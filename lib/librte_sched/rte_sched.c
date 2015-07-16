@@ -495,10 +495,10 @@ rte_sched_port_log_pipe_profile(struct rte_sched_port *port, uint32_t i)
 	struct rte_sched_pipe_profile *p = port->pipe_profiles + i;
 
 	RTE_LOG(INFO, SCHED, "Low level config for pipe profile %u:\n"
-		"\tToken bucket: period = %u, credits per period = %u, size = %u\n"
-		"\tTraffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
-		"\tTraffic class 3 oversubscription: weight = %hhu\n"
-		"\tWRR cost: [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu]\n",
+		"    Token bucket: period = %u, credits per period = %u, size = %u\n"
+		"    Traffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
+		"    Traffic class 3 oversubscription: weight = %hhu\n"
+		"    WRR cost: [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu], [%hhu, %hhu, %hhu, %hhu]\n",
 		i,
 
 		/* Token bucket */
@@ -716,9 +716,9 @@ rte_sched_port_log_subport_config(struct rte_sched_port *port, uint32_t i)
 	struct rte_sched_subport *s = port->subport + i;
 
 	RTE_LOG(INFO, SCHED, "Low level config for subport %u:\n"
-		"\tToken bucket: period = %u, credits per period = %u, size = %u\n"
-		"\tTraffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
-		"\tTraffic class 3 oversubscription: wm min = %u, wm max = %u\n",
+		"    Token bucket: period = %u, credits per period = %u, size = %u\n"
+		"    Traffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
+		"    Traffic class 3 oversubscription: wm min = %u, wm max = %u\n",
 		i,
 
 		/* Token bucket */
