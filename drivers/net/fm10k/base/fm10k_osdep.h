@@ -45,7 +45,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define ERROR_REPORT2(v1, v2, v3)   do { } while (0)
 
 #define STATIC                  static
-#define DEBUGFUNC(F)            DEBUGOUT(F);
+#define DEBUGFUNC(F)            DEBUGOUT(F "\n");
 #define DEBUGOUT(S, args...)    PMD_DRV_LOG_RAW(DEBUG, S, ##args)
 #define DEBUGOUT1(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT2(S, args...)   DEBUGOUT(S, ##args)
