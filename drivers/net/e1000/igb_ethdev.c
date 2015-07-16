@@ -137,6 +137,8 @@ static void eth_igb_rar_set(struct rte_eth_dev *dev,
 		struct ether_addr *mac_addr,
 		uint32_t index, uint32_t pool);
 static void eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index);
+static void eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
+		struct ether_addr *addr);
 
 static void igbvf_intr_disable(struct e1000_hw *hw);
 static int igbvf_dev_configure(struct rte_eth_dev *dev);
@@ -150,6 +152,8 @@ static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on);
 static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on);
+static void igbvf_default_mac_addr_set(struct rte_eth_dev *dev,
+		struct ether_addr *addr);
 static int eth_igb_rss_reta_update(struct rte_eth_dev *dev,
 				   struct rte_eth_rss_reta_entry64 *reta_conf,
 				   uint16_t reta_size);
@@ -283,6 +287,7 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.flow_ctrl_set        = eth_igb_flow_ctrl_set,
 	.mac_addr_add         = eth_igb_rar_set,
 	.mac_addr_remove      = eth_igb_rar_clear,
+	.mac_addr_set         = eth_igb_default_mac_addr_set,
 	.reta_update          = eth_igb_rss_reta_update,
 	.reta_query           = eth_igb_rss_reta_query,
 	.rss_hash_update      = eth_igb_rss_hash_update,
@@ -314,6 +319,7 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
+	.mac_addr_set         = igbvf_default_mac_addr_set,
 };
 
 /**
@@ -2133,6 +2139,14 @@ eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 	e1000_rar_set(hw, addr, index);
 }
 
+static void
+eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
+				struct ether_addr *addr)
+{
+	eth_igb_rar_clear(dev, 0);
+
+	eth_igb_rar_set(dev, (void *)addr, 0, 0);
+}
 /*
  * Virtual Function operations
  */
@@ -2366,6 +2380,17 @@ igbvf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 
 	return 0;
 }
+
+static void
+igbvf_default_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* index is not used by rar_set() */
+	hw->mac.ops.rar_set(hw, (void *)addr, 0);
+}
+
 
 static int
 eth_igb_rss_reta_update(struct rte_eth_dev *dev,
