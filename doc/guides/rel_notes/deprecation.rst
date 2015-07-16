@@ -74,3 +74,8 @@ Deprecation Notices
 * librte_cfgfile: In order to allow for longer names and values,
   the value of macros CFG_NAME_LEN and CFG_NAME_VAL will be increased.
   Most likely, the new values will be 64 and 256, respectively.
+
+* librte_port: Macros to access the packet meta-data stored within the
+  packet buffer will be adjusted to cover the packet mbuf structure as well,
+  as currently they are able to access any packet buffer location except the
+  packet mbuf structure.
