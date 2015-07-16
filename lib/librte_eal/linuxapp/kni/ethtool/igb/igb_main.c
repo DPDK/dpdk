@@ -3178,8 +3178,8 @@ static int igb_sw_init(struct igb_adapter *adapter)
 				     GFP_ATOMIC);
 
 	/* Setup and initialize a copy of the hw vlan table array */
-	adapter->shadow_vfta = (u32 *)kzalloc(sizeof(u32) * E1000_VFTA_ENTRIES,
-					GFP_ATOMIC);
+	adapter->shadow_vfta = kzalloc(sizeof(u32) * E1000_VFTA_ENTRIES,
+				       GFP_ATOMIC);
 #ifdef NO_KNI
 	/* These calls may decrease the number of queues */
 	if (hw->mac.type < e1000_i210) {
