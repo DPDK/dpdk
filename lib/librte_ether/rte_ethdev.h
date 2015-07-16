@@ -3021,6 +3021,22 @@ int rte_eth_dev_mac_addr_add(uint8_t port, struct ether_addr *mac_addr,
 int rte_eth_dev_mac_addr_remove(uint8_t port, struct ether_addr *mac_addr);
 
 /**
+ * Set the default MAC address.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param mac_addr
+ *   New default MAC address.
+ * @return
+ *   - (0) if successful, or *mac_addr* didn't exist.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if MAC address is invalid.
+ */
+int rte_eth_dev_default_mac_addr_set(uint8_t port, struct ether_addr *mac_addr);
+
+
+/**
  * Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
  *
  * @param port

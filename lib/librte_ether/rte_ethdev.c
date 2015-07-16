@@ -2542,6 +2542,27 @@ rte_eth_dev_mac_addr_remove(uint8_t port_id, struct ether_addr *addr)
 }
 
 int
+rte_eth_dev_default_mac_addr_set(uint8_t port_id, struct ether_addr *addr)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (!is_valid_assigned_ether_addr(addr))
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mac_addr_set, -ENOTSUP);
+
+	/* Update default address in NIC data structure */
+	ether_addr_copy(addr, &dev->data->mac_addrs[0]);
+
+	(*dev->dev_ops->mac_addr_set)(dev, addr);
+
+	return 0;
+}
+
+int
 rte_eth_dev_set_vf_rxmode(uint8_t port_id,  uint16_t vf,
 				uint16_t rx_mode, uint8_t on)
 {

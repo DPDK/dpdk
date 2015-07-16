@@ -109,6 +109,7 @@ DPDK_2.0 {
 DPDK_2.1 {
 	global:
 
+	rte_eth_dev_default_mac_addr_set;
 	rte_eth_dev_set_mc_addr_list;
 	rte_eth_timesync_disable;
 	rte_eth_timesync_enable;
