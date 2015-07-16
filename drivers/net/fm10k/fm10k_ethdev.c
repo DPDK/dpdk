@@ -1862,8 +1862,6 @@ fm10k_dev_handle_fault(struct fm10k_hw *hw, uint32_t eicr)
 			fault.address, fault.specinfo);
 	}
 
-	if (estr)
-		return 0;
 	return 0;
 error:
 	PMD_INIT_LOG(ERR, "Failed to handle fault event.");
