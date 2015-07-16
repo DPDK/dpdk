@@ -195,17 +195,19 @@ struct rte_sched_port_params {
 #endif
 };
 
-/** Path through the scheduler hierarchy used by the scheduler enqueue operation to
-identify the destination queue for the current packet. Stored in the field hash.sched
-of struct rte_mbuf of each packet, typically written by the classification stage and read by
-scheduler enqueue.*/
+/*
+ * Path through scheduler hierarchy
+ *
+ * Note: direct access to internal bitfields is deprecated to allow for future expansion.
+ * Use rte_sched_port_pkt_read/write API instead
+ */
 struct rte_sched_port_hierarchy {
 	uint32_t queue:2;                /**< Queue ID (0 .. 3) */
 	uint32_t traffic_class:2;        /**< Traffic class ID (0 .. 3)*/
 	uint32_t pipe:20;                /**< Pipe ID */
 	uint32_t subport:6;              /**< Subport ID */
 	uint32_t color:2;                /**< Color */
-};
+} __attribute__ ((deprecated));
 
 /*
  * Configuration
@@ -328,11 +330,6 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
 	struct rte_sched_queue_stats *stats,
 	uint16_t *qlen);
 
-/*
- * Run-time
- *
- ***/
-
 /**
  * Scheduler hierarchy path write to packet descriptor. Typically called by the
  * packet classification stage.
@@ -350,18 +347,10 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
  * @param color
  *   Packet color set
  */
-static inline void
+void
 rte_sched_port_pkt_write(struct rte_mbuf *pkt,
-	uint32_t subport, uint32_t pipe, uint32_t traffic_class, uint32_t queue, enum rte_meter_color color)
-{
-	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
-
-	sched->color = (uint32_t) color;
-	sched->subport = subport;
-	sched->pipe = pipe;
-	sched->traffic_class = traffic_class;
-	sched->queue = queue;
-}
+			 uint32_t subport, uint32_t pipe, uint32_t traffic_class,
+			 uint32_t queue, enum rte_meter_color color);
 
 /**
  * Scheduler hierarchy path read from packet descriptor (struct rte_mbuf). Typically
@@ -380,24 +369,13 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
  *   Queue ID within pipe traffic class (0 .. 3)
  *
  */
-static inline void
-rte_sched_port_pkt_read_tree_path(struct rte_mbuf *pkt, uint32_t *subport, uint32_t *pipe, uint32_t *traffic_class, uint32_t *queue)
-{
-	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
+void
+rte_sched_port_pkt_read_tree_path(const struct rte_mbuf *pkt,
+				  uint32_t *subport, uint32_t *pipe,
+				  uint32_t *traffic_class, uint32_t *queue);
 
-	*subport = sched->subport;
-	*pipe = sched->pipe;
-	*traffic_class = sched->traffic_class;
-	*queue = sched->queue;
-}
-
-static inline enum rte_meter_color
-rte_sched_port_pkt_read_color(struct rte_mbuf *pkt)
-{
-	struct rte_sched_port_hierarchy *sched = (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
-
-	return (enum rte_meter_color) sched->color;
-}
+enum rte_meter_color
+rte_sched_port_pkt_read_color(const struct rte_mbuf *pkt);
 
 /**
  * Hierarchical scheduler port enqueue. Writes up to n_pkts to port scheduler and

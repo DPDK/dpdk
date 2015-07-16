@@ -184,6 +184,21 @@ enum grinder_state {
 	e_GRINDER_READ_MBUF
 };
 
+/*
+ * Path through the scheduler hierarchy used by the scheduler enqueue
+ * operation to identify the destination queue for the current
+ * packet. Stored in the field pkt.hash.sched of struct rte_mbuf of
+ * each packet, typically written by the classification stage and read
+ * by scheduler enqueue.
+ */
+struct __rte_sched_port_hierarchy {
+	uint32_t queue:2;                /**< Queue ID (0 .. 3) */
+	uint32_t traffic_class:2;        /**< Traffic class ID (0 .. 3)*/
+	uint32_t pipe:20;                /**< Pipe ID */
+	uint32_t subport:6;              /**< Subport ID */
+	uint32_t color:2;                /**< Color */
+};
+
 struct rte_sched_grinder {
 	/* Pipe cache */
 	uint16_t pcache_qmask[RTE_SCHED_GRINDER_PCACHE_SIZE];
@@ -908,6 +923,45 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 #endif
 
 	return 0;
+}
+
+void
+rte_sched_port_pkt_write(struct rte_mbuf *pkt,
+			 uint32_t subport, uint32_t pipe, uint32_t traffic_class,
+			 uint32_t queue, enum rte_meter_color color)
+{
+	struct __rte_sched_port_hierarchy *sched
+		= (struct __rte_sched_port_hierarchy *) &pkt->hash.sched;
+
+	sched->color = (uint32_t) color;
+	sched->subport = subport;
+	sched->pipe = pipe;
+	sched->traffic_class = traffic_class;
+	sched->queue = queue;
+}
+
+void
+rte_sched_port_pkt_read_tree_path(const struct rte_mbuf *pkt,
+				  uint32_t *subport, uint32_t *pipe,
+				  uint32_t *traffic_class, uint32_t *queue)
+{
+	const struct __rte_sched_port_hierarchy *sched
+		= (const struct __rte_sched_port_hierarchy *) &pkt->hash.sched;
+
+	*subport = sched->subport;
+	*pipe = sched->pipe;
+	*traffic_class = sched->traffic_class;
+	*queue = sched->queue;
+}
+
+
+enum rte_meter_color
+rte_sched_port_pkt_read_color(const struct rte_mbuf *pkt)
+{
+	const struct __rte_sched_port_hierarchy *sched
+		= (const struct __rte_sched_port_hierarchy *) &pkt->hash.sched;
+
+	return (enum rte_meter_color) sched->color;
 }
 
 int

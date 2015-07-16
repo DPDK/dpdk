@@ -20,3 +20,12 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.1 {
+	global:
+
+	rte_sched_port_pkt_write;
+	rte_sched_port_pkt_read_tree_path;
+	rte_sched_port_pkt_read_color;
+
+} DPDK_2.0;
