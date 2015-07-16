@@ -448,7 +448,8 @@ rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params)
 
 	status = rte_sched_port_check_params(params);
 	if (status != 0) {
-		RTE_LOG(INFO, SCHED, "Port scheduler params check failed (%d)\n", status);
+		RTE_LOG(NOTICE, SCHED,
+			"Port scheduler params check failed (%d)\n", status);
 
 		return 0;
 	}
@@ -494,7 +495,7 @@ rte_sched_port_log_pipe_profile(struct rte_sched_port *port, uint32_t i)
 {
 	struct rte_sched_pipe_profile *p = port->pipe_profiles + i;
 
-	RTE_LOG(INFO, SCHED, "Low level config for pipe profile %u:\n"
+	RTE_LOG(DEBUG, SCHED, "Low level config for pipe profile %u:\n"
 		"    Token bucket: period = %u, credits per period = %u, size = %u\n"
 		"    Traffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
 		"    Traffic class 3 oversubscription: weight = %hhu\n"
@@ -688,7 +689,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	bmp_mem_size = rte_bitmap_get_memory_footprint(n_queues_per_port);
 	port->bmp = rte_bitmap_init(n_queues_per_port, port->bmp_array, bmp_mem_size);
 	if (port->bmp == NULL) {
-		RTE_LOG(INFO, SCHED, "Bitmap init error\n");
+		RTE_LOG(ERR, SCHED, "Bitmap init error\n");
 		return NULL;
 	}
 	for (i = 0; i < RTE_SCHED_PORT_N_GRINDERS; i ++) {
@@ -715,7 +716,7 @@ rte_sched_port_log_subport_config(struct rte_sched_port *port, uint32_t i)
 {
 	struct rte_sched_subport *s = port->subport + i;
 
-	RTE_LOG(INFO, SCHED, "Low level config for subport %u:\n"
+	RTE_LOG(DEBUG, SCHED, "Low level config for subport %u:\n"
 		"    Token bucket: period = %u, credits per period = %u, size = %u\n"
 		"    Traffic classes: period = %u, credits per period = [%u, %u, %u, %u]\n"
 		"    Traffic class 3 oversubscription: wm min = %u, wm max = %u\n",
@@ -857,7 +858,8 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 		s->tc_ov = s->tc_ov_rate > subport_tc3_rate;
 
 		if (s->tc_ov != tc3_ov) {
-			RTE_LOG(INFO, SCHED, "Subport %u TC3 oversubscription is OFF (%.4lf >= %.4lf)\n",
+			RTE_LOG(DEBUG, SCHED,
+				"Subport %u TC3 oversubscription is OFF (%.4lf >= %.4lf)\n",
 				subport_id, subport_tc3_rate, s->tc_ov_rate);
 		}
 #endif
@@ -896,7 +898,8 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 		s->tc_ov = s->tc_ov_rate > subport_tc3_rate;
 
 		if (s->tc_ov != tc3_ov) {
-			RTE_LOG(INFO, SCHED, "Subport %u TC3 oversubscription is ON (%.4lf < %.4lf)\n",
+			RTE_LOG(DEBUG, SCHED,
+				"Subport %u TC3 oversubscription is ON (%.4lf < %.4lf)\n",
 				subport_id, subport_tc3_rate, s->tc_ov_rate);
 		}
 		p->tc_ov_period_id = s->tc_ov_period_id;
