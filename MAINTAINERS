@@ -103,7 +103,7 @@ F: lib/librte_eal/common/*malloc*
 F: lib/librte_eal/common/eal_common_mem*
 F: lib/librte_eal/common/eal_hugepages.h
 F: lib/librte_malloc/
-F: doc/guides/prog_guide/malloc_lib.rst
+F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_func_reentrancy.c
 F: app/test/test_malloc.c
 F: app/test/test_memory.c

@@ -112,6 +112,8 @@ The services provided by the EAL are:
 
 *   Alarm operations
 
+*   Memory managenent (malloc)
+
 The EAL is fully described in :ref:`Environment Abstraction Layer <Environment_Abstraction_Layer>`.
 
 Core Components
@@ -126,15 +128,6 @@ for high-performance packet processing applications.
 
    Core Components Architecture
 
-
-Memory Manager (librte_malloc)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The librte_malloc library provides an API to allocate memory from the memzones created from the hugepages instead of the heap.
-This helps when allocating large numbers of items that may become susceptible to TLB misses
-when using typical 4k heap pages in the Linux user space environment.
-
-This memory allocator is fully described in :ref:`Malloc Library <Malloc_Library>`.
 
 Ring Manager (librte_ring)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

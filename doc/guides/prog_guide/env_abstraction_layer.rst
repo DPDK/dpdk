@@ -116,7 +116,6 @@ The physical address of the reserved memory for that memory zone is also returne
 .. note::
 
     Memory reservations done using the APIs provided by the rte_malloc library are also backed by pages from the hugetlbfs filesystem.
-    However, physical address information is not available for the blocks of memory allocated in this way.
 
 Xen Dom0 support without hugetbls
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -366,3 +365,222 @@ We expect only 50% of CPU spend on packet IO.
     echo  50000 > pkt_io/cpu.cfs_quota_us
 
 
+Malloc
+------
+
+The EAL provides a malloc API to allocate any-sized memory.
+
+The objective of this API is to provide malloc-like functions to allow
+allocation from hugepage memory and to facilitate application porting.
+The *DPDK API Reference* manual describes the available functions.
+
+Typically, these kinds of allocations should not be done in data plane
+processing because they are slower than pool-based allocation and make
+use of locks within the allocation and free paths.
+However, they can be used in configuration code.
+
+Refer to the rte_malloc() function description in the *DPDK API Reference*
+manual for more information.
+
+Cookies
+~~~~~~~
+
+When CONFIG_RTE_MALLOC_DEBUG is enabled, the allocated memory contains
+overwrite protection fields to help identify buffer overflows.
+
+Alignment and NUMA Constraints
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The rte_malloc() takes an align argument that can be used to request a memory
+area that is aligned on a multiple of this value (which must be a power of two).
+
+On systems with NUMA support, a call to the rte_malloc() function will return
+memory that has been allocated on the NUMA socket of the core which made the call.
+A set of APIs is also provided, to allow memory to be explicitly allocated on a
+NUMA socket directly, or by allocated on the NUMA socket where another core is
+located, in the case where the memory is to be used by a logical core other than
+on the one doing the memory allocation.
+
+Use Cases
+~~~~~~~~~
+
+This API is meant to be used by an application that requires malloc-like
+functions at initialization time.
+
+For allocating/freeing data at runtime, in the fast-path of an application,
+the memory pool library should be used instead.
+
+Internal Implementation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Data Structures
+^^^^^^^^^^^^^^^
+
+There are two data structure types used internally in the malloc library:
+
+*   struct malloc_heap - used to track free space on a per-socket basis
+
+*   struct malloc_elem - the basic element of allocation and free-space
+    tracking inside the library.
+
+Structure: malloc_heap
+""""""""""""""""""""""
+
+The malloc_heap structure is used to manage free space on a per-socket basis.
+Internally, there is one heap structure per NUMA node, which allows us to
+allocate memory to a thread based on the NUMA node on which this thread runs.
+While this does not guarantee that the memory will be used on that NUMA node,
+it is no worse than a scheme where the memory is always allocated on a fixed
+or random node.
+
+The key fields of the heap structure and their function are described below
+(see also diagram above):
+
+*   lock - the lock field is needed to synchronize access to the heap.
+    Given that the free space in the heap is tracked using a linked list,
+    we need a lock to prevent two threads manipulating the list at the same time.
+
+*   free_head - this points to the first element in the list of free nodes for
+    this malloc heap.
+
+.. note::
+
+    The malloc_heap structure does not keep track of in-use blocks of memory,
+    since these are never touched except when they are to be freed again -
+    at which point the pointer to the block is an input to the free() function.
+
+.. _figure_malloc_heap:
+
+.. figure:: img/malloc_heap.*
+
+   Example of a malloc heap and malloc elements within the malloc library
+
+
+.. _malloc_elem:
+
+Structure: malloc_elem
+""""""""""""""""""""""
+
+The malloc_elem structure is used as a generic header structure for various
+blocks of memory.
+It is used in three different ways - all shown in the diagram above:
+
+#.  As a header on a block of free or allocated memory - normal case
+
+#.  As a padding header inside a block of memory
+
+#.  As an end-of-memseg marker
+
+The most important fields in the structure and how they are used are described below.
+
+.. note::
+
+    If the usage of a particular field in one of the above three usages is not
+    described, the field can be assumed to have an undefined value in that
+    situation, for example, for padding headers only the "state" and "pad"
+    fields have valid values.
+
+*   heap - this pointer is a reference back to the heap structure from which
+    this block was allocated.
+    It is used for normal memory blocks when they are being freed, to add the
+    newly-freed block to the heap's free-list.
+
+*   prev - this pointer points to the header element/block in the memseg
+    immediately behind the current one. When freeing a block, this pointer is
+    used to reference the previous block to check if that block is also free.
+    If so, then the two free blocks are merged to form a single larger block.
+
+*   next_free - this pointer is used to chain the free-list of unallocated
+    memory blocks together.
+    It is only used in normal memory blocks; on ``malloc()`` to find a suitable
+    free block to allocate and on ``free()`` to add the newly freed element to
+    the free-list.
+
+*   state - This field can have one of three values: ``FREE``, ``BUSY`` or
+    ``PAD``.
+    The former two are to indicate the allocation state of a normal memory block
+    and the latter is to indicate that the element structure is a dummy structure
+    at the end of the start-of-block padding, i.e. where the start of the data
+    within a block is not at the start of the block itself, due to alignment
+    constraints.
+    In that case, the pad header is used to locate the actual malloc element
+    header for the block.
+    For the end-of-memseg structure, this is always a ``BUSY`` value, which
+    ensures that no element, on being freed, searches beyond the end of the
+    memseg for other blocks to merge with into a larger free area.
+
+*   pad - this holds the length of the padding present at the start of the block.
+    In the case of a normal block header, it is added to the address of the end
+    of the header to give the address of the start of the data area, i.e. the
+    value passed back to the application on a malloc.
+    Within a dummy header inside the padding, this same value is stored, and is
+    subtracted from the address of the dummy header to yield the address of the
+    actual block header.
+
+*   size - the size of the data block, including the header itself.
+    For end-of-memseg structures, this size is given as zero, though it is never
+    actually checked.
+    For normal blocks which are being freed, this size value is used in place of
+    a "next" pointer to identify the location of the next block of memory that
+    in the case of being ``FREE``, the two free blocks can be merged into one.
+
+Memory Allocation
+^^^^^^^^^^^^^^^^^
+
+On EAL initialisation, all memsegs are setup as part of the malloc heap.
+This setup involves placing a dummy structure at the end with ``BUSY`` state,
+which may contain a sentinel value if ``CONFIG_RTE_MALLOC_DEBUG`` is enabled,
+and a proper :ref:`element header<malloc_elem>` with ``FREE`` at the start
+for each memseg.
+The ``FREE`` element is then added to the ``free_list`` for the malloc heap.
+
+When an application makes a call to a malloc-like function, the malloc function
+will first index the ``lcore_config`` structure for the calling thread, and
+determine the NUMA node of that thread.
+The NUMA node is used to index the array of ``malloc_heap`` structures which is
+passed as a parameter to the ``heap_alloc()`` function, along with the
+requested size, type, alignment and boundary parameters.
+
+The ``heap_alloc()`` function will scan the free_list of the heap, and attempt
+to find a free block suitable for storing data of the requested size, with the
+requested alignment and boundary constraints.
+
+When a suitable free element has been identified, the pointer to be returned
+to the user is calculated.
+The cache-line of memory immediately preceding this pointer is filled with a
+struct malloc_elem header.
+Because of alignment and boundary constraints, there could be free space at
+the start and/or end of the element, resulting in the following behavior:
+
+#. Check for trailing space.
+   If the trailing space is big enough, i.e. > 128 bytes, then the free element
+   is split.
+   If it is not, then we just ignore it (wasted space).
+
+#. Check for space at the start of the element.
+   If the space at the start is small, i.e. <=128 bytes, then a pad header is
+   used, and the remaining space is wasted.
+   If, however, the remaining space is greater, then the free element is split.
+
+The advantage of allocating the memory from the end of the existing element is
+that no adjustment of the free list needs to take place - the existing element
+on the free list just has its size pointer adjusted, and the following element
+has its "prev" pointer redirected to the newly created element.
+
+Freeing Memory
+^^^^^^^^^^^^^^
+
+To free an area of memory, the pointer to the start of the data area is passed
+to the free function.
+The size of the ``malloc_elem`` structure is subtracted from this pointer to get
+the element header for the block.
+If this header is of type ``PAD`` then the pad length is further subtracted from
+the pointer to get the proper element header for the entire block.
+
+From this element header, we get pointers to the heap from which the block was
+allocated and to where it must be freed, as well as the pointer to the previous
+element, and via the size field, we can calculate the pointer to the next element.
+These next and previous elements are then checked to see if they are also
+``FREE``, and if so, they are merged with the current element.
+This means that we can never have two ``FREE`` memory blocks adjacent to one
+another, as they are always merged into a single block.

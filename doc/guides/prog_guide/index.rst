@@ -43,7 +43,6 @@ Programmer's Guide
     intro
     overview
     env_abstraction_layer
-    malloc_lib
     ring_lib
     mempool_lib
     mbuf_lib
