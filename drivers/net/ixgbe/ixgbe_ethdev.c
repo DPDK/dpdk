@@ -68,6 +68,9 @@
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass.h"
 #include "ixgbe_rxtx.h"
+#include "base/ixgbe_type.h"
+#include "base/ixgbe_phy.h"
+#include "ixgbe_regs.h"
 
 /*
  * High threshold controlling when to start sending XOFF frames. Must be at
@@ -91,6 +94,7 @@
 
 #define IXGBE_MMW_SIZE_DEFAULT        0x4
 #define IXGBE_MMW_SIZE_JUMBO_FRAME    0x14
+#define IXGBE_MAX_RING_DESC           4096 /* replicate define from rxtx */
 
 /*
  *  Default values for RX/TX configuration
@@ -273,6 +277,19 @@ static int ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
 
+static int ixgbe_get_reg_length(struct rte_eth_dev *dev);
+static int ixgbe_get_regs(struct rte_eth_dev *dev,
+			    struct rte_dev_reg_info *regs);
+static int ixgbe_get_eeprom_length(struct rte_eth_dev *dev);
+static int ixgbe_get_eeprom(struct rte_eth_dev *dev,
+				struct rte_dev_eeprom_info *eeprom);
+static int ixgbe_set_eeprom(struct rte_eth_dev *dev,
+				struct rte_dev_eeprom_info *eeprom);
+
+static int ixgbevf_get_reg_length(struct rte_eth_dev *dev);
+static int ixgbevf_get_regs(struct rte_eth_dev *dev,
+				struct rte_dev_reg_info *regs);
+
 static int ixgbe_timesync_enable(struct rte_eth_dev *dev);
 static int ixgbe_timesync_disable(struct rte_eth_dev *dev);
 static int ixgbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
@@ -411,6 +428,11 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.timesync_disable     = ixgbe_timesync_disable,
 	.timesync_read_rx_timestamp = ixgbe_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp = ixgbe_timesync_read_tx_timestamp,
+	.get_reg_length       = ixgbe_get_reg_length,
+	.get_reg              = ixgbe_get_regs,
+	.get_eeprom_length    = ixgbe_get_eeprom_length,
+	.get_eeprom           = ixgbe_get_eeprom,
+	.set_eeprom           = ixgbe_set_eeprom,
 };
 
 /*
@@ -438,6 +460,8 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.mac_addr_remove      = ixgbevf_remove_mac_addr,
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
 	.mac_addr_set         = ixgbevf_set_default_mac_addr,
+	.get_reg_length       = ixgbevf_get_reg_length,
+	.get_reg              = ixgbevf_get_regs,
 };
 
 /**
@@ -4661,6 +4685,134 @@ ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	timestamp->tv_nsec = 0;
 
 	return  0;
+}
+
+static int
+ixgbe_get_reg_length(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int count = 0;
+	int g_ind = 0;
+	const struct reg_info *reg_group;
+	const struct reg_info **reg_set = (hw->mac.type == ixgbe_mac_82598EB) ?
+				    ixgbe_regs_mac_82598EB : ixgbe_regs_others;
+
+	while ((reg_group = reg_set[g_ind++]))
+		count += ixgbe_regs_group_count(reg_group);
+
+	return count;
+}
+
+static int
+ixgbevf_get_reg_length(struct rte_eth_dev *dev __rte_unused)
+{
+	int count = 0;
+	int g_ind = 0;
+	const struct reg_info *reg_group;
+
+	while ((reg_group = ixgbevf_regs[g_ind++]))
+		count += ixgbe_regs_group_count(reg_group);
+
+	return count;
+}
+
+static int
+ixgbe_get_regs(struct rte_eth_dev *dev,
+	      struct rte_dev_reg_info *regs)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t *data = regs->data;
+	int g_ind = 0;
+	int count = 0;
+	const struct reg_info *reg_group;
+	const struct reg_info **reg_set = (hw->mac.type == ixgbe_mac_82598EB) ?
+				    ixgbe_regs_mac_82598EB : ixgbe_regs_others;
+
+	/* Support only full register dump */
+	if ((regs->length == 0) ||
+	    (regs->length == (uint32_t)ixgbe_get_reg_length(dev))) {
+		regs->version = hw->mac.type << 24 | hw->revision_id << 16 |
+			hw->device_id;
+		while ((reg_group = reg_set[g_ind++]))
+			count += ixgbe_read_regs_group(dev, &data[count],
+				reg_group);
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
+ixgbevf_get_regs(struct rte_eth_dev *dev,
+		struct rte_dev_reg_info *regs)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t *data = regs->data;
+	int g_ind = 0;
+	int count = 0;
+	const struct reg_info *reg_group;
+
+	/* Support only full register dump */
+	if ((regs->length == 0) ||
+	    (regs->length == (uint32_t)ixgbevf_get_reg_length(dev))) {
+		regs->version = hw->mac.type << 24 | hw->revision_id << 16 |
+			hw->device_id;
+		while ((reg_group = ixgbevf_regs[g_ind++]))
+			count += ixgbe_read_regs_group(dev, &data[count],
+						      reg_group);
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
+ixgbe_get_eeprom_length(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Return unit is byte count */
+	return hw->eeprom.word_size * 2;
+}
+
+static int
+ixgbe_get_eeprom(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *in_eeprom)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
+	uint16_t *data = in_eeprom->data;
+	int first, length;
+
+	first = in_eeprom->offset >> 1;
+	length = in_eeprom->length >> 1;
+	if ((first >= hw->eeprom.word_size) ||
+	    ((first + length) >= hw->eeprom.word_size))
+		return -EINVAL;
+
+	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
+
+	return eeprom->ops.read_buffer(hw, first, length, data);
+}
+
+static int
+ixgbe_set_eeprom(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *in_eeprom)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
+	uint16_t *data = in_eeprom->data;
+	int first, length;
+
+	first = in_eeprom->offset >> 1;
+	length = in_eeprom->length >> 1;
+	if ((first >= hw->eeprom.word_size) ||
+	    ((first + length) >= hw->eeprom.word_size))
+		return -EINVAL;
+
+	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
+
+	return eeprom->ops.write_buffer(hw,  first, length, data);
 }
 
 static struct rte_driver rte_ixgbe_driver = {
