@@ -636,6 +636,12 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 		uint32_t j;
 
 		for (j = 0; j < e_RTE_METER_COLORS; j++) {
+			/* if min/max are both zero, then RED is disabled */
+			if ((params->red_params[i][j].min_th |
+			     params->red_params[i][j].max_th) == 0) {
+				continue;
+			}
+
 			if (rte_red_config_init(&port->red_config[i][j],
 				params->red_params[i][j].wq_log2,
 				params->red_params[i][j].min_th,
@@ -1068,6 +1074,9 @@ rte_sched_port_red_drop(struct rte_sched_port *port, struct rte_mbuf *pkt, uint3
 	tc_index = (qindex >> 2) & 0x3;
 	color = rte_sched_port_pkt_read_color(pkt);
 	red_cfg = &port->red_config[tc_index][color];
+
+	if ((red_cfg->min_th | red_cfg->max_th) == 0)
+		return 0;
 
 	qe = port->queue_extra + qindex;
 	red = &qe->red;
