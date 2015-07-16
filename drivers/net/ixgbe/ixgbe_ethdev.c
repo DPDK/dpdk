@@ -187,6 +187,8 @@ static void ixgbe_dev_interrupt_delayed_handler(void *param);
 static void ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		uint32_t index, uint32_t pool);
 static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
+static void ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
+					   struct ether_addr *mac_addr);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config);
 
 /* For Virtual Function support */
@@ -231,6 +233,8 @@ static void ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 				 struct ether_addr *mac_addr,
 				 uint32_t index, uint32_t pool);
 static void ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
+static void ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
+					     struct ether_addr *mac_addr);
 static int ixgbe_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
 			bool add);
@@ -375,6 +379,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.priority_flow_ctrl_set = ixgbe_priority_flow_ctrl_set,
 	.mac_addr_add         = ixgbe_add_rar,
 	.mac_addr_remove      = ixgbe_remove_rar,
+	.mac_addr_set         = ixgbe_set_default_mac_addr,
 	.uc_hash_table_set    = ixgbe_uc_hash_table_set,
 	.uc_all_hash_table_set  = ixgbe_uc_all_hash_table_set,
 	.mirror_rule_set      = ixgbe_mirror_rule_set,
@@ -432,6 +437,7 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.mac_addr_add         = ixgbevf_add_mac_addr,
 	.mac_addr_remove      = ixgbevf_remove_mac_addr,
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
+	.mac_addr_set         = ixgbevf_set_default_mac_addr,
 };
 
 /**
@@ -2928,6 +2934,14 @@ ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
 	ixgbe_clear_rar(hw, index);
 }
 
+static void
+ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+{
+	ixgbe_remove_rar(dev, 0);
+
+	ixgbe_add_rar(dev, addr, 0, 0);
+}
+
 static int
 ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
@@ -3785,6 +3799,14 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	}
 }
 
+static void
+ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hw->mac.ops.set_rar(hw, 0, (void *)addr, 0, 0);
+}
+
 #define MAC_TYPE_FILTER_SUP(type)    do {\
 	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
 		(type) != ixgbe_mac_X550)\
@@ -4525,8 +4547,8 @@ ixgbe_dev_addr_list_itr(__attribute__((unused)) struct ixgbe_hw *hw,
 
 static int
 ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
-			   struct ether_addr *mc_addr_set,
-			   uint32_t nb_mc_addr)
+			  struct ether_addr *mc_addr_set,
+			  uint32_t nb_mc_addr)
 {
 	struct ixgbe_hw *hw;
 	u8 *mc_addr_list;
