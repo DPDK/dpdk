@@ -61,3 +61,12 @@ Deprecation Notices
 * ABI changes are planned for struct virtio_net in order to support vhost-user
   multiple queues feature.
   It should be integrated in release 2.2 without backward compatibility.
+
+* The scheduler hierarchy structure (rte_sched_port_hierarchy) will change to
+  allow for a larger number of subport entries.
+  The number of available traffic_classes and queues may also change.
+  The mbuf structure element for sched hierarchy will also change from a single
+  32 bit to a 64 bit structure.
+
+* The scheduler statistics structure will change to allow keeping track of
+  RED actions.
