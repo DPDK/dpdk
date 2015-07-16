@@ -3398,3 +3398,63 @@ rte_eth_timesync_read_tx_timestamp(uint8_t port_id, struct timespec *timestamp)
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_read_tx_timestamp, -ENOTSUP);
 	return (*dev->dev_ops->timesync_read_tx_timestamp)(dev, timestamp);
 }
+
+int
+rte_eth_dev_get_reg_length(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_reg_length, -ENOTSUP);
+	return (*dev->dev_ops->get_reg_length)(dev);
+}
+
+int
+rte_eth_dev_get_reg_info(uint8_t port_id, struct rte_dev_reg_info *info)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_reg, -ENOTSUP);
+	return (*dev->dev_ops->get_reg)(dev, info);
+}
+
+int
+rte_eth_dev_get_eeprom_length(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_eeprom_length, -ENOTSUP);
+	return (*dev->dev_ops->get_eeprom_length)(dev);
+}
+
+int
+rte_eth_dev_get_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_eeprom, -ENOTSUP);
+	return (*dev->dev_ops->get_eeprom)(dev, info);
+}
+
+int
+rte_eth_dev_set_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_eeprom, -ENOTSUP);
+	return (*dev->dev_ops->set_eeprom)(dev, info);
+}

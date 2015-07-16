@@ -182,6 +182,7 @@ extern "C" {
 #include <rte_devargs.h>
 #include "rte_ether.h"
 #include "rte_eth_ctrl.h"
+#include "rte_dev_info.h"
 
 struct rte_mbuf;
 
@@ -1255,6 +1256,24 @@ typedef int (*eth_timesync_read_tx_timestamp_t)(struct rte_eth_dev *dev,
 						struct timespec *timestamp);
 /**< @internal Function used to read a TX IEEE1588/802.1AS timestamp. */
 
+typedef int (*eth_get_reg_length_t)(struct rte_eth_dev *dev);
+/**< @internal Retrieve device register count  */
+
+typedef int (*eth_get_reg_t)(struct rte_eth_dev *dev,
+				struct rte_dev_reg_info *info);
+/**< @internal Retrieve registers  */
+
+typedef int (*eth_get_eeprom_length_t)(struct rte_eth_dev *dev);
+/**< @internal Retrieve eeprom size  */
+
+typedef int (*eth_get_eeprom_t)(struct rte_eth_dev *dev,
+				struct rte_dev_eeprom_info *info);
+/**< @internal Retrieve eeprom data  */
+
+typedef int (*eth_set_eeprom_t)(struct rte_eth_dev *dev,
+				struct rte_dev_eeprom_info *info);
+/**< @internal Program eeprom data  */
+
 #ifdef RTE_NIC_BYPASS
 
 enum {
@@ -1394,6 +1413,17 @@ struct eth_dev_ops {
 	reta_update_t reta_update;
 	/** Query redirection table. */
 	reta_query_t reta_query;
+
+	eth_get_reg_length_t get_reg_length;
+	/**< Get # of registers */
+	eth_get_reg_t get_reg;
+	/**< Get registers */
+	eth_get_eeprom_length_t get_eeprom_length;
+	/**< Get eeprom length */
+	eth_get_eeprom_t get_eeprom;
+	/**< Get eeprom data */
+	eth_set_eeprom_t set_eeprom;
+	/**< Set eeprom */
   /* bypass control */
 #ifdef RTE_NIC_BYPASS
   bypass_init_t bypass_init;
@@ -3669,6 +3699,79 @@ int rte_eth_remove_rx_callback(uint8_t port_id, uint16_t queue_id,
  */
 int rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
 		struct rte_eth_rxtx_callback *user_cb);
+
+/**
+ * Retrieve number of available registers for access
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (>=0) number of registers if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_eth_dev_get_reg_length(uint8_t port_id);
+
+/**
+ * Retrieve device registers and register attributes
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param info
+ *   The template includes buffer for register data and attribute to be filled.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_eth_dev_get_reg_info(uint8_t port_id, struct rte_dev_reg_info *info);
+
+/**
+ * Retrieve size of device EEPROM
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (>=0) EEPROM size if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_eth_dev_get_eeprom_length(uint8_t port_id);
+
+/**
+ * Retrieve EEPROM and EEPROM attribute
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param info
+ *   The template includes buffer for return EEPROM data and
+ *   EEPROM attributes to be filled.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_eth_dev_get_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info);
+
+/**
+ * Program EEPROM with provided data
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param info
+ *   The template includes EEPROM data for programming and
+ *   EEPROM attributes to be filled
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - others depends on the specific operations implementation.
+ */
+int rte_eth_dev_set_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info);
 
 #ifdef __cplusplus
 }

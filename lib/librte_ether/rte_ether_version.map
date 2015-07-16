@@ -110,6 +110,11 @@ DPDK_2.1 {
 	global:
 
 	rte_eth_dev_default_mac_addr_set;
+	rte_eth_dev_get_eeprom;
+	rte_eth_dev_get_eeprom_length;
+	rte_eth_dev_get_reg_info;
+	rte_eth_dev_get_reg_length;
+	rte_eth_dev_set_eeprom;
 	rte_eth_dev_set_mc_addr_list;
 	rte_eth_timesync_disable;
 	rte_eth_timesync_enable;

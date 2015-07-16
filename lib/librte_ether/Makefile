@@ -51,6 +51,7 @@ SRCS-y += rte_ethdev.c
 SYMLINK-y-include += rte_ether.h
 SYMLINK-y-include += rte_ethdev.h
 SYMLINK-y-include += rte_eth_ctrl.h
+SYMLINK-y-include += rte_dev_info.h
 
 # this lib depends upon:
 DEPDIRS-y += lib/librte_eal lib/librte_mempool lib/librte_ring lib/librte_mbuf
