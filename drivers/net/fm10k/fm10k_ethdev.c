@@ -1779,7 +1779,7 @@ fm10k_dev_handle_fault(struct fm10k_hw *hw, uint32_t eicr)
 	const char *estr = "Unknown error";
 
 	/* Process PCA fault */
-	if (eicr & FM10K_EIMR_PCA_FAULT) {
+	if (eicr & FM10K_EICR_PCA_FAULT) {
 		err = fm10k_get_fault(hw, FM10K_PCA_FAULT, &fault);
 		if (err)
 			goto error;
@@ -1807,7 +1807,7 @@ fm10k_dev_handle_fault(struct fm10k_hw *hw, uint32_t eicr)
 	}
 
 	/* Process THI fault */
-	if (eicr & FM10K_EIMR_THI_FAULT) {
+	if (eicr & FM10K_EICR_THI_FAULT) {
 		err = fm10k_get_fault(hw, FM10K_THI_FAULT, &fault);
 		if (err)
 			goto error;
@@ -1825,7 +1825,7 @@ fm10k_dev_handle_fault(struct fm10k_hw *hw, uint32_t eicr)
 	}
 
 	/* Process FUM fault */
-	if (eicr & FM10K_EIMR_FUM_FAULT) {
+	if (eicr & FM10K_EICR_FUM_FAULT) {
 		err = fm10k_get_fault(hw, FM10K_FUM_FAULT, &fault);
 		if (err)
 			goto error;
