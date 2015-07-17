@@ -541,7 +541,7 @@ csum set (ip|udp|tcp|sctp|outer-ip) (hw|sw) (port_id)
 
 - ip|udp|tcp|sctp always concern the inner layer.
 
-- outer-ip concerns the outer IP layer in case the packet is recognized
+- outer-ip concerns the outer IP layer (only for IPv4) in case the packet is recognized
   as a tunnel packet by the forward engine (vxlan, gre and ipip are
   supported). See "csum parse-tunnel" command.
 
