@@ -122,10 +122,10 @@ do {                                                            \
 	((volatile uint32_t *)((char *)(a)->hw_addr + (reg)))
 static inline uint32_t i40e_read_addr(volatile void *addr)
 {
-	return I40E_PCI_REG(addr);
+	return rte_le_to_cpu_32(I40E_PCI_REG(addr));
 }
 #define I40E_PCI_REG_WRITE(reg, value) \
-	do {I40E_PCI_REG((reg)) = (value);} while(0)
+	do { I40E_PCI_REG((reg)) = rte_cpu_to_le_32(value); } while (0)
 
 #define I40E_WRITE_FLUSH(a) I40E_READ_REG(a, I40E_GLGEN_STAT)
 #define I40EVF_WRITE_FLUSH(a) I40E_READ_REG(a, I40E_VFGEN_RSTAT)
