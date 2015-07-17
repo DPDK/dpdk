@@ -59,6 +59,9 @@
 #include <rte_compat.h>
 
 #include "rte_hash.h"
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_X32)
+#include "rte_cmp_x86.h"
+#endif
 
 TAILQ_HEAD(rte_hash_list, rte_tailq_entry);
 
@@ -94,14 +97,6 @@ EAL_REGISTER_TAILQ(rte_hash_tailq)
 #define KEY_ALIGNMENT			16
 
 typedef int (*rte_hash_cmp_eq_t)(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k32_cmp_eq(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k48_cmp_eq(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k64_cmp_eq(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k80_cmp_eq(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k96_cmp_eq(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k112_cmp_eq(const void *key1, const void *key2, size_t key_len);
-static int rte_hash_k128_cmp_eq(const void *key1, const void *key2, size_t key_len);
 
 /** A hash table structure. */
 struct rte_hash {
@@ -253,6 +248,11 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		goto err;
 	}
 
+/*
+ * If x86 architecture is used, select appropriate compare function,
+ * which may use x86 instrinsics, otherwise use memcmp
+ */
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_X32)
 	/* Select function to compare keys */
 	switch (params->key_len) {
 	case 16:
@@ -283,6 +283,9 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		/* If key is not multiple of 16, use generic memcmp */
 		h->rte_hash_cmp_eq = memcmp;
 	}
+#else
+	h->rte_hash_cmp_eq = memcmp;
+#endif
 
 	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
 	r = rte_ring_lookup(ring_name);
@@ -1117,81 +1120,4 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 	(*next)++;
 
 	return (position - 1);
-}
-
-/* Functions to compare multiple of 16 byte keys (up to 128 bytes) */
-static int
-rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unused)
-{
-	const __m128i k1 = _mm_loadu_si128((const __m128i *) key1);
-	const __m128i k2 = _mm_loadu_si128((const __m128i *) key2);
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_1
-	const __m128i x = _mm_xor_si128(k1, k2);
-
-	return !_mm_test_all_zeros(x, x);
-#else
-	const __m128i x = _mm_cmpeq_epi32(k1, k2);
-
-	return (_mm_movemask_epi8(x) != 0xffff);
-#endif
-}
-
-static int
-rte_hash_k32_cmp_eq(const void *key1, const void *key2, size_t key_len)
-{
-	return rte_hash_k16_cmp_eq(key1, key2, key_len) ||
-		rte_hash_k16_cmp_eq((const char *) key1 + 16,
-				(const char *) key2 + 16, key_len);
-}
-
-static int
-rte_hash_k48_cmp_eq(const void *key1, const void *key2, size_t key_len)
-{
-	return rte_hash_k16_cmp_eq(key1, key2, key_len) ||
-		rte_hash_k16_cmp_eq((const char *) key1 + 16,
-				(const char *) key2 + 16, key_len) ||
-		rte_hash_k16_cmp_eq((const char *) key1 + 32,
-				(const char *) key2 + 32, key_len);
-}
-
-static int
-rte_hash_k64_cmp_eq(const void *key1, const void *key2, size_t key_len)
-{
-	return rte_hash_k32_cmp_eq(key1, key2, key_len) ||
-		rte_hash_k32_cmp_eq((const char *) key1 + 32,
-				(const char *) key2 + 32, key_len);
-}
-
-static int
-rte_hash_k80_cmp_eq(const void *key1, const void *key2, size_t key_len)
-{
-	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
-		rte_hash_k16_cmp_eq((const char *) key1 + 64,
-				(const char *) key2 + 64, key_len);
-}
-
-static int
-rte_hash_k96_cmp_eq(const void *key1, const void *key2, size_t key_len)
-{
-	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
-		rte_hash_k32_cmp_eq((const char *) key1 + 64,
-				(const char *) key2 + 64, key_len);
-}
-
-static int
-rte_hash_k112_cmp_eq(const void *key1, const void *key2, size_t key_len)
-{
-	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
-		rte_hash_k32_cmp_eq((const char *) key1 + 64,
-				(const char *) key2 + 64, key_len) ||
-		rte_hash_k16_cmp_eq((const char *) key1 + 96,
-				(const char *) key2 + 96, key_len);
-}
-
-static int
-rte_hash_k128_cmp_eq(const void *key1, const void *key2, size_t key_len)
-{
-	return rte_hash_k64_cmp_eq(key1, key2, key_len) ||
-		rte_hash_k64_cmp_eq((const char *) key1 + 64,
-				(const char *) key2 + 64, key_len);
 }
