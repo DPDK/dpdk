@@ -213,7 +213,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
  * driver.
  */
 static int
-rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
+rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
 		struct rte_pci_device *dev)
 {
 	const struct rte_pci_id *id_table;
@@ -246,7 +246,6 @@ rte_eal_pci_close_one_driver(struct rte_pci_driver *dr,
 		RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
 				dev->id.device_id, dr->name);
 
-		/* call the driver devuninit() function */
 		if (dr->devuninit && (dr->devuninit(dev) < 0))
 			return -1;	/* negative value is an error */
 
@@ -297,7 +296,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
  * failed, return 1 if no driver is found for this device.
  */
 static int
-pci_close_all_drivers(struct rte_pci_device *dev)
+pci_detach_all_drivers(struct rte_pci_device *dev)
 {
 	struct rte_pci_driver *dr = NULL;
 	int rc = 0;
@@ -306,7 +305,7 @@ pci_close_all_drivers(struct rte_pci_device *dev)
 		return -1;
 
 	TAILQ_FOREACH(dr, &pci_driver_list, next) {
-		rc = rte_eal_pci_close_one_driver(dr, dev);
+		rc = rte_eal_pci_detach_dev(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
 			return -1;
@@ -349,12 +348,17 @@ err_return:
 	return -1;
 }
 
+int __attribute__ ((deprecated))
+rte_eal_pci_close_one(const struct rte_pci_addr *addr)
+{
+	return rte_eal_pci_detach(addr);
+}
+
 /*
- * Find the pci device specified by pci address, then invoke close function of
- * the driver of the devive.
+ * Detach device specified by its pci address.
  */
 int
-rte_eal_pci_close_one(const struct rte_pci_addr *addr)
+rte_eal_pci_detach(const struct rte_pci_addr *addr)
 {
 	struct rte_pci_device *dev = NULL;
 	int ret = 0;
@@ -366,7 +370,7 @@ rte_eal_pci_close_one(const struct rte_pci_addr *addr)
 		if (rte_eal_compare_pci_addr(&dev->addr, addr))
 			continue;
 
-		ret = pci_close_all_drivers(dev);
+		ret = pci_detach_all_drivers(dev);
 		if (ret < 0)
 			goto err_return;
 

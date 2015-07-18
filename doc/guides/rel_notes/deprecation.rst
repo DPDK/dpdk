@@ -16,6 +16,9 @@ Deprecation Notices
   There is no backward compatibility planned from release 2.2.
   All binaries will need to be rebuilt from release 2.2.
 
+* The EAL function rte_eal_pci_close_one is deprecated because renamed to
+  rte_eal_pci_detach.
+
 * The Macros RTE_HASH_BUCKET_ENTRIES_MAX and RTE_HASH_KEY_LENGTH_MAX are
   deprecated and will be removed with version 2.2.
 

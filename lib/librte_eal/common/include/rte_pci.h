@@ -416,7 +416,7 @@ int rte_eal_pci_probe_one(const struct rte_pci_addr *addr);
  * Close the single PCI device.
  *
  * Scan the content of the PCI bus, and find the pci device specified by pci
- * address, then call the close() function for registered driver that has a
+ * address, then call the devuninit() function for registered driver that has a
  * matching entry in its id_table for discovered device.
  *
  * @param addr
@@ -425,7 +425,9 @@ int rte_eal_pci_probe_one(const struct rte_pci_addr *addr);
  *   - 0 on success.
  *   - Negative on error.
  */
-int rte_eal_pci_close_one(const struct rte_pci_addr *addr);
+int rte_eal_pci_detach(const struct rte_pci_addr *addr);
+int __attribute__ ((deprecated))
+rte_eal_pci_close_one(const struct rte_pci_addr *addr);
 
 /**
  * Dump the content of the PCI bus.

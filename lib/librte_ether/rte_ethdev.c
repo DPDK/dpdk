@@ -584,9 +584,9 @@ rte_eth_dev_detach_pdev(uint8_t port_id, struct rte_pci_addr *addr)
 	if (rte_eal_compare_pci_addr(&vp, &freed_addr) == 0)
 		goto err;
 
-	/* invoke close func of the driver,
+	/* invoke devuninit func of the pci driver,
 	 * also remove the device from pci_device_list */
-	if (rte_eal_pci_close_one(&freed_addr))
+	if (rte_eal_pci_detach(&freed_addr))
 		goto err;
 
 	*addr = freed_addr;
@@ -656,7 +656,7 @@ rte_eth_dev_detach_vdev(uint8_t port_id, char *vdevname)
 	if (rte_eth_dev_get_name_by_port(port_id, name))
 		goto err;
 	/* walk around dev_driver_list to find the driver of the device,
-	 * then invoke close function o the driver */
+	 * then invoke uninit function of the driver */
 	if (rte_eal_vdev_uninit(name))
 		goto err;
 
