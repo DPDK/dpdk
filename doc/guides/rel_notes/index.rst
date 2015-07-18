@@ -48,5 +48,5 @@ Contents
     updating_apps
     known_issues
     resolved_issues
-    abi
+    deprecation
     faq

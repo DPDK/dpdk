@@ -60,7 +60,7 @@ F: doc/guides/prog_guide/ext_app_lib_make_help.rst
 ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/librte_compat/
-F: doc/guides/rel_notes/abi.rst
+F: doc/guides/rel_notes/deprecation.rst
 F: scripts/validate-abi.sh
 
 
