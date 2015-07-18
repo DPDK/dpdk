@@ -1646,8 +1646,9 @@ extern struct rte_eth_dev rte_eth_devices[];
 extern uint8_t rte_eth_dev_count(void);
 
 /**
- * Function for internal use by port hotplug functions.
+ * @internal
  * Returns a ethdev slot specified by the unique identifier name.
+ *
  * @param	name
  *  The pointer to the Unique identifier name for each Ethernet device
  * @return
@@ -1656,8 +1657,7 @@ extern uint8_t rte_eth_dev_count(void);
 extern struct rte_eth_dev *rte_eth_dev_allocated(const char *name);
 
 /**
- * Function for internal use by dummy drivers primarily, e.g. ring-based
- * driver.
+ * @internal
  * Allocates a new ethdev slot for an ethernet device and returns the pointer
  * to that slot for the driver to use.
  *
@@ -1670,8 +1670,7 @@ struct rte_eth_dev *rte_eth_dev_allocate(const char *name,
 		enum rte_eth_dev_type type);
 
 /**
- * Function for internal use by dummy drivers primarily, e.g. ring-based
- * driver.
+ * @internal
  * Release the specified ethdev port.
  *
  * @param eth_dev
