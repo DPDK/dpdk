@@ -287,7 +287,7 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 	if (eth_dev == NULL)
 		return -EINVAL;
 
-	eth_dev->attached = 0;
+	eth_dev->attached = DEV_DETACHED;
 	nb_ports--;
 	return 0;
 }
@@ -342,8 +342,7 @@ rte_eth_dev_init(struct rte_pci_driver *pci_drv,
 			(unsigned) pci_dev->id.device_id);
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(eth_dev->data->dev_private);
-	eth_dev->attached = DEV_DETACHED;
-	nb_ports--;
+	rte_eth_dev_release_port(eth_dev);
 	return diag;
 }
 
