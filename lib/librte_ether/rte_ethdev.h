@@ -845,6 +845,10 @@ struct rte_eth_fdir {
 struct rte_intr_conf {
 	/** enable/disable lsc interrupt. 0 (default) - disable, 1 enable */
 	uint16_t lsc;
+#ifdef RTE_NEXT_ABI
+	/** enable/disable rxq interrupt. 0 (default) - disable, 1 enable */
+	uint16_t rxq;
+#endif
 };
 
 /**
@@ -1052,6 +1056,14 @@ typedef int (*eth_tx_queue_setup_t)(struct rte_eth_dev *dev,
 				    unsigned int socket_id,
 				    const struct rte_eth_txconf *tx_conf);
 /**< @internal Setup a transmit queue of an Ethernet device. */
+
+typedef int (*eth_rx_enable_intr_t)(struct rte_eth_dev *dev,
+				    uint16_t rx_queue_id);
+/**< @internal Enable interrupt of a receive queue of an Ethernet device. */
+
+typedef int (*eth_rx_disable_intr_t)(struct rte_eth_dev *dev,
+				    uint16_t rx_queue_id);
+/**< @internal Disable interrupt of a receive queue of an Ethernet device. */
 
 typedef void (*eth_queue_release_t)(void *queue);
 /**< @internal Release memory resources allocated by given RX/TX queue. */
@@ -1380,6 +1392,12 @@ struct eth_dev_ops {
 	eth_queue_release_t        rx_queue_release;/**< Release RX queue.*/
 	eth_rx_queue_count_t       rx_queue_count; /**< Get Rx queue count. */
 	eth_rx_descriptor_done_t   rx_descriptor_done;  /**< Check rxd DD bit */
+#ifdef RTE_NEXT_ABI
+	/**< Enable Rx queue interrupt. */
+	eth_rx_enable_intr_t       rx_queue_intr_enable;
+	/**< Disable Rx queue interrupt.*/
+	eth_rx_disable_intr_t      rx_queue_intr_disable;
+#endif
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue.*/
 	eth_queue_release_t        tx_queue_release;/**< Release TX queue.*/
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
@@ -2955,6 +2973,92 @@ int rte_eth_dev_callback_unregister(uint8_t port_id,
  */
 void _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 				enum rte_eth_event_type event);
+
+/**
+ * When there is no rx packet coming in Rx Queue for a long time, we can
+ * sleep lcore related to RX Queue for power saving, and enable rx interrupt
+ * to be triggered when rx packect arrives.
+ *
+ * The rte_eth_dev_rx_intr_enable() function enables rx queue
+ * interrupt on specific rx queue of a port.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the receive queue from which to retrieve input packets.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support
+ *     that operation.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+int rte_eth_dev_rx_intr_enable(uint8_t port_id, uint16_t queue_id);
+
+/**
+ * When lcore wakes up from rx interrupt indicating packet coming, disable rx
+ * interrupt and returns to polling mode.
+ *
+ * The rte_eth_dev_rx_intr_disable() function disables rx queue
+ * interrupt on specific rx queue of a port.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the receive queue from which to retrieve input packets.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support
+ *     that operation.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+int rte_eth_dev_rx_intr_disable(uint8_t port_id, uint16_t queue_id);
+
+/**
+ * RX Interrupt control per port.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param epfd
+ *   Epoll instance fd which the intr vector associated to.
+ *   Using RTE_EPOLL_PER_THREAD allows to use per thread epoll instance.
+ * @param op
+ *   The operation be performed for the vector.
+ *   Operation type of {RTE_INTR_EVENT_ADD, RTE_INTR_EVENT_DEL}.
+ * @param data
+ *   User raw data.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int rte_eth_dev_rx_intr_ctl(uint8_t port_id, int epfd, int op, void *data);
+
+/**
+ * RX Interrupt control per queue.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the receive queue from which to retrieve input packets.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param epfd
+ *   Epoll instance fd which the intr vector associated to.
+ *   Using RTE_EPOLL_PER_THREAD allows to use per thread epoll instance.
+ * @param op
+ *   The operation be performed for the vector.
+ *   Operation type of {RTE_INTR_EVENT_ADD, RTE_INTR_EVENT_DEL}.
+ * @param data
+ *   User raw data.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int rte_eth_dev_rx_intr_ctl_q(uint8_t port_id, uint16_t queue_id,
+			      int epfd, int op, void *data);
 
 /**
  * Turn on the LED on the Ethernet device.

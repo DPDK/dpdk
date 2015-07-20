@@ -3032,6 +3032,153 @@ _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 	}
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
 }
+
+#ifdef RTE_NEXT_ABI
+int
+rte_eth_dev_rx_intr_ctl(uint8_t port_id, int epfd, int op, void *data)
+{
+	uint32_t vec;
+	struct rte_eth_dev *dev;
+	struct rte_intr_handle *intr_handle;
+	uint16_t qid;
+	int rc;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%u\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	intr_handle = &dev->pci_dev->intr_handle;
+	if (!intr_handle->intr_vec) {
+		PMD_DEBUG_TRACE("RX Intr vector unset\n");
+		return -EPERM;
+	}
+
+	for (qid = 0; qid < dev->data->nb_rx_queues; qid++) {
+		vec = intr_handle->intr_vec[qid];
+		rc = rte_intr_rx_ctl(intr_handle, epfd, op, vec, data);
+		if (rc && rc != -EEXIST) {
+			PMD_DEBUG_TRACE("p %u q %u rx ctl error"
+					" op %d epfd %d vec %u\n",
+					port_id, qid, op, epfd, vec);
+		}
+	}
+
+	return 0;
+}
+
+int
+rte_eth_dev_rx_intr_ctl_q(uint8_t port_id, uint16_t queue_id,
+			  int epfd, int op, void *data)
+{
+	uint32_t vec;
+	struct rte_eth_dev *dev;
+	struct rte_intr_handle *intr_handle;
+	int rc;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%u\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	if (queue_id >= dev->data->nb_rx_queues) {
+		PMD_DEBUG_TRACE("Invalid RX queue_id=%u\n", queue_id);
+		return -EINVAL;
+	}
+
+	intr_handle = &dev->pci_dev->intr_handle;
+	if (!intr_handle->intr_vec) {
+		PMD_DEBUG_TRACE("RX Intr vector unset\n");
+		return -EPERM;
+	}
+
+	vec = intr_handle->intr_vec[queue_id];
+	rc = rte_intr_rx_ctl(intr_handle, epfd, op, vec, data);
+	if (rc && rc != -EEXIST) {
+		PMD_DEBUG_TRACE("p %u q %u rx ctl error"
+				" op %d epfd %d vec %u\n",
+				port_id, queue_id, op, epfd, vec);
+		return rc;
+	}
+
+	return 0;
+}
+
+int
+rte_eth_dev_rx_intr_enable(uint8_t port_id,
+			   uint16_t queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_intr_enable, -ENOTSUP);
+	return (*dev->dev_ops->rx_queue_intr_enable)(dev, queue_id);
+}
+
+int
+rte_eth_dev_rx_intr_disable(uint8_t port_id,
+			    uint16_t queue_id)
+{
+	struct rte_eth_dev *dev;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_intr_disable, -ENOTSUP);
+	return (*dev->dev_ops->rx_queue_intr_disable)(dev, queue_id);
+}
+#else
+int
+rte_eth_dev_rx_intr_enable(uint8_t port_id, uint16_t queue_id)
+{
+	RTE_SET_USED(port_id);
+	RTE_SET_USED(queue_id);
+	return -ENOTSUP;
+}
+
+int
+rte_eth_dev_rx_intr_disable(uint8_t port_id, uint16_t queue_id)
+{
+	RTE_SET_USED(port_id);
+	RTE_SET_USED(queue_id);
+	return -ENOTSUP;
+}
+
+int
+rte_eth_dev_rx_intr_ctl(uint8_t port_id, int epfd, int op, void *data)
+{
+	RTE_SET_USED(port_id);
+	RTE_SET_USED(epfd);
+	RTE_SET_USED(op);
+	RTE_SET_USED(data);
+	return -1;
+}
+
+int
+rte_eth_dev_rx_intr_ctl_q(uint8_t port_id, uint16_t queue_id,
+			  int epfd, int op, void *data)
+{
+	RTE_SET_USED(port_id);
+	RTE_SET_USED(queue_id);
+	RTE_SET_USED(epfd);
+	RTE_SET_USED(op);
+	RTE_SET_USED(data);
+	return -1;
+}
+#endif
+
 #ifdef RTE_NIC_BYPASS
 int rte_eth_dev_bypass_init(uint8_t port_id)
 {

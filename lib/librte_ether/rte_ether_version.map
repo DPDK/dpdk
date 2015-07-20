@@ -115,6 +115,10 @@ DPDK_2.1 {
 	rte_eth_dev_get_reg_info;
 	rte_eth_dev_get_reg_length;
 	rte_eth_dev_is_valid_port;
+	rte_eth_dev_rx_intr_ctl;
+	rte_eth_dev_rx_intr_ctl_q;
+	rte_eth_dev_rx_intr_disable;
+	rte_eth_dev_rx_intr_enable;
 	rte_eth_dev_set_eeprom;
 	rte_eth_dev_set_mc_addr_list;
 	rte_eth_timesync_disable;
