@@ -148,4 +148,24 @@ rte_epoll_ctl(int epfd, int op, int fd,
 int
 rte_intr_tls_epfd(void);
 
+/**
+ * @param intr_handle
+ *   Pointer to the interrupt handle.
+ * @param epfd
+ *   Epoll instance fd which the intr vector associated to.
+ * @param op
+ *   The operation be performed for the vector.
+ *   Operation type of {ADD, DEL}.
+ * @param vec
+ *   RX intr vector number added to the epoll instance wait list.
+ * @param data
+ *   User raw data.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int
+rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
+		int epfd, int op, unsigned int vec, void *data);
+
 #endif /* _RTE_LINUXAPP_INTERRUPTS_H_ */

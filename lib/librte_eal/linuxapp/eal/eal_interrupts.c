@@ -899,6 +899,51 @@ rte_eal_intr_init(void)
 	return -ret;
 }
 
+#ifdef RTE_NEXT_ABI
+static void
+eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
+{
+	union rte_intr_read_buffer buf;
+	int bytes_read = 1;
+
+	switch (intr_handle->type) {
+	case RTE_INTR_HANDLE_UIO:
+	case RTE_INTR_HANDLE_UIO_INTX:
+		bytes_read = sizeof(buf.uio_intr_count);
+		break;
+#ifdef VFIO_PRESENT
+	case RTE_INTR_HANDLE_VFIO_MSIX:
+	case RTE_INTR_HANDLE_VFIO_MSI:
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		bytes_read = sizeof(buf.vfio_intr_count);
+		break;
+#endif
+	default:
+		bytes_read = 1;
+		RTE_LOG(INFO, EAL, "unexpected intr type\n");
+		break;
+	}
+
+	/**
+	 * read out to clear the ready-to-be-read flag
+	 * for epoll_wait.
+	 */
+	do {
+		bytes_read = read(fd, &buf, bytes_read);
+		if (bytes_read < 0) {
+			if (errno == EINTR || errno == EWOULDBLOCK ||
+			    errno == EAGAIN)
+				continue;
+			RTE_LOG(ERR, EAL,
+				"Error reading from fd %d: %s\n",
+				fd, strerror(errno));
+		} else if (bytes_read == 0)
+			RTE_LOG(ERR, EAL, "Read nothing from fd %d\n", fd);
+		return;
+	} while (1);
+}
+#endif
+
 static int
 eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 			struct rte_epoll_event *events)
@@ -1035,3 +1080,75 @@ rte_epoll_ctl(int epfd, int op, int fd,
 
 	return 0;
 }
+
+#ifdef RTE_NEXT_ABI
+int
+rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
+		int op, unsigned int vec, void *data)
+{
+	struct rte_epoll_event *rev;
+	struct rte_epoll_data *epdata;
+	int epfd_op;
+	int rc = 0;
+
+	if (!intr_handle || intr_handle->nb_efd == 0 ||
+	    vec >= intr_handle->nb_efd) {
+		RTE_LOG(ERR, EAL, "Wrong intr vector number.\n");
+		return -EPERM;
+	}
+
+	switch (op) {
+	case RTE_INTR_EVENT_ADD:
+		epfd_op = EPOLL_CTL_ADD;
+		rev = &intr_handle->elist[vec];
+		if (rev->status != RTE_EPOLL_INVALID) {
+			RTE_LOG(INFO, EAL, "Event already been added.\n");
+			return -EEXIST;
+		}
+
+		/* attach to intr vector fd */
+		epdata = &rev->epdata;
+		epdata->event  = EPOLLIN | EPOLLPRI | EPOLLET;
+		epdata->data   = data;
+		epdata->cb_fun = (rte_intr_event_cb_t)eal_intr_proc_rxtx_intr;
+		epdata->cb_arg = (void *)intr_handle;
+		rc = rte_epoll_ctl(epfd, epfd_op, intr_handle->efds[vec], rev);
+		if (!rc)
+			RTE_LOG(DEBUG, EAL,
+				"efd %d associated with vec %d added on epfd %d"
+				"\n", rev->fd, vec, epfd);
+		else
+			rc = -EPERM;
+		break;
+	case RTE_INTR_EVENT_DEL:
+		epfd_op = EPOLL_CTL_DEL;
+		rev = &intr_handle->elist[vec];
+		if (rev->status == RTE_EPOLL_INVALID) {
+			RTE_LOG(INFO, EAL, "Event does not exist.\n");
+			return -EPERM;
+		}
+
+		rc = rte_epoll_ctl(rev->epfd, epfd_op, rev->fd, rev);
+		if (rc)
+			rc = -EPERM;
+		break;
+	default:
+		RTE_LOG(ERR, EAL, "event op type mismatch\n");
+		rc = -EPERM;
+	}
+
+	return rc;
+}
+#else
+int
+rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
+		int epfd, int op, unsigned int vec, void *data)
+{
+	RTE_SET_USED(intr_handle);
+	RTE_SET_USED(epfd);
+	RTE_SET_USED(op);
+	RTE_SET_USED(vec);
+	RTE_SET_USED(data);
+	return -ENOTSUP;
+}
+#endif

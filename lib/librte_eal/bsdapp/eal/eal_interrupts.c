@@ -68,3 +68,16 @@ rte_eal_intr_init(void)
 {
 	return 0;
 }
+
+int
+rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
+		int epfd, int op, unsigned int vec, void *data)
+{
+	RTE_SET_USED(intr_handle);
+	RTE_SET_USED(epfd);
+	RTE_SET_USED(op);
+	RTE_SET_USED(vec);
+	RTE_SET_USED(data);
+
+	return -ENOTSUP;
+}
