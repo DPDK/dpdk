@@ -47,3 +47,6 @@ Deprecation Notices
 * ABI changes are planned for struct rte_eth_fdir_flow_ext in order to support
   flow director filtering in VF. The release 2.1 does not contain these ABI
   changes, but release 2.2 will, and no backwards compatibility is planned.
+
+* ABI change is planned to extend the SCTP flow's key input from release 2.1.
+  The change may be enabled in the release 2.1 with CONFIG_RTE_NEXT_ABI.
