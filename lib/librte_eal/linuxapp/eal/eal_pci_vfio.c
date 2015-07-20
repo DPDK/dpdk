@@ -77,6 +77,22 @@ EAL_REGISTER_TAILQ(rte_vfio_tailq)
 /* per-process VFIO config */
 static struct vfio_config vfio_cfg;
 
+int
+pci_vfio_read_config(const struct rte_intr_handle *intr_handle,
+		    void *buf, size_t len, off_t offs)
+{
+	return pread64(intr_handle->vfio_dev_fd, buf, len,
+	       VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) + offs);
+}
+
+int
+pci_vfio_write_config(const struct rte_intr_handle *intr_handle,
+		    const void *buf, size_t len, off_t offs)
+{
+	return pwrite64(intr_handle->vfio_dev_fd, buf, len,
+	       VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) + offs);
+}
+
 /* get PCI BAR number where MSI-X interrupts are */
 static int
 pci_vfio_get_msix_bar(int fd, int *msix_bar, uint32_t *msix_table_offset,

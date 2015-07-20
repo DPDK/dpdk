@@ -571,6 +571,56 @@ pci_config_space_set(struct rte_pci_device *dev)
 }
 #endif
 
+/* Read PCI config space. */
+int rte_eal_pci_read_config(const struct rte_pci_device *device,
+			    void *buf, size_t len, off_t offset)
+{
+	const struct rte_intr_handle *intr_handle = &device->intr_handle;
+
+	switch (intr_handle->type) {
+	case RTE_INTR_HANDLE_UIO:
+	case RTE_INTR_HANDLE_UIO_INTX:
+		return pci_uio_read_config(intr_handle, buf, len, offset);
+
+#ifdef VFIO_PRESENT
+	case RTE_INTR_HANDLE_VFIO_MSIX:
+	case RTE_INTR_HANDLE_VFIO_MSI:
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		return pci_vfio_read_config(intr_handle, buf, len, offset);
+#endif
+	default:
+		RTE_LOG(ERR, EAL,
+			"Unknown handle type of fd %d\n",
+					intr_handle->fd);
+		return -1;
+	}
+}
+
+/* Write PCI config space. */
+int rte_eal_pci_write_config(const struct rte_pci_device *device,
+			     const void *buf, size_t len, off_t offset)
+{
+	const struct rte_intr_handle *intr_handle = &device->intr_handle;
+
+	switch (intr_handle->type) {
+	case RTE_INTR_HANDLE_UIO:
+	case RTE_INTR_HANDLE_UIO_INTX:
+		return pci_uio_write_config(intr_handle, buf, len, offset);
+
+#ifdef VFIO_PRESENT
+	case RTE_INTR_HANDLE_VFIO_MSIX:
+	case RTE_INTR_HANDLE_VFIO_MSI:
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		return pci_vfio_write_config(intr_handle, buf, len, offset);
+#endif
+	default:
+		RTE_LOG(ERR, EAL,
+			"Unknown handle type of fd %d\n",
+					intr_handle->fd);
+		return -1;
+	}
+}
+
 /* Init the PCI EAL subsystem */
 int
 rte_eal_pci_init(void)

@@ -49,6 +49,11 @@ void pci_uio_free_resource(struct rte_pci_device *dev,
 int pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 		struct mapped_pci_resource *uio_res, int map_idx);
 
+int pci_uio_read_config(const struct rte_intr_handle *intr_handle,
+			void *buf, size_t len, off_t offs);
+int pci_uio_write_config(const struct rte_intr_handle *intr_handle,
+			 const void *buf, size_t len, off_t offs);
+
 #ifdef VFIO_PRESENT
 
 #define VFIO_MAX_GROUPS 64
@@ -56,6 +61,12 @@ int pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 int pci_vfio_enable(void);
 int pci_vfio_is_enabled(void);
 int pci_vfio_mp_sync_setup(void);
+
+/* access config space */
+int pci_vfio_read_config(const struct rte_intr_handle *intr_handle,
+			 void *buf, size_t len, off_t offs);
+int pci_vfio_write_config(const struct rte_intr_handle *intr_handle,
+			  const void *buf, size_t len, off_t offs);
 
 /* map VFIO resource prototype */
 int pci_vfio_map_resource(struct rte_pci_device *dev);

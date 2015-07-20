@@ -455,6 +455,38 @@ void rte_eal_pci_register(struct rte_pci_driver *driver);
  */
 void rte_eal_pci_unregister(struct rte_pci_driver *driver);
 
+/**
+ * Read PCI config space.
+ *
+ * @param device
+ *   A pointer to a rte_pci_device structure describing the device
+ *   to use
+ * @param buf
+ *   A data buffer where the bytes should be read into
+ * @param len
+ *   The length of the data buffer.
+ * @param offset
+ *   The offset into PCI config space
+ */
+int rte_eal_pci_read_config(const struct rte_pci_device *device,
+			    void *buf, size_t len, off_t offset);
+
+/**
+ * Write PCI config space.
+ *
+ * @param device
+ *   A pointer to a rte_pci_device structure describing the device
+ *   to use
+ * @param buf
+ *   A data buffer containing the bytes should be written
+ * @param len
+ *   The length of the data buffer.
+ * @param offset
+ *   The offset into PCI config space
+ */
+int rte_eal_pci_write_config(const struct rte_pci_device *device,
+			     const void *buf, size_t len, off_t offset);
+
 #ifdef __cplusplus
 }
 #endif

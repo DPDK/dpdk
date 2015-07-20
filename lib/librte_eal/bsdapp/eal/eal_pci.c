@@ -396,6 +396,89 @@ error:
 	return -1;
 }
 
+/* Read PCI config space. */
+int rte_eal_pci_read_config(const struct rte_pci_device *dev,
+			    void *buf, size_t len, off_t offset)
+{
+	int fd = -1;
+	struct pci_io pi = {
+		.pi_sel = {
+			.pc_domain = dev->addr.domain,
+			.pc_bus = dev->addr.bus,
+			.pc_dev = dev->addr.devid,
+			.pc_func = dev->addr.function,
+		},
+		.pi_reg = offset,
+		.pi_width = len,
+	};
+
+	if (len == 3 || len > sizeof(pi.pi_data)) {
+		RTE_LOG(ERR, EAL, "%s(): invalid pci read length\n", __func__);
+		goto error;
+	}
+
+	fd = open("/dev/pci", O_RDONLY);
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL, "%s(): error opening /dev/pci\n", __func__);
+		goto error;
+	}
+
+	if (ioctl(fd, PCIOCREAD, &pi) < 0)
+		goto error;
+	close(fd);
+
+	memcpy(buf, &pi.pi_data, len);
+	return 0;
+
+ error:
+	if (fd >= 0)
+		close(fd);
+	return -1;
+}
+
+/* Write PCI config space. */
+int rte_eal_pci_write_config(const struct rte_pci_device *dev,
+			     const void *buf, size_t len, off_t offset)
+{
+	int fd = -1;
+
+	struct pci_io pi = {
+		.pi_sel = {
+			.pc_domain = dev->addr.domain,
+			.pc_bus = dev->addr.bus,
+			.pc_dev = dev->addr.devid,
+			.pc_func = dev->addr.function,
+		},
+		.pi_reg = offset,
+		.pi_data = *(u_int32_t *)buf,
+		.pi_width = len,
+	};
+
+	if (len == 3 || len > sizeof(pi.pi_data)) {
+		RTE_LOG(ERR, EAL, "%s(): invalid pci read length\n", __func__);
+		goto error;
+	}
+
+	memcpy(pi.pi_data, buf, len);
+
+	fd = open("/dev/pci", O_RDONLY);
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL, "%s(): error opening /dev/pci\n", __func__);
+		goto error;
+	}
+
+	if (ioctl(fd, PCIOCWRITE, &pi) < 0)
+		goto error;
+
+	close(fd);
+	return 0;
+
+ error:
+	if (fd >= 0)
+		close(fd);
+	return -1;
+}
+
 /* Init the PCI EAL subsystem */
 int
 rte_eal_pci_init(void)

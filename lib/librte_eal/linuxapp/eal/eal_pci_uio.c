@@ -52,6 +52,20 @@ void *pci_map_addr = NULL;
 
 #define OFF_MAX              ((uint64_t)(off_t)-1)
 
+int
+pci_uio_read_config(const struct rte_intr_handle *intr_handle,
+		    void *buf, size_t len, off_t offset)
+{
+	return pread(intr_handle->uio_cfg_fd, buf, len, offset);
+}
+
+int
+pci_uio_write_config(const struct rte_intr_handle *intr_handle,
+		     const void *buf, size_t len, off_t offset)
+{
+	return pwrite(intr_handle->uio_cfg_fd, buf, len, offset);
+}
+
 static int
 pci_uio_set_bus_master(int dev_fd)
 {
