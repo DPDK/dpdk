@@ -219,7 +219,7 @@ vfio_disable_intx(struct rte_intr_handle *intr_handle) {
 	return 0;
 }
 
-/* enable MSI-X interrupts */
+/* enable MSI interrupts */
 static int
 vfio_enable_msi(struct rte_intr_handle *intr_handle) {
 	int len, ret;
@@ -265,7 +265,7 @@ vfio_enable_msi(struct rte_intr_handle *intr_handle) {
 	return 0;
 }
 
-/* disable MSI-X interrupts */
+/* disable MSI interrupts */
 static int
 vfio_disable_msi(struct rte_intr_handle *intr_handle) {
 	struct vfio_irq_set *irq_set;
