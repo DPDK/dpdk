@@ -79,7 +79,7 @@ void virtio_dev_rxtx_start(struct rte_eth_dev *dev);
 int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			int queue_type,
 			uint16_t queue_idx,
-			uint16_t  vtpci_queue_idx,
+			uint16_t vtpci_queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id,
 			struct virtqueue **pvq);

@@ -254,7 +254,7 @@ virtio_dev_queue_release(struct virtqueue *vq) {
 int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			int queue_type,
 			uint16_t queue_idx,
-			uint16_t  vtpci_queue_idx,
+			uint16_t vtpci_queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id,
 			struct virtqueue **pvq)
@@ -264,7 +264,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	uint16_t vq_size;
 	int size;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtqueue  *vq = NULL;
+	struct virtqueue *vq = NULL;
 
 	/* Write the virtqueue index to the Queue Select Field */
 	VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vtpci_queue_idx);
@@ -413,13 +413,12 @@ virtio_dev_cq_queue_setup(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx,
 		uint32_t socket_id)
 {
 	struct virtqueue *vq;
-	uint16_t nb_desc = 0;
 	int ret;
 	struct virtio_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 	ret = virtio_dev_queue_setup(dev, VTNET_CQ, VTNET_SQ_CQ_QUEUE_IDX,
-			vtpci_queue_idx, nb_desc, socket_id, &vq);
+			vtpci_queue_idx, 0, socket_id, &vq);
 	if (ret < 0) {
 		PMD_INIT_LOG(ERR, "control vq initialization failed");
 		return ret;

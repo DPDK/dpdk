@@ -390,7 +390,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	ret = virtio_dev_queue_setup(dev, VTNET_RQ, queue_idx, vtpci_queue_idx,
 			nb_desc, socket_id, &vq);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "tvq initialization failed");
+		PMD_INIT_LOG(ERR, "rvq initialization failed");
 		return ret;
 	}
 
