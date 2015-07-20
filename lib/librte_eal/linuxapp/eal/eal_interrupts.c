@@ -128,6 +128,9 @@ static pthread_t intr_thread;
 #ifdef VFIO_PRESENT
 
 #define IRQ_SET_BUF_LEN  (sizeof(struct vfio_irq_set) + sizeof(int))
+/* irq set buffer length for queue interrupts and LSC interrupt */
+#define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
+			      sizeof(int) * (RTE_MAX_RXTX_INTR_VEC_ID + 1))
 
 /* enable legacy (INTx) interrupts */
 static int
@@ -245,23 +248,6 @@ vfio_enable_msi(struct rte_intr_handle *intr_handle) {
 						intr_handle->fd);
 		return -1;
 	}
-
-	/* manually trigger interrupt to enable it */
-	memset(irq_set, 0, len);
-	len = sizeof(struct vfio_irq_set);
-	irq_set->argsz = len;
-	irq_set->count = 1;
-	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
-	irq_set->index = VFIO_PCI_MSI_IRQ_INDEX;
-	irq_set->start = 0;
-
-	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
-
-	if (ret) {
-		RTE_LOG(ERR, EAL, "Error triggering MSI interrupts for fd %d\n",
-						intr_handle->fd);
-		return -1;
-	}
 	return 0;
 }
 
@@ -294,7 +280,7 @@ vfio_disable_msi(struct rte_intr_handle *intr_handle) {
 static int
 vfio_enable_msix(struct rte_intr_handle *intr_handle) {
 	int len, ret;
-	char irq_set_buf[IRQ_SET_BUF_LEN];
+	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
 	struct vfio_irq_set *irq_set;
 	int *fd_ptr;
 
@@ -302,12 +288,26 @@ vfio_enable_msix(struct rte_intr_handle *intr_handle) {
 
 	irq_set = (struct vfio_irq_set *) irq_set_buf;
 	irq_set->argsz = len;
+#ifdef RTE_NEXT_ABI
+	if (!intr_handle->max_intr)
+		intr_handle->max_intr = 1;
+	else if (intr_handle->max_intr > RTE_MAX_RXTX_INTR_VEC_ID)
+		intr_handle->max_intr = RTE_MAX_RXTX_INTR_VEC_ID + 1;
+
+	irq_set->count = intr_handle->max_intr;
+#else
 	irq_set->count = 1;
+#endif
 	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = 0;
 	fd_ptr = (int *) &irq_set->data;
-	*fd_ptr = intr_handle->fd;
+#ifdef RTE_NEXT_ABI
+	memcpy(fd_ptr, intr_handle->efds, sizeof(intr_handle->efds));
+	fd_ptr[intr_handle->max_intr - 1] = intr_handle->fd;
+#else
+	fd_ptr[0] = intr_handle->fd;
+#endif
 
 	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
@@ -317,22 +317,6 @@ vfio_enable_msix(struct rte_intr_handle *intr_handle) {
 		return -1;
 	}
 
-	/* manually trigger interrupt to enable it */
-	memset(irq_set, 0, len);
-	len = sizeof(struct vfio_irq_set);
-	irq_set->argsz = len;
-	irq_set->count = 1;
-	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
-	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
-	irq_set->start = 0;
-
-	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
-
-	if (ret) {
-		RTE_LOG(ERR, EAL, "Error triggering MSI-X interrupts for fd %d\n",
-						intr_handle->fd);
-		return -1;
-	}
 	return 0;
 }
 
@@ -340,7 +324,7 @@ vfio_enable_msix(struct rte_intr_handle *intr_handle) {
 static int
 vfio_disable_msix(struct rte_intr_handle *intr_handle) {
 	struct vfio_irq_set *irq_set;
-	char irq_set_buf[IRQ_SET_BUF_LEN];
+	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
 	int len, ret;
 
 	len = sizeof(struct vfio_irq_set);
