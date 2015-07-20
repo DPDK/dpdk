@@ -35,8 +35,8 @@
 #error "don't include this file directly, please include generic <rte_interrupts.h>"
 #endif
 
-#ifndef _RTE_LINUXAPP_INTERRUPTS_H_
-#define _RTE_LINUXAPP_INTERRUPTS_H_
+#ifndef _RTE_BSDAPP_INTERRUPTS_H_
+#define _RTE_BSDAPP_INTERRUPTS_H_
 
 enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_UNKNOWN = 0,
@@ -52,4 +52,4 @@ struct rte_intr_handle {
 	enum rte_intr_handle_type type;  /**< handle type */
 };
 
-#endif /* _RTE_LINUXAPP_INTERRUPTS_H_ */
+#endif /* _RTE_BSDAPP_INTERRUPTS_H_ */
