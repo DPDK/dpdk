@@ -277,6 +277,9 @@ M: John McNamara <john.mcnamara@intel.com>
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
 
+QLogic/Broadcom bnx2x
+F: drivers/net/bnx2x/
+
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/net/ring/

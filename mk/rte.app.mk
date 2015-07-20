@@ -101,6 +101,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
 endif
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs
+_LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
 
 _LDLIBS-y += --start-group
 
@@ -126,6 +127,7 @@ ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD)    += -lrte_pmd_vmxnet3_uio
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD)     += -lrte_pmd_virtio
+_LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lrte_pmd_bnx2x
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD)      += -lrte_pmd_cxgbe
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ENIC_PMD)       += -lrte_pmd_enic
 _LDLIBS-$(CONFIG_RTE_LIBRTE_I40E_PMD)       += -lrte_pmd_i40e
