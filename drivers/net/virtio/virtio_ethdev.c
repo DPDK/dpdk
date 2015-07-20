@@ -276,8 +276,6 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	 */
 	vq_size = VIRTIO_READ_REG_2(hw, VIRTIO_PCI_QUEUE_NUM);
 	PMD_INIT_LOG(DEBUG, "vq_size: %d nb_desc:%d", vq_size, nb_desc);
-	if (nb_desc == 0)
-		nb_desc = vq_size;
 	if (vq_size == 0) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue does not exist", __func__);
 		return -EINVAL;
@@ -286,16 +284,6 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	if (!rte_is_power_of_2(vq_size)) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue size is not powerof 2", __func__);
 		return -EINVAL;
-	}
-
-	if (nb_desc < vq_size) {
-		if (!rte_is_power_of_2(nb_desc)) {
-			PMD_INIT_LOG(ERR,
-				     "nb_desc(%u) size is not powerof 2",
-				     nb_desc);
-			return -EINVAL;
-		}
-		vq_size = nb_desc;
 	}
 
 	if (queue_type == VTNET_RQ) {
@@ -325,7 +313,10 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	vq->queue_id = queue_idx;
 	vq->vq_queue_index = vtpci_queue_idx;
 	vq->vq_nentries = vq_size;
-	vq->vq_free_cnt = vq_size;
+
+	if (nb_desc == 0 || nb_desc > vq_size)
+		nb_desc = vq_size;
+	vq->vq_free_cnt = nb_desc;
 
 	/*
 	 * Reserve a memzone for vring elements
