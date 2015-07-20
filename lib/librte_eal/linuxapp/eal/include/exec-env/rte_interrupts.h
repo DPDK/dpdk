@@ -38,6 +38,8 @@
 #ifndef _RTE_LINUXAPP_INTERRUPTS_H_
 #define _RTE_LINUXAPP_INTERRUPTS_H_
 
+#define RTE_MAX_RXTX_INTR_VEC_ID     32
+
 enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_UNKNOWN = 0,
 	RTE_INTR_HANDLE_UIO,          /**< uio device handle */
@@ -58,6 +60,12 @@ struct rte_intr_handle {
 	};
 	int fd;	 /**< interrupt event file descriptor */
 	enum rte_intr_handle_type type;  /**< handle type */
+#ifdef RTE_NEXT_ABI
+	uint32_t max_intr;             /**< max interrupt requested */
+	uint32_t nb_efd;               /**< number of available efd(event fd) */
+	int efds[RTE_MAX_RXTX_INTR_VEC_ID];  /**< intr vectors/efds mapping */
+	int *intr_vec;                 /**< intr vector number array */
+#endif
 };
 
 #endif /* _RTE_LINUXAPP_INTERRUPTS_H_ */
