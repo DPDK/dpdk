@@ -684,6 +684,7 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		/* set the length to be read dor different handle type */
 		switch (src->intr_handle.type) {
 		case RTE_INTR_HANDLE_UIO:
+		case RTE_INTR_HANDLE_UIO_INTX:
 			bytes_read = sizeof(buf.uio_intr_count);
 			break;
 		case RTE_INTR_HANDLE_ALARM:
