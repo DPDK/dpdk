@@ -105,6 +105,9 @@ static int  eth_igb_flow_ctrl_get(struct rte_eth_dev *dev,
 static int  eth_igb_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 static int eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev);
+#ifdef RTE_NEXT_ABI
+static int eth_igb_rxq_interrupt_setup(struct rte_eth_dev *dev);
+#endif
 static int eth_igb_interrupt_get_status(struct rte_eth_dev *dev);
 static int eth_igb_interrupt_action(struct rte_eth_dev *dev);
 static void eth_igb_interrupt_handler(struct rte_intr_handle *handle,
@@ -218,7 +221,6 @@ static int eth_igb_get_eeprom(struct rte_eth_dev *dev,
 		struct rte_dev_eeprom_info *eeprom);
 static int eth_igb_set_eeprom(struct rte_eth_dev *dev,
 		struct rte_dev_eeprom_info *eeprom);
-
 static int eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
 				    struct ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr);
@@ -229,6 +231,17 @@ static int igb_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 					  uint32_t flags);
 static int igb_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 					  struct timespec *timestamp);
+#ifdef RTE_NEXT_ABI
+static int eth_igb_rx_queue_intr_enable(struct rte_eth_dev *dev,
+					uint16_t queue_id);
+static int eth_igb_rx_queue_intr_disable(struct rte_eth_dev *dev,
+					 uint16_t queue_id);
+static void eth_igb_assign_msix_vector(struct e1000_hw *hw, int8_t direction,
+				       uint8_t queue, uint8_t msix_vector);
+static void eth_igb_write_ivar(struct e1000_hw *hw, uint8_t msix_vector,
+			       uint8_t index, uint8_t offset);
+#endif
+static void eth_igb_configure_msix_intr(struct rte_eth_dev *dev);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -289,6 +302,10 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.vlan_tpid_set        = eth_igb_vlan_tpid_set,
 	.vlan_offload_set     = eth_igb_vlan_offload_set,
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
+#ifdef RTE_NEXT_ABI
+	.rx_queue_intr_enable = eth_igb_rx_queue_intr_enable,
+	.rx_queue_intr_disable = eth_igb_rx_queue_intr_disable,
+#endif
 	.rx_queue_release     = eth_igb_rx_queue_release,
 	.rx_queue_count       = eth_igb_rx_queue_count,
 	.rx_descriptor_done   = eth_igb_rx_descriptor_done,
@@ -639,12 +656,6 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id);
 
-	rte_intr_callback_register(&(pci_dev->intr_handle),
-		eth_igb_interrupt_handler, (void *)eth_dev);
-
-	/* enable uio intr after callback register */
-	rte_intr_enable(&(pci_dev->intr_handle));
-
 	/* enable support intr */
 	igb_intr_enable(eth_dev);
 
@@ -879,7 +890,11 @@ eth_igb_start(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(dev->data->dev_private);
-	int ret, i, mask;
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	int ret, mask;
+#ifdef RTE_NEXT_ABI
+	uint32_t intr_vector = 0;
+#endif
 	uint32_t ctrl_ext;
 
 	PMD_INIT_FUNC_TRACE();
@@ -920,6 +935,29 @@ eth_igb_start(struct rte_eth_dev *dev)
 	/* configure PF module if SRIOV enabled */
 	igb_pf_host_configure(dev);
 
+#ifdef RTE_NEXT_ABI
+	/* check and configure queue intr-vector mapping */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		intr_vector = dev->data->nb_rx_queues;
+
+	if (rte_intr_efd_enable(intr_handle, intr_vector))
+		return -1;
+
+	if (rte_intr_dp_is_en(intr_handle)) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec\n", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+#endif
+
+	/* confiugre msix for rx interrupt */
+	eth_igb_configure_msix_intr(dev);
+
 	/* Configure for OS presence */
 	igb_init_manageability(hw);
 
@@ -947,33 +985,9 @@ eth_igb_start(struct rte_eth_dev *dev)
 		igb_vmdq_vlan_hw_filter_enable(dev);
 	}
 
-	/*
-	 * Configure the Interrupt Moderation register (EITR) with the maximum
-	 * possible value (0xFFFF) to minimize "System Partial Write" issued by
-	 * spurious [DMA] memory updates of RX and TX ring descriptors.
-	 *
-	 * With a EITR granularity of 2 microseconds in the 82576, only 7/8
-	 * spurious memory updates per second should be expected.
-	 * ((65535 * 2) / 1000.1000 ~= 0.131 second).
-	 *
-	 * Because interrupts are not used at all, the MSI-X is not activated
-	 * and interrupt moderation is controlled by EITR[0].
-	 *
-	 * Note that having [almost] disabled memory updates of RX and TX ring
-	 * descriptors through the Interrupt Moderation mechanism, memory
-	 * updates of ring descriptors are now moderated by the configurable
-	 * value of Write-Back Threshold registers.
-	 */
 	if ((hw->mac.type == e1000_82576) || (hw->mac.type == e1000_82580) ||
 		(hw->mac.type == e1000_i350) || (hw->mac.type == e1000_i210) ||
 		(hw->mac.type == e1000_i211)) {
-		uint32_t ivar;
-
-		/* Enable all RX & TX queues in the IVAR registers */
-		ivar = (uint32_t) ((E1000_IVAR_VALID << 16) | E1000_IVAR_VALID);
-		for (i = 0; i < 8; i++)
-			E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, i, ivar);
-
 		/* Configure EITR with the maximum possible value (0xFFFF) */
 		E1000_WRITE_REG(hw, E1000_EITR(0), 0xFFFF);
 	}
@@ -1024,8 +1038,25 @@ eth_igb_start(struct rte_eth_dev *dev)
 	e1000_setup_link(hw);
 
 	/* check if lsc interrupt feature is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc != 0)
-		ret = eth_igb_lsc_interrupt_setup(dev);
+	if (dev->data->dev_conf.intr_conf.lsc != 0) {
+		if (rte_intr_allow_others(intr_handle)) {
+			rte_intr_callback_register(intr_handle,
+						   eth_igb_interrupt_handler,
+						   (void *)dev);
+			eth_igb_lsc_interrupt_setup(dev);
+		} else
+			PMD_INIT_LOG(INFO, "lsc won't enable because of"
+				     " no intr multiplex\n");
+	}
+
+#ifdef RTE_NEXT_ABI
+	/* check if rxq interrupt is enabled */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		eth_igb_rxq_interrupt_setup(dev);
+#endif
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(intr_handle);
 
 	/* resume enabled intr since hw reset */
 	igb_intr_enable(dev);
@@ -1058,8 +1089,13 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	struct e1000_flex_filter *p_flex;
 	struct e1000_5tuple_filter *p_5tuple, *p_5tuple_next;
 	struct e1000_2tuple_filter *p_2tuple, *p_2tuple_next;
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 
 	igb_intr_disable(hw);
+
+	/* disable intr eventfd mapping */
+	rte_intr_disable(intr_handle);
+
 	igb_pf_reset_hw(hw);
 	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
@@ -1108,6 +1144,15 @@ eth_igb_stop(struct rte_eth_dev *dev)
 		rte_free(p_2tuple);
 	}
 	filter_info->twotuple_mask = 0;
+
+#ifdef RTE_NEXT_ABI
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+#endif
 }
 
 static void
@@ -1117,6 +1162,9 @@ eth_igb_close(struct rte_eth_dev *dev)
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct rte_eth_link link;
+#ifdef RTE_NEXT_ABI
+	struct rte_pci_device *pci_dev;
+#endif
 
 	eth_igb_stop(dev);
 	adapter->stopped = 1;
@@ -1135,6 +1183,14 @@ eth_igb_close(struct rte_eth_dev *dev)
 	}
 
 	igb_dev_free_queues(dev);
+
+#ifdef RTE_NEXT_ABI
+	pci_dev = dev->pci_dev;
+	if (pci_dev->intr_handle.intr_vec) {
+		rte_free(pci_dev->intr_handle.intr_vec);
+		pci_dev->intr_handle.intr_vec = NULL;
+	}
+#endif
 
 	memset(&link, 0, sizeof(link));
 	rte_igb_dev_atomic_write_link_status(dev, &link);
@@ -1959,6 +2015,35 @@ eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev)
 
 	return 0;
 }
+
+#ifdef RTE_NEXT_ABI
+/* It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during nic initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int eth_igb_rxq_interrupt_setup(struct rte_eth_dev *dev)
+{
+	uint32_t mask, regval;
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_dev_info dev_info;
+
+	memset(&dev_info, 0, sizeof(dev_info));
+	eth_igb_infos_get(dev, &dev_info);
+
+	mask = 0xFFFFFFFF >> (32 - dev_info.max_rx_queues);
+	regval = E1000_READ_REG(hw, E1000_EIMS);
+	E1000_WRITE_REG(hw, E1000_EIMS, regval | mask);
+
+	return 0;
+}
+#endif
 
 /*
  * It reads ICR and gets interrupt causes, check it and set a bit flag
@@ -4050,6 +4135,164 @@ static struct rte_driver pmd_igbvf_drv = {
 	.type = PMD_PDEV,
 	.init = rte_igbvf_pmd_init,
 };
+
+#ifdef RTE_NEXT_ABI
+static int
+eth_igb_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t mask = 1 << queue_id;
+
+	E1000_WRITE_REG(hw, E1000_EIMC, mask);
+	E1000_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int
+eth_igb_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t mask = 1 << queue_id;
+	uint32_t regval;
+
+	regval = E1000_READ_REG(hw, E1000_EIMS);
+	E1000_WRITE_REG(hw, E1000_EIMS, regval | mask);
+	E1000_WRITE_FLUSH(hw);
+
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+
+	return 0;
+}
+
+static void
+eth_igb_write_ivar(struct e1000_hw *hw, uint8_t  msix_vector,
+		   uint8_t index, uint8_t offset)
+{
+	uint32_t val = E1000_READ_REG_ARRAY(hw, E1000_IVAR0, index);
+
+	/* clear bits */
+	val &= ~((uint32_t)0xFF << offset);
+
+	/* write vector and valid bit */
+	val |= (msix_vector | E1000_IVAR_VALID) << offset;
+
+	E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, index, val);
+}
+
+static void
+eth_igb_assign_msix_vector(struct e1000_hw *hw, int8_t direction,
+			   uint8_t queue, uint8_t msix_vector)
+{
+	uint32_t tmp = 0;
+
+	if (hw->mac.type == e1000_82575) {
+		if (direction == 0)
+			tmp = E1000_EICR_RX_QUEUE0 << queue;
+		else if (direction == 1)
+			tmp = E1000_EICR_TX_QUEUE0 << queue;
+		E1000_WRITE_REG(hw, E1000_MSIXBM(msix_vector), tmp);
+	} else if (hw->mac.type == e1000_82576) {
+		if ((direction == 0) || (direction == 1))
+			eth_igb_write_ivar(hw, msix_vector, queue & 0x7,
+					   ((queue & 0x8) << 1) +
+					   8 * direction);
+	} else if ((hw->mac.type == e1000_82580) ||
+			(hw->mac.type == e1000_i350) ||
+			(hw->mac.type == e1000_i354) ||
+			(hw->mac.type == e1000_i210) ||
+			(hw->mac.type == e1000_i211)) {
+		if ((direction == 0) || (direction == 1))
+			eth_igb_write_ivar(hw, msix_vector,
+					   queue >> 1,
+					   ((queue & 0x1) << 4) +
+					   8 * direction);
+	}
+}
+#endif
+
+/* Sets up the hardware to generate MSI-X interrupts properly
+ * @hw
+ *  board private structure
+ */
+static void
+eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
+{
+#ifdef RTE_NEXT_ABI
+	int queue_id;
+	uint32_t tmpval, regval, intr_mask;
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t vec = 0;
+#endif
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+
+	/* won't configure msix register if no mapping is done
+	 * between intr vector and event fd
+	 */
+	if (!rte_intr_dp_is_en(intr_handle))
+		return;
+
+#ifdef RTE_NEXT_ABI
+	/* set interrupt vector for other causes */
+	if (hw->mac.type == e1000_82575) {
+		tmpval = E1000_READ_REG(hw, E1000_CTRL_EXT);
+		/* enable MSI-X PBA support */
+		tmpval |= E1000_CTRL_EXT_PBA_CLR;
+
+		/* Auto-Mask interrupts upon ICR read */
+		tmpval |= E1000_CTRL_EXT_EIAME;
+		tmpval |= E1000_CTRL_EXT_IRCA;
+
+		E1000_WRITE_REG(hw, E1000_CTRL_EXT, tmpval);
+
+		/* enable msix_other interrupt */
+		E1000_WRITE_REG_ARRAY(hw, E1000_MSIXBM(0), 0, E1000_EIMS_OTHER);
+		regval = E1000_READ_REG(hw, E1000_EIAC);
+		E1000_WRITE_REG(hw, E1000_EIAC, regval | E1000_EIMS_OTHER);
+		regval = E1000_READ_REG(hw, E1000_EIAM);
+		E1000_WRITE_REG(hw, E1000_EIMS, regval | E1000_EIMS_OTHER);
+	} else if ((hw->mac.type == e1000_82576) ||
+			(hw->mac.type == e1000_82580) ||
+			(hw->mac.type == e1000_i350) ||
+			(hw->mac.type == e1000_i354) ||
+			(hw->mac.type == e1000_i210) ||
+			(hw->mac.type == e1000_i211)) {
+		/* turn on MSI-X capability first */
+		E1000_WRITE_REG(hw, E1000_GPIE, E1000_GPIE_MSIX_MODE |
+					E1000_GPIE_PBA | E1000_GPIE_EIAME |
+					E1000_GPIE_NSICR);
+
+		intr_mask = (1 << intr_handle->max_intr) - 1;
+		regval = E1000_READ_REG(hw, E1000_EIAC);
+		E1000_WRITE_REG(hw, E1000_EIAC, regval | intr_mask);
+
+		/* enable msix_other interrupt */
+		regval = E1000_READ_REG(hw, E1000_EIMS);
+		E1000_WRITE_REG(hw, E1000_EIMS, regval | intr_mask);
+		tmpval = (dev->data->nb_rx_queues | E1000_IVAR_VALID) << 8;
+		E1000_WRITE_REG(hw, E1000_IVAR_MISC, tmpval);
+	}
+
+	/* use EIAM to auto-mask when MSI-X interrupt
+	 * is asserted, this saves a register write for every interrupt
+	 */
+	intr_mask = (1 << intr_handle->nb_efd) - 1;
+	regval = E1000_READ_REG(hw, E1000_EIAM);
+	E1000_WRITE_REG(hw, E1000_EIAM, regval | intr_mask);
+
+	for (queue_id = 0; queue_id < dev->data->nb_rx_queues; queue_id++) {
+		eth_igb_assign_msix_vector(hw, 0, queue_id, vec);
+		intr_handle->intr_vec[queue_id] = vec;
+		if (vec < intr_handle->nb_efd - 1)
+			vec++;
+	}
+
+	E1000_WRITE_FLUSH(hw);
+#endif
+}
 
 PMD_REGISTER_DRIVER(pmd_igb_drv);
 PMD_REGISTER_DRIVER(pmd_igbvf_drv);
