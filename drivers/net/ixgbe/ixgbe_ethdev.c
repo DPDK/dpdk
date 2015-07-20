@@ -2143,8 +2143,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	                  hw_stats->rfc +
 	                  hw_stats->rjc +
 	                  hw_stats->fccrc +
-	                  hw_stats->fclast +
-	                  (rxnfgpc - hw_stats->gprc); /* PHY Errors*/
+	                  hw_stats->fclast;
 
 	/* Tx Errors */
 	/*txdgpc: packets that are DMA'ed*/
