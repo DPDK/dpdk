@@ -119,8 +119,8 @@
 #define L1_CACHE_BYTES  BIT(L1_CACHE_SHIFT)
 
 #define PAGE_SHIFT  12
-#define ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
-#define PTR_ALIGN(p, a) ((typeof(p))ALIGN((unsigned long)(p), (a)))
+#define CXGBE_ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
+#define PTR_ALIGN(p, a) ((typeof(p))CXGBE_ALIGN((unsigned long)(p), (a)))
 
 #define VLAN_HLEN 4
 
@@ -178,7 +178,7 @@ typedef uint64_t  dma_addr_t;
 /*
  * round up val _p to a power of 2 size _s
  */
-#define roundup(_p, _s) (((unsigned long)(_p) + (_s - 1)) & ~(_s - 1))
+#define cxgbe_roundup(_p, _s) (((unsigned long)(_p) + (_s - 1)) & ~(_s - 1))
 
 #undef container_of
 #define container_of(ptr, type, member) ({ \
@@ -214,13 +214,13 @@ static inline uint8_t hweight32(uint32_t word32)
 } /* weight32 */
 
 /**
- * fls - find last (most-significant) bit set
+ * cxgbe_fls - find last (most-significant) bit set
  * @x: the word to search
  *
  * This is defined the same way as ffs.
- * Note fls(0) = 0, fls(1) = 1, fls(0x80000000) = 32.
+ * Note cxgbe_fls(0) = 0, cxgbe_fls(1) = 1, cxgbe_fls(0x80000000) = 32.
  */
-static inline int fls(int x)
+static inline int cxgbe_fls(int x)
 {
 	return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
 }

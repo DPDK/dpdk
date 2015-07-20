@@ -411,7 +411,7 @@ static int adap_init0_tweaks(struct adapter *adapter)
 	 * Line Size, etc.  The firmware default is for a 4KB Page Size and
 	 * 64B Cache Line Size ...
 	 */
-	t4_fixup_host_params_compat(adapter, PAGE_SIZE, L1_CACHE_BYTES,
+	t4_fixup_host_params_compat(adapter, CXGBE_PAGE_SIZE, L1_CACHE_BYTES,
 				    T5_LAST_REV);
 
 	/*
@@ -1100,7 +1100,7 @@ int cxgbe_probe(struct adapter *adapter)
 		qpp = 1 << ((t4_read_reg(adapter,
 				A_SGE_EGRESS_QUEUES_PER_PAGE_PF) >> s_qpp)
 				& M_QUEUESPERPAGEPF0);
-		num_seg = PAGE_SIZE / UDBS_SEG_SIZE;
+		num_seg = CXGBE_PAGE_SIZE / UDBS_SEG_SIZE;
 		if (qpp > num_seg)
 			dev_warn(adapter, "Incorrect SGE EGRESS QUEUES_PER_PAGE configuration, continuing in debug mode\n");
 

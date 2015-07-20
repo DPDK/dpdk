@@ -127,7 +127,7 @@ void t4_load_mtus(struct adapter *adap, const unsigned short *mtus,
 
 	for (i = 0; i < NMTUS; ++i) {
 		unsigned int mtu = mtus[i];
-		unsigned int log2 = fls(mtu);
+		unsigned int log2 = cxgbe_fls(mtu);
 
 		if (!(mtu & ((1 << log2) >> 2)))     /* round */
 			log2--;
@@ -1545,11 +1545,11 @@ int t4_fixup_host_params_compat(struct adapter *adap,
 				unsigned int cache_line_size,
 				enum chip_type chip_compat)
 {
-	unsigned int page_shift = fls(page_size) - 1;
+	unsigned int page_shift = cxgbe_fls(page_size) - 1;
 	unsigned int sge_hps = page_shift - 10;
 	unsigned int stat_len = cache_line_size > 64 ? 128 : 64;
 	unsigned int fl_align = cache_line_size < 32 ? 32 : cache_line_size;
-	unsigned int fl_align_log = fls(fl_align) - 1;
+	unsigned int fl_align_log = cxgbe_fls(fl_align) - 1;
 
 	t4_write_reg(adap, A_SGE_HOST_PAGE_SIZE,
 		     V_HOSTPAGESIZEPF0(sge_hps) |

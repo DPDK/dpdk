@@ -43,7 +43,7 @@
 extern "C" {
 #endif
 
-#define PAGE_SIZE RTE_PGSIZE_4K
+#define CXGBE_PAGE_SIZE RTE_PGSIZE_4K
 
 enum {
 	MAX_NPORTS     = 4,     /* max # of ports */
