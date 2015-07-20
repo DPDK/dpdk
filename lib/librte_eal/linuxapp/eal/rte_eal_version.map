@@ -120,6 +120,10 @@ DPDK_2.1 {
 	rte_eal_pci_write_config;
 	rte_epoll_ctl;
 	rte_epoll_wait;
+	rte_intr_allow_others;
+	rte_intr_dp_is_en;
+	rte_intr_efd_disable;
+	rte_intr_efd_enable;
 	rte_intr_rx_ctl;
 	rte_intr_tls_epfd;
 	rte_memzone_free;

@@ -44,6 +44,7 @@
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
 #include <sys/ioctl.h>
+#include <sys/eventfd.h>
 
 #include <rte_common.h>
 #include <rte_interrupts.h>
@@ -68,6 +69,7 @@
 #include "eal_vfio.h"
 
 #define EAL_INTR_EPOLL_WAIT_FOREVER (-1)
+#define NB_OTHER_INTR               1
 
 static RTE_DEFINE_PER_LCORE(int, _epfd) = -1; /**< epoll fd per thread */
 
@@ -1124,6 +1126,73 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 
 	return rc;
 }
+
+int
+rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
+{
+	uint32_t i;
+	int fd;
+	uint32_t n = RTE_MIN(nb_efd, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
+
+	if (intr_handle->type == RTE_INTR_HANDLE_VFIO_MSIX) {
+		for (i = 0; i < n; i++) {
+			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+			if (fd < 0) {
+				RTE_LOG(ERR, EAL,
+					"can't setup eventfd, error %i (%s)\n",
+					errno, strerror(errno));
+				return -1;
+			}
+			intr_handle->efds[i] = fd;
+		}
+		intr_handle->nb_efd   = n;
+		intr_handle->max_intr = NB_OTHER_INTR + n;
+	} else {
+		intr_handle->efds[0]  = intr_handle->fd;
+		intr_handle->nb_efd   = RTE_MIN(nb_efd, 1U);
+		intr_handle->max_intr = NB_OTHER_INTR;
+	}
+
+	return 0;
+}
+
+void
+rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
+{
+	uint32_t i;
+	struct rte_epoll_event *rev;
+
+	for (i = 0; i < intr_handle->nb_efd; i++) {
+		rev = &intr_handle->elist[i];
+		if (rev->status == RTE_EPOLL_INVALID)
+			continue;
+		if (rte_epoll_ctl(rev->epfd, EPOLL_CTL_DEL, rev->fd, rev)) {
+			/* force free if the entry valid */
+			eal_epoll_data_safe_free(rev);
+			rev->status = RTE_EPOLL_INVALID;
+		}
+	}
+
+	if (intr_handle->max_intr > intr_handle->nb_efd) {
+		for (i = 0; i < intr_handle->nb_efd; i++)
+			close(intr_handle->efds[i]);
+	}
+	intr_handle->nb_efd = 0;
+	intr_handle->max_intr = 0;
+}
+
+int
+rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
+{
+	return !(!intr_handle->nb_efd);
+}
+
+int
+rte_intr_allow_others(struct rte_intr_handle *intr_handle)
+{
+	return !!(intr_handle->max_intr - intr_handle->nb_efd);
+}
+
 #else
 int
 rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
@@ -1135,5 +1204,33 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
 	RTE_SET_USED(vec);
 	RTE_SET_USED(data);
 	return -ENOTSUP;
+}
+
+int
+rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
+{
+	RTE_SET_USED(intr_handle);
+	RTE_SET_USED(nb_efd);
+	return 0;
+}
+
+void
+rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
+{
+	RTE_SET_USED(intr_handle);
+}
+
+int
+rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
+{
+	RTE_SET_USED(intr_handle);
+	return 0;
+}
+
+int
+rte_intr_allow_others(struct rte_intr_handle *intr_handle)
+{
+	RTE_SET_USED(intr_handle);
+	return 1;
 }
 #endif

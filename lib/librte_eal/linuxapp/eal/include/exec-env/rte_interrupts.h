@@ -168,4 +168,49 @@ int
 rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
 		int epfd, int op, unsigned int vec, void *data);
 
+/**
+ * It enables the packet I/O interrupt event if it's necessary.
+ * It creates event fd for each interrupt vector when MSIX is used,
+ * otherwise it multiplexes a single event fd.
+ *
+ * @param intr_handle
+ *   Pointer to the interrupt handle.
+ * @param nb_vec
+ *   Number of interrupt vector trying to enable.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int
+rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd);
+
+/**
+ * It disables the packet I/O interrupt event.
+ * It deletes registered eventfds and closes the open fds.
+ *
+ * @param intr_handle
+ *   Pointer to the interrupt handle.
+ */
+void
+rte_intr_efd_disable(struct rte_intr_handle *intr_handle);
+
+/**
+ * The packet I/O interrupt on datapath is enabled or not.
+ *
+ * @param intr_handle
+ *   Pointer to the interrupt handle.
+ */
+int
+rte_intr_dp_is_en(struct rte_intr_handle *intr_handle);
+
+/**
+ * The interrupt handle instance allows other causes or not.
+ * Other causes stand for any none packet I/O interrupts.
+ *
+ * @param intr_handle
+ *   Pointer to the interrupt handle.
+ */
+int
+rte_intr_allow_others(struct rte_intr_handle *intr_handle);
+
 #endif /* _RTE_LINUXAPP_INTERRUPTS_H_ */

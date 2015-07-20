@@ -118,6 +118,10 @@ DPDK_2.1 {
 	rte_eal_pci_detach;
 	rte_eal_pci_read_config;
 	rte_eal_pci_write_config;
+	rte_intr_allow_others;
+	rte_intr_dp_is_en;
+	rte_intr_efd_disable;
+	rte_intr_efd_enable;
 	rte_intr_rx_ctl;
 	rte_memzone_free;
 
