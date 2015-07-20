@@ -51,6 +51,32 @@ enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_MAX
 };
 
+#define RTE_INTR_EVENT_ADD            1UL
+#define RTE_INTR_EVENT_DEL            2UL
+
+typedef void (*rte_intr_event_cb_t)(int fd, void *arg);
+
+struct rte_epoll_data {
+	uint32_t event;               /**< event type */
+	void *data;                   /**< User data */
+	rte_intr_event_cb_t cb_fun;   /**< IN: callback fun */
+	void *cb_arg;	              /**< IN: callback arg */
+};
+
+enum {
+	RTE_EPOLL_INVALID = 0,
+	RTE_EPOLL_VALID,
+	RTE_EPOLL_EXEC,
+};
+
+/** interrupt epoll event obj, taken by epoll_event.ptr */
+struct rte_epoll_event {
+	volatile uint32_t status;  /**< OUT: event status */
+	int fd;                    /**< OUT: event fd */
+	int epfd;       /**< OUT: epoll instance the ev associated with */
+	struct rte_epoll_data epdata;
+};
+
 /** Handle for interrupts. */
 struct rte_intr_handle {
 	union {
@@ -64,8 +90,62 @@ struct rte_intr_handle {
 	uint32_t max_intr;             /**< max interrupt requested */
 	uint32_t nb_efd;               /**< number of available efd(event fd) */
 	int efds[RTE_MAX_RXTX_INTR_VEC_ID];  /**< intr vectors/efds mapping */
+	struct rte_epoll_event elist[RTE_MAX_RXTX_INTR_VEC_ID];
+				       /**< intr vector epoll event */
 	int *intr_vec;                 /**< intr vector number array */
 #endif
 };
+
+#define RTE_EPOLL_PER_THREAD        -1  /**< to hint using per thread epfd */
+
+/**
+ * It waits for events on the epoll instance.
+ *
+ * @param epfd
+ *   Epoll instance fd on which the caller wait for events.
+ * @param events
+ *   Memory area contains the events that will be available for the caller.
+ * @param maxevents
+ *   Up to maxevents are returned, must greater than zero.
+ * @param timeout
+ *   Specifying a timeout of -1 causes a block indefinitely.
+ *   Specifying a timeout equal to zero cause to return immediately.
+ * @return
+ *   - On success, returns the number of available event.
+ *   - On failure, a negative value.
+ */
+int
+rte_epoll_wait(int epfd, struct rte_epoll_event *events,
+	       int maxevents, int timeout);
+
+/**
+ * It performs control operations on epoll instance referred by the epfd.
+ * It requests that the operation op be performed for the target fd.
+ *
+ * @param epfd
+ *   Epoll instance fd on which the caller perform control operations.
+ * @param op
+ *   The operation be performed for the target fd.
+ * @param fd
+ *   The target fd on which the control ops perform.
+ * @param event
+ *   Describes the object linked to the fd.
+ *   Note: The caller must take care the object deletion after CTL_DEL.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int
+rte_epoll_ctl(int epfd, int op, int fd,
+	      struct rte_epoll_event *event);
+
+/**
+ * The function returns the per thread epoll instance.
+ *
+ * @return
+ *   epfd the epoll instance referred to.
+ */
+int
+rte_intr_tls_epfd(void);
 
 #endif /* _RTE_LINUXAPP_INTERRUPTS_H_ */

@@ -69,6 +69,8 @@
 
 #define EAL_INTR_EPOLL_WAIT_FOREVER (-1)
 
+static RTE_DEFINE_PER_LCORE(int, _epfd) = -1; /**< epoll fd per thread */
+
 /**
  * union for pipe fds.
  */
@@ -895,4 +897,141 @@ rte_eal_intr_init(void)
 			"Failed to create thread for interrupt handling\n");
 
 	return -ret;
+}
+
+static int
+eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
+			struct rte_epoll_event *events)
+{
+	unsigned int i, count = 0;
+	struct rte_epoll_event *rev;
+
+	for (i = 0; i < n; i++) {
+		rev = evs[i].data.ptr;
+		if (!rev || !rte_atomic32_cmpset(&rev->status, RTE_EPOLL_VALID,
+						 RTE_EPOLL_EXEC))
+			continue;
+
+		events[count].status        = RTE_EPOLL_VALID;
+		events[count].fd            = rev->fd;
+		events[count].epfd          = rev->epfd;
+		events[count].epdata.event  = rev->epdata.event;
+		events[count].epdata.data   = rev->epdata.data;
+		if (rev->epdata.cb_fun)
+			rev->epdata.cb_fun(rev->fd,
+					   rev->epdata.cb_arg);
+
+		rte_compiler_barrier();
+		rev->status = RTE_EPOLL_VALID;
+		count++;
+	}
+	return count;
+}
+
+static inline int
+eal_init_tls_epfd(void)
+{
+	int pfd = epoll_create(255);
+
+	if (pfd < 0) {
+		RTE_LOG(ERR, EAL,
+			"Cannot create epoll instance\n");
+		return -1;
+	}
+	return pfd;
+}
+
+int
+rte_intr_tls_epfd(void)
+{
+	if (RTE_PER_LCORE(_epfd) == -1)
+		RTE_PER_LCORE(_epfd) = eal_init_tls_epfd();
+
+	return RTE_PER_LCORE(_epfd);
+}
+
+int
+rte_epoll_wait(int epfd, struct rte_epoll_event *events,
+	       int maxevents, int timeout)
+{
+	struct epoll_event evs[maxevents];
+	int rc;
+
+	if (!events) {
+		RTE_LOG(ERR, EAL, "rte_epoll_event can't be NULL\n");
+		return -1;
+	}
+
+	/* using per thread epoll fd */
+	if (epfd == RTE_EPOLL_PER_THREAD)
+		epfd = rte_intr_tls_epfd();
+
+	while (1) {
+		rc = epoll_wait(epfd, evs, maxevents, timeout);
+		if (likely(rc > 0)) {
+			/* epoll_wait has at least one fd ready to read */
+			rc = eal_epoll_process_event(evs, rc, events);
+			break;
+		} else if (rc < 0) {
+			if (errno == EINTR)
+				continue;
+			/* epoll_wait fail */
+			RTE_LOG(ERR, EAL, "epoll_wait returns with fail %s\n",
+				strerror(errno));
+			rc = -1;
+			break;
+		}
+	}
+
+	return rc;
+}
+
+static inline void
+eal_epoll_data_safe_free(struct rte_epoll_event *ev)
+{
+	while (!rte_atomic32_cmpset(&ev->status, RTE_EPOLL_VALID,
+				    RTE_EPOLL_INVALID))
+		while (ev->status != RTE_EPOLL_VALID)
+			rte_pause();
+	memset(&ev->epdata, 0, sizeof(ev->epdata));
+	ev->fd = -1;
+	ev->epfd = -1;
+}
+
+int
+rte_epoll_ctl(int epfd, int op, int fd,
+	      struct rte_epoll_event *event)
+{
+	struct epoll_event ev;
+
+	if (!event) {
+		RTE_LOG(ERR, EAL, "rte_epoll_event can't be NULL\n");
+		return -1;
+	}
+
+	/* using per thread epoll fd */
+	if (epfd == RTE_EPOLL_PER_THREAD)
+		epfd = rte_intr_tls_epfd();
+
+	if (op == EPOLL_CTL_ADD) {
+		event->status = RTE_EPOLL_VALID;
+		event->fd = fd;  /* ignore fd in event */
+		event->epfd = epfd;
+		ev.data.ptr = (void *)event;
+	}
+
+	ev.events = event->epdata.event;
+	if (epoll_ctl(epfd, op, fd, &ev) < 0) {
+		RTE_LOG(ERR, EAL, "Error op %d fd %d epoll_ctl, %s\n",
+			op, fd, strerror(errno));
+		if (op == EPOLL_CTL_ADD)
+			/* rollback status when CTL_ADD fail */
+			event->status = RTE_EPOLL_INVALID;
+		return -1;
+	}
+
+	if (op == EPOLL_CTL_DEL && event->status != RTE_EPOLL_INVALID)
+		eal_epoll_data_safe_free(event);
+
+	return 0;
 }
