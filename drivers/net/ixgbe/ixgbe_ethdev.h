@@ -117,6 +117,9 @@
 	ETH_RSS_IPV6_TCP_EX | \
 	ETH_RSS_IPV6_UDP_EX)
 
+#define IXGBE_VF_IRQ_ENABLE_MASK        3          /* vf irq enable mask */
+#define IXGBE_VF_MAXMSIVECTOR           1
+
 /*
  * Information about the fdir mode.
  */
@@ -332,6 +335,7 @@ uint32_t ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id);
 
 int ixgbe_dev_rx_descriptor_done(void *rx_queue, uint16_t offset);
+int ixgbevf_dev_rx_descriptor_done(void *rx_queue, uint16_t offset);
 
 int ixgbe_dev_rx_init(struct rte_eth_dev *dev);
 

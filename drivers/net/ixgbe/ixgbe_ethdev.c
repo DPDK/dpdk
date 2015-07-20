@@ -85,6 +85,9 @@
  */
 #define IXGBE_FC_LO    0x40
 
+/* Default minimum inter-interrupt interval for EITR configuration */
+#define IXGBE_MIN_INTER_INTERRUPT_INTERVAL_DEFAULT    0x79E
+
 /* Timer value included in XOFF frames. */
 #define IXGBE_FC_PAUSE 0x680
 
@@ -187,6 +190,9 @@ static int ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 			uint16_t reta_size);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev);
+#ifdef RTE_NEXT_ABI
+static int ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
+#endif
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev);
 static void ixgbe_dev_interrupt_handler(struct rte_intr_handle *handle,
@@ -202,11 +208,14 @@ static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_conf
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev);
+static int ixgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev);
+static int ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
 static void ixgbevf_dev_close(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
+static void ixgbevf_intr_enable(struct ixgbe_hw *hw);
 static void ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
 		struct rte_eth_stats *stats);
 static void ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
@@ -216,6 +225,17 @@ static void ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev,
 		uint16_t queue, int on);
 static void ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
+static void ixgbevf_dev_interrupt_handler(struct rte_intr_handle *handle,
+					  void *param);
+#ifdef RTE_NEXT_ABI
+static int ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
+					    uint16_t queue_id);
+static int ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
+					     uint16_t queue_id);
+static void ixgbevf_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
+				 uint8_t queue, uint8_t msix_vector);
+#endif
+static void ixgbevf_configure_msix(struct rte_eth_dev *dev);
 
 /* For Eth VMDQ APIs support */
 static int ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct
@@ -232,6 +252,15 @@ static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		uint8_t rule_id, uint8_t on);
 static int ixgbe_mirror_rule_reset(struct rte_eth_dev *dev,
 		uint8_t	rule_id);
+#ifdef RTE_NEXT_ABI
+static int ixgbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
+					  uint16_t queue_id);
+static int ixgbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
+					   uint16_t queue_id);
+static void ixgbe_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
+			       uint8_t queue, uint8_t msix_vector);
+#endif
+static void ixgbe_configure_msix(struct rte_eth_dev *dev);
 
 static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 		uint16_t queue_idx, uint16_t tx_rate);
@@ -308,7 +337,7 @@ static int ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
  */
 #define UPDATE_VF_STAT(reg, last, cur)	                        \
 {                                                               \
-	u32 latest = IXGBE_READ_REG(hw, reg);                   \
+	uint32_t latest = IXGBE_READ_REG(hw, reg);              \
 	cur += latest - last;                                   \
 	last = latest;                                          \
 }
@@ -391,6 +420,10 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.tx_queue_start	      = ixgbe_dev_tx_queue_start,
 	.tx_queue_stop        = ixgbe_dev_tx_queue_stop,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
+#ifdef RTE_NEXT_ABI
+	.rx_queue_intr_enable = ixgbe_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable = ixgbe_dev_rx_queue_intr_disable,
+#endif
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
 	.rx_queue_count       = ixgbe_dev_rx_queue_count,
 	.rx_descriptor_done   = ixgbe_dev_rx_descriptor_done,
@@ -461,8 +494,13 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.vlan_offload_set     = ixgbevf_vlan_offload_set,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
+	.rx_descriptor_done   = ixgbe_dev_rx_descriptor_done,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
 	.tx_queue_release     = ixgbe_dev_tx_queue_release,
+#ifdef RTE_NEXT_ABI
+	.rx_queue_intr_enable = ixgbevf_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable = ixgbevf_dev_rx_queue_intr_disable,
+#endif
 	.mac_addr_add         = ixgbevf_add_mac_addr,
 	.mac_addr_remove      = ixgbevf_remove_mac_addr,
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
@@ -999,12 +1037,6 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
-
-	rte_intr_callback_register(&(pci_dev->intr_handle),
-		ixgbe_dev_interrupt_handler, (void *)eth_dev);
-
-	/* enable uio intr after callback register */
-	rte_intr_enable(&(pci_dev->intr_handle));
 
 	/* enable support intr */
 	ixgbe_enable_intr(eth_dev);
@@ -1647,6 +1679,10 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+#ifdef RTE_NEXT_ABI
+	uint32_t intr_vector = 0;
+#endif
 	int err, link_up = 0, negotiate = 0;
 	uint32_t speed = 0;
 	int mask = 0;
@@ -1678,6 +1714,30 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 
 	/* configure PF module if SRIOV enabled */
 	ixgbe_pf_host_configure(dev);
+
+#ifdef RTE_NEXT_ABI
+	/* check and configure queue intr-vector mapping */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		intr_vector = dev->data->nb_rx_queues;
+
+	if (rte_intr_efd_enable(intr_handle, intr_vector))
+		return -1;
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int),
+				    0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec\n", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+#endif
+
+	/* confiugre msix for sleep until rx interrupt */
+	ixgbe_configure_msix(dev);
 
 	/* initialize transmission unit */
 	ixgbe_dev_tx_init(dev);
@@ -1756,8 +1816,25 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 skip_link_setup:
 
 	/* check if lsc interrupt is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc != 0)
-		ixgbe_dev_lsc_interrupt_setup(dev);
+	if (dev->data->dev_conf.intr_conf.lsc != 0) {
+		if (rte_intr_allow_others(intr_handle)) {
+			rte_intr_callback_register(intr_handle,
+						   ixgbe_dev_interrupt_handler,
+						   (void *)dev);
+			ixgbe_dev_lsc_interrupt_setup(dev);
+		} else
+			PMD_INIT_LOG(INFO, "lsc won't enable because of"
+				     " no intr multiplex\n");
+	}
+
+#ifdef RTE_NEXT_ABI
+	/* check if rxq interrupt is enabled */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		ixgbe_dev_rxq_interrupt_setup(dev);
+#endif
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(intr_handle);
 
 	/* resume enabled intr since hw reset */
 	ixgbe_enable_intr(dev);
@@ -1814,12 +1891,16 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct ixgbe_5tuple_filter *p_5tuple, *p_5tuple_next;
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 	int vf;
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* disable interrupts */
 	ixgbe_disable_intr(hw);
+
+	/* disable intr eventfd mapping */
+	rte_intr_disable(intr_handle);
 
 	/* reset the NIC */
 	ixgbe_pf_reset_hw(hw);
@@ -1861,6 +1942,14 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	memset(filter_info->fivetuple_mask, 0,
 		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
+#ifdef RTE_NEXT_ABI
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+#endif
 }
 
 /*
@@ -2534,6 +2623,30 @@ ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during nic initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+#ifdef RTE_NEXT_ABI
+static int
+ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	intr->mask |= IXGBE_EICR_RTX_QUEUE;
+
+	return 0;
+}
+#endif
+
 /*
  * It reads ICR and sets flag (IXGBE_EICR_LSC) for the link_update.
  *
@@ -2560,13 +2673,37 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	PMD_DRV_LOG(INFO, "eicr %x", eicr);
 
 	intr->flags = 0;
-	if (eicr & IXGBE_EICR_LSC) {
-		/* set flag for async link update */
+
+	/* set flag for async link update */
+	if (eicr & IXGBE_EICR_LSC)
 		intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
-	}
 
 	if (eicr & IXGBE_EICR_MAILBOX)
 		intr->flags |= IXGBE_FLAG_MAILBOX;
+
+	return 0;
+}
+
+static int
+ixgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
+{
+	uint32_t eicr;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	/* clear all cause mask */
+	ixgbevf_intr_disable(hw);
+
+	/* read-on-clear nic registers here */
+	eicr = IXGBE_READ_REG(hw, IXGBE_VTEICR);
+	PMD_DRV_LOG(INFO, "eicr %x", eicr);
+
+	intr->flags = 0;
+
+	/* set flag for async link update */
+	if (eicr & IXGBE_EICR_LSC)
+		intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
 
 	return 0;
 }
@@ -2666,6 +2803,18 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_DRV_LOG(DEBUG, "enable intr immediately");
+	ixgbevf_intr_enable(hw);
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+	return 0;
+}
+
 /**
  * Interrupt handler which shall be registered for alarm callback for delayed
  * handling specific interrupt to wait for the stable nic state. As the
@@ -2720,11 +2869,22 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
  */
 static void
 ixgbe_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
-							void *param)
+			    void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
 	ixgbe_dev_interrupt_get_status(dev);
 	ixgbe_dev_interrupt_action(dev);
+}
+
+static void
+ixgbevf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+			      void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	ixgbevf_dev_interrupt_get_status(dev);
+	ixgbevf_dev_interrupt_action(dev);
 }
 
 static int
@@ -3232,6 +3392,19 @@ ixgbevf_intr_disable(struct ixgbe_hw *hw)
 	IXGBE_WRITE_FLUSH(hw);
 }
 
+static void
+ixgbevf_intr_enable(struct ixgbe_hw *hw)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	/* VF enable interrupt autoclean */
+	IXGBE_WRITE_REG(hw, IXGBE_VTEIAM, IXGBE_VF_IRQ_ENABLE_MASK);
+	IXGBE_WRITE_REG(hw, IXGBE_VTEIAC, IXGBE_VF_IRQ_ENABLE_MASK);
+	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, IXGBE_VF_IRQ_ENABLE_MASK);
+
+	IXGBE_WRITE_FLUSH(hw);
+}
+
 static int
 ixgbevf_dev_configure(struct rte_eth_dev *dev)
 {
@@ -3273,6 +3446,11 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+#ifdef RTE_NEXT_ABI
+	uint32_t intr_vector = 0;
+#endif
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+
 	int err, mask = 0;
 
 	PMD_INIT_FUNC_TRACE();
@@ -3303,6 +3481,42 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 
 	ixgbevf_dev_rxtx_start(dev);
 
+#ifdef RTE_NEXT_ABI
+	/* check and configure queue intr-vector mapping */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		intr_vector = dev->data->nb_rx_queues;
+
+	if (rte_intr_efd_enable(intr_handle, intr_vector))
+		return -1;
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec\n", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+#endif
+	ixgbevf_configure_msix(dev);
+
+	if (dev->data->dev_conf.intr_conf.lsc != 0) {
+		if (rte_intr_allow_others(intr_handle))
+			rte_intr_callback_register(intr_handle,
+					ixgbevf_dev_interrupt_handler,
+					(void *)dev);
+		else
+			PMD_INIT_LOG(INFO, "lsc won't enable because of"
+				     " no intr multiplex\n");
+	}
+
+	rte_intr_enable(intr_handle);
+
+	/* Re-enable interrupt for VF */
+	ixgbevf_intr_enable(hw);
+
 	return 0;
 }
 
@@ -3310,6 +3524,7 @@ static void
 ixgbevf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -3326,12 +3541,27 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	dev->data->scattered_rx = 0;
 
 	ixgbe_dev_clear_queues(dev);
+
+	/* disable intr eventfd mapping */
+	rte_intr_disable(intr_handle);
+
+#ifdef RTE_NEXT_ABI
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+#endif
 }
 
 static void
 ixgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+#ifdef RTE_NEXT_ABI
+	struct rte_pci_device *pci_dev;
+#endif
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -3343,6 +3573,14 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
+
+#ifdef RTE_NEXT_ABI
+	pci_dev = dev->pci_dev;
+	if (pci_dev->intr_handle.intr_vec) {
+		rte_free(pci_dev->intr_handle.intr_vec);
+		pci_dev->intr_handle.intr_vec = NULL;
+	}
+#endif
 }
 
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
@@ -3858,6 +4096,269 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 	IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id + rule_mr_offset), msb_val);
 
 	return 0;
+}
+
+#ifdef RTE_NEXT_ABI
+static int
+ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	uint32_t mask;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
+	mask |= (1 << queue_id);
+	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
+
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+
+	return 0;
+}
+
+static int
+ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	uint32_t mask;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
+	mask &= ~(1 << queue_id);
+	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
+
+	return 0;
+}
+
+static int
+ixgbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	uint32_t mask;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	if (queue_id < 16) {
+		ixgbe_disable_intr(hw);
+		intr->mask |= (1 << queue_id);
+		ixgbe_enable_intr(dev);
+	} else if (queue_id < 32) {
+		mask = IXGBE_READ_REG(hw, IXGBE_EIMS_EX(0));
+		mask &= (1 << queue_id);
+		IXGBE_WRITE_REG(hw, IXGBE_EIMS_EX(0), mask);
+	} else if (queue_id < 64) {
+		mask = IXGBE_READ_REG(hw, IXGBE_EIMS_EX(1));
+		mask &= (1 << (queue_id - 32));
+		IXGBE_WRITE_REG(hw, IXGBE_EIMS_EX(1), mask);
+	}
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+
+	return 0;
+}
+
+static int
+ixgbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	uint32_t mask;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	if (queue_id < 16) {
+		ixgbe_disable_intr(hw);
+		intr->mask &= ~(1 << queue_id);
+		ixgbe_enable_intr(dev);
+	} else if (queue_id < 32) {
+		mask = IXGBE_READ_REG(hw, IXGBE_EIMS_EX(0));
+		mask &= ~(1 << queue_id);
+		IXGBE_WRITE_REG(hw, IXGBE_EIMS_EX(0), mask);
+	} else if (queue_id < 64) {
+		mask = IXGBE_READ_REG(hw, IXGBE_EIMS_EX(1));
+		mask &= ~(1 << (queue_id - 32));
+		IXGBE_WRITE_REG(hw, IXGBE_EIMS_EX(1), mask);
+	}
+
+	return 0;
+}
+
+static void
+ixgbevf_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
+		     uint8_t queue, uint8_t msix_vector)
+{
+	uint32_t tmp, idx;
+
+	if (direction == -1) {
+		/* other causes */
+		msix_vector |= IXGBE_IVAR_ALLOC_VAL;
+		tmp = IXGBE_READ_REG(hw, IXGBE_VTIVAR_MISC);
+		tmp &= ~0xFF;
+		tmp |= msix_vector;
+		IXGBE_WRITE_REG(hw, IXGBE_VTIVAR_MISC, tmp);
+	} else {
+		/* rx or tx cause */
+		msix_vector |= IXGBE_IVAR_ALLOC_VAL;
+		idx = ((16 * (queue & 1)) + (8 * direction));
+		tmp = IXGBE_READ_REG(hw, IXGBE_VTIVAR(queue >> 1));
+		tmp &= ~(0xFF << idx);
+		tmp |= (msix_vector << idx);
+		IXGBE_WRITE_REG(hw, IXGBE_VTIVAR(queue >> 1), tmp);
+	}
+}
+
+/**
+ * set the IVAR registers, mapping interrupt causes to vectors
+ * @param hw
+ *  pointer to ixgbe_hw struct
+ * @direction
+ *  0 for Rx, 1 for Tx, -1 for other causes
+ * @queue
+ *  queue to map the corresponding interrupt to
+ * @msix_vector
+ *  the vector to map to the corresponding queue
+ */
+static void
+ixgbe_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
+		   uint8_t queue, uint8_t msix_vector)
+{
+	uint32_t tmp, idx;
+
+	msix_vector |= IXGBE_IVAR_ALLOC_VAL;
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		if (direction == -1)
+			direction = 0;
+		idx = (((direction * 64) + queue) >> 2) & 0x1F;
+		tmp = IXGBE_READ_REG(hw, IXGBE_IVAR(idx));
+		tmp &= ~(0xFF << (8 * (queue & 0x3)));
+		tmp |= (msix_vector << (8 * (queue & 0x3)));
+		IXGBE_WRITE_REG(hw, IXGBE_IVAR(idx), tmp);
+	} else if ((hw->mac.type == ixgbe_mac_82599EB) ||
+			(hw->mac.type == ixgbe_mac_X540)) {
+		if (direction == -1) {
+			/* other causes */
+			idx = ((queue & 1) * 8);
+			tmp = IXGBE_READ_REG(hw, IXGBE_IVAR_MISC);
+			tmp &= ~(0xFF << idx);
+			tmp |= (msix_vector << idx);
+			IXGBE_WRITE_REG(hw, IXGBE_IVAR_MISC, tmp);
+		} else {
+			/* rx or tx causes */
+			idx = ((16 * (queue & 1)) + (8 * direction));
+			tmp = IXGBE_READ_REG(hw, IXGBE_IVAR(queue >> 1));
+			tmp &= ~(0xFF << idx);
+			tmp |= (msix_vector << idx);
+			IXGBE_WRITE_REG(hw, IXGBE_IVAR(queue >> 1), tmp);
+		}
+	}
+}
+#endif
+
+static void
+ixgbevf_configure_msix(struct rte_eth_dev *dev)
+{
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+#ifdef RTE_NEXT_ABI
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t q_idx;
+	uint32_t vector_idx = 0;
+#endif
+
+	/* won't configure msix register if no mapping is done
+	 * between intr vector and event fd.
+	 */
+	if (!rte_intr_dp_is_en(intr_handle))
+		return;
+
+#ifdef RTE_NEXT_ABI
+	/* Configure all RX queues of VF */
+	for (q_idx = 0; q_idx < dev->data->nb_rx_queues; q_idx++) {
+		/* Force all queue use vector 0,
+		 * as IXGBE_VF_MAXMSIVECOTR = 1
+		 */
+		ixgbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
+		intr_handle->intr_vec[q_idx] = vector_idx;
+	}
+
+	/* Configure VF Rx queue ivar */
+	ixgbevf_set_ivar_map(hw, -1, 1, vector_idx);
+#endif
+}
+
+/**
+ * Sets up the hardware to properly generate MSI-X interrupts
+ * @hw
+ *  board private structure
+ */
+static void
+ixgbe_configure_msix(struct rte_eth_dev *dev)
+{
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+#ifdef RTE_NEXT_ABI
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t queue_id, vec = 0;
+	uint32_t mask;
+	uint32_t gpie;
+#endif
+
+	/* won't configure msix register if no mapping is done
+	 * between intr vector and event fd
+	 */
+	if (!rte_intr_dp_is_en(intr_handle))
+		return;
+
+#ifdef RTE_NEXT_ABI
+	/* setup GPIE for MSI-x mode */
+	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
+	gpie |= IXGBE_GPIE_MSIX_MODE | IXGBE_GPIE_PBA_SUPPORT |
+		IXGBE_GPIE_OCD | IXGBE_GPIE_EIAME;
+	/* auto clearing and auto setting corresponding bits in EIMS
+	 * when MSI-X interrupt is triggered
+	 */
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		IXGBE_WRITE_REG(hw, IXGBE_EIAM, IXGBE_EICS_RTX_QUEUE);
+	} else {
+		IXGBE_WRITE_REG(hw, IXGBE_EIAM_EX(0), 0xFFFFFFFF);
+		IXGBE_WRITE_REG(hw, IXGBE_EIAM_EX(1), 0xFFFFFFFF);
+	}
+	IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
+
+	/* Populate the IVAR table and set the ITR values to the
+	 * corresponding register.
+	 */
+	for (queue_id = 0; queue_id < dev->data->nb_rx_queues;
+	     queue_id++) {
+		/* by default, 1:1 mapping */
+		ixgbe_set_ivar_map(hw, 0, queue_id, vec);
+		intr_handle->intr_vec[queue_id] = vec;
+		if (vec < intr_handle->nb_efd - 1)
+			vec++;
+	}
+
+	switch (hw->mac.type) {
+	case ixgbe_mac_82598EB:
+		ixgbe_set_ivar_map(hw, -1, IXGBE_IVAR_OTHER_CAUSES_INDEX,
+				   intr_handle->max_intr - 1);
+		break;
+	case ixgbe_mac_82599EB:
+	case ixgbe_mac_X540:
+		ixgbe_set_ivar_map(hw, -1, 1, intr_handle->max_intr - 1);
+		break;
+	default:
+		break;
+	}
+	IXGBE_WRITE_REG(hw, IXGBE_EITR(queue_id),
+			IXGBE_MIN_INTER_INTERRUPT_INTERVAL_DEFAULT & 0xFFF);
+
+	/* set up to autoclear timer, and the vectors */
+	mask = IXGBE_EIMS_ENABLE_MASK;
+	mask &= ~(IXGBE_EIMS_OTHER |
+		  IXGBE_EIMS_MAILBOX |
+		  IXGBE_EIMS_LSC);
+
+	IXGBE_WRITE_REG(hw, IXGBE_EIAC, mask);
+#endif
 }
 
 static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
