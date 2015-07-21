@@ -40,9 +40,9 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 EXPORT_MAP := rte_malloc_version.map
 
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_MALLOC) := rte_malloc.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL) := rte_malloc_empty.c
 
 # this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_MALLOC) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL) += lib/librte_eal
 
 include $(RTE_SDK)/mk/rte.lib.mk
