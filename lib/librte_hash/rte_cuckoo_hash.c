@@ -105,8 +105,8 @@ struct rte_hash {
 	uint32_t num_buckets;           /**< Number of buckets in table. */
 	uint32_t key_len;               /**< Length of hash key. */
 	rte_hash_function hash_func;    /**< Function used to calculate hash. */
-	rte_hash_cmp_eq_t rte_hash_cmp_eq; /**< Function used to compare keys. */
 	uint32_t hash_func_init_val;    /**< Init value used by hash_func. */
+	rte_hash_cmp_eq_t rte_hash_cmp_eq; /**< Function used to compare keys. */
 	uint32_t bucket_bitmask;        /**< Bitmask for getting bucket index
 						from hash signature. */
 	uint32_t key_entry_size;         /**< Size of each key entry. */
