@@ -386,14 +386,14 @@ parse_pipeline_core(uint32_t *socket,
 		switch (type) {
 		case 's':
 		case 'S':
-			if (s_parsed)
+			if (s_parsed || c_parsed || h_parsed)
 				return -EINVAL;
 			s_parsed = 1;
 			next++;
 			break;
 		case 'c':
 		case 'C':
-			if (c_parsed)
+			if (c_parsed || h_parsed)
 				return -EINVAL;
 			c_parsed = 1;
 			next++;
@@ -423,7 +423,10 @@ parse_pipeline_core(uint32_t *socket,
 			num[num_len] = *next;
 		}
 
-		if (num_len == 0 && type != 'h')
+		if (num_len == 0 && type != 'h' && type != 'H')
+			return -EINVAL;
+
+		if (num_len != 0 && (type == 'h' || type == 'H'))
 			return -EINVAL;
 
 		num[num_len] = '\0';
@@ -438,9 +441,6 @@ parse_pipeline_core(uint32_t *socket,
 		case 'c':
 		case 'C':
 			c = val;
-			if (type == 'C' && *next != '\0')
-				return -EINVAL;
-
 			break;
 		case 'h':
 		case 'H':
