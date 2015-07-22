@@ -1707,7 +1707,9 @@ next_desc:
 							rx_mbuf_alloc_failed++;
 				break;
 			}
-		} else if (nb_hold > rxq->rx_free_thresh) {
+		}
+#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
+		else if (nb_hold > rxq->rx_free_thresh) {
 			uint16_t next_rdt = rxq->rx_free_trigger;
 
 			if (!ixgbe_rx_alloc_bufs(rxq, false)) {
@@ -1725,6 +1727,7 @@ next_desc:
 				break;
 			}
 		}
+#endif
 
 		nb_hold++;
 		rxe = &sw_ring[rx_id];
