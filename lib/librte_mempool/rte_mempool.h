@@ -271,12 +271,6 @@ static inline struct rte_mempool_objhdr *__mempool_get_header(void *obj)
 	return RTE_PTR_SUB(obj, sizeof(struct rte_mempool_objhdr));
 }
 
-/* return the trailer of a mempool object (internal) */
-static inline struct rte_mempool_objtlr *__mempool_get_trailer(void *obj)
-{
-	return RTE_PTR_SUB(obj, sizeof(struct rte_mempool_objtlr));
-}
-
 /**
  * Return a pointer to the mempool owning this object.
  *
@@ -290,6 +284,13 @@ static inline struct rte_mempool *rte_mempool_from_obj(void *obj)
 {
 	struct rte_mempool_objhdr *hdr = __mempool_get_header(obj);
 	return hdr->mp;
+}
+
+/* return the trailer of a mempool object (internal) */
+static inline struct rte_mempool_objtlr *__mempool_get_trailer(void *obj)
+{
+	struct rte_mempool *mp = rte_mempool_from_obj(obj);
+	return RTE_PTR_ADD(obj, mp->elt_size);
 }
 
 /**
