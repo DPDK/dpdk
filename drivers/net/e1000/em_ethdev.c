@@ -893,11 +893,11 @@ em_get_max_pktlen(const struct e1000_hw *hw)
 	case e1000_pch2lan:
 	case e1000_82574:
 	case e1000_80003es2lan: /* 9K Jumbo Frame size */
+	case e1000_82583:
 		return (0x2412);
 	case e1000_pchlan:
 		return (0x1000);
 	/* Adapters that do not support jumbo frames */
-	case e1000_82583:
 	case e1000_ich8lan:
 		return (ETHER_MAX_LEN);
 	default:
