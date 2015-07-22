@@ -549,10 +549,10 @@ ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		return 0;
 
 	/* happy day case, full burst + no packets to be joined */
-	const uint32_t *split_fl32 = (uint32_t *)split_flags;
+	const uint64_t *split_fl64 = (uint64_t *)split_flags;
 	if (rxq->pkt_first_seg == NULL &&
-			split_fl32[0] == 0 && split_fl32[1] == 0 &&
-			split_fl32[2] == 0 && split_fl32[3] == 0)
+			split_fl64[0] == 0 && split_fl64[1] == 0 &&
+			split_fl64[2] == 0 && split_fl64[3] == 0)
 		return nb_bufs;
 
 	/* reassemble any packets that need reassembly*/
