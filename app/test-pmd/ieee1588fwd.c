@@ -89,7 +89,7 @@ port_ieee1588_rx_timestamp_check(portid_t pi, uint32_t index)
 		       (unsigned) pi);
 		return;
 	}
-	printf("Port %u RX timestamp value %"PRIu64"\n",
+	printf("Port %u RX timestamp value %lu\n",
 	       (unsigned) pi, timestamp.tv_sec);
 }
 
@@ -112,7 +112,7 @@ port_ieee1588_tx_timestamp_check(portid_t pi)
 		       (unsigned) pi, (unsigned) MAX_TX_TMST_WAIT_MICROSECS);
 		return;
 	}
-	printf("Port %u TX timestamp value %"PRIu64" validated after "
+	printf("Port %u TX timestamp value %lu validated after "
 	       "%u micro-second%s\n",
 	       (unsigned) pi, timestamp.tv_sec, wait_us,
 	       (wait_us == 1) ? "" : "s");
