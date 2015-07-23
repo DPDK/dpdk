@@ -40,9 +40,6 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 CFLAGS += -I$(RTE_SDK)/lib/librte_ring
 CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
-CFLAGS += -I$(RTE_SDK)/lib/librte_ether
-CFLAGS += -I$(RTE_SDK)/drivers/net/ring
-CFLAGS += -I$(RTE_SDK)/drivers/net/pcap
 CFLAGS += $(WERROR_FLAGS) -O3
 
 EXPORT_MAP := rte_eal_version.map
