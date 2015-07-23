@@ -45,7 +45,6 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 
-#include "rte_pci_dev_ids.h"
 #include "eal_filesystem.h"
 #include "eal_pci_init.h"
 

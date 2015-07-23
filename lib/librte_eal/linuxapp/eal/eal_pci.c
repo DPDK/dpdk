@@ -41,7 +41,6 @@
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
 
-#include "rte_pci_dev_ids.h"
 #include "eal_filesystem.h"
 #include "eal_private.h"
 #include "eal_pci_init.h"

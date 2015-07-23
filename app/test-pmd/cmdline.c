@@ -84,7 +84,6 @@
 #include <cmdline_parse_etheraddr.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
-#include <rte_pci_dev_ids.h>
 #ifdef RTE_LIBRTE_PMD_BOND
 #include <rte_eth_bond.h>
 #endif
@@ -9082,6 +9081,7 @@ cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 }
 
 #ifdef RTE_NIC_BYPASS
+#include <rte_pci_dev_ids.h>
 uint8_t
 bypass_is_supported(portid_t port_id)
 {

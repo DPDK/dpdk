@@ -67,7 +67,6 @@
 #include <rte_debug.h>
 #include <rte_devargs.h>
 
-#include "rte_pci_dev_ids.h"
 #include "eal_filesystem.h"
 #include "eal_private.h"
 
