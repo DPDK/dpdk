@@ -57,8 +57,6 @@ The following prerequisites apply:
 
 *   To enable vPMD to work for RX, bulk allocation for Rx must be allowed.
 
-*   The RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y configuration MACRO must be set before compiling the code.
-
 Ensure that the following pre-conditions are satisfied:
 
 *   rxq->rx_free_thresh >= RTE_PMD_IXGBE_RX_MAX_BURST

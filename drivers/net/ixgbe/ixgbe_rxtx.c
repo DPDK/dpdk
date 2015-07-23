@@ -1034,7 +1034,6 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
 		IXGBE_RXDADV_ERR_CKSUM_BIT) & IXGBE_RXDADV_ERR_CKSUM_MSK];
 }
 
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 /*
  * LOOK_AHEAD defines how many desc statuses to check beyond the
  * current descriptor.
@@ -1304,24 +1303,6 @@ ixgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	return nb_rx;
 }
-
-#else
-
-/* Stub to avoid extra ifdefs */
-static uint16_t
-ixgbe_recv_pkts_bulk_alloc(__rte_unused void *rx_queue,
-	__rte_unused struct rte_mbuf **rx_pkts, __rte_unused uint16_t nb_pkts)
-{
-	return 0;
-}
-
-static inline int
-ixgbe_rx_alloc_bufs(__rte_unused struct ixgbe_rx_queue *rxq,
-		    __rte_unused bool reset_mbuf)
-{
-	return -ENOMEM;
-}
-#endif /* RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC */
 
 uint16_t
 ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -1708,7 +1689,6 @@ next_desc:
 				break;
 			}
 		}
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 		else if (nb_hold > rxq->rx_free_thresh) {
 			uint16_t next_rdt = rxq->rx_free_trigger;
 
@@ -1727,7 +1707,6 @@ next_desc:
 				break;
 			}
 		}
-#endif
 
 		nb_hold++;
 		rxe = &sw_ring[rx_id];
@@ -2285,7 +2264,6 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 				rxq->sw_ring[i].mbuf = NULL;
 			}
 		}
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 		if (rxq->rx_nb_avail) {
 			for (i = 0; i < rxq->rx_nb_avail; ++i) {
 				struct rte_mbuf *mb;
@@ -2294,7 +2272,6 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 			}
 			rxq->rx_nb_avail = 0;
 		}
-#endif
 	}
 
 	if (rxq->sw_sc_ring)
@@ -2331,11 +2308,7 @@ ixgbe_dev_rx_queue_release(void *rxq)
  *           function must be used.
  */
 static inline int __attribute__((cold))
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 check_rx_burst_bulk_alloc_preconditions(struct ixgbe_rx_queue *rxq)
-#else
-check_rx_burst_bulk_alloc_preconditions(__rte_unused struct ixgbe_rx_queue *rxq)
-#endif
 {
 	int ret = 0;
 
@@ -2348,7 +2321,6 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct ixgbe_rx_queue *rxq)
 	 * Scattered packets are not supported.  This should be checked
 	 * outside of this function.
 	 */
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	if (!(rxq->rx_free_thresh >= RTE_PMD_IXGBE_RX_MAX_BURST)) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
 			     "rxq->rx_free_thresh=%d, "
@@ -2377,9 +2349,6 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct ixgbe_rx_queue *rxq)
 			     RTE_PMD_IXGBE_RX_MAX_BURST);
 		ret = -EINVAL;
 	}
-#else
-	ret = -EINVAL;
-#endif
 
 	return ret;
 }
@@ -2415,7 +2384,6 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 		rxq->rx_ring[i] = zeroed_desc;
 	}
 
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	/*
 	 * initialize extra software ring entries. Space for these extra
 	 * entries is always allocated
@@ -2428,7 +2396,6 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 	rxq->rx_nb_avail = 0;
 	rxq->rx_next_avail = 0;
 	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
-#endif /* RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC */
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
 	rxq->pkt_first_seg = NULL;
@@ -4015,9 +3982,8 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 		dev->rx_pkt_burst = ixgbe_recv_pkts_bulk_alloc;
 	} else {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are not "
-				    "satisfied, or Scattered Rx is requested, "
-				    "or RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC "
-				    "is not enabled (port=%d).",
+				    "satisfied, or Scattered Rx is requested "
+				    "(port=%d).",
 			     dev->data->port_id);
 
 		dev->rx_pkt_burst = ixgbe_recv_pkts;

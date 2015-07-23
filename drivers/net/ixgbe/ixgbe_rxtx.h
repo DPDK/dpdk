@@ -38,13 +38,7 @@
 #define RTE_PMD_IXGBE_TX_MAX_BURST 32
 #define RTE_PMD_IXGBE_RX_MAX_BURST 32
 
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
-#define RTE_IXGBE_DESCS_PER_LOOP           4
-#elif defined(RTE_IXGBE_INC_VECTOR)
-#define RTE_IXGBE_DESCS_PER_LOOP           4
-#else
-#define RTE_IXGBE_DESCS_PER_LOOP           1
-#endif
+#define RTE_IXGBE_DESCS_PER_LOOP    4
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
 	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
@@ -116,11 +110,9 @@ struct ixgbe_rx_queue {
 	uint16_t            nb_rx_desc; /**< number of RX descriptors. */
 	uint16_t            rx_tail;  /**< current value of RDT register. */
 	uint16_t            nb_rx_hold; /**< number of held free RX desc. */
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	uint16_t rx_nb_avail; /**< nr of staged pkts ready to ret to app */
 	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
-#endif
 	uint16_t            rx_using_sse;
 	/**< indicates that vector RX is in use */
 #ifdef RTE_IXGBE_INC_VECTOR
@@ -134,12 +126,10 @@ struct ixgbe_rx_queue {
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
 	uint8_t             rx_deferred_start; /**< not in global dev start. */
-#ifdef RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
 	struct rte_mbuf *rx_stage[RTE_PMD_IXGBE_RX_MAX_BURST*2];
-#endif
 };
 
 /**
