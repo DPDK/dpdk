@@ -122,8 +122,8 @@ struct ixgbe_rx_queue {
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
 #endif
 #ifdef RTE_IXGBE_INC_VECTOR
-	uint16_t            rxrearm_nb; /**< the idx we start the re-arming from */
-	uint16_t            rxrearm_start;  /**< number of remaining to be re-armed */
+	uint16_t            rxrearm_nb;     /**< number of remaining to be re-armed */
+	uint16_t            rxrearm_start;  /**< the idx we start the re-arming from */
 #endif
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id; /**< RX queue index. */
