@@ -736,13 +736,7 @@ ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 		     nb_free < max_desc && i != txq->tx_tail;
 		     i = (i + 1) & max_desc) {
 			txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
-			/*
-			 * Check for already freed packets.
-			 * Note: ixgbe_tx_free_bufs does not NULL after free,
-			 * so we actually have to check the reference count.
-			 */
-			if (txe->mbuf != NULL &&
-					rte_mbuf_refcnt_read(txe->mbuf) != 0)
+			if (txe->mbuf != NULL)
 				rte_pktmbuf_free_seg(txe->mbuf);
 		}
 		/* reset tx_entry */

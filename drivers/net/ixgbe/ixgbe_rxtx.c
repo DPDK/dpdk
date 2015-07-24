@@ -2272,8 +2272,7 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 
 	if (rxq->sw_ring != NULL) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
-			if (rxq->sw_ring[i].mbuf != NULL &&
-					rte_mbuf_refcnt_read(rxq->sw_ring[i].mbuf)) {
+			if (rxq->sw_ring[i].mbuf != NULL) {
 				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
 				rxq->sw_ring[i].mbuf = NULL;
 			}
