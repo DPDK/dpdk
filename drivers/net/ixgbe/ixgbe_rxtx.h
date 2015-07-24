@@ -193,7 +193,10 @@ struct ixgbe_tx_queue {
 	/** TX ring virtual address. */
 	volatile union ixgbe_adv_tx_desc *tx_ring;
 	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
-	struct ixgbe_tx_entry *sw_ring;      /**< virtual address of SW ring. */
+	union {
+		struct ixgbe_tx_entry *sw_ring; /**< address of SW ring for scalar PMD. */
+		struct ixgbe_tx_entry_v *sw_ring_v; /**< address of SW ring for vector PMD */
+	};
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t            tx_tail;       /**< current value of TDT reg. */
