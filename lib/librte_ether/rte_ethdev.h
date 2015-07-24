@@ -3793,10 +3793,6 @@ int rte_eth_dev_get_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info);
  */
 int rte_eth_dev_set_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info);
 
-#ifdef __cplusplus
-}
-#endif
-
 /**
  * Set the list of multicast addresses to filter on an Ethernet device.
  *
@@ -3817,7 +3813,6 @@ int rte_eth_dev_set_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info);
 int rte_eth_dev_set_mc_addr_list(uint8_t port_id,
 				 struct ether_addr *mc_addr_set,
 				 uint32_t nb_mc_addr);
-
 
 /**
  * Enable IEEE1588/802.1AS timestamping for an Ethernet device.
@@ -3882,4 +3877,9 @@ extern int rte_eth_timesync_read_rx_timestamp(uint8_t port_id,
  */
 extern int rte_eth_timesync_read_tx_timestamp(uint8_t port_id,
 					      struct timespec *timestamp);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* _RTE_ETHDEV_H_ */
