@@ -2270,6 +2270,14 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 {
 	unsigned i;
 
+#ifdef RTE_IXGBE_INC_VECTOR
+	/* SSE Vector driver has a different way of releasing mbufs. */
+	if (rxq->rx_using_sse) {
+		ixgbe_rx_queue_release_mbufs_vec(rxq);
+		return;
+	}
+#endif
+
 	if (rxq->sw_ring != NULL) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
 			if (rxq->sw_ring[i].mbuf != NULL) {
@@ -3925,6 +3933,7 @@ ixgbe_set_ivar(struct rte_eth_dev *dev, u8 entry, u8 vector, s8 type)
 void __attribute__((cold))
 ixgbe_set_rx_function(struct rte_eth_dev *dev)
 {
+	uint16_t i, rx_using_sse;
 	struct ixgbe_adapter *adapter =
 		(struct ixgbe_adapter *)dev->data->dev_private;
 
@@ -4012,6 +4021,17 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 			     dev->data->port_id);
 
 		dev->rx_pkt_burst = ixgbe_recv_pkts;
+	}
+
+	/* Propagate information about RX function choice through all queues. */
+
+	rx_using_sse =
+		(dev->rx_pkt_burst == ixgbe_recv_scattered_pkts_vec ||
+		dev->rx_pkt_burst == ixgbe_recv_pkts_vec);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
+		rxq->rx_using_sse = rx_using_sse;
 	}
 }
 

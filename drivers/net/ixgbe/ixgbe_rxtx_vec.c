@@ -726,25 +726,43 @@ ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 {
 	unsigned i;
 	struct ixgbe_tx_entry_v *txe;
-	uint16_t nb_free, max_desc;
+	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
 
-	if (txq->sw_ring != NULL) {
-		/* release the used mbufs in sw_ring */
-		nb_free = txq->nb_tx_free;
-		max_desc = (uint16_t)(txq->nb_tx_desc - 1);
-		for (i = txq->tx_next_dd - (txq->tx_rs_thresh - 1);
-		     nb_free < max_desc && i != txq->tx_tail;
-		     i = (i + 1) & max_desc) {
-			txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
-			if (txe->mbuf != NULL)
-				rte_pktmbuf_free_seg(txe->mbuf);
-		}
-		/* reset tx_entry */
-		for (i = 0; i < txq->nb_tx_desc; i++) {
-			txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
-			txe->mbuf = NULL;
-		}
+	if (txq->sw_ring == NULL || txq->nb_tx_free == max_desc)
+		return;
+
+	/* release the used mbufs in sw_ring */
+	for (i = txq->tx_next_dd - (txq->tx_rs_thresh - 1);
+	     i != txq->tx_tail;
+	     i = (i + 1) & max_desc) {
+		txe = &((struct ixgbe_tx_entry_v *)txq->sw_ring)[i];
+		rte_pktmbuf_free_seg(txe->mbuf);
 	}
+	txq->nb_tx_free = max_desc;
+
+	/* reset tx_entry */
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		txe = (struct ixgbe_tx_entry_v *)&txq->sw_ring[i];
+		txe->mbuf = NULL;
+	}
+}
+
+void __attribute__((cold))
+ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
+{
+	const unsigned mask = rxq->nb_rx_desc - 1;
+	unsigned i;
+
+	if (rxq->sw_ring == NULL || rxq->rxrearm_nb >= rxq->nb_rx_desc)
+		return;
+
+	/* free all mbufs that are valid in the ring */
+	for (i = rxq->rx_tail; i != rxq->rxrearm_start; i = (i + 1) & mask)
+		rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+	rxq->rxrearm_nb = rxq->nb_rx_desc;
+
+	/* set all entries to NULL */
+	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
 }
 
 static void __attribute__((cold))

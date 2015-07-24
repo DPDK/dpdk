@@ -121,6 +121,8 @@ struct ixgbe_rx_queue {
 	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
 #endif
+	uint16_t            rx_using_sse;
+	/**< indicates that vector RX is in use */
 #ifdef RTE_IXGBE_INC_VECTOR
 	uint16_t            rxrearm_nb;     /**< number of remaining to be re-armed */
 	uint16_t            rxrearm_start;  /**< the idx we start the re-arming from */
@@ -284,6 +286,7 @@ uint16_t ixgbe_recv_scattered_pkts_vec(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 int ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
 int ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq);
+void ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq);
 
 #ifdef RTE_IXGBE_INC_VECTOR
 
