@@ -722,7 +722,7 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 static void __attribute__((cold))
-ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
+ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 {
 	unsigned i;
 	struct ixgbe_tx_entry_v *txe;
@@ -812,7 +812,7 @@ ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 }
 
 static const struct ixgbe_txq_ops vec_txq_ops = {
-	.release_mbufs = ixgbe_tx_queue_release_mbufs,
+	.release_mbufs = ixgbe_tx_queue_release_mbufs_vec,
 	.free_swring = ixgbe_tx_free_swring,
 	.reset = ixgbe_reset_tx_queue,
 };
