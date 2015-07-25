@@ -115,6 +115,24 @@ static unsigned proc_pagemap_readable;
 
 #define RANDOMIZE_VA_SPACE_FILE "/proc/sys/kernel/randomize_va_space"
 
+static void
+test_proc_pagemap_readable(void)
+{
+	int fd = open("/proc/self/pagemap", O_RDONLY);
+
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL,
+			"Cannot open /proc/self/pagemap: %s. "
+			"virt2phys address translation will not work\n",
+			strerror(errno));
+		return;
+	}
+
+	/* Is readable */
+	close(fd);
+	proc_pagemap_readable = 1;
+}
+
 /* Lock page in physical memory and prevent from swapping. */
 int
 rte_mem_lock_page(const void *virt)
@@ -1037,7 +1055,7 @@ calc_num_pages_per_socket(uint64_t * memory,
  *  6. unmap the first mapping
  *  7. fill memsegs in configuration with contiguous zones
  */
-static int
+int
 rte_eal_hugepage_init(void)
 {
 	struct rte_mem_config *mcfg;
@@ -1053,6 +1071,8 @@ rte_eal_hugepage_init(void)
 #ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
 	int new_pages_count[MAX_HUGEPAGE_SIZES];
 #endif
+
+	test_proc_pagemap_readable();
 
 	memset(used_hp, 0, sizeof(used_hp));
 
@@ -1086,7 +1106,6 @@ rte_eal_hugepage_init(void)
 			return 0;
 #endif
 	}
-
 
 	/* calculate total number of hugepages available. at this point we haven't
 	 * yet started sorting them so they all are on socket 0 */
@@ -1378,7 +1397,7 @@ getFileSize(int fd)
  * configuration and finds the hugepages which form that segment, mapping them
  * in order to form a contiguous block in the virtual memory space
  */
-static int
+int
 rte_eal_hugepage_attach(void)
 {
 	const struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -1394,6 +1413,8 @@ rte_eal_hugepage_attach(void)
 		RTE_LOG(WARNING, EAL, "   This may cause issues with mapping memory "
 				"into secondary processes\n");
 	}
+
+	test_proc_pagemap_readable();
 
 	if (internal_config.xen_dom0_support) {
 #ifdef RTE_LIBRTE_XEN_DOM0
@@ -1537,57 +1558,4 @@ error:
 	if (fd_hugepage >= 0)
 		close(fd_hugepage);
 	return -1;
-}
-
-static int
-rte_eal_memdevice_init(void)
-{
-	struct rte_config *config;
-
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-		return 0;
-
-	config = rte_eal_get_configuration();
-	config->mem_config->nchannel = internal_config.force_nchannel;
-	config->mem_config->nrank = internal_config.force_nrank;
-
-	return 0;
-}
-
-static int
-test_proc_pagemap_readable(void)
-{
-	int fd = open("/proc/self/pagemap", O_RDONLY);
-
-	if (fd < 0)
-		return 0;
-	/* Is readable */
-	close(fd);
-
-	return 1;
-}
-
-/* init memory subsystem */
-int
-rte_eal_memory_init(void)
-{
-	RTE_LOG(INFO, EAL, "Setting up memory...\n");
-
-	proc_pagemap_readable = test_proc_pagemap_readable();
-	if (!proc_pagemap_readable)
-		RTE_LOG(ERR, EAL,
-			"Cannot open /proc/self/pagemap: %s. "
-			"virt2phys address translation will not work\n",
-			strerror(errno));
-
-	const int retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
-			rte_eal_hugepage_init() :
-			rte_eal_hugepage_attach();
-	if (retval < 0)
-		return -1;
-
-	if (internal_config.no_shconf == 0 && rte_eal_memdevice_init() < 0)
-		return -1;
-
-	return 0;
 }

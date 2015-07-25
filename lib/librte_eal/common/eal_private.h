@@ -328,4 +328,22 @@ void set_tsc_freq(void);
  */
 uint64_t get_tsc_freq(void);
 
+/**
+ * Prepare physical memory mapping
+ * i.e. hugepages on Linux and
+ *      contigmem on BSD.
+ *
+ * This function is private to the EAL.
+ */
+int rte_eal_hugepage_init(void);
+
+/**
+ * Creates memory mapping in secondary process
+ * i.e. hugepages on Linux and
+ *      contigmem on BSD.
+ *
+ * This function is private to the EAL.
+ */
+int rte_eal_hugepage_attach(void);
+
 #endif /* _EAL_PRIVATE_H_ */

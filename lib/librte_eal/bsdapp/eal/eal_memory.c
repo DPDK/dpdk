@@ -59,7 +59,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	return RTE_BAD_PHYS_ADDR;
 }
 
-static int
+int
 rte_eal_contigmem_init(void)
 {
 	struct rte_mem_config *mcfg;
@@ -132,8 +132,8 @@ rte_eal_contigmem_init(void)
 	return 0;
 }
 
-static int
-rte_eal_contigmem_attach(void)
+int
+rte_eal_hugepage_attach(void)
 {
 	const struct hugepage_info *hpi;
 	int fd_hugepage_info, fd_hugepage = -1;
@@ -191,37 +191,4 @@ error:
 	if (fd_hugepage >= 0)
 		close(fd_hugepage);
 	return -1;
-}
-
-
-static int
-rte_eal_memdevice_init(void)
-{
-	struct rte_config *config;
-
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-		return 0;
-
-	config = rte_eal_get_configuration();
-	config->mem_config->nchannel = internal_config.force_nchannel;
-	config->mem_config->nrank = internal_config.force_nrank;
-
-	return 0;
-}
-
-/* init memory subsystem */
-int
-rte_eal_memory_init(void)
-{
-	RTE_LOG(INFO, EAL, "Setting up physically contiguous memory...\n");
-	const int retval = rte_eal_process_type() == RTE_PROC_PRIMARY ?
-			rte_eal_contigmem_init() :
-			rte_eal_contigmem_attach();
-	if (retval < 0)
-		return -1;
-
-	if (internal_config.no_shconf == 0 && rte_eal_memdevice_init() < 0)
-		return -1;
-
-	return 0;
 }
