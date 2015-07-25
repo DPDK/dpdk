@@ -44,11 +44,14 @@
 #include "eal_thread.h"
 
 /* No topology information available on FreeBSD including NUMA info */
-#define cpu_core_id(X) 0
-#define cpu_socket_id(X) 0
+unsigned
+eal_cpu_core_id(__rte_unused unsigned lcore_id)
+{
+	return 0;
+}
 
 static int
-get_ncpus(void)
+eal_get_ncpus(void)
 {
 	int mib[2] = {CTL_HW, HW_NCPU};
 	int ncpu;
@@ -59,63 +62,18 @@ get_ncpus(void)
 	return ncpu;
 }
 
-/*
- * fill the cpu_info structure with as much info as we can get.
- * code is similar to linux version, but sadly available info is less.
- */
-int
-rte_eal_cpu_init(void)
-{
-	/* pointer to global configuration */
-	struct rte_config *config = rte_eal_get_configuration();
-	unsigned lcore_id;
-	unsigned count = 0;
-
-	const unsigned ncpus = get_ncpus();
-	/*
-	 * Parse the maximum set of logical cores, detect the subset of running
-	 * ones and enable them by default.
-	 */
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		/* init cpuset for per lcore config */
-		CPU_ZERO(&lcore_config[lcore_id].cpuset);
-
-		lcore_config[lcore_id].detected = (lcore_id < ncpus);
-		if (lcore_config[lcore_id].detected == 0) {
-			config->lcore_role[lcore_id] = ROLE_OFF;
-			continue;
-		}
-
-		/* By default, lcore 1:1 map to cpu id */
-		CPU_SET(lcore_id, &lcore_config[lcore_id].cpuset);
-
-		/* By default, each detected core is enabled */
-		config->lcore_role[lcore_id] = ROLE_RTE;
-		lcore_config[lcore_id].core_id = cpu_core_id(lcore_id);
-		lcore_config[lcore_id].socket_id = cpu_socket_id(lcore_id);
-		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES)
-#ifdef RTE_EAL_ALLOW_INV_SOCKET_ID
-			lcore_config[lcore_id].socket_id = 0;
-#else
-			rte_panic("Socket ID (%u) is greater than "
-				"RTE_MAX_NUMA_NODES (%d)\n",
-				lcore_config[lcore_id].socket_id, RTE_MAX_NUMA_NODES);
-#endif
-		RTE_LOG(DEBUG, EAL, "Detected lcore %u\n",
-				lcore_id);
-		count++;
-	}
-	/* Set the count of enabled logical cores of the EAL configuration */
-	config->lcore_count = count;
-	RTE_LOG(DEBUG, EAL, "Support maximum %u logical core(s) by configuration.\n",
-		RTE_MAX_LCORE);
-	RTE_LOG(DEBUG, EAL, "Detected %u lcore(s)\n", config->lcore_count);
-
-	return 0;
-}
-
 unsigned
 eal_cpu_socket_id(__rte_unused unsigned cpu_id)
 {
-	return cpu_socket_id(cpu_id);
+	return 0;
+}
+
+/* Check if a cpu is present by the presence of the
+ * cpu information for it.
+ */
+int
+eal_cpu_detected(unsigned lcore_id)
+{
+	const unsigned ncpus = eal_get_ncpus();
+	return (lcore_id < ncpus);
 }

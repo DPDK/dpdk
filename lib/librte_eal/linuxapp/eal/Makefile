@@ -70,6 +70,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_ivshmem.c
 endif
 
 # from common dir
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_lcore.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_memzone.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_log.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_launch.c
@@ -102,6 +103,7 @@ CFLAGS_eal_pci_vfio.o := -D_GNU_SOURCE
 CFLAGS_eal_common_whitelist.o := -D_GNU_SOURCE
 CFLAGS_eal_common_options.o := -D_GNU_SOURCE
 CFLAGS_eal_common_thread.o := -D_GNU_SOURCE
+CFLAGS_eal_common_lcore.o := -D_GNU_SOURCE
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603

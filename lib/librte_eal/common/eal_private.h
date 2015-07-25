@@ -300,4 +300,18 @@ int rte_eal_dev_init(void);
  */
 int rte_eal_check_module(const char *module_name);
 
+/**
+ * Get cpu core_id.
+ *
+ * This function is private to the EAL.
+ */
+unsigned eal_cpu_core_id(unsigned lcore_id);
+
+/**
+ * Check if cpu is present.
+ *
+ * This function is private to the EAL.
+ */
+int eal_cpu_detected(unsigned lcore_id);
+
 #endif /* _EAL_PRIVATE_H_ */
