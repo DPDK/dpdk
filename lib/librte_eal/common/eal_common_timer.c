@@ -30,6 +30,7 @@
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -41,54 +42,42 @@
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_cycles.h>
-#include <rte_memory.h>
-#include <rte_memzone.h>
-#include <rte_eal.h>
-#include <rte_debug.h>
 
 #include "eal_private.h"
-#include "eal_internal_cfg.h"
 
-#ifdef RTE_LIBEAL_USE_HPET
-#warning HPET is not supported in FreeBSD
-#endif
+/* The frequency of the RDTSC timer resolution */
+static uint64_t eal_tsc_resolution_hz;
 
-enum timer_source eal_timer_source = EAL_TIMER_TSC;
-
-uint64_t
-get_tsc_freq(void)
+void
+rte_delay_us(unsigned us)
 {
-	size_t sz;
-	int tmp;
-	uint64_t tsc_hz;
-
-	sz = sizeof(tmp);
-	tmp = 0;
-
-	if (sysctlbyname("kern.timecounter.smp_tsc", &tmp, &sz, NULL, 0))
-		RTE_LOG(WARNING, EAL, "%s\n", strerror(errno));
-	else if (tmp != 1)
-		RTE_LOG(WARNING, EAL, "TSC is not safe to use in SMP mode\n");
-
-	tmp = 0;
-
-	if (sysctlbyname("kern.timecounter.invariant_tsc", &tmp, &sz, NULL, 0))
-		RTE_LOG(WARNING, EAL, "%s\n", strerror(errno));
-	else if (tmp != 1)
-		RTE_LOG(WARNING, EAL, "TSC is not invariant\n");
-
-	sz = sizeof(tsc_hz);
-	if (sysctlbyname("machdep.tsc_freq", &tsc_hz, &sz, NULL, 0)) {
-		RTE_LOG(WARNING, EAL, "%s\n", strerror(errno));
-		return 0;
-	}
-
-	return tsc_hz;
+	const uint64_t start = rte_get_timer_cycles();
+	const uint64_t ticks = (uint64_t)us * rte_get_timer_hz() / 1E6;
+	while ((rte_get_timer_cycles() - start) < ticks)
+		rte_pause();
 }
 
-int
-rte_eal_timer_init(void)
+uint64_t
+rte_get_tsc_hz(void)
 {
-	set_tsc_freq();
-	return 0;
+	return eal_tsc_resolution_hz;
+}
+
+static uint64_t
+estimate_tsc_freq(void)
+{
+	RTE_LOG(WARNING, EAL, "WARNING: TSC frequency estimated roughly"
+		" - clock timings may be less accurate.\n");
+	/* assume that the sleep(1) will sleep for 1 second */
+	uint64_t start = rte_rdtsc();
+	sleep(1);
+	return rte_rdtsc() - start;
+}
+
+void
+set_tsc_freq(void)
+{
+	uint64_t freq = get_tsc_freq() || estimate_tsc_freq();
+	RTE_LOG(INFO, EAL, "TSC frequency is ~%" PRIu64 " KHz\n", freq / 1000);
+	eal_tsc_resolution_hz = freq;
 }

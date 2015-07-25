@@ -71,6 +71,7 @@ endif
 
 # from common dir
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_lcore.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_timer.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_memzone.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_log.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_launch.c
