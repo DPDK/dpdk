@@ -77,7 +77,11 @@ estimate_tsc_freq(void)
 void
 set_tsc_freq(void)
 {
-	uint64_t freq = get_tsc_freq() || estimate_tsc_freq();
+	uint64_t freq = get_tsc_freq();
+
+	if (!freq)
+		freq = estimate_tsc_freq();
+
 	RTE_LOG(INFO, EAL, "TSC frequency is ~%" PRIu64 " KHz\n", freq / 1000);
 	eal_tsc_resolution_hz = freq;
 }
