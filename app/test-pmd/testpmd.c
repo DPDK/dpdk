@@ -1202,7 +1202,8 @@ all_ports_started(void)
 	FOREACH_PORT(pi, ports) {
 		port = &ports[pi];
 		/* Check if there is a port which is not started */
-		if (port->port_status != RTE_PORT_STARTED)
+		if ((port->port_status != RTE_PORT_STARTED) &&
+			(port->slave_flag == 0))
 			return 0;
 	}
 
@@ -1218,7 +1219,8 @@ all_ports_stopped(void)
 
 	FOREACH_PORT(pi, ports) {
 		port = &ports[pi];
-		if (port->port_status != RTE_PORT_STOPPED)
+		if ((port->port_status != RTE_PORT_STOPPED) &&
+			(port->slave_flag == 0))
 			return 0;
 	}
 
@@ -1806,6 +1808,22 @@ init_port_config(void)
 		rte_eth_dev_bypass_init(pid);
 #endif
 	}
+}
+
+void set_port_slave_flag(portid_t slave_pid)
+{
+	struct rte_port *port;
+
+	port = &ports[slave_pid];
+	port->slave_flag = 1;
+}
+
+void clear_port_slave_flag(portid_t slave_pid)
+{
+	struct rte_port *port;
+
+	port = &ports[slave_pid];
+	port->slave_flag = 0;
 }
 
 const uint16_t vlan_tags[] = {

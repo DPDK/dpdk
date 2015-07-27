@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  *
@@ -4018,6 +4018,7 @@ static void cmd_add_bonding_slave_parsed(void *parsed_result,
 		return;
 	}
 	init_port_config();
+	set_port_slave_flag(slave_port_id);
 }
 
 cmdline_parse_token_string_t cmd_addbonding_slave_add =
@@ -4074,6 +4075,7 @@ static void cmd_remove_bonding_slave_parsed(void *parsed_result,
 		return;
 	}
 	init_port_config();
+	clear_port_slave_flag(slave_port_id);
 }
 
 cmdline_parse_token_string_t cmd_removebonding_slave_remove =

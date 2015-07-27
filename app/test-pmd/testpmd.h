@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -162,11 +162,12 @@ struct rte_port {
 	uint8_t                 need_reconfig;  /**< need reconfiguring port or not */
 	uint8_t                 need_reconfig_queues; /**< need reconfiguring queues or not */
 	uint8_t                 rss_flag;   /**< enable rss or not */
-	uint8_t			dcb_flag;   /**< enable dcb */
+	uint8_t                 dcb_flag;   /**< enable dcb */
 	struct rte_eth_rxconf   rx_conf;    /**< rx configuration */
 	struct rte_eth_txconf   tx_conf;    /**< tx configuration */
 	struct ether_addr       *mc_addr_pool; /**< pool of multicast addrs */
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
+	uint8_t                 slave_flag; /**< bonding slave port */
 };
 
 extern portid_t __rte_unused
@@ -534,6 +535,8 @@ void stop_packet_forwarding(void);
 void dev_set_link_up(portid_t pid);
 void dev_set_link_down(portid_t pid);
 void init_port_config(void);
+void set_port_slave_flag(portid_t slave_pid);
+void clear_port_slave_flag(portid_t slave_pid);
 int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
