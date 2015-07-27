@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -129,6 +129,17 @@ extern "C" {
  */
 int
 rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id);
+
+/**
+ * Free a bonded rte_eth_dev device
+ *
+ * @param name			Name of the link bonding device.
+ *
+ * @return
+ *	0 on success, negative value otherwise
+ */
+int
+rte_eth_bond_free(const char *name);
 
 /**
  * Add a rte_eth_dev device as a slave to the bonded device

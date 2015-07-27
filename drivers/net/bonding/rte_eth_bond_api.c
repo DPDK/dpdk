@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -163,7 +163,22 @@ number_of_sockets(void)
 	return ++sockets;
 }
 
-const char *pmd_bond_driver_name = "Link Bonding PMD";
+const char pmd_bond_driver_name[] = "rte_bond_pmd";
+
+static struct rte_pci_id pci_id_table = {
+	.device_id = PCI_ANY_ID,
+	.subsystem_device_id = PCI_ANY_ID,
+	.vendor_id = PCI_ANY_ID,
+	.subsystem_vendor_id = PCI_ANY_ID,
+};
+
+static struct eth_driver rte_bond_pmd = {
+	.pci_drv = {
+		.name = pmd_bond_driver_name,
+		.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_DETACHABLE,
+		.id_table = &pci_id_table,
+	},
+};
 
 int
 rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
@@ -171,9 +186,8 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	struct rte_pci_device *pci_dev = NULL;
 	struct bond_dev_private *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
-	struct eth_driver *eth_drv = NULL;
 	struct rte_pci_driver *pci_drv = NULL;
-	struct rte_pci_id *pci_id_table = NULL;
+
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
 	 * and internal (private) data
 	 */
@@ -195,26 +209,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 		goto err;
 	}
 
-	eth_drv = rte_zmalloc_socket(name, sizeof(*eth_drv), 0, socket_id);
-	if (eth_drv == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to malloc eth_drv on socket");
-		goto err;
-	}
-
-	pci_drv = &eth_drv->pci_drv;
-
-	pci_id_table = rte_zmalloc_socket(name, sizeof(*pci_id_table), 0, socket_id);
-	if (pci_id_table == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to malloc pci_id_table on socket");
-		goto err;
-	}
-	pci_id_table->device_id = PCI_ANY_ID;
-	pci_id_table->subsystem_device_id = PCI_ANY_ID;
-	pci_id_table->vendor_id = PCI_ANY_ID;
-	pci_id_table->subsystem_vendor_id = PCI_ANY_ID;
-
-	pci_drv->id_table = pci_id_table;
-	pci_drv->drv_flags = RTE_PCI_DRV_INTR_LSC;
+	pci_drv = &rte_bond_pmd.pci_drv;
 
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, socket_id);
 	if (internals == NULL) {
@@ -233,7 +228,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	pci_drv->name = pmd_bond_driver_name;
 	pci_dev->driver = pci_drv;
 
-	eth_dev->driver = eth_drv;
+	eth_dev->driver = &rte_bond_pmd;
 	eth_dev->data->dev_private = internals;
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
@@ -289,11 +284,42 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 err:
 	rte_free(pci_dev);
-	rte_free(pci_id_table);
-	rte_free(eth_drv);
 	rte_free(internals);
+	rte_free(eth_dev->data->mac_addrs);
 
 	return -1;
+}
+
+int
+rte_eth_bond_free(const char *name)
+{
+	struct rte_eth_dev *eth_dev = NULL;
+
+	/* now free all data allocation - for eth_dev structure,
+	 * dummy pci driver and internal (private) data
+	 */
+
+	/* find an ethdev entry */
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev == NULL)
+		return -ENODEV;
+
+	if (eth_dev->data->dev_started == 1) {
+		bond_ethdev_stop(eth_dev);
+		bond_ethdev_close(eth_dev);
+	}
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+
+	rte_free(eth_dev->pci_dev);
+	rte_free(eth_dev->data->dev_private);
+	rte_free(eth_dev->data->mac_addrs);
+
+	rte_eth_dev_release_port(eth_dev);
+
+	return 0;
 }
 
 static int

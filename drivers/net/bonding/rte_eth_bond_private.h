@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -62,7 +62,7 @@
 
 extern const char *pmd_bond_init_valid_arguments[];
 
-extern const char *pmd_bond_driver_name;
+extern const char pmd_bond_driver_name[];
 
 /** Port Queue Mapping Structure */
 struct bond_rx_queue {
@@ -283,5 +283,11 @@ bond_tlb_enable(struct bond_dev_private *internals);
 
 void
 bond_tlb_activate_slave(struct bond_dev_private *internals);
+
+void
+bond_ethdev_stop(struct rte_eth_dev *eth_dev);
+
+void
+bond_ethdev_close(struct rte_eth_dev *dev __rte_unused);
 
 #endif

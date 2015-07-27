@@ -20,3 +20,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.1 {
+	global:
+
+	rte_eth_bond_free;
+
+} DPDK_2.0;

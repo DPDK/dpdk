@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1512,7 +1512,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static void
+void
 bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
@@ -1552,7 +1552,7 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_started = 0;
 }
 
-static void
+void
 bond_ethdev_close(struct rte_eth_dev *dev __rte_unused)
 {
 }
@@ -2042,6 +2042,24 @@ parse_error:
 	return -1;
 }
 
+static int
+bond_uninit(const char *name)
+{
+	int  ret;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	RTE_LOG(INFO, EAL, "Uninitializing pmd_bond for %s\n", name);
+
+	/* free link bonding eth device */
+	ret = rte_eth_bond_free(name);
+	if (ret < 0)
+		RTE_LOG(ERR, EAL, "Failed to free %s\n", name);
+
+	return ret;
+}
+
 /* this part will resolve the slave portids after all the other pdev and vdev
  * have been allocated */
 static int
@@ -2268,6 +2286,7 @@ static struct rte_driver bond_drv = {
 	.name = "eth_bond",
 	.type = PMD_VDEV,
 	.init = bond_init,
+	.uninit = bond_uninit,
 };
 
 PMD_REGISTER_DRIVER(bond_drv);
