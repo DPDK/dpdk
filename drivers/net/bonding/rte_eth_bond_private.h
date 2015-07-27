@@ -288,6 +288,6 @@ void
 bond_ethdev_stop(struct rte_eth_dev *eth_dev);
 
 void
-bond_ethdev_close(struct rte_eth_dev *dev __rte_unused);
+bond_ethdev_close(struct rte_eth_dev *dev);
 
 #endif

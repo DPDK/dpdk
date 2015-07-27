@@ -1512,6 +1512,24 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static void
+bond_ethdev_free_queues(struct rte_eth_dev *dev)
+{
+	uint8_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rte_free(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		rte_free(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
+}
+
 void
 bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 {
@@ -1553,8 +1571,9 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 }
 
 void
-bond_ethdev_close(struct rte_eth_dev *dev __rte_unused)
+bond_ethdev_close(struct rte_eth_dev *dev)
 {
+	bond_ethdev_free_queues(dev);
 }
 
 /* forward declaration */
