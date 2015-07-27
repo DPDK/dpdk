@@ -71,6 +71,7 @@ SRCS-y += test_rwlock.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_TIMER) += test_timer.c
 SRCS-$(CONFIG_RTE_LIBRTE_TIMER) += test_timer_perf.c
+SRCS-$(CONFIG_RTE_LIBRTE_TIMER) += test_timer_racecond.c
 
 SRCS-y += test_mempool.c
 SRCS-y += test_mempool_perf.c
