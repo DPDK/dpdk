@@ -909,6 +909,19 @@ For example, to attach a port created by pcap PMD.
 In this case, identifier is "eth_pcap0,iface=eth0".
 This identifier format is the same as "--vdev" format of DPDK applications.
 
+For example, to re-attach a bonded port which has been previously detached,
+the mode and slave parameters must be given.
+
+.. code-block:: console
+
+    testpmd> port attach eth_bond_testpmd_0,mode=0,slave=1
+    Attaching a new port...
+    EAL: Initializing pmd_bond for eth_bond_testpmd_0
+    EAL: Create bonded device eth_bond_testpmd_0 on port 0 in mode 0 on socket 0.
+    Port 0 is attached. Now total ports is 1
+    Done
+
+
 port detach
 ~~~~~~~~~~~
 
