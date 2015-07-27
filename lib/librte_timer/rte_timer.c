@@ -504,6 +504,7 @@ void rte_timer_manage(void)
 {
 	union rte_timer_status status;
 	struct rte_timer *tim, *next_tim;
+	struct rte_timer *run_first_tim, **pprev;
 	unsigned lcore_id = rte_lcore_id();
 	struct rte_timer *prev[MAX_SKIPLIST_DEPTH + 1];
 	uint64_t cur_time;
@@ -519,9 +520,9 @@ void rte_timer_manage(void)
 	cur_time = rte_get_timer_cycles();
 
 #ifdef RTE_ARCH_X86_64
-	/* on 64-bit the value cached in the pending_head.expired will be updated
-	 * atomically, so we can consult that for a quick check here outside the
-	 * lock */
+	/* on 64-bit the value cached in the pending_head.expired will be
+	 * updated atomically, so we can consult that for a quick check here
+	 * outside the lock */
 	if (likely(priv_timer[lcore_id].pending_head.expire > cur_time))
 		return;
 #endif
@@ -531,8 +532,10 @@ void rte_timer_manage(void)
 
 	/* if nothing to do just unlock and return */
 	if (priv_timer[lcore_id].pending_head.sl_next[0] == NULL ||
-			priv_timer[lcore_id].pending_head.sl_next[0]->expire > cur_time)
-		goto done;
+	    priv_timer[lcore_id].pending_head.sl_next[0]->expire > cur_time) {
+		rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
+		return;
+	}
 
 	/* save start of list of expired timers */
 	tim = priv_timer[lcore_id].pending_head.sl_next[0];
@@ -540,30 +543,47 @@ void rte_timer_manage(void)
 	/* break the existing list at current time point */
 	timer_get_prev_entries(cur_time, lcore_id, prev);
 	for (i = priv_timer[lcore_id].curr_skiplist_depth -1; i >= 0; i--) {
-		priv_timer[lcore_id].pending_head.sl_next[i] = prev[i]->sl_next[i];
+		priv_timer[lcore_id].pending_head.sl_next[i] =
+		    prev[i]->sl_next[i];
 		if (prev[i]->sl_next[i] == NULL)
 			priv_timer[lcore_id].curr_skiplist_depth--;
 		prev[i] ->sl_next[i] = NULL;
 	}
 
-	/* now scan expired list and call callbacks */
+	/* transition run-list from PENDING to RUNNING */
+	run_first_tim = tim;
+	pprev = &run_first_tim;
+
 	for ( ; tim != NULL; tim = next_tim) {
 		next_tim = tim->sl_next[0];
 
 		ret = timer_set_running_state(tim);
+		if (likely(ret == 0)) {
+			pprev = &tim->sl_next[0];
+		} else {
+			/* another core is trying to re-config this one,
+			 * remove it from local expired list and put it
+			 * back on the priv_timer[] skip list */
+			*pprev = next_tim;
+			timer_add(tim, lcore_id, 1);
+		}
+	}
 
-		/* this timer was not pending, continue */
-		if (ret < 0)
-			continue;
+	/* update the next to expire timer value */
+	priv_timer[lcore_id].pending_head.expire =
+	    (priv_timer[lcore_id].pending_head.sl_next[0] == NULL) ? 0 :
+		priv_timer[lcore_id].pending_head.sl_next[0]->expire;
 
-		rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
+	rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
 
+	/* now scan expired list and call callbacks */
+	for (tim = run_first_tim; tim != NULL; tim = next_tim) {
+		next_tim = tim->sl_next[0];
 		priv_timer[lcore_id].updated = 0;
 
 		/* execute callback function with list unlocked */
 		tim->f(tim, tim->arg);
 
-		rte_spinlock_lock(&priv_timer[lcore_id].list_lock);
 		__TIMER_STAT_ADD(pending, -1);
 		/* the timer was stopped or reloaded by the callback
 		 * function, we have nothing to do here */
@@ -579,23 +599,17 @@ void rte_timer_manage(void)
 		}
 		else {
 			/* keep it in list and mark timer as pending */
+			rte_spinlock_lock(&priv_timer[lcore_id].list_lock);
 			status.state = RTE_TIMER_PENDING;
 			__TIMER_STAT_ADD(pending, 1);
 			status.owner = (int16_t)lcore_id;
 			rte_wmb();
 			tim->status.u32 = status.u32;
 			__rte_timer_reset(tim, cur_time + tim->period,
-					tim->period, lcore_id, tim->f, tim->arg, 1);
+				tim->period, lcore_id, tim->f, tim->arg, 1);
+			rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
 		}
 	}
-
-	/* update the next to expire timer value */
-	priv_timer[lcore_id].pending_head.expire =
-			(priv_timer[lcore_id].pending_head.sl_next[0] == NULL) ? 0 :
-					priv_timer[lcore_id].pending_head.sl_next[0]->expire;
-done:
-	/* job finished, unlock the list lock */
-	rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
 }
 
 /* dump statistics about timers */
