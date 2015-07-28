@@ -3008,8 +3008,7 @@ static int ecore_mcast_setup_e1h(struct bnx2x_softc *sc,
 			break;
 
 		case ECORE_MCAST_CMD_DEL:
-			ECORE_MSG(sc,
-				  "Invalidating multicast MACs configuration");
+			ECORE_MSG("Invalidating multicast MACs configuration");
 
 			/* clear the registry */
 			ECORE_MEMSET(o->registry.aprox_match.vec, 0,
@@ -3741,8 +3740,7 @@ static int ecore_queue_comp_cmd(struct bnx2x_softc *sc __rte_unused,
 			    "illegal value for next tx_only: %d. max cos was %d",
 			    o->next_tx_only, o->max_cos);
 
-	ECORE_MSG(sc,
-		  "Completing command %d for queue %d, setting state to %d",
+	ECORE_MSG("Completing command %d for queue %d, setting state to %d",
 		  cmd, o->cids[ECORE_PRIMARY_CID_INDEX], o->next_state);
 
 	if (o->next_tx_only)	/* print num tx-only if any exist */
@@ -4729,8 +4727,7 @@ ecore_func_state_change_comp(struct bnx2x_softc *sc __rte_unused,
 		return ECORE_INVAL;
 	}
 
-	ECORE_MSG(sc,
-		  "Completing command %d for func %d, setting state to %d",
+	ECORE_MSG("Completing command %d for func %d, setting state to %d",
 		  cmd, ECORE_FUNC_ID(sc), o->next_state);
 
 	o->state = o->next_state;
@@ -5172,8 +5169,7 @@ static int ecore_func_send_afex_update(struct bnx2x_softc *sc, struct ecore_func
 	 *  read and we will have to put a full memory barrier there
 	 *  (inside ecore_sp_post()).
 	 */
-	ECORE_MSG(sc,
-		  "afex: sending func_update vif_id 0x%x dvlan 0x%x prio 0x%x",
+	ECORE_MSG("afex: sending func_update vif_id 0x%x dvlan 0x%x prio 0x%x",
 		  rdata->vif_id,
 		  rdata->afex_default_vlan, rdata->allowed_priorities);
 

@@ -4042,7 +4042,7 @@ static void bnx2x_attn_int_deasserted0(struct bnx2x_softc *sc, uint32_t attn)
 		val &= ~AEU_INPUTS_ATTN_BITS_SPIO5;
 		REG_WR(sc, reg_offset, val);
 
-		PMD_DRV_LOG(WARN, "SPIO5 hw attention");
+		PMD_DRV_LOG(WARNING, "SPIO5 hw attention");
 
 /* Fan failure attention */
 		elink_hw_reset_phy(&sc->link_params);
@@ -4577,7 +4577,7 @@ int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp)
 	}
 
 	if (unlikely(status)) {
-		PMD_DRV_LOG(WARN,
+		PMD_DRV_LOG(WARNING,
 			    "Unexpected fastpath status (0x%08x)!", status);
 	}
 
@@ -5777,7 +5777,7 @@ static int bnx2x_set_power_state(struct bnx2x_softc *sc, uint8_t state)
 
 	/* If there is no power capability, silently succeed */
 	if (!(sc->devinfo.pcie_cap_flags & BNX2X_PM_CAPABLE_FLAG)) {
-		PMD_DRV_LOG(WARN, "No power capability");
+		PMD_DRV_LOG(WARNING, "No power capability");
 		return 0;
 	}
 
@@ -6444,12 +6444,12 @@ bnx2x_pf_rx_q_prep(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 	/* validate rings have enough entries to cross high thresholds */
 	if (sc->dropless_fc &&
 	    pause->bd_th_hi + FW_PREFETCH_CNT > sc->rx_ring_size) {
-		PMD_DRV_LOG(WARN, "rx bd ring threshold limit");
+		PMD_DRV_LOG(WARNING, "rx bd ring threshold limit");
 	}
 
 	if (sc->dropless_fc &&
 	    pause->rcq_th_hi + FW_PREFETCH_CNT > USABLE_RCQ_ENTRIES(rxq)) {
-		PMD_DRV_LOG(WARN, "rcq ring threshold limit");
+		PMD_DRV_LOG(WARNING, "rcq ring threshold limit");
 	}
 
 	pause->pri_map = 1;
@@ -7116,7 +7116,7 @@ void bnx2x_periodic_callout(struct bnx2x_softc *sc)
 {
 	if ((sc->state != BNX2X_STATE_OPEN) ||
 	    (atomic_load_acq_long(&sc->periodic_flags) == PERIODIC_STOP)) {
-		PMD_DRV_LOG(WARN, "periodic callout exit (state=0x%x)",
+		PMD_DRV_LOG(WARNING, "periodic callout exit (state=0x%x)",
 			    sc->state);
 		return;
 	}
@@ -7563,7 +7563,7 @@ static uint32_t bnx2x_pcie_capability_read(struct bnx2x_softc *sc, int reg)
 		return ret;
 	}
 
-	PMD_DRV_LOG(WARN, "PCIe capability NOT FOUND!!!");
+	PMD_DRV_LOG(WARNING, "PCIe capability NOT FOUND!!!");
 
 	return 0;
 }
@@ -9118,13 +9118,13 @@ static int bnx2x_do_flr(struct bnx2x_softc *sc)
 
 	/* only E2 and onwards support FLR */
 	if (CHIP_IS_E1x(sc)) {
-		PMD_DRV_LOG(WARN, "FLR not supported in E1H");
+		PMD_DRV_LOG(WARNING, "FLR not supported in E1H");
 		return -1;
 	}
 
 	/* only bootcode REQ_BC_VER_4_INITIATE_FLR and onwards support flr */
 	if (sc->devinfo.bc_ver < REQ_BC_VER_4_INITIATE_FLR) {
-		PMD_DRV_LOG(WARN,
+		PMD_DRV_LOG(WARNING,
 			    "FLR not supported by BC_VER: 0x%08x",
 			    sc->devinfo.bc_ver);
 		return -1;
@@ -9498,7 +9498,7 @@ static void bnx2x_init_multi_cos(struct bnx2x_softc *sc)
 		if (cos < sc->max_cos) {
 			sc->prio_to_cos[pri] = cos;
 		} else {
-			PMD_DRV_LOG(WARN,
+			PMD_DRV_LOG(WARNING,
 				    "Invalid COS %d for priority %d "
 				    "(max COS is %d), setting to 0", cos, pri,
 				    (sc->max_cos - 1));
@@ -11344,7 +11344,7 @@ static void bnx2x_link_reset(struct bnx2x_softc *sc)
 		elink_lfa_reset(&sc->link_params, &sc->link_vars);
 	} else {
 		if (!CHIP_REV_IS_SLOW(sc)) {
-			PMD_DRV_LOG(WARN,
+			PMD_DRV_LOG(WARNING,
 				    "Bootcode is missing - cannot reset link");
 		}
 	}

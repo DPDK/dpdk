@@ -799,8 +799,7 @@ static inline void ecore_clear_blocks_parity(struct bnx2x_softc *sc)
 			reg_val = REG_RD(sc, ecore_blocks_parity_data[i].
 					 sts_clr_addr);
 			if (reg_val & reg_mask)
-				ECORE_MSG(sc,
-					   "Parity errors in %s: 0x%x",
+				ECORE_MSG("Parity errors in %s: 0x%x",
 					   ecore_blocks_parity_data[i].name,
 					   reg_val & reg_mask);
 		}

@@ -37,7 +37,7 @@
 #define PMD_TX_FREE_LOG(level, fmt, args...) do { } while(0)
 #endif
 
-#ifdef RTE_LIBRTE_BNX2X_DEBUG_DRIVER
+#ifdef RTE_LIBRTE_BNX2X_DEBUG
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \
 	RTE_LOG(level, PMD, "%s(): " fmt, __func__, ## args)
 #else
