@@ -43,18 +43,6 @@
 #define BITS_PER_LONG 64
 #endif
 
-static inline long
-bnx2x_hilo(uint32_t *hiref)
-{
-    uint32_t lo = *(hiref + 1);
-#if (BITS_PER_LONG == 64)
-    uint32_t hi = *hiref;
-    return HILO_U64(hi, lo);
-#else
-    return lo;
-#endif
-}
-
 static inline uint16_t
 bnx2x_get_port_stats_dma_len(struct bnx2x_softc *sc)
 {
