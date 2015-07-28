@@ -1829,6 +1829,25 @@ next_desc:
 		ixgbe_fill_cluster_head_buf(first_seg, &rxd, rxq->port_id,
 					    staterr);
 
+		/*
+		 * Deal with the case, when HW CRC srip is disabled.
+		 * That can't happen when LRO is enabled, but still could
+		 * happen for scattered RX mode.
+		 */
+		first_seg->pkt_len -= rxq->crc_len;
+		if (unlikely(rxm->data_len <= rxq->crc_len)) {
+			struct rte_mbuf *lp;
+
+			for (lp = first_seg; lp->next != rxm; lp = lp->next)
+				;
+
+			first_seg->nb_segs--;
+			lp->data_len -= rxq->crc_len - rxm->data_len;
+			lp->next = NULL;
+			rte_pktmbuf_free_seg(rxm);
+		} else
+			rxm->data_len -= rxq->crc_len;
+
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +
 			first_seg->data_off);
