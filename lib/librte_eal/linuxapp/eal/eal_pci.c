@@ -557,7 +557,7 @@ pci_config_max_read_request_size(struct rte_pci_device *dev)
 	return 0;
 }
 
-static void
+void
 pci_config_space_set(struct rte_pci_device *dev)
 {
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

@@ -487,6 +487,17 @@ int rte_eal_pci_read_config(const struct rte_pci_device *device,
 int rte_eal_pci_write_config(const struct rte_pci_device *device,
 			     const void *buf, size_t len, off_t offset);
 
+#ifdef RTE_PCI_CONFIG
+/**
+ * Set special config space registers for performance purpose.
+ *
+ * @param dev
+ *   A pointer to a rte_pci_device structure describing the device
+ *   to use
+ */
+void pci_config_space_set(struct rte_pci_device *dev);
+#endif /* RTE_PCI_CONFIG */
+
 #ifdef __cplusplus
 }
 #endif
