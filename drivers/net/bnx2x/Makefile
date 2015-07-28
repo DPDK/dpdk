@@ -9,6 +9,10 @@ CFLAGS += -O3 -g
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -DZLIB_CONST
 
+EXPORT_MAP := rte_pmd_bnx2x_version.map
+
+LIBABIVER := 1
+
 #
 # all source are stored in SRCS-y
 #
