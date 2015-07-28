@@ -497,6 +497,8 @@ reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 				else {
 					/* free up last mbuf */
 					struct rte_mbuf *secondlast = start;
+
+					start->nb_segs--;
 					while (secondlast->next != end)
 						secondlast = secondlast->next;
 					secondlast->data_len -= (rxq->crc_len -
