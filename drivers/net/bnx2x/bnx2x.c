@@ -169,10 +169,10 @@ bnx2x_dma_alloc(struct bnx2x_softc *sc, size_t size, struct bnx2x_dma *dma,
 
 	dma->sc = sc;
 	if (IS_PF(sc))
-		sprintf(mz_name, "bnx2x%d_%s_%lx", SC_ABS_FUNC(sc), msg,
+		sprintf(mz_name, "bnx2x%d_%s_%" PRIx64, SC_ABS_FUNC(sc), msg,
 			rte_get_timer_cycles());
 	else
-		sprintf(mz_name, "bnx2x%d_%s_%lx", sc->pcie_device, msg,
+		sprintf(mz_name, "bnx2x%d_%s_%" PRIx64, sc->pcie_device, msg,
 			rte_get_timer_cycles());
 
 	/* Caller must take care that strlen(mz_name) < RTE_MEMZONE_NAMESIZE */
@@ -186,7 +186,7 @@ bnx2x_dma_alloc(struct bnx2x_softc *sc, size_t size, struct bnx2x_dma *dma,
 	dma->paddr = (uint64_t) z->phys_addr;
 	dma->vaddr = z->addr;
 
-	PMD_DRV_LOG(DEBUG, "%s: virt=%p phys=%lx", msg, dma->vaddr, dma->paddr);
+	PMD_DRV_LOG(DEBUG, "%s: virt=%p phys=%" PRIx64, msg, dma->vaddr, dma->paddr);
 
 	return 0;
 }
@@ -1296,7 +1296,7 @@ bnx2x_free_tx_pkt(__rte_unused struct bnx2x_fastpath *fp, struct bnx2x_tx_queue 
 		rte_pktmbuf_free(tx_mbuf);
 	} else {
 		PMD_RX_LOG(ERR, "fp[%02d] lost mbuf %lu",
-			   fp->index, TX_BD(pkt_idx, txq));
+			   fp->index, (unsigned long)TX_BD(pkt_idx, txq));
 	}
 
 	txq->sw_ring[TX_BD(pkt_idx, txq)] = NULL;
@@ -1496,7 +1496,7 @@ bnx2x_set_q_rx_mode(struct bnx2x_softc *sc, uint8_t cl_id,
 
 	ramrod_param.rdata = BNX2X_SP(sc, rx_mode_rdata);
 	ramrod_param.rdata_mapping =
-	    (phys_addr_t) ((void *)BNX2X_SP_MAPPING(sc, rx_mode_rdata)),
+	    (phys_addr_t)BNX2X_SP_MAPPING(sc, rx_mode_rdata),
 	    bnx2x_set_bit(ECORE_FILTER_RX_MODE_PENDING, &sc->sp_state);
 
 	ramrod_param.ramrod_flags = ramrod_flags;
@@ -4617,9 +4617,11 @@ static void bnx2x_init_func_obj(struct bnx2x_softc *sc)
 
 	ecore_init_func_obj(sc,
 			    &sc->func_obj,
-			    BNX2X_SP(sc, func_rdata), (phys_addr_t) ((void *)
-								   BNX2X_SP_MAPPING(sc, func_rdata)), BNX2X_SP(sc, func_afex_rdata), (phys_addr_t) ((void *)
-																		BNX2X_SP_MAPPING(sc, func_afex_rdata)), &bnx2x_func_sp_drv);
+			    BNX2X_SP(sc, func_rdata),
+			    (phys_addr_t)BNX2X_SP_MAPPING(sc, func_rdata),
+			    BNX2X_SP(sc, func_afex_rdata),
+			    (phys_addr_t)BNX2X_SP_MAPPING(sc, func_afex_rdata),
+			    &bnx2x_func_sp_drv);
 }
 
 static int bnx2x_init_hw(struct bnx2x_softc *sc, uint32_t load_code)
@@ -4934,9 +4936,8 @@ static void bnx2x_init_eth_fp(struct bnx2x_softc *sc, int idx)
 			     cids,
 			     sc->max_cos,
 			     SC_FUNC(sc),
-			     BNX2X_SP(sc, q_rdata), (phys_addr_t) ((void *)
-								 BNX2X_SP_MAPPING
-								 (sc, q_rdata)),
+			     BNX2X_SP(sc, q_rdata),
+			     (phys_addr_t)BNX2X_SP_MAPPING(sc, q_rdata),
 			     q_type);
 
 	/* configure classification DBs */
@@ -4945,10 +4946,8 @@ static void bnx2x_init_eth_fp(struct bnx2x_softc *sc, int idx)
 			   fp->cl_id,
 			   idx,
 			   SC_FUNC(sc),
-			   BNX2X_SP(sc, mac_rdata), (phys_addr_t) ((void *)
-								 BNX2X_SP_MAPPING
-								 (sc,
-								  mac_rdata)),
+			   BNX2X_SP(sc, mac_rdata),
+			   (phys_addr_t)BNX2X_SP_MAPPING(sc, mac_rdata),
 			   ECORE_FILTER_MAC_PENDING, &sc->sp_state,
 			   ECORE_OBJ_TYPE_RX_TX, &sc->macs_pool);
 }
@@ -5713,8 +5712,10 @@ static void bnx2x_init_objs(struct bnx2x_softc *sc)
 			     sc->fp[0].index,
 			     SC_FUNC(sc),
 			     SC_FUNC(sc),
-			     BNX2X_SP(sc, mcast_rdata), (phys_addr_t) ((void *)
-								     BNX2X_SP_MAPPING(sc, mcast_rdata)), ECORE_FILTER_MCAST_PENDING, &sc->sp_state, o_type);
+			     BNX2X_SP(sc, mcast_rdata),
+			     (phys_addr_t)BNX2X_SP_MAPPING(sc, mcast_rdata),
+			     ECORE_FILTER_MCAST_PENDING,
+			     &sc->sp_state, o_type);
 
 	/* Setup CAM credit pools */
 	ecore_init_mac_credit_pool(sc,
@@ -5735,8 +5736,10 @@ static void bnx2x_init_objs(struct bnx2x_softc *sc)
 				  sc->fp[0].index,
 				  SC_FUNC(sc),
 				  SC_FUNC(sc),
-				  BNX2X_SP(sc, rss_rdata), (phys_addr_t) ((void *)
-									BNX2X_SP_MAPPING(sc, rss_rdata)), ECORE_FILTER_RSS_CONF_PENDING, &sc->sp_state, ECORE_OBJ_TYPE_RX);
+				  BNX2X_SP(sc, rss_rdata),
+				  (phys_addr_t)BNX2X_SP_MAPPING(sc, rss_rdata),
+				  ECORE_FILTER_RSS_CONF_PENDING,
+				  &sc->sp_state, ECORE_OBJ_TYPE_RX);
 }
 
 /*
@@ -6455,10 +6458,10 @@ bnx2x_pf_rx_q_prep(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 	pause->pri_map = 1;
 
 	/* rxq setup */
-	rxq_init->dscr_map = (phys_addr_t)((void *)rxq->rx_ring_phys_addr);
-	rxq_init->rcq_map = (phys_addr_t)((void *)rxq->cq_ring_phys_addr);
-	rxq_init->rcq_np_map = (phys_addr_t)((void *)(rxq->cq_ring_phys_addr +
-						       BNX2X_PAGE_SIZE));
+	rxq_init->dscr_map = (phys_addr_t)rxq->rx_ring_phys_addr;
+	rxq_init->rcq_map = (phys_addr_t)rxq->cq_ring_phys_addr;
+	rxq_init->rcq_np_map = (phys_addr_t)(rxq->cq_ring_phys_addr +
+					      BNX2X_PAGE_SIZE);
 
 	/*
 	 * This should be a maximum number of data bytes that may be
@@ -6496,7 +6499,7 @@ bnx2x_pf_tx_q_prep(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 		PMD_TX_LOG(ERR, "ERROR: TX queue is NULL");
 		return;
 	}
-	txq_init->dscr_map = (phys_addr_t)((void *)txq->tx_ring_phys_addr);
+	txq_init->dscr_map = (phys_addr_t)txq->tx_ring_phys_addr;
 	txq_init->sb_cq_index = HC_INDEX_ETH_FIRST_TX_CQ_CONS + cos;
 	txq_init->traffic_type = LLFC_TRAFFIC_TYPE_NW;
 	txq_init->fw_sb_id = fp->fw_sb_id;
@@ -9596,10 +9599,10 @@ void bnx2x_load_firmware(struct bnx2x_softc *sc)
 
 	sc->fw_len = st.st_size;
 	if (sc->fw_len < FW_HEADER_LEN) {
-		PMD_DRV_LOG(NOTICE, "Invalid fw size: %lu", sc->fw_len);
+		PMD_DRV_LOG(NOTICE, "Invalid fw size: %" PRIu64, sc->fw_len);
 		return;
 	}
-	PMD_DRV_LOG(DEBUG, "fw_len = %lu", sc->fw_len);
+	PMD_DRV_LOG(DEBUG, "fw_len = %" PRIu64, sc->fw_len);
 }
 
 static void
@@ -11081,7 +11084,7 @@ static int bnx2x_init_hw_func(struct bnx2x_softc *sc)
 	for (i = 0; i < L2_ILT_LINES(sc); i++) {
 		ilt->lines[cdu_ilt_start + i].page = sc->context[i].vcxt;
 		ilt->lines[cdu_ilt_start + i].page_mapping =
-		    (phys_addr_t)((void *)sc->context[i].vcxt_dma.paddr);
+		    (phys_addr_t)sc->context[i].vcxt_dma.paddr;
 		ilt->lines[cdu_ilt_start + i].size = sc->context[i].size;
 	}
 	ecore_ilt_init_op(sc, INITOP_SET);

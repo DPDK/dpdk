@@ -1271,7 +1271,7 @@ struct bnx2x_softc {
 	uint32_t       gz_outlen;
 #define GUNZIP_BUF(sc)    (sc->gz_buf)
 #define GUNZIP_OUTLEN(sc) (sc->gz_outlen)
-#define GUNZIP_PHYS(sc)   (phys_addr_t)((void *)(sc->gz_buf_dma.paddr))
+#define GUNZIP_PHYS(sc)   (phys_addr_t)(sc->gz_buf_dma.paddr)
 #define FW_BUF_SIZE       0x40000
 
 	struct raw_op *init_ops;
