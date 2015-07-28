@@ -388,7 +388,7 @@ port_id_is_invalid(portid_t port_id, enum print_warning warning)
 	if (port_id == (portid_t)RTE_PORT_ALL)
 		return 0;
 
-	if (ports[port_id].enabled)
+	if (port_id < RTE_MAX_ETHPORTS && ports[port_id].enabled)
 		return 0;
 
 	if (warning == ENABLED_WARN)
