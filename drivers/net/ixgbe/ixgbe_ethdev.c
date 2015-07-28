@@ -2040,7 +2040,6 @@ static void
 ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
 						   *hw_stats, uint64_t *total_missed_rx,
 						   uint64_t *total_qbrc, uint64_t *total_qprc,
-						   uint64_t *rxnfgpc, uint64_t *txdgpc,
 						   uint64_t *total_qprdc)
 {
 	uint32_t bprc, lxon, lxoff, total;
@@ -2093,8 +2092,6 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
 
 	/* Note that gprc counts missed packets */
 	hw_stats->gprc += IXGBE_READ_REG(hw, IXGBE_GPRC);
-	*rxnfgpc += IXGBE_READ_REG(hw, IXGBE_RXNFGPC);
-	*txdgpc += IXGBE_READ_REG(hw, IXGBE_TXDGPC);
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {
 		hw_stats->gorc += IXGBE_READ_REG(hw, IXGBE_GORCL);
@@ -2188,18 +2185,15 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct ixgbe_hw_stats *hw_stats =
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
-	uint64_t rxnfgpc, txdgpc;
 	unsigned i;
 
 	total_missed_rx = 0;
 	total_qbrc = 0;
 	total_qprc = 0;
 	total_qprdc = 0;
-	rxnfgpc = 0;
-	txdgpc = 0;
 
 	ixgbe_read_stats_registers(hw, hw_stats, &total_missed_rx, &total_qbrc,
-			&total_qprc, &rxnfgpc, &txdgpc, &total_qprdc);
+			&total_qprc, &total_qprdc);
 
 	if (stats == NULL)
 		return;
@@ -2235,9 +2229,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	                  hw_stats->fclast;
 
 	/* Tx Errors */
-	/*txdgpc: packets that are DMA'ed*/
-	/*gptc: packets that are sent*/
-	stats->oerrors  = txdgpc - hw_stats->gptc;
+	stats->oerrors  = 0;
 }
 
 static void
@@ -2262,7 +2254,6 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	struct ixgbe_hw_stats *hw_stats =
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
-	uint64_t rxnfgpc, txdgpc;
 	unsigned i, count = IXGBE_NB_XSTATS;
 
 	if (n < count)
@@ -2272,11 +2263,9 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	total_qbrc = 0;
 	total_qprc = 0;
 	total_qprdc = 0;
-	rxnfgpc = 0;
-	txdgpc = 0;
 
 	ixgbe_read_stats_registers(hw, hw_stats, &total_missed_rx, &total_qbrc,
-							   &total_qprc, &rxnfgpc, &txdgpc, &total_qprdc);
+							   &total_qprc, &total_qprdc);
 
 	/* If this is a reset xstats is NULL, and we have cleared the
 	 * registers by reading them.
