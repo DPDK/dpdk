@@ -509,7 +509,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 			k = (struct rte_hash_key *) ((char *)keys +
 					prim_bkt->key_idx[i] * h->key_entry_size);
 			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
-				rte_ring_sp_enqueue(h->free_slots, &slot_id);
+				rte_ring_sp_enqueue(h->free_slots, slot_id);
 				/* Update data */
 				k->pdata = data;
 				/*
@@ -528,7 +528,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 			k = (struct rte_hash_key *) ((char *)keys +
 					sec_bkt->key_idx[i] * h->key_entry_size);
 			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
-				rte_ring_sp_enqueue(h->free_slots, &slot_id);
+				rte_ring_sp_enqueue(h->free_slots, slot_id);
 				/* Update data */
 				k->pdata = data;
 				/*
