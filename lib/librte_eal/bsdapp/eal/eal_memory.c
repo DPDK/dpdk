@@ -60,7 +60,7 @@ rte_mem_virt2phy(const void *virtaddr)
 }
 
 int
-rte_eal_contigmem_init(void)
+rte_eal_hugepage_init(void)
 {
 	struct rte_mem_config *mcfg;
 	uint64_t total_mem = 0;
