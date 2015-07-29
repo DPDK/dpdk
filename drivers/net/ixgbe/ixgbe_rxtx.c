@@ -130,7 +130,7 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 
 	/* check DD bit on threshold descriptor */
 	status = txq->tx_ring[txq->tx_next_dd].wb.status;
-	if (! (status & IXGBE_ADVTXD_STAT_DD))
+	if (!(status & rte_cpu_to_le_32(IXGBE_ADVTXD_STAT_DD)))
 		return 0;
 
 	/*
@@ -175,11 +175,14 @@ tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 		pkt_len = (*pkts)->data_len;
 
 		/* write data to descriptor */
-		txdp->read.buffer_addr = buf_dma_addr;
+		txdp->read.buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
+
 		txdp->read.cmd_type_len =
-				((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
+			rte_cpu_to_le_32((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
+
 		txdp->read.olinfo_status =
-				(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+			rte_cpu_to_le_32(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+
 		rte_prefetch0(&(*pkts)->pool);
 	}
 }
@@ -195,11 +198,11 @@ tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 	pkt_len = (*pkts)->data_len;
 
 	/* write data to descriptor */
-	txdp->read.buffer_addr = buf_dma_addr;
+	txdp->read.buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
 	txdp->read.cmd_type_len =
-			((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
+			rte_cpu_to_le_32((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
 	txdp->read.olinfo_status =
-			(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+			rte_cpu_to_le_32(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
 	rte_prefetch0(&(*pkts)->pool);
 }
 
@@ -511,6 +514,7 @@ ixgbe_xmit_cleanup(struct ixgbe_tx_queue *txq)
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
 	uint16_t desc_to_clean_to;
 	uint16_t nb_tx_to_clean;
+	uint32_t status;
 
 	/* Determine the last descriptor needing to be cleaned */
 	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
@@ -519,7 +523,8 @@ ixgbe_xmit_cleanup(struct ixgbe_tx_queue *txq)
 
 	/* Check to make sure the last descriptor to clean is done */
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
-	if (! (txr[desc_to_clean_to].wb.status & IXGBE_TXD_STAT_DD))
+	status = txr[desc_to_clean_to].wb.status;
+	if (!(status & rte_cpu_to_le_32(IXGBE_TXD_STAT_DD)))
 	{
 		PMD_TX_FREE_LOG(DEBUG,
 				"TX descriptor %4u is not done"
@@ -1061,14 +1066,15 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 	int s[LOOK_AHEAD], nb_dd;
 #endif /* RTE_NEXT_ABI */
 	int i, j, nb_rx = 0;
-
+	uint32_t status;
 
 	/* get references to current descriptor and S/W ring entry */
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
 
+	status = rxdp->wb.upper.status_error;
 	/* check to make sure there is at least 1 packet to receive */
-	if (! (rxdp->wb.upper.status_error & IXGBE_RXDADV_STAT_DD))
+	if (!(status & rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
 		return 0;
 
 	/*
@@ -1080,7 +1086,7 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 	{
 		/* Read desc statuses backwards to avoid race condition */
 		for (j = LOOK_AHEAD-1; j >= 0; --j)
-			s[j] = rxdp[j].wb.upper.status_error;
+			s[j] = rte_le_to_cpu_32(rxdp[j].wb.upper.status_error);
 
 #ifdef RTE_NEXT_ABI
 		for (j = LOOK_AHEAD - 1; j >= 0; --j)
@@ -1098,7 +1104,8 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 		/* Translate descriptor info to mbuf format */
 		for (j = 0; j < nb_dd; ++j) {
 			mb = rxep[j].mbuf;
-			pkt_len = (uint16_t)(rxdp[j].wb.upper.length - rxq->crc_len);
+			pkt_len = rte_le_to_cpu_16(rxdp[j].wb.upper.length) -
+				  rxq->crc_len;
 			mb->data_len = pkt_len;
 			mb->pkt_len = pkt_len;
 			mb->vlan_tci = rte_le_to_cpu_16(rxdp[j].wb.upper.vlan);
@@ -1114,7 +1121,8 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 				ixgbe_rxd_pkt_info_to_pkt_type(pkt_info[j]);
 #else /* RTE_NEXT_ABI */
 			pkt_flags  = rx_desc_hlen_type_rss_to_pkt_flags(
-					rxdp[j].wb.lower.lo_dword.data);
+					rte_le_to_cpu_32(
+					rxdp[j].wb.lower.lo_dword.data));
 			/* reuse status field from scan list */
 			pkt_flags |= rx_desc_status_to_pkt_flags(s[j]);
 			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
@@ -1122,12 +1130,14 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 #endif /* RTE_NEXT_ABI */
 
 			if (likely(pkt_flags & PKT_RX_RSS_HASH))
-				mb->hash.rss = rxdp[j].wb.lower.hi_dword.rss;
+				mb->hash.rss = rte_le_to_cpu_32(
+				    rxdp[j].wb.lower.hi_dword.rss);
 			else if (pkt_flags & PKT_RX_FDIR) {
-				mb->hash.fdir.hash =
-					(uint16_t)((rxdp[j].wb.lower.hi_dword.csum_ip.csum)
-						& IXGBE_ATR_HASH_MASK);
-				mb->hash.fdir.id = rxdp[j].wb.lower.hi_dword.csum_ip.ip_id;
+				mb->hash.fdir.hash = rte_le_to_cpu_16(
+				    rxdp[j].wb.lower.hi_dword.csum_ip.csum) &
+				    IXGBE_ATR_HASH_MASK;
+				mb->hash.fdir.id = rte_le_to_cpu_16(
+				    rxdp[j].wb.lower.hi_dword.csum_ip.ip_id);
 			}
 		}
 
@@ -1346,7 +1356,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		rxdp = &rx_ring[rx_id];
 		staterr = rxdp->wb.upper.status_error;
-		if (! (staterr & rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
+		if (!(staterr & rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
 			break;
 		rxd = *rxdp;
 
@@ -1464,12 +1474,14 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 #endif /* RTE_NEXT_ABI */
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))
-			rxm->hash.rss = rxd.wb.lower.hi_dword.rss;
+			rxm->hash.rss = rte_le_to_cpu_32(
+						rxd.wb.lower.hi_dword.rss);
 		else if (pkt_flags & PKT_RX_FDIR) {
-			rxm->hash.fdir.hash =
-				(uint16_t)((rxd.wb.lower.hi_dword.csum_ip.csum)
-					   & IXGBE_ATR_HASH_MASK);
-			rxm->hash.fdir.id = rxd.wb.lower.hi_dword.csum_ip.ip_id;
+			rxm->hash.fdir.hash = rte_le_to_cpu_16(
+					rxd.wb.lower.hi_dword.csum_ip.csum) &
+					IXGBE_ATR_HASH_MASK;
+			rxm->hash.fdir.id = rte_le_to_cpu_16(
+					rxd.wb.lower.hi_dword.csum_ip.ip_id);
 		}
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -1980,7 +1992,7 @@ ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 	prev = (uint16_t) (txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
 		volatile union ixgbe_adv_tx_desc *txd = &txq->tx_ring[i];
-		txd->wb.status = IXGBE_TXD_STAT_DD;
+		txd->wb.status = rte_cpu_to_le_32(IXGBE_TXD_STAT_DD);
 		txe[i].mbuf = NULL;
 		txe[i].last_id = i;
 		txe[prev].next_id = i;
@@ -2586,7 +2598,8 @@ ixgbe_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	rxdp = &(rxq->rx_ring[rxq->rx_tail]);
 
 	while ((desc < rxq->nb_rx_desc) &&
-		(rxdp->wb.upper.status_error & IXGBE_RXDADV_STAT_DD)) {
+		(rxdp->wb.upper.status_error &
+			rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD))) {
 		desc += IXGBE_RXQ_SCAN_INTERVAL;
 		rxdp += IXGBE_RXQ_SCAN_INTERVAL;
 		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
@@ -2611,7 +2624,8 @@ ixgbe_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
 		desc -= rxq->nb_rx_desc;
 
 	rxdp = &rxq->rx_ring[desc];
-	return !!(rxdp->wb.upper.status_error & IXGBE_RXDADV_STAT_DD);
+	return !!(rxdp->wb.upper.status_error &
+			rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD));
 }
 
 void __attribute__((cold))
