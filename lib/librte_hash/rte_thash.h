@@ -53,14 +53,19 @@ extern "C" {
 
 #include <stdint.h>
 #include <rte_byteorder.h>
-#include <rte_vect.h>
 #include <rte_ip.h>
 
+#ifdef __SSE3__
+#include <rte_vect.h>
+#endif
+
+#ifdef __SSE3__
 /* Byte swap mask used for converting IPv6 address
  * 4-byte chunks to CPU byte order
  */
 static const __m128i rte_thash_ipv6_bswap_mask = {
-		0x0405060700010203, 0x0C0D0E0F08090A0B};
+		0x0405060700010203ULL, 0x0C0D0E0F08090A0BULL};
+#endif
 
 /**
  * length in dwords of input tuple to
@@ -126,7 +131,11 @@ struct rte_ipv6_tuple {
 union rte_thash_tuple {
 	struct rte_ipv4_tuple	v4;
 	struct rte_ipv6_tuple	v6;
+#ifdef __SSE3__
 } __attribute__((aligned(XMM_SIZE)));
+#else
+};
+#endif
 
 /**
  * Prepare special converted key to use with rte_softrss_be()
@@ -157,12 +166,22 @@ rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
 static inline void
 rte_thash_load_v6_addrs(const struct ipv6_hdr *orig, union rte_thash_tuple *targ)
 {
+#ifdef __SSE3__
 	__m128i ipv6 = _mm_loadu_si128((const __m128i *)orig->src_addr);
 	*(__m128i *)targ->v6.src_addr =
 			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
 	ipv6 = _mm_loadu_si128((const __m128i *)orig->dst_addr);
 	*(__m128i *)targ->v6.dst_addr =
 			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
+#else
+	int i;
+	for (i = 0; i < 4; i++) {
+		*((uint32_t *)targ->v6.src_addr + i) =
+			rte_be_to_cpu_32(*((const uint32_t *)orig->src_addr + i));
+		*((uint32_t *)targ->v6.dst_addr + i) =
+			rte_be_to_cpu_32(*((const uint32_t *)orig->dst_addr + i));
+	}
+#endif
 }
 
 /**
