@@ -1248,7 +1248,7 @@ static struct eth_driver rte_i40evf_pmd = {
 	},
 	.eth_dev_init = i40evf_dev_init,
 	.eth_dev_uninit = i40evf_dev_uninit,
-	.dev_private_size = sizeof(struct i40e_vf),
+	.dev_private_size = sizeof(struct i40e_adapter),
 };
 
 /*
