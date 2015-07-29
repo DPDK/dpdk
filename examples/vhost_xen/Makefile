@@ -46,6 +46,7 @@ SRCS-y := main.c vhost_monitor.c xenstore_parse.c
 
 CFLAGS += -O2 -I/usr/local/include -D_FILE_OFFSET_BITS=64 -Wno-unused-parameter
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -D_GNU_SOURCE
 LDFLAGS += -lxenstore
 
 include $(RTE_SDK)/mk/rte.extapp.mk

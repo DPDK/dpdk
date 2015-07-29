@@ -166,6 +166,7 @@ int
 rte_eal_hpet_init(int make_default)
 {
 	int fd, ret;
+	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	if (internal_config.no_hpet) {
 		RTE_LOG(NOTICE, EAL, "HPET is disabled\n");
@@ -208,11 +209,20 @@ rte_eal_hpet_init(int make_default)
 	 * msb (hpet is 32 bits by default under linux) */
 	ret = pthread_create(&msb_inc_thread_id, NULL,
 			(void *(*)(void *))hpet_msb_inc, NULL);
-	if (ret < 0) {
+	if (ret != 0) {
 		RTE_LOG(ERR, EAL, "ERROR: Cannot create HPET timer thread!\n");
 		internal_config.no_hpet = 1;
 		return -1;
 	}
+
+	/*
+	 * Set thread_name for aid in debugging.
+	 */
+	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "hpet-msb-inc");
+	ret = pthread_setname_np(msb_inc_thread_id, thread_name);
+	if (ret != 0)
+		RTE_LOG(ERR, EAL,
+			"ERROR: Cannot set HPET timer thread name!\n");
 
 	if (make_default)
 		eal_timer_source = EAL_TIMER_HPET;

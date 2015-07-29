@@ -467,6 +467,7 @@ rte_eal_init(int argc, char **argv)
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
+	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
@@ -572,6 +573,11 @@ rte_eal_init(int argc, char **argv)
 				     eal_thread_loop, NULL);
 		if (ret != 0)
 			rte_panic("Cannot create thread\n");
+
+		/* Set thread_name for aid in debugging. */
+		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
+				"lcore-slave-%d", i);
+		pthread_set_name_np(lcore_config[i].thread_id, thread_name);
 	}
 
 	/*

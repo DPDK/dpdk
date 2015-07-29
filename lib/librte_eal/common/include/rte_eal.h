@@ -51,6 +51,9 @@ extern "C" {
 
 #define RTE_MAGIC 19820526 /**< Magic number written by the main partition when ready. */
 
+/* Maximum thread_name length. */
+#define RTE_MAX_THREAD_NAME_LEN 16
+
 /**
  * The lcore role (used in RTE or not).
  */

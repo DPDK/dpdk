@@ -52,6 +52,7 @@ SRCS-y := main.c
 
 CFLAGS += -O2 -D_FILE_OFFSET_BITS=64
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -D_GNU_SOURCE
 
 include $(RTE_SDK)/mk/rte.extapp.mk
 

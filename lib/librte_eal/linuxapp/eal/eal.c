@@ -734,6 +734,7 @@ rte_eal_init(int argc, char **argv)
 	struct shared_driver *solib = NULL;
 	const char *logid;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
+	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
@@ -863,6 +864,15 @@ rte_eal_init(int argc, char **argv)
 				     eal_thread_loop, NULL);
 		if (ret != 0)
 			rte_panic("Cannot create thread\n");
+
+		/* Set thread_name for aid in debugging. */
+		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
+			"lcore-slave-%d", i);
+		ret = pthread_setname_np(lcore_config[i].thread_id,
+						thread_name);
+		if (ret != 0)
+			RTE_LOG(ERR, EAL,
+				"Cannot set name for lcore thread\n");
 	}
 
 	/*

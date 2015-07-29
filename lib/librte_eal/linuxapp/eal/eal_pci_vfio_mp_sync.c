@@ -34,6 +34,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
 /* sys/un.h with __USE_MISC uses strlen, which is unsafe */
 #ifdef __USE_MISC
@@ -54,6 +55,7 @@
 
 #include "eal_filesystem.h"
 #include "eal_pci_init.h"
+#include "eal_thread.h"
 
 /**
  * @file
@@ -374,6 +376,7 @@ int
 pci_vfio_mp_sync_setup(void)
 {
 	int ret;
+	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	if (vfio_mp_sync_socket_setup() < 0) {
 		RTE_LOG(ERR, EAL, "Failed to set up local socket!\n");
@@ -383,11 +386,19 @@ pci_vfio_mp_sync_setup(void)
 	ret = pthread_create(&socket_thread, NULL,
 			pci_vfio_mp_sync_thread, NULL);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Failed to create thread for communication with "
-				"secondary processes!\n");
+		RTE_LOG(ERR, EAL,
+			"Failed to create thread for communication with secondary processes!\n");
 		close(mp_socket_fd);
 		return -1;
 	}
+
+	/* Set thread_name for aid in debugging. */
+	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "pci-vfio-sync");
+	ret = pthread_setname_np(socket_thread, thread_name);
+	if (ret)
+		RTE_LOG(ERR, EAL,
+			"Failed to set thread name for secondary processes!\n");
+
 	return 0;
 }
 

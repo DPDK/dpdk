@@ -93,6 +93,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += malloc_heap.c
 
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_interrupts.o := -D_GNU_SOURCE
+CFLAGS_eal_pci_vfio_mp_sync.o := -D_GNU_SOURCE
+CFLAGS_eal_timer.o := -D_GNU_SOURCE
 CFLAGS_eal_lcore.o := -D_GNU_SOURCE
 CFLAGS_eal_thread.o := -D_GNU_SOURCE
 CFLAGS_eal_log.o := -D_GNU_SOURCE

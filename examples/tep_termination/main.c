@@ -1167,6 +1167,7 @@ main(int argc, char *argv[])
 	uint8_t portid;
 	uint16_t queue_id;
 	static pthread_t tid;
+	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1243,8 +1244,15 @@ main(int argc, char *argv[])
 	memset(&dev_statistics, 0, sizeof(dev_statistics));
 
 	/* Enable stats if the user option is set. */
-	if (enable_stats)
-		pthread_create(&tid, NULL, (void *)print_stats, NULL);
+	if (enable_stats) {
+		ret = pthread_create(&tid, NULL, (void *)print_stats, NULL);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE, "Cannot create print-stats thread\n");
+		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "print-stats");
+		ret = pthread_setname_np(tid, thread_name);
+		if (ret != 0)
+			RTE_LOG(ERR, VHOST_CONFIG, "Cannot set print-stats name\n");
+	}
 
 	/* Launch all data cores. */
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
