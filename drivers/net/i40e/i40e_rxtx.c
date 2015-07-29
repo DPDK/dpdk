@@ -1367,7 +1367,7 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 		mb->port = rxq->port_id;
 		dma_addr = rte_cpu_to_le_64(\
 			RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb));
-		rxdp[i].read.hdr_addr = dma_addr;
+		rxdp[i].read.hdr_addr = 0;
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
 
@@ -1514,7 +1514,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxe->mbuf = nmb;
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
-		rxdp->read.hdr_addr = dma_addr;
+		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
 
 		rx_packet_len = ((qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
@@ -1640,7 +1640,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
 
 		/* Set data buffer address and data length of the mbuf */
-		rxdp->read.hdr_addr = dma_addr;
+		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
 		rx_packet_len = (qword1 & I40E_RXD_QW1_LENGTH_PBUF_MASK) >>
 					I40E_RXD_QW1_LENGTH_PBUF_SHIFT;
@@ -3047,7 +3047,7 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
 
 		rxd = &rxq->rx_ring[i];
 		rxd->read.pkt_addr = dma_addr;
-		rxd->read.hdr_addr = dma_addr;
+		rxd->read.hdr_addr = 0;
 #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
 		rxd->read.rsvd1 = 0;
 		rxd->read.rsvd2 = 0;
