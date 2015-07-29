@@ -87,8 +87,7 @@ static struct rte_sched_port_params port_param = {
 
 #define NB_MBUF          32
 #define MBUF_DATA_SZ     (2048 + RTE_PKTMBUF_HEADROOM)
-#define PKT_BURST_SZ     32
-#define MEMPOOL_CACHE_SZ PKT_BURST_SZ
+#define MEMPOOL_CACHE_SZ 0
 #define SOCKET           0
 
 
