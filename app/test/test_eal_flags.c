@@ -748,8 +748,8 @@ test_no_hpet_flag(void)
 }
 
 /*
- * Test that the app runs with --no-huge and doesn't run when either
- * -m or --socket-mem are specified with --no-huge.
+ * Test that the app runs with --no-huge and doesn't run when --socket-mem are
+ * specified with --no-huge.
  */
 static int
 test_no_huge_flag(void)
@@ -778,8 +778,8 @@ test_no_huge_flag(void)
 		printf("Error - process did not run ok with --no-huge flag\n");
 		return -1;
 	}
-	if (launch_proc(argv2) == 0) {
-		printf("Error - process run ok with --no-huge and -m flags\n");
+	if (launch_proc(argv2) != 0) {
+		printf("Error - process did not run ok with --no-huge and -m flags\n");
 		return -1;
 	}
 #ifdef RTE_EXEC_ENV_BSDAPP
