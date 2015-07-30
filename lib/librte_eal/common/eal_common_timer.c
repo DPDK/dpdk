@@ -36,7 +36,6 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <sys/types.h>
-#include <sys/sysctl.h>
 #include <errno.h>
 
 #include <rte_common.h>
