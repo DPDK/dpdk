@@ -698,6 +698,9 @@ extern "C" {
                                                  RTE_PTYPE_INNER_L4_MASK))
 #endif /* RTE_NEXT_ABI */
 
+/** Alignment constraint of mbuf private area. */
+#define RTE_MBUF_PRIV_ALIGN 8
+
 /**
  * Get the name of a RX offload flag
  *
@@ -1238,7 +1241,7 @@ void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
  *   details.
  * @param priv_size
  *   Size of application private are between the rte_mbuf structure
- *   and the data buffer.
+ *   and the data buffer. This value must be aligned to RTE_MBUF_PRIV_ALIGN.
  * @param data_room_size
  *   Size of data buffer in each mbuf, including RTE_PKTMBUF_HEADROOM.
  * @param socket_id
@@ -1250,7 +1253,7 @@ void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
  *   with rte_errno set appropriately. Possible rte_errno values include:
  *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
  *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - EINVAL - cache size provided is too large
+ *    - EINVAL - cache size provided is too large, or priv_size is not aligned.
  *    - ENOSPC - the maximum number of memzones has already been allocated
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone

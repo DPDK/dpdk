@@ -58,6 +58,7 @@
 #include <rte_mbuf.h>
 #include <rte_string_fns.h>
 #include <rte_hexdump.h>
+#include <rte_errno.h>
 
 /*
  * ctrlmbuf constructor, given as a callback function to
@@ -125,6 +126,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	mbuf_size = sizeof(struct rte_mbuf) + priv_size;
 	buf_len = rte_pktmbuf_data_room_size(mp);
 
+	RTE_MBUF_ASSERT(RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) == priv_size);
 	RTE_MBUF_ASSERT(mp->elt_size >= mbuf_size);
 	RTE_MBUF_ASSERT(buf_len <= UINT16_MAX);
 
@@ -154,7 +156,12 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	struct rte_pktmbuf_pool_private mbp_priv;
 	unsigned elt_size;
 
-
+	if (RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) != priv_size) {
+		RTE_LOG(ERR, MBUF, "mbuf priv_size=%u is not aligned\n",
+			priv_size);
+		rte_errno = EINVAL;
+		return NULL;
+	}
 	elt_size = sizeof(struct rte_mbuf) + (unsigned)priv_size +
 		(unsigned)data_room_size;
 	mbp_priv.mbuf_data_room_size = data_room_size;
