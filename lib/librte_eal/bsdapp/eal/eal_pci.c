@@ -459,7 +459,7 @@ int rte_eal_pci_write_config(const struct rte_pci_device *dev,
 		goto error;
 	}
 
-	memcpy(pi.pi_data, buf, len);
+	memcpy(&pi.pi_data, buf, len);
 
 	fd = open("/dev/pci", O_RDONLY);
 	if (fd < 0) {
