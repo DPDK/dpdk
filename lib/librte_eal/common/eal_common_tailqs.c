@@ -150,7 +150,7 @@ int
 rte_eal_tailq_register(struct rte_tailq_elem *t)
 {
 	if (rte_eal_tailq_local_register(t) < 0) {
-		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
+		RTE_LOG(ERR, EAL,
 			"%s tailq is already registered\n", t->name);
 		goto error;
 	}
@@ -160,7 +160,7 @@ rte_eal_tailq_register(struct rte_tailq_elem *t)
 	if (rte_tailqs_count >= 0) {
 		rte_eal_tailq_update(t);
 		if (t->head == NULL) {
-			rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
+			RTE_LOG(ERR, EAL,
 				"Cannot initialize tailq: %s\n", t->name);
 			TAILQ_REMOVE(&rte_tailq_elem_head, t, next);
 			goto error;
@@ -186,7 +186,7 @@ rte_eal_tailqs_init(void)
 		 * rte_eal_tailq_register and EAL_REGISTER_TAILQ */
 		rte_eal_tailq_update(t);
 		if (t->head == NULL) {
-			rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
+			RTE_LOG(ERR, EAL,
 				"Cannot initialize tailq: %s\n", t->name);
 			/* no need to TAILQ_REMOVE, we are going to panic in
 			 * rte_eal_init() */

@@ -1710,9 +1710,8 @@ main(int argc, char **argv)
 		/* init power management library */
 		ret = rte_power_init(lcore_id);
 		if (ret)
-			rte_log(RTE_LOG_ERR, RTE_LOGTYPE_POWER,
-				"Power management library initialization "
-				"failed on core%u", lcore_id);
+			RTE_LOG(ERR, POWER,
+				"Library initialization failed on core %u\n", lcore_id);
 
 		/* init timer structures for each enabled lcore */
 		rte_timer_init(&power_timers[lcore_id]);
