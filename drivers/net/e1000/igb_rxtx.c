@@ -851,7 +851,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxe->mbuf = nmb;
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
-		rxdp->read.hdr_addr = dma_addr;
+		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
 
 		/*
@@ -1040,7 +1040,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxe->mbuf = nmb;
 		dma = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
 		rxdp->read.pkt_addr = dma;
-		rxdp->read.hdr_addr = dma;
+		rxdp->read.hdr_addr = 0;
 
 		/*
 		 * Set data length & data buffer address of mbuf.
@@ -1990,7 +1990,7 @@ igb_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));
 		rxd = &rxq->rx_ring[i];
-		rxd->read.hdr_addr = dma_addr;
+		rxd->read.hdr_addr = 0;
 		rxd->read.pkt_addr = dma_addr;
 		rxe[i].mbuf = mbuf;
 	}
