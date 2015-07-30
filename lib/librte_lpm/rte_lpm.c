@@ -442,35 +442,41 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 			};
 
 			/* Setting tbl24 entry in one go to avoid race
-			 * conditions */
+			 * conditions
+			 */
 			lpm->tbl24[i] = new_tbl24_entry;
 
 			continue;
 		}
 
-		/* If tbl24 entry is valid and extended calculate the index
-		 * into tbl8. */
-		tbl8_index = lpm->tbl24[i].tbl8_gindex *
-				RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
-		tbl8_group_end = tbl8_index + RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
+		if (lpm->tbl24[i].ext_entry == 1) {
+			/* If tbl24 entry is valid and extended calculate the
+			 *  index into tbl8.
+			 */
+			tbl8_index = lpm->tbl24[i].tbl8_gindex *
+					RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
+			tbl8_group_end = tbl8_index +
+					RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 
-		for (j = tbl8_index; j < tbl8_group_end; j++) {
-			if (!lpm->tbl8[j].valid ||
-					lpm->tbl8[j].depth <= depth) {
-				struct rte_lpm_tbl8_entry new_tbl8_entry = {
-					.valid = VALID,
-					.valid_group = VALID,
-					.depth = depth,
-					.next_hop = next_hop,
-				};
+			for (j = tbl8_index; j < tbl8_group_end; j++) {
+				if (!lpm->tbl8[j].valid ||
+						lpm->tbl8[j].depth <= depth) {
+					struct rte_lpm_tbl8_entry
+						new_tbl8_entry = {
+						.valid = VALID,
+						.valid_group = VALID,
+						.depth = depth,
+						.next_hop = next_hop,
+					};
 
-				/*
-				 * Setting tbl8 entry in one go to avoid race
-				 * conditions
-				 */
-				lpm->tbl8[j] = new_tbl8_entry;
+					/*
+					 * Setting tbl8 entry in one go to avoid
+					 * race conditions
+					 */
+					lpm->tbl8[j] = new_tbl8_entry;
 
-				continue;
+					continue;
+				}
 			}
 		}
 	}
