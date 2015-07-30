@@ -13,6 +13,10 @@ Deprecation Notices
   There is no backward compatibility planned from release 2.2.
   All binaries will need to be rebuilt from release 2.2.
 
+* ABI changes are planned for struct rte_intr_handle, struct rte_eth_conf
+  and struct eth_dev_ops to support interrupt mode feature from release 2.1.
+  Those changes may be enabled in the release 2.1 with CONFIG_RTE_NEXT_ABI.
+
 * The EAL function rte_eal_pci_close_one is deprecated because renamed to
   rte_eal_pci_detach.
 
