@@ -182,7 +182,7 @@ rx_queue_disable(struct fm10k_hw *hw, uint16_t qnum)
 	/* Wait 100us at most */
 	for (i = 0; i < FM10K_QUEUE_DISABLE_TIMEOUT; i++) {
 		rte_delay_us(1);
-		reg = FM10K_READ_REG(hw, FM10K_RXQCTL(i));
+		reg = FM10K_READ_REG(hw, FM10K_RXQCTL(qnum));
 		if (!(reg & FM10K_RXQCTL_ENABLE))
 			break;
 	}
@@ -271,7 +271,7 @@ tx_queue_disable(struct fm10k_hw *hw, uint16_t qnum)
 	/* Wait 100us at most */
 	for (i = 0; i < FM10K_QUEUE_DISABLE_TIMEOUT; i++) {
 		rte_delay_us(1);
-		reg = FM10K_READ_REG(hw, FM10K_TXDCTL(i));
+		reg = FM10K_READ_REG(hw, FM10K_TXDCTL(qnum));
 		if (!(reg & FM10K_TXDCTL_ENABLE))
 			break;
 	}
