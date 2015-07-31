@@ -47,6 +47,11 @@ There is also a `section dedicated to this poll mode driver
    be enabled manually by setting ``CONFIG_RTE_LIBRTE_MLX4_PMD=y`` and
    recompiling DPDK.
 
+.. warning::
+
+   ``CONFIG_RTE_BUILD_COMBINE_LIBS`` with ``CONFIG_RTE_BUILD_SHARED_LIB``
+   is not supported and thus the compilation will fail with this configuration.
+
 Implementation details
 ----------------------
 
