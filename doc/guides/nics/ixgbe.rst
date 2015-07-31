@@ -95,7 +95,7 @@ Other features are supported using optional MACRO configuration. They include:
 
 *   HW extend dual VLAN
 
-*   Enabled by RX_OLFLAGS (RTE_IXGBE_RX_OLFLAGS_DISABLE=n)
+*   Enabled by RX_OLFLAGS (RTE_IXGBE_RX_OLFLAGS_ENABLE=y)
 
 
 To guarantee the constraint, configuration flags in dev_conf.rxmode will be checked:
@@ -154,13 +154,13 @@ Sample Application Notes
 testpmd
 ^^^^^^^
 
-By default, using CONFIG_RTE_IXGBE_RX_OLFLAGS_DISABLE=n:
+By default, using CONFIG_RTE_IXGBE_RX_OLFLAGS_ENABLE=y:
 
 .. code-block:: console
 
     ./x86_64-native-linuxapp-gcc/app/testpmd -c 300 -n 4 -- -i --burst=32 --rxfreet=32 --mbcache=250 --txpt=32 --rxht=8 --rxwt=0 --txfreet=32 --txrst=32 --txqflags=0xf01
 
-When CONFIG_RTE_IXGBE_RX_OLFLAGS_DISABLE=y, better performance can be achieved:
+When CONFIG_RTE_IXGBE_RX_OLFLAGS_ENABLE=n, better performance can be achieved:
 
 .. code-block:: console
 
