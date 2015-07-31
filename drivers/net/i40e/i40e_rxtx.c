@@ -176,6 +176,32 @@ i40e_rxd_error_to_pkt_flags(uint64_t qword)
 	return flags;
 }
 
+/* Function to check and set the ieee1588 timesync index and get the
+ * appropriate flags.
+ */
+#ifdef RTE_LIBRTE_IEEE1588
+static inline uint64_t
+i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
+{
+	uint64_t pkt_flags = 0;
+	uint16_t tsyn = (qword & (I40E_RXD_QW1_STATUS_TSYNVALID_MASK
+				  | I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
+				    >> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
+
+#ifdef RTE_NEXT_ABI
+	if ((mb->packet_type & RTE_PTYPE_L2_MASK)
+			== RTE_PTYPE_L2_ETHER_TIMESYNC)
+		pkt_flags = PKT_RX_IEEE1588_PTP;
+#endif
+	if (tsyn & 0x04) {
+		pkt_flags |= PKT_RX_IEEE1588_TMST;
+		mb->timesync = tsyn & 0x03;
+	}
+
+	return pkt_flags;
+}
+#endif
+
 #ifdef RTE_NEXT_ABI
 /* For each value it means, datasheet of hardware can tell more details */
 static inline uint32_t
@@ -1285,15 +1311,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 				pkt_flags |= i40e_rxd_build_fdir(&rxdp[j], mb);
 
 #ifdef RTE_LIBRTE_IEEE1588
-			uint16_t tsyn = (qword1
-					 & (I40E_RXD_QW1_STATUS_TSYNVALID_MASK
-					   | I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
-					 >> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
-
-			if (tsyn & 0x04)
-				pkt_flags |= PKT_RX_IEEE1588_TMST;
-
-			mb->timesync = tsyn & 0x03;
+			pkt_flags |= i40e_get_iee15888_flags(mb, qword1);
 #endif
 			mb->ol_flags |= pkt_flags;
 
@@ -1547,14 +1565,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
 
 #ifdef RTE_LIBRTE_IEEE1588
-		uint16_t tsyn = (qword1 & (I40E_RXD_QW1_STATUS_TSYNVALID_MASK
-					| I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
-					>> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
-
-		if (tsyn & 0x04)
-			pkt_flags |= PKT_RX_IEEE1588_TMST;
-
-		rxm->timesync = tsyn & 0x03;
+		pkt_flags |= i40e_get_iee15888_flags(rxm, qword1);
 #endif
 		rxm->ol_flags |= pkt_flags;
 
@@ -1723,14 +1734,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
 
 #ifdef RTE_LIBRTE_IEEE1588
-		uint16_t tsyn = (qword1 & (I40E_RXD_QW1_STATUS_TSYNVALID_MASK
-					| I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
-					>> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
-
-		if (tsyn & 0x04)
-			pkt_flags |= PKT_RX_IEEE1588_TMST;
-
-		first_seg->timesync = tsyn & 0x03;
+		pkt_flags |= i40e_get_iee15888_flags(first_seg, qword1);
 #endif
 		first_seg->ol_flags |= pkt_flags;
 
