@@ -82,6 +82,7 @@
 #define E1000_TIMINCA_INCVALUE 16000000
 #define E1000_TIMINCA_INIT     ((0x02 << E1000_TIMINCA_16NS_SHIFT) \
 				| E1000_TIMINCA_INCVALUE)
+#define E1000_TSAUXC_DISABLE_SYSTIME 0x80000000
 
 static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
@@ -3904,6 +3905,12 @@ igb_timesync_enable(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t tsync_ctl;
+	uint32_t tsauxc;
+
+	/* Enable system time for it isn't on by default. */
+	tsauxc = E1000_READ_REG(hw, E1000_TSAUXC);
+	tsauxc &= ~E1000_TSAUXC_DISABLE_SYSTIME;
+	E1000_WRITE_REG(hw, E1000_TSAUXC, tsauxc);
 
 	/* Start incrementing the register used to timestamp PTP packets. */
 	E1000_WRITE_REG(hw, E1000_TIMINCA, E1000_TIMINCA_INIT);
