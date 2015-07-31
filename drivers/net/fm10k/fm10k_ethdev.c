@@ -786,6 +786,8 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 		diag = fm10k_dev_tx_queue_start(dev, i);
 		if (diag != 0) {
 			int j;
+			for (j = 0; j < i; ++j)
+				tx_queue_clean(dev->data->tx_queues[j]);
 			for (j = 0; j < dev->data->nb_rx_queues; ++j)
 				rx_queue_clean(dev->data->rx_queues[j]);
 			return diag;
