@@ -56,6 +56,8 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 			RTE_PKTMBUF_HEADROOM);
 	__m128i dma_addr0, dma_addr1;
 
+	const __m128i hba_msk = _mm_set_epi64x(0, UINT64_MAX);
+
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
@@ -107,6 +109,10 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		/* add headroom to pa values */
 		dma_addr0 = _mm_add_epi64(dma_addr0, hdr_room);
 		dma_addr1 = _mm_add_epi64(dma_addr1, hdr_room);
+
+		/* set Header Buffer Address to zero */
+		dma_addr0 =  _mm_and_si128(dma_addr0, hba_msk);
+		dma_addr1 =  _mm_and_si128(dma_addr1, hba_msk);
 
 		/* flush desc with pa dma_addr */
 		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr0);

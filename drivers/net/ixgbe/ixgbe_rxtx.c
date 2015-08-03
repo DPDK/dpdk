@@ -1193,7 +1193,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 
 		/* populate the descriptors */
 		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb));
-		rxdp[i].read.hdr_addr = dma_addr;
+		rxdp[i].read.hdr_addr = 0;
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
 
@@ -1424,7 +1424,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxe->mbuf = nmb;
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
-		rxdp->read.hdr_addr = dma_addr;
+		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
 
 		/*
@@ -1753,7 +1753,7 @@ next_desc:
 			rxe->mbuf = nmb;
 
 			rxm->data_off = RTE_PKTMBUF_HEADROOM;
-			rxdp->read.hdr_addr = dma;
+			rxdp->read.hdr_addr = 0;
 			rxdp->read.pkt_addr = dma;
 		} else
 			rxe->mbuf = NULL;
@@ -3666,7 +3666,7 @@ ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 		dma_addr =
 			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));
 		rxd = &rxq->rx_ring[i];
-		rxd->read.hdr_addr = dma_addr;
+		rxd->read.hdr_addr = 0;
 		rxd->read.pkt_addr = dma_addr;
 		rxe[i].mbuf = mbuf;
 	}
