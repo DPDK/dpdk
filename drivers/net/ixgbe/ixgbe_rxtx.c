@@ -3940,7 +3940,9 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 	 */
 	} else if (adapter->rx_vec_allowed) {
 		PMD_INIT_LOG(DEBUG, "Vector rx enabled, please make sure RX "
-				   "burst size no less than 32.");
+				    "burst size no less than %d (port=%d).",
+			     RTE_IXGBE_DESCS_PER_LOOP,
+			     dev->data->port_id);
 
 		dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
 	} else if (adapter->rx_bulk_alloc_allowed) {

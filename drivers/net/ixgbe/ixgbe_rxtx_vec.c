@@ -193,13 +193,13 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 #endif
 
 /*
- * vPMD receive routine, now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
- * in one loop
+ * vPMD raw receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
  *
  * Notice:
- * - nb_pkts < RTE_IXGBE_VPMD_RX_BURST, just return no packet
- * - nb_pkts > RTE_IXGBE_VPMD_RX_BURST, only scan RTE_IXGBE_VPMD_RX_BURST
+ * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts > RTE_IXGBE_MAX_RX_BURST, only scan RTE_IXGBE_MAX_RX_BURST
  *   numbers of DD bit
+ * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
  * - don't support ol_flags for rss and csum err
  */
 static inline uint16_t
@@ -223,8 +223,11 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	__m128i desc_mask = _mm_set_epi32(0xFFFFFFFF, 0xFFFFFFFF,
 					  0xFFFFFFFF, 0xFFFF07F0);
 
-	if (unlikely(nb_pkts < RTE_IXGBE_VPMD_RX_BURST))
-		return 0;
+	/* nb_pkts shall be less equal than RTE_IXGBE_MAX_RX_BURST */
+	nb_pkts = RTE_MIN(nb_pkts, RTE_IXGBE_MAX_RX_BURST);
+
+	/* nb_pkts has to be floor-aligned to RTE_IXGBE_DESCS_PER_LOOP */
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_IXGBE_DESCS_PER_LOOP);
 
 	/* Just the act of getting into the function from the application is
 	 * going to cost about 7 cycles */
@@ -272,7 +275,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 * [C*. extract the end-of-packet bit, if requested]
 	 * D. fill info. from desc to mbuf
 	 */
-	for (pos = 0, nb_pkts_recd = 0; pos < RTE_IXGBE_VPMD_RX_BURST;
+	for (pos = 0, nb_pkts_recd = 0; pos < nb_pkts;
 			pos += RTE_IXGBE_DESCS_PER_LOOP,
 			rxdp += RTE_IXGBE_DESCS_PER_LOOP) {
 		__m128i descs0[RTE_IXGBE_DESCS_PER_LOOP];
@@ -407,13 +410,13 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 }
 
 /*
- * vPMD receive routine, now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
- * in one loop
+ * vPMD receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
  *
  * Notice:
- * - nb_pkts < RTE_IXGBE_VPMD_RX_BURST, just return no packet
- * - nb_pkts > RTE_IXGBE_VPMD_RX_BURST, only scan RTE_IXGBE_VPMD_RX_BURST
+ * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts > RTE_IXGBE_MAX_RX_BURST, only scan RTE_IXGBE_MAX_RX_BURST
  *   numbers of DD bit
+ * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
  * - don't support ol_flags for rss and csum err
  */
 uint16_t
@@ -427,11 +430,10 @@ static inline uint16_t
 reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 		uint16_t nb_bufs, uint8_t *split_flags)
 {
-	struct rte_mbuf *pkts[RTE_IXGBE_VPMD_RX_BURST]; /*finished pkts*/
+	struct rte_mbuf *pkts[nb_bufs]; /*finished pkts*/
 	struct rte_mbuf *start = rxq->pkt_first_seg;
 	struct rte_mbuf *end =  rxq->pkt_last_seg;
 	unsigned pkt_idx, buf_idx;
-
 
 	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
 		if (end != NULL) {
@@ -492,14 +494,17 @@ reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
  *
  * Notice:
  * - don't support ol_flags for rss and csum err
- * - now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
+ * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts > RTE_IXGBE_MAX_RX_BURST, only scan RTE_IXGBE_MAX_RX_BURST
+ *   numbers of DD bit
+ * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
  */
 uint16_t
 ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
 	struct ixgbe_rx_queue *rxq = rx_queue;
-	uint8_t split_flags[RTE_IXGBE_VPMD_RX_BURST] = {0};
+	uint8_t split_flags[RTE_IXGBE_MAX_RX_BURST] = {0};
 
 	/* get some new buffers */
 	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
@@ -624,8 +629,8 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t rs = IXGBE_ADVTXD_DCMD_RS|DCMD_DTYP_FLAGS;
 	int i;
 
-	if (unlikely(nb_pkts > RTE_IXGBE_VPMD_TX_BURST))
-		nb_pkts = RTE_IXGBE_VPMD_TX_BURST;
+	/* cross rx_thresh boundary is not allowed */
+	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
 		ixgbe_tx_free_bufs(txq);
