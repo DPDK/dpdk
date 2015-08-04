@@ -1917,12 +1917,12 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Enable checksum offloading */
 		cd_tunneling_params = 0;
-		if (unlikely(ol_flags & I40E_TX_CKSUM_OFFLOAD_MASK)) {
+		if (ol_flags & I40E_TX_CKSUM_OFFLOAD_MASK) {
 			i40e_txd_enable_checksum(ol_flags, &td_cmd, &td_offset,
 				tx_offload, &cd_tunneling_params);
 		}
 
-		if (unlikely(nb_ctx)) {
+		if (nb_ctx) {
 			/* Setup TX context descriptor if required */
 			volatile struct i40e_tx_context_desc *ctx_txd =
 				(volatile struct i40e_tx_context_desc *)\
