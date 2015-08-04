@@ -450,7 +450,7 @@ int rte_eal_pci_write_config(const struct rte_pci_device *dev,
 			.pc_func = dev->addr.function,
 		},
 		.pi_reg = offset,
-		.pi_data = *(u_int32_t *)buf,
+		.pi_data = *(const uint32_t *)buf,
 		.pi_width = len,
 	};
 
