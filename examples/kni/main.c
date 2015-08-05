@@ -830,9 +830,9 @@ kni_free_kni(uint8_t port_id)
 	if (port_id >= RTE_MAX_ETHPORTS || !p[port_id])
 		return -1;
 
-	for (i = 0; i < p[i]->nb_kni; i++) {
-		rte_kni_release(p[i]->kni[i]);
-		p[i]->kni[i] = NULL;
+	for (i = 0; i < p[port_id]->nb_kni; i++) {
+		rte_kni_release(p[port_id]->kni[i]);
+		p[port_id]->kni[i] = NULL;
 	}
 	rte_eth_dev_stop(port_id);
 
