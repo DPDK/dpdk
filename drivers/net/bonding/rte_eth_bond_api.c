@@ -239,6 +239,10 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, ETHER_ADDR_LEN, 0,
 			socket_id);
+	if (eth_dev->data->mac_addrs == NULL) {
+		RTE_BOND_LOG(ERR, "Unable to malloc mac_addrs");
+		goto err;
+	}
 
 	eth_dev->data->dev_started = 0;
 	eth_dev->data->promiscuous = 0;
@@ -285,8 +289,10 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 err:
 	rte_free(pci_dev);
 	rte_free(internals);
-	rte_free(eth_dev->data->mac_addrs);
-
+	if (eth_dev != NULL) {
+		rte_free(eth_dev->data->mac_addrs);
+		rte_eth_dev_release_port(eth_dev);
+	}
 	return -1;
 }
 
