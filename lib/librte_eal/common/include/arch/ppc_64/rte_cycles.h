@@ -39,6 +39,8 @@ extern "C" {
 
 #include "generic/rte_cycles.h"
 
+#include <rte_byteorder.h>
+
 /**
  * Read the time base register.
  *
