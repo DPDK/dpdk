@@ -166,8 +166,10 @@ CPU Feature Identification
 
 The EAL can query the CPU at runtime (using the rte_cpu_get_feature() function) to determine which CPU features are available.
 
-User Space Interrupt and Alarm Handling
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+User Space Interrupt Event
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++ User Space Interrupt and Alarm Handling in Host Thread
 
 The EAL creates a host thread to poll the UIO device file descriptors to detect the interrupts.
 Callbacks can be registered or unregistered by the EAL functions for a specific interrupt event
@@ -176,8 +178,34 @@ The EAL also allows timed callbacks to be used in the same way as for NIC interr
 
 .. note::
 
-    The only interrupts supported by the DPDK Poll-Mode Drivers are those for link status change,
+    In DPDK PMD, the only interrupts handled by the dedicated host thread are those for link status change,
     i.e. link up and link down notification.
+
+
++ RX Interrupt Event
+
+The receive and transmit routines provided by each PMD don't limit themselves to execute in polling thread mode.
+To ease the idle polling with tiny throughput, it's useful to pause the polling and wait until the wake-up event happens.
+The RX interrupt is the first choice to be such kind of wake-up event, but probably won't be the only one.
+
+EAL provides the event APIs for this event-driven thread mode.
+Taking linuxapp as an example, the implementation relies on epoll. Each thread can monitor an epoll instance
+in which all the wake-up events' file descriptors are added. The event file descriptors are created and mapped to
+the interrupt vectors according to the UIO/VFIO spec.
+From bsdapp's perspective, kqueue is the alternative way, but not implemented yet.
+
+EAL initializes the mapping between event file descriptors and interrupt vectors, while each device initializes the mapping
+between interrupt vectors and queues. In this way, EAL actually is unaware of the interrupt cause on the specific vector.
+The eth_dev driver takes responsibility to program the latter mapping.
+
+.. note::
+
+    Per queue RX interrupt event is only allowed in VFIO which supports multiple MSI-X vector. In UIO, the RX interrupt
+    together with other interrupt causes shares the same vector. In this case, when RX interrupt and LSC(link status change)
+    interrupt are both enabled(intr_conf.lsc == 1 && intr_conf.rxq == 1), only the former is capable.
+
+The RX interrupt are controlled/enabled/disabled by ethdev APIs - 'rte_eth_dev_rx_intr_*'. They return failure if the PMD
+hasn't support them yet. The intr_conf.rxq flag is used to turn on the capability of RX interrupt per device.
 
 Blacklisting
 ~~~~~~~~~~~~
