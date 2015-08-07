@@ -505,7 +505,7 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 {
 	uint32_t drv_flags;
 
-	if (port_id >= RTE_MAX_ETHPORTS) {
+	if (!rte_eth_dev_is_valid_port(port_id)) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
 		return -EINVAL;
 	}
