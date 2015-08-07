@@ -322,6 +322,14 @@ rte_memzone_free(const struct rte_memzone *mz)
 	idx = idx / sizeof(struct rte_memzone);
 
 	addr = mcfg->memzone[idx].addr;
+#ifdef RTE_LIBRTE_IVSHMEM
+	/*
+	 * If ioremap_addr is set, it's an IVSHMEM memzone and we cannot
+	 * free it.
+	 */
+	if (mcfg->memzone[idx].ioremap_addr != 0)
+		ret = -EINVAL;
+#endif
 	if (addr == NULL)
 		ret = -EINVAL;
 	else if (mcfg->memzone_cnt == 0) {

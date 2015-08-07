@@ -504,7 +504,22 @@ add_memzone_to_metadata(const struct rte_memzone * mz,
 				config->metadata->name);
 		goto fail;
 	}
+#ifdef RTE_LIBRTE_IVSHMEM
+	struct rte_mem_config *mcfg;
+	unsigned int idx;
 
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	rte_rwlock_write_lock(&mcfg->mlock);
+
+	idx = ((uintptr_t)mz - (uintptr_t)mcfg->memzone);
+	idx = idx / sizeof(struct rte_memzone);
+
+	/* mark the memzone not freeable */
+	mcfg->memzone[idx].ioremap_addr = mz->phys_addr;
+
+	rte_rwlock_write_unlock(&mcfg->mlock);
+#endif
 	rte_spinlock_unlock(&config->sl);
 	return 0;
 fail:

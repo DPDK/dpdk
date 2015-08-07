@@ -258,10 +258,12 @@ const struct rte_memzone *rte_memzone_reserve_bounded(const char *name,
 /**
  * Free a memzone.
  *
+ * Note: an IVSHMEM zone cannot be freed.
+ *
  * @param mz
  *   A pointer to the memzone
  * @return
- *  -EINVAL - invalid parameter
+ *  -EINVAL - invalid parameter, IVSHMEM memzone.
  *  0 - success
  */
 int rte_memzone_free(const struct rte_memzone *mz);
