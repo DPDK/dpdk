@@ -4058,7 +4058,6 @@ test_tlb_tx_burst(void)
 	struct rte_eth_stats port_stats[32];
 	uint64_t sum_ports_opackets = 0, all_bond_opackets = 0, all_bond_obytes = 0;
 	uint16_t pktlen;
-	uint64_t floor_obytes = 0, ceiling_obytes = 0;
 
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves
 			(BONDING_MODE_TLB, 1, 3, 1),
@@ -4070,7 +4069,7 @@ test_tlb_tx_burst(void)
 			"Burst size specified is greater than supported.\n");
 
 
-	/* Generate 400000 test bursts in 2s of packets to transmit  */
+	/* Generate bursts of packets */
 	for (i = 0; i < 400000; i++) {
 		/*test two types of mac src own(bonding) and others */
 		if (i % 2 == 0) {
@@ -4123,15 +4122,14 @@ test_tlb_tx_burst(void)
 
 	TEST_ASSERT_EQUAL(sum_ports_opackets, (uint64_t)all_bond_opackets,
 			"Total packets sent by slaves is not equal to packets sent by bond interface");
-	/* distribution of packets on each slave within +/- 10% of the expected value. */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
 
-		floor_obytes = (all_bond_obytes*90)/(test_params->bonded_slave_count*100);
-		ceiling_obytes = (all_bond_obytes*110)/(test_params->bonded_slave_count*100);
-		TEST_ASSERT(port_stats[i].obytes >= floor_obytes &&
-				port_stats[i].obytes <= ceiling_obytes,
-						"Distribution is not even");
+	/* checking if distribution of packets is balanced over slaves */
+	for (i = 0; i < test_params->bonded_slave_count; i++) {
+		TEST_ASSERT(port_stats[i].obytes > 0 &&
+				port_stats[i].obytes < all_bond_obytes,
+						"Packets are not balanced over slaves");
 	}
+
 	/* Put all slaves down and try and transmit */
 	for (i = 0; i < test_params->bonded_slave_count; i++) {
 		virtual_ethdev_simulate_link_status_interrupt(
