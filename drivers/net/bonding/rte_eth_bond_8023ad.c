@@ -849,7 +849,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	};
 
 	char mem_name[RTE_ETH_NAME_MAX_LEN];
-	uint8_t socket_id;
+	int socket_id;
 	unsigned element_size;
 
 	/* Given slave mus not be in active list */
