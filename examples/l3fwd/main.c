@@ -541,6 +541,7 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 	return 0;
 }
 
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 static inline __attribute__((always_inline)) void
 send_packetsx4(struct lcore_conf *qconf, uint8_t port,
 	struct rte_mbuf *m[], uint32_t num)
@@ -618,6 +619,7 @@ send_packetsx4(struct lcore_conf *qconf, uint8_t port,
 
 	qconf->tx_mbufs[port].len = len;
 }
+#endif /* APP_LOOKUP_LPM */
 
 #ifdef DO_RFC_1812_CHECKS
 static inline int
@@ -1138,6 +1140,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid, struct lcore_conf *qcon
 #endif
 }
 
+#if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
+	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
 #ifdef DO_RFC_1812_CHECKS
 
 #define	IPV4_MIN_VER_IHL	0x45
@@ -1188,6 +1192,7 @@ rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t flags)
 #else
 #define	rfc1812_process(mb, dp)	do { } while (0)
 #endif /* DO_RFC_1812_CHECKS */
+#endif /* APP_LOOKUP_LPM && ENABLE_MULTI_BUFFER_OPTIMIZE */
 
 
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
@@ -1710,11 +1715,11 @@ main_loop(__attribute__((unused)) void *dummy)
 							& pkts_burst[j+6]->ol_flags
 							& pkts_burst[j+7]->ol_flags;
 					if (ol_flag & PKT_RX_IPV4_HDR ) {
-						simple_ipv8_fwd_4pkts(&pkts_burst[j],
+						simple_ipv4_fwd_8pkts(&pkts_burst[j],
 									portid, qconf);
 					} else if (ol_flag & PKT_RX_IPV6_HDR) {
 #endif /* RTE_NEXT_ABI */
-						simple_ipv6_fwd_4pkts(&pkts_burst[j],
+						simple_ipv6_fwd_8pkts(&pkts_burst[j],
 									portid, qconf);
 					} else {
 						l3fwd_simple_forward(pkts_burst[j],
