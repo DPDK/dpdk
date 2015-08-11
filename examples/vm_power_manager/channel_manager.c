@@ -764,11 +764,13 @@ channel_manager_init(const char *path)
 	}
 	global_n_host_cpus = (unsigned)n_cpus;
 
-	if (global_n_host_cpus > CHANNEL_CMDS_MAX_CPUS)
+	if (global_n_host_cpus > CHANNEL_CMDS_MAX_CPUS) {
 		RTE_LOG(WARNING, CHANNEL_MANAGER, "The number of host CPUs(%u) exceeds the "
 				"maximum of %u. No cores over %u should be used.\n",
 				global_n_host_cpus, CHANNEL_CMDS_MAX_CPUS,
 				CHANNEL_CMDS_MAX_CPUS - 1);
+		global_n_host_cpus = CHANNEL_CMDS_MAX_CPUS;
+	}
 
 	return 0;
 error:
