@@ -123,6 +123,12 @@ New Features
 
     *   Support for VXLAN packet on Intel® 40GbE Controllers
 
+*   Poll Mode Driver for Mellanox ConnectX-3 EN adapters (mlx4)
+
+.. note:: This PMD is only available for Linux and is disabled by default
+          due to external dependencies (libibverbs and libmlx4). Please
+          refer to the NIC drivers guide for more information.
+
 *   Packet Distributor Sample Application
 
 *   Job Stats library and Sample Application.
