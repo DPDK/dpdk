@@ -293,6 +293,15 @@ New Features
   series of 10G/40G adapters.
 
 
+* **Enhanced support for Mellanox ConnectX-3 driver (mlx4).**
+
+  *  Support Mellanox OFED 3.0.
+  *  Improved performance for both RX and TX operations.
+  *  Better link status information.
+  *  Outer L3/L4 checksum offload support.
+  *  Inner L3/L4 checksum offload support for VXLAN.
+
+
 * **Enabled VMXNET3 vlan filtering.**
 
   Added support for the VLAN filter functionality of the VMXNET3 interface.
@@ -929,6 +938,9 @@ Resolved Issues
   Instead of requesting a completion event for each TX burst, request it on a
   fixed schedule once every MLX4_PMD_TX_PER_COMP_REQ (currently 64) packets to
   improve performance.
+
+
+* **mlx4: Fix compilation as a shared library and on 32 bit platforms.**
 
 
 * **mlx4: Fix possible crash on scattered mbuf allocation failure.**
