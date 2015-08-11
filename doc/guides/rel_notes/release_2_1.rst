@@ -28,22 +28,42 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Supported Operating Systems
-===========================
 
-The following Linux distributions were successfully used to compiler or run DPDK.
+DPDK Release 2.1
+================
 
-*   FreeBSD 10
 
-*   Fedora release 20
+New Features
+------------
 
-*   Ubuntu 14.04 LTS
+*   TODO.
 
-*   Wind River Linux 6
 
-*   Red Hat Enterprise Linux 6.5
+Resolved Issues
+---------------
 
-*   SUSE Enterprise Linux 11 SP3
+*   TODO.
 
-These distributions may need additional packages that are not installed by default, or a specific kernel.
-Refer to the :ref:`Linux guide <linux_gsg>` and :ref:`FreeBSD guide <freebsd_gsg>` for details.
+
+Known Issues
+------------
+
+*   TODO.
+
+
+API Changes
+-----------
+
+*   TODO.
+
+
+API Changes
+-----------
+
+*   TODO.
+
+
+ABI Changes
+-----------
+
+*   TODO.

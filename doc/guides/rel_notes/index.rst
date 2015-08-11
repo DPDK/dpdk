@@ -28,10 +28,8 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Release Notes
-=============
-
-Package Version: 2.0
+DPDK Release Notes
+==================
 
 |today|
 
@@ -42,8 +40,9 @@ Contents
     :numbered:
 
     rel_description
-    new_features
-    supported_features
+    release_2_1
+    release_2_0
+    release_1_8
     supported_os
     known_issues
     deprecation
