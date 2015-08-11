@@ -36,7 +36,9 @@ API {#index}
 There are many libraries, so their headers may be grouped by topics:
 
 - **device**:
+  [dev]                (@ref rte_dev.h),
   [ethdev]             (@ref rte_ethdev.h),
+  [ethctrl]            (@ref rte_eth_ctrl.h),
   [devargs]            (@ref rte_devargs.h),
   [bond]               (@ref rte_eth_bond.h),
   [vhost]              (@ref rte_virtio_net.h),
@@ -76,12 +78,15 @@ There are many libraries, so their headers may be grouped by topics:
 
 - **layers**:
   [ethernet]           (@ref rte_ether.h),
+  [ARP]                (@ref rte_arp.h),
+  [ICMP]               (@ref rte_icmp.h),
   [IP]                 (@ref rte_ip.h),
   [SCTP]               (@ref rte_sctp.h),
   [TCP]                (@ref rte_tcp.h),
   [UDP]                (@ref rte_udp.h),
   [frag/reass]         (@ref rte_ip_frag.h),
-  [LPM route]          (@ref rte_lpm.h),
+  [LPM IPv4 route]     (@ref rte_lpm.h),
+  [LPM IPv6 route]     (@ref rte_lpm6.h),
   [ACL]                (@ref rte_acl.h)
 
 - **QoS**:
@@ -92,6 +97,7 @@ There are many libraries, so their headers may be grouped by topics:
 - **hashes**:
   [hash]               (@ref rte_hash.h),
   [jhash]              (@ref rte_jhash.h),
+  [thash]              (@ref rte_thash.h),
   [FBK hash]           (@ref rte_fbk_hash.h),
   [CRC hash]           (@ref rte_hash_crc.h)
 
@@ -99,8 +105,10 @@ There are many libraries, so their headers may be grouped by topics:
   [mbuf]               (@ref rte_mbuf.h),
   [ring]               (@ref rte_ring.h),
   [distributor]        (@ref rte_distributor.h),
+  [reorder]            (@ref rte_reorder.h),
   [tailq]              (@ref rte_tailq.h),
-  [bitmap]             (@ref rte_bitmap.h)
+  [bitmap]             (@ref rte_bitmap.h),
+  [ivshmem]            (@ref rte_ivshmem.h)
 
 - **packet framework**:
   * [port]             (@ref rte_port.h):
@@ -122,10 +130,13 @@ There are many libraries, so their headers may be grouped by topics:
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),
   [random]             (@ref rte_random.h),
+  [config file]        (@ref rte_cfgfile.h),
   [key/value args]     (@ref rte_kvargs.h),
   [string]             (@ref rte_string_fns.h)
 
 - **debug**:
+  [jobstats]           (@ref rte_jobstats.h),
+  [hexdump]            (@ref rte_hexdump.h),
   [debug]              (@ref rte_debug.h),
   [log]                (@ref rte_log.h),
   [warnings]           (@ref rte_warnings.h),
@@ -134,4 +145,5 @@ There are many libraries, so their headers may be grouped by topics:
 - **misc**:
   [EAL config]         (@ref rte_eal.h),
   [common]             (@ref rte_common.h),
+  [ABI compat]         (@ref rte_compat.h),
   [version]            (@ref rte_version.h)
