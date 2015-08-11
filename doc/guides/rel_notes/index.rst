@@ -47,5 +47,4 @@ Contents
     supported_os
     updating_apps
     known_issues
-    resolved_issues
     deprecation
