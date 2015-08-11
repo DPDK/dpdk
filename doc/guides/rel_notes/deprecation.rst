@@ -1,7 +1,7 @@
 Deprecation
 ===========
 
-See the :doc:`guidelines document for details of the ABI policy </guidelines/versioning>`.
+See the :doc:`guidelines document for details of the ABI policy </contributing/versioning>`.
 API and ABI deprecation notices are to be posted here.
 
 Help to update from a previous release is provided in

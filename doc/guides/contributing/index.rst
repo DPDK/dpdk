@@ -1,5 +1,5 @@
-Guidelines
-==========
+Contributor's Guidelines
+========================
 
 .. toctree::
     :maxdepth: 2
@@ -9,4 +9,3 @@ Guidelines
     design
     versioning
     documentation
-

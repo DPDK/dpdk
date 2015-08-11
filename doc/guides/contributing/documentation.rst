@@ -65,7 +65,7 @@ added to by the developer.
 
   Developers should update the Release Notes to add a short description of new or updated features.
   Developers should also update the Release Notes to add ABI announcements if necessary,
-  (see :doc:`/guidelines/versioning` for details).
+  (see :doc:`/contributing/versioning` for details).
 
 * **API documentation**
 
