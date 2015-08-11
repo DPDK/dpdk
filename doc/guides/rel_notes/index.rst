@@ -36,7 +36,7 @@ DPDK Release Notes
 Contents
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     rel_description
