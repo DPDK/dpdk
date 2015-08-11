@@ -45,6 +45,5 @@ Contents
     new_features
     supported_features
     supported_os
-    updating_apps
     known_issues
     deprecation

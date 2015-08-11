@@ -1,11 +1,8 @@
-Deprecation
-===========
+ABI and API Deprecation
+=======================
 
 See the :doc:`guidelines document for details of the ABI policy </contributing/versioning>`.
 API and ABI deprecation notices are to be posted here.
-
-Help to update from a previous release is provided in
-:doc:`another section </rel_notes/updating_apps>`.
 
 
 Deprecation Notices
