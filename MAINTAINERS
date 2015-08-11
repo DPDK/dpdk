@@ -343,7 +343,7 @@ F: app/test/test_table*
 F: app/test-pipeline/
 F: doc/guides/sample_app_ug/test_pipeline.rst
 F: examples/ip_pipeline/
-F: doc/guides/sample_app_ug/internet_proto_ip_pipeline.rst
+F: doc/guides/sample_app_ug/ip_pipeline.rst
 
 
 Algorithms

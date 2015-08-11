@@ -67,7 +67,7 @@ Sample Applications User Guide
     vmdq_dcb_forwarding
     vhost
     netmap_compatibility
-    internet_proto_ip_pipeline
+    ip_pipeline
     test_pipeline
     dist_app
     vm_power_management
