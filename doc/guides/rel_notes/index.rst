@@ -49,4 +49,3 @@ Contents
     known_issues
     resolved_issues
     deprecation
-    faq

@@ -44,5 +44,6 @@ Contents:
    nics/index
    sample_app_ug/index
    testpmd_app_ug/index
+   faq/index
    rel_notes/index
    contributing/index

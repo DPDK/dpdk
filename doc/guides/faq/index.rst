@@ -28,20 +28,15 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-.. _freebsd_gsg:
+DPDK FAQ
+========
 
-Getting Started Guide for FreeBSD
-=================================
+This document contains some Frequently Asked Questions that arise when working with DPDK.
 
-|today|
-
-**Contents**
+Contents
 
 .. toctree::
     :maxdepth: 2
     :numbered:
 
-    intro
-    install_from_ports
-    build_dpdk
-    build_sample_apps
+    faq
