@@ -226,7 +226,7 @@ test_table_array(void)
 	array_params.offset = 1;
 
 	table = rte_table_array_ops.f_create(&array_params, 0, 1);
-	if (table != NULL)
+	if (table == NULL)
 		return -4;
 
 	array_params.offset = 32;
@@ -652,14 +652,14 @@ test_table_hash_lru_generic(struct rte_table_ops *ops)
 	hash_params.signature_offset = 1;
 
 	table = ops->f_create(&hash_params, 0, 1);
-	if (table != NULL)
+	if (table == NULL)
 		return -2;
 
 	hash_params.signature_offset = 0;
 	hash_params.key_offset = 1;
 
 	table = ops->f_create(&hash_params, 0, 1);
-	if (table != NULL)
+	if (table == NULL)
 		return -3;
 
 	hash_params.key_offset = 32;
@@ -765,14 +765,14 @@ test_table_hash_ext_generic(struct rte_table_ops *ops)
 	hash_params.n_entries_ext = 1 << 4;
 	hash_params.signature_offset = 1;
 	table = ops->f_create(&hash_params, 0, 1);
-	if (table != NULL)
+	if (table == NULL)
 		return -2;
 
 	hash_params.signature_offset = 0;
 	hash_params.key_offset = 1;
 
 	table = ops->f_create(&hash_params, 0, 1);
-	if (table != NULL)
+	if (table == NULL)
 		return -3;
 
 	hash_params.key_offset = 32;
