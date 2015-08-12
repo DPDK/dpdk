@@ -882,7 +882,7 @@ static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
 static inline struct rte_mbuf *
 rte_mbuf_from_indirect(struct rte_mbuf *mi)
 {
-	return RTE_PTR_SUB(mi->buf_addr, sizeof(*mi) + mi->priv_size);
+	return (struct rte_mbuf *)RTE_PTR_SUB(mi->buf_addr, sizeof(*mi) + mi->priv_size);
 }
 
 /**
