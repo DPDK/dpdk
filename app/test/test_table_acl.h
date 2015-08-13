@@ -32,4 +32,4 @@
  */
 
 /* Test prototypes */
-int test_table_ACL(void);
+int test_table_acl(void);

@@ -745,7 +745,7 @@ fail:
 }
 
 int
-test_table_ACL(void)
+test_table_acl(void)
 {
 
 

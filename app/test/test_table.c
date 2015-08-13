@@ -192,7 +192,7 @@ test_table(void)
 
 #ifdef RTE_LIBRTE_ACL
 	printf("\n\n\n\n************ACL tests************\n");
-	if (test_table_ACL() < 0)
+	if (test_table_acl() < 0)
 		return -1;
 #endif
 
