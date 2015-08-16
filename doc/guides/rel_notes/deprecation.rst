@@ -71,6 +71,10 @@ Deprecation Notices
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
 
+* librte_acl: The structure rte_acl_ipv4vlan_rule is deprecated and should
+  be removed as well as the associated functions rte_acl_ipv4vlan_add_rules
+  and rte_acl_ipv4vlan_build.
+
 * librte_cfgfile: In order to allow for longer names and values,
   the value of macros CFG_NAME_LEN and CFG_NAME_VAL will be increased.
   Most likely, the new values will be 64 and 256, respectively.
