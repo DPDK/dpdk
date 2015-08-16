@@ -61,6 +61,9 @@ Deprecation Notices
 * librte_kni: Functions based on port id are deprecated for a long time and
   should be removed (rte_kni_create, rte_kni_get_port_id and rte_kni_info_get).
 
+* librte_pmd_ring: The deprecated functions rte_eth_ring_pair_create and
+  rte_eth_ring_pair_attach should be removed.
+
 * ABI changes are planned for struct virtio_net in order to support vhost-user
   multiple queues feature.
   It should be integrated in release 2.2 without backward compatibility.
