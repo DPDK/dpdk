@@ -1002,6 +1002,9 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 				strerror(errno));
 			rc = -1;
 			break;
+		} else {
+			/* rc == 0, epoll_wait timed out */
+			break;
 		}
 	}
 
