@@ -115,7 +115,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_lib.c
 
 ifeq ($(CONFIG_RTE_LIBRTE_SCHED),y)
 SRCS-y += test_red.c
-SRCS-$(CONFIG_RTE_ARCH_X86_64) += test_sched.c
+SRCS-y += test_sched.c
 endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_METER) += test_meter.c
