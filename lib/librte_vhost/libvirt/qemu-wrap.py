@@ -75,7 +75,7 @@
 #                "/dev/random", "/dev/urandom",
 #                "/dev/ptmx", "/dev/kvm", "/dev/kqemu",
 #                "/dev/rtc", "/dev/hpet", "/dev/net/tun",
-#                "/dev/<devbase-name>-<index>",
+#                "/dev/<devbase-name>",
 #            ]
 #
 #   4.b) Disable SELinux or set to permissive mode
@@ -129,13 +129,13 @@
 emul_path = "/usr/local/bin/qemu-system-x86_64"
 
 #Path to userspace vhost device file
-# This filename should match the --dev-basename --dev-index parameters of
+# This filename should match the --dev-basename parameters of
 # the command used to launch the userspace vhost sample application e.g.
 # if the sample app lauch command is:
-#    ./build/vhost-switch ..... --dev-basename usvhost --dev-index 1
+#    ./build/vhost-switch ..... --dev-basename usvhost
 # then this variable should be set to:
-#   us_vhost_path = "/dev/usvhost-1"
-us_vhost_path = "/dev/usvhost-1"
+#   us_vhost_path = "/dev/usvhost"
+us_vhost_path = "/dev/usvhost"
 
 #List of additional user defined emulation options. These options will
 #be added to all Qemu calls

@@ -386,7 +386,7 @@ Running the Sample Code
 
     .. code-block:: console
 
-        user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir / mnt/huge -- -p 0x1 --dev-basename usvhost --dev-index 1
+        user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir / mnt/huge -- -p 0x1 --dev-basename usvhost
 
     vhost user: a socket file named usvhost will be created under current directory. Use its path as the socket path in guest's qemu commandline.
 
@@ -401,19 +401,17 @@ Running the Sample Code
 Parameters
 ~~~~~~~~~~
 
-**Basename and Index.**
+**Basename.**
 vhost cuse uses a Linux* character device to communicate with QEMU.
-The basename and the index are used to generate the character devices name.
+The basename is used to generate the character devices name.
 
-    /dev/<basename>-<index>
+    /dev/<basename>
 
-The index parameter is provided for a situation where multiple instances of the virtual switch is required.
-
-For compatibility with the QEMU wrapper script, a base name of "usvhost" and an index of "1" should be used:
+For compatibility with the QEMU wrapper script, a base name of "usvhost" should be used:
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir / mnt/huge -- -p 0x1 --dev-basename usvhost --dev-index 1
+    user@target:~$ ./build/app/vhost-switch -c f -n 4 --huge-dir / mnt/huge -- -p 0x1 --dev-basename usvhost
 
 **vm2vm.**
 The vm2vm parameter disable/set mode of packet switching between guests in the host.
@@ -678,11 +676,11 @@ To call the QEMU wrapper automatically from libvirt, the following configuration
             emul_path = "/usr/local/bin/qemu-system-x86_64"
 
     *   Configure the "us_vhost_path" variable to point to the DPDK vhost-net sample code's character devices name.
-        DPDK vhost-net sample code's character device will be in the format "/dev/<basename>-<index>".
+        DPDK vhost-net sample code's character device will be in the format "/dev/<basename>".
 
         .. code-block:: xml
 
-            us_vhost_path = "/dev/usvhost-1"
+            us_vhost_path = "/dev/usvhost"
 
 Common Issues
 ~~~~~~~~~~~~~
