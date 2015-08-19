@@ -1582,6 +1582,7 @@ rte_pmd_mpipe_devinit(const char *ifname,
 	if (!eth_dev) {
 		RTE_LOG(ERR, PMD, "%s: Failed to allocate device.\n", ifname);
 		rte_free(priv);
+		return -ENOMEM;
 	}
 
 	RTE_LOG(INFO, PMD, "%s: Initialized mpipe device"
