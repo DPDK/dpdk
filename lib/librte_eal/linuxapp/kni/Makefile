@@ -44,10 +44,10 @@ MODULE_CFLAGS += -I$(RTE_OUTPUT)/include -I$(SRCDIR)/ethtool/ixgbe -I$(SRCDIR)/e
 MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 MODULE_CFLAGS += -Wall -Werror
 
-ifeq ($(shell test -f /proc/version_signature && lsb_release -si 2>/dev/null),Ubuntu)
+ifeq ($(shell lsb_release -si 2>/dev/null),Ubuntu)
 MODULE_CFLAGS += -DUBUNTU_RELEASE_CODE=$(shell lsb_release -sr | tr -d .)
-UBUNTU_KERNEL_CODE := $(shell cut -d' ' -f2 /proc/version_signature | \
-                        cut -d'~' -f1 | cut -d- -f1,2 | tr .- $(comma))
+UBUNTU_KERNEL_CODE := $(shell echo `grep UTS_RELEASE $(RTE_KERNELDIR)/include/generated/utsrelease.h \
+	 | cut -d '"' -f2 | cut -d- -f1,2 | tr .- $(comma)`,1)
 MODULE_CFLAGS += -D"UBUNTU_KERNEL_CODE=UBUNTU_KERNEL_VERSION($(UBUNTU_KERNEL_CODE))"
 endif
 
