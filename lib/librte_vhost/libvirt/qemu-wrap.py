@@ -76,6 +76,7 @@
 #                "/dev/ptmx", "/dev/kvm", "/dev/kqemu",
 #                "/dev/rtc", "/dev/hpet", "/dev/net/tun",
 #                "/dev/<devbase-name>",
+#                "/dev/hugepages",
 #            ]
 #
 #   4.b) Disable SELinux or set to permissive mode
@@ -161,6 +162,8 @@ hugetlbfs_dir = ""
 #############################################
 
 import sys, os, subprocess
+import time
+import signal
 
 
 #List of open userspace vhost file descriptors
@@ -173,6 +176,18 @@ vhost_flags = [ "csum=off",
                 "guest_tso6=off",
                 "guest_ecn=off"
               ]
+
+#String of the path to the Qemu process pid
+qemu_pid = "/tmp/%d-qemu.pid" % os.getpid()
+
+#############################################
+# Signal haldler to kill Qemu subprocess
+#############################################
+def kill_qemu_process(signum, stack):
+    pidfile = open(qemu_pid, 'r')
+    pid = int(pidfile.read())
+    os.killpg(pid, signal.SIGTERM)
+    pidfile.close()
 
 
 #############################################
@@ -280,7 +295,7 @@ def main():
     while (num < num_cmd_args):
         arg = sys.argv[num]
 
-		#Check netdev +1 parameter for vhostfd
+	#Check netdev +1 parameter for vhostfd
         if arg == '-netdev':
             num_vhost_devs = len(fd_list)
             new_args.append(arg)
@@ -333,7 +348,6 @@ def main():
         emul_call += mp
         emul_call += " "
 
-
     #add user options
     for opt in emul_opts_user:
         emul_call += opt
@@ -353,14 +367,21 @@ def main():
         emul_call+=str(arg)
         emul_call+= " "
 
+    emul_call += "-pidfile %s " % qemu_pid
     #Call QEMU
-    subprocess.call(emul_call, shell=True)
+    process = subprocess.Popen(emul_call, shell=True, preexec_fn=os.setsid)
 
+    for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
+        signal.signal(sig, kill_qemu_process)
+
+    process.wait()
 
     #Close usvhost files
     for fd in fd_list:
         os.close(fd)
-
+    #Cleanup temporary files
+    if os.access(qemu_pid, os.F_OK):
+        os.remove(qemu_pid)
 
 if __name__ == "__main__":
     main()

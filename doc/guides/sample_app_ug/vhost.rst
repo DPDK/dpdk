@@ -715,15 +715,6 @@ Common Issues
     needs access to the shared memory from the guest to receive and transmit packets. It is important to make sure
     the QEMU version supports shared memory mapping.
 
-*   Issues with ``virsh destroy`` not destroying the VM:
-
-    Using libvirt ``virsh create`` the ``qemu-wrap.py`` spawns a new process to run ``qemu-kvm``. This impacts the behavior
-    of ``virsh destroy`` which kills the process running ``qemu-wrap.py`` without actually destroying the VM (it leaves
-    the ``qemu-kvm`` process running):
-
-    This following patch should fix this issue:
-        http://dpdk.org/ml/archives/dev/2014-June/003607.html
-
 *   In an Ubuntu environment, QEMU fails to start a new guest normally with user space VHOST due to not being able
     to allocate huge pages for the new guest:
 
