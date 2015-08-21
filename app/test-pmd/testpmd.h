@@ -308,8 +308,6 @@ extern volatile int test_done; /* stop packet forwarding when set to 1. */
 extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
 #endif
 
-#define MAX_SOCKET 2 /*MAX SOCKET:currently, it is 2 */
-
 /*
  * Store specified sockets on which memory pool to be used by ports
  * is allocated.
@@ -338,6 +336,7 @@ extern lcoreid_t nb_lcores; /**< Number of logical cores probed at init time. */
 extern lcoreid_t nb_cfg_lcores; /**< Number of configured logical cores. */
 extern lcoreid_t nb_fwd_lcores; /**< Number of forwarding logical cores. */
 extern unsigned int fwd_lcores_cpuids[RTE_MAX_LCORE];
+extern unsigned max_socket;
 
 /*
  * Configuration of Ethernet ports:

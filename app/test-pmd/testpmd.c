@@ -313,6 +313,8 @@ struct queue_stats_mappings *rx_queue_stats_mappings = rx_queue_stats_mappings_a
 uint16_t nb_tx_queue_stats_mappings = 0;
 uint16_t nb_rx_queue_stats_mappings = 0;
 
+unsigned max_socket = 0;
+
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
 static void check_all_ports_link_status(uint32_t port_mask);
@@ -345,6 +347,7 @@ set_default_fwd_lcores_config(void)
 {
 	unsigned int i;
 	unsigned int nb_lc;
+	unsigned int sock_num;
 
 	nb_lc = 0;
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
@@ -353,6 +356,12 @@ set_default_fwd_lcores_config(void)
 		if (i == rte_get_master_lcore())
 			continue;
 		fwd_lcores_cpuids[nb_lc++] = i;
+		sock_num = rte_lcore_to_socket_id(i) + 1;
+		if (sock_num > max_socket) {
+			if (sock_num > RTE_MAX_NUMA_NODES)
+				rte_exit(EXIT_FAILURE, "Total sockets greater than %u\n", RTE_MAX_NUMA_NODES);
+			max_socket = sock_num;
+		}
 	}
 	nb_lcores = (lcoreid_t) nb_lc;
 	nb_cfg_lcores = nb_lcores;
@@ -446,7 +455,7 @@ check_socket_id(const unsigned int socket_id)
 {
 	static int warning_once = 0;
 
-	if (socket_id >= MAX_SOCKET) {
+	if (socket_id >= max_socket) {
 		if (!warning_once && numa_support)
 			printf("Warning: NUMA should be configured manually by"
 			       " using --port-numa-config and"
@@ -466,9 +475,9 @@ init_config(void)
 	struct rte_mempool *mbp;
 	unsigned int nb_mbuf_per_pool;
 	lcoreid_t  lc_id;
-	uint8_t port_per_socket[MAX_SOCKET];
+	uint8_t port_per_socket[RTE_MAX_NUMA_NODES];
 
-	memset(port_per_socket,0,MAX_SOCKET);
+	memset(port_per_socket,0,RTE_MAX_NUMA_NODES);
 	/* Configuration of logical cores. */
 	fwd_lcores = rte_zmalloc("testpmd: fwd_lcores",
 				sizeof(struct fwd_lcore *) * nb_lcores,
@@ -545,7 +554,7 @@ init_config(void)
 		if (param_total_num_mbufs)
 			nb_mbuf_per_pool = nb_mbuf_per_pool/nb_ports;
 
-		for (i = 0; i < MAX_SOCKET; i++) {
+		for (i = 0; i < max_socket; i++) {
 			nb_mbuf = (nb_mbuf_per_pool * RTE_MAX_ETHPORTS);
 			if (nb_mbuf)
 				mbuf_pool_create(mbuf_data_size,
