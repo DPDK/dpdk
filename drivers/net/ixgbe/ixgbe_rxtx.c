@@ -2828,6 +2828,7 @@ ixgbe_rss_configure(struct rte_eth_dev *dev)
 
 #define NUM_VFTA_REGISTERS 128
 #define NIC_RX_BUFFER_SIZE 0x200
+#define X550_RX_BUFFER_SIZE 0x180
 
 static void
 ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
@@ -2856,7 +2857,15 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 	 * RXPBSIZE
 	 * split rx buffer up into sections, each for 1 traffic class
 	 */
-	pbsize = (uint16_t)(NIC_RX_BUFFER_SIZE / nb_tcs);
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+		pbsize = (uint16_t)(X550_RX_BUFFER_SIZE / nb_tcs);
+		break;
+	default:
+		pbsize = (uint16_t)(NIC_RX_BUFFER_SIZE / nb_tcs);
+		break;
+	}
 	for (i = 0 ; i < nb_tcs; i++) {
 		uint32_t rxpbsize = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(i));
 		rxpbsize &= (~(0x3FF << IXGBE_RXPBSIZE_SHIFT));
@@ -3230,7 +3239,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 {
 	int     ret = 0;
 	uint8_t i,pfc_en,nb_tcs;
-	uint16_t pbsize;
+	uint16_t pbsize, rx_buffer_size;
 	uint8_t config_dcb_rx = 0;
 	uint8_t config_dcb_tx = 0;
 	uint8_t tsa[IXGBE_DCB_MAX_TRAFFIC_CLASS] = {0};
@@ -3321,9 +3330,19 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		}
 	}
 
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+		rx_buffer_size = X550_RX_BUFFER_SIZE;
+		break;
+	default:
+		rx_buffer_size = NIC_RX_BUFFER_SIZE;
+		break;
+	}
+
 	if(config_dcb_rx) {
 		/* Set RX buffer size */
-		pbsize = (uint16_t)(NIC_RX_BUFFER_SIZE / nb_tcs);
+		pbsize = (uint16_t)(rx_buffer_size / nb_tcs);
 		uint32_t rxpbsize = pbsize << IXGBE_RXPBSIZE_SHIFT;
 		for (i = 0 ; i < nb_tcs; i++) {
 			IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), rxpbsize);
@@ -3379,7 +3398,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 
 	/* Check if the PFC is supported */
 	if(dev->data->dev_conf.dcb_capability_en & ETH_DCB_PFC_SUPPORT) {
-		pbsize = (uint16_t) (NIC_RX_BUFFER_SIZE / nb_tcs);
+		pbsize = (uint16_t)(rx_buffer_size / nb_tcs);
 		for (i = 0; i < nb_tcs; i++) {
 			/*
 			* If the TC count is 8,and the default high_water is 48,
