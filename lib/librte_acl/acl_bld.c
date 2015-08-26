@@ -1164,35 +1164,93 @@ rule_cmp_wildness(struct rte_acl_build_rule *r1, struct rte_acl_build_rule *r2)
 }
 
 /*
+ * Split the rte_acl_build_rule list into two lists.
+ */
+static void
+rule_list_split(struct rte_acl_build_rule *source,
+	struct rte_acl_build_rule **list_a,
+	struct rte_acl_build_rule **list_b)
+{
+	struct rte_acl_build_rule *fast;
+	struct rte_acl_build_rule *slow;
+
+	if (source == NULL || source->next == NULL) {
+		/* length < 2 cases */
+		*list_a = source;
+		*list_b = NULL;
+	} else {
+		slow = source;
+		fast = source->next;
+		/* Advance 'fast' two nodes, and advance 'slow' one node */
+		while (fast != NULL) {
+			fast = fast->next;
+			if (fast != NULL) {
+				slow = slow->next;
+				fast = fast->next;
+			}
+		}
+		/* 'slow' is before the midpoint in the list, so split it in two
+		   at that point. */
+		*list_a = source;
+		*list_b = slow->next;
+		slow->next = NULL;
+	}
+}
+
+/*
+ * Merge two sorted lists.
+ */
+static struct rte_acl_build_rule *
+rule_list_sorted_merge(struct rte_acl_build_rule *a,
+	struct rte_acl_build_rule *b)
+{
+	struct rte_acl_build_rule *result = NULL;
+	struct rte_acl_build_rule **last_next = &result;
+
+	while (1) {
+		if (a == NULL) {
+			*last_next = b;
+			break;
+		} else if (b == NULL) {
+			*last_next = a;
+			break;
+		}
+		if (rule_cmp_wildness(a, b) >= 0) {
+			*last_next = a;
+			last_next = &a->next;
+			a = a->next;
+		} else {
+			*last_next = b;
+			last_next = &b->next;
+			b = b->next;
+		}
+	}
+	return result;
+}
+
+/*
  * Sort list of rules based on the rules wildness.
+ * Use recursive mergesort algorithm.
  */
 static struct rte_acl_build_rule *
 sort_rules(struct rte_acl_build_rule *head)
 {
-	struct rte_acl_build_rule *new_head;
-	struct rte_acl_build_rule *l, *r, **p;
+	struct rte_acl_build_rule *a;
+	struct rte_acl_build_rule *b;
 
-	new_head = NULL;
-	while (head != NULL) {
+	/* Base case -- length 0 or 1 */
+	if (head == NULL || head->next == NULL)
+		return head;
 
-		/* remove element from the head of the old list. */
-		r = head;
-		head = r->next;
-		r->next = NULL;
+	/* Split head into 'a' and 'b' sublists */
+	rule_list_split(head, &a, &b);
 
-		/* walk through new sorted list to find a proper place. */
-		for (p = &new_head;
-				(l = *p) != NULL &&
-				rule_cmp_wildness(l, r) >= 0;
-				p = &l->next)
-			;
+	/* Recursively sort the sublists */
+	a = sort_rules(a);
+	b = sort_rules(b);
 
-		/* insert element into the new sorted list. */
-		r->next = *p;
-		*p = r;
-	}
-
-	return new_head;
+	/* answer = merge the two sorted lists together */
+	return rule_list_sorted_merge(a, b);
 }
 
 static uint32_t
