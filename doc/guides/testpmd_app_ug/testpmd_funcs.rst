@@ -1469,8 +1469,8 @@ Example, to add/remove an ethertype filter rule:
 
 .. code-block:: console
 
-    testpmd> ethertype_filter 0 add mac_ignr ethertype 0x0806 fwd queue 3
-    testpmd> ethertype_filter 0 del mac_ignr ethertype 0x0806 fwd queue 3
+    testpmd> ethertype_filter 0 add mac_ignr 00:11:22:33:44:55 ethertype 0x0806 fwd queue 3
+    testpmd> ethertype_filter 0 del mac_ignr 00:11:22:33:44:55 ethertype 0x0806 fwd queue 3
 
 2tuple_filter
 ~~~~~~~~~~~~~~~~~
