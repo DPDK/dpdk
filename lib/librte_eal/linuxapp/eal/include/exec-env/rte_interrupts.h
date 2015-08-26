@@ -86,14 +86,12 @@ struct rte_intr_handle {
 	};
 	int fd;	 /**< interrupt event file descriptor */
 	enum rte_intr_handle_type type;  /**< handle type */
-#ifdef RTE_NEXT_ABI
 	uint32_t max_intr;             /**< max interrupt requested */
 	uint32_t nb_efd;               /**< number of available efd(event fd) */
 	int efds[RTE_MAX_RXTX_INTR_VEC_ID];  /**< intr vectors/efds mapping */
 	struct rte_epoll_event elist[RTE_MAX_RXTX_INTR_VEC_ID];
 				       /**< intr vector epoll event */
 	int *intr_vec;                 /**< intr vector number array */
-#endif
 };
 
 #define RTE_EPOLL_PER_THREAD        -1  /**< to hint using per thread epfd */

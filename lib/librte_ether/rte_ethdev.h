@@ -845,10 +845,8 @@ struct rte_eth_fdir {
 struct rte_intr_conf {
 	/** enable/disable lsc interrupt. 0 (default) - disable, 1 enable */
 	uint16_t lsc;
-#ifdef RTE_NEXT_ABI
 	/** enable/disable rxq interrupt. 0 (default) - disable, 1 enable */
 	uint16_t rxq;
-#endif
 };
 
 /**
@@ -1392,12 +1390,10 @@ struct eth_dev_ops {
 	eth_queue_release_t        rx_queue_release;/**< Release RX queue.*/
 	eth_rx_queue_count_t       rx_queue_count; /**< Get Rx queue count. */
 	eth_rx_descriptor_done_t   rx_descriptor_done;  /**< Check rxd DD bit */
-#ifdef RTE_NEXT_ABI
 	/**< Enable Rx queue interrupt. */
 	eth_rx_enable_intr_t       rx_queue_intr_enable;
 	/**< Disable Rx queue interrupt.*/
 	eth_rx_disable_intr_t      rx_queue_intr_disable;
-#endif
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue.*/
 	eth_queue_release_t        tx_queue_release;/**< Release TX queue.*/
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */

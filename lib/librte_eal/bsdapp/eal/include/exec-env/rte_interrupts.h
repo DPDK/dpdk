@@ -50,11 +50,9 @@ struct rte_intr_handle {
 	int fd;                          /**< file descriptor */
 	int uio_cfg_fd;                  /**< UIO config file descriptor */
 	enum rte_intr_handle_type type;  /**< handle type */
-#ifdef RTE_NEXT_ABI
 	int max_intr;                    /**< max interrupt requested */
 	uint32_t nb_efd;                 /**< number of available efds */
 	int *intr_vec;                   /**< intr vector number array */
-#endif
 };
 
 /**

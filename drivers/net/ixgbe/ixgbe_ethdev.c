@@ -190,9 +190,7 @@ static int ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 			uint16_t reta_size);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev);
-#ifdef RTE_NEXT_ABI
 static int ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
-#endif
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev);
 static void ixgbe_dev_interrupt_handler(struct rte_intr_handle *handle,
@@ -227,14 +225,12 @@ static void ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 static void ixgbevf_dev_interrupt_handler(struct rte_intr_handle *handle,
 					  void *param);
-#ifdef RTE_NEXT_ABI
 static int ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					    uint16_t queue_id);
 static int ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					     uint16_t queue_id);
 static void ixgbevf_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 				 uint8_t queue, uint8_t msix_vector);
-#endif
 static void ixgbevf_configure_msix(struct rte_eth_dev *dev);
 
 /* For Eth VMDQ APIs support */
@@ -252,14 +248,12 @@ static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		uint8_t rule_id, uint8_t on);
 static int ixgbe_mirror_rule_reset(struct rte_eth_dev *dev,
 		uint8_t	rule_id);
-#ifdef RTE_NEXT_ABI
 static int ixgbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					  uint16_t queue_id);
 static int ixgbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					   uint16_t queue_id);
 static void ixgbe_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
-#endif
 static void ixgbe_configure_msix(struct rte_eth_dev *dev);
 
 static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
@@ -420,10 +414,8 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.tx_queue_start	      = ixgbe_dev_tx_queue_start,
 	.tx_queue_stop        = ixgbe_dev_tx_queue_stop,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
-#ifdef RTE_NEXT_ABI
 	.rx_queue_intr_enable = ixgbe_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = ixgbe_dev_rx_queue_intr_disable,
-#endif
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
 	.rx_queue_count       = ixgbe_dev_rx_queue_count,
 	.rx_descriptor_done   = ixgbe_dev_rx_descriptor_done,
@@ -497,10 +489,8 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.rx_descriptor_done   = ixgbe_dev_rx_descriptor_done,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
 	.tx_queue_release     = ixgbe_dev_tx_queue_release,
-#ifdef RTE_NEXT_ABI
 	.rx_queue_intr_enable = ixgbevf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = ixgbevf_dev_rx_queue_intr_disable,
-#endif
 	.mac_addr_add         = ixgbevf_add_mac_addr,
 	.mac_addr_remove      = ixgbevf_remove_mac_addr,
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
@@ -1680,9 +1670,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
-#ifdef RTE_NEXT_ABI
 	uint32_t intr_vector = 0;
-#endif
 	int err, link_up = 0, negotiate = 0;
 	uint32_t speed = 0;
 	int mask = 0;
@@ -1715,7 +1703,6 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	/* configure PF module if SRIOV enabled */
 	ixgbe_pf_host_configure(dev);
 
-#ifdef RTE_NEXT_ABI
 	/* check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0)
 		intr_vector = dev->data->nb_rx_queues;
@@ -1734,7 +1721,6 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 			return -ENOMEM;
 		}
 	}
-#endif
 
 	/* confiugre msix for sleep until rx interrupt */
 	ixgbe_configure_msix(dev);
@@ -1827,11 +1813,9 @@ skip_link_setup:
 				     " no intr multiplex\n");
 	}
 
-#ifdef RTE_NEXT_ABI
 	/* check if rxq interrupt is enabled */
 	if (dev->data->dev_conf.intr_conf.rxq != 0)
 		ixgbe_dev_rxq_interrupt_setup(dev);
-#endif
 
 	/* enable uio/vfio intr/eventfd mapping */
 	rte_intr_enable(intr_handle);
@@ -1942,14 +1926,12 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	memset(filter_info->fivetuple_mask, 0,
 		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
-#ifdef RTE_NEXT_ABI
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
 	if (intr_handle->intr_vec != NULL) {
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
-#endif
 }
 
 /*
@@ -2623,7 +2605,6 @@ ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev)
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-#ifdef RTE_NEXT_ABI
 static int
 ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
 {
@@ -2634,7 +2615,6 @@ ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
 
 	return 0;
 }
-#endif
 
 /*
  * It reads ICR and sets flag (IXGBE_EICR_LSC) for the link_update.
@@ -3435,9 +3415,7 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-#ifdef RTE_NEXT_ABI
 	uint32_t intr_vector = 0;
-#endif
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 
 	int err, mask = 0;
@@ -3470,7 +3448,6 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 
 	ixgbevf_dev_rxtx_start(dev);
 
-#ifdef RTE_NEXT_ABI
 	/* check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0)
 		intr_vector = dev->data->nb_rx_queues;
@@ -3488,7 +3465,6 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 			return -ENOMEM;
 		}
 	}
-#endif
 	ixgbevf_configure_msix(dev);
 
 	if (dev->data->dev_conf.intr_conf.lsc != 0) {
@@ -3534,23 +3510,19 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	/* disable intr eventfd mapping */
 	rte_intr_disable(intr_handle);
 
-#ifdef RTE_NEXT_ABI
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
 	if (intr_handle->intr_vec != NULL) {
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
-#endif
 }
 
 static void
 ixgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-#ifdef RTE_NEXT_ABI
 	struct rte_pci_device *pci_dev;
-#endif
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -3563,13 +3535,11 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
 
-#ifdef RTE_NEXT_ABI
 	pci_dev = dev->pci_dev;
 	if (pci_dev->intr_handle.intr_vec) {
 		rte_free(pci_dev->intr_handle.intr_vec);
 		pci_dev->intr_handle.intr_vec = NULL;
 	}
-#endif
 }
 
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
@@ -4087,7 +4057,6 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 	return 0;
 }
 
-#ifdef RTE_NEXT_ABI
 static int
 ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
@@ -4240,18 +4209,15 @@ ixgbe_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 		}
 	}
 }
-#endif
 
 static void
 ixgbevf_configure_msix(struct rte_eth_dev *dev)
 {
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
-#ifdef RTE_NEXT_ABI
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t q_idx;
 	uint32_t vector_idx = 0;
-#endif
 
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd.
@@ -4259,7 +4225,6 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 	if (!rte_intr_dp_is_en(intr_handle))
 		return;
 
-#ifdef RTE_NEXT_ABI
 	/* Configure all RX queues of VF */
 	for (q_idx = 0; q_idx < dev->data->nb_rx_queues; q_idx++) {
 		/* Force all queue use vector 0,
@@ -4271,7 +4236,6 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 
 	/* Configure VF Rx queue ivar */
 	ixgbevf_set_ivar_map(hw, -1, 1, vector_idx);
-#endif
 }
 
 /**
@@ -4283,13 +4247,11 @@ static void
 ixgbe_configure_msix(struct rte_eth_dev *dev)
 {
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
-#ifdef RTE_NEXT_ABI
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t queue_id, vec = 0;
 	uint32_t mask;
 	uint32_t gpie;
-#endif
 
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd
@@ -4297,7 +4259,6 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 	if (!rte_intr_dp_is_en(intr_handle))
 		return;
 
-#ifdef RTE_NEXT_ABI
 	/* setup GPIE for MSI-x mode */
 	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
 	gpie |= IXGBE_GPIE_MSIX_MODE | IXGBE_GPIE_PBA_SUPPORT |
@@ -4347,7 +4308,6 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 		  IXGBE_EIMS_LSC);
 
 	IXGBE_WRITE_REG(hw, IXGBE_EIAC, mask);
-#endif
 }
 
 static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,

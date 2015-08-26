@@ -35,7 +35,7 @@ LIB = librte_eal.a
 
 EXPORT_MAP := rte_eal_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 

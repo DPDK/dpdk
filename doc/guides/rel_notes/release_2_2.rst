@@ -20,6 +20,9 @@ API Changes
 ABI Changes
 -----------
 
+* The EAL and ethdev structures rte_intr_handle and rte_eth_conf were changed
+  to support Rx interrupt. It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
+
 
 Shared Library Versions
 -----------------------
@@ -28,12 +31,12 @@ The libraries prepended with a plus sign were incremented in this version.
 
 .. code-block:: diff
 
-     libethdev.so.1
+   + libethdev.so.2
      librte_acl.so.1
      librte_cfgfile.so.1
      librte_cmdline.so.1
      librte_distributor.so.1
-     librte_eal.so.1
+   + librte_eal.so.2
      librte_hash.so.1
      librte_ip_frag.so.1
      librte_ivshmem.so.1

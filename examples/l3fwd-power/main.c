@@ -239,9 +239,7 @@ static struct rte_eth_conf port_conf = {
 	},
 	.intr_conf = {
 		.lsc = 1,
-#ifdef RTE_NEXT_ABI
 		.rxq = 1,
-#endif
 	},
 };
 

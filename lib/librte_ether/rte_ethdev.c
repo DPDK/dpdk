@@ -3033,7 +3033,6 @@ _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
 }
 
-#ifdef RTE_NEXT_ABI
 int
 rte_eth_dev_rx_intr_ctl(uint8_t port_id, int epfd, int op, void *data)
 {
@@ -3139,45 +3138,6 @@ rte_eth_dev_rx_intr_disable(uint8_t port_id,
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_intr_disable, -ENOTSUP);
 	return (*dev->dev_ops->rx_queue_intr_disable)(dev, queue_id);
 }
-#else
-int
-rte_eth_dev_rx_intr_enable(uint8_t port_id, uint16_t queue_id)
-{
-	RTE_SET_USED(port_id);
-	RTE_SET_USED(queue_id);
-	return -ENOTSUP;
-}
-
-int
-rte_eth_dev_rx_intr_disable(uint8_t port_id, uint16_t queue_id)
-{
-	RTE_SET_USED(port_id);
-	RTE_SET_USED(queue_id);
-	return -ENOTSUP;
-}
-
-int
-rte_eth_dev_rx_intr_ctl(uint8_t port_id, int epfd, int op, void *data)
-{
-	RTE_SET_USED(port_id);
-	RTE_SET_USED(epfd);
-	RTE_SET_USED(op);
-	RTE_SET_USED(data);
-	return -1;
-}
-
-int
-rte_eth_dev_rx_intr_ctl_q(uint8_t port_id, uint16_t queue_id,
-			  int epfd, int op, void *data)
-{
-	RTE_SET_USED(port_id);
-	RTE_SET_USED(queue_id);
-	RTE_SET_USED(epfd);
-	RTE_SET_USED(op);
-	RTE_SET_USED(data);
-	return -1;
-}
-#endif
 
 #ifdef RTE_NIC_BYPASS
 int rte_eth_dev_bypass_init(uint8_t port_id)
