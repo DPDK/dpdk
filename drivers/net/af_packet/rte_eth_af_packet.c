@@ -454,7 +454,7 @@ rte_pmd_init_internals(const char *name,
 		RTE_LOG(ERR, PMD,
 			"%s: no interface specified for AF_PACKET ethdev\n",
 		        name);
-		goto error;
+		goto error_early;
 	}
 
 	RTE_LOG(INFO, PMD,
@@ -467,16 +467,16 @@ rte_pmd_init_internals(const char *name,
 	 */
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
-		goto error;
+		goto error_early;
 
 	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
 	if (pci_dev == NULL)
-		goto error;
+		goto error_early;
 
 	*internals = rte_zmalloc_socket(name, sizeof(**internals),
 	                                0, numa_node);
 	if (*internals == NULL)
-		goto error;
+		goto error_early;
 
 	for (q = 0; q < nb_queues; q++) {
 		(*internals)->rx_queue[q].map = MAP_FAILED;
@@ -498,13 +498,13 @@ rte_pmd_init_internals(const char *name,
 		RTE_LOG(ERR, PMD,
 			"%s: I/F name too long (%s)\n",
 			name, pair->value);
-		goto error;
+		goto error_early;
 	}
 	if (ioctl(sockfd, SIOCGIFINDEX, &ifr) == -1) {
 		RTE_LOG(ERR, PMD,
 			"%s: ioctl failed (SIOCGIFINDEX)\n",
 		        name);
-		goto error;
+		goto error_early;
 	}
 	(*internals)->if_index = ifr.ifr_ifindex;
 
@@ -512,7 +512,7 @@ rte_pmd_init_internals(const char *name,
 		RTE_LOG(ERR, PMD,
 			"%s: ioctl failed (SIOCGIFHWADDR)\n",
 		        name);
-		goto error;
+		goto error_early;
 	}
 	memcpy(&(*internals)->eth_addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
@@ -678,24 +678,22 @@ rte_pmd_init_internals(const char *name,
 	return 0;
 
 error:
-	rte_free(data);
-	rte_free(pci_dev);
-
-	if (*internals) {
-		for (q = 0; q < nb_queues; q++) {
-			munmap((*internals)->rx_queue[q].map,
-			       2 * req->tp_block_size * req->tp_block_nr);
-
-			rte_free((*internals)->rx_queue[q].rd);
-			rte_free((*internals)->tx_queue[q].rd);
-			if (((*internals)->rx_queue[q].sockfd != 0) &&
-				((*internals)->rx_queue[q].sockfd != qsockfd))
-				close((*internals)->rx_queue[q].sockfd);
-		}
-		rte_free(*internals);
-	}
 	if (qsockfd != -1)
 		close(qsockfd);
+	for (q = 0; q < nb_queues; q++) {
+		munmap((*internals)->rx_queue[q].map,
+		       2 * req->tp_block_size * req->tp_block_nr);
+
+		rte_free((*internals)->rx_queue[q].rd);
+		rte_free((*internals)->tx_queue[q].rd);
+		if (((*internals)->rx_queue[q].sockfd != 0) &&
+			((*internals)->rx_queue[q].sockfd != qsockfd))
+			close((*internals)->rx_queue[q].sockfd);
+	}
+	rte_free(*internals);
+error_early:
+	rte_free(pci_dev);
+	rte_free(data);
 	return -1;
 }
 
