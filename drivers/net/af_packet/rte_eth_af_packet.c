@@ -220,7 +220,8 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	}
 
 	/* kick-off transmits */
-	sendto(pkt_q->sockfd, NULL, 0, MSG_DONTWAIT, NULL, 0);
+	if (sendto(pkt_q->sockfd, NULL, 0, MSG_DONTWAIT, NULL, 0) == -1)
+		return 0; /* error sending -- no packets transmitted */
 
 	pkt_q->framenum = framenum;
 	pkt_q->tx_pkts += num_tx;
