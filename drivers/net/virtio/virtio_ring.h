@@ -123,10 +123,10 @@ struct vring {
 #define vring_used_event(vr)  ((vr)->avail->ring[(vr)->num])
 #define vring_avail_event(vr) (*(uint16_t *)&(vr)->used->ring[(vr)->num])
 
-static inline int
+static inline size_t
 vring_size(unsigned int num, unsigned long align)
 {
-	int size;
+	size_t size;
 
 	size = num * sizeof(struct vring_desc);
 	size += sizeof(struct vring_avail) + (num * sizeof(uint16_t));

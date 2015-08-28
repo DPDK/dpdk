@@ -206,7 +206,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	uint16_t seg_num = cookie->nb_segs;
 	uint16_t needed = 1 + seg_num;
 	uint16_t head_idx, idx;
-	uint16_t head_size = txvq->hw->vtnet_hdr_size;
+	size_t head_size = txvq->hw->vtnet_hdr_size;
 
 	if (unlikely(txvq->vq_free_cnt == 0))
 		return -ENOSPC;
@@ -224,7 +224,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	start_dp = txvq->vq_ring.desc;
 	start_dp[idx].addr =
 		txvq->virtio_net_hdr_mem + idx * head_size;
-	start_dp[idx].len = (uint32_t)head_size;
+	start_dp[idx].len = head_size;
 	start_dp[idx].flags = VRING_DESC_F_NEXT;
 
 	for (; ((seg_num > 0) && (cookie != NULL)); seg_num--) {

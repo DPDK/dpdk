@@ -262,21 +262,20 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 {
 	char vq_name[VIRTQUEUE_MAX_NAME_SZ];
 	const struct rte_memzone *mz;
-	uint16_t vq_size;
-	int size;
+	unsigned int vq_size, size;
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = NULL;
 
 	/* Write the virtqueue index to the Queue Select Field */
 	VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vtpci_queue_idx);
-	PMD_INIT_LOG(DEBUG, "selecting queue: %d", vtpci_queue_idx);
+	PMD_INIT_LOG(DEBUG, "selecting queue: %u", vtpci_queue_idx);
 
 	/*
 	 * Read the virtqueue size from the Queue Size field
 	 * Always power of 2 and if 0 virtqueue does not exist
 	 */
 	vq_size = VIRTIO_READ_REG_2(hw, VIRTIO_PCI_QUEUE_NUM);
-	PMD_INIT_LOG(DEBUG, "vq_size: %d nb_desc:%d", vq_size, nb_desc);
+	PMD_INIT_LOG(DEBUG, "vq_size: %u nb_desc:%u", vq_size, nb_desc);
 	if (vq_size == 0) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue does not exist", __func__);
 		return -EINVAL;
