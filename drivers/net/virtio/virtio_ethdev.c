@@ -1202,6 +1202,10 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
 	virtio_negotiate_features(hw);
 
+	/* If host does not support status then disable LSC */
+	if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS))
+		pci_dev->driver->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+
 	rx_func_get(eth_dev);
 
 	/* Setting up rx_header size for the device */
@@ -1395,9 +1399,8 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	/* check if lsc interrupt feature is enabled */
-	if ((dev->data->dev_conf.intr_conf.lsc) &&
-		(pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
-		if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		if (!(pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
 			PMD_DRV_LOG(ERR, "link status not supported by host");
 			return -ENOTSUP;
 		}
