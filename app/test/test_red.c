@@ -146,16 +146,7 @@ static void rdtsc_prof_init(struct rdtsc_prof *p, const char *name)
 
 static inline void rdtsc_prof_start(struct rdtsc_prof *p)
 {
-#ifdef __PIC__
-    asm volatile (
-    "mov %%ebx, %%edi\n"
-    "cpuid\n"
-    "xchgl %%ebx, %%edi;\n"
-	: : : "%eax", "%edi", "%ecx", "%edx" );
-#else
-	asm( "cpuid" : : : "%eax", "%ebx", "%ecx", "%edx" );
-#endif
-	p->clk_start = rte_rdtsc();
+	p->clk_start = rte_rdtsc_precise();
 }
 
 static inline void rdtsc_prof_end(struct rdtsc_prof *p)
