@@ -73,9 +73,6 @@ extern "C" {
 #ifndef RTE_BITMAP_OPTIMIZATIONS
 #define RTE_BITMAP_OPTIMIZATIONS		         1
 #endif
-#if RTE_BITMAP_OPTIMIZATIONS
-#include <tmmintrin.h>
-#endif
 
 /* Slab */
 #define RTE_BITMAP_SLAB_BIT_SIZE                 64
