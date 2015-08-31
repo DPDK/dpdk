@@ -238,7 +238,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	const uint32_t key_entry_size = sizeof(struct rte_hash_key) + params->key_len;
 
 	/* Store all keys and leave the first entry as a dummy entry for lookup_bulk */
-	const uint64_t key_tbl_size = key_entry_size * (params->entries + 1);
+	const uint64_t key_tbl_size = (uint64_t) key_entry_size * (params->entries + 1);
 
 	k = rte_zmalloc_socket(NULL, key_tbl_size,
 			RTE_CACHE_LINE_SIZE, params->socket_id);
