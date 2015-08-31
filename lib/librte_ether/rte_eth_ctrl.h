@@ -335,10 +335,8 @@ struct rte_eth_tcpv4_flow {
  */
 struct rte_eth_sctpv4_flow {
 	struct rte_eth_ipv4_flow ip; /**< IPv4 fields to match. */
-#ifdef RTE_NEXT_ABI
 	uint16_t src_port;           /**< SCTP source port to match. */
 	uint16_t dst_port;           /**< SCTP destination port to match. */
-#endif
 	uint32_t verify_tag;         /**< Verify tag to match */
 };
 
@@ -373,10 +371,8 @@ struct rte_eth_tcpv6_flow {
  */
 struct rte_eth_sctpv6_flow {
 	struct rte_eth_ipv6_flow ip; /**< IPv6 fields to match. */
-#ifdef RTE_NEXT_ABI
 	uint16_t src_port;           /**< SCTP source port to match. */
 	uint16_t dst_port;           /**< SCTP destination port to match. */
-#endif
 	uint32_t verify_tag;         /**< Verify tag to match */
 };
 

@@ -44,9 +44,6 @@ Deprecation Notices
   flow director filtering in VF. The release 2.1 does not contain these ABI
   changes, but release 2.2 will, and no backwards compatibility is planned.
 
-* ABI change is planned to extend the SCTP flow's key input from release 2.1.
-  The change may be enabled in the release 2.1 with CONFIG_RTE_NEXT_ABI.
-
 * ABI changes are planned for struct rte_eth_fdir_filter and
   rte_eth_fdir_masks in order to support new flow director modes,
   MAC VLAN and Cloud, on x550. The MAC VLAN mode means the MAC and

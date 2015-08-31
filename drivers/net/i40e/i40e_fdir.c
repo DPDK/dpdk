@@ -822,7 +822,6 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		sctp = (struct sctp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 					   sizeof(struct ipv4_hdr));
 		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
-#ifdef RTE_NEXT_ABI
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -830,7 +829,6 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		 */
 		sctp->src_port = fdir_input->flow.sctp4_flow.dst_port;
 		sctp->dst_port = fdir_input->flow.sctp4_flow.src_port;
-#endif
 		sctp->tag = fdir_input->flow.sctp4_flow.verify_tag;
 		break;
 
@@ -873,7 +871,6 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		sctp = (struct sctp_hdr *)(raw_pkt + sizeof(struct ether_hdr) +
 					   sizeof(struct ipv6_hdr));
 		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
-#ifdef RTE_NEXT_ABI
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -881,7 +878,6 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		 */
 		sctp->src_port = fdir_input->flow.sctp6_flow.dst_port;
 		sctp->dst_port = fdir_input->flow.sctp6_flow.src_port;
-#endif
 		sctp->tag = fdir_input->flow.sctp6_flow.verify_tag;
 		break;
 

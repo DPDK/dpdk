@@ -23,6 +23,9 @@ ABI Changes
 * The EAL and ethdev structures rte_intr_handle and rte_eth_conf were changed
   to support Rx interrupt. It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
 
+* The ethdev flow director entries for SCTP were changed.
+  It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
+
 * The mbuf structure was changed to support unified packet type.
   It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
 
