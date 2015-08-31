@@ -93,18 +93,8 @@ extern "C" {
 #define PKT_RX_HBUF_OVERFLOW (0ULL << 0)  /**< Header buffer overflow. */
 #define PKT_RX_RECIP_ERR     (0ULL << 0)  /**< Hardware processing error. */
 #define PKT_RX_MAC_ERR       (0ULL << 0)  /**< MAC error. */
-#ifndef RTE_NEXT_ABI
-#define PKT_RX_IPV4_HDR      (1ULL << 5)  /**< RX packet with IPv4 header. */
-#define PKT_RX_IPV4_HDR_EXT  (1ULL << 6)  /**< RX packet with extended IPv4 header. */
-#define PKT_RX_IPV6_HDR      (1ULL << 7)  /**< RX packet with IPv6 header. */
-#define PKT_RX_IPV6_HDR_EXT  (1ULL << 8)  /**< RX packet with extended IPv6 header. */
-#endif /* RTE_NEXT_ABI */
 #define PKT_RX_IEEE1588_PTP  (1ULL << 9)  /**< RX IEEE1588 L2 Ethernet PT Packet. */
 #define PKT_RX_IEEE1588_TMST (1ULL << 10) /**< RX IEEE1588 L2/L4 timestamped packet.*/
-#ifndef RTE_NEXT_ABI
-#define PKT_RX_TUNNEL_IPV4_HDR (1ULL << 11) /**< RX tunnel packet with IPv4 header.*/
-#define PKT_RX_TUNNEL_IPV6_HDR (1ULL << 12) /**< RX tunnel packet with IPv6 header. */
-#endif /* RTE_NEXT_ABI */
 #define PKT_RX_FDIR_ID       (1ULL << 13) /**< FD id reported if FDIR match. */
 #define PKT_RX_FDIR_FLX      (1ULL << 14) /**< Flexible bytes reported if FDIR match. */
 #define PKT_RX_QINQ_PKT      (1ULL << 15)  /**< RX packet with double VLAN stripped. */
@@ -209,7 +199,6 @@ extern "C" {
 /* Use final bit of flags to indicate a control mbuf */
 #define CTRL_MBUF_FLAG       (1ULL << 63) /**< Mbuf contains control data */
 
-#ifdef RTE_NEXT_ABI
 /*
  * 32 bits are divided into several fields to mark packet types. Note that
  * each field is indexical.
@@ -696,7 +685,6 @@ extern "C" {
                                                  RTE_PTYPE_INNER_L2_MASK | \
                                                  RTE_PTYPE_INNER_L3_MASK | \
                                                  RTE_PTYPE_INNER_L4_MASK))
-#endif /* RTE_NEXT_ABI */
 
 /** Alignment constraint of mbuf private area. */
 #define RTE_MBUF_PRIV_ALIGN 8
@@ -775,7 +763,6 @@ struct rte_mbuf {
 	/* remaining bytes are set on RX when pulling packet from descriptor */
 	MARKER rx_descriptor_fields1;
 
-#ifdef RTE_NEXT_ABI
 	/*
 	 * The packet type, which is the combination of outer/inner L2, L3, L4
 	 * and tunnel types.
@@ -796,19 +783,7 @@ struct rte_mbuf {
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
 	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
-#else /* RTE_NEXT_ABI */
-	/**
-	 * The packet type, which is used to indicate ordinary packet and also
-	 * tunneled packet format, i.e. each number is represented a type of
-	 * packet.
-	 */
-	uint16_t packet_type;
 
-	uint16_t data_len;        /**< Amount of data in segment buffer. */
-	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
-	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
-	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
-#endif /* RTE_NEXT_ABI */
 	union {
 		uint32_t rss;     /**< RSS hash result if RSS enabled */
 		struct {
@@ -829,9 +804,8 @@ struct rte_mbuf {
 	} hash;                   /**< hash information */
 
 	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
-#ifdef RTE_NEXT_ABI
+
 	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
-#endif /* RTE_NEXT_ABI */
 
 	/* second cache line - fields only used in slow path or on TX */
 	MARKER cacheline1 __rte_cache_aligned;

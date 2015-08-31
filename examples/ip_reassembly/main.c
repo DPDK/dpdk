@@ -356,11 +356,7 @@ reassemble(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 	dst_port = portid;
 
 	/* if packet is IPv4 */
-#ifdef RTE_NEXT_ABI
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-#else
-	if (m->ol_flags & (PKT_RX_IPV4_HDR)) {
-#endif
 		struct ipv4_hdr *ip_hdr;
 		uint32_t ip_dst;
 
@@ -400,14 +396,8 @@ reassemble(struct rte_mbuf *m, uint8_t portid, uint32_t queue,
 		}
 
 		eth_hdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv4);
-#ifdef RTE_NEXT_ABI
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 		/* if packet is IPv6 */
-#else
-	}
-	/* if packet is IPv6 */
-	else if (m->ol_flags & (PKT_RX_IPV6_HDR | PKT_RX_IPV6_HDR_EXT)) {
-#endif
 		struct ipv6_extension_fragment *frag_hdr;
 		struct ipv6_hdr *ip_hdr;
 

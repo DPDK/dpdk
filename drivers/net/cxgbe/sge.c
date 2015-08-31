@@ -1299,22 +1299,14 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 
 	mbuf->port = pkt->iff;
 	if (pkt->l2info & htonl(F_RXF_IP)) {
-#ifdef RTE_NEXT_ABI
 		mbuf->packet_type = RTE_PTYPE_L3_IPV4;
-#else
-		mbuf->ol_flags |= PKT_RX_IPV4_HDR;
-#endif
 		if (unlikely(!csum_ok))
 			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
 
 		if ((pkt->l2info & htonl(F_RXF_UDP | F_RXF_TCP)) && !csum_ok)
 			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 	} else if (pkt->l2info & htonl(F_RXF_IP6)) {
-#ifdef RTE_NEXT_ABI
 		mbuf->packet_type = RTE_PTYPE_L3_IPV6;
-#else
-		mbuf->ol_flags |= PKT_RX_IPV6_HDR;
-#endif
 	}
 
 	mbuf->port = pkt->iff;
@@ -1419,11 +1411,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 			unmap_rx_buf(&rxq->fl);
 
 			if (cpl->l2info & htonl(F_RXF_IP)) {
-#ifdef RTE_NEXT_ABI
 				pkt->packet_type = RTE_PTYPE_L3_IPV4;
-#else
-				pkt->ol_flags |= PKT_RX_IPV4_HDR;
-#endif
 				if (unlikely(!csum_ok))
 					pkt->ol_flags |= PKT_RX_IP_CKSUM_BAD;
 
@@ -1431,11 +1419,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 				     htonl(F_RXF_UDP | F_RXF_TCP)) && !csum_ok)
 					pkt->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 			} else if (cpl->l2info & htonl(F_RXF_IP6)) {
-#ifdef RTE_NEXT_ABI
 				pkt->packet_type = RTE_PTYPE_L3_IPV6;
-#else
-				pkt->ol_flags |= PKT_RX_IPV6_HDR;
-#endif
 			}
 
 			if (!rss_hdr->filter_tid && rss_hdr->hash_type) {

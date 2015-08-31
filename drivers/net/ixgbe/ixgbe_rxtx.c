@@ -864,7 +864,6 @@ end_of_tx:
  *  RX functions
  *
  **********************************************************************/
-#ifdef RTE_NEXT_ABI
 #define IXGBE_PACKET_TYPE_IPV4              0X01
 #define IXGBE_PACKET_TYPE_IPV4_TCP          0X11
 #define IXGBE_PACKET_TYPE_IPV4_UDP          0X21
@@ -967,43 +966,6 @@ ixgbe_rxd_pkt_info_to_pkt_flags(uint16_t pkt_info)
 	return ip_rss_types_map[pkt_info & 0XF];
 #endif
 }
-#else /* RTE_NEXT_ABI */
-static inline uint64_t
-rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
-{
-	uint64_t pkt_flags;
-
-	static const uint64_t ip_pkt_types_map[16] = {
-		0, PKT_RX_IPV4_HDR, PKT_RX_IPV4_HDR_EXT, PKT_RX_IPV4_HDR_EXT,
-		PKT_RX_IPV6_HDR, 0, 0, 0,
-		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
-		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
-	};
-
-	static const uint64_t ip_rss_types_map[16] = {
-		0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
-		0, PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH,
-		PKT_RX_RSS_HASH, 0, 0, 0,
-		0, 0, 0,  PKT_RX_FDIR,
-	};
-
-#ifdef RTE_LIBRTE_IEEE1588
-	static uint64_t ip_pkt_etqf_map[8] = {
-		0, 0, 0, PKT_RX_IEEE1588_PTP,
-		0, 0, 0, 0,
-	};
-
-	pkt_flags = (hl_tp_rs & IXGBE_RXDADV_PKTTYPE_ETQF) ?
-			ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07] :
-			ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
-#else
-	pkt_flags = (hl_tp_rs & IXGBE_RXDADV_PKTTYPE_ETQF) ? 0 :
-			ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
-
-#endif
-	return pkt_flags | ip_rss_types_map[hl_tp_rs & 0xF];
-}
-#endif /* RTE_NEXT_ABI */
 
 static inline uint64_t
 rx_desc_status_to_pkt_flags(uint32_t rx_status)
@@ -1058,13 +1020,9 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 	struct rte_mbuf *mb;
 	uint16_t pkt_len;
 	uint64_t pkt_flags;
-#ifdef RTE_NEXT_ABI
 	int nb_dd;
 	uint32_t s[LOOK_AHEAD];
 	uint16_t pkt_info[LOOK_AHEAD];
-#else
-	int s[LOOK_AHEAD], nb_dd;
-#endif /* RTE_NEXT_ABI */
 	int i, j, nb_rx = 0;
 	uint32_t status;
 
@@ -1088,11 +1046,9 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 		for (j = LOOK_AHEAD-1; j >= 0; --j)
 			s[j] = rte_le_to_cpu_32(rxdp[j].wb.upper.status_error);
 
-#ifdef RTE_NEXT_ABI
 		for (j = LOOK_AHEAD - 1; j >= 0; --j)
 			pkt_info[j] = rxdp[j].wb.lower.lo_dword.
 						hs_rss.pkt_info;
-#endif /* RTE_NEXT_ABI */
 
 		/* Compute how many status bits were set */
 		nb_dd = 0;
@@ -1111,7 +1067,6 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 			mb->vlan_tci = rte_le_to_cpu_16(rxdp[j].wb.upper.vlan);
 
 			/* convert descriptor fields to rte mbuf flags */
-#ifdef RTE_NEXT_ABI
 			pkt_flags = rx_desc_status_to_pkt_flags(s[j]);
 			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
 			pkt_flags |=
@@ -1119,15 +1074,6 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 			mb->ol_flags = pkt_flags;
 			mb->packet_type =
 				ixgbe_rxd_pkt_info_to_pkt_type(pkt_info[j]);
-#else /* RTE_NEXT_ABI */
-			pkt_flags  = rx_desc_hlen_type_rss_to_pkt_flags(
-					rte_le_to_cpu_32(
-					rxdp[j].wb.lower.lo_dword.data));
-			/* reuse status field from scan list */
-			pkt_flags |= rx_desc_status_to_pkt_flags(s[j]);
-			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
-			mb->ol_flags = pkt_flags;
-#endif /* RTE_NEXT_ABI */
 
 			if (likely(pkt_flags & PKT_RX_RSS_HASH))
 				mb->hash.rss = rte_le_to_cpu_32(
@@ -1328,11 +1274,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	union ixgbe_adv_rx_desc rxd;
 	uint64_t dma_addr;
 	uint32_t staterr;
-#ifdef RTE_NEXT_ABI
 	uint32_t pkt_info;
-#else
-	uint32_t hlen_type_rss;
-#endif
 	uint16_t pkt_len;
 	uint16_t rx_id;
 	uint16_t nb_rx;
@@ -1450,7 +1392,6 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->data_len = pkt_len;
 		rxm->port = rxq->port_id;
 
-#ifdef RTE_NEXT_ABI
 		pkt_info = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.hs_rss.
 								pkt_info);
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
@@ -1462,16 +1403,6 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			ixgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
 		rxm->ol_flags = pkt_flags;
 		rxm->packet_type = ixgbe_rxd_pkt_info_to_pkt_type(pkt_info);
-#else /* RTE_NEXT_ABI */
-		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
-		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
-		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
-
-		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
-		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
-		rxm->ol_flags = pkt_flags;
-#endif /* RTE_NEXT_ABI */
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))
 			rxm->hash.rss = rte_le_to_cpu_32(
@@ -1547,7 +1478,6 @@ ixgbe_fill_cluster_head_buf(
 	uint8_t port_id,
 	uint32_t staterr)
 {
-#ifdef RTE_NEXT_ABI
 	uint16_t pkt_info;
 	uint64_t pkt_flags;
 
@@ -1563,23 +1493,6 @@ ixgbe_fill_cluster_head_buf(
 	pkt_flags |= ixgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
 	head->ol_flags = pkt_flags;
 	head->packet_type = ixgbe_rxd_pkt_info_to_pkt_type(pkt_info);
-#else /* RTE_NEXT_ABI */
-	uint32_t hlen_type_rss;
-	uint64_t pkt_flags;
-
-	head->port = port_id;
-
-	/*
-	 * The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
-	 * set in the pkt_flags field.
-	 */
-	head->vlan_tci = rte_le_to_cpu_16(desc->wb.upper.vlan);
-	hlen_type_rss = rte_le_to_cpu_32(desc->wb.lower.lo_dword.data);
-	pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
-	pkt_flags |= rx_desc_status_to_pkt_flags(staterr);
-	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
-	head->ol_flags = pkt_flags;
-#endif /* RTE_NEXT_ABI */
 
 	if (likely(pkt_flags & PKT_RX_RSS_HASH))
 		head->hash.rss = rte_le_to_cpu_32(desc->wb.lower.hi_dword.rss);

@@ -645,13 +645,7 @@ prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
 	struct ipv4_hdr *ipv4_hdr;
 	struct rte_mbuf *pkt = pkts_in[index];
 
-#ifdef RTE_NEXT_ABI
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
-#else
-	int type = pkt->ol_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV6_HDR);
-
-	if (type == PKT_RX_IPV4_HDR) {
-#endif
 		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
 						   sizeof(struct ether_hdr));
 
@@ -670,11 +664,7 @@ prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
 			/* Not a valid IPv4 packet */
 			rte_pktmbuf_free(pkt);
 		}
-#ifdef RTE_NEXT_ABI
 	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
-#else
-	} else if (type == PKT_RX_IPV6_HDR) {
-#endif
 		/* Fill acl structure */
 		acl->data_ipv6[acl->num_ipv6] = MBUF_IPV6_2PROTO(pkt);
 		acl->m_ipv6[(acl->num_ipv6)++] = pkt;
@@ -692,22 +682,12 @@ prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
 {
 	struct rte_mbuf *pkt = pkts_in[index];
 
-#ifdef RTE_NEXT_ABI
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
-#else
-	int type = pkt->ol_flags & (PKT_RX_IPV4_HDR | PKT_RX_IPV6_HDR);
-
-	if (type == PKT_RX_IPV4_HDR) {
-#endif
 		/* Fill acl structure */
 		acl->data_ipv4[acl->num_ipv4] = MBUF_IPV4_2PROTO(pkt);
 		acl->m_ipv4[(acl->num_ipv4)++] = pkt;
 
-#ifdef RTE_NEXT_ABI
 	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
-#else
-	} else if (type == PKT_RX_IPV6_HDR) {
-#endif
 		/* Fill acl structure */
 		acl->data_ipv6[acl->num_ipv6] = MBUF_IPV6_2PROTO(pkt);
 		acl->m_ipv6[(acl->num_ipv6)++] = pkt;
@@ -755,17 +735,10 @@ send_one_packet(struct rte_mbuf *m, uint32_t res)
 		/* in the ACL list, drop it */
 #ifdef L3FWDACL_DEBUG
 		if ((res & ACL_DENY_SIGNATURE) != 0) {
-#ifdef RTE_NEXT_ABI
 			if (RTE_ETH_IS_IPV4_HDR(m->packet_type))
 				dump_acl4_rule(m, res);
 			else if (RTE_ETH_IS_IPV6_HDR(m->packet_type))
 				dump_acl6_rule(m, res);
-#else
-			if (m->ol_flags & PKT_RX_IPV4_HDR)
-				dump_acl4_rule(m, res);
-			else
-				dump_acl6_rule(m, res);
-#endif /* RTE_NEXT_ABI */
 		}
 #endif
 		rte_pktmbuf_free(m);

@@ -590,7 +590,6 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  *  RX functions
  *
  **********************************************************************/
-#ifdef RTE_NEXT_ABI
 #define IGB_PACKET_TYPE_IPV4              0X01
 #define IGB_PACKET_TYPE_IPV4_TCP          0X11
 #define IGB_PACKET_TYPE_IPV4_UDP          0X21
@@ -684,35 +683,6 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 
 	return pkt_flags;
 }
-#else /* RTE_NEXT_ABI */
-static inline uint64_t
-rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
-{
-	uint64_t pkt_flags;
-
-	static uint64_t ip_pkt_types_map[16] = {
-		0, PKT_RX_IPV4_HDR, PKT_RX_IPV4_HDR_EXT, PKT_RX_IPV4_HDR_EXT,
-		PKT_RX_IPV6_HDR, 0, 0, 0,
-		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
-		PKT_RX_IPV6_HDR_EXT, 0, 0, 0,
-	};
-
-#if defined(RTE_LIBRTE_IEEE1588)
-	static uint32_t ip_pkt_etqf_map[8] = {
-		0, 0, 0, PKT_RX_IEEE1588_PTP,
-		0, 0, 0, 0,
-	};
-
-	pkt_flags = (hl_tp_rs & E1000_RXDADV_PKTTYPE_ETQF) ?
-				ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07] :
-				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
-#else
-	pkt_flags = (hl_tp_rs & E1000_RXDADV_PKTTYPE_ETQF) ? 0 :
-				ip_pkt_types_map[(hl_tp_rs >> 4) & 0x0F];
-#endif
-	return pkt_flags | (((hl_tp_rs & 0x0F) == 0) ?  0 : PKT_RX_RSS_HASH);
-}
-#endif /* RTE_NEXT_ABI */
 
 static inline uint64_t
 rx_desc_status_to_pkt_flags(uint32_t rx_status)
@@ -886,10 +856,8 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		rxm->ol_flags = pkt_flags;
-#ifdef RTE_NEXT_ABI
 		rxm->packet_type = igb_rxd_pkt_info_to_pkt_type(rxd.wb.lower.
 						lo_dword.hs_rss.pkt_info);
-#endif
 
 		/*
 		 * Store the mbuf address into the next entry of the array
@@ -1124,10 +1092,8 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		first_seg->ol_flags = pkt_flags;
-#ifdef RTE_NEXT_ABI
 		first_seg->packet_type = igb_rxd_pkt_info_to_pkt_type(rxd.wb.
 					lower.lo_dword.hs_rss.pkt_info);
-#endif
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +

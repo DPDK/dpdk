@@ -68,7 +68,6 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 static inline void
 rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 {
-#ifdef RTE_NEXT_ABI
 	static const uint32_t
 		ptype_table[FM10K_RXD_PKTTYPE_MASK >> FM10K_RXD_PKTTYPE_SHIFT]
 			__rte_cache_aligned = {
@@ -91,14 +90,6 @@ rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 
 	m->packet_type = ptype_table[(d->w.pkt_info & FM10K_RXD_PKTTYPE_MASK)
 						>> FM10K_RXD_PKTTYPE_SHIFT];
-#else /* RTE_NEXT_ABI */
-	uint16_t ptype;
-	static const uint16_t pt_lut[] = { 0,
-		PKT_RX_IPV4_HDR, PKT_RX_IPV4_HDR_EXT,
-		PKT_RX_IPV6_HDR, PKT_RX_IPV6_HDR_EXT,
-		0, 0, 0
-	};
-#endif /* RTE_NEXT_ABI */
 
 	if (d->w.pkt_info & FM10K_RXD_RSSTYPE_MASK)
 		m->ol_flags |= PKT_RX_RSS_HASH;
@@ -121,12 +112,6 @@ rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 
 	if (unlikely(d->d.staterr & FM10K_RXD_STATUS_RXE))
 		m->ol_flags |= PKT_RX_RECIP_ERR;
-
-#ifndef RTE_NEXT_ABI
-	ptype = (d->d.data & FM10K_RXD_PKTTYPE_MASK_L3) >>
-						FM10K_RXD_PKTTYPE_SHIFT;
-	m->ol_flags |= pt_lut[(uint8_t)ptype];
-#endif
 }
 
 uint16_t

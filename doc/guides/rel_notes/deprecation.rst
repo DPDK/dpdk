@@ -24,11 +24,6 @@ Deprecation Notices
 * The field mem_location of the rte_lpm structure is deprecated and should be
   removed as well as the macros RTE_LPM_HEAP and RTE_LPM_MEMZONE.
 
-* Significant ABI changes are planned for struct rte_mbuf, struct rte_kni_mbuf,
-  and several ``PKT_RX_`` flags will be removed, to support unified packet type
-  from release 2.1. Those changes may be enabled in the upcoming release 2.1
-  with CONFIG_RTE_NEXT_ABI.
-
 * librte_malloc library has been integrated into librte_eal. The 2.1 release
   creates a dummy/empty malloc library to fulfill binaries with dynamic linking
   dependencies on librte_malloc.so. Such dummy library will not be created from

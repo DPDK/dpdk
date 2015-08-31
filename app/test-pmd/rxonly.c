@@ -91,11 +91,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 	uint64_t ol_flags;
 	uint16_t nb_rx;
 	uint16_t i, packet_type;
-#ifdef RTE_NEXT_ABI
 	uint16_t is_encapsulation;
-#else
-	uint64_t is_encapsulation;
-#endif
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
@@ -138,13 +134,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 		eth_type = RTE_BE_TO_CPU_16(eth_hdr->ether_type);
 		ol_flags = mb->ol_flags;
 		packet_type = mb->packet_type;
-
-#ifdef RTE_NEXT_ABI
 		is_encapsulation = RTE_ETH_IS_TUNNEL_PKT(packet_type);
-#else
-		is_encapsulation = ol_flags & (PKT_RX_TUNNEL_IPV4_HDR |
-				PKT_RX_TUNNEL_IPV6_HDR);
-#endif
 
 		print_ether_addr("  src=", &eth_hdr->s_addr);
 		print_ether_addr(" - dst=", &eth_hdr->d_addr);
@@ -171,7 +161,6 @@ pkt_burst_receive(struct fwd_stream *fs)
 		if (ol_flags & PKT_RX_QINQ_PKT)
 			printf(" - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
 					mb->vlan_tci, mb->vlan_tci_outer);
-#ifdef RTE_NEXT_ABI
 		if (mb->packet_type) {
 			uint32_t ptype;
 
@@ -341,7 +330,6 @@ pkt_burst_receive(struct fwd_stream *fs)
 			printf("\n");
 		} else
 			printf("Unknown packet type\n");
-#endif /* RTE_NEXT_ABI */
 		if (is_encapsulation) {
 			struct ipv4_hdr *ipv4_hdr;
 			struct ipv6_hdr *ipv6_hdr;
@@ -355,11 +343,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 			l2_len  = sizeof(struct ether_hdr);
 
 			 /* Do not support ipv4 option field */
-#ifdef RTE_NEXT_ABI
 			if (RTE_ETH_IS_IPV4_HDR(packet_type)) {
-#else
-			if (ol_flags & PKT_RX_TUNNEL_IPV4_HDR) {
-#endif
 				l3_len = sizeof(struct ipv4_hdr);
 				ipv4_hdr = rte_pktmbuf_mtod_offset(mb,
 								   struct ipv4_hdr *,

@@ -38,7 +38,7 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 
 EXPORT_MAP := rte_mbuf_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_MBUF) := rte_mbuf.c

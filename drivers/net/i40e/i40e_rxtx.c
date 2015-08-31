@@ -188,11 +188,9 @@ i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
 				  | I40E_RXD_QW1_STATUS_TSYNINDX_MASK))
 				    >> I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
 
-#ifdef RTE_NEXT_ABI
 	if ((mb->packet_type & RTE_PTYPE_L2_MASK)
 			== RTE_PTYPE_L2_ETHER_TIMESYNC)
 		pkt_flags = PKT_RX_IEEE1588_PTP;
-#endif
 	if (tsyn & 0x04) {
 		pkt_flags |= PKT_RX_IEEE1588_TMST;
 		mb->timesync = tsyn & 0x03;
@@ -202,7 +200,6 @@ i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
 }
 #endif
 
-#ifdef RTE_NEXT_ABI
 /* For each value it means, datasheet of hardware can tell more details */
 static inline uint32_t
 i40e_rxd_pkt_type_mapping(uint8_t ptype)
@@ -735,275 +732,6 @@ i40e_rxd_pkt_type_mapping(uint8_t ptype)
 
 	return ptype_table[ptype];
 }
-#else /* RTE_NEXT_ABI */
-/* Translate pkt types to pkt flags */
-static inline uint64_t
-i40e_rxd_ptype_to_pkt_flags(uint64_t qword)
-{
-	uint8_t ptype = (uint8_t)((qword & I40E_RXD_QW1_PTYPE_MASK) >>
-					I40E_RXD_QW1_PTYPE_SHIFT);
-	static const uint64_t ip_ptype_map[I40E_MAX_PKT_TYPE] = {
-		0, /* PTYPE 0 */
-		0, /* PTYPE 1 */
-		PKT_RX_IEEE1588_PTP, /* PTYPE 2 */
-		0, /* PTYPE 3 */
-		0, /* PTYPE 4 */
-		0, /* PTYPE 5 */
-		0, /* PTYPE 6 */
-		0, /* PTYPE 7 */
-		0, /* PTYPE 8 */
-		0, /* PTYPE 9 */
-		0, /* PTYPE 10 */
-		0, /* PTYPE 11 */
-		0, /* PTYPE 12 */
-		0, /* PTYPE 13 */
-		0, /* PTYPE 14 */
-		0, /* PTYPE 15 */
-		0, /* PTYPE 16 */
-		0, /* PTYPE 17 */
-		0, /* PTYPE 18 */
-		0, /* PTYPE 19 */
-		0, /* PTYPE 20 */
-		0, /* PTYPE 21 */
-		PKT_RX_IPV4_HDR, /* PTYPE 22 */
-		PKT_RX_IPV4_HDR, /* PTYPE 23 */
-		PKT_RX_IPV4_HDR, /* PTYPE 24 */
-		0, /* PTYPE 25 */
-		PKT_RX_IPV4_HDR, /* PTYPE 26 */
-		PKT_RX_IPV4_HDR, /* PTYPE 27 */
-		PKT_RX_IPV4_HDR, /* PTYPE 28 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 29 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 30 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 31 */
-		0, /* PTYPE 32 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 33 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 34 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 35 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 36 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 37 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 38 */
-		0, /* PTYPE 39 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 40 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 41 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 42 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 43 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 44 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 45 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 46 */
-		0, /* PTYPE 47 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 48 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 49 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 50 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 51 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 52 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 53 */
-		0, /* PTYPE 54 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 55 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 56 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 57 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 58 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 59 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 60 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 61 */
-		0, /* PTYPE 62 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 63 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 64 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 65 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 66 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 67 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 68 */
-		0, /* PTYPE 69 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 70 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 71 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 72 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 73 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 74 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 75 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 76 */
-		0, /* PTYPE 77 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 78 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 79 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 80 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 81 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 82 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 83 */
-		0, /* PTYPE 84 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 85 */
-		PKT_RX_TUNNEL_IPV4_HDR, /* PTYPE 86 */
-		PKT_RX_IPV4_HDR_EXT, /* PTYPE 87 */
-		PKT_RX_IPV6_HDR, /* PTYPE 88 */
-		PKT_RX_IPV6_HDR, /* PTYPE 89 */
-		PKT_RX_IPV6_HDR, /* PTYPE 90 */
-		0, /* PTYPE 91 */
-		PKT_RX_IPV6_HDR, /* PTYPE 92 */
-		PKT_RX_IPV6_HDR, /* PTYPE 93 */
-		PKT_RX_IPV6_HDR, /* PTYPE 94 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 95 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 96 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 97 */
-		0, /* PTYPE 98 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 99 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 100 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 101 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 102 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 103 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 104 */
-		0, /* PTYPE 105 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 106 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 107 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 108 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 109 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 110 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 111 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 112 */
-		0, /* PTYPE 113 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 114 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 115 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 116 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 117 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 118 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 119 */
-		0, /* PTYPE 120 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 121 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 122 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 123 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 124 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 125 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 126 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 127 */
-		0, /* PTYPE 128 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 129 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 130 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 131 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 132 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 133 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 134 */
-		0, /* PTYPE 135 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 136 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 137 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 138 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 139 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 140 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 141 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 142 */
-		0, /* PTYPE 143 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 144 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 145 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 146 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 147 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 148 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 149 */
-		0, /* PTYPE 150 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 151 */
-		PKT_RX_TUNNEL_IPV6_HDR, /* PTYPE 152 */
-		PKT_RX_IPV6_HDR_EXT, /* PTYPE 153 */
-		0, /* PTYPE 154 */
-		0, /* PTYPE 155 */
-		0, /* PTYPE 156 */
-		0, /* PTYPE 157 */
-		0, /* PTYPE 158 */
-		0, /* PTYPE 159 */
-		0, /* PTYPE 160 */
-		0, /* PTYPE 161 */
-		0, /* PTYPE 162 */
-		0, /* PTYPE 163 */
-		0, /* PTYPE 164 */
-		0, /* PTYPE 165 */
-		0, /* PTYPE 166 */
-		0, /* PTYPE 167 */
-		0, /* PTYPE 168 */
-		0, /* PTYPE 169 */
-		0, /* PTYPE 170 */
-		0, /* PTYPE 171 */
-		0, /* PTYPE 172 */
-		0, /* PTYPE 173 */
-		0, /* PTYPE 174 */
-		0, /* PTYPE 175 */
-		0, /* PTYPE 176 */
-		0, /* PTYPE 177 */
-		0, /* PTYPE 178 */
-		0, /* PTYPE 179 */
-		0, /* PTYPE 180 */
-		0, /* PTYPE 181 */
-		0, /* PTYPE 182 */
-		0, /* PTYPE 183 */
-		0, /* PTYPE 184 */
-		0, /* PTYPE 185 */
-		0, /* PTYPE 186 */
-		0, /* PTYPE 187 */
-		0, /* PTYPE 188 */
-		0, /* PTYPE 189 */
-		0, /* PTYPE 190 */
-		0, /* PTYPE 191 */
-		0, /* PTYPE 192 */
-		0, /* PTYPE 193 */
-		0, /* PTYPE 194 */
-		0, /* PTYPE 195 */
-		0, /* PTYPE 196 */
-		0, /* PTYPE 197 */
-		0, /* PTYPE 198 */
-		0, /* PTYPE 199 */
-		0, /* PTYPE 200 */
-		0, /* PTYPE 201 */
-		0, /* PTYPE 202 */
-		0, /* PTYPE 203 */
-		0, /* PTYPE 204 */
-		0, /* PTYPE 205 */
-		0, /* PTYPE 206 */
-		0, /* PTYPE 207 */
-		0, /* PTYPE 208 */
-		0, /* PTYPE 209 */
-		0, /* PTYPE 210 */
-		0, /* PTYPE 211 */
-		0, /* PTYPE 212 */
-		0, /* PTYPE 213 */
-		0, /* PTYPE 214 */
-		0, /* PTYPE 215 */
-		0, /* PTYPE 216 */
-		0, /* PTYPE 217 */
-		0, /* PTYPE 218 */
-		0, /* PTYPE 219 */
-		0, /* PTYPE 220 */
-		0, /* PTYPE 221 */
-		0, /* PTYPE 222 */
-		0, /* PTYPE 223 */
-		0, /* PTYPE 224 */
-		0, /* PTYPE 225 */
-		0, /* PTYPE 226 */
-		0, /* PTYPE 227 */
-		0, /* PTYPE 228 */
-		0, /* PTYPE 229 */
-		0, /* PTYPE 230 */
-		0, /* PTYPE 231 */
-		0, /* PTYPE 232 */
-		0, /* PTYPE 233 */
-		0, /* PTYPE 234 */
-		0, /* PTYPE 235 */
-		0, /* PTYPE 236 */
-		0, /* PTYPE 237 */
-		0, /* PTYPE 238 */
-		0, /* PTYPE 239 */
-		0, /* PTYPE 240 */
-		0, /* PTYPE 241 */
-		0, /* PTYPE 242 */
-		0, /* PTYPE 243 */
-		0, /* PTYPE 244 */
-		0, /* PTYPE 245 */
-		0, /* PTYPE 246 */
-		0, /* PTYPE 247 */
-		0, /* PTYPE 248 */
-		0, /* PTYPE 249 */
-		0, /* PTYPE 250 */
-		0, /* PTYPE 251 */
-		0, /* PTYPE 252 */
-		0, /* PTYPE 253 */
-		0, /* PTYPE 254 */
-		0, /* PTYPE 255 */
-	};
-
-	return ip_ptype_map[ptype];
-}
-#endif /* RTE_NEXT_ABI */
 
 #define I40E_RX_DESC_EXT_STATUS_FLEXBH_MASK   0x03
 #define I40E_RX_DESC_EXT_STATUS_FLEXBH_FD_ID  0x01
@@ -1292,18 +1020,10 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			i40e_rxd_to_vlan_tci(mb, &rxdp[j]);
 			pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 			pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
-#ifdef RTE_NEXT_ABI
 			mb->packet_type =
 				i40e_rxd_pkt_type_mapping((uint8_t)((qword1 &
 						I40E_RXD_QW1_PTYPE_MASK) >>
 						I40E_RXD_QW1_PTYPE_SHIFT));
-#else
-			pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
-
-			mb->packet_type = (uint16_t)((qword1 &
-					I40E_RXD_QW1_PTYPE_MASK) >>
-					I40E_RXD_QW1_PTYPE_SHIFT);
-#endif /* RTE_NEXT_ABI */
 			if (pkt_flags & PKT_RX_RSS_HASH)
 				mb->hash.rss = rte_le_to_cpu_32(\
 					rxdp[j].wb.qword0.hi_dword.rss);
@@ -1549,15 +1269,9 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		i40e_rxd_to_vlan_tci(rxm, &rxd);
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
-#ifdef RTE_NEXT_ABI
 		rxm->packet_type =
 			i40e_rxd_pkt_type_mapping((uint8_t)((qword1 &
 			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT));
-#else
-		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
-		rxm->packet_type = (uint16_t)((qword1 & I40E_RXD_QW1_PTYPE_MASK) >>
-				I40E_RXD_QW1_PTYPE_SHIFT);
-#endif /* RTE_NEXT_ABI */
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
@@ -1717,16 +1431,9 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		i40e_rxd_to_vlan_tci(first_seg, &rxd);
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
-#ifdef RTE_NEXT_ABI
 		first_seg->packet_type =
 			i40e_rxd_pkt_type_mapping((uint8_t)((qword1 &
 			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT));
-#else
-		pkt_flags |= i40e_rxd_ptype_to_pkt_flags(qword1);
-		first_seg->packet_type = (uint16_t)((qword1 &
-					I40E_RXD_QW1_PTYPE_MASK) >>
-					I40E_RXD_QW1_PTYPE_SHIFT);
-#endif /* RTE_NEXT_ABI */
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);

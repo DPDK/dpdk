@@ -23,6 +23,9 @@ ABI Changes
 * The EAL and ethdev structures rte_intr_handle and rte_eth_conf were changed
   to support Rx interrupt. It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
 
+* The mbuf structure was changed to support unified packet type.
+  It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
+
 
 Shared Library Versions
 -----------------------
@@ -45,7 +48,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_kvargs.so.1
      librte_lpm.so.1
      librte_malloc.so.1
-     librte_mbuf.so.1
+   + librte_mbuf.so.2
      librte_mempool.so.1
      librte_meter.so.1
      librte_pipeline.so.1

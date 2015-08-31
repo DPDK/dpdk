@@ -520,17 +520,9 @@ vmxnet3_rx_offload(const Vmxnet3_RxCompDesc *rcd, struct rte_mbuf *rxm)
 		struct ipv4_hdr *ip = (struct ipv4_hdr *)(eth + 1);
 
 		if (((ip->version_ihl & 0xf) << 2) > (int)sizeof(struct ipv4_hdr))
-#ifdef RTE_NEXT_ABI
 			rxm->packet_type = RTE_PTYPE_L3_IPV4_EXT;
-#else
-			rxm->ol_flags |= PKT_RX_IPV4_HDR_EXT;
-#endif
 		else
-#ifdef RTE_NEXT_ABI
 			rxm->packet_type = RTE_PTYPE_L3_IPV4;
-#else
-			rxm->ol_flags |= PKT_RX_IPV4_HDR;
-#endif
 
 		if (!rcd->cnc) {
 			if (!rcd->ipc)

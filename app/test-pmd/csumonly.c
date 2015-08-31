@@ -202,14 +202,9 @@ parse_ethernet(struct ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 
 /* Parse a vxlan header */
 static void
-#ifdef RTE_NEXT_ABI
 parse_vxlan(struct udp_hdr *udp_hdr,
 	    struct testpmd_offload_info *info,
 	    uint32_t pkt_type)
-#else
-parse_vxlan(struct udp_hdr *udp_hdr, struct testpmd_offload_info *info,
-	uint64_t mbuf_olflags)
-#endif
 {
 	struct ether_hdr *eth_hdr;
 
@@ -217,12 +212,7 @@ parse_vxlan(struct udp_hdr *udp_hdr, struct testpmd_offload_info *info,
 	 * (rfc7348) or that the rx offload flag is set (i40e only
 	 * currently) */
 	if (udp_hdr->dst_port != _htons(4789) &&
-#ifdef RTE_NEXT_ABI
 		RTE_ETH_IS_TUNNEL_PKT(pkt_type) == 0)
-#else
-		(mbuf_olflags & (PKT_RX_TUNNEL_IPV4_HDR |
-			PKT_RX_TUNNEL_IPV6_HDR)) == 0)
-#endif
 		return;
 
 	info->is_tunnel = 1;
@@ -559,11 +549,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				struct udp_hdr *udp_hdr;
 				udp_hdr = (struct udp_hdr *)((char *)l3_hdr +
 					info.l3_len);
-#ifdef RTE_NEXT_ABI
 				parse_vxlan(udp_hdr, &info, m->packet_type);
-#else
-				parse_vxlan(udp_hdr, &info, m->ol_flags);
-#endif
 			} else if (info.l4_proto == IPPROTO_GRE) {
 				struct simple_gre_hdr *gre_hdr;
 				gre_hdr = (struct simple_gre_hdr *)

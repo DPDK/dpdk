@@ -650,11 +650,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
-#ifdef RTE_NEXT_ABI
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-#else
-	if (m->ol_flags & PKT_RX_IPV4_HDR) {
-#endif
 		/* Handle IPv4 headers.*/
 		ipv4_hdr =
 			rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
@@ -689,12 +685,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 		send_single_packet(m, dst_port);
-#ifdef RTE_NEXT_ABI
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
-#else
-	}
-	else {
-#endif
 		/* Handle IPv6 headers.*/
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 		struct ipv6_hdr *ipv6_hdr;
