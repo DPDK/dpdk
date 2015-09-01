@@ -16,6 +16,9 @@ Known Issues
 API Changes
 -----------
 
+* The function rte_eal_pci_close_one() is removed.
+  It was replaced by rte_eal_pci_detach().
+
 
 ABI Changes
 -----------

@@ -40,7 +40,6 @@ DPDK_2.0 {
 	rte_eal_mp_remote_launch;
 	rte_eal_mp_wait_lcore;
 	rte_eal_parse_devargs_str;
-	rte_eal_pci_close_one;
 	rte_eal_pci_dump;
 	rte_eal_pci_probe;
 	rte_eal_pci_probe_one;

@@ -426,8 +426,6 @@ int rte_eal_pci_probe_one(const struct rte_pci_addr *addr);
  *   - Negative on error.
  */
 int rte_eal_pci_detach(const struct rte_pci_addr *addr);
-int __attribute__ ((deprecated))
-rte_eal_pci_close_one(const struct rte_pci_addr *addr);
 
 /**
  * Dump the content of the PCI bus.

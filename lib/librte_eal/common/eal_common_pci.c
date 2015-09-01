@@ -348,12 +348,6 @@ err_return:
 	return -1;
 }
 
-int __attribute__ ((deprecated))
-rte_eal_pci_close_one(const struct rte_pci_addr *addr)
-{
-	return rte_eal_pci_detach(addr);
-}
-
 /*
  * Detach device specified by its pci address.
  */
