@@ -18,9 +18,6 @@ Deprecation Notices
 
 * The function rte_jhash2 is deprecated and should be removed.
 
-* The field mem_location of the rte_lpm structure is deprecated and should be
-  removed as well as the macros RTE_LPM_HEAP and RTE_LPM_MEMZONE.
-
 * The following fields have been deprecated in rte_eth_stats:
   imissed, ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff

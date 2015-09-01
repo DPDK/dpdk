@@ -34,6 +34,8 @@ ABI Changes
 
 * The dummy malloc library is removed. The content was moved into EAL in 2.1.
 
+* The LPM structure is changed. The deprecated field mem_location is removed.
+
 
 Shared Library Versions
 -----------------------
@@ -54,7 +56,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_jobstats.so.1
      librte_kni.so.1
      librte_kvargs.so.1
-     librte_lpm.so.1
+   + librte_lpm.so.2
    + librte_mbuf.so.2
      librte_mempool.so.1
      librte_meter.so.1

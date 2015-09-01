@@ -56,16 +56,6 @@ extern "C" {
 /** Max number of characters in LPM name. */
 #define RTE_LPM_NAMESIZE                32
 
-/** @deprecated Possible location to allocate memory. This was for last
- * parameter of rte_lpm_create(), but is now redundant. The LPM table is always
- * allocated in memory using librte_malloc which uses a memzone. */
-#define RTE_LPM_HEAP                    0
-
-/** @deprecated Possible location to allocate memory. This was for last
- * parameter of rte_lpm_create(), but is now redundant. The LPM table is always
- * allocated in memory using librte_malloc which uses a memzone. */
-#define RTE_LPM_MEMZONE                 1
-
 /** Maximum depth value possible for IPv4 LPM. */
 #define RTE_LPM_MAX_DEPTH               32
 
@@ -154,7 +144,6 @@ struct rte_lpm_rule_info {
 struct rte_lpm {
 	/* LPM metadata. */
 	char name[RTE_LPM_NAMESIZE];        /**< Name of the lpm. */
-	int mem_location; /**< @deprecated @see RTE_LPM_HEAP and RTE_LPM_MEMZONE. */
 	uint32_t max_rules; /**< Max. balanced rules per lpm. */
 	struct rte_lpm_rule_info rule_info[RTE_LPM_MAX_DEPTH]; /**< Rule info table. */
 

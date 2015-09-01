@@ -165,7 +165,7 @@ test2(void)
 {
 	struct rte_lpm *lpm = NULL;
 
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	rte_lpm_free(lpm);
@@ -607,7 +607,7 @@ test10(void)
 
 	/* Add rule that covers a TBL24 range previously invalid & lookup
 	 * (& delete & lookup) */
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, RTE_LPM_HEAP);
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, MAX_RULES, 0);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	ip = IPv4(128, 0, 0, 0);
