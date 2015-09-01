@@ -46,6 +46,65 @@ struct ipv4_7tuple {
 	uint32_t deny;
 };
 
+/**
+ * Legacy support for 7-tuple IPv4 and VLAN rule.
+ * This structure and corresponding API is deprecated.
+ */
+struct rte_acl_ipv4vlan_rule {
+	struct rte_acl_rule_data data; /**< Miscellaneous data for the rule. */
+	uint8_t proto;                 /**< IPv4 protocol ID. */
+	uint8_t proto_mask;            /**< IPv4 protocol ID mask. */
+	uint16_t vlan;                 /**< VLAN ID. */
+	uint16_t vlan_mask;            /**< VLAN ID mask. */
+	uint16_t domain;               /**< VLAN domain. */
+	uint16_t domain_mask;          /**< VLAN domain mask. */
+	uint32_t src_addr;             /**< IPv4 source address. */
+	uint32_t src_mask_len;         /**< IPv4 source address mask. */
+	uint32_t dst_addr;             /**< IPv4 destination address. */
+	uint32_t dst_mask_len;         /**< IPv4 destination address mask. */
+	uint16_t src_port_low;         /**< L4 source port low. */
+	uint16_t src_port_high;        /**< L4 source port high. */
+	uint16_t dst_port_low;         /**< L4 destination port low. */
+	uint16_t dst_port_high;        /**< L4 destination port high. */
+};
+
+/**
+ * Specifies fields layout inside rte_acl_rule for rte_acl_ipv4vlan_rule.
+ */
+enum {
+	RTE_ACL_IPV4VLAN_PROTO_FIELD,
+	RTE_ACL_IPV4VLAN_VLAN1_FIELD,
+	RTE_ACL_IPV4VLAN_VLAN2_FIELD,
+	RTE_ACL_IPV4VLAN_SRC_FIELD,
+	RTE_ACL_IPV4VLAN_DST_FIELD,
+	RTE_ACL_IPV4VLAN_SRCP_FIELD,
+	RTE_ACL_IPV4VLAN_DSTP_FIELD,
+	RTE_ACL_IPV4VLAN_NUM_FIELDS
+};
+
+/**
+ * Macro to define rule size for rte_acl_ipv4vlan_rule.
+ */
+#define	RTE_ACL_IPV4VLAN_RULE_SZ	\
+	RTE_ACL_RULE_SZ(RTE_ACL_IPV4VLAN_NUM_FIELDS)
+
+/*
+ * That effectively defines order of IPV4VLAN classifications:
+ *  - PROTO
+ *  - VLAN (TAG and DOMAIN)
+ *  - SRC IP ADDRESS
+ *  - DST IP ADDRESS
+ *  - PORTS (SRC and DST)
+ */
+enum {
+	RTE_ACL_IPV4VLAN_PROTO,
+	RTE_ACL_IPV4VLAN_VLAN,
+	RTE_ACL_IPV4VLAN_SRC,
+	RTE_ACL_IPV4VLAN_DST,
+	RTE_ACL_IPV4VLAN_PORTS,
+	RTE_ACL_IPV4VLAN_NUM
+};
+
 /* rules for invalid layout test */
 struct rte_acl_ipv4vlan_rule invalid_layout_rules[] = {
 		/* test src and dst address */

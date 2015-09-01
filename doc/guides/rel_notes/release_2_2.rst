@@ -19,6 +19,8 @@ API Changes
 * The function rte_eal_pci_close_one() is removed.
   It was replaced by rte_eal_pci_detach().
 
+* The deprecated ACL API ipv4vlan is removed.
+
 
 ABI Changes
 -----------
@@ -45,7 +47,7 @@ The libraries prepended with a plus sign were incremented in this version.
 .. code-block:: diff
 
    + libethdev.so.2
-     librte_acl.so.1
+   + librte_acl.so.2
      librte_cfgfile.so.1
      librte_cmdline.so.1
      librte_distributor.so.1

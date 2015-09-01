@@ -39,7 +39,7 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
 EXPORT_MAP := rte_acl_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += tb_mem.c

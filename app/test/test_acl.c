@@ -45,6 +45,8 @@
 
 #include "test_acl.h"
 
+#define	BIT_SIZEOF(x) (sizeof(x) * CHAR_BIT)
+
 #define LEN RTE_ACL_MAX_CATEGORIES
 
 RTE_ACL_RULE_DEF(acl_ipv4vlan_rule, RTE_ACL_IPV4VLAN_NUM_FIELDS);
@@ -98,6 +100,198 @@ bswap_test_data(struct ipv4_7tuple *data, int len, int to_be)
 			data[i].domain = rte_be_to_cpu_16(data[i].domain);
 		}
 	}
+}
+
+static int
+acl_ipv4vlan_check_rule(const struct rte_acl_ipv4vlan_rule *rule)
+{
+	if (rule->src_port_low > rule->src_port_high ||
+			rule->dst_port_low > rule->dst_port_high ||
+			rule->src_mask_len > BIT_SIZEOF(rule->src_addr) ||
+			rule->dst_mask_len > BIT_SIZEOF(rule->dst_addr))
+		return -EINVAL;
+	return 0;
+}
+
+static void
+acl_ipv4vlan_convert_rule(const struct rte_acl_ipv4vlan_rule *ri,
+	struct acl_ipv4vlan_rule *ro)
+{
+	ro->data = ri->data;
+
+	ro->field[RTE_ACL_IPV4VLAN_PROTO_FIELD].value.u8 = ri->proto;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN1_FIELD].value.u16 = ri->vlan;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN2_FIELD].value.u16 = ri->domain;
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].value.u32 = ri->src_addr;
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].value.u32 = ri->dst_addr;
+	ro->field[RTE_ACL_IPV4VLAN_SRCP_FIELD].value.u16 = ri->src_port_low;
+	ro->field[RTE_ACL_IPV4VLAN_DSTP_FIELD].value.u16 = ri->dst_port_low;
+
+	ro->field[RTE_ACL_IPV4VLAN_PROTO_FIELD].mask_range.u8 = ri->proto_mask;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN1_FIELD].mask_range.u16 = ri->vlan_mask;
+	ro->field[RTE_ACL_IPV4VLAN_VLAN2_FIELD].mask_range.u16 =
+		ri->domain_mask;
+	ro->field[RTE_ACL_IPV4VLAN_SRC_FIELD].mask_range.u32 =
+		ri->src_mask_len;
+	ro->field[RTE_ACL_IPV4VLAN_DST_FIELD].mask_range.u32 = ri->dst_mask_len;
+	ro->field[RTE_ACL_IPV4VLAN_SRCP_FIELD].mask_range.u16 =
+		ri->src_port_high;
+	ro->field[RTE_ACL_IPV4VLAN_DSTP_FIELD].mask_range.u16 =
+		ri->dst_port_high;
+}
+
+/*
+ * Add ipv4vlan rules to an existing ACL context.
+ * This function is not multi-thread safe.
+ *
+ * @param ctx
+ *   ACL context to add patterns to.
+ * @param rules
+ *   Array of rules to add to the ACL context.
+ *   Note that all fields in rte_acl_ipv4vlan_rule structures are expected
+ *   to be in host byte order.
+ * @param num
+ *   Number of elements in the input array of rules.
+ * @return
+ *   - -ENOMEM if there is no space in the ACL context for these rules.
+ *   - -EINVAL if the parameters are invalid.
+ *   - Zero if operation completed successfully.
+ */
+static int
+rte_acl_ipv4vlan_add_rules(struct rte_acl_ctx *ctx,
+	const struct rte_acl_ipv4vlan_rule *rules,
+	uint32_t num)
+{
+	int32_t rc;
+	uint32_t i;
+	struct acl_ipv4vlan_rule rv;
+
+	if (ctx == NULL || rules == NULL)
+		return -EINVAL;
+
+	/* check input rules. */
+	for (i = 0; i != num; i++) {
+		rc = acl_ipv4vlan_check_rule(rules + i);
+		if (rc != 0) {
+			RTE_LOG(ERR, ACL, "%s: rule #%u is invalid\n",
+				__func__, i + 1);
+			return rc;
+		}
+	}
+
+	/* perform conversion to the internal format and add to the context. */
+	for (i = 0, rc = 0; i != num && rc == 0; i++) {
+		acl_ipv4vlan_convert_rule(rules + i, &rv);
+		rc = rte_acl_add_rules(ctx, (struct rte_acl_rule *)&rv, 1);
+	}
+
+	return rc;
+}
+
+static void
+acl_ipv4vlan_config(struct rte_acl_config *cfg,
+	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM],
+	uint32_t num_categories)
+{
+	static const struct rte_acl_field_def
+		ipv4_defs[RTE_ACL_IPV4VLAN_NUM_FIELDS] = {
+		{
+			.type = RTE_ACL_FIELD_TYPE_BITMASK,
+			.size = sizeof(uint8_t),
+			.field_index = RTE_ACL_IPV4VLAN_PROTO_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_PROTO,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_BITMASK,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_VLAN1_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_VLAN,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_BITMASK,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_VLAN2_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_VLAN,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_MASK,
+			.size = sizeof(uint32_t),
+			.field_index = RTE_ACL_IPV4VLAN_SRC_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_SRC,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_MASK,
+			.size = sizeof(uint32_t),
+			.field_index = RTE_ACL_IPV4VLAN_DST_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_DST,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_RANGE,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_SRCP_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_PORTS,
+		},
+		{
+			.type = RTE_ACL_FIELD_TYPE_RANGE,
+			.size = sizeof(uint16_t),
+			.field_index = RTE_ACL_IPV4VLAN_DSTP_FIELD,
+			.input_index = RTE_ACL_IPV4VLAN_PORTS,
+		},
+	};
+
+	memcpy(&cfg->defs, ipv4_defs, sizeof(ipv4_defs));
+	cfg->num_fields = RTE_DIM(ipv4_defs);
+
+	cfg->defs[RTE_ACL_IPV4VLAN_PROTO_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_PROTO];
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_VLAN];
+	cfg->defs[RTE_ACL_IPV4VLAN_VLAN2_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_VLAN] +
+		cfg->defs[RTE_ACL_IPV4VLAN_VLAN1_FIELD].size;
+	cfg->defs[RTE_ACL_IPV4VLAN_SRC_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_SRC];
+	cfg->defs[RTE_ACL_IPV4VLAN_DST_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_DST];
+	cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_PORTS];
+	cfg->defs[RTE_ACL_IPV4VLAN_DSTP_FIELD].offset =
+		layout[RTE_ACL_IPV4VLAN_PORTS] +
+		cfg->defs[RTE_ACL_IPV4VLAN_SRCP_FIELD].size;
+
+	cfg->num_categories = num_categories;
+}
+
+/*
+ * Analyze set of ipv4vlan rules and build required internal
+ * run-time structures.
+ * This function is not multi-thread safe.
+ *
+ * @param ctx
+ *   ACL context to build.
+ * @param layout
+ *   Layout of input data to search through.
+ * @param num_categories
+ *   Maximum number of categories to use in that build.
+ * @return
+ *   - -ENOMEM if couldn't allocate enough memory.
+ *   - -EINVAL if the parameters are invalid.
+ *   - Negative error code if operation failed.
+ *   - Zero if operation completed successfully.
+ */
+static int
+rte_acl_ipv4vlan_build(struct rte_acl_ctx *ctx,
+	const uint32_t layout[RTE_ACL_IPV4VLAN_NUM],
+	uint32_t num_categories)
+{
+	struct rte_acl_config cfg;
+
+	if (ctx == NULL || layout == NULL)
+		return -EINVAL;
+
+	memset(&cfg, 0, sizeof(cfg));
+	acl_ipv4vlan_config(&cfg, layout, num_categories);
+	return rte_acl_build(ctx, &cfg);
 }
 
 /*

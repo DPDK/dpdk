@@ -261,6 +261,23 @@ enum {
 	NUM_FIELDS_IPV4
 };
 
+/*
+ * That effectively defines order of IPV4VLAN classifications:
+ *  - PROTO
+ *  - VLAN (TAG and DOMAIN)
+ *  - SRC IP ADDRESS
+ *  - DST IP ADDRESS
+ *  - PORTS (SRC and DST)
+ */
+enum {
+	RTE_ACL_IPV4VLAN_PROTO,
+	RTE_ACL_IPV4VLAN_VLAN,
+	RTE_ACL_IPV4VLAN_SRC,
+	RTE_ACL_IPV4VLAN_DST,
+	RTE_ACL_IPV4VLAN_PORTS,
+	RTE_ACL_IPV4VLAN_NUM
+};
+
 struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 	{
 		.type = RTE_ACL_FIELD_TYPE_BITMASK,
