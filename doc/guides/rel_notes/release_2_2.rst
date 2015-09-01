@@ -32,6 +32,8 @@ ABI Changes
 * The mbuf structure was changed to support unified packet type.
   It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
 
+* The dummy malloc library is removed. The content was moved into EAL in 2.1.
+
 
 Shared Library Versions
 -----------------------
@@ -53,7 +55,6 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_kni.so.1
      librte_kvargs.so.1
      librte_lpm.so.1
-     librte_malloc.so.1
    + librte_mbuf.so.2
      librte_mempool.so.1
      librte_meter.so.1

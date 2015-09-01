@@ -85,7 +85,7 @@ Each build directory contains include files, libraries, and applications:
 
     librte_cmdline.a librte_lpm.a librte_mempool.a librte_ring.a
 
-    librte_eal.a librte_malloc.a librte_pmd_e1000.a librte_timer.a
+    librte_eal.a librte_pmd_e1000.a librte_timer.a
 
 
     ~/DEV/DPDK$ ls i686-native-linuxapp-gcc/include/

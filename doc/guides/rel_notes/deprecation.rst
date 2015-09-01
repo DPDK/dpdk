@@ -21,11 +21,6 @@ Deprecation Notices
 * The field mem_location of the rte_lpm structure is deprecated and should be
   removed as well as the macros RTE_LPM_HEAP and RTE_LPM_MEMZONE.
 
-* librte_malloc library has been integrated into librte_eal. The 2.1 release
-  creates a dummy/empty malloc library to fulfill binaries with dynamic linking
-  dependencies on librte_malloc.so. Such dummy library will not be created from
-  release 2.2 so binaries will need to be rebuilt.
-
 * The following fields have been deprecated in rte_eth_stats:
   imissed, ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff

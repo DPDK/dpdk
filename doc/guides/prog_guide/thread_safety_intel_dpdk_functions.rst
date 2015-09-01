@@ -73,7 +73,7 @@ Performance Insensitive API
 
 Outside of the performance sensitive areas described in Section 25.1,
 the DPDK provides a thread-safe API for most other libraries.
-For example, malloc(librte_malloc) and memzone functions are safe for use in multi-threaded and multi-process environments.
+For example, malloc and memzone functions are safe for use in multi-threaded and multi-process environments.
 
 The setup and configuration of the PMD is not performance sensitive, but is not thread safe either.
 It is possible that the multiple read/writes during PMD setup and configuration could be corrupted in a multi-thread environment.
