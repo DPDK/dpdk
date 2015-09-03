@@ -2099,10 +2099,11 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 	id++;
 	snprintf(z_name, sizeof(z_name), "i40e_dma_%"PRIu64, id);
 #ifdef RTE_LIBRTE_XEN_DOM0
-	mz = rte_memzone_reserve_bounded(z_name, size, 0, 0, alignment,
-							RTE_PGSIZE_2M);
+	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY, 0,
+					 alignment, RTE_PGSIZE_2M);
 #else
-	mz = rte_memzone_reserve_aligned(z_name, size, 0, 0, alignment);
+	mz = rte_memzone_reserve_aligned(z_name, size, SOCKET_ID_ANY, 0,
+					 alignment);
 #endif
 	if (!mz)
 		return I40E_ERR_NO_MEMORY;
