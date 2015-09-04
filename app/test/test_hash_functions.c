@@ -85,7 +85,7 @@ static uint32_t hash_values_crc[2][10] = {{
  * from the array entries is tested.
  */
 #define HASHTEST_ITERATIONS 1000000
-
+#define MAX_KEYSIZE 64
 static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
 static uint32_t hashtest_initvals[] = {0, 0xdeadbeef};
 static uint32_t hashtest_key_lens[] = {
@@ -119,7 +119,7 @@ static void
 run_hash_func_perf_test(uint32_t key_len, uint32_t init_val,
 		rte_hash_function f)
 {
-	static uint8_t key[HASHTEST_ITERATIONS][RTE_HASH_KEY_LENGTH_MAX];
+	static uint8_t key[HASHTEST_ITERATIONS][MAX_KEYSIZE];
 	uint64_t ticks, start, end;
 	unsigned i, j;
 

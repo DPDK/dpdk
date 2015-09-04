@@ -13,11 +13,6 @@ Deprecation Notices
   There is no backward compatibility planned from release 2.2.
   All binaries will need to be rebuilt from release 2.2.
 
-* The Macros RTE_HASH_BUCKET_ENTRIES_MAX and RTE_HASH_KEY_LENGTH_MAX are
-  deprecated and will be removed with version 2.2.
-
-* The function rte_jhash2 is deprecated and should be removed.
-
 * The following fields have been deprecated in rte_eth_stats:
   imissed, ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff

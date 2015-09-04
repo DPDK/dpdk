@@ -267,10 +267,10 @@ rte_jhash_2hashes(const void *key, uint32_t length, uint32_t *pc, uint32_t *pb)
 }
 
 /**
- * Same as rte_jhash2, but takes two seeds and return two uint32_ts.
+ * Same as rte_jhash_32b, but takes two seeds and return two uint32_ts.
  * pc and pb must be non-null, and *pc and *pb must both be initialized
  * with seeds. If you pass in (*pb)=0, the output (*pc) will be
- * the same as the return value from rte_jhash2.
+ * the same as the return value from rte_jhash_32b.
  *
  * @param k
  *   Key to calculate hash of.
@@ -326,17 +326,6 @@ rte_jhash(const void *key, uint32_t length, uint32_t initval)
  */
 static inline uint32_t
 rte_jhash_32b(const uint32_t *k, uint32_t length, uint32_t initval)
-{
-	uint32_t initval2 = 0;
-
-	rte_jhash_32b_2hashes(k, length, &initval, &initval2);
-
-	return initval;
-}
-
-static inline uint32_t
-__attribute__ ((deprecated))
-rte_jhash2(const uint32_t *k, uint32_t length, uint32_t initval)
 {
 	uint32_t initval2 = 0;
 

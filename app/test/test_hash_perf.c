@@ -140,7 +140,7 @@ shuffle_input_keys(unsigned table_index)
 {
 	unsigned i;
 	uint32_t swap_idx;
-	uint8_t temp_key[RTE_HASH_KEY_LENGTH_MAX];
+	uint8_t temp_key[MAX_KEYSIZE];
 	hash_sig_t temp_signature;
 	int32_t temp_position;
 

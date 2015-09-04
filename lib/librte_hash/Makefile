@@ -39,7 +39,7 @@ CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
 EXPORT_MAP := rte_hash_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) := rte_cuckoo_hash.c

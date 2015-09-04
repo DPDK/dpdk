@@ -49,12 +49,6 @@ extern "C" {
 /** Maximum size of hash table that can be created. */
 #define RTE_HASH_ENTRIES_MAX			(1 << 30)
 
-/** @deprecated Maximum bucket size that can be created. */
-#define RTE_HASH_BUCKET_ENTRIES_MAX		4
-
-/** @deprecated Maximum length of key that can be used. */
-#define RTE_HASH_KEY_LENGTH_MAX			64
-
 /** Maximum number of characters in hash name.*/
 #define RTE_HASH_NAMESIZE			32
 
