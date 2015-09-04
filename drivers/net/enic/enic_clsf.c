@@ -214,7 +214,7 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 		enic->fdir.stats.add++;
 	}
 
-	pos = rte_hash_add_key(enic->fdir.hash, (void *)key);
+	pos = rte_hash_add_key(enic->fdir.hash, params);
 	enic->fdir.nodes[pos] = key;
 	return 0;
 }
@@ -244,7 +244,7 @@ int enic_clsf_init(struct enic *enic)
 	struct rte_hash_parameters hash_params = {
 		.name = "enicpmd_clsf_hash",
 		.entries = ENICPMD_CLSF_HASH_ENTRIES,
-		.key_len = RTE_HASH_KEY_LENGTH_MAX,
+		.key_len = sizeof(struct rte_eth_fdir_filter),
 		.hash_func = DEFAULT_HASH_FUNC,
 		.hash_func_init_val = 0,
 		.socket_id = SOCKET_0,
