@@ -115,9 +115,10 @@ struct i40e_adminq_info {
 
 /**
  * i40e_aq_rc_to_posix - convert errors to user-land codes
- * aq_rc: AdminQ error code to convert
+ * aq_ret: AdminQ handler error code can override aq_rc
+ * aq_rc: AdminQ firmware error code to convert
  **/
-STATIC inline int i40e_aq_rc_to_posix(int aq_ret, u16 aq_rc)
+STATIC inline int i40e_aq_rc_to_posix(int aq_ret, int aq_rc)
 {
 	int aq_to_posix[] = {
 		0,           /* I40E_AQ_RC_OK */
@@ -149,8 +150,9 @@ STATIC inline int i40e_aq_rc_to_posix(int aq_ret, u16 aq_rc)
 	if (aq_ret == I40E_ERR_ADMIN_QUEUE_TIMEOUT)
 		return -EAGAIN;
 
-	if (aq_rc >= (sizeof(aq_to_posix) / sizeof((aq_to_posix)[0])))
+	if (!((u32)aq_rc < (sizeof(aq_to_posix) / sizeof((aq_to_posix)[0]))))
 		return -ERANGE;
+
 	return aq_to_posix[aq_rc];
 }
 
