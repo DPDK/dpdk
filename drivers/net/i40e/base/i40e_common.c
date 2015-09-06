@@ -371,9 +371,27 @@ void i40e_debug_aq(struct i40e_hw *hw, enum i40e_debug_mask mask, void *desc,
 bool i40e_check_asq_alive(struct i40e_hw *hw)
 {
 	if (hw->aq.asq.len)
-		return !!(rd32(hw, hw->aq.asq.len) & I40E_PF_ATQLEN_ATQENABLE_MASK);
-	else
-		return false;
+#ifdef PF_DRIVER
+#ifdef INTEGRATED_VF
+		if (!i40e_is_vf(hw))
+			return !!(rd32(hw, hw->aq.asq.len) &
+				I40E_PF_ATQLEN_ATQENABLE_MASK);
+#else
+		return !!(rd32(hw, hw->aq.asq.len) &
+			I40E_PF_ATQLEN_ATQENABLE_MASK);
+#endif /* INTEGRATED_VF */
+#endif /* PF_DRIVER */
+#ifdef VF_DRIVER
+#ifdef INTEGRATED_VF
+		if (i40e_is_vf(hw))
+			return !!(rd32(hw, hw->aq.asq.len) &
+				I40E_VF_ATQLEN1_ATQENABLE_MASK);
+#else
+		return !!(rd32(hw, hw->aq.asq.len) &
+			I40E_VF_ATQLEN1_ATQENABLE_MASK);
+#endif /* INTEGRATED_VF */
+#endif /* VF_DRIVER */
+	return false;
 }
 
 /**

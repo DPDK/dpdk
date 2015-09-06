@@ -69,6 +69,7 @@ STATIC void i40e_adminq_init_regs(struct i40e_hw *hw)
 		hw->aq.arq.len  = I40E_VF_ARQLEN1;
 		hw->aq.arq.bal  = I40E_VF_ARQBAL1;
 		hw->aq.arq.bah  = I40E_VF_ARQBAH1;
+#ifdef PF_DRIVER
 	} else {
 		hw->aq.asq.tail = I40E_PF_ATQT;
 		hw->aq.asq.head = I40E_PF_ATQH;
@@ -80,6 +81,7 @@ STATIC void i40e_adminq_init_regs(struct i40e_hw *hw)
 		hw->aq.arq.len  = I40E_PF_ARQLEN;
 		hw->aq.arq.bal  = I40E_PF_ARQBAL;
 		hw->aq.arq.bah  = I40E_PF_ARQBAH;
+#endif
 	}
 }
 
@@ -316,8 +318,26 @@ STATIC enum i40e_status_code i40e_config_asq_regs(struct i40e_hw *hw)
 	wr32(hw, hw->aq.asq.tail, 0);
 
 	/* set starting point */
+#ifdef PF_DRIVER
+#ifdef INTEGRATED_VF
+	if (!i40e_is_vf(hw))
+		wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
+					  I40E_PF_ATQLEN_ATQENABLE_MASK));
+#else
 	wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
 				  I40E_PF_ATQLEN_ATQENABLE_MASK));
+#endif /* INTEGRATED_VF */
+#endif /* PF_DRIVER */
+#ifdef VF_DRIVER
+#ifdef INTEGRATED_VF
+	if (i40e_is_vf(hw))
+		wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
+					  I40E_VF_ATQLEN1_ATQENABLE_MASK));
+#else
+	wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
+				  I40E_VF_ATQLEN1_ATQENABLE_MASK));
+#endif /* INTEGRATED_VF */
+#endif /* VF_DRIVER */
 	wr32(hw, hw->aq.asq.bal, I40E_LO_DWORD(hw->aq.asq.desc_buf.pa));
 	wr32(hw, hw->aq.asq.bah, I40E_HI_DWORD(hw->aq.asq.desc_buf.pa));
 
@@ -345,8 +365,26 @@ STATIC enum i40e_status_code i40e_config_arq_regs(struct i40e_hw *hw)
 	wr32(hw, hw->aq.arq.tail, 0);
 
 	/* set starting point */
+#ifdef PF_DRIVER
+#ifdef INTEGRATED_VF
+	if (!i40e_is_vf(hw))
+		wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
+					  I40E_PF_ARQLEN_ARQENABLE_MASK));
+#else
 	wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
 				  I40E_PF_ARQLEN_ARQENABLE_MASK));
+#endif /* INTEGRATED_VF */
+#endif /* PF_DRIVER */
+#ifdef VF_DRIVER
+#ifdef INTEGRATED_VF
+	if (i40e_is_vf(hw))
+		wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
+					  I40E_VF_ARQLEN1_ARQENABLE_MASK));
+#else
+	wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
+				  I40E_VF_ARQLEN1_ARQENABLE_MASK));
+#endif /* INTEGRATED_VF */
+#endif /* VF_DRIVER */
 	wr32(hw, hw->aq.arq.bal, I40E_LO_DWORD(hw->aq.arq.desc_buf.pa));
 	wr32(hw, hw->aq.arq.bah, I40E_HI_DWORD(hw->aq.arq.desc_buf.pa));
 
@@ -998,7 +1036,22 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	i40e_acquire_spinlock(&hw->aq.arq_spinlock);
 
 	/* set next_to_use to head */
+#ifdef PF_DRIVER
+#ifdef INTEGRATED_VF
+	if (!i40e_is_vf(hw))
+		ntu = (rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK);
+#else
 	ntu = (rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK);
+#endif /* INTEGRATED_VF */
+#endif /* PF_DRIVER */
+#ifdef VF_DRIVER
+#ifdef INTEGRATED_VF
+	if (i40e_is_vf(hw))
+		ntu = (rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK);
+#else
+	ntu = (rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK);
+#endif /* INTEGRATED_VF */
+#endif /* VF_DRIVER */
 	if (ntu == ntc) {
 		/* nothing to do - shouldn't need to update ring's values */
 		ret_code = I40E_ERR_ADMIN_QUEUE_NO_WORK;
@@ -1093,9 +1146,6 @@ void i40e_resume_aq(struct i40e_hw *hw)
 	hw->aq.asq.next_to_use = 0;
 	hw->aq.asq.next_to_clean = 0;
 
-#if (I40E_VF_ATQLEN_ATQENABLE_MASK != I40E_PF_ATQLEN_ATQENABLE_MASK)
-#error I40E_VF_ATQLEN_ATQENABLE_MASK != I40E_PF_ATQLEN_ATQENABLE_MASK
-#endif
 	i40e_config_asq_regs(hw);
 
 	hw->aq.arq.next_to_use = 0;
