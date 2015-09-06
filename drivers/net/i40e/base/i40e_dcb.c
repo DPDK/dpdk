@@ -884,6 +884,333 @@ enum i40e_status_code i40e_init_dcb(struct i40e_hw *hw)
 	return ret;
 }
 
+/**
+ * i40e_add_ieee_ets_tlv - Prepare ETS TLV in IEEE format
+ * @tlv: Fill the ETS config data in IEEE format
+ * @dcbcfg: Local store which holds the DCB Config
+ *
+ * Prepare IEEE 802.1Qaz ETS CFG TLV
+ **/
+static void i40e_add_ieee_ets_tlv(struct i40e_lldp_org_tlv *tlv,
+				  struct i40e_dcbx_config *dcbcfg)
+{
+	u8 priority0, priority1, maxtcwilling = 0;
+	struct i40e_dcb_ets_config *etscfg;
+	u16 offset = 0, typelength, i;
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+
+	typelength = (u16)((I40E_TLV_TYPE_ORG << I40E_LLDP_TLV_TYPE_SHIFT) |
+			I40E_IEEE_ETS_TLV_LENGTH);
+	tlv->typelength = I40E_HTONS(typelength);
+
+	ouisubtype = (u32)((I40E_IEEE_8021QAZ_OUI << I40E_LLDP_TLV_OUI_SHIFT) |
+			I40E_IEEE_SUBTYPE_ETS_CFG);
+	tlv->ouisubtype = I40E_HTONL(ouisubtype);
+
+	/* First Octet post subtype
+	 * --------------------------
+	 * |will-|CBS  | Re-  | Max |
+	 * |ing  |     |served| TCs |
+	 * --------------------------
+	 * |1bit | 1bit|3 bits|3bits|
+	 */
+	etscfg = &dcbcfg->etscfg;
+	if (etscfg->willing)
+		maxtcwilling = BIT(I40E_IEEE_ETS_WILLING_SHIFT);
+	maxtcwilling |= etscfg->maxtcs & I40E_IEEE_ETS_MAXTC_MASK;
+	buf[offset] = maxtcwilling;
+
+	/* Move offset to Priority Assignment Table */
+	offset++;
+
+	/* Priority Assignment Table (4 octets)
+	 * Octets:|    1    |    2    |    3    |    4    |
+	 *        -----------------------------------------
+	 *        |pri0|pri1|pri2|pri3|pri4|pri5|pri6|pri7|
+	 *        -----------------------------------------
+	 *   Bits:|7  4|3  0|7  4|3  0|7  4|3  0|7  4|3  0|
+	 *        -----------------------------------------
+	 */
+	for (i = 0; i < 4; i++) {
+		priority0 = etscfg->prioritytable[i * 2] & 0xF;
+		priority1 = etscfg->prioritytable[i * 2 + 1] & 0xF;
+		buf[offset] = (priority0 << I40E_IEEE_ETS_PRIO_1_SHIFT) |
+				priority1;
+		offset++;
+	}
+
+	/* TC Bandwidth Table (8 octets)
+	 * Octets:| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+	 *        ---------------------------------
+	 *        |tc0|tc1|tc2|tc3|tc4|tc5|tc6|tc7|
+	 *        ---------------------------------
+	 */
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++)
+		buf[offset++] = etscfg->tcbwtable[i];
+
+	/* TSA Assignment Table (8 octets)
+	 * Octets:| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+	 *        ---------------------------------
+	 *        |tc0|tc1|tc2|tc3|tc4|tc5|tc6|tc7|
+	 *        ---------------------------------
+	 */
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++)
+		buf[offset++] = etscfg->tsatable[i];
+}
+
+/**
+ * i40e_add_ieee_etsrec_tlv - Prepare ETS Recommended TLV in IEEE format
+ * @tlv: Fill ETS Recommended TLV in IEEE format
+ * @dcbcfg: Local store which holds the DCB Config
+ *
+ * Prepare IEEE 802.1Qaz ETS REC TLV
+ **/
+static void i40e_add_ieee_etsrec_tlv(struct i40e_lldp_org_tlv *tlv,
+				     struct i40e_dcbx_config *dcbcfg)
+{
+	struct i40e_dcb_ets_config *etsrec;
+	u16 offset = 0, typelength, i;
+	u8 priority0, priority1;
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+
+	typelength = (u16)((I40E_TLV_TYPE_ORG << I40E_LLDP_TLV_TYPE_SHIFT) |
+			I40E_IEEE_ETS_TLV_LENGTH);
+	tlv->typelength = I40E_HTONS(typelength);
+
+	ouisubtype = (u32)((I40E_IEEE_8021QAZ_OUI << I40E_LLDP_TLV_OUI_SHIFT) |
+			I40E_IEEE_SUBTYPE_ETS_REC);
+	tlv->ouisubtype = I40E_HTONL(ouisubtype);
+
+	etsrec = &dcbcfg->etsrec;
+	/* First Octet is reserved */
+	/* Move offset to Priority Assignment Table */
+	offset++;
+
+	/* Priority Assignment Table (4 octets)
+	 * Octets:|    1    |    2    |    3    |    4    |
+	 *        -----------------------------------------
+	 *        |pri0|pri1|pri2|pri3|pri4|pri5|pri6|pri7|
+	 *        -----------------------------------------
+	 *   Bits:|7  4|3  0|7  4|3  0|7  4|3  0|7  4|3  0|
+	 *        -----------------------------------------
+	 */
+	for (i = 0; i < 4; i++) {
+		priority0 = etsrec->prioritytable[i * 2] & 0xF;
+		priority1 = etsrec->prioritytable[i * 2 + 1] & 0xF;
+		buf[offset] = (priority0 << I40E_IEEE_ETS_PRIO_1_SHIFT) |
+				priority1;
+		offset++;
+	}
+
+	/* TC Bandwidth Table (8 octets)
+	 * Octets:| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+	 *        ---------------------------------
+	 *        |tc0|tc1|tc2|tc3|tc4|tc5|tc6|tc7|
+	 *        ---------------------------------
+	 */
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++)
+		buf[offset++] = etsrec->tcbwtable[i];
+
+	/* TSA Assignment Table (8 octets)
+	 * Octets:| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+	 *        ---------------------------------
+	 *        |tc0|tc1|tc2|tc3|tc4|tc5|tc6|tc7|
+	 *        ---------------------------------
+	 */
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++)
+		buf[offset++] = etsrec->tsatable[i];
+}
+
+ /**
+ * i40e_add_ieee_pfc_tlv - Prepare PFC TLV in IEEE format
+ * @tlv: Fill PFC TLV in IEEE format
+ * @dcbcfg: Local store to get PFC CFG data
+ *
+ * Prepare IEEE 802.1Qaz PFC CFG TLV
+ **/
+static void i40e_add_ieee_pfc_tlv(struct i40e_lldp_org_tlv *tlv,
+				  struct i40e_dcbx_config *dcbcfg)
+{
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+	u16 typelength;
+
+	typelength = (u16)((I40E_TLV_TYPE_ORG << I40E_LLDP_TLV_TYPE_SHIFT) |
+			I40E_IEEE_PFC_TLV_LENGTH);
+	tlv->typelength = I40E_HTONS(typelength);
+
+	ouisubtype = (u32)((I40E_IEEE_8021QAZ_OUI << I40E_LLDP_TLV_OUI_SHIFT) |
+			I40E_IEEE_SUBTYPE_PFC_CFG);
+	tlv->ouisubtype = I40E_HTONL(ouisubtype);
+
+	/* ----------------------------------------
+	 * |will-|MBC  | Re-  | PFC |  PFC Enable  |
+	 * |ing  |     |served| cap |              |
+	 * -----------------------------------------
+	 * |1bit | 1bit|2 bits|4bits| 1 octet      |
+	 */
+	if (dcbcfg->pfc.willing)
+		buf[0] = BIT(I40E_IEEE_PFC_WILLING_SHIFT);
+
+	if (dcbcfg->pfc.mbc)
+		buf[0] |= BIT(I40E_IEEE_PFC_MBC_SHIFT);
+
+	buf[0] |= dcbcfg->pfc.pfccap & 0xF;
+	buf[1] = dcbcfg->pfc.pfcenable;
+}
+
+/**
+ * i40e_add_ieee_app_pri_tlv -  Prepare APP TLV in IEEE format
+ * @tlv: Fill APP TLV in IEEE format
+ * @dcbcfg: Local store to get APP CFG data
+ *
+ * Prepare IEEE 802.1Qaz APP CFG TLV
+ **/
+static void i40e_add_ieee_app_pri_tlv(struct i40e_lldp_org_tlv *tlv,
+				      struct i40e_dcbx_config *dcbcfg)
+{
+	u16 typelength, length, offset = 0;
+	u8 priority, selector, i = 0;
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+
+	/* No APP TLVs then just return */
+	if (dcbcfg->numapps == 0)
+		return;
+	ouisubtype = (u32)((I40E_IEEE_8021QAZ_OUI << I40E_LLDP_TLV_OUI_SHIFT) |
+			I40E_IEEE_SUBTYPE_APP_PRI);
+	tlv->ouisubtype = I40E_HTONL(ouisubtype);
+
+	/* Move offset to App Priority Table */
+	offset++;
+	/* Application Priority Table (3 octets)
+	 * Octets:|         1          |    2    |    3    |
+	 *        -----------------------------------------
+	 *        |Priority|Rsrvd| Sel |    Protocol ID    |
+	 *        -----------------------------------------
+	 *   Bits:|23    21|20 19|18 16|15                0|
+	 *        -----------------------------------------
+	 */
+	while (i < dcbcfg->numapps) {
+		priority = dcbcfg->app[i].priority & 0x7;
+		selector = dcbcfg->app[i].selector & 0x7;
+		buf[offset] = (priority << I40E_IEEE_APP_PRIO_SHIFT) | selector;
+		buf[offset + 1] = (dcbcfg->app[i].protocolid >> 0x8) & 0xFF;
+		buf[offset + 2] =  dcbcfg->app[i].protocolid & 0xFF;
+		/* Move to next app */
+		offset += 3;
+		i++;
+		if (i >= I40E_DCBX_MAX_APPS)
+			break;
+	}
+	/* length includes size of ouisubtype + 1 reserved + 3*numapps */
+	length = sizeof(tlv->ouisubtype) + 1 + (i*3);
+	typelength = (u16)((I40E_TLV_TYPE_ORG << I40E_LLDP_TLV_TYPE_SHIFT) |
+		(length & 0x1FF));
+	tlv->typelength = I40E_HTONS(typelength);
+}
+
+ /**
+ * i40e_add_dcb_tlv - Add all IEEE TLVs
+ * @tlv: pointer to org tlv
+ *
+ * add tlv information
+ **/
+static void i40e_add_dcb_tlv(struct i40e_lldp_org_tlv *tlv,
+			     struct i40e_dcbx_config *dcbcfg,
+			     u16 tlvid)
+{
+	switch (tlvid) {
+	case I40E_IEEE_TLV_ID_ETS_CFG:
+		i40e_add_ieee_ets_tlv(tlv, dcbcfg);
+		break;
+	case I40E_IEEE_TLV_ID_ETS_REC:
+		i40e_add_ieee_etsrec_tlv(tlv, dcbcfg);
+		break;
+	case I40E_IEEE_TLV_ID_PFC_CFG:
+		i40e_add_ieee_pfc_tlv(tlv, dcbcfg);
+		break;
+	case I40E_IEEE_TLV_ID_APP_PRI:
+		i40e_add_ieee_app_pri_tlv(tlv, dcbcfg);
+		break;
+	default:
+		break;
+	}
+}
+
+ /**
+ * i40e_set_dcb_config - Set the local LLDP MIB to FW
+ * @hw: pointer to the hw struct
+ *
+ * Set DCB configuration to the Firmware
+ **/
+enum i40e_status_code i40e_set_dcb_config(struct i40e_hw *hw)
+{
+	enum i40e_status_code ret = I40E_SUCCESS;
+	struct i40e_dcbx_config *dcbcfg;
+	struct i40e_virt_mem mem;
+	u8 mib_type, *lldpmib;
+	u16 miblen;
+
+	/* update the hw local config */
+	dcbcfg = &hw->local_dcbx_config;
+	/* Allocate the LLDPDU */
+	ret = i40e_allocate_virt_mem(hw, &mem, I40E_LLDPDU_SIZE);
+	if (ret)
+		return ret;
+
+	mib_type = SET_LOCAL_MIB_AC_TYPE_LOCAL_MIB;
+	if (dcbcfg->app_mode == I40E_DCBX_APPS_NON_WILLING) {
+		mib_type |= SET_LOCAL_MIB_AC_TYPE_NON_WILLING_APPS <<
+			    SET_LOCAL_MIB_AC_TYPE_NON_WILLING_APPS_SHIFT;
+	}
+	lldpmib = (u8 *)mem.va;
+	ret = i40e_dcb_config_to_lldp(lldpmib, &miblen, dcbcfg);
+	ret = i40e_aq_set_lldp_mib(hw, mib_type, (void *)lldpmib, miblen, NULL);
+
+	i40e_free_virt_mem(hw, &mem);
+	return ret;
+}
+
+/**
+ * i40e_dcb_config_to_lldp - Convert Dcbconfig to MIB format
+ * @hw: pointer to the hw struct
+ * @dcbcfg: store for LLDPDU data
+ *
+ * send DCB configuration to FW
+ **/
+enum i40e_status_code i40e_dcb_config_to_lldp(u8 *lldpmib, u16 *miblen,
+					      struct i40e_dcbx_config *dcbcfg)
+{
+	u16 length, offset = 0, tlvid = I40E_TLV_ID_START;
+	enum i40e_status_code ret = I40E_SUCCESS;
+	struct i40e_lldp_org_tlv *tlv;
+	u16 type, typelength;
+
+	tlv = (struct i40e_lldp_org_tlv *)lldpmib;
+	while (1) {
+		i40e_add_dcb_tlv(tlv, dcbcfg, tlvid++);
+		typelength = I40E_NTOHS(tlv->typelength);
+		type = (u16)((typelength & I40E_LLDP_TLV_TYPE_MASK) >>
+				I40E_LLDP_TLV_TYPE_SHIFT);
+		length = (u16)((typelength & I40E_LLDP_TLV_LEN_MASK) >>
+				I40E_LLDP_TLV_LEN_SHIFT);
+		if (length)
+			offset += length + 2;
+		/* END TLV or beyond LLDPDU size */
+		if ((tlvid >= I40E_TLV_ID_END_OF_LLDPPDU) ||
+		    (offset > I40E_LLDPDU_SIZE))
+			break;
+		/* Move to next TLV */
+		if (length)
+			tlv = (struct i40e_lldp_org_tlv *)((char *)tlv +
+			      sizeof(tlv->typelength) + length);
+	}
+	*miblen = offset;
+	return ret;
+}
 
 
 /**
