@@ -747,16 +747,16 @@ u16 i40e_clean_asq(struct i40e_hw *hw)
 
 	desc = I40E_ADMINQ_DESC(*asq, ntc);
 	details = I40E_ADMINQ_DETAILS(*asq, ntc);
+
 	while (rd32(hw, hw->aq.asq.head) != ntc) {
 		i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE,
-			   "%s: ntc %d head %d.\n", __FUNCTION__, ntc,
-			   rd32(hw, hw->aq.asq.head));
+			   "ntc %d head %d.\n", ntc, rd32(hw, hw->aq.asq.head));
 
 		if (details->callback) {
 			I40E_ADMINQ_CALLBACK cb_func =
 					(I40E_ADMINQ_CALLBACK)details->callback;
-			i40e_memcpy(&desc_cb, desc,
-			            sizeof(struct i40e_aq_desc), I40E_DMA_TO_DMA);
+			i40e_memcpy(&desc_cb, desc, sizeof(struct i40e_aq_desc),
+				    I40E_DMA_TO_DMA);
 			cb_func(hw, &desc_cb);
 		}
 		i40e_memset(desc, 0, sizeof(*desc), I40E_DMA_MEM);

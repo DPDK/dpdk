@@ -729,11 +729,11 @@ STATIC enum i40e_status_code i40e_nvmupd_exec_aq(struct i40e_hw *hw,
 STATIC enum i40e_status_code i40e_nvmupd_get_aq_result(struct i40e_hw *hw,
 						    struct i40e_nvm_access *cmd,
 						    u8 *bytes, int *perrno);
-STATIC inline u8 i40e_nvmupd_get_module(u32 val)
+STATIC INLINE u8 i40e_nvmupd_get_module(u32 val)
 {
 	return (u8)(val & I40E_NVM_MOD_PNT_MASK);
 }
-STATIC inline u8 i40e_nvmupd_get_transaction(u32 val)
+STATIC INLINE u8 i40e_nvmupd_get_transaction(u32 val)
 {
 	return (u8)((val & I40E_NVM_TRANS_MASK) >> I40E_NVM_TRANS_SHIFT);
 }

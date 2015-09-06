@@ -638,7 +638,7 @@ struct i40e_hw {
 #endif /* I40E_NDIS_SUPPORT */
 };
 
-static inline bool i40e_is_vf(struct i40e_hw *hw)
+STATIC INLINE bool i40e_is_vf(struct i40e_hw *hw)
 {
 	return hw->mac.type == I40E_MAC_VF;
 }
