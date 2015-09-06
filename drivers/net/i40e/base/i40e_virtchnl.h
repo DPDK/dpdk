@@ -88,7 +88,9 @@ enum i40e_virtchnl_ops {
 	I40E_VIRTCHNL_OP_GET_STATS = 15,
 	I40E_VIRTCHNL_OP_FCOE = 16,
 	I40E_VIRTCHNL_OP_EVENT = 17,
-	I40E_VIRTCHNL_OP_CONFIG_RSS = 18,
+#ifdef I40E_SOL_VF_SUPPORT
+	I40E_VIRTCHNL_OP_GET_ADDNL_SOL_CONFIG = 19,
+#endif
 };
 
 /* Virtual channel message descriptor. This overlays the admin queue
@@ -288,6 +290,23 @@ struct i40e_virtchnl_ether_addr_list {
 	struct i40e_virtchnl_ether_addr list[1];
 };
 
+#ifdef I40E_SOL_VF_SUPPORT
+/* I40E_VIRTCHNL_OP_GET_ADDNL_SOL_CONFIG
+ * VF sends this message to get the default MTU and list of additional ethernet
+ * addresses it is allowed to use.
+ * PF responds with an indirect message containing
+ * i40e_virtchnl_addnl_solaris_config with zero or more
+ * i40e_virtchnl_ether_addr structures.
+ *
+ * It is expected that this operation will only ever be needed for Solaris VFs
+ * running under a Solaris PF.
+ */
+struct i40e_virtchnl_addnl_solaris_config {
+	u16 default_mtu;
+	struct i40e_virtchnl_ether_addr_list al;
+};
+
+#endif
 /* I40E_VIRTCHNL_OP_ADD_VLAN
  * VF sends this message to add one or more VLAN tag filters for receives.
  * PF adds the filters and returns status.
