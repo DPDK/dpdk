@@ -70,6 +70,22 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_20G_KR2_A:
 			hw->mac.type = I40E_MAC_XL710;
 			break;
+#ifdef X722_SUPPORT
+#ifdef X722_A0_SUPPORT
+		case I40E_DEV_ID_X722_A0:
+#endif
+		case I40E_DEV_ID_SFP_X722:
+		case I40E_DEV_ID_1G_BASE_T_X722:
+		case I40E_DEV_ID_10G_BASE_T_X722:
+			hw->mac.type = I40E_MAC_X722;
+			break;
+#endif
+#ifdef X722_SUPPORT
+		case I40E_DEV_ID_X722_VF:
+		case I40E_DEV_ID_X722_VF_HV:
+			hw->mac.type = I40E_MAC_X722_VF;
+			break;
+#endif
 		case I40E_DEV_ID_VF:
 		case I40E_DEV_ID_VF_HV:
 			hw->mac.type = I40E_MAC_VF;
@@ -834,6 +850,9 @@ enum i40e_status_code i40e_init_shared_code(struct i40e_hw *hw)
 
 	switch (hw->mac.type) {
 	case I40E_MAC_XL710:
+#ifdef X722_SUPPORT
+	case I40E_MAC_X722:
+#endif
 		break;
 	default:
 		return I40E_ERR_DEVICE_NOT_SUPPORTED;

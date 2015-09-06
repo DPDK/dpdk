@@ -191,6 +191,10 @@ enum i40e_mac_type {
 	I40E_MAC_X710,
 	I40E_MAC_XL710,
 	I40E_MAC_VF,
+#ifdef X722_SUPPORT
+	I40E_MAC_X722,
+	I40E_MAC_X722_VF,
+#endif
 	I40E_MAC_GENERIC,
 };
 
@@ -640,7 +644,12 @@ struct i40e_hw {
 
 STATIC INLINE bool i40e_is_vf(struct i40e_hw *hw)
 {
+#ifdef X722_SUPPORT
+	return (hw->mac.type == I40E_MAC_VF ||
+		hw->mac.type == I40E_MAC_X722_VF);
+#else
 	return hw->mac.type == I40E_MAC_VF;
+#endif
 }
 
 struct i40e_driver_version {
@@ -1229,6 +1238,12 @@ enum i40e_filter_program_desc_pcmd {
 						 I40E_TXD_FLTR_QW1_CMD_SHIFT)
 #define I40E_TXD_FLTR_QW1_FD_STATUS_MASK (0x3ULL << \
 					  I40E_TXD_FLTR_QW1_FD_STATUS_SHIFT)
+#ifdef X722_SUPPORT
+
+#define I40E_TXD_FLTR_QW1_ATR_SHIFT	(0xEULL + \
+					 I40E_TXD_FLTR_QW1_CMD_SHIFT)
+#define I40E_TXD_FLTR_QW1_ATR_MASK	BIT_ULL(I40E_TXD_FLTR_QW1_ATR_SHIFT)
+#endif
 
 #define I40E_TXD_FLTR_QW1_CNTINDEX_SHIFT 20
 #define I40E_TXD_FLTR_QW1_CNTINDEX_MASK	(0x1FFUL << \
