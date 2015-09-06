@@ -326,6 +326,15 @@ enum i40e_status_code i40e_aq_config_switch_comp_bw_limit(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_config_vsi_tc_bw(struct i40e_hw *hw, u16 seid,
 			struct i40e_aqc_configure_vsi_tc_bw_data *bw_data,
 			struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_config_switch_comp_ets(struct i40e_hw *hw,
+		u16 seid,
+		struct i40e_aqc_configure_switching_comp_ets_data *ets_data,
+		enum i40e_admin_queue_opc opcode,
+		struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_config_switch_comp_bw_config(struct i40e_hw *hw,
+	u16 seid,
+	struct i40e_aqc_configure_switching_comp_bw_config_data *bw_data,
+	struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_query_vsi_bw_config(struct i40e_hw *hw,
 			u16 seid,
 			struct i40e_aqc_query_vsi_bw_config_resp *bw_data,
