@@ -3334,6 +3334,9 @@ i40e_aq_erase_nvm_exit:
 #define I40E_DEV_FUNC_CAP_NPAR		0x03
 #define I40E_DEV_FUNC_CAP_OS2BMC	0x04
 #define I40E_DEV_FUNC_CAP_VALID_FUNC	0x05
+#ifdef X722_SUPPORT
+#define I40E_DEV_FUNC_CAP_WOL_PROXY	0x08
+#endif
 #define I40E_DEV_FUNC_CAP_SRIOV_1_1	0x12
 #define I40E_DEV_FUNC_CAP_VF		0x13
 #define I40E_DEV_FUNC_CAP_VMDQ		0x14
@@ -3356,6 +3359,7 @@ i40e_aq_erase_nvm_exit:
 #define I40E_DEV_FUNC_CAP_LED		0x61
 #define I40E_DEV_FUNC_CAP_SDP		0x62
 #define I40E_DEV_FUNC_CAP_MDIO		0x63
+#define I40E_DEV_FUNC_CAP_WR_CSR_PROT	0x64
 
 /**
  * i40e_parse_discover_capabilities
@@ -3514,6 +3518,23 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 			p->fd_filters_guaranteed = number;
 			p->fd_filters_best_effort = logical_id;
 			break;
+		case I40E_DEV_FUNC_CAP_WR_CSR_PROT:
+			p->wr_csr_prot = (u64)number;
+			p->wr_csr_prot |= (u64)logical_id << 32;
+			break;
+#ifdef X722_SUPPORT
+		case I40E_DEV_FUNC_CAP_WOL_PROXY:
+			hw->num_wol_proxy_filters = (u16)number;
+			hw->wol_proxy_vsi_seid = (u16)logical_id;
+			p->apm_wol_support = phys_id & I40E_WOL_SUPPORT_MASK;
+			if (phys_id & I40E_ACPI_PROGRAMMING_METHOD_MASK)
+				p->acpi_prog_method = I40E_ACPI_PROGRAMMING_METHOD_AQC_FPK;
+			else
+				p->acpi_prog_method = I40E_ACPI_PROGRAMMING_METHOD_HW_FVL;
+			p->proxy_support = (phys_id & I40E_PROXY_SUPPORT_MASK) ? 1 : 0;
+			p->proxy_support = p->proxy_support;
+			break;
+#endif
 		default:
 			break;
 		}
@@ -5612,11 +5633,11 @@ enum i40e_status_code i40e_read_bw_from_alt_ram(struct i40e_hw *hw,
 
 	/* Calculate the address of the min/max bw registers */
 	max_bw_addr = I40E_ALT_STRUCT_FIRST_PF_OFFSET +
-		I40E_ALT_STRUCT_MAX_BW_OFFSET +
-		(I40E_ALT_STRUCT_DWORDS_PER_PF*hw->pf_id);
+		      I40E_ALT_STRUCT_MAX_BW_OFFSET +
+		      (I40E_ALT_STRUCT_DWORDS_PER_PF * hw->pf_id);
 	min_bw_addr = I40E_ALT_STRUCT_FIRST_PF_OFFSET +
-		I40E_ALT_STRUCT_MIN_BW_OFFSET +
-		(I40E_ALT_STRUCT_DWORDS_PER_PF*hw->pf_id);
+		      I40E_ALT_STRUCT_MIN_BW_OFFSET +
+		      (I40E_ALT_STRUCT_DWORDS_PER_PF * hw->pf_id);
 
 	/* Read the bandwidths from alt ram */
 	status = i40e_aq_alternate_read(hw, max_bw_addr, max_bw,

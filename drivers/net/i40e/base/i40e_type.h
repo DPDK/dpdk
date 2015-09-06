@@ -321,6 +321,17 @@ struct i40e_phy_info {
 #define I40E_HW_CAP_MDIO_PORT_MODE_MDIO		0
 #define I40E_HW_CAP_MDIO_PORT_MODE_I2C		1
 
+#ifdef X722_SUPPORT
+enum i40e_acpi_programming_method {
+	I40E_ACPI_PROGRAMMING_METHOD_HW_FVL = 0,
+	I40E_ACPI_PROGRAMMING_METHOD_AQC_FPK = 1
+};
+
+#define I40E_WOL_SUPPORT_MASK			1
+#define I40E_ACPI_PROGRAMMING_METHOD_MASK	(1 << 1)
+#define I40E_PROXY_SUPPORT_MASK			(1 << 2)
+
+#endif
 /* Capabilities of a PF or a VF or the whole device */
 struct i40e_hw_capabilities {
 	u32  switch_mode;
@@ -378,6 +389,12 @@ struct i40e_hw_capabilities {
 	u8 rx_buf_chain_len;
 	u32 enabled_tcmap;
 	u32 maxtc;
+	u64 wr_csr_prot;
+#ifdef X722_SUPPORT
+	bool apm_wol_support;
+	enum i40e_acpi_programming_method acpi_prog_method;
+	bool proxy_support;
+#endif
 };
 
 struct i40e_mac_info {
@@ -635,6 +652,12 @@ struct i40e_hw {
 	struct i40e_dcbx_config remote_dcbx_config; /* Peer Cfg */
 	struct i40e_dcbx_config desired_dcbx_config; /* CEE Desired Cfg */
 
+#ifdef X722_SUPPORT
+	/* WoL and proxy support */
+	u16 num_wol_proxy_filters;
+	u16 wol_proxy_vsi_seid;
+
+#endif
 	/* debug mask */
 	u32 debug_mask;
 #ifndef I40E_NDIS_SUPPORT
