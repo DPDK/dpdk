@@ -270,6 +270,10 @@ enum i40e_admin_queue_opc {
 	i40e_aqc_opc_set_rss_lut	= 0x0B03,
 	i40e_aqc_opc_get_rss_key	= 0x0B04,
 	i40e_aqc_opc_get_rss_lut	= 0x0B05,
+
+	/* WoL commands */
+	i40e_aqc_opc_set_wol_filter = 0x0120,
+	i40e_aqc_opc_get_wake_reason = 0x0121,
 #endif
 
 	/* Proxy commands */
@@ -2457,6 +2461,49 @@ struct i40e_aqc_set_ns_proxy_table_entry_resp {
 };
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_set_ns_proxy_table_entry_resp);
+
+struct i40e_aqc_set_wol_filter {
+	__le16 filter_index;
+#define I40E_AQC_MAX_NUM_WOL_FILTERS	8
+	__le16 cmd_flags;
+#define I40E_AQC_SET_WOL_FILTER				0x8000
+#define I40E_AQC_SET_WOL_FILTER_NO_TCO_WOL		0x4000
+	__le16 valid_flags;
+#define I40E_AQC_SET_WOL_FILTER_ACTION_VALID		0x8000
+#define I40E_AQC_SET_WOL_FILTER_NO_TCO_ACTION_VALID	0x4000
+	u8 reserved[2];
+	__le32	address_high;
+	__le32	address_low;
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_set_wol_filter);
+
+struct i40e_aqc_set_wol_filter_resp {
+	u8 reserved[8];
+	__le32	address_high;
+	__le32	address_low;
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_set_wol_filter_resp);
+
+struct i40e_aqc_get_wol_wake_reason {
+	u8 reserved[16];
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_get_wol_wake_reason);
+
+struct i40e_aqc_get_wake_reason_completion {
+	u8 reserved_1[2];
+	__le16 wake_reason;
+	u8 reserved_2[12];
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_get_wake_reason_completion);
+
+struct i40e_aqc_set_wol_filter_data {
+	u8 filter[128];
+	u8 mask[16];
+};
 
 #endif
 #endif /* _I40E_ADMINQ_CMD_H_ */

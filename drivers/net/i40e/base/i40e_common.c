@@ -5839,4 +5839,91 @@ enum i40e_status_code i40e_aq_set_ns_proxy_table_entry(struct i40e_hw *hw,
 	return status;
 }
 
+/**
+ * i40e_aq_set_clear_wol_filter
+ * @hw: pointer to the hw struct
+ * @filter_index: index of filter to modify (0-7)
+ * @filter: buffer containing filter to be set
+ * @set_filter: true to set filter, false to clear filter
+ * @no_wol_tco: if true, pass through packets cannot cause wake-up
+ *		if false, pass through packets may cause wake-up
+ * @filter_valid: true if filter action is valid
+ * @no_wol_tco_valid: true if no WoL in TCO traffic action valid
+ * @cmd_details: pointer to command details structure or NULL
+ *
+ * Set or clear WoL filter for port attached to the PF
+ **/
+enum i40e_status_code i40e_aq_set_clear_wol_filter(struct i40e_hw *hw,
+				u8 filter_index,
+				struct i40e_aqc_set_wol_filter_data *filter,
+				bool set_filter, bool no_wol_tco,
+				bool filter_valid, bool no_wol_tco_valid,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_set_wol_filter *cmd =
+		(struct i40e_aqc_set_wol_filter *)&desc.params.raw;
+	enum i40e_status_code status;
+	u16 cmd_flags = 0;
+	u16 valid_flags = 0;
+	u16 buff_len = 0;
+
+	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_set_wol_filter);
+
+	if (filter_index >= I40E_AQC_MAX_NUM_WOL_FILTERS)
+		return  I40E_ERR_PARAM;
+	cmd->filter_index = CPU_TO_LE16(filter_index);
+
+	if (set_filter) {
+		if (!filter)
+			return  I40E_ERR_PARAM;
+		cmd_flags |= I40E_AQC_SET_WOL_FILTER;
+		buff_len = sizeof(*filter);
+	}
+	if (no_wol_tco)
+		cmd_flags |= I40E_AQC_SET_WOL_FILTER_NO_TCO_WOL;
+	cmd->cmd_flags = CPU_TO_LE16(cmd_flags);
+
+	if (filter_valid)
+		valid_flags |= I40E_AQC_SET_WOL_FILTER_ACTION_VALID;
+	if (no_wol_tco_valid)
+		valid_flags |= I40E_AQC_SET_WOL_FILTER_NO_TCO_ACTION_VALID;
+	cmd->valid_flags = CPU_TO_LE16(valid_flags);
+
+	cmd->address_high = CPU_TO_LE32(I40E_HI_DWORD((u64)filter));
+	cmd->address_low = CPU_TO_LE32(I40E_LO_DWORD((u64)filter));
+
+	status = i40e_asq_send_command(hw, &desc, filter,
+				       buff_len, cmd_details);
+
+	return status;
+}
+
+/**
+ * i40e_aq_get_wake_event_reason
+ * @hw: pointer to the hw struct
+ * @wake_reason: return value, index of matching filter
+ * @cmd_details: pointer to command details structure or NULL
+ *
+ * Get information for the reason of a Wake Up event
+ **/
+enum i40e_status_code i40e_aq_get_wake_event_reason(struct i40e_hw *hw,
+				u16 *wake_reason,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_get_wake_reason_completion *resp =
+		(struct i40e_aqc_get_wake_reason_completion *)&desc.params.raw;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_get_wake_reason);
+
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
+
+	if (status == I40E_SUCCESS)
+		*wake_reason = LE16_TO_CPU(resp->wake_reason);
+
+	return status;
+}
+
 #endif /* X722_SUPPORT */

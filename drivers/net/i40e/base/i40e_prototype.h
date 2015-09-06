@@ -498,5 +498,14 @@ enum i40e_status_code i40e_aq_set_arp_proxy_config(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_set_ns_proxy_table_entry(struct i40e_hw *hw,
 			struct i40e_aqc_ns_proxy_data *ns_proxy_table_entry,
 			struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_set_clear_wol_filter(struct i40e_hw *hw,
+			u8 filter_index,
+			struct i40e_aqc_set_wol_filter_data *filter,
+			bool set_filter, bool no_wol_tco,
+			bool filter_valid, bool no_wol_tco_valid,
+			struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_get_wake_event_reason(struct i40e_hw *hw,
+			u16 *wake_reason,
+			struct i40e_asq_cmd_details *cmd_details);
 #endif
 #endif /* _I40E_PROTOTYPE_H_ */
