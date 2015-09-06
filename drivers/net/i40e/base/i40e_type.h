@@ -162,6 +162,13 @@ enum i40e_memcpy_type {
 	I40E_DMA_TO_NONDMA
 };
 
+
+#ifdef X722_SUPPORT
+#define I40E_FW_API_VERSION_MINOR_X722	0x0003
+#endif
+#define I40E_FW_API_VERSION_MINOR_X710	0x0004
+
+
 /* These are structs for managing the hardware information and the operations.
  * The structures of function pointers are filled out at init time when we
  * know for sure exactly which hardware we're working with.  This gives us the
