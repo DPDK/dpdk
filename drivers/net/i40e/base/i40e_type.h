@@ -1175,15 +1175,38 @@ struct i40e_filter_program_desc {
 
 /* Packet Classifier Types for filters */
 enum i40e_filter_pctype {
+#ifdef X722_SUPPORT
+	/* Note: Values 0-28 are reserved for future use.
+	 * Value 29, 30, 32 are not supported on XL710 and X710.
+	 */
+	I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP	= 29,
+	I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP	= 30,
+#else
 	/* Note: Values 0-30 are reserved for future use */
+#endif
 	I40E_FILTER_PCTYPE_NONF_IPV4_UDP		= 31,
+#ifdef X722_SUPPORT
+	I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK	= 32,
+#else
 	/* Note: Value 32 is reserved for future use */
+#endif
 	I40E_FILTER_PCTYPE_NONF_IPV4_TCP		= 33,
 	I40E_FILTER_PCTYPE_NONF_IPV4_SCTP		= 34,
 	I40E_FILTER_PCTYPE_NONF_IPV4_OTHER		= 35,
 	I40E_FILTER_PCTYPE_FRAG_IPV4			= 36,
+#ifdef X722_SUPPORT
+	/* Note: Values 37-38 are reserved for future use.
+	 * Value 39, 40, 42 are not supported on XL710 and X710.
+	 */
+	I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP	= 39,
+	I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP	= 40,
+#else
 	/* Note: Values 37-40 are reserved for future use */
+#endif
 	I40E_FILTER_PCTYPE_NONF_IPV6_UDP		= 41,
+#ifdef X722_SUPPORT
+	I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK	= 42,
+#endif
 	I40E_FILTER_PCTYPE_NONF_IPV6_TCP		= 43,
 	I40E_FILTER_PCTYPE_NONF_IPV6_SCTP		= 44,
 	I40E_FILTER_PCTYPE_NONF_IPV6_OTHER		= 45,
