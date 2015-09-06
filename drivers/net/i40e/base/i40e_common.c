@@ -1547,14 +1547,14 @@ enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 			*aq_failures |= I40E_SET_FC_AQ_FAIL_SET;
 	}
 	/* Update the link info */
-	status = i40e_aq_get_link_info(hw, true, NULL, NULL);
+	status = i40e_update_link_info(hw);
 	if (status) {
 		/* Wait a little bit (on 40G cards it sometimes takes a really
 		 * long time for link to come back from the atomic reset)
 		 * and try once more
 		 */
 		i40e_msec_delay(1000);
-		status = i40e_aq_get_link_info(hw, true, NULL, NULL);
+		status = i40e_update_link_info(hw);
 	}
 	if (status)
 		*aq_failures |= I40E_SET_FC_AQ_FAIL_UPDATE;
@@ -1742,7 +1742,6 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 aq_get_link_info_exit:
 	return status;
 }
-
 
 /**
  * i40e_aq_set_phy_int_mask
@@ -2286,27 +2285,52 @@ enum i40e_status_code i40e_aq_send_driver_version(struct i40e_hw *hw,
 /**
  * i40e_get_link_status - get status of the HW network link
  * @hw: pointer to the hw struct
+ * @link_up: pointer to bool (true/false = linkup/linkdown)
  *
- * Returns true if link is up, false if link is down.
+ * Variable link_up true if link is up, false if link is down.
+ * The variable link_up is invalid if returned value of status != I40E_SUCCESS
  *
  * Side effect: LinkStatusEvent reporting becomes enabled
  **/
-bool i40e_get_link_status(struct i40e_hw *hw)
+enum i40e_status_code i40e_get_link_status(struct i40e_hw *hw, bool *link_up)
 {
 	enum i40e_status_code status = I40E_SUCCESS;
-	bool link_status = false;
 
 	if (hw->phy.get_link_info) {
-		status = i40e_aq_get_link_info(hw, true, NULL, NULL);
+		status = i40e_update_link_info(hw);
 
 		if (status != I40E_SUCCESS)
-			goto i40e_get_link_status_exit;
+			i40e_debug(hw, I40E_DEBUG_LINK, "get link failed: status %d\n",
+				   status);
 	}
 
-	link_status = hw->phy.link_info.link_info & I40E_AQ_LINK_UP;
+	*link_up = hw->phy.link_info.link_info & I40E_AQ_LINK_UP;
 
-i40e_get_link_status_exit:
-	return link_status;
+	return status;
+}
+
+/**
+ * i40e_updatelink_status - update status of the HW network link
+ * @hw: pointer to the hw struct
+ **/
+enum i40e_status_code i40e_update_link_info(struct i40e_hw *hw)
+{
+	struct i40e_aq_get_phy_abilities_resp abilities;
+	enum i40e_status_code status = I40E_SUCCESS;
+
+	status = i40e_aq_get_link_info(hw, true, NULL, NULL);
+	if (status)
+		return status;
+
+	status = i40e_aq_get_phy_capabilities(hw, false, false, &abilities,
+					      NULL);
+	if (status)
+		return status;
+
+	memcpy(hw->phy.link_info.module_type, &abilities.module_type,
+		sizeof(hw->phy.link_info.module_type));
+
+	return status;
 }
 
 /**
