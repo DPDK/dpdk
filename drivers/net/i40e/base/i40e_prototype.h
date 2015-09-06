@@ -491,4 +491,12 @@ enum i40e_status_code i40e_aq_debug_dump(struct i40e_hw *hw, u8 cluster_id,
 				struct i40e_asq_cmd_details *cmd_details);
 void i40e_add_filter_to_drop_tx_flow_control_frames(struct i40e_hw *hw,
 						    u16 vsi_seid);
+#ifdef X722_SUPPORT
+enum i40e_status_code i40e_aq_set_arp_proxy_config(struct i40e_hw *hw,
+			struct i40e_aqc_arp_proxy_data *proxy_config,
+			struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_set_ns_proxy_table_entry(struct i40e_hw *hw,
+			struct i40e_aqc_ns_proxy_data *ns_proxy_table_entry,
+			struct i40e_asq_cmd_details *cmd_details);
+#endif
 #endif /* _I40E_PROTOTYPE_H_ */
