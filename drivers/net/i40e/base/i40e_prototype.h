@@ -214,6 +214,9 @@ enum i40e_status_code i40e_aq_write_nvm_config(struct i40e_hw *hw,
 				u8 cmd_flags, void *data, u16 buf_size,
 				u16 element_count,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_oem_post_update(struct i40e_hw *hw,
+				void *buff, u16 buff_size,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_discover_capabilities(struct i40e_hw *hw,
 				void *buff, u16 buff_size, u16 *data_size,
 				enum i40e_admin_queue_opc list_type_opc,
