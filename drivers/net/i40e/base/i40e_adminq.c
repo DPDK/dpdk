@@ -563,6 +563,7 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	enum i40e_status_code ret_code;
 #ifdef PF_DRIVER
 	u16 eetrack_lo, eetrack_hi;
+	u16 cfg_ptr, oem_hi, oem_lo;
 	int retry = 0;
 #endif
 	/* verify input for valid configuration */
@@ -627,6 +628,12 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	i40e_read_nvm_word(hw, I40E_SR_NVM_EETRACK_LO, &eetrack_lo);
 	i40e_read_nvm_word(hw, I40E_SR_NVM_EETRACK_HI, &eetrack_hi);
 	hw->nvm.eetrack = (eetrack_hi << 16) | eetrack_lo;
+	i40e_read_nvm_word(hw, I40E_SR_BOOT_CONFIG_PTR, &cfg_ptr);
+	i40e_read_nvm_word(hw, (cfg_ptr + I40E_NVM_OEM_VER_OFF),
+			   &oem_hi);
+	i40e_read_nvm_word(hw, (cfg_ptr + (I40E_NVM_OEM_VER_OFF + 1)),
+			   &oem_lo);
+	hw->nvm.oem_ver = ((u32)oem_hi << 16) | oem_lo;
 
 	if (hw->aq.api_maj_ver > I40E_FW_API_VERSION_MAJOR) {
 		ret_code = I40E_ERR_FIRMWARE_API_VERSION;
