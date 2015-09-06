@@ -65,6 +65,9 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_QSFP_B:
 		case I40E_DEV_ID_QSFP_C:
 		case I40E_DEV_ID_10G_BASE_T:
+		case I40E_DEV_ID_10G_BASE_T4:
+		case I40E_DEV_ID_20G_KR2:
+		case I40E_DEV_ID_20G_KR2_A:
 			hw->mac.type = I40E_MAC_XL710;
 			break;
 		case I40E_DEV_ID_VF:
@@ -853,6 +856,7 @@ STATIC enum i40e_media_type i40e_get_media_type(struct i40e_hw *hw)
 	case I40E_PHY_TYPE_10GBASE_KX4:
 	case I40E_PHY_TYPE_10GBASE_KR:
 	case I40E_PHY_TYPE_40GBASE_KR4:
+	case I40E_PHY_TYPE_20GBASE_KR2:
 		media = I40E_MEDIA_TYPE_BACKPLANE;
 		break;
 	case I40E_PHY_TYPE_SGMII:
