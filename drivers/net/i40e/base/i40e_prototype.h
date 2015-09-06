@@ -77,6 +77,10 @@ void i40e_idle_aq(struct i40e_hw *hw);
 void i40e_resume_aq(struct i40e_hw *hw);
 bool i40e_check_asq_alive(struct i40e_hw *hw);
 enum i40e_status_code i40e_aq_queue_shutdown(struct i40e_hw *hw, bool unloading);
+#ifndef I40E_NDIS_SUPPORT
+const char *i40e_aq_str(struct i40e_hw *hw, enum i40e_admin_queue_err aq_err);
+const char *i40e_stat_str(struct i40e_hw *hw, enum i40e_status_code stat_err);
+#endif /* I40E_NDIS_SUPPORT */
 
 #ifdef PF_DRIVER
 
