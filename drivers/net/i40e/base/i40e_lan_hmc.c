@@ -394,7 +394,7 @@ enum i40e_status_code i40e_create_lan_hmc_object(struct i40e_hw *hw,
 				/* update the pd table entry */
 				ret_code = i40e_add_pd_table_entry(hw,
 								info->hmc_info,
-								i);
+								i, NULL);
 				if (I40E_SUCCESS != ret_code) {
 					pd_error = true;
 					break;
