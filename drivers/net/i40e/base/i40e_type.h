@@ -40,6 +40,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "i40e_adminq.h"
 #include "i40e_hmc.h"
 #include "i40e_lan_hmc.h"
+#include "i40e_devids.h"
 
 #define UNREFERENCED_XPARAMETER
 #define UNREFERENCED_1PARAMETER(_p) (_p);
@@ -47,26 +48,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define UNREFERENCED_3PARAMETER(_p, _q, _r) (_p); (_q); (_r);
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) (_p); (_q); (_r); (_s);
 #define UNREFERENCED_5PARAMETER(_p, _q, _r, _s, _t) (_p); (_q); (_r); (_s); (_t);
-
-/* Vendor ID */
-#define I40E_INTEL_VENDOR_ID		0x8086
-
-/* Device IDs */
-#define I40E_DEV_ID_SFP_XL710		0x1572
-#define I40E_DEV_ID_QEMU		0x1574
-#define I40E_DEV_ID_KX_A		0x157F
-#define I40E_DEV_ID_KX_B		0x1580
-#define I40E_DEV_ID_KX_C		0x1581
-#define I40E_DEV_ID_QSFP_A		0x1583
-#define I40E_DEV_ID_QSFP_B		0x1584
-#define I40E_DEV_ID_QSFP_C		0x1585
-#define I40E_DEV_ID_10G_BASE_T		0x1586
-#define I40E_DEV_ID_VF			0x154C
-#define I40E_DEV_ID_VF_HV		0x1571
-
-#define i40e_is_40G_device(d)		((d) == I40E_DEV_ID_QSFP_A  || \
-					 (d) == I40E_DEV_ID_QSFP_B  || \
-					 (d) == I40E_DEV_ID_QSFP_C)
 
 #ifndef I40E_MASK
 /* I40E_MASK is a macro used on 32 bit registers */
