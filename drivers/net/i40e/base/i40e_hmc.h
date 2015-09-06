@@ -133,8 +133,8 @@ struct i40e_hmc_info {
 		 I40E_PFHMC_SDDATALOW_PMSDBPCOUNT_SHIFT) |		\
 		((((type) == I40E_SD_TYPE_PAGED) ? 0 : 1) <<		\
 		I40E_PFHMC_SDDATALOW_PMSDTYPE_SHIFT) |			\
-		(1 << I40E_PFHMC_SDDATALOW_PMSDVALID_SHIFT);		\
-	val3 = (sd_index) | (1u << I40E_PFHMC_SDCMD_PMSDWR_SHIFT);	\
+		BIT(I40E_PFHMC_SDDATALOW_PMSDVALID_SHIFT);		\
+	val3 = (sd_index) | BIT_ULL(I40E_PFHMC_SDCMD_PMSDWR_SHIFT);	\
 	wr32((hw), I40E_PFHMC_SDDATAHIGH, val1);			\
 	wr32((hw), I40E_PFHMC_SDDATALOW, val2);				\
 	wr32((hw), I40E_PFHMC_SDCMD, val3);				\
@@ -153,7 +153,7 @@ struct i40e_hmc_info {
 		I40E_PFHMC_SDDATALOW_PMSDBPCOUNT_SHIFT) |		\
 		((((type) == I40E_SD_TYPE_PAGED) ? 0 : 1) <<		\
 		I40E_PFHMC_SDDATALOW_PMSDTYPE_SHIFT);			\
-	val3 = (sd_index) | (1u << I40E_PFHMC_SDCMD_PMSDWR_SHIFT);	\
+	val3 = (sd_index) | BIT_ULL(I40E_PFHMC_SDCMD_PMSDWR_SHIFT);	\
 	wr32((hw), I40E_PFHMC_SDDATAHIGH, 0);				\
 	wr32((hw), I40E_PFHMC_SDDATALOW, val2);				\
 	wr32((hw), I40E_PFHMC_SDCMD, val3);				\

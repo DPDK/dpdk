@@ -156,13 +156,10 @@ enum i40e_status_code i40e_diag_eeprom_test(struct i40e_hw *hw)
 	ret_code = i40e_read_nvm_word(hw, I40E_SR_NVM_CONTROL_WORD, &reg_val);
 	if ((ret_code == I40E_SUCCESS) &&
 	    ((reg_val & I40E_SR_CONTROL_WORD_1_MASK) ==
-	     (0x01 << I40E_SR_CONTROL_WORD_1_SHIFT))) {
-		ret_code = i40e_validate_nvm_checksum(hw, NULL);
-	} else {
-		ret_code = I40E_ERR_DIAG_TEST_FAILED;
-	}
-
-	return ret_code;
+	     BIT(I40E_SR_CONTROL_WORD_1_SHIFT)))
+		return i40e_validate_nvm_checksum(hw, NULL);
+	else
+		return I40E_ERR_DIAG_TEST_FAILED;
 }
 
 /**
