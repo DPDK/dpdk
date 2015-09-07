@@ -1306,7 +1306,13 @@ parse_link(struct app_params *app,
 		struct rte_cfgfile_entry *ent = &entries[i];
 
 		ret = -ESRCH;
-		if (strcmp(ent->name, "arp_q") == 0)
+		if (strcmp(ent->name, "promisc") == 0) {
+			ret = parser_read_arg_bool(ent->value);
+			if (ret >= 0) {
+				param->promisc = ret;
+				ret = 0;
+			}
+		} else if (strcmp(ent->name, "arp_q") == 0)
 			ret = parser_read_uint32(&param->arp_q,
 				ent->value);
 		else if (strcmp(ent->name, "tcp_syn_q") == 0)
@@ -2125,6 +2131,7 @@ save_links_params(struct app_params *app, FILE *f)
 
 		fprintf(f, "[%s]\n", p->name);
 		fprintf(f, "; %s = %" PRIu32 "\n", "pmd_id", p->pmd_id);
+		fprintf(f, "%s = %s\n", "promisc", p->promisc ? "yes" : "no");
 		fprintf(f, "%s = %" PRIu32 "\n", "arp_q", p->arp_q);
 		fprintf(f, "%s = %" PRIu32 "\n", "tcp_syn_local_q",
 			p->tcp_syn_local_q);
