@@ -185,7 +185,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 				}
 			}
 			len_to_cpy = RTE_MIN(data_len - offset, desc->len - vb_offset);
-		};
+		}
 
 		/* Update used ring with desc information */
 		vq->used->ring[res_cur_idx & (vq->size - 1)].id =
