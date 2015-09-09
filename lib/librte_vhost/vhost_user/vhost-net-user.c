@@ -329,32 +329,16 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 
 	ctx.fh = cfd_ctx->fh;
 	ret = read_vhost_message(connfd, &msg);
-	if (ret < 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"vhost read message failed\n");
-
-		close(connfd);
-		*remove = 1;
-		free(cfd_ctx);
-		user_destroy_device(ctx);
-		ops->destroy_device(ctx);
-
-		return;
-	} else if (ret == 0) {
-		RTE_LOG(INFO, VHOST_CONFIG,
-			"vhost peer closed\n");
-
-		close(connfd);
-		*remove = 1;
-		free(cfd_ctx);
-		user_destroy_device(ctx);
-		ops->destroy_device(ctx);
-
-		return;
-	}
-	if (msg.request > VHOST_USER_MAX) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"vhost read incorrect message\n");
+	if (ret <= 0 || msg.request > VHOST_USER_MAX) {
+		if (ret < 0)
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"vhost read message failed\n");
+		else if (ret == 0)
+			RTE_LOG(INFO, VHOST_CONFIG,
+				"vhost peer closed\n");
+		else
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"vhost read incorrect message\n");
 
 		close(connfd);
 		*remove = 1;
