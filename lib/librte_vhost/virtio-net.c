@@ -485,7 +485,7 @@ set_vring_num(struct vhost_device_ctx ctx, struct vhost_vring_state *state)
 }
 
 /*
- * Reallocate virtio_det and vhost_virtqueue data structure to make them on the
+ * Reallocate virtio_dev and vhost_virtqueue data structure to make them on the
  * same numa node as the memory of vring descriptor.
  */
 #ifdef RTE_LIBRTE_VHOST_NUMA
