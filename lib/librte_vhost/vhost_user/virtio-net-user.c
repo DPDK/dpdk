@@ -214,10 +214,10 @@ virtio_is_ready(struct virtio_net *dev)
 	rvq = dev->virtqueue[VIRTIO_RXQ];
 	tvq = dev->virtqueue[VIRTIO_TXQ];
 	if (rvq && tvq && rvq->desc && tvq->desc &&
-		(rvq->kickfd != (eventfd_t)-1) &&
-		(rvq->callfd != (eventfd_t)-1) &&
-		(tvq->kickfd != (eventfd_t)-1) &&
-		(tvq->callfd != (eventfd_t)-1)) {
+		(rvq->kickfd != -1) &&
+		(rvq->callfd != -1) &&
+		(tvq->kickfd != -1) &&
+		(tvq->callfd != -1)) {
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"virtio is now ready for processing.\n");
 		return 1;
@@ -290,13 +290,13 @@ user_get_vring_base(struct vhost_device_ctx ctx,
 	 * sent and only sent in vhost_vring_stop.
 	 * TODO: cleanup the vring, it isn't usable since here.
 	 */
-	if (((int)dev->virtqueue[VIRTIO_RXQ]->kickfd) >= 0) {
+	if ((dev->virtqueue[VIRTIO_RXQ]->kickfd) >= 0) {
 		close(dev->virtqueue[VIRTIO_RXQ]->kickfd);
-		dev->virtqueue[VIRTIO_RXQ]->kickfd = (eventfd_t)-1;
+		dev->virtqueue[VIRTIO_RXQ]->kickfd = -1;
 	}
-	if (((int)dev->virtqueue[VIRTIO_TXQ]->kickfd) >= 0) {
+	if ((dev->virtqueue[VIRTIO_TXQ]->kickfd) >= 0) {
 		close(dev->virtqueue[VIRTIO_TXQ]->kickfd);
-		dev->virtqueue[VIRTIO_TXQ]->kickfd = (eventfd_t)-1;
+		dev->virtqueue[VIRTIO_TXQ]->kickfd = -1;
 	}
 
 	return 0;

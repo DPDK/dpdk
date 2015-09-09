@@ -190,14 +190,14 @@ cleanup_device(struct virtio_net *dev)
 	}
 
 	/* Close any event notifiers opened by device. */
-	if ((int)dev->virtqueue[VIRTIO_RXQ]->callfd >= 0)
-		close((int)dev->virtqueue[VIRTIO_RXQ]->callfd);
-	if ((int)dev->virtqueue[VIRTIO_RXQ]->kickfd >= 0)
-		close((int)dev->virtqueue[VIRTIO_RXQ]->kickfd);
-	if ((int)dev->virtqueue[VIRTIO_TXQ]->callfd >= 0)
-		close((int)dev->virtqueue[VIRTIO_TXQ]->callfd);
-	if ((int)dev->virtqueue[VIRTIO_TXQ]->kickfd >= 0)
-		close((int)dev->virtqueue[VIRTIO_TXQ]->kickfd);
+	if (dev->virtqueue[VIRTIO_RXQ]->callfd >= 0)
+		close(dev->virtqueue[VIRTIO_RXQ]->callfd);
+	if (dev->virtqueue[VIRTIO_RXQ]->kickfd >= 0)
+		close(dev->virtqueue[VIRTIO_RXQ]->kickfd);
+	if (dev->virtqueue[VIRTIO_TXQ]->callfd >= 0)
+		close(dev->virtqueue[VIRTIO_TXQ]->callfd);
+	if (dev->virtqueue[VIRTIO_TXQ]->kickfd >= 0)
+		close(dev->virtqueue[VIRTIO_TXQ]->kickfd);
 }
 
 /*
@@ -261,10 +261,10 @@ init_device(struct virtio_net *dev)
 	memset(dev->virtqueue[VIRTIO_RXQ], 0, sizeof(struct vhost_virtqueue));
 	memset(dev->virtqueue[VIRTIO_TXQ], 0, sizeof(struct vhost_virtqueue));
 
-	dev->virtqueue[VIRTIO_RXQ]->kickfd = (eventfd_t)-1;
-	dev->virtqueue[VIRTIO_RXQ]->callfd = (eventfd_t)-1;
-	dev->virtqueue[VIRTIO_TXQ]->kickfd = (eventfd_t)-1;
-	dev->virtqueue[VIRTIO_TXQ]->callfd = (eventfd_t)-1;
+	dev->virtqueue[VIRTIO_RXQ]->kickfd = -1;
+	dev->virtqueue[VIRTIO_RXQ]->callfd = -1;
+	dev->virtqueue[VIRTIO_TXQ]->kickfd = -1;
+	dev->virtqueue[VIRTIO_TXQ]->callfd = -1;
 
 	/* Backends are set to -1 indicating an inactive device. */
 	dev->virtqueue[VIRTIO_RXQ]->backend = VIRTIO_DEV_STOPPED;
@@ -685,8 +685,8 @@ set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
 	vq = dev->virtqueue[file->index];
 
-	if ((int)vq->callfd >= 0)
-		close((int)vq->callfd);
+	if (vq->callfd >= 0)
+		close(vq->callfd);
 
 	vq->callfd = file->fd;
 
@@ -711,8 +711,8 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
 	vq = dev->virtqueue[file->index];
 
-	if ((int)vq->kickfd >= 0)
-		close((int)vq->kickfd);
+	if (vq->kickfd >= 0)
+		close(vq->kickfd);
 
 	vq->kickfd = file->fd;
 
