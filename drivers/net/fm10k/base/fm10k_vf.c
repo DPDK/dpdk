@@ -41,7 +41,7 @@ POSSIBILITY OF SUCH DAMAGE.
 STATIC s32 fm10k_stop_hw_vf(struct fm10k_hw *hw)
 {
 	u8 *perm_addr = hw->mac.perm_addr;
-	u32 bal = 0, bah = 0;
+	u32 bal = 0, bah = 0, tdlen;
 	s32 err;
 	u16 i;
 
@@ -63,6 +63,9 @@ STATIC s32 fm10k_stop_hw_vf(struct fm10k_hw *hw)
 		       ((u32)perm_addr[2]);
 	}
 
+	/* restore default itr_scale for next VF initialization */
+	tdlen = hw->mac.itr_scale << FM10K_TDLEN_ITR_SCALE_SHIFT;
+
 	/* The queues have already been disabled so we just need to
 	 * update their base address registers
 	 */
@@ -71,6 +74,7 @@ STATIC s32 fm10k_stop_hw_vf(struct fm10k_hw *hw)
 		FM10K_WRITE_REG(hw, FM10K_TDBAH(i), bah);
 		FM10K_WRITE_REG(hw, FM10K_RDBAL(i), bal);
 		FM10K_WRITE_REG(hw, FM10K_RDBAH(i), bah);
+		FM10K_WRITE_REG(hw, FM10K_TDLEN(i), tdlen);
 	}
 
 	return FM10K_SUCCESS;
@@ -143,9 +147,16 @@ STATIC s32 fm10k_init_hw_vf(struct fm10k_hw *hw)
 	/* record maximum queue count */
 	hw->mac.max_queues = i;
 
-	/* fetch default VLAN */
+	/* fetch default VLAN and ITR scale */
 	hw->mac.default_vid = (FM10K_READ_REG(hw, FM10K_TXQCTL(0)) &
 			       FM10K_TXQCTL_VID_MASK) >> FM10K_TXQCTL_VID_SHIFT;
+	hw->mac.itr_scale = (FM10K_READ_REG(hw, FM10K_TDLEN(0)) &
+			     FM10K_TDLEN_ITR_SCALE_MASK) >>
+			    FM10K_TDLEN_ITR_SCALE_SHIFT;
+
+	/* ensure a non-zero itr scale */
+	if (!hw->mac.itr_scale)
+		hw->mac.itr_scale = FM10K_TDLEN_ITR_SCALE_GEN3;
 
 	return FM10K_SUCCESS;
 }

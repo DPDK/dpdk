@@ -344,6 +344,11 @@ struct fm10k_hw;
 #define FM10K_TDBAL(_n)		((0x40 * (_n)) + 0x8000)
 #define FM10K_TDBAH(_n)		((0x40 * (_n)) + 0x8001)
 #define FM10K_TDLEN(_n)		((0x40 * (_n)) + 0x8002)
+#define FM10K_TDLEN_ITR_SCALE_SHIFT		9
+#define FM10K_TDLEN_ITR_SCALE_MASK		0x00000E00
+#define FM10K_TDLEN_ITR_SCALE_GEN1		4
+#define FM10K_TDLEN_ITR_SCALE_GEN2		2
+#define FM10K_TDLEN_ITR_SCALE_GEN3		1
 #define FM10K_TPH_TXCTRL(_n)	((0x40 * (_n)) + 0x8003)
 #define FM10K_TPH_TXCTRL_DESC_TPHEN		0x00000020
 #define FM10K_TPH_TXCTRL_DESC_RROEN		0x00000200
@@ -693,6 +698,7 @@ struct fm10k_mac_info {
 	bool get_host_state;
 	bool tx_ready;
 	u32 dglort_map;
+	u8 itr_scale;
 };
 
 struct fm10k_swapi_table_info {
