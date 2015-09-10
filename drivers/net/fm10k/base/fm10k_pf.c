@@ -1868,7 +1868,7 @@ STATIC s32 fm10k_adjust_systime_pf(struct fm10k_hw *hw, s32 ppb)
 {
 	u64 systime_adjust;
 
-	DEBUGFUNC("fm10k_adjust_systime_vf");
+	DEBUGFUNC("fm10k_adjust_systime_pf");
 
 	/* if sw_addr is not set we don't have switch register access */
 	if (!hw->sw_addr)
