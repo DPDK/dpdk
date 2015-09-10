@@ -1858,6 +1858,33 @@ const struct fm10k_tlv_attr fm10k_1588_clock_owner_attr[] = {
 	FM10K_TLV_ATTR_LAST
 };
 
+const struct fm10k_tlv_attr fm10k_master_clk_offset_attr[] = {
+	FM10K_TLV_ATTR_U64(FM10K_PF_ATTR_ID_MASTER_CLK_OFFSET),
+	FM10K_TLV_ATTR_LAST
+};
+
+/**
+ *  fm10k_iov_notify_offset_pf - Notify VF of change in PTP offset
+ *  @hw: pointer to hardware structure
+ *  @vf_info: pointer to the vf info structure
+ *  @offset: 64bit unsigned offset from hardware SYSTIME
+ *
+ *  This function sends a message to a given VF to notify it of PTP offset
+ *  changes.
+ **/
+STATIC void fm10k_iov_notify_offset_pf(struct fm10k_hw *hw,
+				       struct fm10k_vf_info *vf_info,
+				       u64 offset)
+{
+	u32 msg[4];
+
+	fm10k_tlv_msg_init(msg, FM10K_VF_MSG_ID_1588);
+	fm10k_tlv_attr_put_u64(msg, FM10K_1588_MSG_CLK_OFFSET, offset);
+
+	if (vf_info->mbx.ops.enqueue_tx)
+		vf_info->mbx.ops.enqueue_tx(hw, &vf_info->mbx, msg);
+}
+
 /**
  *  fm10k_msg_1588_clock_owner_pf - Message handler for clock ownership from SM
  *  @hw: pointer to hardware structure
@@ -1951,6 +1978,33 @@ STATIC s32 fm10k_adjust_systime_pf(struct fm10k_hw *hw, s32 ppb)
 }
 
 /**
+ *  fm10k_notify_offset_pf - Notify switch of change in PTP offset
+ *  @hw: pointer to hardware structure
+ *  @offset: 64bit unsigned offset of SYSTIME
+ *
+ *  This function sends a message to the switch to indicate a change in the
+ *  offset of the hardware SYSTIME registers. The switch manager is
+ *  responsible for transmitting this message to other hosts.
+ */
+STATIC s32 fm10k_notify_offset_pf(struct fm10k_hw *hw, u64 offset)
+{
+	struct fm10k_mbx_info *mbx = &hw->mbx;
+	u32 msg[4];
+
+	DEBUGFUNC("fm10k_notify_offset_pf");
+
+	/* ensure that we control the clock */
+	if (!(hw->flags & FM10K_HW_FLAG_CLOCK_OWNER))
+		return FM10K_ERR_DEVICE_NOT_SUPPORTED;
+
+	fm10k_tlv_msg_init(msg, FM10K_PF_MSG_ID_MASTER_CLK_OFFSET);
+	fm10k_tlv_attr_put_u64(msg, FM10K_PF_ATTR_ID_MASTER_CLK_OFFSET, offset);
+
+	/* load onto outgoing mailbox */
+	return mbx->ops.enqueue_tx(hw, mbx, msg);
+}
+
+/**
  *  fm10k_read_systime_pf - Reads value of systime registers
  *  @hw: pointer to the hardware structure
  *
@@ -2021,6 +2075,7 @@ s32 fm10k_init_ops_pf(struct fm10k_hw *hw)
 	mac->ops.get_fault = &fm10k_get_fault_pf;
 	mac->ops.get_host_state = &fm10k_get_host_state_pf;
 	mac->ops.adjust_systime = &fm10k_adjust_systime_pf;
+	mac->ops.notify_offset = &fm10k_notify_offset_pf;
 	mac->ops.read_systime = &fm10k_read_systime_pf;
 
 	mac->max_msix_vectors = fm10k_get_pcie_msix_count_generic(hw);
@@ -2033,6 +2088,7 @@ s32 fm10k_init_ops_pf(struct fm10k_hw *hw)
 	iov->ops.set_lport = &fm10k_iov_set_lport_pf;
 	iov->ops.reset_lport = &fm10k_iov_reset_lport_pf;
 	iov->ops.update_stats = &fm10k_iov_update_stats_pf;
+	iov->ops.notify_offset = &fm10k_iov_notify_offset_pf;
 
 	return fm10k_sm_mbx_init(hw, &hw->mbx, fm10k_msg_data_pf);
 }

@@ -414,6 +414,8 @@ const struct fm10k_tlv_attr fm10k_lport_state_msg_attr[] = {
 	FM10K_TLV_ATTR_LAST
 };
 
+extern const struct fm10k_tlv_attr fm10k_1588_msg_attr[];
+
 /**
  *  fm10k_msg_lport_state_vf - Message handler for lport_state message from PF
  *  @hw: Pointer to hardware structure
@@ -497,6 +499,7 @@ STATIC s32 fm10k_update_xcast_mode_vf(struct fm10k_hw *hw, u16 glort, u8 mode)
 }
 
 const struct fm10k_tlv_attr fm10k_1588_msg_attr[] = {
+	FM10K_TLV_ATTR_U64(FM10K_1588_MSG_CLK_OFFSET),
 	FM10K_TLV_ATTR_LAST
 };
 

@@ -339,3 +339,17 @@ s32 fm10k_adjust_systime(struct fm10k_hw *hw, s32 ppb)
 	return fm10k_call_func(hw, hw->mac.ops.adjust_systime,
 			       (hw, ppb), FM10K_NOT_IMPLEMENTED);
 }
+
+/**
+ *  fm10k_notify_offset - Notify switch of change in PTP offset
+ *  @hw: pointer to hardware structure
+ *  @offset: 64bit unsigned offset from hardware SYSTIME value
+ *
+ *  This function is meant to notify switch of change in the PTP offset for
+ *  the hardware SYSTIME registers.
+ **/
+s32 fm10k_notify_offset(struct fm10k_hw *hw, u64 offset)
+{
+	return fm10k_call_func(hw, hw->mac.ops.notify_offset,
+			       (hw, offset), FM10K_NOT_IMPLEMENTED);
+}

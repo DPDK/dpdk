@@ -58,4 +58,5 @@ s32 fm10k_update_uc_addr(struct fm10k_hw *hw, u16 lport,
 s32 fm10k_update_mc_addr(struct fm10k_hw *hw, u16 lport,
 			 const u8 *mac, u16 vid, bool add);
 s32 fm10k_adjust_systime(struct fm10k_hw *hw, s32 ppb);
+s32 fm10k_notify_offset(struct fm10k_hw *hw, u64 offset);
 #endif /* _FM10K_API_H_ */

@@ -675,6 +675,7 @@ struct fm10k_mac_ops {
 	s32 (*get_fault)(struct fm10k_hw *, int, struct fm10k_fault *);
 	void (*request_lport_map)(struct fm10k_hw *);
 	s32 (*adjust_systime)(struct fm10k_hw *, s32 ppb);
+	s32 (*notify_offset)(struct fm10k_hw *, u64 offset);
 	u64 (*read_systime)(struct fm10k_hw *);
 };
 
@@ -775,6 +776,7 @@ struct fm10k_iov_ops {
 	s32 (*set_lport)(struct fm10k_hw *, struct fm10k_vf_info *, u16, u8);
 	void (*reset_lport)(struct fm10k_hw *, struct fm10k_vf_info *);
 	void (*update_stats)(struct fm10k_hw *, struct fm10k_hw_stats_q *, u16);
+	void (*notify_offset)(struct fm10k_hw *, struct fm10k_vf_info*, u64);
 };
 
 struct fm10k_iov_info {
