@@ -142,8 +142,8 @@ STATIC u16 fm10k_fifo_head_drop(struct fm10k_mbx_fifo *fifo)
  *  fm10k_fifo_drop_all - Drop all messages in FIFO
  *  @fifo: pointer to FIFO
  *
- *  This function resets the head pointer to drop all messages in the FIFO,
- *  and ensure the FIFO is empty.
+ *  This function resets the head pointer to drop all messages in the FIFO and
+ *  ensure the FIFO is empty.
  **/
 STATIC void fm10k_fifo_drop_all(struct fm10k_mbx_fifo *fifo)
 {
@@ -1075,8 +1075,25 @@ STATIC s32 fm10k_mbx_create_reply(struct fm10k_hw *hw,
  **/
 STATIC void fm10k_mbx_reset_work(struct fm10k_mbx_info *mbx)
 {
+	u16 len, head, ack;
+
 	/* reset our outgoing max size back to Rx limits */
 	mbx->max_size = mbx->rx.size - 1;
+
+	/* update mbx->pulled to account for tail_len and ack */
+	head = FM10K_MSG_HDR_FIELD_GET(mbx->mbx_hdr, HEAD);
+	ack = fm10k_mbx_index_len(mbx, head, mbx->tail);
+	mbx->pulled += mbx->tail_len - ack;
+
+	/* now drop any messages which have started or finished transmitting */
+	while (fm10k_fifo_head_len(&mbx->tx) && mbx->pulled) {
+		len = fm10k_fifo_head_drop(&mbx->tx);
+		mbx->tx_dropped++;
+		if (mbx->pulled >= len)
+			mbx->pulled -= len;
+		else
+			mbx->pulled = 0;
+	}
 
 	/* just do a quick resysnc to start of message */
 	mbx->pushed = 0;
@@ -1774,7 +1791,7 @@ STATIC void fm10k_sm_mbx_disconnect(struct fm10k_hw *hw,
 	mbx->state = FM10K_STATE_CLOSED;
 	mbx->remote = 0;
 	fm10k_mbx_reset_work(mbx);
-	fm10k_mbx_update_max_size(mbx, 0);
+	fm10k_fifo_drop_all(&mbx->tx);
 
 	FM10K_WRITE_REG(hw, mbx->mbmem_reg, 0);
 }
