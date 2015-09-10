@@ -488,8 +488,21 @@ struct fm10k_hw;
 #define ETH_ALEN	6
 #endif /* ETH_ALEN */
 
+#ifndef FM10K_IS_ZERO_ETHER_ADDR
+/* make certain address is not 0 */
+#define FM10K_IS_ZERO_ETHER_ADDR(addr) \
+(!((addr)[0] | (addr)[1] | (addr)[2] | (addr)[3] | (addr)[4] | (addr)[5]))
+#endif
 
+#ifndef FM10K_IS_MULTICAST_ETHER_ADDR
+#define FM10K_IS_MULTICAST_ETHER_ADDR(addr) ((addr)[0] & 0x1)
+#endif
 
+#ifndef FM10K_IS_VALID_ETHER_ADDR
+/* make certain address is not multicast or 0 */
+#define FM10K_IS_VALID_ETHER_ADDR(addr) \
+(!FM10K_IS_MULTICAST_ETHER_ADDR(addr) && !FM10K_IS_ZERO_ETHER_ADDR(addr))
+#endif
 
 enum fm10k_int_source {
 	fm10k_int_Mailbox	= 0,
