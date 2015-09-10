@@ -1969,8 +1969,8 @@ STATIC s32 fm10k_adjust_systime_pf(struct fm10k_hw *hw, s32 ppb)
 	if (systime_adjust > FM10K_SW_SYSTIME_ADJUST_MASK)
 		return FM10K_ERR_PARAM;
 
-	if (ppb < 0)
-		systime_adjust |= FM10K_SW_SYSTIME_ADJUST_DIR_NEGATIVE;
+	if (ppb > 0)
+		systime_adjust |= FM10K_SW_SYSTIME_ADJUST_DIR_POSITIVE;
 
 	FM10K_WRITE_SW_REG(hw, FM10K_SW_SYSTIME_ADJUST, (u32)systime_adjust);
 
