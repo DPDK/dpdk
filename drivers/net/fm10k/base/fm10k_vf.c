@@ -546,6 +546,26 @@ STATIC s32 fm10k_configure_dglort_map_vf(struct fm10k_hw *hw,
 }
 
 /**
+ * fm10k_request_tx_timestamp_mode_vf - Request Tx timestamp mode
+ * @hw: pointer to hardware structure
+ * @glort: glort to request Tx timestamps for
+ * @mode: timestamp mode to request
+ *
+ * This function takes the requested timestamp mode and verifies that it was
+ * requested as none since the VF cannot support receipt of Tx timestamps.
+ *
+ * If the mode is non-zero ERR_PARAM, else success
+ **/
+STATIC s32 fm10k_request_tx_timestamp_mode_vf(struct fm10k_hw *hw,
+					      u16 glort,
+					      u8 mode)
+{
+	UNREFERENCED_2PARAMETER(hw, glort);
+
+	return mode ? FM10K_ERR_PARAM : FM10K_SUCCESS;
+}
+
+/**
  *  fm10k_adjust_systime_vf - Adjust systime frequency
  *  @hw: pointer to hardware structure
  *  @ppb: adjustment rate in parts per billion
@@ -633,7 +653,8 @@ s32 fm10k_init_ops_vf(struct fm10k_hw *hw)
 	mac->ops.configure_dglort_map = &fm10k_configure_dglort_map_vf;
 	mac->ops.get_host_state = &fm10k_get_host_state_generic;
 	mac->ops.adjust_systime = &fm10k_adjust_systime_vf;
-	mac->ops.read_systime = &fm10k_read_systime_vf,
+	mac->ops.read_systime = &fm10k_read_systime_vf;
+	mac->ops.request_tx_timestamp_mode = &fm10k_request_tx_timestamp_mode_vf;
 
 	mac->max_msix_vectors = fm10k_get_pcie_msix_count_generic(hw);
 
