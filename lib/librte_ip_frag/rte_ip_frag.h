@@ -128,19 +128,24 @@ struct rte_ip_frag_tbl {
 };
 
 /** IPv6 fragment extension header */
+#define	RTE_IPV6_EHDR_MF_SHIFT			0
+#define	RTE_IPV6_EHDR_MF_MASK			1
+#define	RTE_IPV6_EHDR_FO_SHIFT			3
+#define	RTE_IPV6_EHDR_FO_MASK			(~((1 << RTE_IPV6_EHDR_FO_SHIFT) - 1))
+
+#define RTE_IPV6_FRAG_USED_MASK			\
+	(RTE_IPV6_EHDR_MF_MASK | RTE_IPV6_EHDR_FO_MASK)
+
+#define RTE_IPV6_GET_MF(x)				((x) & RTE_IPV6_EHDR_MF_MASK)
+#define RTE_IPV6_GET_FO(x)				((x) >> RTE_IPV6_EHDR_FO_SHIFT)
+
+#define RTE_IPV6_SET_FRAG_DATA(fo, mf)	\
+	(((fo) & RTE_IPV6_EHDR_FO_MASK) | ((mf) & RTE_IPV6_EHDR_MF_MASK))
+
 struct ipv6_extension_fragment {
 	uint8_t next_header;            /**< Next header type */
-	uint8_t reserved1;              /**< Reserved */
-	union {
-		struct {
-			uint16_t frag_offset:13; /**< Offset from the start of the packet */
-			uint16_t reserved2:2; /**< Reserved */
-			uint16_t more_frags:1;
-			/**< 1 if more fragments left, 0 if last fragment */
-		};
-		uint16_t frag_data;
-		/**< union of all fragmentation data */
-	};
+	uint8_t reserved;               /**< Reserved */
+	uint16_t frag_data;             /**< All fragmentation data */
 	uint32_t id;                    /**< Packet ID */
 } __attribute__((__packed__));
 

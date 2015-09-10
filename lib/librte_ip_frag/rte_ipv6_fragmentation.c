@@ -46,12 +46,6 @@
  *
  */
 
-/* Fragment Extension Header */
-#define	IPV6_HDR_MF_SHIFT			0
-#define	IPV6_HDR_FO_SHIFT			3
-#define	IPV6_HDR_MF_MASK			(1 << IPV6_HDR_MF_SHIFT)
-#define	IPV6_HDR_FO_MASK			((1 << IPV6_HDR_FO_SHIFT) - 1)
-
 static inline void
 __fill_ipv6hdr_frag(struct ipv6_hdr *dst,
 		const struct ipv6_hdr *src, uint16_t len, uint16_t fofs,
@@ -65,10 +59,8 @@ __fill_ipv6hdr_frag(struct ipv6_hdr *dst,
 
 	fh = (struct ipv6_extension_fragment *) ++dst;
 	fh->next_header = src->proto;
-	fh->reserved1   = 0;
-	fh->frag_offset = rte_cpu_to_be_16(fofs);
-	fh->reserved2   = 0;
-	fh->more_frags  = rte_cpu_to_be_16(mf);
+	fh->reserved = 0;
+	fh->frag_data = rte_cpu_to_be_16(RTE_IPV6_SET_FRAG_DATA(fofs, mf));
 	fh->id = 0;
 }
 
@@ -118,7 +110,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 	frag_size = (uint16_t)(mtu_size - sizeof(struct ipv6_hdr));
 
 	/* Fragment size should be a multiple of 8. */
-	IP_FRAG_ASSERT((frag_size & IPV6_HDR_FO_MASK) == 0);
+	IP_FRAG_ASSERT((frag_size & ~RTE_IPV6_EHDR_FO_MASK) == 0);
 
 	/* Check that pkts_out is big enough to hold all fragments */
 	if (unlikely (frag_size * nb_pkts_out <

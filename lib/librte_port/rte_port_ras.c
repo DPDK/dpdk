@@ -212,12 +212,13 @@ process_ipv6(struct rte_port_ring_writer_ras *p, struct rte_mbuf *pkt)
 	struct ipv6_hdr *pkt_hdr = rte_pktmbuf_mtod(pkt, struct ipv6_hdr *);
 
 	struct ipv6_extension_fragment *frag_hdr;
+	uint16_t frag_data = 0;
 	frag_hdr = rte_ipv6_frag_get_ipv6_fragment_header(pkt_hdr);
-	uint16_t frag_offset = frag_hdr->frag_offset;
-	uint16_t frag_flag = frag_hdr->more_frags;
+	if (frag_hdr != NULL)
+		frag_data = rte_be_to_cpu_16(frag_hdr->frag_data);
 
 	/* If it is a fragmented packet, then try to reassemble */
-	if ((frag_flag == 0) && (frag_offset == 0))
+	if ((frag_data & RTE_IPV6_FRAG_USED_MASK) == 0)
 		p->tx_buf[p->tx_buf_count++] = pkt;
 	else {
 		struct rte_mbuf *mo;

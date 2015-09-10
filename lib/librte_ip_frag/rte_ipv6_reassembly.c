@@ -181,7 +181,8 @@ rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		"tbl: %p, max_cycles: %" PRIu64 ", entry_mask: %#x, "
 		"max_entries: %u, use_entries: %u\n\n",
 		__func__, __LINE__,
-		mb, tms, IPv6_KEY_BYTES(key.src_dst), key.id, ip_ofs, ip_len, frag_hdr->more_frags,
+		mb, tms, IPv6_KEY_BYTES(key.src_dst), key.id, ip_ofs, ip_len,
+		RTE_IPV6_GET_MF(frag_hdr->frag_data),
 		tbl, tbl->max_cycles, tbl->entry_mask, tbl->max_entries,
 		tbl->use_entries);
 
