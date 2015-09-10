@@ -313,8 +313,10 @@ struct fm10k_mbx_info {
 	u64 tx_dropped;
 	u64 tx_messages;
 	u64 tx_dwords;
+	u64 tx_mbmem_pulled;
 	u64 rx_messages;
 	u64 rx_dwords;
+	u64 rx_mbmem_pushed;
 	u64 rx_parse_err;
 
 	/* Buffer to store messages */

@@ -394,6 +394,8 @@ STATIC void fm10k_mbx_write_copy(struct fm10k_hw *hw,
 			if (!tail)
 				tail++;
 
+			mbx->tx_mbmem_pulled++;
+
 			/* write message to hardware FIFO */
 			FM10K_WRITE_MBX(hw, mbmem + tail++, *(head++));
 		} while (--len && --end);
@@ -479,6 +481,8 @@ STATIC void fm10k_mbx_read_copy(struct fm10k_hw *hw,
 			head &= mbx->mbmem_len - 1;
 			if (!head)
 				head++;
+
+			mbx->rx_mbmem_pushed++;
 
 			/* read message from hardware FIFO */
 			*(tail++) = FM10K_READ_MBX(hw, mbmem + head++);
