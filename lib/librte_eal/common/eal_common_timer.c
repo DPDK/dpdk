@@ -81,6 +81,6 @@ set_tsc_freq(void)
 	if (!freq)
 		freq = estimate_tsc_freq();
 
-	RTE_LOG(INFO, EAL, "TSC frequency is ~%" PRIu64 " KHz\n", freq / 1000);
+	RTE_LOG(DEBUG, EAL, "TSC frequency is ~%" PRIu64 " KHz\n", freq / 1000);
 	eal_tsc_resolution_hz = freq;
 }

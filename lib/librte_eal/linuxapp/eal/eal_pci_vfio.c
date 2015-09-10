@@ -1070,7 +1070,7 @@ pci_vfio_enable(void)
 
 	/* return 0 if VFIO modules not loaded */
 	if (vfio_available == 0) {
-		RTE_LOG(INFO, EAL, "VFIO modules not loaded, "
+		RTE_LOG(DEBUG, EAL, "VFIO modules not loaded, "
 			"skipping VFIO support...\n");
 		return 0;
 	}
