@@ -799,6 +799,8 @@ struct fm10k_hw {
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
 	u8 revision_id;
+	u32 flags;
+#define FM10K_HW_FLAG_CLOCK_OWNER	(u32)(1 << 0)
 };
 
 /* Number of Transmit and Receive Descriptors must be a multiple of 8 */

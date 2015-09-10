@@ -57,6 +57,7 @@ enum fm10k_pf_tlv_msg_id_v1 {
 	FM10K_PF_MSG_ID_SET_FLOW_STATE		= 0x505,
 	FM10K_PF_MSG_ID_GET_1588_INFO		= 0x506,
 	FM10K_PF_MSG_ID_1588_TIMESTAMP		= 0x701,
+	FM10K_PF_MSG_ID_1588_CLOCK_OWNER	= 0x702,
 };
 
 enum fm10k_pf_tlv_attr_id_v1 {
@@ -75,6 +76,7 @@ enum fm10k_pf_tlv_attr_id_v1 {
 	FM10K_PF_ATTR_ID_PORT			= 0x0C,
 	FM10K_PF_ATTR_ID_UPDATE_PVID		= 0x0D,
 	FM10K_PF_ATTR_ID_1588_TIMESTAMP		= 0x10,
+	FM10K_PF_ATTR_ID_1588_CLOCK_OWNER	= 0x12,
 };
 
 #define FM10K_MSG_LPORT_MAP_GLORT_SHIFT	0
@@ -115,6 +117,10 @@ struct fm10k_swapi_1588_timestamp {
 	__le16 sglort;
 };
 
+struct fm10k_swapi_1588_clock_owner {
+	__le16 glort;
+	__le16 enabled;
+};
 
 #define FM10K_PF_MSG_LPORT_CREATE_HANDLER(func) \
 	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_LPORT_CREATE, NULL, func)
@@ -141,6 +147,13 @@ extern const struct fm10k_tlv_attr fm10k_1588_timestamp_msg_attr[];
 #define FM10K_PF_MSG_1588_TIMESTAMP_HANDLER(func) \
 	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_1588_TIMESTAMP, \
 			  fm10k_1588_timestamp_msg_attr, func)
+
+s32 fm10k_msg_1588_clock_owner_pf(struct fm10k_hw *, u32 **,
+				  struct fm10k_mbx_info *);
+extern const struct fm10k_tlv_attr fm10k_1588_clock_owner_attr[];
+#define FM10K_PF_MSG_1588_CLOCK_OWNER_HANDLER(func) \
+	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_1588_CLOCK_OWNER, \
+			  fm10k_1588_clock_owner_attr, func)
 
 s32 fm10k_iov_msg_msix_pf(struct fm10k_hw *, u32 **, struct fm10k_mbx_info *);
 s32 fm10k_iov_msg_mac_vlan_pf(struct fm10k_hw *, u32 **,

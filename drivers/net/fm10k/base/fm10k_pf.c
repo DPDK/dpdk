@@ -1852,6 +1852,48 @@ const struct fm10k_tlv_attr fm10k_1588_timestamp_msg_attr[] = {
 	FM10K_TLV_ATTR_LAST
 };
 
+const struct fm10k_tlv_attr fm10k_1588_clock_owner_attr[] = {
+	FM10K_TLV_ATTR_LE_STRUCT(FM10K_PF_ATTR_ID_1588_CLOCK_OWNER,
+				 sizeof(struct fm10k_swapi_1588_clock_owner)),
+	FM10K_TLV_ATTR_LAST
+};
+
+/**
+ *  fm10k_msg_1588_clock_owner_pf - Message handler for clock ownership from SM
+ *  @hw: pointer to hardware structure
+ *  @results: pointer to array containing parsed data,
+ *  @mbx: Pointer to mailbox information structure
+ *
+ *  This handler configures the FM10K_HW_FLAG_CLOCK_OWNER field for the PF
+ */
+s32 fm10k_msg_1588_clock_owner_pf(struct fm10k_hw *hw, u32 **results,
+				  struct fm10k_mbx_info *mbx)
+{
+	struct fm10k_swapi_1588_clock_owner msg;
+	u16 glort;
+	s32 err;
+
+	UNREFERENCED_1PARAMETER(mbx);
+	DEBUGFUNC("fm10k_msg_1588_clock_owner");
+
+	err = fm10k_tlv_attr_get_le_struct(
+		results[FM10K_PF_ATTR_ID_1588_CLOCK_OWNER],
+		&msg, sizeof(msg));
+	if (err)
+		return err;
+
+	/* We own the clock iff the glort matches us and the enabled field is
+	 * true. Otherwise, the clock must belong to some other port.
+	 */
+	glort = le16_to_cpu(msg.glort);
+	if (fm10k_glort_valid_pf(hw, glort) && msg.enabled)
+		hw->flags |= FM10K_HW_FLAG_CLOCK_OWNER;
+	else
+		hw->flags &= ~FM10K_HW_FLAG_CLOCK_OWNER;
+
+	return FM10K_SUCCESS;
+}
+
 /**
  *  fm10k_adjust_systime_pf - Adjust systime frequency
  *  @hw: pointer to hardware structure
@@ -1870,6 +1912,10 @@ STATIC s32 fm10k_adjust_systime_pf(struct fm10k_hw *hw, s32 ppb)
 	u64 systime_adjust;
 
 	DEBUGFUNC("fm10k_adjust_systime_pf");
+
+	/* ensure that we control the clock */
+	if (!(hw->flags & FM10K_HW_FLAG_CLOCK_OWNER))
+		return FM10K_ERR_DEVICE_NOT_SUPPORTED;
 
 	/* if sw_addr is not set we don't have switch register access */
 	if (!hw->sw_addr)
@@ -1936,6 +1982,7 @@ static const struct fm10k_msg_data fm10k_msg_data_pf[] = {
 	FM10K_PF_MSG_ERR_HANDLER(LPORT_CREATE, fm10k_msg_err_pf),
 	FM10K_PF_MSG_ERR_HANDLER(LPORT_DELETE, fm10k_msg_err_pf),
 	FM10K_PF_MSG_UPDATE_PVID_HANDLER(fm10k_msg_update_pvid_pf),
+	FM10K_PF_MSG_1588_CLOCK_OWNER_HANDLER(fm10k_msg_1588_clock_owner_pf),
 	FM10K_TLV_MSG_ERROR_HANDLER(fm10k_tlv_msg_error),
 };
 

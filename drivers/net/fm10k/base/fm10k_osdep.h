@@ -106,6 +106,7 @@ typedef int        bool;
 #define FM10K_LE32_TO_CPU    rte_le_to_cpu_32
 #define FM10K_CPU_TO_LE32    rte_cpu_to_le_32
 #define FM10K_CPU_TO_LE16    rte_cpu_to_le_16
+#define le16_to_cpu          rte_le_to_cpu_16
 
 #define FM10K_RMB            rte_rmb
 #define FM10K_WMB            rte_wmb
