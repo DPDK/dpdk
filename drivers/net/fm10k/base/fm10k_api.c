@@ -55,6 +55,12 @@ s32 fm10k_set_mac_type(struct fm10k_hw *hw)
 
 	switch (hw->device_id) {
 	case FM10K_DEV_ID_PF:
+#ifdef BOULDER_RAPIDS_HW
+	case FM10K_DEV_ID_SDI_FM10420_QDA2:
+#endif /* BOULDER_RAPIDS_HW */
+#ifdef ATWOOD_CHANNEL_HW
+	case FM10K_DEV_ID_SDI_FM10420_DA2:
+#endif /* ATWOOD_CHANNEL_HW */
 		hw->mac.type = fm10k_mac_pf;
 		break;
 	case FM10K_DEV_ID_VF:
