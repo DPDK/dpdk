@@ -118,6 +118,12 @@ struct fm10k_swapi_1588_timestamp {
 	__le16 sglort;
 };
 
+struct fm10k_swapi_tx_timestamp_mode {
+	__le16 glort;
+	__le16 maxmode;
+	__le32 status;
+};
+
 #define FM10K_PF_MSG_LPORT_CREATE_HANDLER(func) \
 	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_LPORT_CREATE, NULL, func)
 #define FM10K_PF_MSG_LPORT_DELETE_HANDLER(func) \
@@ -138,6 +144,11 @@ s32 fm10k_msg_err_pf(struct fm10k_hw *, u32 **, struct fm10k_mbx_info *);
 extern const struct fm10k_tlv_attr fm10k_err_msg_attr[];
 #define FM10K_PF_MSG_ERR_HANDLER(msg, func) \
 	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_##msg, fm10k_err_msg_attr, func)
+
+extern const struct fm10k_tlv_attr fm10k_tx_timestamp_mode_attr[];
+#define FM10K_PF_MSG_TIMESTAMP_MODE_HANDLER(func) \
+	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_TX_TIMESTAMP_MODE, \
+			  fm10k_tx_timestamp_mode_attr, func)
 
 extern const struct fm10k_tlv_attr fm10k_1588_timestamp_msg_attr[];
 #define FM10K_PF_MSG_1588_TIMESTAMP_HANDLER(func) \

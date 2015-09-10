@@ -1810,6 +1810,12 @@ const struct fm10k_tlv_attr fm10k_1588_timestamp_msg_attr[] = {
 	FM10K_TLV_ATTR_LAST
 };
 
+const struct fm10k_tlv_attr fm10k_tx_timestamp_mode_attr[] = {
+	FM10K_TLV_ATTR_LE_STRUCT(FM10K_PF_ATTR_ID_TIMESTAMP_MODE_RESP,
+				 sizeof(struct fm10k_swapi_tx_timestamp_mode)),
+	FM10K_TLV_ATTR_LAST
+};
+
 /* currently there is no shared 1588 timestamp handler */
 
 /**
