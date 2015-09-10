@@ -66,8 +66,7 @@ static ssize_t
 show_max_vfs(struct device *dev, struct device_attribute *attr,
 	     char *buf)
 {
-	return snprintf(buf, 10, "%u\n",
-			pci_num_vf(container_of(dev, struct pci_dev, dev)));
+	return snprintf(buf, 10, "%u\n", dev_num_vf(dev));
 }
 
 static ssize_t
@@ -76,7 +75,7 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 {
 	int err = 0;
 	unsigned long max_vfs;
-	struct pci_dev *pdev = container_of(dev, struct pci_dev, dev);
+	struct pci_dev *pdev = to_pci_dev(dev);
 
 	if (0 != kstrtoul(buf, 0, &max_vfs))
 		return -EINVAL;
@@ -95,7 +94,7 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 static ssize_t
 show_extended_tag(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	struct pci_dev *pci_dev = to_pci_dev(dev);
 	uint32_t val = 0;
 
 	pci_read_config_dword(pci_dev, PCI_DEV_CAP_REG, &val);
@@ -116,7 +115,7 @@ store_extended_tag(struct device *dev,
 		   const char *buf,
 		   size_t count)
 {
-	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	struct pci_dev *pci_dev = to_pci_dev(dev);
 	uint32_t val = 0, enable;
 
 	if (strncmp(buf, "on", 2) == 0)
@@ -153,7 +152,7 @@ show_max_read_request_size(struct device *dev,
 			   struct device_attribute *attr,
 			   char *buf)
 {
-	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	struct pci_dev *pci_dev = to_pci_dev(dev);
 	int val = pcie_get_readrq(pci_dev);
 
 	return snprintf(buf, PCI_SYS_FILE_BUF_SIZE, "%d\n", val);
@@ -165,7 +164,7 @@ store_max_read_request_size(struct device *dev,
 			    const char *buf,
 			    size_t count)
 {
-	struct pci_dev *pci_dev = container_of(dev, struct pci_dev, dev);
+	struct pci_dev *pci_dev = to_pci_dev(dev);
 	unsigned long size = 0;
 	int ret;
 
