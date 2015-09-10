@@ -91,6 +91,16 @@ enum fm10k_pf_tlv_attr_id_v1 {
 #define FM10K_MSG_UPDATE_PVID_PVID_SHIFT	16
 #define FM10K_MSG_UPDATE_PVID_PVID_SIZE		16
 
+/* The following data structures are overlayed specifically to TLV mailbox
+ * messages, and must not have gaps between their values. They must line up
+ * correctly to the TLV definition.
+ */
+#ifdef C99
+#pragma pack(push, 1)
+#else
+#pragma pack(1)
+#endif /* C99 */
+
 struct fm10k_mac_update {
 	__le32	mac_lower;
 	__le16	mac_upper;
@@ -123,6 +133,12 @@ struct fm10k_swapi_1588_clock_owner {
 	__le16 glort;
 	__le16 enabled;
 };
+
+#ifdef C99
+#pragma pack(pop)
+#else
+#pragma pack()
+#endif /* C99 */
 
 #define FM10K_PF_MSG_LPORT_CREATE_HANDLER(func) \
 	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_LPORT_CREATE, NULL, func)
