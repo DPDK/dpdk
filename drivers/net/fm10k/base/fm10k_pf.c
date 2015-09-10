@@ -1189,19 +1189,6 @@ STATIC void fm10k_iov_update_stats_pf(struct fm10k_hw *hw,
 	fm10k_update_hw_stats_q(hw, q, idx, qpp);
 }
 
-STATIC s32 fm10k_iov_report_timestamp_pf(struct fm10k_hw *hw,
-					 struct fm10k_vf_info *vf_info,
-					 u64 timestamp)
-{
-	u32 msg[4];
-
-	/* generate port state response to notify VF it is not ready */
-	fm10k_tlv_msg_init(msg, FM10K_VF_MSG_ID_1588);
-	fm10k_tlv_attr_put_u64(msg, FM10K_1588_MSG_TIMESTAMP, timestamp);
-
-	return vf_info->mbx.ops.enqueue_tx(hw, &vf_info->mbx, msg);
-}
-
 /**
  *  fm10k_iov_msg_msix_pf - Message handler for MSI-X request from VF
  *  @hw: Pointer to hardware structure
@@ -1857,58 +1844,13 @@ s32 fm10k_msg_err_pf(struct fm10k_hw *hw, u32 **results,
 	return FM10K_SUCCESS;
 }
 
+/* currently there is no shared 1588 timestamp handler */
+
 const struct fm10k_tlv_attr fm10k_1588_timestamp_msg_attr[] = {
 	FM10K_TLV_ATTR_LE_STRUCT(FM10K_PF_ATTR_ID_1588_TIMESTAMP,
 				 sizeof(struct fm10k_swapi_1588_timestamp)),
 	FM10K_TLV_ATTR_LAST
 };
-
-const struct fm10k_tlv_attr fm10k_tx_timestamp_mode_attr[] = {
-	FM10K_TLV_ATTR_LE_STRUCT(FM10K_PF_ATTR_ID_TIMESTAMP_MODE_RESP,
-				 sizeof(struct fm10k_swapi_tx_timestamp_mode)),
-	FM10K_TLV_ATTR_LAST
-};
-
-/* currently there is no shared 1588 timestamp handler */
-
-/**
- *  fm10k_request_tx_timestamp_mode_pf - Request a specific Tx timestamping mode
- *  @hw: pointer to hardware structure
- *  @glort: base resource tag for this request
- *  @mode: integer value indicating the requested mode
- *
- *  This function will attempt to request a specific timestamp mode for the
- *  port so that it can receive Tx timestamp messages.
- **/
-STATIC s32 fm10k_request_tx_timestamp_mode_pf(struct fm10k_hw *hw,
-					      u16 glort,
-					      u8 mode)
-{
-	struct fm10k_mbx_info *mbx = &hw->mbx;
-	u32 msg[3], timestamp_mode;
-
-	DEBUGFUNC("fm10k_request_timestamp_mode_pf");
-
-	if (mode > FM10K_TIMESTAMP_MODE_PEP_TO_ANY)
-		return FM10K_ERR_PARAM;
-
-	/* if glort is not valid return error */
-	if (!fm10k_glort_valid_pf(hw, glort))
-		return FM10K_ERR_PARAM;
-
-	/* write timestamp mode as a single u32 value,
-	 * lower 16 bits: glort
-	 * upper 16 bits: mode
-	 */
-	timestamp_mode = ((u32)mode << 16) | glort;
-
-	/* generate message requesting change to xcast mode */
-	fm10k_tlv_msg_init(msg, FM10K_PF_MSG_ID_TX_TIMESTAMP_MODE);
-	fm10k_tlv_attr_put_u32(msg, FM10K_PF_ATTR_ID_TIMESTAMP_MODE_REQ, timestamp_mode);
-
-	/* load onto outgoing mailbox */
-	return mbx->ops.enqueue_tx(hw, mbx, msg);
-}
 
 /**
  *  fm10k_adjust_systime_pf - Adjust systime frequency
@@ -2033,7 +1975,6 @@ s32 fm10k_init_ops_pf(struct fm10k_hw *hw)
 	mac->ops.get_host_state = &fm10k_get_host_state_pf;
 	mac->ops.adjust_systime = &fm10k_adjust_systime_pf;
 	mac->ops.read_systime = &fm10k_read_systime_pf;
-	mac->ops.request_tx_timestamp_mode = &fm10k_request_tx_timestamp_mode_pf;
 
 	mac->max_msix_vectors = fm10k_get_pcie_msix_count_generic(hw);
 
@@ -2045,7 +1986,6 @@ s32 fm10k_init_ops_pf(struct fm10k_hw *hw)
 	iov->ops.set_lport = &fm10k_iov_set_lport_pf;
 	iov->ops.reset_lport = &fm10k_iov_reset_lport_pf;
 	iov->ops.update_stats = &fm10k_iov_update_stats_pf;
-	iov->ops.report_timestamp = &fm10k_iov_report_timestamp_pf;
 
 	return fm10k_sm_mbx_init(hw, &hw->mbx, fm10k_msg_data_pf);
 }

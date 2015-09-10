@@ -497,11 +497,10 @@ STATIC s32 fm10k_update_xcast_mode_vf(struct fm10k_hw *hw, u16 glort, u8 mode)
 }
 
 const struct fm10k_tlv_attr fm10k_1588_msg_attr[] = {
-	FM10K_TLV_ATTR_U64(FM10K_1588_MSG_TIMESTAMP),
 	FM10K_TLV_ATTR_LAST
 };
 
-/* currently there is no shared 1588 timestamp handler */
+/* currently there is no shared 1588 message handler */
 
 /**
  *  fm10k_update_hw_stats_vf - Updates hardware related statistics of VF
@@ -559,26 +558,6 @@ STATIC s32 fm10k_configure_dglort_map_vf(struct fm10k_hw *hw,
 	/* stub for now until we determine correct message for this */
 
 	return FM10K_SUCCESS;
-}
-
-/**
- * fm10k_request_tx_timestamp_mode_vf - Request Tx timestamp mode
- * @hw: pointer to hardware structure
- * @glort: glort to request Tx timestamps for
- * @mode: timestamp mode to request
- *
- * This function takes the requested timestamp mode and verifies that it was
- * requested as none since the VF cannot support receipt of Tx timestamps.
- *
- * If the mode is non-zero ERR_PARAM, else success
- **/
-STATIC s32 fm10k_request_tx_timestamp_mode_vf(struct fm10k_hw *hw,
-					      u16 glort,
-					      u8 mode)
-{
-	UNREFERENCED_2PARAMETER(hw, glort);
-
-	return mode ? FM10K_ERR_PARAM : FM10K_SUCCESS;
 }
 
 /**
@@ -670,7 +649,6 @@ s32 fm10k_init_ops_vf(struct fm10k_hw *hw)
 	mac->ops.get_host_state = &fm10k_get_host_state_generic;
 	mac->ops.adjust_systime = &fm10k_adjust_systime_vf;
 	mac->ops.read_systime = &fm10k_read_systime_vf;
-	mac->ops.request_tx_timestamp_mode = &fm10k_request_tx_timestamp_mode_vf;
 
 	mac->max_msix_vectors = fm10k_get_pcie_msix_count_generic(hw);
 

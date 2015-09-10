@@ -676,7 +676,6 @@ struct fm10k_mac_ops {
 	void (*request_lport_map)(struct fm10k_hw *);
 	s32 (*adjust_systime)(struct fm10k_hw *, s32 ppb);
 	u64 (*read_systime)(struct fm10k_hw *);
-	s32 (*request_tx_timestamp_mode)(struct fm10k_hw *, u16, u8);
 };
 
 enum fm10k_mac_type {
@@ -776,7 +775,6 @@ struct fm10k_iov_ops {
 	s32 (*set_lport)(struct fm10k_hw *, struct fm10k_vf_info *, u16, u8);
 	void (*reset_lport)(struct fm10k_hw *, struct fm10k_vf_info *);
 	void (*update_stats)(struct fm10k_hw *, struct fm10k_hw_stats_q *, u16);
-	s32 (*report_timestamp)(struct fm10k_hw *, struct fm10k_vf_info *, u64);
 };
 
 struct fm10k_iov_info {

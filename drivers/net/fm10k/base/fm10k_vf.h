@@ -63,7 +63,7 @@ enum fm10k_tlv_lport_state_attr_id {
 };
 
 enum fm10k_tlv_1588_attr_id {
-	FM10K_1588_MSG_TIMESTAMP,
+	FM10K_1588_MSG_TIMESTAMP = 0, /* deprecated */
 	FM10K_1588_MSG_MAX
 };
 
