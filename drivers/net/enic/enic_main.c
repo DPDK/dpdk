@@ -538,7 +538,7 @@ enic_alloc_consistent(__rte_unused void *priv, size_t size,
 	*dma_handle = 0;
 
 	rz = rte_memzone_reserve_aligned((const char *)name,
-		size, 0, 0, ENIC_ALIGN);
+					 size, SOCKET_ID_ANY, 0, ENIC_ALIGN);
 	if (!rz) {
 		pr_err("%s : Failed to allocate memory requested for %s",
 			__func__, name);
