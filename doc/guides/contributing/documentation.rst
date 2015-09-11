@@ -63,9 +63,20 @@ added to by the developer.
   any known issues.
   The Releases Notes also contain notifications of features that will change ABI compatibility in the next major release.
 
-  Developers should update the Release Notes to add a short description of new or updated features.
-  Developers should also update the Release Notes to add ABI announcements if necessary,
-  (see :doc:`/contributing/versioning` for details).
+  Developers should include updates to the Release Notes with patch sets that relate to any of the following sections:
+
+  * New Features
+  * Resolved Issues (see below)
+  * Known Issues
+  * API Changes
+  * ABI Changes
+  * Shared Library Versions
+
+  Resolved Issues should only include issues from previous releases that have been resolved in the current release.
+  Issues that are introduced and then fixed within a release cycle do not have to be included here.
+
+  Refer to the Release Notes from the previous DPDK release for the correct format of each section.
+
 
 * **API documentation**
 
