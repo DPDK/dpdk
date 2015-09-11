@@ -2426,7 +2426,8 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 				DEV_TX_OFFLOAD_IPV4_CKSUM  |
 				DEV_TX_OFFLOAD_UDP_CKSUM   |
 				DEV_TX_OFFLOAD_TCP_CKSUM   |
-				DEV_TX_OFFLOAD_SCTP_CKSUM;
+				DEV_TX_OFFLOAD_SCTP_CKSUM  |
+				DEV_TX_OFFLOAD_TCP_TSO;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
