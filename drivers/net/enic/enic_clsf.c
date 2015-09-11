@@ -60,7 +60,6 @@
 #define DEFAULT_HASH_FUNC       rte_jhash
 #endif
 
-#define SOCKET_0                0
 #define ENICPMD_CLSF_HASH_ENTRIES       ENICPMD_FDIR_MAX
 
 void enic_fdir_stats_get(struct enic *enic, struct rte_eth_fdir_stats *stats)
@@ -246,7 +245,7 @@ int enic_clsf_init(struct enic *enic)
 		.key_len = sizeof(struct rte_eth_fdir_filter),
 		.hash_func = DEFAULT_HASH_FUNC,
 		.hash_func_init_val = 0,
-		.socket_id = SOCKET_0,
+		.socket_id = SOCKET_ID_ANY,
 	};
 
 	enic->fdir.hash = rte_hash_create(&hash_params);
