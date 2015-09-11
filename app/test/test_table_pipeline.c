@@ -457,7 +457,8 @@ test_pipeline_single_filter(int test_type, int expected_count)
 				rte_panic("Failed to alloc mbuf from pool\n");
 				return -1;
 			}
-			key = RTE_MBUF_METADATA_UINT8_PTR(m, 32);
+			key = RTE_MBUF_METADATA_UINT8_PTR(m,
+					APP_METADATA_OFFSET(32));
 
 			k32 = (uint32_t *) key;
 			k32[0] = 0xadadadad >> (j % 2);

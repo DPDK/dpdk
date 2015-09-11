@@ -52,8 +52,10 @@ table_test table_tests[] = {
 	uint32_t *k32, *signature;					\
 	uint8_t *key;							\
 	mbuf = rte_pktmbuf_alloc(pool);					\
-	signature = RTE_MBUF_METADATA_UINT32_PTR(mbuf, 0);		\
-	key = RTE_MBUF_METADATA_UINT8_PTR(mbuf, 32);			\
+	signature = RTE_MBUF_METADATA_UINT32_PTR(mbuf,			\
+			APP_METADATA_OFFSET(0));			\
+	key = RTE_MBUF_METADATA_UINT8_PTR(mbuf,			\
+			APP_METADATA_OFFSET(32));			\
 	memset(key, 0, 32);						\
 	k32 = (uint32_t *) key;						\
 	k32[0] = (value);						\
@@ -206,7 +208,7 @@ test_table_array(void)
 	/* Initialize params and create tables */
 	struct rte_table_array_params array_params = {
 		.n_entries = 7,
-		.offset = 1
+		.offset = APP_METADATA_OFFSET(1)
 	};
 
 	table = rte_table_array_ops.f_create(NULL, 0, 1);
@@ -226,13 +228,13 @@ test_table_array(void)
 		return -3;
 
 	array_params.n_entries = 1 << 24;
-	array_params.offset = 1;
+	array_params.offset = APP_METADATA_OFFSET(1);
 
 	table = rte_table_array_ops.f_create(&array_params, 0, 1);
 	if (table == NULL)
 		return -4;
 
-	array_params.offset = 32;
+	array_params.offset = APP_METADATA_OFFSET(32);
 
 	table = rte_table_array_ops.f_create(&array_params, 0, 1);
 	if (table == NULL)
@@ -325,7 +327,7 @@ test_table_lpm(void)
 		.name = "LPM",
 		.n_rules = 1 << 24,
 		.entry_unique_size = entry_size,
-		.offset = 1
+		.offset = APP_METADATA_OFFSET(1)
 	};
 
 	table = rte_table_lpm_ops.f_create(NULL, 0, entry_size);
@@ -346,7 +348,7 @@ test_table_lpm(void)
 		return -3;
 
 	lpm_params.n_rules = 1 << 24;
-	lpm_params.offset = 32;
+	lpm_params.offset = APP_METADATA_OFFSET(32);
 	lpm_params.entry_unique_size = 0;
 
 	table = rte_table_lpm_ops.f_create(&lpm_params, 0, entry_size);
@@ -490,7 +492,7 @@ test_table_lpm_ipv6(void)
 		.n_rules = 1 << 24,
 		.number_tbl8s = 1 << 21,
 		.entry_unique_size = entry_size,
-		.offset = 32
+		.offset = APP_METADATA_OFFSET(32)
 	};
 
 	table = rte_table_lpm_ipv6_ops.f_create(NULL, 0, entry_size);
@@ -528,7 +530,7 @@ test_table_lpm_ipv6(void)
 		return -6;
 
 	lpm_params.entry_unique_size = entry_size;
-	lpm_params.offset = 32;
+	lpm_params.offset = APP_METADATA_OFFSET(32);
 
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table == NULL)
@@ -666,8 +668,8 @@ test_table_hash_lru_generic(struct rte_table_ops *ops)
 		.n_entries = 1 << 10,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 1,
-		.key_offset = 32
+		.signature_offset = APP_METADATA_OFFSET(1),
+		.key_offset = APP_METADATA_OFFSET(32)
 	};
 
 	hash_params.n_entries = 0;
@@ -677,20 +679,20 @@ test_table_hash_lru_generic(struct rte_table_ops *ops)
 		return -1;
 
 	hash_params.n_entries = 1 << 10;
-	hash_params.signature_offset = 1;
+	hash_params.signature_offset = APP_METADATA_OFFSET(1);
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
 		return -2;
 
-	hash_params.signature_offset = 0;
-	hash_params.key_offset = 1;
+	hash_params.signature_offset = APP_METADATA_OFFSET(0);
+	hash_params.key_offset = APP_METADATA_OFFSET(1);
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
 		return -3;
 
-	hash_params.key_offset = 32;
+	hash_params.key_offset = APP_METADATA_OFFSET(32);
 	hash_params.f_hash = NULL;
 
 	table = ops->f_create(&hash_params, 0, 1);
@@ -781,8 +783,8 @@ test_table_hash_ext_generic(struct rte_table_ops *ops)
 		.n_entries_ext = 1 << 4,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 1,
-		.key_offset = 32
+		.signature_offset = APP_METADATA_OFFSET(1),
+		.key_offset = APP_METADATA_OFFSET(32)
 	};
 
 	hash_params.n_entries = 0;
@@ -798,19 +800,19 @@ test_table_hash_ext_generic(struct rte_table_ops *ops)
 		return -2;
 
 	hash_params.n_entries_ext = 1 << 4;
-	hash_params.signature_offset = 1;
+	hash_params.signature_offset = APP_METADATA_OFFSET(1);
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
 		return -2;
 
-	hash_params.signature_offset = 0;
-	hash_params.key_offset = 1;
+	hash_params.signature_offset = APP_METADATA_OFFSET(0);
+	hash_params.key_offset = APP_METADATA_OFFSET(1);
 
 	table = ops->f_create(&hash_params, 0, 1);
 	if (table == NULL)
 		return -3;
 
-	hash_params.key_offset = 32;
+	hash_params.key_offset = APP_METADATA_OFFSET(32);
 	hash_params.f_hash = NULL;
 
 	table = ops->f_create(&hash_params, 0, 1);

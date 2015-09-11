@@ -116,7 +116,7 @@ app_main_loop_worker_pipeline_lpm(void) {
 			.n_rules = 1 << 24,
 			.entry_unique_size =
 				sizeof(struct rte_pipeline_table_entry),
-			.offset = 32,
+			.offset = APP_METADATA_OFFSET(32),
 		};
 
 		struct rte_pipeline_table_params table_params = {

@@ -296,7 +296,7 @@ test_table_lpm_combined(void)
 		.name = "LPM",
 		.n_rules = 1 << 16,
 		.entry_unique_size = 8,
-		.offset = 0,
+		.offset = APP_METADATA_OFFSET(0),
 	};
 
 	struct rte_table_lpm_key lpm_key = {
@@ -357,7 +357,7 @@ test_table_lpm_ipv6_combined(void)
 		.n_rules = 1 << 16,
 		.number_tbl8s = 1 << 13,
 		.entry_unique_size = 8,
-		.offset = 32,
+		.offset = APP_METADATA_OFFSET(32),
 	};
 
 	struct rte_table_lpm_ipv6_key lpm_ipv6_key = {
@@ -419,8 +419,8 @@ test_table_hash8lru(void)
 		.n_entries = 1<<24,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 0,
-		.key_offset = 32,
+		.signature_offset = APP_METADATA_OFFSET(0),
+		.key_offset = APP_METADATA_OFFSET(32),
 	};
 
 	uint8_t key8lru[8];
@@ -477,8 +477,8 @@ test_table_hash16lru(void)
 		.n_entries = 1<<16,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 0,
-		.key_offset = 32,
+		.signature_offset = APP_METADATA_OFFSET(0),
+		.key_offset = APP_METADATA_OFFSET(32),
 	};
 
 	uint8_t key16lru[16];
@@ -535,8 +535,8 @@ test_table_hash32lru(void)
 		.n_entries = 1<<16,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 0,
-		.key_offset = 32,
+		.signature_offset = APP_METADATA_OFFSET(0),
+		.key_offset = APP_METADATA_OFFSET(32),
 	};
 
 	uint8_t key32lru[32];
@@ -594,8 +594,8 @@ test_table_hash8ext(void)
 		.n_entries_ext = 1<<15,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 0,
-		.key_offset = 32,
+		.signature_offset = APP_METADATA_OFFSET(0),
+		.key_offset = APP_METADATA_OFFSET(32),
 	};
 
 	uint8_t key8ext[8];
@@ -660,8 +660,8 @@ test_table_hash16ext(void)
 		.n_entries_ext = 1<<15,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 0,
-		.key_offset = 32,
+		.signature_offset = APP_METADATA_OFFSET(0),
+		.key_offset = APP_METADATA_OFFSET(32),
 	};
 
 	uint8_t key16ext[16];
@@ -726,8 +726,8 @@ test_table_hash32ext(void)
 		.n_entries_ext = 1<<15,
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
-		.signature_offset = 0,
-		.key_offset = 32,
+		.signature_offset = APP_METADATA_OFFSET(0),
+		.key_offset = APP_METADATA_OFFSET(32),
 	};
 
 	uint8_t key32ext[32];

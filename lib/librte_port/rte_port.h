@@ -55,7 +55,7 @@ extern "C" {
  * just beyond the end of the mbuf data structure returned by a port
  */
 #define RTE_MBUF_METADATA_UINT8_PTR(mbuf, offset)          \
-	(&((uint8_t *) &(mbuf)[1])[offset])
+	(&((uint8_t *)(mbuf))[offset])
 #define RTE_MBUF_METADATA_UINT16_PTR(mbuf, offset)         \
 	((uint16_t *) RTE_MBUF_METADATA_UINT8_PTR(mbuf, offset))
 #define RTE_MBUF_METADATA_UINT32_PTR(mbuf, offset)         \

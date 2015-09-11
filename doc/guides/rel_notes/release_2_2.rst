@@ -101,6 +101,10 @@ ABI Changes
 * librte_table LPM: A new parameter to hold the table name will be added to
   the LPM table parameter structure.
 
+* librte_port: Macros to access the packet meta-data stored within the packet
+  buffer has been adjusted to cover the packet mbuf structure.
+
+
 Shared Library Versions
 -----------------------
 
@@ -127,7 +131,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pipeline.so.1
      librte_pmd_bond.so.1
    + librte_pmd_ring.so.2
-     librte_port.so.1
+   + librte_port.so.2
      librte_power.so.1
      librte_reorder.so.1
      librte_ring.so.1

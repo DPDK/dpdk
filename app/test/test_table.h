@@ -78,6 +78,8 @@
 #define MP_FLAGS            0
 
 /* Macros */
+#define APP_METADATA_OFFSET(offset) (sizeof(struct rte_mbuf) + (offset))
+
 #define RING_ENQUEUE(ring, value) do {					\
 	struct rte_mbuf *m;						\
 	uint32_t *k32, *signature;					\
@@ -86,8 +88,10 @@
 	m = rte_pktmbuf_alloc(pool);					\
 	if (m == NULL)							\
 		return -1;						\
-	signature = RTE_MBUF_METADATA_UINT32_PTR(m, 0);			\
-	key = RTE_MBUF_METADATA_UINT8_PTR(m, 32);			\
+	signature = RTE_MBUF_METADATA_UINT32_PTR(m,			\
+			APP_METADATA_OFFSET(0));		\
+	key = RTE_MBUF_METADATA_UINT8_PTR(m,			\
+			APP_METADATA_OFFSET(32));		\
 	k32 = (uint32_t *) key;						\
 	k32[0] = (value);						\
 	*signature = pipeline_test_hash(key, 0, 0);			\

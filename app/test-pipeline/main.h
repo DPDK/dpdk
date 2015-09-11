@@ -137,4 +137,6 @@ void app_main_loop_tx(void);
 #define APP_FLUSH 0x3FF
 #endif
 
+#define APP_METADATA_OFFSET(offset) (sizeof(struct rte_mbuf) + (offset))
+
 #endif /* _MAIN_H_ */
