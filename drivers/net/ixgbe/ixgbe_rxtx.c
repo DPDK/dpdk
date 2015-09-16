@@ -4513,6 +4513,7 @@ ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rte_wmb();
 		IXGBE_WRITE_REG(hw, IXGBE_RDH(rxq->reg_idx), 0);
 		IXGBE_WRITE_REG(hw, IXGBE_RDT(rxq->reg_idx), rxq->nb_rx_desc - 1);
+		dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	} else
 		return -1;
 
@@ -4556,6 +4557,7 @@ ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		ixgbe_rx_queue_release_mbufs(rxq);
 		ixgbe_reset_rx_queue(adapter, rxq);
+		dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	} else
 		return -1;
 
@@ -4598,6 +4600,7 @@ ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		rte_wmb();
 		IXGBE_WRITE_REG(hw, IXGBE_TDH(txq->reg_idx), 0);
 		IXGBE_WRITE_REG(hw, IXGBE_TDT(txq->reg_idx), 0);
+		dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	} else
 		return -1;
 
@@ -4658,6 +4661,7 @@ ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			txq->ops->release_mbufs(txq);
 			txq->ops->reset(txq);
 		}
+		dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	} else
 		return -1;
 

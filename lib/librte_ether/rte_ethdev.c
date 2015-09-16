@@ -778,6 +778,13 @@ rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id)
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_start, -ENOTSUP);
 
+	if (dev->data->rx_queue_state[rx_queue_id] != RTE_ETH_QUEUE_STATE_STOPPED) {
+		PMD_DEBUG_TRACE("Queue %" PRIu16" of device with port_id=%" PRIu8
+			" already started\n",
+			rx_queue_id, port_id);
+		return 0;
+	}
+
 	return dev->dev_ops->rx_queue_start(dev, rx_queue_id);
 
 }
@@ -800,6 +807,13 @@ rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id)
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_stop, -ENOTSUP);
+
+	if (dev->data->rx_queue_state[rx_queue_id] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		PMD_DEBUG_TRACE("Queue %" PRIu16" of device with port_id=%" PRIu8
+			" already stopped\n",
+			rx_queue_id, port_id);
+		return 0;
+	}
 
 	return dev->dev_ops->rx_queue_stop(dev, rx_queue_id);
 
@@ -824,6 +838,13 @@ rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t tx_queue_id)
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_start, -ENOTSUP);
 
+	if (dev->data->tx_queue_state[tx_queue_id] != RTE_ETH_QUEUE_STATE_STOPPED) {
+		PMD_DEBUG_TRACE("Queue %" PRIu16" of device with port_id=%" PRIu8
+			" already started\n",
+			tx_queue_id, port_id);
+		return 0;
+	}
+
 	return dev->dev_ops->tx_queue_start(dev, tx_queue_id);
 
 }
@@ -846,6 +867,13 @@ rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t tx_queue_id)
 	}
 
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_stop, -ENOTSUP);
+
+	if (dev->data->tx_queue_state[tx_queue_id] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		PMD_DEBUG_TRACE("Queue %" PRIu16" of device with port_id=%" PRIu8
+			" already stopped\n",
+			tx_queue_id, port_id);
+		return 0;
+	}
 
 	return dev->dev_ops->tx_queue_stop(dev, tx_queue_id);
 

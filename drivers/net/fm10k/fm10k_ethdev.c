@@ -753,6 +753,7 @@ fm10k_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		 */
 		FM10K_WRITE_REG(hw, FM10K_RDH(rx_queue_id), 0);
 		FM10K_WRITE_REG(hw, FM10K_RDT(rx_queue_id), rxq->nb_desc - 1);
+		dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	return err;
@@ -771,6 +772,7 @@ fm10k_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 		/* Free mbuf and clean HW ring */
 		rx_queue_clean(dev->data->rx_queues[rx_queue_id]);
+		dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	return 0;
@@ -800,6 +802,7 @@ fm10k_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		FM10K_WRITE_REG(hw, FM10K_TXDCTL(tx_queue_id),
 					FM10K_TXDCTL_ENABLE | txdctl);
 		FM10K_WRITE_FLUSH(hw);
+		dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	} else
 		err = -1;
 
@@ -816,6 +819,7 @@ fm10k_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (tx_queue_id < dev->data->nb_tx_queues) {
 		tx_queue_disable(hw, tx_queue_id);
 		tx_queue_clean(dev->data->tx_queues[tx_queue_id]);
+		dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	return 0;

@@ -919,6 +919,12 @@ struct rte_eth_dcb_info {
 	struct rte_eth_dcb_tc_queue_mapping tc_queue;
 };
 
+/**
+ * RX/TX queue states
+ */
+#define RTE_ETH_QUEUE_STATE_STOPPED 0
+#define RTE_ETH_QUEUE_STATE_STARTED 1
+
 struct rte_eth_dev;
 
 struct rte_eth_dev_callback;
@@ -1553,6 +1559,10 @@ struct rte_eth_dev_data {
 		all_multicast : 1, /**< RX all multicast mode ON(1) / OFF(0). */
 		dev_started : 1,   /**< Device state: STARTED(1) / STOPPED(0). */
 		lro         : 1;   /**< RX LRO is ON(1) / OFF(0) */
+	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];
+	/** Queues state: STARTED(1) / STOPPED(0) */
+	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
+	/** Queues state: STARTED(1) / STOPPED(0) */
 	uint32_t dev_flags; /**< Capabilities */
 	enum rte_kernel_driver kdrv;    /**< Kernel driver passthrough */
 	int numa_node;  /**< NUMA node connection */
