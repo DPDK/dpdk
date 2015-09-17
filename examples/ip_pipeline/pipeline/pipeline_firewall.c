@@ -141,7 +141,7 @@ app_pipeline_firewall_rule_find(struct app_pipeline_firewall *p,
 	return NULL;
 }
 
-static void
+static int
 app_pipeline_firewall_ls(
 	struct app_params *app,
 	uint32_t pipeline_id)
@@ -153,11 +153,11 @@ app_pipeline_firewall_ls(
 
 	/* Check input arguments */
 	if (app == NULL)
-		return;
+		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_firewall);
 	if (p == NULL)
-		return;
+		return -1;
 
 	n_rules = p->n_rules;
 	for (priority = 0; n_rules; priority++)
@@ -175,6 +175,8 @@ app_pipeline_firewall_ls(
 		printf("Default rule: DROP\n");
 
 	printf("\n");
+
+	return 0;
 }
 
 static void*
@@ -641,7 +643,7 @@ app_pipeline_firewall_add_rule(struct app_params *app,
 		(key->type != PIPELINE_FIREWALL_IPV4_5TUPLE))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_firewall);
 	if (p == NULL)
 		return -1;
 
@@ -729,7 +731,7 @@ app_pipeline_firewall_delete_rule(struct app_params *app,
 		(key->type != PIPELINE_FIREWALL_IPV4_5TUPLE))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_firewall);
 	if (p == NULL)
 		return -1;
 
@@ -797,7 +799,7 @@ app_pipeline_firewall_add_bulk(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_firewall);
 	if (p == NULL)
 		return -1;
 
@@ -1023,7 +1025,7 @@ app_pipeline_firewall_delete_bulk(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_firewall);
 	if (p == NULL)
 		return -1;
 
@@ -1111,7 +1113,7 @@ app_pipeline_firewall_add_default_rule(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_firewall);
 	if (p == NULL)
 		return -1;
 
@@ -1162,7 +1164,7 @@ app_pipeline_firewall_delete_default_rule(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_firewall);
 	if (p == NULL)
 		return -1;
 
@@ -1804,8 +1806,14 @@ cmd_firewall_ls_parsed(
 {
 	struct cmd_firewall_ls_result *params = parsed_result;
 	struct app_params *app = data;
+	int status;
 
-	app_pipeline_firewall_ls(app, params->pipeline_id);
+	status = app_pipeline_firewall_ls(app, params->pipeline_id);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
 }
 
 cmdline_parse_token_string_t cmd_firewall_ls_p_string =

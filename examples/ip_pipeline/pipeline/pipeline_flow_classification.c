@@ -298,7 +298,7 @@ app_pipeline_fc_add(struct app_params *app,
 		(key == NULL))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_flow_classification);
 	if (p == NULL)
 		return -1;
 
@@ -398,7 +398,7 @@ app_pipeline_fc_add_bulk(struct app_params *app,
 		(n_keys == 0))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_flow_classification);
 	if (p == NULL)
 		return -1;
 
@@ -588,7 +588,7 @@ app_pipeline_fc_del(struct app_params *app,
 		(key == NULL))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_flow_classification);
 	if (p == NULL)
 		return -1;
 
@@ -646,7 +646,7 @@ app_pipeline_fc_add_default(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_flow_classification);
 	if (p == NULL)
 		return -1;
 
@@ -698,7 +698,7 @@ app_pipeline_fc_del_default(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_flow_classification);
 	if (p == NULL)
 		return -EINVAL;
 
@@ -879,7 +879,7 @@ app_pipeline_fc_ls(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_flow_classification);
 	if (p == NULL)
 		return -1;
 

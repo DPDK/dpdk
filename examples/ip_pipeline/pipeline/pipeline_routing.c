@@ -267,7 +267,7 @@ app_pipeline_routing_route_ls(struct app_params *app, uint32_t pipeline_id)
 	struct pipeline_routing *p;
 	struct app_pipeline_routing_route *it;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -EINVAL;
 
@@ -305,7 +305,7 @@ app_pipeline_routing_add_route(struct app_params *app,
 		(data == NULL))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -1;
 
@@ -407,7 +407,7 @@ app_pipeline_routing_delete_route(struct app_params *app,
 		(key == NULL))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -1;
 
@@ -479,7 +479,7 @@ app_pipeline_routing_add_default_route(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -1;
 
@@ -531,7 +531,7 @@ app_pipeline_routing_delete_default_route(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -1;
 
@@ -569,7 +569,7 @@ app_pipeline_routing_arp_ls(struct app_params *app, uint32_t pipeline_id)
 	struct pipeline_routing *p;
 	struct app_pipeline_routing_arp_entry *it;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -EINVAL;
 
@@ -606,7 +606,7 @@ app_pipeline_routing_add_arp_entry(struct app_params *app, uint32_t pipeline_id,
 		(macaddr == NULL))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -1;
 
@@ -701,7 +701,7 @@ app_pipeline_routing_delete_arp_entry(struct app_params *app,
 		(key == NULL))
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -EINVAL;
 
@@ -769,7 +769,7 @@ app_pipeline_routing_add_default_arp_entry(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -1;
 
@@ -821,7 +821,7 @@ app_pipeline_routing_delete_default_arp_entry(struct app_params *app,
 	if (app == NULL)
 		return -1;
 
-	p = app_pipeline_data_fe(app, pipeline_id);
+	p = app_pipeline_data_fe(app, pipeline_id, &pipeline_routing);
 	if (p == NULL)
 		return -EINVAL;
 
@@ -2172,7 +2172,7 @@ cmd_arp_ls_parsed(
 	struct app_params *app = data;
 	struct pipeline_routing *p;
 
-	p = app_pipeline_data_fe(app, params->p);
+	p = app_pipeline_data_fe(app, params->p, &pipeline_routing);
 	if (p == NULL)
 		return;
 

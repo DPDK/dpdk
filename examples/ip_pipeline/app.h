@@ -227,6 +227,7 @@ struct app_pipeline_params {
 struct app_pipeline_data {
 	void *be;
 	void *fe;
+	struct pipeline_type *ptype;
 	uint64_t timer_period;
 	uint32_t enabled;
 };

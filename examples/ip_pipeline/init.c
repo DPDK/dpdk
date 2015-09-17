@@ -1340,6 +1340,8 @@ app_init_pipelines(struct app_params *app)
 				"init error\n", params->name);
 		}
 
+		data->ptype = ptype;
+
 		data->timer_period = (rte_get_tsc_hz() * params->timer_period)
 			/ 1000;
 	}
