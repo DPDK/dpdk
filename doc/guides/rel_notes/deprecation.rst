@@ -50,9 +50,6 @@ Deprecation Notices
   as currently they are able to access any packet buffer location except the
   packet mbuf structure.
 
-* librte_table LPM: A new parameter to hold the table name will be added to
-  the LPM table parameter structure.
-
 * librte_table: New functions for table entry bulk add/delete will be added
   to the table operations structure.
 

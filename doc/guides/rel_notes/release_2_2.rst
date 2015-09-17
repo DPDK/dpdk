@@ -98,6 +98,8 @@ ABI Changes
 
 * The LPM structure is changed. The deprecated field mem_location is removed.
 
+* librte_table LPM: A new parameter to hold the table name will be added to
+  the LPM table parameter structure.
 
 Shared Library Versions
 -----------------------
@@ -130,6 +132,6 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_reorder.so.1
      librte_ring.so.1
      librte_sched.so.1
-     librte_table.so.1
+   + librte_table.so.2
      librte_timer.so.1
      librte_vhost.so.1

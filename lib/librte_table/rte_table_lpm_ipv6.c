@@ -109,7 +109,11 @@ rte_table_lpm_ipv6_create(void *params, int socket_id, uint32_t entry_size)
 			__func__);
 		return NULL;
 	}
-
+	if (p->name == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: Table name is NULL\n",
+			__func__);
+		return NULL;
+	}
 	entry_size = RTE_ALIGN(entry_size, sizeof(uint64_t));
 
 	/* Memory allocation */
@@ -128,7 +132,7 @@ rte_table_lpm_ipv6_create(void *params, int socket_id, uint32_t entry_size)
 	lpm6_config.max_rules = p->n_rules;
 	lpm6_config.number_tbl8s = p->number_tbl8s;
 	lpm6_config.flags = 0;
-	lpm->lpm = rte_lpm6_create("LPM IPv6", socket_id, &lpm6_config);
+	lpm->lpm = rte_lpm6_create(p->name, socket_id, &lpm6_config);
 	if (lpm->lpm == NULL) {
 		rte_free(lpm);
 		RTE_LOG(ERR, TABLE,

@@ -77,6 +77,9 @@ extern "C" {
 
 /** LPM table parameters */
 struct rte_table_lpm_params {
+	/** Table name */
+	const char *name;
+
 	/** Maximum number of LPM rules (i.e. IP routes) */
 	uint32_t n_rules;
 
