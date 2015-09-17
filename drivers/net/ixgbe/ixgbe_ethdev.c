@@ -5451,8 +5451,8 @@ ixgbe_get_eeprom(struct rte_eth_dev *dev,
 
 	first = in_eeprom->offset >> 1;
 	length = in_eeprom->length >> 1;
-	if ((first >= hw->eeprom.word_size) ||
-	    ((first + length) >= hw->eeprom.word_size))
+	if ((first > hw->eeprom.word_size) ||
+	    ((first + length) > hw->eeprom.word_size))
 		return -EINVAL;
 
 	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
@@ -5471,8 +5471,8 @@ ixgbe_set_eeprom(struct rte_eth_dev *dev,
 
 	first = in_eeprom->offset >> 1;
 	length = in_eeprom->length >> 1;
-	if ((first >= hw->eeprom.word_size) ||
-	    ((first + length) >= hw->eeprom.word_size))
+	if ((first > hw->eeprom.word_size) ||
+	    ((first + length) > hw->eeprom.word_size))
 		return -EINVAL;
 
 	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
