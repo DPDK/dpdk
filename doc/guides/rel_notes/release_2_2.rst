@@ -160,6 +160,12 @@ Libraries
   Fixed issue where an incorrect Cuckoo Hash key table size could be
   calculated limiting the size to 4GB.
 
+* **hash: Fixed incorrect lookup if key is all zero.**
+
+  Fixed issue in hash library that occurred if an all zero
+  key was not added in the table and the key was looked up,
+  resulting in an incorrect hit.
+
 
 Examples
 ~~~~~~~~

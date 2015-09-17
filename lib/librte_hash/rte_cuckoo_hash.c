@@ -966,15 +966,22 @@ lookup_stage2(unsigned idx, hash_sig_t prim_hash, hash_sig_t sec_hash,
 /* Lookup bulk stage 3: Check if key matches, update hit mask and return data */
 static inline void
 lookup_stage3(unsigned idx, const struct rte_hash_key *key_slot, const void * const *keys,
-		void *data[], uint64_t *hits, const struct rte_hash *h)
+		const int32_t *positions, void *data[], uint64_t *hits,
+		const struct rte_hash *h)
 {
 	unsigned hit;
+	unsigned key_idx;
 
 	hit = !h->rte_hash_cmp_eq(key_slot->key, keys[idx], h->key_len);
 	if (data != NULL)
 		data[idx] = key_slot->pdata;
 
-	*hits |= (uint64_t)(hit) << idx;
+	key_idx = positions[idx] + 1;
+	/*
+	 * If key index is 0, force hit to be 0, in case key to be looked up
+	 * is all zero (as in the dummy slot), which would result in a wrong hit
+	 */
+	*hits |= (uint64_t)(hit && !!key_idx)  << idx;
 }
 
 static inline void
@@ -1066,8 +1073,8 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		lookup_stage2(idx21, primary_hash21, secondary_hash21,
 			primary_bkt21, secondary_bkt21,	&k_slot21, positions,
 			&extra_hits_mask, key_store, h);
-		lookup_stage3(idx30, k_slot30, keys, data, &hits, h);
-		lookup_stage3(idx31, k_slot31, keys, data, &hits, h);
+		lookup_stage3(idx30, k_slot30, keys, positions, data, &hits, h);
+		lookup_stage3(idx31, k_slot31, keys, positions, data, &hits, h);
 	}
 
 	k_slot30 = k_slot20, k_slot31 = k_slot21;
@@ -1093,8 +1100,8 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 	lookup_stage2(idx21, primary_hash21, secondary_hash21, primary_bkt21,
 		secondary_bkt21, &k_slot21, positions, &extra_hits_mask,
 		key_store, h);
-	lookup_stage3(idx30, k_slot30, keys, data, &hits, h);
-	lookup_stage3(idx31, k_slot31, keys, data, &hits, h);
+	lookup_stage3(idx30, k_slot30, keys, positions, data, &hits, h);
+	lookup_stage3(idx31, k_slot31, keys, positions, data, &hits, h);
 
 	k_slot30 = k_slot20, k_slot31 = k_slot21;
 	idx30 = idx20, idx31 = idx21;
@@ -1114,14 +1121,14 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 	lookup_stage2(idx21, primary_hash21, secondary_hash21, primary_bkt21,
 		secondary_bkt21, &k_slot21, positions, &extra_hits_mask,
 		key_store, h);
-	lookup_stage3(idx30, k_slot30, keys, data, &hits, h);
-	lookup_stage3(idx31, k_slot31, keys, data, &hits, h);
+	lookup_stage3(idx30, k_slot30, keys, positions, data, &hits, h);
+	lookup_stage3(idx31, k_slot31, keys, positions, data, &hits, h);
 
 	k_slot30 = k_slot20, k_slot31 = k_slot21;
 	idx30 = idx20, idx31 = idx21;
 
-	lookup_stage3(idx30, k_slot30, keys, data, &hits, h);
-	lookup_stage3(idx31, k_slot31, keys, data, &hits, h);
+	lookup_stage3(idx30, k_slot30, keys, positions, data, &hits, h);
+	lookup_stage3(idx31, k_slot31, keys, positions, data, &hits, h);
 
 	/* ignore any items we have already found */
 	extra_hits_mask &= ~hits;
