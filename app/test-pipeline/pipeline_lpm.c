@@ -112,6 +112,7 @@ app_main_loop_worker_pipeline_lpm(void) {
 	/* Table configuration */
 	{
 		struct rte_table_lpm_params table_lpm_params = {
+			.name = "LPM",
 			.n_rules = 1 << 24,
 			.entry_unique_size =
 				sizeof(struct rte_pipeline_table_entry),

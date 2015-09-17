@@ -322,6 +322,7 @@ test_table_lpm(void)
 
 	/* Initialize params and create tables */
 	struct rte_table_lpm_params lpm_params = {
+		.name = "LPM",
 		.n_rules = 1 << 24,
 		.entry_unique_size = entry_size,
 		.offset = 1
@@ -331,11 +332,18 @@ test_table_lpm(void)
 	if (table != NULL)
 		return -1;
 
-	lpm_params.n_rules = 0;
+	lpm_params.name = NULL;
 
 	table = rte_table_lpm_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
 		return -2;
+
+	lpm_params.name = "LPM";
+	lpm_params.n_rules = 0;
+
+	table = rte_table_lpm_ops.f_create(&lpm_params, 0, entry_size);
+	if (table != NULL)
+		return -3;
 
 	lpm_params.n_rules = 1 << 24;
 	lpm_params.offset = 32;
@@ -343,28 +351,28 @@ test_table_lpm(void)
 
 	table = rte_table_lpm_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
-		return -3;
+		return -4;
 
 	lpm_params.entry_unique_size = entry_size + 1;
 
 	table = rte_table_lpm_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
-		return -4;
+		return -5;
 
 	lpm_params.entry_unique_size = entry_size;
 
 	table = rte_table_lpm_ops.f_create(&lpm_params, 0, entry_size);
 	if (table == NULL)
-		return -5;
+		return -6;
 
 	/* Free */
 	status = rte_table_lpm_ops.f_free(table);
 	if (status < 0)
-		return -6;
+		return -7;
 
 	status = rte_table_lpm_ops.f_free(NULL);
 	if (status == 0)
-		return -7;
+		return -8;
 
 	/* Add */
 	struct rte_table_lpm_key lpm_key;
@@ -372,75 +380,75 @@ test_table_lpm(void)
 
 	table = rte_table_lpm_ops.f_create(&lpm_params, 0, 1);
 	if (table == NULL)
-		return -8;
+		return -9;
 
 	status = rte_table_lpm_ops.f_add(NULL, &lpm_key, &entry, &key_found,
 		&entry_ptr);
 	if (status == 0)
-		return -9;
+		return -10;
 
 	status = rte_table_lpm_ops.f_add(table, NULL, &entry, &key_found,
 		&entry_ptr);
 	if (status == 0)
-		return -10;
+		return -11;
 
 	status = rte_table_lpm_ops.f_add(table, &lpm_key, NULL, &key_found,
 		&entry_ptr);
 	if (status == 0)
-		return -11;
-
-	lpm_key.depth = 0;
-	status = rte_table_lpm_ops.f_add(table, &lpm_key, &entry, &key_found,
-		&entry_ptr);
-	if (status == 0)
 		return -12;
 
-	lpm_key.depth = 33;
+	lpm_key.depth = 0;
 	status = rte_table_lpm_ops.f_add(table, &lpm_key, &entry, &key_found,
 		&entry_ptr);
 	if (status == 0)
 		return -13;
 
+	lpm_key.depth = 33;
+	status = rte_table_lpm_ops.f_add(table, &lpm_key, &entry, &key_found,
+		&entry_ptr);
+	if (status == 0)
+		return -14;
+
 	lpm_key.depth = 16;
 	status = rte_table_lpm_ops.f_add(table, &lpm_key, &entry, &key_found,
 		&entry_ptr);
 	if (status != 0)
-		return -14;
+		return -15;
 
 	/* Delete */
 	status = rte_table_lpm_ops.f_delete(NULL, &lpm_key, &key_found, NULL);
 	if (status == 0)
-		return -15;
+		return -16;
 
 	status = rte_table_lpm_ops.f_delete(table, NULL, &key_found, NULL);
 	if (status == 0)
-		return -16;
+		return -17;
 
 	lpm_key.depth = 0;
 	status = rte_table_lpm_ops.f_delete(table, &lpm_key, &key_found, NULL);
 	if (status == 0)
-		return -17;
+		return -18;
 
 	lpm_key.depth = 33;
 	status = rte_table_lpm_ops.f_delete(table, &lpm_key, &key_found, NULL);
 	if (status == 0)
-		return -18;
+		return -19;
 
 	lpm_key.depth = 16;
 	status = rte_table_lpm_ops.f_delete(table, &lpm_key, &key_found, NULL);
 	if (status != 0)
-		return -19;
+		return -20;
 
 	status = rte_table_lpm_ops.f_delete(table, &lpm_key, &key_found, NULL);
 	if (status != 0)
-		return -20;
+		return -21;
 
 	/* Traffic flow */
 	entry = 'A';
 	status = rte_table_lpm_ops.f_add(table, &lpm_key, &entry, &key_found,
 		&entry_ptr);
 	if (status < 0)
-		return -21;
+		return -22;
 
 	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)
 		if (i % 2 == 0) {
@@ -452,7 +460,7 @@ test_table_lpm(void)
 	rte_table_lpm_ops.f_lookup(table, mbufs, -1,
 		&result_mask, (void **)entries);
 	if (result_mask != expected_mask)
-		return -22;
+		return -23;
 
 	/* Free resources */
 	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)
@@ -478,6 +486,7 @@ test_table_lpm_ipv6(void)
 
 	/* Initialize params and create tables */
 	struct rte_table_lpm_ipv6_params lpm_params = {
+		.name = "LPM",
 		.n_rules = 1 << 24,
 		.number_tbl8s = 1 << 21,
 		.entry_unique_size = entry_size,
@@ -488,44 +497,51 @@ test_table_lpm_ipv6(void)
 	if (table != NULL)
 		return -1;
 
-	lpm_params.n_rules = 0;
+	lpm_params.name = NULL;
 
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
 		return -2;
+
+	lpm_params.name = "LPM";
+	lpm_params.n_rules = 0;
+
+	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
+	if (table != NULL)
+		return -3;
 
 	lpm_params.n_rules = 1 << 24;
 	lpm_params.number_tbl8s = 0;
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
-		return -2;
+		return -4;
 
 	lpm_params.number_tbl8s = 1 << 21;
 	lpm_params.entry_unique_size = 0;
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
-		return -2;
+		return -5;
 
 	lpm_params.entry_unique_size = entry_size + 1;
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table != NULL)
-		return -2;
+		return -6;
 
 	lpm_params.entry_unique_size = entry_size;
 	lpm_params.offset = 32;
 
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table == NULL)
-		return -3;
+		return -7;
 
 	/* Free */
 	status = rte_table_lpm_ipv6_ops.f_free(table);
 	if (status < 0)
-		return -4;
+		return -8;
 
 	status = rte_table_lpm_ipv6_ops.f_free(NULL);
 	if (status == 0)
-		return -5;
+		return -9;
 
 	/* Add */
 	struct rte_table_lpm_ipv6_key lpm_key;
@@ -537,80 +553,80 @@ test_table_lpm_ipv6(void)
 
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table == NULL)
-		return -6;
+		return -10;
 
 	status = rte_table_lpm_ipv6_ops.f_add(NULL, &lpm_key, &entry,
 		&key_found, &entry_ptr);
 	if (status == 0)
-		return -7;
+		return -11;
 
 	status = rte_table_lpm_ipv6_ops.f_add(table, NULL, &entry, &key_found,
 		&entry_ptr);
 	if (status == 0)
-		return -8;
+		return -12;
 
 	status = rte_table_lpm_ipv6_ops.f_add(table, &lpm_key, NULL, &key_found,
 		&entry_ptr);
 	if (status == 0)
-		return -9;
+		return -13;
 
 	lpm_key.depth = 0;
 	status = rte_table_lpm_ipv6_ops.f_add(table, &lpm_key, &entry,
 		&key_found, &entry_ptr);
 	if (status == 0)
-		return -10;
+		return -14;
 
 	lpm_key.depth = 129;
 	status = rte_table_lpm_ipv6_ops.f_add(table, &lpm_key, &entry,
 		&key_found, &entry_ptr);
 	if (status == 0)
-		return -11;
+		return -15;
 
 	lpm_key.depth = 16;
 	status = rte_table_lpm_ipv6_ops.f_add(table, &lpm_key, &entry,
 		&key_found, &entry_ptr);
 	if (status != 0)
-		return -12;
+		return -16;
 
 	/* Delete */
 	status = rte_table_lpm_ipv6_ops.f_delete(NULL, &lpm_key, &key_found,
 		NULL);
 	if (status == 0)
-		return -13;
+		return -17;
 
 	status = rte_table_lpm_ipv6_ops.f_delete(table, NULL, &key_found, NULL);
 	if (status == 0)
-		return -14;
+		return -18;
 
 	lpm_key.depth = 0;
 	status = rte_table_lpm_ipv6_ops.f_delete(table, &lpm_key, &key_found,
 		NULL);
 	if (status == 0)
-		return -15;
+		return -19;
 
 	lpm_key.depth = 129;
 	status = rte_table_lpm_ipv6_ops.f_delete(table, &lpm_key, &key_found,
 		NULL);
 	if (status == 0)
-		return -16;
+		return -20;
 
 	lpm_key.depth = 16;
 	status = rte_table_lpm_ipv6_ops.f_delete(table, &lpm_key, &key_found,
 		NULL);
 	if (status != 0)
-		return -17;
+		return -21;
 
 	status = rte_table_lpm_ipv6_ops.f_delete(table, &lpm_key, &key_found,
 		NULL);
 	if (status != 0)
-		return -18;
+		return -22;
 
 	/* Traffic flow */
 	entry = 'A';
 	status = rte_table_lpm_ipv6_ops.f_add(table, &lpm_key, &entry,
 		&key_found, &entry_ptr);
 	if (status < 0)
-		return -19;
+		return -23;
 
 	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)
 		if (i % 2 == 0) {
@@ -622,7 +638,7 @@ test_table_lpm_ipv6(void)
 	rte_table_lpm_ipv6_ops.f_lookup(table, mbufs, -1,
 		&result_mask, (void **)entries);
 	if (result_mask != expected_mask)
-		return -20;
+		return -24;
 
 	/* Free resources */
 	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)

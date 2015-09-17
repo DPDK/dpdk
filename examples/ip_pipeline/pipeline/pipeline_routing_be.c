@@ -484,6 +484,7 @@ pipeline_routing_init(struct pipeline_params *params,
 	p->n_tables = 1;
 	{
 		struct rte_table_lpm_params table_lpm_params = {
+			.name = p->name,
 			.n_rules = p_rt->n_routes,
 			.entry_unique_size = sizeof(struct routing_table_entry),
 			.offset = p_rt->ip_da_offset,

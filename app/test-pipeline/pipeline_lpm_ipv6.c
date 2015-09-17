@@ -113,6 +113,7 @@ app_main_loop_worker_pipeline_lpm_ipv6(void) {
 	/* Table configuration */
 	{
 		struct rte_table_lpm_ipv6_params table_lpm_ipv6_params = {
+			.name = "LPM",
 			.n_rules = 1 << 24,
 			.number_tbl8s = 1 << 21,
 			.entry_unique_size =
