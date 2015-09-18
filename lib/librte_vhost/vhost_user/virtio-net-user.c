@@ -206,25 +206,33 @@ err_mmap:
 }
 
 static int
+vq_is_ready(struct vhost_virtqueue *vq)
+{
+	return vq && vq->desc   &&
+	       vq->kickfd != -1 &&
+	       vq->callfd != -1;
+}
+
+static int
 virtio_is_ready(struct virtio_net *dev)
 {
 	struct vhost_virtqueue *rvq, *tvq;
+	uint32_t i;
 
-	/* mq support in future.*/
-	rvq = dev->virtqueue[VIRTIO_RXQ];
-	tvq = dev->virtqueue[VIRTIO_TXQ];
-	if (rvq && tvq && rvq->desc && tvq->desc &&
-		(rvq->kickfd != -1) &&
-		(rvq->callfd != -1) &&
-		(tvq->kickfd != -1) &&
-		(tvq->callfd != -1)) {
-		RTE_LOG(INFO, VHOST_CONFIG,
-			"virtio is now ready for processing.\n");
-		return 1;
+	for (i = 0; i < dev->virt_qp_nb; i++) {
+		rvq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ];
+		tvq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_TXQ];
+
+		if (!vq_is_ready(rvq) || !vq_is_ready(tvq)) {
+			RTE_LOG(INFO, VHOST_CONFIG,
+				"virtio is not ready for processing.\n");
+			return 0;
+		}
 	}
+
 	RTE_LOG(INFO, VHOST_CONFIG,
-		"virtio isn't ready for processing.\n");
-	return 0;
+		"virtio is now ready for processing.\n");
+	return 1;
 }
 
 void
@@ -292,13 +300,13 @@ user_get_vring_base(struct vhost_device_ctx ctx,
 	 * sent and only sent in vhost_vring_stop.
 	 * TODO: cleanup the vring, it isn't usable since here.
 	 */
-	if ((dev->virtqueue[VIRTIO_RXQ]->kickfd) >= 0) {
-		close(dev->virtqueue[VIRTIO_RXQ]->kickfd);
-		dev->virtqueue[VIRTIO_RXQ]->kickfd = -1;
+	if (dev->virtqueue[state->index + VIRTIO_RXQ]->kickfd >= 0) {
+		close(dev->virtqueue[state->index + VIRTIO_RXQ]->kickfd);
+		dev->virtqueue[state->index + VIRTIO_RXQ]->kickfd = -1;
 	}
-	if ((dev->virtqueue[VIRTIO_TXQ]->kickfd) >= 0) {
-		close(dev->virtqueue[VIRTIO_TXQ]->kickfd);
-		dev->virtqueue[VIRTIO_TXQ]->kickfd = -1;
+	if (dev->virtqueue[state->index + VIRTIO_TXQ]->kickfd >= 0) {
+		close(dev->virtqueue[state->index + VIRTIO_TXQ]->kickfd);
+		dev->virtqueue[state->index + VIRTIO_TXQ]->kickfd = -1;
 	}
 
 	return 0;

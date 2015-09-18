@@ -96,7 +96,6 @@ struct vhost_virtqueue {
  * Device structure contains all configuration information relating to the device.
  */
 struct virtio_net {
-	struct vhost_virtqueue	*virtqueue[VIRTIO_QNUM];	/**< Contains all virtqueue information. */
 	struct virtio_memory	*mem;		/**< QEMU memory and memory region information. */
 	uint64_t		features;	/**< Negotiated feature set. */
 	uint64_t		protocol_features;	/**< Negotiated protocol feature set. */
@@ -104,7 +103,9 @@ struct virtio_net {
 	uint32_t		flags;		/**< Device flags. Only used to check if device is running on data core. */
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
 	char			ifname[IF_NAME_SZ];	/**< Name of the tap device or socket path. */
+	uint32_t		virt_qp_nb;	/**< number of queue pair we have allocated */
 	void			*priv;		/**< private context */
+	struct vhost_virtqueue	*virtqueue[VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX];	/**< Contains all virtqueue information. */
 } __rte_cache_aligned;
 
 /**
