@@ -53,11 +53,17 @@ void rte_dump_stack(void)
 
 	size = backtrace(func, BACKTRACE_SIZE);
 	symb = backtrace_symbols(func, size);
+
+	if (symb == NULL)
+		return;
+
 	while (size > 0) {
 		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
 			"%d: [%s]\n", size, symb[size - 1]);
 		size --;
 	}
+
+	free(symb);
 }
 
 /* not implemented in this environment */
