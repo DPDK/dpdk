@@ -496,7 +496,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 						"to get enough desc from "
 						"vring\n",
 						dev->device_fh);
-					return pkt_idx;
+					goto merge_rx_exit;
 				} else {
 					update_secure_len(vq, res_cur_idx, &secure_len, &vec_idx);
 					res_cur_idx++;
@@ -523,7 +523,10 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		*(volatile uint16_t *)&vq->used->idx += entry_success;
 		vq->last_used_idx = res_cur_idx;
+	}
 
+merge_rx_exit:
+	if (likely(pkt_idx)) {
 		/* flush used->idx update before we read avail->flags. */
 		rte_mb();
 
@@ -532,7 +535,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 			eventfd_write(vq->callfd, (eventfd_t)1);
 	}
 
-	return count;
+	return pkt_idx;
 }
 
 uint16_t
