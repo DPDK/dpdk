@@ -64,6 +64,9 @@ Known Issues
 API Changes
 -----------
 
+* The deprecated flow director API is removed.
+  It was replaced by rte_eth_dev_filter_ctrl().
+
 * The function rte_eal_pci_close_one() is removed.
   It was replaced by rte_eal_pci_detach().
 

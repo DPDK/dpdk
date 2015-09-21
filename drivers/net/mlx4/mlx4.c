@@ -4567,13 +4567,6 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.mtu_set = mlx4_dev_set_mtu,
 	.udp_tunnel_add = NULL,
 	.udp_tunnel_del = NULL,
-	.fdir_add_signature_filter = NULL,
-	.fdir_update_signature_filter = NULL,
-	.fdir_remove_signature_filter = NULL,
-	.fdir_add_perfect_filter = NULL,
-	.fdir_update_perfect_filter = NULL,
-	.fdir_remove_perfect_filter = NULL,
-	.fdir_set_masks = NULL
 };
 
 /**

@@ -575,7 +575,6 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.priority_flow_ctrl_set = NULL,
 	.mac_addr_add         = enicpmd_add_mac_addr,
 	.mac_addr_remove      = enicpmd_remove_mac_addr,
-	.fdir_set_masks               = NULL,
 	.filter_ctrl          = enicpmd_dev_filter_ctrl,
 };
 
