@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: cq_enet_desc.h 160468 2014-02-18 09:50:15Z gvaradar $"
 
 #ifndef _CQ_ENET_DESC_H_
 #define _CQ_ENET_DESC_H_

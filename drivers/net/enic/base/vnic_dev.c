@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id$"
 
 #include <rte_memzone.h>
 #include <rte_memcpy.h>

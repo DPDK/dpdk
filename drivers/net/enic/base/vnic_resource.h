@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_resource.h 196958 2014-11-04 18:23:37Z xuywang $"
 
 #ifndef _VNIC_RESOURCE_H_
 #define _VNIC_RESOURCE_H_

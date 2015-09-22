@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_wq.c 183023 2014-07-22 23:47:25Z xuywang $"
 
 #include "vnic_dev.h"
 #include "vnic_wq.h"

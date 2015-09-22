@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_intr.h 171146 2014-05-02 07:08:20Z ssujith $"
 
 #ifndef _VNIC_INTR_H_
 #define _VNIC_INTR_H_

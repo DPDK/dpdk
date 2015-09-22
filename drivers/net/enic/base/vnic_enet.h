@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_enet.h 175806 2014-06-04 19:31:17Z rfaucett $"
 
 #ifndef _VNIC_ENIC_H_
 #define _VNIC_ENIC_H_

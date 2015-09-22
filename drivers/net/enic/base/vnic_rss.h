@@ -30,7 +30,6 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ident "$Id: vnic_rss.h 64224 2010-11-09 19:43:13Z vkolluri $"
 
 #ifndef _VNIC_RSS_H_
 #define _VNIC_RSS_H_

@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: enic_res.h 173137 2014-05-16 03:27:22Z sanpilla $"
 
 #ifndef _ENIC_RES_H_
 #define _ENIC_RES_H_

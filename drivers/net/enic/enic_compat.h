@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id$"
 
 #ifndef _ENIC_COMPAT_H_
 #define _ENIC_COMPAT_H_

@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_rq.c 171146 2014-05-02 07:08:20Z ssujith $"
 
 #include "vnic_dev.h"
 #include "vnic_rq.h"

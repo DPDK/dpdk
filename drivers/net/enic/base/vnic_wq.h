@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_wq.h 183023 2014-07-22 23:47:25Z xuywang $"
 
 #ifndef _VNIC_WQ_H_
 #define _VNIC_WQ_H_

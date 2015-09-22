@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: rq_enet_desc.h 59839 2010-09-27 20:36:31Z roprabhu $"
 
 #ifndef _RQ_ENET_DESC_H_
 #define _RQ_ENET_DESC_H_

@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_stats.h 84040 2011-08-09 23:38:43Z dwang2 $"
 
 #ifndef _VNIC_STATS_H_
 #define _VNIC_STATS_H_

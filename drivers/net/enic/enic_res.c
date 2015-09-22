@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: enic_res.c 171146 2014-05-02 07:08:20Z ssujith $"
 
 #include "enic_compat.h"
 #include "rte_ethdev.h"

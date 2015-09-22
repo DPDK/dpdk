@@ -31,7 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ident "$Id: vnic_cq.h 173398 2014-05-19 09:17:02Z gvaradar $"
 
 #ifndef _VNIC_CQ_H_
 #define _VNIC_CQ_H_
