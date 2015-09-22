@@ -42,6 +42,13 @@ showversion:
 			else echo $$(($$5 - 16)); fi; \
 		fi
 
+.PHONY: showversionum
+showversionum:
+	@set -- \
+		$$(sed -rne 's,^#define RTE_VER_[A-Z_]*[[:space:]]+([0-9]+).*,\1,p' \
+			$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h); \
+		printf '%02d%02d\n' "$$1" "$$2"
+
 INSTALL_CONFIGS := $(sort $(filter-out %~,\
 	$(patsubst $(RTE_SRCDIR)/config/defconfig_%,%,\
 	$(wildcard $(RTE_SRCDIR)/config/defconfig_*))))
