@@ -445,32 +445,6 @@ rte_eth_dev_get_device_type(uint8_t port_id)
 }
 
 static int
-rte_eth_dev_save(struct rte_eth_dev *devs, size_t size)
-{
-	if ((devs == NULL) ||
-	    (size != sizeof(struct rte_eth_dev) * RTE_MAX_ETHPORTS))
-		return -EINVAL;
-
-	/* save current rte_eth_devices */
-	memcpy(devs, rte_eth_devices, size);
-	return 0;
-}
-
-static int
-rte_eth_dev_get_changed_port(struct rte_eth_dev *devs, uint8_t *port_id)
-{
-	if ((devs == NULL) || (port_id == NULL))
-		return -EINVAL;
-
-	/* check which port was attached or detached */
-	for (*port_id = 0; *port_id < RTE_MAX_ETHPORTS; (*port_id)++, devs++) {
-		if (rte_eth_devices[*port_id].attached ^ devs->attached)
-			return 0;
-	}
-	return -ENODEV;
-}
-
-static int
 rte_eth_dev_get_addr_by_port(uint8_t port_id, struct rte_pci_addr *addr)
 {
 	VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
@@ -504,6 +478,59 @@ rte_eth_dev_get_name_by_port(uint8_t port_id, char *name)
 }
 
 static int
+rte_eth_dev_get_port_by_name(const char *name, uint8_t *port_id)
+{
+	int i;
+
+	if (name == NULL) {
+		PMD_DEBUG_TRACE("Null pointer is specified\n");
+		return -EINVAL;
+	}
+
+	*port_id = RTE_MAX_ETHPORTS;
+
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+
+		if (!strncmp(name,
+			rte_eth_dev_data[i].name, strlen(name))) {
+
+			*port_id = i;
+
+			return 0;
+		}
+	}
+	return -ENODEV;
+}
+
+static int
+rte_eth_dev_get_port_by_addr(const struct rte_pci_addr *addr, uint8_t *port_id)
+{
+	int i;
+	struct rte_pci_device *pci_dev = NULL;
+
+	if (addr == NULL) {
+		PMD_DEBUG_TRACE("Null pointer is specified\n");
+		return -EINVAL;
+	}
+
+	*port_id = RTE_MAX_ETHPORTS;
+
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+
+		pci_dev = rte_eth_devices[i].pci_dev;
+
+		if (pci_dev &&
+			!rte_eal_compare_pci_addr(&pci_dev->addr, addr)) {
+
+			*port_id = i;
+
+			return 0;
+		}
+	}
+	return -ENODEV;
+}
+
+static int
 rte_eth_dev_is_detachable(uint8_t port_id)
 {
 	uint32_t drv_flags;
@@ -533,30 +560,19 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 static int
 rte_eth_dev_attach_pdev(struct rte_pci_addr *addr, uint8_t *port_id)
 {
-	uint8_t new_port_id;
-	struct rte_eth_dev devs[RTE_MAX_ETHPORTS];
-
 	if ((addr == NULL) || (port_id == NULL))
 		goto err;
 
-	/* save current port status */
-	if (rte_eth_dev_save(devs, sizeof(devs)))
-		goto err;
 	/* re-construct pci_device_list */
 	if (rte_eal_pci_scan())
 		goto err;
-	/* invoke probe func of the driver can handle the new device.
-	 * TODO:
-	 * rte_eal_pci_probe_one() should return port_id.
-	 * And rte_eth_dev_save() and rte_eth_dev_get_changed_port()
-	 * should be removed. */
+	/* Invoke probe func of the driver can handle the new device. */
 	if (rte_eal_pci_probe_one(addr))
 		goto err;
-	/* get port_id enabled by above procedures */
-	if (rte_eth_dev_get_changed_port(devs, &new_port_id))
+
+	if (rte_eth_dev_get_port_by_addr(addr, port_id))
 		goto err;
 
-	*port_id = new_port_id;
 	return 0;
 err:
 	RTE_LOG(ERR, EAL, "Driver, cannot attach the device\n");
@@ -603,8 +619,6 @@ static int
 rte_eth_dev_attach_vdev(const char *vdevargs, uint8_t *port_id)
 {
 	char *name = NULL, *args = NULL;
-	uint8_t new_port_id;
-	struct rte_eth_dev devs[RTE_MAX_ETHPORTS];
 	int ret = -1;
 
 	if ((vdevargs == NULL) || (port_id == NULL))
@@ -614,22 +628,18 @@ rte_eth_dev_attach_vdev(const char *vdevargs, uint8_t *port_id)
 	if (rte_eal_parse_devargs_str(vdevargs, &name, &args))
 		goto end;
 
-	/* save current port status */
-	if (rte_eth_dev_save(devs, sizeof(devs)))
-		goto end;
 	/* walk around dev_driver_list to find the driver of the device,
-	 * then invoke probe function o the driver.
-	 * TODO:
-	 * rte_eal_vdev_init() should return port_id,
-	 * And rte_eth_dev_save() and rte_eth_dev_get_changed_port()
-	 * should be removed. */
+	 * then invoke probe function of the driver.
+	 * rte_eal_vdev_init() updates port_id allocated after
+	 * initialization.
+	 */
 	if (rte_eal_vdev_init(name, args))
 		goto end;
-	/* get port_id enabled by above procedures */
-	if (rte_eth_dev_get_changed_port(devs, &new_port_id))
+
+	if (rte_eth_dev_get_port_by_name(name, port_id))
 		goto end;
+
 	ret = 0;
-	*port_id = new_port_id;
 end:
 	if (name)
 		free(name);
