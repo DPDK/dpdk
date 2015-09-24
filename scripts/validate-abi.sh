@@ -164,8 +164,8 @@ sed -i -e"$ a\CONFIG_RTE_LIBRTE_KNI=n" config/defconfig_$TARGET
 # Checking abi compliance relies on using the dwarf information in
 # The shared objects.  Thats only included in the DSO's if we build
 # with -g
-export EXTRA_CFLAGS=-g
-export EXTRA_LDFLAGS=-g
+export EXTRA_CFLAGS="$EXTRA_CFLAGS -g"
+export EXTRA_LDFLAGS="$EXTRA_LDFLAGS -g"
 
 # Now configure the build
 log "INFO" "Configuring DPDK $TAG1"
