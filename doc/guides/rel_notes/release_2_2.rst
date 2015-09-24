@@ -8,6 +8,54 @@ New Features
 Resolved Issues
 ---------------
 
+EAL
+~~~
+
+* **eal/linux: Fixed epoll timeout.**
+
+  Fixed issue where the ``rte_epoll_wait()`` function didn't return when the
+  underlying call to ``epoll_wait()`` timed out.
+
+
+Drivers
+~~~~~~~
+
+* **ixgbe: Fixed issue with X550 DCB.**
+
+  Fixed a DCB issue with x550 where for 8 TCs (Traffic Classes), if a packet
+  with user priority 6 or 7 was injected to the NIC, then the NIC would only
+  put 3 packets into the queue. There was also a similar issue for 4 TCs.
+
+* **ixgbe: Removed burst size restriction of vector RX.**
+
+  Fixed issue where a burst size less than 32 didn't receive anything.
+
+* **i40e: Fixed base driver allocation when not using first numa node.**
+
+  Fixed i40e issue that occurred when a DPDK application didn't initialize
+  ports if memory wasn't available on socket 0.
+
+* **vhost: Fixed Qemu shutdown.**
+
+  Fixed issue with libvirt ``virsh destroy`` not killing the VM.
+
+
+Libraries
+~~~~~~~~~
+
+* **hash: Fixed memory allocation of Cuckoo Hash key table.**
+
+  Fixed issue where an incorrect Cuckoo Hash key table size could be
+  calculated limiting the size to 4GB.
+
+
+Examples
+~~~~~~~~
+
+
+Other
+~~~~~
+
 
 Known Issues
 ------------
