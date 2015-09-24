@@ -88,6 +88,7 @@ fixup_config() {
 	sed -i -e"$ a\CONFIG_RTE_NEXT_ABI=n" config/defconfig_$TARGET
 	sed -i -e"$ a\CONFIG_RTE_EAL_IGB_UIO=n" config/defconfig_$TARGET
 	sed -i -e"$ a\CONFIG_RTE_LIBRTE_KNI=n" config/defconfig_$TARGET
+	sed -i -e"$ a\CONFIG_RTE_KNI_KMOD=n" config/defconfig_$TARGET
 }
 
 ###########################################
