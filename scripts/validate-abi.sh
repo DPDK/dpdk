@@ -81,6 +81,15 @@ cleanup_and_exit() {
 	exit $1
 }
 
+# Make sure we configure SHARED libraries
+# Also turn off IGB and KNI as those require kernel headers to build
+fixup_config() {
+	sed -i -e"$ a\CONFIG_RTE_BUILD_SHARED_LIB=y" config/defconfig_$TARGET
+	sed -i -e"$ a\CONFIG_RTE_NEXT_ABI=n" config/defconfig_$TARGET
+	sed -i -e"$ a\CONFIG_RTE_EAL_IGB_UIO=n" config/defconfig_$TARGET
+	sed -i -e"$ a\CONFIG_RTE_LIBRTE_KNI=n" config/defconfig_$TARGET
+}
+
 ###########################################
 #START
 ############################################
@@ -154,12 +163,7 @@ log "INFO" "Checking out version $TAG1 of the dpdk"
 # Move to the old version of the tree
 git checkout $TAG1
 
-# Make sure we configure SHARED libraries
-# Also turn off IGB and KNI as those require kernel headers to build
-sed -i -e"$ a\CONFIG_RTE_BUILD_SHARED_LIB=y" config/defconfig_$TARGET
-sed -i -e"$ a\CONFIG_RTE_NEXT_ABI=n" config/defconfig_$TARGET
-sed -i -e"$ a\CONFIG_RTE_EAL_IGB_UIO=n" config/defconfig_$TARGET
-sed -i -e"$ a\CONFIG_RTE_LIBRTE_KNI=n" config/defconfig_$TARGET
+fixup_config
 
 # Checking abi compliance relies on using the dwarf information in
 # The shared objects.  Thats only included in the DSO's if we build
@@ -196,12 +200,7 @@ git reset --hard
 log "INFO" "Checking out version $TAG2 of the dpdk"
 git checkout $TAG2
 
-# Make sure we configure SHARED libraries
-# Also turn off IGB and KNI as those require kernel headers to build
-sed -i -e"$ a\CONFIG_RTE_BUILD_SHARED_LIB=y" config/defconfig_$TARGET
-sed -i -e"$ a\CONFIG_RTE_NEXT_ABI=n" config/defconfig_$TARGET
-sed -i -e"$ a\CONFIG_RTE_EAL_IGB_UIO=n" config/defconfig_$TARGET
-sed -i -e"$ a\CONFIG_RTE_LIBRTE_KNI=n" config/defconfig_$TARGET
+fixup_config
 
 # Now configure the build
 log "INFO" "Configuring DPDK $TAG2"
