@@ -109,7 +109,7 @@ The following is the list of options that can be given to the EAL:
 
 .. code-block:: console
 
-    ./rte-app -c COREMASK -n NUM [-b <domain:bus:devid.func>] [--socket-mem=MB,...] [-m MB] [-r NUM] [-v] [--file-prefix] [--proc-type <primary|secondary|auto>] [-- xen-dom0]
+    ./rte-app -n NUM [-c COREMASK] [-b <domain:bus:devid.func>] [--socket-mem=MB,...] [-m MB] [-r NUM] [-v] [--file-prefix] [--proc-type <primary|secondary|auto>] [-- xen-dom0]
 
 The EAL options are as follows:
 

@@ -93,7 +93,6 @@ eal_long_options[] = {
 	{0,                     0, NULL, 0                        }
 };
 
-static int lcores_parsed;
 static int master_lcore_parsed;
 static int mem_parsed;
 
@@ -212,7 +211,6 @@ eal_parse_coremask(const char *coremask)
 		return -1;
 	/* Update the count of enabled logical cores of the EAL configuration */
 	cfg->lcore_count = count;
-	lcores_parsed = 1;
 	return 0;
 }
 
@@ -279,7 +277,6 @@ eal_parse_corelist(const char *corelist)
 	/* Update the count of enabled logical cores of the EAL configuration */
 	cfg->lcore_count = count;
 
-	lcores_parsed = 1;
 	return 0;
 }
 
@@ -569,7 +566,6 @@ eal_parse_lcores(const char *lcores)
 		goto err;
 
 	cfg->lcore_count = count;
-	lcores_parsed = 1;
 	ret = 0;
 
 err:
@@ -820,11 +816,6 @@ eal_check_common_options(struct internal_config *internal_cfg)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
 
-	if (!lcores_parsed) {
-		RTE_LOG(ERR, EAL, "CPU cores must be enabled with options "
-			"-c, -l or --lcores\n");
-		return -1;
-	}
 	if (cfg->lcore_role[cfg->master_lcore] != ROLE_RTE) {
 		RTE_LOG(ERR, EAL, "Master lcore is not enabled for DPDK\n");
 		return -1;
@@ -863,7 +854,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 void
 eal_common_usage(void)
 {
-	printf("-c COREMASK|-l CORELIST [options]\n\n"
+	printf("[options]\n\n"
 	       "EAL common options:\n"
 	       "  -c COREMASK         Hexadecimal bitmask of cores to run on\n"
 	       "  -l CORELIST         List of cores to run on\n"

@@ -63,6 +63,8 @@ rte_eal_cpu_init(void)
 	 * ones and enable them by default.
 	 */
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		lcore_config[lcore_id].core_index = count;
+
 		/* init cpuset for per lcore config */
 		CPU_ZERO(&lcore_config[lcore_id].cpuset);
 
@@ -70,6 +72,7 @@ rte_eal_cpu_init(void)
 		lcore_config[lcore_id].detected = eal_cpu_detected(lcore_id);
 		if (lcore_config[lcore_id].detected == 0) {
 			config->lcore_role[lcore_id] = ROLE_OFF;
+			lcore_config[lcore_id].core_index = -1;
 			continue;
 		}
 

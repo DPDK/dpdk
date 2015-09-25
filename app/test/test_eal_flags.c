@@ -571,11 +571,16 @@ test_missing_c_flag(void)
 				 "-n", "3", "--lcores",
 				 "0-1,2@(5-7),(3-5)@(0,2),(0,6),7"};
 
+	if (launch_proc(argv2) != 0) {
+		printf("Error - "
+		       "process did not run ok when missing -c flag\n");
+		return -1;
+	}
+
 	if (launch_proc(argv1) == 0
-			|| launch_proc(argv2) == 0
 			|| launch_proc(argv3) == 0) {
 		printf("Error - "
-		       "process ran without error when missing -c flag\n");
+		       "process ran without error with invalid -c flag\n");
 		return -1;
 	}
 	if (launch_proc(argv4) != 0) {
