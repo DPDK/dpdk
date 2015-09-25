@@ -284,13 +284,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		__m128i zero, staterr, sterr_tmp1, sterr_tmp2;
 		__m128i mbp1, mbp2; /* two mbuf pointer in one XMM reg. */
 
-		if (split_packet) {
-			rte_prefetch0(&rx_pkts[pos]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 1]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 2]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
-		}
-
 		/* B.1 load 1 mbuf point */
 		mbp1 = _mm_loadu_si128((__m128i *)&sw_ring[pos]);
 
@@ -311,6 +304,13 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		_mm_storeu_si128((__m128i *)&rx_pkts[pos+2], mbp2);
+
+		if (split_packet) {
+			rte_prefetch0(&rx_pkts[pos]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 1]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 2]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
+		}
 
 		/* A* mask out 0~3 bits RSS type */
 		descs[3] = _mm_and_si128(descs0[3], desc_mask);
