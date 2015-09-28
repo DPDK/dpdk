@@ -40,7 +40,6 @@ Testpmd Application User Guide
     :numbered:
 
     intro
-    overview
     build_app
     run_app
     testpmd_funcs
