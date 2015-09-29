@@ -91,8 +91,8 @@ test_devargs(void)
 	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "eth_ring1,k1=val,k2=val2") < 0)
 		goto fail;
 	devargs = TAILQ_FIRST(&devargs_list);
-	if (strncmp(devargs->virtual.drv_name, "eth_ring1",
-			sizeof(devargs->virtual.drv_name)) != 0)
+	if (strncmp(devargs->virt.drv_name, "eth_ring1",
+			sizeof(devargs->virt.drv_name)) != 0)
 		goto fail;
 	if (!devargs->args || strcmp(devargs->args, "k1=val,k2=val2") != 0)
 		goto fail;

@@ -107,9 +107,9 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 		break;
 	case RTE_DEVTYPE_VIRTUAL:
 		/* save driver name */
-		ret = snprintf(devargs->virtual.drv_name,
-			       sizeof(devargs->virtual.drv_name), "%s", buf);
-		if (ret < 0 || ret >= (int)sizeof(devargs->virtual.drv_name))
+		ret = snprintf(devargs->virt.drv_name,
+			       sizeof(devargs->virt.drv_name), "%s", buf);
+		if (ret < 0 || ret >= (int)sizeof(devargs->virt.drv_name))
 			goto fail;
 
 		break;
@@ -169,7 +169,7 @@ rte_eal_devargs_dump(FILE *f)
 			       devargs->args);
 		else if (devargs->type == RTE_DEVTYPE_VIRTUAL)
 			fprintf(f, "  VIRTUAL %s %s\n",
-			       devargs->virtual.drv_name,
+			       devargs->virt.drv_name,
 			       devargs->args);
 		else
 			fprintf(f, "  UNKNOWN %s\n", devargs->args);

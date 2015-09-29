@@ -94,6 +94,8 @@ API Changes
 * The deprecated ring PMD functions are removed:
   rte_eth_ring_pair_create() and rte_eth_ring_pair_attach().
 
+* The devargs union field virtual is renamed to virt for C++ compatibility.
+
 
 ABI Changes
 -----------

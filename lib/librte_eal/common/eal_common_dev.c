@@ -107,10 +107,10 @@ rte_eal_dev_init(void)
 		if (devargs->type != RTE_DEVTYPE_VIRTUAL)
 			continue;
 
-		if (rte_eal_vdev_init(devargs->virtual.drv_name,
+		if (rte_eal_vdev_init(devargs->virt.drv_name,
 					devargs->args)) {
 			RTE_LOG(ERR, EAL, "failed to initialize %s device\n",
-					devargs->virtual.drv_name);
+					devargs->virt.drv_name);
 			return -1;
 		}
 	}
