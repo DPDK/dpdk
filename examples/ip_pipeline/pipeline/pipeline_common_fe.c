@@ -358,7 +358,7 @@ app_link_config(struct app_params *app,
 		if (link->ip == ip) {
 			APP_LOG(app, HIGH,
 				"%s is already assigned this IP address",
-				p->name);
+				link->name);
 			return -1;
 		}
 	}
