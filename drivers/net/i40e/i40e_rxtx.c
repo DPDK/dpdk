@@ -57,9 +57,6 @@
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 
-#define I40E_MIN_RING_DESC     64
-#define I40E_MAX_RING_DESC     4096
-#define I40E_ALIGN             128
 #define DEFAULT_TX_RS_THRESH   32
 #define DEFAULT_TX_FREE_THRESH 32
 #define I40E_MAX_PKT_TYPE      256
@@ -67,6 +64,9 @@
 #define I40E_TX_MAX_BURST  32
 
 #define I40E_DMA_MEM_ALIGN 4096
+
+/* Base address of the HW descriptor ring should be 128B aligned. */
+#define I40E_RING_BASE_ALIGN	128
 
 #define I40E_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
 					ETH_TXQ_FLAGS_NOOFFLOADS)
@@ -2126,9 +2126,9 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			    "index exceeds the maximum");
 		return I40E_ERR_PARAM;
 	}
-	if (((nb_desc * sizeof(union i40e_rx_desc)) % I40E_ALIGN) != 0 ||
-					(nb_desc > I40E_MAX_RING_DESC) ||
-					(nb_desc < I40E_MIN_RING_DESC)) {
+	if (nb_desc % I40E_ALIGN_RING_DESC != 0 ||
+			(nb_desc > I40E_MAX_RING_DESC) ||
+			(nb_desc < I40E_MIN_RING_DESC)) {
 		PMD_DRV_LOG(ERR, "Number (%u) of receive descriptors is "
 			    "invalid", nb_desc);
 		return I40E_ERR_PARAM;
@@ -2352,9 +2352,9 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return I40E_ERR_PARAM;
 	}
 
-	if (((nb_desc * sizeof(struct i40e_tx_desc)) % I40E_ALIGN) != 0 ||
-					(nb_desc > I40E_MAX_RING_DESC) ||
-					(nb_desc < I40E_MIN_RING_DESC)) {
+	if (nb_desc % I40E_ALIGN_RING_DESC != 0 ||
+			(nb_desc > I40E_MAX_RING_DESC) ||
+			(nb_desc < I40E_MIN_RING_DESC)) {
 		PMD_DRV_LOG(ERR, "Number (%u) of transmit descriptors is "
 			    "invalid", nb_desc);
 		return I40E_ERR_PARAM;
@@ -2557,10 +2557,10 @@ i40e_ring_dma_zone_reserve(struct rte_eth_dev *dev,
 
 #ifdef RTE_LIBRTE_XEN_DOM0
 	return rte_memzone_reserve_bounded(z_name, ring_size,
-		socket_id, 0, I40E_ALIGN, RTE_PGSIZE_2M);
+		socket_id, 0, I40E_RING_BASE_ALIGN, RTE_PGSIZE_2M);
 #else
 	return rte_memzone_reserve_aligned(z_name, ring_size,
-				socket_id, 0, I40E_ALIGN);
+				socket_id, 0, I40E_RING_BASE_ALIGN);
 #endif
 }
 
@@ -2574,10 +2574,10 @@ i40e_memzone_reserve(const char *name, uint32_t len, int socket_id)
 		return mz;
 #ifdef RTE_LIBRTE_XEN_DOM0
 	mz = rte_memzone_reserve_bounded(name, len,
-		socket_id, 0, I40E_ALIGN, RTE_PGSIZE_2M);
+		socket_id, 0, I40E_RING_BASE_ALIGN, RTE_PGSIZE_2M);
 #else
 	mz = rte_memzone_reserve_aligned(name, len,
-				socket_id, 0, I40E_ALIGN);
+				socket_id, 0, I40E_RING_BASE_ALIGN);
 #endif
 	return mz;
 }

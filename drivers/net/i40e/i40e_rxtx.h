@@ -57,6 +57,12 @@
 #define I40E_RXBUF_SZ_1024 1024
 #define I40E_RXBUF_SZ_2048 2048
 
+/* In none-PXE mode QLEN must be whole number of 32 descriptors. */
+#define	I40E_ALIGN_RING_DESC	32
+
+#define	I40E_MIN_RING_DESC	64
+#define	I40E_MAX_RING_DESC	4096
+
 #undef container_of
 #define container_of(ptr, type, member) ({ \
 		typeof(((type *)0)->member)(*__mptr) = (ptr); \
