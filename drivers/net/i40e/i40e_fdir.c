@@ -1112,8 +1112,16 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 
 	if (fdir_action->behavior == RTE_ETH_FDIR_REJECT)
 		dest = I40E_FILTER_PROGRAM_DESC_DEST_DROP_PACKET;
-	else
+	else if (fdir_action->behavior == RTE_ETH_FDIR_ACCEPT)
 		dest = I40E_FILTER_PROGRAM_DESC_DEST_DIRECT_PACKET_QINDEX;
+	else if (fdir_action->behavior == RTE_ETH_FDIR_PASSTHRU)
+		dest = I40E_FILTER_PROGRAM_DESC_DEST_DIRECT_PACKET_OTHER;
+	else {
+		PMD_DRV_LOG(ERR, "Failed to program FDIR filter:"
+			    " unsupported fdir behavior.");
+		return -EINVAL;
+	}
+
 	fdirdp->dtype_cmd_cntindex |= rte_cpu_to_le_32((dest <<
 				I40E_TXD_FLTR_QW1_DEST_SHIFT) &
 				I40E_TXD_FLTR_QW1_DEST_MASK);

@@ -544,6 +544,7 @@ struct rte_eth_fdir_input {
 enum rte_eth_fdir_behavior {
 	RTE_ETH_FDIR_ACCEPT = 0,
 	RTE_ETH_FDIR_REJECT,
+	RTE_ETH_FDIR_PASSTHRU,
 };
 
 /**
