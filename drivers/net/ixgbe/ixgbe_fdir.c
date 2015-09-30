@@ -1148,7 +1148,8 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 				" signature mode.");
 			return -EINVAL;
 		}
-	} else if (fdir_filter->action.rx_queue < IXGBE_MAX_RX_QUEUE_NUM)
+	} else if (fdir_filter->action.behavior == RTE_ETH_FDIR_ACCEPT &&
+			fdir_filter->action.rx_queue < IXGBE_MAX_RX_QUEUE_NUM)
 		queue = (uint8_t)fdir_filter->action.rx_queue;
 	else
 		return -EINVAL;
