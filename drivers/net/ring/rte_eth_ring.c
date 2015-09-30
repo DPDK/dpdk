@@ -39,6 +39,7 @@
 #include <rte_string_fns.h>
 #include <rte_dev.h>
 #include <rte_kvargs.h>
+#include <rte_errno.h>
 
 #define ETH_RING_NUMA_NODE_ACTION_ARG	"nodeaction"
 #define ETH_RING_ACTION_CREATE		"CREATE"
@@ -276,10 +277,18 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	unsigned i;
 
 	/* do some parameter checking */
-	if (rx_queues == NULL && nb_rx_queues > 0)
+	if (rx_queues == NULL && nb_rx_queues > 0) {
+		rte_errno = EINVAL;
 		goto error;
-	if (tx_queues == NULL && nb_tx_queues > 0)
+	}
+	if (tx_queues == NULL && nb_tx_queues > 0) {
+		rte_errno = EINVAL;
 		goto error;
+	}
+	if (nb_rx_queues > RTE_PMD_RING_MAX_RX_RINGS) {
+		rte_errno = EINVAL;
+		goto error;
+	}
 
 	RTE_LOG(INFO, PMD, "Creating rings-backed ethdev on numa socket %u\n",
 			numa_node);
@@ -288,21 +297,43 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	 * and internal (private) data
 	 */
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-	if (data == NULL)
+	if (data == NULL) {
+		rte_errno = ENOMEM;
 		goto error;
+	}
+
+	data->rx_queues = rte_zmalloc_socket(name, sizeof(void *) * nb_rx_queues,
+			0, numa_node);
+	if (data->rx_queues == NULL) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
+
+	data->tx_queues = rte_zmalloc_socket(name, sizeof(void *) * nb_tx_queues,
+			0, numa_node);
+	if (data->tx_queues == NULL) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
 
 	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
-	if (pci_dev == NULL)
+	if (pci_dev == NULL) {
+		rte_errno = ENOMEM;
 		goto error;
+	}
 
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
-	if (internals == NULL)
+	if (internals == NULL) {
+		rte_errno = ENOMEM;
 		goto error;
+	}
 
 	/* reserve an ethdev entry */
 	eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
-	if (eth_dev == NULL)
+	if (eth_dev == NULL) {
+		rte_errno = ENOSPC;
 		goto error;
+	}
 
 
 	/* now put it all together
@@ -318,9 +349,11 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	internals->nb_tx_queues = nb_tx_queues;
 	for (i = 0; i < nb_rx_queues; i++) {
 		internals->rx_ring_queues[i].rng = rx_queues[i];
+		data->rx_queues[i] = &internals->rx_ring_queues[i];
 	}
 	for (i = 0; i < nb_tx_queues; i++) {
 		internals->tx_ring_queues[i].rng = tx_queues[i];
+		data->tx_queues[i] = &internals->tx_ring_queues[i];
 	}
 
 	rte_ring_pmd.pci_drv.name = ring_ethdev_driver_name;
@@ -350,6 +383,8 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	return data->port_id;
 
 error:
+	rte_free(data->rx_queues);
+	rte_free(data->tx_queues);
 	rte_free(data);
 	rte_free(pci_dev);
 	rte_free(internals);
