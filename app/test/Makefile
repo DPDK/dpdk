@@ -148,6 +148,7 @@ endif
 endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring_perf.c
 SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 
 CFLAGS += -O3

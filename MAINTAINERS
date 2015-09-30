@@ -289,6 +289,7 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/net/ring/
 F: doc/guides/nics/pcap_ring.rst
 F: app/test/test_pmd_ring.c
+F: app/test/test_pmd_ring_perf.c
 
 Null PMD
 M: Tetsuya Mukawa <mukawa@igel.co.jp>
