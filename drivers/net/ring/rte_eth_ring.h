@@ -65,6 +65,20 @@ int rte_eth_from_rings(const char *name,
 		const unsigned nb_tx_queues,
 		const unsigned numa_node);
 
+/**
+ * Create a new ethdev port from a ring
+ *
+ * This function is a shortcut call for rte_eth_from_rings for the
+ * case where one wants to take a single rte_ring and use it as though
+ * it were an ethdev
+ *
+ * @param ring
+ *    the ring to be used as an ethdev
+ * @return
+ *    the port number of the newly created ethdev, or -1 on error
+ */
+int rte_eth_from_ring(struct rte_ring *r);
+
 #ifdef __cplusplus
 }
 #endif

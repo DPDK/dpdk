@@ -5,3 +5,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.2 {
+	global:
+
+	rte_eth_from_ring;
+
+} DPDK_2.0;

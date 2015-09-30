@@ -36,6 +36,7 @@
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
+#include <rte_memzone.h>
 #include <rte_string_fns.h>
 #include <rte_dev.h>
 #include <rte_kvargs.h>
@@ -390,6 +391,13 @@ error:
 	rte_free(internals);
 
 	return -1;
+}
+
+int
+rte_eth_from_ring(struct rte_ring *r)
+{
+	return rte_eth_from_rings(r->name, &r, 1, &r, 1,
+			r->memzone ? r->memzone->socket_id : SOCKET_ID_ANY);
 }
 
 enum dev_action{
