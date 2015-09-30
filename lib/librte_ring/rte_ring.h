@@ -134,6 +134,8 @@ struct rte_ring_debug_stats {
                                     *   if RTE_RING_PAUSE_REP not defined. */
 #endif
 
+struct rte_memzone; /* forward declaration, so as not to require memzone.h */
+
 /**
  * An RTE ring structure.
  *
@@ -147,6 +149,8 @@ struct rte_ring_debug_stats {
 struct rte_ring {
 	char name[RTE_RING_NAMESIZE];    /**< Name of the ring. */
 	int flags;                       /**< Flags supplied at creation. */
+	const struct rte_memzone *memzone;
+			/**< Memzone, if any, containing the rte_ring */
 
 	/** Ring producer status. */
 	struct prod {

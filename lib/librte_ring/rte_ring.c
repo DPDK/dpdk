@@ -196,6 +196,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		rte_ring_init(r, name, count, flags);
 
 		te->data = (void *) r;
+		r->memzone = mz;
 
 		TAILQ_INSERT_TAIL(ring_list, te, next);
 	} else {
