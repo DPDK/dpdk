@@ -2039,19 +2039,25 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
 		hw_stats->mpc[i] += mp;
 		/* Running comprehensive total for stats display */
 		*total_missed_rx += hw_stats->mpc[i];
-		if (hw->mac.type == ixgbe_mac_82598EB)
+		if (hw->mac.type == ixgbe_mac_82598EB) {
 			hw_stats->rnbc[i] +=
 			    IXGBE_READ_REG(hw, IXGBE_RNBC(i));
+			hw_stats->pxonrxc[i] +=
+				IXGBE_READ_REG(hw, IXGBE_PXONRXC(i));
+			hw_stats->pxoffrxc[i] +=
+				IXGBE_READ_REG(hw, IXGBE_PXOFFRXC(i));
+		} else {
+			hw_stats->pxonrxc[i] +=
+				IXGBE_READ_REG(hw, IXGBE_PXONRXCNT(i));
+			hw_stats->pxoffrxc[i] +=
+				IXGBE_READ_REG(hw, IXGBE_PXOFFRXCNT(i));
+			hw_stats->pxon2offc[i] +=
+				IXGBE_READ_REG(hw, IXGBE_PXON2OFFCNT(i));
+		}
 		hw_stats->pxontxc[i] +=
 		    IXGBE_READ_REG(hw, IXGBE_PXONTXC(i));
-		hw_stats->pxonrxc[i] +=
-		    IXGBE_READ_REG(hw, IXGBE_PXONRXC(i));
 		hw_stats->pxofftxc[i] +=
 		    IXGBE_READ_REG(hw, IXGBE_PXOFFTXC(i));
-		hw_stats->pxoffrxc[i] +=
-		    IXGBE_READ_REG(hw, IXGBE_PXOFFRXC(i));
-		hw_stats->pxon2offc[i] +=
-		    IXGBE_READ_REG(hw, IXGBE_PXON2OFFCNT(i));
 	}
 	for (i = 0; i < IXGBE_QUEUE_STAT_COUNTERS; i++) {
 		hw_stats->qprc[i] += IXGBE_READ_REG(hw, IXGBE_QPRC(i));
