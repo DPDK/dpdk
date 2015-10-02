@@ -180,7 +180,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	struct rte_hash_list *hash_list;
 	struct rte_ring *r = NULL;
 	char hash_name[RTE_HASH_NAMESIZE];
-	void *ptr, *k = NULL;
+	void *k = NULL;
 	void *buckets = NULL;
 	char ring_name[RTE_RING_NAMESIZE];
 	unsigned i;
@@ -288,13 +288,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 #endif
 
 	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
-	r = rte_ring_lookup(ring_name);
-	if (r != NULL) {
-		/* clear the free ring */
-		while (rte_ring_dequeue(r, &ptr) == 0)
-			rte_pause();
-	} else
-		r = rte_ring_create(ring_name, rte_align32pow2(params->entries + 1),
+	r = rte_ring_create(ring_name, rte_align32pow2(params->entries + 1),
 				params->socket_id, 0);
 	if (r == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
@@ -363,6 +357,7 @@ rte_hash_free(struct rte_hash *h)
 
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
+	rte_ring_free(h->free_slots);
 	rte_free(h->key_store);
 	rte_free(h->buckets);
 	rte_free(h);
