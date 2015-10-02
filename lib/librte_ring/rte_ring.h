@@ -304,6 +304,13 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
  */
 struct rte_ring *rte_ring_create(const char *name, unsigned count,
 				 int socket_id, unsigned flags);
+/**
+ * De-allocate all memory used by the ring.
+ *
+ * @param r
+ *   Ring to free
+ */
+void rte_ring_free(struct rte_ring *r);
 
 /**
  * Change the high water mark.

@@ -4,6 +4,11 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Enabled freeing of ring.**
+
+  New function rte_ring_free() allows the user to free a ring
+  if it was created with rte_ring_create().
+
 * **Extended Statistics**
 
   Define extended statistics naming scheme to store metadata in the name
