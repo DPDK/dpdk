@@ -44,23 +44,10 @@
 #include "pipeline_actions_common.h"
 #include "hash_func.h"
 
-enum flow_key_type {
-	FLOW_KEY_QINQ,
-	FLOW_KEY_IPV4_5TUPLE,
-	FLOW_KEY_IPV6_5TUPLE,
-};
-
 struct pipeline_passthrough {
 	struct pipeline p;
-
-	uint32_t key_type_valid;
-	enum flow_key_type key_type;
-	uint32_t key_offset_rd;
-	uint32_t key_offset_wr;
-	uint32_t hash_offset;
-
+	struct pipeline_passthrough_params params;
 	rte_table_hash_op_hash f_hash;
-	rte_pipeline_port_in_action_handler f_port_in_ah;
 } __rte_cache_aligned;
 
 static pipeline_msg_req_handler handlers[] = {
@@ -80,421 +67,272 @@ static pipeline_msg_req_handler handlers[] = {
 		pipeline_msg_req_invalid_handler,
 };
 
-static inline void
-pkt_work_key_qinq(
+static inline __attribute__((always_inline)) void
+pkt_work(
 	struct rte_mbuf *pkt,
-	void *arg)
+	void *arg,
+	uint32_t dma_size,
+	uint32_t hash_enabled)
 {
-	struct pipeline_passthrough *p_pt = arg;
-	uint32_t key_offset_rd = p_pt->key_offset_rd;
-	uint32_t key_offset_wr = p_pt->key_offset_wr;
-	uint32_t hash_offset = p_pt->hash_offset;
+	struct pipeline_passthrough *p = arg;
 
-	uint64_t *key_rd = RTE_MBUF_METADATA_UINT64_PTR(pkt, key_offset_rd);
-	uint64_t *key_wr = RTE_MBUF_METADATA_UINT64_PTR(pkt, key_offset_wr);
-	uint32_t *hash = RTE_MBUF_METADATA_UINT32_PTR(pkt, hash_offset);
+	uint64_t *dma_dst = RTE_MBUF_METADATA_UINT64_PTR(pkt,
+		p->params.dma_dst_offset);
+	uint64_t *dma_src = RTE_MBUF_METADATA_UINT64_PTR(pkt,
+		p->params.dma_src_offset);
+	uint64_t *dma_mask = (uint64_t *) p->params.dma_src_mask;
+	uint32_t *dma_hash = RTE_MBUF_METADATA_UINT32_PTR(pkt,
+		p->params.dma_hash_offset);
+	uint32_t i;
 
-	/* Read */
-	uint64_t key_qinq = *key_rd & rte_bswap64(0x00000FFF00000FFFLLU);
+	/* Read (dma_src), compute (dma_dst), write (dma_dst) */
+	for (i = 0; i < (dma_size / 8); i++)
+		dma_dst[i] = dma_src[i] & dma_mask[i];
 
-	/* Compute */
-	uint32_t hash_qinq = p_pt->f_hash(&key_qinq, 8, 0);
-
-	/* Write */
-	*key_wr = key_qinq;
-	*hash = hash_qinq;
+	/* Read (dma_dst), compute (hash), write (hash) */
+	if (hash_enabled)
+		*dma_hash = p->f_hash(dma_dst, dma_size, 0);
 }
 
-static inline void
-pkt4_work_key_qinq(
-	struct rte_mbuf **pkt,
-	void *arg)
+static inline __attribute__((always_inline)) void
+pkt4_work(
+	struct rte_mbuf **pkts,
+	void *arg,
+	uint32_t dma_size,
+	uint32_t hash_enabled)
 {
-	struct pipeline_passthrough *p_pt = arg;
-	uint32_t key_offset_rd = p_pt->key_offset_rd;
-	uint32_t key_offset_wr = p_pt->key_offset_wr;
-	uint32_t hash_offset = p_pt->hash_offset;
+	struct pipeline_passthrough *p = arg;
 
-	uint64_t *key_rd0 = RTE_MBUF_METADATA_UINT64_PTR(pkt[0], key_offset_rd);
-	uint64_t *key_wr0 = RTE_MBUF_METADATA_UINT64_PTR(pkt[0], key_offset_wr);
-	uint32_t *hash0 = RTE_MBUF_METADATA_UINT32_PTR(pkt[0], hash_offset);
+	uint64_t *dma_dst0 = RTE_MBUF_METADATA_UINT64_PTR(pkts[0],
+		p->params.dma_dst_offset);
+	uint64_t *dma_dst1 = RTE_MBUF_METADATA_UINT64_PTR(pkts[1],
+		p->params.dma_dst_offset);
+	uint64_t *dma_dst2 = RTE_MBUF_METADATA_UINT64_PTR(pkts[2],
+		p->params.dma_dst_offset);
+	uint64_t *dma_dst3 = RTE_MBUF_METADATA_UINT64_PTR(pkts[3],
+		p->params.dma_dst_offset);
 
-	uint64_t *key_rd1 = RTE_MBUF_METADATA_UINT64_PTR(pkt[1], key_offset_rd);
-	uint64_t *key_wr1 = RTE_MBUF_METADATA_UINT64_PTR(pkt[1], key_offset_wr);
-	uint32_t *hash1 = RTE_MBUF_METADATA_UINT32_PTR(pkt[1], hash_offset);
+	uint64_t *dma_src0 = RTE_MBUF_METADATA_UINT64_PTR(pkts[0],
+		p->params.dma_src_offset);
+	uint64_t *dma_src1 = RTE_MBUF_METADATA_UINT64_PTR(pkts[1],
+		p->params.dma_src_offset);
+	uint64_t *dma_src2 = RTE_MBUF_METADATA_UINT64_PTR(pkts[2],
+		p->params.dma_src_offset);
+	uint64_t *dma_src3 = RTE_MBUF_METADATA_UINT64_PTR(pkts[3],
+		p->params.dma_src_offset);
 
-	uint64_t *key_rd2 = RTE_MBUF_METADATA_UINT64_PTR(pkt[2], key_offset_rd);
-	uint64_t *key_wr2 = RTE_MBUF_METADATA_UINT64_PTR(pkt[2], key_offset_wr);
-	uint32_t *hash2 = RTE_MBUF_METADATA_UINT32_PTR(pkt[2], hash_offset);
+	uint64_t *dma_mask = (uint64_t *) p->params.dma_src_mask;
 
-	uint64_t *key_rd3 = RTE_MBUF_METADATA_UINT64_PTR(pkt[3], key_offset_rd);
-	uint64_t *key_wr3 = RTE_MBUF_METADATA_UINT64_PTR(pkt[3], key_offset_wr);
-	uint32_t *hash3 = RTE_MBUF_METADATA_UINT32_PTR(pkt[3], hash_offset);
+	uint32_t *dma_hash0 = RTE_MBUF_METADATA_UINT32_PTR(pkts[0],
+		p->params.dma_hash_offset);
+	uint32_t *dma_hash1 = RTE_MBUF_METADATA_UINT32_PTR(pkts[1],
+		p->params.dma_hash_offset);
+	uint32_t *dma_hash2 = RTE_MBUF_METADATA_UINT32_PTR(pkts[2],
+		p->params.dma_hash_offset);
+	uint32_t *dma_hash3 = RTE_MBUF_METADATA_UINT32_PTR(pkts[3],
+		p->params.dma_hash_offset);
 
-	/* Read */
-	uint64_t key_qinq0 = *key_rd0 & rte_bswap64(0x00000FFF00000FFFLLU);
-	uint64_t key_qinq1 = *key_rd1 & rte_bswap64(0x00000FFF00000FFFLLU);
-	uint64_t key_qinq2 = *key_rd2 & rte_bswap64(0x00000FFF00000FFFLLU);
-	uint64_t key_qinq3 = *key_rd3 & rte_bswap64(0x00000FFF00000FFFLLU);
+	uint32_t i;
 
-	/* Compute */
-	uint32_t hash_qinq0 = p_pt->f_hash(&key_qinq0, 8, 0);
-	uint32_t hash_qinq1 = p_pt->f_hash(&key_qinq1, 8, 0);
-	uint32_t hash_qinq2 = p_pt->f_hash(&key_qinq2, 8, 0);
-	uint32_t hash_qinq3 = p_pt->f_hash(&key_qinq3, 8, 0);
+	/* Read (dma_src), compute (dma_dst), write (dma_dst) */
+	for (i = 0; i < (dma_size / 8); i++) {
+		dma_dst0[i] = dma_src0[i] & dma_mask[i];
+		dma_dst1[i] = dma_src1[i] & dma_mask[i];
+		dma_dst2[i] = dma_src2[i] & dma_mask[i];
+		dma_dst3[i] = dma_src3[i] & dma_mask[i];
+	}
 
-	/* Write */
-	*key_wr0 = key_qinq0;
-	*key_wr1 = key_qinq1;
-	*key_wr2 = key_qinq2;
-	*key_wr3 = key_qinq3;
-
-	*hash0 = hash_qinq0;
-	*hash1 = hash_qinq1;
-	*hash2 = hash_qinq2;
-	*hash3 = hash_qinq3;
+	/* Read (dma_dst), compute (hash), write (hash) */
+	if (hash_enabled) {
+		*dma_hash0 = p->f_hash(dma_dst0, dma_size, 0);
+		*dma_hash1 = p->f_hash(dma_dst1, dma_size, 0);
+		*dma_hash2 = p->f_hash(dma_dst2, dma_size, 0);
+		*dma_hash3 = p->f_hash(dma_dst3, dma_size, 0);
+	}
 }
 
-PIPELINE_PORT_IN_AH(port_in_ah_key_qinq, pkt_work_key_qinq, pkt4_work_key_qinq);
-
-static inline void
-pkt_work_key_ipv4(
-	struct rte_mbuf *pkt,
-	void *arg)
-{
-	struct pipeline_passthrough *p_pt = arg;
-	uint32_t key_offset_rd = p_pt->key_offset_rd;
-	uint32_t key_offset_wr = p_pt->key_offset_wr;
-	uint32_t hash_offset = p_pt->hash_offset;
-
-	uint64_t *key_rd = RTE_MBUF_METADATA_UINT64_PTR(pkt, key_offset_rd);
-	uint64_t *key_wr = RTE_MBUF_METADATA_UINT64_PTR(pkt, key_offset_wr);
-	uint32_t *hash = RTE_MBUF_METADATA_UINT32_PTR(pkt, hash_offset);
-	uint64_t key_ipv4[2];
-	uint32_t hash_ipv4;
-
-	/* Read */
-	key_ipv4[0] = key_rd[0] & rte_bswap64(0x00FF0000FFFFFFFFLLU);
-	key_ipv4[1] = key_rd[1];
-
-	/* Compute */
-	hash_ipv4 = p_pt->f_hash(key_ipv4, 16, 0);
-
-	/* Write */
-	key_wr[0] = key_ipv4[0];
-	key_wr[1] = key_ipv4[1];
-	*hash = hash_ipv4;
+#define PKT_WORK(dma_size, hash_enabled)			\
+static inline void						\
+pkt_work_size##dma_size##_hash##hash_enabled(			\
+	struct rte_mbuf *pkt,					\
+	void *arg)						\
+{								\
+	pkt_work(pkt, arg, dma_size, hash_enabled);		\
 }
 
-static inline void
-pkt4_work_key_ipv4(
-	struct rte_mbuf **pkt,
-	void *arg)
-{
-	struct pipeline_passthrough *p_pt = arg;
-	uint32_t key_offset_rd = p_pt->key_offset_rd;
-	uint32_t key_offset_wr = p_pt->key_offset_wr;
-	uint32_t hash_offset = p_pt->hash_offset;
-
-	uint64_t *key_rd0 = RTE_MBUF_METADATA_UINT64_PTR(pkt[0], key_offset_rd);
-	uint64_t *key_wr0 = RTE_MBUF_METADATA_UINT64_PTR(pkt[0], key_offset_wr);
-	uint32_t *hash0 = RTE_MBUF_METADATA_UINT32_PTR(pkt[0], hash_offset);
-
-	uint64_t *key_rd1 = RTE_MBUF_METADATA_UINT64_PTR(pkt[1], key_offset_rd);
-	uint64_t *key_wr1 = RTE_MBUF_METADATA_UINT64_PTR(pkt[1], key_offset_wr);
-	uint32_t *hash1 = RTE_MBUF_METADATA_UINT32_PTR(pkt[1], hash_offset);
-
-	uint64_t *key_rd2 = RTE_MBUF_METADATA_UINT64_PTR(pkt[2], key_offset_rd);
-	uint64_t *key_wr2 = RTE_MBUF_METADATA_UINT64_PTR(pkt[2], key_offset_wr);
-	uint32_t *hash2 = RTE_MBUF_METADATA_UINT32_PTR(pkt[2], hash_offset);
-
-	uint64_t *key_rd3 = RTE_MBUF_METADATA_UINT64_PTR(pkt[3], key_offset_rd);
-	uint64_t *key_wr3 = RTE_MBUF_METADATA_UINT64_PTR(pkt[3], key_offset_wr);
-	uint32_t *hash3 = RTE_MBUF_METADATA_UINT32_PTR(pkt[3], hash_offset);
-
-	uint64_t key_ipv4_0[2];
-	uint64_t key_ipv4_1[2];
-	uint64_t key_ipv4_2[2];
-	uint64_t key_ipv4_3[2];
-
-	uint32_t hash_ipv4_0;
-	uint32_t hash_ipv4_1;
-	uint32_t hash_ipv4_2;
-	uint32_t hash_ipv4_3;
-
-	/* Read */
-	key_ipv4_0[0] = key_rd0[0] & rte_bswap64(0x00FF0000FFFFFFFFLLU);
-	key_ipv4_1[0] = key_rd1[0] & rte_bswap64(0x00FF0000FFFFFFFFLLU);
-	key_ipv4_2[0] = key_rd2[0] & rte_bswap64(0x00FF0000FFFFFFFFLLU);
-	key_ipv4_3[0] = key_rd3[0] & rte_bswap64(0x00FF0000FFFFFFFFLLU);
-
-	key_ipv4_0[1] = key_rd0[1];
-	key_ipv4_1[1] = key_rd1[1];
-	key_ipv4_2[1] = key_rd2[1];
-	key_ipv4_3[1] = key_rd3[1];
-
-	/* Compute */
-	hash_ipv4_0 = p_pt->f_hash(key_ipv4_0, 16, 0);
-	hash_ipv4_1 = p_pt->f_hash(key_ipv4_1, 16, 0);
-	hash_ipv4_2 = p_pt->f_hash(key_ipv4_2, 16, 0);
-	hash_ipv4_3 = p_pt->f_hash(key_ipv4_3, 16, 0);
-
-	/* Write */
-	key_wr0[0] = key_ipv4_0[0];
-	key_wr1[0] = key_ipv4_1[0];
-	key_wr2[0] = key_ipv4_2[0];
-	key_wr3[0] = key_ipv4_3[0];
-
-	key_wr0[1] = key_ipv4_0[1];
-	key_wr1[1] = key_ipv4_1[1];
-	key_wr2[1] = key_ipv4_2[1];
-	key_wr3[1] = key_ipv4_3[1];
-
-	*hash0 = hash_ipv4_0;
-	*hash1 = hash_ipv4_1;
-	*hash2 = hash_ipv4_2;
-	*hash3 = hash_ipv4_3;
+#define PKT4_WORK(dma_size, hash_enabled)			\
+static inline void						\
+pkt4_work_size##dma_size##_hash##hash_enabled(			\
+	struct rte_mbuf **pkts,					\
+	void *arg)						\
+{								\
+	pkt4_work(pkts, arg, dma_size, hash_enabled);		\
 }
 
-PIPELINE_PORT_IN_AH(port_in_ah_key_ipv4, pkt_work_key_ipv4, pkt4_work_key_ipv4);
+#define port_in_ah(dma_size, hash_enabled)			\
+PKT_WORK(dma_size, hash_enabled)				\
+PKT4_WORK(dma_size, hash_enabled)				\
+PIPELINE_PORT_IN_AH(port_in_ah_size##dma_size##_hash##hash_enabled,\
+	pkt_work_size##dma_size##_hash##hash_enabled,		\
+	pkt4_work_size##dma_size##_hash##hash_enabled)
 
-static inline void
-pkt_work_key_ipv6(
-	struct rte_mbuf *pkt,
-	void *arg)
+
+port_in_ah(8, 0)
+port_in_ah(8, 1)
+port_in_ah(16, 0)
+port_in_ah(16, 1)
+port_in_ah(24, 0)
+port_in_ah(24, 1)
+port_in_ah(32, 0)
+port_in_ah(32, 1)
+port_in_ah(40, 0)
+port_in_ah(40, 1)
+port_in_ah(48, 0)
+port_in_ah(48, 1)
+port_in_ah(56, 0)
+port_in_ah(56, 1)
+port_in_ah(64, 0)
+port_in_ah(64, 1)
+
+static rte_pipeline_port_in_action_handler
+get_port_in_ah(struct pipeline_passthrough *p)
 {
-	struct pipeline_passthrough *p_pt = arg;
-	uint32_t key_offset_rd = p_pt->key_offset_rd;
-	uint32_t key_offset_wr = p_pt->key_offset_wr;
-	uint32_t hash_offset = p_pt->hash_offset;
+	if (p->params.dma_enabled == 0)
+		return NULL;
 
-	uint64_t *key_rd = RTE_MBUF_METADATA_UINT64_PTR(pkt, key_offset_rd);
-	uint64_t *key_wr = RTE_MBUF_METADATA_UINT64_PTR(pkt, key_offset_wr);
-	uint32_t *hash = RTE_MBUF_METADATA_UINT32_PTR(pkt, hash_offset);
-	uint64_t key_ipv6[8];
-	uint32_t hash_ipv6;
+	if (p->params.dma_hash_enabled)
+		switch (p->params.dma_size) {
 
-	/* Read */
-	key_ipv6[0] = key_rd[0] & rte_bswap64(0x0000FF00FFFFFFFFLLU);
-	key_ipv6[1] = key_rd[1];
-	key_ipv6[2] = key_rd[2];
-	key_ipv6[3] = key_rd[3];
-	key_ipv6[4] = key_rd[4];
-	key_ipv6[5] = 0;
-	key_ipv6[6] = 0;
-	key_ipv6[7] = 0;
+		case 8: return port_in_ah_size8_hash1;
+		case 16: return port_in_ah_size16_hash1;
+		case 24: return port_in_ah_size24_hash1;
+		case 32: return port_in_ah_size32_hash1;
+		case 40: return port_in_ah_size40_hash1;
+		case 48: return port_in_ah_size48_hash1;
+		case 56: return port_in_ah_size56_hash1;
+		case 64: return port_in_ah_size64_hash1;
+		default: return NULL;
+		}
+	else
+		switch (p->params.dma_size) {
 
-	/* Compute */
-	hash_ipv6 = p_pt->f_hash(key_ipv6, 64, 0);
-
-	/* Write */
-	key_wr[0] = key_ipv6[0];
-	key_wr[1] = key_ipv6[1];
-	key_wr[2] = key_ipv6[2];
-	key_wr[3] = key_ipv6[3];
-	key_wr[4] = key_ipv6[4];
-	key_wr[5] = 0;
-	key_wr[6] = 0;
-	key_wr[7] = 0;
-	*hash = hash_ipv6;
+		case 8: return port_in_ah_size8_hash0;
+		case 16: return port_in_ah_size16_hash0;
+		case 24: return port_in_ah_size24_hash0;
+		case 32: return port_in_ah_size32_hash0;
+		case 40: return port_in_ah_size40_hash0;
+		case 48: return port_in_ah_size48_hash0;
+		case 56: return port_in_ah_size56_hash0;
+		case 64: return port_in_ah_size64_hash0;
+		default: return NULL;
+		}
 }
 
-static inline void
-pkt4_work_key_ipv6(
-	struct rte_mbuf **pkt,
-	void *arg)
-{
-	struct pipeline_passthrough *p_pt = arg;
-	uint32_t key_offset_rd = p_pt->key_offset_rd;
-	uint32_t key_offset_wr = p_pt->key_offset_wr;
-	uint32_t hash_offset = p_pt->hash_offset;
-
-	uint64_t *key_rd0 = RTE_MBUF_METADATA_UINT64_PTR(pkt[0], key_offset_rd);
-	uint64_t *key_wr0 = RTE_MBUF_METADATA_UINT64_PTR(pkt[0], key_offset_wr);
-	uint32_t *hash0 = RTE_MBUF_METADATA_UINT32_PTR(pkt[0], hash_offset);
-
-	uint64_t *key_rd1 = RTE_MBUF_METADATA_UINT64_PTR(pkt[1], key_offset_rd);
-	uint64_t *key_wr1 = RTE_MBUF_METADATA_UINT64_PTR(pkt[1], key_offset_wr);
-	uint32_t *hash1 = RTE_MBUF_METADATA_UINT32_PTR(pkt[1], hash_offset);
-
-	uint64_t *key_rd2 = RTE_MBUF_METADATA_UINT64_PTR(pkt[2], key_offset_rd);
-	uint64_t *key_wr2 = RTE_MBUF_METADATA_UINT64_PTR(pkt[2], key_offset_wr);
-	uint32_t *hash2 = RTE_MBUF_METADATA_UINT32_PTR(pkt[2], hash_offset);
-
-	uint64_t *key_rd3 = RTE_MBUF_METADATA_UINT64_PTR(pkt[3], key_offset_rd);
-	uint64_t *key_wr3 = RTE_MBUF_METADATA_UINT64_PTR(pkt[3], key_offset_wr);
-	uint32_t *hash3 = RTE_MBUF_METADATA_UINT32_PTR(pkt[3], hash_offset);
-
-	uint64_t key_ipv6_0[8];
-	uint64_t key_ipv6_1[8];
-	uint64_t key_ipv6_2[8];
-	uint64_t key_ipv6_3[8];
-
-	uint32_t hash_ipv6_0;
-	uint32_t hash_ipv6_1;
-	uint32_t hash_ipv6_2;
-	uint32_t hash_ipv6_3;
-
-	/* Read */
-	key_ipv6_0[0] = key_rd0[0] & rte_bswap64(0x0000FF00FFFFFFFFLLU);
-	key_ipv6_1[0] = key_rd1[0] & rte_bswap64(0x0000FF00FFFFFFFFLLU);
-	key_ipv6_2[0] = key_rd2[0] & rte_bswap64(0x0000FF00FFFFFFFFLLU);
-	key_ipv6_3[0] = key_rd3[0] & rte_bswap64(0x0000FF00FFFFFFFFLLU);
-
-	key_ipv6_0[1] = key_rd0[1];
-	key_ipv6_1[1] = key_rd1[1];
-	key_ipv6_2[1] = key_rd2[1];
-	key_ipv6_3[1] = key_rd3[1];
-
-	key_ipv6_0[2] = key_rd0[2];
-	key_ipv6_1[2] = key_rd1[2];
-	key_ipv6_2[2] = key_rd2[2];
-	key_ipv6_3[2] = key_rd3[2];
-
-	key_ipv6_0[3] = key_rd0[3];
-	key_ipv6_1[3] = key_rd1[3];
-	key_ipv6_2[3] = key_rd2[3];
-	key_ipv6_3[3] = key_rd3[3];
-
-	key_ipv6_0[4] = key_rd0[4];
-	key_ipv6_1[4] = key_rd1[4];
-	key_ipv6_2[4] = key_rd2[4];
-	key_ipv6_3[4] = key_rd3[4];
-
-	key_ipv6_0[5] = 0;
-	key_ipv6_1[5] = 0;
-	key_ipv6_2[5] = 0;
-	key_ipv6_3[5] = 0;
-
-	key_ipv6_0[6] = 0;
-	key_ipv6_1[6] = 0;
-	key_ipv6_2[6] = 0;
-	key_ipv6_3[6] = 0;
-
-	key_ipv6_0[7] = 0;
-	key_ipv6_1[7] = 0;
-	key_ipv6_2[7] = 0;
-	key_ipv6_3[7] = 0;
-
-	/* Compute */
-	hash_ipv6_0 = p_pt->f_hash(key_ipv6_0, 64, 0);
-	hash_ipv6_1 = p_pt->f_hash(key_ipv6_1, 64, 0);
-	hash_ipv6_2 = p_pt->f_hash(key_ipv6_2, 64, 0);
-	hash_ipv6_3 = p_pt->f_hash(key_ipv6_3, 64, 0);
-
-	/* Write */
-	key_wr0[0] = key_ipv6_0[0];
-	key_wr1[0] = key_ipv6_1[0];
-	key_wr2[0] = key_ipv6_2[0];
-	key_wr3[0] = key_ipv6_3[0];
-
-	key_wr0[1] = key_ipv6_0[1];
-	key_wr1[1] = key_ipv6_1[1];
-	key_wr2[1] = key_ipv6_2[1];
-	key_wr3[1] = key_ipv6_3[1];
-
-	key_wr0[2] = key_ipv6_0[2];
-	key_wr1[2] = key_ipv6_1[2];
-	key_wr2[2] = key_ipv6_2[2];
-	key_wr3[2] = key_ipv6_3[2];
-
-	key_wr0[3] = key_ipv6_0[3];
-	key_wr1[3] = key_ipv6_1[3];
-	key_wr2[3] = key_ipv6_2[3];
-	key_wr3[3] = key_ipv6_3[3];
-
-	key_wr0[4] = key_ipv6_0[4];
-	key_wr1[4] = key_ipv6_1[4];
-	key_wr2[4] = key_ipv6_2[4];
-	key_wr3[4] = key_ipv6_3[4];
-
-	key_wr0[5] = 0;
-	key_wr0[5] = 0;
-	key_wr0[5] = 0;
-	key_wr0[5] = 0;
-
-	key_wr0[6] = 0;
-	key_wr0[6] = 0;
-	key_wr0[6] = 0;
-	key_wr0[6] = 0;
-
-	key_wr0[7] = 0;
-	key_wr0[7] = 0;
-	key_wr0[7] = 0;
-	key_wr0[7] = 0;
-
-	*hash0 = hash_ipv6_0;
-	*hash1 = hash_ipv6_1;
-	*hash2 = hash_ipv6_2;
-	*hash3 = hash_ipv6_3;
-}
-
-PIPELINE_PORT_IN_AH(port_in_ah_key_ipv6, pkt_work_key_ipv6, pkt4_work_key_ipv6);
-
-static int
-pipeline_passthrough_parse_args(struct pipeline_passthrough *p,
+int
+pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 	struct pipeline_params *params)
 {
-	uint32_t key_type_present = 0;
-	uint32_t key_offset_rd_present = 0;
-	uint32_t key_offset_wr_present = 0;
-	uint32_t hash_offset_present = 0;
+	uint32_t dma_dst_offset_present = 0;
+	uint32_t dma_src_offset_present = 0;
+	uint32_t dma_src_mask_present = 0;
+	uint32_t dma_size_present = 0;
+	uint32_t dma_hash_offset_present = 0;
 	uint32_t i;
+
+	/* default values */
+	p->dma_enabled = 0;
+	p->dma_hash_enabled = 0;
+	memset(p->dma_src_mask, 0xFF, sizeof(p->dma_src_mask));
 
 	for (i = 0; i < params->n_args; i++) {
 		char *arg_name = params->args_name[i];
 		char *arg_value = params->args_value[i];
 
-		/* key_type */
-		if (strcmp(arg_name, "key_type") == 0) {
-			if (key_type_present)
+		/* dma_dst_offset */
+		if (strcmp(arg_name, "dma_dst_offset") == 0) {
+			if (dma_dst_offset_present)
 				return -1;
-			key_type_present = 1;
+			dma_dst_offset_present = 1;
 
-			if ((strcmp(arg_value, "q-in-q") == 0) ||
-				(strcmp(arg_value, "qinq") == 0))
-				p->key_type = FLOW_KEY_QINQ;
-			else if (strcmp(arg_value, "ipv4_5tuple") == 0)
-				p->key_type = FLOW_KEY_IPV4_5TUPLE;
-			else if (strcmp(arg_value, "ipv6_5tuple") == 0)
-				p->key_type = FLOW_KEY_IPV6_5TUPLE;
-			else
-				return -1;
-
-			p->key_type_valid = 1;
+			p->dma_dst_offset = atoi(arg_value);
+			p->dma_enabled = 1;
 
 			continue;
 		}
 
-		/* key_offset_rd */
-		if (strcmp(arg_name, "key_offset_rd") == 0) {
-			if (key_offset_rd_present)
+		/* dma_src_offset */
+		if (strcmp(arg_name, "dma_src_offset") == 0) {
+			if (dma_src_offset_present)
 				return -1;
-			key_offset_rd_present = 1;
+			dma_src_offset_present = 1;
 
-			p->key_offset_rd = atoi(arg_value);
+			p->dma_src_offset = atoi(arg_value);
+			p->dma_enabled = 1;
 
 			continue;
 		}
 
-		/* key_offset_wr */
-		if (strcmp(arg_name, "key_offset_wr") == 0) {
-			if (key_offset_wr_present)
+		/* dma_size */
+		if (strcmp(arg_name, "dma_size") == 0) {
+			if (dma_size_present)
 				return -1;
-			key_offset_wr_present = 1;
+			dma_size_present = 1;
 
-			p->key_offset_wr = atoi(arg_value);
+			p->dma_size = atoi(arg_value);
+			if ((p->dma_size == 0) ||
+				(p->dma_size > PIPELINE_PASSTHROUGH_DMA_SIZE_MAX) ||
+				((p->dma_size % 8) != 0))
+				return -1;
+
+			p->dma_enabled = 1;
 
 			continue;
 		}
 
-		/* hash_offset */
-		if (strcmp(arg_name, "hash_offset") == 0) {
-			if (hash_offset_present)
-				return -1;
-			hash_offset_present = 1;
+		/* dma_src_mask */
+		if (strcmp(arg_name, "dma_src_mask") == 0) {
+			uint32_t dma_size;
+			int status;
 
-			p->hash_offset = atoi(arg_value);
+			if (dma_src_mask_present ||
+				(dma_size_present == 0))
+				return -1;
+			dma_src_mask_present = 1;
+
+			dma_size = p->dma_size;
+			status = parse_hex_string(arg_value,
+				p->dma_src_mask,
+				&dma_size);
+			if (status ||
+				(dma_size != p->dma_size))
+				return -1;
+
+			p->dma_enabled = 1;
+
+			continue;
+		}
+
+		/* dma_dst_offset */
+		if (strcmp(arg_name, "dma_dst_offset") == 0) {
+			if (dma_dst_offset_present)
+				return -1;
+			dma_dst_offset_present = 1;
+
+			p->dma_dst_offset = atoi(arg_value);
+			p->dma_enabled = 1;
+
+			continue;
+		}
+
+		/* dma_hash_offset */
+		if (strcmp(arg_name, "dma_hash_offset") == 0) {
+			if (dma_hash_offset_present)
+				return -1;
+			dma_hash_offset_present = 1;
+
+			p->dma_hash_offset = atoi(arg_value);
+			p->dma_hash_enabled = 1;
+			p->dma_enabled = 1;
 
 			continue;
 		}
@@ -503,13 +341,33 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough *p,
 		return -1;
 	}
 
-	/* Check that mandatory arguments are present */
-	if ((key_offset_rd_present != key_type_present) ||
-		(key_offset_wr_present != key_type_present) ||
-		(hash_offset_present != key_type_present))
+	/* Check correlations between arguments */
+	if ((dma_dst_offset_present != p->dma_enabled) ||
+		(dma_src_offset_present != p->dma_enabled) ||
+		(dma_size_present != p->dma_enabled) ||
+		(dma_hash_offset_present != p->dma_hash_enabled) ||
+		(p->dma_hash_enabled > p->dma_enabled))
 		return -1;
 
 	return 0;
+}
+
+
+static rte_table_hash_op_hash
+get_hash_function(struct pipeline_passthrough *p)
+{
+	switch (p->params.dma_size) {
+
+	case 8: return hash_default_key8;
+	case 16: return hash_default_key16;
+	case 24: return hash_default_key24;
+	case 32: return hash_default_key32;
+	case 40: return hash_default_key40;
+	case 48: return hash_default_key48;
+	case 56: return hash_default_key56;
+	case 64: return hash_default_key64;
+	default: return NULL;
+	}
 }
 
 static void*
@@ -541,33 +399,9 @@ pipeline_passthrough_init(struct pipeline_params *params,
 	PLOG(p, HIGH, "Pass-through");
 
 	/* Parse arguments */
-	if (pipeline_passthrough_parse_args(p_pt, params))
+	if (pipeline_passthrough_parse_args(&p_pt->params, params))
 		return NULL;
-
-	if (p_pt->key_type_valid == 0) {
-		p_pt->f_hash = NULL;
-		p_pt->f_port_in_ah = NULL;
-	} else
-		switch (p_pt->key_type) {
-		case FLOW_KEY_QINQ:
-			p_pt->f_hash = hash_default_key8;
-			p_pt->f_port_in_ah = port_in_ah_key_qinq;
-			break;
-
-		case FLOW_KEY_IPV4_5TUPLE:
-			p_pt->f_hash = hash_default_key16;
-			p_pt->f_port_in_ah = port_in_ah_key_ipv4;
-			break;
-
-		case FLOW_KEY_IPV6_5TUPLE:
-			p_pt->f_hash = hash_default_key64;
-			p_pt->f_port_in_ah = port_in_ah_key_ipv6;
-			break;
-
-		default:
-			p_pt->f_hash = NULL;
-			p_pt->f_port_in_ah = NULL;
-		}
+	p_pt->f_hash = get_hash_function(p_pt);
 
 	/* Pipeline */
 	{
@@ -592,7 +426,7 @@ pipeline_passthrough_init(struct pipeline_params *params,
 				&params->port_in[i]),
 			.arg_create = pipeline_port_in_params_convert(
 				&params->port_in[i]),
-			.f_action = p_pt->f_port_in_ah,
+			.f_action = get_port_in_ah(p_pt),
 			.arg_ah = p_pt,
 			.burst_size = params->port_in[i].burst_size,
 		};
