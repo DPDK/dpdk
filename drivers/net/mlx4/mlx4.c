@@ -2735,6 +2735,7 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		PORT(pkt_buf) = rxq->port_id;
 		PKT_LEN(pkt_buf) = pkt_buf_len;
 		pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
+		pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
