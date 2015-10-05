@@ -3819,6 +3819,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int max;
+	char ifname[IF_NAMESIZE];
 
 	priv_lock(priv);
 	/* FIXME: we should ask the device for these values. */
@@ -3848,6 +3849,8 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		  DEV_TX_OFFLOAD_UDP_CKSUM |
 		  DEV_TX_OFFLOAD_TCP_CKSUM) :
 		 0);
+	if (priv_get_ifname(priv, &ifname) == 0)
+		info->if_index = if_nametoindex(ifname);
 	priv_unlock(priv);
 }
 
