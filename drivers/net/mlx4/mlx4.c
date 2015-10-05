@@ -3836,7 +3836,8 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		max = 65535;
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
-	info->max_mac_addrs = elemof(priv->mac);
+	/* Last array entry is reserved for broadcast. */
+	info->max_mac_addrs = (elemof(priv->mac) - 1);
 	info->rx_offload_capa =
 		(priv->hw_csum ?
 		 (DEV_RX_OFFLOAD_IPV4_CKSUM |
@@ -3969,11 +3970,8 @@ mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	priv_lock(priv);
 	DEBUG("%p: removing MAC address from index %" PRIu32,
 	      (void *)dev, index);
-	if (index >= MLX4_MAX_MAC_ADDRESSES)
-		goto end;
-	/* Refuse to remove the broadcast address, this one is special. */
-	if (!memcmp(priv->mac[index].addr_bytes, "\xff\xff\xff\xff\xff\xff",
-		    ETHER_ADDR_LEN))
+	/* Last array entry is reserved for broadcast. */
+	if (index >= (elemof(priv->mac) - 1))
 		goto end;
 	priv_mac_addr_del(priv, index);
 end:
@@ -4002,11 +4000,8 @@ mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	priv_lock(priv);
 	DEBUG("%p: adding MAC address at index %" PRIu32,
 	      (void *)dev, index);
-	if (index >= MLX4_MAX_MAC_ADDRESSES)
-		goto end;
-	/* Refuse to add the broadcast address, this one is special. */
-	if (!memcmp(mac_addr->addr_bytes, "\xff\xff\xff\xff\xff\xff",
-		    ETHER_ADDR_LEN))
+	/* Last array entry is reserved for broadcast. */
+	if (index >= (elemof(priv->mac) - 1))
 		goto end;
 	priv_mac_addr_add(priv, index,
 			  (const uint8_t (*)[ETHER_ADDR_LEN])
@@ -4943,7 +4938,7 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		claim_zero(priv_mac_addr_add(priv, 0,
 					     (const uint8_t (*)[ETHER_ADDR_LEN])
 					     mac.addr_bytes));
-		claim_zero(priv_mac_addr_add(priv, 1,
+		claim_zero(priv_mac_addr_add(priv, (elemof(priv->mac) - 1),
 					     &(const uint8_t [ETHER_ADDR_LEN])
 					     { "\xff\xff\xff\xff\xff\xff" }));
 #ifndef NDEBUG
