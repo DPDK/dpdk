@@ -225,6 +225,34 @@ static int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	struct rte_eth_dev_info dev_info;
+	int err;
+	uint16_t new_mtu = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	cxgbe_dev_info_get(eth_dev, &dev_info);
+
+	/* Must accommodate at least ETHER_MIN_MTU */
+	if ((new_mtu < ETHER_MIN_MTU) || (new_mtu > dev_info.max_rx_pktlen))
+		return -EINVAL;
+
+	/* set to jumbo mode if needed */
+	if (new_mtu > ETHER_MAX_LEN)
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+	else
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+
+	err = t4_set_rxmode(adapter, adapter->mbox, pi->viid, new_mtu, -1, -1,
+			    -1, -1, true);
+	if (!err)
+		eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = new_mtu;
+
+	return err;
+}
+
 static int cxgbe_dev_tx_queue_start(struct rte_eth_dev *eth_dev,
 				    uint16_t tx_queue_id);
 static int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev,
@@ -724,6 +752,7 @@ static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_configure		= cxgbe_dev_configure,
 	.dev_infos_get		= cxgbe_dev_info_get,
 	.link_update		= cxgbe_dev_link_update,
+	.mtu_set		= cxgbe_dev_mtu_set,
 	.tx_queue_setup         = cxgbe_dev_tx_queue_setup,
 	.tx_queue_start		= cxgbe_dev_tx_queue_start,
 	.tx_queue_stop		= cxgbe_dev_tx_queue_stop,
