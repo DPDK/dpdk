@@ -141,8 +141,8 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct adapter *adapter = pi->adapter;
 	int max_queues = adapter->sge.max_ethqsets / adapter->params.nports;
 
-	device_info->min_rx_bufsize = 68; /* XXX: Smallest pkt size */
-	device_info->max_rx_pktlen = 1500; /* XXX: For now we support mtu */
+	device_info->min_rx_bufsize = CXGBE_MIN_RX_BUFSIZE;
+	device_info->max_rx_pktlen = CXGBE_MAX_RX_PKTLEN;
 	device_info->max_rx_queues = max_queues;
 	device_info->max_tx_queues = max_queues;
 	device_info->max_mac_addrs = 1;
@@ -498,12 +498,25 @@ static int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	int err = 0;
 	int msi_idx = 0;
 	unsigned int temp_nb_desc;
+	struct rte_eth_dev_info dev_info;
+	unsigned int pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 
 	RTE_SET_USED(rx_conf);
 
 	dev_debug(adapter, "%s: eth_dev->data->nb_rx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; mp = %p\n",
 		  __func__, eth_dev->data->nb_rx_queues, queue_idx, nb_desc,
 		  socket_id, mp);
+
+	cxgbe_dev_info_get(eth_dev, &dev_info);
+
+	/* Must accommodate at least ETHER_MIN_MTU */
+	if ((pkt_len < dev_info.min_rx_bufsize) ||
+	    (pkt_len > dev_info.max_rx_pktlen)) {
+		dev_err(adap, "%s: max pkt len must be > %d and <= %d\n",
+			__func__, dev_info.min_rx_bufsize,
+			dev_info.max_rx_pktlen);
+		return -EINVAL;
+	}
 
 	/*  Free up the existing queue  */
 	if (eth_dev->data->rx_queues[queue_idx]) {
@@ -533,6 +546,12 @@ static int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	rxq->rspq.size = temp_nb_desc;
 	if ((&rxq->fl) != NULL)
 		rxq->fl.size = temp_nb_desc;
+
+	/* Set to jumbo mode if necessary */
+	if (pkt_len > ETHER_MAX_LEN)
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+	else
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
 
 	err = t4_sge_alloc_rxq(adapter, &rxq->rspq, false, eth_dev, msi_idx,
 			       &rxq->fl, t4_ethrx_handler,

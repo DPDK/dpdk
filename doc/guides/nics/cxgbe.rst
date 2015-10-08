@@ -50,6 +50,7 @@ CXGBE PMD has support for:
 - Promiscuous mode
 - All multicast mode
 - Port hardware statistics
+- Jumbo frames
 
 Limitations
 -----------
@@ -562,3 +563,27 @@ To disable again, run:
 
    testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 0
    testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 1
+
+Jumbo Mode
+~~~~~~~~~~
+
+There are two ways to enable sending and receiving of jumbo frames via testpmd.
+One method involves using the **mtu** command, which changes the mtu of an
+individual port without having to stop the selected port. Another method
+involves stopping all the ports first and then running **max-pkt-len** command
+to configure the mtu of all the ports with a single command.
+
+- To configure each port individually, run the mtu command as follows:
+
+  .. code-block:: console
+
+     testpmd> port config mtu 0 9000
+     testpmd> port config mtu 1 9000
+
+- To configure all the ports at once, stop all the ports first and run the
+  max-pkt-len command as follows:
+
+  .. code-block:: console
+
+     testpmd> port stop all
+     testpmd> port config all max-pkt-len 9000

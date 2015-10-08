@@ -855,12 +855,13 @@ int link_start(struct port_info *pi)
 {
 	struct adapter *adapter = pi->adapter;
 	int ret;
+	unsigned int mtu = pi->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 
 	/*
 	 * We do not set address filters and promiscuity here, the stack does
 	 * that step explicitly.
 	 */
-	ret = t4_set_rxmode(adapter, adapter->mbox, pi->viid, 1500, -1, -1,
+	ret = t4_set_rxmode(adapter, adapter->mbox, pi->viid, mtu, -1, -1,
 			    -1, 1, true);
 	if (ret == 0) {
 		ret = t4_change_mac(adapter, adapter->mbox, pi->viid,

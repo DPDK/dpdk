@@ -6,6 +6,7 @@ New Features
 
 * **Enhanced support for the Chelsio CXGBE driver.**
 
+  *  Added support for Jumbo Frames.
   *  Optimize forwarding performance for Chelsio T5 40GbE cards.
 
 
