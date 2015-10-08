@@ -211,8 +211,8 @@ Unified Wire package for Linux operating system are as follows:
 
       firmware-version: 1.13.32.0, TP 0.1.4.8
 
-Sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~
+Running testpmd
+~~~~~~~~~~~~~~~
 
 This section demonstrates how to launch **testpmd** with Chelsio T5
 devices managed by librte_pmd_cxgbe in Linux operating system.
@@ -259,6 +259,13 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
    .. code-block:: console
 
       echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages/nr_hugepages
+
+#. Mount huge pages:
+
+   .. code-block:: console
+
+      mkdir /mnt/huge
+      mount -t hugetlbfs nodev /mnt/huge
 
 #. Load igb_uio or vfio-pci driver:
 
@@ -329,19 +336,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
 .. note::
 
    Flow control pause TX/RX is disabled by default and can be enabled via
-   testpmd as follows:
-
-   .. code-block:: console
-
-      testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 0
-      testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 1
-
-   To disable again, use:
-
-   .. code-block:: console
-
-      testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 0
-      testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 1
+   testpmd. Refer section :ref:`flow-control` for more details.
 
 FreeBSD
 -------
@@ -409,8 +404,8 @@ Unified Wire package for FreeBSD operating system are as follows:
 
       dev.t5nex.0.firmware_version: 1.13.32.0
 
-Sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~
+Running testpmd
+~~~~~~~~~~~~~~~
 
 This section demonstrates how to launch **testpmd** with Chelsio T5
 devices managed by librte_pmd_cxgbe in FreeBSD operating system.
@@ -543,16 +538,27 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 .. note::
 
    Flow control pause TX/RX is disabled by default and can be enabled via
-   testpmd as follows:
+   testpmd. Refer section :ref:`flow-control` for more details.
 
-   .. code-block:: console
+Sample Application Notes
+------------------------
 
-      testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 0
-      testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 1
+.. _flow-control:
 
-   To disable again, use:
+Enable/Disable Flow Control
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   .. code-block:: console
+Flow control pause TX/RX is disabled by default and can be enabled via
+testpmd as follows:
 
-      testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 0
-      testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 1
+.. code-block:: console
+
+   testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 0
+   testpmd> set flow_ctrl rx on tx on 0 0 0 0 mac_ctrl_frame_fwd off autoneg on 1
+
+To disable again, run:
+
+.. code-block:: console
+
+   testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 0
+   testpmd> set flow_ctrl rx off tx off 0 0 0 0 mac_ctrl_frame_fwd off autoneg off 1
