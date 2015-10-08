@@ -247,6 +247,29 @@ static inline bool fl_starving(const struct adapter *adapter,
 	return fl->avail - fl->pend_cred <= s->fl_starve_thres;
 }
 
+static inline unsigned int get_buf_size(struct adapter *adapter,
+					const struct rx_sw_desc *d)
+{
+	unsigned int rx_buf_size_idx = d->dma_addr & RX_BUF_SIZE;
+	unsigned int buf_size = 0;
+
+	switch (rx_buf_size_idx) {
+	case RX_SMALL_MTU_BUF:
+		buf_size = FL_MTU_SMALL_BUFSIZE(adapter);
+		break;
+
+	case RX_LARGE_MTU_BUF:
+		buf_size = FL_MTU_LARGE_BUFSIZE(adapter);
+		break;
+
+	default:
+		BUG_ON(1);
+		/* NOT REACHED */
+	}
+
+	return buf_size;
+}
+
 /**
  * free_rx_bufs - free the Rx buffers on an SGE free list
  * @q: the SGE free list to free buffers from
@@ -362,6 +385,14 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 	unsigned int buf_size_idx = RX_SMALL_MTU_BUF;
 	struct rte_mbuf *buf_bulk[n];
 	int ret, i;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	u8 jumbo_en = rxq->rspq.eth_dev->data->dev_conf.rxmode.jumbo_frame;
+
+	/* Use jumbo mtu buffers iff mbuf data room size can fit jumbo data. */
+	mbp_priv = rte_mempool_get_priv(rxq->rspq.mb_pool);
+	if (jumbo_en &&
+	    ((mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM) >= 9000))
+		buf_size_idx = RX_LARGE_MTU_BUF;
 
 	ret = rte_mempool_get_bulk(rxq->rspq.mb_pool, (void *)buf_bulk, n);
 	if (unlikely(ret != 0)) {
@@ -1432,14 +1463,31 @@ static int process_responses(struct sge_rspq *q, int budget,
 			const struct cpl_rx_pkt *cpl =
 						(const void *)&q->cur_desc[1];
 			bool csum_ok = cpl->csum_calc && !cpl->err_vec;
-			struct rte_mbuf *pkt;
-			u32 len = ntohl(rc->pldbuflen_qid);
+			struct rte_mbuf *pkt, *npkt;
+			u32 len, bufsz;
 
+			len = ntohl(rc->pldbuflen_qid);
 			BUG_ON(!(len & F_RSPD_NEWBUF));
 			pkt = rsd->buf;
-			pkt->data_len = G_RSPD_LEN(len);
-			pkt->pkt_len = pkt->data_len;
-			unmap_rx_buf(&rxq->fl);
+			npkt = pkt;
+			len = G_RSPD_LEN(len);
+			pkt->pkt_len = len;
+
+			/* Chain mbufs into len if necessary */
+			while (len) {
+				struct rte_mbuf *new_pkt = rsd->buf;
+
+				bufsz = min(get_buf_size(q->adapter, rsd), len);
+				new_pkt->data_len = bufsz;
+				unmap_rx_buf(&rxq->fl);
+				len -= bufsz;
+				npkt->next = new_pkt;
+				npkt = new_pkt;
+				pkt->nb_segs++;
+				rsd = &rxq->fl.sdesc[rxq->fl.cidx];
+			}
+			npkt->next = NULL;
+			pkt->nb_segs--;
 
 			if (cpl->l2info & htonl(F_RXF_IP)) {
 				pkt->packet_type = RTE_PTYPE_L3_IPV4;
