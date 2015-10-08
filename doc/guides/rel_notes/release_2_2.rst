@@ -4,6 +4,10 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Enhanced support for the Chelsio CXGBE driver.**
+
+  *  Optimize forwarding performance for Chelsio T5 40GbE cards.
+
 
 Resolved Issues
 ---------------

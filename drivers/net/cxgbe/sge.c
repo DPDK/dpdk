@@ -286,8 +286,7 @@ static void unmap_rx_buf(struct sge_fl *q)
 
 static inline void ring_fl_db(struct adapter *adap, struct sge_fl *q)
 {
-	/* see if we have exceeded q->size / 4 */
-	if (q->pend_cred >= (q->size / 4)) {
+	if (q->pend_cred >= 64) {
 		u32 val = adap->params.arch.sge_fl_db;
 
 		if (is_t4(adap->params.chip))
@@ -1054,7 +1053,6 @@ out_free:
 		return 0;
 	}
 
-	rte_prefetch0(&((&txq->q)->sdesc->mbuf->pool));
 	pi = (struct port_info *)txq->eth_dev->data->dev_private;
 	adap = pi->adapter;
 
@@ -1070,6 +1068,7 @@ out_free:
 				txq->stats.mapping_err++;
 				goto out_free;
 			}
+			rte_prefetch0((volatile void *)addr);
 			return tx_do_packet_coalesce(txq, mbuf, cflits, adap,
 						     pi, addr);
 		} else {
@@ -1454,7 +1453,8 @@ static int process_responses(struct sge_rspq *q, int budget,
 			unsigned int params;
 			u32 val;
 
-			__refill_fl(q->adapter, &rxq->fl);
+			if (fl_cap(&rxq->fl) - rxq->fl.avail >= 64)
+				__refill_fl(q->adapter, &rxq->fl);
 			params = V_QINTR_TIMER_IDX(X_TIMERREG_UPDATE_CIDX);
 			q->next_intr_params = params;
 			val = V_CIDXINC(cidx_inc) | V_SEINTARM(params);
