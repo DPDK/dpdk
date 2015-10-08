@@ -199,11 +199,20 @@ static void free_tx_desc(struct sge_txq *q, unsigned int n)
 
 static void reclaim_tx_desc(struct sge_txq *q, unsigned int n)
 {
+	struct tx_sw_desc *d;
 	unsigned int cidx = q->cidx;
 
+	d = &q->sdesc[cidx];
 	while (n--) {
-		if (++cidx == q->size)
+		if (d->mbuf) {                       /* an SGL is present */
+			rte_pktmbuf_free(d->mbuf);
+			d->mbuf = NULL;
+		}
+		++d;
+		if (++cidx == q->size) {
 			cidx = 0;
+			d = q->sdesc;
+		}
 	}
 	q->cidx = cidx;
 }
@@ -1038,6 +1047,7 @@ int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf)
 	u32 wr_mid;
 	u64 cntrl, *end;
 	bool v6;
+	u32 max_pkt_len = txq->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 
 	/* Reject xmit if queue is stopped */
 	if (unlikely(txq->flags & EQ_STOPPED))
@@ -1053,6 +1063,10 @@ out_free:
 		return 0;
 	}
 
+	if ((!(m->ol_flags & PKT_TX_TCP_SEG)) &&
+	    (unlikely(m->pkt_len > max_pkt_len)))
+		goto out_free;
+
 	pi = (struct port_info *)txq->eth_dev->data->dev_private;
 	adap = pi->adapter;
 
@@ -1060,7 +1074,7 @@ out_free:
 	/* align the end of coalesce WR to a 512 byte boundary */
 	txq->q.coalesce.max = (8 - (txq->q.pidx & 7)) * 8;
 
-	if (!(m->ol_flags & PKT_TX_TCP_SEG)) {
+	if (!((m->ol_flags & PKT_TX_TCP_SEG) || (m->pkt_len > ETHER_MAX_LEN))) {
 		if (should_tx_packet_coalesce(txq, mbuf, &cflits, adap)) {
 			if (unlikely(map_mbuf(mbuf, addr) < 0)) {
 				dev_warn(adap, "%s: mapping err for coalesce\n",
@@ -1107,33 +1121,46 @@ out_free:
 
 	len = 0;
 	len += sizeof(*cpl);
-	lso = (void *)(wr + 1);
-	v6 = (m->ol_flags & PKT_TX_IPV6) != 0;
-	l3hdr_len = m->l3_len;
-	l4hdr_len = m->l4_len;
-	eth_xtra_len = m->l2_len - ETHER_HDR_LEN;
-	len += sizeof(*lso);
-	wr->op_immdlen = htonl(V_FW_WR_OP(FW_ETH_TX_PKT_WR) |
-			       V_FW_WR_IMMDLEN(len));
-	lso->lso_ctrl = htonl(V_LSO_OPCODE(CPL_TX_PKT_LSO) |
-			      F_LSO_FIRST_SLICE | F_LSO_LAST_SLICE |
-			      V_LSO_IPV6(v6) |
-			      V_LSO_ETHHDR_LEN(eth_xtra_len / 4) |
-			      V_LSO_IPHDR_LEN(l3hdr_len / 4) |
-			      V_LSO_TCPHDR_LEN(l4hdr_len / 4));
-	lso->ipid_ofst = htons(0);
-	lso->mss = htons(m->tso_segsz);
-	lso->seqno_offset = htonl(0);
-	if (is_t4(adap->params.chip))
-		lso->len = htonl(m->pkt_len);
-	else
-		lso->len = htonl(V_LSO_T5_XFER_SIZE(m->pkt_len));
-	cpl = (void *)(lso + 1);
-	cntrl = V_TXPKT_CSUM_TYPE(v6 ? TX_CSUM_TCPIP6 : TX_CSUM_TCPIP) |
-				  V_TXPKT_IPHDR_LEN(l3hdr_len) |
-				  V_TXPKT_ETHHDR_LEN(eth_xtra_len);
-	txq->stats.tso++;
-	txq->stats.tx_cso += m->tso_segsz;
+
+	/* Coalescing skipped and we send through normal path */
+	if (!(m->ol_flags & PKT_TX_TCP_SEG)) {
+		wr->op_immdlen = htonl(V_FW_WR_OP(FW_ETH_TX_PKT_WR) |
+				       V_FW_WR_IMMDLEN(len));
+		cpl = (void *)(wr + 1);
+		if (m->ol_flags & PKT_TX_IP_CKSUM) {
+			cntrl = hwcsum(adap->params.chip, m) |
+				F_TXPKT_IPCSUM_DIS;
+			txq->stats.tx_cso++;
+		}
+	} else {
+		lso = (void *)(wr + 1);
+		v6 = (m->ol_flags & PKT_TX_IPV6) != 0;
+		l3hdr_len = m->l3_len;
+		l4hdr_len = m->l4_len;
+		eth_xtra_len = m->l2_len - ETHER_HDR_LEN;
+		len += sizeof(*lso);
+		wr->op_immdlen = htonl(V_FW_WR_OP(FW_ETH_TX_PKT_WR) |
+				       V_FW_WR_IMMDLEN(len));
+		lso->lso_ctrl = htonl(V_LSO_OPCODE(CPL_TX_PKT_LSO) |
+				      F_LSO_FIRST_SLICE | F_LSO_LAST_SLICE |
+				      V_LSO_IPV6(v6) |
+				      V_LSO_ETHHDR_LEN(eth_xtra_len / 4) |
+				      V_LSO_IPHDR_LEN(l3hdr_len / 4) |
+				      V_LSO_TCPHDR_LEN(l4hdr_len / 4));
+		lso->ipid_ofst = htons(0);
+		lso->mss = htons(m->tso_segsz);
+		lso->seqno_offset = htonl(0);
+		if (is_t4(adap->params.chip))
+			lso->len = htonl(m->pkt_len);
+		else
+			lso->len = htonl(V_LSO_T5_XFER_SIZE(m->pkt_len));
+		cpl = (void *)(lso + 1);
+		cntrl = V_TXPKT_CSUM_TYPE(v6 ? TX_CSUM_TCPIP6 : TX_CSUM_TCPIP) |
+			V_TXPKT_IPHDR_LEN(l3hdr_len) |
+			V_TXPKT_ETHHDR_LEN(eth_xtra_len);
+		txq->stats.tso++;
+		txq->stats.tx_cso += m->tso_segsz;
+	}
 
 	if (m->ol_flags & PKT_TX_VLAN_PKT) {
 		txq->stats.vlan_ins++;
@@ -1154,9 +1181,14 @@ out_free:
 		last_desc -= txq->q.size;
 
 	d = &txq->q.sdesc[last_desc];
-	if (d->mbuf) {
-		rte_pktmbuf_free(d->mbuf);
-		d->mbuf = NULL;
+	if (d->coalesce.idx) {
+		int i;
+
+		for (i = 0; i < d->coalesce.idx; i++) {
+			rte_pktmbuf_free(d->coalesce.mbuf[i]);
+			d->coalesce.mbuf[i] = NULL;
+		}
+		d->coalesce.idx = 0;
 	}
 	write_sgl(m, &txq->q, (struct ulptx_sgl *)(cpl + 1), end, 0,
 		  addr);
