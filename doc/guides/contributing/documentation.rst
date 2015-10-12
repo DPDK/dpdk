@@ -477,7 +477,7 @@ Images
 * The DPDK documentation contains some legacy images in PNG format.
   These will be converted to SVG in time.
 
-* `Inkscape <inkscape.org>`_ is the recommended graphics editor for creating the images.
+* `Inkscape <http://inkscape.org>`_ is the recommended graphics editor for creating the images.
   Use some of the older images in ``doc/guides/prog_guide/img/`` as a template, for example ``mbuf1.svg``
   or ``ring-enqueue.svg``.
 
