@@ -18,6 +18,8 @@ New Features
   * Add 2 new flow director modes on x550.
   * One is MAC VLAN mode, the other is tunnel mode.
 
+* **Added fm10k TSO support for both PF and VF.**
+
 * **Enhanced support for the Chelsio CXGBE driver.**
 
   *  Added support for Jumbo Frames.

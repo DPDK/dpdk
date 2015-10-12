@@ -146,4 +146,9 @@ typedef int        bool;
 #define fm10k_read_reg FM10K_READ_REG
 #endif
 
+#define FM10K_TSO_MINMSS \
+	(FM10K_DMA_CTRL_MINMSS_64 >> FM10K_DMA_CTRL_MINMSS_SHIFT)
+#define FM10K_TSO_MIN_HEADERLEN			54
+#define FM10K_TSO_MAX_HEADERLEN			192
+
 #endif /* _FM10K_OSDEP_H_ */

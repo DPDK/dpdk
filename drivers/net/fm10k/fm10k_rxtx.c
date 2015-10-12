@@ -395,7 +395,7 @@ static inline void tx_free_descriptors(struct fm10k_tx_queue *q)
 static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 {
 	uint16_t last_id;
-	uint8_t flags;
+	uint8_t flags, hdrlen;
 
 	/* always set the LAST flag on the last descriptor used to
 	 * transmit the packet */
@@ -420,7 +420,7 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 	/* set checksum flags on first descriptor of packet. SCTP checksum
 	 * offload is not supported, but we do not explicitly check for this
 	 * case in favor of greatly simplified processing. */
-	if (mb->ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK))
+	if (mb->ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK | PKT_TX_TCP_SEG))
 		q->hw_ring[q->next_free].flags |= FM10K_TXD_FLAG_CSUM;
 
 	/* set vlan if requested */
@@ -432,6 +432,21 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 			rte_cpu_to_le_64(MBUF_DMA_ADDR(mb));
 	q->hw_ring[q->next_free].buflen =
 			rte_cpu_to_le_16(rte_pktmbuf_data_len(mb));
+
+	if (mb->ol_flags & PKT_TX_TCP_SEG) {
+		hdrlen = mb->outer_l2_len + mb->outer_l3_len + mb->l2_len +
+			mb->l3_len + mb->l4_len;
+		if (q->hw_ring[q->next_free].flags & FM10K_TXD_FLAG_FTAG)
+			hdrlen += sizeof(struct fm10k_ftag);
+
+		if (likely((hdrlen >= FM10K_TSO_MIN_HEADERLEN) &&
+				(hdrlen <= FM10K_TSO_MAX_HEADERLEN) &&
+				(mb->tso_segsz >= FM10K_TSO_MINMSS))) {
+			q->hw_ring[q->next_free].mss = mb->tso_segsz;
+			q->hw_ring[q->next_free].hdrlen = hdrlen;
+		}
+	}
+
 	if (++q->next_free == q->nb_desc)
 		q->next_free = 0;
 
@@ -447,7 +462,7 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 			q->next_free = 0;
 	}
 
-	q->hw_ring[last_id].flags = flags;
+	q->hw_ring[last_id].flags |= flags;
 }
 
 uint16_t
