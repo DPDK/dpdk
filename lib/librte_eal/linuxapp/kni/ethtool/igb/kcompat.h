@@ -3901,4 +3901,9 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 /* ndo_bridge_getlink adds new nlflags parameter */
 #define HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
 #endif /* >= 4.1.0 */
+
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0) )
+/* ndo_bridge_getlink adds new filter_mask and vlan_fill parameters */
+#define HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK_VLAN_FILL
+#endif /* >= 4.2.0 */
 #endif /* _KCOMPAT_H_ */

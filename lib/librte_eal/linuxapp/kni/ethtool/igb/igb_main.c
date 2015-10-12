@@ -2276,7 +2276,12 @@ static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 
 #ifdef HAVE_NDO_FDB_ADD_VID
 #ifdef HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
+#ifdef HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK_VLAN_FILL
+	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode, 0, 0,
+				nlflags, filter_mask, NULL);
+#else
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode, 0, 0, nlflags);
+#endif /* HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK_VLAN_FILL */
 #else
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode, 0, 0);
 #endif /* HAVE_NDO_BRIDGE_GETLINK_NLFLAGS */
