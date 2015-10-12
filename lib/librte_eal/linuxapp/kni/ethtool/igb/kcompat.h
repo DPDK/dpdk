@@ -3899,6 +3899,6 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0) )
 /* ndo_bridge_getlink adds new nlflags parameter */
-#define HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK
+#define HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
 #endif /* >= 4.1.0 */
 #endif /* _KCOMPAT_H_ */

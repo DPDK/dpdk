@@ -2250,14 +2250,14 @@ static int igb_ndo_bridge_setlink(struct net_device *dev,
 }
 
 #ifdef HAVE_BRIDGE_FILTER
-#ifdef HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK
+#ifdef HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
 static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 				  struct net_device *dev, u32 filter_mask,
 				  int nlflags)
 #else
 static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 				  struct net_device *dev, u32 filter_mask)
-#endif /* HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK */
+#endif /* HAVE_NDO_BRIDGE_GETLINK_NLFLAGS */
 #else
 static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 				  struct net_device *dev)
@@ -2275,11 +2275,11 @@ static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 		mode = BRIDGE_MODE_VEPA;
 
 #ifdef HAVE_NDO_FDB_ADD_VID
-#ifdef HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK
+#ifdef HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode, 0, 0, nlflags);
 #else
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode, 0, 0);
-#endif /* HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK */
+#endif /* HAVE_NDO_BRIDGE_GETLINK_NLFLAGS */
 #else
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode);
 #endif /* HAVE_NDO_FDB_ADD_VID */
