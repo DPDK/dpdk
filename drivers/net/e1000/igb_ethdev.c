@@ -246,10 +246,9 @@ static void eth_igb_configure_msix_intr(struct rte_eth_dev *dev);
 #define UPDATE_VF_STAT(reg, last, cur)            \
 {                                                 \
 	u32 latest = E1000_READ_REG(hw, reg);     \
-	cur += latest - last;                     \
+	cur += (latest - last) & UINT_MAX;        \
 	last = latest;                            \
 }
-
 
 #define IGB_FC_PAUSE_TIME 0x0680
 #define IGB_LINK_UPDATE_CHECK_TIMEOUT  90  /* 9s */
