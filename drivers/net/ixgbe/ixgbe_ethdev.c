@@ -329,10 +329,10 @@ static int ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
  */
-#define UPDATE_VF_STAT(reg, last, cur)	                        \
+#define UPDATE_VF_STAT(reg, last, cur)                          \
 {                                                               \
 	uint32_t latest = IXGBE_READ_REG(hw, reg);              \
-	cur += latest - last;                                   \
+	cur += (latest - last) & UINT_MAX;                      \
 	last = latest;                                          \
 }
 
