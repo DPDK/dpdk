@@ -480,6 +480,7 @@ struct i40e_vf {
 	struct i40e_virtchnl_vf_resource *vf_res; /* All VSIs */
 	struct i40e_virtchnl_vsi_resource *vsi_res; /* LAN VSI */
 	struct i40e_vsi vsi;
+	uint64_t flags;
 };
 
 /*
@@ -583,6 +584,8 @@ i40e_get_vsi_from_adapter(struct i40e_adapter *adapter)
 	(&(((struct i40e_vsi *)vsi)->adapter->hw))
 #define I40E_VSI_TO_PF(vsi) \
 	(&(((struct i40e_vsi *)vsi)->adapter->pf))
+#define I40E_VSI_TO_VF(vsi) \
+	(&(((struct i40e_vsi *)vsi)->adapter->vf))
 #define I40E_VSI_TO_DEV_DATA(vsi) \
 	(((struct i40e_vsi *)vsi)->adapter->pf.dev_data)
 #define I40E_VSI_TO_ETH_DEV(vsi) \
