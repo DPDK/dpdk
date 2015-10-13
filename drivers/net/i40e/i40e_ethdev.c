@@ -2442,16 +2442,72 @@ i40e_mac_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 }
 
 static int
+i40e_get_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
+{
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	int ret;
+
+	if (!lut)
+		return -EINVAL;
+
+	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
+		ret = i40e_aq_get_rss_lut(hw, vsi->vsi_id, TRUE,
+					  lut, lut_size);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to get RSS lookup table");
+			return ret;
+		}
+	} else {
+		uint32_t *lut_dw = (uint32_t *)lut;
+		uint16_t i, lut_size_dw = lut_size / 4;
+
+		for (i = 0; i < lut_size_dw; i++)
+			lut_dw[i] = I40E_READ_REG(hw, I40E_PFQF_HLUT(i));
+	}
+
+	return 0;
+}
+
+static int
+i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
+{
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	int ret;
+
+	if (!vsi || !lut)
+		return -EINVAL;
+
+	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
+		ret = i40e_aq_set_rss_lut(hw, vsi->vsi_id, TRUE,
+					  lut, lut_size);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to set RSS lookup table");
+			return ret;
+		}
+	} else {
+		uint32_t *lut_dw = (uint32_t *)lut;
+		uint16_t i, lut_size_dw = lut_size / 4;
+
+		for (i = 0; i < lut_size_dw; i++)
+			I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i), lut_dw[i]);
+		I40E_WRITE_FLUSH(hw);
+	}
+
+	return 0;
+}
+
+static int
 i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_reta_entry64 *reta_conf,
 			 uint16_t reta_size)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t lut, l;
-	uint16_t i, j, lut_size = pf->hash_lut_size;
+	uint16_t i, lut_size = pf->hash_lut_size;
 	uint16_t idx, shift;
-	uint8_t mask;
+	uint8_t *lut;
+	int ret;
 
 	if (reta_size != lut_size ||
 		reta_size > ETH_RSS_RETA_SIZE_512) {
@@ -2461,28 +2517,26 @@ i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	for (i = 0; i < reta_size; i += I40E_4_BIT_WIDTH) {
+	lut = rte_zmalloc("i40e_rss_lut", reta_size, 0);
+	if (!lut) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
+	}
+	ret = i40e_get_rss_lut(pf->main_vsi, lut, reta_size);
+	if (ret)
+		goto out;
+	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
-		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
-						I40E_4_BIT_MASK);
-		if (!mask)
-			continue;
-		if (mask == I40E_4_BIT_MASK)
-			l = 0;
-		else
-			l = I40E_READ_REG(hw, I40E_PFQF_HLUT(i >> 2));
-		for (j = 0, lut = 0; j < I40E_4_BIT_WIDTH; j++) {
-			if (mask & (0x1 << j))
-				lut |= reta_conf[idx].reta[shift + j] <<
-							(CHAR_BIT * j);
-			else
-				lut |= l & (I40E_8_BIT_MASK << (CHAR_BIT * j));
-		}
-		I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i >> 2), lut);
+		if (reta_conf[idx].mask & (1ULL << shift))
+			lut[i] = reta_conf[idx].reta[shift];
 	}
+	ret = i40e_set_rss_lut(pf->main_vsi, lut, reta_size);
 
-	return 0;
+out:
+	rte_free(lut);
+
+	return ret;
 }
 
 static int
@@ -2491,11 +2545,10 @@ i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 			uint16_t reta_size)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t lut;
-	uint16_t i, j, lut_size = pf->hash_lut_size;
+	uint16_t i, lut_size = pf->hash_lut_size;
 	uint16_t idx, shift;
-	uint8_t mask;
+	uint8_t *lut;
+	int ret;
 
 	if (reta_size != lut_size ||
 		reta_size > ETH_RSS_RETA_SIZE_512) {
@@ -2505,23 +2558,26 @@ i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	for (i = 0; i < reta_size; i += I40E_4_BIT_WIDTH) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
-		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
-						I40E_4_BIT_MASK);
-		if (!mask)
-			continue;
-
-		lut = I40E_READ_REG(hw, I40E_PFQF_HLUT(i >> 2));
-		for (j = 0; j < I40E_4_BIT_WIDTH; j++) {
-			if (mask & (0x1 << j))
-				reta_conf[idx].reta[shift + j] = ((lut >>
-					(CHAR_BIT * j)) & I40E_8_BIT_MASK);
-		}
+	lut = rte_zmalloc("i40e_rss_lut", reta_size, 0);
+	if (!lut) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
 	}
 
-	return 0;
+	ret = i40e_get_rss_lut(pf->main_vsi, lut, reta_size);
+	if (ret)
+		goto out;
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = lut[i];
+	}
+
+out:
+	rte_free(lut);
+
+	return ret;
 }
 
 /**
@@ -2706,6 +2762,8 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 	/* Allocate queues for pf */
 	if (hw->func_caps.rss) {
 		pf->flags |= I40E_FLAG_RSS;
+		if (hw->mac.type == I40E_MAC_X722)
+			pf->flags |= I40E_FLAG_RSS_AQ_CAPABLE;
 		pf->lan_nb_qps = RTE_MIN(hw->func_caps.num_tx_qp,
 			(uint32_t)(1 << hw->func_caps.rss_table_entry_width));
 		pf->lan_nb_qps = i40e_align_floor(pf->lan_nb_qps);
@@ -5253,22 +5311,77 @@ i40e_pf_disable_rss(struct i40e_pf *pf)
 }
 
 static int
-i40e_hw_rss_hash_set(struct i40e_hw *hw, struct rte_eth_rss_conf *rss_conf)
+i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len)
 {
-	uint32_t *hash_key;
-	uint8_t hash_key_len;
-	uint64_t rss_hf;
-	uint16_t i;
-	uint64_t hena;
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	int ret = 0;
 
-	hash_key = (uint32_t *)(rss_conf->rss_key);
-	hash_key_len = rss_conf->rss_key_len;
-	if (hash_key != NULL && hash_key_len >=
-		(I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t)) {
-		/* Fill in RSS hash key */
+	if (!key || key_len != ((I40E_PFQF_HKEY_MAX_INDEX + 1) *
+		sizeof(uint32_t)))
+		return -EINVAL;
+
+	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
+		struct i40e_aqc_get_set_rss_key_data *key_dw =
+			(struct i40e_aqc_get_set_rss_key_data *)key;
+
+		ret = i40e_aq_set_rss_key(hw, vsi->vsi_id, key_dw);
+		if (ret)
+			PMD_INIT_LOG(ERR, "Failed to configure RSS key "
+				     "via AQ");
+	} else {
+		uint32_t *hash_key = (uint32_t *)key;
+		uint16_t i;
+
 		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
 			I40E_WRITE_REG(hw, I40E_PFQF_HKEY(i), hash_key[i]);
+		I40E_WRITE_FLUSH(hw);
 	}
+
+	return ret;
+}
+
+static int
+i40e_get_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t *key_len)
+{
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	int ret;
+
+	if (!key || !key_len)
+		return -EINVAL;
+
+	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
+		ret = i40e_aq_get_rss_key(hw, vsi->vsi_id,
+			(struct i40e_aqc_get_set_rss_key_data *)key);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to get RSS key via AQ");
+			return ret;
+		}
+	} else {
+		uint32_t *key_dw = (uint32_t *)key;
+		uint16_t i;
+
+		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
+			key_dw[i] = I40E_READ_REG(hw, I40E_PFQF_HKEY(i));
+	}
+	*key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
+
+	return 0;
+}
+
+static int
+i40e_hw_rss_hash_set(struct i40e_pf *pf, struct rte_eth_rss_conf *rss_conf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint64_t rss_hf;
+	uint64_t hena;
+	int ret;
+
+	ret = i40e_set_rss_key(pf->main_vsi, rss_conf->rss_key,
+			       rss_conf->rss_key_len);
+	if (ret)
+		return ret;
 
 	rss_hf = rss_conf->rss_hf;
 	hena = (uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(0));
@@ -5286,6 +5399,7 @@ static int
 i40e_dev_rss_hash_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_conf *rss_conf)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint64_t rss_hf = rss_conf->rss_hf & I40E_RSS_OFFLOAD_ALL;
 	uint64_t hena;
@@ -5301,23 +5415,20 @@ i40e_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (rss_hf == 0) /* Disable RSS */
 		return -EINVAL;
 
-	return i40e_hw_rss_hash_set(hw, rss_conf);
+	return i40e_hw_rss_hash_set(pf, rss_conf);
 }
 
 static int
 i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 			   struct rte_eth_rss_conf *rss_conf)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t *hash_key = (uint32_t *)(rss_conf->rss_key);
 	uint64_t hena;
-	uint16_t i;
 
-	if (hash_key != NULL) {
-		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
-			hash_key[i] = I40E_READ_REG(hw, I40E_PFQF_HKEY(i));
-		rss_conf->rss_key_len = i * sizeof(uint32_t);
-	}
+	i40e_get_rss_key(pf->main_vsi, rss_conf->rss_key,
+			 &rss_conf->rss_key_len);
+
 	hena = (uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(0));
 	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(1))) << 32;
 	rss_conf->rss_hf = i40e_parse_hena(hena);
@@ -5655,7 +5766,7 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 							sizeof(uint32_t);
 	}
 
-	return i40e_hw_rss_hash_set(hw, &rss_conf);
+	return i40e_hw_rss_hash_set(pf, &rss_conf);
 }
 
 static int
