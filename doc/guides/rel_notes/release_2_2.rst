@@ -44,6 +44,10 @@ Drivers
 
   Fixed issue with libvirt ``virsh destroy`` not killing the VM.
 
+* **virtio: Fixed crash after changing link state.**
+
+  Fixed io permission in the interrupt handler.
+
 
 Libraries
 ~~~~~~~~~

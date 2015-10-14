@@ -817,9 +817,6 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_alarm_init() < 0)
 		rte_panic("Cannot init interrupt-handling thread\n");
 
-	if (rte_eal_intr_init() < 0)
-		rte_panic("Cannot init interrupt-handling thread\n");
-
 	if (rte_eal_timer_init() < 0)
 		rte_panic("Cannot init HPET or TSC timers\n");
 
@@ -844,6 +841,9 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_dev_init() < 0)
 		rte_panic("Cannot init pmd devices\n");
+
+	if (rte_eal_intr_init() < 0)
+		rte_panic("Cannot init interrupt-handling thread\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
