@@ -75,6 +75,7 @@ static struct virtio_net_config_ll *ll_root;
 				(1ULL << VIRTIO_NET_F_CTRL_VQ) | \
 				(1ULL << VIRTIO_NET_F_CTRL_RX) | \
 				(VHOST_SUPPORTS_MQ)            | \
+				(1ULL << VIRTIO_F_VERSION_1)   | \
 				(1ULL << VHOST_F_LOG_ALL)      | \
 				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))
 static uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
@@ -478,17 +479,17 @@ set_features(struct vhost_device_ctx ctx, uint64_t *pu)
 		return -1;
 
 	dev->features = *pu;
-	if (dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) {
-		LOG_DEBUG(VHOST_CONFIG,
-			"(%"PRIu64") Mergeable RX buffers enabled\n",
-			dev->device_fh);
+	if (dev->features &
+		((1 << VIRTIO_NET_F_MRG_RXBUF) | (1ULL << VIRTIO_F_VERSION_1))) {
 		vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	} else {
-		LOG_DEBUG(VHOST_CONFIG,
-			"(%"PRIu64") Mergeable RX buffers disabled\n",
-			dev->device_fh);
 		vhost_hlen = sizeof(struct virtio_net_hdr);
 	}
+	LOG_DEBUG(VHOST_CONFIG,
+		"(%"PRIu64") Mergeable RX buffers %s, virtio 1 %s\n",
+		dev->device_fh,
+		(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) ? "on" : "off",
+		(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ? "on" : "off");
 
 	for (i = 0; i < dev->virt_qp_nb; i++) {
 		uint16_t base_idx = i * VIRTIO_QNUM;
