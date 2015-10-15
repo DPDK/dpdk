@@ -1775,6 +1775,44 @@ static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
 }
 
 /**
+ * Chain an mbuf to another, thereby creating a segmented packet.
+ *
+ * Note: The implementation will do a linear walk over the segments to find
+ * the tail entry. For cases when there are many segments, it's better to
+ * chain the entries manually.
+ *
+ * @param head
+ *   The head of the mbuf chain (the first packet)
+ * @param tail
+ *   The mbuf to put last in the chain
+ *
+ * @return
+ *   - 0, on success.
+ *   - -EOVERFLOW, if the chain is full (256 entries)
+ */
+static inline int rte_pktmbuf_chain(struct rte_mbuf *head, struct rte_mbuf *tail)
+{
+	struct rte_mbuf *cur_tail;
+
+	/* Check for number-of-segments-overflow */
+	if (head->nb_segs + tail->nb_segs >= 1 << (sizeof(head->nb_segs) * 8))
+		return -EOVERFLOW;
+
+	/* Chain 'tail' onto the old tail */
+	cur_tail = rte_pktmbuf_lastseg(head);
+	cur_tail->next = tail;
+
+	/* accumulate number of segments and total length. */
+	head->nb_segs = (uint8_t)(head->nb_segs + tail->nb_segs);
+	head->pkt_len += tail->pkt_len;
+
+	/* pkt_len is only set in the head */
+	tail->pkt_len = tail->data_len;
+
+	return 0;
+}
+
+/**
  * Dump an mbuf structure to the console.
  *
  * Dump all fields for the given packet mbuf and all its associated

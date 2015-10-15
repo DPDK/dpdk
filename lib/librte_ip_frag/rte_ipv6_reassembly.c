@@ -86,7 +86,9 @@ ipv6_frag_reassemble(const struct ip_frag_pkt *fp)
 			/* previous fragment found. */
 			if (fp->frags[i].ofs + fp->frags[i].len == ofs) {
 
-				ip_frag_chain(fp->frags[i].mb, m);
+				/* adjust start of the last fragment data. */
+				rte_pktmbuf_adj(m, (uint16_t)(m->l2_len + m->l3_len));
+				rte_pktmbuf_chain(fp->frags[i].mb, m);
 
 				/* update our last fragment and offset. */
 				m = fp->frags[i].mb;
@@ -101,7 +103,8 @@ ipv6_frag_reassemble(const struct ip_frag_pkt *fp)
 	}
 
 	/* chain with the first fragment. */
-	ip_frag_chain(fp->frags[IP_FIRST_FRAG_IDX].mb, m);
+	rte_pktmbuf_adj(m, (uint16_t)(m->l2_len + m->l3_len));
+	rte_pktmbuf_chain(fp->frags[IP_FIRST_FRAG_IDX].mb, m);
 	m = fp->frags[IP_FIRST_FRAG_IDX].mb;
 
 	/* update mbuf fields for reassembled packet. */
