@@ -113,7 +113,7 @@ static unsigned optimize_object_size(unsigned obj_size)
 	/* get number of channels */
 	nchan = rte_memory_get_nchannel();
 	if (nchan == 0)
-		nchan = 1;
+		nchan = 4;
 
 	nrank = rte_memory_get_nrank();
 	if (nrank == 0)
