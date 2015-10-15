@@ -834,12 +834,6 @@ eal_check_common_options(struct internal_config *internal_cfg)
 		RTE_LOG(ERR, EAL, "Invalid process type specified\n");
 		return -1;
 	}
-	if (internal_cfg->process_type == RTE_PROC_PRIMARY &&
-			internal_cfg->force_nchannel == 0) {
-		RTE_LOG(ERR, EAL, "Number of memory channels (-n) not "
-			"specified\n");
-		return -1;
-	}
 	if (index(internal_cfg->hugefile_prefix, '%') != NULL) {
 		RTE_LOG(ERR, EAL, "Invalid char, '%%', in --"OPT_FILE_PREFIX" "
 			"option\n");
@@ -869,7 +863,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 void
 eal_common_usage(void)
 {
-	printf("-c COREMASK|-l CORELIST -n CHANNELS [options]\n\n"
+	printf("-c COREMASK|-l CORELIST [options]\n\n"
 	       "EAL common options:\n"
 	       "  -c COREMASK         Hexadecimal bitmask of cores to run on\n"
 	       "  -l CORELIST         List of cores to run on\n"
