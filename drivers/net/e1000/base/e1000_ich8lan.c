@@ -1475,6 +1475,20 @@ STATIC s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 			return ret_val;
 	}
 
+	/* I217 Packet Loss issue:
+	 * ensure that FEXTNVM4 Beacon Duration is set correctly
+	 * on power up.
+	 * Set the Beacon Duration for I217 to 8 usec
+	 */
+	if (hw->mac.type == e1000_pch_lpt) {
+		u32 mac_reg;
+
+		mac_reg = E1000_READ_REG(hw, E1000_FEXTNVM4);
+		mac_reg &= ~E1000_FEXTNVM4_BEACON_DURATION_MASK;
+		mac_reg |= E1000_FEXTNVM4_BEACON_DURATION_8USEC;
+		E1000_WRITE_REG(hw, E1000_FEXTNVM4, mac_reg);
+	}
+
 	/* Work-around I218 hang issue */
 	if ((hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_V) ||
