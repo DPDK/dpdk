@@ -4923,19 +4923,18 @@ out:
  *  the PHY.
  *  On i217, setup Intel Rapid Start Technology.
  **/
-void e1000_resume_workarounds_pchlan(struct e1000_hw *hw)
+u32 e1000_resume_workarounds_pchlan(struct e1000_hw *hw)
 {
 	s32 ret_val;
 
 	DEBUGFUNC("e1000_resume_workarounds_pchlan");
-
 	if (hw->mac.type < e1000_pch2lan)
-		return;
+		return E1000_SUCCESS;
 
 	ret_val = e1000_init_phy_workarounds_pchlan(hw);
 	if (ret_val) {
 		DEBUGOUT1("Failed to init PHY flow ret_val=%d\n", ret_val);
-		return;
+		return ret_val;
 	}
 
 	/* For i217 Intel Rapid Start Technology support when the system
@@ -4949,7 +4948,7 @@ void e1000_resume_workarounds_pchlan(struct e1000_hw *hw)
 		ret_val = hw->phy.ops.acquire(hw);
 		if (ret_val) {
 			DEBUGOUT("Failed to setup iRST\n");
-			return;
+			return ret_val;
 		}
 
 		/* Clear Auto Enable LPI after link up */
@@ -4983,7 +4982,9 @@ release:
 		if (ret_val)
 			DEBUGOUT1("Error %d in resume workarounds\n", ret_val);
 		hw->phy.ops.release(hw);
+		return ret_val;
 	}
+	return E1000_SUCCESS;
 }
 
 /**
