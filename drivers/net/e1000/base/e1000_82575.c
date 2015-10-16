@@ -1234,7 +1234,7 @@ STATIC s32 e1000_check_for_link_media_swap(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_check_for_link_media_swap");
 
-	/* Check the copper medium. */
+	/* Check for copper. */
 	ret_val = phy->ops.write_reg(hw, E1000_M88E1112_PAGE_ADDR, 0);
 	if (ret_val)
 		return ret_val;
@@ -1246,17 +1246,12 @@ STATIC s32 e1000_check_for_link_media_swap(struct e1000_hw *hw)
 	if (data & E1000_M88E1112_STATUS_LINK)
 		port = E1000_MEDIA_PORT_COPPER;
 
-	/* Check the other medium. */
+	/* Check for other. */
 	ret_val = phy->ops.write_reg(hw, E1000_M88E1112_PAGE_ADDR, 1);
 	if (ret_val)
 		return ret_val;
 
 	ret_val = phy->ops.read_reg(hw, E1000_M88E1112_STATUS, &data);
-	if (ret_val)
-		return ret_val;
-
-	/* reset page to 0 */
-	ret_val = phy->ops.write_reg(hw, E1000_M88E1112_PAGE_ADDR, 0);
 	if (ret_val)
 		return ret_val;
 
@@ -1267,8 +1262,20 @@ STATIC s32 e1000_check_for_link_media_swap(struct e1000_hw *hw)
 	if (port && (hw->dev_spec._82575.media_port != port)) {
 		hw->dev_spec._82575.media_port = port;
 		hw->dev_spec._82575.media_changed = true;
+	}
+
+	if (port == E1000_MEDIA_PORT_COPPER) {
+		/* reset page to 0 */
+		ret_val = phy->ops.write_reg(hw, E1000_M88E1112_PAGE_ADDR, 0);
+		if (ret_val)
+			return ret_val;
+		e1000_check_for_link_82575(hw);
 	} else {
-		ret_val = e1000_check_for_link_82575(hw);
+		e1000_check_for_link_82575(hw);
+		/* reset page to 0 */
+		ret_val = phy->ops.write_reg(hw, E1000_M88E1112_PAGE_ADDR, 0);
+		if (ret_val)
+			return ret_val;
 	}
 
 	return E1000_SUCCESS;
