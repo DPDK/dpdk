@@ -5519,6 +5519,28 @@ ixgbe_reta_reg_get(enum ixgbe_mac_type mac_type, uint16_t reta_idx) {
 	}
 }
 
+uint32_t
+ixgbe_mrqc_reg_get(enum ixgbe_mac_type mac_type) {
+	switch (mac_type) {
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
+		return IXGBE_VFMRQC;
+	default:
+		return IXGBE_MRQC;
+	}
+}
+
+uint32_t
+ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i) {
+	switch (mac_type) {
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
+		return IXGBE_VFRSSRK(i);
+	default:
+		return IXGBE_RSSRK(i);
+	}
+}
+
 static struct rte_driver rte_ixgbe_driver = {
 	.type = PMD_PDEV,
 	.init = rte_ixgbe_pmd_init,

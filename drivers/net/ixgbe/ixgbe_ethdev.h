@@ -381,6 +381,10 @@ uint16_t ixgbe_reta_size_get(enum ixgbe_mac_type mac_type);
 
 uint32_t ixgbe_reta_reg_get(enum ixgbe_mac_type mac_type, uint16_t reta_idx);
 
+uint32_t ixgbe_mrqc_reg_get(enum ixgbe_mac_type mac_type);
+
+uint32_t ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i);
+
 /*
  * Flow director function prototypes
  */

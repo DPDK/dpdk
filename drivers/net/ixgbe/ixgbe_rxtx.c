@@ -2647,11 +2647,13 @@ ixgbe_rss_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw;
 	uint32_t mrqc;
+	uint32_t mrqc_reg;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	mrqc = IXGBE_READ_REG(hw, IXGBE_MRQC);
+	mrqc_reg = ixgbe_mrqc_reg_get(hw->mac.type);
+	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
 	mrqc &= ~IXGBE_MRQC_RSSEN;
-	IXGBE_WRITE_REG(hw, IXGBE_MRQC, mrqc);
+	IXGBE_WRITE_REG(hw, mrqc_reg, mrqc);
 }
 
 static void
@@ -2662,6 +2664,11 @@ ixgbe_hw_rss_hash_set(struct ixgbe_hw *hw, struct rte_eth_rss_conf *rss_conf)
 	uint32_t rss_key;
 	uint64_t rss_hf;
 	uint16_t i;
+	uint32_t mrqc_reg;
+	uint32_t rssrk_reg;
+
+	mrqc_reg = ixgbe_mrqc_reg_get(hw->mac.type);
+	rssrk_reg = ixgbe_rssrk_reg_get(hw->mac.type, 0);
 
 	hash_key = rss_conf->rss_key;
 	if (hash_key != NULL) {
@@ -2671,7 +2678,7 @@ ixgbe_hw_rss_hash_set(struct ixgbe_hw *hw, struct rte_eth_rss_conf *rss_conf)
 			rss_key |= hash_key[(i * 4) + 1] << 8;
 			rss_key |= hash_key[(i * 4) + 2] << 16;
 			rss_key |= hash_key[(i * 4) + 3] << 24;
-			IXGBE_WRITE_REG_ARRAY(hw, IXGBE_RSSRK(0), i, rss_key);
+			IXGBE_WRITE_REG_ARRAY(hw, rssrk_reg, i, rss_key);
 		}
 	}
 
@@ -2696,7 +2703,7 @@ ixgbe_hw_rss_hash_set(struct ixgbe_hw *hw, struct rte_eth_rss_conf *rss_conf)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_UDP;
 	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
 		mrqc |= IXGBE_MRQC_RSS_FIELD_IPV6_EX_UDP;
-	IXGBE_WRITE_REG(hw, IXGBE_MRQC, mrqc);
+	IXGBE_WRITE_REG(hw, mrqc_reg, mrqc);
 }
 
 int
