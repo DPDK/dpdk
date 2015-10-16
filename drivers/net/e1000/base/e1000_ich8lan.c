@@ -62,6 +62,10 @@ POSSIBILITY OF SUCH DAMAGE.
  * Ethernet Connection I217-V
  * Ethernet Connection I218-V
  * Ethernet Connection I218-LM
+ * Ethernet Connection (2) I218-LM
+ * Ethernet Connection (2) I218-V
+ * Ethernet Connection (3) I218-LM
+ * Ethernet Connection (3) I218-V
  */
 
 #include "e1000_api.h"
@@ -1052,19 +1056,19 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 	if ((hw->mac.type < e1000_pch_lpt) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_LM) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_V) ||
+	    (hw->device_id == E1000_DEV_ID_PCH_I218_LM2) ||
+	    (hw->device_id == E1000_DEV_ID_PCH_I218_V2) ||
 	    (hw->dev_spec.ich8lan.ulp_state == e1000_ulp_state_on))
 		return 0;
 
 	if (!to_sx) {
 		int i = 0;
-
 		/* Poll up to 5 seconds for Cable Disconnected indication */
 		while (!(E1000_READ_REG(hw, E1000_FEXT) &
 			 E1000_FEXT_PHY_CABLE_DISCONNECTED)) {
 			/* Bail if link is re-acquired */
 			if (E1000_READ_REG(hw, E1000_STATUS) & E1000_STATUS_LU)
 				return -E1000_ERR_PHY;
-
 			if (i++ == 100)
 				break;
 
@@ -1197,6 +1201,8 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 	if ((hw->mac.type < e1000_pch_lpt) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_LM) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_V) ||
+	    (hw->device_id == E1000_DEV_ID_PCH_I218_LM2) ||
+	    (hw->device_id == E1000_DEV_ID_PCH_I218_V2) ||
 	    (hw->dev_spec.ich8lan.ulp_state == e1000_ulp_state_off))
 		return 0;
 
@@ -1452,7 +1458,9 @@ STATIC s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 
 	/* Work-around I218 hang issue */
 	if ((hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
-	    (hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_V)) {
+	    (hw->device_id == E1000_DEV_ID_PCH_LPTLP_I218_V) ||
+	    (hw->device_id == E1000_DEV_ID_PCH_I218_LM3) ||
+	    (hw->device_id == E1000_DEV_ID_PCH_I218_V3)) {
 		ret_val = e1000_k1_workaround_lpt_lp(hw, link);
 		if (ret_val)
 			return ret_val;
@@ -4794,7 +4802,9 @@ void e1000_suspend_workarounds_ich8lan(struct e1000_hw *hw)
 		u16 phy_reg, device_id = hw->device_id;
 
 		if ((device_id == E1000_DEV_ID_PCH_LPTLP_I218_LM) ||
-		    (device_id == E1000_DEV_ID_PCH_LPTLP_I218_V)) {
+		    (device_id == E1000_DEV_ID_PCH_LPTLP_I218_V) ||
+		    (device_id == E1000_DEV_ID_PCH_I218_LM3) ||
+		    (device_id == E1000_DEV_ID_PCH_I218_V3)) {
 			u32 fextnvm6 = E1000_READ_REG(hw, E1000_FEXTNVM6);
 
 			E1000_WRITE_REG(hw, E1000_FEXTNVM6,

@@ -197,6 +197,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_RCTL_LBM_TCVR	0x000000C0 /* tcvr loopback mode */
 #define E1000_RCTL_DTYP_PS	0x00000400 /* Packet Split descriptor */
 #define E1000_RCTL_RDMTS_HALF	0x00000000 /* Rx desc min thresh size */
+#define E1000_RCTL_RDMTS_HEX	0x00010000
 #define E1000_RCTL_MO_SHIFT	12 /* multicast offset shift */
 #define E1000_RCTL_MO_3		0x00003000 /* multicast offset 15:4 */
 #define E1000_RCTL_BAM		0x00008000 /* broadcast enable */
@@ -1466,6 +1467,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_RXPBS_CFG_TS_EN		0x80000000 /* Timestamp in Rx buffer */
 #define E1000_RXPBS_SIZE_I210_MASK	0x0000003F /* Rx packet buffer size */
 #define E1000_TXPB0S_SIZE_I210_MASK	0x0000003F /* Tx packet buffer 0 size */
+
 
 /* Proxy Filter Control */
 #define E1000_PROXYFC_D0		0x00000001 /* Enable offload in D0 */
