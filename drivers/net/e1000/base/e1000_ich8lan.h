@@ -114,7 +114,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define E1000_FEXTNVM6_REQ_PLL_CLK	0x00000100
 #define E1000_FEXTNVM6_ENABLE_K1_ENTRY_CONDITION	0x00000200
-
+#define E1000_FEXTNVM6_K1_OFF_ENABLE	0x80000000
 #if !defined(EXTERNAL_RELEASE) || defined(ULP_SUPPORT)
 #define E1000_FEXTNVM7_DISABLE_SMB_PERST	0x00000020
 #endif /* !EXTERNAL_RELEASE || ULP_SUPPORT */
@@ -179,6 +179,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define E1000_NVM_K1_CONFIG	0x1B /* NVM K1 Config Word */
 #define E1000_NVM_K1_ENABLE	0x1  /* NVM Enable K1 bit */
+#define K1_ENTRY_LATENCY	0
+#define K1_MIN_TIME		1
 
 /* SMBus Control Phy Register */
 #define CV_SMB_CTRL		PHY_REG(769, 23)
@@ -301,6 +303,7 @@ void e1000_gig_downshift_workaround_ich8lan(struct e1000_hw *hw);
 void e1000_suspend_workarounds_ich8lan(struct e1000_hw *hw);
 u32 e1000_resume_workarounds_pchlan(struct e1000_hw *hw);
 s32 e1000_configure_k1_ich8lan(struct e1000_hw *hw, bool k1_enable);
+s32 e1000_configure_k0s_lpt(struct e1000_hw *hw, u8 entry_latency, u8 min_time);
 void e1000_copy_rx_addrs_to_phy_ich8lan(struct e1000_hw *hw);
 s32 e1000_lv_jumbo_workaround_ich8lan(struct e1000_hw *hw, bool enable);
 s32 e1000_read_emi_reg_locked(struct e1000_hw *hw, u16 addr, u16 *data);
