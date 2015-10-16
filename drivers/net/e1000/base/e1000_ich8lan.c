@@ -1390,7 +1390,8 @@ out:
 STATIC s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
-	s32 ret_val;
+	s32 ret_val, tipg_reg = 0;
+	u16 emi_addr, emi_val = 0;
 	bool link = false;
 	u16 phy_reg;
 
@@ -1440,32 +1441,38 @@ STATIC s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 	 */
 	if (((hw->mac.type == e1000_pch2lan) ||
 	     (hw->mac.type == e1000_pch_lpt)) && link) {
-		u32 reg;
-		reg = E1000_READ_REG(hw, E1000_STATUS);
-		if (!(reg & (E1000_STATUS_FD | E1000_STATUS_SPEED_MASK))) {
-			u16 emi_addr;
+		u16 speed, duplex;
 
-			reg = E1000_READ_REG(hw, E1000_TIPG);
-			reg &= ~E1000_TIPG_IPGT_MASK;
-			reg |= 0xFF;
-			E1000_WRITE_REG(hw, E1000_TIPG, reg);
+		e1000_get_speed_and_duplex_copper_generic(hw, &speed, &duplex);
+		tipg_reg = E1000_READ_REG(hw, E1000_TIPG);
+		tipg_reg &= ~E1000_TIPG_IPGT_MASK;
 
+		if (duplex == HALF_DUPLEX && speed == SPEED_10) {
+			tipg_reg |= 0xFF;
 			/* Reduce Rx latency in analog PHY */
-			ret_val = hw->phy.ops.acquire(hw);
-			if (ret_val)
-				return ret_val;
-
-			if (hw->mac.type == e1000_pch2lan)
-				emi_addr = I82579_RX_CONFIG;
-			else
-				emi_addr = I217_RX_CONFIG;
-			ret_val = e1000_write_emi_reg_locked(hw, emi_addr, 0);
-
-			hw->phy.ops.release(hw);
-
-			if (ret_val)
-				return ret_val;
+			emi_val = 0;
+		} else {
+			/* Roll back the default values */
+			tipg_reg |= 0x08;
+			emi_val = 1;
 		}
+
+		E1000_WRITE_REG(hw, E1000_TIPG, tipg_reg);
+
+		ret_val = hw->phy.ops.acquire(hw);
+		if (ret_val)
+			return ret_val;
+
+		if (hw->mac.type == e1000_pch2lan)
+			emi_addr = I82579_RX_CONFIG;
+		else
+			emi_addr = I217_RX_CONFIG;
+		ret_val = e1000_write_emi_reg_locked(hw, emi_addr, emi_val);
+
+		hw->phy.ops.release(hw);
+
+		if (ret_val)
+			return ret_val;
 	}
 
 	/* Work-around I218 hang issue */
