@@ -272,6 +272,11 @@
 #define E1000_DEV_ID_PCH_LPT_I217_V           0x153B
 #define E1000_DEV_ID_PCH_LPTLP_I218_LM	      0x155A
 #define E1000_DEV_ID_PCH_LPTLP_I218_V	      0x1559
+#define E1000_DEV_ID_PCH_I218_LM2             0x15A0
+#define E1000_DEV_ID_PCH_I218_V2              0x15A1
+#define E1000_DEV_ID_PCH_I218_LM3             0x15A2
+#define E1000_DEV_ID_PCH_I218_V3              0x15A3
+
 
 /*
  * Tested (supported) on VM emulated HW.
