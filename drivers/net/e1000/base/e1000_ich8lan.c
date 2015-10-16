@@ -234,15 +234,19 @@ STATIC bool e1000_phy_is_accessible_pchlan(struct e1000_hw *hw)
 		return false;
 out:
 	if (hw->mac.type == e1000_pch_lpt) {
-		/* Unforce SMBus mode in PHY */
-		hw->phy.ops.read_reg_locked(hw, CV_SMB_CTRL, &phy_reg);
-		phy_reg &= ~CV_SMB_CTRL_FORCE_SMBUS;
-		hw->phy.ops.write_reg_locked(hw, CV_SMB_CTRL, phy_reg);
+		/* Only unforce SMBus if ME is not active */
+		if (!(E1000_READ_REG(hw, E1000_FWSM) &
+		    E1000_ICH_FWSM_FW_VALID)) {
+			/* Unforce SMBus mode in PHY */
+			hw->phy.ops.read_reg_locked(hw, CV_SMB_CTRL, &phy_reg);
+			phy_reg &= ~CV_SMB_CTRL_FORCE_SMBUS;
+			hw->phy.ops.write_reg_locked(hw, CV_SMB_CTRL, phy_reg);
 
-		/* Unforce SMBus mode in MAC */
-		mac_reg = E1000_READ_REG(hw, E1000_CTRL_EXT);
-		mac_reg &= ~E1000_CTRL_EXT_FORCE_SMBUS;
-		E1000_WRITE_REG(hw, E1000_CTRL_EXT, mac_reg);
+			/* Unforce SMBus mode in MAC */
+			mac_reg = E1000_READ_REG(hw, E1000_CTRL_EXT);
+			mac_reg &= ~E1000_CTRL_EXT_FORCE_SMBUS;
+			E1000_WRITE_REG(hw, E1000_CTRL_EXT, mac_reg);
+		}
 	}
 
 	return true;
