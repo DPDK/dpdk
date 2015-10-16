@@ -6,6 +6,10 @@ New Features
 
 * **Added igb TSO support for both PF and VF.**
 
+* **RSS enhancement on Intel x550 NIC**
+
+  * Support 512 entries RSS redirection table.
+
 * **Enhanced support for the Chelsio CXGBE driver.**
 
   *  Added support for Jumbo Frames.

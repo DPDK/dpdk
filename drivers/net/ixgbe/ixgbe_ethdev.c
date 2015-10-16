@@ -2403,7 +2403,7 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 	dev_info->hash_key_size = IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
-	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+	dev_info->reta_size = ixgbe_reta_size_get(hw->mac.type);
 	dev_info->flow_type_rss_offloads = IXGBE_RSS_OFFLOAD_ALL;
 }
 
@@ -3210,12 +3210,15 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 	uint32_t reta, r;
 	uint16_t idx, shift;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t sp_reta_size;
+	uint32_t reta_reg;
 
 	PMD_INIT_FUNC_TRACE();
-	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
+	if (reta_size != sp_reta_size) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-			"(%d)\n", reta_size, ETH_RSS_RETA_SIZE_128);
+			"(%d)\n", reta_size, sp_reta_size);
 		return -EINVAL;
 	}
 
@@ -3226,10 +3229,11 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 						IXGBE_4_BIT_MASK);
 		if (!mask)
 			continue;
+		reta_reg = ixgbe_reta_reg_get(hw->mac.type, i);
 		if (mask == IXGBE_4_BIT_MASK)
 			r = 0;
 		else
-			r = IXGBE_READ_REG(hw, IXGBE_RETA(i >> 2));
+			r = IXGBE_READ_REG(hw, reta_reg);
 		for (j = 0, reta = 0; j < IXGBE_4_BIT_WIDTH; j++) {
 			if (mask & (0x1 << j))
 				reta |= reta_conf[idx].reta[shift + j] <<
@@ -3238,7 +3242,7 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 				reta |= r & (IXGBE_8_BIT_MASK <<
 						(CHAR_BIT * j));
 		}
-		IXGBE_WRITE_REG(hw, IXGBE_RETA(i >> 2), reta);
+		IXGBE_WRITE_REG(hw, reta_reg, reta);
 	}
 
 	return 0;
@@ -3253,16 +3257,19 @@ ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 	uint32_t reta;
 	uint16_t idx, shift;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t sp_reta_size;
+	uint32_t reta_reg;
 
 	PMD_INIT_FUNC_TRACE();
-	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
+	if (reta_size != sp_reta_size) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-				"(%d)\n", reta_size, ETH_RSS_RETA_SIZE_128);
+			"(%d)\n", reta_size, sp_reta_size);
 		return -EINVAL;
 	}
 
-	for (i = 0; i < ETH_RSS_RETA_SIZE_128; i += IXGBE_4_BIT_WIDTH) {
+	for (i = 0; i < reta_size; i += IXGBE_4_BIT_WIDTH) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
 		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
@@ -3270,7 +3277,8 @@ ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 		if (!mask)
 			continue;
 
-		reta = IXGBE_READ_REG(hw, IXGBE_RETA(i >> 2));
+		reta_reg = ixgbe_reta_reg_get(hw->mac.type, i);
+		reta = IXGBE_READ_REG(hw, reta_reg);
 		for (j = 0; j < IXGBE_4_BIT_WIDTH; j++) {
 			if (mask & (0x1 << j))
 				reta_conf[idx].reta[shift + j] =
@@ -5478,6 +5486,37 @@ ixgbe_set_eeprom(struct rte_eth_dev *dev,
 	in_eeprom->magic = hw->vendor_id | (hw->device_id << 16);
 
 	return eeprom->ops.write_buffer(hw,  first, length, data);
+}
+
+uint16_t
+ixgbe_reta_size_get(enum ixgbe_mac_type mac_type) {
+	switch (mac_type) {
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+		return ETH_RSS_RETA_SIZE_512;
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
+		return ETH_RSS_RETA_SIZE_64;
+	default:
+		return ETH_RSS_RETA_SIZE_128;
+	}
+}
+
+uint32_t
+ixgbe_reta_reg_get(enum ixgbe_mac_type mac_type, uint16_t reta_idx) {
+	switch (mac_type) {
+	case ixgbe_mac_X550:
+	case ixgbe_mac_X550EM_x:
+		if (reta_idx < ETH_RSS_RETA_SIZE_128)
+			return IXGBE_RETA(reta_idx >> 2);
+		else
+			return IXGBE_ERETA((reta_idx - ETH_RSS_RETA_SIZE_128) >> 2);
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
+		return IXGBE_VFRETA(reta_idx >> 2);
+	default:
+		return IXGBE_RETA(reta_idx >> 2);
+	}
 }
 
 static struct rte_driver rte_ixgbe_driver = {

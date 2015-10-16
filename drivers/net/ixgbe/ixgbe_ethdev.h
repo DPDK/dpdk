@@ -377,6 +377,10 @@ int ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 int ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				struct rte_eth_rss_conf *rss_conf);
 
+uint16_t ixgbe_reta_size_get(enum ixgbe_mac_type mac_type);
+
+uint32_t ixgbe_reta_reg_get(enum ixgbe_mac_type mac_type, uint16_t reta_idx);
+
 /*
  * Flow director function prototypes
  */

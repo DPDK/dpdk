@@ -2793,9 +2793,13 @@ ixgbe_rss_configure(struct rte_eth_dev *dev)
 	uint32_t reta;
 	uint16_t i;
 	uint16_t j;
+	uint16_t sp_reta_size;
+	uint32_t reta_reg;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
 
 	/*
 	 * Fill in redirection table
@@ -2803,12 +2807,14 @@ ixgbe_rss_configure(struct rte_eth_dev *dev)
 	 * little-endian order.
 	 */
 	reta = 0;
-	for (i = 0, j = 0; i < 128; i++, j++) {
+	for (i = 0, j = 0; i < sp_reta_size; i++, j++) {
+		reta_reg = ixgbe_reta_reg_get(hw->mac.type, i);
+
 		if (j == dev->data->nb_rx_queues)
 			j = 0;
 		reta = (reta << 8) | j;
 		if ((i & 3) == 3)
-			IXGBE_WRITE_REG(hw, IXGBE_RETA(i >> 2),
+			IXGBE_WRITE_REG(hw, reta_reg,
 					rte_bswap32(reta));
 	}
 
