@@ -1442,7 +1442,6 @@ STATIC s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
 			ret_val = e1000_disable_ulp_lpt_lp(hw, false);
 		else
 			ret_val = e1000_enable_ulp_lpt_lp(hw, false);
-
 		if (ret_val)
 			return ret_val;
 	}
@@ -2979,7 +2978,6 @@ STATIC s32 e1000_set_lplu_state_pchlan(struct e1000_hw *hw, bool active)
 	u16 oem_reg;
 
 	DEBUGFUNC("e1000_set_lplu_state_pchlan");
-
 	ret_val = hw->phy.ops.read_reg(hw, HV_OEM_BITS, &oem_reg);
 	if (ret_val)
 		return ret_val;
@@ -3199,6 +3197,7 @@ STATIC s32 e1000_valid_nvm_bank_detect_ich8lan(struct e1000_hw *hw, u32 *bank)
 	struct e1000_nvm_info *nvm = &hw->nvm;
 	u32 bank1_offset = nvm->flash_bank_size * sizeof(u16);
 	u32 act_offset = E1000_ICH_NVM_SIG_WORD * 2 + 1;
+	u32 nvm_dword = 0;
 	u8 sig_byte = 0;
 	s32 ret_val;
 
@@ -3506,12 +3505,10 @@ STATIC s32 e1000_read_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 		hsflctl.hsf_ctrl.fldbcount = size - 1;
 		hsflctl.hsf_ctrl.flcycle = ICH_CYCLE_READ;
 		E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFCTL, hsflctl.regval);
-
 		E1000_WRITE_FLASH_REG(hw, ICH_FLASH_FADDR, flash_linear_addr);
 
-		ret_val =
-		    e1000_flash_cycle_ich8lan(hw,
-					      ICH_FLASH_READ_COMMAND_TIMEOUT);
+		ret_val = e1000_flash_cycle_ich8lan(hw,
+						ICH_FLASH_READ_COMMAND_TIMEOUT);
 
 		/* Check if FCERR is set to 1, if set to 1, clear it
 		 * and try the whole sequence a few more times, else
@@ -3545,6 +3542,7 @@ STATIC s32 e1000_read_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 
 	return ret_val;
 }
+
 
 /**
  *  e1000_write_nvm_ich8lan - Write word(s) to the NVM
@@ -3599,7 +3597,7 @@ STATIC s32 e1000_update_nvm_checksum_ich8lan(struct e1000_hw *hw)
 	struct e1000_dev_spec_ich8lan *dev_spec = &hw->dev_spec.ich8lan;
 	u32 i, act_offset, new_bank_offset, old_bank_offset, bank;
 	s32 ret_val;
-	u16 data;
+	u16 data = 0;
 
 	DEBUGFUNC("e1000_update_nvm_checksum_ich8lan");
 
@@ -3635,12 +3633,7 @@ STATIC s32 e1000_update_nvm_checksum_ich8lan(struct e1000_hw *hw)
 		if (ret_val)
 			goto release;
 	}
-
 	for (i = 0; i < E1000_SHADOW_RAM_WORDS; i++) {
-		/* Determine whether to write the value stored
-		 * in the other NVM bank or a modified value stored
-		 * in the shadow RAM
-		 */
 		if (dev_spec->shadow_ram[i].modified) {
 			data = dev_spec->shadow_ram[i].value;
 		} else {
@@ -3650,7 +3643,6 @@ STATIC s32 e1000_update_nvm_checksum_ich8lan(struct e1000_hw *hw)
 			if (ret_val)
 				break;
 		}
-
 		/* If the word is 0x13, then make sure the signature bits
 		 * (15:14) are 11b until the commit has completed.
 		 * This will allow us to write 10b which indicates the
@@ -3665,6 +3657,7 @@ STATIC s32 e1000_update_nvm_checksum_ich8lan(struct e1000_hw *hw)
 		act_offset = (i + new_bank_offset) << 1;
 
 		usec_delay(100);
+
 		/* Write the bytes to the new bank. */
 		ret_val = e1000_retry_write_flash_byte_ich8lan(hw,
 							       act_offset,
@@ -3699,8 +3692,7 @@ STATIC s32 e1000_update_nvm_checksum_ich8lan(struct e1000_hw *hw)
 		goto release;
 
 	data &= 0xBFFF;
-	ret_val = e1000_retry_write_flash_byte_ich8lan(hw,
-						       act_offset * 2 + 1,
+	ret_val = e1000_retry_write_flash_byte_ich8lan(hw, act_offset * 2 + 1,
 						       (u8)(data >> 8));
 	if (ret_val)
 		goto release;
@@ -3711,7 +3703,9 @@ STATIC s32 e1000_update_nvm_checksum_ich8lan(struct e1000_hw *hw)
 	 * to 1's. We can write 1's to 0's without an erase
 	 */
 	act_offset = (old_bank_offset + E1000_ICH_NVM_SIG_WORD) * 2 + 1;
+
 	ret_val = e1000_retry_write_flash_byte_ich8lan(hw, act_offset, 0);
+
 	if (ret_val)
 		goto release;
 
@@ -3865,6 +3859,7 @@ STATIC s32 e1000_write_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 	return ret_val;
 }
 
+
 /**
  *  e1000_write_flash_byte_ich8lan - Write a single byte to NVM
  *  @hw: pointer to the HW structure
@@ -3882,6 +3877,8 @@ STATIC s32 e1000_write_flash_byte_ich8lan(struct e1000_hw *hw, u32 offset,
 
 	return e1000_write_flash_data_ich8lan(hw, offset, 1, word);
 }
+
+
 
 /**
  *  e1000_retry_write_flash_byte_ich8lan - Writes a single byte to NVM
