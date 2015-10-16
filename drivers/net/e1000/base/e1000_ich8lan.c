@@ -1991,7 +1991,7 @@ STATIC s32 e1000_check_reset_block_ich8lan(struct e1000_hw *hw)
 			continue;
 		}
 		blocked = false;
-	} while (blocked && (i++ < 10));
+	} while (blocked && (i++ < 30));
 	return blocked ? E1000_BLK_PHY_RESET : E1000_SUCCESS;
 }
 
