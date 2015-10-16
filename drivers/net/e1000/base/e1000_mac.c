@@ -36,7 +36,7 @@ POSSIBILITY OF SUCH DAMAGE.
 STATIC s32 e1000_validate_mdi_setting_generic(struct e1000_hw *hw);
 STATIC void e1000_set_lan_id_multi_port_pcie(struct e1000_hw *hw);
 STATIC void e1000_config_collision_dist_generic(struct e1000_hw *hw);
-STATIC void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index);
+STATIC int e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index);
 
 /**
  *  e1000_init_mac_ops_generic - Initialize MAC function pointers
@@ -149,15 +149,15 @@ void e1000_null_write_vfta(struct e1000_hw E1000_UNUSEDARG *hw,
 }
 
 /**
- *  e1000_null_rar_set - No-op function, return void
+ *  e1000_null_rar_set - No-op function, return 0
  *  @hw: pointer to the HW structure
  **/
-void e1000_null_rar_set(struct e1000_hw E1000_UNUSEDARG *hw,
+int e1000_null_rar_set(struct e1000_hw E1000_UNUSEDARG *hw,
 			u8 E1000_UNUSEDARG *h, u32 E1000_UNUSEDARG a)
 {
 	DEBUGFUNC("e1000_null_rar_set");
 	UNREFERENCED_3PARAMETER(hw, h, a);
-	return;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -469,7 +469,7 @@ s32 e1000_check_alt_mac_addr_generic(struct e1000_hw *hw)
  *  Sets the receive address array register at index to the address passed
  *  in by addr.
  **/
-STATIC void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
+STATIC int e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
 {
 	u32 rar_low, rar_high;
 
@@ -495,6 +495,8 @@ STATIC void e1000_rar_set_generic(struct e1000_hw *hw, u8 *addr, u32 index)
 	E1000_WRITE_FLUSH(hw);
 	E1000_WRITE_REG(hw, E1000_RAH(index), rar_high);
 	E1000_WRITE_FLUSH(hw);
+
+	return E1000_SUCCESS;
 }
 
 /**

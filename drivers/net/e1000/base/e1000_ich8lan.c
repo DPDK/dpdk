@@ -77,8 +77,8 @@ STATIC s32  e1000_acquire_nvm_ich8lan(struct e1000_hw *hw);
 STATIC void e1000_release_nvm_ich8lan(struct e1000_hw *hw);
 STATIC bool e1000_check_mng_mode_ich8lan(struct e1000_hw *hw);
 STATIC bool e1000_check_mng_mode_pchlan(struct e1000_hw *hw);
-STATIC void e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index);
-STATIC void e1000_rar_set_pch_lpt(struct e1000_hw *hw, u8 *addr, u32 index);
+STATIC int  e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index);
+STATIC int  e1000_rar_set_pch_lpt(struct e1000_hw *hw, u8 *addr, u32 index);
 STATIC s32 e1000_sw_lcd_config_ich8lan(struct e1000_hw *hw);
 #ifndef NO_NON_BLOCKING_PHY_MTA_UPDATE_SUPPORT
 STATIC void e1000_update_mc_addr_list_pch2lan(struct e1000_hw *hw,
@@ -1740,7 +1740,7 @@ STATIC bool e1000_check_mng_mode_pchlan(struct e1000_hw *hw)
  *  contain the MAC address but RAR[1-6] are reserved for manageability (ME).
  *  Use SHRA[0-3] in place of those reserved for ME.
  **/
-STATIC void e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index)
+STATIC int e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index)
 {
 	u32 rar_low, rar_high;
 
@@ -1764,7 +1764,7 @@ STATIC void e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index)
 		E1000_WRITE_FLUSH(hw);
 		E1000_WRITE_REG(hw, E1000_RAH(index), rar_high);
 		E1000_WRITE_FLUSH(hw);
-		return;
+		return E1000_SUCCESS;
 	}
 
 	/* RAR[1-6] are owned by manageability.  Skip those and program the
@@ -1787,7 +1787,7 @@ STATIC void e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index)
 		/* verify the register updates */
 		if ((E1000_READ_REG(hw, E1000_SHRAL(index - 1)) == rar_low) &&
 		    (E1000_READ_REG(hw, E1000_SHRAH(index - 1)) == rar_high))
-			return;
+			return E1000_SUCCESS;
 
 		DEBUGOUT2("SHRA[%d] might be locked by ME - FWSM=0x%8.8x\n",
 			 (index - 1), E1000_READ_REG(hw, E1000_FWSM));
@@ -1795,6 +1795,7 @@ STATIC void e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index)
 
 out:
 	DEBUGOUT1("Failed to write receive address at index %d\n", index);
+	return -E1000_ERR_CONFIG;
 }
 
 /**
@@ -1808,7 +1809,7 @@ out:
  *  contain the MAC address. SHRA[0-10] are the shared receive address
  *  registers that are shared between the Host and manageability engine (ME).
  **/
-STATIC void e1000_rar_set_pch_lpt(struct e1000_hw *hw, u8 *addr, u32 index)
+STATIC int e1000_rar_set_pch_lpt(struct e1000_hw *hw, u8 *addr, u32 index)
 {
 	u32 rar_low, rar_high;
 	u32 wlock_mac;
@@ -1832,7 +1833,7 @@ STATIC void e1000_rar_set_pch_lpt(struct e1000_hw *hw, u8 *addr, u32 index)
 		E1000_WRITE_FLUSH(hw);
 		E1000_WRITE_REG(hw, E1000_RAH(index), rar_high);
 		E1000_WRITE_FLUSH(hw);
-		return;
+		return E1000_SUCCESS;
 	}
 
 	/* The manageability engine (ME) can lock certain SHRAR registers that
@@ -1867,12 +1868,13 @@ STATIC void e1000_rar_set_pch_lpt(struct e1000_hw *hw, u8 *addr, u32 index)
 			/* verify the register updates */
 			if ((E1000_READ_REG(hw, E1000_SHRAL_PCH_LPT(index - 1)) == rar_low) &&
 			    (E1000_READ_REG(hw, E1000_SHRAH_PCH_LPT(index - 1)) == rar_high))
-				return;
+				return E1000_SUCCESS;
 		}
 	}
 
 out:
 	DEBUGOUT1("Failed to write receive address at index %d\n", index);
+	return -E1000_ERR_CONFIG;
 }
 
 #ifndef NO_NON_BLOCKING_PHY_MTA_UPDATE_SUPPORT
