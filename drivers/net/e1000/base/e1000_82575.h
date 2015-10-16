@@ -498,6 +498,7 @@ s32 e1000_set_eee_i350(struct e1000_hw *hw, bool adv1G, bool adv100M);
 s32 e1000_set_eee_i354(struct e1000_hw *hw, bool adv1G, bool adv100M);
 s32 e1000_get_eee_status_i354(struct e1000_hw *, bool *);
 s32 e1000_initialize_M88E1512_phy(struct e1000_hw *hw);
+s32 e1000_initialize_M88E1543_phy(struct e1000_hw *hw);
 
 /* I2C SDA and SCL timing parameters for standard mode */
 #define E1000_I2C_T_HD_STA	4
