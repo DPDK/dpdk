@@ -1090,6 +1090,9 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 			  (E1000_READ_REG(hw, E1000_FEXT) &
 			   E1000_FEXT_PHY_CABLE_DISCONNECTED) ? "" : "not",
 			  i * 50);
+		if (!(E1000_READ_REG(hw, E1000_FEXT) &
+		    E1000_FEXT_PHY_CABLE_DISCONNECTED))
+			return 0;
 	}
 
 	if (E1000_READ_REG(hw, E1000_FWSM) & E1000_ICH_FWSM_FW_VALID) {
