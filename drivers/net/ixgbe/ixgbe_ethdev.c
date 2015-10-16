@@ -497,6 +497,10 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.mac_addr_set         = ixgbevf_set_default_mac_addr,
 	.get_reg_length       = ixgbevf_get_reg_length,
 	.get_reg              = ixgbevf_get_regs,
+	.reta_update          = ixgbe_dev_rss_reta_update,
+	.reta_query           = ixgbe_dev_rss_reta_query,
+	.rss_hash_update      = ixgbe_dev_rss_hash_update,
+	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -3214,6 +3218,13 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 	uint32_t reta_reg;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (!ixgbe_rss_update_sp(hw->mac.type)) {
+		PMD_DRV_LOG(ERR, "RSS reta update is not supported on this "
+			"NIC.");
+		return -ENOTSUP;
+	}
+
 	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
 	if (reta_size != sp_reta_size) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
@@ -5540,6 +5551,18 @@ ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i) {
 		return IXGBE_RSSRK(i);
 	}
 }
+
+bool
+ixgbe_rss_update_sp(enum ixgbe_mac_type mac_type) {
+	switch (mac_type) {
+	case ixgbe_mac_82599_vf:
+	case ixgbe_mac_X540_vf:
+		return 0;
+	default:
+		return 1;
+	}
+}
+
 
 static struct rte_driver rte_ixgbe_driver = {
 	.type = PMD_PDEV,

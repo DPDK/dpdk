@@ -385,6 +385,8 @@ uint32_t ixgbe_mrqc_reg_get(enum ixgbe_mac_type mac_type);
 
 uint32_t ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i);
 
+bool ixgbe_rss_update_sp(enum ixgbe_mac_type mac_type);
+
 /*
  * Flow director function prototypes
  */

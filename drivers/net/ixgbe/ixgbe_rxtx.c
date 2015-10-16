@@ -2713,8 +2713,16 @@ ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	struct ixgbe_hw *hw;
 	uint32_t mrqc;
 	uint64_t rss_hf;
+	uint32_t mrqc_reg;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!ixgbe_rss_update_sp(hw->mac.type)) {
+		PMD_DRV_LOG(ERR, "RSS hash update is not supported on this "
+			"NIC.");
+		return -ENOTSUP;
+	}
+	mrqc_reg = ixgbe_mrqc_reg_get(hw->mac.type);
 
 	/*
 	 * Excerpt from section 7.1.2.8 Receive-Side Scaling (RSS):
@@ -2726,7 +2734,7 @@ ixgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	 * disabled at initialization time.
 	 */
 	rss_hf = rss_conf->rss_hf & IXGBE_RSS_OFFLOAD_ALL;
-	mrqc = IXGBE_READ_REG(hw, IXGBE_MRQC);
+	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
 	if (!(mrqc & IXGBE_MRQC_RSSEN)) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
 			return -(EINVAL);
@@ -2749,13 +2757,17 @@ ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	uint32_t rss_key;
 	uint64_t rss_hf;
 	uint16_t i;
+	uint32_t mrqc_reg;
+	uint32_t rssrk_reg;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	mrqc_reg = ixgbe_mrqc_reg_get(hw->mac.type);
+	rssrk_reg = ixgbe_rssrk_reg_get(hw->mac.type, 0);
 	hash_key = rss_conf->rss_key;
 	if (hash_key != NULL) {
 		/* Return RSS hash key */
 		for (i = 0; i < 10; i++) {
-			rss_key = IXGBE_READ_REG_ARRAY(hw, IXGBE_RSSRK(0), i);
+			rss_key = IXGBE_READ_REG_ARRAY(hw, rssrk_reg, i);
 			hash_key[(i * 4)] = rss_key & 0x000000FF;
 			hash_key[(i * 4) + 1] = (rss_key >> 8) & 0x000000FF;
 			hash_key[(i * 4) + 2] = (rss_key >> 16) & 0x000000FF;
@@ -2764,7 +2776,7 @@ ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	}
 
 	/* Get RSS functions configured in MRQC register */
-	mrqc = IXGBE_READ_REG(hw, IXGBE_MRQC);
+	mrqc = IXGBE_READ_REG(hw, mrqc_reg);
 	if ((mrqc & IXGBE_MRQC_RSSEN) == 0) { /* RSS is disabled */
 		rss_conf->rss_hf = 0;
 		return 0;
