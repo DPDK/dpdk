@@ -1452,10 +1452,14 @@ STATIC void e1000_clear_vfta_82571(struct e1000_hw *hw)
 STATIC bool e1000_check_mng_mode_82574(struct e1000_hw *hw)
 {
 	u16 data;
+	s32 ret_val;
 
 	DEBUGFUNC("e1000_check_mng_mode_82574");
 
-	hw->nvm.ops.read(hw, NVM_INIT_CONTROL2_REG, 1, &data);
+	ret_val = hw->nvm.ops.read(hw, NVM_INIT_CONTROL2_REG, 1, &data);
+	if (ret_val)
+		return false;
+
 	return (data & E1000_NVM_INIT_CTRL2_MNGM) != 0;
 }
 
