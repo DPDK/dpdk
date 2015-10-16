@@ -2487,11 +2487,17 @@ STATIC s32 e1000_reset_hw_82580(struct e1000_hw *hw)
 		ctrl |= E1000_CTRL_RST;
 
 	E1000_WRITE_REG(hw, E1000_CTRL, ctrl);
-	E1000_WRITE_FLUSH(hw);
 
-	/* Add delay to insure DEV_RST has time to complete */
-	if (global_device_reset)
-		msec_delay(5);
+	switch (hw->device_id) {
+	case E1000_DEV_ID_DH89XXCC_SGMII:
+		break;
+	default:
+		E1000_WRITE_FLUSH(hw);
+		break;
+	}
+
+	/* Add delay to insure DEV_RST or RST has time to complete */
+	msec_delay(5);
 
 	ret_val = e1000_get_auto_rd_done_generic(hw);
 	if (ret_val) {
