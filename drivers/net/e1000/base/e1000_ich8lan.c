@@ -1252,10 +1252,15 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 			/* Restore link speed advertisements and restart
 			 * Auto-negotiation
 			 */
-			ret_val = e1000_phy_setup_autoneg(hw);
-			if (ret_val)
-				goto out;
-
+			if (hw->mac.autoneg) {
+				ret_val = e1000_phy_setup_autoneg(hw);
+				if (ret_val)
+					goto out;
+			} else {
+				ret_val = e1000_setup_copper_link_generic(hw);
+				if (ret_val)
+					goto out;
+			}
 			ret_val = e1000_oem_bits_config_ich8lan(hw, true);
 		}
 
