@@ -891,7 +891,6 @@ out:
 STATIC s32 e1000_set_d0_lplu_state_82580(struct e1000_hw *hw, bool active)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val = E1000_SUCCESS;
 	u32 data;
 
 	DEBUGFUNC("e1000_set_d0_lplu_state_82580");
@@ -919,7 +918,7 @@ STATIC s32 e1000_set_d0_lplu_state_82580(struct e1000_hw *hw, bool active)
 	}
 
 	E1000_WRITE_REG(hw, E1000_82580_PHY_POWER_MGMT, data);
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -939,7 +938,6 @@ STATIC s32 e1000_set_d0_lplu_state_82580(struct e1000_hw *hw, bool active)
 s32 e1000_set_d3_lplu_state_82580(struct e1000_hw *hw, bool active)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val = E1000_SUCCESS;
 	u32 data;
 
 	DEBUGFUNC("e1000_set_d3_lplu_state_82580");
@@ -967,7 +965,7 @@ s32 e1000_set_d3_lplu_state_82580(struct e1000_hw *hw, bool active)
 	}
 
 	E1000_WRITE_REG(hw, E1000_82580_PHY_POWER_MGMT, data);
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
@@ -981,7 +979,7 @@ s32 e1000_set_d3_lplu_state_82580(struct e1000_hw *hw, bool active)
  **/
 STATIC s32 e1000_acquire_nvm_82575(struct e1000_hw *hw)
 {
-	s32 ret_val;
+	s32 ret_val = E1000_SUCCESS;
 
 	DEBUGFUNC("e1000_acquire_nvm_82575");
 
@@ -1003,6 +1001,7 @@ STATIC s32 e1000_acquire_nvm_82575(struct e1000_hw *hw)
 			DEBUGOUT("Nvm bit banging access error detected and cleared.\n");
 		}
 	}
+
 	if (hw->mac.type == e1000_82580) {
 		u32 eecd = E1000_READ_REG(hw, E1000_EECD);
 		if (eecd & E1000_EECD_BLOCKED) {
@@ -1012,7 +1011,6 @@ STATIC s32 e1000_acquire_nvm_82575(struct e1000_hw *hw)
 			DEBUGOUT("Nvm bit banging access error detected and cleared.\n");
 		}
 	}
-
 
 	ret_val = e1000_acquire_nvm_generic(hw);
 	if (ret_val)
@@ -1127,7 +1125,6 @@ STATIC void e1000_release_swfw_sync_82575(struct e1000_hw *hw, u16 mask)
 STATIC s32 e1000_get_cfg_done_82575(struct e1000_hw *hw)
 {
 	s32 timeout = PHY_CFG_TIMEOUT;
-	s32 ret_val = E1000_SUCCESS;
 	u32 mask = E1000_NVM_CFG_DONE_PORT_0;
 
 	DEBUGFUNC("e1000_get_cfg_done_82575");
@@ -1152,7 +1149,7 @@ STATIC s32 e1000_get_cfg_done_82575(struct e1000_hw *hw)
 	    (hw->phy.type == e1000_phy_igp_3))
 		e1000_phy_init_script_igp3(hw);
 
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
