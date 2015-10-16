@@ -311,13 +311,13 @@ STATIC s32 e1000_init_phy_workarounds_pchlan(struct e1000_hw *hw)
 	 */
 	e1000_gate_hw_phy_config_ich8lan(hw, true);
 
-#if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
+#ifdef ULP_SUPPORT
 	/* It is not possible to be certain of the current state of ULP
 	 * so forcibly disable it.
 	 */
 	hw->dev_spec.ich8lan.ulp_state = e1000_ulp_state_unknown;
 
-#endif /* NAHUM6LP_HW && ULP_SUPPORT */
+#endif /* ULP_SUPPORT */
 	ret_val = hw->phy.ops.acquire(hw);
 	if (ret_val) {
 		DEBUGOUT("Failed to initialize PHY flow\n");
@@ -758,6 +758,7 @@ STATIC s32 e1000_init_mac_params_ich8lan(struct e1000_hw *hw)
 		/* multicast address update for pch2 */
 		mac->ops.update_mc_addr_list =
 			e1000_update_mc_addr_list_pch2lan;
+		/* fall-through */
 #endif
 	case e1000_pchlan:
 #if defined(QV_RELEASE) || !defined(NO_PCH_LPT_B0_SUPPORT)
@@ -1036,7 +1037,7 @@ update_fextnvm6:
 	return ret_val;
 }
 
-#if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
+#ifdef ULP_SUPPORT
 /**
  *  e1000_enable_ulp_lpt_lp - configure Ultra Low Power mode for LynxPoint-LP
  *  @hw: pointer to the HW structure
@@ -1366,7 +1367,7 @@ out:
 	return ret_val;
 }
 
-#endif /* NAHUM6LP_HW && ULP_SUPPORT */
+#endif /* ULP_SUPPORT */
 /**
  *  e1000_check_for_copper_link_ich8lan - Check for link (Copper)
  *  @hw: pointer to the HW structure

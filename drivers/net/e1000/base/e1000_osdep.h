@@ -118,7 +118,6 @@ static inline uint32_t e1000_read_addr(volatile void* addr)
         ADVERTISE_10_FULL | ADVERTISE_100_FULL | ADVERTISE_1000_FULL)
 
 #define M88E1543_E_PHY_ID    0x01410EA0
-#define NAHUM6LP_HW 
 #define ULP_SUPPORT
 
 #define E1000_RCTL_DTYP_MASK	0x00000C00 /* Descriptor type mask */

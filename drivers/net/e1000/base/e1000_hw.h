@@ -935,7 +935,7 @@ struct e1000_shadow_ram {
 
 #define E1000_SHADOW_RAM_WORDS		2048
 
-#if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
+#ifdef ULP_SUPPORT
 /* I218 PHY Ultra Low Power (ULP) states */
 enum e1000_ulp_state {
 	e1000_ulp_state_unknown,
@@ -943,7 +943,7 @@ enum e1000_ulp_state {
 	e1000_ulp_state_on,
 };
 
-#endif /* NAHUM6LP_HW && ULP_SUPPORT */
+#endif /* ULP_SUPPORT */
 struct e1000_dev_spec_ich8lan {
 	bool kmrn_lock_loss_workaround_enabled;
 	struct e1000_shadow_ram shadow_ram[E1000_SHADOW_RAM_WORDS];
@@ -952,7 +952,7 @@ struct e1000_dev_spec_ich8lan {
 	bool nvm_k1_enabled;
 	bool eee_disable;
 	u16 eee_lp_ability;
-#if defined(NAHUM6LP_HW) && defined(ULP_SUPPORT)
+#ifdef ULP_SUPPORT
 	enum e1000_ulp_state ulp_state;
 #endif /* NAHUM6LP_HW && ULP_SUPPORT */
 	u16 lat_enc;
