@@ -1,7 +1,7 @@
 ..
      BSD LICENSE
    
-     Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+     Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
      All rights reserved.
    
      Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,7 @@
      OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 This directory contains source code of FreeBSD em & igb drivers of version
-cid-shared-code.2014.04.21 released by LAD. The sub-directory of lad/
+cid-shared-code.2015.10.09 released by ND. The sub-directory of base/
 contains the original source package.
 
 Updating the driver
