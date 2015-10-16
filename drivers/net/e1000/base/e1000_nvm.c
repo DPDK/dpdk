@@ -1373,8 +1373,12 @@ etrack_id:
 		hw->nvm.ops.read(hw, (NVM_ETRACK_WORD + 1), 1, &eeprom_verh);
 		fw_vers->etrack_id = (eeprom_verh << NVM_ETRACK_SHIFT)
 			| eeprom_verl;
+	} else if ((etrack_test & NVM_ETRACK_VALID) == 0) {
+		hw->nvm.ops.read(hw, NVM_ETRACK_WORD, 1, &eeprom_verh);
+		hw->nvm.ops.read(hw, (NVM_ETRACK_WORD + 1), 1, &eeprom_verl);
+		fw_vers->etrack_id = (eeprom_verh << NVM_ETRACK_SHIFT) |
+				     eeprom_verl;
 	}
-	return;
 }
 
 
