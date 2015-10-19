@@ -505,8 +505,12 @@ eal_log_level_parse(int argc, char **argv)
 	int opt;
 	char **argvopt;
 	int option_index;
+	const int old_optind = optind;
+	const int old_optopt = optopt;
+	char * const old_optarg = optarg;
 
 	argvopt = argv;
+	optind = 1;
 
 	eal_reset_internal_config(&internal_config);
 
@@ -527,7 +531,10 @@ eal_log_level_parse(int argc, char **argv)
 			break;
 	}
 
-	optind = 0; /* reset getopt lib */
+	/* restore getopt lib */
+	optind = old_optind;
+	optopt = old_optopt;
+	optarg = old_optarg;
 }
 
 /* Parse the argument given in the command line of the application */
@@ -539,25 +546,29 @@ eal_parse_args(int argc, char **argv)
 	int option_index;
 	char *prgname = argv[0];
 	struct shared_driver *solib;
+	const int old_optind = optind;
+	const int old_optopt = optopt;
+	char * const old_optarg = optarg;
 
 	argvopt = argv;
+	optind = 1;
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
 				  eal_long_options, &option_index)) != EOF) {
 
-		int ret;
-
 		/* getopt is not happy, stop right now */
 		if (opt == '?') {
 			eal_usage(prgname);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 
 		ret = eal_parse_common_option(opt, optarg, &internal_config);
 		/* common parser is not happy */
 		if (ret < 0) {
 			eal_usage(prgname);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 		/* common parser handled this option */
 		if (ret == 0)
@@ -573,7 +584,8 @@ eal_parse_args(int argc, char **argv)
 			solib = malloc(sizeof(*solib));
 			if (solib == NULL) {
 				RTE_LOG(ERR, EAL, "malloc(solib) failed\n");
-				return -1;
+				ret = -1;
+				goto out;
 			}
 			memset(solib, 0, sizeof(*solib));
 			strncpy(solib->name, optarg, PATH_MAX-1);
@@ -589,7 +601,8 @@ eal_parse_args(int argc, char **argv)
 			RTE_LOG(ERR, EAL, "Can't support DPDK app "
 				"running on Dom0, please configure"
 				" RTE_LIBRTE_XEN_DOM0=y\n");
-			return -1;
+			ret = -1;
+			goto out;
 #endif
 			break;
 
@@ -606,7 +619,8 @@ eal_parse_args(int argc, char **argv)
 				RTE_LOG(ERR, EAL, "invalid parameters for --"
 						OPT_SOCKET_MEM "\n");
 				eal_usage(prgname);
-				return -1;
+				ret = -1;
+				goto out;
 			}
 			break;
 
@@ -615,7 +629,8 @@ eal_parse_args(int argc, char **argv)
 				RTE_LOG(ERR, EAL, "invalid parameter for --"
 						OPT_BASE_VIRTADDR "\n");
 				eal_usage(prgname);
-				return -1;
+				ret = -1;
+				goto out;
 			}
 			break;
 
@@ -624,7 +639,8 @@ eal_parse_args(int argc, char **argv)
 				RTE_LOG(ERR, EAL, "invalid parameters for --"
 						OPT_VFIO_INTR "\n");
 				eal_usage(prgname);
-				return -1;
+				ret = -1;
+				goto out;
 			}
 			break;
 
@@ -646,17 +662,21 @@ eal_parse_args(int argc, char **argv)
 					"on Linux\n", opt);
 			}
 			eal_usage(prgname);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 	}
 
-	if (eal_adjust_config(&internal_config) != 0)
-		return -1;
+	if (eal_adjust_config(&internal_config) != 0) {
+		ret = -1;
+		goto out;
+	}
 
 	/* sanity checks */
 	if (eal_check_common_options(&internal_config) != 0) {
 		eal_usage(prgname);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	/* --xen-dom0 doesn't make sense with --socket-mem */
@@ -664,13 +684,20 @@ eal_parse_args(int argc, char **argv)
 		RTE_LOG(ERR, EAL, "Options --"OPT_SOCKET_MEM" cannot be specified "
 			"together with --"OPT_XEN_DOM0"\n");
 		eal_usage(prgname);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (optind >= 0)
 		argv[optind-1] = prgname;
 	ret = optind-1;
-	optind = 0; /* reset getopt lib */
+
+out:
+	/* restore getopt lib */
+	optind = old_optind;
+	optopt = old_optopt;
+	optarg = old_optarg;
+
 	return ret;
 }
 

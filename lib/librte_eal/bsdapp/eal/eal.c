@@ -312,8 +312,14 @@ eal_log_level_parse(int argc, char **argv)
 	int opt;
 	char **argvopt;
 	int option_index;
+	const int old_optind = optind;
+	const int old_optopt = optopt;
+	const int old_optreset = optreset;
+	char * const old_optarg = optarg;
 
 	argvopt = argv;
+	optind = 1;
+	optreset = 1;
 
 	eal_reset_internal_config(&internal_config);
 
@@ -334,7 +340,11 @@ eal_log_level_parse(int argc, char **argv)
 			break;
 	}
 
-	optind = 0; /* reset getopt lib */
+	/* restore getopt lib */
+	optind = old_optind;
+	optopt = old_optopt;
+	optreset = old_optreset;
+	optarg = old_optarg;
 }
 
 /* Parse the argument given in the command line of the application */
@@ -345,25 +355,31 @@ eal_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
+	const int old_optind = optind;
+	const int old_optopt = optopt;
+	const int old_optreset = optreset;
+	char * const old_optarg = optarg;
 
 	argvopt = argv;
+	optind = 1;
+	optreset = 1;
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
 				  eal_long_options, &option_index)) != EOF) {
 
-		int ret;
-
 		/* getopt is not happy, stop right now */
 		if (opt == '?') {
 			eal_usage(prgname);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 
 		ret = eal_parse_common_option(opt, optarg, &internal_config);
 		/* common parser is not happy */
 		if (ret < 0) {
 			eal_usage(prgname);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 		/* common parser handled this option */
 		if (ret == 0)
@@ -387,23 +403,34 @@ eal_parse_args(int argc, char **argv)
 					"on FreeBSD\n", opt);
 			}
 			eal_usage(prgname);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 	}
 
-	if (eal_adjust_config(&internal_config) != 0)
-		return -1;
+	if (eal_adjust_config(&internal_config) != 0) {
+		ret = -1;
+		goto out;
+	}
 
 	/* sanity checks */
 	if (eal_check_common_options(&internal_config) != 0) {
 		eal_usage(prgname);
-		return -1;
+		ret = -1;
+		goto out;
 	}
 
 	if (optind >= 0)
 		argv[optind-1] = prgname;
 	ret = optind-1;
-	optind = 0; /* reset getopt lib */
+
+out:
+	/* restore getopt lib */
+	optind = old_optind;
+	optopt = old_optopt;
+	optreset = old_optreset;
+	optarg = old_optarg;
+
 	return ret;
 }
 
