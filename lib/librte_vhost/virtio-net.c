@@ -399,11 +399,14 @@ static int
 reset_owner(struct vhost_device_ctx ctx)
 {
 	struct virtio_net_config_ll *ll_dev;
+	uint64_t device_fh;
 
 	ll_dev = get_config_ll_entry(ctx);
+	device_fh = ll_dev->dev.device_fh;
 
 	cleanup_device(&ll_dev->dev);
 	init_device(&ll_dev->dev);
+	ll_dev->dev.device_fh = device_fh;
 
 	return 0;
 }
