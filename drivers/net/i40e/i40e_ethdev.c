@@ -382,6 +382,30 @@ static inline void i40e_flex_payload_reg_init(struct i40e_hw *hw)
 	I40E_WRITE_REG(hw, I40E_GLQF_PIT(17), 0x00007440);
 }
 
+#define I40E_FLOW_CONTROL_ETHERTYPE  0x8808
+
+/*
+ * Add a ethertype filter to drop all flow control frames transmitted
+ * from VSIs.
+*/
+static void
+i40e_add_tx_flow_control_drop_filter(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint16_t flags = I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC |
+			I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP |
+			I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TX;
+	int ret;
+
+	ret = i40e_aq_add_rem_control_packet_filter(hw, NULL,
+				I40E_FLOW_CONTROL_ETHERTYPE, flags,
+				pf->main_vsi_seid, 0,
+				TRUE, NULL, NULL);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to add filter to drop flow control "
+				  " frames from VSIs.");
+}
+
 static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
@@ -584,6 +608,12 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 
 	/* enable uio intr after callback register */
 	rte_intr_enable(&(pci_dev->intr_handle));
+	/*
+	 * Add an ethertype filter to drop all flow control frames transmitted
+	 * from VSIs. By doing so, we stop VF from sending out PAUSE or PFC
+	 * frames to wire.
+	 */
+	i40e_add_tx_flow_control_drop_filter(pf);
 
 	/* initialize mirror rule list */
 	TAILQ_INIT(&pf->mirror_list);
