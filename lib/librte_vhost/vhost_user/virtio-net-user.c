@@ -276,6 +276,8 @@ user_get_vring_base(struct vhost_device_ctx ctx,
 {
 	struct virtio_net *dev = get_device(ctx);
 
+	if (dev == NULL)
+		return -1;
 	/* We have to stop the queue (virtio) if it is running. */
 	if (dev->flags & VIRTIO_DEV_RUNNING)
 		notify_ops->destroy_device(dev);
