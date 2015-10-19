@@ -29,6 +29,12 @@ EAL
 Drivers
 ~~~~~~~
 
+* **igb: Fixed IEEE1588 frame identification in I210.**
+
+  Fixed issue where the flag PKT_RX_IEEE1588_PTP was not being set
+  in Intel I210 NIC, as EtherType in RX descriptor is in bits 8:10 of
+  Packet Type and not in the default bits 0:2.
+
 * **ixgbe: Fixed issue with X550 DCB.**
 
   Fixed a DCB issue with x550 where for 8 TCs (Traffic Classes), if a packet

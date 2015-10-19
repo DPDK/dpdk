@@ -714,7 +714,7 @@ igb_rxd_pkt_info_to_pkt_type(uint16_t pkt_info)
 }
 
 static inline uint64_t
-rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
+rx_desc_hlen_type_rss_to_pkt_flags(struct igb_rx_queue *rxq, uint32_t hl_tp_rs)
 {
 	uint64_t pkt_flags = ((hl_tp_rs & 0x0F) == 0) ?  0 : PKT_RX_RSS_HASH;
 
@@ -724,7 +724,14 @@ rx_desc_hlen_type_rss_to_pkt_flags(uint32_t hl_tp_rs)
 		0, 0, 0, 0,
 	};
 
-	pkt_flags |= ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07];
+	struct rte_eth_dev dev = rte_eth_devices[rxq->port_id];
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev.data->dev_private);
+
+	/* EtherType is in bits 8:10 in Packet Type, and not in the default 0:2 */
+	if (hw->mac.type == e1000_i210)
+		pkt_flags |= ip_pkt_etqf_map[(hl_tp_rs >> 12) & 0x07];
+	else
+		pkt_flags |= ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07];
 #endif
 
 	return pkt_flags;
@@ -898,7 +905,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
-		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
+		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(rxq, hlen_type_rss);
 		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		rxm->ol_flags = pkt_flags;
@@ -1134,7 +1141,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 		hlen_type_rss = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
-		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(hlen_type_rss);
+		pkt_flags = rx_desc_hlen_type_rss_to_pkt_flags(rxq, hlen_type_rss);
 		pkt_flags = pkt_flags | rx_desc_status_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		first_seg->ol_flags = pkt_flags;

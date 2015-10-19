@@ -421,25 +421,6 @@ Intel® QuickAssist Technology sample application does not work on a 32-bit OS o
    All.
 
 
-IEEE1588 support possibly not working with an Intel® Ethernet Controller I210 NIC
----------------------------------------------------------------------------------
-
-**Description**:
-   IEEE1588 support is not working with an Intel® Ethernet Controller I210 NIC.
-
-**Implication**:
-   IEEE1588 packets are not forwarded correctly by the Intel® Ethernet Controller I210 NIC.
-
-**Resolution/Workaround**:
-   There is no workaround available.
-
-**Affected Environment/Platform**:
-   All.
-
-**Driver/Module**:
-   IGB Poll Mode Driver
-
-
 Differences in how different Intel NICs handle maximum packet length for jumbo frame
 ------------------------------------------------------------------------------------
 
