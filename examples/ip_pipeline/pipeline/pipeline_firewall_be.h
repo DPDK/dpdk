@@ -63,6 +63,8 @@ struct pipeline_firewall_key {
 enum pipeline_firewall_msg_req_type {
 	PIPELINE_FIREWALL_MSG_REQ_ADD = 0,
 	PIPELINE_FIREWALL_MSG_REQ_DEL,
+	PIPELINE_FIREWALL_MSG_REQ_ADD_BULK,
+	PIPELINE_FIREWALL_MSG_REQ_DEL_BULK,
 	PIPELINE_FIREWALL_MSG_REQ_ADD_DEFAULT,
 	PIPELINE_FIREWALL_MSG_REQ_DEL_DEFAULT,
 	PIPELINE_FIREWALL_MSG_REQS
@@ -103,6 +105,42 @@ struct pipeline_firewall_del_msg_req {
 struct pipeline_firewall_del_msg_rsp {
 	int status;
 	int key_found;
+};
+
+/*
+ * MSG ADD BULK
+ */
+struct pipeline_firewall_add_bulk_msg_req {
+	enum pipeline_msg_req_type type;
+	enum pipeline_firewall_msg_req_type subtype;
+
+	struct pipeline_firewall_key *keys;
+	uint32_t n_keys;
+
+	uint32_t *priorities;
+	uint32_t *port_ids;
+	int *keys_found;
+	void **entries_ptr;
+};
+struct pipeline_firewall_add_bulk_msg_rsp {
+	int status;
+};
+
+/*
+ * MSG DEL BULK
+ */
+struct pipeline_firewall_del_bulk_msg_req {
+	enum pipeline_msg_req_type type;
+	enum pipeline_firewall_msg_req_type subtype;
+
+	/* key */
+	struct pipeline_firewall_key *keys;
+	uint32_t n_keys;
+	int *keys_found;
+};
+
+struct pipeline_firewall_del_bulk_msg_rsp {
+	int status;
 };
 
 /*

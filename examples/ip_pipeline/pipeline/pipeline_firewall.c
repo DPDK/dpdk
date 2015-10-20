@@ -51,6 +51,8 @@
 #include "pipeline_common_fe.h"
 #include "pipeline_firewall.h"
 
+#define BUF_SIZE		1024
+
 struct app_pipeline_firewall_rule {
 	struct pipeline_firewall_key key;
 	int32_t priority;
@@ -71,6 +73,18 @@ struct app_pipeline_firewall {
 	uint32_t default_rule_present;
 	uint32_t default_rule_port_id;
 	void *default_rule_entry_ptr;
+};
+
+struct app_pipeline_add_bulk_params {
+	struct pipeline_firewall_key *keys;
+	uint32_t n_keys;
+	uint32_t *priorities;
+	uint32_t *port_ids;
+};
+
+struct app_pipeline_del_bulk_params {
+	struct pipeline_firewall_key *keys;
+	uint32_t n_keys;
 };
 
 static void
@@ -256,6 +270,358 @@ app_pipeline_firewall_key_check_and_normalize(struct pipeline_firewall_key *key)
 	}
 }
 
+static int
+app_pipeline_add_bulk_parse_file(char *filename,
+		struct app_pipeline_add_bulk_params *params)
+{
+	FILE *f;
+	char file_buf[BUF_SIZE];
+	uint32_t i;
+	int status = 0;
+
+	f = fopen(filename, "r");
+	if (f == NULL)
+		return -1;
+
+	params->n_keys = 0;
+	while (fgets(file_buf, BUF_SIZE, f) != NULL)
+		params->n_keys++;
+	rewind(f);
+
+	if (params->n_keys == 0) {
+		status = -1;
+		goto end;
+	}
+
+	params->keys = rte_malloc(NULL,
+			params->n_keys * sizeof(struct pipeline_firewall_key),
+			RTE_CACHE_LINE_SIZE);
+	if (params->keys == NULL) {
+		status = -1;
+		goto end;
+	}
+
+	params->priorities = rte_malloc(NULL,
+			params->n_keys * sizeof(uint32_t),
+			RTE_CACHE_LINE_SIZE);
+	if (params->priorities == NULL) {
+		status = -1;
+		goto end;
+	}
+
+	params->port_ids = rte_malloc(NULL,
+			params->n_keys * sizeof(uint32_t),
+			RTE_CACHE_LINE_SIZE);
+	if (params->port_ids == NULL) {
+		status = -1;
+		goto end;
+	}
+
+	i = 0;
+	while (fgets(file_buf, BUF_SIZE, f) != NULL) {
+		char *str;
+
+		str = strtok(file_buf, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->priorities[i] = atoi(str);
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip = atoi(str)<<24;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip |= atoi(str)<<16;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip |= atoi(str)<<8;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip |= atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip_mask = atoi(str);
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip = atoi(str)<<24;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip |= atoi(str)<<16;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip |= atoi(str)<<8;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip |= atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip_mask = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_port_from = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_port_to = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_port_from = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_port_to = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.proto = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		/* Need to add 2 to str to skip leading 0x */
+		params->keys[i].key.ipv4_5tuple.proto_mask = strtol(str+2, NULL, 16);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->port_ids[i] = atoi(str);
+		params->keys[i].type = PIPELINE_FIREWALL_IPV4_5TUPLE;
+
+		i++;
+	}
+
+end:
+	fclose(f);
+	return status;
+}
+
+static int
+app_pipeline_del_bulk_parse_file(char *filename,
+		struct app_pipeline_del_bulk_params *params)
+{
+	FILE *f;
+	char file_buf[BUF_SIZE];
+	uint32_t i;
+	int status = 0;
+
+	f = fopen(filename, "r");
+	if (f == NULL)
+		return -1;
+
+	params->n_keys = 0;
+	while (fgets(file_buf, BUF_SIZE, f) != NULL)
+		params->n_keys++;
+	rewind(f);
+
+	if (params->n_keys == 0) {
+		status = -1;
+		goto end;
+	}
+
+	params->keys = rte_malloc(NULL,
+			params->n_keys * sizeof(struct pipeline_firewall_key),
+			RTE_CACHE_LINE_SIZE);
+	if (params->keys == NULL) {
+		status = -1;
+		goto end;
+	}
+
+	i = 0;
+	while (fgets(file_buf, BUF_SIZE, f) != NULL) {
+		char *str;
+
+		str = strtok(file_buf, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip = atoi(str)<<24;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip |= atoi(str)<<16;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip |= atoi(str)<<8;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip |= atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_ip_mask = atoi(str);
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip = atoi(str)<<24;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip |= atoi(str)<<16;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip |= atoi(str)<<8;
+
+		str = strtok(NULL, " .");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip |= atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_ip_mask = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_port_from = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.src_port_to = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_port_from = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.dst_port_to = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		params->keys[i].key.ipv4_5tuple.proto = atoi(str);
+
+		str = strtok(NULL, " ");
+		if (str == NULL) {
+			status = -1;
+			goto end;
+		}
+		/* Need to add 2 to str to skip leading 0x */
+		params->keys[i].key.ipv4_5tuple.proto_mask = strtol(str+2, NULL, 16);
+
+		params->keys[i].type = PIPELINE_FIREWALL_IPV4_5TUPLE;
+
+		i++;
+	}
+
+	for (i = 0; i < params->n_keys; i++) {
+		if (app_pipeline_firewall_key_check_and_normalize(&params->keys[i]) != 0) {
+			status = -1;
+			goto end;
+		}
+	}
+
+end:
+	fclose(f);
+	return status;
+}
+
 int
 app_pipeline_firewall_add_rule(struct app_params *app,
 	uint32_t pipeline_id,
@@ -404,6 +770,332 @@ app_pipeline_firewall_delete_rule(struct app_params *app,
 	app_msg_free(app, rsp);
 
 	return 0;
+}
+
+int
+app_pipeline_firewall_add_bulk(struct app_params *app,
+		uint32_t pipeline_id,
+		struct pipeline_firewall_key *keys,
+		uint32_t n_keys,
+		uint32_t *priorities,
+		uint32_t *port_ids)
+{
+	struct app_pipeline_firewall *p;
+	struct pipeline_firewall_add_bulk_msg_req *req;
+	struct pipeline_firewall_add_bulk_msg_rsp *rsp;
+
+	struct app_pipeline_firewall_rule **rules;
+	int *new_rules;
+
+	int *keys_found;
+	void **entries_ptr;
+
+	uint32_t i;
+	int status = 0;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	rules = rte_malloc(NULL,
+			n_keys * sizeof(struct app_pipeline_firewall_rule *),
+			RTE_CACHE_LINE_SIZE);
+	if (rules == NULL)
+		return -1;
+
+	new_rules = rte_malloc(NULL,
+			n_keys * sizeof(int),
+			RTE_CACHE_LINE_SIZE);
+	if (new_rules == NULL) {
+		rte_free(rules);
+		return -1;
+	}
+
+	/* check data integrity and add to rule list */
+	for (i = 0; i < n_keys; i++) {
+		if (port_ids[i]  >= p->n_ports_out) {
+			rte_free(rules);
+			rte_free(new_rules);
+			return -1;
+		}
+
+		if (app_pipeline_firewall_key_check_and_normalize(&keys[i]) != 0) {
+			rte_free(rules);
+			rte_free(new_rules);
+			return -1;
+		}
+
+		rules[i] = app_pipeline_firewall_rule_find(p, &keys[i]);
+		new_rules[i] = (rules[i] == NULL);
+		if (rules[i] == NULL) {
+			rules[i] = rte_malloc(NULL, sizeof(rules[i]),
+					RTE_CACHE_LINE_SIZE);
+
+			if (rules[i] == NULL) {
+				uint32_t j;
+
+				for (j = 0; j <= i; j++)
+					if (new_rules[j])
+						rte_free(rules[j]);
+
+				rte_free(rules);
+				rte_free(new_rules);
+				return -1;
+			}
+		}
+	}
+
+	keys_found = rte_malloc(NULL,
+			n_keys * sizeof(int),
+			RTE_CACHE_LINE_SIZE);
+	if (keys_found == NULL) {
+		uint32_t j;
+
+		for (j = 0; j < n_keys; j++)
+			if (new_rules[j])
+				rte_free(rules[j]);
+
+		rte_free(rules);
+		rte_free(new_rules);
+		return -1;
+	}
+
+	entries_ptr = rte_malloc(NULL,
+			n_keys * sizeof(struct rte_pipeline_table_entry *),
+			RTE_CACHE_LINE_SIZE);
+	if (entries_ptr == NULL) {
+		uint32_t j;
+
+		for (j = 0; j < n_keys; j++)
+			if (new_rules[j])
+				rte_free(rules[j]);
+
+		rte_free(rules);
+		rte_free(new_rules);
+		rte_free(keys_found);
+		return -1;
+	}
+	for (i = 0; i < n_keys; i++) {
+		entries_ptr[i] = rte_malloc(NULL,
+				sizeof(struct rte_pipeline_table_entry),
+				RTE_CACHE_LINE_SIZE);
+
+		if (entries_ptr[i] == NULL) {
+			uint32_t j;
+
+			for (j = 0; j < n_keys; j++)
+				if (new_rules[j])
+					rte_free(rules[j]);
+
+			for (j = 0; j <= i; j++)
+				rte_free(entries_ptr[j]);
+
+			rte_free(rules);
+			rte_free(new_rules);
+			rte_free(keys_found);
+			rte_free(entries_ptr);
+			return -1;
+		}
+	}
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL) {
+		uint32_t j;
+
+		for (j = 0; j < n_keys; j++)
+			if (new_rules[j])
+				rte_free(rules[j]);
+
+		for (j = 0; j < n_keys; j++)
+			rte_free(entries_ptr[j]);
+
+		rte_free(rules);
+		rte_free(new_rules);
+		rte_free(keys_found);
+		rte_free(entries_ptr);
+		return -1;
+	}
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_FIREWALL_MSG_REQ_ADD_BULK;
+
+	req->keys = keys;
+	req->n_keys = n_keys;
+	req->port_ids = port_ids;
+	req->priorities = priorities;
+	req->keys_found = keys_found;
+	req->entries_ptr = entries_ptr;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL) {
+		uint32_t j;
+
+		for (j = 0; j < n_keys; j++)
+			if (new_rules[j])
+				rte_free(rules[j]);
+
+		for (j = 0; j < n_keys; j++)
+			rte_free(entries_ptr[j]);
+
+		rte_free(rules);
+		rte_free(new_rules);
+		rte_free(keys_found);
+		rte_free(entries_ptr);
+		return -1;
+	}
+
+	if (rsp->status) {
+		for (i = 0; i < n_keys; i++)
+			if (new_rules[i])
+				rte_free(rules[i]);
+
+		for (i = 0; i < n_keys; i++)
+			rte_free(entries_ptr[i]);
+
+		status = -1;
+		goto cleanup;
+	}
+
+	for (i = 0; i < n_keys; i++) {
+		if (entries_ptr[i] == NULL ||
+			((new_rules[i] == 0) && (keys_found[i] == 0)) ||
+			((new_rules[i] == 1) && (keys_found[i] == 1))) {
+			for (i = 0; i < n_keys; i++)
+				if (new_rules[i])
+					rte_free(rules[i]);
+
+			for (i = 0; i < n_keys; i++)
+				rte_free(entries_ptr[i]);
+
+			status = -1;
+			goto cleanup;
+		}
+	}
+
+	for (i = 0; i < n_keys; i++) {
+		memcpy(&rules[i]->key, &keys[i], sizeof(keys[i]));
+		rules[i]->priority = priorities[i];
+		rules[i]->port_id = port_ids[i];
+		rules[i]->entry_ptr = entries_ptr[i];
+
+		/* Commit rule */
+		if (new_rules[i]) {
+			TAILQ_INSERT_TAIL(&p->rules, rules[i], node);
+			p->n_rules++;
+		}
+
+		print_firewall_ipv4_rule(rules[i]);
+	}
+
+cleanup:
+	app_msg_free(app, rsp);
+	rte_free(rules);
+	rte_free(new_rules);
+	rte_free(keys_found);
+	rte_free(entries_ptr);
+
+	return status;
+}
+
+int
+app_pipeline_firewall_delete_bulk(struct app_params *app,
+	uint32_t pipeline_id,
+	struct pipeline_firewall_key *keys,
+	uint32_t n_keys)
+{
+	struct app_pipeline_firewall *p;
+	struct pipeline_firewall_del_bulk_msg_req *req;
+	struct pipeline_firewall_del_bulk_msg_rsp *rsp;
+
+	struct app_pipeline_firewall_rule **rules;
+	int *keys_found;
+
+	uint32_t i;
+	int status = 0;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -1;
+
+	p = app_pipeline_data_fe(app, pipeline_id);
+	if (p == NULL)
+		return -1;
+
+	rules = rte_malloc(NULL,
+			n_keys * sizeof(struct app_pipeline_firewall_rule *),
+			RTE_CACHE_LINE_SIZE);
+	if (rules == NULL)
+		return -1;
+
+	for (i = 0; i < n_keys; i++) {
+		if (app_pipeline_firewall_key_check_and_normalize(&keys[i]) != 0) {
+			return -1;
+		}
+
+		rules[i] = app_pipeline_firewall_rule_find(p, &keys[i]);
+	}
+
+	keys_found = rte_malloc(NULL,
+			n_keys * sizeof(int),
+			RTE_CACHE_LINE_SIZE);
+	if (keys_found == NULL) {
+		rte_free(rules);
+		return -1;
+	}
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL) {
+		rte_free(rules);
+		rte_free(keys_found);
+		return -1;
+	}
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_FIREWALL_MSG_REQ_DEL_BULK;
+
+	req->keys = keys;
+	req->n_keys = n_keys;
+	req->keys_found = keys_found;
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL) {
+		rte_free(rules);
+		rte_free(keys_found);
+		return -1;
+	}
+
+	if (rsp->status) {
+		status = -1;
+		goto cleanup;
+	}
+
+	for (i = 0; i < n_keys; i++) {
+		if (keys_found[i] == 0) {
+			status = -1;
+			goto cleanup;
+		}
+	}
+
+	for (i = 0; i < n_keys; i++) {
+		TAILQ_REMOVE(&p->rules, rules[i], node);
+		p->n_rules--;
+		rte_free(rules[i]);
+	}
+
+cleanup:
+	app_msg_free(app, rsp);
+	rte_free(rules);
+	rte_free(keys_found);
+
+	return status;
 }
 
 int
@@ -795,6 +1487,170 @@ cmdline_parse_inst_t cmd_firewall_del_ipv4 = {
 };
 
 /*
+ * p firewall add bulk
+ */
+
+struct cmd_firewall_add_bulk_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t pipeline_id;
+	cmdline_fixed_string_t firewall_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_fixed_string_t bulk_string;
+	cmdline_fixed_string_t file_path;
+};
+
+static void
+cmd_firewall_add_bulk_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_firewall_add_bulk_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+
+	struct app_pipeline_add_bulk_params add_bulk_params;
+
+	status = app_pipeline_add_bulk_parse_file(params->file_path, &add_bulk_params);
+	if (status != 0) {
+		printf("Command failed\n");
+		goto end;
+	}
+
+	status = app_pipeline_firewall_add_bulk(app, params->pipeline_id, add_bulk_params.keys,
+			add_bulk_params.n_keys, add_bulk_params.priorities, add_bulk_params.port_ids);
+	if (status != 0) {
+		printf("Command failed\n");
+		goto end;
+	}
+
+end:
+	rte_free(add_bulk_params.keys);
+	rte_free(add_bulk_params.priorities);
+	rte_free(add_bulk_params.port_ids);
+}
+
+cmdline_parse_token_string_t cmd_firewall_add_bulk_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_bulk_result, p_string,
+		"p");
+
+cmdline_parse_token_num_t cmd_firewall_add_bulk_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_add_bulk_result, pipeline_id,
+		UINT32);
+
+cmdline_parse_token_string_t cmd_firewall_add_bulk_firewall_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_bulk_result,
+		firewall_string, "firewall");
+
+cmdline_parse_token_string_t cmd_firewall_add_bulk_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_bulk_result,
+		add_string, "add");
+
+cmdline_parse_token_string_t cmd_firewall_add_bulk_bulk_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_bulk_result,
+		bulk_string, "bulk");
+
+cmdline_parse_token_string_t cmd_firewall_add_bulk_file_path_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_add_bulk_result,
+		file_path, NULL);
+
+cmdline_parse_inst_t cmd_firewall_add_bulk = {
+	.f = cmd_firewall_add_bulk_parsed,
+	.data = NULL,
+	.help_str = "Firewall rule add bulk",
+	.tokens = {
+		(void *) &cmd_firewall_add_bulk_p_string,
+		(void *) &cmd_firewall_add_bulk_pipeline_id,
+		(void *) &cmd_firewall_add_bulk_firewall_string,
+		(void *) &cmd_firewall_add_bulk_add_string,
+		(void *) &cmd_firewall_add_bulk_bulk_string,
+		(void *) &cmd_firewall_add_bulk_file_path_string,
+		NULL,
+	},
+};
+
+/*
+ * p firewall del bulk
+ */
+
+struct cmd_firewall_del_bulk_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t pipeline_id;
+	cmdline_fixed_string_t firewall_string;
+	cmdline_fixed_string_t del_string;
+	cmdline_fixed_string_t bulk_string;
+	cmdline_fixed_string_t file_path;
+};
+
+static void
+cmd_firewall_del_bulk_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	void *data)
+{
+	struct cmd_firewall_del_bulk_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+
+	struct app_pipeline_del_bulk_params del_bulk_params;
+
+	status = app_pipeline_del_bulk_parse_file(params->file_path, &del_bulk_params);
+	if (status != 0) {
+		printf("Command failed\n");
+		goto end;
+	}
+
+	status = app_pipeline_firewall_delete_bulk(app, params->pipeline_id,
+			del_bulk_params.keys, del_bulk_params.n_keys);
+	if (status != 0) {
+		printf("Command failed\n");
+		goto end;
+	}
+
+end:
+	rte_free(del_bulk_params.keys);
+}
+
+cmdline_parse_token_string_t cmd_firewall_del_bulk_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_bulk_result, p_string,
+		"p");
+
+cmdline_parse_token_num_t cmd_firewall_del_bulk_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_firewall_del_bulk_result, pipeline_id,
+		UINT32);
+
+cmdline_parse_token_string_t cmd_firewall_del_bulk_firewall_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_bulk_result,
+		firewall_string, "firewall");
+
+cmdline_parse_token_string_t cmd_firewall_del_bulk_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_bulk_result,
+		del_string, "del");
+
+cmdline_parse_token_string_t cmd_firewall_del_bulk_bulk_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_bulk_result,
+		bulk_string, "bulk");
+
+cmdline_parse_token_string_t cmd_firewall_del_bulk_file_path_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_firewall_del_bulk_result,
+		file_path, NULL);
+
+cmdline_parse_inst_t cmd_firewall_del_bulk = {
+	.f = cmd_firewall_del_bulk_parsed,
+	.data = NULL,
+	.help_str = "Firewall rule del bulk",
+	.tokens = {
+		(void *) &cmd_firewall_del_bulk_p_string,
+		(void *) &cmd_firewall_del_bulk_pipeline_id,
+		(void *) &cmd_firewall_del_bulk_firewall_string,
+		(void *) &cmd_firewall_del_bulk_add_string,
+		(void *) &cmd_firewall_del_bulk_bulk_string,
+		(void *) &cmd_firewall_del_bulk_file_path_string,
+		NULL,
+	},
+};
+
+/*
  * p firewall add default
  */
 struct cmd_firewall_add_default_result {
@@ -984,6 +1840,8 @@ cmdline_parse_inst_t cmd_firewall_ls = {
 static cmdline_parse_ctx_t pipeline_cmds[] = {
 	(cmdline_parse_inst_t *) &cmd_firewall_add_ipv4,
 	(cmdline_parse_inst_t *) &cmd_firewall_del_ipv4,
+	(cmdline_parse_inst_t *) &cmd_firewall_add_bulk,
+	(cmdline_parse_inst_t *) &cmd_firewall_del_bulk,
 	(cmdline_parse_inst_t *) &cmd_firewall_add_default,
 	(cmdline_parse_inst_t *) &cmd_firewall_del_default,
 	(cmdline_parse_inst_t *) &cmd_firewall_ls,

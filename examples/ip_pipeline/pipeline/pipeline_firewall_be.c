@@ -80,6 +80,12 @@ static void *
 pipeline_firewall_msg_req_del_handler(struct pipeline *p, void *msg);
 
 static void *
+pipeline_firewall_msg_req_add_bulk_handler(struct pipeline *p, void *msg);
+
+static void *
+pipeline_firewall_msg_req_del_bulk_handler(struct pipeline *p, void *msg);
+
+static void *
 pipeline_firewall_msg_req_add_default_handler(struct pipeline *p, void *msg);
 
 static void *
@@ -90,6 +96,10 @@ static pipeline_msg_req_handler custom_handlers[] = {
 		pipeline_firewall_msg_req_add_handler,
 	[PIPELINE_FIREWALL_MSG_REQ_DEL] =
 		pipeline_firewall_msg_req_del_handler,
+	[PIPELINE_FIREWALL_MSG_REQ_ADD_BULK] =
+		pipeline_firewall_msg_req_add_bulk_handler,
+	[PIPELINE_FIREWALL_MSG_REQ_DEL_BULK] =
+		pipeline_firewall_msg_req_del_bulk_handler,
 	[PIPELINE_FIREWALL_MSG_REQ_ADD_DEFAULT] =
 		pipeline_firewall_msg_req_add_default_handler,
 	[PIPELINE_FIREWALL_MSG_REQ_DEL_DEFAULT] =
@@ -694,6 +704,153 @@ pipeline_firewall_msg_req_del_handler(struct pipeline *p, void *msg)
 		&params,
 		&rsp->key_found,
 		NULL);
+
+	return rsp;
+}
+
+static void *
+pipeline_firewall_msg_req_add_bulk_handler(struct pipeline *p, void *msg)
+{
+	struct pipeline_firewall_add_bulk_msg_req *req = msg;
+	struct pipeline_firewall_add_bulk_msg_rsp *rsp = msg;
+
+	struct rte_table_acl_rule_add_params *params[req->n_keys];
+	struct firewall_table_entry *entries[req->n_keys];
+
+	uint32_t i, n_keys;
+
+	n_keys = req->n_keys;
+
+	for (i = 0; i < n_keys; i++) {
+		entries[i] = rte_malloc(NULL,
+				sizeof(struct firewall_table_entry),
+				RTE_CACHE_LINE_SIZE);
+		if (entries[i] == NULL) {
+			rsp->status = -1;
+			return rsp;
+		}
+
+		params[i] = rte_malloc(NULL,
+				sizeof(struct rte_table_acl_rule_add_params),
+				RTE_CACHE_LINE_SIZE);
+		if (params[i] == NULL) {
+			rsp->status = -1;
+			return rsp;
+		}
+
+		entries[i]->head.action = RTE_PIPELINE_ACTION_PORT;
+		entries[i]->head.port_id = p->port_out_id[req->port_ids[i]];
+
+		switch (req->keys[i].type) {
+		case PIPELINE_FIREWALL_IPV4_5TUPLE:
+			params[i]->priority = req->priorities[i];
+			params[i]->field_value[0].value.u8 =
+				req->keys[i].key.ipv4_5tuple.proto;
+			params[i]->field_value[0].mask_range.u8 =
+				req->keys[i].key.ipv4_5tuple.proto_mask;
+			params[i]->field_value[1].value.u32 =
+				req->keys[i].key.ipv4_5tuple.src_ip;
+			params[i]->field_value[1].mask_range.u32 =
+				req->keys[i].key.ipv4_5tuple.src_ip_mask;
+			params[i]->field_value[2].value.u32 =
+				req->keys[i].key.ipv4_5tuple.dst_ip;
+			params[i]->field_value[2].mask_range.u32 =
+				req->keys[i].key.ipv4_5tuple.dst_ip_mask;
+			params[i]->field_value[3].value.u16 =
+				req->keys[i].key.ipv4_5tuple.src_port_from;
+			params[i]->field_value[3].mask_range.u16 =
+				req->keys[i].key.ipv4_5tuple.src_port_to;
+			params[i]->field_value[4].value.u16 =
+				req->keys[i].key.ipv4_5tuple.dst_port_from;
+			params[i]->field_value[4].mask_range.u16 =
+				req->keys[i].key.ipv4_5tuple.dst_port_to;
+			break;
+
+		default:
+			rsp->status = -1; /* Error */
+
+			for (i = 0; i < n_keys; i++) {
+				rte_free(entries[i]);
+				rte_free(params[i]);
+			}
+
+			return rsp;
+		}
+	}
+
+	rsp->status = rte_pipeline_table_entry_add_bulk(p->p, p->table_id[0],
+			(void *)params, (struct rte_pipeline_table_entry **)entries,
+			n_keys, req->keys_found,
+			(struct rte_pipeline_table_entry **)req->entries_ptr);
+
+	for (i = 0; i < n_keys; i++) {
+		rte_free(entries[i]);
+		rte_free(params[i]);
+	}
+
+	return rsp;
+}
+
+static void *
+pipeline_firewall_msg_req_del_bulk_handler(struct pipeline *p, void *msg)
+{
+	struct pipeline_firewall_del_bulk_msg_req *req = msg;
+	struct pipeline_firewall_del_bulk_msg_rsp *rsp = msg;
+
+	struct rte_table_acl_rule_delete_params *params[req->n_keys];
+
+	uint32_t i, n_keys;
+
+	n_keys = req->n_keys;
+
+	for (i = 0; i < n_keys; i++) {
+		params[i] = rte_malloc(NULL,
+				sizeof(struct rte_table_acl_rule_delete_params),
+				RTE_CACHE_LINE_SIZE);
+		if (params[i] == NULL) {
+			rsp->status = -1;
+			return rsp;
+		}
+
+		switch (req->keys[i].type) {
+		case PIPELINE_FIREWALL_IPV4_5TUPLE:
+			params[i]->field_value[0].value.u8 =
+				req->keys[i].key.ipv4_5tuple.proto;
+			params[i]->field_value[0].mask_range.u8 =
+				req->keys[i].key.ipv4_5tuple.proto_mask;
+			params[i]->field_value[1].value.u32 =
+				req->keys[i].key.ipv4_5tuple.src_ip;
+			params[i]->field_value[1].mask_range.u32 =
+				req->keys[i].key.ipv4_5tuple.src_ip_mask;
+			params[i]->field_value[2].value.u32 =
+				req->keys[i].key.ipv4_5tuple.dst_ip;
+			params[i]->field_value[2].mask_range.u32 =
+				req->keys[i].key.ipv4_5tuple.dst_ip_mask;
+			params[i]->field_value[3].value.u16 =
+				req->keys[i].key.ipv4_5tuple.src_port_from;
+			params[i]->field_value[3].mask_range.u16 =
+				req->keys[i].key.ipv4_5tuple.src_port_to;
+			params[i]->field_value[4].value.u16 =
+				req->keys[i].key.ipv4_5tuple.dst_port_from;
+			params[i]->field_value[4].mask_range.u16 =
+				req->keys[i].key.ipv4_5tuple.dst_port_to;
+			break;
+
+		default:
+			rsp->status = -1; /* Error */
+
+			for (i = 0; i < n_keys; i++)
+				rte_free(params[i]);
+
+			return rsp;
+		}
+	}
+
+	rsp->status = rte_pipeline_table_entry_delete_bulk(p->p, p->table_id[0],
+			(void **)&params, n_keys, req->keys_found, NULL);
+
+	for (i = 0; i < n_keys; i++)
+		rte_free(params[i]);
 
 	return rsp;
 }

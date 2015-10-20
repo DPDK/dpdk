@@ -50,6 +50,20 @@ app_pipeline_firewall_delete_rule(struct app_params *app,
 	struct pipeline_firewall_key *key);
 
 int
+app_pipeline_firewall_add_bulk(struct app_params *app,
+		uint32_t pipeline_id,
+		struct pipeline_firewall_key *keys,
+		uint32_t n_keys,
+		uint32_t *priorities,
+		uint32_t *port_ids);
+
+int
+app_pipeline_firewall_delete_bulk(struct app_params *app,
+	uint32_t pipeline_id,
+	struct pipeline_firewall_key *keys,
+	uint32_t n_keys);
+
+int
 app_pipeline_firewall_add_default_rule(struct app_params *app,
 	uint32_t pipeline_id,
 	uint32_t port_id);
