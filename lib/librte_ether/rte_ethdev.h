@@ -3122,7 +3122,7 @@ int rte_eth_mirror_rule_reset(uint8_t port_id,
  * @param queue_idx
  *   The queue id.
  * @param tx_rate
- *   The tx rate allocated from the total link speed for this queue.
+ *   The tx rate in Mbps. Allocated from the total port link speed.
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support this feature.
