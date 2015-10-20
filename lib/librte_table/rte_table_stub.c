@@ -114,6 +114,8 @@ struct rte_table_ops rte_table_stub_ops = {
 	.f_free = NULL,
 	.f_add = NULL,
 	.f_delete = NULL,
+	.f_add_bulk = NULL,
+	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_stub_lookup,
 	.f_stats = rte_table_stub_stats_read,
 };

@@ -230,6 +230,8 @@ struct rte_table_ops rte_table_array_ops = {
 	.f_free = rte_table_array_free,
 	.f_add = rte_table_array_entry_add,
 	.f_delete = NULL,
+	.f_add_bulk = NULL,
+	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_array_lookup,
 	.f_stats = rte_table_array_stats_read,
 };

@@ -1103,6 +1103,8 @@ struct rte_table_ops rte_table_hash_key16_lru_ops = {
 	.f_free = rte_table_hash_free_key16_lru,
 	.f_add = rte_table_hash_entry_add_key16_lru,
 	.f_delete = rte_table_hash_entry_delete_key16_lru,
+	.f_add_bulk = NULL,
+	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_hash_lookup_key16_lru,
 	.f_stats = rte_table_hash_key16_stats_read,
 };
@@ -1112,6 +1114,8 @@ struct rte_table_ops rte_table_hash_key16_ext_ops = {
 	.f_free = rte_table_hash_free_key16_ext,
 	.f_add = rte_table_hash_entry_add_key16_ext,
 	.f_delete = rte_table_hash_entry_delete_key16_ext,
+	.f_add_bulk = NULL,
+	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_hash_lookup_key16_ext,
 	.f_stats = rte_table_hash_key16_stats_read,
 };

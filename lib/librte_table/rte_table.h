@@ -154,6 +154,77 @@ typedef int (*rte_table_op_entry_delete)(
 	void *entry);
 
 /**
+ * Lookup table entry add bulk
+ *
+ * @param table
+ *   Handle to lookup table instance
+ * @param key
+ *   Array containing lookup keys
+ * @param entries
+ *   Array containing data to be associated with each key. Every item in the
+ *   array has to point to a valid memory buffer where the first entry_size
+ *   bytes (table create parameter) are populated with the data.
+ * @param n_keys
+ *   Number of keys to add
+ * @param key_found
+ *   After successful invocation, key_found for every item in the array is set
+ *   to a value different than 0 if the current key is already present in the
+ *   table and to 0 if not. This pointer has to be set to a valid memory
+ *   location before the table entry add function is called.
+ * @param entries_ptr
+ *   After successful invocation, array *entries_ptr stores the handle to the
+ *   table entry containing the data associated with every key. This handle can
+ *   be used to perform further read-write accesses to this entry. This handle
+ *   is valid until the key is deleted from the table or the same key is
+ *   re-added to the table, typically to associate it with different data. This
+ *   pointer has to be set to a valid memory location before the function is
+ *   called.
+ * @return
+ *   0 on success, error code otherwise
+ */
+typedef int (*rte_table_op_entry_add_bulk)(
+	void *table,
+	void **keys,
+	void **entries,
+	uint32_t n_keys,
+	int *key_found,
+	void **entries_ptr);
+
+/**
+ * Lookup table entry delete bulk
+ *
+ * @param table
+ *   Handle to lookup table instance
+ * @param key
+ *   Array containing lookup keys
+ * @param n_keys
+ *   Number of keys to delete
+ * @param key_found
+ *   After successful invocation, key_found for every item in the array is set
+ *   to a value different than 0if the current key was present in the table
+ *   before the delete operation was performed and to 0 if not. This pointer
+ *   has to be set to a valid memory location before the table entry delete
+ *   function is called.
+ * @param entries
+ *   If entries pointer is NULL, this pointer is ignored for every entry found.
+ *   Else, after successful invocation, if specific key is found in the table
+ *   (key_found is different than 0 for this item after function call is
+ *   completed) and item of entry array points to a valid buffer (entry is set
+ *   to a value different than NULL before the function is called), then the
+ *   first entry_size bytes (table create parameter) in *entry store a copy of
+ *   table entry that contained the data associated with the current key before
+ *   the key was deleted.
+ * @return
+ *   0 on success, error code otherwise
+ */
+typedef int (*rte_table_op_entry_delete_bulk)(
+	void *table,
+	void **keys,
+	uint32_t n_keys,
+	int *key_found,
+	void **entries);
+
+/**
  * Lookup table lookup
  *
  * @param table
@@ -213,12 +284,14 @@ typedef int (*rte_table_op_stats_read)(
 
 /** Lookup table interface defining the lookup table operation */
 struct rte_table_ops {
-	rte_table_op_create f_create;       /**< Create */
-	rte_table_op_free f_free;           /**< Free */
-	rte_table_op_entry_add f_add;       /**< Entry add */
-	rte_table_op_entry_delete f_delete; /**< Entry delete */
-	rte_table_op_lookup f_lookup;       /**< Lookup */
-	rte_table_op_stats_read f_stats;	/**< Stats */
+	rte_table_op_create f_create;                 /**< Create */
+	rte_table_op_free f_free;                     /**< Free */
+	rte_table_op_entry_add f_add;                 /**< Entry add */
+	rte_table_op_entry_delete f_delete;           /**< Entry delete */
+	rte_table_op_entry_add_bulk f_add_bulk;       /**< Add entry bulk */
+	rte_table_op_entry_delete_bulk f_delete_bulk; /**< Delete entry bulk */
+	rte_table_op_lookup f_lookup;                 /**< Lookup */
+	rte_table_op_stats_read f_stats;              /**< Stats */
 };
 
 #ifdef __cplusplus

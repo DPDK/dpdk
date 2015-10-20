@@ -1139,6 +1139,8 @@ struct rte_table_ops rte_table_hash_ext_ops	 = {
 	.f_free = rte_table_hash_ext_free,
 	.f_add = rte_table_hash_ext_entry_add,
 	.f_delete = rte_table_hash_ext_entry_delete,
+	.f_add_bulk = NULL,
+	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_hash_ext_lookup,
 	.f_stats = rte_table_hash_ext_stats_read,
 };
@@ -1148,6 +1150,8 @@ struct rte_table_ops rte_table_hash_ext_dosig_ops  = {
 	.f_free = rte_table_hash_ext_free,
 	.f_add = rte_table_hash_ext_entry_add,
 	.f_delete = rte_table_hash_ext_entry_delete,
+	.f_add_bulk = NULL,
+	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_hash_ext_lookup_dosig,
 	.f_stats = rte_table_hash_ext_stats_read,
 };

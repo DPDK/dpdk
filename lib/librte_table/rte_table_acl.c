@@ -444,6 +444,313 @@ rte_table_acl_entry_delete(
 }
 
 static int
+rte_table_acl_entry_add_bulk(
+	void *table,
+	void **keys,
+	void **entries,
+	uint32_t n_keys,
+	int *key_found,
+	void **entries_ptr)
+{
+	struct rte_table_acl *acl = (struct rte_table_acl *) table;
+	struct rte_acl_ctx *ctx;
+	uint32_t rule_pos[n_keys];
+	uint32_t i;
+	int err = 0, build = 0;
+	int status;
+
+	/* Check input parameters */
+	if (table == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: table parameter is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (keys == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: keys parameter is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (entries == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: entries parameter is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (n_keys == 0) {
+		RTE_LOG(ERR, TABLE, "%s: 0 rules to add\n", __func__);
+		return -EINVAL;
+	}
+	if (key_found == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: key_found parameter is NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+	if (entries_ptr == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: entries_ptr parameter is NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	/* Check input parameters in arrays */
+	for (i = 0; i < n_keys; i++) {
+		struct rte_table_acl_rule_add_params *rule;
+
+		if (keys[i] == NULL) {
+			RTE_LOG(ERR, TABLE, "%s: keys[%" PRIu32 "] parameter is NULL\n",
+					__func__, i);
+			return -EINVAL;
+		}
+
+		if (entries[i] == NULL) {
+			RTE_LOG(ERR, TABLE, "%s: entries[%" PRIu32 "] parameter is NULL\n",
+					__func__, i);
+			return -EINVAL;
+		}
+
+		if (entries_ptr[i] == NULL) {
+			RTE_LOG(ERR, TABLE, "%s: entries_ptr[%" PRIu32 "] parameter is NULL\n",
+					__func__, i);
+			return -EINVAL;
+		}
+
+		rule = (struct rte_table_acl_rule_add_params *) keys[i];
+		if (rule->priority > RTE_ACL_MAX_PRIORITY) {
+			RTE_LOG(ERR, TABLE, "%s: Priority is too high\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	memset(rule_pos, 0, n_keys * sizeof(uint32_t));
+	memset(key_found, 0, n_keys * sizeof(int));
+	for (i = 0; i < n_keys; i++) {
+		struct rte_table_acl_rule_add_params *rule =
+				(struct rte_table_acl_rule_add_params *) keys[i];
+		struct rte_pipeline_acl_rule acl_rule;
+		struct rte_acl_rule *rule_location;
+		uint32_t free_pos, free_pos_valid, j;
+
+		/* Setup rule data structure */
+		memset(&acl_rule, 0, sizeof(acl_rule));
+		acl_rule.data.category_mask = 1;
+		acl_rule.data.priority = RTE_ACL_MAX_PRIORITY - rule->priority;
+		acl_rule.data.userdata = 0; /* To be set up later */
+		memcpy(&acl_rule.field[0],
+			&rule->field_value[0],
+			acl->cfg.num_fields * sizeof(struct rte_acl_field));
+
+		/* Look to see if the rule exists already in the table */
+		free_pos = 0;
+		free_pos_valid = 0;
+		for (j = 1; j < acl->n_rules; j++) {
+			if (acl->acl_rule_list[j] == NULL) {
+				if (free_pos_valid == 0) {
+					free_pos = j;
+					free_pos_valid = 1;
+				}
+
+				continue;
+			}
+
+			/* Compare the key fields */
+			status = memcmp(&acl->acl_rule_list[j]->field[0],
+				&rule->field_value[0],
+				acl->cfg.num_fields * sizeof(struct rte_acl_field));
+
+			/* Rule found: update data associated with the rule */
+			if (status == 0) {
+				key_found[i] = 1;
+				entries_ptr[i] = &acl->memory[j * acl->entry_size];
+				memcpy(entries_ptr[i], entries[i], acl->entry_size);
+
+				break;
+			}
+		}
+
+		/* Key already in the table */
+		if (key_found[i] != 0)
+			continue;
+
+		/* Maximum number of rules reached */
+		if (free_pos_valid == 0) {
+			err = 1;
+			break;
+		}
+
+		/* Add the new rule to the rule set */
+		acl_rule.data.userdata = free_pos;
+		rule_location = (struct rte_acl_rule *)
+			&acl->acl_rule_memory[free_pos * acl->acl_params.rule_size];
+		memcpy(rule_location, &acl_rule, acl->acl_params.rule_size);
+		acl->acl_rule_list[free_pos] = rule_location;
+		rule_pos[i] = free_pos;
+		build = 1;
+	}
+
+	if (err != 0) {
+		for (i = 0; i < n_keys; i++) {
+			if (rule_pos[i] == 0)
+				continue;
+
+			acl->acl_rule_list[rule_pos[i]] = NULL;
+		}
+
+		return -ENOSPC;
+	}
+
+	if (build == 0)
+		return 0;
+
+	/* Build low level ACL table */
+	acl->name_id ^= 1;
+	acl->acl_params.name = acl->name[acl->name_id];
+	status = rte_table_acl_build(acl, &ctx);
+	if (status != 0) {
+		/* Roll back changes */
+		for (i = 0; i < n_keys; i++) {
+			if (rule_pos[i] == 0)
+				continue;
+
+			acl->acl_rule_list[rule_pos[i]] = NULL;
+		}
+		acl->name_id ^= 1;
+
+		return -EINVAL;
+	}
+
+	/* Commit changes */
+	if (acl->ctx != NULL)
+		rte_acl_free(acl->ctx);
+	acl->ctx = ctx;
+
+	for (i = 0; i < n_keys; i++) {
+		if (rule_pos[i] == 0)
+			continue;
+
+		key_found[i] = 0;
+		entries_ptr[i] = &acl->memory[rule_pos[i] * acl->entry_size];
+		memcpy(entries_ptr[i], entries[i], acl->entry_size);
+	}
+
+	return 0;
+}
+
+static int
+rte_table_acl_entry_delete_bulk(
+	void *table,
+	void **keys,
+	uint32_t n_keys,
+	int *key_found,
+	void **entries)
+{
+	struct rte_table_acl *acl = (struct rte_table_acl *) table;
+	struct rte_acl_rule *deleted_rules[n_keys];
+	uint32_t rule_pos[n_keys];
+	struct rte_acl_ctx *ctx;
+	uint32_t i;
+	int status;
+	int build = 0;
+
+	/* Check input parameters */
+	if (table == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: table parameter is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (keys == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: key parameter is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (n_keys == 0) {
+		RTE_LOG(ERR, TABLE, "%s: 0 rules to delete\n", __func__);
+		return -EINVAL;
+	}
+	if (key_found == NULL) {
+		RTE_LOG(ERR, TABLE, "%s: key_found parameter is NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < n_keys; i++) {
+		if (keys[i] == NULL) {
+			RTE_LOG(ERR, TABLE, "%s: keys[%" PRIu32 "] parameter is NULL\n",
+					__func__, i);
+			return -EINVAL;
+		}
+	}
+
+	memset(deleted_rules, 0, n_keys * sizeof(struct rte_acl_rule *));
+	memset(rule_pos, 0, n_keys * sizeof(uint32_t));
+	for (i = 0; i < n_keys; i++) {
+		struct rte_table_acl_rule_delete_params *rule =
+			(struct rte_table_acl_rule_delete_params *) keys[i];
+		uint32_t pos_valid, j;
+
+		/* Look for the rule in the table */
+		pos_valid = 0;
+		for (j = 1; j < acl->n_rules; j++) {
+			if (acl->acl_rule_list[j] == NULL)
+				continue;
+
+			/* Compare the key fields */
+			status = memcmp(&acl->acl_rule_list[j]->field[0],
+					&rule->field_value[0],
+					acl->cfg.num_fields * sizeof(struct rte_acl_field));
+
+			/* Rule found: remove from table */
+			if (status == 0) {
+				pos_valid = 1;
+
+				deleted_rules[i] = acl->acl_rule_list[j];
+				acl->acl_rule_list[j] = NULL;
+				rule_pos[i] = j;
+
+				build = 1;
+			}
+		}
+
+		if (pos_valid == 0) {
+			key_found[i] = 0;
+			continue;
+		}
+	}
+
+	/* Return if no changes to acl table */
+	if (build == 0) {
+		return 0;
+	}
+
+	/* Build low level ACL table */
+	acl->name_id ^= 1;
+	acl->acl_params.name = acl->name[acl->name_id];
+	status = rte_table_acl_build(acl, &ctx);
+	if (status != 0) {
+		/* Roll back changes */
+		for (i = 0; i < n_keys; i++) {
+			if (rule_pos[i] == 0)
+				continue;
+
+			acl->acl_rule_list[rule_pos[i]] = deleted_rules[i];
+		}
+
+		acl->name_id ^= 1;
+
+		return -EINVAL;
+	}
+
+	/* Commit changes */
+	if (acl->ctx != NULL)
+		rte_acl_free(acl->ctx);
+
+	acl->ctx = ctx;
+	for (i = 0; i < n_keys; i++) {
+		if (rule_pos[i] == 0)
+			continue;
+
+		key_found[i] = 1;
+		if (entries != NULL && entries[i] != NULL)
+			memcpy(entries[i], &acl->memory[rule_pos[i] * acl->entry_size],
+					acl->entry_size);
+	}
+
+	return 0;
+}
+
+static int
 rte_table_acl_lookup(
 	void *table,
 	struct rte_mbuf **pkts,
@@ -521,6 +828,8 @@ struct rte_table_ops rte_table_acl_ops = {
 	.f_free = rte_table_acl_free,
 	.f_add = rte_table_acl_entry_add,
 	.f_delete = rte_table_acl_entry_delete,
+	.f_add_bulk = rte_table_acl_entry_add_bulk,
+	.f_delete_bulk = rte_table_acl_entry_delete_bulk,
 	.f_lookup = rte_table_acl_lookup,
 	.f_stats = rte_table_acl_stats_read,
 };

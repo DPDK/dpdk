@@ -377,6 +377,8 @@ struct rte_table_ops rte_table_lpm_ops = {
 	.f_free = rte_table_lpm_free,
 	.f_add = rte_table_lpm_entry_add,
 	.f_delete = rte_table_lpm_entry_delete,
+	.f_add_bulk = NULL,
+	.f_delete_bulk = NULL,
 	.f_lookup = rte_table_lpm_lookup,
 	.f_stats = rte_table_lpm_stats_read,
 };

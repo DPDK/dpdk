@@ -15,9 +15,6 @@ Deprecation Notices
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
 
-* librte_table: New functions for table entry bulk add/delete will be added
-  to the table operations structure.
-
 * librte_table hash: Key mask parameter will be added to the hash table
   parameter structure for 8-byte key and 16-byte key extendible bucket and
   LRU tables.
