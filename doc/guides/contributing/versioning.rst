@@ -383,7 +383,8 @@ easy.  Start by removing the symbol from the requisite version map file:
    } DPDK_2.0;
 
 
-Next remove the corresponding versioned export
+Next remove the corresponding versioned export.
+
 .. code-block:: c
 
  -VERSION_SYMBOL(rte_acl_create, _v20, 2.0);
