@@ -14,7 +14,7 @@ Deprecation Notices
   All binaries will need to be rebuilt from release 2.2.
 
 * The following fields have been deprecated in rte_eth_stats:
-  imissed, ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
+  ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
 
 * ABI changes are planned for struct rte_eth_fdir_flow_ext in order to support

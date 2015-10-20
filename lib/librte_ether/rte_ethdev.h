@@ -195,7 +195,9 @@ struct rte_eth_stats {
 	uint64_t ibytes;    /**< Total number of successfully received bytes. */
 	uint64_t obytes;    /**< Total number of successfully transmitted bytes. */
 	uint64_t imissed;
-	/**< Deprecated; Total of RX missed packets (e.g full FIFO). */
+	/**< Total of RX packets dropped by the HW,
+	 * because there are no available mbufs (i.e. RX queues are full).
+	 */
 	uint64_t ibadcrc;
 	/**< Deprecated; Total of RX packets with CRC error. */
 	uint64_t ibadlen;
