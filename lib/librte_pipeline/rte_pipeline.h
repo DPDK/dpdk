@@ -466,6 +466,70 @@ int rte_pipeline_table_entry_delete(struct rte_pipeline *p,
 	struct rte_pipeline_table_entry *entry);
 
 /**
+ * Pipeline table entry add bulk
+ *
+ * @param p
+ *   Handle to pipeline instance
+ * @param table_id
+ *   Table ID (returned by previous invocation of pipeline table create)
+ * @param keys
+ *   Array containing table entry keys
+ * @param entries
+ *   Array containung new contents for every table entry identified by key
+ * @param n_keys
+ *   Number of keys to add
+ * @param key_found
+ *   On successful invocation, key_found for every item in the array is set to
+ *   TRUE (value different than 0) if key was already present in the table
+ *   before the add operation and to FALSE (value 0) if not
+ * @param entries_ptr
+ *   On successful invocation, array *entries_ptr stores pointer to every table
+ *   entry associated with key. This can be used for further read-write accesses
+ *   to this table entry and is valid until the key is deleted from the table or
+ *   re-added (usually for associating different actions and/or action meta-data
+ *   to the current key)
+ * @return
+ *   0 on success, error code otherwise
+ */
+int rte_pipeline_table_entry_add_bulk(struct rte_pipeline *p,
+	uint32_t table_id,
+	void **keys,
+	struct rte_pipeline_table_entry **entries,
+	uint32_t n_keys,
+	int *key_found,
+	struct rte_pipeline_table_entry **entries_ptr);
+
+/**
+ * Pipeline table entry delete bulk
+ *
+ * @param p
+ *   Handle to pipeline instance
+ * @param table_id
+ *   Table ID (returned by previous invocation of pipeline table create)
+ * @param keys
+ *   Array containing table entry keys
+ * @param n_keys
+ *   Number of keys to delete
+ * @param key_found
+ *   On successful invocation, key_found for every item in the array is set to
+ *   TRUE (value different than 0) if key was found in the table before the
+ *   delete operation and to FALSE (value 0) if not
+ * @param entries
+ *   If entries pointer is NULL, this pointer is ignored for every entry found.
+ *   Else, after successful invocation, if specific key is found in the table
+ *   and entry points to a valid buffer, the table entry contents (as it was
+ *   before the delete was performed) is copied to this buffer.
+ * @return
+ *   0 on success, error code otherwise
+ */
+int rte_pipeline_table_entry_delete_bulk(struct rte_pipeline *p,
+	uint32_t table_id,
+	void **keys,
+	uint32_t n_keys,
+	int *key_found,
+	struct rte_pipeline_table_entry **entries);
+
+/**
  * Read pipeline table stats.
  *
  * This function reads table statistics identified by *table_id* of given

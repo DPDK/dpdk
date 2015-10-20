@@ -29,3 +29,11 @@ DPDK_2.1 {
 	rte_pipeline_table_stats_read;
 
 } DPDK_2.0;
+
+DPDK_2.2 {
+	global:
+
+	rte_pipeline_table_entry_add_bulk;
+	rte_pipeline_table_entry_delete_bulk;
+
+} DPDK_2.1;

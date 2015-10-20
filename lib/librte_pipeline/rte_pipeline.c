@@ -587,6 +587,112 @@ rte_pipeline_table_entry_delete(struct rte_pipeline *p,
 	return (table->ops.f_delete)(table->h_table, key, key_found, entry);
 }
 
+int rte_pipeline_table_entry_add_bulk(struct rte_pipeline *p,
+	uint32_t table_id,
+	void **keys,
+	struct rte_pipeline_table_entry **entries,
+	uint32_t n_keys,
+	int *key_found,
+	struct rte_pipeline_table_entry **entries_ptr)
+{
+	struct rte_table *table;
+	uint32_t i;
+
+	/* Check input arguments */
+	if (p == NULL) {
+		RTE_LOG(ERR, PIPELINE, "%s: pipeline parameter is NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (keys == NULL) {
+		RTE_LOG(ERR, PIPELINE, "%s: keys parameter is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (entries == NULL) {
+		RTE_LOG(ERR, PIPELINE, "%s: entries parameter is NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (table_id >= p->num_tables) {
+		RTE_LOG(ERR, PIPELINE,
+			"%s: table_id %d out of range\n", __func__, table_id);
+		return -EINVAL;
+	}
+
+	table = &p->tables[table_id];
+
+	if (table->ops.f_add_bulk == NULL) {
+		RTE_LOG(ERR, PIPELINE, "%s: f_add_bulk function pointer NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < n_keys; i++) {
+		if ((entries[i]->action == RTE_PIPELINE_ACTION_TABLE) &&
+			table->table_next_id_valid &&
+			(entries[i]->table_id != table->table_next_id)) {
+			RTE_LOG(ERR, PIPELINE,
+				"%s: Tree-like topologies not allowed\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	/* Add entry */
+	for (i = 0; i < n_keys; i++) {
+		if ((entries[i]->action == RTE_PIPELINE_ACTION_TABLE) &&
+			(table->table_next_id_valid == 0)) {
+			table->table_next_id = entries[i]->table_id;
+			table->table_next_id_valid = 1;
+		}
+	}
+
+	return (table->ops.f_add_bulk)(table->h_table, keys, (void **) entries,
+		n_keys, key_found, (void **) entries_ptr);
+}
+
+int rte_pipeline_table_entry_delete_bulk(struct rte_pipeline *p,
+	uint32_t table_id,
+	void **keys,
+	uint32_t n_keys,
+	int *key_found,
+	struct rte_pipeline_table_entry **entries)
+{
+	struct rte_table *table;
+
+	/* Check input arguments */
+	if (p == NULL) {
+		RTE_LOG(ERR, PIPELINE, "%s: pipeline parameter NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (keys == NULL) {
+		RTE_LOG(ERR, PIPELINE, "%s: key parameter is NULL\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (table_id >= p->num_tables) {
+		RTE_LOG(ERR, PIPELINE,
+			"%s: table_id %d out of range\n", __func__, table_id);
+		return -EINVAL;
+	}
+
+	table = &p->tables[table_id];
+
+	if (table->ops.f_delete_bulk == NULL) {
+		RTE_LOG(ERR, PIPELINE,
+			"%s: f_delete function pointer NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	return (table->ops.f_delete_bulk)(table->h_table, keys, n_keys, key_found,
+			(void **) entries);
+}
+
 /*
  * Port
  *

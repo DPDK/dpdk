@@ -338,7 +338,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_mbuf.so.2
      librte_mempool.so.1
      librte_meter.so.1
-     librte_pipeline.so.1
+   + librte_pipeline.so.2
      librte_pmd_bond.so.1
    + librte_pmd_ring.so.2
    + librte_port.so.2
