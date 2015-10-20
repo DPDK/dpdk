@@ -48,6 +48,10 @@ Drivers
 
   Fixed io permission in the interrupt handler.
 
+* **virtio: Fixed crash when releasing queue.**
+
+  Fixed issue when releasing null control queue.
+
 
 Libraries
 ~~~~~~~~~

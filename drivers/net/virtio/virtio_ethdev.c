@@ -239,9 +239,10 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 
 void
 virtio_dev_queue_release(struct virtqueue *vq) {
-	struct virtio_hw *hw = vq->hw;
+	struct virtio_hw *hw;
 
 	if (vq) {
+		hw = vq->hw;
 		/* Select and deactivate the queue */
 		VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->queue_id);
 		VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN, 0);
