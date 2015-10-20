@@ -253,6 +253,94 @@ parse_cb_ipv4_rule(char *str, struct rte_table_acl_rule_add_params *v)
 	return 0;
 }
 
+static int
+parse_cb_ipv4_rule_del(char *str, struct rte_table_acl_rule_delete_params *v)
+{
+	int i, rc;
+	char *s, *sp, *in[CB_FLD_NUM];
+	static const char *dlm = " \t\n";
+
+	/*
+	** Skip leading '@'
+	*/
+	if (strchr(str, '@') != str)
+		return -EINVAL;
+
+	s = str + 1;
+
+	/*
+	* Populate the 'in' array with the location of each
+	* field in the string we're parsing
+	*/
+	for (i = 0; i != DIM(in); i++) {
+		in[i] = strtok_r(s, dlm, &sp);
+		if (in[i] == NULL)
+			return -EINVAL;
+		s = NULL;
+	}
+
+	/* Parse x.x.x.x/x */
+	rc = parse_ipv4_net(in[CB_FLD_SRC_ADDR],
+		&v->field_value[SRC_FIELD_IPV4].value.u32,
+		&v->field_value[SRC_FIELD_IPV4].mask_range.u32);
+	if (rc != 0) {
+		RTE_LOG(ERR, PIPELINE, "failed to read src address/mask: %s\n",
+			in[CB_FLD_SRC_ADDR]);
+		return rc;
+	}
+
+	printf("V=%u, mask=%u\n", v->field_value[SRC_FIELD_IPV4].value.u32,
+		v->field_value[SRC_FIELD_IPV4].mask_range.u32);
+
+	/* Parse x.x.x.x/x */
+	rc = parse_ipv4_net(in[CB_FLD_DST_ADDR],
+		&v->field_value[DST_FIELD_IPV4].value.u32,
+		&v->field_value[DST_FIELD_IPV4].mask_range.u32);
+	if (rc != 0) {
+		RTE_LOG(ERR, PIPELINE, "failed to read dest address/mask: %s\n",
+			in[CB_FLD_DST_ADDR]);
+		return rc;
+	}
+
+	printf("V=%u, mask=%u\n", v->field_value[DST_FIELD_IPV4].value.u32,
+	v->field_value[DST_FIELD_IPV4].mask_range.u32);
+	/* Parse n:n */
+	rc = parse_port_range(in[CB_FLD_SRC_PORT_RANGE],
+		&v->field_value[SRCP_FIELD_IPV4].value.u16,
+		&v->field_value[SRCP_FIELD_IPV4].mask_range.u16);
+	if (rc != 0) {
+		RTE_LOG(ERR, PIPELINE, "failed to read source port range: %s\n",
+			in[CB_FLD_SRC_PORT_RANGE]);
+		return rc;
+	}
+
+	printf("V=%u, mask=%u\n", v->field_value[SRCP_FIELD_IPV4].value.u16,
+		v->field_value[SRCP_FIELD_IPV4].mask_range.u16);
+	/* Parse n:n */
+	rc = parse_port_range(in[CB_FLD_DST_PORT_RANGE],
+		&v->field_value[DSTP_FIELD_IPV4].value.u16,
+		&v->field_value[DSTP_FIELD_IPV4].mask_range.u16);
+	if (rc != 0) {
+		RTE_LOG(ERR, PIPELINE, "failed to read dest port range: %s\n",
+			in[CB_FLD_DST_PORT_RANGE]);
+		return rc;
+	}
+
+	printf("V=%u, mask=%u\n", v->field_value[DSTP_FIELD_IPV4].value.u16,
+		v->field_value[DSTP_FIELD_IPV4].mask_range.u16);
+	/* parse 0/0xnn */
+	GET_CB_FIELD(in[CB_FLD_PROTO],
+		v->field_value[PROTO_FIELD_IPV4].value.u8,
+		0, UINT8_MAX, '/');
+	GET_CB_FIELD(in[CB_FLD_PROTO],
+		v->field_value[PROTO_FIELD_IPV4].mask_range.u8,
+		0, UINT8_MAX, 0);
+
+	printf("V=%u, mask=%u\n",
+		(unsigned int)v->field_value[PROTO_FIELD_IPV4].value.u8,
+		v->field_value[PROTO_FIELD_IPV4].mask_range.u8);
+	return 0;
+}
 
 /*
  * The format for these rules DO NOT need the port ranges to be
@@ -391,6 +479,84 @@ setup_acl_pipeline(void)
 				port_in_id[i],  table_id[i]);
 			goto fail;
 		}
+	}
+
+	/* Add bulk entries to tables */
+	for (i = 0; i < N_PORTS; i++) {
+		struct rte_table_acl_rule_add_params keys[5];
+		struct rte_pipeline_table_entry entries[5];
+		struct rte_table_acl_rule_add_params *key_array[5];
+		struct rte_pipeline_table_entry *table_entries[5];
+		int key_found[5];
+		struct rte_pipeline_table_entry *table_entries_ptr[5];
+		struct rte_pipeline_table_entry entries_ptr[5];
+
+		parser = parse_cb_ipv4_rule;
+		for (n = 0; n < 5; n++) {
+			memset(&keys[n], 0, sizeof(struct rte_table_acl_rule_add_params));
+			key_array[n] = &keys[n];
+
+			snprintf(line, sizeof(line), "%s", lines[n]);
+			printf("PARSING [%s]\n", line);
+
+			ret = parser(line, &keys[n]);
+			if (ret != 0) {
+				RTE_LOG(ERR, PIPELINE,
+					"line %u: parse_cb_ipv4vlan_rule"
+					" failed, error code: %d (%s)\n",
+					n, ret, strerror(-ret));
+				return ret;
+			}
+
+			keys[n].priority = RTE_ACL_MAX_PRIORITY - n - 1;
+
+			entries[n].action = RTE_PIPELINE_ACTION_PORT;
+			entries[n].port_id = port_out_id[i^1];
+			table_entries[n] = &entries[n];
+			table_entries_ptr[n] = &entries_ptr[n];
+		}
+
+		ret = rte_pipeline_table_entry_add_bulk(p, table_id[i],
+				(void **)key_array, table_entries, 5, key_found, table_entries_ptr);
+		if (ret < 0) {
+			rte_panic("Add entry bulk to table %u failed (%d)\n",
+				table_id[i], ret);
+			goto fail;
+		}
+	}
+
+	/* Delete bulk entries from tables */
+	for (i = 0; i < N_PORTS; i++) {
+		struct rte_table_acl_rule_delete_params keys[5];
+		struct rte_table_acl_rule_delete_params *key_array[5];
+		struct rte_pipeline_table_entry *table_entries[5];
+		int key_found[5];
+
+		for (n = 0; n < 5; n++) {
+			memset(&keys[n], 0, sizeof(struct rte_table_acl_rule_delete_params));
+			key_array[n] = &keys[n];
+
+			snprintf(line, sizeof(line), "%s", lines[n]);
+			printf("PARSING [%s]\n", line);
+
+			ret = parse_cb_ipv4_rule_del(line, &keys[n]);
+			if (ret != 0) {
+				RTE_LOG(ERR, PIPELINE,
+					"line %u: parse_cb_ipv4vlan_rule"
+					" failed, error code: %d (%s)\n",
+					n, ret, strerror(-ret));
+				return ret;
+			}
+		}
+
+		ret = rte_pipeline_table_entry_delete_bulk(p, table_id[i],
+			(void **)key_array, 5, key_found, table_entries);
+		if (ret < 0) {
+			rte_panic("Delete bulk entries from table %u failed (%d)\n",
+				table_id[i], ret);
+			goto fail;
+		} else
+			printf("Bulk deleted rules.\n");
 	}
 
 	/* Add entries to tables */
