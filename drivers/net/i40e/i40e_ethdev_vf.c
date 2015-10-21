@@ -67,12 +67,15 @@
 #include "i40e_rxtx.h"
 #include "i40e_ethdev.h"
 #include "i40e_pf.h"
-#define I40EVF_VSI_DEFAULT_MSIX_INTR 1
+#define I40EVF_VSI_DEFAULT_MSIX_INTR     1
+#define I40EVF_VSI_DEFAULT_MSIX_INTR_LNX 0
 
 /* busy wait delay in msec */
 #define I40EVF_BUSY_WAIT_DELAY 10
 #define I40EVF_BUSY_WAIT_COUNT 50
 #define MAX_RESET_WAIT_CNT     20
+/*ITR index for NOITR*/
+#define I40E_QINT_RQCTL_MSIX_INDX_NOITR     3
 
 struct i40evf_arq_msg_info {
 	enum i40e_virtchnl_ops ops;
@@ -412,7 +415,7 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
 		PMD_DRV_LOG(INFO, "Peer is DPDK PF host");
 	else if ((vf->version_major == I40E_VIRTCHNL_VERSION_MAJOR) &&
-		(vf->version_minor == I40E_VIRTCHNL_VERSION_MINOR))
+		(vf->version_minor <= I40E_VIRTCHNL_VERSION_MINOR))
 		PMD_DRV_LOG(INFO, "Peer is Linux PF host");
 	else {
 		PMD_INIT_LOG(ERR, "PF/VF API version mismatch:(%u.%u)-(%u.%u)",
@@ -432,14 +435,23 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int err;
 	struct vf_cmd_info args;
-	uint32_t len;
+	uint32_t caps, len;
 
 	args.ops = I40E_VIRTCHNL_OP_GET_VF_RESOURCES;
-	args.in_args = NULL;
-	args.in_args_size = 0;
 	args.out_buffer = cmd_result_buffer;
 	args.out_size = I40E_AQ_BUF_SZ;
-
+	if (PF_IS_V11(vf)) {
+		caps = I40E_VIRTCHNL_VF_OFFLOAD_L2 |
+		       I40E_VIRTCHNL_VF_OFFLOAD_RSS_AQ |
+		       I40E_VIRTCHNL_VF_OFFLOAD_RSS_REG |
+		       I40E_VIRTCHNL_VF_OFFLOAD_VLAN |
+		       I40E_VIRTCHNL_VF_OFFLOAD_RX_POLLING;
+		args.in_args = (uint8_t *)&caps;
+		args.in_args_size = sizeof(caps);
+	} else {
+		args.in_args = NULL;
+		args.in_args_size = 0;
+	}
 	err = i40evf_execute_vf_cmd(dev, &args);
 
 	if (err) {
@@ -703,11 +715,14 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	int i, err;
 	map_info = (struct i40e_virtchnl_irq_map_info *)cmd_buffer;
 	map_info->num_vectors = 1;
-	map_info->vecmap[0].rxitr_idx = RTE_LIBRTE_I40E_ITR_INTERVAL / 2;
-	map_info->vecmap[0].txitr_idx = RTE_LIBRTE_I40E_ITR_INTERVAL / 2;
+	map_info->vecmap[0].rxitr_idx = I40E_QINT_RQCTL_MSIX_INDX_NOITR;
 	map_info->vecmap[0].vsi_id = vf->vsi_res->vsi_id;
 	/* Alway use default dynamic MSIX interrupt */
-	map_info->vecmap[0].vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR;
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
+		map_info->vecmap[0].vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR;
+	else
+		map_info->vecmap[0].vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR_LNX;
+
 	/* Don't map any tx queue */
 	map_info->vecmap[0].txq_map = 0;
 	map_info->vecmap[0].rxq_map = 0;
@@ -1546,18 +1561,36 @@ i40evf_tx_init(struct rte_eth_dev *dev)
 }
 
 static inline void
-i40evf_enable_queues_intr(struct i40e_hw *hw)
+i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 {
-	I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR - 1),
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
+		/* To support DPDK PF host */
+		I40E_WRITE_REG(hw,
+			I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR - 1),
 			I40E_VFINT_DYN_CTLN1_INTENA_MASK |
 			I40E_VFINT_DYN_CTLN_CLEARPBA_MASK);
+	else
+		/* To support Linux PF host */
+		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
+				I40E_VFINT_DYN_CTL01_INTENA_MASK |
+				I40E_VFINT_DYN_CTL01_CLEARPBA_MASK);
 }
 
 static inline void
-i40evf_disable_queues_intr(struct i40e_hw *hw)
+i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 {
-	I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR - 1),
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
+		I40E_WRITE_REG(hw,
+			I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR - 1),
 			0);
+	else
+		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
 }
 
 static int
@@ -1604,7 +1637,7 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 		goto err_mac;
 	}
 
-	i40evf_enable_queues_intr(hw);
+	i40evf_enable_queues_intr(dev);
 	return 0;
 
 err_mac:
@@ -1616,11 +1649,9 @@ err_queue:
 static void
 i40evf_dev_stop(struct rte_eth_dev *dev)
 {
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
 	PMD_INIT_FUNC_TRACE();
 
-	i40evf_disable_queues_intr(hw);
+	i40evf_disable_queues_intr(dev);
 	i40evf_stop_queues(dev);
 	i40e_dev_clear_queues(dev);
 }

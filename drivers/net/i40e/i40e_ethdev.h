@@ -91,6 +91,11 @@
 #define I40E_48_BIT_WIDTH (CHAR_BIT * 6)
 #define I40E_48_BIT_MASK  RTE_LEN2MASK(I40E_48_BIT_WIDTH, uint64_t)
 
+/* Linux PF host with virtchnl version 1.1 */
+#define PF_IS_V11(vf) \
+	(((vf)->version_major == I40E_VIRTCHNL_VERSION_MAJOR) && \
+	((vf)->version_minor == 1))
+
 /* index flex payload per layer */
 enum i40e_flxpld_layer_idx {
 	I40E_FLXPLD_L2_IDX    = 0,
