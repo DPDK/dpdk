@@ -76,7 +76,8 @@
 #define IGB_TX_OFFLOAD_MASK (			 \
 		PKT_TX_VLAN_PKT |		 \
 		PKT_TX_IP_CKSUM |		 \
-		PKT_TX_L4_MASK)
+		PKT_TX_L4_MASK |		 \
+		PKT_TX_TCP_SEG)
 
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
@@ -146,32 +147,40 @@ enum igb_advctx_num {
 };
 
 /** Offload features */
-union igb_vlan_macip {
-	uint32_t data;
+union igb_tx_offload {
+	uint64_t data;
 	struct {
-		uint16_t l2_l3_len; /**< 7bit L2 and 9b L3 lengths combined */
-		uint16_t vlan_tci;
-		/**< VLAN Tag Control Identifier (CPU order). */
-	} f;
+		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint64_t vlan_tci:16;  /**< VLAN Tag Control Identifier(CPU order). */
+		uint64_t l4_len:8; /**< L4 (TCP/UDP) Header Length. */
+		uint64_t tso_segsz:16; /**< TCP TSO segment size. */
+
+		/* uint64_t unused:8; */
+	};
 };
 
 /*
- * Compare mask for vlan_macip_len.data,
- * should be in sync with igb_vlan_macip.f layout.
+ * Compare mask for igb_tx_offload.data,
+ * should be in sync with igb_tx_offload layout.
  * */
-#define TX_VLAN_CMP_MASK        0xFFFF0000  /**< VLAN length - 16-bits. */
-#define TX_MAC_LEN_CMP_MASK     0x0000FE00  /**< MAC length - 7-bits. */
-#define TX_IP_LEN_CMP_MASK      0x000001FF  /**< IP  length - 9-bits. */
-/** MAC+IP  length. */
-#define TX_MACIP_LEN_CMP_MASK   (TX_MAC_LEN_CMP_MASK | TX_IP_LEN_CMP_MASK)
+#define TX_MACIP_LEN_CMP_MASK	0x000000000000FFFFULL /**< L2L3 header mask. */
+#define TX_VLAN_CMP_MASK		0x00000000FFFF0000ULL /**< Vlan mask. */
+#define TX_TCP_LEN_CMP_MASK		0x000000FF00000000ULL /**< TCP header mask. */
+#define TX_TSO_MSS_CMP_MASK		0x00FFFF0000000000ULL /**< TSO segsz mask. */
+/** Mac + IP + TCP + Mss mask. */
+#define TX_TSO_CMP_MASK	\
+	(TX_MACIP_LEN_CMP_MASK | TX_TCP_LEN_CMP_MASK | TX_TSO_MSS_CMP_MASK)
 
 /**
  * Strucutre to check if new context need be built
  */
 struct igb_advctx_info {
 	uint64_t flags;           /**< ol_flags related to context build. */
-	uint32_t cmp_mask;        /**< compare mask for vlan_macip_lens */
-	union igb_vlan_macip vlan_macip_lens; /**< vlan, mac & ip length. */
+	/** tx offload: vlan, tso, l2-l3-l4 lengths. */
+	union igb_tx_offload tx_offload;
+	/** compare mask for tx offload. */
+	union igb_tx_offload tx_offload_mask;
 };
 
 /**
@@ -221,12 +230,31 @@ struct igb_tx_queue {
  * Macro for VMDq feature for 1 GbE NIC.
  */
 #define E1000_VMOLR_SIZE			(8)
+#define IGB_TSO_MAX_HDRLEN			(512)
+#define IGB_TSO_MAX_MSS				(9216)
 
 /*********************************************************************
  *
  *  TX function
  *
  **********************************************************************/
+
+/*
+ *There're some limitations in hardware for TCP segmentation offload. We
+ *should check whether the parameters are valid.
+ */
+static inline uint64_t
+check_tso_para(uint64_t ol_req, union igb_tx_offload ol_para)
+{
+	if (!(ol_req & PKT_TX_TCP_SEG))
+		return ol_req;
+	if ((ol_para.tso_segsz > IGB_TSO_MAX_MSS) || (ol_para.l2_len +
+			ol_para.l3_len + ol_para.l4_len > IGB_TSO_MAX_HDRLEN)) {
+		ol_req &= ~PKT_TX_TCP_SEG;
+		ol_req |= PKT_TX_TCP_CKSUM;
+	}
+	return ol_req;
+}
 
 /*
  * Advanced context descriptor are almost same between igb/ixgbe
@@ -237,64 +265,81 @@ struct igb_tx_queue {
 static inline void
 igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct e1000_adv_tx_context_desc *ctx_txd,
-		uint64_t ol_flags, uint32_t vlan_macip_lens)
+		uint64_t ol_flags, union igb_tx_offload tx_offload)
 {
 	uint32_t type_tucmd_mlhl;
 	uint32_t mss_l4len_idx;
 	uint32_t ctx_idx, ctx_curr;
-	uint32_t cmp_mask;
+	uint32_t vlan_macip_lens;
+	union igb_tx_offload tx_offload_mask;
 
 	ctx_curr = txq->ctx_curr;
 	ctx_idx = ctx_curr + txq->ctx_start;
 
-	cmp_mask = 0;
+	tx_offload_mask.data = 0;
 	type_tucmd_mlhl = 0;
-
-	if (ol_flags & PKT_TX_VLAN_PKT) {
-		cmp_mask |= TX_VLAN_CMP_MASK;
-	}
-
-	if (ol_flags & PKT_TX_IP_CKSUM) {
-		type_tucmd_mlhl = E1000_ADVTXD_TUCMD_IPV4;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-	}
 
 	/* Specify which HW CTX to upload. */
 	mss_l4len_idx = (ctx_idx << E1000_ADVTXD_IDX_SHIFT);
-	switch (ol_flags & PKT_TX_L4_MASK) {
-	case PKT_TX_UDP_CKSUM:
-		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_UDP |
+
+	if (ol_flags & PKT_TX_VLAN_PKT)
+		tx_offload_mask.data |= TX_VLAN_CMP_MASK;
+
+	/* check if TCP segmentation required for this packet */
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		/* implies IP cksum in IPv4 */
+		if (ol_flags & PKT_TX_IP_CKSUM)
+			type_tucmd_mlhl = E1000_ADVTXD_TUCMD_IPV4 |
+				E1000_ADVTXD_TUCMD_L4T_TCP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
-		mss_l4len_idx |= sizeof(struct udp_hdr) << E1000_ADVTXD_L4LEN_SHIFT;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-		break;
-	case PKT_TX_TCP_CKSUM:
-		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_TCP |
+		else
+			type_tucmd_mlhl = E1000_ADVTXD_TUCMD_IPV6 |
+				E1000_ADVTXD_TUCMD_L4T_TCP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
-		mss_l4len_idx |= sizeof(struct tcp_hdr) << E1000_ADVTXD_L4LEN_SHIFT;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-		break;
-	case PKT_TX_SCTP_CKSUM:
-		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_SCTP |
+
+		tx_offload_mask.data |= TX_TSO_CMP_MASK;
+		mss_l4len_idx |= tx_offload.tso_segsz << E1000_ADVTXD_MSS_SHIFT;
+		mss_l4len_idx |= tx_offload.l4_len << E1000_ADVTXD_L4LEN_SHIFT;
+	} else { /* no TSO, check if hardware checksum is needed */
+		if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK))
+			tx_offload_mask.data |= TX_MACIP_LEN_CMP_MASK;
+
+		if (ol_flags & PKT_TX_IP_CKSUM)
+			type_tucmd_mlhl = E1000_ADVTXD_TUCMD_IPV4;
+
+		switch (ol_flags & PKT_TX_L4_MASK) {
+		case PKT_TX_UDP_CKSUM:
+			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_UDP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
-		mss_l4len_idx |= sizeof(struct sctp_hdr) << E1000_ADVTXD_L4LEN_SHIFT;
-		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
-		break;
-	default:
-		type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_RSV |
+			mss_l4len_idx |= sizeof(struct udp_hdr) << E1000_ADVTXD_L4LEN_SHIFT;
+			break;
+		case PKT_TX_TCP_CKSUM:
+			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_TCP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
-		break;
+			mss_l4len_idx |= sizeof(struct tcp_hdr) << E1000_ADVTXD_L4LEN_SHIFT;
+			break;
+		case PKT_TX_SCTP_CKSUM:
+			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_SCTP |
+				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
+			mss_l4len_idx |= sizeof(struct sctp_hdr) << E1000_ADVTXD_L4LEN_SHIFT;
+			break;
+		default:
+			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_RSV |
+				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
+			break;
+		}
 	}
 
-	txq->ctx_cache[ctx_curr].flags           = ol_flags;
-	txq->ctx_cache[ctx_curr].cmp_mask        = cmp_mask;
-	txq->ctx_cache[ctx_curr].vlan_macip_lens.data =
-		vlan_macip_lens & cmp_mask;
+	txq->ctx_cache[ctx_curr].flags = ol_flags;
+	txq->ctx_cache[ctx_idx].tx_offload.data =
+		tx_offload_mask.data & tx_offload.data;
+	txq->ctx_cache[ctx_idx].tx_offload_mask = tx_offload_mask;
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
+	vlan_macip_lens = (uint32_t)tx_offload.data;
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
-	ctx_txd->mss_l4len_idx   = rte_cpu_to_le_32(mss_l4len_idx);
-	ctx_txd->seqnum_seed     = 0;
+	ctx_txd->mss_l4len_idx = rte_cpu_to_le_32(mss_l4len_idx);
+	ctx_txd->seqnum_seed = 0;
 }
 
 /*
@@ -303,20 +348,20 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
  */
 static inline uint32_t
 what_advctx_update(struct igb_tx_queue *txq, uint64_t flags,
-		uint32_t vlan_macip_lens)
+		union igb_tx_offload tx_offload)
 {
 	/* If match with the current context */
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
-		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data & tx_offload.data)))) {
 			return txq->ctx_curr;
 	}
 
 	/* If match with the second context */
 	txq->ctx_curr ^= 1;
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].vlan_macip_lens.data ==
-		(txq->ctx_cache[txq->ctx_curr].cmp_mask & vlan_macip_lens)))) {
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data & tx_offload.data)))) {
 			return txq->ctx_curr;
 	}
 
@@ -333,14 +378,19 @@ tx_desc_cksum_flags_to_olinfo(uint64_t ol_flags)
 
 	tmp  = l4_olinfo[(ol_flags & PKT_TX_L4_MASK)  != PKT_TX_L4_NO_CKSUM];
 	tmp |= l3_olinfo[(ol_flags & PKT_TX_IP_CKSUM) != 0];
+	tmp |= l4_olinfo[(ol_flags & PKT_TX_TCP_SEG) != 0];
 	return tmp;
 }
 
 static inline uint32_t
 tx_desc_vlan_flags_to_cmdtype(uint64_t ol_flags)
 {
+	uint32_t cmdtype;
 	static uint32_t vlan_cmd[2] = {0, E1000_ADVTXD_DCMD_VLE};
-	return vlan_cmd[(ol_flags & PKT_TX_VLAN_PKT) != 0];
+	static uint32_t tso_cmd[2] = {0, E1000_ADVTXD_DCMD_TSE};
+	cmdtype = vlan_cmd[(ol_flags & PKT_TX_VLAN_PKT) != 0];
+	cmdtype |= tso_cmd[(ol_flags & PKT_TX_TCP_SEG) != 0];
+	return cmdtype;
 }
 
 uint16_t
@@ -354,14 +404,6 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	volatile union e1000_adv_tx_desc *txd;
 	struct rte_mbuf     *tx_pkt;
 	struct rte_mbuf     *m_seg;
-	union igb_vlan_macip vlan_macip_lens;
-	union {
-		uint16_t u16;
-		struct {
-			uint16_t l3_len:9;
-			uint16_t l2_len:7;
-		};
-	} l2_l3_len;
 	uint64_t buf_dma_addr;
 	uint32_t olinfo_status;
 	uint32_t cmd_type_len;
@@ -375,6 +417,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t tx_ol_req;
 	uint32_t new_ctx = 0;
 	uint32_t ctx = 0;
+	union igb_tx_offload tx_offload = {0};
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -399,16 +442,18 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_last = (uint16_t) (tx_id + tx_pkt->nb_segs - 1);
 
 		ol_flags = tx_pkt->ol_flags;
-		l2_l3_len.l2_len = tx_pkt->l2_len;
-		l2_l3_len.l3_len = tx_pkt->l3_len;
-		vlan_macip_lens.f.vlan_tci = tx_pkt->vlan_tci;
-		vlan_macip_lens.f.l2_l3_len = l2_l3_len.u16;
 		tx_ol_req = ol_flags & IGB_TX_OFFLOAD_MASK;
 
 		/* If a Context Descriptor need be built . */
 		if (tx_ol_req) {
-			ctx = what_advctx_update(txq, tx_ol_req,
-				vlan_macip_lens.data);
+			tx_offload.l2_len = tx_pkt->l2_len;
+			tx_offload.l3_len = tx_pkt->l3_len;
+			tx_offload.l4_len = tx_pkt->l4_len;
+			tx_offload.vlan_tci = tx_pkt->vlan_tci;
+			tx_offload.tso_segsz = tx_pkt->tso_segsz;
+			tx_ol_req = check_tso_para(tx_ol_req, tx_offload);
+
+			ctx = what_advctx_update(txq, tx_ol_req, tx_offload);
 			/* Only allocate context descriptor if required*/
 			new_ctx = (ctx == IGB_CTX_NUM);
 			ctx = txq->ctx_curr;
@@ -500,6 +545,8 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		cmd_type_len = txq->txd_type |
 			E1000_ADVTXD_DCMD_IFCS | E1000_ADVTXD_DCMD_DEXT;
+		if (tx_ol_req & PKT_TX_TCP_SEG)
+			pkt_len -= (tx_pkt->l2_len + tx_pkt->l3_len + tx_pkt->l4_len);
 		olinfo_status = (pkt_len << E1000_ADVTXD_PAYLEN_SHIFT);
 #if defined(RTE_LIBRTE_IEEE1588)
 		if (ol_flags & PKT_TX_IEEE1588_TMST)
@@ -523,8 +570,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 					txe->mbuf = NULL;
 				}
 
-				igbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
-				    vlan_macip_lens.data);
+				igbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req, tx_offload);
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -532,8 +578,8 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 
 			/* Setup the TX Advanced Data Descriptor */
-			cmd_type_len  |= tx_desc_vlan_flags_to_cmdtype(ol_flags);
-			olinfo_status |= tx_desc_cksum_flags_to_olinfo(ol_flags);
+			cmd_type_len  |= tx_desc_vlan_flags_to_cmdtype(tx_ol_req);
+			olinfo_status |= tx_desc_cksum_flags_to_olinfo(tx_ol_req);
 			olinfo_status |= (ctx << E1000_ADVTXD_IDX_SHIFT);
 		}
 

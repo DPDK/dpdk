@@ -4,6 +4,8 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Added igb TSO support for both PF and VF.**
+
 * **Enhanced support for the Chelsio CXGBE driver.**
 
   *  Added support for Jumbo Frames.
