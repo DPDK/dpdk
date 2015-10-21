@@ -77,7 +77,6 @@ test_reorder_create(void)
 			"No error on create() with invalid buffer size param.");
 
 	b = rte_reorder_create("PKT_RO1", rte_socket_id(), REORDER_BUFFER_SIZE);
-	printf("DEBUG: b= %p, orig_b= %p\n", b, test_params->b);
 	TEST_ASSERT_EQUAL(b, test_params->b,
 			"New reorder instance created with already existing name");
 
@@ -165,7 +164,7 @@ test_reorder_insert(void)
 	struct rte_reorder_buffer *b = NULL;
 	struct rte_mempool *p = test_params->p;
 	const unsigned int size = 4;
-	const unsigned int num_bufs = 6;
+	const unsigned int num_bufs = 7;
 	struct rte_mbuf *bufs[num_bufs];
 	int ret = 0;
 	unsigned i;
@@ -180,16 +179,6 @@ test_reorder_insert(void)
 
 	ret = rte_mempool_get_bulk(p, (void *)bufs, num_bufs);
 	TEST_ASSERT_SUCCESS(ret, "Error getting mbuf from pool");
-
-	/* late packet */
-	bufs[0]->seqn = 3 * size;
-	ret = rte_reorder_insert(b, bufs[0]);
-	if (!((ret == -1) && (rte_errno == ERANGE))) {
-		printf("%s:%d: No error inserting late packet with seqn:"
-				" 3 * size\n", __func__, __LINE__);
-		ret = -1;
-		goto exit;
-	}
 
 	for (i = 0; i < num_bufs; i++)
 		bufs[i]->seqn = i;
@@ -232,6 +221,16 @@ test_reorder_insert(void)
 		goto exit;
 	}
 
+	/* late packet */
+	bufs[6]->seqn = 3 * size;
+	ret = rte_reorder_insert(b, bufs[6]);
+	if (!((ret == -1) && (rte_errno == ERANGE))) {
+		printf("%s:%d: No error inserting late packet with seqn:"
+				" 3 * size\n", __func__, __LINE__);
+		ret = -1;
+		goto exit;
+	}
+
 	ret = 0;
 exit:
 	rte_mempool_put_bulk(p, (void *)bufs, num_bufs);
@@ -245,8 +244,9 @@ test_reorder_drain(void)
 	struct rte_reorder_buffer *b = NULL;
 	struct rte_mempool *p = test_params->p;
 	const unsigned int size = 4;
-	const unsigned int num_bufs = 10;
+	const unsigned int num_bufs = 8;
 	struct rte_mbuf *bufs[num_bufs];
+	struct rte_mbuf *robufs[num_bufs];
 	int ret = 0;
 	unsigned i, cnt;
 
@@ -255,14 +255,14 @@ test_reorder_drain(void)
 	 * ready_buf: RB[size] = {NULL, NULL, NULL, NULL}
 	 * order_buf: OB[size] = {NULL, NULL, NULL, NULL}
 	 */
-	b = rte_reorder_create("test_insert", rte_socket_id(), size);
+	b = rte_reorder_create("test_drain", rte_socket_id(), size);
 	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
 
 	ret = rte_mempool_get_bulk(p, (void *)bufs, num_bufs);
 	TEST_ASSERT_SUCCESS(ret, "Error getting mbuf from pool");
 
 	/* Check no drained packets if reorder is empty */
-	cnt = rte_reorder_drain(b, bufs, 1);
+	cnt = rte_reorder_drain(b, robufs, 1);
 	if (cnt != 0) {
 		printf("%s:%d: drained packets from empty reorder buffer\n",
 				__func__, __LINE__);
@@ -276,29 +276,40 @@ test_reorder_drain(void)
 	/* Insert packet with seqn 1:
 	 * reorder_seq = 0
 	 * RB[] = {NULL, NULL, NULL, NULL}
-	 * OB[] = {NULL, 1, NULL, NULL}
+	 * OB[] = {1, NULL, NULL, NULL}
 	 */
 	rte_reorder_insert(b, bufs[1]);
 
-	/* Check no drained packets if no ready/order packets */
-	cnt = rte_reorder_drain(b, bufs, 1);
-	if (cnt != 0) {
-		printf("%s:%d: drained packets from empty reorder buffer\n",
-				__func__, __LINE__);
+	cnt = rte_reorder_drain(b, robufs, 1);
+	if (cnt != 1) {
+		printf("%s:%d:%d: number of expected packets not drained\n",
+				__func__, __LINE__, cnt);
 		ret = -1;
 		goto exit;
 	}
 
 	/* Insert more packets
 	 * RB[] = {NULL, NULL, NULL, NULL}
-	 * OB[] = {0, 1, NULL, 3}
+	 * OB[] = {NULL, 2, 3, NULL}
 	 */
-	rte_reorder_insert(b, bufs[0]);
+	rte_reorder_insert(b, bufs[2]);
 	rte_reorder_insert(b, bufs[3]);
 
+	/* Insert more packets
+	 * RB[] = {NULL, NULL, NULL, NULL}
+	 * OB[] = {NULL, 2, 3, 4}
+	 */
+	rte_reorder_insert(b, bufs[4]);
+
+	/* Insert more packets
+	 * RB[] = {2, 3, 4, NULL}
+	 * OB[] = {NULL, NULL, 7, NULL}
+	 */
+	rte_reorder_insert(b, bufs[7]);
+
 	/* drained expected packets */
-	cnt = rte_reorder_drain(b, bufs, 4);
-	if (cnt != 2) {
+	cnt = rte_reorder_drain(b, robufs, 4);
+	if (cnt != 3) {
 		printf("%s:%d:%d: number of expected packets not drained\n",
 				__func__, __LINE__, cnt);
 		ret = -1;
@@ -307,25 +318,15 @@ test_reorder_drain(void)
 
 	/*
 	 * RB[] = {NULL, NULL, NULL, NULL}
-	 * OB[] = {NULL, 3, NULL, NULL}
-	 */
-
-	rte_reorder_insert(b, bufs[4]);
-	rte_reorder_insert(b, bufs[7]);
-
-	/*
-	 * RB[] = {3, 4, NULL, NULL}
 	 * OB[] = {NULL, NULL, 7, NULL}
 	 */
-
-	cnt = rte_reorder_drain(b, bufs, 4);
-	if (cnt != 2) {
+	cnt = rte_reorder_drain(b, robufs, 1);
+	if (cnt != 0) {
 		printf("%s:%d:%d: number of expected packets not drained\n",
 				__func__, __LINE__, cnt);
 		ret = -1;
 		goto exit;
 	}
-
 	ret = 0;
 exit:
 	rte_mempool_put_bulk(p, (void *)bufs, num_bufs);
