@@ -322,7 +322,7 @@ F: examples/distributor/
 F: doc/guides/sample_app_ug/dist_app.rst
 
 Reorder
-M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
+M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/librte_reorder/
 F: doc/guides/prog_guide/reorder_lib.rst
 F: app/test/test_reorder*
