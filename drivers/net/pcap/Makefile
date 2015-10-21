@@ -39,6 +39,7 @@ LIB = librte_pmd_pcap.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lpcap
 
 EXPORT_MAP := rte_pmd_pcap_version.map
 

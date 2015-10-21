@@ -38,6 +38,7 @@ LIB = librte_pmd_szedata2.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lsze2
 
 EXPORT_MAP := rte_pmd_szedata2_version.map
 

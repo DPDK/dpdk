@@ -90,10 +90,6 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 
 endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
 
-_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lpcap
-
-_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lsze2
-
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
 endif
@@ -106,13 +102,13 @@ endif
 # The combined library fails also to store this information.
 # So linking with static or combined library requires explicit dependencies.
 ifneq ($(CONFIG_RTE_BUILD_COMBINE_LIBS)$(CONFIG_RTE_BUILD_SHARED_LIB),ny)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lpcap
+_LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_PMD)       += -libverbs
-endif # CONFIG_RTE_BUILD_COMBINE_LIBS or not CONFIG_RTE_BUILD_SHARED_LIBS
-
-_LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
-
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lsze2
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lxenstore
+endif # CONFIG_RTE_BUILD_COMBINE_LIBS or not CONFIG_RTE_BUILD_SHARED_LIBS
 
 _LDLIBS-y += --start-group
 

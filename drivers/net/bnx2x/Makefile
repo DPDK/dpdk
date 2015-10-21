@@ -8,6 +8,7 @@ LIB = librte_pmd_bnx2x.a
 CFLAGS += -O3 -g
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -DZLIB_CONST
+LDLIBS += -lz
 
 EXPORT_MAP := rte_pmd_bnx2x_version.map
 
