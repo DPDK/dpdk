@@ -57,6 +57,12 @@ quit()
 	QUIT=$1
 }
 
+# Shortcut for quit.
+q()
+{
+	quit
+}
+
 #
 # Sets up environmental variables for ICC.
 #
@@ -628,6 +634,10 @@ while [ "$QUIT" == "0" ]; do
 	read our_entry
 	echo ""
 	${OPTIONS[our_entry]} ${our_entry}
-	echo
-	echo -n "Press enter to continue ..."; read
+
+	if [ "$QUIT" == "0" ] ; then
+		echo
+		echo -n "Press enter to continue ..."; read
+	fi
+
 done
