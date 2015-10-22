@@ -25,6 +25,8 @@ M: Thomas Monjalon <thomas.monjalon@6wind.com>
 T: git://dpdk.org/dpdk
 F: MAINTAINERS
 F: scripts/check-maintainers.sh
+F: scripts/checkpatches.sh
+F: scripts/load-devel-config.sh
 
 
 Security Issues
