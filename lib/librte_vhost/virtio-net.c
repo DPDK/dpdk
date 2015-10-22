@@ -67,11 +67,14 @@ struct virtio_net_device_ops const *notify_ops;
 /* root address of the linked list of managed virtio devices */
 static struct virtio_net_config_ll *ll_root;
 
+#define VHOST_USER_F_PROTOCOL_FEATURES	30
+
 /* Features supported by this lib. */
 #define VHOST_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
 				(1ULL << VIRTIO_NET_F_CTRL_VQ) | \
 				(1ULL << VIRTIO_NET_F_CTRL_RX) | \
-				(1ULL << VHOST_F_LOG_ALL))
+				(1ULL << VHOST_F_LOG_ALL)      | \
+				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))
 static uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
 
 

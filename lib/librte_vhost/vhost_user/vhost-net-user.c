@@ -95,7 +95,9 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_GET_VRING_BASE] = "VHOST_USER_GET_VRING_BASE",
 	[VHOST_USER_SET_VRING_KICK] = "VHOST_USER_SET_VRING_KICK",
 	[VHOST_USER_SET_VRING_CALL] = "VHOST_USER_SET_VRING_CALL",
-	[VHOST_USER_SET_VRING_ERR]  = "VHOST_USER_SET_VRING_ERR"
+	[VHOST_USER_SET_VRING_ERR]  = "VHOST_USER_SET_VRING_ERR",
+	[VHOST_USER_GET_PROTOCOL_FEATURES]  = "VHOST_USER_GET_PROTOCOL_FEATURES",
+	[VHOST_USER_SET_PROTOCOL_FEATURES]  = "VHOST_USER_SET_PROTOCOL_FEATURES",
 };
 
 /**
@@ -361,6 +363,15 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 	case VHOST_USER_SET_FEATURES:
 		features = msg.payload.u64;
 		ops->set_features(ctx, &features);
+		break;
+
+	case VHOST_USER_GET_PROTOCOL_FEATURES:
+		msg.payload.u64 = VHOST_USER_PROTOCOL_FEATURES;
+		msg.size = sizeof(msg.payload.u64);
+		send_vhost_message(connfd, &msg);
+		break;
+	case VHOST_USER_SET_PROTOCOL_FEATURES:
+		user_set_protocol_features(ctx, msg.payload.u64);
 		break;
 
 	case VHOST_USER_SET_OWNER:

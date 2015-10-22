@@ -99,6 +99,7 @@ struct virtio_net {
 	struct vhost_virtqueue	*virtqueue[VIRTIO_QNUM];	/**< Contains all virtqueue information. */
 	struct virtio_memory	*mem;		/**< QEMU memory and memory region information. */
 	uint64_t		features;	/**< Negotiated feature set. */
+	uint64_t		protocol_features;	/**< Negotiated protocol feature set. */
 	uint64_t		device_fh;	/**< device identifier. */
 	uint32_t		flags;		/**< Device flags. Only used to check if device is running on data core. */
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)

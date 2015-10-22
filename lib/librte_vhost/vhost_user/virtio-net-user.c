@@ -318,3 +318,16 @@ user_destroy_device(struct vhost_device_ctx ctx)
 		dev->mem = NULL;
 	}
 }
+
+void
+user_set_protocol_features(struct vhost_device_ctx ctx,
+			   uint64_t protocol_features)
+{
+	struct virtio_net *dev;
+
+	dev = get_device(ctx);
+	if (dev == NULL || protocol_features & ~VHOST_USER_PROTOCOL_FEATURES)
+		return;
+
+	dev->protocol_features = protocol_features;
+}

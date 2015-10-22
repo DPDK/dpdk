@@ -37,11 +37,16 @@
 #include "vhost-net.h"
 #include "vhost-net-user.h"
 
+#define VHOST_USER_PROTOCOL_FEATURES	0ULL
+
 int user_set_mem_table(struct vhost_device_ctx, struct VhostUserMsg *);
 
 void user_set_vring_call(struct vhost_device_ctx, struct VhostUserMsg *);
 
 void user_set_vring_kick(struct vhost_device_ctx, struct VhostUserMsg *);
+
+void user_set_protocol_features(struct vhost_device_ctx ctx,
+				uint64_t protocol_features);
 
 int user_get_vring_base(struct vhost_device_ctx, struct vhost_vring_state *);
 
