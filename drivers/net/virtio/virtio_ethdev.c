@@ -1162,7 +1162,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	struct virtio_net_config *config;
 	struct virtio_net_config local_config;
-	uint32_t offset_conf = sizeof(config->mac);
 	struct rte_pci_device *pci_dev;
 
 	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr));
@@ -1225,8 +1224,14 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VQ)) {
 		config = &local_config;
 
+		vtpci_read_dev_config(hw,
+			offsetof(struct virtio_net_config, mac),
+			&config->mac, sizeof(config->mac));
+
 		if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
-			offset_conf += sizeof(config->status);
+			vtpci_read_dev_config(hw,
+				offsetof(struct virtio_net_config, status),
+				&config->status, sizeof(config->status));
 		} else {
 			PMD_INIT_LOG(DEBUG,
 				     "VIRTIO_NET_F_STATUS is not supported");
@@ -1234,14 +1239,15 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		}
 
 		if (vtpci_with_feature(hw, VIRTIO_NET_F_MQ)) {
-			offset_conf += sizeof(config->max_virtqueue_pairs);
+			vtpci_read_dev_config(hw,
+				offsetof(struct virtio_net_config, max_virtqueue_pairs),
+				&config->max_virtqueue_pairs,
+				sizeof(config->max_virtqueue_pairs));
 		} else {
 			PMD_INIT_LOG(DEBUG,
 				     "VIRTIO_NET_F_MQ is not supported");
 			config->max_virtqueue_pairs = 1;
 		}
-
-		vtpci_read_dev_config(hw, 0, (uint8_t *)config, offset_conf);
 
 		hw->max_rx_queues =
 			(VIRTIO_MAX_RX_QUEUES < config->max_virtqueue_pairs) ?
