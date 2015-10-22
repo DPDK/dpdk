@@ -9,6 +9,8 @@ New Features
   *  Added support for Jumbo Frames.
   *  Optimize forwarding performance for Chelsio T5 40GbE cards.
 
+* **Added vhost-user multiple queue support.**
+
 
 Resolved Issues
 ---------------
