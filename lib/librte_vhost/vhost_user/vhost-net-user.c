@@ -98,6 +98,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_SET_VRING_ERR]  = "VHOST_USER_SET_VRING_ERR",
 	[VHOST_USER_GET_PROTOCOL_FEATURES]  = "VHOST_USER_GET_PROTOCOL_FEATURES",
 	[VHOST_USER_SET_PROTOCOL_FEATURES]  = "VHOST_USER_SET_PROTOCOL_FEATURES",
+	[VHOST_USER_GET_QUEUE_NUM]  = "VHOST_USER_GET_QUEUE_NUM",
 };
 
 /**
@@ -419,6 +420,12 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		if (!(msg.payload.u64 & VHOST_USER_VRING_NOFD_MASK))
 			close(msg.fds[0]);
 		RTE_LOG(INFO, VHOST_CONFIG, "not implemented\n");
+		break;
+
+	case VHOST_USER_GET_QUEUE_NUM:
+		msg.payload.u64 = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX;
+		msg.size = sizeof(msg.payload.u64);
+		send_vhost_message(connfd, &msg);
 		break;
 
 	default:
