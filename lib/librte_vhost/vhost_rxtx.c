@@ -32,6 +32,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <linux/virtio_net.h>
 
 #include <rte_mbuf.h>
@@ -41,6 +42,12 @@
 #include "vhost-net.h"
 
 #define MAX_PKT_BURST 32
+
+static bool
+is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t qp_nb)
+{
+	return (is_tx ^ (idx & 1)) == 0 && idx < qp_nb * VIRTIO_QNUM;
+}
 
 /**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
@@ -68,12 +75,14 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	uint8_t success = 0;
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_rx()\n", dev->device_fh);
-	if (unlikely(queue_id != VIRTIO_RXQ)) {
-		LOG_DEBUG(VHOST_DATA, "mq isn't supported in this version.\n");
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"%s (%"PRIu64"): virtqueue idx:%d invalid.\n",
+			__func__, dev->device_fh, queue_id);
 		return 0;
 	}
 
-	vq = dev->virtqueue[VIRTIO_RXQ];
+	vq = dev->virtqueue[queue_id];
 	count = (count > MAX_PKT_BURST) ? MAX_PKT_BURST : count;
 
 	/*
@@ -235,8 +244,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 }
 
 static inline uint32_t __attribute__((always_inline))
-copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
-	uint16_t res_end_idx, struct rte_mbuf *pkt)
+copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
+			uint16_t res_base_idx, uint16_t res_end_idx,
+			struct rte_mbuf *pkt)
 {
 	uint32_t vec_idx = 0;
 	uint32_t entry_success = 0;
@@ -264,7 +274,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint16_t res_base_idx,
 	 * Convert from gpa to vva
 	 * (guest physical addr -> vhost virtual addr)
 	 */
-	vq = dev->virtqueue[VIRTIO_RXQ];
+	vq = dev->virtqueue[queue_id];
 	vb_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
 	vb_hdr_addr = vb_addr;
 
@@ -464,11 +474,14 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_merge_rx()\n",
 		dev->device_fh);
-	if (unlikely(queue_id != VIRTIO_RXQ)) {
-		LOG_DEBUG(VHOST_DATA, "mq isn't supported in this version.\n");
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"%s (%"PRIu64"): virtqueue idx:%d invalid.\n",
+			__func__, dev->device_fh, queue_id);
+		return 0;
 	}
 
-	vq = dev->virtqueue[VIRTIO_RXQ];
+	vq = dev->virtqueue[queue_id];
 	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
 
 	if (count == 0)
@@ -509,8 +522,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 							res_cur_idx);
 		} while (success == 0);
 
-		entry_success = copy_from_mbuf_to_vring(dev, res_base_idx,
-			res_cur_idx, pkts[pkt_idx]);
+		entry_success = copy_from_mbuf_to_vring(dev, queue_id,
+			res_base_idx, res_cur_idx, pkts[pkt_idx]);
 
 		rte_compiler_barrier();
 
@@ -562,12 +575,14 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	uint16_t free_entries, entry_success = 0;
 	uint16_t avail_idx;
 
-	if (unlikely(queue_id != VIRTIO_TXQ)) {
-		LOG_DEBUG(VHOST_DATA, "mq isn't supported in this version.\n");
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->virt_qp_nb))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"%s (%"PRIu64"): virtqueue idx:%d invalid.\n",
+			__func__, dev->device_fh, queue_id);
 		return 0;
 	}
 
-	vq = dev->virtqueue[VIRTIO_TXQ];
+	vq = dev->virtqueue[queue_id];
 	avail_idx =  *((volatile uint16_t *)&vq->avail->idx);
 
 	/* If there are no available buffers then return. */
