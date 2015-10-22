@@ -27,6 +27,7 @@ F: MAINTAINERS
 F: scripts/check-maintainers.sh
 F: scripts/checkpatches.sh
 F: scripts/load-devel-config.sh
+F: scripts/test-build.sh
 
 
 Security Issues
