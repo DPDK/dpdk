@@ -89,6 +89,7 @@ struct vhost_virtqueue {
 	volatile uint16_t	last_used_idx_res;	/**< Used for multiple devices reserving buffers. */
 	int			callfd;			/**< Used to notify the guest (trigger interrupt). */
 	int			kickfd;			/**< Currently unused as polling mode is enabled. */
+	int			enabled;
 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
 } __rte_cache_aligned;
 
@@ -132,7 +133,7 @@ struct virtio_memory {
 };
 
 /**
- * Device operations to add/remove device.
+ * Device and vring operations.
  *
  * Make sure to set VIRTIO_DEV_RUNNING to the device flags in new_device and
  * remove it in destroy_device.
@@ -141,12 +142,18 @@ struct virtio_memory {
 struct virtio_net_device_ops {
 	int (*new_device)(struct virtio_net *);	/**< Add device. */
 	void (*destroy_device)(volatile struct virtio_net *);	/**< Remove device. */
+
+	int (*vring_state_changed)(struct virtio_net *dev, uint16_t queue_id, int enable);	/**< triggered when a vring is enabled or disabled */
 };
 
 static inline uint16_t __attribute__((always_inline))
 rte_vring_available_entries(struct virtio_net *dev, uint16_t queue_id)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[queue_id];
+
+	if (!vq->enabled)
+		return 0;
+
 	return *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx_res;
 }
 

@@ -50,5 +50,8 @@ void user_set_protocol_features(struct vhost_device_ctx ctx,
 
 int user_get_vring_base(struct vhost_device_ctx, struct vhost_vring_state *);
 
+int user_set_vring_enable(struct vhost_device_ctx ctx,
+			  struct vhost_vring_state *state);
+
 void user_destroy_device(struct vhost_device_ctx);
 #endif

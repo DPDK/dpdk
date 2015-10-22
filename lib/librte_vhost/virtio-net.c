@@ -254,7 +254,7 @@ rm_config_ll_entry(struct virtio_net_config_ll *ll_dev,
 }
 
 static void
-init_vring_queue(struct vhost_virtqueue *vq)
+init_vring_queue(struct vhost_virtqueue *vq, int qp_idx)
 {
 	memset(vq, 0, sizeof(struct vhost_virtqueue));
 
@@ -263,13 +263,19 @@ init_vring_queue(struct vhost_virtqueue *vq)
 
 	/* Backends are set to -1 indicating an inactive device. */
 	vq->backend = -1;
+
+	/* always set the default vq pair to enabled */
+	if (qp_idx == 0)
+		vq->enabled = 1;
 }
 
 static void
 init_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
 {
-	init_vring_queue(dev->virtqueue[qp_idx * VIRTIO_QNUM + VIRTIO_RXQ]);
-	init_vring_queue(dev->virtqueue[qp_idx * VIRTIO_QNUM + VIRTIO_TXQ]);
+	uint32_t base_idx = qp_idx * VIRTIO_QNUM;
+
+	init_vring_queue(dev->virtqueue[base_idx + VIRTIO_RXQ], qp_idx);
+	init_vring_queue(dev->virtqueue[base_idx + VIRTIO_TXQ], qp_idx);
 }
 
 static int

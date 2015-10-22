@@ -83,6 +83,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	}
 
 	vq = dev->virtqueue[queue_id];
+	if (unlikely(vq->enabled == 0))
+		return 0;
+
 	count = (count > MAX_PKT_BURST) ? MAX_PKT_BURST : count;
 
 	/*
@@ -275,6 +278,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
 	 * (guest physical addr -> vhost virtual addr)
 	 */
 	vq = dev->virtqueue[queue_id];
+
 	vb_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
 	vb_hdr_addr = vb_addr;
 
@@ -482,6 +486,9 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	}
 
 	vq = dev->virtqueue[queue_id];
+	if (unlikely(vq->enabled == 0))
+		return 0;
+
 	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
 
 	if (count == 0)
@@ -583,6 +590,9 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	}
 
 	vq = dev->virtqueue[queue_id];
+	if (unlikely(vq->enabled == 0))
+		return 0;
+
 	avail_idx =  *((volatile uint16_t *)&vq->avail->idx);
 
 	/* If there are no available buffers then return. */

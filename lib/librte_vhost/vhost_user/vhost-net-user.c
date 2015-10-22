@@ -99,6 +99,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_GET_PROTOCOL_FEATURES]  = "VHOST_USER_GET_PROTOCOL_FEATURES",
 	[VHOST_USER_SET_PROTOCOL_FEATURES]  = "VHOST_USER_SET_PROTOCOL_FEATURES",
 	[VHOST_USER_GET_QUEUE_NUM]  = "VHOST_USER_GET_QUEUE_NUM",
+	[VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
 };
 
 /**
@@ -426,6 +427,10 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		msg.payload.u64 = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(connfd, &msg);
+		break;
+
+	case VHOST_USER_SET_VRING_ENABLE:
+		user_set_vring_enable(ctx, &msg.payload.state);
 		break;
 
 	default:

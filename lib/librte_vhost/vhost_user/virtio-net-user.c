@@ -312,6 +312,33 @@ user_get_vring_base(struct vhost_device_ctx ctx,
 	return 0;
 }
 
+/*
+ * when virtio queues are ready to work, qemu will send us to
+ * enable the virtio queue pair.
+ */
+int
+user_set_vring_enable(struct vhost_device_ctx ctx,
+		      struct vhost_vring_state *state)
+{
+	struct virtio_net *dev = get_device(ctx);
+	uint16_t base_idx = state->index;
+	int enable = (int)state->num;
+
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"set queue enable: %d to qp idx: %d\n",
+		enable, state->index);
+
+	if (notify_ops->vring_state_changed) {
+		notify_ops->vring_state_changed(dev, base_idx / VIRTIO_QNUM,
+						enable);
+	}
+
+	dev->virtqueue[base_idx + VIRTIO_RXQ]->enabled = enable;
+	dev->virtqueue[base_idx + VIRTIO_TXQ]->enabled = enable;
+
+	return 0;
+}
+
 void
 user_destroy_device(struct vhost_device_ctx ctx)
 {
