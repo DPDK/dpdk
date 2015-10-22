@@ -119,6 +119,9 @@ ABI Changes
 * librte_port: Macros to access the packet meta-data stored within the packet
   buffer has been adjusted to cover the packet mbuf structure.
 
+* librte_cfgfile: Allow longer names and values by increasing the constants
+  CFG_NAME_LEN and CFG_VALUE_LEN to 64 and 256 respectively.
+
 
 Shared Library Versions
 -----------------------
@@ -129,7 +132,7 @@ The libraries prepended with a plus sign were incremented in this version.
 
    + libethdev.so.2
    + librte_acl.so.2
-     librte_cfgfile.so.1
+   + librte_cfgfile.so.2
      librte_cmdline.so.1
      librte_distributor.so.1
    + librte_eal.so.2

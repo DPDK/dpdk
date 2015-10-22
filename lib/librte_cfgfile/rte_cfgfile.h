@@ -47,8 +47,13 @@ extern "C" {
 *
 ***/
 
-#define CFG_NAME_LEN 32
-#define CFG_VALUE_LEN 64
+#ifndef CFG_NAME_LEN
+#define CFG_NAME_LEN 64
+#endif
+
+#ifndef CFG_VALUE_LEN
+#define CFG_VALUE_LEN 256
+#endif
 
 /** Configuration file */
 struct rte_cfgfile;

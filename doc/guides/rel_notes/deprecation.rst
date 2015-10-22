@@ -41,10 +41,6 @@ Deprecation Notices
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
 
-* librte_cfgfile: In order to allow for longer names and values,
-  the value of macros CFG_NAME_LEN and CFG_NAME_VAL will be increased.
-  Most likely, the new values will be 64 and 256, respectively.
-
 * librte_table: New functions for table entry bulk add/delete will be added
   to the table operations structure.
 
