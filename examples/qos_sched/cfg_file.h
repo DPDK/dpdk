@@ -37,39 +37,10 @@
 #include <rte_sched.h>
 #include <rte_cfgfile.h>
 
-#define CFG_NAME_LEN 32
-#define CFG_VALUE_LEN 64
-
-struct cfg_entry {
-	char name[CFG_NAME_LEN];
-	char value[CFG_VALUE_LEN];
-};
-
-struct cfg_section {
-	char name[CFG_NAME_LEN];
-	int num_entries;
-	struct cfg_entry *entries[0];
-};
-
-struct cfg_file {
-	int flags;
-	int num_sections;
-	struct cfg_section *sections[0];
-};
-
-
 int cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port);
 
 int cfg_load_pipe(struct rte_cfgfile *cfg, struct rte_sched_pipe_params *pipe);
 
 int cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subport);
-
-/* reads a config file from disk and returns a handle to the config
- * 'flags' is reserved for future use and must be 0
- */
-struct cfg_file *cfg_load(const char *filename, int flags);
-
-/* cleans up memory allocated by cfg_load() */
-int cfg_close(struct cfg_file *cfg);
 
 #endif
