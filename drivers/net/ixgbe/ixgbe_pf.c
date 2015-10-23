@@ -55,6 +55,7 @@
 #define IXGBE_MAX_VFTA     (128)
 #define IXGBE_VF_MSG_SIZE_DEFAULT 1
 #define IXGBE_VF_GET_QUEUE_MSG_SIZE 5
+#define IXGBE_ETHERTYPE_FLOW_CTRL 0x8808
 
 static inline uint16_t
 dev_num_vf(struct rte_eth_dev *eth_dev)
@@ -166,6 +167,47 @@ void ixgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
 	*vfinfo = NULL;
 }
 
+static void
+ixgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
+	uint16_t vf_num;
+	int i;
+
+	if (!hw->mac.ops.set_ethertype_anti_spoofing) {
+		RTE_LOG(INFO, PMD, "ether type anti-spoofing is not"
+			" supported.\n");
+		return;
+	}
+
+	/* occupy an entity of ether type filter */
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (!(filter_info->ethertype_mask & (1 << i))) {
+			filter_info->ethertype_mask |= 1 << i;
+			filter_info->ethertype_filters[i] =
+				IXGBE_ETHERTYPE_FLOW_CTRL;
+			break;
+		}
+	}
+	if (i == IXGBE_MAX_ETQF_FILTERS) {
+		RTE_LOG(ERR, PMD, "Cannot find an unused ether type filter"
+			" entity for flow control.\n");
+		return;
+	}
+
+	IXGBE_WRITE_REG(hw, IXGBE_ETQF(i),
+			(IXGBE_ETQF_FILTER_EN |
+			IXGBE_ETQF_TX_ANTISPOOF |
+			IXGBE_ETHERTYPE_FLOW_CTRL));
+
+	vf_num = dev_num_vf(eth_dev);
+	for (i = 0; i < vf_num; i++)
+		hw->mac.ops.set_ethertype_anti_spoofing(hw, true, i);
+}
+
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 {
 	uint32_t vtctl, fcrth;
@@ -261,6 +303,8 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 		fcrth = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(i)) - 32;
 		IXGBE_WRITE_REG(hw, IXGBE_FCRTH_82599(i), fcrth);
 	}
+
+	ixgbe_add_tx_flow_control_drop_filter(eth_dev);
 
 	return 0;
 }
