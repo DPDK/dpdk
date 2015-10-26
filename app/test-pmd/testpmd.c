@@ -298,6 +298,9 @@ struct rte_fdir_conf fdir_conf = {
 		},
 		.src_port_mask = 0xFFFF,
 		.dst_port_mask = 0xFFFF,
+		.mac_addr_byte_mask = 0xFF,
+		.tunnel_type_mask = 1,
+		.tunnel_id_mask = 0xFFFFFFFF,
 	},
 	.drop_queue = 127,
 };
