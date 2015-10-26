@@ -133,6 +133,9 @@ struct ixgbe_hw_fdir_mask {
 	uint16_t src_port_mask;
 	uint16_t dst_port_mask;
 	uint16_t flex_bytes_mask;
+	uint8_t  mac_addr_byte_mask;
+	uint32_t tunnel_id_mask;
+	uint8_t  tunnel_type_mask;
 };
 
 struct ixgbe_hw_fdir_info {

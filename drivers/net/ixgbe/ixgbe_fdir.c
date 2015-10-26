@@ -105,15 +105,23 @@
 	rte_memcpy((ipaddr), ipv6_addr, sizeof(ipv6_addr));\
 } while (0)
 
+#define DEFAULT_VXLAN_PORT 4789
+#define IXGBE_FDIRIP6M_INNER_MAC_SHIFT 4
+
 static int fdir_erase_filter_82599(struct ixgbe_hw *hw, uint32_t fdirhash);
+static int fdir_set_input_mask(struct rte_eth_dev *dev,
+			       const struct rte_eth_fdir_masks *input_mask);
 static int fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 		const struct rte_eth_fdir_masks *input_mask);
+static int fdir_set_input_mask_x550(struct rte_eth_dev *dev,
+				    const struct rte_eth_fdir_masks *input_mask);
 static int ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
 		const struct rte_eth_fdir_flex_conf *conf, uint32_t *fdirctrl);
 static int fdir_enable_82599(struct ixgbe_hw *hw, uint32_t fdirctrl);
 static int ixgbe_fdir_filter_to_atr_input(
 		const struct rte_eth_fdir_filter *fdir_filter,
-		union ixgbe_atr_input *input);
+		union ixgbe_atr_input *input,
+		enum rte_fdir_mode mode);
 static uint32_t ixgbe_atr_compute_hash_82599(union ixgbe_atr_input *atr_input,
 				 uint32_t key);
 static uint32_t atr_compute_sig_hash_82599(union ixgbe_atr_input *input,
@@ -122,7 +130,8 @@ static uint32_t atr_compute_perfect_hash_82599(union ixgbe_atr_input *input,
 		enum rte_fdir_pballoc_type pballoc);
 static int fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 			union ixgbe_atr_input *input, uint8_t queue,
-			uint32_t fdircmd, uint32_t fdirhash);
+			uint32_t fdircmd, uint32_t fdirhash,
+			enum rte_fdir_mode mode);
 static int fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 		union ixgbe_atr_input *input, u8 queue, uint32_t fdircmd,
 		uint32_t fdirhash);
@@ -243,9 +252,16 @@ configure_fdir_flags(const struct rte_fdir_conf *conf, uint32_t *fdirctrl)
 	*fdirctrl |= (IXGBE_DEFAULT_FLEXBYTES_OFFSET / sizeof(uint16_t)) <<
 		     IXGBE_FDIRCTRL_FLEX_SHIFT;
 
-	if (conf->mode == RTE_FDIR_MODE_PERFECT) {
+	if (conf->mode >= RTE_FDIR_MODE_PERFECT &&
+	    conf->mode <= RTE_FDIR_MODE_PERFECT_TUNNEL) {
 		*fdirctrl |= IXGBE_FDIRCTRL_PERFECT_MATCH;
 		*fdirctrl |= (conf->drop_queue << IXGBE_FDIRCTRL_DROP_Q_SHIFT);
+		if (conf->mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN)
+			*fdirctrl |= (IXGBE_FDIRCTRL_FILTERMODE_MACVLAN
+					<< IXGBE_FDIRCTRL_FILTERMODE_SHIFT);
+		else if (conf->mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
+			*fdirctrl |= (IXGBE_FDIRCTRL_FILTERMODE_CLOUD
+					<< IXGBE_FDIRCTRL_FILTERMODE_SHIFT);
 	}
 
 	return 0;
@@ -274,7 +290,7 @@ reverse_fdir_bitmasks(uint16_t hi_dword, uint16_t lo_dword)
 }
 
 /*
- * This is based on ixgbe_fdir_set_input_mask_82599() in base/ixgbe_82599.c,
+ * This references ixgbe_fdir_set_input_mask_82599() in base/ixgbe_82599.c,
  * but makes use of the rte_fdir_masks structure to see which bits to set.
  */
 static int
@@ -342,7 +358,6 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 
 	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_SIGNATURE) {
 		/*
-		 * IPv6 mask is only meaningful in signature mode
 		 * Store source and destination IPv6 masks (bit reversed)
 		 */
 		IPV6_ADDR_TO_MASK(input_mask->ipv6_mask.src_ip, src_ipv6m);
@@ -355,6 +370,123 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 	}
 
 	return IXGBE_SUCCESS;
+}
+
+/*
+ * This references ixgbe_fdir_set_input_mask_82599() in base/ixgbe_82599.c,
+ * but makes use of the rte_fdir_masks structure to see which bits to set.
+ */
+static int
+fdir_set_input_mask_x550(struct rte_eth_dev *dev,
+			 const struct rte_eth_fdir_masks *input_mask)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_fdir_info *info =
+			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	/* mask VM pool and DIPv6 since there are currently not supported
+	 * mask FLEX byte, it will be set in flex_conf
+	 */
+	uint32_t fdirm = IXGBE_FDIRM_POOL | IXGBE_FDIRM_DIPv6 |
+			 IXGBE_FDIRM_FLEX;
+	uint32_t fdiripv6m;
+	enum rte_fdir_mode mode = dev->data->dev_conf.fdir_conf.mode;
+	uint16_t mac_mask;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* set the default UDP port for VxLAN */
+	if (mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
+		IXGBE_WRITE_REG(hw, IXGBE_VXLANCTRL, DEFAULT_VXLAN_PORT);
+
+	/* some bits must be set for mac vlan or tunnel mode */
+	fdirm |= IXGBE_FDIRM_L4P | IXGBE_FDIRM_L3P;
+
+	if (input_mask->vlan_tci_mask == 0x0FFF)
+		/* mask VLAN Priority */
+		fdirm |= IXGBE_FDIRM_VLANP;
+	else if (input_mask->vlan_tci_mask == 0xE000)
+		/* mask VLAN ID */
+		fdirm |= IXGBE_FDIRM_VLANID;
+	else if (input_mask->vlan_tci_mask == 0)
+		/* mask VLAN ID and Priority */
+		fdirm |= IXGBE_FDIRM_VLANID | IXGBE_FDIRM_VLANP;
+	else if (input_mask->vlan_tci_mask != 0xEFFF) {
+		PMD_INIT_LOG(ERR, "invalid vlan_tci_mask");
+		return -EINVAL;
+	}
+	info->mask.vlan_tci_mask = input_mask->vlan_tci_mask;
+
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
+
+	fdiripv6m = ((u32)0xFFFFU << IXGBE_FDIRIP6M_DIPM_SHIFT);
+	fdiripv6m |= IXGBE_FDIRIP6M_ALWAYS_MASK;
+	if (mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN)
+		fdiripv6m |= IXGBE_FDIRIP6M_TUNNEL_TYPE |
+				IXGBE_FDIRIP6M_TNI_VNI;
+
+	mac_mask = input_mask->mac_addr_byte_mask;
+	fdiripv6m |= (mac_mask << IXGBE_FDIRIP6M_INNER_MAC_SHIFT)
+			& IXGBE_FDIRIP6M_INNER_MAC;
+	info->mask.mac_addr_byte_mask = input_mask->mac_addr_byte_mask;
+
+	if (mode == RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		switch (input_mask->tunnel_type_mask) {
+		case 0:
+			/* Mask turnnel type */
+			fdiripv6m |= IXGBE_FDIRIP6M_TUNNEL_TYPE;
+			break;
+		case 1:
+			break;
+		default:
+			PMD_INIT_LOG(ERR, "invalid tunnel_type_mask");
+			return -EINVAL;
+		}
+		info->mask.tunnel_type_mask =
+			input_mask->tunnel_type_mask;
+
+		switch (input_mask->tunnel_id_mask & 0xFFFFFFFF) {
+		case 0x0:
+			/* Mask vxlan id */
+			fdiripv6m |= IXGBE_FDIRIP6M_TNI_VNI;
+			break;
+		case 0x00FFFFFF:
+			fdiripv6m |= IXGBE_FDIRIP6M_TNI_VNI_24;
+			break;
+		case 0xFFFFFFFF:
+			break;
+		default:
+			PMD_INIT_LOG(ERR, "invalid tunnel_id_mask");
+			return -EINVAL;
+		}
+		info->mask.tunnel_id_mask =
+			input_mask->tunnel_id_mask;
+	}
+
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRIP6M, fdiripv6m);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, 0xFFFFFFFF);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, 0xFFFFFFFF);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, 0xFFFFFFFF);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRDIP4M, 0xFFFFFFFF);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRSIP4M, 0xFFFFFFFF);
+
+	return IXGBE_SUCCESS;
+}
+
+static int
+fdir_set_input_mask(struct rte_eth_dev *dev,
+		    const struct rte_eth_fdir_masks *input_mask)
+{
+	enum rte_fdir_mode mode = dev->data->dev_conf.fdir_conf.mode;
+
+	if (mode >= RTE_FDIR_MODE_SIGNATURE &&
+	    mode <= RTE_FDIR_MODE_PERFECT)
+		return fdir_set_input_mask_82599(dev, input_mask);
+	else if (mode >= RTE_FDIR_MODE_PERFECT_MAC_VLAN &&
+		 mode <= RTE_FDIR_MODE_PERFECT_TUNNEL)
+		return fdir_set_input_mask_x550(dev, input_mask);
+
+	PMD_DRV_LOG(ERR, "Not supported fdir mode - %d!", mode);
+	return -ENOTSUP;
 }
 
 /*
@@ -431,6 +563,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	int err;
 	uint32_t fdirctrl, pbsize;
 	int i;
+	enum rte_fdir_mode mode = dev->data->dev_conf.fdir_conf.mode;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -438,6 +571,13 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 		hw->mac.type != ixgbe_mac_X540 &&
 		hw->mac.type != ixgbe_mac_X550 &&
 		hw->mac.type != ixgbe_mac_X550EM_x)
+		return -ENOSYS;
+
+	/* x550 supports mac-vlan and tunnel mode but other NICs not */
+	if (hw->mac.type != ixgbe_mac_X550 &&
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    mode != RTE_FDIR_MODE_SIGNATURE &&
+	    mode != RTE_FDIR_MODE_PERFECT)
 		return -ENOSYS;
 
 	err = configure_fdir_flags(&dev->data->dev_conf.fdir_conf, &fdirctrl);
@@ -462,7 +602,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	for (i = 1; i < 8; i++)
 		IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), 0);
 
-	err = fdir_set_input_mask_82599(dev, &dev->data->dev_conf.fdir_conf.mask);
+	err = fdir_set_input_mask(dev, &dev->data->dev_conf.fdir_conf.mask);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD mask");
 		return err;
@@ -488,7 +628,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
  */
 static int
 ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
-		union ixgbe_atr_input *input)
+		union ixgbe_atr_input *input, enum rte_fdir_mode mode)
 {
 	input->formatted.vlan_id = fdir_filter->input.flow_ext.vlan_tci;
 	input->formatted.flex_bytes = (uint16_t)(
@@ -521,8 +661,7 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 		input->formatted.flow_type = IXGBE_ATR_FLOW_TYPE_IPV6;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, " Error on flow_type input");
-		return -EINVAL;
+		break;
 	}
 
 	switch (fdir_filter->input.flow_type) {
@@ -558,8 +697,23 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 			   sizeof(input->formatted.dst_ip));
 		break;
 	default:
-		PMD_DRV_LOG(ERR, " Error on flow_type input");
-		return -EINVAL;
+		break;
+	}
+
+	if (mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
+		rte_memcpy(
+			input->formatted.inner_mac,
+			fdir_filter->input.flow.mac_vlan_flow.mac_addr.addr_bytes,
+			sizeof(input->formatted.inner_mac));
+	} else if (mode == RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		rte_memcpy(
+			input->formatted.inner_mac,
+			fdir_filter->input.flow.tunnel_flow.mac_addr.addr_bytes,
+			sizeof(input->formatted.inner_mac));
+		input->formatted.tunnel_type =
+			fdir_filter->input.flow.tunnel_flow.tunnel_type;
+		input->formatted.tni_vni =
+			fdir_filter->input.flow.tunnel_flow.tunnel_id;
 	}
 
 	return 0;
@@ -743,20 +897,52 @@ atr_compute_sig_hash_82599(union ixgbe_atr_input *input,
 static int
 fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 			union ixgbe_atr_input *input, uint8_t queue,
-			uint32_t fdircmd, uint32_t fdirhash)
+			uint32_t fdircmd, uint32_t fdirhash,
+			enum rte_fdir_mode mode)
 {
 	uint32_t fdirport, fdirvlan;
+	u32 addr_low, addr_high;
+	u32 tunnel_type = 0;
 	int err = 0;
 
-	/* record the IPv4 address (big-endian) */
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRIPSA, input->formatted.src_ip[0]);
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRIPDA, input->formatted.dst_ip[0]);
+	if (mode == RTE_FDIR_MODE_PERFECT) {
+		/* record the IPv4 address (big-endian) */
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRIPSA,
+				input->formatted.src_ip[0]);
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRIPDA,
+				input->formatted.dst_ip[0]);
 
-	/* record source and destination port (little-endian)*/
-	fdirport = IXGBE_NTOHS(input->formatted.dst_port);
-	fdirport <<= IXGBE_FDIRPORT_DESTINATION_SHIFT;
-	fdirport |= IXGBE_NTOHS(input->formatted.src_port);
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRPORT, fdirport);
+		/* record source and destination port (little-endian)*/
+		fdirport = IXGBE_NTOHS(input->formatted.dst_port);
+		fdirport <<= IXGBE_FDIRPORT_DESTINATION_SHIFT;
+		fdirport |= IXGBE_NTOHS(input->formatted.src_port);
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRPORT, fdirport);
+	} else if (mode >= RTE_FDIR_MODE_PERFECT_MAC_VLAN &&
+		   mode <= RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		/* for mac vlan and tunnel modes */
+		addr_low = ((u32)input->formatted.inner_mac[0] |
+			    ((u32)input->formatted.inner_mac[1] << 8) |
+			    ((u32)input->formatted.inner_mac[2] << 16) |
+			    ((u32)input->formatted.inner_mac[3] << 24));
+		addr_high = ((u32)input->formatted.inner_mac[4] |
+			     ((u32)input->formatted.inner_mac[5] << 8));
+
+		if (mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
+			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(0), addr_low);
+			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(1), addr_high);
+			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(2), 0);
+		} else {
+			/* tunnel mode */
+			if (input->formatted.tunnel_type !=
+				RTE_FDIR_TUNNEL_TYPE_NVGRE)
+				tunnel_type = 0x80000000;
+			tunnel_type |= addr_high;
+			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(0), addr_low);
+			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(1), tunnel_type);
+			IXGBE_WRITE_REG(hw, IXGBE_FDIRSIPv6(2),
+					input->formatted.tni_vni);
+		}
+	}
 
 	/* record vlan (little-endian) and flex_bytes(big-endian) */
 	fdirvlan = input->formatted.flex_bytes;
@@ -894,8 +1080,9 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 	int err;
 	struct ixgbe_hw_fdir_info *info =
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
 
-	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_NONE)
+	if (fdir_mode == RTE_FDIR_MODE_NONE)
 		return -ENOTSUP;
 
 	/*
@@ -917,12 +1104,14 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 
-	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT)
+	if (fdir_mode >= RTE_FDIR_MODE_PERFECT &&
+	    fdir_mode <= RTE_FDIR_MODE_PERFECT_TUNNEL)
 		is_perfect = TRUE;
 
 	memset(&input, 0, sizeof(input));
 
-	err = ixgbe_fdir_filter_to_atr_input(fdir_filter, &input);
+	err = ixgbe_fdir_filter_to_atr_input(fdir_filter, &input,
+					     fdir_mode);
 	if (err)
 		return err;
 
@@ -966,7 +1155,8 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 
 	if (is_perfect) {
 		err = fdir_write_perfect_filter_82599(hw, &input, queue,
-				fdircmd_flags, fdirhash);
+				fdircmd_flags, fdirhash,
+				fdir_mode);
 	} else {
 		err = fdir_add_signature_filter_82599(hw, &input, queue,
 				fdircmd_flags, fdirhash);
@@ -1018,7 +1208,8 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 	fdir_info->mode = dev->data->dev_conf.fdir_conf.mode;
 	max_num = (1 << (FDIRENTRIES_NUM_SHIFT +
 			(fdirctrl & FDIRCTRL_PBALLOC_MASK)));
-	if (fdir_info->mode == RTE_FDIR_MODE_PERFECT)
+	if (fdir_info->mode >= RTE_FDIR_MODE_PERFECT &&
+	    fdir_info->mode <= RTE_FDIR_MODE_PERFECT_TUNNEL)
 		fdir_info->guarant_spc = max_num;
 	else if (fdir_info->mode == RTE_FDIR_MODE_SIGNATURE)
 		fdir_info->guarant_spc = max_num * 4;
@@ -1032,11 +1223,20 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 			fdir_info->mask.ipv6_mask.dst_ip);
 	fdir_info->mask.src_port_mask = info->mask.src_port_mask;
 	fdir_info->mask.dst_port_mask = info->mask.dst_port_mask;
+	fdir_info->mask.mac_addr_byte_mask = info->mask.mac_addr_byte_mask;
+	fdir_info->mask.tunnel_id_mask = info->mask.tunnel_id_mask;
+	fdir_info->mask.tunnel_type_mask = info->mask.tunnel_type_mask;
 	fdir_info->max_flexpayload = IXGBE_FDIR_MAX_FLEX_LEN;
-	fdir_info->flow_types_mask[0] = IXGBE_FDIR_FLOW_TYPES;
+
+	if (fdir_info->mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN ||
+	    fdir_info->mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
+		fdir_info->flow_types_mask[0] = 0;
+	else
+		fdir_info->flow_types_mask[0] = IXGBE_FDIR_FLOW_TYPES;
+
 	fdir_info->flex_payload_unit = sizeof(uint16_t);
 	fdir_info->max_flex_payload_segment_num = 1;
-	fdir_info->flex_payload_limit = 62;
+	fdir_info->flex_payload_limit = IXGBE_MAX_FLX_SOURCE_OFF;
 	fdir_info->flex_conf.nb_payloads = 1;
 	fdir_info->flex_conf.flex_set[0].type = RTE_ETH_RAW_PAYLOAD;
 	fdir_info->flex_conf.flex_set[0].src_offset[0] = offset;
@@ -1056,6 +1256,7 @@ ixgbe_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *fdir_st
 	struct ixgbe_hw_fdir_info *info =
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	uint32_t reg, max_num;
+	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
 
 	/* Get the information from registers */
 	reg = IXGBE_READ_REG(hw, IXGBE_FDIRFREE);
@@ -1095,9 +1296,10 @@ ixgbe_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *fdir_st
 	reg = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
 	max_num = (1 << (FDIRENTRIES_NUM_SHIFT +
 			(reg & FDIRCTRL_PBALLOC_MASK)));
-	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT)
+	if (fdir_mode >= RTE_FDIR_MODE_PERFECT &&
+	    fdir_mode <= RTE_FDIR_MODE_PERFECT_TUNNEL)
 			fdir_stats->guarant_cnt = max_num - fdir_stats->free;
-	else if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_SIGNATURE)
+	else if (fdir_mode == RTE_FDIR_MODE_SIGNATURE)
 		fdir_stats->guarant_cnt = max_num * 4 - fdir_stats->free;
 
 }

@@ -11,6 +11,11 @@ New Features
   * Support 512 entries RSS redirection table.
   * Support per VF RSS redirection table.
 
+* **Flow director enhancement on Intel x550 NIC**
+
+  * Add 2 new flow director modes on x550.
+  * One is MAC VLAN mode, the other is tunnel mode.
+
 * **Enhanced support for the Chelsio CXGBE driver.**
 
   *  Added support for Jumbo Frames.
