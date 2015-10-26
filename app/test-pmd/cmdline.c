@@ -7725,6 +7725,8 @@ cmdline_parse_inst_t cmd_ethertype_filter = {
 struct cmd_flow_director_result {
 	cmdline_fixed_string_t flow_director_filter;
 	uint8_t port_id;
+	cmdline_fixed_string_t mode;
+	cmdline_fixed_string_t mode_value;
 	cmdline_fixed_string_t ops;
 	cmdline_fixed_string_t flow;
 	cmdline_fixed_string_t flow_type;
@@ -7747,6 +7749,12 @@ struct cmd_flow_director_result {
 	uint16_t  queue_id;
 	cmdline_fixed_string_t fd_id;
 	uint32_t  fd_id_value;
+	cmdline_fixed_string_t mac;
+	struct ether_addr mac_addr;
+	cmdline_fixed_string_t tunnel;
+	cmdline_fixed_string_t tunnel_type;
+	cmdline_fixed_string_t tunnel_id;
+	uint32_t tunnel_id_value;
 };
 
 static inline int
@@ -7818,6 +7826,26 @@ str2flowtype(char *string)
 	return RTE_ETH_FLOW_UNKNOWN;
 }
 
+static uint8_t
+str2fdir_tunneltype(char *string)
+{
+	uint8_t i = 0;
+
+	static const struct {
+		char str[32];
+		uint8_t type;
+	} tunneltype_str[] = {
+		{"NVGRE", RTE_FDIR_TUNNEL_TYPE_NVGRE},
+		{"VxLAN", RTE_FDIR_TUNNEL_TYPE_VXLAN},
+	};
+
+	for (i = 0; i < RTE_DIM(tunneltype_str); i++) {
+		if (!strcmp(tunneltype_str[i].str, string))
+			return tunneltype_str[i].type;
+	}
+	return RTE_FDIR_TUNNEL_TYPE_UNKNOWN;
+}
+
 #define IPV4_ADDR_TO_UINT(ip_addr, ip) \
 do { \
 	if ((ip_addr).family == AF_INET) \
@@ -7858,6 +7886,25 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	}
 	memset(flexbytes, 0, sizeof(flexbytes));
 	memset(&entry, 0, sizeof(struct rte_eth_fdir_filter));
+
+	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
+		if (strcmp(res->mode_value, "MAC-VLAN")) {
+			printf("Please set mode to MAC-VLAN.\n");
+			return;
+		}
+	} else if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		if (strcmp(res->mode_value, "Tunnel")) {
+			printf("Please set mode to Tunnel.\n");
+			return;
+		}
+	} else {
+		if (strcmp(res->mode_value, "IP")) {
+			printf("Please set mode to IP.\n");
+			return;
+		}
+		entry.input.flow_type = str2flowtype(res->flow_type);
+	}
+
 	ret = parse_flexbytes(res->flexbytes_value,
 					flexbytes,
 					RTE_ETH_FDIR_MAX_FLEXLEN);
@@ -7866,7 +7913,6 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		return;
 	}
 
-	entry.input.flow_type = str2flowtype(res->flow_type);
 	switch (entry.input.flow_type) {
 	case RTE_ETH_FLOW_FRAG_IPV4:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
@@ -7927,9 +7973,24 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 			rte_cpu_to_be_16(res->ether_type);
 		break;
 	default:
-		printf("invalid parameter.\n");
-		return;
+		break;
 	}
+
+	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_MAC_VLAN)
+		(void)rte_memcpy(&entry.input.flow.mac_vlan_flow.mac_addr,
+				 &res->mac_addr,
+				 sizeof(struct ether_addr));
+
+	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		(void)rte_memcpy(&entry.input.flow.tunnel_flow.mac_addr,
+				 &res->mac_addr,
+				 sizeof(struct ether_addr));
+		entry.input.flow.tunnel_flow.tunnel_type =
+			str2fdir_tunneltype(res->tunnel_type);
+		entry.input.flow.tunnel_flow.tunnel_id =
+			rte_cpu_to_be_32(res->tunnel_id_value);
+	}
+
 	(void)rte_memcpy(entry.input.flow_ext.flexbytes,
 		   flexbytes,
 		   RTE_ETH_FDIR_MAX_FLEXLEN);
@@ -8033,6 +8094,37 @@ cmdline_parse_token_num_t cmd_flow_director_fd_id_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
 			      fd_id_value, UINT32);
 
+cmdline_parse_token_string_t cmd_flow_director_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 mode, "mode");
+cmdline_parse_token_string_t cmd_flow_director_mode_ip =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 mode_value, "IP");
+cmdline_parse_token_string_t cmd_flow_director_mode_mac_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 mode_value, "MAC-VLAN");
+cmdline_parse_token_string_t cmd_flow_director_mode_tunnel =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 mode_value, "Tunnel");
+cmdline_parse_token_string_t cmd_flow_director_mac =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 mac, "mac");
+cmdline_parse_token_etheraddr_t cmd_flow_director_mac_addr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_flow_director_result,
+				    mac_addr);
+cmdline_parse_token_string_t cmd_flow_director_tunnel =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 tunnel, "tunnel");
+cmdline_parse_token_string_t cmd_flow_director_tunnel_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 tunnel_type, "NVGRE#VxLAN");
+cmdline_parse_token_string_t cmd_flow_director_tunnel_id =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 tunnel_id, "tunnel-id");
+cmdline_parse_token_num_t cmd_flow_director_tunnel_id_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      tunnel_id_value, UINT32);
+
 cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
 	.f = cmd_flow_director_filter_parsed,
 	.data = NULL,
@@ -8040,6 +8132,8 @@ cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
 	.tokens = {
 		(void *)&cmd_flow_director_filter,
 		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_mode,
+		(void *)&cmd_flow_director_mode_ip,
 		(void *)&cmd_flow_director_ops,
 		(void *)&cmd_flow_director_flow,
 		(void *)&cmd_flow_director_flow_type,
@@ -8067,6 +8161,8 @@ cmdline_parse_inst_t cmd_add_del_udp_flow_director = {
 	.tokens = {
 		(void *)&cmd_flow_director_filter,
 		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_mode,
+		(void *)&cmd_flow_director_mode_ip,
 		(void *)&cmd_flow_director_ops,
 		(void *)&cmd_flow_director_flow,
 		(void *)&cmd_flow_director_flow_type,
@@ -8096,6 +8192,8 @@ cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
 	.tokens = {
 		(void *)&cmd_flow_director_filter,
 		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_mode,
+		(void *)&cmd_flow_director_mode_ip,
 		(void *)&cmd_flow_director_ops,
 		(void *)&cmd_flow_director_flow,
 		(void *)&cmd_flow_director_flow_type,
@@ -8127,11 +8225,67 @@ cmdline_parse_inst_t cmd_add_del_l2_flow_director = {
 	.tokens = {
 		(void *)&cmd_flow_director_filter,
 		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_mode,
+		(void *)&cmd_flow_director_mode_ip,
 		(void *)&cmd_flow_director_ops,
 		(void *)&cmd_flow_director_flow,
 		(void *)&cmd_flow_director_flow_type,
 		(void *)&cmd_flow_director_ether,
 		(void *)&cmd_flow_director_ether_type,
+		(void *)&cmd_flow_director_flexbytes,
+		(void *)&cmd_flow_director_flexbytes_value,
+		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_queue,
+		(void *)&cmd_flow_director_queue_id,
+		(void *)&cmd_flow_director_fd_id,
+		(void *)&cmd_flow_director_fd_id_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_add_del_mac_vlan_flow_director = {
+	.f = cmd_flow_director_filter_parsed,
+	.data = NULL,
+	.help_str = "add or delete a MAC VLAN flow director entry on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_filter,
+		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_mode,
+		(void *)&cmd_flow_director_mode_mac_vlan,
+		(void *)&cmd_flow_director_ops,
+		(void *)&cmd_flow_director_mac,
+		(void *)&cmd_flow_director_mac_addr,
+		(void *)&cmd_flow_director_vlan,
+		(void *)&cmd_flow_director_vlan_value,
+		(void *)&cmd_flow_director_flexbytes,
+		(void *)&cmd_flow_director_flexbytes_value,
+		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_queue,
+		(void *)&cmd_flow_director_queue_id,
+		(void *)&cmd_flow_director_fd_id,
+		(void *)&cmd_flow_director_fd_id_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_add_del_tunnel_flow_director = {
+	.f = cmd_flow_director_filter_parsed,
+	.data = NULL,
+	.help_str = "add or delete a tunnel flow director entry on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_filter,
+		(void *)&cmd_flow_director_port_id,
+		(void *)&cmd_flow_director_mode,
+		(void *)&cmd_flow_director_mode_tunnel,
+		(void *)&cmd_flow_director_ops,
+		(void *)&cmd_flow_director_mac,
+		(void *)&cmd_flow_director_mac_addr,
+		(void *)&cmd_flow_director_vlan,
+		(void *)&cmd_flow_director_vlan_value,
+		(void *)&cmd_flow_director_tunnel,
+		(void *)&cmd_flow_director_tunnel_type,
+		(void *)&cmd_flow_director_tunnel_id,
+		(void *)&cmd_flow_director_tunnel_id_value,
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
@@ -8192,8 +8346,10 @@ cmdline_parse_inst_t cmd_flush_flow_director = {
 struct cmd_flow_director_mask_result {
 	cmdline_fixed_string_t flow_director_mask;
 	uint8_t port_id;
+	cmdline_fixed_string_t mode;
+	cmdline_fixed_string_t mode_value;
 	cmdline_fixed_string_t vlan;
-	uint16_t vlan_value;
+	uint16_t vlan_mask;
 	cmdline_fixed_string_t src_mask;
 	cmdline_ipaddr_t ipv4_src;
 	cmdline_ipaddr_t ipv6_src;
@@ -8202,6 +8358,12 @@ struct cmd_flow_director_mask_result {
 	cmdline_ipaddr_t ipv4_dst;
 	cmdline_ipaddr_t ipv6_dst;
 	uint16_t port_dst;
+	cmdline_fixed_string_t mac;
+	uint8_t mac_addr_byte_mask;
+	cmdline_fixed_string_t tunnel_id;
+	uint32_t tunnel_id_mask;
+	cmdline_fixed_string_t tunnel_type;
+	uint8_t tunnel_type_mask;
 };
 
 static void
@@ -8224,15 +8386,41 @@ cmd_flow_director_mask_parsed(void *parsed_result,
 		printf("Please stop port %d first\n", res->port_id);
 		return;
 	}
+
 	mask = &port->dev_conf.fdir_conf.mask;
 
-	mask->vlan_tci_mask = res->vlan_value;
-	IPV4_ADDR_TO_UINT(res->ipv4_src, mask->ipv4_mask.src_ip);
-	IPV4_ADDR_TO_UINT(res->ipv4_dst, mask->ipv4_mask.dst_ip);
-	IPV6_ADDR_TO_ARRAY(res->ipv6_src, mask->ipv6_mask.src_ip);
-	IPV6_ADDR_TO_ARRAY(res->ipv6_dst, mask->ipv6_mask.dst_ip);
-	mask->src_port_mask = res->port_src;
-	mask->dst_port_mask = res->port_dst;
+	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
+		if (strcmp(res->mode_value, "MAC-VLAN")) {
+			printf("Please set mode to MAC-VLAN.\n");
+			return;
+		}
+
+		mask->vlan_tci_mask = res->vlan_mask;
+		mask->mac_addr_byte_mask = res->mac_addr_byte_mask;
+	} else if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		if (strcmp(res->mode_value, "Tunnel")) {
+			printf("Please set mode to Tunnel.\n");
+			return;
+		}
+
+		mask->vlan_tci_mask = res->vlan_mask;
+		mask->mac_addr_byte_mask = res->mac_addr_byte_mask;
+		mask->tunnel_id_mask = res->tunnel_id_mask;
+		mask->tunnel_type_mask = res->tunnel_type_mask;
+	} else {
+		if (strcmp(res->mode_value, "IP")) {
+			printf("Please set mode to IP.\n");
+			return;
+		}
+
+		mask->vlan_tci_mask = res->vlan_mask;
+		IPV4_ADDR_TO_UINT(res->ipv4_src, mask->ipv4_mask.src_ip);
+		IPV4_ADDR_TO_UINT(res->ipv4_dst, mask->ipv4_mask.dst_ip);
+		IPV6_ADDR_TO_ARRAY(res->ipv6_src, mask->ipv6_mask.src_ip);
+		IPV6_ADDR_TO_ARRAY(res->ipv6_dst, mask->ipv6_mask.dst_ip);
+		mask->src_port_mask = res->port_src;
+		mask->dst_port_mask = res->port_dst;
+	}
 
 	cmd_reconfig_device_queue(res->port_id, 1, 1);
 }
@@ -8248,7 +8436,7 @@ cmdline_parse_token_string_t cmd_flow_director_mask_vlan =
 				 vlan, "vlan");
 cmdline_parse_token_num_t cmd_flow_director_mask_vlan_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
-			      vlan_value, UINT16);
+			      vlan_mask, UINT16);
 cmdline_parse_token_string_t cmd_flow_director_mask_src =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
 				 src_mask, "src_mask");
@@ -8273,13 +8461,47 @@ cmdline_parse_token_ipaddr_t cmd_flow_director_mask_ipv6_dst =
 cmdline_parse_token_num_t cmd_flow_director_mask_port_dst =
 	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
 			      port_dst, UINT16);
-cmdline_parse_inst_t cmd_set_flow_director_mask = {
+
+cmdline_parse_token_string_t cmd_flow_director_mask_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 mode, "mode");
+cmdline_parse_token_string_t cmd_flow_director_mask_mode_ip =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 mode_value, "IP");
+cmdline_parse_token_string_t cmd_flow_director_mask_mode_mac_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 mode_value, "MAC-VLAN");
+cmdline_parse_token_string_t cmd_flow_director_mask_mode_tunnel =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 mode_value, "Tunnel");
+cmdline_parse_token_string_t cmd_flow_director_mask_mac =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 mac, "mac");
+cmdline_parse_token_num_t cmd_flow_director_mask_mac_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
+			      mac_addr_byte_mask, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_mask_tunnel_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 tunnel_type, "tunnel-type");
+cmdline_parse_token_num_t cmd_flow_director_mask_tunnel_type_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
+			      tunnel_type_mask, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_mask_tunnel_id =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_mask_result,
+				 tunnel_id, "tunnel-id");
+cmdline_parse_token_num_t cmd_flow_director_mask_tunnel_id_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_mask_result,
+			      tunnel_id_mask, UINT32);
+
+cmdline_parse_inst_t cmd_set_flow_director_ip_mask = {
 	.f = cmd_flow_director_mask_parsed,
 	.data = NULL,
-	.help_str = "set flow director's mask on NIC",
+	.help_str = "set IP mode flow director's mask on NIC",
 	.tokens = {
 		(void *)&cmd_flow_director_mask,
 		(void *)&cmd_flow_director_mask_port_id,
+		(void *)&cmd_flow_director_mask_mode,
+		(void *)&cmd_flow_director_mask_mode_ip,
 		(void *)&cmd_flow_director_mask_vlan,
 		(void *)&cmd_flow_director_mask_vlan_value,
 		(void *)&cmd_flow_director_mask_src,
@@ -8290,6 +8512,44 @@ cmdline_parse_inst_t cmd_set_flow_director_mask = {
 		(void *)&cmd_flow_director_mask_ipv4_dst,
 		(void *)&cmd_flow_director_mask_ipv6_dst,
 		(void *)&cmd_flow_director_mask_port_dst,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_flow_director_mac_vlan_mask = {
+	.f = cmd_flow_director_mask_parsed,
+	.data = NULL,
+	.help_str = "set MAC VLAN mode flow director's mask on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_mask,
+		(void *)&cmd_flow_director_mask_port_id,
+		(void *)&cmd_flow_director_mask_mode,
+		(void *)&cmd_flow_director_mask_mode_mac_vlan,
+		(void *)&cmd_flow_director_mask_vlan,
+		(void *)&cmd_flow_director_mask_vlan_value,
+		(void *)&cmd_flow_director_mask_mac,
+		(void *)&cmd_flow_director_mask_mac_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_flow_director_tunnel_mask = {
+	.f = cmd_flow_director_mask_parsed,
+	.data = NULL,
+	.help_str = "set tunnel mode flow director's mask on NIC",
+	.tokens = {
+		(void *)&cmd_flow_director_mask,
+		(void *)&cmd_flow_director_mask_port_id,
+		(void *)&cmd_flow_director_mask_mode,
+		(void *)&cmd_flow_director_mask_mode_tunnel,
+		(void *)&cmd_flow_director_mask_vlan,
+		(void *)&cmd_flow_director_mask_vlan_value,
+		(void *)&cmd_flow_director_mask_mac,
+		(void *)&cmd_flow_director_mask_mac_value,
+		(void *)&cmd_flow_director_mask_tunnel_type,
+		(void *)&cmd_flow_director_mask_tunnel_type_value,
+		(void *)&cmd_flow_director_mask_tunnel_id,
+		(void *)&cmd_flow_director_mask_tunnel_id_value,
 		NULL,
 	},
 };
@@ -9025,8 +9285,12 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_add_del_udp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_sctp_flow_director,
 	(cmdline_parse_inst_t *)&cmd_add_del_l2_flow_director,
+	(cmdline_parse_inst_t *)&cmd_add_del_mac_vlan_flow_director,
+	(cmdline_parse_inst_t *)&cmd_add_del_tunnel_flow_director,
 	(cmdline_parse_inst_t *)&cmd_flush_flow_director,
-	(cmdline_parse_inst_t *)&cmd_set_flow_director_mask,
+	(cmdline_parse_inst_t *)&cmd_set_flow_director_ip_mask,
+	(cmdline_parse_inst_t *)&cmd_set_flow_director_mac_vlan_mask,
+	(cmdline_parse_inst_t *)&cmd_set_flow_director_tunnel_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_payload,
 	(cmdline_parse_inst_t *)&cmd_get_sym_hash_ena_per_port,
