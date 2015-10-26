@@ -44,6 +44,10 @@ POSSIBILITY OF SUCH DAMAGE.
 /* TODO: this does not look like it should be used... */
 #define ERROR_REPORT2(v1, v2, v3)   do { } while (0)
 
+#ifndef BOULDER_RAPIDS_HW
+#define BOULDER_RAPIDS_HW
+#endif
+
 #define STATIC                  static
 #define DEBUGFUNC(F)            DEBUGOUT(F "\n");
 #define DEBUGOUT(S, args...)    PMD_DRV_LOG_RAW(DEBUG, S, ##args)

@@ -521,8 +521,10 @@ RTE_PCI_DEV_ID_DECL_I40E(PCI_VENDOR_ID_INTEL, I40E_DEV_ID_10G_BASE_T4)
 /*************** Physical FM10K devices from fm10k_type.h ***************/
 
 #define FM10K_DEV_ID_PF                   0x15A4
+#define FM10K_DEV_ID_SDI_FM10420_QDA2     0x15D0
 
 RTE_PCI_DEV_ID_DECL_FM10K(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_PF)
+RTE_PCI_DEV_ID_DECL_FM10K(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_SDI_FM10420_QDA2)
 
 /****************** Virtual IGB devices from e1000_hw.h ******************/
 

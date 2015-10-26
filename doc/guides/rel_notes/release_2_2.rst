@@ -20,6 +20,10 @@ New Features
 
 * **Added fm10k TSO support for both PF and VF.**
 
+* **New NIC Boulder Rapid support.**
+
+  Boulder Rapid is a new NIC of Intel's fm10k family.
+
 * **Enhanced support for the Chelsio CXGBE driver.**
 
   *  Added support for Jumbo Frames.
