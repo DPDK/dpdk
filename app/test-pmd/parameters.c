@@ -707,12 +707,17 @@ launch_args_parse(int argc, char** argv)
 						RTE_FDIR_MODE_SIGNATURE;
 				else if (!strcmp(optarg, "perfect"))
 					fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
+				else if (!strcmp(optarg, "perfect-mac-vlan"))
+					fdir_conf.mode = RTE_FDIR_MODE_PERFECT_MAC_VLAN;
+				else if (!strcmp(optarg, "perfect-tunnel"))
+					fdir_conf.mode = RTE_FDIR_MODE_PERFECT_TUNNEL;
 				else if (!strcmp(optarg, "none"))
 					fdir_conf.mode = RTE_FDIR_MODE_NONE;
 				else
 					rte_exit(EXIT_FAILURE,
 						 "pkt-mode-invalid %s invalid - must be: "
-						 "none, signature or perfect\n",
+						 "none, signature, perfect, perfect-mac-vlan"
+						 " or perfect-tunnel\n",
 						 optarg);
 			}
 			if (!strcmp(lgopts[opt_idx].name,
