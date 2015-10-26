@@ -377,6 +377,32 @@ struct rte_eth_sctpv6_flow {
 };
 
 /**
+ * A structure used to define the input for MAC VLAN flow
+ */
+struct rte_eth_mac_vlan_flow {
+	struct ether_addr mac_addr;  /**< Mac address to match. */
+};
+
+/**
+ * Tunnel type for flow director.
+ */
+enum rte_eth_fdir_tunnel_type {
+	RTE_FDIR_TUNNEL_TYPE_UNKNOWN = 0,
+	RTE_FDIR_TUNNEL_TYPE_NVGRE,
+	RTE_FDIR_TUNNEL_TYPE_VXLAN,
+};
+
+/**
+ * A structure used to define the input for tunnel flow, now it's VxLAN or
+ * NVGRE
+ */
+struct rte_eth_tunnel_flow {
+	enum rte_eth_fdir_tunnel_type tunnel_type; /**< Tunnel type to match. */
+	uint32_t tunnel_id;                        /**< Tunnel ID to match. TNI, VNI... */
+	struct ether_addr mac_addr;                /**< Mac address to match. */
+};
+
+/**
  * An union contains the inputs for all types of flow
  */
 union rte_eth_fdir_flow {
@@ -389,6 +415,8 @@ union rte_eth_fdir_flow {
 	struct rte_eth_tcpv6_flow  tcp6_flow;
 	struct rte_eth_sctpv6_flow sctp6_flow;
 	struct rte_eth_ipv6_flow   ipv6_flow;
+	struct rte_eth_mac_vlan_flow mac_vlan_flow;
+	struct rte_eth_tunnel_flow   tunnel_flow;
 };
 
 /**
@@ -465,6 +493,9 @@ struct rte_eth_fdir_masks {
 	struct rte_eth_ipv6_flow   ipv6_mask;
 	uint16_t src_port_mask;
 	uint16_t dst_port_mask;
+	uint8_t mac_addr_byte_mask;  /** Per byte MAC address mask */
+	uint32_t tunnel_id_mask;  /** tunnel ID mask */
+	uint8_t tunnel_type_mask;
 };
 
 /**
@@ -522,6 +553,8 @@ enum rte_fdir_mode {
 	RTE_FDIR_MODE_NONE      = 0, /**< Disable FDIR support. */
 	RTE_FDIR_MODE_SIGNATURE,     /**< Enable FDIR signature filter mode. */
 	RTE_FDIR_MODE_PERFECT,       /**< Enable FDIR perfect filter mode. */
+	RTE_FDIR_MODE_PERFECT_MAC_VLAN, /**< Enable FDIR filter mode - MAC VLAN. */
+	RTE_FDIR_MODE_PERFECT_TUNNEL,   /**< Enable FDIR filter mode - tunnel. */
 };
 
 #define UINT32_BIT (CHAR_BIT * sizeof(uint32_t))
