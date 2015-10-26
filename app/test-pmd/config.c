@@ -1829,18 +1829,28 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 static inline void
 print_fdir_mask(struct rte_eth_fdir_masks *mask)
 {
-	printf("\n    vlan_tci: 0x%04x, src_ipv4: 0x%08x, dst_ipv4: 0x%08x,"
-		      " src_port: 0x%04x, dst_port: 0x%04x",
-		mask->vlan_tci_mask, mask->ipv4_mask.src_ip,
-		mask->ipv4_mask.dst_ip,
-		mask->src_port_mask, mask->dst_port_mask);
+	printf("\n    vlan_tci: 0x%04x, ", mask->vlan_tci_mask);
 
-	printf("\n    src_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x,"
-		     " dst_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x",
-		mask->ipv6_mask.src_ip[0], mask->ipv6_mask.src_ip[1],
-		mask->ipv6_mask.src_ip[2], mask->ipv6_mask.src_ip[3],
-		mask->ipv6_mask.dst_ip[0], mask->ipv6_mask.dst_ip[1],
-		mask->ipv6_mask.dst_ip[2], mask->ipv6_mask.dst_ip[3]);
+	if (fdir_conf.mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN)
+		printf("mac_addr: 0x%02x", mask->mac_addr_byte_mask);
+	else if (fdir_conf.mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
+		printf("mac_addr: 0x%02x, tunnel_type: 0x%01x, tunnel_id: 0x%08x",
+			mask->mac_addr_byte_mask, mask->tunnel_type_mask,
+			mask->tunnel_id_mask);
+	else {
+		printf("src_ipv4: 0x%08x, dst_ipv4: 0x%08x,"
+			" src_port: 0x%04x, dst_port: 0x%04x",
+			mask->ipv4_mask.src_ip, mask->ipv4_mask.dst_ip,
+			mask->src_port_mask, mask->dst_port_mask);
+
+		printf("\n    src_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x,"
+			" dst_ipv6: 0x%08x,0x%08x,0x%08x,0x%08x",
+			mask->ipv6_mask.src_ip[0], mask->ipv6_mask.src_ip[1],
+			mask->ipv6_mask.src_ip[2], mask->ipv6_mask.src_ip[3],
+			mask->ipv6_mask.dst_ip[0], mask->ipv6_mask.dst_ip[1],
+			mask->ipv6_mask.dst_ip[2], mask->ipv6_mask.dst_ip[3]);
+	}
+
 	printf("\n");
 }
 
@@ -1966,12 +1976,19 @@ fdir_get_infos(portid_t port_id)
 	printf("  MODE: ");
 	if (fdir_info.mode == RTE_FDIR_MODE_PERFECT)
 		printf("  PERFECT\n");
+	else if (fdir_info.mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN)
+		printf("  PERFECT-MAC-VLAN\n");
+	else if (fdir_info.mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
+		printf("  PERFECT-TUNNEL\n");
 	else if (fdir_info.mode == RTE_FDIR_MODE_SIGNATURE)
 		printf("  SIGNATURE\n");
 	else
 		printf("  DISABLE\n");
-	printf("  SUPPORTED FLOW TYPE: ");
-	print_fdir_flow_type(fdir_info.flow_types_mask[0]);
+	if (fdir_info.mode != RTE_FDIR_MODE_PERFECT_MAC_VLAN
+		&& fdir_info.mode != RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		printf("  SUPPORTED FLOW TYPE: ");
+		print_fdir_flow_type(fdir_info.flow_types_mask[0]);
+	}
 	printf("  FLEX PAYLOAD INFO:\n");
 	printf("  max_len:       %-10"PRIu32"  payload_limit: %-10"PRIu32"\n"
 	       "  payload_unit:  %-10"PRIu32"  payload_seg:   %-10"PRIu32"\n"
