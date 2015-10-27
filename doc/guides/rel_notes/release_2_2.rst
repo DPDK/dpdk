@@ -84,6 +84,21 @@ New Features
   * Add 2 new flow director modes on x550.
   * One is MAC VLAN mode, the other is tunnel mode.
 
+* **Updated the i40e base driver.**
+
+  The i40e base driver was updated with several changes including the
+  following:
+
+  *  Added promiscuous on VLAN support
+  *  Added a workaround to drop all flow control frames
+  *  Added VF capabilities to virtual channel interface
+  *  Added Tx Scheduling related AQ commands
+  *  Added additional PCTYPES supported for FortPark RSS
+  *  Added parsing for CEE DCBX TLVs
+  *  Added FortPark specific registers
+  *  Added AQ functions to handle RSS Key and LUT programming
+  *  Increased pf reset max loop limit
+
 * **Added i40e vector RX/TX.**
 
 * **Added i40e Rx interrupt support.**
