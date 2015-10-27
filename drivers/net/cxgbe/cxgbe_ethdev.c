@@ -141,6 +141,12 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct adapter *adapter = pi->adapter;
 	int max_queues = adapter->sge.max_ethqsets / adapter->params.nports;
 
+	static const struct rte_eth_desc_lim cxgbe_desc_lim = {
+		.nb_max = CXGBE_MAX_RING_DESC_SIZE,
+		.nb_min = CXGBE_MIN_RING_DESC_SIZE,
+		.nb_align = 1,
+	};
+
 	device_info->min_rx_bufsize = CXGBE_MIN_RX_BUFSIZE;
 	device_info->max_rx_pktlen = CXGBE_MAX_RX_PKTLEN;
 	device_info->max_rx_queues = max_queues;
@@ -162,6 +168,9 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 				       DEV_TX_OFFLOAD_TCP_TSO;
 
 	device_info->reta_size = pi->rss_size;
+
+	device_info->rx_desc_lim = cxgbe_desc_lim;
+	device_info->tx_desc_lim = cxgbe_desc_lim;
 }
 
 static void cxgbe_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
