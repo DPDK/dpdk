@@ -316,6 +316,8 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.udp_tunnel_add               = i40e_dev_udp_tunnel_add,
 	.udp_tunnel_del               = i40e_dev_udp_tunnel_del,
 	.filter_ctrl                  = i40e_dev_filter_ctrl,
+	.rxq_info_get                 = i40e_rxq_info_get,
+	.txq_info_get                 = i40e_txq_info_get,
 	.mirror_rule_set              = i40e_mirror_rule_set,
 	.mirror_rule_reset            = i40e_mirror_rule_reset,
 	.timesync_enable              = i40e_timesync_enable,
@@ -1767,6 +1769,18 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.tx_rs_thresh = I40E_DEFAULT_TX_RSBIT_THRESH,
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
 				ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = I40E_MAX_RING_DESC,
+		.nb_min = I40E_MIN_RING_DESC,
+		.nb_align = I40E_ALIGN_RING_DESC,
+	};
+
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = I40E_MAX_RING_DESC,
+		.nb_min = I40E_MIN_RING_DESC,
+		.nb_align = I40E_ALIGN_RING_DESC,
 	};
 
 	if (pf->flags & I40E_FLAG_VMDQ) {

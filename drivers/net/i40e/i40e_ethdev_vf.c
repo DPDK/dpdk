@@ -1803,6 +1803,18 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = I40E_MAX_RING_DESC,
+		.nb_min = I40E_MIN_RING_DESC,
+		.nb_align = I40E_ALIGN_RING_DESC,
+	};
+
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = I40E_MAX_RING_DESC,
+		.nb_min = I40E_MIN_RING_DESC,
+		.nb_align = I40E_ALIGN_RING_DESC,
+	};
 }
 
 static void

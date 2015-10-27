@@ -539,6 +539,11 @@ int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 			  enum rte_filter_op filter_op,
 			  void *arg);
 
+void i40e_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo);
+void i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo);
+
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \
 	(&((struct i40e_adapter *)adapter)->pf)
