@@ -77,6 +77,8 @@ New Features
 
 * **Added vhost-user multiple queue support.**
 
+* **Added port hotplug support to vmxnet3.**
+
 * **Added port hotplug support to xenvirt.**
 
 
