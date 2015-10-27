@@ -69,12 +69,13 @@
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
 
-#define MAX_QUEUES 128
+#define MAX_QUEUES 1024
 /*
- * For 10 GbE, 128 queues require roughly
- * 128*512 (RX/TX_queue_nb * RX/TX_ring_descriptors_nb) per port.
+ * 1024 queues require to meet the needs of a large number of vmdq_pools.
+ * (RX/TX_queue_nb * RX/TX_ring_descriptors_nb) per port.
  */
-#define NUM_MBUFS_PER_PORT (128*512)
+#define NUM_MBUFS_PER_PORT (MAX_QUEUES * RTE_MAX(RTE_TEST_RX_DESC_DEFAULT, \
+						RTE_TEST_TX_DESC_DEFAULT))
 #define MBUF_CACHE_SIZE 64
 
 #define MAX_PKT_BURST 32
