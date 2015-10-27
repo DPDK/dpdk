@@ -1134,6 +1134,17 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = FM10K_MAX_RX_DESC,
+		.nb_min = FM10K_MIN_RX_DESC,
+		.nb_align = FM10K_MULT_RX_DESC,
+	};
+
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = FM10K_MAX_TX_DESC,
+		.nb_min = FM10K_MIN_TX_DESC,
+		.nb_align = FM10K_MULT_TX_DESC,
+	};
 }
 
 static int
