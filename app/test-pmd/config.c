@@ -317,6 +317,69 @@ nic_stats_mapping_display(portid_t port_id)
 }
 
 void
+rx_queue_infos_display(portid_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_rxq_info qinfo;
+	int32_t rc;
+	static const char *info_border = "*********************";
+
+	rc = rte_eth_rx_queue_info_get(port_id, queue_id, &qinfo);
+	if (rc != 0) {
+		printf("Failed to retrieve information for port: %hhu, "
+			"RX queue: %hu\nerror desc: %s(%d)\n",
+			port_id, queue_id, strerror(-rc), rc);
+		return;
+	}
+
+	printf("\n%s Infos for port %-2u, RX queue %-2u %s",
+	       info_border, port_id, queue_id, info_border);
+
+	printf("\nMempool: %s", (qinfo.mp == NULL) ? "NULL" : qinfo.mp->name);
+	printf("\nRX prefetch threshold: %hhu", qinfo.conf.rx_thresh.pthresh);
+	printf("\nRX host threshold: %hhu", qinfo.conf.rx_thresh.hthresh);
+	printf("\nRX writeback threshold: %hhu", qinfo.conf.rx_thresh.wthresh);
+	printf("\nRX free threshold: %hu", qinfo.conf.rx_free_thresh);
+	printf("\nRX drop packets: %s",
+		(qinfo.conf.rx_drop_en != 0) ? "on" : "off");
+	printf("\nRX deferred start: %s",
+		(qinfo.conf.rx_deferred_start != 0) ? "on" : "off");
+	printf("\nRX scattered packets: %s",
+		(qinfo.scattered_rx != 0) ? "on" : "off");
+	printf("\nNumber of RXDs: %hu", qinfo.nb_desc);
+	printf("\n");
+}
+
+void
+tx_queue_infos_display(portid_t port_id, uint16_t queue_id)
+{
+	struct rte_eth_txq_info qinfo;
+	int32_t rc;
+	static const char *info_border = "*********************";
+
+	rc = rte_eth_tx_queue_info_get(port_id, queue_id, &qinfo);
+	if (rc != 0) {
+		printf("Failed to retrieve information for port: %hhu, "
+			"TX queue: %hu\nerror desc: %s(%d)\n",
+			port_id, queue_id, strerror(-rc), rc);
+		return;
+	}
+
+	printf("\n%s Infos for port %-2u, TX queue %-2u %s",
+	       info_border, port_id, queue_id, info_border);
+
+	printf("\nTX prefetch threshold: %hhu", qinfo.conf.tx_thresh.pthresh);
+	printf("\nTX host threshold: %hhu", qinfo.conf.tx_thresh.hthresh);
+	printf("\nTX writeback threshold: %hhu", qinfo.conf.tx_thresh.wthresh);
+	printf("\nTX RS threshold: %hu", qinfo.conf.tx_rs_thresh);
+	printf("\nTX free threshold: %hu", qinfo.conf.tx_free_thresh);
+	printf("\nTX flags: %#x", qinfo.conf.txq_flags);
+	printf("\nTX deferred start: %s",
+		(qinfo.conf.tx_deferred_start != 0) ? "on" : "off");
+	printf("\nNumber of TXDs: %hu", qinfo.nb_desc);
+	printf("\n");
+}
+
+void
 port_infos_display(portid_t port_id)
 {
 	struct rte_port *port;
@@ -404,6 +467,20 @@ port_infos_display(portid_t port_id)
 			printf("  %s\n", (p ? p : "unknown"));
 		}
 	}
+
+	printf("Max possible RX queues: %u\n", dev_info.max_rx_queues);
+	printf("Max possible number of RXDs per queue: %hu\n",
+		dev_info.rx_desc_lim.nb_max);
+	printf("Min possible number of RXDs per queue: %hu\n",
+		dev_info.rx_desc_lim.nb_min);
+	printf("RXDs number alignment: %hu\n", dev_info.rx_desc_lim.nb_align);
+
+	printf("Max possible TX queues: %u\n", dev_info.max_tx_queues);
+	printf("Max possible number of TXDs per queue: %hu\n",
+		dev_info.tx_desc_lim.nb_max);
+	printf("Min possible number of TXDs per queue: %hu\n",
+		dev_info.tx_desc_lim.nb_min);
+	printf("TXDs number alignment: %hu\n", dev_info.tx_desc_lim.nb_align);
 }
 
 int

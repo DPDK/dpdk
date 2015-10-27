@@ -460,6 +460,8 @@ void nic_xstats_display(portid_t port_id);
 void nic_xstats_clear(portid_t port_id);
 void nic_stats_mapping_display(portid_t port_id);
 void port_infos_display(portid_t port_id);
+void rx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
+void tx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
 void fwd_lcores_config_display(void);
 void fwd_config_display(void);
 void rxtx_config_display(void);

@@ -5352,6 +5352,53 @@ cmdline_parse_inst_t cmd_showport = {
 	},
 };
 
+/* *** SHOW QUEUE INFO *** */
+struct cmd_showqueue_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t type;
+	cmdline_fixed_string_t what;
+	uint8_t portnum;
+	uint16_t queuenum;
+};
+
+static void
+cmd_showqueue_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_showqueue_result *res = parsed_result;
+
+	if (!strcmp(res->type, "rxq"))
+		rx_queue_infos_display(res->portnum, res->queuenum);
+	else if (!strcmp(res->type, "txq"))
+		tx_queue_infos_display(res->portnum, res->queuenum);
+}
+
+cmdline_parse_token_string_t cmd_showqueue_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_showqueue_result, show, "show");
+cmdline_parse_token_string_t cmd_showqueue_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_showqueue_result, type, "rxq#txq");
+cmdline_parse_token_string_t cmd_showqueue_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_showqueue_result, what, "info");
+cmdline_parse_token_num_t cmd_showqueue_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_showqueue_result, portnum, UINT8);
+cmdline_parse_token_num_t cmd_showqueue_queuenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_showqueue_result, queuenum, UINT16);
+
+cmdline_parse_inst_t cmd_showqueue = {
+	.f = cmd_showqueue_parsed,
+	.data = NULL,
+	.help_str = "show rxq|txq info <port number> <queue_number>",
+	.tokens = {
+		(void *)&cmd_showqueue_show,
+		(void *)&cmd_showqueue_type,
+		(void *)&cmd_showqueue_what,
+		(void *)&cmd_showqueue_portnum,
+		(void *)&cmd_showqueue_queuenum,
+		NULL,
+	},
+};
+
 /* *** READ PORT REGISTER *** */
 struct cmd_read_reg_result {
 	cmdline_fixed_string_t read;
@@ -9217,6 +9264,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_help_long,
 	(cmdline_parse_inst_t *)&cmd_quit,
 	(cmdline_parse_inst_t *)&cmd_showport,
+	(cmdline_parse_inst_t *)&cmd_showqueue,
 	(cmdline_parse_inst_t *)&cmd_showportall,
 	(cmdline_parse_inst_t *)&cmd_showcfg,
 	(cmdline_parse_inst_t *)&cmd_start,
