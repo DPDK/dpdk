@@ -75,6 +75,9 @@ static struct rte_eth_link pmd_link = {
 		.link_status = 0
 };
 
+static void
+eth_xenvirt_free_queues(struct rte_eth_dev *dev);
+
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
 {
@@ -326,7 +329,7 @@ eth_dev_stop(struct rte_eth_dev *dev)
 static void
 eth_dev_close(struct rte_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
+	eth_xenvirt_free_queues(dev);
 }
 
 static void
@@ -362,8 +365,9 @@ eth_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
-eth_queue_release(void *q __rte_unused)
+eth_queue_release(void *q)
 {
+	rte_free(q);
 }
 
 static int
@@ -524,7 +528,23 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	return 0;
 }
 
+static void
+eth_xenvirt_free_queues(struct rte_eth_dev *dev)
+{
+	int i;
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		eth_queue_release(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		eth_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
+}
 
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
