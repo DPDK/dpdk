@@ -4,6 +4,12 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Added API in ethdev to retrieve RX/TX queue information.**
+
+  *  Add the ability for the upper layer to query RX/TX queue information.
+  *  Add into rte_eth_dev_info new fields to represent information about
+     RX/TX descriptors min/max/align numbers per queue for the device.
+
 * **Added RSS dynamic configuration to bonding.**
 
 * **Added e1000 Rx interrupt support.**
@@ -157,6 +163,9 @@ ABI Changes
 
 * The ethdev flow director entries for SCTP were changed.
   It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
+
+* The new fields rx_desc_lim and tx_desc_lim are added into rte_eth_dev_info
+  structure.
 
 * The mbuf structure was changed to support unified packet type.
   It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.

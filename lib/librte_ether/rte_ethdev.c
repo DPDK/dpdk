@@ -1248,6 +1248,19 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
+	if (nb_rx_desc > dev_info.rx_desc_lim.nb_max ||
+			nb_rx_desc < dev_info.rx_desc_lim.nb_min ||
+			nb_rx_desc % dev_info.rx_desc_lim.nb_align != 0) {
+
+		PMD_DEBUG_TRACE("Invalid value for nb_rx_desc(=%hu), "
+			"should be: <= %hu, = %hu, and a product of %hu\n",
+			nb_rx_desc,
+			dev_info.rx_desc_lim.nb_max,
+			dev_info.rx_desc_lim.nb_min,
+			dev_info.rx_desc_lim.nb_align);
+		return -EINVAL;
+	}
+
 	if (rx_conf == NULL)
 		rx_conf = &dev_info.default_rxconf;
 
@@ -1587,11 +1600,18 @@ void
 rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 {
 	struct rte_eth_dev *dev;
+	const struct rte_eth_desc_lim lim = {
+		.nb_max = UINT16_MAX,
+		.nb_min = 0,
+		.nb_align = 1,
+	};
 
 	VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
 
 	memset(dev_info, 0, sizeof(struct rte_eth_dev_info));
+	dev_info->rx_desc_lim = lim;
+	dev_info->tx_desc_lim = lim;
 
 	FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
@@ -3019,6 +3039,54 @@ rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
 
 	/* Callback wasn't found. */
 	return -EINVAL;
+}
+
+int
+rte_eth_rx_queue_info_get(uint8_t port_id, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (qinfo == NULL)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port_id];
+	if (queue_id >= dev->data->nb_rx_queues) {
+		PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rxq_info_get, -ENOTSUP);
+
+	memset(qinfo, 0, sizeof(*qinfo));
+	dev->dev_ops->rxq_info_get(dev, queue_id, qinfo);
+	return 0;
+}
+
+int
+rte_eth_tx_queue_info_get(uint8_t port_id, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (qinfo == NULL)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port_id];
+	if (queue_id >= dev->data->nb_tx_queues) {
+		PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		return -EINVAL;
+	}
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->txq_info_get, -ENOTSUP);
+
+	memset(qinfo, 0, sizeof(*qinfo));
+	dev->dev_ops->txq_info_get(dev, queue_id, qinfo);
+	return 0;
 }
 
 int

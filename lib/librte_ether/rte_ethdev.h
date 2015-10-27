@@ -653,6 +653,15 @@ struct rte_eth_txconf {
 };
 
 /**
+ * A structure contains information about HW descriptor ring limitations.
+ */
+struct rte_eth_desc_lim {
+	uint16_t nb_max;   /**< Max allowed number of descriptors. */
+	uint16_t nb_min;   /**< Min allowed number of descriptors. */
+	uint16_t nb_align; /**< Number of descriptors should be aligned to. */
+};
+
+/**
  * This enum indicates the flow control mode
  */
 enum rte_eth_fc_mode {
@@ -837,7 +846,29 @@ struct rte_eth_dev_info {
 	uint16_t vmdq_queue_base; /**< First queue ID for VMDQ pools. */
 	uint16_t vmdq_queue_num;  /**< Queue number for VMDQ pools. */
 	uint16_t vmdq_pool_base;  /**< First ID of VMDQ pools. */
+	struct rte_eth_desc_lim rx_desc_lim;  /**< RX descriptors limits */
+	struct rte_eth_desc_lim tx_desc_lim;  /**< TX descriptors limits */
 };
+
+/**
+ * Ethernet device RX queue information structure.
+ * Used to retieve information about configured queue.
+ */
+struct rte_eth_rxq_info {
+	struct rte_mempool *mp;     /**< mempool used by that queue. */
+	struct rte_eth_rxconf conf; /**< queue config parameters. */
+	uint8_t scattered_rx;       /**< scattered packets RX supported. */
+	uint16_t nb_desc;           /**< configured number of RXDs. */
+} __rte_cache_aligned;
+
+/**
+ * Ethernet device TX queue information structure.
+ * Used to retieve information about configured queue.
+ */
+struct rte_eth_txq_info {
+	struct rte_eth_txconf conf; /**< queue config parameters. */
+	uint16_t nb_desc;           /**< configured number of TXDs. */
+} __rte_cache_aligned;
 
 /** Maximum name length for extended statistics counters */
 #define RTE_ETH_XSTATS_NAME_SIZE 64
@@ -996,6 +1027,12 @@ typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
 
 typedef int (*eth_rx_descriptor_done_t)(void *rxq, uint16_t offset);
 /**< @internal Check DD bit of specific RX descriptor */
+
+typedef void (*eth_rxq_info_get_t)(struct rte_eth_dev *dev,
+	uint16_t rx_queue_id, struct rte_eth_rxq_info *qinfo);
+
+typedef void (*eth_txq_info_get_t)(struct rte_eth_dev *dev,
+	uint16_t tx_queue_id, struct rte_eth_txq_info *qinfo);
 
 typedef int (*mtu_set_t)(struct rte_eth_dev *dev, uint16_t mtu);
 /**< @internal Set MTU. */
@@ -1337,9 +1374,13 @@ struct eth_dev_ops {
 	rss_hash_update_t rss_hash_update;
 	/** Get current RSS hash configuration. */
 	rss_hash_conf_get_t rss_hash_conf_get;
-	eth_filter_ctrl_t              filter_ctrl;          /**< common filter control*/
+	eth_filter_ctrl_t              filter_ctrl;
+	/**< common filter control. */
 	eth_set_mc_addr_list_t set_mc_addr_list; /**< set list of mcast addrs */
-
+	eth_rxq_info_get_t rxq_info_get;
+	/**< retrieve RX queue information. */
+	eth_txq_info_get_t txq_info_get;
+	/**< retrieve TX queue information. */
 	/** Turn IEEE1588/802.1AS timestamping on. */
 	eth_timesync_enable_t timesync_enable;
 	/** Turn IEEE1588/802.1AS timestamping off. */
@@ -3495,6 +3536,46 @@ int rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
 		struct rte_eth_rxtx_callback *user_cb);
 
 /**
+ * Retrieve information about given port's RX queue.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The RX queue on the Ethernet device for which information
+ *   will be retrieved.
+ * @param qinfo
+ *   A pointer to a structure of type *rte_eth_rxq_info_info* to be filled with
+ *   the information of the Ethernet device.
+ *
+ * @return
+ *   - 0: Success
+ *   - -ENOTSUP: routine is not supported by the device PMD.
+ *   - -EINVAL:  The port_id or the queue_id is out of range.
+ */
+int rte_eth_rx_queue_info_get(uint8_t port_id, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo);
+
+/**
+ * Retrieve information about given port's TX queue.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The TX queue on the Ethernet device for which information
+ *   will be retrieved.
+ * @param qinfo
+ *   A pointer to a structure of type *rte_eth_txq_info_info* to be filled with
+ *   the information of the Ethernet device.
+ *
+ * @return
+ *   - 0: Success
+ *   - -ENOTSUP: routine is not supported by the device PMD.
+ *   - -EINVAL:  The port_id or the queue_id is out of range.
+ */
+int rte_eth_tx_queue_info_get(uint8_t port_id, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo);
+
+/*
  * Retrieve number of available registers for access
  *
  * @param port_id
