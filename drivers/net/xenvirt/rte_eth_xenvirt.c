@@ -668,6 +668,7 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
+	eth_dev->data->dev_flags = RTE_PCI_DRV_DETACHABLE;
 	eth_dev->pci_dev = pci_dev;
 
 	eth_dev->rx_pkt_burst = eth_xenvirt_rx;
@@ -687,6 +688,38 @@ err:
 }
 
 
+static int
+eth_dev_xenvirt_free(const char *name, const unsigned numa_node)
+{
+	struct rte_eth_dev *eth_dev = NULL;
+
+	RTE_LOG(DEBUG, PMD,
+		"Free virtio rings backed ethdev on numa socket %u\n",
+		numa_node);
+
+	/* find an ethdev entry */
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev == NULL)
+		return -1;
+
+	if (eth_dev->data->dev_started == 1) {
+		eth_dev_stop(eth_dev);
+		eth_dev_close(eth_dev);
+	}
+
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->dev_ops = NULL;
+
+	rte_free(eth_dev->data);
+	rte_free(eth_dev->data->dev_private);
+	rte_free(eth_dev->data->mac_addrs);
+
+	virtio_idx--;
+
+	return 0;
+}
+
 /*TODO: Support multiple process model */
 static int
 rte_pmd_xenvirt_devinit(const char *name, const char *params)
@@ -705,10 +738,25 @@ rte_pmd_xenvirt_devinit(const char *name, const char *params)
 	return 0;
 }
 
+static int
+rte_pmd_xenvirt_devuninit(const char *name)
+{
+	eth_dev_xenvirt_free(name, rte_socket_id());
+
+	if (virtio_idx == 0) {
+		if (xenstore_uninit() != 0)
+			RTE_LOG(ERR, PMD, "%s: xenstore uninit failed\n", __func__);
+
+		gntalloc_close();
+	}
+	return 0;
+}
+
 static struct rte_driver pmd_xenvirt_drv = {
 	.name = "eth_xenvirt",
 	.type = PMD_VDEV,
 	.init = rte_pmd_xenvirt_devinit,
+	.uninit = rte_pmd_xenvirt_devuninit,
 };
 
 PMD_REGISTER_DRIVER(pmd_xenvirt_drv);

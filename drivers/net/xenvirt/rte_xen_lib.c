@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,7 @@
 
 #include <rte_common.h>
 #include <rte_string_fns.h>
+#include <rte_malloc.h>
 
 #include "rte_xen_lib.h"
 
@@ -72,6 +73,8 @@ int gntalloc_fd = -1;
 static char *dompath = NULL;
 /* handle to xenstore read/write operations */
 static struct xs_handle *xs = NULL;
+/* flag to indicate if xenstore cleanup is required */
+static bool is_xenstore_cleaned_up;
 
 /*
  * Reserve a virtual address space.
@@ -275,7 +278,6 @@ xenstore_init(void)
 {
 	unsigned int len, domid;
 	char *buf;
-	static int cleanup = 0;
 	char *end;
 
 	xs = xs_domain_open();
@@ -301,11 +303,27 @@ xenstore_init(void)
 
 	xs_transaction_start(xs); /* When to stop transaction */
 
-	if (cleanup == 0) {
+	if (is_xenstore_cleaned_up == 0) {
 		if (xenstore_cleanup())
 			return -1;
-		cleanup = 1;
+		is_xenstore_cleaned_up = 1;
 	}
+
+	return 0;
+}
+
+int
+xenstore_uninit(void)
+{
+	xs_close(xs);
+
+	if (is_xenstore_cleaned_up == 0) {
+		if (xenstore_cleanup())
+			return -1;
+		is_xenstore_cleaned_up = 1;
+	}
+	free(dompath);
+	dompath = NULL;
 
 	return 0;
 }

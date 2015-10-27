@@ -35,6 +35,9 @@ New Features
 
 * **Added vhost-user multiple queue support.**
 
+* **Added port hotplug support to xenvirt.**
+
+
 Resolved Issues
 ---------------
 
