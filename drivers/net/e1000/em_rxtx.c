@@ -1081,26 +1081,6 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return (nb_rx);
 }
 
-/*
- * Rings setup and release.
- *
- * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
- * multiple of 128 bytes. So we align TDBA/RDBA on 128 byte boundary.
- * This will also optimize cache line size effect.
- * H/W supports up to cache line size 128.
- */
-#define EM_ALIGN 128
-
-/*
- * Maximum number of Ring Descriptors.
- *
- * Since RDLEN/TDLEN should be multiple of 128 bytes, the number of ring
- * desscriptors should meet the following condition:
- * (num_ring_desc * sizeof(struct e1000_rx/tx_desc)) % 128 == 0
- */
-#define EM_MIN_RING_DESC 32
-#define EM_MAX_RING_DESC 4096
-
 #define	EM_MAX_BUF_SIZE     16384
 #define EM_RCTL_FLXBUF_STEP 1024
 
@@ -1210,11 +1190,11 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Validate number of transmit descriptors.
 	 * It must not exceed hardware maximum, and must be multiple
-	 * of EM_ALIGN.
+	 * of E1000_ALIGN.
 	 */
-	if (((nb_desc * sizeof(*txq->tx_ring)) % EM_ALIGN) != 0 ||
-			(nb_desc > EM_MAX_RING_DESC) ||
-			(nb_desc < EM_MIN_RING_DESC)) {
+	if (nb_desc % EM_TXD_ALIGN != 0 ||
+			(nb_desc > E1000_MAX_RING_DESC) ||
+			(nb_desc < E1000_MIN_RING_DESC)) {
 		return -(EINVAL);
 	}
 
@@ -1272,7 +1252,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tsize = sizeof (txq->tx_ring[0]) * EM_MAX_RING_DESC;
+	tsize = sizeof(txq->tx_ring[0]) * E1000_MAX_RING_DESC;
 	if ((tz = ring_dma_zone_reserve(dev, "tx_ring", queue_idx, tsize,
 			socket_id)) == NULL)
 		return (-ENOMEM);
@@ -1375,11 +1355,11 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Validate number of receive descriptors.
 	 * It must not exceed hardware maximum, and must be multiple
-	 * of EM_ALIGN.
+	 * of E1000_ALIGN.
 	 */
-	if (((nb_desc * sizeof(rxq->rx_ring[0])) % EM_ALIGN) != 0 ||
-			(nb_desc > EM_MAX_RING_DESC) ||
-			(nb_desc < EM_MIN_RING_DESC)) {
+	if (nb_desc % EM_RXD_ALIGN != 0 ||
+			(nb_desc > E1000_MAX_RING_DESC) ||
+			(nb_desc < E1000_MIN_RING_DESC)) {
 		return (-EINVAL);
 	}
 
@@ -1399,7 +1379,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* Allocate RX ring for max possible mumber of hardware descriptors. */
-	rsize = sizeof (rxq->rx_ring[0]) * EM_MAX_RING_DESC;
+	rsize = sizeof(rxq->rx_ring[0]) * E1000_MAX_RING_DESC;
 	if ((rz = ring_dma_zone_reserve(dev, "rx_ring", queue_idx, rsize,
 			socket_id)) == NULL)
 		return (-ENOMEM);
@@ -1880,4 +1860,35 @@ eth_em_tx_init(struct rte_eth_dev *dev)
 
 	/* This write will effectively turn on the transmit unit. */
 	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
+}
+
+void
+em_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct em_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+}
+
+void
+em_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct em_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+
+	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
+	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
+	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
+	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
+	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
 }

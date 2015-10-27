@@ -280,6 +280,18 @@ static const struct rte_pci_id pci_id_igbvf_map[] = {
 {0},
 };
 
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = E1000_MAX_RING_DESC,
+	.nb_min = E1000_MIN_RING_DESC,
+	.nb_align = IGB_RXD_ALIGN,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = E1000_MAX_RING_DESC,
+	.nb_min = E1000_MIN_RING_DESC,
+	.nb_align = IGB_RXD_ALIGN,
+};
+
 static const struct eth_dev_ops eth_igb_ops = {
 	.dev_configure        = eth_igb_configure,
 	.dev_start            = eth_igb_start,
@@ -318,6 +330,8 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.rss_hash_conf_get    = eth_igb_rss_hash_conf_get,
 	.filter_ctrl          = eth_igb_filter_ctrl,
 	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
+	.rxq_info_get         = igb_rxq_info_get,
+	.txq_info_get         = igb_txq_info_get,
 	.timesync_enable      = igb_timesync_enable,
 	.timesync_disable     = igb_timesync_disable,
 	.timesync_read_rx_timestamp = igb_timesync_read_rx_timestamp,
@@ -348,6 +362,8 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
+	.rxq_info_get         = igb_rxq_info_get,
+	.txq_info_get         = igb_txq_info_get,
 	.mac_addr_set         = igbvf_default_mac_addr_set,
 	.get_reg_length       = igbvf_get_reg_length,
 	.get_reg              = igbvf_get_regs,
@@ -1654,6 +1670,9 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.txq_flags = 0,
 	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
 }
 
 static void
@@ -1706,6 +1725,9 @@ eth_igbvf_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		},
 		.txq_flags = 0,
 	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
 }
 
 /* return 0 means link status changed, -1 means not changed */

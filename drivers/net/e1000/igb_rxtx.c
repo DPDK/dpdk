@@ -1203,25 +1203,12 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 /*
- * Rings setup and release.
- *
- * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
- * multiple of 128 bytes. So we align TDBA/RDBA on 128 byte boundary.
- * This will also optimize cache line size effect.
- * H/W supports up to cache line size 128.
- */
-#define IGB_ALIGN 128
-
-/*
  * Maximum number of Ring Descriptors.
  *
  * Since RDLEN/TDLEN should be multiple of 128bytes, the number of ring
  * desscriptors should meet the following condition:
  *      (num_ring_desc * sizeof(struct e1000_rx/tx_desc)) % 128 == 0
  */
-#define IGB_MIN_RING_DESC 32
-#define IGB_MAX_RING_DESC 4096
-
 static const struct rte_memzone *
 ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 		      uint16_t queue_id, uint32_t ring_size, int socket_id)
@@ -1238,10 +1225,10 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 
 #ifdef RTE_LIBRTE_XEN_DOM0
 	return rte_memzone_reserve_bounded(z_name, ring_size,
-			socket_id, 0, IGB_ALIGN, RTE_PGSIZE_2M);
+			socket_id, 0, E1000_ALIGN, RTE_PGSIZE_2M);
 #else
 	return rte_memzone_reserve_aligned(z_name, ring_size,
-			socket_id, 0, IGB_ALIGN);
+			socket_id, 0, E1000_ALIGN);
 #endif
 }
 
@@ -1337,10 +1324,11 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Validate number of transmit descriptors.
 	 * It must not exceed hardware maximum, and must be multiple
-	 * of IGB_ALIGN.
+	 * of E1000_ALIGN.
 	 */
-	if (((nb_desc * sizeof(union e1000_adv_tx_desc)) % IGB_ALIGN) != 0 ||
-	    (nb_desc > IGB_MAX_RING_DESC) || (nb_desc < IGB_MIN_RING_DESC)) {
+	if (nb_desc % IGB_TXD_ALIGN != 0 ||
+			(nb_desc > E1000_MAX_RING_DESC) ||
+			(nb_desc < E1000_MIN_RING_DESC)) {
 		return -EINVAL;
 	}
 
@@ -1376,7 +1364,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	size = sizeof(union e1000_adv_tx_desc) * IGB_MAX_RING_DESC;
+	size = sizeof(union e1000_adv_tx_desc) * E1000_MAX_RING_DESC;
 	tz = ring_dma_zone_reserve(dev, "tx_ring", queue_idx,
 					size, socket_id);
 	if (tz == NULL) {
@@ -1485,10 +1473,11 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Validate number of receive descriptors.
 	 * It must not exceed hardware maximum, and must be multiple
-	 * of IGB_ALIGN.
+	 * of E1000_ALIGN.
 	 */
-	if (((nb_desc * sizeof(union e1000_adv_rx_desc)) % IGB_ALIGN) != 0 ||
-	    (nb_desc > IGB_MAX_RING_DESC) || (nb_desc < IGB_MIN_RING_DESC)) {
+	if (nb_desc % IGB_RXD_ALIGN != 0 ||
+			(nb_desc > E1000_MAX_RING_DESC) ||
+			(nb_desc < E1000_MIN_RING_DESC)) {
 		return (-EINVAL);
 	}
 
@@ -1524,7 +1513,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	 *  handle the maximum ring size is allocated in order to allow for
 	 *  resizing in later calls to the queue setup function.
 	 */
-	size = sizeof(union e1000_adv_rx_desc) * IGB_MAX_RING_DESC;
+	size = sizeof(union e1000_adv_rx_desc) * E1000_MAX_RING_DESC;
 	rz = ring_dma_zone_reserve(dev, "rx_ring", queue_idx, size, socket_id);
 	if (rz == NULL) {
 		igb_rx_queue_release(rxq);
@@ -2536,4 +2525,35 @@ eth_igbvf_tx_init(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
 	}
 
+}
+
+void
+igb_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct igb_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+	qinfo->conf.rx_drop_en = rxq->drop_en;
+}
+
+void
+igb_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct igb_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+
+	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
+	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
+	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
 }

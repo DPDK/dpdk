@@ -175,6 +175,8 @@ static const struct eth_dev_ops eth_em_ops = {
 	.mac_addr_add         = eth_em_rar_set,
 	.mac_addr_remove      = eth_em_rar_clear,
 	.set_mc_addr_list     = eth_em_set_mc_addr_list,
+	.rxq_info_get         = em_rxq_info_get,
+	.txq_info_get         = em_txq_info_get,
 };
 
 /**
@@ -1014,6 +1016,18 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_rx_queues = 1;
 	dev_info->max_tx_queues = 1;
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = E1000_MAX_RING_DESC,
+		.nb_min = E1000_MIN_RING_DESC,
+		.nb_align = EM_RXD_ALIGN,
+	};
+
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = E1000_MAX_RING_DESC,
+		.nb_min = E1000_MIN_RING_DESC,
+		.nb_align = EM_TXD_ALIGN,
+	};
 }
 
 /* return 0 means link status changed, -1 means not changed */
