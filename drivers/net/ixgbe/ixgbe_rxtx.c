@@ -1821,25 +1821,6 @@ ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
  **********************************************************************/
 
 /*
- * Rings setup and release.
- *
- * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
- * multiple of 128 bytes. So we align TDBA/RDBA on 128 byte boundary. This will
- * also optimize cache line size effect. H/W supports up to cache line size 128.
- */
-#define IXGBE_ALIGN 128
-
-/*
- * Maximum number of Ring Descriptors.
- *
- * Since RDLEN/TDLEN should be multiple of 128 bytes, the number of ring
- * descriptors should meet the following condition:
- *      (num_ring_desc * sizeof(rx/tx descriptor)) % 128 == 0
- */
-#define IXGBE_MIN_RING_DESC 32
-#define IXGBE_MAX_RING_DESC 4096
-
-/*
  * Create memzone for HW rings. malloc can't be used as the physical address is
  * needed. If the memzone is already created, then this function returns a ptr
  * to the old one.
@@ -2007,9 +1988,9 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 * It must not exceed hardware maximum, and must be multiple
 	 * of IXGBE_ALIGN.
 	 */
-	if (((nb_desc * sizeof(union ixgbe_adv_tx_desc)) % IXGBE_ALIGN) != 0 ||
-	    (nb_desc > IXGBE_MAX_RING_DESC) ||
-	    (nb_desc < IXGBE_MIN_RING_DESC)) {
+	if (nb_desc % IXGBE_TXD_ALIGN != 0 ||
+			(nb_desc > IXGBE_MAX_RING_DESC) ||
+			(nb_desc < IXGBE_MIN_RING_DESC)) {
 		return -EINVAL;
 	}
 
@@ -2374,9 +2355,9 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * It must not exceed hardware maximum, and must be multiple
 	 * of IXGBE_ALIGN.
 	 */
-	if (((nb_desc * sizeof(union ixgbe_adv_rx_desc)) % IXGBE_ALIGN) != 0 ||
-	    (nb_desc > IXGBE_MAX_RING_DESC) ||
-	    (nb_desc < IXGBE_MIN_RING_DESC)) {
+	if (nb_desc % IXGBE_RXD_ALIGN != 0 ||
+			(nb_desc > IXGBE_MAX_RING_DESC) ||
+			(nb_desc < IXGBE_MIN_RING_DESC)) {
 		return (-EINVAL);
 	}
 
@@ -4682,6 +4663,43 @@ ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -1;
 
 	return 0;
+}
+
+void
+ixgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct ixgbe_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+	qinfo->conf.rx_drop_en = rxq->drop_en;
+	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+}
+
+void
+ixgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct ixgbe_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+
+	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
+	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
+	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
+
+	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
+	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
+	qinfo->conf.txq_flags = txq->txq_flags;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 
 /*

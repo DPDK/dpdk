@@ -357,6 +357,12 @@ int ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
+void ixgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo);
+
+void ixgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo);
+
 int ixgbevf_dev_rx_init(struct rte_eth_dev *dev);
 
 void ixgbevf_dev_tx_init(struct rte_eth_dev *dev);

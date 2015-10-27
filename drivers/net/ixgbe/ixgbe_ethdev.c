@@ -388,6 +388,18 @@ static const struct rte_pci_id pci_id_ixgbevf_map[] = {
 
 };
 
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = IXGBE_MAX_RING_DESC,
+	.nb_min = IXGBE_MIN_RING_DESC,
+	.nb_align = IXGBE_RXD_ALIGN,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = IXGBE_MAX_RING_DESC,
+	.nb_min = IXGBE_MIN_RING_DESC,
+	.nb_align = IXGBE_TXD_ALIGN,
+};
+
 static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.dev_configure        = ixgbe_dev_configure,
 	.dev_start            = ixgbe_dev_start,
@@ -458,6 +470,8 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
 	.filter_ctrl          = ixgbe_dev_filter_ctrl,
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
+	.rxq_info_get         = ixgbe_rxq_info_get,
+	.txq_info_get         = ixgbe_txq_info_get,
 	.timesync_enable      = ixgbe_timesync_enable,
 	.timesync_disable     = ixgbe_timesync_disable,
 	.timesync_read_rx_timestamp = ixgbe_timesync_read_rx_timestamp,
@@ -497,6 +511,8 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.mac_addr_add         = ixgbevf_add_mac_addr,
 	.mac_addr_remove      = ixgbevf_remove_mac_addr,
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
+	.rxq_info_get         = ixgbe_rxq_info_get,
+	.txq_info_get         = ixgbe_txq_info_get,
 	.mac_addr_set         = ixgbevf_set_default_mac_addr,
 	.get_reg_length       = ixgbevf_get_reg_length,
 	.get_reg              = ixgbevf_get_regs,
@@ -2580,6 +2596,10 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
+
 	dev_info->hash_key_size = IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
 	dev_info->reta_size = ixgbe_reta_size_get(hw->mac.type);
 	dev_info->flow_type_rss_offloads = IXGBE_RSS_OFFLOAD_ALL;
@@ -2634,6 +2654,9 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
 				ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
 }
 
 /* return 0 means link status changed, -1 means not changed */
