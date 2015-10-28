@@ -33,6 +33,8 @@
 
 #include <stdio.h>
 
+#include <rte_ip.h>
+
 #include "app.h"
 
 static void
@@ -193,6 +195,7 @@ check_swqs(struct app_params *app)
 		struct app_pktq_swq_params *p = &app->swq_params[i];
 		uint32_t n_readers = app_swq_get_readers(app, p);
 		uint32_t n_writers = app_swq_get_writers(app, p);
+		uint32_t n_flags;
 
 		APP_CHECK((p->size > 0),
 			"%s size is 0\n", p->name);
@@ -217,14 +220,48 @@ check_swqs(struct app_params *app)
 		APP_CHECK((n_readers != 0),
 			"%s has no reader\n", p->name);
 
-		APP_CHECK((n_readers == 1),
-			"%s has more than one reader\n", p->name);
+		if (n_readers > 1)
+			APP_LOG(app, LOW, "%s has more than one reader", p->name);
 
 		APP_CHECK((n_writers != 0),
 			"%s has no writer\n", p->name);
 
-		APP_CHECK((n_writers == 1),
-			"%s has more than one writer\n", p->name);
+		if (n_writers > 1)
+			APP_LOG(app, LOW, "%s has more than one writer", p->name);
+
+		n_flags = p->ipv4_frag + p->ipv6_frag + p->ipv4_ras + p->ipv6_ras;
+
+		APP_CHECK((n_flags < 2),
+			"%s has more than one fragmentation or reassembly mode enabled\n",
+			p->name);
+
+		APP_CHECK((!((n_readers > 1) && (n_flags == 1))),
+			"%s has more than one reader when fragmentation or reassembly"
+			" mode enabled\n",
+			p->name);
+
+		APP_CHECK((!((n_writers > 1) && (n_flags == 1))),
+			"%s has more than one writer when fragmentation or reassembly"
+			" mode enabled\n",
+			p->name);
+
+		n_flags = p->ipv4_ras + p->ipv6_ras;
+
+		APP_CHECK((!((p->dropless == 1) && (n_flags == 1))),
+			"%s has dropless when reassembly mode enabled\n", p->name);
+
+		n_flags = p->ipv4_frag + p->ipv6_frag;
+
+		if (n_flags == 1) {
+			uint16_t ip_hdr_size = (p->ipv4_frag) ? sizeof(struct ipv4_hdr) :
+				sizeof(struct ipv6_hdr);
+
+			APP_CHECK((p->mtu > ip_hdr_size),
+				"%s mtu size is smaller than ip header\n", p->name);
+
+			APP_CHECK((!((p->mtu - ip_hdr_size) % 8)),
+				"%s mtu size is incorrect\n", p->name);
+		}
 	}
 }
 

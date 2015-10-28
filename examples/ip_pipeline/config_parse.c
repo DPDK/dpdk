@@ -156,6 +156,14 @@ static const struct app_pktq_swq_params default_swq_params = {
 	.dropless = 0,
 	.n_retries = 0,
 	.cpu_socket_id = 0,
+	.ipv4_frag = 0,
+	.ipv6_frag = 0,
+	.ipv4_ras = 0,
+	.ipv6_ras = 0,
+	.mtu = 0,
+	.metadata_size = 0,
+	.mempool_direct_id = 0,
+	.mempool_indirect_id = 0,
 };
 
 struct app_pktq_tm_params default_tm_params = {
@@ -196,13 +204,15 @@ struct app_pipeline_params default_pipeline_params = {
 
 static const char app_usage[] =
 	"Usage: %s [-f CONFIG_FILE] [-s SCRIPT_FILE] -p PORT_MASK "
-	"[-l LOG_LEVEL]\n"
+	"[-l LOG_LEVEL] [--preproc PREPROCESSOR] [--preproc-args ARGS]\n"
 	"\n"
 	"Arguments:\n"
 	"\t-f CONFIG_FILE: Default config file is %s\n"
 	"\t-p PORT_MASK: Mask of NIC port IDs in hexadecimal format\n"
 	"\t-s SCRIPT_FILE: No CLI script file is run when not specified\n"
 	"\t-l LOG_LEVEL: 0 = NONE, 1 = HIGH PRIO (default), 2 = LOW PRIO\n"
+	"\t--preproc PREPROCESSOR: Configuration file pre-processor\n"
+	"\t--preproc-args ARGS: Arguments to be passed to pre-processor\n"
 	"\n";
 
 static void
@@ -1107,6 +1117,10 @@ parse_pipeline(struct app_params *app,
 			ret = parser_read_uint32(&param->timer_period,
 				ent->value);
 		else {
+			APP_CHECK((param->n_args < APP_MAX_PIPELINE_ARGS),
+				"CFG: [%s] out of memory",
+				section_name);
+
 			param->args_name[param->n_args] = strdup(ent->name);
 			param->args_value[param->n_args] = strdup(ent->value);
 
@@ -1397,6 +1411,7 @@ parse_swq(struct app_params *app,
 	struct app_pktq_swq_params *param;
 	struct rte_cfgfile_entry *entries;
 	int n_entries, ret, i;
+	unsigned frag_entries = 0;
 	ssize_t param_idx;
 
 	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
@@ -1438,6 +1453,71 @@ parse_swq(struct app_params *app,
 		else if (strcmp(ent->name, "cpu") == 0)
 			ret = parser_read_uint32(&param->cpu_socket_id,
 				ent->value);
+		else if (strcmp(ent->name, "ipv4_frag") == 0) {
+			ret = parser_read_arg_bool(ent->value);
+			if (ret >= 0) {
+				param->ipv4_frag = ret;
+				if (param->mtu == 0)
+					param->mtu = 1500;
+				ret = 0;
+			}
+		} else if (strcmp(ent->name, "ipv6_frag") == 0) {
+			ret = parser_read_arg_bool(ent->value);
+			if (ret >= 0) {
+				param->ipv6_frag = ret;
+				if (param->mtu == 0)
+					param->mtu = 1320;
+				ret = 0;
+			}
+		} else if (strcmp(ent->name, "ipv4_ras") == 0) {
+			ret = parser_read_arg_bool(ent->value);
+			if (ret >= 0) {
+				param->ipv4_ras = ret;
+				ret = 0;
+			}
+		} else if (strcmp(ent->name, "ipv6_ras") == 0) {
+			ret = parser_read_arg_bool(ent->value);
+			if (ret >= 0) {
+				param->ipv6_ras = ret;
+				ret = 0;
+			}
+		} else if (strcmp(ent->name, "mtu") == 0) {
+			frag_entries = 1;
+			ret = parser_read_uint32(&param->mtu,
+				ent->value);
+		} else if (strcmp(ent->name, "metadata_size") == 0) {
+			frag_entries = 1;
+			ret = parser_read_uint32(&param->metadata_size,
+				ent->value);
+		} else if (strcmp(ent->name, "mempool_direct") == 0) {
+			int status = validate_name(ent->value, "MEMPOOL", 1);
+			ssize_t idx;
+
+			APP_CHECK((status == 0),
+				"CFG: [%s] entry '%s': invalid mempool\n",
+				section_name,
+				ent->name);
+
+			idx = APP_PARAM_ADD(app->mempool_params, ent->value);
+			PARSER_IMPLICIT_PARAM_ADD_CHECK(idx, section_name);
+			param->mempool_direct_id = idx;
+			frag_entries = 1;
+			ret = 0;
+		} else if (strcmp(ent->name, "mempool_indirect") == 0) {
+			int status = validate_name(ent->value, "MEMPOOL", 1);
+			ssize_t idx;
+
+			APP_CHECK((status == 0),
+				"CFG: [%s] entry '%s': invalid mempool\n",
+				section_name,
+				ent->name);
+
+			idx = APP_PARAM_ADD(app->mempool_params, ent->value);
+			PARSER_IMPLICIT_PARAM_ADD_CHECK(idx, section_name);
+			param->mempool_indirect_id = idx;
+			frag_entries = 1;
+			ret = 0;
+		}
 
 		APP_CHECK(ret != -ESRCH,
 			"CFG: [%s] entry '%s': unknown entry\n",
@@ -1448,6 +1528,13 @@ parse_swq(struct app_params *app,
 			section_name,
 			ent->name,
 			ent->value);
+	}
+
+	if (frag_entries == 1) {
+		APP_CHECK(((param->ipv4_frag == 1) || (param->ipv6_frag == 1)),
+			"CFG: [%s] ipv4/ipv6 frag is off : unsupported entries on this"
+			" configuration\n",
+			section_name);
 	}
 
 	free(entries);
@@ -1769,7 +1856,6 @@ parse_port_mask(struct app_params *app, uint64_t port_mask)
 int
 app_config_parse(struct app_params *app, const char *file_name)
 {
-	char config_file_out[APP_FILE_NAME_SIZE];
 	struct rte_cfgfile *cfg;
 	char **section_names;
 	int i, j, sect_count;
@@ -1851,11 +1937,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 	APP_PARAM_COUNT(app->pipeline_params, app->n_pipelines);
 
 	/* Save configuration to output file */
-	snprintf(config_file_out,
-		APP_FILE_NAME_SIZE,
-		"%s.out",
-		app->config_file);
-	app_config_save(app, config_file_out);
+	app_config_save(app, app->output_file);
 
 	/* Load TM configuration files */
 	app_config_parse_tm(app);
@@ -2069,6 +2151,20 @@ save_swq_params(struct app_params *app, FILE *f)
 		fprintf(f, "%s = %s\n", "dropless", p->dropless ? "yes" : "no");
 		fprintf(f, "%s = %" PRIu64 "\n", "n_retries", p->n_retries);
 		fprintf(f, "%s = %" PRIu32 "\n", "cpu", p->cpu_socket_id);
+		fprintf(f, "%s = %s\n", "ipv4_frag", p->ipv4_frag ? "yes" : "no");
+		fprintf(f, "%s = %s\n", "ipv6_frag", p->ipv6_frag ? "yes" : "no");
+		fprintf(f, "%s = %s\n", "ipv4_ras", p->ipv4_ras ? "yes" : "no");
+		fprintf(f, "%s = %s\n", "ipv6_ras", p->ipv6_ras ? "yes" : "no");
+		if ((p->ipv4_frag == 1) || (p->ipv6_frag == 1)) {
+			fprintf(f, "%s = %" PRIu32 "\n", "mtu", p->mtu);
+			fprintf(f, "%s = %" PRIu32 "\n", "metadata_size", p->metadata_size);
+			fprintf(f, "%s = %s\n",
+				"mempool_direct",
+				app->mempool_params[p->mempool_direct_id].name);
+			fprintf(f, "%s = %s\n",
+				"mempool_indirect",
+				app->mempool_params[p->mempool_indirect_id].name);
+		}
 
 		fputc('\n', f);
 	}
@@ -2360,15 +2456,31 @@ app_config_init(struct app_params *app)
 	return 0;
 }
 
+static char *
+filenamedup(const char *filename, const char *suffix)
+{
+	char *s = malloc(strlen(filename) + strlen(suffix) + 1);
+
+	if (!s)
+		return NULL;
+
+	sprintf(s, "%s%s", filename, suffix);
+	return s;
+}
+
 int
 app_config_args(struct app_params *app, int argc, char **argv)
 {
-	int opt;
-	int option_index, f_present, s_present, p_present, l_present;
+	const char *optname;
+	int opt, option_index;
+	int f_present, s_present, p_present, l_present;
+	int preproc_present, preproc_params_present;
 	int scaned = 0;
 
 	static struct option lgopts[] = {
-		{NULL, 0, 0, 0}
+		{ "preproc", 1, 0, 0 },
+		{ "preproc-args", 1, 0, 0 },
+		{ NULL,  0, 0, 0 }
 	};
 
 	/* Copy application name */
@@ -2378,6 +2490,8 @@ app_config_args(struct app_params *app, int argc, char **argv)
 	s_present = 0;
 	p_present = 0;
 	l_present = 0;
+	preproc_present = 0;
+	preproc_params_present = 0;
 
 	while ((opt = getopt_long(argc, argv, "f:s:p:l:", lgopts,
 			&option_index)) != EOF)
@@ -2443,6 +2557,32 @@ app_config_args(struct app_params *app, int argc, char **argv)
 
 			break;
 
+		case 0:
+			optname = lgopts[option_index].name;
+
+			if (strcmp(optname, "preproc") == 0) {
+				if (preproc_present)
+					rte_panic("Error: Preprocessor argument "
+						"is provided more than once\n");
+				preproc_present = 1;
+
+				app->preproc = strdup(optarg);
+				break;
+			}
+
+			if (strcmp(optname, "preproc-args") == 0) {
+				if (preproc_params_present)
+					rte_panic("Error: Preprocessor args "
+						"are provided more than once\n");
+				preproc_params_present = 1;
+
+				app->preproc_args = strdup(optarg);
+				break;
+			}
+
+			app_print_usage(argv[0]);
+			break;
+
 		default:
 			app_print_usage(argv[0]);
 		}
@@ -2453,5 +2593,40 @@ app_config_args(struct app_params *app, int argc, char **argv)
 	if (!p_present)
 		rte_panic("Error: PORT_MASK is not provided\n");
 
+	/* Check dependencies between args */
+	if (preproc_params_present && (preproc_present == 0))
+		rte_panic("Error: Preprocessor args specified while "
+			"preprocessor is not defined\n");
+
+	app->parser_file = preproc_present ?
+		filenamedup(app->config_file, ".preproc") :
+		strdup(app->config_file);
+	app->output_file = filenamedup(app->config_file, ".out");
+
 	return 0;
+}
+
+int
+app_config_preproc(struct app_params *app)
+{
+	char buffer[256];
+	int status;
+
+	if (app->preproc == NULL)
+		return 0;
+
+	status = access(app->config_file, F_OK | R_OK);
+	APP_CHECK((status == 0), "Unable to open file %s", app->config_file);
+
+	snprintf(buffer, sizeof(buffer), "%s %s %s > %s",
+		app->preproc,
+		app->preproc_args ? app->preproc_args : "",
+		app->config_file,
+		app->parser_file);
+
+	status = system(buffer);
+	APP_CHECK((WIFEXITED(status) && (WEXITSTATUS(status) == 0)),
+		"Error while preprocessing file \"%s\"\n", app->config_file);
+
+	return status;
 }

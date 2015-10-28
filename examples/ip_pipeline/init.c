@@ -803,10 +803,42 @@ app_check_link(struct app_params *app)
 		rte_panic("Some links are DOWN\n");
 }
 
+static uint32_t
+is_any_swq_frag_or_ras(struct app_params *app)
+{
+	uint32_t i;
+
+	for (i = 0; i < app->n_pktq_swq; i++) {
+		struct app_pktq_swq_params *p = &app->swq_params[i];
+
+		if ((p->ipv4_frag == 1) || (p->ipv6_frag == 1) ||
+			(p->ipv4_ras == 1) || (p->ipv6_ras == 1))
+			return 1;
+	}
+
+	return 0;
+}
+
+static void
+app_init_link_frag_ras(struct app_params *app)
+{
+	uint32_t i;
+
+	if (is_any_swq_frag_or_ras(app)) {
+		for (i = 0; i < app->n_pktq_hwq_out; i++) {
+			struct app_pktq_hwq_out_params *p_txq = &app->hwq_out_params[i];
+
+			p_txq->conf.txq_flags &= ~ETH_TXQ_FLAGS_NOMULTSEGS;
+		}
+	}
+}
+
 static void
 app_init_link(struct app_params *app)
 {
 	uint32_t i;
+
+	app_init_link_frag_ras(app);
 
 	for (i = 0; i < app->n_links; i++) {
 		struct app_link_params *p_link = &app->link_params[i];
@@ -916,13 +948,19 @@ app_init_swq(struct app_params *app)
 
 	for (i = 0; i < app->n_pktq_swq; i++) {
 		struct app_pktq_swq_params *p = &app->swq_params[i];
+		unsigned flags = 0;
+
+		if (app_swq_get_readers(app, p) == 1)
+			flags |= RING_F_SC_DEQ;
+		if (app_swq_get_writers(app, p) == 1)
+			flags |= RING_F_SP_ENQ;
 
 		APP_LOG(app, HIGH, "Initializing %s...", p->name);
 		app->swq[i] = rte_ring_create(
 				p->name,
 				p->size,
 				p->cpu_socket_id,
-				RING_F_SP_ENQ | RING_F_SC_DEQ);
+				flags);
 
 		if (app->swq[i] == NULL)
 			rte_panic("%s init error\n", p->name);
@@ -1059,11 +1097,50 @@ static void app_pipeline_params_get(struct app_params *app,
 			break;
 		}
 		case APP_PKTQ_IN_SWQ:
-			out->type = PIPELINE_PORT_IN_RING_READER;
-			out->params.ring.ring = app->swq[in->id];
-			out->burst_size = app->swq_params[in->id].burst_read;
-			/* What about frag and ras ports? */
+		{
+			struct app_pktq_swq_params *swq_params = &app->swq_params[in->id];
+
+			if ((swq_params->ipv4_frag == 0) && (swq_params->ipv6_frag == 0)) {
+				if (app_swq_get_readers(app, swq_params) == 1) {
+					out->type = PIPELINE_PORT_IN_RING_READER;
+					out->params.ring.ring = app->swq[in->id];
+					out->burst_size = app->swq_params[in->id].burst_read;
+				} else {
+					out->type = PIPELINE_PORT_IN_RING_MULTI_READER;
+					out->params.ring_multi.ring = app->swq[in->id];
+					out->burst_size = swq_params->burst_read;
+				}
+			} else {
+				if (swq_params->ipv4_frag == 1) {
+					struct rte_port_ring_reader_ipv4_frag_params *params =
+						&out->params.ring_ipv4_frag;
+
+					out->type = PIPELINE_PORT_IN_RING_READER_IPV4_FRAG;
+					params->ring = app->swq[in->id];
+					params->mtu = swq_params->mtu;
+					params->metadata_size = swq_params->metadata_size;
+					params->pool_direct =
+						app->mempool[swq_params->mempool_direct_id];
+					params->pool_indirect =
+						app->mempool[swq_params->mempool_indirect_id];
+					out->burst_size = swq_params->burst_read;
+				} else {
+					struct rte_port_ring_reader_ipv6_frag_params *params =
+						&out->params.ring_ipv6_frag;
+
+					out->type = PIPELINE_PORT_IN_RING_READER_IPV6_FRAG;
+					params->ring = app->swq[in->id];
+					params->mtu = swq_params->mtu;
+					params->metadata_size = swq_params->metadata_size;
+					params->pool_direct =
+						app->mempool[swq_params->mempool_direct_id];
+					params->pool_indirect =
+						app->mempool[swq_params->mempool_indirect_id];
+					out->burst_size = swq_params->burst_read;
+				}
+			}
 			break;
+		}
 		case APP_PKTQ_IN_TM:
 			out->type = PIPELINE_PORT_IN_SCHED_READER;
 			out->params.sched.sched = app->tm[in->id];
@@ -1122,28 +1199,68 @@ static void app_pipeline_params_get(struct app_params *app,
 			break;
 		}
 		case APP_PKTQ_OUT_SWQ:
-			if (app->swq_params[in->id].dropless == 0) {
-				struct rte_port_ring_writer_params *params =
-					&out->params.ring;
+		{
+			struct app_pktq_swq_params *swq_params = &app->swq_params[in->id];
 
-				out->type = PIPELINE_PORT_OUT_RING_WRITER;
-				params->ring = app->swq[in->id];
-				params->tx_burst_sz =
-					app->swq_params[in->id].burst_write;
+			if ((swq_params->ipv4_ras == 0) && (swq_params->ipv6_ras == 0)) {
+				if (app_swq_get_writers(app, swq_params) == 1) {
+					if (app->swq_params[in->id].dropless == 0) {
+						struct rte_port_ring_writer_params *params =
+							&out->params.ring;
+
+						out->type = PIPELINE_PORT_OUT_RING_WRITER;
+						params->ring = app->swq[in->id];
+						params->tx_burst_sz =
+							app->swq_params[in->id].burst_write;
+					} else {
+						struct rte_port_ring_writer_nodrop_params
+							*params = &out->params.ring_nodrop;
+
+						out->type =
+							PIPELINE_PORT_OUT_RING_WRITER_NODROP;
+						params->ring = app->swq[in->id];
+						params->tx_burst_sz =
+							app->swq_params[in->id].burst_write;
+						params->n_retries =
+							app->swq_params[in->id].n_retries;
+					}
+				} else {
+					if (swq_params->dropless == 0) {
+						struct rte_port_ring_multi_writer_params *params =
+							&out->params.ring_multi;
+
+						out->type = PIPELINE_PORT_OUT_RING_MULTI_WRITER;
+						params->ring = app->swq[in->id];
+						params->tx_burst_sz = swq_params->burst_write;
+					} else {
+						struct rte_port_ring_multi_writer_nodrop_params
+							*params = &out->params.ring_multi_nodrop;
+
+						out->type = PIPELINE_PORT_OUT_RING_MULTI_WRITER_NODROP;
+						params->ring = app->swq[in->id];
+						params->tx_burst_sz = swq_params->burst_write;
+						params->n_retries = swq_params->n_retries;
+					}
+				}
 			} else {
-				struct rte_port_ring_writer_nodrop_params
-					*params = &out->params.ring_nodrop;
+				if (swq_params->ipv4_ras == 1) {
+					struct rte_port_ring_writer_ipv4_ras_params *params =
+						&out->params.ring_ipv4_ras;
 
-				out->type =
-					PIPELINE_PORT_OUT_RING_WRITER_NODROP;
-				params->ring = app->swq[in->id];
-				params->tx_burst_sz =
-					app->swq_params[in->id].burst_write;
-				params->n_retries =
-					app->swq_params[in->id].n_retries;
+					out->type = PIPELINE_PORT_OUT_RING_WRITER_IPV4_RAS;
+					params->ring = app->swq[in->id];
+					params->tx_burst_sz = swq_params->burst_write;
+				} else {
+					struct rte_port_ring_writer_ipv6_ras_params *params =
+						&out->params.ring_ipv6_ras;
+
+					out->type = PIPELINE_PORT_OUT_RING_WRITER_IPV6_RAS;
+					params->ring = app->swq[in->id];
+					params->tx_burst_sz = swq_params->burst_write;
+				}
 			}
-			/* What about frag and ras ports? */
 			break;
+		}
 		case APP_PKTQ_OUT_TM: {
 			struct rte_port_sched_writer_params *params =
 				&out->params.sched;

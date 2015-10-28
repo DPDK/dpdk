@@ -45,6 +45,7 @@
 enum pipeline_port_in_type {
 	PIPELINE_PORT_IN_ETHDEV_READER,
 	PIPELINE_PORT_IN_RING_READER,
+	PIPELINE_PORT_IN_RING_MULTI_READER,
 	PIPELINE_PORT_IN_RING_READER_IPV4_FRAG,
 	PIPELINE_PORT_IN_RING_READER_IPV6_FRAG,
 	PIPELINE_PORT_IN_SCHED_READER,
@@ -56,6 +57,7 @@ struct pipeline_port_in_params {
 	union {
 		struct rte_port_ethdev_reader_params ethdev;
 		struct rte_port_ring_reader_params ring;
+		struct rte_port_ring_multi_reader_params ring_multi;
 		struct rte_port_ring_reader_ipv4_frag_params ring_ipv4_frag;
 		struct rte_port_ring_reader_ipv6_frag_params ring_ipv6_frag;
 		struct rte_port_sched_reader_params sched;
@@ -72,6 +74,8 @@ pipeline_port_in_params_convert(struct pipeline_port_in_params  *p)
 		return (void *) &p->params.ethdev;
 	case PIPELINE_PORT_IN_RING_READER:
 		return (void *) &p->params.ring;
+	case PIPELINE_PORT_IN_RING_MULTI_READER:
+		return (void *) &p->params.ring_multi;
 	case PIPELINE_PORT_IN_RING_READER_IPV4_FRAG:
 		return (void *) &p->params.ring_ipv4_frag;
 	case PIPELINE_PORT_IN_RING_READER_IPV6_FRAG:
@@ -93,6 +97,8 @@ pipeline_port_in_params_get_ops(struct pipeline_port_in_params  *p)
 		return &rte_port_ethdev_reader_ops;
 	case PIPELINE_PORT_IN_RING_READER:
 		return &rte_port_ring_reader_ops;
+	case PIPELINE_PORT_IN_RING_MULTI_READER:
+		return &rte_port_ring_multi_reader_ops;
 	case PIPELINE_PORT_IN_RING_READER_IPV4_FRAG:
 		return &rte_port_ring_reader_ipv4_frag_ops;
 	case PIPELINE_PORT_IN_RING_READER_IPV6_FRAG:
@@ -110,7 +116,9 @@ enum pipeline_port_out_type {
 	PIPELINE_PORT_OUT_ETHDEV_WRITER,
 	PIPELINE_PORT_OUT_ETHDEV_WRITER_NODROP,
 	PIPELINE_PORT_OUT_RING_WRITER,
+	PIPELINE_PORT_OUT_RING_MULTI_WRITER,
 	PIPELINE_PORT_OUT_RING_WRITER_NODROP,
+	PIPELINE_PORT_OUT_RING_MULTI_WRITER_NODROP,
 	PIPELINE_PORT_OUT_RING_WRITER_IPV4_RAS,
 	PIPELINE_PORT_OUT_RING_WRITER_IPV6_RAS,
 	PIPELINE_PORT_OUT_SCHED_WRITER,
@@ -123,7 +131,9 @@ struct pipeline_port_out_params {
 		struct rte_port_ethdev_writer_params ethdev;
 		struct rte_port_ethdev_writer_nodrop_params ethdev_nodrop;
 		struct rte_port_ring_writer_params ring;
+		struct rte_port_ring_multi_writer_params ring_multi;
 		struct rte_port_ring_writer_nodrop_params ring_nodrop;
+		struct rte_port_ring_multi_writer_nodrop_params ring_multi_nodrop;
 		struct rte_port_ring_writer_ipv4_ras_params ring_ipv4_ras;
 		struct rte_port_ring_writer_ipv6_ras_params ring_ipv6_ras;
 		struct rte_port_sched_writer_params sched;
@@ -140,8 +150,12 @@ pipeline_port_out_params_convert(struct pipeline_port_out_params  *p)
 		return (void *) &p->params.ethdev_nodrop;
 	case PIPELINE_PORT_OUT_RING_WRITER:
 		return (void *) &p->params.ring;
+	case PIPELINE_PORT_OUT_RING_MULTI_WRITER:
+		return (void *) &p->params.ring_multi;
 	case PIPELINE_PORT_OUT_RING_WRITER_NODROP:
 		return (void *) &p->params.ring_nodrop;
+	case PIPELINE_PORT_OUT_RING_MULTI_WRITER_NODROP:
+		return (void *) &p->params.ring_multi_nodrop;
 	case PIPELINE_PORT_OUT_RING_WRITER_IPV4_RAS:
 		return (void *) &p->params.ring_ipv4_ras;
 	case PIPELINE_PORT_OUT_RING_WRITER_IPV6_RAS:
@@ -164,8 +178,12 @@ pipeline_port_out_params_get_ops(struct pipeline_port_out_params  *p)
 		return &rte_port_ethdev_writer_nodrop_ops;
 	case PIPELINE_PORT_OUT_RING_WRITER:
 		return &rte_port_ring_writer_ops;
+	case PIPELINE_PORT_OUT_RING_MULTI_WRITER:
+		return &rte_port_ring_multi_writer_ops;
 	case PIPELINE_PORT_OUT_RING_WRITER_NODROP:
 		return &rte_port_ring_writer_nodrop_ops;
+	case PIPELINE_PORT_OUT_RING_MULTI_WRITER_NODROP:
+		return &rte_port_ring_multi_writer_nodrop_ops;
 	case PIPELINE_PORT_OUT_RING_WRITER_IPV4_RAS:
 		return &rte_port_ring_writer_ipv4_ras_ops;
 	case PIPELINE_PORT_OUT_RING_WRITER_IPV6_RAS:

@@ -45,7 +45,9 @@ main(int argc, char **argv)
 
 	app_config_args(&app, argc, argv);
 
-	app_config_parse(&app, app.config_file);
+	app_config_preproc(&app);
+
+	app_config_parse(&app, app.parser_file);
 
 	app_config_check(&app);
 
