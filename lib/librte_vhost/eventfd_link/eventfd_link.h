@@ -61,11 +61,6 @@
 #define _EVENTFD_LINK_H_
 
 /*
- * ioctl to copy an fd entry in calling process to an fd in a target process
- */
-#define EVENTFD_COPY 1
-
-/*
  * arguements for the EVENTFD_COPY ioctl
  */
 struct eventfd_copy {
@@ -73,4 +68,27 @@ struct eventfd_copy {
 	unsigned source_fd; /* fd in the calling pid */
 	pid_t target_pid; /* pid of the target pid */
 };
+
+/*
+ * ioctl to copy an fd entry in calling process to an fd in a target process
+ * NOTE: this one should be
+ * #define EVENTFD_COPY _IOWR('D', 1, struct eventfd_copy) actually
+ */
+#define EVENTFD_COPY 1
+
+/*
+ * arguments for the EVENTFD_COPY2 ioctl
+ */
+struct eventfd_copy2 {
+	unsigned fd; /* fd to steal */
+	pid_t pid; /* pid of the process to steal from */
+	unsigned flags; /* flags to allocate new fd with */
+};
+
+/*
+ * ioctl to copy an fd entry from the target process into newly allocated
+ * fd in the calling process
+ */
+#define EVENTFD_COPY2 _IOW('D', 2, struct eventfd_copy2)
+
 #endif /* _EVENTFD_LINK_H_ */

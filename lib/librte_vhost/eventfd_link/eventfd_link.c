@@ -78,6 +78,64 @@ fget_from_files(struct files_struct *files, unsigned fd)
 }
 
 static long
+eventfd_link_ioctl_copy2(unsigned long arg)
+{
+	void __user *argp = (void __user *) arg;
+	struct task_struct *task_target = NULL;
+	struct file *file;
+	struct files_struct *files;
+	struct eventfd_copy2 eventfd_copy2;
+	long ret = -EFAULT;
+
+	if (copy_from_user(&eventfd_copy2, argp, sizeof(struct eventfd_copy2)))
+		goto out;
+
+	/*
+	 * Find the task struct for the target pid
+	 */
+	ret = -ESRCH;
+
+	task_target =
+		get_pid_task(find_vpid(eventfd_copy2.pid), PIDTYPE_PID);
+	if (task_target == NULL) {
+		pr_info("Unable to find pid %d\n", eventfd_copy2.pid);
+		goto out;
+	}
+
+	ret = -ESTALE;
+	files = get_files_struct(task_target);
+	if (files == NULL) {
+		pr_info("Failed to get target files struct\n");
+		goto out_task;
+	}
+
+	ret = -EBADF;
+	file = fget_from_files(files, eventfd_copy2.fd);
+	put_files_struct(files);
+
+	if (file == NULL) {
+		pr_info("Failed to get fd %d from target\n", eventfd_copy2.fd);
+		goto out_task;
+	}
+
+	/*
+	 * Install the file struct from the target process into the
+	 * newly allocated file desciptor of the source process.
+	 */
+	ret = get_unused_fd_flags(eventfd_copy2.flags);
+	if (ret < 0) {
+		fput(file);
+		goto out_task;
+	}
+	fd_install(ret, file);
+
+out_task:
+	put_task_struct(task_target);
+out:
+	return ret;
+}
+
+static long
 eventfd_link_ioctl_copy(unsigned long arg)
 {
 	void __user *argp = (void __user *) arg;
@@ -175,6 +233,9 @@ eventfd_link_ioctl(struct file *f, unsigned int ioctl, unsigned long arg)
 	switch (ioctl) {
 	case EVENTFD_COPY:
 		ret = eventfd_link_ioctl_copy(arg);
+		break;
+	case EVENTFD_COPY2:
+		ret = eventfd_link_ioctl_copy2(arg);
 		break;
 	}
 
