@@ -271,6 +271,10 @@ struct rte_table_hash_key16_lru_params {
 /** LRU hash table operations for pre-computed key signature */
 extern struct rte_table_ops rte_table_hash_key16_lru_ops;
 
+/** LRU hash table operations for key signature computed on lookup
+    ("do-sig") */
+extern struct rte_table_ops rte_table_hash_key16_lru_dosig_ops;
+
 /** Extendible bucket hash table parameters */
 struct rte_table_hash_key16_ext_params {
 	/** Maximum number of entries (and keys) in the table */
@@ -300,6 +304,10 @@ struct rte_table_hash_key16_ext_params {
 
 /** Extendible bucket operations for pre-computed key signature */
 extern struct rte_table_ops rte_table_hash_key16_ext_ops;
+
+/** Extendible bucket hash table operations for key signature computed on
+    lookup ("do-sig") */
+extern struct rte_table_ops rte_table_hash_key16_ext_dosig_ops;
 
 /**
  * 32-byte key hash tables
