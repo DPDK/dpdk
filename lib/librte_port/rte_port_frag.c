@@ -229,9 +229,10 @@ rte_port_ring_reader_frag_rx(void *port,
 
 		/* Copy meta-data from input jumbo packet to its fragments */
 		for (i = 0; i < p->n_frags; i++) {
-			uint8_t *src = RTE_MBUF_METADATA_UINT8_PTR(pkt, 0);
+			uint8_t *src =
+			  RTE_MBUF_METADATA_UINT8_PTR(pkt, sizeof(struct rte_mbuf));
 			uint8_t *dst =
-				RTE_MBUF_METADATA_UINT8_PTR(p->frags[i], 0);
+			  RTE_MBUF_METADATA_UINT8_PTR(p->frags[i], sizeof(struct rte_mbuf));
 
 			memcpy(dst, src, p->metadata_size);
 		}
