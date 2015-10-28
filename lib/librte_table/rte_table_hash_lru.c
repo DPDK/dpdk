@@ -576,6 +576,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 {								\
 	uint64_t pkt00_mask, pkt01_mask;			\
 	struct rte_mbuf *mbuf00, *mbuf01;			\
+	uint32_t key_offset = t->key_offset;		\
 								\
 	pkt00_index = __builtin_ctzll(pkts_mask);		\
 	pkt00_mask = 1LLU << pkt00_index;			\
@@ -587,8 +588,8 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	pkts_mask &= ~pkt01_mask;				\
 	mbuf01 = pkts[pkt01_index];				\
 								\
-	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf00, 0));	\
-	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf01, 0));	\
+	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf00, key_offset));\
+	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf01, key_offset));\
 }
 
 #define lookup2_stage0_with_odd_support(t, g, pkts, pkts_mask, pkt00_index, \
@@ -596,6 +597,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 {								\
 	uint64_t pkt00_mask, pkt01_mask;			\
 	struct rte_mbuf *mbuf00, *mbuf01;			\
+	uint32_t key_offset = t->key_offset;		\
 								\
 	pkt00_index = __builtin_ctzll(pkts_mask);		\
 	pkt00_mask = 1LLU << pkt00_index;			\
@@ -610,8 +612,8 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	pkts_mask &= ~pkt01_mask;				\
 	mbuf01 = pkts[pkt01_index];				\
 								\
-	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf00, 0));	\
-	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf01, 0));	\
+	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf00, key_offset));\
+	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf01, key_offset));\
 }
 
 #define lookup2_stage1(t, g, pkts, pkt10_index, pkt11_index)	\
