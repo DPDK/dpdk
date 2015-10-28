@@ -46,6 +46,32 @@
 
 static const char eventfd_cdev[] = "/dev/eventfd-link";
 
+static int eventfd_link = -1;
+
+int
+eventfd_init(void)
+{
+	if (eventfd_link >= 0)
+		return 0;
+
+	eventfd_link = open(eventfd_cdev, O_RDWR);
+	if (eventfd_link < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"eventfd_link module is not loaded\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+eventfd_free(void)
+{
+	if (eventfd_link >= 0)
+		close(eventfd_link);
+	return 0;
+}
+
 /*
  * This function uses the eventfd_link kernel module to copy an eventfd file
  * descriptor provided by QEMU in to our process space.
@@ -53,36 +79,26 @@ static const char eventfd_cdev[] = "/dev/eventfd-link";
 int
 eventfd_copy(int target_fd, int target_pid)
 {
-	int eventfd_link, ret;
-	struct eventfd_copy eventfd_copy;
-	int fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	int ret;
+	struct eventfd_copy2 eventfd_copy2;
 
-	if (fd == -1)
-		return -1;
 
 	/* Open the character device to the kernel module. */
 	/* TODO: check this earlier rather than fail until VM boots! */
-	eventfd_link = open(eventfd_cdev, O_RDWR);
-	if (eventfd_link < 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"eventfd_link module is not loaded\n");
-		close(fd);
+	if (eventfd_init() < 0)
 		return -1;
-	}
 
-	eventfd_copy.source_fd = fd;
-	eventfd_copy.target_fd = target_fd;
-	eventfd_copy.target_pid = target_pid;
+	eventfd_copy2.fd = target_fd;
+	eventfd_copy2.pid = target_pid;
+	eventfd_copy2.flags = O_NONBLOCK | O_CLOEXEC;
 	/* Call the IOCTL to copy the eventfd. */
-	ret = ioctl(eventfd_link, EVENTFD_COPY, &eventfd_copy);
-	close(eventfd_link);
+	ret = ioctl(eventfd_link, EVENTFD_COPY2, &eventfd_copy2);
 
 	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"EVENTFD_COPY ioctl failed\n");
-		close(fd);
+			"EVENTFD_COPY2 ioctl failed\n");
 		return -1;
 	}
 
-	return fd;
+	return ret;
 }

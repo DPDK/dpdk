@@ -373,6 +373,9 @@ rte_vhost_driver_register(const char *dev_name)
 		return -1;
 	}
 
+	if (eventfd_init() < 0)
+		return -1;
+
 	/*
 	 * The device name is created. This is passed to QEMU so that it can
 	 * register the device with our application.

@@ -34,6 +34,12 @@
 #define _EVENTFD_H
 
 int
+eventfd_init(void);
+
+int
+eventfd_free(void);
+
+int
 eventfd_copy(int target_fd, int target_pid);
 
 #endif
