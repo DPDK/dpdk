@@ -53,6 +53,8 @@ enum {
 	OPT_FILE_PREFIX_NUM,
 #define OPT_HUGE_DIR          "huge-dir"
 	OPT_HUGE_DIR_NUM,
+#define OPT_HUGE_UNLINK       "huge-unlink"
+	OPT_HUGE_UNLINK_NUM,
 #define OPT_LCORES            "lcores"
 	OPT_LCORES_NUM,
 #define OPT_LOG_LEVEL         "log-level"

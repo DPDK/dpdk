@@ -786,6 +786,30 @@ copy_hugepages_to_shared_mem(struct hugepage_file * dst, int dest_size,
 	return 0;
 }
 
+static int
+unlink_hugepage_files(struct hugepage_file *hugepg_tbl,
+		unsigned num_hp_info)
+{
+	unsigned socket, size;
+	int page, nrpages = 0;
+
+	/* get total number of hugepages */
+	for (size = 0; size < num_hp_info; size++)
+		for (socket = 0; socket < RTE_MAX_NUMA_NODES; socket++)
+			nrpages +=
+			internal_config.hugepage_info[size].num_pages[socket];
+
+	for (page = 0; page < nrpages; page++) {
+		struct hugepage_file *hp = &hugepg_tbl[page];
+
+		if (hp->final_va != NULL && unlink(hp->filepath)) {
+			RTE_LOG(WARNING, EAL, "%s(): Removing %s failed: %s\n",
+				__func__, hp->filepath, strerror(errno));
+		}
+	}
+	return 0;
+}
+
 /*
  * unmaps hugepages that are not going to be used. since we originally allocate
  * ALL hugepages (not just those we need), additional unmapping needs to be done.
@@ -1286,6 +1310,13 @@ rte_eal_hugepage_init(void)
 	if (copy_hugepages_to_shared_mem(hugepage, nr_hugefiles,
 			tmp_hp, nr_hugefiles) < 0) {
 		RTE_LOG(ERR, EAL, "Copying tables to shared memory failed!\n");
+		goto fail;
+	}
+
+	/* free the hugepage backing files */
+	if (internal_config.hugepage_unlink &&
+		unlink_hugepage_files(tmp_hp, internal_config.num_hugepage_sizes) < 0) {
+		RTE_LOG(ERR, EAL, "Unlinking hugepage files failed!\n");
 		goto fail;
 	}
 
