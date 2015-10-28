@@ -271,4 +271,8 @@ struct pipeline_be_ops {
 	pipeline_be_op_track f_track;
 };
 
+/* Parse hex string to uint8_t array */
+int
+parse_hex_string(char *src, uint8_t *dst, uint32_t *size);
+
 #endif

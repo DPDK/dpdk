@@ -465,6 +465,58 @@ parse_pipeline_core(uint32_t *socket,
 	return 0;
 }
 
+static uint32_t
+get_hex_val(char c)
+{
+	switch (c) {
+	case '0': case '1': case '2': case '3': case '4': case '5':
+	case '6': case '7': case '8': case '9':
+		return c - '0';
+	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+		return c - 'A' + 10;
+	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+		return c - 'a' + 10;
+	default:
+		return 0;
+	}
+}
+
+int
+parse_hex_string(char *src, uint8_t *dst, uint32_t *size)
+{
+	char *c;
+	uint32_t len, i;
+
+	/* Check input parameters */
+	if ((src == NULL) ||
+		(dst == NULL) ||
+		(size == NULL) ||
+		(*size == 0))
+		return -1;
+
+	len = strlen(src);
+	if (((len & 3) != 0) ||
+		(len > (*size) * 2))
+		return -1;
+	*size = len / 2;
+
+	for (c = src; *c != 0; c++) {
+		if ((((*c) >= '0') && ((*c) <= '9')) ||
+			(((*c) >= 'A') && ((*c) <= 'F')) ||
+			(((*c) >= 'a') && ((*c) <= 'f')))
+			continue;
+
+		return -1;
+	}
+
+	/* Convert chars to bytes */
+	for (i = 0; i < *size; i++)
+		dst[i] = get_hex_val(src[2 * i]) * 16 +
+			get_hex_val(src[2 * i + 1]);
+
+	return 0;
+}
+
 static size_t
 skip_digits(const char *src)
 {
