@@ -732,6 +732,8 @@ rx_desc_hlen_type_rss_to_pkt_flags(struct igb_rx_queue *rxq, uint32_t hl_tp_rs)
 		pkt_flags |= ip_pkt_etqf_map[(hl_tp_rs >> 12) & 0x07];
 	else
 		pkt_flags |= ip_pkt_etqf_map[(hl_tp_rs >> 4) & 0x07];
+#else
+	RTE_SET_USED(rxq);
 #endif
 
 	return pkt_flags;
