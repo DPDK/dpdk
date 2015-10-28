@@ -37,6 +37,7 @@
 #include <rte_malloc.h>
 #include <rte_table_hash.h>
 #include <rte_byteorder.h>
+#include <pipeline.h>
 
 #include "pipeline_flow_classification_be.h"
 #include "hash_func.h"
@@ -49,6 +50,7 @@ struct pipeline_flow_classification {
 	uint32_t key_offset;
 	uint32_t key_size;
 	uint32_t hash_offset;
+	uint8_t *key_mask;
 } __rte_cache_aligned;
 
 static void *
@@ -125,8 +127,12 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 	uint32_t key_offset_present = 0;
 	uint32_t key_size_present = 0;
 	uint32_t hash_offset_present = 0;
+	uint32_t key_mask_present = 0;
 
 	uint32_t i;
+	char *key_mask_str = NULL;
+
+	p->hash_offset = 0;
 
 	for (i = 0; i < params->n_args; i++) {
 		char *arg_name = params->args_name[i];
@@ -171,6 +177,20 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 			continue;
 		}
 
+		/* key_mask */
+		if (strcmp(arg_name, "key_mask") == 0) {
+			if (key_mask_present)
+				return -1;
+
+			key_mask_str = strdup(arg_value);
+			if (key_mask_str == NULL)
+				return -1;
+
+			key_mask_present = 1;
+
+			continue;
+		}
+
 		/* hash_offset */
 		if (strcmp(arg_name, "hash_offset") == 0) {
 			if (hash_offset_present)
@@ -189,9 +209,22 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 	/* Check that mandatory arguments are present */
 	if ((n_flows_present == 0) ||
 		(key_offset_present == 0) ||
-		(key_size_present == 0) ||
-		(hash_offset_present == 0))
+		(key_size_present == 0))
 		return -1;
+
+	if (key_mask_present) {
+		p->key_mask = rte_malloc(NULL, p->key_size, 0);
+		if (p->key_mask == NULL)
+			return -1;
+
+		if (parse_hex_string(key_mask_str, p->key_mask, &p->key_size)
+			!= 0) {
+			free(p->key_mask);
+			return -1;
+		}
+
+		free(key_mask_str);
+	}
 
 	return 0;
 }
@@ -297,6 +330,7 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 			.signature_offset = p_fc->hash_offset,
 			.key_offset = p_fc->key_offset,
 			.f_hash = hash_func[(p_fc->key_size / 8) - 1],
+			.key_mask = p_fc->key_mask,
 			.seed = 0,
 		};
 
@@ -307,6 +341,7 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 			.signature_offset = p_fc->hash_offset,
 			.key_offset = p_fc->key_offset,
 			.f_hash = hash_func[(p_fc->key_size / 8) - 1],
+			.key_mask = p_fc->key_mask,
 			.seed = 0,
 		};
 
@@ -336,12 +371,25 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 
 		switch (p_fc->key_size) {
 		case 8:
-			table_params.ops = &rte_table_hash_key8_lru_ops;
+			if (p_fc->hash_offset != 0) {
+				table_params.ops =
+					&rte_table_hash_key8_ext_ops;
+			} else {
+				table_params.ops =
+					&rte_table_hash_key8_ext_dosig_ops;
+			}
 			table_params.arg_create = &table_hash_key8_params;
+			break;
 			break;
 
 		case 16:
-			table_params.ops = &rte_table_hash_key16_ext_ops;
+			if (p_fc->hash_offset != 0) {
+				table_params.ops =
+					&rte_table_hash_key16_ext_ops;
+			} else {
+				table_params.ops =
+					&rte_table_hash_key16_ext_dosig_ops;
+			}
 			table_params.arg_create = &table_hash_key16_params;
 			break;
 
