@@ -82,6 +82,7 @@ struct rte_table_hash {
 	uint32_t bucket_size;
 	uint32_t signature_offset;
 	uint32_t key_offset;
+	uint64_t key_mask;
 	rte_table_hash_op_hash f_hash;
 	uint64_t seed;
 
@@ -159,6 +160,11 @@ rte_table_hash_create_key8_lru(void *params, int socket_id, uint32_t entry_size)
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;
 	f->seed = p->seed;
+
+	if (p->key_mask != NULL)
+		f->key_mask = ((uint64_t *)p->key_mask)[0];
+	else
+		f->key_mask = 0xFFFFFFFFFFFFFFFFLLU;
 
 	for (i = 0; i < n_buckets; i++) {
 		struct rte_bucket_4_8 *bucket;
@@ -371,6 +377,11 @@ rte_table_hash_create_key8_ext(void *params, int socket_id, uint32_t entry_size)
 	f->stack_pos = n_buckets_ext;
 	f->stack = (uint32_t *)
 		&f->memory[(n_buckets + n_buckets_ext) * f->bucket_size];
+
+	if (p->key_mask != NULL)
+		f->key_mask = ((uint64_t *)p->key_mask)[0];
+	else
+		f->key_mask = 0xFFFFFFFFFFFFFFFFLLU;
 
 	for (i = 0; i < n_buckets_ext; i++)
 		f->stack[i] = i;
@@ -586,9 +597,12 @@ rte_table_hash_entry_delete_key8_ext(
 	uint64_t *key;						\
 	uint64_t signature;					\
 	uint32_t bucket_index;					\
+	uint64_t hash_key_buffer;				\
 								\
 	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf1, f->key_offset);\
-	signature = f->f_hash(key, RTE_TABLE_HASH_KEY_SIZE, f->seed);\
+	hash_key_buffer = *key & f->key_mask;			\
+	signature = f->f_hash(&hash_key_buffer,			\
+		RTE_TABLE_HASH_KEY_SIZE, f->seed);		\
 	bucket_index = signature & (f->n_buckets - 1);		\
 	bucket1 = (struct rte_bucket_4_8 *)			\
 		&f->memory[bucket_index * f->bucket_size];	\
@@ -602,10 +616,12 @@ rte_table_hash_entry_delete_key8_ext(
 	uint64_t pkt_mask;					\
 	uint64_t *key;						\
 	uint32_t pos;						\
+	uint64_t hash_key_buffer;				\
 								\
 	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf2, f->key_offset);\
+	hash_key_buffer = key[0] & f->key_mask;			\
 								\
-	lookup_key8_cmp(key, bucket2, pos);			\
+	lookup_key8_cmp((&hash_key_buffer), bucket2, pos);	\
 								\
 	pkt_mask = ((bucket2->signature >> pos) & 1LLU) << pkt2_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -624,10 +640,12 @@ rte_table_hash_entry_delete_key8_ext(
 	uint64_t pkt_mask, bucket_mask;				\
 	uint64_t *key;						\
 	uint32_t pos;						\
+	uint64_t hash_key_buffer;				\
 								\
 	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf2, f->key_offset);\
+	hash_key_buffer = *key & f->key_mask;			\
 								\
-	lookup_key8_cmp(key, bucket2, pos);			\
+	lookup_key8_cmp((&hash_key_buffer), bucket2, pos);	\
 								\
 	pkt_mask = ((bucket2->signature >> pos) & 1LLU) << pkt2_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -651,11 +669,13 @@ rte_table_hash_entry_delete_key8_ext(
 	uint64_t pkt_mask, bucket_mask;				\
 	uint64_t *key;						\
 	uint32_t pos;						\
+	uint64_t hash_key_buffer;				\
 								\
 	bucket = buckets[pkt_index];				\
 	key = keys[pkt_index];					\
+	hash_key_buffer = (*key) & f->key_mask;			\
 								\
-	lookup_key8_cmp(key, bucket, pos);			\
+	lookup_key8_cmp((&hash_key_buffer), bucket, pos);	\
 								\
 	pkt_mask = ((bucket->signature >> pos) & 1LLU) << pkt_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -736,6 +756,8 @@ rte_table_hash_entry_delete_key8_ext(
 #define lookup2_stage1_dosig(mbuf10, mbuf11, bucket10, bucket11, f)\
 {								\
 	uint64_t *key10, *key11;				\
+	uint64_t hash_offset_buffer10;				\
+	uint64_t hash_offset_buffer11;				\
 	uint64_t signature10, signature11;			\
 	uint32_t bucket10_index, bucket11_index;		\
 	rte_table_hash_op_hash f_hash = f->f_hash;		\
@@ -744,14 +766,18 @@ rte_table_hash_entry_delete_key8_ext(
 								\
 	key10 = RTE_MBUF_METADATA_UINT64_PTR(mbuf10, key_offset);\
 	key11 = RTE_MBUF_METADATA_UINT64_PTR(mbuf11, key_offset);\
+	hash_offset_buffer10 = *key10 & f->key_mask;		\
+	hash_offset_buffer11 = *key11 & f->key_mask;		\
 								\
-	signature10 = f_hash(key10, RTE_TABLE_HASH_KEY_SIZE, seed);\
+	signature10 = f_hash(&hash_offset_buffer10,		\
+		RTE_TABLE_HASH_KEY_SIZE, seed);			\
 	bucket10_index = signature10 & (f->n_buckets - 1);	\
 	bucket10 = (struct rte_bucket_4_8 *)			\
 		&f->memory[bucket10_index * f->bucket_size];	\
 	rte_prefetch0(bucket10);				\
 								\
-	signature11 = f_hash(key11, RTE_TABLE_HASH_KEY_SIZE, seed);\
+	signature11 = f_hash(&hash_offset_buffer11,		\
+		RTE_TABLE_HASH_KEY_SIZE, seed);			\
 	bucket11_index = signature11 & (f->n_buckets - 1);	\
 	bucket11 = (struct rte_bucket_4_8 *)			\
 		&f->memory[bucket11_index * f->bucket_size];	\
@@ -764,13 +790,17 @@ rte_table_hash_entry_delete_key8_ext(
 	void *a20, *a21;					\
 	uint64_t pkt20_mask, pkt21_mask;			\
 	uint64_t *key20, *key21;				\
+	uint64_t hash_offset_buffer20;				\
+	uint64_t hash_offset_buffer21;				\
 	uint32_t pos20, pos21;					\
 								\
 	key20 = RTE_MBUF_METADATA_UINT64_PTR(mbuf20, f->key_offset);\
 	key21 = RTE_MBUF_METADATA_UINT64_PTR(mbuf21, f->key_offset);\
+	hash_offset_buffer20 = *key20 & f->key_mask;		\
+	hash_offset_buffer21 = *key21 & f->key_mask;		\
 								\
-	lookup_key8_cmp(key20, bucket20, pos20);		\
-	lookup_key8_cmp(key21, bucket21, pos21);		\
+	lookup_key8_cmp((&hash_offset_buffer20), bucket20, pos20);\
+	lookup_key8_cmp((&hash_offset_buffer21), bucket21, pos21);\
 								\
 	pkt20_mask = ((bucket20->signature >> pos20) & 1LLU) << pkt20_index;\
 	pkt21_mask = ((bucket21->signature >> pos21) & 1LLU) << pkt21_index;\
@@ -793,13 +823,17 @@ rte_table_hash_entry_delete_key8_ext(
 	void *a20, *a21;					\
 	uint64_t pkt20_mask, pkt21_mask, bucket20_mask, bucket21_mask;\
 	uint64_t *key20, *key21;				\
+	uint64_t hash_offset_buffer20;				\
+	uint64_t hash_offset_buffer21;				\
 	uint32_t pos20, pos21;					\
 								\
 	key20 = RTE_MBUF_METADATA_UINT64_PTR(mbuf20, f->key_offset);\
 	key21 = RTE_MBUF_METADATA_UINT64_PTR(mbuf21, f->key_offset);\
+	hash_offset_buffer20 = *key20 & f->key_mask;		\
+	hash_offset_buffer21 = *key21 & f->key_mask;		\
 								\
-	lookup_key8_cmp(key20, bucket20, pos20);		\
-	lookup_key8_cmp(key21, bucket21, pos21);		\
+	lookup_key8_cmp((&hash_offset_buffer20), bucket20, pos20);\
+	lookup_key8_cmp((&hash_offset_buffer21), bucket21, pos21);\
 								\
 	pkt20_mask = ((bucket20->signature >> pos20) & 1LLU) << pkt20_index;\
 	pkt21_mask = ((bucket21->signature >> pos21) & 1LLU) << pkt21_index;\

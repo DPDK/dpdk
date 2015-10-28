@@ -308,6 +308,10 @@ ABI Changes
 * librte_table LPM: A new parameter to hold the table name will be added to
   the LPM table parameter structure.
 
+* librte_table hash: The key mask parameter is added to the hash table
+  parameter structure for 8-byte key and 16-byte key extendible bucket
+  and LRU tables.
+
 * librte_port: Macros to access the packet meta-data stored within the packet
   buffer has been adjusted to cover the packet mbuf structure.
 

@@ -418,9 +418,9 @@ test_table_hash8lru(void)
 	struct rte_table_hash_key8_lru_params key8lru_params = {
 		.n_entries = 1<<24,
 		.f_hash = pipeline_test_hash,
-		.seed = 0,
 		.signature_offset = APP_METADATA_OFFSET(0),
 		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
 	};
 
 	uint8_t key8lru[8];
@@ -479,6 +479,7 @@ test_table_hash16lru(void)
 		.seed = 0,
 		.signature_offset = APP_METADATA_OFFSET(0),
 		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
 	};
 
 	uint8_t key16lru[16];
@@ -596,6 +597,7 @@ test_table_hash8ext(void)
 		.seed = 0,
 		.signature_offset = APP_METADATA_OFFSET(0),
 		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
 	};
 
 	uint8_t key8ext[8];
@@ -662,6 +664,7 @@ test_table_hash16ext(void)
 		.seed = 0,
 		.signature_offset = APP_METADATA_OFFSET(0),
 		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
 	};
 
 	uint8_t key16ext[16];

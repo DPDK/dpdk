@@ -85,6 +85,7 @@ struct rte_table_hash {
 	uint32_t bucket_size;
 	uint32_t signature_offset;
 	uint32_t key_offset;
+	uint64_t key_mask[2];
 	rte_table_hash_op_hash f_hash;
 	uint64_t seed;
 
@@ -163,6 +164,14 @@ rte_table_hash_create_key16_lru(void *params,
 	f->key_offset = p->key_offset;
 	f->f_hash = p->f_hash;
 	f->seed = p->seed;
+
+	if (p->key_mask != NULL) {
+		f->key_mask[0] = ((uint64_t *)p->key_mask)[0];
+		f->key_mask[1] = ((uint64_t *)p->key_mask)[1];
+	} else {
+		f->key_mask[0] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[1] = 0xFFFFFFFFFFFFFFFFLLU;
+	}
 
 	for (i = 0; i < n_buckets; i++) {
 		struct rte_bucket_4_16 *bucket;
@@ -383,6 +392,14 @@ rte_table_hash_create_key16_ext(void *params,
 
 	for (i = 0; i < n_buckets_ext; i++)
 		f->stack[i] = i;
+
+	if (p->key_mask != NULL) {
+		f->key_mask[0] = (((uint64_t *)p->key_mask)[0]);
+		f->key_mask[1] = (((uint64_t *)p->key_mask)[1]);
+	} else {
+		f->key_mask[0] = 0xFFFFFFFFFFFFFFFFLLU;
+		f->key_mask[1] = 0xFFFFFFFFFFFFFFFFLLU;
+	}
 
 	return f;
 }
@@ -609,11 +626,14 @@ rte_table_hash_entry_delete_key16_ext(
 	void *a;						\
 	uint64_t pkt_mask;					\
 	uint64_t *key;						\
+	uint64_t hash_key_buffer[2];		\
 	uint32_t pos;						\
 								\
 	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf2, f->key_offset);\
+	hash_key_buffer[0] = key[0] & f->key_mask[0];	\
+	hash_key_buffer[1] = key[1] & f->key_mask[1];	\
 								\
-	lookup_key16_cmp(key, bucket2, pos);			\
+	lookup_key16_cmp(hash_key_buffer, bucket2, pos);	\
 								\
 	pkt_mask = (bucket2->signature[pos] & 1LLU) << pkt2_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -631,11 +651,14 @@ rte_table_hash_entry_delete_key16_ext(
 	void *a;						\
 	uint64_t pkt_mask, bucket_mask;				\
 	uint64_t *key;						\
+	uint64_t hash_key_buffer[2];		\
 	uint32_t pos;						\
 								\
 	key = RTE_MBUF_METADATA_UINT64_PTR(mbuf2, f->key_offset);\
+	hash_key_buffer[0] = key[0] & f->key_mask[0];	\
+	hash_key_buffer[1] = key[1] & f->key_mask[1];	\
 								\
-	lookup_key16_cmp(key, bucket2, pos);			\
+	lookup_key16_cmp(hash_key_buffer, bucket2, pos);	\
 								\
 	pkt_mask = (bucket2->signature[pos] & 1LLU) << pkt2_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -658,12 +681,15 @@ rte_table_hash_entry_delete_key16_ext(
 	void *a;						\
 	uint64_t pkt_mask, bucket_mask;				\
 	uint64_t *key;						\
+	uint64_t hash_key_buffer[2];		\
 	uint32_t pos;						\
 								\
 	bucket = buckets[pkt_index];				\
 	key = keys[pkt_index];					\
+	hash_key_buffer[0] = key[0] & f->key_mask[0];	\
+	hash_key_buffer[1] = key[1] & f->key_mask[1];	\
 								\
-	lookup_key16_cmp(key, bucket, pos);			\
+	lookup_key16_cmp(hash_key_buffer, bucket, pos);	\
 								\
 	pkt_mask = (bucket->signature[pos] & 1LLU) << pkt_index;\
 	pkts_mask_out |= pkt_mask;				\
@@ -749,13 +775,19 @@ rte_table_hash_entry_delete_key16_ext(
 	void *a20, *a21;					\
 	uint64_t pkt20_mask, pkt21_mask;			\
 	uint64_t *key20, *key21;				\
+	uint64_t hash_key_buffer20[2];			\
+	uint64_t hash_key_buffer21[2];			\
 	uint32_t pos20, pos21;					\
 								\
 	key20 = RTE_MBUF_METADATA_UINT64_PTR(mbuf20, f->key_offset);\
 	key21 = RTE_MBUF_METADATA_UINT64_PTR(mbuf21, f->key_offset);\
+	hash_key_buffer20[0] = key20[0] & f->key_mask[0];	\
+	hash_key_buffer20[1] = key20[1] & f->key_mask[1];	\
+	hash_key_buffer21[0] = key21[0] & f->key_mask[0];	\
+	hash_key_buffer21[1] = key21[1] & f->key_mask[1];	\
 								\
-	lookup_key16_cmp(key20, bucket20, pos20);		\
-	lookup_key16_cmp(key21, bucket21, pos21);		\
+	lookup_key16_cmp(hash_key_buffer20, bucket20, pos20);	\
+	lookup_key16_cmp(hash_key_buffer21, bucket21, pos21);	\
 								\
 	pkt20_mask = (bucket20->signature[pos20] & 1LLU) << pkt20_index;\
 	pkt21_mask = (bucket21->signature[pos21] & 1LLU) << pkt21_index;\
@@ -778,13 +810,19 @@ rte_table_hash_entry_delete_key16_ext(
 	void *a20, *a21;					\
 	uint64_t pkt20_mask, pkt21_mask, bucket20_mask, bucket21_mask;\
 	uint64_t *key20, *key21;				\
+	uint64_t hash_key_buffer20[2];			\
+	uint64_t hash_key_buffer21[2];			\
 	uint32_t pos20, pos21;					\
 								\
 	key20 = RTE_MBUF_METADATA_UINT64_PTR(mbuf20, f->key_offset);\
 	key21 = RTE_MBUF_METADATA_UINT64_PTR(mbuf21, f->key_offset);\
+	hash_key_buffer20[0] = key20[0] & f->key_mask[0];	\
+	hash_key_buffer20[1] = key20[1] & f->key_mask[1];	\
+	hash_key_buffer21[0] = key21[0] & f->key_mask[0];	\
+	hash_key_buffer21[1] = key21[1] & f->key_mask[1];	\
 								\
-	lookup_key16_cmp(key20, bucket20, pos20);		\
-	lookup_key16_cmp(key21, bucket21, pos21);		\
+	lookup_key16_cmp(hash_key_buffer20, bucket20, pos20);	\
+	lookup_key16_cmp(hash_key_buffer21, bucket21, pos21);	\
 								\
 	pkt20_mask = (bucket20->signature[pos20] & 1LLU) << pkt20_index;\
 	pkt21_mask = (bucket21->signature[pos21] & 1LLU) << pkt21_index;\

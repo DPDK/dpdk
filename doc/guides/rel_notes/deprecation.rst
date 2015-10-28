@@ -15,10 +15,6 @@ Deprecation Notices
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
 
-* librte_table hash: Key mask parameter will be added to the hash table
-  parameter structure for 8-byte key and 16-byte key extendible bucket and
-  LRU tables.
-
 * librte_pipeline: The prototype for the pipeline input port, output port
   and table action handlers will be updated:
   the pipeline parameter will be added, the packets mask parameter will be

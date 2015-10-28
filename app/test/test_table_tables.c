@@ -669,7 +669,8 @@ test_table_hash_lru_generic(struct rte_table_ops *ops)
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
 		.signature_offset = APP_METADATA_OFFSET(1),
-		.key_offset = APP_METADATA_OFFSET(32)
+		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
 	};
 
 	hash_params.n_entries = 0;
@@ -784,7 +785,8 @@ test_table_hash_ext_generic(struct rte_table_ops *ops)
 		.f_hash = pipeline_test_hash,
 		.seed = 0,
 		.signature_offset = APP_METADATA_OFFSET(1),
-		.key_offset = APP_METADATA_OFFSET(32)
+		.key_offset = APP_METADATA_OFFSET(32),
+		.key_mask = NULL,
 	};
 
 	hash_params.n_entries = 0;

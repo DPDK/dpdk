@@ -19,3 +19,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.2 {
+	global:
+
+	rte_table_hash_key16_ext_dosig_ops;
+
+} DPDK_2.0;
