@@ -26,3 +26,12 @@ DPDK_2.1 {
 	rte_port_ring_writer_nodrop_ops;
 
 } DPDK_2.0;
+
+DPDK_2.2 {
+	global:
+
+	rte_port_ring_multi_reader_ops;
+	rte_port_ring_multi_writer_ops;
+	rte_port_ring_multi_writer_nodrop_ops;
+
+} DPDK_2.1;
