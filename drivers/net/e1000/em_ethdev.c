@@ -1268,11 +1268,14 @@ em_intr_disable(struct e1000_hw *hw)
 static int
 eth_em_interrupt_setup(struct rte_eth_dev *dev)
 {
+	uint32_t regval;
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	E1000_WRITE_REG(hw, E1000_IMS, E1000_ICR_LSC);
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
+	/* clear interrupt */
+	E1000_READ_REG(hw, E1000_ICR);
+	regval = E1000_READ_REG(hw, E1000_IMS);
+	E1000_WRITE_REG(hw, E1000_IMS, regval | E1000_ICR_LSC);
 	return (0);
 }
 
