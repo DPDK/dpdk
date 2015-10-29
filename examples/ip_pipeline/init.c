@@ -50,6 +50,7 @@
 #include "pipeline_firewall.h"
 #include "pipeline_flow_classification.h"
 #include "pipeline_routing.h"
+#include "thread_fe.h"
 
 #define APP_NAME_SIZE	32
 
@@ -1372,6 +1373,25 @@ app_init_threads(struct app_params *app)
 
 		t = &app->thread_data[lcore_id];
 
+		t->timer_period = (rte_get_tsc_hz() * APP_THREAD_TIMER_PERIOD) / 1000;
+		t->thread_req_deadline = time + t->timer_period;
+
+		t->msgq_in = app_thread_msgq_in_get(app,
+				params->socket_id,
+				params->core_id,
+				params->hyper_th_id);
+		if (t->msgq_in == NULL)
+			rte_panic("Init error: Cannot find MSGQ_IN for thread %" PRId32,
+				lcore_id);
+
+		t->msgq_out = app_thread_msgq_out_get(app,
+				params->socket_id,
+				params->core_id,
+				params->hyper_th_id);
+		if (t->msgq_out == NULL)
+			rte_panic("Init error: Cannot find MSGQ_OUT for thread %" PRId32,
+				lcore_id);
+
 		ptype = app_pipeline_type_find(app, params->type);
 		if (ptype == NULL)
 			rte_panic("Init error: Unknown pipeline "
@@ -1381,11 +1401,14 @@ app_init_threads(struct app_params *app)
 			&t->regular[t->n_regular] :
 			&t->custom[t->n_custom];
 
+		p->pipeline_id = p_id;
 		p->be = data->be;
 		p->f_run = ptype->be_ops->f_run;
 		p->f_timer = ptype->be_ops->f_timer;
 		p->timer_period = data->timer_period;
 		p->deadline = time + data->timer_period;
+
+		data->enabled = 1;
 
 		if (ptype->be_ops->f_run == NULL)
 			t->n_regular++;
@@ -1407,6 +1430,7 @@ int app_init(struct app_params *app)
 	app_init_msgq(app);
 
 	app_pipeline_common_cmd_push(app);
+	app_pipeline_thread_cmd_push(app);
 	app_pipeline_type_register(app, &pipeline_master);
 	app_pipeline_type_register(app, &pipeline_passthrough);
 	app_pipeline_type_register(app, &pipeline_flow_classification);

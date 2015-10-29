@@ -228,9 +228,11 @@ struct app_pipeline_data {
 	void *be;
 	void *fe;
 	uint64_t timer_period;
+	uint32_t enabled;
 };
 
 struct app_thread_pipeline_data {
+	uint32_t pipeline_id;
 	void *be;
 	pipeline_be_op_run f_run;
 	pipeline_be_op_timer f_timer;
@@ -242,6 +244,10 @@ struct app_thread_pipeline_data {
 #define APP_MAX_THREAD_PIPELINES                 16
 #endif
 
+#ifndef APP_THREAD_TIMER_PERIOD
+#define APP_THREAD_TIMER_PERIOD                  1
+#endif
+
 struct app_thread_data {
 	struct app_thread_pipeline_data regular[APP_MAX_THREAD_PIPELINES];
 	struct app_thread_pipeline_data custom[APP_MAX_THREAD_PIPELINES];
@@ -249,7 +255,13 @@ struct app_thread_data {
 	uint32_t n_regular;
 	uint32_t n_custom;
 
+	uint64_t timer_period;
+	uint64_t thread_req_deadline;
+
 	uint64_t deadline;
+
+	struct rte_ring *msgq_in;
+	struct rte_ring *msgq_out;
 };
 
 struct app_eal_params {

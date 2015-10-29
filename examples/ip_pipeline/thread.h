@@ -31,63 +31,54 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __INCLUDE_PIPELINE_H__
-#define __INCLUDE_PIPELINE_H__
+#ifndef THREAD_H_
+#define THREAD_H_
 
-#include <cmdline_parse.h>
-
+#include "app.h"
 #include "pipeline_be.h"
 
-/*
- * Pipeline type front-end operations
- */
+enum thread_msg_req_type {
+	THREAD_MSG_REQ_PIPELINE_ENABLE = 0,
+	THREAD_MSG_REQ_PIPELINE_DISABLE,
+	THREAD_MSG_REQS
+};
 
-typedef void* (*pipeline_fe_op_init)(struct pipeline_params *params, void *arg);
+struct thread_msg_req {
+	enum thread_msg_req_type type;
+};
 
-typedef int (*pipeline_fe_op_free)(void *pipeline);
-
-struct pipeline_fe_ops {
-	pipeline_fe_op_init f_init;
-	pipeline_fe_op_free f_free;
-	cmdline_parse_ctx_t *cmds;
+struct thread_msg_rsp {
+	int status;
 };
 
 /*
- * Pipeline type
+ * PIPELINE ENABLE
  */
+struct thread_pipeline_enable_msg_req {
+	enum thread_msg_req_type type;
 
-struct pipeline_type {
-	const char *name;
-
-	/* pipeline back-end */
-	struct pipeline_be_ops *be_ops;
-
-	/* pipeline front-end */
-	struct pipeline_fe_ops *fe_ops;
+	uint32_t pipeline_id;
+	void *be;
+	pipeline_be_op_run f_run;
+	pipeline_be_op_timer f_timer;
+	uint64_t timer_period;
 };
 
-static inline uint32_t
-pipeline_type_cmds_count(struct pipeline_type *ptype)
-{
-	cmdline_parse_ctx_t *cmds;
-	uint32_t n_cmds;
+struct thread_pipeline_enable_msg_rsp {
+	int status;
+};
 
-	if (ptype->fe_ops == NULL)
-		return 0;
+/*
+ * PIPELINE DISABLE
+ */
+struct thread_pipeline_disable_msg_req {
+	enum thread_msg_req_type type;
 
-	cmds = ptype->fe_ops->cmds;
-	if (cmds == NULL)
-		return 0;
+	uint32_t pipeline_id;
+};
 
-	for (n_cmds = 0; cmds[n_cmds]; n_cmds++);
+struct thread_pipeline_disable_msg_rsp {
+	int status;
+};
 
-	return n_cmds;
-}
-
-int
-parse_pipeline_core(uint32_t *socket,
-	uint32_t *core,
-	uint32_t *ht,
-	const char *entry);
-
-#endif
+#endif /* THREAD_H_ */

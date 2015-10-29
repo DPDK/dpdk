@@ -31,63 +31,65 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __INCLUDE_PIPELINE_H__
-#define __INCLUDE_PIPELINE_H__
+#ifndef THREAD_FE_H_
+#define THREAD_FE_H_
 
-#include <cmdline_parse.h>
-
-#include "pipeline_be.h"
-
-/*
- * Pipeline type front-end operations
- */
-
-typedef void* (*pipeline_fe_op_init)(struct pipeline_params *params, void *arg);
-
-typedef int (*pipeline_fe_op_free)(void *pipeline);
-
-struct pipeline_fe_ops {
-	pipeline_fe_op_init f_init;
-	pipeline_fe_op_free f_free;
-	cmdline_parse_ctx_t *cmds;
-};
-
-/*
- * Pipeline type
- */
-
-struct pipeline_type {
-	const char *name;
-
-	/* pipeline back-end */
-	struct pipeline_be_ops *be_ops;
-
-	/* pipeline front-end */
-	struct pipeline_fe_ops *fe_ops;
-};
-
-static inline uint32_t
-pipeline_type_cmds_count(struct pipeline_type *ptype)
+static inline struct rte_ring *
+app_thread_msgq_in_get(struct app_params *app,
+		uint32_t socket_id, uint32_t core_id, uint32_t ht_id)
 {
-	cmdline_parse_ctx_t *cmds;
-	uint32_t n_cmds;
+	char msgq_name[32];
+	ssize_t param_idx;
 
-	if (ptype->fe_ops == NULL)
-		return 0;
+	snprintf(msgq_name, sizeof(msgq_name),
+		"MSGQ-REQ-CORE-s%" PRIu32 "c%" PRIu32 "%s",
+		socket_id,
+		core_id,
+		(ht_id) ? "h" : "");
+	param_idx = APP_PARAM_FIND(app->msgq_params, msgq_name);
 
-	cmds = ptype->fe_ops->cmds;
-	if (cmds == NULL)
-		return 0;
+	if (param_idx < 0)
+		return NULL;
 
-	for (n_cmds = 0; cmds[n_cmds]; n_cmds++);
+	return app->msgq[param_idx];
+}
 
-	return n_cmds;
+static inline struct rte_ring *
+app_thread_msgq_out_get(struct app_params *app,
+		uint32_t socket_id, uint32_t core_id, uint32_t ht_id)
+{
+	char msgq_name[32];
+	ssize_t param_idx;
+
+	snprintf(msgq_name, sizeof(msgq_name),
+		"MSGQ-RSP-CORE-s%" PRIu32 "c%" PRIu32 "%s",
+		socket_id,
+		core_id,
+		(ht_id) ? "h" : "");
+	param_idx = APP_PARAM_FIND(app->msgq_params, msgq_name);
+
+	if (param_idx < 0)
+		return NULL;
+
+	return app->msgq[param_idx];
+
 }
 
 int
-parse_pipeline_core(uint32_t *socket,
-	uint32_t *core,
-	uint32_t *ht,
-	const char *entry);
+app_pipeline_thread_cmd_push(struct app_params *app);
 
-#endif
+int
+app_pipeline_enable(struct app_params *app,
+		uint32_t core_id,
+		uint32_t socket_id,
+		uint32_t hyper_th_id,
+		uint32_t pipeline_id);
+
+int
+app_pipeline_disable(struct app_params *app,
+		uint32_t core_id,
+		uint32_t socket_id,
+		uint32_t hyper_th_id,
+		uint32_t pipeline_id);
+
+#endif /* THREAD_FE_H_ */

@@ -372,7 +372,7 @@ parser_read_uint32(uint32_t *value, const char *p)
 	return 0;
 }
 
-static int
+int
 parse_pipeline_core(uint32_t *socket,
 	uint32_t *core,
 	uint32_t *ht,

@@ -68,6 +68,9 @@ app_pipeline_data_fe(struct app_params *app, uint32_t id)
 	if (pipeline_data == NULL)
 		return NULL;
 
+	if (pipeline_data->enabled == 0)
+		return NULL;
+
 	return pipeline_data->fe;
 }
 
