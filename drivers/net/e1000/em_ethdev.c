@@ -501,7 +501,9 @@ eth_em_start(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 	int ret, mask;
+	uint32_t intr_vector = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -536,6 +538,26 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	/* Configure for OS presence */
 	em_init_manageability(hw);
+
+	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		intr_vector = dev->data->nb_rx_queues;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle)) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+					dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+						" intr_vec\n", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+
+		/* enable rx interrupt */
+		em_rxq_intr_enable(hw);
+	}
 
 	eth_em_tx_init(dev);
 
@@ -608,18 +630,28 @@ eth_em_start(struct rte_eth_dev *dev)
 	}
 	e1000_setup_link(hw);
 
-	/* check if lsc interrupt feature is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc != 0) {
-		ret = eth_em_interrupt_setup(dev);
-		if (ret) {
-			PMD_INIT_LOG(ERR, "Unable to setup interrupts");
-			em_dev_clear_queues(dev);
-			return ret;
-		}
+	if (rte_intr_allow_others(intr_handle)) {
+		/* check if lsc interrupt is enabled */
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
+			ret = eth_em_interrupt_setup(dev);
+			if (ret) {
+				PMD_INIT_LOG(ERR, "Unable to setup interrupts");
+				em_dev_clear_queues(dev);
+				return ret;
+			}
+	} else {
+		rte_intr_callback_unregister(intr_handle,
+						eth_em_interrupt_handler,
+						(void *)dev);
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
+			PMD_INIT_LOG(INFO, "lsc won't enable because of"
+				     " no intr multiplex\n");
 	}
 	/* check if rxq interrupt is enabled */
 	if (dev->data->dev_conf.intr_conf.rxq != 0)
 		eth_em_rxq_interrupt_setup(dev);
+
+	rte_intr_enable(intr_handle);
 
 	adapter->stopped = 0;
 
@@ -646,6 +678,7 @@ eth_em_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 
 	em_rxq_intr_disable(hw);
 	em_lsc_intr_disable(hw);
@@ -662,6 +695,19 @@ eth_em_stop(struct rte_eth_dev *dev)
 	/* clear the recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_em_dev_atomic_write_link_status(dev, &link);
+
+	if (!rte_intr_allow_others(intr_handle))
+		/* resume to the default handler */
+		rte_intr_callback_register(intr_handle,
+					   eth_em_interrupt_handler,
+					   (void *)dev);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
 }
 
 static void
