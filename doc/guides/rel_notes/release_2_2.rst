@@ -59,6 +59,7 @@ New Features
 
   * Virtio ring layout optimization (fixed avail ring)
   * Vector RX
+  * Simple TX
 
 * **Added vhost-user multiple queue support.**
 
