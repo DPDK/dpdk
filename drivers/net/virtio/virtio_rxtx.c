@@ -432,6 +432,9 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	vq->mpool = mp;
 
 	dev->data->rx_queues[queue_idx] = vq;
+
+	virtio_rxq_vec_setup(vq);
+
 	return 0;
 }
 

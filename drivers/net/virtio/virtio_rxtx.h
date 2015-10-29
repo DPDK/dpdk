@@ -33,5 +33,7 @@
 
 #define RTE_PMD_VIRTIO_RX_MAX_BURST 64
 
+int virtio_rxq_vec_setup(struct virtqueue *rxq);
+
 int virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
 	struct rte_mbuf *m);

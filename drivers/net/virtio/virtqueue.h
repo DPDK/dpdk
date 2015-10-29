@@ -188,6 +188,7 @@ struct virtqueue {
 	 */
 	uint16_t vq_used_cons_idx;
 	uint16_t vq_avail_idx;
+	uint64_t mbuf_initializer; /**< value to init mbufs. */
 	phys_addr_t virtio_net_hdr_mem; /**< hdr for each xmit packet */
 
 	struct rte_mbuf **sw_ring; /**< RX software ring. */

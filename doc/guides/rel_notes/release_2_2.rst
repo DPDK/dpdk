@@ -58,6 +58,7 @@ New Features
 * **Enhanced support for virtio driver.**
 
   * Virtio ring layout optimization (fixed avail ring)
+  * Vector RX
 
 * **Added vhost-user multiple queue support.**
 

@@ -58,6 +58,14 @@
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
 
+#define RTE_VIRTIO_VPMD_RX_BURST 32
+#define RTE_VIRTIO_DESC_PER_LOOP 8
+#define RTE_VIRTIO_VPMD_RX_REARM_THRESH RTE_VIRTIO_VPMD_RX_BURST
+
+#ifndef __INTEL_COMPILER
+#pragma GCC diagnostic ignored "-Wcast-qual"
+#endif
+
 int __attribute__((cold))
 virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
 	struct rte_mbuf *cookie)
@@ -79,6 +87,226 @@ virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
 
 	vq->vq_free_cnt--;
 	vq->vq_avail_idx++;
+
+	return 0;
+}
+
+static inline void
+virtio_rxq_rearm_vec(struct virtqueue *rxvq)
+{
+	int i;
+	uint16_t desc_idx;
+	struct rte_mbuf **sw_ring;
+	struct vring_desc *start_dp;
+	int ret;
+
+	desc_idx = rxvq->vq_avail_idx & (rxvq->vq_nentries - 1);
+	sw_ring = &rxvq->sw_ring[desc_idx];
+	start_dp = &rxvq->vq_ring.desc[desc_idx];
+
+	ret = rte_mempool_get_bulk(rxvq->mpool, (void **)sw_ring,
+		RTE_VIRTIO_VPMD_RX_REARM_THRESH);
+	if (unlikely(ret)) {
+		rte_eth_devices[rxvq->port_id].data->rx_mbuf_alloc_failed +=
+			RTE_VIRTIO_VPMD_RX_REARM_THRESH;
+		return;
+	}
+
+	for (i = 0; i < RTE_VIRTIO_VPMD_RX_REARM_THRESH; i++) {
+		uintptr_t p;
+
+		p = (uintptr_t)&sw_ring[i]->rearm_data;
+		*(uint64_t *)p = rxvq->mbuf_initializer;
+
+		start_dp[i].addr =
+			(uint64_t)((uintptr_t)sw_ring[i]->buf_physaddr +
+			RTE_PKTMBUF_HEADROOM - sizeof(struct virtio_net_hdr));
+		start_dp[i].len = sw_ring[i]->buf_len -
+			RTE_PKTMBUF_HEADROOM + sizeof(struct virtio_net_hdr);
+	}
+
+	rxvq->vq_avail_idx += RTE_VIRTIO_VPMD_RX_REARM_THRESH;
+	rxvq->vq_free_cnt -= RTE_VIRTIO_VPMD_RX_REARM_THRESH;
+	vq_update_avail_idx(rxvq);
+}
+
+/* virtio vPMD receive routine, only accept(nb_pkts >= RTE_VIRTIO_DESC_PER_LOOP)
+ *
+ * This routine is for non-mergeable RX, one desc for each guest buffer.
+ * This routine is based on the RX ring layout optimization. Each entry in the
+ * avail ring points to the desc with the same index in the desc ring and this
+ * will never be changed in the driver.
+ *
+ * - nb_pkts < RTE_VIRTIO_DESC_PER_LOOP, just return no packet
+ */
+uint16_t
+virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+	uint16_t nb_pkts)
+{
+	struct virtqueue *rxvq = rx_queue;
+	uint16_t nb_used;
+	uint16_t desc_idx;
+	struct vring_used_elem *rused;
+	struct rte_mbuf **sw_ring;
+	struct rte_mbuf **sw_ring_end;
+	uint16_t nb_pkts_received;
+	__m128i shuf_msk1, shuf_msk2, len_adjust;
+
+	shuf_msk1 = _mm_set_epi8(
+		0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF,		/* vlan tci */
+		5, 4,			/* dat len */
+		0xFF, 0xFF, 5, 4,	/* pkt len */
+		0xFF, 0xFF, 0xFF, 0xFF	/* packet type */
+
+	);
+
+	shuf_msk2 = _mm_set_epi8(
+		0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF,		/* vlan tci */
+		13, 12,			/* dat len */
+		0xFF, 0xFF, 13, 12,	/* pkt len */
+		0xFF, 0xFF, 0xFF, 0xFF	/* packet type */
+	);
+
+	/* Subtract the header length.
+	*  In which case do we need the header length in used->len ?
+	*/
+	len_adjust = _mm_set_epi16(
+		0, 0,
+		0,
+		(uint16_t) -sizeof(struct virtio_net_hdr),
+		0, (uint16_t) -sizeof(struct virtio_net_hdr),
+		0, 0);
+
+	if (unlikely(nb_pkts < RTE_VIRTIO_DESC_PER_LOOP))
+		return 0;
+
+	nb_used = *(volatile uint16_t *)&rxvq->vq_ring.used->idx -
+		rxvq->vq_used_cons_idx;
+
+	rte_compiler_barrier();
+
+	if (unlikely(nb_used == 0))
+		return 0;
+
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_VIRTIO_DESC_PER_LOOP);
+	nb_used = RTE_MIN(nb_used, nb_pkts);
+
+	desc_idx = (uint16_t)(rxvq->vq_used_cons_idx & (rxvq->vq_nentries - 1));
+	rused = &rxvq->vq_ring.used->ring[desc_idx];
+	sw_ring  = &rxvq->sw_ring[desc_idx];
+	sw_ring_end = &rxvq->sw_ring[rxvq->vq_nentries];
+
+	_mm_prefetch((const void *)rused, _MM_HINT_T0);
+
+	if (rxvq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
+		virtio_rxq_rearm_vec(rxvq);
+		if (unlikely(virtqueue_kick_prepare(rxvq)))
+			virtqueue_notify(rxvq);
+	}
+
+	for (nb_pkts_received = 0;
+		nb_pkts_received < nb_used;) {
+		__m128i desc[RTE_VIRTIO_DESC_PER_LOOP / 2];
+		__m128i mbp[RTE_VIRTIO_DESC_PER_LOOP / 2];
+		__m128i pkt_mb[RTE_VIRTIO_DESC_PER_LOOP];
+
+		mbp[0] = _mm_loadu_si128((__m128i *)(sw_ring + 0));
+		desc[0] = _mm_loadu_si128((__m128i *)(rused + 0));
+		_mm_storeu_si128((__m128i *)&rx_pkts[0], mbp[0]);
+
+		mbp[1] = _mm_loadu_si128((__m128i *)(sw_ring + 2));
+		desc[1] = _mm_loadu_si128((__m128i *)(rused + 2));
+		_mm_storeu_si128((__m128i *)&rx_pkts[2], mbp[1]);
+
+		mbp[2] = _mm_loadu_si128((__m128i *)(sw_ring + 4));
+		desc[2] = _mm_loadu_si128((__m128i *)(rused + 4));
+		_mm_storeu_si128((__m128i *)&rx_pkts[4], mbp[2]);
+
+		mbp[3] = _mm_loadu_si128((__m128i *)(sw_ring + 6));
+		desc[3] = _mm_loadu_si128((__m128i *)(rused + 6));
+		_mm_storeu_si128((__m128i *)&rx_pkts[6], mbp[3]);
+
+		pkt_mb[1] = _mm_shuffle_epi8(desc[0], shuf_msk2);
+		pkt_mb[0] = _mm_shuffle_epi8(desc[0], shuf_msk1);
+		pkt_mb[1] = _mm_add_epi16(pkt_mb[1], len_adjust);
+		pkt_mb[0] = _mm_add_epi16(pkt_mb[0], len_adjust);
+		_mm_storeu_si128((void *)&rx_pkts[1]->rx_descriptor_fields1,
+			pkt_mb[1]);
+		_mm_storeu_si128((void *)&rx_pkts[0]->rx_descriptor_fields1,
+			pkt_mb[0]);
+
+		pkt_mb[3] = _mm_shuffle_epi8(desc[1], shuf_msk2);
+		pkt_mb[2] = _mm_shuffle_epi8(desc[1], shuf_msk1);
+		pkt_mb[3] = _mm_add_epi16(pkt_mb[3], len_adjust);
+		pkt_mb[2] = _mm_add_epi16(pkt_mb[2], len_adjust);
+		_mm_storeu_si128((void *)&rx_pkts[3]->rx_descriptor_fields1,
+			pkt_mb[3]);
+		_mm_storeu_si128((void *)&rx_pkts[2]->rx_descriptor_fields1,
+			pkt_mb[2]);
+
+		pkt_mb[5] = _mm_shuffle_epi8(desc[2], shuf_msk2);
+		pkt_mb[4] = _mm_shuffle_epi8(desc[2], shuf_msk1);
+		pkt_mb[5] = _mm_add_epi16(pkt_mb[5], len_adjust);
+		pkt_mb[4] = _mm_add_epi16(pkt_mb[4], len_adjust);
+		_mm_storeu_si128((void *)&rx_pkts[5]->rx_descriptor_fields1,
+			pkt_mb[5]);
+		_mm_storeu_si128((void *)&rx_pkts[4]->rx_descriptor_fields1,
+			pkt_mb[4]);
+
+		pkt_mb[7] = _mm_shuffle_epi8(desc[3], shuf_msk2);
+		pkt_mb[6] = _mm_shuffle_epi8(desc[3], shuf_msk1);
+		pkt_mb[7] = _mm_add_epi16(pkt_mb[7], len_adjust);
+		pkt_mb[6] = _mm_add_epi16(pkt_mb[6], len_adjust);
+		_mm_storeu_si128((void *)&rx_pkts[7]->rx_descriptor_fields1,
+			pkt_mb[7]);
+		_mm_storeu_si128((void *)&rx_pkts[6]->rx_descriptor_fields1,
+			pkt_mb[6]);
+
+		if (unlikely(nb_used <= RTE_VIRTIO_DESC_PER_LOOP)) {
+			if (sw_ring + nb_used <= sw_ring_end)
+				nb_pkts_received += nb_used;
+			else
+				nb_pkts_received += sw_ring_end - sw_ring;
+			break;
+		} else {
+			if (unlikely(sw_ring + RTE_VIRTIO_DESC_PER_LOOP >=
+				sw_ring_end)) {
+				nb_pkts_received += sw_ring_end - sw_ring;
+				break;
+			} else {
+				nb_pkts_received += RTE_VIRTIO_DESC_PER_LOOP;
+
+				rx_pkts += RTE_VIRTIO_DESC_PER_LOOP;
+				sw_ring += RTE_VIRTIO_DESC_PER_LOOP;
+				rused   += RTE_VIRTIO_DESC_PER_LOOP;
+				nb_used -= RTE_VIRTIO_DESC_PER_LOOP;
+			}
+		}
+	}
+
+	rxvq->vq_used_cons_idx += nb_pkts_received;
+	rxvq->vq_free_cnt += nb_pkts_received;
+	rxvq->packets += nb_pkts_received;
+	return nb_pkts_received;
+}
+
+int __attribute__((cold))
+virtio_rxq_vec_setup(struct virtqueue *rxq)
+{
+	uintptr_t p;
+	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
+
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.port = rxq->port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	p = (uintptr_t)&mb_def.rearm_data;
+	rxq->mbuf_initializer = *(uint64_t *)p;
 
 	return 0;
 }
