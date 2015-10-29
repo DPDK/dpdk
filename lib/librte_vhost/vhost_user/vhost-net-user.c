@@ -424,7 +424,7 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		break;
 
 	case VHOST_USER_GET_QUEUE_NUM:
-		msg.payload.u64 = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX;
+		msg.payload.u64 = VHOST_MAX_QUEUE_PAIRS;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(connfd, &msg);
 		break;

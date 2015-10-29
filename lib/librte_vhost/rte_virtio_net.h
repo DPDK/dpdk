@@ -93,6 +93,21 @@ struct vhost_virtqueue {
 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
 } __rte_cache_aligned;
 
+
+/*
+ * Make an extra wrapper for VIRTIO_NET_F_MQ and
+ * VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX as they are
+ * introduced since kernel v3.8. This makes our
+ * code buildable for older kernel.
+ */
+#ifdef VIRTIO_NET_F_MQ
+ #define VHOST_MAX_QUEUE_PAIRS	VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX
+ #define VHOST_SUPPORTS_MQ	(1ULL << VIRTIO_NET_F_MQ)
+#else
+ #define VHOST_MAX_QUEUE_PAIRS	1
+ #define VHOST_SUPPORTS_MQ	0
+#endif
+
 /**
  * Device structure contains all configuration information relating to the device.
  */
@@ -106,7 +121,7 @@ struct virtio_net {
 	char			ifname[IF_NAME_SZ];	/**< Name of the tap device or socket path. */
 	uint32_t		virt_qp_nb;	/**< number of queue pair we have allocated */
 	void			*priv;		/**< private context */
-	struct vhost_virtqueue	*virtqueue[VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX];	/**< Contains all virtqueue information. */
+	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];	/**< Contains all virtqueue information. */
 } __rte_cache_aligned;
 
 /**
