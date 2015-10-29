@@ -54,6 +54,7 @@
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
 #include "virtqueue.h"
+#include "virtio_rxtx.h"
 
 #ifdef RTE_LIBRTE_VIRTIO_DEBUG_DUMP
 #define VIRTIO_DUMP_PACKET(m, len) rte_pktmbuf_dump(stdout, m, len)
@@ -307,6 +308,10 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 				vq->vq_ring.desc[i].flags = VRING_DESC_F_WRITE;
 			}
 
+		memset(&vq->fake_mbuf, 0, sizeof(vq->fake_mbuf));
+		for (i = 0; i < RTE_PMD_VIRTIO_RX_MAX_BURST; i++)
+			vq->sw_ring[vq->vq_nentries + i] = &vq->fake_mbuf;
+
 		while (!virtqueue_full(vq)) {
 			m = rte_rxmbuf_alloc(vq->mpool);
 			if (m == NULL)
@@ -315,8 +320,10 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 			/******************************************
 			*         Enqueue allocated buffers        *
 			*******************************************/
-			error = virtqueue_enqueue_recv_refill(vq, m);
-
+			if (use_simple_rxtx)
+				error = virtqueue_enqueue_recv_refill_simple(vq, m);
+			else
+				error = virtqueue_enqueue_recv_refill(vq, m);
 			if (error) {
 				rte_pktmbuf_free(m);
 				break;

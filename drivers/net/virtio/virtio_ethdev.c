@@ -61,6 +61,7 @@
 #include "virtio_pci.h"
 #include "virtio_logs.h"
 #include "virtqueue.h"
+#include "virtio_rxtx.h"
 
 
 static int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
@@ -247,8 +248,8 @@ virtio_dev_queue_release(struct virtqueue *vq) {
 		VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->queue_id);
 		VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN, 0);
 
+		rte_free(vq->sw_ring);
 		rte_free(vq);
-		vq = NULL;
 	}
 }
 
@@ -291,6 +292,9 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			dev->data->port_id, queue_idx);
 		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
 			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
+		vq->sw_ring = rte_zmalloc_socket("rxq->sw_ring",
+			(RTE_PMD_VIRTIO_RX_MAX_BURST + vq_size) *
+			sizeof(vq->sw_ring[0]), RTE_CACHE_LINE_SIZE, socket_id);
 	} else if (queue_type == VTNET_TQ) {
 		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d",
 			dev->data->port_id, queue_idx);
@@ -306,6 +310,12 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "%s: Can not allocate virtqueue", __func__);
 		return (-ENOMEM);
+	}
+	if (queue_type == VTNET_RQ && vq->sw_ring == NULL) {
+		PMD_INIT_LOG(ERR, "%s: Can not allocate RX soft ring",
+			__func__);
+		rte_free(vq);
+		return -ENOMEM;
 	}
 
 	vq->hw = hw;

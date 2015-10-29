@@ -50,7 +50,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtqueue.c
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_pci.c
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_ethdev.c
-
+SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_rxtx_simple.c
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += lib/librte_eal lib/librte_ether

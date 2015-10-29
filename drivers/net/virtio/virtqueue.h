@@ -190,6 +190,10 @@ struct virtqueue {
 	uint16_t vq_avail_idx;
 	phys_addr_t virtio_net_hdr_mem; /**< hdr for each xmit packet */
 
+	struct rte_mbuf **sw_ring; /**< RX software ring. */
+	/* dummy mbuf, for wraparound when processing RX ring. */
+	struct rte_mbuf fake_mbuf;
+
 	/* Statistics */
 	uint64_t	packets;
 	uint64_t	bytes;
