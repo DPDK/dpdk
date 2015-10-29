@@ -1351,7 +1351,7 @@ icmp_echo_config_setup(void)
 			fs->rx_port = fwd_ports_ids[rxp];
 			fs->rx_queue = rxq;
 			fs->tx_port = fs->rx_port;
-			fs->tx_queue = lc_id;
+			fs->tx_queue = rxq;
 			fs->peer_addr = fs->tx_port;
 			if (verbose_level > 0)
 				printf("  stream=%d port=%d rxq=%d txq=%d\n",
