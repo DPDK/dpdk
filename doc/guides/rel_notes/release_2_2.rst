@@ -55,6 +55,10 @@ New Features
   Like mlx4, this PMD is only available for Linux and is disabled by default
   due to external dependencies (libibverbs and libmlx5).
 
+* **Enhanced support for virtio driver.**
+
+  * Virtio ring layout optimization (fixed avail ring)
+
 * **Added vhost-user multiple queue support.**
 
 * **Added port hotplug support to xenvirt.**

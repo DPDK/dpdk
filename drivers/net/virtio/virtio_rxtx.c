@@ -61,6 +61,8 @@
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
 #endif
 
+static int use_simple_rxtx;
+
 static void
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 {
@@ -298,6 +300,13 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 		/* Allocate blank mbufs for the each rx descriptor */
 		nbufs = 0;
 		error = ENOSPC;
+
+		if (use_simple_rxtx)
+			for (i = 0; i < vq->vq_nentries; i++) {
+				vq->vq_ring.avail->ring[i] = i;
+				vq->vq_ring.desc[i].flags = VRING_DESC_F_WRITE;
+			}
+
 		while (!virtqueue_full(vq)) {
 			m = rte_rxmbuf_alloc(vq->mpool);
 			if (m == NULL)
@@ -324,6 +333,24 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
 			vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
 	} else if (queue_type == VTNET_TQ) {
+		if (use_simple_rxtx) {
+			int mid_idx  = vq->vq_nentries >> 1;
+			for (i = 0; i < mid_idx; i++) {
+				vq->vq_ring.avail->ring[i] = i + mid_idx;
+				vq->vq_ring.desc[i + mid_idx].next = i;
+				vq->vq_ring.desc[i + mid_idx].addr =
+					vq->virtio_net_hdr_mem +
+						mid_idx * vq->hw->vtnet_hdr_size;
+				vq->vq_ring.desc[i + mid_idx].len =
+					vq->hw->vtnet_hdr_size;
+				vq->vq_ring.desc[i + mid_idx].flags =
+					VRING_DESC_F_NEXT;
+				vq->vq_ring.desc[i].flags = 0;
+			}
+			for (i = mid_idx; i < vq->vq_nentries; i++)
+				vq->vq_ring.avail->ring[i] = i;
+		}
+
 		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
 			vq->vq_queue_index);
 		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
