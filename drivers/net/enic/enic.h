@@ -48,7 +48,7 @@
 
 #define DRV_NAME		"enic_pmd"
 #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Poll-mode Driver"
-#define DRV_VERSION		"1.0.0.5"
+#define DRV_VERSION		"1.0.0.6"
 #define DRV_COPYRIGHT		"Copyright 2008-2015 Cisco Systems, Inc"
 
 #define ENIC_WQ_MAX		8
@@ -187,10 +187,12 @@ extern void enic_add_packet_filter(struct enic *enic);
 extern void enic_set_mac_address(struct enic *enic, uint8_t *mac_addr);
 extern void enic_del_mac_address(struct enic *enic);
 extern unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq);
-extern int enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
-	struct rte_mbuf *tx_pkt, unsigned short len,
-	uint8_t sop, uint8_t eop,
-	uint16_t ol_flags, uint16_t vlan_tag);
+extern void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
+			  struct rte_mbuf *tx_pkt, unsigned short len,
+			  uint8_t sop, uint8_t eop, uint8_t cq_entry,
+			  uint16_t ol_flags, uint16_t vlan_tag);
+
+extern void enic_post_wq_index(struct vnic_wq *wq);
 extern int enic_poll(struct vnic_rq *rq, struct rte_mbuf **rx_pkts,
 	unsigned int budget, unsigned int *work_done);
 extern int enic_probe(struct enic *enic);

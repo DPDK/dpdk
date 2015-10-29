@@ -488,21 +488,26 @@ static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	unsigned int seg_len;
 	unsigned int inc_len;
 	unsigned int nb_segs;
-	struct rte_mbuf *tx_pkt;
+	struct rte_mbuf *tx_pkt, *next_tx_pkt;
 	struct vnic_wq *wq = (struct vnic_wq *)tx_queue;
 	struct enic *enic = vnic_dev_priv(wq->vdev);
 	unsigned short vlan_id;
 	unsigned short ol_flags;
+	uint8_t last_seg, eop;
 
 	for (index = 0; index < nb_pkts; index++) {
 		tx_pkt = *tx_pkts++;
 		inc_len = 0;
 		nb_segs = tx_pkt->nb_segs;
 		if (nb_segs > vnic_wq_desc_avail(wq)) {
+			if (index > 0)
+				enic_post_wq_index(wq);
+
 			/* wq cleanup and try again */
 			if (!enic_cleanup_wq(enic, wq) ||
-				(nb_segs > vnic_wq_desc_avail(wq)))
+				(nb_segs > vnic_wq_desc_avail(wq))) {
 				return index;
+			}
 		}
 		pkt_len = tx_pkt->pkt_len;
 		vlan_id = tx_pkt->vlan_tci;
@@ -510,14 +515,15 @@ static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		for (frags = 0; inc_len < pkt_len; frags++) {
 			if (!tx_pkt)
 				break;
+			next_tx_pkt = tx_pkt->next;
 			seg_len = tx_pkt->data_len;
 			inc_len += seg_len;
-			if (enic_send_pkt(enic, wq, tx_pkt,
-				    (unsigned short)seg_len, !frags,
-				    (pkt_len == inc_len), ol_flags, vlan_id)) {
-				break;
-			}
-			tx_pkt = tx_pkt->next;
+			eop = (pkt_len == inc_len) || (!next_tx_pkt);
+			last_seg = eop &&
+				(index == ((unsigned int)nb_pkts - 1));
+			enic_send_pkt(enic, wq, tx_pkt, (unsigned short)seg_len,
+				      !frags, eop, last_seg, ol_flags, vlan_id);
+			tx_pkt = next_tx_pkt;
 		}
 	}
 

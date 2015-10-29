@@ -58,6 +58,7 @@
 #include "vnic_cq.h"
 #include "vnic_intr.h"
 #include "vnic_nic.h"
+#include "enic_vnic_wq.h"
 
 static inline int enic_is_sriov_vf(struct enic *enic)
 {
@@ -151,15 +152,18 @@ unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq)
 		-1 /*wq_work_to_do*/, enic_wq_service, NULL);
 }
 
+void enic_post_wq_index(struct vnic_wq *wq)
+{
+	enic_vnic_post_wq_index(wq);
+}
 
-int enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
-	struct rte_mbuf *tx_pkt, unsigned short len,
-	uint8_t sop, uint8_t eop,
-	uint16_t ol_flags, uint16_t vlan_tag)
+void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
+		   struct rte_mbuf *tx_pkt, unsigned short len,
+		   uint8_t sop, uint8_t eop, uint8_t cq_entry,
+		   uint16_t ol_flags, uint16_t vlan_tag)
 {
 	struct wq_enet_desc *desc = vnic_wq_next_desc(wq);
 	uint16_t mss = 0;
-	uint8_t cq_entry = eop;
 	uint8_t vlan_tag_insert = 0;
 	uint64_t bus_addr = (dma_addr_t)
 	    (tx_pkt->buf_physaddr + RTE_PKTMBUF_HEADROOM);
@@ -190,14 +194,12 @@ int enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 		vlan_tag,
 		0 /* loopback */);
 
-	vnic_wq_post(wq, (void *)tx_pkt, bus_addr, len,
-		sop, eop,
-		1 /*desc_skip_cnt*/,
-		cq_entry,
-		0 /*compressed send*/,
-		0 /*wrid*/);
-
-	return 0;
+	enic_vnic_post_wq(wq, (void *)tx_pkt, bus_addr, len,
+			  sop,
+			  1 /*desc_skip_cnt*/,
+			  cq_entry,
+			  0 /*compressed send*/,
+			  0 /*wrid*/);
 }
 
 void enic_dev_stats_clear(struct enic *enic)
