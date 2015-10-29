@@ -81,6 +81,7 @@ static int eth_em_flow_ctrl_get(struct rte_eth_dev *dev,
 static int eth_em_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 static int eth_em_interrupt_setup(struct rte_eth_dev *dev);
+static int eth_em_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int eth_em_interrupt_get_status(struct rte_eth_dev *dev);
 static int eth_em_interrupt_action(struct rte_eth_dev *dev);
 static void eth_em_interrupt_handler(struct rte_intr_handle *handle,
@@ -107,8 +108,13 @@ static void em_vlan_hw_strip_disable(struct rte_eth_dev *dev);
 static void eth_em_vlan_filter_set(struct rte_eth_dev *dev,
 					uint16_t vlan_id, int on);
 */
+
+static int eth_em_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+static int eth_em_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 static void em_lsc_intr_disable(struct e1000_hw *hw);
+static void em_rxq_intr_enable(struct e1000_hw *hw);
 static void em_rxq_intr_disable(struct e1000_hw *hw);
+
 static int eth_em_led_on(struct rte_eth_dev *dev);
 static int eth_em_led_off(struct rte_eth_dev *dev);
 
@@ -160,6 +166,8 @@ static const struct eth_dev_ops eth_em_ops = {
 	.rx_descriptor_done   = eth_em_rx_descriptor_done,
 	.tx_queue_setup       = eth_em_tx_queue_setup,
 	.tx_queue_release     = eth_em_tx_queue_release,
+	.rx_queue_intr_enable = eth_em_rx_queue_intr_enable,
+	.rx_queue_intr_disable = eth_em_rx_queue_intr_disable,
 	.dev_led_on           = eth_em_led_on,
 	.dev_led_off          = eth_em_led_off,
 	.flow_ctrl_get        = eth_em_flow_ctrl_get,
@@ -609,6 +617,9 @@ eth_em_start(struct rte_eth_dev *dev)
 			return ret;
 		}
 	}
+	/* check if rxq interrupt is enabled */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		eth_em_rxq_interrupt_setup(dev);
 
 	adapter->stopped = 0;
 
@@ -883,6 +894,27 @@ eth_em_stats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));
+}
+
+static int
+eth_em_rx_queue_intr_enable(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	em_rxq_intr_enable(hw);
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+
+	return 0;
+}
+
+static int
+eth_em_rx_queue_intr_disable(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	em_rxq_intr_disable(hw);
+
+	return 0;
 }
 
 static uint32_t
@@ -1274,6 +1306,42 @@ eth_em_interrupt_setup(struct rte_eth_dev *dev)
 	regval = E1000_READ_REG(hw, E1000_IMS);
 	E1000_WRITE_REG(hw, E1000_IMS, regval | E1000_ICR_LSC);
 	return (0);
+}
+
+/*
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during nic initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+eth_em_rxq_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+	E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	E1000_READ_REG(hw, E1000_ICR);
+	em_rxq_intr_enable(hw);
+	return 0;
+}
+
+/*
+ * It enable receive packet interrupt.
+ * @param hw
+ * Pointer to struct e1000_hw
+ *
+ * @return
+ */
+static void
+em_rxq_intr_enable(struct e1000_hw *hw)
+{
+	E1000_WRITE_REG(hw, E1000_IMS, E1000_IMS_RXT0);
+	E1000_WRITE_FLUSH(hw);
 }
 
 /*

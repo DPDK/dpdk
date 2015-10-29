@@ -4,6 +4,8 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Added e1000 Rx interrupt support.**
+
 * **Added igb TSO support for both PF and VF.**
 
 * **RSS enhancement on Intel x550 NIC**
@@ -22,7 +24,6 @@ New Features
   *  Optimize forwarding performance for Chelsio T5 40GbE cards.
 
 * **Added vhost-user multiple queue support.**
-
 
 Resolved Issues
 ---------------
