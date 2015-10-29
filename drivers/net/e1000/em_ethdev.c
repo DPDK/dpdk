@@ -107,10 +107,11 @@ static void em_vlan_hw_strip_disable(struct rte_eth_dev *dev);
 static void eth_em_vlan_filter_set(struct rte_eth_dev *dev,
 					uint16_t vlan_id, int on);
 */
+static void em_lsc_intr_disable(struct e1000_hw *hw);
+static void em_rxq_intr_disable(struct e1000_hw *hw);
 static int eth_em_led_on(struct rte_eth_dev *dev);
 static int eth_em_led_off(struct rte_eth_dev *dev);
 
-static void em_intr_disable(struct e1000_hw *hw);
 static int em_get_rx_buffer_size(struct e1000_hw *hw);
 static void eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		uint32_t index, uint32_t pool);
@@ -635,7 +636,9 @@ eth_em_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	em_intr_disable(hw);
+	em_rxq_intr_disable(hw);
+	em_lsc_intr_disable(hw);
+
 	e1000_reset_hw(hw);
 	if (hw->mac.type >= e1000_82544)
 		E1000_WRITE_REG(hw, E1000_WUC, 0);
@@ -1249,13 +1252,7 @@ eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 }
 
-static void
-em_intr_disable(struct e1000_hw *hw)
-{
-	E1000_WRITE_REG(hw, E1000_IMC, ~0);
-}
-
-/**
+/*
  * It enables the interrupt mask and then enable the interrupt.
  *
  * @param dev
@@ -1277,6 +1274,35 @@ eth_em_interrupt_setup(struct rte_eth_dev *dev)
 	regval = E1000_READ_REG(hw, E1000_IMS);
 	E1000_WRITE_REG(hw, E1000_IMS, regval | E1000_ICR_LSC);
 	return (0);
+}
+
+/*
+ * It disabled lsc interrupt.
+ * @param hw
+ * Pointer to struct e1000_hw
+ *
+ * @return
+ */
+static void
+em_lsc_intr_disable(struct e1000_hw *hw)
+{
+	E1000_WRITE_REG(hw, E1000_IMC, E1000_IMS_LSC);
+	E1000_WRITE_FLUSH(hw);
+}
+
+/*
+ * It disabled receive packet interrupt.
+ * @param hw
+ * Pointer to struct e1000_hw
+ *
+ * @return
+ */
+static void
+em_rxq_intr_disable(struct e1000_hw *hw)
+{
+	E1000_READ_REG(hw, E1000_ICR);
+	E1000_WRITE_REG(hw, E1000_IMC, E1000_IMS_RXT0);
+	E1000_WRITE_FLUSH(hw);
 }
 
 /*
