@@ -798,6 +798,7 @@ sleep_until_rx_interrupt(int num)
 		port_id = ((uintptr_t)data) >> CHAR_BIT;
 		queue_id = ((uintptr_t)data) &
 			RTE_LEN2MASK(CHAR_BIT, uint8_t);
+		rte_eth_dev_rx_intr_disable(port_id, queue_id);
 		RTE_LOG(INFO, L3FWD_POWER,
 			"lcore %u is waked up from rx interrupt on"
 			" port %d queue %d\n",
