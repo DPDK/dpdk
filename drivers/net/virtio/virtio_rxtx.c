@@ -53,6 +53,7 @@
 
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
+#include "virtio_pci.h"
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
 
@@ -61,6 +62,10 @@
 #else
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
 #endif
+
+
+#define VIRTIO_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
+	ETH_TXQ_FLAGS_NOOFFLOADS)
 
 static int use_simple_rxtx;
 
@@ -459,6 +464,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			const struct rte_eth_txconf *tx_conf)
 {
 	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq;
 	uint16_t tx_free_thresh;
 	int ret;
@@ -469,6 +475,15 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	    != ETH_TXQ_FLAGS_NOXSUMS) {
 		PMD_INIT_LOG(ERR, "TX checksum offload not supported\n");
 		return -EINVAL;
+	}
+
+	/* Use simple rx/tx func if single segment and no offloads */
+	if ((tx_conf->txq_flags & VIRTIO_SIMPLE_FLAGS) == VIRTIO_SIMPLE_FLAGS &&
+	     !vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+		PMD_INIT_LOG(INFO, "Using simple rx/tx path");
+		dev->tx_pkt_burst = virtio_xmit_pkts_simple;
+		dev->rx_pkt_burst = virtio_recv_pkts_vec;
+		use_simple_rxtx = 1;
 	}
 
 	ret = virtio_dev_queue_setup(dev, VTNET_TQ, queue_idx, vtpci_queue_idx,
