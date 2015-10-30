@@ -67,6 +67,7 @@ static void fm10k_MAC_filter_set(struct rte_eth_dev *dev,
 	const u8 *mac, bool add, uint32_t pool);
 static void fm10k_tx_queue_release(void *queue);
 static void fm10k_rx_queue_release(void *queue);
+static void fm10k_set_rx_function(struct rte_eth_dev *dev);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -611,7 +612,6 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 			dev->data->dev_conf.rxmode.enable_scatter) {
 			uint32_t reg;
 			dev->data->scattered_rx = 1;
-			dev->rx_pkt_burst = fm10k_recv_scattered_pkts;
 			reg = FM10K_READ_REG(hw, FM10K_SRRCTL(i));
 			reg |= FM10K_SRRCTL_BUFFER_CHAINING_EN;
 			FM10K_WRITE_REG(hw, FM10K_SRRCTL(i), reg);
@@ -627,6 +627,10 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 
 	/* Configure VMDQ/RSS if applicable */
 	fm10k_dev_mq_rx_configure(dev);
+
+	/* Decide the best RX function */
+	fm10k_set_rx_function(dev);
+
 	return 0;
 }
 
@@ -2284,6 +2288,34 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.rss_hash_conf_get	= fm10k_rss_hash_conf_get,
 };
 
+static void __attribute__((cold))
+fm10k_set_rx_function(struct rte_eth_dev *dev)
+{
+	struct fm10k_dev_info *dev_info = FM10K_DEV_PRIVATE_TO_INFO(dev);
+	uint16_t i, rx_using_sse;
+
+	/* In order to allow Vector Rx there are a few configuration
+	 * conditions to be met.
+	 */
+	if (!fm10k_rx_vec_condition_check(dev) && dev_info->rx_vec_allowed) {
+		if (dev->data->scattered_rx)
+			dev->rx_pkt_burst = fm10k_recv_scattered_pkts_vec;
+		else
+			dev->rx_pkt_burst = fm10k_recv_pkts_vec;
+	} else if (dev->data->scattered_rx)
+		dev->rx_pkt_burst = fm10k_recv_scattered_pkts;
+
+	rx_using_sse =
+		(dev->rx_pkt_burst == fm10k_recv_scattered_pkts_vec ||
+		dev->rx_pkt_burst == fm10k_recv_pkts_vec);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct fm10k_rx_queue *rxq = dev->data->rx_queues[i];
+
+		rxq->rx_using_sse = rx_using_sse;
+	}
+}
+
 static void
 fm10k_params_init(struct rte_eth_dev *dev)
 {
@@ -2317,9 +2349,6 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	dev->dev_ops = &fm10k_eth_dev_ops;
 	dev->rx_pkt_burst = &fm10k_recv_pkts;
 	dev->tx_pkt_burst = &fm10k_xmit_pkts;
-
-	if (dev->data->scattered_rx)
-		dev->rx_pkt_burst = &fm10k_recv_scattered_pkts;
 
 	/* only initialize in the primary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

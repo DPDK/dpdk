@@ -192,6 +192,7 @@ struct fm10k_rx_queue {
 	/* Below 2 fields only valid in case vPMD is applied. */
 	uint16_t rxrearm_nb;     /* number of remaining to be re-armed */
 	uint16_t rxrearm_start;  /* the idx we start the re-arming from */
+	uint16_t rx_using_sse; /* indicates that vector RX is in use */
 	uint8_t port_id;
 	uint8_t drop_en;
 	uint8_t rx_deferred_start; /* don't start this queue in dev start. */
