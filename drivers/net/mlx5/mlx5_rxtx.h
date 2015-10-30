@@ -60,6 +60,13 @@
 #include "mlx5.h"
 #include "mlx5_defs.h"
 
+/* RX element (scattered packets). */
+struct rxq_elt_sp {
+	struct ibv_recv_wr wr; /* Work Request. */
+	struct ibv_sge sges[MLX5_PMD_SGE_WR_N]; /* Scatter/Gather Elements. */
+	struct rte_mbuf *bufs[MLX5_PMD_SGE_WR_N]; /* SGEs buffers. */
+};
+
 /* RX element. */
 struct rxq_elt {
 	struct ibv_recv_wr wr; /* Work Request. */
@@ -84,8 +91,10 @@ struct rxq {
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
 	union {
+		struct rxq_elt_sp (*sp)[]; /* Scattered RX elements. */
 		struct rxq_elt (*no_sp)[]; /* RX elements. */
 	} elts;
+	unsigned int sp:1; /* Use scattered RX elements. */
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
@@ -151,6 +160,7 @@ void mlx5_tx_queue_release(void *);
 /* mlx5_rxtx.c */
 
 uint16_t mlx5_tx_burst(void *, struct rte_mbuf **, uint16_t);
+uint16_t mlx5_rx_burst_sp(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);

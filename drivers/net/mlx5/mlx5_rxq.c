@@ -65,6 +65,153 @@
 #include "mlx5_defs.h"
 
 /**
+ * Allocate RX queue elements with scattered packets support.
+ *
+ * @param rxq
+ *   Pointer to RX queue structure.
+ * @param elts_n
+ *   Number of elements to allocate.
+ * @param[in] pool
+ *   If not NULL, fetch buffers from this array instead of allocating them
+ *   with rte_pktmbuf_alloc().
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+rxq_alloc_elts_sp(struct rxq *rxq, unsigned int elts_n,
+		  struct rte_mbuf **pool)
+{
+	unsigned int i;
+	struct rxq_elt_sp (*elts)[elts_n] =
+		rte_calloc_socket("RXQ elements", 1, sizeof(*elts), 0,
+				  rxq->socket);
+	int ret = 0;
+
+	if (elts == NULL) {
+		ERROR("%p: can't allocate packets array", (void *)rxq);
+		ret = ENOMEM;
+		goto error;
+	}
+	/* For each WR (packet). */
+	for (i = 0; (i != elts_n); ++i) {
+		unsigned int j;
+		struct rxq_elt_sp *elt = &(*elts)[i];
+		struct ibv_recv_wr *wr = &elt->wr;
+		struct ibv_sge (*sges)[RTE_DIM(elt->sges)] = &elt->sges;
+
+		/* These two arrays must have the same size. */
+		assert(RTE_DIM(elt->sges) == RTE_DIM(elt->bufs));
+		/* Configure WR. */
+		wr->wr_id = i;
+		wr->next = &(*elts)[(i + 1)].wr;
+		wr->sg_list = &(*sges)[0];
+		wr->num_sge = RTE_DIM(*sges);
+		/* For each SGE (segment). */
+		for (j = 0; (j != RTE_DIM(elt->bufs)); ++j) {
+			struct ibv_sge *sge = &(*sges)[j];
+			struct rte_mbuf *buf;
+
+			if (pool != NULL) {
+				buf = *(pool++);
+				assert(buf != NULL);
+				rte_pktmbuf_reset(buf);
+			} else
+				buf = rte_pktmbuf_alloc(rxq->mp);
+			if (buf == NULL) {
+				assert(pool == NULL);
+				ERROR("%p: empty mbuf pool", (void *)rxq);
+				ret = ENOMEM;
+				goto error;
+			}
+			elt->bufs[j] = buf;
+			/* Headroom is reserved by rte_pktmbuf_alloc(). */
+			assert(DATA_OFF(buf) == RTE_PKTMBUF_HEADROOM);
+			/* Buffer is supposed to be empty. */
+			assert(rte_pktmbuf_data_len(buf) == 0);
+			assert(rte_pktmbuf_pkt_len(buf) == 0);
+			/* sge->addr must be able to store a pointer. */
+			assert(sizeof(sge->addr) >= sizeof(uintptr_t));
+			if (j == 0) {
+				/* The first SGE keeps its headroom. */
+				sge->addr = rte_pktmbuf_mtod(buf, uintptr_t);
+				sge->length = (buf->buf_len -
+					       RTE_PKTMBUF_HEADROOM);
+			} else {
+				/* Subsequent SGEs lose theirs. */
+				assert(DATA_OFF(buf) == RTE_PKTMBUF_HEADROOM);
+				SET_DATA_OFF(buf, 0);
+				sge->addr = (uintptr_t)buf->buf_addr;
+				sge->length = buf->buf_len;
+			}
+			sge->lkey = rxq->mr->lkey;
+			/* Redundant check for tailroom. */
+			assert(sge->length == rte_pktmbuf_tailroom(buf));
+		}
+	}
+	/* The last WR pointer must be NULL. */
+	(*elts)[(i - 1)].wr.next = NULL;
+	DEBUG("%p: allocated and configured %u WRs (%zu segments)",
+	      (void *)rxq, elts_n, (elts_n * RTE_DIM((*elts)[0].sges)));
+	rxq->elts_n = elts_n;
+	rxq->elts_head = 0;
+	rxq->elts.sp = elts;
+	assert(ret == 0);
+	return 0;
+error:
+	if (elts != NULL) {
+		assert(pool == NULL);
+		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
+			unsigned int j;
+			struct rxq_elt_sp *elt = &(*elts)[i];
+
+			for (j = 0; (j != RTE_DIM(elt->bufs)); ++j) {
+				struct rte_mbuf *buf = elt->bufs[j];
+
+				if (buf != NULL)
+					rte_pktmbuf_free_seg(buf);
+			}
+		}
+		rte_free(elts);
+	}
+	DEBUG("%p: failed, freed everything", (void *)rxq);
+	assert(ret > 0);
+	return ret;
+}
+
+/**
+ * Free RX queue elements with scattered packets support.
+ *
+ * @param rxq
+ *   Pointer to RX queue structure.
+ */
+static void
+rxq_free_elts_sp(struct rxq *rxq)
+{
+	unsigned int i;
+	unsigned int elts_n = rxq->elts_n;
+	struct rxq_elt_sp (*elts)[elts_n] = rxq->elts.sp;
+
+	DEBUG("%p: freeing WRs", (void *)rxq);
+	rxq->elts_n = 0;
+	rxq->elts.sp = NULL;
+	if (elts == NULL)
+		return;
+	for (i = 0; (i != RTE_DIM(*elts)); ++i) {
+		unsigned int j;
+		struct rxq_elt_sp *elt = &(*elts)[i];
+
+		for (j = 0; (j != RTE_DIM(elt->bufs)); ++j) {
+			struct rte_mbuf *buf = elt->bufs[j];
+
+			if (buf != NULL)
+				rte_pktmbuf_free_seg(buf);
+		}
+	}
+	rte_free(elts);
+}
+
+/**
  * Allocate RX queue elements.
  *
  * @param rxq
@@ -224,7 +371,10 @@ rxq_cleanup(struct rxq *rxq)
 	struct ibv_exp_release_intf_params params;
 
 	DEBUG("cleaning up %p", (void *)rxq);
-	rxq_free_elts(rxq);
+	if (rxq->sp)
+		rxq_free_elts_sp(rxq);
+	else
+		rxq_free_elts(rxq);
 	if (rxq->if_qp != NULL) {
 		assert(rxq->priv != NULL);
 		assert(rxq->priv->ctx != NULL);
@@ -445,6 +595,15 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		rte_pktmbuf_tailroom(buf)) == tmpl.mb_len);
 	assert(rte_pktmbuf_headroom(buf) == RTE_PKTMBUF_HEADROOM);
 	rte_pktmbuf_free(buf);
+	/* Enable scattered packets support for this queue if necessary. */
+	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
+	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
+	     (tmpl.mb_len - RTE_PKTMBUF_HEADROOM))) {
+		tmpl.sp = 1;
+		desc /= MLX5_PMD_SGE_WR_N;
+	}
+	DEBUG("%p: %s scattered packets support (%u WRs)",
+	      (void *)dev, (tmpl.sp ? "enabling" : "disabling"), desc);
 	/* Use the entire RX mempool as the memory region. */
 	tmpl.mr = ibv_reg_mr(priv->pd,
 			     (void *)mp->elt_va_start,
@@ -528,14 +687,19 @@ skip_mr:
 	/* Allocate descriptors for RX queues, except for the RSS parent. */
 	if (parent)
 		goto skip_alloc;
-	ret = rxq_alloc_elts(&tmpl, desc, NULL);
+	if (tmpl.sp)
+		ret = rxq_alloc_elts_sp(&tmpl, desc, NULL);
+	else
+		ret = rxq_alloc_elts(&tmpl, desc, NULL);
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
 	ret = ibv_post_recv(tmpl.qp,
-			    &(*tmpl.elts.no_sp)[0].wr,
+			    (tmpl.sp ?
+			     &(*tmpl.elts.sp)[0].wr :
+			     &(*tmpl.elts.no_sp)[0].wr),
 			    &bad_wr);
 	if (ret) {
 		ERROR("%p: ibv_post_recv() failed for WR %p: %s",
@@ -655,7 +819,10 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, (void *)rxq);
 		(*priv->rxqs)[idx] = rxq;
 		/* Update receive callback. */
-		dev->rx_pkt_burst = mlx5_rx_burst;
+		if (rxq->sp)
+			dev->rx_pkt_burst = mlx5_rx_burst_sp;
+		else
+			dev->rx_pkt_burst = mlx5_rx_burst;
 	}
 	priv_unlock(priv);
 	return -ret;
