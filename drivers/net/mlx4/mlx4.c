@@ -2820,6 +2820,12 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(wr->num_sge == 1);
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
+		/*
+		 * Fetch initial bytes of packet descriptor into a
+		 * cacheline while allocating rep.
+		 */
+		rte_prefetch0(seg);
+		rte_prefetch0(&seg->cacheline1);
 		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
 						    &flags);
 		if (unlikely(ret < 0)) {
@@ -2857,11 +2863,6 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (ret == 0)
 			break;
 		len = ret;
-		/*
-		 * Fetch initial bytes of packet descriptor into a
-		 * cacheline while allocating rep.
-		 */
-		rte_prefetch0(seg);
 		rep = __rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
 			/*
