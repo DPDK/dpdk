@@ -277,13 +277,14 @@ static int enicpmd_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	uint16_t vlan_id, int on)
 {
 	struct enic *enic = pmd_priv(eth_dev);
+	int err;
 
 	ENICPMD_FUNC_TRACE();
 	if (on)
-		enic_add_vlan(enic, vlan_id);
+		err = enic_add_vlan(enic, vlan_id);
 	else
-		enic_del_vlan(enic, vlan_id);
-	return 0;
+		err = enic_del_vlan(enic, vlan_id);
+	return err;
 }
 
 static void enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
