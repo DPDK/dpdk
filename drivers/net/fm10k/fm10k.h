@@ -180,7 +180,7 @@ struct fm10k_rx_queue {
 	struct rte_mbuf *pkt_last_seg;  /* Last segment of current packet. */
 	uint64_t hw_ring_phys_addr;
 	uint64_t mbuf_initializer; /* value to init mbufs */
-	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
+	/* need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
 	uint16_t next_dd;
 	uint16_t next_alloc;
@@ -188,6 +188,8 @@ struct fm10k_rx_queue {
 	uint16_t alloc_thresh;
 	volatile uint32_t *tail_ptr;
 	uint16_t nb_desc;
+	/* Number of faked desc added at the tail for Vector RX function */
+	uint16_t nb_fake_desc;
 	uint16_t queue_id;
 	/* Below 2 fields only valid in case vPMD is applied. */
 	uint16_t rxrearm_nb;     /* number of remaining to be re-armed */

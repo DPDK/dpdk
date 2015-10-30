@@ -102,6 +102,7 @@ fm10k_mbx_unlock(struct fm10k_hw *hw)
 static inline int
 rx_queue_reset(struct fm10k_rx_queue *q)
 {
+	static const union fm10k_rx_desc zero = {{0} };
 	uint64_t dma_addr;
 	int i, diag;
 	PMD_INIT_FUNC_TRACE();
@@ -120,6 +121,15 @@ rx_queue_reset(struct fm10k_rx_queue *q)
 		dma_addr = MBUF_DMA_ADDR_DEFAULT(q->sw_ring[i]);
 		q->hw_ring[i].q.pkt_addr = dma_addr;
 		q->hw_ring[i].q.hdr_addr = dma_addr;
+	}
+
+	/* initialize extra software ring entries. Space for these extra
+	 * entries is always allocated.
+	 */
+	memset(&q->fake_mbuf, 0x0, sizeof(q->fake_mbuf));
+	for (i = 0; i < q->nb_fake_desc; ++i) {
+		q->sw_ring[q->nb_desc + i] = &q->fake_mbuf;
+		q->hw_ring[q->nb_desc + i] = zero;
 	}
 
 	q->next_dd = 0;
@@ -146,6 +156,10 @@ rx_queue_clean(struct fm10k_rx_queue *q)
 	/* zero descriptor rings */
 	for (i = 0; i < q->nb_desc; ++i)
 		q->hw_ring[i] = zero;
+
+	/* zero faked descriptors */
+	for (i = 0; i < q->nb_fake_desc; ++i)
+		q->hw_ring[q->nb_desc + i] = zero;
 
 	/* vPMD driver has a different way of releasing mbufs. */
 	if (q->rx_using_sse) {
@@ -1541,6 +1555,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	/* setup queue */
 	q->mp = mp;
 	q->nb_desc = nb_desc;
+	q->nb_fake_desc = FM10K_MULT_RX_DESC;
 	q->port_id = dev->data->port_id;
 	q->queue_id = queue_id;
 	q->tail_ptr = (volatile uint32_t *)
@@ -1550,8 +1565,8 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	/* allocate memory for the software ring */
 	q->sw_ring = rte_zmalloc_socket("fm10k sw ring",
-					nb_desc * sizeof(struct rte_mbuf *),
-					RTE_CACHE_LINE_SIZE, socket_id);
+			(nb_desc + q->nb_fake_desc) * sizeof(struct rte_mbuf *),
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (q->sw_ring == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate software ring");
 		rte_free(q);
