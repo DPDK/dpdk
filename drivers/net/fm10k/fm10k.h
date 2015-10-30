@@ -138,6 +138,8 @@ struct fm10k_dev_info {
 	/* Protect the mailbox to avoid race condition */
 	rte_spinlock_t    mbx_lock;
 	struct fm10k_macvlan_filter_info    macvlan;
+	/* Flag to indicate if RX vector conditions satisfied */
+	bool rx_vec_allowed;
 };
 
 /*
@@ -168,9 +170,10 @@ struct fm10k_rx_queue {
 	struct rte_mempool *mp;
 	struct rte_mbuf **sw_ring;
 	volatile union fm10k_rx_desc *hw_ring;
-	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
-	struct rte_mbuf *pkt_last_seg;  /**< Last segment of current packet. */
+	struct rte_mbuf *pkt_first_seg; /* First segment of current packet. */
+	struct rte_mbuf *pkt_last_seg;  /* Last segment of current packet. */
 	uint64_t hw_ring_phys_addr;
+	uint64_t mbuf_initializer; /* value to init mbufs */
 	uint16_t next_dd;
 	uint16_t next_alloc;
 	uint16_t next_trigger;
@@ -180,7 +183,7 @@ struct fm10k_rx_queue {
 	uint16_t queue_id;
 	uint8_t port_id;
 	uint8_t drop_en;
-	uint8_t rx_deferred_start; /**< don't start this queue in dev start. */
+	uint8_t rx_deferred_start; /* don't start this queue in dev start. */
 };
 
 /*
@@ -316,4 +319,6 @@ uint16_t fm10k_recv_scattered_pkts(void *rx_queue,
 
 uint16_t fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts);
+
+int fm10k_rxq_vec_setup(struct fm10k_rx_queue *rxq);
 #endif

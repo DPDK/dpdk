@@ -43,3 +43,24 @@
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
+
+int __attribute__((cold))
+fm10k_rxq_vec_setup(struct fm10k_rx_queue *rxq)
+{
+	uintptr_t p;
+	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
+
+	mb_def.nb_segs = 1;
+	/* data_off will be ajusted after new mbuf allocated for 512-byte
+	 * alignment.
+	 */
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.port = rxq->port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	p = (uintptr_t)&mb_def.rearm_data;
+	rxq->mbuf_initializer = *(uint64_t *)p;
+	return 0;
+}

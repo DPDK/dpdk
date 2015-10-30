@@ -1466,6 +1466,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	const struct rte_eth_rxconf *conf, struct rte_mempool *mp)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct fm10k_dev_info *dev_info = FM10K_DEV_PRIVATE_TO_INFO(dev);
 	struct fm10k_rx_queue *q;
 	const struct rte_memzone *mz;
 
@@ -1547,6 +1548,16 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 #else
 	q->hw_ring_phys_addr = mz->phys_addr;
 #endif
+
+	/* Check if number of descs satisfied Vector requirement */
+	if (!rte_is_power_of_2(nb_desc)) {
+		PMD_INIT_LOG(DEBUG, "queue[%d] doesn't meet Vector Rx "
+				    "preconditions - canceling the feature for "
+				    "the whole port[%d]",
+			     q->queue_id, q->port_id);
+		dev_info->rx_vec_allowed = false;
+	} else
+		fm10k_rxq_vec_setup(q);
 
 	dev->data->rx_queues[queue_id] = q;
 	return 0;
