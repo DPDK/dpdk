@@ -37,6 +37,7 @@
 #include <rte_memcpy.h>
 #include <rte_dev.h>
 #include <rte_kvargs.h>
+#include <rte_spinlock.h>
 
 #include "rte_eth_null.h"
 
@@ -75,6 +76,17 @@ struct pmd_internals {
 
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 	struct null_queue tx_null_queues[RTE_MAX_QUEUES_PER_PORT];
+
+	/** Bit mask of RSS offloads, the bit offset also means flow type */
+	uint64_t flow_type_rss_offloads;
+
+	rte_spinlock_t rss_lock;
+
+	uint16_t reta_size;
+	struct rte_eth_rss_reta_entry64 reta_conf[ETH_RSS_RETA_SIZE_128 /
+			RTE_RETA_GROUP_SIZE];
+
+	uint8_t rss_key[40];                /**< 40-byte hash key. */
 };
 
 
@@ -295,6 +307,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_tx_queues = RTE_DIM(internals->tx_null_queues);
 	dev_info->min_rx_bufsize = 0;
 	dev_info->pci_dev = NULL;
+	dev_info->reta_size = internals->reta_size;
+	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
 }
 
 static void
@@ -375,6 +389,91 @@ static int
 eth_link_update(struct rte_eth_dev *dev __rte_unused,
 		int wait_to_complete __rte_unused) { return 0; }
 
+static int
+eth_rss_reta_update(struct rte_eth_dev *dev,
+		struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size)
+{
+	int i, j;
+	struct pmd_internals *internal = dev->data->dev_private;
+
+	if (reta_size != internal->reta_size)
+		return -EINVAL;
+
+	rte_spinlock_lock(&internal->rss_lock);
+
+	/* Copy RETA table */
+	for (i = 0; i < (internal->reta_size / RTE_RETA_GROUP_SIZE); i++) {
+		internal->reta_conf[i].mask = reta_conf[i].mask;
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+			if ((reta_conf[i].mask >> j) & 0x01)
+				internal->reta_conf[i].reta[j] = reta_conf[i].reta[j];
+	}
+
+	rte_spinlock_unlock(&internal->rss_lock);
+
+	return 0;
+}
+
+static int
+eth_rss_reta_query(struct rte_eth_dev *dev,
+		struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size)
+{
+	int i, j;
+	struct pmd_internals *internal = dev->data->dev_private;
+
+	if (reta_size != internal->reta_size)
+		return -EINVAL;
+
+	rte_spinlock_lock(&internal->rss_lock);
+
+	/* Copy RETA table */
+	for (i = 0; i < (internal->reta_size / RTE_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+			if ((reta_conf[i].mask >> j) & 0x01)
+				reta_conf[i].reta[j] = internal->reta_conf[i].reta[j];
+	}
+
+	rte_spinlock_unlock(&internal->rss_lock);
+
+	return 0;
+}
+
+static int
+eth_rss_hash_update(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf)
+{
+	struct pmd_internals *internal = dev->data->dev_private;
+
+	rte_spinlock_lock(&internal->rss_lock);
+
+	if ((rss_conf->rss_hf & internal->flow_type_rss_offloads) != 0)
+		dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf =
+				rss_conf->rss_hf & internal->flow_type_rss_offloads;
+
+	if (rss_conf->rss_key)
+		rte_memcpy(internal->rss_key, rss_conf->rss_key, 40);
+
+	rte_spinlock_unlock(&internal->rss_lock);
+
+	return 0;
+}
+
+static int
+eth_rss_hash_conf_get(struct rte_eth_dev *dev,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	struct pmd_internals *internal = dev->data->dev_private;
+
+	rte_spinlock_lock(&internal->rss_lock);
+
+	rss_conf->rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
+	if (rss_conf->rss_key)
+		rte_memcpy(rss_conf->rss_key, internal->rss_key, 40);
+
+	rte_spinlock_unlock(&internal->rss_lock);
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
@@ -387,6 +486,10 @@ static const struct eth_dev_ops ops = {
 	.link_update = eth_link_update,
 	.stats_get = eth_stats_get,
 	.stats_reset = eth_stats_reset,
+	.reta_update = eth_rss_reta_update,
+	.reta_query = eth_rss_reta_query,
+	.rss_hash_update = eth_rss_hash_update,
+	.rss_hash_conf_get = eth_rss_hash_conf_get
 };
 
 int
@@ -401,6 +504,13 @@ eth_dev_null_create(const char *name,
 	struct rte_pci_device *pci_dev = NULL;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
+
+	static const uint8_t default_rss_key[40] = {
+		0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2, 0x41, 0x67, 0x25, 0x3D,
+		0x43, 0xA3, 0x8F, 0xB0, 0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
+		0x77, 0xCB, 0x2D, 0xA3, 0x80, 0x30, 0xF2, 0x0C, 0x6A, 0x42, 0xB7, 0x3B,
+		0xBE, 0xAC, 0x01, 0xFA
+	};
 
 	if (name == NULL)
 		return -EINVAL;
@@ -442,6 +552,11 @@ eth_dev_null_create(const char *name,
 	internals->packet_size = packet_size;
 	internals->packet_copy = packet_copy;
 	internals->numa_node = numa_node;
+
+	internals->flow_type_rss_offloads =  ETH_RSS_PROTO_MASK;
+	internals->reta_size = RTE_DIM(internals->reta_conf) * RTE_RETA_GROUP_SIZE;
+
+	rte_memcpy(internals->rss_key, default_rss_key, 40);
 
 	pci_dev->numa_node = numa_node;
 	pci_dev->driver = &rte_null_pmd.pci_drv;
