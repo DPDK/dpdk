@@ -1788,9 +1788,6 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	return txq->tx_rs_thresh;
 }
 
-#define I40E_TD_CMD (I40E_TX_DESC_CMD_ICRC |\
-		     I40E_TX_DESC_CMD_EOP)
-
 /* Populate 4 descriptors with data from 4 mbufs */
 static inline void
 tx4(volatile struct i40e_tx_desc *txdp, struct rte_mbuf **pkts)
@@ -2625,6 +2622,9 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 	rxq->nb_rx_hold = 0;
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
+
+	rxq->rxrearm_start = 0;
+	rxq->rxrearm_nb = 0;
 }
 
 void
@@ -3062,4 +3062,26 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 	pf->fdir.rxq = rxq;
 
 	return I40E_SUCCESS;
+}
+
+/* Stubs needed for linkage when CONFIG_RTE_I40E_INC_VECTOR is set to 'n' */
+uint16_t __attribute__((weak))
+i40e_recv_pkts_vec(
+	void __rte_unused *rx_queue,
+	struct rte_mbuf __rte_unused **rx_pkts,
+	uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
+
+int __attribute__((weak))
+i40e_rxq_vec_setup(struct i40e_rx_queue __rte_unused *rxq)
+{
+	return -1;
+}
+
+void __attribute__((weak))
+i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue __rte_unused*rxq)
+{
+	return;
 }
