@@ -115,24 +115,6 @@ struct priv {
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
-/* Work Request ID data type (64 bit). */
-typedef union {
-	struct {
-		uint32_t id;
-		uint16_t offset;
-	} data;
-	uint64_t raw;
-} wr_id_t;
-
-/* Compile-time check. */
-static inline void wr_id_t_check(void)
-{
-	wr_id_t check[1 + (2 * -!(sizeof(wr_id_t) == sizeof(uint64_t)))];
-
-	(void)check;
-	(void)wr_id_t_check;
-}
-
 /**
  * Lock private structure to protect it from concurrent access in the
  * control path.

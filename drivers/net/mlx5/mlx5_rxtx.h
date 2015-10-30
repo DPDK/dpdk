@@ -81,16 +81,14 @@ struct mlx5_txq_stats {
 
 /* RX element (scattered packets). */
 struct rxq_elt_sp {
-	struct ibv_recv_wr wr; /* Work Request. */
 	struct ibv_sge sges[MLX5_PMD_SGE_WR_N]; /* Scatter/Gather Elements. */
 	struct rte_mbuf *bufs[MLX5_PMD_SGE_WR_N]; /* SGEs buffers. */
 };
 
 /* RX element. */
 struct rxq_elt {
-	struct ibv_recv_wr wr; /* Work Request. */
 	struct ibv_sge sge; /* Scatter/Gather Element. */
-	/* mbuf pointer is derived from WR_ID(wr.wr_id).offset. */
+	struct rte_mbuf *buf; /* SGE buffer. */
 };
 
 struct priv;

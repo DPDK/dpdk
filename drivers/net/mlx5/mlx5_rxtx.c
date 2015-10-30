@@ -612,8 +612,6 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		return 0;
 	for (i = 0; (i != pkts_n); ++i) {
 		struct rxq_elt_sp *elt = &(*elts)[elts_head];
-		struct ibv_recv_wr *wr = &elt->wr;
-		uint64_t wr_id = wr->wr_id;
 		unsigned int len;
 		unsigned int pkt_buf_len;
 		struct rte_mbuf *pkt_buf = NULL; /* Buffer returned in pkts. */
@@ -623,12 +621,6 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint32_t flags;
 
 		/* Sanity checks. */
-#ifdef NDEBUG
-		(void)wr_id;
-#endif
-		assert(wr_id < rxq->elts_n);
-		assert(wr->sg_list == elt->sges);
-		assert(wr->num_sge == RTE_DIM(elt->sges));
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
 		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
@@ -677,6 +669,7 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			struct rte_mbuf *rep;
 			unsigned int seg_tailroom;
 
+			assert(seg != NULL);
 			/*
 			 * Fetch initial bytes of packet descriptor into a
 			 * cacheline while allocating rep.
@@ -688,9 +681,8 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				 * Unable to allocate a replacement mbuf,
 				 * repost WR.
 				 */
-				DEBUG("rxq=%p, wr_id=%" PRIu64 ":"
-				      " can't allocate a new mbuf",
-				      (void *)rxq, wr_id);
+				DEBUG("rxq=%p: can't allocate a new mbuf",
+				      (void *)rxq);
 				if (pkt_buf != NULL) {
 					*pkt_buf_next = NULL;
 					rte_pktmbuf_free(pkt_buf);
@@ -825,18 +817,13 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		return mlx5_rx_burst_sp(dpdk_rxq, pkts, pkts_n);
 	for (i = 0; (i != pkts_n); ++i) {
 		struct rxq_elt *elt = &(*elts)[elts_head];
-		struct ibv_recv_wr *wr = &elt->wr;
-		uint64_t wr_id = wr->wr_id;
 		unsigned int len;
-		struct rte_mbuf *seg = (void *)((uintptr_t)elt->sge.addr -
-			WR_ID(wr_id).offset);
+		struct rte_mbuf *seg = elt->buf;
 		struct rte_mbuf *rep;
 		uint32_t flags;
 
 		/* Sanity checks. */
-		assert(WR_ID(wr_id).id < rxq->elts_n);
-		assert(wr->sg_list == &elt->sge);
-		assert(wr->num_sge == 1);
+		assert(seg != NULL);
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
 		/*
@@ -888,9 +875,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 * Unable to allocate a replacement mbuf,
 			 * repost WR.
 			 */
-			DEBUG("rxq=%p, wr_id=%" PRIu32 ":"
-			      " can't allocate a new mbuf",
-			      (void *)rxq, WR_ID(wr_id).id);
+			DEBUG("rxq=%p: can't allocate a new mbuf",
+			      (void *)rxq);
 			/* Increment out of memory counters. */
 			++rxq->stats.rx_nombuf;
 			++rxq->priv->dev->data->rx_mbuf_alloc_failed;
@@ -900,10 +886,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Reconfigure sge to use rep instead of seg. */
 		elt->sge.addr = (uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM;
 		assert(elt->sge.lkey == rxq->mr->lkey);
-		WR_ID(wr->wr_id).offset =
-			(((uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM) -
-			 (uintptr_t)rep);
-		assert(WR_ID(wr->wr_id).id == WR_ID(wr_id).id);
+		elt->buf = rep;
 
 		/* Add SGE to array for repost. */
 		sges[i] = elt->sge;

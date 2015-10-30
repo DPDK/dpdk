@@ -161,6 +161,4 @@ pmd_drv_log_basename(const char *s)
 	\
 	snprintf(name, sizeof(name), __VA_ARGS__)
 
-#define WR_ID(o) (((wr_id_t *)&(o))->data)
-
 #endif /* RTE_PMD_MLX5_UTILS_H_ */
