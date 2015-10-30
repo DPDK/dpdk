@@ -162,6 +162,7 @@ int priv_get_mtu(struct priv *, uint16_t *);
 int priv_set_flags(struct priv *, unsigned int, unsigned int);
 int mlx5_dev_configure(struct rte_eth_dev *);
 void mlx5_dev_infos_get(struct rte_eth_dev *, struct rte_eth_dev_info *);
+int mlx5_dev_set_mtu(struct rte_eth_dev *, uint16_t);
 int mlx5_ibv_device_to_pci_addr(const struct ibv_device *,
 				struct rte_pci_addr *);
 

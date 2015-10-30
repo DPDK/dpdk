@@ -140,6 +140,7 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.tx_queue_release = mlx5_tx_queue_release,
 	.mac_addr_remove = mlx5_mac_addr_remove,
 	.mac_addr_add = mlx5_mac_addr_add,
+	.mtu_set = mlx5_dev_set_mtu,
 };
 
 static struct {

@@ -347,6 +347,23 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
 }
 
 /**
+ * Set device MTU.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param mtu
+ *   MTU value to set.
+ *
+ * @return
+ *   0 on success, -1 on failure and errno is set.
+ */
+static int
+priv_set_mtu(struct priv *priv, uint16_t mtu)
+{
+	return priv_set_sysfs_ulong(priv, "mtu", mtu);
+}
+
+/**
  * Set device flags.
  *
  * @param priv
@@ -515,6 +532,91 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	priv_unlock(priv);
+}
+
+/**
+ * DPDK callback to change the MTU.
+ *
+ * Setting the MTU affects hardware MRU (packets larger than the MTU cannot be
+ * received). Use this as a hint to enable/disable scattered packets support
+ * and improve performance when not needed.
+ * Since failure is not an option, reconfiguring queues on the fly is not
+ * recommended.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param in_mtu
+ *   New MTU.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct priv *priv = dev->data->dev_private;
+	int ret = 0;
+	unsigned int i;
+	uint16_t (*rx_func)(void *, struct rte_mbuf **, uint16_t) =
+		mlx5_rx_burst;
+
+	priv_lock(priv);
+	/* Set kernel interface MTU first. */
+	if (priv_set_mtu(priv, mtu)) {
+		ret = errno;
+		WARN("cannot set port %u MTU to %u: %s", priv->port, mtu,
+		     strerror(ret));
+		goto out;
+	} else
+		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
+	priv->mtu = mtu;
+	/* Temporarily replace RX handler with a fake one, assuming it has not
+	 * been copied elsewhere. */
+	dev->rx_pkt_burst = removed_rx_burst;
+	/* Make sure everyone has left mlx5_rx_burst() and uses
+	 * removed_rx_burst() instead. */
+	rte_wmb();
+	usleep(1000);
+	/* Reconfigure each RX queue. */
+	for (i = 0; (i != priv->rxqs_n); ++i) {
+		struct rxq *rxq = (*priv->rxqs)[i];
+		unsigned int max_frame_len;
+		int sp;
+
+		if (rxq == NULL)
+			continue;
+		/* Calculate new maximum frame length according to MTU and
+		 * toggle scattered support (sp) if necessary. */
+		max_frame_len = (priv->mtu + ETHER_HDR_LEN +
+				 (ETHER_MAX_VLAN_FRAME_LEN - ETHER_MAX_LEN));
+		sp = (max_frame_len > (rxq->mb_len - RTE_PKTMBUF_HEADROOM));
+		/* Provide new values to rxq_setup(). */
+		dev->data->dev_conf.rxmode.jumbo_frame = sp;
+		dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_len;
+		ret = rxq_rehash(dev, rxq);
+		if (ret) {
+			/* Force SP RX if that queue requires it and abort. */
+			if (rxq->sp)
+				rx_func = mlx5_rx_burst_sp;
+			break;
+		}
+		/* Reenable non-RSS queue attributes. No need to check
+		 * for errors at this stage. */
+		if (!priv->rss) {
+			if (priv->started)
+				rxq_mac_addrs_add(rxq);
+		}
+		/* Scattered burst function takes priority. */
+		if (rxq->sp)
+			rx_func = mlx5_rx_burst_sp;
+	}
+	/* Burst functions can now be called again. */
+	rte_wmb();
+	dev->rx_pkt_burst = rx_func;
+out:
+	priv_unlock(priv);
+	assert(ret >= 0);
+	return -ret;
 }
 
 /**

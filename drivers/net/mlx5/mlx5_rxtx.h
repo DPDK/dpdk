@@ -144,6 +144,7 @@ struct txq {
 /* mlx5_rxq.c */
 
 void rxq_cleanup(struct rxq *);
+int rxq_rehash(struct rte_eth_dev *, struct rxq *);
 int rxq_setup(struct rte_eth_dev *, struct rxq *, uint16_t, unsigned int,
 	      const struct rte_eth_rxconf *, struct rte_mempool *);
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,

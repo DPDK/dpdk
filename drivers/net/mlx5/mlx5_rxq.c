@@ -526,6 +526,184 @@ rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 #endif /* RSS_SUPPORT */
 
 /**
+ * Reconfigure a RX queue with new parameters.
+ *
+ * rxq_rehash() does not allocate mbufs, which, if not done from the right
+ * thread (such as a control thread), may corrupt the pool.
+ * In case of failure, the queue is left untouched.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rxq
+ *   RX queue pointer.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
+{
+	struct priv *priv = rxq->priv;
+	struct rxq tmpl = *rxq;
+	unsigned int mbuf_n;
+	unsigned int desc_n;
+	struct rte_mbuf **pool;
+	unsigned int i, k;
+	struct ibv_exp_qp_attr mod;
+	struct ibv_recv_wr *bad_wr;
+	int err;
+	int parent = (rxq == &priv->rxq_parent);
+
+	if (parent) {
+		ERROR("%p: cannot rehash parent queue %p",
+		      (void *)dev, (void *)rxq);
+		return EINVAL;
+	}
+	DEBUG("%p: rehashing queue %p", (void *)dev, (void *)rxq);
+	/* Number of descriptors and mbufs currently allocated. */
+	desc_n = (tmpl.elts_n * (tmpl.sp ? MLX5_PMD_SGE_WR_N : 1));
+	mbuf_n = desc_n;
+	/* Enable scattered packets support for this queue if necessary. */
+	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
+	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
+	     (tmpl.mb_len - RTE_PKTMBUF_HEADROOM))) {
+		tmpl.sp = 1;
+		desc_n /= MLX5_PMD_SGE_WR_N;
+	} else
+		tmpl.sp = 0;
+	DEBUG("%p: %s scattered packets support (%u WRs)",
+	      (void *)dev, (tmpl.sp ? "enabling" : "disabling"), desc_n);
+	/* If scatter mode is the same as before, nothing to do. */
+	if (tmpl.sp == rxq->sp) {
+		DEBUG("%p: nothing to do", (void *)dev);
+		return 0;
+	}
+	/* Remove attached flows if RSS is disabled (no parent queue). */
+	if (!priv->rss) {
+		rxq_mac_addrs_del(&tmpl);
+		/* Update original queue in case of failure. */
+		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
+	}
+	/* From now on, any failure will render the queue unusable.
+	 * Reinitialize QP. */
+	mod = (struct ibv_exp_qp_attr){ .qp_state = IBV_QPS_RESET };
+	err = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
+	if (err) {
+		ERROR("%p: cannot reset QP: %s", (void *)dev, strerror(err));
+		assert(err > 0);
+		return err;
+	}
+	err = ibv_resize_cq(tmpl.cq, desc_n);
+	if (err) {
+		ERROR("%p: cannot resize CQ: %s", (void *)dev, strerror(err));
+		assert(err > 0);
+		return err;
+	}
+	mod = (struct ibv_exp_qp_attr){
+		/* Move the QP to this state. */
+		.qp_state = IBV_QPS_INIT,
+		/* Primary port number. */
+		.port_num = priv->port
+	};
+	err = ibv_exp_modify_qp(tmpl.qp, &mod,
+				(IBV_EXP_QP_STATE |
+#ifdef RSS_SUPPORT
+				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
+#endif /* RSS_SUPPORT */
+				 IBV_EXP_QP_PORT));
+	if (err) {
+		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
+		      (void *)dev, strerror(err));
+		assert(err > 0);
+		return err;
+	};
+	/* Reconfigure flows. Do not care for errors. */
+	if (!priv->rss) {
+		if (priv->started)
+			rxq_mac_addrs_add(&tmpl);
+		/* Update original queue in case of failure. */
+		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
+	}
+	/* Allocate pool. */
+	pool = rte_malloc(__func__, (mbuf_n * sizeof(*pool)), 0);
+	if (pool == NULL) {
+		ERROR("%p: cannot allocate memory", (void *)dev);
+		return ENOBUFS;
+	}
+	/* Snatch mbufs from original queue. */
+	k = 0;
+	if (rxq->sp) {
+		struct rxq_elt_sp (*elts)[rxq->elts_n] = rxq->elts.sp;
+
+		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
+			struct rxq_elt_sp *elt = &(*elts)[i];
+			unsigned int j;
+
+			for (j = 0; (j != RTE_DIM(elt->bufs)); ++j) {
+				assert(elt->bufs[j] != NULL);
+				pool[k++] = elt->bufs[j];
+			}
+		}
+	} else {
+		struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts.no_sp;
+
+		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
+			struct rxq_elt *elt = &(*elts)[i];
+			struct rte_mbuf *buf = (void *)
+				((uintptr_t)elt->sge.addr -
+				 WR_ID(elt->wr.wr_id).offset);
+
+			assert(WR_ID(elt->wr.wr_id).id == i);
+			pool[k++] = buf;
+		}
+	}
+	assert(k == mbuf_n);
+	tmpl.elts_n = 0;
+	tmpl.elts.sp = NULL;
+	assert((void *)&tmpl.elts.sp == (void *)&tmpl.elts.no_sp);
+	err = ((tmpl.sp) ?
+	       rxq_alloc_elts_sp(&tmpl, desc_n, pool) :
+	       rxq_alloc_elts(&tmpl, desc_n, pool));
+	if (err) {
+		ERROR("%p: cannot reallocate WRs, aborting", (void *)dev);
+		rte_free(pool);
+		assert(err > 0);
+		return err;
+	}
+	assert(tmpl.elts_n == desc_n);
+	assert(tmpl.elts.sp != NULL);
+	rte_free(pool);
+	/* Clean up original data. */
+	rxq->elts_n = 0;
+	rte_free(rxq->elts.sp);
+	rxq->elts.sp = NULL;
+	/* Post WRs. */
+	err = ibv_post_recv(tmpl.qp,
+			    (tmpl.sp ?
+			     &(*tmpl.elts.sp)[0].wr :
+			     &(*tmpl.elts.no_sp)[0].wr),
+			    &bad_wr);
+	if (err) {
+		ERROR("%p: ibv_post_recv() failed for WR %p: %s",
+		      (void *)dev,
+		      (void *)bad_wr,
+		      strerror(err));
+		goto skip_rtr;
+	}
+	mod = (struct ibv_exp_qp_attr){
+		.qp_state = IBV_QPS_RTR
+	};
+	err = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
+	if (err)
+		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
+		      (void *)dev, strerror(err));
+skip_rtr:
+	*rxq = tmpl;
+	assert(err >= 0);
+	return err;
+}
+
+/**
  * Configure a RX queue.
  *
  * @param dev
