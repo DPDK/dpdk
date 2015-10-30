@@ -209,11 +209,14 @@ struct fifo {
 	uint16_t *endp;
 };
 
+struct fm10k_txq_ops;
+
 struct fm10k_tx_queue {
 	struct rte_mbuf **sw_ring;
 	struct fm10k_tx_desc *hw_ring;
 	uint64_t hw_ring_phys_addr;
 	struct fifo rs_tracker;
+	const struct fm10k_txq_ops *ops; /* txq ops */
 	uint16_t last_free;
 	uint16_t next_free;
 	uint16_t nb_free;
@@ -228,6 +231,11 @@ struct fm10k_tx_queue {
 	uint8_t port_id;
 	uint8_t tx_deferred_start; /** < don't start this queue in dev start. */
 	uint16_t queue_id;
+};
+
+struct fm10k_txq_ops {
+	void (*release_mbufs)(struct fm10k_tx_queue *txq);
+	void (*reset)(struct fm10k_tx_queue *txq);
 };
 
 #define MBUF_DMA_ADDR(mb) \
@@ -343,4 +351,5 @@ uint16_t fm10k_recv_scattered_pkts_vec(void *, struct rte_mbuf **,
 					uint16_t);
 uint16_t fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
+void fm10k_txq_vec_setup(struct fm10k_tx_queue *txq);
 #endif

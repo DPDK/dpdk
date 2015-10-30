@@ -44,6 +44,11 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
+static void
+fm10k_tx_queue_release_mbufs_vec(struct fm10k_tx_queue *txq);
+static void
+fm10k_reset_tx_queue(struct fm10k_tx_queue *txq);
+
 /* Handling the offload flags (olflags) field takes computation
  * time when receiving packets. Therefore we provide a flag to disable
  * the processing of the olflags field when they are not needed. This
@@ -628,6 +633,17 @@ fm10k_recv_scattered_pkts_vec(void *rx_queue,
 		&split_flags[i]);
 }
 
+static const struct fm10k_txq_ops vec_txq_ops = {
+	.release_mbufs = fm10k_tx_queue_release_mbufs_vec,
+	.reset = fm10k_reset_tx_queue,
+};
+
+void __attribute__((cold))
+fm10k_txq_vec_setup(struct fm10k_tx_queue *txq)
+{
+	txq->ops = &vec_txq_ops;
+}
+
 static inline void
 vtx1(volatile struct fm10k_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)
@@ -776,4 +792,56 @@ fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	FM10K_PCI_REG_WRITE(txq->tail_ptr, txq->next_free);
 
 	return nb_pkts;
+}
+
+static void __attribute__((cold))
+fm10k_tx_queue_release_mbufs_vec(struct fm10k_tx_queue *txq)
+{
+	unsigned i;
+	const uint16_t max_desc = (uint16_t)(txq->nb_desc - 1);
+
+	if (txq->sw_ring == NULL || txq->nb_free == max_desc)
+		return;
+
+	/* release the used mbufs in sw_ring */
+	for (i = txq->next_dd - (txq->rs_thresh - 1);
+	     i != txq->next_free;
+	     i = (i + 1) & max_desc)
+		rte_pktmbuf_free_seg(txq->sw_ring[i]);
+
+	txq->nb_free = max_desc;
+
+	/* reset tx_entry */
+	for (i = 0; i < txq->nb_desc; i++)
+		txq->sw_ring[i] = NULL;
+
+	rte_free(txq->sw_ring);
+	txq->sw_ring = NULL;
+}
+
+static void __attribute__((cold))
+fm10k_reset_tx_queue(struct fm10k_tx_queue *txq)
+{
+	static const struct fm10k_tx_desc zeroed_desc = {0};
+	struct rte_mbuf **txe = txq->sw_ring;
+	uint16_t i;
+
+	/* Zero out HW ring memory */
+	for (i = 0; i < txq->nb_desc; i++)
+		txq->hw_ring[i] = zeroed_desc;
+
+	/* Initialize SW ring entries */
+	for (i = 0; i < txq->nb_desc; i++)
+		txe[i] = NULL;
+
+	txq->next_dd = (uint16_t)(txq->rs_thresh - 1);
+	txq->next_rs = (uint16_t)(txq->rs_thresh - 1);
+
+	txq->next_free = 0;
+	txq->nb_used = 0;
+	/* Always allow 1 descriptor to be un-allocated to avoid
+	 * a H/W race condition
+	 */
+	txq->nb_free = (uint16_t)(txq->nb_desc - 1);
+	FM10K_PCI_REG_WRITE(txq->tail_ptr, 0);
 }

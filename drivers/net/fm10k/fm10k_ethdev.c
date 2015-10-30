@@ -327,6 +327,11 @@ fm10k_check_mq_mode(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static const struct fm10k_txq_ops def_txq_ops = {
+	.release_mbufs = tx_queue_free,
+	.reset = tx_queue_reset,
+};
+
 static int
 fm10k_dev_configure(struct rte_eth_dev *dev)
 {
@@ -721,7 +726,9 @@ fm10k_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	PMD_INIT_FUNC_TRACE();
 
 	if (tx_queue_id < dev->data->nb_tx_queues) {
-		tx_queue_reset(dev->data->tx_queues[tx_queue_id]);
+		struct fm10k_tx_queue *q = dev->data->tx_queues[tx_queue_id];
+
+		q->ops->reset(q);
 
 		/* reset head and tail pointers */
 		FM10K_WRITE_REG(hw, FM10K_TDH(tx_queue_id), 0);
@@ -997,8 +1004,11 @@ fm10k_dev_queue_release(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dev->data->tx_queues) {
-		for (i = 0; i < dev->data->nb_tx_queues; i++)
-			fm10k_tx_queue_release(dev->data->tx_queues[i]);
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			struct fm10k_tx_queue *txq = dev->data->tx_queues[i];
+
+			txq->ops->release_mbufs(txq);
+		}
 	}
 
 	if (dev->data->rx_queues) {
@@ -1670,7 +1680,9 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	 * different socket than was previously used.
 	 */
 	if (dev->data->tx_queues[queue_id] != NULL) {
-		tx_queue_free(dev->data->tx_queues[queue_id]);
+		struct fm10k_tx_queue *txq = dev->data->tx_queues[queue_id];
+
+		txq->ops->release_mbufs(txq);
 		dev->data->tx_queues[queue_id] = NULL;
 	}
 
@@ -1686,6 +1698,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->nb_desc = nb_desc;
 	q->port_id = dev->data->port_id;
 	q->queue_id = queue_id;
+	q->ops = &def_txq_ops;
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_TDT(queue_id)];
 	if (handle_txconf(q, conf))
@@ -1744,9 +1757,10 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 static void
 fm10k_tx_queue_release(void *queue)
 {
+	struct fm10k_tx_queue *q = queue;
 	PMD_INIT_FUNC_TRACE();
 
-	tx_queue_free(queue);
+	q->ops->release_mbufs(q);
 }
 
 static int
