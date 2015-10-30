@@ -71,8 +71,8 @@ struct pmd_internals {
 	unsigned nb_rx_queues;
 	unsigned nb_tx_queues;
 
-	struct null_queue rx_null_queues[1];
-	struct null_queue tx_null_queues[1];
+	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
+	struct null_queue tx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 };
 
 
@@ -178,7 +178,15 @@ eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 }
 
 static int
-eth_dev_configure(struct rte_eth_dev *dev __rte_unused) { return 0; }
+eth_dev_configure(struct rte_eth_dev *dev) {
+	struct pmd_internals *internals;
+
+	internals = dev->data->dev_private;
+	internals->nb_rx_queues = dev->data->nb_rx_queues;
+	internals->nb_tx_queues = dev->data->nb_tx_queues;
+
+	return 0;
+}
 
 static int
 eth_dev_start(struct rte_eth_dev *dev)
@@ -213,10 +221,11 @@ eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	if ((dev == NULL) || (mb_pool == NULL))
 		return -EINVAL;
 
-	if (rx_queue_id != 0)
+	internals = dev->data->dev_private;
+
+	if (rx_queue_id >= internals->nb_rx_queues)
 		return -ENODEV;
 
-	internals = dev->data->dev_private;
 	packet_size = internals->packet_size;
 
 	internals->rx_null_queues[rx_queue_id].mb_pool = mb_pool;
@@ -246,10 +255,11 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	if (dev == NULL)
 		return -EINVAL;
 
-	if (tx_queue_id != 0)
+	internals = dev->data->dev_private;
+
+	if (tx_queue_id >= internals->nb_tx_queues)
 		return -ENODEV;
 
-	internals = dev->data->dev_private;
 	packet_size = internals->packet_size;
 
 	dev->data->tx_queues[tx_queue_id] =
@@ -279,8 +289,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->driver_name = drivername;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)-1;
-	dev_info->max_rx_queues = (uint16_t)internals->nb_rx_queues;
-	dev_info->max_tx_queues = (uint16_t)internals->nb_tx_queues;
+	dev_info->max_rx_queues = RTE_DIM(internals->rx_null_queues);
+	dev_info->max_tx_queues = RTE_DIM(internals->tx_null_queues);
 	dev_info->min_rx_bufsize = 0;
 	dev_info->pci_dev = NULL;
 }
