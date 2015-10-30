@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -60,6 +61,7 @@
 #endif
 
 #include "mlx5.h"
+#include "mlx5_autoconf.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_defs.h"
@@ -600,9 +602,6 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct rxq_elt_sp (*elts)[rxq->elts_n] = rxq->elts.sp;
 	const unsigned int elts_n = rxq->elts_n;
 	unsigned int elts_head = rxq->elts_head;
-	struct ibv_recv_wr head;
-	struct ibv_recv_wr **next = &head.next;
-	struct ibv_recv_wr *bad_wr;
 	unsigned int i;
 	unsigned int pkts_ret = 0;
 	int ret;
@@ -660,9 +659,6 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				/* Increment dropped packets counter. */
 				++rxq->stats.idropped;
 #endif
-				/* Link completed WRs together for repost. */
-				*next = wr;
-				next = &wr->next;
 				goto repost;
 			}
 			ret = wc.byte_len;
@@ -671,9 +667,6 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			break;
 		len = ret;
 		pkt_buf_len = len;
-		/* Link completed WRs together for repost. */
-		*next = wr;
-		next = &wr->next;
 		/*
 		 * Replace spent segments with new ones, concatenate and
 		 * return them as pkt_buf.
@@ -770,26 +763,27 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rxq->stats.ibytes += pkt_buf_len;
 #endif
 repost:
+#ifdef HAVE_EXP_QP_BURST_RECV_SG_LIST
+		ret = rxq->if_qp->recv_sg_list(rxq->qp,
+					       elt->sges,
+					       RTE_DIM(elt->sges));
+#else /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
+		errno = ENOSYS;
+		ret = -1;
+#endif /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
+		if (unlikely(ret)) {
+			/* Inability to repost WRs is fatal. */
+			DEBUG("%p: recv_sg_list(): failed (ret=%d)",
+			      (void *)rxq->priv,
+			      ret);
+			abort();
+		}
 		if (++elts_head >= elts_n)
 			elts_head = 0;
 		continue;
 	}
 	if (unlikely(i == 0))
 		return 0;
-	*next = NULL;
-	/* Repost WRs. */
-#ifdef DEBUG_RECV
-	DEBUG("%p: reposting %d WRs", (void *)rxq, i);
-#endif
-	ret = ibv_post_recv(rxq->qp, head.next, &bad_wr);
-	if (unlikely(ret)) {
-		/* Inability to repost WRs is fatal. */
-		DEBUG("%p: ibv_post_recv(): failed for WR %p: %s",
-		      (void *)rxq->priv,
-		      (void *)bad_wr,
-		      strerror(ret));
-		abort();
-	}
 	rxq->elts_head = elts_head;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	/* Increment packets counter. */

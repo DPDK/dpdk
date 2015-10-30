@@ -119,6 +119,10 @@ mlx5_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
 		HAVE_EXP_QUERY_DEVICE \
 		infiniband/verbs.h \
 		type 'struct ibv_exp_device_attr' $(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_EXP_QP_BURST_RECV_SG_LIST \
+		infiniband/verbs.h \
+		field 'struct ibv_exp_qp_burst_family.recv_sg_list' $(AUTOCONF_OUTPUT)
 
 mlx5.o: mlx5_autoconf.h
 
