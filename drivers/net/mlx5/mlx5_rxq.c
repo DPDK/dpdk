@@ -65,12 +65,13 @@
 #include "mlx5_defs.h"
 
 /* Initialization data for hash RX queues. */
-static const struct hash_rxq_init hash_rxq_init[] = {
+const struct hash_rxq_init hash_rxq_init[] = {
 	[HASH_RXQ_TCPV4] = {
 		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
 				IBV_EXP_RX_HASH_DST_IPV4 |
 				IBV_EXP_RX_HASH_SRC_PORT_TCP |
 				IBV_EXP_RX_HASH_DST_PORT_TCP),
+		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV4_TCP,
 		.flow_priority = 0,
 		.flow_spec.tcp_udp = {
 			.type = IBV_FLOW_SPEC_TCP,
@@ -83,6 +84,7 @@ static const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_EXP_RX_HASH_DST_IPV4 |
 				IBV_EXP_RX_HASH_SRC_PORT_UDP |
 				IBV_EXP_RX_HASH_DST_PORT_UDP),
+		.dpdk_rss_hf = ETH_RSS_NONFRAG_IPV4_UDP,
 		.flow_priority = 0,
 		.flow_spec.tcp_udp = {
 			.type = IBV_FLOW_SPEC_UDP,
@@ -93,6 +95,8 @@ static const struct hash_rxq_init hash_rxq_init[] = {
 	[HASH_RXQ_IPV4] = {
 		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
 				IBV_EXP_RX_HASH_DST_IPV4),
+		.dpdk_rss_hf = (ETH_RSS_IPV4 |
+				ETH_RSS_FRAG_IPV4),
 		.flow_priority = 1,
 		.flow_spec.ipv4 = {
 			.type = IBV_FLOW_SPEC_IPV4,
@@ -102,6 +106,7 @@ static const struct hash_rxq_init hash_rxq_init[] = {
 	},
 	[HASH_RXQ_ETH] = {
 		.hash_fields = 0,
+		.dpdk_rss_hf = 0,
 		.flow_priority = 2,
 		.flow_spec.eth = {
 			.type = IBV_FLOW_SPEC_ETH,
@@ -112,7 +117,7 @@ static const struct hash_rxq_init hash_rxq_init[] = {
 };
 
 /* Number of entries in hash_rxq_init[]. */
-static const unsigned int hash_rxq_init_n = RTE_DIM(hash_rxq_init);
+const unsigned int hash_rxq_init_n = RTE_DIM(hash_rxq_init);
 
 /* Initialization data for hash RX queue indirection tables. */
 static const struct ind_table_init ind_table_init[] = {
@@ -259,16 +264,18 @@ static unsigned int
 priv_make_ind_table_init(struct priv *priv,
 			 struct ind_table_init (*table)[IND_TABLE_INIT_N])
 {
+	uint64_t rss_hf;
 	unsigned int i;
 	unsigned int j;
 	unsigned int table_n = 0;
 	/* Mandatory to receive frames not handled by normal hash RX queues. */
 	unsigned int hash_types_sup = 1 << HASH_RXQ_ETH;
 
+	rss_hf = priv->dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
 	/* Process other protocols only if more than one queue. */
 	if (priv->rxqs_n > 1)
 		for (i = 0; (i != hash_rxq_init_n); ++i)
-			if (hash_rxq_init[i].hash_fields)
+			if (rss_hf & hash_rxq_init[i].dpdk_rss_hf)
 				hash_types_sup |= (1 << i);
 
 	/* Filter out entries whose protocols are not in the set. */
@@ -329,7 +336,6 @@ priv_create_hash_rxqs(struct priv *priv)
 	assert(priv->hash_rxqs_n == 0);
 	assert(priv->pd != NULL);
 	assert(priv->ctx != NULL);
-	assert(priv->rss_conf != NULL);
 	if (priv->rxqs_n == 0)
 		return EINVAL;
 	assert(priv->rxqs != NULL);
@@ -412,10 +418,16 @@ priv_create_hash_rxqs(struct priv *priv)
 		struct hash_rxq *hash_rxq = &(*hash_rxqs)[i];
 		enum hash_rxq_type type =
 			hash_rxq_type_from_n(&ind_table_init[j], k);
+		struct rte_eth_rss_conf *priv_rss_conf =
+			(*priv->rss_conf)[type];
 		struct ibv_exp_rx_hash_conf hash_conf = {
 			.rx_hash_function = IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
-			.rx_hash_key_len = priv->rss_conf->rss_key_len,
-			.rx_hash_key = priv->rss_conf->rss_key,
+			.rx_hash_key_len = (priv_rss_conf ?
+					    priv_rss_conf->rss_key_len :
+					    rss_hash_default_key_len),
+			.rx_hash_key = (priv_rss_conf ?
+					priv_rss_conf->rss_key :
+					rss_hash_default_key),
 			.rx_hash_fields_mask = hash_rxq_init[type].hash_fields,
 			.rwq_ind_tbl = (*ind_tables)[j],
 		};

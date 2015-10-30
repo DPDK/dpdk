@@ -145,6 +145,7 @@ struct flow_attr_spec_eth {
 /* Initialization data for hash RX queue. */
 struct hash_rxq_init {
 	uint64_t hash_fields; /* Fields that participate in the hash. */
+	uint64_t dpdk_rss_hf; /* Matching DPDK RSS hash fields. */
 	unsigned int flow_priority; /* Flow priority to use. */
 	struct ibv_flow_spec flow_spec; /* Flow specification template. */
 	const struct hash_rxq_init *underlayer; /* Pointer to underlayer. */
@@ -211,6 +212,9 @@ struct txq {
 };
 
 /* mlx5_rxq.c */
+
+extern const struct hash_rxq_init hash_rxq_init[];
+extern const unsigned int hash_rxq_init_n;
 
 extern uint8_t rss_hash_default_key[];
 extern const size_t rss_hash_default_key_len;

@@ -113,7 +113,8 @@ struct priv {
 	/* Hash RX QPs feeding the indirection table. */
 	struct hash_rxq (*hash_rxqs)[];
 	unsigned int hash_rxqs_n; /* Hash RX QPs array size. */
-	struct rte_eth_rss_conf *rss_conf; /* RSS configuration. */
+	/* RSS configuration array indexed by hash RX queue type. */
+	struct rte_eth_rss_conf *(*rss_conf)[];
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
@@ -172,7 +173,8 @@ void mlx5_mac_addr_add(struct rte_eth_dev *, struct ether_addr *, uint32_t,
 
 /* mlx5_rss.c */
 
-int rss_hash_rss_conf_new_key(struct priv *, const uint8_t *, unsigned int);
+int rss_hash_rss_conf_new_key(struct priv *, const uint8_t *, unsigned int,
+			      uint64_t);
 int mlx5_rss_hash_update(struct rte_eth_dev *, struct rte_eth_rss_conf *);
 int mlx5_rss_hash_conf_get(struct rte_eth_dev *, struct rte_eth_rss_conf *);
 
