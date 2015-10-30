@@ -64,4 +64,12 @@
 #define MLX5_PMD_TX_MP_CACHE 8
 #endif
 
+/*
+ * If defined, only use software counters. The PMD will never ask the hardware
+ * for these, and many of them won't be available.
+ */
+#ifndef MLX5_PMD_SOFT_COUNTERS
+#define MLX5_PMD_SOFT_COUNTERS 1
+#endif
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

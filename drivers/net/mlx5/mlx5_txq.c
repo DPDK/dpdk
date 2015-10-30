@@ -472,6 +472,7 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (ret)
 		rte_free(txq);
 	else {
+		txq->stats.idx = idx;
 		DEBUG("%p: adding TX queue %p to list",
 		      (void *)dev, (void *)txq);
 		(*priv->txqs)[idx] = txq;

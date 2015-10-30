@@ -993,6 +993,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (ret)
 		rte_free(rxq);
 	else {
+		rxq->stats.idx = idx;
 		DEBUG("%p: adding RX queue %p to list",
 		      (void *)dev, (void *)rxq);
 		(*priv->rxqs)[idx] = rxq;

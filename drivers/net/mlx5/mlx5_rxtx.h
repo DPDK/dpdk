@@ -60,6 +60,25 @@
 #include "mlx5.h"
 #include "mlx5_defs.h"
 
+struct mlx5_rxq_stats {
+	unsigned int idx; /**< Mapping index. */
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	uint64_t ipackets; /**< Total of successfully received packets. */
+	uint64_t ibytes; /**< Total of successfully received bytes. */
+#endif
+	uint64_t idropped; /**< Total of packets dropped when RX ring full. */
+	uint64_t rx_nombuf; /**< Total of RX mbuf allocation failures. */
+};
+
+struct mlx5_txq_stats {
+	unsigned int idx; /**< Mapping index. */
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	uint64_t opackets; /**< Total of successfully sent packets. */
+	uint64_t obytes; /**< Total of successfully sent bytes. */
+#endif
+	uint64_t odropped; /**< Total of packets not sent when TX ring full. */
+};
+
 /* RX element (scattered packets). */
 struct rxq_elt_sp {
 	struct ibv_recv_wr wr; /* Work Request. */
@@ -96,6 +115,7 @@ struct rxq {
 	} elts;
 	unsigned int sp:1; /* Use scattered RX elements. */
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
+	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };
@@ -135,6 +155,7 @@ struct txq {
 	unsigned int elts_comp; /* Number of completion requests. */
 	unsigned int elts_comp_cd; /* Countdown for next completion request. */
 	unsigned int elts_comp_cd_init; /* Initial value for countdown. */
+	struct mlx5_txq_stats stats; /* TX queue counters. */
 	linear_t (*elts_linear)[]; /* Linearized buffers. */
 	struct ibv_mr *mr_linear; /* Memory Region for linearized buffers. */
 	unsigned int socket; /* CPU socket ID for allocations. */

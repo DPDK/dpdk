@@ -177,6 +177,11 @@ int priv_mac_addr_add(struct priv *, unsigned int,
 void mlx5_mac_addr_add(struct rte_eth_dev *, struct ether_addr *, uint32_t,
 		       uint32_t);
 
+/* mlx5_stats.c */
+
+void mlx5_stats_get(struct rte_eth_dev *, struct rte_eth_stats *);
+void mlx5_stats_reset(struct rte_eth_dev *);
+
 /* mlx5_trigger.c */
 
 int mlx5_dev_start(struct rte_eth_dev *);
