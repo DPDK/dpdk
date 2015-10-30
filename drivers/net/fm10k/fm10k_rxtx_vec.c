@@ -521,3 +521,91 @@ fm10k_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	return fm10k_recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
 }
+
+static inline uint16_t
+fm10k_reassemble_packets(struct fm10k_rx_queue *rxq,
+		struct rte_mbuf **rx_bufs,
+		uint16_t nb_bufs, uint8_t *split_flags)
+{
+	struct rte_mbuf *pkts[RTE_FM10K_MAX_RX_BURST]; /*finished pkts*/
+	struct rte_mbuf *start = rxq->pkt_first_seg;
+	struct rte_mbuf *end =  rxq->pkt_last_seg;
+	unsigned pkt_idx, buf_idx;
+
+	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
+		if (end != NULL) {
+			/* processing a split packet */
+			end->next = rx_bufs[buf_idx];
+			start->nb_segs++;
+			start->pkt_len += rx_bufs[buf_idx]->data_len;
+			end = end->next;
+
+			if (!split_flags[buf_idx]) {
+				/* it's the last packet of the set */
+				start->hash = end->hash;
+				start->ol_flags = end->ol_flags;
+				pkts[pkt_idx++] = start;
+				start = end = NULL;
+			}
+		} else {
+			/* not processing a split packet */
+			if (!split_flags[buf_idx]) {
+				/* not a split packet, save and skip */
+				pkts[pkt_idx++] = rx_bufs[buf_idx];
+				continue;
+			}
+			end = start = rx_bufs[buf_idx];
+		}
+	}
+
+	/* save the partial packet for next time */
+	rxq->pkt_first_seg = start;
+	rxq->pkt_last_seg = end;
+	memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
+	return pkt_idx;
+}
+
+/*
+ * vPMD receive routine that reassembles scattered packets
+ *
+ * Notice:
+ * - don't support ol_flags for rss and csum err
+ * - nb_pkts > RTE_FM10K_MAX_RX_BURST, only scan RTE_FM10K_MAX_RX_BURST
+ *   numbers of DD bit
+ */
+uint16_t
+fm10k_recv_scattered_pkts_vec(void *rx_queue,
+				struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts)
+{
+	struct fm10k_rx_queue *rxq = rx_queue;
+	uint8_t split_flags[RTE_FM10K_MAX_RX_BURST] = {0};
+	unsigned i = 0;
+
+	/* Split_flags only can support max of RTE_FM10K_MAX_RX_BURST */
+	nb_pkts = RTE_MIN(nb_pkts, RTE_FM10K_MAX_RX_BURST);
+	/* get some new buffers */
+	uint16_t nb_bufs = fm10k_recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
+			split_flags);
+	if (nb_bufs == 0)
+		return 0;
+
+	/* happy day case, full burst + no packets to be joined */
+	const uint64_t *split_fl64 = (uint64_t *)split_flags;
+
+	if (rxq->pkt_first_seg == NULL &&
+			split_fl64[0] == 0 && split_fl64[1] == 0 &&
+			split_fl64[2] == 0 && split_fl64[3] == 0)
+		return nb_bufs;
+
+	/* reassemble any packets that need reassembly*/
+	if (rxq->pkt_first_seg == NULL) {
+		/* find the first split flag, and only reassemble then*/
+		while (i < nb_bufs && !split_flags[i])
+			i++;
+		if (i == nb_bufs)
+			return nb_bufs;
+	}
+	return i + fm10k_reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
+		&split_flags[i]);
+}
