@@ -44,6 +44,133 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
+/* Handling the offload flags (olflags) field takes computation
+ * time when receiving packets. Therefore we provide a flag to disable
+ * the processing of the olflags field when they are not needed. This
+ * gives improved performance, at the cost of losing the offload info
+ * in the received packet
+ */
+#ifdef RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE
+
+/* Vlan present flag shift */
+#define VP_SHIFT     (2)
+/* L3 type shift */
+#define L3TYPE_SHIFT     (4)
+/* L4 type shift */
+#define L4TYPE_SHIFT     (7)
+
+static inline void
+fm10k_desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
+{
+	__m128i ptype0, ptype1, vtag0, vtag1;
+	union {
+		uint16_t e[4];
+		uint64_t dword;
+	} vol;
+
+	const __m128i pkttype_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT,
+			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT);
+
+	/* mask everything except rss type */
+	const __m128i rsstype_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			0x000F, 0x000F, 0x000F, 0x000F);
+
+	/* map rss type to rss hash flag */
+	const __m128i rss_flags = _mm_set_epi8(0, 0, 0, 0,
+			0, 0, 0, PKT_RX_RSS_HASH,
+			PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH, 0,
+			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, 0);
+
+	ptype0 = _mm_unpacklo_epi16(descs[0], descs[1]);
+	ptype1 = _mm_unpacklo_epi16(descs[2], descs[3]);
+	vtag0 = _mm_unpackhi_epi16(descs[0], descs[1]);
+	vtag1 = _mm_unpackhi_epi16(descs[2], descs[3]);
+
+	ptype0 = _mm_unpacklo_epi32(ptype0, ptype1);
+	ptype0 = _mm_and_si128(ptype0, rsstype_msk);
+	ptype0 = _mm_shuffle_epi8(rss_flags, ptype0);
+
+	vtag1 = _mm_unpacklo_epi32(vtag0, vtag1);
+	vtag1 = _mm_srli_epi16(vtag1, VP_SHIFT);
+	vtag1 = _mm_and_si128(vtag1, pkttype_msk);
+
+	vtag1 = _mm_or_si128(ptype0, vtag1);
+	vol.dword = _mm_cvtsi128_si64(vtag1);
+
+	rx_pkts[0]->ol_flags = vol.e[0];
+	rx_pkts[1]->ol_flags = vol.e[1];
+	rx_pkts[2]->ol_flags = vol.e[2];
+	rx_pkts[3]->ol_flags = vol.e[3];
+}
+
+static inline void
+fm10k_desc_to_pktype_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
+{
+	__m128i l3l4type0, l3l4type1, l3type, l4type;
+	union {
+		uint16_t e[4];
+		uint64_t dword;
+	} vol;
+
+	/* L3 pkt type mask  Bit4 to Bit6 */
+	const __m128i l3type_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			0x0070, 0x0070, 0x0070, 0x0070);
+
+	/* L4 pkt type mask  Bit7 to Bit9 */
+	const __m128i l4type_msk = _mm_set_epi16(
+			0x0000, 0x0000, 0x0000, 0x0000,
+			0x0380, 0x0380, 0x0380, 0x0380);
+
+	/* convert RRC l3 type to mbuf format */
+	const __m128i l3type_flags = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, RTE_PTYPE_L3_IPV6_EXT,
+			RTE_PTYPE_L3_IPV6, RTE_PTYPE_L3_IPV4_EXT,
+			RTE_PTYPE_L3_IPV4, 0);
+
+	/* Convert RRC l4 type to mbuf format l4type_flags shift-left 8 bits
+	 * to fill into8 bits length.
+	 */
+	const __m128i l4type_flags = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0,
+			RTE_PTYPE_TUNNEL_GENEVE >> 8,
+			RTE_PTYPE_TUNNEL_NVGRE >> 8,
+			RTE_PTYPE_TUNNEL_VXLAN >> 8,
+			RTE_PTYPE_TUNNEL_GRE >> 8,
+			RTE_PTYPE_L4_UDP >> 8,
+			RTE_PTYPE_L4_TCP >> 8,
+			0);
+
+	l3l4type0 = _mm_unpacklo_epi16(descs[0], descs[1]);
+	l3l4type1 = _mm_unpacklo_epi16(descs[2], descs[3]);
+	l3l4type0 = _mm_unpacklo_epi32(l3l4type0, l3l4type1);
+
+	l3type = _mm_and_si128(l3l4type0, l3type_msk);
+	l4type = _mm_and_si128(l3l4type0, l4type_msk);
+
+	l3type = _mm_srli_epi16(l3type, L3TYPE_SHIFT);
+	l4type = _mm_srli_epi16(l4type, L4TYPE_SHIFT);
+
+	l3type = _mm_shuffle_epi8(l3type_flags, l3type);
+	/* l4type_flags shift-left for 8 bits, need shift-right back */
+	l4type = _mm_shuffle_epi8(l4type_flags, l4type);
+
+	l4type = _mm_slli_epi16(l4type, 8);
+	l3l4type0 = _mm_or_si128(l3type, l4type);
+	vol.dword = _mm_cvtsi128_si64(l3l4type0);
+
+	rx_pkts[0]->packet_type = vol.e[0];
+	rx_pkts[1]->packet_type = vol.e[1];
+	rx_pkts[2]->packet_type = vol.e[2];
+	rx_pkts[3]->packet_type = vol.e[3];
+}
+#else
+#define fm10k_desc_to_olflags_v(desc, rx_pkts) do {} while (0)
+#define fm10k_desc_to_pktype_v(desc, rx_pkts) do {} while (0)
+#endif
+
 int __attribute__((cold))
 fm10k_rxq_vec_setup(struct fm10k_rx_queue *rxq)
 {
@@ -63,4 +190,303 @@ fm10k_rxq_vec_setup(struct fm10k_rx_queue *rxq)
 	p = (uintptr_t)&mb_def.rearm_data;
 	rxq->mbuf_initializer = *(uint64_t *)p;
 	return 0;
+}
+
+static inline void
+fm10k_rxq_rearm(struct fm10k_rx_queue *rxq)
+{
+	int i;
+	uint16_t rx_id;
+	volatile union fm10k_rx_desc *rxdp;
+	struct rte_mbuf **mb_alloc = &rxq->sw_ring[rxq->rxrearm_start];
+	struct rte_mbuf *mb0, *mb1;
+	__m128i head_off = _mm_set_epi64x(
+			RTE_PKTMBUF_HEADROOM + FM10K_RX_DATABUF_ALIGN - 1,
+			RTE_PKTMBUF_HEADROOM + FM10K_RX_DATABUF_ALIGN - 1);
+	__m128i dma_addr0, dma_addr1;
+	/* Rx buffer need to be aligned with 512 byte */
+	const __m128i hba_msk = _mm_set_epi64x(0,
+				UINT64_MAX - FM10K_RX_DATABUF_ALIGN + 1);
+
+	rxdp = rxq->hw_ring + rxq->rxrearm_start;
+
+	/* Pull 'n' more MBUFs into the software ring */
+	if (rte_mempool_get_bulk(rxq->mp,
+				 (void *)mb_alloc,
+				 RTE_FM10K_RXQ_REARM_THRESH) < 0) {
+		dma_addr0 = _mm_setzero_si128();
+		/* Clean up all the HW/SW ring content */
+		for (i = 0; i < RTE_FM10K_RXQ_REARM_THRESH; i++) {
+			mb_alloc[i] = &rxq->fake_mbuf;
+			_mm_store_si128((__m128i *)&rxdp[i].q,
+						dma_addr0);
+		}
+
+		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
+			RTE_FM10K_RXQ_REARM_THRESH;
+		return;
+	}
+
+	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
+	for (i = 0; i < RTE_FM10K_RXQ_REARM_THRESH; i += 2, mb_alloc += 2) {
+		__m128i vaddr0, vaddr1;
+		uintptr_t p0, p1;
+
+		mb0 = mb_alloc[0];
+		mb1 = mb_alloc[1];
+
+		/* Flush mbuf with pkt template.
+		 * Data to be rearmed is 6 bytes long.
+		 * Though, RX will overwrite ol_flags that are coming next
+		 * anyway. So overwrite whole 8 bytes with one load:
+		 * 6 bytes of rearm_data plus first 2 bytes of ol_flags.
+		 */
+		p0 = (uintptr_t)&mb0->rearm_data;
+		*(uint64_t *)p0 = rxq->mbuf_initializer;
+		p1 = (uintptr_t)&mb1->rearm_data;
+		*(uint64_t *)p1 = rxq->mbuf_initializer;
+
+		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
+		vaddr0 = _mm_loadu_si128((__m128i *)&mb0->buf_addr);
+		vaddr1 = _mm_loadu_si128((__m128i *)&mb1->buf_addr);
+
+		/* convert pa to dma_addr hdr/data */
+		dma_addr0 = _mm_unpackhi_epi64(vaddr0, vaddr0);
+		dma_addr1 = _mm_unpackhi_epi64(vaddr1, vaddr1);
+
+		/* add headroom to pa values */
+		dma_addr0 = _mm_add_epi64(dma_addr0, head_off);
+		dma_addr1 = _mm_add_epi64(dma_addr1, head_off);
+
+		/* Do 512 byte alignment to satisfy HW requirement, in the
+		 * meanwhile, set Header Buffer Address to zero.
+		 */
+		dma_addr0 = _mm_and_si128(dma_addr0, hba_msk);
+		dma_addr1 = _mm_and_si128(dma_addr1, hba_msk);
+
+		/* flush desc with pa dma_addr */
+		_mm_store_si128((__m128i *)&rxdp++->q, dma_addr0);
+		_mm_store_si128((__m128i *)&rxdp++->q, dma_addr1);
+
+		/* enforce 512B alignment on default Rx virtual addresses */
+		mb0->data_off = (uint16_t)(RTE_PTR_ALIGN((char *)mb0->buf_addr
+				+ RTE_PKTMBUF_HEADROOM, FM10K_RX_DATABUF_ALIGN)
+				- (char *)mb0->buf_addr);
+		mb1->data_off = (uint16_t)(RTE_PTR_ALIGN((char *)mb1->buf_addr
+				+ RTE_PKTMBUF_HEADROOM, FM10K_RX_DATABUF_ALIGN)
+				- (char *)mb1->buf_addr);
+	}
+
+	rxq->rxrearm_start += RTE_FM10K_RXQ_REARM_THRESH;
+	if (rxq->rxrearm_start >= rxq->nb_desc)
+		rxq->rxrearm_start = 0;
+
+	rxq->rxrearm_nb -= RTE_FM10K_RXQ_REARM_THRESH;
+
+	rx_id = (uint16_t)((rxq->rxrearm_start == 0) ?
+			(rxq->nb_desc - 1) : (rxq->rxrearm_start - 1));
+
+	/* Update the tail pointer on the NIC */
+	FM10K_PCI_REG_WRITE(rxq->tail_ptr, rx_id);
+}
+
+static inline uint16_t
+fm10k_recv_raw_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts, uint8_t *split_packet)
+{
+	volatile union fm10k_rx_desc *rxdp;
+	struct rte_mbuf **mbufp;
+	uint16_t nb_pkts_recd;
+	int pos;
+	struct fm10k_rx_queue *rxq = rx_queue;
+	uint64_t var;
+	__m128i shuf_msk;
+	__m128i dd_check, eop_check;
+	uint16_t next_dd;
+
+	next_dd = rxq->next_dd;
+
+	/* Just the act of getting into the function from the application is
+	 * going to cost about 7 cycles
+	 */
+	rxdp = rxq->hw_ring + next_dd;
+
+	_mm_prefetch((const void *)rxdp, _MM_HINT_T0);
+
+	/* See if we need to rearm the RX queue - gives the prefetch a bit
+	 * of time to act
+	 */
+	if (rxq->rxrearm_nb > RTE_FM10K_RXQ_REARM_THRESH)
+		fm10k_rxq_rearm(rxq);
+
+	/* Before we start moving massive data around, check to see if
+	 * there is actually a packet available
+	 */
+	if (!(rxdp->d.staterr & FM10K_RXD_STATUS_DD))
+		return 0;
+
+	/* Vecotr RX will process 4 packets at a time, strip the unaligned
+	 * tails in case it's not multiple of 4.
+	 */
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_FM10K_DESCS_PER_LOOP);
+
+	/* 4 packets DD mask */
+	dd_check = _mm_set_epi64x(0x0000000100000001LL, 0x0000000100000001LL);
+
+	/* 4 packets EOP mask */
+	eop_check = _mm_set_epi64x(0x0000000200000002LL, 0x0000000200000002LL);
+
+	/* mask to shuffle from desc. to mbuf */
+	shuf_msk = _mm_set_epi8(
+		7, 6, 5, 4,  /* octet 4~7, 32bits rss */
+		15, 14,      /* octet 14~15, low 16 bits vlan_macip */
+		13, 12,      /* octet 12~13, 16 bits data_len */
+		0xFF, 0xFF,  /* skip high 16 bits pkt_len, zero out */
+		13, 12,      /* octet 12~13, low 16 bits pkt_len */
+		0xFF, 0xFF,  /* skip high 16 bits pkt_type */
+		0xFF, 0xFF   /* Skip pkt_type field in shuffle operation */
+		);
+
+	/* Cache is empty -> need to scan the buffer rings, but first move
+	 * the next 'n' mbufs into the cache
+	 */
+	mbufp = &rxq->sw_ring[next_dd];
+
+	/* A. load 4 packet in one loop
+	 * [A*. mask out 4 unused dirty field in desc]
+	 * B. copy 4 mbuf point from swring to rx_pkts
+	 * C. calc the number of DD bits among the 4 packets
+	 * [C*. extract the end-of-packet bit, if requested]
+	 * D. fill info. from desc to mbuf
+	 */
+	for (pos = 0, nb_pkts_recd = 0; pos < nb_pkts;
+			pos += RTE_FM10K_DESCS_PER_LOOP,
+			rxdp += RTE_FM10K_DESCS_PER_LOOP) {
+		__m128i descs0[RTE_FM10K_DESCS_PER_LOOP];
+		__m128i pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
+		__m128i zero, staterr, sterr_tmp1, sterr_tmp2;
+		__m128i mbp1, mbp2; /* two mbuf pointer in one XMM reg. */
+
+		/* B.1 load 1 mbuf point */
+		mbp1 = _mm_loadu_si128((__m128i *)&mbufp[pos]);
+
+		/* Read desc statuses backwards to avoid race condition */
+		/* A.1 load 4 pkts desc */
+		descs0[3] = _mm_loadu_si128((__m128i *)(rxdp + 3));
+
+		/* B.2 copy 2 mbuf point into rx_pkts  */
+		_mm_storeu_si128((__m128i *)&rx_pkts[pos], mbp1);
+
+		/* B.1 load 1 mbuf point */
+		mbp2 = _mm_loadu_si128((__m128i *)&mbufp[pos+2]);
+
+		descs0[2] = _mm_loadu_si128((__m128i *)(rxdp + 2));
+		/* B.1 load 2 mbuf point */
+		descs0[1] = _mm_loadu_si128((__m128i *)(rxdp + 1));
+		descs0[0] = _mm_loadu_si128((__m128i *)(rxdp));
+
+		/* B.2 copy 2 mbuf point into rx_pkts  */
+		_mm_storeu_si128((__m128i *)&rx_pkts[pos+2], mbp2);
+
+		/* avoid compiler reorder optimization */
+		rte_compiler_barrier();
+
+		if (split_packet) {
+			rte_prefetch0(&rx_pkts[pos]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 1]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 2]->cacheline1);
+			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
+		}
+
+		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
+		pkt_mb4 = _mm_shuffle_epi8(descs0[3], shuf_msk);
+		pkt_mb3 = _mm_shuffle_epi8(descs0[2], shuf_msk);
+
+		/* C.1 4=>2 filter staterr info only */
+		sterr_tmp2 = _mm_unpackhi_epi32(descs0[3], descs0[2]);
+		/* C.1 4=>2 filter staterr info only */
+		sterr_tmp1 = _mm_unpackhi_epi32(descs0[1], descs0[0]);
+
+		/* set ol_flags with vlan packet type */
+		fm10k_desc_to_olflags_v(descs0, &rx_pkts[pos]);
+
+		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
+		pkt_mb2 = _mm_shuffle_epi8(descs0[1], shuf_msk);
+		pkt_mb1 = _mm_shuffle_epi8(descs0[0], shuf_msk);
+
+		/* C.2 get 4 pkts staterr value  */
+		zero = _mm_xor_si128(dd_check, dd_check);
+		staterr = _mm_unpacklo_epi32(sterr_tmp1, sterr_tmp2);
+
+		/* D.3 copy final 3,4 data to rx_pkts */
+		_mm_storeu_si128((void *)&rx_pkts[pos+3]->rx_descriptor_fields1,
+				pkt_mb4);
+		_mm_storeu_si128((void *)&rx_pkts[pos+2]->rx_descriptor_fields1,
+				pkt_mb3);
+
+		/* C* extract and record EOP bit */
+		if (split_packet) {
+			__m128i eop_shuf_mask = _mm_set_epi8(
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 0xFF,
+					0x04, 0x0C, 0x00, 0x08
+					);
+
+			/* and with mask to extract bits, flipping 1-0 */
+			__m128i eop_bits = _mm_andnot_si128(staterr, eop_check);
+			/* the staterr values are not in order, as the count
+			 * count of dd bits doesn't care. However, for end of
+			 * packet tracking, we do care, so shuffle. This also
+			 * compresses the 32-bit values to 8-bit
+			 */
+			eop_bits = _mm_shuffle_epi8(eop_bits, eop_shuf_mask);
+			/* store the resulting 32-bit value */
+			*(int *)split_packet = _mm_cvtsi128_si32(eop_bits);
+			split_packet += RTE_FM10K_DESCS_PER_LOOP;
+
+			/* zero-out next pointers */
+			rx_pkts[pos]->next = NULL;
+			rx_pkts[pos + 1]->next = NULL;
+			rx_pkts[pos + 2]->next = NULL;
+			rx_pkts[pos + 3]->next = NULL;
+		}
+
+		/* C.3 calc available number of desc */
+		staterr = _mm_and_si128(staterr, dd_check);
+		staterr = _mm_packs_epi32(staterr, zero);
+
+		/* D.3 copy final 1,2 data to rx_pkts */
+		_mm_storeu_si128((void *)&rx_pkts[pos+1]->rx_descriptor_fields1,
+				pkt_mb2);
+		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
+				pkt_mb1);
+
+		fm10k_desc_to_pktype_v(descs0, &rx_pkts[pos]);
+
+		/* C.4 calc avaialbe number of desc */
+		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
+		nb_pkts_recd += var;
+		if (likely(var != RTE_FM10K_DESCS_PER_LOOP))
+			break;
+	}
+
+	/* Update our internal tail pointer */
+	rxq->next_dd = (uint16_t)(rxq->next_dd + nb_pkts_recd);
+	rxq->next_dd = (uint16_t)(rxq->next_dd & (rxq->nb_desc - 1));
+	rxq->rxrearm_nb = (uint16_t)(rxq->rxrearm_nb + nb_pkts_recd);
+
+	return nb_pkts_recd;
+}
+
+/* vPMD receive routine
+ *
+ * Notice:
+ * - don't support ol_flags for rss and csum err
+ */
+uint16_t
+fm10k_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	return fm10k_recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
 }

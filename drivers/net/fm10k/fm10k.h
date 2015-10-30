@@ -123,6 +123,12 @@
 #define FM10K_VFTA_BIT(vlan_id)    (1 << ((vlan_id) & 0x1F))
 #define FM10K_VFTA_IDX(vlan_id)    ((vlan_id) >> 5)
 
+#define RTE_FM10K_RXQ_REARM_THRESH      32
+#define RTE_FM10K_VPMD_TX_BURST         32
+#define RTE_FM10K_MAX_RX_BURST          RTE_FM10K_RXQ_REARM_THRESH
+#define RTE_FM10K_TX_MAX_FREE_BUF_SZ    64
+#define RTE_FM10K_DESCS_PER_LOOP    4
+
 struct fm10k_macvlan_filter_info {
 	uint16_t vlan_num;       /* Total VLAN number */
 	uint16_t mac_num;        /* Total mac number */
@@ -174,6 +180,8 @@ struct fm10k_rx_queue {
 	struct rte_mbuf *pkt_last_seg;  /* Last segment of current packet. */
 	uint64_t hw_ring_phys_addr;
 	uint64_t mbuf_initializer; /* value to init mbufs */
+	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
+	struct rte_mbuf fake_mbuf;
 	uint16_t next_dd;
 	uint16_t next_alloc;
 	uint16_t next_trigger;
@@ -181,6 +189,9 @@ struct fm10k_rx_queue {
 	volatile uint32_t *tail_ptr;
 	uint16_t nb_desc;
 	uint16_t queue_id;
+	/* Below 2 fields only valid in case vPMD is applied. */
+	uint16_t rxrearm_nb;     /* number of remaining to be re-armed */
+	uint16_t rxrearm_start;  /* the idx we start the re-arming from */
 	uint8_t port_id;
 	uint8_t drop_en;
 	uint8_t rx_deferred_start; /* don't start this queue in dev start. */
@@ -321,4 +332,5 @@ uint16_t fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts);
 
 int fm10k_rxq_vec_setup(struct fm10k_rx_queue *rxq);
+uint16_t fm10k_recv_pkts_vec(void *, struct rte_mbuf **, uint16_t);
 #endif

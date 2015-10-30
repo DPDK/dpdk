@@ -121,6 +121,9 @@ rx_queue_reset(struct fm10k_rx_queue *q)
 	q->next_alloc = 0;
 	q->next_trigger = q->alloc_thresh - 1;
 	FM10K_PCI_REG_WRITE(q->tail_ptr, q->nb_desc - 1);
+	q->rxrearm_start = 0;
+	q->rxrearm_nb = 0;
+
 	return 0;
 }
 
