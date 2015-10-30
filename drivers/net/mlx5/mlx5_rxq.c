@@ -60,10 +60,219 @@
 #endif
 
 #include "mlx5.h"
-#include "mlx5_autoconf.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 #include "mlx5_defs.h"
+
+/* Default RSS hash key also used for ConnectX-3. */
+static uint8_t hash_rxq_default_key[] = {
+	0x2c, 0xc6, 0x81, 0xd1,
+	0x5b, 0xdb, 0xf4, 0xf7,
+	0xfc, 0xa2, 0x83, 0x19,
+	0xdb, 0x1a, 0x3e, 0x94,
+	0x6b, 0x9e, 0x38, 0xd9,
+	0x2c, 0x9c, 0x03, 0xd1,
+	0xad, 0x99, 0x44, 0xa7,
+	0xd9, 0x56, 0x3d, 0x59,
+	0x06, 0x3c, 0x25, 0xf3,
+	0xfc, 0x1f, 0xdc, 0x2a,
+};
+
+/**
+ * Return nearest power of two above input value.
+ *
+ * @param v
+ *   Input value.
+ *
+ * @return
+ *   Nearest power of two above input value.
+ */
+static unsigned int
+log2above(unsigned int v)
+{
+	unsigned int l;
+	unsigned int r;
+
+	for (l = 0, r = 0; (v >> 1); ++l, v >>= 1)
+		r |= (v & 1);
+	return (l + r);
+}
+
+/**
+ * Initialize hash RX queues and indirection table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+priv_create_hash_rxqs(struct priv *priv)
+{
+	static const uint64_t rss_hash_table[] = {
+		/* TCPv4. */
+		(IBV_EXP_RX_HASH_SRC_IPV4 | IBV_EXP_RX_HASH_DST_IPV4 |
+		 IBV_EXP_RX_HASH_SRC_PORT_TCP | IBV_EXP_RX_HASH_DST_PORT_TCP),
+		/* UDPv4. */
+		(IBV_EXP_RX_HASH_SRC_IPV4 | IBV_EXP_RX_HASH_DST_IPV4 |
+		 IBV_EXP_RX_HASH_SRC_PORT_UDP | IBV_EXP_RX_HASH_DST_PORT_UDP),
+		/* Other IPv4. */
+		(IBV_EXP_RX_HASH_SRC_IPV4 | IBV_EXP_RX_HASH_DST_IPV4),
+		/* None, used for everything else. */
+		0,
+	};
+
+	DEBUG("allocating hash RX queues for %u WQs", priv->rxqs_n);
+	assert(priv->ind_table == NULL);
+	assert(priv->hash_rxqs == NULL);
+	assert(priv->hash_rxqs_n == 0);
+	assert(priv->pd != NULL);
+	assert(priv->ctx != NULL);
+	if (priv->rxqs_n == 0)
+		return EINVAL;
+	assert(priv->rxqs != NULL);
+
+	/* FIXME: large data structures are allocated on the stack. */
+	unsigned int wqs_n = (1 << log2above(priv->rxqs_n));
+	struct ibv_exp_wq *wqs[wqs_n];
+	struct ibv_exp_rwq_ind_table_init_attr ind_init_attr = {
+		.pd = priv->pd,
+		.log_ind_tbl_size = log2above(priv->rxqs_n),
+		.ind_tbl = wqs,
+		.comp_mask = 0,
+	};
+	struct ibv_exp_rwq_ind_table *ind_table = NULL;
+	/* If only one RX queue is configured, RSS is not needed and a single
+	 * empty hash entry is used (last rss_hash_table[] entry). */
+	unsigned int hash_rxqs_n =
+		((priv->rxqs_n == 1) ? 1 : RTE_DIM(rss_hash_table));
+	struct hash_rxq (*hash_rxqs)[hash_rxqs_n] = NULL;
+	unsigned int i;
+	unsigned int j;
+	int err = 0;
+
+	if (wqs_n < priv->rxqs_n) {
+		ERROR("cannot handle this many RX queues (%u)", priv->rxqs_n);
+		err = ERANGE;
+		goto error;
+	}
+	if (wqs_n != priv->rxqs_n)
+		WARN("%u RX queues are configured, consider rounding this"
+		     " number to the next power of two (%u) for optimal"
+		     " performance",
+		     priv->rxqs_n, wqs_n);
+	/* When the number of RX queues is not a power of two, the remaining
+	 * table entries are padded with reused WQs and hashes are not spread
+	 * uniformly. */
+	for (i = 0, j = 0; (i != wqs_n); ++i) {
+		wqs[i] = (*priv->rxqs)[j]->wq;
+		if (++j == priv->rxqs_n)
+			j = 0;
+	}
+	errno = 0;
+	ind_table = ibv_exp_create_rwq_ind_table(priv->ctx, &ind_init_attr);
+	if (ind_table == NULL) {
+		/* Not clear whether errno is set. */
+		err = (errno ? errno : EINVAL);
+		ERROR("RX indirection table creation failed with error %d: %s",
+		      err, strerror(err));
+		goto error;
+	}
+	/* Allocate array that holds hash RX queues and related data. */
+	hash_rxqs = rte_malloc(__func__, sizeof(*hash_rxqs), 0);
+	if (hash_rxqs == NULL) {
+		err = ENOMEM;
+		ERROR("cannot allocate hash RX queues container: %s",
+		      strerror(err));
+		goto error;
+	}
+	for (i = 0, j = (RTE_DIM(rss_hash_table) - hash_rxqs_n);
+	     (j != RTE_DIM(rss_hash_table));
+	     ++i, ++j) {
+		struct hash_rxq *hash_rxq = &(*hash_rxqs)[i];
+
+		struct ibv_exp_rx_hash_conf hash_conf = {
+			.rx_hash_function = IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
+			.rx_hash_key_len = sizeof(hash_rxq_default_key),
+			.rx_hash_key = hash_rxq_default_key,
+			.rx_hash_fields_mask = rss_hash_table[j],
+			.rwq_ind_tbl = ind_table,
+		};
+		struct ibv_exp_qp_init_attr qp_init_attr = {
+			.max_inl_recv = 0, /* Currently not supported. */
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
+				      IBV_EXP_QP_INIT_ATTR_RX_HASH),
+			.pd = priv->pd,
+			.rx_hash_conf = &hash_conf,
+			.port_num = priv->port,
+		};
+
+		*hash_rxq = (struct hash_rxq){
+			.priv = priv,
+			.qp = ibv_exp_create_qp(priv->ctx, &qp_init_attr),
+		};
+		if (hash_rxq->qp == NULL) {
+			err = (errno ? errno : EINVAL);
+			ERROR("Hash RX QP creation failure: %s",
+			      strerror(err));
+			while (i) {
+				hash_rxq = &(*hash_rxqs)[--i];
+				claim_zero(ibv_destroy_qp(hash_rxq->qp));
+			}
+			goto error;
+		}
+	}
+	priv->ind_table = ind_table;
+	priv->hash_rxqs = hash_rxqs;
+	priv->hash_rxqs_n = hash_rxqs_n;
+	assert(err == 0);
+	return 0;
+error:
+	rte_free(hash_rxqs);
+	if (ind_table != NULL)
+		claim_zero(ibv_exp_destroy_rwq_ind_table(ind_table));
+	return err;
+}
+
+/**
+ * Clean up hash RX queues and indirection table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+void
+priv_destroy_hash_rxqs(struct priv *priv)
+{
+	unsigned int i;
+
+	DEBUG("destroying %u hash RX queues", priv->hash_rxqs_n);
+	if (priv->hash_rxqs_n == 0) {
+		assert(priv->hash_rxqs == NULL);
+		assert(priv->ind_table == NULL);
+		return;
+	}
+	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
+		struct hash_rxq *hash_rxq = &(*priv->hash_rxqs)[i];
+		unsigned int j, k;
+
+		assert(hash_rxq->priv == priv);
+		assert(hash_rxq->qp != NULL);
+		/* Also check that there are no remaining flows. */
+		assert(hash_rxq->allmulti_flow == NULL);
+		assert(hash_rxq->promisc_flow == NULL);
+		for (j = 0; (j != RTE_DIM(hash_rxq->mac_flow)); ++j)
+			for (k = 0; (k != RTE_DIM(hash_rxq->mac_flow[j])); ++k)
+				assert(hash_rxq->mac_flow[j][k] == NULL);
+		claim_zero(ibv_destroy_qp(hash_rxq->qp));
+	}
+	priv->hash_rxqs_n = 0;
+	rte_free(priv->hash_rxqs);
+	priv->hash_rxqs = NULL;
+	claim_zero(ibv_exp_destroy_rwq_ind_table(priv->ind_table));
+	priv->ind_table = NULL;
+}
 
 /**
  * Allocate RX queue elements with scattered packets support.
@@ -336,15 +545,15 @@ rxq_cleanup(struct rxq *rxq)
 		rxq_free_elts_sp(rxq);
 	else
 		rxq_free_elts(rxq);
-	if (rxq->if_qp != NULL) {
+	if (rxq->if_wq != NULL) {
 		assert(rxq->priv != NULL);
 		assert(rxq->priv->ctx != NULL);
-		assert(rxq->qp != NULL);
+		assert(rxq->wq != NULL);
 		params = (struct ibv_exp_release_intf_params){
 			.comp_mask = 0,
 		};
 		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
-						rxq->if_qp,
+						rxq->if_wq,
 						&params));
 	}
 	if (rxq->if_cq != NULL) {
@@ -358,12 +567,8 @@ rxq_cleanup(struct rxq *rxq)
 						rxq->if_cq,
 						&params));
 	}
-	if (rxq->qp != NULL) {
-		rxq_promiscuous_disable(rxq);
-		rxq_allmulticast_disable(rxq);
-		rxq_mac_addrs_del(rxq);
-		claim_zero(ibv_destroy_qp(rxq->qp));
-	}
+	if (rxq->wq != NULL)
+		claim_zero(ibv_exp_destroy_wq(rxq->wq));
 	if (rxq->cq != NULL)
 		claim_zero(ibv_destroy_cq(rxq->cq));
 	if (rxq->rd != NULL) {
@@ -381,112 +586,6 @@ rxq_cleanup(struct rxq *rxq)
 		claim_zero(ibv_dereg_mr(rxq->mr));
 	memset(rxq, 0, sizeof(*rxq));
 }
-
-/**
- * Allocate a Queue Pair.
- * Optionally setup inline receive if supported.
- *
- * @param priv
- *   Pointer to private structure.
- * @param cq
- *   Completion queue to associate with QP.
- * @param desc
- *   Number of descriptors in QP (hint only).
- *
- * @return
- *   QP pointer or NULL in case of error.
- */
-static struct ibv_qp *
-rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
-	     struct ibv_exp_res_domain *rd)
-{
-	struct ibv_exp_qp_init_attr attr = {
-		/* CQ to be associated with the send queue. */
-		.send_cq = cq,
-		/* CQ to be associated with the receive queue. */
-		.recv_cq = cq,
-		.cap = {
-			/* Max number of outstanding WRs. */
-			.max_recv_wr = ((priv->device_attr.max_qp_wr < desc) ?
-					priv->device_attr.max_qp_wr :
-					desc),
-			/* Max number of scatter/gather elements in a WR. */
-			.max_recv_sge = ((priv->device_attr.max_sge <
-					  MLX5_PMD_SGE_WR_N) ?
-					 priv->device_attr.max_sge :
-					 MLX5_PMD_SGE_WR_N),
-		},
-		.qp_type = IBV_QPT_RAW_PACKET,
-		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
-			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN),
-		.pd = priv->pd,
-		.res_domain = rd,
-	};
-
-	return ibv_exp_create_qp(priv->ctx, &attr);
-}
-
-#ifdef RSS_SUPPORT
-
-/**
- * Allocate a RSS Queue Pair.
- * Optionally setup inline receive if supported.
- *
- * @param priv
- *   Pointer to private structure.
- * @param cq
- *   Completion queue to associate with QP.
- * @param desc
- *   Number of descriptors in QP (hint only).
- * @param parent
- *   If nonzero, create a parent QP, otherwise a child.
- *
- * @return
- *   QP pointer or NULL in case of error.
- */
-static struct ibv_qp *
-rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
-		 int parent, struct ibv_exp_res_domain *rd)
-{
-	struct ibv_exp_qp_init_attr attr = {
-		/* CQ to be associated with the send queue. */
-		.send_cq = cq,
-		/* CQ to be associated with the receive queue. */
-		.recv_cq = cq,
-		.cap = {
-			/* Max number of outstanding WRs. */
-			.max_recv_wr = ((priv->device_attr.max_qp_wr < desc) ?
-					priv->device_attr.max_qp_wr :
-					desc),
-			/* Max number of scatter/gather elements in a WR. */
-			.max_recv_sge = ((priv->device_attr.max_sge <
-					  MLX5_PMD_SGE_WR_N) ?
-					 priv->device_attr.max_sge :
-					 MLX5_PMD_SGE_WR_N),
-		},
-		.qp_type = IBV_QPT_RAW_PACKET,
-		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
-			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN |
-			      IBV_EXP_QP_INIT_ATTR_QPG),
-		.pd = priv->pd,
-		.res_domain = rd,
-	};
-
-	if (parent) {
-		attr.qpg.qpg_type = IBV_EXP_QPG_PARENT;
-		/* TSS isn't necessary. */
-		attr.qpg.parent_attrib.tss_child_count = 0;
-		attr.qpg.parent_attrib.rss_child_count = priv->rxqs_n;
-		DEBUG("initializing parent RSS queue");
-	} else {
-		attr.qpg.qpg_type = IBV_EXP_QPG_CHILD_RX;
-		attr.qpg.qpg_parent = priv->rxq_parent.qp;
-		DEBUG("initializing child RSS queue");
-	}
-	return ibv_exp_create_qp(priv->ctx, &attr);
-}
-
-#endif /* RSS_SUPPORT */
 
 /**
  * Reconfigure a RX queue with new parameters.
@@ -512,15 +611,9 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	unsigned int desc_n;
 	struct rte_mbuf **pool;
 	unsigned int i, k;
-	struct ibv_exp_qp_attr mod;
+	struct ibv_exp_wq_attr mod;
 	int err;
-	int parent = (rxq == &priv->rxq_parent);
 
-	if (parent) {
-		ERROR("%p: cannot rehash parent queue %p",
-		      (void *)dev, (void *)rxq);
-		return EINVAL;
-	}
 	DEBUG("%p: rehashing queue %p", (void *)dev, (void *)rxq);
 	/* Number of descriptors and mbufs currently allocated. */
 	desc_n = (tmpl.elts_n * (tmpl.sp ? MLX5_PMD_SGE_WR_N : 1));
@@ -549,61 +642,17 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		DEBUG("%p: nothing to do", (void *)dev);
 		return 0;
 	}
-	/* Remove attached flows if RSS is disabled (no parent queue). */
-	if (!priv->rss) {
-		rxq_allmulticast_disable(&tmpl);
-		rxq_promiscuous_disable(&tmpl);
-		rxq_mac_addrs_del(&tmpl);
-		/* Update original queue in case of failure. */
-		rxq->allmulti_flow = tmpl.allmulti_flow;
-		rxq->promisc_flow = tmpl.promisc_flow;
-		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
-	}
 	/* From now on, any failure will render the queue unusable.
-	 * Reinitialize QP. */
-	mod = (struct ibv_exp_qp_attr){ .qp_state = IBV_QPS_RESET };
-	err = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
-	if (err) {
-		ERROR("%p: cannot reset QP: %s", (void *)dev, strerror(err));
-		assert(err > 0);
-		return err;
-	}
-	err = ibv_resize_cq(tmpl.cq, desc_n);
-	if (err) {
-		ERROR("%p: cannot resize CQ: %s", (void *)dev, strerror(err));
-		assert(err > 0);
-		return err;
-	}
-	mod = (struct ibv_exp_qp_attr){
-		/* Move the QP to this state. */
-		.qp_state = IBV_QPS_INIT,
-		/* Primary port number. */
-		.port_num = priv->port
+	 * Reinitialize WQ. */
+	mod = (struct ibv_exp_wq_attr){
+		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
+		.wq_state = IBV_EXP_WQS_RESET,
 	};
-	err = ibv_exp_modify_qp(tmpl.qp, &mod,
-				(IBV_EXP_QP_STATE |
-#ifdef RSS_SUPPORT
-				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
-#endif /* RSS_SUPPORT */
-				 IBV_EXP_QP_PORT));
+	err = ibv_exp_modify_wq(tmpl.wq, &mod);
 	if (err) {
-		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
-		      (void *)dev, strerror(err));
+		ERROR("%p: cannot reset WQ: %s", (void *)dev, strerror(err));
 		assert(err > 0);
 		return err;
-	};
-	/* Reconfigure flows. Do not care for errors. */
-	if (!priv->rss) {
-		if (priv->started)
-			rxq_mac_addrs_add(&tmpl);
-		if (priv->started && priv->promisc_req)
-			rxq_promiscuous_enable(&tmpl);
-		if (priv->started && priv->allmulti_req)
-			rxq_allmulticast_enable(&tmpl);
-		/* Update original queue in case of failure. */
-		rxq->allmulti_flow = tmpl.allmulti_flow;
-		rxq->promisc_flow = tmpl.promisc_flow;
-		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
 	}
 	/* Allocate pool. */
 	pool = rte_malloc(__func__, (mbuf_n * sizeof(*pool)), 0);
@@ -655,21 +704,27 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	rxq->elts_n = 0;
 	rte_free(rxq->elts.sp);
 	rxq->elts.sp = NULL;
+	/* Change queue state to ready. */
+	mod = (struct ibv_exp_wq_attr){
+		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
+		.wq_state = IBV_EXP_WQS_RDY,
+	};
+	err = ibv_exp_modify_wq(tmpl.wq, &mod);
+	if (err) {
+		ERROR("%p: WQ state to IBV_EXP_WQS_RDY failed: %s",
+		      (void *)dev, strerror(err));
+		goto error;
+	}
 	/* Post SGEs. */
-	assert(tmpl.if_qp != NULL);
+	assert(tmpl.if_wq != NULL);
 	if (tmpl.sp) {
 		struct rxq_elt_sp (*elts)[tmpl.elts_n] = tmpl.elts.sp;
 
 		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
-#ifdef HAVE_EXP_QP_BURST_RECV_SG_LIST
-			err = tmpl.if_qp->recv_sg_list
-				(tmpl.qp,
+			err = tmpl.if_wq->recv_sg_list
+				(tmpl.wq,
 				 (*elts)[i].sges,
 				 RTE_DIM((*elts)[i].sges));
-#else /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
-			errno = ENOSYS;
-			err = -1;
-#endif /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
 			if (err)
 				break;
 		}
@@ -677,8 +732,8 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		struct rxq_elt (*elts)[tmpl.elts_n] = tmpl.elts.no_sp;
 
 		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
-			err = tmpl.if_qp->recv_burst(
-				tmpl.qp,
+			err = tmpl.if_wq->recv_burst(
+				tmpl.wq,
 				&(*elts)[i].sge,
 				1);
 			if (err)
@@ -690,16 +745,9 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		      (void *)dev, err);
 		/* Set err because it does not contain a valid errno value. */
 		err = EIO;
-		goto skip_rtr;
+		goto error;
 	}
-	mod = (struct ibv_exp_qp_attr){
-		.qp_state = IBV_QPS_RTR
-	};
-	err = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
-	if (err)
-		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
-		      (void *)dev, strerror(err));
-skip_rtr:
+error:
 	*rxq = tmpl;
 	assert(err >= 0);
 	return err;
@@ -735,30 +783,20 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		.mp = mp,
 		.socket = socket
 	};
-	struct ibv_exp_qp_attr mod;
+	struct ibv_exp_wq_attr mod;
 	union {
 		struct ibv_exp_query_intf_params params;
 		struct ibv_exp_cq_init_attr cq;
 		struct ibv_exp_res_domain_init_attr rd;
+		struct ibv_exp_wq_init_attr wq;
 	} attr;
 	enum ibv_exp_query_intf_status status;
 	struct rte_mbuf *buf;
 	int ret = 0;
-	int parent = (rxq == &priv->rxq_parent);
 	unsigned int i;
+	unsigned int cq_size = desc;
 
 	(void)conf; /* Thresholds configuration (ignored). */
-	/*
-	 * If this is a parent queue, hardware must support RSS and
-	 * RSS must be enabled.
-	 */
-	assert((!parent) || ((priv->hw_rss) && (priv->rss)));
-	if (parent) {
-		/* Even if unused, ibv_create_cq() requires at least one
-		 * descriptor. */
-		desc = 1;
-		goto skip_mr;
-	}
 	if ((desc == 0) || (desc % MLX5_PMD_SGE_WR_N)) {
 		ERROR("%p: invalid number of RX descriptors (must be a"
 		      " multiple of %d)", (void *)dev, MLX5_PMD_SGE_WR_N);
@@ -801,7 +839,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-skip_mr:
 	attr.rd = (struct ibv_exp_res_domain_init_attr){
 		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
 			      IBV_EXP_RES_DOMAIN_MSG_MODEL),
@@ -819,7 +856,8 @@ skip_mr:
 		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
 		.res_domain = tmpl.rd,
 	};
-	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, NULL, 0, &attr.cq);
+	tmpl.cq = ibv_exp_create_cq(priv->ctx, cq_size, NULL, NULL, 0,
+				    &attr.cq);
 	if (tmpl.cq == NULL) {
 		ret = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
@@ -830,48 +868,30 @@ skip_mr:
 	      priv->device_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
-#ifdef RSS_SUPPORT
-	if (priv->rss)
-		tmpl.qp = rxq_setup_qp_rss(priv, tmpl.cq, desc, parent,
-					   tmpl.rd);
-	else
-#endif /* RSS_SUPPORT */
-		tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc, tmpl.rd);
-	if (tmpl.qp == NULL) {
-		ret = (errno ? errno : EINVAL);
-		ERROR("%p: QP creation failure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
-	mod = (struct ibv_exp_qp_attr){
-		/* Move the QP to this state. */
-		.qp_state = IBV_QPS_INIT,
-		/* Primary port number. */
-		.port_num = priv->port
+	attr.wq = (struct ibv_exp_wq_init_attr){
+		.wq_context = NULL, /* Could be useful in the future. */
+		.wq_type = IBV_EXP_WQT_RQ,
+		/* Max number of outstanding WRs. */
+		.max_recv_wr = ((priv->device_attr.max_qp_wr < (int)cq_size) ?
+				priv->device_attr.max_qp_wr :
+				(int)cq_size),
+		/* Max number of scatter/gather elements in a WR. */
+		.max_recv_sge = ((priv->device_attr.max_sge <
+				  MLX5_PMD_SGE_WR_N) ?
+				 priv->device_attr.max_sge :
+				 MLX5_PMD_SGE_WR_N),
+		.pd = priv->pd,
+		.cq = tmpl.cq,
+		.comp_mask = IBV_EXP_CREATE_WQ_RES_DOMAIN,
+		.res_domain = tmpl.rd,
 	};
-	ret = ibv_exp_modify_qp(tmpl.qp, &mod,
-				(IBV_EXP_QP_STATE |
-#ifdef RSS_SUPPORT
-				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
-#endif /* RSS_SUPPORT */
-				 IBV_EXP_QP_PORT));
-	if (ret) {
-		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
+	tmpl.wq = ibv_exp_create_wq(priv->ctx, &attr.wq);
+	if (tmpl.wq == NULL) {
+		ret = (errno ? errno : EINVAL);
+		ERROR("%p: WQ creation failure: %s",
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-	if ((parent) || (!priv->rss))  {
-		/* Configure MAC and broadcast addresses. */
-		ret = rxq_mac_addrs_add(&tmpl);
-		if (ret) {
-			ERROR("%p: QP flow attachment failed: %s",
-			      (void *)dev, strerror(ret));
-			goto error;
-		}
-	}
-	/* Allocate descriptors for RX queues, except for the RSS parent. */
-	if (parent)
-		goto skip_alloc;
 	if (tmpl.sp)
 		ret = rxq_alloc_elts_sp(&tmpl, desc, NULL);
 	else
@@ -881,7 +901,6 @@ skip_mr:
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-skip_alloc:
 	/* Save port ID. */
 	tmpl.port_id = dev->data->port_id;
 	DEBUG("%p: RTE port ID: %u", (void *)rxq, tmpl.port_id);
@@ -898,38 +917,44 @@ skip_alloc:
 	}
 	attr.params = (struct ibv_exp_query_intf_params){
 		.intf_scope = IBV_EXP_INTF_GLOBAL,
-		.intf = IBV_EXP_INTF_QP_BURST,
-		.obj = tmpl.qp,
+		.intf = IBV_EXP_INTF_WQ,
+		.obj = tmpl.wq,
 	};
-	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
-	if (tmpl.if_qp == NULL) {
-		ERROR("%p: QP interface family query failed with status %d",
+	tmpl.if_wq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_wq == NULL) {
+		ERROR("%p: WQ interface family query failed with status %d",
 		      (void *)dev, status);
 		goto error;
 	}
+	/* Change queue state to ready. */
+	mod = (struct ibv_exp_wq_attr){
+		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
+		.wq_state = IBV_EXP_WQS_RDY,
+	};
+	ret = ibv_exp_modify_wq(tmpl.wq, &mod);
+	if (ret) {
+		ERROR("%p: WQ state to IBV_EXP_WQS_RDY failed: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
 	/* Post SGEs. */
-	if (!parent && tmpl.sp) {
+	if (tmpl.sp) {
 		struct rxq_elt_sp (*elts)[tmpl.elts_n] = tmpl.elts.sp;
 
 		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
-#ifdef HAVE_EXP_QP_BURST_RECV_SG_LIST
-			ret = tmpl.if_qp->recv_sg_list
-				(tmpl.qp,
+			ret = tmpl.if_wq->recv_sg_list
+				(tmpl.wq,
 				 (*elts)[i].sges,
 				 RTE_DIM((*elts)[i].sges));
-#else /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
-			errno = ENOSYS;
-			ret = -1;
-#endif /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
 			if (ret)
 				break;
 		}
-	} else if (!parent) {
+	} else {
 		struct rxq_elt (*elts)[tmpl.elts_n] = tmpl.elts.no_sp;
 
 		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
-			ret = tmpl.if_qp->recv_burst(
-				tmpl.qp,
+			ret = tmpl.if_wq->recv_burst(
+				tmpl.wq,
 				&(*elts)[i].sge,
 				1);
 			if (ret)
@@ -941,15 +966,6 @@ skip_alloc:
 		      (void *)dev, ret);
 		/* Set ret because it does not contain a valid errno value. */
 		ret = EIO;
-		goto error;
-	}
-	mod = (struct ibv_exp_qp_attr){
-		.qp_state = IBV_QPS_RTR
-	};
-	ret = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
-	if (ret) {
-		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
-		      (void *)dev, strerror(ret));
 		goto error;
 	}
 	/* Clean up rxq in case we're reinitializing it. */
@@ -1055,7 +1071,6 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 		return;
 	priv = rxq->priv;
 	priv_lock(priv);
-	assert(rxq != &priv->rxq_parent);
 	for (i = 0; (i != priv->rxqs_n); ++i)
 		if ((*priv->rxqs)[i] == rxq) {
 			DEBUG("%p: removing RX queue %p from list",

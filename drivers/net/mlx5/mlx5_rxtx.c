@@ -35,7 +35,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include <errno.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -61,7 +60,6 @@
 #endif
 
 #include "mlx5.h"
-#include "mlx5_autoconf.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_defs.h"
@@ -755,14 +753,9 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rxq->stats.ibytes += pkt_buf_len;
 #endif
 repost:
-#ifdef HAVE_EXP_QP_BURST_RECV_SG_LIST
-		ret = rxq->if_qp->recv_sg_list(rxq->qp,
+		ret = rxq->if_wq->recv_sg_list(rxq->wq,
 					       elt->sges,
 					       RTE_DIM(elt->sges));
-#else /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
-		errno = ENOSYS;
-		ret = -1;
-#endif /* HAVE_EXP_QP_BURST_RECV_SG_LIST */
 		if (unlikely(ret)) {
 			/* Inability to repost WRs is fatal. */
 			DEBUG("%p: recv_sg_list(): failed (ret=%d)",
@@ -919,7 +912,7 @@ repost:
 #ifdef DEBUG_RECV
 	DEBUG("%p: reposting %u WRs", (void *)rxq, i);
 #endif
-	ret = rxq->if_qp->recv_burst(rxq->qp, sges, i);
+	ret = rxq->if_wq->recv_burst(rxq->wq, sges, i);
 	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
 		DEBUG("%p: recv_burst(): failed (ret=%d)",

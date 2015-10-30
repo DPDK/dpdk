@@ -394,7 +394,6 @@ priv_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
  * Ethernet device configuration.
  *
  * Prepare the driver for a given number of TX and RX queues.
- * Allocate parent RSS queue when several RX queues are requested.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -408,8 +407,6 @@ dev_configure(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	unsigned int rxqs_n = dev->data->nb_rx_queues;
 	unsigned int txqs_n = dev->data->nb_tx_queues;
-	unsigned int tmp;
-	int ret;
 
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
@@ -422,47 +419,8 @@ dev_configure(struct rte_eth_dev *dev)
 		return 0;
 	INFO("%p: RX queues number update: %u -> %u",
 	     (void *)dev, priv->rxqs_n, rxqs_n);
-	/* If RSS is enabled, disable it first. */
-	if (priv->rss) {
-		unsigned int i;
-
-		/* Only if there are no remaining child RX queues. */
-		for (i = 0; (i != priv->rxqs_n); ++i)
-			if ((*priv->rxqs)[i] != NULL)
-				return EINVAL;
-		rxq_cleanup(&priv->rxq_parent);
-		priv->rss = 0;
-		priv->rxqs_n = 0;
-	}
-	if (rxqs_n <= 1) {
-		/* Nothing else to do. */
-		priv->rxqs_n = rxqs_n;
-		return 0;
-	}
-	/* Allocate a new RSS parent queue if supported by hardware. */
-	if (!priv->hw_rss) {
-		ERROR("%p: only a single RX queue can be configured when"
-		      " hardware doesn't support RSS",
-		      (void *)dev);
-		return EINVAL;
-	}
-	/* Fail if hardware doesn't support that many RSS queues. */
-	if (rxqs_n >= priv->max_rss_tbl_sz) {
-		ERROR("%p: only %u RX queues can be configured for RSS",
-		      (void *)dev, priv->max_rss_tbl_sz);
-		return EINVAL;
-	}
-	priv->rss = 1;
-	tmp = priv->rxqs_n;
 	priv->rxqs_n = rxqs_n;
-	ret = rxq_setup(dev, &priv->rxq_parent, 0, 0, NULL, NULL);
-	if (!ret)
-		return 0;
-	/* Failure, rollback. */
-	priv->rss = 0;
-	priv->rxqs_n = tmp;
-	assert(ret > 0);
-	return ret;
+	return 0;
 }
 
 /**
@@ -670,16 +628,6 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 			if (rxq->sp)
 				rx_func = mlx5_rx_burst_sp;
 			break;
-		}
-		/* Reenable non-RSS queue attributes. No need to check
-		 * for errors at this stage. */
-		if (!priv->rss) {
-			if (priv->started)
-				rxq_mac_addrs_add(rxq);
-			if (priv->started && priv->promisc_req)
-				rxq_promiscuous_enable(rxq);
-			if (priv->started && priv->allmulti_req)
-				rxq_allmulticast_enable(rxq);
 		}
 		/* Scattered burst function takes priority. */
 		if (rxq->sp)

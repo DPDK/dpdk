@@ -99,13 +99,9 @@ struct rxq {
 	struct rte_mempool *mp; /* Memory Pool for allocations. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_qp *qp; /* Queue Pair. */
-	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
+	struct ibv_exp_wq *wq; /* Work Queue. */
+	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
-	/* MAC flow steering rules, one per VLAN ID. */
-	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
-	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
-	struct ibv_flow *allmulti_flow; /* Multicast flow. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -120,6 +116,15 @@ struct rxq {
 	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
+};
+
+struct hash_rxq {
+	struct priv *priv; /* Back pointer to private data. */
+	struct ibv_qp *qp; /* Hash RX QP. */
+	/* MAC flow steering rules, one per VLAN ID. */
+	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
+	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
+	struct ibv_flow *allmulti_flow; /* Multicast flow. */
 };
 
 /* TX element. */
@@ -166,6 +171,8 @@ struct txq {
 
 /* mlx5_rxq.c */
 
+int priv_create_hash_rxqs(struct priv *);
+void priv_destroy_hash_rxqs(struct priv *);
 void rxq_cleanup(struct rxq *);
 int rxq_rehash(struct rte_eth_dev *, struct rxq *);
 int rxq_setup(struct rte_eth_dev *, struct rxq *, uint16_t, unsigned int,

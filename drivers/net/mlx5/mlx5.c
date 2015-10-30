@@ -85,6 +85,11 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
+	/* In case mlx5_dev_stop() has not been called. */
+	priv_allmulticast_disable(priv);
+	priv_promiscuous_disable(priv);
+	priv_mac_addrs_disable(priv);
+	priv_destroy_hash_rxqs(priv);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
@@ -116,8 +121,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->txqs_n = 0;
 		priv->txqs = NULL;
 	}
-	if (priv->rss)
-		rxq_cleanup(&priv->rxq_parent);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(ibv_dealloc_pd(priv->pd));
@@ -297,9 +300,6 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 #ifdef HAVE_EXP_QUERY_DEVICE
 		exp_device_attr.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS;
-#ifdef RSS_SUPPORT
-		exp_device_attr.comp_mask |= IBV_EXP_DEVICE_ATTR_RSS_TBL_SZ;
-#endif /* RSS_SUPPORT */
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
@@ -349,32 +349,6 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			ERROR("ibv_exp_query_device() failed");
 			goto port_error;
 		}
-#ifdef RSS_SUPPORT
-		if ((exp_device_attr.exp_device_cap_flags &
-		     IBV_EXP_DEVICE_QPG) &&
-		    (exp_device_attr.exp_device_cap_flags &
-		     IBV_EXP_DEVICE_UD_RSS) &&
-		    (exp_device_attr.comp_mask &
-		     IBV_EXP_DEVICE_ATTR_RSS_TBL_SZ) &&
-		    (exp_device_attr.max_rss_tbl_sz > 0)) {
-			priv->hw_qpg = 1;
-			priv->hw_rss = 1;
-			priv->max_rss_tbl_sz = exp_device_attr.max_rss_tbl_sz;
-		} else {
-			priv->hw_qpg = 0;
-			priv->hw_rss = 0;
-			priv->max_rss_tbl_sz = 0;
-		}
-		priv->hw_tss = !!(exp_device_attr.exp_device_cap_flags &
-				  IBV_EXP_DEVICE_UD_TSS);
-		DEBUG("device flags: %s%s%s",
-		      (priv->hw_qpg ? "IBV_DEVICE_QPG " : ""),
-		      (priv->hw_tss ? "IBV_DEVICE_TSS " : ""),
-		      (priv->hw_rss ? "IBV_DEVICE_RSS " : ""));
-		if (priv->hw_rss)
-			DEBUG("maximum RSS indirection table size: %u",
-			      exp_device_attr.max_rss_tbl_sz);
-#endif /* RSS_SUPPORT */
 
 		priv->hw_csum =
 			((exp_device_attr.exp_device_cap_flags &

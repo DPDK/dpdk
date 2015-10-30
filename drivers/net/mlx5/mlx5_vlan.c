@@ -67,8 +67,6 @@ vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
-	unsigned int r;
-	struct rxq *rxq;
 
 	DEBUG("%p: %s VLAN filter ID %" PRIu16,
 	      (void *)dev, (on ? "enable" : "disable"), vlan_id);
@@ -99,34 +97,9 @@ vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		priv->vlan_filter[priv->vlan_filter_n] = vlan_id;
 		++priv->vlan_filter_n;
 	}
-	if (!priv->started)
-		return 0;
-	/* Rehash MAC flows in all RX queues. */
-	if (priv->rss) {
-		rxq = &priv->rxq_parent;
-		r = 1;
-	} else {
-		rxq = (*priv->rxqs)[0];
-		r = priv->rxqs_n;
-	}
-	for (i = 0; (i < r); rxq = (*priv->rxqs)[++i]) {
-		int ret;
-
-		if (rxq == NULL)
-			continue;
-		rxq_mac_addrs_del(rxq);
-		ret = rxq_mac_addrs_add(rxq);
-		if (!ret)
-			continue;
-		/* Rollback. */
-		while (i != 0) {
-			rxq = (*priv->rxqs)[--i];
-			if (rxq != NULL)
-				rxq_mac_addrs_del(rxq);
-		}
-		return ret;
-	}
-	return 0;
+	/* Rehash MAC flows in all hash RX queues. */
+	priv_mac_addrs_disable(priv);
+	return priv_mac_addrs_enable(priv);
 }
 
 /**
