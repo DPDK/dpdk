@@ -159,6 +159,12 @@ struct ind_table_init {
 	unsigned int hash_types_n;
 };
 
+enum hash_rxq_flow_type {
+	HASH_RXQ_FLOW_TYPE_MAC,
+	HASH_RXQ_FLOW_TYPE_PROMISC,
+	HASH_RXQ_FLOW_TYPE_ALLMULTI,
+};
+
 struct hash_rxq {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_qp *qp; /* Hash RX QP. */
@@ -223,6 +229,7 @@ size_t hash_rxq_flow_attr(const struct hash_rxq *, struct ibv_flow_attr *,
 			  size_t);
 int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
+int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
 void rxq_cleanup(struct rxq *);
 int rxq_rehash(struct rte_eth_dev *, struct rxq *);
 int rxq_setup(struct rte_eth_dev *, struct rxq *, uint16_t, unsigned int,

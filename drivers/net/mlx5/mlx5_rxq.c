@@ -539,6 +539,35 @@ priv_destroy_hash_rxqs(struct priv *priv)
 }
 
 /**
+ * Check whether a given flow type is allowed.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param type
+ *   Flow type to check.
+ *
+ * @return
+ *   Nonzero if the given flow type is allowed.
+ */
+int
+priv_allow_flow_type(struct priv *priv, enum hash_rxq_flow_type type)
+{
+	/* Only FLOW_TYPE_PROMISC is allowed when promiscuous mode
+	 * has been requested. */
+	if (priv->promisc_req)
+		return (type == HASH_RXQ_FLOW_TYPE_PROMISC);
+	switch (type) {
+	case HASH_RXQ_FLOW_TYPE_PROMISC:
+		return !!priv->promisc_req;
+	case HASH_RXQ_FLOW_TYPE_ALLMULTI:
+		return !!priv->allmulti_req;
+	case HASH_RXQ_FLOW_TYPE_MAC:
+		return 1;
+	}
+	return 0;
+}
+
+/**
  * Allocate RX queue elements with scattered packets support.
  *
  * @param rxq

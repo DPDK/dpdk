@@ -113,6 +113,8 @@ priv_promiscuous_enable(struct priv *priv)
 {
 	unsigned int i;
 
+	if (!priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_PROMISC))
+		return 0;
 	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
 		struct hash_rxq *hash_rxq = &(*priv->hash_rxqs)[i];
 		int ret;
@@ -147,6 +149,10 @@ mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 	ret = priv_promiscuous_enable(priv);
 	if (ret)
 		ERROR("cannot enable promiscuous mode: %s", strerror(ret));
+	else {
+		priv_mac_addrs_disable(priv);
+		priv_allmulticast_disable(priv);
+	}
 	priv_unlock(priv);
 }
 
@@ -196,6 +202,8 @@ mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 	priv_lock(priv);
 	priv->promisc_req = 0;
 	priv_promiscuous_disable(priv);
+	priv_mac_addrs_enable(priv);
+	priv_allmulticast_enable(priv);
 	priv_unlock(priv);
 }
 
@@ -266,6 +274,8 @@ priv_allmulticast_enable(struct priv *priv)
 {
 	unsigned int i;
 
+	if (!priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI))
+		return 0;
 	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
 		struct hash_rxq *hash_rxq = &(*priv->hash_rxqs)[i];
 		int ret;

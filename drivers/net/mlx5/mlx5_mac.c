@@ -410,6 +410,8 @@ priv_mac_addr_add(struct priv *priv, unsigned int mac_index,
 			(*mac)[3], (*mac)[4], (*mac)[5]
 		}
 	};
+	if (!priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_MAC))
+		goto end;
 	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
 		ret = hash_rxq_mac_addr_add(&(*priv->hash_rxqs)[i], mac_index);
 		if (!ret)
@@ -420,6 +422,7 @@ priv_mac_addr_add(struct priv *priv, unsigned int mac_index,
 					      mac_index);
 		return ret;
 	}
+end:
 	BITFIELD_SET(priv->mac_configured, mac_index);
 	return 0;
 }
@@ -439,6 +442,8 @@ priv_mac_addrs_enable(struct priv *priv)
 	unsigned int i;
 	int ret;
 
+	if (!priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_MAC))
+		return 0;
 	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
 		ret = hash_rxq_mac_addrs_add(&(*priv->hash_rxqs)[i]);
 		if (!ret)
