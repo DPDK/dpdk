@@ -58,6 +58,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_spinlock.h>
+#include <rte_interrupts.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
@@ -101,6 +102,7 @@ struct priv {
 	unsigned int hw_csum:1; /* Checksum offload is supported. */
 	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int vf:1; /* This is a VF device. */
+	unsigned int pending_alarm:1; /* An alarm is pending. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
@@ -115,6 +117,7 @@ struct priv {
 	unsigned int hash_rxqs_n; /* Hash RX QPs array size. */
 	/* RSS configuration array indexed by hash RX queue type. */
 	struct rte_eth_rss_conf *(*rss_conf)[];
+	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
@@ -157,6 +160,10 @@ int mlx5_dev_get_flow_ctrl(struct rte_eth_dev *, struct rte_eth_fc_conf *);
 int mlx5_dev_set_flow_ctrl(struct rte_eth_dev *, struct rte_eth_fc_conf *);
 int mlx5_ibv_device_to_pci_addr(const struct ibv_device *,
 				struct rte_pci_addr *);
+void mlx5_dev_link_status_handler(void *);
+void mlx5_dev_interrupt_handler(struct rte_intr_handle *, void *);
+void priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
+void priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
 
 /* mlx5_mac.c */
 

@@ -37,6 +37,8 @@
 #endif
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_interrupts.h>
+#include <rte_alarm.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
@@ -87,6 +89,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		priv_mac_addrs_disable(priv);
 		priv_destroy_hash_rxqs(priv);
 	}
+	priv_dev_interrupt_handler_install(priv, dev);
 	priv_unlock(priv);
 	return -err;
 }
@@ -114,6 +117,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_promiscuous_disable(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
+	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv->started = 0;
 	priv_unlock(priv);
 }

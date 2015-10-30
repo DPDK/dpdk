@@ -86,6 +86,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
 	/* In case mlx5_dev_stop() has not been called. */
+	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_allmulticast_disable(priv);
 	priv_promiscuous_disable(priv);
 	priv_mac_addrs_disable(priv);
@@ -450,6 +451,7 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
 		eth_dev->data->mac_addrs = priv->mac;
+		TAILQ_INIT(&eth_dev->link_intr_cbs);
 
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
@@ -523,6 +525,7 @@ static struct eth_driver mlx5_driver = {
 		.name = MLX5_DRIVER_NAME,
 		.id_table = mlx5_pci_id_map,
 		.devinit = mlx5_pci_devinit,
+		.drv_flags = RTE_PCI_DRV_INTR_LSC,
 	},
 	.dev_private_size = sizeof(struct priv)
 };

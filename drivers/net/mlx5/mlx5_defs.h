@@ -78,4 +78,7 @@
 #define MLX5_PMD_SOFT_COUNTERS 1
 #endif
 
+/* Alarm timeout. */
+#define MLX5_ALARM_TIMEOUT_US 100000
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

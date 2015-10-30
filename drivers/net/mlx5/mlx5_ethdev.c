@@ -47,6 +47,7 @@
 #include <linux/if.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
+#include <fcntl.h>
 
 /* DPDK headers don't like -pedantic. */
 #ifdef PEDANTIC
@@ -56,6 +57,8 @@
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_common.h>
+#include <rte_interrupts.h>
+#include <rte_alarm.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
@@ -789,4 +792,151 @@ mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
 	}
 	fclose(file);
 	return 0;
+}
+
+/**
+ * Link status handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ *
+ * @return
+ *   Nonzero if the callback process can be called immediately.
+ */
+static int
+priv_dev_link_status_handler(struct priv *priv, struct rte_eth_dev *dev)
+{
+	struct ibv_async_event event;
+	int port_change = 0;
+	int ret = 0;
+
+	/* Read all message and acknowledge them. */
+	for (;;) {
+		if (ibv_get_async_event(priv->ctx, &event))
+			break;
+
+		if (event.event_type == IBV_EVENT_PORT_ACTIVE ||
+		    event.event_type == IBV_EVENT_PORT_ERR)
+			port_change = 1;
+		else
+			DEBUG("event type %d on port %d not handled",
+			      event.event_type, event.element.port_num);
+		ibv_ack_async_event(&event);
+	}
+
+	if (port_change ^ priv->pending_alarm) {
+		struct rte_eth_link *link = &dev->data->dev_link;
+
+		priv->pending_alarm = 0;
+		mlx5_link_update_unlocked(dev, 0);
+		if (((link->link_speed == 0) && link->link_status) ||
+		    ((link->link_speed != 0) && !link->link_status)) {
+			/* Inconsistent status, check again later. */
+			priv->pending_alarm = 1;
+			rte_eal_alarm_set(MLX5_ALARM_TIMEOUT_US,
+					  mlx5_dev_link_status_handler,
+					  dev);
+		} else
+			ret = 1;
+	}
+	return ret;
+}
+
+/**
+ * Handle delayed link status event.
+ *
+ * @param arg
+ *   Registered argument.
+ */
+void
+mlx5_dev_link_status_handler(void *arg)
+{
+	struct rte_eth_dev *dev = arg;
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+
+	priv_lock(priv);
+	assert(priv->pending_alarm == 1);
+	ret = priv_dev_link_status_handler(priv, dev);
+	priv_unlock(priv);
+	if (ret)
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+}
+
+/**
+ * Handle interrupts from the NIC.
+ *
+ * @param[in] intr_handle
+ *   Interrupt handler.
+ * @param cb_arg
+ *   Callback argument.
+ */
+void
+mlx5_dev_interrupt_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
+{
+	struct rte_eth_dev *dev = cb_arg;
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+
+	(void)intr_handle;
+	priv_lock(priv);
+	ret = priv_dev_link_status_handler(priv, dev);
+	priv_unlock(priv);
+	if (ret)
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+}
+
+/**
+ * Uninstall interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+void
+priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
+{
+	if (!dev->data->dev_conf.intr_conf.lsc)
+		return;
+	rte_intr_callback_unregister(&priv->intr_handle,
+				     mlx5_dev_interrupt_handler,
+				     dev);
+	if (priv->pending_alarm)
+		rte_eal_alarm_cancel(mlx5_dev_link_status_handler, dev);
+	priv->pending_alarm = 0;
+	priv->intr_handle.fd = 0;
+	priv->intr_handle.type = 0;
+}
+
+/**
+ * Install interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+void
+priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
+{
+	int rc, flags;
+
+	if (!dev->data->dev_conf.intr_conf.lsc)
+		return;
+	assert(priv->ctx->async_fd > 0);
+	flags = fcntl(priv->ctx->async_fd, F_GETFL);
+	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	if (rc < 0) {
+		INFO("failed to change file descriptor async event queue");
+		dev->data->dev_conf.intr_conf.lsc = 0;
+	} else {
+		priv->intr_handle.fd = priv->ctx->async_fd;
+		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
+		rte_intr_callback_register(&priv->intr_handle,
+					   mlx5_dev_interrupt_handler,
+					   dev);
+	}
 }
