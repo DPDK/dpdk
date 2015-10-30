@@ -46,6 +46,9 @@
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX5_PMD_TX_PER_COMP_REQ 64
 
+/* RSS Indirection table size. */
+#define RSS_INDIRECTION_TABLE_SIZE 128
+
 /* Maximum number of Scatter/Gather Elements per Work Request. */
 #ifndef MLX5_PMD_SGE_WR_N
 #define MLX5_PMD_SGE_WR_N 4

@@ -109,6 +109,7 @@ struct priv {
 	/* Indirection tables referencing all RX WQs. */
 	struct ibv_exp_rwq_ind_table *(*ind_tables)[];
 	unsigned int ind_tables_n; /* Number of indirection tables. */
+	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	/* Hash RX QPs feeding the indirection table. */
 	struct hash_rxq (*hash_rxqs)[];
 	unsigned int hash_rxqs_n; /* Hash RX QPs array size. */

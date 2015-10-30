@@ -299,7 +299,9 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ether_addr mac;
 
 #ifdef HAVE_EXP_QUERY_DEVICE
-		exp_device_attr.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS;
+		exp_device_attr.comp_mask =
+			IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS |
+			IBV_EXP_DEVICE_ATTR_RX_HASH;
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
@@ -363,6 +365,12 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
 		      (priv->hw_csum_l2tun ? "" : "not "));
 
+		priv->ind_table_max_size = exp_device_attr.rx_hash_caps.max_rwq_indirection_table_size;
+		DEBUG("maximum RX indirection table size is %u",
+		      priv->ind_table_max_size);
+
+#else /* HAVE_EXP_QUERY_DEVICE */
+		priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
 		priv->vf = vf;
