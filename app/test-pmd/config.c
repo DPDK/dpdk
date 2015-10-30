@@ -879,7 +879,7 @@ void
 port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
 {
 	struct rte_eth_rss_conf rss_conf;
-	uint8_t rss_key[10 * 4];
+	uint8_t rss_key[10 * 4] = "";
 	uint64_t rss_hf;
 	uint8_t i;
 	int diag;
@@ -895,6 +895,7 @@ port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
 
 	/* Get RSS hash key if asked to display it */
 	rss_conf.rss_key = (show_rss_key) ? rss_key : NULL;
+	rss_conf.rss_key_len = sizeof(rss_key);
 	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
 	if (diag != 0) {
 		switch (diag) {
