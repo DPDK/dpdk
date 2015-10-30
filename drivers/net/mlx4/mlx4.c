@@ -4821,9 +4821,9 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			goto port_error;
 		}
 		if (port_attr.state != IBV_PORT_ACTIVE)
-			WARN("bad state for port %d: \"%s\" (%d)",
-			     port, ibv_port_state_str(port_attr.state),
-			     port_attr.state);
+			DEBUG("port %d is not active: \"%s\" (%d)",
+			      port, ibv_port_state_str(port_attr.state),
+			      port_attr.state);
 
 		/* Allocate protection domain. */
 		pd = ibv_alloc_pd(ctx);
