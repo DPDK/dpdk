@@ -116,6 +116,10 @@ mlx5_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
 		HAVE_EXP_QUERY_DEVICE \
 		infiniband/verbs.h \
 		type 'struct ibv_exp_device_attr' $(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_FLOW_SPEC_IPV6 \
+		infiniband/verbs.h \
+		type 'struct ibv_exp_flow_spec_ipv6' $(AUTOCONF_OUTPUT)
 
 mlx5.o: mlx5_autoconf.h
 

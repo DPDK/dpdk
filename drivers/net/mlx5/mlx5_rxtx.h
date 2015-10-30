@@ -59,6 +59,7 @@
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
+#include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 
 struct mlx5_rxq_stats {
@@ -124,14 +125,19 @@ enum hash_rxq_type {
 	HASH_RXQ_TCPV4,
 	HASH_RXQ_UDPV4,
 	HASH_RXQ_IPV4,
+#ifdef HAVE_FLOW_SPEC_IPV6
+	HASH_RXQ_TCPV6,
+	HASH_RXQ_UDPV6,
+	HASH_RXQ_IPV6,
+#endif /* HAVE_FLOW_SPEC_IPV6 */
 	HASH_RXQ_ETH,
 };
 
 /* Flow structure with Ethernet specification. It is packed to prevent padding
  * between attr and spec as this layout is expected by libibverbs. */
 struct flow_attr_spec_eth {
-	struct ibv_flow_attr attr;
-	struct ibv_flow_spec_eth spec;
+	struct ibv_exp_flow_attr attr;
+	struct ibv_exp_flow_spec_eth spec;
 } __attribute__((packed));
 
 /* Define a struct flow_attr_spec_eth object as an array of at least
@@ -147,7 +153,7 @@ struct hash_rxq_init {
 	uint64_t hash_fields; /* Fields that participate in the hash. */
 	uint64_t dpdk_rss_hf; /* Matching DPDK RSS hash fields. */
 	unsigned int flow_priority; /* Flow priority to use. */
-	struct ibv_flow_spec flow_spec; /* Flow specification template. */
+	struct ibv_exp_flow_spec flow_spec; /* Flow specification template. */
 	const struct hash_rxq_init *underlayer; /* Pointer to underlayer. */
 };
 
@@ -170,9 +176,9 @@ struct hash_rxq {
 	struct ibv_qp *qp; /* Hash RX QP. */
 	enum hash_rxq_type type; /* Hash RX queue type. */
 	/* MAC flow steering rules, one per VLAN ID. */
-	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
-	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
-	struct ibv_flow *allmulti_flow; /* Multicast flow. */
+	struct ibv_exp_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
+	struct ibv_exp_flow *promisc_flow; /* Promiscuous flow. */
+	struct ibv_exp_flow *allmulti_flow; /* Multicast flow. */
 };
 
 /* TX element. */
@@ -225,7 +231,7 @@ extern const unsigned int hash_rxq_init_n;
 extern uint8_t rss_hash_default_key[];
 extern const size_t rss_hash_default_key_len;
 
-size_t hash_rxq_flow_attr(const struct hash_rxq *, struct ibv_flow_attr *,
+size_t hash_rxq_flow_attr(const struct hash_rxq *, struct ibv_exp_flow_attr *,
 			  size_t);
 int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);

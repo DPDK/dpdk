@@ -73,9 +73,9 @@ static void hash_rxq_allmulticast_disable(struct hash_rxq *);
 static int
 hash_rxq_promiscuous_enable(struct hash_rxq *hash_rxq)
 {
-	struct ibv_flow *flow;
+	struct ibv_exp_flow *flow;
 	FLOW_ATTR_SPEC_ETH(data, hash_rxq_flow_attr(hash_rxq, NULL, 0));
-	struct ibv_flow_attr *attr = &data->attr;
+	struct ibv_exp_flow_attr *attr = &data->attr;
 
 	if (hash_rxq->promisc_flow != NULL)
 		return 0;
@@ -84,7 +84,7 @@ hash_rxq_promiscuous_enable(struct hash_rxq *hash_rxq)
 	 * on specific MAC addresses. */
 	hash_rxq_flow_attr(hash_rxq, attr, sizeof(data));
 	errno = 0;
-	flow = ibv_create_flow(hash_rxq->qp, attr);
+	flow = ibv_exp_create_flow(hash_rxq->qp, attr);
 	if (flow == NULL) {
 		/* It's not clear whether errno is always set in this case. */
 		ERROR("%p: flow configuration failed, errno=%d: %s",
@@ -168,7 +168,7 @@ hash_rxq_promiscuous_disable(struct hash_rxq *hash_rxq)
 	if (hash_rxq->promisc_flow == NULL)
 		return;
 	DEBUG("%p: disabling promiscuous mode", (void *)hash_rxq);
-	claim_zero(ibv_destroy_flow(hash_rxq->promisc_flow));
+	claim_zero(ibv_exp_destroy_flow(hash_rxq->promisc_flow));
 	hash_rxq->promisc_flow = NULL;
 	DEBUG("%p: promiscuous mode disabled", (void *)hash_rxq);
 }
@@ -219,10 +219,10 @@ mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 static int
 hash_rxq_allmulticast_enable(struct hash_rxq *hash_rxq)
 {
-	struct ibv_flow *flow;
+	struct ibv_exp_flow *flow;
 	FLOW_ATTR_SPEC_ETH(data, hash_rxq_flow_attr(hash_rxq, NULL, 0));
-	struct ibv_flow_attr *attr = &data->attr;
-	struct ibv_flow_spec_eth *spec = &data->spec;
+	struct ibv_exp_flow_attr *attr = &data->attr;
+	struct ibv_exp_flow_spec_eth *spec = &data->spec;
 
 	if (hash_rxq->allmulti_flow != NULL)
 		return 0;
@@ -233,8 +233,8 @@ hash_rxq_allmulticast_enable(struct hash_rxq *hash_rxq)
 	 */
 	assert(((uint8_t *)attr + sizeof(*attr)) == (uint8_t *)spec);
 	hash_rxq_flow_attr(hash_rxq, attr, sizeof(data));
-	*spec = (struct ibv_flow_spec_eth){
-		.type = IBV_FLOW_SPEC_ETH,
+	*spec = (struct ibv_exp_flow_spec_eth){
+		.type = IBV_EXP_FLOW_SPEC_ETH,
 		.size = sizeof(*spec),
 		.val = {
 			.dst_mac = "\x01\x00\x00\x00\x00\x00",
@@ -244,7 +244,7 @@ hash_rxq_allmulticast_enable(struct hash_rxq *hash_rxq)
 		},
 	};
 	errno = 0;
-	flow = ibv_create_flow(hash_rxq->qp, attr);
+	flow = ibv_exp_create_flow(hash_rxq->qp, attr);
 	if (flow == NULL) {
 		/* It's not clear whether errno is always set in this case. */
 		ERROR("%p: flow configuration failed, errno=%d: %s",
@@ -328,7 +328,7 @@ hash_rxq_allmulticast_disable(struct hash_rxq *hash_rxq)
 	if (hash_rxq->allmulti_flow == NULL)
 		return;
 	DEBUG("%p: disabling allmulticast mode", (void *)hash_rxq);
-	claim_zero(ibv_destroy_flow(hash_rxq->allmulti_flow));
+	claim_zero(ibv_exp_destroy_flow(hash_rxq->allmulti_flow));
 	hash_rxq->allmulti_flow = NULL;
 	DEBUG("%p: allmulticast mode disabled", (void *)hash_rxq);
 }
