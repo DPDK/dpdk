@@ -2281,6 +2281,27 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.rss_hash_conf_get	= fm10k_rss_hash_conf_get,
 };
 
+static void
+fm10k_params_init(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct fm10k_dev_info *info = FM10K_DEV_PRIVATE_TO_INFO(dev);
+
+	/* Inialize bus info. Normally we would call fm10k_get_bus_info(), but
+	 * there is no way to get link status without reading BAR4.  Until this
+	 * works, assume we have maximum bandwidth.
+	 * @todo - fix bus info
+	 */
+	hw->bus_caps.speed = fm10k_bus_speed_8000;
+	hw->bus_caps.width = fm10k_bus_width_pcie_x8;
+	hw->bus_caps.payload = fm10k_bus_payload_512;
+	hw->bus.speed = fm10k_bus_speed_8000;
+	hw->bus.width = fm10k_bus_width_pcie_x8;
+	hw->bus.payload = fm10k_bus_payload_256;
+
+	info->rx_vec_allowed = true;
+}
+
 static int
 eth_fm10k_dev_init(struct rte_eth_dev *dev)
 {
@@ -2327,18 +2348,8 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 		return -EIO;
 	}
 
-	/*
-	 * Inialize bus info. Normally we would call fm10k_get_bus_info(), but
-	 * there is no way to get link status without reading BAR4.  Until this
-	 * works, assume we have maximum bandwidth.
-	 * @todo - fix bus info
-	 */
-	hw->bus_caps.speed = fm10k_bus_speed_8000;
-	hw->bus_caps.width = fm10k_bus_width_pcie_x8;
-	hw->bus_caps.payload = fm10k_bus_payload_512;
-	hw->bus.speed = fm10k_bus_speed_8000;
-	hw->bus.width = fm10k_bus_width_pcie_x8;
-	hw->bus.payload = fm10k_bus_payload_256;
+	/* Initialize parameters */
+	fm10k_params_init(dev);
 
 	/* Initialize the hw */
 	diag = fm10k_init_hw(hw);
