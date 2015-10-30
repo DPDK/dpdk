@@ -18,6 +18,8 @@ New Features
   * Add 2 new flow director modes on x550.
   * One is MAC VLAN mode, the other is tunnel mode.
 
+* **Added i40e vector RX/TX.**
+
 * **Added i40e flow control support.**
 
 * **Added fm10k TSO support for both PF and VF.**

@@ -743,3 +743,35 @@ i40e_txq_vec_setup(struct i40e_tx_queue __rte_unused *txq)
 {
 	return 0;
 }
+
+int __attribute__((cold))
+i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
+{
+#ifndef RTE_LIBRTE_IEEE1588
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
+
+#ifndef RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE
+	/* whithout rx ol_flags, no VP flag report */
+	if (rxmode->hw_vlan_strip != 0 ||
+	    rxmode->hw_vlan_extend != 0)
+		return -1;
+#endif
+
+	/* no fdir support */
+	if (fconf->mode != RTE_FDIR_MODE_NONE)
+		return -1;
+
+	 /* - no csum error report support
+	 * - no header split support
+	 */
+	if (rxmode->hw_ip_checksum == 1 ||
+	    rxmode->header_split == 1)
+		return -1;
+
+	return 0;
+#else
+	RTE_SET_USED(dev);
+	return -1;
+#endif
+}

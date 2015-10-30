@@ -451,8 +451,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	 * has already done this work. Only check we don't need a different
 	 * RX function */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
-		if (dev->data->scattered_rx)
-			dev->rx_pkt_burst = i40e_recv_scattered_pkts;
+		i40e_set_rx_function(dev);
+		i40e_set_tx_function(dev);
 		return 0;
 	}
 	pci_dev = dev->pci_dev;
@@ -724,9 +724,19 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 static int
 i40e_dev_configure(struct rte_eth_dev *dev)
 {
+	struct i40e_adapter *ad =
+		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
 	int ret;
+
+	/* Initialize to TRUE. If any of Rx queues doesn't meet the
+	 * bulk allocation or vector Rx preconditions we will reset it.
+	 */
+	ad->rx_bulk_alloc_allowed = true;
+	ad->rx_vec_allowed = true;
+	ad->tx_simple_allowed = true;
+	ad->tx_vec_allowed = true;
 
 	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT) {
 		ret = i40e_fdir_setup(pf);
@@ -3901,6 +3911,9 @@ i40e_dev_tx_init(struct i40e_pf *pf)
 		if (ret != I40E_SUCCESS)
 			break;
 	}
+	if (ret == I40E_SUCCESS)
+		i40e_set_tx_function(container_of(pf, struct i40e_adapter, pf)
+				     ->eth_dev);
 
 	return ret;
 }
@@ -3927,6 +3940,9 @@ i40e_dev_rx_init(struct i40e_pf *pf)
 			break;
 		}
 	}
+	if (ret == I40E_SUCCESS)
+		i40e_set_rx_function(container_of(pf, struct i40e_adapter, pf)
+				     ->eth_dev);
 
 	return ret;
 }

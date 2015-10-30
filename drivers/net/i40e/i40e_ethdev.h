@@ -479,6 +479,12 @@ struct i40e_adapter {
 		struct i40e_pf pf;
 		struct i40e_vf vf;
 	};
+
+	/* for vector PMD */
+	bool rx_bulk_alloc_allowed;
+	bool rx_vec_allowed;
+	bool tx_simple_allowed;
+	bool tx_vec_allowed;
 };
 
 int i40e_dev_switch_queues(struct i40e_pf *pf, bool on);

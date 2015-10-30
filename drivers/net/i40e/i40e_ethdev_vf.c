@@ -1197,8 +1197,8 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	 * has already done this work.
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
-		if (eth_dev->data->scattered_rx)
-			eth_dev->rx_pkt_burst = i40e_recv_scattered_pkts;
+		i40e_set_rx_function(eth_dev);
+		i40e_set_tx_function(eth_dev);
 		return 0;
 	}
 
@@ -1292,6 +1292,17 @@ PMD_REGISTER_DRIVER(rte_i40evf_driver);
 static int
 i40evf_dev_configure(struct rte_eth_dev *dev)
 {
+	struct i40e_adapter *ad =
+		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	/* Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation or vector Rx preconditions we will reset it.
+	 */
+	ad->rx_bulk_alloc_allowed = true;
+	ad->rx_vec_allowed = true;
+	ad->tx_simple_allowed = true;
+	ad->tx_vec_allowed = true;
+
 	return i40evf_init_vlan(dev);
 }
 
@@ -1523,7 +1534,6 @@ i40evf_rxq_init(struct rte_eth_dev *dev, struct i40e_rx_queue *rxq)
 	if (dev_data->dev_conf.rxmode.enable_scatter ||
 	    (rxq->max_pkt_len + 2 * I40E_VLAN_TAG_SIZE) > buf_size) {
 		dev_data->scattered_rx = 1;
-		dev->rx_pkt_burst = i40e_recv_scattered_pkts;
 	}
 
 	return 0;
@@ -1534,6 +1544,7 @@ i40evf_rx_init(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	uint16_t i;
+	int ret = I40E_SUCCESS;
 	struct i40e_rx_queue **rxq =
 		(struct i40e_rx_queue **)dev->data->rx_queues;
 
@@ -1541,11 +1552,14 @@ i40evf_rx_init(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (!rxq[i] || !rxq[i]->q_set)
 			continue;
-		if (i40evf_rxq_init(dev, rxq[i]) < 0)
-			return -EFAULT;
+		ret = i40evf_rxq_init(dev, rxq[i]);
+		if (ret != I40E_SUCCESS)
+			break;
 	}
+	if (ret == I40E_SUCCESS)
+		i40e_set_rx_function(dev);
 
-	return 0;
+	return ret;
 }
 
 static void
@@ -1558,6 +1572,8 @@ i40evf_tx_init(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		txq[i]->qtx_tail = hw->hw_addr + I40E_QTX_TAIL1(i);
+
+	i40e_set_tx_function(dev);
 }
 
 static inline void
