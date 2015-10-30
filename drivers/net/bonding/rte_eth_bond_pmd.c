@@ -1801,7 +1801,7 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_eth_stats slave_stats;
-	int i;
+	int i, j;
 
 	for (i = 0; i < internals->slave_count; i++) {
 		rte_eth_stats_get(internals->slaves[i].port_id, &slave_stats);
@@ -1820,6 +1820,15 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->rx_pause_xon += slave_stats.rx_pause_xon;
 		stats->tx_pause_xoff += slave_stats.tx_pause_xoff;
 		stats->rx_pause_xoff += slave_stats.rx_pause_xoff;
+
+		for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {
+			stats->q_ipackets[j] += slave_stats.q_ipackets[j];
+			stats->q_opackets[j] += slave_stats.q_opackets[j];
+			stats->q_ibytes[j] += slave_stats.q_ibytes[j];
+			stats->q_obytes[j] += slave_stats.q_obytes[j];
+			stats->q_errors[j] += slave_stats.q_errors[j];
+		}
+
 	}
 }
 
