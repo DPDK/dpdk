@@ -38,6 +38,8 @@
 #include <rte_dev.h>
 #include <rte_kvargs.h>
 
+#include "rte_eth_null.h"
+
 #define ETH_NULL_PACKET_SIZE_ARG	"size"
 #define ETH_NULL_PACKET_COPY_ARG	"copy"
 
@@ -387,7 +389,7 @@ static const struct eth_dev_ops ops = {
 	.stats_reset = eth_stats_reset,
 };
 
-static int
+int
 eth_dev_null_create(const char *name,
 		const unsigned numa_node,
 		unsigned packet_size,

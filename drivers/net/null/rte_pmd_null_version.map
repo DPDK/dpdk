@@ -2,3 +2,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_2.2 {
+	global:
+
+	eth_dev_null_create;
+
+} DPDK_2.0;
