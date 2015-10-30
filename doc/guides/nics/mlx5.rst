@@ -73,6 +73,25 @@ long as they share the same MAC address.
 Enabling librte_pmd_mlx5 causes DPDK applications to be linked against
 libibverbs.
 
+Features
+--------
+
+- Multiple TX and RX queues.
+- Support for scattered TX and RX frames.
+- IPv4, TCPv4 and UDPv4 RSS on any number of queues.
+- Several RSS hash keys, one for each flow type.
+- Support for multiple MAC addresses.
+- VLAN filtering.
+- Promiscuous mode.
+
+Limitations
+-----------
+
+- IPv6 and inner VXLAN RSS are not supported yet.
+- Port statistics through software counters only.
+- No allmulticast mode.
+- Hardware checksum offloads are not supported yet.
+
 Configuration
 -------------
 
@@ -170,6 +189,13 @@ DPDK and must be installed separately:
 
    Both libraries are BSD and GPL licensed. Linux kernel modules are GPL
    licensed.
+
+Currently supported by DPDK:
+
+- Mellanox OFED **3.1**.
+- Minimum firmware version:
+  - ConnectX-4: **12.12.0780**.
+  - ConnectX-4 Lx: **14.12.0780**.
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
