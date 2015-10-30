@@ -74,20 +74,17 @@ static int
 hash_rxq_promiscuous_enable(struct hash_rxq *hash_rxq)
 {
 	struct ibv_flow *flow;
-	struct ibv_flow_attr attr = {
-		.type = IBV_FLOW_ATTR_ALL_DEFAULT,
-		.num_of_specs = 0,
-		.port = hash_rxq->priv->port,
-		.flags = 0
-	};
+	FLOW_ATTR_SPEC_ETH(data, hash_rxq_flow_attr(hash_rxq, NULL, 0));
+	struct ibv_flow_attr *attr = &data->attr;
 
-	if (hash_rxq->priv->vf)
-		return 0;
 	if (hash_rxq->promisc_flow != NULL)
 		return 0;
 	DEBUG("%p: enabling promiscuous mode", (void *)hash_rxq);
+	/* Promiscuous flows only differ from normal flows by not filtering
+	 * on specific MAC addresses. */
+	hash_rxq_flow_attr(hash_rxq, attr, sizeof(data));
 	errno = 0;
-	flow = ibv_create_flow(hash_rxq->qp, &attr);
+	flow = ibv_create_flow(hash_rxq->qp, attr);
 	if (flow == NULL) {
 		/* It's not clear whether errno is always set in this case. */
 		ERROR("%p: flow configuration failed, errno=%d: %s",
@@ -162,8 +159,6 @@ mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 static void
 hash_rxq_promiscuous_disable(struct hash_rxq *hash_rxq)
 {
-	if (hash_rxq->priv->vf)
-		return;
 	if (hash_rxq->promisc_flow == NULL)
 		return;
 	DEBUG("%p: disabling promiscuous mode", (void *)hash_rxq);
@@ -217,18 +212,31 @@ static int
 hash_rxq_allmulticast_enable(struct hash_rxq *hash_rxq)
 {
 	struct ibv_flow *flow;
-	struct ibv_flow_attr attr = {
-		.type = IBV_FLOW_ATTR_MC_DEFAULT,
-		.num_of_specs = 0,
-		.port = hash_rxq->priv->port,
-		.flags = 0
-	};
+	FLOW_ATTR_SPEC_ETH(data, hash_rxq_flow_attr(hash_rxq, NULL, 0));
+	struct ibv_flow_attr *attr = &data->attr;
+	struct ibv_flow_spec_eth *spec = &data->spec;
 
 	if (hash_rxq->allmulti_flow != NULL)
 		return 0;
 	DEBUG("%p: enabling allmulticast mode", (void *)hash_rxq);
+	/*
+	 * No padding must be inserted by the compiler between attr and spec.
+	 * This layout is expected by libibverbs.
+	 */
+	assert(((uint8_t *)attr + sizeof(*attr)) == (uint8_t *)spec);
+	hash_rxq_flow_attr(hash_rxq, attr, sizeof(data));
+	*spec = (struct ibv_flow_spec_eth){
+		.type = IBV_FLOW_SPEC_ETH,
+		.size = sizeof(*spec),
+		.val = {
+			.dst_mac = "\x01\x00\x00\x00\x00\x00",
+		},
+		.mask = {
+			.dst_mac = "\x01\x00\x00\x00\x00\x00",
+		},
+	};
 	errno = 0;
-	flow = ibv_create_flow(hash_rxq->qp, &attr);
+	flow = ibv_create_flow(hash_rxq->qp, attr);
 	if (flow == NULL) {
 		/* It's not clear whether errno is always set in this case. */
 		ERROR("%p: flow configuration failed, errno=%d: %s",
