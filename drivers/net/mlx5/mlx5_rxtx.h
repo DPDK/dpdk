@@ -116,6 +116,8 @@ struct rxq {
 		struct rxq_elt (*no_sp)[]; /* RX elements. */
 	} elts;
 	unsigned int sp:1; /* Use scattered RX elements. */
+	unsigned int csum:1; /* Enable checksum offloading. */
+	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
 	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */

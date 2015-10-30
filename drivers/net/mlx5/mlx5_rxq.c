@@ -565,6 +565,15 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	/* Number of descriptors and mbufs currently allocated. */
 	desc_n = (tmpl.elts_n * (tmpl.sp ? MLX5_PMD_SGE_WR_N : 1));
 	mbuf_n = desc_n;
+	/* Toggle RX checksum offload if hardware supports it. */
+	if (priv->hw_csum) {
+		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
+		rxq->csum = tmpl.csum;
+	}
+	if (priv->hw_csum_l2tun) {
+		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
+		rxq->csum_l2tun = tmpl.csum_l2tun;
+	}
 	/* Enable scattered packets support for this queue if necessary. */
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
@@ -785,6 +794,11 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		rte_pktmbuf_tailroom(buf)) == tmpl.mb_len);
 	assert(rte_pktmbuf_headroom(buf) == RTE_PKTMBUF_HEADROOM);
 	rte_pktmbuf_free(buf);
+	/* Toggle RX checksum offload if hardware supports it. */
+	if (priv->hw_csum)
+		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
+	if (priv->hw_csum_l2tun)
+		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	/* Enable scattered packets support for this queue if necessary. */
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >

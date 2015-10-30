@@ -149,6 +149,12 @@ pmd_drv_log_basename(const char *s)
 #define NB_SEGS(m) ((m)->nb_segs)
 #define PORT(m) ((m)->port)
 
+/* Transpose flags. Useful to convert IBV to DPDK flags. */
+#define TRANSPOSE(val, from, to) \
+	(((from) >= (to)) ? \
+	 (((val) & (from)) / ((from) / (to))) : \
+	 (((val) & (from)) * ((to) / (from))))
+
 /* Allocate a buffer on the stack and fill it with a printf format string. */
 #define MKSTR(name, ...) \
 	char name[snprintf(NULL, 0, __VA_ARGS__) + 1]; \

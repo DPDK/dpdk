@@ -390,6 +390,17 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			++elts_comp;
 			send_flags |= IBV_EXP_QP_BURST_SIGNALED;
 		}
+		/* Should we enable HW CKSUM offload */
+		if (buf->ol_flags &
+		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
+			send_flags |= IBV_EXP_QP_BURST_IP_CSUM;
+			/* HW does not support checksum offloads at arbitrary
+			 * offsets but automatically recognizes the packet
+			 * type. For inner L3/L4 checksums, only VXLAN (UDP)
+			 * tunnels are currently supported. */
+			if (RTE_ETH_IS_TUNNEL_PKT(buf->packet_type))
+				send_flags |= IBV_EXP_QP_BURST_TUNNEL;
+		}
 		if (likely(segs == 1)) {
 			uintptr_t addr;
 			uint32_t length;
@@ -488,6 +499,85 @@ stop:
 	txq->elts_comp += elts_comp;
 	txq->elts_comp_cd = elts_comp_cd;
 	return i;
+}
+
+/**
+ * Translate RX completion flags to packet type.
+ *
+ * @param flags
+ *   RX completion flags returned by poll_length_flags().
+ *
+ * @return
+ *   Packet type for struct rte_mbuf.
+ */
+static inline uint32_t
+rxq_cq_to_pkt_type(uint32_t flags)
+{
+	uint32_t pkt_type;
+
+	if (flags & IBV_EXP_CQ_RX_TUNNEL_PACKET)
+		pkt_type =
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_OUTER_IPV4_PACKET,
+				  RTE_PTYPE_L3_IPV4) |
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_OUTER_IPV6_PACKET,
+				  RTE_PTYPE_L3_IPV6) |
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_IPV4_PACKET,
+				  RTE_PTYPE_INNER_L3_IPV4) |
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_IPV6_PACKET,
+				  RTE_PTYPE_INNER_L3_IPV6);
+	else
+		pkt_type =
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_IPV4_PACKET,
+				  RTE_PTYPE_L3_IPV4) |
+			TRANSPOSE(flags,
+				  IBV_EXP_CQ_RX_IPV6_PACKET,
+				  RTE_PTYPE_L3_IPV6);
+	return pkt_type;
+}
+
+/**
+ * Translate RX completion flags to offload flags.
+ *
+ * @param[in] rxq
+ *   Pointer to RX queue structure.
+ * @param flags
+ *   RX completion flags returned by poll_length_flags().
+ *
+ * @return
+ *   Offload flags (ol_flags) for struct rte_mbuf.
+ */
+static inline uint32_t
+rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
+{
+	uint32_t ol_flags = 0;
+
+	if (rxq->csum)
+		ol_flags |=
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_IP_CSUM_OK,
+				  PKT_RX_IP_CKSUM_BAD) |
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_TCP_UDP_CSUM_OK,
+				  PKT_RX_L4_CKSUM_BAD);
+	/*
+	 * PKT_RX_IP_CKSUM_BAD and PKT_RX_L4_CKSUM_BAD are used in place
+	 * of PKT_RX_EIP_CKSUM_BAD because the latter is not functional
+	 * (its value is 0).
+	 */
+	if ((flags & IBV_EXP_CQ_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
+		ol_flags |=
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_OUTER_IP_CSUM_OK,
+				  PKT_RX_IP_CKSUM_BAD) |
+			TRANSPOSE(~flags,
+				  IBV_EXP_CQ_RX_OUTER_TCP_UDP_CSUM_OK,
+				  PKT_RX_L4_CKSUM_BAD);
+	return ol_flags;
 }
 
 /**
@@ -669,6 +759,8 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NB_SEGS(pkt_buf) = j;
 		PORT(pkt_buf) = rxq->port_id;
 		PKT_LEN(pkt_buf) = pkt_buf_len;
+		pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
+		pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
@@ -829,6 +921,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NEXT(seg) = NULL;
 		PKT_LEN(seg) = len;
 		DATA_LEN(seg) = len;
+		seg->packet_type = rxq_cq_to_pkt_type(flags);
+		seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 
 		/* Return packet. */
 		*(pkts++) = seg;
