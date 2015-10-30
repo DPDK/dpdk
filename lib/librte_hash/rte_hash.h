@@ -56,6 +56,9 @@ extern "C" {
 #define RTE_HASH_LOOKUP_BULK_MAX		64
 #define RTE_HASH_LOOKUP_MULTI_MAX		RTE_HASH_LOOKUP_BULK_MAX
 
+/** Enable Hardware transactional memory support. */
+#define RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT	0x01
+
 /** Signature of key that is stored internally. */
 typedef uint32_t hash_sig_t;
 

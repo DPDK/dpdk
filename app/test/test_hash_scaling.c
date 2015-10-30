@@ -133,6 +133,7 @@ test_hash_scaling(int locking_mode)
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
 		.socket_id = rte_socket_id(),
+		.extra_flag = RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
 	};
 	struct rte_hash *handle;
 	char name[RTE_HASH_NAMESIZE];
