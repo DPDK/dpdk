@@ -176,3 +176,7 @@ The following are known limitations:
     testpmd [options] -- --mbuf-size=<your-max-packet-size>
 
 #.  Qemu e1000 does not validate the checksum of incoming packets.
+
+#.  Qemu e1000 only supports one interrupt source, so link and Rx interrupt should be exclusive.
+
+#.  Qemu e1000 does not support interrupt auto-clear, application should disable interrupt immediately when woken up.
