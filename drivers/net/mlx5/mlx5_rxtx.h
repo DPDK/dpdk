@@ -78,6 +78,8 @@ struct rxq {
 	struct ibv_qp *qp; /* Queue Pair. */
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
+	/* MAC flow steering rules. */
+	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES];
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */

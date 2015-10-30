@@ -134,6 +134,8 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.tx_queue_setup = mlx5_tx_queue_setup,
 	.rx_queue_release = mlx5_rx_queue_release,
 	.tx_queue_release = mlx5_tx_queue_release,
+	.mac_addr_remove = mlx5_mac_addr_remove,
+	.mac_addr_add = mlx5_mac_addr_add,
 };
 
 static struct {
@@ -390,7 +392,7 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		claim_zero(priv_mac_addr_add(priv, 0,
 					     (const uint8_t (*)[ETHER_ADDR_LEN])
 					     mac.addr_bytes));
-		claim_zero(priv_mac_addr_add(priv, 1,
+		claim_zero(priv_mac_addr_add(priv, (RTE_DIM(priv->mac) - 1),
 					     &(const uint8_t [ETHER_ADDR_LEN])
 					     { "\xff\xff\xff\xff\xff\xff" }));
 #ifndef NDEBUG

@@ -248,6 +248,7 @@ rxq_cleanup(struct rxq *rxq)
 						&params));
 	}
 	if (rxq->qp != NULL) {
+		rxq_mac_addrs_del(rxq);
 		claim_zero(ibv_destroy_qp(rxq->qp));
 	}
 	if (rxq->cq != NULL)
@@ -514,6 +515,15 @@ skip_mr:
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
 		      (void *)dev, strerror(ret));
 		goto error;
+	}
+	if ((parent) || (!priv->rss))  {
+		/* Configure MAC and broadcast addresses. */
+		ret = rxq_mac_addrs_add(&tmpl);
+		if (ret) {
+			ERROR("%p: QP flow attachment failed: %s",
+			      (void *)dev, strerror(ret));
+			goto error;
+		}
 	}
 	/* Allocate descriptors for RX queues, except for the RSS parent. */
 	if (parent)

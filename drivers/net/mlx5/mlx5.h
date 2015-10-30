@@ -166,7 +166,12 @@ int mlx5_ibv_device_to_pci_addr(const struct ibv_device *,
 /* mlx5_mac.c */
 
 int priv_get_mac(struct priv *, uint8_t (*)[ETHER_ADDR_LEN]);
+void rxq_mac_addrs_del(struct rxq *);
+void mlx5_mac_addr_remove(struct rte_eth_dev *, uint32_t);
+int rxq_mac_addrs_add(struct rxq *);
 int priv_mac_addr_add(struct priv *, unsigned int,
 		      const uint8_t (*)[ETHER_ADDR_LEN]);
+void mlx5_mac_addr_add(struct rte_eth_dev *, struct ether_addr *, uint32_t,
+		       uint32_t);
 
 #endif /* RTE_PMD_MLX5_H_ */
