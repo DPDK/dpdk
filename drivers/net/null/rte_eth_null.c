@@ -432,6 +432,7 @@ eth_dev_null_create(const char *name,
 	internals->numa_node = numa_node;
 
 	pci_dev->numa_node = numa_node;
+	pci_dev->driver = &rte_null_pmd.pci_drv;
 
 	data->dev_private = internals;
 	data->port_id = eth_dev->data->port_id;
@@ -445,6 +446,7 @@ eth_dev_null_create(const char *name,
 	eth_dev->dev_ops = &ops;
 	eth_dev->pci_dev = pci_dev;
 	eth_dev->driver = &rte_null_pmd;
+	TAILQ_INIT(&eth_dev->link_intr_cbs);
 
 	/* finally assign rx and tx ops */
 	if (packet_copy) {
