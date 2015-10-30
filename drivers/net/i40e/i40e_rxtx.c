@@ -3074,6 +3074,15 @@ i40e_recv_pkts_vec(
 	return 0;
 }
 
+uint16_t __attribute__((weak))
+i40e_recv_scattered_pkts_vec(
+	void __rte_unused *rx_queue,
+	struct rte_mbuf __rte_unused **rx_pkts,
+	uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
+
 int __attribute__((weak))
 i40e_rxq_vec_setup(struct i40e_rx_queue __rte_unused *rxq)
 {

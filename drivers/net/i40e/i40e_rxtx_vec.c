@@ -220,9 +220,7 @@ desc_pktlen_align(__m128i descs[4])
 	*((uint16_t *)&descs[3]+7) = vol.e[3];
 }
 
- /* vPMD receive routine, now only accept (nb_pkts == RTE_I40E_VPMD_RX_BURST)
- * in one loop
- *
+ /*
  * Notice:
  * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
  * - nb_pkts > RTE_I40E_VPMD_RX_BURST, only scan RTE_I40E_VPMD_RX_BURST
@@ -430,19 +428,121 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	return nb_pkts_recd;
 }
 
- /* vPMD receive routine, now only accept (nb_pkts == RTE_IXGBE_VPMD_RX_BURST)
- * in one loop
- *
+ /*
  * Notice:
- * - nb_pkts < RTE_I40E_VPMD_RX_BURST, just return no packet
- * - nb_pkts > RTE_I40E_VPMD_RX_BURST, only scan RTE_IXGBE_VPMD_RX_BURST
- *   numbers of DD bit
+ * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts > RTE_I40E_VPMD_RX_BURST, only scan RTE_I40E_VPMD_RX_BURST
+ *   numbers of DD bits
  */
 uint16_t
 i40e_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		   uint16_t nb_pkts)
 {
 	return _recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
+}
+
+static inline uint16_t
+reassemble_packets(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_bufs,
+		   uint16_t nb_bufs, uint8_t *split_flags)
+{
+	struct rte_mbuf *pkts[RTE_I40E_VPMD_RX_BURST]; /*finished pkts*/
+	struct rte_mbuf *start = rxq->pkt_first_seg;
+	struct rte_mbuf *end =  rxq->pkt_last_seg;
+	unsigned pkt_idx, buf_idx;
+
+	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
+		if (end != NULL) {
+			/* processing a split packet */
+			end->next = rx_bufs[buf_idx];
+			rx_bufs[buf_idx]->data_len += rxq->crc_len;
+
+			start->nb_segs++;
+			start->pkt_len += rx_bufs[buf_idx]->data_len;
+			end = end->next;
+
+			if (!split_flags[buf_idx]) {
+				/* it's the last packet of the set */
+				start->hash = end->hash;
+				start->ol_flags = end->ol_flags;
+				/* we need to strip crc for the whole packet */
+				start->pkt_len -= rxq->crc_len;
+				if (end->data_len > rxq->crc_len) {
+					end->data_len -= rxq->crc_len;
+				} else {
+					/* free up last mbuf */
+					struct rte_mbuf *secondlast = start;
+
+					while (secondlast->next != end)
+						secondlast = secondlast->next;
+					secondlast->data_len -= (rxq->crc_len -
+							end->data_len);
+					secondlast->next = NULL;
+					rte_pktmbuf_free_seg(end);
+					end = secondlast;
+				}
+				pkts[pkt_idx++] = start;
+				start = end = NULL;
+			}
+		} else {
+			/* not processing a split packet */
+			if (!split_flags[buf_idx]) {
+				/* not a split packet, save and skip */
+				pkts[pkt_idx++] = rx_bufs[buf_idx];
+				continue;
+			}
+			end = start = rx_bufs[buf_idx];
+			rx_bufs[buf_idx]->data_len += rxq->crc_len;
+			rx_bufs[buf_idx]->pkt_len += rxq->crc_len;
+		}
+	}
+
+	/* save the partial packet for next time */
+	rxq->pkt_first_seg = start;
+	rxq->pkt_last_seg = end;
+	memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
+	return pkt_idx;
+}
+
+ /* vPMD receive routine that reassembles scattered packets
+ * Notice:
+ * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts > RTE_I40E_VPMD_RX_BURST, only scan RTE_I40E_VPMD_RX_BURST
+ *   numbers of DD bits
+ */
+uint16_t
+i40e_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			     uint16_t nb_pkts)
+{
+
+	struct i40e_rx_queue *rxq = rx_queue;
+	uint8_t split_flags[RTE_I40E_VPMD_RX_BURST] = {0};
+
+	/* get some new buffers */
+	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
+			split_flags);
+	if (nb_bufs == 0)
+		return 0;
+
+	/* happy day case, full burst + no packets to be joined */
+	const uint64_t *split_fl64 = (uint64_t *)split_flags;
+
+	if (rxq->pkt_first_seg == NULL &&
+			split_fl64[0] == 0 && split_fl64[1] == 0 &&
+			split_fl64[2] == 0 && split_fl64[3] == 0)
+		return nb_bufs;
+
+	/* reassemble any packets that need reassembly*/
+	unsigned i = 0;
+
+	if (rxq->pkt_first_seg == NULL) {
+		/* find the first split flag, and only reassemble then*/
+		while (i < nb_bufs && !split_flags[i])
+			i++;
+		if (i == nb_bufs)
+			return nb_bufs;
+	}
+	return i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
+		&split_flags[i]);
 }
 
 static inline void

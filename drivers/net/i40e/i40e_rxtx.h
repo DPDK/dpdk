@@ -231,6 +231,9 @@ int i40e_dev_rx_descriptor_done(void *rx_queue, uint16_t offset);
 
 uint16_t i40e_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			    uint16_t nb_pkts);
+uint16_t i40e_recv_scattered_pkts_vec(void *rx_queue,
+				      struct rte_mbuf **rx_pkts,
+				      uint16_t nb_pkts);
 int i40e_rxq_vec_setup(struct i40e_rx_queue *rxq);
 int i40e_txq_vec_setup(struct i40e_tx_queue *txq);
 void i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq);
