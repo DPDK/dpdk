@@ -248,8 +248,13 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 	else if (udev->mode == RTE_INTR_MODE_MSIX) {
 		struct msi_desc *desc;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0))
 		list_for_each_entry(desc, &pdev->msi_list, list)
 			igbuio_msix_mask_irq(desc, irq_state);
+#else
+		list_for_each_entry(desc, &pdev->dev.msi_list, list)
+			igbuio_msix_mask_irq(desc, irq_state);
+#endif
 	}
 	pci_cfg_access_unlock(pdev);
 
