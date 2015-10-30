@@ -71,19 +71,43 @@ static const struct hash_rxq_init hash_rxq_init[] = {
 				IBV_EXP_RX_HASH_DST_IPV4 |
 				IBV_EXP_RX_HASH_SRC_PORT_TCP |
 				IBV_EXP_RX_HASH_DST_PORT_TCP),
+		.flow_priority = 0,
+		.flow_spec.tcp_udp = {
+			.type = IBV_FLOW_SPEC_TCP,
+			.size = sizeof(hash_rxq_init[0].flow_spec.tcp_udp),
+		},
+		.underlayer = &hash_rxq_init[HASH_RXQ_IPV4],
 	},
 	[HASH_RXQ_UDPV4] = {
 		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
 				IBV_EXP_RX_HASH_DST_IPV4 |
 				IBV_EXP_RX_HASH_SRC_PORT_UDP |
 				IBV_EXP_RX_HASH_DST_PORT_UDP),
+		.flow_priority = 0,
+		.flow_spec.tcp_udp = {
+			.type = IBV_FLOW_SPEC_UDP,
+			.size = sizeof(hash_rxq_init[0].flow_spec.tcp_udp),
+		},
+		.underlayer = &hash_rxq_init[HASH_RXQ_IPV4],
 	},
 	[HASH_RXQ_IPV4] = {
 		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
 				IBV_EXP_RX_HASH_DST_IPV4),
+		.flow_priority = 1,
+		.flow_spec.ipv4 = {
+			.type = IBV_FLOW_SPEC_IPV4,
+			.size = sizeof(hash_rxq_init[0].flow_spec.ipv4),
+		},
+		.underlayer = &hash_rxq_init[HASH_RXQ_ETH],
 	},
 	[HASH_RXQ_ETH] = {
 		.hash_fields = 0,
+		.flow_priority = 2,
+		.flow_spec.eth = {
+			.type = IBV_FLOW_SPEC_ETH,
+			.size = sizeof(hash_rxq_init[0].flow_spec.eth),
+		},
+		.underlayer = NULL,
 	},
 };
 
@@ -123,6 +147,59 @@ static uint8_t hash_rxq_default_key[] = {
 	0x06, 0x3c, 0x25, 0xf3,
 	0xfc, 0x1f, 0xdc, 0x2a,
 };
+
+/**
+ * Populate flow steering rule for a given hash RX queue type using
+ * information from hash_rxq_init[]. Nothing is written to flow_attr when
+ * flow_attr_size is not large enough, but the required size is still returned.
+ *
+ * @param[in] hash_rxq
+ *   Pointer to hash RX queue.
+ * @param[out] flow_attr
+ *   Pointer to flow attribute structure to fill. Note that the allocated
+ *   area must be larger and large enough to hold all flow specifications.
+ * @param flow_attr_size
+ *   Entire size of flow_attr and trailing room for flow specifications.
+ *
+ * @return
+ *   Total size of the flow attribute buffer. No errors are defined.
+ */
+size_t
+hash_rxq_flow_attr(const struct hash_rxq *hash_rxq,
+		   struct ibv_flow_attr *flow_attr,
+		   size_t flow_attr_size)
+{
+	size_t offset = sizeof(*flow_attr);
+	enum hash_rxq_type type = hash_rxq->type;
+	const struct hash_rxq_init *init = &hash_rxq_init[type];
+
+	assert(hash_rxq->priv != NULL);
+	assert((size_t)type < RTE_DIM(hash_rxq_init));
+	do {
+		offset += init->flow_spec.hdr.size;
+		init = init->underlayer;
+	} while (init != NULL);
+	if (offset > flow_attr_size)
+		return offset;
+	flow_attr_size = offset;
+	init = &hash_rxq_init[type];
+	*flow_attr = (struct ibv_flow_attr){
+		.type = IBV_FLOW_ATTR_NORMAL,
+		.priority = init->flow_priority,
+		.num_of_specs = 0,
+		.port = hash_rxq->priv->port,
+		.flags = 0,
+	};
+	do {
+		offset -= init->flow_spec.hdr.size;
+		memcpy((void *)((uintptr_t)flow_attr + offset),
+		       &init->flow_spec,
+		       init->flow_spec.hdr.size);
+		++flow_attr->num_of_specs;
+		init = init->underlayer;
+	} while (init != NULL);
+	return flow_attr_size;
+}
 
 /**
  * Return nearest power of two above input value.

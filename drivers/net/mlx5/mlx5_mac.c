@@ -242,12 +242,9 @@ hash_rxq_add_mac_flow(struct hash_rxq *hash_rxq, unsigned int mac_index,
 	const uint8_t (*mac)[ETHER_ADDR_LEN] =
 			(const uint8_t (*)[ETHER_ADDR_LEN])
 			priv->mac[mac_index].addr_bytes;
-	struct __attribute__((packed)) {
-		struct ibv_flow_attr attr;
-		struct ibv_flow_spec_eth spec;
-	} data;
-	struct ibv_flow_attr *attr = &data.attr;
-	struct ibv_flow_spec_eth *spec = &data.spec;
+	FLOW_ATTR_SPEC_ETH(data, hash_rxq_flow_attr(hash_rxq, NULL, 0));
+	struct ibv_flow_attr *attr = &data->attr;
+	struct ibv_flow_spec_eth *spec = &data->spec;
 	unsigned int vlan_enabled = !!priv->vlan_filter_n;
 	unsigned int vlan_id = priv->vlan_filter[vlan_index];
 
@@ -260,12 +257,10 @@ hash_rxq_add_mac_flow(struct hash_rxq *hash_rxq, unsigned int mac_index,
 	 * This layout is expected by libibverbs.
 	 */
 	assert(((uint8_t *)attr + sizeof(*attr)) == (uint8_t *)spec);
-	*attr = (struct ibv_flow_attr){
-		.type = IBV_FLOW_ATTR_NORMAL,
-		.num_of_specs = 1,
-		.port = priv->port,
-		.flags = 0
-	};
+	hash_rxq_flow_attr(hash_rxq, attr, sizeof(data));
+	/* The first specification must be Ethernet. */
+	assert(spec->type == IBV_FLOW_SPEC_ETH);
+	assert(spec->size == sizeof(*spec));
 	*spec = (struct ibv_flow_spec_eth){
 		.type = IBV_FLOW_SPEC_ETH,
 		.size = sizeof(*spec),

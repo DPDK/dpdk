@@ -34,6 +34,7 @@
 #ifndef RTE_PMD_MLX5_RXTX_H_
 #define RTE_PMD_MLX5_RXTX_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* Verbs header. */
@@ -126,9 +127,27 @@ enum hash_rxq_type {
 	HASH_RXQ_ETH,
 };
 
+/* Flow structure with Ethernet specification. It is packed to prevent padding
+ * between attr and spec as this layout is expected by libibverbs. */
+struct flow_attr_spec_eth {
+	struct ibv_flow_attr attr;
+	struct ibv_flow_spec_eth spec;
+} __attribute__((packed));
+
+/* Define a struct flow_attr_spec_eth object as an array of at least
+ * "size" bytes. Room after the first index is normally used to store
+ * extra flow specifications. */
+#define FLOW_ATTR_SPEC_ETH(name, size) \
+	struct flow_attr_spec_eth name \
+		[((size) / sizeof(struct flow_attr_spec_eth)) + \
+		 !!((size) % sizeof(struct flow_attr_spec_eth))]
+
 /* Initialization data for hash RX queue. */
 struct hash_rxq_init {
 	uint64_t hash_fields; /* Fields that participate in the hash. */
+	unsigned int flow_priority; /* Flow priority to use. */
+	struct ibv_flow_spec flow_spec; /* Flow specification template. */
+	const struct hash_rxq_init *underlayer; /* Pointer to underlayer. */
 };
 
 /* Initialization data for indirection table. */
@@ -193,6 +212,8 @@ struct txq {
 
 /* mlx5_rxq.c */
 
+size_t hash_rxq_flow_attr(const struct hash_rxq *, struct ibv_flow_attr *,
+			  size_t);
 int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
 void rxq_cleanup(struct rxq *);
