@@ -45,6 +45,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <linux/if.h>
+#include <linux/ethtool.h>
+#include <linux/sockios.h>
 
 /* DPDK headers don't like -pedantic. */
 #ifdef PEDANTIC
@@ -532,6 +534,75 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	priv_unlock(priv);
+}
+
+/**
+ * DPDK callback to retrieve physical link information (unlocked version).
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param wait_to_complete
+ *   Wait for request completion (ignored).
+ */
+static int
+mlx5_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct ethtool_cmd edata = {
+		.cmd = ETHTOOL_GSET
+	};
+	struct ifreq ifr;
+	struct rte_eth_link dev_link;
+	int link_speed = 0;
+
+	(void)wait_to_complete;
+	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
+		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
+		return -1;
+	}
+	memset(&dev_link, 0, sizeof(dev_link));
+	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
+				(ifr.ifr_flags & IFF_RUNNING));
+	ifr.ifr_data = &edata;
+	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
+		     strerror(errno));
+		return -1;
+	}
+	link_speed = ethtool_cmd_speed(&edata);
+	if (link_speed == -1)
+		dev_link.link_speed = 0;
+	else
+		dev_link.link_speed = link_speed;
+	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
+				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+	if (memcmp(&dev_link, &dev->data->dev_link, sizeof(dev_link))) {
+		/* Link status changed. */
+		dev->data->dev_link = dev_link;
+		return 0;
+	}
+	/* Link status is still the same. */
+	return -1;
+}
+
+/**
+ * DPDK callback to retrieve physical link information.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param wait_to_complete
+ *   Wait for request completion (ignored).
+ */
+int
+mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+
+	priv_lock(priv);
+	ret = mlx5_link_update_unlocked(dev, wait_to_complete);
+	priv_unlock(priv);
+	return ret;
 }
 
 /**

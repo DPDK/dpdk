@@ -137,6 +137,7 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.promiscuous_disable = mlx5_promiscuous_disable,
 	.allmulticast_enable = mlx5_allmulticast_enable,
 	.allmulticast_disable = mlx5_allmulticast_disable,
+	.link_update = mlx5_link_update,
 	.stats_get = mlx5_stats_get,
 	.stats_reset = mlx5_stats_reset,
 	.dev_infos_get = mlx5_dev_infos_get,
