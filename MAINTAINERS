@@ -255,6 +255,10 @@ M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 
+Mellanox mlx5
+M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+F: drivers/net/mlx5/
+
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>
 M: Changchun Ouyang <changchun.ouyang@intel.com>
