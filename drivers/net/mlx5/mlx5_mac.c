@@ -97,9 +97,12 @@ priv_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
  *   Pointer to RX queue structure.
  * @param mac_index
  *   MAC address index.
+ * @param vlan_index
+ *   VLAN index to use.
  */
 static void
-rxq_del_mac_flow(struct rxq *rxq, unsigned int mac_index)
+rxq_del_mac_flow(struct rxq *rxq, unsigned int mac_index,
+		 unsigned int vlan_index)
 {
 #ifndef NDEBUG
 	const uint8_t (*mac)[ETHER_ADDR_LEN] =
@@ -108,14 +111,17 @@ rxq_del_mac_flow(struct rxq *rxq, unsigned int mac_index)
 #endif
 
 	assert(mac_index < RTE_DIM(rxq->mac_flow));
-	if (rxq->mac_flow[mac_index] == NULL)
+	assert(vlan_index < RTE_DIM(rxq->mac_flow[mac_index]));
+	if (rxq->mac_flow[mac_index][vlan_index] == NULL)
 		return;
-	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u",
+	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u"
+	      " VLAN index %u",
 	      (void *)rxq,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
-	      mac_index);
-	claim_zero(ibv_destroy_flow(rxq->mac_flow[mac_index]));
-	rxq->mac_flow[mac_index] = NULL;
+	      mac_index,
+	      vlan_index);
+	claim_zero(ibv_destroy_flow(rxq->mac_flow[mac_index][vlan_index]));
+	rxq->mac_flow[mac_index][vlan_index] = NULL;
 }
 
 /**
@@ -129,8 +135,11 @@ rxq_del_mac_flow(struct rxq *rxq, unsigned int mac_index)
 static void
 rxq_mac_addr_del(struct rxq *rxq, unsigned int mac_index)
 {
+	unsigned int i;
+
 	assert(mac_index < RTE_DIM(rxq->mac_flow));
-	rxq_del_mac_flow(rxq, mac_index);
+	for (i = 0; (i != RTE_DIM(rxq->mac_flow[mac_index])); ++i)
+		rxq_del_mac_flow(rxq, mac_index, i);
 }
 
 /**
@@ -208,12 +217,15 @@ end:
  *   Pointer to RX queue structure.
  * @param mac_index
  *   MAC address index to register.
+ * @param vlan_index
+ *   VLAN index to use.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-rxq_add_mac_flow(struct rxq *rxq, unsigned int mac_index)
+rxq_add_mac_flow(struct rxq *rxq, unsigned int mac_index,
+		 unsigned int vlan_index)
 {
 	struct ibv_flow *flow;
 	struct priv *priv = rxq->priv;
@@ -226,9 +238,12 @@ rxq_add_mac_flow(struct rxq *rxq, unsigned int mac_index)
 	} data;
 	struct ibv_flow_attr *attr = &data.attr;
 	struct ibv_flow_spec_eth *spec = &data.spec;
+	unsigned int vlan_enabled = !!priv->vlan_filter_n;
+	unsigned int vlan_id = priv->vlan_filter[vlan_index];
 
 	assert(mac_index < RTE_DIM(rxq->mac_flow));
-	if (rxq->mac_flow[mac_index] != NULL)
+	assert(vlan_index < RTE_DIM(rxq->mac_flow[mac_index]));
+	if (rxq->mac_flow[mac_index][vlan_index] != NULL)
 		return 0;
 	/*
 	 * No padding must be inserted by the compiler between attr and spec.
@@ -249,15 +264,21 @@ rxq_add_mac_flow(struct rxq *rxq, unsigned int mac_index)
 				(*mac)[0], (*mac)[1], (*mac)[2],
 				(*mac)[3], (*mac)[4], (*mac)[5]
 			},
+			.vlan_tag = (vlan_enabled ? htons(vlan_id) : 0),
 		},
 		.mask = {
 			.dst_mac = "\xff\xff\xff\xff\xff\xff",
+			.vlan_tag = (vlan_enabled ? htons(0xfff) : 0),
 		},
 	};
-	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u",
+	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u"
+	      " VLAN index %u filtering %s, ID %u",
 	      (void *)rxq,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
-	      mac_index);
+	      mac_index,
+	      vlan_index,
+	      (vlan_enabled ? "enabled" : "disabled"),
+	      vlan_id);
 	/* Create related flow. */
 	errno = 0;
 	flow = ibv_create_flow(rxq->qp, attr);
@@ -270,7 +291,7 @@ rxq_add_mac_flow(struct rxq *rxq, unsigned int mac_index)
 			return errno;
 		return EINVAL;
 	}
-	rxq->mac_flow[mac_index] = flow;
+	rxq->mac_flow[mac_index][vlan_index] = flow;
 	return 0;
 }
 
@@ -288,12 +309,23 @@ rxq_add_mac_flow(struct rxq *rxq, unsigned int mac_index)
 static int
 rxq_mac_addr_add(struct rxq *rxq, unsigned int mac_index)
 {
+	struct priv *priv = rxq->priv;
+	unsigned int i = 0;
 	int ret;
 
 	assert(mac_index < RTE_DIM(rxq->mac_flow));
-	ret = rxq_add_mac_flow(rxq, mac_index);
-	if (ret)
-		return ret;
+	assert(RTE_DIM(rxq->mac_flow[mac_index]) ==
+	       RTE_DIM(priv->vlan_filter));
+	/* Add a MAC address for each VLAN filter, or at least once. */
+	do {
+		ret = rxq_add_mac_flow(rxq, mac_index, i);
+		if (ret) {
+			/* Failure, rollback. */
+			while (i != 0)
+				rxq_del_mac_flow(rxq, mac_index, --i);
+			return ret;
+		}
+	} while (++i < priv->vlan_filter_n);
 	return 0;
 }
 

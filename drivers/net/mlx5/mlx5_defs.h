@@ -40,6 +40,9 @@
 /* Maximum number of simultaneous MAC addresses. */
 #define MLX5_MAX_MAC_ADDRESSES 128
 
+/* Maximum number of simultaneous VLAN filters. */
+#define MLX5_MAX_VLAN_IDS 128
+
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX5_PMD_TX_PER_COMP_REQ 64
 

@@ -90,6 +90,8 @@ struct priv {
 	 */
 	struct ether_addr mac[MLX5_MAX_MAC_ADDRESSES];
 	BITFIELD_DECLARE(mac_configured, uint32_t, MLX5_MAX_MAC_ADDRESSES);
+	uint16_t vlan_filter[MLX5_MAX_VLAN_IDS]; /* VLAN filters table. */
+	unsigned int vlan_filter_n; /* Number of configured VLAN filters. */
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
@@ -197,6 +199,10 @@ void mlx5_allmulticast_disable(struct rte_eth_dev *);
 
 void mlx5_stats_get(struct rte_eth_dev *, struct rte_eth_stats *);
 void mlx5_stats_reset(struct rte_eth_dev *);
+
+/* mlx5_vlan.c */
+
+int mlx5_vlan_filter_set(struct rte_eth_dev *, uint16_t, int);
 
 /* mlx5_trigger.c */
 

@@ -104,8 +104,8 @@ struct rxq {
 	struct ibv_qp *qp; /* Queue Pair. */
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
-	/* MAC flow steering rules. */
-	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES];
+	/* MAC flow steering rules, one per VLAN ID. */
+	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
 	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
 	struct ibv_flow *allmulti_flow; /* Multicast flow. */
 	unsigned int port_id; /* Port ID for incoming packets. */

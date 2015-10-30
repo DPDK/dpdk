@@ -141,6 +141,7 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.stats_get = mlx5_stats_get,
 	.stats_reset = mlx5_stats_reset,
 	.dev_infos_get = mlx5_dev_infos_get,
+	.vlan_filter_set = mlx5_vlan_filter_set,
 	.rx_queue_setup = mlx5_rx_queue_setup,
 	.tx_queue_setup = mlx5_tx_queue_setup,
 	.rx_queue_release = mlx5_rx_queue_release,
