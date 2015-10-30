@@ -33,6 +33,14 @@ New Features
   *  Added support for Jumbo Frames.
   *  Optimize forwarding performance for Chelsio T5 40GbE cards.
 
+* **Added support for Mellanox ConnectX-4 adapters (mlx5).**
+
+  The mlx5 poll-mode driver implements support for Mellanox ConnectX-4 EN
+  and Mellanox ConnectX-4 Lx EN families of 10/25/40/50/100 Gb/s adapters.
+
+  Like mlx4, this PMD is only available for Linux and is disabled by default
+  due to external dependencies (libibverbs and libmlx5).
+
 * **Added vhost-user multiple queue support.**
 
 * **Added port hotplug support to xenvirt.**

@@ -45,6 +45,7 @@ Network Interface Controller Drivers
     ixgbe
     intel_vf
     mlx4
+    mlx5
     virtio
     vmxnet3
     pcap_ring
