@@ -188,7 +188,7 @@ conditions are not met. If a user wishes to monitor individual slaves then they
 must register callbacks with that slave directly.
 
 The link bonding library also supports devices which do not implement link
-status change interrupts, this is achieve by polling the devices link status at
+status change interrupts, this is achieved by polling the devices link status at
 a defined period which is set using the ``rte_eth_bond_link_monitoring_set``
 API, the default polling interval is 10ms. When a device is added as a slave to
 a bonding device it is determined using the ``RTE_PCI_DRV_INTR_LSC`` flag
@@ -286,7 +286,7 @@ and UDP protocols for load balancing.
 Using Link Bonding Devices
 --------------------------
 
-The librte_pmd_bond library support two modes of device creation, the libraries
+The librte_pmd_bond library supports two modes of device creation, the libraries
 export full C API or using the EAL command line to statically configure link
 bonding devices at application startup. Using the EAL option it is possible to
 use link bonding functionality transparently without specific knowledge of the
@@ -299,7 +299,7 @@ Using the Poll Mode Driver from an Application
 
 Using the librte_pmd_bond libraries API it is possible to dynamically create
 and manage link bonding device from within any application. Link bonding
-device are created using the ``rte_eth_bond_create`` API which requires a
+devices are created using the ``rte_eth_bond_create`` API which requires a
 unique device name, the link bonding mode to initial the device in and finally
 the socket Id which to allocate the devices resources onto. After successful
 creation of a bonding device it must be configured using the generic Ethernet
@@ -362,7 +362,7 @@ The different options are:
         mode=2
 
 *   slave: Defines the PMD device which will be added as slave to the bonded
-    device. This option can be selected multiple time, for each device to be
+    device. This option can be selected multiple times, for each device to be
     added as a slave. Physical devices should be specified using their PCI
     address, in the format domain:bus:devid.function
 
