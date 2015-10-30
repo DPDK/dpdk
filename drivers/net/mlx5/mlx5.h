@@ -94,6 +94,8 @@ struct priv {
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
 	unsigned int started:1; /* Device started, flows enabled. */
+	unsigned int promisc_req:1; /* Promiscuous mode requested. */
+	unsigned int allmulti_req:1; /* All multicast mode requested. */
 	unsigned int hw_qpg:1; /* QP groups are supported. */
 	unsigned int hw_tss:1; /* TSS is supported. */
 	unsigned int hw_rss:1; /* RSS is supported. */
@@ -176,6 +178,17 @@ int priv_mac_addr_add(struct priv *, unsigned int,
 		      const uint8_t (*)[ETHER_ADDR_LEN]);
 void mlx5_mac_addr_add(struct rte_eth_dev *, struct ether_addr *, uint32_t,
 		       uint32_t);
+
+/* mlx5_rxmode.c */
+
+int rxq_promiscuous_enable(struct rxq *);
+void mlx5_promiscuous_enable(struct rte_eth_dev *);
+void rxq_promiscuous_disable(struct rxq *);
+void mlx5_promiscuous_disable(struct rte_eth_dev *);
+int rxq_allmulticast_enable(struct rxq *);
+void mlx5_allmulticast_enable(struct rte_eth_dev *);
+void rxq_allmulticast_disable(struct rxq *);
+void mlx5_allmulticast_disable(struct rte_eth_dev *);
 
 /* mlx5_stats.c */
 

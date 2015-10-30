@@ -605,6 +605,10 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		if (!priv->rss) {
 			if (priv->started)
 				rxq_mac_addrs_add(rxq);
+			if (priv->started && priv->promisc_req)
+				rxq_promiscuous_enable(rxq);
+			if (priv->started && priv->allmulti_req)
+				rxq_allmulticast_enable(rxq);
 		}
 		/* Scattered burst function takes priority. */
 		if (rxq->sp)

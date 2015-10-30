@@ -106,6 +106,8 @@ struct rxq {
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	/* MAC flow steering rules. */
 	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES];
+	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
+	struct ibv_flow *allmulti_flow; /* Multicast flow. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */

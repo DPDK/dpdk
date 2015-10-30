@@ -398,6 +398,8 @@ rxq_cleanup(struct rxq *rxq)
 						&params));
 	}
 	if (rxq->qp != NULL) {
+		rxq_promiscuous_disable(rxq);
+		rxq_allmulticast_disable(rxq);
 		rxq_mac_addrs_del(rxq);
 		claim_zero(ibv_destroy_qp(rxq->qp));
 	}
@@ -580,8 +582,12 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	}
 	/* Remove attached flows if RSS is disabled (no parent queue). */
 	if (!priv->rss) {
+		rxq_allmulticast_disable(&tmpl);
+		rxq_promiscuous_disable(&tmpl);
 		rxq_mac_addrs_del(&tmpl);
 		/* Update original queue in case of failure. */
+		rxq->allmulti_flow = tmpl.allmulti_flow;
+		rxq->promisc_flow = tmpl.promisc_flow;
 		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
 	}
 	/* From now on, any failure will render the queue unusable.
@@ -621,7 +627,13 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	if (!priv->rss) {
 		if (priv->started)
 			rxq_mac_addrs_add(&tmpl);
+		if (priv->started && priv->promisc_req)
+			rxq_promiscuous_enable(&tmpl);
+		if (priv->started && priv->allmulti_req)
+			rxq_allmulticast_enable(&tmpl);
 		/* Update original queue in case of failure. */
+		rxq->allmulti_flow = tmpl.allmulti_flow;
+		rxq->promisc_flow = tmpl.promisc_flow;
 		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
 	}
 	/* Allocate pool. */

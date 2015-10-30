@@ -86,6 +86,10 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		if (rxq == NULL)
 			continue;
 		ret = rxq_mac_addrs_add(rxq);
+		if (!ret && priv->promisc_req)
+			ret = rxq_promiscuous_enable(rxq);
+		if (!ret && priv->allmulti_req)
+			ret = rxq_allmulticast_enable(rxq);
 		if (!ret)
 			continue;
 		WARN("%p: QP flow attachment failed: %s",
@@ -94,6 +98,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		while (i != 0) {
 			rxq = (*priv->rxqs)[--i];
 			if (rxq != NULL) {
+				rxq_allmulticast_disable(rxq);
+				rxq_promiscuous_disable(rxq);
 				rxq_mac_addrs_del(rxq);
 			}
 		}
@@ -140,6 +146,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 		/* Ignore nonexistent RX queues. */
 		if (rxq == NULL)
 			continue;
+		rxq_allmulticast_disable(rxq);
+		rxq_promiscuous_disable(rxq);
 		rxq_mac_addrs_del(rxq);
 	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
 	priv_unlock(priv);
