@@ -127,6 +127,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		claim_zero(ibv_close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
+	rte_free(priv->rss_conf);
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -154,6 +155,8 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.mac_addr_remove = mlx5_mac_addr_remove,
 	.mac_addr_add = mlx5_mac_addr_add,
 	.mtu_set = mlx5_dev_set_mtu,
+	.rss_hash_update = mlx5_rss_hash_update,
+	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
 };
 
 static struct {
@@ -374,6 +377,12 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
 		priv->vf = vf;
+		/* Register default RSS hash key. */
+		err = rss_hash_rss_conf_new_key(priv,
+						rss_hash_default_key,
+						rss_hash_default_key_len);
+		if (err)
+			goto port_error;
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx5_en loaded?"
@@ -437,6 +446,7 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		continue;
 
 port_error:
+		rte_free(priv->rss_conf);
 		rte_free(priv);
 		if (pd)
 			claim_zero(ibv_dealloc_pd(pd));

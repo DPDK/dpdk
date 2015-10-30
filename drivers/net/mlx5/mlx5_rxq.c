@@ -135,7 +135,7 @@ static const struct ind_table_init ind_table_init[] = {
 #define IND_TABLE_INIT_N RTE_DIM(ind_table_init)
 
 /* Default RSS hash key also used for ConnectX-3. */
-static uint8_t hash_rxq_default_key[] = {
+uint8_t rss_hash_default_key[] = {
 	0x2c, 0xc6, 0x81, 0xd1,
 	0x5b, 0xdb, 0xf4, 0xf7,
 	0xfc, 0xa2, 0x83, 0x19,
@@ -147,6 +147,9 @@ static uint8_t hash_rxq_default_key[] = {
 	0x06, 0x3c, 0x25, 0xf3,
 	0xfc, 0x1f, 0xdc, 0x2a,
 };
+
+/* Length of the default RSS hash key. */
+const size_t rss_hash_default_key_len = sizeof(rss_hash_default_key);
 
 /**
  * Populate flow steering rule for a given hash RX queue type using
@@ -326,6 +329,7 @@ priv_create_hash_rxqs(struct priv *priv)
 	assert(priv->hash_rxqs_n == 0);
 	assert(priv->pd != NULL);
 	assert(priv->ctx != NULL);
+	assert(priv->rss_conf != NULL);
 	if (priv->rxqs_n == 0)
 		return EINVAL;
 	assert(priv->rxqs != NULL);
@@ -410,8 +414,8 @@ priv_create_hash_rxqs(struct priv *priv)
 			hash_rxq_type_from_n(&ind_table_init[j], k);
 		struct ibv_exp_rx_hash_conf hash_conf = {
 			.rx_hash_function = IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
-			.rx_hash_key_len = sizeof(hash_rxq_default_key),
-			.rx_hash_key = hash_rxq_default_key,
+			.rx_hash_key_len = priv->rss_conf->rss_key_len,
+			.rx_hash_key = priv->rss_conf->rss_key,
 			.rx_hash_fields_mask = hash_rxq_init[type].hash_fields,
 			.rwq_ind_tbl = (*ind_tables)[j],
 		};
