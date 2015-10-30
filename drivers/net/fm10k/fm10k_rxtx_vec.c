@@ -321,6 +321,24 @@ fm10k_rxq_rearm(struct fm10k_rx_queue *rxq)
 	FM10K_PCI_REG_WRITE(rxq->tail_ptr, rx_id);
 }
 
+void __attribute__((cold))
+fm10k_rx_queue_release_mbufs_vec(struct fm10k_rx_queue *rxq)
+{
+	const unsigned mask = rxq->nb_desc - 1;
+	unsigned i;
+
+	if (rxq->sw_ring == NULL || rxq->rxrearm_nb >= rxq->nb_desc)
+		return;
+
+	/* free all mbufs that are valid in the ring */
+	for (i = rxq->next_dd; i != rxq->rxrearm_start; i = (i + 1) & mask)
+		rte_pktmbuf_free_seg(rxq->sw_ring[i]);
+	rxq->rxrearm_nb = rxq->nb_desc;
+
+	/* set all entries to NULL */
+	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_desc);
+}
+
 static inline uint16_t
 fm10k_recv_raw_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts, uint8_t *split_packet)

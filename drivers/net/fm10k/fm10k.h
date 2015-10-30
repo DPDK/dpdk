@@ -334,6 +334,7 @@ uint16_t fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 int fm10k_rxq_vec_setup(struct fm10k_rx_queue *rxq);
 int fm10k_rx_vec_condition_check(struct rte_eth_dev *);
+void fm10k_rx_queue_release_mbufs_vec(struct fm10k_rx_queue *rxq);
 uint16_t fm10k_recv_pkts_vec(void *, struct rte_mbuf **, uint16_t);
 uint16_t fm10k_recv_scattered_pkts_vec(void *, struct rte_mbuf **,
 					uint16_t);
