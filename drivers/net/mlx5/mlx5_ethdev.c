@@ -695,6 +695,105 @@ out:
 }
 
 /**
+ * DPDK callback to get flow control status.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] fc_conf
+ *   Flow control output buffer.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct ifreq ifr;
+	struct ethtool_pauseparam ethpause = {
+		.cmd = ETHTOOL_GPAUSEPARAM
+	};
+	int ret;
+
+	ifr.ifr_data = &ethpause;
+	priv_lock(priv);
+	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+		ret = errno;
+		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM)"
+		     " failed: %s",
+		     strerror(ret));
+		goto out;
+	}
+
+	fc_conf->autoneg = ethpause.autoneg;
+	if (ethpause.rx_pause && ethpause.tx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (ethpause.rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (ethpause.tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+	ret = 0;
+
+out:
+	priv_unlock(priv);
+	assert(ret >= 0);
+	return -ret;
+}
+
+/**
+ * DPDK callback to modify flow control parameters.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[in] fc_conf
+ *   Flow control parameters.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct ifreq ifr;
+	struct ethtool_pauseparam ethpause = {
+		.cmd = ETHTOOL_SPAUSEPARAM
+	};
+	int ret;
+
+	ifr.ifr_data = &ethpause;
+	ethpause.autoneg = fc_conf->autoneg;
+	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
+	    (fc_conf->mode & RTE_FC_RX_PAUSE))
+		ethpause.rx_pause = 1;
+	else
+		ethpause.rx_pause = 0;
+
+	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
+	    (fc_conf->mode & RTE_FC_TX_PAUSE))
+		ethpause.tx_pause = 1;
+	else
+		ethpause.tx_pause = 0;
+
+	priv_lock(priv);
+	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+		ret = errno;
+		WARN("ioctl(SIOCETHTOOL, ETHTOOL_SPAUSEPARAM)"
+		     " failed: %s",
+		     strerror(ret));
+		goto out;
+	}
+	ret = 0;
+
+out:
+	priv_unlock(priv);
+	assert(ret >= 0);
+	return -ret;
+}
+
+/**
  * Get PCI information from struct ibv_device.
  *
  * @param device
