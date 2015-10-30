@@ -106,8 +106,9 @@ struct priv {
 	unsigned int txqs_n; /* TX queues array size. */
 	struct rxq *(*rxqs)[]; /* RX queues. */
 	struct txq *(*txqs)[]; /* TX queues. */
-	/* Indirection table referencing all RX WQs. */
-	struct ibv_exp_rwq_ind_table *ind_table;
+	/* Indirection tables referencing all RX WQs. */
+	struct ibv_exp_rwq_ind_table *(*ind_tables)[];
+	unsigned int ind_tables_n; /* Number of indirection tables. */
 	/* Hash RX QPs feeding the indirection table. */
 	struct hash_rxq (*hash_rxqs)[];
 	unsigned int hash_rxqs_n; /* Hash RX QPs array size. */

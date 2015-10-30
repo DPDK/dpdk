@@ -262,6 +262,9 @@ priv_allmulticast_enable(struct priv *priv)
 		struct hash_rxq *hash_rxq = &(*priv->hash_rxqs)[i];
 		int ret;
 
+		/* allmulticast not relevant for TCP. */
+		if (hash_rxq->type == HASH_RXQ_TCPV4)
+			continue;
 		ret = hash_rxq_allmulticast_enable(hash_rxq);
 		if (!ret)
 			continue;

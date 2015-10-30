@@ -64,6 +64,52 @@
 #include "mlx5_utils.h"
 #include "mlx5_defs.h"
 
+/* Initialization data for hash RX queues. */
+static const struct hash_rxq_init hash_rxq_init[] = {
+	[HASH_RXQ_TCPV4] = {
+		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
+				IBV_EXP_RX_HASH_DST_IPV4 |
+				IBV_EXP_RX_HASH_SRC_PORT_TCP |
+				IBV_EXP_RX_HASH_DST_PORT_TCP),
+	},
+	[HASH_RXQ_UDPV4] = {
+		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
+				IBV_EXP_RX_HASH_DST_IPV4 |
+				IBV_EXP_RX_HASH_SRC_PORT_UDP |
+				IBV_EXP_RX_HASH_DST_PORT_UDP),
+	},
+	[HASH_RXQ_IPV4] = {
+		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
+				IBV_EXP_RX_HASH_DST_IPV4),
+	},
+	[HASH_RXQ_ETH] = {
+		.hash_fields = 0,
+	},
+};
+
+/* Number of entries in hash_rxq_init[]. */
+static const unsigned int hash_rxq_init_n = RTE_DIM(hash_rxq_init);
+
+/* Initialization data for hash RX queue indirection tables. */
+static const struct ind_table_init ind_table_init[] = {
+	{
+		.max_size = -1u, /* Superseded by HW limitations. */
+		.hash_types =
+			1 << HASH_RXQ_TCPV4 |
+			1 << HASH_RXQ_UDPV4 |
+			1 << HASH_RXQ_IPV4 |
+			0,
+		.hash_types_n = 3,
+	},
+	{
+		.max_size = 1,
+		.hash_types = 1 << HASH_RXQ_ETH,
+		.hash_types_n = 1,
+	},
+};
+
+#define IND_TABLE_INIT_N RTE_DIM(ind_table_init)
+
 /* Default RSS hash key also used for ConnectX-3. */
 static uint8_t hash_rxq_default_key[] = {
 	0x2c, 0xc6, 0x81, 0xd1,
@@ -99,6 +145,74 @@ log2above(unsigned int v)
 }
 
 /**
+ * Return the type corresponding to the n'th bit set.
+ *
+ * @param table
+ *   The indirection table.
+ * @param n
+ *   The n'th bit set.
+ *
+ * @return
+ *   The corresponding hash_rxq_type.
+ */
+static enum hash_rxq_type
+hash_rxq_type_from_n(const struct ind_table_init *table, unsigned int n)
+{
+	assert(n < table->hash_types_n);
+	while (((table->hash_types >> n) & 0x1) == 0)
+		++n;
+	return n;
+}
+
+/**
+ * Filter out disabled hash RX queue types from ind_table_init[].
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param[out] table
+ *   Output table.
+ *
+ * @return
+ *   Number of table entries.
+ */
+static unsigned int
+priv_make_ind_table_init(struct priv *priv,
+			 struct ind_table_init (*table)[IND_TABLE_INIT_N])
+{
+	unsigned int i;
+	unsigned int j;
+	unsigned int table_n = 0;
+	/* Mandatory to receive frames not handled by normal hash RX queues. */
+	unsigned int hash_types_sup = 1 << HASH_RXQ_ETH;
+
+	/* Process other protocols only if more than one queue. */
+	if (priv->rxqs_n > 1)
+		for (i = 0; (i != hash_rxq_init_n); ++i)
+			if (hash_rxq_init[i].hash_fields)
+				hash_types_sup |= (1 << i);
+
+	/* Filter out entries whose protocols are not in the set. */
+	for (i = 0, j = 0; (i != IND_TABLE_INIT_N); ++i) {
+		unsigned int nb;
+		unsigned int h;
+
+		/* j is increased only if the table has valid protocols. */
+		assert(j <= i);
+		(*table)[j] = ind_table_init[i];
+		(*table)[j].hash_types &= hash_types_sup;
+		for (h = 0, nb = 0; (h != hash_rxq_init_n); ++h)
+			if (((*table)[j].hash_types >> h) & 0x1)
+				++nb;
+		(*table)[i].hash_types_n = nb;
+		if (nb) {
+			++table_n;
+			++j;
+		}
+	}
+	return table_n;
+}
+
+/**
  * Initialize hash RX queues and indirection table.
  *
  * @param priv
@@ -110,21 +224,21 @@ log2above(unsigned int v)
 int
 priv_create_hash_rxqs(struct priv *priv)
 {
-	static const uint64_t rss_hash_table[] = {
-		/* TCPv4. */
-		(IBV_EXP_RX_HASH_SRC_IPV4 | IBV_EXP_RX_HASH_DST_IPV4 |
-		 IBV_EXP_RX_HASH_SRC_PORT_TCP | IBV_EXP_RX_HASH_DST_PORT_TCP),
-		/* UDPv4. */
-		(IBV_EXP_RX_HASH_SRC_IPV4 | IBV_EXP_RX_HASH_DST_IPV4 |
-		 IBV_EXP_RX_HASH_SRC_PORT_UDP | IBV_EXP_RX_HASH_DST_PORT_UDP),
-		/* Other IPv4. */
-		(IBV_EXP_RX_HASH_SRC_IPV4 | IBV_EXP_RX_HASH_DST_IPV4),
-		/* None, used for everything else. */
-		0,
-	};
+	unsigned int wqs_n = (1 << log2above(priv->rxqs_n));
+	struct ibv_exp_wq *wqs[wqs_n];
+	struct ind_table_init ind_table_init[IND_TABLE_INIT_N];
+	unsigned int ind_tables_n =
+		priv_make_ind_table_init(priv, &ind_table_init);
+	unsigned int hash_rxqs_n = 0;
+	struct hash_rxq (*hash_rxqs)[] = NULL;
+	struct ibv_exp_rwq_ind_table *(*ind_tables)[] = NULL;
+	unsigned int i;
+	unsigned int j;
+	unsigned int k;
+	int err = 0;
 
-	DEBUG("allocating hash RX queues for %u WQs", priv->rxqs_n);
-	assert(priv->ind_table == NULL);
+	assert(priv->ind_tables == NULL);
+	assert(priv->ind_tables_n == 0);
 	assert(priv->hash_rxqs == NULL);
 	assert(priv->hash_rxqs_n == 0);
 	assert(priv->pd != NULL);
@@ -132,26 +246,11 @@ priv_create_hash_rxqs(struct priv *priv)
 	if (priv->rxqs_n == 0)
 		return EINVAL;
 	assert(priv->rxqs != NULL);
-
-	/* FIXME: large data structures are allocated on the stack. */
-	unsigned int wqs_n = (1 << log2above(priv->rxqs_n));
-	struct ibv_exp_wq *wqs[wqs_n];
-	struct ibv_exp_rwq_ind_table_init_attr ind_init_attr = {
-		.pd = priv->pd,
-		.log_ind_tbl_size = log2above(priv->rxqs_n),
-		.ind_tbl = wqs,
-		.comp_mask = 0,
-	};
-	struct ibv_exp_rwq_ind_table *ind_table = NULL;
-	/* If only one RX queue is configured, RSS is not needed and a single
-	 * empty hash entry is used (last rss_hash_table[] entry). */
-	unsigned int hash_rxqs_n =
-		((priv->rxqs_n == 1) ? 1 : RTE_DIM(rss_hash_table));
-	struct hash_rxq (*hash_rxqs)[hash_rxqs_n] = NULL;
-	unsigned int i;
-	unsigned int j;
-	int err = 0;
-
+	if (ind_tables_n == 0) {
+		ERROR("all hash RX queue types have been filtered out,"
+		      " indirection table cannot be created");
+		return EINVAL;
+	}
 	if (wqs_n < priv->rxqs_n) {
 		ERROR("cannot handle this many RX queues (%u)", priv->rxqs_n);
 		err = ERANGE;
@@ -170,9 +269,40 @@ priv_create_hash_rxqs(struct priv *priv)
 		if (++j == priv->rxqs_n)
 			j = 0;
 	}
-	errno = 0;
-	ind_table = ibv_exp_create_rwq_ind_table(priv->ctx, &ind_init_attr);
-	if (ind_table == NULL) {
+	/* Get number of hash RX queues to configure. */
+	for (i = 0, hash_rxqs_n = 0; (i != ind_tables_n); ++i)
+		hash_rxqs_n += ind_table_init[i].hash_types_n;
+	DEBUG("allocating %u hash RX queues for %u WQs, %u indirection tables",
+	      hash_rxqs_n, priv->rxqs_n, ind_tables_n);
+	/* Create indirection tables. */
+	ind_tables = rte_calloc(__func__, ind_tables_n,
+				sizeof((*ind_tables)[0]), 0);
+	if (ind_tables == NULL) {
+		err = ENOMEM;
+		ERROR("cannot allocate indirection tables container: %s",
+		      strerror(err));
+		goto error;
+	}
+	for (i = 0; (i != ind_tables_n); ++i) {
+		struct ibv_exp_rwq_ind_table_init_attr ind_init_attr = {
+			.pd = priv->pd,
+			.log_ind_tbl_size = 0, /* Set below. */
+			.ind_tbl = wqs,
+			.comp_mask = 0,
+		};
+		unsigned int ind_tbl_size = ind_table_init[i].max_size;
+		struct ibv_exp_rwq_ind_table *ind_table;
+
+		if (wqs_n < ind_tbl_size)
+			ind_tbl_size = wqs_n;
+		ind_init_attr.log_ind_tbl_size = log2above(ind_tbl_size);
+		errno = 0;
+		ind_table = ibv_exp_create_rwq_ind_table(priv->ctx,
+							 &ind_init_attr);
+		if (ind_table != NULL) {
+			(*ind_tables)[i] = ind_table;
+			continue;
+		}
 		/* Not clear whether errno is set. */
 		err = (errno ? errno : EINVAL);
 		ERROR("RX indirection table creation failed with error %d: %s",
@@ -180,24 +310,26 @@ priv_create_hash_rxqs(struct priv *priv)
 		goto error;
 	}
 	/* Allocate array that holds hash RX queues and related data. */
-	hash_rxqs = rte_malloc(__func__, sizeof(*hash_rxqs), 0);
+	hash_rxqs = rte_calloc(__func__, hash_rxqs_n,
+			       sizeof((*hash_rxqs)[0]), 0);
 	if (hash_rxqs == NULL) {
 		err = ENOMEM;
 		ERROR("cannot allocate hash RX queues container: %s",
 		      strerror(err));
 		goto error;
 	}
-	for (i = 0, j = (RTE_DIM(rss_hash_table) - hash_rxqs_n);
-	     (j != RTE_DIM(rss_hash_table));
-	     ++i, ++j) {
+	for (i = 0, j = 0, k = 0;
+	     ((i != hash_rxqs_n) && (j != ind_tables_n));
+	     ++i) {
 		struct hash_rxq *hash_rxq = &(*hash_rxqs)[i];
-
+		enum hash_rxq_type type =
+			hash_rxq_type_from_n(&ind_table_init[j], k);
 		struct ibv_exp_rx_hash_conf hash_conf = {
 			.rx_hash_function = IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
 			.rx_hash_key_len = sizeof(hash_rxq_default_key),
 			.rx_hash_key = hash_rxq_default_key,
-			.rx_hash_fields_mask = rss_hash_table[j],
-			.rwq_ind_tbl = ind_table,
+			.rx_hash_fields_mask = hash_rxq_init[type].hash_fields,
+			.rwq_ind_tbl = (*ind_tables)[j],
 		};
 		struct ibv_exp_qp_init_attr qp_init_attr = {
 			.max_inl_recv = 0, /* Currently not supported. */
@@ -209,30 +341,54 @@ priv_create_hash_rxqs(struct priv *priv)
 			.port_num = priv->port,
 		};
 
+		DEBUG("using indirection table %u for hash RX queue %u",
+		      j, i);
 		*hash_rxq = (struct hash_rxq){
 			.priv = priv,
 			.qp = ibv_exp_create_qp(priv->ctx, &qp_init_attr),
+			.type = type,
 		};
 		if (hash_rxq->qp == NULL) {
 			err = (errno ? errno : EINVAL);
 			ERROR("Hash RX QP creation failure: %s",
 			      strerror(err));
-			while (i) {
-				hash_rxq = &(*hash_rxqs)[--i];
-				claim_zero(ibv_destroy_qp(hash_rxq->qp));
-			}
 			goto error;
 		}
+		if (++k < ind_table_init[j].hash_types_n)
+			continue;
+		/* Switch to the next indirection table and reset hash RX
+		 * queue type array index. */
+		++j;
+		k = 0;
 	}
-	priv->ind_table = ind_table;
+	priv->ind_tables = ind_tables;
+	priv->ind_tables_n = ind_tables_n;
 	priv->hash_rxqs = hash_rxqs;
 	priv->hash_rxqs_n = hash_rxqs_n;
 	assert(err == 0);
 	return 0;
 error:
-	rte_free(hash_rxqs);
-	if (ind_table != NULL)
-		claim_zero(ibv_exp_destroy_rwq_ind_table(ind_table));
+	if (hash_rxqs != NULL) {
+		for (i = 0; (i != hash_rxqs_n); ++i) {
+			struct ibv_qp *qp = (*hash_rxqs)[i].qp;
+
+			if (qp == NULL)
+				continue;
+			claim_zero(ibv_destroy_qp(qp));
+		}
+		rte_free(hash_rxqs);
+	}
+	if (ind_tables != NULL) {
+		for (j = 0; (j != ind_tables_n); ++j) {
+			struct ibv_exp_rwq_ind_table *ind_table =
+				(*ind_tables)[j];
+
+			if (ind_table == NULL)
+				continue;
+			claim_zero(ibv_exp_destroy_rwq_ind_table(ind_table));
+		}
+		rte_free(ind_tables);
+	}
 	return err;
 }
 
@@ -250,7 +406,7 @@ priv_destroy_hash_rxqs(struct priv *priv)
 	DEBUG("destroying %u hash RX queues", priv->hash_rxqs_n);
 	if (priv->hash_rxqs_n == 0) {
 		assert(priv->hash_rxqs == NULL);
-		assert(priv->ind_table == NULL);
+		assert(priv->ind_tables == NULL);
 		return;
 	}
 	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
@@ -270,8 +426,16 @@ priv_destroy_hash_rxqs(struct priv *priv)
 	priv->hash_rxqs_n = 0;
 	rte_free(priv->hash_rxqs);
 	priv->hash_rxqs = NULL;
-	claim_zero(ibv_exp_destroy_rwq_ind_table(priv->ind_table));
-	priv->ind_table = NULL;
+	for (i = 0; (i != priv->ind_tables_n); ++i) {
+		struct ibv_exp_rwq_ind_table *ind_table =
+			(*priv->ind_tables)[i];
+
+		assert(ind_table != NULL);
+		claim_zero(ibv_exp_destroy_rwq_ind_table(ind_table));
+	}
+	priv->ind_tables_n = 0;
+	rte_free(priv->ind_tables);
+	priv->ind_tables = NULL;
 }
 
 /**

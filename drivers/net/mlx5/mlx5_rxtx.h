@@ -118,9 +118,31 @@ struct rxq {
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };
 
+/* Hash RX queue types. */
+enum hash_rxq_type {
+	HASH_RXQ_TCPV4,
+	HASH_RXQ_UDPV4,
+	HASH_RXQ_IPV4,
+	HASH_RXQ_ETH,
+};
+
+/* Initialization data for hash RX queue. */
+struct hash_rxq_init {
+	uint64_t hash_fields; /* Fields that participate in the hash. */
+};
+
+/* Initialization data for indirection table. */
+struct ind_table_init {
+	unsigned int max_size; /* Maximum number of WQs. */
+	/* Hash RX queues using this table. */
+	unsigned int hash_types;
+	unsigned int hash_types_n;
+};
+
 struct hash_rxq {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_qp *qp; /* Hash RX QP. */
+	enum hash_rxq_type type; /* Hash RX queue type. */
 	/* MAC flow steering rules, one per VLAN ID. */
 	struct ibv_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
 	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
