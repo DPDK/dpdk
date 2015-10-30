@@ -32,6 +32,7 @@
  */
 
 #include <stddef.h>
+#include <assert.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -58,6 +59,7 @@
 #endif
 
 #include "mlx5.h"
+#include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 
 /**
@@ -367,6 +369,152 @@ priv_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
 	tmp &= keep;
 	tmp |= flags;
 	return priv_set_sysfs_ulong(priv, "flags", tmp);
+}
+
+/**
+ * Ethernet device configuration.
+ *
+ * Prepare the driver for a given number of TX and RX queues.
+ * Allocate parent RSS queue when several RX queues are requested.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+dev_configure(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	unsigned int rxqs_n = dev->data->nb_rx_queues;
+	unsigned int txqs_n = dev->data->nb_tx_queues;
+	unsigned int tmp;
+	int ret;
+
+	priv->rxqs = (void *)dev->data->rx_queues;
+	priv->txqs = (void *)dev->data->tx_queues;
+	if (txqs_n != priv->txqs_n) {
+		INFO("%p: TX queues number update: %u -> %u",
+		     (void *)dev, priv->txqs_n, txqs_n);
+		priv->txqs_n = txqs_n;
+	}
+	if (rxqs_n == priv->rxqs_n)
+		return 0;
+	INFO("%p: RX queues number update: %u -> %u",
+	     (void *)dev, priv->rxqs_n, rxqs_n);
+	/* If RSS is enabled, disable it first. */
+	if (priv->rss) {
+		unsigned int i;
+
+		/* Only if there are no remaining child RX queues. */
+		for (i = 0; (i != priv->rxqs_n); ++i)
+			if ((*priv->rxqs)[i] != NULL)
+				return EINVAL;
+		rxq_cleanup(&priv->rxq_parent);
+		priv->rss = 0;
+		priv->rxqs_n = 0;
+	}
+	if (rxqs_n <= 1) {
+		/* Nothing else to do. */
+		priv->rxqs_n = rxqs_n;
+		return 0;
+	}
+	/* Allocate a new RSS parent queue if supported by hardware. */
+	if (!priv->hw_rss) {
+		ERROR("%p: only a single RX queue can be configured when"
+		      " hardware doesn't support RSS",
+		      (void *)dev);
+		return EINVAL;
+	}
+	/* Fail if hardware doesn't support that many RSS queues. */
+	if (rxqs_n >= priv->max_rss_tbl_sz) {
+		ERROR("%p: only %u RX queues can be configured for RSS",
+		      (void *)dev, priv->max_rss_tbl_sz);
+		return EINVAL;
+	}
+	priv->rss = 1;
+	tmp = priv->rxqs_n;
+	priv->rxqs_n = rxqs_n;
+	ret = rxq_setup(dev, &priv->rxq_parent, 0, 0, NULL, NULL);
+	if (!ret)
+		return 0;
+	/* Failure, rollback. */
+	priv->rss = 0;
+	priv->rxqs_n = tmp;
+	assert(ret > 0);
+	return ret;
+}
+
+/**
+ * DPDK callback for Ethernet device configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_configure(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+
+	priv_lock(priv);
+	ret = dev_configure(dev);
+	assert(ret >= 0);
+	priv_unlock(priv);
+	return -ret;
+}
+
+/**
+ * DPDK callback to get information about the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] info
+ *   Info structure output buffer.
+ */
+void
+mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
+{
+	struct priv *priv = dev->data->dev_private;
+	unsigned int max;
+	char ifname[IF_NAMESIZE];
+
+	priv_lock(priv);
+	/* FIXME: we should ask the device for these values. */
+	info->min_rx_bufsize = 32;
+	info->max_rx_pktlen = 65536;
+	/*
+	 * Since we need one CQ per QP, the limit is the minimum number
+	 * between the two values.
+	 */
+	max = ((priv->device_attr.max_cq > priv->device_attr.max_qp) ?
+	       priv->device_attr.max_qp : priv->device_attr.max_cq);
+	/* If max >= 65535 then max = 0, max_rx_queues is uint16_t. */
+	if (max >= 65535)
+		max = 65535;
+	info->max_rx_queues = max;
+	info->max_tx_queues = max;
+	/* Last array entry is reserved for broadcast. */
+	info->max_mac_addrs = (RTE_DIM(priv->mac) - 1);
+	info->rx_offload_capa =
+		(priv->hw_csum ?
+		 (DEV_RX_OFFLOAD_IPV4_CKSUM |
+		  DEV_RX_OFFLOAD_UDP_CKSUM |
+		  DEV_RX_OFFLOAD_TCP_CKSUM) :
+		 0);
+	info->tx_offload_capa =
+		(priv->hw_csum ?
+		 (DEV_TX_OFFLOAD_IPV4_CKSUM |
+		  DEV_TX_OFFLOAD_UDP_CKSUM |
+		  DEV_TX_OFFLOAD_TCP_CKSUM) :
+		 0);
+	if (priv_get_ifname(priv, &ifname) == 0)
+		info->if_index = if_nametoindex(ifname);
+	priv_unlock(priv);
 }
 
 /**

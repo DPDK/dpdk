@@ -129,7 +129,11 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 }
 
 static const struct eth_dev_ops mlx5_dev_ops = {
+	.dev_configure = mlx5_dev_configure,
+	.dev_start = mlx5_dev_start,
+	.dev_stop = mlx5_dev_stop,
 	.dev_close = mlx5_dev_close,
+	.dev_infos_get = mlx5_dev_infos_get,
 	.rx_queue_setup = mlx5_rx_queue_setup,
 	.tx_queue_setup = mlx5_tx_queue_setup,
 	.rx_queue_release = mlx5_rx_queue_release,
