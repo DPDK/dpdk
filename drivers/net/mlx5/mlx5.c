@@ -63,6 +63,7 @@
 
 #include "mlx5.h"
 #include "mlx5_utils.h"
+#include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
 
 /**
@@ -77,11 +78,46 @@ static void
 mlx5_dev_close(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	void *tmp;
+	unsigned int i;
 
 	priv_lock(priv);
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
+	/* Prevent crashes when queues are still in use. */
+	dev->rx_pkt_burst = removed_rx_burst;
+	dev->tx_pkt_burst = removed_tx_burst;
+	if (priv->rxqs != NULL) {
+		/* XXX race condition if mlx5_rx_burst() is still running. */
+		usleep(1000);
+		for (i = 0; (i != priv->rxqs_n); ++i) {
+			tmp = (*priv->rxqs)[i];
+			if (tmp == NULL)
+				continue;
+			(*priv->rxqs)[i] = NULL;
+			rxq_cleanup(tmp);
+			rte_free(tmp);
+		}
+		priv->rxqs_n = 0;
+		priv->rxqs = NULL;
+	}
+	if (priv->txqs != NULL) {
+		/* XXX race condition if mlx5_tx_burst() is still running. */
+		usleep(1000);
+		for (i = 0; (i != priv->txqs_n); ++i) {
+			tmp = (*priv->txqs)[i];
+			if (tmp == NULL)
+				continue;
+			(*priv->txqs)[i] = NULL;
+			txq_cleanup(tmp);
+			rte_free(tmp);
+		}
+		priv->txqs_n = 0;
+		priv->txqs = NULL;
+	}
+	if (priv->rss)
+		rxq_cleanup(&priv->rxq_parent);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(ibv_dealloc_pd(priv->pd));
@@ -94,6 +130,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 
 static const struct eth_dev_ops mlx5_dev_ops = {
 	.dev_close = mlx5_dev_close,
+	.rx_queue_setup = mlx5_rx_queue_setup,
+	.tx_queue_setup = mlx5_tx_queue_setup,
+	.rx_queue_release = mlx5_rx_queue_release,
+	.tx_queue_release = mlx5_tx_queue_release,
 };
 
 static struct {

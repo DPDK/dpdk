@@ -40,4 +40,28 @@
 /* Maximum number of simultaneous MAC addresses. */
 #define MLX5_MAX_MAC_ADDRESSES 128
 
+/* Request send completion once in every 64 sends, might be less. */
+#define MLX5_PMD_TX_PER_COMP_REQ 64
+
+/* Maximum number of Scatter/Gather Elements per Work Request. */
+#ifndef MLX5_PMD_SGE_WR_N
+#define MLX5_PMD_SGE_WR_N 4
+#endif
+
+/* Maximum size for inline data. */
+#ifndef MLX5_PMD_MAX_INLINE
+#define MLX5_PMD_MAX_INLINE 0
+#endif
+
+/*
+ * Maximum number of cached Memory Pools (MPs) per TX queue. Each RTE MP
+ * from which buffers are to be transmitted will have to be mapped by this
+ * driver to their own Memory Region (MR). This is a slow operation.
+ *
+ * This value is always 1 for RX queues.
+ */
+#ifndef MLX5_PMD_TX_MP_CACHE
+#define MLX5_PMD_TX_MP_CACHE 8
+#endif
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

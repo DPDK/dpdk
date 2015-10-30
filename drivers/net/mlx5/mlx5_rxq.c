@@ -1,0 +1,682 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright 2015 6WIND S.A.
+ *   Copyright 2015 Mellanox.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of 6WIND S.A. nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <stddef.h>
+#include <assert.h>
+#include <errno.h>
+#include <string.h>
+#include <stdint.h>
+
+/* Verbs header. */
+/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-pedantic"
+#endif
+#include <infiniband/verbs.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-pedantic"
+#endif
+
+/* DPDK headers don't like -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-pedantic"
+#endif
+#include <rte_mbuf.h>
+#include <rte_malloc.h>
+#include <rte_ethdev.h>
+#include <rte_common.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-pedantic"
+#endif
+
+#include "mlx5.h"
+#include "mlx5_rxtx.h"
+#include "mlx5_utils.h"
+#include "mlx5_defs.h"
+
+/**
+ * Allocate RX queue elements.
+ *
+ * @param rxq
+ *   Pointer to RX queue structure.
+ * @param elts_n
+ *   Number of elements to allocate.
+ * @param[in] pool
+ *   If not NULL, fetch buffers from this array instead of allocating them
+ *   with rte_pktmbuf_alloc().
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n, struct rte_mbuf **pool)
+{
+	unsigned int i;
+	struct rxq_elt (*elts)[elts_n] =
+		rte_calloc_socket("RXQ elements", 1, sizeof(*elts), 0,
+				  rxq->socket);
+	int ret = 0;
+
+	if (elts == NULL) {
+		ERROR("%p: can't allocate packets array", (void *)rxq);
+		ret = ENOMEM;
+		goto error;
+	}
+	/* For each WR (packet). */
+	for (i = 0; (i != elts_n); ++i) {
+		struct rxq_elt *elt = &(*elts)[i];
+		struct ibv_recv_wr *wr = &elt->wr;
+		struct ibv_sge *sge = &(*elts)[i].sge;
+		struct rte_mbuf *buf;
+
+		if (pool != NULL) {
+			buf = *(pool++);
+			assert(buf != NULL);
+			rte_pktmbuf_reset(buf);
+		} else
+			buf = rte_pktmbuf_alloc(rxq->mp);
+		if (buf == NULL) {
+			assert(pool == NULL);
+			ERROR("%p: empty mbuf pool", (void *)rxq);
+			ret = ENOMEM;
+			goto error;
+		}
+		/* Configure WR. Work request ID contains its own index in
+		 * the elts array and the offset between SGE buffer header and
+		 * its data. */
+		WR_ID(wr->wr_id).id = i;
+		WR_ID(wr->wr_id).offset =
+			(((uintptr_t)buf->buf_addr + RTE_PKTMBUF_HEADROOM) -
+			 (uintptr_t)buf);
+		wr->next = &(*elts)[(i + 1)].wr;
+		wr->sg_list = sge;
+		wr->num_sge = 1;
+		/* Headroom is reserved by rte_pktmbuf_alloc(). */
+		assert(DATA_OFF(buf) == RTE_PKTMBUF_HEADROOM);
+		/* Buffer is supposed to be empty. */
+		assert(rte_pktmbuf_data_len(buf) == 0);
+		assert(rte_pktmbuf_pkt_len(buf) == 0);
+		/* sge->addr must be able to store a pointer. */
+		assert(sizeof(sge->addr) >= sizeof(uintptr_t));
+		/* SGE keeps its headroom. */
+		sge->addr = (uintptr_t)
+			((uint8_t *)buf->buf_addr + RTE_PKTMBUF_HEADROOM);
+		sge->length = (buf->buf_len - RTE_PKTMBUF_HEADROOM);
+		sge->lkey = rxq->mr->lkey;
+		/* Redundant check for tailroom. */
+		assert(sge->length == rte_pktmbuf_tailroom(buf));
+		/* Make sure elts index and SGE mbuf pointer can be deduced
+		 * from WR ID. */
+		if ((WR_ID(wr->wr_id).id != i) ||
+		    ((void *)((uintptr_t)sge->addr -
+			WR_ID(wr->wr_id).offset) != buf)) {
+			ERROR("%p: cannot store index and offset in WR ID",
+			      (void *)rxq);
+			sge->addr = 0;
+			rte_pktmbuf_free(buf);
+			ret = EOVERFLOW;
+			goto error;
+		}
+	}
+	/* The last WR pointer must be NULL. */
+	(*elts)[(i - 1)].wr.next = NULL;
+	DEBUG("%p: allocated and configured %u single-segment WRs",
+	      (void *)rxq, elts_n);
+	rxq->elts_n = elts_n;
+	rxq->elts_head = 0;
+	rxq->elts.no_sp = elts;
+	assert(ret == 0);
+	return 0;
+error:
+	if (elts != NULL) {
+		assert(pool == NULL);
+		for (i = 0; (i != RTE_DIM(*elts)); ++i) {
+			struct rxq_elt *elt = &(*elts)[i];
+			struct rte_mbuf *buf;
+
+			if (elt->sge.addr == 0)
+				continue;
+			assert(WR_ID(elt->wr.wr_id).id == i);
+			buf = (void *)((uintptr_t)elt->sge.addr -
+				WR_ID(elt->wr.wr_id).offset);
+			rte_pktmbuf_free_seg(buf);
+		}
+		rte_free(elts);
+	}
+	DEBUG("%p: failed, freed everything", (void *)rxq);
+	assert(ret > 0);
+	return ret;
+}
+
+/**
+ * Free RX queue elements.
+ *
+ * @param rxq
+ *   Pointer to RX queue structure.
+ */
+static void
+rxq_free_elts(struct rxq *rxq)
+{
+	unsigned int i;
+	unsigned int elts_n = rxq->elts_n;
+	struct rxq_elt (*elts)[elts_n] = rxq->elts.no_sp;
+
+	DEBUG("%p: freeing WRs", (void *)rxq);
+	rxq->elts_n = 0;
+	rxq->elts.no_sp = NULL;
+	if (elts == NULL)
+		return;
+	for (i = 0; (i != RTE_DIM(*elts)); ++i) {
+		struct rxq_elt *elt = &(*elts)[i];
+		struct rte_mbuf *buf;
+
+		if (elt->sge.addr == 0)
+			continue;
+		assert(WR_ID(elt->wr.wr_id).id == i);
+		buf = (void *)((uintptr_t)elt->sge.addr -
+			WR_ID(elt->wr.wr_id).offset);
+		rte_pktmbuf_free_seg(buf);
+	}
+	rte_free(elts);
+}
+
+/**
+ * Clean up a RX queue.
+ *
+ * Destroy objects, free allocated memory and reset the structure for reuse.
+ *
+ * @param rxq
+ *   Pointer to RX queue structure.
+ */
+void
+rxq_cleanup(struct rxq *rxq)
+{
+	struct ibv_exp_release_intf_params params;
+
+	DEBUG("cleaning up %p", (void *)rxq);
+	rxq_free_elts(rxq);
+	if (rxq->if_qp != NULL) {
+		assert(rxq->priv != NULL);
+		assert(rxq->priv->ctx != NULL);
+		assert(rxq->qp != NULL);
+		params = (struct ibv_exp_release_intf_params){
+			.comp_mask = 0,
+		};
+		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
+						rxq->if_qp,
+						&params));
+	}
+	if (rxq->if_cq != NULL) {
+		assert(rxq->priv != NULL);
+		assert(rxq->priv->ctx != NULL);
+		assert(rxq->cq != NULL);
+		params = (struct ibv_exp_release_intf_params){
+			.comp_mask = 0,
+		};
+		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
+						rxq->if_cq,
+						&params));
+	}
+	if (rxq->qp != NULL) {
+		claim_zero(ibv_destroy_qp(rxq->qp));
+	}
+	if (rxq->cq != NULL)
+		claim_zero(ibv_destroy_cq(rxq->cq));
+	if (rxq->rd != NULL) {
+		struct ibv_exp_destroy_res_domain_attr attr = {
+			.comp_mask = 0,
+		};
+
+		assert(rxq->priv != NULL);
+		assert(rxq->priv->ctx != NULL);
+		claim_zero(ibv_exp_destroy_res_domain(rxq->priv->ctx,
+						      rxq->rd,
+						      &attr));
+	}
+	if (rxq->mr != NULL)
+		claim_zero(ibv_dereg_mr(rxq->mr));
+	memset(rxq, 0, sizeof(*rxq));
+}
+
+/**
+ * Allocate a Queue Pair.
+ * Optionally setup inline receive if supported.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param cq
+ *   Completion queue to associate with QP.
+ * @param desc
+ *   Number of descriptors in QP (hint only).
+ *
+ * @return
+ *   QP pointer or NULL in case of error.
+ */
+static struct ibv_qp *
+rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
+	     struct ibv_exp_res_domain *rd)
+{
+	struct ibv_exp_qp_init_attr attr = {
+		/* CQ to be associated with the send queue. */
+		.send_cq = cq,
+		/* CQ to be associated with the receive queue. */
+		.recv_cq = cq,
+		.cap = {
+			/* Max number of outstanding WRs. */
+			.max_recv_wr = ((priv->device_attr.max_qp_wr < desc) ?
+					priv->device_attr.max_qp_wr :
+					desc),
+			/* Max number of scatter/gather elements in a WR. */
+			.max_recv_sge = ((priv->device_attr.max_sge <
+					  MLX5_PMD_SGE_WR_N) ?
+					 priv->device_attr.max_sge :
+					 MLX5_PMD_SGE_WR_N),
+		},
+		.qp_type = IBV_QPT_RAW_PACKET,
+		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
+			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN),
+		.pd = priv->pd,
+		.res_domain = rd,
+	};
+
+	return ibv_exp_create_qp(priv->ctx, &attr);
+}
+
+#ifdef RSS_SUPPORT
+
+/**
+ * Allocate a RSS Queue Pair.
+ * Optionally setup inline receive if supported.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param cq
+ *   Completion queue to associate with QP.
+ * @param desc
+ *   Number of descriptors in QP (hint only).
+ * @param parent
+ *   If nonzero, create a parent QP, otherwise a child.
+ *
+ * @return
+ *   QP pointer or NULL in case of error.
+ */
+static struct ibv_qp *
+rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
+		 int parent, struct ibv_exp_res_domain *rd)
+{
+	struct ibv_exp_qp_init_attr attr = {
+		/* CQ to be associated with the send queue. */
+		.send_cq = cq,
+		/* CQ to be associated with the receive queue. */
+		.recv_cq = cq,
+		.cap = {
+			/* Max number of outstanding WRs. */
+			.max_recv_wr = ((priv->device_attr.max_qp_wr < desc) ?
+					priv->device_attr.max_qp_wr :
+					desc),
+			/* Max number of scatter/gather elements in a WR. */
+			.max_recv_sge = ((priv->device_attr.max_sge <
+					  MLX5_PMD_SGE_WR_N) ?
+					 priv->device_attr.max_sge :
+					 MLX5_PMD_SGE_WR_N),
+		},
+		.qp_type = IBV_QPT_RAW_PACKET,
+		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
+			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN |
+			      IBV_EXP_QP_INIT_ATTR_QPG),
+		.pd = priv->pd,
+		.res_domain = rd,
+	};
+
+	if (parent) {
+		attr.qpg.qpg_type = IBV_EXP_QPG_PARENT;
+		/* TSS isn't necessary. */
+		attr.qpg.parent_attrib.tss_child_count = 0;
+		attr.qpg.parent_attrib.rss_child_count = priv->rxqs_n;
+		DEBUG("initializing parent RSS queue");
+	} else {
+		attr.qpg.qpg_type = IBV_EXP_QPG_CHILD_RX;
+		attr.qpg.qpg_parent = priv->rxq_parent.qp;
+		DEBUG("initializing child RSS queue");
+	}
+	return ibv_exp_create_qp(priv->ctx, &attr);
+}
+
+#endif /* RSS_SUPPORT */
+
+/**
+ * Configure a RX queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rxq
+ *   Pointer to RX queue structure.
+ * @param desc
+ *   Number of descriptors to configure in queue.
+ * @param socket
+ *   NUMA socket on which memory must be allocated.
+ * @param[in] conf
+ *   Thresholds parameters.
+ * @param mp
+ *   Memory pool for buffer allocations.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
+	  unsigned int socket, const struct rte_eth_rxconf *conf,
+	  struct rte_mempool *mp)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rxq tmpl = {
+		.priv = priv,
+		.mp = mp,
+		.socket = socket
+	};
+	struct ibv_exp_qp_attr mod;
+	union {
+		struct ibv_exp_query_intf_params params;
+		struct ibv_exp_cq_init_attr cq;
+		struct ibv_exp_res_domain_init_attr rd;
+	} attr;
+	enum ibv_exp_query_intf_status status;
+	struct ibv_recv_wr *bad_wr;
+	struct rte_mbuf *buf;
+	int ret = 0;
+	int parent = (rxq == &priv->rxq_parent);
+
+	(void)conf; /* Thresholds configuration (ignored). */
+	/*
+	 * If this is a parent queue, hardware must support RSS and
+	 * RSS must be enabled.
+	 */
+	assert((!parent) || ((priv->hw_rss) && (priv->rss)));
+	if (parent) {
+		/* Even if unused, ibv_create_cq() requires at least one
+		 * descriptor. */
+		desc = 1;
+		goto skip_mr;
+	}
+	if ((desc == 0) || (desc % MLX5_PMD_SGE_WR_N)) {
+		ERROR("%p: invalid number of RX descriptors (must be a"
+		      " multiple of %d)", (void *)dev, MLX5_PMD_SGE_WR_N);
+		return EINVAL;
+	}
+	/* Get mbuf length. */
+	buf = rte_pktmbuf_alloc(mp);
+	if (buf == NULL) {
+		ERROR("%p: unable to allocate mbuf", (void *)dev);
+		return ENOMEM;
+	}
+	tmpl.mb_len = buf->buf_len;
+	assert((rte_pktmbuf_headroom(buf) +
+		rte_pktmbuf_tailroom(buf)) == tmpl.mb_len);
+	assert(rte_pktmbuf_headroom(buf) == RTE_PKTMBUF_HEADROOM);
+	rte_pktmbuf_free(buf);
+	/* Use the entire RX mempool as the memory region. */
+	tmpl.mr = ibv_reg_mr(priv->pd,
+			     (void *)mp->elt_va_start,
+			     (mp->elt_va_end - mp->elt_va_start),
+			     (IBV_ACCESS_LOCAL_WRITE |
+			      IBV_ACCESS_REMOTE_WRITE));
+	if (tmpl.mr == NULL) {
+		ret = EINVAL;
+		ERROR("%p: MR creation failure: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+skip_mr:
+	attr.rd = (struct ibv_exp_res_domain_init_attr){
+		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
+			      IBV_EXP_RES_DOMAIN_MSG_MODEL),
+		.thread_model = IBV_EXP_THREAD_SINGLE,
+		.msg_model = IBV_EXP_MSG_HIGH_BW,
+	};
+	tmpl.rd = ibv_exp_create_res_domain(priv->ctx, &attr.rd);
+	if (tmpl.rd == NULL) {
+		ret = ENOMEM;
+		ERROR("%p: RD creation failure: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	attr.cq = (struct ibv_exp_cq_init_attr){
+		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
+		.res_domain = tmpl.rd,
+	};
+	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, NULL, 0, &attr.cq);
+	if (tmpl.cq == NULL) {
+		ret = ENOMEM;
+		ERROR("%p: CQ creation failure: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	DEBUG("priv->device_attr.max_qp_wr is %d",
+	      priv->device_attr.max_qp_wr);
+	DEBUG("priv->device_attr.max_sge is %d",
+	      priv->device_attr.max_sge);
+#ifdef RSS_SUPPORT
+	if (priv->rss)
+		tmpl.qp = rxq_setup_qp_rss(priv, tmpl.cq, desc, parent,
+					   tmpl.rd);
+	else
+#endif /* RSS_SUPPORT */
+		tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc, tmpl.rd);
+	if (tmpl.qp == NULL) {
+		ret = (errno ? errno : EINVAL);
+		ERROR("%p: QP creation failure: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	mod = (struct ibv_exp_qp_attr){
+		/* Move the QP to this state. */
+		.qp_state = IBV_QPS_INIT,
+		/* Primary port number. */
+		.port_num = priv->port
+	};
+	ret = ibv_exp_modify_qp(tmpl.qp, &mod,
+				(IBV_EXP_QP_STATE |
+#ifdef RSS_SUPPORT
+				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
+#endif /* RSS_SUPPORT */
+				 IBV_EXP_QP_PORT));
+	if (ret) {
+		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	/* Allocate descriptors for RX queues, except for the RSS parent. */
+	if (parent)
+		goto skip_alloc;
+	ret = rxq_alloc_elts(&tmpl, desc, NULL);
+	if (ret) {
+		ERROR("%p: RXQ allocation failed: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	ret = ibv_post_recv(tmpl.qp,
+			    &(*tmpl.elts.no_sp)[0].wr,
+			    &bad_wr);
+	if (ret) {
+		ERROR("%p: ibv_post_recv() failed for WR %p: %s",
+		      (void *)dev,
+		      (void *)bad_wr,
+		      strerror(ret));
+		goto error;
+	}
+skip_alloc:
+	mod = (struct ibv_exp_qp_attr){
+		.qp_state = IBV_QPS_RTR
+	};
+	ret = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
+	if (ret) {
+		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	/* Save port ID. */
+	tmpl.port_id = dev->data->port_id;
+	DEBUG("%p: RTE port ID: %u", (void *)rxq, tmpl.port_id);
+	attr.params = (struct ibv_exp_query_intf_params){
+		.intf_scope = IBV_EXP_INTF_GLOBAL,
+		.intf = IBV_EXP_INTF_CQ,
+		.obj = tmpl.cq,
+	};
+	tmpl.if_cq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_cq == NULL) {
+		ERROR("%p: CQ interface family query failed with status %d",
+		      (void *)dev, status);
+		goto error;
+	}
+	attr.params = (struct ibv_exp_query_intf_params){
+		.intf_scope = IBV_EXP_INTF_GLOBAL,
+		.intf = IBV_EXP_INTF_QP_BURST,
+		.obj = tmpl.qp,
+	};
+	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_qp == NULL) {
+		ERROR("%p: QP interface family query failed with status %d",
+		      (void *)dev, status);
+		goto error;
+	}
+	/* Clean up rxq in case we're reinitializing it. */
+	DEBUG("%p: cleaning-up old rxq just in case", (void *)rxq);
+	rxq_cleanup(rxq);
+	*rxq = tmpl;
+	DEBUG("%p: rxq updated with %p", (void *)rxq, (void *)&tmpl);
+	assert(ret == 0);
+	return 0;
+error:
+	rxq_cleanup(&tmpl);
+	assert(ret > 0);
+	return ret;
+}
+
+/**
+ * DPDK callback to configure a RX queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ * @param desc
+ *   Number of descriptors to configure in queue.
+ * @param socket
+ *   NUMA socket on which memory must be allocated.
+ * @param[in] conf
+ *   Thresholds parameters.
+ * @param mp
+ *   Memory pool for buffer allocations.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+		    unsigned int socket, const struct rte_eth_rxconf *conf,
+		    struct rte_mempool *mp)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rxq *rxq = (*priv->rxqs)[idx];
+	int ret;
+
+	priv_lock(priv);
+	DEBUG("%p: configuring queue %u for %u descriptors",
+	      (void *)dev, idx, desc);
+	if (idx >= priv->rxqs_n) {
+		ERROR("%p: queue index out of range (%u >= %u)",
+		      (void *)dev, idx, priv->rxqs_n);
+		priv_unlock(priv);
+		return -EOVERFLOW;
+	}
+	if (rxq != NULL) {
+		DEBUG("%p: reusing already allocated queue index %u (%p)",
+		      (void *)dev, idx, (void *)rxq);
+		if (priv->started) {
+			priv_unlock(priv);
+			return -EEXIST;
+		}
+		(*priv->rxqs)[idx] = NULL;
+		rxq_cleanup(rxq);
+	} else {
+		rxq = rte_calloc_socket("RXQ", 1, sizeof(*rxq), 0, socket);
+		if (rxq == NULL) {
+			ERROR("%p: unable to allocate queue index %u",
+			      (void *)dev, idx);
+			priv_unlock(priv);
+			return -ENOMEM;
+		}
+	}
+	ret = rxq_setup(dev, rxq, desc, socket, conf, mp);
+	if (ret)
+		rte_free(rxq);
+	else {
+		DEBUG("%p: adding RX queue %p to list",
+		      (void *)dev, (void *)rxq);
+		(*priv->rxqs)[idx] = rxq;
+		/* Update receive callback. */
+		dev->rx_pkt_burst = mlx5_rx_burst;
+	}
+	priv_unlock(priv);
+	return -ret;
+}
+
+/**
+ * DPDK callback to release a RX queue.
+ *
+ * @param dpdk_rxq
+ *   Generic RX queue pointer.
+ */
+void
+mlx5_rx_queue_release(void *dpdk_rxq)
+{
+	struct rxq *rxq = (struct rxq *)dpdk_rxq;
+	struct priv *priv;
+	unsigned int i;
+
+	if (rxq == NULL)
+		return;
+	priv = rxq->priv;
+	priv_lock(priv);
+	assert(rxq != &priv->rxq_parent);
+	for (i = 0; (i != priv->rxqs_n); ++i)
+		if ((*priv->rxqs)[i] == rxq) {
+			DEBUG("%p: removing RX queue %p from list",
+			      (void *)priv->dev, (void *)rxq);
+			(*priv->rxqs)[i] = NULL;
+			break;
+		}
+	rxq_cleanup(rxq);
+	rte_free(rxq);
+	priv_unlock(priv);
+}

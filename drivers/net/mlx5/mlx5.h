@@ -63,6 +63,7 @@
 #endif
 
 #include "mlx5_utils.h"
+#include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 
@@ -101,8 +102,32 @@ struct priv {
 	unsigned int rss:1; /* RSS is enabled. */
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int max_rss_tbl_sz; /* Maximum number of RSS queues. */
+	/* RX/TX queues. */
+	struct rxq rxq_parent; /* Parent queue when RSS is enabled. */
+	unsigned int rxqs_n; /* RX queues array size. */
+	unsigned int txqs_n; /* TX queues array size. */
+	struct rxq *(*rxqs)[]; /* RX queues. */
+	struct txq *(*txqs)[]; /* TX queues. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
+
+/* Work Request ID data type (64 bit). */
+typedef union {
+	struct {
+		uint32_t id;
+		uint16_t offset;
+	} data;
+	uint64_t raw;
+} wr_id_t;
+
+/* Compile-time check. */
+static inline void wr_id_t_check(void)
+{
+	wr_id_t check[1 + (2 * -!(sizeof(wr_id_t) == sizeof(uint64_t)))];
+
+	(void)check;
+	(void)wr_id_t_check;
+}
 
 /**
  * Lock private structure to protect it from concurrent access in the

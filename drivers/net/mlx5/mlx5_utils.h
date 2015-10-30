@@ -140,10 +140,21 @@ pmd_drv_log_basename(const char *s)
 #define WARN(...) PMD_DRV_LOG(WARNING, __VA_ARGS__)
 #define ERROR(...) PMD_DRV_LOG(ERR, __VA_ARGS__)
 
+/* Convenience macros for accessing mbuf fields. */
+#define NEXT(m) ((m)->next)
+#define DATA_LEN(m) ((m)->data_len)
+#define PKT_LEN(m) ((m)->pkt_len)
+#define DATA_OFF(m) ((m)->data_off)
+#define SET_DATA_OFF(m, o) ((m)->data_off = (o))
+#define NB_SEGS(m) ((m)->nb_segs)
+#define PORT(m) ((m)->port)
+
 /* Allocate a buffer on the stack and fill it with a printf format string. */
 #define MKSTR(name, ...) \
 	char name[snprintf(NULL, 0, __VA_ARGS__) + 1]; \
 	\
 	snprintf(name, sizeof(name), __VA_ARGS__)
+
+#define WR_ID(o) (((wr_id_t *)&(o))->data)
 
 #endif /* RTE_PMD_MLX5_UTILS_H_ */
