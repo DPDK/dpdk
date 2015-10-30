@@ -4,6 +4,8 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Added RSS dynamic configuration to bonding.**
+
 * **Added e1000 Rx interrupt support.**
 
 * **Added igb TSO support for both PF and VF.**

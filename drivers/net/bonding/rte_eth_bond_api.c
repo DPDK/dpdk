@@ -273,6 +273,9 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	internals->rx_offload_capa = 0;
 	internals->tx_offload_capa = 0;
 
+	/* Initially allow to choose any offload type */
+	internals->flow_type_rss_offloads = ETH_RSS_PROTO_MASK;
+
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
 
@@ -369,6 +372,11 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 
 	rte_eth_dev_info_get(slave_port_id, &dev_info);
 
+	/* We need to store slaves reta_size to be able to synchronize RETA for all
+	 * slave devices even if its sizes are different.
+	 */
+	internals->slaves[internals->slave_count].reta_size = dev_info.reta_size;
+
 	if (internals->slave_count < 1) {
 		/* if MAC is not user defined then use MAC of first slave add to
 		 * bonded device */
@@ -382,9 +390,16 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 		/* Make primary slave */
 		internals->primary_port = slave_port_id;
 
+		/* Inherit queues settings from first slave */
+		internals->nb_rx_queues = slave_eth_dev->data->nb_rx_queues;
+		internals->nb_tx_queues = slave_eth_dev->data->nb_tx_queues;
+
+		internals->reta_size = dev_info.reta_size;
+
 		/* Take the first dev's offload capabilities */
 		internals->rx_offload_capa = dev_info.rx_offload_capa;
 		internals->tx_offload_capa = dev_info.tx_offload_capa;
+		internals->flow_type_rss_offloads = dev_info.flow_type_rss_offloads;
 
 	} else {
 		/* Check slave link properties are supported if props are set,
@@ -403,7 +418,18 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 		}
 		internals->rx_offload_capa &= dev_info.rx_offload_capa;
 		internals->tx_offload_capa &= dev_info.tx_offload_capa;
+		internals->flow_type_rss_offloads &= dev_info.flow_type_rss_offloads;
+
+		/* RETA size is GCD of all slaves RETA sizes, so, if all sizes will be
+		 * the power of 2, the lower one is GCD
+		 */
+		if (internals->reta_size > dev_info.reta_size)
+			internals->reta_size = dev_info.reta_size;
+
 	}
+
+	bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf &=
+			internals->flow_type_rss_offloads;
 
 	internals->slave_count++;
 
@@ -531,6 +557,8 @@ __eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	if (internals->slave_count == 0) {
 		internals->rx_offload_capa = 0;
 		internals->tx_offload_capa = 0;
+		internals->flow_type_rss_offloads = ETH_RSS_PROTO_MASK;
+		internals->reta_size = 0;
 	}
 	return 0;
 }
