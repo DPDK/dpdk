@@ -3085,3 +3085,11 @@ i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue __rte_unused*rxq)
 {
 	return;
 }
+
+uint16_t __attribute__((weak))
+i40e_xmit_pkts_vec(void __rte_unused *tx_queue,
+		   struct rte_mbuf __rte_unused **tx_pkts,
+		   uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}

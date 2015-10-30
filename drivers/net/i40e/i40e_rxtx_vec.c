@@ -445,6 +445,163 @@ i40e_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return _recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
 }
 
+static inline void
+vtx1(volatile struct i40e_tx_desc *txdp,
+		struct rte_mbuf *pkt, uint64_t flags)
+{
+	uint64_t high_qw = (I40E_TX_DESC_DTYPE_DATA |
+			((uint64_t)flags  << I40E_TXD_QW1_CMD_SHIFT) |
+			((uint64_t)pkt->data_len << I40E_TXD_QW1_TX_BUF_SZ_SHIFT));
+
+	__m128i descriptor = _mm_set_epi64x(high_qw,
+				pkt->buf_physaddr + pkt->data_off);
+	_mm_store_si128((__m128i *)txdp, descriptor);
+}
+
+static inline void
+vtx(volatile struct i40e_tx_desc *txdp,
+		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
+{
+	int i;
+
+	for (i = 0; i < nb_pkts; ++i, ++txdp, ++pkt)
+		vtx1(txdp, *pkt, flags);
+}
+
+static inline int __attribute__((always_inline))
+i40e_tx_free_bufs(struct i40e_tx_queue *txq)
+{
+	struct i40e_tx_entry *txep;
+	uint32_t n;
+	uint32_t i;
+	int nb_free = 0;
+	struct rte_mbuf *m, *free[RTE_I40E_TX_MAX_FREE_BUF_SZ];
+
+	/* check DD bits on threshold descriptor */
+	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
+			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
+		return 0;
+
+	n = txq->tx_rs_thresh;
+
+	 /* first buffer to free from S/W ring is at index
+	  * tx_next_dd - (tx_rs_thresh-1)
+	  */
+	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
+	m = __rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	if (likely(m != NULL)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (likely(m != NULL)) {
+				if (likely(m->pool == free[0]->pool)) {
+					free[nb_free++] = m;
+				} else {
+					rte_mempool_put_bulk(free[0]->pool,
+							     (void *)free,
+							     nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m != NULL)
+				rte_mempool_put(m->pool, m);
+		}
+	}
+
+	/* buffers were freed, update counters */
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
+
+	return txq->tx_rs_thresh;
+}
+
+static inline void __attribute__((always_inline))
+tx_backlog_entry(struct i40e_tx_entry *txep,
+		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i;
+
+	for (i = 0; i < (int)nb_pkts; ++i)
+		txep[i].mbuf = tx_pkts[i];
+}
+
+uint16_t
+i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		   uint16_t nb_pkts)
+{
+	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
+	volatile struct i40e_tx_desc *txdp;
+	struct i40e_tx_entry *txep;
+	uint16_t n, nb_commit, tx_id;
+	uint64_t flags = I40E_TD_CMD;
+	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;
+	int i;
+
+	/* cross rx_thresh boundary is not allowed */
+	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		i40e_tx_free_bufs(txq);
+
+	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	tx_id = txq->tx_tail;
+	txdp = &txq->tx_ring[tx_id];
+	txep = &txq->sw_ring[tx_id];
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+	if (nb_commit >= n) {
+		tx_backlog_entry(txep, tx_pkts, n);
+
+		for (i = 0; i < n - 1; ++i, ++tx_pkts, ++txdp)
+			vtx1(txdp, *tx_pkts, flags);
+
+		vtx1(txdp, *tx_pkts++, rs);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		tx_id = 0;
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+
+		/* avoid reach the end of ring */
+		txdp = &txq->tx_ring[tx_id];
+		txep = &txq->sw_ring[tx_id];
+	}
+
+	tx_backlog_entry(txep, tx_pkts, nb_commit);
+
+	vtx(txdp, tx_pkts, nb_commit, flags);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->tx_next_rs) {
+		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)I40E_TX_DESC_CMD_RS) <<
+						I40E_TXD_QW1_CMD_SHIFT);
+		txq->tx_next_rs =
+			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	I40E_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+
+	return nb_pkts;
+}
+
 void __attribute__((cold))
 i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq)
 {
@@ -478,5 +635,11 @@ i40e_rxq_vec_setup(struct i40e_rx_queue *rxq)
 	rte_compiler_barrier();
 	p = (uintptr_t)&mb_def.rearm_data;
 	rxq->mbuf_initializer = *(uint64_t *)p;
+	return 0;
+}
+
+int __attribute__((cold))
+i40e_txq_vec_setup(struct i40e_tx_queue __rte_unused *txq)
+{
 	return 0;
 }
