@@ -691,26 +691,30 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			bytes_read = sizeof(buf.vfio_intr_count);
 			break;
 #endif
+		case RTE_INTR_HANDLE_EXT:
 		default:
 			bytes_read = 1;
 			break;
 		}
 
-		/**
-		 * read out to clear the ready-to-be-read flag
-		 * for epoll_wait.
-		 */
-		bytes_read = read(events[n].data.fd, &buf, bytes_read);
-		if (bytes_read < 0) {
-			if (errno == EINTR || errno == EWOULDBLOCK)
-				continue;
+		if (src->intr_handle.type != RTE_INTR_HANDLE_EXT) {
+			/**
+			 * read out to clear the ready-to-be-read flag
+			 * for epoll_wait.
+			 */
+			bytes_read = read(events[n].data.fd, &buf, bytes_read);
+			if (bytes_read < 0) {
+				if (errno == EINTR || errno == EWOULDBLOCK)
+					continue;
 
-			RTE_LOG(ERR, EAL, "Error reading from file "
-				"descriptor %d: %s\n", events[n].data.fd,
-							strerror(errno));
-		} else if (bytes_read == 0)
-			RTE_LOG(ERR, EAL, "Read nothing from file "
-				"descriptor %d\n", events[n].data.fd);
+				RTE_LOG(ERR, EAL, "Error reading from file "
+					"descriptor %d: %s\n",
+					events[n].data.fd,
+					strerror(errno));
+			} else if (bytes_read == 0)
+				RTE_LOG(ERR, EAL, "Read nothing from file "
+					"descriptor %d\n", events[n].data.fd);
+		}
 
 		/* grab a lock, again to call callbacks and update status. */
 		rte_spinlock_lock(&intr_lock);
