@@ -220,6 +220,9 @@ struct fm10k_tx_queue {
 	uint16_t nb_used;
 	uint16_t free_thresh;
 	uint16_t rs_thresh;
+	/* Below 2 fields only valid in case vPMD is applied. */
+	uint16_t next_rs; /* Next pos to set RS flag */
+	uint16_t next_dd; /* Next pos to check DD flag */
 	volatile uint32_t *tail_ptr;
 	uint16_t nb_desc;
 	uint8_t port_id;
@@ -338,4 +341,6 @@ void fm10k_rx_queue_release_mbufs_vec(struct fm10k_rx_queue *rxq);
 uint16_t fm10k_recv_pkts_vec(void *, struct rte_mbuf **, uint16_t);
 uint16_t fm10k_recv_scattered_pkts_vec(void *, struct rte_mbuf **,
 					uint16_t);
+uint16_t fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 #endif

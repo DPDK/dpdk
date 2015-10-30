@@ -627,3 +627,153 @@ fm10k_recv_scattered_pkts_vec(void *rx_queue,
 	return i + fm10k_reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
 		&split_flags[i]);
 }
+
+static inline void
+vtx1(volatile struct fm10k_tx_desc *txdp,
+		struct rte_mbuf *pkt, uint64_t flags)
+{
+	__m128i descriptor = _mm_set_epi64x(flags << 56 |
+			pkt->vlan_tci << 16 | pkt->data_len,
+			MBUF_DMA_ADDR(pkt));
+	_mm_store_si128((__m128i *)txdp, descriptor);
+}
+
+static inline void
+vtx(volatile struct fm10k_tx_desc *txdp,
+		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
+{
+	int i;
+
+	for (i = 0; i < nb_pkts; ++i, ++txdp, ++pkt)
+		vtx1(txdp, *pkt, flags);
+}
+
+static inline int __attribute__((always_inline))
+fm10k_tx_free_bufs(struct fm10k_tx_queue *txq)
+{
+	struct rte_mbuf **txep;
+	uint8_t flags;
+	uint32_t n;
+	uint32_t i;
+	int nb_free = 0;
+	struct rte_mbuf *m, *free[RTE_FM10K_TX_MAX_FREE_BUF_SZ];
+
+	/* check DD bit on threshold descriptor */
+	flags = txq->hw_ring[txq->next_dd].flags;
+	if (!(flags & FM10K_TXD_FLAG_DONE))
+		return 0;
+
+	n = txq->rs_thresh;
+
+	/* First buffer to free from S/W ring is at index
+	 * next_dd - (rs_thresh-1)
+	 */
+	txep = &txq->sw_ring[txq->next_dd - (n - 1)];
+	m = __rte_pktmbuf_prefree_seg(txep[0]);
+	if (likely(m != NULL)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			m = __rte_pktmbuf_prefree_seg(txep[i]);
+			if (likely(m != NULL)) {
+				if (likely(m->pool == free[0]->pool))
+					free[nb_free++] = m;
+				else {
+					rte_mempool_put_bulk(free[0]->pool,
+							(void *)free, nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = __rte_pktmbuf_prefree_seg(txep[i]);
+			if (m != NULL)
+				rte_mempool_put(m->pool, m);
+		}
+	}
+
+	/* buffers were freed, update counters */
+	txq->nb_free = (uint16_t)(txq->nb_free + txq->rs_thresh);
+	txq->next_dd = (uint16_t)(txq->next_dd + txq->rs_thresh);
+	if (txq->next_dd >= txq->nb_desc)
+		txq->next_dd = (uint16_t)(txq->rs_thresh - 1);
+
+	return txq->rs_thresh;
+}
+
+static inline void __attribute__((always_inline))
+tx_backlog_entry(struct rte_mbuf **txep,
+		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i;
+
+	for (i = 0; i < (int)nb_pkts; ++i)
+		txep[i] = tx_pkts[i];
+}
+
+uint16_t
+fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts)
+{
+	struct fm10k_tx_queue *txq = (struct fm10k_tx_queue *)tx_queue;
+	volatile struct fm10k_tx_desc *txdp;
+	struct rte_mbuf **txep;
+	uint16_t n, nb_commit, tx_id;
+	uint64_t flags = FM10K_TXD_FLAG_LAST;
+	uint64_t rs = FM10K_TXD_FLAG_RS | FM10K_TXD_FLAG_LAST;
+	int i;
+
+	/* cross rx_thresh boundary is not allowed */
+	nb_pkts = RTE_MIN(nb_pkts, txq->rs_thresh);
+
+	if (txq->nb_free < txq->free_thresh)
+		fm10k_tx_free_bufs(txq);
+
+	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	tx_id = txq->next_free;
+	txdp = &txq->hw_ring[tx_id];
+	txep = &txq->sw_ring[tx_id];
+
+	txq->nb_free = (uint16_t)(txq->nb_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_desc - tx_id);
+	if (nb_commit >= n) {
+		tx_backlog_entry(txep, tx_pkts, n);
+
+		for (i = 0; i < n - 1; ++i, ++tx_pkts, ++txdp)
+			vtx1(txdp, *tx_pkts, flags);
+
+		vtx1(txdp, *tx_pkts++, rs);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		tx_id = 0;
+		txq->next_rs = (uint16_t)(txq->rs_thresh - 1);
+
+		/* avoid reach the end of ring */
+		txdp = &(txq->hw_ring[tx_id]);
+		txep = &txq->sw_ring[tx_id];
+	}
+
+	tx_backlog_entry(txep, tx_pkts, nb_commit);
+
+	vtx(txdp, tx_pkts, nb_commit, flags);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->next_rs) {
+		txq->hw_ring[txq->next_rs].flags |= FM10K_TXD_FLAG_RS;
+		txq->next_rs = (uint16_t)(txq->next_rs + txq->rs_thresh);
+	}
+
+	txq->next_free = tx_id;
+
+	FM10K_PCI_REG_WRITE(txq->tail_ptr, txq->next_free);
+
+	return nb_pkts;
+}
