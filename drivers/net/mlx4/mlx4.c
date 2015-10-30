@@ -3645,6 +3645,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 			}
 		}
 		priv->started = 0;
+		priv_unlock(priv);
 		return -ret;
 	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
 	priv_unlock(priv);
