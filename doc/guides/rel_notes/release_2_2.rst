@@ -32,6 +32,8 @@ New Features
 
 * **Added DCB support to i40e PF driver.**
 
+* **Added fm10k vector RX/TX.**
+
 * **Added fm10k TSO support for both PF and VF.**
 
 * **Added fm10k VMDQ support.**
