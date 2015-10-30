@@ -83,6 +83,9 @@
 #define MLX4_PMD_SOFT_COUNTERS 1
 #endif
 
+/* Alarm timeout. */
+#define MLX4_ALARM_TIMEOUT_US 100000
+
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
 };

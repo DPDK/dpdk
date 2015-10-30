@@ -57,6 +57,7 @@
 #include <linux/if.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
+#include <fcntl.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -85,6 +86,7 @@
 #include <rte_atomic.h>
 #include <rte_version.h>
 #include <rte_log.h>
+#include <rte_alarm.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
@@ -282,6 +284,7 @@ struct priv {
 	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int rss:1; /* RSS is enabled. */
 	unsigned int vf:1; /* This is a VF device. */
+	unsigned int pending_alarm:1; /* An alarm is pending. */
 #ifdef INLINE_RECV
 	unsigned int inl_recv_size; /* Inline recv size */
 #endif
@@ -292,6 +295,7 @@ struct priv {
 	unsigned int txqs_n; /* TX queues array size. */
 	struct rxq *(*rxqs)[]; /* RX queues. */
 	struct txq *(*txqs)[]; /* TX queues. */
+	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
@@ -3586,6 +3590,9 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	priv_unlock(priv);
 }
 
+static void
+priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
+
 /**
  * DPDK callback to start the device.
  *
@@ -3648,6 +3655,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		priv_unlock(priv);
 		return -ret;
 	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
+	priv_dev_interrupt_handler_install(priv, dev);
 	priv_unlock(priv);
 	return 0;
 }
@@ -3744,6 +3752,9 @@ removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	return 0;
 }
 
+static void
+priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
+
 /**
  * DPDK callback to close the device.
  *
@@ -3804,6 +3815,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		claim_zero(ibv_close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
+	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -4695,6 +4707,158 @@ mlx4_getenv_int(const char *name)
 	return atoi(val);
 }
 
+static void
+mlx4_dev_link_status_handler(void *);
+static void
+mlx4_dev_interrupt_handler(struct rte_intr_handle *, void *);
+
+/**
+ * Link status handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ *
+ * @return
+ *   Nonzero if the callback process can be called immediately.
+ */
+static int
+priv_dev_link_status_handler(struct priv *priv, struct rte_eth_dev *dev)
+{
+	struct ibv_async_event event;
+	int port_change = 0;
+	int ret = 0;
+
+	/* Read all message and acknowledge them. */
+	for (;;) {
+		if (ibv_get_async_event(priv->ctx, &event))
+			break;
+
+		if (event.event_type == IBV_EVENT_PORT_ACTIVE ||
+		    event.event_type == IBV_EVENT_PORT_ERR)
+			port_change = 1;
+		else
+			DEBUG("event type %d on port %d not handled",
+			      event.event_type, event.element.port_num);
+		ibv_ack_async_event(&event);
+	}
+
+	if (port_change ^ priv->pending_alarm) {
+		struct rte_eth_link *link = &dev->data->dev_link;
+
+		priv->pending_alarm = 0;
+		mlx4_link_update_unlocked(dev, 0);
+		if (((link->link_speed == 0) && link->link_status) ||
+		    ((link->link_speed != 0) && !link->link_status)) {
+			/* Inconsistent status, check again later. */
+			priv->pending_alarm = 1;
+			rte_eal_alarm_set(MLX4_ALARM_TIMEOUT_US,
+					  mlx4_dev_link_status_handler,
+					  dev);
+		} else
+			ret = 1;
+	}
+	return ret;
+}
+
+/**
+ * Handle delayed link status event.
+ *
+ * @param arg
+ *   Registered argument.
+ */
+static void
+mlx4_dev_link_status_handler(void *arg)
+{
+	struct rte_eth_dev *dev = arg;
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+
+	priv_lock(priv);
+	assert(priv->pending_alarm == 1);
+	ret = priv_dev_link_status_handler(priv, dev);
+	priv_unlock(priv);
+	if (ret)
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+}
+
+/**
+ * Handle interrupts from the NIC.
+ *
+ * @param[in] intr_handle
+ *   Interrupt handler.
+ * @param cb_arg
+ *   Callback argument.
+ */
+static void
+mlx4_dev_interrupt_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
+{
+	struct rte_eth_dev *dev = cb_arg;
+	struct priv *priv = dev->data->dev_private;
+	int ret;
+
+	(void)intr_handle;
+	priv_lock(priv);
+	ret = priv_dev_link_status_handler(priv, dev);
+	priv_unlock(priv);
+	if (ret)
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+}
+
+/**
+ * Uninstall interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+static void
+priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
+{
+	if (!dev->data->dev_conf.intr_conf.lsc)
+		return;
+	rte_intr_callback_unregister(&priv->intr_handle,
+				     mlx4_dev_interrupt_handler,
+				     dev);
+	if (priv->pending_alarm)
+		rte_eal_alarm_cancel(mlx4_dev_link_status_handler, dev);
+	priv->pending_alarm = 0;
+	priv->intr_handle.fd = 0;
+	priv->intr_handle.type = 0;
+}
+
+/**
+ * Install interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+static void
+priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
+{
+	int rc, flags;
+
+	if (!dev->data->dev_conf.intr_conf.lsc)
+		return;
+	assert(priv->ctx->async_fd > 0);
+	flags = fcntl(priv->ctx->async_fd, F_GETFL);
+	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	if (rc < 0) {
+		INFO("failed to change file descriptor async event queue");
+		dev->data->dev_conf.intr_conf.lsc = 0;
+	} else {
+		priv->intr_handle.fd = priv->ctx->async_fd;
+		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
+		rte_intr_callback_register(&priv->intr_handle,
+					   mlx4_dev_interrupt_handler,
+					   dev);
+	}
+}
+
 static struct eth_driver mlx4_driver;
 
 /**
@@ -4981,6 +5145,7 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
 		eth_dev->data->mac_addrs = priv->mac;
+		TAILQ_INIT(&eth_dev->link_intr_cbs);
 
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
@@ -5047,6 +5212,7 @@ static struct eth_driver mlx4_driver = {
 		.name = MLX4_DRIVER_NAME,
 		.id_table = mlx4_pci_id_map,
 		.devinit = mlx4_pci_devinit,
+		.drv_flags = RTE_PCI_DRV_INTR_LSC,
 	},
 	.dev_private_size = sizeof(struct priv)
 };
