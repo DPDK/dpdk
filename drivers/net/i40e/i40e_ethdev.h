@@ -287,6 +287,17 @@ struct i40e_pf_vf {
 };
 
 /*
+ * Structure to store private data for flow control.
+ */
+struct i40e_fc_conf {
+	uint16_t pause_time; /* Flow control pause timer */
+	/* FC high water 0-7 for pfc and 8 for lfc unit:kilobytes */
+	uint32_t high_water[I40E_MAX_TRAFFIC_CLASS + 1];
+	/* FC low water  0-7 for pfc and 8 for lfc unit:kilobytes */
+	uint32_t low_water[I40E_MAX_TRAFFIC_CLASS + 1];
+};
+
+/*
  * Structure to store private data for VMDQ instance
  */
 struct i40e_vmdq_info {
@@ -390,6 +401,7 @@ struct i40e_pf {
 	struct i40e_vmdq_info *vmdq;
 
 	struct i40e_fdir_info fdir; /* flow director info */
+	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	struct i40e_mirror_rule_list mirror_list;
 	uint16_t nb_mirror_rule;   /* The number of mirror rules */
 };

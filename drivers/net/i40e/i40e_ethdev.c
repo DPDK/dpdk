@@ -81,6 +81,27 @@
 
 #define I40E_PRE_TX_Q_CFG_WAIT_US       10 /* 10 us */
 
+/* Flow control default timer */
+#define I40E_DEFAULT_PAUSE_TIME 0xFFFFU
+
+/* Flow control default high water */
+#define I40E_DEFAULT_HIGH_WATER (0x1C40/1024)
+
+/* Flow control default low water */
+#define I40E_DEFAULT_LOW_WATER  (0x1A40/1024)
+
+/* Flow control enable fwd bit */
+#define I40E_PRTMAC_FWD_CTRL   0x00000001
+
+/* Receive Packet Buffer size */
+#define I40E_RXPBSIZE (968 * 1024)
+
+/* Kilobytes shift */
+#define I40E_KILOSHIFT 10
+
+/* Receive Average Packet Size in Byte*/
+#define I40E_PACKET_AVERAGE_SIZE 128
+
 /* Mask of PF interrupt causes */
 #define I40E_PFINT_ICR0_ENA_MASK ( \
 		I40E_PFINT_ICR0_ENA_ECC_ERR_MASK | \
@@ -145,6 +166,8 @@ static void i40e_vlan_strip_queue_set(struct rte_eth_dev *dev,
 static int i40e_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on);
 static int i40e_dev_led_on(struct rte_eth_dev *dev);
 static int i40e_dev_led_off(struct rte_eth_dev *dev);
+static int i40e_flow_ctrl_get(struct rte_eth_dev *dev,
+			      struct rte_eth_fc_conf *fc_conf);
 static int i40e_flow_ctrl_set(struct rte_eth_dev *dev,
 			      struct rte_eth_fc_conf *fc_conf);
 static int i40e_priority_flow_ctrl_set(struct rte_eth_dev *dev,
@@ -272,6 +295,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.tx_queue_release             = i40e_dev_tx_queue_release,
 	.dev_led_on                   = i40e_dev_led_on,
 	.dev_led_off                  = i40e_dev_led_off,
+	.flow_ctrl_get                = i40e_flow_ctrl_get,
 	.flow_ctrl_set                = i40e_flow_ctrl_set,
 	.priority_flow_ctrl_set       = i40e_priority_flow_ctrl_set,
 	.mac_addr_add                 = i40e_macaddr_add,
@@ -1812,12 +1836,148 @@ i40e_dev_led_off(struct rte_eth_dev *dev)
 }
 
 static int
-i40e_flow_ctrl_set(__rte_unused struct rte_eth_dev *dev,
-		   __rte_unused struct rte_eth_fc_conf *fc_conf)
+i40e_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	fc_conf->pause_time = pf->fc_conf.pause_time;
+	fc_conf->high_water =  pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS];
+	fc_conf->low_water = pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS];
+
+	 /* Return current mode according to actual setting*/
+	switch (hw->fc.current_mode) {
+	case I40E_FC_FULL:
+		fc_conf->mode = RTE_FC_FULL;
+		break;
+	case I40E_FC_TX_PAUSE:
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+		break;
+	case I40E_FC_RX_PAUSE:
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+		break;
+	case I40E_FC_NONE:
+	default:
+		fc_conf->mode = RTE_FC_NONE;
+	};
+
+	return 0;
+}
+
+static int
+i40e_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	uint32_t mflcn_reg, fctrl_reg, reg;
+	uint32_t max_high_water;
+	uint8_t i, aq_failure;
+	int err;
+	struct i40e_hw *hw;
+	struct i40e_pf *pf;
+	enum i40e_fc_mode rte_fcmode_2_i40e_fcmode[] = {
+		[RTE_FC_NONE] = I40E_FC_NONE,
+		[RTE_FC_RX_PAUSE] = I40E_FC_RX_PAUSE,
+		[RTE_FC_TX_PAUSE] = I40E_FC_TX_PAUSE,
+		[RTE_FC_FULL] = I40E_FC_FULL
+	};
+
+	/* high_water field in the rte_eth_fc_conf using the kilobytes unit */
+
+	max_high_water = I40E_RXPBSIZE >> I40E_KILOSHIFT;
+	if ((fc_conf->high_water > max_high_water) ||
+			(fc_conf->high_water < fc_conf->low_water)) {
+		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB, "
+			"High_water must <= %d.", max_high_water);
+		return -EINVAL;
+	}
+
+	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	hw->fc.requested_mode = rte_fcmode_2_i40e_fcmode[fc_conf->mode];
+
+	pf->fc_conf.pause_time = fc_conf->pause_time;
+	pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS] = fc_conf->high_water;
+	pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS] = fc_conf->low_water;
+
 	PMD_INIT_FUNC_TRACE();
 
-	return -ENOSYS;
+	/* All the link flow control related enable/disable register
+	 * configuration is handle by the F/W
+	 */
+	err = i40e_set_fc(hw, &aq_failure, true);
+	if (err < 0)
+		return -ENOSYS;
+
+	if (i40e_is_40G_device(hw->device_id)) {
+		/* Configure flow control refresh threshold,
+		 * the value for stat_tx_pause_refresh_timer[8]
+		 * is used for global pause operation.
+		 */
+
+		I40E_WRITE_REG(hw,
+			       I40E_PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER(8),
+			       pf->fc_conf.pause_time);
+
+		/* configure the timer value included in transmitted pause
+		 * frame,
+		 * the value for stat_tx_pause_quanta[8] is used for global
+		 * pause operation
+		 */
+		I40E_WRITE_REG(hw, I40E_PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA(8),
+			       pf->fc_conf.pause_time);
+
+		fctrl_reg = I40E_READ_REG(hw,
+					  I40E_PRTMAC_HSEC_CTL_RX_FORWARD_CONTROL);
+
+		if (fc_conf->mac_ctrl_frame_fwd != 0)
+			fctrl_reg |= I40E_PRTMAC_FWD_CTRL;
+		else
+			fctrl_reg &= ~I40E_PRTMAC_FWD_CTRL;
+
+		I40E_WRITE_REG(hw, I40E_PRTMAC_HSEC_CTL_RX_FORWARD_CONTROL,
+			       fctrl_reg);
+	} else {
+		/* Configure pause time (2 TCs per register) */
+		reg = (uint32_t)pf->fc_conf.pause_time * (uint32_t)0x00010001;
+		for (i = 0; i < I40E_MAX_TRAFFIC_CLASS / 2; i++)
+			I40E_WRITE_REG(hw, I40E_PRTDCB_FCTTVN(i), reg);
+
+		/* Configure flow control refresh threshold value */
+		I40E_WRITE_REG(hw, I40E_PRTDCB_FCRTV,
+			       pf->fc_conf.pause_time / 2);
+
+		mflcn_reg = I40E_READ_REG(hw, I40E_PRTDCB_MFLCN);
+
+		/* set or clear MFLCN.PMCF & MFLCN.DPF bits
+		 *depending on configuration
+		 */
+		if (fc_conf->mac_ctrl_frame_fwd != 0) {
+			mflcn_reg |= I40E_PRTDCB_MFLCN_PMCF_MASK;
+			mflcn_reg &= ~I40E_PRTDCB_MFLCN_DPF_MASK;
+		} else {
+			mflcn_reg &= ~I40E_PRTDCB_MFLCN_PMCF_MASK;
+			mflcn_reg |= I40E_PRTDCB_MFLCN_DPF_MASK;
+		}
+
+		I40E_WRITE_REG(hw, I40E_PRTDCB_MFLCN, mflcn_reg);
+	}
+
+	/* config the water marker both based on the packets and bytes */
+	I40E_WRITE_REG(hw, I40E_GLRPB_PHW,
+		       (pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS]
+		       << I40E_KILOSHIFT) / I40E_PACKET_AVERAGE_SIZE);
+	I40E_WRITE_REG(hw, I40E_GLRPB_PLW,
+		       (pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS]
+		       << I40E_KILOSHIFT) / I40E_PACKET_AVERAGE_SIZE);
+	I40E_WRITE_REG(hw, I40E_GLRPB_GHW,
+		       pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS]
+		       << I40E_KILOSHIFT);
+	I40E_WRITE_REG(hw, I40E_GLRPB_GLW,
+		       pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS]
+		       << I40E_KILOSHIFT);
+
+	I40E_WRITE_FLUSH(hw);
+
+	return 0;
 }
 
 static int
@@ -2277,6 +2437,10 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "HW configuration doesn't support SRIOV");
 		return -EINVAL;
 	}
+	/* Add the parameter init for LFC */
+	pf->fc_conf.pause_time = I40E_DEFAULT_PAUSE_TIME;
+	pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS] = I40E_DEFAULT_HIGH_WATER;
+	pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS] = I40E_DEFAULT_LOW_WATER;
 
 	pf->flags = I40E_FLAG_HEADER_SPLIT_DISABLED;
 	pf->max_num_vsi = RTE_MIN(hw->func_caps.num_vsis, I40E_MAX_NUM_VSIS);
