@@ -227,6 +227,7 @@ struct fm10k_tx_queue {
 	uint16_t next_rs; /* Next pos to set RS flag */
 	uint16_t next_dd; /* Next pos to check DD flag */
 	volatile uint32_t *tail_ptr;
+	uint32_t txq_flags; /* Holds flags for this TXq */
 	uint16_t nb_desc;
 	uint8_t port_id;
 	uint8_t tx_deferred_start; /** < don't start this queue in dev start. */

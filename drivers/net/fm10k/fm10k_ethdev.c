@@ -55,6 +55,9 @@
 #define CHARS_PER_UINT32 (sizeof(uint32_t))
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
 
+#define FM10K_SIMPLE_TX_FLAG ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
+				ETH_TXQ_FLAGS_NOOFFLOADS)
+
 static void fm10k_close_mbx_service(struct fm10k_hw *hw);
 static void fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -68,6 +71,7 @@ static void fm10k_MAC_filter_set(struct rte_eth_dev *dev,
 static void fm10k_tx_queue_release(void *queue);
 static void fm10k_rx_queue_release(void *queue);
 static void fm10k_set_rx_function(struct rte_eth_dev *dev);
+static void fm10k_set_tx_function(struct rte_eth_dev *dev);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -563,6 +567,10 @@ fm10k_dev_tx_init(struct rte_eth_dev *dev)
 				base_addr >> (CHAR_BIT * sizeof(uint32_t)));
 		FM10K_WRITE_REG(hw, FM10K_TDLEN(i), size);
 	}
+
+	/* set up vector or scalar TX function as appropriate */
+	fm10k_set_tx_function(dev);
+
 	return 0;
 }
 
@@ -1153,8 +1161,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 		},
 		.tx_free_thresh = FM10K_TX_FREE_THRESH_DEFAULT(0),
 		.tx_rs_thresh = FM10K_TX_RS_THRESH_DEFAULT(0),
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-				ETH_TXQ_FLAGS_NOOFFLOADS,
+		.txq_flags = FM10K_SIMPLE_TX_FLAG,
 	};
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
@@ -1698,6 +1705,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->nb_desc = nb_desc;
 	q->port_id = dev->data->port_id;
 	q->queue_id = queue_id;
+	q->txq_flags = conf->txq_flags;
 	q->ops = &def_txq_ops;
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_TDT(queue_id)];
@@ -2307,6 +2315,32 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.rss_hash_update	= fm10k_rss_hash_update,
 	.rss_hash_conf_get	= fm10k_rss_hash_conf_get,
 };
+
+static void __attribute__((cold))
+fm10k_set_tx_function(struct rte_eth_dev *dev)
+{
+	struct fm10k_tx_queue *txq;
+	int i;
+	int use_sse = 1;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if ((txq->txq_flags & FM10K_SIMPLE_TX_FLAG) !=
+			FM10K_SIMPLE_TX_FLAG) {
+			use_sse = 0;
+			break;
+		}
+	}
+
+	if (use_sse) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			txq = dev->data->tx_queues[i];
+			fm10k_txq_vec_setup(txq);
+		}
+		dev->tx_pkt_burst = fm10k_xmit_pkts_vec;
+	} else
+		dev->tx_pkt_burst = fm10k_xmit_pkts;
+}
 
 static void __attribute__((cold))
 fm10k_set_rx_function(struct rte_eth_dev *dev)
