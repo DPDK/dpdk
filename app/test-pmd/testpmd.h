@@ -562,8 +562,10 @@ int set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate);
 int set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate,
 				uint64_t q_msk);
 
-void port_rss_hash_conf_show(portid_t port_id, int show_rss_key);
-void port_rss_hash_key_update(portid_t port_id, uint8_t *hash_key);
+void port_rss_hash_conf_show(portid_t port_id, char rss_info[],
+			     int show_rss_key);
+void port_rss_hash_key_update(portid_t port_id, char rss_type[],
+			      uint8_t *hash_key, uint hash_key_len);
 void get_syn_filter(uint8_t port_id);
 void get_ethertype_filter(uint8_t port_id, uint16_t index);
 void get_2tuple_filter(uint8_t port_id, uint16_t index);

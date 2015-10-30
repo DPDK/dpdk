@@ -190,7 +190,7 @@ show port rss-hash
 
 Display the RSS hash functions and RSS hash key of a port::
 
-   testpmd> show port (port_id) rss-hash [key]
+   testpmd> show port (port_id) rss-hash ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2-payload|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex [key]
 
 clear port
 ~~~~~~~~~~

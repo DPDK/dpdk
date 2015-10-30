@@ -190,7 +190,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" by masks on port X. size is used to indicate the"
 			" hardware supported reta size\n\n"
 
-			"show port rss-hash [key]\n"
+			"show port rss-hash ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|"
+			"ipv4-sctp|ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|"
+			"ipv6-other|l2-payload|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex [key]\n"
 			"    Display the RSS hash functions and RSS hash key"
 			" of port X\n\n"
 
@@ -1498,6 +1500,7 @@ struct cmd_config_rss_hash_key {
 	cmdline_fixed_string_t config;
 	uint8_t port_id;
 	cmdline_fixed_string_t rss_hash_key;
+	cmdline_fixed_string_t rss_type;
 	cmdline_fixed_string_t key;
 };
 
@@ -1555,7 +1558,8 @@ cmd_config_rss_hash_key_parsed(void *parsed_result,
 			return;
 		hash_key[i] = (uint8_t) ((xdgt0 * 16) + xdgt1);
 	}
-	port_rss_hash_key_update(res->port_id, hash_key);
+	port_rss_hash_key_update(res->port_id, res->rss_type, hash_key,
+				 RSS_HASH_KEY_LENGTH);
 }
 
 cmdline_parse_token_string_t cmd_config_rss_hash_key_port =
@@ -1568,18 +1572,29 @@ cmdline_parse_token_num_t cmd_config_rss_hash_key_port_id =
 cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_hash_key =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key,
 				 rss_hash_key, "rss-hash-key");
+cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, rss_type,
+				 "ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
+				 "ipv4-other#ipv6#ipv6-frag#ipv6-tcp#ipv6-udp#"
+				 "ipv6-sctp#ipv6-other#l2-payload#ipv6-ex#"
+				 "ipv6-tcp-ex#ipv6-udp-ex");
 cmdline_parse_token_string_t cmd_config_rss_hash_key_value =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, key, NULL);
 
 cmdline_parse_inst_t cmd_config_rss_hash_key = {
 	.f = cmd_config_rss_hash_key_parsed,
 	.data = NULL,
-	.help_str = "port config X rss-hash-key 80 hexa digits",
+	.help_str =
+		"port config X rss-hash-key ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|"
+		"ipv4-sctp|ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|"
+		"ipv6-sctp|ipv6-other|l2-payload|"
+		"ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex 80 hexa digits\n",
 	.tokens = {
 		(void *)&cmd_config_rss_hash_key_port,
 		(void *)&cmd_config_rss_hash_key_config,
 		(void *)&cmd_config_rss_hash_key_port_id,
 		(void *)&cmd_config_rss_hash_key_rss_hash_key,
+		(void *)&cmd_config_rss_hash_key_rss_type,
 		(void *)&cmd_config_rss_hash_key_value,
 		NULL,
 	},
@@ -1929,6 +1944,7 @@ struct cmd_showport_rss_hash {
 	cmdline_fixed_string_t port;
 	uint8_t port_id;
 	cmdline_fixed_string_t rss_hash;
+	cmdline_fixed_string_t rss_type;
 	cmdline_fixed_string_t key; /* optional argument */
 };
 
@@ -1938,7 +1954,8 @@ static void cmd_showport_rss_hash_parsed(void *parsed_result,
 {
 	struct cmd_showport_rss_hash *res = parsed_result;
 
-	port_rss_hash_conf_show(res->port_id, show_rss_key != NULL);
+	port_rss_hash_conf_show(res->port_id, res->rss_type,
+				show_rss_key != NULL);
 }
 
 cmdline_parse_token_string_t cmd_showport_rss_hash_show =
@@ -1950,18 +1967,29 @@ cmdline_parse_token_num_t cmd_showport_rss_hash_port_id =
 cmdline_parse_token_string_t cmd_showport_rss_hash_rss_hash =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, rss_hash,
 				 "rss-hash");
+cmdline_parse_token_string_t cmd_showport_rss_hash_rss_hash_info =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, rss_type,
+				 "ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
+				 "ipv4-other#ipv6#ipv6-frag#ipv6-tcp#ipv6-udp#"
+				 "ipv6-sctp#ipv6-other#l2-payload#ipv6-ex#"
+				 "ipv6-tcp-ex#ipv6-udp-ex");
 cmdline_parse_token_string_t cmd_showport_rss_hash_rss_key =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, key, "key");
 
 cmdline_parse_inst_t cmd_showport_rss_hash = {
 	.f = cmd_showport_rss_hash_parsed,
 	.data = NULL,
-	.help_str = "show port X rss-hash (X = port number)\n",
+	.help_str =
+		"show port X rss-hash ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|"
+		"ipv4-sctp|ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|"
+		"ipv6-sctp|ipv6-other|l2-payload|"
+		"ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex (X = port number)\n",
 	.tokens = {
 		(void *)&cmd_showport_rss_hash_show,
 		(void *)&cmd_showport_rss_hash_port,
 		(void *)&cmd_showport_rss_hash_port_id,
 		(void *)&cmd_showport_rss_hash_rss_hash,
+		(void *)&cmd_showport_rss_hash_rss_hash_info,
 		NULL,
 	},
 };
@@ -1969,12 +1997,17 @@ cmdline_parse_inst_t cmd_showport_rss_hash = {
 cmdline_parse_inst_t cmd_showport_rss_hash_key = {
 	.f = cmd_showport_rss_hash_parsed,
 	.data = (void *)1,
-	.help_str = "show port X rss-hash key (X = port number)\n",
+	.help_str =
+		"show port X rss-hash ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|"
+		"ipv4-sctp|ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|"
+		"ipv6-sctp|ipv6-other|l2-payload|"
+		"ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex key (X = port number)\n",
 	.tokens = {
 		(void *)&cmd_showport_rss_hash_show,
 		(void *)&cmd_showport_rss_hash_port,
 		(void *)&cmd_showport_rss_hash_port_id,
 		(void *)&cmd_showport_rss_hash_rss_hash,
+		(void *)&cmd_showport_rss_hash_rss_hash_info,
 		(void *)&cmd_showport_rss_hash_rss_key,
 		NULL,
 	},

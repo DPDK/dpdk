@@ -97,6 +97,30 @@
 
 static char *flowtype_to_str(uint16_t flow_type);
 
+struct rss_type_info {
+	char str[32];
+	uint64_t rss_type;
+};
+
+static const struct rss_type_info rss_type_table[] = {
+	{ "ipv4", ETH_RSS_IPV4 },
+	{ "ipv4-frag", ETH_RSS_FRAG_IPV4 },
+	{ "ipv4-tcp", ETH_RSS_NONFRAG_IPV4_TCP },
+	{ "ipv4-udp", ETH_RSS_NONFRAG_IPV4_UDP },
+	{ "ipv4-sctp", ETH_RSS_NONFRAG_IPV4_SCTP },
+	{ "ipv4-other", ETH_RSS_NONFRAG_IPV4_OTHER },
+	{ "ipv6", ETH_RSS_IPV6 },
+	{ "ipv6-frag", ETH_RSS_FRAG_IPV6 },
+	{ "ipv6-tcp", ETH_RSS_NONFRAG_IPV6_TCP },
+	{ "ipv6-udp", ETH_RSS_NONFRAG_IPV6_UDP },
+	{ "ipv6-sctp", ETH_RSS_NONFRAG_IPV6_SCTP },
+	{ "ipv6-other", ETH_RSS_NONFRAG_IPV6_OTHER },
+	{ "l2-payload", ETH_RSS_L2_PAYLOAD },
+	{ "ipv6-ex", ETH_RSS_IPV6_EX },
+	{ "ipv6-tcp-ex", ETH_RSS_IPV6_TCP_EX },
+	{ "ipv6-udp-ex", ETH_RSS_IPV6_UDP_EX },
+};
+
 static void
 print_ethaddr(const char *name, struct ether_addr *eth_addr)
 {
@@ -852,31 +876,8 @@ port_rss_reta_info(portid_t port_id,
  * key of the port.
  */
 void
-port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
+port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
 {
-	struct rss_type_info {
-		char str[32];
-		uint64_t rss_type;
-	};
-	static const struct rss_type_info rss_type_table[] = {
-		{"ipv4", ETH_RSS_IPV4},
-		{"ipv4-frag", ETH_RSS_FRAG_IPV4},
-		{"ipv4-tcp", ETH_RSS_NONFRAG_IPV4_TCP},
-		{"ipv4-udp", ETH_RSS_NONFRAG_IPV4_UDP},
-		{"ipv4-sctp", ETH_RSS_NONFRAG_IPV4_SCTP},
-		{"ipv4-other", ETH_RSS_NONFRAG_IPV4_OTHER},
-		{"ipv6", ETH_RSS_IPV6},
-		{"ipv6-frag", ETH_RSS_FRAG_IPV6},
-		{"ipv6-tcp", ETH_RSS_NONFRAG_IPV6_TCP},
-		{"ipv6-udp", ETH_RSS_NONFRAG_IPV6_UDP},
-		{"ipv6-sctp", ETH_RSS_NONFRAG_IPV6_SCTP},
-		{"ipv6-other", ETH_RSS_NONFRAG_IPV6_OTHER},
-		{"l2-payload", ETH_RSS_L2_PAYLOAD},
-		{"ipv6-ex", ETH_RSS_IPV6_EX},
-		{"ipv6-tcp-ex", ETH_RSS_IPV6_TCP_EX},
-		{"ipv6-udp-ex", ETH_RSS_IPV6_UDP_EX},
-	};
-
 	struct rte_eth_rss_conf rss_conf;
 	uint8_t rss_key[10 * 4];
 	uint64_t rss_hf;
@@ -885,6 +886,13 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
+
+	rss_conf.rss_hf = 0;
+	for (i = 0; i < RTE_DIM(rss_type_table); i++) {
+		if (!strcmp(rss_info, rss_type_table[i].str))
+			rss_conf.rss_hf = rss_type_table[i].rss_type;
+	}
+
 	/* Get RSS hash key if asked to display it */
 	rss_conf.rss_key = (show_rss_key) ? rss_key : NULL;
 	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
@@ -922,12 +930,20 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 }
 
 void
-port_rss_hash_key_update(portid_t port_id, uint8_t *hash_key)
+port_rss_hash_key_update(portid_t port_id, char rss_type[], uint8_t *hash_key,
+			 uint hash_key_len)
 {
 	struct rte_eth_rss_conf rss_conf;
 	int diag;
+	unsigned int i;
 
 	rss_conf.rss_key = NULL;
+	rss_conf.rss_key_len = hash_key_len;
+	rss_conf.rss_hf = 0;
+	for (i = 0; i < RTE_DIM(rss_type_table); i++) {
+		if (!strcmp(rss_type_table[i].str, rss_type))
+			rss_conf.rss_hf = rss_type_table[i].rss_type;
+	}
 	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
 	if (diag == 0) {
 		rss_conf.rss_key = hash_key;
