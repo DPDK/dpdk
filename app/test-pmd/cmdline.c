@@ -2032,37 +2032,46 @@ cmd_config_dcb_parsed(void *parsed_result,
                         __attribute__((unused)) void *data)
 {
 	struct cmd_config_dcb *res = parsed_result;
-	struct dcb_config dcb_conf;
 	portid_t port_id = res->port_id;
 	struct rte_port *port;
+	uint8_t pfc_en;
+	int ret;
 
 	port = &ports[port_id];
 	/** Check if the port is not started **/
 	if (port->port_status != RTE_PORT_STOPPED) {
-		printf("Please stop port %d first\n",port_id);
+		printf("Please stop port %d first\n", port_id);
 		return;
 	}
 
-	dcb_conf.num_tcs = (enum rte_eth_nb_tcs) res->num_tcs;
-	if ((dcb_conf.num_tcs != ETH_4_TCS) && (dcb_conf.num_tcs != ETH_8_TCS)){
-		printf("The invalid number of traffic class,only 4 or 8 allowed\n");
+	if ((res->num_tcs != ETH_4_TCS) && (res->num_tcs != ETH_8_TCS)) {
+		printf("The invalid number of traffic class,"
+			" only 4 or 8 allowed.\n");
 		return;
 	}
+
+	if (nb_fwd_lcores < res->num_tcs) {
+		printf("nb_cores shouldn't be less than number of TCs.\n");
+		return;
+	}
+	if (!strncmp(res->pfc_en, "on", 2))
+		pfc_en = 1;
+	else
+		pfc_en = 0;
 
 	/* DCB in VT mode */
-	if (!strncmp(res->vt_en, "on",2))
-		dcb_conf.dcb_mode = DCB_VT_ENABLED;
+	if (!strncmp(res->vt_en, "on", 2))
+		ret = init_port_dcb_config(port_id, DCB_VT_ENABLED,
+				(enum rte_eth_nb_tcs)res->num_tcs,
+				pfc_en);
 	else
-		dcb_conf.dcb_mode = DCB_ENABLED;
+		ret = init_port_dcb_config(port_id, DCB_ENABLED,
+				(enum rte_eth_nb_tcs)res->num_tcs,
+				pfc_en);
 
-	if (!strncmp(res->pfc_en, "on",2)) {
-		dcb_conf.pfc_en = 1;
-	}
-	else
-		dcb_conf.pfc_en = 0;
 
-	if (init_port_dcb_config(port_id,&dcb_conf) != 0) {
-		printf("Cannot initialize network ports\n");
+	if (ret != 0) {
+		printf("Cannot initialize network ports.\n");
 		return;
 	}
 

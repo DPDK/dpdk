@@ -255,25 +255,6 @@ enum dcb_mode_enable
 	DCB_ENABLED
 };
 
-/*
- * DCB general config info
- */
-struct dcb_config {
-	enum dcb_mode_enable dcb_mode;
-	uint8_t vt_en;
-	enum rte_eth_nb_tcs num_tcs;
-	uint8_t pfc_en;
-};
-
-/*
- * In DCB io FWD mode, 128 RX queue to 128 TX queue mapping
- */
-enum dcb_queue_mapping_mode {
-	DCB_VT_Q_MAPPING = 0,
-	DCB_4_TCS_Q_MAPPING,
-	DCB_8_TCS_Q_MAPPING
-};
-
 #define MAX_TX_QUEUE_STATS_MAPPINGS 1024 /* MAX_PORT of 32 @ 32 tx_queues/port */
 #define MAX_RX_QUEUE_STATS_MAPPINGS 4096 /* MAX_PORT of 32 @ 128 rx_queues/port */
 
@@ -536,7 +517,9 @@ void dev_set_link_down(portid_t pid);
 void init_port_config(void);
 void set_port_slave_flag(portid_t slave_pid);
 void clear_port_slave_flag(portid_t slave_pid);
-int init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf);
+int init_port_dcb_config(portid_t pid, enum dcb_mode_enable dcb_mode,
+		     enum rte_eth_nb_tcs num_tcs,
+		     uint8_t pfc_en);
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);

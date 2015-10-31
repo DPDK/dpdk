@@ -182,9 +182,6 @@ uint8_t dcb_config = 0;
 /* Whether the dcb is in testing status */
 uint8_t dcb_test = 0;
 
-/* DCB on and VT on mapping is default */
-enum dcb_queue_mapping_mode dcb_q_mapping = DCB_VT_Q_MAPPING;
-
 /*
  * Configurable number of RX/TX queues.
  */
@@ -1852,115 +1849,131 @@ const uint16_t vlan_tags[] = {
 };
 
 static  int
-get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
+get_eth_dcb_conf(struct rte_eth_conf *eth_conf,
+		 enum dcb_mode_enable dcb_mode,
+		 enum rte_eth_nb_tcs num_tcs,
+		 uint8_t pfc_en)
 {
-        uint8_t i;
+	uint8_t i;
 
 	/*
 	 * Builds up the correct configuration for dcb+vt based on the vlan tags array
 	 * given above, and the number of traffic classes available for use.
 	 */
-	if (dcb_conf->dcb_mode == DCB_VT_ENABLED) {
-		struct rte_eth_vmdq_dcb_conf vmdq_rx_conf;
-		struct rte_eth_vmdq_dcb_tx_conf vmdq_tx_conf;
+	if (dcb_mode == DCB_VT_ENABLED) {
+		struct rte_eth_vmdq_dcb_conf *vmdq_rx_conf =
+				&eth_conf->rx_adv_conf.vmdq_dcb_conf;
+		struct rte_eth_vmdq_dcb_tx_conf *vmdq_tx_conf =
+				&eth_conf->tx_adv_conf.vmdq_dcb_tx_conf;
 
 		/* VMDQ+DCB RX and TX configrations */
-		vmdq_rx_conf.enable_default_pool = 0;
-		vmdq_rx_conf.default_pool = 0;
-		vmdq_rx_conf.nb_queue_pools =
-			(dcb_conf->num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
-		vmdq_tx_conf.nb_queue_pools =
-			(dcb_conf->num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
+		vmdq_rx_conf->enable_default_pool = 0;
+		vmdq_rx_conf->default_pool = 0;
+		vmdq_rx_conf->nb_queue_pools =
+			(num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
+		vmdq_tx_conf->nb_queue_pools =
+			(num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
 
-		vmdq_rx_conf.nb_pool_maps = sizeof( vlan_tags )/sizeof( vlan_tags[ 0 ]);
-		for (i = 0; i < vmdq_rx_conf.nb_pool_maps; i++) {
-			vmdq_rx_conf.pool_map[i].vlan_id = vlan_tags[ i ];
-			vmdq_rx_conf.pool_map[i].pools = 1 << (i % vmdq_rx_conf.nb_queue_pools);
+		vmdq_rx_conf->nb_pool_maps = vmdq_rx_conf->nb_queue_pools;
+		for (i = 0; i < vmdq_rx_conf->nb_pool_maps; i++) {
+			vmdq_rx_conf->pool_map[i].vlan_id = vlan_tags[i];
+			vmdq_rx_conf->pool_map[i].pools =
+				1 << (i % vmdq_rx_conf->nb_queue_pools);
 		}
 		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
-			vmdq_rx_conf.dcb_tc[i] = i;
-			vmdq_tx_conf.dcb_tc[i] = i;
+			vmdq_rx_conf->dcb_tc[i] = i;
+			vmdq_tx_conf->dcb_tc[i] = i;
 		}
 
-		/*set DCB mode of RX and TX of multiple queues*/
+		/* set DCB mode of RX and TX of multiple queues */
 		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_DCB;
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
-		if (dcb_conf->pfc_en)
-			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
-		else
-			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
+	} else {
+		struct rte_eth_dcb_rx_conf *rx_conf =
+				&eth_conf->rx_adv_conf.dcb_rx_conf;
+		struct rte_eth_dcb_tx_conf *tx_conf =
+				&eth_conf->tx_adv_conf.dcb_tx_conf;
 
-		(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_dcb_conf, &vmdq_rx_conf,
-                                sizeof(struct rte_eth_vmdq_dcb_conf)));
-		(void)(rte_memcpy(&eth_conf->tx_adv_conf.vmdq_dcb_tx_conf, &vmdq_tx_conf,
-                                sizeof(struct rte_eth_vmdq_dcb_tx_conf)));
-	}
-	else {
-		struct rte_eth_dcb_rx_conf rx_conf;
-		struct rte_eth_dcb_tx_conf tx_conf;
+		rx_conf->nb_tcs = num_tcs;
+		tx_conf->nb_tcs = num_tcs;
 
-		/* queue mapping configuration of DCB RX and TX */
-		if (dcb_conf->num_tcs == ETH_4_TCS)
-			dcb_q_mapping = DCB_4_TCS_Q_MAPPING;
-		else
-			dcb_q_mapping = DCB_8_TCS_Q_MAPPING;
-
-		rx_conf.nb_tcs = dcb_conf->num_tcs;
-		tx_conf.nb_tcs = dcb_conf->num_tcs;
-
-		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++){
-			rx_conf.dcb_tc[i] = i;
-			tx_conf.dcb_tc[i] = i;
+		for (i = 0; i < num_tcs; i++) {
+			rx_conf->dcb_tc[i] = i;
+			tx_conf->dcb_tc[i] = i;
 		}
-		eth_conf->rxmode.mq_mode = ETH_MQ_RX_DCB;
+		eth_conf->rxmode.mq_mode = ETH_MQ_RX_DCB_RSS;
+		eth_conf->rx_adv_conf.rss_conf.rss_hf = rss_hf;
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_DCB;
-		if (dcb_conf->pfc_en)
-			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT|ETH_DCB_PFC_SUPPORT;
-		else
-			eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
-
-		(void)(rte_memcpy(&eth_conf->rx_adv_conf.dcb_rx_conf, &rx_conf,
-                                sizeof(struct rte_eth_dcb_rx_conf)));
-		(void)(rte_memcpy(&eth_conf->tx_adv_conf.dcb_tx_conf, &tx_conf,
-                                sizeof(struct rte_eth_dcb_tx_conf)));
 	}
+
+	if (pfc_en)
+		eth_conf->dcb_capability_en =
+				ETH_DCB_PG_SUPPORT | ETH_DCB_PFC_SUPPORT;
+	else
+		eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
 
 	return 0;
 }
 
 int
-init_port_dcb_config(portid_t pid,struct dcb_config *dcb_conf)
+init_port_dcb_config(portid_t pid,
+		     enum dcb_mode_enable dcb_mode,
+		     enum rte_eth_nb_tcs num_tcs,
+		     uint8_t pfc_en)
 {
 	struct rte_eth_conf port_conf;
+	struct rte_eth_dev_info dev_info;
 	struct rte_port *rte_port;
 	int retval;
-	uint16_t nb_vlan;
 	uint16_t i;
 
-	/* rxq and txq configuration in dcb mode */
-	nb_rxq = 128;
-	nb_txq = 128;
+	rte_eth_dev_info_get(pid, &dev_info);
+
+	/* If dev_info.vmdq_pool_base is greater than 0,
+	 * the queue id of vmdq pools is started after pf queues.
+	 */
+	if (dcb_mode == DCB_VT_ENABLED && dev_info.vmdq_pool_base > 0) {
+		printf("VMDQ_DCB multi-queue mode is nonsensical"
+			" for port %d.", pid);
+		return -1;
+	}
+
+	/* Assume the ports in testpmd have the same dcb capability
+	 * and has the same number of rxq and txq in dcb mode
+	 */
+	if (dcb_mode == DCB_VT_ENABLED) {
+		nb_rxq = dev_info.max_rx_queues;
+		nb_txq = dev_info.max_tx_queues;
+	} else {
+		/*if vt is disabled, use all pf queues */
+		if (dev_info.vmdq_pool_base == 0) {
+			nb_rxq = dev_info.max_rx_queues;
+			nb_txq = dev_info.max_tx_queues;
+		} else {
+			nb_rxq = (queueid_t)num_tcs;
+			nb_txq = (queueid_t)num_tcs;
+
+		}
+	}
 	rx_free_thresh = 64;
 
-	memset(&port_conf,0,sizeof(struct rte_eth_conf));
+	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 	/* Enter DCB configuration status */
 	dcb_config = 1;
 
-	nb_vlan = sizeof( vlan_tags )/sizeof( vlan_tags[ 0 ]);
 	/*set configuration of DCB in vt mode and DCB in non-vt mode*/
-	retval = get_eth_dcb_conf(&port_conf, dcb_conf);
+	retval = get_eth_dcb_conf(&port_conf, dcb_mode, num_tcs, pfc_en);
 	if (retval < 0)
 		return retval;
 
 	rte_port = &ports[pid];
-	memcpy(&rte_port->dev_conf, &port_conf,sizeof(struct rte_eth_conf));
+	memcpy(&rte_port->dev_conf, &port_conf, sizeof(struct rte_eth_conf));
 
 	rxtx_port_config(rte_port);
 	/* VLAN filter */
 	rte_port->dev_conf.rxmode.hw_vlan_filter = 1;
-	for (i = 0; i < nb_vlan; i++){
+	for (i = 0; i < RTE_DIM(vlan_tags); i++)
 		rx_vft_set(pid, vlan_tags[i], 1);
-	}
 
 	rte_eth_macaddr_get(pid, &rte_port->eth_addr);
 	map_port_queue_stats_mapping_registers(pid, rte_port);

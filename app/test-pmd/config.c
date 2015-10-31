@@ -1145,113 +1145,92 @@ rss_fwd_config_setup(void)
 	}
 }
 
-/*
- * In DCB and VT on,the mapping of 128 receive queues to 128 transmit queues.
- */
-static void
-dcb_rxq_2_txq_mapping(queueid_t rxq, queueid_t *txq)
-{
-	if(dcb_q_mapping == DCB_4_TCS_Q_MAPPING) {
-
-		if (rxq < 32)
-			/* tc0: 0-31 */
-			*txq = rxq;
-		else if (rxq < 64) {
-			/* tc1: 64-95 */
-			*txq =  (uint16_t)(rxq + 32);
-		}
-		else {
-			/* tc2: 96-111;tc3:112-127 */
-			*txq =  (uint16_t)(rxq/2 + 64);
-		}
-	}
-	else {
-		if (rxq < 16)
-			/* tc0 mapping*/
-			*txq = rxq;
-		else if (rxq < 32) {
-			/* tc1 mapping*/
-			 *txq = (uint16_t)(rxq + 16);
-		}
-		else if (rxq < 64) {
-			/*tc2,tc3 mapping */
-			*txq =  (uint16_t)(rxq + 32);
-		}
-		else {
-			/* tc4,tc5,tc6 and tc7 mapping */
-			*txq =  (uint16_t)(rxq/2 + 64);
-		}
-	}
-}
-
 /**
- * For the DCB forwarding test, each core is assigned on every port multi-transmit
- * queue.
+ * For the DCB forwarding test, each core is assigned on each traffic class.
  *
  * Each core is assigned a multi-stream, each stream being composed of
  * a RX queue to poll on a RX port for input messages, associated with
- * a TX queue of a TX port where to send forwarded packets.
- * All packets received on the RX queue of index "RxQj" of the RX port "RxPi"
- * are sent on the TX queue "TxQl" of the TX port "TxPk" according to the two
- * following rules:
- * In VT mode,
- *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
- *    - TxQl = RxQj
- * In non-VT mode,
- *    - TxPk = (RxPi + 1) if RxPi is even, (RxPi - 1) if RxPi is odd
- *    There is a mapping of RxQj to TxQl to be required,and the mapping was implemented
- *    in dcb_rxq_2_txq_mapping function.
+ * a TX queue of a TX port where to send forwarded packets. All RX and
+ * TX queues are mapping to the same traffic class.
+ * If VMDQ and DCB co-exist, each traffic class on different POOLs share
+ * the same core
  */
 static void
 dcb_fwd_config_setup(void)
 {
-	portid_t   rxp;
-	portid_t   txp;
-	queueid_t  rxq;
-	queueid_t  nb_q;
+	struct rte_eth_dcb_info rxp_dcb_info, txp_dcb_info;
+	portid_t txp, rxp = 0;
+	queueid_t txq, rxq = 0;
 	lcoreid_t  lc_id;
-	uint16_t sm_id;
-
-	nb_q = nb_rxq;
+	uint16_t nb_rx_queue, nb_tx_queue;
+	uint16_t i, j, k, sm_id = 0;
+	uint8_t tc = 0;
 
 	cur_fwd_config.nb_fwd_lcores = (lcoreid_t) nb_fwd_lcores;
 	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
 	cur_fwd_config.nb_fwd_streams =
-		(streamid_t) (nb_q * cur_fwd_config.nb_fwd_ports);
+		(streamid_t) (nb_rxq * cur_fwd_config.nb_fwd_ports);
 
 	/* reinitialize forwarding streams */
 	init_fwd_streams();
+	sm_id = 0;
+	if ((rxp & 0x1) == 0)
+		txp = (portid_t) (rxp + 1);
+	else
+		txp = (portid_t) (rxp - 1);
+	/* get the dcb info on the first RX and TX ports */
+	(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[rxp], &rxp_dcb_info);
+	(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
 
-	setup_fwd_config_of_each_lcore(&cur_fwd_config);
-	rxp = 0; rxq = 0;
 	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
-		/* a fwd core can run multi-streams */
-		for (sm_id = 0; sm_id < fwd_lcores[lc_id]->stream_nb; sm_id++)
-		{
-			struct fwd_stream *fs;
-			fs = fwd_streams[fwd_lcores[lc_id]->stream_idx + sm_id];
-			if ((rxp & 0x1) == 0)
-				txp = (portid_t) (rxp + 1);
-			else
-				txp = (portid_t) (rxp - 1);
-			fs->rx_port = fwd_ports_ids[rxp];
-			fs->rx_queue = rxq;
-			fs->tx_port = fwd_ports_ids[txp];
-			if (dcb_q_mapping == DCB_VT_Q_MAPPING)
-				fs->tx_queue = rxq;
-			else
-				dcb_rxq_2_txq_mapping(rxq, &fs->tx_queue);
-			fs->peer_addr = fs->tx_port;
-			rxq = (queueid_t) (rxq + 1);
-			if (rxq < nb_q)
-				continue;
-			rxq = 0;
-			if (numa_support && (nb_fwd_ports <= (nb_ports >> 1)))
-				rxp = (portid_t)
-					(rxp + ((nb_ports >> 1) / nb_fwd_ports));
-			else
-				rxp = (portid_t) (rxp + 1);
+		fwd_lcores[lc_id]->stream_nb = 0;
+		fwd_lcores[lc_id]->stream_idx = sm_id;
+		for (i = 0; i < ETH_MAX_VMDQ_POOL; i++) {
+			/* if the nb_queue is zero, means this tc is
+			 * not enabled on the POOL
+			 */
+			if (rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue == 0)
+				break;
+			k = fwd_lcores[lc_id]->stream_nb +
+				fwd_lcores[lc_id]->stream_idx;
+			rxq = rxp_dcb_info.tc_queue.tc_rxq[i][tc].base;
+			txq = txp_dcb_info.tc_queue.tc_txq[i][tc].base;
+			nb_rx_queue = txp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue;
+			nb_tx_queue = txp_dcb_info.tc_queue.tc_txq[i][tc].nb_queue;
+			for (j = 0; j < nb_rx_queue; j++) {
+				struct fwd_stream *fs;
+
+				fs = fwd_streams[k + j];
+				fs->rx_port = fwd_ports_ids[rxp];
+				fs->rx_queue = rxq + j;
+				fs->tx_port = fwd_ports_ids[txp];
+				fs->tx_queue = txq + j % nb_tx_queue;
+				fs->peer_addr = fs->tx_port;
+			}
+			fwd_lcores[lc_id]->stream_nb +=
+				rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue;
 		}
+		sm_id = (streamid_t) (sm_id + fwd_lcores[lc_id]->stream_nb);
+
+		tc++;
+		if (tc < rxp_dcb_info.nb_tcs)
+			continue;
+		/* Restart from TC 0 on next RX port */
+		tc = 0;
+		if (numa_support && (nb_fwd_ports <= (nb_ports >> 1)))
+			rxp = (portid_t)
+				(rxp + ((nb_ports >> 1) / nb_fwd_ports));
+		else
+			rxp++;
+		if (rxp >= nb_fwd_ports)
+			return;
+		/* get the dcb information on next RX and TX ports */
+		if ((rxp & 0x1) == 0)
+			txp = (portid_t) (rxp + 1);
+		else
+			txp = (portid_t) (rxp - 1);
+		rte_eth_dev_get_dcb_info(fwd_ports_ids[rxp], &rxp_dcb_info);
+		rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
 	}
 }
 
@@ -1371,10 +1350,6 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 void
 fwd_config_display(void)
 {
-	if((dcb_config) && (nb_fwd_lcores == 1)) {
-		printf("In DCB mode,the nb forwarding cores should be larger than 1\n");
-		return;
-	}
 	fwd_config_setup();
 	pkt_fwd_config_display(&cur_fwd_config);
 }
