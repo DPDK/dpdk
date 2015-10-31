@@ -57,6 +57,9 @@
 #define IXGBE_VFTA_SIZE 128
 #define IXGBE_VLAN_TAG_SIZE 4
 #define IXGBE_MAX_RX_QUEUE_NUM	128
+#define IXGBE_VMDQ_DCB_NB_QUEUES     IXGBE_MAX_RX_QUEUE_NUM
+#define IXGBE_DCB_NB_QUEUES          IXGBE_MAX_RX_QUEUE_NUM
+
 #ifndef NBBY
 #define NBBY	8	/* number of bits in a byte */
 #endif

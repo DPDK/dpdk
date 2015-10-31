@@ -865,16 +865,98 @@ rte_igbvf_pmd_init(const char *name __rte_unused, const char *params __rte_unuse
 }
 
 static int
+igb_check_mq_mode(struct rte_eth_dev *dev)
+{
+	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	enum rte_eth_tx_mq_mode tx_mq_mode = dev->data->dev_conf.txmode.mq_mode;
+	uint16_t nb_rx_q = dev->data->nb_rx_queues;
+	uint16_t nb_tx_q = dev->data->nb_rx_queues;
+
+	if ((rx_mq_mode & ETH_MQ_RX_DCB_FLAG) ||
+	    tx_mq_mode == ETH_MQ_TX_DCB ||
+	    tx_mq_mode == ETH_MQ_TX_VMDQ_DCB) {
+		PMD_INIT_LOG(ERR, "DCB mode is not supported.");
+		return -EINVAL;
+	}
+	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
+		/* Check multi-queue mode.
+		 * To no break software we accept ETH_MQ_RX_NONE as this might
+		 * be used to turn off VLAN filter.
+		 */
+
+		if (rx_mq_mode == ETH_MQ_RX_NONE ||
+		    rx_mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
+			dev->data->dev_conf.rxmode.mq_mode = ETH_MQ_RX_VMDQ_ONLY;
+			RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool = 1;
+		} else {
+			/* Only support one queue on VFs.
+			 * RSS together with SRIOV is not supported.
+			 */
+			PMD_INIT_LOG(ERR, "SRIOV is active,"
+					" wrong mq_mode rx %d.",
+					rx_mq_mode);
+			return -EINVAL;
+		}
+		/* TX mode is not used here, so mode might be ignored.*/
+		if (tx_mq_mode != ETH_MQ_TX_VMDQ_ONLY) {
+			/* SRIOV only works in VMDq enable mode */
+			PMD_INIT_LOG(WARNING, "SRIOV is active,"
+					" TX mode %d is not supported. "
+					" Driver will behave as %d mode.",
+					tx_mq_mode, ETH_MQ_TX_VMDQ_ONLY);
+		}
+
+		/* check valid queue number */
+		if ((nb_rx_q > 1) || (nb_tx_q > 1)) {
+			PMD_INIT_LOG(ERR, "SRIOV is active,"
+					" only support one queue on VFs.");
+			return -EINVAL;
+		}
+	} else {
+		/* To no break software that set invalid mode, only display
+		 * warning if invalid mode is used.
+		 */
+		if (rx_mq_mode != ETH_MQ_RX_NONE &&
+		    rx_mq_mode != ETH_MQ_RX_VMDQ_ONLY &&
+		    rx_mq_mode != ETH_MQ_RX_RSS) {
+			/* RSS together with VMDq not supported*/
+			PMD_INIT_LOG(ERR, "RX mode %d is not supported.",
+				     rx_mq_mode);
+			return -EINVAL;
+		}
+
+		if (tx_mq_mode != ETH_MQ_TX_NONE &&
+		    tx_mq_mode != ETH_MQ_TX_VMDQ_ONLY) {
+			PMD_INIT_LOG(WARNING, "TX mode %d is not supported."
+					" Due to txmode is meaningless in this"
+					" driver, just ignore.",
+					tx_mq_mode);
+		}
+	}
+	return 0;
+}
+
+static int
 eth_igb_configure(struct rte_eth_dev *dev)
 {
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* multipe queue mode checking */
+	ret  = igb_check_mq_mode(dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "igb_check_mq_mode fails with %d.",
+			    ret);
+		return ret;
+	}
+
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
 	PMD_INIT_FUNC_TRACE();
 
-	return (0);
+	return 0;
 }
 
 static int
