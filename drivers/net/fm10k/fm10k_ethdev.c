@@ -283,12 +283,56 @@ tx_queue_disable(struct fm10k_hw *hw, uint16_t qnum)
 }
 
 static int
+fm10k_check_mq_mode(struct rte_eth_dev *dev)
+{
+	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_vmdq_rx_conf *vmdq_conf;
+	uint16_t nb_rx_q = dev->data->nb_rx_queues;
+
+	vmdq_conf = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
+
+	if (rx_mq_mode & ETH_MQ_RX_DCB_FLAG) {
+		PMD_INIT_LOG(ERR, "DCB mode is not supported.");
+		return -EINVAL;
+	}
+
+	if (!(rx_mq_mode & ETH_MQ_RX_VMDQ_FLAG))
+		return 0;
+
+	if (hw->mac.type == fm10k_mac_vf) {
+		PMD_INIT_LOG(ERR, "VMDQ mode is not supported in VF.");
+		return -EINVAL;
+	}
+
+	/* Check VMDQ queue pool number */
+	if (vmdq_conf->nb_queue_pools >
+			sizeof(vmdq_conf->pool_map[0].pools) * CHAR_BIT ||
+			vmdq_conf->nb_queue_pools > nb_rx_q) {
+		PMD_INIT_LOG(ERR, "Too many of queue pools: %d",
+			vmdq_conf->nb_queue_pools);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 fm10k_dev_configure(struct rte_eth_dev *dev)
 {
+	int ret;
+
 	PMD_INIT_FUNC_TRACE();
 
 	if (dev->data->dev_conf.rxmode.hw_strip_crc == 0)
 		PMD_INIT_LOG(WARNING, "fm10k always strip CRC");
+	/* multipe queue mode checking */
+	ret  = fm10k_check_mq_mode(dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "fm10k_check_mq_mode fails with %d.",
+			    ret);
+		return ret;
+	}
 
 	return 0;
 }
