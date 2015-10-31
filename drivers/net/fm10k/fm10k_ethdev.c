@@ -337,8 +337,41 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/* fls = find last set bit = 32 minus the number of leading zeros */
+#ifndef fls
+#define fls(x) (((x) == 0) ? 0 : (32 - __builtin_clz((x))))
+#endif
+
 static void
-fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
+fm10k_dev_vmdq_rx_configure(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_vmdq_rx_conf *vmdq_conf;
+	uint32_t i;
+
+	vmdq_conf = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
+
+	for (i = 0; i < vmdq_conf->nb_pool_maps; i++) {
+		if (!vmdq_conf->pool_map[i].pools)
+			continue;
+		fm10k_mbx_lock(hw);
+		fm10k_update_vlan(hw, vmdq_conf->pool_map[i].vlan_id, 0, true);
+		fm10k_mbx_unlock(hw);
+	}
+}
+
+static void
+fm10k_dev_pf_main_vsi_reset(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Add default mac address */
+	fm10k_MAC_filter_set(dev, hw->mac.addr, true,
+		MAIN_VSI_POOL_NUMBER);
+}
+
+static void
+fm10k_dev_rss_configure(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
@@ -407,6 +440,78 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	}
 
 	FM10K_WRITE_REG(hw, FM10K_MRQC(0), mrqc);
+}
+
+static void
+fm10k_dev_logic_port_update(struct rte_eth_dev *dev,
+	uint16_t nb_lport_old, uint16_t nb_lport_new)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t i;
+
+	fm10k_mbx_lock(hw);
+	/* Disable previous logic ports */
+	if (nb_lport_old)
+		hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
+			nb_lport_old, false);
+	/* Enable new logic ports */
+	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
+		nb_lport_new, true);
+	fm10k_mbx_unlock(hw);
+
+	for (i = 0; i < nb_lport_new; i++) {
+		/* Set unicast mode by default. App can change
+		 * to other mode in other API func.
+		 */
+		fm10k_mbx_lock(hw);
+		hw->mac.ops.update_xcast_mode(hw, hw->mac.dglort_map + i,
+			FM10K_XCAST_MODE_NONE);
+		fm10k_mbx_unlock(hw);
+	}
+}
+
+static void
+fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_vmdq_rx_conf *vmdq_conf;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct fm10k_macvlan_filter_info *macvlan;
+	uint16_t nb_queue_pools = 0; /* pool number in configuration */
+	uint16_t nb_lport_new, nb_lport_old;
+
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	vmdq_conf = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
+
+	fm10k_dev_rss_configure(dev);
+
+	/* only PF supports VMDQ */
+	if (hw->mac.type != fm10k_mac_pf)
+		return;
+
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG)
+		nb_queue_pools = vmdq_conf->nb_queue_pools;
+
+	/* no pool number change, no need to update logic port and VLAN/MAC */
+	if (macvlan->nb_queue_pools == nb_queue_pools)
+		return;
+
+	nb_lport_old = macvlan->nb_queue_pools ? macvlan->nb_queue_pools : 1;
+	nb_lport_new = nb_queue_pools ? nb_queue_pools : 1;
+	fm10k_dev_logic_port_update(dev, nb_lport_old, nb_lport_new);
+
+	/* reset MAC/VLAN as it's based on VMDQ or PF main VSI */
+	memset(dev->data->mac_addrs, 0,
+		ETHER_ADDR_LEN * FM10K_MAX_MACADDR_NUM);
+	ether_addr_copy((const struct ether_addr *)hw->mac.addr,
+		&dev->data->mac_addrs[0]);
+	memset(macvlan, 0, sizeof(*macvlan));
+	macvlan->nb_queue_pools = nb_queue_pools;
+
+	if (nb_queue_pools)
+		fm10k_dev_vmdq_rx_configure(dev);
+	else
+		fm10k_dev_pf_main_vsi_reset(dev);
 }
 
 static int
@@ -517,7 +622,7 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 		FM10K_WRITE_FLUSH(hw);
 	}
 
-	/* Configure RSS if applicable */
+	/* Configure VMDQ/RSS if applicable */
 	fm10k_dev_mq_rx_configure(dev);
 	return 0;
 }
@@ -747,10 +852,32 @@ fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Failed to disable allmulticast mode");
 }
 
-/* fls = find last set bit = 32 minus the number of leading zeros */
-#ifndef fls
-#define fls(x) (((x) == 0) ? 0 : (32 - __builtin_clz((x))))
-#endif
+static void
+fm10k_dev_dglort_map_configure(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t dglortdec, pool_len, rss_len, i;
+	uint16_t nb_queue_pools;
+	struct fm10k_macvlan_filter_info *macvlan;
+
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	nb_queue_pools = macvlan->nb_queue_pools;
+	pool_len = nb_queue_pools ? fls(nb_queue_pools - 1) : 0;
+	rss_len = fls(dev->data->nb_rx_queues - 1) - pool_len;
+	dglortdec = (rss_len << FM10K_DGLORTDEC_RSSLENGTH_SHIFT) | pool_len;
+
+	/* Establish only MAP 0 as valid */
+	FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(0), FM10K_DGLORTMAP_ANY);
+
+	/* Configure VMDQ/RSS DGlort Decoder */
+	FM10K_WRITE_REG(hw, FM10K_DGLORTDEC(0), dglortdec);
+
+	/* Invalidate all other GLORT entries */
+	for (i = 1; i < FM10K_DGLORT_COUNT; i++)
+		FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(i),
+				FM10K_DGLORTMAP_NONE);
+}
+
 #define BSIZEPKT_ROUNDUP ((1 << FM10K_SRRCTL_BSIZEPKT_SHIFT) - 1)
 static int
 fm10k_dev_start(struct rte_eth_dev *dev)
@@ -791,20 +918,8 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 		return diag;
 	}
 
-	if (hw->mac.type == fm10k_mac_pf) {
-		/* Establish only VSI 0 as valid */
-		FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(0), FM10K_DGLORTMAP_ANY);
-
-		/* Configure RSS bits used in RETA table */
-		FM10K_WRITE_REG(hw, FM10K_DGLORTDEC(0),
-				fls(dev->data->nb_rx_queues - 1) <<
-				FM10K_DGLORTDEC_RSSLENGTH_SHIFT);
-
-		/* Invalidate all other GLORT entries */
-		for (i = 1; i < FM10K_DGLORT_COUNT; i++)
-			FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(i),
-					FM10K_DGLORTMAP_NONE);
-	}
+	if (hw->mac.type == fm10k_mac_pf)
+		fm10k_dev_dglort_map_configure(dev);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct fm10k_rx_queue *rxq;
@@ -838,8 +953,8 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* Update default vlan */
-	if (hw->mac.default_vid && hw->mac.default_vid <= ETHER_MAX_VLAN_ID)
+	/* Update default vlan when not in VMDQ mode */
+	if (!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG))
 		fm10k_vlan_filter_set(dev, hw->mac.default_vid, true);
 
 	return 0;
@@ -978,7 +1093,10 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_mac_addrs      = FM10K_MAX_MACADDR_NUM;
 	dev_info->max_hash_mac_addrs = 0;
 	dev_info->max_vfs            = dev->pci_dev->max_vfs;
-	dev_info->max_vmdq_pools     = ETH_64_POOLS;
+	dev_info->vmdq_pool_base     = 0;
+	dev_info->vmdq_queue_base    = 0;
+	dev_info->max_vmdq_pools     = ETH_32_POOLS;
+	dev_info->vmdq_queue_num     = FM10K_MAX_QUEUES_PF;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
