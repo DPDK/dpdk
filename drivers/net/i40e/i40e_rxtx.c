@@ -2110,7 +2110,8 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct i40e_rx_queue *rxq;
 	const struct rte_memzone *rz;
 	uint32_t ring_size;
-	uint16_t len;
+	uint16_t len, i;
+	uint16_t base, bsf, tc_mapping;
 	int use_def_burst_func = 1;
 
 	if (hw->mac.type == I40E_MAC_VF) {
@@ -2231,6 +2232,19 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		ad->rx_bulk_alloc_allowed = false;
 	}
 
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (!(vsi->enabled_tc & (1 << i)))
+			continue;
+		tc_mapping = rte_le_to_cpu_16(vsi->info.tc_mapping[i]);
+		base = (tc_mapping & I40E_AQ_VSI_TC_QUE_OFFSET_MASK) >>
+			I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT;
+		bsf = (tc_mapping & I40E_AQ_VSI_TC_QUE_NUMBER_MASK) >>
+			I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT;
+
+		if (queue_idx >= base && queue_idx < (base + BIT(bsf)))
+			rxq->dcb_tc = i;
+	}
+
 	return 0;
 }
 
@@ -2323,6 +2337,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_memzone *tz;
 	uint32_t ring_size;
 	uint16_t tx_rs_thresh, tx_free_thresh;
+	uint16_t i, base, bsf, tc_mapping;
 
 	if (hw->mac.type == I40E_MAC_VF) {
 		struct i40e_vf *vf =
@@ -2491,6 +2506,19 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Use a simple TX queue without offloads or multi segs if possible */
 	i40e_set_tx_function_flag(dev, txq);
+
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (!(vsi->enabled_tc & (1 << i)))
+			continue;
+		tc_mapping = rte_le_to_cpu_16(vsi->info.tc_mapping[i]);
+		base = (tc_mapping & I40E_AQ_VSI_TC_QUE_OFFSET_MASK) >>
+			I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT;
+		bsf = (tc_mapping & I40E_AQ_VSI_TC_QUE_NUMBER_MASK) >>
+			I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT;
+
+		if (queue_idx >= base && queue_idx < (base + BIT(bsf)))
+			txq->dcb_tc = i;
+	}
 
 	return 0;
 }
@@ -2704,7 +2732,7 @@ i40e_tx_queue_init(struct i40e_tx_queue *txq)
 #ifdef RTE_LIBRTE_IEEE1588
 	tx_ctx.timesync_ena = 1;
 #endif
-	tx_ctx.rdylist = rte_le_to_cpu_16(vsi->info.qs_handle[0]);
+	tx_ctx.rdylist = rte_le_to_cpu_16(vsi->info.qs_handle[txq->dcb_tc]);
 	if (vsi->type == I40E_VSI_FDIR)
 		tx_ctx.fd_ena = TRUE;
 

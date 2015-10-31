@@ -204,6 +204,19 @@ struct i40e_macvlan_filter {
 	uint16_t vlan_id;
 };
 
+/* Bandwidth limit information */
+struct i40e_bw_info {
+	uint16_t bw_limit;      /* BW Limit (0 = disabled) */
+	uint8_t  bw_max_quanta; /* Max Quanta when BW limit is enabled */
+
+	/* Relative TC credits across VSIs */
+	uint8_t  bw_ets_share_credits[I40E_MAX_TRAFFIC_CLASS];
+	/* TC BW limit credits within VSI */
+	uint8_t  bw_ets_limit_credits[I40E_MAX_TRAFFIC_CLASS];
+	/* TC BW limit max quanta within VSI */
+	uint8_t  bw_ets_max_quanta[I40E_MAX_TRAFFIC_CLASS];
+};
+
 /*
  * Structure that defines a VSI, associated with a adapter.
  */
@@ -249,6 +262,7 @@ struct i40e_vsi {
 	uint16_t vsi_id;
 	uint16_t msix_intr; /* The MSIX interrupt binds to VSI */
 	uint8_t enabled_tc; /* The traffic class enabled */
+	struct i40e_bw_info bw_info; /* VSI bandwidth information */
 };
 
 struct pool_entry {

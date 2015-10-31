@@ -133,6 +133,7 @@ struct i40e_rx_queue {
 	bool q_set; /**< indicate if rx queue has been configured */
 	bool rx_deferred_start; /**< don't start this queue in dev start */
 	uint16_t rx_using_sse; /**<flag indicate the usage of vPMD for rx */
+	uint8_t dcb_tc;         /**< Traffic class of rx queue */
 };
 
 struct i40e_tx_entry {
@@ -173,6 +174,7 @@ struct i40e_tx_queue {
 	uint16_t tx_next_rs;
 	bool q_set; /**< indicate if tx queue has been configured */
 	bool tx_deferred_start; /**< don't start this queue in dev start */
+	uint8_t dcb_tc;         /**< Traffic class of tx queue */
 };
 
 /** Offload features */

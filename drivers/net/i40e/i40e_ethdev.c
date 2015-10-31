@@ -56,6 +56,7 @@
 #include "base/i40e_adminq_cmd.h"
 #include "base/i40e_type.h"
 #include "base/i40e_register.h"
+#include "base/i40e_dcb.h"
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
@@ -134,6 +135,10 @@
 #define I40E_PRTTSYN_TSYNENA  0x80000000
 #define I40E_PRTTSYN_TSYNTYPE 0x0e000000
 
+#define I40E_MAX_PERCENT            100
+#define I40E_DEFAULT_DCB_APP_NUM    1
+#define I40E_DEFAULT_DCB_APP_PRIO   3
+
 static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
@@ -189,6 +194,8 @@ static int i40e_pf_parameter_init(struct rte_eth_dev *dev);
 static int i40e_pf_setup(struct i40e_pf *pf);
 static int i40e_dev_rxtx_init(struct i40e_pf *pf);
 static int i40e_vmdq_setup(struct rte_eth_dev *dev);
+static int i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb);
+static int i40e_dcb_setup(struct rte_eth_dev *dev);
 static void i40e_stat_update_32(struct i40e_hw *hw, uint32_t reg,
 		bool offset_loaded, uint64_t *offset, uint64_t *stat);
 static void i40e_stat_update_48(struct i40e_hw *hw,
@@ -517,11 +524,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		     ((hw->nvm.version >> 4) & 0xff),
 		     (hw->nvm.version & 0xf), hw->nvm.eetrack);
 
-	/* Disable LLDP */
-	ret = i40e_aq_stop_lldp(hw, true, NULL);
-	if (ret != I40E_SUCCESS) /* Its failure can be ignored */
-		PMD_INIT_LOG(INFO, "Failed to stop lldp");
-
 	/* Clear PXE mode */
 	i40e_clear_pxe_mode(hw);
 
@@ -642,6 +644,13 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	/* initialize mirror rule list */
 	TAILQ_INIT(&pf->mirror_list);
 
+	/* Init dcb to sw mode by default */
+	ret = i40e_dcb_init_configure(dev, TRUE);
+	if (ret != I40E_SUCCESS) {
+		PMD_INIT_LOG(INFO, "Failed to init dcb.");
+		pf->flags &= ~I40E_FLAG_DCB;
+	}
+
 	return 0;
 
 err_mac_alloc:
@@ -728,7 +737,7 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
-	int ret;
+	int i, ret;
 
 	/* Initialize to TRUE. If any of Rx queues doesn't meet the
 	 * bulk allocation or vector Rx preconditions we will reset it.
@@ -773,8 +782,27 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 		if (ret)
 			goto err;
 	}
+
+	if (mq_mode & ETH_MQ_RX_DCB_FLAG) {
+		ret = i40e_dcb_setup(dev);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "failed to configure DCB.");
+			goto err_dcb;
+		}
+	}
+
 	return 0;
+
+err_dcb:
+	/* need to release vmdq resource if exists */
+	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
+		i40e_vsi_release(pf->vmdq[i].vsi);
+		pf->vmdq[i].vsi = NULL;
+	}
+	rte_free(pf->vmdq);
+	pf->vmdq = NULL;
 err:
+	/* need to release fdir resource if exists */
 	i40e_fdir_teardown(pf);
 	return ret;
 }
@@ -2517,6 +2545,9 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 		 */
 	}
 
+	if (hw->func_caps.dcb)
+		pf->flags |= I40E_FLAG_DCB;
+
 	if (sum_vsis > pf->max_num_vsi ||
 		sum_queues > hw->func_caps.num_rx_qp) {
 		PMD_INIT_LOG(ERR, "VSI/QUEUE setting can't be satisfied");
@@ -2922,7 +2953,7 @@ i40e_vsi_config_tc_queue_mapping(struct i40e_vsi *vsi,
 				 struct i40e_aqc_vsi_properties_data *info,
 				 uint8_t enabled_tcmap)
 {
-	int ret, total_tc = 0, i;
+	int ret, i, total_tc = 0;
 	uint16_t qpnum_per_tc, bsf, qp_idx;
 
 	ret = validate_tcmap_parameter(vsi, enabled_tcmap);
@@ -5479,11 +5510,6 @@ i40e_pf_config_mq_rx(struct i40e_pf *pf)
 	int ret = 0;
 	enum rte_eth_rx_mq_mode mq_mode = pf->dev_data->dev_conf.rxmode.mq_mode;
 
-	if (mq_mode & ETH_MQ_RX_DCB_FLAG) {
-		PMD_INIT_LOG(ERR, "i40e doesn't support DCB yet");
-		return -ENOTSUP;
-	}
-
 	/* RSS setup */
 	if (mq_mode & ETH_MQ_RX_RSS_FLAG)
 		ret = i40e_pf_config_rss(pf);
@@ -6507,4 +6533,486 @@ i40e_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	timestamp->tv_nsec = 0;
 
 	return  0;
+}
+
+/*
+ * i40e_parse_dcb_configure - parse dcb configure from user
+ * @dev: the device being configured
+ * @dcb_cfg: pointer of the result of parse
+ * @*tc_map: bit map of enabled traffic classes
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static int
+i40e_parse_dcb_configure(struct rte_eth_dev *dev,
+			 struct i40e_dcbx_config *dcb_cfg,
+			 uint8_t *tc_map)
+{
+	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
+	uint8_t i, tc_bw, bw_lf;
+
+	memset(dcb_cfg, 0, sizeof(struct i40e_dcbx_config));
+
+	dcb_rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
+	if (dcb_rx_conf->nb_tcs > I40E_MAX_TRAFFIC_CLASS) {
+		PMD_INIT_LOG(ERR, "number of tc exceeds max.");
+		return -EINVAL;
+	}
+
+	/* assume each tc has the same bw */
+	tc_bw = I40E_MAX_PERCENT / dcb_rx_conf->nb_tcs;
+	for (i = 0; i < dcb_rx_conf->nb_tcs; i++)
+		dcb_cfg->etscfg.tcbwtable[i] = tc_bw;
+	/* to ensure the sum of tcbw is equal to 100 */
+	bw_lf = I40E_MAX_PERCENT % dcb_rx_conf->nb_tcs;
+	for (i = 0; i < bw_lf; i++)
+		dcb_cfg->etscfg.tcbwtable[i]++;
+
+	/* assume each tc has the same Transmission Selection Algorithm */
+	for (i = 0; i < dcb_rx_conf->nb_tcs; i++)
+		dcb_cfg->etscfg.tsatable[i] = I40E_IEEE_TSA_ETS;
+
+	for (i = 0; i < I40E_MAX_USER_PRIORITY; i++)
+		dcb_cfg->etscfg.prioritytable[i] =
+				dcb_rx_conf->dcb_tc[i];
+
+	/* FW needs one App to configure HW */
+	dcb_cfg->numapps = I40E_DEFAULT_DCB_APP_NUM;
+	dcb_cfg->app[0].selector = I40E_APP_SEL_ETHTYPE;
+	dcb_cfg->app[0].priority = I40E_DEFAULT_DCB_APP_PRIO;
+	dcb_cfg->app[0].protocolid = I40E_APP_PROTOID_FCOE;
+
+	if (dcb_rx_conf->nb_tcs == 0)
+		*tc_map = 1; /* tc0 only */
+	else
+		*tc_map = RTE_LEN2MASK(dcb_rx_conf->nb_tcs, uint8_t);
+
+	if (dev->data->dev_conf.dcb_capability_en & ETH_DCB_PFC_SUPPORT) {
+		dcb_cfg->pfc.willing = 0;
+		dcb_cfg->pfc.pfccap = I40E_MAX_TRAFFIC_CLASS;
+		dcb_cfg->pfc.pfcenable = *tc_map;
+	}
+	return 0;
+}
+
+/*
+ * i40e_vsi_get_bw_info - Query VSI BW Information
+ * @vsi: the VSI being queried
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static int
+i40e_vsi_get_bw_info(struct i40e_vsi *vsi)
+{
+	struct i40e_aqc_query_vsi_ets_sla_config_resp bw_ets_config = {0};
+	struct i40e_aqc_query_vsi_bw_config_resp bw_config = {0};
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	int i, ret;
+	uint32_t tc_bw_max;
+
+	/* Get the VSI level BW configuration */
+	ret = i40e_aq_query_vsi_bw_config(hw, vsi->seid, &bw_config, NULL);
+	if (ret) {
+		PMD_INIT_LOG(ERR,
+			 "couldn't get PF vsi bw config, err %s aq_err %s\n",
+			 i40e_stat_str(hw, ret),
+			 i40e_aq_str(hw, hw->aq.asq_last_status));
+		return -EINVAL;
+	}
+
+	/* Get the VSI level BW configuration per TC */
+	ret = i40e_aq_query_vsi_ets_sla_config(hw, vsi->seid, &bw_ets_config,
+						  NULL);
+	if (ret) {
+		PMD_INIT_LOG(ERR,
+			 "couldn't get PF vsi ets bw config, err %s aq_err %s\n",
+			 i40e_stat_str(hw, ret),
+			 i40e_aq_str(hw, hw->aq.asq_last_status));
+		return -EINVAL;
+	}
+
+	if (bw_config.tc_valid_bits != bw_ets_config.tc_valid_bits) {
+		PMD_INIT_LOG(WARNING,
+			 "Enabled TCs mismatch from querying VSI BW info"
+			 " 0x%08x 0x%08x\n", bw_config.tc_valid_bits,
+			 bw_ets_config.tc_valid_bits);
+		/* Still continuing */
+	}
+
+	vsi->bw_info.bw_limit = rte_le_to_cpu_16(bw_config.port_bw_limit);
+	vsi->bw_info.bw_max_quanta = bw_config.max_bw;
+	tc_bw_max = rte_le_to_cpu_16(bw_ets_config.tc_bw_max[0]) |
+		    (rte_le_to_cpu_16(bw_ets_config.tc_bw_max[1]) << 16);
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		vsi->bw_info.bw_ets_share_credits[i] =
+				bw_ets_config.share_credits[i];
+		vsi->bw_info.bw_ets_limit_credits[i] =
+				rte_le_to_cpu_16(bw_ets_config.credits[i]);
+		/* 3 bits out of 4 for each TC */
+		vsi->bw_info.bw_ets_max_quanta[i] =
+			(uint8_t)((tc_bw_max >> (i * 4)) & 0x7);
+		PMD_INIT_LOG(DEBUG,
+			 "%s: vsi seid = %d, TC = %d, qset = 0x%x\n",
+			 __func__, vsi->seid, i, bw_config.qs_handles[i]);
+	}
+
+	return 0;
+}
+
+static int
+i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
+			      struct i40e_aqc_vsi_properties_data *info,
+			      uint8_t enabled_tcmap)
+{
+	int ret, i, total_tc = 0;
+	uint16_t qpnum_per_tc, bsf, qp_idx;
+	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(vsi);
+
+	ret = validate_tcmap_parameter(vsi, enabled_tcmap);
+	if (ret != I40E_SUCCESS)
+		return ret;
+
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (enabled_tcmap & (1 << i))
+			total_tc++;
+	}
+	if (total_tc == 0)
+		total_tc = 1;
+	vsi->enabled_tc = enabled_tcmap;
+
+	qpnum_per_tc = dev_data->nb_rx_queues / total_tc;
+	/* Number of queues per enabled TC */
+	if (qpnum_per_tc == 0) {
+		PMD_INIT_LOG(ERR, " number of queues is less that tcs.");
+		return I40E_ERR_INVALID_QP_ID;
+	}
+	qpnum_per_tc = RTE_MIN(i40e_align_floor(qpnum_per_tc),
+				I40E_MAX_Q_PER_TC);
+	bsf = rte_bsf32(qpnum_per_tc);
+
+	/**
+	 * Configure TC and queue mapping parameters, for enabled TC,
+	 * allocate qpnum_per_tc queues to this traffic. For disabled TC,
+	 * default queue will serve it.
+	 */
+	qp_idx = 0;
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (vsi->enabled_tc & (1 << i)) {
+			info->tc_mapping[i] = rte_cpu_to_le_16((qp_idx <<
+					I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT) |
+				(bsf << I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT));
+			qp_idx += qpnum_per_tc;
+		} else
+			info->tc_mapping[i] = 0;
+	}
+
+	/* Associate queue number with VSI, Keep vsi->nb_qps unchanged */
+	if (vsi->type == I40E_VSI_SRIOV) {
+		info->mapping_flags |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_QUE_MAP_NONCONTIG);
+		for (i = 0; i < vsi->nb_qps; i++)
+			info->queue_mapping[i] =
+				rte_cpu_to_le_16(vsi->base_queue + i);
+	} else {
+		info->mapping_flags |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_QUE_MAP_CONTIG);
+		info->queue_mapping[0] = rte_cpu_to_le_16(vsi->base_queue);
+	}
+	info->valid_sections |=
+		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_QUEUE_MAP_VALID);
+
+	return I40E_SUCCESS;
+}
+
+/*
+ * i40e_vsi_config_tc - Configure VSI tc setting for given TC map
+ * @vsi: VSI to be configured
+ * @tc_map: enabled TC bitmap
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static int
+i40e_vsi_config_tc(struct i40e_vsi *vsi, u8 tc_map)
+{
+	struct i40e_aqc_configure_vsi_tc_bw_data bw_data;
+	struct i40e_vsi_context ctxt;
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	int ret = 0;
+	int i;
+
+	/* Check if enabled_tc is same as existing or new TCs */
+	if (vsi->enabled_tc == tc_map)
+		return ret;
+
+	/* configure tc bandwidth */
+	memset(&bw_data, 0, sizeof(bw_data));
+	bw_data.tc_valid_bits = tc_map;
+	/* Enable ETS TCs with equal BW Share for now across all VSIs */
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (tc_map & BIT_ULL(i))
+			bw_data.tc_bw_credits[i] = 1;
+	}
+	ret = i40e_aq_config_vsi_tc_bw(hw, vsi->seid, &bw_data, NULL);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "AQ command Config VSI BW allocation"
+			" per TC failed = %d",
+			hw->aq.asq_last_status);
+		goto out;
+	}
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++)
+		vsi->info.qs_handle[i] = bw_data.qs_handles[i];
+
+	/* Update Queue Pairs Mapping for currently enabled UPs */
+	ctxt.seid = vsi->seid;
+	ctxt.pf_num = hw->pf_id;
+	ctxt.vf_num = 0;
+	ctxt.uplink_seid = vsi->uplink_seid;
+	ctxt.info = vsi->info;
+	i40e_get_cap(hw);
+	ret = i40e_vsi_update_queue_mapping(vsi, &ctxt.info, tc_map);
+	if (ret)
+		goto out;
+
+	/* Update the VSI after updating the VSI queue-mapping information */
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to configure "
+			    "TC queue mapping = %d",
+			    hw->aq.asq_last_status);
+		goto out;
+	}
+	/* update the local VSI info with updated queue map */
+	(void)rte_memcpy(&vsi->info.tc_mapping, &ctxt.info.tc_mapping,
+					sizeof(vsi->info.tc_mapping));
+	(void)rte_memcpy(&vsi->info.queue_mapping,
+			&ctxt.info.queue_mapping,
+		sizeof(vsi->info.queue_mapping));
+	vsi->info.mapping_flags = ctxt.info.mapping_flags;
+	vsi->info.valid_sections = 0;
+
+	/* Update current VSI BW information */
+	ret = i40e_vsi_get_bw_info(vsi);
+	if (ret) {
+		PMD_INIT_LOG(ERR,
+			 "Failed updating vsi bw info, err %s aq_err %s",
+			 i40e_stat_str(hw, ret),
+			 i40e_aq_str(hw, hw->aq.asq_last_status));
+		goto out;
+	}
+
+	vsi->enabled_tc = tc_map;
+
+out:
+	return ret;
+}
+
+/*
+ * i40e_dcb_hw_configure - program the dcb setting to hw
+ * @pf: pf the configuration is taken on
+ * @new_cfg: new configuration
+ * @tc_map: enabled TC bitmap
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static enum i40e_status_code
+i40e_dcb_hw_configure(struct i40e_pf *pf,
+		      struct i40e_dcbx_config *new_cfg,
+		      uint8_t tc_map)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_dcbx_config *old_cfg = &hw->local_dcbx_config;
+	struct i40e_vsi *main_vsi = pf->main_vsi;
+	struct i40e_vsi_list *vsi_list;
+	int i, ret;
+	uint32_t val;
+
+	/* Use the FW API if FW > v4.4*/
+	if (!((hw->aq.fw_maj_ver == 4) && (hw->aq.fw_min_ver >= 4))) {
+		PMD_INIT_LOG(ERR, "FW < v4.4, can not use FW LLDP API"
+				  " to configure DCB");
+		return I40E_ERR_FIRMWARE_API_VERSION;
+	}
+
+	/* Check if need reconfiguration */
+	if (!memcmp(new_cfg, old_cfg, sizeof(struct i40e_dcbx_config))) {
+		PMD_INIT_LOG(ERR, "No Change in DCB Config required.");
+		return I40E_SUCCESS;
+	}
+
+	/* Copy the new config to the current config */
+	*old_cfg = *new_cfg;
+	old_cfg->etsrec = old_cfg->etscfg;
+	ret = i40e_set_dcb_config(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR,
+			 "Set DCB Config failed, err %s aq_err %s\n",
+			 i40e_stat_str(hw, ret),
+			 i40e_aq_str(hw, hw->aq.asq_last_status));
+		return ret;
+	}
+	/* set receive Arbiter to RR mode and ETS scheme by default */
+	for (i = 0; i <= I40E_PRTDCB_RETSTCC_MAX_INDEX; i++) {
+		val = I40E_READ_REG(hw, I40E_PRTDCB_RETSTCC(i));
+		val &= ~(I40E_PRTDCB_RETSTCC_BWSHARE_MASK     |
+			 I40E_PRTDCB_RETSTCC_UPINTC_MODE_MASK |
+			 I40E_PRTDCB_RETSTCC_ETSTC_SHIFT);
+		val |= ((uint32_t)old_cfg->etscfg.tcbwtable[i] <<
+			I40E_PRTDCB_RETSTCC_BWSHARE_SHIFT) &
+			 I40E_PRTDCB_RETSTCC_BWSHARE_MASK;
+		val |= ((uint32_t)1 << I40E_PRTDCB_RETSTCC_UPINTC_MODE_SHIFT) &
+			 I40E_PRTDCB_RETSTCC_UPINTC_MODE_MASK;
+		val |= ((uint32_t)1 << I40E_PRTDCB_RETSTCC_ETSTC_SHIFT) &
+			 I40E_PRTDCB_RETSTCC_ETSTC_MASK;
+		I40E_WRITE_REG(hw, I40E_PRTDCB_RETSTCC(i), val);
+	}
+	/* get local mib to check whether it is configured correctly */
+	/* IEEE mode */
+	hw->local_dcbx_config.dcbx_mode = I40E_DCBX_MODE_IEEE;
+	/* Get Local DCB Config */
+	i40e_aq_get_dcb_config(hw, I40E_AQ_LLDP_MIB_LOCAL, 0,
+				     &hw->local_dcbx_config);
+
+	/* Update each VSI */
+	i40e_vsi_config_tc(main_vsi, tc_map);
+	if (main_vsi->veb) {
+		TAILQ_FOREACH(vsi_list, &main_vsi->veb->head, list) {
+			/* Beside main VSI, only enable default
+			 * TC for other VSIs
+			 */
+			ret = i40e_vsi_config_tc(vsi_list->vsi,
+						I40E_DEFAULT_TCMAP);
+			if (ret)
+				PMD_INIT_LOG(WARNING,
+					 "Failed configuring TC for VSI seid=%d\n",
+					 vsi_list->vsi->seid);
+			/* continue */
+		}
+	}
+	return I40E_SUCCESS;
+}
+
+/*
+ * i40e_dcb_init_configure - initial dcb config
+ * @dev: device being configured
+ * @sw_dcb: indicate whether dcb is sw configured or hw offload
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static int
+i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret = 0;
+
+	if ((pf->flags & I40E_FLAG_DCB) == 0) {
+		PMD_INIT_LOG(ERR, "HW doesn't support DCB");
+		return -ENOTSUP;
+	}
+
+	/* DCB initialization:
+	 * Update DCB configuration from the Firmware and configure
+	 * LLDP MIB change event.
+	 */
+	if (sw_dcb == TRUE) {
+		ret = i40e_aq_stop_lldp(hw, TRUE, NULL);
+		if (ret != I40E_SUCCESS)
+			PMD_INIT_LOG(DEBUG, "Failed to stop lldp");
+
+		ret = i40e_init_dcb(hw);
+		/* if sw_dcb, lldp agent is stopped, the return from
+		 * i40e_init_dcb we expect is failure with I40E_AQ_RC_EPERM
+		 * adminq status.
+		 */
+		if (ret != I40E_SUCCESS &&
+		    hw->aq.asq_last_status == I40E_AQ_RC_EPERM) {
+			memset(&hw->local_dcbx_config, 0,
+				sizeof(struct i40e_dcbx_config));
+			/* set dcb default configuration */
+			hw->local_dcbx_config.etscfg.willing = 0;
+			hw->local_dcbx_config.etscfg.maxtcs = 0;
+			hw->local_dcbx_config.etscfg.tcbwtable[0] = 100;
+			hw->local_dcbx_config.etscfg.tsatable[0] =
+						I40E_IEEE_TSA_ETS;
+			hw->local_dcbx_config.etsrec =
+				hw->local_dcbx_config.etscfg;
+			hw->local_dcbx_config.pfc.willing = 0;
+			hw->local_dcbx_config.pfc.pfccap =
+						I40E_MAX_TRAFFIC_CLASS;
+			/* FW needs one App to configure HW */
+			hw->local_dcbx_config.numapps = 1;
+			hw->local_dcbx_config.app[0].selector =
+						I40E_APP_SEL_ETHTYPE;
+			hw->local_dcbx_config.app[0].priority = 3;
+			hw->local_dcbx_config.app[0].protocolid =
+						I40E_APP_PROTOID_FCOE;
+			ret = i40e_set_dcb_config(hw);
+			if (ret) {
+				PMD_INIT_LOG(ERR, "default dcb config fails."
+					" err = %d, aq_err = %d.", ret,
+					  hw->aq.asq_last_status);
+				return -ENOSYS;
+			}
+		} else {
+			PMD_INIT_LOG(ERR, "DCBX configuration failed, err = %d,"
+					  " aq_err = %d.", ret,
+					  hw->aq.asq_last_status);
+			return -ENOTSUP;
+		}
+	} else {
+		ret = i40e_aq_start_lldp(hw, NULL);
+		if (ret != I40E_SUCCESS)
+			PMD_INIT_LOG(DEBUG, "Failed to start lldp");
+
+		ret = i40e_init_dcb(hw);
+		if (!ret) {
+			if (hw->dcbx_status == I40E_DCBX_STATUS_DISABLED) {
+				PMD_INIT_LOG(ERR, "HW doesn't support"
+						  " DCBX offload.");
+				return -ENOTSUP;
+			}
+		} else {
+			PMD_INIT_LOG(ERR, "DCBX configuration failed, err = %d,"
+					  " aq_err = %d.", ret,
+					  hw->aq.asq_last_status);
+			return -ENOTSUP;
+		}
+	}
+	return 0;
+}
+
+/*
+ * i40e_dcb_setup - setup dcb related config
+ * @dev: device being configured
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static int
+i40e_dcb_setup(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_dcbx_config dcb_cfg;
+	uint8_t tc_map = 0;
+	int ret = 0;
+
+	if ((pf->flags & I40E_FLAG_DCB) == 0) {
+		PMD_INIT_LOG(ERR, "HW doesn't support DCB");
+		return -ENOTSUP;
+	}
+
+	if (pf->vf_num != 0 ||
+	    (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG))
+		PMD_INIT_LOG(DEBUG, " DCB only works on main vsi.");
+
+	ret = i40e_parse_dcb_configure(dev, &dcb_cfg, &tc_map);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "invalid dcb config");
+		return -EINVAL;
+	}
+	ret = i40e_dcb_hw_configure(pf, &dcb_cfg, tc_map);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "dcb sw configure fails");
+		return -ENOSYS;
+	}
+	return 0;
 }

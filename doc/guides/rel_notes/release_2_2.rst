@@ -22,6 +22,8 @@ New Features
 
 * **Added i40e flow control support.**
 
+* **Added DCB support to i40e PF driver.**
+
 * **Added fm10k TSO support for both PF and VF.**
 
 * **New NIC Boulder Rapid support.**
