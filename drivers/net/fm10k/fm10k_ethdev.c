@@ -45,6 +45,8 @@
 #define FM10K_MBXLOCK_DELAY_US 20
 #define UINT64_LOWER_32BITS_MASK 0x00000000ffffffffULL
 
+#define MAIN_VSI_POOL_NUMBER 0
+
 /* Max try times to acquire switch status */
 #define MAX_QUERY_SWITCH_STATE_TIMES 10
 /* Wait interval to get switch status */
@@ -61,10 +63,8 @@ static void fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static inline int fm10k_glort_valid(struct fm10k_hw *hw);
 static int
 fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
-static void
-fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add);
-static void
-fm10k_MACVLAN_remove_all(struct rte_eth_dev *dev);
+static void fm10k_MAC_filter_set(struct rte_eth_dev *dev,
+	const u8 *mac, bool add, uint32_t pool);
 static void fm10k_tx_queue_release(void *queue);
 static void fm10k_rx_queue_release(void *queue);
 
@@ -883,10 +883,17 @@ static void
 fm10k_dev_close(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t nb_lport;
+	struct fm10k_macvlan_filter_info *macvlan;
 
 	PMD_INIT_FUNC_TRACE();
 
-	fm10k_MACVLAN_remove_all(dev);
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	nb_lport = macvlan->nb_queue_pools ? macvlan->nb_queue_pools : 1;
+	fm10k_mbx_lock(hw);
+	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
+		nb_lport, false);
+	fm10k_mbx_unlock(hw);
 
 	/* Stop mailbox service first */
 	fm10k_close_mbx_service(hw);
@@ -1024,6 +1031,11 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 
+	if (macvlan->nb_queue_pools > 0) { /* VMDQ mode */
+		PMD_INIT_LOG(ERR, "Cannot change VLAN filter in VMDQ mode");
+		return (-EINVAL);
+	}
+
 	if (vlan_id > ETH_VLAN_ID_MAX) {
 		PMD_INIT_LOG(ERR, "Invalid vlan_id: must be < 4096");
 		return (-EINVAL);
@@ -1101,38 +1113,80 @@ fm10k_vlan_offload_set(__rte_unused struct rte_eth_dev *dev, int mask)
 	}
 }
 
-/* Add/Remove a MAC address, and update filters */
-static void
-fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add)
+/* Add/Remove a MAC address, and update filters to main VSI */
+static void fm10k_MAC_filter_set_main_vsi(struct rte_eth_dev *dev,
+		const u8 *mac, bool add, uint32_t pool)
 {
-	uint32_t i, j, k;
-	struct fm10k_hw *hw;
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct fm10k_macvlan_filter_info *macvlan;
+	uint32_t i, j, k;
 
-	hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 
-	i = 0;
-	for (j = 0; j < FM10K_VFTA_SIZE; j++) {
-		if (macvlan->vfta[j]) {
-			for (k = 0; k < FM10K_UINT32_BIT_SIZE; k++) {
-				if (macvlan->vfta[j] & (1 << k)) {
-					if (i + 1 > macvlan->vlan_num) {
-						PMD_INIT_LOG(ERR, "vlan number "
-								"not match");
-						return;
-					}
-					fm10k_mbx_lock(hw);
-					fm10k_update_uc_addr(hw,
-						hw->mac.dglort_map, mac,
-						j * FM10K_UINT32_BIT_SIZE + k,
-						add, 0);
-					fm10k_mbx_unlock(hw);
-					i++;
-				}
+	if (pool != MAIN_VSI_POOL_NUMBER) {
+		PMD_DRV_LOG(ERR, "VMDQ not enabled, can't set "
+			"mac to pool %u", pool);
+		return;
+	}
+	for (i = 0, j = 0; j < FM10K_VFTA_SIZE; j++) {
+		if (!macvlan->vfta[j])
+			continue;
+		for (k = 0; k < FM10K_UINT32_BIT_SIZE; k++) {
+			if (!(macvlan->vfta[j] & (1 << k)))
+				continue;
+			if (i + 1 > macvlan->vlan_num) {
+				PMD_INIT_LOG(ERR, "vlan number not match");
+				return;
 			}
+			fm10k_mbx_lock(hw);
+			fm10k_update_uc_addr(hw, hw->mac.dglort_map, mac,
+				j * FM10K_UINT32_BIT_SIZE + k, add, 0);
+			fm10k_mbx_unlock(hw);
+			i++;
 		}
 	}
+}
+
+/* Add/Remove a MAC address, and update filters to VMDQ */
+static void fm10k_MAC_filter_set_vmdq(struct rte_eth_dev *dev,
+		const u8 *mac, bool add, uint32_t pool)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct fm10k_macvlan_filter_info *macvlan;
+	struct rte_eth_vmdq_rx_conf *vmdq_conf;
+	uint32_t i;
+
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	vmdq_conf = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
+
+	if (pool > macvlan->nb_queue_pools) {
+		PMD_DRV_LOG(ERR, "Pool number %u invalid."
+			" Max pool is %u",
+			pool, macvlan->nb_queue_pools);
+		return;
+	}
+	for (i = 0; i < vmdq_conf->nb_pool_maps; i++) {
+		if (!(vmdq_conf->pool_map[i].pools & (1UL << pool)))
+			continue;
+		fm10k_mbx_lock(hw);
+		fm10k_update_uc_addr(hw, hw->mac.dglort_map + pool, mac,
+			vmdq_conf->pool_map[i].vlan_id, add, 0);
+		fm10k_mbx_unlock(hw);
+	}
+}
+
+/* Add/Remove a MAC address, and update filters */
+static void fm10k_MAC_filter_set(struct rte_eth_dev *dev,
+		const u8 *mac, bool add, uint32_t pool)
+{
+	struct fm10k_macvlan_filter_info *macvlan;
+
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+
+	if (macvlan->nb_queue_pools > 0) /* VMDQ mode */
+		fm10k_MAC_filter_set_vmdq(dev, mac, add, pool);
+	else
+		fm10k_MAC_filter_set_main_vsi(dev, mac, add, pool);
 
 	if (add)
 		macvlan->mac_num++;
@@ -1143,11 +1197,15 @@ fm10k_MAC_filter_set(struct rte_eth_dev *dev, const u8 *mac, bool add)
 /* Add a MAC address, and update filters */
 static void
 fm10k_macaddr_add(struct rte_eth_dev *dev,
-		 struct ether_addr *mac_addr,
-		 __rte_unused uint32_t index,
-		 __rte_unused uint32_t pool)
+		struct ether_addr *mac_addr,
+		uint32_t index,
+		uint32_t pool)
 {
-	fm10k_MAC_filter_set(dev, mac_addr->addr_bytes, TRUE);
+	struct fm10k_macvlan_filter_info *macvlan;
+
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	fm10k_MAC_filter_set(dev, mac_addr->addr_bytes, TRUE, pool);
+	macvlan->mac_vmdq_id[index] = pool;
 }
 
 /* Remove a MAC address, and update filters */
@@ -1155,29 +1213,12 @@ static void
 fm10k_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct rte_eth_dev_data *data = dev->data;
-
-	if (index < FM10K_MAX_MACADDR_NUM)
-		fm10k_MAC_filter_set(dev, data->mac_addrs[index].addr_bytes,
-				FALSE);
-}
-
-/* Remove all VLAN and MAC address table entries */
-static void
-fm10k_MACVLAN_remove_all(struct rte_eth_dev *dev)
-{
-	uint32_t j, k;
 	struct fm10k_macvlan_filter_info *macvlan;
 
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
-	for (j = 0; j < FM10K_VFTA_SIZE; j++) {
-		if (macvlan->vfta[j]) {
-			for (k = 0; k < FM10K_UINT32_BIT_SIZE; k++) {
-				if (macvlan->vfta[j] & (1 << k))
-					fm10k_vlan_filter_set(dev,
-						j * FM10K_UINT32_BIT_SIZE + k, false);
-			}
-		}
-	}
+	fm10k_MAC_filter_set(dev, data->mac_addrs[index].addr_bytes,
+			FALSE, macvlan->mac_vmdq_id[index]);
+	macvlan->mac_vmdq_id[index] = 0;
 }
 
 static inline int
@@ -2267,7 +2308,8 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	fm10k_mbx_unlock(hw);
 
 	/* Add default mac address */
-	fm10k_MAC_filter_set(dev, hw->mac.addr, true);
+	fm10k_MAC_filter_set(dev, hw->mac.addr, true,
+		MAIN_VSI_POOL_NUMBER);
 
 	return 0;
 }

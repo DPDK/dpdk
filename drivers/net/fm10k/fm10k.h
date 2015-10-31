@@ -126,6 +126,9 @@
 struct fm10k_macvlan_filter_info {
 	uint16_t vlan_num;       /* Total VLAN number */
 	uint16_t mac_num;        /* Total mac number */
+	uint16_t nb_queue_pools; /* Active queue pools number */
+	/* VMDQ ID for each MAC address */
+	uint8_t  mac_vmdq_id[FM10K_MAX_MACADDR_NUM];
 	uint32_t vfta[FM10K_VFTA_SIZE];        /* VLAN bitmap */
 };
 
