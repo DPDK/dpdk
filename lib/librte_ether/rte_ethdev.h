@@ -854,6 +854,38 @@ struct rte_eth_xstats {
 	uint64_t value;
 };
 
+#define ETH_DCB_NUM_TCS    8
+#define ETH_MAX_VMDQ_POOL  64
+
+/**
+ * A structure used to get the information of queue and
+ * TC mapping on both TX and RX paths.
+ */
+struct rte_eth_dcb_tc_queue_mapping {
+	/** rx queues assigned to tc per Pool */
+	struct {
+		uint8_t base;
+		uint8_t nb_queue;
+	} tc_rxq[ETH_MAX_VMDQ_POOL][ETH_DCB_NUM_TCS];
+	/** rx queues assigned to tc per Pool */
+	struct {
+		uint8_t base;
+		uint8_t nb_queue;
+	} tc_txq[ETH_MAX_VMDQ_POOL][ETH_DCB_NUM_TCS];
+};
+
+/**
+ * A structure used to get the information of DCB.
+ * It includes TC UP mapping and queue TC mapping.
+ */
+struct rte_eth_dcb_info {
+	uint8_t nb_tcs;        /**< number of TCs */
+	uint8_t prio_tc[ETH_DCB_NUM_USER_PRIORITIES]; /**< Priority to tc */
+	uint8_t tc_bws[ETH_DCB_NUM_TCS]; /**< TX BW percentage for each TC */
+	/** rx queues assigned to tc */
+	struct rte_eth_dcb_tc_queue_mapping tc_queue;
+};
+
 struct rte_eth_dev;
 
 struct rte_eth_dev_callback;
@@ -1207,6 +1239,10 @@ typedef int (*eth_filter_ctrl_t)(struct rte_eth_dev *dev,
 				 void *arg);
 /**< @internal Take operations to assigned filter type on an Ethernet device */
 
+typedef int (*eth_get_dcb_info)(struct rte_eth_dev *dev,
+				 struct rte_eth_dcb_info *dcb_info);
+/**< @internal Get dcb information on an Ethernet device */
+
 /**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
@@ -1312,6 +1348,9 @@ struct eth_dev_ops {
 	eth_timesync_read_rx_timestamp_t timesync_read_rx_timestamp;
 	/** Read the IEEE1588/802.1AS TX timestamp. */
 	eth_timesync_read_tx_timestamp_t timesync_read_tx_timestamp;
+
+	/** Get DCB information */
+	eth_get_dcb_info get_dcb_info;
 };
 
 /**
@@ -3319,6 +3358,21 @@ int rte_eth_dev_filter_supported(uint8_t port_id, enum rte_filter_type filter_ty
  */
 int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type,
 			enum rte_filter_op filter_op, void *arg);
+
+/**
+ * Get DCB information on an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param dcb_info
+ *   dcb information.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ */
+int rte_eth_dev_get_dcb_info(uint8_t port_id,
+			     struct rte_eth_dcb_info *dcb_info);
 
 /**
  * Add a callback to be called on packet RX on a given port and queue.

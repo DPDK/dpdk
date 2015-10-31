@@ -247,6 +247,8 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				enum rte_filter_type filter_type,
 				enum rte_filter_op filter_op,
 				void *arg);
+static int i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
+				  struct rte_eth_dcb_info *dcb_info);
 static void i40e_configure_registers(struct i40e_hw *hw);
 static void i40e_hw_init(struct i40e_hw *hw);
 static int i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi);
@@ -320,6 +322,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.timesync_disable             = i40e_timesync_disable,
 	.timesync_read_rx_timestamp   = i40e_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp   = i40e_timesync_read_tx_timestamp,
+	.get_dcb_info                 = i40e_dev_get_dcb_info,
 };
 
 static struct eth_driver rte_i40e_pmd = {
@@ -7013,6 +7016,45 @@ i40e_dcb_setup(struct rte_eth_dev *dev)
 	if (ret) {
 		PMD_INIT_LOG(ERR, "dcb sw configure fails");
 		return -ENOSYS;
+	}
+	return 0;
+}
+
+static int
+i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
+		      struct rte_eth_dcb_info *dcb_info)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_vsi *vsi = pf->main_vsi;
+	struct i40e_dcbx_config *dcb_cfg = &hw->local_dcbx_config;
+	uint16_t bsf, tc_mapping;
+	int i;
+
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_DCB_FLAG)
+		dcb_info->nb_tcs = rte_bsf32(vsi->enabled_tc + 1);
+	else
+		dcb_info->nb_tcs = 1;
+	for (i = 0; i < I40E_MAX_USER_PRIORITY; i++)
+		dcb_info->prio_tc[i] = dcb_cfg->etscfg.prioritytable[i];
+	for (i = 0; i < dcb_info->nb_tcs; i++)
+		dcb_info->tc_bws[i] = dcb_cfg->etscfg.tcbwtable[i];
+
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (vsi->enabled_tc & (1 << i)) {
+			tc_mapping = rte_le_to_cpu_16(vsi->info.tc_mapping[i]);
+			/* only main vsi support multi TCs */
+			dcb_info->tc_queue.tc_rxq[0][i].base =
+				(tc_mapping & I40E_AQ_VSI_TC_QUE_OFFSET_MASK) >>
+				I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT;
+			dcb_info->tc_queue.tc_txq[0][i].base =
+				dcb_info->tc_queue.tc_rxq[0][i].base;
+			bsf = (tc_mapping & I40E_AQ_VSI_TC_QUE_NUMBER_MASK) >>
+				I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT;
+			dcb_info->tc_queue.tc_rxq[0][i].nb_queue = 1 << bsf;
+			dcb_info->tc_queue.tc_txq[0][i].nb_queue =
+				dcb_info->tc_queue.tc_rxq[0][i].nb_queue;
+		}
 	}
 	return 0;
 }

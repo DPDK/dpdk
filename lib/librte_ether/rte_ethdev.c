@@ -3143,3 +3143,21 @@ rte_eth_dev_set_eeprom(uint8_t port_id, struct rte_dev_eeprom_info *info)
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_eeprom, -ENOTSUP);
 	return (*dev->dev_ops->set_eeprom)(dev, info);
 }
+
+int
+rte_eth_dev_get_dcb_info(uint8_t port_id,
+			     struct rte_eth_dcb_info *dcb_info)
+{
+	struct rte_eth_dev *dev;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	memset(dcb_info, 0, sizeof(struct rte_eth_dcb_info));
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_dcb_info, -ENOTSUP);
+	return (*dev->dev_ops->get_dcb_info)(dev, dcb_info);
+}

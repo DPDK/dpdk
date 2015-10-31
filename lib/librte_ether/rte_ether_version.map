@@ -127,3 +127,10 @@ DPDK_2.1 {
 	rte_eth_timesync_read_tx_timestamp;
 
 } DPDK_2.0;
+
+DPDK_2.2 {
+	global:
+
+	rte_eth_dev_get_dcb_info;
+
+} DPDK_2.1;
