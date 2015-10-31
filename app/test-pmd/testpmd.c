@@ -1878,8 +1878,8 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 			vmdq_rx_conf.pool_map[i].pools = 1 << (i % vmdq_rx_conf.nb_queue_pools);
 		}
 		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
-			vmdq_rx_conf.dcb_queue[i] = i;
-			vmdq_tx_conf.dcb_queue[i] = i;
+			vmdq_rx_conf.dcb_tc[i] = i;
+			vmdq_tx_conf.dcb_tc[i] = i;
 		}
 
 		/*set DCB mode of RX and TX of multiple queues*/
@@ -1909,8 +1909,8 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, struct dcb_config *dcb_conf)
 		tx_conf.nb_tcs = dcb_conf->num_tcs;
 
 		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++){
-			rx_conf.dcb_queue[i] = i;
-			tx_conf.dcb_queue[i] = i;
+			rx_conf.dcb_tc[i] = i;
+			tx_conf.dcb_tc[i] = i;
 		}
 		eth_conf->rxmode.mq_mode = ETH_MQ_RX_DCB;
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_DCB;

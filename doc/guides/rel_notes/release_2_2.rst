@@ -122,6 +122,10 @@ API Changes
 * The deprecated flow director API is removed.
   It was replaced by rte_eth_dev_filter_ctrl().
 
+* The dcb_queue is renamed to dcb_tc in following dcb configuration
+  structures: rte_eth_dcb_rx_conf, rte_eth_dcb_tx_conf,
+  rte_eth_vmdq_dcb_conf, rte_eth_vmdq_dcb_tx_conf.
+
 * The function rte_eal_pci_close_one() is removed.
   It was replaced by rte_eal_pci_detach().
 

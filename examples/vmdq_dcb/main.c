@@ -107,7 +107,7 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 			.default_pool = 0,
 			.nb_pool_maps = 0,
 			.pool_map = {{0, 0},},
-			.dcb_queue = {0},
+			.dcb_tc = {0},
 		},
 	},
 };
@@ -144,7 +144,7 @@ get_eth_conf(struct rte_eth_conf *eth_conf, enum rte_eth_nb_pools num_pools)
 		conf.pool_map[i].pools = 1 << (i % num_pools);
 	}
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++){
-		conf.dcb_queue[i] = (uint8_t)(i % (NUM_QUEUES/num_pools));
+		conf.dcb_tc[i] = (uint8_t)(i % (NUM_QUEUES/num_pools));
 	}
 	(void)(rte_memcpy(eth_conf, &vmdq_dcb_conf_default, sizeof(*eth_conf)));
 	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_dcb_conf, &conf,

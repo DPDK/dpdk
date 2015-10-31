@@ -543,20 +543,20 @@ enum rte_eth_nb_pools {
 /* This structure may be extended in future. */
 struct rte_eth_dcb_rx_conf {
 	enum rte_eth_nb_tcs nb_tcs; /**< Possible DCB TCs, 4 or 8 TCs */
-	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
-	/**< Possible DCB queue,4 or 8. */
+	/** Traffic class each UP mapped to. */
+	uint8_t dcb_tc[ETH_DCB_NUM_USER_PRIORITIES];
 };
 
 struct rte_eth_vmdq_dcb_tx_conf {
 	enum rte_eth_nb_pools nb_queue_pools; /**< With DCB, 16 or 32 pools. */
-	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
-	/**< Possible DCB queue,4 or 8. */
+	/** Traffic class each UP mapped to. */
+	uint8_t dcb_tc[ETH_DCB_NUM_USER_PRIORITIES];
 };
 
 struct rte_eth_dcb_tx_conf {
 	enum rte_eth_nb_tcs nb_tcs; /**< Possible DCB TCs, 4 or 8 TCs. */
-	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
-	/**< Possible DCB queue,4 or 8. */
+	/** Traffic class each UP mapped to. */
+	uint8_t dcb_tc[ETH_DCB_NUM_USER_PRIORITIES];
 };
 
 struct rte_eth_vmdq_tx_conf {
@@ -583,7 +583,7 @@ struct rte_eth_vmdq_dcb_conf {
 		uint16_t vlan_id; /**< The vlan id of the received frame */
 		uint64_t pools;   /**< Bitmask of pools for packet rx */
 	} pool_map[ETH_VMDQ_MAX_VLAN_FILTERS]; /**< VMDq vlan pool maps. */
-	uint8_t dcb_queue[ETH_DCB_NUM_USER_PRIORITIES];
+	uint8_t dcb_tc[ETH_DCB_NUM_USER_PRIORITIES];
 	/**< Selects a queue in a pool */
 };
 

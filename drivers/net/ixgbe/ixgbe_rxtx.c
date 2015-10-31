@@ -2928,7 +2928,7 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 		 * mapping is done with 3 bits per priority,
 		 * so shift by i*3 each time
 		 */
-		queue_mapping |= ((cfg->dcb_queue[i] & 0x07) << (i * 3));
+		queue_mapping |= ((cfg->dcb_tc[i] & 0x07) << (i * 3));
 
 	IXGBE_WRITE_REG(hw, IXGBE_RTRUP2TC, queue_mapping);
 
@@ -3063,7 +3063,7 @@ ixgbe_vmdq_dcb_rx_config(struct rte_eth_dev *dev,
 	}
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
-		j = vmdq_rx_conf->dcb_queue[i];
+		j = vmdq_rx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
 		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap =
 						(uint8_t)(1 << j);
@@ -3091,7 +3091,7 @@ ixgbe_dcb_vt_tx_config(struct rte_eth_dev *dev,
 
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
-		j = vmdq_tx_conf->dcb_queue[i];
+		j = vmdq_tx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
 		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap =
 						(uint8_t)(1 << j);
@@ -3113,7 +3113,7 @@ ixgbe_dcb_rx_config(struct rte_eth_dev *dev,
 
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
-		j = rx_conf->dcb_queue[i];
+		j = rx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
 		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap =
 						(uint8_t)(1 << j);
@@ -3134,7 +3134,7 @@ ixgbe_dcb_tx_config(struct rte_eth_dev *dev,
 
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
-		j = tx_conf->dcb_queue[i];
+		j = tx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
 		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap =
 						(uint8_t)(1 << j);
