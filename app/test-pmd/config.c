@@ -2302,3 +2302,46 @@ mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr)
 	mcast_addr_pool_remove(port, i);
 	eth_port_multicast_addr_list_set(port_id);
 }
+
+void
+port_dcb_info_display(uint8_t port_id)
+{
+	struct rte_eth_dcb_info dcb_info;
+	uint16_t i;
+	int ret;
+	static const char *border = "================";
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	ret = rte_eth_dev_get_dcb_info(port_id, &dcb_info);
+	if (ret) {
+		printf("\n Failed to get dcb infos on port %-2d\n",
+			port_id);
+		return;
+	}
+	printf("\n  %s DCB infos for port %-2d  %s\n", border, port_id, border);
+	printf("  TC NUMBER: %d\n", dcb_info.nb_tcs);
+	printf("\n  TC :        ");
+	for (i = 0; i < dcb_info.nb_tcs; i++)
+		printf("\t%4d", i);
+	printf("\n  Priority :  ");
+	for (i = 0; i < dcb_info.nb_tcs; i++)
+		printf("\t%4d", dcb_info.prio_tc[i]);
+	printf("\n  BW percent :");
+	for (i = 0; i < dcb_info.nb_tcs; i++)
+		printf("\t%4d%%", dcb_info.tc_bws[i]);
+	printf("\n  RXQ base :  ");
+	for (i = 0; i < dcb_info.nb_tcs; i++)
+		printf("\t%4d", dcb_info.tc_queue.tc_rxq[0][i].base);
+	printf("\n  RXQ number :");
+	for (i = 0; i < dcb_info.nb_tcs; i++)
+		printf("\t%4d", dcb_info.tc_queue.tc_rxq[0][i].nb_queue);
+	printf("\n  TXQ base :  ");
+	for (i = 0; i < dcb_info.nb_tcs; i++)
+		printf("\t%4d", dcb_info.tc_queue.tc_txq[0][i].base);
+	printf("\n  TXQ number :");
+	for (i = 0; i < dcb_info.nb_tcs; i++)
+		printf("\t%4d", dcb_info.tc_queue.tc_txq[0][i].nb_queue);
+	printf("\n");
+}

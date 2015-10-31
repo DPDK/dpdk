@@ -559,6 +559,7 @@ int tx_queue_id_is_invalid(queueid_t txq_id);
 /* Functions to manage the set of filtered Multicast MAC addresses */
 void mcast_addr_add(uint8_t port_id, struct ether_addr *mc_addr);
 void mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr);
+void port_dcb_info_display(uint8_t port_id);
 
 enum print_warning {
 	ENABLED_WARN = 0,

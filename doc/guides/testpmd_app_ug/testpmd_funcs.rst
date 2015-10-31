@@ -50,10 +50,10 @@ If you type a partial command and hit ``<TAB>`` you get a list of the available 
 
    testpmd> show port <TAB>
 
-       info [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap X
-       info [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap all
-       stats [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap X
-       stats [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap all
+       info [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc X
+       info [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc all
+       stats [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc X
+       stats [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc all
        ...
 
 
@@ -128,7 +128,7 @@ show port
 
 Display information for a given port or all ports::
 
-   testpmd> show port (info|stats|fdir|stat_qmap) (port_id|all)
+   testpmd> show port (info|stats|fdir|stat_qmap|dcb_tc) (port_id|all)
 
 The available information categories are:
 
@@ -139,6 +139,8 @@ The available information categories are:
 * ``fdir``: Flow Director information and statistics.
 
 * ``stat_qmap``: Queue statistics mapping.
+
+* ``dcb_tc``: DCB information such as TC mapping.
 
 For example:
 
