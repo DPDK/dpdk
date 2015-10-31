@@ -3169,9 +3169,13 @@ ixgbe_dcb_rx_hw_config(struct ixgbe_hw *hw,
 				reg = (reg & ~IXGBE_MRQC_MRQE_MASK) |
 					IXGBE_MRQC_VMDQRT4TCEN;
 			else {
+				/* no matter the mode is DCB or DCB_RSS, just
+				 * set the MRQE to RSSXTCEN. RSS is controlled
+				 * by RSS_FIELD
+				 */
 				IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, 0);
 				reg = (reg & ~IXGBE_MRQC_MRQE_MASK) |
-					IXGBE_MRQC_RT4TCEN;
+					IXGBE_MRQC_RTRSS4TCEN;
 			}
 		}
 		if (dcb_config->num_tcs.pg_tcs == 8) {
@@ -3181,7 +3185,7 @@ ixgbe_dcb_rx_hw_config(struct ixgbe_hw *hw,
 			else {
 				IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, 0);
 				reg = (reg & ~IXGBE_MRQC_MRQE_MASK) |
-					IXGBE_MRQC_RT8TCEN;
+					IXGBE_MRQC_RTRSS8TCEN;
 			}
 		}
 
@@ -3286,16 +3290,17 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 			 *get dcb and VT rx configuration parameters
 			 *from rte_eth_conf
 			 */
-			ixgbe_vmdq_dcb_rx_config(dev,dcb_config);
+			ixgbe_vmdq_dcb_rx_config(dev, dcb_config);
 			/*Configure general VMDQ and DCB RX parameters*/
 			ixgbe_vmdq_dcb_configure(dev);
 		}
 		break;
 	case ETH_MQ_RX_DCB:
+	case ETH_MQ_RX_DCB_RSS:
 		dcb_config->vt_mode = false;
 		config_dcb_rx = DCB_RX_CONFIG;
 		/* Get dcb TX configuration parameters from rte_eth_conf */
-		ixgbe_dcb_rx_config(dev,dcb_config);
+		ixgbe_dcb_rx_config(dev, dcb_config);
 		/*Configure general DCB RX parameters*/
 		ixgbe_dcb_rx_hw_config(hw, dcb_config);
 		break;
@@ -3317,7 +3322,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		dcb_config->vt_mode = false;
 		config_dcb_tx = DCB_TX_CONFIG;
 		/*get DCB TX configuration parameters from rte_eth_conf*/
-		ixgbe_dcb_tx_config(dev,dcb_config);
+		ixgbe_dcb_tx_config(dev, dcb_config);
 		/*Configure general DCB TX parameters*/
 		ixgbe_dcb_tx_hw_config(hw, dcb_config);
 		break;
@@ -3458,14 +3463,15 @@ void ixgbe_configure_dcb(struct rte_eth_dev *dev)
 
 	/* check support mq_mode for DCB */
 	if ((dev_conf->rxmode.mq_mode != ETH_MQ_RX_VMDQ_DCB) &&
-	    (dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB))
+	    (dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB) &&
+	    (dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB_RSS))
 		return;
 
 	if (dev->data->nb_rx_queues != ETH_DCB_NUM_QUEUES)
 		return;
 
 	/** Configure DCB hardware **/
-	ixgbe_dcb_hw_configure(dev,dcb_cfg);
+	ixgbe_dcb_hw_configure(dev, dcb_cfg);
 
 	return;
 }
@@ -3707,21 +3713,25 @@ ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 		 * any DCB/RSS w/o VMDq multi-queue setting
 		 */
 		switch (dev->data->dev_conf.rxmode.mq_mode) {
-			case ETH_MQ_RX_RSS:
-				ixgbe_rss_configure(dev);
-				break;
+		case ETH_MQ_RX_RSS:
+		case ETH_MQ_RX_DCB_RSS:
+		case ETH_MQ_RX_VMDQ_RSS:
+			ixgbe_rss_configure(dev);
+			break;
 
-			case ETH_MQ_RX_VMDQ_DCB:
-				ixgbe_vmdq_dcb_configure(dev);
-				break;
+		case ETH_MQ_RX_VMDQ_DCB:
+			ixgbe_vmdq_dcb_configure(dev);
+			break;
 
-			case ETH_MQ_RX_VMDQ_ONLY:
-				ixgbe_vmdq_rx_hw_configure(dev);
-				break;
+		case ETH_MQ_RX_VMDQ_ONLY:
+			ixgbe_vmdq_rx_hw_configure(dev);
+			break;
 
-			case ETH_MQ_RX_NONE:
-				/* if mq_mode is none, disable rss mode.*/
-			default: ixgbe_rss_disable(dev);
+		case ETH_MQ_RX_NONE:
+		default:
+			/* if mq_mode is none, disable rss mode.*/
+			ixgbe_rss_disable(dev);
+			break;
 		}
 	} else {
 		/*
