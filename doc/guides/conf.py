@@ -37,6 +37,7 @@ from pygments.formatters.latex import LatexFormatter
 
 project = 'DPDK'
 
+html_add_permalinks = ""
 html_show_copyright = False
 highlight_language = 'none'
 
