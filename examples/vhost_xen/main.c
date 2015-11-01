@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -579,6 +579,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 	uint16_t res_base_idx, res_end_idx;
 	uint16_t free_entries;
 	uint8_t success = 0;
+	void *userdata;
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_rx()\n", dev->device_fh);
 	vq = dev->virtqueue_rx;
@@ -656,13 +657,14 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 		vq->used->ring[res_cur_idx & (vq->size - 1)].len = packet_len;
 
 		/* Copy mbuf data to buffer */
-		rte_memcpy((void *)(uintptr_t)buff_addr, (const void*)buff->data, rte_pktmbuf_data_len(buff));
+		userdata = rte_pktmbuf_mtod(buff, void *);
+		rte_memcpy((void *)(uintptr_t)buff_addr, userdata, rte_pktmbuf_data_len(buff));
 
 		res_cur_idx++;
 		packet_success++;
 
 		/* mergeable is disabled then a header is required per buffer. */
-		rte_memcpy((void *)(uintptr_t)buff_hdr_addr, (const void*)&virtio_hdr, vq->vhost_hlen);
+		rte_memcpy((void *)(uintptr_t)buff_hdr_addr, (const void *)&virtio_hdr, vq->vhost_hlen);
 		if (res_cur_idx < res_end_idx) {
 			/* Prefetch descriptor index. */
 			rte_prefetch0(&vq->desc[head[packet_success]]);

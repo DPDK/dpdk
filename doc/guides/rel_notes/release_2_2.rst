@@ -239,6 +239,8 @@ Libraries
 Examples
 ~~~~~~~~
 
+* **vhost_xen: Fixed compile error.**
+
 
 Other
 ~~~~~
