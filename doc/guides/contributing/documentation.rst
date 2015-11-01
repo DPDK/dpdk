@@ -142,7 +142,7 @@ The following dependencies must be installed to build the documentation:
 
 * Sphinx (also called python-sphinx).
 
-* TexLive (at least TexLive-core, extra Latex support and extra fonts).
+* TexLive (at least TexLive-core and the extra Latex support).
 
 * Inkscape.
 
@@ -158,18 +158,17 @@ It can be installed as follows:
    sudo yum     -y install doxygen
 
 `Sphinx`_ is a Python documentation tool for converting RST files to Html or to PDF (via LaTeX).
-It can be installed as follows:
+For full support with figure and table captioning the latest version of Sphinx can be installed as follows:
 
 .. code-block:: console
 
    # Ubuntu/Debian.
-   sudo apt-get -y install python-sphinx
+   sudo apt-get -y install python-pip
+   sudo pip install --upgrade sphinx
 
    # Red Hat/Fedora.
-   sudo yum     -y install python-sphinx
-
-   # Or, on any system with Python installed.
-   sudo easy_install -U sphinx
+   sudo yum     -y install python-pip
+   sudo pip install --upgrade sphinx
 
 For further information on getting started with Sphinx see the `Sphinx Tutorial <http://sphinx-doc.org/tutorial.html>`_.
 
@@ -196,13 +195,10 @@ The main required packages can be installed as follows:
 .. code-block:: console
 
    # Ubuntu/Debian.
-   sudo apt-get -y install texlive-latex-extra texlive-fonts-extra \
-                           texlive-fonts-recommended
-
+   sudo apt-get -y install texlive-latex-extra
 
    # Red Hat/Fedora, selective install.
-   sudo yum     -y install texlive-collection-latexextra \
-                           texlive-collection-fontsextra
+   sudo yum     -y install texlive-collection-latexextra
 
 
 Build commands

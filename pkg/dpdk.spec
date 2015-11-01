@@ -47,7 +47,7 @@ ExclusiveArch: i686, x86_64
 
 BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel
 BuildRequires: doxygen, python-sphinx, inkscape
-BuildRequires: texlive-collection-latexextra, texlive-collection-fontsextra
+BuildRequires: texlive-collection-latexextra
 
 %description
 DPDK core includes kernel modules, core libraries and tools.

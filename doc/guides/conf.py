@@ -60,7 +60,6 @@ latex_documents = [
 # Latex directives to be included directly in the latex/pdf docs.
 latex_preamble = r"""
 \usepackage[utf8]{inputenc}
-\usepackage{DejaVuSansMono}
 \usepackage[T1]{fontenc}
 \usepackage{helvet}
 \renewcommand{\familydefault}{\sfdefault}
