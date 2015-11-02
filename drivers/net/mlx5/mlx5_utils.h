@@ -161,4 +161,24 @@ pmd_drv_log_basename(const char *s)
 	\
 	snprintf(name, sizeof(name), __VA_ARGS__)
 
+/**
+ * Return nearest power of two above input value.
+ *
+ * @param v
+ *   Input value.
+ *
+ * @return
+ *   Nearest power of two above input value.
+ */
+static inline unsigned int
+log2above(unsigned int v)
+{
+	unsigned int l;
+	unsigned int r;
+
+	for (l = 0, r = 0; (v >> 1); ++l, v >>= 1)
+		r |= (v & 1);
+	return (l + r);
+}
+
 #endif /* RTE_PMD_MLX5_UTILS_H_ */

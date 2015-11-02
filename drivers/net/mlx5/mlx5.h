@@ -118,6 +118,8 @@ struct priv {
 	/* RSS configuration array indexed by hash RX queue type. */
 	struct rte_eth_rss_conf *(*rss_conf)[];
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
+	unsigned int (*reta_idx)[]; /* RETA index table. */
+	unsigned int reta_idx_n; /* RETA index size. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
@@ -184,6 +186,11 @@ int rss_hash_rss_conf_new_key(struct priv *, const uint8_t *, unsigned int,
 			      uint64_t);
 int mlx5_rss_hash_update(struct rte_eth_dev *, struct rte_eth_rss_conf *);
 int mlx5_rss_hash_conf_get(struct rte_eth_dev *, struct rte_eth_rss_conf *);
+int priv_rss_reta_index_resize(struct priv *, unsigned int);
+int mlx5_dev_rss_reta_query(struct rte_eth_dev *,
+			    struct rte_eth_rss_reta_entry64 *, uint16_t);
+int mlx5_dev_rss_reta_update(struct rte_eth_dev *,
+			     struct rte_eth_rss_reta_entry64 *, uint16_t);
 
 /* mlx5_rxmode.c */
 

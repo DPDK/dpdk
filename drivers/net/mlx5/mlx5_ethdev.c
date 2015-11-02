@@ -410,6 +410,9 @@ dev_configure(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	unsigned int rxqs_n = dev->data->nb_rx_queues;
 	unsigned int txqs_n = dev->data->nb_tx_queues;
+	unsigned int i;
+	unsigned int j;
+	unsigned int reta_idx_n;
 
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
@@ -418,11 +421,31 @@ dev_configure(struct rte_eth_dev *dev)
 		     (void *)dev, priv->txqs_n, txqs_n);
 		priv->txqs_n = txqs_n;
 	}
+	if (rxqs_n > priv->ind_table_max_size) {
+		ERROR("cannot handle this many RX queues (%u)", rxqs_n);
+		return EINVAL;
+	}
 	if (rxqs_n == priv->rxqs_n)
 		return 0;
 	INFO("%p: RX queues number update: %u -> %u",
 	     (void *)dev, priv->rxqs_n, rxqs_n);
 	priv->rxqs_n = rxqs_n;
+	/* If the requested number of RX queues is not a power of two, use the
+	 * maximum indirection table size for better balancing.
+	 * The result is always rounded to the next power of two. */
+	reta_idx_n = (1 << log2above((rxqs_n & (rxqs_n - 1)) ?
+				     priv->ind_table_max_size :
+				     rxqs_n));
+	if (priv_rss_reta_index_resize(priv, reta_idx_n))
+		return ENOMEM;
+	/* When the number of RX queues is not a power of two, the remaining
+	 * table entries are padded with reused WQs and hashes are not spread
+	 * uniformly. */
+	for (i = 0, j = 0; (i != reta_idx_n); ++i) {
+		(*priv->reta_idx)[i] = j;
+		if (++j == rxqs_n)
+			j = 0;
+	}
 	return 0;
 }
 
@@ -494,6 +517,12 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		 0);
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
+	/* FIXME: RETA update/query API expects the callee to know the size of
+	 * the indirection table, for this PMD the size varies depending on
+	 * the number of RX queues, it becomes impossible to find the correct
+	 * size if it is not fixed.
+	 * The API should be updated to solve this problem. */
+	info->reta_size = priv->ind_table_max_size;
 	priv_unlock(priv);
 }
 

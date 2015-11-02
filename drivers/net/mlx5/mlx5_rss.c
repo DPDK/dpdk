@@ -211,3 +211,166 @@ mlx5_rss_hash_conf_get(struct rte_eth_dev *dev,
 	priv_unlock(priv);
 	return 0;
 }
+
+/**
+ * Allocate/reallocate RETA index table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @praram reta_size
+ *   The size of the array to allocate.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+priv_rss_reta_index_resize(struct priv *priv, unsigned int reta_size)
+{
+	void *mem;
+	unsigned int old_size = priv->reta_idx_n;
+
+	if (priv->reta_idx_n == reta_size)
+		return 0;
+
+	mem = rte_realloc(priv->reta_idx,
+			  reta_size * sizeof((*priv->reta_idx)[0]), 0);
+	if (!mem)
+		return ENOMEM;
+	priv->reta_idx = mem;
+	priv->reta_idx_n = reta_size;
+
+	if (old_size < reta_size)
+		memset(&(*priv->reta_idx)[old_size], 0,
+		       (reta_size - old_size) *
+		       sizeof((*priv->reta_idx)[0]));
+	return 0;
+}
+
+/**
+ * Query RETA table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param[in, out] reta_conf
+ *   Pointer to the first RETA configuration structure.
+ * @param reta_size
+ *   Number of entries.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_dev_rss_reta_query(struct priv *priv,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			unsigned int reta_size)
+{
+	unsigned int idx;
+	unsigned int i;
+	int ret;
+
+	/* See RETA comment in mlx5_dev_infos_get(). */
+	ret = priv_rss_reta_index_resize(priv, priv->ind_table_max_size);
+	if (ret)
+		return ret;
+
+	/* Fill each entry of the table even if its bit is not set. */
+	for (idx = 0, i = 0; (i != reta_size); ++i) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		reta_conf[idx].reta[i % RTE_RETA_GROUP_SIZE] =
+			(*priv->reta_idx)[i];
+	}
+	return 0;
+}
+
+/**
+ * Update RETA table.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param[in] reta_conf
+ *   Pointer to the first RETA configuration structure.
+ * @param reta_size
+ *   Number of entries.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_dev_rss_reta_update(struct priv *priv,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 unsigned int reta_size)
+{
+	unsigned int idx;
+	unsigned int i;
+	unsigned int pos;
+	int ret;
+
+	/* See RETA comment in mlx5_dev_infos_get(). */
+	ret = priv_rss_reta_index_resize(priv, priv->ind_table_max_size);
+	if (ret)
+		return ret;
+
+	for (idx = 0, i = 0; (i != reta_size); ++i) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		pos = i % RTE_RETA_GROUP_SIZE;
+		if (((reta_conf[idx].mask >> i) & 0x1) == 0)
+			continue;
+		assert(reta_conf[idx].reta[pos] < priv->rxqs_n);
+		(*priv->reta_idx)[i] = reta_conf[idx].reta[pos];
+	}
+	return 0;
+}
+
+/**
+ * DPDK callback to get the RETA indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param reta_conf
+ *   Pointer to RETA configuration structure array.
+ * @param reta_size
+ *   Size of the RETA table.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_rss_reta_query(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	int ret;
+	struct priv *priv = dev->data->dev_private;
+
+	priv_lock(priv);
+	ret = priv_dev_rss_reta_query(priv, reta_conf, reta_size);
+	priv_unlock(priv);
+	return -ret;
+}
+
+/**
+ * DPDK callback to update the RETA indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param reta_conf
+ *   Pointer to RETA configuration structure array.
+ * @param reta_size
+ *   Size of the RETA table.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+int
+mlx5_dev_rss_reta_update(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	int ret;
+	struct priv *priv = dev->data->dev_private;
+
+	priv_lock(priv);
+	ret = priv_dev_rss_reta_update(priv, reta_conf, reta_size);
+	priv_unlock(priv);
+	return -ret;
+}

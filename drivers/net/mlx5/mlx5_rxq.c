@@ -259,26 +259,6 @@ hash_rxq_flow_attr(const struct hash_rxq *hash_rxq,
 }
 
 /**
- * Return nearest power of two above input value.
- *
- * @param v
- *   Input value.
- *
- * @return
- *   Nearest power of two above input value.
- */
-static unsigned int
-log2above(unsigned int v)
-{
-	unsigned int l;
-	unsigned int r;
-
-	for (l = 0, r = 0; (v >> 1); ++l, v >>= 1)
-		r |= (v & 1);
-	return (l + r);
-}
-
-/**
  * Return the type corresponding to the n'th bit set.
  *
  * @param table
@@ -360,14 +340,7 @@ priv_make_ind_table_init(struct priv *priv,
 int
 priv_create_hash_rxqs(struct priv *priv)
 {
-	/* If the requested number of WQs is not a power of two, use the
-	 * maximum indirection table size for better balancing.
-	 * The result is always rounded to the next power of two. */
-	unsigned int wqs_n =
-		(1 << log2above((priv->rxqs_n & (priv->rxqs_n - 1)) ?
-				priv->ind_table_max_size :
-				priv->rxqs_n));
-	struct ibv_exp_wq *wqs[wqs_n];
+	struct ibv_exp_wq *wqs[priv->reta_idx_n];
 	struct ind_table_init ind_table_init[IND_TABLE_INIT_N];
 	unsigned int ind_tables_n =
 		priv_make_ind_table_init(priv, &ind_table_init);
@@ -393,25 +366,15 @@ priv_create_hash_rxqs(struct priv *priv)
 		      " indirection table cannot be created");
 		return EINVAL;
 	}
-	if ((wqs_n < priv->rxqs_n) || (wqs_n > priv->ind_table_max_size)) {
-		ERROR("cannot handle this many RX queues (%u)", priv->rxqs_n);
-		err = ERANGE;
-		goto error;
-	}
-	if (wqs_n != priv->rxqs_n) {
+	if (priv->rxqs_n & (priv->rxqs_n - 1)) {
 		INFO("%u RX queues are configured, consider rounding this"
 		     " number to the next power of two for better balancing",
 		     priv->rxqs_n);
-		DEBUG("indirection table extended to assume %u WQs", wqs_n);
+		DEBUG("indirection table extended to assume %u WQs",
+		      priv->reta_idx_n);
 	}
-	/* When the number of RX queues is not a power of two, the remaining
-	 * table entries are padded with reused WQs and hashes are not spread
-	 * uniformly. */
-	for (i = 0, j = 0; (i != wqs_n); ++i) {
-		wqs[i] = (*priv->rxqs)[j]->wq;
-		if (++j == priv->rxqs_n)
-			j = 0;
-	}
+	for (i = 0; (i != priv->reta_idx_n); ++i)
+		wqs[i] = (*priv->rxqs)[(*priv->reta_idx)[i]]->wq;
 	/* Get number of hash RX queues to configure. */
 	for (i = 0, hash_rxqs_n = 0; (i != ind_tables_n); ++i)
 		hash_rxqs_n += ind_table_init[i].hash_types_n;
@@ -436,8 +399,8 @@ priv_create_hash_rxqs(struct priv *priv)
 		unsigned int ind_tbl_size = ind_table_init[i].max_size;
 		struct ibv_exp_rwq_ind_table *ind_table;
 
-		if (wqs_n < ind_tbl_size)
-			ind_tbl_size = wqs_n;
+		if (priv->reta_idx_n < ind_tbl_size)
+			ind_tbl_size = priv->reta_idx_n;
 		ind_init_attr.log_ind_tbl_size = log2above(ind_tbl_size);
 		errno = 0;
 		ind_table = ibv_exp_create_rwq_ind_table(priv->ctx,

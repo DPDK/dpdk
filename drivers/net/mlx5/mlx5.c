@@ -133,6 +133,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 			rte_free((*priv->rss_conf)[i]);
 		rte_free(priv->rss_conf);
 	}
+	if (priv->reta_idx != NULL)
+		rte_free(priv->reta_idx);
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -160,6 +162,8 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.mac_addr_remove = mlx5_mac_addr_remove,
 	.mac_addr_add = mlx5_mac_addr_add,
 	.mtu_set = mlx5_dev_set_mtu,
+	.reta_update = mlx5_dev_rss_reta_update,
+	.reta_query = mlx5_dev_rss_reta_query,
 	.rss_hash_update = mlx5_rss_hash_update,
 	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
 };
@@ -373,7 +377,9 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
 		      (priv->hw_csum_l2tun ? "" : "not "));
 
-		priv->ind_table_max_size = exp_device_attr.rx_hash_caps.max_rwq_indirection_table_size;
+		priv->ind_table_max_size =
+			RTE_MIN((unsigned int)RSS_INDIRECTION_TABLE_SIZE,
+				exp_device_attr.rx_hash_caps.max_rwq_indirection_table_size);
 		DEBUG("maximum RX indirection table size is %u",
 		      priv->ind_table_max_size);
 
