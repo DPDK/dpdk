@@ -77,6 +77,12 @@ WERROR_FLAGS += -Wcast-align -Wnested-externs -Wcast-qual
 WERROR_FLAGS += -Wformat-nonliteral -Wformat-security
 WERROR_FLAGS += -Wundef -Wwrite-strings
 
+# There are many issues reported for ARMv7 architecture
+# which are not necessarily fatal. Report as warnings.
+ifeq ($(CONFIG_RTE_ARCH_ARMv7),y)
+WERROR_FLAGS += -Wno-error=cast-align
+endif
+
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
 
