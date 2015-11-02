@@ -106,6 +106,12 @@ ifneq ($(filter $(AUTO_CPUFLAGS),__builtin_vsx_xvnmaddadp),)
 CPUFLAGS += VSX
 endif
 
+# ARM flags
+ifneq ($(filter $(AUTO_CPUFLAGS),__ARM_NEON_FP),)
+CPUFLAGS += NEON
+endif
+
+
 MACHINE_CFLAGS += $(addprefix -DRTE_MACHINE_CPUFLAG_,$(CPUFLAGS))
 
 # To strip whitespace

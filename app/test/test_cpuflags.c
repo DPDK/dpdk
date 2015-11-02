@@ -115,6 +115,11 @@ test_cpuflags(void)
 	CHECK_FOR_FLAG(RTE_CPUFLAG_ICACHE_SNOOP);
 #endif
 
+#if defined(RTE_ARCH_ARM)
+	printf("Check for NEON:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_NEON);
+#endif
+
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
 	printf("Check for SSE:\t\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_SSE);
