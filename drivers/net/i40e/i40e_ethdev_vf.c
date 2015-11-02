@@ -115,6 +115,9 @@ static int i40evf_dev_link_update(struct rte_eth_dev *dev,
 				  __rte_unused int wait_to_complete);
 static void i40evf_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
+static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
+				 struct rte_eth_xstats *xstats, unsigned n);
+static void i40evf_dev_xstats_reset(struct rte_eth_dev *dev);
 static int i40evf_vlan_filter_set(struct rte_eth_dev *dev,
 				  uint16_t vlan_id, int on);
 static void i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
@@ -151,6 +154,30 @@ static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
 
+struct rte_i40evf_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned offset;
+};
+
+static const struct rte_i40evf_xstats_name_off rte_i40evf_stats_strings[] = {
+	{"rx_bytes", offsetof(struct i40e_eth_stats, rx_bytes)},
+	{"rx_unicast_packets", offsetof(struct i40e_eth_stats, rx_unicast)},
+	{"rx_multicast_packets", offsetof(struct i40e_eth_stats, rx_multicast)},
+	{"rx_broadcast_packets", offsetof(struct i40e_eth_stats, rx_broadcast)},
+	{"rx_dropped_packets", offsetof(struct i40e_eth_stats, rx_discards)},
+	{"rx_unknown_protocol_packets", offsetof(struct i40e_eth_stats,
+		rx_unknown_protocol)},
+	{"tx_bytes", offsetof(struct i40e_eth_stats, tx_bytes)},
+	{"tx_unicast_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
+	{"tx_multicast_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
+	{"tx_broadcast_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
+	{"tx_dropped_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
+	{"tx_error_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
+};
+
+#define I40EVF_NB_XSTATS (sizeof(rte_i40evf_stats_strings) / \
+		sizeof(rte_i40evf_stats_strings[0]))
+
 static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.dev_configure        = i40evf_dev_configure,
 	.dev_start            = i40evf_dev_start,
@@ -161,6 +188,8 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.allmulticast_disable = i40evf_dev_allmulticast_disable,
 	.link_update          = i40evf_dev_link_update,
 	.stats_get            = i40evf_dev_stats_get,
+	.xstats_get           = i40evf_dev_xstats_get,
+	.xstats_reset         = i40evf_dev_xstats_reset,
 	.dev_close            = i40evf_dev_close,
 	.dev_infos_get        = i40evf_dev_info_get,
 	.vlan_filter_set      = i40evf_vlan_filter_set,
@@ -903,11 +932,10 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 }
 
 static int
-i40evf_get_statics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+i40evf_update_stats(struct rte_eth_dev *dev, struct i40e_eth_stats **pstats)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_virtchnl_queue_select q_stats;
-	struct i40e_eth_stats *pstats;
 	int err;
 	struct vf_cmd_info args;
 
@@ -922,9 +950,23 @@ i40evf_get_statics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err) {
 		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_STATS");
+		*pstats = NULL;
 		return err;
 	}
-	pstats = (struct i40e_eth_stats *)args.out_buffer;
+	*pstats = (struct i40e_eth_stats *)args.out_buffer;
+	return 0;
+}
+
+static int
+i40evf_get_statics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	int ret;
+	struct i40e_eth_stats *pstats = NULL;
+
+	ret = i40evf_update_stats(dev, &pstats);
+	if (ret != 0)
+		return 0;
+
 	stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
 						pstats->rx_broadcast;
 	stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
@@ -935,6 +977,47 @@ i40evf_get_statics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->obytes = pstats->tx_bytes;
 
 	return 0;
+}
+
+static void
+i40evf_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_eth_stats *pstats = NULL;
+
+	/* read stat values to clear hardware registers */
+	i40evf_update_stats(dev, &pstats);
+
+	/* set stats offset base on current values */
+	vf->vsi.eth_stats_offset = vf->vsi.eth_stats;
+}
+
+static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
+				 struct rte_eth_xstats *xstats, unsigned n)
+{
+	int ret;
+	unsigned i;
+	struct i40e_eth_stats *pstats = NULL;
+
+	if (n < I40EVF_NB_XSTATS)
+		return I40EVF_NB_XSTATS;
+
+	ret = i40evf_update_stats(dev, &pstats);
+	if (ret != 0)
+		return 0;
+
+	if (!xstats)
+		return 0;
+
+	/* loop over xstats array and values from pstats */
+	for (i = 0; i < I40EVF_NB_XSTATS; i++) {
+		snprintf(xstats[i].name, sizeof(xstats[i].name),
+			 "%s", rte_i40evf_stats_strings[i].name);
+		xstats[i].value = *(uint64_t *)(((char *)pstats) +
+			rte_i40evf_stats_strings[i].offset);
+	}
+
+	return I40EVF_NB_XSTATS;
 }
 
 static int

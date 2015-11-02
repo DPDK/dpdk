@@ -14,6 +14,7 @@ New Features
   * igb
   * igbvf
   * i40e
+  * i40evf
 
 * **Added API in ethdev to retrieve RX/TX queue information.**
 
