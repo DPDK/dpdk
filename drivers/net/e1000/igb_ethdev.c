@@ -96,7 +96,10 @@ static int  eth_igb_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static void eth_igb_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
+static int eth_igb_xstats_get(struct rte_eth_dev *dev,
+			      struct rte_eth_xstats *xstats, unsigned n);
 static void eth_igb_stats_reset(struct rte_eth_dev *dev);
+static void eth_igb_xstats_reset(struct rte_eth_dev *dev);
 static void eth_igb_infos_get(struct rte_eth_dev *dev,
 			      struct rte_eth_dev_info *dev_info);
 static void eth_igbvf_infos_get(struct rte_eth_dev *dev,
@@ -303,7 +306,9 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.allmulticast_disable = eth_igb_allmulticast_disable,
 	.link_update          = eth_igb_link_update,
 	.stats_get            = eth_igb_stats_get,
+	.xstats_get           = eth_igb_xstats_get,
 	.stats_reset          = eth_igb_stats_reset,
+	.xstats_reset         = eth_igb_xstats_reset,
 	.dev_infos_get        = eth_igb_infos_get,
 	.mtu_set              = eth_igb_mtu_set,
 	.vlan_filter_set      = eth_igb_vlan_filter_set,
@@ -368,6 +373,76 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.get_reg_length       = igbvf_get_reg_length,
 	.get_reg              = igbvf_get_regs,
 };
+
+/* store statistics names and its offset in stats structure */
+struct rte_igb_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned offset;
+};
+
+static const struct rte_igb_xstats_name_off rte_igb_stats_strings[] = {
+	{"rx_crc_errors", offsetof(struct e1000_hw_stats, crcerrs)},
+	{"rx_align_errors", offsetof(struct e1000_hw_stats, algnerrc)},
+	{"rx_symbol_errors", offsetof(struct e1000_hw_stats, symerrs)},
+	{"rx_missed_packets", offsetof(struct e1000_hw_stats, mpc)},
+	{"tx_single_collision_packets", offsetof(struct e1000_hw_stats, scc)},
+	{"tx_multiple_collision_packets", offsetof(struct e1000_hw_stats, mcc)},
+	{"tx_excessive_collision_packets", offsetof(struct e1000_hw_stats,
+		ecol)},
+	{"tx_late_collisions", offsetof(struct e1000_hw_stats, latecol)},
+	{"tx_total_collisions", offsetof(struct e1000_hw_stats, colc)},
+	{"tx_deferred_packets", offsetof(struct e1000_hw_stats, dc)},
+	{"tx_no_carrier_sense_packets", offsetof(struct e1000_hw_stats, tncrs)},
+	{"rx_carrier_ext_errors", offsetof(struct e1000_hw_stats, cexterr)},
+	{"rx_length_errors", offsetof(struct e1000_hw_stats, rlec)},
+	{"rx_xon_packets", offsetof(struct e1000_hw_stats, xonrxc)},
+	{"tx_xon_packets", offsetof(struct e1000_hw_stats, xontxc)},
+	{"rx_xoff_packets", offsetof(struct e1000_hw_stats, xoffrxc)},
+	{"tx_xoff_packets", offsetof(struct e1000_hw_stats, xofftxc)},
+	{"rx_flow_control_unsupported_packets", offsetof(struct e1000_hw_stats,
+		fcruc)},
+	{"rx_size_64_packets", offsetof(struct e1000_hw_stats, prc64)},
+	{"rx_size_65_to_127_packets", offsetof(struct e1000_hw_stats, prc127)},
+	{"rx_size_128_to_255_packets", offsetof(struct e1000_hw_stats, prc255)},
+	{"rx_size_256_to_511_packets", offsetof(struct e1000_hw_stats, prc511)},
+	{"rx_size_512_to_1023_packets", offsetof(struct e1000_hw_stats,
+		prc1023)},
+	{"rx_size_1024_to_max_packets", offsetof(struct e1000_hw_stats,
+		prc1522)},
+	{"rx_broadcast_packets", offsetof(struct e1000_hw_stats, bprc)},
+	{"rx_multicast_packets", offsetof(struct e1000_hw_stats, mprc)},
+	{"rx_undersize_errors", offsetof(struct e1000_hw_stats, ruc)},
+	{"rx_fragment_errors", offsetof(struct e1000_hw_stats, rfc)},
+	{"rx_oversize_errors", offsetof(struct e1000_hw_stats, roc)},
+	{"rx_jabber_errors", offsetof(struct e1000_hw_stats, rjc)},
+	{"rx_management_packets", offsetof(struct e1000_hw_stats, mgprc)},
+	{"rx_management_dropped", offsetof(struct e1000_hw_stats, mgpdc)},
+	{"tx_management_packets", offsetof(struct e1000_hw_stats, mgptc)},
+	{"rx_total_packets", offsetof(struct e1000_hw_stats, tpr)},
+	{"tx_total_packets", offsetof(struct e1000_hw_stats, tpt)},
+	{"rx_total_bytes", offsetof(struct e1000_hw_stats, tor)},
+	{"tx_total_bytes", offsetof(struct e1000_hw_stats, tot)},
+	{"tx_size_64_packets", offsetof(struct e1000_hw_stats, ptc64)},
+	{"tx_size_65_to_127_packets", offsetof(struct e1000_hw_stats, ptc127)},
+	{"tx_size_128_to_255_packets", offsetof(struct e1000_hw_stats, ptc255)},
+	{"tx_size_256_to_511_packets", offsetof(struct e1000_hw_stats, ptc511)},
+	{"tx_size_512_to_1023_packets", offsetof(struct e1000_hw_stats,
+		ptc1023)},
+	{"tx_size_1023_to_max_packets", offsetof(struct e1000_hw_stats,
+		ptc1522)},
+	{"tx_multicast_packets", offsetof(struct e1000_hw_stats, mptc)},
+	{"tx_broadcast_packets", offsetof(struct e1000_hw_stats, bptc)},
+	{"tx_tso_packets", offsetof(struct e1000_hw_stats, tsctc)},
+	{"tx_tso_errors", offsetof(struct e1000_hw_stats, tsctfc)},
+	{"rx_sent_to_host_packets", offsetof(struct e1000_hw_stats, rpthc)},
+	{"tx_sent_by_host_packets", offsetof(struct e1000_hw_stats, hgptc)},
+	{"rx_code_violation_packets", offsetof(struct e1000_hw_stats, scvpc)},
+
+	{"interrupt_assert_count", offsetof(struct e1000_hw_stats, iac)},
+};
+
+#define IGB_NB_XSTATS (sizeof(rte_igb_stats_strings) / \
+		sizeof(rte_igb_stats_strings[0]))
 
 /**
  * Atomically reads the link status information from global
@@ -1354,11 +1429,8 @@ igb_hardware_init(struct e1000_hw *hw)
 
 /* This function is based on igb_update_stats_counters() in igb/if_igb.c */
 static void
-eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 {
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_hw_stats *stats =
-			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 	int pause_frames;
 
 	if(hw->phy.media_type == e1000_media_type_copper ||
@@ -1464,6 +1536,16 @@ eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	stats->cexterr += E1000_READ_REG(hw, E1000_CEXTERR);
 	stats->tsctc += E1000_READ_REG(hw, E1000_TSCTC);
 	stats->tsctfc += E1000_READ_REG(hw, E1000_TSCTFC);
+}
+
+static void
+eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_hw_stats *stats =
+			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+
+	igb_read_stats_registers(hw, stats);
 
 	if (rte_stats == NULL)
 		return;
@@ -1503,6 +1585,50 @@ eth_igb_stats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));
+}
+
+static void
+eth_igb_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct e1000_hw_stats *stats =
+			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+
+	/* HW registers are cleared on read */
+	eth_igb_xstats_get(dev, NULL, IGB_NB_XSTATS);
+
+	/* Reset software totals */
+	memset(stats, 0, sizeof(*stats));
+}
+
+static int
+eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+		   unsigned n)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_hw_stats *hw_stats =
+			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	unsigned i;
+
+	if (n < IGB_NB_XSTATS)
+		return IGB_NB_XSTATS;
+
+	igb_read_stats_registers(hw, hw_stats);
+
+	/* If this is a reset xstats is NULL, and we have cleared the
+	 * registers by reading them.
+	 */
+	if (!xstats)
+		return 0;
+
+	/* Extended stats */
+	for (i = 0; i < IGB_NB_XSTATS; i++) {
+		snprintf(xstats[i].name, sizeof(xstats[i].name),
+			 "%s", rte_igb_stats_strings[i].name);
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
+			rte_igb_stats_strings[i].offset);
+	}
+
+	return IGB_NB_XSTATS;
 }
 
 static void
@@ -1560,7 +1686,6 @@ eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	rte_stats->ilbbytes = hw_stats->gorlbc;
 	rte_stats->olbpackets = hw_stats->gptlbc;
 	rte_stats->olbbytes = hw_stats->gotlbc;
-
 }
 
 static void

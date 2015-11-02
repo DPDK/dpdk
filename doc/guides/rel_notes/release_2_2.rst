@@ -11,6 +11,7 @@ New Features
   of the programmers guide. Implemented the extended stats API for these
   PMDs:
 
+  * igb
 
 * **Added API in ethdev to retrieve RX/TX queue information.**
 
