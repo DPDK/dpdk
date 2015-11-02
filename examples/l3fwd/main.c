@@ -2074,7 +2074,7 @@ parse_args(int argc, char **argv)
 			}
 
 			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ETH_DEST,
-				sizeof(CMD_LINE_OPT_CONFIG))) {
+				sizeof(CMD_LINE_OPT_ETH_DEST))) {
 					parse_eth_dest(optarg);
 			}
 
