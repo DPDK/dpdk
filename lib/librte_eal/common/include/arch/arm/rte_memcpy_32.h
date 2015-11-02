@@ -35,14 +35,17 @@
 
 #include <stdint.h>
 #include <string.h>
-/* ARM NEON Intrinsics are used to copy data */
-#include <arm_neon.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "generic/rte_memcpy.h"
+
+#ifdef __ARM_NEON_FP
+
+/* ARM NEON Intrinsics are used to copy data */
+#include <arm_neon.h>
 
 static inline void
 rte_mov16(uint8_t *dst, const uint8_t *src)
@@ -271,6 +274,58 @@ rte_memcpy_func(void *dst, const void *src, size_t n)
 			(const uint8_t *)src - 16 + n);
 	return ret;
 }
+
+#else
+
+static inline void
+rte_mov16(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 16);
+}
+
+static inline void
+rte_mov32(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 32);
+}
+
+static inline void
+rte_mov48(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 48);
+}
+
+static inline void
+rte_mov64(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 64);
+}
+
+static inline void
+rte_mov128(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 128);
+}
+
+static inline void
+rte_mov256(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 256);
+}
+
+static inline void *
+rte_memcpy(void *dst, const void *src, size_t n)
+{
+	return memcpy(dst, src, n);
+}
+
+static inline void *
+rte_memcpy_func(void *dst, const void *src, size_t n)
+{
+	return memcpy(dst, src, n);
+}
+
+#endif /* __ARM_NEON_FP */
 
 #ifdef __cplusplus
 }
