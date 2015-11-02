@@ -205,6 +205,13 @@ For example::
 
    testpmd> clear port stats all
 
+show (rxq|txq)
+~~~~~~~~~~~~~~
+
+Display information for a given port's RX/TX queue::
+
+   testpmd> show (rxq|txq) info (port_id) (queue_id)
+
 show config
 ~~~~~~~~~~~
 

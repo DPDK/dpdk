@@ -199,6 +199,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"clear port (info|stats|xstats|fdir|stat_qmap) (port_id|all)\n"
 			"    Clear information for port_id, or all.\n\n"
 
+			"show (rxq|txq) info (port_id) (queue_id)\n"
+			"    Display information for configured RX/TX queue.\n\n"
+
 			"show config (rxtx|cores|fwd|txpkts)\n"
 			"    Display the given configuration.\n\n"
 
