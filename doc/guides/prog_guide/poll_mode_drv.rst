@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -294,3 +294,52 @@ Ethernet Device API
 ~~~~~~~~~~~~~~~~~~~
 
 The Ethernet device API exported by the Ethernet PMDs is described in the *DPDK API Reference*.
+
+Extended Statistics API
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The extended statistics API allows each individual PMD to expose a unique set
+of statistics. The client of the API provides an array of
+``struct rte_eth_xstats`` type. Each ``struct rte_eth_xstats`` contains a
+string and value pair. The amount of xstats exposed, and position of the
+statistic in the array must remain constant during runtime.
+
+A naming scheme exists for the strings exposed to clients of the API. This is
+to allow scraping of the API for statistics of interest. The naming scheme uses
+strings split by a single underscore ``_``. The scheme is as follows:
+
+* direction
+* detail 1
+* detail 2
+* detail n
+* unit
+
+Examples of common statistics xstats strings, formatted to comply to the scheme
+proposed above:
+
+* ``rx_bytes``
+* ``rx_crc_errors``
+* ``tx_multicast_packets``
+
+The scheme, although quite simple, allows flexibility in presenting and reading
+information from the statistic strings. The following example illustrates the
+naming scheme:``rx_packets``. In this example, the string is split into two
+components. The first component ``rx`` indicates that the statistic is
+associated with the receive side of the NIC.  The second component ``packets``
+indicates that the unit of measure is packets.
+
+A more complicated example: ``tx_size_128_to_255_packets``. In this example,
+``tx`` indicates transmission, ``size``  is the first detail, ``128`` etc are
+more details, and ``packets`` indicates that this is a packet counter.
+
+Some additions in the metadata scheme are as follows:
+
+* If the first part does not match ``rx`` or ``tx``, the statistic does not
+  have an affinity with either receive of transmit.
+
+* If the first letter of the second part is ``q`` and this ``q`` is followed
+  by a number, this statistic is part of a specific queue.
+
+An example where queue numbers are used is as follows: ``tx_q7_bytes`` which
+indicates this statistic applies to queue number 7, and represents the number
+of transmitted bytes on that queue.

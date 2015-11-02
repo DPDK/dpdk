@@ -137,27 +137,30 @@ struct rte_eth_xstats_name_off {
 };
 
 static const struct rte_eth_xstats_name_off rte_stats_strings[] = {
-	{"rx_packets", offsetof(struct rte_eth_stats, ipackets)},
-	{"tx_packets", offsetof(struct rte_eth_stats, opackets)},
-	{"rx_bytes", offsetof(struct rte_eth_stats, ibytes)},
-	{"tx_bytes", offsetof(struct rte_eth_stats, obytes)},
-	{"tx_errors", offsetof(struct rte_eth_stats, oerrors)},
+	{"rx_good_packets", offsetof(struct rte_eth_stats, ipackets)},
+	{"tx_good_packets", offsetof(struct rte_eth_stats, opackets)},
+	{"rx_good_bytes", offsetof(struct rte_eth_stats, ibytes)},
+	{"tx_good_bytes", offsetof(struct rte_eth_stats, obytes)},
 	{"rx_errors", offsetof(struct rte_eth_stats, ierrors)},
-	{"alloc_rx_buff_failed", offsetof(struct rte_eth_stats, rx_nombuf)},
+	{"tx_errors", offsetof(struct rte_eth_stats, oerrors)},
+	{"rx_mbuf_allocation_errors", offsetof(struct rte_eth_stats,
+		rx_nombuf)},
 };
+
 #define RTE_NB_STATS (sizeof(rte_stats_strings) / sizeof(rte_stats_strings[0]))
 
 static const struct rte_eth_xstats_name_off rte_rxq_stats_strings[] = {
-	{"rx_packets", offsetof(struct rte_eth_stats, q_ipackets)},
-	{"rx_bytes", offsetof(struct rte_eth_stats, q_ibytes)},
+	{"packets", offsetof(struct rte_eth_stats, q_ipackets)},
+	{"bytes", offsetof(struct rte_eth_stats, q_ibytes)},
+	{"errors", offsetof(struct rte_eth_stats, q_errors)},
 };
+
 #define RTE_NB_RXQ_STATS (sizeof(rte_rxq_stats_strings) /	\
 		sizeof(rte_rxq_stats_strings[0]))
 
 static const struct rte_eth_xstats_name_off rte_txq_stats_strings[] = {
-	{"tx_packets", offsetof(struct rte_eth_stats, q_opackets)},
-	{"tx_bytes", offsetof(struct rte_eth_stats, q_obytes)},
-	{"tx_errors", offsetof(struct rte_eth_stats, q_errors)},
+	{"packets", offsetof(struct rte_eth_stats, q_opackets)},
+	{"bytes", offsetof(struct rte_eth_stats, q_obytes)},
 };
 #define RTE_NB_TXQ_STATS (sizeof(rte_txq_stats_strings) /	\
 		sizeof(rte_txq_stats_strings[0]))
@@ -1480,8 +1483,6 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 
 	/* Return generic statistics */
 	count = RTE_NB_STATS;
-	count += dev->data->nb_rx_queues * RTE_NB_RXQ_STATS;
-	count += dev->data->nb_tx_queues * RTE_NB_TXQ_STATS;
 
 	/* implemented by the driver */
 	if (dev->dev_ops->xstats_get != NULL) {
@@ -1493,6 +1494,9 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 
 		if (xcount < 0)
 			return xcount;
+	} else {
+		count += dev->data->nb_rx_queues * RTE_NB_RXQ_STATS;
+		count += dev->data->nb_tx_queues * RTE_NB_TXQ_STATS;
 	}
 
 	if (n < count + xcount)
@@ -1512,6 +1516,10 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 		xstats[count++].value = val;
 	}
 
+	/* if xstats_get() is implemented by the PMD, the Q stats are done */
+	if (dev->dev_ops->xstats_get != NULL)
+		return count + xcount;
+
 	/* per-rxq stats */
 	for (q = 0; q < dev->data->nb_rx_queues; q++) {
 		for (i = 0; i < RTE_NB_RXQ_STATS; i++) {
@@ -1520,7 +1528,7 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 					q * sizeof(uint64_t));
 			val = *stats_ptr;
 			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				"rx_queue_%u_%s", q,
+				"rx_q%u_%s", q,
 				rte_rxq_stats_strings[i].name);
 			xstats[count++].value = val;
 		}
@@ -1534,7 +1542,7 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 					q * sizeof(uint64_t));
 			val = *stats_ptr;
 			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				"tx_queue_%u_%s", q,
+				"tx_q%u_%s", q,
 				rte_txq_stats_strings[i].name);
 			xstats[count++].value = val;
 		}

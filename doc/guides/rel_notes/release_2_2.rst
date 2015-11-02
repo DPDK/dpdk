@@ -4,6 +4,14 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Extended Statistics**
+
+  Define extended statistics naming scheme to store metadata in the name
+  string name of each statistic, refer to the Extended Statistics section
+  of the programmers guide. Implemented the extended stats API for these
+  PMDs:
+
+
 * **Added API in ethdev to retrieve RX/TX queue information.**
 
   *  Add the ability for the upper layer to query RX/TX queue information.
