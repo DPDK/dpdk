@@ -54,8 +54,14 @@ extern "C" {
  * @return
  *   The time base for this lcore.
  */
+#ifndef CONFIG_RTE_ARM_EAL_RDTSC_USE_PMU
+
+/**
+ * This call is easily portable to any ARM architecture, however,
+ * it may be damn slow and inprecise for some tasks.
+ */
 static inline uint64_t
-rte_rdtsc(void)
+__rte_rdtsc_syscall(void)
 {
 	struct timespec val;
 	uint64_t v;
@@ -67,6 +73,36 @@ rte_rdtsc(void)
 	v += (uint64_t) val.tv_nsec;
 	return v;
 }
+#define rte_rdtsc __rte_rdtsc_syscall
+
+#else
+
+/**
+ * This function requires to configure the PMCCNTR and enable
+ * userspace access to it:
+ *
+ *      asm volatile("mcr p15, 0, %0, c9, c14, 0" : : "r"(1));
+ *      asm volatile("mcr p15, 0, %0, c9, c12, 0" : : "r"(29));
+ *      asm volatile("mcr p15, 0, %0, c9, c12, 1" : : "r"(0x8000000f));
+ *
+ * which is possible only from the priviledged mode (kernel space).
+ */
+static inline uint64_t
+__rte_rdtsc_pmccntr(void)
+{
+	unsigned tsc;
+	uint64_t final_tsc;
+
+	/* Read PMCCNTR */
+	asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(tsc));
+	/* 1 tick = 64 clocks */
+	final_tsc = ((uint64_t)tsc) << 6;
+
+	return (uint64_t)final_tsc;
+}
+#define rte_rdtsc __rte_rdtsc_pmccntr
+
+#endif /* RTE_ARM_EAL_RDTSC_USE_PMU */
 
 static inline uint64_t
 rte_rdtsc_precise(void)
