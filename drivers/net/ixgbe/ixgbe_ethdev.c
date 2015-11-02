@@ -529,33 +529,95 @@ struct rte_ixgbe_xstats_name_off {
 };
 
 static const struct rte_ixgbe_xstats_name_off rte_ixgbe_stats_strings[] = {
-	{"rx_illegal_byte_err", offsetof(struct ixgbe_hw_stats, errbc)},
-	{"rx_len_err", offsetof(struct ixgbe_hw_stats, rlec)},
-	{"rx_undersize_count", offsetof(struct ixgbe_hw_stats, ruc)},
-	{"rx_oversize_count", offsetof(struct ixgbe_hw_stats, roc)},
-	{"rx_fragment_count", offsetof(struct ixgbe_hw_stats, rfc)},
-	{"rx_jabber_count", offsetof(struct ixgbe_hw_stats, rjc)},
-	{"l3_l4_xsum_error", offsetof(struct ixgbe_hw_stats, xec)},
-	{"mac_local_fault", offsetof(struct ixgbe_hw_stats, mlfc)},
-	{"mac_remote_fault", offsetof(struct ixgbe_hw_stats, mrfc)},
-	{"mac_short_pkt_discard", offsetof(struct ixgbe_hw_stats, mspdc)},
-	{"fccrc_error", offsetof(struct ixgbe_hw_stats, fccrc)},
-	{"fcoe_drop", offsetof(struct ixgbe_hw_stats, fcoerpdc)},
-	{"fc_last_error", offsetof(struct ixgbe_hw_stats, fclast)},
-	{"rx_broadcast_packets", offsetof(struct ixgbe_hw_stats, bprc)},
-	{"rx_phy_multicast_packets", offsetof(struct ixgbe_hw_stats, mprc)},
-	{"mgmt_pkts_dropped", offsetof(struct ixgbe_hw_stats, mngpdc)},
 	{"rx_crc_errors", offsetof(struct ixgbe_hw_stats, crcerrs)},
-	{"fdir_match", offsetof(struct ixgbe_hw_stats, fdirmatch)},
-	{"fdir_miss", offsetof(struct ixgbe_hw_stats, fdirmiss)},
-	{"tx_flow_control_xon", offsetof(struct ixgbe_hw_stats, lxontxc)},
-	{"rx_flow_control_xon", offsetof(struct ixgbe_hw_stats, lxonrxc)},
-	{"tx_flow_control_xoff", offsetof(struct ixgbe_hw_stats, lxofftxc)},
-	{"rx_flow_control_xoff", offsetof(struct ixgbe_hw_stats, lxoffrxc)},
+	{"rx_illegal_byte_errors", offsetof(struct ixgbe_hw_stats, illerrc)},
+	{"rx_error_bytes", offsetof(struct ixgbe_hw_stats, errbc)},
+	{"mac_local_errors", offsetof(struct ixgbe_hw_stats, mlfc)},
+	{"mac_remote_errors", offsetof(struct ixgbe_hw_stats, mrfc)},
+	{"rx_length_errors", offsetof(struct ixgbe_hw_stats, rlec)},
+	{"tx_xon_packets", offsetof(struct ixgbe_hw_stats, lxontxc)},
+	{"rx_xon_packets", offsetof(struct ixgbe_hw_stats, lxonrxc)},
+	{"tx_xoff_packets", offsetof(struct ixgbe_hw_stats, lxofftxc)},
+	{"rx_xoff_packets", offsetof(struct ixgbe_hw_stats, lxoffrxc)},
+	{"rx_size_64_packets", offsetof(struct ixgbe_hw_stats, prc64)},
+	{"rx_size_65_to_127_packets", offsetof(struct ixgbe_hw_stats, prc127)},
+	{"rx_size_128_to_255_packets", offsetof(struct ixgbe_hw_stats, prc255)},
+	{"rx_size_256_to_511_packets", offsetof(struct ixgbe_hw_stats, prc511)},
+	{"rx_size_512_to_1023_packets", offsetof(struct ixgbe_hw_stats,
+		prc1023)},
+	{"rx_size_1024_to_max_packets", offsetof(struct ixgbe_hw_stats,
+		prc1522)},
+	{"rx_broadcast_packets", offsetof(struct ixgbe_hw_stats, bprc)},
+	{"rx_multicast_packets", offsetof(struct ixgbe_hw_stats, mprc)},
+	{"rx_fragment_errors", offsetof(struct ixgbe_hw_stats, rfc)},
+	{"rx_undersize_errors", offsetof(struct ixgbe_hw_stats, ruc)},
+	{"rx_oversize_errors", offsetof(struct ixgbe_hw_stats, roc)},
+	{"rx_jabber_errors", offsetof(struct ixgbe_hw_stats, rjc)},
+	{"rx_management_packets", offsetof(struct ixgbe_hw_stats, mngprc)},
+	{"rx_management_dropped", offsetof(struct ixgbe_hw_stats, mngpdc)},
+	{"tx_management_packets", offsetof(struct ixgbe_hw_stats, mngptc)},
+	{"rx_total_packets", offsetof(struct ixgbe_hw_stats, tpr)},
+	{"rx_total_bytes", offsetof(struct ixgbe_hw_stats, tor)},
+	{"tx_total_packets", offsetof(struct ixgbe_hw_stats, tpt)},
+	{"tx_size_64_packets", offsetof(struct ixgbe_hw_stats, ptc64)},
+	{"tx_size_65_to_127_packets", offsetof(struct ixgbe_hw_stats, ptc127)},
+	{"tx_size_128_to_255_packets", offsetof(struct ixgbe_hw_stats, ptc255)},
+	{"tx_size_256_to_511_packets", offsetof(struct ixgbe_hw_stats, ptc511)},
+	{"tx_size_512_to_1023_packets", offsetof(struct ixgbe_hw_stats,
+		ptc1023)},
+	{"tx_size_1024_to_max_packets", offsetof(struct ixgbe_hw_stats,
+		ptc1522)},
+	{"tx_multicast_packets", offsetof(struct ixgbe_hw_stats, mptc)},
+	{"tx_broadcast_packets", offsetof(struct ixgbe_hw_stats, bptc)},
+	{"rx_mac_short_packet_dropped", offsetof(struct ixgbe_hw_stats, mspdc)},
+	{"rx_l3_l4_xsum_error", offsetof(struct ixgbe_hw_stats, xec)},
+
+	{"flow_director_added_filters", offsetof(struct ixgbe_hw_stats,
+		fdirustat_add)},
+	{"flow_director_removed_filters", offsetof(struct ixgbe_hw_stats,
+		fdirustat_remove)},
+	{"flow_director_filter_add_errors", offsetof(struct ixgbe_hw_stats,
+		fdirfstat_fadd)},
+	{"flow_director_filter_remove_errors", offsetof(struct ixgbe_hw_stats,
+		fdirfstat_fremove)},
+	{"flow_director_matched_filters", offsetof(struct ixgbe_hw_stats,
+		fdirmatch)},
+	{"flow_director_missed_filters", offsetof(struct ixgbe_hw_stats,
+		fdirmiss)},
+
+	{"rx_fcoe_crc_errors", offsetof(struct ixgbe_hw_stats, fccrc)},
+	{"rx_fcoe_dropped", offsetof(struct ixgbe_hw_stats, fcoerpdc)},
+	{"rx_fcoe_mbuf_allocation_errors", offsetof(struct ixgbe_hw_stats,
+		fclast)},
+	{"rx_fcoe_packets", offsetof(struct ixgbe_hw_stats, fcoeprc)},
+	{"tx_fcoe_packets", offsetof(struct ixgbe_hw_stats, fcoeptc)},
+	{"rx_fcoe_bytes", offsetof(struct ixgbe_hw_stats, fcoedwrc)},
+	{"tx_fcoe_bytes", offsetof(struct ixgbe_hw_stats, fcoedwtc)},
+	{"rx_fcoe_no_direct_data_placement", offsetof(struct ixgbe_hw_stats,
+		fcoe_noddp)},
+	{"rx_fcoe_no_direct_data_placement_ext_buff",
+		offsetof(struct ixgbe_hw_stats, fcoe_noddp_ext_buff)},
+
+	{"tx_flow_control_xon_packets", offsetof(struct ixgbe_hw_stats,
+		lxontxc)},
+	{"rx_flow_control_xon_packets", offsetof(struct ixgbe_hw_stats,
+		lxonrxc)},
+	{"tx_flow_control_xoff_packets", offsetof(struct ixgbe_hw_stats,
+		lxofftxc)},
+	{"rx_flow_control_xoff_packets", offsetof(struct ixgbe_hw_stats,
+		lxoffrxc)},
+	{"rx_total_missed_packets", offsetof(struct ixgbe_hw_stats, mpctotal)},
 };
 
-#define IXGBE_NB_XSTATS (sizeof(rte_ixgbe_stats_strings) /	\
-		sizeof(rte_ixgbe_stats_strings[0]))
+#define IXGBE_NB_HW_STATS (sizeof(rte_ixgbe_stats_strings) / \
+			   sizeof(rte_ixgbe_stats_strings[0]))
+
+/* Per-queue statistics */
+#define IXBGE_NB_8_PER_Q_STATS (8 * 7)
+#define IXBGE_NB_16_PER_Q_STATS (16 * 5)
+#define IXGBE_NB_Q_STATS (IXBGE_NB_8_PER_Q_STATS + IXBGE_NB_16_PER_Q_STATS)
+
+#define IXGBE_NB_XSTATS (IXGBE_NB_HW_STATS + IXGBE_NB_Q_STATS)
 
 /**
  * Atomically reads the link status information from global
@@ -2447,7 +2509,7 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	total_qprdc = 0;
 
 	ixgbe_read_stats_registers(hw, hw_stats, &total_missed_rx, &total_qbrc,
-							   &total_qprc, &total_qprdc);
+				   &total_qprc, &total_qprdc);
 
 	/* If this is a reset xstats is NULL, and we have cleared the
 	 * registers by reading them.
@@ -2455,12 +2517,91 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	if (!xstats)
 		return 0;
 
-	/* Extended stats */
-	for (i = 0; i < IXGBE_NB_XSTATS; i++) {
-		snprintf(xstats[i].name, sizeof(xstats[i].name),
-				"%s", rte_ixgbe_stats_strings[i].name);
-		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
-							rte_ixgbe_stats_strings[i].offset);
+	/* Extended stats from ixgbe_hw_stats */
+	count = 0;
+	for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
+		snprintf(xstats[count].name, sizeof(xstats[count].name), "%s",
+			 rte_ixgbe_stats_strings[i].name);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				rte_ixgbe_stats_strings[i].offset);
+		count++;
+	}
+
+	/* Per-Q stats, with 8 queues available */
+	for (i = 0; i < 8; i++) {
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "rx_q%u_mbuf_allocation_errors", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, rnbc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "rx_q%u_missed_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, mpc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "rx_q%u_xon_priority_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, pxonrxc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "tx_q%u_xon_priority_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, pxontxc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "rx_q%u_xoff_priority_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, pxoffrxc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "tx_q%u_xoff_priority_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, pxofftxc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "xx_q%u_xon_to_xoff_priority_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, pxon2offc[i]));
+		count++;
+	}
+
+	for (i = 0; i < 16; i++) {
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "rx_q%u_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, qprc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "rx_q%u_bytes", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, qbrc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "tx_q%u_packets", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, qptc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "tx_q%u_bytes", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, qbtc[i]));
+		count++;
+
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "rx_q%u_dropped", i);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+				offsetof(struct ixgbe_hw_stats, qprdc[i]));
+		count++;
 	}
 
 	return count;
