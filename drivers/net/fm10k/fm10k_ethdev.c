@@ -73,6 +73,46 @@ static void fm10k_rx_queue_release(void *queue);
 static void fm10k_set_rx_function(struct rte_eth_dev *dev);
 static void fm10k_set_tx_function(struct rte_eth_dev *dev);
 
+struct fm10k_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned offset;
+};
+
+struct fm10k_xstats_name_off fm10k_hw_stats_strings[] = {
+	{"completion_timeout_count", offsetof(struct fm10k_hw_stats, timeout)},
+	{"unsupported_requests_count", offsetof(struct fm10k_hw_stats, ur)},
+	{"completer_abort_count", offsetof(struct fm10k_hw_stats, ca)},
+	{"unsupported_message_count", offsetof(struct fm10k_hw_stats, um)},
+	{"checksum_error_count", offsetof(struct fm10k_hw_stats, xec)},
+	{"vlan_dropped", offsetof(struct fm10k_hw_stats, vlan_drop)},
+	{"loopback_dropped", offsetof(struct fm10k_hw_stats, loopback_drop)},
+	{"rx_mbuf_allocation_errors", offsetof(struct fm10k_hw_stats,
+		nodesc_drop)},
+};
+
+#define FM10K_NB_HW_XSTATS (sizeof(fm10k_hw_stats_strings) / \
+		sizeof(fm10k_hw_stats_strings[0]))
+
+struct fm10k_xstats_name_off fm10k_hw_stats_rx_q_strings[] = {
+	{"packets", offsetof(struct fm10k_hw_stats_q, rx_packets)},
+	{"bytes", offsetof(struct fm10k_hw_stats_q, rx_bytes)},
+	{"dropped", offsetof(struct fm10k_hw_stats_q, rx_drops)},
+};
+
+#define FM10K_NB_RX_Q_XSTATS (sizeof(fm10k_hw_stats_rx_q_strings) / \
+		sizeof(fm10k_hw_stats_rx_q_strings[0]))
+
+struct fm10k_xstats_name_off fm10k_hw_stats_tx_q_strings[] = {
+	{"packets", offsetof(struct fm10k_hw_stats_q, tx_packets)},
+	{"bytes", offsetof(struct fm10k_hw_stats_q, tx_bytes)},
+};
+
+#define FM10K_NB_TX_Q_XSTATS (sizeof(fm10k_hw_stats_tx_q_strings) / \
+		sizeof(fm10k_hw_stats_tx_q_strings[0]))
+
+#define FM10K_NB_XSTATS (FM10K_NB_HW_XSTATS + FM10K_MAX_QUEUES_PF * \
+		(FM10K_NB_RX_Q_XSTATS + FM10K_NB_TX_Q_XSTATS))
+
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
 {
@@ -1076,6 +1116,51 @@ fm10k_link_update(struct rte_eth_dev *dev,
 	dev->data->dev_link.link_status = 1;
 
 	return 0;
+}
+
+static int
+fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+		 unsigned n)
+{
+	struct fm10k_hw_stats *hw_stats =
+		FM10K_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	unsigned i, q, count = 0;
+
+	if (n < FM10K_NB_XSTATS)
+		return FM10K_NB_XSTATS;
+
+	/* Global stats */
+	for (i = 0; i < FM10K_NB_HW_XSTATS; i++) {
+		snprintf(xstats[count].name, sizeof(xstats[count].name),
+			 "%s", fm10k_hw_stats_strings[count].name);
+		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+			fm10k_hw_stats_strings[count].offset);
+		count++;
+	}
+
+	/* PF queue stats */
+	for (q = 0; q < FM10K_MAX_QUEUES_PF; q++) {
+		for (i = 0; i < FM10K_NB_RX_Q_XSTATS; i++) {
+			snprintf(xstats[count].name, sizeof(xstats[count].name),
+				 "rx_q%u_%s", q,
+				 fm10k_hw_stats_rx_q_strings[i].name);
+			xstats[count].value =
+				*(uint64_t *)(((char *)&hw_stats->q[q]) +
+				fm10k_hw_stats_rx_q_strings[i].offset);
+			count++;
+		}
+		for (i = 0; i < FM10K_NB_TX_Q_XSTATS; i++) {
+			snprintf(xstats[count].name, sizeof(xstats[count].name),
+				 "tx_q%u_%s", q,
+				 fm10k_hw_stats_tx_q_strings[i].name);
+			xstats[count].value =
+				*(uint64_t *)(((char *)&hw_stats->q[q]) +
+				fm10k_hw_stats_tx_q_strings[i].offset);
+			count++;
+		}
+	}
+
+	return FM10K_NB_XSTATS;
 }
 
 static void
@@ -2310,7 +2395,9 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.allmulticast_enable    = fm10k_dev_allmulticast_enable,
 	.allmulticast_disable   = fm10k_dev_allmulticast_disable,
 	.stats_get		= fm10k_stats_get,
+	.xstats_get		= fm10k_xstats_get,
 	.stats_reset		= fm10k_stats_reset,
+	.xstats_reset		= fm10k_stats_reset,
 	.link_update		= fm10k_link_update,
 	.dev_infos_get		= fm10k_dev_infos_get,
 	.vlan_filter_set	= fm10k_vlan_filter_set,
