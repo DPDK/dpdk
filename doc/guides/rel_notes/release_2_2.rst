@@ -53,6 +53,23 @@ New Features
 
 * **Added RSS dynamic configuration to bonding.**
 
+* **Updated the e1000 base driver.**
+
+  The e1000 base driver was updated with several features including the
+  following:
+
+  * Add new i218 devices
+  * Allow both ULP and EEE in Sx state
+  * Initialize 88E1543 (Marvell 1543) PHY
+  * Add flags to set EEE advertisement modes
+  * Support inverted format ETrackId
+  * Add bit to disable packetbuffer read
+  * Add defaults for i210 Rx/Tx PBSIZE
+  * Check more errors for ESB2 init and reset
+  * Check more NVM read errors
+  * Return code after setting receive address register
+  * Remove all NAHUM6LP_HW tags
+
 * **Added e1000 Rx interrupt support.**
 
 * **Added igb TSO support for both PF and VF.**
@@ -155,6 +172,100 @@ EAL
 
 Drivers
 ~~~~~~~
+
+* **e1000/base: Synchronize PHY interface on non-ME systems.**
+
+  On power up, the MAC - PHY interface needs to be set to PCIe, even if
+  cable is disconnected.  In ME systems, the ME handles this on exit from
+  Sx(Sticky mode) state. In non-ME, the driver handles it. Add a check
+  for non-ME system to the driver code that handles that.
+
+* **e1000/base: Increase timeout of reset check.**
+
+  Previously, in check_reset_block RSPCIPHY was polled for 100 ms before
+  determining that the ME veto is set. It's not enough. It need to be increased
+  to 300 ms.
+
+* **e1000/base: Disable IPv6 extension header parsing on 82575.**
+
+  Disable IPv6 options as per hardware limitation.
+
+* **e1000/base: Prevent ULP flow if cable connected.**
+
+  Enabling ulp on link down when cable is connect caused an infinite
+  loop of linkup/down indications in the NDIS driver.
+  After discussed, correct flow is to enable ULP only when cable is
+  disconnected.
+
+* **e1000/base: Support different EEARBC for i210.**
+
+  EEARBC has changed on i210. It means EEARBC has a different address on
+  i210 than on other NICs. So, add a new entity named EEARBC_I210 to the
+  register list and make sure the right one is being used on i210.
+
+* **e1000/base: Fix K1 configuration**
+
+  This patch is for the following updates to the K1 configurations:
+  Tx idle period for entering K1 should be 128 ns.
+  Minimum Tx idle period in K1 should be 256 ns.
+
+* **e1000/base: Fix link detect flow**
+
+  In case that auto-negotiate is not enabled, call
+  e1000_setup_copper_link_generic instead of e1000_phy_setup_autoneg.
+
+* **e1000/base: Fix link check for i354 M88E1112 PHY**
+
+  e1000_check_for_link_media_swap() is supposed to check PHY page 0 for
+  copper and PHY page 1 for "other" (fiber) link. We switched back from
+  page 1 to page 0 too soon, before e1000_check_for_link_82575() is
+  executed and we were never finding link on fiber (other).
+
+  If the link is copper, as the M88E1112 page address is set to 1, it should be
+  set back to 0 before checking this link.
+
+* **e1000/base: Fix beacon duration for i217**
+
+  Fix for I217 Packet Loss issue - The Management Engine sets the FEXTNVM4
+  Beacon Duration incorrectly.  This fix ensures that the correct value will
+  always be set. Correct value for this field is 8 usec.
+
+* **e1000/base: Fix TIPG for non 10 half duplex mode**
+
+  TIPG value is increased when setting speed to 10 half to prevent
+  packet loss. However, it was never decreased again when speed
+  changes. This caused performance issues in the NDIS driver.
+  Fix this to restore TIPG to default value on non 10 half.
+
+* **e1000/base: Fix reset of DH89XXCC SGMII**
+
+  For DH89XXCC_SGMII, write flush leaves registers of this device trashed
+  (0xFFFFFFFF). Add check for this device.
+  Also, after both for Port SW Reset and Device Reset case, platform should
+  wait at least 3ms before reading any registers. Since waiting is
+  conditionally executed only for Device Reset - remove the condition.
+
+* **e1000/base: Fix redundant PHY power down for i210**
+
+  Bit 11 of PHYREG 0 is used to power down PHY. The use of PHYREG 16 is
+  unnecessary any more.
+
+* **e1000/base: fix jumbo frame CRC failures**
+
+  Change the value of register 776.20[11:2] for jumbo mode from 0x1A to 0x1F.
+  This is to enlarge the gap between read and write pointers in the TX Fifo.
+  And replace the magic number with a macro by the way.
+
+* **e1000/base: Fix link flap on 82579**
+
+  Several customers have reported a link flap issue on 82579. The symptoms
+  are random and intermittent link losses when 82579 is connected to specific
+  switches. Issue has been root caused as interoperability problem between
+  the NIC and at least some Broadcom PHYs in the Energy Efficient Ethernet
+  wake mechanism.
+  To fix the issue, we are disabling the Phase Locked Loop shutdown in 100M
+  Low Power Idle. This solution will cause an increase of power in 100M EEE
+  link. It may cost additional 28mW in this specific mode.
 
 * **igb: Fixed IEEE1588 frame identification in I210.**
 
