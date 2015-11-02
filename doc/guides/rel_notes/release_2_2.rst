@@ -4,6 +4,11 @@ DPDK Release 2.2
 New Features
 ------------
 
+* **Introduce ARMv7 architecture**
+
+  It is now possible to build DPDK for the ARMv7 platform and test with
+  virtual PMD drivers.
+
 * **Enabled freeing of ring.**
 
   New function rte_ring_free() allows the user to free a ring

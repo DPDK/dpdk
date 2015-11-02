@@ -115,6 +115,10 @@ F: app/test/test_mp_secondary.c
 F: examples/multi_process/
 F: doc/guides/sample_app_ug/multi_process.rst
 
+ARM v7
+M: Jan Viktorin <viktorin@rehivetech.com>
+F: lib/librte_eal/common/include/arch/arm/
+
 EZchip TILE-Gx
 M: Zhigang Lu <zlu@ezchip.com>
 F: lib/librte_eal/common/include/arch/tile/
