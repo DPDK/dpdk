@@ -149,6 +149,8 @@ static void ixgbe_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int ixgbe_dev_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstats *xstats, unsigned n);
+static int ixgbevf_dev_xstats_get(struct rte_eth_dev *dev,
+				  struct rte_eth_xstats *xstats, unsigned n);
 static void ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static void ixgbe_dev_xstats_reset(struct rte_eth_dev *dev);
 static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
@@ -494,7 +496,9 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.dev_stop             = ixgbevf_dev_stop,
 	.link_update          = ixgbe_dev_link_update,
 	.stats_get            = ixgbevf_dev_stats_get,
+	.xstats_get           = ixgbevf_dev_xstats_get,
 	.stats_reset          = ixgbevf_dev_stats_reset,
+	.xstats_reset         = ixgbevf_dev_stats_reset,
 	.dev_close            = ixgbevf_dev_close,
 	.dev_infos_get        = ixgbevf_dev_info_get,
 	.mtu_set              = ixgbevf_dev_set_mtu,
@@ -618,6 +622,13 @@ static const struct rte_ixgbe_xstats_name_off rte_ixgbe_stats_strings[] = {
 #define IXGBE_NB_Q_STATS (IXBGE_NB_8_PER_Q_STATS + IXBGE_NB_16_PER_Q_STATS)
 
 #define IXGBE_NB_XSTATS (IXGBE_NB_HW_STATS + IXGBE_NB_Q_STATS)
+
+static const struct rte_ixgbe_xstats_name_off rte_ixgbevf_stats_strings[] = {
+	{"rx_multicast_packets", offsetof(struct ixgbevf_hw_stats, vfmprc)},
+};
+
+#define IXGBEVF_NB_XSTATS (sizeof(rte_ixgbevf_stats_strings) /	\
+		sizeof(rte_ixgbevf_stats_strings[0]))
 
 /**
  * Atomically reads the link status information from global
@@ -2621,7 +2632,7 @@ ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 }
 
 static void
-ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ixgbevf_update_stats(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats*)
@@ -2646,6 +2657,42 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* Rx Multicst Packet */
 	UPDATE_VF_STAT(IXGBE_VFMPRC,
 	    hw_stats->last_vfmprc, hw_stats->vfmprc);
+}
+
+static int
+ixgbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+		       unsigned n)
+{
+	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats *)
+			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	unsigned i;
+
+	if (n < IXGBEVF_NB_XSTATS)
+		return IXGBEVF_NB_XSTATS;
+
+	ixgbevf_update_stats(dev);
+
+	if (!xstats)
+		return 0;
+
+	/* Extended stats */
+	for (i = 0; i < IXGBEVF_NB_XSTATS; i++) {
+		snprintf(xstats[i].name, sizeof(xstats[i].name),
+			 "%s", rte_ixgbevf_stats_strings[i].name);
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
+			rte_ixgbevf_stats_strings[i].offset);
+	}
+
+	return IXGBEVF_NB_XSTATS;
+}
+
+static void
+ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats *)
+			  IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+
+	ixgbevf_update_stats(dev);
 
 	if (stats == NULL)
 		return;
