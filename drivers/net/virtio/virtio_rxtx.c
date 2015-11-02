@@ -534,6 +534,34 @@ virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 	}
 }
 
+static void
+virtio_update_packet_stats(struct virtqueue *vq, struct rte_mbuf *mbuf)
+{
+	uint32_t s = mbuf->pkt_len;
+	struct ether_addr *ea;
+
+	if (s == 64) {
+		vq->size_bins[1]++;
+	} else if (s > 64 && s < 1024) {
+		uint32_t bin;
+
+		/* count zeros, and offset into correct bin */
+		bin = (sizeof(s) * 8) - __builtin_clz(s) - 5;
+		vq->size_bins[bin]++;
+	} else {
+		if (s < 64)
+			vq->size_bins[0]++;
+		else if (s < 1519)
+			vq->size_bins[6]++;
+		else if (s >= 1519)
+			vq->size_bins[7]++;
+	}
+
+	ea = rte_pktmbuf_mtod(mbuf, struct ether_addr *);
+	vq->multicast += is_multicast_ether_addr(ea);
+	vq->broadcast += is_broadcast_ether_addr(ea);
+}
+
 #define VIRTIO_MBUF_BURST_SZ 64
 #define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
 uint16_t
@@ -595,7 +623,9 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		VIRTIO_DUMP_PACKET(rxm, rxm->data_len);
 
 		rx_pkts[nb_rx++] = rxm;
+
 		rxvq->bytes += rx_pkts[nb_rx - 1]->pkt_len;
+		virtio_update_packet_stats(rxvq, rxm);
 	}
 
 	rxvq->packets += nb_rx;
@@ -758,6 +788,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			rx_pkts[nb_rx]->data_len);
 
 		rxvq->bytes += rx_pkts[nb_rx]->pkt_len;
+		virtio_update_packet_stats(rxvq, rx_pkts[nb_rx]);
 		nb_rx++;
 	}
 
@@ -858,6 +889,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 			nb_tx++;
 			txvq->bytes += txm->pkt_len;
+			virtio_update_packet_stats(txvq, txm);
 		} else {
 			PMD_TX_LOG(ERR, "No free tx descriptors to transmit");
 			break;

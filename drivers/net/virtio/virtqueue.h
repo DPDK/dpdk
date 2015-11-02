@@ -199,6 +199,10 @@ struct virtqueue {
 	uint64_t	packets;
 	uint64_t	bytes;
 	uint64_t	errors;
+	uint64_t	multicast;
+	uint64_t	broadcast;
+	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
+	uint64_t	size_bins[8];
 
 	struct vq_desc_extra {
 		void              *cookie;

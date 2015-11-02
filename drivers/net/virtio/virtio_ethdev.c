@@ -81,7 +81,10 @@ static int virtio_dev_link_update(struct rte_eth_dev *dev,
 static void virtio_set_hwaddr(struct virtio_hw *hw);
 static void virtio_get_hwaddr(struct virtio_hw *hw);
 
-static void virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+static void virtio_dev_stats_get(struct rte_eth_dev *dev,
+				 struct rte_eth_stats *stats);
+static int virtio_dev_xstats_get(struct rte_eth_dev *dev,
+				 struct rte_eth_xstats *xstats, unsigned n);
 static void virtio_dev_stats_reset(struct rte_eth_dev *dev);
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
 static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
@@ -109,6 +112,31 @@ static const struct rte_pci_id pci_id_virtio_map[] = {
 
 { .vendor_id = 0, /* sentinel */ },
 };
+
+struct rte_virtio_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned offset;
+};
+
+/* [rt]x_qX_ is prepended to the name string here */
+static const struct rte_virtio_xstats_name_off rte_virtio_q_stat_strings[] = {
+	{"good_packets",           offsetof(struct virtqueue, packets)},
+	{"good_bytes",             offsetof(struct virtqueue, bytes)},
+	{"errors",                 offsetof(struct virtqueue, errors)},
+	{"multicast_packets",      offsetof(struct virtqueue, multicast)},
+	{"broadcast_packets",      offsetof(struct virtqueue, broadcast)},
+	{"undersize_packets",      offsetof(struct virtqueue, size_bins[0])},
+	{"size_64_packets",        offsetof(struct virtqueue, size_bins[1])},
+	{"size_65_127_packets",    offsetof(struct virtqueue, size_bins[2])},
+	{"size_128_255_packets",   offsetof(struct virtqueue, size_bins[3])},
+	{"size_256_511_packets",   offsetof(struct virtqueue, size_bins[4])},
+	{"size_512_1023_packets",  offsetof(struct virtqueue, size_bins[5])},
+	{"size_1024_1517_packets", offsetof(struct virtqueue, size_bins[6])},
+	{"size_1518_max_packets",  offsetof(struct virtqueue, size_bins[7])},
+};
+
+#define VIRTIO_NB_Q_XSTATS (sizeof(rte_virtio_q_stat_strings) / \
+			    sizeof(rte_virtio_q_stat_strings[0]))
 
 static int
 virtio_send_command(struct virtqueue *vq, struct virtio_pmd_ctrl *ctrl,
@@ -578,7 +606,9 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 
 	.dev_infos_get           = virtio_dev_info_get,
 	.stats_get               = virtio_dev_stats_get,
+	.xstats_get              = virtio_dev_xstats_get,
 	.stats_reset             = virtio_dev_stats_reset,
+	.xstats_reset            = virtio_dev_stats_reset,
 	.link_update             = virtio_dev_link_update,
 	.rx_queue_setup          = virtio_dev_rx_queue_setup,
 	.rx_queue_release        = virtio_dev_rx_queue_release,
@@ -633,7 +663,7 @@ virtio_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 }
 
 static void
-virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned i;
 
@@ -670,6 +700,64 @@ virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 }
 
+static int
+virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+		      unsigned n)
+{
+	unsigned i;
+	unsigned count = 0;
+
+	unsigned nstats = dev->data->nb_tx_queues * VIRTIO_NB_Q_XSTATS +
+		dev->data->nb_rx_queues * VIRTIO_NB_Q_XSTATS;
+
+	if (n < nstats)
+		return nstats;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct virtqueue *rxvq = dev->data->rx_queues[i];
+
+		if (rxvq == NULL)
+			continue;
+
+		unsigned t;
+
+		for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
+			snprintf(xstats[count].name, sizeof(xstats[count].name),
+				 "rx_q%u_%s", i,
+				 rte_virtio_q_stat_strings[t].name);
+			xstats[count].value = *(uint64_t *)(((char *)rxvq) +
+				rte_virtio_q_stat_strings[t].offset);
+			count++;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct virtqueue *txvq = dev->data->tx_queues[i];
+
+		if (txvq == NULL)
+			continue;
+
+		unsigned t;
+
+		for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
+			snprintf(xstats[count].name, sizeof(xstats[count].name),
+				 "tx_q%u_%s", i,
+				 rte_virtio_q_stat_strings[t].name);
+			xstats[count].value = *(uint64_t *)(((char *)txvq) +
+				rte_virtio_q_stat_strings[t].offset);
+			count++;
+		}
+	}
+
+	return count;
+}
+
+static void
+virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	virtio_update_stats(dev, stats);
+}
+
 static void
 virtio_dev_stats_reset(struct rte_eth_dev *dev)
 {
@@ -683,6 +771,9 @@ virtio_dev_stats_reset(struct rte_eth_dev *dev)
 		txvq->packets = 0;
 		txvq->bytes = 0;
 		txvq->errors = 0;
+		txvq->multicast = 0;
+		txvq->broadcast = 0;
+		memset(txvq->size_bins, 0, sizeof(txvq->size_bins[0]) * 8);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -693,6 +784,9 @@ virtio_dev_stats_reset(struct rte_eth_dev *dev)
 		rxvq->packets = 0;
 		rxvq->bytes = 0;
 		rxvq->errors = 0;
+		rxvq->multicast = 0;
+		rxvq->broadcast = 0;
+		memset(rxvq->size_bins, 0, sizeof(rxvq->size_bins[0]) * 8);
 	}
 
 	dev->data->rx_mbuf_alloc_failed = 0;
