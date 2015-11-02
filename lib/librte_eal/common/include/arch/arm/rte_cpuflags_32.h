@@ -41,6 +41,7 @@ extern "C" {
 #include <fcntl.h>
 #include <assert.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "generic/rte_cpuflags.h"
 
@@ -52,10 +53,15 @@ extern "C" {
 #define AT_HWCAP2 26
 #endif
 
+#ifndef AT_PLATFORM
+#define AT_PLATFORM 15
+#endif
+
 /* software based registers */
 enum cpu_register_t {
 	REG_HWCAP = 0,
 	REG_HWCAP2,
+	REG_PLATFORM,
 };
 
 /**
@@ -89,6 +95,7 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_SHA1,
 	RTE_CPUFLAG_SHA2,
 	RTE_CPUFLAG_CRC32,
+	RTE_CPUFLAG_V7L,
 	/* The last item */
 	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
 };
@@ -121,6 +128,7 @@ static const struct feature_entry cpu_feature_table[] = {
 	FEAT_DEF(SHA1,      0x00000001, 0, REG_HWCAP2,  2)
 	FEAT_DEF(SHA2,      0x00000001, 0, REG_HWCAP2,  3)
 	FEAT_DEF(CRC32,     0x00000001, 0, REG_HWCAP2,  4)
+	FEAT_DEF(V7L,       0x00000001, 0, REG_PLATFORM, 0)
 };
 
 /*
@@ -141,6 +149,10 @@ rte_cpu_get_features(__attribute__((unused)) uint32_t leaf,
 			out[REG_HWCAP] = auxv.a_un.a_val;
 		else if (auxv.a_type == AT_HWCAP2)
 			out[REG_HWCAP2] = auxv.a_un.a_val;
+		else if (auxv.a_type == AT_PLATFORM) {
+			if (!strcmp((const char *)auxv.a_un.a_val, "v7l"))
+				out[REG_PLATFORM] = 0x0001;
+		}
 	}
 }
 
