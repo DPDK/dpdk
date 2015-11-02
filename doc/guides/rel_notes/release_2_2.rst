@@ -12,6 +12,7 @@ New Features
   PMDs:
 
   * igb
+  * igbvf
 
 * **Added API in ethdev to retrieve RX/TX queue information.**
 

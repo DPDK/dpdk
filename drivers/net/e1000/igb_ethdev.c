@@ -152,7 +152,10 @@ static int igbvf_dev_start(struct rte_eth_dev *dev);
 static void igbvf_dev_stop(struct rte_eth_dev *dev);
 static void igbvf_dev_close(struct rte_eth_dev *dev);
 static int eth_igbvf_link_update(struct e1000_hw *hw);
-static void eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats);
+static void eth_igbvf_stats_get(struct rte_eth_dev *dev,
+				struct rte_eth_stats *rte_stats);
+static int eth_igbvf_xstats_get(struct rte_eth_dev *dev,
+				struct rte_eth_xstats *xstats, unsigned n);
 static void eth_igbvf_stats_reset(struct rte_eth_dev *dev);
 static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
@@ -359,7 +362,9 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.dev_close            = igbvf_dev_close,
 	.link_update          = eth_igb_link_update,
 	.stats_get            = eth_igbvf_stats_get,
+	.xstats_get           = eth_igbvf_xstats_get,
 	.stats_reset          = eth_igbvf_stats_reset,
+	.xstats_reset         = eth_igbvf_stats_reset,
 	.vlan_filter_set      = igbvf_vlan_filter_set,
 	.dev_infos_get        = eth_igbvf_infos_get,
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
@@ -443,6 +448,17 @@ static const struct rte_igb_xstats_name_off rte_igb_stats_strings[] = {
 
 #define IGB_NB_XSTATS (sizeof(rte_igb_stats_strings) / \
 		sizeof(rte_igb_stats_strings[0]))
+
+static const struct rte_igb_xstats_name_off rte_igbvf_stats_strings[] = {
+	{"rx_multicast_packets", offsetof(struct e1000_vf_stats, mprc)},
+	{"rx_good_loopback_packets", offsetof(struct e1000_vf_stats, gprlbc)},
+	{"tx_good_loopback_packets", offsetof(struct e1000_vf_stats, gptlbc)},
+	{"rx_good_loopback_bytes", offsetof(struct e1000_vf_stats, gorlbc)},
+	{"tx_good_loopback_bytes", offsetof(struct e1000_vf_stats, gotlbc)},
+};
+
+#define IGBVF_NB_XSTATS (sizeof(rte_igbvf_stats_strings) / \
+		sizeof(rte_igbvf_stats_strings[0]))
 
 /**
  * Atomically reads the link status information from global
@@ -1632,12 +1648,8 @@ eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 }
 
 static void
-eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+igbvf_read_stats_registers(struct e1000_hw *hw, struct e1000_vf_stats *hw_stats)
 {
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_vf_stats *hw_stats = (struct e1000_vf_stats*)
-			  E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
-
 	/* Good Rx packets, include VF loopback */
 	UPDATE_VF_STAT(E1000_VFGPRC,
 	    hw_stats->last_gprc, hw_stats->gprc);
@@ -1673,6 +1685,43 @@ eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	/* Good Tx loopback octets */
 	UPDATE_VF_STAT(E1000_VFGOTLBC,
 	    hw_stats->last_gotlbc, hw_stats->gotlbc);
+}
+
+static int
+eth_igbvf_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+		     unsigned n)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_vf_stats *hw_stats = (struct e1000_vf_stats *)
+			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	unsigned i;
+
+	if (n < IGBVF_NB_XSTATS)
+		return IGBVF_NB_XSTATS;
+
+	igbvf_read_stats_registers(hw, hw_stats);
+
+	if (!xstats)
+		return 0;
+
+	for (i = 0; i < IGBVF_NB_XSTATS; i++) {
+		snprintf(xstats[i].name, sizeof(xstats[i].name), "%s",
+			 rte_igbvf_stats_strings[i].name);
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
+			rte_igbvf_stats_strings[i].offset);
+	}
+
+	return IGBVF_NB_XSTATS;
+}
+
+static void
+eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_vf_stats *hw_stats = (struct e1000_vf_stats *)
+			  E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+
+	igbvf_read_stats_registers(hw, hw_stats);
 
 	if (rte_stats == NULL)
 		return;
@@ -1700,7 +1749,6 @@ eth_igbvf_stats_reset(struct rte_eth_dev *dev)
 	/* reset HW current stats*/
 	memset(&hw_stats->gprc, 0, sizeof(*hw_stats) -
 	       offsetof(struct e1000_vf_stats, gprc));
-
 }
 
 static void
