@@ -1342,6 +1342,33 @@ i40e_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *stat)
 			    I40E_PFQF_FDSTAT_BEST_CNT_SHIFT);
 }
 
+static int
+i40e_fdir_filter_set(struct rte_eth_dev *dev,
+		     struct rte_eth_hash_filter_info *info)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	int ret = 0;
+
+	if (!info) {
+		PMD_DRV_LOG(ERR, "Invalid pointer");
+		return -EFAULT;
+	}
+
+	switch (info->info_type) {
+	case RTE_ETH_FDIR_FILTER_INPUT_SET_SELECT:
+		ret = i40e_filter_inset_select(hw,
+			&(info->info.input_set_conf), RTE_ETH_FILTER_FDIR);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "FD filter info type (%d) not supported",
+			    info->info_type);
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
 /*
  * i40e_fdir_ctrl_func - deal with all operations on flow director.
  * @pf: board private structure
@@ -1381,6 +1408,10 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_INFO:
 		i40e_fdir_info_get(dev, (struct rte_eth_fdir_info *)arg);
+		break;
+	case RTE_ETH_FILTER_SET:
+		ret = i40e_fdir_filter_set(dev,
+			(struct rte_eth_hash_filter_info *)arg);
 		break;
 	case RTE_ETH_FILTER_STATS:
 		i40e_fdir_stats_get(dev, (struct rte_eth_fdir_stats *)arg);

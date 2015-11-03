@@ -107,6 +107,7 @@ enum i40e_flxpld_layer_idx {
 #define I40E_FDIR_BITMASK_NUM_WORD  2  /* max number of bitmask words */
 #define I40E_FDIR_MAX_FLEXWORD_NUM  8  /* max number of flexpayload words */
 #define I40E_FDIR_MAX_FLEX_LEN      16 /* len in bytes of flex payload */
+#define I40E_INSET_MASK_NUM_REG     2  /* number of input set mask registers */
 
 /* i40e flags */
 #define I40E_FLAG_RSS                   (1ULL << 0)
@@ -549,6 +550,12 @@ uint16_t i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype);
 int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 			  enum rte_filter_op filter_op,
 			  void *arg);
+int i40e_select_filter_input_set(struct i40e_hw *hw,
+				 struct rte_eth_input_set_conf *conf,
+				 enum rte_filter_type filter);
+int i40e_filter_inset_select(struct i40e_hw *hw,
+			     struct rte_eth_input_set_conf *conf,
+			     enum rte_filter_type filter);
 
 void i40e_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);

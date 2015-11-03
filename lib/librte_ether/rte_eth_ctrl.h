@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -295,7 +295,84 @@ struct rte_eth_tunnel_filter_conf {
 	uint16_t queue_id;      /** < queue number. */
 };
 
-#define RTE_ETH_FDIR_MAX_FLEXLEN         16 /** < Max length of flexbytes. */
+#define RTE_ETH_FDIR_MAX_FLEXLEN 16  /** < Max length of flexbytes. */
+#define RTE_ETH_INSET_SIZE_MAX   128 /** < Max length of input set. */
+
+/**
+ * Input set fields for Flow Director and Hash filters
+ */
+enum rte_eth_input_set_field {
+	RTE_ETH_INPUT_SET_UNKNOWN = 0,
+
+	/* L2 */
+	RTE_ETH_INPUT_SET_L2_SRC_MAC = 1,
+	RTE_ETH_INPUT_SET_L2_DST_MAC,
+	RTE_ETH_INPUT_SET_L2_OUTER_VLAN,
+	RTE_ETH_INPUT_SET_L2_INNER_VLAN,
+	RTE_ETH_INPUT_SET_L2_ETHERTYPE,
+
+	/* L3 */
+	RTE_ETH_INPUT_SET_L3_SRC_IP4 = 129,
+	RTE_ETH_INPUT_SET_L3_DST_IP4,
+	RTE_ETH_INPUT_SET_L3_SRC_IP6,
+	RTE_ETH_INPUT_SET_L3_DST_IP6,
+	RTE_ETH_INPUT_SET_L3_IP4_TOS,
+	RTE_ETH_INPUT_SET_L3_IP4_PROTO,
+	RTE_ETH_INPUT_SET_L3_IP6_TC,
+	RTE_ETH_INPUT_SET_L3_IP6_NEXT_HEADER,
+
+	/* L4 */
+	RTE_ETH_INPUT_SET_L4_UDP_SRC_PORT = 257,
+	RTE_ETH_INPUT_SET_L4_UDP_DST_PORT,
+	RTE_ETH_INPUT_SET_L4_TCP_SRC_PORT,
+	RTE_ETH_INPUT_SET_L4_TCP_DST_PORT,
+	RTE_ETH_INPUT_SET_L4_SCTP_SRC_PORT,
+	RTE_ETH_INPUT_SET_L4_SCTP_DST_PORT,
+	RTE_ETH_INPUT_SET_L4_SCTP_VERIFICATION_TAG,
+
+	/* Tunnel */
+	RTE_ETH_INPUT_SET_TUNNEL_L2_INNER_DST_MAC = 385,
+	RTE_ETH_INPUT_SET_TUNNEL_L2_INNER_SRC_MAC,
+	RTE_ETH_INPUT_SET_TUNNEL_L2_INNER_VLAN,
+	RTE_ETH_INPUT_SET_TUNNEL_L4_UDP_KEY,
+	RTE_ETH_INPUT_SET_TUNNEL_GRE_KEY,
+
+	/* Flexible Payload */
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_1ST_WORD = 641,
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_2ND_WORD,
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_3RD_WORD,
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_4TH_WORD,
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_5TH_WORD,
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_6TH_WORD,
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_7TH_WORD,
+	RTE_ETH_INPUT_SET_FLEX_PAYLOAD_8TH_WORD,
+
+	RTE_ETH_INPUT_SET_DEFAULT = 65533,
+	RTE_ETH_INPUT_SET_NONE = 65534,
+	RTE_ETH_INPUT_SET_MAX = 65535,
+};
+
+/**
+ * Filters input set operations
+ */
+enum rte_filter_input_set_op {
+	RTE_ETH_INPUT_SET_OP_UNKNOWN,
+	RTE_ETH_INPUT_SET_SELECT, /**< select input set */
+	RTE_ETH_INPUT_SET_ADD,    /**< add input set entry */
+	RTE_ETH_INPUT_SET_OP_MAX
+};
+
+
+/**
+ * A structure used to define the input set configuration for
+ * flow director and hash filters
+ */
+struct rte_eth_input_set_conf {
+	uint16_t flow_type;
+	uint16_t inset_size;
+	enum rte_eth_input_set_field field[RTE_ETH_INSET_SIZE_MAX];
+	enum rte_filter_input_set_op op;
+};
 
 /**
  * A structure used to define the input for L2 flow
@@ -535,7 +612,7 @@ struct rte_eth_fdir_flex_mask {
 
 /**
  * A structure used to define all flexible payload related setting
- * include flexpay load and flex mask
+ * include flex payload and flex mask
  */
 struct rte_eth_fdir_flex_conf {
 	uint16_t nb_payloads;  /**< The number of following payload cfg */
@@ -615,12 +692,37 @@ struct rte_eth_fdir_stats {
 };
 
 /**
+ * Flow Director filter information types.
+ */
+enum rte_eth_fdir_filter_info_type {
+	RTE_ETH_FDIR_FILTER_INFO_TYPE_UNKNOWN = 0,
+	/** Flow Director filter input set configuration */
+	RTE_ETH_FDIR_FILTER_INPUT_SET_SELECT,
+	RTE_ETH_FDIR_FILTER_INFO_TYPE_MAX,
+};
+
+/**
+ * A structure used to set FDIR filter information, to support filter type
+ * of 'RTE_ETH_FILTER_FDIR' RTE_ETH_FDIR_FILTER_INPUT_SET_SELECT operation.
+ */
+struct rte_eth_fdir_filter_info {
+	enum rte_eth_fdir_filter_info_type info_type; /**< Information type */
+	/** Details of fdir filter information */
+	union {
+		/** Flow Director input set configuration per port */
+		struct rte_eth_input_set_conf input_set_conf;
+	} info;
+};
+
+/**
  * Hash filter information types.
  * - RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT is for getting/setting the
  *   information/configuration of 'symmetric hash enable' per port.
  * - RTE_ETH_HASH_FILTER_GLOBAL_CONFIG is for getting/setting the global
  *   configurations of hash filters. Those global configurations are valid
  *   for all ports of the same NIC.
+ * - RTE_ETH_HASH_FILTER_INPUT_SET_SELECT is for setting the global
+ *   hash input set fields
  */
 enum rte_eth_hash_filter_info_type {
 	RTE_ETH_HASH_FILTER_INFO_TYPE_UNKNOWN = 0,
@@ -628,6 +730,8 @@ enum rte_eth_hash_filter_info_type {
 	RTE_ETH_HASH_FILTER_SYM_HASH_ENA_PER_PORT,
 	/** Configure globally for hash filter */
 	RTE_ETH_HASH_FILTER_GLOBAL_CONFIG,
+	/** Global Hash filter input set configuration */
+	RTE_ETH_HASH_FILTER_INPUT_SET_SELECT,
 	RTE_ETH_HASH_FILTER_INFO_TYPE_MAX,
 };
 
@@ -647,7 +751,7 @@ enum rte_eth_hash_function {
  * A structure used to set or get global hash function configurations which
  * include symmetric hash enable per flow type and hash function type.
  * Each bit in sym_hash_enable_mask[] indicates if the symmetric hash of the
- * coresponding flow type is enabled or not.
+ * corresponding flow type is enabled or not.
  * Each bit in valid_bit_mask[] indicates if the corresponding bit in
  * sym_hash_enable_mask[] is valid or not. For the configurations gotten, it
  * also means if the flow type is supported by hardware or not.
@@ -672,6 +776,8 @@ struct rte_eth_hash_filter_info {
 		uint8_t enable;
 		/** Global configurations of hash filter */
 		struct rte_eth_hash_global_conf global_conf;
+		/** Global configurations of hash filter input set */
+		struct rte_eth_input_set_conf input_set_conf;
 	} info;
 };
 

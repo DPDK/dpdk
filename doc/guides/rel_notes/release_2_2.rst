@@ -46,6 +46,8 @@ New Features
 
 * **Added DCB support to i40e PF driver.**
 
+* **Added RSS/FD input set granularity on Intel X710/XL710.**
+
 * **Added fm10k vector RX/TX.**
 
 * **Added fm10k TSO support for both PF and VF.**
@@ -194,6 +196,9 @@ ABI Changes
 
 * The ethdev flow director entries for SCTP were changed.
   It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
+
+* The size of the ethdev structure rte_eth_hash_filter_info is changed
+  by adding a new element rte_eth_input_set_conf in an union.
 
 * The new fields rx_desc_lim and tx_desc_lim are added into rte_eth_dev_info
   structure.

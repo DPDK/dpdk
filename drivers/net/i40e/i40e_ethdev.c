@@ -139,6 +139,142 @@
 #define I40E_DEFAULT_DCB_APP_NUM    1
 #define I40E_DEFAULT_DCB_APP_PRIO   3
 
+#define I40E_PRTQF_FD_INSET(_i, _j)  (0x00250000 + ((_i) * 64 + (_j) * 32))
+#define I40E_GLQF_FD_MSK(_i, _j)     (0x00267200 + ((_i) * 4 + (_j) * 8))
+#define I40E_GLQF_FD_MSK_FIELD       0x0000FFFF
+#define I40E_GLQF_HASH_INSET(_i, _j) (0x00267600 + ((_i) * 4 + (_j) * 8))
+#define I40E_GLQF_HASH_MSK(_i, _j)   (0x00267A00 + ((_i) * 4 + (_j) * 8))
+#define I40E_GLQF_HASH_MSK_FIELD      0x0000FFFF
+
+#define I40E_INSET_NONE            0x00000000000000000ULL
+
+/* bit0 ~ bit 7 */
+#define I40E_INSET_DMAC            0x0000000000000001ULL
+#define I40E_INSET_SMAC            0x0000000000000002ULL
+#define I40E_INSET_VLAN_OUTER      0x0000000000000004ULL
+#define I40E_INSET_VLAN_INNER      0x0000000000000008ULL
+#define I40E_INSET_VLAN_TUNNEL     0x0000000000000010ULL
+
+/* bit 8 ~ bit 15 */
+#define I40E_INSET_IPV4_SRC        0x0000000000000100ULL
+#define I40E_INSET_IPV4_DST        0x0000000000000200ULL
+#define I40E_INSET_IPV6_SRC        0x0000000000000400ULL
+#define I40E_INSET_IPV6_DST        0x0000000000000800ULL
+#define I40E_INSET_SRC_PORT        0x0000000000001000ULL
+#define I40E_INSET_DST_PORT        0x0000000000002000ULL
+#define I40E_INSET_SCTP_VT         0x0000000000004000ULL
+
+/* bit 16 ~ bit 31 */
+#define I40E_INSET_IPV4_TOS        0x0000000000010000ULL
+#define I40E_INSET_IPV4_PROTO      0x0000000000020000ULL
+#define I40E_INSET_IPV4_TTL        0x0000000000040000ULL
+#define I40E_INSET_IPV6_TC         0x0000000000080000ULL
+#define I40E_INSET_IPV6_FLOW       0x0000000000100000ULL
+#define I40E_INSET_IPV6_NEXT_HDR   0x0000000000200000ULL
+#define I40E_INSET_IPV6_HOP_LIMIT  0x0000000000400000ULL
+#define I40E_INSET_TCP_FLAGS       0x0000000000800000ULL
+
+/* bit 32 ~ bit 47, tunnel fields */
+#define I40E_INSET_TUNNEL_IPV4_DST       0x0000000100000000ULL
+#define I40E_INSET_TUNNEL_IPV6_DST       0x0000000200000000ULL
+#define I40E_INSET_TUNNEL_DMAC           0x0000000400000000ULL
+#define I40E_INSET_TUNNEL_SRC_PORT       0x0000000800000000ULL
+#define I40E_INSET_TUNNEL_DST_PORT       0x0000001000000000ULL
+#define I40E_INSET_TUNNEL_ID             0x0000002000000000ULL
+
+/* bit 48 ~ bit 55 */
+#define I40E_INSET_LAST_ETHER_TYPE 0x0001000000000000ULL
+
+/* bit 56 ~ bit 63, Flex Payload */
+#define I40E_INSET_FLEX_PAYLOAD_W1 0x0100000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD_W2 0x0200000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD_W3 0x0400000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD_W4 0x0800000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD_W5 0x1000000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD_W6 0x2000000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD_W7 0x4000000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD_W8 0x8000000000000000ULL
+#define I40E_INSET_FLEX_PAYLOAD \
+	(I40E_INSET_FLEX_PAYLOAD_W1 | I40E_INSET_FLEX_PAYLOAD_W2 | \
+	I40E_INSET_FLEX_PAYLOAD_W3 | I40E_INSET_FLEX_PAYLOAD_W3 | \
+	I40E_INSET_FLEX_PAYLOAD_W5 | I40E_INSET_FLEX_PAYLOAD_W6 | \
+	I40E_INSET_FLEX_PAYLOAD_W7 | I40E_INSET_FLEX_PAYLOAD_W8)
+
+/**
+ * Below are values for writing un-exposed registers suggested
+ * by silicon experts
+ */
+/* Destination MAC address */
+#define I40E_REG_INSET_L2_DMAC                   0xE000000000000000ULL
+/* Source MAC address */
+#define I40E_REG_INSET_L2_SMAC                   0x1C00000000000000ULL
+/* VLAN tag in the outer L2 header */
+#define I40E_REG_INSET_L2_OUTER_VLAN             0x0000000000800000ULL
+/* VLAN tag in the inner L2 header */
+#define I40E_REG_INSET_L2_INNER_VLAN             0x0000000001000000ULL
+/* Source IPv4 address */
+#define I40E_REG_INSET_L3_SRC_IP4                0x0001800000000000ULL
+/* Destination IPv4 address */
+#define I40E_REG_INSET_L3_DST_IP4                0x0000001800000000ULL
+/* IPv4 Type of Service (TOS) */
+#define I40E_REG_INSET_L3_IP4_TOS                0x0040000000000000ULL
+/* IPv4 Protocol */
+#define I40E_REG_INSET_L3_IP4_PROTO              0x0004000000000000ULL
+/* Source IPv6 address */
+#define I40E_REG_INSET_L3_SRC_IP6                0x0007F80000000000ULL
+/* Destination IPv6 address */
+#define I40E_REG_INSET_L3_DST_IP6                0x000007F800000000ULL
+/* IPv6 Traffic Class (TC) */
+#define I40E_REG_INSET_L3_IP6_TC                 0x0040000000000000ULL
+/* IPv6 Next Header */
+#define I40E_REG_INSET_L3_IP6_NEXT_HDR           0x0008000000000000ULL
+/* Source L4 port */
+#define I40E_REG_INSET_L4_SRC_PORT               0x0000000400000000ULL
+/* Destination L4 port */
+#define I40E_REG_INSET_L4_DST_PORT               0x0000000200000000ULL
+/* SCTP verification tag */
+#define I40E_REG_INSET_L4_SCTP_VERIFICATION_TAG  0x0000000180000000ULL
+/* Inner destination MAC address (MAC-in-UDP/MAC-in-GRE)*/
+#define I40E_REG_INSET_TUNNEL_L2_INNER_DST_MAC   0x0000000001C00000ULL
+/* Source port of tunneling UDP */
+#define I40E_REG_INSET_TUNNEL_L4_UDP_SRC_PORT    0x0000000000200000ULL
+/* Destination port of tunneling UDP */
+#define I40E_REG_INSET_TUNNEL_L4_UDP_DST_PORT    0x0000000000100000ULL
+/* UDP Tunneling ID, NVGRE/GRE key */
+#define I40E_REG_INSET_TUNNEL_ID                 0x00000000000C0000ULL
+/* Last ether type */
+#define I40E_REG_INSET_LAST_ETHER_TYPE           0x0000000000004000ULL
+/* Tunneling outer destination IPv4 address */
+#define I40E_REG_INSET_TUNNEL_L3_DST_IP4         0x00000000000000C0ULL
+/* Tunneling outer destination IPv6 address */
+#define I40E_REG_INSET_TUNNEL_L3_DST_IP6         0x0000000000003FC0ULL
+/* 1st word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD1        0x0000000000002000ULL
+/* 2nd word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD2        0x0000000000001000ULL
+/* 3rd word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD3        0x0000000000000800ULL
+/* 4th word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD4        0x0000000000000400ULL
+/* 5th word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD5        0x0000000000000200ULL
+/* 6th word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD6        0x0000000000000100ULL
+/* 7th word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD7        0x0000000000000080ULL
+/* 8th word of flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORD8        0x0000000000000040ULL
+
+#define I40E_REG_INSET_MASK_DEFAULT              0x0000000000000000ULL
+
+#define I40E_TRANSLATE_INSET 0
+#define I40E_TRANSLATE_REG   1
+
+#define I40E_INSET_IPV4_TOS_MASK      0x0009FF00UL
+#define I40E_INSET_IPV4_PROTO_MASK    0x000DFF00UL
+#define I40E_INSET_IPV6_TC_MASK       0x0009F00FUL
+#define I40E_INSET_IPV6_NEXT_HDR_MASK 0x000C00FFUL
+
 static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
@@ -5997,6 +6133,606 @@ out:
 	return 0;
 }
 
+/**
+ * Valid input sets for hash and flow director filters per PCTYPE
+ */
+static uint64_t
+i40e_get_valid_input_set(enum i40e_filter_pctype pctype,
+		enum rte_filter_type filter)
+{
+	uint64_t valid;
+
+	static const uint64_t valid_hash_inset_table[] = {
+		[I40E_FILTER_PCTYPE_FRAG_IPV4] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV4_SRC |
+			I40E_INSET_IPV4_DST | I40E_INSET_IPV4_TOS |
+			I40E_INSET_IPV4_PROTO | I40E_INSET_IPV4_TTL |
+			I40E_INSET_TUNNEL_DMAC | I40E_INSET_TUNNEL_ID |
+			I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV4_TOS |
+			I40E_INSET_IPV4_PROTO | I40E_INSET_IPV4_TTL |
+			I40E_INSET_TUNNEL_DMAC | I40E_INSET_TUNNEL_ID |
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+			I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV4_TOS |
+			I40E_INSET_IPV4_PROTO | I40E_INSET_IPV4_TTL |
+			I40E_INSET_TUNNEL_DMAC | I40E_INSET_TUNNEL_ID |
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+			I40E_INSET_TCP_FLAGS | I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV4_TOS |
+			I40E_INSET_IPV4_PROTO | I40E_INSET_IPV4_TTL |
+			I40E_INSET_TUNNEL_DMAC | I40E_INSET_TUNNEL_ID |
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+			I40E_INSET_SCTP_VT | I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_OTHER] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV4_TOS |
+			I40E_INSET_IPV4_PROTO | I40E_INSET_IPV4_TTL |
+			I40E_INSET_TUNNEL_DMAC | I40E_INSET_TUNNEL_ID |
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+			I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_FRAG_IPV6] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV6_TC |
+			I40E_INSET_IPV6_FLOW | I40E_INSET_IPV6_NEXT_HDR |
+			I40E_INSET_IPV6_HOP_LIMIT | I40E_INSET_TUNNEL_DMAC |
+			I40E_INSET_TUNNEL_ID | I40E_INSET_IPV6_SRC |
+			I40E_INSET_IPV6_DST | I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_UDP] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV6_TC |
+			I40E_INSET_IPV6_FLOW | I40E_INSET_IPV6_NEXT_HDR |
+			I40E_INSET_IPV6_HOP_LIMIT | I40E_INSET_IPV6_SRC |
+			I40E_INSET_IPV6_DST | I40E_INSET_SRC_PORT |
+			I40E_INSET_DST_PORT | I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV6_TC |
+			I40E_INSET_IPV6_FLOW | I40E_INSET_IPV6_NEXT_HDR |
+			I40E_INSET_IPV6_HOP_LIMIT | I40E_INSET_IPV6_SRC |
+			I40E_INSET_IPV6_DST | I40E_INSET_SRC_PORT |
+			I40E_INSET_DST_PORT | I40E_INSET_TCP_FLAGS |
+			I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_SCTP] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV6_TC |
+			I40E_INSET_IPV6_FLOW | I40E_INSET_IPV6_NEXT_HDR |
+			I40E_INSET_IPV6_HOP_LIMIT | I40E_INSET_IPV6_SRC |
+			I40E_INSET_IPV6_DST | I40E_INSET_SRC_PORT |
+			I40E_INSET_DST_PORT | I40E_INSET_SCTP_VT |
+			I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_IPV6_TC |
+			I40E_INSET_IPV6_FLOW | I40E_INSET_IPV6_NEXT_HDR |
+			I40E_INSET_IPV6_HOP_LIMIT | I40E_INSET_IPV6_SRC |
+			I40E_INSET_IPV6_DST | I40E_INSET_TUNNEL_ID |
+			I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_L2_PAYLOAD] =
+			I40E_INSET_DMAC | I40E_INSET_SMAC |
+			I40E_INSET_VLAN_OUTER | I40E_INSET_VLAN_INNER |
+			I40E_INSET_VLAN_TUNNEL | I40E_INSET_LAST_ETHER_TYPE |
+			I40E_INSET_FLEX_PAYLOAD,
+	};
+
+	/**
+	 * Flow director supports only fields defined in
+	 * union rte_eth_fdir_flow.
+	 */
+	static const uint64_t valid_fdir_inset_table[] = {
+		[I40E_FILTER_PCTYPE_FRAG_IPV4] =
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] =
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] =
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] =
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+		I40E_INSET_SCTP_VT | I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_OTHER] =
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_FRAG_IPV6] =
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_UDP] =
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP] =
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_SCTP] =
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+		I40E_INSET_SCTP_VT | I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] =
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+		I40E_INSET_FLEX_PAYLOAD,
+		[I40E_FILTER_PCTYPE_L2_PAYLOAD] =
+		I40E_INSET_LAST_ETHER_TYPE | I40E_INSET_FLEX_PAYLOAD,
+	};
+
+	if (pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD)
+		return 0;
+	if (filter == RTE_ETH_FILTER_HASH)
+		valid = valid_hash_inset_table[pctype];
+	else
+		valid = valid_fdir_inset_table[pctype];
+
+	return valid;
+}
+
+/**
+ * Validate if the input set is allowed for a specific PCTYPE
+ */
+static int
+i40e_validate_input_set(enum i40e_filter_pctype pctype,
+		enum rte_filter_type filter, uint64_t inset)
+{
+	uint64_t valid;
+
+	valid = i40e_get_valid_input_set(pctype, filter);
+	if (inset & (~valid))
+		return -EINVAL;
+
+	return 0;
+}
+
+/* default input set fields combination per pctype */
+static uint64_t
+i40e_get_default_input_set(uint16_t pctype)
+{
+	static const uint64_t default_inset_table[] = {
+		[I40E_FILTER_PCTYPE_FRAG_IPV4] =
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] =
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] =
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] =
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+			I40E_INSET_SCTP_VT,
+		[I40E_FILTER_PCTYPE_NONF_IPV4_OTHER] =
+			I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST,
+		[I40E_FILTER_PCTYPE_FRAG_IPV6] =
+			I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_UDP] =
+			I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP] =
+			I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_SCTP] =
+			I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
+			I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
+			I40E_INSET_SCTP_VT,
+		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] =
+			I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST,
+		[I40E_FILTER_PCTYPE_L2_PAYLOAD] =
+			I40E_INSET_LAST_ETHER_TYPE,
+	};
+
+	if (pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD)
+		return 0;
+
+	return default_inset_table[pctype];
+}
+
+/**
+ * Parse the input set from index to logical bit masks
+ */
+static int
+i40e_parse_input_set(uint64_t *inset,
+		     enum i40e_filter_pctype pctype,
+		     enum rte_eth_input_set_field *field,
+		     uint16_t size)
+{
+	uint16_t i, j;
+	int ret = -EINVAL;
+
+	static const struct {
+		enum rte_eth_input_set_field field;
+		uint64_t inset;
+	} inset_convert_table[] = {
+		{RTE_ETH_INPUT_SET_NONE, I40E_INSET_NONE},
+		{RTE_ETH_INPUT_SET_L2_SRC_MAC, I40E_INSET_SMAC},
+		{RTE_ETH_INPUT_SET_L2_DST_MAC, I40E_INSET_DMAC},
+		{RTE_ETH_INPUT_SET_L2_OUTER_VLAN, I40E_INSET_VLAN_OUTER},
+		{RTE_ETH_INPUT_SET_L2_INNER_VLAN, I40E_INSET_VLAN_INNER},
+		{RTE_ETH_INPUT_SET_L2_ETHERTYPE, I40E_INSET_LAST_ETHER_TYPE},
+		{RTE_ETH_INPUT_SET_L3_SRC_IP4, I40E_INSET_IPV4_SRC},
+		{RTE_ETH_INPUT_SET_L3_DST_IP4, I40E_INSET_IPV4_DST},
+		{RTE_ETH_INPUT_SET_L3_IP4_TOS, I40E_INSET_IPV4_TOS},
+		{RTE_ETH_INPUT_SET_L3_IP4_PROTO, I40E_INSET_IPV4_PROTO},
+		{RTE_ETH_INPUT_SET_L3_SRC_IP6, I40E_INSET_IPV6_SRC},
+		{RTE_ETH_INPUT_SET_L3_DST_IP6, I40E_INSET_IPV6_DST},
+		{RTE_ETH_INPUT_SET_L3_IP6_TC, I40E_INSET_IPV6_TC},
+		{RTE_ETH_INPUT_SET_L3_IP6_NEXT_HEADER,
+			I40E_INSET_IPV6_NEXT_HDR},
+		{RTE_ETH_INPUT_SET_L4_UDP_SRC_PORT, I40E_INSET_SRC_PORT},
+		{RTE_ETH_INPUT_SET_L4_TCP_SRC_PORT, I40E_INSET_SRC_PORT},
+		{RTE_ETH_INPUT_SET_L4_SCTP_SRC_PORT, I40E_INSET_SRC_PORT},
+		{RTE_ETH_INPUT_SET_L4_UDP_DST_PORT, I40E_INSET_DST_PORT},
+		{RTE_ETH_INPUT_SET_L4_TCP_DST_PORT, I40E_INSET_DST_PORT},
+		{RTE_ETH_INPUT_SET_L4_SCTP_DST_PORT, I40E_INSET_DST_PORT},
+		{RTE_ETH_INPUT_SET_L4_SCTP_VERIFICATION_TAG,
+			I40E_INSET_SCTP_VT},
+		{RTE_ETH_INPUT_SET_TUNNEL_L2_INNER_DST_MAC,
+			I40E_INSET_TUNNEL_DMAC},
+		{RTE_ETH_INPUT_SET_TUNNEL_L2_INNER_VLAN,
+			I40E_INSET_VLAN_TUNNEL},
+		{RTE_ETH_INPUT_SET_TUNNEL_L4_UDP_KEY,
+			I40E_INSET_TUNNEL_ID},
+		{RTE_ETH_INPUT_SET_TUNNEL_GRE_KEY, I40E_INSET_TUNNEL_ID},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_1ST_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W1},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_2ND_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W2},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_3RD_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W3},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_4TH_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W4},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_5TH_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W5},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_6TH_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W6},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_7TH_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W7},
+		{RTE_ETH_INPUT_SET_FLEX_PAYLOAD_8TH_WORD,
+			I40E_INSET_FLEX_PAYLOAD_W8},
+	};
+
+	if (!inset || !field || size > RTE_ETH_INSET_SIZE_MAX)
+		return ret;
+
+	/* Only one item allowed for default or all */
+	if (size == 1) {
+		if (field[0] == RTE_ETH_INPUT_SET_DEFAULT) {
+			*inset = i40e_get_default_input_set(pctype);
+			return 0;
+		} else if (field[0] == RTE_ETH_INPUT_SET_NONE) {
+			*inset = I40E_INSET_NONE;
+			return 0;
+		}
+	}
+
+	for (i = 0, *inset = 0; i < size; i++) {
+		for (j = 0; j < RTE_DIM(inset_convert_table); j++) {
+			if (field[i] == inset_convert_table[j].field) {
+				*inset |= inset_convert_table[j].inset;
+				break;
+			}
+		}
+
+		/* It contains unsupported input set, return immediately */
+		if (j == RTE_DIM(inset_convert_table))
+			return ret;
+	}
+
+	return 0;
+}
+
+/**
+ * Translate the input set from bit masks to register aware bit masks
+ * and vice versa
+ */
+static uint64_t
+i40e_translate_input_set_reg(uint64_t input)
+{
+	uint64_t val = 0;
+	uint16_t i;
+
+	static const struct {
+		uint64_t inset;
+		uint64_t inset_reg;
+	} inset_map[] = {
+		{I40E_INSET_DMAC, I40E_REG_INSET_L2_DMAC},
+		{I40E_INSET_SMAC, I40E_REG_INSET_L2_SMAC},
+		{I40E_INSET_VLAN_OUTER, I40E_REG_INSET_L2_OUTER_VLAN},
+		{I40E_INSET_VLAN_INNER, I40E_REG_INSET_L2_INNER_VLAN},
+		{I40E_INSET_LAST_ETHER_TYPE, I40E_REG_INSET_LAST_ETHER_TYPE},
+		{I40E_INSET_IPV4_SRC, I40E_REG_INSET_L3_SRC_IP4},
+		{I40E_INSET_IPV4_DST, I40E_REG_INSET_L3_DST_IP4},
+		{I40E_INSET_IPV4_TOS, I40E_REG_INSET_L3_IP4_TOS},
+		{I40E_INSET_IPV4_PROTO, I40E_REG_INSET_L3_IP4_PROTO},
+		{I40E_INSET_IPV6_SRC, I40E_REG_INSET_L3_SRC_IP6},
+		{I40E_INSET_IPV6_DST, I40E_REG_INSET_L3_DST_IP6},
+		{I40E_INSET_IPV6_TC, I40E_REG_INSET_L3_IP6_TC},
+		{I40E_INSET_IPV6_NEXT_HDR, I40E_REG_INSET_L3_IP6_NEXT_HDR},
+		{I40E_INSET_SRC_PORT, I40E_REG_INSET_L4_SRC_PORT},
+		{I40E_INSET_DST_PORT, I40E_REG_INSET_L4_DST_PORT},
+		{I40E_INSET_SCTP_VT, I40E_REG_INSET_L4_SCTP_VERIFICATION_TAG},
+		{I40E_INSET_TUNNEL_ID, I40E_REG_INSET_TUNNEL_ID},
+		{I40E_INSET_TUNNEL_DMAC,
+			I40E_REG_INSET_TUNNEL_L2_INNER_DST_MAC},
+		{I40E_INSET_TUNNEL_IPV4_DST, I40E_REG_INSET_TUNNEL_L3_DST_IP4},
+		{I40E_INSET_TUNNEL_IPV6_DST, I40E_REG_INSET_TUNNEL_L3_DST_IP6},
+		{I40E_INSET_TUNNEL_SRC_PORT,
+			I40E_REG_INSET_TUNNEL_L4_UDP_SRC_PORT},
+		{I40E_INSET_TUNNEL_DST_PORT,
+			I40E_REG_INSET_TUNNEL_L4_UDP_DST_PORT},
+		{I40E_INSET_TUNNEL_ID, I40E_REG_INSET_TUNNEL_ID},
+		{I40E_INSET_FLEX_PAYLOAD_W1, I40E_REG_INSET_FLEX_PAYLOAD_WORD1},
+		{I40E_INSET_FLEX_PAYLOAD_W2, I40E_REG_INSET_FLEX_PAYLOAD_WORD2},
+		{I40E_INSET_FLEX_PAYLOAD_W3, I40E_REG_INSET_FLEX_PAYLOAD_WORD3},
+		{I40E_INSET_FLEX_PAYLOAD_W4, I40E_REG_INSET_FLEX_PAYLOAD_WORD4},
+		{I40E_INSET_FLEX_PAYLOAD_W5, I40E_REG_INSET_FLEX_PAYLOAD_WORD5},
+		{I40E_INSET_FLEX_PAYLOAD_W6, I40E_REG_INSET_FLEX_PAYLOAD_WORD6},
+		{I40E_INSET_FLEX_PAYLOAD_W7, I40E_REG_INSET_FLEX_PAYLOAD_WORD7},
+		{I40E_INSET_FLEX_PAYLOAD_W8, I40E_REG_INSET_FLEX_PAYLOAD_WORD8},
+	};
+
+	if (input == 0)
+		return val;
+
+	/* Translate input set to register aware inset */
+	for (i = 0; i < RTE_DIM(inset_map); i++) {
+		if (input & inset_map[i].inset)
+			val |= inset_map[i].inset_reg;
+	}
+
+	return val;
+}
+
+static uint8_t
+i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask, uint8_t nb_elem)
+{
+	uint8_t i, idx = 0;
+
+	static const struct {
+		uint64_t inset;
+		uint32_t mask;
+	} inset_mask_map[] = {
+		{I40E_INSET_IPV4_TOS, I40E_INSET_IPV4_TOS_MASK},
+		{I40E_INSET_IPV4_PROTO, I40E_INSET_IPV4_PROTO_MASK},
+		{I40E_INSET_IPV6_TC, I40E_INSET_IPV6_TC_MASK},
+		{I40E_INSET_IPV6_NEXT_HDR, I40E_INSET_IPV6_NEXT_HDR_MASK},
+	};
+
+	if (!inset || !mask || !nb_elem)
+		return 0;
+
+	if (!inset && nb_elem >= I40E_INSET_MASK_NUM_REG) {
+		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++)
+			mask[i] = 0;
+		return I40E_INSET_MASK_NUM_REG;
+	}
+
+	for (i = 0, idx = 0; i < RTE_DIM(inset_mask_map); i++) {
+		if (idx >= nb_elem)
+			break;
+		if (inset & inset_mask_map[i].inset) {
+			mask[idx] = inset_mask_map[i].mask;
+			idx++;
+		}
+	}
+
+	return idx;
+}
+
+static uint64_t
+i40e_get_reg_inset(struct i40e_hw *hw, enum rte_filter_type filter,
+			    enum i40e_filter_pctype pctype)
+{
+	uint64_t reg = 0;
+
+	if (filter == RTE_ETH_FILTER_HASH) {
+		reg = I40E_READ_REG(hw, I40E_GLQF_HASH_INSET(1, pctype));
+		reg <<= I40E_32_BIT_WIDTH;
+		reg |= I40E_READ_REG(hw, I40E_GLQF_HASH_INSET(0, pctype));
+	} else if (filter == RTE_ETH_FILTER_FDIR) {
+		reg = I40E_READ_REG(hw, I40E_PRTQF_FD_INSET(pctype, 1));
+		reg <<= I40E_32_BIT_WIDTH;
+		reg |= I40E_READ_REG(hw, I40E_PRTQF_FD_INSET(pctype, 0));
+	}
+
+	return reg;
+}
+
+static void
+i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
+{
+	uint32_t reg = I40E_READ_REG(hw, addr);
+
+	PMD_DRV_LOG(DEBUG, "[0x%08x] original: 0x%08x\n", addr, reg);
+	if (reg != val)
+		I40E_WRITE_REG(hw, addr, val);
+	PMD_DRV_LOG(DEBUG, "[0x%08x] after: 0x%08x\n", addr,
+		    (uint32_t)I40E_READ_REG(hw, addr));
+}
+
+static int
+i40e_set_hash_inset_mask(struct i40e_hw *hw,
+			 enum i40e_filter_pctype pctype,
+			 enum rte_filter_input_set_op op,
+			 uint32_t *mask_reg,
+			 uint8_t num)
+{
+	uint32_t reg;
+	uint8_t i;
+
+	if (!mask_reg || num > RTE_ETH_INPUT_SET_SELECT)
+		return -EINVAL;
+
+	if (op == RTE_ETH_INPUT_SET_SELECT) {
+		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
+			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+					     0);
+			if (i >= num)
+				continue;
+			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+					     mask_reg[i]);
+		}
+	} else if (op == RTE_ETH_INPUT_SET_ADD) {
+		uint8_t j, count = 0;
+
+		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
+			reg = I40E_READ_REG(hw, I40E_GLQF_HASH_MSK(i, pctype));
+			if (reg & I40E_GLQF_HASH_MSK_FIELD)
+				count++;
+		}
+		if (count + num > I40E_INSET_MASK_NUM_REG)
+			return -EINVAL;
+
+		for (i = count, j = 0; i < I40E_INSET_MASK_NUM_REG; i++, j++)
+			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+					     mask_reg[j]);
+	}
+
+	return 0;
+}
+
+static int
+i40e_set_fd_inset_mask(struct i40e_hw *hw,
+		       enum i40e_filter_pctype pctype,
+		       enum rte_filter_input_set_op op,
+		       uint32_t *mask_reg,
+		       uint8_t num)
+{
+	uint32_t reg;
+	uint8_t i;
+
+	if (!mask_reg || num > RTE_ETH_INPUT_SET_SELECT)
+		return -EINVAL;
+
+	if (op == RTE_ETH_INPUT_SET_SELECT) {
+		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
+			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+					     0);
+			if (i >= num)
+				continue;
+			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+					     mask_reg[i]);
+		}
+	} else if (op == RTE_ETH_INPUT_SET_ADD) {
+		uint8_t j, count = 0;
+
+		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
+			reg = I40E_READ_REG(hw, I40E_GLQF_FD_MSK(i, pctype));
+			if (reg & I40E_GLQF_FD_MSK_FIELD)
+				count++;
+		}
+		if (count + num > I40E_INSET_MASK_NUM_REG)
+			return -EINVAL;
+
+		for (i = count, j = 0; i < I40E_INSET_MASK_NUM_REG; i++, j++)
+			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+					     mask_reg[j]);
+	}
+
+	return 0;
+}
+
+int
+i40e_filter_inset_select(struct i40e_hw *hw,
+			 struct rte_eth_input_set_conf *conf,
+			 enum rte_filter_type filter)
+{
+	enum i40e_filter_pctype pctype;
+	uint64_t inset_reg = 0, input_set;
+	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG];
+	uint8_t num;
+	int ret;
+
+	if (!hw || !conf) {
+		PMD_DRV_LOG(ERR, "Invalid pointer");
+		return -EFAULT;
+	}
+
+	pctype = i40e_flowtype_to_pctype(conf->flow_type);
+	if (pctype == 0 || pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
+		PMD_DRV_LOG(ERR, "Not supported flow type (%u)",
+			    conf->flow_type);
+		return -EINVAL;
+	}
+	if (filter != RTE_ETH_FILTER_HASH && filter != RTE_ETH_FILTER_FDIR) {
+		PMD_DRV_LOG(ERR, "Not supported filter type (%u)", filter);
+		return -EINVAL;
+	}
+
+	ret = i40e_parse_input_set(&input_set, pctype, conf->field,
+				   conf->inset_size);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to parse input set");
+		return -EINVAL;
+	}
+	if (i40e_validate_input_set(pctype, filter, input_set) != 0) {
+		PMD_DRV_LOG(ERR, "Invalid input set");
+		return -EINVAL;
+	}
+
+	if (conf->op == RTE_ETH_INPUT_SET_ADD) {
+		inset_reg |= i40e_get_reg_inset(hw, filter, pctype);
+	} else if (conf->op != RTE_ETH_INPUT_SET_SELECT) {
+		PMD_DRV_LOG(ERR, "Unsupported input set operation");
+		return -EINVAL;
+	}
+	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
+					   I40E_INSET_MASK_NUM_REG);
+	inset_reg |= i40e_translate_input_set_reg(input_set);
+
+	if (filter == RTE_ETH_FILTER_HASH) {
+		ret = i40e_set_hash_inset_mask(hw, pctype, conf->op, mask_reg,
+					       num);
+		if (ret)
+			return -EINVAL;
+
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
+				      (uint32_t)(inset_reg & UINT32_MAX));
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
+				     (uint32_t)((inset_reg >>
+				     I40E_32_BIT_WIDTH) & UINT32_MAX));
+	} else if (filter == RTE_ETH_FILTER_FDIR) {
+		ret = i40e_set_fd_inset_mask(hw, pctype, conf->op, mask_reg,
+					     num);
+		if (ret)
+			return -EINVAL;
+
+		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
+				      (uint32_t)(inset_reg & UINT32_MAX));
+		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 1),
+				     (uint32_t)((inset_reg >>
+				     I40E_32_BIT_WIDTH) & UINT32_MAX));
+	} else {
+		PMD_DRV_LOG(ERR, "Not supported filter type (%u)", filter);
+		return -EINVAL;
+	}
+	I40E_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
 static int
 i40e_hash_filter_get(struct i40e_hw *hw, struct rte_eth_hash_filter_info *info)
 {
@@ -6044,6 +6780,12 @@ i40e_hash_filter_set(struct i40e_hw *hw, struct rte_eth_hash_filter_info *info)
 		ret = i40e_set_hash_filter_global_config(hw,
 				&(info->info.global_conf));
 		break;
+	case RTE_ETH_HASH_FILTER_INPUT_SET_SELECT:
+		ret = i40e_filter_inset_select(hw,
+					       &(info->info.input_set_conf),
+					       RTE_ETH_FILTER_HASH);
+		break;
+
 	default:
 		PMD_DRV_LOG(ERR, "Hash filter info type (%d) not supported",
 							info->info_type);
