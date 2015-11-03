@@ -432,7 +432,6 @@ rte_pmd_init_internals(const char *name,
                        struct rte_kvargs *kvlist)
 {
 	struct rte_eth_dev_data *data = NULL;
-	struct rte_pci_device *pci_dev = NULL;
 	struct rte_kvargs_pair *pair = NULL;
 	struct ifreq ifr;
 	size_t ifnamelen;
@@ -468,10 +467,6 @@ rte_pmd_init_internals(const char *name,
 	 */
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
-		goto error_early;
-
-	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
-	if (pci_dev == NULL)
 		goto error_early;
 
 	*internals = rte_zmalloc_socket(name, sizeof(**internals),
@@ -670,11 +665,8 @@ rte_pmd_init_internals(const char *name,
 	data->dev_link = pmd_link;
 	data->mac_addrs = &(*internals)->eth_addr;
 
-	pci_dev->numa_node = numa_node;
-
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
-	(*eth_dev)->pci_dev = pci_dev;
 	(*eth_dev)->driver = NULL;
 	(*eth_dev)->data->dev_flags = 0;
 	(*eth_dev)->data->drv_name = drivername;
@@ -698,7 +690,6 @@ error:
 	}
 	rte_free(*internals);
 error_early:
-	rte_free(pci_dev);
 	rte_free(data);
 	return -1;
 }
