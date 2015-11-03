@@ -5,7 +5,7 @@
  *
  *   Originally based upon librte_pmd_pcap code:
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  *
@@ -656,8 +656,8 @@ rte_pmd_init_internals(const char *name,
 	/*
 	 * now put it all together
 	 * - store queue data in internals,
-	 * - store numa_node info in pci_driver
-	 * - point eth_dev_data to internals and pci_driver
+	 * - store numa_node in eth_dev
+	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
 
@@ -675,6 +675,11 @@ rte_pmd_init_internals(const char *name,
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
 	(*eth_dev)->pci_dev = pci_dev;
+	(*eth_dev)->driver = NULL;
+	(*eth_dev)->data->dev_flags = 0;
+	(*eth_dev)->data->drv_name = drivername;
+	(*eth_dev)->data->kdrv = RTE_KDRV_NONE;
+	(*eth_dev)->data->numa_node = numa_node;
 
 	return 0;
 

@@ -67,7 +67,7 @@
 /* virtio_idx is increased after new device is created.*/
 static int virtio_idx = 0;
 
-static const char *drivername = "xen dummy virtio PMD";
+static const char *drivername = "xen virtio PMD";
 
 static struct rte_eth_link pmd_link = {
 		.link_speed = 10000,
@@ -688,8 +688,13 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
+
 	eth_dev->data->dev_flags = RTE_PCI_DRV_DETACHABLE;
 	eth_dev->pci_dev = pci_dev;
+	eth_dev->data->kdrv = RTE_KDRV_NONE;
+	eth_dev->data->drv_name = drivername;
+	eth_dev->driver = NULL;
+	eth_dev->data->numa_node = numa_node;
 
 	eth_dev->rx_pkt_burst = eth_xenvirt_rx;
 	eth_dev->tx_pkt_burst = eth_xenvirt_tx;

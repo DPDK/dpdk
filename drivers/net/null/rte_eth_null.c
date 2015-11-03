@@ -540,8 +540,8 @@ eth_dev_null_create(const char *name,
 
 	/* now put it all together
 	 * - store queue data in internals,
-	 * - store numa_node info in pci_driver
-	 * - point eth_dev_data to internals and pci_driver
+	 * - store numa_node info in ethdev data
+	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
 	/* NOTE: we'll replace the data element, of originally allocated eth_dev
@@ -574,6 +574,12 @@ eth_dev_null_create(const char *name,
 	eth_dev->pci_dev = pci_dev;
 	eth_dev->driver = &rte_null_pmd;
 	TAILQ_INIT(&eth_dev->link_intr_cbs);
+
+	eth_dev->driver = NULL;
+	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	eth_dev->data->kdrv = RTE_KDRV_NONE;
+	eth_dev->data->drv_name = drivername;
+	eth_dev->data->numa_node = numa_node;
 
 	/* finally assign rx and tx ops */
 	if (packet_copy) {

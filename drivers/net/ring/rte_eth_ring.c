@@ -336,11 +336,10 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		goto error;
 	}
 
-
 	/* now put it all together
 	 * - store queue data in internals,
-	 * - store numa_node info in pci_driver
-	 * - point eth_dev_data to internals and pci_driver
+	 * - store numa_node info in eth_dev_data
+	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
 	/* NOTE: we'll replace the data element, of originally allocated eth_dev
@@ -374,7 +373,11 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	eth_dev->data = data;
 	eth_dev->driver = &rte_ring_pmd;
 	eth_dev->dev_ops = &ops;
-	eth_dev->pci_dev = pci_dev;
+	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	eth_dev->data->kdrv = RTE_KDRV_NONE;
+	eth_dev->data->drv_name = drivername;
+	eth_dev->data->numa_node = numa_node;
+
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	/* finally assign rx and tx ops */

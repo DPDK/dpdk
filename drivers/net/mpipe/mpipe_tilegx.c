@@ -80,6 +80,7 @@ struct mpipe_context {
 
 static struct mpipe_context mpipe_contexts[GXIO_MPIPE_INSTANCE_MAX];
 static int mpipe_instances;
+static const char *drivername = "MPIPE PMD";
 
 /* Per queue statistics. */
 struct mpipe_queue_stats {
@@ -1594,6 +1595,12 @@ rte_pmd_mpipe_devinit(const char *ifname,
 	eth_dev->data->dev_private = priv;
 	eth_dev->pci_dev = &priv->pci_dev;
 	eth_dev->data->mac_addrs = &priv->mac_addr;
+
+	eth_dev->data->dev_flags = 0;
+	eth_dev->data->kdrv = RTE_KDRV_NONE;
+	eth_dev->driver = NULL;
+	eth_dev->data->drv_name = drivername;
+	eth_dev->data->numa_node = instance;
 
 	eth_dev->dev_ops      = &mpipe_dev_ops;
 	eth_dev->rx_pkt_burst = &mpipe_recv_pkts;

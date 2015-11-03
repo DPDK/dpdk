@@ -44,6 +44,8 @@
 
 #define DEFAULT_POLLING_INTERVAL_10_MS (10)
 
+const char pmd_bond_driver_name[] = "rte_bond_pmd";
+
 int
 valid_bonded_ethdev(const struct rte_eth_dev *eth_dev)
 {
@@ -163,8 +165,6 @@ number_of_sockets(void)
 	return ++sockets;
 }
 
-const char pmd_bond_driver_name[] = "rte_bond_pmd";
-
 static struct rte_pci_id pci_id_table = {
 	.device_id = PCI_ANY_ID,
 	.subsystem_device_id = PCI_ANY_ID,
@@ -251,6 +251,13 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	eth_dev->dev_ops = &default_dev_ops;
 	eth_dev->pci_dev = pci_dev;
+
+	eth_dev->data->dev_flags = RTE_ETH_DEV_INTR_LSC |
+		RTE_ETH_DEV_DETACHABLE;
+	eth_dev->driver = NULL;
+	eth_dev->data->kdrv = RTE_KDRV_NONE;
+	eth_dev->data->drv_name = pmd_bond_driver_name;
+	eth_dev->data->numa_node =  socket_id;
 
 	rte_spinlock_init(&internals->lock);
 
