@@ -2793,6 +2793,7 @@ static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on)
 {
 	struct e1000_mbx_info *mbx = &hw->mbx;
 	uint32_t msgbuf[2];
+	s32 err;
 
 	/* After set vlan, vlan strip will also be enabled in igb driver*/
 	msgbuf[0] = E1000_VF_SET_VLAN;
@@ -2801,7 +2802,20 @@ static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on)
 	if (on)
 		msgbuf[0] |= E1000_VF_SET_VLAN_ADD;
 
-	return (mbx->ops.write_posted(hw, msgbuf, 2, 0));
+	err = mbx->ops.write_posted(hw, msgbuf, 2, 0);
+	if (err)
+		goto mbx_err;
+
+	err = mbx->ops.read_posted(hw, msgbuf, 2, 0);
+	if (err)
+		goto mbx_err;
+
+	msgbuf[0] &= ~E1000_VT_MSGTYPE_CTS;
+	if (msgbuf[0] == (E1000_VF_SET_VLAN | E1000_VT_MSGTYPE_NACK))
+		err = -EINVAL;
+
+mbx_err:
+	return err;
 }
 
 static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on)
