@@ -419,6 +419,9 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 
 	eth_dev->dev_ops = is_vf ? &bnx2xvf_eth_dev_ops : &bnx2x_eth_dev_ops;
 	pci_dev = eth_dev->pci_dev;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
 	sc = eth_dev->data->dev_private;
 	sc->pcie_bus    = pci_dev->addr.bus;
 	sc->pcie_device = pci_dev->addr.devid;

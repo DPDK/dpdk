@@ -5138,6 +5138,9 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		eth_dev->data->dev_private = priv;
 		eth_dev->pci_dev = pci_dev;
+
+		rte_eth_copy_pci_info(eth_dev, pci_dev);
+
 		eth_dev->driver = &mlx4_driver;
 		eth_dev->data->rx_mbuf_alloc_failed = 0;
 		eth_dev->data->mtu = ETHER_MTU;

@@ -570,6 +570,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		return 0;
 	}
 	pci_dev = dev->pci_dev;
+
+	rte_eth_copy_pci_info(dev, pci_dev);
+
 	pf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	pf->adapter->eth_dev = dev;
 	pf->dev_data = dev->data;

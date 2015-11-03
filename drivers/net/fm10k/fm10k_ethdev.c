@@ -2510,6 +2510,8 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	rte_eth_copy_pci_info(dev, dev->pci_dev);
+
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 	memset(macvlan, 0, sizeof(*macvlan));
 	/* Vendor and Device ID need to be set before init of shared code */

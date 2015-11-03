@@ -1288,6 +1288,8 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
+	rte_eth_copy_pci_info(eth_dev, eth_dev->pci_dev);
+
 	hw->vendor_id = eth_dev->pci_dev->id.vendor_id;
 	hw->device_id = eth_dev->pci_dev->id.device_id;
 	hw->subsystem_vendor_id = eth_dev->pci_dev->id.subsystem_vendor_id;

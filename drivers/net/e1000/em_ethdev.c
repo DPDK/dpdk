@@ -243,6 +243,9 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 		E1000_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 
 	pci_dev = eth_dev->pci_dev;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
 	eth_dev->dev_ops = &eth_em_ops;
 	eth_dev->rx_pkt_burst = (eth_rx_burst_t)&eth_em_recv_pkts;
 	eth_dev->tx_pkt_burst = (eth_tx_burst_t)&eth_em_xmit_pkts;

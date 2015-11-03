@@ -1288,6 +1288,9 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	pci_dev = eth_dev->pci_dev;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
 	if (virtio_resource_init(pci_dev) < 0)
 		return -1;
 
