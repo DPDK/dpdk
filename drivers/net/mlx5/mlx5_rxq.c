@@ -259,23 +259,29 @@ hash_rxq_flow_attr(const struct hash_rxq *hash_rxq,
 }
 
 /**
- * Return the type corresponding to the n'th bit set.
+ * Convert hash type position in indirection table initializer to
+ * hash RX queue type.
  *
  * @param table
- *   The indirection table.
- * @param n
- *   The n'th bit set.
+ *   Indirection table initializer.
+ * @param pos
+ *   Hash type position.
  *
  * @return
- *   The corresponding hash_rxq_type.
+ *   Hash RX queue type.
  */
 static enum hash_rxq_type
-hash_rxq_type_from_n(const struct ind_table_init *table, unsigned int n)
+hash_rxq_type_from_pos(const struct ind_table_init *table, unsigned int pos)
 {
-	assert(n < table->hash_types_n);
-	while (((table->hash_types >> n) & 0x1) == 0)
-		++n;
-	return n;
+	enum hash_rxq_type type = 0;
+
+	assert(pos < table->hash_types_n);
+	do {
+		if ((table->hash_types & (1 << type)) && (pos-- == 0))
+			break;
+		++type;
+	} while (1);
+	return type;
 }
 
 /**
@@ -429,7 +435,7 @@ priv_create_hash_rxqs(struct priv *priv)
 	     ++i) {
 		struct hash_rxq *hash_rxq = &(*hash_rxqs)[i];
 		enum hash_rxq_type type =
-			hash_rxq_type_from_n(&ind_table_init[j], k);
+			hash_rxq_type_from_pos(&ind_table_init[j], k);
 		struct rte_eth_rss_conf *priv_rss_conf =
 			(*priv->rss_conf)[type];
 		struct ibv_exp_rx_hash_conf hash_conf = {
@@ -453,8 +459,8 @@ priv_create_hash_rxqs(struct priv *priv)
 			.port_num = priv->port,
 		};
 
-		DEBUG("using indirection table %u for hash RX queue %u",
-		      j, i);
+		DEBUG("using indirection table %u for hash RX queue %u type %d",
+		      j, i, type);
 		*hash_rxq = (struct hash_rxq){
 			.priv = priv,
 			.qp = ibv_exp_create_qp(priv->ctx, &qp_init_attr),
