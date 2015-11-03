@@ -48,6 +48,8 @@ New Features
 
 * **Added RSS/FD input set granularity on Intel X710/XL710.**
 
+* **Added different GRE key length for input set on Intel X710/XL710.**
+
 * **Added fm10k vector RX/TX.**
 
 * **Added fm10k TSO support for both PF and VF.**

@@ -295,6 +295,26 @@ struct rte_eth_tunnel_filter_conf {
 	uint16_t queue_id;      /** < queue number. */
 };
 
+/**
+ * Global eth device configuration type.
+ */
+enum rte_eth_global_cfg_type {
+	RTE_ETH_GLOBAL_CFG_TYPE_UNKNOWN = 0,
+	RTE_ETH_GLOBAL_CFG_TYPE_GRE_KEY_LEN,
+	RTE_ETH_GLOBAL_CFG_TYPE_MAX,
+};
+
+/**
+ * Global eth device configuration.
+ */
+struct rte_eth_global_cfg {
+	enum rte_eth_global_cfg_type cfg_type; /**< Global config type. */
+	union {
+		uint8_t gre_key_len; /**< Valid GRE key length in byte. */
+		uint64_t reserved; /**< Reserve space for future use. */
+	} cfg;
+};
+
 #define RTE_ETH_FDIR_MAX_FLEXLEN 16  /** < Max length of flexbytes. */
 #define RTE_ETH_INSET_SIZE_MAX   128 /** < Max length of input set. */
 

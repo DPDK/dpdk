@@ -5886,7 +5886,7 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 
 static int
 i40e_tunnel_filter_param_check(struct i40e_pf *pf,
-			struct rte_eth_tunnel_filter_conf *filter)
+			       struct rte_eth_tunnel_filter_conf *filter)
 {
 	if (pf == NULL || filter == NULL) {
 		PMD_DRV_LOG(ERR, "Invalid parameter");
@@ -5918,9 +5918,85 @@ i40e_tunnel_filter_param_check(struct i40e_pf *pf,
 	return 0;
 }
 
+#define I40E_GL_PRS_FVBM_MSK_ENA 0x80000000
+#define I40E_GL_PRS_FVBM(_i)     (0x00269760 + ((_i) * 4))
 static int
-i40e_tunnel_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
-			void *arg)
+i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len)
+{
+	uint32_t val, reg;
+	int ret = -EINVAL;
+
+	val = I40E_READ_REG(hw, I40E_GL_PRS_FVBM(2));
+	PMD_DRV_LOG(DEBUG, "Read original GL_PRS_FVBM with 0x%08x\n", val);
+
+	if (len == 3) {
+		reg = val | I40E_GL_PRS_FVBM_MSK_ENA;
+	} else if (len == 4) {
+		reg = val & ~I40E_GL_PRS_FVBM_MSK_ENA;
+	} else {
+		PMD_DRV_LOG(ERR, "Unsupported GRE key length of %u", len);
+		return ret;
+	}
+
+	if (reg != val) {
+		ret = i40e_aq_debug_write_register(hw, I40E_GL_PRS_FVBM(2),
+						   reg, NULL);
+		if (ret != 0)
+			return ret;
+	} else {
+		ret = 0;
+	}
+	PMD_DRV_LOG(DEBUG, "Read modified GL_PRS_FVBM with 0x%08x\n",
+		    I40E_READ_REG(hw, I40E_GL_PRS_FVBM(2)));
+
+	return ret;
+}
+
+static int
+i40e_dev_global_config_set(struct i40e_hw *hw, struct rte_eth_global_cfg *cfg)
+{
+	int ret = -EINVAL;
+
+	if (!hw || !cfg)
+		return -EINVAL;
+
+	switch (cfg->cfg_type) {
+	case RTE_ETH_GLOBAL_CFG_TYPE_GRE_KEY_LEN:
+		ret = i40e_dev_set_gre_key_len(hw, cfg->cfg.gre_key_len);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unknown config type %u", cfg->cfg_type);
+		break;
+	}
+
+	return ret;
+}
+
+static int
+i40e_filter_ctrl_global_config(struct rte_eth_dev *dev,
+			       enum rte_filter_op filter_op,
+			       void *arg)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret = I40E_ERR_PARAM;
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_SET:
+		ret = i40e_dev_global_config_set(hw,
+			(struct rte_eth_global_cfg *)arg);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unknown operation %u", filter_op);
+		break;
+	}
+
+	return ret;
+}
+
+static int
+i40e_tunnel_filter_handle(struct rte_eth_dev *dev,
+			  enum rte_filter_op filter_op,
+			  void *arg)
 {
 	struct rte_eth_tunnel_filter_conf *filter;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -5935,6 +6011,7 @@ i40e_tunnel_filter_handle(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 	case RTE_ETH_FILTER_NOP:
 		if (!(pf->flags & I40E_FLAG_VXLAN))
 			ret = I40E_NOT_SUPPORTED;
+		break;
 	case RTE_ETH_FILTER_ADD:
 		ret = i40e_dev_tunnel_filter_set(pf, filter, 1);
 		break;
@@ -6928,6 +7005,10 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_NONE:
+		/* For global configuration */
+		ret = i40e_filter_ctrl_global_config(dev, filter_op, arg);
+		break;
 	case RTE_ETH_FILTER_HASH:
 		ret = i40e_hash_filter_ctrl(dev, filter_op, arg);
 		break;
