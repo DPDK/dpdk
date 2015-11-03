@@ -1779,3 +1779,36 @@ Set the global configurations of hash filters::
 For example, to enable simple_xor for flow type of ipv6 on port 2::
 
    testpmd> set_hash_global_config 2 simple_xor ipv6 enable
+
+set_hash_input_set
+~~~~~~~~~~~~~~~~~~
+
+Set the input set for hash::
+
+   set_hash_input_set (port_id) (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
+   ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
+   l2_payload) (ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos| \
+   ipv4-proto|ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port| \
+   tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag| \
+   udp-key|gre-key|fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th| \
+   fld-8th|none) (select|add)
+
+For example, to add source IP to hash input set for flow type of ipv4 on port 0::
+
+   testpmd> set_hash_input_set 0 ipv4 src-ipv4 add
+
+set_fdir_input_set
+~~~~~~~~~~~~~~~~~~
+
+Set the input set for Fdir::
+
+   set_fdir_input_set (port_id) (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
+   ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload)
+   (src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|udp-src-port|udp-dst-port| \
+   tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag| \
+   fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th|fld-8th|none) \
+   (select|add)
+
+For example to add source IP to FD input set for flow type of ipv4 on port 0::
+
+   testpmd> set_fdir_input_set 0 ipv4 src-ipv4 add

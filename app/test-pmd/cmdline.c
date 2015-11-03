@@ -692,6 +692,28 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload)"
 			" (enable|disable)\n"
 			"    Set the global configurations of hash filters.\n\n"
+
+			"set_hash_input_set (port_id) (ipv4|ipv4-frag|"
+			"ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|"
+			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|"
+			"l2_payload) (ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|"
+			"dst-ipv6|ipv4-tos|ipv4-proto|ipv6-tc|"
+			"ipv6-next-header|udp-src-port|udp-dst-port|"
+			"tcp-src-port|tcp-dst-port|sctp-src-port|"
+			"sctp-dst-port|sctp-veri-tag|udp-key|gre-key|fld-1st|"
+			"fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th|"
+			"fld-8th|none) (select|add)\n"
+			"    Set the input set for hash.\n\n"
+
+			"set_fdir_input_set (port_id) (ipv4|ipv4-frag|"
+			"ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|"
+			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|"
+			"l2_payload) (src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|"
+			"udp-src-port|udp-dst-port|tcp-src-port|tcp-dst-port|"
+			"sctp-src-port|sctp-dst-port|sctp-veri-tag|fld-1st|"
+			"fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th|"
+			"fld-8th|none) (select|add)\n"
+			"    Set the input set for FDir.\n\n"
 		);
 	}
 }
@@ -9205,6 +9227,200 @@ cmdline_parse_inst_t cmd_set_hash_global_config = {
 	},
 };
 
+/* Set hash input set */
+struct cmd_set_hash_input_set_result {
+	cmdline_fixed_string_t set_hash_input_set;
+	uint8_t port_id;
+	cmdline_fixed_string_t flow_type;
+	cmdline_fixed_string_t inset_field;
+	cmdline_fixed_string_t select;
+};
+
+static enum rte_eth_input_set_field
+str2inset(char *string)
+{
+	uint16_t i;
+
+	static const struct {
+		char str[32];
+		enum rte_eth_input_set_field inset;
+	} inset_table[] = {
+		{"ovlan", RTE_ETH_INPUT_SET_L2_OUTER_VLAN},
+		{"ivlan", RTE_ETH_INPUT_SET_L2_INNER_VLAN},
+		{"src-ipv4", RTE_ETH_INPUT_SET_L3_SRC_IP4},
+		{"dst-ipv4", RTE_ETH_INPUT_SET_L3_DST_IP4},
+		{"ipv4-tos", RTE_ETH_INPUT_SET_L3_IP4_TOS},
+		{"ipv4-proto", RTE_ETH_INPUT_SET_L3_IP4_PROTO},
+		{"src-ipv6", RTE_ETH_INPUT_SET_L3_SRC_IP6},
+		{"dst-ipv6", RTE_ETH_INPUT_SET_L3_DST_IP6},
+		{"ipv6-tc", RTE_ETH_INPUT_SET_L3_IP6_TC},
+		{"ipv6-next-header", RTE_ETH_INPUT_SET_L3_IP6_NEXT_HEADER},
+		{"udp-src-port", RTE_ETH_INPUT_SET_L4_UDP_SRC_PORT},
+		{"udp-dst-port", RTE_ETH_INPUT_SET_L4_UDP_DST_PORT},
+		{"tcp-src-port", RTE_ETH_INPUT_SET_L4_TCP_SRC_PORT},
+		{"tcp-dst-port", RTE_ETH_INPUT_SET_L4_TCP_DST_PORT},
+		{"sctp-src-port", RTE_ETH_INPUT_SET_L4_SCTP_SRC_PORT},
+		{"sctp-dst-port", RTE_ETH_INPUT_SET_L4_SCTP_DST_PORT},
+		{"sctp-veri-tag", RTE_ETH_INPUT_SET_L4_SCTP_VERIFICATION_TAG},
+		{"udp-key", RTE_ETH_INPUT_SET_TUNNEL_L4_UDP_KEY},
+		{"gre-key", RTE_ETH_INPUT_SET_TUNNEL_GRE_KEY},
+		{"fld-1st", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_1ST_WORD},
+		{"fld-2nd", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_2ND_WORD},
+		{"fld-3rd", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_3RD_WORD},
+		{"fld-4th", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_4TH_WORD},
+		{"fld-5th", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_5TH_WORD},
+		{"fld-6th", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_6TH_WORD},
+		{"fld-7th", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_7TH_WORD},
+		{"fld-8th", RTE_ETH_INPUT_SET_FLEX_PAYLOAD_8TH_WORD},
+		{"none", RTE_ETH_INPUT_SET_NONE},
+	};
+
+	for (i = 0; i < RTE_DIM(inset_table); i++) {
+		if (!strcmp(string, inset_table[i].str))
+			return inset_table[i].inset;
+	}
+
+	return RTE_ETH_INPUT_SET_UNKNOWN;
+}
+
+static void
+cmd_set_hash_input_set_parsed(void *parsed_result,
+			      __rte_unused struct cmdline *cl,
+			      __rte_unused void *data)
+{
+	struct cmd_set_hash_input_set_result *res = parsed_result;
+	struct rte_eth_hash_filter_info info;
+
+	memset(&info, 0, sizeof(info));
+	info.info_type = RTE_ETH_HASH_FILTER_INPUT_SET_SELECT;
+	info.info.input_set_conf.flow_type = str2flowtype(res->flow_type);
+	info.info.input_set_conf.field[0] = str2inset(res->inset_field);
+	info.info.input_set_conf.inset_size = 1;
+	if (!strcmp(res->select, "select"))
+		info.info.input_set_conf.op = RTE_ETH_INPUT_SET_SELECT;
+	else if (!strcmp(res->select, "add"))
+		info.info.input_set_conf.op = RTE_ETH_INPUT_SET_ADD;
+	rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_HASH,
+				RTE_ETH_FILTER_SET, &info);
+}
+
+cmdline_parse_token_string_t cmd_set_hash_input_set_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
+		set_hash_input_set, "set_hash_input_set");
+cmdline_parse_token_num_t cmd_set_hash_input_set_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_hash_input_set_result,
+		port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_hash_input_set_flow_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
+		flow_type,
+		"ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#ipv6#"
+		"ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#ipv6-other#l2_payload");
+cmdline_parse_token_string_t cmd_set_hash_input_set_field =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
+		inset_field,
+		"ovlan#ivlan#src-ipv4#dst-ipv4#src-ipv6#dst-ipv6#"
+		"ipv4-tos#ipv4-proto#ipv6-tc#ipv6-next-header#udp-src-port#"
+		"udp-dst-port#tcp-src-port#tcp-dst-port#sctp-src-port#"
+		"sctp-dst-port#sctp-veri-tag#udp-key#gre-key#fld-1st#"
+		"fld-2nd#fld-3rd#fld-4th#fld-5th#fld-6th#fld-7th#"
+		"fld-8th#none");
+cmdline_parse_token_string_t cmd_set_hash_input_set_select =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
+		select, "select#add");
+
+cmdline_parse_inst_t cmd_set_hash_input_set = {
+	.f = cmd_set_hash_input_set_parsed,
+	.data = NULL,
+	.help_str = "set_hash_input_set <port_id> "
+	"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag|"
+	"ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
+	"ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos|ipv4-proto|"
+	"ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port|tcp-src-port|"
+	"tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag|udp-key|"
+	"gre-key|fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|"
+	"fld-7th|fld-8th|none select|add",
+	.tokens = {
+		(void *)&cmd_set_hash_input_set_cmd,
+		(void *)&cmd_set_hash_input_set_port_id,
+		(void *)&cmd_set_hash_input_set_flow_type,
+		(void *)&cmd_set_hash_input_set_field,
+		(void *)&cmd_set_hash_input_set_select,
+		NULL,
+	},
+};
+
+/* Set flow director input set */
+struct cmd_set_fdir_input_set_result {
+	cmdline_fixed_string_t set_fdir_input_set;
+	uint8_t port_id;
+	cmdline_fixed_string_t flow_type;
+	cmdline_fixed_string_t inset_field;
+	cmdline_fixed_string_t select;
+};
+
+static void
+cmd_set_fdir_input_set_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
+{
+	struct cmd_set_fdir_input_set_result *res = parsed_result;
+	struct rte_eth_fdir_filter_info info;
+
+	memset(&info, 0, sizeof(info));
+	info.info_type = RTE_ETH_FDIR_FILTER_INPUT_SET_SELECT;
+	info.info.input_set_conf.flow_type = str2flowtype(res->flow_type);
+	info.info.input_set_conf.field[0] = str2inset(res->inset_field);
+	info.info.input_set_conf.inset_size = 1;
+	if (!strcmp(res->select, "select"))
+		info.info.input_set_conf.op = RTE_ETH_INPUT_SET_SELECT;
+	else if (!strcmp(res->select, "add"))
+		info.info.input_set_conf.op = RTE_ETH_INPUT_SET_ADD;
+	rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
+		RTE_ETH_FILTER_SET, &info);
+}
+
+cmdline_parse_token_string_t cmd_set_fdir_input_set_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
+	set_fdir_input_set, "set_fdir_input_set");
+cmdline_parse_token_num_t cmd_set_fdir_input_set_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_fdir_input_set_result,
+	port_id, UINT8);
+cmdline_parse_token_string_t cmd_set_fdir_input_set_flow_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
+	flow_type,
+	"ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#ipv6#"
+	"ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#ipv6-other#l2_payload");
+cmdline_parse_token_string_t cmd_set_fdir_input_set_field =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
+	inset_field,
+	"src-ipv4#dst-ipv4#src-ipv6#dst-ipv6#udp-src-port#udp-dst-port#"
+	"tcp-src-port#tcp-dst-port#sctp-src-port#sctp-dst-port#"
+	"sctp-veri-tag#fld-1st#fld-2nd#fld-3rd#fld-4th#fld-5th#fld-6th#"
+	"fld-7th#fld-8th#none");
+cmdline_parse_token_string_t cmd_set_fdir_input_set_select =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
+	select, "select#add");
+
+cmdline_parse_inst_t cmd_set_fdir_input_set = {
+	.f = cmd_set_fdir_input_set_parsed,
+	.data = NULL,
+	.help_str = "set_fdir_input_set <port_id> "
+	"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag|"
+	"ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
+	"src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|udp-src-port|udp-dst-port|"
+	"tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag|"
+	"fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|"
+	"fld-7th|fld-8th|none select|add",
+	.tokens = {
+		(void *)&cmd_set_fdir_input_set_cmd,
+		(void *)&cmd_set_fdir_input_set_port_id,
+		(void *)&cmd_set_fdir_input_set_flow_type,
+		(void *)&cmd_set_fdir_input_set_field,
+		(void *)&cmd_set_fdir_input_set_select,
+		NULL,
+	},
+};
+
 /* *** ADD/REMOVE A MULTICAST MAC ADDRESS TO/FROM A PORT *** */
 struct cmd_mcast_addr_result {
 	cmdline_fixed_string_t mcast_addr_cmd;
@@ -9392,6 +9608,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_sym_hash_ena_per_port,
 	(cmdline_parse_inst_t *)&cmd_get_hash_global_config,
 	(cmdline_parse_inst_t *)&cmd_set_hash_global_config,
+	(cmdline_parse_inst_t *)&cmd_set_hash_input_set,
+	(cmdline_parse_inst_t *)&cmd_set_fdir_input_set,
 	(cmdline_parse_inst_t *)&cmd_mcast_addr,
 	NULL,
 };
