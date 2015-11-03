@@ -239,6 +239,8 @@ Libraries
 Examples
 ~~~~~~~~
 
+* **l3fwd: Fixed crash with IPv6.**
+
 * **vhost_xen: Fixed compile error.**
 
 
