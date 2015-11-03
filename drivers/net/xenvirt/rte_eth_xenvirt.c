@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -637,7 +637,6 @@ eth_dev_xenvirt_create(const char *name, const char *params,
                 enum dev_action action)
 {
 	struct rte_eth_dev_data *data = NULL;
-	struct rte_pci_device *pci_dev = NULL;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	struct xenvirt_dict dict;
@@ -659,10 +658,6 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 	if (data == NULL)
 		goto err;
 
-	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
-	if (pci_dev == NULL)
-		goto err;
-
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
 	if (internals == NULL)
 		goto err;
@@ -671,8 +666,6 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 	eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
 	if (eth_dev == NULL)
 		goto err;
-
-	pci_dev->numa_node = numa_node;
 
 	data->dev_private = internals;
 	data->port_id = eth_dev->data->port_id;
@@ -690,7 +683,6 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 	eth_dev->dev_ops = &ops;
 
 	eth_dev->data->dev_flags = RTE_PCI_DRV_DETACHABLE;
-	eth_dev->pci_dev = pci_dev;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->drv_name = drivername;
 	eth_dev->driver = NULL;
@@ -706,7 +698,6 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 
 err:
 	rte_free(data);
-	rte_free(pci_dev);
 	rte_free(internals);
 
 	return -1;
