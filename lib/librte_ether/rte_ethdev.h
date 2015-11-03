@@ -1553,7 +1553,16 @@ struct rte_eth_dev_data {
 		all_multicast : 1, /**< RX all multicast mode ON(1) / OFF(0). */
 		dev_started : 1,   /**< Device state: STARTED(1) / STOPPED(0). */
 		lro         : 1;   /**< RX LRO is ON(1) / OFF(0) */
+	uint32_t dev_flags; /**< Capabilities */
+	enum rte_kernel_driver kdrv;    /**< Kernel driver passthrough */
+	int numa_node;  /**< NUMA node connection */
+	const char *drv_name;   /**< Driver name */
 };
+
+/** Device supports hotplug detach */
+#define RTE_ETH_DEV_DETACHABLE   0x0001
+/** Device supports link state interrupt */
+#define RTE_ETH_DEV_INTR_LSC     0x0002
 
 /**
  * @internal
@@ -3734,6 +3743,20 @@ extern int rte_eth_timesync_read_rx_timestamp(uint8_t port_id,
  */
 extern int rte_eth_timesync_read_tx_timestamp(uint8_t port_id,
 					      struct timespec *timestamp);
+
+/**
+ * Copy pci device info to the Ethernet device data.
+ *
+ * @param eth_dev
+ * The *eth_dev* pointer is the address of the *rte_eth_dev* structure.
+ * @param pci_dev
+ * The *pci_dev* pointer is the address of the *rte_pci_device* structure.
+ *
+ * @return
+ *   - 0 on success, negative on error
+ */
+extern void rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_dev);
+
 
 #ifdef __cplusplus
 }

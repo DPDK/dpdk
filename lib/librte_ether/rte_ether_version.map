@@ -131,6 +131,7 @@ DPDK_2.1 {
 DPDK_2.2 {
 	global:
 
+	rte_eth_copy_pci_info;
 	rte_eth_dev_get_dcb_info;
 	rte_eth_rx_queue_info_get;
 	rte_eth_tx_queue_info_get;

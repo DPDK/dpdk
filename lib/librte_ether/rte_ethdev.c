@@ -3247,3 +3247,22 @@ rte_eth_dev_get_dcb_info(uint8_t port_id,
 	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_dcb_info, -ENOTSUP);
 	return (*dev->dev_ops->get_dcb_info)(dev, dcb_info);
 }
+
+void
+rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_dev)
+{
+	if ((eth_dev == NULL) || (pci_dev == NULL)) {
+		PMD_DEBUG_TRACE("NULL pointer eth_dev=%p pci_dev=%p\n",
+				eth_dev, pci_dev);
+	}
+
+	eth_dev->data->dev_flags = 0;
+	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
+	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_DETACHABLE)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
+
+	eth_dev->data->kdrv = pci_dev->kdrv;
+	eth_dev->data->numa_node = pci_dev->numa_node;
+	eth_dev->data->drv_name = pci_dev->driver->name;
+}
