@@ -2169,7 +2169,8 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head, int m_p
 				struct ether_hdr *eh
 				    = rte_pktmbuf_mtod(m0, struct ether_hdr *);
 
-				tx_start_bd->vlan_or_ethertype = eh->ether_type;
+				tx_start_bd->vlan_or_ethertype
+				    = rte_cpu_to_le_16(rte_be_to_cpu_16(eh->ether_type));
 			}
 		}
 
