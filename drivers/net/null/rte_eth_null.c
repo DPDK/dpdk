@@ -366,13 +366,6 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	}
 }
 
-static struct eth_driver rte_null_pmd = {
-	.pci_drv = {
-		.name = "rte_null_pmd",
-		.drv_flags = RTE_PCI_DRV_DETACHABLE,
-	},
-};
-
 static void
 eth_queue_release(void *q)
 {
@@ -501,7 +494,6 @@ eth_dev_null_create(const char *name,
 	const unsigned nb_rx_queues = 1;
 	const unsigned nb_tx_queues = 1;
 	struct rte_eth_dev_data *data = NULL;
-	struct rte_pci_device *pci_dev = NULL;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 
@@ -523,10 +515,6 @@ eth_dev_null_create(const char *name,
 	 */
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
-		goto error;
-
-	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
-	if (pci_dev == NULL)
 		goto error;
 
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
@@ -558,9 +546,6 @@ eth_dev_null_create(const char *name,
 
 	rte_memcpy(internals->rss_key, default_rss_key, 40);
 
-	pci_dev->numa_node = numa_node;
-	pci_dev->driver = &rte_null_pmd.pci_drv;
-
 	data->dev_private = internals;
 	data->port_id = eth_dev->data->port_id;
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
@@ -571,8 +556,7 @@ eth_dev_null_create(const char *name,
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
-	eth_dev->pci_dev = pci_dev;
-	eth_dev->driver = &rte_null_pmd;
+
 	TAILQ_INIT(&eth_dev->link_intr_cbs);
 
 	eth_dev->driver = NULL;
@@ -594,7 +578,6 @@ eth_dev_null_create(const char *name,
 
 error:
 	rte_free(data);
-	rte_free(pci_dev);
 	rte_free(internals);
 
 	return -1;
@@ -697,14 +680,13 @@ rte_pmd_null_devuninit(const char *name)
 	RTE_LOG(INFO, PMD, "Closing null ethdev on numa socket %u\n",
 			rte_socket_id());
 
-	/* reserve an ethdev entry */
+	/* find the ethdev entry */
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
 		return -1;
 
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->data);
-	rte_free(eth_dev->pci_dev);
 
 	rte_eth_dev_release_port(eth_dev);
 
