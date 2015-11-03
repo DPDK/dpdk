@@ -427,7 +427,7 @@ rte_eth_dev_socket_id(uint8_t port_id)
 {
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
-	return rte_eth_devices[port_id].pci_dev->numa_node;
+	return rte_eth_devices[port_id].data->numa_node;
 }
 
 uint8_t
@@ -533,27 +533,25 @@ rte_eth_dev_get_port_by_addr(const struct rte_pci_addr *addr, uint8_t *port_id)
 static int
 rte_eth_dev_is_detachable(uint8_t port_id)
 {
-	uint32_t drv_flags;
+	uint32_t dev_flags;
 
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id);
 		return -EINVAL;
 	}
 
-	if (rte_eth_devices[port_id].dev_type == RTE_ETH_DEV_PCI) {
-		switch (rte_eth_devices[port_id].pci_dev->kdrv) {
-		case RTE_KDRV_IGB_UIO:
-		case RTE_KDRV_UIO_GENERIC:
-		case RTE_KDRV_NIC_UIO:
-			break;
-		case RTE_KDRV_VFIO:
-		default:
-			return -ENOTSUP;
-		}
+	switch (rte_eth_devices[port_id].data->kdrv) {
+	case RTE_KDRV_IGB_UIO:
+	case RTE_KDRV_UIO_GENERIC:
+	case RTE_KDRV_NIC_UIO:
+	case RTE_KDRV_NONE:
+		break;
+	case RTE_KDRV_VFIO:
+	default:
+		return -ENOTSUP;
 	}
-
-	drv_flags = rte_eth_devices[port_id].driver->pci_drv.drv_flags;
-	return !(drv_flags & RTE_PCI_DRV_DETACHABLE);
+	dev_flags = rte_eth_devices[port_id].data->dev_flags;
+	return !(dev_flags & RTE_ETH_DEV_DETACHABLE);
 }
 
 /* attach the new physical device, then store port_id of the device */
@@ -965,14 +963,11 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * If link state interrupt is enabled, check that the
 	 * device supports it.
 	 */
-	if (dev_conf->intr_conf.lsc == 1) {
-		const struct rte_pci_driver *pci_drv = &dev->driver->pci_drv;
-
-		if (!(pci_drv->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
+	if ((dev_conf->intr_conf.lsc == 1) &&
+		(!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC))) {
 			PMD_DEBUG_TRACE("driver %s does not support lsc\n",
-					pci_drv->name);
+					dev->data->drv_name);
 			return -EINVAL;
-		}
 	}
 
 	/*
@@ -1634,8 +1629,7 @@ rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 	FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
 	dev_info->pci_dev = dev->pci_dev;
-	if (dev->driver)
-		dev_info->driver_name = dev->driver->pci_drv.name;
+	dev_info->driver_name = dev->data->drv_name;
 }
 
 void
