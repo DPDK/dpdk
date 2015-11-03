@@ -617,13 +617,6 @@ static const struct eth_dev_ops ops = {
 	.stats_reset = eth_stats_reset,
 };
 
-static struct eth_driver rte_pcap_pmd = {
-	.pci_drv = {
-		.name = "rte_pcap_pmd",
-		.drv_flags = RTE_PCI_DRV_DETACHABLE,
-	},
-};
-
 /*
  * Function handler that opens the pcap file for reading a stores a
  * reference of it for use it later on.
@@ -806,7 +799,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 		struct rte_kvargs *kvlist)
 {
 	struct rte_eth_dev_data *data = NULL;
-	struct rte_pci_device *pci_dev = NULL;
 	unsigned k_idx;
 	struct rte_kvargs_pair *pair = NULL;
 
@@ -819,15 +811,11 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	RTE_LOG(INFO, PMD,
 			"Creating pcap-backed ethdev on numa socket %u\n", numa_node);
 
-	/* now do all data allocation - for eth_dev structure, dummy pci driver
+	/* now do all data allocation - for eth_dev structure
 	 * and internal (private) data
 	 */
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
-		goto error;
-
-	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
-	if (pci_dev == NULL)
 		goto error;
 
 	*internals = rte_zmalloc_socket(name, sizeof(**internals), 0, numa_node);
@@ -860,8 +848,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	else
 		(*internals)->if_index = if_nametoindex(pair->value);
 
-	pci_dev->numa_node = numa_node;
-
 	data->dev_private = *internals;
 	data->port_id = (*eth_dev)->data->port_id;
 	snprintf(data->name, sizeof(data->name), "%s", (*eth_dev)->data->name);
@@ -874,8 +860,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
-	(*eth_dev)->pci_dev = pci_dev;
-	(*eth_dev)->driver = &rte_pcap_pmd;
 	(*eth_dev)->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	(*eth_dev)->driver = NULL;
 	(*eth_dev)->data->kdrv = RTE_KDRV_NONE;
@@ -886,7 +870,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 
 error:
 	rte_free(data);
-	rte_free(pci_dev);
 	rte_free(*internals);
 
 	return -1;
@@ -1101,7 +1084,6 @@ rte_pmd_pcap_devuninit(const char *name)
 
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->data);
-	rte_free(eth_dev->pci_dev);
 
 	rte_eth_dev_release_port(eth_dev);
 
