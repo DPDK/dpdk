@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -879,7 +879,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 
 	RTE_VERIFY(port->rx_ring == NULL);
 	RTE_VERIFY(port->tx_ring == NULL);
-	socket_id = rte_eth_devices[slave_id].pci_dev->numa_node;
+	socket_id = rte_eth_devices[slave_id].data->numa_node;
 
 	element_size = sizeof(struct slow_protocol_frame) + sizeof(struct rte_mbuf)
 				+ RTE_PKTMBUF_HEADROOM;

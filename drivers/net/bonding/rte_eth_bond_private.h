@@ -174,7 +174,7 @@ struct bond_dev_private {
 extern struct eth_dev_ops default_dev_ops;
 
 int
-valid_bonded_ethdev(const struct rte_eth_dev *eth_dev);
+check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev);
 
 /* Search given slave array to find possition of given id.
  * Return slave pos or slaves_count if not found. */

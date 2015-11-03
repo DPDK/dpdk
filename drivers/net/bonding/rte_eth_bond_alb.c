@@ -65,7 +65,7 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev)
 
 	uint16_t data_size;
 	char mem_name[RTE_ETH_NAME_MAX_LEN];
-	int socket_id = bond_dev->pci_dev->numa_node;
+	int socket_id = bond_dev->data->numa_node;
 
 	/* Fill hash table with initial values */
 	memset(hash_table, 0, sizeof(struct client_data) * ALB_HASH_TABLE_SIZE);

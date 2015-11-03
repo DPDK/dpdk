@@ -1307,7 +1307,7 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	rte_eth_dev_stop(slave_eth_dev->data->port_id);
 
 	/* Enable interrupts on slave device if supported */
-	if (slave_eth_dev->driver->pci_drv.drv_flags & RTE_PCI_DRV_INTR_LSC)
+	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		slave_eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
 	/* If RSS is enabled for bonding, try to enable it for slaves  */
@@ -1403,9 +1403,9 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	}
 
 	/* If lsc interrupt is set, check initial slave's link status */
-	if (slave_eth_dev->driver->pci_drv.drv_flags & RTE_PCI_DRV_INTR_LSC)
+	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		bond_ethdev_lsc_event_callback(slave_eth_dev->data->port_id,
-				RTE_ETH_EVENT_INTR_LSC, &bonded_eth_dev->data->port_id);
+			RTE_ETH_EVENT_INTR_LSC, &bonded_eth_dev->data->port_id);
 
 	return 0;
 }
@@ -1444,7 +1444,7 @@ slave_add(struct bond_dev_private *internals,
 
 	/* If slave device doesn't support interrupts then we need to enabled
 	 * polling to monitor link status */
-	if (!(slave_eth_dev->pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
+	if (!(slave_eth_dev->data->dev_flags & RTE_PCI_DRV_INTR_LSC)) {
 		slave_details->link_status_poll_enabled = 1;
 
 		if (!internals->link_status_polling_enabled) {
@@ -1488,7 +1488,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	int i;
 
 	/* slave eth dev will be started by bonded device */
-	if (valid_bonded_ethdev(eth_dev)) {
+	if (check_for_bonded_ethdev(eth_dev)) {
 		RTE_BOND_LOG(ERR, "User tried to explicitly start a slave eth_dev (%d)",
 				eth_dev->data->port_id);
 		return -1;
@@ -1633,7 +1633,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = (uint16_t)512;
 
 	dev_info->min_rx_bufsize = 0;
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->pci_dev = NULL;
 
 	dev_info->rx_offload_capa = internals->rx_offload_capa;
 	dev_info->tx_offload_capa = internals->tx_offload_capa;
@@ -1649,7 +1649,7 @@ bond_ethdev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 {
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)
 			rte_zmalloc_socket(NULL, sizeof(struct bond_rx_queue),
-					0, dev->pci_dev->numa_node);
+					0, dev->data->numa_node);
 	if (bd_rx_q == NULL)
 		return -1;
 
@@ -1673,7 +1673,7 @@ bond_ethdev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 {
 	struct bond_tx_queue *bd_tx_q  = (struct bond_tx_queue *)
 			rte_zmalloc_socket(NULL, sizeof(struct bond_tx_queue),
-					0, dev->pci_dev->numa_node);
+					0, dev->data->numa_node);
 
 	if (bd_tx_q == NULL)
 		return -1;
@@ -1926,7 +1926,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	bonded_eth_dev = &rte_eth_devices[*(uint8_t *)param];
 	slave_eth_dev = &rte_eth_devices[port_id];
 
-	if (valid_bonded_ethdev(bonded_eth_dev))
+	if (check_for_bonded_ethdev(bonded_eth_dev))
 		return;
 
 	internals = bonded_eth_dev->data->dev_private;
