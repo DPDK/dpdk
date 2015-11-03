@@ -2747,9 +2747,8 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	uint16_t sum_queues = 0, sum_vsis, left_queues;
+	uint16_t qp_count = 0, vsi_count = 0;
 
-	/* First check if FW support SRIOV */
 	if (dev->pci_dev->max_vfs && !hw->func_caps.sr_iov_1_1) {
 		PMD_INIT_LOG(ERR, "HW configuration doesn't support SRIOV");
 		return -EINVAL;
@@ -2760,109 +2759,85 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 	pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS] = I40E_DEFAULT_LOW_WATER;
 
 	pf->flags = I40E_FLAG_HEADER_SPLIT_DISABLED;
-	pf->max_num_vsi = RTE_MIN(hw->func_caps.num_vsis, I40E_MAX_NUM_VSIS);
-	PMD_INIT_LOG(INFO, "Max supported VSIs:%u", pf->max_num_vsi);
-	/* Allocate queues for pf */
-	if (hw->func_caps.rss) {
+	pf->max_num_vsi = hw->func_caps.num_vsis;
+	pf->lan_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF;
+	pf->vmdq_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
+	pf->vf_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
+
+	/* FDir queue/VSI allocation */
+	pf->fdir_qp_offset = 0;
+	if (hw->func_caps.fd) {
+		pf->flags |= I40E_FLAG_FDIR;
+		pf->fdir_nb_qps = I40E_DEFAULT_QP_NUM_FDIR;
+	} else {
+		pf->fdir_nb_qps = 0;
+	}
+	qp_count += pf->fdir_nb_qps;
+	vsi_count += 1;
+
+	/* LAN queue/VSI allocation */
+	pf->lan_qp_offset = pf->fdir_qp_offset + pf->fdir_nb_qps;
+	if (!hw->func_caps.rss) {
+		pf->lan_nb_qps = 1;
+	} else {
 		pf->flags |= I40E_FLAG_RSS;
 		if (hw->mac.type == I40E_MAC_X722)
 			pf->flags |= I40E_FLAG_RSS_AQ_CAPABLE;
-		pf->lan_nb_qps = RTE_MIN(hw->func_caps.num_tx_qp,
-			(uint32_t)(1 << hw->func_caps.rss_table_entry_width));
-		pf->lan_nb_qps = i40e_align_floor(pf->lan_nb_qps);
-	} else
-		pf->lan_nb_qps = 1;
-	sum_queues = pf->lan_nb_qps;
-	/* Default VSI is not counted in */
-	sum_vsis = 0;
-	PMD_INIT_LOG(INFO, "PF queue pairs:%u", pf->lan_nb_qps);
+		pf->lan_nb_qps = pf->lan_nb_qp_max;
+	}
+	qp_count += pf->lan_nb_qps;
+	vsi_count += 1;
 
+	/* VF queue/VSI allocation */
+	pf->vf_qp_offset = pf->lan_qp_offset + pf->lan_nb_qps;
 	if (hw->func_caps.sr_iov_1_1 && dev->pci_dev->max_vfs) {
 		pf->flags |= I40E_FLAG_SRIOV;
 		pf->vf_nb_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
-		if (dev->pci_dev->max_vfs > hw->func_caps.num_vfs) {
-			PMD_INIT_LOG(ERR, "Config VF number %u, "
-				     "max supported %u.",
-				     dev->pci_dev->max_vfs,
-				     hw->func_caps.num_vfs);
-			return -EINVAL;
-		}
-		if (pf->vf_nb_qps > I40E_MAX_QP_NUM_PER_VF) {
-			PMD_INIT_LOG(ERR, "FVL VF queue %u, "
-				     "max support %u queues.",
-				     pf->vf_nb_qps, I40E_MAX_QP_NUM_PER_VF);
-			return -EINVAL;
-		}
 		pf->vf_num = dev->pci_dev->max_vfs;
-		sum_queues += pf->vf_nb_qps * pf->vf_num;
-		sum_vsis   += pf->vf_num;
-		PMD_INIT_LOG(INFO, "Max VF num:%u each has queue pairs:%u",
-			     pf->vf_num, pf->vf_nb_qps);
-	} else
+		PMD_DRV_LOG(DEBUG, "%u VF VSIs, %u queues per VF VSI, "
+			    "in total %u queues", pf->vf_num, pf->vf_nb_qps,
+			    pf->vf_nb_qps * pf->vf_num);
+	} else {
+		pf->vf_nb_qps = 0;
 		pf->vf_num = 0;
+	}
+	qp_count += pf->vf_nb_qps * pf->vf_num;
+	vsi_count += pf->vf_num;
 
+	/* VMDq queue/VSI allocation */
+	pf->vmdq_qp_offset = pf->vf_qp_offset + pf->vf_nb_qps * pf->vf_num;
 	if (hw->func_caps.vmdq) {
 		pf->flags |= I40E_FLAG_VMDQ;
-		pf->vmdq_nb_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
+		pf->vmdq_nb_qps = pf->vmdq_nb_qp_max;
 		pf->max_nb_vmdq_vsi = 1;
-		/*
-		 * If VMDQ available, assume a single VSI can be created.  Will adjust
-		 * later.
-		 */
-		sum_queues += pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi;
-		sum_vsis += pf->max_nb_vmdq_vsi;
+		PMD_DRV_LOG(DEBUG, "%u VMDQ VSIs, %u queues per VMDQ VSI, "
+			    "in total %u queues", pf->max_nb_vmdq_vsi,
+			    pf->vmdq_nb_qps,
+			    pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi);
 	} else {
 		pf->vmdq_nb_qps = 0;
 		pf->max_nb_vmdq_vsi = 0;
 	}
-	pf->nb_cfg_vmdq_vsi = 0;
-
-	if (hw->func_caps.fd) {
-		pf->flags |= I40E_FLAG_FDIR;
-		pf->fdir_nb_qps = I40E_DEFAULT_QP_NUM_FDIR;
-		/**
-		 * Each flow director consumes one VSI and one queue,
-		 * but can't calculate out predictably here.
-		 */
-	}
+	qp_count += pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi;
+	vsi_count += pf->max_nb_vmdq_vsi;
 
 	if (hw->func_caps.dcb)
 		pf->flags |= I40E_FLAG_DCB;
 
-	if (sum_vsis > pf->max_num_vsi ||
-		sum_queues > hw->func_caps.num_rx_qp) {
-		PMD_INIT_LOG(ERR, "VSI/QUEUE setting can't be satisfied");
-		PMD_INIT_LOG(ERR, "Max VSIs: %u, asked:%u",
-			     pf->max_num_vsi, sum_vsis);
-		PMD_INIT_LOG(ERR, "Total queue pairs:%u, asked:%u",
-			     hw->func_caps.num_rx_qp, sum_queues);
+	if (qp_count > hw->func_caps.num_tx_qp) {
+		PMD_DRV_LOG(ERR, "Failed to allocate %u queues, which exceeds "
+			    "the hardware maximum %u", qp_count,
+			    hw->func_caps.num_tx_qp);
+		return -EINVAL;
+	}
+	if (vsi_count > hw->func_caps.num_vsis) {
+		PMD_DRV_LOG(ERR, "Failed to allocate %u VSIs, which exceeds "
+			    "the hardware maximum %u", vsi_count,
+			    hw->func_caps.num_vsis);
 		return -EINVAL;
 	}
 
-	/* Adjust VMDQ setting to support as many VMs as possible */
-	if (pf->flags & I40E_FLAG_VMDQ) {
-		left_queues = hw->func_caps.num_rx_qp - sum_queues;
-
-		pf->max_nb_vmdq_vsi += RTE_MIN(left_queues / pf->vmdq_nb_qps,
-					pf->max_num_vsi - sum_vsis);
-
-		/* Limit the max VMDQ number that rte_ether that can support  */
-		pf->max_nb_vmdq_vsi = RTE_MIN(pf->max_nb_vmdq_vsi,
-					ETH_64_POOLS - 1);
-
-		PMD_INIT_LOG(INFO, "Max VMDQ VSI num:%u",
-				pf->max_nb_vmdq_vsi);
-		PMD_INIT_LOG(INFO, "VMDQ queue pairs:%u", pf->vmdq_nb_qps);
-	}
-
-	/* Each VSI occupy 1 MSIX interrupt at least, plus IRQ0 for misc intr
-	 * cause */
-	if (sum_vsis > hw->func_caps.num_msix_vectors - 1) {
-		PMD_INIT_LOG(ERR, "Too many VSIs(%u), MSIX intr(%u) not enough",
-			     sum_vsis, hw->func_caps.num_msix_vectors);
-		return -EINVAL;
-	}
-	return I40E_SUCCESS;
+	return 0;
 }
 
 static int
@@ -3252,7 +3227,8 @@ i40e_vsi_config_tc_queue_mapping(struct i40e_vsi *vsi,
 	bsf = rte_bsf32(qpnum_per_tc);
 
 	/* Adjust the queue number to actual queues that can be applied */
-	vsi->nb_qps = qpnum_per_tc * total_tc;
+	if (!(vsi->type == I40E_VSI_MAIN && total_tc == 1))
+		vsi->nb_qps = qpnum_per_tc * total_tc;
 
 	/**
 	 * Configure TC and queue mapping parameters, for enabled TC,

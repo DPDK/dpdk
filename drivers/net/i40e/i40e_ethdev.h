@@ -402,10 +402,18 @@ struct i40e_pf {
 	uint16_t vf_num;
 	/* Each of below queue pairs should be power of 2 since it's the
 	   precondition after TC configuration applied */
+	uint16_t lan_nb_qp_max;
 	uint16_t lan_nb_qps; /* The number of queue pairs of LAN */
+	uint16_t lan_qp_offset;
+	uint16_t vmdq_nb_qp_max;
 	uint16_t vmdq_nb_qps; /* The number of queue pairs of VMDq */
+	uint16_t vmdq_qp_offset;
+	uint16_t vf_nb_qp_max;
 	uint16_t vf_nb_qps; /* The number of queue pairs of VF */
+	uint16_t vf_qp_offset;
 	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
+	uint16_t fdir_qp_offset;
+
 	uint16_t hash_lut_size; /* The size of hash lookup table */
 	/* store VXLAN UDP ports */
 	uint16_t vxlan_ports[I40E_MAX_PF_UDP_OFFLOAD_PORTS];

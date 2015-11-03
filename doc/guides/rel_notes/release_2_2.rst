@@ -118,6 +118,13 @@ Drivers
   Fixed i40e issue that occurred when a DPDK application didn't initialize
   ports if memory wasn't available on socket 0.
 
+* **i40e: Fixed maximum of 64 queues per port.**
+
+  Fixed the issue in i40e of cannot supporting more than 64 queues per port,
+  though hardware actually supports that. The real number of queues may vary,
+  as long as the total number of queues used in PF, VFs, VMDq and FD does not
+  exceeds the hardware maximum.
+
 * **vhost: Fixed Qemu shutdown.**
 
   Fixed issue with libvirt ``virsh destroy`` not killing the VM.
@@ -190,6 +197,9 @@ ABI Changes
 
 * The new fields rx_desc_lim and tx_desc_lim are added into rte_eth_dev_info
   structure.
+
+* The maximum number of queues per port CONFIG_RTE_MAX_QUEUES_PER_PORT is
+  increased to 1024.
 
 * The mbuf structure was changed to support unified packet type.
   It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.

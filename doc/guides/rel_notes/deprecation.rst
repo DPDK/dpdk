@@ -8,11 +8,6 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
-* Significant ABI changes are planned for struct rte_eth_dev to support up to
-  1024 queues per port. This change will be in release 2.2.
-  There is no backward compatibility planned from release 2.2.
-  All binaries will need to be rebuilt from release 2.2.
-
 * The following fields have been deprecated in rte_eth_stats:
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
