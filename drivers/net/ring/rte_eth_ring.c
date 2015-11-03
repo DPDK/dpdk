@@ -46,8 +46,6 @@
 #define ETH_RING_ACTION_CREATE		"CREATE"
 #define ETH_RING_ACTION_ATTACH		"ATTACH"
 
-static const char *ring_ethdev_driver_name = "Ring PMD";
-
 static const char *valid_arguments[] = {
 	ETH_RING_NUMA_NODE_ACTION_ARG,
 	NULL
@@ -254,15 +252,6 @@ static const struct eth_dev_ops ops = {
 	.mac_addr_add = eth_mac_addr_add,
 };
 
-static struct eth_driver rte_ring_pmd = {
-	.pci_drv = {
-		.name = "rte_ring_pmd",
-		.drv_flags = RTE_PCI_DRV_DETACHABLE,
-	},
-};
-
-static struct rte_pci_id id_table;
-
 int
 rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned nb_rx_queues,
@@ -271,7 +260,6 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned numa_node)
 {
 	struct rte_eth_dev_data *data = NULL;
-	struct rte_pci_device *pci_dev = NULL;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 
@@ -317,12 +305,6 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		goto error;
 	}
 
-	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, numa_node);
-	if (pci_dev == NULL) {
-		rte_errno = ENOMEM;
-		goto error;
-	}
-
 	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
 	if (internals == NULL) {
 		rte_errno = ENOMEM;
@@ -356,12 +338,6 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		data->tx_queues[i] = &internals->tx_ring_queues[i];
 	}
 
-	rte_ring_pmd.pci_drv.name = ring_ethdev_driver_name;
-	rte_ring_pmd.pci_drv.id_table = &id_table;
-
-	pci_dev->numa_node = numa_node;
-	pci_dev->driver = &rte_ring_pmd.pci_drv;
-
 	data->dev_private = internals;
 	data->port_id = eth_dev->data->port_id;
 	memmove(data->name, eth_dev->data->name, sizeof(data->name));
@@ -371,7 +347,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	data->mac_addrs = &internals->address;
 
 	eth_dev->data = data;
-	eth_dev->driver = &rte_ring_pmd;
+	eth_dev->driver = NULL;
 	eth_dev->dev_ops = &ops;
 	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
@@ -390,7 +366,6 @@ error:
 	rte_free(data->rx_queues);
 	rte_free(data->tx_queues);
 	rte_free(data);
-	rte_free(pci_dev);
 	rte_free(internals);
 
 	return -1;
@@ -607,7 +582,6 @@ rte_pmd_ring_devuninit(const char *name)
 	eth_dev_stop(eth_dev);
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->data);
-	rte_free(eth_dev->pci_dev);
 
 	rte_eth_dev_release_port(eth_dev);
 	return 0;
