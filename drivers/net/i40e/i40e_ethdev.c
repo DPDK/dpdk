@@ -5728,12 +5728,12 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 	 * If both VMDQ and RSS enabled, not all of PF queues are configured.
 	 * It's necessary to calulate the actual PF queues that are configured.
 	 */
-	if (pf->dev_data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG) {
+	if (pf->dev_data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG)
 		num = i40e_pf_calc_configured_queues_num(pf);
-		num = i40e_align_floor(num);
-	} else
-		num = i40e_align_floor(pf->dev_data->nb_rx_queues);
+	else
+		num = pf->dev_data->nb_rx_queues;
 
+	num = RTE_MIN(num, I40E_MAX_Q_PER_TC);
 	PMD_INIT_LOG(INFO, "Max of contiguous %u PF queues are configured",
 			num);
 

@@ -2171,7 +2171,7 @@ i40evf_config_rss(struct i40e_vf *vf)
 		return 0;
 	}
 
-	num = i40e_align_floor(vf->dev_data->nb_rx_queues);
+	num = RTE_MIN(vf->dev_data->nb_rx_queues, I40E_MAX_QP_NUM_PER_VF);
 	/* Fill out the look up table */
 	for (i = 0, j = 0; i < nb_q; i++, j++) {
 		if (j >= num)
