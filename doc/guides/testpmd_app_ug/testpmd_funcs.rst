@@ -1812,3 +1812,14 @@ Set the input set for Fdir::
 For example to add source IP to FD input set for flow type of ipv4 on port 0::
 
    testpmd> set_fdir_input_set 0 ipv4 src-ipv4 add
+
+global_config
+~~~~~~~~~~~~~
+
+Set different GRE key length for input set::
+
+   global_config (port_id) gre-key-len (number in bytes)
+
+For example to set GRE key length for input set to 4 bytes on port 0::
+
+   testpmd> global_config 0 gre-key-len 4
