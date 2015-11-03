@@ -108,6 +108,13 @@ struct vhost_virtqueue {
  #define VHOST_SUPPORTS_MQ	0
 #endif
 
+/*
+ * Define virtio 1.0 for older kernels
+ */
+#ifndef VIRTIO_F_VERSION_1
+ #define VIRTIO_F_VERSION_1 32
+#endif
+
 /**
  * Device structure contains all configuration information relating to the device.
  */
