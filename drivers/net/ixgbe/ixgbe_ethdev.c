@@ -2492,7 +2492,6 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	                  total_missed_rx +
 	                  hw_stats->illerrc +
 	                  hw_stats->errbc +
-	                  hw_stats->xec +
 	                  hw_stats->rfc +
 	                  hw_stats->fccrc +
 	                  hw_stats->fclast;
