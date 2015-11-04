@@ -1022,6 +1022,11 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "Invalid queue ID");
 		return -EINVAL;
 	}
+	if (filter->input.flow_ext.is_vf &&
+		filter->input.flow_ext.dst_id >= pf->vf_num) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID");
+		return -EINVAL;
+	}
 
 	memset(pkt, 0, I40E_FDIR_PKT_LEN);
 
@@ -1061,7 +1066,7 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 	volatile struct i40e_tx_desc *txdp;
 	volatile struct i40e_filter_program_desc *fdirdp;
 	uint32_t td_cmd;
-	uint16_t i;
+	uint16_t vsi_id, i;
 	uint8_t dest;
 
 	PMD_DRV_LOG(INFO, "filling filter programming descriptor.");
@@ -1083,9 +1088,13 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 					  I40E_TXD_FLTR_QW0_PCTYPE_SHIFT) &
 					  I40E_TXD_FLTR_QW0_PCTYPE_MASK);
 
-	/* Use LAN VSI Id by default */
+	if (filter->input.flow_ext.is_vf)
+		vsi_id = pf->vfs[filter->input.flow_ext.dst_id].vsi->vsi_id;
+	else
+		/* Use LAN VSI Id by default */
+		vsi_id = pf->main_vsi->vsi_id;
 	fdirdp->qindex_flex_ptype_vsi |=
-		rte_cpu_to_le_32((pf->main_vsi->vsi_id <<
+		rte_cpu_to_le_32((vsi_id <<
 				  I40E_TXD_FLTR_QW0_DEST_VSI_SHIFT) &
 				  I40E_TXD_FLTR_QW0_DEST_VSI_MASK);
 

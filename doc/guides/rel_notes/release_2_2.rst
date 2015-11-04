@@ -55,6 +55,8 @@ New Features
 
 * **Added different GRE key length for input set on Intel X710/XL710.**
 
+* **Added flow director support in i40e VF.**
+
 * **Added fm10k vector RX/TX.**
 
 * **Added fm10k TSO support for both PF and VF.**
