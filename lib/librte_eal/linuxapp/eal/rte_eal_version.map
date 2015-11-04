@@ -128,3 +128,10 @@ DPDK_2.1 {
 	rte_memzone_free;
 
 } DPDK_2.0;
+
+DPDK_2.2 {
+	global:
+
+	rte_intr_cap_multiple;
+
+} DPDK_2.1;

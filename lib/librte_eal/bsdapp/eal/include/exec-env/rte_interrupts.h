@@ -122,4 +122,14 @@ int rte_intr_dp_is_en(struct rte_intr_handle *intr_handle);
  */
 int rte_intr_allow_others(struct rte_intr_handle *intr_handle);
 
+/**
+ * The multiple interrupt vector capability of interrupt handle instance.
+ * It returns zero if no multiple interrupt vector support.
+ *
+ * @param intr_handle
+ *   Pointer to the interrupt handle.
+ */
+int
+rte_intr_cap_multiple(struct rte_intr_handle *intr_handle);
+
 #endif /* _RTE_BSDAPP_INTERRUPTS_H_ */

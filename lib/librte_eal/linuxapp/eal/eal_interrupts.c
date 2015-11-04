@@ -1212,3 +1212,12 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 	else
 		return !!(intr_handle->max_intr - intr_handle->nb_efd);
 }
+
+int
+rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
+{
+	if (intr_handle->type == RTE_INTR_HANDLE_VFIO_MSIX)
+		return 1;
+
+	return 0;
+}

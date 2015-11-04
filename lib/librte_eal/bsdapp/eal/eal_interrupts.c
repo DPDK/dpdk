@@ -110,3 +110,10 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 	RTE_SET_USED(intr_handle);
 	return 1;
 }
+
+int
+rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
+{
+	RTE_SET_USED(intr_handle);
+	return 0;
+}
