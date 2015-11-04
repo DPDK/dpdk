@@ -128,6 +128,10 @@ Drivers
 
   Fixed issue where a burst size less than 32 didn't receive anything.
 
+* **ixgbe: Fixed VF start with PF stopped.**
+
+  VF needs the PF interrupt support initialized even if not started.
+
 * **i40e: Fixed base driver allocation when not using first numa node.**
 
   Fixed i40e issue that occurred when a DPDK application didn't initialize
@@ -161,6 +165,7 @@ Drivers
   Fixed issue in hash library where, using multiple cores with
   hardware transactional memory support, thread scaling did not work,
   due to the global ring that is shared by all cores.
+
 
 Libraries
 ~~~~~~~~~
