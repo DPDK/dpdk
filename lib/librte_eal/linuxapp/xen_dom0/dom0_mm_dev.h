@@ -69,7 +69,7 @@
 #define MAX_EXCHANGE_FAIL_TIME 5  /**< Maximum times of allowing exchange fail .*/
 #define MAX_MEMBLOCK_SIZE (2 * DOM0_MEMBLOCK_SIZE)
 #define MAX_NUM_ORDER     (DOM0_CONTIG_NUM_ORDER + 1)
-#define SIZE_PER_BLOCK    2       /** < size of per memory block(2MB)).*/
+#define SIZE_PER_BLOCK    2       /**< Size of memory block (2MB).*/
 
 /**
  * A structure describing the private information for a dom0 device.

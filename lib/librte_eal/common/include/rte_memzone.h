@@ -92,7 +92,7 @@ struct rte_memzone {
 	int32_t socket_id;                /**< NUMA socket ID. */
 
 	uint32_t flags;                   /**< Characteristics of this memzone. */
-	uint32_t memseg_id;             /** <store the memzone is from which memseg. */
+	uint32_t memseg_id;               /**< Memseg it belongs. */
 } __attribute__((__packed__));
 
 /**

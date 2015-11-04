@@ -291,8 +291,8 @@ struct rte_eth_tunnel_filter_conf {
 
 	uint16_t filter_type;   /**< Filter type. */
 	enum rte_eth_tunnel_type tunnel_type; /**< Tunnel Type. */
-	uint32_t tenant_id;     /** < Tenant number. */
-	uint16_t queue_id;      /** < queue number. */
+	uint32_t tenant_id;     /**< Tenant number. */
+	uint16_t queue_id;      /**< Queue number. */
 };
 
 /**
@@ -315,8 +315,8 @@ struct rte_eth_global_cfg {
 	} cfg;
 };
 
-#define RTE_ETH_FDIR_MAX_FLEXLEN 16  /** < Max length of flexbytes. */
-#define RTE_ETH_INSET_SIZE_MAX   128 /** < Max length of input set. */
+#define RTE_ETH_FDIR_MAX_FLEXLEN 16  /**< Max length of flexbytes. */
+#define RTE_ETH_INSET_SIZE_MAX   128 /**< Max length of input set. */
 
 /**
  * Input set fields for Flow Director and Hash filters
