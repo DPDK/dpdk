@@ -180,6 +180,39 @@ New Features
   Due to its experimental state this application may change without notice.
   The application is supported only for Linux x86_64.
 
+* **IP pipeline application**
+
+  The following features have been added to ip_pipeline
+  application;
+
+  * Added Multiple Producers Multiple Consumers (MPSC)
+    and fragmentation/reassembly support to software rings.
+
+  * Added dynamic pipeline reconfiguration feature that
+    allows binding pipeline to other threads at runtime
+    using CLI commands.
+
+  * Added Enable/disable of promisc mode from ip_pipeline
+    configuration file.
+
+  * Added check on rx queues and tx queues of each link
+    whether they are used correctly in ip_pipeline
+    configuration file.
+
+  * Added flow id parameters to the flow-classification
+    table entries.
+
+  * Added more functions to the routing pipeline:
+    ARP table enable/disable, Q-in-Q and MPLS encapsulation,
+    add colour (Traffic-class for QoS) to the MPLS tag.
+
+  * Added flow-actions pipeline for traffic metering/marking
+    (for e.g. Two Rate Three Color Marker (trTCM)), policer etc.
+
+  * Modified the pass-through pipeline's actions-handler to
+    implement a generic approach to extract fields from the
+    packet's header and copying them to packet metadata.
+
 
 Resolved Issues
 ---------------
