@@ -45,6 +45,7 @@
 #include <sys/signalfd.h>
 #include <sys/ioctl.h>
 #include <sys/eventfd.h>
+#include <assert.h>
 
 #include <rte_common.h>
 #include <rte_interrupts.h>
@@ -1148,6 +1149,8 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 	int fd;
 	uint32_t n = RTE_MIN(nb_efd, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 
+	assert(nb_efd != 0);
+
 	if (intr_handle->type == RTE_INTR_HANDLE_VFIO_MSIX) {
 		for (i = 0; i < n; i++) {
 			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -1204,5 +1207,8 @@ rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
 int
 rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 {
-	return !!(intr_handle->max_intr - intr_handle->nb_efd);
+	if (!rte_intr_dp_is_en(intr_handle))
+		return 1;
+	else
+		return !!(intr_handle->max_intr - intr_handle->nb_efd);
 }

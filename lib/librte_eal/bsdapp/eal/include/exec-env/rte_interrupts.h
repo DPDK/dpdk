@@ -85,8 +85,9 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
  *
  * @param intr_handle
  *   Pointer to the interrupt handle.
- * @param nb_vec
+ * @param nb_efd
  *   Number of interrupt vector trying to enable.
+ *   The value 0 is not allowed.
  * @return
  *   - On success, zero.
  *   - On failure, a negative value.
