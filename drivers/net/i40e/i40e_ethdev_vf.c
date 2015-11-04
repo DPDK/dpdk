@@ -150,6 +150,10 @@ static int i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
 				      struct rte_eth_rss_conf *rss_conf);
 static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 					struct rte_eth_rss_conf *rss_conf);
+static int
+i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+static int
+i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
@@ -201,6 +205,9 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.tx_queue_stop        = i40evf_dev_tx_queue_stop,
 	.rx_queue_setup       = i40e_dev_rx_queue_setup,
 	.rx_queue_release     = i40e_dev_rx_queue_release,
+	.rx_queue_intr_enable = i40evf_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable = i40evf_dev_rx_queue_intr_disable,
+	.rx_descriptor_done   = i40e_dev_rx_descriptor_done,
 	.tx_queue_setup       = i40e_dev_tx_queue_setup,
 	.tx_queue_release     = i40e_dev_tx_queue_release,
 	.reta_update          = i40evf_dev_rss_reta_update,
@@ -741,22 +748,33 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_irq_map_info) + \
 		sizeof(struct i40e_virtchnl_vector_map)];
 	struct i40e_virtchnl_irq_map_info *map_info;
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	uint32_t vector_id;
 	int i, err;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
+			vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR;
+		else
+			vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR_LNX;
+	} else {
+		vector_id = I40E_MISC_VEC_ID;
+	}
+
 	map_info = (struct i40e_virtchnl_irq_map_info *)cmd_buffer;
 	map_info->num_vectors = 1;
 	map_info->vecmap[0].rxitr_idx = I40E_QINT_RQCTL_MSIX_INDX_NOITR;
 	map_info->vecmap[0].vsi_id = vf->vsi_res->vsi_id;
 	/* Alway use default dynamic MSIX interrupt */
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
-		map_info->vecmap[0].vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR;
-	else
-		map_info->vecmap[0].vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR_LNX;
-
+	map_info->vecmap[0].vector_id = vector_id;
 	/* Don't map any tx queue */
 	map_info->vecmap[0].txq_map = 0;
 	map_info->vecmap[0].rxq_map = 0;
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		map_info->vecmap[0].rxq_map |= 1 << i;
+		if (rte_intr_dp_is_en(intr_handle))
+			intr_handle->intr_vec[i] = vector_id;
+	}
 
 	args.ops = I40E_VIRTCHNL_OP_CONFIG_IRQ_MAP;
 	args.in_args = (u8 *)cmd_buffer;
@@ -1669,6 +1687,16 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+
+	if (!rte_intr_allow_others(intr_handle)) {
+		I40E_WRITE_REG(hw,
+			       I40E_VFINT_DYN_CTL01,
+			       I40E_VFINT_DYN_CTL01_INTENA_MASK |
+			       I40E_VFINT_DYN_CTL01_CLEARPBA_MASK);
+		I40E_WRITE_FLUSH(hw);
+		return;
+	}
 
 	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
 		/* To support DPDK PF host */
@@ -1681,6 +1709,8 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
 				I40E_VFINT_DYN_CTL01_INTENA_MASK |
 				I40E_VFINT_DYN_CTL01_CLEARPBA_MASK);
+
+	I40E_WRITE_FLUSH(hw);
 }
 
 static inline void
@@ -1688,13 +1718,78 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+
+	if (!rte_intr_allow_others(intr_handle)) {
+		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
+		I40E_WRITE_FLUSH(hw);
+		return;
+	}
 
 	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
 		I40E_WRITE_REG(hw,
-			I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR - 1),
-			0);
+			       I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR
+						    - 1),
+			       0);
 	else
 		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
+
+	I40E_WRITE_FLUSH(hw);
+}
+
+static int
+i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t interval =
+		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
+	uint16_t msix_intr;
+
+	msix_intr = intr_handle->intr_vec[queue_id];
+	if (msix_intr == I40E_MISC_VEC_ID)
+		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
+			       I40E_VFINT_DYN_CTL01_INTENA_MASK |
+			       I40E_VFINT_DYN_CTL01_CLEARPBA_MASK |
+			       (0 << I40E_VFINT_DYN_CTL01_ITR_INDX_SHIFT) |
+			       (interval <<
+				I40E_VFINT_DYN_CTL01_INTERVAL_SHIFT));
+	else
+		I40E_WRITE_REG(hw,
+			       I40E_VFINT_DYN_CTLN1(msix_intr -
+						    I40E_RX_VEC_START),
+			       I40E_VFINT_DYN_CTLN1_INTENA_MASK |
+			       I40E_VFINT_DYN_CTLN1_CLEARPBA_MASK |
+			       (0 << I40E_VFINT_DYN_CTLN1_ITR_INDX_SHIFT) |
+			       (interval <<
+				I40E_VFINT_DYN_CTLN1_INTERVAL_SHIFT));
+
+	I40E_WRITE_FLUSH(hw);
+
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+
+	return 0;
+}
+
+static int
+i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t msix_intr;
+
+	msix_intr = intr_handle->intr_vec[queue_id];
+	if (msix_intr == I40E_MISC_VEC_ID)
+		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
+	else
+		I40E_WRITE_REG(hw,
+			       I40E_VFINT_DYN_CTLN1(msix_intr -
+						    I40E_RX_VEC_START),
+			       0);
+
+	I40E_WRITE_FLUSH(hw);
+
+	return 0;
 }
 
 static int
@@ -1702,7 +1797,9 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 	struct ether_addr mac_addr;
+	uint32_t intr_vector = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1711,6 +1808,24 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 					dev->data->nb_tx_queues);
+
+	/* check and configure queue intr-vector mapping */
+	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		intr_vector = dev->data->nb_rx_queues;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (!intr_handle->intr_vec) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec\n", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
 
 	if (i40evf_rx_init(dev) != 0){
 		PMD_DRV_LOG(ERR, "failed to do RX init");
@@ -1741,6 +1856,10 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 		goto err_mac;
 	}
 
+	/* vf don't allow intr except for rxq intr */
+	if (dev->data->dev_conf.intr_conf.rxq != 0)
+		rte_intr_enable(intr_handle);
+
 	i40evf_enable_queues_intr(dev);
 	return 0;
 
@@ -1753,11 +1872,20 @@ err_queue:
 static void
 i40evf_dev_stop(struct rte_eth_dev *dev)
 {
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+
 	PMD_INIT_FUNC_TRACE();
 
-	i40evf_disable_queues_intr(dev);
 	i40evf_stop_queues(dev);
+	i40evf_disable_queues_intr(dev);
 	i40e_dev_clear_queues(dev);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
 }
 
 static int

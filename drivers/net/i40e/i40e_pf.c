@@ -547,11 +547,6 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 		goto send_msg;
 	}
 
-	if (irqmap->vecmap[0].vector_id == 0) {
-		PMD_DRV_LOG(ERR, "DPDK host don't support use IRQ0");
-		ret = I40E_ERR_PARAM;
-		goto send_msg;
-	}
 	/* This MSIX intr store the intr in VF range */
 	vf->vsi->msix_intr = irqmap->vecmap[0].vector_id;
 	vf->vsi->nb_msix = irqmap->num_vectors;

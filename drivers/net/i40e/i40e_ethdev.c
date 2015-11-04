@@ -76,11 +76,6 @@
 /* Maximun number of VSI */
 #define I40E_MAX_NUM_VSIS          (384UL)
 
-/* Default queue interrupt throttling time in microseconds */
-#define I40E_ITR_INDEX_DEFAULT          0
-#define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
-#define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
-
 #define I40E_PRE_TX_Q_CFG_WAIT_US       10 /* 10 us */
 
 /* Flow control default timer */
@@ -1099,16 +1094,6 @@ i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi)
 	I40E_WRITE_FLUSH(hw);
 }
 
-static inline uint16_t
-i40e_calc_itr_interval(int16_t interval)
-{
-	if (interval < 0 || interval > I40E_QUEUE_ITR_INTERVAL_MAX)
-		interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
-
-	/* Convert to hardware count, as writing each 1 represents 2 us */
-	return (interval/2);
-}
-
 static void
 __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 		       int base_queue, int nb_queue)
@@ -1159,13 +1144,24 @@ __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 	} else {
 		uint32_t reg;
 
-		/* num_msix_vectors_vf needs to minus irq0 */
-		reg = (hw->func_caps.num_msix_vectors_vf - 1) *
-			vsi->user_param + (msix_vect - 1);
+		if (msix_vect == I40E_MISC_VEC_ID) {
+			I40E_WRITE_REG(hw,
+				       I40E_VPINT_LNKLST0(vsi->user_param),
+				       (base_queue <<
+					I40E_VPINT_LNKLST0_FIRSTQ_INDX_SHIFT) |
+				       (0x0 <<
+					I40E_VPINT_LNKLST0_FIRSTQ_TYPE_SHIFT));
+		} else {
+			/* num_msix_vectors_vf needs to minus irq0 */
+			reg = (hw->func_caps.num_msix_vectors_vf - 1) *
+				vsi->user_param + (msix_vect - 1);
 
-		I40E_WRITE_REG(hw, I40E_VPINT_LNKLSTN(reg), (base_queue <<
-				I40E_VPINT_LNKLSTN_FIRSTQ_INDX_SHIFT) |
-				(0x0 << I40E_VPINT_LNKLSTN_FIRSTQ_TYPE_SHIFT));
+			I40E_WRITE_REG(hw, I40E_VPINT_LNKLSTN(reg),
+				       (base_queue <<
+					I40E_VPINT_LNKLSTN_FIRSTQ_INDX_SHIFT) |
+				       (0x0 <<
+					I40E_VPINT_LNKLSTN_FIRSTQ_TYPE_SHIFT));
+		}
 	}
 
 	I40E_WRITE_FLUSH(hw);

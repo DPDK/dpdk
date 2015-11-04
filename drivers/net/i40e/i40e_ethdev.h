@@ -162,6 +162,11 @@ enum i40e_flxpld_layer_idx {
 #define I40E_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
 #define I40E_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
 
+/* Default queue interrupt throttling time in microseconds */
+#define I40E_ITR_INDEX_DEFAULT          0
+#define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
+#define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
+
 struct i40e_adapter;
 
 /**
@@ -636,6 +641,16 @@ i40e_align_floor(int n)
 	if (n == 0)
 		return 0;
 	return 1 << (sizeof(n) * CHAR_BIT - 1 - __builtin_clz(n));
+}
+
+static inline uint16_t
+i40e_calc_itr_interval(int16_t interval)
+{
+	if (interval < 0 || interval > I40E_QUEUE_ITR_INTERVAL_MAX)
+		interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
+
+	/* Convert to hardware count, as writing each 1 represents 2 us */
+	return (interval / 2);
 }
 
 #define I40E_VALID_FLOW(flow_type) \
