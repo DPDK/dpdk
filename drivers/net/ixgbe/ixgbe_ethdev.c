@@ -4478,7 +4478,8 @@ ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
-	mask |= (1 << queue_id);
+	mask |= (1 << IXGBE_MISC_VEC_ID);
+	RTE_SET_USED(queue_id);
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
 
 	rte_intr_enable(&dev->pci_dev->intr_handle);
@@ -4494,7 +4495,8 @@ ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
-	mask &= ~(1 << queue_id);
+	mask &= ~(1 << IXGBE_MISC_VEC_ID);
+	RTE_SET_USED(queue_id);
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
 
 	return 0;
@@ -4630,7 +4632,7 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t q_idx;
-	uint32_t vector_idx = 0;
+	uint32_t vector_idx = IXGBE_MISC_VEC_ID;
 
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd.
@@ -4662,7 +4664,8 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t queue_id, vec = 0;
+	uint32_t queue_id, base = IXGBE_MISC_VEC_ID;
+	uint32_t vec = IXGBE_MISC_VEC_ID;
 	uint32_t mask;
 	uint32_t gpie;
 
@@ -4671,6 +4674,9 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 	 */
 	if (!rte_intr_dp_is_en(intr_handle))
 		return;
+
+	if (rte_intr_allow_others(intr_handle))
+		vec = base = IXGBE_RX_VEC_START;
 
 	/* setup GPIE for MSI-x mode */
 	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
@@ -4695,23 +4701,23 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 		/* by default, 1:1 mapping */
 		ixgbe_set_ivar_map(hw, 0, queue_id, vec);
 		intr_handle->intr_vec[queue_id] = vec;
-		if (vec < intr_handle->nb_efd - 1)
+		if (vec < base + intr_handle->nb_efd - 1)
 			vec++;
 	}
 
 	switch (hw->mac.type) {
 	case ixgbe_mac_82598EB:
 		ixgbe_set_ivar_map(hw, -1, IXGBE_IVAR_OTHER_CAUSES_INDEX,
-				   intr_handle->max_intr - 1);
+				   IXGBE_MISC_VEC_ID);
 		break;
 	case ixgbe_mac_82599EB:
 	case ixgbe_mac_X540:
-		ixgbe_set_ivar_map(hw, -1, 1, intr_handle->max_intr - 1);
+		ixgbe_set_ivar_map(hw, -1, 1, IXGBE_MISC_VEC_ID);
 		break;
 	default:
 		break;
 	}
-	IXGBE_WRITE_REG(hw, IXGBE_EITR(queue_id),
+	IXGBE_WRITE_REG(hw, IXGBE_EITR(IXGBE_MISC_VEC_ID),
 			IXGBE_MIN_INTER_INTERRUPT_INTERVAL_DEFAULT & 0xFFF);
 
 	/* set up to autoclear timer, and the vectors */

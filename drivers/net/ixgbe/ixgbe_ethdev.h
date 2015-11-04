@@ -123,6 +123,9 @@
 #define IXGBE_VF_IRQ_ENABLE_MASK        3          /* vf irq enable mask */
 #define IXGBE_VF_MAXMSIVECTOR           1
 
+#define IXGBE_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
+#define IXGBE_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
+
 /*
  * Information about the fdir mode.
  */
