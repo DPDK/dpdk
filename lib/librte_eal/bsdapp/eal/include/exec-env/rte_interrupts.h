@@ -38,6 +38,9 @@
 #ifndef _RTE_BSDAPP_INTERRUPTS_H_
 #define _RTE_BSDAPP_INTERRUPTS_H_
 
+#define RTE_INTR_VEC_ZERO_OFFSET      0
+#define RTE_INTR_VEC_RXTX_OFFSET      1
+
 enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_UNKNOWN = 0,
 	RTE_INTR_HANDLE_UIO,      /**< uio device handle */

@@ -39,6 +39,8 @@
 #define _RTE_LINUXAPP_INTERRUPTS_H_
 
 #define RTE_MAX_RXTX_INTR_VEC_ID     32
+#define RTE_INTR_VEC_ZERO_OFFSET      0
+#define RTE_INTR_VEC_RXTX_OFFSET      1
 
 enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_UNKNOWN = 0,

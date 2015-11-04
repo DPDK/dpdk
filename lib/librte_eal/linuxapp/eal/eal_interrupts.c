@@ -301,8 +301,10 @@ vfio_enable_msix(struct rte_intr_handle *intr_handle) {
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = 0;
 	fd_ptr = (int *) &irq_set->data;
-	memcpy(fd_ptr, intr_handle->efds, sizeof(intr_handle->efds));
-	fd_ptr[intr_handle->max_intr - 1] = intr_handle->fd;
+	/* INTR vector offset 0 reserve for non-efds mapping */
+	fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] = intr_handle->fd;
+	memcpy(&fd_ptr[RTE_INTR_VEC_RXTX_OFFSET], intr_handle->efds,
+		sizeof(*intr_handle->efds) * intr_handle->nb_efd);
 
 	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
@@ -1083,10 +1085,14 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	struct rte_epoll_event *rev;
 	struct rte_epoll_data *epdata;
 	int epfd_op;
+	unsigned int efd_idx;
 	int rc = 0;
 
+	efd_idx = (vec >= RTE_INTR_VEC_RXTX_OFFSET) ?
+		(vec - RTE_INTR_VEC_RXTX_OFFSET) : vec;
+
 	if (!intr_handle || intr_handle->nb_efd == 0 ||
-	    vec >= intr_handle->nb_efd) {
+	    efd_idx >= intr_handle->nb_efd) {
 		RTE_LOG(ERR, EAL, "Wrong intr vector number.\n");
 		return -EPERM;
 	}
@@ -1094,7 +1100,7 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	switch (op) {
 	case RTE_INTR_EVENT_ADD:
 		epfd_op = EPOLL_CTL_ADD;
-		rev = &intr_handle->elist[vec];
+		rev = &intr_handle->elist[efd_idx];
 		if (rev->status != RTE_EPOLL_INVALID) {
 			RTE_LOG(INFO, EAL, "Event already been added.\n");
 			return -EEXIST;
@@ -1106,7 +1112,8 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 		epdata->data   = data;
 		epdata->cb_fun = (rte_intr_event_cb_t)eal_intr_proc_rxtx_intr;
 		epdata->cb_arg = (void *)intr_handle;
-		rc = rte_epoll_ctl(epfd, epfd_op, intr_handle->efds[vec], rev);
+		rc = rte_epoll_ctl(epfd, epfd_op,
+				   intr_handle->efds[efd_idx], rev);
 		if (!rc)
 			RTE_LOG(DEBUG, EAL,
 				"efd %d associated with vec %d added on epfd %d"
@@ -1116,7 +1123,7 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 		break;
 	case RTE_INTR_EVENT_DEL:
 		epfd_op = EPOLL_CTL_DEL;
-		rev = &intr_handle->elist[vec];
+		rev = &intr_handle->elist[efd_idx];
 		if (rev->status == RTE_EPOLL_INVALID) {
 			RTE_LOG(INFO, EAL, "Event does not exist.\n");
 			return -EPERM;
