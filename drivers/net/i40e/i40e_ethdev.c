@@ -1530,8 +1530,8 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	if (pf->fdir.fdir_vsi) {
-		i40e_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
-		i40e_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
+		i40e_vsi_queues_unbind_intr(pf->fdir.fdir_vsi);
+		i40e_vsi_disable_queues_intr(pf->fdir.fdir_vsi);
 	}
 	/* Clear all queues and release memory */
 	i40e_dev_clear_queues(dev);
