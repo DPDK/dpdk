@@ -159,6 +159,9 @@ enum i40e_flxpld_layer_idx {
 	(1ULL << I40E_FILTER_PCTYPE_FCOE_OTHER) | \
 	(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
 
+#define I40E_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
+#define I40E_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
+
 struct i40e_adapter;
 
 /**
@@ -256,6 +259,7 @@ struct i40e_vsi {
 	uint16_t seid;           /* The seid of VSI itself */
 	uint16_t uplink_seid;    /* The uplink seid of this VSI */
 	uint16_t nb_qps;         /* Number of queue pairs VSI can occupy */
+	uint16_t nb_used_qps;    /* Number of queue pairs VSI uses */
 	uint16_t max_macaddrs;   /* Maximum number of MAC addresses */
 	uint16_t base_queue;     /* The first queue index of this VSI */
 	/*
@@ -264,6 +268,7 @@ struct i40e_vsi {
 	 */
 	uint16_t vsi_id;
 	uint16_t msix_intr; /* The MSIX interrupt binds to VSI */
+	uint16_t nb_msix;   /* The max number of msix vector */
 	uint8_t enabled_tc; /* The traffic class enabled */
 	struct i40e_bw_info bw_info; /* VSI bandwidth information */
 };

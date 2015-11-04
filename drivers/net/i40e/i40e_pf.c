@@ -554,6 +554,8 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 	}
 	/* This MSIX intr store the intr in VF range */
 	vf->vsi->msix_intr = irqmap->vecmap[0].vector_id;
+	vf->vsi->nb_msix = irqmap->num_vectors;
+	vf->vsi->nb_used_qps = vf->vsi->nb_qps;
 
 	/* Don't care how the TX/RX queue mapping with this vector.
 	 * Link all VF RX queues together. Only did mapping work.

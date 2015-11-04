@@ -47,6 +47,8 @@ New Features
 
 * **Added i40e vector RX/TX.**
 
+* **Added i40e Rx interrupt support.**
+
 * **Added i40e flow control support.**
 
 * **Added DCB support to i40e PF driver.**
