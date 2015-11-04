@@ -162,12 +162,6 @@ Drivers
 
   Fixed issue when releasing null control queue.
 
-* **hash: Fixed thread scaling by reducing contention.**
-
-  Fixed issue in hash library where, using multiple cores with
-  hardware transactional memory support, thread scaling did not work,
-  due to the global ring that is shared by all cores.
-
 
 Libraries
 ~~~~~~~~~
@@ -182,6 +176,12 @@ Libraries
   Fixed issue in hash library that occurred if an all zero
   key was not added in the table and the key was looked up,
   resulting in an incorrect hit.
+
+* **hash: Fixed thread scaling by reducing contention.**
+
+  Fixed issue in hash library where, using multiple cores with
+  hardware transactional memory support, thread scaling did not work,
+  due to the global ring that is shared by all cores.
 
 
 Examples

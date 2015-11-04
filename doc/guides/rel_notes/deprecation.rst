@@ -12,17 +12,6 @@ Deprecation Notices
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
 
-* ABI changes are planned for struct rte_eth_fdir_filter and
-  rte_eth_fdir_masks in order to support new flow director modes,
-  MAC VLAN and Cloud, on x550. The MAC VLAN mode means the MAC and
-  VLAN are monitored. The Cloud mode is for VxLAN and NVGRE, and
-  the tunnel type, TNI/VNI, inner MAC and inner VLAN are monitored.
-  The release 2.2 will contain these changes without backwards compatibility.
-
-* ABI changes are planned for struct virtio_net in order to support vhost-user
-  multiple queues feature.
-  It should be integrated in release 2.2 without backward compatibility.
-
 * The scheduler hierarchy structure (rte_sched_port_hierarchy) will change to
   allow for a larger number of subport entries.
   The number of available traffic_classes and queues may also change.
