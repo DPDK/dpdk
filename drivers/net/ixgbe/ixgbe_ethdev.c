@@ -208,8 +208,6 @@ static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_conf
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev);
-static int ixgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev);
-static int ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
@@ -225,8 +223,6 @@ static void ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev,
 		uint16_t queue, int on);
 static void ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
-static void ixgbevf_dev_interrupt_handler(struct rte_intr_handle *handle,
-					  void *param);
 static int ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					    uint16_t queue_id);
 static int ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
@@ -3067,30 +3063,6 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
-ixgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
-{
-	uint32_t eicr;
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_interrupt *intr =
-		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-
-	/* clear all cause mask */
-	ixgbevf_intr_disable(hw);
-
-	/* read-on-clear nic registers here */
-	eicr = IXGBE_READ_REG(hw, IXGBE_VTEICR);
-	PMD_DRV_LOG(INFO, "eicr %x", eicr);
-
-	intr->flags = 0;
-
-	/* set flag for async link update */
-	if (eicr & IXGBE_EICR_LSC)
-		intr->flags |= IXGBE_FLAG_NEED_LINK_UPDATE;
-
-	return 0;
-}
-
 /**
  * It gets and then prints the link status.
  *
@@ -3186,18 +3158,6 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
-ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev)
-{
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	PMD_DRV_LOG(DEBUG, "enable intr immediately");
-	ixgbevf_intr_enable(hw);
-	rte_intr_enable(&dev->pci_dev->intr_handle);
-	return 0;
-}
-
 /**
  * Interrupt handler which shall be registered for alarm callback for delayed
  * handling specific interrupt to wait for the stable nic state. As the
@@ -3258,16 +3218,6 @@ ixgbe_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 	ixgbe_dev_interrupt_get_status(dev);
 	ixgbe_dev_interrupt_action(dev);
-}
-
-static void
-ixgbevf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
-			      void *param)
-{
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
-
-	ixgbevf_dev_interrupt_get_status(dev);
-	ixgbevf_dev_interrupt_action(dev);
 }
 
 static int
@@ -3895,16 +3845,6 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 	ixgbevf_configure_msix(dev);
-
-	if (dev->data->dev_conf.intr_conf.lsc != 0) {
-		if (rte_intr_allow_others(intr_handle))
-			rte_intr_callback_register(intr_handle,
-					ixgbevf_dev_interrupt_handler,
-					(void *)dev);
-		else
-			PMD_INIT_LOG(INFO, "lsc won't enable because of"
-				     " no intr multiplex\n");
-	}
 
 	rte_intr_enable(intr_handle);
 
@@ -4658,7 +4598,7 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 		intr_handle->intr_vec[q_idx] = vector_idx;
 	}
 
-	/* Configure VF Rx queue ivar */
+	/* Configure VF other cause ivar */
 	ixgbevf_set_ivar_map(hw, -1, 1, vector_idx);
 }
 
