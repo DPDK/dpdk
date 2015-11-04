@@ -1858,21 +1858,26 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* call read registers - updates values, now write them to struct */
 	i40e_read_stats_registers(pf, hw);
 
-	stats->ipackets = ns->eth.rx_unicast + ns->eth.rx_multicast +
-						ns->eth.rx_broadcast;
-	stats->opackets = ns->eth.tx_unicast + ns->eth.tx_multicast +
-						ns->eth.tx_broadcast;
-	stats->ibytes   = ns->eth.rx_bytes;
-	stats->obytes   = ns->eth.tx_bytes;
-	stats->oerrors  = ns->eth.tx_errors;
-	stats->imcasts  = ns->eth.rx_multicast;
+	stats->ipackets = pf->main_vsi->eth_stats.rx_unicast +
+			pf->main_vsi->eth_stats.rx_multicast +
+			pf->main_vsi->eth_stats.rx_broadcast -
+			pf->main_vsi->eth_stats.rx_discards;
+	stats->opackets = pf->main_vsi->eth_stats.tx_unicast +
+			pf->main_vsi->eth_stats.tx_multicast +
+			pf->main_vsi->eth_stats.tx_broadcast;
+	stats->ibytes   = pf->main_vsi->eth_stats.rx_bytes;
+	stats->obytes   = pf->main_vsi->eth_stats.tx_bytes;
+	stats->oerrors  = ns->eth.tx_errors +
+			pf->main_vsi->eth_stats.tx_errors;
+	stats->imcasts  = pf->main_vsi->eth_stats.rx_multicast;
 	stats->fdirmatch = ns->fd_sb_match;
 
 	/* Rx Errors */
 	stats->ibadcrc  = ns->crc_errors;
 	stats->ibadlen  = ns->rx_length_errors + ns->rx_undersize +
 			ns->rx_oversize + ns->rx_fragments + ns->rx_jabber;
-	stats->imissed  = ns->eth.rx_discards;
+	stats->imissed  = ns->eth.rx_discards +
+			pf->main_vsi->eth_stats.rx_discards;
 	stats->ierrors  = stats->ibadcrc + stats->ibadlen + stats->imissed;
 
 	PMD_DRV_LOG(DEBUG, "***************** PF stats start *******************");

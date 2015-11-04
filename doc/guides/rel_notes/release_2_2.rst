@@ -134,6 +134,10 @@ Drivers
   as long as the total number of queues used in PF, VFs, VMDq and FD does not
   exceeds the hardware maximum.
 
+* **i40e: Fixed statistics of packets.**
+
+  Added discarding packets on VSI to the stats and rectify the old statistics.
+
 * **vhost: Fixed Qemu shutdown.**
 
   Fixed issue with libvirt ``virsh destroy`` not killing the VM.
