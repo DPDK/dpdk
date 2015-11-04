@@ -4495,7 +4495,10 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	uint32_t tmpval, regval, intr_mask;
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t vec = 0;
+	uint32_t vec = E1000_MISC_VEC_ID;
+	uint32_t base = E1000_MISC_VEC_ID;
+	uint32_t misc_shift = 0;
+
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 
 	/* won't configure msix register if no mapping is done
@@ -4503,6 +4506,11 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	 */
 	if (!rte_intr_dp_is_en(intr_handle))
 		return;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		vec = base = E1000_RX_VEC_START;
+		misc_shift = 1;
+	}
 
 	/* set interrupt vector for other causes */
 	if (hw->mac.type == e1000_82575) {
@@ -4532,8 +4540,8 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_GPIE, E1000_GPIE_MSIX_MODE |
 					E1000_GPIE_PBA | E1000_GPIE_EIAME |
 					E1000_GPIE_NSICR);
-
-		intr_mask = (1 << intr_handle->max_intr) - 1;
+		intr_mask = RTE_LEN2MASK(intr_handle->nb_efd, uint32_t) <<
+			misc_shift;
 		regval = E1000_READ_REG(hw, E1000_EIAC);
 		E1000_WRITE_REG(hw, E1000_EIAC, regval | intr_mask);
 
@@ -4547,14 +4555,15 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	/* use EIAM to auto-mask when MSI-X interrupt
 	 * is asserted, this saves a register write for every interrupt
 	 */
-	intr_mask = (1 << intr_handle->nb_efd) - 1;
+	intr_mask = RTE_LEN2MASK(intr_handle->nb_efd, uint32_t) <<
+		misc_shift;
 	regval = E1000_READ_REG(hw, E1000_EIAM);
 	E1000_WRITE_REG(hw, E1000_EIAM, regval | intr_mask);
 
 	for (queue_id = 0; queue_id < dev->data->nb_rx_queues; queue_id++) {
 		eth_igb_assign_msix_vector(hw, 0, queue_id, vec);
 		intr_handle->intr_vec[queue_id] = vec;
-		if (vec < intr_handle->nb_efd - 1)
+		if (vec < base + intr_handle->nb_efd - 1)
 			vec++;
 	}
 

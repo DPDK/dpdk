@@ -132,6 +132,9 @@
 #define	EM_RXD_ALIGN	(E1000_ALIGN / sizeof(struct e1000_rx_desc))
 #define	EM_TXD_ALIGN	(E1000_ALIGN / sizeof(struct e1000_data_desc))
 
+#define E1000_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
+#define E1000_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
+
 /* structure for interrupt relative data */
 struct e1000_interrupt {
 	uint32_t flags;
