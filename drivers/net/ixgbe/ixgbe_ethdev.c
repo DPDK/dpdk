@@ -3951,7 +3951,6 @@ static void
 ixgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -3963,12 +3962,6 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
-
-	pci_dev = dev->pci_dev;
-	if (pci_dev->intr_handle.intr_vec) {
-		rte_free(pci_dev->intr_handle.intr_vec);
-		pci_dev->intr_handle.intr_vec = NULL;
-	}
 }
 
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
