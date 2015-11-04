@@ -1646,14 +1646,16 @@ Different NICs may have different capabilities, command show port fdir (port_id)
                         flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)
                         src (src_ip_address) dst (dst_ip_address) \
                         vlan (vlan_value) flexbytes (flexbytes_value) \
-                        (drop|fwd) queue (queue_id) fd_id (fd_id_value)
+                        (drop|fwd) pf|vf(vf_id) queue (queue_id) \
+                        fd_id (fd_id_value)
 
    flow_director_filter (port_id) (add|del|update) \
                         flow (ipv4-tcp|ipv4-udp|ipv6-tcp|ipv6-udp) \
                         src (src_ip_address) (src_port) \
                         dst (dst_ip_address) (dst_port) \
                         vlan (vlan_value) flexbytes (flexbytes_value) \
-                        (drop|fwd) queue (queue_id) fd_id (fd_id_value)
+                        (drop|fwd) queue pf|vf(vf_id) (queue_id) \
+                        fd_id (fd_id_value)
 
    flow_director_filter (port_id) (add|del|update) \
                         flow (ipv4-sctp|ipv6-sctp) \
@@ -1661,21 +1663,22 @@ Different NICs may have different capabilities, command show port fdir (port_id)
                         dst (dst_ip_address) (dst_port)
                         tag (verification_tag) vlan (vlan_value) \
                         flexbytes (flexbytes_value) (drop|fwd) \
-                        queue (queue_id) fd_id (fd_id_value)
+                        pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)
 
    flow_director_filter (port_id) (add|del|update) flow l2_payload \
                         ether (ethertype) flexbytes (flexbytes_value) \
-                        (drop|fwd) queue (queue_id) fd_id (fd_id_value)
+                        (drop|fwd) pf|vf(vf_id) queue (queue_id)
+                        fd_id (fd_id_value)
 
 For example, to add an ipv4-udp flow type filter::
 
    testpmd> flow_director_filter 0 add flow ipv4-udp src 2.2.2.3 32 \
-            dst 2.2.2.5 33 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
+            dst 2.2.2.5 33 vlan 0x1 flexbytes (0x88,0x48) fwd pf queue 1 fd_id 1
 
 For example, add an ipv4-other flow type filter::
 
    testpmd> flow_director_filter 0 add flow ipv4-other src 2.2.2.3 \
-             dst 2.2.2.5 vlan 0x1 flexbytes (0x88,0x48) fwd queue 1 fd_id 1
+             dst 2.2.2.5 vlan 0x1 flexbytes (0x88,0x48) fwd pf queue 1 fd_id 1
 
 flush_flow_director
 ~~~~~~~~~~~~~~~~~~~

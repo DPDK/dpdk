@@ -633,7 +633,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)"
 			" src (src_ip_address) dst (dst_ip_address)"
 			" vlan (vlan_value) flexbytes (flexbytes_value)"
-			" (drop|fwd) queue (queue_id) fd_id (fd_id_value)\n"
+			" (drop|fwd) pf|vf(vf_id) queue (queue_id)"
+			" fd_id (fd_id_value)\n"
 			"    Add/Del an IP type flow director filter.\n\n"
 
 			"flow_director_filter (port_id) (add|del|update)"
@@ -641,7 +642,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
 			" vlan (vlan_value) flexbytes (flexbytes_value)"
-			" (drop|fwd) queue (queue_id) fd_id (fd_id_value)\n"
+			" (drop|fwd) pf|vf(vf_id) queue (queue_id)"
+			" fd_id (fd_id_value)\n"
 			"    Add/Del an UDP/TCP type flow director filter.\n\n"
 
 			"flow_director_filter (port_id) (add|del|update)"
@@ -650,13 +652,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" dst (dst_ip_address) (dst_port)"
 			" tag (verification_tag) vlan (vlan_value)"
 			" flexbytes (flexbytes_value) (drop|fwd)"
-			" queue (queue_id) fd_id (fd_id_value)\n"
+			" pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a SCTP type flow director filter.\n\n"
 
 			"flow_director_filter (port_id) (add|del|update)"
 			" flow l2_payload ether (ethertype)"
 			" flexbytes (flexbytes_value) (drop|fwd)"
-			" queue (queue_id) fd_id (fd_id_value)\n"
+			" pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a l2 payload type flow director filter.\n\n"
 
 			"flush_flow_director (port_id)\n"
@@ -7911,6 +7913,7 @@ struct cmd_flow_director_result {
 	uint16_t vlan_value;
 	cmdline_fixed_string_t flexbytes;
 	cmdline_fixed_string_t flexbytes_value;
+	cmdline_fixed_string_t pf_vf;
 	cmdline_fixed_string_t drop;
 	cmdline_fixed_string_t queue;
 	uint16_t  queue_id;
@@ -8043,6 +8046,8 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	struct cmd_flow_director_result *res = parsed_result;
 	struct rte_eth_fdir_filter entry;
 	uint8_t flexbytes[RTE_ETH_FDIR_MAX_FLEXLEN];
+	char *end;
+	unsigned long vf_id;
 	int ret = 0;
 
 	ret = rte_eth_dev_filter_supported(res->port_id, RTE_ETH_FILTER_FDIR);
@@ -8169,6 +8174,27 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		entry.action.behavior = RTE_ETH_FDIR_REJECT;
 	else
 		entry.action.behavior = RTE_ETH_FDIR_ACCEPT;
+
+	if (!strcmp(res->pf_vf, "pf"))
+		entry.input.flow_ext.is_vf = 0;
+	else if (!strncmp(res->pf_vf, "vf", 2)) {
+		struct rte_eth_dev_info dev_info;
+
+		memset(&dev_info, 0, sizeof(dev_info));
+		rte_eth_dev_info_get(res->port_id, &dev_info);
+		errno = 0;
+		vf_id = strtoul(res->pf_vf + 2, &end, 10);
+		if (errno != 0 || *end != '\0' || vf_id >= dev_info.max_vfs) {
+			printf("invalid parameter %s.\n", res->pf_vf);
+			return;
+		}
+		entry.input.flow_ext.is_vf = 1;
+		entry.input.flow_ext.dst_id = (uint16_t)vf_id;
+	} else {
+		printf("invalid parameter %s.\n", res->pf_vf);
+		return;
+	}
+
 	/* set to report FD ID by default */
 	entry.action.report_status = RTE_ETH_FDIR_REPORT_ID;
 	entry.action.rx_queue = res->queue_id;
@@ -8248,6 +8274,9 @@ cmdline_parse_token_string_t cmd_flow_director_flexbytes_value =
 cmdline_parse_token_string_t cmd_flow_director_drop =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 drop, "drop#fwd");
+cmdline_parse_token_string_t cmd_flow_director_pf_vf =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+			      pf_vf, NULL);
 cmdline_parse_token_string_t cmd_flow_director_queue =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 queue, "queue");
@@ -8313,6 +8342,7 @@ cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_pf_vf,
 		(void *)&cmd_flow_director_queue,
 		(void *)&cmd_flow_director_queue_id,
 		(void *)&cmd_flow_director_fd_id,
@@ -8344,6 +8374,7 @@ cmdline_parse_inst_t cmd_add_del_udp_flow_director = {
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_pf_vf,
 		(void *)&cmd_flow_director_queue,
 		(void *)&cmd_flow_director_queue_id,
 		(void *)&cmd_flow_director_fd_id,
@@ -8377,6 +8408,7 @@ cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_pf_vf,
 		(void *)&cmd_flow_director_queue,
 		(void *)&cmd_flow_director_queue_id,
 		(void *)&cmd_flow_director_fd_id,
@@ -8402,6 +8434,7 @@ cmdline_parse_inst_t cmd_add_del_l2_flow_director = {
 		(void *)&cmd_flow_director_flexbytes,
 		(void *)&cmd_flow_director_flexbytes_value,
 		(void *)&cmd_flow_director_drop,
+		(void *)&cmd_flow_director_pf_vf,
 		(void *)&cmd_flow_director_queue,
 		(void *)&cmd_flow_director_queue_id,
 		(void *)&cmd_flow_director_fd_id,
