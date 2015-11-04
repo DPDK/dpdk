@@ -114,6 +114,10 @@ Drivers
   in Intel I210 NIC, as EtherType in RX descriptor is in bits 8:10 of
   Packet Type and not in the default bits 0:2.
 
+* **igb: Fixed VF start with PF stopped.**
+
+  VF needs the PF interrupt support initialized even if not started.
+
 * **ixgbe: Fixed issue with X550 DCB.**
 
   Fixed a DCB issue with x550 where for 8 TCs (Traffic Classes), if a packet

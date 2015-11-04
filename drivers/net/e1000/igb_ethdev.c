@@ -760,6 +760,13 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id);
 
+	rte_intr_callback_register(&pci_dev->intr_handle,
+				   eth_igb_interrupt_handler,
+				   (void *)eth_dev);
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(&pci_dev->intr_handle);
+
 	/* enable support intr */
 	igb_intr_enable(eth_dev);
 
@@ -1122,13 +1129,15 @@ eth_igb_start(struct rte_eth_dev *dev)
 	igb_pf_host_configure(dev);
 
 	/* check and configure queue intr-vector mapping */
-	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+	if ((rte_intr_cap_multiple(intr_handle) ||
+	     !RTE_ETH_DEV_SRIOV(dev).active) &&
+	    dev->data->dev_conf.intr_conf.rxq != 0) {
 		intr_vector = dev->data->nb_rx_queues;
 		if (rte_intr_efd_enable(intr_handle, intr_vector))
 			return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle)) {
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
 		intr_handle->intr_vec =
 			rte_zmalloc("intr_vec",
 				    dev->data->nb_rx_queues * sizeof(int), 0);
@@ -1221,20 +1230,22 @@ eth_igb_start(struct rte_eth_dev *dev)
 	}
 	e1000_setup_link(hw);
 
-	/* check if lsc interrupt feature is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc != 0) {
-		if (rte_intr_allow_others(intr_handle)) {
-			rte_intr_callback_register(intr_handle,
-						   eth_igb_interrupt_handler,
-						   (void *)dev);
+	if (rte_intr_allow_others(intr_handle)) {
+		/* check if lsc interrupt is enabled */
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			eth_igb_lsc_interrupt_setup(dev);
-		} else
+	} else {
+		rte_intr_callback_unregister(intr_handle,
+					     eth_igb_interrupt_handler,
+					     (void *)dev);
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			PMD_INIT_LOG(INFO, "lsc won't enable because of"
 				     " no intr multiplex\n");
 	}
 
 	/* check if rxq interrupt is enabled */
-	if (dev->data->dev_conf.intr_conf.rxq != 0)
+	if (dev->data->dev_conf.intr_conf.rxq != 0 &&
+	    rte_intr_dp_is_en(intr_handle))
 		eth_igb_rxq_interrupt_setup(dev);
 
 	/* enable uio/vfio intr/eventfd mapping */
@@ -1326,6 +1337,12 @@ eth_igb_stop(struct rte_eth_dev *dev)
 		rte_free(p_2tuple);
 	}
 	filter_info->twotuple_mask = 0;
+
+	if (!rte_intr_allow_others(intr_handle))
+		/* resume to the default handler */
+		rte_intr_callback_register(intr_handle,
+					   eth_igb_interrupt_handler,
+					   (void *)dev);
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
