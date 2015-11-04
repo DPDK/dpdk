@@ -12,10 +12,6 @@ Deprecation Notices
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
 
-* ABI changes are planned for struct rte_eth_fdir_flow_ext in order to support
-  flow director filtering in VF. The release 2.1 does not contain these ABI
-  changes, but release 2.2 will, and no backwards compatibility is planned.
-
 * ABI changes are planned for struct rte_eth_fdir_filter and
   rte_eth_fdir_masks in order to support new flow director modes,
   MAC VLAN and Cloud, on x550. The MAC VLAN mode means the MAC and

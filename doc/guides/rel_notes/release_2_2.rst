@@ -219,6 +219,9 @@ ABI Changes
 * The ethdev flow director entries for SCTP were changed.
   It was already done in 2.1 for CONFIG_RTE_NEXT_ABI.
 
+* The ethdev flow director structure rte_eth_fdir_flow_ext structure is changed.
+  New fields are added to support flow director filtering in VF.
+
 * The size of the ethdev structure rte_eth_hash_filter_info is changed
   by adding a new element rte_eth_input_set_conf in an union.
 
