@@ -1311,7 +1311,7 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		slave_eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
 	/* If RSS is enabled for bonding, try to enable it for slaves  */
-	if (bonded_eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
+	if (bonded_eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		if (bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len
 				!= 0) {
 			slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len =
@@ -1324,7 +1324,8 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 
 		slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf =
 				bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
-		slave_eth_dev->data->dev_conf.rxmode.mq_mode |= ETH_MQ_RX_RSS;
+		slave_eth_dev->data->dev_conf.rxmode.mq_mode =
+				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
 	}
 
 	/* Configure device */
