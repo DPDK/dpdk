@@ -226,6 +226,8 @@ F: drivers/net/cxgbe/
 F: doc/guides/nics/cxgbe.rst
 
 Cisco enic
+M: John Daley <johndale@cisco.com>
+M: Sujith Sankar <ssujith@cisco.com>
 F: drivers/net/enic/
 
 Intel e1000
