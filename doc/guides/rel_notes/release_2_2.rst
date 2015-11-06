@@ -74,6 +74,10 @@ New Features
   *  Added support for Jumbo Frames.
   *  Optimize forwarding performance for Chelsio T5 40GbE cards.
 
+* **Improved enic Tx packet rate.**
+
+  Reduced frequency of Tx tail pointer updates to the NIC.
+
 * **Added support for Mellanox ConnectX-4 adapters (mlx5).**
 
   The mlx5 poll-mode driver implements support for Mellanox ConnectX-4 EN
