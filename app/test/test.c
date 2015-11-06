@@ -81,7 +81,7 @@ do_recursive_call(void)
 			{ "run_secondary_instances", test_mp_secondary },
 			{ "test_missing_c_flag", no_action },
 			{ "test_master_lcore_flag", no_action },
-			{ "test_missing_n_flag", no_action },
+			{ "test_invalid_n_flag", no_action },
 			{ "test_no_hpet_flag", no_action },
 			{ "test_whitelist_flag", no_action },
 			{ "test_invalid_b_flag", no_action },
