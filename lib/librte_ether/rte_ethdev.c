@@ -3276,6 +3276,7 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_de
 	if ((eth_dev == NULL) || (pci_dev == NULL)) {
 		PMD_DEBUG_TRACE("NULL pointer eth_dev=%p pci_dev=%p\n",
 				eth_dev, pci_dev);
+		return;
 	}
 
 	eth_dev->data->dev_flags = 0;
