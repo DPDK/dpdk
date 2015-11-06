@@ -1209,28 +1209,6 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  * desscriptors should meet the following condition:
  *      (num_ring_desc * sizeof(struct e1000_rx/tx_desc)) % 128 == 0
  */
-static const struct rte_memzone *
-ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
-		      uint16_t queue_id, uint32_t ring_size, int socket_id)
-{
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-			dev->driver->pci_drv.name, ring_name,
-				dev->data->port_id, queue_id);
-	mz = rte_memzone_lookup(z_name);
-	if (mz)
-		return mz;
-
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return rte_memzone_reserve_bounded(z_name, ring_size,
-			socket_id, 0, E1000_ALIGN, RTE_PGSIZE_2M);
-#else
-	return rte_memzone_reserve_aligned(z_name, ring_size,
-			socket_id, 0, E1000_ALIGN);
-#endif
-}
 
 static void
 igb_tx_queue_release_mbufs(struct igb_tx_queue *txq)
@@ -1365,8 +1343,8 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	size = sizeof(union e1000_adv_tx_desc) * E1000_MAX_RING_DESC;
-	tz = ring_dma_zone_reserve(dev, "tx_ring", queue_idx,
-					size, socket_id);
+	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx, size,
+				      E1000_ALIGN, socket_id);
 	if (tz == NULL) {
 		igb_tx_queue_release(txq);
 		return (-ENOMEM);
@@ -1384,12 +1362,9 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 
 	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(txq->reg_idx));
-#ifndef RTE_LIBRTE_XEN_DOM0
-	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
-#else
 	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
-#endif
-	 txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
+
+	txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc("txq->sw_ring",
 				   sizeof(struct igb_tx_entry) * nb_desc,
@@ -1514,18 +1489,15 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	 *  resizing in later calls to the queue setup function.
 	 */
 	size = sizeof(union e1000_adv_rx_desc) * E1000_MAX_RING_DESC;
-	rz = ring_dma_zone_reserve(dev, "rx_ring", queue_idx, size, socket_id);
+	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx, size,
+				      E1000_ALIGN, socket_id);
 	if (rz == NULL) {
 		igb_rx_queue_release(rxq);
 		return (-ENOMEM);
 	}
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(rxq->reg_idx));
 	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(rxq->reg_idx));
-#ifndef RTE_LIBRTE_XEN_DOM0
-	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
-#else
 	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
-#endif
 	rxq->rx_ring = (union e1000_adv_rx_desc *) rz->addr;
 
 	/* Allocate software ring. */

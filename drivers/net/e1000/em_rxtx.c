@@ -1084,28 +1084,6 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 #define	EM_MAX_BUF_SIZE     16384
 #define EM_RCTL_FLXBUF_STEP 1024
 
-static const struct rte_memzone *
-ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
-		uint16_t queue_id, uint32_t ring_size, int socket_id)
-{
-	const struct rte_memzone *mz;
-	char z_name[RTE_MEMZONE_NAMESIZE];
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		dev->driver->pci_drv.name, ring_name, dev->data->port_id,
-		queue_id);
-
-	if ((mz = rte_memzone_lookup(z_name)) != 0)
-		return (mz);
-
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return rte_memzone_reserve_bounded(z_name, ring_size,
-			socket_id, 0, RTE_CACHE_LINE_SIZE, RTE_PGSIZE_2M);
-#else
-	return rte_memzone_reserve(z_name, ring_size, socket_id, 0);
-#endif
-}
-
 static void
 em_tx_queue_release_mbufs(struct em_tx_queue *txq)
 {
@@ -1253,8 +1231,9 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	tsize = sizeof(txq->tx_ring[0]) * E1000_MAX_RING_DESC;
-	if ((tz = ring_dma_zone_reserve(dev, "tx_ring", queue_idx, tsize,
-			socket_id)) == NULL)
+	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx, tsize,
+				      RTE_CACHE_LINE_SIZE, socket_id);
+	if (tz == NULL)
 		return (-ENOMEM);
 
 	/* Allocate the tx queue data structure. */
@@ -1280,11 +1259,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 
 	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(queue_idx));
-#ifndef RTE_LIBRTE_XEN_DOM0
-	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
-#else
 	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
-#endif
 	txq->tx_ring = (struct e1000_data_desc *) tz->addr;
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
@@ -1380,8 +1355,9 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate RX ring for max possible mumber of hardware descriptors. */
 	rsize = sizeof(rxq->rx_ring[0]) * E1000_MAX_RING_DESC;
-	if ((rz = ring_dma_zone_reserve(dev, "rx_ring", queue_idx, rsize,
-			socket_id)) == NULL)
+	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx, rsize,
+				      RTE_CACHE_LINE_SIZE, socket_id);
+	if (rz == NULL)
 		return (-ENOMEM);
 
 	/* Allocate the RX queue data structure. */
@@ -1410,11 +1386,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(queue_idx));
 	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(queue_idx));
-#ifndef RTE_LIBRTE_XEN_DOM0
-	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
-#else
 	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
-#endif
 	rxq->rx_ring = (struct e1000_rx_desc *) rz->addr;
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
