@@ -48,9 +48,14 @@ SRCS-$(CONFIG_RTE_LIBRTE_ACL) += rte_acl.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_bld.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_gen.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_scalar.c
+ifeq ($(CONFIG_RTE_ARCH_ARM64),y)
+SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_neon.c
+else
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_sse.c
+endif
 
 CFLAGS_acl_run_sse.o += -msse4.1
+CFLAGS_acl_run_neon.o += -flax-vector-conversions -Wno-maybe-uninitialized
 
 #
 # If the compiler supports AVX2 instructions,
