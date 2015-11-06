@@ -1,0 +1,56 @@
+#   BSD LICENSE
+#
+#   Copyright (C) Cavium networks 2015. All rights reserved.
+#
+#   Redistribution and use in source and binary forms, with or without
+#   modification, are permitted provided that the following conditions
+#   are met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in
+#       the documentation and/or other materials provided with the
+#       distribution.
+#     * Neither the name of Cavium networks nor the names of its
+#       contributors may be used to endorse or promote products derived
+#       from this software without specific prior written permission.
+#
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+#   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+#   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+#   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+#   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+#   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+#   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+#include "common_linuxapp"
+
+CONFIG_RTE_MACHINE="thunderx"
+
+CONFIG_RTE_ARCH="arm64"
+CONFIG_RTE_ARCH_ARM64=y
+CONFIG_RTE_ARCH_64=y
+CONFIG_RTE_ARCH_ARM_NEON=y
+
+CONFIG_RTE_FORCE_INTRINSICS=y
+
+CONFIG_RTE_TOOLCHAIN="gcc"
+CONFIG_RTE_TOOLCHAIN_GCC=y
+
+CONFIG_RTE_CACHE_LINE_SIZE=128
+
+CONFIG_RTE_IXGBE_INC_VECTOR=n
+CONFIG_RTE_LIBRTE_VIRTIO_PMD=n
+CONFIG_RTE_LIBRTE_IVSHMEM=n
+CONFIG_RTE_LIBRTE_FM10K_PMD=n
+CONFIG_RTE_LIBRTE_I40E_PMD=n
+
+CONFIG_RTE_LIBRTE_LPM=n
+CONFIG_RTE_LIBRTE_TABLE=n
+CONFIG_RTE_LIBRTE_PIPELINE=n
