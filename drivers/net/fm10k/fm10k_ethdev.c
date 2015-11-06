@@ -1492,34 +1492,6 @@ check_nb_desc(uint16_t min, uint16_t max, uint16_t mult, uint16_t request)
 		return 0;
 }
 
-/*
- * Create a memzone for hardware descriptor rings. Malloc cannot be used since
- * the physical address is required. If the memzone is already created, then
- * this function returns a pointer to the existing memzone.
- */
-static inline const struct rte_memzone *
-allocate_hw_ring(const char *driver_name, const char *ring_name,
-	uint8_t port_id, uint16_t queue_id, int socket_id,
-	uint32_t size, uint32_t align)
-{
-	char name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(name, sizeof(name), "%s_%s_%d_%d_%d",
-		 driver_name, ring_name, port_id, queue_id, socket_id);
-
-	/* return the memzone if it already exists */
-	mz = rte_memzone_lookup(name);
-	if (mz)
-		return mz;
-
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return rte_memzone_reserve_bounded(name, size, socket_id, 0, align,
-					   RTE_PGSIZE_2M);
-#else
-	return rte_memzone_reserve_aligned(name, size, socket_id, 0, align);
-#endif
-}
 
 static inline int
 check_thresh(uint16_t min, uint16_t max, uint16_t div, uint16_t request)
@@ -1667,9 +1639,9 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	 * enough to hold the maximum ring size is requested to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	mz = allocate_hw_ring(dev->driver->pci_drv.name, "rx_ring",
-				dev->data->port_id, queue_id, socket_id,
-				FM10K_MAX_RX_RING_SZ, FM10K_ALIGN_RX_DESC);
+	mz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_id,
+				      FM10K_MAX_RX_RING_SZ, FM10K_ALIGN_RX_DESC,
+				      socket_id);
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate hardware ring");
 		rte_free(q->sw_ring);
@@ -1677,11 +1649,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		return (-ENOMEM);
 	}
 	q->hw_ring = mz->addr;
-#ifdef RTE_LIBRTE_XEN_DOM0
 	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
-#else
-	q->hw_ring_phys_addr = mz->phys_addr;
-#endif
 
 	/* Check if number of descs satisfied Vector requirement */
 	if (!rte_is_power_of_2(nb_desc)) {
@@ -1831,9 +1799,9 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	 * enough to hold the maximum ring size is requested to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	mz = allocate_hw_ring(dev->driver->pci_drv.name, "tx_ring",
-				dev->data->port_id, queue_id, socket_id,
-				FM10K_MAX_TX_RING_SZ, FM10K_ALIGN_TX_DESC);
+	mz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_id,
+				      FM10K_MAX_TX_RING_SZ, FM10K_ALIGN_TX_DESC,
+				      socket_id);
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate hardware ring");
 		rte_free(q->sw_ring);
@@ -1841,11 +1809,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		return (-ENOMEM);
 	}
 	q->hw_ring = mz->addr;
-#ifdef RTE_LIBRTE_XEN_DOM0
 	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
-#else
-	q->hw_ring_phys_addr = mz->phys_addr;
-#endif
 
 	/*
 	 * allocate memory for the RS bit tracker. Enough slots to hold the
