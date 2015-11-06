@@ -1,7 +1,7 @@
 /*
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 RehiveTech. All rights reserved.
+ *   Copyright (C) Cavium networks Ltd. 2015.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  *       notice, this list of conditions and the following disclaimer in
  *       the documentation and/or other materials provided with the
  *       distribution.
- *     * Neither the name of RehiveTech nor the names of its
+ *     * Neither the name of Cavium networks nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -28,15 +28,66 @@
  *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+*/
 
-#ifndef _RTE_MEMCPY_ARM_H_
-#define _RTE_MEMCPY_ARM_H_
+#ifndef _RTE_MEMCPY_ARM64_H_
+#define _RTE_MEMCPY_ARM64_H_
 
-#ifdef RTE_ARCH_64
-#include <rte_memcpy_64.h>
-#else
-#include <rte_memcpy_32.h>
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#endif /* _RTE_MEMCPY_ARM_H_ */
+#include <stdint.h>
+#include <string.h>
+
+#include "generic/rte_memcpy.h"
+
+static inline void
+rte_mov16(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 16);
+}
+
+static inline void
+rte_mov32(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 32);
+}
+
+static inline void
+rte_mov48(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 48);
+}
+
+static inline void
+rte_mov64(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 64);
+}
+
+static inline void
+rte_mov128(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 128);
+}
+
+static inline void
+rte_mov256(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 256);
+}
+
+#define rte_memcpy(d, s, n)	memcpy((d), (s), (n))
+
+static inline void *
+rte_memcpy_func(void *dst, const void *src, size_t n)
+{
+	return memcpy(dst, src, n);
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _RTE_MEMCPY_ARM_64_H_ */
