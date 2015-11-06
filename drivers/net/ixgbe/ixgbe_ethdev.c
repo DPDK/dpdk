@@ -613,11 +613,25 @@ static const struct rte_ixgbe_xstats_name_off rte_ixgbe_stats_strings[] = {
 			   sizeof(rte_ixgbe_stats_strings[0]))
 
 /* Per-queue statistics */
-#define IXBGE_NB_8_PER_Q_STATS (8 * 7)
-#define IXBGE_NB_16_PER_Q_STATS (16 * 5)
-#define IXGBE_NB_Q_STATS (IXBGE_NB_8_PER_Q_STATS + IXBGE_NB_16_PER_Q_STATS)
+static const struct rte_ixgbe_xstats_name_off rte_ixgbe_rxq_strings[] = {
+	{"mbuf_allocation_errors", offsetof(struct ixgbe_hw_stats, rnbc)},
+	{"dropped", offsetof(struct ixgbe_hw_stats, mpc)},
+	{"xon_packets", offsetof(struct ixgbe_hw_stats, pxonrxc)},
+	{"xoff_packets", offsetof(struct ixgbe_hw_stats, pxoffrxc)},
+};
 
-#define IXGBE_NB_XSTATS (IXGBE_NB_HW_STATS + IXGBE_NB_Q_STATS)
+#define IXGBE_NB_RXQ_PRIO_STATS (sizeof(rte_ixgbe_rxq_strings) / \
+			   sizeof(rte_ixgbe_rxq_strings[0]))
+
+static const struct rte_ixgbe_xstats_name_off rte_ixgbe_txq_strings[] = {
+	{"xon_packets", offsetof(struct ixgbe_hw_stats, pxontxc)},
+	{"xoff_packets", offsetof(struct ixgbe_hw_stats, pxofftxc)},
+	{"xon_to_xoff_packets", offsetof(struct ixgbe_hw_stats,
+		pxon2offc)},
+};
+
+#define IXGBE_NB_TXQ_PRIO_STATS (sizeof(rte_ixgbe_txq_strings) / \
+			   sizeof(rte_ixgbe_txq_strings[0]))
 
 static const struct rte_ixgbe_xstats_name_off rte_ixgbevf_stats_strings[] = {
 	{"rx_multicast_packets", offsetof(struct ixgbevf_hw_stats, vfmprc)},
@@ -2513,6 +2527,13 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 	memset(stats, 0, sizeof(*stats));
 }
 
+/* This function calculates the number of xstats based on the current config */
+static unsigned
+ixgbe_xstats_calc_num(void) {
+	return IXGBE_NB_HW_STATS + (IXGBE_NB_RXQ_PRIO_STATS * 8) +
+		(IXGBE_NB_TXQ_PRIO_STATS * 8);
+}
+
 static int
 ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 					 unsigned n)
@@ -2522,7 +2543,9 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	struct ixgbe_hw_stats *hw_stats =
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
-	unsigned i, count = IXGBE_NB_XSTATS;
+	unsigned i, stat, count = 0;
+
+	count = ixgbe_xstats_calc_num();
 
 	if (n < count)
 		return count;
@@ -2551,81 +2574,30 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		count++;
 	}
 
-	/* Per-Q stats, with 8 queues available */
-	for (i = 0; i < 8; i++) {
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_mbuf_allocation_errors", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, rnbc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_missed_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, mpc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_xon_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, pxonrxc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "tx_q%u_xon_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, pxontxc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_xoff_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, pxoffrxc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "tx_q%u_xoff_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, pxofftxc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "xx_q%u_xon_to_xoff_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, pxon2offc[i]));
-		count++;
+	/* RX Priority Stats */
+	for (stat = 0; stat < IXGBE_NB_RXQ_PRIO_STATS; stat++) {
+		for (i = 0; i < 8; i++) {
+			snprintf(xstats[count].name, sizeof(xstats[count].name),
+				 "rx_priority%u_%s", i,
+				 rte_ixgbe_rxq_strings[stat].name);
+			xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+					rte_ixgbe_rxq_strings[stat].offset +
+					(sizeof(uint64_t) * i));
+			count++;
+		}
 	}
 
-	for (i = 0; i < 16; i++) {
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, qprc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_bytes", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, qbrc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "tx_q%u_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, qptc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "tx_q%u_bytes", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, qbtc[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_dropped", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct ixgbe_hw_stats, qprdc[i]));
-		count++;
+	/* TX Priority Stats */
+	for (stat = 0; stat < IXGBE_NB_TXQ_PRIO_STATS; stat++) {
+		for (i = 0; i < 8; i++) {
+			snprintf(xstats[count].name, sizeof(xstats[count].name),
+				 "tx_priority%u_%s", i,
+				 rte_ixgbe_txq_strings[stat].name);
+			xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
+					rte_ixgbe_txq_strings[stat].offset +
+					(sizeof(uint64_t) * i));
+			count++;
+		}
 	}
 
 	return count;
@@ -2637,8 +2609,10 @@ ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 	struct ixgbe_hw_stats *stats =
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
+	unsigned count = ixgbe_xstats_calc_num();
+
 	/* HW registers are cleared on read */
-	ixgbe_dev_xstats_get(dev, NULL, IXGBE_NB_XSTATS);
+	ixgbe_dev_xstats_get(dev, NULL, count);
 
 	/* Reset software totals */
 	memset(stats, 0, sizeof(*stats));
