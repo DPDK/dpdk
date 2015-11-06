@@ -343,11 +343,8 @@ stats_display(uint8_t port_id)
 	printf("  RX-packets: %-10"PRIu64" RX-missed: %-10"PRIu64" RX-bytes:  "
 	       "%-"PRIu64"\n",
 	       stats.ipackets, stats.imissed, stats.ibytes);
-	printf("  RX-badcrc:  %-10"PRIu64" RX-badlen: %-10"PRIu64" RX-errors: "
-	       "%-"PRIu64"\n",
-	       stats.ibadcrc, stats.ibadlen, stats.ierrors);
-	printf("  RX-nombuf:  %-10"PRIu64"\n",
-	       stats.rx_nombuf);
+	printf("  RX-errors: %-10"PRIu64" RX-nombuf:  %-10"PRIu64"\n",
+	       stats.ierrors, stats.rx_nombuf);
 	printf("  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64" TX-bytes:  "
 	       "%-"PRIu64"\n",
 	       stats.opackets, stats.oerrors, stats.obytes);

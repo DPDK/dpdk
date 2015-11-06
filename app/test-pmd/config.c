@@ -172,9 +172,7 @@ nic_stats_display(portid_t port_id)
 		printf("  RX-packets: %-10"PRIu64" RX-missed: %-10"PRIu64" RX-bytes:  "
 		       "%-"PRIu64"\n",
 		       stats.ipackets, stats.imissed, stats.ibytes);
-		printf("  RX-badcrc:  %-10"PRIu64" RX-badlen: %-10"PRIu64" RX-errors: "
-		       "%-"PRIu64"\n",
-		       stats.ibadcrc, stats.ibadlen, stats.ierrors);
+		printf("  RX-errors: %-"PRIu64"\n", stats.ierrors);
 		printf("  RX-nombuf:  %-10"PRIu64"\n",
 		       stats.rx_nombuf);
 		printf("  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64" TX-bytes:  "
@@ -185,21 +183,13 @@ nic_stats_display(portid_t port_id)
 		printf("  RX-packets:              %10"PRIu64"    RX-errors: %10"PRIu64
 		       "    RX-bytes: %10"PRIu64"\n",
 		       stats.ipackets, stats.ierrors, stats.ibytes);
-		printf("  RX-badcrc:               %10"PRIu64"    RX-badlen: %10"PRIu64
-		       "  RX-errors:  %10"PRIu64"\n",
-		       stats.ibadcrc, stats.ibadlen, stats.ierrors);
+		printf("  RX-errors:  %10"PRIu64"\n", stats.ierrors);
 		printf("  RX-nombuf:               %10"PRIu64"\n",
 		       stats.rx_nombuf);
 		printf("  TX-packets:              %10"PRIu64"    TX-errors: %10"PRIu64
 		       "    TX-bytes: %10"PRIu64"\n",
 		       stats.opackets, stats.oerrors, stats.obytes);
 	}
-
-	/* stats fdir */
-	if (fdir_conf.mode != RTE_FDIR_MODE_NONE)
-		printf("  Fdirmiss:   %-10"PRIu64" Fdirmatch: %-10"PRIu64"\n",
-		       stats.fdirmiss,
-		       stats.fdirmatch);
 
 	if (port->rx_queue_stats_mapping_enabled) {
 		printf("\n");
@@ -219,14 +209,6 @@ nic_stats_display(portid_t port_id)
 		}
 	}
 
-	/* Display statistics of XON/XOFF pause frames, if any. */
-	if ((stats.tx_pause_xon  | stats.rx_pause_xon |
-	     stats.tx_pause_xoff | stats.rx_pause_xoff) > 0) {
-		printf("  RX-XOFF:    %-10"PRIu64" RX-XON:    %-10"PRIu64"\n",
-		       stats.rx_pause_xoff, stats.rx_pause_xon);
-		printf("  TX-XOFF:    %-10"PRIu64" TX-XON:    %-10"PRIu64"\n",
-		       stats.tx_pause_xoff, stats.tx_pause_xon);
-	}
 	printf("  %s############################%s\n",
 	       nic_stats_border, nic_stats_border);
 }

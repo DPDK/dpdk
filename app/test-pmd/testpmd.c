@@ -754,9 +754,7 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 			printf("  Bad-ipcsum: %-14"PRIu64" Bad-l4csum: %-14"PRIu64" \n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
 		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
-			printf("  RX-badcrc:  %-14"PRIu64" RX-badlen:  %-14"PRIu64
-			       "RX-error: %-"PRIu64"\n",
-			       stats->ibadcrc, stats->ibadlen, stats->ierrors);
+			printf("  RX-error: %-"PRIu64"\n",  stats->ierrors);
 			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
 		}
 
@@ -775,9 +773,7 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 			printf("  Bad-ipcsum:%14"PRIu64"    Bad-l4csum:%14"PRIu64"\n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
 		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
-			printf("  RX-badcrc:              %14"PRIu64"    RX-badlen: %14"PRIu64
-			       "    RX-error:%"PRIu64"\n",
-			       stats->ibadcrc, stats->ibadlen, stats->ierrors);
+			printf("  RX-error:%"PRIu64"\n", stats->ierrors);
 			printf("  RX-nombufs:             %14"PRIu64"\n",
 			       stats->rx_nombuf);
 		}
@@ -788,15 +784,6 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 		       (uint64_t) (stats->opackets + port->tx_dropped));
 	}
 
-	/* Display statistics of XON/XOFF pause frames, if any. */
-	if ((stats->tx_pause_xon  | stats->rx_pause_xon |
-	     stats->tx_pause_xoff | stats->rx_pause_xoff) > 0) {
-		printf("  RX-XOFF:    %-14"PRIu64" RX-XON:     %-14"PRIu64"\n",
-		       stats->rx_pause_xoff, stats->rx_pause_xon);
-		printf("  TX-XOFF:    %-14"PRIu64" TX-XON:     %-14"PRIu64"\n",
-		       stats->tx_pause_xoff, stats->tx_pause_xon);
-	}
-
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	if (port->rx_stream)
 		pkt_burst_stats_display("RX",
@@ -805,11 +792,6 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 		pkt_burst_stats_display("TX",
 			&port->tx_stream->tx_burst_stats);
 #endif
-	/* stats fdir */
-	if (fdir_conf.mode != RTE_FDIR_MODE_NONE)
-		printf("  Fdirmiss:%14"PRIu64"	  Fdirmatch:%14"PRIu64"\n",
-		       stats->fdirmiss,
-		       stats->fdirmatch);
 
 	if (port->rx_queue_stats_mapping_enabled) {
 		printf("\n");
@@ -1152,10 +1134,6 @@ stop_packet_forwarding(void)
 		stats.oerrors  -= port->stats.oerrors;
 		port->stats.oerrors = 0;
 		stats.rx_nombuf -= port->stats.rx_nombuf;
-		port->stats.rx_nombuf = 0;
-		stats.fdirmatch -= port->stats.fdirmatch;
-		port->stats.rx_nombuf = 0;
-		stats.fdirmiss -= port->stats.fdirmiss;
 		port->stats.rx_nombuf = 0;
 
 		total_recv += stats.ipackets;
