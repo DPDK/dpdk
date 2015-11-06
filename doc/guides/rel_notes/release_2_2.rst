@@ -4,10 +4,11 @@ DPDK Release 2.2
 New Features
 ------------
 
-* **Introduce ARMv7 architecture**
+* **Introduce ARMv7 and ARMv8 architectures**
 
-  It is now possible to build DPDK for the ARMv7 platform and test with
-  virtual PMD drivers.
+  * It is now possible to build DPDK for the ARMv7 and ARMv8 platforms.
+  * ARMv7 can be tested with virtual PMD drivers.
+  * ARMv8 can be tested with virtual and physical PMD drivers.
 
 * **Enabled freeing of ring.**
 
