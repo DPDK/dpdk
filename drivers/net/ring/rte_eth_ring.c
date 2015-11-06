@@ -363,8 +363,10 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	return data->port_id;
 
 error:
-	rte_free(data->rx_queues);
-	rte_free(data->tx_queues);
+	if (data) {
+		rte_free(data->rx_queues);
+		rte_free(data->tx_queues);
+	}
 	rte_free(data);
 	rte_free(internals);
 
