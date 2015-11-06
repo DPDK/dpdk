@@ -640,7 +640,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		int socket_id, unsigned flags, void *vaddr,
 		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
 
-#ifdef RTE_LIBRTE_XEN_DOM0
 /**
  * Create a new mempool named *name* in memory on Xen Dom0.
  *
@@ -728,7 +727,7 @@ rte_dom0_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
 		rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
 		int socket_id, unsigned flags);
-#endif
+
 
 /**
  * Dump the status of the mempool to the console.

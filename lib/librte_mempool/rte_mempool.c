@@ -375,6 +375,26 @@ rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
 	return usz;
 }
 
+#ifndef RTE_LIBRTE_XEN_DOM0
+/* stub if DOM0 support not configured */
+struct rte_mempool *
+rte_dom0_mempool_create(const char *name __rte_unused,
+			unsigned n __rte_unused,
+			unsigned elt_size __rte_unused,
+			unsigned cache_size __rte_unused,
+			unsigned private_data_size __rte_unused,
+			rte_mempool_ctor_t *mp_init __rte_unused,
+			void *mp_init_arg __rte_unused,
+			rte_mempool_obj_ctor_t *obj_init __rte_unused,
+			void *obj_init_arg __rte_unused,
+			int socket_id __rte_unused,
+			unsigned flags __rte_unused)
+{
+	rte_errno = EINVAL;
+	return NULL;
+}
+#endif
+
 /* create the mempool */
 struct rte_mempool *
 rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
@@ -383,20 +403,20 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
 		   int socket_id, unsigned flags)
 {
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return rte_dom0_mempool_create(name, n, elt_size,
-		cache_size, private_data_size,
-		mp_init, mp_init_arg,
-		obj_init, obj_init_arg,
-		socket_id, flags);
-#else
-	return rte_mempool_xmem_create(name, n, elt_size,
-		cache_size, private_data_size,
-		mp_init, mp_init_arg,
-		obj_init, obj_init_arg,
-		socket_id, flags,
-		NULL, NULL, MEMPOOL_PG_NUM_DEFAULT, MEMPOOL_PG_SHIFT_MAX);
-#endif
+	if (is_xen_dom0_supported())
+		return rte_dom0_mempool_create(name, n, elt_size,
+					       cache_size, private_data_size,
+					       mp_init, mp_init_arg,
+					       obj_init, obj_init_arg,
+					       socket_id, flags);
+	else
+		return rte_mempool_xmem_create(name, n, elt_size,
+					       cache_size, private_data_size,
+					       mp_init, mp_init_arg,
+					       obj_init, obj_init_arg,
+					       socket_id, flags,
+					       NULL, NULL, MEMPOOL_PG_NUM_DEFAULT,
+					       MEMPOOL_PG_SHIFT_MAX);
 }
 
 /*

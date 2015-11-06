@@ -97,6 +97,13 @@
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
 
+#ifdef RTE_LIBRTE_XEN_DOM0
+int is_xen_dom0_supported(void)
+{
+	return internal_config.xen_dom0_support;
+}
+#endif
+
 /**
  * @file
  * Huge page mapping under linux

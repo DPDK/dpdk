@@ -156,7 +156,7 @@ get_xen_memory_size(void)
  * Based on physical address to caculate MFN in Xen Dom0.
  */
 phys_addr_t
-rte_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr)
+rte_xen_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr)
 {
 	int mfn_id;
 	uint64_t mfn, mfn_offset;

@@ -52,6 +52,8 @@
 extern "C" {
 #endif
 
+#include <rte_common.h>
+
 enum rte_page_sizes {
 	RTE_PGSIZE_4K    = 1ULL << 12,
 	RTE_PGSIZE_64K   = 1ULL << 16,
@@ -180,6 +182,13 @@ unsigned rte_memory_get_nchannel(void);
 unsigned rte_memory_get_nrank(void);
 
 #ifdef RTE_LIBRTE_XEN_DOM0
+
+/**< Internal use only - should DOM0 memory mapping be used */
+extern int is_xen_dom0_supported(void);
+
+/**< Internal use only - phys to virt mapping for xen */
+phys_addr_t rte_xen_mem_phy2mch(uint32_t, const phys_addr_t);
+
 /**
  * Return the physical address of elt, which is an element of the pool mp.
  *
@@ -191,7 +200,14 @@ unsigned rte_memory_get_nrank(void);
  * @return
  *   The physical address or error.
  */
-phys_addr_t rte_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr);
+static inline phys_addr_t
+rte_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr)
+{
+	if (is_xen_dom0_supported())
+		return rte_xen_mem_phy2mch(memseg_id, phy_addr);
+	else
+		return phy_addr;
+}
 
 /**
  * Memory init for supporting application running on Xen domain0.
@@ -214,7 +230,19 @@ int rte_xen_dom0_memory_init(void);
  *       negative: error
  */
 int rte_xen_dom0_memory_attach(void);
+#else
+static inline int is_xen_dom0_supported(void)
+{
+	return 0;
+}
+
+static inline phys_addr_t
+rte_mem_phy2mch(uint32_t memseg_id __rte_unused, const phys_addr_t phy_addr)
+{
+	return phy_addr;
+}
 #endif
+
 #ifdef __cplusplus
 }
 #endif

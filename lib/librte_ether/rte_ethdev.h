@@ -3768,6 +3768,30 @@ extern int rte_eth_timesync_read_tx_timestamp(uint8_t port_id,
 extern void rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_dev);
 
 
+/**
+ * Create memzone for HW rings.
+ * malloc can't be used as the physical address is needed.
+ * If the memzone is already created, then this function returns a ptr
+ * to the old one.
+ *
+ * @param eth_dev
+ *   The *eth_dev* pointer is the address of the *rte_eth_dev* structure
+ * @param name
+ *   The name of the memory zone
+ * @param queue_id
+ *   The index of the queue to add to name
+ * @param size
+ *   The sizeof of the memory area
+ * @param align
+ *   Alignment for resulting memzone. Must be a power of 2.
+ * @param socket_id
+ *   The *socket_id* argument is the socket identifier in case of NUMA.
+ */
+const struct rte_memzone *
+rte_eth_dma_zone_reserve(const struct rte_eth_dev *eth_dev, const char *name,
+			 uint16_t queue_id, size_t size,
+			 unsigned align, int socket_id);
+
 #ifdef __cplusplus
 }
 #endif

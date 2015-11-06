@@ -2694,6 +2694,30 @@ rte_eth_dev_rx_intr_ctl(uint8_t port_id, int epfd, int op, void *data)
 	return 0;
 }
 
+const struct rte_memzone *
+rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
+			 uint16_t queue_id, size_t size, unsigned align,
+			 int socket_id)
+{
+	char z_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+
+	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
+		 dev->driver->pci_drv.name, ring_name,
+		 dev->data->port_id, queue_id);
+
+	mz = rte_memzone_lookup(z_name);
+	if (mz)
+		return mz;
+
+	if (is_xen_dom0_supported())
+		return rte_memzone_reserve_bounded(z_name, size, socket_id,
+						   0, align, RTE_PGSIZE_2M);
+	else
+		return rte_memzone_reserve_aligned(z_name, size, socket_id,
+						   0, align);
+}
+
 int
 rte_eth_dev_rx_intr_ctl_q(uint8_t port_id, uint16_t queue_id,
 			  int epfd, int op, void *data)
