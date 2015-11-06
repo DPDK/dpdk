@@ -120,6 +120,32 @@ test_cpuflags(void)
 	CHECK_FOR_FLAG(RTE_CPUFLAG_NEON);
 #endif
 
+#if defined(RTE_ARCH_ARM64)
+	printf("Check for FP:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_FP);
+
+	printf("Check for ASIMD:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_NEON);
+
+	printf("Check for EVTSTRM:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_EVTSTRM);
+
+	printf("Check for AES:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_AES);
+
+	printf("Check for PMULL:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_PMULL);
+
+	printf("Check for SHA1:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_SHA1);
+
+	printf("Check for SHA2:\t\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_SHA2);
+
+	printf("Check for CRC32:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_CRC32);
+#endif
+
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
 	printf("Check for SSE:\t\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_SSE);
