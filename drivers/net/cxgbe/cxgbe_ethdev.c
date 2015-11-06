@@ -660,18 +660,14 @@ static void cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 			      ps.rx_ovflow2 + ps.rx_ovflow3 +
 			      ps.rx_trunc0 + ps.rx_trunc1 +
 			      ps.rx_trunc2 + ps.rx_trunc3;
-	eth_stats->ibadcrc  = ps.rx_fcs_err;
-	eth_stats->ibadlen  = ps.rx_jabber + ps.rx_too_long + ps.rx_runt;
-	eth_stats->ierrors  = ps.rx_symbol_err + eth_stats->ibadcrc +
-			      eth_stats->ibadlen + ps.rx_len_err +
-			      eth_stats->imissed;
-	eth_stats->rx_pause_xon  = ps.rx_pause;
+	eth_stats->ierrors  = ps.rx_symbol_err + ps.rx_fcs_err +
+			      ps.rx_jabber + ps.rx_too_long + ps.rx_runt +
+			      ps.rx_len_err + eth_stats->imissed;
 
 	/* TX Stats */
 	eth_stats->opackets = ps.tx_frames;
 	eth_stats->obytes   = ps.tx_octets;
 	eth_stats->oerrors  = ps.tx_error_frames;
-	eth_stats->tx_pause_xon  = ps.tx_pause;
 
 	for (i = 0; i < pi->n_rx_qsets; i++) {
 		struct sge_eth_rxq *rxq =
