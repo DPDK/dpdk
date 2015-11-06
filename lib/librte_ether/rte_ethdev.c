@@ -1515,7 +1515,8 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 	dev = &rte_eth_devices[port_id];
 
 	/* Return generic statistics */
-	count = RTE_NB_STATS;
+	count = RTE_NB_STATS + (dev->data->nb_rx_queues * RTE_NB_RXQ_STATS) +
+		(dev->data->nb_tx_queues * RTE_NB_TXQ_STATS);
 
 	/* implemented by the driver */
 	if (dev->dev_ops->xstats_get != NULL) {
@@ -1527,9 +1528,6 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 
 		if (xcount < 0)
 			return xcount;
-	} else {
-		count += dev->data->nb_rx_queues * RTE_NB_RXQ_STATS;
-		count += dev->data->nb_tx_queues * RTE_NB_TXQ_STATS;
 	}
 
 	if (n < count + xcount)
@@ -1548,10 +1546,6 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 			"%s", rte_stats_strings[i].name);
 		xstats[count++].value = val;
 	}
-
-	/* if xstats_get() is implemented by the PMD, the Q stats are done */
-	if (dev->dev_ops->xstats_get != NULL)
-		return count + xcount;
 
 	/* per-rxq stats */
 	for (q = 0; q < dev->data->nb_rx_queues; q++) {
