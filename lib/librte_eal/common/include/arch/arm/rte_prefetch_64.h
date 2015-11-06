@@ -1,7 +1,7 @@
 /*
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 RehiveTech. All rights reserved.
+ *   Copyright (C) Cavium networks Ltd. 2015.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  *       notice, this list of conditions and the following disclaimer in
  *       the documentation and/or other materials provided with the
  *       distribution.
- *     * Neither the name of RehiveTech nor the names of its
+ *     * Neither the name of Cavium networks nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -30,13 +30,32 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_PREFETCH_ARM_H_
-#define _RTE_PREFETCH_ARM_H_
+#ifndef _RTE_PREFETCH_ARM_64_H_
+#define _RTE_PREFETCH_ARM_64_H_
 
-#ifdef RTE_ARCH_64
-#include <rte_prefetch_64.h>
-#else
-#include <rte_prefetch_32.h>
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#endif /* _RTE_PREFETCH_ARM_H_ */
+#include "generic/rte_prefetch.h"
+
+static inline void rte_prefetch0(const volatile void *p)
+{
+	asm volatile ("PRFM PLDL1KEEP, [%0]" : : "r" (p));
+}
+
+static inline void rte_prefetch1(const volatile void *p)
+{
+	asm volatile ("PRFM PLDL2KEEP, [%0]" : : "r" (p));
+}
+
+static inline void rte_prefetch2(const volatile void *p)
+{
+	asm volatile ("PRFM PLDL3KEEP, [%0]" : : "r" (p));
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _RTE_PREFETCH_ARM_64_H_ */
