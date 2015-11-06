@@ -1815,16 +1815,11 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->opackets += slave_stats.opackets;
 		stats->ibytes += slave_stats.ibytes;
 		stats->obytes += slave_stats.obytes;
+		stats->imissed += slave_stats.imissed;
 		stats->ierrors += slave_stats.ierrors;
 		stats->oerrors += slave_stats.oerrors;
 		stats->imcasts += slave_stats.imcasts;
 		stats->rx_nombuf += slave_stats.rx_nombuf;
-		stats->fdirmatch += slave_stats.fdirmatch;
-		stats->fdirmiss += slave_stats.fdirmiss;
-		stats->tx_pause_xon += slave_stats.tx_pause_xon;
-		stats->rx_pause_xon += slave_stats.rx_pause_xon;
-		stats->tx_pause_xoff += slave_stats.tx_pause_xoff;
-		stats->rx_pause_xoff += slave_stats.rx_pause_xoff;
 
 		for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {
 			stats->q_ipackets[j] += slave_stats.q_ipackets[j];
