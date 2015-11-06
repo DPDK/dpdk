@@ -198,26 +198,26 @@ struct rte_eth_stats {
 	/**< Total of RX packets dropped by the HW,
 	 * because there are no available mbufs (i.e. RX queues are full).
 	 */
-	uint64_t ibadcrc;
+	uint64_t ibadcrc __rte_deprecated;
 	/**< Deprecated; Total of RX packets with CRC error. */
-	uint64_t ibadlen;
+	uint64_t ibadlen __rte_deprecated;
 	/**< Deprecated; Total of RX packets with bad length. */
 	uint64_t ierrors;   /**< Total number of erroneous received packets. */
 	uint64_t oerrors;   /**< Total number of failed transmitted packets. */
 	uint64_t imcasts;
 	/**< Deprecated; Total number of multicast received packets. */
 	uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
-	uint64_t fdirmatch;
+	uint64_t fdirmatch __rte_deprecated;
 	/**< Deprecated; Total number of RX packets matching a filter. */
-	uint64_t fdirmiss;
+	uint64_t fdirmiss __rte_deprecated;
 	/**< Deprecated; Total number of RX packets not matching any filter. */
-	uint64_t tx_pause_xon;
+	uint64_t tx_pause_xon __rte_deprecated;
 	 /**< Deprecated; Total nb. of XON pause frame sent. */
-	uint64_t rx_pause_xon;
+	uint64_t rx_pause_xon __rte_deprecated;
 	/**< Deprecated; Total nb. of XON pause frame received. */
-	uint64_t tx_pause_xoff;
+	uint64_t tx_pause_xoff __rte_deprecated;
 	/**< Deprecated; Total nb. of XOFF pause frame sent. */
-	uint64_t rx_pause_xoff;
+	uint64_t rx_pause_xoff __rte_deprecated;
 	/**< Deprecated; Total nb. of XOFF pause frame received. */
 	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	/**< Total number of queue RX packets. */

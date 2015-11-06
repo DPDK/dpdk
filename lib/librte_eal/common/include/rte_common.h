@@ -69,6 +69,9 @@ typedef uint32_t unaligned_uint32_t;
 typedef uint16_t unaligned_uint16_t;
 #endif
 
+/******* Macro to mark functions and fields scheduled for removal *****/
+#define __rte_deprecated	__attribute__((__deprecated__))
+
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**
