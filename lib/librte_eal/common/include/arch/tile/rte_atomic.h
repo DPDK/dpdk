@@ -79,6 +79,12 @@ static inline void rte_rmb(void)
 	__sync_synchronize();
 }
 
+#define rte_smp_mb() rte_mb()
+
+#define rte_smp_wmb() rte_compiler_barrier()
+
+#define rte_smp_rmb() rte_compiler_barrier()
+
 #ifdef __cplusplus
 }
 #endif

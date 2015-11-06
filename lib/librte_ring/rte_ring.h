@@ -468,7 +468,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 	/* write entries in ring */
 	ENQUEUE_PTRS();
-	rte_compiler_barrier();
+	rte_smp_wmb();
 
 	/* if we exceed the watermark */
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
@@ -563,7 +563,7 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 	/* write entries in ring */
 	ENQUEUE_PTRS();
-	rte_compiler_barrier();
+	rte_smp_wmb();
 
 	/* if we exceed the watermark */
 	if (unlikely(((mask + 1) - free_entries + n) > r->prod.watermark)) {
@@ -654,7 +654,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	/* copy in table */
 	DEQUEUE_PTRS();
-	rte_compiler_barrier();
+	rte_smp_rmb();
 
 	/*
 	 * If there are other dequeues in progress that preceded us,
@@ -738,7 +738,7 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	/* copy in table */
 	DEQUEUE_PTRS();
-	rte_compiler_barrier();
+	rte_smp_rmb();
 
 	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;

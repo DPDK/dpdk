@@ -151,7 +151,7 @@ vq_ring_update_avail(struct virtqueue *vq, uint16_t desc_idx)
 	 */
 	avail_idx = (uint16_t)(vq->vq_ring.avail->idx & (vq->vq_nentries - 1));
 	vq->vq_ring.avail->ring[avail_idx] = desc_idx;
-	rte_compiler_barrier();  /* wmb , for IA memory model barrier is enough*/
+	rte_smp_wmb();
 	vq->vq_ring.avail->idx++;
 }
 

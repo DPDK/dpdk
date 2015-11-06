@@ -102,7 +102,7 @@ eth_xenvirt_rx(void *q, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	nb_used = VIRTQUEUE_NUSED(rxvq);
 
-	rte_compiler_barrier(); /* rmb */
+	rte_smp_rmb();
 	num = (uint16_t)(likely(nb_used <= nb_pkts) ? nb_used : nb_pkts);
 	num = (uint16_t)(likely(num <= VIRTIO_MBUF_BURST_SZ) ? num : VIRTIO_MBUF_BURST_SZ);
 	if (unlikely(num == 0)) return 0;
@@ -153,7 +153,7 @@ eth_xenvirt_tx(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	PMD_TX_LOG(DEBUG, "%d packets to xmit", nb_pkts);
 	nb_used = VIRTQUEUE_NUSED(txvq);
 
-	rte_compiler_barrier();   /* rmb */
+	rte_smp_rmb();
 
 	num = (uint16_t)(likely(nb_used <= VIRTIO_MBUF_BURST_SZ) ? nb_used : VIRTIO_MBUF_BURST_SZ);
 	num = virtqueue_dequeue_burst(txvq, snd_pkts, len, num);

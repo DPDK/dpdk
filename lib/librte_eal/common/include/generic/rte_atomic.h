@@ -72,6 +72,33 @@ static inline void rte_wmb(void);
  */
 static inline void rte_rmb(void);
 
+/**
+ * General memory barrier between lcores
+ *
+ * Guarantees that the LOAD and STORE operations that precede the
+ * rte_smp_mb() call are globally visible across the lcores
+ * before the the LOAD and STORE operations that follows it.
+ */
+static inline void rte_smp_mb(void);
+
+/**
+ * Write memory barrier between lcores
+ *
+ * Guarantees that the STORE operations that precede the
+ * rte_smp_wmb() call are globally visible across the lcores
+ * before the the STORE operations that follows it.
+ */
+static inline void rte_smp_wmb(void);
+
+/**
+ * Read memory barrier between lcores
+ *
+ * Guarantees that the LOAD operations that precede the
+ * rte_smp_rmb() call are globally visible across the lcores
+ * before the the LOAD operations that follows it.
+ */
+static inline void rte_smp_rmb(void);
+
 #endif /* __DOXYGEN__ */
 
 /**

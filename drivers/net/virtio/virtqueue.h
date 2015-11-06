@@ -53,12 +53,10 @@ struct rte_mbuf;
  *     accesses through relaxed memory I/O windows, so smp_mb() et al are
  *     sufficient.
  *
- * This driver is for virtio_pci on SMP and therefore can assume
- * weaker (compiler barriers)
  */
-#define virtio_mb()	rte_mb()
-#define virtio_rmb()	rte_compiler_barrier()
-#define virtio_wmb()	rte_compiler_barrier()
+#define virtio_mb()	rte_smp_mb()
+#define virtio_rmb()	rte_smp_rmb()
+#define virtio_wmb()	rte_smp_wmb()
 
 #ifdef RTE_PMD_PACKET_PREFETCH
 #define rte_packet_prefetch(p)  rte_prefetch1(p)
