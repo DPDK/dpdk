@@ -1623,14 +1623,23 @@ flow_director_filter
 
 The Flow Director works in receive mode to identify specific flows or sets of flows and route them to specific queues.
 
-Two types of filtering are supported which are referred to as Perfect Match and Signature filters, the match mode
-is set by the ``--pkt-filter-mode`` command-line parameter:
+Four types of filtering are supported which are referred to as Perfect Match, Signature, Perfect-mac-vlan and
+Perfect-tunnel filters, the match mode is set by the ``--pkt-filter-mode`` command-line parameter:
 
 * Perfect match filters.
   The hardware checks a match between the masked fields of the received packets and the programmed filters.
+  The masked fields are for IP flow.
 
 * Signature filters.
   The hardware checks a match between a hash-based signature of the masked fields of the received packet.
+
+* Perfect-mac-vlan match filters.
+  The hardware checks a match between the masked fields of the received packets and the programmed filters.
+  The masked fields are for MAC VLAN flow.
+
+* Perfect-tunnel match filters.
+  The hardware checks a match between the masked fields of the received packets and the programmed filters.
+  The masked fields are for tunnel flow.
 
 The Flow Director filters can match the different fields for different type of packet: flow type, specific input set
 per flow type and the flexible payload.
@@ -1642,14 +1651,14 @@ Different NICs may have different capabilities, command show port fdir (port_id)
 
 # Commands to add flow director filters of different flow types::
 
-   flow_director_filter (port_id) (add|del|update) \
+   flow_director_filter (port_id) mode IP (add|del|update) \
                         flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)
                         src (src_ip_address) dst (dst_ip_address) \
                         vlan (vlan_value) flexbytes (flexbytes_value) \
                         (drop|fwd) pf|vf(vf_id) queue (queue_id) \
                         fd_id (fd_id_value)
 
-   flow_director_filter (port_id) (add|del|update) \
+   flow_director_filter (port_id) mode IP (add|del|update) \
                         flow (ipv4-tcp|ipv4-udp|ipv6-tcp|ipv6-udp) \
                         src (src_ip_address) (src_port) \
                         dst (dst_ip_address) (dst_port) \
@@ -1657,7 +1666,7 @@ Different NICs may have different capabilities, command show port fdir (port_id)
                         (drop|fwd) queue pf|vf(vf_id) (queue_id) \
                         fd_id (fd_id_value)
 
-   flow_director_filter (port_id) (add|del|update) \
+   flow_director_filter (port_id) mode IP (add|del|update) \
                         flow (ipv4-sctp|ipv6-sctp) \
                         src (src_ip_address) (src_port) \
                         dst (dst_ip_address) (dst_port)
@@ -1665,10 +1674,21 @@ Different NICs may have different capabilities, command show port fdir (port_id)
                         flexbytes (flexbytes_value) (drop|fwd) \
                         pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)
 
-   flow_director_filter (port_id) (add|del|update) flow l2_payload \
+   flow_director_filter (port_id) mode IP (add|del|update) flow l2_payload \
                         ether (ethertype) flexbytes (flexbytes_value) \
                         (drop|fwd) pf|vf(vf_id) queue (queue_id)
                         fd_id (fd_id_value)
+
+   flow_director_filter (port_id) mode MAC-VLAN (add|del|update) \
+                        mac (mac_address) vlan (vlan_value) \
+                        flexbytes (flexbytes_value) (drop|fwd) \
+                        queue (queue_id) fd_id (fd_id_value)
+
+   flow_director_filter (port_id) mode Tunnel (add|del|update) \
+                        mac (mac_address) vlan (vlan_value) \
+                        tunnel (NVGRE|VxLAN) tunnel-id (tunnel_id_value) \
+                        flexbytes (flexbytes_value) (drop|fwd) \
+                        queue (queue_id) fd_id (fd_id_value)
 
 For example, to add an ipv4-udp flow type filter::
 
@@ -1696,9 +1716,16 @@ flow_director_mask
 
 Set flow director's input masks::
 
-   flow_director_mask (port_id) vlan (vlan_value) \
+   flow_director_mask (port_id) mode IP vlan (vlan_value) \
                       src_mask (ipv4_src) (ipv6_src) (src_port) \
                       dst_mask (ipv4_dst) (ipv6_dst) (dst_port)
+
+   flow_director_mask (port_id) mode MAC-VLAN vlan (vlan_value) \
+                      mac (mac_value)
+
+   flow_director_mask (port_id) mode Tunnel vlan (vlan_value) \
+                      mac (mac_value) tunnel-type (tunnel_type_value) \
+                      tunnel-id (tunnel_id_value)
 
 Example, to set flow director mask on port 0::
 

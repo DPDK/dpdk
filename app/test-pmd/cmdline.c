@@ -629,7 +629,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" priority (prio_value) queue (queue_id)\n"
 			"    Add/Del a flex filter.\n\n"
 
-			"flow_director_filter (port_id) (add|del|update)"
+			"flow_director_filter (port_id) mode IP (add|del|update)"
 			" flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)"
 			" src (src_ip_address) dst (dst_ip_address)"
 			" vlan (vlan_value) flexbytes (flexbytes_value)"
@@ -637,7 +637,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" fd_id (fd_id_value)\n"
 			"    Add/Del an IP type flow director filter.\n\n"
 
-			"flow_director_filter (port_id) (add|del|update)"
+			"flow_director_filter (port_id) mode IP (add|del|update)"
 			" flow (ipv4-tcp|ipv4-udp|ipv6-tcp|ipv6-udp)"
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
@@ -646,7 +646,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" fd_id (fd_id_value)\n"
 			"    Add/Del an UDP/TCP type flow director filter.\n\n"
 
-			"flow_director_filter (port_id) (add|del|update)"
+			"flow_director_filter (port_id) mode IP (add|del|update)"
 			" flow (ipv4-sctp|ipv6-sctp)"
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
@@ -655,19 +655,42 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a SCTP type flow director filter.\n\n"
 
-			"flow_director_filter (port_id) (add|del|update)"
+			"flow_director_filter (port_id) mode IP (add|del|update)"
 			" flow l2_payload ether (ethertype)"
 			" flexbytes (flexbytes_value) (drop|fwd)"
 			" pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a l2 payload type flow director filter.\n\n"
 
+			"flow_director_filter (port_id) mode MAC-VLAN (add|del|update)"
+			" mac (mac_address) vlan (vlan_value)"
+			" flexbytes (flexbytes_value) (drop|fwd)"
+			" queue (queue_id) fd_id (fd_id_value)\n"
+			"    Add/Del a MAC-VLAN flow director filter.\n\n"
+
+			"flow_director_filter (port_id) mode Tunnel (add|del|update)"
+			" mac (mac_address) vlan (vlan_value)"
+			" tunnel (NVGRE|VxLAN) tunnel-id (tunnel_id_value)"
+			" flexbytes (flexbytes_value) (drop|fwd)"
+			" queue (queue_id) fd_id (fd_id_value)\n"
+			"    Add/Del a Tunnel flow director filter.\n\n"
+
 			"flush_flow_director (port_id)\n"
 			"    Flush all flow director entries of a device.\n\n"
 
-			"flow_director_mask (port_id) vlan (vlan_value)"
+			"flow_director_mask (port_id) mode IP vlan (vlan_value)"
 			" src_mask (ipv4_src) (ipv6_src) (src_port)"
 			" dst_mask (ipv4_dst) (ipv6_dst) (dst_port)\n"
-			"    Set flow director mask.\n\n"
+			"    Set flow director IP mask.\n\n"
+
+			"flow_director_mask (port_id) mode MAC-VLAN"
+			" vlan (vlan_value) mac (mac_value)\n"
+			"    Set flow director MAC-VLAN mask.\n\n"
+
+			"flow_director_mask (port_id) mode Tunnel"
+			" vlan (vlan_value) mac (mac_value)"
+			" tunnel-type (tunnel_type_value)"
+			" tunnel-id (tunnel_id_value)\n"
+			"    Set flow director Tunnel mask.\n\n"
 
 			"flow_director_flex_mask (port_id)"
 			" flow (none|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|"
