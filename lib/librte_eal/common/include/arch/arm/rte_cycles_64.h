@@ -1,7 +1,7 @@
 /*
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 RehiveTech. All rights reserved.
+ *   Copyright (C) Cavium networks Ltd. 2015.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
  *       notice, this list of conditions and the following disclaimer in
  *       the documentation and/or other materials provided with the
  *       distribution.
- *     * Neither the name of RehiveTech nor the names of its
+ *     * Neither the name of Cavium networks nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -28,15 +28,44 @@
  *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+*/
 
-#ifndef _RTE_CYCLES_ARM_H_
-#define _RTE_CYCLES_ARM_H_
+#ifndef _RTE_CYCLES_ARM64_H_
+#define _RTE_CYCLES_ARM64_H_
 
-#ifdef RTE_ARCH_64
-#include <rte_cycles_64.h>
-#else
-#include <rte_cycles_32.h>
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#endif /* _RTE_CYCLES_ARM_H_ */
+#include "generic/rte_cycles.h"
+
+/**
+ * Read the time base register.
+ *
+ * @return
+ *   The time base for this lcore.
+ */
+static inline uint64_t
+rte_rdtsc(void)
+{
+	uint64_t tsc;
+
+	asm volatile("mrs %0, cntvct_el0" : "=r" (tsc));
+	return tsc;
+}
+
+static inline uint64_t
+rte_rdtsc_precise(void)
+{
+	rte_mb();
+	return rte_rdtsc();
+}
+
+static inline uint64_t
+rte_get_tsc_cycles(void) { return rte_rdtsc(); }
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _RTE_CYCLES_ARM64_H_ */
