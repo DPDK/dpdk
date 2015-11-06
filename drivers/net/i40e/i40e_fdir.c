@@ -275,11 +275,8 @@ i40e_fdir_setup(struct i40e_pf *pf)
 		goto fail_mem;
 	}
 	pf->fdir.prg_pkt = mz->addr;
-#ifdef RTE_LIBRTE_XEN_DOM0
 	pf->fdir.dma_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
-#else
-	pf->fdir.dma_addr = (uint64_t)mz->phys_addr;
-#endif
+
 	pf->fdir.match_counter_index = I40E_COUNTER_INDEX_FDIR(hw->pf_id);
 	PMD_DRV_LOG(INFO, "FDIR setup successfully, with programming queue %u.",
 		    vsi->base_queue);

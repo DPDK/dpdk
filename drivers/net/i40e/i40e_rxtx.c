@@ -84,12 +84,6 @@
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
 	((uint64_t)((mb)->buf_physaddr + (mb)->data_off))
 
-static const struct rte_memzone *
-i40e_ring_dma_zone_reserve(struct rte_eth_dev *dev,
-			   const char *ring_name,
-			   uint16_t queue_id,
-			   uint32_t ring_size,
-			   int socket_id);
 static uint16_t i40e_xmit_pkts_simple(void *tx_queue,
 				      struct rte_mbuf **tx_pkts,
 				      uint16_t nb_pkts);
@@ -2175,11 +2169,8 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate the maximun number of RX ring hardware descriptor. */
 	ring_size = sizeof(union i40e_rx_desc) * I40E_MAX_RING_DESC;
 	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
-	rz = i40e_ring_dma_zone_reserve(dev,
-					"rx_ring",
-					queue_idx,
-					ring_size,
-					socket_id);
+	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
+			      ring_size, I40E_RING_BASE_ALIGN, socket_id);
 	if (!rz) {
 		i40e_dev_rx_queue_release(rxq);
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for RX");
@@ -2189,12 +2180,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Zero all the descriptors in the ring. */
 	memset(rz->addr, 0, ring_size);
 
-#ifdef RTE_LIBRTE_XEN_DOM0
 	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
-#else
-	rxq->rx_ring_phys_addr = (uint64_t)rz->phys_addr;
-#endif
-
 	rxq->rx_ring = (union i40e_rx_desc *)rz->addr;
 
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
@@ -2457,11 +2443,8 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate TX hardware ring descriptors. */
 	ring_size = sizeof(struct i40e_tx_desc) * I40E_MAX_RING_DESC;
 	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
-	tz = i40e_ring_dma_zone_reserve(dev,
-					"tx_ring",
-					queue_idx,
-					ring_size,
-					socket_id);
+	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
+			      ring_size, I40E_RING_BASE_ALIGN, socket_id);
 	if (!tz) {
 		i40e_dev_tx_queue_release(txq);
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for TX");
@@ -2486,11 +2469,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
-#ifdef RTE_LIBRTE_XEN_DOM0
 	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
-#else
-	txq->tx_ring_phys_addr = (uint64_t)tz->phys_addr;
-#endif
 	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
 
 	/* Allocate software ring */
@@ -2543,47 +2522,21 @@ i40e_dev_tx_queue_release(void *txq)
 	rte_free(q);
 }
 
-static const struct rte_memzone *
-i40e_ring_dma_zone_reserve(struct rte_eth_dev *dev,
-			   const char *ring_name,
-			   uint16_t queue_id,
-			   uint32_t ring_size,
-			   int socket_id)
-{
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-			dev->driver->pci_drv.name, ring_name,
-				dev->data->port_id, queue_id);
-	mz = rte_memzone_lookup(z_name);
-	if (mz)
-		return mz;
-
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return rte_memzone_reserve_bounded(z_name, ring_size,
-		socket_id, 0, I40E_RING_BASE_ALIGN, RTE_PGSIZE_2M);
-#else
-	return rte_memzone_reserve_aligned(z_name, ring_size,
-				socket_id, 0, I40E_RING_BASE_ALIGN);
-#endif
-}
-
 const struct rte_memzone *
 i40e_memzone_reserve(const char *name, uint32_t len, int socket_id)
 {
-	const struct rte_memzone *mz = NULL;
+	const struct rte_memzone *mz;
 
 	mz = rte_memzone_lookup(name);
 	if (mz)
 		return mz;
-#ifdef RTE_LIBRTE_XEN_DOM0
-	mz = rte_memzone_reserve_bounded(name, len,
-		socket_id, 0, I40E_RING_BASE_ALIGN, RTE_PGSIZE_2M);
-#else
-	mz = rte_memzone_reserve_aligned(name, len,
+
+	if (is_xen_dom0_supported())
+		mz = rte_memzone_reserve_bounded(name, len,
+				socket_id, 0, I40E_RING_BASE_ALIGN, RTE_PGSIZE_2M);
+	else
+		mz = rte_memzone_reserve_aligned(name, len,
 				socket_id, 0, I40E_RING_BASE_ALIGN);
-#endif
 	return mz;
 }
 
@@ -3003,11 +2956,9 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 	ring_size = sizeof(struct i40e_tx_desc) * I40E_FDIR_NUM_TX_DESC;
 	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
 
-	tz = i40e_ring_dma_zone_reserve(dev,
-					"fdir_tx_ring",
-					I40E_FDIR_QUEUE_ID,
-					ring_size,
-					SOCKET_ID_ANY);
+	tz = rte_eth_dma_zone_reserve(dev, "fdir_tx_ring",
+				      I40E_FDIR_QUEUE_ID, ring_size,
+				      I40E_RING_BASE_ALIGN, SOCKET_ID_ANY);
 	if (!tz) {
 		i40e_dev_tx_queue_release(txq);
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for TX.");
@@ -3019,11 +2970,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 	txq->reg_idx = pf->fdir.fdir_vsi->base_queue;
 	txq->vsi = pf->fdir.fdir_vsi;
 
-#ifdef RTE_LIBRTE_XEN_DOM0
 	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
-#else
-	txq->tx_ring_phys_addr = (uint64_t)tz->phys_addr;
-#endif
 	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
 	/*
 	 * don't need to allocate software ring and reset for the fdir
@@ -3063,11 +3010,9 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 	ring_size = sizeof(union i40e_rx_desc) * I40E_FDIR_NUM_RX_DESC;
 	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
 
-	rz = i40e_ring_dma_zone_reserve(dev,
-					"fdir_rx_ring",
-					I40E_FDIR_QUEUE_ID,
-					ring_size,
-					SOCKET_ID_ANY);
+	rz = rte_eth_dma_zone_reserve(dev, "fdir_rx_ring",
+				      I40E_FDIR_QUEUE_ID, ring_size,
+				      I40E_RING_BASE_ALIGN, SOCKET_ID_ANY);
 	if (!rz) {
 		i40e_dev_rx_queue_release(rxq);
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for RX.");
@@ -3079,11 +3024,7 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 	rxq->reg_idx = pf->fdir.fdir_vsi->base_queue;
 	rxq->vsi = pf->fdir.fdir_vsi;
 
-#ifdef RTE_LIBRTE_XEN_DOM0
 	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
-#else
-	rxq->rx_ring_phys_addr = (uint64_t)rz->phys_addr;
-#endif
 	rxq->rx_ring = (union i40e_rx_desc *)rz->addr;
 
 	/*

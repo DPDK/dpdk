@@ -2924,23 +2924,14 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 		return I40E_ERR_PARAM;
 
 	snprintf(z_name, sizeof(z_name), "i40e_dma_%"PRIu64, rte_rand());
-#ifdef RTE_LIBRTE_XEN_DOM0
 	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY, 0,
 					 alignment, RTE_PGSIZE_2M);
-#else
-	mz = rte_memzone_reserve_aligned(z_name, size, SOCKET_ID_ANY, 0,
-					 alignment);
-#endif
 	if (!mz)
 		return I40E_ERR_NO_MEMORY;
 
 	mem->size = size;
 	mem->va = mz->addr;
-#ifdef RTE_LIBRTE_XEN_DOM0
 	mem->pa = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
-#else
-	mem->pa = mz->phys_addr;
-#endif
 	mem->zone = (const void *)mz;
 	PMD_DRV_LOG(DEBUG, "memzone %s allocated with physical address: "
 		    "%"PRIu64, mz->name, mem->pa);
