@@ -1834,35 +1834,6 @@ ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
  *
  **********************************************************************/
 
-/*
- * Create memzone for HW rings. malloc can't be used as the physical address is
- * needed. If the memzone is already created, then this function returns a ptr
- * to the old one.
- */
-static const struct rte_memzone * __attribute__((cold))
-ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
-		      uint16_t queue_id, uint32_t ring_size, int socket_id)
-{
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-			dev->driver->pci_drv.name, ring_name,
-			dev->data->port_id, queue_id);
-
-	mz = rte_memzone_lookup(z_name);
-	if (mz)
-		return mz;
-
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return rte_memzone_reserve_bounded(z_name, ring_size,
-		socket_id, 0, IXGBE_ALIGN, RTE_PGSIZE_2M);
-#else
-	return rte_memzone_reserve_aligned(z_name, ring_size,
-		socket_id, 0, IXGBE_ALIGN);
-#endif
-}
-
 static void __attribute__((cold))
 ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 {
@@ -2104,9 +2075,9 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tz = ring_dma_zone_reserve(dev, "tx_ring", queue_idx,
+	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
 			sizeof(union ixgbe_adv_tx_desc) * IXGBE_MAX_RING_DESC,
-			socket_id);
+			IXGBE_ALIGN, socket_id);
 	if (tz == NULL) {
 		ixgbe_tx_queue_release(txq);
 		return (-ENOMEM);
@@ -2136,11 +2107,8 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
 	else
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
-#ifndef	RTE_LIBRTE_XEN_DOM0
-	txq->tx_ring_phys_addr = (uint64_t) tz->phys_addr;
-#else
+
 	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
-#endif
 	txq->tx_ring = (union ixgbe_adv_tx_desc *) tz->addr;
 
 	/* Allocate software ring */
@@ -2410,8 +2378,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	rz = ring_dma_zone_reserve(dev, "rx_ring", queue_idx,
-				   RX_RING_SZ, socket_id);
+	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
+				      RX_RING_SZ, IXGBE_ALIGN, socket_id);
 	if (rz == NULL) {
 		ixgbe_rx_queue_release(rxq);
 		return (-ENOMEM);
@@ -2440,11 +2408,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		rxq->rdh_reg_addr =
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_RDH(rxq->reg_idx));
 	}
-#ifndef RTE_LIBRTE_XEN_DOM0
-	rxq->rx_ring_phys_addr = (uint64_t) rz->phys_addr;
-#else
+
 	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
-#endif
 	rxq->rx_ring = (union ixgbe_adv_rx_desc *) rz->addr;
 
 	/*
