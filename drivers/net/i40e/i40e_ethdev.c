@@ -489,6 +489,9 @@ static const struct rte_i40e_xstats_name_off rte_i40e_stats_strings[] = {
 	{"tx_dropped", offsetof(struct i40e_eth_stats, tx_discards)},
 };
 
+#define I40E_NB_ETH_XSTATS (sizeof(rte_i40e_stats_strings) / \
+		sizeof(rte_i40e_stats_strings[0]))
+
 static const struct rte_i40e_xstats_name_off rte_i40e_hw_port_strings[] = {
 	{"tx_link_down_dropped", offsetof(struct i40e_hw_port_stats,
 		tx_dropped_link_down)},
@@ -555,15 +558,30 @@ static const struct rte_i40e_xstats_name_off rte_i40e_hw_port_strings[] = {
 		rx_lpi_count)},
 };
 
-/* Q Stats: 5 stats are exposed for each queue, implemented in xstats_get() */
-#define I40E_NB_HW_PORT_Q_STATS (8 * 5)
-
-#define I40E_NB_ETH_XSTATS (sizeof(rte_i40e_stats_strings) / \
-		sizeof(rte_i40e_stats_strings[0]))
 #define I40E_NB_HW_PORT_XSTATS (sizeof(rte_i40e_hw_port_strings) / \
 		sizeof(rte_i40e_hw_port_strings[0]))
-#define I40E_NB_XSTATS (I40E_NB_ETH_XSTATS + I40E_NB_HW_PORT_XSTATS + \
-		I40E_NB_HW_PORT_Q_STATS)
+
+static const struct rte_i40e_xstats_name_off rte_i40e_rxq_prio_strings[] = {
+	{"xon_packets", offsetof(struct i40e_hw_port_stats,
+		priority_xon_rx)},
+	{"xoff_packets", offsetof(struct i40e_hw_port_stats,
+		priority_xoff_rx)},
+};
+
+#define I40E_NB_RXQ_PRIO_XSTATS (sizeof(rte_i40e_rxq_prio_strings) / \
+		sizeof(rte_i40e_rxq_prio_strings[0]))
+
+static const struct rte_i40e_xstats_name_off rte_i40e_txq_prio_strings[] = {
+	{"xon_packets", offsetof(struct i40e_hw_port_stats,
+		priority_xon_tx)},
+	{"xoff_packets", offsetof(struct i40e_hw_port_stats,
+		priority_xoff_tx)},
+	{"xon_to_xoff_packets", offsetof(struct i40e_hw_port_stats,
+		priority_xon_2_xoff)},
+};
+
+#define I40E_NB_TXQ_PRIO_XSTATS (sizeof(rte_i40e_txq_prio_strings) / \
+		sizeof(rte_i40e_txq_prio_strings[0]))
 
 static struct eth_driver rte_i40e_pmd = {
 	.pci_drv = {
@@ -2139,23 +2157,33 @@ i40e_dev_stats_reset(struct rte_eth_dev *dev)
 	i40e_read_stats_registers(pf, hw);
 }
 
+static uint32_t
+i40e_xstats_calc_num(void)
+{
+	return I40E_NB_ETH_XSTATS + I40E_NB_HW_PORT_XSTATS +
+		(I40E_NB_RXQ_PRIO_XSTATS * 8) +
+		(I40E_NB_TXQ_PRIO_XSTATS * 8);
+}
+
 static int
 i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		    unsigned n)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	unsigned i, count = 0;
+	unsigned i, count, prio;
 	struct i40e_hw_port_stats *hw_stats = &pf->stats;
 
-	if (n < I40E_NB_XSTATS)
-		return I40E_NB_XSTATS;
+	count = i40e_xstats_calc_num();
+	if (n < count)
+		return count;
 
 	i40e_read_stats_registers(pf, hw);
 
-	/* Reset */
 	if (xstats == NULL)
 		return 0;
+
+	count = 0;
 
 	/* Get stats from i40e_eth_stats struct */
 	for (i = 0; i < I40E_NB_ETH_XSTATS; i++) {
@@ -2175,45 +2203,35 @@ i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		count++;
 	}
 
-	/* Get per-queue stats from i40e_hw_port struct */
-	for (i = 0; i < 8; i++) {
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_xon_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct i40e_hw_port_stats,
-					 priority_xon_rx[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "rx_q%u_xoff_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct i40e_hw_port_stats,
-					 priority_xoff_rx[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "tx_q%u_xon_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct i40e_hw_port_stats,
-					 priority_xon_tx[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "tx_q%u_xoff_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct i40e_hw_port_stats,
-					 priority_xoff_tx[i]));
-		count++;
-
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "xx_q%u_xon_to_xoff_priority_packets", i);
-		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				offsetof(struct i40e_hw_port_stats,
-					 priority_xon_2_xoff[i]));
-		count++;
+	for (i = 0; i < I40E_NB_RXQ_PRIO_XSTATS; i++) {
+		for (prio = 0; prio < 8; prio++) {
+			snprintf(xstats[count].name,
+				 sizeof(xstats[count].name),
+				 "rx_priority%u_%s", prio,
+				 rte_i40e_rxq_prio_strings[i].name);
+			xstats[count].value =
+				*(uint64_t *)(((char *)hw_stats) +
+				rte_i40e_rxq_prio_strings[i].offset +
+				(sizeof(uint64_t) * prio));
+			count++;
+		}
 	}
 
-	return I40E_NB_XSTATS;
+	for (i = 0; i < I40E_NB_TXQ_PRIO_XSTATS; i++) {
+		for (prio = 0; prio < 8; prio++) {
+			snprintf(xstats[count].name,
+				 sizeof(xstats[count].name),
+				 "tx_priority%u_%s", prio,
+				 rte_i40e_txq_prio_strings[i].name);
+			xstats[count].value =
+				*(uint64_t *)(((char *)hw_stats) +
+				rte_i40e_txq_prio_strings[i].offset +
+				(sizeof(uint64_t) * prio));
+			count++;
+		}
+	}
+
+	return count;
 }
 
 static int
