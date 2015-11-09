@@ -22,6 +22,7 @@
  *   Intel Corporation
  */
 
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 #include <linux/netdevice.h>
@@ -102,9 +103,20 @@ struct kni_net {
 	struct list_head kni_list_head;
 };
 
-static __net_init int kni_init_net(struct net *net)
+static int __net_init kni_init_net(struct net *net)
 {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	struct kni_net *knet = net_generic(net, kni_net_id);
+#else
+	struct kni_net *knet;
+	int ret;
+
+	knet = kmalloc(sizeof(struct kni_net), GFP_KERNEL);
+	if (!knet) {
+		ret = -ENOMEM;
+		return ret;
+	}
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32) */
 
 	/* Clear the bit of device in use */
 	clear_bit(KNI_DEV_IN_USE_BIT_NUM, &knet->device_in_use);
@@ -112,14 +124,33 @@ static __net_init int kni_init_net(struct net *net)
 	init_rwsem(&knet->kni_list_lock);
 	INIT_LIST_HEAD(&knet->kni_list_head);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	return 0;
+#else
+	ret = net_assign_generic(net, kni_net_id, knet);
+	if (ret < 0)
+		kfree(knet);
+
+	return ret;
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32) */
+}
+
+static void __net_exit kni_exit_net(struct net *net)
+{
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 32)
+	struct kni_net *knet = net_generic(net, kni_net_id);
+
+	kfree(knet);
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32) */
 }
 
 static struct pernet_operations kni_net_ops = {
 	.init = kni_init_net,
-	.exit = NULL,
+	.exit = kni_exit_net,
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	.id   = &kni_net_id,
 	.size = sizeof(struct kni_net),
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32) */
 };
 
 static int __init
@@ -134,7 +165,11 @@ kni_init(void)
 		return -EINVAL;
 	}
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	rc = register_pernet_subsys(&kni_net_ops);
+#else
+	rc = register_pernet_gen_subsys(&kni_net_id, &kni_net_ops);
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32) */
 	if (rc)
 		return -EPERM;
 
@@ -152,7 +187,11 @@ kni_init(void)
 	return 0;
 
 out:
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	unregister_pernet_subsys(&kni_net_ops);
+#else
+	register_pernet_gen_subsys(&kni_net_id, &kni_net_ops);
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32) */
 	return rc;
 }
 
@@ -160,7 +199,11 @@ static void __exit
 kni_exit(void)
 {
 	misc_deregister(&kni_misc);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	unregister_pernet_subsys(&kni_net_ops);
+#else
+	register_pernet_gen_subsys(&kni_net_id, &kni_net_ops);
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32) */
 	KNI_PRINT("####### DPDK kni module unloaded  #######\n");
 }
 
