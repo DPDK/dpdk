@@ -12,6 +12,11 @@ Deprecation Notices
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
 
+* ABI changes is planned for the reta field in struct rte_eth_rss_reta_entry64
+  which handles at most 256 entries (8 bits) while newer NICs support larger
+  tables (512 entries).
+  It should be integrated in release 2.3.
+
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
 
