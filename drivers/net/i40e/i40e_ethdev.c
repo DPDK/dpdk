@@ -288,7 +288,6 @@ static void i40e_dev_stats_get(struct rte_eth_dev *dev,
 static int i40e_dev_xstats_get(struct rte_eth_dev *dev,
 			       struct rte_eth_xstats *xstats, unsigned n);
 static void i40e_dev_stats_reset(struct rte_eth_dev *dev);
-static void i40e_dev_xstats_reset(struct rte_eth_dev *dev);
 static int i40e_dev_queue_stats_mapping_set(struct rte_eth_dev *dev,
 					    uint16_t queue_id,
 					    uint8_t stat_idx,
@@ -426,7 +425,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.stats_get                    = i40e_dev_stats_get,
 	.xstats_get                   = i40e_dev_xstats_get,
 	.stats_reset                  = i40e_dev_stats_reset,
-	.xstats_reset                 = i40e_dev_xstats_reset,
+	.xstats_reset                 = i40e_dev_stats_reset,
 	.queue_stats_mapping_set      = i40e_dev_queue_stats_mapping_set,
 	.dev_infos_get                = i40e_dev_info_get,
 	.vlan_filter_set              = i40e_vlan_filter_set,
@@ -2124,19 +2123,20 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	PMD_DRV_LOG(DEBUG, "***************** PF stats end ********************");
 }
 
+/* Reset the statistics */
 static void
-i40e_dev_xstats_reset(struct rte_eth_dev *dev)
+i40e_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_hw_port_stats *hw_stats = &pf->stats;
 
-	/* The hw registers are cleared on read */
+	/* Mark PF and VSI stats to update the offset, aka "reset" */
 	pf->offset_loaded = false;
-	i40e_read_stats_registers(pf, hw);
+	if (pf->main_vsi)
+		pf->main_vsi->offset_loaded = false;
 
-	/* reset software counters */
-	memset(hw_stats, 0, sizeof(*hw_stats));
+	/* read the stats, reading current register values into offset */
+	i40e_read_stats_registers(pf, hw);
 }
 
 static int
@@ -2214,16 +2214,6 @@ i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	}
 
 	return I40E_NB_XSTATS;
-}
-
-/* Reset the statistics */
-static void
-i40e_dev_stats_reset(struct rte_eth_dev *dev)
-{
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-
-	/* It results in reloading the start point of each counter */
-	pf->offset_loaded = false;
 }
 
 static int
