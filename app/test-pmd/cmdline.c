@@ -199,7 +199,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"clear port (info|stats|xstats|fdir|stat_qmap) (port_id|all)\n"
 			"    Clear information for port_id, or all.\n\n"
 
-			"show config (rxtx|cores|fwd)\n"
+			"show config (rxtx|cores|fwd|txpkts)\n"
 			"    Display the given configuration.\n\n"
 
 			"read rxd (port_id) (queue_id) (rxd_id)\n"
@@ -246,7 +246,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set txpkts (x[,y]*)\n"
 			"    Set the length of each segment of TXONLY"
-			" packets.\n\n"
+			" and optionally CSUM packets.\n\n"
+
+			"set txsplit (off|on|rand)\n"
+			"    Set the split policy for the TX packets."
+			" Right now only applicable for CSUM and TXONLY"
+			" modes\n\n"
 
 			"set corelist (x[,y]*)\n"
 			"    Set the list of forwarding cores.\n\n"
@@ -2640,6 +2645,47 @@ cmdline_parse_inst_t cmd_set_txpkts = {
 		(void *)&cmd_set_txpkts_keyword,
 		(void *)&cmd_set_txpkts_name,
 		(void *)&cmd_set_txpkts_lengths,
+		NULL,
+	},
+};
+
+/* *** SET COPY AND SPLIT POLICY ON TX PACKETS *** */
+
+struct cmd_set_txsplit_result {
+	cmdline_fixed_string_t cmd_keyword;
+	cmdline_fixed_string_t txsplit;
+	cmdline_fixed_string_t mode;
+};
+
+static void
+cmd_set_txsplit_parsed(void *parsed_result,
+		      __attribute__((unused)) struct cmdline *cl,
+		      __attribute__((unused)) void *data)
+{
+	struct cmd_set_txsplit_result *res;
+
+	res = parsed_result;
+	set_tx_pkt_split(res->mode);
+}
+
+cmdline_parse_token_string_t cmd_set_txsplit_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_txsplit_result,
+				 cmd_keyword, "set");
+cmdline_parse_token_string_t cmd_set_txsplit_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_txsplit_result,
+				 txsplit, "txsplit");
+cmdline_parse_token_string_t cmd_set_txsplit_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_txsplit_result,
+				 mode, NULL);
+
+cmdline_parse_inst_t cmd_set_txsplit = {
+	.f = cmd_set_txsplit_parsed,
+	.data = NULL,
+	.help_str = "set txsplit on|off|rand",
+	.tokens = {
+		(void *)&cmd_set_txsplit_keyword,
+		(void *)&cmd_set_txsplit_name,
+		(void *)&cmd_set_txsplit_mode,
 		NULL,
 	},
 };
@@ -5256,6 +5302,8 @@ static void cmd_showcfg_parsed(void *parsed_result,
 		fwd_lcores_config_display();
 	else if (!strcmp(res->what, "fwd"))
 		fwd_config_display();
+	else if (!strcmp(res->what, "txpkts"))
+		show_tx_pkt_segments();
 }
 
 cmdline_parse_token_string_t cmd_showcfg_show =
@@ -5264,12 +5312,12 @@ cmdline_parse_token_string_t cmd_showcfg_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, cfg, "config");
 cmdline_parse_token_string_t cmd_showcfg_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, what,
-				 "rxtx#cores#fwd");
+				 "rxtx#cores#fwd#txpkts");
 
 cmdline_parse_inst_t cmd_showcfg = {
 	.f = cmd_showcfg_parsed,
 	.data = NULL,
-	.help_str = "show config rxtx|cores|fwd",
+	.help_str = "show config rxtx|cores|fwd|txpkts",
 	.tokens = {
 		(void *)&cmd_showcfg_show,
 		(void *)&cmd_showcfg_port,
@@ -9597,6 +9645,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_reset,
 	(cmdline_parse_inst_t *)&cmd_set_numbers,
 	(cmdline_parse_inst_t *)&cmd_set_txpkts,
+	(cmdline_parse_inst_t *)&cmd_set_txsplit,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_list,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mask,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mode,

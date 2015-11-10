@@ -211,7 +211,7 @@ show config
 Displays the configuration of the application.
 The configuration comes from the command-line, the runtime or the application defaults::
 
-   testpmd> show config (rxtx|cores|fwd)
+   testpmd> show config (rxtx|cores|fwd|txpkts)
 
 The available information categories are:
 
@@ -220,6 +220,8 @@ The available information categories are:
 * ``cores``: List of forwarding cores.
 
 * ``fwd``: Packet forwarding configuration.
+
+* ``txpkts``: Packets to TX configuration.
 
 For example:
 
@@ -395,6 +397,23 @@ Set the length of each segment of the TX-ONLY packets::
    testpmd> set txpkts (x[,y]*)
 
 Where x[,y]* represents a CSV list of values, without white space.
+
+set txsplit
+~~~~~~~~~~~
+
+Set the split policy for the TX packets, applicable for TX-ONLY and CSUM forwarding modes::
+
+   testpmd> set txsplit (off|on|rand)
+
+Where:
+
+* ``off`` disable packet copy & split for CSUM mode.
+
+* ``on`` split outgoing packet into multiple segments. Size of each segment
+  and number of segments per packet is determined by ``set txpkts`` command
+  (see above).
+
+* ``rand`` same as 'on', but number of segments per each packet is a random value between 1 and total number of segments.
 
 set corelist
 ~~~~~~~~~~~~

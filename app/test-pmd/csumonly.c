@@ -457,6 +457,155 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 }
 
 /*
+ * Helper function.
+ * Performs actual copying.
+ * Returns number of segments in the destination mbuf on success,
+ * or negative error code on failure.
+ */
+static int
+mbuf_copy_split(const struct rte_mbuf *ms, struct rte_mbuf *md[],
+	uint16_t seglen[], uint8_t nb_seg)
+{
+	uint32_t dlen, slen, tlen;
+	uint32_t i, len;
+	const struct rte_mbuf *m;
+	const uint8_t *src;
+	uint8_t *dst;
+
+	dlen = 0;
+	slen = 0;
+	tlen = 0;
+
+	dst = NULL;
+	src = NULL;
+
+	m = ms;
+	i = 0;
+	while (ms != NULL && i != nb_seg) {
+
+		if (slen == 0) {
+			slen = rte_pktmbuf_data_len(ms);
+			src = rte_pktmbuf_mtod(ms, const uint8_t *);
+		}
+
+		if (dlen == 0) {
+			dlen = RTE_MIN(seglen[i], slen);
+			md[i]->data_len = dlen;
+			md[i]->next = (i + 1 == nb_seg) ? NULL : md[i + 1];
+			dst = rte_pktmbuf_mtod(md[i], uint8_t *);
+		}
+
+		len = RTE_MIN(slen, dlen);
+		memcpy(dst, src, len);
+		tlen += len;
+		slen -= len;
+		dlen -= len;
+		src += len;
+		dst += len;
+
+		if (slen == 0)
+			ms = ms->next;
+		if (dlen == 0)
+			i++;
+	}
+
+	if (ms != NULL)
+		return -ENOBUFS;
+	else if (tlen != m->pkt_len)
+		return -EINVAL;
+
+	md[0]->nb_segs = nb_seg;
+	md[0]->pkt_len = tlen;
+	md[0]->vlan_tci = m->vlan_tci;
+	md[0]->vlan_tci_outer = m->vlan_tci_outer;
+	md[0]->ol_flags = m->ol_flags;
+	md[0]->tx_offload = m->tx_offload;
+
+	return nb_seg;
+}
+
+/*
+ * Allocate a new mbuf with up to tx_pkt_nb_segs segments.
+ * Copy packet contents and offload information into then new segmented mbuf.
+ */
+static struct rte_mbuf *
+pkt_copy_split(const struct rte_mbuf *pkt)
+{
+	int32_t n, rc;
+	uint32_t i, len, nb_seg;
+	struct rte_mempool *mp;
+	uint16_t seglen[RTE_MAX_SEGS_PER_PKT];
+	struct rte_mbuf *p, *md[RTE_MAX_SEGS_PER_PKT];
+
+	mp = current_fwd_lcore()->mbp;
+
+	if (tx_pkt_split == TX_PKT_SPLIT_RND)
+		nb_seg = random() % tx_pkt_nb_segs + 1;
+	else
+		nb_seg = tx_pkt_nb_segs;
+
+	memcpy(seglen, tx_pkt_seg_lengths, nb_seg * sizeof(seglen[0]));
+
+	/* calculate number of segments to use and their length. */
+	len = 0;
+	for (i = 0; i != nb_seg && len < pkt->pkt_len; i++) {
+		len += seglen[i];
+		md[i] = NULL;
+	}
+
+	n = pkt->pkt_len - len;
+
+	/* update size of the last segment to fit rest of the packet */
+	if (n >= 0) {
+		seglen[i - 1] += n;
+		len += n;
+	}
+
+	nb_seg = i;
+	while (i != 0) {
+		p = rte_pktmbuf_alloc(mp);
+		if (p == NULL) {
+			RTE_LOG(ERR, USER1,
+				"failed to allocate %u-th of %u mbuf "
+				"from mempool: %s\n",
+				nb_seg - i, nb_seg, mp->name);
+			break;
+		}
+
+		md[--i] = p;
+		if (rte_pktmbuf_tailroom(md[i]) < seglen[i]) {
+			RTE_LOG(ERR, USER1, "mempool %s, %u-th segment: "
+				"expected seglen: %u, "
+				"actual mbuf tailroom: %u\n",
+				mp->name, i, seglen[i],
+				rte_pktmbuf_tailroom(md[i]));
+			break;
+		}
+	}
+
+	/* all mbufs successfully allocated, do copy */
+	if (i == 0) {
+		rc = mbuf_copy_split(pkt, md, seglen, nb_seg);
+		if (rc < 0)
+			RTE_LOG(ERR, USER1,
+				"mbuf_copy_split for %p(len=%u, nb_seg=%hhu) "
+				"into %u segments failed with error code: %d\n",
+				pkt, pkt->pkt_len, pkt->nb_segs, nb_seg, rc);
+
+		/* figure out how many mbufs to free. */
+		i = RTE_MAX(rc, 0);
+	}
+
+	/* free unused mbufs */
+	for (; i != nb_seg; i++) {
+		rte_pktmbuf_free_seg(md[i]);
+		md[i] = NULL;
+	}
+
+	return md[0];
+}
+
+/*
  * Receive a burst of packets, and for each packet:
  *  - parse packet, and try to recognize a supported packet type (1)
  *  - if it's not a supported packet type, don't touch the packet, else:
@@ -486,7 +635,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_port *txp;
-	struct rte_mbuf *m;
+	struct rte_mbuf *m, *p;
 	struct ether_hdr *eth_hdr;
 	void *l3_hdr = NULL, *outer_l3_hdr = NULL; /* can be IPv4 or IPv6 */
 	uint16_t nb_rx;
@@ -627,6 +776,16 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		m->tso_segsz = info.tso_segsz;
 		m->ol_flags = ol_flags;
 
+		/* Do split & copy for the packet. */
+		if (tx_pkt_split != TX_PKT_SPLIT_OFF) {
+			p = pkt_copy_split(m);
+			if (p != NULL) {
+				rte_pktmbuf_free(m);
+				m = p;
+				pkts_burst[i] = m;
+			}
+		}
+
 		/* if verbose mode is enabled, dump debug info */
 		if (verbose_level > 0) {
 			struct {
@@ -648,6 +807,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			const char *name;
 
 			printf("-----------------\n");
+			printf("mbuf=%p, pkt_len=%u, nb_segs=%hhu:\n",
+				m, m->pkt_len, m->nb_segs);
 			/* dump rx parsed packet info */
 			printf("rx: l2_len=%d ethertype=%x l3_len=%d "
 				"l4_proto=%d l4_len=%d\n",

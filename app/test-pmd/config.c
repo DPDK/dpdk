@@ -97,6 +97,24 @@
 
 static char *flowtype_to_str(uint16_t flow_type);
 
+static const struct {
+	enum tx_pkt_split split;
+	const char *name;
+} tx_split_name[] = {
+	{
+		.split = TX_PKT_SPLIT_OFF,
+		.name = "off",
+	},
+	{
+		.split = TX_PKT_SPLIT_ON,
+		.name = "on",
+	},
+	{
+		.split = TX_PKT_SPLIT_RND,
+		.name = "rand",
+	},
+};
+
 struct rss_type_info {
 	char str[32];
 	uint64_t rss_type;
@@ -1580,6 +1598,49 @@ set_nb_pkt_per_burst(uint16_t nb)
 	nb_pkt_per_burst = nb;
 	printf("Number of packets per burst set to %u\n",
 	       (unsigned int) nb_pkt_per_burst);
+}
+
+static const char *
+tx_split_get_name(enum tx_pkt_split split)
+{
+	uint32_t i;
+
+	for (i = 0; i != RTE_DIM(tx_split_name); i++) {
+		if (tx_split_name[i].split == split)
+			return tx_split_name[i].name;
+	}
+	return NULL;
+}
+
+void
+set_tx_pkt_split(const char *name)
+{
+	uint32_t i;
+
+	for (i = 0; i != RTE_DIM(tx_split_name); i++) {
+		if (strcmp(tx_split_name[i].name, name) == 0) {
+			tx_pkt_split = tx_split_name[i].split;
+			return;
+		}
+	}
+	printf("unknown value: \"%s\"\n", name);
+}
+
+void
+show_tx_pkt_segments(void)
+{
+	uint32_t i, n;
+	const char *split;
+
+	n = tx_pkt_nb_segs;
+	split = tx_split_get_name(tx_pkt_split);
+
+	printf("Number of segments: %u\n", n);
+	printf("Segment sizes: ");
+	for (i = 0; i != n - 1; i++)
+		printf("%hu,", tx_pkt_seg_lengths[i]);
+	printf("%hu\n", tx_pkt_seg_lengths[i]);
+	printf("Split packet: %s\n", split);
 }
 
 void

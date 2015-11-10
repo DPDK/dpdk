@@ -210,6 +210,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint64_t end_tsc;
 	uint64_t core_cycles;
 #endif
+	uint32_t nb_segs, pkt_len;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	start_tsc = rte_rdtsc();
@@ -233,7 +234,12 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		}
 		pkt->data_len = tx_pkt_seg_lengths[0];
 		pkt_seg = pkt;
-		for (i = 1; i < tx_pkt_nb_segs; i++) {
+		if (tx_pkt_split == TX_PKT_SPLIT_RND)
+			nb_segs = random() % tx_pkt_nb_segs + 1;
+		else
+			nb_segs = tx_pkt_nb_segs;
+		pkt_len = pkt->data_len;
+		for (i = 1; i < nb_segs; i++) {
 			pkt_seg->next = tx_mbuf_alloc(mbp);
 			if (pkt_seg->next == NULL) {
 				pkt->nb_segs = i;
@@ -242,6 +248,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			}
 			pkt_seg = pkt_seg->next;
 			pkt_seg->data_len = tx_pkt_seg_lengths[i];
+			pkt_len += pkt_seg->data_len;
 		}
 		pkt_seg->next = NULL; /* Last segment of packet. */
 
@@ -266,8 +273,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		 * Complete first mbuf of packet and append it to the
 		 * burst of packets to be transmitted.
 		 */
-		pkt->nb_segs = tx_pkt_nb_segs;
-		pkt->pkt_len = tx_pkt_length;
+		pkt->nb_segs = nb_segs;
+		pkt->pkt_len = pkt_len;
 		pkt->ol_flags = ol_flags;
 		pkt->vlan_tci = vlan_tci;
 		pkt->vlan_tci_outer = vlan_tci_outer;

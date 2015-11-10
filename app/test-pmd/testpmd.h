@@ -361,6 +361,14 @@ extern uint16_t tx_pkt_length; /**< Length of TXONLY packet */
 extern uint16_t tx_pkt_seg_lengths[RTE_MAX_SEGS_PER_PKT]; /**< Seg. lengths */
 extern uint8_t  tx_pkt_nb_segs; /**< Number of segments in TX packets */
 
+enum tx_pkt_split {
+	TX_PKT_SPLIT_OFF,
+	TX_PKT_SPLIT_ON,
+	TX_PKT_SPLIT_RND,
+};
+
+extern enum tx_pkt_split tx_pkt_split;
+
 extern uint16_t nb_pkt_per_burst;
 extern uint16_t mb_mempool_cache;
 extern int8_t rx_pthresh;
@@ -509,6 +517,8 @@ void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_va
 
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);
+void show_tx_pkt_segments(void);
+void set_tx_pkt_split(const char *name);
 void set_nb_pkt_per_burst(uint16_t pkt_burst);
 char *list_pkt_forwarding_modes(void);
 void set_pkt_forwarding_mode(const char *fwd_mode);
