@@ -841,10 +841,10 @@ test_set_rxtx_conf(cmdline_fixed_string_t mode)
 		port_conf.rxmode.enable_scatter = 0;
 		return 0;
 	} else if (!strcmp(mode, "scalar")) {
-		/* bulk alloc rx, simple tx */
-		tx_conf.txq_flags = 0xf01;
-		tx_conf.tx_rs_thresh = 128;
-		tx_conf.tx_free_thresh = 128;
+		/* bulk alloc rx, full-featured tx */
+		tx_conf.txq_flags = 0;
+		tx_conf.tx_rs_thresh = 32;
+		tx_conf.tx_free_thresh = 32;
 		port_conf.rxmode.hw_ip_checksum = 1;
 		port_conf.rxmode.enable_scatter = 0;
 		return 0;

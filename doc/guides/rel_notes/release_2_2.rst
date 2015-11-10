@@ -134,6 +134,13 @@ Drivers
 
   VF needs the PF interrupt support initialized even if not started.
 
+* **ixgbe: Fixed TX hang when RS distance exceeds HW limit.**
+
+  Fixed an issue when TX queue can hang when a lot of highly fragmented
+  packets have to be sent.
+  As part of that fix, tx_rs_thresh for ixgbe PMD is not allowed to be greater
+  then to 32 to comply with HW restrictions.
+
 * **i40e: Fixed base driver allocation when not using first numa node.**
 
   Fixed i40e issue that occurred when a DPDK application didn't initialize

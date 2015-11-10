@@ -572,7 +572,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ixgbe_tx_entry *sw_ring;
 	struct ixgbe_tx_entry *txe, *txn;
 	volatile union ixgbe_adv_tx_desc *txr;
-	volatile union ixgbe_adv_tx_desc *txd;
+	volatile union ixgbe_adv_tx_desc *txd, *txp;
 	struct rte_mbuf     *tx_pkt;
 	struct rte_mbuf     *m_seg;
 	uint64_t buf_dma_addr;
@@ -595,6 +595,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	txr     = txq->tx_ring;
 	tx_id   = txq->tx_tail;
 	txe = &sw_ring[tx_id];
+	txp = NULL;
 
 	/* Determine if the descriptor ring needs to be cleaned. */
 	if (txq->nb_tx_free < txq->tx_free_thresh)
@@ -637,6 +638,12 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * Context descriptors required to transmit the packet
 		 */
 		nb_used = (uint16_t)(tx_pkt->nb_segs + new_ctx);
+
+		if (txp != NULL &&
+				nb_used + txq->nb_tx_used >= txq->tx_rs_thresh)
+			/* set RS on the previous packet in the burst */
+			txp->read.cmd_type_len |=
+				rte_cpu_to_le_32(IXGBE_TXD_CMD_RS);
 
 		/*
 		 * The number of descriptors that must be allocated for a
@@ -840,10 +847,18 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			/* Update txq RS bit counters */
 			txq->nb_tx_used = 0;
-		}
+			txp = NULL;
+		} else
+			txp = txd;
+
 		txd->read.cmd_type_len |= rte_cpu_to_le_32(cmd_type_len);
 	}
+
 end_of_tx:
+	/* set RS on last packet in the burst */
+	if (txp != NULL)
+		txp->read.cmd_type_len |= rte_cpu_to_le_32(IXGBE_TXD_CMD_RS);
+
 	rte_wmb();
 
 	/*
@@ -2019,9 +2034,16 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH);
 	if (tx_rs_thresh >= (nb_desc - 2)) {
 		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less than the number "
-			     "of TX descriptors minus 2. (tx_rs_thresh=%u "
-			     "port=%d queue=%d)", (unsigned int)tx_rs_thresh,
-			     (int)dev->data->port_id, (int)queue_idx);
+			"of TX descriptors minus 2. (tx_rs_thresh=%u "
+			"port=%d queue=%d)", (unsigned int)tx_rs_thresh,
+			(int)dev->data->port_id, (int)queue_idx);
+		return -(EINVAL);
+	}
+	if (tx_rs_thresh > DEFAULT_TX_RS_THRESH) {
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less or equal than %u. "
+			"(tx_rs_thresh=%u port=%d queue=%d)",
+			DEFAULT_TX_RS_THRESH, (unsigned int)tx_rs_thresh,
+			(int)dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 	if (tx_free_thresh >= (nb_desc - 3)) {
