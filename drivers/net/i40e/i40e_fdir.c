@@ -1361,7 +1361,7 @@ i40e_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *stat)
 
 static int
 i40e_fdir_filter_set(struct rte_eth_dev *dev,
-		     struct rte_eth_hash_filter_info *info)
+		     struct rte_eth_fdir_filter_info *info)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
@@ -1428,7 +1428,7 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_SET:
 		ret = i40e_fdir_filter_set(dev,
-			(struct rte_eth_hash_filter_info *)arg);
+			(struct rte_eth_fdir_filter_info *)arg);
 		break;
 	case RTE_ETH_FILTER_STATS:
 		i40e_fdir_stats_get(dev, (struct rte_eth_fdir_stats *)arg);
