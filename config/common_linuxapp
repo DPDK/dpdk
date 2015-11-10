@@ -111,6 +111,9 @@ CONFIG_RTE_EAL_IGB_UIO=y
 CONFIG_RTE_EAL_VFIO=y
 CONFIG_RTE_MALLOC_DEBUG=n
 
+# Default driver path (or "" to disable)
+CONFIG_RTE_EAL_PMD_PATH=""
+
 #
 # Special configurations in PCI Config Space for high performance
 #

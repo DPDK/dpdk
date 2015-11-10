@@ -108,6 +108,9 @@ CONFIG_RTE_EAL_ALLOW_INV_SOCKET_ID=n
 CONFIG_RTE_EAL_ALWAYS_PANIC_ON_ERROR=n
 CONFIG_RTE_MALLOC_DEBUG=n
 
+# Default driver path (or "" to disable)
+CONFIG_RTE_EAL_PMD_PATH=""
+
 #
 # FreeBSD contiguous memory driver settings
 #
