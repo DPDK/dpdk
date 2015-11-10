@@ -106,6 +106,7 @@ The drivers directory has a *net* subdirectory which contains::
     +-- null               # NULL poll mode driver for testing
     +-- pcap               # PCAP poll mode driver
     +-- ring               # Ring poll mode driver
+    +-- szedata2           # SZEDATA2 poll mode driver
     +-- virtio             # Virtio poll mode driver
     +-- vmxnet3            # VMXNET3 poll mode driver
     +-- xenvirt            # Xen virtio poll mode driver

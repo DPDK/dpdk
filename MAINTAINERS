@@ -246,6 +246,11 @@ M: John Daley <johndale@cisco.com>
 M: Sujith Sankar <ssujith@cisco.com>
 F: drivers/net/enic/
 
+Combo szedata2
+M: Matej Vido <matejvido@gmail.com>
+F: drivers/net/szedata2/
+F: doc/guides/nics/szedata2.rst
+
 Intel e1000
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 F: drivers/net/e1000/

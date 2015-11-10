@@ -98,6 +98,11 @@ New Features
   Like mlx4, this PMD is only available for Linux and is disabled by default
   due to external dependencies (libibverbs and libmlx5).
 
+* **Added virtual szedata2 driver for COMBO cards.**
+
+  Added virtual PMD for COMBO-100G and COMBO-80G cards.
+  PMD is disabled in default configuration.
+
 * **Enhanced support for virtio driver.**
 
   * Virtio ring layout optimization (fixed avail ring)

@@ -255,6 +255,11 @@ CONFIG_RTE_LIBRTE_ENIC_PMD=y
 CONFIG_RTE_LIBRTE_ENIC_DEBUG=n
 
 #
+# Compile software PMD backed by SZEDATA2 device
+#
+CONFIG_RTE_LIBRTE_PMD_SZEDATA2=n
+
+#
 # Compile burst-oriented VIRTIO PMD driver
 #
 CONFIG_RTE_LIBRTE_VIRTIO_PMD=y
