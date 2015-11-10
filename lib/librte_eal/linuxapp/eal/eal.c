@@ -43,7 +43,6 @@
 #include <getopt.h>
 #include <sys/file.h>
 #include <fcntl.h>
-#include <dlfcn.h>
 #include <stddef.h>
 #include <errno.h>
 #include <limits.h>
@@ -89,20 +88,6 @@
 
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;
-
-TAILQ_HEAD(shared_driver_list, shared_driver);
-
-/* Definition for shared object drivers. */
-struct shared_driver {
-	TAILQ_ENTRY(shared_driver) next;
-
-	char    name[PATH_MAX];
-	void*   lib_handle;
-};
-
-/* List of external loadable drivers */
-static struct shared_driver_list solib_list =
-TAILQ_HEAD_INITIALIZER(solib_list);
 
 /* early configuration structure, when memory config is not mmapped */
 static struct rte_mem_config early_mem_config;
@@ -350,7 +335,6 @@ eal_usage(const char *prgname)
 	printf("\nUsage: %s ", prgname);
 	eal_common_usage();
 	printf("EAL Linux options:\n"
-	       "  -d LIB.so           Add driver (can be used multiple times)\n"
 	       "  --"OPT_SOCKET_MEM"        Memory to allocate on sockets (comma separated values)\n"
 	       "  --"OPT_HUGE_DIR"          Directory where hugetlbfs is mounted\n"
 	       "  --"OPT_FILE_PREFIX"       Prefix for hugepage filenames\n"
@@ -545,7 +529,6 @@ eal_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
-	struct shared_driver *solib;
 	const int old_optind = optind;
 	const int old_optopt = optopt;
 	char * const old_optarg = optarg;
@@ -578,20 +561,6 @@ eal_parse_args(int argc, char **argv)
 		case 'h':
 			eal_usage(prgname);
 			exit(EXIT_SUCCESS);
-
-		/* force loading of external driver */
-		case 'd':
-			solib = malloc(sizeof(*solib));
-			if (solib == NULL) {
-				RTE_LOG(ERR, EAL, "malloc(solib) failed\n");
-				ret = -1;
-				goto out;
-			}
-			memset(solib, 0, sizeof(*solib));
-			strncpy(solib->name, optarg, PATH_MAX-1);
-			solib->name[PATH_MAX-1] = 0;
-			TAILQ_INSERT_TAIL(&solib_list, solib, next);
-			break;
 
 		/* long options */
 		case OPT_XEN_DOM0_NUM:
@@ -758,7 +727,6 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
-	struct shared_driver *solib = NULL;
 	const char *logid;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
@@ -852,12 +820,8 @@ rte_eal_init(int argc, char **argv)
 
 	rte_eal_mcfg_complete();
 
-	TAILQ_FOREACH(solib, &solib_list, next) {
-		RTE_LOG(DEBUG, EAL, "open shared lib %s\n", solib->name);
-		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
-		if (solib->lib_handle == NULL)
-			RTE_LOG(WARNING, EAL, "%s\n", dlerror());
-	}
+	if (eal_plugins_init() < 0)
+		rte_panic("Cannot init plugins\n");
 
 	eal_thread_init_master(rte_config.master_lcore);
 

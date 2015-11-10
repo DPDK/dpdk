@@ -571,6 +571,9 @@ rte_eal_init(int argc, char **argv)
 
 	rte_eal_mcfg_complete();
 
+	if (eal_plugins_init() < 0)
+		rte_panic("Cannot init plugins\n");
+
 	eal_thread_init_master(rte_config.master_lcore);
 
 	ret = eal_thread_dump_affinity(cpuset, RTE_CPU_AFFINITY_STR_LEN);

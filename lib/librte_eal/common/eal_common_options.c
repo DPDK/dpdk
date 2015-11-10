@@ -39,6 +39,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <getopt.h>
+#include <dlfcn.h>
 
 #include <rte_eal.h>
 #include <rte_log.h>
@@ -94,6 +95,20 @@ eal_long_options[] = {
 	{0,                     0, NULL, 0                        }
 };
 
+TAILQ_HEAD(shared_driver_list, shared_driver);
+
+/* Definition for shared object drivers. */
+struct shared_driver {
+	TAILQ_ENTRY(shared_driver) next;
+
+	char    name[PATH_MAX];
+	void*   lib_handle;
+};
+
+/* List of external loadable drivers */
+static struct shared_driver_list solib_list =
+TAILQ_HEAD_INITIALIZER(solib_list);
+
 static int master_lcore_parsed;
 static int mem_parsed;
 
@@ -132,6 +147,40 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 #endif
 	internal_cfg->vmware_tsc_map = 0;
 	internal_cfg->create_uio_dev = 0;
+}
+
+static int
+eal_plugin_add(const char *path)
+{
+	struct shared_driver *solib;
+
+	solib = malloc(sizeof(*solib));
+	if (solib == NULL) {
+		RTE_LOG(ERR, EAL, "malloc(solib) failed\n");
+		return -1;
+	}
+	memset(solib, 0, sizeof(*solib));
+	strncpy(solib->name, path, PATH_MAX-1);
+	solib->name[PATH_MAX-1] = 0;
+	TAILQ_INSERT_TAIL(&solib_list, solib, next);
+
+	return 0;
+}
+
+int
+eal_plugins_init(void)
+{
+	struct shared_driver *solib = NULL;
+
+	TAILQ_FOREACH(solib, &solib_list, next) {
+		RTE_LOG(DEBUG, EAL, "open shared lib %s\n", solib->name);
+		solib->lib_handle = dlopen(solib->name, RTLD_NOW);
+		if (solib->lib_handle == NULL) {
+			RTE_LOG(ERR, EAL, "%s\n", dlerror());
+			return -1;
+		}
+	}
+	return 0;
 }
 
 /*
@@ -706,6 +755,11 @@ eal_parse_common_option(int opt, const char *optarg,
 			return -1;
 		}
 		break;
+	/* force loading of external driver */
+	case 'd':
+		if (eal_plugin_add(optarg) == -1)
+			return -1;
+		break;
 	case 'v':
 		/* since message is explicitly requested by user, we
 		 * write message at highest log level so it can always
@@ -894,6 +948,7 @@ eal_common_usage(void)
 	       "  --"OPT_VDEV"              Add a virtual device.\n"
 	       "                      The argument format is <driver><id>[,key=val,...]\n"
 	       "                      (ex: --vdev=eth_pcap0,iface=eth2).\n"
+	       "  -d LIB.so           Add driver (can be used multiple times)\n"
 	       "  --"OPT_VMWARE_TSC_MAP"    Use VMware TSC map instead of native RDTSC\n"
 	       "  --"OPT_PROC_TYPE"         Type of this process (primary|secondary|auto)\n"
 	       "  --"OPT_SYSLOG"            Set syslog facility\n"
