@@ -125,6 +125,239 @@ count_ones(uint32_t num)
 	return (((num + (num >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24; /* count */
 }
 
+static uint16_t
+eth_szedata2_rx(void *queue,
+		struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
+{
+	unsigned int i;
+	struct rte_mbuf *mbuf;
+	struct szedata2_rx_queue *sze_q = queue;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	uint16_t num_rx = 0;
+	uint16_t buf_size;
+	uint16_t sg_size;
+	uint16_t hw_size;
+	uint16_t packet_size;
+	uint64_t num_bytes = 0;
+	struct szedata *sze = sze_q->sze;
+	uint8_t *header_ptr = NULL; /* header of packet */
+	uint8_t *packet_ptr1 = NULL;
+	uint8_t *packet_ptr2 = NULL;
+	uint16_t packet_len1 = 0;
+	uint16_t packet_len2 = 0;
+	uint16_t hw_data_align;
+
+	if (unlikely(sze_q->sze == NULL || nb_pkts == 0))
+		return 0;
+
+	/*
+	 * Reads the given number of packets from szedata2 channel given
+	 * by queue and copies the packet data into a newly allocated mbuf
+	 * to return.
+	 */
+	for (i = 0; i < nb_pkts; i++) {
+		mbuf = rte_pktmbuf_alloc(sze_q->mb_pool);
+
+		if (unlikely(mbuf == NULL))
+			break;
+
+		/* get the next sze packet */
+		if (sze->ct_rx_lck != NULL && !sze->ct_rx_rem_bytes &&
+				sze->ct_rx_lck->next == NULL) {
+			/* unlock old data */
+			szedata_rx_unlock_data(sze_q->sze, sze->ct_rx_lck_orig);
+			sze->ct_rx_lck_orig = NULL;
+			sze->ct_rx_lck = NULL;
+		}
+
+		if (!sze->ct_rx_rem_bytes && sze->ct_rx_lck_orig == NULL) {
+			/* nothing to read, lock new data */
+			sze->ct_rx_lck = szedata_rx_lock_data(sze_q->sze, ~0U);
+			sze->ct_rx_lck_orig = sze->ct_rx_lck;
+
+			if (sze->ct_rx_lck == NULL) {
+				/* nothing to lock */
+				rte_pktmbuf_free(mbuf);
+				break;
+			}
+
+			sze->ct_rx_cur_ptr = sze->ct_rx_lck->start;
+			sze->ct_rx_rem_bytes = sze->ct_rx_lck->len;
+
+			if (!sze->ct_rx_rem_bytes) {
+				rte_pktmbuf_free(mbuf);
+				break;
+			}
+		}
+
+		if (sze->ct_rx_rem_bytes < RTE_SZE2_PACKET_HEADER_SIZE) {
+			/*
+			 * cut in header
+			 * copy parts of header to merge buffer
+			 */
+			if (sze->ct_rx_lck->next == NULL) {
+				rte_pktmbuf_free(mbuf);
+				break;
+			}
+
+			/* copy first part of header */
+			rte_memcpy(sze->ct_rx_buffer, sze->ct_rx_cur_ptr,
+					sze->ct_rx_rem_bytes);
+
+			/* copy second part of header */
+			sze->ct_rx_lck = sze->ct_rx_lck->next;
+			sze->ct_rx_cur_ptr = sze->ct_rx_lck->start;
+			rte_memcpy(sze->ct_rx_buffer + sze->ct_rx_rem_bytes,
+				sze->ct_rx_cur_ptr,
+				RTE_SZE2_PACKET_HEADER_SIZE -
+				sze->ct_rx_rem_bytes);
+
+			sze->ct_rx_cur_ptr += RTE_SZE2_PACKET_HEADER_SIZE -
+				sze->ct_rx_rem_bytes;
+			sze->ct_rx_rem_bytes = sze->ct_rx_lck->len -
+				RTE_SZE2_PACKET_HEADER_SIZE +
+				sze->ct_rx_rem_bytes;
+
+			header_ptr = (uint8_t *)sze->ct_rx_buffer;
+		} else {
+			/* not cut */
+			header_ptr = (uint8_t *)sze->ct_rx_cur_ptr;
+			sze->ct_rx_cur_ptr += RTE_SZE2_PACKET_HEADER_SIZE;
+			sze->ct_rx_rem_bytes -= RTE_SZE2_PACKET_HEADER_SIZE;
+		}
+
+		sg_size = le16toh(*((uint16_t *)header_ptr));
+		hw_size = le16toh(*(((uint16_t *)header_ptr) + 1));
+		packet_size = sg_size -
+			RTE_SZE2_ALIGN8(RTE_SZE2_PACKET_HEADER_SIZE + hw_size);
+
+
+		/* checks if packet all right */
+		if (!sg_size)
+			errx(5, "Zero segsize");
+
+		/* check sg_size and hwsize */
+		if (hw_size > sg_size - RTE_SZE2_PACKET_HEADER_SIZE) {
+			errx(10, "Hwsize bigger than expected. Segsize: %d, "
+				"hwsize: %d", sg_size, hw_size);
+		}
+
+		hw_data_align =
+			RTE_SZE2_ALIGN8(RTE_SZE2_PACKET_HEADER_SIZE + hw_size) -
+			RTE_SZE2_PACKET_HEADER_SIZE;
+
+		if (sze->ct_rx_rem_bytes >=
+				(uint16_t)(sg_size -
+				RTE_SZE2_PACKET_HEADER_SIZE)) {
+			/* no cut */
+			/* one packet ready - go to another */
+			packet_ptr1 = sze->ct_rx_cur_ptr + hw_data_align;
+			packet_len1 = packet_size;
+			packet_ptr2 = NULL;
+			packet_len2 = 0;
+
+			sze->ct_rx_cur_ptr += RTE_SZE2_ALIGN8(sg_size) -
+				RTE_SZE2_PACKET_HEADER_SIZE;
+			sze->ct_rx_rem_bytes -= RTE_SZE2_ALIGN8(sg_size) -
+				RTE_SZE2_PACKET_HEADER_SIZE;
+		} else {
+			/* cut in data */
+			if (sze->ct_rx_lck->next == NULL) {
+				errx(6, "Need \"next\" lock, "
+					"but it is missing: %u",
+					sze->ct_rx_rem_bytes);
+			}
+
+			/* skip hw data */
+			if (sze->ct_rx_rem_bytes <= hw_data_align) {
+				uint16_t rem_size = hw_data_align -
+					sze->ct_rx_rem_bytes;
+
+				/* MOVE to next lock */
+				sze->ct_rx_lck = sze->ct_rx_lck->next;
+				sze->ct_rx_cur_ptr =
+					(void *)(((uint8_t *)
+					(sze->ct_rx_lck->start)) + rem_size);
+
+				packet_ptr1 = sze->ct_rx_cur_ptr;
+				packet_len1 = packet_size;
+				packet_ptr2 = NULL;
+				packet_len2 = 0;
+
+				sze->ct_rx_cur_ptr +=
+					RTE_SZE2_ALIGN8(packet_size);
+				sze->ct_rx_rem_bytes = sze->ct_rx_lck->len -
+					rem_size - RTE_SZE2_ALIGN8(packet_size);
+			} else {
+				/* get pointer and length from first part */
+				packet_ptr1 = sze->ct_rx_cur_ptr +
+					hw_data_align;
+				packet_len1 = sze->ct_rx_rem_bytes -
+					hw_data_align;
+
+				/* MOVE to next lock */
+				sze->ct_rx_lck = sze->ct_rx_lck->next;
+				sze->ct_rx_cur_ptr = sze->ct_rx_lck->start;
+
+				/* get pointer and length from second part */
+				packet_ptr2 = sze->ct_rx_cur_ptr;
+				packet_len2 = packet_size - packet_len1;
+
+				sze->ct_rx_cur_ptr +=
+					RTE_SZE2_ALIGN8(packet_size) -
+					packet_len1;
+				sze->ct_rx_rem_bytes = sze->ct_rx_lck->len -
+					(RTE_SZE2_ALIGN8(packet_size) -
+					 packet_len1);
+			}
+		}
+
+		if (unlikely(packet_ptr1 == NULL)) {
+			rte_pktmbuf_free(mbuf);
+			break;
+		}
+
+		/* get the space available for data in the mbuf */
+		mbp_priv = rte_mempool_get_priv(sze_q->mb_pool);
+		buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size -
+				RTE_PKTMBUF_HEADROOM);
+
+		if (packet_size <= buf_size) {
+			/* sze packet will fit in one mbuf, go ahead and copy */
+			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *),
+					packet_ptr1, packet_len1);
+			if (packet_ptr2 != NULL) {
+				rte_memcpy((void *)(rte_pktmbuf_mtod(mbuf,
+					uint8_t *) + packet_len1),
+					packet_ptr2, packet_len2);
+			}
+			mbuf->data_len = (uint16_t)packet_size;
+
+			mbuf->pkt_len = packet_size;
+			mbuf->port = sze_q->in_port;
+			bufs[num_rx] = mbuf;
+			num_rx++;
+			num_bytes += packet_size;
+		} else {
+			/*
+			 * sze packet will not fit in one mbuf,
+			 * scattered mode is not enabled, drop packet
+			 */
+			RTE_LOG(ERR, PMD,
+				"SZE segment %d bytes will not fit in one mbuf "
+				"(%d bytes), scattered mode is not enabled, "
+				"drop packet!!\n",
+				packet_size, buf_size);
+			rte_pktmbuf_free(mbuf);
+		}
+	}
+
+	sze_q->rx_pkts += num_rx;
+	sze_q->rx_bytes += num_bytes;
+	return num_rx;
+}
+
 static int
 init_rx_channels(struct rte_eth_dev *dev, int v)
 {
@@ -724,7 +957,7 @@ rte_eth_from_szedata2(const char *name,
 		return -1;
 	}
 
-	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->rx_pkt_burst = eth_szedata2_rx;
 	eth_dev->tx_pkt_burst = NULL;
 
 	return 0;
