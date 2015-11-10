@@ -436,6 +436,9 @@ reset_owner(struct vhost_device_ctx ctx)
 	if (dev == NULL)
 		return -1;
 
+	if (dev->flags & VIRTIO_DEV_RUNNING)
+		notify_ops->destroy_device(dev);
+
 	device_fh = dev->device_fh;
 	cleanup_device(dev);
 	init_device(dev);
