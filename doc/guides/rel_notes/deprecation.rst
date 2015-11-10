@@ -17,6 +17,10 @@ Deprecation Notices
   tables (512 entries).
   It should be integrated in release 2.3.
 
+* ABI changes are planned for struct rte_eth_fdir_flow in order to support
+  extend flow director's input set. The release 2.2 does not contain these ABI
+  changes, but release 2.3 will, and no backwards compatibility is planned.
+
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
 
