@@ -358,6 +358,220 @@ eth_szedata2_rx(void *queue,
 	return num_rx;
 }
 
+static uint16_t
+eth_szedata2_tx(void *queue,
+		struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
+{
+	struct rte_mbuf *mbuf;
+	struct szedata2_tx_queue *sze_q = queue;
+	uint16_t num_tx = 0;
+	uint64_t num_bytes = 0;
+
+	const struct szedata_lock *lck;
+	uint32_t lock_size;
+	uint32_t lock_size2;
+	void *dst;
+	uint32_t pkt_len;
+	uint32_t hwpkt_len;
+	uint32_t unlock_size;
+	uint32_t rem_len;
+	uint8_t mbuf_segs;
+	uint16_t pkt_left = nb_pkts;
+
+	if (sze_q->sze == NULL || nb_pkts == 0)
+		return 0;
+
+	while (pkt_left > 0) {
+		unlock_size = 0;
+		lck = szedata_tx_lock_data(sze_q->sze,
+			RTE_ETH_SZEDATA2_TX_LOCK_SIZE,
+			sze_q->tx_channel);
+		if (lck == NULL)
+			continue;
+
+		dst = lck->start;
+		lock_size = lck->len;
+		lock_size2 = lck->next ? lck->next->len : 0;
+
+next_packet:
+		mbuf = bufs[nb_pkts - pkt_left];
+
+		pkt_len = mbuf->pkt_len;
+		mbuf_segs = mbuf->nb_segs;
+
+		hwpkt_len = RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED +
+			RTE_SZE2_ALIGN8(pkt_len);
+
+		if (lock_size + lock_size2 < hwpkt_len) {
+			szedata_tx_unlock_data(sze_q->sze, lck, unlock_size);
+			continue;
+		}
+
+		num_bytes += pkt_len;
+
+		if (lock_size > hwpkt_len) {
+			void *tmp_dst;
+
+			rem_len = 0;
+
+			/* write packet length at first 2 bytes in 8B header */
+			*((uint16_t *)dst) = htole16(
+					RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED +
+					pkt_len);
+			*(((uint16_t *)dst) + 1) = htole16(0);
+
+			/* copy packet from mbuf */
+			tmp_dst = ((uint8_t *)(dst)) +
+				RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED;
+			if (mbuf_segs == 1) {
+				/*
+				 * non-scattered packet,
+				 * transmit from one mbuf
+				 */
+				rte_memcpy(tmp_dst,
+					rte_pktmbuf_mtod(mbuf, const void *),
+					pkt_len);
+			} else {
+				/* scattered packet, transmit from more mbufs */
+				struct rte_mbuf *m = mbuf;
+				while (m) {
+					rte_memcpy(tmp_dst,
+						rte_pktmbuf_mtod(m,
+						const void *),
+						m->data_len);
+					tmp_dst = ((uint8_t *)(tmp_dst)) +
+						m->data_len;
+					m = m->next;
+				}
+			}
+
+
+			dst = ((uint8_t *)dst) + hwpkt_len;
+			unlock_size += hwpkt_len;
+			lock_size -= hwpkt_len;
+
+			rte_pktmbuf_free(mbuf);
+			num_tx++;
+			pkt_left--;
+			if (pkt_left == 0) {
+				szedata_tx_unlock_data(sze_q->sze, lck,
+					unlock_size);
+				break;
+			}
+			goto next_packet;
+		} else if (lock_size + lock_size2 >= hwpkt_len) {
+			void *tmp_dst;
+			uint16_t write_len;
+
+			/* write packet length at first 2 bytes in 8B header */
+			*((uint16_t *)dst) =
+				htole16(RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED +
+					pkt_len);
+			*(((uint16_t *)dst) + 1) = htole16(0);
+
+			/*
+			 * If the raw packet (pkt_len) is smaller than lock_size
+			 * get the correct length for memcpy
+			 */
+			write_len =
+				pkt_len < lock_size -
+				RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED ?
+				pkt_len :
+				lock_size - RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED;
+
+			rem_len = hwpkt_len - lock_size;
+
+			tmp_dst = ((uint8_t *)(dst)) +
+				RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED;
+			if (mbuf_segs == 1) {
+				/*
+				 * non-scattered packet,
+				 * transmit from one mbuf
+				 */
+				/* copy part of packet to first area */
+				rte_memcpy(tmp_dst,
+					rte_pktmbuf_mtod(mbuf, const void *),
+					write_len);
+
+				if (lck->next)
+					dst = lck->next->start;
+
+				/* copy part of packet to second area */
+				rte_memcpy(dst,
+					(const void *)(rte_pktmbuf_mtod(mbuf,
+							const uint8_t *) +
+					write_len), pkt_len - write_len);
+			} else {
+				/* scattered packet, transmit from more mbufs */
+				struct rte_mbuf *m = mbuf;
+				uint16_t written = 0;
+				uint16_t to_write = 0;
+				bool new_mbuf = true;
+				uint16_t write_off = 0;
+
+				/* copy part of packet to first area */
+				while (m && written < write_len) {
+					to_write = RTE_MIN(m->data_len,
+							write_len - written);
+					rte_memcpy(tmp_dst,
+						rte_pktmbuf_mtod(m,
+							const void *),
+						to_write);
+
+					tmp_dst = ((uint8_t *)(tmp_dst)) +
+						to_write;
+					if (m->data_len <= write_len -
+							written) {
+						m = m->next;
+						new_mbuf = true;
+					} else {
+						new_mbuf = false;
+					}
+					written += to_write;
+				}
+
+				if (lck->next)
+					dst = lck->next->start;
+
+				tmp_dst = dst;
+				written = 0;
+				write_off = new_mbuf ? 0 : to_write;
+
+				/* copy part of packet to second area */
+				while (m && written < pkt_len - write_len) {
+					rte_memcpy(tmp_dst, (const void *)
+						(rte_pktmbuf_mtod(m,
+						uint8_t *) + write_off),
+						m->data_len - write_off);
+
+					tmp_dst = ((uint8_t *)(tmp_dst)) +
+						(m->data_len - write_off);
+					written += m->data_len - write_off;
+					m = m->next;
+					write_off = 0;
+				}
+			}
+
+			dst = ((uint8_t *)dst) + rem_len;
+			unlock_size += hwpkt_len;
+			lock_size = lock_size2 - rem_len;
+			lock_size2 = 0;
+
+			rte_pktmbuf_free(mbuf);
+			num_tx++;
+		}
+
+		szedata_tx_unlock_data(sze_q->sze, lck, unlock_size);
+		pkt_left--;
+	}
+
+	sze_q->tx_pkts += num_tx;
+	sze_q->err_pkts += nb_pkts - num_tx;
+	sze_q->tx_bytes += num_bytes;
+	return num_tx;
+}
+
 static int
 init_rx_channels(struct rte_eth_dev *dev, int v)
 {
@@ -958,7 +1172,7 @@ rte_eth_from_szedata2(const char *name,
 	}
 
 	eth_dev->rx_pkt_burst = eth_szedata2_rx;
-	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = eth_szedata2_tx;
 
 	return 0;
 }
