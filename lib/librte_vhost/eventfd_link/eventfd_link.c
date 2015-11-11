@@ -249,6 +249,7 @@ static const struct file_operations eventfd_link_fops = {
 
 
 static struct miscdevice eventfd_link_misc = {
+	.minor = MISC_DYNAMIC_MINOR,
 	.name = "eventfd-link",
 	.fops = &eventfd_link_fops,
 };
