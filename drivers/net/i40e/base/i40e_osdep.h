@@ -146,7 +146,7 @@ struct i40e_dma_mem {
 	void *va;
 	u64 pa;
 	u32 size;
-	u64 id;
+	const void *zone;
 } __attribute__((packed));
 
 #define i40e_allocate_dma_mem(h, m, unused, s, a) \

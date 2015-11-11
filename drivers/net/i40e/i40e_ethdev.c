@@ -2910,15 +2910,13 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 			u64 size,
 			u32 alignment)
 {
-	static uint64_t id = 0;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
 	if (!mem)
 		return I40E_ERR_PARAM;
 
-	id++;
-	snprintf(z_name, sizeof(z_name), "i40e_dma_%"PRIu64, id);
+	snprintf(z_name, sizeof(z_name), "i40e_dma_%"PRIu64, rte_rand());
 #ifdef RTE_LIBRTE_XEN_DOM0
 	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY, 0,
 					 alignment, RTE_PGSIZE_2M);
@@ -2929,7 +2927,6 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 	if (!mz)
 		return I40E_ERR_NO_MEMORY;
 
-	mem->id = id;
 	mem->size = size;
 	mem->va = mz->addr;
 #ifdef RTE_LIBRTE_XEN_DOM0
@@ -2937,6 +2934,9 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 #else
 	mem->pa = mz->phys_addr;
 #endif
+	mem->zone = (const void *)mz;
+	PMD_DRV_LOG(DEBUG, "memzone %s allocated with physical address: "
+		    "%"PRIu64, mz->name, mem->pa);
 
 	return I40E_SUCCESS;
 }
@@ -2950,9 +2950,14 @@ enum i40e_status_code
 i40e_free_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 		    struct i40e_dma_mem *mem)
 {
-	if (!mem || !mem->va)
+	if (!mem)
 		return I40E_ERR_PARAM;
 
+	PMD_DRV_LOG(DEBUG, "memzone %s to be freed with physical address: "
+		    "%"PRIu64, ((const struct rte_memzone *)mem->zone)->name,
+		    mem->pa);
+	rte_memzone_free((const struct rte_memzone *)mem->zone);
+	mem->zone = NULL;
 	mem->va = NULL;
 	mem->pa = (u64)0;
 

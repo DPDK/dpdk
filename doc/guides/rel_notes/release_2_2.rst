@@ -150,6 +150,11 @@ Drivers
 
   Added discarding packets on VSI to the stats and rectify the old statistics.
 
+* **i40e: Fixed issue of not freeing memzone.**
+
+  Fixed the issue of not freeing memzone in the call to free the memory for
+  adminq DMA.
+
 * **vhost: Fixed Qemu shutdown.**
 
   Fixed issue with libvirt ``virsh destroy`` not killing the VM.
