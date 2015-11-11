@@ -8019,14 +8019,14 @@ str2flowtype(char *string)
 	return RTE_ETH_FLOW_UNKNOWN;
 }
 
-static uint8_t
+static enum rte_eth_fdir_tunnel_type
 str2fdir_tunneltype(char *string)
 {
 	uint8_t i = 0;
 
 	static const struct {
 		char str[32];
-		uint8_t type;
+		enum rte_eth_fdir_tunnel_type type;
 	} tunneltype_str[] = {
 		{"NVGRE", RTE_FDIR_TUNNEL_TYPE_NVGRE},
 		{"VxLAN", RTE_FDIR_TUNNEL_TYPE_VXLAN},
