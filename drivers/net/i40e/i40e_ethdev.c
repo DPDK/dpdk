@@ -3120,17 +3120,33 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 
 	/* VMDq queue/VSI allocation */
 	pf->vmdq_qp_offset = pf->vf_qp_offset + pf->vf_nb_qps * pf->vf_num;
+	pf->vmdq_nb_qps = 0;
+	pf->max_nb_vmdq_vsi = 0;
 	if (hw->func_caps.vmdq) {
-		pf->flags |= I40E_FLAG_VMDQ;
-		pf->vmdq_nb_qps = pf->vmdq_nb_qp_max;
-		pf->max_nb_vmdq_vsi = 1;
-		PMD_DRV_LOG(DEBUG, "%u VMDQ VSIs, %u queues per VMDQ VSI, "
-			    "in total %u queues", pf->max_nb_vmdq_vsi,
-			    pf->vmdq_nb_qps,
-			    pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi);
-	} else {
-		pf->vmdq_nb_qps = 0;
-		pf->max_nb_vmdq_vsi = 0;
+		if (qp_count < hw->func_caps.num_tx_qp) {
+			pf->max_nb_vmdq_vsi = (hw->func_caps.num_tx_qp -
+				qp_count) / pf->vmdq_nb_qp_max;
+
+			/* Limit the maximum number of VMDq vsi to the maximum
+			 * ethdev can support
+			 */
+			pf->max_nb_vmdq_vsi = RTE_MIN(pf->max_nb_vmdq_vsi,
+				ETH_64_POOLS);
+			if (pf->max_nb_vmdq_vsi) {
+				pf->flags |= I40E_FLAG_VMDQ;
+				pf->vmdq_nb_qps = pf->vmdq_nb_qp_max;
+				PMD_DRV_LOG(DEBUG, "%u VMDQ VSIs, %u queues "
+					    "per VMDQ VSI, in total %u queues",
+					    pf->max_nb_vmdq_vsi,
+					    pf->vmdq_nb_qps, pf->vmdq_nb_qps *
+					    pf->max_nb_vmdq_vsi);
+			} else {
+				PMD_DRV_LOG(INFO, "No enough queues left for "
+					    "VMDq");
+			}
+		} else {
+			PMD_DRV_LOG(INFO, "No queue left for VMDq");
+		}
 	}
 	qp_count += pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi;
 	vsi_count += pf->max_nb_vmdq_vsi;
