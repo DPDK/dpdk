@@ -3418,7 +3418,7 @@ bitmap_is_subset(uint8_t src1, uint8_t src2)
 	return !((src1 ^ src2) & src2);
 }
 
-static int
+static enum i40e_status_code
 validate_tcmap_parameter(struct i40e_vsi *vsi, uint8_t enabled_tcmap)
 {
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
@@ -3426,14 +3426,14 @@ validate_tcmap_parameter(struct i40e_vsi *vsi, uint8_t enabled_tcmap)
 	/* If DCB is not supported, only default TC is supported */
 	if (!hw->func_caps.dcb && enabled_tcmap != I40E_DEFAULT_TCMAP) {
 		PMD_DRV_LOG(ERR, "DCB is not enabled, only TC0 is supported");
-		return -EINVAL;
+		return I40E_NOT_SUPPORTED;
 	}
 
 	if (!bitmap_is_subset(hw->func_caps.enabled_tcmap, enabled_tcmap)) {
 		PMD_DRV_LOG(ERR, "Enabled TC map 0x%x not applicable to "
 			    "HW support 0x%x", hw->func_caps.enabled_tcmap,
 			    enabled_tcmap);
-		return -EINVAL;
+		return I40E_NOT_SUPPORTED;
 	}
 	return I40E_SUCCESS;
 }
@@ -3518,12 +3518,13 @@ i40e_vsi_update_tc_bandwidth(struct i40e_vsi *vsi, uint8_t enabled_tcmap)
 	return I40E_SUCCESS;
 }
 
-static int
+static enum i40e_status_code
 i40e_vsi_config_tc_queue_mapping(struct i40e_vsi *vsi,
 				 struct i40e_aqc_vsi_properties_data *info,
 				 uint8_t enabled_tcmap)
 {
-	int ret, i, total_tc = 0;
+	enum i40e_status_code ret;
+	int i, total_tc = 0;
 	uint16_t qpnum_per_tc, bsf, qp_idx;
 
 	ret = validate_tcmap_parameter(vsi, enabled_tcmap);
@@ -7928,13 +7929,14 @@ i40e_parse_dcb_configure(struct rte_eth_dev *dev,
  *
  * Returns 0 on success, negative value on failure
  */
-static int
+static enum i40e_status_code
 i40e_vsi_get_bw_info(struct i40e_vsi *vsi)
 {
 	struct i40e_aqc_query_vsi_ets_sla_config_resp bw_ets_config = {0};
 	struct i40e_aqc_query_vsi_bw_config_resp bw_config = {0};
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	int i, ret;
+	enum i40e_status_code ret;
+	int i;
 	uint32_t tc_bw_max;
 
 	/* Get the VSI level BW configuration */
@@ -7944,7 +7946,7 @@ i40e_vsi_get_bw_info(struct i40e_vsi *vsi)
 			 "couldn't get PF vsi bw config, err %s aq_err %s\n",
 			 i40e_stat_str(hw, ret),
 			 i40e_aq_str(hw, hw->aq.asq_last_status));
-		return -EINVAL;
+		return ret;
 	}
 
 	/* Get the VSI level BW configuration per TC */
@@ -7955,7 +7957,7 @@ i40e_vsi_get_bw_info(struct i40e_vsi *vsi)
 			 "couldn't get PF vsi ets bw config, err %s aq_err %s\n",
 			 i40e_stat_str(hw, ret),
 			 i40e_aq_str(hw, hw->aq.asq_last_status));
-		return -EINVAL;
+		return ret;
 	}
 
 	if (bw_config.tc_valid_bits != bw_ets_config.tc_valid_bits) {
@@ -7983,15 +7985,16 @@ i40e_vsi_get_bw_info(struct i40e_vsi *vsi)
 			 __func__, vsi->seid, i, bw_config.qs_handles[i]);
 	}
 
-	return 0;
+	return ret;
 }
 
-static int
+static enum i40e_status_code
 i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
 			      struct i40e_aqc_vsi_properties_data *info,
 			      uint8_t enabled_tcmap)
 {
-	int ret, i, total_tc = 0;
+	enum i40e_status_code ret;
+	int i, total_tc = 0;
 	uint16_t qpnum_per_tc, bsf, qp_idx;
 	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(vsi);
 
@@ -8058,13 +8061,13 @@ i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
  *
  * Returns 0 on success, negative value on failure
  */
-static int
+static enum i40e_status_code
 i40e_vsi_config_tc(struct i40e_vsi *vsi, u8 tc_map)
 {
 	struct i40e_aqc_configure_vsi_tc_bw_data bw_data;
 	struct i40e_vsi_context ctxt;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	int ret = 0;
+	enum i40e_status_code ret = I40E_SUCCESS;
 	int i;
 
 	/* Check if enabled_tc is same as existing or new TCs */
@@ -8150,7 +8153,8 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 	struct i40e_dcbx_config *old_cfg = &hw->local_dcbx_config;
 	struct i40e_vsi *main_vsi = pf->main_vsi;
 	struct i40e_vsi_list *vsi_list;
-	int i, ret;
+	enum i40e_status_code ret;
+	int i;
 	uint32_t val;
 
 	/* Use the FW API if FW > v4.4*/
