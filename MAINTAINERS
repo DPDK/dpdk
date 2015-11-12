@@ -262,7 +262,7 @@ F: doc/guides/nics/mlx5.rst
 
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>
-M: Changchun Ouyang <changchun.ouyang@intel.com>
+M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
 F: drivers/net/virtio/
 F: doc/guides/nics/virtio.rst
 F: lib/librte_vhost/
