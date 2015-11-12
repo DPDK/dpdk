@@ -3118,13 +3118,16 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 	pf->vmdq_nb_qps = 0;
 	pf->max_nb_vmdq_vsi = 0;
 	if (hw->func_caps.vmdq) {
-		if (qp_count < hw->func_caps.num_tx_qp) {
+		if (qp_count < hw->func_caps.num_tx_qp &&
+			vsi_count < hw->func_caps.num_vsis) {
 			pf->max_nb_vmdq_vsi = (hw->func_caps.num_tx_qp -
 				qp_count) / pf->vmdq_nb_qp_max;
 
 			/* Limit the maximum number of VMDq vsi to the maximum
 			 * ethdev can support
 			 */
+			pf->max_nb_vmdq_vsi = RTE_MIN(pf->max_nb_vmdq_vsi,
+				hw->func_caps.num_vsis - vsi_count);
 			pf->max_nb_vmdq_vsi = RTE_MIN(pf->max_nb_vmdq_vsi,
 				ETH_64_POOLS);
 			if (pf->max_nb_vmdq_vsi) {
@@ -3140,7 +3143,7 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 					    "VMDq");
 			}
 		} else {
-			PMD_DRV_LOG(INFO, "No queue left for VMDq");
+			PMD_DRV_LOG(INFO, "No queue or VSI left for VMDq");
 		}
 	}
 	qp_count += pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi;
