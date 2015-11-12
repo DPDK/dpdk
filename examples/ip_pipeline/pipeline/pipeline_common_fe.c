@@ -937,47 +937,18 @@ print_link_info(struct app_link_params *p)
 		stats.ipackets,
 		stats.ibytes);
 
-	printf("\tRX mcast %" PRIu64
-		"  fdirmatch %" PRIu64
-		"  fdirmiss %" PRIu64
-		"  lb-packets %" PRIu64
-		"  lb-bytes %" PRIu64
-		"  xon %" PRIu64
-		"  xoff %" PRIu64 "\n",
-		stats.imcasts,
-		stats.fdirmatch,
-		stats.fdirmiss,
-		stats.ilbpackets,
-		stats.ilbbytes,
-		stats.rx_pause_xon,
-		stats.rx_pause_xoff);
-
 	printf("\tRX errors %" PRIu64
 		"  missed %" PRIu64
-		"  badcrc %" PRIu64
-		"  badlen %" PRIu64
 		"  no-mbuf %" PRIu64
 		"\n",
 		stats.ierrors,
 		stats.imissed,
-		stats.ibadcrc,
-		stats.ibadlen,
 		stats.rx_nombuf);
 
 	printf("\tTX packets %" PRIu64
 		"  bytes %" PRIu64 "\n",
 		stats.opackets,
 		stats.obytes);
-
-	printf("\tTX lb-packets %" PRIu64
-		"  lb-bytes %" PRIu64
-		"  xon %" PRIu64
-		"  xoff %" PRIu64
-		"\n",
-		stats.olbpackets,
-		stats.olbbytes,
-		stats.tx_pause_xon,
-		stats.tx_pause_xoff);
 
 	printf("\tTX errors %" PRIu64
 		"\n",
