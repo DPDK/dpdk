@@ -74,7 +74,6 @@ free_mem_region(struct virtio_net *dev)
 {
 	struct orig_region_map *region;
 	unsigned int idx;
-	uint64_t alignment;
 
 	if (!dev || !dev->mem)
 		return;
@@ -82,12 +81,8 @@ free_mem_region(struct virtio_net *dev)
 	region = orig_region(dev->mem, dev->mem->nregions);
 	for (idx = 0; idx < dev->mem->nregions; idx++) {
 		if (region[idx].mapped_address) {
-			alignment = region[idx].blksz;
-			munmap((void *)(uintptr_t)
-				RTE_ALIGN_FLOOR(
-					region[idx].mapped_address, alignment),
-				RTE_ALIGN_CEIL(
-					region[idx].mapped_size, alignment));
+			munmap((void *)(uintptr_t)region[idx].mapped_address,
+					region[idx].mapped_size);
 			close(region[idx].fd);
 		}
 	}
@@ -147,6 +142,18 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 		/* This is ugly */
 		mapped_size = memory.regions[idx].memory_size +
 			memory.regions[idx].mmap_offset;
+
+		/* mmap() without flag of MAP_ANONYMOUS, should be called
+		 * with length argument aligned with hugepagesz at older
+		 * longterm version Linux, like 2.6.32 and 3.2.72, or
+		 * mmap() will fail with EINVAL.
+		 *
+		 * to avoid failure, make sure in caller to keep length
+		 * aligned.
+		 */
+		alignment = get_blk_size(pmsg->fds[idx]);
+		mapped_size = RTE_ALIGN_CEIL(mapped_size, alignment);
+
 		mapped_address = (uint64_t)(uintptr_t)mmap(NULL,
 			mapped_size,
 			PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -154,9 +161,11 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 			0);
 
 		RTE_LOG(INFO, VHOST_CONFIG,
-			"mapped region %d fd:%d to %p sz:0x%"PRIx64" off:0x%"PRIx64"\n",
+			"mapped region %d fd:%d to:%p sz:0x%"PRIx64" "
+			"off:0x%"PRIx64" align:0x%"PRIx64"\n",
 			idx, pmsg->fds[idx], (void *)(uintptr_t)mapped_address,
-			mapped_size, memory.regions[idx].mmap_offset);
+			mapped_size, memory.regions[idx].mmap_offset,
+			alignment);
 
 		if (mapped_address == (uint64_t)(uintptr_t)MAP_FAILED) {
 			RTE_LOG(ERR, VHOST_CONFIG,
@@ -166,7 +175,7 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 
 		pregion_orig[idx].mapped_address = mapped_address;
 		pregion_orig[idx].mapped_size = mapped_size;
-		pregion_orig[idx].blksz = get_blk_size(pmsg->fds[idx]);
+		pregion_orig[idx].blksz = alignment;
 		pregion_orig[idx].fd = pmsg->fds[idx];
 
 		mapped_address +=  memory.regions[idx].mmap_offset;
@@ -193,11 +202,8 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 
 err_mmap:
 	while (idx--) {
-		alignment = pregion_orig[idx].blksz;
-		munmap((void *)(uintptr_t)RTE_ALIGN_FLOOR(
-			pregion_orig[idx].mapped_address, alignment),
-			RTE_ALIGN_CEIL(pregion_orig[idx].mapped_size,
-					alignment));
+		munmap((void *)(uintptr_t)pregion_orig[idx].mapped_address,
+				pregion_orig[idx].mapped_size);
 		close(pregion_orig[idx].fd);
 	}
 	free(dev->mem);
