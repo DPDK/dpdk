@@ -204,6 +204,7 @@ cleanup_device(struct virtio_net *dev)
 		munmap((void *)(uintptr_t)dev->mem->mapped_address,
 			(size_t)dev->mem->mapped_size);
 		free(dev->mem);
+		dev->mem = NULL;
 	}
 
 	for (i = 0; i < dev->virt_qp_nb; i++) {
@@ -306,20 +307,18 @@ alloc_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
 }
 
 /*
- *  Initialise all variables in device structure.
+ * Reset some variables in device structure, while keeping few
+ * others untouched, such as device_fh, ifname, virt_qp_nb: they
+ * should be same unless the device is removed.
  */
 static void
-init_device(struct virtio_net *dev)
+reset_device(struct virtio_net *dev)
 {
-	int vq_offset;
 	uint32_t i;
 
-	/*
-	 * Virtqueues have already been malloced so
-	 * we don't want to set them to NULL.
-	 */
-	vq_offset = offsetof(struct virtio_net, virtqueue);
-	memset(dev, 0, vq_offset);
+	dev->features = 0;
+	dev->protocol_features = 0;
+	dev->flags = 0;
 
 	for (i = 0; i < dev->virt_qp_nb; i++)
 		init_vring_queue_pair(dev, i);
@@ -336,16 +335,13 @@ new_device(struct vhost_device_ctx ctx)
 	struct virtio_net_config_ll *new_ll_dev;
 
 	/* Setup device and virtqueues. */
-	new_ll_dev = rte_malloc(NULL, sizeof(struct virtio_net_config_ll), 0);
+	new_ll_dev = rte_zmalloc(NULL, sizeof(struct virtio_net_config_ll), 0);
 	if (new_ll_dev == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%"PRIu64") Failed to allocate memory for dev.\n",
 			ctx.fh);
 		return -1;
 	}
-
-	/* Initialise device and virtqueues. */
-	init_device(&new_ll_dev->dev);
 
 	new_ll_dev->next = NULL;
 
@@ -430,7 +426,6 @@ static int
 reset_owner(struct vhost_device_ctx ctx)
 {
 	struct virtio_net *dev;
-	uint64_t device_fh;
 
 	dev = get_device(ctx);
 	if (dev == NULL)
@@ -439,10 +434,8 @@ reset_owner(struct vhost_device_ctx ctx)
 	if (dev->flags & VIRTIO_DEV_RUNNING)
 		notify_ops->destroy_device(dev);
 
-	device_fh = dev->device_fh;
 	cleanup_device(dev);
-	init_device(dev);
-	dev->device_fh = device_fh;
+	reset_device(dev);
 	return 0;
 }
 
