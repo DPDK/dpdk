@@ -113,6 +113,10 @@ New Features
 
 * **Added flow director support in i40e VF.**
 
+* **Added i40e support of early X722 series.**
+
+  Add early X722 support for evaluation only, as the hardware is in A0.
+
 * **Added fm10k vector RX/TX.**
 
 * **Added fm10k TSO support for both PF and VF.**
