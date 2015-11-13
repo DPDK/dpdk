@@ -45,7 +45,7 @@ extern "C" {
 
 #include "generic/rte_cpuflags.h"
 
-enum rte_cpu_flag_t __RTE_CPUFLAG_UNDERLYING_TYPE {
+enum rte_cpu_flag_t {
 	/* (EAX 01h) ECX features*/
 	RTE_CPUFLAG_SSE3 = 0,               /**< SSE3 */
 	RTE_CPUFLAG_PCLMULQDQ,              /**< PCLMULQDQ */
@@ -150,7 +150,7 @@ enum rte_cpu_flag_t __RTE_CPUFLAG_UNDERLYING_TYPE {
 	RTE_CPUFLAG_NUMFLAGS,               /**< This should always be the last! */
 };
 
-enum cpu_register_t __RTE_REGISTER_UNDERLYING_TYPE {
+enum cpu_register_t {
 	RTE_REG_EAX = 0,
 	RTE_REG_EBX,
 	RTE_REG_ECX,

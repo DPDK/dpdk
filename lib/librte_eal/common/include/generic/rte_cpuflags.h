@@ -44,23 +44,15 @@
 #include <errno.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-#define __RTE_CPUFLAG_UNDERLYING_TYPE  : unsigned int
-#define __RTE_REGISTER_UNDERLYING_TYPE : unsigned int
-#else
-#define __RTE_CPUFLAG_UNDERLYING_TYPE
-#define __RTE_REGISTER_UNDERLYING_TYPE
-#endif
-
 /**
  * Enumeration of all CPU features supported
  */
-enum rte_cpu_flag_t __RTE_CPUFLAG_UNDERLYING_TYPE;
+enum rte_cpu_flag_t;
 
 /**
  * Enumeration of CPU registers
  */
-enum cpu_register_t __RTE_REGISTER_UNDERLYING_TYPE;
+enum cpu_register_t;
 
 typedef uint32_t cpuid_registers_t[4];
 

@@ -49,7 +49,7 @@ extern "C" {
 #define AT_HWCAP2 26
 
 /* software based registers */
-enum cpu_register_t __RTE_REGISTER_UNDERLYING_TYPE {
+enum cpu_register_t {
 	REG_HWCAP = 0,
 	REG_HWCAP2,
 };
@@ -57,7 +57,7 @@ enum cpu_register_t __RTE_REGISTER_UNDERLYING_TYPE {
 /**
  * Enumeration of all CPU features supported
  */
-enum rte_cpu_flag_t __RTE_CPUFLAG_UNDERLYING_TYPE {
+enum rte_cpu_flag_t {
 	RTE_CPUFLAG_PPC_LE = 0,
 	RTE_CPUFLAG_TRUE_LE,
 	RTE_CPUFLAG_PSERIES_PERFMON_COMPAT,
