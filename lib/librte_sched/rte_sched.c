@@ -62,16 +62,6 @@
 
 #define RTE_SCHED_ENQUEUE                     1
 
-#define RTE_SCHED_TS                          1
-
-#if RTE_SCHED_TS == 0 /* Infinite credits. Traffic shaping disabled. */
-#define RTE_SCHED_TS_CREDITS_UPDATE           0
-#define RTE_SCHED_TS_CREDITS_CHECK            0
-#else                 /* Real Credits. Full traffic shaping implemented. */
-#define RTE_SCHED_TS_CREDITS_UPDATE           1
-#define RTE_SCHED_TS_CREDITS_CHECK            1
-#endif
-
 #ifndef RTE_SCHED_TB_RATE_CONFIG_ERR
 #define RTE_SCHED_TB_RATE_CONFIG_ERR          (1e-7)
 #endif
@@ -1478,11 +1468,7 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 
 #endif /* RTE_SCHED_ENQUEUE */
 
-#if RTE_SCHED_TS_CREDITS_UPDATE == 0
-
-#define grinder_credits_update(port, pos)
-
-#elif !defined(RTE_SCHED_SUBPORT_TC_OV)
+#if   !defined(RTE_SCHED_SUBPORT_TC_OV)
 
 static inline void
 grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
@@ -1615,7 +1601,6 @@ grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
 
 #endif /* RTE_SCHED_TS_CREDITS_UPDATE, RTE_SCHED_SUBPORT_TC_OV */
 
-#if RTE_SCHED_TS_CREDITS_CHECK
 
 #ifndef RTE_SCHED_SUBPORT_TC_OV
 
@@ -1696,7 +1681,6 @@ grinder_credits_check(struct rte_sched_port *port, uint32_t pos)
 
 #endif /* RTE_SCHED_SUBPORT_TC_OV */
 
-#endif /* RTE_SCHED_TS_CREDITS_CHECK */
 
 static inline int
 grinder_schedule(struct rte_sched_port *port, uint32_t pos)
@@ -1706,11 +1690,9 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 	struct rte_mbuf *pkt = grinder->pkt;
 	uint32_t pkt_len = pkt->pkt_len + port->frame_overhead;
 
-#if RTE_SCHED_TS_CREDITS_CHECK
 	if (!grinder_credits_check(port, pos)) {
 		return 0;
 	}
-#endif
 
 	/* Advance port time */
 	port->time += pkt_len;
