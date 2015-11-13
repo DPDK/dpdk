@@ -346,7 +346,8 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		return -7;
 	}
 
-	/* qsize: non-zero, power of 2, no bigger than 32K (due to 16-bit read/write pointers) */
+	/* qsize: non-zero, power of 2,
+	 * no bigger than 32K (due to 16-bit read/write pointers) */
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i ++) {
 		uint16_t qsize = params->qsize[i];
 
@@ -1318,7 +1319,8 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 
 #else
 
-/* The enqueue function implements a 4-level pipeline with each stage processing
+/*
+ * The enqueue function implements a 4-level pipeline with each stage processing
  * two different packets. The purpose of using a pipeline is to hide the latency
  * of prefetching the data structures. The naming convention is presented in the
  * diagram below:
@@ -1329,7 +1331,7 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
  * ----->|_______|----->|_______|----->|_______|----->|_______|----->
  *   p01            p11            p21            p31
  *
- ***/
+ */
 int
 rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 {
