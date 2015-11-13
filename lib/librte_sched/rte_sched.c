@@ -60,28 +60,10 @@
 #include <immintrin.h>
 #endif
 
-#ifndef RTE_SCHED_TB_RATE_CONFIG_ERR
 #define RTE_SCHED_TB_RATE_CONFIG_ERR          (1e-7)
-#endif
-
-#ifndef RTE_SCHED_WRR_SHIFT
 #define RTE_SCHED_WRR_SHIFT                   3
-#endif
-
-#ifndef RTE_SCHED_PORT_N_GRINDERS
-#define RTE_SCHED_PORT_N_GRINDERS             8
-#endif
-#if (RTE_SCHED_PORT_N_GRINDERS == 0) || (RTE_SCHED_PORT_N_GRINDERS & (RTE_SCHED_PORT_N_GRINDERS - 1))
-#error Number of grinders must be non-zero and a power of 2
-#endif
-#if (RTE_SCHED_OPTIMIZATIONS && (RTE_SCHED_PORT_N_GRINDERS != 8))
-#error Number of grinders must be 8 when RTE_SCHED_OPTIMIZATIONS is set
-#endif
-
 #define RTE_SCHED_GRINDER_PCACHE_SIZE         (64 / RTE_SCHED_QUEUES_PER_PIPE)
-
 #define RTE_SCHED_PIPE_INVALID                UINT32_MAX
-
 #define RTE_SCHED_BMP_POS_INVALID             UINT32_MAX
 
 struct rte_sched_subport {
@@ -620,6 +602,10 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	if (port == NULL) {
 		return NULL;
 	}
+
+	/* compile time checks */
+	RTE_BUILD_BUG_ON(RTE_SCHED_PORT_N_GRINDERS == 0);
+	RTE_BUILD_BUG_ON(RTE_SCHED_PORT_N_GRINDERS & (RTE_SCHED_PORT_N_GRINDERS - 1));
 
 	/* User parameters */
 	port->n_subports_per_port = params->n_subports_per_port;
