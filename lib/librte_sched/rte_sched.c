@@ -191,7 +191,7 @@ enum grinder_state {
  * each packet, typically written by the classification stage and read
  * by scheduler enqueue.
  */
-struct __rte_sched_port_hierarchy {
+struct rte_sched_port_hierarchy {
 	uint32_t queue:2;                /**< Queue ID (0 .. 3) */
 	uint32_t traffic_class:2;        /**< Traffic class ID (0 .. 3)*/
 	uint32_t pipe:20;                /**< Pipe ID */
@@ -930,8 +930,8 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
 			 uint32_t subport, uint32_t pipe, uint32_t traffic_class,
 			 uint32_t queue, enum rte_meter_color color)
 {
-	struct __rte_sched_port_hierarchy *sched
-		= (struct __rte_sched_port_hierarchy *) &pkt->hash.sched;
+	struct rte_sched_port_hierarchy *sched
+		= (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
 
 	sched->color = (uint32_t) color;
 	sched->subport = subport;
@@ -945,8 +945,8 @@ rte_sched_port_pkt_read_tree_path(const struct rte_mbuf *pkt,
 				  uint32_t *subport, uint32_t *pipe,
 				  uint32_t *traffic_class, uint32_t *queue)
 {
-	const struct __rte_sched_port_hierarchy *sched
-		= (const struct __rte_sched_port_hierarchy *) &pkt->hash.sched;
+	const struct rte_sched_port_hierarchy *sched
+		= (const struct rte_sched_port_hierarchy *) &pkt->hash.sched;
 
 	*subport = sched->subport;
 	*pipe = sched->pipe;
@@ -958,8 +958,8 @@ rte_sched_port_pkt_read_tree_path(const struct rte_mbuf *pkt,
 enum rte_meter_color
 rte_sched_port_pkt_read_color(const struct rte_mbuf *pkt)
 {
-	const struct __rte_sched_port_hierarchy *sched
-		= (const struct __rte_sched_port_hierarchy *) &pkt->hash.sched;
+	const struct rte_sched_port_hierarchy *sched
+		= (const struct rte_sched_port_hierarchy *) &pkt->hash.sched;
 
 	return (enum rte_meter_color) sched->color;
 }

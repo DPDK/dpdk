@@ -196,20 +196,6 @@ struct rte_sched_port_params {
 };
 
 /*
- * Path through scheduler hierarchy
- *
- * Note: direct access to internal bitfields is deprecated to allow for future expansion.
- * Use rte_sched_port_pkt_read/write API instead
- */
-struct rte_sched_port_hierarchy {
-	uint32_t queue:2;                /**< Queue ID (0 .. 3) */
-	uint32_t traffic_class:2;        /**< Traffic class ID (0 .. 3)*/
-	uint32_t pipe:20;                /**< Pipe ID */
-	uint32_t subport:6;              /**< Subport ID */
-	uint32_t color:2;                /**< Color */
-} __attribute__ ((deprecated));
-
-/*
  * Configuration
  *
  ***/
