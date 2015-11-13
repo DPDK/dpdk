@@ -33,6 +33,7 @@
 
 #ifndef _E1000_ETHDEV_H_
 #define _E1000_ETHDEV_H_
+#include <rte_time.h>
 
 /* need update link, bit flag */
 #define E1000_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -257,6 +258,9 @@ struct e1000_adapter {
 	struct e1000_vf_info    *vfdata;
 	struct e1000_filter_info filter;
 	bool stopped;
+	struct rte_timecounter  systime_tc;
+	struct rte_timecounter  rx_tstamp_tc;
+	struct rte_timecounter  tx_tstamp_tc;
 };
 
 #define E1000_DEV_PRIVATE(adapter) \

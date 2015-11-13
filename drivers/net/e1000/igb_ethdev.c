@@ -78,10 +78,11 @@
 #define IGB_8_BIT_MASK   UINT8_MAX
 
 /* Additional timesync values. */
-#define E1000_ETQF_FILTER_1588 3
-#define E1000_TIMINCA_INCVALUE 16000000
-#define E1000_TIMINCA_INIT     ((0x02 << E1000_TIMINCA_16NS_SHIFT) \
-				| E1000_TIMINCA_INCVALUE)
+#define E1000_CYCLECOUNTER_MASK      0xffffffffffffffff
+#define E1000_ETQF_FILTER_1588       3
+#define IGB_82576_TSYNC_SHIFT        16
+#define E1000_INCPERIOD_82576        (1 << E1000_TIMINCA_16NS_SHIFT)
+#define E1000_INCVALUE_82576         (16 << IGB_82576_TSYNC_SHIFT)
 #define E1000_TSAUXC_DISABLE_SYSTIME 0x80000000
 
 static int  eth_igb_configure(struct rte_eth_dev *dev);
@@ -236,6 +237,11 @@ static int igb_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 					  uint32_t flags);
 static int igb_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 					  struct timespec *timestamp);
+static int igb_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
+static int igb_timesync_read_time(struct rte_eth_dev *dev,
+				  struct timespec *timestamp);
+static int igb_timesync_write_time(struct rte_eth_dev *dev,
+				   const struct timespec *timestamp);
 static int eth_igb_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					uint16_t queue_id);
 static int eth_igb_rx_queue_intr_disable(struct rte_eth_dev *dev,
@@ -349,6 +355,9 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.get_eeprom_length    = eth_igb_get_eeprom_length,
 	.get_eeprom           = eth_igb_get_eeprom,
 	.set_eeprom           = eth_igb_set_eeprom,
+	.timesync_adjust_time = igb_timesync_adjust_time,
+	.timesync_read_time   = igb_timesync_read_time,
+	.timesync_write_time  = igb_timesync_write_time,
 };
 
 /*
@@ -4188,6 +4197,209 @@ eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static uint64_t
+igb_read_systime_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t systime_cycles;
+
+	switch (hw->mac.type) {
+	case e1000_i210:
+	case e1000_i211:
+		/*
+		 * Need to read System Time Residue Register to be able
+		 * to read the other two registers.
+		 */
+		E1000_READ_REG(hw, E1000_SYSTIMR);
+		/* SYSTIMEL stores ns and SYSTIMEH stores seconds. */
+		systime_cycles = (uint64_t)E1000_READ_REG(hw, E1000_SYSTIML);
+		systime_cycles += (uint64_t)E1000_READ_REG(hw, E1000_SYSTIMH)
+				* NSEC_PER_SEC;
+		break;
+	case e1000_82580:
+	case e1000_i350:
+	case e1000_i354:
+		/*
+		 * Need to read System Time Residue Register to be able
+		 * to read the other two registers.
+		 */
+		E1000_READ_REG(hw, E1000_SYSTIMR);
+		systime_cycles = (uint64_t)E1000_READ_REG(hw, E1000_SYSTIML);
+		/* Only the 8 LSB are valid. */
+		systime_cycles |= (uint64_t)(E1000_READ_REG(hw, E1000_SYSTIMH)
+				& 0xff) << 32;
+		break;
+	default:
+		systime_cycles = (uint64_t)E1000_READ_REG(hw, E1000_SYSTIML);
+		systime_cycles |= (uint64_t)E1000_READ_REG(hw, E1000_SYSTIMH)
+				<< 32;
+		break;
+	}
+
+	return systime_cycles;
+}
+
+static uint64_t
+igb_read_rx_tstamp_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t rx_tstamp_cycles;
+
+	switch (hw->mac.type) {
+	case e1000_i210:
+	case e1000_i211:
+		/* RXSTMPL stores ns and RXSTMPH stores seconds. */
+		rx_tstamp_cycles = (uint64_t)E1000_READ_REG(hw, E1000_RXSTMPL);
+		rx_tstamp_cycles += (uint64_t)E1000_READ_REG(hw, E1000_RXSTMPH)
+				* NSEC_PER_SEC;
+		break;
+	case e1000_82580:
+	case e1000_i350:
+	case e1000_i354:
+		rx_tstamp_cycles = (uint64_t)E1000_READ_REG(hw, E1000_RXSTMPL);
+		/* Only the 8 LSB are valid. */
+		rx_tstamp_cycles |= (uint64_t)(E1000_READ_REG(hw, E1000_RXSTMPH)
+				& 0xff) << 32;
+		break;
+	default:
+		rx_tstamp_cycles = (uint64_t)E1000_READ_REG(hw, E1000_RXSTMPL);
+		rx_tstamp_cycles |= (uint64_t)E1000_READ_REG(hw, E1000_RXSTMPH)
+				<< 32;
+		break;
+	}
+
+	return rx_tstamp_cycles;
+}
+
+static uint64_t
+igb_read_tx_tstamp_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t tx_tstamp_cycles;
+
+	switch (hw->mac.type) {
+	case e1000_i210:
+	case e1000_i211:
+		/* RXSTMPL stores ns and RXSTMPH stores seconds. */
+		tx_tstamp_cycles = (uint64_t)E1000_READ_REG(hw, E1000_TXSTMPL);
+		tx_tstamp_cycles += (uint64_t)E1000_READ_REG(hw, E1000_TXSTMPH)
+				* NSEC_PER_SEC;
+		break;
+	case e1000_82580:
+	case e1000_i350:
+	case e1000_i354:
+		tx_tstamp_cycles = (uint64_t)E1000_READ_REG(hw, E1000_TXSTMPL);
+		/* Only the 8 LSB are valid. */
+		tx_tstamp_cycles |= (uint64_t)(E1000_READ_REG(hw, E1000_TXSTMPH)
+				& 0xff) << 32;
+		break;
+	default:
+		tx_tstamp_cycles = (uint64_t)E1000_READ_REG(hw, E1000_TXSTMPL);
+		tx_tstamp_cycles |= (uint64_t)E1000_READ_REG(hw, E1000_TXSTMPH)
+				<< 32;
+		break;
+	}
+
+	return tx_tstamp_cycles;
+}
+
+static void
+igb_start_timecounters(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_adapter *adapter =
+		(struct e1000_adapter *)dev->data->dev_private;
+	uint32_t incval = 1;
+	uint32_t shift = 0;
+	uint64_t mask = E1000_CYCLECOUNTER_MASK;
+
+	switch (hw->mac.type) {
+	case e1000_82580:
+	case e1000_i350:
+	case e1000_i354:
+		/* 32 LSB bits + 8 MSB bits = 40 bits */
+		mask = (1ULL << 40) - 1;
+		/* fall-through */
+	case e1000_i210:
+	case e1000_i211:
+		/*
+		 * Start incrementing the register
+		 * used to timestamp PTP packets.
+		 */
+		E1000_WRITE_REG(hw, E1000_TIMINCA, incval);
+		break;
+	case e1000_82576:
+		incval = E1000_INCVALUE_82576;
+		shift = IGB_82576_TSYNC_SHIFT;
+		E1000_WRITE_REG(hw, E1000_TIMINCA,
+				E1000_INCPERIOD_82576 | incval);
+		break;
+	default:
+		/* Not supported */
+		return;
+	}
+
+	memset(&adapter->systime_tc, 0, sizeof(struct rte_timecounter));
+	memset(&adapter->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+	memset(&adapter->tx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+
+	adapter->systime_tc.cc_mask = mask;
+	adapter->systime_tc.cc_shift = shift;
+	adapter->systime_tc.nsec_mask = (1ULL << shift) - 1;
+
+	adapter->rx_tstamp_tc.cc_mask = mask;
+	adapter->rx_tstamp_tc.cc_shift = shift;
+	adapter->rx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+
+	adapter->tx_tstamp_tc.cc_mask = mask;
+	adapter->tx_tstamp_tc.cc_shift = shift;
+	adapter->tx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+}
+
+static int
+igb_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
+{
+	struct e1000_adapter *adapter =
+			(struct e1000_adapter *)dev->data->dev_private;
+
+	adapter->systime_tc.nsec += delta;
+	adapter->rx_tstamp_tc.nsec += delta;
+	adapter->tx_tstamp_tc.nsec += delta;
+
+	return 0;
+}
+
+static int
+igb_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
+{
+	uint64_t ns;
+	struct e1000_adapter *adapter =
+			(struct e1000_adapter *)dev->data->dev_private;
+
+	ns = rte_timespec_to_ns(ts);
+
+	/* Set the timecounters to a new value. */
+	adapter->systime_tc.nsec = ns;
+	adapter->rx_tstamp_tc.nsec = ns;
+	adapter->tx_tstamp_tc.nsec = ns;
+
+	return 0;
+}
+
+static int
+igb_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
+{
+	uint64_t ns, systime_cycles;
+	struct e1000_adapter *adapter =
+			(struct e1000_adapter *)dev->data->dev_private;
+
+	systime_cycles = igb_read_systime_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->systime_tc, systime_cycles);
+	*ts = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
 static int
 igb_timesync_enable(struct rte_eth_dev *dev)
 {
@@ -4195,13 +4407,32 @@ igb_timesync_enable(struct rte_eth_dev *dev)
 	uint32_t tsync_ctl;
 	uint32_t tsauxc;
 
+	/* Stop the timesync system time. */
+	E1000_WRITE_REG(hw, E1000_TIMINCA, 0x0);
+	/* Reset the timesync system time value. */
+	switch (hw->mac.type) {
+	case e1000_82580:
+	case e1000_i350:
+	case e1000_i354:
+	case e1000_i210:
+	case e1000_i211:
+		E1000_WRITE_REG(hw, E1000_SYSTIMR, 0x0);
+		/* fall-through */
+	case e1000_82576:
+		E1000_WRITE_REG(hw, E1000_SYSTIML, 0x0);
+		E1000_WRITE_REG(hw, E1000_SYSTIMH, 0x0);
+		break;
+	default:
+		/* Not supported. */
+		return -ENOTSUP;
+	}
+
 	/* Enable system time for it isn't on by default. */
 	tsauxc = E1000_READ_REG(hw, E1000_TSAUXC);
 	tsauxc &= ~E1000_TSAUXC_DISABLE_SYSTIME;
 	E1000_WRITE_REG(hw, E1000_TSAUXC, tsauxc);
 
-	/* Start incrementing the register used to timestamp PTP packets. */
-	E1000_WRITE_REG(hw, E1000_TIMINCA, E1000_TIMINCA_INIT);
+	igb_start_timecounters(dev);
 
 	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
 	E1000_WRITE_REG(hw, E1000_ETQF(E1000_ETQF_FILTER_1588),
@@ -4253,19 +4484,19 @@ igb_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 			       uint32_t flags __rte_unused)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_adapter *adapter =
+			(struct e1000_adapter *)dev->data->dev_private;
 	uint32_t tsync_rxctl;
-	uint32_t rx_stmpl;
-	uint32_t rx_stmph;
+	uint64_t rx_tstamp_cycles;
+	uint64_t ns;
 
 	tsync_rxctl = E1000_READ_REG(hw, E1000_TSYNCRXCTL);
 	if ((tsync_rxctl & E1000_TSYNCRXCTL_VALID) == 0)
 		return -EINVAL;
 
-	rx_stmpl = E1000_READ_REG(hw, E1000_RXSTMPL);
-	rx_stmph = E1000_READ_REG(hw, E1000_RXSTMPH);
-
-	timestamp->tv_sec = (uint64_t)(((uint64_t)rx_stmph << 32) | rx_stmpl);
-	timestamp->tv_nsec = 0;
+	rx_tstamp_cycles = igb_read_rx_tstamp_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->rx_tstamp_tc, rx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
 
 	return  0;
 }
@@ -4275,19 +4506,19 @@ igb_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 			       struct timespec *timestamp)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_adapter *adapter =
+			(struct e1000_adapter *)dev->data->dev_private;
 	uint32_t tsync_txctl;
-	uint32_t tx_stmpl;
-	uint32_t tx_stmph;
+	uint64_t tx_tstamp_cycles;
+	uint64_t ns;
 
 	tsync_txctl = E1000_READ_REG(hw, E1000_TSYNCTXCTL);
 	if ((tsync_txctl & E1000_TSYNCTXCTL_VALID) == 0)
 		return -EINVAL;
 
-	tx_stmpl = E1000_READ_REG(hw, E1000_TXSTMPL);
-	tx_stmph = E1000_READ_REG(hw, E1000_TXSTMPH);
-
-	timestamp->tv_sec = (uint64_t)(((uint64_t)tx_stmph << 32) | tx_stmpl);
-	timestamp->tv_nsec = 0;
+	tx_tstamp_cycles = igb_read_tx_tstamp_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->tx_tstamp_tc, tx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
 
 	return  0;
 }
