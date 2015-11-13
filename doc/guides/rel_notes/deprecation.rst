@@ -12,12 +12,6 @@ Deprecation Notices
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
 
-* The scheduler hierarchy structure (rte_sched_port_hierarchy) will change to
-  allow for a larger number of subport entries.
-  The number of available traffic_classes and queues may also change.
-  The mbuf structure element for sched hierarchy will also change from a single
-  32 bit to a 64 bit structure.
-
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
 

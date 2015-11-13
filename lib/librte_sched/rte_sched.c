@@ -152,11 +152,12 @@ enum grinder_state {
  * by scheduler enqueue.
  */
 struct rte_sched_port_hierarchy {
-	uint32_t queue:2;                /**< Queue ID (0 .. 3) */
-	uint32_t traffic_class:2;        /**< Traffic class ID (0 .. 3)*/
-	uint32_t pipe:20;                /**< Pipe ID */
-	uint32_t subport:6;              /**< Subport ID */
+	uint16_t queue:2;                /**< Queue ID (0 .. 3) */
+	uint16_t traffic_class:2;        /**< Traffic class ID (0 .. 3)*/
 	uint32_t color:2;                /**< Color */
+	uint16_t unused:10;
+	uint16_t subport;                /**< Subport ID */
+	uint32_t pipe;		         /**< Pipe ID */
 };
 
 struct rte_sched_grinder {
@@ -292,8 +293,9 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 	if (params->mtu == 0)
 		return -5;
 
-	/* n_subports_per_port: non-zero, power of 2 */
+	/* n_subports_per_port: non-zero, limited to 16 bits, power of 2 */
 	if (params->n_subports_per_port == 0 ||
+	    params->n_subports_per_port > 1u << 16 ||
 	    !rte_is_power_of_2(params->n_subports_per_port))
 		return -6;
 
@@ -915,6 +917,8 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
 {
 	struct rte_sched_port_hierarchy *sched
 		= (struct rte_sched_port_hierarchy *) &pkt->hash.sched;
+
+	RTE_BUILD_BUG_ON(sizeof(*sched) > sizeof(pkt->hash.sched));
 
 	sched->color = (uint32_t) color;
 	sched->subport = subport;

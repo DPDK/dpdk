@@ -799,7 +799,10 @@ struct rte_mbuf {
 			/**< First 4 flexible bytes or FD ID, dependent on
 			     PKT_RX_FDIR_* flag in ol_flags. */
 		} fdir;           /**< Filter identifier if FDIR enabled */
-		uint32_t sched;   /**< Hierarchical scheduler */
+		struct {
+			uint32_t lo;
+			uint32_t hi;
+		} sched;          /**< Hierarchical scheduler */
 		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 	} hash;                   /**< hash information */
 
