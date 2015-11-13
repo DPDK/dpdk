@@ -52,11 +52,7 @@
 #pragma warning(disable:2259) /* conversion may lose significant bits */
 #endif
 
-#ifndef RTE_SCHED_OPTIMIZATIONS
-#define RTE_SCHED_OPTIMIZATIONS		          0
-#endif
-
-#if RTE_SCHED_OPTIMIZATIONS
+#ifdef RTE_SCHED_VECTOR
 #include <immintrin.h>
 #endif
 
@@ -1668,7 +1664,7 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 	return 1;
 }
 
-#if RTE_SCHED_OPTIMIZATIONS
+#ifdef RTE_SCHED_VECTOR
 
 static inline int
 grinder_pipe_exists(struct rte_sched_port *port, uint32_t base_pipe)
