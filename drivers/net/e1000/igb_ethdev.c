@@ -1101,6 +1101,9 @@ eth_igb_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	/* disable uio/vfio intr/eventfd mapping */
+	rte_intr_disable(intr_handle);
+
 	/* Power up the phy. Needed to make the link go Up */
 	e1000_power_up_phy(hw);
 
