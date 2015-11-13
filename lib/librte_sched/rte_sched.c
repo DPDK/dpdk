@@ -60,8 +60,6 @@
 #include <immintrin.h>
 #endif
 
-#define RTE_SCHED_ENQUEUE                     1
-
 #ifndef RTE_SCHED_TB_RATE_CONFIG_ERR
 #define RTE_SCHED_TB_RATE_CONFIG_ERR          (1e-7)
 #endif
@@ -1275,35 +1273,6 @@ rte_sched_port_enqueue_qwa(struct rte_sched_port *port, uint32_t qindex, struct 
 	return 1;
 }
 
-#if RTE_SCHED_ENQUEUE == 0
-
-int
-rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint32_t n_pkts)
-{
-	uint32_t result, i;
-
-	result = 0;
-
-	for (i = 0; i < n_pkts; i ++) {
-		struct rte_mbuf *pkt;
-		struct rte_mbuf **q_base;
-		uint32_t subport, pipe, traffic_class, queue, qindex;
-
-		pkt = pkts[i];
-
-		rte_sched_port_pkt_read_tree_path(pkt, &subport, &pipe, &traffic_class, &queue);
-
-		qindex = rte_sched_port_qindex(port, subport, pipe, traffic_class, queue);
-
-		q_base = rte_sched_port_qbase(port, qindex);
-
-		result += rte_sched_port_enqueue_qwa(port, qindex, q_base, pkt);
-	}
-
-	return result;
-}
-
-#else
 
 /*
  * The enqueue function implements a 4-level pipeline with each stage processing
@@ -1466,9 +1435,7 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 	return result;
 }
 
-#endif /* RTE_SCHED_ENQUEUE */
-
-#if   !defined(RTE_SCHED_SUBPORT_TC_OV)
+#ifndef RTE_SCHED_SUBPORT_TC_OV
 
 static inline void
 grinder_credits_update(struct rte_sched_port *port, uint32_t pos)
