@@ -64,8 +64,6 @@
 #define RTE_SCHED_TB_RATE_CONFIG_ERR          (1e-7)
 #endif
 
-#define RTE_SCHED_WRR                         1
-
 #ifndef RTE_SCHED_WRR_SHIFT
 #define RTE_SCHED_WRR_SHIFT                   3
 #endif
@@ -1879,24 +1877,6 @@ grinder_next_pipe(struct rte_sched_port *port, uint32_t pos)
 	return 1;
 }
 
-#if RTE_SCHED_WRR == 0
-
-#define grinder_wrr_load(a,b)
-
-#define grinder_wrr_store(a,b)
-
-static inline void
-grinder_wrr(struct rte_sched_port *port, uint32_t pos)
-{
-	struct rte_sched_grinder *grinder = port->grinder + pos;
-	uint64_t slab = grinder->qmask;
-
-	if (rte_bsf64(slab, &grinder->qpos) == 0) {
-		rte_panic("grinder wrr\n");
-	}
-}
-
-#elif RTE_SCHED_WRR == 1
 
 static inline void
 grinder_wrr_load(struct rte_sched_port *port, uint32_t pos)
@@ -1962,11 +1942,6 @@ grinder_wrr(struct rte_sched_port *port, uint32_t pos)
 	grinder->wrr_tokens[3] -= wrr_tokens_min;
 }
 
-#else
-
-#error Invalid value for RTE_SCHED_WRR
-
-#endif /* RTE_SCHED_WRR */
 
 #define grinder_evict(port, pos)
 
