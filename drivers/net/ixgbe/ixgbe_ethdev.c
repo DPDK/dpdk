@@ -126,10 +126,17 @@
 #define IXGBE_HKEY_MAX_INDEX 10
 
 /* Additional timesync values. */
-#define IXGBE_TIMINCA_16NS_SHIFT 24
-#define IXGBE_TIMINCA_INCVALUE   16000000
-#define IXGBE_TIMINCA_INIT       ((0x02 << IXGBE_TIMINCA_16NS_SHIFT) \
-				  | IXGBE_TIMINCA_INCVALUE)
+#define NSEC_PER_SEC             1000000000L
+#define IXGBE_INCVAL_10GB        0x66666666
+#define IXGBE_INCVAL_1GB         0x40000000
+#define IXGBE_INCVAL_100         0x50000000
+#define IXGBE_INCVAL_SHIFT_10GB  28
+#define IXGBE_INCVAL_SHIFT_1GB   24
+#define IXGBE_INCVAL_SHIFT_100   21
+#define IXGBE_INCVAL_SHIFT_82599 7
+#define IXGBE_INCPER_SHIFT_82599 24
+
+#define IXGBE_CYCLECOUNTER_MASK   0xffffffffffffffff
 
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -325,6 +332,11 @@ static int ixgbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 					    uint32_t flags);
 static int ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 					    struct timespec *timestamp);
+static int ixgbe_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
+static int ixgbe_timesync_read_time(struct rte_eth_dev *dev,
+				   struct timespec *timestamp);
+static int ixgbe_timesync_write_time(struct rte_eth_dev *dev,
+				   const struct timespec *timestamp);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -480,6 +492,9 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.get_eeprom           = ixgbe_get_eeprom,
 	.set_eeprom           = ixgbe_set_eeprom,
 	.get_dcb_info         = ixgbe_dev_get_dcb_info,
+	.timesync_adjust_time = ixgbe_timesync_adjust_time,
+	.timesync_read_time   = ixgbe_timesync_read_time,
+	.timesync_write_time  = ixgbe_timesync_write_time,
 };
 
 /*
@@ -5582,6 +5597,186 @@ ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 					 ixgbe_dev_addr_list_itr, TRUE);
 }
 
+static uint64_t
+ixgbe_read_systime_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t systime_cycles;
+
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+		/* SYSTIMEL stores ns and SYSTIMEH stores seconds. */
+		systime_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_SYSTIML);
+		systime_cycles += (uint64_t)IXGBE_READ_REG(hw, IXGBE_SYSTIMH)
+				* NSEC_PER_SEC;
+		break;
+	default:
+		systime_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_SYSTIML);
+		systime_cycles |= (uint64_t)IXGBE_READ_REG(hw, IXGBE_SYSTIMH)
+				<< 32;
+	}
+
+	return systime_cycles;
+}
+
+static uint64_t
+ixgbe_read_rx_tstamp_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t rx_tstamp_cycles;
+
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+		/* RXSTMPL stores ns and RXSTMPH stores seconds. */
+		rx_tstamp_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_RXSTMPL);
+		rx_tstamp_cycles += (uint64_t)IXGBE_READ_REG(hw, IXGBE_RXSTMPH)
+				* NSEC_PER_SEC;
+		break;
+	default:
+		/* RXSTMPL stores ns and RXSTMPH stores seconds. */
+		rx_tstamp_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_RXSTMPL);
+		rx_tstamp_cycles |= (uint64_t)IXGBE_READ_REG(hw, IXGBE_RXSTMPH)
+				<< 32;
+	}
+
+	return rx_tstamp_cycles;
+}
+
+static uint64_t
+ixgbe_read_tx_tstamp_cyclecounter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint64_t tx_tstamp_cycles;
+
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+		/* TXSTMPL stores ns and TXSTMPH stores seconds. */
+		tx_tstamp_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_TXSTMPL);
+		tx_tstamp_cycles += (uint64_t)IXGBE_READ_REG(hw, IXGBE_TXSTMPH)
+				* NSEC_PER_SEC;
+		break;
+	default:
+		/* TXSTMPL stores ns and TXSTMPH stores seconds. */
+		tx_tstamp_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_TXSTMPL);
+		tx_tstamp_cycles |= (uint64_t)IXGBE_READ_REG(hw, IXGBE_TXSTMPH)
+				<< 32;
+	}
+
+	return tx_tstamp_cycles;
+}
+
+static void
+ixgbe_start_timecounters(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct rte_eth_link link;
+	uint32_t incval = 0;
+	uint32_t shift = 0;
+
+	/* Get current link speed. */
+	memset(&link, 0, sizeof(link));
+	ixgbe_dev_link_update(dev, 1);
+	rte_ixgbe_dev_atomic_read_link_status(dev, &link);
+
+	switch (link.link_speed) {
+	case ETH_LINK_SPEED_100:
+		incval = IXGBE_INCVAL_100;
+		shift = IXGBE_INCVAL_SHIFT_100;
+		break;
+	case ETH_LINK_SPEED_1000:
+		incval = IXGBE_INCVAL_1GB;
+		shift = IXGBE_INCVAL_SHIFT_1GB;
+		break;
+	case ETH_LINK_SPEED_10000:
+	default:
+		incval = IXGBE_INCVAL_10GB;
+		shift = IXGBE_INCVAL_SHIFT_10GB;
+		break;
+	}
+
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550:
+		/* Independent of link speed. */
+		incval = 1;
+		/* Cycles read will be interpreted as ns. */
+		shift = 0;
+		/* Fall-through */
+	case ixgbe_mac_X540:
+		IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, incval);
+		break;
+	case ixgbe_mac_82599EB:
+		incval >>= IXGBE_INCVAL_SHIFT_82599;
+		shift -= IXGBE_INCVAL_SHIFT_82599;
+		IXGBE_WRITE_REG(hw, IXGBE_TIMINCA,
+				(1 << IXGBE_INCPER_SHIFT_82599) | incval);
+		break;
+	default:
+		/* Not supported. */
+		return;
+	}
+
+	memset(&adapter->systime_tc, 0, sizeof(struct rte_timecounter));
+	memset(&adapter->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+	memset(&adapter->tx_tstamp_tc, 0, sizeof(struct rte_timecounter));
+
+	adapter->systime_tc.cc_mask = IXGBE_CYCLECOUNTER_MASK;
+	adapter->systime_tc.cc_shift = shift;
+	adapter->systime_tc.nsec_mask = (1ULL << shift) - 1;
+
+	adapter->rx_tstamp_tc.cc_mask = IXGBE_CYCLECOUNTER_MASK;
+	adapter->rx_tstamp_tc.cc_shift = shift;
+	adapter->rx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+
+	adapter->tx_tstamp_tc.cc_mask = IXGBE_CYCLECOUNTER_MASK;
+	adapter->tx_tstamp_tc.cc_shift = shift;
+	adapter->tx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
+}
+
+static int
+ixgbe_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
+{
+	struct ixgbe_adapter *adapter =
+			(struct ixgbe_adapter *)dev->data->dev_private;
+
+	adapter->systime_tc.nsec += delta;
+	adapter->rx_tstamp_tc.nsec += delta;
+	adapter->tx_tstamp_tc.nsec += delta;
+
+	return 0;
+}
+
+static int
+ixgbe_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
+{
+	uint64_t ns;
+	struct ixgbe_adapter *adapter =
+			(struct ixgbe_adapter *)dev->data->dev_private;
+
+	ns = rte_timespec_to_ns(ts);
+	/* Set the timecounters to a new value. */
+	adapter->systime_tc.nsec = ns;
+	adapter->rx_tstamp_tc.nsec = ns;
+	adapter->tx_tstamp_tc.nsec = ns;
+
+	return 0;
+}
+
+static int
+ixgbe_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
+{
+	uint64_t ns, systime_cycles;
+	struct ixgbe_adapter *adapter =
+			(struct ixgbe_adapter *)dev->data->dev_private;
+
+	systime_cycles = ixgbe_read_systime_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->systime_tc, systime_cycles);
+	*ts = rte_ns_to_timespec(ns);
+
+	return 0;
+}
+
 static int
 ixgbe_timesync_enable(struct rte_eth_dev *dev)
 {
@@ -5589,13 +5784,18 @@ ixgbe_timesync_enable(struct rte_eth_dev *dev)
 	uint32_t tsync_ctl;
 	uint32_t tsauxc;
 
+	/* Stop the timesync system time. */
+	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, 0x0);
+	/* Reset the timesync system time value. */
+	IXGBE_WRITE_REG(hw, IXGBE_SYSTIML, 0x0);
+	IXGBE_WRITE_REG(hw, IXGBE_SYSTIMH, 0x0);
+
 	/* Enable system time for platforms where it isn't on by default. */
 	tsauxc = IXGBE_READ_REG(hw, IXGBE_TSAUXC);
 	tsauxc &= ~IXGBE_TSAUXC_DISABLE_SYSTIME;
 	IXGBE_WRITE_REG(hw, IXGBE_TSAUXC, tsauxc);
 
-	/* Start incrementing the register used to timestamp PTP packets. */
-	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, IXGBE_TIMINCA_INIT);
+	ixgbe_start_timecounters(dev);
 
 	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
 	IXGBE_WRITE_REG(hw, IXGBE_ETQF(IXGBE_ETQF_FILTER_1588),
@@ -5612,6 +5812,8 @@ ixgbe_timesync_enable(struct rte_eth_dev *dev)
 	tsync_ctl = IXGBE_READ_REG(hw, IXGBE_TSYNCTXCTL);
 	tsync_ctl |= IXGBE_TSYNCTXCTL_ENABLED;
 	IXGBE_WRITE_REG(hw, IXGBE_TSYNCTXCTL, tsync_ctl);
+
+	IXGBE_WRITE_FLUSH(hw);
 
 	return 0;
 }
@@ -5647,19 +5849,19 @@ ixgbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 				 uint32_t flags __rte_unused)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
 	uint32_t tsync_rxctl;
-	uint32_t rx_stmpl;
-	uint32_t rx_stmph;
+	uint64_t rx_tstamp_cycles;
+	uint64_t ns;
 
 	tsync_rxctl = IXGBE_READ_REG(hw, IXGBE_TSYNCRXCTL);
 	if ((tsync_rxctl & IXGBE_TSYNCRXCTL_VALID) == 0)
 		return -EINVAL;
 
-	rx_stmpl = IXGBE_READ_REG(hw, IXGBE_RXSTMPL);
-	rx_stmph = IXGBE_READ_REG(hw, IXGBE_RXSTMPH);
-
-	timestamp->tv_sec = (uint64_t)(((uint64_t)rx_stmph << 32) | rx_stmpl);
-	timestamp->tv_nsec = 0;
+	rx_tstamp_cycles = ixgbe_read_rx_tstamp_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->rx_tstamp_tc, rx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
 
 	return  0;
 }
@@ -5669,21 +5871,21 @@ ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 				 struct timespec *timestamp)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter =
+		(struct ixgbe_adapter *)dev->data->dev_private;
 	uint32_t tsync_txctl;
-	uint32_t tx_stmpl;
-	uint32_t tx_stmph;
+	uint64_t tx_tstamp_cycles;
+	uint64_t ns;
 
 	tsync_txctl = IXGBE_READ_REG(hw, IXGBE_TSYNCTXCTL);
 	if ((tsync_txctl & IXGBE_TSYNCTXCTL_VALID) == 0)
 		return -EINVAL;
 
-	tx_stmpl = IXGBE_READ_REG(hw, IXGBE_TXSTMPL);
-	tx_stmph = IXGBE_READ_REG(hw, IXGBE_TXSTMPH);
+	tx_tstamp_cycles = ixgbe_read_tx_tstamp_cyclecounter(dev);
+	ns = rte_timecounter_update(&adapter->tx_tstamp_tc, tx_tstamp_cycles);
+	*timestamp = rte_ns_to_timespec(ns);
 
-	timestamp->tv_sec = (uint64_t)(((uint64_t)tx_stmph << 32) | tx_stmpl);
-	timestamp->tv_nsec = 0;
-
-	return  0;
+	return 0;
 }
 
 static int

@@ -37,6 +37,7 @@
 #include "base/ixgbe_dcb_82599.h"
 #include "base/ixgbe_dcb_82598.h"
 #include "ixgbe_bypass.h"
+#include <rte_time.h>
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -282,6 +283,9 @@ struct ixgbe_adapter {
 
 	bool rx_bulk_alloc_allowed;
 	bool rx_vec_allowed;
+	struct rte_timecounter      systime_tc;
+	struct rte_timecounter      rx_tstamp_tc;
+	struct rte_timecounter      tx_tstamp_tc;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
