@@ -35,6 +35,7 @@
 #define _I40E_ETHDEV_H_
 
 #include <rte_eth_ctrl.h>
+#include <rte_time.h>
 
 #define I40E_VLAN_TAG_SIZE        4
 
@@ -516,11 +517,16 @@ struct i40e_adapter {
 		struct i40e_vf vf;
 	};
 
-	/* for vector PMD */
+	/* For vector PMD */
 	bool rx_bulk_alloc_allowed;
 	bool rx_vec_allowed;
 	bool tx_simple_allowed;
 	bool tx_vec_allowed;
+
+	/* For PTP */
+	struct rte_timecounter systime_tc;
+	struct rte_timecounter rx_tstamp_tc;
+	struct rte_timecounter tx_tstamp_tc;
 };
 
 int i40e_dev_switch_queues(struct i40e_pf *pf, bool on);
