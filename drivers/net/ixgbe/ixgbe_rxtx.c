@@ -127,7 +127,8 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 {
 	struct ixgbe_tx_entry *txep;
 	uint32_t status;
-	int i;
+	int i, nb_free = 0;
+	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bit on threshold descriptor */
 	status = txq->tx_ring[txq->tx_next_dd].wb.status;
@@ -140,19 +141,26 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 	 */
 	txep = &(txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)]);
 
-	/* free buffers one at a time */
-	if ((txq->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOREFCOUNT) != 0) {
-		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
-			txep->mbuf->next = NULL;
-			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
-			txep->mbuf = NULL;
+	for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
+		/* free buffers one at a time */
+		m = __rte_pktmbuf_prefree_seg(txep->mbuf);
+		txep->mbuf = NULL;
+
+		if (unlikely(m == NULL))
+			continue;
+
+		if (nb_free >= RTE_IXGBE_TX_MAX_FREE_BUF_SZ ||
+		    (nb_free > 0 && m->pool != free[0]->pool)) {
+			rte_mempool_put_bulk(free[0]->pool,
+					     (void **)free, nb_free);
+			nb_free = 0;
 		}
-	} else {
-		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
-			rte_pktmbuf_free_seg(txep->mbuf);
-			txep->mbuf = NULL;
-		}
+
+		free[nb_free++] = m;
 	}
+
+	if (nb_free > 0)
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
 
 	/* buffers were freed, update counters */
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
