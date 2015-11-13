@@ -52,10 +52,6 @@
 #pragma warning(disable:2259) /* conversion may lose significant bits */
 #endif
 
-#ifndef RTE_SCHED_DEBUG
-#define RTE_SCHED_DEBUG                       0
-#endif
-
 #ifndef RTE_SCHED_OPTIMIZATIONS
 #define RTE_SCHED_OPTIMIZATIONS		          0
 #endif
@@ -1050,7 +1046,7 @@ rte_sched_port_qsize(struct rte_sched_port *port, uint32_t qindex)
 	return port->qsize[tc];
 }
 
-#if RTE_SCHED_DEBUG
+#ifdef RTE_SCHED_DEBUG
 
 static inline int
 rte_sched_port_queue_is_empty(struct rte_sched_port *port, uint32_t qindex)
@@ -1162,7 +1158,7 @@ rte_sched_port_set_queue_empty_timestamp(struct rte_sched_port *port, uint32_t q
 
 #endif /* RTE_SCHED_RED */
 
-#if RTE_SCHED_DEBUG
+#ifdef RTE_SCHED_DEBUG
 
 static inline int
 debug_pipe_is_empty(struct rte_sched_port *port, uint32_t pindex)
@@ -1896,7 +1892,7 @@ grinder_next_pipe(struct rte_sched_port *port, uint32_t pos)
 			return 0;
 		}
 
-#if RTE_SCHED_DEBUG
+#ifdef RTE_SCHED_DEBUG
 		debug_check_queue_slab(port, bmp_pos, bmp_slab);
 #endif
 
