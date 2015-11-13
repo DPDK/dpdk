@@ -1206,6 +1206,17 @@ typedef int (*eth_timesync_read_tx_timestamp_t)(struct rte_eth_dev *dev,
 						struct timespec *timestamp);
 /**< @internal Function used to read a TX IEEE1588/802.1AS timestamp. */
 
+typedef int (*eth_timesync_adjust_time)(struct rte_eth_dev *dev, int64_t);
+/**< @internal Function used to adjust the device clock */
+
+typedef int (*eth_timesync_read_time)(struct rte_eth_dev *dev,
+				      struct timespec *timestamp);
+/**< @internal Function used to get time from the device clock. */
+
+typedef int (*eth_timesync_write_time)(struct rte_eth_dev *dev,
+				       const struct timespec *timestamp);
+/**< @internal Function used to get time from the device clock */
+
 typedef int (*eth_get_reg_length_t)(struct rte_eth_dev *dev);
 /**< @internal Retrieve device register count  */
 
@@ -1400,6 +1411,12 @@ struct eth_dev_ops {
 
 	/** Get DCB information */
 	eth_get_dcb_info get_dcb_info;
+	/** Adjust the device clock.*/
+	eth_timesync_adjust_time timesync_adjust_time;
+	/** Get the device clock time. */
+	eth_timesync_read_time timesync_read_time;
+	/** Set the device clock time. */
+	eth_timesync_write_time timesync_write_time;
 };
 
 /**
@@ -3753,6 +3770,60 @@ extern int rte_eth_timesync_read_rx_timestamp(uint8_t port_id,
  */
 extern int rte_eth_timesync_read_tx_timestamp(uint8_t port_id,
 					      struct timespec *timestamp);
+
+/**
+ * Adjust the timesync clock on an Ethernet device.
+ *
+ * This is usually used in conjunction with other Ethdev timesync functions to
+ * synchronize the device time using the IEEE1588/802.1AS protocol.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param delta
+ *   The adjustment in nanoseconds.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -ENODEV: The port ID is invalid.
+ *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ */
+extern int rte_eth_timesync_adjust_time(uint8_t port_id, int64_t delta);
+
+/**
+ * Read the time from the timesync clock on an Ethernet device.
+ *
+ * This is usually used in conjunction with other Ethdev timesync functions to
+ * synchronize the device time using the IEEE1588/802.1AS protocol.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param time
+ *   Pointer to the timespec struct that holds the time.
+ *
+ * @return
+ *   - 0: Success.
+ */
+extern int rte_eth_timesync_read_time(uint8_t port_id, struct timespec *time);
+
+/**
+ * Set the time of the timesync clock on an Ethernet device.
+ *
+ * This is usually used in conjunction with other Ethdev timesync functions to
+ * synchronize the device time using the IEEE1588/802.1AS protocol.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param time
+ *   Pointer to the timespec struct that holds the time.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -EINVAL: No timestamp is available.
+ *   - -ENODEV: The port ID is invalid.
+ *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ */
+extern int rte_eth_timesync_write_time(uint8_t port_id,
+				       const struct timespec *time);
 
 /**
  * Copy pci device info to the Ethernet device data.

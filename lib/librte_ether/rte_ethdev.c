@@ -3211,6 +3211,42 @@ rte_eth_timesync_read_tx_timestamp(uint8_t port_id, struct timespec *timestamp)
 }
 
 int
+rte_eth_timesync_adjust_time(uint8_t port_id, int64_t delta)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_adjust_time, -ENOTSUP);
+	return (*dev->dev_ops->timesync_adjust_time)(dev, delta);
+}
+
+int
+rte_eth_timesync_read_time(uint8_t port_id, struct timespec *timestamp)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_read_time, -ENOTSUP);
+	return (*dev->dev_ops->timesync_read_time)(dev, timestamp);
+}
+
+int
+rte_eth_timesync_write_time(uint8_t port_id, const struct timespec *timestamp)
+{
+	struct rte_eth_dev *dev;
+
+	VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	FUNC_PTR_OR_ERR_RET(*dev->dev_ops->timesync_write_time, -ENOTSUP);
+	return (*dev->dev_ops->timesync_write_time)(dev, timestamp);
+}
+
+int
 rte_eth_dev_get_reg_length(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;
