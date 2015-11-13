@@ -1991,6 +1991,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	/* disable uio/vfio intr/eventfd mapping */
+	rte_intr_disable(intr_handle);
+
 	/* stop adapter */
 	hw->adapter_stopped = 0;
 	ixgbe_stop_adapter(hw);
