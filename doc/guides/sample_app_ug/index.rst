@@ -73,6 +73,7 @@ Sample Applications User Guide
     vm_power_management
     tep_termination
     proc_info
+    ptpclient
 
 **Figures**
 
@@ -135,6 +136,8 @@ Sample Applications User Guide
 :numref:`figure_vm_power_mgr_vm_request_seq` :ref:`figure_vm_power_mgr_vm_request_seq`
 :numref:`figure_overlay_networking` :ref:`figure_overlay_networking`
 :numref:`figure_tep_termination_arch` :ref:`figure_tep_termination_arch`
+
+:numref:`figure_ptpclient_highlevel` :ref:`figure_ptpclient_highlevel`
 
 **Tables**
 
