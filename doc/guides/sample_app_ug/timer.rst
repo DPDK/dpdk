@@ -41,7 +41,8 @@ Compiling the Application
 
     .. code-block:: console
 
-        export RTE_SDK=/path/to/rte_sdk cd ${RTE_SDK}/examples/timer
+        export RTE_SDK=/path/to/rte_sdk
+        cd ${RTE_SDK}/examples/timer
 
 #.  Set the target (a default target is used if not specified). For example:
 

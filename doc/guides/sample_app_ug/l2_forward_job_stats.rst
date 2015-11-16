@@ -101,7 +101,8 @@ Compiling the Application
 
     .. code-block:: console
 
-        export RTE_SDK=/path/to/rte_sdk cd ${RTE_SDK}/examples/l2fwd-jobstats
+        export RTE_SDK=/path/to/rte_sdk
+        cd ${RTE_SDK}/examples/l2fwd-jobstats
 
 #.  Set the target (a default target is used if not specified). For example:
 

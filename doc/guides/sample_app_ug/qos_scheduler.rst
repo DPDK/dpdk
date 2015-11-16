@@ -64,7 +64,8 @@ To compile the application:
 
     .. code-block:: console
 
-        export RTE_SDK=/path/to/rte_sdk cd ${RTE_SDK}/examples/qos_sched
+        export RTE_SDK=/path/to/rte_sdk
+        cd ${RTE_SDK}/examples/qos_sched
 
 #.  Set the target (a default target is used if not specified). For example:
 

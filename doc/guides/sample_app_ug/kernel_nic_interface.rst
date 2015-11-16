@@ -87,8 +87,8 @@ Compile the application as follows:
 
     .. code-block:: console
 
-        export RTE_SDK=/path/to/rte_sdk cd
-        ${RTE_SDK}/examples/kni
+        export RTE_SDK=/path/to/rte_sdk
+        cd ${RTE_SDK}/examples/kni
 
 #.  Set the target (a default target is used if not specified)
 

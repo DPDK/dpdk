@@ -99,7 +99,8 @@ The sequence of steps used to build the application is:
 
     .. code-block:: console
 
-        cd ${RTE_SDK}/examples/load_balancer make
+        cd ${RTE_SDK}/examples/load_balancer
+        make
 
     For more details on how to build the DPDK libraries and sample applications,
     please refer to the *DPDK Getting Started Guide.*
