@@ -1700,7 +1700,7 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 			       I40E_VFINT_DYN_CTL01,
 			       I40E_VFINT_DYN_CTL01_INTENA_MASK |
 			       I40E_VFINT_DYN_CTL01_CLEARPBA_MASK);
-		I40E_WRITE_FLUSH(hw);
+		I40EVF_WRITE_FLUSH(hw);
 		return;
 	}
 
@@ -1716,7 +1716,7 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 				I40E_VFINT_DYN_CTL01_INTENA_MASK |
 				I40E_VFINT_DYN_CTL01_CLEARPBA_MASK);
 
-	I40E_WRITE_FLUSH(hw);
+	I40EVF_WRITE_FLUSH(hw);
 }
 
 static inline void
@@ -1728,7 +1728,7 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 
 	if (!rte_intr_allow_others(intr_handle)) {
 		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
-		I40E_WRITE_FLUSH(hw);
+		I40EVF_WRITE_FLUSH(hw);
 		return;
 	}
 
@@ -1740,7 +1740,7 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 	else
 		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
 
-	I40E_WRITE_FLUSH(hw);
+	I40EVF_WRITE_FLUSH(hw);
 }
 
 static int
@@ -1770,7 +1770,7 @@ i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 			       (interval <<
 				I40E_VFINT_DYN_CTLN1_INTERVAL_SHIFT));
 
-	I40E_WRITE_FLUSH(hw);
+	I40EVF_WRITE_FLUSH(hw);
 
 	rte_intr_enable(&dev->pci_dev->intr_handle);
 
@@ -1793,7 +1793,7 @@ i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 						    I40E_RX_VEC_START),
 			       0);
 
-	I40E_WRITE_FLUSH(hw);
+	I40EVF_WRITE_FLUSH(hw);
 
 	return 0;
 }
