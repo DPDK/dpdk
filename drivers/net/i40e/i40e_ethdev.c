@@ -8287,7 +8287,8 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 	uint32_t val;
 
 	/* Use the FW API if FW > v4.4*/
-	if (!((hw->aq.fw_maj_ver == 4) && (hw->aq.fw_min_ver >= 4))) {
+	if (!(((hw->aq.fw_maj_ver == 4) && (hw->aq.fw_min_ver >= 4)) ||
+	      (hw->aq.fw_maj_ver >= 5))) {
 		PMD_INIT_LOG(ERR, "FW < v4.4, can not use FW LLDP API"
 				  " to configure DCB");
 		return I40E_ERR_FIRMWARE_API_VERSION;
