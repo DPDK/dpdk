@@ -1347,58 +1347,15 @@ i40e_parse_link_speed(uint16_t eth_link_speed)
 }
 
 static int
-i40e_phy_conf_link(struct i40e_hw *hw, uint8_t abilities, uint8_t force_speed)
+i40e_phy_conf_link(__rte_unused struct i40e_hw *hw,
+		   __rte_unused uint8_t abilities,
+		   __rte_unused uint8_t force_speed)
 {
-	enum i40e_status_code status;
-	struct i40e_aq_get_phy_abilities_resp phy_ab;
-	struct i40e_aq_set_phy_config phy_conf;
-	const uint8_t mask = I40E_AQ_PHY_FLAG_PAUSE_TX |
-			I40E_AQ_PHY_FLAG_PAUSE_RX |
-			I40E_AQ_PHY_FLAG_LOW_POWER;
-	const uint8_t advt = I40E_LINK_SPEED_40GB |
-			I40E_LINK_SPEED_10GB |
-			I40E_LINK_SPEED_1GB |
-			I40E_LINK_SPEED_100MB;
-	int ret = -ENOTSUP;
-
-	/* Skip it on 40G interfaces, as a workaround for the link issue */
-	if (i40e_is_40G_device(hw->device_id))
-		return I40E_SUCCESS;
-
-	status = i40e_aq_get_phy_capabilities(hw, false, false, &phy_ab,
-					      NULL);
-	if (status)
-		return ret;
-
-	memset(&phy_conf, 0, sizeof(phy_conf));
-
-	/* bits 0-2 use the values from get_phy_abilities_resp */
-	abilities &= ~mask;
-	abilities |= phy_ab.abilities & mask;
-
-	/* update ablities and speed */
-	if (abilities & I40E_AQ_PHY_AN_ENABLED)
-		phy_conf.link_speed = advt;
-	else
-		phy_conf.link_speed = force_speed;
-
-	phy_conf.abilities = abilities;
-
-	/* use get_phy_abilities_resp value for the rest */
-	phy_conf.phy_type = phy_ab.phy_type;
-	phy_conf.eee_capability = phy_ab.eee_capability;
-	phy_conf.eeer = phy_ab.eeer_val;
-	phy_conf.low_power_ctrl = phy_ab.d3_lpan;
-
-	PMD_DRV_LOG(DEBUG, "\tCurrent: abilities %x, link_speed %x",
-		    phy_ab.abilities, phy_ab.link_speed);
-	PMD_DRV_LOG(DEBUG, "\tConfig:  abilities %x, link_speed %x",
-		    phy_conf.abilities, phy_conf.link_speed);
-
-	status = i40e_aq_set_phy_config(hw, &phy_conf, NULL);
-	if (status)
-		return ret;
-
+	/* Skip any phy config on both 10G and 40G interfaces, as a workaround
+	 * for the link control limitation of that all link control should be
+	 * handled by firmware. It should follow up if link control will be
+	 * opened to software driver in future firmware versions.
+	 */
 	return I40E_SUCCESS;
 }
 
