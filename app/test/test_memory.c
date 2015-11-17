@@ -55,7 +55,8 @@ static int
 test_memory(void)
 {
 	uint64_t s;
-	unsigned i, j;
+	unsigned i;
+	size_t j;
 	const struct rte_memseg *mem;
 
 	/*
