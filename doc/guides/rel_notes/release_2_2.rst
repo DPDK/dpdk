@@ -15,7 +15,7 @@ New Features
   New function rte_ring_free() allows the user to free a ring
   if it was created with rte_ring_create().
 
-* **Added keepalive support to EAL.**
+* **Added keepalive support to EAL and example application.**
 
 * **Added ethdev API to support IEEE1588.**
 

@@ -112,6 +112,8 @@ Keep alive
 M: Remy Horton <remy.horton@intel.com>
 F: lib/librte_eal/common/include/rte_keepalive.h
 F: lib/librte_eal/common/rte_keepalive.c
+F: examples/l2fwd-keepalive/
+F: doc/guides/sample_app_ug/keep_alive.rst
 
 Secondary process
 K: RTE_PROC_
