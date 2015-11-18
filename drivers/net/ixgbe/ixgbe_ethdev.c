@@ -2331,13 +2331,21 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 }
 
 static void
-ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
-						   *hw_stats, uint64_t *total_missed_rx,
-						   uint64_t *total_qbrc, uint64_t *total_qprc,
-						   uint64_t *total_qprdc)
+ixgbe_read_stats_registers(struct ixgbe_hw *hw,
+			   struct ixgbe_hw_stats *hw_stats,
+			   uint64_t *total_missed_rx, uint64_t *total_qbrc,
+			   uint64_t *total_qprc, uint64_t *total_qprdc)
 {
 	uint32_t bprc, lxon, lxoff, total;
+	uint32_t delta_gprc = 0;
+	uint32_t delta_gptc = 0;
 	unsigned i;
+	/* Workaround for RX byte count not including CRC bytes when CRC
++	 * strip is enabled. CRC bytes are removed from counters when crc_strip
+	 * is disabled.
++	 */
+	int crc_strip = (IXGBE_READ_REG(hw, IXGBE_HLREG0) &
+			IXGBE_HLREG0_RXCRCSTRP);
 
 	hw_stats->crcerrs += IXGBE_READ_REG(hw, IXGBE_CRCERRS);
 	hw_stats->illerrc += IXGBE_READ_REG(hw, IXGBE_ILLERRC);
@@ -2372,16 +2380,28 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
 		    IXGBE_READ_REG(hw, IXGBE_PXOFFTXC(i));
 	}
 	for (i = 0; i < IXGBE_QUEUE_STAT_COUNTERS; i++) {
-		hw_stats->qprc[i] += IXGBE_READ_REG(hw, IXGBE_QPRC(i));
-		hw_stats->qptc[i] += IXGBE_READ_REG(hw, IXGBE_QPTC(i));
+		uint32_t delta_qprc = IXGBE_READ_REG(hw, IXGBE_QPRC(i));
+		uint32_t delta_qptc = IXGBE_READ_REG(hw, IXGBE_QPTC(i));
+		uint32_t delta_qprdc = IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
+
+		delta_gprc += delta_qprc;
+		delta_gptc += delta_qptc;
+
+		hw_stats->qprc[i] += delta_qprc;
+		hw_stats->qptc[i] += delta_qptc;
+
 		hw_stats->qbrc[i] += IXGBE_READ_REG(hw, IXGBE_QBRC_L(i));
 		hw_stats->qbrc[i] +=
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_QBRC_H(i)) << 32);
+		if (crc_strip == 0)
+			hw_stats->qbrc[i] -= delta_qprc * ETHER_CRC_LEN;
+
 		hw_stats->qbtc[i] += IXGBE_READ_REG(hw, IXGBE_QBTC_L(i));
 		hw_stats->qbtc[i] +=
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_QBTC_H(i)) << 32);
-		*total_qprdc += hw_stats->qprdc[i] +=
-				IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
+
+		hw_stats->qprdc[i] += delta_qprdc;
+		*total_qprdc += hw_stats->qprdc[i];
 
 		*total_qprc += hw_stats->qprc[i];
 		*total_qbrc += hw_stats->qbrc[i];
@@ -2390,8 +2410,11 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
 	hw_stats->mrfc += IXGBE_READ_REG(hw, IXGBE_MRFC);
 	hw_stats->rlec += IXGBE_READ_REG(hw, IXGBE_RLEC);
 
-	/* Note that gprc counts missed packets */
-	hw_stats->gprc += IXGBE_READ_REG(hw, IXGBE_GPRC);
+	/*
+	 * An errata states that gprc actually counts good + missed packets:
+	 * Workaround to set gprc to summated queue packet receives
+	 */
+	hw_stats->gprc = *total_qprc;
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {
 		hw_stats->gorc += IXGBE_READ_REG(hw, IXGBE_GORCL);
@@ -2410,6 +2433,16 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
 		hw_stats->gotc += IXGBE_READ_REG(hw, IXGBE_GOTCH);
 		hw_stats->tor += IXGBE_READ_REG(hw, IXGBE_TORH);
 	}
+	uint64_t old_tpr = hw_stats->tpr;
+
+	hw_stats->tpr += IXGBE_READ_REG(hw, IXGBE_TPR);
+	hw_stats->tpt += IXGBE_READ_REG(hw, IXGBE_TPT);
+
+	if (crc_strip == 0)
+		hw_stats->gorc -= delta_gprc * ETHER_CRC_LEN;
+
+	hw_stats->gotc -= delta_gptc * ETHER_CRC_LEN;
+	hw_stats->tor -= (hw_stats->tpr - old_tpr) * ETHER_CRC_LEN;
 
 	/*
 	 * Workaround: mprc hardware is incorrectly counting
@@ -2449,8 +2482,6 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw, struct ixgbe_hw_stats
 	hw_stats->mngprc += IXGBE_READ_REG(hw, IXGBE_MNGPRC);
 	hw_stats->mngpdc += IXGBE_READ_REG(hw, IXGBE_MNGPDC);
 	hw_stats->mngptc += IXGBE_READ_REG(hw, IXGBE_MNGPTC);
-	hw_stats->tpr += IXGBE_READ_REG(hw, IXGBE_TPR);
-	hw_stats->tpt += IXGBE_READ_REG(hw, IXGBE_TPT);
 	hw_stats->ptc127 += IXGBE_READ_REG(hw, IXGBE_PTC127);
 	hw_stats->ptc255 += IXGBE_READ_REG(hw, IXGBE_PTC255);
 	hw_stats->ptc511 += IXGBE_READ_REG(hw, IXGBE_PTC511);
