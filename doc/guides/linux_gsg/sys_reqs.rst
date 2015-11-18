@@ -28,6 +28,7 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 System Requirements
 ===================
 
@@ -148,6 +149,8 @@ System Software
 
     *   HPET and HPET_MMAP configuration options should also be enabled if HPET  support is required.
         See :ref:`Section 5.1 High Precision Event Timer (HPET) Functionality <High_Precision_Event_Timer>` for more details.
+
+.. _linux_gsg_hugepages:
 
 Use of Hugepages in the Linux* Environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

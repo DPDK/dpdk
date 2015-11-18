@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -47,3 +47,4 @@ Contents
     build_sample_apps
     enable_func
     quick_start
+    nic_perf_intel_platform
