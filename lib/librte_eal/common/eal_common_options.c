@@ -191,11 +191,13 @@ eal_plugindir_init(const char *path)
 	}
 
 	while ((dent = readdir(d)) != NULL) {
-		if (dent->d_type != DT_REG && dent->d_type != DT_LNK)
-			continue;
+		struct stat sb;
 
 		snprintf(sopath, PATH_MAX-1, "%s/%s", path, dent->d_name);
 		sopath[PATH_MAX-1] = 0;
+
+		if (!(stat(sopath, &sb) == 0 && S_ISREG(sb.st_mode)))
+			continue;
 
 		if (eal_plugin_add(sopath) == -1)
 			break;
