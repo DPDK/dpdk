@@ -1870,6 +1870,7 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 	unsigned int i;
 	struct i40e_hw_port_stats *ns = &pf->stats; /* new stats */
 	struct i40e_hw_port_stats *os = &pf->stats_offset; /* old stats */
+
 	/* Get statistics of struct i40e_eth_stats */
 	i40e_stat_update_48(hw, I40E_GLPRT_GORCH(hw->port),
 			    I40E_GLPRT_GORCL(hw->port),
@@ -1887,6 +1888,12 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    I40E_GLPRT_BPRCL(hw->port),
 			    pf->offset_loaded, &os->eth.rx_broadcast,
 			    &ns->eth.rx_broadcast);
+	/* Workaround: CRC size should not be included in byte statistics,
+	 * so subtract ETHER_CRC_LEN from the byte counter for each rx packet.
+	 */
+	ns->eth.rx_bytes -= (ns->eth.rx_unicast + ns->eth.rx_multicast +
+		ns->eth.rx_broadcast) * ETHER_CRC_LEN;
+
 	i40e_stat_update_32(hw, I40E_GLPRT_RDPC(hw->port),
 			    pf->offset_loaded, &os->eth.rx_discards,
 			    &ns->eth.rx_discards);
@@ -1912,6 +1919,8 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    I40E_GLPRT_BPTCL(hw->port),
 			    pf->offset_loaded, &os->eth.tx_broadcast,
 			    &ns->eth.tx_broadcast);
+	ns->eth.tx_bytes -= (ns->eth.tx_unicast + ns->eth.tx_multicast +
+		ns->eth.tx_broadcast) * ETHER_CRC_LEN;
 	/* GLPRT_TEPC not supported */
 
 	/* additional port specific stats */
@@ -2069,8 +2078,8 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = pf->main_vsi->eth_stats.tx_unicast +
 			pf->main_vsi->eth_stats.tx_multicast +
 			pf->main_vsi->eth_stats.tx_broadcast;
-	stats->ibytes   = pf->main_vsi->eth_stats.rx_bytes;
-	stats->obytes   = pf->main_vsi->eth_stats.tx_bytes;
+	stats->ibytes   = ns->eth.rx_bytes;
+	stats->obytes   = ns->eth.tx_bytes;
 	stats->oerrors  = ns->eth.tx_errors +
 			pf->main_vsi->eth_stats.tx_errors;
 	stats->imcasts  = pf->main_vsi->eth_stats.rx_multicast;
