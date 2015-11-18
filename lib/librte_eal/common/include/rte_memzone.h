@@ -100,7 +100,7 @@ struct rte_memzone {
  *
  * This function reserves some memory and returns a pointer to a
  * correctly filled memzone descriptor. If the allocation cannot be
- * done, return NULL. Note: A reserved zone cannot be freed.
+ * done, return NULL.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will
@@ -151,7 +151,6 @@ const struct rte_memzone *rte_memzone_reserve(const char *name,
  * boundary, and returns a pointer to a correctly filled memzone
  * descriptor. If the allocation cannot be done or if the alignment
  * is not a power of 2, returns NULL.
- * Note: A reserved zone cannot be freed.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will
@@ -207,7 +206,6 @@ const struct rte_memzone *rte_memzone_reserve_aligned(const char *name,
  * Memory buffer is reserved in a way, that it wouldn't cross specified
  * boundary. That implies that requested length should be less or equal
  * then boundary.
- * Note: A reserved zone cannot be freed.
  *
  * @param name
  *   The name of the memzone. If it already exists, the function will
