@@ -2177,25 +2177,32 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head, int m_p
 		bd_prod = NEXT_TX_BD(bd_prod);
 		if (IS_VF(sc)) {
 			struct eth_tx_parse_bd_e2 *tx_parse_bd;
-			uint8_t *data = rte_pktmbuf_mtod(m0, uint8_t *);
+			const struct ether_hdr *eh = rte_pktmbuf_mtod(m0, struct ether_hdr *);
+			uint8_t mac_type = UNICAST_ADDRESS;
 
 			tx_parse_bd =
 			    &txq->tx_ring[TX_BD(bd_prod, txq)].parse_bd_e2;
+			if (is_multicast_ether_addr(&eh->d_addr)) {
+				if (is_broadcast_ether_addr(&eh->d_addr))
+					mac_type = BROADCAST_ADDRESS;
+				else
+					mac_type = MULTICAST_ADDRESS;
+			}
 			tx_parse_bd->parsing_data =
-			    (1 << ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE_SHIFT);
+			    (mac_type << ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE_SHIFT);
 
 			rte_memcpy(&tx_parse_bd->data.mac_addr.dst_hi,
-				   &data[0], 2);
+				   &eh->d_addr.addr_bytes[0], 2);
 			rte_memcpy(&tx_parse_bd->data.mac_addr.dst_mid,
-				   &data[2], 2);
+				   &eh->d_addr.addr_bytes[2], 2);
 			rte_memcpy(&tx_parse_bd->data.mac_addr.dst_lo,
-				   &data[4], 2);
+				   &eh->d_addr.addr_bytes[4], 2);
 			rte_memcpy(&tx_parse_bd->data.mac_addr.src_hi,
-				   &data[6], 2);
+				   &eh->s_addr.addr_bytes[0], 2);
 			rte_memcpy(&tx_parse_bd->data.mac_addr.src_mid,
-				   &data[8], 2);
+				   &eh->s_addr.addr_bytes[2], 2);
 			rte_memcpy(&tx_parse_bd->data.mac_addr.src_lo,
-				   &data[10], 2);
+				   &eh->s_addr.addr_bytes[4], 2);
 
 			tx_parse_bd->data.mac_addr.dst_hi =
 			    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.dst_hi);

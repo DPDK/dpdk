@@ -4029,7 +4029,7 @@ struct double_regpair
 
 
 /*
- * Ethernet address typesm used in ethernet tx BDs
+ * Ethernet address types used in ethernet tx BDs
  */
 enum eth_addr_type
 {
@@ -4037,7 +4037,8 @@ enum eth_addr_type
 	UNICAST_ADDRESS,
 	MULTICAST_ADDRESS,
 	BROADCAST_ADDRESS,
-	MAX_ETH_ADDR_TYPE};
+	MAX_ETH_ADDR_TYPE
+};
 
 
 /*
