@@ -1480,6 +1480,13 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 {
 	int pause_frames;
 
+	uint64_t old_gprc  = stats->gprc;
+	uint64_t old_gptc  = stats->gptc;
+	uint64_t old_tpr   = stats->tpr;
+	uint64_t old_tpt   = stats->tpt;
+	uint64_t old_rpthc = stats->rpthc;
+	uint64_t old_hgptc = stats->hgptc;
+
 	if(hw->phy.media_type == e1000_media_type_copper ||
 	    (E1000_READ_REG(hw, E1000_STATUS) & E1000_STATUS_LU)) {
 		stats->symerrs +=
@@ -1521,10 +1528,13 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 	/* For the 64-bit byte counters the low dword must be read first. */
 	/* Both registers clear on the read of the high dword */
 
+	/* Workaround CRC bytes included in size, take away 4 bytes/packet */
 	stats->gorc += E1000_READ_REG(hw, E1000_GORCL);
 	stats->gorc += ((uint64_t)E1000_READ_REG(hw, E1000_GORCH) << 32);
+	stats->gorc -= (stats->gprc - old_gprc) * ETHER_CRC_LEN;
 	stats->gotc += E1000_READ_REG(hw, E1000_GOTCL);
 	stats->gotc += ((uint64_t)E1000_READ_REG(hw, E1000_GOTCH) << 32);
+	stats->gotc -= (stats->gptc - old_gptc) * ETHER_CRC_LEN;
 
 	stats->rnbc += E1000_READ_REG(hw, E1000_RNBC);
 	stats->ruc += E1000_READ_REG(hw, E1000_RUC);
@@ -1532,13 +1542,16 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 	stats->roc += E1000_READ_REG(hw, E1000_ROC);
 	stats->rjc += E1000_READ_REG(hw, E1000_RJC);
 
-	stats->tor += E1000_READ_REG(hw, E1000_TORL);
-	stats->tor += ((uint64_t)E1000_READ_REG(hw, E1000_TORH) << 32);
-	stats->tot += E1000_READ_REG(hw, E1000_TOTL);
-	stats->tot += ((uint64_t)E1000_READ_REG(hw, E1000_TOTH) << 32);
-
 	stats->tpr += E1000_READ_REG(hw, E1000_TPR);
 	stats->tpt += E1000_READ_REG(hw, E1000_TPT);
+
+	stats->tor += E1000_READ_REG(hw, E1000_TORL);
+	stats->tor += ((uint64_t)E1000_READ_REG(hw, E1000_TORH) << 32);
+	stats->tor -= (stats->tpr - old_tpr) * ETHER_CRC_LEN;
+	stats->tot += E1000_READ_REG(hw, E1000_TOTL);
+	stats->tot += ((uint64_t)E1000_READ_REG(hw, E1000_TOTH) << 32);
+	stats->tot -= (stats->tpt - old_tpt) * ETHER_CRC_LEN;
+
 	stats->ptc64 += E1000_READ_REG(hw, E1000_PTC64);
 	stats->ptc127 += E1000_READ_REG(hw, E1000_PTC127);
 	stats->ptc255 += E1000_READ_REG(hw, E1000_PTC255);
@@ -1571,8 +1584,10 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 	stats->htcbdpc += E1000_READ_REG(hw, E1000_HTCBDPC);
 	stats->hgorc += E1000_READ_REG(hw, E1000_HGORCL);
 	stats->hgorc += ((uint64_t)E1000_READ_REG(hw, E1000_HGORCH) << 32);
+	stats->hgorc -= (stats->rpthc - old_rpthc) * ETHER_CRC_LEN;
 	stats->hgotc += E1000_READ_REG(hw, E1000_HGOTCL);
 	stats->hgotc += ((uint64_t)E1000_READ_REG(hw, E1000_HGOTCH) << 32);
+	stats->hgotc -= (stats->hgptc - old_hgptc) * ETHER_CRC_LEN;
 	stats->lenerrs += E1000_READ_REG(hw, E1000_LENERRS);
 	stats->scvpc += E1000_READ_REG(hw, E1000_SCVPC);
 	stats->hrmpc += E1000_READ_REG(hw, E1000_HRMPC);
