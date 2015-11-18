@@ -90,6 +90,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_thread.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += rte_malloc.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += malloc_elem.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += malloc_heap.c
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += rte_keepalive.c
 
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_interrupts.o := -D_GNU_SOURCE

@@ -146,4 +146,5 @@ There are many libraries, so their headers may be grouped by topics:
   [EAL config]         (@ref rte_eal.h),
   [common]             (@ref rte_common.h),
   [ABI compat]         (@ref rte_compat.h),
+  [keepalive]          (@ref rte_keepalive.h),
   [version]            (@ref rte_version.h)

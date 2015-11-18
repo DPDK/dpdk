@@ -130,5 +130,9 @@ DPDK_2.2 {
 	global:
 
 	rte_intr_cap_multiple;
+	rte_keepalive_create;
+	rte_keepalive_dispatch_pings;
+	rte_keepalive_mark_alive;
+	rte_keepalive_register_core;
 
 } DPDK_2.1;
