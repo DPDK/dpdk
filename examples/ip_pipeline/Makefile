@@ -67,6 +67,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_firewall_be.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_firewall.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_flow_classification_be.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_flow_classification.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_flow_actions_be.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_flow_actions.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_routing_be.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += pipeline_routing.c
 

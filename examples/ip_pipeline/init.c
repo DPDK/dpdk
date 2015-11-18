@@ -49,6 +49,7 @@
 #include "pipeline_passthrough.h"
 #include "pipeline_firewall.h"
 #include "pipeline_flow_classification.h"
+#include "pipeline_flow_actions.h"
 #include "pipeline_routing.h"
 #include "thread_fe.h"
 
@@ -1436,6 +1437,7 @@ int app_init(struct app_params *app)
 	app_pipeline_type_register(app, &pipeline_master);
 	app_pipeline_type_register(app, &pipeline_passthrough);
 	app_pipeline_type_register(app, &pipeline_flow_classification);
+	app_pipeline_type_register(app, &pipeline_flow_actions);
 	app_pipeline_type_register(app, &pipeline_firewall);
 	app_pipeline_type_register(app, &pipeline_routing);
 

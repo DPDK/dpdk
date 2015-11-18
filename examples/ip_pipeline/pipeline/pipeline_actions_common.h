@@ -116,4 +116,87 @@ f_ah(									\
 	return 0;							\
 }
 
+#define PIPELINE_TABLE_AH_HIT_DROP_TIME(f_ah, f_pkt_work, f_pkt4_work)	\
+static int								\
+f_ah(									\
+	struct rte_mbuf **pkts,						\
+	uint64_t *pkts_mask,						\
+	struct rte_pipeline_table_entry **entries,			\
+	void *arg)							\
+{									\
+	uint64_t pkts_in_mask = *pkts_mask;				\
+	uint64_t pkts_out_mask = *pkts_mask;				\
+	uint64_t time = rte_rdtsc();					\
+									\
+	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {			\
+		uint64_t n_pkts = __builtin_popcountll(pkts_in_mask);	\
+		uint32_t i;						\
+									\
+		for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4) {		\
+			uint64_t mask = f_pkt4_work(&pkts[i],		\
+				&entries[i], arg, time);	\
+			pkts_out_mask ^= mask << i;			\
+		}							\
+									\
+		for ( ; i < n_pkts; i++) {				\
+			uint64_t mask = f_pkt_work(pkts[i],		\
+				entries[i], arg, time);		\
+			pkts_out_mask ^= mask << i;			\
+		}							\
+	} else								\
+		for ( ; pkts_in_mask; ) {				\
+			uint32_t pos = __builtin_ctzll(pkts_in_mask);	\
+			uint64_t pkt_mask = 1LLU << pos;		\
+			uint64_t mask = f_pkt_work(pkts[pos],		\
+				entries[pos], arg, time);		\
+									\
+			pkts_in_mask &= ~pkt_mask;			\
+			pkts_out_mask ^= mask << pos;			\
+		}							\
+									\
+	*pkts_mask = pkts_out_mask;					\
+	return 0;							\
+}
+
+#define PIPELINE_TABLE_AH_MISS_DROP_TIME(f_ah, f_pkt_work, f_pkt4_work)	\
+static int								\
+f_ah(									\
+	struct rte_mbuf **pkts,						\
+	uint64_t *pkts_mask,						\
+	struct rte_pipeline_table_entry *entry,				\
+	void *arg)							\
+{									\
+	uint64_t pkts_in_mask = *pkts_mask;				\
+	uint64_t pkts_out_mask = *pkts_mask;				\
+	uint64_t time = rte_rdtsc();					\
+									\
+	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {			\
+		uint64_t n_pkts = __builtin_popcountll(pkts_in_mask);	\
+		uint32_t i;						\
+									\
+		for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4) {		\
+			uint64_t mask = f_pkt4_work(&pkts[i],		\
+				entry, arg, time);			\
+			pkts_out_mask ^= mask << i;			\
+		}							\
+									\
+		for ( ; i < n_pkts; i++) {				\
+			uint64_t mask = f_pkt_work(pkts[i], entry, arg, time);\
+			pkts_out_mask ^= mask << i;			\
+		}							\
+	} else								\
+		for ( ; pkts_in_mask; ) {				\
+			uint32_t pos = __builtin_ctzll(pkts_in_mask);	\
+			uint64_t pkt_mask = 1LLU << pos;		\
+			uint64_t mask = f_pkt_work(pkts[pos],		\
+				entry, arg, time);		\
+									\
+			pkts_in_mask &= ~pkt_mask;			\
+			pkts_out_mask ^= mask << pos;			\
+		}							\
+									\
+	*pkts_mask = pkts_out_mask;					\
+	return 0;							\
+}
+
 #endif
