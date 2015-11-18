@@ -133,6 +133,7 @@ DPDK_2.2 {
 
 	rte_eth_copy_pci_info;
 	rte_eth_dev_get_dcb_info;
+	rte_eth_dma_zone_reserve;
 	rte_eth_rx_queue_info_get;
 	rte_eth_timesync_adjust_time;
 	rte_eth_timesync_read_time;
