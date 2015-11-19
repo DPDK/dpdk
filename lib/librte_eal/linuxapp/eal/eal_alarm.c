@@ -63,6 +63,12 @@
 #define MS_PER_S 1000
 #define US_PER_S (US_PER_MS * MS_PER_S)
 
+#ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
+#define CLOCK_TYPE_ID CLOCK_MONOTONIC_RAW
+#else
+#define CLOCK_TYPE_ID CLOCK_MONOTONIC
+#endif
+
 struct alarm_entry {
 	LIST_ENTRY(alarm_entry) next;
 	struct timeval time;
@@ -104,7 +110,7 @@ eal_alarm_callback(struct rte_intr_handle *hdl __rte_unused,
 
 	rte_spinlock_lock(&alarm_list_lk);
 	while ((ap = LIST_FIRST(&alarm_list)) !=NULL &&
-			clock_gettime(CLOCK_MONOTONIC_RAW, &now) == 0 &&
+			clock_gettime(CLOCK_TYPE_ID, &now) == 0 &&
 			(ap->time.tv_sec < now.tv_sec || (ap->time.tv_sec == now.tv_sec &&
 						(ap->time.tv_usec * NS_PER_US) <= now.tv_nsec))) {
 		ap->executing = 1;
@@ -152,7 +158,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 		return -ENOMEM;
 
 	/* use current time to calculate absolute time of alarm */
-	clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+	clock_gettime(CLOCK_TYPE_ID, &now);
 
 	new_alarm->cb_fn = cb_fn;
 	new_alarm->cb_arg = cb_arg;
