@@ -37,7 +37,7 @@
 #include "common.h"
 #include "t4_regs.h"
 
-#define CXGBE_MIN_RING_DESC_SIZE      1024 /* Min TX/RX descriptor ring size */
+#define CXGBE_MIN_RING_DESC_SIZE      128  /* Min TX/RX descriptor ring size */
 #define CXGBE_MAX_RING_DESC_SIZE      4096 /* Max TX/RX descriptor ring size */
 
 #define CXGBE_DEFAULT_TX_DESC_SIZE    1024 /* Default TX ring size */
