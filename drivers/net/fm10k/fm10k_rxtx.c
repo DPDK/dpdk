@@ -104,9 +104,6 @@ rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 		(FM10K_RXD_STATUS_L4CS | FM10K_RXD_STATUS_L4E)))
 		m->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 
-	if (d->d.staterr & FM10K_RXD_STATUS_VEXT)
-		m->ol_flags |= PKT_RX_VLAN_PKT;
-
 	if (unlikely(d->d.staterr & FM10K_RXD_STATUS_HBO))
 		m->ol_flags |= PKT_RX_HBUF_OVERFLOW;
 
@@ -146,6 +143,15 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 #endif
 
 		mbuf->hash.rss = desc.d.rss;
+		/**
+		 * Packets in fm10k device always carry at least one VLAN tag.
+		 * For those packets coming in without VLAN tag,
+		 * the port default VLAN tag will be used.
+		 * So, always PKT_RX_VLAN_PKT flag is set and vlan_tci
+		 * is valid for each RX packet's mbuf.
+		 */
+		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
+		mbuf->vlan_tci = desc.w.vlan;
 
 		rx_pkts[count] = mbuf;
 		if (++next_dd == q->nb_desc) {
@@ -292,6 +298,15 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rx_desc_to_ol_flags(first_seg, &desc);
 #endif
 		first_seg->hash.rss = desc.d.rss;
+		/**
+		 * Packets in fm10k device always carry at least one VLAN tag.
+		 * For those packets coming in without VLAN tag,
+		 * the port default VLAN tag will be used.
+		 * So, always PKT_RX_VLAN_PKT flag is set and vlan_tci
+		 * is valid for each RX packet's mbuf.
+		 */
+		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
+		first_seg->vlan_tci = desc.w.vlan;
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +
