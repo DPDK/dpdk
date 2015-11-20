@@ -494,7 +494,7 @@ s32 ixgbe_get_phy_id(struct ixgbe_hw *hw)
 
 /**
  *  ixgbe_get_phy_type_from_id - Get the phy type
- *  @hw: pointer to hardware structure
+ *  @phy_id: PHY ID information
  *
  **/
 enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id)
@@ -526,8 +526,6 @@ enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id)
 		phy_type = ixgbe_phy_unknown;
 		break;
 	}
-
-	DEBUGOUT1("phy type found is %d\n", phy_type);
 	return phy_type;
 }
 

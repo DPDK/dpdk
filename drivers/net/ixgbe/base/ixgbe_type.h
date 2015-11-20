@@ -2949,6 +2949,20 @@ enum ixgbe_fdir_pballoc_type {
 #define FW_DISABLE_RXEN_CMD		0xDE
 #define FW_DISABLE_RXEN_LEN		0x1
 #define FW_PHY_MGMT_REQ_CMD		0x20
+#define FW_PHY_TOKEN_REQ_CMD		0xA
+#define FW_PHY_TOKEN_REQ_LEN		2
+#define FW_PHY_TOKEN_REQ		0
+#define FW_PHY_TOKEN_REL		1
+#define FW_PHY_TOKEN_OK			1
+#define FW_PHY_TOKEN_RETRY		0x80
+#define FW_PHY_TOKEN_DELAY		5	/* milliseconds */
+#define FW_PHY_TOKEN_WAIT		5	/* seconds */
+#define FW_PHY_TOKEN_RETRIES ((FW_PHY_TOKEN_WAIT * 1000) / FW_PHY_TOKEN_DELAY)
+#define FW_INT_PHY_REQ_CMD		0xB
+#define FW_INT_PHY_REQ_LEN		10
+#define FW_INT_PHY_REQ_READ		0
+#define FW_INT_PHY_REQ_WRITE		1
+
 /* Host Interface Command Structures */
 
 struct ixgbe_hic_hdr {
@@ -3015,6 +3029,28 @@ struct ixgbe_hic_disable_rxen {
 	u8  port_number;
 	u8  pad2;
 	u16 pad3;
+};
+
+struct ixgbe_hic_phy_token_req {
+	struct ixgbe_hic_hdr hdr;
+	u8 port_number;
+	u8 command_type;
+	u16 pad;
+};
+
+struct ixgbe_hic_internal_phy_req {
+	struct ixgbe_hic_hdr hdr;
+	u8 port_number;
+	u8 command_type;
+	u16 address;
+	u16 rsv1;
+	u32 write_data;
+	u16 pad;
+};
+
+struct ixgbe_hic_internal_phy_resp {
+	struct ixgbe_hic_hdr hdr;
+	u32 read_data;
 };
 
 
@@ -3142,6 +3178,7 @@ struct ixgbe_adv_tx_context_desc {
 #define IXGBE_ADVTXD_TUCMD_L4T_UDP	0x00000000 /* L4 Packet TYPE of UDP */
 #define IXGBE_ADVTXD_TUCMD_L4T_TCP	0x00000800 /* L4 Packet TYPE of TCP */
 #define IXGBE_ADVTXD_TUCMD_L4T_SCTP	0x00001000 /* L4 Packet TYPE of SCTP */
+#define IXGBE_ADVTXD_TUCMD_L4T_RSV	0x00001800 /* RSV L4 Packet TYPE */
 #define IXGBE_ADVTXD_TUCMD_MKRREQ	0x00002000 /* req Markers and CRC */
 #define IXGBE_ADVTXD_POPTS_IPSEC	0x00000400 /* IPSec offload request */
 #define IXGBE_ADVTXD_TUCMD_IPSEC_TYPE_ESP 0x00002000 /* IPSec Type ESP */
@@ -3959,6 +3996,8 @@ struct ixgbe_hw {
 #define IXGBE_ERR_FEATURE_NOT_SUPPORTED		-36
 #define IXGBE_ERR_EEPROM_PROTECTED_REGION	-37
 #define IXGBE_ERR_FDIR_CMD_INCOMPLETE		-38
+#define IXGBE_ERR_FW_RESP_INVALID		-39
+#define IXGBE_ERR_TOKEN_RETRY			-40
 
 #define IXGBE_NOT_IMPLEMENTED			0x7FFFFFFF
 

@@ -2243,7 +2243,7 @@ s32 ixgbe_update_eeprom_checksum_generic(struct ixgbe_hw *hw)
  *  ixgbe_validate_mac_addr - Validate MAC address
  *  @mac_addr: pointer to MAC address.
  *
- *  Tests a MAC address to ensure it is a valid Individual Address
+ *  Tests a MAC address to ensure it is a valid Individual Address.
  **/
 s32 ixgbe_validate_mac_addr(u8 *mac_addr)
 {
@@ -2253,16 +2253,13 @@ s32 ixgbe_validate_mac_addr(u8 *mac_addr)
 
 	/* Make sure it is not a multicast address */
 	if (IXGBE_IS_MULTICAST(mac_addr)) {
-		DEBUGOUT("MAC address is multicast\n");
 		status = IXGBE_ERR_INVALID_MAC_ADDR;
 	/* Not a broadcast address */
 	} else if (IXGBE_IS_BROADCAST(mac_addr)) {
-		DEBUGOUT("MAC address is broadcast\n");
 		status = IXGBE_ERR_INVALID_MAC_ADDR;
 	/* Reject the zero address */
 	} else if (mac_addr[0] == 0 && mac_addr[1] == 0 && mac_addr[2] == 0 &&
 		   mac_addr[3] == 0 && mac_addr[4] == 0 && mac_addr[5] == 0) {
-		DEBUGOUT("MAC address is all zeros\n");
 		status = IXGBE_ERR_INVALID_MAC_ADDR;
 	}
 	return status;
