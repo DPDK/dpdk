@@ -473,6 +473,15 @@ static inline void t4_os_unlock(rte_spinlock_t *lock)
 }
 
 /**
+ * t4_os_trylock - try to get a lock
+ * @lock: the spinlock
+ */
+static inline int t4_os_trylock(rte_spinlock_t *lock)
+{
+	return rte_spinlock_trylock(lock);
+}
+
+/**
  * t4_os_init_list_head - initialize
  * @head: head of list to initialize [to empty]
  */

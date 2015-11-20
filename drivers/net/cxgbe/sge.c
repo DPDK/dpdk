@@ -808,20 +808,23 @@ static void tx_timer_cb(void *data)
 	struct adapter *adap = (struct adapter *)data;
 	struct sge_eth_txq *txq = &adap->sge.ethtxq[0];
 	int i;
+	unsigned int coal_idx;
 
 	/* monitor any pending tx */
 	for (i = 0; i < adap->sge.max_ethqsets; i++, txq++) {
-		t4_os_lock(&txq->txq_lock);
-		if (txq->q.coalesce.idx) {
-			if (txq->q.coalesce.idx == txq->q.last_coal_idx &&
-			    txq->q.pidx == txq->q.last_pidx) {
-				ship_tx_pkt_coalesce_wr(adap, txq);
-			} else {
-				txq->q.last_coal_idx = txq->q.coalesce.idx;
-				txq->q.last_pidx = txq->q.pidx;
+		if (t4_os_trylock(&txq->txq_lock)) {
+			coal_idx = txq->q.coalesce.idx;
+			if (coal_idx) {
+				if (coal_idx == txq->q.last_coal_idx &&
+				    txq->q.pidx == txq->q.last_pidx) {
+					ship_tx_pkt_coalesce_wr(adap, txq);
+				} else {
+					txq->q.last_coal_idx = coal_idx;
+					txq->q.last_pidx = txq->q.pidx;
+				}
 			}
+			t4_os_unlock(&txq->txq_lock);
 		}
-		t4_os_unlock(&txq->txq_lock);
 	}
 	rte_eal_alarm_set(50, tx_timer_cb, (void *)adap);
 }
