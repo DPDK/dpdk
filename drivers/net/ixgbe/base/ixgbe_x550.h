@@ -81,7 +81,6 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw);
 s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw);
 s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw);
 s32 ixgbe_setup_kr_x550em(struct ixgbe_hw *hw);
-s32 ixgbe_setup_kx4_x550em(struct ixgbe_hw *hw);
 s32 ixgbe_init_ext_t_x550em(struct ixgbe_hw *hw);
 s32 ixgbe_setup_internal_phy_t_x550em(struct ixgbe_hw *hw);
 s32 ixgbe_setup_phy_loopback_x550em(struct ixgbe_hw *hw);
