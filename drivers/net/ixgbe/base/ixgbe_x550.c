@@ -468,8 +468,13 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	hw->bus.type = ixgbe_bus_type_internal;
 	mac->ops.get_bus_info = ixgbe_get_bus_info_X550em;
 
-	mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
-	mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
+	if (hw->mac.type == ixgbe_mac_X550EM_x) {
+		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
+		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
+		mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
+		mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
+	}
+
 	mac->ops.get_media_type = ixgbe_get_media_type_X550em;
 	mac->ops.setup_sfp = ixgbe_setup_sfp_modules_X550em;
 	mac->ops.get_link_capabilities = ixgbe_get_link_capabilities_X550em;
@@ -482,8 +487,6 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	else
 		mac->ops.setup_fc = ixgbe_setup_fc_X550em;
 
-	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
-	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
 
 	if (hw->device_id != IXGBE_DEV_ID_X550EM_X_KR)
 		mac->ops.setup_eee = NULL;
