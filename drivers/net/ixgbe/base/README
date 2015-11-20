@@ -34,7 +34,7 @@ Intel® IXGBE driver
 ===================
 
 This directory contains source code of FreeBSD ixgbe driver of version
-cid-10g-shared-code.2015.06.05 released by ND. The sub-directory of base/
+cid-10g-shared-code.2015.11.12 released by ND. The sub-directory of base/
 contains the original source package.
 This driver is valid for the product(s) listed below
 
@@ -50,7 +50,7 @@ This driver is valid for the product(s) listed below
 * Intel® Ethernet Controller X540-AT2
 * Intel® Ethernet Server Adapter X520 Series
 * Intel® Ethernet Server Adapter X520-T2
-* Intel® Ethernet Controller X550-BT2
+* Intel® Ethernet Controller X550 Series
 
 Updating the driver
 ===================
