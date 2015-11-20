@@ -582,7 +582,12 @@ rte_pmd_ring_devuninit(const char *name)
 		return -ENODEV;
 
 	eth_dev_stop(eth_dev);
-	rte_free(eth_dev->data->dev_private);
+
+	if (eth_dev->data) {
+		rte_free(eth_dev->data->rx_queues);
+		rte_free(eth_dev->data->tx_queues);
+		rte_free(eth_dev->data->dev_private);
+	}
 	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
