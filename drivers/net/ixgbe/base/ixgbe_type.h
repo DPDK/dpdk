@@ -1956,6 +1956,7 @@ enum {
  *	FIP  (0x8914):	 Filter 4
  *	LLDP (0x88CC):	 Filter 5
  *	LACP (0x8809):	 Filter 6
+ *	FC   (0x8808):	 Filter 7
  */
 #define IXGBE_ETQF_FILTER_EAPOL		0
 #define IXGBE_ETQF_FILTER_FCOE		2
@@ -1963,6 +1964,7 @@ enum {
 #define IXGBE_ETQF_FILTER_FIP		4
 #define IXGBE_ETQF_FILTER_LLDP		5
 #define IXGBE_ETQF_FILTER_LACP		6
+#define IXGBE_ETQF_FILTER_FC		7
 /* VLAN Control Bit Masks */
 #define IXGBE_VLNCTRL_VET		0x0000FFFF  /* bits 0-15 */
 #define IXGBE_VLNCTRL_CFI		0x10000000  /* bit 28 */
