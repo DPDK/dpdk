@@ -188,6 +188,7 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 		hw->mvals = ixgbe_mvals_X540;
 		break;
 	case IXGBE_DEV_ID_X550T:
+	case IXGBE_DEV_ID_X550T1:
 		hw->mac.type = ixgbe_mac_X550;
 		hw->mvals = ixgbe_mvals_X550;
 		break;

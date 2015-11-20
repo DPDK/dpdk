@@ -644,7 +644,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 	if (enable_eee) {
 		eeer |= (IXGBE_EEER_TX_LPI_EN | IXGBE_EEER_RX_LPI_EN);
 
-		if (hw->device_id == IXGBE_DEV_ID_X550T) {
+		if (hw->mac.type == ixgbe_mac_X550) {
 			/* Advertise EEE capability */
 			hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_eee_reg);
@@ -682,7 +682,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 	} else {
 		eeer &= ~(IXGBE_EEER_TX_LPI_EN | IXGBE_EEER_RX_LPI_EN);
 
-		if (hw->device_id == IXGBE_DEV_ID_X550T) {
+		if (hw->mac.type == ixgbe_mac_X550) {
 			/* Disable advertised EEE capability */
 			hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_eee_reg);
