@@ -68,6 +68,7 @@ ifeq ($(LINK_USING_CC),1)
 # Override the definition of LD here, since we're linking with CC
 LD := $(CC) $(CPU_CFLAGS)
 _CPU_LDFLAGS := $(call linkerprefix,$(CPU_LDFLAGS))
+override EXTRA_LDFLAGS := $(call linkerprefix,$(EXTRA_LDFLAGS))
 else
 _CPU_LDFLAGS := $(CPU_LDFLAGS)
 endif
