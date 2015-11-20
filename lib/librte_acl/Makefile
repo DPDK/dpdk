@@ -48,31 +48,42 @@ SRCS-$(CONFIG_RTE_LIBRTE_ACL) += rte_acl.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_bld.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_gen.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_scalar.c
+
 ifeq ($(CONFIG_RTE_ARCH_ARM64),y)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_neon.c
+CFLAGS_acl_run_neon.o += -flax-vector-conversions -Wno-maybe-uninitialized
 else
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_sse.c
+#check if flag for SSE4.1 is already on, if not set it up manually
+	ifeq ($(findstring RTE_MACHINE_CPUFLAG_SSE4_1,$(CFLAGS)),)
+		CFLAGS_acl_run_sse.o += -msse4.1
+	endif
 endif
-
-CFLAGS_acl_run_sse.o += -msse4.1
-CFLAGS_acl_run_neon.o += -flax-vector-conversions -Wno-maybe-uninitialized
 
 #
 # If the compiler supports AVX2 instructions,
 # then add support for AVX2 classify method.
 #
 
-CC_AVX2_SUPPORT=$(shell $(CC) -march=core-avx2 -dM -E - </dev/null 2>&1 | \
-grep -q AVX2 && echo 1)
+#check if flag for AVX2 is already on, if not set it up manually
+ifeq ($(findstring RTE_MACHINE_CPUFLAG_AVX2,$(CFLAGS)),RTE_MACHINE_CPUFLAG_AVX2)
+	CC_AVX2_SUPPORT=1
+else
+	CC_AVX2_SUPPORT=\
+	$(shell $(CC) -march=core-avx2 -dM -E - </dev/null 2>&1 | \
+	grep -q AVX2 && echo 1)
+	ifeq ($(CC_AVX2_SUPPORT), 1)
+		ifeq ($(CC), icc)
+		CFLAGS_acl_run_avx2.o += -march=core-avx2
+		else
+		CFLAGS_acl_run_avx2.o += -mavx2
+		endif
+	endif
+endif
 
 ifeq ($(CC_AVX2_SUPPORT), 1)
 	SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_avx2.c
 	CFLAGS_rte_acl.o += -DCC_AVX2_SUPPORT
-	ifeq ($(CC), icc)
-	CFLAGS_acl_run_avx2.o += -march=core-avx2
-	else
-	CFLAGS_acl_run_avx2.o += -mavx2
-	endif
 endif
 
 # install this header file
