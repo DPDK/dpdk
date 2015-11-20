@@ -74,8 +74,8 @@ WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
-# disable max-inline params boundaries for ICC 15 compiler
-ifeq ($(shell test $(ICC_MAJOR_VERSION) -eq 15 && echo 1), 1)
+# disable max-inline params boundaries for ICC compiler for version 15 and greater
+ifeq ($(shell test $(ICC_MAJOR_VERSION) -ge 14 && echo 1), 1)
 	TOOLCHAIN_CFLAGS += -no-inline-max-size -no-inline-max-total-size
 endif
 
