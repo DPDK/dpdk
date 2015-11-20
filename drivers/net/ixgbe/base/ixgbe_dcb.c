@@ -147,6 +147,11 @@ s32 ixgbe_dcb_calculate_tc_credits_cee(struct ixgbe_hw *hw,
 		/* Calculate credit refill ratio using multiplier */
 		credit_refill = min(link_percentage * min_multiplier,
 				    (u32)IXGBE_DCB_MAX_CREDIT_REFILL);
+
+		/* Refill at least minimum credit */
+		if (credit_refill < min_credit)
+			credit_refill = min_credit;
+
 		p->data_credits_refill = (u16)credit_refill;
 
 		/* Calculate maximum credit for the TC */
@@ -157,7 +162,7 @@ s32 ixgbe_dcb_calculate_tc_credits_cee(struct ixgbe_hw *hw,
 		 * of a TC is too small, the maximum credit may not be
 		 * enough to send out a jumbo frame in data plane arbitration.
 		 */
-		if (credit_max && (credit_max < min_credit))
+		if (credit_max < min_credit)
 			credit_max = min_credit;
 
 		if (direction == IXGBE_DCB_TX_CONFIG) {
@@ -369,8 +374,6 @@ s32 ixgbe_dcb_check_config_cee(struct ixgbe_dcb_config *dcb_config)
 	}
 
 err_config:
-	DEBUGOUT2("DCB error code %d while checking %s settings.\n",
-		  ret_val, (i == IXGBE_DCB_TX_CONFIG) ? "Tx" : "Rx");
 
 	return ret_val;
 }
