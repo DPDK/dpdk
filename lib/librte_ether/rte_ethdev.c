@@ -1342,6 +1342,18 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 
 	rte_eth_dev_info_get(port_id, &dev_info);
 
+	if (nb_tx_desc > dev_info.tx_desc_lim.nb_max ||
+	    nb_tx_desc < dev_info.tx_desc_lim.nb_min ||
+	    nb_tx_desc % dev_info.tx_desc_lim.nb_align != 0) {
+		PMD_DEBUG_TRACE("Invalid value for nb_tx_desc(=%hu), "
+				"should be: <= %hu, = %hu, and a product of %hu\n",
+				nb_tx_desc,
+				dev_info.tx_desc_lim.nb_max,
+				dev_info.tx_desc_lim.nb_min,
+				dev_info.tx_desc_lim.nb_align);
+		return -EINVAL;
+	}
+
 	if (tx_conf == NULL)
 		tx_conf = &dev_info.default_txconf;
 
