@@ -378,8 +378,8 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw)
 	mac->max_tx_queues	= IXGBE_82599_MAX_TX_QUEUES;
 	mac->max_msix_vectors	= ixgbe_get_pcie_msix_count_generic(hw);
 
-	mac->arc_subsystem_valid = (IXGBE_READ_REG(hw, IXGBE_FWSM) &
-				   IXGBE_FWSM_MODE_MASK) ? true : false;
+	mac->arc_subsystem_valid = !!(IXGBE_READ_REG(hw, IXGBE_FWSM_BY_MAC(hw))
+				      & IXGBE_FWSM_MODE_MASK);
 
 	hw->mbx.ops.init_params = ixgbe_init_mbx_params_pf;
 
