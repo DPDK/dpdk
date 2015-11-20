@@ -114,132 +114,6 @@ STATIC s32 ixgbe_write_cs4227(struct ixgbe_hw *hw, u16 reg, u16 value)
 }
 
 /**
- * ixgbe_get_cs4227_status - Return CS4227 status
- * @hw: pointer to hardware structure
- *
- * Performs a diagnostic on the CS4227 chip. Returns an error if it is
- * not operating correctly.
- * This function assumes that the caller has acquired the proper semaphore.
- **/
-STATIC s32 ixgbe_get_cs4227_status(struct ixgbe_hw *hw)
-{
-	s32 status;
-	u16 value = 0;
-	u16 reg_slice, reg_val;
-	u8 retry;
-
-	/* Check register reads. */
-	for (retry = 0; retry < IXGBE_CS4227_RETRIES; ++retry) {
-		status = ixgbe_read_cs4227(hw, IXGBE_CS4227_GLOBAL_ID_LSB,
-					   &value);
-		if (status != IXGBE_SUCCESS)
-			return status;
-		if (value == IXGBE_CS4227_GLOBAL_ID_VALUE)
-			break;
-		msec_delay(IXGBE_CS4227_CHECK_DELAY);
-	}
-	if (value != IXGBE_CS4227_GLOBAL_ID_VALUE)
-		return IXGBE_ERR_PHY;
-
-	status = ixgbe_read_cs4227(hw, IXGBE_CS4227_SCRATCH, &value);
-	if (status != IXGBE_SUCCESS)
-		return status;
-
-	/* If this is the first time after power-on, check the ucode.
-	 * Otherwise, this will disrupt link on all ports. Because we
-	 * can only do this the first time, we must check all ports,
-	 * not just our own.
-	 * While we are at it, set the LINE side to 10G SR, which is
-	 * what it needs to be regardless of the actual link.
-	 */
-	if (value != IXGBE_CS4227_SCRATCH_VALUE) {
-		reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB;
-		reg_val = IXGBE_CS4227_SPEED_10G;
-		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB;
-		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB;
-		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
-		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB + (1 << 12);
-		reg_val = IXGBE_CS4227_SPEED_10G;
-		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (1 << 12);
-		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (1 << 12);
-		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
-		status = ixgbe_write_cs4227(hw, reg_slice, reg_val);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		msec_delay(10);
-	}
-
-	/* Verify that the ucode is operational on all ports. */
-	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB;
-	reg_val = 0xFFFF;
-	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	if (reg_val != 0)
-		return IXGBE_ERR_PHY;
-
-	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB;
-	reg_val = 0xFFFF;
-	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	if (reg_val != 0)
-		return IXGBE_ERR_PHY;
-
-	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (1 << 12);
-	reg_val = 0xFFFF;
-	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	if (reg_val != 0)
-		return IXGBE_ERR_PHY;
-
-	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (1 << 12);
-	reg_val = 0xFFFF;
-	status = ixgbe_read_cs4227(hw, reg_slice, &reg_val);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	if (reg_val != 0)
-		return IXGBE_ERR_PHY;
-
-	/* Set scratch indicating that the diagnostic was successful. */
-	status = ixgbe_write_cs4227(hw, IXGBE_CS4227_SCRATCH,
-				    IXGBE_CS4227_SCRATCH_VALUE);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	status = ixgbe_read_cs4227(hw, IXGBE_CS4227_SCRATCH, &value);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	if (value != IXGBE_CS4227_SCRATCH_VALUE)
-		return IXGBE_ERR_PHY;
-
-	return IXGBE_SUCCESS;
-}
-
-/**
  * ixgbe_read_pe - Read register from port expander
  * @hw: pointer to hardware structure
  * @reg: register number to read
@@ -281,13 +155,17 @@ STATIC s32 ixgbe_write_pe(struct ixgbe_hw *hw, u8 reg, u8 value)
  * ixgbe_reset_cs4227 - Reset CS4227 using port expander
  * @hw: pointer to hardware structure
  *
+ * This function assumes that the caller has acquired the proper semaphore.
  * Returns error code
  **/
 STATIC s32 ixgbe_reset_cs4227(struct ixgbe_hw *hw)
 {
 	s32 status;
+	u32 retry;
+	u16 value;
 	u8 reg;
 
+	/* Trigger hard reset. */
 	status = ixgbe_read_pe(hw, IXGBE_PE_OUTPUT, &reg);
 	if (status != IXGBE_SUCCESS)
 		return status;
@@ -322,7 +200,29 @@ STATIC s32 ixgbe_reset_cs4227(struct ixgbe_hw *hw)
 	if (status != IXGBE_SUCCESS)
 		return status;
 
+	/* Wait for the reset to complete. */
 	msec_delay(IXGBE_CS4227_RESET_DELAY);
+	for (retry = 0; retry < IXGBE_CS4227_RETRIES; retry++) {
+		status = ixgbe_read_cs4227(hw, IXGBE_CS4227_EFUSE_STATUS,
+					   &value);
+		if (status == IXGBE_SUCCESS &&
+		    value == IXGBE_CS4227_EEPROM_LOAD_OK)
+			break;
+		msec_delay(IXGBE_CS4227_CHECK_DELAY);
+	}
+	if (retry == IXGBE_CS4227_RETRIES) {
+		ERROR_REPORT1(IXGBE_ERROR_INVALID_STATE,
+			"CS4227 reset did not complete.");
+		return IXGBE_ERR_PHY;
+	}
+
+	status = ixgbe_read_cs4227(hw, IXGBE_CS4227_EEPROM_STATUS, &value);
+	if (status != IXGBE_SUCCESS ||
+	    !(value & IXGBE_CS4227_EEPROM_LOAD_OK)) {
+		ERROR_REPORT1(IXGBE_ERROR_INVALID_STATE,
+			"CS4227 EEPROM did not load successfully.");
+		return IXGBE_ERR_PHY;
+	}
 
 	return IXGBE_SUCCESS;
 }
@@ -333,29 +233,75 @@ STATIC s32 ixgbe_reset_cs4227(struct ixgbe_hw *hw)
  **/
 STATIC void ixgbe_check_cs4227(struct ixgbe_hw *hw)
 {
+	s32 status = IXGBE_SUCCESS;
 	u32 swfw_mask = hw->phy.phy_semaphore_mask;
-	s32 status;
+	u16 value = 0;
 	u8 retry;
 
 	for (retry = 0; retry < IXGBE_CS4227_RETRIES; retry++) {
 		status = hw->mac.ops.acquire_swfw_sync(hw, swfw_mask);
 		if (status != IXGBE_SUCCESS) {
 			ERROR_REPORT2(IXGBE_ERROR_CAUTION,
-				      "semaphore failed with %d\n", status);
-			return;
+				"semaphore failed with %d", status);
+			msec_delay(IXGBE_CS4227_CHECK_DELAY);
+			continue;
 		}
-		status = ixgbe_get_cs4227_status(hw);
-		if (status == IXGBE_SUCCESS) {
-			hw->mac.ops.release_swfw_sync(hw, swfw_mask);
-			msec_delay(hw->eeprom.semaphore_delay);
-			return;
-		}
-		ixgbe_reset_cs4227(hw);
+
+		/* Get status of reset flow. */
+		status = ixgbe_read_cs4227(hw, IXGBE_CS4227_SCRATCH, &value);
+
+		if (status == IXGBE_SUCCESS &&
+		    value == IXGBE_CS4227_RESET_COMPLETE)
+			goto out;
+
+		if (status != IXGBE_SUCCESS ||
+		    value != IXGBE_CS4227_RESET_PENDING)
+			break;
+
+		/* Reset is pending. Wait and check again. */
 		hw->mac.ops.release_swfw_sync(hw, swfw_mask);
-		msec_delay(hw->eeprom.semaphore_delay);
+		msec_delay(IXGBE_CS4227_CHECK_DELAY);
 	}
-	ERROR_REPORT2(IXGBE_ERROR_CAUTION,
-		      "Unable to initialize CS4227, err=%d\n", status);
+
+	/* If still pending, assume other instance failed. */
+	if (retry == IXGBE_CS4227_RETRIES) {
+		status = hw->mac.ops.acquire_swfw_sync(hw, swfw_mask);
+		if (status != IXGBE_SUCCESS) {
+			ERROR_REPORT2(IXGBE_ERROR_CAUTION,
+				      "semaphore failed with %d", status);
+			return;
+		}
+	}
+
+	/* Reset the CS4227. */
+	status = ixgbe_reset_cs4227(hw);
+	if (status != IXGBE_SUCCESS) {
+		ERROR_REPORT2(IXGBE_ERROR_INVALID_STATE,
+			"CS4227 reset failed: %d", status);
+		goto out;
+	}
+
+	/* Reset takes so long, temporarily release semaphore in case the
+	 * other driver instance is waiting for the reset indication.
+	 */
+	ixgbe_write_cs4227(hw, IXGBE_CS4227_SCRATCH,
+			   IXGBE_CS4227_RESET_PENDING);
+	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+	msec_delay(10);
+	status = hw->mac.ops.acquire_swfw_sync(hw, swfw_mask);
+	if (status != IXGBE_SUCCESS) {
+		ERROR_REPORT2(IXGBE_ERROR_CAUTION,
+			"semaphore failed with %d", status);
+		return;
+	}
+
+	/* Record completion for next time. */
+	status = ixgbe_write_cs4227(hw, IXGBE_CS4227_SCRATCH,
+		IXGBE_CS4227_RESET_COMPLETE);
+
+out:
+	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+	msec_delay(hw->eeprom.semaphore_delay);
 }
 
 /**
@@ -1509,14 +1455,6 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		 * to determine internal PHY mode.
 		 */
 		phy->nw_mng_if_sel = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
-
-		/* If internal PHY mode is KR, then initialize KR link */
-		if (phy->nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE) {
-			speed = IXGBE_LINK_SPEED_10GB_FULL |
-				IXGBE_LINK_SPEED_1GB_FULL;
-			ret_val = ixgbe_setup_kr_speed_x550em(hw, speed);
-		}
-
 		phy->ops.identify_sfp = ixgbe_identify_sfp_module_X550em;
 	}
 
@@ -1775,36 +1713,53 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 	if (ret_val != IXGBE_SUCCESS)
 		return ret_val;
 
-	/* Configure CS4227 LINE side to 10G SR. */
-	reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB + (hw->bus.lan_id << 12);
-	reg_val = IXGBE_CS4227_SPEED_10G;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-		reg_val);
+	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE)) {
+		/* Configure CS4227 LINE side to 10G SR. */
+		reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB +
+			    (hw->bus.lan_id << 12);
+		reg_val = IXGBE_CS4227_SPEED_10G;
+		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+						   reg_val);
 
-	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + (hw->bus.lan_id << 12);
-	reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-		reg_val);
-
-	/* Configure CS4227 for HOST connection rate then type. */
-	reg_slice = IXGBE_CS4227_HOST_SPARE22_MSB + (hw->bus.lan_id << 12);
-	reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ?
-		IXGBE_CS4227_SPEED_10G : IXGBE_CS4227_SPEED_1G;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-					   reg_val);
-
-	reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB + (hw->bus.lan_id << 12);
-	if (setup_linear)
-		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
-	else
+		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB +
+			    (hw->bus.lan_id << 12);
 		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-	ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-					   reg_val);
+		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+						   reg_val);
 
-	/* If internal link mode is XFI, then setup XFI internal link. */
-	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE))
+		/* Configure CS4227 for HOST connection rate then type. */
+		reg_slice = IXGBE_CS4227_HOST_SPARE22_MSB +
+			    (hw->bus.lan_id << 12);
+		reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ?
+		IXGBE_CS4227_SPEED_10G : IXGBE_CS4227_SPEED_1G;
+		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+						   reg_val);
+
+		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB +
+			    (hw->bus.lan_id << 12);
+		if (setup_linear)
+			reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+		else
+			reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+						   reg_val);
+
+		/* Setup XFI internal link. */
 		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
+	} else {
+		/* Configure internal PHY for KR/KX. */
+		ixgbe_setup_kr_speed_x550em(hw, speed);
 
+		/* Configure CS4227 LINE side to proper mode. */
+		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB +
+			    (hw->bus.lan_id << 12);
+		if (setup_linear)
+			reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+		else
+			reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
+						   reg_val);
+	}
 	return ret_val;
 }
 
