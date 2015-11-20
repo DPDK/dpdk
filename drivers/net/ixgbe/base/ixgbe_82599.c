@@ -1369,7 +1369,7 @@ s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 	 * Continue setup of fdirctrl register bits:
 	 *  Turn perfect match filtering on
 	 *  Report hash in RSS field of Rx wb descriptor
-	 *  Initialize the drop queue
+	 *  Initialize the drop queue to queue 127
 	 *  Move the flexible bytes to use the ethertype - shift 6 words
 	 *  Set the maximum length per hash bucket to 0xA filters
 	 *  Send interrupt when 64 (0x4 * 16) filters are left
@@ -1380,6 +1380,9 @@ s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 		    (0x6 << IXGBE_FDIRCTRL_FLEX_SHIFT) |
 		    (0xA << IXGBE_FDIRCTRL_MAX_LENGTH_SHIFT) |
 		    (4 << IXGBE_FDIRCTRL_FULL_THRESH_SHIFT);
+	if ((hw->mac.type == ixgbe_mac_X550) ||
+	    (hw->mac.type == ixgbe_mac_X550EM_x))
+		fdirctrl |= IXGBE_FDIRCTRL_DROP_NO_MATCH;
 
 	if (cloud_mode)
 		fdirctrl |=(IXGBE_FDIRCTRL_FILTERMODE_CLOUD <<
@@ -1389,6 +1392,39 @@ s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 	ixgbe_fdir_enable_82599(hw, fdirctrl);
 
 	return IXGBE_SUCCESS;
+}
+
+/**
+ *  ixgbe_set_fdir_drop_queue_82599 - Set Flow Director drop queue
+ *  @hw: pointer to hardware structure
+ *  @dropqueue: Rx queue index used for the dropped packets
+ **/
+void ixgbe_set_fdir_drop_queue_82599(struct ixgbe_hw *hw, u8 dropqueue)
+{
+	u32 fdirctrl;
+
+	DEBUGFUNC("ixgbe_set_fdir_drop_queue_82599");
+	/* Clear init done bit and drop queue field */
+	fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
+	fdirctrl &= ~(IXGBE_FDIRCTRL_DROP_Q_MASK | IXGBE_FDIRCTRL_INIT_DONE);
+
+	/* Set drop queue */
+	fdirctrl |= (dropqueue << IXGBE_FDIRCTRL_DROP_Q_SHIFT);
+	if ((hw->mac.type == ixgbe_mac_X550) ||
+	    (hw->mac.type == ixgbe_mac_X550EM_x))
+		fdirctrl |= IXGBE_FDIRCTRL_DROP_NO_MATCH;
+
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD,
+			(IXGBE_READ_REG(hw, IXGBE_FDIRCMD) |
+			 IXGBE_FDIRCMD_CLEARHT));
+	IXGBE_WRITE_FLUSH(hw);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD,
+			(IXGBE_READ_REG(hw, IXGBE_FDIRCMD) &
+			 ~IXGBE_FDIRCMD_CLEARHT));
+	IXGBE_WRITE_FLUSH(hw);
+
+	/* write hashes and fdirctrl register, poll for completion */
+	ixgbe_fdir_enable_82599(hw, fdirctrl);
 }
 
 /*
