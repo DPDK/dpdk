@@ -1440,7 +1440,6 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 {
 	struct ixgbe_phy_info *phy = &hw->phy;
-	ixgbe_link_speed speed;
 	s32 ret_val;
 
 	DEBUGFUNC("ixgbe_init_phy_ops_X550em");
@@ -1489,14 +1488,8 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		/* If internal link mode is XFI, then setup iXFI internal link,
 		 * else setup KR now.
 		 */
-		if (!(phy->nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE)) {
-			phy->ops.setup_internal_link =
+		phy->ops.setup_internal_link =
 					      ixgbe_setup_internal_phy_t_x550em;
-		} else {
-			speed = IXGBE_LINK_SPEED_10GB_FULL |
-				IXGBE_LINK_SPEED_1GB_FULL;
-			ret_val = ixgbe_setup_kr_speed_x550em(hw, speed);
-		}
 
 		/* setup SW LPLU only for first revision */
 		if (!(IXGBE_FUSES0_REV1 & IXGBE_READ_REG(hw,
@@ -1930,43 +1923,50 @@ s32 ixgbe_setup_internal_phy_t_x550em(struct ixgbe_hw *hw)
 	if (hw->mac.ops.get_media_type(hw) != ixgbe_media_type_copper)
 		return IXGBE_ERR_CONFIG;
 
-	/* If link is not up, then there is no setup necessary so return  */
-	status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
-	if (status != IXGBE_SUCCESS)
-		return status;
+	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE)) {
+		/* If link is down, there is no setup necessary so return  */
+		status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
+		if (status != IXGBE_SUCCESS)
+			return status;
 
-	if (!link_up)
-		return IXGBE_SUCCESS;
+		if (!link_up)
+			return IXGBE_SUCCESS;
 
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_VENDOR_STAT,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      &speed);
-	if (status != IXGBE_SUCCESS)
-		return status;
+		status = hw->phy.ops.read_reg(hw,
+					      IXGBE_MDIO_AUTO_NEG_VENDOR_STAT,
+					      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+					      &speed);
+		if (status != IXGBE_SUCCESS)
+			return status;
 
-	/* If link is not still up, then no setup is necessary so return */
-	status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	if (!link_up)
-		return IXGBE_SUCCESS;
+		/* If link is still down - no setup is required so return */
+		status = ixgbe_ext_phy_t_x550em_get_link(hw, &link_up);
+		if (status != IXGBE_SUCCESS)
+			return status;
+		if (!link_up)
+			return IXGBE_SUCCESS;
 
-	/* clear everything but the speed and duplex bits */
-	speed &= IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_MASK;
+		/* clear everything but the speed and duplex bits */
+		speed &= IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_MASK;
 
-	switch (speed) {
-	case IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10GB_FULL:
-		force_speed = IXGBE_LINK_SPEED_10GB_FULL;
-		break;
-	case IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_1GB_FULL:
-		force_speed = IXGBE_LINK_SPEED_1GB_FULL;
-		break;
-	default:
-		/* Internal PHY does not support anything else */
-		return IXGBE_ERR_INVALID_LINK_SETTINGS;
+		switch (speed) {
+		case IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_10GB_FULL:
+			force_speed = IXGBE_LINK_SPEED_10GB_FULL;
+			break;
+		case IXGBE_MDIO_AUTO_NEG_VENDOR_STATUS_1GB_FULL:
+			force_speed = IXGBE_LINK_SPEED_1GB_FULL;
+			break;
+		default:
+			/* Internal PHY does not support anything else */
+			return IXGBE_ERR_INVALID_LINK_SETTINGS;
+		}
+
+		return ixgbe_setup_ixfi_x550em(hw, &force_speed);
+	} else {
+		speed = IXGBE_LINK_SPEED_10GB_FULL |
+			IXGBE_LINK_SPEED_1GB_FULL;
+		return ixgbe_setup_kr_speed_x550em(hw, speed);
 	}
-
-	return ixgbe_setup_ixfi_x550em(hw, &force_speed);
 }
 
 /**
@@ -3128,3 +3128,4 @@ s32 ixgbe_led_off_t_X550em(struct ixgbe_hw *hw, u32 led_idx)
 
 	return IXGBE_SUCCESS;
 }
+
