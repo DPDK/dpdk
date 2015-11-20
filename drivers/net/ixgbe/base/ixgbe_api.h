@@ -149,10 +149,10 @@ s32 ixgbe_reinit_fdir_tables_82599(struct ixgbe_hw *hw);
 s32 ixgbe_init_fdir_signature_82599(struct ixgbe_hw *hw, u32 fdirctrl);
 s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 					bool cloud_mode);
-s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
-					  union ixgbe_atr_hash_dword input,
-					  union ixgbe_atr_hash_dword common,
-					  u8 queue);
+void ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
+					   union ixgbe_atr_hash_dword input,
+					   union ixgbe_atr_hash_dword common,
+					   u8 queue);
 s32 ixgbe_fdir_set_input_mask_82599(struct ixgbe_hw *hw,
 				    union ixgbe_atr_input *input_mask, bool cloud_mode);
 s32 ixgbe_fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,

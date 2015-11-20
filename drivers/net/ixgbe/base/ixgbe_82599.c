@@ -1491,16 +1491,15 @@ u32 ixgbe_atr_compute_sig_hash_82599(union ixgbe_atr_hash_dword input,
  * Note that the tunnel bit in input must not be set when the hardware
  * tunneling support does not exist.
  **/
-s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
-					  union ixgbe_atr_hash_dword input,
-					  union ixgbe_atr_hash_dword common,
-					  u8 queue)
+void ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
+					   union ixgbe_atr_hash_dword input,
+					   union ixgbe_atr_hash_dword common,
+					   u8 queue)
 {
 	u64 fdirhashcmd;
 	u8 flow_type;
 	bool tunnel;
 	u32 fdircmd;
-	s32 err;
 
 	DEBUGFUNC("ixgbe_fdir_add_signature_filter_82599");
 
@@ -1522,7 +1521,7 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 		break;
 	default:
 		DEBUGOUT(" Error on flow type input\n");
-		return IXGBE_ERR_CONFIG;
+		return;
 	}
 
 	/* configure FDIRCMD register */
@@ -1541,15 +1540,9 @@ s32 ixgbe_fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 	fdirhashcmd |= ixgbe_atr_compute_sig_hash_82599(input, common);
 	IXGBE_WRITE_REG64(hw, IXGBE_FDIRHASH, fdirhashcmd);
 
-	err = ixgbe_fdir_check_cmd_complete(hw, &fdircmd);
-	if (err) {
-		DEBUGOUT("Flow Director command did not complete!\n");
-		return err;
-	}
-
 	DEBUGOUT2("Tx Queue=%x hash=%x\n", queue, (u32)fdirhashcmd);
 
-	return IXGBE_SUCCESS;
+	return;
 }
 
 #define IXGBE_COMPUTE_BKT_HASH_ITERATION(_n) \
