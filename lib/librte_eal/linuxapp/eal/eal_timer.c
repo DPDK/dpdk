@@ -271,7 +271,7 @@ get_tsc_freq(void)
 #ifdef CLOCK_MONOTONIC_RAW
 #define NS_PER_SEC 1E9
 
-	struct timespec sleeptime = {.tv_nsec = 5E8 }; /* 1/2 second */
+	struct timespec sleeptime = {.tv_nsec = NS_PER_SEC / 10 }; /* 1/10 second */
 
 	struct timespec t_start, t_end;
 	uint64_t tsc_hz;
