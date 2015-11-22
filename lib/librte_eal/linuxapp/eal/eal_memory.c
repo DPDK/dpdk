@@ -399,8 +399,10 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 			return -1;
 		}
 
+		/* map the segment, and populate page tables,
+		 * the kernel fills this segment with zeros */
 		virtaddr = mmap(vma_addr, hugepage_sz, PROT_READ | PROT_WRITE,
-				MAP_SHARED, fd, 0);
+				MAP_SHARED | MAP_POPULATE, fd, 0);
 		if (virtaddr == MAP_FAILED) {
 			RTE_LOG(ERR, EAL, "%s(): mmap failed: %s\n", __func__,
 					strerror(errno));
@@ -410,7 +412,6 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 
 		if (orig) {
 			hugepg_tbl[i].orig_va = virtaddr;
-			memset(virtaddr, 0, hugepage_sz);
 		}
 		else {
 			hugepg_tbl[i].final_va = virtaddr;
@@ -529,22 +530,16 @@ remap_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 
 			old_addr = vma_addr;
 
-			/* map new, bigger segment */
+			/* map new, bigger segment, and populate page tables,
+			 * the kernel fills this segment with zeros */
 			vma_addr = mmap(vma_addr, total_size,
-					PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+					PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd, 0);
 
 			if (vma_addr == MAP_FAILED || vma_addr != old_addr) {
 				RTE_LOG(ERR, EAL, "%s(): mmap failed: %s\n", __func__, strerror(errno));
 				close(fd);
 				return -1;
 			}
-
-			/* touch the page. this is needed because kernel postpones mapping
-			 * creation until the first page fault. with this, we pin down
-			 * the page and it is marked as used and gets into process' pagemap.
-			 */
-			for (offset = 0; offset < total_size; offset += hugepage_sz)
-				*((volatile uint8_t*) RTE_PTR_ADD(vma_addr, offset));
 		}
 
 		/* set shared flock on the file. */
@@ -591,9 +586,6 @@ remap_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 				return -1;
 			}
 		}
-
-		/* zero out the whole segment */
-		memset(hugepg_tbl[page_idx].final_va, 0, total_size);
 
 		page_idx++;
 	}
