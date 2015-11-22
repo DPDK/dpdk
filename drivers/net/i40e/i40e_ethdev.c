@@ -3755,14 +3755,22 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 	return i40e_vsi_add_mac(vsi, &filter);
 }
 
-static int
-i40e_vsi_dump_bw_config(struct i40e_vsi *vsi)
+#define I40E_3_BIT_MASK     0x7
+/*
+ * i40e_vsi_get_bw_config - Query VSI BW Information
+ * @vsi: the VSI to be queried
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static enum i40e_status_code
+i40e_vsi_get_bw_config(struct i40e_vsi *vsi)
 {
 	struct i40e_aqc_query_vsi_bw_config_resp bw_config;
 	struct i40e_aqc_query_vsi_ets_sla_config_resp ets_sla_config;
 	struct i40e_hw *hw = &vsi->adapter->hw;
 	i40e_status ret;
 	int i;
+	uint32_t bw_max;
 
 	memset(&bw_config, 0, sizeof(bw_config));
 	ret = i40e_aq_query_vsi_bw_config(hw, vsi->seid, &bw_config, NULL);
@@ -3781,20 +3789,32 @@ i40e_vsi_dump_bw_config(struct i40e_vsi *vsi)
 		return ret;
 	}
 
-	/* Not store the info yet, just print out */
-	PMD_DRV_LOG(INFO, "VSI bw limit:%u", bw_config.port_bw_limit);
-	PMD_DRV_LOG(INFO, "VSI max_bw:%u", bw_config.max_bw);
+	/* store and print out BW info */
+	vsi->bw_info.bw_limit = rte_le_to_cpu_16(bw_config.port_bw_limit);
+	vsi->bw_info.bw_max = bw_config.max_bw;
+	PMD_DRV_LOG(DEBUG, "VSI bw limit:%u", vsi->bw_info.bw_limit);
+	PMD_DRV_LOG(DEBUG, "VSI max_bw:%u", vsi->bw_info.bw_max);
+	bw_max = rte_le_to_cpu_16(ets_sla_config.tc_bw_max[0]) |
+		    (rte_le_to_cpu_16(ets_sla_config.tc_bw_max[1]) <<
+		     I40E_16_BIT_WIDTH);
 	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
-		PMD_DRV_LOG(INFO, "\tVSI TC%u:share credits %u", i,
-			    ets_sla_config.share_credits[i]);
-		PMD_DRV_LOG(INFO, "\tVSI TC%u:credits %u", i,
-			    rte_le_to_cpu_16(ets_sla_config.credits[i]));
-		PMD_DRV_LOG(INFO, "\tVSI TC%u: max credits: %u", i,
-			    rte_le_to_cpu_16(ets_sla_config.credits[i / 4]) >>
-			    (i * 4));
+		vsi->bw_info.bw_ets_share_credits[i] =
+				ets_sla_config.share_credits[i];
+		vsi->bw_info.bw_ets_credits[i] =
+				rte_le_to_cpu_16(ets_sla_config.credits[i]);
+		/* 4 bits per TC, 4th bit is reserved */
+		vsi->bw_info.bw_ets_max[i] =
+			(uint8_t)((bw_max >> (i * I40E_4_BIT_WIDTH)) &
+				  I40E_3_BIT_MASK);
+		PMD_DRV_LOG(DEBUG, "\tVSI TC%u:share credits %u", i,
+			    vsi->bw_info.bw_ets_share_credits[i]);
+		PMD_DRV_LOG(DEBUG, "\tVSI TC%u:credits %u", i,
+			    vsi->bw_info.bw_ets_credits[i]);
+		PMD_DRV_LOG(DEBUG, "\tVSI TC%u: max credits: %u", i,
+			    vsi->bw_info.bw_ets_max[i]);
 	}
 
-	return 0;
+	return I40E_SUCCESS;
 }
 
 /* Setup a VSI */
@@ -4120,7 +4140,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	}
 
 	/* Get VSI BW information */
-	i40e_vsi_dump_bw_config(vsi);
+	i40e_vsi_get_bw_config(vsi);
 	return vsi;
 fail_msix_alloc:
 	i40e_res_pool_free(&pf->msix_pool,vsi->msix_intr);
@@ -8052,70 +8072,6 @@ i40e_parse_dcb_configure(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/*
- * i40e_vsi_get_bw_info - Query VSI BW Information
- * @vsi: the VSI being queried
- *
- * Returns 0 on success, negative value on failure
- */
-static enum i40e_status_code
-i40e_vsi_get_bw_info(struct i40e_vsi *vsi)
-{
-	struct i40e_aqc_query_vsi_ets_sla_config_resp bw_ets_config = {0};
-	struct i40e_aqc_query_vsi_bw_config_resp bw_config = {0};
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	enum i40e_status_code ret;
-	int i;
-	uint32_t tc_bw_max;
-
-	/* Get the VSI level BW configuration */
-	ret = i40e_aq_query_vsi_bw_config(hw, vsi->seid, &bw_config, NULL);
-	if (ret) {
-		PMD_INIT_LOG(ERR,
-			 "couldn't get PF vsi bw config, err %s aq_err %s\n",
-			 i40e_stat_str(hw, ret),
-			 i40e_aq_str(hw, hw->aq.asq_last_status));
-		return ret;
-	}
-
-	/* Get the VSI level BW configuration per TC */
-	ret = i40e_aq_query_vsi_ets_sla_config(hw, vsi->seid, &bw_ets_config,
-						  NULL);
-	if (ret) {
-		PMD_INIT_LOG(ERR,
-			 "couldn't get PF vsi ets bw config, err %s aq_err %s\n",
-			 i40e_stat_str(hw, ret),
-			 i40e_aq_str(hw, hw->aq.asq_last_status));
-		return ret;
-	}
-
-	if (bw_config.tc_valid_bits != bw_ets_config.tc_valid_bits) {
-		PMD_INIT_LOG(WARNING,
-			 "Enabled TCs mismatch from querying VSI BW info"
-			 " 0x%08x 0x%08x\n", bw_config.tc_valid_bits,
-			 bw_ets_config.tc_valid_bits);
-		/* Still continuing */
-	}
-
-	vsi->bw_info.bw_limit = rte_le_to_cpu_16(bw_config.port_bw_limit);
-	vsi->bw_info.bw_max_quanta = bw_config.max_bw;
-	tc_bw_max = rte_le_to_cpu_16(bw_ets_config.tc_bw_max[0]) |
-		    (rte_le_to_cpu_16(bw_ets_config.tc_bw_max[1]) << 16);
-	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
-		vsi->bw_info.bw_ets_share_credits[i] =
-				bw_ets_config.share_credits[i];
-		vsi->bw_info.bw_ets_limit_credits[i] =
-				rte_le_to_cpu_16(bw_ets_config.credits[i]);
-		/* 3 bits out of 4 for each TC */
-		vsi->bw_info.bw_ets_max_quanta[i] =
-			(uint8_t)((tc_bw_max >> (i * 4)) & 0x7);
-		PMD_INIT_LOG(DEBUG,
-			 "%s: vsi seid = %d, TC = %d, qset = 0x%x\n",
-			 __func__, vsi->seid, i, bw_config.qs_handles[i]);
-	}
-
-	return ret;
-}
 
 static enum i40e_status_code
 i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
@@ -8249,8 +8205,8 @@ i40e_vsi_config_tc(struct i40e_vsi *vsi, u8 tc_map)
 	vsi->info.mapping_flags = ctxt.info.mapping_flags;
 	vsi->info.valid_sections = 0;
 
-	/* Update current VSI BW information */
-	ret = i40e_vsi_get_bw_info(vsi);
+	/* query and update current VSI BW information */
+	ret = i40e_vsi_get_bw_config(vsi);
 	if (ret) {
 		PMD_INIT_LOG(ERR,
 			 "Failed updating vsi bw info, err %s aq_err %s",
