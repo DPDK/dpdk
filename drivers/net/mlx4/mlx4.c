@@ -229,7 +229,7 @@ typedef uint8_t linear_t[16384];
 struct txq {
 	struct priv *priv; /* Back pointer to private data. */
 	struct {
-		struct rte_mempool *mp; /* Cached Memory Pool. */
+		const struct rte_mempool *mp; /* Cached Memory Pool. */
 		struct ibv_mr *mr; /* Memory Region (for mp). */
 		uint32_t lkey; /* mr->lkey */
 	} mp2mr[MLX4_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
@@ -1016,7 +1016,7 @@ txq_mb2mp(struct rte_mbuf *buf)
  *   mr->lkey on success, (uint32_t)-1 on failure.
  */
 static uint32_t
-txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
+txq_mp2mr(struct txq *txq, const struct rte_mempool *mp)
 {
 	unsigned int i;
 	struct ibv_mr *mr;
@@ -1033,7 +1033,8 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 		}
 	}
 	/* Add a new entry, register MR first. */
-	DEBUG("%p: discovered new memory pool %p", (void *)txq, (void *)mp);
+	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
+	      (void *)txq, mp->name, (const void *)mp);
 	mr = ibv_reg_mr(txq->priv->pd,
 			(void *)mp->elt_va_start,
 			(mp->elt_va_end - mp->elt_va_start),
@@ -1056,9 +1057,85 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 	txq->mp2mr[i].mp = mp;
 	txq->mp2mr[i].mr = mr;
 	txq->mp2mr[i].lkey = mr->lkey;
-	DEBUG("%p: new MR lkey for MP %p: 0x%08" PRIu32,
-	      (void *)txq, (void *)mp, txq->mp2mr[i].lkey);
+	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
+	      (void *)txq, mp->name, (const void *)mp, txq->mp2mr[i].lkey);
 	return txq->mp2mr[i].lkey;
+}
+
+struct txq_mp2mr_mbuf_check_data {
+	const struct rte_mempool *mp;
+	int ret;
+};
+
+/**
+ * Callback function for rte_mempool_obj_iter() to check whether a given
+ * mempool object looks like a mbuf.
+ *
+ * @param[in, out] arg
+ *   Context data (struct txq_mp2mr_mbuf_check_data). Contains mempool pointer
+ *   and return value.
+ * @param[in] start
+ *   Object start address.
+ * @param[in] end
+ *   Object end address.
+ * @param index
+ *   Unused.
+ *
+ * @return
+ *   Nonzero value when object is not a mbuf.
+ */
+static void
+txq_mp2mr_mbuf_check(void *arg, void *start, void *end,
+		     uint32_t index __rte_unused)
+{
+	struct txq_mp2mr_mbuf_check_data *data = arg;
+	struct rte_mbuf *buf =
+		(void *)((uintptr_t)start + data->mp->header_size);
+
+	(void)index;
+	/* Check whether mbuf structure fits element size and whether mempool
+	 * pointer is valid. */
+	if (((uintptr_t)end >= (uintptr_t)(buf + 1)) &&
+	    (buf->pool == data->mp))
+		data->ret = 0;
+	else
+		data->ret = -1;
+}
+
+/**
+ * Iterator function for rte_mempool_walk() to register existing mempools and
+ * fill the MP to MR cache of a TX queue.
+ *
+ * @param[in] mp
+ *   Memory Pool to register.
+ * @param *arg
+ *   Pointer to TX queue structure.
+ */
+static void
+txq_mp2mr_iter(const struct rte_mempool *mp, void *arg)
+{
+	struct txq *txq = arg;
+	struct txq_mp2mr_mbuf_check_data data = {
+		.mp = mp,
+		.ret = -1,
+	};
+
+	/* Discard empty mempools. */
+	if (mp->size == 0)
+		return;
+	/* Register mempool only if the first element looks like a mbuf. */
+	rte_mempool_obj_iter((void *)mp->elt_va_start,
+			     1,
+			     mp->header_size + mp->elt_size + mp->trailer_size,
+			     1,
+			     mp->elt_pa,
+			     mp->pg_num,
+			     mp->pg_shift,
+			     txq_mp2mr_mbuf_check,
+			     &data);
+	if (data.ret)
+		return;
+	txq_mp2mr(txq, mp);
 }
 
 #if MLX4_PMD_SGE_WR_N > 1
@@ -1571,6 +1648,8 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	txq_cleanup(txq);
 	*txq = tmpl;
 	DEBUG("%p: txq updated with %p", (void *)txq, (void *)&tmpl);
+	/* Pre-register known mempools. */
+	rte_mempool_walk(txq_mp2mr_iter, txq);
 	assert(ret == 0);
 	return 0;
 error:
