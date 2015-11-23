@@ -228,6 +228,10 @@ Other
 Known Issues
 ------------
 
+* Some drivers do not fill the packet type when receiving.
+  As the l3fwd example application requires this info, the i40e vector
+  driver must be disabled to benefit of the packet type with i40e.
+
 
 API Changes
 -----------
