@@ -133,7 +133,7 @@ mlx5_stats_reset(struct rte_eth_dev *dev)
 	for (i = 0; (i != priv->txqs_n); ++i) {
 		if ((*priv->txqs)[i] == NULL)
 			continue;
-		idx = (*priv->rxqs)[i]->stats.idx;
+		idx = (*priv->txqs)[i]->stats.idx;
 		(*priv->txqs)[i]->stats =
 			(struct mlx5_txq_stats){ .idx = idx };
 	}
