@@ -216,22 +216,15 @@ eal_plugins_init(void)
 
 	TAILQ_FOREACH(solib, &solib_list, next) {
 		struct stat sb;
-		if (stat(solib->name, &sb) == -1) {
-			RTE_LOG(ERR, EAL, "Invalid plugin specified: %s: %s\n",
-				solib->name, strerror(errno));
-			return -1;
-		}
 
-		switch (sb.st_mode & S_IFMT) {
-		case S_IFDIR:
+		if (stat(solib->name, &sb) == 0 && S_ISDIR(sb.st_mode)) {
 			if (eal_plugindir_init(solib->name) == -1) {
 				RTE_LOG(ERR, EAL,
 					"Cannot init plugin directory %s\n",
 					solib->name);
 				return -1;
 			}
-			break;
-		case S_IFREG:
+		} else {
 			RTE_LOG(DEBUG, EAL, "open shared lib %s\n",
 				solib->name);
 			solib->lib_handle = dlopen(solib->name, RTLD_NOW);
@@ -239,7 +232,6 @@ eal_plugins_init(void)
 				RTE_LOG(ERR, EAL, "%s\n", dlerror());
 				return -1;
 			}
-			break;
 		}
 
 	}
