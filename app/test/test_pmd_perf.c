@@ -626,7 +626,10 @@ timeout:
 
 	rte_free(pkts_burst);
 
-	return diff_tsc / total;
+	if (total > 0)
+		return diff_tsc / total;
+	else
+		return -1;
 }
 
 static int
@@ -673,8 +676,10 @@ exec_burst(uint32_t flags, int lcore)
 
 	/* wait for polling finished */
 	diff_tsc = rte_eal_wait_lcore(lcore);
-	if (diff_tsc < 0)
+	if (diff_tsc < 0) {
+		printf("exec_burst: Failed to measure cycles per packet\n");
 		return -1;
+	}
 
 	printf("Result: %d cycles per packet\n", diff_tsc);
 
@@ -811,7 +816,8 @@ test_pmd_perf(void)
 			return -1;
 	} else if (sc_flag == SC_BURST_POLL_FIRST ||
 		   sc_flag == SC_BURST_XMIT_FIRST)
-		exec_burst(sc_flag, slave_id);
+		if (exec_burst(sc_flag, slave_id) < 0)
+			return -1;
 
 	/* port tear down */
 	for (portid = 0; portid < nb_ports; portid++) {
