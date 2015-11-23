@@ -209,7 +209,7 @@ typedef uint8_t linear_t[16384];
 struct txq {
 	struct priv *priv; /* Back pointer to private data. */
 	struct {
-		struct rte_mempool *mp; /* Cached Memory Pool. */
+		const struct rte_mempool *mp; /* Cached Memory Pool. */
 		struct ibv_mr *mr; /* Memory Region (for mp). */
 		uint32_t lkey; /* mr->lkey */
 	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
@@ -264,6 +264,7 @@ void mlx5_tx_queue_release(void *);
 
 /* mlx5_rxtx.c */
 
+void txq_mp2mr_iter(const struct rte_mempool *, void *);
 uint16_t mlx5_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst_sp(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst(void *, struct rte_mbuf **, uint16_t);

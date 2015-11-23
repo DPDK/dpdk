@@ -415,6 +415,8 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	txq_cleanup(txq);
 	*txq = tmpl;
 	DEBUG("%p: txq updated with %p", (void *)txq, (void *)&tmpl);
+	/* Pre-register known mempools. */
+	rte_mempool_walk(txq_mp2mr_iter, txq);
 	assert(ret == 0);
 	return 0;
 error:
