@@ -436,7 +436,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	unsigned int elts_head = txq->elts_head;
-	const unsigned int elts_tail = txq->elts_tail;
 	const unsigned int elts_n = txq->elts_n;
 	unsigned int elts_comp_cd = txq->elts_comp_cd;
 	unsigned int elts_comp = 0;
@@ -446,7 +445,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 	assert(elts_comp_cd != 0);
 	txq_complete(txq);
-	max = (elts_n - (elts_head - elts_tail));
+	max = (elts_n - (elts_head - txq->elts_tail));
 	if (max > elts_n)
 		max -= elts_n;
 	assert(max >= 1);
