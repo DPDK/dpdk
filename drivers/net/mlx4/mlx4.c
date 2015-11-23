@@ -299,6 +299,46 @@ struct priv {
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
+/* Local storage for secondary process data. */
+struct mlx4_secondary_data {
+	struct rte_eth_dev_data data; /* Local device data. */
+	struct priv *primary_priv; /* Private structure from primary. */
+	struct rte_eth_dev_data *shared_dev_data; /* Shared device data. */
+	rte_spinlock_t lock; /* Port configuration lock. */
+} mlx4_secondary_data[RTE_MAX_ETHPORTS];
+
+/**
+ * Check if running as a secondary process.
+ *
+ * @return
+ *   Nonzero if running as a secondary process.
+ */
+static inline int
+mlx4_is_secondary(void)
+{
+	return rte_eal_process_type() != RTE_PROC_PRIMARY;
+}
+
+/**
+ * Return private structure associated with an Ethernet device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Pointer to private structure.
+ */
+static struct priv *
+mlx4_get_priv(struct rte_eth_dev *dev)
+{
+	struct mlx4_secondary_data *sd;
+
+	if (!mlx4_is_secondary())
+		return dev->data->dev_private;
+	sd = &mlx4_secondary_data[dev->data->port_id];
+	return sd->data.dev_private;
+}
+
 /**
  * Lock private structure to protect it from concurrent access in the
  * control path.
@@ -659,6 +699,13 @@ priv_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
 /* Device configuration. */
 
 static int
+txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
+	  unsigned int socket, const struct rte_eth_txconf *conf);
+
+static void
+txq_cleanup(struct txq *txq);
+
+static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	  unsigned int socket, const struct rte_eth_rxconf *conf,
 	  struct rte_mempool *mp);
@@ -756,11 +803,167 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	priv_lock(priv);
 	ret = dev_configure(dev);
 	assert(ret >= 0);
 	priv_unlock(priv);
 	return -ret;
+}
+
+static uint16_t mlx4_tx_burst(void *, struct rte_mbuf **, uint16_t);
+static uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);
+
+/**
+ * Configure secondary process queues from a private data pointer (primary
+ * or secondary) and update burst callbacks. Can take place only once.
+ *
+ * All queues must have been previously created by the primary process to
+ * avoid undefined behavior.
+ *
+ * @param priv
+ *   Private data pointer from either primary or secondary process.
+ *
+ * @return
+ *   Private data pointer from secondary process, NULL in case of error.
+ */
+static struct priv *
+mlx4_secondary_data_setup(struct priv *priv)
+{
+	unsigned int port_id = 0;
+	struct mlx4_secondary_data *sd;
+	void **tx_queues;
+	void **rx_queues;
+	unsigned int nb_tx_queues;
+	unsigned int nb_rx_queues;
+	unsigned int i;
+
+	/* priv must be valid at this point. */
+	assert(priv != NULL);
+	/* priv->dev must also be valid but may point to local memory from
+	 * another process, possibly with the same address and must not
+	 * be dereferenced yet. */
+	assert(priv->dev != NULL);
+	/* Determine port ID by finding out where priv comes from. */
+	while (1) {
+		sd = &mlx4_secondary_data[port_id];
+		rte_spinlock_lock(&sd->lock);
+		/* Primary process? */
+		if (sd->primary_priv == priv)
+			break;
+		/* Secondary process? */
+		if (sd->data.dev_private == priv)
+			break;
+		rte_spinlock_unlock(&sd->lock);
+		if (++port_id == RTE_DIM(mlx4_secondary_data))
+			port_id = 0;
+	}
+	/* Switch to secondary private structure. If private data has already
+	 * been updated by another thread, there is nothing else to do. */
+	priv = sd->data.dev_private;
+	if (priv->dev->data == &sd->data)
+		goto end;
+	/* Sanity checks. Secondary private structure is supposed to point
+	 * to local eth_dev, itself still pointing to the shared device data
+	 * structure allocated by the primary process. */
+	assert(sd->shared_dev_data != &sd->data);
+	assert(sd->data.nb_tx_queues == 0);
+	assert(sd->data.tx_queues == NULL);
+	assert(sd->data.nb_rx_queues == 0);
+	assert(sd->data.rx_queues == NULL);
+	assert(priv != sd->primary_priv);
+	assert(priv->dev->data == sd->shared_dev_data);
+	assert(priv->txqs_n == 0);
+	assert(priv->txqs == NULL);
+	assert(priv->rxqs_n == 0);
+	assert(priv->rxqs == NULL);
+	nb_tx_queues = sd->shared_dev_data->nb_tx_queues;
+	nb_rx_queues = sd->shared_dev_data->nb_rx_queues;
+	/* Allocate local storage for queues. */
+	tx_queues = rte_zmalloc("secondary ethdev->tx_queues",
+				sizeof(sd->data.tx_queues[0]) * nb_tx_queues,
+				RTE_CACHE_LINE_SIZE);
+	rx_queues = rte_zmalloc("secondary ethdev->rx_queues",
+				sizeof(sd->data.rx_queues[0]) * nb_rx_queues,
+				RTE_CACHE_LINE_SIZE);
+	if (tx_queues == NULL || rx_queues == NULL)
+		goto error;
+	/* Lock to prevent control operations during setup. */
+	priv_lock(priv);
+	/* TX queues. */
+	for (i = 0; i != nb_tx_queues; ++i) {
+		struct txq *primary_txq = (*sd->primary_priv->txqs)[i];
+		struct txq *txq;
+
+		if (primary_txq == NULL)
+			continue;
+		txq = rte_calloc_socket("TXQ", 1, sizeof(*txq), 0,
+					primary_txq->socket);
+		if (txq != NULL) {
+			if (txq_setup(priv->dev,
+				      txq,
+				      primary_txq->elts_n * MLX4_PMD_SGE_WR_N,
+				      primary_txq->socket,
+				      NULL) == 0) {
+				txq->stats.idx = primary_txq->stats.idx;
+				tx_queues[i] = txq;
+				continue;
+			}
+			rte_free(txq);
+		}
+		while (i) {
+			txq = tx_queues[--i];
+			txq_cleanup(txq);
+			rte_free(txq);
+		}
+		goto error;
+	}
+	/* RX queues. */
+	for (i = 0; i != nb_rx_queues; ++i) {
+		struct rxq *primary_rxq = (*sd->primary_priv->rxqs)[i];
+
+		if (primary_rxq == NULL)
+			continue;
+		/* Not supported yet. */
+		rx_queues[i] = NULL;
+	}
+	/* Update everything. */
+	priv->txqs = (void *)tx_queues;
+	priv->txqs_n = nb_tx_queues;
+	priv->rxqs = (void *)rx_queues;
+	priv->rxqs_n = nb_rx_queues;
+	sd->data.rx_queues = rx_queues;
+	sd->data.tx_queues = tx_queues;
+	sd->data.nb_rx_queues = nb_rx_queues;
+	sd->data.nb_tx_queues = nb_tx_queues;
+	sd->data.dev_link = sd->shared_dev_data->dev_link;
+	sd->data.mtu = sd->shared_dev_data->mtu;
+	memcpy(sd->data.rx_queue_state, sd->shared_dev_data->rx_queue_state,
+	       sizeof(sd->data.rx_queue_state));
+	memcpy(sd->data.tx_queue_state, sd->shared_dev_data->tx_queue_state,
+	       sizeof(sd->data.tx_queue_state));
+	sd->data.dev_flags = sd->shared_dev_data->dev_flags;
+	/* Use local data from now on. */
+	rte_mb();
+	priv->dev->data = &sd->data;
+	rte_mb();
+	priv->dev->tx_pkt_burst = mlx4_tx_burst;
+	priv->dev->rx_pkt_burst = removed_rx_burst;
+	priv_unlock(priv);
+end:
+	/* More sanity checks. */
+	assert(priv->dev->tx_pkt_burst == mlx4_tx_burst);
+	assert(priv->dev->rx_pkt_burst == removed_rx_burst);
+	assert(priv->dev->data == &sd->data);
+	rte_spinlock_unlock(&sd->lock);
+	return priv;
+error:
+	priv_unlock(priv);
+	rte_free(tx_queues);
+	rte_free(rx_queues);
+	rte_spinlock_unlock(&sd->lock);
+	return NULL;
 }
 
 /* TX queues handling. */
@@ -1468,6 +1671,46 @@ stop:
 }
 
 /**
+ * DPDK callback for TX in secondary processes.
+ *
+ * This function configures all queues from primary process information
+ * if necessary before reverting to the normal TX burst callback.
+ *
+ * @param dpdk_txq
+ *   Generic pointer to TX queue structure.
+ * @param[in] pkts
+ *   Packets to transmit.
+ * @param pkts_n
+ *   Number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully transmitted (<= pkts_n).
+ */
+static uint16_t
+mlx4_tx_burst_secondary_setup(void *dpdk_txq, struct rte_mbuf **pkts,
+			      uint16_t pkts_n)
+{
+	struct txq *txq = dpdk_txq;
+	struct priv *priv = mlx4_secondary_data_setup(txq->priv);
+	struct priv *primary_priv;
+	unsigned int index;
+
+	if (priv == NULL)
+		return 0;
+	primary_priv =
+		mlx4_secondary_data[priv->dev->data->port_id].primary_priv;
+	/* Look for queue index in both private structures. */
+	for (index = 0; index != priv->txqs_n; ++index)
+		if (((*primary_priv->txqs)[index] == txq) ||
+		    ((*priv->txqs)[index] == txq))
+			break;
+	if (index == priv->txqs_n)
+		return 0;
+	txq = (*priv->txqs)[index];
+	return priv->dev->tx_pkt_burst(txq, pkts, pkts_n);
+}
+
+/**
  * Configure a TX queue.
  *
  * @param dev
@@ -1488,7 +1731,7 @@ static int
 txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	  unsigned int socket, const struct rte_eth_txconf *conf)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx4_get_priv(dev);
 	struct txq tmpl = {
 		.priv = priv,
 		.socket = socket
@@ -1504,6 +1747,8 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	int ret = 0;
 
 	(void)conf; /* Thresholds configuration (ignored). */
+	if (priv == NULL)
+		return EINVAL;
 	if ((desc == 0) || (desc % MLX4_PMD_SGE_WR_N)) {
 		ERROR("%p: invalid number of TX descriptors (must be a"
 		      " multiple of %d)", (void *)dev, MLX4_PMD_SGE_WR_N);
@@ -1682,6 +1927,8 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct txq *txq = (*priv->txqs)[idx];
 	int ret;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	priv_lock(priv);
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
@@ -1737,6 +1984,8 @@ mlx4_tx_queue_release(void *dpdk_txq)
 	struct priv *priv;
 	unsigned int i;
 
+	if (mlx4_is_secondary())
+		return;
 	if (txq == NULL)
 		return;
 	priv = txq->priv;
@@ -3036,6 +3285,46 @@ repost:
 }
 
 /**
+ * DPDK callback for RX in secondary processes.
+ *
+ * This function configures all queues from primary process information
+ * if necessary before reverting to the normal RX burst callback.
+ *
+ * @param dpdk_rxq
+ *   Generic pointer to RX queue structure.
+ * @param[out] pkts
+ *   Array to store received packets.
+ * @param pkts_n
+ *   Maximum number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully received (<= pkts_n).
+ */
+static uint16_t
+mlx4_rx_burst_secondary_setup(void *dpdk_rxq, struct rte_mbuf **pkts,
+			      uint16_t pkts_n)
+{
+	struct rxq *rxq = dpdk_rxq;
+	struct priv *priv = mlx4_secondary_data_setup(rxq->priv);
+	struct priv *primary_priv;
+	unsigned int index;
+
+	if (priv == NULL)
+		return 0;
+	primary_priv =
+		mlx4_secondary_data[priv->dev->data->port_id].primary_priv;
+	/* Look for queue index in both private structures. */
+	for (index = 0; index != priv->rxqs_n; ++index)
+		if (((*primary_priv->rxqs)[index] == rxq) ||
+		    ((*priv->rxqs)[index] == rxq))
+			break;
+	if (index == priv->rxqs_n)
+		return 0;
+	rxq = (*priv->rxqs)[index];
+	return priv->dev->rx_pkt_burst(rxq, pkts, pkts_n);
+}
+
+/**
  * Allocate a Queue Pair.
  * Optionally setup inline receive if supported.
  *
@@ -3613,6 +3902,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct rxq *rxq = (*priv->rxqs)[idx];
 	int ret;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	priv_lock(priv);
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
@@ -3671,6 +3962,8 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	struct priv *priv;
 	unsigned int i;
 
+	if (mlx4_is_secondary())
+		return;
 	if (rxq == NULL)
 		return;
 	priv = rxq->priv;
@@ -3710,6 +4003,8 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	unsigned int r;
 	struct rxq *rxq;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	priv_lock(priv);
 	if (priv->started) {
 		priv_unlock(priv);
@@ -3774,6 +4069,8 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	unsigned int r;
 	struct rxq *rxq;
 
+	if (mlx4_is_secondary())
+		return;
 	priv_lock(priv);
 	if (!priv->started) {
 		priv_unlock(priv);
@@ -3864,10 +4161,12 @@ priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
 static void
 mlx4_dev_close(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx4_get_priv(dev);
 	void *tmp;
 	unsigned int i;
 
+	if (priv == NULL)
+		return;
 	priv_lock(priv);
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
@@ -3929,10 +4228,12 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 static void
 mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx4_get_priv(dev);
 	unsigned int max;
 	char ifname[IF_NAMESIZE];
 
+	if (priv == NULL)
+		return;
 	priv_lock(priv);
 	/* FIXME: we should ask the device for these values. */
 	info->min_rx_bufsize = 32;
@@ -3978,11 +4279,13 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 static void
 mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx4_get_priv(dev);
 	struct rte_eth_stats tmp = {0};
 	unsigned int i;
 	unsigned int idx;
 
+	if (priv == NULL)
+		return;
 	priv_lock(priv);
 	/* Add software counters. */
 	for (i = 0; (i != priv->rxqs_n); ++i) {
@@ -4041,10 +4344,12 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 static void
 mlx4_stats_reset(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx4_get_priv(dev);
 	unsigned int i;
 	unsigned int idx;
 
+	if (priv == NULL)
+		return;
 	priv_lock(priv);
 	for (i = 0; (i != priv->rxqs_n); ++i) {
 		if ((*priv->rxqs)[i] == NULL)
@@ -4079,6 +4384,8 @@ mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct priv *priv = dev->data->dev_private;
 
+	if (mlx4_is_secondary())
+		return;
 	priv_lock(priv);
 	DEBUG("%p: removing MAC address from index %" PRIu32,
 	      (void *)dev, index);
@@ -4108,6 +4415,8 @@ mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 {
 	struct priv *priv = dev->data->dev_private;
 
+	if (mlx4_is_secondary())
+		return;
 	(void)vmdq;
 	priv_lock(priv);
 	DEBUG("%p: adding MAC address at index %" PRIu32,
@@ -4135,6 +4444,8 @@ mlx4_promiscuous_enable(struct rte_eth_dev *dev)
 	unsigned int i;
 	int ret;
 
+	if (mlx4_is_secondary())
+		return;
 	priv_lock(priv);
 	if (priv->promisc) {
 		priv_unlock(priv);
@@ -4181,6 +4492,8 @@ mlx4_promiscuous_disable(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 
+	if (mlx4_is_secondary())
+		return;
 	priv_lock(priv);
 	if (!priv->promisc) {
 		priv_unlock(priv);
@@ -4211,6 +4524,8 @@ mlx4_allmulticast_enable(struct rte_eth_dev *dev)
 	unsigned int i;
 	int ret;
 
+	if (mlx4_is_secondary())
+		return;
 	priv_lock(priv);
 	if (priv->allmulti) {
 		priv_unlock(priv);
@@ -4257,6 +4572,8 @@ mlx4_allmulticast_disable(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 
+	if (mlx4_is_secondary())
+		return;
 	priv_lock(priv);
 	if (!priv->allmulti) {
 		priv_unlock(priv);
@@ -4285,7 +4602,7 @@ end:
 static int
 mlx4_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx4_get_priv(dev);
 	struct ethtool_cmd edata = {
 		.cmd = ETHTOOL_GSET
 	};
@@ -4293,6 +4610,8 @@ mlx4_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 	struct rte_eth_link dev_link;
 	int link_speed = 0;
 
+	if (priv == NULL)
+		return -EINVAL;
 	(void)wait_to_complete;
 	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
 		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
@@ -4334,9 +4653,11 @@ mlx4_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 static int
 mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx4_get_priv(dev);
 	int ret;
 
+	if (priv == NULL)
+		return -EINVAL;
 	priv_lock(priv);
 	ret = mlx4_link_update_unlocked(dev, wait_to_complete);
 	priv_unlock(priv);
@@ -4369,6 +4690,8 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	uint16_t (*rx_func)(void *, struct rte_mbuf **, uint16_t) =
 		mlx4_rx_burst;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	priv_lock(priv);
 	/* Set kernel interface MTU first. */
 	if (priv_set_mtu(priv, mtu)) {
@@ -4452,6 +4775,8 @@ mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	};
 	int ret;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	ifr.ifr_data = &ethpause;
 	priv_lock(priv);
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
@@ -4500,6 +4825,8 @@ mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	};
 	int ret;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	ifr.ifr_data = &ethpause;
 	ethpause.autoneg = fc_conf->autoneg;
 	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
@@ -4639,6 +4966,8 @@ mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (mlx4_is_secondary())
+		return -E_RTE_SECONDARY;
 	priv_lock(priv);
 	ret = vlan_filter_set(dev, vlan_id, on);
 	priv_unlock(priv);
@@ -5058,7 +5387,7 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_port_attr port_attr;
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
-		struct rte_eth_dev *eth_dev;
+		struct rte_eth_dev *eth_dev = NULL;
 #ifdef HAVE_EXP_QUERY_DEVICE
 		struct ibv_exp_device_attr exp_device_attr;
 #endif /* HAVE_EXP_QUERY_DEVICE */
@@ -5234,18 +5563,46 @@ mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			goto port_error;
 		}
 
-		eth_dev->data->dev_private = priv;
+		/* Secondary processes have to use local storage for their
+		 * private data as well as a copy of eth_dev->data, but this
+		 * pointer must not be modified before burst functions are
+		 * actually called. */
+		if (mlx4_is_secondary()) {
+			struct mlx4_secondary_data *sd =
+				&mlx4_secondary_data[eth_dev->data->port_id];
+
+			sd->primary_priv = eth_dev->data->dev_private;
+			if (sd->primary_priv == NULL) {
+				ERROR("no private data for port %u",
+				      eth_dev->data->port_id);
+				err = EINVAL;
+				goto port_error;
+			}
+			sd->shared_dev_data = eth_dev->data;
+			rte_spinlock_init(&sd->lock);
+			memcpy(sd->data.name, sd->shared_dev_data->name,
+			       sizeof(sd->data.name));
+			sd->data.dev_private = priv;
+			sd->data.rx_mbuf_alloc_failed = 0;
+			sd->data.mtu = ETHER_MTU;
+			sd->data.port_id = sd->shared_dev_data->port_id;
+			sd->data.mac_addrs = priv->mac;
+			eth_dev->tx_pkt_burst = mlx4_tx_burst_secondary_setup;
+			eth_dev->rx_pkt_burst = mlx4_rx_burst_secondary_setup;
+		} else {
+			eth_dev->data->dev_private = priv;
+			eth_dev->data->rx_mbuf_alloc_failed = 0;
+			eth_dev->data->mtu = ETHER_MTU;
+			eth_dev->data->mac_addrs = priv->mac;
+		}
 		eth_dev->pci_dev = pci_dev;
 
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 		eth_dev->driver = &mlx4_driver;
-		eth_dev->data->rx_mbuf_alloc_failed = 0;
-		eth_dev->data->mtu = ETHER_MTU;
 
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
-		eth_dev->data->mac_addrs = priv->mac;
 		TAILQ_INIT(&eth_dev->link_intr_cbs);
 
 		/* Bring Ethernet device up. */
@@ -5259,6 +5616,8 @@ port_error:
 			claim_zero(ibv_dealloc_pd(pd));
 		if (ctx)
 			claim_zero(ibv_close_device(ctx));
+		if (eth_dev)
+			rte_eth_dev_release_port(eth_dev);
 		break;
 	}
 
