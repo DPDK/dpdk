@@ -111,6 +111,10 @@ ifneq ($(filter $(AUTO_CPUFLAGS),__ARM_NEON_FP),)
 CPUFLAGS += NEON
 endif
 
+ifneq ($(filter $(AUTO_CPUFLAGS),__ARM_FEATURE_CRC32),)
+CPUFLAGS += CRC32
+endif
+
 
 MACHINE_CFLAGS += $(addprefix -DRTE_MACHINE_CPUFLAG_,$(CPUFLAGS))
 

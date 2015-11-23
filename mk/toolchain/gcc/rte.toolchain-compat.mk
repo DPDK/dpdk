@@ -54,7 +54,11 @@ else
 # GCC 4.5.x - added support for atom
 # GCC 4.6.x - added support for corei7, corei7-avx
 # GCC 4.7.x - added support for fsgsbase, rdrnd, f16c, core-avx-i, core-avx2
-
+# GCC 4.9.x - added support for armv8-a+crc
+#
+	ifeq ($(shell test $(GCC_VERSION) -le 49 && echo 1), 1)
+		MACHINE_CFLAGS := $(patsubst -march=armv8-a+crc,-march=armv8-a+crc -D__ARM_FEATURE_CRC32=1,$(MACHINE_CFLAGS))
+	endif
 	ifeq ($(shell test $(GCC_VERSION) -le 47 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=core-avx-i,-march=corei7-avx,$(MACHINE_CFLAGS))
 		MACHINE_CFLAGS := $(patsubst -march=core-avx2,-march=core-avx2,$(MACHINE_CFLAGS))
