@@ -244,8 +244,6 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = eth_dev->pci_dev;
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
 	eth_dev->dev_ops = &eth_em_ops;
 	eth_dev->rx_pkt_burst = (eth_rx_burst_t)&eth_em_recv_pkts;
 	eth_dev->tx_pkt_burst = (eth_tx_burst_t)&eth_em_xmit_pkts;
@@ -259,6 +257,8 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 				(eth_rx_burst_t)&eth_em_recv_scattered_pkts;
 		return 0;
 	}
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->device_id = pci_dev->id.device_id;

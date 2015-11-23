@@ -647,8 +647,6 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = eth_dev->pci_dev;
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
 	eth_dev->dev_ops = &eth_igb_ops;
 	eth_dev->rx_pkt_burst = &eth_igb_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_igb_xmit_pkts;
@@ -661,6 +659,8 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 			eth_dev->rx_pkt_burst = &eth_igb_recv_scattered_pkts;
 		return 0;
 	}
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->hw_addr= (void *)pci_dev->mem_resource[0].addr;
 
