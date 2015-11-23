@@ -55,7 +55,7 @@ extern "C" {
 #include <string.h>
 
 #ifndef RTE_FBK_HASH_FUNC_DEFAULT
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#if defined(RTE_MACHINE_CPUFLAG_SSE4_2) || defined(RTE_MACHINE_CPUFLAG_CRC32)
 #include <rte_hash_crc.h>
 /** Default four-byte key hash function if none is specified. */
 #define RTE_FBK_HASH_FUNC_DEFAULT		rte_hash_crc_4byte

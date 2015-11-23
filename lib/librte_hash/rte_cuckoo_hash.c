@@ -85,7 +85,7 @@ EAL_REGISTER_TAILQ(rte_hash_tailq)
 #endif
 
 /* Hash function used if none is specified */
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#if defined(RTE_MACHINE_CPUFLAG_SSE4_2) || defined(RTE_MACHINE_CPUFLAG_CRC32)
 #include <rte_hash_crc.h>
 #define DEFAULT_HASH_FUNC       rte_hash_crc
 #else
