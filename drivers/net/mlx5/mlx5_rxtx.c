@@ -115,6 +115,24 @@ txq_complete(struct txq *txq)
 }
 
 /**
+ * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which
+ * the cloned mbuf is allocated is returned instead.
+ *
+ * @param buf
+ *   Pointer to mbuf.
+ *
+ * @return
+ *   Memory pool where data is located for given mbuf.
+ */
+static struct rte_mempool *
+txq_mb2mp(struct rte_mbuf *buf)
+{
+	if (unlikely(RTE_MBUF_INDIRECT(buf)))
+		return rte_mbuf_from_indirect(buf)->pool;
+	return buf->pool;
+}
+
+/**
  * Get Memory Region (MR) <-> Memory Pool (MP) association from txq->mp2mr[].
  * Add MP to txq->mp2mr[] if it's not registered yet. If mp2mr[] is full,
  * remove an entry first.
@@ -254,7 +272,7 @@ tx_burst_sg(struct txq *txq, unsigned int segs, struct txq_elt *elt,
 		uint32_t lkey;
 
 		/* Retrieve Memory Region key for this memory pool. */
-		lkey = txq_mp2mr(txq, buf->pool);
+		lkey = txq_mp2mr(txq, txq_mb2mp(buf));
 		if (unlikely(lkey == (uint32_t)-1)) {
 			/* MR does not exist. */
 			DEBUG("%p: unable to get MP <-> MR association",
@@ -410,7 +428,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			length = DATA_LEN(buf);
 			/* Retrieve Memory Region key for this memory pool. */
-			lkey = txq_mp2mr(txq, buf->pool);
+			lkey = txq_mp2mr(txq, txq_mb2mp(buf));
 			if (unlikely(lkey == (uint32_t)-1)) {
 				/* MR does not exist. */
 				DEBUG("%p: unable to get MP <-> MR"
