@@ -179,7 +179,7 @@ txq_mp2mr(struct txq *txq, const struct rte_mempool *mp)
 		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
 		      (void *)txq);
 		--i;
-		claim_zero(ibv_dereg_mr(txq->mp2mr[i].mr));
+		claim_zero(ibv_dereg_mr(txq->mp2mr[0].mr));
 		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
 			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
 	}
