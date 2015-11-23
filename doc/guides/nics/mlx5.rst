@@ -130,6 +130,19 @@ These options can be modified in the ``.config`` file.
 
   This value is always 1 for RX queues since they use a single MP.
 
+Environment variables
+~~~~~~~~~~~~~~~~~~~~~
+
+- ``MLX5_ENABLE_CQE_COMPRESSION``
+
+  A nonzero value lets ConnectX-4 return smaller completion entries to
+  improve performance when PCI backpressure is detected. It is most useful
+  for scenarios involving heavy traffic on many queues.
+
+  Since the additional software logic necessary to handle this mode can
+  lower performance when there is no backpressure, it is not enabled by
+  default.
+
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
