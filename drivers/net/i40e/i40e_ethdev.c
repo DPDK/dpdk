@@ -5672,9 +5672,14 @@ i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len)
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	int ret = 0;
 
-	if (!key || key_len != ((I40E_PFQF_HKEY_MAX_INDEX + 1) *
-		sizeof(uint32_t)))
+	if (!key || key_len == 0) {
+		PMD_DRV_LOG(DEBUG, "No key to be configured");
+		return 0;
+	} else if (key_len != (I40E_PFQF_HKEY_MAX_INDEX + 1) *
+		sizeof(uint32_t)) {
+		PMD_DRV_LOG(ERR, "Invalid key length %u", key_len);
 		return -EINVAL;
+	}
 
 	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
 		struct i40e_aqc_get_set_rss_key_data *key_dw =
