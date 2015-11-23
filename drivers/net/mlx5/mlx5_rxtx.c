@@ -325,6 +325,8 @@ tx_burst_sg(struct txq *txq, unsigned int segs, struct txq_elt *elt,
 		sge->length = size;
 		sge->lkey = txq->mr_linear->lkey;
 		sent_size += size;
+		/* Include last segment. */
+		segs++;
 	}
 	return (struct tx_burst_sg_ret){
 		.length = sent_size,
