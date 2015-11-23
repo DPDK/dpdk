@@ -63,6 +63,10 @@
 #include "rte_cmp_x86.h"
 #endif
 
+#if defined(RTE_ARCH_ARM64)
+#include "rte_cmp_arm64.h"
+#endif
+
 TAILQ_HEAD(rte_hash_list, rte_tailq_entry);
 
 static struct rte_tailq_elem rte_hash_tailq = {
@@ -280,7 +284,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
  * If x86 architecture is used, select appropriate compare function,
  * which may use x86 instrinsics, otherwise use memcmp
  */
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_X32)
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) ||\
+	 defined(RTE_ARCH_X86_X32) || defined(RTE_ARCH_ARM64)
 	/* Select function to compare keys */
 	switch (params->key_len) {
 	case 16:
