@@ -81,7 +81,7 @@ extern "C" {
 #define RTE_LPM_RETURN_IF_TRUE(cond, retval)
 #endif
 
-/** @internal bitmask with valid and ext_entry/valid_group fields set */
+/** @internal bitmask with valid and valid_group fields set */
 #define RTE_LPM_VALID_EXT_ENTRY_BITMASK 0x0300
 
 /** Bitmask used to indicate successful lookup */
@@ -89,43 +89,40 @@ extern "C" {
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 /** @internal Tbl24 entry structure. */
-struct rte_lpm_tbl24_entry {
-	/* Stores Next hop or group index (i.e. gindex)into tbl8. */
+struct rte_lpm_tbl_entry {
+	/**
+	 * Stores Next hop (tbl8 or tbl24 when valid_group is not set) or
+	 * a group index pointing to a tbl8 structure (tbl24 only, when
+	 * valid_group is set)
+	 */
 	union {
 		uint8_t next_hop;
-		uint8_t tbl8_gindex;
+		uint8_t group_idx;
 	};
 	/* Using single uint8_t to store 3 values. */
-	uint8_t valid     :1; /**< Validation flag. */
-	uint8_t ext_entry :1; /**< External entry. */
-	uint8_t depth     :6; /**< Rule depth. */
-};
-
-/** @internal Tbl8 entry structure. */
-struct rte_lpm_tbl8_entry {
-	uint8_t next_hop; /**< next hop. */
-	/* Using single uint8_t to store 3 values. */
-	uint8_t valid       :1; /**< Validation flag. */
-	uint8_t valid_group :1; /**< Group validation flag. */
+	uint8_t valid     :1;   /**< Validation flag. */
+	/**
+	 * For tbl24:
+	 *  - valid_group == 0: entry stores a next hop
+	 *  - valid_group == 1: entry stores a group_index pointing to a tbl8
+	 * For tbl8:
+	 *  - valid_group indicates whether the current tbl8 is in use or not
+	 */
+	uint8_t valid_group :1;
 	uint8_t depth       :6; /**< Rule depth. */
 };
-#else
-struct rte_lpm_tbl24_entry {
-	uint8_t depth       :6;
-	uint8_t ext_entry   :1;
-	uint8_t valid       :1;
-	union {
-		uint8_t tbl8_gindex;
-		uint8_t next_hop;
-	};
-};
 
-struct rte_lpm_tbl8_entry {
+#else
+struct rte_lpm_tbl_entry {
 	uint8_t depth       :6;
 	uint8_t valid_group :1;
 	uint8_t valid       :1;
-	uint8_t next_hop;
+	union {
+		uint8_t group_idx;
+		uint8_t next_hop;
+	};
 };
+
 #endif
 
 /** @internal Rule structure. */
@@ -148,9 +145,9 @@ struct rte_lpm {
 	struct rte_lpm_rule_info rule_info[RTE_LPM_MAX_DEPTH]; /**< Rule info table. */
 
 	/* LPM Tables. */
-	struct rte_lpm_tbl24_entry tbl24[RTE_LPM_TBL24_NUM_ENTRIES] \
+	struct rte_lpm_tbl_entry tbl24[RTE_LPM_TBL24_NUM_ENTRIES]
 			__rte_cache_aligned; /**< LPM tbl24 table. */
-	struct rte_lpm_tbl8_entry tbl8[RTE_LPM_TBL8_NUM_ENTRIES] \
+	struct rte_lpm_tbl_entry tbl8[RTE_LPM_TBL8_NUM_ENTRIES]
 			__rte_cache_aligned; /**< LPM tbl8 table. */
 	struct rte_lpm_rule rules_tbl[0] \
 			__rte_cache_aligned; /**< LPM rules. */

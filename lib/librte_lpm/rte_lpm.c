@@ -159,8 +159,7 @@ rte_lpm_create(const char *name, int socket_id, int max_rules,
 
 	lpm_list = RTE_TAILQ_CAST(rte_lpm_tailq.head, rte_lpm_list);
 
-	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl24_entry) != 2);
-	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl8_entry) != 2);
+	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl_entry) != 2);
 
 	/* Check user arguments. */
 	if ((name == NULL) || (socket_id < -1) || (max_rules == 0)){
@@ -382,15 +381,15 @@ rule_find(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth)
  * Find, clean and allocate a tbl8.
  */
 static inline int32_t
-tbl8_alloc(struct rte_lpm_tbl8_entry *tbl8)
+tbl8_alloc(struct rte_lpm_tbl_entry *tbl8)
 {
-	uint32_t tbl8_gindex; /* tbl8 group index. */
-	struct rte_lpm_tbl8_entry *tbl8_entry;
+	uint32_t group_idx; /* tbl8 group index. */
+	struct rte_lpm_tbl_entry *tbl8_entry;
 
 	/* Scan through tbl8 to find a free (i.e. INVALID) tbl8 group. */
-	for (tbl8_gindex = 0; tbl8_gindex < RTE_LPM_TBL8_NUM_GROUPS;
-			tbl8_gindex++) {
-		tbl8_entry = &tbl8[tbl8_gindex *
+	for (group_idx = 0; group_idx < RTE_LPM_TBL8_NUM_GROUPS;
+			group_idx++) {
+		tbl8_entry = &tbl8[group_idx *
 		                   RTE_LPM_TBL8_GROUP_NUM_ENTRIES];
 		/* If a free tbl8 group is found clean it and set as VALID. */
 		if (!tbl8_entry->valid_group) {
@@ -401,7 +400,7 @@ tbl8_alloc(struct rte_lpm_tbl8_entry *tbl8)
 			tbl8_entry->valid_group = VALID;
 
 			/* Return group index for allocated tbl8 group. */
-			return tbl8_gindex;
+			return group_idx;
 		}
 	}
 
@@ -410,7 +409,7 @@ tbl8_alloc(struct rte_lpm_tbl8_entry *tbl8)
 }
 
 static inline void
-tbl8_free(struct rte_lpm_tbl8_entry *tbl8, uint32_t tbl8_group_start)
+tbl8_free(struct rte_lpm_tbl_entry *tbl8, uint32_t tbl8_group_start)
 {
 	/* Set tbl8 group invalid*/
 	tbl8[tbl8_group_start].valid_group = INVALID;
@@ -431,13 +430,13 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 		 * For invalid OR valid and non-extended tbl 24 entries set
 		 * entry.
 		 */
-		if (!lpm->tbl24[i].valid || (lpm->tbl24[i].ext_entry == 0 &&
+		if (!lpm->tbl24[i].valid || (lpm->tbl24[i].valid_group == 0 &&
 				lpm->tbl24[i].depth <= depth)) {
 
-			struct rte_lpm_tbl24_entry new_tbl24_entry = {
+			struct rte_lpm_tbl_entry new_tbl24_entry = {
 				{ .next_hop = next_hop, },
 				.valid = VALID,
-				.ext_entry = 0,
+				.valid_group = 0,
 				.depth = depth,
 			};
 
@@ -449,11 +448,11 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 			continue;
 		}
 
-		if (lpm->tbl24[i].ext_entry == 1) {
+		if (lpm->tbl24[i].valid_group == 1) {
 			/* If tbl24 entry is valid and extended calculate the
 			 *  index into tbl8.
 			 */
-			tbl8_index = lpm->tbl24[i].tbl8_gindex *
+			tbl8_index = lpm->tbl24[i].group_idx *
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 			tbl8_group_end = tbl8_index +
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
@@ -461,7 +460,7 @@ add_depth_small(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 			for (j = tbl8_index; j < tbl8_group_end; j++) {
 				if (!lpm->tbl8[j].valid ||
 						lpm->tbl8[j].depth <= depth) {
-					struct rte_lpm_tbl8_entry
+					struct rte_lpm_tbl_entry
 						new_tbl8_entry = {
 						.valid = VALID,
 						.valid_group = VALID,
@@ -522,17 +521,17 @@ add_depth_big(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 		 * so assign whole structure in one go
 		 */
 
-		struct rte_lpm_tbl24_entry new_tbl24_entry = {
-			{ .tbl8_gindex = (uint8_t)tbl8_group_index, },
+		struct rte_lpm_tbl_entry new_tbl24_entry = {
+			{ .group_idx = (uint8_t)tbl8_group_index, },
 			.valid = VALID,
-			.ext_entry = 1,
+			.valid_group = 1,
 			.depth = 0,
 		};
 
 		lpm->tbl24[tbl24_index] = new_tbl24_entry;
 
 	}/* If valid entry but not extended calculate the index into Table8. */
-	else if (lpm->tbl24[tbl24_index].ext_entry == 0) {
+	else if (lpm->tbl24[tbl24_index].valid_group == 0) {
 		/* Search for free tbl8 group. */
 		tbl8_group_index = tbl8_alloc(lpm->tbl8);
 
@@ -573,10 +572,10 @@ add_depth_big(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 		 * so assign whole structure in one go.
 		 */
 
-		struct rte_lpm_tbl24_entry new_tbl24_entry = {
-				{ .tbl8_gindex = (uint8_t)tbl8_group_index, },
+		struct rte_lpm_tbl_entry new_tbl24_entry = {
+				{ .group_idx = (uint8_t)tbl8_group_index, },
 				.valid = VALID,
-				.ext_entry = 1,
+				.valid_group = 1,
 				.depth = 0,
 		};
 
@@ -586,7 +585,7 @@ add_depth_big(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 	else { /*
 		* If it is valid, extended entry calculate the index into tbl8.
 		*/
-		tbl8_group_index = lpm->tbl24[tbl24_index].tbl8_gindex;
+		tbl8_group_index = lpm->tbl24[tbl24_index].group_idx;
 		tbl8_group_start = tbl8_group_index *
 				RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 		tbl8_index = tbl8_group_start + (ip_masked & 0xFF);
@@ -595,7 +594,7 @@ add_depth_big(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 
 			if (!lpm->tbl8[i].valid ||
 					lpm->tbl8[i].depth <= depth) {
-				struct rte_lpm_tbl8_entry new_tbl8_entry = {
+				struct rte_lpm_tbl_entry new_tbl8_entry = {
 					.valid = VALID,
 					.depth = depth,
 					.next_hop = next_hop,
@@ -731,17 +730,17 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 		 */
 		for (i = tbl24_index; i < (tbl24_index + tbl24_range); i++) {
 
-			if (lpm->tbl24[i].ext_entry == 0 &&
+			if (lpm->tbl24[i].valid_group == 0 &&
 					lpm->tbl24[i].depth <= depth ) {
 				lpm->tbl24[i].valid = INVALID;
-			} else if (lpm->tbl24[i].ext_entry == 1) {
+			} else if (lpm->tbl24[i].valid_group == 1) {
 				/*
 				 * If TBL24 entry is extended, then there has
 				 * to be a rule with depth >= 25 in the
 				 * associated TBL8 group.
 				 */
 
-				tbl8_group_index = lpm->tbl24[i].tbl8_gindex;
+				tbl8_group_index = lpm->tbl24[i].group_idx;
 				tbl8_index = tbl8_group_index *
 						RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 
@@ -760,14 +759,14 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 		 * associated with this rule.
 		 */
 
-		struct rte_lpm_tbl24_entry new_tbl24_entry = {
+		struct rte_lpm_tbl_entry new_tbl24_entry = {
 			{.next_hop = lpm->rules_tbl[sub_rule_index].next_hop,},
 			.valid = VALID,
-			.ext_entry = 0,
+			.valid_group = 0,
 			.depth = sub_rule_depth,
 		};
 
-		struct rte_lpm_tbl8_entry new_tbl8_entry = {
+		struct rte_lpm_tbl_entry new_tbl8_entry = {
 			.valid = VALID,
 			.valid_group = VALID,
 			.depth = sub_rule_depth,
@@ -777,17 +776,17 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
 
 		for (i = tbl24_index; i < (tbl24_index + tbl24_range); i++) {
 
-			if (lpm->tbl24[i].ext_entry == 0 &&
+			if (lpm->tbl24[i].valid_group == 0 &&
 					lpm->tbl24[i].depth <= depth ) {
 				lpm->tbl24[i] = new_tbl24_entry;
-			} else  if (lpm->tbl24[i].ext_entry == 1) {
+			} else  if (lpm->tbl24[i].valid_group == 1) {
 				/*
 				 * If TBL24 entry is extended, then there has
 				 * to be a rule with depth >= 25 in the
 				 * associated TBL8 group.
 				 */
 
-				tbl8_group_index = lpm->tbl24[i].tbl8_gindex;
+				tbl8_group_index = lpm->tbl24[i].group_idx;
 				tbl8_index = tbl8_group_index *
 						RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 
@@ -813,7 +812,7 @@ delete_depth_small(struct rte_lpm *lpm, uint32_t ip_masked,
  * thus can be recycled
  */
 static inline int32_t
-tbl8_recycle_check(struct rte_lpm_tbl8_entry *tbl8, uint32_t tbl8_group_start)
+tbl8_recycle_check(struct rte_lpm_tbl_entry *tbl8, uint32_t tbl8_group_start)
 {
 	uint32_t tbl8_group_end, i;
 	tbl8_group_end = tbl8_group_start + RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
@@ -873,7 +872,7 @@ delete_depth_big(struct rte_lpm *lpm, uint32_t ip_masked,
 	tbl24_index = ip_masked >> 8;
 
 	/* Calculate the index into tbl8 and range. */
-	tbl8_group_index = lpm->tbl24[tbl24_index].tbl8_gindex;
+	tbl8_group_index = lpm->tbl24[tbl24_index].group_idx;
 	tbl8_group_start = tbl8_group_index * RTE_LPM_TBL8_GROUP_NUM_ENTRIES;
 	tbl8_index = tbl8_group_start + (ip_masked & 0xFF);
 	tbl8_range = depth_to_range(depth);
@@ -890,7 +889,7 @@ delete_depth_big(struct rte_lpm *lpm, uint32_t ip_masked,
 	}
 	else {
 		/* Set new tbl8 entry. */
-		struct rte_lpm_tbl8_entry new_tbl8_entry = {
+		struct rte_lpm_tbl_entry new_tbl8_entry = {
 			.valid = VALID,
 			.depth = sub_rule_depth,
 			.valid_group = lpm->tbl8[tbl8_group_start].valid_group,
@@ -922,10 +921,10 @@ delete_depth_big(struct rte_lpm *lpm, uint32_t ip_masked,
 	}
 	else if (tbl8_recycle_index > -1) {
 		/* Update tbl24 entry. */
-		struct rte_lpm_tbl24_entry new_tbl24_entry = {
+		struct rte_lpm_tbl_entry new_tbl24_entry = {
 			{ .next_hop = lpm->tbl8[tbl8_recycle_index].next_hop, },
 			.valid = VALID,
-			.ext_entry = 0,
+			.valid_group = 0,
 			.depth = lpm->tbl8[tbl8_recycle_index].depth,
 		};
 
