@@ -49,6 +49,11 @@ found on the `Liberouter website <https://www.liberouter.org/>`_.
    It can be enabled by setting ``CONFIG_RTE_LIBRTE_PMD_SZEDATA2=y``
    and recompiling.
 
+.. note::
+
+   Currently the driver is supported only on x86_64 architectures.
+   Only x86_64 versions of the external libraries are provided.
+
 Prerequisities
 --------------
 
