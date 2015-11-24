@@ -129,6 +129,9 @@
 #define RTE_FM10K_TX_MAX_FREE_BUF_SZ    64
 #define RTE_FM10K_DESCS_PER_LOOP    4
 
+#define FM10K_SIMPLE_TX_FLAG ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
+				ETH_TXQ_FLAGS_NOOFFLOADS)
+
 struct fm10k_macvlan_filter_info {
 	uint16_t vlan_num;       /* Total VLAN number */
 	uint16_t mac_num;        /* Total mac number */
@@ -354,4 +357,6 @@ uint16_t fm10k_recv_scattered_pkts_vec(void *, struct rte_mbuf **,
 uint16_t fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 void fm10k_txq_vec_setup(struct fm10k_tx_queue *txq);
+int fm10k_tx_vec_condition_check(struct fm10k_tx_queue *txq);
+
 #endif

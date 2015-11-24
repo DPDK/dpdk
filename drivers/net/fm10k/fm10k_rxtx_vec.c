@@ -641,6 +641,16 @@ fm10k_txq_vec_setup(struct fm10k_tx_queue *txq)
 	txq->ops = &vec_txq_ops;
 }
 
+int __attribute__((cold))
+fm10k_tx_vec_condition_check(struct fm10k_tx_queue *txq)
+{
+	/* Vector TX can't offload any features yet */
+	if ((txq->txq_flags & FM10K_SIMPLE_TX_FLAG) != FM10K_SIMPLE_TX_FLAG)
+		return -1;
+
+	return 0;
+}
+
 static inline void
 vtx1(volatile struct fm10k_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)

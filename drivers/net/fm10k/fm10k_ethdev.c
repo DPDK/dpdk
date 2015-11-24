@@ -55,9 +55,6 @@
 #define CHARS_PER_UINT32 (sizeof(uint32_t))
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
 
-#define FM10K_SIMPLE_TX_FLAG ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
-				ETH_TXQ_FLAGS_NOOFFLOADS)
-
 static void fm10k_close_mbx_service(struct fm10k_hw *hw);
 static void fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -130,6 +127,65 @@ static void
 fm10k_mbx_unlock(struct fm10k_hw *hw)
 {
 	rte_spinlock_unlock(FM10K_DEV_PRIVATE_TO_MBXLOCK(hw->back));
+}
+
+/* Stubs needed for linkage when vPMD is disabled */
+int __attribute__((weak))
+fm10k_rx_vec_condition_check(__rte_unused struct rte_eth_dev *dev)
+{
+	return -1;
+}
+
+uint16_t __attribute__((weak))
+fm10k_recv_pkts_vec(
+	__rte_unused void *rx_queue,
+	__rte_unused struct rte_mbuf **rx_pkts,
+	__rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+uint16_t __attribute__((weak))
+fm10k_recv_scattered_pkts_vec(
+		__rte_unused void *rx_queue,
+		__rte_unused struct rte_mbuf **rx_pkts,
+		__rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+int __attribute__((weak))
+fm10k_rxq_vec_setup(__rte_unused struct fm10k_rx_queue *rxq)
+
+{
+	return -1;
+}
+
+void __attribute__((weak))
+fm10k_rx_queue_release_mbufs_vec(
+		__rte_unused struct fm10k_rx_queue *rxq)
+{
+	return;
+}
+
+void __attribute__((weak))
+fm10k_txq_vec_setup(__rte_unused struct fm10k_tx_queue *txq)
+{
+	return;
+}
+
+int __attribute__((weak))
+fm10k_tx_vec_condition_check(__rte_unused struct fm10k_tx_queue *txq)
+{
+	return -1;
+}
+
+uint16_t __attribute__((weak))
+fm10k_xmit_pkts_vec(__rte_unused void *tx_queue,
+		__rte_unused struct rte_mbuf **tx_pkts,
+		__rte_unused uint16_t nb_pkts)
+{
+	return 0;
 }
 
 /*
@@ -2394,8 +2450,8 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		if ((txq->txq_flags & FM10K_SIMPLE_TX_FLAG) !=
-			FM10K_SIMPLE_TX_FLAG) {
+		/* Check if Vector Tx is satisfied */
+		if (fm10k_tx_vec_condition_check(txq)) {
 			use_sse = 0;
 			break;
 		}
