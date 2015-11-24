@@ -66,8 +66,6 @@ endif
 
 RTE_TARGET ?= $(RTE_ARCH)-$(RTE_MACHINE)-$(RTE_EXEC_ENV)-$(RTE_TOOLCHAIN)
 
-RTE_LIBNAME := dpdk
-
 ifeq ($(BUILDING_RTE_SDK),)
 # if we are building an external app/lib, include internal/rte.extvars.mk that will
 # define RTE_OUTPUT, RTE_SRCDIR, RTE_EXTMK, RTE_SDK_BIN, (etc ...)

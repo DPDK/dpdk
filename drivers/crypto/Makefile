@@ -34,5 +34,4 @@ include $(RTE_SDK)/mk/rte.vars.mk
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk

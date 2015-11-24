@@ -55,7 +55,7 @@ print_help () {
 	        -s    short test with only first config without examples/doc
 
 	config: defconfig name followed by switches delimited with "+" sign
-	        Example: x86_64-native-linuxapp-gcc+next+shared+combined
+	        Example: x86_64-native-linuxapp-gcc+next+shared
 	        Default is to enable most of the options.
 	        The external dependencies are setup with DPDK_DEP_* variables.
 	END_OF_HELP
@@ -101,8 +101,6 @@ config () # <directory> <target> <options>
 		sed -ri           's,(NEXT_ABI=)y,\1n,' $1/.config
 		! echo $3 | grep -q shared || \
 		sed -ri         's,(SHARED_LIB=)n,\1y,' $1/.config
-		! echo $3 | grep -q combined || \
-		sed -ri       's,(COMBINE_LIBS=)n,\1y,' $1/.config
 		echo $2 | grep -q '^i686' || \
 		sed -ri               's,(NUMA=)n,\1y,' $1/.config
 		sed -ri         's,(PCI_CONFIG=)n,\1y,' $1/.config
@@ -110,7 +108,6 @@ config () # <directory> <target> <options>
 		sed -ri             's,(BYPASS=)n,\1y,' $1/.config
 		test "$DPDK_DEP_MOFED" != y || \
 		echo $2 | grep -q '^clang$' || \
-		echo $3 | grep -q 'shared.*combined' || \
 		sed -ri           's,(MLX._PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \
 		echo $2 | grep -q '^i686' || \
@@ -122,10 +119,8 @@ config () # <directory> <target> <options>
 		sed -ri               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
 		echo $2 | grep -q '^i686' || \
-		echo $3 | grep -q 'shared.*combined' || \
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
-		echo $3 | grep -q 'shared.*combined' || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config

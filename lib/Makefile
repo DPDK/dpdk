@@ -64,5 +64,4 @@ DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
 DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += librte_ivshmem
 endif
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk

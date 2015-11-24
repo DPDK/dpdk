@@ -138,14 +138,6 @@ endif
 		$(depfile_newer)),\
 		$(O_TO_S_DO))
 
-ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS)$(EXTLIB_BUILD),yn)
-	$(if $(or \
-        $(file_missing),\
-        $(call cmdline_changed,$(O_TO_C_STR)),\
-        $(depfile_missing),\
-        $(depfile_newer)),\
-        $(O_TO_C_DO))
-endif
 else
 $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
@@ -161,14 +153,6 @@ $(LIB): $(OBJS-y) $(DEP_$(LIB)) FORCE
 	    $(depfile_missing),\
 	    $(depfile_newer)),\
 	    $(O_TO_A_DO))
-ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS)$(EXTLIB_BUILD),yn)
-	$(if $(or \
-        $(file_missing),\
-        $(call cmdline_changed,$(O_TO_C_STR)),\
-        $(depfile_missing),\
-        $(depfile_newer)),\
-        $(O_TO_C_DO))
-endif
 endif
 
 #

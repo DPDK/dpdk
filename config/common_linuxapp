@@ -74,11 +74,6 @@ CONFIG_RTE_ARCH_STRICT_ALIGN=n
 CONFIG_RTE_BUILD_SHARED_LIB=n
 
 #
-# Combine to one single library
-#
-CONFIG_RTE_BUILD_COMBINE_LIBS=n
-
-#
 # Use newest code breaking previous ABI
 #
 CONFIG_RTE_NEXT_ABI=y

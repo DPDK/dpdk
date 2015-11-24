@@ -59,10 +59,6 @@ _LDLIBS-y += -L$(RTE_SDK_BIN)/lib
 
 _LDLIBS-y += --whole-archive
 
-_LDLIBS-$(CONFIG_RTE_BUILD_COMBINE_LIBS)    += -l$(RTE_LIBNAME)
-
-ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),n)
-
 _LDLIBS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR)    += -lrte_distributor
 _LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
 
@@ -88,8 +84,6 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 
-endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
-
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
 endif
@@ -99,9 +93,8 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
 endif
 
 # The static libraries do not know their dependencies.
-# The combined library fails also to store this information.
-# So linking with static or combined library requires explicit dependencies.
-ifneq ($(CONFIG_RTE_BUILD_COMBINE_LIBS)$(CONFIG_RTE_BUILD_SHARED_LIB),ny)
+# So linking with static library requires explicit dependencies.
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lpcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs
@@ -111,11 +104,9 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lxenstore
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lgxio
 # QAT PMD has a dependency on libcrypto (from openssl) for calculating HMAC precomputes
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lcrypto
-endif # CONFIG_RTE_BUILD_COMBINE_LIBS or not CONFIG_RTE_BUILD_SHARED_LIBS
+endif # !CONFIG_RTE_BUILD_SHARED_LIBS
 
 _LDLIBS-y += --start-group
-
-ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),n)
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KVARGS)         += -lrte_kvargs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MBUF)           += -lrte_mbuf
@@ -160,8 +151,6 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB)   += -lrte_pmd_aesni_mb
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB)   += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 
 endif # ! $(CONFIG_RTE_BUILD_SHARED_LIB)
-
-endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS
 
 _LDLIBS-y += $(EXECENV_LDLIBS)
 _LDLIBS-y += --end-group

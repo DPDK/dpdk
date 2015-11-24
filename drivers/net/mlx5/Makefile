@@ -31,12 +31,6 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS)$(CONFIG_RTE_BUILD_SHARED_LIB),yy)
-all:
-	@echo 'MLX5: Not supported in a combined shared library'
-	@false
-endif
-
 # Library name.
 LIB = librte_pmd_mlx5.a
 
