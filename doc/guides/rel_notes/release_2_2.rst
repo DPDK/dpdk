@@ -278,6 +278,11 @@ ABI Changes
 * The new fields rx_desc_lim and tx_desc_lim are added into rte_eth_dev_info
   structure.
 
+* For debug builds, the functions rte_eth_rx_burst(), rte_eth_tx_burst()
+  rte_eth_rx_descriptor_done() and rte_eth_rx_queue_count() will
+  no longer be separate functions in the DPDK libraries. Instead, they will
+  only be present in the rte_ethdev.h header file.
+
 * The maximum number of queues per port CONFIG_RTE_MAX_QUEUES_PER_PORT is
   increased to 1024.
 

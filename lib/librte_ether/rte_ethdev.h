@@ -2492,18 +2492,21 @@ extern int rte_eth_dev_set_vlan_pvid(uint8_t port_id, uint16_t pvid, int on);
  *   of pointers to *rte_mbuf* structures effectively supplied to the
  *   *rx_pkts* array.
  */
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-extern uint16_t rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
-				 struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
-#else
 static inline uint16_t
 rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 		 struct rte_mbuf **rx_pkts, const uint16_t nb_pkts)
 {
-	struct rte_eth_dev *dev;
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 
-	dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_pkt_burst, 0);
 
+	if (queue_id >= dev->data->nb_rx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid RX queue_id=%d\n", queue_id);
+		return 0;
+	}
+#endif
 	int16_t nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
 			rx_pkts, nb_pkts);
 
@@ -2521,7 +2524,6 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
 
 	return nb_rx;
 }
-#endif
 
 /**
  * Get the number of used descriptors in a specific queue
@@ -2533,18 +2535,16 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
  * @return
  *  The number of used descriptors in the specific queue.
  */
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-extern uint32_t rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id);
-#else
 static inline uint32_t
 rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
 {
-        struct rte_eth_dev *dev;
-
-        dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, 0);
+#endif
         return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
 }
-#endif
 
 /**
  * Check if the DD bit of the specific RX descriptor in the queue has been set
@@ -2560,21 +2560,17 @@ rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
  *  - (0) if the specific DD bit is not set.
  *  - (-ENODEV) if *port_id* invalid.
  */
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-extern int rte_eth_rx_descriptor_done(uint8_t port_id,
-				      uint16_t queue_id,
-				      uint16_t offset);
-#else
 static inline int
 rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
 {
-	struct rte_eth_dev *dev;
-
-	dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
+#endif
 	return (*dev->dev_ops->rx_descriptor_done)( \
 		dev->data->rx_queues[queue_id], offset);
 }
-#endif
 
 /**
  * Send a burst of output packets on a transmit queue of an Ethernet device.
@@ -2634,17 +2630,21 @@ rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
  *   the transmit ring. The return value can be less than the value of the
  *   *tx_pkts* parameter when the transmit ring is full or has been filled up.
  */
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-extern uint16_t rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
-				 struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
-#else
 static inline uint16_t
 rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	struct rte_eth_dev *dev;
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 
-	dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_pkt_burst, 0);
+
+	if (queue_id >= dev->data->nb_tx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		return 0;
+	}
+#endif
 
 #ifdef RTE_ETHDEV_RXTX_CALLBACKS
 	struct rte_eth_rxtx_callback *cb = dev->pre_tx_burst_cbs[queue_id];
@@ -2660,7 +2660,6 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 
 	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
 }
-#endif
 
 /**
  * The eth device event type for interrupt, and maybe others in the future.

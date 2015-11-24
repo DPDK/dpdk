@@ -1,4 +1,4 @@
-DPDK_2.0 {
+DPDK_2.2 {
 	global:
 
 	_rte_eth_dev_callback_process;
@@ -7,6 +7,7 @@ DPDK_2.0 {
 	rte_eth_allmulticast_disable;
 	rte_eth_allmulticast_enable;
 	rte_eth_allmulticast_get;
+	rte_eth_copy_pci_info;
 	rte_eth_dev_allocate;
 	rte_eth_dev_allocated;
 	rte_eth_dev_attach;
@@ -24,6 +25,7 @@ DPDK_2.0 {
 	rte_eth_dev_close;
 	rte_eth_dev_configure;
 	rte_eth_dev_count;
+	rte_eth_dev_default_mac_addr_set;
 	rte_eth_dev_detach;
 	rte_eth_dev_fdir_add_perfect_filter;
 	rte_eth_dev_fdir_add_signature_filter;
@@ -37,9 +39,16 @@ DPDK_2.0 {
 	rte_eth_dev_filter_supported;
 	rte_eth_dev_flow_ctrl_get;
 	rte_eth_dev_flow_ctrl_set;
+	rte_eth_dev_get_dcb_info;
+	rte_eth_dev_get_eeprom;
+	rte_eth_dev_get_eeprom_length;
 	rte_eth_dev_get_mtu;
+	rte_eth_dev_get_reg_info;
+	rte_eth_dev_get_reg_length;
 	rte_eth_dev_get_vlan_offload;
+	rte_eth_devices;
 	rte_eth_dev_info_get;
+	rte_eth_dev_is_valid_port;
 	rte_eth_dev_mac_addr_add;
 	rte_eth_dev_mac_addr_remove;
 	rte_eth_dev_priority_flow_ctrl_set;
@@ -48,10 +57,16 @@ DPDK_2.0 {
 	rte_eth_dev_rss_hash_update;
 	rte_eth_dev_rss_reta_query;
 	rte_eth_dev_rss_reta_update;
+	rte_eth_dev_rx_intr_ctl;
+	rte_eth_dev_rx_intr_ctl_q;
+	rte_eth_dev_rx_intr_disable;
+	rte_eth_dev_rx_intr_enable;
 	rte_eth_dev_rx_queue_start;
 	rte_eth_dev_rx_queue_stop;
+	rte_eth_dev_set_eeprom;
 	rte_eth_dev_set_link_down;
 	rte_eth_dev_set_link_up;
+	rte_eth_dev_set_mc_addr_list;
 	rte_eth_dev_set_mtu;
 	rte_eth_dev_set_rx_queue_stats_mapping;
 	rte_eth_dev_set_tx_queue_stats_mapping;
@@ -74,7 +89,7 @@ DPDK_2.0 {
 	rte_eth_dev_udp_tunnel_delete;
 	rte_eth_dev_vlan_filter;
 	rte_eth_dev_wd_timeout_store;
-	rte_eth_devices;
+	rte_eth_dma_zone_reserve;
 	rte_eth_driver_register;
 	rte_eth_led_off;
 	rte_eth_led_on;
@@ -89,55 +104,24 @@ DPDK_2.0 {
 	rte_eth_promiscuous_get;
 	rte_eth_remove_rx_callback;
 	rte_eth_remove_tx_callback;
-	rte_eth_rx_burst;
-	rte_eth_rx_descriptor_done;
-	rte_eth_rx_queue_count;
+	rte_eth_rx_queue_info_get;
 	rte_eth_rx_queue_setup;
 	rte_eth_set_queue_rate_limit;
 	rte_eth_set_vf_rate_limit;
 	rte_eth_stats;
 	rte_eth_stats_get;
 	rte_eth_stats_reset;
-	rte_eth_tx_burst;
+	rte_eth_timesync_adjust_time;
+	rte_eth_timesync_disable;
+	rte_eth_timesync_enable;
+	rte_eth_timesync_read_rx_timestamp;
+	rte_eth_timesync_read_time;
+	rte_eth_timesync_read_tx_timestamp;
+	rte_eth_timesync_write_time;
+	rte_eth_tx_queue_info_get;
 	rte_eth_tx_queue_setup;
 	rte_eth_xstats_get;
 	rte_eth_xstats_reset;
 
 	local: *;
 };
-
-DPDK_2.1 {
-	global:
-
-	rte_eth_dev_default_mac_addr_set;
-	rte_eth_dev_get_eeprom;
-	rte_eth_dev_get_eeprom_length;
-	rte_eth_dev_get_reg_info;
-	rte_eth_dev_get_reg_length;
-	rte_eth_dev_is_valid_port;
-	rte_eth_dev_rx_intr_ctl;
-	rte_eth_dev_rx_intr_ctl_q;
-	rte_eth_dev_rx_intr_disable;
-	rte_eth_dev_rx_intr_enable;
-	rte_eth_dev_set_eeprom;
-	rte_eth_dev_set_mc_addr_list;
-	rte_eth_timesync_disable;
-	rte_eth_timesync_enable;
-	rte_eth_timesync_read_rx_timestamp;
-	rte_eth_timesync_read_tx_timestamp;
-
-} DPDK_2.0;
-
-DPDK_2.2 {
-	global:
-
-	rte_eth_copy_pci_info;
-	rte_eth_dev_get_dcb_info;
-	rte_eth_dma_zone_reserve;
-	rte_eth_rx_queue_info_get;
-	rte_eth_timesync_adjust_time;
-	rte_eth_timesync_read_time;
-	rte_eth_timesync_write_time;
-	rte_eth_tx_queue_info_get;
-
-} DPDK_2.1;
