@@ -243,6 +243,9 @@ API Changes
   structures: rte_eth_dcb_rx_conf, rte_eth_dcb_tx_conf,
   rte_eth_vmdq_dcb_conf, rte_eth_vmdq_dcb_tx_conf.
 
+* The rte_eth_rx_queue_count() function now returns "int" instead of "uint32_t"
+  to allow the use of negative values as error codes on return.
+
 * The function rte_eal_pci_close_one() is removed.
   It was replaced by rte_eal_pci_detach().
 
@@ -258,7 +261,6 @@ API Changes
   rte_eth_ring_pair_create() and rte_eth_ring_pair_attach().
 
 * The devargs union field virtual is renamed to virt for C++ compatibility.
-
 
 ABI Changes
 -----------

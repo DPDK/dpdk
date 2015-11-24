@@ -2533,16 +2533,16 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
  * @param queue_id
  *  The queue id on the specific port.
  * @return
- *  The number of used descriptors in the specific queue.
+ *  The number of used descriptors in the specific queue, or:
+ *     (-EINVAL) if *port_id* is invalid
+ *     (-ENOTSUP) if the device does not support this function
  */
-static inline uint32_t
+static inline int
 rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, 0);
-#endif
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
         return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
 }
 
@@ -2559,15 +2559,14 @@ rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
  *  - (1) if the specific DD bit is set.
  *  - (0) if the specific DD bit is not set.
  *  - (-ENODEV) if *port_id* invalid.
+ *  - (-ENOTSUP) if the device does not support this function
  */
 static inline int
 rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
-#endif
 	return (*dev->dev_ops->rx_descriptor_done)( \
 		dev->data->rx_queues[queue_id], offset);
 }
