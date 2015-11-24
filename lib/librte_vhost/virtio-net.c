@@ -182,9 +182,9 @@ add_config_ll_entry(struct virtio_net_config_ll *new_ll_dev)
 }
 
 static void
-cleanup_vq(struct vhost_virtqueue *vq)
+cleanup_vq(struct vhost_virtqueue *vq, int destroy)
 {
-	if (vq->callfd >= 0)
+	if ((vq->callfd >= 0) && (destroy != 0))
 		close(vq->callfd);
 	if (vq->kickfd >= 0)
 		close(vq->kickfd);
@@ -195,7 +195,7 @@ cleanup_vq(struct vhost_virtqueue *vq)
  * free any memory owned by a device.
  */
 static void
-cleanup_device(struct virtio_net *dev)
+cleanup_device(struct virtio_net *dev, int destroy)
 {
 	uint32_t i;
 
@@ -208,8 +208,8 @@ cleanup_device(struct virtio_net *dev)
 	}
 
 	for (i = 0; i < dev->virt_qp_nb; i++) {
-		cleanup_vq(dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ]);
-		cleanup_vq(dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_TXQ]);
+		cleanup_vq(dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ], destroy);
+		cleanup_vq(dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_TXQ], destroy);
 	}
 }
 
@@ -237,17 +237,17 @@ rm_config_ll_entry(struct virtio_net_config_ll *ll_dev,
 	/* First remove the device and then clean it up. */
 	if (ll_dev == ll_root) {
 		ll_root = ll_dev->next;
-		cleanup_device(&ll_dev->dev);
+		cleanup_device(&ll_dev->dev, 1);
 		free_device(ll_dev);
 		return ll_root;
 	} else {
 		if (likely(ll_dev_last != NULL)) {
 			ll_dev_last->next = ll_dev->next;
-			cleanup_device(&ll_dev->dev);
+			cleanup_device(&ll_dev->dev, 1);
 			free_device(ll_dev);
 			return ll_dev_last->next;
 		} else {
-			cleanup_device(&ll_dev->dev);
+			cleanup_device(&ll_dev->dev, 1);
 			free_device(ll_dev);
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"Remove entry from config_ll failed\n");
@@ -279,6 +279,25 @@ init_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
 
 	init_vring_queue(dev->virtqueue[base_idx + VIRTIO_RXQ], qp_idx);
 	init_vring_queue(dev->virtqueue[base_idx + VIRTIO_TXQ], qp_idx);
+}
+
+static void
+reset_vring_queue(struct vhost_virtqueue *vq, int qp_idx)
+{
+	int callfd;
+
+	callfd = vq->callfd;
+	init_vring_queue(vq, qp_idx);
+	vq->callfd = callfd;
+}
+
+static void
+reset_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
+{
+	uint32_t base_idx = qp_idx * VIRTIO_QNUM;
+
+	reset_vring_queue(dev->virtqueue[base_idx + VIRTIO_RXQ], qp_idx);
+	reset_vring_queue(dev->virtqueue[base_idx + VIRTIO_TXQ], qp_idx);
 }
 
 static int
@@ -321,7 +340,7 @@ reset_device(struct virtio_net *dev)
 	dev->flags = 0;
 
 	for (i = 0; i < dev->virt_qp_nb; i++)
-		init_vring_queue_pair(dev, i);
+		reset_vring_queue_pair(dev, i);
 }
 
 /*
@@ -434,7 +453,7 @@ reset_owner(struct vhost_device_ctx ctx)
 	if (dev->flags & VIRTIO_DEV_RUNNING)
 		notify_ops->destroy_device(dev);
 
-	cleanup_device(dev);
+	cleanup_device(dev, 0);
 	reset_device(dev);
 	return 0;
 }
