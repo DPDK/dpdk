@@ -386,7 +386,6 @@ fm10k_check_mq_mode(struct rte_eth_dev *dev)
 }
 
 static const struct fm10k_txq_ops def_txq_ops = {
-	.release_mbufs = tx_queue_free,
 	.reset = tx_queue_reset,
 };
 
@@ -1073,7 +1072,7 @@ fm10k_dev_queue_release(struct rte_eth_dev *dev)
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
 			struct fm10k_tx_queue *txq = dev->data->tx_queues[i];
 
-			txq->ops->release_mbufs(txq);
+			tx_queue_free(txq);
 		}
 	}
 
@@ -1761,7 +1760,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	if (dev->data->tx_queues[queue_id] != NULL) {
 		struct fm10k_tx_queue *txq = dev->data->tx_queues[queue_id];
 
-		txq->ops->release_mbufs(txq);
+		tx_queue_free(txq);
 		dev->data->tx_queues[queue_id] = NULL;
 	}
 
@@ -1836,7 +1835,7 @@ fm10k_tx_queue_release(void *queue)
 	struct fm10k_tx_queue *q = queue;
 	PMD_INIT_FUNC_TRACE();
 
-	q->ops->release_mbufs(q);
+	tx_queue_free(q);
 }
 
 static int

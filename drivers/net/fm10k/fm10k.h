@@ -237,7 +237,6 @@ struct fm10k_tx_queue {
 };
 
 struct fm10k_txq_ops {
-	void (*release_mbufs)(struct fm10k_tx_queue *txq);
 	void (*reset)(struct fm10k_tx_queue *txq);
 };
 

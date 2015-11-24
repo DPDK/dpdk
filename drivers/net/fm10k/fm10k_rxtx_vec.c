@@ -45,8 +45,6 @@
 #endif
 
 static void
-fm10k_tx_queue_release_mbufs_vec(struct fm10k_tx_queue *txq);
-static void
 fm10k_reset_tx_queue(struct fm10k_tx_queue *txq);
 
 /* Handling the offload flags (olflags) field takes computation
@@ -634,7 +632,6 @@ fm10k_recv_scattered_pkts_vec(void *rx_queue,
 }
 
 static const struct fm10k_txq_ops vec_txq_ops = {
-	.release_mbufs = fm10k_tx_queue_release_mbufs_vec,
 	.reset = fm10k_reset_tx_queue,
 };
 
@@ -792,31 +789,6 @@ fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	FM10K_PCI_REG_WRITE(txq->tail_ptr, txq->next_free);
 
 	return nb_pkts;
-}
-
-static void __attribute__((cold))
-fm10k_tx_queue_release_mbufs_vec(struct fm10k_tx_queue *txq)
-{
-	unsigned i;
-	const uint16_t max_desc = (uint16_t)(txq->nb_desc - 1);
-
-	if (txq->sw_ring == NULL || txq->nb_free == max_desc)
-		return;
-
-	/* release the used mbufs in sw_ring */
-	for (i = txq->next_dd - (txq->rs_thresh - 1);
-	     i != txq->next_free;
-	     i = (i + 1) & max_desc)
-		rte_pktmbuf_free_seg(txq->sw_ring[i]);
-
-	txq->nb_free = max_desc;
-
-	/* reset tx_entry */
-	for (i = 0; i < txq->nb_desc; i++)
-		txq->sw_ring[i] = NULL;
-
-	rte_free(txq->sw_ring);
-	txq->sw_ring = NULL;
 }
 
 static void __attribute__((cold))
