@@ -220,6 +220,7 @@ Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_cryptodev/
 F: app/test/test_cryptodev*
+F: examples/l2fwd-crypto/
 
 
 Drivers
