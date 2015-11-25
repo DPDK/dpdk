@@ -39,6 +39,9 @@
  *
  * Defines RTE Crypto Device APIs for the provisioning of cipher and
  * authentication operations.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
  */
 
 #ifdef __cplusplus

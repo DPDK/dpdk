@@ -310,6 +310,7 @@ CONFIG_RTE_PMD_PACKET_PREFETCH=y
 
 #
 # Compile generic crypto device library
+# EXPERIMENTAL: API may change without prior notice
 #
 CONFIG_RTE_LIBRTE_CRYPTODEV=y
 CONFIG_RTE_LIBRTE_CRYPTODEV_DEBUG=n

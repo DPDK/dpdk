@@ -17,6 +17,16 @@ New Features
 
 * **Added keepalive support to EAL and example application.**
 
+* **Added experimental cryptodev API**
+
+  The cryptographic processing of packet is provided as a preview
+  with two drivers for:
+
+  * Intel QuickAssist devices
+  * Intel AES-NI multi-buffer library
+
+  Due to its experimental state, the API may change without prior notice.
+
 * **Added ethdev API to support IEEE1588.**
 
   Added functions to read, write and adjust system time in the NIC.

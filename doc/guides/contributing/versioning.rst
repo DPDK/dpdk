@@ -13,6 +13,7 @@ General Guidelines
 ------------------
 
 #. Whenever possible, ABI should be preserved
+#. The libraries marked in experimental state may change without constraint.
 #. The addition of symbols is generally not problematic
 #. The modification of symbols can generally be managed with versioning
 #. The removal of symbols generally is an ABI break and requires bumping of the
