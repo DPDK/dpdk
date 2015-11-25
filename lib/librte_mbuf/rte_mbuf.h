@@ -1625,6 +1625,27 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 #define rte_pktmbuf_mtod(m, t) rte_pktmbuf_mtod_offset(m, t, 0)
 
 /**
+ * A macro that returns the physical address that points to an offset of the
+ * start of the data in the mbuf
+ *
+ * @param m
+ *   The packet mbuf.
+ * @param o
+ *   The offset into the data to calculate address from.
+ */
+#define rte_pktmbuf_mtophys_offset(m, o) \
+	(phys_addr_t)((m)->buf_physaddr + (m)->data_off + (o))
+
+/**
+ * A macro that returns the physical address that points to the start of the
+ * data in the mbuf
+ *
+ * @param m
+ *   The packet mbuf.
+ */
+#define rte_pktmbuf_mtophys(m) rte_pktmbuf_mtophys_offset(m, 0)
+
+/**
  * A macro that returns the length of the packet.
  *
  * The value can be read or assigned.
