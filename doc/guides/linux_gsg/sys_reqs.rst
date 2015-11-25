@@ -111,17 +111,13 @@ System Software
 
 **Required:**
 
-*   Kernel version >= 2.6.33
+*   Kernel version >= 2.6.34
 
     The kernel version in use can be checked using the command:
 
     .. code-block:: console
 
         uname -r
-
-For details of the patches needed to use the DPDK with earlier kernel versions,
-see the DPDK FAQ included in the *DPDK Release Notes*.
-Note also that Red hat* Linux* 6.2 and 6.3 uses a 2.6.32 kernel that already has all the necessary patches applied.
 
 *   glibc >= 2.7 (for features related to cpuset)
 

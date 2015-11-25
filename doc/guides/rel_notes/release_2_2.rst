@@ -262,6 +262,9 @@ Examples
 Other
 ~~~~~
 
+* This release drops compatibility with Linux kernel 2.6.33. The minimum
+  kernel requirement is now 2.6.34.
+
 
 Known Issues
 ------------

@@ -160,25 +160,6 @@ This is especially true when using a large number (>512) of 2 MB huge pages. Ple
 This can be done either by issuing a ulimit command or editing the limits.conf file. Please consult Linux* manpages for usage information.
 
 
-Does my kernel require patching to run the DPDK?
-------------------------------------------------
-
-Any kernel greater than version 2.6.33 can be used without any patches applied. The following kernels may require patches to provide hugepage support:
-
-*   Kernel version 2.6.32 requires the following patches applied:
-
-    *   `mm: hugetlb: add hugepage support to pagemap <http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5dc37642cbce34619e4588a9f0bdad1d2f870956>`_
-
-    *   `mm: hugetlb: fix hugepage memory leak in walk_page_range() <http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=d33b9f45bd24a6391bc05e2b5a13c1b5787ca9c2>`_
-
-    *   `hugetlb: add nodemask arg to huge page alloc, free and surplus adjust functions <http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6ae11b278bca1cd41651bae49a8c69de2f6a6262>`_
-        (not mandatory, but recommended on a NUMA system to support per-NUMA node hugepages allocation)
-
-*   Kernel version 2.6.31, requires the above patches plus the following:
-
-    *   `UIO: Add name attributes for mappings and port regions <http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=8205779114e8f612549d191f8e151526a74ab9f2>`_
-
-
 VF driver for IXGBE devices cannot be initialized
 -------------------------------------------------
 
