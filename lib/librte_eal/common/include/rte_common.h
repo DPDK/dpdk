@@ -69,6 +69,16 @@ typedef uint32_t unaligned_uint32_t;
 typedef uint16_t unaligned_uint16_t;
 #endif
 
+/**
+ * Force alignment
+ */
+#define __rte_aligned(a) __attribute__((__aligned__(a)))
+
+/**
+ * Force a structure to be packed
+ */
+#define __rte_packed __attribute__((__packed__))
+
 /******* Macro to mark functions and fields scheduled for removal *****/
 #define __rte_deprecated	__attribute__((__deprecated__))
 

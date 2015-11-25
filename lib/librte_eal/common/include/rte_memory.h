@@ -80,7 +80,7 @@ enum rte_page_sizes {
 /**
  * Force alignment to cache line.
  */
-#define __rte_cache_aligned __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)))
+#define __rte_cache_aligned __rte_aligned(RTE_CACHE_LINE_SIZE)
 
 typedef uint64_t phys_addr_t; /**< Physical address definition. */
 #define RTE_BAD_PHYS_ADDR ((phys_addr_t)-1)
@@ -106,7 +106,7 @@ struct rte_memseg {
 	 /**< store segment MFNs */
 	uint64_t mfn[DOM0_NUM_MEMBLOCK];
 #endif
-} __attribute__((__packed__));
+} __rte_packed;
 
 /**
  * Lock page in physical memory and prevent from swapping.
