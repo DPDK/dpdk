@@ -120,6 +120,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_KVARGS)         += -lrte_kvargs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MBUF)           += -lrte_mbuf
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ETHER)          += -lethdev
+_LDLIBS-$(CONFIG_RTE_LIBRTE_CRYPTODEV)      += -lrte_cryptodev
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MEMPOOL)        += -lrte_mempool
 _LDLIBS-$(CONFIG_RTE_LIBRTE_RING)           += -lrte_ring
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lrte_eal

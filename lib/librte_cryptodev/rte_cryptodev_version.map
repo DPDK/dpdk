@@ -1,0 +1,32 @@
+DPDK_2.2 {
+	global:
+
+	rte_cryptodevs;
+	rte_cryptodev_callback_register;
+	rte_cryptodev_callback_unregister;
+	rte_cryptodev_close;
+	rte_cryptodev_count;
+	rte_cryptodev_count_devtype;
+	rte_cryptodev_configure;
+	rte_cryptodev_create_vdev;
+	rte_cryptodev_get_dev_id;
+	rte_cryptodev_info_get;
+	rte_cryptodev_pmd_allocate;
+	rte_cryptodev_pmd_callback_process;
+	rte_cryptodev_pmd_driver_register;
+	rte_cryptodev_pmd_release_device;
+	rte_cryptodev_pmd_virtual_dev_init;
+	rte_cryptodev_session_create;
+	rte_cryptodev_session_free;
+	rte_cryptodev_socket_id;
+	rte_cryptodev_start;
+	rte_cryptodev_stats_get;
+	rte_cryptodev_stats_reset;
+	rte_cryptodev_stop;
+	rte_cryptodev_queue_pair_count;
+	rte_cryptodev_queue_pair_setup;
+	rte_cryptodev_queue_pair_start;
+	rte_cryptodev_queue_pair_stop;
+
+	local: *;
+};

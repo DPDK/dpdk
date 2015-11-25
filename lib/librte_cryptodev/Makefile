@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2015 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,37 +30,31 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += librte_compat
-DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
-DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
-DIRS-$(CONFIG_RTE_LIBRTE_CFGFILE) += librte_cfgfile
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += librte_cryptodev
-DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += librte_vhost
-DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
-DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
-DIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += librte_ip_frag
-DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += librte_jobstats
-DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
-DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
-DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
-DIRS-$(CONFIG_RTE_LIBRTE_KVARGS) += librte_kvargs
-DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += librte_distributor
-DIRS-$(CONFIG_RTE_LIBRTE_PORT) += librte_port
-DIRS-$(CONFIG_RTE_LIBRTE_TABLE) += librte_table
-DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += librte_pipeline
-DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += librte_reorder
+# library name
+LIB = librte_cryptodev.a
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
-DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += librte_ivshmem
-endif
+# library version
+LIBABIVER := 1
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
-include $(RTE_SDK)/mk/rte.subdir.mk
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+# library source files
+SRCS-y += rte_cryptodev.c
+
+# export include files
+SYMLINK-y-include += rte_crypto.h
+SYMLINK-y-include += rte_cryptodev.h
+SYMLINK-y-include += rte_cryptodev_pmd.h
+
+# versioning export map
+EXPORT_MAP := rte_cryptodev_version.map
+
+# library dependencies
+DEPDIRS-y += lib/librte_eal
+DEPDIRS-y += lib/librte_mempool
+DEPDIRS-y += lib/librte_ring
+DEPDIRS-y += lib/librte_mbuf
+
+include $(RTE_SDK)/mk/rte.lib.mk

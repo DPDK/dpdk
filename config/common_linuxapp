@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -316,6 +316,14 @@ CONFIG_RTE_LIBRTE_PMD_NULL=y
 # Do prefetch of packet data within PMD driver receive function
 #
 CONFIG_RTE_PMD_PACKET_PREFETCH=y
+
+#
+# Compile generic crypto device library
+#
+CONFIG_RTE_LIBRTE_CRYPTODEV=y
+CONFIG_RTE_LIBRTE_CRYPTODEV_DEBUG=n
+CONFIG_RTE_CRYPTO_MAX_DEVS=64
+CONFIG_RTE_CRYPTODEV_NAME_LEN=64
 
 #
 # Compile librte_ring
