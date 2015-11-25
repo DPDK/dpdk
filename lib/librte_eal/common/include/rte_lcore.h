@@ -247,6 +247,26 @@ int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
  */
 void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
 
+/**
+ * Set thread names.
+ *
+ * Macro to wrap `pthread_setname_np()` with a glibc version check.
+ * Only glibc >= 2.12 supports this feature.
+ *
+ * This macro only used for Linux, BSD does direct libc call.
+ * BSD libc version of function is `pthread_set_name_np()`.
+ */
+#if defined(__DOXYGEN__)
+#define rte_thread_setname(...) pthread_setname_np(__VA_ARGS__)
+#endif
+
+#if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 12)
+#define rte_thread_setname(...) pthread_setname_np(__VA_ARGS__)
+#else
+#define rte_thread_setname(...) 0
+#endif
+#endif
 
 #ifdef __cplusplus
 }

@@ -887,7 +887,7 @@ rte_eal_intr_init(void)
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
 			"eal-intr-thread");
-		ret_1 = pthread_setname_np(intr_thread, thread_name);
+		ret_1 = rte_thread_setname(intr_thread, thread_name);
 		if (ret_1 != 0)
 			RTE_LOG(ERR, EAL,
 			"Failed to set thread name for interrupt handling\n");

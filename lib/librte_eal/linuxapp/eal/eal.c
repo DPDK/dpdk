@@ -859,7 +859,7 @@ rte_eal_init(int argc, char **argv)
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
 			"lcore-slave-%d", i);
-		ret = pthread_setname_np(lcore_config[i].thread_id,
+		ret = rte_thread_setname(lcore_config[i].thread_id,
 						thread_name);
 		if (ret != 0)
 			RTE_LOG(ERR, EAL,

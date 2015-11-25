@@ -1510,7 +1510,7 @@ main(int argc, char *argv[])
 
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "print-xen-stats");
-		ret = pthread_setname_np(tid, thread_name);
+		ret = rte_thread_setname(tid, thread_name);
 		if (ret != 0)
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"Cannot set print-stats name\n");
