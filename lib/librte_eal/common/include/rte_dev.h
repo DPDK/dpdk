@@ -46,7 +46,60 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 #include <sys/queue.h>
+
+#include <rte_log.h>
+
+__attribute__((format(printf, 2, 0)))
+static inline void
+rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+
+	char buffer[vsnprintf(NULL, 0, fmt, ap) + 1];
+
+	va_end(ap);
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD, "%s: %s", func_name, buffer);
+}
+
+/* Macros for checking for restricting functions to primary instance only */
+#define RTE_PROC_PRIMARY_OR_ERR_RET(retval) do { \
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
+		RTE_PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
+		return retval; \
+	} \
+} while (0)
+
+#define RTE_PROC_PRIMARY_OR_RET() do { \
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
+		RTE_PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
+		return; \
+	} \
+} while (0)
+
+/* Macros to check for invalid function pointers */
+#define RTE_FUNC_PTR_OR_ERR_RET(func, retval) do { \
+	if ((func) == NULL) { \
+		RTE_PMD_DEBUG_TRACE("Function not supported\n"); \
+		return retval; \
+	} \
+} while (0)
+
+#define RTE_FUNC_PTR_OR_RET(func) do { \
+	if ((func) == NULL) { \
+		RTE_PMD_DEBUG_TRACE("Function not supported\n"); \
+		return; \
+	} \
+} while (0)
+
 
 /** Double linked list of device drivers. */
 TAILQ_HEAD(rte_driver_list, rte_driver);

@@ -69,60 +69,6 @@
 #include "rte_ether.h"
 #include "rte_ethdev.h"
 
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-#define RTE_PMD_DEBUG_TRACE(fmt, args...) do { \
-		RTE_LOG(ERR, PMD, "%s: " fmt, __func__, ## args); \
-	} while (0)
-#else
-#define RTE_PMD_DEBUG_TRACE(fmt, args...)
-#endif
-
-/* Macros for checking for restricting functions to primary instance only */
-#define RTE_PROC_PRIMARY_OR_ERR_RET(retval) do { \
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
-		RTE_PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
-		return (retval); \
-	} \
-} while (0)
-
-#define RTE_PROC_PRIMARY_OR_RET() do { \
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
-		RTE_PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
-		return; \
-	} \
-} while (0)
-
-/* Macros to check for invalid function pointers in dev_ops structure */
-#define RTE_FUNC_PTR_OR_ERR_RET(func, retval) do { \
-	if ((func) == NULL) { \
-		RTE_PMD_DEBUG_TRACE("Function not supported\n"); \
-		return (retval); \
-	} \
-} while (0)
-
-#define RTE_FUNC_PTR_OR_RET(func) do { \
-	if ((func) == NULL) { \
-		RTE_PMD_DEBUG_TRACE("Function not supported\n"); \
-		return; \
-	} \
-} while (0)
-
-/* Macros to check for valid port */
-#define RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, retval) do { \
-	if (!rte_eth_dev_is_valid_port(port_id)) {  \
-		RTE_PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id); \
-		return retval; \
-	} \
-} while (0)
-
-#define RTE_ETH_VALID_PORTID_OR_RET(port_id) do { \
-	if (!rte_eth_dev_is_valid_port(port_id)) { \
-		RTE_PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id); \
-		return; \
-	} \
-} while (0)
-
-
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
 static struct rte_eth_dev_data *rte_eth_dev_data;

@@ -172,6 +172,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include <rte_dev.h>
+
 /* Use this macro to check if LRO API is supported */
 #define RTE_ETHDEV_HAS_LRO_SUPPORT
 
@@ -930,6 +932,30 @@ struct rte_eth_dev;
 struct rte_eth_dev_callback;
 /** @internal Structure to keep track of registered callbacks */
 TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
+
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#define RTE_PMD_DEBUG_TRACE(...) \
+	rte_pmd_debug_trace(__func__, __VA_ARGS__)
+#else
+#define RTE_PMD_DEBUG_TRACE(fmt, args...)
+#endif
+
+
+/* Macros to check for valid port */
+#define RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, retval) do { \
+	if (!rte_eth_dev_is_valid_port(port_id)) { \
+		RTE_PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id); \
+		return retval; \
+	} \
+} while (0)
+
+#define RTE_ETH_VALID_PORTID_OR_RET(port_id) do { \
+	if (!rte_eth_dev_is_valid_port(port_id)) { \
+		RTE_PMD_DEBUG_TRACE("Invalid port_id=%d\n", port_id); \
+		return; \
+	} \
+} while (0)
 
 /*
  * Definitions of all functions exported by an Ethernet driver through the
