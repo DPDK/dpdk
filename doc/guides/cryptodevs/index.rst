@@ -35,4 +35,5 @@ Crypto Device Drivers
     :maxdepth: 2
     :numbered:
 
+    aesni_mb
     qat

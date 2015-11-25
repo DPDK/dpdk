@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2015 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,8 +30,34 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
+ifeq ($(AESNI_MULTI_BUFFER_LIB_PATH),)
+$(error "Please define AESNI_MULTI_BUFFER_LIB_PATH environment variable")
+endif
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
-include $(RTE_SDK)/mk/rte.subdir.mk
+# library name
+LIB = librte_pmd_aesni_mb.a
+
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_pmd_aesni_version.map
+
+# external library include paths
+CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)
+CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)/include
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops.c
+
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_cryptodev
+
+include $(RTE_SDK)/mk/rte.lib.mk
