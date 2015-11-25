@@ -728,6 +728,9 @@ typedef uint8_t  MARKER8[0];  /**< generic marker with 1B alignment */
 typedef uint64_t MARKER64[0]; /**< marker that allows us to overwrite 8 bytes
                                * with a single assignment */
 
+/** Opaque rte_mbuf_offload  structure declarations */
+struct rte_mbuf_offload;
+
 /**
  * The generic rte_mbuf, containing a packet mbuf.
  */
@@ -844,6 +847,9 @@ struct rte_mbuf {
 
 	/** Timesync flags for use with IEEE1588. */
 	uint16_t timesync;
+
+	/* Chain of off-load operations to perform on mbuf */
+	struct rte_mbuf_offload *offload_ops;
 } __rte_cache_aligned;
 
 static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);

@@ -104,6 +104,7 @@ There are many libraries, so their headers may be grouped by topics:
 
 - **containers**:
   [mbuf]               (@ref rte_mbuf.h),
+  [mbuf_offload]       (@ref rte_mbuf_offload.h),
   [ring]               (@ref rte_ring.h),
   [distributor]        (@ref rte_distributor.h),
   [reorder]            (@ref rte_reorder.h),

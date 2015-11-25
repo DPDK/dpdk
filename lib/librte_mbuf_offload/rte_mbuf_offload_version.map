@@ -1,0 +1,7 @@
+DPDK_2.2 {
+	global:
+
+	rte_pktmbuf_offload_pool_create;
+
+	local: *;
+};
