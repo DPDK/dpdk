@@ -1055,16 +1055,6 @@ rte_sched_port_queue_is_empty(struct rte_sched_port *port, uint32_t qindex)
 	return (queue->qr == queue->qw);
 }
 
-static inline int
-rte_sched_port_queue_is_full(struct rte_sched_port *port, uint32_t qindex)
-{
-	struct rte_sched_queue *queue = port->queue + qindex;
-	uint16_t qsize = rte_sched_port_qsize(port, qindex);
-	uint16_t qlen = queue->qw - queue->qr;
-
-	return (qlen >= qsize);
-}
-
 #endif /* RTE_SCHED_DEBUG */
 
 #ifdef RTE_SCHED_COLLECT_STATS
@@ -1155,27 +1145,6 @@ rte_sched_port_set_queue_empty_timestamp(struct rte_sched_port *port, uint32_t q
 #endif /* RTE_SCHED_RED */
 
 #ifdef RTE_SCHED_DEBUG
-
-static inline int
-debug_pipe_is_empty(struct rte_sched_port *port, uint32_t pindex)
-{
-	uint32_t qindex, i;
-
-	qindex = pindex << 4;
-
-	for (i = 0; i < 16; i++) {
-		uint32_t queue_empty = rte_sched_port_queue_is_empty(port, qindex + i);
-		uint32_t bmp_bit_clear = (rte_bitmap_get(port->bmp, qindex + i) == 0);
-
-		if (queue_empty != bmp_bit_clear)
-			rte_panic("Queue status mismatch for queue %u of pipe %u\n", i, pindex);
-
-		if (!queue_empty)
-			return 0;
-	}
-
-	return 1;
-}
 
 static inline void
 debug_check_queue_slab(struct rte_sched_port *port, uint32_t bmp_pos,
