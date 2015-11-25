@@ -153,6 +153,9 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lrte_pmd_pcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET)  += -lrte_pmd_af_packet
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL)       += -lrte_pmd_null
 
+# QAT PMD has a dependency on libcrypto (from openssl) for calculating HMAC precomputes
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lrte_pmd_qat -lcrypto
+
 endif # ! $(CONFIG_RTE_BUILD_SHARED_LIB)
 
 endif # ! CONFIG_RTE_BUILD_COMBINE_LIBS

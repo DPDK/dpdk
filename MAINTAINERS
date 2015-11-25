@@ -326,6 +326,9 @@ Null PMD
 M: Tetsuya Mukawa <mukawa@igel.co.jp>
 F: drivers/net/null/
 
+Intel QuickAssist
+F: drivers/crypto/qat/
+
 
 Packet processing
 -----------------

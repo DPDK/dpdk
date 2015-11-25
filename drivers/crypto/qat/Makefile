@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2015 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,7 +30,34 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += net
-DIRS-y += crypto
+# library name
+LIB = librte_pmd_qat.a
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# library version
+LIBABIVER := 1
+
+# build flags
+CFLAGS += $(WERROR_FLAGS)
+
+# external library include paths
+CFLAGS += -I$(SRCDIR)/qat_adf
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_crypto.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_qp.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_adf/qat_algs_build_desc.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += rte_qat_cryptodev.c
+
+# export include files
+SYMLINK-y-include +=
+
+# versioning export map
+EXPORT_MAP := rte_pmd_qat_version.map
+
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += lib/librte_cryptodev
+
+
+include $(RTE_SDK)/mk/rte.lib.mk

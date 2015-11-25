@@ -1,6 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-    All rights reserved.
+    Copyright(c) 2015 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -28,23 +27,12 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Crypto Device Drivers
+=====================
 
-Contents:
 
 .. toctree::
-   :maxdepth: 1
-   :titlesonly:
+    :maxdepth: 2
+    :numbered:
 
-   linux_gsg/index
-   freebsd_gsg/index
-   xen/index
-   prog_guide/index
-   nics/index
-   cryptodevs/index
-   sample_app_ug/index
-   testpmd_app_ug/index
-   faq/index
-   rel_notes/index
-   contributing/index
+    qat

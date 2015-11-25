@@ -31,7 +31,7 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += net
-DIRS-y += crypto
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
 
+include $(RTE_SDK)/mk/rte.sharelib.mk
 include $(RTE_SDK)/mk/rte.subdir.mk

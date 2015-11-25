@@ -326,6 +326,20 @@ CONFIG_RTE_CRYPTO_MAX_DEVS=64
 CONFIG_RTE_CRYPTODEV_NAME_LEN=64
 
 #
+# Compile PMD for QuickAssist based devices
+#
+CONFIG_RTE_LIBRTE_PMD_QAT=n
+CONFIG_RTE_LIBRTE_PMD_QAT_DEBUG_INIT=n
+CONFIG_RTE_LIBRTE_PMD_QAT_DEBUG_TX=n
+CONFIG_RTE_LIBRTE_PMD_QAT_DEBUG_RX=n
+CONFIG_RTE_LIBRTE_PMD_QAT_DEBUG_DRIVER=n
+#
+# Number of sessions to create in the session memory pool
+# on a single QuickAssist device.
+#
+CONFIG_RTE_QAT_PMD_MAX_NB_SESSIONS=2048
+
+#
 # Compile librte_ring
 #
 CONFIG_RTE_LIBRTE_RING=y
