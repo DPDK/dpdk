@@ -33,7 +33,7 @@
 
 #ifndef _TEST_H_
 #define _TEST_H_
-
+#include <stddef.h>
 #include <sys/queue.h>
 
 #define TEST_SUCCESS  (0)
@@ -63,6 +63,17 @@
 			return TEST_FAILED;                                  \
 		}                                                        \
 } while (0)
+
+
+#define TEST_ASSERT_BUFFERS_ARE_EQUAL(a, b, len,  msg, ...) do {	\
+	if (memcmp(a, b, len)) {                                        \
+		printf("TestCase %s() line %d failed: "              \
+			msg "\n", __func__, __LINE__, ##__VA_ARGS__);    \
+		TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);    \
+		return TEST_FAILED;                                  \
+	}                                                        \
+} while (0)
+
 
 #define TEST_ASSERT_NOT_EQUAL(a, b, msg, ...) do {               \
 		if (!(a != b)) {                                         \
@@ -113,27 +124,36 @@
 
 struct unit_test_case {
 	int (*setup)(void);
-	int (*teardown)(void);
+	void (*teardown)(void);
 	int (*testcase)(void);
 	const char *success_msg;
 	const char *fail_msg;
+	unsigned enabled;
 };
 
-#define TEST_CASE(fn) { NULL, NULL, fn, #fn " succeeded", #fn " failed"}
+#define TEST_CASE(fn) { NULL, NULL, fn, #fn " succeeded", #fn " failed", 1 }
 
 #define TEST_CASE_NAMED(name, fn) { NULL, NULL, fn, name " succeeded", \
-		name " failed"}
+		name " failed", 1 }
 
 #define TEST_CASE_ST(setup, teardown, testcase)         \
 		{ setup, teardown, testcase, #testcase " succeeded",    \
-		#testcase " failed "}
+		#testcase " failed ", 1 }
 
-#define TEST_CASES_END() { NULL, NULL, NULL, NULL, NULL }
+
+#define TEST_CASE_DISABLED(fn) { NULL, NULL, fn, #fn " succeeded", \
+	#fn " failed", 0 }
+
+#define TEST_CASE_ST_DISABLED(setup, teardown, testcase)         \
+		{ setup, teardown, testcase, #testcase " succeeded",    \
+		#testcase " failed ", 0 }
+
+#define TEST_CASES_END() { NULL, NULL, NULL, NULL, NULL, 0 }
 
 struct unit_test_suite {
 	const char *suite_name;
 	int (*setup)(void);
-	int (*teardown)(void);
+	void (*teardown)(void);
 	struct unit_test_case unit_test_cases[];
 };
 

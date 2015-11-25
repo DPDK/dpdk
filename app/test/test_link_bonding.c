@@ -4020,7 +4020,7 @@ test_close_bonded_device(void)
 	return 0;
 }
 
-static int
+static void
 testsuite_teardown(void)
 {
 	if (test_params->pkt_eth_hdr != NULL) {
@@ -4029,7 +4029,7 @@ testsuite_teardown(void)
 	}
 
 	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	remove_slaves_and_stop_bonded_device();
 }
 
 static void
@@ -4993,7 +4993,7 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_reconfigure_bonded_device),
 		TEST_CASE(test_close_bonded_device),
 
-		{ NULL, NULL, NULL, NULL, NULL } /**< NULL terminate unit test array */
+		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
 

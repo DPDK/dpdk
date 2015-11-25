@@ -453,7 +453,7 @@ test_setup(void)
 	return 0;
 }
 
-static int
+static void
 testsuite_teardown(void)
 {
 	struct slave_conf *port;
@@ -467,8 +467,6 @@ testsuite_teardown(void)
 
 	FOR_EACH_PORT(i, port)
 		rte_eth_dev_stop(port->port_id);
-
-	return 0;
 }
 
 /*
@@ -1390,7 +1388,8 @@ static struct unit_test_suite link_bonding_mode4_test_suite  = {
 		TEST_CASE_NAMED("test_mode4_tx_burst", test_mode4_tx_burst_wrapper),
 		TEST_CASE_NAMED("test_mode4_marker", test_mode4_marker_wrapper),
 		TEST_CASE_NAMED("test_mode4_expired", test_mode4_expired_wrapper),
-		{ NULL, NULL, NULL, NULL, NULL } /**< NULL terminate unit test array */
+
+		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
 

@@ -586,7 +586,7 @@ test_setup(void)
 	return TEST_SUCCESS;
 }
 
-static int
+static void
 testsuite_teardown(void)
 {
 	struct slave_conf *port;
@@ -600,8 +600,6 @@ testsuite_teardown(void)
 
 	FOR_EACH_PORT(i, port)
 		rte_eth_dev_stop(port->port_id);
-
-	return 0;
 }
 
 static int
@@ -661,7 +659,8 @@ static struct unit_test_suite link_bonding_rssconf_test_suite  = {
 		TEST_CASE_NAMED("test_setup", test_setup_wrapper),
 		TEST_CASE_NAMED("test_rss", test_rss_wrapper),
 		TEST_CASE_NAMED("test_rss_lazy", test_rss_lazy_wrapper),
-		{ NULL, NULL, NULL, NULL, NULL } /**< NULL terminate unit test array */
+
+		TEST_CASES_END()
 	}
 };
 

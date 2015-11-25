@@ -159,51 +159,81 @@ main(int argc, char **argv)
 int
 unit_test_suite_runner(struct unit_test_suite *suite)
 {
-	int retval, i = 0;
+	int test_success;
+	unsigned total = 0, executed = 0, skipped = 0, succeeded = 0, failed = 0;
 
 	if (suite->suite_name)
-		printf("Test Suite : %s\n", suite->suite_name);
+		printf(" + ------------------------------------------------------- +\n");
+		printf(" + Test Suite : %s\n", suite->suite_name);
 
 	if (suite->setup)
 		if (suite->setup() != 0)
-			return -1;
+			goto suite_summary;
 
-	while (suite->unit_test_cases[i].testcase) {
-		/* Run test case setup */
-		if (suite->unit_test_cases[i].setup) {
-			retval = suite->unit_test_cases[i].setup();
-			if (retval != 0)
-				return retval;
+	printf(" + ------------------------------------------------------- +\n");
+
+	while (suite->unit_test_cases[total].testcase) {
+		if (!suite->unit_test_cases[total].enabled) {
+			skipped++;
+			total++;
+			continue;
+		} else {
+			executed++;
 		}
 
-		/* Run test case */
-		if (suite->unit_test_cases[i].testcase() == 0) {
-			printf("TestCase %2d: %s\n", i,
-					suite->unit_test_cases[i].success_msg ?
-					suite->unit_test_cases[i].success_msg :
+		/* run test case setup */
+		if (suite->unit_test_cases[total].setup)
+			test_success = suite->unit_test_cases[total].setup();
+		else
+			test_success = TEST_SUCCESS;
+
+		if (test_success == TEST_SUCCESS) {
+			/* run the test case */
+			test_success = suite->unit_test_cases[total].testcase();
+			if (test_success == TEST_SUCCESS)
+				succeeded++;
+			else
+				failed++;
+		} else {
+			failed++;
+		}
+
+		/* run the test case teardown */
+		if (suite->unit_test_cases[total].teardown)
+			suite->unit_test_cases[total].teardown();
+
+		if (test_success == TEST_SUCCESS)
+			printf(" + TestCase [%2d] : %s\n", total,
+					suite->unit_test_cases[total].success_msg ?
+					suite->unit_test_cases[total].success_msg :
 					"passed");
-		}
-		else {
-			printf("TestCase %2d: %s\n", i, suite->unit_test_cases[i].fail_msg ?
-					suite->unit_test_cases[i].fail_msg :
+		else
+			printf(" + TestCase [%2d] : %s\n", total,
+					suite->unit_test_cases[total].fail_msg ?
+					suite->unit_test_cases[total].fail_msg :
 					"failed");
-			return -1;
-		}
 
-		/* Run test case teardown */
-		if (suite->unit_test_cases[i].teardown) {
-			retval = suite->unit_test_cases[i].teardown();
-			if (retval != 0)
-				return retval;
-		}
-
-		i++;
+		total++;
 	}
 
 	/* Run test suite teardown */
 	if (suite->teardown)
-		if (suite->teardown() != 0)
-			return -1;
+		suite->teardown();
+
+	goto suite_summary;
+
+suite_summary:
+	printf(" + ------------------------------------------------------- +\n");
+	printf(" + Test Suite Summary \n");
+	printf(" + Tests Total :       %2d\n", total);
+	printf(" + Tests Skipped :     %2d\n", skipped);
+	printf(" + Tests Executed :    %2d\n", executed);
+	printf(" + Tests Passed :      %2d\n", succeeded);
+	printf(" + Tests Failed :      %2d\n", failed);
+	printf(" + ------------------------------------------------------- +\n");
+
+	if (failed)
+		return -1;
 
 	return 0;
 }

@@ -219,6 +219,7 @@ F: scripts/test-null.sh
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_cryptodev/
+F: app/test/test_cryptodev*
 
 
 Drivers
