@@ -1834,7 +1834,7 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 				num_received += burst_received;
 		}
 
-		printf("\n%u\t%u\t\%u\t\t%u\t\t%u", dev_num, 0,
+		printf("\n%u\t%u\t%u\t\t%u\t\t%u", dev_num, 0,
 					num_sent, num_received, burst_size);
 		printf("\t\t%"PRIu64, retries);
 		printf("\t\t\t%"PRIu64, total_cycles/num_received);
