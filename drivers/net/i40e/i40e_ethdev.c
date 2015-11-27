@@ -131,7 +131,7 @@
 #define I40E_PTP_1GB_INCVAL      0x2000000000ULL
 #define I40E_PRTTSYN_TSYNENA     0x80000000
 #define I40E_PRTTSYN_TSYNTYPE    0x0e000000
-#define I40E_CYCLECOUNTER_MASK   0xffffffffffffffff
+#define I40E_CYCLECOUNTER_MASK   0xffffffffffffffffULL
 
 #define I40E_MAX_PERCENT            100
 #define I40E_DEFAULT_DCB_APP_NUM    1

@@ -136,7 +136,7 @@
 #define IXGBE_INCVAL_SHIFT_82599 7
 #define IXGBE_INCPER_SHIFT_82599 24
 
-#define IXGBE_CYCLECOUNTER_MASK   0xffffffffffffffff
+#define IXGBE_CYCLECOUNTER_MASK   0xffffffffffffffffULL
 
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);

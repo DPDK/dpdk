@@ -78,7 +78,7 @@
 #define IGB_8_BIT_MASK   UINT8_MAX
 
 /* Additional timesync values. */
-#define E1000_CYCLECOUNTER_MASK      0xffffffffffffffff
+#define E1000_CYCLECOUNTER_MASK      0xffffffffffffffffULL
 #define E1000_ETQF_FILTER_1588       3
 #define IGB_82576_TSYNC_SHIFT        16
 #define E1000_INCPERIOD_82576        (1 << E1000_TIMINCA_16NS_SHIFT)
