@@ -788,8 +788,6 @@ virtio_dev_stats_reset(struct rte_eth_dev *dev)
 		rxvq->broadcast = 0;
 		memset(rxvq->size_bins, 0, sizeof(rxvq->size_bins[0]) * 8);
 	}
-
-	dev->data->rx_mbuf_alloc_failed = 0;
 }
 
 static void

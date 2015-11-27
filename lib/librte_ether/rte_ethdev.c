@@ -1456,6 +1456,7 @@ rte_eth_stats_reset(uint8_t port_id)
 
 	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->stats_reset);
 	(*dev->dev_ops->stats_reset)(dev);
+	dev->data->rx_mbuf_alloc_failed = 0;
 }
 
 /* retrieve ethdev extended statistics */
