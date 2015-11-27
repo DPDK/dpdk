@@ -2483,6 +2483,8 @@ fm10k_set_rx_function(struct rte_eth_dev *dev)
 			dev->rx_pkt_burst = fm10k_recv_pkts_vec;
 	} else if (dev->data->scattered_rx)
 		dev->rx_pkt_burst = fm10k_recv_scattered_pkts;
+	else
+		dev->rx_pkt_burst = fm10k_recv_pkts;
 
 	rx_using_sse =
 		(dev->rx_pkt_burst == fm10k_recv_scattered_pkts_vec ||
