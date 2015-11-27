@@ -2458,13 +2458,16 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 	}
 
 	if (use_sse) {
+		PMD_INIT_LOG(DEBUG, "Use vector Tx func");
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
 			txq = dev->data->tx_queues[i];
 			fm10k_txq_vec_setup(txq);
 		}
 		dev->tx_pkt_burst = fm10k_xmit_pkts_vec;
-	} else
+	} else {
 		dev->tx_pkt_burst = fm10k_xmit_pkts;
+		PMD_INIT_LOG(DEBUG, "Use regular Tx func");
+	}
 }
 
 static void __attribute__((cold))
@@ -2489,6 +2492,11 @@ fm10k_set_rx_function(struct rte_eth_dev *dev)
 	rx_using_sse =
 		(dev->rx_pkt_burst == fm10k_recv_scattered_pkts_vec ||
 		dev->rx_pkt_burst == fm10k_recv_pkts_vec);
+
+	if (rx_using_sse)
+		PMD_INIT_LOG(DEBUG, "Use vector Rx func");
+	else
+		PMD_INIT_LOG(DEBUG, "Use regular Rx func");
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct fm10k_rx_queue *rxq = dev->data->rx_queues[i];
