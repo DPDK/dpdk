@@ -141,12 +141,12 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 		/* n_flows */
 		if (strcmp(arg_name, "n_flows") == 0) {
 			if (n_flows_present)
-				return -1;
+				goto error_parse;
 			n_flows_present = 1;
 
 			p->n_flows = atoi(arg_value);
 			if (p->n_flows == 0)
-				return -1;
+				goto error_parse;
 
 			continue;
 		}
@@ -154,7 +154,8 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 		/* key_offset */
 		if (strcmp(arg_name, "key_offset") == 0) {
 			if (key_offset_present)
-				return -1;
+				goto error_parse;
+
 			key_offset_present = 1;
 
 			p->key_offset = atoi(arg_value);
@@ -165,14 +166,14 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 		/* key_size */
 		if (strcmp(arg_name, "key_size") == 0) {
 			if (key_size_present)
-				return -1;
+				goto error_parse;
 			key_size_present = 1;
 
 			p->key_size = atoi(arg_value);
 			if ((p->key_size == 0) ||
 				(p->key_size > PIPELINE_FC_FLOW_KEY_MAX_SIZE) ||
 				(p->key_size % 8))
-				return -1;
+				goto error_parse;
 
 			continue;
 		}
@@ -180,11 +181,11 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 		/* key_mask */
 		if (strcmp(arg_name, "key_mask") == 0) {
 			if (key_mask_present)
-				return -1;
+				goto error_parse;
 
 			key_mask_str = strdup(arg_value);
 			if (key_mask_str == NULL)
-				return -1;
+				goto error_parse;
 
 			key_mask_present = 1;
 
@@ -194,7 +195,7 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 		/* hash_offset */
 		if (strcmp(arg_name, "hash_offset") == 0) {
 			if (hash_offset_present)
-				return -1;
+				goto error_parse;
 			hash_offset_present = 1;
 
 			p->hash_offset = atoi(arg_value);
@@ -210,23 +211,29 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 	if ((n_flows_present == 0) ||
 		(key_offset_present == 0) ||
 		(key_size_present == 0))
-		return -1;
+		goto error_parse;
 
 	if (key_mask_present) {
 		p->key_mask = rte_malloc(NULL, p->key_size, 0);
 		if (p->key_mask == NULL)
-			return -1;
+			goto error_parse;
 
 		if (parse_hex_string(key_mask_str, p->key_mask, &p->key_size)
 			!= 0) {
-			free(p->key_mask);
-			return -1;
+			goto error_parse;
 		}
 
 		free(key_mask_str);
 	}
 
 	return 0;
+
+error_parse:
+	if (key_mask_str != NULL)
+		free(key_mask_str);
+	if (p->key_mask != NULL)
+		free(p->key_mask);
+	return -1;
 }
 
 static void *pipeline_fc_init(struct pipeline_params *params,
