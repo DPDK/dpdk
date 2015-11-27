@@ -1037,6 +1037,7 @@ rte_cryptodev_session_create(uint8_t dev_id, struct rte_crypto_xform *xform)
 {
 	struct rte_cryptodev *dev;
 	struct rte_cryptodev_session *sess;
+	void *_sess;
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
@@ -1046,10 +1047,12 @@ rte_cryptodev_session_create(uint8_t dev_id, struct rte_crypto_xform *xform)
 	dev = &rte_crypto_devices[dev_id];
 
 	/* Allocate a session structure from the session pool */
-	if (rte_mempool_get(dev->data->session_pool, (void **)&sess)) {
+	if (rte_mempool_get(dev->data->session_pool, &_sess)) {
 		CDEV_LOG_ERR("Couldn't get object from session mempool");
 		return NULL;
 	}
+
+	sess = (struct rte_cryptodev_session *)_sess;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->session_configure, NULL);
 	if (dev->dev_ops->session_configure(dev, xform, sess->_private) ==
@@ -1058,7 +1061,7 @@ rte_cryptodev_session_create(uint8_t dev_id, struct rte_crypto_xform *xform)
 				dev_id);
 
 		/* Return session to mempool */
-		rte_mempool_put(sess->mp, (void *)sess);
+		rte_mempool_put(sess->mp, _sess);
 		return NULL;
 	}
 
