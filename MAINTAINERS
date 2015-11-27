@@ -513,6 +513,7 @@ Other Example Applications
 --------------------------
 
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/dpdk_qat/
 F: doc/guides/sample_app_ug/intel_quickassist.rst
 
@@ -520,6 +521,7 @@ F: examples/exception_path/
 F: doc/guides/sample_app_ug/exception_path.rst
 
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/helloworld/
 F: doc/guides/sample_app_ug/hello_world.rst
 
@@ -527,6 +529,7 @@ F: examples/ipv4_multicast/
 F: doc/guides/sample_app_ug/ipv4_multicast.rst
 
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/l2fwd/
 F: doc/guides/sample_app_ug/l2_forward_real_virtual.rst
 
