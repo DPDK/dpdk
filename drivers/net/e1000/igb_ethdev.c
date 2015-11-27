@@ -846,6 +846,7 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int diag;
+	struct ether_addr *perm_addr = (struct ether_addr *)hw->mac.perm_addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -896,6 +897,26 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 			"addresses",
 			ETHER_ADDR_LEN * hw->mac.rar_entry_count);
 		return -ENOMEM;
+	}
+
+	/* Generate a random MAC address, if none was assigned by PF. */
+	if (is_zero_ether_addr(perm_addr)) {
+		eth_random_addr(perm_addr->addr_bytes);
+		diag = e1000_rar_set(hw, perm_addr->addr_bytes, 0);
+		if (diag) {
+			rte_free(eth_dev->data->mac_addrs);
+			eth_dev->data->mac_addrs = NULL;
+			return diag;
+		}
+		PMD_INIT_LOG(INFO, "\tVF MAC address not assigned by Host PF");
+		PMD_INIT_LOG(INFO, "\tAssign randomly generated MAC address "
+			     "%02x:%02x:%02x:%02x:%02x:%02x",
+			     perm_addr->addr_bytes[0],
+			     perm_addr->addr_bytes[1],
+			     perm_addr->addr_bytes[2],
+			     perm_addr->addr_bytes[3],
+			     perm_addr->addr_bytes[4],
+			     perm_addr->addr_bytes[5]);
 	}
 
 	/* Copy the permanent MAC address */

@@ -151,6 +151,10 @@ Drivers
 
   VF needs the PF interrupt support initialized even if not started.
 
+* **igb: Fixed VF MAC address when using with DPDK PF.**
+
+  Assign a random MAC address in VF when not assigned by PF.
+
 * **ixgbe: Fixed issue with X550 DCB.**
 
   Fixed a DCB issue with x550 where for 8 TCs (Traffic Classes), if a packet
