@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -217,7 +217,7 @@ Using the Poll Mode Driver from an Application
 Both drivers can provide similar APIs to allow the user to create a PMD, that is,
 rte_ethdev structure, instances at run-time in the end-application,
 for example, using rte_eth_from_rings() or rte_eth_from_pcaps() APIs.
-For the rings- based PMD, this functionality could be used, for example,
+For the rings-based PMD, this functionality could be used, for example,
 to allow data exchange between cores using rings to be done in exactly the
 same way as sending or receiving packets from an Ethernet device.
 For the libpcap-based PMD, it allows an application to open one or more pcap files
@@ -231,26 +231,30 @@ for reception on the same port (error handling omitted for clarity):
 
 .. code-block:: c
 
-    struct rte_ring *r1, *r2;
-    int port1, port2;
+    #define RING_SIZE 256
+    #define NUM_RINGS 2
+    #define SOCKET0 0
 
-    r1 = rte_ring_create("R1", 256, SOCKET0,RING_F_SP_ENQ|RING_F_SC_DEQ);
-    r2 = rte_ring_create("R2", 256, SOCKET0, RING_F_SP_ENQ|RING_F_SC_DEQ);
+    struct rte_ring *ring[NUM_RINGS];
+    int port0, port1;
 
-    /* create an ethdev where RX and TX are done to/from r1, and * another from r2 */
+    ring[0] = rte_ring_create("R0", RING_SIZE, SOCKET0, RING_F_SP_ENQ|RING_F_SC_DEQ);
+    ring[1] = rte_ring_create("R1", RING_SIZE, SOCKET0, RING_F_SP_ENQ|RING_F_SC_DEQ);
 
-    port1 = rte_eth_from_rings(r1, 1, r1, 1, SOCKET0);
-    port2 = rte_eth_from_rings(r2, 1, r2, 1, SOCKET0);
+    /* create two ethdev's */
+
+    port0 = rte_eth_from_rings("eth_ring0", ring, NUM_RINGS, ring, NUM_RINGS, SOCKET0);
+    port1 = rte_eth_from_rings("eth_ring1", ring, NUM_RINGS, ring, NUM_RINGS, SOCKET0);
 
 
 To create two pseudo-Ethernet ports where the traffic is switched between them,
-that is, traffic sent to port 1 is read back from port 2 and vice-versa,
+that is, traffic sent to port 0 is read back from port 1 and vice-versa,
 the final two lines could be changed as below:
 
 .. code-block:: c
 
-    port1 = rte_eth_from_rings(r1, 1, r2, 1, SOCKET0);
-    port2 = rte_eth_from_rings(r2, 1, r1, 1, SOCKET0);
+    port0 = rte_eth_from_rings("eth_ring0", &ring[0], 1, &ring[1], 1, SOCKET0);
+    port1 = rte_eth_from_rings("eth_ring1", &ring[1], 1, &ring[0], 1, SOCKET0);
 
 This type of configuration could be useful in a pipeline model, for example,
 where one may want to have inter-core communication using pseudo Ethernet devices rather than raw rings,
