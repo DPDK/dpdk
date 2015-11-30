@@ -77,13 +77,15 @@ int
 app_pipeline_fc_add(struct app_params *app,
 	uint32_t pipeline_id,
 	struct pipeline_fc_key *key,
-	uint32_t port_id);
+	uint32_t port_id,
+	uint32_t flow_id);
 
 int
 app_pipeline_fc_add_bulk(struct app_params *app,
 	uint32_t pipeline_id,
 	struct pipeline_fc_key *key,
 	uint32_t *port_id,
+	uint32_t *flow_id,
 	uint32_t n_keys);
 
 int

@@ -152,6 +152,7 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 struct app_pipeline_fc_flow {
 	struct pipeline_fc_key key;
 	uint32_t port_id;
+	uint32_t flow_id;
 	uint32_t signature;
 	void *entry_ptr;
 
@@ -280,7 +281,8 @@ int
 app_pipeline_fc_add(struct app_params *app,
 	uint32_t pipeline_id,
 	struct pipeline_fc_key *key,
-	uint32_t port_id)
+	uint32_t port_id,
+	uint32_t flow_id)
 {
 	struct app_pipeline_fc *p;
 	struct app_pipeline_fc_flow *flow;
@@ -325,6 +327,7 @@ app_pipeline_fc_add(struct app_params *app,
 	req->subtype = PIPELINE_FC_MSG_REQ_FLOW_ADD;
 	app_pipeline_fc_key_convert(key, req->key, &signature);
 	req->port_id = port_id;
+	req->flow_id = flow_id;
 
 	/* Send request and wait for response */
 	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
@@ -348,6 +351,7 @@ app_pipeline_fc_add(struct app_params *app,
 	memset(&flow->key, 0, sizeof(flow->key));
 	memcpy(&flow->key, key, sizeof(flow->key));
 	flow->port_id = port_id;
+	flow->flow_id = flow_id;
 	flow->signature = signature;
 	flow->entry_ptr = rsp->entry_ptr;
 
@@ -370,6 +374,7 @@ app_pipeline_fc_add_bulk(struct app_params *app,
 	uint32_t pipeline_id,
 	struct pipeline_fc_key *key,
 	uint32_t *port_id,
+	uint32_t *flow_id,
 	uint32_t n_keys)
 {
 	struct app_pipeline_fc *p;
@@ -389,6 +394,7 @@ app_pipeline_fc_add_bulk(struct app_params *app,
 	if ((app == NULL) ||
 		(key == NULL) ||
 		(port_id == NULL) ||
+		(flow_id == NULL) ||
 		(n_keys == 0))
 		return -1;
 
@@ -496,6 +502,7 @@ app_pipeline_fc_add_bulk(struct app_params *app,
 			flow_req[i].key,
 			&signature[i]);
 		flow_req[i].port_id = port_id[i];
+		flow_req[i].flow_id = flow_id[i];
 	}
 
 	req->type = PIPELINE_MSG_REQ_CUSTOM;
@@ -535,6 +542,7 @@ app_pipeline_fc_add_bulk(struct app_params *app,
 	for (i = 0; i < rsp->n_keys; i++) {
 		memcpy(&flow[i]->key, &key[i], sizeof(flow[i]->key));
 		flow[i]->port_id = port_id[i];
+		flow[i]->flow_id = flow_id[i];
 		flow[i]->signature = signature[i];
 		flow[i]->entry_ptr = flow_rsp[i].entry_ptr;
 
@@ -731,13 +739,15 @@ print_fc_qinq_flow(struct app_pipeline_fc_flow *flow)
 {
 	printf("(SVLAN = %" PRIu32 ", "
 		"CVLAN = %" PRIu32 ") => "
-		"Port = %" PRIu32 " "
+		"Port = %" PRIu32 ", "
+		"Flow ID = %" PRIu32 ", "
 		"(signature = 0x%08" PRIx32 ", "
 		"entry_ptr = %p)\n",
 
 		flow->key.key.qinq.svlan,
 		flow->key.key.qinq.cvlan,
 		flow->port_id,
+		flow->flow_id,
 		flow->signature,
 		flow->entry_ptr);
 }
@@ -750,7 +760,8 @@ print_fc_ipv4_5tuple_flow(struct app_pipeline_fc_flow *flow)
 		   "SP = %" PRIu32 ", "
 		   "DP = %" PRIu32 ", "
 		   "Proto = %" PRIu32 ") => "
-		   "Port = %" PRIu32 " "
+		   "Port = %" PRIu32 ", "
+		   "Flow ID = %" PRIu32 " "
 		   "(signature = 0x%08" PRIx32 ", "
 		   "entry_ptr = %p)\n",
 
@@ -770,6 +781,7 @@ print_fc_ipv4_5tuple_flow(struct app_pipeline_fc_flow *flow)
 		   flow->key.key.ipv4_5tuple.proto,
 
 		   flow->port_id,
+		   flow->flow_id,
 		   flow->signature,
 		   flow->entry_ptr);
 }
@@ -787,7 +799,8 @@ print_fc_ipv6_5tuple_flow(struct app_pipeline_fc_flow *flow) {
 		"SP = %" PRIu32 ", "
 		"DP = %" PRIu32 " "
 		"Proto = %" PRIu32 " "
-		"=> Port = %" PRIu32 " "
+		"=> Port = %" PRIu32 ", "
+		"Flow ID = %" PRIu32 " "
 		"(signature = 0x%08" PRIx32 ", "
 		"entry_ptr = %p)\n",
 
@@ -831,6 +844,7 @@ print_fc_ipv6_5tuple_flow(struct app_pipeline_fc_flow *flow) {
 		flow->key.key.ipv6_5tuple.proto,
 
 		flow->port_id,
+		flow->flow_id,
 		flow->signature,
 		flow->entry_ptr);
 }
@@ -895,7 +909,10 @@ struct cmd_fc_add_qinq_result {
 	cmdline_fixed_string_t qinq_string;
 	uint16_t svlan;
 	uint16_t cvlan;
+	cmdline_fixed_string_t port_string;
 	uint32_t port;
+	cmdline_fixed_string_t flowid_string;
+	uint32_t flow_id;
 };
 
 static void
@@ -917,7 +934,8 @@ cmd_fc_add_qinq_parsed(
 	status = app_pipeline_fc_add(app,
 		params->pipeline_id,
 		&key,
-		params->port);
+		params->port,
+		params->flow_id);
 	if (status != 0)
 		printf("Command failed\n");
 }
@@ -947,8 +965,19 @@ cmdline_parse_token_num_t cmd_fc_add_qinq_svlan =
 cmdline_parse_token_num_t cmd_fc_add_qinq_cvlan =
 	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, cvlan, UINT16);
 
+cmdline_parse_token_string_t cmd_fc_add_qinq_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, port_string,
+		"port");
+
 cmdline_parse_token_num_t cmd_fc_add_qinq_port =
 	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, port, UINT32);
+
+cmdline_parse_token_string_t cmd_fc_add_qinq_flowid_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, flowid_string,
+		"flowid");
+
+cmdline_parse_token_num_t cmd_fc_add_qinq_flow_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, flow_id, UINT32);
 
 cmdline_parse_inst_t cmd_fc_add_qinq = {
 	.f = cmd_fc_add_qinq_parsed,
@@ -962,7 +991,10 @@ cmdline_parse_inst_t cmd_fc_add_qinq = {
 		(void *) &cmd_fc_add_qinq_qinq_string,
 		(void *) &cmd_fc_add_qinq_svlan,
 		(void *) &cmd_fc_add_qinq_cvlan,
+		(void *) &cmd_fc_add_qinq_port_string,
 		(void *) &cmd_fc_add_qinq_port,
+		(void *) &cmd_fc_add_qinq_flowid_string,
+		(void *) &cmd_fc_add_qinq_flow_id,
 		NULL,
 	},
 };
@@ -996,8 +1028,21 @@ cmd_fc_add_qinq_all_parsed(
 	struct app_params *app = data;
 	struct pipeline_fc_key *key;
 	uint32_t *port_id;
-	uint32_t flow_id;
+	uint32_t *flow_id;
+	uint32_t id;
 
+	/* Check input arguments */
+	if (params->n_flows == 0) {
+		printf("Invalid number of flows\n");
+		return;
+	}
+
+	if (params->n_ports == 0) {
+		printf("Invalid number of output ports\n");
+		return;
+	}
+
+	/* Memory allocation */
 	key = rte_zmalloc(NULL,
 		N_FLOWS_BULK * sizeof(*key),
 		RTE_CACHE_LINE_SIZE);
@@ -1015,23 +1060,36 @@ cmd_fc_add_qinq_all_parsed(
 		return;
 	}
 
-	for (flow_id = 0; flow_id < params->n_flows; flow_id++) {
-		uint32_t pos = flow_id & (N_FLOWS_BULK - 1);
+	flow_id = rte_malloc(NULL,
+		N_FLOWS_BULK * sizeof(*flow_id),
+		RTE_CACHE_LINE_SIZE);
+	if (flow_id == NULL) {
+		rte_free(port_id);
+		rte_free(key);
+		printf("Memory allocation failed\n");
+		return;
+	}
+
+	/* Flow add */
+	for (id = 0; id < params->n_flows; id++) {
+		uint32_t pos = id & (N_FLOWS_BULK - 1);
 
 		key[pos].type = FLOW_KEY_QINQ;
-		key[pos].key.qinq.svlan = flow_id >> 12;
-		key[pos].key.qinq.cvlan = flow_id & 0xFFF;
+		key[pos].key.qinq.svlan = id >> 12;
+		key[pos].key.qinq.cvlan = id & 0xFFF;
 
-		port_id[pos] = flow_id % params->n_ports;
+		port_id[pos] = id % params->n_ports;
+		flow_id[pos] = id;
 
 		if ((pos == N_FLOWS_BULK - 1) ||
-			(flow_id == params->n_flows - 1)) {
+			(id == params->n_flows - 1)) {
 			int status;
 
 			status = app_pipeline_fc_add_bulk(app,
 				params->pipeline_id,
 				key,
 				port_id,
+				flow_id,
 				pos + 1);
 
 			if (status != 0) {
@@ -1042,6 +1100,8 @@ cmd_fc_add_qinq_all_parsed(
 		}
 	}
 
+	/* Memory free */
+	rte_free(flow_id);
 	rte_free(port_id);
 	rte_free(key);
 }
@@ -1110,7 +1170,10 @@ struct cmd_fc_add_ipv4_5tuple_result {
 	uint16_t port_src;
 	uint16_t port_dst;
 	uint32_t proto;
+	cmdline_fixed_string_t port_string;
 	uint32_t port;
+	cmdline_fixed_string_t flowid_string;
+	uint32_t flow_id;
 };
 
 static void
@@ -1137,7 +1200,8 @@ cmd_fc_add_ipv4_5tuple_parsed(
 	status = app_pipeline_fc_add(app,
 		params->pipeline_id,
 		&key,
-		params->port);
+		params->port,
+		params->flow_id);
 	if (status != 0)
 		printf("Command failed\n");
 }
@@ -1180,8 +1244,20 @@ cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_proto =
 	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, proto,
 		UINT32);
 
+cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, port_string,
+		"port");
+
 cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_port =
 	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, port,
+		UINT32);
+
+cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_flowid_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result,
+		flowid_string, "flowid");
+
+cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_flow_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, flow_id,
 		UINT32);
 
 cmdline_parse_inst_t cmd_fc_add_ipv4_5tuple = {
@@ -1199,7 +1275,10 @@ cmdline_parse_inst_t cmd_fc_add_ipv4_5tuple = {
 		(void *) &cmd_fc_add_ipv4_5tuple_port_src,
 		(void *) &cmd_fc_add_ipv4_5tuple_port_dst,
 		(void *) &cmd_fc_add_ipv4_5tuple_proto,
+		(void *) &cmd_fc_add_ipv4_5tuple_port_string,
 		(void *) &cmd_fc_add_ipv4_5tuple_port,
+		(void *) &cmd_fc_add_ipv4_5tuple_flowid_string,
+		(void *) &cmd_fc_add_ipv4_5tuple_flow_id,
 		NULL,
 	},
 };
@@ -1229,8 +1308,21 @@ cmd_fc_add_ipv4_5tuple_all_parsed(
 	struct app_params *app = data;
 	struct pipeline_fc_key *key;
 	uint32_t *port_id;
-	uint32_t flow_id;
+	uint32_t *flow_id;
+	uint32_t id;
 
+	/* Check input parameters */
+	if (params->n_flows == 0) {
+		printf("Invalid number of flows\n");
+		return;
+	}
+
+	if (params->n_ports == 0) {
+		printf("Invalid number of ports\n");
+		return;
+	}
+
+	/* Memory allocation */
 	key = rte_zmalloc(NULL,
 		N_FLOWS_BULK * sizeof(*key),
 		RTE_CACHE_LINE_SIZE);
@@ -1248,26 +1340,39 @@ cmd_fc_add_ipv4_5tuple_all_parsed(
 		return;
 	}
 
-	for (flow_id = 0; flow_id < params->n_flows; flow_id++) {
-		uint32_t pos = flow_id & (N_FLOWS_BULK - 1);
+	flow_id = rte_malloc(NULL,
+		N_FLOWS_BULK * sizeof(*flow_id),
+		RTE_CACHE_LINE_SIZE);
+	if (flow_id == NULL) {
+		rte_free(port_id);
+		rte_free(key);
+		printf("Memory allocation failed\n");
+		return;
+	}
+
+	/* Flow add */
+	for (id = 0; id < params->n_flows; id++) {
+		uint32_t pos = id & (N_FLOWS_BULK - 1);
 
 		key[pos].type = FLOW_KEY_IPV4_5TUPLE;
 		key[pos].key.ipv4_5tuple.ip_src = 0;
-		key[pos].key.ipv4_5tuple.ip_dst = flow_id;
+		key[pos].key.ipv4_5tuple.ip_dst = id;
 		key[pos].key.ipv4_5tuple.port_src = 0;
 		key[pos].key.ipv4_5tuple.port_dst = 0;
 		key[pos].key.ipv4_5tuple.proto = 6;
 
-		port_id[pos] = flow_id % params->n_ports;
+		port_id[pos] = id % params->n_ports;
+		flow_id[pos] = id;
 
 		if ((pos == N_FLOWS_BULK - 1) ||
-			(flow_id == params->n_flows - 1)) {
+			(id == params->n_flows - 1)) {
 			int status;
 
 			status = app_pipeline_fc_add_bulk(app,
 				params->pipeline_id,
 				key,
 				port_id,
+				flow_id,
 				pos + 1);
 
 			if (status != 0) {
@@ -1278,6 +1383,8 @@ cmd_fc_add_ipv4_5tuple_all_parsed(
 		}
 	}
 
+	/* Memory free */
+	rte_free(flow_id);
 	rte_free(port_id);
 	rte_free(key);
 }
@@ -1346,7 +1453,10 @@ struct cmd_fc_add_ipv6_5tuple_result {
 	uint16_t port_src;
 	uint16_t port_dst;
 	uint32_t proto;
+	cmdline_fixed_string_t port_string;
 	uint32_t port;
+	cmdline_fixed_string_t flowid_string;
+	uint32_t flow_id;
 };
 
 static void
@@ -1375,7 +1485,8 @@ cmd_fc_add_ipv6_5tuple_parsed(
 	status = app_pipeline_fc_add(app,
 		params->pipeline_id,
 		&key,
-		params->port);
+		params->port,
+		params->flow_id);
 	if (status != 0)
 		printf("Command failed\n");
 }
@@ -1418,8 +1529,20 @@ cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_proto =
 	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, proto,
 		UINT32);
 
+cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
+		port_string, "port");
+
 cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_port =
 	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, port,
+		UINT32);
+
+cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_flowid_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
+		flowid_string, "flowid");
+
+cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_flow_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, flow_id,
 		UINT32);
 
 cmdline_parse_inst_t cmd_fc_add_ipv6_5tuple = {
@@ -1437,7 +1560,10 @@ cmdline_parse_inst_t cmd_fc_add_ipv6_5tuple = {
 		(void *) &cmd_fc_add_ipv6_5tuple_port_src,
 		(void *) &cmd_fc_add_ipv6_5tuple_port_dst,
 		(void *) &cmd_fc_add_ipv6_5tuple_proto,
+		(void *) &cmd_fc_add_ipv6_5tuple_port_string,
 		(void *) &cmd_fc_add_ipv6_5tuple_port,
+		(void *) &cmd_fc_add_ipv6_5tuple_flowid_string,
+		(void *) &cmd_fc_add_ipv6_5tuple_flow_id,
 		NULL,
 	},
 };
@@ -1467,8 +1593,21 @@ cmd_fc_add_ipv6_5tuple_all_parsed(
 	struct app_params *app = data;
 	struct pipeline_fc_key *key;
 	uint32_t *port_id;
-	uint32_t flow_id;
+	uint32_t *flow_id;
+	uint32_t id;
 
+	/* Check input parameters */
+	if (params->n_flows == 0) {
+		printf("Invalid number of flows\n");
+		return;
+	}
+
+	if (params->n_ports == 0) {
+		printf("Invalid number of ports\n");
+		return;
+	}
+
+	/* Memory allocation */
 	key = rte_zmalloc(NULL,
 		N_FLOWS_BULK * sizeof(*key),
 		RTE_CACHE_LINE_SIZE);
@@ -1486,25 +1625,38 @@ cmd_fc_add_ipv6_5tuple_all_parsed(
 		return;
 	}
 
-	for (flow_id = 0; flow_id < params->n_flows; flow_id++) {
-		uint32_t pos = flow_id & (N_FLOWS_BULK - 1);
+	flow_id = rte_malloc(NULL,
+		N_FLOWS_BULK * sizeof(*flow_id),
+		RTE_CACHE_LINE_SIZE);
+	if (flow_id == NULL) {
+		rte_free(port_id);
+		rte_free(key);
+		printf("Memory allocation failed\n");
+		return;
+	}
+
+	/* Flow add */
+	for (id = 0; id < params->n_flows; id++) {
+		uint32_t pos = id & (N_FLOWS_BULK - 1);
 		uint32_t *x;
 
 		key[pos].type = FLOW_KEY_IPV6_5TUPLE;
 		x = (uint32_t *) key[pos].key.ipv6_5tuple.ip_dst;
-		*x = rte_bswap32(flow_id);
+		*x = rte_bswap32(id);
 		key[pos].key.ipv6_5tuple.proto = 6;
 
-		port_id[pos] = flow_id % params->n_ports;
+		port_id[pos] = id % params->n_ports;
+		flow_id[pos] = id;
 
 		if ((pos == N_FLOWS_BULK - 1) ||
-			(flow_id == params->n_flows - 1)) {
+			(id == params->n_flows - 1)) {
 			int status;
 
 			status = app_pipeline_fc_add_bulk(app,
 				params->pipeline_id,
 				key,
 				port_id,
+				flow_id,
 				pos + 1);
 
 			if (status != 0) {
@@ -1515,6 +1667,8 @@ cmd_fc_add_ipv6_5tuple_all_parsed(
 		}
 	}
 
+	/* Memory free */
+	rte_free(flow_id);
 	rte_free(port_id);
 	rte_free(key);
 }

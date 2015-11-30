@@ -59,6 +59,7 @@ struct pipeline_fc_add_msg_req {
 	uint8_t key[PIPELINE_FC_FLOW_KEY_MAX_SIZE];
 
 	uint32_t port_id;
+	uint32_t flow_id;
 };
 
 struct pipeline_fc_add_msg_rsp {
@@ -73,6 +74,7 @@ struct pipeline_fc_add_msg_rsp {
 struct pipeline_fc_add_bulk_flow_req {
 	uint8_t key[PIPELINE_FC_FLOW_KEY_MAX_SIZE];
 	uint32_t port_id;
+	uint32_t flow_id;
 };
 
 struct pipeline_fc_add_bulk_flow_rsp {
