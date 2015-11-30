@@ -105,9 +105,15 @@ static int
 rte_port_source_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 {
 	struct rte_port_source *p = (struct rte_port_source *) port;
+	uint32_t i;
 
 	if (rte_mempool_get_bulk(p->mempool, (void **) pkts, n_pkts) != 0)
 		return 0;
+
+	for (i = 0; i < n_pkts; i++) {
+		rte_mbuf_refcnt_set(pkts[i], 1);
+		rte_pktmbuf_reset(pkts[i]);
+	}
 
 	RTE_PORT_SOURCE_STATS_PKTS_IN_ADD(p, n_pkts);
 
