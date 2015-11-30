@@ -139,28 +139,64 @@ rte_port_source_stats_read(void *port,
 /*
  * Port SINK
  */
+#ifdef RTE_PORT_STATS_COLLECT
+
+#define RTE_PORT_SINK_STATS_PKTS_IN_ADD(port, val) \
+	(port->stats.n_pkts_in += val)
+#define RTE_PORT_SINK_STATS_PKTS_DROP_ADD(port, val) \
+	(port->stats.n_pkts_drop += val)
+
+#else
+
+#define RTE_PORT_SINK_STATS_PKTS_IN_ADD(port, val)
+#define RTE_PORT_SINK_STATS_PKTS_DROP_ADD(port, val)
+
+#endif
+
+struct rte_port_sink {
+	struct rte_port_out_stats stats;
+};
+
 static void *
-rte_port_sink_create(__rte_unused void *params, __rte_unused int socket_id)
+rte_port_sink_create(__rte_unused void *params, int socket_id)
 {
-	return (void *) 1;
+	struct rte_port_sink *port;
+
+	/* Memory allocation */
+	port = rte_zmalloc_socket("PORT", sizeof(*port),
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (port == NULL) {
+		RTE_LOG(ERR, PORT, "%s: Failed to allocate port\n", __func__);
+		return NULL;
+	}
+
+	return port;
 }
 
 static int
-rte_port_sink_tx(__rte_unused void *port, struct rte_mbuf *pkt)
+rte_port_sink_tx(void *port, struct rte_mbuf *pkt)
 {
+	__rte_unused struct rte_port_sink *p = (struct rte_port_sink *) port;
+
+	RTE_PORT_SINK_STATS_PKTS_IN_ADD(p, 1);
 	rte_pktmbuf_free(pkt);
+	RTE_PORT_SINK_STATS_PKTS_DROP_ADD(p, 1);
 
 	return 0;
 }
 
 static int
-rte_port_sink_tx_bulk(__rte_unused void *port, struct rte_mbuf **pkts,
+rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 	uint64_t pkts_mask)
 {
+	__rte_unused struct rte_port_sink *p = (struct rte_port_sink *) port;
+
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
 		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
 		uint32_t i;
 
+		RTE_PORT_SINK_STATS_PKTS_IN_ADD(p, n_pkts);
+		RTE_PORT_SINK_STATS_PKTS_DROP_ADD(p, n_pkts);
 		for (i = 0; i < n_pkts; i++) {
 			struct rte_mbuf *pkt = pkts[i];
 
@@ -172,10 +208,28 @@ rte_port_sink_tx_bulk(__rte_unused void *port, struct rte_mbuf **pkts,
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 
+			RTE_PORT_SINK_STATS_PKTS_IN_ADD(p, 1);
+			RTE_PORT_SINK_STATS_PKTS_DROP_ADD(p, 1);
 			rte_pktmbuf_free(pkt);
 			pkts_mask &= ~pkt_mask;
 		}
 	}
+
+	return 0;
+}
+
+static int
+rte_port_sink_stats_read(void *port, struct rte_port_out_stats *stats,
+		int clear)
+{
+	struct rte_port_sink *p =
+		(struct rte_port_sink *) port;
+
+	if (stats != NULL)
+		memcpy(stats, &p->stats, sizeof(p->stats));
+
+	if (clear)
+		memset(&p->stats, 0, sizeof(p->stats));
 
 	return 0;
 }
@@ -196,4 +250,5 @@ struct rte_port_out_ops rte_port_sink_ops = {
 	.f_tx = rte_port_sink_tx,
 	.f_tx_bulk = rte_port_sink_tx_bulk,
 	.f_flush = NULL,
+	.f_stats = rte_port_sink_stats_read,
 };
