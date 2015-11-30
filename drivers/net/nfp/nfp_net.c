@@ -73,8 +73,13 @@
 /* Prototypes */
 static void nfp_net_close(struct rte_eth_dev *dev);
 static int nfp_net_configure(struct rte_eth_dev *dev);
+static int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+static void nfp_net_infos_get(struct rte_eth_dev *dev,
+			      struct rte_eth_dev_info *dev_info);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
 static int nfp_net_link_update(struct rte_eth_dev *dev, int wait_to_complete);
+static void nfp_net_promisc_enable(struct rte_eth_dev *dev);
+static void nfp_net_promisc_disable(struct rte_eth_dev *dev);
 static int nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq);
 static uint32_t nfp_net_rx_queue_count(struct rte_eth_dev *dev,
 				       uint16_t queue_idx);
@@ -734,6 +739,65 @@ nfp_net_close(struct rte_eth_dev *dev)
 	 */
 }
 
+static void
+nfp_net_promisc_enable(struct rte_eth_dev *dev)
+{
+	uint32_t new_ctrl, update = 0;
+	struct nfp_net_hw *hw;
+
+	PMD_DRV_LOG(DEBUG, "Promiscuous mode enable\n");
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!(hw->cap & NFP_NET_CFG_CTRL_PROMISC)) {
+		PMD_INIT_LOG(INFO, "Promiscuous mode not supported\n");
+		return;
+	}
+
+	if (hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) {
+		PMD_DRV_LOG(INFO, "Promiscuous mode already enabled\n");
+		return;
+	}
+
+	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_PROMISC;
+	update = NFP_NET_CFG_UPDATE_GEN;
+
+	/*
+	 * DPDK sets promiscuous mode on just after this call assuming
+	 * it can not fail ...
+	 */
+	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+		return;
+
+	hw->ctrl = new_ctrl;
+}
+
+static void
+nfp_net_promisc_disable(struct rte_eth_dev *dev)
+{
+	uint32_t new_ctrl, update = 0;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
+		PMD_DRV_LOG(INFO, "Promiscuous mode already disabled\n");
+		return;
+	}
+
+	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_PROMISC;
+	update = NFP_NET_CFG_UPDATE_GEN;
+
+	/*
+	 * DPDK sets promiscuous mode off just before this call
+	 * assuming it can not fail ...
+	 */
+	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+		return;
+
+	hw->ctrl = new_ctrl;
+}
+
 /*
  * return 0 means link status changed, -1 means not changed
  *
@@ -948,6 +1012,65 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
 }
 
+static void
+nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+{
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	dev_info->driver_name = dev->driver->pci_drv.name;
+	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
+	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
+	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
+	dev_info->max_rx_pktlen = hw->mtu;
+	/* Next should change when PF support is implemented */
+	dev_info->max_mac_addrs = 1;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN)
+		dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_RXCSUM)
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_IPV4_CKSUM |
+					     DEV_RX_OFFLOAD_UDP_CKSUM |
+					     DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
+		dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_TXCSUM)
+		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_IPV4_CKSUM |
+					     DEV_RX_OFFLOAD_UDP_CKSUM |
+					     DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = DEFAULT_RX_PTHRESH,
+			.hthresh = DEFAULT_RX_HTHRESH,
+			.wthresh = DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = DEFAULT_TX_PTHRESH,
+			.hthresh = DEFAULT_TX_HTHRESH,
+			.wthresh = DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = DEFAULT_TX_RSBIT_THRESH,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+			     ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
+
+	dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
+#if RTE_VER_MAJOR == 2 && RTE_VER_MINOR >= 1
+	dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
+#endif
+}
+
 static uint32_t
 nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
@@ -990,6 +1113,34 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 	}
 
 	return count;
+}
+
+static int
+nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* check that mtu is within the allowed range */
+	if ((mtu < ETHER_MIN_MTU) || ((uint32_t)mtu > hw->max_mtu))
+		return -EINVAL;
+
+	/* switch to jumbo mode if needed */
+	if ((uint32_t)mtu > ETHER_MAX_LEN)
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+	else
+		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = (uint32_t)mtu;
+
+	/* writing to configuration space */
+	nn_cfg_writel(hw, NFP_NET_CFG_MTU, (uint32_t)mtu);
+
+	hw->mtu = mtu;
+
+	return 0;
 }
 
 static int
@@ -1770,6 +1921,41 @@ xmit_end:
 	return i;
 }
 
+static void
+nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	uint32_t new_ctrl, update;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	new_ctrl = 0;
+
+	if ((mask & ETH_VLAN_FILTER_OFFLOAD) ||
+	    (mask & ETH_VLAN_FILTER_OFFLOAD))
+		RTE_LOG(INFO, PMD, "Not support for ETH_VLAN_FILTER_OFFLOAD or"
+			" ETH_VLAN_FILTER_EXTEND");
+
+	/* Enable vlan strip if it is not configured yet */
+	if ((mask & ETH_VLAN_STRIP_OFFLOAD) &&
+	    !(hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN))
+		new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_RXVLAN;
+
+	/* Disable vlan strip just if it is configured */
+	if (!(mask & ETH_VLAN_STRIP_OFFLOAD) &&
+	    (hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN))
+		new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_RXVLAN;
+
+	if (new_ctrl == 0)
+		return;
+
+	update = NFP_NET_CFG_UPDATE_GEN;
+
+	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+		return;
+
+	hw->ctrl = new_ctrl;
+}
+
 /* Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device */
 static int
 nfp_net_reta_update(struct rte_eth_dev *dev,
@@ -1990,9 +2176,14 @@ static struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.dev_start		= nfp_net_start,
 	.dev_stop		= nfp_net_stop,
 	.dev_close		= nfp_net_close,
+	.promiscuous_enable	= nfp_net_promisc_enable,
+	.promiscuous_disable	= nfp_net_promisc_disable,
 	.link_update		= nfp_net_link_update,
 	.stats_get		= nfp_net_stats_get,
 	.stats_reset		= nfp_net_stats_reset,
+	.dev_infos_get		= nfp_net_infos_get,
+	.mtu_set		= nfp_net_dev_mtu_set,
+	.vlan_offload_set	= nfp_net_vlan_offload_set,
 	.reta_update		= nfp_net_reta_update,
 	.reta_query		= nfp_net_reta_query,
 	.rss_hash_update	= nfp_net_rss_hash_update,
