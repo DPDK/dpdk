@@ -108,6 +108,10 @@ New Features
   Like mlx4, this PMD is only available for Linux and is disabled by default
   due to external dependencies (libibverbs and libmlx5).
 
+* **Added driver for Netronome nfp-6xxx card.**
+
+  Support for using Netronome nfp-6xxx with PCI VFs.
+
 * **Added virtual szedata2 driver for COMBO cards.**
 
   Added virtual PMD for COMBO-100G and COMBO-80G cards.

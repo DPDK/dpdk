@@ -100,6 +100,7 @@ config () # <directory> <target> <options>
 		test "$DPDK_DEP_ZLIB" != y || \
 		echo $2 | grep -q '^i686' || \
 		sed -ri          's,(BNX2X_PMD=)n,\1y,' $1/.config
+		sed -ri            's,(NFP_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_PCAP" != y || \
 		sed -ri               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \

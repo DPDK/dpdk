@@ -303,6 +303,10 @@ M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 F: drivers/net/mlx5/
 F: doc/guides/nics/mlx5.rst
 
+Netronome nfp
+M: Alejandro Lucero <alejandro.lucero@netronome.com>
+F: drivers/net/nfp/
+
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>

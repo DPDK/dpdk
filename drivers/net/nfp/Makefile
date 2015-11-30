@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -31,26 +31,26 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += af_packet
-DIRS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD) += bnx2x
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bonding
-DIRS-$(CONFIG_RTE_LIBRTE_CXGBE_PMD) += cxgbe
-DIRS-$(CONFIG_RTE_LIBRTE_E1000_PMD) += e1000
-DIRS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic
-DIRS-$(CONFIG_RTE_LIBRTE_FM10K_PMD) += fm10k
-DIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e
-DIRS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += ixgbe
-DIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4
-DIRS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5
-DIRS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD) += mpipe
-DIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL) += null
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_PCAP) += pcap
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_RING) += ring
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2) += szedata2
-DIRS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio
-DIRS-$(CONFIG_RTE_LIBRTE_VMXNET3_PMD) += vmxnet3
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += xenvirt
+#
+# library name
+#
+LIB = librte_pmd_nfp.a
 
-include $(RTE_SDK)/mk/rte.sharelib.mk
-include $(RTE_SDK)/mk/rte.subdir.mk
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+EXPORT_MAP := rte_pmd_nfp_version.map
+
+LIBABIVER := 1
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_net.c
+
+# this lib depends upon:
+DEPDIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += lib/librte_eal lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += lib/librte_mempool lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += lib/librte_net lib/librte_malloc
+
+include $(RTE_SDK)/mk/rte.lib.mk
