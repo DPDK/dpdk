@@ -1878,7 +1878,9 @@ err_queue:
 static void
 i40evf_dev_stop(struct rte_eth_dev *dev)
 {
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct ether_addr mac_addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1892,6 +1894,11 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+	/* Set mac addr */
+	(void)rte_memcpy(mac_addr.addr_bytes, hw->mac.addr,
+				sizeof(mac_addr.addr_bytes));
+	/* Delete mac addr of this vf */
+	i40evf_del_mac_addr(dev, &mac_addr);
 }
 
 static int
