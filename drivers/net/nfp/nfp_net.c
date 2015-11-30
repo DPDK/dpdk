@@ -90,6 +90,9 @@ static int nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				  uint16_t nb_desc, unsigned int socket_id,
 				  const struct rte_eth_txconf *tx_conf);
 static int nfp_net_start(struct rte_eth_dev *dev);
+static void nfp_net_stats_get(struct rte_eth_dev *dev,
+			      struct rte_eth_stats *stats);
+static void nfp_net_stats_reset(struct rte_eth_dev *dev);
 static void nfp_net_stop(struct rte_eth_dev *dev);
 static uint16_t nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
@@ -677,6 +680,177 @@ nfp_net_close(struct rte_eth_dev *dev)
 	 * The ixgbe PMD driver disables the pcie master on the
 	 * device. The i40e does not...
 	 */
+}
+
+static void
+nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	int i;
+	struct nfp_net_hw *hw;
+	struct rte_eth_stats nfp_dev_stats;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* RTE_ETHDEV_QUEUE_STAT_CNTRS default value is 16 */
+
+	/* reading per RX ring stats */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		nfp_dev_stats.q_ipackets[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i));
+
+		nfp_dev_stats.q_ipackets[i] -=
+			hw->eth_stats_base.q_ipackets[i];
+
+		nfp_dev_stats.q_ibytes[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i) + 0x8);
+
+		nfp_dev_stats.q_ibytes[i] -=
+			hw->eth_stats_base.q_ibytes[i];
+	}
+
+	/* reading per TX ring stats */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		nfp_dev_stats.q_opackets[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i));
+
+		nfp_dev_stats.q_opackets[i] -=
+			hw->eth_stats_base.q_opackets[i];
+
+		nfp_dev_stats.q_obytes[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i) + 0x8);
+
+		nfp_dev_stats.q_obytes[i] -=
+			hw->eth_stats_base.q_obytes[i];
+	}
+
+	nfp_dev_stats.ipackets =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_FRAMES);
+
+	nfp_dev_stats.ipackets -= hw->eth_stats_base.ipackets;
+
+	nfp_dev_stats.ibytes =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_OCTETS);
+
+	nfp_dev_stats.ibytes -= hw->eth_stats_base.ibytes;
+
+	nfp_dev_stats.opackets =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_FRAMES);
+
+	nfp_dev_stats.opackets -= hw->eth_stats_base.opackets;
+
+	nfp_dev_stats.obytes =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_OCTETS);
+
+	nfp_dev_stats.obytes -= hw->eth_stats_base.obytes;
+
+	nfp_dev_stats.imcasts =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
+
+	nfp_dev_stats.imcasts -= hw->eth_stats_base.imcasts;
+
+	/* reading general device stats */
+	nfp_dev_stats.ierrors =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
+
+	nfp_dev_stats.ierrors -= hw->eth_stats_base.ierrors;
+
+	nfp_dev_stats.oerrors =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_ERRORS);
+
+	nfp_dev_stats.oerrors -= hw->eth_stats_base.oerrors;
+
+	/* Multicast frames received */
+	nfp_dev_stats.imcasts =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
+
+	nfp_dev_stats.imcasts -= hw->eth_stats_base.imcasts;
+
+	/* RX ring mbuf allocation failures */
+	nfp_dev_stats.rx_nombuf = dev->data->rx_mbuf_alloc_failed;
+
+	nfp_dev_stats.imissed =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
+
+	nfp_dev_stats.imissed -= hw->eth_stats_base.imissed;
+
+	if (stats)
+		memcpy(stats, &nfp_dev_stats, sizeof(*stats));
+}
+
+static void
+nfp_net_stats_reset(struct rte_eth_dev *dev)
+{
+	int i;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * hw->eth_stats_base records the per counter starting point.
+	 * Lets update it now
+	 */
+
+	/* reading per RX ring stats */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		hw->eth_stats_base.q_ipackets[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i));
+
+		hw->eth_stats_base.q_ibytes[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i) + 0x8);
+	}
+
+	/* reading per TX ring stats */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		hw->eth_stats_base.q_opackets[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i));
+
+		hw->eth_stats_base.q_obytes[i] =
+			nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i) + 0x8);
+	}
+
+	hw->eth_stats_base.ipackets =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_FRAMES);
+
+	hw->eth_stats_base.ibytes =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_OCTETS);
+
+	hw->eth_stats_base.opackets =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_FRAMES);
+
+	hw->eth_stats_base.obytes =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_OCTETS);
+
+	hw->eth_stats_base.imcasts =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
+
+	/* reading general device stats */
+	hw->eth_stats_base.ierrors =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
+
+	hw->eth_stats_base.oerrors =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_ERRORS);
+
+	/* Multicast frames received */
+	hw->eth_stats_base.imcasts =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
+
+	/* RX ring mbuf allocation failures */
+	dev->data->rx_mbuf_alloc_failed = 0;
+
+	hw->eth_stats_base.imissed =
+		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
 }
 
 static uint32_t
@@ -1721,6 +1895,8 @@ static struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.dev_start		= nfp_net_start,
 	.dev_stop		= nfp_net_stop,
 	.dev_close		= nfp_net_close,
+	.stats_get		= nfp_net_stats_get,
+	.stats_reset		= nfp_net_stats_reset,
 	.reta_update		= nfp_net_reta_update,
 	.reta_query		= nfp_net_reta_query,
 	.rss_hash_update	= nfp_net_rss_hash_update,
@@ -1851,6 +2027,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     pci_dev->id.device_id,
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
+
+	/* Recording current stats counters values */
+	nfp_net_stats_reset(eth_dev);
 
 	return 0;
 }
