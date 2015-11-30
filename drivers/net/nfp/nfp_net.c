@@ -73,6 +73,9 @@
 /* Prototypes */
 static void nfp_net_close(struct rte_eth_dev *dev);
 static int nfp_net_configure(struct rte_eth_dev *dev);
+static void nfp_net_dev_interrupt_handler(struct rte_intr_handle *handle,
+					  void *param);
+static void nfp_net_dev_interrupt_delayed_handler(void *param);
 static int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static void nfp_net_infos_get(struct rte_eth_dev *dev,
 			      struct rte_eth_dev_info *dev_info);
@@ -731,6 +734,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	nfp_net_stop(dev);
 
+	rte_intr_disable(&dev->pci_dev->intr_handle);
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
 
 	/*
@@ -1113,6 +1117,114 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 	}
 
 	return count;
+}
+
+static void
+nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
+{
+	struct rte_eth_link link;
+
+	memset(&link, 0, sizeof(link));
+	nfp_net_dev_atomic_read_link_status(dev, &link);
+	if (link.link_status)
+		RTE_LOG(INFO, PMD, "Port %d: Link Up - speed %u Mbps - %s\n",
+			(int)(dev->data->port_id), (unsigned)link.link_speed,
+			link.link_duplex == ETH_LINK_FULL_DUPLEX
+			? "full-duplex" : "half-duplex");
+	else
+		RTE_LOG(INFO, PMD, " Port %d: Link Down\n",
+			(int)(dev->data->port_id));
+
+	RTE_LOG(INFO, PMD, "PCI Address: %04d:%02d:%02d:%d\n",
+		dev->pci_dev->addr.domain, dev->pci_dev->addr.bus,
+		dev->pci_dev->addr.devid, dev->pci_dev->addr.function);
+}
+
+/* Interrupt configuration and handling */
+
+/*
+ * nfp_net_irq_unmask - Unmask an interrupt
+ *
+ * If MSI-X auto-masking is enabled clear the mask bit, otherwise
+ * clear the ICR for the entry.
+ */
+static void
+nfp_net_irq_unmask(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) {
+		/* If MSI-X auto-masking is used, clear the entry */
+		rte_wmb();
+		rte_intr_enable(&dev->pci_dev->intr_handle);
+	} else {
+		/* Make sure all updates are written before un-masking */
+		rte_wmb();
+		nn_cfg_writeb(hw, NFP_NET_CFG_ICR(NFP_NET_IRQ_LSC_IDX),
+			      NFP_NET_CFG_ICR_UNMASKED);
+	}
+}
+
+static void
+nfp_net_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+			      void *param)
+{
+	int64_t timeout;
+	struct rte_eth_link link;
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	PMD_DRV_LOG(DEBUG, "We got a LSC interrupt!!!\n");
+
+	/* get the link status */
+	memset(&link, 0, sizeof(link));
+	nfp_net_dev_atomic_read_link_status(dev, &link);
+
+	nfp_net_link_update(dev, 0);
+
+	/* likely to up */
+	if (!link.link_status) {
+		/* handle it 1 sec later, wait it being stable */
+		timeout = NFP_NET_LINK_UP_CHECK_TIMEOUT;
+		/* likely to down */
+	} else {
+		/* handle it 4 sec later, wait it being stable */
+		timeout = NFP_NET_LINK_DOWN_CHECK_TIMEOUT;
+	}
+
+	if (rte_eal_alarm_set(timeout * 1000,
+			      nfp_net_dev_interrupt_delayed_handler,
+			      (void *)dev) < 0) {
+		RTE_LOG(ERR, PMD, "Error setting alarm");
+		/* Unmasking */
+		nfp_net_irq_unmask(dev);
+	}
+}
+
+/*
+ * Interrupt handler which shall be registered for alarm callback for delayed
+ * handling specific interrupt to wait for the stable nic state. As the NIC
+ * interrupt state is not stable for nfp after link is just down, it needs
+ * to wait 4 seconds to get the stable status.
+ *
+ * @param handle   Pointer to interrupt handle.
+ * @param param    The address of parameter (struct rte_eth_dev *)
+ *
+ * @return  void
+ */
+static void
+nfp_net_dev_interrupt_delayed_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	nfp_net_link_update(dev, 0);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+
+	nfp_net_dev_link_status_print(dev);
+
+	/* Unmasking */
+	nfp_net_irq_unmask(dev);
 }
 
 static int
@@ -2314,6 +2426,17 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     pci_dev->id.device_id,
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
+
+	/* Registering LSC interrupt handler */
+	rte_intr_callback_register(&pci_dev->intr_handle,
+				   nfp_net_dev_interrupt_handler,
+				   (void *)eth_dev);
+
+	/* enable uio intr after callback register */
+	rte_intr_enable(&pci_dev->intr_handle);
+
+	/* Telling the firmware about the LSC interrupt entry */
+	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
 
 	/* Recording current stats counters values */
 	nfp_net_stats_reset(eth_dev);
