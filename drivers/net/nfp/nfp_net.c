@@ -1501,12 +1501,230 @@ xmit_end:
 	return i;
 }
 
+/* Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device */
+static int
+nfp_net_reta_update(struct rte_eth_dev *dev,
+		    struct rte_eth_rss_reta_entry64 *reta_conf,
+		    uint16_t reta_size)
+{
+	uint32_t reta, mask;
+	int i, j;
+	int idx, shift;
+	uint32_t update;
+	struct nfp_net_hw *hw =
+		NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
+		return -EINVAL;
+
+	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
+		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)\n", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
+		return -EINVAL;
+	}
+
+	/*
+	 * Update Redirection Table. There are 128 8bit-entries which can be
+	 * manage as 32 32bit-entries
+	 */
+	for (i = 0; i < reta_size; i += 4) {
+		/* Handling 4 RSS entries per loop */
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) & 0xF);
+
+		if (!mask)
+			continue;
+
+		reta = 0;
+		/* If all 4 entries were set, don't need read RETA register */
+		if (mask != 0xF)
+			reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + i);
+
+		for (j = 0; j < 4; j++) {
+			if (!(mask & (0x1 << j)))
+				continue;
+			if (mask != 0xF)
+				/* Clearing the entry bits */
+				reta &= ~(0xFF << (8 * j));
+			reta |= reta_conf[idx].reta[shift + j] << (8 * j);
+		}
+		nn_cfg_writel(hw, NFP_NET_CFG_RSS_ITBL + shift, reta);
+	}
+
+	update = NFP_NET_CFG_UPDATE_RSS;
+
+	if (nfp_net_reconfig(hw, hw->ctrl, update) < 0)
+		return -EIO;
+
+	return 0;
+}
+
+ /* Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device. */
+static int
+nfp_net_reta_query(struct rte_eth_dev *dev,
+		   struct rte_eth_rss_reta_entry64 *reta_conf,
+		   uint16_t reta_size)
+{
+	uint8_t i, j, mask;
+	int idx, shift;
+	uint32_t reta;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
+		return -EINVAL;
+
+	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
+		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)\n", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
+		return -EINVAL;
+	}
+
+	/*
+	 * Reading Redirection Table. There are 128 8bit-entries which can be
+	 * manage as 32 32bit-entries
+	 */
+	for (i = 0; i < reta_size; i += 4) {
+		/* Handling 4 RSS entries per loop */
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) & 0xF);
+
+		if (!mask)
+			continue;
+
+		reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + shift);
+		for (j = 0; j < 4; j++) {
+			if (!(mask & (0x1 << j)))
+				continue;
+			reta_conf->reta[shift + j] =
+				(uint8_t)((reta >> (8 * j)) & 0xF);
+		}
+	}
+	return 0;
+}
+
+static int
+nfp_net_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	uint32_t update;
+	uint32_t cfg_rss_ctrl = 0;
+	uint8_t key;
+	uint64_t rss_hf;
+	int i;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	rss_hf = rss_conf->rss_hf;
+
+	/* Checking if RSS is enabled */
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS)) {
+		if (rss_hf != 0) { /* Enable RSS? */
+			RTE_LOG(ERR, PMD, "RSS unsupported\n");
+			return -EINVAL;
+		}
+		return 0; /* Nothing to do */
+	}
+
+	if (rss_conf->rss_key_len > NFP_NET_CFG_RSS_KEY_SZ) {
+		RTE_LOG(ERR, PMD, "hash key too long\n");
+		return -EINVAL;
+	}
+
+	if (rss_hf & ETH_RSS_IPV4)
+		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4 |
+				NFP_NET_CFG_RSS_IPV4_TCP |
+				NFP_NET_CFG_RSS_IPV4_UDP;
+
+	if (rss_hf & ETH_RSS_IPV6)
+		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6 |
+				NFP_NET_CFG_RSS_IPV6_TCP |
+				NFP_NET_CFG_RSS_IPV6_UDP;
+
+	/* configuring where to apply the RSS hash */
+	nn_cfg_writel(hw, NFP_NET_CFG_RSS_CTRL, cfg_rss_ctrl);
+
+	/* Writing the key byte a byte */
+	for (i = 0; i < rss_conf->rss_key_len; i++) {
+		memcpy(&key, &rss_conf->rss_key[i], 1);
+		nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY + i, key);
+	}
+
+	/* Writing the key size */
+	nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY_SZ, rss_conf->rss_key_len);
+
+	update = NFP_NET_CFG_UPDATE_RSS;
+
+	if (nfp_net_reconfig(hw, hw->ctrl, update) < 0)
+		return -EIO;
+
+	return 0;
+}
+
+static int
+nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	uint64_t rss_hf;
+	uint32_t cfg_rss_ctrl;
+	uint8_t key;
+	int i;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
+		return -EINVAL;
+
+	rss_hf = rss_conf->rss_hf;
+	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV4_UDP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+
+	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP;
+
+	/* Reading the key size */
+	rss_conf->rss_key_len = nn_cfg_readl(hw, NFP_NET_CFG_RSS_KEY_SZ);
+
+	/* Reading the key byte a byte */
+	for (i = 0; i < rss_conf->rss_key_len; i++) {
+		key = nn_cfg_readb(hw, NFP_NET_CFG_RSS_KEY + i);
+		memcpy(&rss_conf->rss_key[i], &key, 1);
+	}
+
+	return 0;
+}
+
 /* Initialise and register driver with DPDK Application */
 static struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.dev_configure		= nfp_net_configure,
 	.dev_start		= nfp_net_start,
 	.dev_stop		= nfp_net_stop,
 	.dev_close		= nfp_net_close,
+	.reta_update		= nfp_net_reta_update,
+	.reta_query		= nfp_net_reta_query,
+	.rss_hash_update	= nfp_net_rss_hash_update,
+	.rss_hash_conf_get	= nfp_net_rss_hash_conf_get,
 	.rx_queue_setup		= nfp_net_rx_queue_setup,
 	.rx_queue_release	= nfp_net_rx_queue_release,
 	.rx_queue_count		= nfp_net_rx_queue_count,
