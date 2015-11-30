@@ -46,6 +46,7 @@ Network Interface Controller Drivers
     intel_vf
     mlx4
     mlx5
+    nfp
     szedata2
     virtio
     vmxnet3

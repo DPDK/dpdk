@@ -306,6 +306,7 @@ F: doc/guides/nics/mlx5.rst
 Netronome nfp
 M: Alejandro Lucero <alejandro.lucero@netronome.com>
 F: drivers/net/nfp/
+F: doc/guides/nics/nfp.rst
 
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>
