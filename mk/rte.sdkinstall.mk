@@ -93,25 +93,31 @@ ifeq ($(DESTDIR)$(if $T,,+),)
 	@echo Installation cannot run with T defined and DESTDIR undefined
 else
 	@echo ================== Installing $(DESTDIR)$(prefix)/
+	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-runtime
+	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-sdk
+	@echo Installation in $(DESTDIR)$(prefix)/ complete
+endif
+
+install-runtime:
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(libdir))
-	$(Q)cp -a $(RTE_OUTPUT)/lib/* $(DESTDIR)$(libdir)
+	$(Q)cp -a    $O/lib/* $(DESTDIR)$(libdir)
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(bindir))
-	$(Q)tar -cf -      -C $(RTE_OUTPUT) app  --exclude 'app/*.map' \
+	$(Q)tar -cf -      -C $O app  --exclude 'app/*.map' \
 		--exclude 'app/cmdline*' --exclude app/test \
 		--exclude app/testacl --exclude app/testpipeline | \
 	    tar -xf -      -C $(DESTDIR)$(bindir) --strip-components=1 \
 		--keep-newer-files --warning=no-ignore-newer
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(datadir))
 	$(Q)cp -a $(RTE_SDK)/tools $(DESTDIR)$(datadir)
+
+install-sdk:
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(includedir))
-	$(Q)tar -chf -     -C $(RTE_OUTPUT) include | \
+	$(Q)tar -chf -     -C $O include | \
 	    tar -xf -      -C $(DESTDIR)$(includedir) --strip-components=1 \
 		--keep-newer-files --warning=no-ignore-newer
 	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(sdkdir))
 	$(Q)cp -a               $(RTE_SDK)/{mk,scripts}  $(DESTDIR)$(sdkdir)
 	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(targetdir))
-	$(Q)cp -a               $(RTE_OUTPUT)/.config    $(DESTDIR)$(targetdir)
+	$(Q)cp -a               $O/.config               $(DESTDIR)$(targetdir)
 	$(Q)$(call rte_symlink, $(DESTDIR)$(includedir), $(DESTDIR)$(targetdir)/include)
 	$(Q)$(call rte_symlink, $(DESTDIR)$(libdir),     $(DESTDIR)$(targetdir)/lib)
-	@echo Installation in $(DESTDIR)$(prefix)/ complete
-endif
