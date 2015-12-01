@@ -29,59 +29,29 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Build directory is given with O=
-ifdef O
-BUILD_DIR=$(O)
-else
-BUILD_DIR=.
-endif
+# Configuration, compilation and installation can be done at once
+# with make install T=<config>
 
-# Targets to install can be specified in command line. It can be a
-# target name or a name containing jokers "*". Example:
-# x86_64-native-*-gcc
-ifndef T
-T=*
-endif
-
-#
-# install: build sdk for all supported targets
-#
-INSTALL_CONFIGS := $(patsubst $(RTE_SRCDIR)/config/defconfig_%,%,\
-	$(wildcard $(RTE_SRCDIR)/config/defconfig_$(T)))
-INSTALL_TARGETS := $(addsuffix _install,\
-	$(filter-out %~,$(INSTALL_CONFIGS)))
+# The build directory is T and may be prepended with O
+O ?= .
+RTE_OUTPUT := $O/$T
 
 .PHONY: install
-install: $(INSTALL_TARGETS)
-
-%_install:
-	@echo ================== Installing $*
-	$(Q)if [ ! -f $(BUILD_DIR)/$*/.config ]; then \
-		$(MAKE) config T=$* O=$(BUILD_DIR)/$*; \
-	elif cmp -s $(BUILD_DIR)/$*/.config.orig $(BUILD_DIR)/$*/.config; then \
-		$(MAKE) config T=$* O=$(BUILD_DIR)/$*; \
+install:
+	@echo ================== Installing $T
+	$(Q)if [ ! -f $(RTE_OUTPUT)/.config ]; then \
+		$(MAKE) config O=$(RTE_OUTPUT); \
+	elif cmp -s $(RTE_OUTPUT)/.config.orig $(RTE_OUTPUT)/.config; then \
+		$(MAKE) config O=$(RTE_OUTPUT); \
 	else \
-		if [ -f $(BUILD_DIR)/$*/.config.orig ] ; then \
-			tmp_build=$(BUILD_DIR)/$*/.config.tmp; \
-			$(MAKE) config T=$* O=$$tmp_build; \
-			if ! cmp -s $(BUILD_DIR)/$*/.config.orig $$tmp_build/.config ; then \
+		if [ -f $(RTE_OUTPUT)/.config.orig ] ; then \
+			tmp_build=$(RTE_OUTPUT)/.config.tmp; \
+			$(MAKE) config O=$$tmp_build; \
+			if ! cmp -s $(RTE_OUTPUT)/.config.orig $$tmp_build/.config ; then \
 				echo "Conflict: local config and template config have both changed"; \
 				exit 1; \
 			fi; \
 		fi; \
 		echo "Using local configuration"; \
 	fi
-	$(Q)$(MAKE) all O=$(BUILD_DIR)/$*
-
-#
-# uninstall: remove all built sdk
-#
-UNINSTALL_TARGETS := $(addsuffix _uninstall,\
-	$(filter-out %~,$(INSTALL_CONFIGS)))
-
-.PHONY: uninstall
-uninstall: $(UNINSTALL_TARGETS)
-
-%_uninstall:
-	@echo ================== Uninstalling $*
-	$(Q)rm -rf $(BUILD_DIR)/$*
+	$(Q)$(MAKE) all O=$(RTE_OUTPUT)

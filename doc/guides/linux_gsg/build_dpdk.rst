@@ -110,22 +110,6 @@ To compile a 32-bit build using gcc, the make command should be:
 
     make install T=i686-native-linuxapp-gcc
 
-To compile all 64-bit targets using gcc, use:
-
-.. code-block:: console
-
-    make install T=x86_64*gcc
-
-To compile all 64-bit targets using both gcc and icc, use:
-
-.. code-block:: console
-
-    make install T=x86_64-*
-
-.. note::
-
-    The wildcard operator (*) can be used to create multiple targets at the same time.
-
 To prepare a target without building it, for example, if the configuration changes need to be made before compilation,
 use the make config T=<target> command:
 

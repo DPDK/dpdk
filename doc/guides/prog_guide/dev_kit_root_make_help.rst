@@ -108,21 +108,14 @@ Install Targets
 *   Install
 
     Build the DPDK binary.
-    Actually, this builds each supported target in a separate directory.
-    The name of each directory is the name of the target.
-    The name of the targets to install can be optionally specified using T=mytarget.
-    The target name can contain wildcard \* characters.
+    The name of the target to install is specified using T=mytarget.
     The list of available targets are in $(RTE_SDK)/config (remove the defconfig\_ prefix).
 
     Example:
 
     .. code-block:: console
 
-        make install T=x86_64-*
-
-*   Uninstall
-
-    Remove installed target directories.
+        make install T=x86_64-native-linuxapp-gcc
 
 Test Targets
 ------------

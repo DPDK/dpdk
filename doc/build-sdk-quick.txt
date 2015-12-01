@@ -5,8 +5,7 @@ Build commands
 	all              same as build (default rule)
 	build            build in a configured directory
 	clean            remove files but keep configuration
-	install          build many targets (wildcard allowed) and install in DESTDIR
-	uninstall        remove all installed targets
+	install          configure, build and install a target in DESTDIR
 	examples         build examples for given targets (T=)
 	examples_clean   clean examples for given targets (T=)
 Build variables
@@ -20,6 +19,6 @@ Build variables
 	D         debug dependencies
 	O         build directory (default: build/ - install default: ./)
 	DESTDIR   second-stage install directory
-	T         target template (install default: *) - used with config or install
+	T         target template - used with config or install
 			format: <arch-machine-execenv-toolchain>
 			templates in config/defconfig_*
