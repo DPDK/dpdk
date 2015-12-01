@@ -43,9 +43,19 @@ O ?= build
 RTE_OUTPUT := $O
 endif
 
+ifneq ($(MAKECMDGOALS),pre_install)
+include $(RTE_SDK)/mk/rte.vars.mk
+endif
+
 ifdef T # defaults with T= will install an almost flat staging tree
 export prefix ?=
+kerneldir   ?= $(prefix)/kmod
 else
+ifeq ($(RTE_EXEC_ENV),linuxapp)
+kerneldir   ?= /lib/modules/$(shell uname -r)/extra/dpdk
+else
+kerneldir   ?= /boot/modules
+endif
 prefix      ?=     /usr/local
 endif
 exec_prefix ?=      $(prefix)
@@ -94,6 +104,7 @@ ifeq ($(DESTDIR)$(if $T,,+),)
 else
 	@echo ================== Installing $(DESTDIR)$(prefix)/
 	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-runtime
+	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-kmod
 	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-sdk
 	@echo Installation in $(DESTDIR)$(prefix)/ complete
 endif
@@ -109,6 +120,12 @@ install-runtime:
 		--keep-newer-files --warning=no-ignore-newer
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(datadir))
 	$(Q)cp -a $(RTE_SDK)/tools $(DESTDIR)$(datadir)
+
+install-kmod:
+ifneq ($(wildcard $O/kmod/*),)
+	$(Q)$(call rte_mkdir, $(DESTDIR)$(kerneldir))
+	$(Q)cp -a   $O/kmod/* $(DESTDIR)$(kerneldir)
+endif
 
 install-sdk:
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(includedir))
