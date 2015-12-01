@@ -95,6 +95,7 @@ test fast_test ring_test mempool_test perf_test coverage:
 
 .PHONY: install
 install:
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk pre_install
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk $@
 
 .PHONY: doc help

@@ -36,9 +36,8 @@
 O ?= .
 RTE_OUTPUT := $O/$T
 
-.PHONY: install
-install:
-	@echo ================== Installing $T
+.PHONY: pre_install
+pre_install:
 	$(Q)if [ ! -f $(RTE_OUTPUT)/.config ]; then \
 		$(MAKE) config O=$(RTE_OUTPUT); \
 	elif cmp -s $(RTE_OUTPUT)/.config.orig $(RTE_OUTPUT)/.config; then \
@@ -55,3 +54,19 @@ install:
 		echo "Using local configuration"; \
 	fi
 	$(Q)$(MAKE) all O=$(RTE_OUTPUT)
+
+.PHONY: install
+install:
+	@echo ================== Installing $(DESTDIR)
+	$(Q)mkdir -p $(DESTDIR)
+	$(Q)tar -C $(RTE_SDK) -cf - mk scripts/*.sh | tar -C $(DESTDIR) -x \
+	  --keep-newer-files --warning=no-ignore-newer -f -
+	$(Q)mkdir -p $(DESTDIR)/$T
+	$(Q)tar -C $(RTE_OUTPUT) -chf - \
+	  --exclude app --exclude hostapp --exclude build \
+	  --exclude Makefile --exclude .depdirs . | \
+	  tar -C $(DESTDIR)/$T -x --keep-newer-files \
+	  --warning=no-ignore-newer -f -
+	$(Q)install -D $(RTE_OUTPUT)/app/testpmd \
+	  $(DESTDIR)/$T/app/testpmd
+	@echo Installation in $(DESTDIR) complete
