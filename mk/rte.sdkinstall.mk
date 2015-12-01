@@ -156,3 +156,4 @@ ifneq ($(wildcard $O/doc/*/*/*pdf),)
 	$(Q)$(call rte_mkdir,     $(DESTDIR)$(docdir)/guides)
 	$(Q)cp -a $O/doc/*/*/*pdf $(DESTDIR)$(docdir)/guides
 endif
+	$(Q)cp -a $(RTE_SDK)/examples $(DESTDIR)$(datadir)
