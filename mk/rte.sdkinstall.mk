@@ -64,6 +64,7 @@ sbindir     ?= $(exec_prefix)/sbin
 libdir      ?= $(exec_prefix)/lib
 includedir  ?=      $(prefix)/include/dpdk
 datarootdir ?=      $(prefix)/share
+docdir      ?=       $(datarootdir)/doc/dpdk
 datadir     ?=       $(datarootdir)/dpdk
 sdkdir      ?=                $(datadir)
 targetdir   ?=                $(datadir)/$(RTE_TARGET)
@@ -107,6 +108,7 @@ else
 	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-runtime
 	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-kmod
 	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-sdk
+	$(Q)$(MAKE) O=$(RTE_OUTPUT) T= install-doc
 	@echo Installation in $(DESTDIR)$(prefix)/ complete
 endif
 
@@ -142,3 +144,15 @@ install-sdk:
 	$(Q)cp -a               $O/.config               $(DESTDIR)$(targetdir)
 	$(Q)$(call rte_symlink, $(DESTDIR)$(includedir), $(DESTDIR)$(targetdir)/include)
 	$(Q)$(call rte_symlink, $(DESTDIR)$(libdir),     $(DESTDIR)$(targetdir)/lib)
+
+install-doc:
+ifneq ($(wildcard $O/doc),)
+	$(Q)$(call rte_mkdir, $(DESTDIR)$(docdir))
+	$(Q)tar -cf -      -C $O/doc html --exclude 'html/guides/.*' | \
+	    tar -xf -      -C $(DESTDIR)$(docdir) --strip-components=1 \
+		--keep-newer-files --warning=no-ignore-newer
+endif
+ifneq ($(wildcard $O/doc/*/*/*pdf),)
+	$(Q)$(call rte_mkdir,     $(DESTDIR)$(docdir)/guides)
+	$(Q)cp -a $O/doc/*/*/*pdf $(DESTDIR)$(docdir)/guides
+endif
