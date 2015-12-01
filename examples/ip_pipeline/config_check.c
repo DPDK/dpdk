@@ -98,6 +98,8 @@ check_links(struct app_params *app)
 
 		n_rxq = app_link_get_n_rxq(app, link);
 
+		APP_CHECK((n_rxq), "%s does not have any RXQ\n", link->name);
+
 		APP_CHECK((n_rxq == rxq_max + 1),
 			"%s RXQs are not contiguous (B)\n", link->name);
 
@@ -114,6 +116,8 @@ check_links(struct app_params *app)
 
 		/* Check that link RXQs are contiguous */
 		n_txq = app_link_get_n_txq(app, link);
+
+		APP_CHECK((n_txq),  "%s does not have any TXQ\n", link->name);
 
 		for (i = 0; i < n_txq; i++) {
 			char name[APP_PARAM_NAME_SIZE];
