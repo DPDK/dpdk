@@ -33,11 +33,21 @@
 # Configuration, compilation and installation can be done at once
 # with make install T=<config>
 
+ifdef T # config, build and install combined
 # The build directory is T and may be prepended with O
 O ?= .
 RTE_OUTPUT := $O/$T
+else # standard install
+# Build directory is given with O=
+O ?= build
+RTE_OUTPUT := $O
+endif
 
+ifdef T # defaults with T= will install an almost flat staging tree
+export prefix ?=
+else
 prefix      ?=     /usr/local
+endif
 exec_prefix ?=      $(prefix)
 bindir      ?= $(exec_prefix)/bin
 libdir      ?= $(exec_prefix)/lib
@@ -58,6 +68,7 @@ rte_symlink = ln -snf $$($(RTE_SDK)/scripts/relpath.sh $1 $(dir $2)) $2
 
 .PHONY: pre_install
 pre_install:
+ifdef T
 	$(Q)if [ ! -f $(RTE_OUTPUT)/.config ]; then \
 		$(MAKE) config O=$(RTE_OUTPUT); \
 	elif cmp -s $(RTE_OUTPUT)/.config.orig $(RTE_OUTPUT)/.config; then \
@@ -74,6 +85,7 @@ pre_install:
 		echo "Using local configuration"; \
 	fi
 	$(Q)$(MAKE) all O=$(RTE_OUTPUT)
+endif
 
 .PHONY: install
 install:

@@ -5,7 +5,8 @@ Build commands
 	all              same as build (default rule)
 	build            build in a configured directory
 	clean            remove files but keep configuration
-	install          configure, build and install a target in DESTDIR
+	install T=       configure, build and install a target in DESTDIR
+	install          install optionally staged in DESTDIR
 	examples         build examples for given targets (T=)
 	examples_clean   clean examples for given targets (T=)
 Build variables
@@ -17,8 +18,8 @@ Build variables
 	CROSS     toolchain prefix
 	V         verbose
 	D         debug dependencies
-	O         build directory (default: build/ - install default: ./)
-	DESTDIR   second-stage install directory
+	O         build directory (default: build/ - install T= default: ./)
+	DESTDIR   staging install directory
 	prefix    root install directory
 	T         target template - used with config or install
 			format: <arch-machine-execenv-toolchain>

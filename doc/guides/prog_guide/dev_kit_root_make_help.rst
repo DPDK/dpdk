@@ -107,8 +107,6 @@ Install Targets
 
 *   Install
 
-    Build the DPDK binary.
-    The name of the target to install is specified using T=mytarget.
     The list of available targets are in $(RTE_SDK)/config (remove the defconfig\_ prefix).
 
     The GNU standards variables may be used:
@@ -119,7 +117,7 @@ Install Targets
 
     .. code-block:: console
 
-        make install T=x86_64-native-linuxapp-gcc prefix=/usr
+        make install DESTDIR=myinstall prefix=/usr
 
 Test Targets
 ------------
