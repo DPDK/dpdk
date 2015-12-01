@@ -60,6 +60,7 @@ prefix      ?=     /usr/local
 endif
 exec_prefix ?=      $(prefix)
 bindir      ?= $(exec_prefix)/bin
+sbindir     ?= $(exec_prefix)/sbin
 libdir      ?= $(exec_prefix)/lib
 includedir  ?=      $(prefix)/include/dpdk
 datarootdir ?=      $(prefix)/share
@@ -120,6 +121,9 @@ install-runtime:
 		--keep-newer-files --warning=no-ignore-newer
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(datadir))
 	$(Q)cp -a $(RTE_SDK)/tools $(DESTDIR)$(datadir)
+	$(Q)$(call rte_mkdir,      $(DESTDIR)$(sbindir))
+	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/tools/dpdk_nic_bind.py, \
+	                           $(DESTDIR)$(sbindir)/dpdk_nic_bind)
 
 install-kmod:
 ifneq ($(wildcard $O/kmod/*),)
