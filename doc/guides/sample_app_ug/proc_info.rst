@@ -30,10 +30,10 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-proc_info Application
-========================
+dpdk_proc_info Application
+==========================
 
-The proc_info application is a Data Plane Development Kit (DPDK) application
+The dpdk_proc_info application is a Data Plane Development Kit (DPDK) application
 that runs as a DPDK secondary process and is capable of retrieving port
 statistics, resetting port statistics and printing DPDK memory information.
 This application extends the original functionality that was supported by
@@ -45,7 +45,7 @@ The application has a number of command line options:
 
 .. code-block:: console
 
-   ./$(RTE_TARGET)/app/proc_info -- -m | [-p PORTMASK] [--stats | --xstats |
+   ./$(RTE_TARGET)/app/dpdk_proc_info -- -m | [-p PORTMASK] [--stats | --xstats |
    --stats-reset | --xstats-reset]
 
 Parameters
