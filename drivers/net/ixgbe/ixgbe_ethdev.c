@@ -2341,7 +2341,6 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 {
 	uint32_t bprc, lxon, lxoff, total;
 	uint32_t delta_gprc = 0;
-	uint32_t delta_gptc = 0;
 	unsigned i;
 	/* Workaround for RX byte count not including CRC bytes when CRC
 +	 * strip is enabled. CRC bytes are removed from counters when crc_strip
@@ -2388,7 +2387,6 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 		uint32_t delta_qprdc = IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
 
 		delta_gprc += delta_qprc;
-		delta_gptc += delta_qptc;
 
 		hw_stats->qprc[i] += delta_qprc;
 		hw_stats->qptc[i] += delta_qptc;
@@ -2444,6 +2442,8 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	if (crc_strip == 0)
 		hw_stats->gorc -= delta_gprc * ETHER_CRC_LEN;
 
+	uint64_t delta_gptc = IXGBE_READ_REG(hw, IXGBE_GPTC);
+	hw_stats->gptc += delta_gptc;
 	hw_stats->gotc -= delta_gptc * ETHER_CRC_LEN;
 	hw_stats->tor -= (hw_stats->tpr - old_tpr) * ETHER_CRC_LEN;
 
@@ -2470,7 +2470,6 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	hw_stats->lxofftxc += lxoff;
 	total = lxon + lxoff;
 
-	hw_stats->gptc += IXGBE_READ_REG(hw, IXGBE_GPTC);
 	hw_stats->mptc += IXGBE_READ_REG(hw, IXGBE_MPTC);
 	hw_stats->ptc64 += IXGBE_READ_REG(hw, IXGBE_PTC64);
 	hw_stats->gptc -= total;
