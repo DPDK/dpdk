@@ -61,18 +61,12 @@ ifneq ($(BUILDING_RTE_SDK),)
   RTE_MACHINE := $(CONFIG_RTE_MACHINE:"%"=%)
   RTE_EXEC_ENV := $(CONFIG_RTE_EXEC_ENV:"%"=%)
   RTE_TOOLCHAIN := $(CONFIG_RTE_TOOLCHAIN:"%"=%)
-  RTE_TARGET := $(RTE_ARCH)-$(RTE_MACHINE)-$(RTE_EXEC_ENV)-$(RTE_TOOLCHAIN)
   RTE_SDK_BIN := $(RTE_OUTPUT)
 endif
 
-RTE_LIBNAME := dpdk
+RTE_TARGET ?= $(RTE_ARCH)-$(RTE_MACHINE)-$(RTE_EXEC_ENV)-$(RTE_TOOLCHAIN)
 
-# RTE_TARGET is deducted from config when we are building the SDK.
-# Else, when building an external app, RTE_TARGET must be specified
-# by the user.
-ifeq ($(RTE_TARGET),)
-$(error RTE_TARGET is not defined)
-endif
+RTE_LIBNAME := dpdk
 
 ifeq ($(BUILDING_RTE_SDK),)
 # if we are building an external app/lib, include internal/rte.extvars.mk that will

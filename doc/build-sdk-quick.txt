@@ -19,6 +19,7 @@ Build variables
 	D         debug dependencies
 	O         build directory (default: build/ - install default: ./)
 	DESTDIR   second-stage install directory
+	prefix    root install directory
 	T         target template - used with config or install
 			format: <arch-machine-execenv-toolchain>
 			templates in config/defconfig_*

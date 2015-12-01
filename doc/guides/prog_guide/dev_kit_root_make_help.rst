@@ -111,11 +111,15 @@ Install Targets
     The name of the target to install is specified using T=mytarget.
     The list of available targets are in $(RTE_SDK)/config (remove the defconfig\_ prefix).
 
+    The GNU standards variables may be used:
+    http://gnu.org/prep/standards/html_node/Directory-Variables.html and
+    http://gnu.org/prep/standards/html_node/DESTDIR.html
+
     Example:
 
     .. code-block:: console
 
-        make install T=x86_64-native-linuxapp-gcc
+        make install T=x86_64-native-linuxapp-gcc prefix=/usr
 
 Test Targets
 ------------

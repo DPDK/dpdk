@@ -1,6 +1,7 @@
 #   BSD LICENSE
 #
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright 2015 6WIND S.A.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -36,6 +37,25 @@
 O ?= .
 RTE_OUTPUT := $O/$T
 
+prefix      ?=     /usr/local
+exec_prefix ?=      $(prefix)
+bindir      ?= $(exec_prefix)/bin
+libdir      ?= $(exec_prefix)/lib
+includedir  ?=      $(prefix)/include/dpdk
+datarootdir ?=      $(prefix)/share
+datadir     ?=       $(datarootdir)/dpdk
+sdkdir      ?=                $(datadir)
+targetdir   ?=                $(datadir)/$(RTE_TARGET)
+
+# The install directories may be staged in DESTDIR
+
+# Create the directory $1 if not exists
+rte_mkdir = test -d $1 || mkdir -p $1
+
+# Create the relative symbolic link $2 -> $1
+# May be replaced with --relative option of ln from coreutils-8.16
+rte_symlink = ln -snf $$($(RTE_SDK)/scripts/relpath.sh $1 $(dir $2)) $2
+
 .PHONY: pre_install
 pre_install:
 	$(Q)if [ ! -f $(RTE_OUTPUT)/.config ]; then \
@@ -57,16 +77,29 @@ pre_install:
 
 .PHONY: install
 install:
-	@echo ================== Installing $(DESTDIR)
-	$(Q)mkdir -p $(DESTDIR)
-	$(Q)tar -C $(RTE_SDK) -cf - mk scripts/*.sh | tar -C $(DESTDIR) -x \
-	  --keep-newer-files --warning=no-ignore-newer -f -
-	$(Q)mkdir -p $(DESTDIR)/$T
-	$(Q)tar -C $(RTE_OUTPUT) -chf - \
-	  --exclude app --exclude hostapp --exclude build \
-	  --exclude Makefile --exclude .depdirs . | \
-	  tar -C $(DESTDIR)/$T -x --keep-newer-files \
-	  --warning=no-ignore-newer -f -
-	$(Q)install -D $(RTE_OUTPUT)/app/testpmd \
-	  $(DESTDIR)/$T/app/testpmd
-	@echo Installation in $(DESTDIR) complete
+ifeq ($(DESTDIR)$(if $T,,+),)
+	@echo Installation cannot run with T defined and DESTDIR undefined
+else
+	@echo ================== Installing $(DESTDIR)$(prefix)/
+	$(Q)$(call rte_mkdir, $(DESTDIR)$(libdir))
+	$(Q)cp -a $(RTE_OUTPUT)/lib/* $(DESTDIR)$(libdir)
+	$(Q)$(call rte_mkdir, $(DESTDIR)$(bindir))
+	$(Q)tar -cf -      -C $(RTE_OUTPUT) app  --exclude 'app/*.map' \
+		--exclude 'app/cmdline*' --exclude app/test \
+		--exclude app/testacl --exclude app/testpipeline | \
+	    tar -xf -      -C $(DESTDIR)$(bindir) --strip-components=1 \
+		--keep-newer-files --warning=no-ignore-newer
+	$(Q)$(call rte_mkdir,      $(DESTDIR)$(datadir))
+	$(Q)cp -a $(RTE_SDK)/tools $(DESTDIR)$(datadir)
+	$(Q)$(call rte_mkdir, $(DESTDIR)$(includedir))
+	$(Q)tar -chf -     -C $(RTE_OUTPUT) include | \
+	    tar -xf -      -C $(DESTDIR)$(includedir) --strip-components=1 \
+		--keep-newer-files --warning=no-ignore-newer
+	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(sdkdir))
+	$(Q)cp -a               $(RTE_SDK)/{mk,scripts}  $(DESTDIR)$(sdkdir)
+	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(targetdir))
+	$(Q)cp -a               $(RTE_OUTPUT)/.config    $(DESTDIR)$(targetdir)
+	$(Q)$(call rte_symlink, $(DESTDIR)$(includedir), $(DESTDIR)$(targetdir)/include)
+	$(Q)$(call rte_symlink, $(DESTDIR)$(libdir),     $(DESTDIR)$(targetdir)/lib)
+	@echo Installation in $(DESTDIR)$(prefix)/ complete
+endif

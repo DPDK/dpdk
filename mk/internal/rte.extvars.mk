@@ -51,7 +51,11 @@ endif
 RTE_EXTMK ?= $(RTE_SRCDIR)/Makefile
 export RTE_EXTMK
 
+# RTE_SDK_BIN must point to .config, include/ and lib/.
 RTE_SDK_BIN := $(RTE_SDK)/$(RTE_TARGET)
+ifeq ($(wildcard $(RTE_SDK_BIN)/.config),)
+$(error Cannot find .config in $(RTE_SDK))
+endif
 
 #
 # Output files wil go in a separate directory: default output is
