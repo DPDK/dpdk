@@ -41,17 +41,11 @@
  * Route
  */
 
-struct app_pipeline_routing_route_params {
-	uint32_t flags;
-	uint32_t port_id; /* Output port ID */
-	uint32_t ip; /* IP address for the next hop (only for remote routes) */
-};
-
 int
 app_pipeline_routing_add_route(struct app_params *app,
 	uint32_t pipeline_id,
 	struct pipeline_routing_route_key *key,
-	struct app_pipeline_routing_route_params *route_params);
+	struct pipeline_routing_route_data *data);
 
 int
 app_pipeline_routing_delete_route(struct app_params *app,

@@ -43,7 +43,7 @@
 
 struct app_pipeline_routing_route {
 	struct pipeline_routing_route_key key;
-	struct app_pipeline_routing_route_params params;
+	struct pipeline_routing_route_data data;
 	void *entry_ptr;
 
 	TAILQ_ENTRY(app_pipeline_routing_route) node;
@@ -187,21 +187,55 @@ print_route(const struct app_pipeline_routing_route *route)
 				&route->key.key.ipv4;
 
 		printf("IP Prefix = %" PRIu32 ".%" PRIu32
-			".%" PRIu32 ".%" PRIu32 "/%" PRIu32 " => "
-			"(Port = %" PRIu32 ", Next Hop IP = "
-			"%" PRIu32 ".%" PRIu32 ".%" PRIu32 ".%" PRIu32 ")\n",
+			".%" PRIu32 ".%" PRIu32 "/%" PRIu32
+			" => (Port = %" PRIu32,
+
 			(key->ip >> 24) & 0xFF,
 			(key->ip >> 16) & 0xFF,
 			(key->ip >> 8) & 0xFF,
 			key->ip & 0xFF,
 
 			key->depth,
-			route->params.port_id,
+			route->data.port_id);
 
-			(route->params.ip >> 24) & 0xFF,
-			(route->params.ip >> 16) & 0xFF,
-			(route->params.ip >> 8) & 0xFF,
-			route->params.ip & 0xFF);
+		if (route->data.flags & PIPELINE_ROUTING_ROUTE_ARP)
+			printf(
+				", Next Hop IP = %" PRIu32 ".%" PRIu32
+				".%" PRIu32 ".%" PRIu32,
+
+				(route->data.ethernet.ip >> 24) & 0xFF,
+				(route->data.ethernet.ip >> 16) & 0xFF,
+				(route->data.ethernet.ip >> 8) & 0xFF,
+				route->data.ethernet.ip & 0xFF);
+		else
+			printf(
+				", Next Hop HWaddress = %02" PRIx32
+				":%02" PRIx32 ":%02" PRIx32
+				":%02" PRIx32 ":%02" PRIx32
+				":%02" PRIx32,
+
+				route->data.ethernet.macaddr.addr_bytes[0],
+				route->data.ethernet.macaddr.addr_bytes[1],
+				route->data.ethernet.macaddr.addr_bytes[2],
+				route->data.ethernet.macaddr.addr_bytes[3],
+				route->data.ethernet.macaddr.addr_bytes[4],
+				route->data.ethernet.macaddr.addr_bytes[5]);
+
+		if (route->data.flags & PIPELINE_ROUTING_ROUTE_QINQ)
+			printf(", QinQ SVLAN = %" PRIu32 " CVLAN = %" PRIu32,
+				route->data.l2.qinq.svlan,
+				route->data.l2.qinq.cvlan);
+
+		if (route->data.flags & PIPELINE_ROUTING_ROUTE_MPLS) {
+			uint32_t i;
+
+			printf(", MPLS labels");
+			for (i = 0; i < route->data.l2.mpls.n_labels; i++)
+				printf(" %" PRIu32,
+					route->data.l2.mpls.labels[i]);
+		}
+
+		printf(")\n");
 	}
 }
 
@@ -209,9 +243,10 @@ static void
 print_arp_entry(const struct app_pipeline_routing_arp_entry *entry)
 {
 	printf("(Port = %" PRIu32 ", IP = %" PRIu32 ".%" PRIu32
-		".%" PRIu32 ".%" PRIu32 ") => "
-		"HWaddress = %02" PRIx32 ":%02" PRIx32 ":%02" PRIx32
+		".%" PRIu32 ".%" PRIu32
+		") => HWaddress = %02" PRIx32 ":%02" PRIx32 ":%02" PRIx32
 		":%02" PRIx32 ":%02" PRIx32 ":%02" PRIx32 "\n",
+
 		entry->key.key.ipv4.port_id,
 		(entry->key.key.ipv4.ip >> 24) & 0xFF,
 		(entry->key.key.ipv4.ip >> 16) & 0xFF,
@@ -253,7 +288,7 @@ int
 app_pipeline_routing_add_route(struct app_params *app,
 	uint32_t pipeline_id,
 	struct pipeline_routing_route_key *key,
-	struct app_pipeline_routing_route_params *route_params)
+	struct pipeline_routing_route_data *data)
 {
 	struct pipeline_routing *p;
 
@@ -267,7 +302,7 @@ app_pipeline_routing_add_route(struct app_params *app,
 	/* Check input arguments */
 	if ((app == NULL) ||
 		(key == NULL) ||
-		(route_params == NULL))
+		(data == NULL))
 		return -1;
 
 	p = app_pipeline_data_fe(app, pipeline_id);
@@ -287,8 +322,8 @@ app_pipeline_routing_add_route(struct app_params *app,
 		netmask = (~0) << (32 - depth);
 		key->key.ipv4.ip &= netmask;
 
-		/* route params */
-		if (route_params->port_id >= p->n_ports_out)
+		/* data */
+		if (data->port_id >= p->n_ports_out)
 			return -1;
 	}
 	break;
@@ -318,9 +353,7 @@ app_pipeline_routing_add_route(struct app_params *app,
 	req->type = PIPELINE_MSG_REQ_CUSTOM;
 	req->subtype = PIPELINE_ROUTING_MSG_REQ_ROUTE_ADD;
 	memcpy(&req->key, key, sizeof(*key));
-	req->flags = route_params->flags;
-	req->port_id = route_params->port_id;
-	req->ip = route_params->ip;
+	memcpy(&req->data, data, sizeof(*data));
 
 	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
 	if (rsp == NULL) {
@@ -341,7 +374,7 @@ app_pipeline_routing_add_route(struct app_params *app,
 	}
 
 	memcpy(&entry->key, key, sizeof(*key));
-	memcpy(&entry->params, route_params, sizeof(*route_params));
+	memcpy(&entry->data, data, sizeof(*data));
 	entry->entry_ptr = rsp->entry_ptr;
 
 	/* Commit entry */
@@ -820,31 +853,71 @@ app_pipeline_routing_delete_default_arp_entry(struct app_params *app,
 	return 0;
 }
 
+static int
+parse_labels(char *string, uint32_t *labels, uint32_t *n_labels)
+{
+	uint32_t n_max_labels = *n_labels, count = 0;
+
+	/* Check for void list of labels */
+	if (strcmp(string, "<void>") == 0) {
+		*n_labels = 0;
+		return 0;
+	}
+
+	/* At least one label should be present */
+	for ( ; (*string != '\0'); ) {
+		char *next;
+		int value;
+
+		if (count >= n_max_labels)
+			return -1;
+
+		if (count > 0) {
+			if (string[0] != ':')
+				return -1;
+
+			string++;
+		}
+
+		value = strtol(string, &next, 10);
+		if (next == string)
+			return -1;
+		string = next;
+
+		labels[count++] = (uint32_t) value;
+	}
+
+	*n_labels = count;
+	return 0;
+}
+
 /*
- * route add
+ * route add (mpls = no, qinq = no, arp = no)
  */
 
-struct cmd_route_add_result {
+struct cmd_route_add1_result {
 	cmdline_fixed_string_t p_string;
 	uint32_t p;
 	cmdline_fixed_string_t route_string;
 	cmdline_fixed_string_t add_string;
 	cmdline_ipaddr_t ip;
 	uint32_t depth;
+	cmdline_fixed_string_t port_string;
 	uint32_t port;
-	cmdline_ipaddr_t nh_ip;
+	cmdline_fixed_string_t ether_string;
+	struct ether_addr macaddr;
 };
 
 static void
-cmd_route_add_parsed(
+cmd_route_add1_parsed(
 	void *parsed_result,
 	__rte_unused struct cmdline *cl,
 	void *data)
 {
-	struct cmd_route_add_result *params = parsed_result;
+	struct cmd_route_add1_result *params = parsed_result;
 	struct app_params *app = data;
 	struct pipeline_routing_route_key key;
-	struct app_pipeline_routing_route_params rt_params;
+	struct pipeline_routing_route_data route_data;
 	int status;
 
 	/* Create route */
@@ -852,14 +925,14 @@ cmd_route_add_parsed(
 	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
 	key.key.ipv4.depth = params->depth;
 
-	rt_params.flags = 0; /* remote route */
-	rt_params.port_id = params->port;
-	rt_params.ip = rte_bswap32((uint32_t) params->nh_ip.addr.ipv4.s_addr);
+	route_data.flags = 0;
+	route_data.port_id = params->port;
+	route_data.ethernet.macaddr = params->macaddr;
 
 	status = app_pipeline_routing_add_route(app,
 		params->p,
 		&key,
-		&rt_params);
+		&route_data);
 
 	if (status != 0) {
 		printf("Command failed\n");
@@ -867,46 +940,662 @@ cmd_route_add_parsed(
 	}
 }
 
-static cmdline_parse_token_string_t cmd_route_add_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_route_add_result, p_string,
+static cmdline_parse_token_string_t cmd_route_add1_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add1_result, p_string,
 	"p");
 
-static cmdline_parse_token_num_t cmd_route_add_p =
-	TOKEN_NUM_INITIALIZER(struct cmd_route_add_result, p, UINT32);
+static cmdline_parse_token_num_t cmd_route_add1_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add1_result, p, UINT32);
 
-static cmdline_parse_token_string_t cmd_route_add_route_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_route_add_result, route_string,
+static cmdline_parse_token_string_t cmd_route_add1_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add1_result, route_string,
 	"route");
 
-static cmdline_parse_token_string_t cmd_route_add_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_route_add_result, add_string,
+static cmdline_parse_token_string_t cmd_route_add1_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add1_result, add_string,
 	"add");
 
-static cmdline_parse_token_ipaddr_t cmd_route_add_ip =
-	TOKEN_IPV4_INITIALIZER(struct cmd_route_add_result, ip);
+static cmdline_parse_token_ipaddr_t cmd_route_add1_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add1_result, ip);
 
-static cmdline_parse_token_num_t cmd_route_add_depth =
-	TOKEN_NUM_INITIALIZER(struct cmd_route_add_result, depth, UINT32);
+static cmdline_parse_token_num_t cmd_route_add1_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add1_result, depth, UINT32);
 
-static cmdline_parse_token_num_t cmd_route_add_port =
-	TOKEN_NUM_INITIALIZER(struct cmd_route_add_result, port, UINT32);
+static cmdline_parse_token_string_t cmd_route_add1_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add1_result, port_string,
+	"port");
 
-static cmdline_parse_token_ipaddr_t cmd_route_add_nh_ip =
-	TOKEN_IPV4_INITIALIZER(struct cmd_route_add_result, nh_ip);
+static cmdline_parse_token_num_t cmd_route_add1_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add1_result, port, UINT32);
 
-static cmdline_parse_inst_t cmd_route_add = {
-	.f = cmd_route_add_parsed,
+static cmdline_parse_token_string_t cmd_route_add1_ether_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add1_result, ether_string,
+	"ether");
+
+static cmdline_parse_token_etheraddr_t cmd_route_add1_macaddr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_route_add1_result, macaddr);
+
+static cmdline_parse_inst_t cmd_route_add1 = {
+	.f = cmd_route_add1_parsed,
 	.data = NULL,
-	.help_str = "Route add",
+	.help_str = "Route add (mpls = no, qinq = no, arp = no)",
 	.tokens = {
-		(void *)&cmd_route_add_p_string,
-		(void *)&cmd_route_add_p,
-		(void *)&cmd_route_add_route_string,
-		(void *)&cmd_route_add_add_string,
-		(void *)&cmd_route_add_ip,
-		(void *)&cmd_route_add_depth,
-		(void *)&cmd_route_add_port,
-		(void *)&cmd_route_add_nh_ip,
+		(void *)&cmd_route_add1_p_string,
+		(void *)&cmd_route_add1_p,
+		(void *)&cmd_route_add1_route_string,
+		(void *)&cmd_route_add1_add_string,
+		(void *)&cmd_route_add1_ip,
+		(void *)&cmd_route_add1_depth,
+		(void *)&cmd_route_add1_port_string,
+		(void *)&cmd_route_add1_port,
+		(void *)&cmd_route_add1_ether_string,
+		(void *)&cmd_route_add1_macaddr,
+		NULL,
+	},
+};
+
+/*
+ * route add (mpls = no, qinq = no, arp = yes)
+ */
+
+struct cmd_route_add2_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_ipaddr_t ip;
+	uint32_t depth;
+	cmdline_fixed_string_t port_string;
+	uint32_t port;
+	cmdline_fixed_string_t ether_string;
+	cmdline_ipaddr_t nh_ip;
+};
+
+static void
+cmd_route_add2_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_add2_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing_route_key key;
+	struct pipeline_routing_route_data route_data;
+	int status;
+
+	/* Create route */
+	key.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.depth = params->depth;
+
+	route_data.flags = PIPELINE_ROUTING_ROUTE_ARP;
+	route_data.port_id = params->port;
+	route_data.ethernet.ip =
+		rte_bswap32((uint32_t) params->nh_ip.addr.ipv4.s_addr);
+
+	status = app_pipeline_routing_add_route(app,
+		params->p,
+		&key,
+		&route_data);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_add2_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add2_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_add2_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add2_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add2_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add2_result, route_string,
+	"route");
+
+static cmdline_parse_token_string_t cmd_route_add2_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add2_result, add_string,
+	"add");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add2_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add2_result, ip);
+
+static cmdline_parse_token_num_t cmd_route_add2_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add2_result, depth, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add2_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add2_result, port_string,
+	"port");
+
+static cmdline_parse_token_num_t cmd_route_add2_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add2_result, port, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add2_ether_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add2_result, ether_string,
+	"ether");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add2_nh_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add2_result, nh_ip);
+
+static cmdline_parse_inst_t cmd_route_add2 = {
+	.f = cmd_route_add2_parsed,
+	.data = NULL,
+	.help_str = "Route add (mpls = no, qinq = no, arp = yes)",
+	.tokens = {
+		(void *)&cmd_route_add2_p_string,
+		(void *)&cmd_route_add2_p,
+		(void *)&cmd_route_add2_route_string,
+		(void *)&cmd_route_add2_add_string,
+		(void *)&cmd_route_add2_ip,
+		(void *)&cmd_route_add2_depth,
+		(void *)&cmd_route_add2_port_string,
+		(void *)&cmd_route_add2_port,
+		(void *)&cmd_route_add2_ether_string,
+		(void *)&cmd_route_add2_nh_ip,
+		NULL,
+	},
+};
+
+/*
+ * route add (mpls = no, qinq = yes, arp = no)
+ */
+
+struct cmd_route_add3_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_ipaddr_t ip;
+	uint32_t depth;
+	cmdline_fixed_string_t port_string;
+	uint32_t port;
+	cmdline_fixed_string_t ether_string;
+	struct ether_addr macaddr;
+	cmdline_fixed_string_t qinq_string;
+	uint32_t svlan;
+	uint32_t cvlan;
+};
+
+static void
+cmd_route_add3_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_add3_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing_route_key key;
+	struct pipeline_routing_route_data route_data;
+	int status;
+
+	/* Create route */
+	key.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.depth = params->depth;
+
+	route_data.flags = PIPELINE_ROUTING_ROUTE_QINQ;
+	route_data.port_id = params->port;
+	route_data.ethernet.macaddr = params->macaddr;
+	route_data.l2.qinq.svlan = params->svlan;
+	route_data.l2.qinq.cvlan = params->cvlan;
+
+	status = app_pipeline_routing_add_route(app,
+		params->p,
+		&key,
+		&route_data);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_add3_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add3_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_add3_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add3_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add3_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add3_result, route_string,
+	"route");
+
+static cmdline_parse_token_string_t cmd_route_add3_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add3_result, add_string,
+	"add");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add3_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add3_result, ip);
+
+static cmdline_parse_token_num_t cmd_route_add3_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add3_result, depth, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add3_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add3_result, port_string,
+	"port");
+
+static cmdline_parse_token_num_t cmd_route_add3_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add3_result, port, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add3_ether_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add3_result, ether_string,
+	"ether");
+
+static cmdline_parse_token_etheraddr_t cmd_route_add3_macaddr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_route_add3_result, macaddr);
+
+static cmdline_parse_token_string_t cmd_route_add3_qinq_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add3_result, qinq_string,
+	"qinq");
+
+static cmdline_parse_token_num_t cmd_route_add3_svlan =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add3_result, svlan, UINT32);
+
+static cmdline_parse_token_num_t cmd_route_add3_cvlan =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add3_result, cvlan, UINT32);
+
+static cmdline_parse_inst_t cmd_route_add3 = {
+	.f = cmd_route_add3_parsed,
+	.data = NULL,
+	.help_str = "Route add (qinq = yes, arp = no)",
+	.tokens = {
+		(void *)&cmd_route_add3_p_string,
+		(void *)&cmd_route_add3_p,
+		(void *)&cmd_route_add3_route_string,
+		(void *)&cmd_route_add3_add_string,
+		(void *)&cmd_route_add3_ip,
+		(void *)&cmd_route_add3_depth,
+		(void *)&cmd_route_add3_port_string,
+		(void *)&cmd_route_add3_port,
+		(void *)&cmd_route_add3_ether_string,
+		(void *)&cmd_route_add3_macaddr,
+		(void *)&cmd_route_add3_qinq_string,
+		(void *)&cmd_route_add3_svlan,
+		(void *)&cmd_route_add3_cvlan,
+		NULL,
+	},
+};
+
+/*
+ * route add (mpls = no, qinq = yes, arp = yes)
+ */
+
+struct cmd_route_add4_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_ipaddr_t ip;
+	uint32_t depth;
+	cmdline_fixed_string_t port_string;
+	uint32_t port;
+	cmdline_fixed_string_t ether_string;
+	cmdline_ipaddr_t nh_ip;
+	cmdline_fixed_string_t qinq_string;
+	uint32_t svlan;
+	uint32_t cvlan;
+};
+
+static void
+cmd_route_add4_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_add4_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing_route_key key;
+	struct pipeline_routing_route_data route_data;
+	int status;
+
+	/* Create route */
+	key.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.depth = params->depth;
+
+	route_data.flags = PIPELINE_ROUTING_ROUTE_QINQ |
+		PIPELINE_ROUTING_ROUTE_ARP;
+	route_data.port_id = params->port;
+	route_data.ethernet.ip =
+		rte_bswap32((uint32_t) params->nh_ip.addr.ipv4.s_addr);
+	route_data.l2.qinq.svlan = params->svlan;
+	route_data.l2.qinq.cvlan = params->cvlan;
+
+	status = app_pipeline_routing_add_route(app,
+		params->p,
+		&key,
+		&route_data);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_add4_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add4_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_add4_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add4_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add4_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add4_result, route_string,
+	"route");
+
+static cmdline_parse_token_string_t cmd_route_add4_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add4_result, add_string,
+	"add");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add4_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add4_result, ip);
+
+static cmdline_parse_token_num_t cmd_route_add4_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add4_result, depth, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add4_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add4_result, port_string,
+	"port");
+
+static cmdline_parse_token_num_t cmd_route_add4_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add4_result, port, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add4_ether_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add4_result, ether_string,
+	"ether");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add4_nh_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add4_result, nh_ip);
+
+static cmdline_parse_token_string_t cmd_route_add4_qinq_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add4_result, qinq_string,
+	"qinq");
+
+static cmdline_parse_token_num_t cmd_route_add4_svlan =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add4_result, svlan, UINT32);
+
+static cmdline_parse_token_num_t cmd_route_add4_cvlan =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add4_result, cvlan, UINT32);
+
+static cmdline_parse_inst_t cmd_route_add4 = {
+	.f = cmd_route_add4_parsed,
+	.data = NULL,
+	.help_str = "Route add (qinq = yes, arp = yes)",
+	.tokens = {
+		(void *)&cmd_route_add4_p_string,
+		(void *)&cmd_route_add4_p,
+		(void *)&cmd_route_add4_route_string,
+		(void *)&cmd_route_add4_add_string,
+		(void *)&cmd_route_add4_ip,
+		(void *)&cmd_route_add4_depth,
+		(void *)&cmd_route_add4_port_string,
+		(void *)&cmd_route_add4_port,
+		(void *)&cmd_route_add4_ether_string,
+		(void *)&cmd_route_add4_nh_ip,
+		(void *)&cmd_route_add4_qinq_string,
+		(void *)&cmd_route_add4_svlan,
+		(void *)&cmd_route_add4_cvlan,
+		NULL,
+	},
+};
+
+/*
+ * route add (mpls = yes, qinq = no, arp = no)
+ */
+
+struct cmd_route_add5_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_ipaddr_t ip;
+	uint32_t depth;
+	cmdline_fixed_string_t port_string;
+	uint32_t port;
+	cmdline_fixed_string_t ether_string;
+	struct ether_addr macaddr;
+	cmdline_fixed_string_t mpls_string;
+	cmdline_fixed_string_t mpls_labels;
+};
+
+static void
+cmd_route_add5_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_add5_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing_route_key key;
+	struct pipeline_routing_route_data route_data;
+	uint32_t mpls_labels[PIPELINE_ROUTING_MPLS_LABELS_MAX];
+	uint32_t n_labels = RTE_DIM(mpls_labels);
+	uint32_t i;
+	int status;
+
+	/* Parse MPLS labels */
+	status = parse_labels(params->mpls_labels, mpls_labels, &n_labels);
+	if (status) {
+		printf("MPLS labels parse error\n");
+		return;
+	}
+
+	/* Create route */
+	key.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.depth = params->depth;
+
+	route_data.flags = PIPELINE_ROUTING_ROUTE_MPLS;
+	route_data.port_id = params->port;
+	route_data.ethernet.macaddr = params->macaddr;
+	for (i = 0; i < n_labels; i++)
+		route_data.l2.mpls.labels[i] = mpls_labels[i];
+	route_data.l2.mpls.n_labels = n_labels;
+
+	status = app_pipeline_routing_add_route(app,
+		params->p,
+		&key,
+		&route_data);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_add5_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add5_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_add5_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add5_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add5_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add5_result, route_string,
+	"route");
+
+static cmdline_parse_token_string_t cmd_route_add5_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add5_result, add_string,
+	"add");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add5_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add5_result, ip);
+
+static cmdline_parse_token_num_t cmd_route_add5_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add5_result, depth, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add5_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add5_result, port_string,
+	"port");
+
+static cmdline_parse_token_num_t cmd_route_add5_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add5_result, port, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add5_ether_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add5_result, ether_string,
+	"ether");
+
+static cmdline_parse_token_etheraddr_t cmd_route_add5_macaddr =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_route_add5_result, macaddr);
+
+static cmdline_parse_token_string_t cmd_route_add5_mpls_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add5_result, mpls_string,
+	"mpls");
+
+static cmdline_parse_token_string_t cmd_route_add5_mpls_labels =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add5_result, mpls_labels,
+	NULL);
+
+static cmdline_parse_inst_t cmd_route_add5 = {
+	.f = cmd_route_add5_parsed,
+	.data = NULL,
+	.help_str = "Route add (mpls = yes, arp = no)",
+	.tokens = {
+		(void *)&cmd_route_add5_p_string,
+		(void *)&cmd_route_add5_p,
+		(void *)&cmd_route_add5_route_string,
+		(void *)&cmd_route_add5_add_string,
+		(void *)&cmd_route_add5_ip,
+		(void *)&cmd_route_add5_depth,
+		(void *)&cmd_route_add5_port_string,
+		(void *)&cmd_route_add5_port,
+		(void *)&cmd_route_add5_ether_string,
+		(void *)&cmd_route_add5_macaddr,
+		(void *)&cmd_route_add5_mpls_string,
+		(void *)&cmd_route_add5_mpls_labels,
+		NULL,
+	},
+};
+
+/*
+ * route add (mpls = yes, qinq = no, arp = yes)
+ */
+
+struct cmd_route_add6_result {
+	cmdline_fixed_string_t p_string;
+	uint32_t p;
+	cmdline_fixed_string_t route_string;
+	cmdline_fixed_string_t add_string;
+	cmdline_ipaddr_t ip;
+	uint32_t depth;
+	cmdline_fixed_string_t port_string;
+	uint32_t port;
+	cmdline_fixed_string_t ether_string;
+	cmdline_ipaddr_t nh_ip;
+	cmdline_fixed_string_t mpls_string;
+	cmdline_fixed_string_t mpls_labels;
+};
+
+static void
+cmd_route_add6_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	void *data)
+{
+	struct cmd_route_add6_result *params = parsed_result;
+	struct app_params *app = data;
+	struct pipeline_routing_route_key key;
+	struct pipeline_routing_route_data route_data;
+	uint32_t mpls_labels[PIPELINE_ROUTING_MPLS_LABELS_MAX];
+	uint32_t n_labels = RTE_DIM(mpls_labels);
+	uint32_t i;
+	int status;
+
+	/* Parse MPLS labels */
+	status = parse_labels(params->mpls_labels, mpls_labels, &n_labels);
+	if (status) {
+		printf("MPLS labels parse error\n");
+		return;
+	}
+
+	/* Create route */
+	key.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key.key.ipv4.ip = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
+	key.key.ipv4.depth = params->depth;
+
+	route_data.flags = PIPELINE_ROUTING_ROUTE_MPLS |
+		PIPELINE_ROUTING_ROUTE_ARP;
+	route_data.port_id = params->port;
+	route_data.ethernet.ip =
+		rte_bswap32((uint32_t) params->nh_ip.addr.ipv4.s_addr);
+	for (i = 0; i < n_labels; i++)
+		route_data.l2.mpls.labels[i] = mpls_labels[i];
+	route_data.l2.mpls.n_labels = n_labels;
+
+	status = app_pipeline_routing_add_route(app,
+		params->p,
+		&key,
+		&route_data);
+
+	if (status != 0) {
+		printf("Command failed\n");
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_route_add6_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add6_result, p_string,
+	"p");
+
+static cmdline_parse_token_num_t cmd_route_add6_p =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add6_result, p, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add6_route_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add6_result, route_string,
+	"route");
+
+static cmdline_parse_token_string_t cmd_route_add6_add_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add6_result, add_string,
+	"add");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add6_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add6_result, ip);
+
+static cmdline_parse_token_num_t cmd_route_add6_depth =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add6_result, depth, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add6_port_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add6_result, port_string,
+	"port");
+
+static cmdline_parse_token_num_t cmd_route_add6_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_route_add6_result, port, UINT32);
+
+static cmdline_parse_token_string_t cmd_route_add6_ether_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add6_result, ether_string,
+	"ether");
+
+static cmdline_parse_token_ipaddr_t cmd_route_add6_nh_ip =
+	TOKEN_IPV4_INITIALIZER(struct cmd_route_add6_result, nh_ip);
+
+static cmdline_parse_token_string_t cmd_route_add6_mpls_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add6_result, mpls_string,
+	"mpls");
+
+static cmdline_parse_token_string_t cmd_route_add6_mpls_labels =
+	TOKEN_STRING_INITIALIZER(struct cmd_route_add6_result, mpls_labels,
+	NULL);
+
+static cmdline_parse_inst_t cmd_route_add6 = {
+	.f = cmd_route_add6_parsed,
+	.data = NULL,
+	.help_str = "Route add (mpls = yes, arp = yes)",
+	.tokens = {
+		(void *)&cmd_route_add6_p_string,
+		(void *)&cmd_route_add6_p,
+		(void *)&cmd_route_add6_route_string,
+		(void *)&cmd_route_add6_add_string,
+		(void *)&cmd_route_add6_ip,
+		(void *)&cmd_route_add6_depth,
+		(void *)&cmd_route_add6_port_string,
+		(void *)&cmd_route_add6_port,
+		(void *)&cmd_route_add6_ether_string,
+		(void *)&cmd_route_add6_nh_ip,
+		(void *)&cmd_route_add6_mpls_string,
+		(void *)&cmd_route_add6_mpls_labels,
 		NULL,
 	},
 };
@@ -1519,7 +2208,12 @@ static cmdline_parse_inst_t cmd_arp_ls = {
 };
 
 static cmdline_parse_ctx_t pipeline_cmds[] = {
-	(cmdline_parse_inst_t *)&cmd_route_add,
+	(cmdline_parse_inst_t *)&cmd_route_add1,
+	(cmdline_parse_inst_t *)&cmd_route_add2,
+	(cmdline_parse_inst_t *)&cmd_route_add3,
+	(cmdline_parse_inst_t *)&cmd_route_add4,
+	(cmdline_parse_inst_t *)&cmd_route_add5,
+	(cmdline_parse_inst_t *)&cmd_route_add6,
 	(cmdline_parse_inst_t *)&cmd_route_del,
 	(cmdline_parse_inst_t *)&cmd_route_add_default,
 	(cmdline_parse_inst_t *)&cmd_route_del_default,

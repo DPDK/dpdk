@@ -39,6 +39,44 @@
 #include "pipeline_common_be.h"
 
 /*
+ * Pipeline argument parsing
+ */
+#ifndef PIPELINE_ROUTING_N_ROUTES_DEFAULT
+#define PIPELINE_ROUTING_N_ROUTES_DEFAULT                  4096
+#endif
+
+enum pipeline_routing_encap {
+	PIPELINE_ROUTING_ENCAP_ETHERNET = 0,
+	PIPELINE_ROUTING_ENCAP_ETHERNET_QINQ,
+	PIPELINE_ROUTING_ENCAP_ETHERNET_MPLS,
+};
+
+struct pipeline_routing_params {
+	/* routing */
+	uint32_t n_routes;
+
+	/* routing packet encapsulation */
+	enum pipeline_routing_encap encap;
+	uint32_t qinq_sched;
+	uint32_t mpls_color_mark;
+
+	/* arp */
+	uint32_t n_arp_entries;
+
+	/* packet buffer offsets */
+	uint32_t ip_hdr_offset;
+	uint32_t arp_key_offset;
+	uint32_t color_offset;
+
+	/* debug */
+	uint32_t dbg_ah_disable;
+};
+
+int
+pipeline_routing_parse_args(struct pipeline_routing_params *p,
+	struct pipeline_params *params);
+
+/*
  * Route
  */
 enum pipeline_routing_route_key_type {
@@ -59,6 +97,36 @@ struct pipeline_routing_route_key {
 
 enum pipeline_routing_route_flags {
 	PIPELINE_ROUTING_ROUTE_LOCAL = 1 << 0, /* 0 = remote; 1 = local */
+	PIPELINE_ROUTING_ROUTE_ARP = 1 << 1, /* 0 = ARP OFF; 1 = ARP ON */
+	PIPELINE_ROUTING_ROUTE_QINQ = 1 << 2, /* 0 = QINQ OFF; 1 = QINQ ON */
+	PIPELINE_ROUTING_ROUTE_MPLS = 1 << 3, /* 0 = MPLS OFF; 1 = MPLS ON */
+};
+
+#define PIPELINE_ROUTING_MPLS_LABELS_MAX         4
+
+struct pipeline_routing_route_data {
+	uint32_t flags;
+	uint32_t port_id; /* Output port ID */
+
+	union {
+		/* Next hop IP (valid only when ARP is enabled) */
+		uint32_t ip;
+
+		/* Next hop MAC address (valid only when ARP disabled */
+		struct ether_addr macaddr;
+	} ethernet;
+
+	union {
+		struct {
+			uint16_t svlan;
+			uint16_t cvlan;
+		} qinq;
+
+		struct {
+			uint32_t labels[PIPELINE_ROUTING_MPLS_LABELS_MAX];
+			uint32_t n_labels;
+		} mpls;
+	} l2;
 };
 
 /*
@@ -106,9 +174,7 @@ struct pipeline_routing_route_add_msg_req {
 	struct pipeline_routing_route_key key;
 
 	/* data */
-	uint32_t flags;
-	uint32_t port_id; /* Output port ID */
-	uint32_t ip; /* Next hop IP address (only valid for remote routes) */
+	struct pipeline_routing_route_data data;
 };
 
 struct pipeline_routing_route_add_msg_rsp {
