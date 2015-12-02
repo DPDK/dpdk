@@ -1050,8 +1050,8 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 					rte_atomic64_add(
 					&dev_statistics[tdev->device_fh].rx_atomic,
 					ret);
-					dev_statistics[tdev->device_fh].tx_total++;
-					dev_statistics[tdev->device_fh].tx += ret;
+					dev_statistics[dev->device_fh].tx_total++;
+					dev_statistics[dev->device_fh].tx += ret;
 				}
 			}
 
