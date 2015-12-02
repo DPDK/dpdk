@@ -120,6 +120,7 @@ F: examples/l2fwd-keepalive/
 F: doc/guides/sample_app_ug/keep_alive.rst
 
 Secondary process
+M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 K: RTE_PROC_
 F: doc/guides/prog_guide/multi_proc_support.rst
 F: app/test/test_mp_secondary.c
@@ -175,16 +176,19 @@ F: examples/vhost_xen/
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 F: lib/librte_eal/bsdapp/Makefile
 F: lib/librte_eal/bsdapp/eal/
 F: doc/guides/freebsd_gsg/
 
 FreeBSD contigmem
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 F: lib/librte_eal/bsdapp/contigmem/
 
 FreeBSD UIO
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 F: lib/librte_eal/bsdapp/nic_uio/
 
 
