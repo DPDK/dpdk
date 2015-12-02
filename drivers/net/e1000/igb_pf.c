@@ -229,7 +229,7 @@ set_rx_mode(struct rte_eth_dev *dev)
 
 	/* set all bits that we expect to always be set */
 	fctrl &= ~E1000_RCTL_SBP; /* disable store-bad-packets */
-	fctrl |= E1000_RCTL_BAM;;
+	fctrl |= E1000_RCTL_BAM;
 
 	/* clear the bits we are changing the status of */
 	fctrl &= ~(E1000_RCTL_UPE | E1000_RCTL_MPE);

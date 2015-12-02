@@ -362,7 +362,7 @@ grant_node_create(uint32_t pg_num, uint32_t *gref_arr, phys_addr_t *pa_arr, char
 	uint32_t pg_shift;
 	void *ptr = NULL;
 	uint32_t count, entries_per_pg;
-	uint32_t i, j = 0, k = 0;;
+	uint32_t i, j = 0, k = 0;
 	uint32_t *gref_tmp;
 	int first = 1;
 	char tmp_str[PATH_MAX] = {0};
