@@ -118,7 +118,6 @@ struct l2fwd_crypto_options {
 	unsigned nb_ports_per_lcore;
 	unsigned refresh_period;
 	unsigned single_lcore:1;
-	unsigned no_stats_printing:1;
 
 	enum rte_cryptodev_type cdev_type;
 	unsigned sessionless:1;
@@ -575,10 +574,9 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 						(uint64_t)timer_period)) {
 
 					/* do this only on master core */
-					if (lcore_id == rte_get_master_lcore() &&
-							!options->no_stats_printing) {
+					if (lcore_id == rte_get_master_lcore()
+						&& options->refresh_period) {
 						print_stats();
-						/* reset the timer */
 						timer_tsc = 0;
 					}
 				}
@@ -802,11 +800,6 @@ static int
 l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		struct option *lgopts, int option_index)
 {
-	if (strcmp(lgopts[option_index].name, "no_stats") == 0) {
-		options->no_stats_printing = 1;
-		return 0;
-	}
-
 	if (strcmp(lgopts[option_index].name, "cdev_type") == 0)
 		return parse_cryptodev_type(&options->cdev_type, optarg);
 
@@ -903,21 +896,21 @@ l2fwd_crypto_parse_timer_period(struct l2fwd_crypto_options *options,
 		const char *q_arg)
 {
 	char *end = NULL;
-	int n;
+	long int n;
 
 	/* parse number string */
 	n = strtol(q_arg, &end, 10);
 	if ((q_arg[0] == '\0') || (end == NULL) || (*end != '\0'))
 		n = 0;
 
-	if (n >= MAX_TIMER_PERIOD)
-		n = 0;
+	if (n >= MAX_TIMER_PERIOD) {
+		printf("Warning refresh period specified %ld is greater than "
+				"max value %d! using max value",
+				n, MAX_TIMER_PERIOD);
+		n = MAX_TIMER_PERIOD;
+	}
 
 	options->refresh_period = n * 1000 * TIMER_MILLISECOND;
-	if (options->refresh_period == 0) {
-		printf("invalid refresh period specified\n");
-		return -1;
-	}
 
 	return 0;
 }
@@ -932,7 +925,6 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	options->nb_ports_per_lcore = 1;
 	options->refresh_period = 10000;
 	options->single_lcore = 0;
-	options->no_stats_printing = 0;
 
 	options->cdev_type = RTE_CRYPTODEV_AESNI_MB_PMD;
 	options->sessionless = 0;
@@ -979,7 +971,7 @@ l2fwd_crypto_options_print(struct l2fwd_crypto_options *options)
 	printf("single lcore mode: %s\n",
 			options->single_lcore ? "enabled" : "disabled");
 	printf("stats_printing: %s\n",
-			options->no_stats_printing ? "disabled" : "enabled");
+			options->refresh_period == 0 ? "disabled" : "enabled");
 
 	switch (options->cdev_type) {
 	case RTE_CRYPTODEV_AESNI_MB_PMD:
@@ -1036,7 +1028,6 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 	char **argvopt = argv, *prgname = argv[0];
 
 	static struct option lgopts[] = {
-			{ "no_stats", no_argument, 0, 0 },
 			{ "sessionless", no_argument, 0, 0 },
 
 			{ "cdev_type", required_argument, 0, 0 },
