@@ -37,4 +37,3 @@
 #include "vmxnet3_osdep.h"
 
 #endif /* _INCLUDECHECK_H */
-

@@ -3270,4 +3270,3 @@ i40e_xmit_pkts_vec(void __rte_unused *tx_queue,
 {
 	return 0;
 }
-
