@@ -640,7 +640,8 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	struct xenvirt_dict dict;
-	bzero(&dict, sizeof(struct xenvirt_dict));
+
+	memset(&dict, 0, sizeof(struct xenvirt_dict));
 
 	RTE_LOG(INFO, PMD, "Creating virtio rings backed ethdev on numa socket %u\n",
 			numa_node);

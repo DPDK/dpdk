@@ -1512,7 +1512,7 @@ attach_port(char *identifier)
 	nb_ports = rte_eth_dev_count();
 
 	/* set_default_fwd_ports_config(); */
-	bzero(fwd_ports_ids, sizeof(fwd_ports_ids));
+	memset(fwd_ports_ids, 0, sizeof(fwd_ports_ids));
 	i = 0;
 	FOREACH_PORT(j, ports) {
 		fwd_ports_ids[i] = j;
@@ -1547,7 +1547,7 @@ detach_port(uint8_t port_id)
 	nb_ports = rte_eth_dev_count();
 
 	/* set_default_fwd_ports_config(); */
-	bzero(fwd_ports_ids, sizeof(fwd_ports_ids));
+	memset(fwd_ports_ids, 0, sizeof(fwd_ports_ids));
 	i = 0;
 	FOREACH_PORT(pi, ports) {
 		fwd_ports_ids[i] = pi;

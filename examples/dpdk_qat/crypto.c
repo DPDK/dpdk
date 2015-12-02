@@ -307,7 +307,7 @@ getCoreAffinity(Cpa32U *coreAffinity, const CpaInstanceHandle instanceHandle)
 	Cpa16U i = 0;
 	CpaStatus status = CPA_STATUS_SUCCESS;
 
-	bzero(&info, sizeof(CpaInstanceInfo2));
+	memset(&info, 0, sizeof(CpaInstanceInfo2));
 
 	status = cpaCyInstanceGetInfo2(instanceHandle, &info);
 	if (CPA_STATUS_SUCCESS != status) {
@@ -380,7 +380,7 @@ initCySymSession(const int pkt_cipher_alg,
 	CpaBoolean isCrypto = CPA_TRUE, isHmac = CPA_TRUE;
 	CpaCySymSessionSetupData sessionSetupData;
 
-	bzero(&sessionSetupData, sizeof(CpaCySymSessionSetupData));
+	memset(&sessionSetupData, 0, sizeof(CpaCySymSessionSetupData));
 
 	/* Assumption: key length is set to each algorithm's max length */
 	switch (pkt_cipher_alg) {
@@ -781,7 +781,7 @@ crypto_encrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 
 	lcore_id = rte_lcore_id();
 
-	bzero(opData, sizeof(CpaCySymDpOpData));
+	memset(opData, 0, sizeof(CpaCySymDpOpData));
 
 	opData->srcBuffer = opData->dstBuffer = PACKET_DATA_START_PHYS(rte_buff);
 	opData->srcBufferLen = opData->dstBufferLen = rte_buff->data_len;
@@ -856,7 +856,7 @@ crypto_decrypt(struct rte_mbuf *rte_buff, enum cipher_alg c, enum hash_alg h)
 
 	lcore_id = rte_lcore_id();
 
-	bzero(opData, sizeof(CpaCySymDpOpData));
+	memset(opData, 0, sizeof(CpaCySymDpOpData));
 
 	opData->dstBuffer = opData->srcBuffer = PACKET_DATA_START_PHYS(rte_buff);
 	opData->dstBufferLen = opData->srcBufferLen = rte_buff->data_len;
