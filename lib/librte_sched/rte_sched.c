@@ -53,7 +53,12 @@
 #endif
 
 #ifdef RTE_SCHED_VECTOR
-#include <immintrin.h>
+#include <rte_vect.h>
+
+#if defined(__SSE2__)
+#define SCHED_VECTOR_SSE2
+#endif
+
 #endif
 
 #define RTE_SCHED_TB_RATE_CONFIG_ERR          (1e-7)
@@ -1667,7 +1672,7 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 	return 1;
 }
 
-#ifdef RTE_SCHED_VECTOR
+#ifdef SCHED_VECTOR_SSE2
 
 static inline int
 grinder_pipe_exists(struct rte_sched_port *port, uint32_t base_pipe)
