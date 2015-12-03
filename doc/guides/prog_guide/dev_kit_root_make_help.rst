@@ -138,7 +138,7 @@ Documentation Targets
 
 *   doc
 
-    Generate the Doxygen documentation (API, html and pdf).
+    Generate the documentation (API and guides).
 
 *   doc-api-html
 
@@ -185,7 +185,7 @@ Misc Targets
 
 *   help
 
-    Show this help.
+    Show a quick help.
 
 Other Useful Command-line Variables
 -----------------------------------
@@ -241,10 +241,3 @@ the EXTRA_CFLAGS environment variable should be set before compiling as follows:
 .. code-block:: console
 
     export EXTRA_CFLAGS='-O0 -g'
-
-The DPDK and any user or sample applications can then be compiled in the usual way.
-For example:
-
-.. code-block:: console
-
-    make install T=x86_64-native-linuxapp-gcc make -C examples/<theapp>
