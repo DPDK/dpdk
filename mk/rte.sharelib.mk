@@ -40,6 +40,8 @@ LIB_ONE := lib$(RTE_LIBNAME).so
 else
 LIB_ONE := lib$(RTE_LIBNAME).a
 endif
+COMBINED_MAP=$(BUILDDIR)/lib/libdpdk.map
+COMBINED_LDFLAGS += --version-script=$(COMBINED_MAP)
 endif
 
 .PHONY:sharelib
@@ -51,9 +53,10 @@ ifeq ($(LINK_USING_CC),1)
 # Override the definition of LD here, since we're linking with CC
 LD := $(CC) $(CPU_CFLAGS)
 O_TO_S = $(LD) $(call linkerprefix,$(CPU_LDFLAGS)) \
+	 $(call linkerprefix,$(COMBINED_LDFLAGS)) \
 	-shared $(OBJS) -o $(RTE_OUTPUT)/lib/$(LIB_ONE)
 else
-O_TO_S = $(LD) $(CPU_LDFLAGS) \
+O_TO_S = $(LD) $(CPU_LDFLAGS) $(COMBINED_LDFLAGS) \
 	-shared $(OBJS) -o $(RTE_OUTPUT)/lib/$(LIB_ONE)
 endif
 
@@ -79,6 +82,7 @@ ifeq ($(CONFIG_RTE_BUILD_COMBINE_LIBS),y)
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 $(LIB_ONE): FORCE
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	@$(SRCDIR)/scripts/merge-maps.sh > $(COMBINED_MAP)
 	$(O_TO_S_DO)
 else
 $(LIB_ONE): FORCE
