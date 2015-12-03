@@ -54,7 +54,7 @@ extern "C" {
  * @return
  *   The time base for this lcore.
  */
-#ifndef CONFIG_RTE_ARM_EAL_RDTSC_USE_PMU
+#ifndef RTE_ARM_EAL_RDTSC_USE_PMU
 
 /**
  * This call is easily portable to any ARM architecture, however,
