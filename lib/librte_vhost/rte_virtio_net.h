@@ -90,6 +90,7 @@ struct vhost_virtqueue {
 	int			callfd;			/**< Used to notify the guest (trigger interrupt). */
 	int			kickfd;			/**< Currently unused as polling mode is enabled. */
 	int			enabled;
+	uint64_t		reserved[16];		/**< Reserve some spaces for future extension. */
 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
 } __rte_cache_aligned;
 
@@ -128,6 +129,7 @@ struct virtio_net {
 	char			ifname[IF_NAME_SZ];	/**< Name of the tap device or socket path. */
 	uint32_t		virt_qp_nb;	/**< number of queue pair we have allocated */
 	void			*priv;		/**< private context */
+	uint64_t		reserved[64];	/**< Reserve some spaces for future extension. */
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];	/**< Contains all virtqueue information. */
 } __rte_cache_aligned;
 
