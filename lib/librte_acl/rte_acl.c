@@ -114,8 +114,11 @@ rte_acl_init(void)
 {
 	enum rte_acl_classify_alg alg = RTE_ACL_CLASSIFY_DEFAULT;
 
-#ifdef RTE_ARCH_ARM64
+#if defined(RTE_ARCH_ARM64)
 	alg =  RTE_ACL_CLASSIFY_NEON;
+#elif defined(RTE_ARCH_ARM)
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+		alg =  RTE_ACL_CLASSIFY_NEON;
 #else
 #ifdef CC_AVX2_SUPPORT
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))

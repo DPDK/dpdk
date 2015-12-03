@@ -53,6 +53,29 @@ typedef union rte_xmm {
 	double   pd[XMM_SIZE / sizeof(double)];
 } __attribute__((aligned(16))) rte_xmm_t;
 
+#ifdef RTE_ARCH_ARM
+/* NEON intrinsic vqtbl1q_u8() is not supported in ARMv7-A(AArch32) */
+static __inline uint8x16_t
+vqtbl1q_u8(uint8x16_t a, uint8x16_t b)
+{
+	uint8_t i, pos;
+	rte_xmm_t rte_a, rte_b, rte_ret;
+
+	vst1q_u8(rte_a.u8, a);
+	vst1q_u8(rte_b.u8, b);
+
+	for (i = 0; i < 16; i++) {
+		pos = rte_b.u8[i];
+		if (pos < 16)
+			rte_ret.u8[i] = rte_a.u8[pos];
+		else
+			rte_ret.u8[i] = 0;
+	}
+
+	return vld1q_u8(rte_ret.u8);
+}
+#endif
+
 #ifdef __cplusplus
 }
 #endif

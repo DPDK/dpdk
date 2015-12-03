@@ -49,7 +49,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_bld.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_gen.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_scalar.c
 
-ifeq ($(CONFIG_RTE_ARCH_ARM64),y)
+ifneq ($(filter y,$(CONFIG_RTE_ARCH_ARM) $(CONFIG_RTE_ARCH_ARM64)),)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_neon.c
 CFLAGS_acl_run_neon.o += -flax-vector-conversions -Wno-maybe-uninitialized
 else
