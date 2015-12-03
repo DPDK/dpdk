@@ -41,8 +41,9 @@ Group: System Environment/Libraries
 License: BSD and LGPLv2 and GPLv2
 
 ExclusiveArch: i686, x86_64
-%global target %{_arch}-native-linuxapp-gcc
 %global machine default
+%global target %{_arch}-%{machine}-linuxapp-gcc
+%global config %{_arch}-native-linuxapp-gcc
 
 BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel
 BuildRequires: doxygen, python-sphinx, inkscape
@@ -69,16 +70,11 @@ BuildArch: noarch
 DPDK doc is divided in two parts: API details in doxygen HTML format
 and guides in sphinx HTML/PDF formats.
 
-%global destdir %{buildroot}%{_prefix}
-%global moddir  /lib/modules/%(uname -r)/extra
-%global datadir %{_datadir}/dpdk
-%global docdir  %{_docdir}/dpdk
-
 %prep
 %setup -q
 
 %build
-make O=%{target} T=%{target} config
+make O=%{target} T=%{config} config
 sed -ri 's,(RTE_MACHINE=).*,\1%{machine},' %{target}/.config
 sed -ri 's,(RTE_APP_TEST=).*,\1n,'         %{target}/.config
 sed -ri 's,(RTE_BUILD_SHARED_LIB=).*,\1y,' %{target}/.config
@@ -92,51 +88,28 @@ make O=%{target} doc
 
 %install
 rm -rf %{buildroot}
-make            O=%{target}      DESTDIR=%{destdir}
-mkdir -p                                 %{buildroot}%{moddir}
-mv     %{destdir}/%{target}/kmod/*.ko    %{buildroot}%{moddir}
-rmdir  %{destdir}/%{target}/kmod
-mkdir -p                                 %{buildroot}%{_sbindir}
-ln -s  %{datadir}/tools/*nic_bind.py     %{buildroot}%{_sbindir}/dpdk_nic_bind
-mkdir -p                                 %{buildroot}%{_bindir}
-mv     %{destdir}/%{target}/app/testpmd  %{buildroot}%{_bindir}
-rmdir  %{destdir}/%{target}/app
-mv     %{destdir}/%{target}/include      %{buildroot}%{_includedir}
-mv     %{destdir}/%{target}/lib          %{buildroot}%{_libdir}
-mkdir -p                                 %{buildroot}%{docdir}
-rm -rf %{destdir}/%{target}/doc/*/*/.{build,doc}*
-mv     %{destdir}/%{target}/doc/html/*   %{buildroot}%{docdir}
-mv     %{destdir}/%{target}/doc/*/*/*pdf %{buildroot}%{docdir}/guides
-rm -rf %{destdir}/%{target}/doc
-mkdir -p                                 %{buildroot}%{datadir}
-mv     %{destdir}/%{target}/.config      %{buildroot}%{datadir}/config
-mv     %{destdir}/%{target}              %{buildroot}%{datadir}
-mv     %{destdir}/scripts                %{buildroot}%{datadir}
-mv     %{destdir}/mk                     %{buildroot}%{datadir}
-cp -a             examples               %{buildroot}%{datadir}
-cp -a             tools                  %{buildroot}%{datadir}
-ln -s             %{datadir}/config      %{buildroot}%{datadir}/%{target}/.config
-ln -s             %{_includedir}         %{buildroot}%{datadir}/%{target}/include
-ln -s             %{_libdir}             %{buildroot}%{datadir}/%{target}/lib
+make install O=%{target} DESTDIR=%{buildroot} \
+	prefix=%{_prefix} bindir=%{_bindir} sbindir=%{_sbindir} \
+	includedir=%{_includedir}/dpdk libdir=%{_libdir} \
+	datadir=%{_datadir}/dpdk docdir=%{_docdir}/dpdk
 
 %files
-%dir %{datadir}
-%{datadir}/config
-%{datadir}/tools
-%{moddir}/*
+%dir %{_datadir}/dpdk
+%{_datadir}/dpdk/tools
+/lib/modules/%(uname -r)/extra/*
 %{_sbindir}/*
 %{_bindir}/*
 %{_libdir}/*
 
 %files devel
-%{_includedir}/*
-%{datadir}/mk
-%{datadir}/scripts
-%{datadir}/%{target}
-%{datadir}/examples
+%{_includedir}/dpdk
+%{_datadir}/dpdk/mk
+%{_datadir}/dpdk/scripts
+%{_datadir}/dpdk/%{target}
+%{_datadir}/dpdk/examples
 
 %files doc
-%doc %{docdir}
+%doc %{_docdir}/dpdk
 
 %post
 /sbin/ldconfig
