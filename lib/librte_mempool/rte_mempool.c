@@ -403,7 +403,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
 		   int socket_id, unsigned flags)
 {
-	if (is_xen_dom0_supported())
+	if (rte_xen_dom0_supported())
 		return rte_dom0_mempool_create(name, n, elt_size,
 					       cache_size, private_data_size,
 					       mp_init, mp_init_arg,

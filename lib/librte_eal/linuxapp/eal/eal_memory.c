@@ -98,7 +98,7 @@
 #include "eal_hugepages.h"
 
 #ifdef RTE_LIBRTE_XEN_DOM0
-int is_xen_dom0_supported(void)
+int rte_xen_dom0_supported(void)
 {
 	return internal_config.xen_dom0_support;
 }

@@ -134,5 +134,6 @@ DPDK_2.2 {
 	rte_keepalive_dispatch_pings;
 	rte_keepalive_mark_alive;
 	rte_keepalive_register_core;
+	rte_xen_dom0_supported;
 
 } DPDK_2.1;

@@ -2605,7 +2605,7 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	if (mz)
 		return mz;
 
-	if (is_xen_dom0_supported())
+	if (rte_xen_dom0_supported())
 		return rte_memzone_reserve_bounded(z_name, size, socket_id,
 						   0, align, RTE_PGSIZE_2M);
 	else
