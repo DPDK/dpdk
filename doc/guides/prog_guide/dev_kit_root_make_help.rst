@@ -138,19 +138,6 @@ Test Targets
 
         make test O=mybuild
 
-*   testall
-
-    Launch automatic tests for all installed target directories (after a make install).
-    The name of the targets to test can be optionally specified using T=mytarget.
-    The target name can contain wildcard (\*) characters.
-    The list of available targets are in $(RTE_SDK)/config (remove the defconfig\_  prefix).
-
-    Examples:
-
-    .. code-block:: console
-
-        make testall, make testall T=x86_64-*
-
 Documentation Targets
 ---------------------
 

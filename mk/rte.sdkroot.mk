@@ -93,10 +93,6 @@ config showconfigs showversion:
 test fast_test ring_test mempool_test perf_test coverage:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk $@
 
-.PHONY: testall
-testall:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktestall.mk $@
-
 .PHONY: install uninstall
 install uninstall:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkinstall.mk $@
