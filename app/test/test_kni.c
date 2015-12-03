@@ -625,7 +625,7 @@ test_kni(void)
 				"a never used name string\n");
 		goto fail;
 	}
-
+	ret = 0;
 
 fail:
 	rte_eth_dev_stop(port_id);
