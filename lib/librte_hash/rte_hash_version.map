@@ -24,7 +24,6 @@ DPDK_2.1 {
 
 	rte_hash_add_key_data;
 	rte_hash_add_key_with_hash_data;
-	rte_hash_create;
 	rte_hash_iterate;
 	rte_hash_lookup_bulk_data;
 	rte_hash_lookup_data;
