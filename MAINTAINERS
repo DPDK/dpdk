@@ -44,7 +44,7 @@ F: doc/
 
 Build System
 ------------
-M: Olivier Matz <olivier.matz@6wind.com>
+M: Thomas Monjalon <thomas.monjalon@6wind.com>
 F: GNUmakefile
 F: Makefile
 F: config/
