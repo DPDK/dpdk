@@ -31,3 +31,10 @@ DPDK_2.1 {
 	rte_hash_reset;
 
 } DPDK_2.0;
+
+DPDK_2.2 {
+	global:
+
+	rte_hash_set_cmp_func;
+
+} DPDK_2.1;

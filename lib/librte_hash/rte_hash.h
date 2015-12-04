@@ -66,6 +66,9 @@ typedef uint32_t hash_sig_t;
 typedef uint32_t (*rte_hash_function)(const void *key, uint32_t key_len,
 				      uint32_t init_val);
 
+/** Type of function used to compare the hash key. */
+typedef int (*rte_hash_cmp_eq_t)(const void *key1, const void *key2, size_t key_len);
+
 /**
  * Parameters used when creating the hash table.
  */
@@ -102,6 +105,19 @@ struct rte_hash;
  */
 struct rte_hash *
 rte_hash_create(const struct rte_hash_parameters *params);
+
+/**
+ * Set a new hash compare function other than the default one.
+ *
+ * @note Function pointer does not work with multi-process, so do not use it
+ * in multi-process mode.
+ *
+ * @param h
+ *   Hash table to reset
+ * @param func
+ *   New compare function
+ */
+void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func);
 
 /**
  * Find an existing hash table object and return a pointer to it.

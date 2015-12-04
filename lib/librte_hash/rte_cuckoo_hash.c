@@ -102,8 +102,6 @@ EAL_REGISTER_TAILQ(rte_hash_tailq)
 
 #define LCORE_CACHE_SIZE		8
 
-typedef int (*rte_hash_cmp_eq_t)(const void *key1, const void *key2, size_t key_len);
-
 struct lcore_cache {
 	unsigned len; /**< Cache len */
 	void *objs[LCORE_CACHE_SIZE]; /**< Cache objects */
@@ -185,6 +183,11 @@ rte_hash_find_existing(const char *name)
 		return NULL;
 	}
 	return h;
+}
+
+void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func)
+{
+	h->rte_hash_cmp_eq = func;
 }
 
 struct rte_hash *
