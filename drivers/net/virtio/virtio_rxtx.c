@@ -611,6 +611,8 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		rxm->port = rxvq->port_id;
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rxm->ol_flags = 0;
+		rxm->vlan_tci = 0;
 
 		rxm->nb_segs = 1;
 		rxm->next = NULL;
@@ -731,6 +733,8 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->nb_segs = seg_num;
 		rxm->next = NULL;
+		rxm->ol_flags = 0;
+		rxm->vlan_tci = 0;
 		rxm->pkt_len = (uint32_t)(len[0] - hdr_size);
 		rxm->data_len = (uint16_t)(len[0] - hdr_size);
 
