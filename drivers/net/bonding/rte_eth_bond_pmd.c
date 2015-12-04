@@ -1445,7 +1445,7 @@ slave_add(struct bond_dev_private *internals,
 
 	/* If slave device doesn't support interrupts then we need to enabled
 	 * polling to monitor link status */
-	if (!(slave_eth_dev->data->dev_flags & RTE_PCI_DRV_INTR_LSC)) {
+	if (!(slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)) {
 		slave_details->link_status_poll_enabled = 1;
 
 		if (!internals->link_status_polling_enabled) {
