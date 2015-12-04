@@ -1064,6 +1064,7 @@ static void app_pipeline_params_get(struct app_params *app,
 	struct pipeline_params *p_out)
 {
 	uint32_t i;
+	uint32_t mempool_id;
 
 	strcpy(p_out->name, p_in->name);
 
@@ -1147,8 +1148,9 @@ static void app_pipeline_params_get(struct app_params *app,
 			out->burst_size = app->tm_params[in->id].burst_read;
 			break;
 		case APP_PKTQ_IN_SOURCE:
+			mempool_id = app->source_params[in->id].mempool_id;
 			out->type = PIPELINE_PORT_IN_SOURCE;
-			out->params.source.mempool = app->mempool[in->id];
+			out->params.source.mempool = app->mempool[mempool_id];
 			out->burst_size = app->source_params[in->id].burst;
 			break;
 		default:
