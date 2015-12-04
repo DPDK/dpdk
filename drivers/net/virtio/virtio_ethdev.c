@@ -1289,8 +1289,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = eth_dev->pci_dev;
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
 	if (virtio_resource_init(pci_dev) < 0)
 		return -1;
 
@@ -1310,6 +1308,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	/* If host does not support status then disable LSC */
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS))
 		pci_dev->driver->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	rx_func_get(eth_dev);
 
