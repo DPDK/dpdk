@@ -832,7 +832,6 @@ uint16_t
 virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct virtqueue *txvq = tx_queue;
-	struct rte_mbuf *txm;
 	uint16_t nb_used, nb_tx;
 	int error;
 
@@ -846,58 +845,49 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	if (likely(nb_used > txvq->vq_nentries - txvq->vq_free_thresh))
 		virtio_xmit_cleanup(txvq, nb_used);
 
-	nb_tx = 0;
-
-	while (nb_tx < nb_pkts) {
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		struct rte_mbuf *txm = tx_pkts[nb_tx];
 		/* Need one more descriptor for virtio header. */
-		int need = tx_pkts[nb_tx]->nb_segs - txvq->vq_free_cnt + 1;
+		int need = txm->nb_segs - txvq->vq_free_cnt + 1;
 
-		/*Positive value indicates it need free vring descriptors */
+		/* Positive value indicates it need free vring descriptors */
 		if (unlikely(need > 0)) {
 			nb_used = VIRTQUEUE_NUSED(txvq);
 			virtio_rmb();
 			need = RTE_MIN(need, (int)nb_used);
 
 			virtio_xmit_cleanup(txvq, need);
-			need = (int)tx_pkts[nb_tx]->nb_segs -
-				txvq->vq_free_cnt + 1;
-		}
-
-		/*
-		 * Zero or negative value indicates it has enough free
-		 * descriptors to use for transmitting.
-		 */
-		if (likely(need <= 0)) {
-			txm = tx_pkts[nb_tx];
-
-			/* Do VLAN tag insertion */
-			if (unlikely(txm->ol_flags & PKT_TX_VLAN_PKT)) {
-				error = rte_vlan_insert(&txm);
-				if (unlikely(error)) {
-					rte_pktmbuf_free(txm);
-					++nb_tx;
-					continue;
-				}
-			}
-
-			/* Enqueue Packet buffers */
-			error = virtqueue_enqueue_xmit(txvq, txm);
-			if (unlikely(error)) {
-				if (error == ENOSPC)
-					PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0");
-				else if (error == EMSGSIZE)
-					PMD_TX_LOG(ERR, "virtqueue_enqueue Free count < 1");
-				else
-					PMD_TX_LOG(ERR, "virtqueue_enqueue error: %d", error);
+			need = txm->nb_segs - txvq->vq_free_cnt + 1;
+			if (unlikely(need > 0)) {
+				PMD_TX_LOG(ERR,
+					   "No free tx descriptors to transmit");
 				break;
 			}
-			nb_tx++;
-			txvq->bytes += txm->pkt_len;
-			virtio_update_packet_stats(txvq, txm);
-		} else {
-			PMD_TX_LOG(ERR, "No free tx descriptors to transmit");
+		}
+
+		/* Do VLAN tag insertion */
+		if (unlikely(txm->ol_flags & PKT_TX_VLAN_PKT)) {
+			error = rte_vlan_insert(&txm);
+			if (unlikely(error)) {
+				rte_pktmbuf_free(txm);
+				continue;
+			}
+		}
+
+		/* Enqueue Packet buffers */
+		error = virtqueue_enqueue_xmit(txvq, txm);
+		if (unlikely(error)) {
+			if (error == ENOSPC)
+				PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0");
+			else if (error == EMSGSIZE)
+				PMD_TX_LOG(ERR, "virtqueue_enqueue Free count < 1");
+			else
+				PMD_TX_LOG(ERR, "virtqueue_enqueue error: %d", error);
 			break;
 		}
+
+		txvq->bytes += txm->pkt_len;
+		virtio_update_packet_stats(txvq, txm);
 	}
 
 	txvq->packets += nb_tx;
