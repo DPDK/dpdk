@@ -197,6 +197,11 @@ Drivers
   Fixed the issue of not freeing memzone in the call to free the memory for
   adminq DMA.
 
+* **mlx: Fixed driver loading.**
+
+  The mlx drivers were unable to load when built as a shared library,
+  due to a missing symbol in mempool library.
+
 * **vhost: Fixed Qemu shutdown.**
 
   Fixed issue with libvirt ``virsh destroy`` not killing the VM.
