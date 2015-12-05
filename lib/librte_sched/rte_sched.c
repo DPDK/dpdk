@@ -55,8 +55,8 @@
 #ifdef RTE_SCHED_VECTOR
 #include <rte_vect.h>
 
-#if defined(__SSE2__)
-#define SCHED_VECTOR_SSE2
+#if defined(__SSE4__)
+#define SCHED_VECTOR_SSE4
 #endif
 
 #endif
@@ -1672,7 +1672,7 @@ grinder_schedule(struct rte_sched_port *port, uint32_t pos)
 	return 1;
 }
 
-#ifdef SCHED_VECTOR_SSE2
+#ifdef SCHED_VECTOR_SSE4
 
 static inline int
 grinder_pipe_exists(struct rte_sched_port *port, uint32_t base_pipe)
