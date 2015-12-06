@@ -938,7 +938,7 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 #define RTE_PMD_DEBUG_TRACE(...) \
 	rte_pmd_debug_trace(__func__, __VA_ARGS__)
 #else
-#define RTE_PMD_DEBUG_TRACE(fmt, args...)
+#define RTE_PMD_DEBUG_TRACE(...)
 #endif
 
 
