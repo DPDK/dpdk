@@ -102,13 +102,13 @@ ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
 endif
 
-ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
+# The static libraries do not know their dependencies.
+# The combined library fails also to store this information.
+# So linking with static or combined library requires explicit dependencies.
+ifneq ($(CONFIG_RTE_BUILD_COMBINE_LIBS)$(CONFIG_RTE_BUILD_SHARED_LIB),ny)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs
-endif # ! CONFIG_RTE_BUILD_SHARED_LIBS
-
-ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_PMD)       += -libverbs
-endif # ! CONFIG_RTE_BUILD_SHARED_LIBS
+endif # CONFIG_RTE_BUILD_COMBINE_LIBS or not CONFIG_RTE_BUILD_SHARED_LIBS
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
 
