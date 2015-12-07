@@ -32,7 +32,7 @@
 ARCH  ?= arm
 CROSS ?=
 
-CPU_CFLAGS  ?= -marm -DRTE_CACHE_LINE_SIZE=64 -munaligned-access
+CPU_CFLAGS  ?= -marm -munaligned-access
 CPU_LDFLAGS ?=
 CPU_ASFLAGS ?= -felf
 

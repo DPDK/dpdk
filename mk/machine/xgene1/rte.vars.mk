@@ -55,4 +55,4 @@
 # CPU_LDFLAGS =
 # CPU_ASFLAGS =
 
-MACHINE_CFLAGS += -march=armv8-a -DRTE_CACHE_LINE_SIZE=64
+MACHINE_CFLAGS += -march=armv8-a

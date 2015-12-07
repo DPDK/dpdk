@@ -68,10 +68,6 @@
  */
 #define RTE_KNI_NAMESIZE 32
 
-#ifndef RTE_CACHE_LINE_SIZE
-#define RTE_CACHE_LINE_SIZE 64       /**< Cache line size. */
-#endif
-
 /*
  * Request id.
  */

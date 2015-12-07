@@ -32,7 +32,7 @@
 ARCH  ?= powerpc
 CROSS ?=
 
-CPU_CFLAGS  ?= -m64 -DRTE_CACHE_LINE_SIZE=128
+CPU_CFLAGS  ?= -m64
 CPU_LDFLAGS ?=
 CPU_ASFLAGS ?= -felf64
 

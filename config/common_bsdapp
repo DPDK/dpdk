@@ -84,6 +84,11 @@ CONFIG_RTE_BUILD_COMBINE_LIBS=n
 CONFIG_RTE_NEXT_ABI=y
 
 #
+# Machine's cache line size
+#
+CONFIG_RTE_CACHE_LINE_SIZE=64
+
+#
 # Compile Environment Abstraction Layer
 #
 CONFIG_RTE_LIBRTE_EAL=y

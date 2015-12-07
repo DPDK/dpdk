@@ -55,4 +55,4 @@ CROSS ?= aarch64-thunderx-linux-gnu-
 # CPU_LDFLAGS =
 # CPU_ASFLAGS =
 
-MACHINE_CFLAGS += -march=armv8-a+crc -mcpu=thunderx -DRTE_CACHE_LINE_SIZE=128
+MACHINE_CFLAGS += -march=armv8-a+crc -mcpu=thunderx
