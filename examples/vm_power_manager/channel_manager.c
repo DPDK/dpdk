@@ -734,7 +734,7 @@ connect_hypervisor(const char *path)
 int
 channel_manager_init(const char *path)
 {
-	int n_cpus;
+	virNodeInfo info;
 
 	LIST_INIT(&vm_list_head);
 	if (connect_hypervisor(path) < 0) {
@@ -756,13 +756,12 @@ channel_manager_init(const char *path)
 		goto error;
 	}
 
-	n_cpus = virNodeGetCPUMap(global_vir_conn_ptr, NULL, NULL, 0);
-	if (n_cpus <= 0) {
-		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to get the number of Host "
-				"CPUs\n");
+	if (virNodeGetInfo(global_vir_conn_ptr, &info)) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to retrieve node Info\n");
 		goto error;
 	}
-	global_n_host_cpus = (unsigned)n_cpus;
+
+	global_n_host_cpus = (unsigned)info.cpus;
 
 	if (global_n_host_cpus > CHANNEL_CMDS_MAX_CPUS) {
 		RTE_LOG(WARNING, CHANNEL_MANAGER, "The number of host CPUs(%u) exceeds the "
