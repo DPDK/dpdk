@@ -2274,7 +2274,7 @@ static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 	else
 		mode = BRIDGE_MODE_VEPA;
 
-#ifdef HAVE_NDO_FDB_ADD_VID
+#ifdef HAVE_NDO_DFLT_BRIDGE_ADD_MASK
 #ifdef HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
 #ifdef HAVE_NDO_BRIDGE_GETLINK_FILTER_MASK_VLAN_FILL
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode, 0, 0,
@@ -2287,7 +2287,7 @@ static int igb_ndo_bridge_getlink(struct sk_buff *skb, u32 pid, u32 seq,
 #endif /* HAVE_NDO_BRIDGE_GETLINK_NLFLAGS */
 #else
 	return ndo_dflt_bridge_getlink(skb, pid, seq, dev, mode);
-#endif /* HAVE_NDO_FDB_ADD_VID */
+#endif /* HAVE_NDO_DFLT_BRIDGE_ADD_MASK */
 }
 #endif /* HAVE_BRIDGE_ATTRIBS */
 #endif /* NTF_SELF */
