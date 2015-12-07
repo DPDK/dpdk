@@ -41,6 +41,7 @@ CFLAGS += $(WERROR_FLAGS)
 
 # external library include paths
 CFLAGS += -I$(SRCDIR)/qat_adf
+LDLIBS += -lcrypto
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_crypto.c

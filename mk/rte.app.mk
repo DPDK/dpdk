@@ -108,6 +108,9 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_PMD)       += -libverbs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lsze2
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lxenstore
+_LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lgxio
+# QAT PMD has a dependency on libcrypto (from openssl) for calculating HMAC precomputes
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lcrypto
 endif # CONFIG_RTE_BUILD_COMBINE_LIBS or not CONFIG_RTE_BUILD_SHARED_LIBS
 
 _LDLIBS-y += --start-group
@@ -144,14 +147,12 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_E1000_PMD)      += -lrte_pmd_e1000
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -lrte_pmd_mlx4
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_PMD)       += -lrte_pmd_mlx5
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lrte_pmd_szedata2
-_LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lrte_pmd_mpipe -lgxio
+_LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lrte_pmd_mpipe
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_RING)       += -lrte_pmd_ring
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lrte_pmd_pcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET)  += -lrte_pmd_af_packet
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL)       += -lrte_pmd_null
-
-# QAT PMD has a dependency on libcrypto (from openssl) for calculating HMAC precomputes
-_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lrte_pmd_qat -lcrypto
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lrte_pmd_qat
 
 # AESNI MULTI BUFFER is dependent on the IPSec_MB library
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB)   += -lrte_pmd_aesni_mb

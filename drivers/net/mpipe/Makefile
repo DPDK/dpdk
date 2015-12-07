@@ -32,6 +32,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_mpipe.a
 
 CFLAGS += $(WERROR_FLAGS) -O3
+LDLIBS += -lgxio
 
 EXPORT_MAP := rte_pmd_mpipe_version.map
 
