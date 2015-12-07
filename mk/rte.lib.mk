@@ -35,15 +35,19 @@ include $(RTE_SDK)/mk/internal/rte.clean-pre.mk
 include $(RTE_SDK)/mk/internal/rte.build-pre.mk
 include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 
+EXTLIB_BUILD ?= n
+
 # VPATH contains at least SRCDIR
 VPATH += $(SRCDIR)
 
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 LIB := $(patsubst %.a,%.so.$(LIBABIVER),$(LIB))
+ifeq ($(EXTLIB_BUILD),n)
 ifeq ($(CONFIG_RTE_NEXT_ABI),y)
 LIB := $(LIB).1
 endif
 CPU_LDFLAGS += --version-script=$(SRCDIR)/$(EXPORT_MAP)
+endif
 endif
 
 
@@ -175,7 +179,7 @@ $(RTE_OUTPUT)/lib/$(LIB): $(LIB)
 	@[ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib
 	$(Q)cp -f $(LIB) $(RTE_OUTPUT)/lib
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
-ifeq ($(CONFIG_RTE_NEXT_ABI),y)
+ifeq ($(CONFIG_RTE_NEXT_ABI)$(EXTLIB_BUILD),yn)
 	$(Q)ln -s -f $< $(basename $(basename $@))
 else
 	$(Q)ln -s -f $< $(basename $@)
