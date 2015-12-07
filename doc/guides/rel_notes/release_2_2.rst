@@ -505,6 +505,17 @@ ABI Changes
 * librte_cfgfile: Allow longer names and values by increasing the constants
   CFG_NAME_LEN and CFG_VALUE_LEN to 64 and 256 respectively.
 
+* vhost: a new field enabled is added to the vhost_virtqueue structure.
+
+* vhost: a new field virt_qp_nb is added to virtio_net structure, and the
+  virtqueue field is moved to the end of virtio_net structure.
+
+* vhost: a new operation vring_state_changed is added to virtio_net_device_ops
+  structure.
+
+* vhost: a few spaces are reserved both at vhost_virtqueue and virtio_net
+  structure for future extension.
+
 
 Shared Library Versions
 -----------------------
@@ -539,4 +550,4 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_sched.so.1
    + librte_table.so.2
      librte_timer.so.1
-     librte_vhost.so.1
+   + librte_vhost.so.2
