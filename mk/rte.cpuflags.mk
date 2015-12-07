@@ -33,7 +33,7 @@
 # used to set the RTE_CPUFLAG_* environment variables giving details
 # of what instruction sets the target cpu supports.
 
-AUTO_CPUFLAGS := $(shell $(CC) $(MACHINE_CFLAGS) $(EXTRA_CFLAGS) -dM -E - < /dev/null)
+AUTO_CPUFLAGS := $(shell $(CC) $(MACHINE_CFLAGS) $(WERROR_FLAGS) $(EXTRA_CFLAGS) -dM -E - < /dev/null)
 
 # adding flags to CPUFLAGS
 
