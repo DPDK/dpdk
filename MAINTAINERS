@@ -521,6 +521,10 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/dpdk_qat/
 F: doc/guides/sample_app_ug/intel_quickassist.rst
 
+M: Remy Horton <remy.horton@intel.com>
+F: examples/ethtool/
+F: doc/guides/sample_app_ug/ethtool.rst
+
 F: examples/exception_path/
 F: doc/guides/sample_app_ug/exception_path.rst
 

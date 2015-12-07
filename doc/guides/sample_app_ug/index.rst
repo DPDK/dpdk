@@ -41,6 +41,7 @@ Sample Applications User Guide
 
     intro
     cmd_line
+    ethtool
     exception_path
     hello_world
     skeleton

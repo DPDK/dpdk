@@ -125,6 +125,8 @@ New Features
 
 * **Added port hotplug support to xenvirt.**
 
+* **Added ethtool shim and sample application.**
+
 
 Resolved Issues
 ---------------

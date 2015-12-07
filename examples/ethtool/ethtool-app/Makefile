@@ -1,6 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2014 6WIND S.A.
+#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -12,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of 6WIND S.A. nor the names of its
+#     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -32,51 +33,22 @@ ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
 
-# Default target, can be overriden by command line or environment
+# Default target, can be overridden by command line or environment
 RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bond
-DIRS-y += cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += distributor
-ifneq ($(ICP_ROOT),)
-DIRS-y += dpdk_qat
-endif
-DIRS-y += ethtool
-DIRS-y += exception_path
-DIRS-y += helloworld
-DIRS-y += ip_pipeline
-DIRS-y += ip_reassembly
-DIRS-$(CONFIG_RTE_IP_FRAG) += ip_fragmentation
-DIRS-y += ipv4_multicast
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += kni
-DIRS-y += l2fwd
-DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += l2fwd-ivshmem
-DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += l2fwd-jobstats
-DIRS-y += l2fwd-keepalive
-DIRS-y += l3fwd
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += l3fwd-acl
-DIRS-$(CONFIG_RTE_LIBRTE_POWER) += l3fwd-power
-DIRS-y += l3fwd-vf
-DIRS-y += link_status_interrupt
-DIRS-y += load_balancer
-DIRS-y += multi_process
-DIRS-y += netmap_compat/bridge
-DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += packet_ordering
-DIRS-$(CONFIG_RTE_LIBRTE_IEEE1588) += ptpclient
-DIRS-$(CONFIG_RTE_LIBRTE_METER) += qos_meter
-DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += qos_sched
-DIRS-y += quota_watermark
-DIRS-$(CONFIG_RTE_ETHDEV_RXTX_CALLBACKS) += rxtx_callbacks
-DIRS-y += skeleton
-DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += tep_termination
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += timer
-DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost
-DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += vhost_xen
-DIRS-y += vmdq
-DIRS-y += vmdq_dcb
-DIRS-$(CONFIG_RTE_LIBRTE_POWER) += vm_power_manager
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += l2fwd-crypto
+# binary name
+APP = ethtool
 
-include $(RTE_SDK)/mk/rte.extsubdir.mk
+# all source are stored in SRCS-y
+SRCS-y := main.c ethapp.c
+
+CFLAGS += -O3 -D_GNU_SOURCE -pthread -I$(SRCDIR)/../lib
+CFLAGS += $(WERROR_FLAGS)
+
+LDLIBS += -L$(subst ethtool-app,lib,$(RTE_OUTPUT))/lib
+LDLIBS += -lrte_ethtool
+
+
+include $(RTE_SDK)/mk/rte.extapp.mk
