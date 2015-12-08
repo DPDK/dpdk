@@ -480,12 +480,9 @@ pcmd_macaddr_callback(void *ptr_params,
 			return;
 		}
 	}
-	if (stat == 0)
-		return;
-	else if (stat == -ENOTSUP)
-		printf("Port %i: Operation not supported\n", params->port);
-	else
-		printf("Port %i: Error %i\n", params->port, stat);
+
+	printf("Port %i: Error %s\n", params->port,
+	       strerror(-stat));
 }
 
 static void
