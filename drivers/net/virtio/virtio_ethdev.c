@@ -273,7 +273,7 @@ virtio_dev_queue_release(struct virtqueue *vq) {
 	if (vq) {
 		hw = vq->hw;
 		/* Select and deactivate the queue */
-		VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->queue_id);
+		VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->vq_queue_index);
 		VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN, 0);
 
 		rte_free(vq->sw_ring);
