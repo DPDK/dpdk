@@ -76,6 +76,7 @@ Sample Applications User Guide
     tep_termination
     proc_info
     ptpclient
+    performance_thread
 
 **Figures**
 
