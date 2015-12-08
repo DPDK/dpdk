@@ -510,17 +510,12 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 			do {
 				avail_idx = *((volatile uint16_t *)&vq->avail->idx);
-				if (unlikely(res_cur_idx == avail_idx)) {
-					LOG_DEBUG(VHOST_DATA,
-						"(%"PRIu64") Failed "
-						"to get enough desc from "
-						"vring\n",
-						dev->device_fh);
+				if (unlikely(res_cur_idx == avail_idx))
 					goto merge_rx_exit;
-				} else {
-					update_secure_len(vq, res_cur_idx, &secure_len, &vec_idx);
-					res_cur_idx++;
-				}
+
+				update_secure_len(vq, res_cur_idx,
+						  &secure_len, &vec_idx);
+				res_cur_idx++;
 			} while (pkt_len > secure_len);
 
 			/* vq->last_used_idx_res is atomically updated. */
