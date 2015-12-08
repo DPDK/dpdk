@@ -563,6 +563,10 @@ F: doc/guides/sample_app_ug/load_balancer.rst
 F: examples/netmap_compat/
 F: doc/guides/sample_app_ug/netmap_compatibility.rst
 
+M: Ian Betts <ian.betts@intel.com>
+F: examples/performance-thread/
+F: doc/guides/sample_app_ug/performance_thread.rst
+
 F: examples/quota_watermark/
 F: doc/guides/sample_app_ug/quota_watermark.rst
 
