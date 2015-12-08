@@ -92,4 +92,4 @@ for c in cores:
         print "Core %s" % str(c).ljust(max_core_id_len),
         for s in sockets:
                 print str(core_map[(s,c)]).ljust(max_core_map_len),
-        print "\n"
+        print ""
