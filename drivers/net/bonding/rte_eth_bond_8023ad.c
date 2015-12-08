@@ -851,6 +851,9 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	char mem_name[RTE_ETH_NAME_MAX_LEN];
 	int socket_id;
 	unsigned element_size;
+	uint32_t total_tx_desc;
+	struct bond_tx_queue *bd_tx_q;
+	uint16_t q_id;
 
 	/* Given slave mus not be in active list */
 	RTE_VERIFY(find_slave_by_id(internals->active_slaves,
@@ -884,14 +887,17 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	element_size = sizeof(struct slow_protocol_frame) + sizeof(struct rte_mbuf)
 				+ RTE_PKTMBUF_HEADROOM;
 
-	 /* How big memory pool should be? If driver will not
-	  * free packets quick enough there will be ENOMEM in tx_machine.
-	  * For now give 511 pkts * max number of queued TX packets per slave.
-	  * Hope it will be enough. */
+	/* The size of the mempool should be at least:
+	 * the sum of the TX descriptors + BOND_MODE_8023AX_SLAVE_TX_PKTS */
+	total_tx_desc = BOND_MODE_8023AX_SLAVE_TX_PKTS;
+	for (q_id = 0; q_id < bond_dev->data->nb_rx_queues; q_id++) {
+		bd_tx_q = (struct bond_tx_queue*)bond_dev->data->tx_queues[q_id];
+		total_tx_desc += bd_tx_q->nb_tx_desc;
+	}
+
 	snprintf(mem_name, RTE_DIM(mem_name), "slave_port%u_pool", slave_id);
 	port->mbuf_pool = rte_mempool_create(mem_name,
-		BOND_MODE_8023AX_SLAVE_TX_PKTS * 512 - 1,
-		element_size,
+		total_tx_desc, element_size,
 		RTE_MEMPOOL_CACHE_MAX_SIZE >= 32 ? 32 : RTE_MEMPOOL_CACHE_MAX_SIZE,
 		sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init,
 		NULL, rte_pktmbuf_init, NULL, socket_id, MEMPOOL_F_NO_SPREAD);
@@ -932,12 +938,12 @@ bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev,
 	struct port *port;
 	uint8_t i;
 
-	/* Given slave mus be in active list */
+	/* Given slave must be in active list */
 	RTE_VERIFY(find_slave_by_id(internals->active_slaves,
 	internals->active_slave_count, slave_id) < internals->active_slave_count);
 
 	/* Exclude slave from transmit policy. If this slave is an aggregator
-	 * make all aggregated slaves unselected to force sellection logic
+	 * make all aggregated slaves unselected to force selection logic
 	 * to select suitable aggregator for this port. */
 	for (i = 0; i < internals->active_slave_count; i++) {
 		port = &mode_8023ad_ports[internals->active_slaves[i]];
@@ -1095,7 +1101,7 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 			goto free_out;
 		}
 
-		/* Setup marker timer. Do it in loop in case concurent access. */
+		/* Setup marker timer. Do it in loop in case concurrent access. */
 		do {
 			old_marker_timer = port->rx_marker_timer;
 			if (!timer_is_expired(&old_marker_timer)) {
