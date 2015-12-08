@@ -7430,7 +7430,7 @@ int bnx2x_init(struct bnx2x_softc *sc)
 	int rc;
 
 	/* Check if the driver is still running and bail out if it is. */
-	if (sc->link_vars.link_up) {
+	if (sc->state != BNX2X_STATE_CLOSED) {
 		PMD_DRV_LOG(DEBUG, "Init called while driver is running!");
 		rc = 0;
 		goto bnx2x_init_done;
