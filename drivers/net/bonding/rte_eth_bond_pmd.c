@@ -39,6 +39,7 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_ip.h>
+#include <rte_ip_frag.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
 #include <rte_dev.h>
@@ -552,17 +553,20 @@ xmit_l34_hash(const struct rte_mbuf *buf, uint8_t slave_count)
 
 		l3hash = ipv4_hash(ipv4_hdr);
 
-		ip_hdr_offset = (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
-				IPV4_IHL_MULTIPLIER;
+		/* there is no L4 header in fragmented packet */
+		if (likely(rte_ipv4_frag_pkt_is_fragmented(ipv4_hdr) == 0)) {
+			ip_hdr_offset = (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
+					IPV4_IHL_MULTIPLIER;
 
-		if (ipv4_hdr->next_proto_id == IPPROTO_TCP) {
-			tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr +
-					ip_hdr_offset);
-			l4hash = HASH_L4_PORTS(tcp_hdr);
-		} else if (ipv4_hdr->next_proto_id == IPPROTO_UDP) {
-			udp_hdr = (struct udp_hdr *)((char *)ipv4_hdr +
-					ip_hdr_offset);
-			l4hash = HASH_L4_PORTS(udp_hdr);
+			if (ipv4_hdr->next_proto_id == IPPROTO_TCP) {
+				tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr +
+						ip_hdr_offset);
+				l4hash = HASH_L4_PORTS(tcp_hdr);
+			} else if (ipv4_hdr->next_proto_id == IPPROTO_UDP) {
+				udp_hdr = (struct udp_hdr *)((char *)ipv4_hdr +
+						ip_hdr_offset);
+				l4hash = HASH_L4_PORTS(udp_hdr);
+			}
 		}
 	} else if  (rte_cpu_to_be_16(ETHER_TYPE_IPv6) == proto) {
 		struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
