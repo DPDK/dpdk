@@ -1292,7 +1292,7 @@ app_pipeline_common_cmd_push(struct app_params *app)
 	/* Push pipeline commands into the application */
 	memcpy(&app->cmds[app->n_cmds],
 		pipeline_common_cmds,
-		n_cmds * sizeof(cmdline_parse_ctx_t *));
+		n_cmds * sizeof(cmdline_parse_ctx_t));
 
 	for (i = 0; i < n_cmds; i++)
 		app->cmds[app->n_cmds + i]->data = app;

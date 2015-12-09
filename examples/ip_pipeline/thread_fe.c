@@ -335,9 +335,8 @@ app_pipeline_thread_cmd_push(struct app_params *app)
 		return -ENOMEM;
 
 	/* Push thread commands into the application */
-	memcpy(&app->cmds[app->n_cmds],
-			thread_cmds,
-		n_cmds * sizeof(cmdline_parse_ctx_t *));
+	memcpy(&app->cmds[app->n_cmds], thread_cmds,
+		n_cmds * sizeof(cmdline_parse_ctx_t));
 
 	for (i = 0; i < n_cmds; i++)
 		app->cmds[app->n_cmds + i]->data = app;
