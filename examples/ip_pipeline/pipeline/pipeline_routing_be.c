@@ -1461,8 +1461,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 		uint64_t macaddr_dst;
 		uint64_t ethertype = ETHER_TYPE_IPv4;
 
-		*((struct ether_addr *) &macaddr_dst) =
-			req->data.ethernet.macaddr;
+		macaddr_dst = *((uint64_t *)&(req->data.ethernet.macaddr));
 		macaddr_dst = rte_bswap64(macaddr_dst << 16);
 
 		entry_arp0.slab[0] =
@@ -1503,8 +1502,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 		uint64_t svlan = req->data.l2.qinq.svlan;
 		uint64_t cvlan = req->data.l2.qinq.cvlan;
 
-		*((struct ether_addr *) &macaddr_dst) =
-			req->data.ethernet.macaddr;
+		macaddr_dst = *((uint64_t *)&(req->data.ethernet.macaddr));
 		macaddr_dst = rte_bswap64(macaddr_dst << 16);
 
 		entry_arp0.slab[0] = rte_bswap64((svlan << 48) |
@@ -1563,8 +1561,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 		uint64_t label3 = req->data.l2.mpls.labels[3];
 		uint32_t n_labels = req->data.l2.mpls.n_labels;
 
-		*((struct ether_addr *) &macaddr_dst) =
-			req->data.ethernet.macaddr;
+		macaddr_dst = *((uint64_t *)&(req->data.ethernet.macaddr));
 		macaddr_dst = rte_bswap64(macaddr_dst << 16);
 
 		switch (n_labels) {
@@ -1814,7 +1811,7 @@ pipeline_routing_msg_req_arp_add_handler(struct pipeline *p, void *msg)
 		return rsp;
 	}
 
-	*((struct ether_addr *) &entry.macaddr) = req->macaddr;
+	entry.macaddr = *((uint64_t *)&(req->macaddr));
 	entry.macaddr = entry.macaddr << 16;
 
 	rsp->status = rte_pipeline_table_entry_add(p->p,
