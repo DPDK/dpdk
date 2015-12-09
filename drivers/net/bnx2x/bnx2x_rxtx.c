@@ -156,7 +156,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 	rxq->rx_bd_head = 0;
-	rxq->rx_bd_tail = idx;
+	rxq->rx_bd_tail = rxq->nb_rx_desc;
 
 	/* Allocate CQ chain. */
 	dma_size = BNX2X_RX_CHAIN_PAGE_SZ * rxq->nb_cq_pages;

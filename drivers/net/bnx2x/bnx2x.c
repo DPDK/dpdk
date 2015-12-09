@@ -5005,11 +5005,17 @@ static void bnx2x_init_rx_rings(struct bnx2x_softc *sc)
 			return;
 		}
 
-/*
- * Activate the BD ring...
- * Warning, this will generate an interrupt (to the TSTORM)
- * so this can only be done after the chip is initialized
- */
+		rxq->rx_bd_head = 0;
+		rxq->rx_bd_tail = rxq->nb_rx_desc;
+		rxq->rx_cq_head = 0;
+		rxq->rx_cq_tail = TOTAL_RCQ_ENTRIES(rxq);
+		*fp->rx_cq_cons_sb = 0;
+
+		/*
+		 * Activate the BD ring...
+		 * Warning, this will generate an interrupt (to the TSTORM)
+		 * so this can only be done after the chip is initialized
+		 */
 		bnx2x_update_rx_prod(sc, fp, rxq->rx_bd_tail, rxq->rx_cq_tail);
 
 		if (i != 0) {
