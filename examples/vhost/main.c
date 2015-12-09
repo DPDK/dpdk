@@ -1449,7 +1449,8 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 	uint64_t buff_addr, phys_addr;
 	struct vhost_virtqueue *vq;
 	struct vring_desc *desc;
-	struct rte_mbuf *mbuf = NULL;
+	void *obj = NULL;
+	struct rte_mbuf *mbuf;
 	struct vpool *vpool;
 	hpa_type addr_type;
 	struct vhost_dev *vdev = (struct vhost_dev *)dev->priv;
@@ -1500,7 +1501,8 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 		}
 	} while (unlikely(phys_addr == 0));
 
-	rte_ring_sc_dequeue(vpool->ring, (void **)&mbuf);
+	rte_ring_sc_dequeue(vpool->ring, &obj);
+	mbuf = obj;
 	if (unlikely(mbuf == NULL)) {
 		LOG_DEBUG(VHOST_DATA,
 			"(%"PRIu64") in attach_rxmbuf_zcp: "
@@ -1517,7 +1519,7 @@ attach_rxmbuf_zcp(struct virtio_net *dev)
 			"size required: %d\n",
 			dev->device_fh, desc->len, desc_idx, vpool->buf_size);
 		put_desc_to_used_list_zcp(vq, desc_idx);
-		rte_ring_sp_enqueue(vpool->ring, (void *)mbuf);
+		rte_ring_sp_enqueue(vpool->ring, obj);
 		return;
 	}
 
@@ -1789,7 +1791,8 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 {
 	struct mbuf_table *tx_q;
 	struct rte_mbuf **m_table;
-	struct rte_mbuf *mbuf = NULL;
+	void *obj = NULL;
+	struct rte_mbuf *mbuf;
 	unsigned len, ret, offset = 0;
 	struct vpool *vpool;
 	uint16_t vlan_tag = (uint16_t)vlan_tags[(uint16_t)dev->device_fh];
@@ -1801,7 +1804,8 @@ virtio_tx_route_zcp(struct virtio_net *dev, struct rte_mbuf *m,
 
 	/* Allocate an mbuf and populate the structure. */
 	vpool = &vpool_array[MAX_QUEUES + vmdq_rx_q];
-	rte_ring_sc_dequeue(vpool->ring, (void **)&mbuf);
+	rte_ring_sc_dequeue(vpool->ring, &obj);
+	mbuf = obj;
 	if (unlikely(mbuf == NULL)) {
 		struct vhost_virtqueue *vq = dev->virtqueue[VIRTIO_TXQ];
 		RTE_LOG(ERR, VHOST_DATA,
