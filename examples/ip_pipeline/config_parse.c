@@ -40,6 +40,7 @@
 #include <string.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <rte_errno.h>
 #include <rte_cfgfile.h>
