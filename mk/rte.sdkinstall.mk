@@ -139,7 +139,8 @@ install-sdk:
 	    tar -xf -      -C $(DESTDIR)$(includedir) --strip-components=1 \
 		--keep-newer-files --warning=no-ignore-newer
 	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(sdkdir))
-	$(Q)cp -a               $(RTE_SDK)/{mk,scripts}  $(DESTDIR)$(sdkdir)
+	$(Q)cp -a               $(RTE_SDK)/mk            $(DESTDIR)$(sdkdir)
+	$(Q)cp -a               $(RTE_SDK)/scripts       $(DESTDIR)$(sdkdir)
 	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(targetdir))
 	$(Q)cp -a               $O/.config               $(DESTDIR)$(targetdir)
 	$(Q)$(call rte_symlink, $(DESTDIR)$(includedir), $(DESTDIR)$(targetdir)/include)
