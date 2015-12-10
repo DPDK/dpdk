@@ -123,6 +123,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *mb;
 	struct ether_hdr *eth_hdr;
+	struct ether_addr addr;
 	struct ptpv2_msg *ptp_hdr;
 	uint16_t eth_type;
 	uint32_t timesync_index;
@@ -204,6 +205,11 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	timesync_index = mb->timesync & 0x3;
 	/* Read and check the RX timestamp. */
 	port_ieee1588_rx_timestamp_check(fs->rx_port, timesync_index);
+
+	/* Swap dest and src mac addresses. */
+	ether_addr_copy(&eth_hdr->d_addr, &addr);
+	ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
+	ether_addr_copy(&addr, &eth_hdr->s_addr);
 
 	/* Forward PTP packet with hardware TX timestamp */
 	mb->ol_flags |= PKT_TX_IEEE1588_TMST;
