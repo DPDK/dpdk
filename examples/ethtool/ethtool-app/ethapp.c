@@ -339,6 +339,7 @@ pcmd_pause_callback(void *ptr_params,
 	if (ptr_data != NULL) {
 		stat = rte_ethtool_get_pauseparam(params->port, &info);
 	} else {
+		memset(&info, 0, sizeof(info));
 		if (strcasecmp("all", params->opt) == 0) {
 			info.tx_pause = 1;
 			info.rx_pause = 1;
@@ -352,6 +353,8 @@ pcmd_pause_callback(void *ptr_params,
 			info.tx_pause = 0;
 			info.rx_pause = 0;
 		}
+		/* Assume auto-negotiation wanted */
+		info.autoneg = 1;
 		stat = rte_ethtool_set_pauseparam(params->port, &info);
 	}
 	if (stat == 0) {
