@@ -863,8 +863,7 @@ int rte_vhost_enable_guest_notification(struct virtio_net *dev,
 		return -1;
 	}
 
-	dev->virtqueue[queue_id]->used->flags =
-		enable ? 0 : VRING_USED_F_NO_NOTIFY;
+	dev->virtqueue[queue_id]->used->flags = VRING_USED_F_NO_NOTIFY;
 	return 0;
 }
 
