@@ -471,7 +471,7 @@ l2fwd_parse_args(int argc, char **argv)
 		/* timer period */
 		case 'T':
 			timer_period = l2fwd_parse_timer_period(optarg)
-				* 1000 * TIMER_MILLISECOND;
+				* (int64_t)(1000 * TIMER_MILLISECOND);
 			if (timer_period < 0) {
 				printf("invalid timer period\n");
 				l2fwd_usage(prgname);
