@@ -333,7 +333,7 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 
 	ctx.fh = cfd_ctx->fh;
 	ret = read_vhost_message(connfd, &msg);
-	if (ret <= 0 || msg.request > VHOST_USER_MAX) {
+	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
 		if (ret < 0)
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"vhost read message failed\n");
