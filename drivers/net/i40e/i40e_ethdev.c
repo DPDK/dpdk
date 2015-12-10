@@ -207,9 +207,9 @@
 /* Source MAC address */
 #define I40E_REG_INSET_L2_SMAC                   0x1C00000000000000ULL
 /* VLAN tag in the outer L2 header */
-#define I40E_REG_INSET_L2_OUTER_VLAN             0x0000000000800000ULL
+#define I40E_REG_INSET_L2_OUTER_VLAN             0x0080000000000000ULL
 /* VLAN tag in the inner L2 header */
-#define I40E_REG_INSET_L2_INNER_VLAN             0x0000000001000000ULL
+#define I40E_REG_INSET_L2_INNER_VLAN             0x0100000000000000ULL
 /* Source IPv4 address */
 #define I40E_REG_INSET_L3_SRC_IP4                0x0001800000000000ULL
 /* Destination IPv4 address */
