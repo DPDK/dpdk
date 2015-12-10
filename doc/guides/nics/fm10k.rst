@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2015 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -28,48 +28,40 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Network Interface Controller Drivers
-====================================
+FM10K Poll Mode Driver
+======================
 
-|today|
+The FM10K poll mode driver library provides support for the Intel FM10000
+(FM10K) family of 40GbE/100GbE adapters.
 
 
-**Contents**
+Limitations
+-----------
 
-.. toctree::
-    :maxdepth: 3
-    :numbered:
 
-    bnx2x
-    cxgbe
-    e1000em
-    fm10k
-    ixgbe
-    intel_vf
-    mlx4
-    mlx5
-    nfp
-    szedata2
-    virtio
-    vmxnet3
-    pcap_ring
+Switch manager
+~~~~~~~~~~~~~~
 
-**Figures**
+The Intel FM10000 family of NICs integrate a hardware switch and multiple host
+interfaces. The FM10000 PMD driver only manages host interfaces. For the
+switch component another switch driver has to be loaded prior to to the
+FM10000 PMD driver.  The switch driver can be acquired for Intel support or
+from the `Match Interface <https://github.com/match-interface>`_ project.
+Only Testpoint is validated with DPDK, the latest version that has been
+validated with DPDK2.2 is 4.1.6.
 
-:numref:`figure_single_port_nic` :ref:`figure_single_port_nic`
+CRC striping
+~~~~~~~~~~~~
 
-:numref:`figure_perf_benchmark` :ref:`figure_perf_benchmark`
+The FM10000 family of NICs strip the CRC for every packets coming into the
+host interface.  So, CRC will be stripped even when the
+``rxmode.hw_strip_crc`` member is set to 0 in ``struct rte_eth_conf``.
 
-:numref:`figure_fast_pkt_proc` :ref:`figure_fast_pkt_proc`
 
-:numref:`figure_inter_vm_comms` :ref:`figure_inter_vm_comms`
+Maximum packet length
+~~~~~~~~~~~~~~~~~~~~~
 
-:numref:`figure_host_vm_comms` :ref:`figure_host_vm_comms`
-
-:numref:`figure_host_vm_comms_qemu` :ref:`figure_host_vm_comms_qemu`
-
-:numref:`figure_vmxnet3_int` :ref:`figure_vmxnet3_int`
-
-:numref:`figure_vswitch_vm` :ref:`figure_vswitch_vm`
-
-:numref:`figure_vm_vm_comms` :ref:`figure_vm_vm_comms`
+The FM10000 family of NICS support a maximum of a 15K jumbo frame. The value
+is fixed and cannot be changed. So, even when the ``rxmode.max_rx_pkt_len``
+member of ``struct rte_eth_conf`` is set to a value lower than 15364, frames
+up to 15364 bytes can still reach the host interface.
