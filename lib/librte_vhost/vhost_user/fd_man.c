@@ -150,8 +150,10 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 
 	/* Find a free slot in the list. */
 	i = fdset_find_free_slot(pfdset);
-	if (i == -1)
+	if (i == -1) {
+		pthread_mutex_unlock(&pfdset->fd_mutex);
 		return -2;
+	}
 
 	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat);
 	pfdset->num++;
