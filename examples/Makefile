@@ -78,7 +78,5 @@ DIRS-y += vmdq
 DIRS-y += vmdq_dcb
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += vm_power_manager
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += l2fwd-crypto
-ifneq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),)
-DIRS-$(CONFIG_RTE_ARCH_X86_64) += performance-thread
-endif
+
 include $(RTE_SDK)/mk/rte.extsubdir.mk

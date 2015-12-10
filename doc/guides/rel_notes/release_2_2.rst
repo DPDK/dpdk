@@ -131,6 +131,15 @@ New Features
 
 * **Added ethtool shim and sample application.**
 
+* **Added experimental performance thread example application.**
+
+  The application demonstrates L3 fowarding with different threading
+  models: pthreads, cgroups, or lighweight threads. The example inludes
+  a simple cooperative scheduler.
+
+  Due to its experimental state this application may change without notice.
+  The application is supported only for Linux x86_64.
+
 
 Resolved Issues
 ---------------

@@ -60,7 +60,10 @@
  */
 
 /**
- *  @file
+ *  @file lthread_api.h
+ *
+ *  @warning
+ *  @b EXPERIMENTAL: this API may change without prior notice
  *
  *  This file contains the public API for the L-thread subsystem
  *

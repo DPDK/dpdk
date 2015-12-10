@@ -44,6 +44,12 @@
 #define LTHREAD_DIAG 0
 
 /**
+ *
+ * @file lthread_diag_api.h
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * lthread diagnostic interface
  *
  * If enabled via configuration file option ( tbd ) the lthread subsystem
