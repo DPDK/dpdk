@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,9 @@
 
 #include "main.h"
 
-#define MAX_QUEUES 512
+#ifndef MAX_QUEUES
+#define MAX_QUEUES 128
+#endif
 
 /* the maximum number of external ports supported */
 #define MAX_SUP_PORTS 1
