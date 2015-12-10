@@ -353,7 +353,7 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 				vq->vq_ring.desc[i + mid_idx].next = i;
 				vq->vq_ring.desc[i + mid_idx].addr =
 					vq->virtio_net_hdr_mem +
-						mid_idx * vq->hw->vtnet_hdr_size;
+						i * vq->hw->vtnet_hdr_size;
 				vq->vq_ring.desc[i + mid_idx].len =
 					vq->hw->vtnet_hdr_size;
 				vq->vq_ring.desc[i + mid_idx].flags =
