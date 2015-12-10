@@ -1930,7 +1930,11 @@ app_config_parse(struct app_params *app, const char *file_name)
 	APP_CHECK(cfg != NULL, "Unable to load config file %s", file_name);
 
 	sect_count = rte_cfgfile_num_sections(cfg, NULL, 0);
+	APP_CHECK(sect_count > 0, "Number of sections return %d", sect_count);
+
 	section_names = malloc(sect_count * sizeof(char *));
+	APP_CHECK(section_names != NULL, "Failed to allocate memory");
+
 	for (i = 0; i < sect_count; i++)
 		section_names[i] = malloc(CFG_NAME_LEN);
 
