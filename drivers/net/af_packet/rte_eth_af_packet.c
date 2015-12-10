@@ -74,6 +74,7 @@ struct pkt_rx_queue {
 	unsigned int framenum;
 
 	struct rte_mempool *mb_pool;
+	uint8_t in_port;
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long err_pkts;
@@ -160,6 +161,7 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		ppd->tp_status = TP_STATUS_KERNEL;
 		if (++framenum >= framecount)
 			framenum = 0;
+		mbuf->port = pkt_q->in_port;
 
 		/* account for the receive frame */
 		bufs[i] = mbuf;
@@ -365,6 +367,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	dev->data->rx_queues[rx_queue_id] = pkt_q;
+	pkt_q->in_port = dev->data->port_id;
 
 	return 0;
 }
