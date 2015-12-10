@@ -115,8 +115,8 @@ get_phys_map(void *va, phys_addr_t pa[], uint32_t pg_num, uint32_t pg_sz)
 			(rc = pread(fd, pa, nb, ofs)) < 0 ||
 			(rc -= nb) != 0) {
 		RTE_LOG(ERR, PMD, "%s: failed read of %u bytes from \'%s\' "
-			"at offset %zu, error code: %d\n",
-			__func__, nb, PAGEMAP_FNAME, ofs, errno);
+			"at offset %lu, error code: %d\n",
+			__func__, nb, PAGEMAP_FNAME, (unsigned long)ofs, errno);
 		rc = ENOENT;
 	}
 

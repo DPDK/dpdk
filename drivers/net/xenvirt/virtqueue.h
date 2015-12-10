@@ -55,7 +55,7 @@ struct rte_mbuf;
  * rather than gpa<->hva in virito spec.
  */
 #define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	rte_pktmbuf_mtod(mb, uint64_t)
+	((uint64_t)(uintptr_t)rte_pktmbuf_mtod(mb, void *))
 
 enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 
@@ -198,7 +198,7 @@ virtqueue_enqueue_recv_refill(struct virtqueue *rxvq, struct rte_mbuf *cookie)
 	dxp->ndescs = needed;
 
 	start_dp[head_idx].addr  =
-		(uint64_t) ((uint64_t)cookie->buf_addr + RTE_PKTMBUF_HEADROOM - sizeof(struct virtio_net_hdr));
+		(uint64_t) ((uintptr_t)cookie->buf_addr + RTE_PKTMBUF_HEADROOM - sizeof(struct virtio_net_hdr));
 	start_dp[head_idx].len   = cookie->buf_len - RTE_PKTMBUF_HEADROOM + sizeof(struct virtio_net_hdr);
 	start_dp[head_idx].flags = VRING_DESC_F_WRITE;
 	rxvq->vq_desc_head_idx   = start_dp[head_idx].next;

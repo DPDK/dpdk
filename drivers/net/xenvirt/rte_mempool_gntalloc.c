@@ -184,10 +184,10 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 				rv = ioctl(gntalloc_fd, IOCTL_GNTALLOC_DEALLOC_GREF, &arg);
 				if (rv) {
 					/* shouldn't fail here */
-					RTE_LOG(ERR, PMD, "va=%p pa=%p index=%p %s\n",
+					RTE_LOG(ERR, PMD, "va=%p pa=%"PRIu64"x index=%"PRIu64" %s\n",
 						gnt_arr[i].va,
-						(void *)gnt_arr[i].pa,
-						(void *)arg.index, strerror(errno));
+						gnt_arr[i].pa,
+						arg.index, strerror(errno));
 					rte_panic("gntdealloc failed when freeing pages\n");
 				}
 			}
