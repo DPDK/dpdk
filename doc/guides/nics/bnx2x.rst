@@ -143,6 +143,14 @@ command::
    cd <DPDK-source-directory>
    make config T=i686-native-linuxapp-gcc install
 
+To compile BNX2X PMD for Linux i686 gcc target, run the following "make"
+command:
+
+.. code-block:: console
+
+   cd <DPDK-source-directory>
+   make config T=i686-native-linuxapp-gcc install
+
 To compile BNX2X PMD for FreeBSD x86_64 clang target, run the following "gmake"
 command::
 

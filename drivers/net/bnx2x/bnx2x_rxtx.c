@@ -110,8 +110,10 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_LOG(DEBUG, "fp[%02d] req_bd=%u, thresh=%u, usable_bd=%lu, "
 		       "total_bd=%lu, rx_pages=%u, cq_pages=%u",
-		       queue_idx, nb_desc, rxq->rx_free_thresh, USABLE_RX_BD(rxq),
-		       TOTAL_RX_BD(rxq), rxq->nb_rx_pages, rxq->nb_cq_pages);
+		       queue_idx, nb_desc, rxq->rx_free_thresh,
+		       (unsigned long)USABLE_RX_BD(rxq),
+		       (unsigned long)TOTAL_RX_BD(rxq), rxq->nb_rx_pages,
+		       rxq->nb_cq_pages);
 
 	/* Allocate RX ring hardware descriptors */
 	dma_size = rxq->nb_rx_desc * sizeof(struct eth_rx_bd);
@@ -291,8 +293,9 @@ bnx2x_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_LOG(DEBUG, "fp[%02d] req_bd=%u, thresh=%u, usable_bd=%lu, "
 		     "total_bd=%lu, tx_pages=%u",
-		     queue_idx, nb_desc, txq->tx_free_thresh, USABLE_TX_BD(txq),
-		     TOTAL_TX_BD(txq), txq->nb_tx_pages);
+		     queue_idx, nb_desc, txq->tx_free_thresh,
+		     (unsigned long)USABLE_TX_BD(txq),
+		     (unsigned long)TOTAL_TX_BD(txq), txq->nb_tx_pages);
 
 	/* Allocate TX ring hardware descriptors */
 	tsize = txq->nb_tx_desc * sizeof(union eth_tx_bd_types);

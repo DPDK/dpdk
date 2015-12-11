@@ -1444,22 +1444,22 @@ void bnx2x_reg_write16(struct bnx2x_softc *sc, size_t offset, uint16_t val);
 void bnx2x_reg_write32(struct bnx2x_softc *sc, size_t offset, uint32_t val);
 #else
 #define bnx2x_reg_write8(sc, offset, val)\
-	*((volatile uint8_t*)((uint64_t)sc->bar[BAR0].base_addr + offset)) = val
+	*((volatile uint8_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val
 
 #define bnx2x_reg_write16(sc, offset, val)\
-	*((volatile uint16_t*)((uint64_t)sc->bar[BAR0].base_addr + offset)) = val
+	*((volatile uint16_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val
 
 #define bnx2x_reg_write32(sc, offset, val)\
-	*((volatile uint32_t*)((uint64_t)sc->bar[BAR0].base_addr + offset)) = val
+	*((volatile uint32_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val
 
 #define bnx2x_reg_read8(sc, offset)\
-	(*((volatile uint8_t*)((uint64_t)sc->bar[BAR0].base_addr + offset)))
+	(*((volatile uint8_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)))
 
 #define bnx2x_reg_read16(sc, offset)\
-	(*((volatile uint16_t*)((uint64_t)sc->bar[BAR0].base_addr + offset)))
+	(*((volatile uint16_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)))
 
 #define bnx2x_reg_read32(sc, offset)\
-	(*((volatile uint32_t*)((uint64_t)sc->bar[BAR0].base_addr + offset)))
+	(*((volatile uint32_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)))
 #endif
 
 #define REG_ADDR(sc, offset) (((uint64_t)sc->bar[BAR0].base_addr) + (offset))

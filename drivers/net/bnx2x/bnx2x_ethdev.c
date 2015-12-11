@@ -442,7 +442,7 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	sc->bar[BAR0].base_addr = (void *)pci_dev->mem_resource[0].addr;
 	if (is_vf)
 		sc->bar[BAR1].base_addr = (void *)
-			((uint64_t)pci_dev->mem_resource[0].addr + PXP_VF_ADDR_DB_START);
+			((uintptr_t)pci_dev->mem_resource[0].addr + PXP_VF_ADDR_DB_START);
 	else
 		sc->bar[BAR1].base_addr = pci_dev->mem_resource[2].addr;
 

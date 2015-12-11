@@ -66,8 +66,8 @@ bnx2x_check_bull(struct bnx2x_softc *sc)
 
 /* add tlv to a buffer */
 #define BNX2X_TLV_APPEND(_tlvs, _offset, _type, _length) \
-	((struct vf_first_tlv *)((uint64_t)_tlvs + _offset))->type   = _type; \
-	((struct vf_first_tlv *)((uint64_t)_tlvs + _offset))->length = _length
+	((struct vf_first_tlv *)((unsigned long)_tlvs + _offset))->type   = _type; \
+	((struct vf_first_tlv *)((unsigned long)_tlvs + _offset))->length = _length
 
 /* Initiliaze header of the first tlv and clear mailbox*/
 static void
