@@ -448,7 +448,7 @@ app_pipeline_fc_add_bulk(struct app_params *app,
 	flow_rsp = rte_malloc(NULL,
 		n_keys * sizeof(struct pipeline_fc_add_bulk_flow_rsp),
 		RTE_CACHE_LINE_SIZE);
-	if (flow_req == NULL) {
+	if (flow_rsp == NULL) {
 		rte_free(flow_req);
 		rte_free(new_flow);
 		rte_free(signature);
