@@ -374,6 +374,9 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	sw_cq_cons = rxq->rx_cq_head;
 	sw_cq_prod = rxq->rx_cq_tail;
 
+	if (sw_cq_cons == hw_cq_cons)
+		return 0;
+
 	while (nb_rx < nb_pkts && sw_cq_cons != hw_cq_cons) {
 
 		bd_prod &= MAX_RX_BD(rxq);
