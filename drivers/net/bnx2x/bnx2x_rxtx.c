@@ -240,7 +240,7 @@ bnx2x_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			bnx2x_txeof(sc, fp);
 		}
 
-		if (unlikely(ret == ENOMEM)) {
+		if (unlikely(ret == -ENOMEM)) {
 			break;
 		}
 
