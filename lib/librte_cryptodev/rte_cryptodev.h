@@ -243,6 +243,8 @@ struct rte_cryptodev_config {
 /**
  * Configure a device.
  *
+ * EXPERIMENTAL: this API file may change without prior notice
+ *
  * This function must be invoked first before any other function in the
  * API. This function can also be re-invoked when a device is in the
  * stopped state.

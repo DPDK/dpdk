@@ -51,6 +51,9 @@
  * operations, with supporting allocate and free functions. It also provides
  * APIs for attaching an offload to a mbuf, as well as an API to retrieve a
  * specified offload type from an mbuf offload chain.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
  */
 
 #include <rte_mbuf.h>
@@ -91,6 +94,8 @@ struct rte_pktmbuf_offload_pool_private {
 
 /**
  * Creates a mempool of rte_mbuf_offload objects
+ *
+ * EXPERIMENTAL: this API file may change without prior notice
  *
  * @param	name		mempool name
  * @param	size		number of objects in mempool

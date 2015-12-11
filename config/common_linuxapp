@@ -379,6 +379,7 @@ CONFIG_RTE_PKTMBUF_HEADROOM=128
 
 #
 # Compile librte_mbuf_offload
+# EXPERIMENTAL: API may change without prior notice
 #
 CONFIG_RTE_LIBRTE_MBUF_OFFLOAD=y
 CONFIG_RTE_LIBRTE_MBUF_OFFLOAD_DEBUG=n
