@@ -40,6 +40,7 @@ Network Interface Controller Drivers
     :maxdepth: 3
     :numbered:
 
+    bnx2x
     cxgbe
     e1000em
     ixgbe
