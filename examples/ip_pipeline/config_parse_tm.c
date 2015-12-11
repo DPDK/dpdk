@@ -399,7 +399,7 @@ tm_cfgfile_load(struct app_pktq_tm_params *tm)
 
 	memset(tm->sched_subport_params, 0, sizeof(tm->sched_subport_params));
 	memset(tm->sched_pipe_profiles, 0, sizeof(tm->sched_pipe_profiles));
-	memset(&tm->sched_port_params, 0, sizeof(tm->sched_pipe_profiles));
+	memset(&tm->sched_port_params, 0, sizeof(tm->sched_port_params));
 	for (i = 0; i < APP_MAX_SCHED_SUBPORTS * APP_MAX_SCHED_PIPES; i++)
 		tm->sched_pipe_to_profile[i] = -1;
 
