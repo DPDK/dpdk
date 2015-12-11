@@ -1631,8 +1631,8 @@ parse_tm(struct app_params *app,
 			param->file_name = strdup(ent->value);
 			if (param->file_name == NULL)
 				ret = -EINVAL;
-
-			ret = 0;
+			else
+				ret = 0;
 		} else if (strcmp(ent->name, "burst_read") == 0)
 			ret = parser_read_uint32(&param->burst_read,
 				ent->value);
