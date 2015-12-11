@@ -308,6 +308,13 @@ M: Alejandro Lucero <alejandro.lucero@netronome.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
 
+QLogic bnx2x
+M: Sony Chacko <sony.chacko@qlogic.com>
+M: Harish Patil <harish.patil@qlogic.com>
+M: Rasesh Mody <rasesh.mody@qlogic.com>
+F: drivers/net/bnx2x/
+F: doc/guides/nics/bnx2x.rst
+
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
@@ -328,10 +335,6 @@ M: Nicolás Pernas Maradei <nicolas.pernas.maradei@emutex.com>
 M: John McNamara <john.mcnamara@intel.com>
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
-
-QLogic/Broadcom bnx2x
-F: drivers/net/bnx2x/
-F: doc/guides/nics/bnx2x.rst
 
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
