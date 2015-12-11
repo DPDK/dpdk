@@ -1823,7 +1823,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 
 refill_fl_err:
 	t4_iq_free(adap, adap->mbox, adap->pf, 0, FW_IQ_TYPE_FL_INT_CAP,
-		   iq->cntxt_id, fl ? fl->cntxt_id : 0xffff, 0xffff);
+		   iq->cntxt_id, fl->cntxt_id, 0xffff);
 fl_nomem:
 	ret = -ENOMEM;
 err:
