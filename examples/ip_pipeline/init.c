@@ -1068,7 +1068,7 @@ static void app_pipeline_params_get(struct app_params *app,
 	uint32_t i;
 	uint32_t mempool_id;
 
-	strcpy(p_out->name, p_in->name);
+	snprintf(p_out->name, PIPELINE_NAME_SIZE, "%s", p_in->name);
 
 	p_out->socket_id = (int) p_in->socket_id;
 
