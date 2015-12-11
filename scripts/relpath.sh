@@ -61,6 +61,8 @@ right2=${REL2#*/}
 prev_right2=$REL2
 prev_left2=
 
+prefix=
+
 while [ "${right1}" != "" -a "${right2}" != "" ]; do
 
 	if [ "$left1" != "$left2" ]; then
