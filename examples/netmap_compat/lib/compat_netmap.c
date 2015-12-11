@@ -73,6 +73,14 @@ struct fd_port {
 	uint32_t port;
 };
 
+#ifndef POLLRDNORM
+#define POLLRDNORM	0x0040
+#endif
+
+#ifndef POLLWRNORM
+#define POLLWRNORM	0x0100
+#endif
+
 #define	FD_PORT_FREE	UINT32_MAX
 #define	FD_PORT_RSRV	(FD_PORT_FREE - 1)
 
