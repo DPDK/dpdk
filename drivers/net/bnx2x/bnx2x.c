@@ -4343,7 +4343,7 @@ static void bnx2x_eq_int(struct bnx2x_softc *sc)
 /* handle eq element */
 		switch (opcode) {
 		case EVENT_RING_OPCODE_STAT_QUERY:
-			PMD_DRV_LOG(DEBUG, "got statistics completion event %d",
+			PMD_DEBUG_PERIODIC_LOG(DEBUG, "got statistics completion event %d",
 				    sc->stats_comp++);
 			/* nothing to do with stats comp */
 			goto next_spqe;
@@ -4494,7 +4494,7 @@ static int bnx2x_handle_sp_tq(struct bnx2x_softc *sc)
 	/* SP events: STAT_QUERY and others */
 	if (status & BNX2X_DEF_SB_IDX) {
 /* handle EQ completions */
-		PMD_DRV_LOG(DEBUG, "---> EQ INTR <---");
+		PMD_DEBUG_PERIODIC_LOG(DEBUG, "---> EQ INTR <---");
 		bnx2x_eq_int(sc);
 		bnx2x_ack_sb(sc, sc->igu_dsb_id, USTORM_ID,
 			   le16toh(sc->def_idx), IGU_INT_NOP, 1);
@@ -4567,7 +4567,7 @@ int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp)
 		return 0;
 	}
 
-	PMD_DRV_LOG(DEBUG, "Interrupt status 0x%04x", status);
+	PMD_DEBUG_PERIODIC_LOG(DEBUG, "Interrupt status 0x%04x", status);
 	//bnx2x_dump_status_block(sc);
 
 	FOR_EACH_ETH_QUEUE(sc, i) {

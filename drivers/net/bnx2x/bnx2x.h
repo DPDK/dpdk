@@ -1445,7 +1445,7 @@ struct bnx2x_func_init_params {
 #define BAR1 2
 #define BAR2 4
 
-#ifdef RTE_LIBRTE_BNX2X_DEBUG
+#ifdef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
 uint8_t bnx2x_reg_read8(struct bnx2x_softc *sc, size_t offset);
 uint16_t bnx2x_reg_read16(struct bnx2x_softc *sc, size_t offset);
 uint32_t bnx2x_reg_read32(struct bnx2x_softc *sc, size_t offset);

@@ -47,4 +47,12 @@
 #define PMD_DRV_LOG(level, fmt, args...) \
 	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
 
+#ifdef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
+#define PMD_DEBUG_PERIODIC_LOG(level, fmt, args...) \
+	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+#else
+#define PMD_DEBUG_PERIODIC_LOG(level, fmt, args...) do { } while(0)
+#endif
+
+
 #endif /* _PMD_LOGS_H_ */

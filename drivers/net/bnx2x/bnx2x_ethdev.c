@@ -52,7 +52,7 @@ bnx2x_interrupt_action(struct rte_eth_dev *dev)
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	uint32_t link_status;
 
-	PMD_DRV_LOG(INFO, "Interrupt handled");
+	PMD_DEBUG_PERIODIC_LOG(INFO, "Interrupt handled");
 
 	if (bnx2x_intr_legacy(sc, 0))
 		DELAY_MS(250);

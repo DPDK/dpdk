@@ -105,7 +105,7 @@ bnx2x_storm_stats_post(struct bnx2x_softc *sc)
 		sc->fw_stats_req->hdr.drv_stats_counter =
 			htole16(sc->stats_counter++);
 
-		PMD_DRV_LOG(DEBUG,
+		PMD_DEBUG_PERIODIC_LOG(DEBUG,
 				"sending statistics ramrod %d",
 				le16toh(sc->fw_stats_req->hdr.drv_stats_counter));
 
