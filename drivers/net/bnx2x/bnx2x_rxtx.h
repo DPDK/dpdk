@@ -1,7 +1,11 @@
 /*
  * Copyright (c) 2013-2015 Brocade Communications Systems, Inc.
  *
+ * Copyright (c) 2015 QLogic Corporation.
  * All rights reserved.
+ * www.qlogic.com
+ *
+ * See LICENSE.bnx2x_pmd for copyright and licensing details.
  */
 
 #ifndef _BNX2X_RXTX_H_
