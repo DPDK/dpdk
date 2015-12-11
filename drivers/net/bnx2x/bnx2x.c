@@ -21,12 +21,33 @@
 #include "ecore_init.h"
 #include "ecore_init_ops.h"
 
+#include "rte_version.h"
 #include "rte_pci_dev_ids.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <zlib.h>
+
+#define BNX2X_PMD_VER_PREFIX "BNX2X PMD"
+#define BNX2X_PMD_VERSION_MAJOR 1
+#define BNX2X_PMD_VERSION_MINOR 0
+#define BNX2X_PMD_VERSION_PATCH 0
+
+static inline const char *
+bnx2x_pmd_version(void)
+{
+	static char version[32];
+
+	snprintf(version, sizeof(version), "%s %s_%d.%d.%d",
+			BNX2X_PMD_VER_PREFIX,
+			BNX2X_DRIVER_VERSION,
+			BNX2X_PMD_VERSION_MAJOR,
+			BNX2X_PMD_VERSION_MINOR,
+			BNX2X_PMD_VERSION_PATCH);
+
+	return version;
+}
 
 static z_stream zlib_stream;
 
@@ -11740,87 +11761,95 @@ void bnx2x_print_adapter_info(struct bnx2x_softc *sc)
 
 	PMD_INIT_LOG(DEBUG, "\n\n===================================\n");
 	/* Hardware chip info. */
-	PMD_INIT_LOG(DEBUG, "%10s : %#08x\n", "ASIC", sc->devinfo.chip_id);
-	PMD_INIT_LOG(DEBUG, "%10s : %c%d\n", "Rev", (CHIP_REV(sc) >> 12) + 'A',
+	PMD_INIT_LOG(DEBUG, "%12s : %#08x", "ASIC", sc->devinfo.chip_id);
+	PMD_INIT_LOG(DEBUG, "%12s : %c%d", "Rev", (CHIP_REV(sc) >> 12) + 'A',
 		     (CHIP_METAL(sc) >> 4));
 
 	/* Bus info. */
-	PMD_INIT_LOG(DEBUG, "%10s : %d, ", "Bus PCIe", sc->devinfo.pcie_link_width);
+	PMD_INIT_LOG(DEBUG, "%12s : %d, ", "Bus PCIe", sc->devinfo.pcie_link_width);
 	switch (sc->devinfo.pcie_link_speed) {
 	case 1:
-		PMD_INIT_LOG(DEBUG, "2.5 Gbps\n");
+		PMD_INIT_LOG(DEBUG, "%23s", "2.5 Gbps");
 		break;
 	case 2:
-		PMD_INIT_LOG(DEBUG, "5 Gbps\n");
+		PMD_INIT_LOG(DEBUG, "%21s", "5 Gbps");
 		break;
 	case 4:
-		PMD_INIT_LOG(DEBUG, "8 Gbps\n");
+		PMD_INIT_LOG(DEBUG, "%21s", "8 Gbps");
 		break;
 	default:
-		PMD_INIT_LOG(DEBUG, "Unknown link speed\n");
+		PMD_INIT_LOG(DEBUG, "%33s", "Unknown link speed");
 	}
 
 	/* Device features. */
-	PMD_INIT_LOG(DEBUG, "%10s : ", "Flags");
+	PMD_INIT_LOG(DEBUG, "%12s : ", "Flags");
 
 	/* Miscellaneous flags. */
 	if (sc->devinfo.pcie_cap_flags & BNX2X_MSI_CAPABLE_FLAG) {
-		PMD_INIT_LOG(DEBUG, "MSI");
+		PMD_INIT_LOG(DEBUG, "%18s", "MSI");
 		i++;
 	}
 
 	if (sc->devinfo.pcie_cap_flags & BNX2X_MSIX_CAPABLE_FLAG) {
 		if (i > 0)
 			PMD_INIT_LOG(DEBUG, "|");
-		PMD_INIT_LOG(DEBUG, "MSI-X");
+		PMD_INIT_LOG(DEBUG, "%20s", "MSI-X");
 		i++;
 	}
 
-	PMD_INIT_LOG(DEBUG, "\n");
-
 	if (IS_PF(sc)) {
-		PMD_INIT_LOG(DEBUG, "\n%10s : ", "Queues");
+		PMD_INIT_LOG(DEBUG, "%12s : ", "Queues");
 		switch (sc->sp->rss_rdata.rss_mode) {
 		case ETH_RSS_MODE_DISABLED:
-			PMD_INIT_LOG(DEBUG, "None\n");
+			PMD_INIT_LOG(DEBUG, "%19s", "None");
 			break;
 		case ETH_RSS_MODE_REGULAR:
-			PMD_INIT_LOG(DEBUG, "RSS : %d\n", sc->num_queues);
+			PMD_INIT_LOG(DEBUG, "%18s : %d", "RSS", sc->num_queues);
 			break;
 		default:
-			PMD_INIT_LOG(DEBUG, "Unknown\n");
+			PMD_INIT_LOG(DEBUG, "%22s", "Unknown");
 			break;
 		}
 	}
 
+	/* RTE and Driver versions */
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "DPDK",
+		     rte_version());
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "Driver",
+		     bnx2x_pmd_version());
+
 	/* Firmware versions and device features. */
-	PMD_INIT_LOG(DEBUG, "%10s : %d.%d.%d\n%10s : %s\n",
+	PMD_INIT_LOG(DEBUG, "%12s : %d.%d.%d",
 		     "Firmware",
 		     BNX2X_5710_FW_MAJOR_VERSION,
 		     BNX2X_5710_FW_MINOR_VERSION,
-		     BNX2X_5710_FW_REVISION_VERSION,
+		     BNX2X_5710_FW_REVISION_VERSION);
+	PMD_INIT_LOG(DEBUG, "%12s : %s",
 		     "Bootcode", sc->devinfo.bc_ver_str);
 
-	PMD_INIT_LOG(DEBUG, "===================================\n");
-	PMD_INIT_LOG(DEBUG, "%10s : %u\n", "Bnx2x Func", sc->pcie_func);
-	PMD_INIT_LOG(DEBUG, "%10s : %s\n", "Bnx2x Flags", get_bnx2x_flags(sc->flags));
-	PMD_INIT_LOG(DEBUG, "%10s : %s\n", "DMAE Is",
+	PMD_INIT_LOG(DEBUG, "\n\n===================================\n");
+	PMD_INIT_LOG(DEBUG, "%12s : %u", "Bnx2x Func", sc->pcie_func);
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "Bnx2x Flags", get_bnx2x_flags(sc->flags));
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "DMAE Is",
 		     (sc->dmae_ready ? "Ready" : "Not Ready"));
-	PMD_INIT_LOG(DEBUG, "%10s : %s\n", "OVLAN", (OVLAN(sc) ? "YES" : "NO"));
-	PMD_INIT_LOG(DEBUG, "%10s : %s\n", "MF", (IS_MF(sc) ? "YES" : "NO"));
-	PMD_INIT_LOG(DEBUG, "%10s : %u\n", "MTU", sc->mtu);
-	PMD_INIT_LOG(DEBUG, "%10s : %s\n", "PHY Type", get_ext_phy_type(ext_phy_type));
-	PMD_INIT_LOG(DEBUG, "%10s : ", "MAC Addr");
-	for (i = 0; i < 6; i++)
-		PMD_INIT_LOG(DEBUG, "%x%s", sc->link_params.mac_addr[i],
-			     i < 5 ? ":" : "\n");
-	PMD_INIT_LOG(DEBUG, "%10s : %s\n", "RX Mode", get_rx_mode(sc->rx_mode));
-	PMD_INIT_LOG(DEBUG, "%10s : %s\n", "State", get_state(sc->state));
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "OVLAN", (OVLAN(sc) ? "YES" : "NO"));
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "MF", (IS_MF(sc) ? "YES" : "NO"));
+	PMD_INIT_LOG(DEBUG, "%12s : %u", "MTU", sc->mtu);
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "PHY Type", get_ext_phy_type(ext_phy_type));
+	PMD_INIT_LOG(DEBUG, "%12s : %x:%x:%x:%x:%x:%x", "MAC Addr",
+			sc->link_params.mac_addr[0],
+			sc->link_params.mac_addr[1],
+			sc->link_params.mac_addr[2],
+			sc->link_params.mac_addr[3],
+			sc->link_params.mac_addr[4],
+			sc->link_params.mac_addr[5]);
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "RX Mode", get_rx_mode(sc->rx_mode));
+	PMD_INIT_LOG(DEBUG, "%12s : %s", "State", get_state(sc->state));
 	if (sc->recovery_state)
-		PMD_INIT_LOG(DEBUG, "%10s : %s\n", "Recovery",
+		PMD_INIT_LOG(DEBUG, "%12s : %s", "Recovery",
 			     get_recovery_state(sc->recovery_state));
-	PMD_INIT_LOG(DEBUG, "%10s : CQ = %lx,  EQ = %lx\n", "SPQ Left",
+	PMD_INIT_LOG(DEBUG, "%12s : CQ = %lx,  EQ = %lx", "SPQ Left",
 		     sc->cq_spq_left, sc->eq_spq_left);
-	PMD_INIT_LOG(DEBUG, "%10s : %x\n", "Switch", sc->link_params.switch_cfg);
-	PMD_INIT_LOG(DEBUG, "===================================\n\n");
+	PMD_INIT_LOG(DEBUG, "%12s : %x", "Switch", sc->link_params.switch_cfg);
+	PMD_INIT_LOG(DEBUG, "\n\n===================================\n");
 }
