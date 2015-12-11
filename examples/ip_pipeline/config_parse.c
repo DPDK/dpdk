@@ -2398,7 +2398,7 @@ save_pipeline_params(struct app_params *app, FILE *f)
 		}
 
 		/* msgq_out */
-		if (p->n_msgq_in) {
+		if (p->n_msgq_out) {
 			uint32_t j;
 
 			fprintf(f, "msgq_out =");
