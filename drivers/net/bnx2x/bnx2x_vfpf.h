@@ -34,10 +34,22 @@ struct vf_resource_query {
 #define	BNX2X_VF_Q_FLAG_DHC             0x0200
 #define	BNX2X_VF_Q_FLAG_LEADING_RSS     0x0400
 
+#define TLV_BUFFER_SIZE			1024
+
+/* general tlv header (used for both vf->pf request and pf->vf response) */
+struct channel_tlv {
+	uint16_t type;
+	uint16_t length;
+};
+
 struct vf_first_tlv {
 	uint16_t type;
 	uint16_t length;
 	uint32_t reply_offset;
+};
+
+struct tlv_buffer_size {
+	uint8_t tlv_buffer[TLV_BUFFER_SIZE];
 };
 
 /* tlv struct for all PF replies except acquire */
@@ -244,12 +256,14 @@ union query_tlvs {
 	struct vf_release_tlv		release;
 	struct vf_rss_tlv		update_rss;
 	struct channel_list_end_tlv     list_end;
+	struct tlv_buffer_size		tlv_buf_size;
 };
 
 union resp_tlvs {
 	struct vf_common_reply_tlv	common_reply;
 	struct vf_acquire_resp_tlv	acquire_resp;
 	struct channel_list_end_tlv	list_end;
+	struct tlv_buffer_size		tlv_buf_size;
 };
 
 /* struct allocated by VF driver, PF sends updates to VF via bulletin */
@@ -300,6 +314,7 @@ enum channel_tlvs {
 	BNX2X_VF_TLV_PF_SET_MAC,
 	BNX2X_VF_TLV_PF_SET_VLAN,
 	BNX2X_VF_TLV_UPDATE_RSS,
+	BNX2X_VF_TLV_PHYS_PORT_ID,
 	BNX2X_VF_TLV_MAX
 };
 

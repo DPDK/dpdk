@@ -257,8 +257,15 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 
 	acq->bulletin_addr = sc->pf2vf_bulletin_mapping.paddr;
 
-	BNX2X_TLV_APPEND(acq, acq->first_tlv.length, BNX2X_VF_TLV_LIST_END,
-			sizeof(struct channel_list_end_tlv));
+	/* Request physical port identifier */
+	BNX2X_TLV_APPEND(acq, acq->first_tlv.length,
+			 BNX2X_VF_TLV_PHYS_PORT_ID,
+			 sizeof(struct channel_tlv));
+
+	BNX2X_TLV_APPEND(acq,
+			 (acq->first_tlv.length + sizeof(struct channel_tlv)),
+			 BNX2X_VF_TLV_LIST_END,
+			 sizeof(struct channel_list_end_tlv));
 
 	/* requesting the resources in loop */
 	obtain_status = bnx2x_loop_obtain_resources(sc);
