@@ -9519,13 +9519,22 @@ static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 		return -ENOMEM;
 	}
 
+#ifndef __FreeBSD__
 	pci_read(sc, PCI_STATUS, &status, 2);
 	if (!(status & PCI_STATUS_CAP_LIST)) {
+#else
+	pci_read(sc, PCIR_STATUS, &status, 2);
+	if (!(status & PCIM_STATUS_CAPPRESENT)) {
+#endif
 		PMD_DRV_LOG(NOTICE, "PCIe capability reading failed");
 		return -1;
 	}
 
+#ifndef __FreeBSD__
 	pci_read(sc, PCI_CAPABILITY_LIST, &pci_cap.next, 1);
+#else
+	pci_read(sc, PCIR_CAP_PTR, &pci_cap.next, 1);
+#endif
 	while (pci_cap.next) {
 		cap->addr = pci_cap.next & ~3;
 		pci_read(sc, pci_cap.next & ~3, &pci_cap, 2);

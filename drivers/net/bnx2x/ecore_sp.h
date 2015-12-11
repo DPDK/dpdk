@@ -16,23 +16,17 @@
 #ifndef ECORE_SP_H
 #define ECORE_SP_H
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-#ifndef LITTLE_ENDIAN
-#define LITTLE_ENDIAN
-#endif
+#include <rte_byteorder.h>
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #ifndef __LITTLE_ENDIAN
-#define __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN RTE_LITTLE_ENDIAN
 #endif
-#undef BIG_ENDIAN
 #undef __BIG_ENDIAN
-#else /* _BIG_ENDIAN */
-#ifndef BIG_ENDIAN
-#define BIG_ENDIAN
-#endif
+#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 #ifndef __BIG_ENDIAN
-#define __BIG_ENDIAN
+#define __BIG_ENDIAN    RTE_BIG_ENDIAN
 #endif
-#undef LITTLE_ENDIAN
 #undef __LITTLE_ENDIAN
 #endif
 

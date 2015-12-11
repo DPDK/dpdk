@@ -155,6 +155,14 @@ command::
    cd <DPDK-source-directory>
    gmake config T=x86_64-native-bsdapp-gcc install -Wl,-rpath=/usr/local/lib/gcc48 CC=gcc48
 
+To compile BNX2X PMD for FreeBSD x86_64 gcc target, run the following "gmake"
+command:
+
+.. code-block:: console
+
+   cd <DPDK-source-directory>
+   gmake config T=x86_64-native-bsdapp-gcc install -Wl,-rpath=/usr/local/lib/gcc48 CC=gcc48
+
 Linux
 -----
 
