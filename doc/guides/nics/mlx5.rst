@@ -78,19 +78,23 @@ Features
 
 - Multiple TX and RX queues.
 - Support for scattered TX and RX frames.
-- IPv4, TCPv4 and UDPv4 RSS on any number of queues.
+- IPv4, IPv6, TCPv4, TCPv6, UDPv4 and UDPv6 RSS on any number of queues.
 - Several RSS hash keys, one for each flow type.
+- Configurable RETA table.
 - Support for multiple MAC addresses.
 - VLAN filtering.
 - Promiscuous mode.
+- Multicast promiscuous mode.
+- Hardware checksum offloads.
 
 Limitations
 -----------
 
-- IPv6 and inner VXLAN RSS are not supported yet.
+- KVM and VMware ESX SR-IOV modes are not supported yet.
+- Inner RSS for VXLAN frames is not supported yet.
 - Port statistics through software counters only.
-- No allmulticast mode.
-- Hardware checksum offloads are not supported yet.
+- Hardware checksum offloads for VXLAN inner header are not supported yet.
+- Secondary processes are not supported yet.
 
 Configuration
 -------------
@@ -119,8 +123,13 @@ These options can be modified in the ``.config`` file.
 
 - ``CONFIG_RTE_LIBRTE_MLX5_MAX_INLINE`` (default **0**)
 
-  Amount of data to be inlined during TX operations. Improves latency but
-  lowers throughput.
+  Amount of data to be inlined during TX operations. Improves latency.
+  Can improve PPS performance when PCI backpressure is detected and may be
+  useful for scenarios involving heavy traffic on many queues.
+
+  Since the additional software logic necessary to handle this mode can
+  lower performance when there is no backpressure, it is not enabled by
+  default.
 
 - ``CONFIG_RTE_LIBRTE_MLX5_TX_MP_CACHE`` (default **8**)
 
@@ -205,10 +214,26 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **3.1**.
+- Mellanox OFED **3.1-1.0.3** or **3.1-1.5.7.1** depending on usage.
+
+    The following features are supported with version **3.1-1.5.7.1** and
+    above only:
+
+    - IPv6, UPDv6, TCPv6 RSS.
+    - RX checksum offloads.
+    - IBM POWER8.
+
 - Minimum firmware version:
-  - ConnectX-4: **12.12.0780**.
-  - ConnectX-4 Lx: **14.12.0780**.
+
+  With MLNX_OFED **3.1-1.0.3**:
+
+  - ConnectX-4: **12.12.1240**
+  - ConnectX-4 Lx: **14.12.1100**
+
+  With MLNX_OFED **3.1-1.5.7.1**:
+
+  - ConnectX-4: **12.13.0144**
+  - ConnectX-4 Lx: **14.13.0144**
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
@@ -230,6 +255,23 @@ required from that distribution.
    this DPDK release was developed and tested against is strongly
    recommended. Please check the `prerequisites`_.
 
+Notes for testpmd
+-----------------
+
+Compared to librte_pmd_mlx4 that implements a single RSS configuration per
+port, librte_pmd_mlx5 supports per-protocol RSS configuration.
+
+Since ``testpmd`` defaults to IP RSS mode and there is currently no
+command-line parameter to enable additional protocols (UDP and TCP as well
+as IP), the following commands must be entered from its CLI to get the same
+behavior as librte_pmd_mlx4:
+
+.. code-block:: console
+
+   > port stop all
+   > port config all rss all
+   > port start all
+
 Usage example
 -------------
 
@@ -241,6 +283,13 @@ devices managed by librte_pmd_mlx5.
    .. code-block:: console
 
       modprobe -a ib_uverbs mlx5_core mlx5_ib
+
+   Alternatively if MLNX_OFED is fully installed, the follwoing script can
+   be run:
+
+   .. code-block:: console
+
+      /etc/init.d/openibd restart
 
    .. note::
 
