@@ -417,6 +417,18 @@ Known Issues
   As the l3fwd example application requires this info, the i40e vector
   driver must be disabled to benefit of the packet type with i40e.
 
+* **Mellanox PMDs (mlx4 & mlx5):**
+
+  * PMDs do not support DPDK integrated shared library.
+
+  * There is performance degradation for small packets when PMD
+    is compiled with SGE_WR_N = 4 compared to the performance when SGE_WR_N = 1.
+    If scattered packets are not used it is recomended
+    to compile PMD with SGE_WR_N = 1.
+
+  * When a Multicast or Broadcast packet is sent to the SR-IOV mlx4 VF,
+    it is returned back to the port.
+
 
 API Changes
 -----------
