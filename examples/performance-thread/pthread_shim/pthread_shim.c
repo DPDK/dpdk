@@ -327,17 +327,24 @@ int pthread_cond_broadcast(pthread_cond_t *cond)
 	return _sys_pthread_funcs.f_pthread_cond_broadcast(cond);
 }
 
+int pthread_mutex_destroy(pthread_mutex_t *mutex)
+{
+	if (override)
+		return lthread_mutex_destroy(*(struct lthread_mutex **)mutex);
+	return _sys_pthread_funcs.f_pthread_mutex_destroy(mutex);
+}
+
 int pthread_cond_destroy(pthread_cond_t *cond)
 {
 	if (override)
-		return -lthread_cond_destroy(*(struct lthread_cond **)cond);
+		return lthread_cond_destroy(*(struct lthread_cond **)cond);
 	return _sys_pthread_funcs.f_pthread_cond_destroy(cond);
 }
 
 int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr)
 {
 	if (override)
-		return -lthread_cond_init(NULL,
+		return lthread_cond_init(NULL,
 				(struct lthread_cond **)cond,
 				(const struct lthread_condattr *) attr);
 	return _sys_pthread_funcs.f_pthread_cond_init(cond, attr);

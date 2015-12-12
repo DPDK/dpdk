@@ -211,6 +211,10 @@ static void initial_lthread(void *args __attribute__((unused)))
 			printf("error on thread exit\n");
 	}
 
+	pthread_cond_destroy(&exit_cond);
+	pthread_mutex_destroy(&print_lock);
+	pthread_mutex_destroy(&exit_lock);
+
 	/* shutdown the lthread scheduler */
 	lthread_scheduler_shutdown(rte_lcore_id());
 	lthread_detach();
