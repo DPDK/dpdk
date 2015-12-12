@@ -136,6 +136,10 @@ New Features
 
   Reduced frequency of Tx tail pointer updates to the NIC.
 
+* **Added support for link status interrupts in mlx4.**
+
+* **Added partial support (TX only) for secondary processes in mlx4.**
+
 * **Added support for Mellanox ConnectX-4 adapters (mlx5).**
 
   The mlx5 poll-mode driver implements support for Mellanox ConnectX-4 EN
@@ -346,6 +350,16 @@ Drivers
 
   The mlx drivers were unable to load when built as a shared library,
   due to a missing symbol in mempool library.
+
+* **mlx4: Performance improvements.**
+
+  Fixed bugs in TX and RX flows that improves mlx4 performance.
+
+* **mlx4: Fixed Tx loss after initialization.**
+
+* **mlx4:  Fixed scattered Tx with too many segments.**
+
+* **mlx4: Fixed memory registration for indirect mbuf data.**
 
 * **vhost: Fixed Qemu shutdown.**
 
