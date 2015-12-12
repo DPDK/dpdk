@@ -78,8 +78,8 @@ long as they share the same MAC address.
 
 Compiling librte_pmd_mlx4 causes DPDK to be linked against libibverbs.
 
-Features and limitations
-------------------------
+Features
+---------
 
 - RSS, also known as RCA, is supported. In this mode the number of
   configured RX queues must be a power of two.
@@ -91,11 +91,17 @@ Features and limitations
 - Scattered packets are supported for TX and RX.
 - Inner L3/L4 (IP, TCP and UDP) TX/RX checksum offloading and validation.
 - Outer L3 (IP) TX/RX checksum offloading and validation for VXLAN frames.
+- Secondary process TX is supported.
 
-.. break
+Limitations
+-----------
 
 - RSS hash key cannot be modified.
+- RSS RETA cannot be configured
+- RSS always includes L3 (IPv4/IPv6) and L4 (UDP/TCP). They cannot be
+  dissociated.
 - Hardware counters are not implemented (they are software counters).
+- Secondary process RX is not supported
 
 Configuration
 -------------
@@ -237,8 +243,9 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **3.0**.
-- Firmware version **2.34.5000** and higher.
+- Mellanox OFED **3.1**.
+- Firmware version **2.35.5100** and higher.
+- Supported architectures:  **x86_64** and **POWER8**.
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
@@ -271,6 +278,13 @@ devices managed by librte_pmd_mlx4.
    .. code-block:: console
 
       modprobe -a ib_uverbs mlx4_en mlx4_core mlx4_ib
+
+   Alternatively if MLNX_OFED is fully installed, the follwoing script can
+   be run:
+
+   .. code-block:: console
+
+      /etc/init.d/openibd restart
 
    .. note::
 
