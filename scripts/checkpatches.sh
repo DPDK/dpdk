@@ -59,7 +59,7 @@ quiet=false
 verbose=false
 while getopts hqv ARG ; do
 	case $ARG in
-		q ) quiet=true ;;
+		q ) quiet=true && options="$options --no-summary" ;;
 		v ) verbose=true ;;
 		h ) print_usage ; exit 0 ;;
 		? ) print_usage ; exit 1 ;;
