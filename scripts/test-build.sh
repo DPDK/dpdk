@@ -40,7 +40,25 @@
 . scripts/load-devel-config.sh
 
 print_usage () {
-	echo "usage: $(basename $0) [-jX] [-s] [config1 [config2] ...]]"
+	echo "usage: $(basename $0) [-h] [-jX] [-s] [config1 [config2] ...]]"
+}
+
+print_help () {
+	echo 'Test building several targets with different options'
+	echo
+	print_usage
+	cat <<- END_OF_HELP
+
+	options:
+	        -h    this help
+	        -jX   use X parallel jobs in "make"
+	        -s    short test with only first config without examples/doc
+
+	config: defconfig name followed by switches delimited with "+" sign
+	        Example: x86_64-native-linuxapp-gcc+next+shared+combined
+	        Default is to enable most of the options.
+	        The external dependencies are setup with DPDK_DEP_* variables.
+	END_OF_HELP
 }
 
 J=$DPDK_MAKE_JOBS
@@ -49,7 +67,7 @@ while getopts hj:s ARG ; do
 	case $ARG in
 		j ) J=$OPTARG ;;
 		s ) short=true ;;
-		h ) print_usage ; exit 0 ;;
+		h ) print_help ; exit 0 ;;
 		? ) print_usage ; exit 1 ;;
 	esac
 done
