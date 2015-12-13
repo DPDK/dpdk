@@ -43,6 +43,7 @@ Network Interface Controller Drivers
     bnx2x
     cxgbe
     e1000em
+    enic
     fm10k
     ixgbe
     intel_vf
