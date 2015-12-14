@@ -10,3 +10,4 @@ Contributor's Guidelines
     versioning
     documentation
     patches
+    cheatsheet
