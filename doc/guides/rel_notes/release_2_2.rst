@@ -450,6 +450,11 @@ Known Issues
   As the l3fwd example application requires this info, the i40e vector
   driver must be disabled to benefit of the packet type with i40e.
 
+* Some (possibly all) VF drivers (e.g. i40evf) do not handle any PF reset
+  events/requests in VF driver, that means VF driver may not work after a
+  PF reset in host side. The workaround is to avoid triggering any PF reset
+  events/requests on host side.
+
 * **Mellanox PMDs (mlx4 & mlx5):**
 
   * PMDs do not support DPDK integrated shared library.
