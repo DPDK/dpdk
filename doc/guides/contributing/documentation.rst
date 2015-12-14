@@ -1,4 +1,4 @@
-.. doc_guidelines:
+.. _doc_guidelines:
 
 DPDK Documentation Guidelines
 =============================

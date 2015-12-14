@@ -9,3 +9,4 @@ Contributor's Guidelines
     design
     versioning
     documentation
+    patches
