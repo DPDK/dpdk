@@ -31,7 +31,7 @@ MLX5 poll mode driver
 =====================
 
 The MLX5 poll mode driver library (**librte_pmd_mlx5**) provides support for
-**Mellanox ConnectX-4 EN** and **Mellanox ConnectX-4 Lx EN** families of
+**Mellanox ConnectX-4** and **Mellanox ConnectX-4 Lx** families of
 10/25/40/50/100 Gb/s adapters as well as their virtual functions (VF) in
 SR-IOV context.
 
@@ -284,7 +284,7 @@ devices managed by librte_pmd_mlx5.
 
       modprobe -a ib_uverbs mlx5_core mlx5_ib
 
-   Alternatively if MLNX_OFED is fully installed, the follwoing script can
+   Alternatively if MLNX_OFED is fully installed, the following script can
    be run:
 
    .. code-block:: console

@@ -390,7 +390,7 @@ Drivers
 
 * **mlx4: Fixed Tx loss after initialization.**
 
-* **mlx4:  Fixed scattered Tx with too many segments.**
+* **mlx4: Fixed scattered Tx with too many segments.**
 
 * **mlx4: Fixed memory registration for indirect mbuf data.**
 
@@ -455,9 +455,12 @@ Known Issues
   PF reset in host side. The workaround is to avoid triggering any PF reset
   events/requests on host side.
 
+* 100G link report support is missing.
+
 * **Mellanox PMDs (mlx4 & mlx5):**
 
-  * PMDs do not support DPDK integrated shared library.
+  * PMDs do not support CONFIG_RTE_BUILD_COMBINE_LIBS and
+    CONFIG_RTE_BUILD_SHARED_LIB simultaneously.
 
   * There is performance degradation for small packets when PMD
     is compiled with SGE_WR_N = 4 compared to the performance when SGE_WR_N = 1.
@@ -466,6 +469,11 @@ Known Issues
 
   * When a Multicast or Broadcast packet is sent to the SR-IOV mlx4 VF,
     it is returned back to the port.
+
+  * PMDs report "bad" L4 checksum when IP packet is received.
+
+  * mlx5 PMD reports "bad" checksum although the packet has "good" checksum.
+    Will be fixed in upcoming MLNX_OFED release.
 
 
 API Changes

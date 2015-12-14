@@ -31,8 +31,8 @@ MLX4 poll mode driver library
 =============================
 
 The MLX4 poll mode driver library (**librte_pmd_mlx4**) implements support
-for **Mellanox ConnectX-3 EN** 10/40 Gbps adapters as well as their virtual
-functions (VF) in SR-IOV context.
+for **Mellanox ConnectX-3** and **Mellanox ConnectX-3 Pro** 10/40 Gbps adapters
+as well as their virtual functions (VF) in SR-IOV context.
 
 Information and documentation about this family of adapters can be found on
 the `Mellanox website <http://www.mellanox.com>`_. Help is also provided by
@@ -79,7 +79,7 @@ long as they share the same MAC address.
 Compiling librte_pmd_mlx4 causes DPDK to be linked against libibverbs.
 
 Features
----------
+--------
 
 - RSS, also known as RCA, is supported. In this mode the number of
   configured RX queues must be a power of two.
@@ -101,7 +101,7 @@ Limitations
 - RSS always includes L3 (IPv4/IPv6) and L4 (UDP/TCP). They cannot be
   dissociated.
 - Hardware counters are not implemented (they are software counters).
-- Secondary process RX is not supported
+- Secondary process RX is not supported.
 
 Configuration
 -------------
@@ -279,7 +279,7 @@ devices managed by librte_pmd_mlx4.
 
       modprobe -a ib_uverbs mlx4_en mlx4_core mlx4_ib
 
-   Alternatively if MLNX_OFED is fully installed, the follwoing script can
+   Alternatively if MLNX_OFED is fully installed, the following script can
    be run:
 
    .. code-block:: console
