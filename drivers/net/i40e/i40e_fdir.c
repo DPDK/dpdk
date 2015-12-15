@@ -1091,7 +1091,7 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 		/* Use LAN VSI Id by default */
 		vsi_id = pf->main_vsi->vsi_id;
 	fdirdp->qindex_flex_ptype_vsi |=
-		rte_cpu_to_le_32((vsi_id <<
+		rte_cpu_to_le_32(((uint32_t)vsi_id <<
 				  I40E_TXD_FLTR_QW0_DEST_VSI_SHIFT) &
 				  I40E_TXD_FLTR_QW0_DEST_VSI_MASK);
 
