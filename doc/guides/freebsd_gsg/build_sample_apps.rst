@@ -119,7 +119,7 @@ The following is the list of options that can be given to the EAL:
 
 .. code-block:: console
 
-    ./rte-app -n NUM [-c COREMASK] [-b <domain:bus:devid.func>] \
+    ./rte-app -c COREMASK [-n NUM] [-b <domain:bus:devid.func>] \
               [-r NUM] [-v] [--proc-type <primary|secondary|auto>]
 
 .. note::
