@@ -16,8 +16,8 @@ Deprecation Notices
   must be updated to support 100G link and to have a cleaner link speed API.
 
 * ABI changes is planned for the reta field in struct rte_eth_rss_reta_entry64
-  which handles at most 256 entries (8 bits) while newer NICs support larger
-  tables (512 entries).
+  which handles at most 256 queues (8 bits) while newer NICs support larger
+  tables (512 queues).
   It should be integrated in release 2.3.
 
 * ABI changes are planned for struct rte_eth_fdir_flow in order to support
