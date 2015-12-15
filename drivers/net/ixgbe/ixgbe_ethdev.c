@@ -2546,6 +2546,7 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	}
 
 	/* Rx Errors */
+	stats->imissed  = total_missed_rx;
 	stats->ierrors  = hw_stats->crcerrs +
 	                  hw_stats->mspdc +
 	                  hw_stats->rlec +
