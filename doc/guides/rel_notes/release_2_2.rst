@@ -341,6 +341,8 @@ Drivers
 
   Assign a random MAC address in VF when not assigned by PF.
 
+* **igb: Removed CRC bytes from byte counter statistics.**
+
 * **ixgbe: Fixed issue with X550 DCB.**
 
   Fixed a DCB issue with x550 where for 8 TCs (Traffic Classes), if a packet
@@ -360,6 +362,17 @@ Drivers
   Fixed an issue where the TX queue can hang when a lot of highly fragmented
   packets have to be sent. As part of that fix, ``tx_rs_thresh`` for ixgbe PMD
   is not allowed to be greater then to 32 to comply with HW restrictions.
+
+* **ixgbe: Fixed rx error statistic counter.**
+
+  Fixed an issue that the rx error counter of ixgbe was not accurate. The
+  mac short packet discard count (mspdc) was added to the counter. Mac local
+  faults and mac remote faults are removed as they do not count packets but
+  errors, and jabber errors were removed as they are already accounted for
+  by the CRC error counter. Finally the XEC (l3 / l4 checksum error) counter
+  was removed due to errata, see commit 256ff05a9cae for details.
+
+* **ixgbe: Removed CRC bytes from byte counter statistics.**
 
 * **i40e: Fixed base driver allocation when not using first numa node.**
 
@@ -381,6 +394,8 @@ Drivers
 
   Fixed an issue of not freeing a memzone in the call to free the memory for
   adminq DMA.
+
+* **i40e: Removed CRC bytes from byte counter statistics.**
 
 * **mlx: Fixed driver loading.**
 
