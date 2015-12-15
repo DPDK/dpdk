@@ -121,8 +121,8 @@ then
 	cleanup_and_exit 1
 fi
 
-HASH1=$(git show -s --format=%H "$TAG1" -- 2> /dev/null)
-HASH2=$(git show -s --format=%H "$TAG2" -- 2> /dev/null)
+HASH1=$(git show -s --format=%H "$TAG1" -- 2> /dev/null | tail -1)
+HASH2=$(git show -s --format=%H "$TAG2" -- 2> /dev/null | tail -1)
 
 # Make sure our tags exist
 res=$(validate_tags)
