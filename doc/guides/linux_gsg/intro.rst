@@ -33,7 +33,7 @@ Introduction
 
 This document contains instructions for installing and configuring the Intel® Data Plane Development Kit (DPDK) software.
 It is designed to get customers up and running quickly.
-The document describes how to compile and run a DPDK application in a Linux* application (linuxapp) environment,
+The document describes how to compile and run a DPDK application in a Linux application (linuxapp) environment,
 without going deeply into detail.
 
 Documentation Roadmap
@@ -48,7 +48,7 @@ The following is a list of DPDK documents in the suggested reading order:
 
 *   Programmer's Guide: Describes:
 
-    *   The software architecture and how to use it (through examples), specifically in a Linux* application (linuxapp) environment
+    *   The software architecture and how to use it (through examples), specifically in a Linux application (linuxapp) environment
 
     *   The content of the DPDK, the build system (including the commands that can be used in the root DPDK Makefile to build the development kit and
         an application) and guidelines for porting an application
@@ -61,7 +61,3 @@ The following is a list of DPDK documents in the suggested reading order:
 
 *   Sample Applications User Guide: Describes a set of sample applications.
     Each chapter describes a sample application that showcases specific functionality and provides instructions on how to compile, run and use the sample application.
-
-.. note::
-
-    These documents are available for download as a separate documentation package at the same location as the DPDK code package.

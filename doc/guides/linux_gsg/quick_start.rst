@@ -28,6 +28,8 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+.. _linux_setup_script:
+
 Quick Start Setup Script
 ========================
 
@@ -51,7 +53,7 @@ The setup.sh script, found in the tools subdirectory, allows the user to perform
 
 *   Look at hugepages in the meminfo
 
-*   List hugepages in /mnt/huge
+*   List hugepages in ``/mnt/huge``
 
 *   Remove built DPDK libraries
 
@@ -106,7 +108,7 @@ Some options in the script prompt the user for further data before proceeding.
 
 .. code-block:: console
 
-    user@host:~/rte$ source tools/setup.sh
+    source tools/setup.sh
 
     ------------------------------------------------------------------------
 
@@ -202,7 +204,7 @@ Some options in the script prompt the user for further data before proceeding.
 
 Option:
 
-The following selection demonstrates the creation of the x86_64-native-linuxapp-gcc DPDK library.
+The following selection demonstrates the creation of the ``x86_64-native-linuxapp-gcc`` DPDK library.
 
 .. code-block:: console
 
@@ -214,7 +216,7 @@ The following selection demonstrates the creation of the x86_64-native-linuxapp-
     == Build lib
     ...
     Build complete
-    RTE_TARGET exported as x86_64-native -linuxapp-gcc
+    RTE_TARGET exported as x86_64-native-linuxapp-gcc
 
 The following selection demonstrates the starting of the DPDK UIO driver.
 
@@ -277,15 +279,16 @@ the logical core layout of the platform should be determined when selecting a co
 
 .. code-block:: console
 
-    rte@rte-desktop:~/rte/examples$ cd helloworld/
-    rte@rte-desktop:~/rte/examples/helloworld$ make
-    CC main.o
-    LD helloworld
-    INSTALL-APP helloworld
-    INSTALL-MAP helloworld.map
+    cd helloworld/
+    make
+      CC main.o
+      LD helloworld
+      INSTALL-APP helloworld
+      INSTALL-MAP helloworld.map
 
-    rte@rte-desktop:~/rte/examples/helloworld$ sudo ./build/app/helloworld -c 0xf -n 3
+    sudo ./build/app/helloworld -c 0xf -n 3
     [sudo] password for rte:
+
     EAL: coremask set to f
     EAL: Detected lcore 0 as core 0 on socket 0
     EAL: Detected lcore 1 as core 0 on socket 1

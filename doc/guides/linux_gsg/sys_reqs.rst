@@ -28,7 +28,6 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 System Requirements
 ===================
 
@@ -37,7 +36,7 @@ This chapter describes the packages required to compile the DPDK.
 .. note::
 
     If the DPDK is being used on an Intel® Communications Chipset 89xx Series platform,
-    please consult the *Intel® Communications Chipset 89xx Series Software for Linux* Getting Started Guide*.
+    please consult the *Intel® Communications Chipset 89xx Series Software for Linux Getting Started Guide*.
 
 BIOS Setting Prerequisite on x86
 --------------------------------
@@ -45,7 +44,7 @@ BIOS Setting Prerequisite on x86
 For the majority of platforms, no special BIOS settings are needed to use basic DPDK functionality.
 However, for additional HPET timer and power management functionality,
 and high performance of small packets on 40G NIC, BIOS setting changes may be needed.
-Consult :ref:`Chapter 5. Enabling Additional Functionality <Enabling_Additional_Functionality>`
+Consult the section on :ref:`Enabling Additional Functionality <Enabling_Additional_Functionality>`
 for more information on the required changes.
 
 Compilation of the DPDK
@@ -55,17 +54,17 @@ Compilation of the DPDK
 
 .. note::
 
-    Testing has been performed using Fedora* 18. The setup commands and installed packages needed on other systems may be different.
+    Testing has been performed using Fedora 18. The setup commands and installed packages needed on other systems may be different.
     For details on other Linux distributions and the versions tested, please consult the DPDK Release Notes.
 
-*   GNU  make
+*   GNU ``make``.
 
-*   coreutils:  cmp, sed, grep, arch
+*   coreutils: ``cmp``, ``sed``, ``grep``, ``arch``, etc.
 
-*   gcc: versions 4.5.x or later is recommended for i686/x86_64. versions 4.8.x or later is recommended
-    for ppc_64 and x86_x32 ABI. On some distributions, some specific compiler flags and linker flags are enabled by
-    default and affect performance (- fstack-protector, for example). Please refer to the documentation
-    of your distribution and to gcc -dumpspecs.
+*   gcc: versions 4.5.x or later is recommended for ``i686/x86_64``. Versions 4.8.x or later is recommended
+    for ``ppc_64`` and ``x86_x32`` ABI. On some distributions, some specific compiler flags and linker flags are enabled by
+    default and affect performance (``-fstack-protector``, for example). Please refer to the documentation
+    of your distribution and to ``gcc -dumpspecs``.
 
 *   libc headers (glibc-devel.i686 / libc6-dev-i386; glibc-devel.x86_64 for 64-bit compilation on Intel
     architecture; glibc-devel.ppc64 for 64 bit IBM Power architecture;)
@@ -75,9 +74,9 @@ Compilation of the DPDK
 
 *   Additional packages required for 32-bit compilation on 64-bit systems are:
 
-    glibc.i686, libgcc.i686, libstdc++.i686 and glibc-devel.i686 for Intel i686/x86_64;
+    * glibc.i686, libgcc.i686, libstdc++.i686 and glibc-devel.i686 for Intel i686/x86_64;
 
-    glibc.ppc64, libgcc.ppc64, libstdc++.ppc64 and glibc-devel.ppc64 for IBM ppc_64;
+    * glibc.ppc64, libgcc.ppc64, libstdc++.ppc64 and glibc-devel.ppc64 for IBM ppc_64;
 
 .. note::
 
@@ -86,21 +85,20 @@ Compilation of the DPDK
 
 .. note::
 
-    Python, version 2.6 or 2.7, to use various helper scripts included in the DPDK package
+    Python, version 2.6 or 2.7, to use various helper scripts included in the DPDK package.
 
 
 **Optional Tools:**
 
-*   Intel®  C++ Compiler (icc). For installation, additional libraries may be required.
+*   Intel® C++ Compiler (icc). For installation, additional libraries may be required.
     See the icc Installation Guide found in the Documentation directory under the compiler installation.
-    This release has been tested using version 12.1.
 
 *   IBM® Advance ToolChain for Powerlinux. This is a set of open source development tools and runtime libraries
     which allows users to take leading edge advantage of IBM's latest POWER hardware features on Linux. To install
     it, see the IBM official installation document.
 
 *   libpcap headers and libraries (libpcap-devel) to compile and use the libpcap-based poll-mode driver.
-    This driver is disabled by default and can be enabled by setting CONFIG_RTE_LIBRTE_PMD_PCAP=y in the build time config file.
+    This driver is disabled by default and can be enabled by setting ``CONFIG_RTE_LIBRTE_PMD_PCAP=y`` in the build time config file.
 
 Running DPDK Applications
 -------------------------
@@ -114,29 +112,17 @@ System Software
 
 *   Kernel version >= 2.6.34
 
-    The kernel version in use can be checked using the command:
-
-    .. code-block:: console
+    The kernel version in use can be checked using the command::
 
         uname -r
 
 *   glibc >= 2.7 (for features related to cpuset)
 
-    The version can be checked using the ldd --version command. A sample output is shown below:
-
-    .. code-block:: console
-
-        # ldd --version
-
-        ldd (GNU libc) 2.14.90
-        Copyright (C) 2011 Free Software Foundation, Inc.
-        This is free software; see the source for copying conditions. There is NO
-        warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-        Written by Roland McGrath and Ulrich Drepper.
+    The version can be checked using the ``ldd --version`` command.
 
 *   Kernel configuration
 
-    In the Fedora* OS and other common distributions, such as Ubuntu*, or Red Hat Enterprise Linux*,
+    In the Fedora OS and other common distributions, such as Ubuntu, or Red Hat Enterprise Linux,
     the vendor supplied kernel configurations can be used to run most DPDK applications.
 
     For other kernel builds, options which should be enabled for DPDK include:
@@ -148,15 +134,15 @@ System Software
     *   PROC_PAGE_MONITOR  support
 
     *   HPET and HPET_MMAP configuration options should also be enabled if HPET  support is required.
-        See :ref:`Section 5.1 High Precision Event Timer (HPET) Functionality <High_Precision_Event_Timer>` for more details.
+        See the section on :ref:`High Precision Event Timer (HPET) Functionality <High_Precision_Event_Timer>` for more details.
 
 .. _linux_gsg_hugepages:
 
-Use of Hugepages in the Linux* Environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Use of Hugepages in the Linux Environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Hugepage support is required for the large memory pool allocation used for packet buffers
-(the HUGETLBFS option must be enabled in the running kernel as indicated in Section 2.3).
+(the HUGETLBFS option must be enabled in the running kernel as indicated the previous section).
 By using hugepage allocations, performance is increased since fewer pages are needed,
 and therefore less Translation Lookaside Buffers (TLBs, high speed translation caches),
 which reduce the time it takes to translate a virtual page address to a physical page address.
@@ -167,19 +153,15 @@ Reserving Hugepages for DPDK Use
 
 The allocation of hugepages should be done at boot time or as soon as possible after system boot
 to prevent memory from being fragmented in physical memory.
-To reserve hugepages at boot time, a parameter is passed to the Linux* kernel on the kernel command line.
+To reserve hugepages at boot time, a parameter is passed to the Linux kernel on the kernel command line.
 
-For 2 MB pages, just pass the hugepages option to the kernel. For example, to reserve 1024 pages of 2 MB, use:
-
-.. code-block:: console
+For 2 MB pages, just pass the hugepages option to the kernel. For example, to reserve 1024 pages of 2 MB, use::
 
     hugepages=1024
 
 For other hugepage sizes, for example 1G pages, the size must be specified explicitly and
 can also be optionally set as the default hugepage size for the system.
-For example, to reserve 4G of hugepage memory in the form of four 1G pages, the following options should be passed to the kernel:
-
-.. code-block:: console
+For example, to reserve 4G of hugepage memory in the form of four 1G pages, the following options should be passed to the kernel::
 
     default_hugepagesz=1G hugepagesz=1G hugepages=4
 
@@ -197,21 +179,17 @@ In the case of a dual-socket NUMA system,
 the number of hugepages reserved at boot time is generally divided equally between the two sockets
 (on the assumption that sufficient memory is present on both sockets).
 
-See the Documentation/kernel-parameters.txt file in your Linux* source tree for further details of these and other kernel options.
+See the Documentation/kernel-parameters.txt file in your Linux source tree for further details of these and other kernel options.
 
 **Alternative:**
 
 For 2 MB pages, there is also the option of allocating hugepages after the system has booted.
-This is done by echoing the number of hugepages required to a nr_hugepages file in the /sys/devices/ directory.
-For a single-node system, the command to use is as follows (assuming that 1024 pages are required):
-
-.. code-block:: console
+This is done by echoing the number of hugepages required to a nr_hugepages file in the ``/sys/devices/`` directory.
+For a single-node system, the command to use is as follows (assuming that 1024 pages are required)::
 
     echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
 
-On a NUMA machine, pages should be allocated explicitly on separate nodes:
-
-.. code-block:: console
+On a NUMA machine, pages should be allocated explicitly on separate nodes::
 
     echo 1024 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
     echo 1024 > /sys/devices/system/node/node1/hugepages/hugepages-2048kB/nr_hugepages
@@ -223,29 +201,23 @@ On a NUMA machine, pages should be allocated explicitly on separate nodes:
 Using Hugepages with the DPDK
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once the hugepage memory is reserved, to make the memory available for DPDK use, perform the following steps:
-
-.. code-block:: console
+Once the hugepage memory is reserved, to make the memory available for DPDK use, perform the following steps::
 
     mkdir /mnt/huge
     mount -t hugetlbfs nodev /mnt/huge
 
-The mount point can be made permanent across reboots, by adding the following line to the /etc/fstab file:
-
-.. code-block:: console
+The mount point can be made permanent across reboots, by adding the following line to the ``/etc/fstab`` file::
 
     nodev /mnt/huge hugetlbfs defaults 0 0
 
-For 1GB pages, the page size must be specified as a mount option:
-
-.. code-block:: console
+For 1GB pages, the page size must be specified as a mount option::
 
     nodev /mnt/huge_1GB hugetlbfs pagesize=1GB 0 0
 
-Xen Domain0 Support in the Linux* Environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Xen Domain0 Support in the Linux Environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The existing memory management implementation is based on the Linux* kernel hugepage mechanism.
+The existing memory management implementation is based on the Linux kernel hugepage mechanism.
 On the Xen hypervisor, hugepage support for DomainU (DomU) Guests means that DPDK applications work as normal for guests.
 
 However, Domain0 (Dom0) does not support hugepages.
@@ -263,11 +235,9 @@ Furthermore, the CONFIG_RTE_EAL_ALLOW_INV_SOCKET_ID setting should also be chang
 Loading the DPDK rte_dom0_mm Module
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To run any DPDK application on Xen Dom0, the rte_dom0_mm module must be loaded into the running kernel with rsv_memsize option.
+To run any DPDK application on Xen Dom0, the ``rte_dom0_mm`` module must be loaded into the running kernel with rsv_memsize option.
 The module is found in the kmod sub-directory of the DPDK target directory.
-This module should be loaded using the insmod command as shown below (assuming that the current directory is the DPDK target directory):
-
-.. code-block:: console
+This module should be loaded using the insmod command as shown below (assuming that the current directory is the DPDK target directory)::
 
     sudo insmod kmod/rte_dom0_mm.ko rsv_memsize=X
 
@@ -278,19 +248,15 @@ Configuring Memory for DPDK Use
 
 After the rte_dom0_mm.ko kernel module has been loaded, the user must configure the memory size for DPDK usage.
 This is done by echoing the memory size to a memsize file in the /sys/devices/ directory.
-Use the following command (assuming that 2048 MB is required):
-
-.. code-block:: console
+Use the following command (assuming that 2048 MB is required)::
 
     echo 2048 > /sys/kernel/mm/dom0-mm/memsize-mB/memsize
 
-The user can also check how much memory has already been used:
-
-.. code-block:: console
+The user can also check how much memory has already been used::
 
     cat /sys/kernel/mm/dom0-mm/memsize-mB/memsize_rsvd
 
-Xen Domain0 does not support NUMA configuration, as a result the --socket-mem command line option is invalid for Xen Domain0.
+Xen Domain0 does not support NUMA configuration, as a result the ``--socket-mem`` command line option is invalid for Xen Domain0.
 
 .. note::
 
@@ -299,4 +265,4 @@ Xen Domain0 does not support NUMA configuration, as a result the --socket-mem co
 Running the DPDK Application on Xen Domain0
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To run the DPDK application on Xen Domain0, an extra command line option --xen-dom0 is required.
+To run the DPDK application on Xen Domain0, an extra command line option ``--xen-dom0`` is required.
