@@ -919,6 +919,11 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	 */
 	i40e_add_tx_flow_control_drop_filter(pf);
 
+	/* Set the max frame size to 0x2600 by default,
+	 * in case other drivers changed the default value.
+	 */
+	i40e_aq_set_mac_config(hw, I40E_FRAME_SIZE_MAX, TRUE, 0, NULL);
+
 	/* initialize mirror rule list */
 	TAILQ_INIT(&pf->mirror_list);
 
