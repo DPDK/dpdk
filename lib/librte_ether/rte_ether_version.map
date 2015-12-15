@@ -27,14 +27,6 @@ DPDK_2.2 {
 	rte_eth_dev_count;
 	rte_eth_dev_default_mac_addr_set;
 	rte_eth_dev_detach;
-	rte_eth_dev_fdir_add_perfect_filter;
-	rte_eth_dev_fdir_add_signature_filter;
-	rte_eth_dev_fdir_get_infos;
-	rte_eth_dev_fdir_remove_perfect_filter;
-	rte_eth_dev_fdir_remove_signature_filter;
-	rte_eth_dev_fdir_set_masks;
-	rte_eth_dev_fdir_update_perfect_filter;
-	rte_eth_dev_fdir_update_signature_filter;
 	rte_eth_dev_filter_ctrl;
 	rte_eth_dev_filter_supported;
 	rte_eth_dev_flow_ctrl_get;
