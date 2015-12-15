@@ -12,6 +12,9 @@ Deprecation Notices
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
 
+* The ethdev structures rte_eth_link, rte_eth_dev_info and rte_eth_conf
+  must be updated to support 100G link and to have a cleaner link speed API.
+
 * ABI changes is planned for the reta field in struct rte_eth_rss_reta_entry64
   which handles at most 256 entries (8 bits) while newer NICs support larger
   tables (512 entries).
