@@ -33,76 +33,63 @@
 Compiling the DPDK Target from Source
 =====================================
 
-.. note::
-
-    Testing has been performed using FreeBSD* 10.0-RELEASE (x86_64) and requires the
-    installation of the kernel sources, which should be included during the
-    installation of FreeBSD*. The DPDK also requires the use of FreeBSD*
-    ports to compile and function.
-
 System Requirements
 -------------------
 
 The DPDK and its applications require the GNU make system (gmake)
-to build on FreeBSD*. Optionally, gcc may also be used in place of clang
+to build on FreeBSD. Optionally, gcc may also be used in place of clang
 to build the DPDK, in which case it too must be installed prior to
 compiling the DPDK. The installation of these tools is covered in this
 section.
 
 Compiling the DPDK requires the FreeBSD kernel sources, which should be
-included during the installation of FreeBSD* on the development platform.
-The DPDK also requires the use of FreeBSD* ports to compile and function.
+included during the installation of FreeBSD on the development platform.
+The DPDK also requires the use of FreeBSD ports to compile and function.
 
-To use the FreeBSD* ports system, it is required to update and extract the FreeBSD*
+To use the FreeBSD ports system, it is required to update and extract the FreeBSD
 ports tree by issuing the following commands:
 
 .. code-block:: console
 
-    root@host:~ # portsnap fetch
-    root@host:~ # portsnap extract
+    portsnap fetch
+    portsnap extract
 
 If the environment requires proxies for external communication, these can be set
 using:
 
 .. code-block:: console
 
-    root@host:~ # setenv http_proxy <my_proxy_host>:<port>
-    root@host:~ # setenv ftp_proxy <my_proxy_host>:<port>
+    setenv http_proxy <my_proxy_host>:<port>
+    setenv ftp_proxy <my_proxy_host>:<port>
 
-The FreeBSD* ports below need to be installed prior to building the DPDK.
-In general these can be installed using the following set of commands:
+The FreeBSD ports below need to be installed prior to building the DPDK.
+In general these can be installed using the following set of commands::
 
-#.  cd /usr/ports/<port_location>
+   cd /usr/ports/<port_location>
 
-#.  make config-recursive
+   make config-recursive
 
-#.  make install
+   make install
 
-#.  make clean
+   make clean
 
-Each port location can be found using:
+Each port location can be found using::
 
-.. code-block:: console
-
-    user@host:~ # whereis <port_name>
+   whereis <port_name>
 
 The ports required and their locations are as follows:
 
-dialog4ports
-   /usr/ports/ports-mgmt/dialog4ports
+* dialog4ports: ``/usr/ports/ports-mgmt/dialog4ports``
 
-GNU make(gmake)
-   /usr/ports/devel/gmake
+* GNU make(gmake): ``/usr/ports/devel/gmake``
 
-coreutils
-   /usr/ports/sysutils/coreutils
+* coreutils: ``/usr/ports/sysutils/coreutils``
 
-For compiling and using the DPDK with gcc, it too must be installed
+For compiling and using the DPDK with gcc, the compiler must be installed
 from the ports collection:
 
-gcc: version 4.8 is recommended
-   /usr/ports/lang/gcc48
-   (Ensure that CPU_OPTS is selected (default is OFF))
+* gcc: version 4.8 is recommended ``/usr/ports/lang/gcc48``.
+  Ensure that ``CPU_OPTS`` is selected (default is OFF).
 
 When running the make config-recursive command, a dialog may be presented to the
 user. For the installation of the DPDK, the default options were used.
@@ -111,7 +98,7 @@ user. For the installation of the DPDK, the default options were used.
 
     To avoid multiple dialogs being presented to the user during make install,
     it is advisable before running the make install command to re-run the
-    make config -recursive command until no more dialogs are seen.
+    make config-recursive command until no more dialogs are seen.
 
 
 Install the DPDK and Browse Sources
@@ -121,10 +108,12 @@ First, uncompress the archive and move to the DPDK source directory:
 
 .. code-block:: console
 
-    user@host:~ # unzip DPDK-<version>zip
-    user@host:~ # cd DPDK-<version>
-    user@host:~/DPDK # ls
-    app/ config/ examples/ lib/ LICENSE.GPL LICENSE.LGPL Makefile mk/ scripts/ tools/
+    unzip DPDK-<version>.zip
+    cd DPDK-<version>
+
+    ls
+    app/ config/ examples/ lib/ LICENSE.GPL LICENSE.LGPL Makefile
+    mk/ scripts/ tools/
 
 The DPDK is composed of several directories:
 
@@ -139,38 +128,36 @@ The DPDK is composed of several directories:
 Installation of the DPDK Target Environments
 --------------------------------------------
 
-The format of a DPDK target is:
+The format of a DPDK target is::
 
-ARCH-MACHINE-EXECENV-TOOLCHAIN
+   ARCH-MACHINE-EXECENV-TOOLCHAIN
 
 Where:
 
-*   ARCH is:   x86_64
+* ``ARCH`` is: ``x86_64``
 
-*   MACHINE is: native
+* ``MACHINE`` is: ``native``
 
-*   EXECENV is: bsdapp
+* ``EXECENV`` is: ``bsdapp``
 
-*   TOOLCHAIN is: gcc | clang
+* ``TOOLCHAIN`` is: ``gcc`` | ``clang``
 
 The configuration files for the DPDK targets can be found in the DPDK/config
-directory in the form of:
-
-::
+directory in the form of::
 
     defconfig_ARCH-MACHINE-EXECENV-TOOLCHAIN
 
 .. note::
 
-    Configuration files are provided with the RTE_MACHINE optimization level set.
-    Within the configuration files, the RTE_MACHINE configuration value is set
-    to native, which means that the compiled software is tuned for the platform
-    on which it is built.  For more information on this setting, and its
-    possible values, see the *DPDK Programmers Guide*.
+   Configuration files are provided with the ``RTE_MACHINE`` optimization level set.
+   Within the configuration files, the ``RTE_MACHINE`` configuration value is set
+   to native, which means that the compiled software is tuned for the platform
+   on which it is built.  For more information on this setting, and its
+   possible values, see the *DPDK Programmers Guide*.
 
-To install and make the target, use "gmake install T=<target>".
+To make the target, use ``gmake install T=<target>``.
 
-For example to compile for FreeBSD* use:
+For example to compile for FreeBSD use:
 
 .. code-block:: console
 
@@ -178,10 +165,10 @@ For example to compile for FreeBSD* use:
 
 .. note::
 
-	If the compiler binary to be used does not correspond to that given in the
-	TOOLCHAIN part of the target, the compiler command may need to be explicitly
-	specified. For example, if compiling for gcc, where the gcc binary is called
-	gcc4.8, the command would need to be "gmake install T=<target> CC=gcc4.8".
+   If the compiler binary to be used does not correspond to that given in the
+   TOOLCHAIN part of the target, the compiler command may need to be explicitly
+   specified. For example, if compiling for gcc, where the gcc binary is called
+   gcc4.8, the command would need to be ``gmake install T=<target> CC=gcc4.8``.
 
 Browsing the Installed DPDK Environment Target
 ----------------------------------------------
@@ -194,8 +181,9 @@ contains the kernel modules to install:
 
 .. code-block:: console
 
-    user@host:~/DPDK # ls x86_64-native-bsdapp-gcc
-    app   build    hostapp    include    kmod    lib    Makefile
+    ls x86_64-native-bsdapp-gcc
+
+    app build hostapp include kmod lib Makefile
 
 
 .. _loading_contigmem:
@@ -216,13 +204,11 @@ module loading using:
 
 .. code-block:: console
 
-    root@host:~ # kenv hw.contigmem.num_buffers=n
-    root@host:~ # kenv hw.contigmem.buffer_size=m
+    kenv hw.contigmem.num_buffers=n
+    kenv hw.contigmem.buffer_size=m
 
 The kernel environment variables can also be specified during boot by placing the
-following in /boot/loader.conf:
-
-::
+following in ``/boot/loader.conf``::
 
     hw.contigmem.num_buffers=n hw.contigmem.buffer_size=m
 
@@ -230,7 +216,7 @@ The variables can be inspected using the following command:
 
 .. code-block:: console
 
-    root@host:~ # sysctl -a hw.contigmem
+    sysctl -a hw.contigmem
 
 Where n is the number of blocks and m is the size in bytes of each area of
 contiguous memory.  A default of two buffers of size 1073741824 bytes (1 Gigabyte)
@@ -245,27 +231,26 @@ is the DPDK target directory):
 
 It is advisable to include the loading of the contigmem module during the boot
 process to avoid issues with potential memory fragmentation during later system
-up time.  This can be achieved by copying the module to the /boot/kernel/
-directory and placing the following into /boot/loader.conf:
-
-::
+up time.  This can be achieved by copying the module to the ``/boot/kernel/``
+directory and placing the following into ``/boot/loader.conf``::
 
     contigmem_load="YES"
 
 .. note::
 
     The contigmem_load directive should be placed after any definitions of
-    hw.contigmem.num_buffers and hw.contigmem.buffer_size if the default values
+    ``hw.contigmem.num_buffers`` and ``hw.contigmem.buffer_size`` if the default values
     are not to be used.
 
 An error such as:
 
 .. code-block:: console
 
-    kldload: can't load ./x86_64-native-bsdapp-gcc/kmod/contigmem.ko: Exec format error
+    kldload: can't load ./x86_64-native-bsdapp-gcc/kmod/contigmem.ko:
+             Exec format error
 
 is generally attributed to not having enough contiguous memory
-available and can be verified via dmesg or /var/log/messages:
+available and can be verified via dmesg or ``/var/log/messages``:
 
 .. code-block:: console
 
@@ -278,7 +263,7 @@ To avoid this error, reduce the number of buffers or the buffer size.
 Loading the DPDK nic_uio Module
 -------------------------------
 
-After loading the contigmem module, the nic_uio must also be loaded into the
+After loading the contigmem module, the ``nic_uio must`` also be loaded into the
 running kernel prior to running any DPDK application.  This module must
 be loaded using the kldload command as shown below (assuming that the current
 directory is the DPDK target directory).
@@ -290,28 +275,26 @@ directory is the DPDK target directory).
 .. note::
 
     If the ports to be used are currently bound to a existing kernel driver
-    then the hw.nic_uio.bdfs sysctl value will need to be set before loading the
+    then the ``hw.nic_uio.bdfs sysctl`` value will need to be set before loading the
     module. Setting this value is described in the next section below.
 
-Currently loaded modules can be seen by using the "kldstat" command and a module
-can be removed from the running kernel by using "kldunload <module_name>".
+Currently loaded modules can be seen by using the ``kldstat`` command and a module
+can be removed from the running kernel by using ``kldunload <module_name>``.
 
-To load the module during boot, copy the nic_uio module to /boot/kernel
-and place the following into /boot/loader.conf:
-
-::
+To load the module during boot, copy the ``nic_uio`` module to ``/boot/kernel``
+and place the following into ``/boot/loader.conf``::
 
     nic_uio_load="YES"
 
 .. note::
 
-    nic_uio_load="YES" must appear after the contigmem_load directive, if it exists.
+    ``nic_uio_load="YES"`` must appear after the contigmem_load directive, if it exists.
 
-By default, the nic_uio module will take ownership of network ports if they are
+By default, the ``nic_uio`` module will take ownership of network ports if they are
 recognized DPDK devices and are not owned by another module. However, since
 the FreeBSD kernel includes support, either built-in, or via a separate driver
 module, for most network card devices, it is likely that the ports to be used are
-already bound to a driver other than nic_uio. The following sub-section describe
+already bound to a driver other than ``nic_uio``. The following sub-section describe
 how to query and modify the device ownership of the ports to be used by
 DPDK applications.
 
@@ -321,11 +304,11 @@ Binding Network Ports to the nic_uio Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Device ownership can be viewed using the pciconf -l command. The example below shows
-four Intel® 82599 network ports under "if_ixgbe" module ownership.
+four Intel® 82599 network ports under ``if_ixgbe`` module ownership.
 
 .. code-block:: console
 
-    user@host:~ # pciconf -l
+    pciconf -l
     ix0@pci0:1:0:0: class=0x020000 card=0x00038086 chip=0x10fb8086 rev=0x01 hdr=0x00
     ix1@pci0:1:0:1: class=0x020000 card=0x00038086 chip=0x10fb8086 rev=0x01 hdr=0x00
     ix2@pci0:2:0:0: class=0x020000 card=0x00038086 chip=0x10fb8086 rev=0x01 hdr=0x00
@@ -333,41 +316,35 @@ four Intel® 82599 network ports under "if_ixgbe" module ownership.
 
 The first column constitutes three components:
 
-#.  Device name: ixN
+#. Device name: ``ixN``
 
-#.  Unit name:  pci0
+#. Unit name: ``pci0``
 
-#.  Selector (Bus:Device:Function):   1:0:0
+#. Selector (Bus:Device:Function): ``1:0:0``
 
-Where no driver is associated with a device, the device name will be none.
+Where no driver is associated with a device, the device name will be ``none``.
 
-By default, the FreeBSD* kernel will include built-in drivers for the most common
+By default, the FreeBSD kernel will include built-in drivers for the most common
 devices; a kernel rebuild would normally be required to either remove the drivers
 or configure them as loadable modules.
 
-To avoid building a custom kernel, the nic_uio module can detach a network port
-from its current device driver.  This is achieved by setting the hw.nic_uio.bdfs
-kernel environment variable prior to loading nic_uio, as follows:
-
-::
+To avoid building a custom kernel, the ``nic_uio`` module can detach a network port
+from its current device driver. This is achieved by setting the ``hw.nic_uio.bdfs``
+kernel environment variable prior to loading ``nic_uio``, as follows::
 
     hw.nic_uio.bdfs="b:d:f,b:d:f,..."
 
 Where a comma separated list of selectors is set, the list must not contain any
 whitespace.
 
-For example to re-bind "ix2\@pci0:2:0:0" and "ix3\@pci0:2:0:1" to the nic_uio module
-upon loading, use the following command:
-
-.. code-block:: console
+For example to re-bind ``ix2@pci0:2:0:0`` and ``ix3@pci0:2:0:1`` to the ``nic_uio`` module
+upon loading, use the following command::
 
     kenv hw.nic_uio.bdfs="2:0:0,2:0:1"
 
 The variable can also be specified during boot by placing the following into
-"/boot/loader.conf", before the previously-described "nic_uio_load" line - as
-shown.
-
-::
+``/boot/loader.conf``, before the previously-described ``nic_uio_load`` line - as
+shown::
 
     hw.nic_uio.bdfs="2:0:0,2:0:1"
     nic_uio_load="YES"
@@ -376,15 +353,15 @@ Binding Network Ports Back to their Original Kernel Driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the original driver for a network port has been compiled into the kernel,
-it is necessary to reboot FreeBSD* to restore the original device binding. Before
-doing so, update or remove the "hw.nic_uio.bdfs" in "/boot/loader.conf".
+it is necessary to reboot FreeBSD to restore the original device binding. Before
+doing so, update or remove the ``hw.nic_uio.bdfs`` in ``/boot/loader.conf``.
 
 If rebinding to a driver that is a loadable module, the network port binding can
 be reset without rebooting. To do so, unload both the target kernel module and the
-nic_uio module, modify or clear the "hw.nic_uio.bdfs" kernel environment (kenv)
+``nic_uio`` module, modify or clear the ``hw.nic_uio.bdfs`` kernel environment (kenv)
 value, and reload the two drivers - first the original kernel driver, and then
-the nic_uio driver. [The latter does not need to be reloaded unless there are
-ports that are still to be bound to it].
+the ``nic_uio driver``. Note: the latter does not need to be reloaded unless there are
+ports that are still to be bound to it.
 
 Example commands to perform these steps are shown below:
 
@@ -393,9 +370,11 @@ Example commands to perform these steps are shown below:
     kldunload nic_uio
     kldunload <original_driver>
 
-    kenv -u hw.nic_uio.bdfs  # to clear the value completely
+    # To clear the value completely:
+    kenv -u hw.nic_uio.bdfs
 
-    kenv hw.nic_uio.bdfs="b:d:f,b:d:f,..." # to update the list of ports to bind
+    # To update the list of ports to bind:
+    kenv hw.nic_uio.bdfs="b:d:f,b:d:f,..."
 
     kldload <original_driver>
 

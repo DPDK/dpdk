@@ -34,20 +34,19 @@ Introduction
 This document contains instructions for installing and configuring the
 Data Plane Development Kit (DPDK) software. It is designed to get customers
 up and running quickly and describes how to compile and run a
-DPDK application in a FreeBSD* application (bsdapp) environment, without going
+DPDK application in a FreeBSD application (bsdapp) environment, without going
 deeply into detail.
 
-For a comprehensive guide to installing and using FreeBSD*, the following
-handbook is available from the FreeBSD* Documentation Project:
-
-`http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/index.html <http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/index.html>`_
+For a comprehensive guide to installing and using FreeBSD, the following
+handbook is available from the FreeBSD Documentation Project:
+`FreeBSD Handbook <http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/index.html>`_.
 
 .. note::
 
-	The DPDK is now available as part of the FreeBSD ports collection.
-	Installing via the ports collection infrastructure is now the recommended
-	way to install the DPDK on FreeBSD, and is documented in the
-	next chapter, :ref:`install_from_ports`.
+   The DPDK is now available as part of the FreeBSD ports collection.
+   Installing via the ports collection infrastructure is now the recommended
+   way to install the DPDK on FreeBSD, and is documented in the
+   next chapter, :ref:`install_from_ports`.
 
 Documentation Roadmap
 ---------------------
@@ -82,8 +81,3 @@ The following is a list of DPDK documents in the suggested reading order:
 *   **Sample Applications User Guide**: Describes a set of sample applications.
     Each chapter describes a sample application that showcases specific functionality
     and provides instructions on how to compile, run and use the sample application.
-
-.. note::
-
-    These documents are available for download as a separate documentation
-    package at the same location as the DPDK code package.
