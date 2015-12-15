@@ -13,45 +13,46 @@ A file located in a subdir of "linuxapp" is specific to this execution environme
 
 .. note::
 
-	Code in DPDK libraries and applications should be generic.
-	The correct location for architecture or executive environment specific code is in the EAL.
+   Code in DPDK libraries and applications should be generic.
+   The correct location for architecture or executive environment specific code is in the EAL.
 
 When absolutely necessary, there are several ways to handle specific code:
 
 * Use a ``#ifdef`` with the CONFIG option in the C code.
   This can be done when the differences are small and they can be embedded in the same C file:
 
-.. code-block: console
+  .. code-block:: c
 
-   #ifdef RTE_ARCH_I686
-   toto();
-   #else
-   titi();
-   #endif
+     #ifdef RTE_ARCH_I686
+     toto();
+     #else
+     titi();
+     #endif
 
 * Use the CONFIG option in the Makefile. This is done when the differences are more significant.
-  In this case, the code is split into two separate files that are architecture or environment specific.  This should only apply inside the EAL library.
+  In this case, the code is split into two separate files that are architecture or environment specific.
+  This should only apply inside the EAL library.
 
-.. note:
+.. note::
 
-	As in the linux kernel, the "CONFIG_" prefix is not used in C code.
-	This is only needed in Makefiles or shell scripts.
+   As in the linux kernel, the ``CONFIG_`` prefix is not used in C code.
+   This is only needed in Makefiles or shell scripts.
 
 Per Architecture Sources
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following config options can be used:
 
-* CONFIG_RTE_ARCH is a string that contains the name of the architecture.
-* CONFIG_RTE_ARCH_I686, CONFIG_RTE_ARCH_X86_64, CONFIG_RTE_ARCH_X86_64_32 or CONFIG_RTE_ARCH_PPC_64 are defined only if we are building for those architectures.
+* ``CONFIG_RTE_ARCH`` is a string that contains the name of the architecture.
+* ``CONFIG_RTE_ARCH_I686``, ``CONFIG_RTE_ARCH_X86_64``, ``CONFIG_RTE_ARCH_X86_64_32`` or ``CONFIG_RTE_ARCH_PPC_64`` are defined only if we are building for those architectures.
 
 Per Execution Environment Sources
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following config options can be used:
 
-* CONFIG_RTE_EXEC_ENV is a string that contains the name of the executive environment.
-* CONFIG_RTE_EXEC_ENV_BSDAPP or CONFIG_RTE_EXEC_ENV_LINUXAPP are defined only if we are building for this execution environment.
+* ``CONFIG_RTE_EXEC_ENV`` is a string that contains the name of the executive environment.
+* ``CONFIG_RTE_EXEC_ENV_BSDAPP`` or ``CONFIG_RTE_EXEC_ENV_LINUXAPP`` are defined only if we are building for this execution environment.
 
 Library Statistics
 ------------------
@@ -77,8 +78,8 @@ are collected for any instance of any object type provided by the library:
 
 .. code-block:: console
 
-	# DPDK file config/common_linuxapp, config/common_bsdapp, etc.
-	CONFIG_RTE_<LIBRARY_NAME>_STATS_COLLECT=y/n
+   # DPDK file config/common_linuxapp, config/common_bsdapp, etc.
+   CONFIG_RTE_<LIBRARY_NAME>_STATS_COLLECT=y/n
 
 The default value for this DPDK configuration file variable (either "yes" or
 "no") is decided by each library.
