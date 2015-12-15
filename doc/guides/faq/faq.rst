@@ -157,13 +157,13 @@ I am getting errors about not being able to open files. Why?
 
 As the DPDK operates, it opens a lot of files, which can result in reaching the open files limits, which is set using the ulimit command or in the limits.conf file.
 This is especially true when using a large number (>512) of 2 MB huge pages. Please increase the open file limit if your application is not able to open files.
-This can be done either by issuing a ulimit command or editing the limits.conf file. Please consult Linux* manpages for usage information.
+This can be done either by issuing a ulimit command or editing the limits.conf file. Please consult Linux manpages for usage information.
 
 
 VF driver for IXGBE devices cannot be initialized
 -------------------------------------------------
 
-Some versions of Linux* IXGBE driver do not assign a random MAC address to VF devices at initialization.
+Some versions of Linux IXGBE driver do not assign a random MAC address to VF devices at initialization.
 In this case, this has to be done manually on the VM host, using the following command:
 
 .. code-block:: console
@@ -195,10 +195,10 @@ When trying to send packets from an application to itself, meaning smac==dmac, u
 Check on register ``LLE(PFVMTXSSW[n])``, which allows an individual pool to send traffic and have it looped back to itself.
 
 
-Can I split packet RX to use DPDK and have an application's higher order functions continue using Linux* pthread?
------------------------------------------------------------------------------------------------------------------
+Can I split packet RX to use DPDK and have an application's higher order functions continue using Linux pthread?
+----------------------------------------------------------------------------------------------------------------
 
-The DPDK's lcore threads are Linux* pthreads bound onto specific cores. Configure the DPDK to do work on the same
+The DPDK's lcore threads are Linux pthreads bound onto specific cores. Configure the DPDK to do work on the same
 cores and run the application's other work on other cores using the DPDK's "coremask" setting to specify which
 cores it should launch itself on.
 
