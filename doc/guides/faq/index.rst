@@ -33,8 +33,6 @@ DPDK FAQ
 
 This document contains some Frequently Asked Questions that arise when working with DPDK.
 
-Contents
-
 .. toctree::
     :maxdepth: 2
     :numbered:

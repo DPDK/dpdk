@@ -31,11 +31,6 @@
 Network Interface Controller Drivers
 ====================================
 
-|today|
-
-
-**Contents**
-
 .. toctree::
     :maxdepth: 3
     :numbered:

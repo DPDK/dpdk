@@ -31,11 +31,6 @@
 Programmer's Guide
 ==================
 
-|today|
-
-
-**Contents**
-
 .. toctree::
     :maxdepth: 3
     :numbered:

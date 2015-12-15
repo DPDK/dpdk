@@ -33,10 +33,6 @@
 Getting Started Guide for Linux
 ===============================
 
-|today|
-
-Contents
-
 .. toctree::
     :maxdepth: 2
     :numbered:

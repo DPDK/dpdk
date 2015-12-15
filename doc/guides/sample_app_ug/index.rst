@@ -31,10 +31,6 @@
 Sample Applications User Guide
 ==============================
 
-|today|
-
-**Contents**
-
 .. toctree::
     :maxdepth: 2
     :numbered:
