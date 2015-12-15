@@ -461,7 +461,7 @@ Local Variables
 * When declaring variables in functions, multiple variables per line are OK.
   However, if multiple declarations would cause the line to exceed a reasonable line length, begin a new set of declarations on the next line rather than using a line continuation.
 * Be careful to not obfuscate the code by initializing variables in the declarations, only the last variable on a line should be initialized.
-  If multiple variables are to be initialised when defined, put one per line.
+  If multiple variables are to be initialized when defined, put one per line.
 * Do not use function calls in initializers, except for ``const`` variables.
 
 .. code-block:: c

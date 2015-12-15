@@ -261,7 +261,7 @@ with the public symbol name
         struct rte_acl_ctx *ctx;
         ...
 
-Note that the base name of the symbol was kept intact, as this is condusive to
+Note that the base name of the symbol was kept intact, as this is conducive to
 the macros used for versioning symbols.  That is our next step, mapping this new
 symbol name to the initial symbol name at version node 2.0.  Immediately after
 the function, we add this line of code

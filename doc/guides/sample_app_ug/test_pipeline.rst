@@ -151,7 +151,7 @@ For hash tables, the following parameters can be selected:
    |       |                        |                                                          | [destination IPv4 address, 4 bytes of 0]              |
    |       |                        |                                                          |                                                       |
    +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
-   | 4     | hash-[spec]-8-ext      | Extendible bucket hash table with 8-byte key size        | Same as hash-[spec]-8-lru table entries, above.       |
+   | 4     | hash-[spec]-8-ext      | Extendable bucket hash table with 8-byte key size        | Same as hash-[spec]-8-lru table entries, above.       |
    |       |                        | and 16 million entries.                                  |                                                       |
    |       |                        |                                                          |                                                       |
    +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
@@ -174,7 +174,7 @@ For hash tables, the following parameters can be selected:
    |       |                        |                                                          | [destination IPv4 address, 12 bytes of 0]             |
    |       |                        |                                                          |                                                       |
    +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
-   | 6     | hash-[spec]-16-ext     | Extendible bucket hash table with 16-byte key size       | Same as hash-[spec]-16-lru table entries, above.      |
+   | 6     | hash-[spec]-16-ext     | Extendable bucket hash table with 16-byte key size       | Same as hash-[spec]-16-lru table entries, above.      |
    |       |                        | and 16 million entries.                                  |                                                       |
    |       |                        |                                                          |                                                       |
    +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
@@ -197,7 +197,7 @@ For hash tables, the following parameters can be selected:
    |       |                        |                                                          | [destination IPv4 address, 28 bytes of 0]             |
    |       |                        |                                                          |                                                       |
    +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+
-   | 8     | hash-[spec]-32-ext     | Extendible bucket hash table with 32-byte key size       | Same as hash-[spec]-32-lru table entries, above.      |
+   | 8     | hash-[spec]-32-ext     | Extendable bucket hash table with 32-byte key size       | Same as hash-[spec]-32-lru table entries, above.      |
    |       |                        | and 16 million entries.                                  |                                                       |
    |       |                        |                                                          |                                                       |
    +-------+------------------------+----------------------------------------------------------+-------------------------------------------------------+

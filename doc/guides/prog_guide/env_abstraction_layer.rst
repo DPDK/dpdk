@@ -555,7 +555,7 @@ The most important fields in the structure and how they are used are described b
 Memory Allocation
 ^^^^^^^^^^^^^^^^^
 
-On EAL initialisation, all memsegs are setup as part of the malloc heap.
+On EAL initialization, all memsegs are setup as part of the malloc heap.
 This setup involves placing a dummy structure at the end with ``BUSY`` state,
 which may contain a sentinel value if ``CONFIG_RTE_MALLOC_DEBUG`` is enabled,
 and a proper :ref:`element header<malloc_elem>` with ``FREE`` at the start

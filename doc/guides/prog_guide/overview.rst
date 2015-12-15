@@ -112,7 +112,7 @@ The services provided by the EAL are:
 
 *   Alarm operations
 
-*   Memory managenent (malloc)
+*   Memory management (malloc)
 
 The EAL is fully described in :ref:`Environment Abstraction Layer <Environment_Abstraction_Layer>`.
 

@@ -185,7 +185,7 @@ Bonding device stores its own version of RSS settings i.e. RETA, RSS hash
 function and RSS key, used to set up its slaves. That let to define the meaning
 of RSS configuration of bonding device as desired configuration of whole bonding
 (as one unit), without pointing any of slave inside. It is required to ensure
-consistency and made it more errorproof.
+consistency and made it more error-proof.
 
 RSS hash function set for bonding device, is a maximal set of RSS hash functions
 supported by all bonded slaves. RETA size is a GCD of all its RETA's sizes, so

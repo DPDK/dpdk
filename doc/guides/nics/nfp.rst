@@ -126,7 +126,7 @@ Using the NFP PMD is not different to using other PMDs. Usual steps are:
 
       cat /sys/kernel/mm/hugepages/hugepages-2048kB/free_hugepages
 
-   The hugepages reservation should be performed at system initialisation and
+   The hugepages reservation should be performed at system initialization and
    it is usual to use a kernel parameter for configuration. If the reservation
    is attempted on a busy system it will likely fail. Reserving memory for
    hugepages may be done adding the following to the grub kernel command line:

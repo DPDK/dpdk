@@ -32,7 +32,7 @@ AESN-NI Multi Buffer Crytpo Poll Mode Driver
 
 
 The AESNI MB PMD (**librte_pmd_aesni_mb**) provides poll mode crypto driver
-support for utilising Intel multi buffer library, see the white paper
+support for utilizing Intel multi buffer library, see the white paper
 `Fast Multi-buffer IPsec Implementations on Intel® Architecture Processors
 <https://www-ssl.intel.com/content/www/us/en/intelligent-systems/intel-technology/fast-multi-buffer-ipsec-implementations-ia-processors-paper.html?wapkw=multi+buffer>`_.
 

@@ -1248,7 +1248,7 @@ The lthread reference value is passed back in all subsequent event callbacks,
 the mutex and APIs are provided to retrieve the reference value from
 mutexes and condition variables. This enables a user to monitor, count, or
 filter for specific events, on specific objects, for example to monitor for a
-specific thread signalling a specific condition variable, or to monitor
+specific thread signaling a specific condition variable, or to monitor
 on all timer events, the possibilities and combinations are endless.
 
 The callback function can be set by calling the function

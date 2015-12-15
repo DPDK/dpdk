@@ -454,7 +454,7 @@ The possible options are:
 
 .. _table_qos_23:
 
-.. table:: Configuration Parameters Specific to Extendible Bucket Hash Table
+.. table:: Configuration Parameters Specific to Extendable Bucket Hash Table
 
    +---+---------------------------+--------------------------------------------------+
    | # | Parameter                 | Details                                          |
@@ -576,7 +576,7 @@ either with pre-computed signature or "do-sig").
    |   |                         |                              |                           |                               |
    +---+-------------------------+------------------------------+---------------------------+-------------------------------+
    | 2 | Bucket extensions array | n_buckets_ext (configurable) | 32                        | This array is only created    |
-   |   |                         |                              |                           | for extendible bucket tables. |
+   |   |                         |                              |                           | for extendable bucket tables. |
    |   |                         |                              |                           |                               |
    +---+-------------------------+------------------------------+---------------------------+-------------------------------+
    | 3 | Key array               | n_keys                       | key_size (configurable)   | Keys added to the hash table. |
@@ -601,7 +601,7 @@ either with pre-computed signature or "do-sig").
    |   |                  |                    | Entry 0 stores the index (0 .. 3) of the MRU key, while entry 3  |
    |   |                  |                    | stores the index of the LRU key.                                 |
    |   |                  |                    |                                                                  |
-   |   |                  |                    | For extendible bucket tables, this field represents the next     |
+   |   |                  |                    | For extendable bucket tables, this field represents the next     |
    |   |                  |                    | pointer (i.e. the pointer to the next group of 4 keys linked to  |
    |   |                  |                    | the current bucket). The next pointer is not NULL if the bucket  |
    |   |                  |                    | is currently extended or NULL otherwise.                         |
@@ -864,7 +864,7 @@ Single Key Size Hash Tables
    |   |                         |                              |                      |                                    |
    +---+-------------------------+------------------------------+----------------------+------------------------------------+
    | 2 | Bucket extensions array | n_buckets_ext (configurable) | *8-byte key size:*   | This array is only created for     |
-   |   |                         |                              |                      | extendible bucket tables.          |
+   |   |                         |                              |                      | extendable bucket tables.          |
    |   |                         |                              |                      |                                    |
    |   |                         |                              | 64 + 4 x entry_size  |                                    |
    |   |                         |                              |                      |                                    |
@@ -885,7 +885,7 @@ Single Key Size Hash Tables
    +===+===============+====================+===============================================================================+
    | 1 | Valid         | 8                  | Bit X (X = 0 .. 3) is set to 1 if key X is valid or to 0 otherwise.           |
    |   |               |                    |                                                                               |
-   |   |               |                    | Bit 4 is only used for extendible bucket tables to help with the              |
+   |   |               |                    | Bit 4 is only used for extendable bucket tables to help with the              |
    |   |               |                    | implementation of the branchless logic. In this case, bit 4 is set to 1 if    |
    |   |               |                    | next pointer is valid (not NULL) or to 0 otherwise.                           |
    |   |               |                    |                                                                               |
@@ -894,7 +894,7 @@ Single Key Size Hash Tables
    |   |               |                    | stored as array of 4 entries of 2 bytes each. Entry 0 stores the index        |
    |   |               |                    | (0 .. 3) of the MRU key, while entry 3 stores the index of the LRU key.       |
    |   |               |                    |                                                                               |
-   |   |               |                    | For extendible bucket tables, this field represents the next pointer (i.e.    |
+   |   |               |                    | For extendable bucket tables, this field represents the next pointer (i.e.    |
    |   |               |                    | the pointer to the next group of 4 keys linked to the current bucket). The    |
    |   |               |                    | next pointer is not NULL if the bucket is currently extended or NULL          |
    |   |               |                    | otherwise.                                                                    |

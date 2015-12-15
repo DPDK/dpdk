@@ -128,7 +128,7 @@ is carried out. If there is no match there either, key is considered not to be i
 
 Example of addition:
 
-Like lookup, the primary and secondary buckets are indentified. If there is an empty slot in
+Like lookup, the primary and secondary buckets are identified. If there is an empty slot in
 the primary bucket, primary and secondary signatures are stored in that slot, key and data (if any) are added to
 the second table and an index to the position in the second table is stored in the slot of the first table.
 If there is no space in the primary bucket, one of the entries on that bucket is pushed to its alternative location,

@@ -54,8 +54,8 @@ found on the `Liberouter website <https://www.liberouter.org/>`_.
    Currently the driver is supported only on x86_64 architectures.
    Only x86_64 versions of the external libraries are provided.
 
-Prerequisities
---------------
+Prerequisites
+-------------
 
 This PMD requires kernel modules which are responsible for initialization and
 allocation of resources needed for sze2 layer function.

@@ -81,7 +81,7 @@ Supported QLogic NICs
 Prerequisites
 -------------
 
-- Requires firmware version **7.2.51.0**. It is inbox on most of the
+- Requires firmware version **7.2.51.0**. It is included in most of the
   standard Linux distros. If it is not available visit
   `QLogic Driver Download Center <http://driverdownloads.qlogic.com>`_
   to get the required firmware.
@@ -313,7 +313,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
 #. Assign VF MAC address:
 
-   Assign MAC address to the VF using iproute2 ulility. The syntax is:
+   Assign MAC address to the VF using iproute2 utility. The syntax is:
    ip link set <PF iface> vf <VF id> mac <macaddr>
 
    Example output:
@@ -323,7 +323,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
       ip link set ens5f0 vf 0 mac 52:54:00:2f:9d:e8
 
 
-#. PCI passthrough:
+#. PCI Passthrough:
 
    The VF devices may be passed through to the guest VM using virt-manager or
    virsh etc. bnx2x PMD should be used to bind the VF devices in the guest VM

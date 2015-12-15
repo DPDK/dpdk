@@ -59,6 +59,6 @@ New Features
 
     *   Support configuring hash functions
 
-    *   Support for VXLAN packet on IntelÂ® 40GbE Controllers
+    *   Support for VXLAN packet on Intel 40GbE Controllers
 
 *   Packet Distributor Sample Application

@@ -269,7 +269,7 @@ The default value is 0, which means the checksum offload is disabled.
     user@target:~$ ./build/app/tep_termination -c f -n 4 --huge-dir /mnt/huge --
                 --nb-devices 2 --tx-checksum
 
-**TCP segment sise.**
+**TCP segment size.**
 
 The tso-segsz option specifies the TCP segment size for TSO offload for tunneling packet.
 The default value is 0, which means TSO offload is disabled.
