@@ -24,6 +24,14 @@ Deprecation Notices
   extend flow director's input set. The release 2.2 does not contain these ABI
   changes, but release 2.3 will, and no backwards compatibility is planned.
 
+* ABI changes are planned for rte_eth_ipv4_flow and rte_eth_ipv6_flow to
+  include more fields to be matched against. The release 2.2 does not
+  contain these ABI changes, but release 2.3 will.
+
+* ABI changes are planned for adding four new flow types. This impacts
+  RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
+  but release 2.3 will.
+
 * ABI changes are planned for rte_eth_tunnel_filter_conf. Change the fields
   of outer_mac and inner_mac from pointer to struct in order to keep the
   code's readability. The release 2.2 does not contain these ABI changes, but
