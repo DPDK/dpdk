@@ -233,7 +233,7 @@ The LPM object is created and loaded with the pre-configured entries read from a
 
         /* create the LPM table */
 
-        rte_snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
+        snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
 
         ipv4_l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid, IPV4_L3FWD_LPM_MAX_RULES, 0);
 

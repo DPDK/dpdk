@@ -173,7 +173,7 @@ The code for creating the TAP interface is as follows:
         }
 
         if (name)
-            rte_snprintf(name, IFNAMSIZ, ifr.ifr_name);
+            snprintf(name, IFNAMSIZ, ifr.ifr_name);
 
         return fd;
     }

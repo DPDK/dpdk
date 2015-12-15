@@ -265,11 +265,11 @@ The code for allocating the kernel NIC interfaces for a specific port is as foll
 
             memset(&conf, 0, sizeof(conf));
             if (params[port_id]->nb_lcore_k) {
-                rte_snprintf(conf.name, RTE_KNI_NAMESIZE, "vEth%u_%u", port_id, i);
+                snprintf(conf.name, RTE_KNI_NAMESIZE, "vEth%u_%u", port_id, i);
                 conf.core_id = params[port_id]->lcore_k[i];
                 conf.force_bind = 1;
             } else
-                rte_snprintf(conf.name, RTE_KNI_NAMESIZE, "vEth%u", port_id);
+                snprintf(conf.name, RTE_KNI_NAMESIZE, "vEth%u", port_id);
                 conf.group_id = (uint16_t)port_id;
                 conf.mbuf_size = MAX_PACKET_SZ;
 
@@ -352,7 +352,7 @@ The code is as follows:
                 goto fail;
             }
 
-            rte_snprintf(s, sizeof(s), "%.*s", size, p);
+            snprintf(s, sizeof(s), "%.*s", size, p);
             nb_token = rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',');
 
             if (nb_token <= FLD_LCORE_TX) {

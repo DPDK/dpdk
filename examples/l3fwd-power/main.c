@@ -1373,7 +1373,7 @@ setup_hash(int socketid)
 	char s[64];
 
 	/* create ipv4 hash */
-	rte_snprintf(s, sizeof(s), "ipv4_l3fwd_hash_%d", socketid);
+	snprintf(s, sizeof(s), "ipv4_l3fwd_hash_%d", socketid);
 	ipv4_l3fwd_hash_params.name = s;
 	ipv4_l3fwd_hash_params.socket_id = socketid;
 	ipv4_l3fwd_lookup_struct[socketid] =
@@ -1383,7 +1383,7 @@ setup_hash(int socketid)
 				"socket %d\n", socketid);
 
 	/* create ipv6 hash */
-	rte_snprintf(s, sizeof(s), "ipv6_l3fwd_hash_%d", socketid);
+	snprintf(s, sizeof(s), "ipv6_l3fwd_hash_%d", socketid);
 	ipv6_l3fwd_hash_params.name = s;
 	ipv6_l3fwd_hash_params.socket_id = socketid;
 	ipv6_l3fwd_lookup_struct[socketid] =

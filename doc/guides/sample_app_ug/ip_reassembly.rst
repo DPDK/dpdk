@@ -223,7 +223,7 @@ each RX queue uses its own mempool.
     nb_mbuf += RTE_TEST_RX_DESC_DEFAULT + RTE_TEST_TX_DESC_DEFAULT;
     nb_mbuf = RTE_MAX(nb_mbuf, (uint32_t)NB_MBUF);
 
-    rte_snprintf(buf, sizeof(buf), "mbuf_pool_%u_%u", lcore, queue);
+    snprintf(buf, sizeof(buf), "mbuf_pool_%u_%u", lcore, queue);
 
     if ((rxq->pool = rte_mempool_create(buf, nb_mbuf, MBUF_SIZE, 0, sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init, NULL,
         rte_pktmbuf_init, NULL, socket, MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET)) == NULL) {

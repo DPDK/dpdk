@@ -94,7 +94,6 @@ DPDK_2.0 {
 	rte_set_application_usage_hook;
 	rte_set_log_level;
 	rte_set_log_type;
-	rte_snprintf;
 	rte_socket_id;
 	rte_strerror;
 	rte_strsplit;
@@ -106,7 +105,6 @@ DPDK_2.0 {
 	rte_xen_dom0_memory_init;
 	rte_zmalloc;
 	rte_zmalloc_socket;
-	test_mp_secondary;
 
 	local: *;
 };
