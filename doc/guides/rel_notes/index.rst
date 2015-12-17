@@ -36,6 +36,7 @@ DPDK Release Notes
     :numbered:
 
     rel_description
+    release_2_3
     release_2_2
     release_2_1
     release_2_0
