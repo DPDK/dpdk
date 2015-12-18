@@ -305,7 +305,7 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * So, always PKT_RX_VLAN_PKT flag is set and vlan_tci
 		 * is valid for each RX packet's mbuf.
 		 */
-		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
+		first_seg->ol_flags |= PKT_RX_VLAN_PKT;
 		first_seg->vlan_tci = desc.w.vlan;
 
 		/* Prefetch data of first segment, if configured to do so. */
