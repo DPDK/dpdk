@@ -1756,7 +1756,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	for (i = 0; i < txq->tx_rs_thresh; i++)
 		rte_prefetch0((txep + i)->mbuf);
 
-	if (!(txq->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOREFCOUNT)) {
+	if (txq->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOREFCOUNT) {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
 			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
 			txep->mbuf = NULL;
