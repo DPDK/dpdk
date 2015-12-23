@@ -1131,9 +1131,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		hw->max_tx_queues = 1;
 	}
 
-	eth_dev->data->nb_rx_queues = hw->max_rx_queues;
-	eth_dev->data->nb_tx_queues = hw->max_tx_queues;
-
 	PMD_INIT_LOG(DEBUG, "hw->max_rx_queues=%d   hw->max_tx_queues=%d",
 			hw->max_rx_queues, hw->max_tx_queues);
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
