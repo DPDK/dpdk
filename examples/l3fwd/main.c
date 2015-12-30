@@ -41,6 +41,8 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <getopt.h>
+#include <signal.h>
+#include <stdbool.h>
 
 #include <rte_common.h>
 #include <rte_vect.h>
@@ -74,6 +76,8 @@
 
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>
+
+static volatile bool force_quit;
 
 #define APP_LOOKUP_EXACT_MATCH          0
 #define APP_LOOKUP_LPM                  1
@@ -1553,7 +1557,7 @@ main_loop(__attribute__((unused)) void *dummy)
 			portid, queueid);
 	}
 
-	while (1) {
+	while (!force_quit) {
 
 		cur_tsc = rte_rdtsc();
 
@@ -1781,6 +1785,8 @@ main_loop(__attribute__((unused)) void *dummy)
 
 		}
 	}
+
+	return 0;
 }
 
 static int
@@ -2516,8 +2522,12 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	printf("\nChecking link status");
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
+		if (force_quit)
+			return;
 		all_ports_up = 1;
 		for (portid = 0; portid < port_num; portid++) {
+			if (force_quit)
+				return;
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
@@ -2559,6 +2569,16 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	}
 }
 
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+		printf("\n\nSignal %d received, preparing to exit...\n",
+				signum);
+		force_quit = true;
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -2578,6 +2598,10 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid EAL parameters\n");
 	argc -= ret;
 	argv += ret;
+
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	/* pre-init dst MACs for all ports to 02:00:00:00:00:xx */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
@@ -2733,12 +2757,26 @@ main(int argc, char **argv)
 
 	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);
 
+	ret = 0;
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-		if (rte_eal_wait_lcore(lcore_id) < 0)
-			return -1;
+		if (rte_eal_wait_lcore(lcore_id) < 0) {
+			ret = -1;
+			break;
+		}
 	}
 
-	return 0;
+	/* stop ports */
+	for (portid = 0; portid < nb_ports; portid++) {
+		if ((enabled_port_mask & (1 << portid)) == 0)
+			continue;
+		printf("Closing port %d...", portid);
+		rte_eth_dev_stop(portid);
+		rte_eth_dev_close(portid);
+		printf(" Done\n");
+	}
+	printf("Bye...\n");
+
+	return ret;
 }
