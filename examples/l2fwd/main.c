@@ -44,6 +44,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
+#include <signal.h>
+#include <stdbool.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -68,6 +70,8 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+
+static volatile bool force_quit;
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
@@ -283,7 +287,7 @@ l2fwd_main_loop(void)
 			portid);
 	}
 
-	while (1) {
+	while (!force_quit) {
 
 		cur_tsc = rte_rdtsc();
 
@@ -491,8 +495,12 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	printf("\nChecking link status");
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
+		if (force_quit)
+			return;
 		all_ports_up = 1;
 		for (portid = 0; portid < port_num; portid++) {
+			if (force_quit)
+				return;
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
@@ -534,6 +542,16 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	}
 }
 
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+		printf("\n\nSignal %d received, preparing to exit...\n",
+				signum);
+		force_quit = true;
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -552,6 +570,10 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
 	argc -= ret;
 	argv += ret;
+
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	/* parse application arguments (after the EAL ones) */
 	ret = l2fwd_parse_args(argc, argv);
@@ -696,12 +718,25 @@ main(int argc, char **argv)
 
 	check_all_ports_link_status(nb_ports, l2fwd_enabled_port_mask);
 
+	ret = 0;
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-		if (rte_eal_wait_lcore(lcore_id) < 0)
-			return -1;
+		if (rte_eal_wait_lcore(lcore_id) < 0) {
+			ret = -1;
+			break;
+		}
 	}
 
-	return 0;
+	for (portid = 0; portid < nb_ports; portid++) {
+		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0)
+			continue;
+		printf("Closing port %d...", portid);
+		rte_eth_dev_stop(portid);
+		rte_eth_dev_close(portid);
+		printf(" Done\n");
+	}
+	printf("Bye...\n");
+
+	return ret;
 }
