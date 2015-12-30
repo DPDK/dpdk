@@ -462,6 +462,7 @@ unsigned int parse_item_list(char* str, const char* item_name,
 			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
 void prompt(void);
+void prompt_exit(void);
 void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
 void nic_xstats_display(portid_t port_id);

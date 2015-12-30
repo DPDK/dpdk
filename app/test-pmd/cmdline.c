@@ -90,6 +90,8 @@
 
 #include "testpmd.h"
 
+static struct cmdline *testpmd_cl;
+
 static void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 
 #ifdef RTE_NIC_BYPASS
@@ -9778,17 +9780,21 @@ cmdline_parse_ctx_t main_ctx[] = {
 void
 prompt(void)
 {
-	struct cmdline *cl;
-
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
 
-	cl = cmdline_stdin_new(main_ctx, "testpmd> ");
-	if (cl == NULL) {
+	testpmd_cl = cmdline_stdin_new(main_ctx, "testpmd> ");
+	if (testpmd_cl == NULL)
 		return;
-	}
-	cmdline_interact(cl);
-	cmdline_stdin_exit(cl);
+	cmdline_interact(testpmd_cl);
+	cmdline_stdin_exit(testpmd_cl);
+}
+
+void
+prompt_exit(void)
+{
+	if (testpmd_cl != NULL)
+		cmdline_quit(testpmd_cl);
 }
 
 static void

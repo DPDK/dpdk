@@ -1570,13 +1570,16 @@ pmd_test_exit(void)
 	if (test_done == 0)
 		stop_packet_forwarding();
 
-	FOREACH_PORT(pt_id, ports) {
-		printf("Stopping port %d...", pt_id);
-		fflush(stdout);
-		rte_eth_dev_close(pt_id);
-		printf("done\n");
+	if (ports != NULL) {
+		no_link_check = 1;
+		FOREACH_PORT(pt_id, ports) {
+			printf("\nShutting down port %d...\n", pt_id);
+			fflush(stdout);
+			stop_port(pt_id);
+			close_port(pt_id);
+		}
 	}
-	printf("bye...\n");
+	printf("\nBye...\n");
 }
 
 typedef void (*cmd_func_t)(void);
@@ -1984,11 +1987,34 @@ init_port(void)
 		ports[pid].enabled = 1;
 }
 
+static void
+force_quit(void)
+{
+	pmd_test_exit();
+	prompt_exit();
+}
+
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+		printf("\nSignal %d received, preparing to exit...\n",
+				signum);
+		force_quit();
+		/* exit with the expected status */
+		signal(signum, SIG_DFL);
+		kill(getpid(), signum);
+	}
+}
+
 int
 main(int argc, char** argv)
 {
 	int  diag;
 	uint8_t port_id;
+
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	diag = rte_eal_init(argc, argv);
 	if (diag < 0)
@@ -2041,6 +2067,7 @@ main(int argc, char** argv)
 		start_packet_forwarding(0);
 		printf("Press enter to exit\n");
 		rc = read(0, &c, 1);
+		pmd_test_exit();
 		if (rc < 0)
 			return 1;
 	}
