@@ -55,6 +55,13 @@
 #define CHARS_PER_UINT32 (sizeof(uint32_t))
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
 
+/* First 64 Logical ports for PF/VMDQ, second 64 for Flow director */
+#define MAX_LPORT_NUM    128
+#define GLORT_FD_Q_BASE  0x40
+#define GLORT_PF_MASK    0xFFC0
+#define GLORT_FD_MASK    GLORT_PF_MASK
+#define GLORT_FD_INDEX   GLORT_FD_Q_BASE
+
 static void fm10k_close_mbx_service(struct fm10k_hw *hw);
 static void fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -571,21 +578,10 @@ fm10k_dev_rss_configure(struct rte_eth_dev *dev)
 }
 
 static void
-fm10k_dev_logic_port_update(struct rte_eth_dev *dev,
-	uint16_t nb_lport_old, uint16_t nb_lport_new)
+fm10k_dev_logic_port_update(struct rte_eth_dev *dev, uint16_t nb_lport_new)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t i;
-
-	fm10k_mbx_lock(hw);
-	/* Disable previous logic ports */
-	if (nb_lport_old)
-		hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
-			nb_lport_old, false);
-	/* Enable new logic ports */
-	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
-		nb_lport_new, true);
-	fm10k_mbx_unlock(hw);
 
 	for (i = 0; i < nb_lport_new; i++) {
 		/* Set unicast mode by default. App can change
@@ -606,7 +602,7 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	struct fm10k_macvlan_filter_info *macvlan;
 	uint16_t nb_queue_pools = 0; /* pool number in configuration */
-	uint16_t nb_lport_new, nb_lport_old;
+	uint16_t nb_lport_new;
 
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 	vmdq_conf = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
@@ -624,9 +620,8 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	if (macvlan->nb_queue_pools == nb_queue_pools)
 		return;
 
-	nb_lport_old = macvlan->nb_queue_pools ? macvlan->nb_queue_pools : 1;
 	nb_lport_new = nb_queue_pools ? nb_queue_pools : 1;
-	fm10k_dev_logic_port_update(dev, nb_lport_old, nb_lport_new);
+	fm10k_dev_logic_port_update(dev, nb_lport_new);
 
 	/* reset MAC/VLAN as it's based on VMDQ or PF main VSI */
 	memset(dev->data->mac_addrs, 0,
@@ -997,7 +992,7 @@ static void
 fm10k_dev_dglort_map_configure(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t dglortdec, pool_len, rss_len, i;
+	uint32_t dglortdec, pool_len, rss_len, i, dglortmask;
 	uint16_t nb_queue_pools;
 	struct fm10k_macvlan_filter_info *macvlan;
 
@@ -1005,16 +1000,24 @@ fm10k_dev_dglort_map_configure(struct rte_eth_dev *dev)
 	nb_queue_pools = macvlan->nb_queue_pools;
 	pool_len = nb_queue_pools ? fls(nb_queue_pools - 1) : 0;
 	rss_len = fls(dev->data->nb_rx_queues - 1) - pool_len;
+
+	/* GLORT 0x0-0x3F are used by PF and VMDQ,  0x40-0x7F used by FD */
 	dglortdec = (rss_len << FM10K_DGLORTDEC_RSSLENGTH_SHIFT) | pool_len;
-
-	/* Establish only MAP 0 as valid */
-	FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(0), FM10K_DGLORTMAP_ANY);
-
+	dglortmask = (GLORT_PF_MASK << FM10K_DGLORTMAP_MASK_SHIFT) |
+			hw->mac.dglort_map;
+	FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(0), dglortmask);
 	/* Configure VMDQ/RSS DGlort Decoder */
 	FM10K_WRITE_REG(hw, FM10K_DGLORTDEC(0), dglortdec);
 
+	/* Flow Director configurations, only queue number is valid. */
+	dglortdec = fls(dev->data->nb_rx_queues - 1);
+	dglortmask = (GLORT_FD_MASK << FM10K_DGLORTMAP_MASK_SHIFT) |
+			(hw->mac.dglort_map + GLORT_FD_Q_BASE);
+	FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(1), dglortmask);
+	FM10K_WRITE_REG(hw, FM10K_DGLORTDEC(1), dglortdec);
+
 	/* Invalidate all other GLORT entries */
-	for (i = 1; i < FM10K_DGLORT_COUNT; i++)
+	for (i = 2; i < FM10K_DGLORT_COUNT; i++)
 		FM10K_WRITE_REG(hw, FM10K_DGLORTMAP(i),
 				FM10K_DGLORTMAP_NONE);
 }
@@ -1142,16 +1145,12 @@ static void
 fm10k_dev_close(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint16_t nb_lport;
-	struct fm10k_macvlan_filter_info *macvlan;
 
 	PMD_INIT_FUNC_TRACE();
 
-	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
-	nb_lport = macvlan->nb_queue_pools ? macvlan->nb_queue_pools : 1;
 	fm10k_mbx_lock(hw);
 	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
-		nb_lport, false);
+		MAX_LPORT_NUM, false);
 	fm10k_mbx_unlock(hw);
 
 	/* Stop mailbox service first */
@@ -2671,7 +2670,8 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	 */
 	fm10k_mbx_lock(hw);
 	/* Enable port first */
-	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map, 1, 1);
+	hw->mac.ops.update_lport_state(hw, hw->mac.dglort_map,
+					MAX_LPORT_NUM, 1);
 
 	/* Set unicast mode by default. App can change to other mode in other
 	 * API func.
