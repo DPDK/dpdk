@@ -9569,8 +9569,13 @@ static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 
 static void bnx2x_init_rte(struct bnx2x_softc *sc)
 {
-	sc->max_tx_queues = 128;
-	sc->max_rx_queues = 128;
+	if (IS_VF(sc)) {
+		sc->max_tx_queues = BNX2X_VF_MAX_QUEUES_PER_VF;
+		sc->max_rx_queues = BNX2X_VF_MAX_QUEUES_PER_VF;
+	} else {
+		sc->max_tx_queues = 128;
+		sc->max_rx_queues = 128;
+	}
 }
 
 #define FW_HEADER_LEN 104

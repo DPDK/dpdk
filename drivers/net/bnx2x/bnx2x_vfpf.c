@@ -282,6 +282,8 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 	sc->igu_sb_cnt  = sc_resp.resc.num_sbs;
 	sc->igu_base_sb = sc_resp.resc.hw_sbs[0] & 0xFF;
 	sc->igu_dsb_id  = -1;
+	sc->max_tx_queues = sc_resp.resc.num_txqs;
+	sc->max_rx_queues = sc_resp.resc.num_rxqs;
 
 	sc->link_params.chip_id = sc->devinfo.chip_id;
 	sc->doorbell_size = sc_resp.db_size;

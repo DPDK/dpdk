@@ -87,7 +87,6 @@ bnx2x_dev_configure(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	int mp_ncpus = sysconf(_SC_NPROCESSORS_CONF);
-	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -119,25 +118,6 @@ bnx2x_dev_configure(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "bnx2x_alloc_hsi_mem was failed");
 		bnx2x_free_ilt_mem(sc);
 		return -ENXIO;
-	}
-
-	if (IS_VF(sc)) {
-		if (bnx2x_dma_alloc(sc, sizeof(struct bnx2x_vf_mbx_msg),
-				  &sc->vf2pf_mbox_mapping, "vf2pf_mbox",
-				  RTE_CACHE_LINE_SIZE) != 0)
-			return -ENOMEM;
-
-		sc->vf2pf_mbox = (struct bnx2x_vf_mbx_msg *)sc->vf2pf_mbox_mapping.vaddr;
-		if (bnx2x_dma_alloc(sc, sizeof(struct bnx2x_vf_bulletin),
-				  &sc->pf2vf_bulletin_mapping, "vf2pf_bull",
-				  RTE_CACHE_LINE_SIZE) != 0)
-			return -ENOMEM;
-
-		sc->pf2vf_bulletin = (struct bnx2x_vf_bulletin *)sc->pf2vf_bulletin_mapping.vaddr;
-
-		ret = bnx2x_vf_get_resources(sc, sc->num_queues, sc->num_queues);
-		if (ret)
-			return ret;
 	}
 
 	return 0;
@@ -466,6 +446,7 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	ret = bnx2x_attach(sc);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "bnx2x_attach failed (%d)", ret);
+		return ret;
 	}
 
 	eth_dev->data->mac_addrs = (struct ether_addr *)sc->link_params.mac_addr;
@@ -479,7 +460,30 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	PMD_DRV_LOG(INFO, "portID=%d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id, pci_dev->id.device_id);
 
-	return ret;
+	if (IS_VF(sc)) {
+		if (bnx2x_dma_alloc(sc, sizeof(struct bnx2x_vf_mbx_msg),
+				    &sc->vf2pf_mbox_mapping, "vf2pf_mbox",
+				    RTE_CACHE_LINE_SIZE) != 0)
+			return -ENOMEM;
+
+		sc->vf2pf_mbox = (struct bnx2x_vf_mbx_msg *)
+					 sc->vf2pf_mbox_mapping.vaddr;
+
+		if (bnx2x_dma_alloc(sc, sizeof(struct bnx2x_vf_bulletin),
+				    &sc->pf2vf_bulletin_mapping, "vf2pf_bull",
+				    RTE_CACHE_LINE_SIZE) != 0)
+			return -ENOMEM;
+
+		sc->pf2vf_bulletin = (struct bnx2x_vf_bulletin *)
+					     sc->pf2vf_bulletin_mapping.vaddr;
+
+		ret = bnx2x_vf_get_resources(sc, sc->max_tx_queues,
+					     sc->max_rx_queues);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 static int
