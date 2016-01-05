@@ -148,23 +148,6 @@ struct bnx2x_device_type {
 #define FW_PREFETCH_CNT      16U
 #define DROPLESS_FC_HEADROOM 100
 
-#ifndef MCLSHIFT
-#define MCLSHIFT                              11
-#endif
-#define MCLBYTES                              (1 << MCLSHIFT)
-
-#if !defined(MJUMPAGESIZE)
-#if BNX2X_PAGE_SIZE < 2048
-#define MJUMPAGESIZE    MCLBYTES
-#elif BNX2X_PAGE_SIZE <= 8192
-#define MJUMPAGESIZE    BNX2X_PAGE_SIZE
-#else
-#define MJUMPAGESIZE    (8 * 1024)
-#endif
-#endif
-#define MJUM9BYTES      (9 * 1024)
-#define MJUM16BYTES     (16 * 1024)
-
 /*
  * Transmit Buffer Descriptor (tx_bd) definitions*
  */
@@ -399,7 +382,6 @@ struct bnx2x_fastpath {
 	uint8_t fw_sb_id;  /* status block number in FW */
 
 	uint32_t rx_buf_size;
-	int mbuf_alloc_size;
 
 	int state;
 #define BNX2X_FP_STATE_CLOSED  0x01

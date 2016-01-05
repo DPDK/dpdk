@@ -2331,15 +2331,6 @@ static void bnx2x_set_fp_rx_buf_size(struct bnx2x_softc *sc)
 		/* get the Rx buffer size for RX frames */
 		sc->fp[i].rx_buf_size =
 		    (IP_HEADER_ALIGNMENT_PADDING + ETH_OVERHEAD + sc->mtu);
-
-		/* get the mbuf allocation size for RX frames */
-		if (sc->fp[i].rx_buf_size <= MCLBYTES) {
-			sc->fp[i].mbuf_alloc_size = MCLBYTES;
-		} else if (sc->fp[i].rx_buf_size <= BNX2X_PAGE_SIZE) {
-			sc->fp[i].mbuf_alloc_size = PAGE_SIZE;
-		} else {
-			sc->fp[i].mbuf_alloc_size = MJUM9BYTES;
-		}
 	}
 }
 
