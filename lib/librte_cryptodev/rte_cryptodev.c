@@ -532,12 +532,6 @@ rte_cryptodev_queue_pair_start(uint8_t dev_id, uint16_t queue_pair_id)
 {
 	struct rte_cryptodev *dev;
 
-	/*
-	 * This function is only safe when called from the primary process
-	 * in a multi-process setup
-	 */
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
-
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
@@ -559,12 +553,6 @@ int
 rte_cryptodev_queue_pair_stop(uint8_t dev_id, uint16_t queue_pair_id)
 {
 	struct rte_cryptodev *dev;
-
-	/*
-	 * This function is only safe when called from the primary process
-	 * in a multi-process setup
-	 */
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
@@ -592,12 +580,6 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 {
 	struct rte_cryptodev *dev;
 	int diag;
-
-	/*
-	 * This function is only safe when called from the primary process
-	 * in a multi-process setup
-	 */
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
@@ -635,12 +617,6 @@ rte_cryptodev_start(uint8_t dev_id)
 
 	CDEV_LOG_DEBUG("Start dev_id=%" PRIu8, dev_id);
 
-	/*
-	 * This function is only safe when called from the primary process
-	 * in a multi-process setup
-	 */
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
-
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return -EINVAL;
@@ -670,12 +646,6 @@ rte_cryptodev_stop(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
 
-	/*
-	 * This function is only safe when called from the primary process
-	 * in a multi-process setup
-	 */
-	RTE_PROC_PRIMARY_OR_RET();
-
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
 		return;
@@ -700,12 +670,6 @@ rte_cryptodev_close(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
 	int retval;
-
-	/*
-	 * This function is only safe when called from the primary process
-	 * in a multi-process setup
-	 */
-	RTE_PROC_PRIMARY_OR_ERR_RET(-EINVAL);
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
@@ -746,12 +710,6 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
 {
 	struct rte_cryptodev *dev;
-
-	/*
-	 * This function is only safe when called from the primary process
-	 * in a multi-process setup
-	 */
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
