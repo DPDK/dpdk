@@ -488,3 +488,19 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 end:
 	priv_unlock(priv);
 }
+
+/**
+ * DPDK callback to set primary MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ */
+void
+mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	DEBUG("%p: setting primary MAC address", (void *)dev);
+	mlx5_mac_addr_remove(dev, 0);
+	mlx5_mac_addr_add(dev, mac_addr, 0, 0);
+}

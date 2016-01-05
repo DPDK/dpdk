@@ -179,6 +179,7 @@ int priv_mac_addr_add(struct priv *, unsigned int,
 int priv_mac_addrs_enable(struct priv *);
 void mlx5_mac_addr_add(struct rte_eth_dev *, struct ether_addr *, uint32_t,
 		       uint32_t);
+void mlx5_mac_addr_set(struct rte_eth_dev *, struct ether_addr *);
 
 /* mlx5_rss.c */
 
