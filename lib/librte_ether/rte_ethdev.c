@@ -671,7 +671,7 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	void **rxq;
 	unsigned i;
 
-	if (dev->data->rx_queues == NULL) { /* first time configuration */
+	if (dev->data->rx_queues == NULL && nb_queues != 0) { /* first time configuration */
 		dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
 				sizeof(dev->data->rx_queues[0]) * nb_queues,
 				RTE_CACHE_LINE_SIZE);
@@ -679,7 +679,7 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_rx_queues = 0;
 			return -(ENOMEM);
 		}
-	} else { /* re-configure */
+	} else if (dev->data->rx_queues != NULL && nb_queues != 0) { /* re-configure */
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release, -ENOTSUP);
 
 		rxq = dev->data->rx_queues;
@@ -699,6 +699,13 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 
 		dev->data->rx_queues = rxq;
 
+	} else if (dev->data->rx_queues != NULL && nb_queues == 0) {
+		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release, -ENOTSUP);
+
+		rxq = dev->data->rx_queues;
+
+		for (i = nb_queues; i < old_nb_queues; i++)
+			(*dev->dev_ops->rx_queue_release)(rxq[i]);
 	}
 	dev->data->nb_rx_queues = nb_queues;
 	return 0;
@@ -815,7 +822,7 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	void **txq;
 	unsigned i;
 
-	if (dev->data->tx_queues == NULL) { /* first time configuration */
+	if (dev->data->tx_queues == NULL && nb_queues != 0) { /* first time configuration */
 		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
 						   sizeof(dev->data->tx_queues[0]) * nb_queues,
 						   RTE_CACHE_LINE_SIZE);
@@ -823,7 +830,7 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 			dev->data->nb_tx_queues = 0;
 			return -(ENOMEM);
 		}
-	} else { /* re-configure */
+	} else if (dev->data->tx_queues != NULL && nb_queues != 0) { /* re-configure */
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release, -ENOTSUP);
 
 		txq = dev->data->tx_queues;
@@ -843,6 +850,13 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 
 		dev->data->tx_queues = txq;
 
+	} else if (dev->data->tx_queues != NULL && nb_queues == 0) {
+		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release, -ENOTSUP);
+
+		txq = dev->data->tx_queues;
+
+		for (i = nb_queues; i < old_nb_queues; i++)
+			(*dev->dev_ops->tx_queue_release)(txq[i]);
 	}
 	dev->data->nb_tx_queues = nb_queues;
 	return 0;
@@ -889,23 +903,21 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * configured device.
 	 */
 	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+
+	if (nb_rx_q == 0 && nb_tx_q == 0) {
+		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d both rx and tx queue cannot be 0\n", port_id);
+		return -EINVAL;
+	}
+
 	if (nb_rx_q > dev_info.max_rx_queues) {
 		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d nb_rx_queues=%d > %d\n",
 				port_id, nb_rx_q, dev_info.max_rx_queues);
-		return -EINVAL;
-	}
-	if (nb_rx_q == 0) {
-		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d nb_rx_q == 0\n", port_id);
 		return -EINVAL;
 	}
 
 	if (nb_tx_q > dev_info.max_tx_queues) {
 		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d nb_tx_queues=%d > %d\n",
 				port_id, nb_tx_q, dev_info.max_tx_queues);
-		return -EINVAL;
-	}
-	if (nb_tx_q == 0) {
-		RTE_PMD_DEBUG_TRACE("ethdev port_id=%d nb_tx_q == 0\n", port_id);
 		return -EINVAL;
 	}
 
