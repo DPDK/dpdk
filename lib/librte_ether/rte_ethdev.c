@@ -709,10 +709,6 @@ rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id)
 {
 	struct rte_eth_dev *dev;
 
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
-
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
@@ -738,10 +734,6 @@ int
 rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id)
 {
 	struct rte_eth_dev *dev;
-
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -769,10 +761,6 @@ rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t tx_queue_id)
 {
 	struct rte_eth_dev *dev;
 
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
-
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
@@ -798,10 +786,6 @@ int
 rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t tx_queue_id)
 {
 	struct rte_eth_dev *dev;
-
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -871,10 +855,6 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	int diag;
-
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1057,10 +1037,6 @@ rte_eth_dev_start(uint8_t port_id)
 	struct rte_eth_dev *dev;
 	int diag;
 
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
-
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
@@ -1094,10 +1070,6 @@ rte_eth_dev_stop(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_RET();
-
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
 
@@ -1119,10 +1091,6 @@ rte_eth_dev_set_link_up(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
-
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
@@ -1136,10 +1104,6 @@ rte_eth_dev_set_link_down(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
-
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
@@ -1152,10 +1116,6 @@ void
 rte_eth_dev_close(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;
-
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_RET();
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
@@ -1180,10 +1140,6 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 	uint32_t mbp_buf_size;
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
-
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1263,10 +1219,6 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
-
-	/* This function is only safe when called from the primary process
-	 * in a multi-process setup*/
-	RTE_PROC_PRIMARY_OR_ERR_RET(-E_RTE_SECONDARY);
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -2477,7 +2429,7 @@ rte_eth_dev_callback_register(uint8_t port_id,
 	/* create a new callback. */
 	if (user_cb == NULL)
 		user_cb = rte_zmalloc("INTR_USER_CALLBACK",
-		                      sizeof(struct rte_eth_dev_callback), 0);
+					sizeof(struct rte_eth_dev_callback), 0);
 	if (user_cb != NULL) {
 		user_cb->cb_fn = cb_fn;
 		user_cb->cb_arg = cb_arg;
