@@ -4428,6 +4428,22 @@ end:
 }
 
 /**
+ * DPDK callback to set the primary MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ */
+static void
+mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	DEBUG("%p: setting primary MAC address", (void *)dev);
+	mlx4_mac_addr_remove(dev, 0);
+	mlx4_mac_addr_add(dev, mac_addr, 0, 0);
+}
+
+/**
  * DPDK callback to enable promiscuous mode.
  *
  * @param dev
@@ -5000,6 +5016,7 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.priority_flow_ctrl_set = NULL,
 	.mac_addr_remove = mlx4_mac_addr_remove,
 	.mac_addr_add = mlx4_mac_addr_add,
+	.mac_addr_set = mlx4_mac_addr_set,
 	.mtu_set = mlx4_dev_set_mtu,
 };
 
