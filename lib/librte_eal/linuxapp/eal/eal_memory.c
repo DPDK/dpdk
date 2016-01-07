@@ -693,54 +693,23 @@ error:
 	return -1;
 }
 
-/*
- * Sort the hugepg_tbl by physical address (lower addresses first on x86,
- * higher address first on powerpc). We use a slow algorithm, but we won't
- * have millions of pages, and this is only done at init time.
- */
 static int
-sort_by_physaddr(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
+cmp_physaddr(const void *a, const void *b)
 {
-	unsigned i, j;
-	int compare_idx;
-	uint64_t compare_addr;
-	struct hugepage_file tmp;
-
-	for (i = 0; i < hpi->num_pages[0]; i++) {
-		compare_addr = 0;
-		compare_idx = -1;
-
-		/*
-		 * browse all entries starting at 'i', and find the
-		 * entry with the smallest addr
-		 */
-		for (j=i; j< hpi->num_pages[0]; j++) {
-
-			if (compare_addr == 0 ||
-#ifdef RTE_ARCH_PPC_64
-				hugepg_tbl[j].physaddr > compare_addr) {
+#ifndef RTE_ARCH_PPC_64
+	const struct hugepage_file *p1 = (const struct hugepage_file *)a;
+	const struct hugepage_file *p2 = (const struct hugepage_file *)b;
 #else
-				hugepg_tbl[j].physaddr < compare_addr) {
+	/* PowerPC needs memory sorted in reverse order from x86 */
+	const struct hugepage_file *p1 = (const struct hugepage_file *)b;
+	const struct hugepage_file *p2 = (const struct hugepage_file *)a;
 #endif
-				compare_addr = hugepg_tbl[j].physaddr;
-				compare_idx = j;
-			}
-		}
-
-		/* should not happen */
-		if (compare_idx == -1) {
-			RTE_LOG(ERR, EAL, "%s(): error in physaddr sorting\n", __func__);
-			return -1;
-		}
-
-		/* swap the 2 entries in the table */
-		memcpy(&tmp, &hugepg_tbl[compare_idx],
-			sizeof(struct hugepage_file));
-		memcpy(&hugepg_tbl[compare_idx], &hugepg_tbl[i],
-			sizeof(struct hugepage_file));
-		memcpy(&hugepg_tbl[i], &tmp, sizeof(struct hugepage_file));
-	}
-	return 0;
+	if (p1->physaddr < p2->physaddr)
+		return -1;
+	else if (p1->physaddr > p2->physaddr)
+		return 1;
+	else
+		return 0;
 }
 
 /*
@@ -1187,8 +1156,8 @@ rte_eal_hugepage_init(void)
 			goto fail;
 		}
 
-		if (sort_by_physaddr(&tmp_hp[hp_offset], hpi) < 0)
-			goto fail;
+		qsort(&tmp_hp[hp_offset], hpi->num_pages[0],
+		      sizeof(struct hugepage_file), cmp_physaddr);
 
 #ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
 		/* remap all hugepages into single file segments */
