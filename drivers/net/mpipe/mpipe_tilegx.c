@@ -78,6 +78,13 @@ struct mpipe_context {
 	struct mpipe_channel_config channels[MPIPE_MAX_CHANNELS];
 };
 
+/* Per-core local data. */
+struct mpipe_local {
+	int mbuf_push_debt[RTE_MAX_ETHPORTS];	/* Buffer push debt. */
+} __rte_cache_aligned;
+
+#define MPIPE_BUF_DEBT_THRESHOLD	32
+static __thread struct mpipe_local mpipe_local;
 static struct mpipe_context mpipe_contexts[GXIO_MPIPE_INSTANCE_MAX];
 static int mpipe_instances;
 static const char *drivername = "MPIPE PMD";
@@ -137,7 +144,7 @@ struct mpipe_dev_priv {
 	int first_bucket;		/* mPIPE bucket start index. */
 	int first_ring;			/* mPIPE notif ring start index. */
 	int notif_group;		/* mPIPE notif group. */
-	rte_atomic32_t dp_count;	/* Active datapath thread count. */
+	rte_atomic32_t dp_count __rte_cache_aligned;	/* DP Entry count. */
 	int tx_stat_mapping[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	int rx_stat_mapping[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 };
@@ -459,6 +466,14 @@ mpipe_dp_wait(struct mpipe_dev_priv *priv)
 	while (rte_atomic32_read(&priv->dp_count) != 0) {
 		rte_pause();
 	}
+}
+
+static inline int
+mpipe_mbuf_stack_index(struct mpipe_dev_priv *priv, struct rte_mbuf *mbuf)
+{
+	return (mbuf->port < RTE_MAX_ETHPORTS) ?
+		mpipe_priv(&rte_eth_devices[mbuf->port])->stack :
+		priv->stack;
 }
 
 static inline struct rte_mbuf *
@@ -1267,6 +1282,7 @@ mpipe_do_xmit(struct mpipe_tx_queue *tx_queue, struct rte_mbuf **tx_pkts,
 	unsigned nb_bytes = 0;
 	unsigned nb_sent = 0;
 	int nb_slots, i;
+	uint8_t port_id;
 
 	PMD_DEBUG_TX("Trying to transmit %d packets on %s:%d.\n",
 		     nb_pkts, mpipe_name(tx_queue->q.priv),
@@ -1315,14 +1331,22 @@ mpipe_do_xmit(struct mpipe_tx_queue *tx_queue, struct rte_mbuf **tx_pkts,
 			if (priv->tx_comps[idx])
 				rte_pktmbuf_free_seg(priv->tx_comps[idx]);
 
+			port_id = (mbuf->port < RTE_MAX_ETHPORTS) ?
+						mbuf->port : priv->port_id;
 			desc = (gxio_mpipe_edesc_t) { {
 				.va        = rte_pktmbuf_mtod(mbuf, uintptr_t),
 				.xfer_size = rte_pktmbuf_data_len(mbuf),
 				.bound     = next ? 0 : 1,
+				.stack_idx = mpipe_mbuf_stack_index(priv, mbuf),
 			} };
+			if (mpipe_local.mbuf_push_debt[port_id] > 0) {
+				mpipe_local.mbuf_push_debt[port_id]--;
+				desc.hwb = 1;
+				priv->tx_comps[idx] = NULL;
+			} else
+				priv->tx_comps[idx] = mbuf;
 
 			nb_bytes += mbuf->data_len;
-			priv->tx_comps[idx] = mbuf;
 			gxio_mpipe_equeue_put_at(equeue, desc, slot + i);
 
 			PMD_DEBUG_TX("%s:%d: Sending packet %p, len %d\n",
@@ -1443,17 +1467,22 @@ mpipe_do_recv(struct mpipe_rx_queue *rx_queue, struct rte_mbuf **rx_pkts,
 				continue;
 			}
 
-			mbuf = __rte_mbuf_raw_alloc(priv->rx_mpool);
-			if (unlikely(!mbuf)) {
-				nb_nomem++;
-				gxio_mpipe_iqueue_drop(iqueue, idesc);
-				PMD_DEBUG_RX("%s:%d: RX alloc failure\n",
+			if (mpipe_local.mbuf_push_debt[in_port] <
+					MPIPE_BUF_DEBT_THRESHOLD)
+				mpipe_local.mbuf_push_debt[in_port]++;
+			else {
+				mbuf = __rte_mbuf_raw_alloc(priv->rx_mpool);
+				if (unlikely(!mbuf)) {
+					nb_nomem++;
+					gxio_mpipe_iqueue_drop(iqueue, idesc);
+					PMD_DEBUG_RX("%s:%d: alloc failure\n",
 					     mpipe_name(rx_queue->q.priv),
 					     rx_queue->q.queue_idx);
-				continue;
-			}
+					continue;
+				}
 
-			mpipe_recv_push(priv, mbuf);
+				mpipe_recv_push(priv, mbuf);
+			}
 
 			/* Get and setup the mbuf for the received packet. */
 			mbuf = mpipe_recv_mbuf(priv, idesc, in_port);
