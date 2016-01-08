@@ -752,13 +752,6 @@ mpipe_init(struct mpipe_dev_priv *priv)
 	if (priv->initialized)
 		return 0;
 
-	rc = mpipe_link_init(priv);
-	if (rc < 0) {
-		RTE_LOG(ERR, PMD, "%s: Failed to init link.\n",
-			mpipe_name(priv));
-		return rc;
-	}
-
 	rc = mpipe_recv_init(priv);
 	if (rc < 0) {
 		RTE_LOG(ERR, PMD, "%s: Failed to init rx.\n",
@@ -1631,6 +1624,13 @@ rte_pmd_mpipe_devinit(const char *ifname,
 	eth_dev->dev_ops      = &mpipe_dev_ops;
 	eth_dev->rx_pkt_burst = &mpipe_recv_pkts;
 	eth_dev->tx_pkt_burst = &mpipe_xmit_pkts;
+
+	rc = mpipe_link_init(priv);
+	if (rc < 0) {
+		RTE_LOG(ERR, PMD, "%s: Failed to init link.\n",
+			mpipe_name(priv));
+		return rc;
+	}
 
 	return 0;
 }
