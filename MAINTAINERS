@@ -144,6 +144,7 @@ F: lib/librte_hash/rte*_arm64.h
 
 EZchip TILE-Gx
 M: Zhigang Lu <zlu@ezchip.com>
+M: Liming Sun <lsun@ezchip.com>
 F: lib/librte_eal/common/arch/tile/
 F: lib/librte_eal/common/include/arch/tile/
 F: drivers/net/mpipe/

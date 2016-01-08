@@ -30,7 +30,7 @@
 
 
 ARCH  ?= tile
-CROSS ?= tile-
+CROSS ?=
 
 CPU_CFLAGS  ?=
 CPU_LDFLAGS ?=
