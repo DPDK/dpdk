@@ -478,11 +478,13 @@ virtio_dev_close(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 
+	if (hw->started == 1)
+		virtio_dev_stop(dev);
+
 	/* reset the NIC */
 	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
 		vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
 	vtpci_reset(hw);
-	hw->started = 0;
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(dev);
 }
@@ -1159,10 +1161,9 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return -EPERM;
 
-	if (hw->started == 1) {
-		virtio_dev_stop(eth_dev);
-		virtio_dev_close(eth_dev);
-	}
+	/* Close it anyway since there's no way to know if closed */
+	virtio_dev_close(eth_dev);
+
 	pci_dev = eth_dev->pci_dev;
 
 	eth_dev->dev_ops = NULL;
@@ -1364,8 +1365,11 @@ static void
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
+	struct virtio_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_LOG(DEBUG, "stop");
+
+	hw->started = 0;
 
 	if (dev->data->dev_conf.intr_conf.lsc)
 		rte_intr_disable(&dev->pci_dev->intr_handle);
