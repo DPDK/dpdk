@@ -246,6 +246,74 @@ A typical example of such an IPv6 2-tuple rule is a follows:
 Any IPv6 packets with protocol ID 6 (TCP), and source address inside the range
 [2001:db8:1234:0000:0000:0000:0000:0000 - 2001:db8:1234:ffff:ffff:ffff:ffff:ffff] matches the above rule.
 
+In the following example the last element of the search key is 8-bit long.
+So it is a case where the 4 consecutive bytes of an input field are not fully occupied.
+The structure for the classification is:
+
+.. code-block:: c
+
+    struct acl_key {
+        uint8_t ip_proto;
+        uint32_t ip_src;
+        uint32_t ip_dst;
+        uint8_t tos;      /*< This is partially using a 32-bit input element */
+    };
+
+The following array of field definitions can be used:
+
+.. code-block:: c
+
+    struct rte_acl_field_def ipv4_defs[4] = {
+        /* first input field - always one byte long. */
+        {
+            .type = RTE_ACL_FIELD_TYPE_BITMASK,
+            .size = sizeof (uint8_t),
+            .field_index = 0,
+            .input_index = 0,
+            .offset = offsetof (struct acl_key, ip_proto),
+        },
+
+        /* next input field (IPv4 source address) - 4 consecutive bytes. */
+        {
+            .type = RTE_ACL_FIELD_TYPE_MASK,
+            .size = sizeof (uint32_t),
+            .field_index = 1,
+            .input_index = 1,
+           .offset = offsetof (struct acl_key, ip_src),
+        },
+
+        /* next input field (IPv4 destination address) - 4 consecutive bytes. */
+        {
+            .type = RTE_ACL_FIELD_TYPE_MASK,
+            .size = sizeof (uint32_t),
+            .field_index = 2,
+            .input_index = 2,
+           .offset = offsetof (struct acl_key, ip_dst),
+        },
+
+        /*
+         * Next element of search key (Type of Service) is indeed 1 byte long.
+         * Anyway we need to allocate all the 4 consecutive bytes for it.
+         */
+        {
+            .type = RTE_ACL_FIELD_TYPE_BITMASK,
+            .size = sizeof (uint32_t), /* All the 4 consecutive bytes are allocated */
+            .field_index = 3,
+            .input_index = 3,
+            .offset = offsetof (struct acl_key, tos),
+        },
+    };
+
+A typical example of such an IPv4 4-tuple rule is as follows:
+
+::
+
+    source addr/mask  destination addr/mask  tos/mask protocol/mask
+    192.168.1.0/24    192.168.2.31/32        1/0xff   6/0xff
+
+Any IPv4 packets with protocol ID 6 (TCP), source address 192.168.1.[0-255], destination address 192.168.2.31,
+ToS 1 matches the above rule.
+
 When creating a set of rules, for each rule, additional information must be supplied also:
 
 *   **priority**: A weight to measure the priority of the rules (higher is better).
