@@ -15,11 +15,6 @@ Deprecation Notices
 * The ethdev structures rte_eth_link, rte_eth_dev_info and rte_eth_conf
   must be updated to support 100G link and to have a cleaner link speed API.
 
-* ABI changes is planned for the reta field in struct rte_eth_rss_reta_entry64
-  which handles at most 256 queues (8 bits) while newer NICs support larger
-  tables (512 queues).
-  It should be integrated in release 2.3.
-
 * ABI changes are planned for struct rte_eth_fdir_flow in order to support
   extend flow director's input set. The release 2.2 does not contain these ABI
   changes, but release 2.3 will, and no backwards compatibility is planned.

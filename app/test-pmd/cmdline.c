@@ -1769,7 +1769,7 @@ parse_reta_config(const char *str,
 	int i;
 	unsigned size;
 	uint16_t hash_index, idx, shift;
-	uint8_t nb_queue;
+	uint16_t nb_queue;
 	char s[256];
 	const char *p, *p0 = str;
 	char *end;
@@ -1802,7 +1802,7 @@ parse_reta_config(const char *str,
 		}
 
 		hash_index = (uint16_t)int_fld[FLD_HASH_INDEX];
-		nb_queue = (uint8_t)int_fld[FLD_QUEUE];
+		nb_queue = (uint16_t)int_fld[FLD_QUEUE];
 
 		if (hash_index >= nb_entries) {
 			printf("Invalid RETA hash index=%d\n", hash_index);

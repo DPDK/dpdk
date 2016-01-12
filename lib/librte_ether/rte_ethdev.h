@@ -520,7 +520,7 @@ struct rte_eth_mirror_conf {
 struct rte_eth_rss_reta_entry64 {
 	uint64_t mask;
 	/**< Mask bits indicate which entries need to be updated/queried. */
-	uint8_t reta[RTE_RETA_GROUP_SIZE];
+	uint16_t reta[RTE_RETA_GROUP_SIZE];
 	/**< Group of 64 redirection table entries. */
 };
 

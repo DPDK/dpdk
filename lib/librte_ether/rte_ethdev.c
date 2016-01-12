@@ -1819,7 +1819,7 @@ rte_eth_check_reta_mask(struct rte_eth_rss_reta_entry64 *reta_conf,
 static int
 rte_eth_check_reta_entry(struct rte_eth_rss_reta_entry64 *reta_conf,
 			 uint16_t reta_size,
-			 uint8_t max_rxq)
+			 uint16_t max_rxq)
 {
 	uint16_t i, idx, shift;
 
