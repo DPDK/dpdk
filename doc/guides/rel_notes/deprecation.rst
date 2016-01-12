@@ -44,8 +44,3 @@ Deprecation Notices
   and table action handlers will be updated:
   the pipeline parameter will be added, the packets mask parameter will be
   either removed (for input port action handler) or made input-only.
-
-* ABI changes are planned in cmdline buffer size to allow the use of long
-  commands (such as RETA update in testpmd).  This should impact
-  CMDLINE_PARSE_RESULT_BUFSIZE, STR_TOKEN_SIZE and RDLINE_BUF_SIZE.
-  It should be integrated in release 2.3.

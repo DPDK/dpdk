@@ -93,7 +93,7 @@ extern "C" {
 #endif
 
 /* configuration */
-#define RDLINE_BUF_SIZE 256
+#define RDLINE_BUF_SIZE 512
 #define RDLINE_PROMPT_SIZE  32
 #define RDLINE_VT100_BUF_SIZE  8
 #define RDLINE_HISTORY_BUF_SIZE BUFSIZ
