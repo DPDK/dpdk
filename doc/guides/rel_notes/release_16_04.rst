@@ -56,6 +56,8 @@ This section should contain new features added in this release. Sample format:
 
   Support TCP/UDP checksum offload.
 
+* **Added vmxnet3 TSO support.**
+
 * **Virtio 1.0.**
 
   Enabled virtio 1.0 support for virtio pmd driver.

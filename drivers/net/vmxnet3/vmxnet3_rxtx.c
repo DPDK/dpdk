@@ -289,27 +289,45 @@ vmxnet3_dev_clear_queues(struct rte_eth_dev *dev)
 	}
 }
 
+static int
+vmxnet3_unmap_pkt(uint16_t eop_idx, vmxnet3_tx_queue_t *txq)
+{
+	int completed = 0;
+	struct rte_mbuf *mbuf;
+
+	/* Release cmd_ring descriptor and free mbuf */
+	VMXNET3_ASSERT(txq->cmd_ring.base[eop_idx].txd.eop == 1);
+
+	mbuf = txq->cmd_ring.buf_info[eop_idx].m;
+	if (mbuf == NULL)
+		rte_panic("EOP desc does not point to a valid mbuf");
+	rte_pktmbuf_free(mbuf);
+
+	txq->cmd_ring.buf_info[eop_idx].m = NULL;
+
+	while (txq->cmd_ring.next2comp != eop_idx) {
+		/* no out-of-order completion */
+		VMXNET3_ASSERT(txq->cmd_ring.base[txq->cmd_ring.next2comp].txd.cq == 0);
+		vmxnet3_cmd_ring_adv_next2comp(&txq->cmd_ring);
+		completed++;
+	}
+
+	/* Mark the txd for which tcd was generated as completed */
+	vmxnet3_cmd_ring_adv_next2comp(&txq->cmd_ring);
+
+	return completed + 1;
+}
+
 static void
 vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 {
 	int completed = 0;
-	struct rte_mbuf *mbuf;
 	vmxnet3_comp_ring_t *comp_ring = &txq->comp_ring;
 	struct Vmxnet3_TxCompDesc *tcd = (struct Vmxnet3_TxCompDesc *)
 		(comp_ring->base + comp_ring->next2proc);
 
 	while (tcd->gen == comp_ring->gen) {
-		/* Release cmd_ring descriptor and free mbuf */
-		VMXNET3_ASSERT(txq->cmd_ring.base[tcd->txdIdx].txd.eop == 1);
-		while (txq->cmd_ring.next2comp != tcd->txdIdx) {
-			mbuf = txq->cmd_ring.buf_info[txq->cmd_ring.next2comp].m;
-			txq->cmd_ring.buf_info[txq->cmd_ring.next2comp].m = NULL;
-			rte_pktmbuf_free_seg(mbuf);
-
-			/* Mark the txd for which tcd was generated as completed */
-			vmxnet3_cmd_ring_adv_next2comp(&txq->cmd_ring);
-			completed++;
-		}
+		completed += vmxnet3_unmap_pkt(tcd->txdIdx, txq);
 
 		vmxnet3_comp_ring_adv_next2proc(comp_ring);
 		tcd = (struct Vmxnet3_TxCompDesc *)(comp_ring->base +
@@ -345,21 +363,43 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		struct rte_mbuf *txm = tx_pkts[nb_tx];
 		struct rte_mbuf *m_seg = txm;
 		int copy_size = 0;
+		bool tso = (txm->ol_flags & PKT_TX_TCP_SEG) != 0;
+		/* # of descriptors needed for a packet. */
+		unsigned count = txm->nb_segs;
 
-		/* Is this packet execessively fragmented, then drop */
-		if (unlikely(txm->nb_segs > VMXNET3_MAX_TXD_PER_PKT)) {
-			++txq->stats.drop_too_many_segs;
-			++txq->stats.drop_total;
+		avail = vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring);
+		if (count > avail) {
+			/* Is command ring full? */
+			if (unlikely(avail == 0)) {
+				PMD_TX_LOG(DEBUG, "No free ring descriptors");
+				txq->stats.tx_ring_full++;
+				txq->stats.drop_total += (nb_pkts - nb_tx);
+				break;
+			}
+
+			/* Command ring is not full but cannot handle the
+			 * multi-segmented packet. Let's try the next packet
+			 * in this case.
+			 */
+			PMD_TX_LOG(DEBUG, "Running out of ring descriptors "
+				   "(avail %d needed %d)", avail, count);
+			txq->stats.drop_total++;
+			if (tso)
+				txq->stats.drop_tso++;
 			rte_pktmbuf_free(txm);
-			++nb_tx;
+			nb_tx++;
 			continue;
 		}
 
-		/* Is command ring full? */
-		avail = vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring);
-		if (txm->nb_segs > avail) {
-			++txq->stats.tx_ring_full;
-			break;
+		/* Drop non-TSO packet that is excessively fragmented */
+		if (unlikely(!tso && count > VMXNET3_MAX_TXD_PER_PKT)) {
+			PMD_TX_LOG(ERR, "Non-TSO packet cannot occupy more than %d tx "
+				   "descriptors. Packet dropped.", VMXNET3_MAX_TXD_PER_PKT);
+			txq->stats.drop_too_many_segs++;
+			txq->stats.drop_total++;
+			rte_pktmbuf_free(txm);
+			nb_tx++;
+			continue;
 		}
 
 		if (txm->nb_segs == 1 && rte_pktmbuf_pkt_len(txm) <= VMXNET3_HDR_COPY_SIZE) {
@@ -376,11 +416,11 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		do {
 			/* Remember the transmit buffer for cleanup */
 			tbi = txq->cmd_ring.buf_info + txq->cmd_ring.next2fill;
-			tbi->m = m_seg;
 
 			/* NB: the following assumes that VMXNET3 maximum
-			   transmit buffer size (16K) is greater than
-			   maximum sizeof mbuf segment size. */
+			 * transmit buffer size (16K) is greater than
+			 * maximum size of mbuf segment size.
+			 */
 			gdesc = txq->cmd_ring.base + txq->cmd_ring.next2fill;
 			if (copy_size)
 				gdesc->txd.addr = rte_cpu_to_le_64(txq->data_ring.basePA +
@@ -399,6 +439,8 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			dw2 = txq->cmd_ring.gen << VMXNET3_TXD_GEN_SHIFT;
 		} while ((m_seg = m_seg->next) != NULL);
 
+		/* set the last buf_info for the pkt */
+		tbi->m = txm;
 		/* Update the EOP descriptor */
 		gdesc->dword[3] |= VMXNET3_TXD_EOP | VMXNET3_TXD_CQ;
 
@@ -409,7 +451,17 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			gdesc->txd.tci = txm->vlan_tci;
 		}
 
-		if (txm->ol_flags & PKT_TX_L4_MASK) {
+		if (tso) {
+			uint16_t mss = txm->tso_segsz;
+
+			VMXNET3_ASSERT(mss > 0);
+
+			gdesc->txd.hlen = txm->l2_len + txm->l3_len + txm->l4_len;
+			gdesc->txd.om = VMXNET3_OM_TSO;
+			gdesc->txd.msscof = mss;
+
+			deferred += (rte_pktmbuf_pkt_len(txm) - gdesc->txd.hlen + mss - 1) / mss;
+		} else if (txm->ol_flags & PKT_TX_L4_MASK) {
 			gdesc->txd.om = VMXNET3_OM_CSUM;
 			gdesc->txd.hlen = txm->l2_len + txm->l3_len;
 
@@ -425,17 +477,19 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 					   txm->ol_flags & PKT_TX_L4_MASK);
 				abort();
 			}
+			deferred++;
 		} else {
 			gdesc->txd.hlen = 0;
 			gdesc->txd.om = VMXNET3_OM_NONE;
 			gdesc->txd.msscof = 0;
+			deferred++;
 		}
 
 		/* flip the GEN bit on the SOP */
 		rte_compiler_barrier();
 		gdesc->dword[2] ^= VMXNET3_TXD_GEN;
 
-		txq_ctrl->txNumDeferred = rte_cpu_to_le_32(++deferred);
+		txq_ctrl->txNumDeferred = rte_cpu_to_le_32(deferred);
 		nb_tx++;
 	}
 
