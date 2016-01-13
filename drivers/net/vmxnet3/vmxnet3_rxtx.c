@@ -326,6 +326,8 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_tx;
 	vmxnet3_tx_queue_t *txq = tx_queue;
 	struct vmxnet3_hw *hw = txq->hw;
+	Vmxnet3_TxQueueCtrl *txq_ctrl = &txq->shared->ctrl;
+	uint32_t deferred = rte_le_to_cpu_32(txq_ctrl->txNumDeferred);
 
 	if (unlikely(txq->stopped)) {
 		PMD_TX_LOG(DEBUG, "Tx queue is stopped.");
@@ -413,15 +415,14 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		rte_compiler_barrier();
 		gdesc->dword[2] ^= VMXNET3_TXD_GEN;
 
-		txq->shared->ctrl.txNumDeferred++;
+		txq_ctrl->txNumDeferred = rte_cpu_to_le_32(++deferred);
 		nb_tx++;
 	}
 
-	PMD_TX_LOG(DEBUG, "vmxnet3 txThreshold: %u", txq->shared->ctrl.txThreshold);
+	PMD_TX_LOG(DEBUG, "vmxnet3 txThreshold: %u", rte_le_to_cpu_32(txq_ctrl->txThreshold));
 
-	if (txq->shared->ctrl.txNumDeferred >= txq->shared->ctrl.txThreshold) {
-
-		txq->shared->ctrl.txNumDeferred = 0;
+	if (deferred >= rte_le_to_cpu_32(txq_ctrl->txThreshold)) {
+		txq_ctrl->txNumDeferred = 0;
 		/* Notify vSwitch that packets are available. */
 		VMXNET3_WRITE_BAR0_REG(hw, (VMXNET3_REG_TXPROD + txq->queue_id * VMXNET3_REG_ALIGN),
 				       txq->cmd_ring.next2fill);
