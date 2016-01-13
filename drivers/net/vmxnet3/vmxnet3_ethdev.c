@@ -693,7 +693,8 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 }
 
 static void
-vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev,
+		     struct rte_eth_dev_info *dev_info)
 {
 	dev_info->max_rx_queues = VMXNET3_MAX_RX_QUEUES;
 	dev_info->max_tx_queues = VMXNET3_MAX_TX_QUEUES;
@@ -716,6 +717,17 @@ vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev, struct rte_
 		.nb_min = VMXNET3_DEF_TX_RING_SIZE,
 		.nb_align = 1,
 	};
+
+	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_TSO;
 }
 
 /* return 0 means link status changed, -1 means not changed */
