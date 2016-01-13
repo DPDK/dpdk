@@ -776,7 +776,7 @@ ixgbe_atr_compute_hash_82599(union ixgbe_atr_input *atr_input,
 	 *
 	 *    hi_hash_dword[31:0]  ^= Stream[351:320];
 	 *
-	 *    if(key[0])
+	 *    if (key[0])
 	 *        hash[15:0] ^= Stream[15:0];
 	 *
 	 *    for (i = 0; i < 16; i++) {

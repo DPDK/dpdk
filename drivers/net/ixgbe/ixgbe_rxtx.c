@@ -109,7 +109,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
  */
 #define rte_ixgbe_prefetch(p)   rte_prefetch0(p)
 #else
-#define rte_ixgbe_prefetch(p)   do {} while(0)
+#define rte_ixgbe_prefetch(p)   do {} while (0)
 #endif
 
 /*********************************************************************
@@ -2909,7 +2909,7 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 		pbsize = (uint16_t)(NIC_RX_BUFFER_SIZE / nb_tcs);
 		break;
 	}
-	for (i = 0 ; i < nb_tcs; i++) {
+	for (i = 0; i < nb_tcs; i++) {
 		uint32_t rxpbsize = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(i));
 		rxpbsize &= (~(0x3FF << IXGBE_RXPBSIZE_SHIFT));
 		/* clear 10 bits. */
@@ -2955,7 +2955,7 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 
 	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
 	vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
-	vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
+	vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
 
 	/* VFTA - enable all vlan filters */
@@ -3212,7 +3212,7 @@ ixgbe_dcb_rx_hw_config(struct ixgbe_hw *hw,
 
 	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
 	vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
-	vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
+	vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
 
 	/* VFTA - enable all vlan filters */
@@ -3352,7 +3352,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 	nb_tcs = dcb_config->num_tcs.pfc_tcs;
 	/* Unpack map */
 	ixgbe_dcb_unpack_map_cee(dcb_config, IXGBE_DCB_RX_CONFIG, map);
-	if(nb_tcs == ETH_4_TCS) {
+	if (nb_tcs == ETH_4_TCS) {
 		/* Avoid un-configured priority mapping to TC0 */
 		uint8_t j = 4;
 		uint8_t mask = 0xFF;
@@ -3388,11 +3388,11 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		break;
 	}
 
-	if(config_dcb_rx) {
+	if (config_dcb_rx) {
 		/* Set RX buffer size */
 		pbsize = (uint16_t)(rx_buffer_size / nb_tcs);
 		uint32_t rxpbsize = pbsize << IXGBE_RXPBSIZE_SHIFT;
-		for (i = 0 ; i < nb_tcs; i++) {
+		for (i = 0; i < nb_tcs; i++) {
 			IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), rxpbsize);
 		}
 		/* zero alloc all unused TCs */
@@ -3400,7 +3400,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 			IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), 0);
 		}
 	}
-	if(config_dcb_tx) {
+	if (config_dcb_tx) {
 		/* Only support an equally distributed Tx packet buffer strategy. */
 		uint32_t txpktsize = IXGBE_TXPBSIZE_MAX / nb_tcs;
 		uint32_t txpbthresh = (txpktsize / DCB_TX_PB) - IXGBE_TXPKT_SIZE_MAX;
@@ -3421,7 +3421,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 	ixgbe_dcb_calculate_tc_credits_cee(hw, dcb_config,max_frame,
 				IXGBE_DCB_RX_CONFIG);
 
-	if(config_dcb_rx) {
+	if (config_dcb_rx) {
 		/* Unpack CEE standard containers */
 		ixgbe_dcb_unpack_refill_cee(dcb_config, IXGBE_DCB_RX_CONFIG, refill);
 		ixgbe_dcb_unpack_max_cee(dcb_config, max);
@@ -3431,7 +3431,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		ixgbe_dcb_hw_arbite_rx_config(hw,refill,max,bwgid,tsa,map);
 	}
 
-	if(config_dcb_tx) {
+	if (config_dcb_tx) {
 		/* Unpack CEE standard containers */
 		ixgbe_dcb_unpack_refill_cee(dcb_config, IXGBE_DCB_TX_CONFIG, refill);
 		ixgbe_dcb_unpack_max_cee(dcb_config, max);
@@ -3445,7 +3445,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 	ixgbe_dcb_config_tc_stats_82599(hw, dcb_config);
 
 	/* Check if the PFC is supported */
-	if(dev->data->dev_conf.dcb_capability_en & ETH_DCB_PFC_SUPPORT) {
+	if (dev->data->dev_conf.dcb_capability_en & ETH_DCB_PFC_SUPPORT) {
 		pbsize = (uint16_t)(rx_buffer_size / nb_tcs);
 		for (i = 0; i < nb_tcs; i++) {
 			/*
@@ -3459,7 +3459,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 			tc->pfc = ixgbe_dcb_pfc_enabled;
 		}
 		ixgbe_dcb_unpack_pfc_cee(dcb_config, map, &pfc_en);
-		if(dcb_config->num_tcs.pfc_tcs == ETH_4_TCS)
+		if (dcb_config->num_tcs.pfc_tcs == ETH_4_TCS)
 			pfc_en &= 0x0F;
 		ret = ixgbe_dcb_config_pfc(hw, pfc_en, map);
 	}
@@ -3534,7 +3534,7 @@ ixgbe_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 
 	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
 	vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
-	vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
+	vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
 
 	/* VFTA - enable all vlan filters */

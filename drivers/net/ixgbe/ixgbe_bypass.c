@@ -46,7 +46,7 @@
 			    __func__, __LINE__);            \
 		return retval;                            \
 	}                                                   \
-} while(0)
+} while (0)
 
 #define	FUNC_PTR_OR_RET(func) do {                          \
 	if ((func) == NULL) {                               \
@@ -54,7 +54,7 @@
 			    __func__, __LINE__);            \
 		return;                                     \
 	}                                                   \
-} while(0)
+} while (0)
 
 
 /**

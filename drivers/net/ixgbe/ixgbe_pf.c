@@ -286,7 +286,7 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	 * enable vlan filtering and allow all vlan tags through
 	 */
         vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
-        vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
+        vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
         IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
 
         /* VFTA - enable all vlan filters */

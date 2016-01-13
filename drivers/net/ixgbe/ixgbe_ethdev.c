@@ -392,19 +392,19 @@ static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
 		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
 		(h)->bitmap[idx] |= 1 << bit;\
-	}while(0)
+	} while (0)
 
 #define IXGBE_CLEAR_HWSTRIP(h, q) do{\
 		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
 		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
 		(h)->bitmap[idx] &= ~(1 << bit);\
-	}while(0)
+	} while (0)
 
 #define IXGBE_GET_HWSTRIP(h, q, r) do{\
 		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
 		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
 		(r) = (h)->bitmap[idx] >> bit & 1;\
-	}while(0)
+	} while (0)
 
 /*
  * The set of PCI devices this driver supports
@@ -819,7 +819,7 @@ ixgbe_reset_qstat_mappings(struct ixgbe_hw *hw)
 {
 	uint32_t i;
 
-	for(i = 0; i != IXGBE_NB_STAT_MAPPING_REGS; i++) {
+	for (i = 0; i != IXGBE_NB_STAT_MAPPING_REGS; i++) {
 		IXGBE_WRITE_REG(hw, IXGBE_RQSMR(i), 0);
 		IXGBE_WRITE_REG(hw, IXGBE_TQSM(i), 0);
 	}
@@ -1620,7 +1620,7 @@ ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
 	struct ixgbe_hwstrip *hwstrip =
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(dev->data->dev_private);
 
-	if(queue >= IXGBE_MAX_RX_QUEUE_NUM)
+	if (queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return;
 
 	if (on)
@@ -1790,21 +1790,21 @@ ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 static void
 ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
-	if(mask & ETH_VLAN_STRIP_MASK){
+	if (mask & ETH_VLAN_STRIP_MASK) {
 		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
 			ixgbe_vlan_hw_strip_enable_all(dev);
 		else
 			ixgbe_vlan_hw_strip_disable_all(dev);
 	}
 
-	if(mask & ETH_VLAN_FILTER_MASK){
+	if (mask & ETH_VLAN_FILTER_MASK) {
 		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
 			ixgbe_vlan_hw_filter_enable(dev);
 		else
 			ixgbe_vlan_hw_filter_disable(dev);
 	}
 
-	if(mask & ETH_VLAN_EXTEND_MASK){
+	if (mask & ETH_VLAN_EXTEND_MASK) {
 		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
 			ixgbe_vlan_hw_extend_enable(dev);
 		else
@@ -1819,7 +1819,7 @@ ixgbe_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
 	uint32_t vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
-	vlanctrl |= IXGBE_VLNCTRL_VFE ; /* enable vlan filters */
+	vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
 }
 
@@ -3464,13 +3464,13 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 	/* Low water mark of zero causes XOFF floods */
 	if (hw->fc.current_mode & ixgbe_fc_tx_pause) {
 		 /* High/Low water can not be 0 */
-		if( (!hw->fc.high_water[tc_num])|| (!hw->fc.low_water[tc_num])) {
+		if ((!hw->fc.high_water[tc_num]) || (!hw->fc.low_water[tc_num])) {
 			PMD_INIT_LOG(ERR, "Invalid water mark configuration");
 			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
 			goto out;
 		}
 
-		if(hw->fc.low_water[tc_num] >= hw->fc.high_water[tc_num]) {
+		if (hw->fc.low_water[tc_num] >= hw->fc.high_water[tc_num]) {
 			PMD_INIT_LOG(ERR, "Invalid water mark configuration");
 			ret_val = IXGBE_ERR_INVALID_LINK_SETTINGS;
 			goto out;
@@ -3584,7 +3584,7 @@ ixgbe_dcb_pfc_enable(struct rte_eth_dev *dev,uint8_t tc_num)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int32_t ret_val = IXGBE_NOT_IMPLEMENTED;
 
-	if(hw->mac.type != ixgbe_mac_82598EB) {
+	if (hw->mac.type != ixgbe_mac_82598EB) {
 		ret_val = ixgbe_dcb_pfc_enable_generic(hw,tc_num);
 	}
 	return ret_val;
@@ -3999,10 +3999,10 @@ static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
 
 	for (i = 0; i < IXGBE_VFTA_SIZE; i++){
 		vfta = shadow_vfta->vfta[i];
-		if(vfta){
+		if (vfta) {
 			mask = 1;
 			for (j = 0; j < 32; j++){
-				if(vfta & mask)
+				if (vfta & mask)
 					ixgbe_set_vfta(hw, (i<<5)+j, 0, on);
 				mask<<=1;
 			}
@@ -4026,7 +4026,7 @@ ixgbevf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 
 	/* vind is not used in VF driver, set to 0, check ixgbe_set_vfta_vf */
 	ret = ixgbe_set_vfta(hw, vlan_id, 0, !!on);
-	if(ret){
+	if (ret) {
 		PMD_INIT_LOG(ERR, "Unable to set VF vlan");
 		return ret;
 	}
@@ -4051,11 +4051,11 @@ ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if(queue >= hw->mac.max_rx_queues)
+	if (queue >= hw->mac.max_rx_queues)
 		return;
 
 	ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
-	if(on)
+	if (on)
 		ctrl |= IXGBE_RXDCTL_VME;
 	else
 		ctrl &= ~IXGBE_RXDCTL_VME;
@@ -4073,10 +4073,10 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	int on = 0;
 
 	/* VF function only support hw strip feature, others are not support */
-	if(mask & ETH_VLAN_STRIP_MASK){
+	if (mask & ETH_VLAN_STRIP_MASK) {
 		on = !!(dev->data->dev_conf.rxmode.hw_vlan_strip);
 
-		for(i=0; i < hw->mac.max_rx_queues; i++)
+		for (i = 0; i < hw->mac.max_rx_queues; i++)
 			ixgbevf_vlan_strip_queue_set(dev,i,on);
 	}
 }
@@ -4154,7 +4154,7 @@ ixgbe_uc_hash_table_set(struct rte_eth_dev *dev,struct ether_addr* mac_addr,
 	uta_shift = vector & ixgbe_uta_bit_mask;
 
 	rc = ((uta_info->uta_shadow[uta_idx] >> uta_shift & bit1) != 0);
-	if(rc == on)
+	if (rc == on)
 		return 0;
 
 	reg_val = IXGBE_READ_REG(hw, IXGBE_UTA(uta_idx));
@@ -4192,7 +4192,7 @@ ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	if (hw->mac.type < ixgbe_mac_82599EB)
 		return -ENOTSUP;
 
-	if(on) {
+	if (on) {
 		for (i = 0; i < ETH_VMDQ_NUM_UC_HASH_ARRAY; i++) {
 			uta_info->uta_shadow[i] = ~0;
 			IXGBE_WRITE_REG(hw, IXGBE_UTA(i), ~0);
@@ -4385,7 +4385,7 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 				/* search vlan id related pool vlan filter index */
 				reg_index = ixgbe_find_vlvf_slot(hw,
 						mirror_conf->vlan.vlan_id[i]);
-				if(reg_index < 0)
+				if (reg_index < 0)
 					return -EINVAL;
 				vlvf = IXGBE_READ_REG(hw, IXGBE_VLVF(reg_index));
 				if ((vlvf & IXGBE_VLVF_VIEN) &&
@@ -4403,8 +4403,8 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 
 			mr_info->mr_conf[rule_id].vlan.vlan_mask =
 						mirror_conf->vlan.vlan_mask;
-			for(i = 0 ;i < ETH_VMDQ_MAX_VLAN_FILTERS; i++) {
-				if(mirror_conf->vlan.vlan_mask & (1ULL << i))
+			for (i = 0; i < ETH_VMDQ_MAX_VLAN_FILTERS; i++) {
+				if (mirror_conf->vlan.vlan_mask & (1ULL << i))
 					mr_info->mr_conf[rule_id].vlan.vlan_id[i] =
 						mirror_conf->vlan.vlan_id[i];
 			}
@@ -4412,7 +4412,7 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 			mv_lsb = 0;
 			mv_msb = 0;
 			mr_info->mr_conf[rule_id].vlan.vlan_mask = 0;
-			for(i = 0 ;i < ETH_VMDQ_MAX_VLAN_FILTERS; i++)
+			for (i = 0; i < ETH_VMDQ_MAX_VLAN_FILTERS; i++)
 				mr_info->mr_conf[rule_id].vlan.vlan_id[i] = 0;
 		}
 	}
