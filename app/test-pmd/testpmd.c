@@ -354,17 +354,17 @@ set_default_fwd_lcores_config(void)
 
 	nb_lc = 0;
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		if (! rte_lcore_is_enabled(i))
-			continue;
-		if (i == rte_get_master_lcore())
-			continue;
-		fwd_lcores_cpuids[nb_lc++] = i;
 		sock_num = rte_lcore_to_socket_id(i) + 1;
 		if (sock_num > max_socket) {
 			if (sock_num > RTE_MAX_NUMA_NODES)
 				rte_exit(EXIT_FAILURE, "Total sockets greater than %u\n", RTE_MAX_NUMA_NODES);
 			max_socket = sock_num;
 		}
+		if (!rte_lcore_is_enabled(i))
+			continue;
+		if (i == rte_get_master_lcore())
+			continue;
+		fwd_lcores_cpuids[nb_lc++] = i;
 	}
 	nb_lcores = (lcoreid_t) nb_lc;
 	nb_cfg_lcores = nb_lcores;
