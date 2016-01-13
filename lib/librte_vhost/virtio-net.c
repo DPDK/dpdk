@@ -632,7 +632,7 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 	struct vhost_virtqueue *vq;
 
 	dev = get_device(ctx);
-	if (dev == NULL)
+	if ((dev == NULL) || (dev->mem == NULL))
 		return -1;
 
 	/* addr->index refers to the queue index. The txq 1, rxq is 0. */
