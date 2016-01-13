@@ -52,6 +52,10 @@ This section should contain new features added in this release. Sample format:
   Tx data ring has been shown to improve small pkt forwarding performance
   on vSphere environment.
 
+* **Added vmxnet3 Tx L4 checksum offload.**
+
+  Support TCP/UDP checksum offload.
+
 * **Virtio 1.0.**
 
   Enabled virtio 1.0 support for virtio pmd driver.

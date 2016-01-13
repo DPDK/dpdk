@@ -409,7 +409,27 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			gdesc->txd.tci = txm->vlan_tci;
 		}
 
-		/* TODO: Add transmit checksum offload here */
+		if (txm->ol_flags & PKT_TX_L4_MASK) {
+			gdesc->txd.om = VMXNET3_OM_CSUM;
+			gdesc->txd.hlen = txm->l2_len + txm->l3_len;
+
+			switch (txm->ol_flags & PKT_TX_L4_MASK) {
+			case PKT_TX_TCP_CKSUM:
+				gdesc->txd.msscof = gdesc->txd.hlen + offsetof(struct tcp_hdr, cksum);
+				break;
+			case PKT_TX_UDP_CKSUM:
+				gdesc->txd.msscof = gdesc->txd.hlen + offsetof(struct udp_hdr, dgram_cksum);
+				break;
+			default:
+				PMD_TX_LOG(WARNING, "requested cksum offload not supported %#llx",
+					   txm->ol_flags & PKT_TX_L4_MASK);
+				abort();
+			}
+		} else {
+			gdesc->txd.hlen = 0;
+			gdesc->txd.om = VMXNET3_OM_NONE;
+			gdesc->txd.msscof = 0;
+		}
 
 		/* flip the GEN bit on the SOP */
 		rte_compiler_barrier();
@@ -724,8 +744,8 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMS) !=
-	    ETH_TXQ_FLAGS_NOXSUMS) {
-		PMD_INIT_LOG(ERR, "TX no support for checksum offload yet");
+	    ETH_TXQ_FLAGS_NOXSUMSCTP) {
+		PMD_INIT_LOG(ERR, "SCTP checksum offload not supported");
 		return -EINVAL;
 	}
 
