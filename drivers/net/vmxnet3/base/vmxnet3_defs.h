@@ -35,14 +35,7 @@
 #ifndef _VMXNET3_DEFS_H_
 #define _VMXNET3_DEFS_H_
 
-#define INCLUDE_ALLOW_USERLEVEL
-#define INCLUDE_ALLOW_VMKERNEL
-#define INCLUDE_ALLOW_DISTRIBUTE
-#define INCLUDE_ALLOW_VMKDRIVERS
-#define INCLUDE_ALLOW_VMCORE
-#define INCLUDE_ALLOW_MODULE
-#include "includeCheck.h"
-
+#include "vmxnet3_osdep.h"
 #include "upt1_defs.h"
 
 /* all registers are 32 bit wide */

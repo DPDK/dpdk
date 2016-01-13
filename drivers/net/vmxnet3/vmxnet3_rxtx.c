@@ -593,7 +593,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (unlikely(rxd->btype != VMXNET3_RXD_BTYPE_HEAD)) {
 			PMD_RX_LOG(DEBUG,
 				   "Alert : Misbehaving device, incorrect "
-				   " buffer type used. iPacket dropped.");
+				   " buffer type used. Packet dropped.");
 			rte_pktmbuf_free_seg(rbi->m);
 			goto rcd_done;
 		}

@@ -819,7 +819,7 @@ vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vid, int on)
 	else
 		VMXNET3_CLEAR_VFTABLE_ENTRY(hw->shadow_vfta, vid);
 
-	/* don't change active filter if in promiscious mode */
+	/* don't change active filter if in promiscuous mode */
 	if (rxConf->rxMode & VMXNET3_RXM_PROMISC)
 		return 0;
 

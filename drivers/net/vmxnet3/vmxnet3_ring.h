@@ -130,18 +130,6 @@ struct vmxnet3_txq_stats {
 	uint64_t	tx_ring_full;
 };
 
-typedef struct vmxnet3_tx_ctx {
-	int      ip_type;
-	bool     is_vlan;
-	bool     is_cso;
-
-	uint16_t evl_tag;		/* only valid when is_vlan == TRUE */
-	uint32_t eth_hdr_size;  /* only valid for pkts requesting tso or csum
-							 * offloading */
-	uint32_t ip_hdr_size;
-	uint32_t l4_hdr_size;
-} vmxnet3_tx_ctx_t;
-
 typedef struct vmxnet3_tx_queue {
 	struct vmxnet3_hw            *hw;
 	struct vmxnet3_cmd_ring      cmd_ring;
@@ -154,7 +142,6 @@ typedef struct vmxnet3_tx_queue {
 	uint16_t                     queue_id;      /**< Device TX queue index. */
 	uint8_t                      port_id;       /**< Device port identifier. */
 } vmxnet3_tx_queue_t;
-
 
 struct vmxnet3_rxq_stats {
 	uint64_t                     drop_total;
