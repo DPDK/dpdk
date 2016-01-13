@@ -342,6 +342,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint32_t first2fill, avail, dw2;
 		struct rte_mbuf *txm = tx_pkts[nb_tx];
 		struct rte_mbuf *m_seg = txm;
+		int copy_size = 0;
 
 		/* Is this packet execessively fragmented, then drop */
 		if (unlikely(txm->nb_segs > VMXNET3_MAX_TXD_PER_PKT)) {
@@ -359,6 +360,14 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			break;
 		}
 
+		if (txm->nb_segs == 1 && rte_pktmbuf_pkt_len(txm) <= VMXNET3_HDR_COPY_SIZE) {
+			struct Vmxnet3_TxDataDesc *tdd;
+
+			tdd = txq->data_ring.base + txq->cmd_ring.next2fill;
+			copy_size = rte_pktmbuf_pkt_len(txm);
+			rte_memcpy(tdd->data, rte_pktmbuf_mtod(txm, char *), copy_size);
+		}
+
 		/* use the previous gen bit for the SOP desc */
 		dw2 = (txq->cmd_ring.gen ^ 0x1) << VMXNET3_TXD_GEN_SHIFT;
 		first2fill = txq->cmd_ring.next2fill;
@@ -371,7 +380,13 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			   transmit buffer size (16K) is greater than
 			   maximum sizeof mbuf segment size. */
 			gdesc = txq->cmd_ring.base + txq->cmd_ring.next2fill;
-			gdesc->txd.addr = rte_mbuf_data_dma_addr(m_seg);
+			if (copy_size)
+				gdesc->txd.addr = rte_cpu_to_le_64(txq->data_ring.basePA +
+								txq->cmd_ring.next2fill *
+								sizeof(struct Vmxnet3_TxDataDesc));
+			else
+				gdesc->txd.addr = rte_mbuf_data_dma_addr(m_seg);
+
 			gdesc->dword[2] = dw2 | m_seg->data_len;
 			gdesc->dword[3] = 0;
 

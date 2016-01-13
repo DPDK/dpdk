@@ -47,6 +47,11 @@ This section should contain new features added in this release. Sample format:
   A new function ``rte_pktmbuf_alloc_bulk()`` has been added to allow the user
   to allocate a bulk of mbufs.
 
+* **Restored vmxnet3 Tx data ring.**
+
+  Tx data ring has been shown to improve small pkt forwarding performance
+  on vSphere environment.
+
 * **Virtio 1.0.**
 
   Enabled virtio 1.0 support for virtio pmd driver.
