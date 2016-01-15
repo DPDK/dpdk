@@ -33,7 +33,6 @@ DPDK documentation
 
 .. toctree::
    :maxdepth: 1
-   :titlesonly:
 
    linux_gsg/index
    freebsd_gsg/index

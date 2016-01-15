@@ -45,7 +45,7 @@ html_add_permalinks = ""
 html_show_copyright = False
 highlight_language = 'none'
 
-version = subprocess.check_output(['make', '-sRrC', '../../', 'showversion']).decode('utf-8')
+version = subprocess.check_output(['make', '-sRrC', '../../', 'showversion']).decode('utf-8').rstrip()
 release = version
 
 master_doc = 'index'
