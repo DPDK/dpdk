@@ -513,10 +513,12 @@ COPY_BLOCK_64_BACK31:
 	 * Make store aligned when copy size exceeds 512 bytes
 	 */
 	dstofss = 32 - ((uintptr_t)dst & 0x1F);
-	n -= dstofss;
-	rte_mov32((uint8_t *)dst, (const uint8_t *)src);
-	src = (const uint8_t *)src + dstofss;
-	dst = (uint8_t *)dst + dstofss;
+	if (dstofss > 0) {
+		n -= dstofss;
+		rte_mov32((uint8_t *)dst, (const uint8_t *)src);
+		src = (const uint8_t *)src + dstofss;
+		dst = (uint8_t *)dst + dstofss;
+	}
 
 	/**
 	 * Copy 256-byte blocks.
@@ -833,11 +835,13 @@ COPY_BLOCK_64_BACK15:
 	 * backwards access.
 	 */
 	dstofss = 16 - ((uintptr_t)dst & 0x0F) + 16;
-	n -= dstofss;
-	rte_mov32((uint8_t *)dst, (const uint8_t *)src);
-	src = (const uint8_t *)src + dstofss;
-	dst = (uint8_t *)dst + dstofss;
-	srcofs = ((uintptr_t)src & 0x0F);
+	if (dstofss > 0) {
+		n -= dstofss;
+		rte_mov32((uint8_t *)dst, (const uint8_t *)src);
+		src = (const uint8_t *)src + dstofss;
+		dst = (uint8_t *)dst + dstofss;
+		srcofs = ((uintptr_t)src & 0x0F);
+	}
 
 	/**
 	 * For aligned copy
