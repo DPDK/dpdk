@@ -131,6 +131,7 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_ERMS,                   /**< ERMS */
 	RTE_CPUFLAG_INVPCID,                /**< INVPCID */
 	RTE_CPUFLAG_RTM,                    /**< Transactional memory */
+	RTE_CPUFLAG_AVX512F,                /**< AVX512F */
 
 	/* (EAX 80000001h) ECX features */
 	RTE_CPUFLAG_LAHF_SAHF,              /**< LAHF_SAHF */
@@ -238,6 +239,7 @@ static const struct feature_entry cpu_feature_table[] = {
 	FEAT_DEF(ERMS, 0x00000007, 0, RTE_REG_EBX,  8)
 	FEAT_DEF(INVPCID, 0x00000007, 0, RTE_REG_EBX, 10)
 	FEAT_DEF(RTM, 0x00000007, 0, RTE_REG_EBX, 11)
+	FEAT_DEF(AVX512F, 0x00000007, 0, RTE_REG_EBX, 16)
 
 	FEAT_DEF(LAHF_SAHF, 0x80000001, 0, RTE_REG_ECX,  0)
 	FEAT_DEF(LZCNT, 0x80000001, 0, RTE_REG_ECX,  4)
