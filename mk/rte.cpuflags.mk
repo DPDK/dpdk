@@ -89,6 +89,10 @@ ifneq ($(filter $(AUTO_CPUFLAGS),__AVX2__),)
 CPUFLAGS += AVX2
 endif
 
+ifneq ($(filter $(AUTO_CPUFLAGS),__AVX512F__),)
+CPUFLAGS += AVX512F
+endif
+
 # IBM Power CPU flags
 ifneq ($(filter $(AUTO_CPUFLAGS),__PPC64__),)
 CPUFLAGS += PPC64
