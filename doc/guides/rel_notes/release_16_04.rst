@@ -156,6 +156,12 @@ Drivers
   Fixed issue in ethdev library that the structure for setting
   fdir's mask and flow entry was not consistent in byte ordering.
 
+* **cxgbe: Fixed crash due to incorrect size allocated for RSS table.**
+
+  Fixed a segfault that occurs when accessing part of port 0's RSS
+  table that gets overwritten by subsequent port 1's part of the RSS
+  table due to incorrect size allocated for each entry in the table.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,

@@ -355,7 +355,7 @@ static int init_rss(struct adapter *adap)
 	for_each_port(adap, i) {
 		struct port_info *pi = adap2pinfo(adap, i);
 
-		pi->rss = rte_zmalloc(NULL, pi->rss_size, 0);
+		pi->rss = rte_zmalloc(NULL, pi->rss_size * sizeof(u16), 0);
 		if (!pi->rss)
 			return -ENOMEM;
 	}
