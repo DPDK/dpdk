@@ -1422,8 +1422,8 @@ switch_worker(__attribute__((unused)) void *arg)
 							rte_pktmbuf_free(pkts_burst[--tx_count]);
 					}
 				}
-				while (tx_count)
-					virtio_tx_route(vdev, pkts_burst[--tx_count], (uint16_t)dev->device_fh);
+				for (i = 0; i < tx_count; ++i)
+					virtio_tx_route(vdev, pkts_burst[i], (uint16_t)dev->device_fh);
 			}
 
 			/*move to the next device in the list*/
