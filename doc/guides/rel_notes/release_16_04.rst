@@ -162,6 +162,11 @@ Drivers
   table that gets overwritten by subsequent port 1's part of the RSS
   table due to incorrect size allocated for each entry in the table.
 
+* **cxgbe: Fixed setting wrong device MTU.**
+
+  Fixed an incorrect device MTU being set due to ethernet header and
+  CRC lengths being added twice.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,

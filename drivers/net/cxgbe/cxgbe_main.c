@@ -855,7 +855,10 @@ int link_start(struct port_info *pi)
 {
 	struct adapter *adapter = pi->adapter;
 	int ret;
-	unsigned int mtu = pi->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	unsigned int mtu;
+
+	mtu = pi->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
+	      (ETHER_HDR_LEN + ETHER_CRC_LEN);
 
 	/*
 	 * We do not set address filters and promiscuity here, the stack does
