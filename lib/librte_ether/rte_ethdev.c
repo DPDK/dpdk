@@ -586,10 +586,8 @@ rte_eth_dev_attach_vdev(const char *vdevargs, uint8_t *port_id)
 
 	ret = 0;
 end:
-	if (name)
-		free(name);
-	if (args)
-		free(args);
+	free(name);
+	free(args);
 
 	if (ret < 0)
 		RTE_LOG(ERR, EAL, "Driver, cannot attach the device\n");

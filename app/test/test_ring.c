@@ -471,17 +471,13 @@ test_ring_basic(void)
 	if (ret != 0)
 		goto fail;
 
-	if (src)
-		free(src);
-	if (dst)
-		free(dst);
+	free(src);
+	free(dst);
 	return 0;
 
  fail:
-	if (src)
-		free(src);
-	if (dst)
-		free(dst);
+	free(src);
+	free(dst);
 	return -1;
 }
 
@@ -759,17 +755,13 @@ test_ring_burst_basic(void)
 		goto fail;
 
 	/* Free memory before test completed */
-	if (src)
-		free(src);
-	if (dst)
-		free(dst);
+	free(src);
+	free(dst);
 	return 0;
 
  fail:
-	if (src)
-		free(src);
-	if (dst)
-		free(dst);
+	free(src);
+	free(dst);
 	return -1;
 }
 
@@ -1168,17 +1160,13 @@ test_ring_stats(void)
 	memset(&r->stats[lcore_id], 0, sizeof(r->stats[lcore_id]));
 
 	/* Free memory before test completed */
-	if (src)
-		free(src);
-	if (dst)
-		free(dst);
+	free(src);
+	free(dst);
 	return 0;
 
 fail:
-	if (src)
-		free(src);
-	if (dst)
-		free(dst);
+	free(src);
+	free(dst);
 	return -1;
 #endif
 }

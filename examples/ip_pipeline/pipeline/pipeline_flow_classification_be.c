@@ -333,10 +333,8 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 	return 0;
 
 error_parse:
-	if (key_mask_str != NULL)
-		free(key_mask_str);
-	if (p->key_mask != NULL)
-		free(p->key_mask);
+	free(key_mask_str);
+	free(p->key_mask);
 	return -1;
 }
 

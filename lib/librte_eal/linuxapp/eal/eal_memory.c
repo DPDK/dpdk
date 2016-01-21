@@ -1404,8 +1404,7 @@ rte_eal_hugepage_init(void)
 	return 0;
 
 fail:
-	if (tmp_hp)
-		free(tmp_hp);
+	free(tmp_hp);
 	return -1;
 }
 

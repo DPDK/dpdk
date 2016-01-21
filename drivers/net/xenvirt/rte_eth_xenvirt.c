@@ -431,10 +431,8 @@ gntalloc_vring_create(int queue_type, uint32_t size, int vtidx)
 		va = NULL;
 	}
 out:
-	if (pa_arr)
-		free(pa_arr);
-	if (gref_arr)
-		free(gref_arr);
+	free(pa_arr);
+	free(gref_arr);
 
 	return va;
 }

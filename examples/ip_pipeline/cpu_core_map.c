@@ -488,6 +488,5 @@ cpu_core_map_get_lcore_id(struct cpu_core_map *map,
 void
 cpu_core_map_free(struct cpu_core_map *map)
 {
-	if (map)
-		free(map);
+	free(map);
 }

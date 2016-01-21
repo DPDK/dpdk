@@ -296,8 +296,7 @@ virtio_net_config_ll *new_device(unsigned int virtio_idx, struct xen_guest *gues
 	add_config_ll_entry(new_ll_dev);
 	return new_ll_dev;
 err:
-	if (new_ll_dev)
-		free(new_ll_dev);
+	free(new_ll_dev);
 	rte_free(virtqueue_rx);
 	rte_free(virtqueue_tx);
 

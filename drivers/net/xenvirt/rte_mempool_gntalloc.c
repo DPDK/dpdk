@@ -229,15 +229,12 @@ mmap_failed:
 			munmap(gnt_arr[i].va, pg_sz);
 	}
 out:
-	if (gnt_arr)
-		free(gnt_arr);
+	free(gnt_arr);
 	if (orig_va)
 		munmap(orig_va, sz);
 	if (mp == NULL) {
-		if (gref_arr)
-			free(gref_arr);
-		if (pa_arr)
-			free(pa_arr);
+		free(gref_arr);
+		free(pa_arr);
 
 		/* some gref has already been de-allocated from the list in the driver,
 		 * so dealloc one by one, and it is safe to deallocate twice

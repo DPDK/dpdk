@@ -120,8 +120,7 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	return 0;
 
 fail:
-	if (buf)
-		free(buf);
+	free(buf);
 	if (devargs) {
 		free(devargs->args);
 		free(devargs);

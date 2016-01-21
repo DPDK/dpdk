@@ -203,8 +203,7 @@ xen_free_gntnode(struct xen_gntnode *gntnode)
 {
 	if (gntnode == NULL)
 		return;
-	if (gntnode->gnt_info)
-		free(gntnode->gnt_info);
+	free(gntnode->gnt_info);
 	free(gntnode);
 }
 
@@ -286,14 +285,10 @@ parse_gntnode(int dom_id, char *path)
 	return gntnode;
 
 err:
-	if (gnt)
-		free(gnt);
-	if (gntnode)
-		free(gntnode);
-	if (gref_list)
-		free(gref_list);
-	if (buf)
-		free(buf);
+	free(gnt);
+	free(gntnode);
+	free(gref_list);
+	free(buf);
 	return NULL;
 }
 
@@ -412,8 +407,7 @@ parse_mpool_va(struct xen_mempool *mempool)
 	}
 	ret = 0;
 out:
-	if (buf)
-		free(buf);
+	free(buf);
 	return ret;
 }
 
@@ -460,8 +454,7 @@ cleanup_mempool(struct xen_mempool *mempool)
 	}
 	mempool->pindex = NULL;
 
-	if (mempool->mempfn_tbl)
-		free(mempool->mempfn_tbl);
+	free(mempool->mempfn_tbl);
 	mempool->mempfn_tbl = NULL;
 }
 
@@ -559,8 +552,7 @@ xen_map_vringflag(struct xen_vring *vring)
 	free(buf);
 	return 0;
 err:
-	if (buf)
-		free(buf);
+	free(buf);
 	if (vring->flag) {
 		munmap(vring->flag, pg_sz);
 		vring->flag = NULL;
@@ -622,8 +614,7 @@ cleanup_vring(struct xen_vring *vring)
 	}
 	vring->rx_pindex = NULL;
 
-	if (vring->rxpfn_tbl)
-		free(vring->rxpfn_tbl);
+	free(vring->rxpfn_tbl);
 	vring->rxpfn_tbl = NULL;
 
 	if (vring->txvring_addr) {
@@ -644,8 +635,7 @@ cleanup_vring(struct xen_vring *vring)
 	}
 	vring->tx_pindex = NULL;
 
-	if (vring->txpfn_tbl)
-		free(vring->txpfn_tbl);
+	free(vring->txpfn_tbl);
 	vring->txpfn_tbl = NULL;
 
 	if (vring->flag) {
@@ -680,8 +670,7 @@ xen_parse_etheraddr(struct xen_vring *vring)
 		goto out;
 	ret = 0;
 out:
-	if (buf)
-		free(buf);
+	free(buf);
 	return ret;
 }
 

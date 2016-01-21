@@ -4023,10 +4023,8 @@ test_close_bonded_device(void)
 static void
 testsuite_teardown(void)
 {
-	if (test_params->pkt_eth_hdr != NULL) {
-		free(test_params->pkt_eth_hdr);
-		test_params->pkt_eth_hdr = NULL;
-	}
+	free(test_params->pkt_eth_hdr);
+	test_params->pkt_eth_hdr = NULL;
 
 	/* Clean up and remove slaves from bonded device */
 	remove_slaves_and_stop_bonded_device();
