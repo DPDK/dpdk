@@ -1309,13 +1309,13 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	 * driver.
 	 */
 	if (tx_conf->tx_free_thresh != 0)
-		PMD_INIT_LOG(WARNING, "The tx_free_thresh parameter is not "
+		PMD_INIT_LOG(INFO, "The tx_free_thresh parameter is not "
 			     "used for the 1G driver.");
 	if (tx_conf->tx_rs_thresh != 0)
-		PMD_INIT_LOG(WARNING, "The tx_rs_thresh parameter is not "
+		PMD_INIT_LOG(INFO, "The tx_rs_thresh parameter is not "
 			     "used for the 1G driver.");
-	if (tx_conf->tx_thresh.wthresh == 0)
-		PMD_INIT_LOG(WARNING, "To improve 1G driver performance, "
+	if (tx_conf->tx_thresh.wthresh == 0 && hw->mac.type != e1000_82576)
+		PMD_INIT_LOG(INFO, "To improve 1G driver performance, "
 			     "consider setting the TX WTHRESH value to 4, 8, "
 			     "or 16.");
 

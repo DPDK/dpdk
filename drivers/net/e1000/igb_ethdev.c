@@ -61,13 +61,14 @@
  * Default values for port configuration
  */
 #define IGB_DEFAULT_RX_FREE_THRESH  32
-#define IGB_DEFAULT_RX_PTHRESH      8
-#define IGB_DEFAULT_RX_HTHRESH      8
-#define IGB_DEFAULT_RX_WTHRESH      0
 
-#define IGB_DEFAULT_TX_PTHRESH      32
-#define IGB_DEFAULT_TX_HTHRESH      0
-#define IGB_DEFAULT_TX_WTHRESH      0
+#define IGB_DEFAULT_RX_PTHRESH      ((hw->mac.type == e1000_i354) ? 12 : 8)
+#define IGB_DEFAULT_RX_HTHRESH      8
+#define IGB_DEFAULT_RX_WTHRESH      ((hw->mac.type == e1000_82576) ? 1 : 4)
+
+#define IGB_DEFAULT_TX_PTHRESH      ((hw->mac.type == e1000_i354) ? 20 : 8)
+#define IGB_DEFAULT_TX_HTHRESH      1
+#define IGB_DEFAULT_TX_WTHRESH      ((hw->mac.type == e1000_82576) ? 1 : 16)
 
 #define IGB_HKEY_MAX_INDEX 10
 
