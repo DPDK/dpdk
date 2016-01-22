@@ -220,9 +220,6 @@ rte_eth_dev_create_unique_device_name(char *name, size_t size,
 {
 	int ret;
 
-	if ((name == NULL) || (pci_dev == NULL))
-		return -EINVAL;
-
 	ret = snprintf(name, size, "%d:%d.%d",
 			pci_dev->addr.bus, pci_dev->addr.devid,
 			pci_dev->addr.function);
@@ -505,9 +502,6 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 static int
 rte_eth_dev_attach_pdev(struct rte_pci_addr *addr, uint8_t *port_id)
 {
-	if ((addr == NULL) || (port_id == NULL))
-		goto err;
-
 	/* re-construct pci_device_list */
 	if (rte_eal_pci_scan())
 		goto err;
@@ -530,9 +524,6 @@ rte_eth_dev_detach_pdev(uint8_t port_id, struct rte_pci_addr *addr)
 {
 	struct rte_pci_addr freed_addr;
 	struct rte_pci_addr vp;
-
-	if (addr == NULL)
-		goto err;
 
 	/* check whether the driver supports detach feature, or not */
 	if (rte_eth_dev_is_detachable(port_id))
@@ -566,9 +557,6 @@ rte_eth_dev_attach_vdev(const char *vdevargs, uint8_t *port_id)
 	char *name = NULL, *args = NULL;
 	int ret = -1;
 
-	if ((vdevargs == NULL) || (port_id == NULL))
-		goto end;
-
 	/* parse vdevargs, then retrieve device name and args */
 	if (rte_eal_parse_devargs_str(vdevargs, &name, &args))
 		goto end;
@@ -599,9 +587,6 @@ static int
 rte_eth_dev_detach_vdev(uint8_t port_id, char *vdevname)
 {
 	char name[RTE_ETH_NAME_MAX_LEN];
-
-	if (vdevname == NULL)
-		goto err;
 
 	/* check whether the driver supports detach feature, or not */
 	if (rte_eth_dev_is_detachable(port_id))
