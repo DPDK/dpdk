@@ -104,7 +104,7 @@ init_mbuf_pools(void)
 	pktmbuf_pool = rte_pktmbuf_pool_create(PKTMBUF_POOL_NAME, num_mbufs,
 		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 
-	return (pktmbuf_pool == NULL); /* 0  on success */
+	return pktmbuf_pool == NULL; /* 0  on success */
 }
 
 /**

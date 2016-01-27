@@ -416,7 +416,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		PMD_DRV_LOG(ERR, "command mismatch, expect %u, get %u",
 			    args->ops, info.ops);
 
-	return (err | info.result);
+	return err | info.result;
 }
 
 /*

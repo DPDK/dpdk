@@ -50,13 +50,13 @@
 static inline uint32_t
 less(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
 {
-	return (a*d < b*c);
+	return a*d < b*c;
 }
 
 static inline uint32_t
 less_or_equal(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
 {
-	return (a*d <= b*c);
+	return a*d <= b*c;
 }
 
 /* check whether a/b is a valid approximation */

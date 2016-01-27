@@ -306,7 +306,7 @@ _get_section(struct rte_cfgfile *cfg, const char *sectionname)
 int
 rte_cfgfile_has_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
-	return (_get_section(cfg, sectionname) != NULL);
+	return _get_section(cfg, sectionname) != NULL;
 }
 
 int
@@ -352,5 +352,5 @@ int
 rte_cfgfile_has_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)
 {
-	return (rte_cfgfile_get_entry(cfg, sectionname, entryname) != NULL);
+	return rte_cfgfile_get_entry(cfg, sectionname, entryname) != NULL;
 }

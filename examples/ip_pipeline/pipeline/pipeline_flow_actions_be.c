@@ -380,7 +380,7 @@ pkt4_work(
 	*pkt2_color = color3_2;
 	*pkt3_color = color3_3;
 
-	return (drop0 | (drop1 << 1) | (drop2 << 2) | (drop3 << 3));
+	return drop0 | (drop1 << 1) | (drop2 << 2) | (drop3 << 3);
 }
 
 PIPELINE_TABLE_AH_HIT_DROP_TIME(fa_table_ah_hit, pkt_work, pkt4_work);

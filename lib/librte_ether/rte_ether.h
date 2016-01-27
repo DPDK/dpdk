@@ -145,7 +145,7 @@ static inline int is_zero_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_unicast_ether_addr(const struct ether_addr *ea)
 {
-	return ((ea->addr_bytes[0] & ETHER_GROUP_ADDR) == 0);
+	return (ea->addr_bytes[0] & ETHER_GROUP_ADDR) == 0;
 }
 
 /**
@@ -160,7 +160,7 @@ static inline int is_unicast_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_multicast_ether_addr(const struct ether_addr *ea)
 {
-	return (ea->addr_bytes[0] & ETHER_GROUP_ADDR);
+	return ea->addr_bytes[0] & ETHER_GROUP_ADDR;
 }
 
 /**
@@ -193,7 +193,7 @@ static inline int is_broadcast_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_universal_ether_addr(const struct ether_addr *ea)
 {
-	return ((ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) == 0);
+	return (ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) == 0;
 }
 
 /**
@@ -208,7 +208,7 @@ static inline int is_universal_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_local_admin_ether_addr(const struct ether_addr *ea)
 {
-	return ((ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) != 0);
+	return (ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) != 0;
 }
 
 /**
@@ -224,7 +224,7 @@ static inline int is_local_admin_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_valid_assigned_ether_addr(const struct ether_addr *ea)
 {
-	return (is_unicast_ether_addr(ea) && (! is_zero_ether_addr(ea)));
+	return is_unicast_ether_addr(ea) && (! is_zero_ether_addr(ea));
 }
 
 /**

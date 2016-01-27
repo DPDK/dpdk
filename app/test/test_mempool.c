@@ -448,10 +448,10 @@ test_mempool_xmem_misc(void)
 		printf("failure @ %s: rte_mempool_xmem_usage(%u, %u) "
 			"returns: %#zx, while expected: %#zx;\n",
 			__func__, elt_num, total_size, sz, (size_t)usz);
-		return (-1);
+		return -1;
 	}
 
-	return (0);
+	return 0;
 }
 
 static int

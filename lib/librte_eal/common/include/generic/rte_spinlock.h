@@ -127,7 +127,7 @@ rte_spinlock_trylock (rte_spinlock_t *sl);
 static inline int
 rte_spinlock_trylock (rte_spinlock_t *sl)
 {
-	return (__sync_lock_test_and_set(&sl->locked,1) == 0);
+	return __sync_lock_test_and_set(&sl->locked,1) == 0;
 }
 #endif
 

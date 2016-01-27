@@ -59,7 +59,7 @@ bnx2x_reg_read8(struct bnx2x_softc *sc, size_t offset)
 	val = (uint8_t)(*((volatile uint8_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)));
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%02x", (unsigned long)offset, val);
 
-	return (val);
+	return val;
 }
 
 uint16_t
@@ -75,7 +75,7 @@ bnx2x_reg_read16(struct bnx2x_softc *sc, size_t offset)
 	val = (uint16_t)(*((volatile uint16_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)));
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x", (unsigned long)offset, val);
 
-	return (val);
+	return val;
 }
 
 uint32_t
@@ -92,5 +92,5 @@ bnx2x_reg_read32(struct bnx2x_softc *sc, size_t offset)
 	val = (uint32_t)(*((volatile uint32_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)));
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x", (unsigned long)offset, val);
 
-	return (val);
+	return val;
 }

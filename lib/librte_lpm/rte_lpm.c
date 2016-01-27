@@ -113,7 +113,7 @@ depth_to_range(uint8_t depth)
 		return 1 << (MAX_DEPTH_TBL24 - depth);
 
 	/* Else if depth is greater than 24 */
-	return (1 << (RTE_LPM_MAX_DEPTH - depth));
+	return 1 << (RTE_LPM_MAX_DEPTH - depth);
 }
 
 /*

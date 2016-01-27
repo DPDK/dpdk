@@ -92,7 +92,7 @@ vmxnet3_cmd_ring_desc_avail(struct vmxnet3_cmd_ring *ring)
 static inline bool
 vmxnet3_cmd_ring_desc_empty(struct vmxnet3_cmd_ring *ring)
 {
-	return (ring->next2comp == ring->next2fill);
+	return ring->next2comp == ring->next2fill;
 }
 
 typedef struct vmxnet3_comp_ring {

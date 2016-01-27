@@ -304,7 +304,7 @@ send_burst(struct lcore_queue_conf *qconf, uint32_t thresh, uint8_t port)
 			txmb->tail = 0;
 	}
 
-	return (fill);
+	return fill;
 }
 
 /* Enqueue a single packet, and send burst if queue is filled */
@@ -335,7 +335,7 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 	if(++txmb->head == len)
 		txmb->head = 0;
 
-	return (0);
+	return 0;
 }
 
 static inline void
@@ -561,13 +561,13 @@ parse_flow_num(const char *str, uint32_t min, uint32_t max, uint32_t *val)
 	errno = 0;
 	v = strtoul(str, &end, 10);
 	if (errno != 0 || *end != '\0')
-		return (-EINVAL);
+		return -EINVAL;
 
 	if (v < min || v > max)
-		return (-EINVAL);
+		return -EINVAL;
 
 	*val = (uint32_t)v;
-	return (0);
+	return 0;
 }
 
 static int
@@ -583,20 +583,20 @@ parse_flow_ttl(const char *str, uint32_t min, uint32_t max, uint32_t *val)
 	errno = 0;
 	v = strtoul(str, &end, 10);
 	if (errno != 0)
-		return (-EINVAL);
+		return -EINVAL;
 
 	if (*end != '\0') {
 		if (strncmp(frmt_sec, end, sizeof(frmt_sec)) == 0)
 			v *= MS_PER_S;
 		else if (strncmp(frmt_msec, end, sizeof (frmt_msec)) != 0)
-			return (-EINVAL);
+			return -EINVAL;
 	}
 
 	if (v < min || v > max)
-		return (-EINVAL);
+		return -EINVAL;
 
 	*val = (uint32_t)v;
-	return (0);
+	return 0;
 }
 
 static int
@@ -689,7 +689,7 @@ parse_args(int argc, char **argv)
 						optarg,
 						lgopts[option_index].name);
 					print_usage(prgname);
-					return (ret);
+					return ret;
 				}
 			}
 
@@ -702,7 +702,7 @@ parse_args(int argc, char **argv)
 						optarg,
 						lgopts[option_index].name);
 					print_usage(prgname);
-					return (ret);
+					return ret;
 				}
 			}
 

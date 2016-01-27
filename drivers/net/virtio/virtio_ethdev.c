@@ -329,7 +329,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	}
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "%s: Can not allocate virtqueue", __func__);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	if (queue_type == VTNET_RQ && vq->sw_ring == NULL) {
 		PMD_INIT_LOG(ERR, "%s: Can not allocate RX soft ring",
@@ -1229,7 +1229,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	if (rxmode->hw_ip_checksum) {
 		PMD_DRV_LOG(ERR, "HW IP checksum not supported");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	hw->vlan_strip = rxmode->hw_vlan_strip;

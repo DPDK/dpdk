@@ -44,7 +44,7 @@ rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unu
 #else
 	const __m128i x = _mm_cmpeq_epi32(k1, k2);
 
-	return (_mm_movemask_epi8(x) != 0xffff);
+	return _mm_movemask_epi8(x) != 0xffff;
 #endif
 }
 

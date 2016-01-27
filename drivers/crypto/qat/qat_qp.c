@@ -150,13 +150,13 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 		(qp_conf->nb_descriptors < ADF_MIN_SYM_DESC)) {
 		PMD_DRV_LOG(ERR, "Can't create qp for %u descriptors",
 				qp_conf->nb_descriptors);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	if (dev->pci_dev->mem_resource[0].addr == NULL) {
 		PMD_DRV_LOG(ERR, "Could not find VF config space "
 				"(UIO driver attached?).");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	if (queue_pair_id >=
@@ -164,7 +164,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 					ADF_NUM_BUNDLES_PER_DEV)) {
 		PMD_DRV_LOG(ERR, "qp_id %u invalid for this device",
 				queue_pair_id);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/* Allocate the queue pair data structure. */
@@ -172,7 +172,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 			sizeof(*qp), RTE_CACHE_LINE_SIZE);
 	if (qp == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to alloc mem for qp struct");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	qp->mmap_bar_addr = dev->pci_dev->mem_resource[0].addr;
 	rte_atomic16_init(&qp->inflights16);
@@ -198,7 +198,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 
 create_err:
 	rte_free(qp);
-	return (-EFAULT);
+	return -EFAULT;
 }
 
 int qat_crypto_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
@@ -293,7 +293,7 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 	PMD_INIT_FUNC_TRACE();
 	if (desc_size > ADF_MSG_SIZE_TO_BYTES(ADF_MAX_MSG_SIZE)) {
 		PMD_DRV_LOG(ERR, "Invalid descriptor size %d", desc_size);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/*
@@ -306,7 +306,7 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 			socket_id);
 	if (qp_mz == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to allocate ring memzone");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	queue->base_addr = (char *)qp_mz->addr;
@@ -322,7 +322,7 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 	if (adf_verify_queue_size(desc_size, nb_desc, &(queue->queue_size))
 			!= 0) {
 		PMD_DRV_LOG(ERR, "Invalid num inflights");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	queue->max_inflights = ADF_MAX_INFLIGHTS(queue->queue_size,
@@ -336,7 +336,7 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 
 	if (queue->max_inflights < 2) {
 		PMD_DRV_LOG(ERR, "Invalid num inflights");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 	queue->head = 0;
 	queue->tail = 0;
@@ -361,7 +361,7 @@ static int qat_qp_check_queue_alignment(uint64_t phys_addr,
 {
 	PMD_INIT_FUNC_TRACE();
 	if (((queue_size_bytes - 1) & phys_addr) != 0)
-		return (-EINVAL);
+		return -EINVAL;
 	return 0;
 }
 
@@ -378,7 +378,7 @@ static int adf_verify_queue_size(uint32_t msg_size, uint32_t msg_num,
 			return 0;
 		}
 	PMD_DRV_LOG(ERR, "Invalid ring size %d", msg_size * msg_num);
-	return (-EINVAL);
+	return -EINVAL;
 }
 
 static void adf_queue_arb_enable(struct qat_queue *txq, void *base_addr)

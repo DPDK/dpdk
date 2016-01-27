@@ -85,7 +85,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 
 	m = __rte_mbuf_raw_alloc(mp);
 	__rte_mbuf_sanity_check_raw(m, 0);
-	return (m);
+	return m;
 }
 
 #define RTE_MBUF_DATA_DMA_ADDR(mb)             \
@@ -312,10 +312,10 @@ what_ctx_update(struct em_tx_queue *txq, uint64_t flags,
 	if (likely (txq->ctx_cache.flags == flags &&
 			((txq->ctx_cache.hdrlen.data ^ hdrlen.data) &
 			txq->ctx_cache.cmp_mask) == 0))
-		return (EM_CTX_0);
+		return EM_CTX_0;
 
 	/* Mismatch */
-	return (EM_CTX_NUM);
+	return EM_CTX_NUM;
 }
 
 /* Reset transmit descriptors after they have been used */
@@ -373,7 +373,7 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
 
 	/* No Error */
-	return (0);
+	return 0;
 }
 
 static inline uint32_t
@@ -385,7 +385,7 @@ tx_desc_cksum_flags_to_upper(uint64_t ol_flags)
 
 	tmp = l4_olinfo[(ol_flags & PKT_TX_L4_MASK) != PKT_TX_L4_NO_CKSUM];
 	tmp |= l3_olinfo[(ol_flags & PKT_TX_IP_CKSUM) != 0];
-	return (tmp);
+	return tmp;
 }
 
 uint16_t
@@ -493,7 +493,7 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (em_xmit_cleanup(txq) != 0) {
 				/* Could not clean any descriptors */
 				if (nb_tx == 0)
-					return (0);
+					return 0;
 				goto end_of_tx;
 			}
 		}
@@ -630,7 +630,7 @@ end_of_tx:
 	E1000_PCI_REG_WRITE(txq->tdt_reg_addr, tx_id);
 	txq->tx_tail = tx_id;
 
-	return (nb_tx);
+	return nb_tx;
 }
 
 /*********************************************************************
@@ -659,7 +659,7 @@ rx_desc_error_to_pkt_flags(uint32_t rx_error)
 		pkt_flags |= PKT_RX_IP_CKSUM_BAD;
 	if (rx_error & E1000_RXD_ERR_TCPE)
 		pkt_flags |= PKT_RX_L4_CKSUM_BAD;
-	return (pkt_flags);
+	return pkt_flags;
 }
 
 uint16_t
@@ -833,7 +833,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
-	return (nb_rx);
+	return nb_rx;
 }
 
 uint16_t
@@ -1078,7 +1078,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
-	return (nb_rx);
+	return nb_rx;
 }
 
 #define	EM_MAX_BUF_SIZE     16384
@@ -1234,19 +1234,19 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx, tsize,
 				      RTE_CACHE_LINE_SIZE, socket_id);
 	if (tz == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	/* Allocate the tx queue data structure. */
 	if ((txq = rte_zmalloc("ethdev TX queue", sizeof(*txq),
 			RTE_CACHE_LINE_SIZE)) == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	/* Allocate software ring */
 	if ((txq->sw_ring = rte_zmalloc("txq->sw_ring",
 			sizeof(txq->sw_ring[0]) * nb_desc,
 			RTE_CACHE_LINE_SIZE)) == NULL) {
 		em_tx_queue_release(txq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	txq->nb_tx_desc = nb_desc;
@@ -1268,7 +1268,7 @@ eth_em_tx_queue_setup(struct rte_eth_dev *dev,
 	em_reset_tx_queue(txq);
 
 	dev->data->tx_queues[queue_idx] = txq;
-	return (0);
+	return 0;
 }
 
 static void
@@ -1335,7 +1335,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	if (nb_desc % EM_RXD_ALIGN != 0 ||
 			(nb_desc > E1000_MAX_RING_DESC) ||
 			(nb_desc < E1000_MIN_RING_DESC)) {
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/*
@@ -1344,7 +1344,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	if (rx_conf->rx_drop_en) {
 		PMD_INIT_LOG(ERR, "drop_en functionality not supported by "
 			     "device");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/* Free memory prior to re-allocation if needed. */
@@ -1358,19 +1358,19 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx, rsize,
 				      RTE_CACHE_LINE_SIZE, socket_id);
 	if (rz == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	/* Allocate the RX queue data structure. */
 	if ((rxq = rte_zmalloc("ethdev RX queue", sizeof(*rxq),
 			RTE_CACHE_LINE_SIZE)) == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	/* Allocate software ring. */
 	if ((rxq->sw_ring = rte_zmalloc("rxq->sw_ring",
 			sizeof (rxq->sw_ring[0]) * nb_desc,
 			RTE_CACHE_LINE_SIZE)) == NULL) {
 		em_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	rxq->mb_pool = mp;
@@ -1395,7 +1395,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->rx_queues[queue_idx] = rxq;
 	em_reset_rx_queue(rxq);
 
-	return (0);
+	return 0;
 }
 
 uint32_t
@@ -1546,12 +1546,12 @@ em_rctl_bsize(__rte_unused enum e1000_mac_type hwtyp, uint32_t *bufsz)
 			i++) {
 		if (rctl_bsize >= bufsz_to_rctl[i].bufsz) {
 			*bufsz = bufsz_to_rctl[i].bufsz;
-			return (bufsz_to_rctl[i].rctl);
+			return bufsz_to_rctl[i].rctl;
 		}
 	}
 
 	/* Should never happen. */
-	return (-EINVAL);
+	return -EINVAL;
 }
 
 static int
@@ -1572,7 +1572,7 @@ em_alloc_rx_queue_mbufs(struct em_rx_queue *rxq)
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed "
 				     "queue_id=%hu", rxq->queue_id);
-			return (-ENOMEM);
+			return -ENOMEM;
 		}
 
 		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));

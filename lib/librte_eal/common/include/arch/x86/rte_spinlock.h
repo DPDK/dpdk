@@ -90,7 +90,7 @@ rte_spinlock_trylock (rte_spinlock_t *sl)
 			: "[lockval]" (lockval)
 			: "memory");
 
-	return (lockval == 0);
+	return lockval == 0;
 }
 #endif
 

@@ -361,8 +361,8 @@ static inline int
 mpipe_link_compare(struct rte_eth_link *link1,
 		   struct rte_eth_link *link2)
 {
-	return ((*(uint64_t *)link1 == *(uint64_t *)link2)
-		? -1 : 0);
+	return (*(uint64_t *)link1 == *(uint64_t *)link2)
+		? -1 : 0;
 }
 
 static int

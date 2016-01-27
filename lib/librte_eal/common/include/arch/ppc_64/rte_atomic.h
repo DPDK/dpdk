@@ -109,12 +109,12 @@ rte_atomic16_dec(rte_atomic16_t *v)
 
 static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v)
 {
-	return (__atomic_add_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0);
+	return __atomic_add_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0;
 }
 
 static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v)
 {
-	return (__atomic_sub_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0);
+	return __atomic_sub_fetch(&v->cnt, 1, __ATOMIC_ACQUIRE) == 0;
 }
 
 /*------------------------- 32 bit atomic operations -------------------------*/
@@ -198,7 +198,7 @@ static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v)
 			: [cnt] "r" (&v->cnt)
 			: "cc", "xer", "memory");
 
-	return (ret == 0);
+	return ret == 0;
 }
 
 static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
@@ -216,7 +216,7 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 			: [cnt] "r" (&v->cnt)
 			: "cc", "xer", "memory");
 
-	return (ret == 0);
+	return ret == 0;
 }
 /*------------------------- 64 bit atomic operations -------------------------*/
 
@@ -387,7 +387,7 @@ static inline int rte_atomic64_inc_and_test(rte_atomic64_t *v)
 			: [cnt] "r" (&v->cnt)
 			: "cc", "xer", "memory");
 
-	return (ret == 0);
+	return ret == 0;
 }
 
 static inline int rte_atomic64_dec_and_test(rte_atomic64_t *v)
@@ -405,7 +405,7 @@ static inline int rte_atomic64_dec_and_test(rte_atomic64_t *v)
 			: [cnt] "r" (&v->cnt)
 			: "cc", "xer", "memory");
 
-	return (ret == 0);
+	return ret == 0;
 }
 
 static inline int rte_atomic64_test_and_set(rte_atomic64_t *v)

@@ -1839,7 +1839,7 @@ bnx2x_ack_int(struct bnx2x_softc *sc)
 static inline int
 func_by_vn(struct bnx2x_softc *sc, int vn)
 {
-    return (2 * vn + SC_PORT(sc));
+    return 2 * vn + SC_PORT(sc);
 }
 
 /*
@@ -1874,7 +1874,7 @@ bnx2x_stats_id(struct bnx2x_fastpath *fp)
 	return fp->cl_id;
     }
 
-    return (fp->cl_id + SC_PORT(sc) * FP_SB_MAX_E1x);
+    return fp->cl_id + SC_PORT(sc) * FP_SB_MAX_E1x;
 }
 
 int bnx2x_init(struct bnx2x_softc *sc);

@@ -609,36 +609,36 @@ check_memzone_bounded(const char *name, uint32_t len,  uint32_t align,
 			align, bound)) == NULL) {
 		printf("%s(%s): memzone creation failed\n",
 			__func__, name);
-		return (-1);
+		return -1;
 	}
 
 	if ((mz->phys_addr & ((phys_addr_t)align - 1)) != 0) {
 		printf("%s(%s): invalid phys addr alignment\n",
 			__func__, mz->name);
-		return (-1);
+		return -1;
 	}
 
 	if (((uintptr_t) mz->addr & ((uintptr_t)align - 1)) != 0) {
 		printf("%s(%s): invalid virtual addr alignment\n",
 			__func__, mz->name);
-		return (-1);
+		return -1;
 	}
 
 	if ((mz->len & RTE_CACHE_LINE_MASK) != 0 || mz->len < len ||
 			mz->len < RTE_CACHE_LINE_SIZE) {
 		printf("%s(%s): invalid length\n",
 			__func__, mz->name);
-		return (-1);
+		return -1;
 	}
 
 	if ((mz->phys_addr & bmask) !=
 			((mz->phys_addr + mz->len - 1) & bmask)) {
 		printf("%s(%s): invalid memzone boundary %u crossed\n",
 			__func__, mz->name, bound);
-		return (-1);
+		return -1;
 	}
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -654,7 +654,7 @@ test_memzone_bounded(void)
 			100, SOCKET_ID_ANY, 0, 32, UINT32_MAX)) != NULL) {
 		printf("%s(%s)created a memzone with invalid boundary "
 			"conditions\n", __func__, memzone_err->name);
-		return (-1);
+		return -1;
 	}
 
 	/* should fail as len is greater then boundary */
@@ -663,20 +663,20 @@ test_memzone_bounded(void)
 			100, SOCKET_ID_ANY, 0, 32, 32)) != NULL) {
 		printf("%s(%s)created a memzone with invalid boundary "
 			"conditions\n", __func__, memzone_err->name);
-		return (-1);
+		return -1;
 	}
 
 	if ((rc = check_memzone_bounded("bounded_128", 100, 128, 128)) != 0)
-		return (rc);
+		return rc;
 
 	if ((rc = check_memzone_bounded("bounded_256", 100, 256, 128)) != 0)
-		return (rc);
+		return rc;
 
 	if ((rc = check_memzone_bounded("bounded_1K", 100, 64, 1024)) != 0)
-		return (rc);
+		return rc;
 
 	if ((rc = check_memzone_bounded("bounded_1K_MAX", 0, 64, 1024)) != 0)
-		return (rc);
+		return rc;
 
 	return 0;
 }

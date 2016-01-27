@@ -1037,7 +1037,7 @@ rte_ring_full(const struct rte_ring *r)
 {
 	uint32_t prod_tail = r->prod.tail;
 	uint32_t cons_tail = r->cons.tail;
-	return (((cons_tail - prod_tail - 1) & r->prod.mask) == 0);
+	return ((cons_tail - prod_tail - 1) & r->prod.mask) == 0;
 }
 
 /**
@@ -1070,7 +1070,7 @@ rte_ring_count(const struct rte_ring *r)
 {
 	uint32_t prod_tail = r->prod.tail;
 	uint32_t cons_tail = r->cons.tail;
-	return ((prod_tail - cons_tail) & r->prod.mask);
+	return (prod_tail - cons_tail) & r->prod.mask;
 }
 
 /**
@@ -1086,7 +1086,7 @@ rte_ring_free_count(const struct rte_ring *r)
 {
 	uint32_t prod_tail = r->prod.tail;
 	uint32_t cons_tail = r->cons.tail;
-	return ((cons_tail - prod_tail - 1) & r->prod.mask);
+	return (cons_tail - prod_tail - 1) & r->prod.mask;
 }
 
 /**

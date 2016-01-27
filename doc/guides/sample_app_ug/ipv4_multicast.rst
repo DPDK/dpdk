@@ -222,7 +222,7 @@ Then, the number of ports in the destination portmask is calculated with the hel
 
         for (n = 0; v != 0; v &= v - 1, n++)
            ;
-        return (n);
+        return n;
     }
 
 This is done to determine which forwarding algorithm to use.
@@ -344,13 +344,13 @@ It is the mcast_out_pkt() function that performs the packet duplication (either 
         /* Create new mbuf for the header. */
 
         if (unlikely ((hdr = rte_pktmbuf_alloc(header_pool)) == NULL))
-            return (NULL);
+            return NULL;
 
         /* If requested, then make a new clone packet. */
 
         if (use_clone != 0 && unlikely ((pkt = rte_pktmbuf_clone(pkt, clone_pool)) == NULL)) {
             rte_pktmbuf_free(hdr);
-            return (NULL);
+            return NULL;
         }
 
         /* prepend new header */
@@ -370,5 +370,5 @@ It is the mcast_out_pkt() function that performs the packet duplication (either 
         hdr->ol_flags = pkt->ol_flags;
         rte_mbuf_sanity_check(hdr, RTE_MBUF_PKT, 1);
 
-        return (hdr);
+        return hdr;
     }

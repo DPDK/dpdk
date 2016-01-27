@@ -309,7 +309,7 @@ static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v)
 {
-	return (__sync_add_and_fetch(&v->cnt, 1) == 0);
+	return __sync_add_and_fetch(&v->cnt, 1) == 0;
 }
 #endif
 
@@ -329,7 +329,7 @@ static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v)
 {
-	return (__sync_sub_and_fetch(&v->cnt, 1) == 0);
+	return __sync_sub_and_fetch(&v->cnt, 1) == 0;
 }
 #endif
 
@@ -562,7 +562,7 @@ static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v)
 {
-	return (__sync_add_and_fetch(&v->cnt, 1) == 0);
+	return __sync_add_and_fetch(&v->cnt, 1) == 0;
 }
 #endif
 
@@ -582,7 +582,7 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 {
-	return (__sync_sub_and_fetch(&v->cnt, 1) == 0);
+	return __sync_sub_and_fetch(&v->cnt, 1) == 0;
 }
 #endif
 

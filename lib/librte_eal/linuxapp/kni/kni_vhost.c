@@ -439,7 +439,7 @@ kni_sock_rcvmsg(struct socket *sock,
 	KNI_DBG_RX("kni_rcvmsg expect_len %ld, flags 0x%08x, pkt_len %d\n",
 		   (unsigned long)len, q->flags, pkt_len);
 
-	return (pkt_len + vnet_hdr_len);
+	return pkt_len + vnet_hdr_len;
 }
 
 /* dummy tap like ioctl */

@@ -119,7 +119,7 @@ find_heap_max_free_elem(int *s, unsigned align)
 		}
 	}
 
-	return (len - MALLOC_ELEM_OVERHEAD - align);
+	return len - MALLOC_ELEM_OVERHEAD - align;
 }
 
 static const struct rte_memzone *

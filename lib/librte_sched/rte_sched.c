@@ -457,7 +457,7 @@ rte_sched_port_get_memory_footprint(struct rte_sched_port_params *params)
 	size0 = sizeof(struct rte_sched_port);
 	size1 = rte_sched_port_get_array_base(params, e_RTE_SCHED_PORT_ARRAY_TOTAL);
 
-	return (size0 + size1);
+	return size0 + size1;
 }
 
 static void
@@ -1057,7 +1057,7 @@ rte_sched_port_queue_is_empty(struct rte_sched_port *port, uint32_t qindex)
 {
 	struct rte_sched_queue *queue = port->queue + qindex;
 
-	return (queue->qr == queue->qw);
+	return queue->qr == queue->qw;
 }
 
 #endif /* RTE_SCHED_DEBUG */

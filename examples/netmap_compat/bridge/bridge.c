@@ -215,7 +215,7 @@ netmap_port_open(uint32_t idx)
 	err = rte_netmap_ioctl(port->fd, NIOCGINFO, &req);
 	if (err) {
 		printf("[E] NIOCGINFO ioctl failed (error %d)\n", err);
-		return (err);
+		return err;
 	}
 
 	snprintf(req.nr_name, sizeof(req.nr_name), "%s", port->str);
@@ -225,7 +225,7 @@ netmap_port_open(uint32_t idx)
 	err = rte_netmap_ioctl(port->fd, NIOCREGIF, &req);
 	if (err) {
 		printf("[E] NIOCREGIF ioctl failed (error %d)\n", err);
-		return (err);
+		return err;
 	}
 
 	/* mmap only once. */
@@ -235,7 +235,7 @@ netmap_port_open(uint32_t idx)
 
 	if (ports.mem == MAP_FAILED) {
 		printf("[E] NETMAP mmap failed for fd: %d)\n", port->fd);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	port->nmif = NETMAP_IF(ports.mem, req.nr_offset);
@@ -243,7 +243,7 @@ netmap_port_open(uint32_t idx)
 	port->tx_ring = NETMAP_TXRING(port->nmif, 0);
 	port->rx_ring = NETMAP_RXRING(port->nmif, 0);
 
-	return (0);
+	return 0;
 }
 
 

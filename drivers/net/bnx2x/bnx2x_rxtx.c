@@ -89,7 +89,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (NULL == rxq) {
 		PMD_INIT_LOG(ERR, "rte_zmalloc for rxq failed!");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	rxq->sc = sc;
 	rxq->mb_pool = mp;
@@ -121,7 +121,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (NULL == dma) {
 		PMD_RX_LOG(ERR, "ring_dma_zone_reserve for rx_ring failed!");
 		bnx2x_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	fp->rx_desc_mapping = rxq->rx_ring_phys_addr = (uint64_t)dma->phys_addr;
 	rxq->rx_ring = (uint64_t*)dma->addr;
@@ -142,7 +142,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (NULL == rxq->sw_ring) {
 		PMD_RX_LOG(ERR, "rte_zmalloc for sw_ring failed!");
 		bnx2x_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* Initialize software ring entries */
@@ -153,7 +153,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			PMD_RX_LOG(ERR, "RX mbuf alloc failed queue_id=%u, idx=%d",
 				   (unsigned)rxq->queue_id, idx);
 			bnx2x_rx_queue_release(rxq);
-			return (-ENOMEM);
+			return -ENOMEM;
 		}
 		rxq->sw_ring[idx] = mbuf;
 		rxq->rx_ring[idx] = mbuf->buf_physaddr;
@@ -169,7 +169,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dma = ring_dma_zone_reserve(dev, "bnx2x_rcq", queue_idx, dma_size, socket_id);
 	if (NULL == dma) {
 		PMD_RX_LOG(ERR, "RCQ  alloc failed");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	fp->rx_comp_mapping = rxq->cq_ring_phys_addr = (uint64_t)dma->phys_addr;
 	rxq->cq_ring = (union eth_rx_cqe*)dma->addr;
@@ -278,7 +278,7 @@ bnx2x_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq = rte_zmalloc("ethdev TX queue", sizeof(struct bnx2x_tx_queue),
 			  RTE_CACHE_LINE_SIZE);
 	if (txq == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 	txq->sc = sc;
 
 	txq->nb_tx_pages = 1;
@@ -302,7 +302,7 @@ bnx2x_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	tz = ring_dma_zone_reserve(dev, "tx_hw_ring", queue_idx, tsize, socket_id);
 	if (tz == NULL) {
 		bnx2x_tx_queue_release(txq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	fp->tx_desc_mapping = txq->tx_ring_phys_addr = (uint64_t)tz->phys_addr;
 	txq->tx_ring = (union eth_tx_bd_types *) tz->addr;
@@ -314,7 +314,7 @@ bnx2x_dev_tx_queue_setup(struct rte_eth_dev *dev,
 				   RTE_CACHE_LINE_SIZE);
 	if (txq->sw_ring == NULL) {
 		bnx2x_tx_queue_release(txq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* PMD_DRV_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,

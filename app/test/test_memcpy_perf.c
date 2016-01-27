@@ -152,8 +152,8 @@ free_buffers(void)
 static inline size_t
 get_rand_offset(size_t uoffset)
 {
-	return (((rte_rand() % (LARGE_BUFFER_SIZE - SMALL_BUFFER_SIZE)) &
-			~(ALIGNMENT_UNIT - 1)) + uoffset);
+	return ((rte_rand() % (LARGE_BUFFER_SIZE - SMALL_BUFFER_SIZE)) &
+			~(ALIGNMENT_UNIT - 1)) + uoffset;
 }
 
 /* Fill in source and destination addresses. */

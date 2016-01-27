@@ -112,7 +112,7 @@ app_usage(const char *prgname)
 
 static inline int str_is(const char *str, const char *is)
 {
-	return (strcmp(str, is) == 0);
+	return strcmp(str, is) == 0;
 }
 
 /* returns core mask used by DPDK */

@@ -377,7 +377,7 @@ ipv4_hash_crc(const void *data, __rte_unused uint32_t data_len,
 	init_val = rte_jhash_1word(k->ip_dst, init_val);
 	init_val = rte_jhash_1word(*p, init_val);
 #endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
-	return (init_val);
+	return init_val;
 }
 
 static inline uint32_t
@@ -420,7 +420,7 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len, uint32_t init_va
 	init_val = rte_jhash(k->ip_dst, sizeof(uint8_t) * IPV6_ADDR_LEN, init_val);
 	init_val = rte_jhash_1word(*p, init_val);
 #endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
-	return (init_val);
+	return init_val;
 }
 
 #define IPV4_L3FWD_NUM_ROUTES \

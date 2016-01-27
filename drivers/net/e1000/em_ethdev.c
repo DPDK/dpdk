@@ -272,7 +272,7 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 			"failed to init HW",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
-		return -(ENODEV);
+		return -ENODEV;
 	}
 
 	/* Allocate memory for storing MAC addresses */
@@ -282,7 +282,7 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to "
 			"store MAC addresses",
 			ETHER_ADDR_LEN * hw->mac.rar_entry_count);
-		return -(ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* Copy the permanent MAC address */
@@ -299,7 +299,7 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 	rte_intr_callback_register(&(pci_dev->intr_handle),
 		eth_em_interrupt_handler, (void *)eth_dev);
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -431,11 +431,11 @@ em_hw_init(struct e1000_hw *hw)
 		PMD_INIT_LOG(ERR, "PHY reset is blocked due to "
 			"SOL/IDER session");
 	}
-	return (0);
+	return 0;
 
 error:
 	em_hw_control_release(hw);
-	return (diag);
+	return diag;
 }
 
 static int
@@ -448,7 +448,7 @@ eth_em_configure(struct rte_eth_dev *dev)
 	intr->flags |= E1000_FLAG_NEED_LINK_UPDATE;
 	PMD_INIT_FUNC_TRACE();
 
-	return (0);
+	return 0;
 }
 
 static void
@@ -536,7 +536,7 @@ eth_em_start(struct rte_eth_dev *dev)
 	/* Initialize the hardware */
 	if (em_hardware_init(hw)) {
 		PMD_INIT_LOG(ERR, "Unable to initialize the hardware");
-		return (-EIO);
+		return -EIO;
 	}
 
 	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN);
@@ -662,14 +662,14 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "<<");
 
-	return (0);
+	return 0;
 
 error_invalid_config:
 	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port %u",
 		     dev->data->dev_conf.link_speed,
 		     dev->data->dev_conf.link_duplex, dev->data->port_id);
 	em_dev_clear_queues(dev);
-	return (-EINVAL);
+	return -EINVAL;
 }
 
 /*********************************************************************
@@ -802,9 +802,9 @@ em_hardware_init(struct e1000_hw *hw)
 
 	diag = e1000_init_hw(hw);
 	if (diag < 0)
-		return (diag);
+		return diag;
 	e1000_check_for_link(hw);
-	return (0);
+	return 0;
 }
 
 /* This function is based on em_update_stats_counters() in e1000/if_em.c */
@@ -972,14 +972,14 @@ em_get_max_pktlen(const struct e1000_hw *hw)
 	case e1000_82574:
 	case e1000_80003es2lan: /* 9K Jumbo Frame size */
 	case e1000_82583:
-		return (0x2412);
+		return 0x2412;
 	case e1000_pchlan:
-		return (0x1000);
+		return 0x1000;
 	/* Adapters that do not support jumbo frames */
 	case e1000_ich8lan:
-		return (ETHER_MAX_LEN);
+		return ETHER_MAX_LEN;
 	default:
-		return (MAX_JUMBO_FRAME_SIZE);
+		return MAX_JUMBO_FRAME_SIZE;
 	}
 }
 
@@ -1360,7 +1360,7 @@ eth_em_interrupt_setup(struct rte_eth_dev *dev)
 	E1000_READ_REG(hw, E1000_ICR);
 	regval = E1000_READ_REG(hw, E1000_IMS);
 	E1000_WRITE_REG(hw, E1000_IMS, regval | E1000_ICR_LSC);
-	return (0);
+	return 0;
 }
 
 /*
@@ -1552,7 +1552,7 @@ eth_em_led_on(struct rte_eth_dev *dev)
 	struct e1000_hw *hw;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	return (e1000_led_on(hw) == E1000_SUCCESS ? 0 : -ENOTSUP);
+	return e1000_led_on(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
@@ -1561,7 +1561,7 @@ eth_em_led_off(struct rte_eth_dev *dev)
 	struct e1000_hw *hw;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	return (e1000_led_off(hw) == E1000_SUCCESS ? 0 : -ENOTSUP);
+	return e1000_led_off(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
@@ -1633,7 +1633,7 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	    (fc_conf->high_water < fc_conf->low_water)) {
 		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value");
 		PMD_INIT_LOG(ERR, "high water must <= 0x%x", max_high_water);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	hw->fc.requested_mode = rte_fcmode_2_e1000_fcmode[fc_conf->mode];
@@ -1663,7 +1663,7 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 
 	PMD_INIT_LOG(ERR, "e1000_setup_link_generic = 0x%x", err);
-	return (-EIO);
+	return -EIO;
 }
 
 static void

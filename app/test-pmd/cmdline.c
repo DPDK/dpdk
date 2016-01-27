@@ -2420,11 +2420,11 @@ parse_item_list(char* str, const char* item_name, unsigned int max_items,
 		}
 		if (c != ',') {
 			printf("character %c is not a decimal digit\n", c);
-			return (0);
+			return 0;
 		}
 		if (! value_ok) {
 			printf("No valid value before comma\n");
-			return (0);
+			return 0;
 		}
 		if (nb_item < max_items) {
 			parsed_items[nb_item] = value;
@@ -2436,11 +2436,11 @@ parse_item_list(char* str, const char* item_name, unsigned int max_items,
 	if (nb_item >= max_items) {
 		printf("Number of %s = %u > %u (maximum items)\n",
 		       item_name, nb_item + 1, max_items);
-		return (0);
+		return 0;
 	}
 	parsed_items[nb_item++] = value;
 	if (! check_unique_values)
-		return (nb_item);
+		return nb_item;
 
 	/*
 	 * Then, check that all values in the list are differents.
@@ -2451,11 +2451,11 @@ parse_item_list(char* str, const char* item_name, unsigned int max_items,
 			if (parsed_items[j] == parsed_items[i]) {
 				printf("duplicated %s %u at index %u and %u\n",
 				       item_name, parsed_items[i], i, j);
-				return (0);
+				return 0;
 			}
 		}
 	}
-	return (nb_item);
+	return nb_item;
 }
 
 struct cmd_set_list_result {

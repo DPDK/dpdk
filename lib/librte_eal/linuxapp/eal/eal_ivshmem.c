@@ -109,8 +109,8 @@ TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 static int
 is_ivshmem_device(struct rte_pci_device * dev)
 {
-	return (dev->id.vendor_id == PCI_VENDOR_ID_IVSHMEM
-			&& dev->id.device_id == PCI_DEVICE_ID_IVSHMEM);
+	return dev->id.vendor_id == PCI_VENDOR_ID_IVSHMEM
+			&& dev->id.device_id == PCI_DEVICE_ID_IVSHMEM;
 }
 
 static void *

@@ -1628,7 +1628,7 @@ static int igb_get_i2c_data(void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	s32 i2cctl = E1000_READ_REG(hw, E1000_I2CPARAMS);
 
-	return ((i2cctl & E1000_I2C_DATA_IN) != 0);
+	return (i2cctl & E1000_I2C_DATA_IN) != 0;
 }
 
 /* igb_set_i2c_data - Sets the I2C data bit
@@ -1690,7 +1690,7 @@ static int igb_get_i2c_clk(void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	s32 i2cctl = E1000_READ_REG(hw, E1000_I2CPARAMS);
 
-	return ((i2cctl & E1000_I2C_CLK_IN) != 0);
+	return (i2cctl & E1000_I2C_CLK_IN) != 0;
 }
 
 static const struct i2c_algo_bit_data igb_i2c_algo = {
@@ -8044,7 +8044,7 @@ static bool igb_clean_rx_irq(struct igb_q_vector *q_vector, int budget)
 	igb_lro_flush_all(q_vector);
 
 #endif /* IGB_NO_LRO */
-	return (total_packets < budget);
+	return total_packets < budget;
 }
 #else /* CONFIG_IGB_DISABLE_PACKET_SPLIT */
 /**
@@ -8352,7 +8352,7 @@ static bool igb_clean_rx_irq(struct igb_q_vector *q_vector, int budget)
 	igb_lro_flush_all(q_vector);
 
 #endif /* IGB_NO_LRO */
-	return (total_packets < budget);
+	return total_packets < budget;
 }
 #endif /* CONFIG_IGB_DISABLE_PACKET_SPLIT */
 

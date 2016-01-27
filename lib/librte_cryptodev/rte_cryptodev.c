@@ -474,7 +474,7 @@ rte_cryptodev_queue_pairs_config(struct rte_cryptodev *dev, uint16_t nb_qpairs,
 	if (nb_qpairs > (dev_info.max_nb_queue_pairs)) {
 		CDEV_LOG_ERR("Invalid num queue_pairs (%u) for dev %u",
 				nb_qpairs, dev->data->dev_id);
-	    return (-EINVAL);
+	    return -EINVAL;
 	}
 
 	if (dev->data->queue_pairs == NULL) { /* first time configuration */
@@ -601,7 +601,7 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	dev = &rte_crypto_devices[dev_id];
@@ -609,7 +609,7 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 	if (dev->data->dev_started) {
 		CDEV_LOG_ERR(
 		    "device %d must be stopped to allow configuration", dev_id);
-		return (-EBUSY);
+		return -EBUSY;
 	}
 
 	/* Setup new number of queue pairs and reconfigure device. */
@@ -643,7 +643,7 @@ rte_cryptodev_start(uint8_t dev_id)
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	dev = &rte_crypto_devices[dev_id];
@@ -755,13 +755,13 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	dev = &rte_crypto_devices[dev_id];
 	if (queue_pair_id >= dev->data->nb_queue_pairs) {
 		CDEV_LOG_ERR("Invalid queue_pair_id=%d", queue_pair_id);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	if (dev->data->dev_started) {
@@ -784,7 +784,7 @@ rte_cryptodev_stats_get(uint8_t dev_id, struct rte_cryptodev_stats *stats)
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
-		return (-ENODEV);
+		return -ENODEV;
 	}
 
 	if (stats == NULL) {
@@ -849,11 +849,11 @@ rte_cryptodev_callback_register(uint8_t dev_id,
 	struct rte_cryptodev_callback *user_cb;
 
 	if (!cb_fn)
-		return (-EINVAL);
+		return -EINVAL;
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	dev = &rte_crypto_devices[dev_id];
@@ -880,7 +880,7 @@ rte_cryptodev_callback_register(uint8_t dev_id,
 	}
 
 	rte_spinlock_unlock(&rte_cryptodev_cb_lock);
-	return ((user_cb == NULL) ? -ENOMEM : 0);
+	return (user_cb == NULL) ? -ENOMEM : 0;
 }
 
 int
@@ -893,11 +893,11 @@ rte_cryptodev_callback_unregister(uint8_t dev_id,
 	struct rte_cryptodev_callback *cb, *next;
 
 	if (!cb_fn)
-		return (-EINVAL);
+		return -EINVAL;
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	dev = &rte_crypto_devices[dev_id];

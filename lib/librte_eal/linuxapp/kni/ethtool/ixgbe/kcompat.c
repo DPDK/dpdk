@@ -444,8 +444,8 @@ u64
 _kc_pci_map_page(struct pci_dev *dev, struct page *page, unsigned long offset,
                  size_t size, int direction)
 {
-	return (((u64) (page - mem_map) << PAGE_SHIFT) + offset +
-		PCI_DRAM_OFFSET);
+	return ((u64) (page - mem_map) << PAGE_SHIFT) + offset +
+		PCI_DRAM_OFFSET;
 }
 
 #else /* CONFIG_HIGHMEM */

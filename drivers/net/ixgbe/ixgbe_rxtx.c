@@ -94,7 +94,7 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 
 	m = __rte_mbuf_raw_alloc(mp);
 	__rte_mbuf_sanity_check_raw(m, 0);
-	return (m);
+	return m;
 }
 
 
@@ -468,7 +468,7 @@ what_advctx_update(struct ixgbe_tx_queue *txq, uint64_t flags,
 	}
 
 	/* Mismatch, use the previous context */
-	return (IXGBE_CTX_NUM);
+	return IXGBE_CTX_NUM;
 }
 
 static inline uint32_t
@@ -561,7 +561,7 @@ ixgbe_xmit_cleanup(struct ixgbe_tx_queue *txq)
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
 
 	/* No Error */
-	return (0);
+	return 0;
 }
 
 uint16_t
@@ -683,7 +683,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (ixgbe_xmit_cleanup(txq) != 0) {
 				/* Could not clean any descriptors */
 				if (nb_tx == 0)
-					return (0);
+					return 0;
 				goto end_of_tx;
 			}
 
@@ -712,7 +712,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 						 * descriptors
 						 */
 						if (nb_tx == 0)
-							return (0);
+							return 0;
 						goto end_of_tx;
 					}
 				}
@@ -870,7 +870,7 @@ end_of_tx:
 	IXGBE_PCI_REG_WRITE(txq->tdt_reg_addr, tx_id);
 	txq->tx_tail = tx_id;
 
-	return (nb_tx);
+	return nb_tx;
 }
 
 /*********************************************************************
@@ -1136,7 +1136,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 	diag = rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
 				    rxq->rx_free_thresh);
 	if (unlikely(diag != 0))
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	rxdp = &rxq->rx_ring[alloc_idx];
 	for (i = 0; i < rxq->rx_free_thresh; ++i) {
@@ -1458,7 +1458,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
-	return (nb_rx);
+	return nb_rx;
 }
 
 /**
@@ -2068,7 +2068,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct ixgbe_tx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	/*
 	 * Allocate TX ring hardware descriptors. A memzone large enough to
@@ -2080,7 +2080,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			IXGBE_ALIGN, socket_id);
 	if (tz == NULL) {
 		ixgbe_tx_queue_release(txq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	txq->nb_tx_desc = nb_desc;
@@ -2117,7 +2117,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq->sw_ring == NULL) {
 		ixgbe_tx_queue_release(txq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
 		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
@@ -2130,7 +2130,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->tx_queues[queue_idx] = txq;
 
 
-	return (0);
+	return 0;
 }
 
 /**
@@ -2347,7 +2347,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (nb_desc % IXGBE_RXD_ALIGN != 0 ||
 			(nb_desc > IXGBE_MAX_RING_DESC) ||
 			(nb_desc < IXGBE_MIN_RING_DESC)) {
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/* Free memory prior to re-allocation if needed... */
@@ -2360,7 +2360,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct ixgbe_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 	rxq->mb_pool = mp;
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
@@ -2382,7 +2382,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				      RX_RING_SZ, IXGBE_ALIGN, socket_id);
 	if (rz == NULL) {
 		ixgbe_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/*
@@ -2439,7 +2439,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 					  RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq->sw_ring) {
 		ixgbe_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/*
@@ -2456,7 +2456,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				   RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq->sw_sc_ring) {
 		ixgbe_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p sw_sc_ring=%p hw_ring=%p "
@@ -3584,7 +3584,7 @@ ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed queue_id=%u",
 				     (unsigned) rxq->queue_id);
-			return (-ENOMEM);
+			return -ENOMEM;
 		}
 
 		rte_mbuf_refcnt_set(mbuf, 1);

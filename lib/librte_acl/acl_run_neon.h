@@ -102,7 +102,7 @@ resolve_priority_neon(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
 static inline __attribute__((always_inline)) uint32_t
 check_any_match_x4(uint64_t val[])
 {
-	return ((val[0] | val[1] | val[2] | val[3]) & RTE_ACL_NODE_MATCH);
+	return (val[0] | val[1] | val[2] | val[3]) & RTE_ACL_NODE_MATCH;
 }
 
 static inline __attribute__((always_inline)) void

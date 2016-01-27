@@ -1260,7 +1260,7 @@ rte_mempool_virt2phy(const struct rte_mempool *mp, const void *elt)
 		uintptr_t off;
 
 		off = (const char *)elt - (const char *)mp->elt_va_start;
-		return (mp->elt_pa[off >> mp->pg_shift] + (off & mp->pg_mask));
+		return mp->elt_pa[off >> mp->pg_shift] + (off & mp->pg_mask);
 	} else {
 		/*
 		 * If huge pages are disabled, we cannot assume the

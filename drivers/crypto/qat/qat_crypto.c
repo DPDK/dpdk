@@ -294,8 +294,8 @@ uint16_t qat_crypto_pkt_tx_burst(void *qp, struct rte_mbuf **tx_pkts,
 	tail = queue->tail;
 
 	/* Find how many can actually fit on the ring */
-	overflow = (rte_atomic16_add_return(&tmp_qp->inflights16, nb_pkts)
-				- queue->max_inflights);
+	overflow = rte_atomic16_add_return(&tmp_qp->inflights16, nb_pkts)
+				- queue->max_inflights;
 	if (overflow > 0) {
 		rte_atomic16_sub(&tmp_qp->inflights16, overflow);
 		nb_pkts_possible = nb_pkts - overflow;

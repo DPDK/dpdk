@@ -112,7 +112,7 @@ static struct rte_ring *r;
 		printf("error at %s:%d\tcondition " #exp " failed\n",	\
 		    __func__, __LINE__);				\
 		rte_ring_dump(stdout, r);				\
-		return (-1);						\
+		return -1;						\
 	}
 
 #define	TEST_RING_FULL_EMTPY_ITER	8
@@ -274,7 +274,7 @@ test_ring_basic_full_empty(void * const src[], void *dst[])
 		TEST_RING_VERIFY(0 == memcmp(src, dst, rsz));
 		rte_ring_dump(stdout, r);
 	}
-	return (0);
+	return 0;
 }
 
 static int

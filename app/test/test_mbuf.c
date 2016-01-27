@@ -696,7 +696,7 @@ test_refcnt_slave(__attribute__((unused)) void *arg)
 	printf("%s finished at lcore %u, "
 	       "number of freed mbufs: %u\n",
 	       __func__, lcore, free);
-	return (0);
+	return 0;
 }
 
 static void
@@ -770,7 +770,7 @@ test_refcnt_master(void)
 	rte_wmb();
 
 	printf("%s finished at lcore %u\n", __func__, lcore);
-	return (0);
+	return 0;
 }
 
 #endif
@@ -786,7 +786,7 @@ test_refcnt_mbuf(void)
 	if ((lnum = rte_lcore_count()) == 1) {
 		printf("skipping %s, number of lcores: %u is not enough\n",
 		    __func__, lnum);
-		return (0);
+		return 0;
 	}
 
 	printf("starting %s, at %u lcores\n", __func__, lnum);
@@ -800,7 +800,7 @@ test_refcnt_mbuf(void)
 				SOCKET_ID_ANY)) == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_pool) "\n",
 		    __func__);
-		return (-1);
+		return -1;
 	}
 
 	if (refcnt_mbuf_ring == NULL &&
@@ -809,7 +809,7 @@ test_refcnt_mbuf(void)
 			RING_F_SP_ENQ)) == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_mbuf_ring)
 		    "\n", __func__);
-		return (-1);
+		return -1;
 	}
 
 	refcnt_stop_slaves = 0;
@@ -836,7 +836,7 @@ test_refcnt_mbuf(void)
 	rte_ring_dump(stdout, refcnt_mbuf_ring);
 
 #endif
-	return (0);
+	return 0;
 }
 
 #include <unistd.h>

@@ -153,7 +153,7 @@ _lthread_queue_create(const char *name)
 static inline int __attribute__ ((always_inline))
 _lthread_queue_empty(struct lthread_queue *q)
 {
-	return (q->tail == q->head);
+	return q->tail == q->head;
 }
 
 

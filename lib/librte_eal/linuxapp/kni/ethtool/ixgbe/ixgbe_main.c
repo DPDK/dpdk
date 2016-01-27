@@ -2279,7 +2279,7 @@ static int ixgbe_set_mac(struct net_device *netdev, void *p)
 	/* set the correct pool for the new PF MAC address in entry 0 */
 	ret = ixgbe_add_mac_filter(adapter, hw->mac.addr,
 				    adapter->num_vfs);
-	return (ret > 0 ? 0 : ret);
+	return ret > 0 ? 0 : ret;
 }
 
 

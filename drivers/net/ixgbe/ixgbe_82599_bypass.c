@@ -268,7 +268,7 @@ ixgbe_bypass_get_media_type(struct ixgbe_hw *hw)
 	} else {
 		media_type = ixgbe_get_media_type_82599(hw);
 	}
-	return (media_type);
+	return media_type;
 }
 
 /*
@@ -310,5 +310,5 @@ ixgbe_bypass_init_hw(struct ixgbe_hw *hw)
                 hw->mac.ops.flap_tx_laser = NULL;
 	}
 
-	return (rc);
+	return rc;
 }

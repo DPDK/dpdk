@@ -96,7 +96,7 @@ tx_mbuf_alloc(struct rte_mempool *mp)
 
 	m = __rte_mbuf_raw_alloc(mp);
 	__rte_mbuf_sanity_check_raw(m, 0);
-	return (m);
+	return m;
 }
 
 

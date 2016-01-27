@@ -1323,7 +1323,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	if ((diag != IXGBE_SUCCESS) && (diag != IXGBE_ERR_INVALID_MAC_ADDR)) {
 		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
-		return (diag);
+		return diag;
 	}
 
 	/* negotiate mailbox API version to use with the PF. */
@@ -1374,7 +1374,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 		default:
 			PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
-			return (-EIO);
+			return -EIO;
 	}
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
@@ -1478,7 +1478,7 @@ rte_ixgbevf_pmd_init(const char *name __rte_unused, const char *param __rte_unus
 	PMD_INIT_FUNC_TRACE();
 
 	rte_eth_driver_register(&rte_ixgbevf_pmd);
-	return (0);
+	return 0;
 }
 
 static int
@@ -2162,7 +2162,7 @@ skip_link_setup:
 
 	ixgbe_restore_statistics_mapping(dev);
 
-	return (0);
+	return 0;
 
 error:
 	PMD_INIT_LOG(ERR, "failure in ixgbe_dev_start(): %d", err);
@@ -3248,7 +3248,7 @@ ixgbe_dev_led_on(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	return (ixgbe_led_on(hw, 0) == IXGBE_SUCCESS ? 0 : -ENOTSUP);
+	return ixgbe_led_on(hw, 0) == IXGBE_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
@@ -3257,7 +3257,7 @@ ixgbe_dev_led_off(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	return (ixgbe_led_off(hw, 0) == IXGBE_SUCCESS ? 0 : -ENOTSUP);
+	return ixgbe_led_off(hw, 0) == IXGBE_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
@@ -3339,7 +3339,7 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		(fc_conf->high_water < fc_conf->low_water)) {
 		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
 		PMD_INIT_LOG(ERR, "High_water must <= 0x%x", max_high_water);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	hw->fc.requested_mode = rte_fcmode_2_ixgbe_fcmode[fc_conf->mode];
@@ -3561,7 +3561,7 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	    (pfc_conf->fc.high_water <= pfc_conf->fc.low_water)) {
 		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
 		PMD_INIT_LOG(ERR, "High_water must <= 0x%x", max_high_water);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	hw->fc.requested_mode = rte_fcmode_2_ixgbe_fcmode[pfc_conf->fc.mode];
@@ -4026,7 +4026,7 @@ ixgbe_vmdq_mode_check(struct ixgbe_hw *hw)
 	reg_val = IXGBE_READ_REG(hw, IXGBE_VT_CTL);
 	if (!(reg_val & IXGBE_VT_CTL_VT_ENABLE)) {
 		PMD_INIT_LOG(ERR, "VMDq must be enabled for this setting");
-		return (-1);
+		return -1;
 	}
 
 	return 0;
@@ -4083,7 +4083,7 @@ ixgbe_uc_hash_table_set(struct rte_eth_dev *dev,struct ether_addr* mac_addr,
 
 	/* The UTA table only exists on 82599 hardware and newer */
 	if (hw->mac.type < ixgbe_mac_82599EB)
-		return (-ENOTSUP);
+		return -ENOTSUP;
 
 	vector = ixgbe_uta_vector(hw,mac_addr);
 	uta_idx = (vector >> ixgbe_uta_bit_shift) & ixgbe_uta_idx_mask;
@@ -4126,7 +4126,7 @@ ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 
 	/* The UTA table only exists on 82599 hardware and newer */
 	if (hw->mac.type < ixgbe_mac_82599EB)
-		return (-ENOTSUP);
+		return -ENOTSUP;
 
 	if(on) {
 		for (i = 0; i < ETH_VMDQ_NUM_UC_HASH_ARRAY; i++) {
@@ -4175,10 +4175,10 @@ ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
 	if (hw->mac.type == ixgbe_mac_82598EB) {
 		PMD_INIT_LOG(ERR, "setting VF receive mode set should be done"
 			     " on 82599 hardware and newer");
-		return (-ENOTSUP);
+		return -ENOTSUP;
 	}
 	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return (-ENOTSUP);
+		return -ENOTSUP;
 
 	val = ixgbe_convert_vm_rx_mask_to_val(rx_mask, val);
 
@@ -4203,7 +4203,7 @@ ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return (-ENOTSUP);
+		return -ENOTSUP;
 
 	addr = IXGBE_VFRE(pool >= ETH_64_POOLS/2);
 	reg = IXGBE_READ_REG(hw, addr);
@@ -4230,7 +4230,7 @@ ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return (-ENOTSUP);
+		return -ENOTSUP;
 
 	addr = IXGBE_VFTE(pool >= ETH_64_POOLS/2);
 	reg = IXGBE_READ_REG(hw, addr);
@@ -4256,7 +4256,7 @@ ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return (-ENOTSUP);
+		return -ENOTSUP;
 	for (pool_idx = 0; pool_idx < ETH_64_POOLS; pool_idx++) {
 		if (pool_mask & ((uint64_t)(1ULL << pool_idx)))
 			ret = hw->mac.ops.set_vfta(hw,vlan,pool_idx,vlan_on);
@@ -4422,7 +4422,7 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 		(IXGBE_DEV_PRIVATE_TO_PFDATA(dev->data->dev_private));
 
 	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return (-ENOTSUP);
+		return -ENOTSUP;
 
 	memset(&mr_info->mr_conf[rule_id], 0,
 		sizeof(struct rte_eth_mirror_conf));

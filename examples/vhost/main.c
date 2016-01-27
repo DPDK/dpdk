@@ -911,7 +911,7 @@ gpa_to_hpa(struct vhost_dev  *vdev, uint64_t guest_pa,
 static inline int __attribute__((always_inline))
 ether_addr_cmp(struct ether_addr *ea, struct ether_addr *eb)
 {
-	return (((*(uint64_t *)ea ^ *(uint64_t *)eb) & MAC_ADDR_CMP) == 0);
+	return ((*(uint64_t *)ea ^ *(uint64_t *)eb) & MAC_ADDR_CMP) == 0;
 }
 
 /*
@@ -2281,7 +2281,7 @@ alloc_data_ll(uint32_t size)
 	}
 	ll_new[i].next = NULL;
 
-	return (ll_new);
+	return ll_new;
 }
 
 /*

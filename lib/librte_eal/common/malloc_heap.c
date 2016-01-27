@@ -87,7 +87,7 @@ check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
 		check_flag = RTE_MEMZONE_16GB;
 	}
 
-	return (check_flag & flags);
+	return check_flag & flags;
 }
 
 /*

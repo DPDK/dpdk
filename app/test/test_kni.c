@@ -237,7 +237,7 @@ test_kni_allocate_lcores(void)
 	}
 	printf("count: %u\n", count);
 
-	return (count == 2 ? 0 : -1);
+	return count == 2 ? 0 : -1;
 }
 
 static int

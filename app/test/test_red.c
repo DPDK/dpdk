@@ -229,7 +229,7 @@ static double calc_drop_prob(uint32_t min_th, uint32_t max_th,
 	} else {
 		drop_prob = 1.0;
 	}
-	return (drop_prob);
+	return drop_prob;
 }
 
 /**
@@ -249,7 +249,7 @@ static int check_drop_rate(double *diff, double drop_rate, double drop_prob, dou
 	                ret = 0;
 	        }
         }
-	return (ret);
+	return ret;
 }
 
 /**
@@ -269,7 +269,7 @@ static int check_avg(double *diff, double avg, double exp_avg, double tolerance)
 	                ret = 0;
                 }
 	}
-	return (ret);
+	return ret;
 }
 
 /**
@@ -303,10 +303,10 @@ static uint64_t get_machclk_freq(void)
 		   USEC_PER_MSEC); /**< diff is in micro secs */
 
 	if (diff == 0)
-		return(0);
+		return 0;
 
 	clk_freq_hz = ((end - start) * USEC_PER_SEC / diff);
-	return (clk_freq_hz);
+	return clk_freq_hz;
 }
 
 /**
@@ -326,14 +326,14 @@ test_rte_red_init(struct test_config *tcfg)
 					(uint16_t)tcfg->tconfig->min_th,
 					(uint16_t)tcfg->tconfig->max_th,
 					(uint16_t)tcfg->tconfig->maxp_inv[i]) != 0) {
-			return(FAIL);
+			return FAIL;
 		}
 	}
 
 	*tcfg->tqueue->q = 0;
 	*tcfg->tvar->dropped = 0;
 	*tcfg->tvar->enqueued = 0;
-	return(PASS);
+	return PASS;
 }
 
 /**
@@ -364,11 +364,11 @@ increase_actual_qsize(struct rte_red_config *red_cfg,
         * check if target actual queue size has been reached
         */
         if (*q != level)
-                return (-1);
+                return -1;
         /**
          * success
          */
-        return (0);
+        return 0;
 }
 
 /**
@@ -395,11 +395,11 @@ increase_average_qsize(struct rte_red_config *red_cfg,
          */
         avg = rte_red_get_avg_int(red_cfg, red);
         if (avg != level)
-                return (-1);
+                return -1;
         /**
          * success
          */
-        return (0);
+        return 0;
 }
 
 /**
@@ -572,7 +572,7 @@ static enum test_result func_test1(struct test_config *tcfg)
 	               (double)tcfg->tqueue->drop_tolerance);
 	}
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -683,7 +683,7 @@ static enum test_result func_test2(struct test_config *tcfg)
 	               (double)tcfg->tqueue->drop_tolerance);
 	}
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -796,7 +796,7 @@ static enum test_result func_test3(struct test_config *tcfg)
 		       diff <= (double)tcfg->tqueue->avg_tolerance ? "pass" : "fail");
 	}
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -938,7 +938,7 @@ static enum test_result func_test4(struct test_config *tcfg)
 	       diff, (double)tcfg->tqueue->avg_tolerance,
 	       diff <= (double)tcfg->tqueue->avg_tolerance ? "pass" : "fail");
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -1078,7 +1078,7 @@ static enum test_result func_test5(struct test_config *tcfg)
 		       diff, (double)tcfg->tqueue->drop_tolerance);
 	}
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -1209,7 +1209,7 @@ static enum test_result func_test6(struct test_config *tcfg)
 		       diff <= tcfg->tqueue->avg_tolerance ? "pass" : "fail");
 	}
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -1380,7 +1380,7 @@ static enum test_result perf1_test(struct test_config *tcfg)
 
 	rdtsc_prof_print(&prof);
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -1567,7 +1567,7 @@ static enum test_result perf2_test(struct test_config *tcfg)
 
 	rdtsc_prof_print(&prof);
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -1731,7 +1731,7 @@ static enum test_result ovfl_test1(struct test_config *tcfg)
 	       *tcfg->tvar->enqueued, *tcfg->tvar->dropped,
 	       drop_prob * 100.0, drop_rate * 100.0);
 out:
-	return (result);
+	return result;
 }
 
 /**
@@ -1870,7 +1870,7 @@ test_red(void)
 		printf("[total: %u, pass: %u, fail: %u]\n", num_tests, num_pass, num_tests - num_pass);
 		ret = -1;
 	}
-	return (ret);
+	return ret;
 }
 
 static struct test_command red_cmd = {

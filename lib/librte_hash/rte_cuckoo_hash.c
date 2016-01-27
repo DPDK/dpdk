@@ -425,7 +425,7 @@ rte_hash_secondary_hash(const hash_sig_t primary_hash)
 
 	uint32_t tag = primary_hash >> all_bits_shift;
 
-	return (primary_hash ^ ((tag + 1) * alt_bits_xor));
+	return primary_hash ^ ((tag + 1) * alt_bits_xor);
 }
 
 void
@@ -603,7 +603,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return (prim_bkt->key_idx[i] - 1);
+				return prim_bkt->key_idx[i] - 1;
 			}
 		}
 	}
@@ -623,7 +623,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return (sec_bkt->key_idx[i] - 1);
+				return sec_bkt->key_idx[i] - 1;
 			}
 		}
 	}
@@ -655,7 +655,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 		prim_bkt->signatures[ret].current = sig;
 		prim_bkt->signatures[ret].alt = alt_hash;
 		prim_bkt->key_idx[ret] = new_idx;
-		return (new_idx - 1);
+		return new_idx - 1;
 	}
 
 	/* Error in addition, store new slot back in the ring and return error */
@@ -732,7 +732,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return (bkt->key_idx[i] - 1);
+				return bkt->key_idx[i] - 1;
 			}
 		}
 	}
@@ -755,7 +755,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return (bkt->key_idx[i] - 1);
+				return bkt->key_idx[i] - 1;
 			}
 		}
 	}
@@ -847,7 +847,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return (bkt->key_idx[i] - 1);
+				return bkt->key_idx[i] - 1;
 			}
 		}
 	}
@@ -870,7 +870,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return (bkt->key_idx[i] - 1);
+				return bkt->key_idx[i] - 1;
 			}
 		}
 	}
@@ -1239,5 +1239,5 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 	/* Increment iterator */
 	(*next)++;
 
-	return (position - 1);
+	return position - 1;
 }

@@ -97,14 +97,14 @@ init_watch(void)
 	xs = xs_daemon_open();
 	if (xs == NULL) {
 		RTE_LOG(ERR, XENHOST, "xs_daemon_open failed\n");
-		return (-1);
+		return -1;
 	}
 
 	ret = xs_watch(xs, "/local/domain", "mytoken");
 	if (ret == 0) {
 		RTE_LOG(ERR, XENHOST, "%s: xs_watch failed\n", __func__);
 		xs_daemon_close(xs);
-		return (-1);
+		return -1;
 	}
 
 	/* We are notified of read availability on the watch via the file descriptor. */
@@ -126,7 +126,7 @@ get_xen_guest(int dom_id)
 			return guest;
 	}
 
-	return (NULL);
+	return NULL;
 }
 
 

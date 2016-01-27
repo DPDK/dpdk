@@ -251,5 +251,5 @@ int enic_clsf_init(struct enic *enic)
 	enic->fdir.hash = rte_hash_create(&hash_params);
 	memset(&enic->fdir.stats, 0, sizeof(enic->fdir.stats));
 	enic->fdir.stats.free = ENICPMD_FDIR_MAX;
-	return (NULL == enic->fdir.hash);
+	return NULL == enic->fdir.hash;
 }

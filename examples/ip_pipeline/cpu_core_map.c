@@ -276,7 +276,7 @@ cpu_core_map_get_n_lcores_linux(void)
 	if (string == NULL)
 		return -1;
 
-	return (atoi(++string) + 1);
+	return atoi(++string) + 1;
 }
 
 #define FILE_LINUX_CPU_CORE_ID \

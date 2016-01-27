@@ -178,7 +178,7 @@ log2above(unsigned int v)
 
 	for (l = 0, r = 0; (v >> 1); ++l, v >>= 1)
 		r |= (v & 1);
-	return (l + r);
+	return l + r;
 }
 
 #endif /* RTE_PMD_MLX5_UTILS_H_ */

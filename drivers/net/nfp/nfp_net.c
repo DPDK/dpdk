@@ -1275,7 +1275,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	    (nb_desc > NFP_NET_MAX_RX_DESC) ||
 	    (nb_desc < NFP_NET_MIN_RX_DESC)) {
 		RTE_LOG(ERR, PMD, "Wrong nb_desc value\n");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/*
@@ -1291,7 +1291,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct nfp_net_rxq),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	/* Hw queues mapping based on firmware confifguration */
 	rxq->qidx = queue_idx;
@@ -1328,7 +1328,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	if (tz == NULL) {
 		RTE_LOG(ERR, PMD, "Error allocatig rx dma\n");
 		nfp_net_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* Saving physical and virtual addresses for the RX ring */
@@ -1341,7 +1341,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 					 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq->rxbufs == NULL) {
 		nfp_net_rx_queue_release(rxq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	PMD_RX_LOG(DEBUG, "rxbufs=%p hw_ring=%p dma_addr=0x%" PRIx64 "\n",
@@ -1379,7 +1379,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		if (mbuf == NULL) {
 			RTE_LOG(ERR, PMD, "RX mbuf alloc failed queue_id=%u\n",
 				(unsigned)rxq->qidx);
-			return (-ENOMEM);
+			return -ENOMEM;
 		}
 
 		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DMA_ADDR_DEFAULT(mbuf));
@@ -1457,7 +1457,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL) {
 		RTE_LOG(ERR, PMD, "Error allocating tx dma\n");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/*
@@ -1471,7 +1471,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (tz == NULL) {
 		RTE_LOG(ERR, PMD, "Error allocating tx dma\n");
 		nfp_net_tx_queue_release(txq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	txq->tx_count = nb_desc;
@@ -1499,7 +1499,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq->txbufs == NULL) {
 		nfp_net_tx_queue_release(txq);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	PMD_TX_LOG(DEBUG, "txbufs=%p hw_ring=%p dma_addr=0x%" PRIx64 "\n",
 		   txq->txbufs, txq->txds, (unsigned long int)txq->dma);

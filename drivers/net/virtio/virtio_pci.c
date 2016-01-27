@@ -306,7 +306,7 @@ legacy_virtio_has_msix(const struct rte_pci_addr *loc)
 	if (d)
 		closedir(d);
 
-	return (d != NULL);
+	return d != NULL;
 }
 
 /* Extract I/O port numbers from sysfs */

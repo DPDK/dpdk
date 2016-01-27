@@ -690,7 +690,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 static inline int __attribute__((always_inline))
 ether_addr_cmp(struct ether_addr *ea, struct ether_addr *eb)
 {
-	return (((*(uint64_t *)ea ^ *(uint64_t *)eb) & MAC_ADDR_CMP) == 0);
+	return ((*(uint64_t *)ea ^ *(uint64_t *)eb) & MAC_ADDR_CMP) == 0;
 }
 
 /*
@@ -1184,7 +1184,7 @@ alloc_data_ll(uint32_t size)
 	}
 	ll_new[i].next = NULL;
 
-	return (ll_new);
+	return ll_new;
 }
 
 /*

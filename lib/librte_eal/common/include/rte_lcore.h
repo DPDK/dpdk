@@ -175,7 +175,7 @@ rte_lcore_is_enabled(unsigned lcore_id)
 	struct rte_config *cfg = rte_eal_get_configuration();
 	if (lcore_id >= RTE_MAX_LCORE)
 		return 0;
-	return (cfg->lcore_role[lcore_id] != ROLE_OFF);
+	return cfg->lcore_role[lcore_id] != ROLE_OFF;
 }
 
 /**

@@ -656,7 +656,7 @@ i40e_calc_itr_interval(int16_t interval)
 		interval = I40E_QUEUE_ITR_INTERVAL_DEFAULT;
 
 	/* Convert to hardware count, as writing each 1 represents 2 us */
-	return (interval / 2);
+	return interval / 2;
 }
 
 #define I40E_VALID_FLOW(flow_type) \

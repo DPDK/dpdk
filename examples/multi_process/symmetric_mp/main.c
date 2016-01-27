@@ -196,7 +196,7 @@ smp_parse_args(int argc, char **argv)
 	ret = optind-1;
 	optind = 0; /* reset getopt lib */
 
-	return (ret);
+	return ret;
 }
 
 /*

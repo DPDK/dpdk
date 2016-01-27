@@ -115,7 +115,7 @@ __rte_bitmap_index1_inc(struct rte_bitmap *bmp)
 static inline uint64_t
 __rte_bitmap_mask1_get(struct rte_bitmap *bmp)
 {
-	return ((~1lu) << bmp->offset1);
+	return (~1lu) << bmp->offset1;
 }
 
 static inline void
@@ -344,7 +344,7 @@ rte_bitmap_get(struct rte_bitmap *bmp, uint32_t pos)
 	index2 = pos >> RTE_BITMAP_SLAB_BIT_SIZE_LOG2;
 	offset2 = pos & RTE_BITMAP_SLAB_BIT_MASK;
 	slab2 = bmp->array2 + index2;
-	return ((*slab2) & (1lu << offset2));
+	return (*slab2) & (1lu << offset2);
 }
 
 /**
@@ -412,7 +412,7 @@ __rte_bitmap_line_not_empty(uint64_t *slab2)
 	v1 |= v2;
 	v3 |= v4;
 
-	return (v1 | v3);
+	return v1 | v3;
 }
 
 /**

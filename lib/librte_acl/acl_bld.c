@@ -1157,8 +1157,8 @@ rule_cmp_wildness(struct rte_acl_build_rule *r1, struct rte_acl_build_rule *r2)
 		int field_index = r1->config->defs[n].field_index;
 
 		if (r1->wildness[field_index] != r2->wildness[field_index])
-			return (r1->wildness[field_index] -
-				r2->wildness[field_index]);
+			return r1->wildness[field_index] -
+				r2->wildness[field_index];
 	}
 	return 0;
 }

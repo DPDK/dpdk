@@ -1234,7 +1234,7 @@ static uint8_t elink_is_4_port_mode(struct bnx2x_softc *sc)
 	port4mode_ovwr_val = REG_RD(sc, MISC_REG_PORT4MODE_EN_OVWR);
 	if (port4mode_ovwr_val & (1 << 0)) {
 		/* Return 4-port mode override value */
-		return ((port4mode_ovwr_val & (1 << 1)) == (1 << 1));
+		return (port4mode_ovwr_val & (1 << 1)) == (1 << 1);
 	}
 	/* Return 4-port mode from input pin */
 	return (uint8_t) REG_RD(sc, MISC_REG_PORT4MODE_EN);

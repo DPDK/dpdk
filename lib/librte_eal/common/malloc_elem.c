@@ -170,8 +170,8 @@ malloc_elem_free_list_index(size_t size)
 	index = (log2 - MALLOC_MINSIZE_LOG2 + MALLOC_LOG2_INCREMENT - 1) /
 	        MALLOC_LOG2_INCREMENT;
 
-	return (index <= RTE_HEAP_NUM_FREELISTS-1?
-	        index: RTE_HEAP_NUM_FREELISTS-1);
+	return index <= RTE_HEAP_NUM_FREELISTS-1?
+	        index: RTE_HEAP_NUM_FREELISTS-1;
 }
 
 /*

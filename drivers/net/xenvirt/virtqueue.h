@@ -133,7 +133,7 @@ struct rte_mbuf * virtqueue_detatch_unused(struct virtqueue *vq);
 static inline int __attribute__((always_inline))
 virtqueue_full(const struct virtqueue *vq)
 {
-	return (vq->vq_free_cnt == 0);
+	return vq->vq_free_cnt == 0;
 }
 
 #define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))

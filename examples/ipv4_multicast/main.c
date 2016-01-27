@@ -225,7 +225,7 @@ bitcnt(uint32_t v)
 	for (n = 0; v != 0; v &= v - 1, n++)
 		;
 
-	return (n);
+	return n;
 }
 
 /**
@@ -278,13 +278,13 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 
 	/* Create new mbuf for the header. */
 	if (unlikely ((hdr = rte_pktmbuf_alloc(header_pool)) == NULL))
-		return (NULL);
+		return NULL;
 
 	/* If requested, then make a new clone packet. */
 	if (use_clone != 0 &&
 	    unlikely ((pkt = rte_pktmbuf_clone(pkt, clone_pool)) == NULL)) {
 		rte_pktmbuf_free(hdr);
-		return (NULL);
+		return NULL;
 	}
 
 	/* prepend new header */
@@ -305,7 +305,7 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 	hdr->ol_flags = pkt->ol_flags;
 
 	__rte_mbuf_sanity_check(hdr, 1);
-	return (hdr);
+	return hdr;
 }
 
 /*
@@ -509,7 +509,7 @@ parse_portmask(const char *portmask)
 	if ((portmask[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return 0;
 
-	return ((uint32_t)pm);
+	return (uint32_t)pm;
 }
 
 static int
@@ -523,9 +523,9 @@ parse_nqueue(const char *q_arg)
 	n = strtoul(q_arg, &end, 0);
 	if (errno != 0 || end == NULL || *end != '\0' ||
 			n == 0 || n >= MAX_RX_QUEUE_PER_LCORE)
-		return (-1);
+		return -1;
 
-	return (n);
+	return n;
 }
 
 /* Parse the argument given in the command line of the application */

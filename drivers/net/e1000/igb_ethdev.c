@@ -791,7 +791,7 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 err_late:
 	igb_hw_control_release(hw);
 
-	return (error);
+	return error;
 }
 
 static int
@@ -1010,7 +1010,7 @@ rte_igbvf_pmd_init(const char *name __rte_unused, const char *params __rte_unuse
 	PMD_INIT_FUNC_TRACE();
 
 	rte_eth_driver_register(&rte_igbvf_pmd);
-	return (0);
+	return 0;
 }
 
 static int
@@ -1146,7 +1146,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	/* Initialize the hardware */
 	if (igb_hardware_init(hw)) {
 		PMD_INIT_LOG(ERR, "Unable to initialize the hardware");
-		return (-EIO);
+		return -EIO;
 	}
 	adapter->stopped = 0;
 
@@ -1289,14 +1289,14 @@ eth_igb_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "<<");
 
-	return (0);
+	return 0;
 
 error_invalid_config:
 	PMD_INIT_LOG(ERR, "Invalid link_speed/link_duplex (%u/%u) for port %u",
 		     dev->data->dev_conf.link_speed,
 		     dev->data->dev_conf.link_duplex, dev->data->port_id);
 	igb_dev_clear_queues(dev);
-	return (-EINVAL);
+	return -EINVAL;
 }
 
 /*********************************************************************
@@ -1489,13 +1489,13 @@ igb_hardware_init(struct e1000_hw *hw)
 
 	diag = e1000_init_hw(hw);
 	if (diag < 0)
-		return (diag);
+		return diag;
 
 	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN << 16 | ETHER_TYPE_VLAN);
 	e1000_get_phy_info(hw);
 	e1000_check_for_link(hw);
 
-	return (0);
+	return 0;
 }
 
 /* This function is based on igb_update_stats_counters() in igb/if_igb.c */
@@ -2510,7 +2510,7 @@ eth_igb_led_on(struct rte_eth_dev *dev)
 	struct e1000_hw *hw;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	return (e1000_led_on(hw) == E1000_SUCCESS ? 0 : -ENOTSUP);
+	return e1000_led_on(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
@@ -2519,7 +2519,7 @@ eth_igb_led_off(struct rte_eth_dev *dev)
 	struct e1000_hw *hw;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	return (e1000_led_off(hw) == E1000_SUCCESS ? 0 : -ENOTSUP);
+	return e1000_led_off(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
@@ -2591,7 +2591,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	    (fc_conf->high_water < fc_conf->low_water)) {
 		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value");
 		PMD_INIT_LOG(ERR, "high water must <=  0x%x", max_high_water);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	hw->fc.requested_mode = rte_fcmode_2_e1000_fcmode[fc_conf->mode];
@@ -2621,7 +2621,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 
 	PMD_INIT_LOG(ERR, "e1000_setup_link_generic = 0x%x", err);
-	return (-EIO);
+	return -EIO;
 }
 
 #define E1000_RAH_POOLSEL_SHIFT      (18)

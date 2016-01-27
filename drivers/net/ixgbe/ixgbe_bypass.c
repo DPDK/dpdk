@@ -153,7 +153,7 @@ ixgbe_bypass_state_show(struct rte_eth_dev *dev, u32 *state)
 	 */
 	*state = (by_ctl >> BYPASS_STATUS_OFF_SHIFT) &  BYPASS_STATUS_OFF_MASK;
 
-	return (ret_val);
+	return ret_val;
 }
 
 

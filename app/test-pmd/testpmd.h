@@ -420,7 +420,7 @@ mbuf_pool_find(unsigned int sock_id)
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
 
 	mbuf_poolname_build(sock_id, pool_name, sizeof(pool_name));
-	return (rte_mempool_lookup((const char *)pool_name));
+	return rte_mempool_lookup((const char *)pool_name);
 }
 
 /**

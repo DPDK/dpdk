@@ -64,7 +64,7 @@ get_phys_map(void *va, phys_addr_t pa[], uint32_t pg_num, uint32_t pg_sz)
 	nb = pg_num * sizeof(*pa);
 
 	if ((fd = open(PAGEMAP_FNAME, O_RDONLY)) < 0)
-		return (ENOENT);
+		return ENOENT;
 
 	if ((rc = pread(fd, pa, nb, ofs)) < 0 || (rc -= nb) != 0) {
 
@@ -79,7 +79,7 @@ get_phys_map(void *va, phys_addr_t pa[], uint32_t pg_num, uint32_t pg_sz)
 	for (i = 0; i != pg_num; i++)
 		pa[i] = (pa[i] & PAGEMAP_PFN_MASK) * pg_sz;
 
-	return (rc);
+	return rc;
 }
 
 struct rte_mempool *
@@ -103,7 +103,7 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 	pg_sz = getpagesize();
 	if (rte_is_power_of_2(pg_sz) == 0) {
 		rte_errno = EINVAL;
-		return (mp);
+		return mp;
 	}
 
 	pg_shift = rte_bsf32(pg_sz);
@@ -122,7 +122,7 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 			"error code: %d\n",
 			__func__, name, sz, errno);
 		rte_errno = rc;
-		return (mp);
+		return mp;
 	}
 
 	/* extract physical mappings of the allocated memory. */
@@ -177,7 +177,7 @@ mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 	}
 
 	free(pa);
-	return (mp);
+	return mp;
 }
 
 #else /* RTE_EXEC_ENV_LINUXAPP */
@@ -195,7 +195,7 @@ mempool_anon_create(__rte_unused const char *name,
 	__rte_unused int socket_id, __rte_unused unsigned flags)
 {
 	rte_errno = ENOTSUP;
-	return (NULL);
+	return NULL;
 }
 
 #endif /* RTE_EXEC_ENV_LINUXAPP */

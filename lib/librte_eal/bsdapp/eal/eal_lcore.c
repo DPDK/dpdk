@@ -75,5 +75,5 @@ int
 eal_cpu_detected(unsigned lcore_id)
 {
 	const unsigned ncpus = eal_get_ncpus();
-	return (lcore_id < ncpus);
+	return lcore_id < ncpus;
 }

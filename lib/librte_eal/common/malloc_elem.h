@@ -104,9 +104,9 @@ set_trailer(struct malloc_elem *elem)
 static inline int
 malloc_elem_cookies_ok(const struct malloc_elem *elem)
 {
-	return (elem != NULL &&
+	return elem != NULL &&
 			MALLOC_ELEM_HEADER(elem) == MALLOC_HEADER_COOKIE &&
-			MALLOC_ELEM_TRAILER(elem) == MALLOC_TRAILER_COOKIE);
+			MALLOC_ELEM_TRAILER(elem) == MALLOC_TRAILER_COOKIE;
 }
 
 #endif

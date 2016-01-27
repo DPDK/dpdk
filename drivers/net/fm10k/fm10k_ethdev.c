@@ -1350,12 +1350,12 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 
 	if (macvlan->nb_queue_pools > 0) { /* VMDQ mode */
 		PMD_INIT_LOG(ERR, "Cannot change VLAN filter in VMDQ mode");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	if (vlan_id > ETH_VLAN_ID_MAX) {
 		PMD_INIT_LOG(ERR, "Invalid vlan_id: must be < 4096");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	vid_idx = FM10K_VFTA_IDX(vlan_id);
@@ -1367,7 +1367,7 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	if (!on && !(macvlan->vfta[vid_idx] & vid_bit)) {
 		PMD_INIT_LOG(ERR, "Invalid vlan_id: not existing "
 			"in the VLAN filter table");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	fm10k_mbx_lock(hw);
@@ -1375,7 +1375,7 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	fm10k_mbx_unlock(hw);
 	if (result != FM10K_SUCCESS) {
 		PMD_INIT_LOG(ERR, "VLAN update failed: %d", result);
-		return (-EIO);
+		return -EIO;
 	}
 
 	for (mac_index = 0; (mac_index < FM10K_MAX_MACADDR_NUM) &&
@@ -1396,7 +1396,7 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	}
 	if (result != FM10K_SUCCESS) {
 		PMD_INIT_LOG(ERR, "MAC address update failed: %d", result);
-		return (-EIO);
+		return -EIO;
 	}
 
 	if (on) {
@@ -1579,7 +1579,7 @@ handle_rxconf(struct fm10k_rx_queue *q, const struct rte_eth_rxconf *conf)
 			rx_free_thresh, FM10K_RX_FREE_THRESH_MAX(q),
 			FM10K_RX_FREE_THRESH_MIN(q),
 			FM10K_RX_FREE_THRESH_DIV(q));
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	q->alloc_thresh = rx_free_thresh;
@@ -1635,7 +1635,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	/* make sure the mempool element size can account for alignment. */
 	if (!mempool_element_size_valid(mp)) {
 		PMD_INIT_LOG(ERR, "Error : Mempool element size is too small");
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/* make sure a valid number of descriptors have been requested */
@@ -1647,7 +1647,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 			"and a multiple of %u",
 			nb_desc, (uint32_t)FM10K_MAX_RX_DESC, FM10K_MIN_RX_DESC,
 			FM10K_MULT_RX_DESC);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/*
@@ -1665,7 +1665,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 				socket_id);
 	if (q == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate queue structure");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* setup queue */
@@ -1677,7 +1677,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_RDT(queue_id)];
 	if (handle_rxconf(q, conf))
-		return (-EINVAL);
+		return -EINVAL;
 
 	/* allocate memory for the software ring */
 	q->sw_ring = rte_zmalloc_socket("fm10k sw ring",
@@ -1686,7 +1686,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	if (q->sw_ring == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate software ring");
 		rte_free(q);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/*
@@ -1701,7 +1701,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		PMD_INIT_LOG(ERR, "Cannot allocate hardware ring");
 		rte_free(q->sw_ring);
 		rte_free(q);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	q->hw_ring = mz->addr;
 	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
@@ -1753,7 +1753,7 @@ handle_txconf(struct fm10k_tx_queue *q, const struct rte_eth_txconf *conf)
 			tx_free_thresh, FM10K_TX_FREE_THRESH_MAX(q),
 			FM10K_TX_FREE_THRESH_MIN(q),
 			FM10K_TX_FREE_THRESH_DIV(q));
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	q->free_thresh = tx_free_thresh;
@@ -1777,7 +1777,7 @@ handle_txconf(struct fm10k_tx_queue *q, const struct rte_eth_txconf *conf)
 			tx_rs_thresh, FM10K_TX_RS_THRESH_MAX(q),
 			FM10K_TX_RS_THRESH_MIN(q),
 			FM10K_TX_RS_THRESH_DIV(q));
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	q->rs_thresh = tx_rs_thresh;
@@ -1805,7 +1805,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 			"and a multiple of %u",
 			nb_desc, (uint32_t)FM10K_MAX_TX_DESC, FM10K_MIN_TX_DESC,
 			FM10K_MULT_TX_DESC);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	/*
@@ -1825,7 +1825,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 				socket_id);
 	if (q == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate queue structure");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* setup queue */
@@ -1837,7 +1837,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_TDT(queue_id)];
 	if (handle_txconf(q, conf))
-		return (-EINVAL);
+		return -EINVAL;
 
 	/* allocate memory for the software ring */
 	q->sw_ring = rte_zmalloc_socket("fm10k sw ring",
@@ -1846,7 +1846,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	if (q->sw_ring == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate software ring");
 		rte_free(q);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/*
@@ -1861,7 +1861,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		PMD_INIT_LOG(ERR, "Cannot allocate hardware ring");
 		rte_free(q->sw_ring);
 		rte_free(q);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	q->hw_ring = mz->addr;
 	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
@@ -1878,7 +1878,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		PMD_INIT_LOG(ERR, "Cannot allocate RS bit tracker");
 		rte_free(q->sw_ring);
 		rte_free(q);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	dev->data->tx_queues[queue_id] = q;

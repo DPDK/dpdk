@@ -379,7 +379,7 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 			IPv6_KEY_BYTES(p1[i].key.src_dst), p1[i].key.id, p1[i].start);
 
 		if (ip_frag_key_cmp(key, &p1[i].key) == 0)
-			return (p1 + i);
+			return p1 + i;
 		else if (ip_frag_key_is_empty(&p1[i].key))
 			empty = (empty == NULL) ? (p1 + i) : empty;
 		else if (max_cycles + p1[i].start < tms)
@@ -405,7 +405,7 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 			IPv6_KEY_BYTES(p2[i].key.src_dst), p2[i].key.id, p2[i].start);
 
 		if (ip_frag_key_cmp(key, &p2[i].key) == 0)
-			return (p2 + i);
+			return p2 + i;
 		else if (ip_frag_key_is_empty(&p2[i].key))
 			empty = (empty == NULL) ?( p2 + i) : empty;
 		else if (max_cycles + p2[i].start < tms)

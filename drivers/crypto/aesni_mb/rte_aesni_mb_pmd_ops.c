@@ -179,7 +179,7 @@ aesni_mb_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qp = rte_zmalloc_socket("AES-NI PMD Queue Pair", sizeof(*qp),
 					RTE_CACHE_LINE_SIZE, socket_id);
 	if (qp == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	qp->id = qp_id;
 	dev->data->queue_pairs[qp_id] = qp;

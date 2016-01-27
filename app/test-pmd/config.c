@@ -750,7 +750,7 @@ ring_dma_zone_lookup(const char *ring_name, uint8_t port_id, uint16_t q_id)
 		printf("%s ring memory zoneof (port %d, queue %d) not"
 		       "found (zone name = %s\n",
 		       ring_name, port_id, q_id, mz_name);
-	return (mz);
+	return mz;
 }
 
 union igb_ring_dword {

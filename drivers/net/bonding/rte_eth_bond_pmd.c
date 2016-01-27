@@ -480,7 +480,7 @@ ether_hash(struct ether_hdr *eth_hdr)
 static inline uint32_t
 ipv4_hash(struct ipv4_hdr *ipv4_hdr)
 {
-	return (ipv4_hdr->src_addr ^ ipv4_hdr->dst_addr);
+	return ipv4_hdr->src_addr ^ ipv4_hdr->dst_addr;
 }
 
 static inline uint32_t

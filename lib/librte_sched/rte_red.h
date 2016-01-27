@@ -163,7 +163,7 @@ static inline uint32_t
 rte_fast_rand(void)
 {
 	rte_red_rand_seed = (214013 * rte_red_rand_seed) + 2531011;
-	return (rte_red_rand_seed >> 10);
+	return rte_red_rand_seed >> 10;
 }
 
 /**

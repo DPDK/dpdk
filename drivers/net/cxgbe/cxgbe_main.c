@@ -200,7 +200,7 @@ int cxgb4_set_rspq_intr_params(struct sge_rspq *q, unsigned int us,
 
 static inline bool is_x_1g_port(const struct link_config *lc)
 {
-	return ((lc->supported & FW_PORT_CAP_SPEED_1G) != 0);
+	return (lc->supported & FW_PORT_CAP_SPEED_1G) != 0;
 }
 
 static inline bool is_x_10g_port(const struct link_config *lc)

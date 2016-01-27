@@ -138,10 +138,10 @@ ifname_to_portid(const char *ifname, uint8_t *port)
 	portid = strtoul(ifname, &endptr, 10);
 	if (endptr == ifname || *endptr != '\0' ||
 			portid >= RTE_DIM(ports) || errno != 0)
-		return (-EINVAL);
+		return -EINVAL;
 
 	*port = (uint8_t)portid;
-	return (0);
+	return 0;
 }
 
 /**
@@ -196,10 +196,10 @@ fd_reserve(void)
 		;
 
 	if (i == RTE_DIM(fd_port))
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	fd_port[i].port = FD_PORT_RSRV;
-	return (IDX_TO_FD(i));
+	return IDX_TO_FD(i);
 }
 
 static int32_t
@@ -210,7 +210,7 @@ fd_release(int32_t fd)
 	idx = FD_TO_IDX(fd);
 
 	if (!FD_VALID(fd) || (port = fd_port[idx].port) == FD_PORT_FREE)
-		return (-EINVAL);
+		return -EINVAL;
 
 	/* if we still have a valid port attached, release the port */
 	if (port < RTE_DIM(ports) && ports[port].fd == idx) {
@@ -218,7 +218,7 @@ fd_release(int32_t fd)
 	}
 
 	fd_port[idx].port = FD_PORT_FREE;
-	return (0);
+	return 0;
 }
 
 static int
@@ -228,26 +228,26 @@ check_nmreq(struct nmreq *req, uint8_t *port)
 	uint8_t portid;
 
 	if (req == NULL)
-		return (-EINVAL);
+		return -EINVAL;
 
 	if (req->nr_version != NETMAP_API) {
 		req->nr_version = NETMAP_API;
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	if ((rc = ifname_to_portid(req->nr_name, &portid)) != 0) {
 	    	RTE_LOG(ERR, USER1, "Invalid interface name:\"%s\" "
 			"in NIOCGINFO call\n", req->nr_name);
-		return (rc);
+		return rc;
 	}
 
 	if (ports[portid].pool == NULL) {
 	    	RTE_LOG(ERR, USER1, "Misconfigured portid %hhu\n", portid);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	*port = portid;
-	return (0);
+	return 0;
 }
 
 /**
@@ -268,7 +268,7 @@ ioctl_niocginfo(__rte_unused int fd, void * param)
 
 	req = (struct nmreq *)param;
 	if ((rc = check_nmreq(req, &portid)) != 0)
-		return (rc);
+		return rc;
 
 	req->nr_tx_rings = (uint16_t)(ports[portid].nr_tx_rings - 1);
 	req->nr_rx_rings = (uint16_t)(ports[portid].nr_rx_rings - 1);
@@ -279,7 +279,7 @@ ioctl_niocginfo(__rte_unused int fd, void * param)
 	req->nr_memsize = netmap.mem_sz;
 	req->nr_offset = 0;
 
-	return (0);
+	return 0;
 }
 
 static void
@@ -315,12 +315,12 @@ netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
 	if (ports[port].fd < RTE_DIM(fd_port)) {
 	    	RTE_LOG(ERR, USER1, "port %hhu already in use by fd: %u\n",
 			port, IDX_TO_FD(ports[port].fd));
-		return (-EBUSY);
+		return -EBUSY;
 	}
 	if (fd_port[idx].port != FD_PORT_RSRV) {
 	    	RTE_LOG(ERR, USER1, "fd: %u is misconfigured\n",
 			IDX_TO_FD(idx));
-		return (-EBUSY);
+		return -EBUSY;
 	}
 
 	nmif = ports[port].nmif;
@@ -330,7 +330,7 @@ netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
 
 	/* only ALL rings supported right now. */
 	if (req->nr_ringid != 0)
-		return (-EINVAL);
+		return -EINVAL;
 
 	snprintf(nmif->ni_name, sizeof(nmif->ni_name), "%s", req->nr_name);
 	nmif->ni_version  = req->nr_version;
@@ -380,7 +380,7 @@ netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
 		RTE_LOG(ERR, USER1,
 			"Couldn't start ethernet device %s (error %d)\n",
 			req->nr_name, rc);
-	    return (rc);
+	    return rc;
 	}
 
 	/* setup fdi <--> port relationtip. */
@@ -390,7 +390,7 @@ netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
 	req->nr_memsize = netmap.mem_sz;
 	req->nr_offset = (uintptr_t)nmif - (uintptr_t)netmap.mem;
 
-	return (0);
+	return 0;
 }
 
 /**
@@ -406,7 +406,7 @@ ioctl_niocregif(int32_t fd, void * param)
 
 	req = (struct nmreq *)param;
 	if ((rc = check_nmreq(req, &portid)) != 0)
-		return (rc);
+		return rc;
 
 	idx = FD_TO_IDX(fd);
 
@@ -414,7 +414,7 @@ ioctl_niocregif(int32_t fd, void * param)
 	rc = netmap_regif(req, idx, portid);
 	rte_spinlock_unlock(&netmap_lock);
 
-	return (rc);
+	return rc;
 }
 
 static void
@@ -452,7 +452,7 @@ ioctl_niocunregif(int fd)
 	}
 
 	rte_spinlock_unlock(&netmap_lock);
-	return (rc);
+	return rc;
 }
 
 /**
@@ -517,7 +517,7 @@ rx_sync_if(uint32_t port)
 		rc += r->avail;
 	}
 
-	return (rc);
+	return rc;
 }
 
 /**
@@ -531,9 +531,9 @@ ioctl_niocrxsync(int fd)
 	idx = FD_TO_IDX(fd);
 	if ((port = fd_port[idx].port) < RTE_DIM(ports) &&
 			ports[port].fd == idx) {
-		return (rx_sync_if(fd_port[idx].port));
+		return rx_sync_if(fd_port[idx].port);
 	} else  {
-		return (-EINVAL);
+		return -EINVAL;
 	}
 }
 
@@ -612,7 +612,7 @@ tx_sync_if(uint32_t port)
 		rc += r->avail;
 	}
 
-	return (rc);
+	return rc;
 }
 
 /**
@@ -626,9 +626,9 @@ ioctl_nioctxsync(int fd)
 	idx = FD_TO_IDX(fd);
 	if ((port = fd_port[idx].port) < RTE_DIM(ports) &&
 			ports[port].fd == idx) {
-		return (tx_sync_if(fd_port[idx].port));
+		return tx_sync_if(fd_port[idx].port);
 	} else  {
-		return (-EINVAL);
+		return -EINVAL;
 	}
 }
 
@@ -659,7 +659,7 @@ rte_netmap_init(const struct rte_netmap_conf *conf)
 			RTE_CACHE_LINE_SIZE, conf->socket_id)) == NULL) {
 		RTE_LOG(ERR, USER1, "%s: failed to allocate %zu bytes\n",
 			__func__, sz);
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	netmap.mem_sz = sz;
@@ -681,7 +681,7 @@ rte_netmap_init(const struct rte_netmap_conf *conf)
 		fd_port[i].port = FD_PORT_FREE;
 	}
 
-	return (0);
+	return 0;
 }
 
 
@@ -698,7 +698,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 			conf->nr_rx_rings > netmap.conf.max_rings) {
 		RTE_LOG(ERR, USER1, "%s(%hhu): invalid parameters\n",
 			__func__, portid);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 		rx_slots = (uint16_t)rte_align32pow2(conf->nr_rx_slots);
@@ -708,7 +708,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 			rx_slots > netmap.conf.max_slots) {
 		RTE_LOG(ERR, USER1, "%s(%hhu): invalid parameters\n",
 			__func__, portid);
-		return (-EINVAL);
+		return -EINVAL;
 	}
 
 	ret = rte_eth_dev_configure(portid, conf->nr_rx_rings,
@@ -716,7 +716,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 	if (ret < 0) {
 	    RTE_LOG(ERR, USER1, "Couldn't configure port %hhu\n", portid);
-	    return (ret);
+	    return ret;
 	}
 
 	for (i = 0; i < conf->nr_tx_rings; i++) {
@@ -728,7 +728,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 				"Couldn't configure TX queue %"PRIu16" of "
 				"port %"PRIu8"\n",
 				i, portid);
-			return (ret);
+			return ret;
 		}
 
 		ret = rte_eth_rx_queue_setup(portid, i, rx_slots,
@@ -739,7 +739,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 				"Couldn't configure RX queue %"PRIu16" of "
 				"port %"PRIu8"\n",
 				i, portid);
-			return (ret);
+			return ret;
 		}
 	}
 
@@ -754,7 +754,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 	ports[portid].tx_burst = conf->tx_burst;
 	ports[portid].rx_burst = conf->rx_burst;
 
-	return (0);
+	return 0;
 }
 
 int
@@ -770,7 +770,7 @@ rte_netmap_close(__rte_unused int fd)
 		errno =-rc;
 		rc = -1;
 	}
-	return (rc);
+	return rc;
 }
 
 int rte_netmap_ioctl(int fd, uint32_t op, void *param)
@@ -779,7 +779,7 @@ int rte_netmap_ioctl(int fd, uint32_t op, void *param)
 
 	if (!FD_VALID(fd)) {
 	    errno = EBADF;
-	    return (-1);
+	    return -1;
 	}
 
 	switch (op) {
@@ -815,7 +815,7 @@ int rte_netmap_ioctl(int fd, uint32_t op, void *param)
 		ret = 0;
 	}
 
-	return (ret);
+	return ret;
 }
 
 void *
@@ -829,7 +829,7 @@ rte_netmap_mmap(void *addr, size_t length,
 			((flags & MAP_FIXED) != 0 && addr != NULL)) {
 
 		errno = EINVAL;
-		return (MAP_FAILED);
+		return MAP_FAILED;
 	}
 
 	return (void *)((uintptr_t)netmap.mem + (uintptr_t)offset);
@@ -852,7 +852,7 @@ rte_netmap_open(__rte_unused const char *pathname, __rte_unused int flags)
 		errno = -fd;
 		fd = -1;
 	}
-	return (fd);
+	return fd;
 }
 
 /**

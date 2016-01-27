@@ -51,7 +51,7 @@ extern "C" {
  */
 static inline uint16_t rte_arch_bswap16(uint16_t _x)
 {
-	return ((_x >> 8) | ((_x << 8) & 0xff00));
+	return (_x >> 8) | ((_x << 8) & 0xff00);
 }
 
 /*
@@ -61,8 +61,8 @@ static inline uint16_t rte_arch_bswap16(uint16_t _x)
  */
 static inline uint32_t rte_arch_bswap32(uint32_t _x)
 {
-	return ((_x >> 24) | ((_x >> 8) & 0xff00) | ((_x << 8) & 0xff0000) |
-		((_x << 24) & 0xff000000));
+	return (_x >> 24) | ((_x >> 8) & 0xff00) | ((_x << 8) & 0xff0000) |
+		((_x << 24) & 0xff000000);
 }
 
 /*
@@ -73,10 +73,10 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 /* 64-bit mode */
 static inline uint64_t rte_arch_bswap64(uint64_t _x)
 {
-	return ((_x >> 56) | ((_x >> 40) & 0xff00) | ((_x >> 24) & 0xff0000) |
+	return (_x >> 56) | ((_x >> 40) & 0xff00) | ((_x >> 24) & 0xff0000) |
 		((_x >> 8) & 0xff000000) | ((_x << 8) & (0xffULL << 32)) |
 		((_x << 24) & (0xffULL << 40)) |
-		((_x << 40) & (0xffULL << 48)) | ((_x << 56)));
+		((_x << 40) & (0xffULL << 48)) | ((_x << 56));
 }
 
 #ifndef RTE_FORCE_INTRINSICS

@@ -3413,7 +3413,7 @@ i40e_res_pool_alloc(struct i40e_res_pool_info *pool,
 	pool->num_free -= valid_entry->len;
 	pool->num_alloc += valid_entry->len;
 
-	return (valid_entry->base + pool->base);
+	return valid_entry->base + pool->base;
 }
 
 /**

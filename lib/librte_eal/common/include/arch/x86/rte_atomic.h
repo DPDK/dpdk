@@ -118,7 +118,7 @@ static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v)
 			: [cnt] "+m" (v->cnt),  /* output */
 			  [ret] "=qm" (ret)
 			);
-	return (ret != 0);
+	return ret != 0;
 }
 
 static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v)
@@ -131,7 +131,7 @@ static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v)
 			: [cnt] "+m" (v->cnt),  /* output */
 			  [ret] "=qm" (ret)
 			);
-	return (ret != 0);
+	return ret != 0;
 }
 
 /*------------------------- 32 bit atomic operations -------------------------*/
@@ -192,7 +192,7 @@ static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v)
 			: [cnt] "+m" (v->cnt),  /* output */
 			  [ret] "=qm" (ret)
 			);
-	return (ret != 0);
+	return ret != 0;
 }
 
 static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
@@ -205,7 +205,7 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 			: [cnt] "+m" (v->cnt),  /* output */
 			  [ret] "=qm" (ret)
 			);
-	return (ret != 0);
+	return ret != 0;
 }
 #endif
 

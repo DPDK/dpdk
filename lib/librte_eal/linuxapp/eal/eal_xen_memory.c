@@ -171,7 +171,7 @@ rte_xen_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr)
 	mfn = mfn_offset + memseg[memseg_id].mfn[mfn_id];
 
 	/** return mechine address */
-	return (mfn * PAGE_SIZE + phy_addr % PAGE_SIZE);
+	return mfn * PAGE_SIZE + phy_addr % PAGE_SIZE;
 }
 
 int

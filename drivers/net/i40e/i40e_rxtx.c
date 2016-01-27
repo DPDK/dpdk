@@ -1483,7 +1483,7 @@ i40e_calc_context_desc(uint64_t flags)
 	mask |= PKT_TX_IEEE1588_TMST;
 #endif
 
-	return ((flags & mask) ? 1 : 0);
+	return (flags & mask) ? 1 : 0;
 }
 
 /* set i40e TSO context descriptor */
@@ -2147,7 +2147,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (!rxq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
 			    "rx queue data structure");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 	rxq->mp = mp;
 	rxq->nb_rx_desc = nb_desc;
@@ -2174,7 +2174,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (!rz) {
 		i40e_dev_rx_queue_release(rxq);
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for RX");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* Zero all the descriptors in the ring. */
@@ -2198,7 +2198,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (!rxq->sw_ring) {
 		i40e_dev_rx_queue_release(rxq);
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for SW ring");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	i40e_reset_rx_queue(rxq);
@@ -2437,7 +2437,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (!txq) {
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for "
 			    "tx queue structure");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	/* Allocate TX hardware ring descriptors. */
@@ -2448,7 +2448,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (!tz) {
 		i40e_dev_tx_queue_release(txq);
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for TX");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	txq->nb_tx_desc = nb_desc;
@@ -2481,7 +2481,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (!txq->sw_ring) {
 		i40e_dev_tx_queue_release(txq);
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for SW TX ring");
-		return (-ENOMEM);
+		return -ENOMEM;
 	}
 
 	i40e_reset_tx_queue(txq);
