@@ -835,6 +835,14 @@ app_init_link_frag_ras(struct app_params *app)
 	}
 }
 
+static inline int
+app_get_cpu_socket_id(uint32_t pmd_id)
+{
+	int status = rte_eth_dev_socket_id(pmd_id);
+
+	return (status != SOCKET_ID_ANY) ? status : 0;
+}
+
 static void
 app_init_link(struct app_params *app)
 {
@@ -890,7 +898,7 @@ app_init_link(struct app_params *app)
 				p_link->pmd_id,
 				rxq_queue_id,
 				p_rxq->size,
-				rte_eth_dev_socket_id(p_link->pmd_id),
+				app_get_cpu_socket_id(p_link->pmd_id),
 				&p_rxq->conf,
 				app->mempool[p_rxq->mempool_id]);
 			if (status < 0)
@@ -917,7 +925,7 @@ app_init_link(struct app_params *app)
 				p_link->pmd_id,
 				txq_queue_id,
 				p_txq->size,
-				rte_eth_dev_socket_id(p_link->pmd_id),
+				app_get_cpu_socket_id(p_link->pmd_id),
 				&p_txq->conf);
 			if (status < 0)
 				rte_panic("%s (%" PRIu32 "): "
@@ -989,7 +997,7 @@ app_init_tm(struct app_params *app)
 		/* TM */
 		p_tm->sched_port_params.name = p_tm->name;
 		p_tm->sched_port_params.socket =
-			rte_eth_dev_socket_id(p_link->pmd_id);
+			app_get_cpu_socket_id(p_link->pmd_id);
 		p_tm->sched_port_params.rate =
 			(uint64_t) link_eth_params.link_speed * 1000 * 1000 / 8;
 
