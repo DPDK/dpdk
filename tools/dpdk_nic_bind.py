@@ -156,22 +156,32 @@ def check_modules():
     '''Checks that igb_uio is loaded'''
     global dpdk_drivers
 
-    fd = open("/proc/modules", 'r')
-    loaded_mods = fd.readlines()
-    fd.close()
-
     # list of supported modules
     mods =  [{"Name" : driver, "Found" : False} for driver in dpdk_drivers]
 
     # first check if module is loaded
-    for line in loaded_mods:
+    try:
+        # Get list of sysfs modules (both built-in and dynamically loaded)
+        sysfs_path = '/sys/module/'
+
+        # Get the list of directories in sysfs_path
+        sysfs_mods = [os.path.join(sysfs_path, o) for o
+                      in os.listdir(sysfs_path)
+                      if os.path.isdir(os.path.join(sysfs_path, o))]
+
+        # Extract the last element of '/sys/module/abc' in the array
+        sysfs_mods = [a.split('/')[-1] for a in sysfs_mods]
+
+        # special case for vfio_pci (module is named vfio-pci,
+        # but its .ko is named vfio_pci)
+        sysfs_mods = map(lambda a:
+                         a if a != 'vfio_pci' else 'vfio-pci', sysfs_mods)
+
         for mod in mods:
-            if line.startswith(mod["Name"]):
+            if mod["Name"] in sysfs_mods:
                 mod["Found"] = True
-            # special case for vfio_pci (module is named vfio-pci,
-            # but its .ko is named vfio_pci)
-            elif line.replace("_", "-").startswith(mod["Name"]):
-                mod["Found"] = True
+    except:
+        pass
 
     # check if we have at least one loaded module
     if True not in [mod["Found"] for mod in mods] and b_flag is not None:
