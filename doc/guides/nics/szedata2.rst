@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright 2015 CESNET
+    Copyright 2015 - 2016 CESNET
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,8 @@ SZEDATA2 poll mode driver library
 
 The SZEDATA2 poll mode driver library implements support for cards from COMBO
 family (**COMBO-80G**, **COMBO-100G**).
-The SZEDATA2 PMD is virtual PMD which uses interface provided by libsze2
-library to communicate with COMBO cards over sze2 layer.
+The SZEDATA2 PMD uses interface provided by libsze2 library to communicate
+with COMBO cards over sze2 layer.
 
 More information about family of
 `COMBO cards <https://www.liberouter.org/technologies/cards/>`_
@@ -74,50 +74,29 @@ separately:
    * szedata2_cv3
 
    Kernel modules manage initialization of hardware, allocation and
-   sharing of resources for user space applications:
+   sharing of resources for user space applications.
 
 Information about getting the dependencies can be found `here
 <https://www.liberouter.org/technologies/netcope/access-to-libsze2-library/>`_.
 
+Configuration
+-------------
+
+These configuration options can be modified before compilation in the
+``.config`` file:
+
+*  ``CONFIG_RTE_LIBRTE_PMD_SZEDATA2`` default value: **n**
+
+   Value **y** enables compilation of szedata2 PMD.
 
 Using the SZEDATA2 PMD
 ----------------------
 
-SZEDATA2 PMD can be created by passing ``--vdev=`` option to EAL in the
-following format:
+From DPDK version 16.04 the type of SZEDATA2 PMD is changed to PMD_PDEV.
+SZEDATA2 device is automatically recognized during EAL initialization.
+No special command line options are needed.
 
-.. code-block:: console
-
-   --vdev 'DEVICE,dev_path=PATH,rx_ifaces=RX_MASK,tx_ifaces=TX_MASK'
-
-``DEVICE`` and options ``dev_path``, ``rx_ifaces``, ``tx_ifaces`` are mandatory
-and must be separated by commas.
-
-*  ``DEVICE``: contains prefix ``eth_szedata2`` followed by numbers or letters,
-   must be unique for each virtual device
-
-*  ``dev_path``: Defines path to szedata2 device.
-   Value is valid path to szedata2 device. Example:
-
-   .. code-block:: console
-
-      dev_path=/dev/szedataII0
-
-*  ``rx_ifaces``: Defines which receive channels will be used.
-   For each channel is created one queue. Value is mask for selecting which
-   receive channels are required. Example:
-
-   .. code-block:: console
-
-      rx_ifaces=0x3
-
-*  ``tx_ifaces``: Defines which transmit channels will be used.
-   For each channel is created one queue. Value is mask for selecting which
-   transmit channels are required. Example:
-
-   .. code-block:: console
-
-      tx_ifaces=0x3
+Kernel modules have to be loaded before running the DPDK application.
 
 Example of usage
 ----------------
@@ -128,5 +107,39 @@ transmit channel:
 .. code-block:: console
 
    $RTE_TARGET/app/testpmd -c 0xf -n 2 \
-   --vdev 'eth_szedata20,dev_path=/dev/szedataII0,rx_ifaces=0x3,tx_ifaces=0x3' \
-   -- --port-topology=chained --rxq=2 --txq=2 --nb-cores=2
+   -- --port-topology=chained --rxq=2 --txq=2 --nb-cores=2 -i -a
+
+Example output:
+
+.. code-block:: console
+
+   [...]
+   EAL: PCI device 0000:06:00.0 on NUMA socket -1
+   EAL:   probe driver: 1b26:c1c1 rte_szedata2_pmd
+   PMD: Initializing szedata2 device (0000:06:00.0)
+   PMD: SZEDATA2 path: /dev/szedataII0
+   PMD: Available DMA channels RX: 8 TX: 8
+   PMD: resource0 phys_addr = 0xe8000000 len = 134217728 virt addr = 7f48f8000000
+   PMD: szedata2 device (0000:06:00.0) successfully initialized
+   Interactive-mode selected
+   Auto-start selected
+   Configuring Port 0 (socket 0)
+   Port 0: 00:11:17:00:00:00
+   Checking link statuses...
+   Port 0 Link Up - speed 10000 Mbps - full-duplex
+   Done
+   Start automatic packet forwarding
+     io packet forwarding - CRC stripping disabled - packets/burst=32
+     nb forwarding cores=2 - nb forwarding ports=1
+     RX queues=2 - RX desc=128 - RX free threshold=0
+     RX threshold registers: pthresh=0 hthresh=0 wthresh=0
+     TX queues=2 - TX desc=512 - TX free threshold=0
+     TX threshold registers: pthresh=0 hthresh=0 wthresh=0
+     TX RS bit threshold=0 - TXQ flags=0x0
+   testpmd>
+
+.. note::
+
+   Link speed API currently supports speeds up to 40 Gbps.
+   Therefore there is used 10G constant for 100 Gbps cards until the link speed
+   API is not changed.

@@ -181,6 +181,12 @@ This section should contain new features added in this release. Sample format:
 
   Only available with Mellanox OFED >= 3.2.
 
+* **Changed szedata2 type of driver from vdev to pdev.**
+
+  Previously szedata2 device had to be added by ``--vdev`` option.
+  Now szedata2 PMD recognises the device automatically during EAL
+  initialization.
+
 * **Increased number of next hops for LPM IPv4 to 2^24.**
 
   The next_hop field is extended from 8 bits to 24 bits for IPv4.

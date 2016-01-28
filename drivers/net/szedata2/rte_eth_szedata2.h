@@ -34,6 +34,14 @@
 #ifndef RTE_PMD_SZEDATA2_H_
 #define RTE_PMD_SZEDATA2_H_
 
+/* PCI Vendor ID */
+#define PCI_VENDOR_ID_NETCOPE 0x1b26
+
+/* PCI Device IDs */
+#define PCI_DEVICE_ID_NETCOPE_COMBO80G 0xcb80
+#define PCI_DEVICE_ID_NETCOPE_COMBO100G 0xc1c1
+#define PCI_DEVICE_ID_NETCOPE_COMBO100G2 0xc2c1
+
 /* szedata2_packet header length == 4 bytes == 2B segment size + 2B hw size */
 #define RTE_SZE2_PACKET_HEADER_SIZE 4
 

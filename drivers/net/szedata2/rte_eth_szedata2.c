@@ -35,6 +35,8 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <err.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #include <libsze2.h>
 
@@ -47,10 +49,6 @@
 
 #include "rte_eth_szedata2.h"
 
-#define RTE_ETH_SZEDATA2_DEV_PATH_ARG "dev_path"
-#define RTE_ETH_SZEDATA2_RX_IFACES_ARG "rx_ifaces"
-#define RTE_ETH_SZEDATA2_TX_IFACES_ARG "tx_ifaces"
-
 #define RTE_ETH_SZEDATA2_MAX_RX_QUEUES 32
 #define RTE_ETH_SZEDATA2_MAX_TX_QUEUES 32
 #define RTE_ETH_SZEDATA2_TX_LOCK_SIZE (32 * 1024 * 1024)
@@ -59,6 +57,11 @@
  * size of szedata2_packet header with alignment
  */
 #define RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED 8
+
+#define RTE_SZEDATA2_DRIVER_NAME "rte_szedata2_pmd"
+#define RTE_SZEDATA2_PCI_DRIVER_NAME "rte_szedata2_pmd"
+
+#define SZEDATA2_DEV_PATH_FMT "/dev/szedataII%u"
 
 struct szedata2_rx_queue {
 	struct szedata *sze;
@@ -74,56 +77,26 @@ struct szedata2_tx_queue {
 	struct szedata *sze;
 	uint8_t tx_channel;
 	volatile uint64_t tx_pkts;
-	volatile uint64_t err_pkts;
 	volatile uint64_t tx_bytes;
-};
-
-struct rxtx_szedata2 {
-	uint32_t num_of_rx;
-	uint32_t num_of_tx;
-	uint32_t sze_rx_mask_req;
-	uint32_t sze_tx_mask_req;
-	char *sze_dev;
+	volatile uint64_t err_pkts;
 };
 
 struct pmd_internals {
 	struct szedata2_rx_queue rx_queue[RTE_ETH_SZEDATA2_MAX_RX_QUEUES];
 	struct szedata2_tx_queue tx_queue[RTE_ETH_SZEDATA2_MAX_TX_QUEUES];
-	unsigned nb_rx_queues;
-	unsigned nb_tx_queues;
-	uint32_t num_of_rx;
-	uint32_t num_of_tx;
-	uint32_t sze_rx_req;
-	uint32_t sze_tx_req;
-	int if_index;
-	char *sze_dev;
-};
-
-static const char *valid_arguments[] = {
-	RTE_ETH_SZEDATA2_DEV_PATH_ARG,
-	RTE_ETH_SZEDATA2_RX_IFACES_ARG,
-	RTE_ETH_SZEDATA2_TX_IFACES_ARG,
-	NULL
+	uint16_t max_rx_queues;
+	uint16_t max_tx_queues;
+	char sze_dev[PATH_MAX];
 };
 
 static struct ether_addr eth_addr = {
 	.addr_bytes = { 0x00, 0x11, 0x17, 0x00, 0x00, 0x00 }
 };
-static const char *drivername = "SZEdata2 PMD";
 static struct rte_eth_link pmd_link = {
 		.link_speed = ETH_LINK_SPEED_10G,
 		.link_duplex = ETH_LINK_FULL_DUPLEX,
 		.link_status = 0
 };
-
-
-static uint32_t
-count_ones(uint32_t num)
-{
-	num = num - ((num >> 1) & 0x55555555); /* reuse input as temporary */
-	num = (num & 0x33333333) + ((num >> 2) & 0x33333333);        /* temp */
-	return (((num + (num >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24; /* count */
-}
 
 static uint16_t
 eth_szedata2_rx(void *queue,
@@ -905,288 +878,139 @@ next_packet:
 }
 
 static int
-init_rx_channels(struct rte_eth_dev *dev, int v)
+eth_rx_queue_start(struct rte_eth_dev *dev, uint16_t rxq_id)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
+	struct szedata2_rx_queue *rxq = dev->data->rx_queues[rxq_id];
 	int ret;
-	uint32_t i;
-	uint32_t count = internals->num_of_rx;
-	uint32_t num_sub = 0;
-	uint32_t x;
-	uint32_t rx;
-	uint32_t tx;
+	struct pmd_internals *internals = (struct pmd_internals *)
+		dev->data->dev_private;
 
-	rx = internals->sze_rx_req;
-	tx = 0;
-
-	for (i = 0; i < count; i++) {
-		/*
-		 * Open, subscribe rx,tx channels and start device
-		 */
-		if (v)
-			RTE_LOG(INFO, PMD, "Opening SZE device %u. time\n", i);
-
-		internals->rx_queue[num_sub].sze =
-			szedata_open(internals->sze_dev);
-		if (internals->rx_queue[num_sub].sze == NULL)
-			return -1;
-
-		/* separate least significant non-zero bit */
-		x = rx & ((~rx) + 1);
-
-		if (v)
-			RTE_LOG(INFO, PMD, "Subscribing rx channel: 0x%x "
-				"tx channel: 0x%x\n", x, tx);
-
-		ret = szedata_subscribe3(internals->rx_queue[num_sub].sze,
-				&x, &tx);
-		if (ret) {
-			szedata_close(internals->rx_queue[num_sub].sze);
-			internals->rx_queue[num_sub].sze = NULL;
-			return -1;
-		}
-
-		if (v)
-			RTE_LOG(INFO, PMD, "Subscribed rx channel: 0x%x "
-				"tx channel: 0x%x\n", x, tx);
-
-		if (x) {
-			if (v)
-				RTE_LOG(INFO, PMD, "Starting SZE device for "
-					"rx queue: %u\n", num_sub);
-
-			ret = szedata_start(internals->rx_queue[num_sub].sze);
-			if (ret) {
-				szedata_close(internals->rx_queue[num_sub].sze);
-				internals->rx_queue[num_sub].sze = NULL;
-				return -1;
-			}
-
-			/*
-			 * set to 1 all bits lower than bit set to 1
-			 * and that bit to 0
-			 */
-			x -= 1;
-			internals->rx_queue[num_sub].rx_channel =
-				count_ones(x);
-
-			if (v)
-				RTE_LOG(INFO, PMD, "Subscribed rx channel "
-					"no: %u\n",
-					internals->rx_queue[num_sub].rx_channel
-					);
-
-			num_sub++;
-			internals->nb_rx_queues = num_sub;
-		} else {
-			if (v)
-				RTE_LOG(INFO, PMD,
-					"Could not subscribe any rx channel. "
-					"Closing SZE device\n");
-
-			szedata_close(internals->rx_queue[num_sub].sze);
-			internals->rx_queue[num_sub].sze = NULL;
-		}
-
-		/* set least significant non-zero bit to zero */
-		rx = rx & (rx - 1);
+	if (rxq->sze == NULL) {
+		uint32_t rx = 1 << rxq->rx_channel;
+		uint32_t tx = 0;
+		rxq->sze = szedata_open(internals->sze_dev);
+		if (rxq->sze == NULL)
+			return -EINVAL;
+		ret = szedata_subscribe3(rxq->sze, &rx, &tx);
+		if (ret != 0 || rx == 0)
+			goto err;
 	}
 
-	dev->data->nb_rx_queues = (uint16_t)num_sub;
+	ret = szedata_start(rxq->sze);
+	if (ret != 0)
+		goto err;
+	dev->data->rx_queue_state[rxq_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	return 0;
 
-	if (v)
-		RTE_LOG(INFO, PMD, "Successfully opened rx channels: %u\n",
-			num_sub);
+err:
+	szedata_close(rxq->sze);
+	rxq->sze = NULL;
+	return -EINVAL;
+}
 
+static int
+eth_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rxq_id)
+{
+	struct szedata2_rx_queue *rxq = dev->data->rx_queues[rxq_id];
+
+	if (rxq->sze != NULL) {
+		szedata_close(rxq->sze);
+		rxq->sze = NULL;
+	}
+
+	dev->data->rx_queue_state[rxq_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;
 }
 
 static int
-init_tx_channels(struct rte_eth_dev *dev, int v)
+eth_tx_queue_start(struct rte_eth_dev *dev, uint16_t txq_id)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
+	struct szedata2_tx_queue *txq = dev->data->tx_queues[txq_id];
 	int ret;
-	uint32_t i;
-	uint32_t count = internals->num_of_tx;
-	uint32_t num_sub = 0;
-	uint32_t x;
-	uint32_t rx;
-	uint32_t tx;
+	struct pmd_internals *internals = (struct pmd_internals *)
+		dev->data->dev_private;
 
-	rx = 0;
-	tx = internals->sze_tx_req;
-
-	for (i = 0; i < count; i++) {
-		/*
-		 * Open, subscribe rx,tx channels and start device
-		 */
-		if (v)
-			RTE_LOG(INFO, PMD, "Opening SZE device %u. time\n",
-				i + internals->num_of_rx);
-
-		internals->tx_queue[num_sub].sze =
-			szedata_open(internals->sze_dev);
-		if (internals->tx_queue[num_sub].sze == NULL)
-			return -1;
-
-		/* separate least significant non-zero bit */
-		x = tx & ((~tx) + 1);
-
-		if (v)
-			RTE_LOG(INFO, PMD, "Subscribing rx channel: 0x%x "
-				"tx channel: 0x%x\n", rx, x);
-
-		ret = szedata_subscribe3(internals->tx_queue[num_sub].sze,
-				&rx, &x);
-		if (ret) {
-			szedata_close(internals->tx_queue[num_sub].sze);
-			internals->tx_queue[num_sub].sze = NULL;
-			return -1;
-		}
-
-		if (v)
-			RTE_LOG(INFO, PMD, "Subscribed rx channel: 0x%x "
-				"tx channel: 0x%x\n", rx, x);
-
-		if (x) {
-			if (v)
-				RTE_LOG(INFO, PMD, "Starting SZE device for "
-					"tx queue: %u\n", num_sub);
-
-			ret = szedata_start(internals->tx_queue[num_sub].sze);
-			if (ret) {
-				szedata_close(internals->tx_queue[num_sub].sze);
-				internals->tx_queue[num_sub].sze = NULL;
-				return -1;
-			}
-
-			/*
-			 * set to 1 all bits lower than bit set to 1
-			 * and that bit to 0
-			 */
-			x -= 1;
-			internals->tx_queue[num_sub].tx_channel =
-				count_ones(x);
-
-			if (v)
-				RTE_LOG(INFO, PMD, "Subscribed tx channel "
-					"no: %u\n",
-					internals->tx_queue[num_sub].tx_channel
-					);
-
-			num_sub++;
-			internals->nb_tx_queues = num_sub;
-		} else {
-			if (v)
-				RTE_LOG(INFO, PMD,
-					"Could not subscribe any tx channel. "
-					"Closing SZE device\n");
-
-			szedata_close(internals->tx_queue[num_sub].sze);
-			internals->tx_queue[num_sub].sze = NULL;
-		}
-
-		/* set least significant non-zero bit to zero */
-		tx = tx & (tx - 1);
+	if (txq->sze == NULL) {
+		uint32_t rx = 0;
+		uint32_t tx = 1 << txq->tx_channel;
+		txq->sze = szedata_open(internals->sze_dev);
+		if (txq->sze == NULL)
+			return -EINVAL;
+		ret = szedata_subscribe3(txq->sze, &rx, &tx);
+		if (ret != 0 || tx == 0)
+			goto err;
 	}
 
-	dev->data->nb_tx_queues = (uint16_t)num_sub;
-
-	if (v)
-		RTE_LOG(INFO, PMD, "Successfully opened tx channels: %u\n",
-			num_sub);
-
+	ret = szedata_start(txq->sze);
+	if (ret != 0)
+		goto err;
+	dev->data->tx_queue_state[txq_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
+
+err:
+	szedata_close(txq->sze);
+	txq->sze = NULL;
+	return -EINVAL;
 }
 
-static void
-close_rx_channels(struct rte_eth_dev *dev)
+static int
+eth_tx_queue_stop(struct rte_eth_dev *dev, uint16_t txq_id)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
-	uint32_t i;
-	uint32_t num_sub = internals->nb_rx_queues;
+	struct szedata2_tx_queue *txq = dev->data->tx_queues[txq_id];
 
-	for (i = 0; i < num_sub; i++) {
-		if (internals->rx_queue[i].sze != NULL) {
-			szedata_close(internals->rx_queue[i].sze);
-			internals->rx_queue[i].sze = NULL;
-		}
+	if (txq->sze != NULL) {
+		szedata_close(txq->sze);
+		txq->sze = NULL;
 	}
-	/* set number of rx queues to zero */
-	internals->nb_rx_queues = 0;
-	dev->data->nb_rx_queues = (uint16_t)0;
-}
 
-static void
-close_tx_channels(struct rte_eth_dev *dev)
-{
-	struct pmd_internals *internals = dev->data->dev_private;
-	uint32_t i;
-	uint32_t num_sub = internals->nb_tx_queues;
-
-	for (i = 0; i < num_sub; i++) {
-		if (internals->tx_queue[i].sze != NULL) {
-			szedata_close(internals->tx_queue[i].sze);
-			internals->tx_queue[i].sze = NULL;
-		}
-	}
-	/* set number of rx queues to zero */
-	internals->nb_tx_queues = 0;
-	dev->data->nb_tx_queues = (uint16_t)0;
+	dev->data->tx_queue_state[txq_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
 }
 
 static int
 eth_dev_start(struct rte_eth_dev *dev)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
 	int ret;
+	uint16_t i;
+	uint16_t nb_rx = dev->data->nb_rx_queues;
+	uint16_t nb_tx = dev->data->nb_tx_queues;
 
-	if (internals->nb_rx_queues == 0) {
-		ret = init_rx_channels(dev, 0);
-		if (ret != 0) {
-			close_rx_channels(dev);
-			return -1;
-		}
+	for (i = 0; i < nb_rx; i++) {
+		ret = eth_rx_queue_start(dev, i);
+		if (ret != 0)
+			goto err_rx;
 	}
 
-	if (internals->nb_tx_queues == 0) {
-		ret = init_tx_channels(dev, 0);
-		if (ret != 0) {
-			close_tx_channels(dev);
-			close_rx_channels(dev);
-			return -1;
-		}
+	for (i = 0; i < nb_tx; i++) {
+		ret = eth_tx_queue_start(dev, i);
+		if (ret != 0)
+			goto err_tx;
 	}
 
 	dev->data->dev_link.link_status = 1;
 	return 0;
+
+err_tx:
+	for (i = 0; i < nb_tx; i++)
+		eth_tx_queue_stop(dev, i);
+err_rx:
+	for (i = 0; i < nb_rx; i++)
+		eth_rx_queue_stop(dev, i);
+	return ret;
 }
 
 static void
 eth_dev_stop(struct rte_eth_dev *dev)
 {
-	unsigned i;
-	struct pmd_internals *internals = dev->data->dev_private;
+	uint16_t i;
+	uint16_t nb_rx = dev->data->nb_rx_queues;
+	uint16_t nb_tx = dev->data->nb_tx_queues;
 
-	for (i = 0; i < internals->nb_rx_queues; i++) {
-		if (internals->rx_queue[i].sze != NULL) {
-			szedata_close(internals->rx_queue[i].sze);
-			internals->rx_queue[i].sze = NULL;
-		}
-	}
+	for (i = 0; i < nb_tx; i++)
+		eth_tx_queue_stop(dev, i);
 
-	for (i = 0; i < internals->nb_tx_queues; i++) {
-		if (internals->tx_queue[i].sze != NULL) {
-			szedata_close(internals->tx_queue[i].sze);
-			internals->tx_queue[i].sze = NULL;
-		}
-	}
-
-	internals->nb_rx_queues = 0;
-	internals->nb_tx_queues = 0;
-
-	dev->data->nb_rx_queues = (uint16_t)0;
-	dev->data->nb_tx_queues = (uint16_t)0;
+	for (i = 0; i < nb_rx; i++)
+		eth_rx_queue_stop(dev, i);
 
 	dev->data->dev_link.link_status = 0;
 }
@@ -1210,44 +1034,42 @@ eth_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	dev_info->driver_name = drivername;
-	dev_info->if_index = internals->if_index;
+	dev_info->if_index = 0;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)-1;
-	dev_info->max_rx_queues = (uint16_t)internals->nb_rx_queues;
-	dev_info->max_tx_queues = (uint16_t)internals->nb_tx_queues;
+	dev_info->max_rx_queues = internals->max_rx_queues;
+	dev_info->max_tx_queues = internals->max_tx_queues;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->pci_dev = NULL;
 }
 
 static void
 eth_stats_get(struct rte_eth_dev *dev,
 		struct rte_eth_stats *stats)
 {
-	unsigned i;
+	uint16_t i;
+	uint16_t nb_rx = dev->data->nb_rx_queues;
+	uint16_t nb_tx = dev->data->nb_tx_queues;
 	uint64_t rx_total = 0;
 	uint64_t tx_total = 0;
 	uint64_t tx_err_total = 0;
 	uint64_t rx_total_bytes = 0;
 	uint64_t tx_total_bytes = 0;
-	const struct pmd_internals *internal = dev->data->dev_private;
+	const struct pmd_internals *internals = dev->data->dev_private;
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
-			i < internal->nb_rx_queues; i++) {
-		stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
-		stats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < nb_rx; i++) {
+		stats->q_ipackets[i] = internals->rx_queue[i].rx_pkts;
+		stats->q_ibytes[i] = internals->rx_queue[i].rx_bytes;
 		rx_total += stats->q_ipackets[i];
 		rx_total_bytes += stats->q_ibytes[i];
 	}
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
-			i < internal->nb_tx_queues; i++) {
-		stats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
-		stats->q_errors[i] = internal->tx_queue[i].err_pkts;
-		stats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < nb_tx; i++) {
+		stats->q_opackets[i] = internals->tx_queue[i].tx_pkts;
+		stats->q_obytes[i] = internals->tx_queue[i].tx_bytes;
+		stats->q_errors[i] = internals->tx_queue[i].err_pkts;
 		tx_total += stats->q_opackets[i];
-		tx_err_total += stats->q_errors[i];
 		tx_total_bytes += stats->q_obytes[i];
+		tx_err_total += stats->q_errors[i];
 	}
 
 	stats->ipackets = rx_total;
@@ -1260,49 +1082,62 @@ eth_stats_get(struct rte_eth_dev *dev,
 static void
 eth_stats_reset(struct rte_eth_dev *dev)
 {
-	unsigned i;
-	struct pmd_internals *internal = dev->data->dev_private;
-	for (i = 0; i < internal->nb_rx_queues; i++) {
-		internal->rx_queue[i].rx_pkts = 0;
-		internal->rx_queue[i].rx_bytes = 0;
+	uint16_t i;
+	uint16_t nb_rx = dev->data->nb_rx_queues;
+	uint16_t nb_tx = dev->data->nb_tx_queues;
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	for (i = 0; i < nb_rx; i++) {
+		internals->rx_queue[i].rx_pkts = 0;
+		internals->rx_queue[i].rx_bytes = 0;
+		internals->rx_queue[i].err_pkts = 0;
 	}
-	for (i = 0; i < internal->nb_tx_queues; i++) {
-		internal->tx_queue[i].tx_pkts = 0;
-		internal->tx_queue[i].err_pkts = 0;
-		internal->tx_queue[i].tx_bytes = 0;
+	for (i = 0; i < nb_tx; i++) {
+		internals->tx_queue[i].tx_pkts = 0;
+		internals->tx_queue[i].tx_bytes = 0;
+		internals->tx_queue[i].err_pkts = 0;
+	}
+}
+
+static void
+eth_rx_queue_release(void *q)
+{
+	struct szedata2_rx_queue *rxq = (struct szedata2_rx_queue *)q;
+	if (rxq->sze != NULL) {
+		szedata_close(rxq->sze);
+		rxq->sze = NULL;
+	}
+}
+
+static void
+eth_tx_queue_release(void *q)
+{
+	struct szedata2_tx_queue *txq = (struct szedata2_tx_queue *)q;
+	if (txq->sze != NULL) {
+		szedata_close(txq->sze);
+		txq->sze = NULL;
 	}
 }
 
 static void
 eth_dev_close(struct rte_eth_dev *dev)
 {
-	unsigned i;
-	struct pmd_internals *internals = dev->data->dev_private;
+	uint16_t i;
+	uint16_t nb_rx = dev->data->nb_rx_queues;
+	uint16_t nb_tx = dev->data->nb_tx_queues;
 
-	for (i = 0; i < internals->nb_rx_queues; i++) {
-		if (internals->rx_queue[i].sze != NULL) {
-			szedata_close(internals->rx_queue[i].sze);
-			internals->rx_queue[i].sze = NULL;
-		}
+	eth_dev_stop(dev);
+
+	for (i = 0; i < nb_rx; i++) {
+		eth_rx_queue_release(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
 	}
-
-	for (i = 0; i < internals->nb_tx_queues; i++) {
-		if (internals->tx_queue[i].sze != NULL) {
-			szedata_close(internals->tx_queue[i].sze);
-			internals->tx_queue[i].sze = NULL;
-		}
+	dev->data->nb_rx_queues = 0;
+	for (i = 0; i < nb_tx; i++) {
+		eth_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
 	}
-
-	internals->nb_rx_queues = 0;
-	internals->nb_tx_queues = 0;
-
-	dev->data->nb_rx_queues = (uint16_t)0;
-	dev->data->nb_tx_queues = (uint16_t)0;
-}
-
-static void
-eth_queue_release(void *q __rte_unused)
-{
+	dev->data->nb_tx_queues = 0;
 }
 
 static int
@@ -1321,11 +1156,28 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		struct rte_mempool *mb_pool)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	struct szedata2_rx_queue *szedata2_q =
-		&internals->rx_queue[rx_queue_id];
-	szedata2_q->mb_pool = mb_pool;
-	dev->data->rx_queues[rx_queue_id] = szedata2_q;
-	szedata2_q->in_port = dev->data->port_id;
+	struct szedata2_rx_queue *rxq = &internals->rx_queue[rx_queue_id];
+	int ret;
+	uint32_t rx = 1 << rx_queue_id;
+	uint32_t tx = 0;
+
+	rxq->sze = szedata_open(internals->sze_dev);
+	if (rxq->sze == NULL)
+		return -EINVAL;
+	ret = szedata_subscribe3(rxq->sze, &rx, &tx);
+	if (ret != 0 || rx == 0) {
+		szedata_close(rxq->sze);
+		rxq->sze = NULL;
+		return -EINVAL;
+	}
+	rxq->rx_channel = rx_queue_id;
+	rxq->in_port = dev->data->port_id;
+	rxq->mb_pool = mb_pool;
+	rxq->rx_pkts = 0;
+	rxq->rx_bytes = 0;
+	rxq->err_pkts = 0;
+
+	dev->data->rx_queues[rx_queue_id] = rxq;
 	return 0;
 }
 
@@ -1337,7 +1189,26 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 		const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	dev->data->tx_queues[tx_queue_id] = &internals->tx_queue[tx_queue_id];
+	struct szedata2_tx_queue *txq = &internals->tx_queue[tx_queue_id];
+	int ret;
+	uint32_t rx = 0;
+	uint32_t tx = 1 << tx_queue_id;
+
+	txq->sze = szedata_open(internals->sze_dev);
+	if (txq->sze == NULL)
+		return -EINVAL;
+	ret = szedata_subscribe3(txq->sze, &rx, &tx);
+	if (ret != 0 || tx == 0) {
+		szedata_close(txq->sze);
+		txq->sze = NULL;
+		return -EINVAL;
+	}
+	txq->tx_channel = tx_queue_id;
+	txq->tx_pkts = 0;
+	txq->tx_bytes = 0;
+	txq->err_pkts = 0;
+
+	dev->data->tx_queues[tx_queue_id] = txq;
 	return 0;
 }
 
@@ -1353,272 +1224,217 @@ static struct eth_dev_ops ops = {
 		.dev_close          = eth_dev_close,
 		.dev_configure      = eth_dev_configure,
 		.dev_infos_get      = eth_dev_info,
+		.rx_queue_start     = eth_rx_queue_start,
+		.rx_queue_stop      = eth_rx_queue_stop,
+		.tx_queue_start     = eth_tx_queue_start,
+		.tx_queue_stop      = eth_tx_queue_stop,
 		.rx_queue_setup     = eth_rx_queue_setup,
 		.tx_queue_setup     = eth_tx_queue_setup,
-		.rx_queue_release   = eth_queue_release,
-		.tx_queue_release   = eth_queue_release,
+		.rx_queue_release   = eth_rx_queue_release,
+		.tx_queue_release   = eth_tx_queue_release,
 		.link_update        = eth_link_update,
 		.stats_get          = eth_stats_get,
 		.stats_reset        = eth_stats_reset,
 		.mac_addr_set       = eth_mac_addr_set,
 };
 
+/*
+ * This function goes through sysfs and looks for an index of szedata2
+ * device file (/dev/szedataIIX, where X is the index).
+ *
+ * @return
+ *           0 on success
+ *          -1 on error
+ */
 static int
-parse_mask(const char *mask_str, uint32_t *mask_num)
+get_szedata2_index(struct rte_eth_dev *dev, uint32_t *index)
 {
-	char *endptr;
-	long int value;
-
-	value = strtol(mask_str, &endptr, 0);
-	if (*endptr != '\0' || value > UINT32_MAX || value < 0)
-		return -1;
-
-	*mask_num = (uint32_t)value;
-	return 0;
-}
-
-static int
-add_rx_mask(const char *key __rte_unused, const char *value, void *extra_args)
-{
-	struct rxtx_szedata2 *szedata2 = extra_args;
-	uint32_t mask;
-
-	if (parse_mask(value, &mask) != 0)
-		return -1;
-
-	szedata2->sze_rx_mask_req |= mask;
-	return 0;
-}
-
-static int
-add_tx_mask(const char *key __rte_unused, const char *value, void *extra_args)
-{
-	struct rxtx_szedata2 *szedata2 = extra_args;
-	uint32_t mask;
-
-	if (parse_mask(value, &mask) != 0)
-		return -1;
-
-	szedata2->sze_tx_mask_req |= mask;
-	return 0;
-}
-
-static int
-rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
-		const unsigned nb_tx_queues,
-		const unsigned numa_node,
-		struct pmd_internals **internals,
-		struct rte_eth_dev **eth_dev)
-{
-	struct rte_eth_dev_data *data = NULL;
-
-	RTE_LOG(INFO, PMD,
-			"Creating szedata2-backed ethdev on numa socket %u\n",
-			numa_node);
-
-	/*
-	 * now do all data allocation - for eth_dev structure
-	 * and internal (private) data
-	 */
-	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
-	if (data == NULL)
-		goto error;
-
-	*internals = rte_zmalloc_socket(name, sizeof(**internals), 0,
-			numa_node);
-	if (*internals == NULL)
-		goto error;
-
-	/* reserve an ethdev entry */
-	*eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
-	if (*eth_dev == NULL)
-		goto error;
-
-	/*
-	 * now put it all together
-	 * - store queue data in internals,
-	 * - store numa_node info in pci_driver
-	 * - point eth_dev_data to internals
-	 * - and point eth_dev structure to new eth_dev_data structure
-	 *
-	 * NOTE: we'll replace the data element, of originally allocated eth_dev
-	 * so the rings are local per-process
-	 */
-
-	(*internals)->nb_rx_queues = nb_rx_queues;
-	(*internals)->nb_tx_queues = nb_tx_queues;
-
-	(*internals)->if_index = 0;
-
-	data->dev_private = *internals;
-	data->port_id = (*eth_dev)->data->port_id;
-	snprintf(data->name, sizeof(data->name), "%s", (*eth_dev)->data->name);
-	data->nb_rx_queues = (uint16_t)nb_rx_queues;
-	data->nb_tx_queues = (uint16_t)nb_tx_queues;
-	data->dev_link = pmd_link;
-	data->mac_addrs = &eth_addr;
-
-	(*eth_dev)->data = data;
-	(*eth_dev)->dev_ops = &ops;
-	(*eth_dev)->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	(*eth_dev)->driver = NULL;
-	(*eth_dev)->data->kdrv = RTE_KDRV_NONE;
-	(*eth_dev)->data->drv_name = drivername;
-	(*eth_dev)->data->numa_node = numa_node;
-
-	return 0;
-
-error:
-	rte_free(data);
-	rte_free(*internals);
-	return -1;
-}
-
-static int
-rte_eth_from_szedata2(const char *name,
-		struct rxtx_szedata2 *szedata2,
-		const unsigned numa_node)
-{
-	struct pmd_internals *internals = NULL;
-	struct rte_eth_dev *eth_dev = NULL;
-	struct rte_eth_dev_data *data = NULL;
+	DIR *dir;
+	struct dirent *entry;
 	int ret;
+	uint32_t tmp_index;
+	FILE *fd;
+	char pcislot_path[PATH_MAX];
+	struct rte_pci_addr pcislot_addr = dev->pci_dev->addr;
+	uint32_t domain;
+	uint32_t bus;
+	uint32_t devid;
+	uint32_t function;
 
-	if (rte_pmd_init_internals(name, 0, 0, numa_node,
-			&internals, &eth_dev) < 0)
-		return -1;
-
-	data = eth_dev->data;
-
-	internals->sze_dev = szedata2->sze_dev;
-	internals->sze_rx_req = szedata2->sze_rx_mask_req;
-	internals->sze_tx_req = szedata2->sze_tx_mask_req;
-	internals->num_of_rx = szedata2->num_of_rx;
-	internals->num_of_tx = szedata2->num_of_tx;
-
-	RTE_LOG(INFO, PMD, "Number of rx channels to open: %u mask: 0x%x\n",
-			internals->num_of_rx, internals->sze_rx_req);
-	RTE_LOG(INFO, PMD, "Number of tx channels to open: %u mask: 0x%x\n",
-			internals->num_of_tx, internals->sze_tx_req);
-
-	ret = init_rx_channels(eth_dev, 1);
-	if (ret != 0) {
-		close_rx_channels(eth_dev);
-		return -1;
-	}
-
-	ret = init_tx_channels(eth_dev, 1);
-	if (ret != 0) {
-		close_tx_channels(eth_dev);
-		close_rx_channels(eth_dev);
-		return -1;
-	}
-
-	if (data->dev_conf.rxmode.enable_scatter == 1 ||
-		data->scattered_rx == 1) {
-		eth_dev->rx_pkt_burst = eth_szedata2_rx_scattered;
-		data->scattered_rx = 1;
-	} else {
-		eth_dev->rx_pkt_burst = eth_szedata2_rx;
-		data->scattered_rx = 0;
-	}
-	eth_dev->tx_pkt_burst = eth_szedata2_tx;
-
-	return 0;
-}
-
-
-static int
-rte_pmd_szedata2_devinit(const char *name, const char *params)
-{
-	unsigned numa_node;
-	int ret;
-	struct rte_kvargs *kvlist;
-	unsigned k_idx;
-	struct rte_kvargs_pair *pair = NULL;
-	struct rxtx_szedata2 szedata2 = { 0, 0, 0, 0, NULL };
-	bool dev_path_missing = true;
-
-	RTE_LOG(INFO, PMD, "Initializing pmd_szedata2 for %s\n", name);
-
-	numa_node = rte_socket_id();
-
-	kvlist = rte_kvargs_parse(params, valid_arguments);
-	if (kvlist == NULL)
+	dir = opendir("/sys/class/combo");
+	if (dir == NULL)
 		return -1;
 
 	/*
-	 * Get szedata2 device path and rx,tx channels from passed arguments.
+	 * Iterate through all combosixX directories.
+	 * When the value in /sys/class/combo/combosixX/device/pcislot
+	 * file is the location of the ethernet device dev, "X" is the
+	 * index of the device.
 	 */
+	while ((entry = readdir(dir)) != NULL) {
+		ret = sscanf(entry->d_name, "combosix%u", &tmp_index);
+		if (ret != 1)
+			continue;
 
-	if (rte_kvargs_count(kvlist, RTE_ETH_SZEDATA2_DEV_PATH_ARG) != 1)
-		goto err;
+		snprintf(pcislot_path, PATH_MAX,
+			"/sys/class/combo/combosix%u/device/pcislot",
+			tmp_index);
 
-	if (rte_kvargs_count(kvlist, RTE_ETH_SZEDATA2_RX_IFACES_ARG) < 1)
-		goto err;
+		fd = fopen(pcislot_path, "r");
+		if (fd == NULL)
+			continue;
 
-	if (rte_kvargs_count(kvlist, RTE_ETH_SZEDATA2_TX_IFACES_ARG) < 1)
-		goto err;
+		ret = fscanf(fd, "%4" PRIx16 ":%2" PRIx8 ":%2" PRIx8 ".%" PRIx8,
+				&domain, &bus, &devid, &function);
+		fclose(fd);
+		if (ret != 4)
+			continue;
 
-	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
-		pair = &kvlist->pairs[k_idx];
-		if (strstr(pair->key, RTE_ETH_SZEDATA2_DEV_PATH_ARG) != NULL) {
-			szedata2.sze_dev = pair->value;
-			dev_path_missing = false;
-			break;
+		if (pcislot_addr.domain == domain &&
+				pcislot_addr.bus == bus &&
+				pcislot_addr.devid == devid &&
+				pcislot_addr.function == function) {
+			*index = tmp_index;
+			closedir(dir);
+			return 0;
 		}
 	}
 
-	if (dev_path_missing)
-		goto err;
-
-	ret = rte_kvargs_process(kvlist, RTE_ETH_SZEDATA2_RX_IFACES_ARG,
-			&add_rx_mask, &szedata2);
-	if (ret < 0)
-		goto err;
-
-	ret = rte_kvargs_process(kvlist, RTE_ETH_SZEDATA2_TX_IFACES_ARG,
-			&add_tx_mask, &szedata2);
-	if (ret < 0)
-		goto err;
-
-	szedata2.num_of_rx = count_ones(szedata2.sze_rx_mask_req);
-	szedata2.num_of_tx = count_ones(szedata2.sze_tx_mask_req);
-
-	RTE_LOG(INFO, PMD, "SZE device found at path %s\n", szedata2.sze_dev);
-
-	return rte_eth_from_szedata2(name, &szedata2, numa_node);
-err:
-	rte_kvargs_free(kvlist);
+	closedir(dir);
 	return -1;
 }
 
 static int
-rte_pmd_szedata2_devuninit(const char *name)
+rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev *dev = NULL;
+	struct rte_eth_dev_data *data = dev->data;
+	struct pmd_internals *internals = (struct pmd_internals *)
+		data->dev_private;
+	struct szedata *szedata_temp;
+	int ret;
+	uint32_t szedata2_index;
+	struct rte_pci_addr pciaddr = dev->pci_dev->addr;
 
-	RTE_LOG(INFO, PMD, "Uninitializing pmd_szedata2 for %s "
-			"on numa socket %u\n", name, rte_socket_id());
+	RTE_LOG(INFO, PMD, "Initializing szedata2 device (" PCI_PRI_FMT ")\n",
+			pciaddr.domain, pciaddr.bus, pciaddr.devid,
+			pciaddr.function);
 
-	if (name == NULL)
-		return -1;
+	/* Get index of szedata2 device file and create path to device file */
+	ret = get_szedata2_index(dev, &szedata2_index);
+	if (ret != 0) {
+		RTE_LOG(ERR, PMD, "Failed to get szedata2 device index!\n");
+		return -ENODEV;
+	}
+	snprintf(internals->sze_dev, PATH_MAX, SZEDATA2_DEV_PATH_FMT,
+			szedata2_index);
 
-	dev = rte_eth_dev_allocated(name);
-	if (dev == NULL)
-		return -1;
+	RTE_LOG(INFO, PMD, "SZEDATA2 path: %s\n", internals->sze_dev);
 
-	rte_free(dev->data->dev_private);
-	rte_free(dev->data);
-	rte_eth_dev_release_port(dev);
+	/*
+	 * Get number of available DMA RX and TX channels, which is maximum
+	 * number of queues that can be created and store it in private device
+	 * data structure.
+	 */
+	szedata_temp = szedata_open(internals->sze_dev);
+	if (szedata_temp == NULL) {
+		RTE_LOG(ERR, PMD, "szedata_open(): failed to open %s",
+				internals->sze_dev);
+		return -EINVAL;
+	}
+	internals->max_rx_queues = szedata_ifaces_available(szedata_temp,
+			SZE2_DIR_RX);
+	internals->max_tx_queues = szedata_ifaces_available(szedata_temp,
+			SZE2_DIR_TX);
+	szedata_close(szedata_temp);
+
+	RTE_LOG(INFO, PMD, "Available DMA channels RX: %u, TX: %u\n",
+			internals->max_rx_queues, internals->max_tx_queues);
+
+	/* Set rx, tx burst functions */
+	if (data->dev_conf.rxmode.enable_scatter == 1 ||
+		data->scattered_rx == 1) {
+		dev->rx_pkt_burst = eth_szedata2_rx_scattered;
+		data->scattered_rx = 1;
+	} else {
+		dev->rx_pkt_burst = eth_szedata2_rx;
+		data->scattered_rx = 0;
+	}
+	dev->tx_pkt_burst = eth_szedata2_tx;
+
+	/* Set function callbacks for Ethernet API */
+	dev->dev_ops = &ops;
+
+	rte_eth_copy_pci_info(dev, dev->pci_dev);
+
+	data->dev_link = pmd_link;
+
+	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct ether_addr),
+			RTE_CACHE_LINE_SIZE);
+	if (data->mac_addrs == NULL) {
+		RTE_LOG(ERR, PMD, "Could not alloc space for MAC address!\n");
+		return -EINVAL;
+	}
+
+	ether_addr_copy(&eth_addr, data->mac_addrs);
+
 	return 0;
 }
 
-static struct rte_driver pmd_szedata2_drv = {
-	.name = "eth_szedata2",
-	.type = PMD_VDEV,
-	.init = rte_pmd_szedata2_devinit,
-	.uninit = rte_pmd_szedata2_devuninit,
+static int
+rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
+{
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
+	return 0;
+}
+
+static const struct rte_pci_id rte_szedata2_pci_id_table[] = {
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETCOPE,
+				PCI_DEVICE_ID_NETCOPE_COMBO80G)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETCOPE,
+				PCI_DEVICE_ID_NETCOPE_COMBO100G)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETCOPE,
+				PCI_DEVICE_ID_NETCOPE_COMBO100G2)
+	},
+	{
+		.vendor_id = 0,
+	}
 };
 
-PMD_REGISTER_DRIVER(pmd_szedata2_drv);
+static struct eth_driver szedata2_eth_driver = {
+	.pci_drv = {
+		.name     = RTE_SZEDATA2_PCI_DRIVER_NAME,
+		.id_table = rte_szedata2_pci_id_table,
+	},
+	.eth_dev_init     = rte_szedata2_eth_dev_init,
+	.eth_dev_uninit   = rte_szedata2_eth_dev_uninit,
+	.dev_private_size = sizeof(struct pmd_internals),
+};
+
+static int
+rte_szedata2_init(const char *name __rte_unused,
+		const char *args __rte_unused)
+{
+	rte_eth_driver_register(&szedata2_eth_driver);
+	return 0;
+}
+
+static int
+rte_szedata2_uninit(const char *name __rte_unused)
+{
+	return 0;
+}
+
+static struct rte_driver rte_szedata2_driver = {
+	.type = PMD_PDEV,
+	.name = RTE_SZEDATA2_DRIVER_NAME,
+	.init = rte_szedata2_init,
+	.uninit = rte_szedata2_uninit,
+};
+
+PMD_REGISTER_DRIVER(rte_szedata2_driver);
