@@ -49,6 +49,7 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
 #include <sys/io.h>
 #endif
@@ -901,27 +902,33 @@ int rte_eal_has_hugepages(void)
 int
 rte_eal_check_module(const char *module_name)
 {
-	char mod_name[30]; /* Any module names can be longer than 30 bytes? */
-	int ret = 0;
+	char sysfs_mod_name[PATH_MAX];
+	struct stat st;
 	int n;
 
 	if (NULL == module_name)
 		return -1;
 
-	FILE *fd = fopen("/proc/modules", "r");
-	if (NULL == fd) {
-		RTE_LOG(ERR, EAL, "Open /proc/modules failed!"
-			" error %i (%s)\n", errno, strerror(errno));
+	/* Check if there is sysfs mounted */
+	if (stat("/sys/module", &st) != 0) {
+		RTE_LOG(DEBUG, EAL, "sysfs is not mounted! error %i (%s)\n",
+			errno, strerror(errno));
 		return -1;
 	}
-	while (!feof(fd)) {
-		n = fscanf(fd, "%29s %*[^\n]", mod_name);
-		if ((n == 1) && !strcmp(mod_name, module_name)) {
-			ret = 1;
-			break;
-		}
-	}
-	fclose(fd);
 
-	return ret;
+	/* A module might be built-in, therefore try sysfs */
+	n = snprintf(sysfs_mod_name, PATH_MAX, "/sys/module/%s", module_name);
+	if (n < 0 || n > PATH_MAX) {
+		RTE_LOG(DEBUG, EAL, "Could not format module path\n");
+		return -1;
+	}
+
+	if (stat(sysfs_mod_name, &st) != 0) {
+		RTE_LOG(DEBUG, EAL, "Module %s not found! error %i (%s)\n",
+		        sysfs_mod_name, errno, strerror(errno));
+		return 0;
+	}
+
+	/* Module has been found */
+	return 1;
 }
