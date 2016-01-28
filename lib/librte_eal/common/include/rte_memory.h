@@ -184,7 +184,7 @@ unsigned rte_memory_get_nrank(void);
 #ifdef RTE_LIBRTE_XEN_DOM0
 
 /**< Internal use only - should DOM0 memory mapping be used */
-extern int rte_xen_dom0_supported(void);
+int rte_xen_dom0_supported(void);
 
 /**< Internal use only - phys to virt mapping for xen */
 phys_addr_t rte_xen_mem_phy2mch(uint32_t, const phys_addr_t);
