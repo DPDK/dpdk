@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright (c) 2015 CESNET
+ *   Copyright (c) 2015 - 2016 CESNET
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,9 @@
 #include <err.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include <libsze2.h>
 
@@ -46,6 +49,7 @@
 #include <rte_memcpy.h>
 #include <rte_kvargs.h>
 #include <rte_dev.h>
+#include <rte_atomic.h>
 
 #include "rte_eth_szedata2.h"
 
@@ -91,11 +95,6 @@ struct pmd_internals {
 
 static struct ether_addr eth_addr = {
 	.addr_bytes = { 0x00, 0x11, 0x17, 0x00, 0x00, 0x00 }
-};
-static struct rte_eth_link pmd_link = {
-		.link_speed = ETH_LINK_SPEED_10G,
-		.link_duplex = ETH_LINK_FULL_DUPLEX,
-		.link_status = 0
 };
 
 static uint16_t
@@ -987,7 +986,6 @@ eth_dev_start(struct rte_eth_dev *dev)
 			goto err_tx;
 	}
 
-	dev->data->dev_link.link_status = 1;
 	return 0;
 
 err_tx:
@@ -1011,8 +1009,6 @@ eth_dev_stop(struct rte_eth_dev *dev)
 
 	for (i = 0; i < nb_rx; i++)
 		eth_rx_queue_stop(dev, i);
-
-	dev->data->dev_link.link_status = 0;
 }
 
 static int
@@ -1141,9 +1137,76 @@ eth_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
-eth_link_update(struct rte_eth_dev *dev __rte_unused,
+eth_link_update(struct rte_eth_dev *dev,
 		int wait_to_complete __rte_unused)
 {
+	struct rte_eth_link link;
+	struct rte_eth_link *link_ptr = &link;
+	struct rte_eth_link *dev_link = &dev->data->dev_link;
+	volatile struct szedata2_cgmii_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_IBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_ibuf *);
+
+	switch (cgmii_link_speed(ibuf)) {
+	case SZEDATA2_LINK_SPEED_10G:
+		link.link_speed = ETH_LINK_SPEED_10G;
+		break;
+	case SZEDATA2_LINK_SPEED_40G:
+		link.link_speed = ETH_LINK_SPEED_40G;
+		break;
+	case SZEDATA2_LINK_SPEED_100G:
+		/*
+		 * TODO
+		 * If link_speed value from rte_eth_link structure
+		 * will be changed to support 100Gbps speed change
+		 * this value to 100G.
+		 */
+		link.link_speed = ETH_LINK_SPEED_10G;
+		break;
+	default:
+		link.link_speed = ETH_LINK_SPEED_10G;
+		break;
+	}
+
+	/* szedata2 uses only full duplex */
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+
+	link.link_status = (cgmii_ibuf_is_enabled(ibuf) &&
+			cgmii_ibuf_is_link_up(ibuf)) ? 1 : 0;
+
+	rte_atomic64_cmpset((uint64_t *)dev_link, *(uint64_t *)dev_link,
+			*(uint64_t *)link_ptr);
+
+	return 0;
+}
+
+static int
+eth_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	volatile struct szedata2_cgmii_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_IBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_ibuf *);
+	volatile struct szedata2_cgmii_obuf *obuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_OBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_obuf *);
+
+	cgmii_ibuf_enable(ibuf);
+	cgmii_obuf_enable(obuf);
+	return 0;
+}
+
+static int
+eth_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	volatile struct szedata2_cgmii_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_IBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_ibuf *);
+	volatile struct szedata2_cgmii_obuf *obuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_OBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_obuf *);
+
+	cgmii_ibuf_disable(ibuf);
+	cgmii_obuf_disable(obuf);
 	return 0;
 }
 
@@ -1221,6 +1284,8 @@ eth_mac_addr_set(struct rte_eth_dev *dev __rte_unused,
 static struct eth_dev_ops ops = {
 		.dev_start          = eth_dev_start,
 		.dev_stop           = eth_dev_stop,
+		.dev_set_link_up    = eth_dev_set_link_up,
+		.dev_set_link_down  = eth_dev_set_link_down,
 		.dev_close          = eth_dev_close,
 		.dev_configure      = eth_dev_configure,
 		.dev_infos_get      = eth_dev_info,
@@ -1313,11 +1378,16 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	struct szedata *szedata_temp;
 	int ret;
 	uint32_t szedata2_index;
-	struct rte_pci_addr pciaddr = dev->pci_dev->addr;
+	struct rte_pci_addr *pci_addr = &dev->pci_dev->addr;
+	struct rte_pci_resource *pci_rsc =
+		&dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER];
+	char rsc_filename[PATH_MAX];
+	void *pci_resource_ptr = NULL;
+	int fd;
 
 	RTE_LOG(INFO, PMD, "Initializing szedata2 device (" PCI_PRI_FMT ")\n",
-			pciaddr.domain, pciaddr.bus, pciaddr.devid,
-			pciaddr.function);
+			pci_addr->domain, pci_addr->bus, pci_addr->devid,
+			pci_addr->function);
 
 	/* Get index of szedata2 device file and create path to device file */
 	ret = get_szedata2_index(dev, &szedata2_index);
@@ -1347,7 +1417,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 			SZE2_DIR_TX);
 	szedata_close(szedata_temp);
 
-	RTE_LOG(INFO, PMD, "Available DMA channels RX: %u, TX: %u\n",
+	RTE_LOG(INFO, PMD, "Available DMA channels RX: %u TX: %u\n",
 			internals->max_rx_queues, internals->max_tx_queues);
 
 	/* Set rx, tx burst functions */
@@ -1366,16 +1436,58 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 
 	rte_eth_copy_pci_info(dev, dev->pci_dev);
 
-	data->dev_link = pmd_link;
+	/* mmap pci resource0 file to rte_pci_resource structure */
+	if (dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].phys_addr ==
+			0) {
+		RTE_LOG(ERR, PMD, "Missing resource%u file\n",
+				PCI_RESOURCE_NUMBER);
+		return -EINVAL;
+	}
+	snprintf(rsc_filename, PATH_MAX,
+		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%u",
+		pci_addr->domain, pci_addr->bus,
+		pci_addr->devid, pci_addr->function, PCI_RESOURCE_NUMBER);
+	fd = open(rsc_filename, O_RDWR);
+	if (fd < 0) {
+		RTE_LOG(ERR, PMD, "Could not open file %s\n", rsc_filename);
+		return -EINVAL;
+	}
+
+	pci_resource_ptr = mmap(0,
+			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len,
+			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	close(fd);
+	if (pci_resource_ptr == NULL) {
+		RTE_LOG(ERR, PMD, "Could not mmap file %s (fd = %d)\n",
+				rsc_filename, fd);
+		return -EINVAL;
+	}
+	dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr =
+		pci_resource_ptr;
+
+	RTE_LOG(DEBUG, PMD, "resource%u phys_addr = 0x%llx len = %llu "
+			"virt addr = %llx\n", PCI_RESOURCE_NUMBER,
+			(unsigned long long)pci_rsc->phys_addr,
+			(unsigned long long)pci_rsc->len,
+			(unsigned long long)pci_rsc->addr);
+
+	eth_link_update(dev, 0);
 
 	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct ether_addr),
 			RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
 		RTE_LOG(ERR, PMD, "Could not alloc space for MAC address!\n");
+		munmap(dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr,
+			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len);
 		return -EINVAL;
 	}
 
 	ether_addr_copy(&eth_addr, data->mac_addrs);
+
+	RTE_LOG(INFO, PMD, "szedata2 device ("
+			PCI_PRI_FMT ") successfully initialized\n",
+			pci_addr->domain, pci_addr->bus, pci_addr->devid,
+			pci_addr->function);
 
 	return 0;
 }
@@ -1383,8 +1495,18 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 static int
 rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
 {
+	struct rte_pci_addr *pci_addr = &dev->pci_dev->addr;
+
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
+	munmap(dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr,
+		dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].len);
+
+	RTE_LOG(INFO, PMD, "szedata2 device ("
+			PCI_PRI_FMT ") successfully uninitialized\n",
+			pci_addr->domain, pci_addr->bus, pci_addr->devid,
+			pci_addr->function);
+
 	return 0;
 }
 

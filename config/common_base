@@ -246,6 +246,15 @@ CONFIG_RTE_LIBRTE_NFP_DEBUG=n
 # Compile software PMD backed by SZEDATA2 device
 #
 CONFIG_RTE_LIBRTE_PMD_SZEDATA2=n
+#
+# Defines firmware type address space.
+# RTE_LIBRTE_PMD_SZEDATA2_AS can be:
+# 0 - for firmwares:
+#         NIC_100G1_LR4
+#         HANIC_100G1_LR4
+#         HANIC_100G1_SR10
+# Other values raise compile time error
+CONFIG_RTE_LIBRTE_PMD_SZEDATA2_AS=0
 
 #
 # Compile burst-oriented VIRTIO PMD driver

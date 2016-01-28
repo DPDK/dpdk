@@ -89,6 +89,17 @@ These configuration options can be modified before compilation in the
 
    Value **y** enables compilation of szedata2 PMD.
 
+*  ``CONFIG_RTE_LIBRTE_PMD_SZEDATA2_AS`` default value: **0**
+
+   This option defines type of firmware address space.
+   Currently supported value is:
+
+   * **0** for firmwares:
+
+      * NIC_100G1_LR4
+      * HANIC_100G1_LR4
+      * HANIC_100G1_SR10
+
 Using the SZEDATA2 PMD
 ----------------------
 
