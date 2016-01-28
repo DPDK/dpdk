@@ -220,25 +220,25 @@ eth_pcap_rx(void *queue,
 		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(pcap_q->mb_pool) -
 				RTE_PKTMBUF_HEADROOM);
 
-		if (header.len <= buf_size) {
+		if (header.caplen <= buf_size) {
 			/* pcap packet will fit in the mbuf, go ahead and copy */
 			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *), packet,
-					header.len);
-			mbuf->data_len = (uint16_t)header.len;
+					header.caplen);
+			mbuf->data_len = (uint16_t)header.caplen;
 		} else {
 			/* Try read jumbo frame into multi mbufs. */
 			if (unlikely(eth_pcap_rx_jumbo(pcap_q->mb_pool,
 						       mbuf,
 						       packet,
-						       header.len) == -1))
+						       header.caplen) == -1))
 				break;
 		}
 
-		mbuf->pkt_len = (uint16_t)header.len;
+		mbuf->pkt_len = (uint16_t)header.caplen;
 		mbuf->port = pcap_q->in_port;
 		bufs[num_rx] = mbuf;
 		num_rx++;
-		rx_bytes += header.len;
+		rx_bytes += header.caplen;
 	}
 	pcap_q->rx_pkts += num_rx;
 	pcap_q->rx_bytes += rx_bytes;
