@@ -306,7 +306,7 @@ COPY_BLOCK_128_BACK63:
 	goto COPY_BLOCK_128_BACK63;
 }
 
-#elif RTE_MACHINE_CPUFLAG_AVX2
+#elif defined RTE_MACHINE_CPUFLAG_AVX2
 
 /**
  * AVX2 implementation below

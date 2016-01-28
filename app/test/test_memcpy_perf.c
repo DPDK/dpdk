@@ -81,7 +81,7 @@ static size_t buf_sizes[TEST_VALUE_RANGE];
 /* Data is aligned on this many bytes (power of 2) */
 #ifdef RTE_MACHINE_CPUFLAG_AVX512F
 #define ALIGNMENT_UNIT          64
-#elif RTE_MACHINE_CPUFLAG_AVX2
+#elif defined RTE_MACHINE_CPUFLAG_AVX2
 #define ALIGNMENT_UNIT          32
 #else /* RTE_MACHINE_CPUFLAG */
 #define ALIGNMENT_UNIT          16
