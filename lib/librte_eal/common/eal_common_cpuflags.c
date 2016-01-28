@@ -79,7 +79,7 @@ rte_cpu_check_supported(void)
 			fprintf(stderr,
 			        "ERROR: This system does not support \"%s\".\n"
 			        "Please check that RTE_MACHINE is set correctly.\n",
-			        cpu_feature_table[compile_time_flags[i]].name);
+			        rte_cpu_feature_table[compile_time_flags[i]].name);
 			exit(1);
 		}
 	}

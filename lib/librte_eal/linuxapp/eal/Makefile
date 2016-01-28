@@ -33,7 +33,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 LIB = librte_eal.a
 
+ARCH_DIR ?= $(RTE_ARCH)
 EXPORT_MAP := rte_eal_version.map
+VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
 
 LIBABIVER := 2
 
@@ -92,6 +94,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += malloc_elem.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += malloc_heap.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += rte_keepalive.c
 
+# from arch dir
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += rte_cpuflags.c
+
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_interrupts.o := -D_GNU_SOURCE
 CFLAGS_eal_pci_vfio_mp_sync.o := -D_GNU_SOURCE
@@ -121,5 +126,6 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))
 
 DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += lib/librte_eal/common
+DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += lib/librte_eal/common/arch/$(ARCH_DIR)
 
 include $(RTE_SDK)/mk/rte.lib.mk

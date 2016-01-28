@@ -45,6 +45,8 @@ extern "C" {
 
 #include "generic/rte_cpuflags.h"
 
+extern const struct feature_entry rte_cpu_feature_table[];
+
 #ifndef AT_HWCAP
 #define AT_HWCAP 16
 #endif
@@ -79,18 +81,6 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_AARCH64,
 	/* The last item */
 	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
-};
-
-static const struct feature_entry cpu_feature_table[] = {
-	FEAT_DEF(FP,		0x00000001, 0, REG_HWCAP,  0)
-	FEAT_DEF(NEON,		0x00000001, 0, REG_HWCAP,  1)
-	FEAT_DEF(EVTSTRM,	0x00000001, 0, REG_HWCAP,  2)
-	FEAT_DEF(AES,		0x00000001, 0, REG_HWCAP,  3)
-	FEAT_DEF(PMULL,		0x00000001, 0, REG_HWCAP,  4)
-	FEAT_DEF(SHA1,		0x00000001, 0, REG_HWCAP,  5)
-	FEAT_DEF(SHA2,		0x00000001, 0, REG_HWCAP,  6)
-	FEAT_DEF(CRC32,		0x00000001, 0, REG_HWCAP,  7)
-	FEAT_DEF(AARCH64,	0x00000001, 0, REG_PLATFORM, 1)
 };
 
 /*
@@ -132,7 +122,7 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 		/* Flag does not match anything in the feature tables */
 		return -ENOENT;
 
-	feat = &cpu_feature_table[feature];
+	feat = &rte_cpu_feature_table[feature];
 
 	if (!feat->leaf)
 		/* This entry in the table wasn't filled out! */

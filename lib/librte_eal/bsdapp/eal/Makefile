@@ -33,7 +33,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 LIB = librte_eal.a
 
+ARCH_DIR ?= $(RTE_ARCH)
 VPATH += $(RTE_SDK)/lib/librte_eal/common
+VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
 
 CFLAGS += -I$(SRCDIR)/include
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
@@ -82,6 +84,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += malloc_elem.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += malloc_heap.c
 SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += rte_keepalive.c
 
+# from arch dir
+SRCS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += rte_cpuflags.c
+
 CFLAGS_eal.o := -D_GNU_SOURCE
 #CFLAGS_eal_thread.o := -D_GNU_SOURCE
 CFLAGS_eal_log.o := -D_GNU_SOURCE
@@ -100,5 +105,6 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))
 
 DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += lib/librte_eal/common
+DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_BSDAPP) += lib/librte_eal/common/arch/$(ARCH_DIR)
 
 include $(RTE_SDK)/mk/rte.lib.mk

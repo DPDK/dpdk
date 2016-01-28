@@ -44,6 +44,8 @@ extern "C" {
 
 #include "generic/rte_cpuflags.h"
 
+extern const struct feature_entry rte_cpu_feature_table[];
+
 /* Symbolic values for the entries in the auxiliary table */
 #define AT_HWCAP  16
 #define AT_HWCAP2 26
@@ -96,43 +98,6 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
 };
 
-static const struct feature_entry cpu_feature_table[] = {
-	FEAT_DEF(PPC_LE, 0x00000001, 0, REG_HWCAP,  0)
-	FEAT_DEF(TRUE_LE, 0x00000001, 0, REG_HWCAP,  1)
-	FEAT_DEF(PSERIES_PERFMON_COMPAT, 0x00000001, 0, REG_HWCAP,  6)
-	FEAT_DEF(VSX, 0x00000001, 0, REG_HWCAP,  7)
-	FEAT_DEF(ARCH_2_06, 0x00000001, 0, REG_HWCAP,  8)
-	FEAT_DEF(POWER6_EXT, 0x00000001, 0, REG_HWCAP,  9)
-	FEAT_DEF(DFP, 0x00000001, 0, REG_HWCAP,  10)
-	FEAT_DEF(PA6T, 0x00000001, 0, REG_HWCAP,  11)
-	FEAT_DEF(ARCH_2_05, 0x00000001, 0, REG_HWCAP,  12)
-	FEAT_DEF(ICACHE_SNOOP, 0x00000001, 0, REG_HWCAP,  13)
-	FEAT_DEF(SMT, 0x00000001, 0, REG_HWCAP,  14)
-	FEAT_DEF(BOOKE, 0x00000001, 0, REG_HWCAP,  15)
-	FEAT_DEF(CELLBE, 0x00000001, 0, REG_HWCAP,  16)
-	FEAT_DEF(POWER5_PLUS, 0x00000001, 0, REG_HWCAP,  17)
-	FEAT_DEF(POWER5, 0x00000001, 0, REG_HWCAP,  18)
-	FEAT_DEF(POWER4, 0x00000001, 0, REG_HWCAP,  19)
-	FEAT_DEF(NOTB, 0x00000001, 0, REG_HWCAP,  20)
-	FEAT_DEF(EFP_DOUBLE, 0x00000001, 0, REG_HWCAP,  21)
-	FEAT_DEF(EFP_SINGLE, 0x00000001, 0, REG_HWCAP,  22)
-	FEAT_DEF(SPE, 0x00000001, 0, REG_HWCAP,  23)
-	FEAT_DEF(UNIFIED_CACHE, 0x00000001, 0, REG_HWCAP,  24)
-	FEAT_DEF(4xxMAC, 0x00000001, 0, REG_HWCAP,  25)
-	FEAT_DEF(MMU, 0x00000001, 0, REG_HWCAP,  26)
-	FEAT_DEF(FPU, 0x00000001, 0, REG_HWCAP,  27)
-	FEAT_DEF(ALTIVEC, 0x00000001, 0, REG_HWCAP,  28)
-	FEAT_DEF(PPC601, 0x00000001, 0, REG_HWCAP,  29)
-	FEAT_DEF(PPC64, 0x00000001, 0, REG_HWCAP,  30)
-	FEAT_DEF(PPC32, 0x00000001, 0, REG_HWCAP,  31)
-	FEAT_DEF(TAR, 0x00000001, 0, REG_HWCAP2,  26)
-	FEAT_DEF(LSEL, 0x00000001, 0, REG_HWCAP2,  27)
-	FEAT_DEF(EBB, 0x00000001, 0, REG_HWCAP2,  28)
-	FEAT_DEF(DSCR, 0x00000001, 0, REG_HWCAP2,  29)
-	FEAT_DEF(HTM, 0x00000001, 0, REG_HWCAP2,  30)
-	FEAT_DEF(ARCH_2_07, 0x00000001, 0, REG_HWCAP2,  31)
-};
-
 /*
  * Read AUXV software register and get cpu features for Power
  */
@@ -167,7 +132,7 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 		/* Flag does not match anything in the feature tables */
 		return -ENOENT;
 
-	feat = &cpu_feature_table[feature];
+	feat = &rte_cpu_feature_table[feature];
 
 	if (!feat->leaf)
 		/* This entry in the table wasn't filled out! */

@@ -30,53 +30,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _RTE_CPUFLAGS_TILE_H_
-#define _RTE_CPUFLAGS_TILE_H_
+#include "rte_cpuflags.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <elf.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <unistd.h>
-
-#include "generic/rte_cpuflags.h"
-
-/* software based registers */
-enum cpu_register_t {
-	REG_DUMMY = 0
+const struct feature_entry rte_cpu_feature_table[] = {
 };
-
-/**
- * Enumeration of all CPU features supported
- */
-enum rte_cpu_flag_t {
-	RTE_CPUFLAG_NUMFLAGS /**< This should always be the last! */
-};
-
-/*
- * Read AUXV software register and get cpu features for Power
- */
-static inline void
-rte_cpu_get_features(__attribute__((unused)) uint32_t leaf,
-		     __attribute__((unused)) uint32_t subleaf,
-		     __attribute__((unused)) cpuid_registers_t out)
-{
-}
-
-/*
- * Checks if a particular flag is available on current machine.
- */
-static inline int
-rte_cpu_get_flag_enabled(__attribute__((unused)) enum rte_cpu_flag_t feature)
-{
-	return -ENOENT;
-}
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _RTE_CPUFLAGS_TILE_H_ */

@@ -45,6 +45,8 @@ extern "C" {
 
 #include "generic/rte_cpuflags.h"
 
+extern const struct feature_entry rte_cpu_feature_table[];
+
 #ifndef AT_HWCAP
 #define AT_HWCAP 16
 #endif
@@ -100,37 +102,6 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
 };
 
-static const struct feature_entry cpu_feature_table[] = {
-	FEAT_DEF(SWP,       0x00000001, 0, REG_HWCAP,  0)
-	FEAT_DEF(HALF,      0x00000001, 0, REG_HWCAP,  1)
-	FEAT_DEF(THUMB,     0x00000001, 0, REG_HWCAP,  2)
-	FEAT_DEF(A26BIT,    0x00000001, 0, REG_HWCAP,  3)
-	FEAT_DEF(FAST_MULT, 0x00000001, 0, REG_HWCAP,  4)
-	FEAT_DEF(FPA,       0x00000001, 0, REG_HWCAP,  5)
-	FEAT_DEF(VFP,       0x00000001, 0, REG_HWCAP,  6)
-	FEAT_DEF(EDSP,      0x00000001, 0, REG_HWCAP,  7)
-	FEAT_DEF(JAVA,      0x00000001, 0, REG_HWCAP,  8)
-	FEAT_DEF(IWMMXT,    0x00000001, 0, REG_HWCAP,  9)
-	FEAT_DEF(CRUNCH,    0x00000001, 0, REG_HWCAP,  10)
-	FEAT_DEF(THUMBEE,   0x00000001, 0, REG_HWCAP,  11)
-	FEAT_DEF(NEON,      0x00000001, 0, REG_HWCAP,  12)
-	FEAT_DEF(VFPv3,     0x00000001, 0, REG_HWCAP,  13)
-	FEAT_DEF(VFPv3D16,  0x00000001, 0, REG_HWCAP,  14)
-	FEAT_DEF(TLS,       0x00000001, 0, REG_HWCAP,  15)
-	FEAT_DEF(VFPv4,     0x00000001, 0, REG_HWCAP,  16)
-	FEAT_DEF(IDIVA,     0x00000001, 0, REG_HWCAP,  17)
-	FEAT_DEF(IDIVT,     0x00000001, 0, REG_HWCAP,  18)
-	FEAT_DEF(VFPD32,    0x00000001, 0, REG_HWCAP,  19)
-	FEAT_DEF(LPAE,      0x00000001, 0, REG_HWCAP,  20)
-	FEAT_DEF(EVTSTRM,   0x00000001, 0, REG_HWCAP,  21)
-	FEAT_DEF(AES,       0x00000001, 0, REG_HWCAP2,  0)
-	FEAT_DEF(PMULL,     0x00000001, 0, REG_HWCAP2,  1)
-	FEAT_DEF(SHA1,      0x00000001, 0, REG_HWCAP2,  2)
-	FEAT_DEF(SHA2,      0x00000001, 0, REG_HWCAP2,  3)
-	FEAT_DEF(CRC32,     0x00000001, 0, REG_HWCAP2,  4)
-	FEAT_DEF(V7L,       0x00000001, 0, REG_PLATFORM, 0)
-};
-
 /*
  * Read AUXV software register and get cpu features for ARM
  */
@@ -169,7 +140,7 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 		/* Flag does not match anything in the feature tables */
 		return -ENOENT;
 
-	feat = &cpu_feature_table[feature];
+	feat = &rte_cpu_feature_table[feature];
 
 	if (!feat->leaf)
 		/* This entry in the table wasn't filled out! */
