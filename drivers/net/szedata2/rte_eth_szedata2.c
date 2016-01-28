@@ -1281,6 +1281,42 @@ eth_mac_addr_set(struct rte_eth_dev *dev __rte_unused,
 {
 }
 
+static void
+eth_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	volatile struct szedata2_cgmii_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_IBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_ibuf *);
+	cgmii_ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_PROMISC);
+}
+
+static void
+eth_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	volatile struct szedata2_cgmii_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_IBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_ibuf *);
+	cgmii_ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_ONLY_VALID);
+}
+
+static void
+eth_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	volatile struct szedata2_cgmii_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_IBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_ibuf *);
+	cgmii_ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_ALL_MULTICAST);
+}
+
+static void
+eth_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	volatile struct szedata2_cgmii_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+			dev, SZEDATA2_CGMII_IBUF_BASE_OFF,
+			volatile struct szedata2_cgmii_ibuf *);
+	cgmii_ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_ONLY_VALID);
+}
+
 static struct eth_dev_ops ops = {
 		.dev_start          = eth_dev_start,
 		.dev_stop           = eth_dev_stop,
@@ -1289,6 +1325,10 @@ static struct eth_dev_ops ops = {
 		.dev_close          = eth_dev_close,
 		.dev_configure      = eth_dev_configure,
 		.dev_infos_get      = eth_dev_info,
+		.promiscuous_enable   = eth_promiscuous_enable,
+		.promiscuous_disable  = eth_promiscuous_disable,
+		.allmulticast_enable  = eth_allmulticast_enable,
+		.allmulticast_disable = eth_allmulticast_disable,
 		.rx_queue_start     = eth_rx_queue_start,
 		.rx_queue_stop      = eth_rx_queue_stop,
 		.tx_queue_start     = eth_tx_queue_start,
@@ -1471,8 +1511,10 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 			(unsigned long long)pci_rsc->len,
 			(unsigned long long)pci_rsc->addr);
 
+	/* Get link state */
 	eth_link_update(dev, 0);
 
+	/* Allocate space for one mac address */
 	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct ether_addr),
 			RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
@@ -1483,6 +1525,9 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	}
 
 	ether_addr_copy(&eth_addr, data->mac_addrs);
+
+	/* At initial state COMBO card is in promiscuous mode so disable it */
+	eth_promiscuous_disable(dev);
 
 	RTE_LOG(INFO, PMD, "szedata2 device ("
 			PCI_PRI_FMT ") successfully initialized\n",

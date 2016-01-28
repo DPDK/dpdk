@@ -213,6 +213,13 @@ enum szedata2_link_speed {
 	SZEDATA2_LINK_SPEED_100G,
 };
 
+enum szedata2_mac_check_mode {
+	SZEDATA2_MAC_CHMODE_PROMISC       = 0x0,
+	SZEDATA2_MAC_CHMODE_ONLY_VALID    = 0x1,
+	SZEDATA2_MAC_CHMODE_ALL_BROADCAST = 0x2,
+	SZEDATA2_MAC_CHMODE_ALL_MULTICAST = 0x3,
+};
+
 /*
  * Structure describes CGMII IBUF address space
  */
@@ -296,6 +303,38 @@ static inline bool
 cgmii_ibuf_is_link_up(volatile struct szedata2_cgmii_ibuf *ibuf)
 {
 	return ((rte_le_to_cpu_32(ibuf->ibuf_st) & 0x80) != 0) ? true : false;
+}
+
+/*
+ * @return
+ *     MAC address check mode
+ */
+static inline enum szedata2_mac_check_mode
+cgmii_ibuf_mac_mode_read(volatile struct szedata2_cgmii_ibuf *ibuf)
+{
+	switch (rte_le_to_cpu_32(ibuf->mac_chmode) & 0x3) {
+	case 0x0:
+		return SZEDATA2_MAC_CHMODE_PROMISC;
+	case 0x1:
+		return SZEDATA2_MAC_CHMODE_ONLY_VALID;
+	case 0x2:
+		return SZEDATA2_MAC_CHMODE_ALL_BROADCAST;
+	case 0x3:
+		return SZEDATA2_MAC_CHMODE_ALL_MULTICAST;
+	default:
+		return SZEDATA2_MAC_CHMODE_PROMISC;
+	}
+}
+
+/*
+ * Writes "mode" in MAC address check mode register.
+ */
+static inline void
+cgmii_ibuf_mac_mode_write(volatile struct szedata2_cgmii_ibuf *ibuf,
+		enum szedata2_mac_check_mode mode)
+{
+	ibuf->mac_chmode = rte_cpu_to_le_32(
+			(rte_le_to_cpu_32(ibuf->mac_chmode) & ~0x3) | mode);
 }
 
 /*
