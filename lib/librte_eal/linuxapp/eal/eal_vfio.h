@@ -52,6 +52,14 @@
 #define RTE_PCI_MSIX_FLAGS_QSIZE  PCI_MSIX_FLAGS_QSIZE
 #endif
 
+#define RTE_VFIO_TYPE1 VFIO_TYPE1_IOMMU
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#define RTE_VFIO_NOIOMMU 8
+#else
+#define RTE_VFIO_NOIOMMU VFIO_NOIOMMU_IOMMU
+#endif
+
 #define VFIO_PRESENT
 #endif /* kernel version */
 #endif /* RTE_EAL_VFIO */

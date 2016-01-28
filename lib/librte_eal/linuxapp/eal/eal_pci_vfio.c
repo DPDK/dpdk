@@ -72,10 +72,73 @@ EAL_REGISTER_TAILQ(rte_vfio_tailq)
 #define VFIO_DIR "/dev/vfio"
 #define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define VFIO_GROUP_FMT "/dev/vfio/%u"
+#define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
 #define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
 
 /* per-process VFIO config */
 static struct vfio_config vfio_cfg;
+
+/* DMA mapping function prototype.
+ * Takes VFIO container fd as a parameter.
+ * Returns 0 on success, -1 on error.
+ * */
+typedef int (*vfio_dma_func_t)(int);
+
+struct vfio_iommu_type {
+	int type_id;
+	const char *name;
+	vfio_dma_func_t dma_map_func;
+};
+
+static int vfio_type1_dma_map(int);
+static int vfio_noiommu_dma_map(int);
+
+/* IOMMU types we support */
+static const struct vfio_iommu_type iommu_types[] = {
+	/* x86 IOMMU, otherwise known as type 1 */
+	{ RTE_VFIO_TYPE1, "Type 1", &vfio_type1_dma_map},
+	/* IOMMU-less mode */
+	{ RTE_VFIO_NOIOMMU, "No-IOMMU", &vfio_noiommu_dma_map},
+};
+
+int
+vfio_type1_dma_map(int vfio_container_fd)
+{
+	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
+	int i, ret;
+
+	/* map all DPDK segments for DMA. use 1:1 PA to IOVA mapping */
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		struct vfio_iommu_type1_dma_map dma_map;
+
+		if (ms[i].addr == NULL)
+			break;
+
+		memset(&dma_map, 0, sizeof(dma_map));
+		dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
+		dma_map.vaddr = ms[i].addr_64;
+		dma_map.size = ms[i].len;
+		dma_map.iova = ms[i].phys_addr;
+		dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
+
+		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
+
+		if (ret) {
+			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, "
+					"error %i (%s)\n", errno, strerror(errno));
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int
+vfio_noiommu_dma_map(int __rte_unused vfio_container_fd)
+{
+	/* No-IOMMU mode does not need DMA mapping */
+	return 0;
+}
 
 int
 pci_vfio_read_config(const struct rte_intr_handle *intr_handle,
@@ -208,42 +271,58 @@ pci_vfio_set_bus_master(int dev_fd)
 	return 0;
 }
 
-/* set up DMA mappings */
-static int
-pci_vfio_setup_dma_maps(int vfio_container_fd)
-{
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	int i, ret;
+/* pick IOMMU type. returns a pointer to vfio_iommu_type or NULL for error */
+static const struct vfio_iommu_type *
+pci_vfio_set_iommu_type(int vfio_container_fd) {
+	unsigned idx;
+	for (idx = 0; idx < RTE_DIM(iommu_types); idx++) {
+		const struct vfio_iommu_type *t = &iommu_types[idx];
 
-	ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU,
-			VFIO_TYPE1_IOMMU);
-	if (ret) {
-		RTE_LOG(ERR, EAL, "  cannot set IOMMU type, "
-				"error %i (%s)\n", errno, strerror(errno));
-		return -1;
+		int ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU,
+				t->type_id);
+		if (!ret) {
+			RTE_LOG(NOTICE, EAL, "  using IOMMU type %d (%s)\n",
+					t->type_id, t->name);
+			return t;
+		}
+		/* not an error, there may be more supported IOMMU types */
+		RTE_LOG(DEBUG, EAL, "  set IOMMU type %d (%s) failed, "
+				"error %i (%s)\n", t->type_id, t->name, errno,
+				strerror(errno));
+	}
+	/* if we didn't find a suitable IOMMU type, fail */
+	return NULL;
+}
+
+/* check if we have any supported extensions */
+static int
+pci_vfio_has_supported_extensions(int vfio_container_fd) {
+	int ret;
+	unsigned idx, n_extensions = 0;
+	for (idx = 0; idx < RTE_DIM(iommu_types); idx++) {
+		const struct vfio_iommu_type *t = &iommu_types[idx];
+
+		ret = ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION,
+				t->type_id);
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "  could not get IOMMU type, "
+				"error %i (%s)\n", errno,
+				strerror(errno));
+			close(vfio_container_fd);
+			return -1;
+		} else if (ret == 1) {
+			/* we found a supported extension */
+			n_extensions++;
+		}
+		RTE_LOG(DEBUG, EAL, "  IOMMU type %d (%s) is %s\n",
+				t->type_id, t->name,
+				ret ? "supported" : "not supported");
 	}
 
-	/* map all DPDK segments for DMA. use 1:1 PA to IOVA mapping */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		struct vfio_iommu_type1_dma_map dma_map;
-
-		if (ms[i].addr == NULL)
-			break;
-
-		memset(&dma_map, 0, sizeof(dma_map));
-		dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
-		dma_map.vaddr = ms[i].addr_64;
-		dma_map.size = ms[i].len;
-		dma_map.iova = ms[i].phys_addr;
-		dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
-
-		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
-
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, "
-					"error %i (%s)\n", errno, strerror(errno));
-			return -1;
-		}
+	/* if we didn't find any supported IOMMU types, fail */
+	if (!n_extensions) {
+		close(vfio_container_fd);
+		return -1;
 	}
 
 	return 0;
@@ -372,17 +451,10 @@ pci_vfio_get_container_fd(void)
 			return -1;
 		}
 
-		/* check if we support IOMMU type 1 */
-		ret = ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU);
-		if (ret != 1) {
-			if (ret < 0)
-				RTE_LOG(ERR, EAL, "  could not get IOMMU type, "
-					"error %i (%s)\n", errno,
-					strerror(errno));
-			else
-				RTE_LOG(ERR, EAL, "  unsupported IOMMU type "
-					"detected in VFIO\n");
-			close(vfio_container_fd);
+		ret = pci_vfio_has_supported_extensions(vfio_container_fd);
+		if (ret) {
+			RTE_LOG(ERR, EAL, "  no supported IOMMU "
+					"extensions found!\n");
 			return -1;
 		}
 
@@ -432,6 +504,7 @@ pci_vfio_get_group_fd(int iommu_group_no)
 
 	/* if primary, try to open the group */
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
+		/* try regular group format */
 		snprintf(filename, sizeof(filename),
 				 VFIO_GROUP_FMT, iommu_group_no);
 		vfio_group_fd = open(filename, O_RDWR);
@@ -442,7 +515,20 @@ pci_vfio_get_group_fd(int iommu_group_no)
 						strerror(errno));
 				return -1;
 			}
-			return 0;
+
+			/* special case: try no-IOMMU path as well */
+			snprintf(filename, sizeof(filename),
+					VFIO_NOIOMMU_GROUP_FMT, iommu_group_no);
+			vfio_group_fd = open(filename, O_RDWR);
+			if (vfio_group_fd < 0) {
+				if (errno != ENOENT) {
+					RTE_LOG(ERR, EAL, "Cannot open %s: %s\n", filename,
+							strerror(errno));
+					return -1;
+				}
+				return 0;
+			}
+			/* noiommu group found */
 		}
 
 		/* if the fd is valid, create a new group for it */
@@ -660,14 +746,21 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	}
 
 	/*
-	 * set up DMA mappings for container
+	 * pick an IOMMU type and set up DMA mappings for container
 	 *
 	 * needs to be done only once, only when at least one group is assigned to
 	 * a container and only in primary process
 	 */
 	if (internal_config.process_type == RTE_PROC_PRIMARY &&
 			vfio_cfg.vfio_container_has_dma == 0) {
-		ret = pci_vfio_setup_dma_maps(vfio_cfg.vfio_container_fd);
+		/* select an IOMMU type which we will be using */
+		const struct vfio_iommu_type *t =
+				pci_vfio_set_iommu_type(vfio_cfg.vfio_container_fd);
+		if (!t) {
+			RTE_LOG(ERR, EAL, "  %s failed to select IOMMU type\n", pci_addr);
+			return -1;
+		}
+		ret = t->dma_map_func(vfio_cfg.vfio_container_fd);
 		if (ret) {
 			RTE_LOG(ERR, EAL, "  %s DMA remapping failed, "
 					"error %i (%s)\n", pci_addr, errno, strerror(errno));
@@ -887,35 +980,41 @@ pci_vfio_enable(void)
 {
 	/* initialize group list */
 	int i;
-	int module_vfio_type1;
+	int vfio_available;
 
 	for (i = 0; i < VFIO_MAX_GROUPS; i++) {
 		vfio_cfg.vfio_groups[i].fd = -1;
 		vfio_cfg.vfio_groups[i].group_no = -1;
 	}
 
-	module_vfio_type1 = rte_eal_check_module("vfio_iommu_type1");
+	/* inform the user that we are probing for VFIO */
+	RTE_LOG(INFO, EAL, "Probing VFIO support...\n");
+
+	/* check if vfio-pci module is loaded */
+	vfio_available = rte_eal_check_module("vfio_pci");
 
 	/* return error directly */
-	if (module_vfio_type1 == -1) {
+	if (vfio_available == -1) {
 		RTE_LOG(INFO, EAL, "Could not get loaded module details!\n");
 		return -1;
 	}
 
 	/* return 0 if VFIO modules not loaded */
-	if (module_vfio_type1 == 0) {
-		RTE_LOG(INFO, EAL, "VFIO modules not all loaded, "
-			"skip VFIO support...\n");
+	if (vfio_available == 0) {
+		RTE_LOG(INFO, EAL, "VFIO modules not loaded, "
+			"skipping VFIO support...\n");
 		return 0;
 	}
 
 	vfio_cfg.vfio_container_fd = pci_vfio_get_container_fd();
 
 	/* check if we have VFIO driver enabled */
-	if (vfio_cfg.vfio_container_fd != -1)
+	if (vfio_cfg.vfio_container_fd != -1) {
+		RTE_LOG(NOTICE, EAL, "VFIO support initialized\n");
 		vfio_cfg.vfio_enabled = 1;
-	else
+	} else {
 		RTE_LOG(NOTICE, EAL, "VFIO support could not be initialized\n");
+	}
 
 	return 0;
 }
