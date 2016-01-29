@@ -49,6 +49,7 @@ void user_set_vring_kick(struct vhost_device_ctx, struct VhostUserMsg *);
 
 void user_set_protocol_features(struct vhost_device_ctx ctx,
 				uint64_t protocol_features);
+int user_set_log_base(struct vhost_device_ctx ctx, struct VhostUserMsg *);
 
 int user_get_vring_base(struct vhost_device_ctx, struct vhost_vring_state *);
 

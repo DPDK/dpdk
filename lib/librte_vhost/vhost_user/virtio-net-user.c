@@ -365,3 +365,51 @@ user_set_protocol_features(struct vhost_device_ctx ctx,
 
 	dev->protocol_features = protocol_features;
 }
+
+int
+user_set_log_base(struct vhost_device_ctx ctx,
+		 struct VhostUserMsg *msg)
+{
+	struct virtio_net *dev;
+	int fd = msg->fds[0];
+	uint64_t size, off;
+	void *addr;
+
+	dev = get_device(ctx);
+	if (!dev)
+		return -1;
+
+	if (fd < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG, "invalid log fd: %d\n", fd);
+		return -1;
+	}
+
+	if (msg->size != sizeof(VhostUserLog)) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"invalid log base msg size: %"PRId32" != %d\n",
+			msg->size, (int)sizeof(VhostUserLog));
+		return -1;
+	}
+
+	size = msg->payload.log.mmap_size;
+	off  = msg->payload.log.mmap_offset;
+	RTE_LOG(INFO, VHOST_CONFIG,
+		"log mmap size: %"PRId64", offset: %"PRId64"\n",
+		size, off);
+
+	/*
+	 * mmap from 0 to workaround a hugepage mmap bug: mmap will
+	 * fail when offset is not page size aligned.
+	 */
+	addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (addr == MAP_FAILED) {
+		RTE_LOG(ERR, VHOST_CONFIG, "mmap log base failed!\n");
+		return -1;
+	}
+
+	/* TODO: unmap on stop */
+	dev->log_base = (uint64_t)(uintptr_t)addr + off;
+	dev->log_size = size;
+
+	return 0;
+}

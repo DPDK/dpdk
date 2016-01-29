@@ -388,9 +388,12 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		break;
 
 	case VHOST_USER_SET_LOG_BASE:
-		RTE_LOG(INFO, VHOST_CONFIG, "not implemented.\n");
-		break;
+		user_set_log_base(ctx, &msg);
 
+		/* it needs a reply */
+		msg.size = sizeof(msg.payload.u64);
+		send_vhost_message(connfd, &msg);
+		break;
 	case VHOST_USER_SET_LOG_FD:
 		close(msg.fds[0]);
 		RTE_LOG(INFO, VHOST_CONFIG, "not implemented.\n");
