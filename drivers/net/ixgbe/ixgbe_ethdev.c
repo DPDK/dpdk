@@ -2248,9 +2248,6 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	/* disable interrupts */
 	ixgbe_disable_intr(hw);
 
-	/* disable intr eventfd mapping */
-	rte_intr_disable(intr_handle);
-
 	/* reset the NIC */
 	ixgbe_pf_reset_hw(hw);
 	hw->adapter_stopped = 0;
@@ -3961,9 +3958,6 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	dev->data->scattered_rx = 0;
 
 	ixgbe_dev_clear_queues(dev);
-
-	/* disable intr eventfd mapping */
-	rte_intr_disable(intr_handle);
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
