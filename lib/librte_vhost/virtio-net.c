@@ -673,12 +673,16 @@ set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 		return -1;
 	}
 
+	vq->log_guest_addr = addr->log_guest_addr;
+
 	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address desc: %p\n",
 			dev->device_fh, vq->desc);
 	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address avail: %p\n",
 			dev->device_fh, vq->avail);
 	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address used: %p\n",
 			dev->device_fh, vq->used);
+	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") log_guest_addr: %"PRIx64"\n",
+			dev->device_fh, vq->log_guest_addr);
 
 	return 0;
 }

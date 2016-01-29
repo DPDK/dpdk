@@ -40,6 +40,7 @@
  */
 
 #include <stdint.h>
+#include <linux/vhost.h>
 #include <linux/virtio_ring.h>
 #include <linux/virtio_net.h>
 #include <sys/eventfd.h>
@@ -90,7 +91,8 @@ struct vhost_virtqueue {
 	int			callfd;			/**< Used to notify the guest (trigger interrupt). */
 	int			kickfd;			/**< Currently unused as polling mode is enabled. */
 	int			enabled;
-	uint64_t		reserved[16];		/**< Reserve some spaces for future extension. */
+	uint64_t		log_guest_addr;		/**< Physical address of used ring, for logging */
+	uint64_t		reserved[15];		/**< Reserve some spaces for future extension. */
 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
 } __rte_cache_aligned;
 
@@ -204,6 +206,7 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 	}
 	return vhost_va;
 }
+
 
 /**
  *  Disable features in feature_mask. Returns 0 on success.
