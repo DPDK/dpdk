@@ -100,6 +100,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_SET_PROTOCOL_FEATURES]  = "VHOST_USER_SET_PROTOCOL_FEATURES",
 	[VHOST_USER_GET_QUEUE_NUM]  = "VHOST_USER_GET_QUEUE_NUM",
 	[VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
+	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
 };
 
 /**
@@ -436,6 +437,9 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 
 	case VHOST_USER_SET_VRING_ENABLE:
 		user_set_vring_enable(ctx, &msg.payload.state);
+		break;
+	case VHOST_USER_SEND_RARP:
+		user_send_rarp(&msg);
 		break;
 
 	default:

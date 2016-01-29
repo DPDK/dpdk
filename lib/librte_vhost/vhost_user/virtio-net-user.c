@@ -34,11 +34,18 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <net/ethernet.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
+#include <linux/if_packet.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -410,6 +417,124 @@ user_set_log_base(struct vhost_device_ctx ctx,
 	/* TODO: unmap on stop */
 	dev->log_base = (uint64_t)(uintptr_t)addr + off;
 	dev->log_size = size;
+
+	return 0;
+}
+
+#define RARP_BUF_SIZE	64
+
+static void
+make_rarp_packet(uint8_t *buf, uint8_t *mac)
+{
+	struct ether_header *eth_hdr;
+	struct ether_arp *rarp;
+
+	/* Ethernet header. */
+	eth_hdr = (struct ether_header *)buf;
+	memset(&eth_hdr->ether_dhost, 0xff, ETH_ALEN);
+	memcpy(&eth_hdr->ether_shost, mac,  ETH_ALEN);
+	eth_hdr->ether_type = htons(ETH_P_RARP);
+
+	/* RARP header. */
+	rarp = (struct ether_arp *)(eth_hdr + 1);
+	rarp->ea_hdr.ar_hrd = htons(ARPHRD_ETHER);
+	rarp->ea_hdr.ar_pro = htons(ETHERTYPE_IP);
+	rarp->ea_hdr.ar_hln = ETH_ALEN;
+	rarp->ea_hdr.ar_pln = 4;
+	rarp->ea_hdr.ar_op  = htons(ARPOP_RREQUEST);
+
+	memcpy(&rarp->arp_sha, mac, ETH_ALEN);
+	memset(&rarp->arp_spa, 0x00, 4);
+	memcpy(&rarp->arp_tha, mac, 6);
+	memset(&rarp->arp_tpa, 0x00, 4);
+}
+
+
+static void
+send_rarp(const char *ifname, uint8_t *rarp)
+{
+	int fd;
+	struct ifreq ifr;
+	struct sockaddr_ll addr;
+
+	fd = socket(AF_PACKET, SOCK_RAW, 0);
+	if (fd < 0) {
+		perror("socket failed");
+		return;
+	}
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
+	if (ioctl(fd, SIOCGIFINDEX, &ifr) < 0) {
+		perror("failed to get interface index");
+		close(fd);
+		return;
+	}
+
+	addr.sll_ifindex = ifr.ifr_ifindex;
+	addr.sll_halen   = ETH_ALEN;
+
+	if (sendto(fd, rarp, RARP_BUF_SIZE, 0,
+		   (const struct sockaddr*)&addr, sizeof(addr)) < 0) {
+		perror("send rarp packet failed");
+	}
+}
+
+
+/*
+ * Broadcast a RARP message to all interfaces, to update
+ * switch's mac table
+ */
+int
+user_send_rarp(struct VhostUserMsg *msg)
+{
+	uint8_t *mac = (uint8_t *)&msg->payload.u64;
+	uint8_t rarp[RARP_BUF_SIZE];
+	struct ifconf ifc = {0, };
+	struct ifreq *ifr;
+	int nr = 16;
+	int fd;
+	uint32_t i;
+
+	RTE_LOG(DEBUG, VHOST_CONFIG,
+		":: mac: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+	make_rarp_packet(rarp, mac);
+
+	/*
+	 * Get all interfaces
+	 */
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		perror("failed to create AF_INET socket");
+		return -1;
+	}
+
+again:
+	ifc.ifc_len = sizeof(*ifr) * nr;
+	ifc.ifc_buf = realloc(ifc.ifc_buf, ifc.ifc_len);
+
+	if (ioctl(fd, SIOCGIFCONF, &ifc) < 0) {
+		perror("failed at SIOCGIFCONF");
+		close(fd);
+		return -1;
+	}
+
+	if (ifc.ifc_len == (int)sizeof(struct ifreq) * nr) {
+		/*
+		 * current ifc_buf is not big enough to hold
+		 * all interfaces; double it and try again.
+		 */
+		nr *= 2;
+		goto again;
+	}
+
+	ifr = (struct ifreq *)ifc.ifc_buf;
+	for (i = 0; i < ifc.ifc_len / sizeof(struct ifreq); i++)
+		send_rarp(ifr[i].ifr_name, rarp);
+
+	close(fd);
 
 	return 0;
 }
