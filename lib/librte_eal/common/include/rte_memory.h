@@ -74,10 +74,26 @@ enum rte_page_sizes {
 	(RTE_CACHE_LINE_SIZE * ((size + RTE_CACHE_LINE_SIZE - 1) / RTE_CACHE_LINE_SIZE))
 /**< Return the first cache-aligned value greater or equal to size. */
 
+/**< Cache line size in terms of log2 */
+#if RTE_CACHE_LINE_SIZE == 64
+#define RTE_CACHE_LINE_SIZE_LOG2 6
+#elif RTE_CACHE_LINE_SIZE == 128
+#define RTE_CACHE_LINE_SIZE_LOG2 7
+#else
+#error "Unsupported cache line size"
+#endif
+
+#define RTE_CACHE_LINE_MIN_SIZE 64	/**< Minimum Cache line size. */
+
 /**
  * Force alignment to cache line.
  */
 #define __rte_cache_aligned __rte_aligned(RTE_CACHE_LINE_SIZE)
+
+/**
+ * Force minimum cache line alignment.
+ */
+#define __rte_cache_min_aligned __rte_aligned(RTE_CACHE_LINE_MIN_SIZE)
 
 typedef uint64_t phys_addr_t; /**< Physical address definition. */
 #define RTE_BAD_PHYS_ADDR ((phys_addr_t)-1)
