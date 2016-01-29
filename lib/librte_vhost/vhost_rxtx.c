@@ -140,7 +140,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct rte_mbuf **pkts, uint32_t count)
 {
 	struct vhost_virtqueue *vq;
-	struct vring_desc *desc;
+	struct vring_desc *desc, *hdr_desc;
 	struct rte_mbuf *buff, *first_buff;
 	/* The virtio_hdr is initialised to 0. */
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
@@ -223,6 +223,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		/* Copy virtio_hdr to packet and increment buffer address */
 		buff_hdr_addr = buff_addr;
+		hdr_desc = desc;
 
 		/*
 		 * If the descriptors are chained the header and data are
@@ -247,6 +248,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 			rte_memcpy((void *)(uintptr_t)(buff_addr + vb_offset),
 				rte_pktmbuf_mtod_offset(buff, const void *, offset),
 				len_to_cpy);
+			vhost_log_write(dev, desc->addr + vb_offset, len_to_cpy);
 			PRINT_PACKET(dev, (uintptr_t)(buff_addr + vb_offset),
 				len_to_cpy, 0);
 
@@ -304,6 +306,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		rte_memcpy((void *)(uintptr_t)buff_hdr_addr,
 			(const void *)&virtio_hdr, vq->vhost_hlen);
+		vhost_log_write(dev, hdr_desc->addr, vq->vhost_hlen);
 
 		PRINT_PACKET(dev, (uintptr_t)buff_hdr_addr, vq->vhost_hlen, 1);
 
@@ -383,6 +386,7 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
 
 	rte_memcpy((void *)(uintptr_t)vb_hdr_addr,
 		(const void *)&virtio_hdr, vq->vhost_hlen);
+	vhost_log_write(dev, vq->buf_vec[vec_idx].buf_addr, vq->vhost_hlen);
 
 	PRINT_PACKET(dev, (uintptr_t)vb_hdr_addr, vq->vhost_hlen, 1);
 
@@ -426,6 +430,8 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
 		/* Copy mbuf data to vring buffer */
 		rte_memcpy((void *)(uintptr_t)(vb_addr + vb_offset),
 			rte_pktmbuf_mtod_offset(pkt, const void *, seg_offset),
+			cpy_len);
+		vhost_log_write(dev, vq->buf_vec[vec_idx].buf_addr + vb_offset,
 			cpy_len);
 
 		PRINT_PACKET(dev,
