@@ -863,7 +863,7 @@ struct rte_eth_rxq_info {
 	struct rte_eth_rxconf conf; /**< queue config parameters. */
 	uint8_t scattered_rx;       /**< scattered packets RX supported. */
 	uint16_t nb_desc;           /**< configured number of RXDs. */
-} __rte_cache_aligned;
+} __rte_cache_min_aligned;
 
 /**
  * Ethernet device TX queue information structure.
@@ -872,7 +872,7 @@ struct rte_eth_rxq_info {
 struct rte_eth_txq_info {
 	struct rte_eth_txconf conf; /**< queue config parameters. */
 	uint16_t nb_desc;           /**< configured number of TXDs. */
-} __rte_cache_aligned;
+} __rte_cache_min_aligned;
 
 /** Maximum name length for extended statistics counters */
 #define RTE_ETH_XSTATS_NAME_SIZE 64
