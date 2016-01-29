@@ -120,7 +120,7 @@ mlx5_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
 		enum IBV_EXP_QP_BURST_CREATE_ENABLE_MULTI_PACKET_SEND_WR \
 		$(AUTOCONF_OUTPUT)
 
-mlx5.o: mlx5_autoconf.h
+$(SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD):.c=.o): mlx5_autoconf.h
 
 clean_mlx5: FORCE
 	$Q rm -f -- mlx5_autoconf.h
