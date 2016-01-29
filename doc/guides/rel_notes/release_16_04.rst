@@ -44,6 +44,8 @@ This section should contain new features added in this release. Sample format:
   Add the offload and negotiation of checksum and TSO between vhost-user and
   vanilla Linux virtio guest.
 
+* **Added vhost-user live migration support.**
+
 
 Resolved Issues
 ---------------
