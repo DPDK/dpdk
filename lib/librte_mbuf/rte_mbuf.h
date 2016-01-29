@@ -814,7 +814,7 @@ struct rte_mbuf {
 	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
 
 	/* second cache line - fields only used in slow path or on TX */
-	MARKER cacheline1 __rte_cache_aligned;
+	MARKER cacheline1 __rte_cache_min_aligned;
 
 	union {
 		void *userdata;   /**< Can be used for external metadata */

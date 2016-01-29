@@ -68,6 +68,8 @@
  */
 #define RTE_KNI_NAMESIZE 32
 
+#define RTE_CACHE_LINE_MIN_SIZE 64
+
 /*
  * Request id.
  */
@@ -118,7 +120,7 @@ struct rte_kni_mbuf {
 	uint16_t data_len;      /**< Amount of data in segment buffer. */
 
 	/* fields on second cache line */
-	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
+	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_MIN_SIZE)));
 	void *pool;
 	void *next;
 };
