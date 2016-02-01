@@ -501,6 +501,7 @@ struct rte_eth_tunnel_flow {
 
 /**
  * An union contains the inputs for all types of flow
+ * Items in flows need to be in big endian
  */
 union rte_eth_fdir_flow {
 	struct rte_eth_l2_flow     l2_flow;
@@ -588,14 +589,22 @@ struct rte_eth_fdir_filter {
  *  to match the various fields of RX packet headers.
  */
 struct rte_eth_fdir_masks {
-	uint16_t vlan_tci_mask;
+	uint16_t vlan_tci_mask;   /**< Bit mask for vlan_tci in big endian */
+	/** Bit mask for ipv4 flow in big endian. */
 	struct rte_eth_ipv4_flow   ipv4_mask;
+	/** Bit maks for ipv6 flow in big endian. */
 	struct rte_eth_ipv6_flow   ipv6_mask;
+	/** Bit mask for L4 source port in big endian. */
 	uint16_t src_port_mask;
+	/** Bit mask for L4 destination port in big endian. */
 	uint16_t dst_port_mask;
-	uint8_t mac_addr_byte_mask;  /** Per byte MAC address mask */
-	uint32_t tunnel_id_mask;  /** tunnel ID mask */
-	uint8_t tunnel_type_mask;
+	/** 6 bit mask for proper 6 bytes of Mac address, bit 0 matches the
+	    first byte on the wire */
+	uint8_t mac_addr_byte_mask;
+	/** Bit mask for tunnel ID in big endian. */
+	uint32_t tunnel_id_mask;
+	uint8_t tunnel_type_mask; /**< 1 - Match tunnel type,
+				       0 - Ignore tunnel type. */
 };
 
 /**

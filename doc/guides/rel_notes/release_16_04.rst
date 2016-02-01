@@ -82,6 +82,11 @@ EAL
 Drivers
 ~~~~~~~
 
+* **ethdev: Fixed byte order consistency between fdir flow and mask.**
+
+  Fixed issue in ethdev library that the structure for setting
+  fdir's mask and flow entry was not consistent in byte ordering.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,
@@ -133,6 +138,9 @@ ABI Changes
 * Add a short 1-2 sentence description of the ABI change that was announced in
   the previous releases and made in this release. Use fixed width quotes for
   ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
+
+* The fields in ethdev structure ``rte_eth_fdir_masks`` were changed
+  to be in big endian.
 
 
 Shared Library Versions

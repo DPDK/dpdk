@@ -309,6 +309,7 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 	uint32_t fdiripv6m; /* IPv6 source and destination masks. */
 	uint16_t dst_ipv6m = 0;
 	uint16_t src_ipv6m = 0;
+	volatile uint32_t *reg;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -322,16 +323,16 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 		/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
 		fdirm |= IXGBE_FDIRM_L4P;
 
-	if (input_mask->vlan_tci_mask == 0x0FFF)
+	if (input_mask->vlan_tci_mask == rte_cpu_to_be_16(0x0FFF))
 		/* mask VLAN Priority */
 		fdirm |= IXGBE_FDIRM_VLANP;
-	else if (input_mask->vlan_tci_mask == 0xE000)
+	else if (input_mask->vlan_tci_mask == rte_cpu_to_be_16(0xE000))
 		/* mask VLAN ID */
 		fdirm |= IXGBE_FDIRM_VLANID;
 	else if (input_mask->vlan_tci_mask == 0)
 		/* mask VLAN ID and Priority */
 		fdirm |= IXGBE_FDIRM_VLANID | IXGBE_FDIRM_VLANP;
-	else if (input_mask->vlan_tci_mask != 0xEFFF) {
+	else if (input_mask->vlan_tci_mask != rte_cpu_to_be_16(0xEFFF)) {
 		PMD_INIT_LOG(ERR, "invalid vlan_tci_mask");
 		return -EINVAL;
 	}
@@ -340,19 +341,26 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev,
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
 
 	/* store the TCP/UDP port masks, bit reversed from port layout */
-	fdirtcpm = reverse_fdir_bitmasks(input_mask->dst_port_mask,
-					 input_mask->src_port_mask);
+	fdirtcpm = reverse_fdir_bitmasks(
+			rte_be_to_cpu_16(input_mask->dst_port_mask),
+			rte_be_to_cpu_16(input_mask->src_port_mask));
 
-	/* write all the same so that UDP, TCP and SCTP use the same mask */
+	/* write all the same so that UDP, TCP and SCTP use the same mask
+	 * (little-endian)
+	 */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, ~fdirtcpm);
 	info->mask.src_port_mask = input_mask->src_port_mask;
 	info->mask.dst_port_mask = input_mask->dst_port_mask;
 
-	/* Store source and destination IPv4 masks (big-endian) */
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRSIP4M, ~(input_mask->ipv4_mask.src_ip));
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRDIP4M, ~(input_mask->ipv4_mask.dst_ip));
+	/* Store source and destination IPv4 masks (big-endian),
+	 * can not use IXGBE_WRITE_REG.
+	 */
+	reg = IXGBE_PCI_REG_ADDR(hw, IXGBE_FDIRSIP4M);
+	*reg = ~(input_mask->ipv4_mask.src_ip);
+	reg = IXGBE_PCI_REG_ADDR(hw, IXGBE_FDIRDIP4M);
+	*reg = ~(input_mask->ipv4_mask.dst_ip);
 	info->mask.src_ipv4_mask = input_mask->ipv4_mask.src_ip;
 	info->mask.dst_ipv4_mask = input_mask->ipv4_mask.dst_ip;
 
@@ -401,16 +409,16 @@ fdir_set_input_mask_x550(struct rte_eth_dev *dev,
 	/* some bits must be set for mac vlan or tunnel mode */
 	fdirm |= IXGBE_FDIRM_L4P | IXGBE_FDIRM_L3P;
 
-	if (input_mask->vlan_tci_mask == 0x0FFF)
+	if (input_mask->vlan_tci_mask == rte_cpu_to_be_16(0x0FFF))
 		/* mask VLAN Priority */
 		fdirm |= IXGBE_FDIRM_VLANP;
-	else if (input_mask->vlan_tci_mask == 0xE000)
+	else if (input_mask->vlan_tci_mask == rte_cpu_to_be_16(0xE000))
 		/* mask VLAN ID */
 		fdirm |= IXGBE_FDIRM_VLANID;
 	else if (input_mask->vlan_tci_mask == 0)
 		/* mask VLAN ID and Priority */
 		fdirm |= IXGBE_FDIRM_VLANID | IXGBE_FDIRM_VLANP;
-	else if (input_mask->vlan_tci_mask != 0xEFFF) {
+	else if (input_mask->vlan_tci_mask != rte_cpu_to_be_16(0xEFFF)) {
 		PMD_INIT_LOG(ERR, "invalid vlan_tci_mask");
 		return -EINVAL;
 	}
@@ -444,7 +452,7 @@ fdir_set_input_mask_x550(struct rte_eth_dev *dev,
 		info->mask.tunnel_type_mask =
 			input_mask->tunnel_type_mask;
 
-		switch (input_mask->tunnel_id_mask & 0xFFFFFFFF) {
+		switch (rte_be_to_cpu_32(input_mask->tunnel_id_mask)) {
 		case 0x0:
 			/* Mask vxlan id */
 			fdiripv6m |= IXGBE_FDIRIP6M_TNI_VNI;
@@ -904,13 +912,16 @@ fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 	u32 addr_low, addr_high;
 	u32 tunnel_type = 0;
 	int err = 0;
+	volatile uint32_t *reg;
 
 	if (mode == RTE_FDIR_MODE_PERFECT) {
-		/* record the IPv4 address (big-endian) */
-		IXGBE_WRITE_REG(hw, IXGBE_FDIRIPSA,
-				input->formatted.src_ip[0]);
-		IXGBE_WRITE_REG(hw, IXGBE_FDIRIPDA,
-				input->formatted.dst_ip[0]);
+		/* record the IPv4 address (big-endian)
+		 * can not use IXGBE_WRITE_REG.
+		 */
+		reg = IXGBE_PCI_REG_ADDR(hw, IXGBE_FDIRIPSA);
+		*reg = input->formatted.src_ip[0];
+		reg = IXGBE_PCI_REG_ADDR(hw, IXGBE_FDIRIPDA);
+		*reg = input->formatted.dst_ip[0];
 
 		/* record source and destination port (little-endian)*/
 		fdirport = IXGBE_NTOHS(input->formatted.dst_port);

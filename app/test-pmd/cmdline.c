@@ -8689,13 +8689,13 @@ cmd_flow_director_mask_parsed(void *parsed_result,
 			return;
 		}
 
-		mask->vlan_tci_mask = res->vlan_mask;
+		mask->vlan_tci_mask = rte_cpu_to_be_16(res->vlan_mask);
 		IPV4_ADDR_TO_UINT(res->ipv4_src, mask->ipv4_mask.src_ip);
 		IPV4_ADDR_TO_UINT(res->ipv4_dst, mask->ipv4_mask.dst_ip);
 		IPV6_ADDR_TO_ARRAY(res->ipv6_src, mask->ipv6_mask.src_ip);
 		IPV6_ADDR_TO_ARRAY(res->ipv6_dst, mask->ipv6_mask.dst_ip);
-		mask->src_port_mask = res->port_src;
-		mask->dst_port_mask = res->port_dst;
+		mask->src_port_mask = rte_cpu_to_be_16(res->port_src);
+		mask->dst_port_mask = rte_cpu_to_be_16(res->port_dst);
 	}
 
 	cmd_reconfig_device_queue(res->port_id, 1, 1);
