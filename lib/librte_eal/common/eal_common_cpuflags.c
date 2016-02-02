@@ -36,19 +36,6 @@
 #include <rte_common.h>
 #include <rte_cpuflags.h>
 
-/*
- * This should prevent use of advanced instruction sets in this file. Otherwise
- * the check function itself could cause a crash.
- */
-#ifdef __INTEL_COMPILER
-#pragma optimize ("", off)
-#else
-#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
-#if GCC_VERSION > 404000
-#pragma GCC optimize ("O0")
-#endif
-#endif
-
 /**
  * Checks if the machine is adequate for running the binary. If it is not, the
  * program exits with status 1.
