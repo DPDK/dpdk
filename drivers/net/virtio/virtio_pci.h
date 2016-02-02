@@ -175,8 +175,8 @@ struct virtio_pci_ops {
 	uint8_t (*get_status)(struct virtio_hw *hw);
 	void    (*set_status)(struct virtio_hw *hw, uint8_t status);
 
-	uint32_t (*get_features)(struct virtio_hw *hw);
-	void     (*set_features)(struct virtio_hw *hw, uint32_t features);
+	uint64_t (*get_features)(struct virtio_hw *hw);
+	void     (*set_features)(struct virtio_hw *hw, uint64_t features);
 
 	uint8_t (*get_isr)(struct virtio_hw *hw);
 
@@ -191,7 +191,7 @@ struct virtio_pci_ops {
 struct virtio_hw {
 	struct virtqueue *cvq;
 	uint32_t    io_base;
-	uint32_t    guest_features;
+	uint64_t    guest_features;
 	uint32_t    max_tx_queues;
 	uint32_t    max_rx_queues;
 	uint16_t    vtnet_hdr_size;
@@ -271,9 +271,9 @@ outl_p(unsigned int data, unsigned int port)
 	outl_p((unsigned int)(value), (VIRTIO_PCI_REG_ADDR((hw), (reg))))
 
 static inline int
-vtpci_with_feature(struct virtio_hw *hw, uint32_t bit)
+vtpci_with_feature(struct virtio_hw *hw, uint64_t bit)
 {
-	return (hw->guest_features & (1u << bit)) != 0;
+	return (hw->guest_features & (1ULL << bit)) != 0;
 }
 
 /*
@@ -286,7 +286,7 @@ void vtpci_reinit_complete(struct virtio_hw *);
 
 void vtpci_set_status(struct virtio_hw *, uint8_t);
 
-uint32_t vtpci_negotiate_features(struct virtio_hw *, uint32_t);
+uint64_t vtpci_negotiate_features(struct virtio_hw *, uint64_t);
 
 void vtpci_write_dev_config(struct virtio_hw *, size_t, const void *, int);
 

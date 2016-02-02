@@ -87,15 +87,20 @@ legacy_write_dev_config(struct virtio_hw *hw, size_t offset,
 	}
 }
 
-static uint32_t
+static uint64_t
 legacy_get_features(struct virtio_hw *hw)
 {
 	return VIRTIO_READ_REG_4(hw, VIRTIO_PCI_HOST_FEATURES);
 }
 
 static void
-legacy_set_features(struct virtio_hw *hw, uint32_t features)
+legacy_set_features(struct virtio_hw *hw, uint64_t features)
 {
+	if ((features >> 32) != 0) {
+		PMD_DRV_LOG(ERR,
+			"only 32 bit features are allowed for legacy virtio!");
+		return;
+	}
 	VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_GUEST_FEATURES, features);
 }
 
@@ -453,10 +458,10 @@ vtpci_write_dev_config(struct virtio_hw *hw, size_t offset,
 	hw->vtpci_ops->write_dev_cfg(hw, offset, src, length);
 }
 
-uint32_t
-vtpci_negotiate_features(struct virtio_hw *hw, uint32_t host_features)
+uint64_t
+vtpci_negotiate_features(struct virtio_hw *hw, uint64_t host_features)
 {
-	uint32_t features;
+	uint64_t features;
 
 	/*
 	 * Limit negotiated features to what the driver, virtqueue, and

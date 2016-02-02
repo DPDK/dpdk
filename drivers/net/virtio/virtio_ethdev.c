@@ -930,16 +930,16 @@ virtio_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static void
 virtio_negotiate_features(struct virtio_hw *hw)
 {
-	uint32_t host_features;
+	uint64_t host_features;
 
 	/* Prepare guest_features: feature that driver wants to support */
 	hw->guest_features = VIRTIO_PMD_GUEST_FEATURES;
-	PMD_INIT_LOG(DEBUG, "guest_features before negotiate = %x",
+	PMD_INIT_LOG(DEBUG, "guest_features before negotiate = %" PRIx64,
 		hw->guest_features);
 
 	/* Read device(host) feature bits */
 	host_features = hw->vtpci_ops->get_features(hw);
-	PMD_INIT_LOG(DEBUG, "host_features before negotiate = %x",
+	PMD_INIT_LOG(DEBUG, "host_features before negotiate = %" PRIx64,
 		host_features);
 
 	/*
@@ -947,7 +947,7 @@ virtio_negotiate_features(struct virtio_hw *hw)
 	 * guest feature bits.
 	 */
 	hw->guest_features = vtpci_negotiate_features(hw, host_features);
-	PMD_INIT_LOG(DEBUG, "features after negotiate = %x",
+	PMD_INIT_LOG(DEBUG, "features after negotiate = %" PRIx64,
 		hw->guest_features);
 }
 
