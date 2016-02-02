@@ -163,6 +163,31 @@ struct virtqueue;
  */
 #define VIRTIO_MAX_VIRTQUEUES 8
 
+struct virtio_hw;
+
+struct virtio_pci_ops {
+	void (*read_dev_cfg)(struct virtio_hw *hw, size_t offset,
+			     void *dst, int len);
+	void (*write_dev_cfg)(struct virtio_hw *hw, size_t offset,
+			      const void *src, int len);
+	void (*reset)(struct virtio_hw *hw);
+
+	uint8_t (*get_status)(struct virtio_hw *hw);
+	void    (*set_status)(struct virtio_hw *hw, uint8_t status);
+
+	uint32_t (*get_features)(struct virtio_hw *hw);
+	void     (*set_features)(struct virtio_hw *hw, uint32_t features);
+
+	uint8_t (*get_isr)(struct virtio_hw *hw);
+
+	uint16_t (*set_config_irq)(struct virtio_hw *hw, uint16_t vec);
+
+	uint16_t (*get_queue_num)(struct virtio_hw *hw, uint16_t queue_id);
+	void (*setup_queue)(struct virtio_hw *hw, struct virtqueue *vq);
+	void (*del_queue)(struct virtio_hw *hw, struct virtqueue *vq);
+	void (*notify_queue)(struct virtio_hw *hw, struct virtqueue *vq);
+};
+
 struct virtio_hw {
 	struct virtqueue *cvq;
 	uint32_t    io_base;
@@ -174,6 +199,7 @@ struct virtio_hw {
 	uint8_t	    use_msix;
 	uint8_t     started;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
+	const struct virtio_pci_ops *vtpci_ops;
 };
 
 /*
@@ -253,6 +279,7 @@ vtpci_with_feature(struct virtio_hw *hw, uint32_t bit)
 /*
  * Function declaration from virtio_pci.c
  */
+int vtpci_init(struct rte_pci_device *, struct virtio_hw *);
 void vtpci_reset(struct virtio_hw *);
 
 void vtpci_reinit_complete(struct virtio_hw *);
@@ -261,7 +288,7 @@ void vtpci_set_status(struct virtio_hw *, uint8_t);
 
 uint32_t vtpci_negotiate_features(struct virtio_hw *, uint32_t);
 
-void vtpci_write_dev_config(struct virtio_hw *, size_t, void *, int);
+void vtpci_write_dev_config(struct virtio_hw *, size_t, const void *, int);
 
 void vtpci_read_dev_config(struct virtio_hw *, size_t, void *, int);
 

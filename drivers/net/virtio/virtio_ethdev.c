@@ -272,9 +272,7 @@ virtio_dev_queue_release(struct virtqueue *vq) {
 
 	if (vq) {
 		hw = vq->hw;
-		/* Select and deactivate the queue */
-		VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->vq_queue_index);
-		VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN, 0);
+		hw->vtpci_ops->del_queue(hw, vq);
 
 		rte_free(vq->sw_ring);
 		rte_free(vq);
@@ -295,15 +293,13 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = NULL;
 
-	/* Write the virtqueue index to the Queue Select Field */
-	VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vtpci_queue_idx);
-	PMD_INIT_LOG(DEBUG, "selecting queue: %u", vtpci_queue_idx);
+	PMD_INIT_LOG(DEBUG, "setting up queue: %u", vtpci_queue_idx);
 
 	/*
 	 * Read the virtqueue size from the Queue Size field
 	 * Always power of 2 and if 0 virtqueue does not exist
 	 */
-	vq_size = VIRTIO_READ_REG_2(hw, VIRTIO_PCI_QUEUE_NUM);
+	vq_size = hw->vtpci_ops->get_queue_num(hw, vtpci_queue_idx);
 	PMD_INIT_LOG(DEBUG, "vq_size: %u nb_desc:%u", vq_size, nb_desc);
 	if (vq_size == 0) {
 		PMD_INIT_LOG(ERR, "%s: virtqueue does not exist", __func__);
@@ -436,12 +432,8 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		memset(vq->virtio_net_hdr_mz->addr, 0, PAGE_SIZE);
 	}
 
-	/*
-	 * Set guest physical address of the virtqueue
-	 * in VIRTIO_PCI_QUEUE_PFN config register of device
-	 */
-	VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN,
-			mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
+	hw->vtpci_ops->setup_queue(hw, vq);
+
 	*pvq = vq;
 	return 0;
 }
@@ -950,7 +942,7 @@ virtio_negotiate_features(struct virtio_hw *hw)
 		hw->guest_features);
 
 	/* Read device(host) feature bits */
-	host_features = VIRTIO_READ_REG_4(hw, VIRTIO_PCI_HOST_FEATURES);
+	host_features = hw->vtpci_ops->get_features(hw);
 	PMD_INIT_LOG(DEBUG, "host_features before negotiate = %x",
 		host_features);
 
@@ -1286,6 +1278,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	pci_dev = eth_dev->pci_dev;
+
+	vtpci_init(pci_dev, hw);
 
 	if (virtio_resource_init(pci_dev) < 0)
 		return -1;
