@@ -41,6 +41,14 @@
 #include "virtio_logs.h"
 #include "virtqueue.h"
 
+/*
+ * Following macros are derived from linux/pci_regs.h, however,
+ * we can't simply include that header here, as there is no such
+ * file for non-Linux platform.
+ */
+#define PCI_CAPABILITY_LIST	0x34
+#define PCI_CAP_ID_VNDR		0x09
+
 static void
 legacy_read_dev_config(struct virtio_hw *hw, size_t offset,
 		       void *dst, int length)
@@ -444,6 +452,217 @@ static const struct virtio_pci_ops legacy_ops = {
 };
 
 
+static inline uint8_t
+io_read8(uint8_t *addr)
+{
+	return *(volatile uint8_t *)addr;
+}
+
+static inline void
+io_write8(uint8_t val, uint8_t *addr)
+{
+	*(volatile uint8_t *)addr = val;
+}
+
+static inline uint16_t
+io_read16(uint16_t *addr)
+{
+	return *(volatile uint16_t *)addr;
+}
+
+static inline void
+io_write16(uint16_t val, uint16_t *addr)
+{
+	*(volatile uint16_t *)addr = val;
+}
+
+static inline uint32_t
+io_read32(uint32_t *addr)
+{
+	return *(volatile uint32_t *)addr;
+}
+
+static inline void
+io_write32(uint32_t val, uint32_t *addr)
+{
+	*(volatile uint32_t *)addr = val;
+}
+
+static inline void
+io_write64_twopart(uint64_t val, uint32_t *lo, uint32_t *hi)
+{
+	io_write32(val & ((1ULL << 32) - 1), lo);
+	io_write32(val >> 32,		     hi);
+}
+
+static void
+modern_read_dev_config(struct virtio_hw *hw, size_t offset,
+		       void *dst, int length)
+{
+	int i;
+	uint8_t *p;
+	uint8_t old_gen, new_gen;
+
+	do {
+		old_gen = io_read8(&hw->common_cfg->config_generation);
+
+		p = dst;
+		for (i = 0;  i < length; i++)
+			*p++ = io_read8((uint8_t *)hw->dev_cfg + offset + i);
+
+		new_gen = io_read8(&hw->common_cfg->config_generation);
+	} while (old_gen != new_gen);
+}
+
+static void
+modern_write_dev_config(struct virtio_hw *hw, size_t offset,
+			const void *src, int length)
+{
+	int i;
+	const uint8_t *p = src;
+
+	for (i = 0;  i < length; i++)
+		io_write8(*p++, (uint8_t *)hw->dev_cfg + offset + i);
+}
+
+static uint64_t
+modern_get_features(struct virtio_hw *hw)
+{
+	uint32_t features_lo, features_hi;
+
+	io_write32(0, &hw->common_cfg->device_feature_select);
+	features_lo = io_read32(&hw->common_cfg->device_feature);
+
+	io_write32(1, &hw->common_cfg->device_feature_select);
+	features_hi = io_read32(&hw->common_cfg->device_feature);
+
+	return ((uint64_t)features_hi << 32) | features_lo;
+}
+
+static void
+modern_set_features(struct virtio_hw *hw, uint64_t features)
+{
+	io_write32(0, &hw->common_cfg->guest_feature_select);
+	io_write32(features & ((1ULL << 32) - 1),
+		&hw->common_cfg->guest_feature);
+
+	io_write32(1, &hw->common_cfg->guest_feature_select);
+	io_write32(features >> 32,
+		&hw->common_cfg->guest_feature);
+}
+
+static uint8_t
+modern_get_status(struct virtio_hw *hw)
+{
+	return io_read8(&hw->common_cfg->device_status);
+}
+
+static void
+modern_set_status(struct virtio_hw *hw, uint8_t status)
+{
+	io_write8(status, &hw->common_cfg->device_status);
+}
+
+static void
+modern_reset(struct virtio_hw *hw)
+{
+	modern_set_status(hw, VIRTIO_CONFIG_STATUS_RESET);
+	modern_get_status(hw);
+}
+
+static uint8_t
+modern_get_isr(struct virtio_hw *hw)
+{
+	return io_read8(hw->isr);
+}
+
+static uint16_t
+modern_set_config_irq(struct virtio_hw *hw, uint16_t vec)
+{
+	io_write16(vec, &hw->common_cfg->msix_config);
+	return io_read16(&hw->common_cfg->msix_config);
+}
+
+static uint16_t
+modern_get_queue_num(struct virtio_hw *hw, uint16_t queue_id)
+{
+	io_write16(queue_id, &hw->common_cfg->queue_select);
+	return io_read16(&hw->common_cfg->queue_size);
+}
+
+static void
+modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
+{
+	uint64_t desc_addr, avail_addr, used_addr;
+	uint16_t notify_off;
+
+	desc_addr = vq->mz->phys_addr;
+	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct vring_desc);
+	used_addr = RTE_ALIGN_CEIL(avail_addr + offsetof(struct vring_avail,
+							 ring[vq->vq_nentries]),
+				   VIRTIO_PCI_VRING_ALIGN);
+
+	io_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+
+	io_write64_twopart(desc_addr, &hw->common_cfg->queue_desc_lo,
+				      &hw->common_cfg->queue_desc_hi);
+	io_write64_twopart(avail_addr, &hw->common_cfg->queue_avail_lo,
+				       &hw->common_cfg->queue_avail_hi);
+	io_write64_twopart(used_addr, &hw->common_cfg->queue_used_lo,
+				      &hw->common_cfg->queue_used_hi);
+
+	notify_off = io_read16(&hw->common_cfg->queue_notify_off);
+	vq->notify_addr = (void *)((uint8_t *)hw->notify_base +
+				notify_off * hw->notify_off_multiplier);
+
+	io_write16(1, &hw->common_cfg->queue_enable);
+
+	PMD_INIT_LOG(DEBUG, "queue %u addresses:", vq->vq_queue_index);
+	PMD_INIT_LOG(DEBUG, "\t desc_addr: %" PRIx64, desc_addr);
+	PMD_INIT_LOG(DEBUG, "\t aval_addr: %" PRIx64, avail_addr);
+	PMD_INIT_LOG(DEBUG, "\t used_addr: %" PRIx64, used_addr);
+	PMD_INIT_LOG(DEBUG, "\t notify addr: %p (notify offset: %u)",
+		vq->notify_addr, notify_off);
+}
+
+static void
+modern_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
+{
+	io_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+
+	io_write64_twopart(0, &hw->common_cfg->queue_desc_lo,
+				  &hw->common_cfg->queue_desc_hi);
+	io_write64_twopart(0, &hw->common_cfg->queue_avail_lo,
+				  &hw->common_cfg->queue_avail_hi);
+	io_write64_twopart(0, &hw->common_cfg->queue_used_lo,
+				  &hw->common_cfg->queue_used_hi);
+
+	io_write16(0, &hw->common_cfg->queue_enable);
+}
+
+static void
+modern_notify_queue(struct virtio_hw *hw __rte_unused, struct virtqueue *vq)
+{
+	io_write16(1, vq->notify_addr);
+}
+
+static const struct virtio_pci_ops modern_ops = {
+	.read_dev_cfg	= modern_read_dev_config,
+	.write_dev_cfg	= modern_write_dev_config,
+	.reset		= modern_reset,
+	.get_status	= modern_get_status,
+	.set_status	= modern_set_status,
+	.get_features	= modern_get_features,
+	.set_features	= modern_set_features,
+	.get_isr	= modern_get_isr,
+	.set_config_irq	= modern_set_config_irq,
+	.get_queue_num	= modern_get_queue_num,
+	.setup_queue	= modern_setup_queue,
+	.del_queue	= modern_del_queue,
+	.notify_queue	= modern_notify_queue,
+};
+
+
 void
 vtpci_read_dev_config(struct virtio_hw *hw, size_t offset,
 		      void *dst, int length)
@@ -497,6 +716,12 @@ vtpci_set_status(struct virtio_hw *hw, uint8_t status)
 }
 
 uint8_t
+vtpci_get_status(struct virtio_hw *hw)
+{
+	return hw->vtpci_ops->get_status(hw);
+}
+
+uint8_t
 vtpci_isr(struct virtio_hw *hw)
 {
 	return hw->vtpci_ops->get_isr(hw);
@@ -510,15 +735,142 @@ vtpci_irq_config(struct virtio_hw *hw, uint16_t vec)
 	return hw->vtpci_ops->set_config_irq(hw, vec);
 }
 
+static void *
+get_cfg_addr(struct rte_pci_device *dev, struct virtio_pci_cap *cap)
+{
+	uint8_t  bar    = cap->bar;
+	uint32_t length = cap->length;
+	uint32_t offset = cap->offset;
+	uint8_t *base;
+
+	if (bar > 5) {
+		PMD_INIT_LOG(ERR, "invalid bar: %u", bar);
+		return NULL;
+	}
+
+	if (offset + length < offset) {
+		PMD_INIT_LOG(ERR, "offset(%u) + length(%u) overflows",
+			offset, length);
+		return NULL;
+	}
+
+	if (offset + length > dev->mem_resource[bar].len) {
+		PMD_INIT_LOG(ERR,
+			"invalid cap: overflows bar space: %u > %" PRIu64,
+			offset + length, dev->mem_resource[bar].len);
+		return NULL;
+	}
+
+	base = dev->mem_resource[bar].addr;
+	if (base == NULL) {
+		PMD_INIT_LOG(ERR, "bar %u base addr is NULL", bar);
+		return NULL;
+	}
+
+	return base + offset;
+}
+
+static int
+virtio_read_caps(struct rte_pci_device *dev, struct virtio_hw *hw)
+{
+	uint8_t pos;
+	struct virtio_pci_cap cap;
+	int ret;
+
+	if (rte_eal_pci_map_device(dev) < 0) {
+		PMD_INIT_LOG(DEBUG, "failed to map pci device!");
+		return -1;
+	}
+
+	ret = rte_eal_pci_read_config(dev, &pos, 1, PCI_CAPABILITY_LIST);
+	if (ret < 0) {
+		PMD_INIT_LOG(DEBUG, "failed to read pci capability list");
+		return -1;
+	}
+
+	while (pos) {
+		ret = rte_eal_pci_read_config(dev, &cap, sizeof(cap), pos);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR,
+				"failed to read pci cap at pos: %x", pos);
+			break;
+		}
+
+		if (cap.cap_vndr != PCI_CAP_ID_VNDR) {
+			PMD_INIT_LOG(DEBUG,
+				"[%2x] skipping non VNDR cap id: %02x",
+				pos, cap.cap_vndr);
+			goto next;
+		}
+
+		PMD_INIT_LOG(DEBUG,
+			"[%2x] cfg type: %u, bar: %u, offset: %04x, len: %u",
+			pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
+
+		switch (cap.cfg_type) {
+		case VIRTIO_PCI_CAP_COMMON_CFG:
+			hw->common_cfg = get_cfg_addr(dev, &cap);
+			break;
+		case VIRTIO_PCI_CAP_NOTIFY_CFG:
+			rte_eal_pci_read_config(dev, &hw->notify_off_multiplier,
+						4, pos + sizeof(cap));
+			hw->notify_base = get_cfg_addr(dev, &cap);
+			break;
+		case VIRTIO_PCI_CAP_DEVICE_CFG:
+			hw->dev_cfg = get_cfg_addr(dev, &cap);
+			break;
+		case VIRTIO_PCI_CAP_ISR_CFG:
+			hw->isr = get_cfg_addr(dev, &cap);
+			break;
+		}
+
+next:
+		pos = cap.cap_next;
+	}
+
+	if (hw->common_cfg == NULL || hw->notify_base == NULL ||
+	    hw->dev_cfg == NULL    || hw->isr == NULL) {
+		PMD_INIT_LOG(INFO, "no modern virtio pci device found.");
+		return -1;
+	}
+
+	PMD_INIT_LOG(INFO, "found modern virtio pci device.");
+
+	PMD_INIT_LOG(DEBUG, "common cfg mapped at: %p", hw->common_cfg);
+	PMD_INIT_LOG(DEBUG, "device cfg mapped at: %p", hw->dev_cfg);
+	PMD_INIT_LOG(DEBUG, "isr cfg mapped at: %p", hw->isr);
+	PMD_INIT_LOG(DEBUG, "notify base: %p, notify off multiplier: %u",
+		hw->notify_base, hw->notify_off_multiplier);
+
+	return 0;
+}
+
 int
 vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 {
-	hw->vtpci_ops = &legacy_ops;
+	hw->dev = dev;
 
+	/*
+	 * Try if we can succeed reading virtio pci caps, which exists
+	 * only on modern pci device. If failed, we fallback to legacy
+	 * virtio handling.
+	 */
+	if (virtio_read_caps(dev, hw) == 0) {
+		PMD_INIT_LOG(INFO, "modern virtio pci detected.");
+		hw->vtpci_ops = &modern_ops;
+		hw->modern    = 1;
+		dev->driver->drv_flags |= RTE_PCI_DRV_INTR_LSC;
+		return 0;
+	}
+
+	PMD_INIT_LOG(INFO, "trying with legacy virtio pci.");
 	if (legacy_virtio_resource_init(dev) < 0)
 		return -1;
+
+	hw->vtpci_ops = &legacy_ops;
 	hw->use_msix = legacy_virtio_has_msix(&dev->addr);
 	hw->io_base  = (uint32_t)(uintptr_t)dev->mem_resource[0].addr;
+	hw->modern   = 0;
 
 	return 0;
 }

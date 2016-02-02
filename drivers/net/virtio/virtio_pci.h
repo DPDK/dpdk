@@ -93,6 +93,7 @@ struct virtqueue;
 #define VIRTIO_CONFIG_STATUS_ACK       0x01
 #define VIRTIO_CONFIG_STATUS_DRIVER    0x02
 #define VIRTIO_CONFIG_STATUS_DRIVER_OK 0x04
+#define VIRTIO_CONFIG_STATUS_FEATURES_OK 0x08
 #define VIRTIO_CONFIG_STATUS_FAILED    0x80
 
 /*
@@ -141,6 +142,8 @@ struct virtqueue;
 /* We support indirect buffer descriptors */
 #define VIRTIO_RING_F_INDIRECT_DESC	28
 
+#define VIRTIO_F_VERSION_1		32
+
 /*
  * Some VirtIO feature bits (currently bits 28 through 31) are
  * reserved for the transport being used (eg. virtio_ring), the
@@ -162,6 +165,60 @@ struct virtqueue;
  * Maximum number of virtqueues per device.
  */
 #define VIRTIO_MAX_VIRTQUEUES 8
+
+/* Common configuration */
+#define VIRTIO_PCI_CAP_COMMON_CFG	1
+/* Notifications */
+#define VIRTIO_PCI_CAP_NOTIFY_CFG	2
+/* ISR Status */
+#define VIRTIO_PCI_CAP_ISR_CFG		3
+/* Device specific configuration */
+#define VIRTIO_PCI_CAP_DEVICE_CFG	4
+/* PCI configuration access */
+#define VIRTIO_PCI_CAP_PCI_CFG		5
+
+/* This is the PCI capability header: */
+struct virtio_pci_cap {
+	uint8_t cap_vndr;		/* Generic PCI field: PCI_CAP_ID_VNDR */
+	uint8_t cap_next;		/* Generic PCI field: next ptr. */
+	uint8_t cap_len;		/* Generic PCI field: capability length */
+	uint8_t cfg_type;		/* Identifies the structure. */
+	uint8_t bar;			/* Where to find it. */
+	uint8_t padding[3];		/* Pad to full dword. */
+	uint32_t offset;		/* Offset within bar. */
+	uint32_t length;		/* Length of the structure, in bytes. */
+};
+
+struct virtio_pci_notify_cap {
+	struct virtio_pci_cap cap;
+	uint32_t notify_off_multiplier;	/* Multiplier for queue_notify_off. */
+};
+
+/* Fields in VIRTIO_PCI_CAP_COMMON_CFG: */
+struct virtio_pci_common_cfg {
+	/* About the whole device. */
+	uint32_t device_feature_select;	/* read-write */
+	uint32_t device_feature;	/* read-only */
+	uint32_t guest_feature_select;	/* read-write */
+	uint32_t guest_feature;		/* read-write */
+	uint16_t msix_config;		/* read-write */
+	uint16_t num_queues;		/* read-only */
+	uint8_t device_status;		/* read-write */
+	uint8_t config_generation;	/* read-only */
+
+	/* About a specific virtqueue. */
+	uint16_t queue_select;		/* read-write */
+	uint16_t queue_size;		/* read-write, power of 2. */
+	uint16_t queue_msix_vector;	/* read-write */
+	uint16_t queue_enable;		/* read-write */
+	uint16_t queue_notify_off;	/* read-only */
+	uint32_t queue_desc_lo;		/* read-write */
+	uint32_t queue_desc_hi;		/* read-write */
+	uint32_t queue_avail_lo;	/* read-write */
+	uint32_t queue_avail_hi;	/* read-write */
+	uint32_t queue_used_lo;		/* read-write */
+	uint32_t queue_used_hi;		/* read-write */
+};
 
 struct virtio_hw;
 
@@ -188,6 +245,8 @@ struct virtio_pci_ops {
 	void (*notify_queue)(struct virtio_hw *hw, struct virtqueue *vq);
 };
 
+struct virtio_net_config;
+
 struct virtio_hw {
 	struct virtqueue *cvq;
 	uint32_t    io_base;
@@ -198,7 +257,14 @@ struct virtio_hw {
 	uint8_t	    vlan_strip;
 	uint8_t	    use_msix;
 	uint8_t     started;
+	uint8_t     modern;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
+	uint32_t    notify_off_multiplier;
+	uint8_t     *isr;
+	uint16_t    *notify_base;
+	struct rte_pci_device *dev;
+	struct virtio_pci_common_cfg *common_cfg;
+	struct virtio_net_config *dev_cfg;
 	const struct virtio_pci_ops *vtpci_ops;
 };
 
@@ -284,6 +350,7 @@ void vtpci_reset(struct virtio_hw *);
 
 void vtpci_reinit_complete(struct virtio_hw *);
 
+uint8_t vtpci_get_status(struct virtio_hw *);
 void vtpci_set_status(struct virtio_hw *, uint8_t);
 
 uint64_t vtpci_negotiate_features(struct virtio_hw *, uint64_t);

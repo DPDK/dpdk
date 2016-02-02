@@ -35,6 +35,10 @@ This section should contain new features added in this release. Sample format:
 
   Refer to the previous release notes for examples.
 
+* **Virtio 1.0.**
+
+  Enabled virtio 1.0 support for virtio pmd driver.
+
 
 Resolved Issues
 ---------------

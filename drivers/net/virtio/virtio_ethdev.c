@@ -927,7 +927,7 @@ virtio_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	return virtio_send_command(hw->cvq, &ctrl, &len, 1);
 }
 
-static void
+static int
 virtio_negotiate_features(struct virtio_hw *hw)
 {
 	uint64_t host_features;
@@ -949,6 +949,22 @@ virtio_negotiate_features(struct virtio_hw *hw)
 	hw->guest_features = vtpci_negotiate_features(hw, host_features);
 	PMD_INIT_LOG(DEBUG, "features after negotiate = %" PRIx64,
 		hw->guest_features);
+
+	if (hw->modern) {
+		if (!vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
+			PMD_INIT_LOG(ERR,
+				"VIRTIO_F_VERSION_1 features is not enabled.");
+			return -1;
+		}
+		vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
+		if (!(vtpci_get_status(hw) & VIRTIO_CONFIG_STATUS_FEATURES_OK)) {
+			PMD_INIT_LOG(ERR,
+				"failed to set FEATURES_OK status!");
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -1032,7 +1048,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Tell the host we've known how to drive the device. */
 	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
-	virtio_negotiate_features(hw);
+	if (virtio_negotiate_features(hw) < 0)
+		return -1;
 
 	/* If host does not support status then disable LSC */
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS))
@@ -1043,7 +1060,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	rx_func_get(eth_dev);
 
 	/* Setting up rx_header size for the device */
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF) ||
+	    vtpci_with_feature(hw, VIRTIO_F_VERSION_1))
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	else
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr);
@@ -1159,6 +1177,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 		rte_intr_callback_unregister(&pci_dev->intr_handle,
 						virtio_interrupt_handler,
 						eth_dev);
+	rte_eal_pci_unmap_device(pci_dev);
 
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 

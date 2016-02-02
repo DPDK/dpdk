@@ -202,6 +202,8 @@ struct virtqueue {
 	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
 	uint64_t	size_bins[8];
 
+	uint16_t	*notify_addr;
+
 	struct vq_desc_extra {
 		void              *cookie;
 		uint16_t          ndescs;
