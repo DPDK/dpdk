@@ -261,9 +261,9 @@ void vtpci_set_status(struct virtio_hw *, uint8_t);
 
 uint32_t vtpci_negotiate_features(struct virtio_hw *, uint32_t);
 
-void vtpci_write_dev_config(struct virtio_hw *, uint64_t, void *, int);
+void vtpci_write_dev_config(struct virtio_hw *, size_t, void *, int);
 
-void vtpci_read_dev_config(struct virtio_hw *, uint64_t, void *, int);
+void vtpci_read_dev_config(struct virtio_hw *, size_t, void *, int);
 
 uint8_t vtpci_isr(struct virtio_hw *);
 

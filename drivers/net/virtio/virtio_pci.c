@@ -38,7 +38,7 @@
 static uint8_t vtpci_get_status(struct virtio_hw *);
 
 void
-vtpci_read_dev_config(struct virtio_hw *hw, uint64_t offset,
+vtpci_read_dev_config(struct virtio_hw *hw, size_t offset,
 		void *dst, int length)
 {
 	uint64_t off;
@@ -61,7 +61,7 @@ vtpci_read_dev_config(struct virtio_hw *hw, uint64_t offset,
 }
 
 void
-vtpci_write_dev_config(struct virtio_hw *hw, uint64_t offset,
+vtpci_write_dev_config(struct virtio_hw *hw, size_t offset,
 		void *src, int length)
 {
 	uint64_t off;
