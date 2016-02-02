@@ -55,9 +55,9 @@ after a primary process has already configured the hugepage shared memory for th
 To support these two process types, and other multi-process setups described later,
 two additional command-line parameters are available to the EAL:
 
-*   --proc-type: for specifying a given process instance as the primary or secondary DPDK instance
+*   ``--proc-type:`` for specifying a given process instance as the primary or secondary DPDK instance
 
-*   --file-prefix: to allow processes that do not want to co-operate to have different memory regions
+*   ``--file-prefix:`` to allow processes that do not want to co-operate to have different memory regions
 
 A number of example applications are provided that demonstrate how multiple DPDK processes can be used together.
 These are more fully documented in the "Multi- process Sample Application" chapter
@@ -90,7 +90,7 @@ and point to the same objects, in both processes.
    Memory Sharing in the DPDK Multi-process Sample Application
 
 
-The EAL also supports an auto-detection mode (set by EAL --proc-type=auto flag ),
+The EAL also supports an auto-detection mode (set by EAL ``--proc-type=auto`` flag ),
 whereby an DPDK process is started as a secondary instance if a primary instance is already running.
 
 Deployment Models
@@ -102,8 +102,8 @@ Symmetric/Peer Processes
 DPDK multi-process support can be used to create a set of peer processes where each process performs the same workload.
 This model is equivalent to having multiple threads each running the same main-loop function,
 as is done in most of the supplied DPDK sample applications.
-In this model, the first of the processes spawned should be spawned using the --proc-type=primary EAL flag,
-while all subsequent instances should be spawned using the --proc-type=secondary flag.
+In this model, the first of the processes spawned should be spawned using the ``--proc-type=primary`` EAL flag,
+while all subsequent instances should be spawned using the ``--proc-type=secondary`` flag.
 
 The simple_mp and symmetric_mp sample applications demonstrate this usage model.
 They are described in the "Multi-process Sample Application" chapter in the *DPDK Sample Application's User Guide*.
@@ -125,7 +125,7 @@ Running Multiple Independent DPDK Applications
 In addition to the above scenarios involving multiple DPDK processes working together,
 it is possible to run multiple DPDK processes side-by-side,
 where those processes are all working independently.
-Support for this usage scenario is provided using the --file-prefix parameter to the EAL.
+Support for this usage scenario is provided using the ``--file-prefix`` parameter to the EAL.
 
 By default, the EAL creates hugepage files on each hugetlbfs filesystem using the rtemap_X filename,
 where X is in the range 0 to the maximum number of hugepages -1.
@@ -137,7 +137,7 @@ The rte part of the filenames of each of the above is configurable using the fil
 In addition to specifying the file-prefix parameter,
 any DPDK applications that are to be run side-by-side must explicitly limit their memory use.
 This is done by passing the -m flag to each process to specify how much hugepage memory, in megabytes,
-each process can use (or passing --socket-mem to specify how much hugepage memory on each socket each process can use).
+each process can use (or passing ``--socket-mem`` to specify how much hugepage memory on each socket each process can use).
 
 .. note::
 
@@ -149,7 +149,7 @@ Running Multiple Independent Groups of DPDK Applications
 
 In the same way that it is possible to run independent DPDK applications side- by-side on a single system,
 this can be trivially extended to multi-process groups of DPDK applications running side-by-side.
-In this case, the secondary processes must use the same --file-prefix parameter
+In this case, the secondary processes must use the same ``--file-prefix`` parameter
 as the primary process whose shared memory they are connecting to.
 
 .. note::

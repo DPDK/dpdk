@@ -103,7 +103,7 @@ Multi-process Support
 ~~~~~~~~~~~~~~~~~~~~~
 
 The Linuxapp EAL allows a multi-process as well as a multi-threaded (pthread) deployment model.
-See chapter 2.20
+See chapter
 :ref:`Multi-process Support <Multi-process_Support>` for more details.
 
 Memory Mapping Discovery and Memory Reservation
