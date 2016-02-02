@@ -131,6 +131,7 @@ F: doc/guides/sample_app_ug/multi_process.rst
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
 M: Jianbo Liu <jianbo.liu@linaro.org>
+F: lib/librte_eal/common/arch/arm/
 F: lib/librte_eal/common/include/arch/arm/
 
 ARM v8
@@ -141,16 +142,19 @@ F: lib/librte_acl/acl_run_neon.*
 
 EZchip TILE-Gx
 M: Zhigang Lu <zlu@ezchip.com>
+F: lib/librte_eal/common/arch/tile/
 F: lib/librte_eal/common/include/arch/tile/
 F: drivers/net/mpipe/
 
 IBM POWER
 M: Chao Zhu <chaozhu@linux.vnet.ibm.com>
+F: lib/librte_eal/common/arch/ppc_64/
 F: lib/librte_eal/common/include/arch/ppc_64/
 
 Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+F: lib/librte_eal/common/arch/x86/
 F: lib/librte_eal/common/include/arch/x86/
 
 Linux EAL (with overlaps)

@@ -39,58 +39,12 @@
  * Architecture specific API to determine available CPU features at runtime.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <errno.h>
-#include <stdint.h>
 
 /**
  * Enumeration of all CPU features supported
  */
 enum rte_cpu_flag_t;
-
-/**
- * Enumeration of CPU registers
- */
-#ifdef __DOXYGEN__
-enum cpu_register_t;
-#endif
-
-typedef uint32_t cpuid_registers_t[4];
-
-#define CPU_FLAG_NAME_MAX_LEN 64
-
-/**
- * Struct to hold a processor feature entry
- */
-struct feature_entry {
-	uint32_t leaf;				/**< cpuid leaf */
-	uint32_t subleaf;			/**< cpuid subleaf */
-	uint32_t reg;				/**< cpuid register */
-	uint32_t bit;				/**< cpuid register bit */
-	char name[CPU_FLAG_NAME_MAX_LEN];       /**< String for printing */
-};
-
-#define FEAT_DEF(name, leaf, subleaf, reg, bit) \
-	[RTE_CPUFLAG_##name] = {leaf, subleaf, reg, bit, #name },
-
-/**
- * An array that holds feature entries
- *
- * Defined in arch-specific rte_cpuflags.h.
- */
-#ifdef __DOXYGEN__
-static const struct feature_entry cpu_feature_table[];
-#endif
-
-/**
- * Execute CPUID instruction and get contents of a specific register
- *
- * This function, when compiled with GCC, will generate architecture-neutral
- * code, as per GCC manual.
- */
-static inline void
-rte_cpu_get_features(uint32_t leaf, uint32_t subleaf, cpuid_registers_t out);
 
 /**
  * Get name of CPU flag
@@ -114,10 +68,8 @@ rte_cpu_get_flag_name(enum rte_cpu_flag_t feature);
  *     0 if flag is not available
  *     -ENOENT if flag is invalid
  */
-#ifdef __DOXYGEN__
-static inline int
+int
 rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature);
-#endif
 
 /**
  * This function checks that the currently used CPU supports the CPU features

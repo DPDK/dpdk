@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright (C) Cavium networks Ltd. 2015.
+ *   Copyright(c) 2015 RehiveTech. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -32,19 +33,51 @@
 
 #include "rte_cpuflags.h"
 
-#ifdef RTE_ARCH_64
-const struct feature_entry rte_cpu_feature_table[] = {
-	FEAT_DEF(FP,		0x00000001, 0, REG_HWCAP,  0)
-	FEAT_DEF(NEON,		0x00000001, 0, REG_HWCAP,  1)
-	FEAT_DEF(EVTSTRM,	0x00000001, 0, REG_HWCAP,  2)
-	FEAT_DEF(AES,		0x00000001, 0, REG_HWCAP,  3)
-	FEAT_DEF(PMULL,		0x00000001, 0, REG_HWCAP,  4)
-	FEAT_DEF(SHA1,		0x00000001, 0, REG_HWCAP,  5)
-	FEAT_DEF(SHA2,		0x00000001, 0, REG_HWCAP,  6)
-	FEAT_DEF(CRC32,		0x00000001, 0, REG_HWCAP,  7)
-	FEAT_DEF(AARCH64,	0x00000001, 0, REG_PLATFORM, 1)
+#include <elf.h>
+#include <fcntl.h>
+#include <assert.h>
+#include <unistd.h>
+#include <string.h>
+
+#ifndef AT_HWCAP
+#define AT_HWCAP 16
+#endif
+
+#ifndef AT_HWCAP2
+#define AT_HWCAP2 26
+#endif
+
+#ifndef AT_PLATFORM
+#define AT_PLATFORM 15
+#endif
+
+enum cpu_register_t {
+	REG_HWCAP = 0,
+	REG_HWCAP2,
+	REG_PLATFORM,
 };
-#else
+
+typedef uint32_t cpuid_registers_t[4];
+
+/**
+ * Struct to hold a processor feature entry
+ */
+struct feature_entry {
+	uint32_t leaf;				/**< cpuid leaf */
+	uint32_t subleaf;			/**< cpuid subleaf */
+	uint32_t reg;				/**< cpuid register */
+	uint32_t bit;				/**< cpuid register bit */
+#define CPU_FLAG_NAME_MAX_LEN 64
+	char name[CPU_FLAG_NAME_MAX_LEN];       /**< String for printing */
+};
+
+#define FEAT_DEF(name, leaf, subleaf, reg, bit) \
+	[RTE_CPUFLAG_##name] = {leaf, subleaf, reg, bit, #name },
+
+#ifdef RTE_ARCH_ARMv7
+#define PLATFORM_STR "v7l"
+typedef Elf32_auxv_t _Elfx_auxv_t;
+
 const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(SWP,       0x00000001, 0, REG_HWCAP,  0)
 	FEAT_DEF(HALF,      0x00000001, 0, REG_HWCAP,  1)
@@ -75,7 +108,73 @@ const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(CRC32,     0x00000001, 0, REG_HWCAP2,  4)
 	FEAT_DEF(V7L,       0x00000001, 0, REG_PLATFORM, 0)
 };
-#endif
+
+#elif defined RTE_ARCH_ARM64
+#define PLATFORM_STR "aarch64"
+typedef Elf64_auxv_t _Elfx_auxv_t;
+
+const struct feature_entry rte_cpu_feature_table[] = {
+	FEAT_DEF(FP,		0x00000001, 0, REG_HWCAP,  0)
+	FEAT_DEF(NEON,		0x00000001, 0, REG_HWCAP,  1)
+	FEAT_DEF(EVTSTRM,	0x00000001, 0, REG_HWCAP,  2)
+	FEAT_DEF(AES,		0x00000001, 0, REG_HWCAP,  3)
+	FEAT_DEF(PMULL,		0x00000001, 0, REG_HWCAP,  4)
+	FEAT_DEF(SHA1,		0x00000001, 0, REG_HWCAP,  5)
+	FEAT_DEF(SHA2,		0x00000001, 0, REG_HWCAP,  6)
+	FEAT_DEF(CRC32,		0x00000001, 0, REG_HWCAP,  7)
+	FEAT_DEF(AARCH64,	0x00000001, 0, REG_PLATFORM, 1)
+};
+#endif /* RTE_ARCH */
+
+/*
+ * Read AUXV software register and get cpu features for ARM
+ */
+static void
+rte_cpu_get_features(__attribute__((unused)) uint32_t leaf,
+	__attribute__((unused)) uint32_t subleaf, cpuid_registers_t out)
+{
+	int auxv_fd;
+	_Elfx_auxv_t auxv;
+
+	auxv_fd = open("/proc/self/auxv", O_RDONLY);
+	assert(auxv_fd);
+	while (read(auxv_fd, &auxv, sizeof(auxv)) == sizeof(auxv)) {
+		if (auxv.a_type == AT_HWCAP) {
+			out[REG_HWCAP] = auxv.a_un.a_val;
+		} else if (auxv.a_type == AT_HWCAP2) {
+			out[REG_HWCAP2] = auxv.a_un.a_val;
+		} else if (auxv.a_type == AT_PLATFORM) {
+			if (!strcmp((const char *)auxv.a_un.a_val, PLATFORM_STR))
+				out[REG_PLATFORM] = 0x0001;
+		}
+	}
+}
+
+/*
+ * Checks if a particular flag is available on current machine.
+ */
+int
+rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
+{
+	const struct feature_entry *feat;
+	cpuid_registers_t regs = {0};
+
+	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+		/* Flag does not match anything in the feature tables */
+		return -ENOENT;
+
+	feat = &rte_cpu_feature_table[feature];
+
+	if (!feat->leaf)
+		/* This entry in the table wasn't filled out! */
+		return -EFAULT;
+
+	/* get the cpuid leaf containing the desired feature */
+	rte_cpu_get_features(feat->leaf, feat->subleaf, regs);
+
+	/* check if the feature is enabled */
+	return (regs[feat->reg] >> feat->bit) & 1;
+}
 
 const char *
 rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)

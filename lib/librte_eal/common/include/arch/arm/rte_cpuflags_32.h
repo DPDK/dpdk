@@ -37,35 +37,6 @@
 extern "C" {
 #endif
 
-#include <elf.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <unistd.h>
-#include <string.h>
-
-#include "generic/rte_cpuflags.h"
-
-extern const struct feature_entry rte_cpu_feature_table[];
-
-#ifndef AT_HWCAP
-#define AT_HWCAP 16
-#endif
-
-#ifndef AT_HWCAP2
-#define AT_HWCAP2 26
-#endif
-
-#ifndef AT_PLATFORM
-#define AT_PLATFORM 15
-#endif
-
-/* software based registers */
-enum cpu_register_t {
-	REG_HWCAP = 0,
-	REG_HWCAP2,
-	REG_PLATFORM,
-};
-
 /**
  * Enumeration of all CPU features supported
  */
@@ -102,56 +73,7 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
 };
 
-/*
- * Read AUXV software register and get cpu features for ARM
- */
-static inline void
-rte_cpu_get_features(__attribute__((unused)) uint32_t leaf,
-	__attribute__((unused)) uint32_t subleaf, cpuid_registers_t out)
-{
-	int auxv_fd;
-	Elf32_auxv_t auxv;
-
-	auxv_fd = open("/proc/self/auxv", O_RDONLY);
-	assert(auxv_fd);
-	while (read(auxv_fd, &auxv,
-		sizeof(Elf32_auxv_t)) == sizeof(Elf32_auxv_t)) {
-		if (auxv.a_type == AT_HWCAP)
-			out[REG_HWCAP] = auxv.a_un.a_val;
-		else if (auxv.a_type == AT_HWCAP2)
-			out[REG_HWCAP2] = auxv.a_un.a_val;
-		else if (auxv.a_type == AT_PLATFORM) {
-			if (!strcmp((const char *)auxv.a_un.a_val, "v7l"))
-				out[REG_PLATFORM] = 0x0001;
-		}
-	}
-}
-
-/*
- * Checks if a particular flag is available on current machine.
- */
-static inline int
-rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
-{
-	const struct feature_entry *feat;
-	cpuid_registers_t regs = {0};
-
-	if (feature >= RTE_CPUFLAG_NUMFLAGS)
-		/* Flag does not match anything in the feature tables */
-		return -ENOENT;
-
-	feat = &rte_cpu_feature_table[feature];
-
-	if (!feat->leaf)
-		/* This entry in the table wasn't filled out! */
-		return -EFAULT;
-
-	/* get the cpuid leaf containing the desired feature */
-	rte_cpu_get_features(feat->leaf, feat->subleaf, regs);
-
-	/* check if the feature is enabled */
-	return (regs[feat->reg] >> feat->bit) & 1;
-}
+#include "generic/rte_cpuflags.h"
 
 #ifdef __cplusplus
 }

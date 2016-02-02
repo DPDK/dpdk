@@ -33,6 +33,34 @@
 
 #include "rte_cpuflags.h"
 
+#include <stdio.h>
+#include <errno.h>
+#include <stdint.h>
+
+enum cpu_register_t {
+	RTE_REG_EAX = 0,
+	RTE_REG_EBX,
+	RTE_REG_ECX,
+	RTE_REG_EDX,
+};
+
+typedef uint32_t cpuid_registers_t[4];
+
+/**
+ * Struct to hold a processor feature entry
+ */
+struct feature_entry {
+	uint32_t leaf;				/**< cpuid leaf */
+	uint32_t subleaf;			/**< cpuid subleaf */
+	uint32_t reg;				/**< cpuid register */
+	uint32_t bit;				/**< cpuid register bit */
+#define CPU_FLAG_NAME_MAX_LEN 64
+	char name[CPU_FLAG_NAME_MAX_LEN];       /**< String for printing */
+};
+
+#define FEAT_DEF(name, leaf, subleaf, reg, bit) \
+	[RTE_CPUFLAG_##name] = {leaf, subleaf, reg, bit, #name },
+
 const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(SSE3, 0x00000001, 0, RTE_REG_ECX,  0)
 	FEAT_DEF(PCLMULQDQ, 0x00000001, 0, RTE_REG_ECX,  1)
@@ -127,6 +155,61 @@ const struct feature_entry rte_cpu_feature_table[] = {
 
 	FEAT_DEF(INVTSC, 0x80000007, 0, RTE_REG_EDX,  8)
 };
+
+/*
+ * Execute CPUID instruction and get contents of a specific register
+ *
+ * This function, when compiled with GCC, will generate architecture-neutral
+ * code, as per GCC manual.
+ */
+static void
+rte_cpu_get_features(uint32_t leaf, uint32_t subleaf, cpuid_registers_t out)
+{
+#if defined(__i386__) && defined(__PIC__)
+	/* %ebx is a forbidden register if we compile with -fPIC or -fPIE */
+	asm volatile("movl %%ebx,%0 ; cpuid ; xchgl %%ebx,%0"
+		 : "=r" (out[RTE_REG_EBX]),
+		   "=a" (out[RTE_REG_EAX]),
+		   "=c" (out[RTE_REG_ECX]),
+		   "=d" (out[RTE_REG_EDX])
+		 : "a" (leaf), "c" (subleaf));
+#else
+	asm volatile("cpuid"
+		 : "=a" (out[RTE_REG_EAX]),
+		   "=b" (out[RTE_REG_EBX]),
+		   "=c" (out[RTE_REG_ECX]),
+		   "=d" (out[RTE_REG_EDX])
+		 : "a" (leaf), "c" (subleaf));
+#endif
+}
+
+int
+rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
+{
+	const struct feature_entry *feat;
+	cpuid_registers_t regs;
+
+	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+		/* Flag does not match anything in the feature tables */
+		return -ENOENT;
+
+	feat = &rte_cpu_feature_table[feature];
+
+	if (!feat->leaf)
+		/* This entry in the table wasn't filled out! */
+		return -EFAULT;
+
+	rte_cpu_get_features(feat->leaf & 0xffff0000, 0, regs);
+	if (((regs[RTE_REG_EAX] ^ feat->leaf) & 0xffff0000) ||
+	      regs[RTE_REG_EAX] < feat->leaf)
+		return 0;
+
+	/* get the cpuid leaf containing the desired feature */
+	rte_cpu_get_features(feat->leaf, feat->subleaf, regs);
+
+	/* check if the feature is enabled */
+	return (regs[feat->reg] >> feat->bit) & 1;
+}
 
 const char *
 rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)

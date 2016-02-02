@@ -32,5 +32,16 @@
 
 #include "rte_cpuflags.h"
 
+#include <errno.h>
+
 const struct feature_entry rte_cpu_feature_table[] = {
 };
+
+/*
+ * Checks if a particular flag is available on current machine.
+ */
+int
+rte_cpu_get_flag_enabled(__attribute__((unused)) enum rte_cpu_flag_t feature)
+{
+	return -ENOENT;
+}
