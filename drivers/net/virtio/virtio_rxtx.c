@@ -339,11 +339,6 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 		vq_update_avail_idx(vq);
 
 		PMD_INIT_LOG(DEBUG, "Allocated %d bufs", nbufs);
-
-		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
-			vq->vq_queue_index);
-		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
-			vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
 	} else if (queue_type == VTNET_TQ) {
 		if (use_simple_rxtx) {
 			int mid_idx  = vq->vq_nentries >> 1;
@@ -362,16 +357,6 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 			for (i = mid_idx; i < vq->vq_nentries; i++)
 				vq->vq_ring.avail->ring[i] = i;
 		}
-
-		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
-			vq->vq_queue_index);
-		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
-			vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
-	} else {
-		VIRTIO_WRITE_REG_2(vq->hw, VIRTIO_PCI_QUEUE_SEL,
-			vq->vq_queue_index);
-		VIRTIO_WRITE_REG_4(vq->hw, VIRTIO_PCI_QUEUE_PFN,
-			vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
 	}
 }
 
