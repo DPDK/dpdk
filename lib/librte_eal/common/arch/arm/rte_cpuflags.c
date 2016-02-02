@@ -77,3 +77,10 @@ const struct feature_entry rte_cpu_feature_table[] = {
 };
 #endif
 
+const char *
+rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)
+{
+	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+		return NULL;
+	return rte_cpu_feature_table[feature].name;
+}

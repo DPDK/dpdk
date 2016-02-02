@@ -47,9 +47,7 @@
 /**
  * Enumeration of all CPU features supported
  */
-#ifdef __DOXYGEN__
 enum rte_cpu_flag_t;
-#endif
 
 /**
  * Enumeration of CPU registers
@@ -93,6 +91,18 @@ static const struct feature_entry cpu_feature_table[];
  */
 static inline void
 rte_cpu_get_features(uint32_t leaf, uint32_t subleaf, cpuid_registers_t out);
+
+/**
+ * Get name of CPU flag
+ *
+ * @param feature
+ *     CPU flag ID
+ * @return
+ *     flag name
+ *     NULL if flag ID is invalid
+ */
+const char *
+rte_cpu_get_flag_name(enum rte_cpu_flag_t feature);
 
 /**
  * Function for checking a CPU flag availability
