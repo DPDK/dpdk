@@ -81,9 +81,9 @@ virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
 
 	start_dp = vq->vq_ring.desc;
 	start_dp[desc_idx].addr = (uint64_t)((uintptr_t)cookie->buf_physaddr +
-		RTE_PKTMBUF_HEADROOM - sizeof(struct virtio_net_hdr));
+		RTE_PKTMBUF_HEADROOM - vq->hw->vtnet_hdr_size);
 	start_dp[desc_idx].len = cookie->buf_len -
-		RTE_PKTMBUF_HEADROOM + sizeof(struct virtio_net_hdr);
+		RTE_PKTMBUF_HEADROOM + vq->hw->vtnet_hdr_size;
 
 	vq->vq_free_cnt--;
 	vq->vq_avail_idx++;
@@ -120,9 +120,9 @@ virtio_rxq_rearm_vec(struct virtqueue *rxvq)
 
 		start_dp[i].addr =
 			(uint64_t)((uintptr_t)sw_ring[i]->buf_physaddr +
-			RTE_PKTMBUF_HEADROOM - sizeof(struct virtio_net_hdr));
+			RTE_PKTMBUF_HEADROOM - rxvq->hw->vtnet_hdr_size);
 		start_dp[i].len = sw_ring[i]->buf_len -
-			RTE_PKTMBUF_HEADROOM + sizeof(struct virtio_net_hdr);
+			RTE_PKTMBUF_HEADROOM + rxvq->hw->vtnet_hdr_size;
 	}
 
 	rxvq->vq_avail_idx += RTE_VIRTIO_VPMD_RX_REARM_THRESH;
@@ -175,8 +175,8 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	len_adjust = _mm_set_epi16(
 		0, 0,
 		0,
-		(uint16_t) -sizeof(struct virtio_net_hdr),
-		0, (uint16_t) -sizeof(struct virtio_net_hdr),
+		(uint16_t)-rxvq->hw->vtnet_hdr_size,
+		0, (uint16_t)-rxvq->hw->vtnet_hdr_size,
 		0, 0);
 
 	if (unlikely(nb_pkts < RTE_VIRTIO_DESC_PER_LOOP))
