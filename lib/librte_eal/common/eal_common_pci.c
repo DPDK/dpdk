@@ -188,7 +188,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			pci_config_space_set(dev);
 #endif
 			/* map resources for devices that use igb_uio */
-			ret = pci_map_device(dev);
+			ret = rte_eal_pci_map_device(dev);
 			if (ret != 0)
 				return ret;
 		} else if (dr->drv_flags & RTE_PCI_DRV_FORCE_UNBIND &&
@@ -254,7 +254,7 @@ rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
 			/* unmap resources for devices that use igb_uio */
-			pci_unmap_device(dev);
+			rte_eal_pci_unmap_device(dev);
 
 		return 0;
 	}

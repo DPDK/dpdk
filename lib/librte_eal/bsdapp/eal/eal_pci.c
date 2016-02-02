@@ -93,7 +93,7 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev __rte_unused)
 
 /* Map pci device */
 int
-pci_map_device(struct rte_pci_device *dev)
+rte_eal_pci_map_device(struct rte_pci_device *dev)
 {
 	int ret = -1;
 
@@ -115,7 +115,7 @@ pci_map_device(struct rte_pci_device *dev)
 
 /* Unmap pci device */
 void
-pci_unmap_device(struct rte_pci_device *dev)
+rte_eal_pci_unmap_device(struct rte_pci_device *dev)
 {
 	/* try unmapping the NIC resources */
 	switch (dev->kdrv) {

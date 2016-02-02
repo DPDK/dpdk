@@ -142,5 +142,8 @@ DPDK_2.2 {
 DPDK_2.3 {
 	global:
 
+	rte_eal_pci_map_device;
+	rte_eal_pci_unmap_device;
 	rte_cpu_feature_table;
+
 } DPDK_2.2;
