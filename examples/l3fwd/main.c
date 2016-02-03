@@ -545,7 +545,8 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 	return 0;
 }
 
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
+#if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
+	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
 static inline __attribute__((always_inline)) void
 send_packetsx4(struct lcore_conf *qconf, uint8_t port,
 	struct rte_mbuf *m[], uint32_t num)
