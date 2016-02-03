@@ -152,7 +152,7 @@ hash_xor_key64(void *key, __rte_unused uint32_t key_size, uint64_t seed)
 	return (xor0 >> 32) ^ xor0;
 }
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) && defined(RTE_CPUFLAG_SSE4_2)
 
 #include <x86intrin.h>
 
