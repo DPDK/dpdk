@@ -655,7 +655,8 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 	return 0;
 }
 
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
+#if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
+	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
 static inline __attribute__((always_inline)) void
 send_packetsx4(uint8_t port,
 	struct rte_mbuf *m[], uint32_t num)
@@ -1838,12 +1839,12 @@ process_burst(struct rte_mbuf *pkts_burst[MAX_PKT_BURST], int nb_rx,
 	for (j = 0; j < (nb_rx - PREFETCH_OFFSET); j++) {
 		rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[
 				j + PREFETCH_OFFSET], void *));
-		l3fwd_simple_forward(pkts_burst[j], portid, qconf);
+		l3fwd_simple_forward(pkts_burst[j], portid);
 	}
 
 	/* Forward remaining prefetched packets */
 	for (; j < nb_rx; j++)
-		l3fwd_simple_forward(pkts_burst[j], portid, qconf);
+		l3fwd_simple_forward(pkts_burst[j], portid);
 
 #endif /* ENABLE_MULTI_BUFFER_OPTIMIZE */
 
