@@ -551,6 +551,7 @@ void i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi);
 int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
 			   struct i40e_vsi_vlan_pvid_info *info);
 int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
+int i40e_vsi_config_vlan_filter(struct i40e_vsi *vsi, bool on);
 uint64_t i40e_config_hena(uint64_t flags);
 uint64_t i40e_parse_hena(uint64_t flags);
 enum i40e_status_code i40e_fdir_setup_tx_resources(struct i40e_pf *pf);

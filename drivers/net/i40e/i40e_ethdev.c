@@ -2412,6 +2412,13 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_vsi *vsi = pf->main_vsi;
 
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+			i40e_vsi_config_vlan_filter(vsi, TRUE);
+		else
+			i40e_vsi_config_vlan_filter(vsi, FALSE);
+	}
+
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
 		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
@@ -2663,7 +2670,10 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 	}
 
 	(void)rte_memcpy(&mac_filter.mac_addr, mac_addr, ETHER_ADDR_LEN);
-	mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+	else
+		mac_filter.filter_type = RTE_MAC_PERFECT_MATCH;
 
 	if (pool == 0)
 		vsi = pf->main_vsi;
@@ -4236,6 +4246,63 @@ fail_mem:
 	return NULL;
 }
 
+/* Configure vlan filter on or off */
+int
+i40e_vsi_config_vlan_filter(struct i40e_vsi *vsi, bool on)
+{
+	int i, num;
+	struct i40e_mac_filter *f;
+	struct i40e_mac_filter_info *mac_filter;
+	enum rte_mac_filter_type desired_filter;
+	int ret = I40E_SUCCESS;
+
+	if (on) {
+		/* Filter to match MAC and VLAN */
+		desired_filter = RTE_MACVLAN_PERFECT_MATCH;
+	} else {
+		/* Filter to match only MAC */
+		desired_filter = RTE_MAC_PERFECT_MATCH;
+	}
+
+	num = vsi->mac_num;
+
+	mac_filter = rte_zmalloc("mac_filter_info_data",
+				 num * sizeof(*mac_filter), 0);
+	if (mac_filter == NULL) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		return I40E_ERR_NO_MEMORY;
+	}
+
+	i = 0;
+
+	/* Remove all existing mac */
+	TAILQ_FOREACH(f, &vsi->mac_list, next) {
+		mac_filter[i] = f->mac_info;
+		ret = i40e_vsi_delete_mac(vsi, &f->mac_info.mac_addr);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Update VSI failed to %s vlan filter",
+				    on ? "enable" : "disable");
+			goto DONE;
+		}
+		i++;
+	}
+
+	/* Override with new filter */
+	for (i = 0; i < num; i++) {
+		mac_filter[i].filter_type = desired_filter;
+		ret = i40e_vsi_add_mac(vsi, &mac_filter[i]);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Update VSI failed to %s vlan filter",
+				    on ? "enable" : "disable");
+			goto DONE;
+		}
+	}
+
+DONE:
+	rte_free(mac_filter);
+	return ret;
+}
+
 /* Configure vlan stripping on or off */
 int
 i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on)
@@ -4283,9 +4350,11 @@ i40e_dev_init_vlan(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
 	int ret;
+	int mask = 0;
 
 	/* Apply vlan offload setting */
-	i40e_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK);
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK;
+	i40e_vlan_offload_set(dev, mask);
 
 	/* Apply double-vlan setting, not implemented yet */
 
