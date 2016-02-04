@@ -687,13 +687,16 @@ static int
 fm10k_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct fm10k_macvlan_filter_info *macvlan;
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 	int i, ret;
 	struct fm10k_rx_queue *rxq;
 	uint64_t base_addr;
 	uint32_t size;
 	uint32_t rxdctl = FM10K_RXDCTL_WRITE_BACK_MIN_DELAY;
+	uint32_t logic_port = hw->mac.dglort_map;
 	uint16_t buf_size;
+	uint16_t queue_stride = 0;
 
 	/* enable RXINT for interrupt mode */
 	i = 0;
@@ -748,7 +751,8 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 		buf_size -= FM10K_RX_DATABUF_ALIGN;
 
 		FM10K_WRITE_REG(hw, FM10K_SRRCTL(i),
-				buf_size >> FM10K_SRRCTL_BSIZEPKT_SHIFT);
+				(buf_size >> FM10K_SRRCTL_BSIZEPKT_SHIFT) |
+				FM10K_SRRCTL_LOOPBACK_SUPPRESS);
 
 		/* It adds dual VLAN length for supporting dual VLAN */
 		if ((dev->data->dev_conf.rxmode.max_rx_pkt_len +
@@ -774,6 +778,18 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 
 	/* Decide the best RX function */
 	fm10k_set_rx_function(dev);
+
+	/* update RX_SGLORT for loopback suppress*/
+	if (hw->mac.type != fm10k_mac_pf)
+		return 0;
+	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
+	if (macvlan->nb_queue_pools)
+		queue_stride = dev->data->nb_rx_queues / macvlan->nb_queue_pools;
+	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
+		if (i && queue_stride && !(i % queue_stride))
+			logic_port++;
+		FM10K_WRITE_REG(hw, FM10K_RX_SGLORT(i), logic_port);
+	}
 
 	return 0;
 }
