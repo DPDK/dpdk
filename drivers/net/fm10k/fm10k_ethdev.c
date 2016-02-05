@@ -1131,6 +1131,8 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 static void
 fm10k_dev_stop(struct rte_eth_dev *dev)
 {
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 	int i;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1142,6 +1144,24 @@ fm10k_dev_stop(struct rte_eth_dev *dev)
 	if (dev->data->rx_queues)
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			fm10k_dev_rx_queue_stop(dev, i);
+
+	/* Disable datapath event */
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			FM10K_WRITE_REG(hw, FM10K_RXINT(i),
+				3 << FM10K_RXINT_TIMER_SHIFT);
+			if (hw->mac.type == fm10k_mac_pf)
+				FM10K_WRITE_REG(hw, FM10K_ITR(Q2V(dev, i)),
+					FM10K_ITR_MASK_SET);
+			else
+				FM10K_WRITE_REG(hw, FM10K_VFITR(Q2V(dev, i)),
+					FM10K_ITR_MASK_SET);
+		}
+	}
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	rte_free(intr_handle->intr_vec);
+	intr_handle->intr_vec = NULL;
 }
 
 static void
