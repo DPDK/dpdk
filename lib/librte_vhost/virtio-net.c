@@ -77,7 +77,11 @@ static struct virtio_net_config_ll *ll_root;
 				(VHOST_SUPPORTS_MQ)            | \
 				(1ULL << VIRTIO_F_VERSION_1)   | \
 				(1ULL << VHOST_F_LOG_ALL)      | \
-				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))
+				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
+				(1ULL << VIRTIO_NET_F_HOST_TSO4) | \
+				(1ULL << VIRTIO_NET_F_HOST_TSO6) | \
+				(1ULL << VIRTIO_NET_F_CSUM))
+
 static uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
 
 

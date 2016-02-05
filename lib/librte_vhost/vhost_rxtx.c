@@ -37,7 +37,12 @@
 
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
+#include <rte_ether.h>
+#include <rte_ip.h>
 #include <rte_virtio_net.h>
+#include <rte_tcp.h>
+#include <rte_udp.h>
+#include <rte_sctp.h>
 
 #include "vhost-net.h"
 
@@ -563,6 +568,97 @@ rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id,
 		return virtio_dev_rx(dev, queue_id, pkts, count);
 }
 
+static void
+parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
+{
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+	void *l3_hdr = NULL;
+	struct ether_hdr *eth_hdr;
+	uint16_t ethertype;
+
+	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+
+	m->l2_len = sizeof(struct ether_hdr);
+	ethertype = rte_be_to_cpu_16(eth_hdr->ether_type);
+
+	if (ethertype == ETHER_TYPE_VLAN) {
+		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+
+		m->l2_len += sizeof(struct vlan_hdr);
+		ethertype = rte_be_to_cpu_16(vlan_hdr->eth_proto);
+	}
+
+	l3_hdr = (char *)eth_hdr + m->l2_len;
+
+	switch (ethertype) {
+	case ETHER_TYPE_IPv4:
+		ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
+		*l4_proto = ipv4_hdr->next_proto_id;
+		m->l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
+		*l4_hdr = (char *)l3_hdr + m->l3_len;
+		m->ol_flags |= PKT_TX_IPV4;
+		break;
+	case ETHER_TYPE_IPv6:
+		ipv6_hdr = (struct ipv6_hdr *)l3_hdr;
+		*l4_proto = ipv6_hdr->proto;
+		m->l3_len = sizeof(struct ipv6_hdr);
+		*l4_hdr = (char *)l3_hdr + m->l3_len;
+		m->ol_flags |= PKT_TX_IPV6;
+		break;
+	default:
+		m->l3_len = 0;
+		*l4_proto = 0;
+		break;
+	}
+}
+
+static inline void __attribute__((always_inline))
+vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
+{
+	uint16_t l4_proto = 0;
+	void *l4_hdr = NULL;
+	struct tcp_hdr *tcp_hdr = NULL;
+
+	parse_ethernet(m, &l4_proto, &l4_hdr);
+	if (hdr->flags == VIRTIO_NET_HDR_F_NEEDS_CSUM) {
+		if (hdr->csum_start == (m->l2_len + m->l3_len)) {
+			switch (hdr->csum_offset) {
+			case (offsetof(struct tcp_hdr, cksum)):
+				if (l4_proto == IPPROTO_TCP)
+					m->ol_flags |= PKT_TX_TCP_CKSUM;
+				break;
+			case (offsetof(struct udp_hdr, dgram_cksum)):
+				if (l4_proto == IPPROTO_UDP)
+					m->ol_flags |= PKT_TX_UDP_CKSUM;
+				break;
+			case (offsetof(struct sctp_hdr, cksum)):
+				if (l4_proto == IPPROTO_SCTP)
+					m->ol_flags |= PKT_TX_SCTP_CKSUM;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
+		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
+		case VIRTIO_NET_HDR_GSO_TCPV4:
+		case VIRTIO_NET_HDR_GSO_TCPV6:
+			tcp_hdr = (struct tcp_hdr *)l4_hdr;
+			m->ol_flags |= PKT_TX_TCP_SEG;
+			m->tso_segsz = hdr->gso_size;
+			m->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
+			break;
+		default:
+			RTE_LOG(WARNING, VHOST_DATA,
+				"unsupported gso type %u.\n", hdr->gso_type);
+			break;
+		}
+	}
+}
+
 uint16_t
 rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
@@ -571,11 +667,13 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	struct vhost_virtqueue *vq;
 	struct vring_desc *desc;
 	uint64_t vb_addr = 0;
+	uint64_t vb_net_hdr_addr = 0;
 	uint32_t head[MAX_PKT_BURST];
 	uint32_t used_idx;
 	uint32_t i;
 	uint16_t free_entries, entry_success = 0;
 	uint16_t avail_idx;
+	struct virtio_net_hdr *hdr = NULL;
 
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->virt_qp_nb))) {
 		RTE_LOG(ERR, VHOST_DATA,
@@ -626,6 +724,9 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 		uint8_t alloc_err = 0;
 
 		desc = &vq->desc[head[entry_success]];
+
+		vb_net_hdr_addr = gpa_to_vva(dev, desc->addr);
+		hdr = (struct virtio_net_hdr *)((uintptr_t)vb_net_hdr_addr);
 
 		/* Discard first buffer as it is the virtio header */
 		if (desc->flags & VRING_DESC_F_NEXT) {
@@ -765,6 +866,8 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 			break;
 
 		m->nb_segs = seg_num;
+		if ((hdr->flags != 0) || (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE))
+			vhost_dequeue_offload(hdr, m);
 
 		pkts[entry_success] = m;
 		vq->last_used_idx++;

@@ -39,6 +39,11 @@ This section should contain new features added in this release. Sample format:
 
   Enabled virtio 1.0 support for virtio pmd driver.
 
+* **Supported virtio offload in vhost-user.**
+
+  Add the offload of checksum and TSO between vhost-user and
+  vanilla Linux virtio guest.
+
 
 Resolved Issues
 ---------------
