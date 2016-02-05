@@ -359,6 +359,9 @@ M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/aesni_mb/
 
 Intel QuickAssist
+M: John Griffin <john.griffin@intel.com>
+M: Fiona Trahe <fiona.trahe@intel.com>
+M: Deepak Kumar Jain <deepak.k.jain@intel.com>
 F: drivers/crypto/qat/
 
 SNOW 3G PMD
