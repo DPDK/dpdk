@@ -2205,6 +2205,37 @@ fm10k_dev_disable_intr_vf(struct rte_eth_dev *dev)
 }
 
 static int
+fm10k_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Enable ITR */
+	if (hw->mac.type == fm10k_mac_pf)
+		FM10K_WRITE_REG(hw, FM10K_ITR(Q2V(dev, queue_id)),
+			FM10K_ITR_AUTOMASK | FM10K_ITR_MASK_CLEAR);
+	else
+		FM10K_WRITE_REG(hw, FM10K_VFITR(Q2V(dev, queue_id)),
+			FM10K_ITR_AUTOMASK | FM10K_ITR_MASK_CLEAR);
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+	return 0;
+}
+
+static int
+fm10k_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Disable ITR */
+	if (hw->mac.type == fm10k_mac_pf)
+		FM10K_WRITE_REG(hw, FM10K_ITR(Q2V(dev, queue_id)),
+			FM10K_ITR_MASK_SET);
+	else
+		FM10K_WRITE_REG(hw, FM10K_VFITR(Q2V(dev, queue_id)),
+			FM10K_ITR_MASK_SET);
+	return 0;
+}
+
+static int
 fm10k_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2539,6 +2570,8 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.tx_queue_setup		= fm10k_tx_queue_setup,
 	.tx_queue_release	= fm10k_tx_queue_release,
 	.rx_descriptor_done	= fm10k_dev_rx_descriptor_done,
+	.rx_queue_intr_enable	= fm10k_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable	= fm10k_dev_rx_queue_intr_disable,
 	.reta_update		= fm10k_reta_update,
 	.reta_query		= fm10k_reta_query,
 	.rss_hash_update	= fm10k_rss_hash_update,
