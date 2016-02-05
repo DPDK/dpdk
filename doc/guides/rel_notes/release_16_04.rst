@@ -41,7 +41,7 @@ This section should contain new features added in this release. Sample format:
 
 * **Supported virtio offload in vhost-user.**
 
-  Add the offload of checksum and TSO between vhost-user and
+  Add the offload and negotiation of checksum and TSO between vhost-user and
   vanilla Linux virtio guest.
 
 

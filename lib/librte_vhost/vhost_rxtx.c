@@ -54,6 +54,44 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t qp_nb)
 	return (is_tx ^ (idx & 1)) == 0 && idx < qp_nb * VIRTIO_QNUM;
 }
 
+static void
+virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
+{
+	memset(net_hdr, 0, sizeof(struct virtio_net_hdr));
+
+	if (m_buf->ol_flags & PKT_TX_L4_MASK) {
+		net_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+		net_hdr->csum_start = m_buf->l2_len + m_buf->l3_len;
+
+		switch (m_buf->ol_flags & PKT_TX_L4_MASK) {
+		case PKT_TX_TCP_CKSUM:
+			net_hdr->csum_offset = (offsetof(struct tcp_hdr,
+						cksum));
+			break;
+		case PKT_TX_UDP_CKSUM:
+			net_hdr->csum_offset = (offsetof(struct udp_hdr,
+						dgram_cksum));
+			break;
+		case PKT_TX_SCTP_CKSUM:
+			net_hdr->csum_offset = (offsetof(struct sctp_hdr,
+						cksum));
+			break;
+		}
+	}
+
+	if (m_buf->ol_flags & PKT_TX_TCP_SEG) {
+		if (m_buf->ol_flags & PKT_TX_IPV4)
+			net_hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
+		else
+			net_hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
+		net_hdr->gso_size = m_buf->tso_segsz;
+		net_hdr->hdr_len = m_buf->l2_len + m_buf->l3_len
+					+ m_buf->l4_len;
+	}
+
+	return;
+}
+
 /**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtio device. A packet
@@ -67,7 +105,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 {
 	struct vhost_virtqueue *vq;
 	struct vring_desc *desc;
-	struct rte_mbuf *buff;
+	struct rte_mbuf *buff, *first_buff;
 	/* The virtio_hdr is initialised to 0. */
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 	uint64_t buff_addr = 0;
@@ -139,6 +177,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		desc = &vq->desc[head[packet_success]];
 
 		buff = pkts[packet_success];
+		first_buff = buff;
 
 		/* Convert from gpa to vva (guest physical addr -> vhost virtual addr) */
 		buff_addr = gpa_to_vva(dev, desc->addr);
@@ -222,6 +261,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		if (unlikely(uncompleted_pkt == 1))
 			continue;
 
+		virtio_enqueue_offload(first_buff, &virtio_hdr.hdr);
+
 		rte_memcpy((void *)(uintptr_t)buff_hdr_addr,
 			(const void *)&virtio_hdr, vq->vhost_hlen);
 
@@ -294,6 +335,8 @@ copy_from_mbuf_to_vring(struct virtio_net *dev, uint32_t queue_id,
 
 	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") RX: Num merge buffers %d\n",
 		dev->device_fh, virtio_hdr.num_buffers);
+
+	virtio_enqueue_offload(pkt, &virtio_hdr.hdr);
 
 	rte_memcpy((void *)(uintptr_t)vb_hdr_addr,
 		(const void *)&virtio_hdr, vq->vhost_hlen);

@@ -80,7 +80,10 @@ static struct virtio_net_config_ll *ll_root;
 				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
 				(1ULL << VIRTIO_NET_F_HOST_TSO4) | \
 				(1ULL << VIRTIO_NET_F_HOST_TSO6) | \
-				(1ULL << VIRTIO_NET_F_CSUM))
+				(1ULL << VIRTIO_NET_F_CSUM)    | \
+				(1ULL << VIRTIO_NET_F_GUEST_CSUM) | \
+				(1ULL << VIRTIO_NET_F_GUEST_TSO4) | \
+				(1ULL << VIRTIO_NET_F_GUEST_TSO6))
 
 static uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
 
