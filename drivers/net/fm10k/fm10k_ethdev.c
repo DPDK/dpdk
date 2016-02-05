@@ -55,6 +55,9 @@
 #define CHARS_PER_UINT32 (sizeof(uint32_t))
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
 
+/* default 1:1 map from queue ID to interrupt vector ID */
+#define Q2V(dev, queue_id) (dev->pci_dev->intr_handle.intr_vec[queue_id])
+
 /* First 64 Logical ports for PF/VMDQ, second 64 for Flow director */
 #define MAX_LPORT_NUM    128
 #define GLORT_FD_Q_BASE  0x40
@@ -116,6 +119,8 @@ struct fm10k_xstats_name_off fm10k_hw_stats_tx_q_strings[] = {
 
 #define FM10K_NB_XSTATS (FM10K_NB_HW_XSTATS + FM10K_MAX_QUEUES_PF * \
 		(FM10K_NB_RX_Q_XSTATS + FM10K_NB_TX_Q_XSTATS))
+static int
+fm10k_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
 
 static void
 fm10k_mbx_initlock(struct fm10k_hw *hw)
@@ -682,6 +687,7 @@ static int
 fm10k_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 	int i, ret;
 	struct fm10k_rx_queue *rxq;
 	uint64_t base_addr;
@@ -689,10 +695,25 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 	uint32_t rxdctl = FM10K_RXDCTL_WRITE_BACK_MIN_DELAY;
 	uint16_t buf_size;
 
-	/* Disable RXINT to avoid possible interrupt */
-	for (i = 0; i < hw->mac.max_queues; i++)
+	/* enable RXINT for interrupt mode */
+	i = 0;
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (; i < dev->data->nb_rx_queues; i++) {
+			FM10K_WRITE_REG(hw, FM10K_RXINT(i), Q2V(dev, i));
+			if (hw->mac.type == fm10k_mac_pf)
+				FM10K_WRITE_REG(hw, FM10K_ITR(Q2V(dev, i)),
+					FM10K_ITR_AUTOMASK |
+					FM10K_ITR_MASK_CLEAR);
+			else
+				FM10K_WRITE_REG(hw, FM10K_VFITR(Q2V(dev, i)),
+					FM10K_ITR_AUTOMASK |
+					FM10K_ITR_MASK_CLEAR);
+		}
+	}
+	/* Disable other RXINT to avoid possible interrupt */
+	for (; i < hw->mac.max_queues; i++)
 		FM10K_WRITE_REG(hw, FM10K_RXINT(i),
-				3 << FM10K_RXINT_TIMER_SHIFT);
+			3 << FM10K_RXINT_TIMER_SHIFT);
 
 	/* Setup RX queues */
 	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
@@ -1055,6 +1076,9 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "TX init failed: %d", diag);
 		return diag;
 	}
+
+	if (fm10k_dev_rxq_interrupt_setup(dev))
+		return -EIO;
 
 	diag = fm10k_dev_rx_init(dev);
 	if (diag) {
@@ -2071,7 +2095,7 @@ fm10k_dev_enable_intr_pf(struct rte_eth_dev *dev)
 	uint32_t int_map = FM10K_INT_MAP_IMMEDIATE;
 
 	/* Bind all local non-queue interrupt to vector 0 */
-	int_map |= 0;
+	int_map |= FM10K_MISC_VEC_ID;
 
 	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_Mailbox), int_map);
 	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_PCIeFault), int_map);
@@ -2102,7 +2126,7 @@ fm10k_dev_disable_intr_pf(struct rte_eth_dev *dev)
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t int_map = FM10K_INT_MAP_DISABLE;
 
-	int_map |= 0;
+	int_map |= FM10K_MISC_VEC_ID;
 
 	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_Mailbox), int_map);
 	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_PCIeFault), int_map);
@@ -2133,7 +2157,7 @@ fm10k_dev_enable_intr_vf(struct rte_eth_dev *dev)
 	uint32_t int_map = FM10K_INT_MAP_IMMEDIATE;
 
 	/* Bind all local non-queue interrupt to vector 0 */
-	int_map |= 0;
+	int_map |= FM10K_MISC_VEC_ID;
 
 	/* Only INT 0 available, other 15 are reserved. */
 	FM10K_WRITE_REG(hw, FM10K_VFINT_MAP, int_map);
@@ -2150,7 +2174,7 @@ fm10k_dev_disable_intr_vf(struct rte_eth_dev *dev)
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t int_map = FM10K_INT_MAP_DISABLE;
 
-	int_map |= 0;
+	int_map |= FM10K_MISC_VEC_ID;
 
 	/* Only INT 0 available, other 15 are reserved. */
 	FM10K_WRITE_REG(hw, FM10K_VFINT_MAP, int_map);
@@ -2158,6 +2182,66 @@ fm10k_dev_disable_intr_vf(struct rte_eth_dev *dev)
 	/* Disable ITR 0 */
 	FM10K_WRITE_REG(hw, FM10K_VFITR(0), FM10K_ITR_MASK_SET);
 	FM10K_WRITE_FLUSH(hw);
+}
+
+static int
+fm10k_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	uint32_t intr_vector, vec;
+	uint16_t queue_id;
+	int result = 0;
+
+	/* fm10k needs one separate interrupt for mailbox,
+	 * so only drivers which support multiple interrupt vectors
+	 * e.g. vfio-pci can work for fm10k interrupt mode
+	 */
+	if (!rte_intr_cap_multiple(intr_handle) ||
+			dev->data->dev_conf.intr_conf.rxq == 0)
+		return result;
+
+	intr_vector = dev->data->nb_rx_queues;
+
+	/* disable interrupt first */
+	rte_intr_disable(&dev->pci_dev->intr_handle);
+	if (hw->mac.type == fm10k_mac_pf)
+		fm10k_dev_disable_intr_pf(dev);
+	else
+		fm10k_dev_disable_intr_vf(dev);
+
+	if (rte_intr_efd_enable(intr_handle, intr_vector)) {
+		PMD_INIT_LOG(ERR, "Failed to init event fd");
+		result = -EIO;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !result) {
+		intr_handle->intr_vec =	rte_zmalloc("intr_vec",
+			dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec) {
+			for (queue_id = 0, vec = FM10K_RX_VEC_START;
+					queue_id < dev->data->nb_rx_queues;
+					queue_id++) {
+				intr_handle->intr_vec[queue_id] = vec;
+				if (vec < intr_handle->nb_efd - 1
+						+ FM10K_RX_VEC_START)
+					vec++;
+			}
+		} else {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				" intr_vec", dev->data->nb_rx_queues);
+			rte_intr_efd_disable(intr_handle);
+			result = -ENOMEM;
+		}
+	}
+
+	if (hw->mac.type == fm10k_mac_pf)
+		fm10k_dev_enable_intr_pf(dev);
+	else
+		fm10k_dev_enable_intr_vf(dev);
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+	hw->mac.ops.update_int_moderator(hw);
+	return result;
 }
 
 static int
@@ -2530,7 +2614,7 @@ static int
 eth_fm10k_dev_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int diag;
+	int diag, i;
 	struct fm10k_macvlan_filter_info *macvlan;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2636,7 +2720,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 		fm10k_dev_enable_intr_vf(dev);
 	}
 
-	/* Enable uio intr after callback registered */
+	/* Enable intr after callback registered */
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
 
 	hw->mac.ops.update_int_moderator(hw);
@@ -2644,7 +2728,6 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	/* Make sure Switch Manager is ready before going forward. */
 	if (hw->mac.type == fm10k_mac_pf) {
 		int switch_ready = 0;
-		int i;
 
 		for (i = 0; i < MAX_QUERY_SWITCH_STATE_TIMES; i++) {
 			fm10k_mbx_lock(hw);
@@ -2752,7 +2835,8 @@ static struct eth_driver rte_pmd_fm10k = {
 	.pci_drv = {
 		.name = "rte_pmd_fm10k",
 		.id_table = pci_id_fm10k_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+			RTE_PCI_DRV_DETACHABLE,
 	},
 	.eth_dev_init = eth_fm10k_dev_init,
 	.eth_dev_uninit = eth_fm10k_dev_uninit,

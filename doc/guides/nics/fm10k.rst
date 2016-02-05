@@ -179,3 +179,11 @@ after approx 40 seconds. To ensure these overflows are detected and accounted
 for in the statistics, it is necessary to read statistic regularly. It is
 suggested to read stats every 20 seconds, which will ensure the statistics
 are accurate.
+
+
+Interrupt mode
+~~~~~~~~~~~~~~
+
+The FM10000 family of NICS need one separate interrupt for mailbox. So only
+drivers which support multiple interrupt vectors e.g. vfio-pci can work
+for fm10k interrupt mode.

@@ -156,6 +156,8 @@ This section should contain new features added in this release. Sample format:
 
 * **Added i40e VEB switching support.**
 
+* **Added fm10k Rx interrupt support.**
+
 * **Increased number of next hops for LPM IPv4 to 2^24.**
 
   The next_hop field is extended from 8 bits to 24 bits for IPv4.
