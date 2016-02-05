@@ -36,7 +36,7 @@
 #include <stdlib.h>
 
 #include <rte_common.h>
-#include <rte_rwlock.h>
+#include <rte_spinlock.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
