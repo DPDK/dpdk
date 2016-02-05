@@ -120,7 +120,7 @@ __rte_jhash_2hashes(const void *key, uint32_t length, uint32_t *pc,
 	 * If check_align is not set, first case will be used
 	 */
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_X32)
-	const uint32_t *k = key;
+	const uint32_t *k = (const uint32_t *)key;
 	const uint32_t s = 0;
 #else
 	const uint32_t *k = (uint32_t *)((uintptr_t)key & (uintptr_t)~3);
