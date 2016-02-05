@@ -2954,12 +2954,6 @@ cmd_tx_vlan_set_parsed(void *parsed_result,
 		       __attribute__((unused)) void *data)
 {
 	struct cmd_tx_vlan_set_result *res = parsed_result;
-	int vlan_offload = rte_eth_dev_get_vlan_offload(res->port_id);
-
-	if (vlan_offload & ETH_VLAN_EXTEND_OFFLOAD) {
-		printf("Error, as QinQ has been enabled.\n");
-		return;
-	}
 
 	tx_vlan_set(res->port_id, res->vlan_id);
 }
@@ -2970,12 +2964,12 @@ cmdline_parse_token_string_t cmd_tx_vlan_set_tx_vlan =
 cmdline_parse_token_string_t cmd_tx_vlan_set_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_tx_vlan_set_result,
 				 set, "set");
-cmdline_parse_token_num_t cmd_tx_vlan_set_vlanid =
-	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_result,
-			      vlan_id, UINT16);
 cmdline_parse_token_num_t cmd_tx_vlan_set_portid =
 	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_result,
 			      port_id, UINT8);
+cmdline_parse_token_num_t cmd_tx_vlan_set_vlanid =
+	TOKEN_NUM_INITIALIZER(struct cmd_tx_vlan_set_result,
+			      vlan_id, UINT16);
 
 cmdline_parse_inst_t cmd_tx_vlan_set = {
 	.f = cmd_tx_vlan_set_parsed,
@@ -3006,12 +3000,6 @@ cmd_tx_vlan_set_qinq_parsed(void *parsed_result,
 			    __attribute__((unused)) void *data)
 {
 	struct cmd_tx_vlan_set_qinq_result *res = parsed_result;
-	int vlan_offload = rte_eth_dev_get_vlan_offload(res->port_id);
-
-	if (!(vlan_offload & ETH_VLAN_EXTEND_OFFLOAD)) {
-		printf("Error, as QinQ hasn't been enabled.\n");
-		return;
-	}
 
 	tx_qinq_set(res->port_id, res->vlan_id, res->vlan_id_outer);
 }
