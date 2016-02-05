@@ -39,6 +39,37 @@
 #include <rte_keepalive.h>
 #include <rte_malloc.h>
 
+struct rte_keepalive {
+	/** Core Liveness. */
+	enum rte_keepalive_state {
+		ALIVE = 1,
+		MISSING = 0,
+		DEAD = 2,
+		GONE = 3
+	} __rte_cache_aligned state_flags[RTE_KEEPALIVE_MAXCORES];
+
+	/** Last-seen-alive timestamps */
+	uint64_t last_alive[RTE_KEEPALIVE_MAXCORES];
+
+	/**
+	 * Cores to check.
+	 * Indexed by core id, non-zero if the core should be checked.
+	 */
+	uint8_t active_cores[RTE_KEEPALIVE_MAXCORES];
+
+	/** Dead core handler. */
+	rte_keepalive_failure_callback_t callback;
+
+	/**
+	 * Dead core handler app data.
+	 * Pointer is passed to dead core handler.
+	 */
+	void *callback_data;
+	uint64_t tsc_initial;
+	uint64_t tsc_mhz;
+};
+
+
 static void
 print_trace(const char *msg, struct rte_keepalive *keepcfg, int idx_core)
 {
@@ -110,4 +141,11 @@ rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 {
 	if (id_core < RTE_KEEPALIVE_MAXCORES)
 		keepcfg->active_cores[id_core] = 1;
+}
+
+
+void
+rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
+{
+	keepcfg->state_flags[rte_lcore_id()] = ALIVE;
 }

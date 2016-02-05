@@ -64,35 +64,7 @@ typedef void (*rte_keepalive_failure_callback_t)(
  * Keepalive state structure.
  * @internal
  */
-struct rte_keepalive {
-	/** Core Liveness. */
-	enum {
-		ALIVE = 1,
-		MISSING = 0,
-		DEAD = 2,
-		GONE = 3
-	} __rte_cache_aligned state_flags[RTE_KEEPALIVE_MAXCORES];
-
-	/** Last-seen-alive timestamps */
-	uint64_t last_alive[RTE_KEEPALIVE_MAXCORES];
-
-	/**
-	 * Cores to check.
-	 * Indexed by core id, non-zero if the core should be checked.
-	 */
-	uint8_t active_cores[RTE_KEEPALIVE_MAXCORES];
-
-	/** Dead core handler. */
-	rte_keepalive_failure_callback_t callback;
-
-	/**
-	 * Dead core handler app data.
-	 * Pointer is passed to dead core handler.
-	 */
-	void *callback_data;
-	uint64_t tsc_initial;
-	uint64_t tsc_mhz;
-};
+struct rte_keepalive;
 
 
 /**
@@ -136,11 +108,8 @@ void rte_keepalive_register_core(struct rte_keepalive *keepcfg,
  * This function needs to be called from within the main process loop of
  * the LCore to be checked.
  */
-static inline void
-rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
-{
-	keepcfg->state_flags[rte_lcore_id()] = ALIVE;
-}
+void
+rte_keepalive_mark_alive(struct rte_keepalive *keepcfg);
 
 
 #endif /* _KEEPALIVE_H_ */
