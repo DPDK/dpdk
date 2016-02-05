@@ -50,8 +50,6 @@
 #   - can define CPU_ASFLAGS variable (overriden by cmdline value) that
 #     overrides the one defined in arch.
 #
-# examples for RTE_MACHINE: default, pc, bensley, tylesburg, ...
-#
 include $(RTE_SDK)/mk/machine/$(RTE_MACHINE)/rte.vars.mk
 
 #
@@ -69,8 +67,6 @@ include $(RTE_SDK)/mk/machine/$(RTE_MACHINE)/rte.vars.mk
 #     define in machine .mk)
 #   - may override any previously defined variable
 #
-# examples for RTE_ARCH: i686, x86_64
-#
 include $(RTE_SDK)/mk/arch/$(RTE_ARCH)/rte.vars.mk
 
 #
@@ -82,8 +78,6 @@ include $(RTE_SDK)/mk/arch/$(RTE_ARCH)/rte.vars.mk
 #   - define TOOLCHAIN_ASFLAGS variable (overriden by cmdline value)
 #   - may override any previously defined variable
 #
-# examples for RTE_TOOLCHAIN: gcc, icc
-#
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.vars.mk
 
 #
@@ -93,8 +87,6 @@ include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.vars.mk
 #   - define EXECENV_LDFLAGS variable (overriden by cmdline)
 #   - define EXECENV_ASFLAGS variable (overriden by cmdline)
 #   - may override any previously defined variable
-#
-# examples for RTE_EXEC_ENV: linuxapp, bsdapp
 #
 include $(RTE_SDK)/mk/exec-env/$(RTE_EXEC_ENV)/rte.vars.mk
 
