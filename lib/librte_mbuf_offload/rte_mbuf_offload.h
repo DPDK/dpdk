@@ -59,6 +59,9 @@
 #include <rte_mbuf.h>
 #include <rte_crypto.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** packet mbuf offload operation types */
 enum rte_mbuf_ol_op_type {
@@ -125,7 +128,7 @@ static inline uint16_t
 __rte_pktmbuf_offload_priv_size(struct rte_mempool *mpool)
 {
 	struct rte_pktmbuf_offload_pool_private *priv =
-			rte_mempool_get_priv(mpool);
+		(struct rte_pktmbuf_offload_pool_private *)rte_mempool_get_priv(mpool);
 
 	return priv->offload_priv_size;
 }
