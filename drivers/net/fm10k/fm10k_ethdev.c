@@ -2818,6 +2818,21 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 
 	fm10k_mbx_unlock(hw);
 
+	/* Make sure default VID is ready before going forward. */
+	if (hw->mac.type == fm10k_mac_pf) {
+		for (i = 0; i < MAX_QUERY_SWITCH_STATE_TIMES; i++) {
+			if (hw->mac.default_vid)
+				break;
+			/* Delay some time to acquire async port VLAN info. */
+			rte_delay_us(WAIT_SWITCH_MSG_US);
+		}
+
+		if (!hw->mac.default_vid) {
+			PMD_INIT_LOG(ERR, "default VID is not ready");
+			return -1;
+		}
+	}
+
 	/* Add default mac address */
 	fm10k_MAC_filter_set(dev, hw->mac.addr, true,
 		MAIN_VSI_POOL_NUMBER);
