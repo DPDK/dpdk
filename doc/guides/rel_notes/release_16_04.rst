@@ -276,6 +276,12 @@ Libraries
 Examples
 ~~~~~~~~
 
+* **l3fwd-power: Fixed memory leak for non-IP packet.**
+
+  Fixed issue in l3fwd-power where, on receiving packets of types
+  other than IPv4 or IPv6, the mbuf was not released, and caused
+  a memory leak.
+
 * **examples/vhost: Fixed frequent mbuf allocation failure.**
 
   vhost-switch often fails to allocate mbuf when dequeue from vring because it

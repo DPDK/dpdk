@@ -682,7 +682,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		/* We don't currently handle IPv6 packets in LPM mode. */
 		rte_pktmbuf_free(m);
 #endif
-	}
+	} else
+		rte_pktmbuf_free(m);
 
 }
 
