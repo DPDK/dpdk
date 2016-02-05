@@ -2434,6 +2434,7 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.rx_queue_release	= fm10k_rx_queue_release,
 	.tx_queue_setup		= fm10k_tx_queue_setup,
 	.tx_queue_release	= fm10k_tx_queue_release,
+	.rx_descriptor_done	= fm10k_dev_rx_descriptor_done,
 	.reta_update		= fm10k_reta_update,
 	.reta_query		= fm10k_reta_query,
 	.rss_hash_update	= fm10k_rss_hash_update,

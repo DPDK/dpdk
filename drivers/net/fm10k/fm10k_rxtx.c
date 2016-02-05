@@ -369,6 +369,31 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rcv;
 }
 
+int
+fm10k_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
+{
+	volatile union fm10k_rx_desc *rxdp;
+	struct fm10k_rx_queue *rxq = rx_queue;
+	uint16_t desc;
+	int ret;
+
+	if (unlikely(offset >= rxq->nb_desc)) {
+		PMD_DRV_LOG(ERR, "Invalid RX descriptor offset %u", offset);
+		return 0;
+	}
+
+	desc = rxq->next_dd + offset;
+	if (desc >= rxq->nb_desc)
+		desc -= rxq->nb_desc;
+
+	rxdp = &rxq->hw_ring[desc];
+
+	ret = !!(rxdp->w.status &
+			rte_cpu_to_le_16(FM10K_RXD_STATUS_DD));
+
+	return ret;
+}
+
 static inline void tx_free_descriptors(struct fm10k_tx_queue *q)
 {
 	uint16_t next_rs, count = 0;

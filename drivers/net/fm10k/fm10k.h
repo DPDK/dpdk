@@ -345,6 +345,9 @@ uint16_t fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 uint16_t fm10k_recv_scattered_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
+int
+fm10k_dev_rx_descriptor_done(void *rx_queue, uint16_t offset);
+
 uint16_t fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts);
 
