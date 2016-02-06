@@ -39,18 +39,7 @@
  * Netronome vNIC DPDK Poll-Mode Driver: Main entry point
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <sys/io.h>
-#include <assert.h>
-#include <time.h>
 #include <math.h>
-#include <inttypes.h>
 
 #include <rte_byteorder.h>
 #include <rte_common.h>
