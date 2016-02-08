@@ -35,7 +35,6 @@
 
 #include <exec-env/rte_kni_common.h>
 #include "kni_dev.h"
-#include <rte_config.h>
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Intel Corporation");

@@ -39,7 +39,6 @@
 #include <sched.h>
 #include <dlfcn.h>
 
-#include <rte_config.h>
 #include <rte_log.h>
 
 #include "lthread_api.h"

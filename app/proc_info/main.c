@@ -42,7 +42,6 @@
 #include <getopt.h>
 
 #include <rte_eal.h>
-#include <rte_config.h>
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_ethdev.h>

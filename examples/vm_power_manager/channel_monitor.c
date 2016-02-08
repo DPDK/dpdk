@@ -42,7 +42,6 @@
 #include <sys/epoll.h>
 #include <sys/queue.h>
 
-#include <rte_config.h>
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_malloc.h>

@@ -40,7 +40,6 @@
 #include "test.h"
 
 #include <rte_power.h>
-#include <rte_config.h>
 
 #define TEST_POWER_VM_LCORE_ID            0U
 #define TEST_POWER_VM_LCORE_OUT_OF_BOUNDS (RTE_MAX_LCORE+1)

@@ -73,7 +73,6 @@
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-pedantic"
 #endif
-#include <rte_config.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_dev.h>

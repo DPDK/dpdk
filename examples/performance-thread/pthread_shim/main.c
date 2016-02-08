@@ -47,7 +47,6 @@
 #include <sched.h>
 #include <pthread.h>
 
-#include <rte_config.h>
 #include <rte_common.h>
 #include <rte_lcore.h>
 #include <rte_per_lcore.h>

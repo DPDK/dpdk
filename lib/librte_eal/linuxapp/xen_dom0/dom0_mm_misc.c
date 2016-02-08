@@ -71,7 +71,6 @@
 #include <xen/xen-ops.h>
 #include <xen/interface/memory.h>
 
-#include <rte_config.h>
 #include <exec-env/rte_dom0_common.h>
 
 #include "compat.h"

@@ -73,7 +73,6 @@
 #include <sys/mman.h>
 #include <errno.h>
 
-#include <rte_config.h>
 #include <rte_log.h>
 #include <rte_common.h>
 

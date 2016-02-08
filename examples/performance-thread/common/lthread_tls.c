@@ -45,7 +45,6 @@
 #include <execinfo.h>
 #include <sched.h>
 
-#include <rte_config.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_ring.h>

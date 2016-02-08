@@ -48,7 +48,6 @@
 #include <rte_lcore.h>
 #include <rte_power.h>
 #include <rte_debug.h>
-#include <rte_config.h>
 
 #include "vm_power_cli_guest.h"
 

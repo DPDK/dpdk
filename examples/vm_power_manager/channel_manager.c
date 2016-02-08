@@ -45,7 +45,6 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 
-#include <rte_config.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>

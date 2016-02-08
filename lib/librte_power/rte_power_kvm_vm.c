@@ -34,7 +34,6 @@
 #include <string.h>
 
 #include <rte_log.h>
-#include <rte_config.h>
 
 #include "guest_channel.h"
 #include "channel_commands.h"

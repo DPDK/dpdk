@@ -45,7 +45,6 @@
 #include <cmdline_parse_num.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
-#include <rte_config.h>
 
 #include "vm_power_cli.h"
 #include "channel_manager.h"

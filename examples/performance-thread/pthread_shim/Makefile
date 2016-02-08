@@ -46,7 +46,7 @@ SRCS-y := main.c  pthread_shim.c
 INCLUDES := -I$(RTE_SDK)/$(RTE_TARGET)/include -I$(SRCDIR)
 include $(RTE_SDK)/examples/performance-thread/common/common.mk
 
-CFLAGS=    -g -O3 $(USER_FLAGS) $(INCLUDES)
+CFLAGS += -g -O3 $(USER_FLAGS) $(INCLUDES)
 CFLAGS += $(WERROR_FLAGS)
 
 LDFLAGS += -lpthread

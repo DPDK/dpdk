@@ -43,7 +43,6 @@
 #include <cmdline_parse_num.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
-#include <rte_config.h>
 #include <rte_log.h>
 #include <rte_lcore.h>
 

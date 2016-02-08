@@ -41,7 +41,6 @@
 #include <signal.h>
 
 #include <rte_eal.h>
-#include <rte_config.h>
 #include <rte_cycles.h>
 #include <rte_eal_memconfig.h>
 #include <rte_debug.h>
