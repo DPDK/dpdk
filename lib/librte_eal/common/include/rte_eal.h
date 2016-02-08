@@ -86,7 +86,7 @@ struct rte_config {
 
 	/**
 	 * Pointer to memory configuration, which may be shared across multiple
-	 * Intel DPDK instances
+	 * DPDK instances
 	 */
 	struct rte_mem_config *mem_config;
 } __attribute__((__packed__));

@@ -163,7 +163,7 @@ Not all variants of supported NIC types have been used in testing
 
 **Description**:
    The supported network interface cards can come in a number of variants with different device ID's.
-   Not all of these variants have been tested with the Intel® DPDK.
+   Not all of these variants have been tested with the DPDK.
 
    The NIC device identifiers used during testing:
 
@@ -210,7 +210,7 @@ Multi-process sample app requires exact memory mapping
    A multi-process client application fails to initialize.
 
 **Resolution/Workaround**:
-   See the "Multi-process Limitations" section in the Intel®  DPDK Programmer's Guide for more information.
+   See the "Multi-process Limitations" section in the DPDK Programmer's Guide for more information.
 
 **Affected Environment/Platform**:
    All.
@@ -468,7 +468,7 @@ GCC might generate Intel® AVX instructions for processors without Intel® AVX s
 ------------------------------------------------------------------------------------
 
 **Description**:
-   When compiling Intel®  DPDK (and any DPDK app), gcc may generate Intel® AVX instructions, even when the
+   When compiling DPDK (and any DPDK app), gcc may generate Intel® AVX instructions, even when the
    processor does not support Intel® AVX.
 
 **Implication**:

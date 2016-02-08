@@ -278,7 +278,7 @@ For example,
         rmmod igb (To remove the igb module)
         insmod igb max_vfs=2,2 (To enable two Virtual Functions per port)
 
-*   Using Intel®  DPDK PMD PF igb driver:
+*   Using DPDK PMD PF igb driver:
 
     Kernel Params: iommu=pt, intel_iommu=on modprobe uio
 

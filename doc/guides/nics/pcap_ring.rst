@@ -45,7 +45,7 @@ the DPDK also includes two pure-software PMDs. These two drivers are:
     The libpcap -based PMD is disabled by default in the build configuration files,
     owing to an external dependency on the libpcap development files which must be installed on the board.
     Once the libpcap development files are installed,
-    the library can be enabled by setting CONFIG_RTE_LIBRTE_PMD_PCAP=y and recompiling the Intel®  DPDK.
+    the library can be enabled by setting CONFIG_RTE_LIBRTE_PMD_PCAP=y and recompiling the DPDK.
 
 Using the Drivers from the EAL Command Line
 -------------------------------------------

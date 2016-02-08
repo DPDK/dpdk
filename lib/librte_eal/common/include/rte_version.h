@@ -33,7 +33,7 @@
 
 /**
  * @file
- * Definitions of Intel(R) DPDK version numbers
+ * Definitions of DPDK version numbers
  */
 
 #ifndef _RTE_VERSION_H_

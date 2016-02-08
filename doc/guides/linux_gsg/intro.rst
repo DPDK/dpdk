@@ -31,7 +31,7 @@
 Introduction
 ============
 
-This document contains instructions for installing and configuring the Intel® Data Plane Development Kit (DPDK) software.
+This document contains instructions for installing and configuring the Data Plane Development Kit (DPDK) software.
 It is designed to get customers up and running quickly.
 The document describes how to compile and run a DPDK application in a Linux application (linuxapp) environment,
 without going deeply into detail.

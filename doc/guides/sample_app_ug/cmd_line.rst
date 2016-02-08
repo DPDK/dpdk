@@ -45,7 +45,7 @@ to debug a DPDK application, in a Linux* application environment.
 .. note::
 
     The rte_cmdline library should not be used in production code since
-    it is not validated to the same standard as other Intel®  DPDK libraries.
+    it is not validated to the same standard as other DPDK libraries.
     See also the "rte_cmdline library should not be used in production code due to limited testing" item
     in the "Known Issues" section of the Release Notes.
 

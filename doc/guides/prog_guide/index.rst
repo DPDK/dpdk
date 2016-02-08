@@ -53,7 +53,7 @@ Programmer's Guide
     ip_fragment_reassembly_lib
     multi_proc_support
     kernel_nic_interface
-    thread_safety_intel_dpdk_functions
+    thread_safety_dpdk_functions
     qos_framework
     power_man
     packet_classif_access_ctrl
@@ -63,7 +63,7 @@ Programmer's Guide
     source_org
     dev_kit_build_system
     dev_kit_root_make_help
-    extend_intel_dpdk
+    extend_dpdk
     build_app
     ext_app_lib_make_help
     perf_opt_guidelines

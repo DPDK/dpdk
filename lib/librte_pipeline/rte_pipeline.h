@@ -42,7 +42,7 @@ extern "C" {
  * @file
  * RTE Pipeline
  *
- * This tool is part of the Intel DPDK Packet Framework tool suite and provides
+ * This tool is part of the DPDK Packet Framework tool suite and provides
  * a standard methodology (logically similar to OpenFlow) for rapid development
  * of complex packet processing pipelines out of ports, tables and actions.
  *

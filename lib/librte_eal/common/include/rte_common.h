@@ -38,7 +38,7 @@
  * @file
  *
  * Generic, commonly-used macro and inline function definitions
- * for Intel DPDK.
+ * for DPDK.
  */
 
 #ifdef __cplusplus
