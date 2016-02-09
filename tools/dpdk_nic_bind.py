@@ -317,7 +317,7 @@ def unbind_one(dev_id, force):
         f = open(filename, "a")
     except:
         print "Error: unbind failed for %s - Cannot open %s" % (dev_id, filename)
-        sys/exit(1)
+        sys.exit(1)
     f.write(dev_id)
     f.close()
 
