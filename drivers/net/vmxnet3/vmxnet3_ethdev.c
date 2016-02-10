@@ -564,7 +564,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	status = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 
 	if (status != 0) {
-		PMD_INIT_LOG(ERR, "Device activation in %s(): UNSUCCESSFUL", __func__);
+		PMD_INIT_LOG(ERR, "Device activation: UNSUCCESSFUL");
 		return -1;
 	}
 
@@ -577,7 +577,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	 */
 	ret = vmxnet3_dev_rxtx_init(dev);
 	if (ret != VMXNET3_SUCCESS) {
-		PMD_INIT_LOG(ERR, "Device receive init in %s: UNSUCCESSFUL", __func__);
+		PMD_INIT_LOG(ERR, "Device receive init: UNSUCCESSFUL");
 		return ret;
 	}
 
@@ -882,7 +882,7 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 	uint32_t events = hw->shared->ecr;
 
 	if (!events) {
-		PMD_INIT_LOG(ERR, "No events to process in %s()", __func__);
+		PMD_INIT_LOG(ERR, "No events to process");
 		return;
 	}
 

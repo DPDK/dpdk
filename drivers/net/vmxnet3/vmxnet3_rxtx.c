@@ -456,7 +456,7 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 		/* Allocate blank mbuf for the current Rx Descriptor */
 		mbuf = rte_rxmbuf_alloc(rxq->mp);
 		if (unlikely(mbuf == NULL)) {
-			PMD_RX_LOG(ERR, "Error allocating mbuf in %s", __func__);
+			PMD_RX_LOG(ERR, "Error allocating mbuf");
 			rxq->stats.rx_buf_alloc_failure++;
 			err = ENOMEM;
 			break;
