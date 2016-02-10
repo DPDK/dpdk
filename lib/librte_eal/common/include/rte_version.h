@@ -50,22 +50,22 @@ extern "C" {
 /**
  * String that appears before the version number
  */
-#define RTE_VER_PREFIX "RTE"
+#define RTE_VER_PREFIX "DPDK"
 
 /**
- * Major version number i.e. the x in x.y.z
+ * Major version/year number i.e. the yy in yy.mm.z
  */
-#define RTE_VER_MAJOR 2
+#define RTE_VER_YEAR 16
 
 /**
- * Minor version number i.e. the y in x.y.z
+ * Minor version/month number i.e. the mm in yy.mm.z
  */
-#define RTE_VER_MINOR 3
+#define RTE_VER_MONTH 4
 
 /**
- * Patch level number i.e. the z in x.y.z
+ * Patch level number i.e. the z in yy.mm.z
  */
-#define RTE_VER_PATCH_LEVEL 0
+#define RTE_VER_MINOR 0
 
 /**
  * Extra string to be appended to version number
@@ -77,7 +77,7 @@ extern "C" {
  *   0-15 = release candidates
  *   16   = release
  */
-#define RTE_VER_PATCH_RELEASE 0
+#define RTE_VER_RELEASE 0
 
 /**
  * Macro to compute a version number usable for comparisons
@@ -88,10 +88,10 @@ extern "C" {
  * All version numbers in one to compare with RTE_VERSION_NUM()
  */
 #define RTE_VERSION RTE_VERSION_NUM( \
-			RTE_VER_MAJOR, \
+			RTE_VER_YEAR, \
+			RTE_VER_MONTH, \
 			RTE_VER_MINOR, \
-			RTE_VER_PATCH_LEVEL, \
-			RTE_VER_PATCH_RELEASE)
+			RTE_VER_RELEASE)
 
 /**
  * Function returning version string
@@ -105,21 +105,21 @@ rte_version(void)
 	if (version[0] != 0)
 		return version;
 	if (strlen(RTE_VER_SUFFIX) == 0)
-		snprintf(version, sizeof(version), "%s %d.%d.%d",
+		snprintf(version, sizeof(version), "%s %d.%02d.%d",
 			RTE_VER_PREFIX,
-			RTE_VER_MAJOR,
-			RTE_VER_MINOR,
-			RTE_VER_PATCH_LEVEL);
+			RTE_VER_YEAR,
+			RTE_VER_MONTH,
+			RTE_VER_MINOR);
 	else
-		snprintf(version, sizeof(version), "%s %d.%d.%d%s%d",
+		snprintf(version, sizeof(version), "%s %d.%02d.%d%s%d",
 			RTE_VER_PREFIX,
-			RTE_VER_MAJOR,
+			RTE_VER_YEAR,
+			RTE_VER_MONTH,
 			RTE_VER_MINOR,
-			RTE_VER_PATCH_LEVEL,
 			RTE_VER_SUFFIX,
-			RTE_VER_PATCH_RELEASE < 16 ?
-				RTE_VER_PATCH_RELEASE :
-				RTE_VER_PATCH_RELEASE - 16);
+			RTE_VER_RELEASE < 16 ?
+				RTE_VER_RELEASE :
+				RTE_VER_RELEASE - 16);
 	return version;
 }
 

@@ -1070,9 +1070,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 
 	dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
-#if RTE_VER_MAJOR == 2 && RTE_VER_MINOR >= 1
 	dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
-#endif
 }
 
 static uint32_t
