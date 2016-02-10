@@ -1,5 +1,5 @@
-DPDK Release 2.3
-================
+DPDK Release 16.04
+==================
 
 
 **Read this first**
@@ -14,7 +14,7 @@ Build the docs and view the output file to ensure the changes are correct::
 
    make doc-guides-html
 
-   firefox build/doc/html/guides/rel_notes/release_2_3.html
+   firefox build/doc/html/guides/rel_notes/release_16_04.html
 
 
 New Features
