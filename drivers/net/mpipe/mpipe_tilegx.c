@@ -134,7 +134,6 @@ struct mpipe_dev_priv {
 	struct rte_mempool *rx_mpool;	/* mpool used by the rx queues. */
 	unsigned rx_offset;		/* Receive head room. */
 	unsigned rx_size_code;		/* mPIPE rx buffer size code. */
-	unsigned rx_buffers;		/* receive buffers on stack. */
 	int is_xaui:1,			/* Is this an xgbe or gbe? */
 	    initialized:1,		/* Initialized port? */
 	    running:1;			/* Running port? */
@@ -521,7 +520,6 @@ mpipe_recv_fill_stack(struct mpipe_dev_priv *priv, int count)
 		mpipe_recv_push(priv, mbuf);
 	}
 
-	priv->rx_buffers += count;
 	PMD_DEBUG_RX("%s: Filled %d/%d buffers\n", mpipe_name(priv), i, count);
 }
 
@@ -531,10 +529,9 @@ mpipe_recv_flush_stack(struct mpipe_dev_priv *priv)
 	const int offset = priv->rx_offset & ~RTE_MEMPOOL_ALIGN_MASK;
 	uint8_t in_port = priv->port_id;
 	struct rte_mbuf *mbuf;
-	unsigned count;
 	void *va;
 
-	for (count = 0; count < priv->rx_buffers; count++) {
+	while (1) {
 		va = gxio_mpipe_pop_buffer(priv->context, priv->stack);
 		if (!va)
 			break;
@@ -553,10 +550,6 @@ mpipe_recv_flush_stack(struct mpipe_dev_priv *priv)
 
 		__rte_mbuf_raw_free(mbuf);
 	}
-
-	PMD_DEBUG_RX("%s: Returned %d/%d buffers\n",
-		     mpipe_name(priv), count, priv->rx_buffers);
-	priv->rx_buffers -= count;
 }
 
 static void
@@ -1238,31 +1231,23 @@ mpipe_recv_flush(struct mpipe_dev_priv *priv)
 	gxio_mpipe_iqueue_t *iqueue;
 	gxio_mpipe_idesc_t idesc;
 	struct rte_mbuf *mbuf;
-	int retries = 0;
 	unsigned queue;
 
-	do {
-		mpipe_recv_flush_stack(priv);
+	/* Release packets on the buffer stack. */
+	mpipe_recv_flush_stack(priv);
 
-		/* Flush packets sitting in recv queues. */
-		for (queue = 0; queue < priv->nb_rx_queues; queue++) {
-			rx_queue = mpipe_rx_queue(priv, queue);
-			iqueue = &rx_queue->iqueue;
-			while (gxio_mpipe_iqueue_try_get(iqueue, &idesc) >= 0) {
-				mbuf = mpipe_recv_mbuf(priv, &idesc, in_port);
-				rte_pktmbuf_free(mbuf);
-				priv->rx_buffers--;
-			}
-			rte_free(rx_queue->rx_ring_mem);
+	/* Flush packets sitting in recv queues. */
+	for (queue = 0; queue < priv->nb_rx_queues; queue++) {
+		rx_queue = mpipe_rx_queue(priv, queue);
+		iqueue = &rx_queue->iqueue;
+		while (gxio_mpipe_iqueue_try_get(iqueue, &idesc) >= 0) {
+			/* Skip idesc with the 'buffer error' bit set. */
+			if (idesc.be)
+				continue;
+			mbuf = mpipe_recv_mbuf(priv, &idesc, in_port);
+			rte_pktmbuf_free(mbuf);
 		}
-	} while (retries++ < 10 && priv->rx_buffers);
-
-	if (priv->rx_buffers) {
-		RTE_LOG(ERR, PMD, "%s: Leaked %d receive buffers.\n",
-			mpipe_name(priv), priv->rx_buffers);
-	} else {
-		PMD_DEBUG_RX("%s: Returned all receive buffers.\n",
-			     mpipe_name(priv));
+		rte_free(rx_queue->rx_ring_mem);
 	}
 }
 
@@ -1331,6 +1316,7 @@ mpipe_do_xmit(struct mpipe_tx_queue *tx_queue, struct rte_mbuf **tx_pkts,
 				.xfer_size = rte_pktmbuf_data_len(mbuf),
 				.bound     = next ? 0 : 1,
 				.stack_idx = mpipe_mbuf_stack_index(priv, mbuf),
+				.size      = priv->rx_size_code,
 			} };
 			if (mpipe_local.mbuf_push_debt[port_id] > 0) {
 				mpipe_local.mbuf_push_debt[port_id]--;
