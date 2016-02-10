@@ -146,9 +146,7 @@ virtio_send_command(struct virtqueue *vq, struct virtio_pmd_ctrl *ctrl,
 	ctrl->status = status;
 
 	if (!(vq && vq->hw->cvq)) {
-		PMD_INIT_LOG(ERR,
-			     "%s(): Control queue is not supported.",
-			     __func__);
+		PMD_INIT_LOG(ERR, "Control queue is not supported.");
 		return -1;
 	}
 	head = vq->vq_desc_head_idx;
@@ -298,12 +296,12 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	vq_size = hw->vtpci_ops->get_queue_num(hw, vtpci_queue_idx);
 	PMD_INIT_LOG(DEBUG, "vq_size: %u nb_desc:%u", vq_size, nb_desc);
 	if (vq_size == 0) {
-		PMD_INIT_LOG(ERR, "%s: virtqueue does not exist", __func__);
+		PMD_INIT_LOG(ERR, "virtqueue does not exist");
 		return -EINVAL;
 	}
 
 	if (!rte_is_power_of_2(vq_size)) {
-		PMD_INIT_LOG(ERR, "%s: virtqueue size is not powerof 2", __func__);
+		PMD_INIT_LOG(ERR, "virtqueue size is not powerof 2");
 		return -EINVAL;
 	}
 
@@ -328,12 +326,11 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			RTE_CACHE_LINE_SIZE);
 	}
 	if (vq == NULL) {
-		PMD_INIT_LOG(ERR, "%s: Can not allocate virtqueue", __func__);
+		PMD_INIT_LOG(ERR, "Can not allocate virtqueue");
 		return -ENOMEM;
 	}
 	if (queue_type == VTNET_RQ && vq->sw_ring == NULL) {
-		PMD_INIT_LOG(ERR, "%s: Can not allocate RX soft ring",
-			__func__);
+		PMD_INIT_LOG(ERR, "Can not allocate RX soft ring");
 		rte_free(vq);
 		return -ENOMEM;
 	}
