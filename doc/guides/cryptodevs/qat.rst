@@ -33,7 +33,7 @@ Quick Assist Crypto Poll Mode Driver
 The QAT PMD provides poll mode crypto driver support for **Intel QuickAssist
 Technology DH895xxC** hardware accelerator.
 
-The QAT PMD has been tested on Fedora 21 64-bit with gcc and on the 4.3
+The QAT PMD has been tested on Fedora 21 64-bit with gcc and on the 4.4
 kernel.org Linux kernel.
 
 
@@ -73,9 +73,9 @@ Installation
 To use the DPDK QAT PMD an SRIOV-enabled QAT kernel driver is required. The
 VF devices exposed by this driver will be used by QAT PMD.
 
-If you are running on kernel 4.3 or greater, see instructions for
+If you are running on kernel 4.4 or greater, see instructions for
 `Installation using kernel.org driver`_ below. If you are on a kernel earlier
-than 4.3, see `Installation using 01.org QAT driver`_.
+than 4.4, see `Installation using 01.org QAT driver`_.
 
 
 Installation using 01.org QAT driver
@@ -157,13 +157,13 @@ If the build or install fails due to mismatching kernel sources you may need to 
 Installation using kernel.org driver
 ------------------------------------
 
-Assuming you are running on at least a 4.3 kernel, you can use the stock kernel.org QAT
+Assuming you are running on at least a 4.4 kernel, you can use the stock kernel.org QAT
 driver to start the QAT hardware.
 
 The steps below assume you are:
 
 * Running DPDK on a platform with one ``DH895xCC`` device.
-* On a kernel at least version 4.3.
+* On a kernel at least version 4.4.
 
 In BIOS ensure that SRIOV is enabled and VT-d is disabled.
 
@@ -190,7 +190,7 @@ Using the sysfs, enable the VFs::
 
     echo 32 > /sys/bus/pci/drivers/dh895xcc/0000\:03\:00.0/sriov_numvfs
 
-If you get an error, it's likely you're using a QAT kernel driver earlier than kernel 4.3.
+If you get an error, it's likely you're using a QAT kernel driver earlier than kernel 4.4.
 
 To verify that the VFs are available for use - use ``lspci -d:443`` to confirm
 the bdf of the 32 VF devices are available per ``DH895xCC`` device.
