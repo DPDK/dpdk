@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -495,7 +495,11 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 		return -ENOTSUP;
 	}
 	dev_flags = rte_eth_devices[port_id].data->dev_flags;
-	return !(dev_flags & RTE_ETH_DEV_DETACHABLE);
+	if ((dev_flags & RTE_ETH_DEV_DETACHABLE) &&
+		(!(dev_flags & RTE_ETH_DEV_BONDED_SLAVE)))
+		return 0;
+	else
+		return 1;
 }
 
 /* attach the new physical device, then store port_id of the device */

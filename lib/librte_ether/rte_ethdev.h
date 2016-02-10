@@ -1662,6 +1662,8 @@ struct rte_eth_dev_data {
 #define RTE_ETH_DEV_DETACHABLE   0x0001
 /** Device supports link state interrupt */
 #define RTE_ETH_DEV_INTR_LSC     0x0002
+/** Device is a bonded slave */
+#define RTE_ETH_DEV_BONDED_SLAVE 0x0004
 
 /**
  * @internal

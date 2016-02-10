@@ -314,11 +314,8 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 {
 	struct rte_eth_dev *bonded_eth_dev, *slave_eth_dev;
 	struct bond_dev_private *internals;
-	struct bond_dev_private *temp_internals;
 	struct rte_eth_link link_props;
 	struct rte_eth_dev_info dev_info;
-
-	int i, j;
 
 	if (valid_slave_port_id(slave_port_id) != 0)
 		return -1;
@@ -326,26 +323,14 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
 	internals = bonded_eth_dev->data->dev_private;
 
-	/* Verify that new slave device is not already a slave of another
-	 * bonded device */
-	for (i = rte_eth_dev_count()-1; i >= 0; i--) {
-		if (check_for_bonded_ethdev(&rte_eth_devices[i]) == 0) {
-			temp_internals = rte_eth_devices[i].data->dev_private;
-
-			for (j = 0; j < temp_internals->slave_count; j++) {
-				/* Device already a slave of a bonded device */
-				if (temp_internals->slaves[j].port_id == slave_port_id) {
-					RTE_BOND_LOG(ERR, "Slave port %d is already a slave",
-							slave_port_id);
-					return -1;
-				}
-			}
-		}
+	slave_eth_dev = &rte_eth_devices[slave_port_id];
+	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_BONDED_SLAVE) {
+		RTE_BOND_LOG(ERR, "Slave device is already a slave of a bonded device");
+		return -1;
 	}
 
-	slave_eth_dev = &rte_eth_devices[slave_port_id];
-
 	/* Add slave details to bonded device */
+	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDED_SLAVE;
 	slave_add(internals, slave_eth_dev);
 
 	rte_eth_dev_info_get(slave_port_id, &dev_info);
@@ -385,6 +370,7 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 		if (internals->link_props_set) {
 			if (link_properties_valid(&(bonded_eth_dev->data->dev_link),
 									  &(slave_eth_dev->data->dev_link))) {
+				slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDED_SLAVE);
 				RTE_BOND_LOG(ERR,
 						"Slave port %d link speed/duplex not supported",
 						slave_port_id);
@@ -416,6 +402,7 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 
 	if (bonded_eth_dev->data->dev_started) {
 		if (slave_configure(bonded_eth_dev, slave_eth_dev) != 0) {
+			slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDED_SLAVE);
 			RTE_BOND_LOG(ERR, "rte_bond_slaves_configure: port=%d",
 					slave_port_id);
 			return -1;
@@ -468,7 +455,7 @@ __eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 {
 	struct rte_eth_dev *bonded_eth_dev;
 	struct bond_dev_private *internals;
-
+	struct rte_eth_dev *slave_eth_dev;
 	int i, slave_idx;
 
 	if (valid_slave_port_id(slave_port_id) != 0)
@@ -508,7 +495,9 @@ __eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	mac_address_set(&rte_eth_devices[slave_port_id],
 			&(internals->slaves[slave_idx].persisted_mac_addr));
 
-	slave_remove(internals, &rte_eth_devices[slave_port_id]);
+	slave_eth_dev = &rte_eth_devices[slave_port_id];
+	slave_remove(internals, slave_eth_dev);
+	slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDED_SLAVE);
 
 	/*  first slave in the active list will be the primary by default,
 	 *  otherwise use first device in list */
