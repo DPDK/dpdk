@@ -348,7 +348,6 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		close(connfd);
 		*remove = 1;
 		free(cfd_ctx);
-		user_destroy_device(ctx);
 		ops->destroy_device(ctx);
 
 		return;

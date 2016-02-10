@@ -421,3 +421,15 @@ int cuse_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 
 	return ops->set_backend(ctx, file);
 }
+
+void
+vhost_backend_cleanup(struct virtio_net *dev)
+{
+	/* Unmap QEMU memory file if mapped. */
+	if (dev->mem) {
+		munmap((void *)(uintptr_t)dev->mem->mapped_address,
+			(size_t)dev->mem->mapped_size);
+		free(dev->mem);
+		dev->mem = NULL;
+	}
+}

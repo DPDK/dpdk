@@ -115,4 +115,10 @@ struct vhost_net_device_ops {
 
 
 struct vhost_net_device_ops const *get_virtio_net_callbacks(void);
+
+/*
+ * Backend-specific cleanup. Defined by vhost-cuse and vhost-user.
+ */
+void vhost_backend_cleanup(struct virtio_net *dev);
+
 #endif /* _VHOST_NET_CDEV_H_ */

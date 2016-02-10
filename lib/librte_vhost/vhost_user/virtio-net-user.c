@@ -94,6 +94,16 @@ free_mem_region(struct virtio_net *dev)
 	}
 }
 
+void
+vhost_backend_cleanup(struct virtio_net *dev)
+{
+	if (dev->mem) {
+		free_mem_region(dev);
+		free(dev->mem);
+		dev->mem = NULL;
+	}
+}
+
 int
 user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 {
@@ -342,21 +352,6 @@ user_set_vring_enable(struct vhost_device_ctx ctx,
 	dev->virtqueue[state->index]->enabled = enable;
 
 	return 0;
-}
-
-void
-user_destroy_device(struct vhost_device_ctx ctx)
-{
-	struct virtio_net *dev = get_device(ctx);
-
-	if (dev && (dev->flags & VIRTIO_DEV_RUNNING))
-		notify_ops->destroy_device(dev);
-
-	if (dev && dev->mem) {
-		free_mem_region(dev);
-		free(dev->mem);
-		dev->mem = NULL;
-	}
 }
 
 void

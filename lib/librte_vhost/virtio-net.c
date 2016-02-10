@@ -207,13 +207,7 @@ cleanup_device(struct virtio_net *dev, int destroy)
 {
 	uint32_t i;
 
-	/* Unmap QEMU memory file if mapped. */
-	if (dev->mem) {
-		munmap((void *)(uintptr_t)dev->mem->mapped_address,
-			(size_t)dev->mem->mapped_size);
-		free(dev->mem);
-		dev->mem = NULL;
-	}
+	vhost_backend_cleanup(dev);
 
 	for (i = 0; i < dev->virt_qp_nb; i++) {
 		cleanup_vq(dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ], destroy);
