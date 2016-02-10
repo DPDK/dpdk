@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -277,6 +277,7 @@ int
 rte_eth_bond_free(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
+	struct bond_dev_private *internals;
 
 	/* now free all data allocation - for eth_dev structure,
 	 * dummy pci driver and internal (private) data
@@ -286,6 +287,10 @@ rte_eth_bond_free(const char *name)
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
 		return -ENODEV;
+
+	internals = eth_dev->data->dev_private;
+	if (internals->slave_count != 0)
+		return -EBUSY;
 
 	if (eth_dev->data->dev_started == 1) {
 		bond_ethdev_stop(eth_dev);
