@@ -54,6 +54,11 @@ static inline void rte_prefetch2(const volatile void *p)
 	asm volatile ("PRFM PLDL3KEEP, [%0]" : : "r" (p));
 }
 
+static inline void rte_prefetch_non_temporal(const volatile void *p)
+{
+	asm volatile ("PRFM PLDL1STRM, [%0]" : : "r" (p));
+}
+
 #ifdef __cplusplus
 }
 #endif

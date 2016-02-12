@@ -68,4 +68,16 @@ static inline void rte_prefetch1(const volatile void *p);
  */
 static inline void rte_prefetch2(const volatile void *p);
 
+/**
+ * Prefetch a cache line into all cache levels (non-temporal/transient version)
+ *
+ * The non-temporal prefetch is intended as a prefetch hint that processor will
+ * use the prefetched data only once or short period, unlike the
+ * rte_prefetch0() function which imply that prefetched data to use repeatedly.
+ *
+ * @param p
+ *   Address to prefetch
+ */
+static inline void rte_prefetch_non_temporal(const volatile void *p);
+
 #endif /* _RTE_PREFETCH_H_ */

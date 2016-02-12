@@ -54,6 +54,12 @@ static inline void rte_prefetch2(const volatile void *p)
 	__builtin_prefetch((const void *)(uintptr_t)p, 0, 1);
 }
 
+static inline void rte_prefetch_non_temporal(const volatile void *p)
+{
+	/* non-temporal version not available, fallback to rte_prefetch0 */
+	rte_prefetch0(p);
+}
+
 #ifdef __cplusplus
 }
 #endif
