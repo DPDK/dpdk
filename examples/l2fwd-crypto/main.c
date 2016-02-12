@@ -793,7 +793,7 @@ parse_auth_op(enum rte_crypto_auth_operation *op, char *optarg)
 		*op = RTE_CRYPTO_AUTH_OP_VERIFY;
 		return 0;
 	} else if (strcmp("GENERATE", optarg) == 0) {
-		*op = RTE_CRYPTO_AUTH_OP_VERIFY;
+		*op = RTE_CRYPTO_AUTH_OP_GENERATE;
 		return 0;
 	}
 
@@ -831,11 +831,11 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 
 	/* Authentication options */
 	else if (strcmp(lgopts[option_index].name, "auth_algo") == 0)
-		return parse_auth_algo(&options->cipher_xform.auth.algo,
+		return parse_auth_algo(&options->auth_xform.auth.algo,
 				optarg);
 
 	else if (strcmp(lgopts[option_index].name, "auth_op") == 0)
-		return parse_auth_op(&options->cipher_xform.auth.op,
+		return parse_auth_op(&options->auth_xform.auth.op,
 				optarg);
 
 	else if (strcmp(lgopts[option_index].name, "auth_key") == 0)
