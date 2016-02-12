@@ -838,11 +838,16 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pi->adapter = adapter;
 
 	err = cxgbe_probe(adapter);
-	if (err)
+	if (err) {
 		dev_err(adapter, "%s: cxgbe probe failed with err %d\n",
 			__func__, err);
+		goto out_free_adapter;
+	}
+
+	return 0;
 
 out_free_adapter:
+	rte_free(adapter);
 	return err;
 }
 
