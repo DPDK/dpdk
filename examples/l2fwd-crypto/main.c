@@ -981,9 +981,9 @@ l2fwd_crypto_options_print(struct l2fwd_crypto_options *options)
 
 	switch (options->cdev_type) {
 	case RTE_CRYPTODEV_AESNI_MB_PMD:
-		printf("crytpodev type: AES-NI MB PMD\n"); break;
+		printf("cryptodev type: AES-NI MB PMD\n"); break;
 	case RTE_CRYPTODEV_QAT_PMD:
-		printf("crytpodev type: QAT PMD\n"); break;
+		printf("cryptodev type: QAT PMD\n"); break;
 	default:
 		break;
 	}
