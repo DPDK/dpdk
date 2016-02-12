@@ -17,3 +17,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_16.04 {
+	global:
+
+	rte_jobstats_abort;
+
+} DPDK_2.0;

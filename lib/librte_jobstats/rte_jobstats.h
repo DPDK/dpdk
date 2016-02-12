@@ -237,6 +237,20 @@ int
 rte_jobstats_start(struct rte_jobstats_context *ctx, struct rte_jobstats *job);
 
 /**
+ * Mark that *job* finished its execution, but time of this work will be skipped
+ * and added to management time.
+ *
+ * @param job
+ *  Job object.
+ *
+ * @return
+ *  0 on success
+ *  -EINVAL if job is NULL or job was not started (it have no context).
+ */
+int
+rte_jobstats_abort(struct rte_jobstats *job);
+
+/**
  * Mark that *job* finished its execution. Context in which it was executing
  * will receive stat update. After this function call *job* object is ready to
  * be executed in other context.

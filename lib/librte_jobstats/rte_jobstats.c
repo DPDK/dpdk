@@ -170,6 +170,26 @@ rte_jobstats_start(struct rte_jobstats_context *ctx, struct rte_jobstats *job)
 }
 
 int
+rte_jobstats_abort(struct rte_jobstats *job)
+{
+	struct rte_jobstats_context *ctx;
+	uint64_t now, exec_time;
+
+	/* Some sanity check. */
+	if (unlikely(job == NULL || job->context == NULL))
+		return -EINVAL;
+
+	ctx = job->context;
+	now = get_time();
+	exec_time = now - ctx->state_time;
+	ADD_TIME_MIN_MAX(ctx, management, exec_time);
+	ctx->state_time = now;
+	job->context = NULL;
+
+	return 0;
+}
+
+int
 rte_jobstats_finish(struct rte_jobstats *job, int64_t job_value)
 {
 	struct rte_jobstats_context *ctx;

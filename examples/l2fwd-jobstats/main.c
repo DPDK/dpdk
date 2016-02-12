@@ -577,10 +577,13 @@ l2fwd_main_loop(void)
 			 */
 			rte_jobstats_start(&qconf->jobs_context, &qconf->idle_job);
 
+			uint64_t repeats = 0;
+
 			do {
 				uint8_t i;
 				uint64_t now = rte_get_timer_cycles();
 
+				repeats++;
 				need_manage = qconf->flush_timer.expire < now;
 				/* Check if we was esked to give a stats. */
 				stats_read_pending =
@@ -591,7 +594,11 @@ l2fwd_main_loop(void)
 					need_manage = qconf->rx_timers[i].expire < now;
 
 			} while (!need_manage);
-			rte_jobstats_finish(&qconf->idle_job, qconf->idle_job.target);
+
+			if (likely(repeats != 1))
+				rte_jobstats_finish(&qconf->idle_job, qconf->idle_job.target);
+			else
+				rte_jobstats_abort(&qconf->idle_job);
 
 			rte_timer_manage();
 			rte_jobstats_context_finish(&qconf->jobs_context);
