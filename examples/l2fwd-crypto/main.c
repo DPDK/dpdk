@@ -205,17 +205,22 @@ struct l2fwd_crypto_statistics crypto_statistics[RTE_MAX_ETHPORTS];
 /* default period is 10 seconds */
 static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000;
 
-uint64_t total_packets_dropped = 0, total_packets_tx = 0, total_packets_rx = 0,
-	total_packets_enqueued = 0, total_packets_dequeued = 0,
-	total_packets_errors = 0;
-
 /* Print out statistics on packets dropped */
 static void
 print_stats(void)
 {
+	uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
+	uint64_t total_packets_enqueued, total_packets_dequeued,
+		total_packets_errors;
 	unsigned portid;
 	uint64_t cdevid;
 
+	total_packets_dropped = 0;
+	total_packets_tx = 0;
+	total_packets_rx = 0;
+	total_packets_enqueued = 0;
+	total_packets_dequeued = 0;
+	total_packets_errors = 0;
 
 	const char clr[] = { 27, '[', '2', 'J', '\0' };
 	const char topLeft[] = { 27, '[', '1', ';', '1', 'H', '\0' };
