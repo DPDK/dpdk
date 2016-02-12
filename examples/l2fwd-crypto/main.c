@@ -671,8 +671,9 @@ l2fwd_crypto_usage(const char *prgname)
 		"  --cipher_algo ALGO\n"
 		"  --cipher_op ENCRYPT / DECRYPT\n"
 		"  --cipher_key KEY\n"
+		"  --iv IV\n"
 
-		"  --auth ALGO\n"
+		"  --auth_algo ALGO\n"
 		"  --auth_op GENERATE / VERIFY\n"
 		"  --auth_key KEY\n"
 
