@@ -578,12 +578,14 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	if (hw->mac.type != ixgbe_mac_82599EB &&
 		hw->mac.type != ixgbe_mac_X540 &&
 		hw->mac.type != ixgbe_mac_X550 &&
-		hw->mac.type != ixgbe_mac_X550EM_x)
+		hw->mac.type != ixgbe_mac_X550EM_x &&
+		hw->mac.type != ixgbe_mac_X550EM_a)
 		return -ENOSYS;
 
 	/* x550 supports mac-vlan and tunnel mode but other NICs not */
 	if (hw->mac.type != ixgbe_mac_X550 &&
 	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a &&
 	    mode != RTE_FDIR_MODE_SIGNATURE &&
 	    mode != RTE_FDIR_MODE_PERFECT)
 		return -ENOSYS;
@@ -1104,7 +1106,8 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 	 */
 	if ((!del) &&
 	    (hw->mac.type == ixgbe_mac_X550 ||
-	     hw->mac.type == ixgbe_mac_X550EM_x) &&
+	     hw->mac.type == ixgbe_mac_X550EM_x ||
+	     hw->mac.type == ixgbe_mac_X550EM_a) &&
 	    (fdir_filter->input.flow_type ==
 	       RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) &&
 	    (info->mask.src_port_mask != 0 ||
@@ -1332,7 +1335,8 @@ ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
 	if (hw->mac.type != ixgbe_mac_82599EB &&
 		hw->mac.type != ixgbe_mac_X540 &&
 		hw->mac.type != ixgbe_mac_X550 &&
-		hw->mac.type != ixgbe_mac_X550EM_x)
+		hw->mac.type != ixgbe_mac_X550EM_x &&
+		hw->mac.type != ixgbe_mac_X550EM_a)
 		return -ENOTSUP;
 
 	if (filter_op == RTE_ETH_FILTER_NOP)

@@ -847,7 +847,8 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	if ((hw->mac.type != ixgbe_mac_82599EB) &&
 		(hw->mac.type != ixgbe_mac_X540) &&
 		(hw->mac.type != ixgbe_mac_X550) &&
-		(hw->mac.type != ixgbe_mac_X550EM_x))
+		(hw->mac.type != ixgbe_mac_X550EM_x) &&
+		(hw->mac.type != ixgbe_mac_X550EM_a))
 		return -ENOSYS;
 
 	PMD_INIT_LOG(DEBUG, "Setting port %d, %s queue_id %d to stat index %d",
@@ -952,7 +953,8 @@ ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
 	/*we only support 4 Tcs for X540, X550 */
 	if (hw->mac.type == ixgbe_mac_X540 ||
 		hw->mac.type == ixgbe_mac_X550 ||
-		hw->mac.type == ixgbe_mac_X550EM_x) {
+		hw->mac.type == ixgbe_mac_X550EM_x ||
+		hw->mac.type == ixgbe_mac_X550EM_a) {
 		dcb_config->num_tcs.pg_tcs = 4;
 		dcb_config->num_tcs.pfc_tcs = 4;
 	}
@@ -6116,9 +6118,11 @@ ixgbe_reta_size_get(enum ixgbe_mac_type mac_type) {
 	switch (mac_type) {
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
 		return ETH_RSS_RETA_SIZE_512;
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
+	case ixgbe_mac_X550EM_a_vf:
 		return ETH_RSS_RETA_SIZE_64;
 	default:
 		return ETH_RSS_RETA_SIZE_128;
@@ -6130,12 +6134,14 @@ ixgbe_reta_reg_get(enum ixgbe_mac_type mac_type, uint16_t reta_idx) {
 	switch (mac_type) {
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
 		if (reta_idx < ETH_RSS_RETA_SIZE_128)
 			return IXGBE_RETA(reta_idx >> 2);
 		else
 			return IXGBE_ERETA((reta_idx - ETH_RSS_RETA_SIZE_128) >> 2);
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
+	case ixgbe_mac_X550EM_a_vf:
 		return IXGBE_VFRETA(reta_idx >> 2);
 	default:
 		return IXGBE_RETA(reta_idx >> 2);
@@ -6147,6 +6153,7 @@ ixgbe_mrqc_reg_get(enum ixgbe_mac_type mac_type) {
 	switch (mac_type) {
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
+	case ixgbe_mac_X550EM_a_vf:
 		return IXGBE_VFMRQC;
 	default:
 		return IXGBE_MRQC;
@@ -6158,6 +6165,7 @@ ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i) {
 	switch (mac_type) {
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
+	case ixgbe_mac_X550EM_a_vf:
 		return IXGBE_VFRSSRK(i);
 	default:
 		return IXGBE_RSSRK(i);

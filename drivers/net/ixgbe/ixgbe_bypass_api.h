@@ -78,6 +78,7 @@ static s32 ixgbe_bypass_rw_generic(struct ixgbe_hw *hw, u32 cmd, u32 *status)
 		break;
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
 		sck = IXGBE_ESDP_SDP2;
 		sdi = IXGBE_ESDP_SDP0;
 		sdo = IXGBE_ESDP_SDP1;

@@ -2154,7 +2154,8 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (hw->mac.type == ixgbe_mac_82599_vf ||
 	    hw->mac.type == ixgbe_mac_X540_vf ||
 	    hw->mac.type == ixgbe_mac_X550_vf ||
-	    hw->mac.type == ixgbe_mac_X550EM_x_vf)
+	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
+	    hw->mac.type == ixgbe_mac_X550EM_a_vf)
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
 	else
 		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
@@ -2447,7 +2448,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (hw->mac.type == ixgbe_mac_82599_vf ||
 	    hw->mac.type == ixgbe_mac_X540_vf ||
 	    hw->mac.type == ixgbe_mac_X550_vf ||
-	    hw->mac.type == ixgbe_mac_X550EM_x_vf) {
+	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
+	    hw->mac.type == ixgbe_mac_X550EM_a_vf) {
 		rxq->rdt_reg_addr =
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_VFRDT(queue_idx));
 		rxq->rdh_reg_addr =
@@ -2903,6 +2905,7 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 	switch (hw->mac.type) {
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
 		pbsize = (uint16_t)(X550_RX_BUFFER_SIZE / nb_tcs);
 		break;
 	default:
@@ -3242,6 +3245,7 @@ ixgbe_dcb_hw_arbite_rx_config(struct ixgbe_hw *hw, uint16_t *refill,
 	case ixgbe_mac_X540:
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
 		ixgbe_dcb_config_rx_arbiter_82599(hw, refill, max, bwg_id,
 						  tsa, map);
 		break;
@@ -3263,6 +3267,7 @@ ixgbe_dcb_hw_arbite_tx_config(struct ixgbe_hw *hw, uint16_t *refill, uint16_t *m
 	case ixgbe_mac_X540:
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
 		ixgbe_dcb_config_tx_desc_arbiter_82599(hw, refill, max, bwg_id,tsa);
 		ixgbe_dcb_config_tx_data_arbiter_82599(hw, refill, max, bwg_id,tsa, map);
 		break;
@@ -3381,6 +3386,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 	switch (hw->mac.type) {
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
+	case ixgbe_mac_X550EM_a:
 		rx_buffer_size = X550_RX_BUFFER_SIZE;
 		break;
 	default:
@@ -4403,6 +4409,7 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 			case ixgbe_mac_X540:
 			case ixgbe_mac_X550:
 			case ixgbe_mac_X550EM_x:
+			case ixgbe_mac_X550EM_a:
 			default:
 				txctrl = IXGBE_READ_REG(hw,
 						IXGBE_DCA_TXCTRL_82599(txq->reg_idx));
