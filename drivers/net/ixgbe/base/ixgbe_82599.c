@@ -1380,9 +1380,6 @@ s32 ixgbe_init_fdir_perfect_82599(struct ixgbe_hw *hw, u32 fdirctrl,
 		    (0x6 << IXGBE_FDIRCTRL_FLEX_SHIFT) |
 		    (0xA << IXGBE_FDIRCTRL_MAX_LENGTH_SHIFT) |
 		    (4 << IXGBE_FDIRCTRL_FULL_THRESH_SHIFT);
-	if ((hw->mac.type == ixgbe_mac_X550) ||
-	    (hw->mac.type == ixgbe_mac_X550EM_x))
-		fdirctrl |= IXGBE_FDIRCTRL_DROP_NO_MATCH;
 
 	if (cloud_mode)
 		fdirctrl |=(IXGBE_FDIRCTRL_FILTERMODE_CLOUD <<

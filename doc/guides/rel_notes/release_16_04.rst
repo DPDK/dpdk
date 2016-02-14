@@ -188,6 +188,11 @@ Drivers
   driver is loaded while the PF interface is down.
   The solution is to only set it when we get an ACK from the PF.
 
+* **ixgbe: Fixed setting flow director flag twice.**
+
+  Resolved an issue where packets were being dropped when switching to perfect
+  filters mode.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,
