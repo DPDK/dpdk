@@ -1285,6 +1285,7 @@ struct ixgbe_dmac_config {
 #define IXGBE_XPCSS		0x04290
 #define IXGBE_MFLCN		0x04294
 #define IXGBE_SERDESC		0x04298
+#define IXGBE_MAC_SGMII_BUSY	0x04298
 #define IXGBE_MACS		0x0429C
 #define IXGBE_AUTOC		0x042A0
 #define IXGBE_LINKS		0x042A4
