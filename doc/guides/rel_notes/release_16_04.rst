@@ -182,6 +182,12 @@ Drivers
   Fixed an incorrect device MTU being set due to ethernet header and
   CRC lengths being added twice.
 
+* **ixgbe: Fixed zeroed VF mac address.**
+
+  Resolved an issue where VF mac address is zeroed out in cases where the VF
+  driver is loaded while the PF interface is down.
+  The solution is to only set it when we get an ACK from the PF.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,
