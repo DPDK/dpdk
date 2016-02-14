@@ -151,8 +151,6 @@ POSSIBILITY OF SUCH DAMAGE.
 /* SFP+ SFF-8472 Compliance */
 #define IXGBE_SFF_SFF_8472_UNSUP	0x00
 
-#ident "$Id: ixgbe_phy.h,v 1.56 2013/09/05 23:59:49 jtkirshe Exp $"
-
 s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw);
 bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr);
 enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id);
@@ -209,4 +207,8 @@ s32 ixgbe_read_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
 s32 ixgbe_write_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
 				   u8 eeprom_data);
 void ixgbe_i2c_bus_clear(struct ixgbe_hw *hw);
+s32 ixgbe_read_i2c_combined_generic_int(struct ixgbe_hw *, u8 addr, u16 reg,
+					u16 *val, bool lock);
+s32 ixgbe_write_i2c_combined_generic_int(struct ixgbe_hw *, u8 addr, u16 reg,
+					 u16 val, bool lock);
 #endif /* _IXGBE_PHY_H_ */

@@ -1435,35 +1435,33 @@ s32 ixgbe_read_i2c_byte_unlocked(struct ixgbe_hw *hw, u8 byte_offset,
 }
 
 /**
- * ixgbe_read_i2c_combined - Perform I2C read combined operation
+ * ixgbe_read_link - Perform read operation on link device
  * @hw: pointer to the hardware structure
- * @addr: I2C bus address to read from
- * @reg: I2C device register to read from
+ * @addr: bus address to read from
+ * @reg: device register to read from
  * @val: pointer to location to receive read value
  *
  * Returns an error code on error.
  */
-s32 ixgbe_read_i2c_combined(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 *val)
+s32 ixgbe_read_link(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 *val)
 {
-	return ixgbe_call_func(hw, hw->phy.ops.read_i2c_combined, (hw, addr,
+	return ixgbe_call_func(hw, hw->link.ops.read_link, (hw, addr,
 			       reg, val), IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
- * ixgbe_read_i2c_combined_unlocked - Perform I2C read combined operation
+ * ixgbe_read_link_unlocked - Perform read operation on link device
  * @hw: pointer to the hardware structure
- * @addr: I2C bus address to read from
- * @reg: I2C device register to read from
+ * @addr: bus address to read from
+ * @reg: device register to read from
  * @val: pointer to location to receive read value
  *
  * Returns an error code on error.
  **/
-s32 ixgbe_read_i2c_combined_unlocked(struct ixgbe_hw *hw, u8 addr, u16 reg,
-				     u16 *val)
+s32 ixgbe_read_link_unlocked(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 *val)
 {
-	return ixgbe_call_func(hw, hw->phy.ops.read_i2c_combined_unlocked,
-			       (hw, addr, reg, val),
-			       IXGBE_NOT_IMPLEMENTED);
+	return ixgbe_call_func(hw, hw->link.ops.read_link_unlocked,
+			       (hw, addr, reg, val), IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
@@ -1502,33 +1500,32 @@ s32 ixgbe_write_i2c_byte_unlocked(struct ixgbe_hw *hw, u8 byte_offset,
 }
 
 /**
- * ixgbe_write_i2c_combined - Perform I2C write combined operation
+ * ixgbe_write_link - Perform write operation on link device
  * @hw: pointer to the hardware structure
- * @addr: I2C bus address to write to
- * @reg: I2C device register to write to
+ * @addr: bus address to write to
+ * @reg: device register to write to
  * @val: value to write
  *
  * Returns an error code on error.
  */
-s32 ixgbe_write_i2c_combined(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 val)
+s32 ixgbe_write_link(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 val)
 {
-	return ixgbe_call_func(hw, hw->phy.ops.write_i2c_combined, (hw, addr,
-			       reg, val), IXGBE_NOT_IMPLEMENTED);
+	return ixgbe_call_func(hw, hw->link.ops.write_link,
+			       (hw, addr, reg, val), IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
- * ixgbe_write_i2c_combined_unlocked - Perform I2C write combined operation
+ * ixgbe_write_link_unlocked - Perform write operation on link device
  * @hw: pointer to the hardware structure
- * @addr: I2C bus address to write to
- * @reg: I2C device register to write to
+ * @addr: bus address to write to
+ * @reg: device register to write to
  * @val: value to write
  *
  * Returns an error code on error.
  **/
-s32 ixgbe_write_i2c_combined_unlocked(struct ixgbe_hw *hw, u8 addr, u16 reg,
-				      u16 val)
+s32 ixgbe_write_link_unlocked(struct ixgbe_hw *hw, u8 addr, u16 reg, u16 val)
 {
-	return ixgbe_call_func(hw, hw->phy.ops.write_i2c_combined_unlocked,
+	return ixgbe_call_func(hw, hw->link.ops.write_link_unlocked,
 			       (hw, addr, reg, val), IXGBE_NOT_IMPLEMENTED);
 }
 

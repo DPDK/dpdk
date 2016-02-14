@@ -104,7 +104,7 @@ s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw)
  **/
 STATIC s32 ixgbe_read_cs4227(struct ixgbe_hw *hw, u16 reg, u16 *value)
 {
-	return ixgbe_read_i2c_combined_unlocked(hw, IXGBE_CS4227, reg, value);
+	return hw->link.ops.read_link_unlocked(hw, hw->link.addr, reg, value);
 }
 
 /**
@@ -117,7 +117,7 @@ STATIC s32 ixgbe_read_cs4227(struct ixgbe_hw *hw, u16 reg, u16 *value)
  **/
 STATIC s32 ixgbe_write_cs4227(struct ixgbe_hw *hw, u16 reg, u16 value)
 {
-	return ixgbe_write_i2c_combined_unlocked(hw, IXGBE_CS4227, reg, value);
+	return hw->link.ops.write_link_unlocked(hw, hw->link.addr, reg, value);
 }
 
 /**
@@ -389,6 +389,68 @@ STATIC s32 ixgbe_write_phy_reg_x550em(struct ixgbe_hw *hw, u32 reg_addr,
 }
 
 /**
+ * ixgbe_read_i2c_combined_generic - Perform I2C read combined operation
+ * @hw: pointer to the hardware structure
+ * @addr: I2C bus address to read from
+ * @reg: I2C device register to read from
+ * @val: pointer to location to receive read value
+ *
+ * Returns an error code on error.
+ **/
+static s32 ixgbe_read_i2c_combined_generic(struct ixgbe_hw *hw, u8 addr,
+					   u16 reg, u16 *val)
+{
+	return ixgbe_read_i2c_combined_generic_int(hw, addr, reg, val, true);
+}
+
+/**
+ * ixgbe_read_i2c_combined_generic_unlocked - Do I2C read combined operation
+ * @hw: pointer to the hardware structure
+ * @addr: I2C bus address to read from
+ * @reg: I2C device register to read from
+ * @val: pointer to location to receive read value
+ *
+ * Returns an error code on error.
+ **/
+static s32
+ixgbe_read_i2c_combined_generic_unlocked(struct ixgbe_hw *hw, u8 addr,
+					 u16 reg, u16 *val)
+{
+	return ixgbe_read_i2c_combined_generic_int(hw, addr, reg, val, false);
+}
+
+/**
+ * ixgbe_write_i2c_combined_generic - Perform I2C write combined operation
+ * @hw: pointer to the hardware structure
+ * @addr: I2C bus address to write to
+ * @reg: I2C device register to write to
+ * @val: value to write
+ *
+ * Returns an error code on error.
+ **/
+static s32 ixgbe_write_i2c_combined_generic(struct ixgbe_hw *hw,
+					    u8 addr, u16 reg, u16 val)
+{
+	return ixgbe_write_i2c_combined_generic_int(hw, addr, reg, val, true);
+}
+
+/**
+ * ixgbe_write_i2c_combined_generic_unlocked - Do I2C write combined operation
+ * @hw: pointer to the hardware structure
+ * @addr: I2C bus address to write to
+ * @reg: I2C device register to write to
+ * @val: value to write
+ *
+ * Returns an error code on error.
+ **/
+static s32
+ixgbe_write_i2c_combined_generic_unlocked(struct ixgbe_hw *hw,
+					  u8 addr, u16 reg, u16 val)
+{
+	return ixgbe_write_i2c_combined_generic_int(hw, addr, reg, val, false);
+}
+
+/**
 *  ixgbe_init_ops_X550EM - Inits func ptrs and MAC type
 *  @hw: pointer to hardware structure
 *
@@ -400,6 +462,7 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	struct ixgbe_mac_info *mac = &hw->mac;
 	struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
 	struct ixgbe_phy_info *phy = &hw->phy;
+	struct ixgbe_link_info *link = &hw->link;
 	s32 ret_val;
 
 	DEBUGFUNC("ixgbe_init_ops_X550EM");
@@ -440,6 +503,13 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
 		mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
 		mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
+		link->ops.read_link = ixgbe_read_i2c_combined_generic;
+		link->ops.read_link_unlocked =
+				ixgbe_read_i2c_combined_generic_unlocked;
+		link->ops.write_link = ixgbe_write_i2c_combined_generic;
+		link->ops.write_link_unlocked =
+				ixgbe_write_i2c_combined_generic_unlocked;
+		link->addr = IXGBE_CS4227;
 	}
 	if (hw->mac.type == ixgbe_mac_X550EM_a) {
 		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550a;
@@ -1903,22 +1973,22 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 		reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB +
 			    (hw->bus.lan_id << 12);
 		reg_val = IXGBE_CS4227_SPEED_10G;
-		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-						   reg_val);
+		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
+						  reg_val);
 
 		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB +
 			    (hw->bus.lan_id << 12);
 		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-						   reg_val);
+		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
+						  reg_val);
 
 		/* Configure CS4227 for HOST connection rate then type. */
 		reg_slice = IXGBE_CS4227_HOST_SPARE22_MSB +
 			    (hw->bus.lan_id << 12);
 		reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ?
 		IXGBE_CS4227_SPEED_10G : IXGBE_CS4227_SPEED_1G;
-		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-						   reg_val);
+		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
+						  reg_val);
 
 		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB +
 			    (hw->bus.lan_id << 12);
@@ -1926,8 +1996,8 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 			reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
 		else
 			reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-						   reg_val);
+		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
+						  reg_val);
 
 		/* Setup XFI internal link. */
 		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
@@ -1942,8 +2012,8 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 			reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
 		else
 			reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		ret_val = ixgbe_write_i2c_combined(hw, IXGBE_CS4227, reg_slice,
-						   reg_val);
+		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
+						  reg_val);
 	}
 	return ret_val;
 }

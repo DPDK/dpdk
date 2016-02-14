@@ -109,8 +109,8 @@ STATIC u8 ixgbe_ones_comp_byte_add(u8 add1, u8 add2)
  *
  * Returns an error code on error.
  */
-STATIC s32 ixgbe_read_i2c_combined_generic_int(struct ixgbe_hw *hw, u8 addr,
-					       u16 reg, u16 *val, bool lock)
+s32 ixgbe_read_i2c_combined_generic_int(struct ixgbe_hw *hw, u8 addr, u16 reg,
+					u16 *val, bool lock)
 {
 	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 	int max_retry = 10;
@@ -180,37 +180,6 @@ fail:
 }
 
 /**
- * ixgbe_read_i2c_combined_generic - Perform I2C read combined operation
- * @hw: pointer to the hardware structure
- * @addr: I2C bus address to read from
- * @reg: I2C device register to read from
- * @val: pointer to location to receive read value
- *
- * Returns an error code on error.
- **/
-STATIC s32 ixgbe_read_i2c_combined_generic(struct ixgbe_hw *hw, u8 addr,
-					   u16 reg, u16 *val)
-{
-	return ixgbe_read_i2c_combined_generic_int(hw, addr, reg, val, true);
-}
-
-/**
- * ixgbe_read_i2c_combined_generic_unlocked - Do I2C read combined operation
- * @hw: pointer to the hardware structure
- * @addr: I2C bus address to read from
- * @reg: I2C device register to read from
- * @val: pointer to location to receive read value
- *
- * Returns an error code on error.
- **/
-STATIC s32
-ixgbe_read_i2c_combined_generic_unlocked(struct ixgbe_hw *hw, u8 addr,
-					 u16 reg, u16 *val)
-{
-	return ixgbe_read_i2c_combined_generic_int(hw, addr, reg, val, false);
-}
-
-/**
  * ixgbe_write_i2c_combined_generic_int - Perform I2C write combined operation
  * @hw: pointer to the hardware structure
  * @addr: I2C bus address to write to
@@ -220,8 +189,8 @@ ixgbe_read_i2c_combined_generic_unlocked(struct ixgbe_hw *hw, u8 addr,
  *
  * Returns an error code on error.
  */
-STATIC s32 ixgbe_write_i2c_combined_generic_int(struct ixgbe_hw *hw, u8 addr,
-						u16 reg, u16 val, bool lock)
+s32 ixgbe_write_i2c_combined_generic_int(struct ixgbe_hw *hw, u8 addr, u16 reg,
+					 u16 val, bool lock)
 {
 	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 	int max_retry = 1;
@@ -276,37 +245,6 @@ fail:
 }
 
 /**
- * ixgbe_write_i2c_combined_generic - Perform I2C write combined operation
- * @hw: pointer to the hardware structure
- * @addr: I2C bus address to write to
- * @reg: I2C device register to write to
- * @val: value to write
- *
- * Returns an error code on error.
- **/
-STATIC s32 ixgbe_write_i2c_combined_generic(struct ixgbe_hw *hw,
-					    u8 addr, u16 reg, u16 val)
-{
-	return ixgbe_write_i2c_combined_generic_int(hw, addr, reg, val, true);
-}
-
-/**
- * ixgbe_write_i2c_combined_generic_unlocked - Do I2C write combined operation
- * @hw: pointer to the hardware structure
- * @addr: I2C bus address to write to
- * @reg: I2C device register to write to
- * @val: value to write
- *
- * Returns an error code on error.
- **/
-STATIC s32
-ixgbe_write_i2c_combined_generic_unlocked(struct ixgbe_hw *hw,
-					  u8 addr, u16 reg, u16 val)
-{
-	return ixgbe_write_i2c_combined_generic_int(hw, addr, reg, val, false);
-}
-
-/**
  *  ixgbe_init_phy_ops_generic - Inits PHY function ptrs
  *  @hw: pointer to the hardware structure
  *
@@ -337,12 +275,6 @@ s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw)
 	phy->ops.i2c_bus_clear = ixgbe_i2c_bus_clear;
 	phy->ops.identify_sfp = ixgbe_identify_module_generic;
 	phy->sfp_type = ixgbe_sfp_type_unknown;
-	phy->ops.read_i2c_combined = ixgbe_read_i2c_combined_generic;
-	phy->ops.write_i2c_combined = ixgbe_write_i2c_combined_generic;
-	phy->ops.read_i2c_combined_unlocked =
-				ixgbe_read_i2c_combined_generic_unlocked;
-	phy->ops.write_i2c_combined_unlocked =
-				ixgbe_write_i2c_combined_generic_unlocked;
 	phy->ops.read_i2c_byte_unlocked = ixgbe_read_i2c_byte_generic_unlocked;
 	phy->ops.write_i2c_byte_unlocked =
 				ixgbe_write_i2c_byte_generic_unlocked;
