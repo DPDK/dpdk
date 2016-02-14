@@ -658,7 +658,6 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 	u16 autoneg_eee_reg;
 	u32 link_reg;
 	s32 status;
-	u32 fuse;
 
 	DEBUGFUNC("ixgbe_setup_eee_X550");
 
@@ -679,9 +678,10 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 			hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
 				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_eee_reg);
 		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
-			/* Not supported on first revision. */
-			fuse = IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0));
-			if (!(fuse & IXGBE_FUSES0_REV1))
+			/* Not supported on first revision of X550EM_x. */
+			if ((hw->mac.type == ixgbe_mac_X550EM_x) &&
+			    !(IXGBE_FUSES0_REV_MASK &
+			      IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0))))
 				return IXGBE_SUCCESS;
 
 			status = ixgbe_read_iosf_sb_reg_x550(hw,
@@ -1602,9 +1602,10 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.setup_internal_link =
 					      ixgbe_setup_internal_phy_t_x550em;
 
-		/* setup SW LPLU only for first revision */
-		if (!(IXGBE_FUSES0_REV1 & IXGBE_READ_REG(hw,
-						       IXGBE_FUSES0_GROUP(0))))
+		/* setup SW LPLU only for first revision of X550EM_x */
+		if ((hw->mac.type == ixgbe_mac_X550EM_x) &&
+		    !(IXGBE_FUSES0_REV_MASK &
+		      IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0))))
 			phy->ops.enter_lplu = ixgbe_enter_lplu_t_x550em;
 
 		phy->ops.handle_lasi = ixgbe_handle_lasi_ext_t_x550em;
@@ -2808,7 +2809,9 @@ s32 ixgbe_enter_lplu_t_x550em(struct ixgbe_hw *hw)
 	bool link_up;
 
 	/* SW LPLU not required on later HW revisions. */
-	if (IXGBE_FUSES0_REV1 & IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0)))
+	if ((hw->mac.type == ixgbe_mac_X550EM_x) &&
+	    (IXGBE_FUSES0_REV_MASK &
+	     IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0))))
 		return IXGBE_SUCCESS;
 
 	/* If blocked by MNG FW, then don't restart AN */

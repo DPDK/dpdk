@@ -100,6 +100,11 @@ This section should contain new features added in this release. Sample format:
   Added new X550EM_a devices and their mac types, X550EM_a and X550EM_a_vf.
   Updated the code to use the new devices and mac types.
 
+* **Added x550em_x V2 device support.**
+
+  Only x550em_x V1 was supported before. Now V2 is supported.
+  A mask for V1 and V2 is defined and used to support both.
+
 * **Enabled PCI extended tag for i40e.**
 
   It enabled extended tag by checking and writing corresponding PCI config
