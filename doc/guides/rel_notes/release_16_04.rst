@@ -64,6 +64,17 @@ This section should contain new features added in this release. Sample format:
 
 * **Added vhost-user live migration support.**
 
+* **Added multicast promiscuous mode support on VF for ixgbe.**
+
+  Added multicast promiscuous mode support on ixgbe VF driver. So all the VFs
+  can receive the multicast packets.
+
+  Please note if we want to use this promiscuous mode, we need both PF and VF
+  driver to support it. The reason is this VF feature is configured on PF.
+  If use kernel PF driver + dpdk VF driver, make sure kernel PF driver support
+  VF multicast promiscuous mode. If use dpdk PF + dpdk VF, better make sure PF
+  driver is the same version as VF.
+
 * **Added support for E-tag on X550.**
 
   E-tag is defined in 802.1br. Please reference

@@ -151,6 +151,12 @@
 #define IXGBE_VMTIR(_i) (0x00017000 + ((_i) * 4)) /* 64 of these (0-63) */
 #define IXGBE_QDE_STRIP_TAG                    0x00000004
 
+enum ixgbevf_xcast_modes {
+	IXGBEVF_XCAST_MODE_NONE = 0,
+	IXGBEVF_XCAST_MODE_MULTI,
+	IXGBEVF_XCAST_MODE_ALLMULTI,
+};
+
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
@@ -252,6 +258,8 @@ static int ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 static void ixgbevf_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 				 uint8_t queue, uint8_t msix_vector);
 static void ixgbevf_configure_msix(struct rte_eth_dev *dev);
+static void ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static void ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
 /* For Eth VMDQ APIs support */
 static int ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct
@@ -546,6 +554,8 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.stats_reset          = ixgbevf_dev_stats_reset,
 	.xstats_reset         = ixgbevf_dev_stats_reset,
 	.dev_close            = ixgbevf_dev_close,
+	.allmulticast_enable  = ixgbevf_dev_allmulticast_enable,
+	.allmulticast_disable = ixgbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ixgbevf_dev_info_get,
 	.mtu_set              = ixgbevf_dev_set_mtu,
 	.vlan_filter_set      = ixgbevf_vlan_filter_set,
@@ -1261,6 +1271,7 @@ ixgbevf_negotiate_api(struct ixgbe_hw *hw)
 
 	/* start with highest supported, proceed down */
 	static const enum ixgbe_pfvf_api_rev sup_ver[] = {
+		ixgbe_mbox_api_12,
 		ixgbe_mbox_api_11,
 		ixgbe_mbox_api_10,
 	};
@@ -6924,6 +6935,61 @@ ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	}
 
 	return ret;
+}
+
+/* ixgbevf_update_xcast_mode - Update Multicast mode
+ * @hw: pointer to the HW structure
+ * @netdev: pointer to net device structure
+ * @xcast_mode: new multicast mode
+ *
+ * Updates the Multicast Mode of VF.
+ */
+static int ixgbevf_update_xcast_mode(struct ixgbe_hw *hw,
+				     int xcast_mode)
+{
+	struct ixgbe_mbx_info *mbx = &hw->mbx;
+	u32 msgbuf[2];
+	s32 err;
+
+	switch (hw->api_version) {
+	case ixgbe_mbox_api_12:
+		break;
+	default:
+		return -EOPNOTSUPP;
+	}
+
+	msgbuf[0] = IXGBE_VF_UPDATE_XCAST_MODE;
+	msgbuf[1] = xcast_mode;
+
+	err = mbx->ops.write_posted(hw, msgbuf, 2, 0);
+	if (err)
+		return err;
+
+	err = mbx->ops.read_posted(hw, msgbuf, 2, 0);
+	if (err)
+		return err;
+
+	msgbuf[0] &= ~IXGBE_VT_MSGTYPE_CTS;
+	if (msgbuf[0] == (IXGBE_VF_UPDATE_XCAST_MODE | IXGBE_VT_MSGTYPE_NACK))
+		return -EPERM;
+
+	return 0;
+}
+
+static void
+ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	ixgbevf_update_xcast_mode(hw, IXGBEVF_XCAST_MODE_ALLMULTI);
+}
+
+static void
+ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	ixgbevf_update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE);
 }
 
 static struct rte_driver rte_ixgbe_driver = {
