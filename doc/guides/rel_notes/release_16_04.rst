@@ -105,6 +105,11 @@ This section should contain new features added in this release. Sample format:
   Only x550em_x V1 was supported before. Now V2 is supported.
   A mask for V1 and V2 is defined and used to support both.
 
+* **Added sw-firmware sync on X550EM_a.**
+
+  Added support for sw-firmware sync for resource sharing.
+  Use the PHY token, shared between sw-fw for PHY access on X550EM_a.
+
 * **Enabled PCI extended tag for i40e.**
 
   It enabled extended tag by checking and writing corresponding PCI config

@@ -69,6 +69,8 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 				 u32 device_type, u32 data);
 s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 	u32 device_type, u32 *data);
+s32 ixgbe_get_phy_token(struct ixgbe_hw *);
+s32 ixgbe_put_phy_token(struct ixgbe_hw *);
 s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 	u32 device_type, u32 data);
 s32 ixgbe_read_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,

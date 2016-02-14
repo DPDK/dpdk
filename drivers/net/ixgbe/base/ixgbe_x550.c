@@ -39,6 +39,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_phy.h"
 
 STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed);
+static s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
+static void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
 
 /**
  *  ixgbe_init_ops_X550 - Inits func ptrs and MAC type
@@ -442,6 +444,8 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	if (hw->mac.type == ixgbe_mac_X550EM_a) {
 		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550a;
 		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550a;
+		mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550a;
+		mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550a;
 	}
 
 	mac->ops.get_media_type = ixgbe_get_media_type_X550em;
@@ -918,6 +922,63 @@ s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 out:
 	ixgbe_release_swfw_semaphore(hw, gssr);
 	return ret;
+}
+
+/**
+ * ixgbe_get_phy_token - Get the token for shared phy access
+ * @hw: Pointer to hardware structure
+ */
+
+s32 ixgbe_get_phy_token(struct ixgbe_hw *hw)
+{
+	struct ixgbe_hic_phy_token_req token_cmd;
+	s32 status;
+
+	token_cmd.hdr.cmd = FW_PHY_TOKEN_REQ_CMD;
+	token_cmd.hdr.buf_len = FW_PHY_TOKEN_REQ_LEN;
+	token_cmd.hdr.cmd_or_resp.cmd_resv = 0;
+	token_cmd.port_number = hw->bus.lan_id;
+	token_cmd.command_type = FW_PHY_TOKEN_REQ;
+	token_cmd.pad = 0;
+	status = ixgbe_host_interface_command(hw, (u32 *)&token_cmd,
+					      sizeof(token_cmd),
+					      IXGBE_HI_COMMAND_TIMEOUT,
+					      true);
+	if (status)
+		return status;
+	if (token_cmd.hdr.cmd_or_resp.ret_status == FW_PHY_TOKEN_OK)
+		return IXGBE_SUCCESS;
+	if (token_cmd.hdr.cmd_or_resp.ret_status != FW_PHY_TOKEN_RETRY)
+		return IXGBE_ERR_FW_RESP_INVALID;
+
+	return IXGBE_ERR_TOKEN_RETRY;
+}
+
+/**
+ * ixgbe_put_phy_token - Put the token for shared phy access
+ * @hw: Pointer to hardware structure
+ */
+
+s32 ixgbe_put_phy_token(struct ixgbe_hw *hw)
+{
+	struct ixgbe_hic_phy_token_req token_cmd;
+	s32 status;
+
+	token_cmd.hdr.cmd = FW_PHY_TOKEN_REQ_CMD;
+	token_cmd.hdr.buf_len = FW_PHY_TOKEN_REQ_LEN;
+	token_cmd.hdr.cmd_or_resp.cmd_resv = 0;
+	token_cmd.port_number = hw->bus.lan_id;
+	token_cmd.command_type = FW_PHY_TOKEN_REL;
+	token_cmd.pad = 0;
+	status = ixgbe_host_interface_command(hw, (u32 *)&token_cmd,
+					      sizeof(token_cmd),
+					      IXGBE_HI_COMMAND_TIMEOUT,
+					      true);
+	if (status)
+		return status;
+	if (token_cmd.hdr.cmd_or_resp.ret_status == FW_PHY_TOKEN_OK)
+		return IXGBE_SUCCESS;
+	return IXGBE_ERR_FW_RESP_INVALID;
 }
 
 /**
@@ -3077,6 +3138,59 @@ void ixgbe_release_swfw_sync_X550em(struct ixgbe_hw *hw, u32 mask)
 		ixgbe_set_mux(hw, 0);
 
 	ixgbe_release_swfw_sync_X540(hw, mask);
+}
+
+/**
+ *  ixgbe_acquire_swfw_sync_X550a - Acquire SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to acquire
+ *
+ *  Acquires the SWFW semaphore and get the shared phy token as needed
+ */
+static s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
+{
+	u32 hmask = mask & ~IXGBE_GSSR_TOKEN_SM;
+	int retries = FW_PHY_TOKEN_RETRIES;
+	s32 status = IXGBE_SUCCESS;
+
+	DEBUGFUNC("ixgbe_acquire_swfw_sync_X550a");
+
+	while (--retries) {
+		if (hmask)
+			status = ixgbe_acquire_swfw_sync_X540(hw, hmask);
+		if (status)
+			break;
+		if (!(mask & IXGBE_GSSR_TOKEN_SM))
+			break;
+		status = ixgbe_get_phy_token(hw);
+		if (status != IXGBE_ERR_TOKEN_RETRY)
+			break;
+		if (hmask)
+			ixgbe_release_swfw_sync_X540(hw, hmask);
+		msec_delay(FW_PHY_TOKEN_DELAY);
+	}
+
+	return status;
+}
+
+/**
+ *  ixgbe_release_swfw_sync_X550a - Release SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to release
+ *
+ *  Releases the SWFW semaphore and puts the shared phy token as needed
+ */
+static void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
+{
+	u32 hmask = mask & ~IXGBE_GSSR_TOKEN_SM;
+
+	DEBUGFUNC("ixgbe_release_swfw_sync_X550a");
+
+	if (mask & IXGBE_GSSR_TOKEN_SM)
+		ixgbe_put_phy_token(hw);
+
+	if (hmask)
+		ixgbe_release_swfw_sync_X540(hw, hmask);
 }
 
 /**
