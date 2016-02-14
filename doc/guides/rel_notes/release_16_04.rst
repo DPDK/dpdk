@@ -193,6 +193,13 @@ Drivers
   Resolved an issue where packets were being dropped when switching to perfect
   filters mode.
 
+* **ixgbe: Set MDIO speed after MAC reset.**
+
+  The MDIO clock speed must be reconfigured after the MAC reset. The MDIO clock
+  speed becomes invalid, therefore the driver reads invalid PHY register values.
+  The driver now set the MDIO clock speed prior to initializing PHY ops and
+  again after the MAC reset.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,
