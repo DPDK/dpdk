@@ -95,6 +95,11 @@ This section should contain new features added in this release. Sample format:
     default VxLAN port number is 4789 but this can be updated
     programmatically.
 
+* **Added new X550EM_a devices.**
+
+  Added new X550EM_a devices and their mac types, X550EM_a and X550EM_a_vf.
+  Updated the code to use the new devices and mac types.
+
 * **Enabled PCI extended tag for i40e.**
 
   It enabled extended tag by checking and writing corresponding PCI config

@@ -80,9 +80,14 @@ s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw)
 	mac->ops.mdd_event = ixgbe_mdd_event_X550;
 	mac->ops.restore_mdd_vf = ixgbe_restore_mdd_vf_X550;
 	mac->ops.disable_rx = ixgbe_disable_rx_x550;
-	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T) {
+	switch (hw->device_id) {
+	case IXGBE_DEV_ID_X550EM_X_10G_T:
+	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		hw->mac.ops.led_on = ixgbe_led_on_t_X550em;
 		hw->mac.ops.led_off = ixgbe_led_off_t_X550em;
+		break;
+	default:
+		break;
 	}
 	return ret_val;
 }
@@ -330,22 +335,36 @@ STATIC void ixgbe_setup_mux_ctl(struct ixgbe_hw *hw)
 STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 {
 	switch (hw->device_id) {
+	case IXGBE_DEV_ID_X550EM_A_SFP:
+		hw->phy.phy_semaphore_mask = IXGBE_GSSR_TOKEN_SM;
+		if (hw->bus.lan_id)
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
+		else
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY0_SM;
+		return ixgbe_identify_module_generic(hw);
 	case IXGBE_DEV_ID_X550EM_X_SFP:
 		/* set up for CS4227 usage */
 		hw->phy.phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		ixgbe_setup_mux_ctl(hw);
 		ixgbe_check_cs4227(hw);
+		/* Fallthrough */
 
+	case IXGBE_DEV_ID_X550EM_A_SFP_N:
 		return ixgbe_identify_module_generic(hw);
 		break;
 	case IXGBE_DEV_ID_X550EM_X_KX4:
 		hw->phy.type = ixgbe_phy_x550em_kx4;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_KR:
+	case IXGBE_DEV_ID_X550EM_A_KR:
+	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		hw->phy.type = ixgbe_phy_x550em_kr;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		return ixgbe_identify_phy_generic(hw);
 	default:
 		break;
@@ -419,6 +438,10 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
 		mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
 		mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
+	}
+	if (hw->mac.type == ixgbe_mac_X550EM_a) {
+		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550a;
+		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550a;
 	}
 
 	mac->ops.get_media_type = ixgbe_get_media_type_X550em;
@@ -898,6 +921,69 @@ out:
 }
 
 /**
+ *  ixgbe_write_iosf_sb_reg_x550a - Writes a value to specified register
+ *  of the IOSF device
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit PHY register to write
+ *  @device_type: 3 bit device type
+ *  @data: Data to write to the register
+ **/
+s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
+	u32 device_type, u32 data)
+{
+	struct ixgbe_hic_internal_phy_req write_cmd;
+	s32 status;
+	UNREFERENCED_1PARAMETER(device_type);
+
+	write_cmd.hdr.cmd = FW_INT_PHY_REQ_CMD;
+	write_cmd.hdr.buf_len = FW_INT_PHY_REQ_LEN;
+	write_cmd.port_number = hw->bus.lan_id;
+	write_cmd.command_type = FW_INT_PHY_REQ_WRITE;
+	write_cmd.address = (u16)reg_addr;
+	write_cmd.rsv1 = 0;
+	write_cmd.write_data = data;
+	write_cmd.pad = 0;
+
+	status = ixgbe_host_interface_command(hw, (u32 *)&write_cmd,
+		sizeof(write_cmd), IXGBE_HI_COMMAND_TIMEOUT, false);
+
+	return status;
+}
+
+/**
+ *  ixgbe_read_iosf_sb_reg_x550a - Writes a value to specified register
+ *  of the IOSF device.
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit PHY register to write
+ *  @device_type: 3 bit device type
+ *  @data: Pointer to read data from the register
+ **/
+s32 ixgbe_read_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
+	u32 device_type, u32 *data)
+{
+	struct ixgbe_hic_internal_phy_req read_cmd;
+	s32 status;
+	UNREFERENCED_1PARAMETER(device_type);
+
+	read_cmd.hdr.cmd = FW_INT_PHY_REQ_CMD;
+	read_cmd.hdr.buf_len = FW_INT_PHY_REQ_LEN;
+	read_cmd.port_number = hw->bus.lan_id;
+	read_cmd.command_type = FW_INT_PHY_REQ_READ;
+	read_cmd.address = (u16)reg_addr;
+	read_cmd.rsv1 = 0;
+	read_cmd.write_data = 0;
+	read_cmd.pad = 0;
+
+	status = ixgbe_host_interface_command(hw, (u32 *)&read_cmd,
+		sizeof(read_cmd), IXGBE_HI_COMMAND_TIMEOUT, true);
+
+	/* Extract the register value from the response. */
+	*data = ((struct ixgbe_hic_internal_phy_resp *)&read_cmd)->read_data;
+
+	return status;
+}
+
+/**
  *  ixgbe_disable_mdd_X550
  *  @hw: pointer to hardware structure
  *
@@ -1056,13 +1142,22 @@ enum ixgbe_media_type ixgbe_get_media_type_X550em(struct ixgbe_hw *hw)
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_X_KR:
 	case IXGBE_DEV_ID_X550EM_X_KX4:
+	case IXGBE_DEV_ID_X550EM_A_KR:
+	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		media_type = ixgbe_media_type_backplane;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_SFP:
+	case IXGBE_DEV_ID_X550EM_A_SFP:
+	case IXGBE_DEV_ID_X550EM_A_SFP_N:
+	case IXGBE_DEV_ID_X550EM_A_QSFP:
+	case IXGBE_DEV_ID_X550EM_A_QSFP_N:
 		media_type = ixgbe_media_type_fiber;
 		break;
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		media_type = ixgbe_media_type_copper;
 		break;
 	default:

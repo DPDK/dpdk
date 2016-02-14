@@ -69,6 +69,10 @@ s32 ixgbe_write_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 				 u32 device_type, u32 data);
 s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 	u32 device_type, u32 *data);
+s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
+	u32 device_type, u32 data);
+s32 ixgbe_read_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
+	u32 device_type, u32 *data);
 void ixgbe_disable_mdd_X550(struct ixgbe_hw *hw);
 void ixgbe_enable_mdd_X550(struct ixgbe_hw *hw);
 void ixgbe_mdd_event_X550(struct ixgbe_hw *hw, u32 *vf_bitmap);
