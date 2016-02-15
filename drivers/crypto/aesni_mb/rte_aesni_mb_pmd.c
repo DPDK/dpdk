@@ -298,7 +298,7 @@ aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
 static struct aesni_mb_session *
 get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *crypto_op)
 {
-	struct aesni_mb_session *sess;
+	struct aesni_mb_session *sess = NULL;
 
 	if (crypto_op->type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (unlikely(crypto_op->session->type !=
@@ -307,16 +307,19 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *crypto_op)
 
 		sess = (struct aesni_mb_session *)crypto_op->session->_private;
 	} else  {
-		struct rte_cryptodev_session *c_sess = NULL;
+		void *_sess = NULL;
 
-		if (rte_mempool_get(qp->sess_mp, (void **)&c_sess))
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		sess = (struct aesni_mb_session *)c_sess->_private;
+		sess = (struct aesni_mb_session *)
+			((struct rte_cryptodev_session *)_sess)->_private;
 
 		if (unlikely(aesni_mb_set_session_parameters(qp->ops,
-				sess, crypto_op->xform) != 0))
-			return NULL;
+				sess, crypto_op->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, _sess);
+			sess = NULL;
+		}
 	}
 
 	return sess;
