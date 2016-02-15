@@ -628,7 +628,7 @@ cryptodev_aesni_mb_create(const char *name, unsigned socket_id)
 	internals->max_nb_queue_pairs = RTE_AESNI_MB_PMD_MAX_NB_QUEUE_PAIRS;
 	internals->max_nb_sessions = RTE_AESNI_MB_PMD_MAX_NB_SESSIONS;
 
-	return dev->data->dev_id;
+	return 0;
 init_error:
 	MB_LOG_ERR("driver %s: cryptodev_aesni_create failed", name);
 

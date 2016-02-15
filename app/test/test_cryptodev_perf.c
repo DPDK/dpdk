@@ -107,6 +107,7 @@ testsuite_setup(void)
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info info;
 	unsigned i, nb_devs, valid_dev_id = 0;
+	int ret;
 	uint16_t qp_id;
 
 	ts_params->mbuf_mp = rte_mempool_lookup("CRYPTO_PERF_MBUFPOOL");
@@ -138,10 +139,10 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_MB_PMD);
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
-				int dev_id = rte_eal_vdev_init(
+				ret = rte_eal_vdev_init(
 					CRYPTODEV_NAME_AESNI_MB_PMD, NULL);
 
-				TEST_ASSERT(dev_id >= 0,
+				TEST_ASSERT(ret == 0,
 					"Failed to create instance %u of pmd : %s",
 					i, CRYPTODEV_NAME_AESNI_MB_PMD);
 			}

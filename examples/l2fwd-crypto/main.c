@@ -1184,9 +1184,9 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports)
 			return -1;
 	} else if (options->cdev_type == RTE_CRYPTODEV_AESNI_MB_PMD) {
 		for (i = 0; i < nb_ports; i++) {
-			int id = rte_eal_vdev_init(CRYPTODEV_NAME_AESNI_MB_PMD,
+			int retval = rte_eal_vdev_init(CRYPTODEV_NAME_AESNI_MB_PMD,
 					NULL);
-			if (id < 0)
+			if (retval < 0)
 				return -1;
 		}
 	}

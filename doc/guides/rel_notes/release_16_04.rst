@@ -66,6 +66,13 @@ EAL
 Drivers
 ~~~~~~~
 
+* **aesni_mb: Fixed wrong return value when creating a device.**
+
+  cryptodev_aesni_mb_init() was returning the device id of the device created,
+  instead of 0 (when success), that rte_eal_vdev_init() expects.
+  This made impossible the creation of more than one aesni_mb device
+  from command line.
+
 
 Libraries
 ~~~~~~~~~

@@ -143,7 +143,8 @@ testsuite_setup(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info info;
-	unsigned i, nb_devs, dev_id = 0;
+	unsigned i, nb_devs, dev_id;
+	int ret;
 	uint16_t qp_id;
 
 	memset(ts_params, 0, sizeof(*ts_params));
@@ -177,10 +178,10 @@ testsuite_setup(void)
 				RTE_CRYPTODEV_AESNI_MB_PMD);
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
-				int dev_id = rte_eal_vdev_init(
+				ret = rte_eal_vdev_init(
 					CRYPTODEV_NAME_AESNI_MB_PMD, NULL);
 
-				TEST_ASSERT(dev_id >= 0,
+				TEST_ASSERT(ret == 0,
 					"Failed to create instance %u of"
 					" pmd : %s",
 					i, CRYPTODEV_NAME_AESNI_MB_PMD);
