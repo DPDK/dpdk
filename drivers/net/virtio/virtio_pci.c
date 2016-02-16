@@ -795,7 +795,7 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_hw *hw)
 	struct virtio_pci_cap cap;
 	int ret;
 
-	if (rte_eal_pci_map_device(dev) < 0) {
+	if (rte_eal_pci_map_device(dev)) {
 		PMD_INIT_LOG(DEBUG, "failed to map pci device!");
 		return -1;
 	}
