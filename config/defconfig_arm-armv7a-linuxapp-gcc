@@ -30,7 +30,7 @@
 
 #include "common_linuxapp"
 
-CONFIG_RTE_MACHINE="armv7-a"
+CONFIG_RTE_MACHINE="armv7a"
 
 CONFIG_RTE_ARCH="arm"
 CONFIG_RTE_ARCH_ARM=y
