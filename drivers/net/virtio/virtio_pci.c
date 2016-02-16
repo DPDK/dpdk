@@ -439,7 +439,7 @@ legacy_virtio_resource_init(struct rte_pci_device *pci_dev)
 
 #else
 static int
-legayc_virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
+legacy_virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
 {
 	/* nic_uio does not enable interrupts, return 0 (false). */
 	return 0;
