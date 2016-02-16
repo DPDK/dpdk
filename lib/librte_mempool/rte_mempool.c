@@ -438,8 +438,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	char rg_name[RTE_RING_NAMESIZE];
 	struct rte_mempool_list *mempool_list;
 	struct rte_mempool *mp = NULL;
-	struct rte_tailq_entry *te;
-	struct rte_ring *r;
+	struct rte_tailq_entry *te = NULL;
+	struct rte_ring *r = NULL;
 	const struct rte_memzone *mz;
 	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
@@ -511,7 +511,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	snprintf(rg_name, sizeof(rg_name), RTE_MEMPOOL_MZ_FORMAT, name);
 	r = rte_ring_create(rg_name, rte_align32pow2(n+1), socket_id, rg_flags);
 	if (r == NULL)
-		goto exit;
+		goto exit_unlock;
 
 	/*
 	 * reserve a memory zone for this mempool: private data is
@@ -536,7 +536,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	te = rte_zmalloc("MEMPOOL_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
 		RTE_LOG(ERR, MEMPOOL, "Cannot allocate tailq entry!\n");
-		goto exit;
+		goto exit_unlock;
 	}
 
 	/*
@@ -561,15 +561,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
-
-	/*
-	 * no more memory: in this case we loose previously reserved
-	 * space for the ring as we cannot free it
-	 */
-	if (mz == NULL) {
-		rte_free(te);
-		goto exit;
-	}
+	if (mz == NULL)
+		goto exit_unlock;
 
 	if (rte_eal_has_hugepages()) {
 		startaddr = (void*)mz->addr;
@@ -633,11 +626,16 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_INSERT_TAIL(mempool_list, te, next);
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-
-exit:
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
 
 	return mp;
+
+exit_unlock:
+	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_ring_free(r);
+	rte_free(te);
+
+	return NULL;
 }
 
 /* Return the number of entries in the mempool */
