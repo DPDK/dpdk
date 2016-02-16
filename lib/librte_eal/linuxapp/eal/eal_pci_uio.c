@@ -39,6 +39,10 @@
 #include <sys/mman.h>
 #include <linux/pci_regs.h>
 
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#include <sys/io.h>
+#endif
+
 #include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_eal_memconfig.h>
@@ -145,7 +149,7 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
  */
 static int
 pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
-			   unsigned int buflen)
+			   unsigned int buflen, int create)
 {
 	struct rte_pci_addr *loc = &dev->addr;
 	unsigned int uio_num;
@@ -208,7 +212,7 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 		return -1;
 
 	/* create uio device if we've been asked to */
-	if (internal_config.create_uio_dev &&
+	if (internal_config.create_uio_dev && create &&
 			pci_mknod_uio_dev(dstbuf, uio_num) < 0)
 		RTE_LOG(WARNING, EAL, "Cannot create /dev/uio%u\n", uio_num);
 
@@ -245,7 +249,7 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 	loc = &dev->addr;
 
 	/* find uio resource */
-	uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname));
+	uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname), 1);
 	if (uio_num < 0) {
 		RTE_LOG(WARNING, EAL, "  "PCI_PRI_FMT" not managed by UIO driver, "
 				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
@@ -362,4 +366,126 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 error:
 	rte_free(maps[map_idx].path);
 	return -1;
+}
+
+int
+pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
+		   struct rte_pci_ioport *p)
+{
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	char dirname[PATH_MAX];
+	char filename[PATH_MAX];
+	int uio_num;
+	unsigned long start;
+
+	uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname), 0);
+	if (uio_num < 0)
+		return -1;
+
+	/* get portio start */
+	snprintf(filename, sizeof(filename),
+		 "%s/portio/port%d/start", dirname, bar);
+	if (eal_parse_sysfs_value(filename, &start) < 0) {
+		RTE_LOG(ERR, EAL, "%s(): cannot parse portio start\n",
+			__func__);
+		return -1;
+	}
+	/* ensure we don't get anything funny here, read/write will cast to
+	 * uin16_t */
+	if (start > UINT16_MAX)
+		return -1;
+
+	/* FIXME only for primary process ? */
+	if (dev->intr_handle.type == RTE_INTR_HANDLE_UNKNOWN) {
+
+		snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
+		dev->intr_handle.fd = open(filename, O_RDWR);
+		if (dev->intr_handle.fd < 0) {
+			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+				filename, strerror(errno));
+			return -1;
+		}
+		dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
+	}
+
+	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%lx\n", start);
+
+	p->base = start;
+	return 0;
+#else
+	RTE_SET_USED(dev);
+	RTE_SET_USED(bar);
+	RTE_SET_USED(p);
+	return -1;
+#endif
+}
+
+void
+pci_uio_ioport_read(struct rte_pci_ioport *p,
+		    void *data, size_t len, off_t offset)
+{
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	uint8_t *d;
+	int size;
+	unsigned short reg = p->base + offset;
+
+	for (d = data; len > 0; d += size, reg += size, len -= size) {
+		if (len >= 4) {
+			size = 4;
+			*(uint32_t *)d = inl(reg);
+		} else if (len >= 2) {
+			size = 2;
+			*(uint16_t *)d = inw(reg);
+		} else {
+			size = 1;
+			*d = inb(reg);
+		}
+	}
+#else
+	RTE_SET_USED(p);
+	RTE_SET_USED(data);
+	RTE_SET_USED(len);
+	RTE_SET_USED(offset);
+#endif
+}
+
+void
+pci_uio_ioport_write(struct rte_pci_ioport *p,
+		     const void *data, size_t len, off_t offset)
+{
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	const uint8_t *s;
+	int size;
+	unsigned short reg = p->base + offset;
+
+	for (s = data; len > 0; s += size, reg += size, len -= size) {
+		if (len >= 4) {
+			size = 4;
+			outl_p(*(const uint32_t *)s, reg);
+		} else if (len >= 2) {
+			size = 2;
+			outw_p(*(const uint16_t *)s, reg);
+		} else {
+			size = 1;
+			outb_p(*s, reg);
+		}
+	}
+#else
+	RTE_SET_USED(p);
+	RTE_SET_USED(data);
+	RTE_SET_USED(len);
+	RTE_SET_USED(offset);
+#endif
+}
+
+int
+pci_uio_ioport_unmap(struct rte_pci_ioport *p)
+{
+	RTE_SET_USED(p);
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	/* FIXME close intr fd ? */
+	return 0;
+#else
+	return -1;
+#endif
 }

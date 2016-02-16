@@ -51,6 +51,11 @@
 #include <sys/pciio.h>
 #include <dev/pci/pcireg.h>
 
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#include <sys/types.h>
+#include <machine/cpufunc.h>
+#endif
+
 #include <rte_interrupts.h>
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -477,6 +482,136 @@ int rte_eal_pci_write_config(const struct rte_pci_device *dev,
 	if (fd >= 0)
 		close(fd);
 	return -1;
+}
+
+int
+rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
+		       struct rte_pci_ioport *p)
+{
+	int ret;
+
+	switch (dev->kdrv) {
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	case RTE_KDRV_NIC_UIO:
+		if ((uintptr_t) dev->mem_resource[bar].addr <= UINT16_MAX) {
+			p->base = (uintptr_t)dev->mem_resource[bar].addr;
+			ret = 0;
+		} else
+			ret = -1;
+		break;
+#endif
+	default:
+		ret = -1;
+		break;
+	}
+
+	if (!ret)
+		p->dev = dev;
+
+	return ret;
+}
+
+static void
+pci_uio_ioport_read(struct rte_pci_ioport *p,
+		    void *data, size_t len, off_t offset)
+{
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	uint8_t *d;
+	int size;
+	unsigned short reg = p->base + offset;
+
+	for (d = data; len > 0; d += size, reg += size, len -= size) {
+		if (len >= 4) {
+			size = 4;
+			*(uint32_t *)d = inl(reg);
+		} else if (len >= 2) {
+			size = 2;
+			*(uint16_t *)d = inw(reg);
+		} else {
+			size = 1;
+			*d = inb(reg);
+		}
+	}
+#else
+	RTE_SET_USED(p);
+	RTE_SET_USED(data);
+	RTE_SET_USED(len);
+	RTE_SET_USED(offset);
+#endif
+}
+
+void
+rte_eal_pci_ioport_read(struct rte_pci_ioport *p,
+			void *data, size_t len, off_t offset)
+{
+	switch (p->dev->kdrv) {
+	case RTE_KDRV_NIC_UIO:
+		pci_uio_ioport_read(p, data, len, offset);
+		break;
+	default:
+		break;
+	}
+}
+
+static void
+pci_uio_ioport_write(struct rte_pci_ioport *p,
+		     const void *data, size_t len, off_t offset)
+{
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	const uint8_t *s;
+	int size;
+	unsigned short reg = p->base + offset;
+
+	for (s = data; len > 0; s += size, reg += size, len -= size) {
+		if (len >= 4) {
+			size = 4;
+			outl(*(const uint32_t *)s, reg);
+		} else if (len >= 2) {
+			size = 2;
+			outw(*(const uint16_t *)s, reg);
+		} else {
+			size = 1;
+			outb(*s, reg);
+		}
+	}
+#else
+	RTE_SET_USED(p);
+	RTE_SET_USED(data);
+	RTE_SET_USED(len);
+	RTE_SET_USED(offset);
+#endif
+}
+
+void
+rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
+			 const void *data, size_t len, off_t offset)
+{
+	switch (p->dev->kdrv) {
+	case RTE_KDRV_NIC_UIO:
+		pci_uio_ioport_write(p, data, len, offset);
+		break;
+	default:
+		break;
+	}
+}
+
+int
+rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
+{
+	int ret;
+
+	switch (p->dev->kdrv) {
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+	case RTE_KDRV_NIC_UIO:
+		ret = 0;
+		break;
+#endif
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
 }
 
 /* Init the PCI EAL subsystem */

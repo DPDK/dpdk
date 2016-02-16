@@ -976,6 +976,43 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 }
 
 int
+pci_vfio_ioport_map(struct rte_pci_device *dev, int bar,
+		    struct rte_pci_ioport *p)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(bar);
+	RTE_SET_USED(p);
+	return -1;
+}
+
+void
+pci_vfio_ioport_read(struct rte_pci_ioport *p,
+		     void *data, size_t len, off_t offset)
+{
+	RTE_SET_USED(p);
+	RTE_SET_USED(data);
+	RTE_SET_USED(len);
+	RTE_SET_USED(offset);
+}
+
+void
+pci_vfio_ioport_write(struct rte_pci_ioport *p,
+		      const void *data, size_t len, off_t offset)
+{
+	RTE_SET_USED(p);
+	RTE_SET_USED(data);
+	RTE_SET_USED(len);
+	RTE_SET_USED(offset);
+}
+
+int
+pci_vfio_ioport_unmap(struct rte_pci_ioport *p)
+{
+	RTE_SET_USED(p);
+	return -1;
+}
+
+int
 pci_vfio_enable(void)
 {
 	/* initialize group list */
