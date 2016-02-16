@@ -66,8 +66,9 @@ Compilation of the DPDK
     default and affect performance (``-fstack-protector``, for example). Please refer to the documentation
     of your distribution and to ``gcc -dumpspecs``.
 
-*   libc headers (glibc-devel.i686 / libc6-dev-i386; glibc-devel.x86_64 for 64-bit compilation on Intel
-    architecture; glibc-devel.ppc64 for 64 bit IBM Power architecture;)
+*   libc headers, often packaged as ``gcc-multilib`` (``glibc-devel.i686`` / ``libc6-dev-i386``;
+    ``glibc-devel.x86_64`` / ``libc6-dev`` for 64-bit compilation on Intel architecture;
+    ``glibc-devel.ppc64`` for 64 bit IBM Power architecture;)
 
 *   Linux kernel headers or sources required to build kernel modules. (kernel - devel.x86_64;
     kernel - devel.ppc64)
