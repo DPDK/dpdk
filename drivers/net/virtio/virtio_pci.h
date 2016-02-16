@@ -36,13 +36,7 @@
 
 #include <stdint.h>
 
-#ifdef __FreeBSD__
-#include <sys/types.h>
-#include <machine/cpufunc.h>
-#else
-#include <sys/io.h>
-#endif
-
+#include <rte_pci.h>
 #include <rte_ethdev.h>
 
 struct virtqueue;
@@ -249,7 +243,7 @@ struct virtio_net_config;
 
 struct virtio_hw {
 	struct virtqueue *cvq;
-	uint32_t    io_base;
+	struct rte_pci_ioport io;
 	uint64_t    guest_features;
 	uint32_t    max_tx_queues;
 	uint32_t    max_rx_queues;
@@ -282,12 +276,6 @@ struct virtio_net_config {
 } __attribute__((packed));
 
 /*
- * The remaining space is defined by each driver as the per-driver
- * configuration space.
- */
-#define VIRTIO_PCI_CONFIG(hw) (((hw)->use_msix) ? 24 : 20)
-
-/*
  * How many bits to shift physical queue address written to QUEUE_PFN.
  * 12 is historical, and due to x86 page size.
  */
@@ -295,28 +283,6 @@ struct virtio_net_config {
 
 /* The alignment to use between consumer and producer parts of vring. */
 #define VIRTIO_PCI_VRING_ALIGN 4096
-
-#ifdef __FreeBSD__
-
-static inline void
-outb_p(unsigned char data, unsigned int port)
-{
-
-	outb(port, (u_char)data);
-}
-
-static inline void
-outw_p(unsigned short data, unsigned int port)
-{
-	outw(port, (u_short)data);
-}
-
-static inline void
-outl_p(unsigned int data, unsigned int port)
-{
-	outl(port, (u_int)data);
-}
-#endif
 
 static inline int
 vtpci_with_feature(struct virtio_hw *hw, uint64_t bit)

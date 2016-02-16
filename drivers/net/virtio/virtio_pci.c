@@ -49,74 +49,35 @@
 #define PCI_CAPABILITY_LIST	0x34
 #define PCI_CAP_ID_VNDR		0x09
 
-#define VIRTIO_PCI_REG_ADDR(hw, reg) \
-	(unsigned short)((hw)->io_base + (reg))
-
-#define VIRTIO_READ_REG_1(hw, reg) \
-	inb((VIRTIO_PCI_REG_ADDR((hw), (reg))))
-#define VIRTIO_WRITE_REG_1(hw, reg, value) \
-	outb_p((unsigned char)(value), (VIRTIO_PCI_REG_ADDR((hw), (reg))))
-
-#define VIRTIO_READ_REG_2(hw, reg) \
-	inw((VIRTIO_PCI_REG_ADDR((hw), (reg))))
-#define VIRTIO_WRITE_REG_2(hw, reg, value) \
-	outw_p((unsigned short)(value), (VIRTIO_PCI_REG_ADDR((hw), (reg))))
-
-#define VIRTIO_READ_REG_4(hw, reg) \
-	inl((VIRTIO_PCI_REG_ADDR((hw), (reg))))
-#define VIRTIO_WRITE_REG_4(hw, reg, value) \
-	outl_p((unsigned int)(value), (VIRTIO_PCI_REG_ADDR((hw), (reg))))
+/*
+ * The remaining space is defined by each driver as the per-driver
+ * configuration space.
+ */
+#define VIRTIO_PCI_CONFIG(hw) (((hw)->use_msix) ? 24 : 20)
 
 static void
 legacy_read_dev_config(struct virtio_hw *hw, size_t offset,
 		       void *dst, int length)
 {
-	uint64_t off;
-	uint8_t *d;
-	int size;
-
-	off = VIRTIO_PCI_CONFIG(hw) + offset;
-	for (d = dst; length > 0; d += size, off += size, length -= size) {
-		if (length >= 4) {
-			size = 4;
-			*(uint32_t *)d = VIRTIO_READ_REG_4(hw, off);
-		} else if (length >= 2) {
-			size = 2;
-			*(uint16_t *)d = VIRTIO_READ_REG_2(hw, off);
-		} else {
-			size = 1;
-			*d = VIRTIO_READ_REG_1(hw, off);
-		}
-	}
+	rte_eal_pci_ioport_read(&hw->io, dst, length,
+				VIRTIO_PCI_CONFIG(hw) + offset);
 }
 
 static void
 legacy_write_dev_config(struct virtio_hw *hw, size_t offset,
 			const void *src, int length)
 {
-	uint64_t off;
-	const uint8_t *s;
-	int size;
-
-	off = VIRTIO_PCI_CONFIG(hw) + offset;
-	for (s = src; length > 0; s += size, off += size, length -= size) {
-		if (length >= 4) {
-			size = 4;
-			VIRTIO_WRITE_REG_4(hw, off, *(const uint32_t *)s);
-		} else if (length >= 2) {
-			size = 2;
-			VIRTIO_WRITE_REG_2(hw, off, *(const uint16_t *)s);
-		} else {
-			size = 1;
-			VIRTIO_WRITE_REG_1(hw, off, *s);
-		}
-	}
+	rte_eal_pci_ioport_write(&hw->io, src, length,
+				 VIRTIO_PCI_CONFIG(hw) + offset);
 }
 
 static uint64_t
 legacy_get_features(struct virtio_hw *hw)
 {
-	return VIRTIO_READ_REG_4(hw, VIRTIO_PCI_HOST_FEATURES);
+	uint64_t dst;
+
+	rte_eal_pci_ioport_read(&hw->io, &dst, 4, VIRTIO_PCI_HOST_FEATURES);
+	return dst;
 }
 
 static void
@@ -127,19 +88,23 @@ legacy_set_features(struct virtio_hw *hw, uint64_t features)
 			"only 32 bit features are allowed for legacy virtio!");
 		return;
 	}
-	VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_GUEST_FEATURES, features);
+	rte_eal_pci_ioport_write(&hw->io, &features, 4,
+				 VIRTIO_PCI_GUEST_FEATURES);
 }
 
 static uint8_t
 legacy_get_status(struct virtio_hw *hw)
 {
-	return VIRTIO_READ_REG_1(hw, VIRTIO_PCI_STATUS);
+	uint8_t dst;
+
+	rte_eal_pci_ioport_read(&hw->io, &dst, 1, VIRTIO_PCI_STATUS);
+	return dst;
 }
 
 static void
 legacy_set_status(struct virtio_hw *hw, uint8_t status)
 {
-	VIRTIO_WRITE_REG_1(hw, VIRTIO_PCI_STATUS, status);
+	rte_eal_pci_ioport_write(&hw->io, &status, 1, VIRTIO_PCI_STATUS);
 }
 
 static void
@@ -151,147 +116,62 @@ legacy_reset(struct virtio_hw *hw)
 static uint8_t
 legacy_get_isr(struct virtio_hw *hw)
 {
-	return VIRTIO_READ_REG_1(hw, VIRTIO_PCI_ISR);
+	uint8_t dst;
+
+	rte_eal_pci_ioport_read(&hw->io, &dst, 1, VIRTIO_PCI_ISR);
+	return dst;
 }
 
 /* Enable one vector (0) for Link State Intrerrupt */
 static uint16_t
 legacy_set_config_irq(struct virtio_hw *hw, uint16_t vec)
 {
-	VIRTIO_WRITE_REG_2(hw, VIRTIO_MSI_CONFIG_VECTOR, vec);
-	return VIRTIO_READ_REG_2(hw, VIRTIO_MSI_CONFIG_VECTOR);
+	uint16_t dst;
+
+	rte_eal_pci_ioport_write(&hw->io, &vec, 2, VIRTIO_MSI_CONFIG_VECTOR);
+	rte_eal_pci_ioport_read(&hw->io, &dst, 2, VIRTIO_MSI_CONFIG_VECTOR);
+	return dst;
 }
 
 static uint16_t
 legacy_get_queue_num(struct virtio_hw *hw, uint16_t queue_id)
 {
-	VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, queue_id);
-	return VIRTIO_READ_REG_2(hw, VIRTIO_PCI_QUEUE_NUM);
+	uint16_t dst;
+
+	rte_eal_pci_ioport_write(&hw->io, &queue_id, 2, VIRTIO_PCI_QUEUE_SEL);
+	rte_eal_pci_ioport_read(&hw->io, &dst, 2, VIRTIO_PCI_QUEUE_NUM);
+	return dst;
 }
 
 static void
 legacy_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
-	VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->vq_queue_index);
+	uint32_t src;
 
-	VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN,
-		vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT);
+	rte_eal_pci_ioport_write(&hw->io, &vq->vq_queue_index, 2,
+			 VIRTIO_PCI_QUEUE_SEL);
+	src = vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
+	rte_eal_pci_ioport_write(&hw->io, &src, 4, VIRTIO_PCI_QUEUE_PFN);
 }
 
 static void
 legacy_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
-	VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_SEL, vq->vq_queue_index);
+	uint32_t src = 0;
 
-	VIRTIO_WRITE_REG_4(hw, VIRTIO_PCI_QUEUE_PFN, 0);
+	rte_eal_pci_ioport_write(&hw->io, &vq->vq_queue_index, 2,
+			 VIRTIO_PCI_QUEUE_SEL);
+	rte_eal_pci_ioport_write(&hw->io, &src, 4, VIRTIO_PCI_QUEUE_PFN);
 }
 
 static void
 legacy_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
-	VIRTIO_WRITE_REG_2(hw, VIRTIO_PCI_QUEUE_NOTIFY, vq->vq_queue_index);
+	rte_eal_pci_ioport_write(&hw->io, &vq->vq_queue_index, 2,
+			 VIRTIO_PCI_QUEUE_NOTIFY);
 }
 
 #ifdef RTE_EXEC_ENV_LINUXAPP
-static int
-parse_sysfs_value(const char *filename, unsigned long *val)
-{
-	FILE *f;
-	char buf[BUFSIZ];
-	char *end = NULL;
-
-	f = fopen(filename, "r");
-	if (f == NULL) {
-		PMD_INIT_LOG(ERR, "%s(): cannot open sysfs value %s",
-			     __func__, filename);
-		return -1;
-	}
-
-	if (fgets(buf, sizeof(buf), f) == NULL) {
-		PMD_INIT_LOG(ERR, "%s(): cannot read sysfs value %s",
-			     __func__, filename);
-		fclose(f);
-		return -1;
-	}
-	*val = strtoul(buf, &end, 0);
-	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
-		PMD_INIT_LOG(ERR, "%s(): cannot parse sysfs value %s",
-			     __func__, filename);
-		fclose(f);
-		return -1;
-	}
-	fclose(f);
-	return 0;
-}
-
-static int
-get_uio_dev(struct rte_pci_addr *loc, char *buf, unsigned int buflen,
-			unsigned int *uio_num)
-{
-	struct dirent *e;
-	DIR *dir;
-	char dirname[PATH_MAX];
-
-	/*
-	 * depending on kernel version, uio can be located in uio/uioX
-	 * or uio:uioX
-	 */
-	snprintf(dirname, sizeof(dirname),
-		     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
-		     loc->domain, loc->bus, loc->devid, loc->function);
-	dir = opendir(dirname);
-	if (dir == NULL) {
-		/* retry with the parent directory */
-		snprintf(dirname, sizeof(dirname),
-			     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
-			     loc->domain, loc->bus, loc->devid, loc->function);
-		dir = opendir(dirname);
-
-		if (dir == NULL) {
-			PMD_INIT_LOG(ERR, "Cannot opendir %s", dirname);
-			return -1;
-		}
-	}
-
-	/* take the first file starting with "uio" */
-	while ((e = readdir(dir)) != NULL) {
-		/* format could be uio%d ...*/
-		int shortprefix_len = sizeof("uio") - 1;
-		/* ... or uio:uio%d */
-		int longprefix_len = sizeof("uio:uio") - 1;
-		char *endptr;
-
-		if (strncmp(e->d_name, "uio", 3) != 0)
-			continue;
-
-		/* first try uio%d */
-		errno = 0;
-		*uio_num = strtoull(e->d_name + shortprefix_len, &endptr, 10);
-		if (errno == 0 && endptr != (e->d_name + shortprefix_len)) {
-			snprintf(buf, buflen, "%s/uio%u", dirname, *uio_num);
-			break;
-		}
-
-		/* then try uio:uio%d */
-		errno = 0;
-		*uio_num = strtoull(e->d_name + longprefix_len, &endptr, 10);
-		if (errno == 0 && endptr != (e->d_name + longprefix_len)) {
-			snprintf(buf, buflen, "%s/uio:uio%u", dirname,
-				     *uio_num);
-			break;
-		}
-	}
-	closedir(dir);
-
-	/* No uio resource found */
-	if (e == NULL) {
-		PMD_INIT_LOG(ERR, "Could not find uio resource");
-		return -1;
-	}
-
-	return 0;
-}
-
 static int
 legacy_virtio_has_msix(const struct rte_pci_addr *loc)
 {
@@ -308,135 +188,6 @@ legacy_virtio_has_msix(const struct rte_pci_addr *loc)
 
 	return d != NULL;
 }
-
-/* Extract I/O port numbers from sysfs */
-static int
-virtio_resource_init_by_uio(struct rte_pci_device *pci_dev)
-{
-	char dirname[PATH_MAX];
-	char filename[PATH_MAX];
-	unsigned long start, size;
-	unsigned int uio_num;
-
-	if (get_uio_dev(&pci_dev->addr, dirname, sizeof(dirname), &uio_num) < 0)
-		return -1;
-
-	/* get portio size */
-	snprintf(filename, sizeof(filename),
-		     "%s/portio/port0/size", dirname);
-	if (parse_sysfs_value(filename, &size) < 0) {
-		PMD_INIT_LOG(ERR, "%s(): cannot parse size",
-			     __func__);
-		return -1;
-	}
-
-	/* get portio start */
-	snprintf(filename, sizeof(filename),
-		 "%s/portio/port0/start", dirname);
-	if (parse_sysfs_value(filename, &start) < 0) {
-		PMD_INIT_LOG(ERR, "%s(): cannot parse portio start",
-			     __func__);
-		return -1;
-	}
-	pci_dev->mem_resource[0].addr = (void *)(uintptr_t)start;
-	pci_dev->mem_resource[0].len =  (uint64_t)size;
-	PMD_INIT_LOG(DEBUG,
-		     "PCI Port IO found start=0x%lx with size=0x%lx",
-		     start, size);
-
-	/* save fd */
-	memset(dirname, 0, sizeof(dirname));
-	snprintf(dirname, sizeof(dirname), "/dev/uio%u", uio_num);
-	pci_dev->intr_handle.fd = open(dirname, O_RDWR);
-	if (pci_dev->intr_handle.fd < 0) {
-		PMD_INIT_LOG(ERR, "Cannot open %s: %s\n",
-			dirname, strerror(errno));
-		return -1;
-	}
-
-	pci_dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
-	pci_dev->driver->drv_flags |= RTE_PCI_DRV_INTR_LSC;
-
-	return 0;
-}
-
-/* Extract port I/O numbers from proc/ioports */
-static int
-virtio_resource_init_by_ioports(struct rte_pci_device *pci_dev)
-{
-	uint16_t start, end;
-	int size;
-	FILE *fp;
-	char *line = NULL;
-	char pci_id[16];
-	int found = 0;
-	size_t linesz;
-
-	snprintf(pci_id, sizeof(pci_id), PCI_PRI_FMT,
-		 pci_dev->addr.domain,
-		 pci_dev->addr.bus,
-		 pci_dev->addr.devid,
-		 pci_dev->addr.function);
-
-	fp = fopen("/proc/ioports", "r");
-	if (fp == NULL) {
-		PMD_INIT_LOG(ERR, "%s(): can't open ioports", __func__);
-		return -1;
-	}
-
-	while (getdelim(&line, &linesz, '\n', fp) > 0) {
-		char *ptr = line;
-		char *left;
-		int n;
-
-		n = strcspn(ptr, ":");
-		ptr[n] = 0;
-		left = &ptr[n + 1];
-
-		while (*left && isspace(*left))
-			left++;
-
-		if (!strncmp(left, pci_id, strlen(pci_id))) {
-			found = 1;
-
-			while (*ptr && isspace(*ptr))
-				ptr++;
-
-			sscanf(ptr, "%04hx-%04hx", &start, &end);
-			size = end - start + 1;
-
-			break;
-		}
-	}
-
-	free(line);
-	fclose(fp);
-
-	if (!found)
-		return -1;
-
-	pci_dev->mem_resource[0].addr = (void *)(uintptr_t)(uint32_t)start;
-	pci_dev->mem_resource[0].len =  (uint64_t)size;
-	PMD_INIT_LOG(DEBUG,
-		"PCI Port IO found start=0x%x with size=0x%x",
-		start, size);
-
-	/* can't support lsc interrupt without uio */
-	pci_dev->driver->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
-
-	return 0;
-}
-
-/* Extract I/O port numbers from sysfs */
-static int
-legacy_virtio_resource_init(struct rte_pci_device *pci_dev)
-{
-	if (virtio_resource_init_by_uio(pci_dev) == 0)
-		return 0;
-	else
-		return virtio_resource_init_by_ioports(pci_dev);
-}
-
 #else
 static int
 legacy_virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
@@ -444,14 +195,22 @@ legacy_virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
 	/* nic_uio does not enable interrupts, return 0 (false). */
 	return 0;
 }
+#endif
 
 static int
-legacy_virtio_resource_init(struct rte_pci_device *pci_dev __rte_unused)
+legacy_virtio_resource_init(struct rte_pci_device *pci_dev,
+			    struct virtio_hw *hw)
 {
-	/* no setup required */
+	if (rte_eal_pci_ioport_map(pci_dev, 0, &hw->io) < 0)
+		return -1;
+
+	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UNKNOWN)
+		pci_dev->driver->drv_flags |= RTE_PCI_DRV_INTR_LSC;
+	else
+		pci_dev->driver->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+
 	return 0;
 }
-#endif
 
 static const struct virtio_pci_ops legacy_ops = {
 	.read_dev_cfg	= legacy_read_dev_config,
@@ -882,12 +641,11 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 	}
 
 	PMD_INIT_LOG(INFO, "trying with legacy virtio pci.");
-	if (legacy_virtio_resource_init(dev) < 0)
+	if (legacy_virtio_resource_init(dev, hw) < 0)
 		return -1;
 
 	hw->vtpci_ops = &legacy_ops;
 	hw->use_msix = legacy_virtio_has_msix(&dev->addr);
-	hw->io_base  = (uint32_t)(uintptr_t)dev->mem_resource[0].addr;
 	hw->modern   = 0;
 
 	return 0;
