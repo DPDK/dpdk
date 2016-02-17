@@ -271,8 +271,33 @@ struct pipeline_be_ops {
 	pipeline_be_op_track f_track;
 };
 
-/* Parse hex string to uint8_t array */
-int
-parse_hex_string(char *src, uint8_t *dst, uint32_t *size);
+/* Pipeline specific config parse error messages */
+#define PIPELINE_ARG_CHECK(exp, fmt, ...)				\
+do {									\
+	if (!(exp)) {							\
+		fprintf(stderr, fmt "\n", ## __VA_ARGS__);		\
+		return -1;						\
+	}								\
+} while (0)
+
+#define PIPELINE_PARSE_ERR_INV_VAL(exp, section, entry, val)		\
+PIPELINE_ARG_CHECK(exp, "Parse error in section \"%s\": entry \"%s\" "	\
+	"has invalid value (\"%s\")", section, entry, val)
+
+#define PIPELINE_PARSE_ERR_OUT_RNG(exp, section, entry, val)		\
+PIPELINE_ARG_CHECK(exp, "Parse error in section \"%s\": entry \"%s\" "	\
+	"value is out of range (\"%s\")", section, entry, val)
+
+#define PIPELINE_PARSE_ERR_DUPLICATE(exp, section, entry)		\
+PIPELINE_ARG_CHECK(exp, "Parse error in section \"%s\": duplicated "	\
+	"entry \"%s\"", section, entry)
+
+#define PIPELINE_PARSE_ERR_INV_ENT(exp, section, entry)			\
+PIPELINE_ARG_CHECK(exp, "Parse error in section \"%s\": invalid entry "	\
+	"\"%s\"", section, entry)
+
+#define PIPELINE_PARSE_ERR_MANDATORY(exp, section, entry)		\
+PIPELINE_ARG_CHECK(exp, "Parse error in section \"%s\": mandatory "	\
+	"entry \"%s\" is missing", section, entry)
 
 #endif

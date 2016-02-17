@@ -42,6 +42,7 @@
 
 #include "pipeline_passthrough_be.h"
 #include "pipeline_actions_common.h"
+#include "parser.h"
 #include "hash_func.h"
 
 struct pipeline_passthrough {
@@ -238,6 +239,7 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 	uint32_t dma_size_present = 0;
 	uint32_t dma_hash_offset_present = 0;
 	uint32_t i;
+	char dma_mask_str[PIPELINE_PASSTHROUGH_DMA_SIZE_MAX * 2];
 
 	/* default values */
 	p->dma_enabled = 0;
@@ -250,11 +252,20 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 
 		/* dma_dst_offset */
 		if (strcmp(arg_name, "dma_dst_offset") == 0) {
-			if (dma_dst_offset_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				dma_dst_offset_present == 0, params->name,
+				arg_name);
 			dma_dst_offset_present = 1;
 
-			p->dma_dst_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->dma_dst_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
+
 			p->dma_enabled = 1;
 
 			continue;
@@ -262,11 +273,20 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 
 		/* dma_src_offset */
 		if (strcmp(arg_name, "dma_src_offset") == 0) {
-			if (dma_src_offset_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				dma_src_offset_present == 0, params->name,
+				arg_name);
 			dma_src_offset_present = 1;
 
-			p->dma_src_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->dma_src_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
+
 			p->dma_enabled = 1;
 
 			continue;
@@ -274,15 +294,23 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 
 		/* dma_size */
 		if (strcmp(arg_name, "dma_size") == 0) {
-			if (dma_size_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				dma_size_present == 0, params->name,
+				arg_name);
 			dma_size_present = 1;
 
-			p->dma_size = atoi(arg_value);
-			if ((p->dma_size == 0) ||
-				(p->dma_size > PIPELINE_PASSTHROUGH_DMA_SIZE_MAX) ||
-				((p->dma_size % 8) != 0))
-				return -1;
+			status = parser_read_uint32(&p->dma_size,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL(((status != -EINVAL) &&
+				(p->dma_size != 0) &&
+				((p->dma_size % 8) == 0)),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG(((status != -ERANGE) &&
+				(p->dma_size <=
+				PIPELINE_PASSTHROUGH_DMA_SIZE_MAX)),
+				params->name, arg_name, arg_value);
 
 			p->dma_enabled = 1;
 
@@ -291,34 +319,22 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 
 		/* dma_src_mask */
 		if (strcmp(arg_name, "dma_src_mask") == 0) {
-			uint32_t dma_size;
-			int status;
+			int mask_str_len = strlen(arg_value);
 
-			if (dma_src_mask_present ||
-				(dma_size_present == 0))
-				return -1;
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				dma_src_mask_present == 0,
+				params->name, arg_name);
 			dma_src_mask_present = 1;
 
-			dma_size = p->dma_size;
-			status = parse_hex_string(arg_value,
-				p->dma_src_mask,
-				&dma_size);
-			if (status ||
-				(dma_size != p->dma_size))
-				return -1;
+			PIPELINE_ARG_CHECK((mask_str_len <
+				(PIPELINE_PASSTHROUGH_DMA_SIZE_MAX * 2)),
+				"Parse error in section \"%s\": entry "
+				"\"%s\" too long", params->name,
+				arg_name);
 
-			p->dma_enabled = 1;
+			snprintf(dma_mask_str, mask_str_len + 1,
+				"%s", arg_value);
 
-			continue;
-		}
-
-		/* dma_dst_offset */
-		if (strcmp(arg_name, "dma_dst_offset") == 0) {
-			if (dma_dst_offset_present)
-				return -1;
-			dma_dst_offset_present = 1;
-
-			p->dma_dst_offset = atoi(arg_value);
 			p->dma_enabled = 1;
 
 			continue;
@@ -326,11 +342,20 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 
 		/* dma_hash_offset */
 		if (strcmp(arg_name, "dma_hash_offset") == 0) {
-			if (dma_hash_offset_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				dma_hash_offset_present == 0,
+				params->name, arg_name);
 			dma_hash_offset_present = 1;
 
-			p->dma_hash_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->dma_hash_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
+
 			p->dma_hash_enabled = 1;
 			p->dma_enabled = 1;
 
@@ -338,16 +363,39 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 		}
 
 		/* any other */
-		return -1;
+		PIPELINE_PARSE_ERR_INV_ENT(0, params->name, arg_name);
 	}
 
 	/* Check correlations between arguments */
-	if ((dma_dst_offset_present != p->dma_enabled) ||
-		(dma_src_offset_present != p->dma_enabled) ||
-		(dma_size_present != p->dma_enabled) ||
-		(dma_hash_offset_present != p->dma_hash_enabled) ||
-		(p->dma_hash_enabled > p->dma_enabled))
-		return -1;
+	PIPELINE_ARG_CHECK((dma_dst_offset_present == p->dma_enabled),
+		"Parse error in section \"%s\": missing entry "
+		"\"dma_dst_offset\"", params->name);
+	PIPELINE_ARG_CHECK((dma_src_offset_present == p->dma_enabled),
+		"Parse error in section \"%s\": missing entry "
+		"\"dma_src_offset\"", params->name);
+	PIPELINE_ARG_CHECK((dma_size_present == p->dma_enabled),
+		"Parse error in section \"%s\": missing entry "
+		"\"dma_size\"", params->name);
+	PIPELINE_ARG_CHECK((dma_hash_offset_present == p->dma_enabled),
+		"Parse error in section \"%s\": missing entry "
+		"\"dma_hash_offset\"", params->name);
+
+	if (dma_src_mask_present) {
+		uint32_t dma_size = p->dma_size;
+		int status;
+
+		PIPELINE_ARG_CHECK((strlen(dma_mask_str) ==
+			(dma_size * 2)), "Parse error in section "
+			"\"%s\": dma_src_mask should have exactly %u hex "
+			"digits", params->name, (dma_size * 2));
+
+		status = parse_hex_string(dma_mask_str, p->dma_src_mask,
+			&p->dma_size);
+
+		PIPELINE_PARSE_ERR_INV_VAL(((status == 0) &&
+			(dma_size == p->dma_size)), params->name,
+			"dma_src_mask", dma_mask_str);
+	}
 
 	return 0;
 }

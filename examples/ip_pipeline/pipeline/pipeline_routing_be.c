@@ -47,6 +47,7 @@
 
 #include "pipeline_routing_be.h"
 #include "pipeline_actions_common.h"
+#include "parser.h"
 #include "hash_func.h"
 
 #define MPLS_LABEL(label, exp, s, ttl)					\
@@ -940,21 +941,28 @@ pipeline_routing_parse_args(struct pipeline_routing_params *p,
 
 		/* n_routes */
 		if (strcmp(arg_name, "n_routes") == 0) {
-			if (n_routes_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				n_routes_present == 0, params->name,
+				arg_name);
 			n_routes_present = 1;
 
-			p->n_routes = atoi(arg_value);
-			if (p->n_routes == 0)
-				return -1;
+			status = parser_read_uint32(&p->n_routes,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL(((status != -EINVAL) &&
+				(p->n_routes != 0)), params->name,
+				arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* encap */
 		if (strcmp(arg_name, "encap") == 0) {
-			if (encap_present)
-				return -1;
+			PIPELINE_PARSE_ERR_DUPLICATE(encap_present == 0,
+				params->name, arg_name);
 			encap_present = 1;
 
 			/* ethernet */
@@ -976,140 +984,204 @@ pipeline_routing_parse_args(struct pipeline_routing_params *p,
 			}
 
 			/* any other */
-			return -1;
+			PIPELINE_PARSE_ERR_INV_VAL(0, params->name,
+				arg_name, arg_value);
 		}
 
 		/* qinq_sched */
 		if (strcmp(arg_name, "qinq_sched") == 0) {
-			if (qinq_sched_present)
-				return -1;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				qinq_sched_present == 0, params->name,
+				arg_name);
 			qinq_sched_present = 1;
 
-			if (strcmp(arg_value, "no") == 0)
-				p->qinq_sched = 0;
-			else if (strcmp(arg_value, "yes") == 0)
-				p->qinq_sched = 1;
-			else if (strcmp(arg_value, "test") == 0)
-				p->qinq_sched = 2;
-			else
-				return -1;
+			status = parser_read_arg_bool(arg_value);
+			if (status == -EINVAL) {
+				if (strcmp(arg_value, "test") == 0) {
+					p->qinq_sched = 2;
+					continue;
+				}
+			} else {
+				p->qinq_sched = status;
+				continue;
+			}
 
-			continue;
+			PIPELINE_PARSE_ERR_INV_VAL(0, params->name,
+				arg_name, arg_value);
 		}
 
 		/* mpls_color_mark */
 		if (strcmp(arg_name, "mpls_color_mark") == 0) {
-			if (mpls_color_mark_present)
-				return -1;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				mpls_color_mark_present == 0,
+				params->name, arg_name);
 			mpls_color_mark_present = 1;
 
-			if (strcmp(arg_value, "no") == 0)
-				p->mpls_color_mark = 0;
-			else if (strcmp(arg_value, "yes") == 0)
-				p->mpls_color_mark = 1;
-			else
-				return -1;
 
-			continue;
+			status = parser_read_arg_bool(arg_value);
+			if (status >= 0) {
+				p->mpls_color_mark = status;
+				continue;
+			}
+
+			PIPELINE_PARSE_ERR_INV_VAL(0, params->name,
+				arg_name, arg_value);
 		}
 
 		/* n_arp_entries */
 		if (strcmp(arg_name, "n_arp_entries") == 0) {
-			if (n_arp_entries_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				n_arp_entries_present == 0, params->name,
+				arg_name);
 			n_arp_entries_present = 1;
 
-			p->n_arp_entries = atoi(arg_value);
+			status = parser_read_uint32(&p->n_arp_entries,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* ip_hdr_offset */
 		if (strcmp(arg_name, "ip_hdr_offset") == 0) {
-			if (ip_hdr_offset_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				ip_hdr_offset_present == 0, params->name,
+				arg_name);
 			ip_hdr_offset_present = 1;
 
-			p->ip_hdr_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->ip_hdr_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* arp_key_offset */
 		if (strcmp(arg_name, "arp_key_offset") == 0) {
-			if (arp_key_offset_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				arp_key_offset_present == 0, params->name,
+				arg_name);
 			arp_key_offset_present = 1;
 
-			p->arp_key_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->arp_key_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* color_offset */
 		if (strcmp(arg_name, "color_offset") == 0) {
-			if (color_offset_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				color_offset_present == 0, params->name,
+				arg_name);
 			color_offset_present = 1;
 
-			p->color_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->color_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* debug */
 		if (strcmp(arg_name, "dbg_ah_disable") == 0) {
-			if (dbg_ah_disable_present)
-				return -1;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				dbg_ah_disable_present == 0, params->name,
+				arg_name);
 			dbg_ah_disable_present = 1;
 
-			if (strcmp(arg_value, "no") == 0)
-				p->dbg_ah_disable = 0;
-			else if (strcmp(arg_value, "yes") == 0)
-				p->dbg_ah_disable = 1;
-			else
-				return -1;
+			status = parser_read_arg_bool(arg_value);
+			if (status >= 0) {
+				p->dbg_ah_disable = status;
+				continue;
+			}
+
+			PIPELINE_PARSE_ERR_INV_VAL(0, params->name,
+				arg_name, arg_value);
 
 			continue;
 		}
 
 		/* any other */
-		return -1;
+		PIPELINE_PARSE_ERR_INV_ENT(0, params->name, arg_name);
 	}
 
 	/* Check that mandatory arguments are present */
-	if (ip_hdr_offset_present == 0)
-		return -1;
+	PIPELINE_PARSE_ERR_MANDATORY(ip_hdr_offset_present, params->name,
+		"ip_hdr_offset");
 
 	/* Check relations between arguments */
 	switch (p->encap) {
 	case PIPELINE_ROUTING_ENCAP_ETHERNET:
-		if (p->qinq_sched ||
-			p->mpls_color_mark ||
-			color_offset_present)
-			return -1;
+		PIPELINE_ARG_CHECK((!p->qinq_sched), "Parse error in "
+			"section \"%s\": encap = ethernet, therefore "
+			"qinq_sched = yes/test is not allowed",
+			params->name);
+		PIPELINE_ARG_CHECK((!p->mpls_color_mark), "Parse error "
+			"in section \"%s\": encap = ethernet, therefore "
+			"mpls_color_mark = yes is not allowed",
+			params->name);
+		PIPELINE_ARG_CHECK((!color_offset_present), "Parse error "
+			"in section \"%s\": encap = ethernet, therefore "
+			"color_offset is not allowed",
+			params->name);
 		break;
 
 	case PIPELINE_ROUTING_ENCAP_ETHERNET_QINQ:
-		if (p->mpls_color_mark ||
-			color_offset_present)
-			return -1;
+		PIPELINE_ARG_CHECK((!p->mpls_color_mark), "Parse error "
+			"in section \"%s\": encap = ethernet_qinq, "
+			"therefore mpls_color_mark = yes is not allowed",
+			params->name);
+		PIPELINE_ARG_CHECK((!color_offset_present), "Parse error "
+			"in section \"%s\": encap = ethernet_qinq, "
+			"therefore color_offset is not allowed",
+			params->name);
 		break;
 
 	case PIPELINE_ROUTING_ENCAP_ETHERNET_MPLS:
-		if (p->qinq_sched)
-			return -1;
+		PIPELINE_ARG_CHECK((!p->qinq_sched), "Parse error in "
+			"section \"%s\": encap = ethernet_mpls, therefore "
+			"qinq_sched  = yes/test is not allowed",
+			params->name);
 		break;
-
-	default:
-		return -1;
 	}
 
-	if ((p->n_arp_entries && (arp_key_offset_present == 0)) ||
-		((p->n_arp_entries == 0) && arp_key_offset_present))
-		return -1;
+	PIPELINE_ARG_CHECK((!(p->n_arp_entries &&
+		(!arp_key_offset_present))), "Parse error in section "
+			"\"%s\": n_arp_entries is set while "
+			"arp_key_offset is not set", params->name);
+
+	PIPELINE_ARG_CHECK((!((p->n_arp_entries == 0) &&
+		arp_key_offset_present)), "Parse error in section "
+			"\"%s\": arp_key_offset present while "
+			"n_arp_entries is not set", params->name);
 
 	return 0;
 }

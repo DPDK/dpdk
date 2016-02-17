@@ -42,6 +42,7 @@
 
 #include "pipeline_actions_common.h"
 #include "pipeline_flow_actions_be.h"
+#include "parser.h"
 #include "hash_func.h"
 
 int
@@ -415,80 +416,118 @@ pipeline_fa_parse_args(struct pipeline_fa_params *p,
 
 		/* n_flows */
 		if (strcmp(arg_name, "n_flows") == 0) {
-			if (n_flows_present)
-				return -1;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				n_flows_present == 0, params->name,
+				arg_name);
 			n_flows_present = 1;
 
-			p->n_flows = atoi(arg_value);
-			if (p->n_flows == 0)
-				return -1;
+			status = parser_read_uint32(&p->n_flows,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL(((status != -EINVAL) &&
+				(p->n_flows != 0)), params->name,
+				arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* n_meters_per_flow */
 		if (strcmp(arg_name, "n_meters_per_flow") == 0) {
-			if (n_meters_per_flow_present)
-				return -1;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				n_meters_per_flow_present == 0,
+				params->name, arg_name);
 			n_meters_per_flow_present = 1;
 
-			p->n_meters_per_flow = atoi(arg_value);
-			if ((p->n_meters_per_flow == 0) ||
-				(p->n_meters_per_flow > PIPELINE_FA_N_TC_MAX))
-				return -1;
+			status = parser_read_uint32(&p->n_meters_per_flow,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL(((status != -EINVAL) &&
+				(p->n_meters_per_flow != 0)),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG(((status != -ERANGE) &&
+				(p->n_meters_per_flow <=
+				PIPELINE_FA_N_TC_MAX)), params->name,
+				arg_name, arg_value);
 
 			continue;
 		}
 
 		/* flow_id_offset */
 		if (strcmp(arg_name, "flow_id_offset") == 0) {
-			if (flow_id_offset_present)
-				return -1;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				flow_id_offset_present == 0,
+				params->name, arg_name);
 			flow_id_offset_present = 1;
 
-			p->flow_id_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->flow_id_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* ip_hdr_offset */
 		if (strcmp(arg_name, "ip_hdr_offset") == 0) {
-			if (ip_hdr_offset_present)
-				return -1;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				ip_hdr_offset_present == 0,
+				params->name, arg_name);
 			ip_hdr_offset_present = 1;
 
-			p->ip_hdr_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->ip_hdr_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* color_offset */
 		if (strcmp(arg_name, "color_offset") == 0) {
-			if (color_offset_present)
-				return -1;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				color_offset_present == 0, params->name,
+				arg_name);
 			color_offset_present = 1;
 
+			status = parser_read_uint32(&p->color_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
+
 			p->dscp_enabled = 1;
-			p->color_offset = atoi(arg_value);
 
 			continue;
 		}
 
 		/* Unknown argument */
-		return -1;
+		PIPELINE_PARSE_ERR_INV_ENT(0, params->name, arg_name);
 	}
 
 	/* Check that mandatory arguments are present */
-	if ((n_flows_present == 0) ||
-		(flow_id_offset_present == 0) ||
-		(ip_hdr_offset_present == 0) ||
-		(color_offset_present == 0))
-		return -1;
+	PIPELINE_PARSE_ERR_MANDATORY((n_flows_present), params->name,
+		"n_flows");
+	PIPELINE_PARSE_ERR_MANDATORY((flow_id_offset_present),
+		params->name, "flow_id_offset");
+	PIPELINE_PARSE_ERR_MANDATORY((ip_hdr_offset_present),
+		params->name, "ip_hdr_offset");
+	PIPELINE_PARSE_ERR_MANDATORY((color_offset_present), params->name,
+		"color_offset");
 
 	return 0;
 }

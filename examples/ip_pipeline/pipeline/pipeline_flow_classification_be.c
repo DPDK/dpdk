@@ -41,6 +41,7 @@
 
 #include "pipeline_flow_classification_be.h"
 #include "pipeline_actions_common.h"
+#include "parser.h"
 #include "hash_func.h"
 
 struct pipeline_flow_classification {
@@ -53,7 +54,7 @@ struct pipeline_flow_classification {
 
 	uint32_t key_offset;
 	uint32_t hash_offset;
-	uint8_t *key_mask;
+	uint8_t key_mask[PIPELINE_FC_FLOW_KEY_MAX_SIZE];
 	uint32_t flow_id_offset;
 
 } __rte_cache_aligned;
@@ -219,7 +220,7 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 	uint32_t flow_id_offset_present = 0;
 
 	uint32_t i;
-	char *key_mask_str = NULL;
+	char key_mask_str[PIPELINE_FC_FLOW_KEY_MAX_SIZE * 2];
 
 	p->hash_offset = 0;
 
@@ -232,110 +233,157 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 
 		/* n_flows */
 		if (strcmp(arg_name, "n_flows") == 0) {
-			if (n_flows_present)
-				goto error_parse;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				n_flows_present == 0, params->name,
+				arg_name);
 			n_flows_present = 1;
 
-			p->n_flows = atoi(arg_value);
-			if (p->n_flows == 0)
-				goto error_parse;
+			status = parser_read_uint32(&p->n_flows,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL(((status != -EINVAL) &&
+				(p->n_flows != 0)), params->name,
+				arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* key_offset */
 		if (strcmp(arg_name, "key_offset") == 0) {
-			if (key_offset_present)
-				goto error_parse;
+			int status;
 
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				key_offset_present == 0, params->name,
+				arg_name);
 			key_offset_present = 1;
 
-			p->key_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->key_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* key_size */
 		if (strcmp(arg_name, "key_size") == 0) {
-			if (key_size_present)
-				goto error_parse;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				key_size_present == 0, params->name,
+				arg_name);
 			key_size_present = 1;
 
-			p->key_size = atoi(arg_value);
-			if ((p->key_size == 0) ||
-				(p->key_size > PIPELINE_FC_FLOW_KEY_MAX_SIZE) ||
-				(p->key_size % 8))
-				goto error_parse;
+			status = parser_read_uint32(&p->key_size,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL(((status != -EINVAL) &&
+				(p->key_size != 0) &&
+				(p->key_size % 8 == 0)),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG(((status != -ERANGE) &&
+				(p->key_size <=
+				PIPELINE_FC_FLOW_KEY_MAX_SIZE)),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* key_mask */
 		if (strcmp(arg_name, "key_mask") == 0) {
-			if (key_mask_present)
-				goto error_parse;
+			int mask_str_len = strlen(arg_value);
 
-			key_mask_str = strdup(arg_value);
-			if (key_mask_str == NULL)
-				goto error_parse;
-
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				key_mask_present == 0,
+				params->name, arg_name);
 			key_mask_present = 1;
+
+			PIPELINE_ARG_CHECK((mask_str_len <
+				(PIPELINE_FC_FLOW_KEY_MAX_SIZE * 2)),
+				"Parse error in section \"%s\": entry "
+				"\"%s\" is too long", params->name,
+				arg_name);
+
+			snprintf(key_mask_str, mask_str_len, "%s",
+				arg_value);
 
 			continue;
 		}
 
 		/* hash_offset */
 		if (strcmp(arg_name, "hash_offset") == 0) {
-			if (hash_offset_present)
-				goto error_parse;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				hash_offset_present == 0, params->name,
+				arg_name);
 			hash_offset_present = 1;
 
-			p->hash_offset = atoi(arg_value);
+			status = parser_read_uint32(&p->hash_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
 
 			continue;
 		}
 
 		/* flow_id_offset */
 		if (strcmp(arg_name, "flowid_offset") == 0) {
-			if (flow_id_offset_present)
-				goto error_parse;
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				flow_id_offset_present == 0, params->name,
+				arg_name);
 			flow_id_offset_present = 1;
 
+			status = parser_read_uint32(&p->flow_id_offset,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL((status != -EINVAL),
+				params->name, arg_name, arg_value);
+			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
+
 			p->flow_id = 1;
-			p->flow_id_offset = atoi(arg_value);
 
 			continue;
 		}
 
 		/* Unknown argument */
-		goto error_parse;
+		PIPELINE_PARSE_ERR_INV_ENT(0, params->name, arg_name);
 	}
 
 	/* Check that mandatory arguments are present */
-	if ((n_flows_present == 0) ||
-		(key_offset_present == 0) ||
-		(key_size_present == 0))
-		goto error_parse;
+	PIPELINE_PARSE_ERR_MANDATORY((n_flows_present), params->name,
+		"n_flows");
+	PIPELINE_PARSE_ERR_MANDATORY((key_offset_present), params->name,
+		"key_offset");
+	PIPELINE_PARSE_ERR_MANDATORY((key_size_present), params->name,
+		"key_size");
 
 	if (key_mask_present) {
-		p->key_mask = rte_malloc(NULL, p->key_size, 0);
-		if (p->key_mask == NULL)
-			goto error_parse;
+		uint32_t key_size = p->key_size;
+		int status;
 
-		if (parse_hex_string(key_mask_str, p->key_mask, &p->key_size)
-			!= 0) {
-			goto error_parse;
-		}
+		PIPELINE_ARG_CHECK((strlen(key_mask_str) ==
+			(key_size * 2)), "Parse error in section "
+			"\"%s\": key_mask should have exactly %u hex "
+			"digits", params->name, (key_size * 2));
 
-		free(key_mask_str);
+		status = parse_hex_string(key_mask_str, p->key_mask,
+			&p->key_size);
+
+		PIPELINE_PARSE_ERR_INV_VAL(((status == 0) &&
+			(key_size == p->key_size)), params->name,
+			"key_mask", key_mask_str);
 	}
 
 	return 0;
-
-error_parse:
-	free(key_mask_str);
-	free(p->key_mask);
-	return -1;
 }
 
 static void *pipeline_fc_init(struct pipeline_params *params,
