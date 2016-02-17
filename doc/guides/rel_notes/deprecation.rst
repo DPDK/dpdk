@@ -15,6 +15,12 @@ Deprecation Notices
   The /sys entries extended_tag and max_read_request_size created by igb_uio
   will be removed.
 
+* ABI changes are planned for struct rte_pci_id, i.e., add new field ``class``.
+  This new added ``class`` field can be used to probe pci device by class
+  related info. This change should impact size of struct rte_pci_id and struct
+  rte_pci_device. The release 16.04 does not contain these ABI changes, but
+  release 16.07 will.
+
 * The following fields have been deprecated in rte_eth_stats:
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
