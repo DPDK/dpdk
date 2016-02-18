@@ -58,6 +58,11 @@ This section should contain bug fixes added to the relevant sections. Sample for
   The title should contain the code/lib section like a commit message.
   Add the entries in alphabetic order in the relevant sections below.
 
+* **examples/vhost: Fixed frequent mbuf allocation failure.**
+
+  vhost-switch often fails to allocate mbuf when dequeue from vring because it
+  wrongly calculates the number of mbufs needed.
+
 
 EAL
 ~~~
