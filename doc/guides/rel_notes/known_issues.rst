@@ -598,3 +598,23 @@ VM power manager may not work on systems with more than 64 cores
 
 **Driver/Module**:
    VM power manager application.
+
+
+DPDK may not build on some Intel CPUs using clang < 3.7.0
+---------------------------------------------------------
+
+**Description**:
+   When compiling DPDK with an earlier version than 3.7.0 of clang, CPU flags are not detected on some Intel platforms
+   such as Intel Broadwell/Skylake (and possibly future CPUs), and therefore compilation fails due to missing intrinsics.
+
+**Implication**:
+   DPDK will not build when using a clang version < 3.7.0.
+
+**Resolution/Workaround**:
+   Use clang 3.7.0 or higher, or gcc.
+
+**Affected Environment/Platform**:
+   Platforms with Intel Broadwell/Skylake using an old clang version.
+
+**Driver/Module**:
+   Environment Abstraction Layer (EAL).
