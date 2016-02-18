@@ -342,7 +342,7 @@ qat_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			msg_counter != nb_pkts) {
-		rx_mbuf = (struct rte_mbuf *)(resp_msg->opaque_data);
+		rx_mbuf = (struct rte_mbuf *)(uintptr_t)(resp_msg->opaque_data);
 		ol = rte_pktmbuf_offload_get(rx_mbuf, RTE_PKTMBUF_OL_CRYPTO);
 
 		if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
@@ -405,7 +405,7 @@ qat_alg_write_mbuf_entry(struct rte_mbuf *mbuf, uint8_t *out_msg)
 	ctx = (struct qat_session *)ol->op.crypto.session->_private;
 	qat_req = (struct icp_qat_fw_la_bulk_req *)out_msg;
 	*qat_req = ctx->fw_req;
-	qat_req->comn_mid.opaque_data = (uint64_t)mbuf;
+	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)mbuf;
 
 	/*
 	 * The following code assumes:

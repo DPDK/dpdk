@@ -125,7 +125,6 @@ config () # <directory> <target> <options>
 		echo $3 | grep -q 'shared.*combined' || \
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
-		echo $2 | grep -q '^i686' || \
 		echo $3 | grep -q 'shared.*combined' || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config
