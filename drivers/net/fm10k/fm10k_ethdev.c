@@ -2520,29 +2520,16 @@ static const struct fm10k_msg_data fm10k_msgdata_vf[] = {
 	FM10K_TLV_MSG_ERROR_HANDLER(fm10k_tlv_msg_error),
 };
 
-/* Mailbox message handler in PF */
-static const struct fm10k_msg_data fm10k_msgdata_pf[] = {
-	FM10K_PF_MSG_ERR_HANDLER(XCAST_MODES, fm10k_msg_err_pf),
-	FM10K_PF_MSG_ERR_HANDLER(UPDATE_MAC_FWD_RULE, fm10k_msg_err_pf),
-	FM10K_PF_MSG_LPORT_MAP_HANDLER(fm10k_msg_lport_map_pf),
-	FM10K_PF_MSG_ERR_HANDLER(LPORT_CREATE, fm10k_msg_err_pf),
-	FM10K_PF_MSG_ERR_HANDLER(LPORT_DELETE, fm10k_msg_err_pf),
-	FM10K_PF_MSG_UPDATE_PVID_HANDLER(fm10k_msg_update_pvid_pf),
-	FM10K_TLV_MSG_ERROR_HANDLER(fm10k_tlv_msg_error),
-};
-
 static int
 fm10k_setup_mbx_service(struct fm10k_hw *hw)
 {
-	int err;
+	int err = 0;
 
 	/* Initialize mailbox lock */
 	fm10k_mbx_initlock(hw);
 
 	/* Replace default message handler with new ones */
-	if (hw->mac.type == fm10k_mac_pf)
-		err = hw->mbx.ops.register_handlers(&hw->mbx, fm10k_msgdata_pf);
-	else
+	if (hw->mac.type == fm10k_mac_vf)
 		err = hw->mbx.ops.register_handlers(&hw->mbx, fm10k_msgdata_vf);
 
 	if (err) {
