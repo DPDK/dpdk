@@ -604,7 +604,6 @@ struct fm10k_mac_ops {
 				    struct fm10k_dglort_cfg *);
 	void (*set_dma_mask)(struct fm10k_hw *, u64);
 	s32 (*get_fault)(struct fm10k_hw *, int, struct fm10k_fault *);
-	void (*request_lport_map)(struct fm10k_hw *);
 	s32 (*adjust_systime)(struct fm10k_hw *, s32 ppb);
 	s32 (*notify_offset)(struct fm10k_hw *, u64 offset);
 	u64 (*read_systime)(struct fm10k_hw *);
