@@ -91,14 +91,14 @@ enum fm10k_pf_tlv_attr_id_v1 {
 #define FM10K_MSG_UPDATE_PVID_PVID_SHIFT	16
 #define FM10K_MSG_UPDATE_PVID_PVID_SIZE		16
 
-/* The following data structures are overlayed specifically to TLV mailbox
- * messages, and must not have gaps between their values. They must line up
- * correctly to the TLV definition.
+/* The following data structures are overlayed directly onto TLV mailbox
+ * messages, and must not break 4 byte alignment. Ensure the structures line
+ * up correctly as per their TLV definition.
  */
 #ifdef C99
-#pragma pack(push, 1)
+#pragma pack(push, 4)
 #else
-#pragma pack(1)
+#pragma pack(4)
 #endif /* C99 */
 
 struct fm10k_mac_update {
