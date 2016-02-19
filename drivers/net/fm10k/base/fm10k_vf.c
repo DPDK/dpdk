@@ -128,8 +128,10 @@ STATIC s32 fm10k_init_hw_vf(struct fm10k_hw *hw)
 
 	/* verify we have at least 1 queue */
 	if (!~FM10K_READ_REG(hw, FM10K_TXQCTL(0)) ||
-	    !~FM10K_READ_REG(hw, FM10K_RXQCTL(0)))
-		return FM10K_ERR_NO_RESOURCES;
+	    !~FM10K_READ_REG(hw, FM10K_RXQCTL(0))) {
+		err = FM10K_ERR_NO_RESOURCES;
+		goto reset_max_queues;
+	}
 
 	/* determine how many queues we have */
 	for (i = 1; tqdloc0 && (i < FM10K_MAX_QUEUES_POOL); i++) {
@@ -147,7 +149,7 @@ STATIC s32 fm10k_init_hw_vf(struct fm10k_hw *hw)
 	/* shut down queues we own and reset DMA configuration */
 	err = fm10k_disable_queues_generic(hw, i);
 	if (err)
-		return err;
+		goto reset_max_queues;
 
 	/* record maximum queue count */
 	hw->mac.max_queues = i;
@@ -160,6 +162,11 @@ STATIC s32 fm10k_init_hw_vf(struct fm10k_hw *hw)
 			    FM10K_TDLEN_ITR_SCALE_SHIFT;
 
 	return FM10K_SUCCESS;
+
+reset_max_queues:
+	hw->mac.max_queues = 0;
+
+	return err;
 }
 
 /**
