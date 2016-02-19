@@ -2136,12 +2136,12 @@ fm10k_dev_enable_intr_pf(struct rte_eth_dev *dev)
 	/* Bind all local non-queue interrupt to vector 0 */
 	int_map |= FM10K_MISC_VEC_ID;
 
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_Mailbox), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_PCIeFault), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SwitchUpDown), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SwitchEvent), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SRAM), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_VFLR), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_mailbox), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_pcie_fault), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_switch_up_down), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_switch_event), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_sram), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_vflr), int_map);
 
 	/* Enable misc causes */
 	FM10K_WRITE_REG(hw, FM10K_EIMR, FM10K_EIMR_ENABLE(PCA_FAULT) |
@@ -2167,12 +2167,12 @@ fm10k_dev_disable_intr_pf(struct rte_eth_dev *dev)
 
 	int_map |= FM10K_MISC_VEC_ID;
 
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_Mailbox), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_PCIeFault), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SwitchUpDown), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SwitchEvent), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_SRAM), int_map);
-	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_VFLR), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_mailbox), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_pcie_fault), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_switch_up_down), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_switch_event), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_sram), int_map);
+	FM10K_WRITE_REG(hw, FM10K_INT_MAP(fm10k_int_vflr), int_map);
 
 	/* Disable misc causes */
 	FM10K_WRITE_REG(hw, FM10K_EIMR, FM10K_EIMR_DISABLE(PCA_FAULT) |
