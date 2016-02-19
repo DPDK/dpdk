@@ -159,10 +159,6 @@ STATIC s32 fm10k_init_hw_vf(struct fm10k_hw *hw)
 			     FM10K_TDLEN_ITR_SCALE_MASK) >>
 			    FM10K_TDLEN_ITR_SCALE_SHIFT;
 
-	/* ensure a non-zero itr scale */
-	if (!hw->mac.itr_scale)
-		hw->mac.itr_scale = FM10K_TDLEN_ITR_SCALE_GEN3;
-
 	return FM10K_SUCCESS;
 }
 
