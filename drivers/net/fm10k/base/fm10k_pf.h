@@ -140,10 +140,6 @@ struct fm10k_swapi_1588_clock_owner {
 #pragma pack()
 #endif /* C99 */
 
-#define FM10K_PF_MSG_LPORT_CREATE_HANDLER(func) \
-	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_LPORT_CREATE, NULL, func)
-#define FM10K_PF_MSG_LPORT_DELETE_HANDLER(func) \
-	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_LPORT_DELETE, NULL, func)
 s32 fm10k_msg_lport_map_pf(struct fm10k_hw *, u32 **, struct fm10k_mbx_info *);
 extern const struct fm10k_tlv_attr fm10k_lport_map_msg_attr[];
 #define FM10K_PF_MSG_LPORT_MAP_HANDLER(func) \
