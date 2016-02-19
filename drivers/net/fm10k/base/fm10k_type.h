@@ -50,6 +50,12 @@ struct fm10k_hw;
 #define FM10K_DEV_ID_SDI_FM10420_DA2	0x15D5
 #endif /* ATWOOD_CHANNEL_HW */
 
+#ifndef LINUX_MACROS
+#ifndef BIT
+#define BIT(a) (1UL << (a))
+#endif
+#endif /* LINUX_MACROS */
+
 #define FM10K_MAX_QUEUES		256
 #define FM10K_MAX_QUEUES_PF		128
 #define FM10K_MAX_QUEUES_POOL		16
@@ -465,7 +471,7 @@ struct fm10k_hw;
 #define FM10K_VLAN_TABLE_VID_MAX		4096
 #define FM10K_VLAN_TABLE_VSI_MAX		64
 #define FM10K_VLAN_LENGTH_SHIFT			16
-#define FM10K_VLAN_CLEAR			(1 << 15)
+#define FM10K_VLAN_CLEAR			BIT(15)
 #define FM10K_VLAN_ALL \
 	((FM10K_VLAN_TABLE_VID_MAX - 1) << FM10K_VLAN_LENGTH_SHIFT)
 
@@ -763,10 +769,10 @@ struct fm10k_vf_info {
 						 */
 };
 
-#define FM10K_VF_FLAG_ALLMULTI_CAPABLE	((u8)1 << FM10K_XCAST_MODE_ALLMULTI)
-#define FM10K_VF_FLAG_MULTI_CAPABLE	((u8)1 << FM10K_XCAST_MODE_MULTI)
-#define FM10K_VF_FLAG_PROMISC_CAPABLE	((u8)1 << FM10K_XCAST_MODE_PROMISC)
-#define FM10K_VF_FLAG_NONE_CAPABLE	((u8)1 << FM10K_XCAST_MODE_NONE)
+#define FM10K_VF_FLAG_ALLMULTI_CAPABLE	(u8)(BIT(FM10K_XCAST_MODE_ALLMULTI))
+#define FM10K_VF_FLAG_MULTI_CAPABLE	(u8)(BIT(FM10K_XCAST_MODE_MULTI))
+#define FM10K_VF_FLAG_PROMISC_CAPABLE	(u8)(BIT(FM10K_XCAST_MODE_PROMISC))
+#define FM10K_VF_FLAG_NONE_CAPABLE	(u8)(BIT(FM10K_XCAST_MODE_NONE))
 #define FM10K_VF_FLAG_CAPABLE(vf_info)	((vf_info)->vf_flags & (u8)0xF)
 #define FM10K_VF_FLAG_ENABLED(vf_info)	((vf_info)->vf_flags >> 4)
 #define FM10K_VF_FLAG_SET_MODE(mode)	((u8)0x10 << (mode))
@@ -817,7 +823,7 @@ struct fm10k_hw {
 	u16 subsystem_vendor_id;
 	u8 revision_id;
 	u32 flags;
-#define FM10K_HW_FLAG_CLOCK_OWNER	(u32)(1 << 0)
+#define FM10K_HW_FLAG_CLOCK_OWNER	BIT(0)
 };
 
 /* Number of Transmit and Receive Descriptors must be a multiple of 8 */

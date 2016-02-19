@@ -576,8 +576,8 @@ STATIC s32 fm10k_configure_dglort_map_pf(struct fm10k_hw *hw,
 		return FM10K_ERR_PARAM;
 
 	/* determine count of VSIs and queues */
-	queue_count = 1 << (dglort->rss_l + dglort->pc_l);
-	vsi_count = 1 << (dglort->vsi_l + dglort->queue_l);
+	queue_count = BIT(dglort->rss_l + dglort->pc_l);
+	vsi_count = BIT(dglort->vsi_l + dglort->queue_l);
 	glort = dglort->glort;
 	q_idx = dglort->queue_b;
 
@@ -593,8 +593,8 @@ STATIC s32 fm10k_configure_dglort_map_pf(struct fm10k_hw *hw,
 	}
 
 	/* determine count of PCs and queues */
-	queue_count = 1 << (dglort->queue_l + dglort->rss_l + dglort->vsi_l);
-	pc_count = 1 << dglort->pc_l;
+	queue_count = BIT(dglort->queue_l + dglort->rss_l + dglort->vsi_l);
+	pc_count = BIT(dglort->pc_l);
 
 	/* configure PC for Tx queues */
 	for (pc = 0; pc < pc_count; pc++) {
@@ -1001,7 +1001,7 @@ STATIC s32 fm10k_iov_reset_resources_pf(struct fm10k_hw *hw,
 		return FM10K_ERR_PARAM;
 
 	/* clear event notification of VF FLR */
-	FM10K_WRITE_REG(hw, FM10K_PFVFLREC(vf_idx / 32), 1 << (vf_idx % 32));
+	FM10K_WRITE_REG(hw, FM10K_PFVFLREC(vf_idx / 32), BIT(vf_idx % 32));
 
 	/* force timeout and then disconnect the mailbox */
 	vf_info->mbx.timeout = 0;
@@ -1417,7 +1417,7 @@ s32 fm10k_iov_msg_lport_state_pf(struct fm10k_hw *hw, u32 **results,
 		mode = fm10k_iov_supported_xcast_mode_pf(vf_info, mode);
 
 		/* if mode is not currently enabled, enable it */
-		if (!(FM10K_VF_FLAG_ENABLED(vf_info) & (1 << mode)))
+		if (!(FM10K_VF_FLAG_ENABLED(vf_info) & BIT(mode)))
 			fm10k_update_xcast_mode_pf(hw, vf_info->glort, mode);
 
 		/* swap mode back to a bit flag */
