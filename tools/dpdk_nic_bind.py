@@ -32,9 +32,11 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-import sys, os, getopt, subprocess
+import sys
+import os
+import getopt
+import subprocess
 from os.path import exists, abspath, dirname, basename
-
 
 # The PCI device class for ETHERNET devices
 ETHERNET_CLASS = "0200"
@@ -43,7 +45,7 @@ ETHERNET_CLASS = "0200"
 # Each device within this is itself a dictionary of device properties
 devices = {}
 # list of supported DPDK drivers
-dpdk_drivers = [ "igb_uio", "vfio-pci", "uio_pci_generic" ]
+dpdk_drivers = ["igb_uio", "vfio-pci", "uio_pci_generic"]
 
 # command-line arg flags
 b_flag = None
@@ -51,10 +53,11 @@ status_flag = False
 force_flag = False
 args = []
 
+
 def usage():
     '''Print usage information for the program'''
     argv0 = basename(sys.argv[0])
-    print ("""
+    print("""
 Usage:
 ------
 
@@ -78,8 +81,9 @@ Options:
         * the driver being used e.g. drv=igb_uio
         * any suitable drivers not currently using that device
             e.g. unused=igb_uio
-        NOTE: if this flag is passed along with a bind/unbind option, the status
-        display will always occur after the other operations have taken place.
+        NOTE: if this flag is passed along with a bind/unbind option, the
+        status display will always occur after the other operations have taken
+        place.
 
     -b driver, --bind=driver:
         Select the driver to use or \"none\" to unbind the device
@@ -110,7 +114,8 @@ To unbind 0000:01:00.0 from using any driver
 To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
         %(argv0)s -b ixgbe 02:00.0 02:00.1
 
-    """ % locals()) # replace items from local variables
+    """ % locals())  # replace items from local variables
+
 
 # This is roughly compatible with check_output function in subprocess module
 # which is only available in python 2.7.
@@ -119,6 +124,7 @@ def check_output(args, stderr=None):
     return subprocess.Popen(args, stdout=subprocess.PIPE,
                             stderr=stderr).communicate()[0]
 
+
 def find_module(mod):
     '''find the .ko file for kernel module named mod.
     Searches the $RTE_SDK/$RTE_TARGET directory, the kernel
@@ -126,20 +132,20 @@ def find_module(mod):
     the script '''
     # check $RTE_SDK/$RTE_TARGET directory
     if 'RTE_SDK' in os.environ and 'RTE_TARGET' in os.environ:
-        path = "%s/%s/kmod/%s.ko" % (os.environ['RTE_SDK'],\
+        path = "%s/%s/kmod/%s.ko" % (os.environ['RTE_SDK'],
                                      os.environ['RTE_TARGET'], mod)
         if exists(path):
             return path
 
     # check using depmod
     try:
-        depmod_out = check_output(["modinfo", "-n", mod], \
+        depmod_out = check_output(["modinfo", "-n", mod],
                                   stderr=subprocess.STDOUT).lower()
         if "error" not in depmod_out:
             path = depmod_out.strip()
             if exists(path):
                 return path
-    except: # if modinfo can't find module, it fails, so continue
+    except:  # if modinfo can't find module, it fails, so continue
         pass
 
     # check for a copy based off current path
@@ -147,17 +153,18 @@ def find_module(mod):
     if (tools_dir.endswith("tools")):
         base_dir = dirname(tools_dir)
         find_out = check_output(["find", base_dir, "-name", mod + ".ko"])
-        if len(find_out) > 0: #something matched
+        if len(find_out) > 0:  # something matched
             path = find_out.splitlines()[0]
             if exists(path):
                 return path
+
 
 def check_modules():
     '''Checks that igb_uio is loaded'''
     global dpdk_drivers
 
     # list of supported modules
-    mods =  [{"Name" : driver, "Found" : False} for driver in dpdk_drivers]
+    mods = [{"Name": driver, "Found": False} for driver in dpdk_drivers]
 
     # first check if module is loaded
     try:
@@ -186,17 +193,19 @@ def check_modules():
     # check if we have at least one loaded module
     if True not in [mod["Found"] for mod in mods] and b_flag is not None:
         if b_flag in dpdk_drivers:
-            print ("Error - no supported modules(DPDK driver) are loaded")
+            print("Error - no supported modules(DPDK driver) are loaded")
             sys.exit(1)
         else:
-            print ("Warning - no supported modules(DPDK driver) are loaded")
+            print("Warning - no supported modules(DPDK driver) are loaded")
 
     # change DPDK driver list to only contain drivers that are loaded
     dpdk_drivers = [mod["Name"] for mod in mods if mod["Found"]]
 
+
 def has_driver(dev_id):
     '''return true if a device is assigned to a driver. False otherwise'''
     return "Driver_str" in devices[dev_id]
+
 
 def get_pci_device_details(dev_id):
     '''This function gets additional details for a PCI device'''
@@ -223,6 +232,7 @@ def get_pci_device_details(dev_id):
 
     return device
 
+
 def get_nic_details():
     '''This function populates the "devices" dictionary. The keys used are
     the pci addresses (domain:bus:slot.func). The values are themselves
@@ -234,15 +244,16 @@ def get_nic_details():
     devices = {}
     # first loop through and read details for all devices
     # request machine readable format, with numeric IDs
-    dev = {};
+    dev = {}
     dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
     for dev_line in dev_lines:
         if (len(dev_line) == 0):
             if dev["Class"] == ETHERNET_CLASS:
-                #convert device and vendor ids to numbers, then add to global
-                dev["Vendor"] = int(dev["Vendor"],16)
-                dev["Device"] = int(dev["Device"],16)
-                devices[dev["Slot"]] = dict(dev) # use dict to make copy of dev
+                # convert device and vendor ids to numbers, then add to global
+                dev["Vendor"] = int(dev["Vendor"], 16)
+                dev["Device"] = int(dev["Device"], 16)
+                # use dict to make copy of dev
+                devices[dev["Slot"]] = dict(dev)
         else:
             name, value = dev_line.decode().split("\t", 1)
             dev[name.rstrip(":")] = value
@@ -269,13 +280,14 @@ def get_nic_details():
             if _if in devices[d]["Interface"].split(","):
                 devices[d]["Ssh_if"] = True
                 devices[d]["Active"] = "*Active*"
-                break;
+                break
 
         # add igb_uio to list of supporting modules if needed
         if "Module_str" in devices[d]:
             for driver in dpdk_drivers:
                 if driver not in devices[d]["Module_str"]:
-                    devices[d]["Module_str"] = devices[d]["Module_str"] + ",%s" % driver
+                    devices[d]["Module_str"] = \
+                        devices[d]["Module_str"] + ",%s" % driver
         else:
             devices[d]["Module_str"] = ",".join(dpdk_drivers)
 
@@ -286,11 +298,12 @@ def get_nic_details():
                 modules.remove(devices[d]["Driver_str"])
                 devices[d]["Module_str"] = ",".join(modules)
 
+
 def dev_id_from_dev_name(dev_name):
     '''Take a device "name" - a string passed in by user to identify a NIC
     device, and determine the device id - i.e. the domain:bus:slot.func - for
     it, which can then be used to index into the devices array'''
-    dev = None
+
     # check if it's already a suitable index
     if dev_name in devices:
         return dev_name
@@ -303,22 +316,23 @@ def dev_id_from_dev_name(dev_name):
             if dev_name in devices[d]["Interface"].split(","):
                 return devices[d]["Slot"]
     # if nothing else matches - error
-    print ("Unknown device: %s. " \
-        "Please specify device in \"bus:slot.func\" format" % dev_name)
+    print("Unknown device: %s. "
+          "Please specify device in \"bus:slot.func\" format" % dev_name)
     sys.exit(1)
+
 
 def unbind_one(dev_id, force):
     '''Unbind the device identified by "dev_id" from its current driver'''
     dev = devices[dev_id]
     if not has_driver(dev_id):
-        print ("%s %s %s is not currently managed by any driver\n" % \
-            (dev["Slot"], dev["Device_str"], dev["Interface"]))
+        print("%s %s %s is not currently managed by any driver\n" %
+              (dev["Slot"], dev["Device_str"], dev["Interface"]))
         return
 
     # prevent us disconnecting ourselves
     if dev["Ssh_if"] and not force:
-        print ("Routing table indicates that interface %s is active" \
-            ". Skipping unbind" % (dev_id))
+        print("Routing table indicates that interface %s is active. "
+              "Skipping unbind" % (dev_id))
         return
 
     # write to /sys to unbind
@@ -326,32 +340,35 @@ def unbind_one(dev_id, force):
     try:
         f = open(filename, "a")
     except:
-        print ("Error: unbind failed for %s - Cannot open %s" % (dev_id, filename))
+        print("Error: unbind failed for %s - Cannot open %s"
+              % (dev_id, filename))
         sys.exit(1)
     f.write(dev_id)
     f.close()
+
 
 def bind_one(dev_id, driver, force):
     '''Bind the device given by "dev_id" to the driver "driver". If the device
     is already bound to a different driver, it will be unbound first'''
     dev = devices[dev_id]
-    saved_driver = None # used to rollback any unbind in case of failure
+    saved_driver = None  # used to rollback any unbind in case of failure
 
     # prevent disconnection of our ssh session
     if dev["Ssh_if"] and not force:
-        print ("Routing table indicates that interface %s is active" \
-            ". Not modifying" % (dev_id))
+        print("Routing table indicates that interface %s is active. "
+              "Not modifying" % (dev_id))
         return
 
     # unbind any existing drivers we don't want
     if has_driver(dev_id):
         if dev["Driver_str"] == driver:
-            print ("%s already bound to driver %s, skipping\n" % (dev_id, driver))
+            print("%s already bound to driver %s, skipping\n"
+                  % (dev_id, driver))
             return
         else:
             saved_driver = dev["Driver_str"]
             unbind_one(dev_id, force)
-            dev["Driver_str"] = "" # clear driver string
+            dev["Driver_str"] = ""  # clear driver string
 
     # if we are binding to one of DPDK drivers, add PCI id's to that driver
     if driver in dpdk_drivers:
@@ -359,14 +376,15 @@ def bind_one(dev_id, driver, force):
         try:
             f = open(filename, "w")
         except:
-            print ("Error: bind failed for %s - Cannot open %s" % (dev_id, filename))
+            print("Error: bind failed for %s - Cannot open %s"
+                  % (dev_id, filename))
             return
         try:
             f.write("%04x %04x" % (dev["Vendor"], dev["Device"]))
             f.close()
         except:
-            print ("Error: bind failed for %s - Cannot write new PCI ID to " \
-                "driver %s" % (dev_id, driver))
+            print("Error: bind failed for %s - Cannot write new PCI ID to "
+                  "driver %s" % (dev_id, driver))
             return
 
     # do the bind by writing to /sys
@@ -374,8 +392,9 @@ def bind_one(dev_id, driver, force):
     try:
         f = open(filename, "a")
     except:
-        print ("Error: bind failed for %s - Cannot open %s" % (dev_id, filename))
-        if saved_driver is not None: # restore any previous driver
+        print("Error: bind failed for %s - Cannot open %s"
+              % (dev_id, filename))
+        if saved_driver is not None:  # restore any previous driver
             bind_one(dev_id, saved_driver, force)
         return
     try:
@@ -388,8 +407,9 @@ def bind_one(dev_id, driver, force):
         tmp = get_pci_device_details(dev_id)
         if "Driver_str" in tmp and tmp["Driver_str"] == driver:
             return
-        print ("Error: bind failed for %s - Cannot bind to driver %s" % (dev_id, driver))
-        if saved_driver is not None: # restore any previous driver
+        print("Error: bind failed for %s - Cannot bind to driver %s"
+              % (dev_id, driver))
+        if saved_driver is not None:  # restore any previous driver
             bind_one(dev_id, saved_driver, force)
         return
 
@@ -399,6 +419,7 @@ def unbind_all(dev_list, force=False):
     dev_list = map(dev_id_from_dev_name, dev_list)
     for d in dev_list:
         unbind_one(d, force)
+
 
 def bind_all(dev_list, driver, force=False):
     """Bind method, takes a list of device locations"""
@@ -427,31 +448,33 @@ def bind_all(dev_list, driver, force=False):
         if "Driver_str" in devices[d]:
             unbind_one(d, force)
 
-def display_devices(title, dev_list, extra_params = None):
-    '''Displays to the user the details of a list of devices given in "dev_list"
-    The "extra_params" parameter, if given, should contain a string with
-    %()s fields in it for replacement by the named fields in each device's
-    dictionary.'''
-    strings = [] # this holds the strings to print. We sort before printing
-    print ("\n%s" % title)
-    print   ("="*len(title))
+
+def display_devices(title, dev_list, extra_params=None):
+    '''Displays to the user the details of a list of devices given in
+    "dev_list". The "extra_params" parameter, if given, should contain a string
+     with %()s fields in it for replacement by the named fields in each
+     device's dictionary.'''
+    strings = []  # this holds the strings to print. We sort before printing
+    print("\n%s" % title)
+    print("="*len(title))
     if len(dev_list) == 0:
         strings.append("<none>")
     else:
         for dev in dev_list:
             if extra_params is not None:
-                strings.append("%s '%s' %s" % (dev["Slot"], \
-                                dev["Device_str"], extra_params % dev))
+                strings.append("%s '%s' %s" % (dev["Slot"],
+                               dev["Device_str"], extra_params % dev))
             else:
                 strings.append("%s '%s'" % (dev["Slot"], dev["Device_str"]))
     # sort before printing, so that the entries appear in PCI order
     strings.sort()
-    print ("\n".join(strings)) # print one per line
+    print("\n".join(strings))  # print one per line
+
 
 def show_status():
-    '''Function called when the script is passed the "--status" option. Displays
-    to the user what devices are bound to the igb_uio driver, the kernel driver
-    or to no driver'''
+    '''Function called when the script is passed the "--status" option.
+    Displays to the user what devices are bound to the igb_uio driver, the
+    kernel driver or to no driver'''
     global dpdk_drivers
     kernel_drv = []
     dpdk_drv = []
@@ -468,12 +491,13 @@ def show_status():
             kernel_drv.append(devices[d])
 
     # print each category separately, so we can clearly see what's used by DPDK
-    display_devices("Network devices using DPDK-compatible driver", dpdk_drv, \
+    display_devices("Network devices using DPDK-compatible driver", dpdk_drv,
                     "drv=%(Driver_str)s unused=%(Module_str)s")
     display_devices("Network devices using kernel driver", kernel_drv,
-                    "if=%(Interface)s drv=%(Driver_str)s unused=%(Module_str)s %(Active)s")
-    display_devices("Other network devices", no_drv,\
-                    "unused=%(Module_str)s")
+                    "if=%(Interface)s drv=%(Driver_str)s "
+                    "unused=%(Module_str)s %(Active)s")
+    display_devices("Other network devices", no_drv, "unused=%(Module_str)s")
+
 
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
@@ -488,11 +512,11 @@ def parse_args():
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "b:us",
-                               ["help", "usage", "status", "force",
-                                "bind=", "unbind"])
-    except (getopt.GetoptError, error):
-        print (str(error))
-        print ("Run '%s --usage' for further information" % sys.argv[0])
+                                   ["help", "usage", "status", "force",
+                                    "bind=", "unbind"])
+    except getopt.GetoptError as error:
+        print(str(error))
+        print("Run '%s --usage' for further information" % sys.argv[0])
         sys.exit(1)
 
     for opt, arg in opts:
@@ -505,12 +529,13 @@ def parse_args():
             force_flag = True
         if opt == "-b" or opt == "-u" or opt == "--bind" or opt == "--unbind":
             if b_flag is not None:
-                print ("Error - Only one bind or unbind may be specified\n")
+                print("Error - Only one bind or unbind may be specified\n")
                 sys.exit(1)
             if opt == "-u" or opt == "--unbind":
                 b_flag = "none"
             else:
                 b_flag = arg
+
 
 def do_arg_actions():
     '''do the actual action requested by the user'''
@@ -520,13 +545,14 @@ def do_arg_actions():
     global args
 
     if b_flag is None and not status_flag:
-        print ("Error: No action specified for devices. Please give a -b or -u option")
-        print ("Run '%s --usage' for further information" % sys.argv[0])
+        print("Error: No action specified for devices."
+              "Please give a -b or -u option")
+        print("Run '%s --usage' for further information" % sys.argv[0])
         sys.exit(1)
 
     if b_flag is not None and len(args) == 0:
-        print ("Error: No devices specified.")
-        print ("Run '%s --usage' for further information" % sys.argv[0])
+        print("Error: No devices specified.")
+        print("Run '%s --usage' for further information" % sys.argv[0])
         sys.exit(1)
 
     if b_flag == "none" or b_flag == "None":
@@ -535,8 +561,9 @@ def do_arg_actions():
         bind_all(args, b_flag, force_flag)
     if status_flag:
         if b_flag is not None:
-            get_nic_details() # refresh if we have changed anything
+            get_nic_details()  # refresh if we have changed anything
         show_status()
+
 
 def main():
     '''program main function'''
