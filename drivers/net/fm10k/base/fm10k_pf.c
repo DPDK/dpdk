@@ -1105,7 +1105,7 @@ STATIC s32 fm10k_iov_reset_resources_pf(struct fm10k_hw *hw,
 		FM10K_WRITE_REG(hw, FM10K_RQMAP(qmap_idx + i), vf_q_idx + i);
 	}
 
-	/* repeat the first ring for all of the remaining VF rings */
+	/* repeat the first ring for all the remaining VF rings */
 	for (i = queues_per_pool; i < qmap_stride; i++) {
 		FM10K_WRITE_REG(hw, FM10K_TQMAP(qmap_idx + i), vf_q_idx);
 		FM10K_WRITE_REG(hw, FM10K_RQMAP(qmap_idx + i), vf_q_idx);
@@ -1246,9 +1246,9 @@ s32 fm10k_iov_msg_mac_vlan_pf(struct fm10k_hw *hw, u32 **results,
 			      struct fm10k_mbx_info *mbx)
 {
 	struct fm10k_vf_info *vf_info = (struct fm10k_vf_info *)mbx;
-	int err = FM10K_SUCCESS;
 	u8 mac[ETH_ALEN];
 	u32 *result;
+	int err = FM10K_SUCCESS;
 	bool set;
 	u16 vlan;
 	u32 vid;
@@ -1427,10 +1427,10 @@ s32 fm10k_iov_msg_lport_state_pf(struct fm10k_hw *hw, u32 **results,
 			err = fm10k_update_lport_state_pf(hw, vf_info->glort,
 							  1, false);
 
-		/* need to clear VF_FLAG_ENABLED in order to ensure that we
-		 * actually re-enable the lport state below. Note that this
-		 * has no impact if VF is already disabled, as the flags are
-		 * already zeroed.
+		/* we need to clear VF_FLAG_ENABLED flags in order to ensure
+		 * that we actually re-enable the LPORT state below. Note that
+		 * this has no impact if the VF is already disabled, as the
+		 * flags are already cleared.
 		 */
 		if (!err)
 			vf_info->vf_flags = FM10K_VF_FLAG_CAPABLE(vf_info);

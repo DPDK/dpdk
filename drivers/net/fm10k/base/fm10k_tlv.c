@@ -405,7 +405,7 @@ static u32 *fm10k_tlv_attr_nest_start(u32 *msg, u16 attr_id)
 }
 
 /**
- *  fm10k_tlv_attr_nest_start - Start a set of nested attributes
+ *  fm10k_tlv_attr_nest_stop - Stop a set of nested attributes
  *  @msg: Pointer to message block
  *
  *  This function closes off an existing set of nested attributes.  The
