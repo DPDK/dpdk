@@ -149,8 +149,6 @@ extern const struct fm10k_tlv_attr fm10k_lport_map_msg_attr[];
 #define FM10K_PF_MSG_LPORT_MAP_HANDLER(func) \
 	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_LPORT_MAP, \
 			  fm10k_lport_map_msg_attr, func)
-s32 fm10k_msg_update_pvid_pf(struct fm10k_hw *, u32 **,
-			     struct fm10k_mbx_info *);
 extern const struct fm10k_tlv_attr fm10k_update_pvid_msg_attr[];
 #define FM10K_PF_MSG_UPDATE_PVID_HANDLER(func) \
 	FM10K_MSG_HANDLER(FM10K_PF_MSG_ID_UPDATE_PVID, \
@@ -183,7 +181,9 @@ s32 fm10k_iov_msg_mac_vlan_pf(struct fm10k_hw *, u32 **,
 			      struct fm10k_mbx_info *);
 s32 fm10k_iov_msg_lport_state_pf(struct fm10k_hw *, u32 **,
 				 struct fm10k_mbx_info *);
+#ifndef NO_DEFAULT_SRIOV_MSG_HANDLERS
 extern const struct fm10k_msg_data fm10k_iov_msg_data_pf[];
+#endif
 
 s32 fm10k_init_ops_pf(struct fm10k_hw *hw);
 #endif /* _FM10K_PF_H */
