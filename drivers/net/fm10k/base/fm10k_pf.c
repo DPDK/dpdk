@@ -300,7 +300,6 @@ STATIC s32 fm10k_read_mac_addr_pf(struct fm10k_hw *hw)
 {
 	u8 perm_addr[ETH_ALEN];
 	u32 serial_num;
-	int i;
 
 	DEBUGFUNC("fm10k_read_mac_addr_pf");
 
@@ -324,10 +323,8 @@ STATIC s32 fm10k_read_mac_addr_pf(struct fm10k_hw *hw)
 	perm_addr[4] = (u8)(serial_num >> 8);
 	perm_addr[5] = (u8)(serial_num);
 
-	for (i = 0; i < ETH_ALEN; i++) {
-		hw->mac.perm_addr[i] = perm_addr[i];
-		hw->mac.addr[i] = perm_addr[i];
-	}
+	memcpy(hw->mac.perm_addr, perm_addr, ETH_ALEN);
+	memcpy(hw->mac.addr, perm_addr, ETH_ALEN);
 
 	return FM10K_SUCCESS;
 }
