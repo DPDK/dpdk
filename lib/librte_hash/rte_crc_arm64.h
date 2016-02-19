@@ -50,6 +50,28 @@ extern "C" {
 #include <rte_common.h>
 
 static inline uint32_t
+crc32c_arm64_u8(uint8_t data, uint32_t init_val)
+{
+	asm(".arch armv8-a+crc");
+	__asm__ volatile(
+			"crc32cb %w[crc], %w[crc], %w[value]"
+			: [crc] "+r" (init_val)
+			: [value] "r" (data));
+	return init_val;
+}
+
+static inline uint32_t
+crc32c_arm64_u16(uint16_t data, uint32_t init_val)
+{
+	asm(".arch armv8-a+crc");
+	__asm__ volatile(
+			"crc32ch %w[crc], %w[crc], %w[value]"
+			: [crc] "+r" (init_val)
+			: [value] "r" (data));
+	return init_val;
+}
+
+static inline uint32_t
 crc32c_arm64_u32(uint32_t data, uint32_t init_val)
 {
 	asm(".arch armv8-a+crc");
@@ -100,6 +122,48 @@ static inline void __attribute__((constructor))
 rte_hash_crc_init_alg(void)
 {
 	rte_hash_crc_set_alg(CRC32_ARM64);
+}
+
+/**
+ * Use single crc32 instruction to perform a hash on a 1 byte value.
+ * Fall back to software crc32 implementation in case arm64 crc intrinsics is
+ * not supported
+ *
+ * @param data
+ *   Data to perform hash on.
+ * @param init_val
+ *   Value to initialise hash generator.
+ * @return
+ *   32bit calculated hash value.
+ */
+static inline uint32_t
+rte_hash_crc_1byte(uint8_t data, uint32_t init_val)
+{
+	if (likely(crc32_alg & CRC32_ARM64))
+		return crc32c_arm64_u8(data, init_val);
+
+	return crc32c_1byte(data, init_val);
+}
+
+/**
+ * Use single crc32 instruction to perform a hash on a 2 bytes value.
+ * Fall back to software crc32 implementation in case arm64 crc intrinsics is
+ * not supported
+ *
+ * @param data
+ *   Data to perform hash on.
+ * @param init_val
+ *   Value to initialise hash generator.
+ * @return
+ *   32bit calculated hash value.
+ */
+static inline uint32_t
+rte_hash_crc_2byte(uint16_t data, uint32_t init_val)
+{
+	if (likely(crc32_alg & CRC32_ARM64))
+		return crc32c_arm64_u16(data, init_val);
+
+	return crc32c_2bytes(data, init_val);
 }
 
 /**

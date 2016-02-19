@@ -87,6 +87,11 @@ Drivers
 Libraries
 ~~~~~~~~~
 
+* **hash: Fixed CRC32c hash computation for non multiple of 4 bytes sizes.**
+
+  Fix crc32c hash functions to return a valid crc32c value for data lengths
+  not multiple of 4 bytes.
+
 
 Examples
 ~~~~~~~~
