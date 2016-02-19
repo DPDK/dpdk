@@ -74,6 +74,11 @@ STATIC s32 fm10k_stop_hw_vf(struct fm10k_hw *hw)
 		FM10K_WRITE_REG(hw, FM10K_TDBAH(i), bah);
 		FM10K_WRITE_REG(hw, FM10K_RDBAL(i), bal);
 		FM10K_WRITE_REG(hw, FM10K_RDBAH(i), bah);
+		/* Restore ITR scale in software-defined mechanism in TDLEN
+		 * for next VF initialization. See definition of
+		 * FM10K_TDLEN_ITR_SCALE_SHIFT for more details on the use of
+		 * TDLEN here.
+		 */
 		FM10K_WRITE_REG(hw, FM10K_TDLEN(i), tdlen);
 	}
 
@@ -157,6 +162,10 @@ STATIC s32 fm10k_init_hw_vf(struct fm10k_hw *hw)
 	/* fetch default VLAN and ITR scale */
 	hw->mac.default_vid = (FM10K_READ_REG(hw, FM10K_TXQCTL(0)) &
 			       FM10K_TXQCTL_VID_MASK) >> FM10K_TXQCTL_VID_SHIFT;
+	/* Read the ITR scale from TDLEN. See the definition of
+	 * FM10K_TDLEN_ITR_SCALE_SHIFT for more information about how TDLEN is
+	 * used here.
+	 */
 	hw->mac.itr_scale = (FM10K_READ_REG(hw, FM10K_TDLEN(0)) &
 			     FM10K_TDLEN_ITR_SCALE_MASK) >>
 			    FM10K_TDLEN_ITR_SCALE_SHIFT;

@@ -350,6 +350,15 @@ struct fm10k_hw;
 #define FM10K_TDBAL(_n)		((0x40 * (_n)) + 0x8000)
 #define FM10K_TDBAH(_n)		((0x40 * (_n)) + 0x8001)
 #define FM10K_TDLEN(_n)		((0x40 * (_n)) + 0x8002)
+/* When fist initialized, VFs need to know the Interrupt Throttle Rate (ITR)
+ * scale which is based on the PCIe speed but the speed information in the PCI
+ * configuration space may not be accurate. The PF already knows the ITR scale
+ * but there is no defined method to pass that information from the PF to the
+ * VF. This is accomplished during VF initialization by temporarily co-opting
+ * the yet-to-be-used TDLEN register to have the PF store the ITR shift for
+ * the VF to retrieve before the VF needs to use the TDLEN register for its
+ * intended purpose, i.e. before the Tx resources are allocated.
+ */
 #define FM10K_TDLEN_ITR_SCALE_SHIFT		9
 #define FM10K_TDLEN_ITR_SCALE_MASK		0x00000E00
 #define FM10K_TDLEN_ITR_SCALE_GEN1		2
