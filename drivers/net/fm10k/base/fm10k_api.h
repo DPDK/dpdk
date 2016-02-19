@@ -44,7 +44,9 @@ s32 fm10k_stop_hw(struct fm10k_hw *hw);
 s32 fm10k_start_hw(struct fm10k_hw *hw);
 s32 fm10k_init_shared_code(struct fm10k_hw *hw);
 s32 fm10k_get_bus_info(struct fm10k_hw *hw);
+#ifndef NO_IS_SLOT_APPROPRIATE_CHECK
 bool fm10k_is_slot_appropriate(struct fm10k_hw *hw);
+#endif
 s32 fm10k_update_vlan(struct fm10k_hw *hw, u32 vid, u8 idx, bool set);
 s32 fm10k_read_mac_addr(struct fm10k_hw *hw);
 void fm10k_update_hw_stats(struct fm10k_hw *hw, struct fm10k_hw_stats *stats);

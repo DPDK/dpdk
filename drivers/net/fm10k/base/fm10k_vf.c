@@ -178,6 +178,7 @@ reset_max_queues:
 	return err;
 }
 
+#ifndef NO_IS_SLOT_APPROPRIATE_CHECK
 /**
  *  fm10k_is_slot_appropriate_vf - Indicate appropriate slot for this SKU
  *  @hw: pointer to hardware structure
@@ -194,6 +195,7 @@ STATIC bool fm10k_is_slot_appropriate_vf(struct fm10k_hw *hw)
 	return TRUE;
 }
 
+#endif
 /* This structure defines the attibutes to be parsed below */
 const struct fm10k_tlv_attr fm10k_mac_vlan_msg_attr[] = {
 	FM10K_TLV_ATTR_U32(FM10K_MAC_VLAN_MSG_VLAN),
@@ -648,7 +650,9 @@ s32 fm10k_init_ops_vf(struct fm10k_hw *hw)
 	mac->ops.init_hw = &fm10k_init_hw_vf;
 	mac->ops.start_hw = &fm10k_start_hw_generic;
 	mac->ops.stop_hw = &fm10k_stop_hw_vf;
+#ifndef NO_IS_SLOT_APPROPRIATE_CHECK
 	mac->ops.is_slot_appropriate = &fm10k_is_slot_appropriate_vf;
+#endif
 	mac->ops.update_vlan = &fm10k_update_vlan_vf;
 	mac->ops.read_mac_addr = &fm10k_read_mac_addr_vf;
 	mac->ops.update_uc_addr = &fm10k_update_uc_addr_vf;

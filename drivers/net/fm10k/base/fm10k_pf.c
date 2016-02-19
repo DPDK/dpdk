@@ -216,6 +216,7 @@ STATIC s32 fm10k_init_hw_pf(struct fm10k_hw *hw)
 	return FM10K_SUCCESS;
 }
 
+#ifndef NO_IS_SLOT_APPROPRIATE_CHECK
 /**
  *  fm10k_is_slot_appropriate_pf - Indicate appropriate slot for this SKU
  *  @hw: pointer to hardware structure
@@ -231,6 +232,7 @@ STATIC bool fm10k_is_slot_appropriate_pf(struct fm10k_hw *hw)
 	       (hw->bus.width == hw->bus_caps.width);
 }
 
+#endif
 /**
  *  fm10k_update_vlan_pf - Update status of VLAN ID in VLAN filter table
  *  @hw: pointer to hardware structure
@@ -2064,7 +2066,9 @@ s32 fm10k_init_ops_pf(struct fm10k_hw *hw)
 	mac->ops.init_hw = &fm10k_init_hw_pf;
 	mac->ops.start_hw = &fm10k_start_hw_generic;
 	mac->ops.stop_hw = &fm10k_stop_hw_generic;
+#ifndef NO_IS_SLOT_APPROPRIATE_CHECK
 	mac->ops.is_slot_appropriate = &fm10k_is_slot_appropriate_pf;
+#endif
 	mac->ops.update_vlan = &fm10k_update_vlan_pf;
 	mac->ops.read_mac_addr = &fm10k_read_mac_addr_pf;
 	mac->ops.update_uc_addr = &fm10k_update_uc_addr_pf;

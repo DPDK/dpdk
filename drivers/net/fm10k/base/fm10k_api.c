@@ -181,6 +181,7 @@ s32 fm10k_get_bus_info(struct fm10k_hw *hw)
 			       FM10K_NOT_IMPLEMENTED);
 }
 
+#ifndef NO_IS_SLOT_APPROPRIATE_CHECK
 /**
  *  fm10k_is_slot_appropriate - Indicate appropriate slot for this SKU
  *  @hw: pointer to hardware structure
@@ -195,6 +196,7 @@ bool fm10k_is_slot_appropriate(struct fm10k_hw *hw)
 	return true;
 }
 
+#endif
 /**
  *  fm10k_update_vlan - Clear VLAN ID to VLAN filter table
  *  @hw: pointer to hardware structure
