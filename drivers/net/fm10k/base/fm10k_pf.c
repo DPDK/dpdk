@@ -379,8 +379,8 @@ STATIC s32 fm10k_update_xc_addr_pf(struct fm10k_hw *hw, u16 glort,
 						 ((u32)mac[3] << 16) |
 						 ((u32)mac[4] << 8) |
 						 ((u32)mac[5]));
-	mac_update.mac_upper = FM10K_CPU_TO_LE16(((u32)mac[0] << 8) |
-						 ((u32)mac[1]));
+	mac_update.mac_upper = FM10K_CPU_TO_LE16(((u16)mac[0] << 8) |
+					   ((u16)mac[1]));
 	mac_update.vlan = FM10K_CPU_TO_LE16(vid);
 	mac_update.glort = FM10K_CPU_TO_LE16(glort);
 	mac_update.action = add ? 0 : 1;
