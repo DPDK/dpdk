@@ -269,7 +269,7 @@ user_set_vring_call(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 		file.fd = pmsg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring call idx:%d file:%d\n", file.index, file.fd);
-	ops->set_vring_call(ctx, &file);
+	vhost_set_vring_call(ctx, &file);
 }
 
 
@@ -290,7 +290,7 @@ user_set_vring_kick(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 		file.fd = pmsg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring kick idx:%d file:%d\n", file.index, file.fd);
-	ops->set_vring_kick(ctx, &file);
+	vhost_set_vring_kick(ctx, &file);
 
 	if (virtio_is_ready(dev) &&
 		!(dev->flags & VIRTIO_DEV_RUNNING))
@@ -313,7 +313,7 @@ user_get_vring_base(struct vhost_device_ctx ctx,
 		notify_ops->destroy_device(dev);
 
 	/* Here we are safe to get the last used index */
-	ops->get_vring_base(ctx, state->index, state);
+	vhost_get_vring_base(ctx, state->index, state);
 
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring base idx:%d file:%d\n", state->index, state->num);

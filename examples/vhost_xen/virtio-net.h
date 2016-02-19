@@ -110,6 +110,4 @@ struct virtio_net_device_ops {
 	void (* destroy_device)	(volatile struct virtio_net *);	/* Remove device. */
 };
 
-struct vhost_net_device_ops const * get_virtio_net_callbacks(void);
-
 #endif

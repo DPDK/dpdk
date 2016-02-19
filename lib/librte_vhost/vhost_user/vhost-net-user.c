@@ -55,7 +55,6 @@
 
 static void vserver_new_vq_conn(int fd, void *data, int *remove);
 static void vserver_message_handler(int fd, void *dat, int *remove);
-struct vhost_net_device_ops const *ops;
 
 struct connfd_ctx {
 	struct vhost_server *vserver;
@@ -302,7 +301,7 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 		return;
 	}
 
-	fh = ops->new_device(vdev_ctx);
+	fh = vhost_new_device(vdev_ctx);
 	if (fh == -1) {
 		free(ctx);
 		close(conn_fd);
@@ -311,7 +310,7 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 
 	vdev_ctx.fh = fh;
 	size = strnlen(vserver->path, PATH_MAX);
-	ops->set_ifname(vdev_ctx, vserver->path,
+	vhost_set_ifname(vdev_ctx, vserver->path,
 		size);
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", fh);
@@ -348,7 +347,7 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		close(connfd);
 		*remove = 1;
 		free(cfd_ctx);
-		ops->destroy_device(ctx);
+		vhost_destroy_device(ctx);
 
 		return;
 	}
@@ -357,14 +356,14 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		vhost_message_str[msg.request]);
 	switch (msg.request) {
 	case VHOST_USER_GET_FEATURES:
-		ret = ops->get_features(ctx, &features);
+		ret = vhost_get_features(ctx, &features);
 		msg.payload.u64 = features;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(connfd, &msg);
 		break;
 	case VHOST_USER_SET_FEATURES:
 		features = msg.payload.u64;
-		ops->set_features(ctx, &features);
+		vhost_set_features(ctx, &features);
 		break;
 
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
@@ -377,10 +376,10 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		break;
 
 	case VHOST_USER_SET_OWNER:
-		ops->set_owner(ctx);
+		vhost_set_owner(ctx);
 		break;
 	case VHOST_USER_RESET_OWNER:
-		ops->reset_owner(ctx);
+		vhost_reset_owner(ctx);
 		break;
 
 	case VHOST_USER_SET_MEM_TABLE:
@@ -400,13 +399,13 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		break;
 
 	case VHOST_USER_SET_VRING_NUM:
-		ops->set_vring_num(ctx, &msg.payload.state);
+		vhost_set_vring_num(ctx, &msg.payload.state);
 		break;
 	case VHOST_USER_SET_VRING_ADDR:
-		ops->set_vring_addr(ctx, &msg.payload.addr);
+		vhost_set_vring_addr(ctx, &msg.payload.addr);
 		break;
 	case VHOST_USER_SET_VRING_BASE:
-		ops->set_vring_base(ctx, &msg.payload.state);
+		vhost_set_vring_base(ctx, &msg.payload.state);
 		break;
 
 	case VHOST_USER_GET_VRING_BASE:
@@ -456,8 +455,6 @@ rte_vhost_driver_register(const char *path)
 	struct vhost_server *vserver;
 
 	pthread_mutex_lock(&g_vhost_server.server_mutex);
-	if (ops == NULL)
-		ops = get_virtio_net_callbacks();
 
 	if (g_vhost_server.vserver_cnt == MAX_VHOST_SERVER) {
 		RTE_LOG(ERR, VHOST_CONFIG,

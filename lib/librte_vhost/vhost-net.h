@@ -43,8 +43,6 @@
 
 #include "rte_virtio_net.h"
 
-extern struct vhost_net_device_ops const *ops;
-
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER1
@@ -85,36 +83,28 @@ struct vhost_device_ctx {
 	uint64_t	fh;	/* Populated with fi->fh to track the device index. */
 };
 
-/*
- * Structure contains function pointers to be defined in virtio-net.c. These
- * functions are called in CUSE context and are used to configure devices.
- */
-struct vhost_net_device_ops {
-	int (*new_device)(struct vhost_device_ctx);
-	void (*destroy_device)(struct vhost_device_ctx);
+int vhost_new_device(struct vhost_device_ctx);
+void vhost_destroy_device(struct vhost_device_ctx);
 
-	void (*set_ifname)(struct vhost_device_ctx,
-		const char *if_name, unsigned int if_len);
+void vhost_set_ifname(struct vhost_device_ctx,
+	const char *if_name, unsigned int if_len);
 
-	int (*get_features)(struct vhost_device_ctx, uint64_t *);
-	int (*set_features)(struct vhost_device_ctx, uint64_t *);
+int vhost_get_features(struct vhost_device_ctx, uint64_t *);
+int vhost_set_features(struct vhost_device_ctx, uint64_t *);
 
-	int (*set_vring_num)(struct vhost_device_ctx, struct vhost_vring_state *);
-	int (*set_vring_addr)(struct vhost_device_ctx, struct vhost_vring_addr *);
-	int (*set_vring_base)(struct vhost_device_ctx, struct vhost_vring_state *);
-	int (*get_vring_base)(struct vhost_device_ctx, uint32_t, struct vhost_vring_state *);
+int vhost_set_vring_num(struct vhost_device_ctx, struct vhost_vring_state *);
+int vhost_set_vring_addr(struct vhost_device_ctx, struct vhost_vring_addr *);
+int vhost_set_vring_base(struct vhost_device_ctx, struct vhost_vring_state *);
+int vhost_get_vring_base(struct vhost_device_ctx,
+	uint32_t, struct vhost_vring_state *);
 
-	int (*set_vring_kick)(struct vhost_device_ctx, struct vhost_vring_file *);
-	int (*set_vring_call)(struct vhost_device_ctx, struct vhost_vring_file *);
+int vhost_set_vring_kick(struct vhost_device_ctx, struct vhost_vring_file *);
+int vhost_set_vring_call(struct vhost_device_ctx, struct vhost_vring_file *);
 
-	int (*set_backend)(struct vhost_device_ctx, struct vhost_vring_file *);
+int vhost_set_backend(struct vhost_device_ctx, struct vhost_vring_file *);
 
-	int (*set_owner)(struct vhost_device_ctx);
-	int (*reset_owner)(struct vhost_device_ctx);
-};
-
-
-struct vhost_net_device_ops const *get_virtio_net_callbacks(void);
+int vhost_set_owner(struct vhost_device_ctx);
+int vhost_reset_owner(struct vhost_device_ctx);
 
 /*
  * Backend-specific cleanup. Defined by vhost-cuse and vhost-user.

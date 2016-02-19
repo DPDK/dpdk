@@ -399,7 +399,7 @@ get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int 
 
 	if (ret >= 0) {
 		ifr_size = strnlen(ifr.ifr_name, sizeof(ifr.ifr_name));
-		ops->set_ifname(ctx, ifr.ifr_name, ifr_size);
+		vhost_set_ifname(ctx, ifr.ifr_name, ifr_size);
 	} else
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%"PRIu64") TUNGETIFF ioctl failed\n",
@@ -419,7 +419,7 @@ int cuse_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	if (!(dev->flags & VIRTIO_DEV_RUNNING) && file->fd != VIRTIO_DEV_STOPPED)
 		get_ifname(ctx, dev, file->fd, ctx.pid);
 
-	return ops->set_backend(ctx, file);
+	return vhost_set_backend(ctx, file);
 }
 
 void

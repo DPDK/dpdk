@@ -350,8 +350,8 @@ reset_device(struct virtio_net *dev)
  * initialised and a new entry is added to the device configuration linked
  * list.
  */
-static int
-new_device(struct vhost_device_ctx ctx)
+int
+vhost_new_device(struct vhost_device_ctx ctx)
 {
 	struct virtio_net_config_ll *new_ll_dev;
 
@@ -376,8 +376,8 @@ new_device(struct vhost_device_ctx ctx)
  * Function is called from the CUSE release function. This function will
  * cleanup the device and remove it from device configuration linked list.
  */
-static void
-destroy_device(struct vhost_device_ctx ctx)
+void
+vhost_destroy_device(struct vhost_device_ctx ctx)
 {
 	struct virtio_net_config_ll *ll_dev_cur_ctx, *ll_dev_last = NULL;
 	struct virtio_net_config_ll *ll_dev_cur = ll_root;
@@ -405,8 +405,8 @@ destroy_device(struct vhost_device_ctx ctx)
 	}
 }
 
-static void
-set_ifname(struct vhost_device_ctx ctx,
+void
+vhost_set_ifname(struct vhost_device_ctx ctx,
 	const char *if_name, unsigned int if_len)
 {
 	struct virtio_net *dev;
@@ -428,8 +428,8 @@ set_ifname(struct vhost_device_ctx ctx,
  * This function just returns success at the moment unless
  * the device hasn't been initialised.
  */
-static int
-set_owner(struct vhost_device_ctx ctx)
+int
+vhost_set_owner(struct vhost_device_ctx ctx)
 {
 	struct virtio_net *dev;
 
@@ -443,8 +443,8 @@ set_owner(struct vhost_device_ctx ctx)
 /*
  * Called from CUSE IOCTL: VHOST_RESET_OWNER
  */
-static int
-reset_owner(struct vhost_device_ctx ctx)
+int
+vhost_reset_owner(struct vhost_device_ctx ctx)
 {
 	struct virtio_net *dev;
 
@@ -464,8 +464,8 @@ reset_owner(struct vhost_device_ctx ctx)
  * Called from CUSE IOCTL: VHOST_GET_FEATURES
  * The features that we support are requested.
  */
-static int
-get_features(struct vhost_device_ctx ctx, uint64_t *pu)
+int
+vhost_get_features(struct vhost_device_ctx ctx, uint64_t *pu)
 {
 	struct virtio_net *dev;
 
@@ -482,8 +482,8 @@ get_features(struct vhost_device_ctx ctx, uint64_t *pu)
  * Called from CUSE IOCTL: VHOST_SET_FEATURES
  * We receive the negotiated features supported by us and the virtio device.
  */
-static int
-set_features(struct vhost_device_ctx ctx, uint64_t *pu)
+int
+vhost_set_features(struct vhost_device_ctx ctx, uint64_t *pu)
 {
 	struct virtio_net *dev;
 	uint16_t vhost_hlen;
@@ -522,8 +522,9 @@ set_features(struct vhost_device_ctx ctx, uint64_t *pu)
  * Called from CUSE IOCTL: VHOST_SET_VRING_NUM
  * The virtio device sends us the size of the descriptor ring.
  */
-static int
-set_vring_num(struct vhost_device_ctx ctx, struct vhost_vring_state *state)
+int
+vhost_set_vring_num(struct vhost_device_ctx ctx,
+	struct vhost_vring_state *state)
 {
 	struct virtio_net *dev;
 
@@ -624,8 +625,8 @@ numa_realloc(struct virtio_net *dev, int index __rte_unused)
  * The virtio device sends us the desc, used and avail ring addresses.
  * This function then converts these to our address space.
  */
-static int
-set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
+int
+vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
@@ -686,8 +687,9 @@ set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
  * Called from CUSE IOCTL: VHOST_SET_VRING_BASE
  * The virtio device sends us the available ring last used index.
  */
-static int
-set_vring_base(struct vhost_device_ctx ctx, struct vhost_vring_state *state)
+int
+vhost_set_vring_base(struct vhost_device_ctx ctx,
+	struct vhost_vring_state *state)
 {
 	struct virtio_net *dev;
 
@@ -706,8 +708,8 @@ set_vring_base(struct vhost_device_ctx ctx, struct vhost_vring_state *state)
  * Called from CUSE IOCTL: VHOST_GET_VRING_BASE
  * We send the virtio device our available ring last used index.
  */
-static int
-get_vring_base(struct vhost_device_ctx ctx, uint32_t index,
+int
+vhost_get_vring_base(struct vhost_device_ctx ctx, uint32_t index,
 	struct vhost_vring_state *state)
 {
 	struct virtio_net *dev;
@@ -729,8 +731,8 @@ get_vring_base(struct vhost_device_ctx ctx, uint32_t index,
  * The virtio device sends an eventfd to interrupt the guest. This fd gets
  * copied into our process space.
  */
-static int
-set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+int
+vhost_set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
@@ -766,8 +768,8 @@ set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
  * The virtio device sends an eventfd that it can use to notify us.
  * This fd gets copied into our process space.
  */
-static int
-set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+int
+vhost_set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
@@ -796,8 +798,8 @@ set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
  * At that point we remove the device from the data core.
  * The device will still exist in the device configuration linked list.
  */
-static int
-set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+int
+vhost_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 
@@ -822,42 +824,6 @@ set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 		if (file->fd == VIRTIO_DEV_STOPPED)
 			notify_ops->destroy_device(dev);
 	return 0;
-}
-
-/*
- * Function pointers are set for the device operations to allow CUSE to call
- * functions when an IOCTL, device_add or device_release is received.
- */
-static const struct vhost_net_device_ops vhost_device_ops = {
-	.new_device = new_device,
-	.destroy_device = destroy_device,
-
-	.set_ifname = set_ifname,
-
-	.get_features = get_features,
-	.set_features = set_features,
-
-	.set_vring_num = set_vring_num,
-	.set_vring_addr = set_vring_addr,
-	.set_vring_base = set_vring_base,
-	.get_vring_base = get_vring_base,
-
-	.set_vring_kick = set_vring_kick,
-	.set_vring_call = set_vring_call,
-
-	.set_backend = set_backend,
-
-	.set_owner = set_owner,
-	.reset_owner = reset_owner,
-};
-
-/*
- * Called by main to setup callbacks when registering CUSE device.
- */
-struct vhost_net_device_ops const *
-get_virtio_net_callbacks(void)
-{
-	return &vhost_device_ops;
 }
 
 int rte_vhost_enable_guest_notification(struct virtio_net *dev,
