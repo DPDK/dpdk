@@ -74,6 +74,7 @@ EAL_REGISTER_TAILQ(rte_vfio_tailq)
 #define VFIO_GROUP_FMT "/dev/vfio/%u"
 #define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
 #define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
+#define VFIO_GET_REGION_IDX(x) (x >> 40)
 
 /* per-process VFIO config */
 static struct vfio_config vfio_cfg;
@@ -999,30 +1000,41 @@ int
 pci_vfio_ioport_map(struct rte_pci_device *dev, int bar,
 		    struct rte_pci_ioport *p)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(bar);
-	RTE_SET_USED(p);
-	return -1;
+	if (bar < VFIO_PCI_BAR0_REGION_INDEX ||
+	    bar > VFIO_PCI_BAR5_REGION_INDEX) {
+		RTE_LOG(ERR, EAL, "invalid bar (%d)!\n", bar);
+		return -1;
+	}
+
+	p->dev = dev;
+	p->base = VFIO_GET_REGION_ADDR(bar);
+	return 0;
 }
 
 void
 pci_vfio_ioport_read(struct rte_pci_ioport *p,
 		     void *data, size_t len, off_t offset)
 {
-	RTE_SET_USED(p);
-	RTE_SET_USED(data);
-	RTE_SET_USED(len);
-	RTE_SET_USED(offset);
+	const struct rte_intr_handle *intr_handle = &p->dev->intr_handle;
+
+	if (pread64(intr_handle->vfio_dev_fd, data,
+		    len, p->base + offset) <= 0)
+		RTE_LOG(ERR, EAL,
+			"Can't read from PCI bar (%" PRIu64 ") : offset (%x)\n",
+			VFIO_GET_REGION_IDX(p->base), (int)offset);
 }
 
 void
 pci_vfio_ioport_write(struct rte_pci_ioport *p,
 		      const void *data, size_t len, off_t offset)
 {
-	RTE_SET_USED(p);
-	RTE_SET_USED(data);
-	RTE_SET_USED(len);
-	RTE_SET_USED(offset);
+	const struct rte_intr_handle *intr_handle = &p->dev->intr_handle;
+
+	if (pwrite64(intr_handle->vfio_dev_fd, data,
+		     len, p->base + offset) <= 0)
+		RTE_LOG(ERR, EAL,
+			"Can't write to PCI bar (%" PRIu64 ") : offset (%x)\n",
+			VFIO_GET_REGION_IDX(p->base), (int)offset);
 }
 
 int
