@@ -659,6 +659,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	struct pci_map *maps;
 	uint32_t msix_table_offset = 0;
 	uint32_t msix_table_size = 0;
+	uint32_t ioport_bar;
 
 	dev->intr_handle.fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
@@ -851,6 +852,25 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 			if (internal_config.process_type == RTE_PROC_PRIMARY)
 				rte_free(vfio_res);
 			return -1;
+		}
+
+		/* chk for io port region */
+		ret = pread64(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
+			      VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX)
+			      + PCI_BASE_ADDRESS_0 + i*4);
+
+		if (ret != sizeof(ioport_bar)) {
+			RTE_LOG(ERR, EAL,
+				"Cannot read command (%x) from config space!\n",
+				PCI_BASE_ADDRESS_0 + i*4);
+			return -1;
+		}
+
+		if (ioport_bar & PCI_BASE_ADDRESS_SPACE_IO) {
+			RTE_LOG(INFO, EAL,
+				"Ignore mapping IO port bar(%d) addr: %x\n",
+				 i, ioport_bar);
+			continue;
 		}
 
 		/* skip non-mmapable BARs */
