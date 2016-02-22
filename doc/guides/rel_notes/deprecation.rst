@@ -12,6 +12,8 @@ Deprecation Notices
   and will be removed from 16.07.
   Macros CONFIG_RTE_PCI_CONFIG, CONFIG_RTE_PCI_EXTENDED_TAG and
   CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE will be removed.
+  The /sys entries extended_tag and max_read_request_size created by igb_uio
+  will be removed.
 
 * The following fields have been deprecated in rte_eth_stats:
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,

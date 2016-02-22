@@ -40,15 +40,6 @@
 
 #include "compat.h"
 
-#ifdef RTE_PCI_CONFIG
-#define PCI_SYS_FILE_BUF_SIZE      10
-#define PCI_DEV_CAP_REG            0xA4
-#define PCI_DEV_CTRL_REG           0xA8
-#define PCI_DEV_CAP_EXT_TAG_MASK   0x20
-#define PCI_DEV_CTRL_EXT_TAG_SHIFT 8
-#define PCI_DEV_CTRL_EXT_TAG_MASK  (1 << PCI_DEV_CTRL_EXT_TAG_SHIFT)
-#endif
-
 /**
  * A structure describing the private information for a uio device.
  */
@@ -94,19 +85,9 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 static ssize_t
 show_extended_tag(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	struct pci_dev *pci_dev = to_pci_dev(dev);
-	uint32_t val = 0;
+	dev_info(dev, "Deprecated\n");
 
-	pci_read_config_dword(pci_dev, PCI_DEV_CAP_REG, &val);
-	if (!(val & PCI_DEV_CAP_EXT_TAG_MASK)) /* Not supported */
-		return snprintf(buf, PCI_SYS_FILE_BUF_SIZE, "%s\n", "invalid");
-
-	val = 0;
-	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
-					PCI_DEV_CTRL_REG, &val);
-
-	return snprintf(buf, PCI_SYS_FILE_BUF_SIZE, "%s\n",
-		(val & PCI_DEV_CTRL_EXT_TAG_MASK) ? "on" : "off");
+	return 0;
 }
 
 static ssize_t
@@ -115,36 +96,9 @@ store_extended_tag(struct device *dev,
 		   const char *buf,
 		   size_t count)
 {
-	struct pci_dev *pci_dev = to_pci_dev(dev);
-	uint32_t val = 0, enable;
+	dev_info(dev, "Deprecated\n");
 
-	if (strncmp(buf, "on", 2) == 0)
-		enable = 1;
-	else if (strncmp(buf, "off", 3) == 0)
-		enable = 0;
-	else
-		return -EINVAL;
-
-	pci_cfg_access_lock(pci_dev);
-	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
-					PCI_DEV_CAP_REG, &val);
-	if (!(val & PCI_DEV_CAP_EXT_TAG_MASK)) { /* Not supported */
-		pci_cfg_access_unlock(pci_dev);
-		return -EPERM;
-	}
-
-	val = 0;
-	pci_bus_read_config_dword(pci_dev->bus, pci_dev->devfn,
-					PCI_DEV_CTRL_REG, &val);
-	if (enable)
-		val |= PCI_DEV_CTRL_EXT_TAG_MASK;
-	else
-		val &= ~PCI_DEV_CTRL_EXT_TAG_MASK;
-	pci_bus_write_config_dword(pci_dev->bus, pci_dev->devfn,
-					PCI_DEV_CTRL_REG, val);
-	pci_cfg_access_unlock(pci_dev);
-
-	return count;
+	return 0;
 }
 
 static ssize_t
@@ -152,10 +106,9 @@ show_max_read_request_size(struct device *dev,
 			   struct device_attribute *attr,
 			   char *buf)
 {
-	struct pci_dev *pci_dev = to_pci_dev(dev);
-	int val = pcie_get_readrq(pci_dev);
+	dev_info(dev, "Deprecated\n");
 
-	return snprintf(buf, PCI_SYS_FILE_BUF_SIZE, "%d\n", val);
+	return 0;
 }
 
 static ssize_t
@@ -164,18 +117,9 @@ store_max_read_request_size(struct device *dev,
 			    const char *buf,
 			    size_t count)
 {
-	struct pci_dev *pci_dev = to_pci_dev(dev);
-	unsigned long size = 0;
-	int ret;
+	dev_info(dev, "Deprecated\n");
 
-	if (0 != kstrtoul(buf, 0, &size))
-		return -EINVAL;
-
-	ret = pcie_set_readrq(pci_dev, (int)size);
-	if (ret < 0)
-		return ret;
-
-	return count;
+	return 0;
 }
 #endif
 

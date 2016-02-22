@@ -186,27 +186,17 @@ Check with the local Intel's Network Division application engineers for firmware
 The base driver to support firmware version of FVL3E will be integrated in the next
 DPDK release, so currently the validated firmware version is 4.2.6.
 
-Enabling Extended Tag and Setting Max Read Request Size
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enabling Extended Tag
+~~~~~~~~~~~~~~~~~~~~~
 
-PCI configurations of ``extended_tag`` and max _read_requ st_size have big impacts on performance of small packets on 40G NIC.
-Enabling extended_tag and setting ``max_read_request_size`` to small size such as 128 bytes provide great helps to high performance of small packets.
+PCI configuration of ``extended_tag`` has big impact on small packet size
+performance of 40G ports. Enabling ``extended_tag`` can help 40G port to
+achieve the best performance, especially for small packet size.
 
-*   These can be done in some BIOS implementations.
+* Disabling/enabling ``extended_tag`` can be done in some BIOS implementations.
 
-*   For other BIOS implementations, PCI configurations can be changed by using command of ``setpci``, or special configurations in DPDK config file of ``common_linux``.
-
-    *   Bits 7:5 at address of 0xA8 of each PCI device is used for setting the max_read_request_size,
-        and bit 8 of 0xA8 of each PCI device is used for enabling/disabling the extended_tag.
-        lspci and setpci can be used to read the values of 0xA8 and then write it back after being changed.
-
-    *   In config file of common_linux, below three configurations can be changed for the same purpose.
-
-        ``CONFIG_RTE_PCI_CONFIG``
-
-        ``CONFIG_RTE_PCI_EXTENDED_TAG``
-
-        ``CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE``
+* If BIOS does not enable it, and does not support changing it, tools
+  (e.g. ``setpci`` on Linux) can be used to enable or disable ``extended_tag``.
 
 * From release 16.04, ``extended_tag`` is enabled by default during port
   initialization, users don't need to care about that anymore.
