@@ -57,6 +57,12 @@ This section should contain new features added in this release. Sample format:
 
 * **Added vhost-user live migration support.**
 
+* **Enabled PCI extended tag for i40e.**
+
+  It enabled extended tag by checking and writing corresponding PCI config
+  space bytes, to boost the performance. In the meanwhile, it deprecated the
+  legacy way via reading/writing sysfile supported by kernel module igb_uio.
+
 
 Resolved Issues
 ---------------

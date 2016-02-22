@@ -273,6 +273,17 @@
 #define I40E_INSET_IPV6_TC_MASK       0x0009F00FUL
 #define I40E_INSET_IPV6_NEXT_HDR_MASK 0x000C00FFUL
 
+/* PCI offset for querying capability */
+#define PCI_DEV_CAP_REG            0xA4
+/* PCI offset for enabling/disabling Extended Tag */
+#define PCI_DEV_CTRL_REG           0xA8
+/* Bit mask of Extended Tag capability */
+#define PCI_DEV_CAP_EXT_TAG_MASK   0x20
+/* Bit shift of Extended Tag enable/disable */
+#define PCI_DEV_CTRL_EXT_TAG_SHIFT 8
+/* Bit mask of Extended Tag enable/disable */
+#define PCI_DEV_CTRL_EXT_TAG_MASK  (1 << PCI_DEV_CTRL_EXT_TAG_SHIFT)
+
 static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
@@ -386,7 +397,7 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 static int i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 				  struct rte_eth_dcb_info *dcb_info);
 static void i40e_configure_registers(struct i40e_hw *hw);
-static void i40e_hw_init(struct i40e_hw *hw);
+static void i40e_hw_init(struct rte_eth_dev *dev);
 static int i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi);
 static int i40e_mirror_rule_set(struct rte_eth_dev *dev,
 			struct rte_eth_mirror_conf *mirror_conf,
@@ -765,7 +776,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	i40e_clear_hw(hw);
 
 	/* Initialize the hardware */
-	i40e_hw_init(hw);
+	i40e_hw_init(dev);
 
 	/* Reset here to make sure all is clean for each PF */
 	ret = i40e_pf_reset(hw);
@@ -7262,13 +7273,61 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 }
 
 /*
+ * Check and enable Extended Tag.
+ * Enabling Extended Tag is important for 40G performance.
+ */
+static void
+i40e_enable_extended_tag(struct rte_eth_dev *dev)
+{
+	uint32_t buf = 0;
+	int ret;
+
+	ret = rte_eal_pci_read_config(dev->pci_dev, &buf, sizeof(buf),
+				      PCI_DEV_CAP_REG);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
+			    PCI_DEV_CAP_REG);
+		return;
+	}
+	if (!(buf & PCI_DEV_CAP_EXT_TAG_MASK)) {
+		PMD_DRV_LOG(ERR, "Does not support Extended Tag");
+		return;
+	}
+
+	buf = 0;
+	ret = rte_eal_pci_read_config(dev->pci_dev, &buf, sizeof(buf),
+				      PCI_DEV_CTRL_REG);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
+			    PCI_DEV_CTRL_REG);
+		return;
+	}
+	if (buf & PCI_DEV_CTRL_EXT_TAG_MASK) {
+		PMD_DRV_LOG(DEBUG, "Extended Tag has already been enabled");
+		return;
+	}
+	buf |= PCI_DEV_CTRL_EXT_TAG_MASK;
+	ret = rte_eal_pci_write_config(dev->pci_dev, &buf, sizeof(buf),
+				       PCI_DEV_CTRL_REG);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to write PCI offset 0x%x",
+			    PCI_DEV_CTRL_REG);
+		return;
+	}
+}
+
+/*
  * As some registers wouldn't be reset unless a global hardware reset,
  * hardware initialization is needed to put those registers into an
  * expected initial state.
  */
 static void
-i40e_hw_init(struct i40e_hw *hw)
+i40e_hw_init(struct rte_eth_dev *dev)
 {
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	i40e_enable_extended_tag(dev);
+
 	/* clear the PF Queue Filter control register */
 	I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, 0);
 

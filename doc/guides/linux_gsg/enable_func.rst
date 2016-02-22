@@ -208,6 +208,9 @@ Enabling extended_tag and setting ``max_read_request_size`` to small size such a
 
         ``CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE``
 
+* From release 16.04, ``extended_tag`` is enabled by default during port
+  initialization, users don't need to care about that anymore.
+
 Use 16 Bytes RX Descriptor Size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
