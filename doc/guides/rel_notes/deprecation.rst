@@ -8,6 +8,11 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* The EAL function pci_config_space_set is deprecated in release 16.04
+  and will be removed from 16.07.
+  Macros CONFIG_RTE_PCI_CONFIG, CONFIG_RTE_PCI_EXTENDED_TAG and
+  CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE will be removed.
+
 * The following fields have been deprecated in rte_eth_stats:
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff

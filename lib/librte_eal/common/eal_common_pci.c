@@ -180,13 +180,6 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		}
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
-#ifdef RTE_PCI_CONFIG
-			/*
-			 * Set PCIe config space for high performance.
-			 * Return value can be ignored.
-			 */
-			pci_config_space_set(dev);
-#endif
 			/* map resources for devices that use igb_uio */
 			ret = rte_eal_pci_map_device(dev);
 			if (ret != 0)

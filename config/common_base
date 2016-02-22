@@ -102,6 +102,7 @@ CONFIG_RTE_EAL_PMD_PATH=""
 
 #
 # Special configurations in PCI Config Space for high performance
+# They are all deprecated, and will be removed later.
 #
 CONFIG_RTE_PCI_CONFIG=n
 CONFIG_RTE_PCI_EXTENDED_TAG=""

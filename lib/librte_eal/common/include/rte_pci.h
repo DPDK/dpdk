@@ -578,14 +578,17 @@ void rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
 			      const void *data, size_t len, off_t offset);
 
 #ifdef RTE_PCI_CONFIG
+#include <rte_common.h>
 /**
  * Set special config space registers for performance purpose.
+ * It is deprecated, as all configurations have been moved into
+ * each PMDs respectively.
  *
  * @param dev
  *   A pointer to a rte_pci_device structure describing the device
  *   to use
  */
-void pci_config_space_set(struct rte_pci_device *dev);
+void pci_config_space_set(struct rte_pci_device *dev) __rte_deprecated;
 #endif /* RTE_PCI_CONFIG */
 
 #ifdef __cplusplus
