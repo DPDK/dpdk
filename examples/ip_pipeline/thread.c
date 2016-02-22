@@ -39,6 +39,43 @@
 #include "app.h"
 #include "thread.h"
 
+#if APP_THREAD_HEADROOM_STATS_COLLECT
+
+#define PIPELINE_RUN_REGULAR(thread, pipeline)		\
+do {							\
+	uint64_t t0 = rte_rdtsc_precise();		\
+	int n_pkts = rte_pipeline_run(pipeline->p);	\
+							\
+	if (n_pkts == 0) {				\
+		uint64_t t1 = rte_rdtsc_precise();	\
+							\
+		thread->headroom_cycles += t1 - t0;	\
+	}						\
+} while (0)
+
+
+#define PIPELINE_RUN_CUSTOM(thread, data)		\
+do {							\
+	uint64_t t0 = rte_rdtsc_precise();		\
+	int n_pkts = data->f_run(data->be);		\
+							\
+	if (n_pkts == 0) {				\
+		uint64_t t1 = rte_rdtsc_precise();	\
+							\
+		thread->headroom_cycles += t1 - t0;	\
+	}						\
+} while (0)
+
+#else
+
+#define PIPELINE_RUN_REGULAR(thread, pipeline)		\
+	rte_pipeline_run(pipeline->p)
+
+#define PIPELINE_RUN_CUSTOM(thread, data)		\
+	data->f_run(data->be)
+
+#endif
+
 static inline void *
 thread_msg_recv(struct rte_ring *r)
 {
@@ -165,11 +202,34 @@ thread_msg_req_handle(struct app_thread_data *t)
 			thread_msg_send(t->msgq_out, rsp);
 			break;
 		}
+
+		case THREAD_MSG_REQ_HEADROOM_READ: {
+			struct thread_headroom_read_msg_rsp *rsp =
+				(struct thread_headroom_read_msg_rsp *)
+				req;
+
+			rsp->headroom_ratio = t->headroom_ratio;
+			rsp->status = 0;
+			thread_msg_send(t->msgq_out, rsp);
+			break;
+		}
 		default:
 			break;
 		}
 
 	return 0;
+}
+
+static void
+thread_headroom_update(struct app_thread_data *t, uint64_t time)
+{
+	uint64_t time_diff = time - t->headroom_time;
+
+	t->headroom_ratio =
+		((double) t->headroom_cycles) / ((double) time_diff);
+
+	t->headroom_cycles = 0;
+	t->headroom_time = rte_rdtsc_precise();
 }
 
 int
@@ -188,14 +248,14 @@ app_thread(void *arg)
 			struct app_thread_pipeline_data *data = &t->regular[j];
 			struct pipeline *p = data->be;
 
-			rte_pipeline_run(p->p);
+			PIPELINE_RUN_REGULAR(t, p);
 		}
 
 		/* Run custom pipelines */
 		for (j = 0; j < n_custom; j++) {
 			struct app_thread_pipeline_data *data = &t->custom[j];
 
-			data->f_run(data->be);
+			PIPELINE_RUN_CUSTOM(t, data);
 		}
 
 		/* Timer */
@@ -244,6 +304,7 @@ app_thread(void *arg)
 
 				if (deadline <= time) {
 					thread_msg_req_handle(t);
+					thread_headroom_update(t, time);
 					deadline = time + t->timer_period;
 					t->thread_req_deadline = deadline;
 				}
@@ -251,6 +312,7 @@ app_thread(void *arg)
 				if (deadline < t_deadline)
 					t_deadline = deadline;
 			}
+
 
 			t->deadline = t_deadline;
 		}

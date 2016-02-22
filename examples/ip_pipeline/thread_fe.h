@@ -92,4 +92,10 @@ app_pipeline_disable(struct app_params *app,
 		uint32_t hyper_th_id,
 		uint32_t pipeline_id);
 
+int
+app_thread_headroom(struct app_params *app,
+		uint32_t core_id,
+		uint32_t socket_id,
+		uint32_t hyper_th_id);
+
 #endif /* THREAD_FE_H_ */

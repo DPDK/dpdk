@@ -263,6 +263,10 @@ struct app_thread_data {
 
 	struct rte_ring *msgq_in;
 	struct rte_ring *msgq_out;
+
+	uint64_t headroom_time;
+	uint64_t headroom_cycles;
+	double headroom_ratio;
 };
 
 struct app_eal_params {
@@ -419,6 +423,10 @@ struct app_eal_params {
 
 #ifndef APP_MAX_CMDS
 #define APP_MAX_CMDS                             64
+#endif
+
+#ifndef APP_THREAD_HEADROOM_STATS_COLLECT
+#define APP_THREAD_HEADROOM_STATS_COLLECT        1
 #endif
 
 struct app_params {

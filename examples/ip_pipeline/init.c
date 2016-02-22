@@ -1351,8 +1351,8 @@ app_init_pipelines(struct app_params *app)
 
 		data->ptype = ptype;
 
-		data->timer_period = (rte_get_tsc_hz() * params->timer_period)
-			/ 1000;
+		data->timer_period = (rte_get_tsc_hz() *
+			params->timer_period) / 100;
 	}
 }
 
@@ -1386,6 +1386,10 @@ app_init_threads(struct app_params *app)
 
 		t->timer_period = (rte_get_tsc_hz() * APP_THREAD_TIMER_PERIOD) / 1000;
 		t->thread_req_deadline = time + t->timer_period;
+
+		t->headroom_cycles = 0;
+		t->headroom_time = rte_get_tsc_cycles();
+		t->headroom_ratio = 0.0;
 
 		t->msgq_in = app_thread_msgq_in_get(app,
 				params->socket_id,

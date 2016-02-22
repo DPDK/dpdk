@@ -170,6 +170,54 @@ app_pipeline_disable(struct app_params *app,
 	return 0;
 }
 
+int
+app_thread_headroom(struct app_params *app,
+		uint32_t socket_id,
+		uint32_t core_id,
+		uint32_t hyper_th_id)
+{
+	struct thread_headroom_read_msg_req *req;
+	struct thread_headroom_read_msg_rsp *rsp;
+	int thread_id;
+	int status;
+
+	if (app == NULL)
+		return -1;
+
+	thread_id = cpu_core_map_get_lcore_id(app->core_map,
+			socket_id,
+			core_id,
+			hyper_th_id);
+
+	if ((thread_id < 0) ||
+		((app->core_mask & (1LLU << thread_id)) == 0))
+		return -1;
+
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -1;
+
+	req->type = THREAD_MSG_REQ_HEADROOM_READ;
+
+	rsp = thread_msg_send_recv(app,
+		socket_id, core_id, hyper_th_id, req, MSG_TIMEOUT_DEFAULT);
+
+	if (rsp == NULL)
+		return -1;
+
+	status = rsp->status;
+
+	if (status != 0)
+		return -1;
+
+	printf("%.3f%%\n", rsp->headroom_ratio * 100);
+
+
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
 /*
  * pipeline enable
  */
@@ -318,9 +366,74 @@ cmdline_parse_inst_t cmd_pipeline_disable = {
 	},
 };
 
+
+/*
+ * thread headroom
+ */
+
+struct cmd_thread_headroom_result {
+	cmdline_fixed_string_t t_string;
+	cmdline_fixed_string_t t_id_string;
+	cmdline_fixed_string_t headroom_string;
+};
+
+static void
+cmd_thread_headroom_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	 void *data)
+{
+	struct cmd_thread_headroom_result *params = parsed_result;
+	struct app_params *app = data;
+	int status;
+	uint32_t core_id, socket_id, hyper_th_id;
+
+	if (parse_pipeline_core(&socket_id,
+			&core_id,
+			&hyper_th_id,
+			params->t_id_string) != 0) {
+		printf("Command failed\n");
+		return;
+	}
+
+	status = app_thread_headroom(app,
+			socket_id,
+			core_id,
+			hyper_th_id);
+
+	if (status != 0)
+		printf("Command failed\n");
+}
+
+cmdline_parse_token_string_t cmd_thread_headroom_t_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_thread_headroom_result,
+	t_string, "t");
+
+cmdline_parse_token_string_t cmd_thread_headroom_t_id_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_thread_headroom_result,
+	t_id_string, NULL);
+
+cmdline_parse_token_string_t cmd_thread_headroom_headroom_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_thread_headroom_result,
+		headroom_string, "headroom");
+
+cmdline_parse_inst_t cmd_thread_headroom = {
+	.f = cmd_thread_headroom_parsed,
+	.data = NULL,
+	.help_str = "Display thread headroom",
+	.tokens = {
+		(void *)&cmd_thread_headroom_t_string,
+		(void *)&cmd_thread_headroom_t_id_string,
+		(void *)&cmd_thread_headroom_headroom_string,
+		NULL,
+	},
+};
+
+
 static cmdline_parse_ctx_t thread_cmds[] = {
 	(cmdline_parse_inst_t *) &cmd_pipeline_enable,
 	(cmdline_parse_inst_t *) &cmd_pipeline_disable,
+	(cmdline_parse_inst_t *) &cmd_thread_headroom,
 	NULL,
 };
 

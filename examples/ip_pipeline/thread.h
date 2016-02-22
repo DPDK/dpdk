@@ -40,6 +40,7 @@
 enum thread_msg_req_type {
 	THREAD_MSG_REQ_PIPELINE_ENABLE = 0,
 	THREAD_MSG_REQ_PIPELINE_DISABLE,
+	THREAD_MSG_REQ_HEADROOM_READ,
 	THREAD_MSG_REQS
 };
 
@@ -79,6 +80,19 @@ struct thread_pipeline_disable_msg_req {
 
 struct thread_pipeline_disable_msg_rsp {
 	int status;
+};
+
+/*
+ * THREAD HEADROOM
+ */
+struct thread_headroom_read_msg_req {
+	enum thread_msg_req_type type;
+};
+
+struct thread_headroom_read_msg_rsp {
+	int status;
+
+	double headroom_ratio;
 };
 
 #endif /* THREAD_H_ */
