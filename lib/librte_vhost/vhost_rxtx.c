@@ -43,6 +43,7 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_sctp.h>
+#include <rte_arp.h>
 
 #include "vhost-net.h"
 
@@ -761,11 +762,50 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 	}
 }
 
+#define RARP_PKT_SIZE	64
+
+static int
+make_rarp_packet(struct rte_mbuf *rarp_mbuf, const struct ether_addr *mac)
+{
+	struct ether_hdr *eth_hdr;
+	struct arp_hdr  *rarp;
+
+	if (rarp_mbuf->buf_len < 64) {
+		RTE_LOG(WARNING, VHOST_DATA,
+			"failed to make RARP; mbuf size too small %u (< %d)\n",
+			rarp_mbuf->buf_len, RARP_PKT_SIZE);
+		return -1;
+	}
+
+	/* Ethernet header. */
+	eth_hdr = rte_pktmbuf_mtod_offset(rarp_mbuf, struct ether_hdr *, 0);
+	memset(eth_hdr->d_addr.addr_bytes, 0xff, ETHER_ADDR_LEN);
+	ether_addr_copy(mac, &eth_hdr->s_addr);
+	eth_hdr->ether_type = htons(ETHER_TYPE_RARP);
+
+	/* RARP header. */
+	rarp = (struct arp_hdr *)(eth_hdr + 1);
+	rarp->arp_hrd = htons(ARP_HRD_ETHER);
+	rarp->arp_pro = htons(ETHER_TYPE_IPv4);
+	rarp->arp_hln = ETHER_ADDR_LEN;
+	rarp->arp_pln = 4;
+	rarp->arp_op  = htons(ARP_OP_REVREQUEST);
+
+	ether_addr_copy(mac, &rarp->arp_data.arp_sha);
+	ether_addr_copy(mac, &rarp->arp_data.arp_tha);
+	memset(&rarp->arp_data.arp_sip, 0x00, 4);
+	memset(&rarp->arp_data.arp_tip, 0x00, 4);
+
+	rarp_mbuf->pkt_len  = rarp_mbuf->data_len = RARP_PKT_SIZE;
+
+	return 0;
+}
+
 uint16_t
 rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
-	struct rte_mbuf *m, *prev;
+	struct rte_mbuf *m, *prev, *rarp_mbuf = NULL;
 	struct vhost_virtqueue *vq;
 	struct vring_desc *desc;
 	uint64_t vb_addr = 0;
@@ -788,11 +828,34 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	if (unlikely(vq->enabled == 0))
 		return 0;
 
+	/*
+	 * Construct a RARP broadcast packet, and inject it to the "pkts"
+	 * array, to looks like that guest actually send such packet.
+	 *
+	 * Check user_send_rarp() for more information.
+	 */
+	if (unlikely(rte_atomic16_cmpset((volatile uint16_t *)
+					 &dev->broadcast_rarp.cnt, 1, 0))) {
+		rarp_mbuf = rte_pktmbuf_alloc(mbuf_pool);
+		if (rarp_mbuf == NULL) {
+			RTE_LOG(ERR, VHOST_DATA,
+				"Failed to allocate memory for mbuf.\n");
+			return 0;
+		}
+
+		if (make_rarp_packet(rarp_mbuf, &dev->mac)) {
+			rte_pktmbuf_free(rarp_mbuf);
+			rarp_mbuf = NULL;
+		} else {
+			count -= 1;
+		}
+	}
+
 	avail_idx =  *((volatile uint16_t *)&vq->avail->idx);
 
 	/* If there are no available buffers then return. */
 	if (vq->last_used_idx == avail_idx)
-		return 0;
+		goto out;
 
 	LOG_DEBUG(VHOST_DATA, "%s (%"PRIu64")\n", __func__,
 		dev->device_fh);
@@ -983,8 +1046,21 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	vq->used->idx += entry_success;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
+
 	/* Kick guest if required. */
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
 		eventfd_write(vq->callfd, (eventfd_t)1);
+
+out:
+	if (unlikely(rarp_mbuf != NULL)) {
+		/*
+		 * Inject it to the head of "pkts" array, so that switch's mac
+		 * learning table will get updated first.
+		 */
+		memmove(&pkts[1], pkts, entry_success * sizeof(m));
+		pkts[0] = rarp_mbuf;
+		entry_success += 1;
+	}
+
 	return entry_success;
 }

@@ -39,12 +39,6 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <net/ethernet.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <linux/if_packet.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -415,120 +409,38 @@ user_set_log_base(struct vhost_device_ctx ctx,
 	return 0;
 }
 
-#define RARP_BUF_SIZE	64
-
-static void
-make_rarp_packet(uint8_t *buf, uint8_t *mac)
-{
-	struct ether_header *eth_hdr;
-	struct ether_arp *rarp;
-
-	/* Ethernet header. */
-	eth_hdr = (struct ether_header *)buf;
-	memset(&eth_hdr->ether_dhost, 0xff, ETH_ALEN);
-	memcpy(&eth_hdr->ether_shost, mac,  ETH_ALEN);
-	eth_hdr->ether_type = htons(ETH_P_RARP);
-
-	/* RARP header. */
-	rarp = (struct ether_arp *)(eth_hdr + 1);
-	rarp->ea_hdr.ar_hrd = htons(ARPHRD_ETHER);
-	rarp->ea_hdr.ar_pro = htons(ETHERTYPE_IP);
-	rarp->ea_hdr.ar_hln = ETH_ALEN;
-	rarp->ea_hdr.ar_pln = 4;
-	rarp->ea_hdr.ar_op  = htons(ARPOP_RREQUEST);
-
-	memcpy(&rarp->arp_sha, mac, ETH_ALEN);
-	memset(&rarp->arp_spa, 0x00, 4);
-	memcpy(&rarp->arp_tha, mac, 6);
-	memset(&rarp->arp_tpa, 0x00, 4);
-}
-
-
-static void
-send_rarp(const char *ifname, uint8_t *rarp)
-{
-	int fd;
-	struct ifreq ifr;
-	struct sockaddr_ll addr;
-
-	fd = socket(AF_PACKET, SOCK_RAW, 0);
-	if (fd < 0) {
-		perror("socket failed");
-		return;
-	}
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
-	if (ioctl(fd, SIOCGIFINDEX, &ifr) < 0) {
-		perror("failed to get interface index");
-		close(fd);
-		return;
-	}
-
-	addr.sll_ifindex = ifr.ifr_ifindex;
-	addr.sll_halen   = ETH_ALEN;
-
-	if (sendto(fd, rarp, RARP_BUF_SIZE, 0,
-		   (const struct sockaddr*)&addr, sizeof(addr)) < 0) {
-		perror("send rarp packet failed");
-	}
-}
-
-
 /*
- * Broadcast a RARP message to all interfaces, to update
- * switch's mac table
+ * An rarp packet is constructed and broadcasted to notify switches about
+ * the new location of the migrated VM, so that packets from outside will
+ * not be lost after migration.
+ *
+ * However, we don't actually "send" a rarp packet here, instead, we set
+ * a flag 'broadcast_rarp' to let rte_vhost_dequeue_burst() inject it.
  */
 int
-user_send_rarp(struct VhostUserMsg *msg)
+user_send_rarp(struct vhost_device_ctx ctx, struct VhostUserMsg *msg)
 {
+	struct virtio_net *dev;
 	uint8_t *mac = (uint8_t *)&msg->payload.u64;
-	uint8_t rarp[RARP_BUF_SIZE];
-	struct ifconf ifc = {0, };
-	struct ifreq *ifr;
-	int nr = 16;
-	int fd;
-	uint32_t i;
+
+	dev = get_device(ctx);
+	if (!dev)
+		return -1;
 
 	RTE_LOG(DEBUG, VHOST_CONFIG,
 		":: mac: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-	make_rarp_packet(rarp, mac);
+	memcpy(dev->mac.addr_bytes, mac, 6);
 
 	/*
-	 * Get all interfaces
+	 * Set the flag to inject a RARP broadcast packet at
+	 * rte_vhost_dequeue_burst().
+	 *
+	 * rte_smp_wmb() is for making sure the mac is copied
+	 * before the flag is set.
 	 */
-	fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (fd < 0) {
-		perror("failed to create AF_INET socket");
-		return -1;
-	}
-
-again:
-	ifc.ifc_len = sizeof(*ifr) * nr;
-	ifc.ifc_buf = realloc(ifc.ifc_buf, ifc.ifc_len);
-
-	if (ioctl(fd, SIOCGIFCONF, &ifc) < 0) {
-		perror("failed at SIOCGIFCONF");
-		close(fd);
-		return -1;
-	}
-
-	if (ifc.ifc_len == (int)sizeof(struct ifreq) * nr) {
-		/*
-		 * current ifc_buf is not big enough to hold
-		 * all interfaces; double it and try again.
-		 */
-		nr *= 2;
-		goto again;
-	}
-
-	ifr = (struct ifreq *)ifc.ifc_buf;
-	for (i = 0; i < ifc.ifc_len / sizeof(struct ifreq); i++)
-		send_rarp(ifr[i].ifr_name, rarp);
-
-	close(fd);
+	rte_smp_wmb();
+	rte_atomic16_set(&dev->broadcast_rarp, 1);
 
 	return 0;
 }

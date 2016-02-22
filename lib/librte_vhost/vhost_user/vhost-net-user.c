@@ -437,7 +437,7 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		user_set_vring_enable(ctx, &msg.payload.state);
 		break;
 	case VHOST_USER_SEND_RARP:
-		user_send_rarp(&msg);
+		user_send_rarp(ctx, &msg);
 		break;
 
 	default:

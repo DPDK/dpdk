@@ -49,6 +49,7 @@
 
 #include <rte_memory.h>
 #include <rte_mempool.h>
+#include <rte_ether.h>
 
 struct rte_mbuf;
 
@@ -133,7 +134,9 @@ struct virtio_net {
 	void			*priv;		/**< private context */
 	uint64_t		log_size;	/**< Size of log area */
 	uint64_t		log_base;	/**< Where dirty pages are logged */
-	uint64_t		reserved[62];	/**< Reserve some spaces for future extension. */
+	struct ether_addr	mac;		/**< MAC address */
+	rte_atomic16_t		broadcast_rarp;	/**< A flag to tell if we need broadcast rarp packet */
+	uint64_t		reserved[61];	/**< Reserve some spaces for future extension. */
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];	/**< Contains all virtqueue information. */
 } __rte_cache_aligned;
 
