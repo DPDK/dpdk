@@ -166,7 +166,7 @@ void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 	uint16_t mss = 0;
 	uint8_t vlan_tag_insert = 0;
 	uint64_t bus_addr = (dma_addr_t)
-	    (tx_pkt->buf_physaddr + RTE_PKTMBUF_HEADROOM);
+	    (tx_pkt->buf_physaddr + tx_pkt->data_off);
 
 	if (sop) {
 		if (ol_flags & PKT_TX_VLAN_PKT)
