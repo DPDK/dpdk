@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -42,15 +42,10 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = l3fwd
 
 # all source are stored in SRCS-y
-SRCS-y := main.c
+SRCS-y := main.c l3fwd_lpm.c l3fwd_em.c
 
+CFLAGS += -I$(SRCDIR)
 CFLAGS += -O3 $(USER_FLAGS)
 CFLAGS += $(WERROR_FLAGS)
-
-# workaround for a gcc bug with noreturn attribute
-# http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
-ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
-CFLAGS_main.o += -Wno-return-type
-endif
 
 include $(RTE_SDK)/mk/rte.extapp.mk
