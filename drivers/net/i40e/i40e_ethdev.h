@@ -199,6 +199,19 @@ struct i40e_vsi_list {
 struct i40e_rx_queue;
 struct i40e_tx_queue;
 
+/* Bandwidth limit information */
+struct i40e_bw_info {
+	uint16_t bw_limit;      /* BW Limit (0 = disabled) */
+	uint8_t  bw_max;        /* Max BW limit if enabled */
+
+	/* Relative credits within same TC with respect to other VSIs or Comps */
+	uint8_t  bw_ets_share_credits[I40E_MAX_TRAFFIC_CLASS];
+	/* Bandwidth limit per TC */
+	uint8_t  bw_ets_credits[I40E_MAX_TRAFFIC_CLASS];
+	/* Max bandwidth limit per TC */
+	uint8_t  bw_ets_max[I40E_MAX_TRAFFIC_CLASS];
+};
+
 /* Structure that defines a VEB */
 struct i40e_veb {
 	struct i40e_vsi_list_head head;
@@ -207,6 +220,8 @@ struct i40e_veb {
 	uint16_t uplink_seid; /* The uplink seid of this VEB */
 	uint16_t stats_idx;
 	struct i40e_eth_stats stats;
+	uint8_t enabled_tc;   /* The traffic class enabled */
+	struct i40e_bw_info bw_info; /* VEB bandwidth information */
 };
 
 /* i40e MACVLAN filter structure */
@@ -214,19 +229,6 @@ struct i40e_macvlan_filter {
 	struct ether_addr macaddr;
 	enum rte_mac_filter_type filter_type;
 	uint16_t vlan_id;
-};
-
-/* Bandwidth limit information */
-struct i40e_bw_info {
-	uint16_t bw_limit;      /* BW Limit (0 = disabled) */
-	uint8_t  bw_max;        /* Max BW limit if enabled */
-
-	/* Relative VSI credits within same TC with respect to other VSIs */
-	uint8_t  bw_ets_share_credits[I40E_MAX_TRAFFIC_CLASS];
-	/* Bandwidth limit per TC */
-	uint8_t  bw_ets_credits[I40E_MAX_TRAFFIC_CLASS];
-	/* Max bandwidth limit per TC */
-	uint8_t  bw_ets_max[I40E_MAX_TRAFFIC_CLASS];
 };
 
 /*

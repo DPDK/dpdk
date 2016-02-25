@@ -146,6 +146,10 @@ This section should contain new features added in this release. Sample format:
 
 * **Supported ether type setting of single and double VLAN for i40e**
 
+* **Added VMDQ DCB mode in i40e.**
+
+  Added support for DCB in VMDQ mode to i40e driver.
+
 * **Increased number of next hops for LPM IPv4 to 2^24.**
 
   The next_hop field is extended from 8 bits to 24 bits for IPv4.

@@ -3843,7 +3843,6 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 	return i40e_vsi_add_mac(vsi, &filter);
 }
 
-#define I40E_3_BIT_MASK     0x7
 /*
  * i40e_vsi_get_bw_config - Query VSI BW Information
  * @vsi: the VSI to be queried
@@ -3893,7 +3892,7 @@ i40e_vsi_get_bw_config(struct i40e_vsi *vsi)
 		/* 4 bits per TC, 4th bit is reserved */
 		vsi->bw_info.bw_ets_max[i] =
 			(uint8_t)((bw_max >> (i * I40E_4_BIT_WIDTH)) &
-				  I40E_3_BIT_MASK);
+				  RTE_LEN2MASK(3, uint8_t));
 		PMD_DRV_LOG(DEBUG, "\tVSI TC%u:share credits %u", i,
 			    vsi->bw_info.bw_ets_share_credits[i]);
 		PMD_DRV_LOG(DEBUG, "\tVSI TC%u:credits %u", i,
@@ -8292,6 +8291,8 @@ i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
 	int i, total_tc = 0;
 	uint16_t qpnum_per_tc, bsf, qp_idx;
 	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(vsi);
+	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
+	uint16_t used_queues;
 
 	ret = validate_tcmap_parameter(vsi, enabled_tcmap);
 	if (ret != I40E_SUCCESS)
@@ -8305,7 +8306,18 @@ i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
 		total_tc = 1;
 	vsi->enabled_tc = enabled_tcmap;
 
-	qpnum_per_tc = dev_data->nb_rx_queues / total_tc;
+	/* different VSI has different queues assigned */
+	if (vsi->type == I40E_VSI_MAIN)
+		used_queues = dev_data->nb_rx_queues -
+			pf->nb_cfg_vmdq_vsi * RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
+	else if (vsi->type == I40E_VSI_VMDQ2)
+		used_queues = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
+	else {
+		PMD_INIT_LOG(ERR, "unsupported VSI type.");
+		return I40E_ERR_NO_AVAILABLE_VSI;
+	}
+
+	qpnum_per_tc = used_queues / total_tc;
 	/* Number of queues per enabled TC */
 	if (qpnum_per_tc == 0) {
 		PMD_INIT_LOG(ERR, " number of queues is less that tcs.");
@@ -8350,6 +8362,93 @@ i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
 }
 
 /*
+ * i40e_config_switch_comp_tc - Configure VEB tc setting for given TC map
+ * @veb: VEB to be configured
+ * @tc_map: enabled TC bitmap
+ *
+ * Returns 0 on success, negative value on failure
+ */
+static enum i40e_status_code
+i40e_config_switch_comp_tc(struct i40e_veb *veb, uint8_t tc_map)
+{
+	struct i40e_aqc_configure_switching_comp_bw_config_data veb_bw;
+	struct i40e_aqc_query_switching_comp_bw_config_resp bw_query;
+	struct i40e_aqc_query_switching_comp_ets_config_resp ets_query;
+	struct i40e_hw *hw = I40E_VSI_TO_HW(veb->associate_vsi);
+	enum i40e_status_code ret = I40E_SUCCESS;
+	int i;
+	uint32_t bw_max;
+
+	/* Check if enabled_tc is same as existing or new TCs */
+	if (veb->enabled_tc == tc_map)
+		return ret;
+
+	/* configure tc bandwidth */
+	memset(&veb_bw, 0, sizeof(veb_bw));
+	veb_bw.tc_valid_bits = tc_map;
+	/* Enable ETS TCs with equal BW Share for now across all VSIs */
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (tc_map & BIT_ULL(i))
+			veb_bw.tc_bw_share_credits[i] = 1;
+	}
+	ret = i40e_aq_config_switch_comp_bw_config(hw, veb->seid,
+						   &veb_bw, NULL);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "AQ command Config switch_comp BW allocation"
+				  " per TC failed = %d",
+				  hw->aq.asq_last_status);
+		return ret;
+	}
+
+	memset(&ets_query, 0, sizeof(ets_query));
+	ret = i40e_aq_query_switch_comp_ets_config(hw, veb->seid,
+						   &ets_query, NULL);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to get switch_comp ETS"
+				 " configuration %u", hw->aq.asq_last_status);
+		return ret;
+	}
+	memset(&bw_query, 0, sizeof(bw_query));
+	ret = i40e_aq_query_switch_comp_bw_config(hw, veb->seid,
+						  &bw_query, NULL);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to get switch_comp bandwidth"
+				 " configuration %u", hw->aq.asq_last_status);
+		return ret;
+	}
+
+	/* store and print out BW info */
+	veb->bw_info.bw_limit = rte_le_to_cpu_16(ets_query.port_bw_limit);
+	veb->bw_info.bw_max = ets_query.tc_bw_max;
+	PMD_DRV_LOG(DEBUG, "switch_comp bw limit:%u", veb->bw_info.bw_limit);
+	PMD_DRV_LOG(DEBUG, "switch_comp max_bw:%u", veb->bw_info.bw_max);
+	bw_max = rte_le_to_cpu_16(bw_query.tc_bw_max[0]) |
+		    (rte_le_to_cpu_16(bw_query.tc_bw_max[1]) <<
+		     I40E_16_BIT_WIDTH);
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		veb->bw_info.bw_ets_share_credits[i] =
+				bw_query.tc_bw_share_credits[i];
+		veb->bw_info.bw_ets_credits[i] =
+				rte_le_to_cpu_16(bw_query.tc_bw_limits[i]);
+		/* 4 bits per TC, 4th bit is reserved */
+		veb->bw_info.bw_ets_max[i] =
+			(uint8_t)((bw_max >> (i * I40E_4_BIT_WIDTH)) &
+				  RTE_LEN2MASK(3, uint8_t));
+		PMD_DRV_LOG(DEBUG, "\tVEB TC%u:share credits %u", i,
+			    veb->bw_info.bw_ets_share_credits[i]);
+		PMD_DRV_LOG(DEBUG, "\tVEB TC%u:credits %u", i,
+			    veb->bw_info.bw_ets_credits[i]);
+		PMD_DRV_LOG(DEBUG, "\tVEB TC%u: max credits: %u", i,
+			    veb->bw_info.bw_ets_max[i]);
+	}
+
+	veb->enabled_tc = tc_map;
+
+	return ret;
+}
+
+
+/*
  * i40e_vsi_config_tc - Configure VSI tc setting for given TC map
  * @vsi: VSI to be configured
  * @tc_map: enabled TC bitmap
@@ -8357,7 +8456,7 @@ i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
  * Returns 0 on success, negative value on failure
  */
 static enum i40e_status_code
-i40e_vsi_config_tc(struct i40e_vsi *vsi, u8 tc_map)
+i40e_vsi_config_tc(struct i40e_vsi *vsi, uint8_t tc_map)
 {
 	struct i40e_aqc_configure_vsi_tc_bw_data bw_data;
 	struct i40e_vsi_context ctxt;
@@ -8499,15 +8598,27 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 	i40e_aq_get_dcb_config(hw, I40E_AQ_LLDP_MIB_LOCAL, 0,
 				     &hw->local_dcbx_config);
 
+	/* if Veb is created, need to update TC of it at first */
+	if (main_vsi->veb) {
+		ret = i40e_config_switch_comp_tc(main_vsi->veb, tc_map);
+		if (ret)
+			PMD_INIT_LOG(WARNING,
+				 "Failed configuring TC for VEB seid=%d\n",
+				 main_vsi->veb->seid);
+	}
 	/* Update each VSI */
 	i40e_vsi_config_tc(main_vsi, tc_map);
 	if (main_vsi->veb) {
 		TAILQ_FOREACH(vsi_list, &main_vsi->veb->head, list) {
-			/* Beside main VSI, only enable default
+			/* Beside main VSI and VMDQ VSIs, only enable default
 			 * TC for other VSIs
 			 */
-			ret = i40e_vsi_config_tc(vsi_list->vsi,
-						I40E_DEFAULT_TCMAP);
+			if (vsi_list->vsi->type == I40E_VSI_VMDQ2)
+				ret = i40e_vsi_config_tc(vsi_list->vsi,
+							 tc_map);
+			else
+				ret = i40e_vsi_config_tc(vsi_list->vsi,
+							 I40E_DEFAULT_TCMAP);
 			if (ret)
 				PMD_INIT_LOG(WARNING,
 					 "Failed configuring TC for VSI seid=%d\n",
@@ -8627,9 +8738,8 @@ i40e_dcb_setup(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if (pf->vf_num != 0 ||
-	    (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG))
-		PMD_INIT_LOG(DEBUG, " DCB only works on main vsi.");
+	if (pf->vf_num != 0)
+		PMD_INIT_LOG(DEBUG, " DCB only works on pf and vmdq vsis.");
 
 	ret = i40e_parse_dcb_configure(dev, &dcb_cfg, &tc_map);
 	if (ret) {
@@ -8654,7 +8764,7 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 	struct i40e_vsi *vsi = pf->main_vsi;
 	struct i40e_dcbx_config *dcb_cfg = &hw->local_dcbx_config;
 	uint16_t bsf, tc_mapping;
-	int i;
+	int i, j;
 
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_DCB_FLAG)
 		dcb_info->nb_tcs = rte_bsf32(vsi->enabled_tc + 1);
@@ -8665,23 +8775,27 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 	for (i = 0; i < dcb_info->nb_tcs; i++)
 		dcb_info->tc_bws[i] = dcb_cfg->etscfg.tcbwtable[i];
 
-	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
-		if (vsi->enabled_tc & (1 << i)) {
+	j = 0;
+	do {
+		for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+			if (!(vsi->enabled_tc & (1 << i)))
+				continue;
 			tc_mapping = rte_le_to_cpu_16(vsi->info.tc_mapping[i]);
 			/* only main vsi support multi TCs */
-			dcb_info->tc_queue.tc_rxq[0][i].base =
+			dcb_info->tc_queue.tc_rxq[j][i].base =
 				(tc_mapping & I40E_AQ_VSI_TC_QUE_OFFSET_MASK) >>
 				I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT;
-			dcb_info->tc_queue.tc_txq[0][i].base =
-				dcb_info->tc_queue.tc_rxq[0][i].base;
+			dcb_info->tc_queue.tc_txq[j][i].base =
+				dcb_info->tc_queue.tc_rxq[j][i].base;
 			bsf = (tc_mapping & I40E_AQ_VSI_TC_QUE_NUMBER_MASK) >>
 				I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT;
-			dcb_info->tc_queue.tc_rxq[0][i].nb_queue = 1 << bsf;
-			dcb_info->tc_queue.tc_txq[0][i].nb_queue =
-				dcb_info->tc_queue.tc_rxq[0][i].nb_queue;
+			dcb_info->tc_queue.tc_rxq[j][i].nb_queue = 1 << bsf;
+			dcb_info->tc_queue.tc_txq[j][i].nb_queue =
+				dcb_info->tc_queue.tc_rxq[j][i].nb_queue;
 		}
-	}
-
+		vsi = pf->vmdq[j].vsi;
+		j++;
+	} while (j < RTE_MIN(pf->nb_cfg_vmdq_vsi, ETH_MAX_VMDQ_POOL));
 	return 0;
 }
 
