@@ -33,9 +33,6 @@ Quick Assist Crypto Poll Mode Driver
 The QAT PMD provides poll mode crypto driver support for **Intel QuickAssist
 Technology DH895xxC** hardware accelerator.
 
-The QAT PMD has been tested on Fedora 21 64-bit with gcc and on the 4.4
-kernel.org Linux kernel.
-
 
 Features
 --------
@@ -70,6 +67,7 @@ Limitations
 * Not performance tuned.
 * Snow3g(UEA2) supported only if cipher length, cipher offset fields are byte-aligned.
 * Snow3g(UIA2) supported only if hash length, hash offset fields are byte-aligned.
+* No BSD support as BSD QAT kernel driver not available.
 
 
 Installation
@@ -201,6 +199,25 @@ To verify that the VFs are available for use - use ``lspci -d:443`` to confirm
 the bdf of the 32 VF devices are available per ``DH895xCC`` device.
 
 To complete the installation - follow instructions in `Binding the available VFs to the DPDK UIO driver`_.
+
+**Note**: If the QAT kernel modules are not loaded and you see an error like
+    ``Failed to load MMP firmware qat_895xcc_mmp.bin`` this may be as a
+    result of not using a distribution, but just updating the kernel directly.
+
+Download firmware from the kernel firmware repo at:
+http://git.kernel.org/cgit/linux/kernel/git/firmware/linux-firmware.git/tree/
+
+Copy qat binaries to /lib/firmware:
+*    ``cp qat_895xcc.bin /lib/firmware``
+*    ``cp qat_895xcc_mmp.bin /lib/firmware``
+
+cd to your linux source root directory and start the qat kernel modules:
+*    ``insmod ./drivers/crypto/qat/qat_common/intel_qat.ko``
+*    ``insmod ./drivers/crypto/qat/qat_dh895xcc/qat_dh895xcc.ko``
+
+**Note**:The following warning in /var/log/messages can be ignored:
+    ``IOMMU should be enabled for SR-IOV to work correctly``
+
 
 
 Binding the available VFs to the DPDK UIO driver
