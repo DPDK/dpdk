@@ -1924,6 +1924,11 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 			return -EINVAL;
 		}
 	} else {
+		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_VMDQ_DCB_RSS) {
+			PMD_INIT_LOG(ERR, "VMDQ+DCB+RSS mq_mode is"
+					  " not supported.");
+			return -EINVAL;
+		}
 		/* check configuration for vmdb+dcb mode */
 		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_VMDQ_DCB) {
 			const struct rte_eth_vmdq_dcb_conf *conf;
