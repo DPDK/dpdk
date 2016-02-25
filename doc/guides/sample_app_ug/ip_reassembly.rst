@@ -39,8 +39,7 @@ Overview
 
 The application demonstrates the use of the DPDK libraries to implement packet forwarding
 with reassembly for IPv4 and IPv6 fragmented packets.
-The initialization and run- time paths are very similar to those of the L2 forwarding application
-(see Chapter 9 "L2 Forwarding Sample Application" for more information).
+The initialization and run- time paths are very similar to those of the :doc:`l2_forward_real_virtual`.
 The main difference from the L2 Forwarding sample application is that
 it reassembles fragmented IPv4 and IPv6 packets before forwarding.
 The maximum allowed size of reassembled packet is 9.5 KB.
@@ -182,8 +181,7 @@ Explanation
 -----------
 
 The following sections provide some explanation of the sample application code.
-As mentioned in the overview section, the initialization and run-time paths are very similar to those of the L2 forwarding application
-(see Chapter 9 "L2 Forwarding Sample Application" for more information).
+As mentioned in the overview section, the initialization and run-time paths are very similar to those of the :doc:`l2_forward_real_virtual`.
 The following sections describe aspects that are specific to the IP reassemble sample application.
 
 IPv4 Fragment Table Initialization

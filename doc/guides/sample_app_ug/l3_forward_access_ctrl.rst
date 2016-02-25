@@ -51,8 +51,7 @@ When packets are received from a port,
 the application extracts the necessary information from the TCP/IP header of the received packet and
 performs a lookup in the rule database to figure out whether the packets should be dropped (in the ACL range)
 or forwarded to desired ports.
-The initialization and run-time paths are similar to those of the L3 forwarding application
-(see Chapter 10, "L3 Forwarding Sample Application" for more information).
+The initialization and run-time paths are similar to those of the :doc:`l3_forward`.
 However, there are significant differences in the two applications.
 For example, the original L3 forwarding application uses either LPM or
 an exact match algorithm to perform forwarding port lookup,
@@ -360,8 +359,7 @@ Explanation
 -----------
 
 The following sections provide some explanation of the sample application code.
-The aspects of port, device and CPU configuration are similar to those of the L3 forwarding application
-(see Chapter 10, "L3 Forwarding Sample Application" for more information).
+The aspects of port, device and CPU configuration are similar to those of the :doc:`l3_forward`.
 The following sections describe aspects that are specific to L3 forwarding with access control.
 
 Parse Rules from File

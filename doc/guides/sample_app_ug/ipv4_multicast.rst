@@ -39,8 +39,7 @@ Overview
 --------
 
 The application demonstrates the use of zero-copy buffers for packet forwarding.
-The initialization and run-time paths are very similar to those of the L2 forwarding application
-(see Chapter 9 "L2 Forwarding Sample Application (in Real and Virtualized Environments)" for details more information).
+The initialization and run-time paths are very similar to those of the :doc:`l2_forward_real_virtual`.
 This guide highlights the differences between the two applications.
 There are two key differences from the L2 Forwarding sample application:
 
@@ -134,8 +133,7 @@ Explanation
 
 The following sections provide some explanation of the code.
 As mentioned in the overview section,
-the initialization and run-time paths are very similar to those of the L2 Forwarding sample application
-(see Chapter 9 "L2 Forwarding Sample Application in Real and Virtualized Environments" for more information).
+the initialization and run-time paths are very similar to those of the :doc:`l2_forward_real_virtual`.
 The following sections describe aspects that are specific to the IPv4 Multicast sample application.
 
 Memory Pool Initialization

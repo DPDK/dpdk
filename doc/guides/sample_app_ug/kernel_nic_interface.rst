@@ -237,8 +237,7 @@ The following sections provide some explanation of code.
 Initialization
 ~~~~~~~~~~~~~~
 
-Setup of mbuf pool, driver and queues is similar to the setup done in the L2 Forwarding sample application
-(see Chapter 9 "L2 Forwarding Sample Application (in Real and Virtualized Environments" for details).
+Setup of mbuf pool, driver and queues is similar to the setup done in the :doc:`l2_forward_real_virtual`..
 In addition, one or more kernel NIC interfaces are allocated for each
 of the configured ports according to the command line parameters.
 
@@ -425,7 +424,7 @@ to see if this lcore is reading from or writing to kernel NIC interfaces.
 
 For the case that reads from a NIC port and writes to the kernel NIC interfaces,
 the packet reception is the same as in L2 Forwarding sample application
-(see Section 9.4.6 "Receive, Process  and Transmit Packets").
+(see :ref:`l2_fwd_app_rx_tx_packets`).
 The packet transmission is done by sending mbufs into the kernel NIC interfaces by rte_kni_tx_burst().
 The KNI library automatically frees the mbufs after the kernel successfully copied the mbufs.
 
@@ -472,7 +471,7 @@ The KNI library automatically frees the mbufs after the kernel successfully copi
 For the other case that reads from kernel NIC interfaces and writes to a physical NIC port, packets are retrieved by reading
 mbufs from kernel NIC interfaces by `rte_kni_rx_burst()`.
 The packet transmission is the same as in the L2 Forwarding sample application
-(see Section 9.4.6 "Receive, Process and Transmit Packet's").
+(see :ref:`l2_fwd_app_rx_tx_packets`).
 
 .. code-block:: c
 

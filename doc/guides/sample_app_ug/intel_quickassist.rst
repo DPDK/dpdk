@@ -203,7 +203,7 @@ where,
 
 *   --config'(port,queue,lcore)[,(port,queue,lcore)]':  determines which queues from which ports are mapped to which cores.
 
-Refer to Chapter 10 , "L3 Forwarding Sample Application" for more detailed descriptions of the --config command line option.
+Refer to the :doc:`l3_forward` for more detailed descriptions of the --config command line option.
 
 As an example, to run the application with two ports and two cores,
 which are using different Intel® QuickAssist Technology execution engines,

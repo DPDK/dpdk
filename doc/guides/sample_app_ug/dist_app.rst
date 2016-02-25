@@ -160,16 +160,16 @@ Application Initialization
 --------------------------
 
 Command line parsing is done in the same way as it is done in the L2 Forwarding Sample
-Application. See Section 9.4.1, "Command Line Arguments".
+Application. See :ref:`l2_fwd_app_cmd_arguments`.
 
 Mbuf pool initialization is done in the same way as it is done in the L2 Forwarding
-Sample Application. See Section 9.4.2, "Mbuf Pool Initialization".
+Sample Application. See :ref:`l2_fwd_app_mbuf_init`.
 
 Driver Initialization is done in same way as it is done in the L2 Forwarding Sample
-Application. See Section 9.4.3, "Driver Initialization".
+Application. See :ref:`l2_fwd_app_dvr_init`.
 
 RX queue initialization is done in the same way as it is done in the L2 Forwarding
-Sample Application. See Section 9.4.4, "RX Queue Initialization".
+Sample Application. See :ref:`l2_fwd_app_rx_init`.
 
 TX queue initialization is done in the same way as it is done in the L2 Forwarding
-Sample Application. See Section 9.4.5, "TX Queue Initialization".
+Sample Application. See :ref:`l2_fwd_app_tx_init`.

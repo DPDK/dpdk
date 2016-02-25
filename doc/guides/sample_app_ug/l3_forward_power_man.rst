@@ -43,8 +43,7 @@ Overview
 --------
 
 The application demonstrates the use of the Power libraries in the DPDK to implement packet forwarding.
-The initialization and run-time paths are very similar to those of the L3 forwarding sample application
-(see Chapter 10 "L3 Forwarding Sample Application" for more information).
+The initialization and run-time paths are very similar to those of the :doc:`l3_forward`.
 The main difference from the L3 Forwarding sample application is that this application introduces power-aware optimization algorithms
 by leveraging the Power library to control P-state and C-state of processor based on packet load.
 
@@ -152,7 +151,7 @@ where,
 
 *   --no-numa: optional, disables numa awareness
 
-See Chapter 10 "L3 Forwarding Sample Application" for details.
+See :doc:`l3_forward` for details.
 The L3fwd-power example reuses the L3fwd command line options.
 
 Explanation

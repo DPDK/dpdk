@@ -39,8 +39,7 @@ Overview
 --------
 
 The application demonstrates the use of the hash and LPM libraries in the DPDK to implement packet forwarding.
-The initialization and run-time paths are very similar to those of the L3 forwarding application
-(see Chapter 10 "L3 Forwarding Sample Application" for more information).
+The initialization and run-time paths are very similar to those of the :doc:`l3_forward`.
 The forwarding decision is taken based on information read from the input packet.
 
 The lookup method is either hash-based or LPM-based and is selected at compile time.
@@ -60,7 +59,7 @@ The set of LPM rules used by the application is statically configured and loaded
 
 .. note::
 
-    Please refer to Section 9.1.1 "Virtual Function Setup Instructions" for virtualized test case setup.
+    Please refer to :ref:`l2_fwd_vf_setup` for virtualized test case setup.
 
 Compiling the Application
 -------------------------
@@ -155,4 +154,4 @@ Explanation
 -----------
 
 The operation of this application is similar to that of the basic L3 Forwarding Sample Application.
-See Section 10.4 "Explanation" for more information.
+See :ref:`l3_fwd_explanation` for more information.

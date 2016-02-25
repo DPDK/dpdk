@@ -28,6 +28,8 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+.. _l2_fwd_app_real_and_virtual:
+
 L2 Forwarding Sample Application (in Real and Virtualized Environments)
 =======================================================================
 
@@ -73,6 +75,7 @@ The L2 Forwarding application can also be used as a starting point for developin
 
    Performance Benchmark Setup (Virtualized Environment)
 
+.. _l2_fwd_vf_setup:
 
 Virtual Function Setup Instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -147,11 +150,13 @@ Explanation
 
 The following sections provide some explanation of the code.
 
+.. _l2_fwd_app_cmd_arguments:
+
 Command Line Arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The L2 Forwarding sample application takes specific parameters,
-in addition to Environment Abstraction Layer (EAL) arguments (see Section 9.3).
+in addition to Environment Abstraction Layer (EAL) arguments.
 The preferred way to parse parameters is to use the getopt() function,
 since it is part of a well-defined and portable library.
 
@@ -178,6 +183,8 @@ This is done at the beginning of the main() function:
     ret = l2fwd_parse_args(argc, argv);
     if (ret < 0)
         rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
+
+.. _l2_fwd_app_mbuf_init:
 
 Mbuf Pool Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -215,6 +222,8 @@ Two callback pointers are also given to the rte_mempool_create() function:
     The default is used, that is, rte_pktmbuf_init(), which is provided in the rte_mbuf library.
     If a more complex application wants to extend the rte_pktmbuf structure for its own needs,
     a new function derived from rte_pktmbuf_init( ) can be created.
+
+.. _l2_fwd_app_dvr_init:
 
 Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~
@@ -303,6 +312,8 @@ The global configuration is stored in a static structure:
         },
     };
 
+.. _l2_fwd_app_rx_init:
+
 RX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -335,7 +346,7 @@ The list of queues that must be polled for a given lcore is stored in a private 
     struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 The values n_rx_port and rx_port_list[] are used in the main packet processing loop
-(see Section 9.4.6 "Receive, Process and Transmit Packets" later in this chapter).
+(see :ref:`l2_fwd_app_rx_tx_packets`).
 
 The global configuration for the RX queues is stored in a static structure:
 
@@ -348,6 +359,8 @@ The global configuration for the RX queues is stored in a static structure:
             .wthresh = RX_WTHRESH,
         },
     };
+
+.. _l2_fwd_app_tx_init:
 
 TX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -376,6 +389,8 @@ The global configuration for TX queues is stored in a static structure:
         },
         .tx_free_thresh = RTE_TEST_TX_DESC_DEFAULT + 1, /* disable feature */
     };
+
+.. _l2_fwd_app_rx_tx_packets:
 
 Receive, Process and Transmit Packets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

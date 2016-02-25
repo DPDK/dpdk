@@ -59,7 +59,7 @@ Note: Only the worker cores are monitored. A local (on the host) mechanism
 or agent to supervise the Keep Alive Monitor Agent Core DPDK core is required
 to detect its failure.
 
-Note: This application is based on the L2 forwarding application. As
+Note: This application is based on the :doc:`l2_forward_real_virtual`. As
 such, the initialization and run-time paths are very similar to those
 of the L2 forwarding application.
 
@@ -127,9 +127,7 @@ Explanation
 The following sections provide some explanation of the The
 Keep-Alive/'Liveliness' conceptual scheme. As mentioned in the
 overview section, the initialization and run-time paths are very
-similar to those of the L2 forwarding application (see Chapter 9
-"L2 Forwarding Sample Application (in Real and Virtualized
-Environments)" for more information).
+similar to those of the :doc:`l2_forward_real_virtual`.
 
 The Keep-Alive/'Liveliness' conceptual scheme:
 

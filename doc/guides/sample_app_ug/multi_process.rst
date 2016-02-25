@@ -378,7 +378,7 @@ using the local cache mechanism of mempool structures.
 
 This application performs the same functionality as the L2 Forwarding sample application,
 therefore this chapter does not cover that part but describes functionality that is introduced in this multi-process example only.
-Please refer to Chapter 9, "L2 Forwarding Sample Application (in Real and Virtualized Environments)" for more information.
+Please refer to :doc:`l2_forward_real_virtual` for more information.
 
 Unlike previous examples where all processes are started from the command line with input arguments, in this example,
 only one process is spawned from the command line and that process creates other processes.
@@ -464,7 +464,7 @@ Therefore, to provide the capability to resume the new slave instance if the pre
 
 #.  Set up a notification mechanism for slave process exit cases. After the specific slave leaves,
     the master should be notified and then help to create a new instance.
-    This mechanism is provided in Section 15.1.5.1, "Master-slave Process Models".
+    This mechanism is provided in Section `Master-slave Process Models`_.
 
 #.  Use a synchronization mechanism among dependent processes.
     The master should have the capability to stop or kill slave processes that have a dependency on the one that has exited.

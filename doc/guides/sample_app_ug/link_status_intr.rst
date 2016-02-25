@@ -118,16 +118,16 @@ Command Line Arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The Link Status Interrupt sample application takes specific parameters,
-in addition to Environment Abstraction Layer (EAL) arguments (see Section 13.3).
+in addition to Environment Abstraction Layer (EAL) arguments (see Section `Running the Application`_).
 
 Command line parsing is done in the same way as it is done in the L2 Forwarding Sample Application.
-See Section 9.4.1, "Command Line Arguments" for more information.
+See :ref:`l2_fwd_app_cmd_arguments` for more information.
 
 Mbuf Pool Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 Mbuf pool initialization is done in the same way as it is done in the L2 Forwarding Sample Application.
-See Section 9.4.2, "Mbuf Pool Initialization" for more information.
+See :ref:`l2_fwd_app_mbuf_init` for more information.
 
 Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~
@@ -287,7 +287,7 @@ The list of queues that must be polled for a given lcore is stored in a private 
     struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 The n_rx_port and rx_port_list[] fields are used in the main packet processing loop
-(see Section 13.4.7, "Receive, Process and Transmit Packets" later in this chapter).
+(see `Receive, Process and Transmit Packets`_).
 
 The global configuration for the RX queues is stored in a static structure:
 

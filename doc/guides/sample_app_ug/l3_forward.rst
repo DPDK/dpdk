@@ -38,8 +38,7 @@ Overview
 --------
 
 The application demonstrates the use of the hash and LPM libraries in the DPDK to implement packet forwarding.
-The initialization and run-time paths are very similar to those of the L2 forwarding application
-(see Chapter 9 "L2 Forwarding Sample Application (in Real and Virtualized Environments)" for more information).
+The initialization and run-time paths are very similar to those of the :doc:`l2_forward_real_virtual`.
 The main difference from the L2 Forwarding sample application is that the forwarding decision
 is made based on information read from the input packet.
 
@@ -157,12 +156,13 @@ In this command:
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
+.. _l3_fwd_explanation:
+
 Explanation
 -----------
 
 The following sections provide some explanation of the sample application code. As mentioned in the overview section,
-the initialization and run-time paths are very similar to those of the L2 forwarding application
-(see Chapter 9 "L2 Forwarding Sample Application (in Real and Virtualized Environments)" for more information).
+the initialization and run-time paths are very similar to those of the :doc:`l2_forward_real_virtual`.
 The following sections describe aspects that are specific to the L3 Forwarding sample application.
 
 Hash Initialization

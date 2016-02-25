@@ -77,7 +77,7 @@ To have the application display the statistics, send a SIGHUP signal to the runn
 where, <pid> is the process id of the application process.
 
 The VMDQ and DCB Forwarding sample application is in many ways simpler than the L2 Forwarding application
-(see Chapter 9 , "L2 Forwarding Sample Application (in Real and Virtualized Environments)")
+(see :doc:`l2_forward_real_virtual`)
 as it performs unidirectional L2 forwarding of packets from one port to a second port.
 No command-line options are taken by this application apart from the standard EAL command-line options.
 
@@ -132,7 +132,7 @@ Initialization
 
 The EAL, driver and PCI configuration is performed largely as in the L2 Forwarding sample application,
 as is the creation of the mbuf pool.
-See Chapter 9, "L2 Forwarding Sample Application (in Real and Virtualized Environments)".
+See :doc:`l2_forward_real_virtual`.
 Where this example application differs is in the configuration of the NIC port for RX.
 
 The VMDQ and DCB hardware feature is configured at port initialization time by setting the appropriate values in the
@@ -228,7 +228,7 @@ so the pools parameter in the rte_eth_vmdq_dcb_conf structure is specified as a 
 Once the network port has been initialized using the correct VMDQ and DCB values,
 the initialization of the port's RX and TX hardware rings is performed similarly to that
 in the L2 Forwarding sample application.
-See Chapter 9, "L2 Forwarding Sample Application (in Real and Virtualized Environments)" for more information.
+See :doc:`l2_forward_real_virtual` for more information.
 
 Statistics Display
 ~~~~~~~~~~~~~~~~~~

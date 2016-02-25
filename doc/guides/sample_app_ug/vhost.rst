@@ -144,6 +144,8 @@ The example in this section have been validated with the following distributions
 
 *   Fedora* 20
 
+.. _vhost_app_prerequisites:
+
 Prerequisites
 -------------
 
@@ -260,7 +262,7 @@ Setting up the Guest Execution Environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is recommended for testing purposes that the DPDK testpmd sample application is used in the guest to forward packets,
-the reasons for this are discussed in Section 22.7, "Running the Virtual Machine (QEMU)".
+the reasons for this are discussed in `Running the Virtual Machine (QEMU)`_.
 
 The testpmd application forwards packets between pairs of Ethernet devices,
 it requires an even number of Ethernet devices (virtio or otherwise) to execute.
@@ -405,6 +407,8 @@ Running the Sample Code
     The number used with the --socket-mem parameter may need to be more than 1024.
     The number required depends on the number of mbufs allocated by vhost-switch.
 
+.. _vhost_app_parameters:
+
 Parameters
 ~~~~~~~~~~
 
@@ -530,6 +534,8 @@ It is enabled by default.
     ./vhost-switch -c f -n 4 --socket-mem 1024 --huge-dir /mnt/huge \
      -- --vlan-strip [0, 1]
 
+.. _vhost_app_running:
+
 Running the Virtual Machine (QEMU)
 ----------------------------------
 
@@ -583,7 +589,7 @@ an open file descriptor must be passed to QEMU running as a child process.
 
 .. note::
 
-    This process is automated in the QEMU wrapper script discussed in Section 24.7.3.
+    This process is automated in the `QEMU Wrapper Script`_.
 
 Mapping the Virtual Machine's Memory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -600,7 +606,7 @@ In this case, the path passed to the guest should be that of the 1 GB page huget
 
 .. note::
 
-    This process is automated in the QEMU wrapper script discussed in Section 24.7.3.
+    This process is automated in the `QEMU Wrapper Script`_.
     The following two sections only applies to vhost cuse.
     For vhost-user, please make corresponding changes to qemu-wrapper script and guest XML file.
 
@@ -760,6 +766,7 @@ Common Issues
     Linux module but which is necessary for the user space VHOST current implementation (CUSE-based) to communicate with
     the guest.
 
+.. _vhost_app_running_dpdk:
 
 Running DPDK in the Virtual Machine
 -----------------------------------

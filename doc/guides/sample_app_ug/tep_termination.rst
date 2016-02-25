@@ -121,7 +121,7 @@ The example in this section have been validated with the following distributions
 Prerequisites
 -------------
 
-Refer to the guide in section 27.4 in the vhost sample.
+Refer to :ref:`vhost_app_prerequisites`.
 
 Compiling the Sample Code
 -------------------------
@@ -225,7 +225,7 @@ Parameters
 
 **The same parameters with the vhost sample.**
 
-Refer to the guide in section 27.6.1 in the vhost sample for the meanings of 'Basename',
+Refer to :ref:`vhost_app_parameters` for the meanings of 'Basename',
 'Stats', 'RX Retry', 'RX Retry Number' and 'RX Retry Delay Time'.
 
 **Number of Devices.**
@@ -303,12 +303,12 @@ The default value is 1.
 Running the Virtual Machine (QEMU)
 ----------------------------------
 
-Refer to the guide in section 27.7 in the vhost sample.
+Refer to :ref:`vhost_app_running`.
 
 Running DPDK in the Virtual Machine
 -----------------------------------
 
-Refer to the guide in section 27.8 in the vHost sample.
+Refer to :ref:`vhost_app_running_dpdk`.
 
 Passing Traffic to the Virtual Machine Device
 ---------------------------------------------

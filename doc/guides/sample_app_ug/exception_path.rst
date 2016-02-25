@@ -134,8 +134,7 @@ The following sections provide some explanation of the code.
 Initialization
 ~~~~~~~~~~~~~~
 
-Setup of the mbuf pool, driver and queues is similar to the setup done in the L2 Forwarding sample application
-(see Chapter 9 "L2 forwarding Sample Application (in Real and Virtualized Environments" for details).
+Setup of the mbuf pool, driver and queues is similar to the setup done in the :ref:`l2_fwd_app_real_and_virtual`.
 In addition, the TAP interfaces must also be created.
 A TAP interface is created for each lcore that is being used.
 The code for creating the TAP interface is as follows:
@@ -221,7 +220,7 @@ This function first checks the lcore_id against the user provided input_cores_ma
 if this core is reading from or writing to a TAP interface.
 
 For the case that reads from a NIC port, the packet reception is the same as in the L2 Forwarding sample application
-(see Section 9.4.6, "Receive, Process and Transmit Packets").
+(see :ref:`l2_fwd_app_rx_tx_packets`).
 The packet transmission is done by calling write() with the file descriptor of the appropriate TAP interface
 and then explicitly freeing the mbuf back to the pool.
 
