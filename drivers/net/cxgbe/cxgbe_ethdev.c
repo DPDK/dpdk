@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2016 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -818,8 +818,6 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	pci_dev = eth_dev->pci_dev;
-
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	snprintf(name, sizeof(name), "cxgbeadapter%d", eth_dev->data->port_id);
 	adapter = rte_zmalloc(name, sizeof(*adapter), 0);

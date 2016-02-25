@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2016 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1169,6 +1169,9 @@ allocate_mac:
 		pi->eth_dev->dev_ops = adapter->eth_dev->dev_ops;
 		pi->eth_dev->tx_pkt_burst = adapter->eth_dev->tx_pkt_burst;
 		pi->eth_dev->rx_pkt_burst = adapter->eth_dev->rx_pkt_burst;
+
+		rte_eth_copy_pci_info(pi->eth_dev, pi->eth_dev->pci_dev);
+
 		TAILQ_INIT(&pi->eth_dev->link_intr_cbs);
 
 		pi->eth_dev->data->mac_addrs = rte_zmalloc(name,
