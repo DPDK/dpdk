@@ -126,6 +126,9 @@ int rte_cfgfile_has_section(struct rte_cfgfile *cfg, const char *sectionname);
 /**
 * Get number of entries in given config file section
 *
+* If multiple sections have the given name this function operates on the
+* first one.
+*
 * @param cfg
 *   Config file
 * @param sectionname
@@ -137,6 +140,9 @@ int rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	const char *sectionname);
 
 /** Get section entries as key-value pairs
+*
+* If multiple sections have the given name this function operates on the
+* first one.
 *
 * @param cfg
 *   Config file
@@ -155,7 +161,37 @@ int rte_cfgfile_section_entries(struct rte_cfgfile *cfg,
 	struct rte_cfgfile_entry *entries,
 	int max_entries);
 
+/** Get section entries as key-value pairs
+*
+* The index of a section is the same as the index of its name in the
+* result of rte_cfgfile_sections. This API can be used when there are
+* multiple sections with the same name.
+*
+* @param cfg
+*   Config file
+* @param index
+*   Section index
+* @param sectionname
+*   Pre-allocated string of at least CFG_NAME_LEN characters where the
+*   section name is stored after successful invocation.
+* @param entries
+*   Pre-allocated array of at least max_entries entries where the section
+*   entries are stored as key-value pair after successful invocation
+* @param max_entries
+*   Maximum number of section entries to be stored in entries array
+* @return
+*   Number of entries populated on success, negative error code otherwise
+*/
+int rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg,
+	int index,
+	char *sectionname,
+	struct rte_cfgfile_entry *entries,
+	int max_entries);
+
 /** Get value of the named entry in named config file section
+*
+* If multiple sections have the given name this function operates on the
+* first one.
 *
 * @param cfg
 *   Config file
@@ -171,6 +207,9 @@ const char *rte_cfgfile_get_entry(struct rte_cfgfile *cfg,
 	const char *entryname);
 
 /** Check if given entry exists in named config file section
+*
+* If multiple sections have the given name this function operates on the
+* first one.
 *
 * @param cfg
 *   Config file

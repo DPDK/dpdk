@@ -13,3 +13,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_16.04 {
+	global:
+
+	rte_cfgfile_section_entries_by_index;
+
+} DPDK_2.0;

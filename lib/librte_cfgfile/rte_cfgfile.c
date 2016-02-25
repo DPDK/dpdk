@@ -333,6 +333,24 @@ rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 	return i;
 }
 
+int
+rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
+		char *sectionname,
+		struct rte_cfgfile_entry *entries, int max_entries)
+{
+	int i;
+	const struct rte_cfgfile_section *sect;
+
+	if (index < 0 || index >= cfg->num_sections)
+		return -1;
+
+	sect = cfg->sections[index];
+	snprintf(sectionname, CFG_NAME_LEN, "%s", sect->name);
+	for (i = 0; i < max_entries && i < sect->num_entries; i++)
+		entries[i] = *sect->entries[i];
+	return i;
+}
+
 const char *
 rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)
