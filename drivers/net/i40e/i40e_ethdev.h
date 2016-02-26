@@ -411,7 +411,7 @@ struct i40e_pf {
 
 	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
 	struct ether_addr dev_addr; /* PF device mac address */
-	uint64_t flags; /* PF featuer flags */
+	uint64_t flags; /* PF feature flags */
 	/* All kinds of queue pair setting for different VSIs */
 	struct i40e_pf_vf *vfs;
 	uint16_t vf_num;
