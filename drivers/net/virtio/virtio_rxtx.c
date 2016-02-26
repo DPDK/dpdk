@@ -557,8 +557,12 @@ virtio_update_packet_stats(struct virtqueue *vq, struct rte_mbuf *mbuf)
 	}
 
 	ea = rte_pktmbuf_mtod(mbuf, struct ether_addr *);
-	vq->multicast += is_multicast_ether_addr(ea);
-	vq->broadcast += is_broadcast_ether_addr(ea);
+	if (is_multicast_ether_addr(ea)) {
+		if (is_broadcast_ether_addr(ea))
+			vq->broadcast++;
+		else
+			vq->multicast++;
+	}
 }
 
 #define VIRTIO_MBUF_BURST_SZ 64
