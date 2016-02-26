@@ -2030,6 +2030,25 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+ixgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	uint32_t gpie;
+
+	/* only set up it on X550EM_X */
+	if (hw->mac.type == ixgbe_mac_X550EM_x) {
+		gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
+		gpie |= IXGBE_SDP0_GPIEN_X550EM_x;
+		IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
+		if (hw->phy.type == ixgbe_phy_x550em_ext_t)
+			intr->mask |= IXGBE_EICR_GPI_SDP0_X550EM_x;
+	}
+}
+
 /*
  * Configure device link speed and setup link.
  * It returns 0 on success.
@@ -2077,6 +2096,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 
 	/* configure PF module if SRIOV enabled */
 	ixgbe_pf_host_configure(dev);
+
+	ixgbe_dev_phy_intr_setup(dev);
 
 	/* check and configure queue intr-vector mapping */
 	if ((rte_intr_cap_multiple(intr_handle) ||
@@ -3156,6 +3177,11 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	if (eicr & IXGBE_EICR_MAILBOX)
 		intr->flags |= IXGBE_FLAG_MAILBOX;
 
+	if (hw->mac.type ==  ixgbe_mac_X550EM_x &&
+	    hw->phy.type == ixgbe_phy_x550em_ext_t &&
+	    (eicr & IXGBE_EICR_GPI_SDP0_X550EM_x))
+		intr->flags |= IXGBE_FLAG_PHY_INTERRUPT;
+
 	return 0;
 }
 
@@ -3211,12 +3237,19 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 	int64_t timeout;
 	struct rte_eth_link link;
 	int intr_enable_delay = false;
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_DRV_LOG(DEBUG, "intr action type %d", intr->flags);
 
 	if (intr->flags & IXGBE_FLAG_MAILBOX) {
 		ixgbe_pf_mbx_process(dev);
 		intr->flags &= ~IXGBE_FLAG_MAILBOX;
+	}
+
+	if (intr->flags & IXGBE_FLAG_PHY_INTERRUPT) {
+		ixgbe_handle_lasi(hw);
+		intr->flags &= ~IXGBE_FLAG_PHY_INTERRUPT;
 	}
 
 	if (intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE) {
@@ -3281,6 +3314,11 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 	eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
 	if (eicr & IXGBE_EICR_MAILBOX)
 		ixgbe_pf_mbx_process(dev);
+
+	if (intr->flags & IXGBE_FLAG_PHY_INTERRUPT) {
+		ixgbe_handle_lasi(hw);
+		intr->flags &= ~IXGBE_FLAG_PHY_INTERRUPT;
+	}
 
 	if (intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE) {
 		ixgbe_dev_link_update(dev, 0);

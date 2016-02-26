@@ -116,6 +116,14 @@ This section should contain new features added in this release. Sample format:
   Only x550em_x V1 was supported before. Now V2 is supported.
   A mask for V1 and V2 is defined and used to support both.
 
+* **Supported link speed auto-negotiation on X550EM_X**
+
+  Normally the auto-negotiation is supported by FW. SW need not care about
+  that. But on x550em_x, FW doesn't support auto-neg. As the ports of x550em_x
+  are 10G, if we connect the port with a peer which is 1G, the link will always
+  be down.
+  We added the support of auto-neg by SW to avoid this link down issue.
+
 * **Added sw-firmware sync on X550EM_a.**
 
   Added support for sw-firmware sync for resource sharing.
