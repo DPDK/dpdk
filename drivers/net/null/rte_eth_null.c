@@ -69,10 +69,6 @@ struct null_queue {
 struct pmd_internals {
 	unsigned packet_size;
 	unsigned packet_copy;
-	unsigned numa_node;
-
-	unsigned nb_rx_queues;
-	unsigned nb_tx_queues;
 
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 	struct null_queue tx_null_queues[RTE_MAX_QUEUES_PER_PORT];
@@ -192,13 +188,8 @@ eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 }
 
 static int
-eth_dev_configure(struct rte_eth_dev *dev) {
-	struct pmd_internals *internals;
-
-	internals = dev->data->dev_private;
-	internals->nb_rx_queues = dev->data->nb_rx_queues;
-	internals->nb_tx_queues = dev->data->nb_tx_queues;
-
+eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
+{
 	return 0;
 }
 
@@ -237,7 +228,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 
 	internals = dev->data->dev_private;
 
-	if (rx_queue_id >= internals->nb_rx_queues)
+	if (rx_queue_id >= dev->data->nb_rx_queues)
 		return -ENODEV;
 
 	packet_size = internals->packet_size;
@@ -246,7 +237,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	dev->data->rx_queues[rx_queue_id] =
 		&internals->rx_null_queues[rx_queue_id];
 	dummy_packet = rte_zmalloc_socket(NULL,
-			packet_size, 0, internals->numa_node);
+			packet_size, 0, dev->data->numa_node);
 	if (dummy_packet == NULL)
 		return -ENOMEM;
 
@@ -271,7 +262,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 
 	internals = dev->data->dev_private;
 
-	if (tx_queue_id >= internals->nb_tx_queues)
+	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -ENODEV;
 
 	packet_size = internals->packet_size;
@@ -279,7 +270,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	dev->data->tx_queues[tx_queue_id] =
 		&internals->tx_null_queues[tx_queue_id];
 	dummy_packet = rte_zmalloc_socket(NULL,
-			packet_size, 0, internals->numa_node);
+			packet_size, 0, dev->data->numa_node);
 	if (dummy_packet == NULL)
 		return -ENOMEM;
 
@@ -323,7 +314,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 
 	internal = dev->data->dev_private;
 	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
-			RTE_MIN(internal->nb_rx_queues,
+			RTE_MIN(dev->data->nb_rx_queues,
 				RTE_DIM(internal->rx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
 		igb_stats->q_ipackets[i] =
@@ -332,7 +323,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	}
 
 	num_stats = RTE_MIN((unsigned)RTE_ETHDEV_QUEUE_STAT_CNTRS,
-			RTE_MIN(internal->nb_tx_queues,
+			RTE_MIN(dev->data->nb_tx_queues,
 				RTE_DIM(internal->tx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
 		igb_stats->q_opackets[i] =
@@ -535,11 +526,8 @@ eth_dev_null_create(const char *name,
 	/* NOTE: we'll replace the data element, of originally allocated eth_dev
 	 * so the nulls are local per-process */
 
-	internals->nb_rx_queues = nb_rx_queues;
-	internals->nb_tx_queues = nb_tx_queues;
 	internals->packet_size = packet_size;
 	internals->packet_copy = packet_copy;
-	internals->numa_node = numa_node;
 
 	internals->flow_type_rss_offloads =  ETH_RSS_PROTO_MASK;
 	internals->reta_size = RTE_DIM(internals->reta_conf) * RTE_RETA_GROUP_SIZE;
@@ -560,10 +548,10 @@ eth_dev_null_create(const char *name,
 	TAILQ_INIT(&eth_dev->link_intr_cbs);
 
 	eth_dev->driver = NULL;
-	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	eth_dev->data->kdrv = RTE_KDRV_NONE;
-	eth_dev->data->drv_name = drivername;
-	eth_dev->data->numa_node = numa_node;
+	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	data->kdrv = RTE_KDRV_NONE;
+	data->drv_name = drivername;
+	data->numa_node = numa_node;
 
 	/* finally assign rx and tx ops */
 	if (packet_copy) {
