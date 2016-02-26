@@ -35,6 +35,104 @@ The FM10K poll mode driver library provides support for the Intel FM10000
 (FM10K) family of 40GbE/100GbE adapters.
 
 
+Vector PMD for FM10K
+--------------------
+
+Vector PMD (vPMD) uses Intel® SIMD instructions to optimize packet I/O.
+It improves load/store bandwidth efficiency of L1 data cache by using a wider
+SSE/AVX ''register (1)''.
+The wider register gives space to hold multiple packet buffers so as to save
+on the number of instructions when bulk processing packets.
+
+There is no change to the PMD API. The RX/TX handlers are the only two entries for
+vPMD packet I/O. They are transparently registered at runtime RX/TX execution
+if all required conditions are met.
+
+1.  To date, only an SSE version of FM10K vPMD is available.
+    To ensure that vPMD is in the binary code, set
+    ``CONFIG_RTE_LIBRTE_FM10K_INC_VECTOR=y`` in the configure file.
+
+Some constraints apply as pre-conditions for specific optimizations on bulk
+packet transfers. The following sections explain RX and TX constraints in the
+vPMD.
+
+
+RX Constraints
+~~~~~~~~~~~~~~
+
+
+Prerequisites and Pre-conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For Vector RX it is assumed that the number of descriptor rings will be a power
+of 2. With this pre-condition, the ring pointer can easily scroll back to the
+head after hitting the tail without a conditional check. In addition Vector RX
+can use this assumption to do a bit mask using ``ring_size - 1``.
+
+
+Features not Supported by Vector RX PMD
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some features are not supported when trying to increase the throughput in
+vPMD. They are:
+
+*   IEEE1588
+
+*   Flow director
+
+*   Header split
+
+*   RX checksum offload
+
+Other features are supported using optional MACRO configuration. They include:
+
+*   HW VLAN strip
+
+*   L3/L4 packet type
+
+To enable via ``RX_OLFLAGS`` use ``RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE=y``.
+
+To guarantee the constraint, the following configuration flags in ``dev_conf.rxmode``
+will be checked:
+
+*   ``hw_vlan_extend``
+
+*   ``hw_ip_checksum``
+
+*   ``header_split``
+
+*   ``fdir_conf->mode``
+
+
+RX Burst Size
+^^^^^^^^^^^^^
+
+As vPMD is focused on high throughput, it processes 4 packets at a time. So it assumes
+that the RX burst should be greater than 4 packets per burst. It returns zero if using
+``nb_pkt`` < 4 in the receive handler. If ``nb_pkt`` is not a multiple of 4, a
+floor alignment will be applied.
+
+
+TX Constraint
+~~~~~~~~~~~~~
+
+Features not Supported by TX Vector PMD
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+TX vPMD only works when ``txq_flags`` is set to ``FM10K_SIMPLE_TX_FLAG``.
+This means that it does not support TX multi-segment, VLAN offload or TX csum
+offload. The following MACROs are used for these three features:
+
+*   ``ETH_TXQ_FLAGS_NOMULTSEGS``
+
+*   ``ETH_TXQ_FLAGS_NOVLANOFFL``
+
+*   ``ETH_TXQ_FLAGS_NOXSUMSCTP``
+
+*   ``ETH_TXQ_FLAGS_NOXSUMUDP``
+
+*   ``ETH_TXQ_FLAGS_NOXSUMTCP``
+
 Limitations
 -----------
 
