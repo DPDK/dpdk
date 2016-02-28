@@ -35,6 +35,11 @@ This section should contain new features added in this release. Sample format:
 
   Refer to the previous release notes for examples.
 
+* **Enabled bulk allocation of mbufs.**
+
+  A new function ``rte_pktmbuf_alloc_bulk()`` has been added to allow the user
+  to allocate a bulk of mbufs.
+
 * **Virtio 1.0.**
 
   Enabled virtio 1.0 support for virtio pmd driver.
