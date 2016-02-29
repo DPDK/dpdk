@@ -53,6 +53,14 @@
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	  3
 
+/* Used to mark destination port as 'invalid'. */
+#define	BAD_PORT ((uint16_t)-1)
+
+#define FWDSTEP	4
+
+/* replace first 12B of the ethernet header. */
+#define	MASK_ETH 0x3f
+
 /* Hash parameters. */
 #ifdef RTE_ARCH_X86_64
 /* default to 4 million hash entries (approx) */

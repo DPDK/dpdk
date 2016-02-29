@@ -300,80 +300,16 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 	return (uint8_t)((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
 }
 
-static inline __attribute__((always_inline)) void
-l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
-		struct lcore_conf *qconf)
-{
-	struct ether_hdr *eth_hdr;
-	struct ipv4_hdr *ipv4_hdr;
-	uint8_t dst_port;
-
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
-
-	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-		/* Handle IPv4 headers.*/
-		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
-						   sizeof(struct ether_hdr));
-
-#ifdef DO_RFC_1812_CHECKS
-		/* Check to make sure the packet is valid (RFC1812) */
-		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt_len) < 0) {
-			rte_pktmbuf_free(m);
-			return;
-		}
-#endif
-		 dst_port = em_get_ipv4_dst_port(ipv4_hdr, portid,
-						qconf->ipv4_lookup_struct);
-
-		if (dst_port >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port) == 0)
-			dst_port = portid;
-
-#ifdef DO_RFC_1812_CHECKS
-		/* Update time to live and header checksum */
-		--(ipv4_hdr->time_to_live);
-		++(ipv4_hdr->hdr_checksum);
-#endif
-		/* dst addr */
-		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
-
-		/* src addr */
-		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
-
-		send_single_packet(qconf, m, dst_port);
-	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
-		/* Handle IPv6 headers.*/
-		struct ipv6_hdr *ipv6_hdr;
-
-		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
-						   sizeof(struct ether_hdr));
-
-		dst_port = em_get_ipv6_dst_port(ipv6_hdr, portid,
-					qconf->ipv6_lookup_struct);
-
-		if (dst_port >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port) == 0)
-			dst_port = portid;
-
-		/* dst addr */
-		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
-
-		/* src addr */
-		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
-
-		send_single_packet(qconf, m, dst_port);
-	} else {
-		/* Free the mbuf that contains non-IPV4/IPV6 packet */
-		rte_pktmbuf_free(m);
-	}
-}
-
 /*
  * Include header file if SSE4_1 is enabled for
  * buffer optimization i.e. ENABLE_MULTI_BUFFER_OPTIMIZE=1.
  */
 #if defined(__SSE4_1__)
+#ifndef HASH_MULTI_LOOKUP
 #include "l3fwd_em_sse.h"
+#else
+#include "l3fwd_em_hlm_sse.h"
+#endif
 #else
 #include "l3fwd_em.h"
 #endif
@@ -572,6 +508,7 @@ populate_ipv6_many_flow_into_table(const struct rte_hash *h,
 	printf("Hash: Adding 0x%x keys\n", nr_flow);
 }
 
+/* main processing loop */
 int
 em_main_loop(__attribute__((unused)) void *dummy)
 {
@@ -615,11 +552,8 @@ em_main_loop(__attribute__((unused)) void *dummy)
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > drain_tsc)) {
 
-			/*
-			 * This could be optimized (use queueid instead of
-			 * portid), but it is not called so often
-			 */
-			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
+			for (i = 0; i < qconf->n_rx_queue; i++) {
+				portid = qconf->rx_queue_list[i].port_id;
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
 				send_burst(qconf,

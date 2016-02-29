@@ -34,6 +34,74 @@
 #ifndef __L3FWD_EM_H__
 #define __L3FWD_EM_H__
 
+static inline __attribute__((always_inline)) void
+l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
+		struct lcore_conf *qconf)
+{
+	struct ether_hdr *eth_hdr;
+	struct ipv4_hdr *ipv4_hdr;
+	uint8_t dst_port;
+
+	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+
+	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
+		/* Handle IPv4 headers.*/
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+						   sizeof(struct ether_hdr));
+
+#ifdef DO_RFC_1812_CHECKS
+		/* Check to make sure the packet is valid (RFC1812) */
+		if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt_len) < 0) {
+			rte_pktmbuf_free(m);
+			return;
+		}
+#endif
+		 dst_port = em_get_ipv4_dst_port(ipv4_hdr, portid,
+						qconf->ipv4_lookup_struct);
+
+		if (dst_port >= RTE_MAX_ETHPORTS ||
+			(enabled_port_mask & 1 << dst_port) == 0)
+			dst_port = portid;
+
+#ifdef DO_RFC_1812_CHECKS
+		/* Update time to live and header checksum */
+		--(ipv4_hdr->time_to_live);
+		++(ipv4_hdr->hdr_checksum);
+#endif
+		/* dst addr */
+		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
+
+		/* src addr */
+		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+
+		send_single_packet(qconf, m, dst_port);
+	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
+		/* Handle IPv6 headers.*/
+		struct ipv6_hdr *ipv6_hdr;
+
+		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+						   sizeof(struct ether_hdr));
+
+		dst_port = em_get_ipv6_dst_port(ipv6_hdr, portid,
+					qconf->ipv6_lookup_struct);
+
+		if (dst_port >= RTE_MAX_ETHPORTS ||
+			(enabled_port_mask & 1 << dst_port) == 0)
+			dst_port = portid;
+
+		/* dst addr */
+		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
+
+		/* src addr */
+		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+
+		send_single_packet(qconf, m, dst_port);
+	} else {
+		/* Free the mbuf that contains non-IPV4/IPV6 packet */
+		rte_pktmbuf_free(m);
+	}
+}
+
 /*
  * Buffer non-optimized handling of packets, invoked
  * from main_loop.

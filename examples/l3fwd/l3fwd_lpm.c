@@ -101,14 +101,6 @@ static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
 #define IPV6_L3FWD_LPM_MAX_RULES         1024
 #define IPV6_L3FWD_LPM_NUMBER_TBL8S (1 << 16)
 
-/* Used to mark destination port as 'invalid'. */
-#define	BAD_PORT	((uint16_t)-1)
-
-#define FWDSTEP	4
-
-/* replace first 12B of the ethernet header. */
-#define	MASK_ETH	0x3f
-
 struct rte_lpm *ipv4_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 struct rte_lpm6 *ipv6_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 
@@ -166,11 +158,8 @@ lpm_main_loop(__attribute__((unused)) void *dummy)
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > drain_tsc)) {
 
-			/*
-			 * This could be optimized (use queueid instead of
-			 * portid), but it is not called so often
-			 */
-			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
+			for (i = 0; i < qconf->n_rx_queue; i++) {
+				portid = qconf->rx_queue_list[i].port_id;
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
 				send_burst(qconf,
