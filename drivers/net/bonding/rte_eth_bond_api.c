@@ -419,8 +419,13 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	if (bonded_eth_dev->data->dev_started) {
 		rte_eth_link_get_nowait(slave_port_id, &link_props);
 
-		 if (link_props.link_status == 1)
+		 if (link_props.link_status == 1) {
+			if (internals->active_slave_count == 0 &&
+			    !internals->user_defined_primary_port)
+				bond_ethdev_primary_set(internals,
+							slave_port_id);
 			activate_slave(bonded_eth_dev, slave_port_id);
+		}
 	}
 	return 0;
 
