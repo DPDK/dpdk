@@ -59,12 +59,16 @@ check_mempools(struct app_params *app)
 static void
 check_links(struct app_params *app)
 {
-	uint32_t n_links_port_mask = __builtin_popcountll(app->port_mask);
 	uint32_t i;
 
 	/* Check that number of links matches the port mask */
-	APP_CHECK((app->n_links == n_links_port_mask),
-		"Not enough links provided in the PORT_MASK\n");
+	if (app->port_mask) {
+		uint32_t n_links_port_mask =
+			__builtin_popcountll(app->port_mask);
+
+		APP_CHECK((app->n_links == n_links_port_mask),
+			"Not enough links provided in the PORT_MASK\n");
+	}
 
 	for (i = 0; i < app->n_links; i++) {
 		struct app_link_params *link = &app->link_params[i];
@@ -76,8 +80,8 @@ check_links(struct app_params *app)
 		rxq_max = 0;
 		if (link->arp_q > rxq_max)
 			rxq_max = link->arp_q;
-		if (link->tcp_syn_local_q > rxq_max)
-			rxq_max = link->tcp_syn_local_q;
+		if (link->tcp_syn_q > rxq_max)
+			rxq_max = link->tcp_syn_q;
 		if (link->ip_local_q > rxq_max)
 			rxq_max = link->ip_local_q;
 		if (link->tcp_local_q > rxq_max)
@@ -89,7 +93,7 @@ check_links(struct app_params *app)
 
 		for (i = 1; i <= rxq_max; i++)
 			APP_CHECK(((link->arp_q == i) ||
-				(link->tcp_syn_local_q == i) ||
+				(link->tcp_syn_q == i) ||
 				(link->ip_local_q == i) ||
 				(link->tcp_local_q == i) ||
 				(link->udp_local_q == i) ||

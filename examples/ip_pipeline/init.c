@@ -96,9 +96,10 @@ app_init_core_mask(struct app_params *app)
 static void
 app_init_eal(struct app_params *app)
 {
-	char buffer[32];
+	char buffer[256];
 	struct app_eal_params *p = &app->eal_params;
 	uint32_t n_args = 0;
+	uint32_t i;
 	int status;
 
 	app->eal_argv[n_args++] = strdup(app->app_name);
@@ -132,24 +133,47 @@ app_init_eal(struct app_params *app)
 		app->eal_argv[n_args++] = strdup(buffer);
 	}
 
-	if (p->pci_blacklist) {
+	for (i = 0; i < APP_MAX_LINKS; i++) {
+		if (p->pci_blacklist[i] == NULL)
+			break;
+
 		snprintf(buffer,
 			sizeof(buffer),
 			"--pci-blacklist=%s",
-			p->pci_blacklist);
+			p->pci_blacklist[i]);
 		app->eal_argv[n_args++] = strdup(buffer);
 	}
 
-	if (p->pci_whitelist) {
+	if (app->port_mask != 0)
+		for (i = 0; i < APP_MAX_LINKS; i++) {
+			if (p->pci_whitelist[i] == NULL)
+				break;
+
+			snprintf(buffer,
+				sizeof(buffer),
+				"--pci-whitelist=%s",
+				p->pci_whitelist[i]);
+			app->eal_argv[n_args++] = strdup(buffer);
+		}
+	else
+		for (i = 0; i < app->n_links; i++) {
+			char *pci_bdf = app->link_params[i].pci_bdf;
+
+			snprintf(buffer,
+				sizeof(buffer),
+				"--pci-whitelist=%s",
+				pci_bdf);
+			app->eal_argv[n_args++] = strdup(buffer);
+		}
+
+	for (i = 0; i < APP_MAX_LINKS; i++) {
+		if (p->vdev[i] == NULL)
+			break;
+
 		snprintf(buffer,
 			sizeof(buffer),
-			"--pci-whitelist=%s",
-			p->pci_whitelist);
-		app->eal_argv[n_args++] = strdup(buffer);
-	}
-
-	if (p->vdev) {
-		snprintf(buffer, sizeof(buffer), "--vdev=%s", p->vdev);
+			"--vdev=%s",
+			p->vdev[i]);
 		app->eal_argv[n_args++] = strdup(buffer);
 	}
 
@@ -267,6 +291,15 @@ app_init_eal(struct app_params *app)
 	app->eal_argc = n_args;
 
 	APP_LOG(app, HIGH, "Initializing EAL ...");
+	if (app->log_level >= APP_LOG_LEVEL_LOW) {
+		int i;
+
+		fprintf(stdout, "[APP] EAL arguments: \"");
+		for (i = 1; i < app->eal_argc; i++)
+			fprintf(stdout, "%s ", app->eal_argv[i]);
+		fprintf(stdout, "\"\n");
+	}
+
 	status = rte_eal_init(app->eal_argc, app->eal_argv);
 	if (status < 0)
 		rte_panic("EAL init error\n");
@@ -317,7 +350,7 @@ app_link_filter_tcp_syn_add(struct app_link_params *link)
 {
 	struct rte_eth_syn_filter filter = {
 		.hig_pri = 1,
-		.queue = link->tcp_syn_local_q,
+		.queue = link->tcp_syn_q,
 	};
 
 	return rte_eth_dev_filter_ctrl(link->pmd_id,
@@ -555,20 +588,32 @@ app_link_set_arp_filter(struct app_params *app, struct app_link_params *cp)
 static void
 app_link_set_tcp_syn_filter(struct app_params *app, struct app_link_params *cp)
 {
-	if (cp->tcp_syn_local_q != 0) {
+	if (cp->tcp_syn_q != 0) {
 		int status = app_link_filter_tcp_syn_add(cp);
 
 		APP_LOG(app, LOW, "%s (%" PRIu32 "): "
 			"Adding TCP SYN filter (queue = %" PRIu32 ")",
-			cp->name, cp->pmd_id, cp->tcp_syn_local_q);
+			cp->name, cp->pmd_id, cp->tcp_syn_q);
 
 		if (status)
 			rte_panic("%s (%" PRIu32 "): "
 				"Error adding TCP SYN filter "
 				"(queue = %" PRIu32 ") (%" PRId32 ")\n",
-				cp->name, cp->pmd_id, cp->tcp_syn_local_q,
+				cp->name, cp->pmd_id, cp->tcp_syn_q,
 				status);
 	}
+}
+
+static int
+app_link_is_virtual(struct app_link_params *p)
+{
+	uint32_t pmd_id = p->pmd_id;
+	struct rte_eth_dev *dev = &rte_eth_devices[pmd_id];
+
+	if (dev->dev_type == RTE_ETH_DEV_VIRTUAL)
+		return 1;
+
+	return 0;
 }
 
 void
@@ -576,6 +621,11 @@ app_link_up_internal(struct app_params *app, struct app_link_params *cp)
 {
 	uint32_t i;
 	int status;
+
+	if (app_link_is_virtual(cp)) {
+		cp->state = 1;
+		return;
+	}
 
 	/* For each link, add filters for IP of current link */
 	if (cp->ip != 0) {
@@ -671,8 +721,8 @@ app_link_up_internal(struct app_params *app, struct app_link_params *cp)
 	/* PMD link up */
 	status = rte_eth_dev_set_link_up(cp->pmd_id);
 	if (status < 0)
-		rte_panic("%s (%" PRIu32 "): PMD set up error %" PRId32 "\n",
-			cp->name, cp->pmd_id, status);
+		rte_panic("%s (%" PRIu32 "): PMD set link up error %"
+			PRId32 "\n", cp->name, cp->pmd_id, status);
 
 	/* Mark link as UP */
 	cp->state = 1;
@@ -682,9 +732,18 @@ void
 app_link_down_internal(struct app_params *app, struct app_link_params *cp)
 {
 	uint32_t i;
+	int status;
+
+	if (app_link_is_virtual(cp)) {
+		cp->state = 0;
+		return;
+	}
 
 	/* PMD link down */
-	rte_eth_dev_set_link_down(cp->pmd_id);
+	status = rte_eth_dev_set_link_down(cp->pmd_id);
+	if (status < 0)
+		rte_panic("%s (%" PRIu32 "): PMD set link down error %"
+			PRId32 "\n", cp->name, cp->pmd_id, status);
 
 	/* Mark link as DOWN */
 	cp->state = 0;

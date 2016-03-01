@@ -898,9 +898,15 @@ print_link_info(struct app_link_params *p)
 
 	mac_addr = (struct ether_addr *) &p->mac_addr;
 
-	printf("%s: flags=<%s>\n",
-		p->name,
-		(p->state) ? "UP" : "DOWN");
+	if (strlen(p->pci_bdf))
+		printf("%s(%s): flags=<%s>\n",
+			p->name,
+			p->pci_bdf,
+			(p->state) ? "UP" : "DOWN");
+	else
+		printf("%s: flags=<%s>\n",
+			p->name,
+			(p->state) ? "UP" : "DOWN");
 
 	if (p->ip)
 		printf("\tinet %" PRIu32 ".%" PRIu32
