@@ -1019,6 +1019,7 @@ bond_mode_8023ad_conf_get(struct rte_eth_dev *dev,
 	conf->aggregate_wait_timeout_ms = mode4->aggregate_wait_timeout / ms_ticks;
 	conf->tx_period_ms = mode4->tx_period_timeout / ms_ticks;
 	conf->update_timeout_ms = mode4->update_timeout_us / 1000;
+	conf->rx_marker_period_ms = mode4->rx_marker_timeout / ms_ticks;
 }
 
 void
