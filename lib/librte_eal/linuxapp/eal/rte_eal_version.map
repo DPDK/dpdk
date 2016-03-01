@@ -141,7 +141,7 @@ DPDK_2.2 {
 
 } DPDK_2.1;
 
-DPDK_2.3 {
+DPDK_16.04 {
 	global:
 
 	rte_cpu_get_flag_name;
