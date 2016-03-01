@@ -67,7 +67,9 @@
 #define VIRTIO_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
 	ETH_TXQ_FLAGS_NOOFFLOADS)
 
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 static int use_simple_rxtx;
+#endif
 
 static void
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
@@ -307,12 +309,13 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 		nbufs = 0;
 		error = ENOSPC;
 
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 		if (use_simple_rxtx)
 			for (i = 0; i < vq->vq_nentries; i++) {
 				vq->vq_ring.avail->ring[i] = i;
 				vq->vq_ring.desc[i].flags = VRING_DESC_F_WRITE;
 			}
-
+#endif
 		memset(&vq->fake_mbuf, 0, sizeof(vq->fake_mbuf));
 		for (i = 0; i < RTE_PMD_VIRTIO_RX_MAX_BURST; i++)
 			vq->sw_ring[vq->vq_nentries + i] = &vq->fake_mbuf;
@@ -325,9 +328,11 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 			/******************************************
 			*         Enqueue allocated buffers        *
 			*******************************************/
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 			if (use_simple_rxtx)
 				error = virtqueue_enqueue_recv_refill_simple(vq, m);
 			else
+#endif
 				error = virtqueue_enqueue_recv_refill(vq, m);
 			if (error) {
 				rte_pktmbuf_free(m);
@@ -340,6 +345,7 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 
 		PMD_INIT_LOG(DEBUG, "Allocated %d bufs", nbufs);
 	} else if (queue_type == VTNET_TQ) {
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 		if (use_simple_rxtx) {
 			int mid_idx  = vq->vq_nentries >> 1;
 			for (i = 0; i < mid_idx; i++) {
@@ -357,6 +363,7 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 			for (i = mid_idx; i < vq->vq_nentries; i++)
 				vq->vq_ring.avail->ring[i] = i;
 		}
+#endif
 	}
 }
 
@@ -423,7 +430,9 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->rx_queues[queue_idx] = vq;
 
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 	virtio_rxq_vec_setup(vq);
+#endif
 
 	return 0;
 }
@@ -449,7 +458,10 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			const struct rte_eth_txconf *tx_conf)
 {
 	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
+
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 	struct virtio_hw *hw = dev->data->dev_private;
+#endif
 	struct virtqueue *vq;
 	uint16_t tx_free_thresh;
 	int ret;
@@ -462,6 +474,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 	/* Use simple rx/tx func if single segment and no offloads */
 	if ((tx_conf->txq_flags & VIRTIO_SIMPLE_FLAGS) == VIRTIO_SIMPLE_FLAGS &&
 	     !vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
@@ -470,6 +483,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		dev->rx_pkt_burst = virtio_recv_pkts_vec;
 		use_simple_rxtx = 1;
 	}
+#endif
 
 	ret = virtio_dev_queue_setup(dev, VTNET_TQ, queue_idx, vtpci_queue_idx,
 			nb_desc, socket_id, &vq);
