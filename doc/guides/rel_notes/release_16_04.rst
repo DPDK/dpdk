@@ -44,6 +44,12 @@ This section should contain new features added in this release. Sample format:
 
   Enabled virtio 1.0 support for virtio pmd driver.
 
+* **Supported virtio for ARM.**
+
+  Enabled virtio support for armv7/v8. Tested for arm64.
+  Virtio for arm support VFIO-noiommu mode only.
+  Virtio can work with other non-x86 arch too like powerpc.
+
 * **Supported virtio offload in vhost-user.**
 
   Add the offload and negotiation of checksum and TSO between vhost-user and
