@@ -1844,6 +1844,18 @@ test_multi_session(void)
 				sessions[i], ut_params, ts_params),
 				"Failed to perform decrypt on request "
 				"number %u.", i);
+		/* free crypto operation structure */
+		if (ut_params->op)
+			rte_crypto_op_free(ut_params->op);
+
+		/*
+		 * free mbuf - both obuf and ibuf are usually the same,
+		 * but rte copes even if we call free twice
+		 */
+		if (ut_params->obuf) {
+			rte_pktmbuf_free(ut_params->obuf);
+			ut_params->obuf = 0;
+		}
 	}
 
 	/* Next session create should fail */
