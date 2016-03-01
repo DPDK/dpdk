@@ -171,6 +171,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			 * mode and packet address does not match. */
 			if (unlikely(hdr->ether_type == ether_type_slow_be ||
 				!collecting || (!promisc &&
+					!is_multicast_ether_addr(&hdr->d_addr) &&
 					!is_same_ether_addr(&bond_mac, &hdr->d_addr)))) {
 
 				if (hdr->ether_type == ether_type_slow_be) {

@@ -747,8 +747,11 @@ test_mode4_rx(void)
 	rte_eth_macaddr_get(test_params.bonded_port_id, &bonded_mac);
 	ether_addr_copy(&bonded_mac, &dst_mac);
 
-	/* Assert that dst address is not bonding address */
-	dst_mac.addr_bytes[0]++;
+	/* Assert that dst address is not bonding address.  Do not set the
+	 * least significant bit of the zero byte as this would create a
+	 * multicast address.
+	 */
+	dst_mac.addr_bytes[0] += 2;
 
 	/* First try with promiscuous mode enabled.
 	 * Add 2 packets to each slave. First with bonding MAC address, second with
