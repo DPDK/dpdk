@@ -61,6 +61,8 @@
 #ifndef _PARSE_PORTLIST_H_
 #define _PARSE_PORTLIST_H_
 
+#include <cmdline_parse.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

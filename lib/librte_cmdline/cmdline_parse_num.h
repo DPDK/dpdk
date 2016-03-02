@@ -61,6 +61,8 @@
 #ifndef _PARSE_NUM_H_
 #define _PARSE_NUM_H_
 
+#include <cmdline_parse.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -61,6 +61,8 @@
 #ifndef _PARSE_ETHERADDR_H_
 #define _PARSE_ETHERADDR_H_
 
+#include <cmdline_parse.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

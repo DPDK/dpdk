@@ -61,6 +61,7 @@
 #ifndef _PARSE_IPADDR_H_
 #define _PARSE_IPADDR_H_
 
+#include <cmdline_parse.h>
 #include <netinet/in.h>
 
 #ifdef __cplusplus
