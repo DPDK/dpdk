@@ -152,6 +152,12 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		mbuf->ol_flags |= PKT_RX_VLAN_PKT;
 		mbuf->vlan_tci = desc.w.vlan;
+		/**
+		 * mbuf->vlan_tci_outer is an idle field in fm10k driver,
+		 * so it can be selected to store sglort value.
+		 */
+		if (q->rx_ftag_en)
+			mbuf->vlan_tci_outer = rte_le_to_cpu_16(desc.w.sglort);
 
 		rx_pkts[count] = mbuf;
 		if (++next_dd == q->nb_desc) {
@@ -307,6 +313,13 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		first_seg->ol_flags |= PKT_RX_VLAN_PKT;
 		first_seg->vlan_tci = desc.w.vlan;
+		/**
+		 * mbuf->vlan_tci_outer is an idle field in fm10k driver,
+		 * so it can be selected to store sglort value.
+		 */
+		if (q->rx_ftag_en)
+			first_seg->vlan_tci_outer =
+				rte_le_to_cpu_16(desc.w.sglort);
 
 		/* Prefetch data of first segment, if configured to do so. */
 		rte_packet_prefetch((char *)first_seg->buf_addr +
@@ -498,6 +511,8 @@ static inline void tx_xmit_pkt(struct fm10k_tx_queue *q, struct rte_mbuf *mb)
 	q->nb_free -= mb->nb_segs;
 
 	q->hw_ring[q->next_free].flags = 0;
+	if (q->tx_ftag_en)
+		q->hw_ring[q->next_free].flags |= FM10K_TXD_FLAG_FTAG;
 	/* set checksum flags on first descriptor of packet. SCTP checksum
 	 * offload is not supported, but we do not explicitly check for this
 	 * case in favor of greatly simplified processing. */

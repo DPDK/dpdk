@@ -688,6 +688,9 @@ fm10k_tx_vec_condition_check(struct fm10k_tx_queue *txq)
 	if ((txq->txq_flags & FM10K_SIMPLE_TX_FLAG) != FM10K_SIMPLE_TX_FLAG)
 		return -1;
 
+	if (txq->tx_ftag_en)
+		return -1;
+
 	return 0;
 }
 

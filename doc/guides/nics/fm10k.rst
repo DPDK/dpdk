@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,20 @@ FM10K Poll Mode Driver
 The FM10K poll mode driver library provides support for the Intel FM10000
 (FM10K) family of 40GbE/100GbE adapters.
 
+FTAG Based Forwarding of FM10K
+------------------------------
+
+FTAG Based Forwarding is a unique feature of FM10K. The FM10K family of NICs
+support the addition of a Fabric Tag (FTAG) to carry special information.
+The FTAG is placed at the beginning of the frame, it contains information
+such as where the packet comes from and goes, and the vlan tag. In FTAG based
+forwarding mode, the switch logic forwards packets according to glort (global
+resource tag) information, rather than the mac and vlan table. Currently this
+feature works only on PF.
+
+To enable this feature, the user should pass a devargs parameter to the eal
+like "-w 84:00.0,enable_ftag=1", and the application should make sure an
+appropriate FTAG is inserted for every frame on TX side.
 
 Vector PMD for FM10K
 --------------------

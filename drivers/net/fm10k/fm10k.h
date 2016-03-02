@@ -204,6 +204,7 @@ struct fm10k_rx_queue {
 	uint8_t port_id;
 	uint8_t drop_en;
 	uint8_t rx_deferred_start; /* don't start this queue in dev start. */
+	uint16_t rx_ftag_en; /* indicates FTAG RX supported */
 };
 
 /*
@@ -240,6 +241,7 @@ struct fm10k_tx_queue {
 	uint8_t port_id;
 	uint8_t tx_deferred_start; /** don't start this queue in dev start. */
 	uint16_t queue_id;
+	uint16_t tx_ftag_en; /* indicates FTAG TX supported */
 };
 
 struct fm10k_txq_ops {

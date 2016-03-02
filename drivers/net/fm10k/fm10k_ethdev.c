@@ -37,6 +37,7 @@
 #include <rte_string_fns.h>
 #include <rte_dev.h>
 #include <rte_spinlock.h>
+#include <rte_kvargs.h>
 
 #include "fm10k.h"
 #include "base/fm10k_api.h"
@@ -79,6 +80,7 @@ static void fm10k_tx_queue_release(void *queue);
 static void fm10k_rx_queue_release(void *queue);
 static void fm10k_set_rx_function(struct rte_eth_dev *dev);
 static void fm10k_set_tx_function(struct rte_eth_dev *dev);
+static int fm10k_check_ftag(struct rte_devargs *devargs);
 
 struct fm10k_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -667,6 +669,19 @@ fm10k_dev_tx_init(struct rte_eth_dev *dev)
 		if (ret) {
 			PMD_INIT_LOG(ERR, "failed to disable queue %d", i);
 			return -1;
+		}
+		/* Enable use of FTAG bit in TX descriptor, PFVTCTL
+		 * register is read-only for VF.
+		 */
+		if (fm10k_check_ftag(dev->pci_dev->devargs)) {
+			if (hw->mac.type == fm10k_mac_pf) {
+				FM10K_WRITE_REG(hw, FM10K_PFVTCTL(i),
+						FM10K_PFVTCTL_FTAG_DESC_ENABLE);
+				PMD_INIT_LOG(DEBUG, "FTAG mode is enabled");
+			} else {
+				PMD_INIT_LOG(ERR, "VF FTAG is not supported.");
+				return -ENOTSUP;
+			}
 		}
 
 		/* set location and size for descriptor ring */
@@ -2584,15 +2599,57 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.rss_hash_conf_get	= fm10k_rss_hash_conf_get,
 };
 
+static int ftag_check_handler(__rte_unused const char *key,
+		const char *value, __rte_unused void *opaque)
+{
+	if (strcmp(value, "1"))
+		return -1;
+
+	return 0;
+}
+
+static int
+fm10k_check_ftag(struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	const char *ftag_key = "enable_ftag";
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, ftag_key)) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	/* FTAG is enabled when there's key-value pair: enable_ftag=1 */
+	if (rte_kvargs_process(kvlist, ftag_key,
+				ftag_check_handler, NULL) < 0) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	rte_kvargs_free(kvlist);
+
+	return 1;
+}
+
 static void __attribute__((cold))
 fm10k_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct fm10k_tx_queue *txq;
 	int i;
 	int use_sse = 1;
+	uint16_t tx_ftag_en = 0;
+
+	if (fm10k_check_ftag(dev->pci_dev->devargs))
+		tx_ftag_en = 1;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
+		txq->tx_ftag_en = tx_ftag_en;
 		/* Check if Vector Tx is satisfied */
 		if (fm10k_tx_vec_condition_check(txq)) {
 			use_sse = 0;
@@ -2618,11 +2675,16 @@ fm10k_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct fm10k_dev_info *dev_info = FM10K_DEV_PRIVATE_TO_INFO(dev);
 	uint16_t i, rx_using_sse;
+	uint16_t rx_ftag_en = 0;
+
+	if (fm10k_check_ftag(dev->pci_dev->devargs))
+		rx_ftag_en = 1;
 
 	/* In order to allow Vector Rx there are a few configuration
 	 * conditions to be met.
 	 */
-	if (!fm10k_rx_vec_condition_check(dev) && dev_info->rx_vec_allowed) {
+	if (!fm10k_rx_vec_condition_check(dev) &&
+			dev_info->rx_vec_allowed && !rx_ftag_en) {
 		if (dev->data->scattered_rx)
 			dev->rx_pkt_burst = fm10k_recv_scattered_pkts_vec;
 		else
@@ -2645,6 +2707,7 @@ fm10k_set_rx_function(struct rte_eth_dev *dev)
 		struct fm10k_rx_queue *rxq = dev->data->rx_queues[i];
 
 		rxq->rx_using_sse = rx_using_sse;
+		rxq->rx_ftag_en = rx_ftag_en;
 	}
 }
 
