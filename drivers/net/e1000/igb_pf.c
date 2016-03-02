@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -332,8 +332,10 @@ igb_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	int rar_entry = hw->mac.rar_entry_count - (vf + 1);
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
 
-	if (is_valid_assigned_ether_addr((struct ether_addr*)new_mac)) {
-		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac, 6);
+	if (is_unicast_ether_addr((struct ether_addr *)new_mac)) {
+		if (!is_zero_ether_addr((struct ether_addr *)new_mac))
+			rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
+				sizeof(vfinfo[vf].vf_mac_addresses));
 		hw->mac.ops.rar_set(hw, new_mac, rar_entry);
 		return 0;
 	}

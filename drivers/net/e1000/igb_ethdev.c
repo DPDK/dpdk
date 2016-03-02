@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -2842,6 +2842,7 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(dev->data->dev_private);
+	struct ether_addr addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2850,6 +2851,15 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 	igbvf_dev_stop(dev);
 	adapter->stopped = 1;
 	igb_dev_free_queues(dev);
+
+	/**
+	 * reprogram the RAR with a zero mac address,
+	 * to ensure that the VF traffic goes to the PF
+	 * after stop, close and detach of the VF.
+	 **/
+
+	memset(&addr, 0, sizeof(addr));
+	igbvf_default_mac_addr_set(dev, &addr);
 }
 
 static void
