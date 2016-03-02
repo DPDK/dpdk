@@ -144,6 +144,9 @@ test_cpuflags(void)
 
 	printf("Check for CRC32:\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_CRC32);
+
+	printf("Check for ATOMICS:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_ATOMICS);
 #endif
 
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
