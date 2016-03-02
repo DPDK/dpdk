@@ -231,6 +231,32 @@ rte_em_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ *  eth_em_dev_is_ich8 - Check for ICH8 device
+ *  @hw: pointer to the HW structure
+ *
+ *  return TRUE for ICH8, otherwise FALSE
+ **/
+static bool
+eth_em_dev_is_ich8(struct e1000_hw *hw)
+{
+	DEBUGFUNC("eth_em_dev_is_ich8");
+
+	switch (hw->device_id) {
+	case E1000_DEV_ID_PCH_LPT_I217_LM:
+	case E1000_DEV_ID_PCH_LPT_I217_V:
+	case E1000_DEV_ID_PCH_LPTLP_I218_LM:
+	case E1000_DEV_ID_PCH_LPTLP_I218_V:
+	case E1000_DEV_ID_PCH_I218_V2:
+	case E1000_DEV_ID_PCH_I218_LM2:
+	case E1000_DEV_ID_PCH_I218_V3:
+	case E1000_DEV_ID_PCH_I218_LM3:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 static int
 eth_em_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -265,6 +291,8 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->stopped = 0;
 
 	/* For ICH8 support we'll need to map the flash memory BAR */
+	if (eth_em_dev_is_ich8(hw))
+		hw->flash_address = (void *)pci_dev->mem_resource[1].addr;
 
 	if (e1000_setup_init_funcs(hw, TRUE) != E1000_SUCCESS ||
 			em_hw_init(hw) != 0) {
@@ -490,6 +518,7 @@ em_set_pba(struct e1000_hw *hw)
 			break;
 		case e1000_pchlan:
 		case e1000_pch2lan:
+		case e1000_pch_lpt:
 			pba = E1000_PBA_26K;
 			break;
 		default:
@@ -798,6 +827,8 @@ em_hardware_init(struct e1000_hw *hw)
 		hw->fc.low_water = 0x5048;
 		hw->fc.pause_time = 0x0650;
 		hw->fc.refresh_time = 0x0400;
+	} else if (hw->mac.type == e1000_pch_lpt) {
+		hw->fc.requested_mode = e1000_fc_full;
 	}
 
 	diag = e1000_init_hw(hw);
@@ -969,6 +1000,7 @@ em_get_max_pktlen(const struct e1000_hw *hw)
 	case e1000_ich9lan:
 	case e1000_ich10lan:
 	case e1000_pch2lan:
+	case e1000_pch_lpt:
 	case e1000_82574:
 	case e1000_80003es2lan: /* 9K Jumbo Frame size */
 	case e1000_82583:
