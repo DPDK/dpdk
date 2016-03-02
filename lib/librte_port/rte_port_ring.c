@@ -520,16 +520,20 @@ send_burst_nodrop(struct rte_port_ring_writer_nodrop *p)
 				p->tx_buf_count);
 
 	/* We sent all the packets in a first try */
-	if (nb_tx >= p->tx_buf_count)
+	if (nb_tx >= p->tx_buf_count) {
+		p->tx_buf_count = 0;
 		return;
+	}
 
 	for (i = 0; i < p->n_retries; i++) {
 		nb_tx += rte_ring_sp_enqueue_burst(p->ring,
 				(void **) (p->tx_buf + nb_tx), p->tx_buf_count - nb_tx);
 
 		/* We sent all the packets in more than one try */
-		if (nb_tx >= p->tx_buf_count)
+		if (nb_tx >= p->tx_buf_count) {
+			p->tx_buf_count = 0;
 			return;
+		}
 	}
 
 	/* We didn't send the packets in maximum allowed attempts */
@@ -549,16 +553,20 @@ send_burst_mp_nodrop(struct rte_port_ring_writer_nodrop *p)
 				p->tx_buf_count);
 
 	/* We sent all the packets in a first try */
-	if (nb_tx >= p->tx_buf_count)
+	if (nb_tx >= p->tx_buf_count) {
+		p->tx_buf_count = 0;
 		return;
+	}
 
 	for (i = 0; i < p->n_retries; i++) {
 		nb_tx += rte_ring_mp_enqueue_burst(p->ring,
 				(void **) (p->tx_buf + nb_tx), p->tx_buf_count - nb_tx);
 
 		/* We sent all the packets in more than one try */
-		if (nb_tx >= p->tx_buf_count)
+		if (nb_tx >= p->tx_buf_count) {
+			p->tx_buf_count = 0;
 			return;
+		}
 	}
 
 	/* We didn't send the packets in maximum allowed attempts */
