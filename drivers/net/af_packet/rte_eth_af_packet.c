@@ -53,8 +53,6 @@
 #include <unistd.h>
 #include <poll.h>
 
-#include "rte_eth_af_packet.h"
-
 #define ETH_AF_PACKET_IFACE_ARG		"iface"
 #define ETH_AF_PACKET_NUM_Q_ARG		"qpairs"
 #define ETH_AF_PACKET_BLOCKSIZE_ARG	"blocksz"
@@ -64,6 +62,8 @@
 #define DFLT_BLOCK_SIZE		(1 << 12)
 #define DFLT_FRAME_SIZE		(1 << 11)
 #define DFLT_FRAME_COUNT	(1 << 9)
+
+#define RTE_PMD_AF_PACKET_MAX_RINGS 16
 
 struct pkt_rx_queue {
 	int sockfd;
@@ -667,11 +667,13 @@ rte_pmd_init_internals(const char *name,
 	data->nb_tx_queues = (uint16_t)nb_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &(*internals)->eth_addr;
+	strncpy(data->name,
+		(*eth_dev)->data->name, strlen((*eth_dev)->data->name));
 
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
 	(*eth_dev)->driver = NULL;
-	(*eth_dev)->data->dev_flags = 0;
+	(*eth_dev)->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	(*eth_dev)->data->drv_name = drivername;
 	(*eth_dev)->data->kdrv = RTE_KDRV_NONE;
 	(*eth_dev)->data->numa_node = numa_node;
@@ -798,7 +800,7 @@ rte_eth_from_packet(const char *name,
 	return 0;
 }
 
-int
+static int
 rte_pmd_af_packet_devinit(const char *name, const char *params)
 {
 	unsigned numa_node;
@@ -836,10 +838,43 @@ exit:
 	return ret;
 }
 
+static int
+rte_pmd_af_packet_devuninit(const char *name)
+{
+	struct rte_eth_dev *eth_dev = NULL;
+	struct pmd_internals *internals;
+	unsigned q;
+
+	RTE_LOG(INFO, PMD, "Closing AF_PACKET ethdev on numa socket %u\n",
+			rte_socket_id());
+
+	if (name == NULL)
+		return -1;
+
+	/* find the ethdev entry */
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev == NULL)
+		return -1;
+
+	internals = eth_dev->data->dev_private;
+	for (q = 0; q < internals->nb_queues; q++) {
+		rte_free(internals->rx_queue[q].rd);
+		rte_free(internals->tx_queue[q].rd);
+	}
+
+	rte_free(eth_dev->data->dev_private);
+	rte_free(eth_dev->data);
+
+	rte_eth_dev_release_port(eth_dev);
+
+	return 0;
+}
+
 static struct rte_driver pmd_af_packet_drv = {
 	.name = "eth_af_packet",
 	.type = PMD_VDEV,
 	.init = rte_pmd_af_packet_devinit,
+	.uninit = rte_pmd_af_packet_devuninit,
 };
 
 PMD_REGISTER_DRIVER(pmd_af_packet_drv);

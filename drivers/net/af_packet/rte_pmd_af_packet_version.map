@@ -1,7 +1,4 @@
 DPDK_2.0 {
-	global:
-
-	rte_pmd_af_packet_devinit;
 
 	local: *;
 };
