@@ -390,16 +390,20 @@ send_burst_nodrop(struct rte_port_ethdev_writer_nodrop *p)
 			p->tx_buf_count);
 
 	/* We sent all the packets in a first try */
-	if (nb_tx >= p->tx_buf_count)
+	if (nb_tx >= p->tx_buf_count) {
+		p->tx_buf_count = 0;
 		return;
+	}
 
 	for (i = 0; i < p->n_retries; i++) {
 		nb_tx += rte_eth_tx_burst(p->port_id, p->queue_id,
 							 p->tx_buf + nb_tx, p->tx_buf_count - nb_tx);
 
 		/* We sent all the packets in more than one try */
-		if (nb_tx >= p->tx_buf_count)
+		if (nb_tx >= p->tx_buf_count) {
+			p->tx_buf_count = 0;
 			return;
+		}
 	}
 
 	/* We didn't send the packets in maximum allowed attempts */
