@@ -84,6 +84,7 @@ txq_complete(struct txq *txq)
 {
 	unsigned int elts_comp = txq->elts_comp;
 	unsigned int elts_tail = txq->elts_tail;
+	unsigned int elts_free = txq->elts_tail;
 	const unsigned int elts_n = txq->elts_n;
 	int wcs_n;
 
@@ -110,6 +111,25 @@ txq_complete(struct txq *txq)
 	elts_tail += wcs_n * txq->elts_comp_cd_init;
 	if (elts_tail >= elts_n)
 		elts_tail -= elts_n;
+
+	while (elts_free != elts_tail) {
+		struct txq_elt *elt = &(*txq->elts)[elts_free];
+		unsigned int elts_free_next =
+			(((elts_free + 1) == elts_n) ? 0 : elts_free + 1);
+		struct rte_mbuf *tmp = elt->buf;
+		struct txq_elt *elt_next = &(*txq->elts)[elts_free_next];
+
+		RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
+		/* Faster than rte_pktmbuf_free(). */
+		do {
+			struct rte_mbuf *next = NEXT(tmp);
+
+			rte_pktmbuf_free_seg(tmp);
+			tmp = next;
+		} while (tmp != NULL);
+		elts_free = elts_free_next;
+	}
+
 	txq->elts_tail = elts_tail;
 	txq->elts_comp = elts_comp;
 	return 0;
@@ -464,7 +484,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct rte_mbuf *buf_next = pkts[i + 1];
 		unsigned int elts_head_next =
 			(((elts_head + 1) == elts_n) ? 0 : elts_head + 1);
-		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
 		unsigned int segs = NB_SEGS(buf);
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -472,18 +491,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #endif
 		uint32_t send_flags = 0;
 
-		/* Clean up old buffer. */
-		if (likely(elt->buf != NULL)) {
-			struct rte_mbuf *tmp = elt->buf;
-
-			/* Faster than rte_pktmbuf_free(). */
-			do {
-				struct rte_mbuf *next = NEXT(tmp);
-
-				rte_pktmbuf_free_seg(tmp);
-				tmp = next;
-			} while (tmp != NULL);
-		}
 		if (i + 1 < max)
 			rte_prefetch0(buf_next);
 		/* Request TX completion. */
@@ -517,7 +524,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (txq->priv->vf)
 				rte_prefetch0((volatile void *)
 					      (uintptr_t)addr);
-			RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
 			/* Prefetch next buffer data. */
 			if (i + 1 < max) {
 				buf_next_addr =
@@ -568,7 +574,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					  &sges);
 			if (ret.length == (unsigned int)-1)
 				goto stop;
-			RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
 			/* Put SG list into send queue. */
 			err = txq->send_pending_sg_list
 				(txq->qp,
