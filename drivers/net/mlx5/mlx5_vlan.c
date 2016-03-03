@@ -98,9 +98,10 @@ vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		priv->vlan_filter[priv->vlan_filter_n] = vlan_id;
 		++priv->vlan_filter_n;
 	}
-	/* Rehash MAC flows in all hash RX queues. */
+	/* Rehash flows in all hash RX queues. */
 	priv_mac_addrs_disable(priv);
-	return priv_mac_addrs_enable(priv);
+	priv_special_flow_disable_all(priv);
+	return priv_rehash_flows(priv);
 }
 
 /**

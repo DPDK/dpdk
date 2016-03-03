@@ -541,7 +541,10 @@ priv_destroy_hash_rxqs(struct priv *priv)
 		assert(hash_rxq->qp != NULL);
 		/* Also check that there are no remaining flows. */
 		for (j = 0; (j != RTE_DIM(hash_rxq->special_flow)); ++j)
-			assert(hash_rxq->special_flow[j] == NULL);
+			for (k = 0;
+			     (k != RTE_DIM(hash_rxq->special_flow[j]));
+			     ++k)
+				assert(hash_rxq->special_flow[j][k] == NULL);
 		for (j = 0; (j != RTE_DIM(hash_rxq->mac_flow)); ++j)
 			for (k = 0; (k != RTE_DIM(hash_rxq->mac_flow[j])); ++k)
 				assert(hash_rxq->mac_flow[j][k] == NULL);

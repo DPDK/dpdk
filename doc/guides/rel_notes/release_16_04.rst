@@ -283,6 +283,10 @@ Drivers
   Done to prevent port initialization on non-Ethernet link layers and
   to report an error.
 
+* **mlx5: Applied VLAN filtering to broadcast and IPv6 multicast flows.**
+
+  Prevented reception of multicast frames outside of configured VLANs.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,

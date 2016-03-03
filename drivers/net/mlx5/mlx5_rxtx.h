@@ -195,6 +195,7 @@ struct special_flow_init {
 	uint8_t dst_mac_val[6];
 	uint8_t dst_mac_mask[6];
 	unsigned int hash_types;
+	unsigned int per_vlan:1;
 };
 
 enum hash_rxq_flow_type {
@@ -231,7 +232,8 @@ struct hash_rxq {
 	enum hash_rxq_type type; /* Hash RX queue type. */
 	/* MAC flow steering rules, one per VLAN ID. */
 	struct ibv_exp_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
-	struct ibv_exp_flow *special_flow[MLX5_MAX_SPECIAL_FLOWS];
+	struct ibv_exp_flow *special_flow
+		[MLX5_MAX_SPECIAL_FLOWS][MLX5_MAX_VLAN_IDS];
 };
 
 /* TX element. */

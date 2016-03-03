@@ -74,6 +74,7 @@ static const struct special_flow_init special_flow_init[] = {
 #endif /* HAVE_FLOW_SPEC_IPV6 */
 			1 << HASH_RXQ_ETH |
 			0,
+		.per_vlan = 0,
 	},
 	[HASH_RXQ_FLOW_TYPE_ALLMULTI] = {
 		.dst_mac_val = "\x01\x00\x00\x00\x00\x00",
@@ -87,6 +88,7 @@ static const struct special_flow_init special_flow_init[] = {
 #endif /* HAVE_FLOW_SPEC_IPV6 */
 			1 << HASH_RXQ_ETH |
 			0,
+		.per_vlan = 0,
 	},
 	[HASH_RXQ_FLOW_TYPE_BROADCAST] = {
 		.dst_mac_val = "\xff\xff\xff\xff\xff\xff",
@@ -100,6 +102,7 @@ static const struct special_flow_init special_flow_init[] = {
 #endif /* HAVE_FLOW_SPEC_IPV6 */
 			1 << HASH_RXQ_ETH |
 			0,
+		.per_vlan = 1,
 	},
 #ifdef HAVE_FLOW_SPEC_IPV6
 	[HASH_RXQ_FLOW_TYPE_IPV6MULTI] = {
@@ -110,24 +113,28 @@ static const struct special_flow_init special_flow_init[] = {
 			1 << HASH_RXQ_IPV6 |
 			1 << HASH_RXQ_ETH |
 			0,
+		.per_vlan = 1,
 	},
 #endif /* HAVE_FLOW_SPEC_IPV6 */
 };
 
 /**
- * Enable a special flow in a hash RX queue.
+ * Enable a special flow in a hash RX queue for a given VLAN index.
  *
  * @param hash_rxq
  *   Pointer to hash RX queue structure.
  * @param flow_type
  *   Special flow type.
+ * @param vlan_index
+ *   VLAN index to use.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-hash_rxq_special_flow_enable(struct hash_rxq *hash_rxq,
-			     enum hash_rxq_flow_type flow_type)
+hash_rxq_special_flow_enable_vlan(struct hash_rxq *hash_rxq,
+				  enum hash_rxq_flow_type flow_type,
+				  unsigned int vlan_index)
 {
 	struct priv *priv = hash_rxq->priv;
 	struct ibv_exp_flow *flow;
@@ -136,12 +143,15 @@ hash_rxq_special_flow_enable(struct hash_rxq *hash_rxq,
 	struct ibv_exp_flow_spec_eth *spec = &data->spec;
 	const uint8_t *mac;
 	const uint8_t *mask;
+	unsigned int vlan_enabled = (priv->vlan_filter_n &&
+				     special_flow_init[flow_type].per_vlan);
+	unsigned int vlan_id = priv->vlan_filter[vlan_index];
 
 	/* Check if flow is relevant for this hash_rxq. */
 	if (!(special_flow_init[flow_type].hash_types & (1 << hash_rxq->type)))
 		return 0;
 	/* Check if flow already exists. */
-	if (hash_rxq->special_flow[flow_type] != NULL)
+	if (hash_rxq->special_flow[flow_type][vlan_index] != NULL)
 		return 0;
 
 	/*
@@ -164,12 +174,14 @@ hash_rxq_special_flow_enable(struct hash_rxq *hash_rxq,
 				mac[0], mac[1], mac[2],
 				mac[3], mac[4], mac[5],
 			},
+			.vlan_tag = (vlan_enabled ? htons(vlan_id) : 0),
 		},
 		.mask = {
 			.dst_mac = {
 				mask[0], mask[1], mask[2],
 				mask[3], mask[4], mask[5],
 			},
+			.vlan_tag = (vlan_enabled ? htons(0xfff) : 0),
 		},
 	};
 
@@ -184,9 +196,77 @@ hash_rxq_special_flow_enable(struct hash_rxq *hash_rxq,
 			return errno;
 		return EINVAL;
 	}
-	hash_rxq->special_flow[flow_type] = flow;
-	DEBUG("%p: enabling special flow %s (%d)",
-	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type);
+	hash_rxq->special_flow[flow_type][vlan_index] = flow;
+	DEBUG("%p: special flow %s (index %d) VLAN %u (index %u) enabled",
+	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type,
+	      vlan_id, vlan_index);
+	return 0;
+}
+
+/**
+ * Disable a special flow in a hash RX queue for a given VLAN index.
+ *
+ * @param hash_rxq
+ *   Pointer to hash RX queue structure.
+ * @param flow_type
+ *   Special flow type.
+ * @param vlan_index
+ *   VLAN index to use.
+ */
+static void
+hash_rxq_special_flow_disable_vlan(struct hash_rxq *hash_rxq,
+				   enum hash_rxq_flow_type flow_type,
+				   unsigned int vlan_index)
+{
+	struct ibv_exp_flow *flow =
+		hash_rxq->special_flow[flow_type][vlan_index];
+
+	if (flow == NULL)
+		return;
+	claim_zero(ibv_exp_destroy_flow(flow));
+	hash_rxq->special_flow[flow_type][vlan_index] = NULL;
+	DEBUG("%p: special flow %s (index %d) VLAN %u (index %u) disabled",
+	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type,
+	      hash_rxq->priv->vlan_filter[vlan_index], vlan_index);
+}
+
+/**
+ * Enable a special flow in a hash RX queue.
+ *
+ * @param hash_rxq
+ *   Pointer to hash RX queue structure.
+ * @param flow_type
+ *   Special flow type.
+ * @param vlan_index
+ *   VLAN index to use.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+hash_rxq_special_flow_enable(struct hash_rxq *hash_rxq,
+			     enum hash_rxq_flow_type flow_type)
+{
+	struct priv *priv = hash_rxq->priv;
+	unsigned int i = 0;
+	int ret;
+
+	assert((unsigned int)flow_type < RTE_DIM(hash_rxq->special_flow));
+	assert(RTE_DIM(hash_rxq->special_flow[flow_type]) ==
+	       RTE_DIM(priv->vlan_filter));
+	/* Add a special flow for each VLAN filter when relevant. */
+	do {
+		ret = hash_rxq_special_flow_enable_vlan(hash_rxq, flow_type, i);
+		if (ret) {
+			/* Failure, rollback. */
+			while (i != 0)
+				hash_rxq_special_flow_disable_vlan(hash_rxq,
+								   flow_type,
+								   --i);
+			return ret;
+		}
+	} while (special_flow_init[flow_type].per_vlan &&
+		 ++i < priv->vlan_filter_n);
 	return 0;
 }
 
@@ -202,12 +282,11 @@ static void
 hash_rxq_special_flow_disable(struct hash_rxq *hash_rxq,
 			      enum hash_rxq_flow_type flow_type)
 {
-	if (hash_rxq->special_flow[flow_type] == NULL)
-		return;
-	claim_zero(ibv_exp_destroy_flow(hash_rxq->special_flow[flow_type]));
-	hash_rxq->special_flow[flow_type] = NULL;
-	DEBUG("%p: special flow %s (%d) disabled",
-	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type);
+	unsigned int i;
+
+	assert((unsigned int)flow_type < RTE_DIM(hash_rxq->special_flow));
+	for (i = 0; (i != RTE_DIM(hash_rxq->special_flow[flow_type])); ++i)
+		hash_rxq_special_flow_disable_vlan(hash_rxq, flow_type, i);
 }
 
 /**
