@@ -80,10 +80,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		      " %s",
 		      (void *)priv, strerror(err));
 		/* Rollback. */
-		priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_IPV6MULTI);
-		priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_BROADCAST);
-		priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI);
-		priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_PROMISC);
+		priv_special_flow_disable_all(priv);
 		priv_mac_addrs_disable(priv);
 		priv_destroy_hash_rxqs(priv);
 	}
@@ -113,10 +110,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 		return;
 	}
 	DEBUG("%p: cleaning up and destroying hash RX queues", (void *)dev);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_IPV6MULTI);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_BROADCAST);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_PROMISC);
+	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	priv_fdir_disable(priv);

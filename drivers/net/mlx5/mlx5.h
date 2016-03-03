@@ -199,6 +199,8 @@ int mlx5_dev_rss_reta_update(struct rte_eth_dev *,
 
 int priv_special_flow_enable(struct priv *, enum hash_rxq_flow_type);
 void priv_special_flow_disable(struct priv *, enum hash_rxq_flow_type);
+int priv_special_flow_enable_all(struct priv *);
+void priv_special_flow_disable_all(struct priv *);
 void mlx5_promiscuous_enable(struct rte_eth_dev *);
 void mlx5_promiscuous_disable(struct rte_eth_dev *);
 void mlx5_allmulticast_enable(struct rte_eth_dev *);

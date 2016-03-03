@@ -268,6 +268,46 @@ priv_special_flow_disable(struct priv *priv, enum hash_rxq_flow_type flow_type)
 }
 
 /**
+ * Enable all special flows in all hash RX queues.
+ *
+ * @param priv
+ *   Private structure.
+ */
+int
+priv_special_flow_enable_all(struct priv *priv)
+{
+	enum hash_rxq_flow_type flow_type;
+
+	for (flow_type = 0; flow_type != HASH_RXQ_FLOW_TYPE_MAC; ++flow_type) {
+		int ret;
+
+		ret = priv_special_flow_enable(priv, flow_type);
+		if (!ret)
+			continue;
+		/* Failure, rollback. */
+		while (flow_type)
+			priv_special_flow_disable(priv, --flow_type);
+		return ret;
+	}
+	return 0;
+}
+
+/**
+ * Disable all special flows in all hash RX queues.
+ *
+ * @param priv
+ *   Private structure.
+ */
+void
+priv_special_flow_disable_all(struct priv *priv)
+{
+	enum hash_rxq_flow_type flow_type;
+
+	for (flow_type = 0; flow_type != HASH_RXQ_FLOW_TYPE_MAC; ++flow_type)
+		priv_special_flow_disable(priv, flow_type);
+}
+
+/**
  * DPDK callback to enable promiscuous mode.
  *
  * @param dev

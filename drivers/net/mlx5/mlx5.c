@@ -88,10 +88,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
 	/* In case mlx5_dev_stop() has not been called. */
 	priv_dev_interrupt_handler_uninstall(priv, dev);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_PROMISC);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_BROADCAST);
-	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_IPV6MULTI);
+	priv_special_flow_disable_all(priv);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 
