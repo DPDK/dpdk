@@ -287,6 +287,10 @@ Drivers
 
   Prevented reception of multicast frames outside of configured VLANs.
 
+* **mlx5: Fixed RX checksum offload in non L3/L4 packets.**
+
+  Fixed report of bad checksum for packets of unknown type.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,

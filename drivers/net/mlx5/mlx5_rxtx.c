@@ -719,14 +719,24 @@ rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
 {
 	uint32_t ol_flags = 0;
 
-	if (rxq->csum)
-		ol_flags |=
-			TRANSPOSE(~flags,
-				  IBV_EXP_CQ_RX_IP_CSUM_OK,
-				  PKT_RX_IP_CKSUM_BAD) |
-			TRANSPOSE(~flags,
-				  IBV_EXP_CQ_RX_TCP_UDP_CSUM_OK,
-				  PKT_RX_L4_CKSUM_BAD);
+	if (rxq->csum) {
+		/* Set IP checksum flag only for IPv4/IPv6 packets. */
+		if (flags &
+		    (IBV_EXP_CQ_RX_IPV4_PACKET | IBV_EXP_CQ_RX_IPV6_PACKET))
+			ol_flags |=
+				TRANSPOSE(~flags,
+					IBV_EXP_CQ_RX_IP_CSUM_OK,
+					PKT_RX_IP_CKSUM_BAD);
+#ifdef HAVE_EXP_CQ_RX_TCP_PACKET
+		/* Set L4 checksum flag only for TCP/UDP packets. */
+		if (flags &
+		    (IBV_EXP_CQ_RX_TCP_PACKET | IBV_EXP_CQ_RX_UDP_PACKET))
+#endif /* HAVE_EXP_CQ_RX_TCP_PACKET */
+			ol_flags |=
+				TRANSPOSE(~flags,
+					IBV_EXP_CQ_RX_TCP_UDP_CSUM_OK,
+					PKT_RX_L4_CKSUM_BAD);
+	}
 	/*
 	 * PKT_RX_IP_CKSUM_BAD and PKT_RX_L4_CKSUM_BAD are used in place
 	 * of PKT_RX_EIP_CKSUM_BAD because the latter is not functional
