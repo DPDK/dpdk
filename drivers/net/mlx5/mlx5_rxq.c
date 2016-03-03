@@ -901,6 +901,8 @@ rxq_cleanup(struct rxq *rxq)
 		rxq_free_elts_sp(rxq);
 	else
 		rxq_free_elts(rxq);
+	rxq->poll = NULL;
+	rxq->recv = NULL;
 	if (rxq->if_wq != NULL) {
 		assert(rxq->priv != NULL);
 		assert(rxq->priv->ctx != NULL);
@@ -1103,6 +1105,10 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		err = EIO;
 		goto error;
 	}
+	if (tmpl.sp)
+		tmpl.recv = tmpl.if_wq->recv_sg_list;
+	else
+		tmpl.recv = tmpl.if_wq->recv_burst;
 error:
 	*rxq = tmpl;
 	assert(err >= 0);
@@ -1345,6 +1351,16 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	*rxq = tmpl;
 	DEBUG("%p: rxq updated with %p", (void *)rxq, (void *)&tmpl);
 	assert(ret == 0);
+	/* Assign function in queue. */
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+	rxq->poll = rxq->if_cq->poll_length_flags_cvlan;
+#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+	rxq->poll = rxq->if_cq->poll_length_flags;
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+	if (rxq->sp)
+		rxq->recv = rxq->if_wq->recv_sg_list;
+	else
+		rxq->recv = rxq->if_wq->recv_burst;
 	return 0;
 error:
 	rxq_cleanup(&tmpl);

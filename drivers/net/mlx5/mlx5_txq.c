@@ -187,6 +187,11 @@ txq_cleanup(struct txq *txq)
 
 	DEBUG("cleaning up %p", (void *)txq);
 	txq_free_elts(txq);
+	txq->poll_cnt = NULL;
+#if MLX5_PMD_MAX_INLINE > 0
+	txq->send_pending_inline = NULL;
+#endif
+	txq->send_flush = NULL;
 	if (txq->if_qp != NULL) {
 		assert(txq->priv != NULL);
 		assert(txq->priv->ctx != NULL);
@@ -414,6 +419,15 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	DEBUG("%p: cleaning-up old txq just in case", (void *)txq);
 	txq_cleanup(txq);
 	*txq = tmpl;
+	txq->poll_cnt = txq->if_cq->poll_cnt;
+#if MLX5_PMD_MAX_INLINE > 0
+	txq->send_pending_inline = txq->if_qp->send_pending_inline;
+#endif
+#if MLX5_PMD_SGE_WR_N > 1
+	txq->send_pending_sg_list = txq->if_qp->send_pending_sg_list;
+#endif
+	txq->send_pending = txq->if_qp->send_pending;
+	txq->send_flush = txq->if_qp->send_flush;
 	DEBUG("%p: txq updated with %p", (void *)txq, (void *)&tmpl);
 	/* Pre-register known mempools. */
 	rte_mempool_walk(txq_mp2mr_iter, txq);

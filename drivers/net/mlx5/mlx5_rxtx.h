@@ -107,12 +107,8 @@ struct rxq {
 	struct rte_mempool *mp; /* Memory Pool for allocations. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_exp_wq *wq; /* Work Queue. */
-	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
-	struct ibv_exp_cq_family_v1 *if_cq; /* CQ interface. */
-#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
-	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+	int32_t (*poll)(); /* Verbs poll function. */
+	int32_t (*recv)(); /* Verbs receive function. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -130,6 +126,12 @@ struct rxq {
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	struct fdir_queue fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
+	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+	struct ibv_exp_cq_family_v1 *if_cq; /* CQ interface. */
+#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 };
 
 /* Hash RX queue types. */
@@ -248,6 +250,15 @@ typedef uint8_t linear_t[16384];
 /* TX queue descriptor. */
 struct txq {
 	struct priv *priv; /* Back pointer to private data. */
+	int32_t (*poll_cnt)(struct ibv_cq *cq, uint32_t max);
+	int (*send_pending)();
+#if MLX5_PMD_MAX_INLINE > 0
+	int (*send_pending_inline)();
+#endif
+#if MLX5_PMD_SGE_WR_N > 1
+	int (*send_pending_sg_list)();
+#endif
+	int (*send_flush)(struct ibv_qp *qp);
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
 	struct txq_elt (*elts)[]; /* TX elements. */

@@ -61,6 +61,7 @@ CFLAGS += -g
 CFLAGS += -I.
 CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -Wno-strict-prototypes
 LDLIBS += -libverbs
 
 # A few warnings cannot be avoided in external headers.

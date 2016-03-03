@@ -93,7 +93,7 @@ txq_complete(struct txq *txq)
 	DEBUG("%p: processing %u work requests completions",
 	      (void *)txq, elts_comp);
 #endif
-	wcs_n = txq->if_cq->poll_cnt(txq->cq, elts_comp);
+	wcs_n = txq->poll_cnt(txq->cq, elts_comp);
 	if (unlikely(wcs_n == 0))
 		return 0;
 	if (unlikely(wcs_n < 0)) {
@@ -538,14 +538,14 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Put packet into send queue. */
 #if MLX5_PMD_MAX_INLINE > 0
 			if (length <= txq->max_inline)
-				err = txq->if_qp->send_pending_inline
+				err = txq->send_pending_inline
 					(txq->qp,
 					 (void *)addr,
 					 length,
 					 send_flags);
 			else
 #endif
-				err = txq->if_qp->send_pending
+				err = txq->send_pending
 					(txq->qp,
 					 addr,
 					 length,
@@ -567,7 +567,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				goto stop;
 			RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
 			/* Put SG list into send queue. */
-			err = txq->if_qp->send_pending_sg_list
+			err = txq->send_pending_sg_list
 				(txq->qp,
 				 sges,
 				 ret.num,
@@ -599,7 +599,7 @@ stop:
 	txq->stats.opackets += i;
 #endif
 	/* Ring QP doorbell. */
-	err = txq->if_qp->send_flush(txq->qp);
+	err = txq->send_flush(txq->qp);
 	if (unlikely(err)) {
 		/* A nonzero value is not supposed to be returned.
 		 * Nothing can be done about it. */
@@ -733,14 +733,7 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Sanity checks. */
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
-		ret = rxq->if_cq->poll_length_flags_cvlan(rxq->cq, NULL, NULL,
-							  &flags, &vlan_tci);
-#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
-		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
-						    &flags);
-		(void)vlan_tci;
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+		ret = rxq->poll(rxq->cq, NULL, NULL, &flags, &vlan_tci);
 		if (unlikely(ret < 0)) {
 			struct ibv_wc wc;
 			int wcs_n;
@@ -877,9 +870,7 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rxq->stats.ibytes += pkt_buf_len;
 #endif
 repost:
-		ret = rxq->if_wq->recv_sg_list(rxq->wq,
-					       elt->sges,
-					       RTE_DIM(elt->sges));
+		ret = rxq->recv(rxq->wq, elt->sges, RTE_DIM(elt->sges));
 		if (unlikely(ret)) {
 			/* Inability to repost WRs is fatal. */
 			DEBUG("%p: recv_sg_list(): failed (ret=%d)",
@@ -950,14 +941,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 */
 		rte_prefetch0(seg);
 		rte_prefetch0(&seg->cacheline1);
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
-		ret = rxq->if_cq->poll_length_flags_cvlan(rxq->cq, NULL, NULL,
-							  &flags, &vlan_tci);
-#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
-		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
-						    &flags);
-		(void)vlan_tci;
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+		ret = rxq->poll(rxq->cq, NULL, NULL, &flags, &vlan_tci);
 		if (unlikely(ret < 0)) {
 			struct ibv_wc wc;
 			int wcs_n;
@@ -1049,7 +1033,7 @@ repost:
 #ifdef DEBUG_RECV
 	DEBUG("%p: reposting %u WRs", (void *)rxq, i);
 #endif
-	ret = rxq->if_wq->recv_burst(rxq->wq, sges, i);
+	ret = rxq->recv(rxq->wq, sges, i);
 	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
 		DEBUG("%p: recv_burst(): failed (ret=%d)",
