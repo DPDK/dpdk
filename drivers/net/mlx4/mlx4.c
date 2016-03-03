@@ -733,6 +733,12 @@ dev_configure(struct rte_eth_dev *dev)
 	}
 	if (rxqs_n == priv->rxqs_n)
 		return 0;
+	if ((rxqs_n & (rxqs_n - 1)) != 0) {
+		ERROR("%p: invalid number of RX queues (%u),"
+		      " must be a power of 2",
+		      (void *)dev, rxqs_n);
+		return EINVAL;
+	}
 	INFO("%p: RX queues number update: %u -> %u",
 	     (void *)dev, priv->rxqs_n, rxqs_n);
 	/* If RSS is enabled, disable it first. */
