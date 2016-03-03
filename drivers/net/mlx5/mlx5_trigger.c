@@ -87,6 +87,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		priv_mac_addrs_disable(priv);
 		priv_destroy_hash_rxqs(priv);
 	}
+	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE)
+		priv_fdir_enable(priv);
 	priv_dev_interrupt_handler_install(priv, dev);
 	priv_unlock(priv);
 	return -err;
@@ -117,6 +119,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_PROMISC);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
+	priv_fdir_disable(priv);
 	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv->started = 0;
 	priv_unlock(priv);

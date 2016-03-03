@@ -168,6 +168,13 @@ This section should contain new features added in this release. Sample format:
 
 * **Added fm10k FTAG based forwarding support.**
 
+* **Added mlx5 flow director support.**
+
+  Added flow director support (RTE_FDIR_MODE_PERFECT and
+  RTE_FDIR_MODE_PERFECT_MAC_VLAN).
+
+  Only available with Mellanox OFED >= 3.2.
+
 * **Increased number of next hops for LPM IPv4 to 2^24.**
 
   The next_hop field is extended from 8 bits to 24 bits for IPv4.

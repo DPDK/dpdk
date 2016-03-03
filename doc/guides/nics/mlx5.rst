@@ -81,6 +81,7 @@ Features
 - Promiscuous mode.
 - Multicast promiscuous mode.
 - Hardware checksum offloads.
+- Flow director (RTE_FDIR_MODE_PERFECT and RTE_FDIR_MODE_PERFECT_MAC_VLAN).
 
 Limitations
 -----------
@@ -209,7 +210,8 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **3.1-1.0.3** or **3.1-1.5.7.1** depending on usage.
+- Mellanox OFED **3.1-1.0.3**, **3.1-1.5.7.1** or **3.2-2.0.0.0** depending
+  on usage.
 
     The following features are supported with version **3.1-1.5.7.1** and
     above only:
@@ -217,6 +219,11 @@ Currently supported by DPDK:
     - IPv6, UPDv6, TCPv6 RSS.
     - RX checksum offloads.
     - IBM POWER8.
+
+    The following features are supported with version **3.2-2.0.0.0** and
+    above only:
+
+    - Flow director.
 
 - Minimum firmware version:
 
@@ -229,6 +236,11 @@ Currently supported by DPDK:
 
   - ConnectX-4: **12.13.0144**
   - ConnectX-4 Lx: **14.13.0144**
+
+  With MLNX_OFED **3.2-2.0.0.0**:
+
+  - ConnectX-4: **12.14.2036**
+  - ConnectX-4 Lx: **14.14.2036**
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~

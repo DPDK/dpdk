@@ -62,6 +62,7 @@
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
+#include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 
 /* Initialization data for hash RX queues. */
@@ -242,7 +243,12 @@ priv_flow_attr(struct priv *priv, struct ibv_exp_flow_attr *flow_attr,
 	init = &hash_rxq_init[type];
 	*flow_attr = (struct ibv_exp_flow_attr){
 		.type = IBV_EXP_FLOW_ATTR_NORMAL,
+#ifdef MLX5_FDIR_SUPPORT
+		/* Priorities < 3 are reserved for flow director. */
+		.priority = init->flow_priority + 3,
+#else /* MLX5_FDIR_SUPPORT */
 		.priority = init->flow_priority,
+#endif /* MLX5_FDIR_SUPPORT */
 		.num_of_specs = 0,
 		.port = priv->port,
 		.flags = 0,

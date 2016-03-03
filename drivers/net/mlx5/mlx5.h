@@ -120,6 +120,7 @@ struct priv {
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
+	struct fdir_filter_list *fdir_filter_list; /* Flow director rules. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
@@ -215,5 +216,14 @@ int mlx5_vlan_filter_set(struct rte_eth_dev *, uint16_t, int);
 
 int mlx5_dev_start(struct rte_eth_dev *);
 void mlx5_dev_stop(struct rte_eth_dev *);
+
+/* mlx5_fdir.c */
+
+int fdir_init_filters_list(struct priv *);
+void priv_fdir_delete_filters_list(struct priv *);
+void priv_fdir_disable(struct priv *);
+void priv_fdir_enable(struct priv *);
+int mlx5_dev_filter_ctrl(struct rte_eth_dev *, enum rte_filter_type,
+			 enum rte_filter_op, void *);
 
 #endif /* RTE_PMD_MLX5_H_ */

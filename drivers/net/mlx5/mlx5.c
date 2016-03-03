@@ -94,6 +94,11 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_IPV6MULTI);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
+
+	/* Remove flow director elements. */
+	priv_fdir_disable(priv);
+	priv_fdir_delete_filters_list(priv);
+
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
@@ -170,6 +175,9 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.reta_query = mlx5_dev_rss_reta_query,
 	.rss_hash_update = mlx5_rss_hash_update,
 	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
+#ifdef MLX5_FDIR_SUPPORT
+	.filter_ctrl = mlx5_dev_filter_ctrl,
+#endif /* MLX5_FDIR_SUPPORT */
 };
 
 static struct {
@@ -422,6 +430,10 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		claim_zero(priv_mac_addr_add(priv, 0,
 					     (const uint8_t (*)[ETHER_ADDR_LEN])
 					     mac.addr_bytes));
+		/* Initialize FD filters list. */
+		err = fdir_init_filters_list(priv);
+		if (err)
+			goto port_error;
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];

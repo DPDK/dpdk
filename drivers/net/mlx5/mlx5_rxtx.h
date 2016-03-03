@@ -93,6 +93,12 @@ struct rxq_elt {
 	struct rte_mbuf *buf; /* SGE buffer. */
 };
 
+/* Flow director queue structure. */
+struct fdir_queue {
+	struct ibv_qp *qp; /* Associated RX QP. */
+	struct ibv_exp_rwq_ind_table *ind_table; /* Indirection table. */
+};
+
 struct priv;
 
 /* RX queue descriptor. */
@@ -118,6 +124,7 @@ struct rxq {
 	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
+	struct fdir_queue fdir_queue; /* Flow director queue. */
 };
 
 /* Hash RX queue types. */
