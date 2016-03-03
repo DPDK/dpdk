@@ -72,11 +72,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	DEBUG("%p: allocating and configuring hash RX queues", (void *)dev);
 	err = priv_create_hash_rxqs(priv);
 	if (!err)
-		err = priv_promiscuous_enable(priv);
-	if (!err)
-		err = priv_mac_addrs_enable(priv);
-	if (!err)
-		err = priv_allmulticast_enable(priv);
+		err = priv_rehash_flows(priv);
 	if (!err)
 		priv->started = 1;
 	else {
@@ -84,8 +80,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		      " %s",
 		      (void *)priv, strerror(err));
 		/* Rollback. */
-		priv_allmulticast_disable(priv);
-		priv_promiscuous_disable(priv);
+		priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI);
+		priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_PROMISC);
 		priv_mac_addrs_disable(priv);
 		priv_destroy_hash_rxqs(priv);
 	}
@@ -113,8 +109,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 		return;
 	}
 	DEBUG("%p: cleaning up and destroying hash RX queues", (void *)dev);
-	priv_allmulticast_disable(priv);
-	priv_promiscuous_disable(priv);
+	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI);
+	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_PROMISC);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	priv_dev_interrupt_handler_uninstall(priv, dev);

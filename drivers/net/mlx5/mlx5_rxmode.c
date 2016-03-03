@@ -58,31 +58,96 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 
-static void hash_rxq_promiscuous_disable(struct hash_rxq *);
-static void hash_rxq_allmulticast_disable(struct hash_rxq *);
+/* Initialization data for special flows. */
+static const struct special_flow_init special_flow_init[] = {
+	[HASH_RXQ_FLOW_TYPE_PROMISC] = {
+		.dst_mac_val = "\x00\x00\x00\x00\x00\x00",
+		.dst_mac_mask = "\x00\x00\x00\x00\x00\x00",
+		.hash_types =
+			1 << HASH_RXQ_TCPV4 |
+			1 << HASH_RXQ_UDPV4 |
+			1 << HASH_RXQ_IPV4 |
+#ifdef HAVE_FLOW_SPEC_IPV6
+			1 << HASH_RXQ_TCPV6 |
+			1 << HASH_RXQ_UDPV6 |
+			1 << HASH_RXQ_IPV6 |
+#endif /* HAVE_FLOW_SPEC_IPV6 */
+			1 << HASH_RXQ_ETH |
+			0,
+	},
+	[HASH_RXQ_FLOW_TYPE_ALLMULTI] = {
+		.dst_mac_val = "\x01\x00\x00\x00\x00\x00",
+		.dst_mac_mask = "\x01\x00\x00\x00\x00\x00",
+		.hash_types =
+			1 << HASH_RXQ_UDPV4 |
+			1 << HASH_RXQ_IPV4 |
+#ifdef HAVE_FLOW_SPEC_IPV6
+			1 << HASH_RXQ_UDPV6 |
+			1 << HASH_RXQ_IPV6 |
+#endif /* HAVE_FLOW_SPEC_IPV6 */
+			1 << HASH_RXQ_ETH |
+			0,
+	},
+};
 
 /**
- * Enable promiscuous mode in a hash RX queue.
+ * Enable a special flow in a hash RX queue.
  *
  * @param hash_rxq
  *   Pointer to hash RX queue structure.
+ * @param flow_type
+ *   Special flow type.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-hash_rxq_promiscuous_enable(struct hash_rxq *hash_rxq)
+hash_rxq_special_flow_enable(struct hash_rxq *hash_rxq,
+			     enum hash_rxq_flow_type flow_type)
 {
 	struct ibv_exp_flow *flow;
 	FLOW_ATTR_SPEC_ETH(data, hash_rxq_flow_attr(hash_rxq, NULL, 0));
 	struct ibv_exp_flow_attr *attr = &data->attr;
+	struct ibv_exp_flow_spec_eth *spec = &data->spec;
+	const uint8_t *mac;
+	const uint8_t *mask;
 
-	if (hash_rxq->promisc_flow != NULL)
+	/* Check if flow is relevant for this hash_rxq. */
+	if (!(special_flow_init[flow_type].hash_types & (1 << hash_rxq->type)))
 		return 0;
-	DEBUG("%p: enabling promiscuous mode", (void *)hash_rxq);
-	/* Promiscuous flows only differ from normal flows by not filtering
-	 * on specific MAC addresses. */
+	/* Check if flow already exists. */
+	if (hash_rxq->special_flow[flow_type] != NULL)
+		return 0;
+
+	/*
+	 * No padding must be inserted by the compiler between attr and spec.
+	 * This layout is expected by libibverbs.
+	 */
+	assert(((uint8_t *)attr + sizeof(*attr)) == (uint8_t *)spec);
 	hash_rxq_flow_attr(hash_rxq, attr, sizeof(data));
+	/* The first specification must be Ethernet. */
+	assert(spec->type == IBV_EXP_FLOW_SPEC_ETH);
+	assert(spec->size == sizeof(*spec));
+
+	mac = special_flow_init[flow_type].dst_mac_val;
+	mask = special_flow_init[flow_type].dst_mac_mask;
+	*spec = (struct ibv_exp_flow_spec_eth){
+		.type = IBV_EXP_FLOW_SPEC_ETH,
+		.size = sizeof(*spec),
+		.val = {
+			.dst_mac = {
+				mac[0], mac[1], mac[2],
+				mac[3], mac[4], mac[5],
+			},
+		},
+		.mask = {
+			.dst_mac = {
+				mask[0], mask[1], mask[2],
+				mask[3], mask[4], mask[5],
+			},
+		},
+	};
+
 	errno = 0;
 	flow = ibv_exp_create_flow(hash_rxq->qp, attr);
 	if (flow == NULL) {
@@ -94,42 +159,87 @@ hash_rxq_promiscuous_enable(struct hash_rxq *hash_rxq)
 			return errno;
 		return EINVAL;
 	}
-	hash_rxq->promisc_flow = flow;
-	DEBUG("%p: promiscuous mode enabled", (void *)hash_rxq);
+	hash_rxq->special_flow[flow_type] = flow;
+	DEBUG("%p: enabling special flow %s (%d)",
+	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type);
 	return 0;
 }
 
 /**
- * Enable promiscuous mode in all hash RX queues.
+ * Disable a special flow in a hash RX queue.
+ *
+ * @param hash_rxq
+ *   Pointer to hash RX queue structure.
+ * @param flow_type
+ *   Special flow type.
+ */
+static void
+hash_rxq_special_flow_disable(struct hash_rxq *hash_rxq,
+			      enum hash_rxq_flow_type flow_type)
+{
+	if (hash_rxq->special_flow[flow_type] == NULL)
+		return;
+	DEBUG("%p: disabling special flow %s (%d)",
+	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type);
+	claim_zero(ibv_exp_destroy_flow(hash_rxq->special_flow[flow_type]));
+	hash_rxq->special_flow[flow_type] = NULL;
+	DEBUG("%p: special flow %s (%d) disabled",
+	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type);
+}
+
+/**
+ * Enable a special flow in all hash RX queues.
  *
  * @param priv
  *   Private structure.
+ * @param flow_type
+ *   Special flow type.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 int
-priv_promiscuous_enable(struct priv *priv)
+priv_special_flow_enable(struct priv *priv, enum hash_rxq_flow_type flow_type)
 {
 	unsigned int i;
 
-	if (!priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_PROMISC))
+	if (!priv_allow_flow_type(priv, flow_type))
 		return 0;
 	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
 		struct hash_rxq *hash_rxq = &(*priv->hash_rxqs)[i];
 		int ret;
 
-		ret = hash_rxq_promiscuous_enable(hash_rxq);
+		ret = hash_rxq_special_flow_enable(hash_rxq, flow_type);
 		if (!ret)
 			continue;
 		/* Failure, rollback. */
 		while (i != 0) {
 			hash_rxq = &(*priv->hash_rxqs)[--i];
-			hash_rxq_promiscuous_disable(hash_rxq);
+			hash_rxq_special_flow_disable(hash_rxq, flow_type);
 		}
 		return ret;
 	}
 	return 0;
+}
+
+/**
+ * Disable a special flow in all hash RX queues.
+ *
+ * @param priv
+ *   Private structure.
+ * @param flow_type
+ *   Special flow type.
+ */
+void
+priv_special_flow_disable(struct priv *priv, enum hash_rxq_flow_type flow_type)
+{
+	unsigned int i;
+
+	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
+		struct hash_rxq *hash_rxq = &(*priv->hash_rxqs)[i];
+
+		hash_rxq_special_flow_disable(hash_rxq, flow_type);
+	}
 }
 
 /**
@@ -146,46 +256,11 @@ mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 
 	priv_lock(priv);
 	priv->promisc_req = 1;
-	ret = priv_promiscuous_enable(priv);
+	ret = priv_rehash_flows(priv);
 	if (ret)
-		ERROR("cannot enable promiscuous mode: %s", strerror(ret));
-	else {
-		priv_mac_addrs_disable(priv);
-		priv_allmulticast_disable(priv);
-	}
+		ERROR("error while enabling promiscuous mode: %s",
+		      strerror(ret));
 	priv_unlock(priv);
-}
-
-/**
- * Disable promiscuous mode in a hash RX queue.
- *
- * @param hash_rxq
- *   Pointer to hash RX queue structure.
- */
-static void
-hash_rxq_promiscuous_disable(struct hash_rxq *hash_rxq)
-{
-	if (hash_rxq->promisc_flow == NULL)
-		return;
-	DEBUG("%p: disabling promiscuous mode", (void *)hash_rxq);
-	claim_zero(ibv_exp_destroy_flow(hash_rxq->promisc_flow));
-	hash_rxq->promisc_flow = NULL;
-	DEBUG("%p: promiscuous mode disabled", (void *)hash_rxq);
-}
-
-/**
- * Disable promiscuous mode in all hash RX queues.
- *
- * @param priv
- *   Private structure.
- */
-void
-priv_promiscuous_disable(struct priv *priv)
-{
-	unsigned int i;
-
-	for (i = 0; (i != priv->hash_rxqs_n); ++i)
-		hash_rxq_promiscuous_disable(&(*priv->hash_rxqs)[i]);
 }
 
 /**
@@ -198,102 +273,15 @@ void
 mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	int ret;
 
 	priv_lock(priv);
 	priv->promisc_req = 0;
-	priv_promiscuous_disable(priv);
-	priv_mac_addrs_enable(priv);
-	priv_allmulticast_enable(priv);
+	ret = priv_rehash_flows(priv);
+	if (ret)
+		ERROR("error while disabling promiscuous mode: %s",
+		      strerror(ret));
 	priv_unlock(priv);
-}
-
-/**
- * Enable allmulti mode in a hash RX queue.
- *
- * @param hash_rxq
- *   Pointer to hash RX queue structure.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-hash_rxq_allmulticast_enable(struct hash_rxq *hash_rxq)
-{
-	struct ibv_exp_flow *flow;
-	FLOW_ATTR_SPEC_ETH(data, hash_rxq_flow_attr(hash_rxq, NULL, 0));
-	struct ibv_exp_flow_attr *attr = &data->attr;
-	struct ibv_exp_flow_spec_eth *spec = &data->spec;
-
-	if (hash_rxq->allmulti_flow != NULL)
-		return 0;
-	DEBUG("%p: enabling allmulticast mode", (void *)hash_rxq);
-	/*
-	 * No padding must be inserted by the compiler between attr and spec.
-	 * This layout is expected by libibverbs.
-	 */
-	assert(((uint8_t *)attr + sizeof(*attr)) == (uint8_t *)spec);
-	hash_rxq_flow_attr(hash_rxq, attr, sizeof(data));
-	*spec = (struct ibv_exp_flow_spec_eth){
-		.type = IBV_EXP_FLOW_SPEC_ETH,
-		.size = sizeof(*spec),
-		.val = {
-			.dst_mac = "\x01\x00\x00\x00\x00\x00",
-		},
-		.mask = {
-			.dst_mac = "\x01\x00\x00\x00\x00\x00",
-		},
-	};
-	errno = 0;
-	flow = ibv_exp_create_flow(hash_rxq->qp, attr);
-	if (flow == NULL) {
-		/* It's not clear whether errno is always set in this case. */
-		ERROR("%p: flow configuration failed, errno=%d: %s",
-		      (void *)hash_rxq, errno,
-		      (errno ? strerror(errno) : "Unknown error"));
-		if (errno)
-			return errno;
-		return EINVAL;
-	}
-	hash_rxq->allmulti_flow = flow;
-	DEBUG("%p: allmulticast mode enabled", (void *)hash_rxq);
-	return 0;
-}
-
-/**
- * Enable allmulti mode in most hash RX queues.
- * TCP queues are exempted to save resources.
- *
- * @param priv
- *   Private structure.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-int
-priv_allmulticast_enable(struct priv *priv)
-{
-	unsigned int i;
-
-	if (!priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI))
-		return 0;
-	for (i = 0; (i != priv->hash_rxqs_n); ++i) {
-		struct hash_rxq *hash_rxq = &(*priv->hash_rxqs)[i];
-		int ret;
-
-		/* allmulticast not relevant for TCP. */
-		if (hash_rxq->type == HASH_RXQ_TCPV4)
-			continue;
-		ret = hash_rxq_allmulticast_enable(hash_rxq);
-		if (!ret)
-			continue;
-		/* Failure, rollback. */
-		while (i != 0) {
-			hash_rxq = &(*priv->hash_rxqs)[--i];
-			hash_rxq_allmulticast_disable(hash_rxq);
-		}
-		return ret;
-	}
-	return 0;
 }
 
 /**
@@ -310,42 +298,11 @@ mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 
 	priv_lock(priv);
 	priv->allmulti_req = 1;
-	ret = priv_allmulticast_enable(priv);
+	ret = priv_rehash_flows(priv);
 	if (ret)
-		ERROR("cannot enable allmulticast mode: %s", strerror(ret));
+		ERROR("error while enabling allmulticast mode: %s",
+		      strerror(ret));
 	priv_unlock(priv);
-}
-
-/**
- * Disable allmulti mode in a hash RX queue.
- *
- * @param hash_rxq
- *   Pointer to hash RX queue structure.
- */
-static void
-hash_rxq_allmulticast_disable(struct hash_rxq *hash_rxq)
-{
-	if (hash_rxq->allmulti_flow == NULL)
-		return;
-	DEBUG("%p: disabling allmulticast mode", (void *)hash_rxq);
-	claim_zero(ibv_exp_destroy_flow(hash_rxq->allmulti_flow));
-	hash_rxq->allmulti_flow = NULL;
-	DEBUG("%p: allmulticast mode disabled", (void *)hash_rxq);
-}
-
-/**
- * Disable allmulti mode in all hash RX queues.
- *
- * @param priv
- *   Private structure.
- */
-void
-priv_allmulticast_disable(struct priv *priv)
-{
-	unsigned int i;
-
-	for (i = 0; (i != priv->hash_rxqs_n); ++i)
-		hash_rxq_allmulticast_disable(&(*priv->hash_rxqs)[i]);
 }
 
 /**
@@ -358,9 +315,13 @@ void
 mlx5_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	int ret;
 
 	priv_lock(priv);
 	priv->allmulti_req = 0;
-	priv_allmulticast_disable(priv);
+	ret = priv_rehash_flows(priv);
+	if (ret)
+		ERROR("error while disabling allmulticast mode: %s",
+		      strerror(ret));
 	priv_unlock(priv);
 }

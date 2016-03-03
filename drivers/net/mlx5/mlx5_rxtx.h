@@ -176,11 +176,34 @@ struct ind_table_init {
 	unsigned int hash_types_n;
 };
 
+/* Initialization data for special flows. */
+struct special_flow_init {
+	uint8_t dst_mac_val[6];
+	uint8_t dst_mac_mask[6];
+	unsigned int hash_types;
+};
+
 enum hash_rxq_flow_type {
-	HASH_RXQ_FLOW_TYPE_MAC,
 	HASH_RXQ_FLOW_TYPE_PROMISC,
 	HASH_RXQ_FLOW_TYPE_ALLMULTI,
+	HASH_RXQ_FLOW_TYPE_MAC,
 };
+
+#ifndef NDEBUG
+static inline const char *
+hash_rxq_flow_type_str(enum hash_rxq_flow_type flow_type)
+{
+	switch (flow_type) {
+	case HASH_RXQ_FLOW_TYPE_PROMISC:
+		return "promiscuous";
+	case HASH_RXQ_FLOW_TYPE_ALLMULTI:
+		return "allmulticast";
+	case HASH_RXQ_FLOW_TYPE_MAC:
+		return "MAC";
+	}
+	return NULL;
+}
+#endif /* NDEBUG */
 
 struct hash_rxq {
 	struct priv *priv; /* Back pointer to private data. */
@@ -188,8 +211,7 @@ struct hash_rxq {
 	enum hash_rxq_type type; /* Hash RX queue type. */
 	/* MAC flow steering rules, one per VLAN ID. */
 	struct ibv_exp_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
-	struct ibv_exp_flow *promisc_flow; /* Promiscuous flow. */
-	struct ibv_exp_flow *allmulti_flow; /* Multicast flow. */
+	struct ibv_exp_flow *special_flow[MLX5_MAX_SPECIAL_FLOWS];
 };
 
 /* TX element. */
@@ -247,6 +269,7 @@ size_t hash_rxq_flow_attr(const struct hash_rxq *, struct ibv_exp_flow_attr *,
 int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
 int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
+int priv_rehash_flows(struct priv *);
 void rxq_cleanup(struct rxq *);
 int rxq_rehash(struct rte_eth_dev *, struct rxq *);
 int rxq_setup(struct rte_eth_dev *, struct rxq *, uint16_t, unsigned int,

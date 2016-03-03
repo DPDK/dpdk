@@ -43,6 +43,9 @@
 /* Maximum number of simultaneous VLAN filters. */
 #define MLX5_MAX_VLAN_IDS 128
 
+/* Maximum number of special flows. */
+#define MLX5_MAX_SPECIAL_FLOWS 2
+
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX5_PMD_TX_PER_COMP_REQ 64
 

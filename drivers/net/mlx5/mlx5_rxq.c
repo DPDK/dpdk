@@ -534,8 +534,8 @@ priv_destroy_hash_rxqs(struct priv *priv)
 		assert(hash_rxq->priv == priv);
 		assert(hash_rxq->qp != NULL);
 		/* Also check that there are no remaining flows. */
-		assert(hash_rxq->allmulti_flow == NULL);
-		assert(hash_rxq->promisc_flow == NULL);
+		for (j = 0; (j != RTE_DIM(hash_rxq->special_flow)); ++j)
+			assert(hash_rxq->special_flow[j] == NULL);
 		for (j = 0; (j != RTE_DIM(hash_rxq->mac_flow)); ++j)
 			for (k = 0; (k != RTE_DIM(hash_rxq->mac_flow[j])); ++k)
 				assert(hash_rxq->mac_flow[j][k] == NULL);
@@ -582,6 +582,35 @@ priv_allow_flow_type(struct priv *priv, enum hash_rxq_flow_type type)
 	case HASH_RXQ_FLOW_TYPE_MAC:
 		return 1;
 	}
+	return 0;
+}
+
+/**
+ * Automatically enable/disable flows according to configuration.
+ *
+ * @param priv
+ *   Private structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+priv_rehash_flows(struct priv *priv)
+{
+	unsigned int i;
+
+	for (i = 0; (i != RTE_DIM((*priv->hash_rxqs)[0].special_flow)); ++i)
+		if (!priv_allow_flow_type(priv, i)) {
+			priv_special_flow_disable(priv, i);
+		} else {
+			int ret = priv_special_flow_enable(priv, i);
+
+			if (ret)
+				return ret;
+		}
+	if (priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_MAC))
+		return priv_mac_addrs_enable(priv);
+	priv_mac_addrs_disable(priv);
 	return 0;
 }
 
