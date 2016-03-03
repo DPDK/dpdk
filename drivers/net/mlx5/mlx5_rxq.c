@@ -1190,11 +1190,7 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	DEBUG("%p: %s scattered packets support (%u WRs)",
 	      (void *)dev, (tmpl.sp ? "enabling" : "disabling"), desc);
 	/* Use the entire RX mempool as the memory region. */
-	tmpl.mr = ibv_reg_mr(priv->pd,
-			     (void *)mp->elt_va_start,
-			     (mp->elt_va_end - mp->elt_va_start),
-			     (IBV_ACCESS_LOCAL_WRITE |
-			      IBV_ACCESS_REMOTE_WRITE));
+	tmpl.mr = mlx5_mp2mr(priv->pd, mp);
 	if (tmpl.mr == NULL) {
 		ret = EINVAL;
 		ERROR("%p: MR creation failure: %s",

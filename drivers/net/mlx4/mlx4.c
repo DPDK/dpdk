@@ -86,6 +86,7 @@
 #include <rte_version.h>
 #include <rte_log.h>
 #include <rte_alarm.h>
+#include <rte_memory.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
@@ -1183,6 +1184,52 @@ txq_complete(struct txq *txq)
 	return 0;
 }
 
+/* For best performance, this function should not be inlined. */
+static struct ibv_mr *mlx4_mp2mr(struct ibv_pd *, const struct rte_mempool *)
+	__attribute__((noinline));
+
+/**
+ * Register mempool as a memory region.
+ *
+ * @param pd
+ *   Pointer to protection domain.
+ * @param mp
+ *   Pointer to memory pool.
+ *
+ * @return
+ *   Memory region pointer, NULL in case of error.
+ */
+static struct ibv_mr *
+mlx4_mp2mr(struct ibv_pd *pd, const struct rte_mempool *mp)
+{
+	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
+	uintptr_t start = mp->elt_va_start;
+	uintptr_t end = mp->elt_va_end;
+	unsigned int i;
+
+	DEBUG("mempool %p area start=%p end=%p size=%zu",
+	      (const void *)mp, (void *)start, (void *)end,
+	      (size_t)(end - start));
+	/* Round start and end to page boundary if found in memory segments. */
+	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
+		uintptr_t addr = (uintptr_t)ms[i].addr;
+		size_t len = ms[i].len;
+		unsigned int align = ms[i].hugepage_sz;
+
+		if ((start > addr) && (start < addr + len))
+			start = RTE_ALIGN_FLOOR(start, align);
+		if ((end > addr) && (end < addr + len))
+			end = RTE_ALIGN_CEIL(end, align);
+	}
+	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
+	      (const void *)mp, (void *)start, (void *)end,
+	      (size_t)(end - start));
+	return ibv_reg_mr(pd,
+			  (void *)start,
+			  end - start,
+			  IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+}
+
 /**
  * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which
  * the cloned mbuf is allocated is returned instead.
@@ -1234,10 +1281,7 @@ txq_mp2mr(struct txq *txq, const struct rte_mempool *mp)
 	/* Add a new entry, register MR first. */
 	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
 	      (void *)txq, mp->name, (const void *)mp);
-	mr = ibv_reg_mr(txq->priv->pd,
-			(void *)mp->elt_va_start,
-			(mp->elt_va_end - mp->elt_va_start),
-			(IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE));
+	mr = mlx4_mp2mr(txq->priv->pd, mp);
 	if (unlikely(mr == NULL)) {
 		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
 		      (void *)txq);
@@ -3719,11 +3763,7 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	DEBUG("%p: %s scattered packets support (%u WRs)",
 	      (void *)dev, (tmpl.sp ? "enabling" : "disabling"), desc);
 	/* Use the entire RX mempool as the memory region. */
-	tmpl.mr = ibv_reg_mr(priv->pd,
-			     (void *)mp->elt_va_start,
-			     (mp->elt_va_end - mp->elt_va_start),
-			     (IBV_ACCESS_LOCAL_WRITE |
-			      IBV_ACCESS_REMOTE_WRITE));
+	tmpl.mr = mlx4_mp2mr(priv->pd, mp);
 	if (tmpl.mr == NULL) {
 		ret = EINVAL;
 		ERROR("%p: MR creation failure: %s",

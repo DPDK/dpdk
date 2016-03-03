@@ -317,6 +317,7 @@ void mlx5_tx_queue_release(void *);
 
 /* mlx5_rxtx.c */
 
+struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, const struct rte_mempool *);
 void txq_mp2mr_iter(const struct rte_mempool *, void *);
 uint16_t mlx5_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst_sp(void *, struct rte_mbuf **, uint16_t);
