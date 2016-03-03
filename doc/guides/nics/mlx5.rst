@@ -78,6 +78,7 @@ Features
 - Configurable RETA table.
 - Support for multiple MAC addresses.
 - VLAN filtering.
+- RX VLAN stripping.
 - Promiscuous mode.
 - Multicast promiscuous mode.
 - Hardware checksum offloads.
@@ -224,6 +225,7 @@ Currently supported by DPDK:
     above only:
 
     - Flow director.
+    - RX VLAN stripping.
 
 - Minimum firmware version:
 

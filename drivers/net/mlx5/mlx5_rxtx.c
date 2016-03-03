@@ -62,6 +62,7 @@
 #include "mlx5.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 
 /**
@@ -713,12 +714,19 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		unsigned int seg_headroom = RTE_PKTMBUF_HEADROOM;
 		unsigned int j = 0;
 		uint32_t flags;
+		uint16_t vlan_tci;
 
 		/* Sanity checks. */
 		assert(elts_head < rxq->elts_n);
 		assert(rxq->elts_head < rxq->elts_n);
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+		ret = rxq->if_cq->poll_length_flags_cvlan(rxq->cq, NULL, NULL,
+							  &flags, &vlan_tci);
+#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
 						    &flags);
+		(void)vlan_tci;
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		if (unlikely(ret < 0)) {
 			struct ibv_wc wc;
 			int wcs_n;
@@ -840,6 +848,12 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		PKT_LEN(pkt_buf) = pkt_buf_len;
 		pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
 		pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+		if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
+			pkt_buf->ol_flags |= PKT_RX_VLAN_PKT;
+			pkt_buf->vlan_tci = vlan_tci;
+		}
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
@@ -910,6 +924,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct rte_mbuf *seg = elt->buf;
 		struct rte_mbuf *rep;
 		uint32_t flags;
+		uint16_t vlan_tci;
 
 		/* Sanity checks. */
 		assert(seg != NULL);
@@ -921,8 +936,14 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 */
 		rte_prefetch0(seg);
 		rte_prefetch0(&seg->cacheline1);
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+		ret = rxq->if_cq->poll_length_flags_cvlan(rxq->cq, NULL, NULL,
+							  &flags, &vlan_tci);
+#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
 						    &flags);
+		(void)vlan_tci;
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		if (unlikely(ret < 0)) {
 			struct ibv_wc wc;
 			int wcs_n;
@@ -989,6 +1010,12 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		DATA_LEN(seg) = len;
 		seg->packet_type = rxq_cq_to_pkt_type(flags);
 		seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+		if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
+			seg->ol_flags |= PKT_RX_VLAN_PKT;
+			seg->vlan_tci = vlan_tci;
+		}
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 
 		/* Return packet. */
 		*(pkts++) = seg;

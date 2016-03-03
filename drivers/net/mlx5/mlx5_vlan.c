@@ -48,6 +48,7 @@
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
+#include "mlx5_autoconf.h"
 
 /**
  * Configure a VLAN filter.
@@ -126,4 +127,107 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	priv_unlock(priv);
 	assert(ret >= 0);
 	return -ret;
+}
+
+/**
+ * Set/reset VLAN stripping for a specific queue.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param idx
+ *   RX queue index.
+ * @param on
+ *   Enable/disable VLAN stripping.
+ */
+static void
+priv_vlan_strip_queue_set(struct priv *priv, uint16_t idx, int on)
+{
+	struct rxq *rxq = (*priv->rxqs)[idx];
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+	struct ibv_exp_wq_attr mod;
+	uint16_t vlan_offloads =
+		(on ? IBV_EXP_RECEIVE_WQ_CVLAN_STRIP : 0) |
+		0;
+	int err;
+
+	DEBUG("set VLAN offloads 0x%x for port %d queue %d",
+	      vlan_offloads, rxq->port_id, idx);
+	mod = (struct ibv_exp_wq_attr){
+		.attr_mask = IBV_EXP_WQ_ATTR_VLAN_OFFLOADS,
+		.vlan_offloads = vlan_offloads,
+	};
+
+	err = ibv_exp_modify_wq(rxq->wq, &mod);
+	if (err) {
+		ERROR("%p: failed to modified stripping mode: %s",
+		      (void *)priv, strerror(err));
+		return;
+	}
+
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+
+	/* Update related bits in RX queue. */
+	rxq->vlan_strip = !!on;
+}
+
+/**
+ * Callback to set/reset VLAN stripping for a specific queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param queue
+ *   RX queue index.
+ * @param on
+ *   Enable/disable VLAN stripping.
+ */
+void
+mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	/* Validate hw support */
+	if (!priv->hw_vlan_strip) {
+		ERROR("VLAN stripping is not supported");
+		return;
+	}
+
+	/* Validate queue number */
+	if (queue >= priv->rxqs_n) {
+		ERROR("VLAN stripping, invalid queue number %d", queue);
+		return;
+	}
+
+	priv_lock(priv);
+	priv_vlan_strip_queue_set(priv, queue, on);
+	priv_unlock(priv);
+}
+
+/**
+ * Callback to set/reset VLAN offloads for a port.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mask
+ *   VLAN offload bit mask.
+ */
+void
+mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct priv *priv = dev->data->dev_private;
+	unsigned int i;
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		int hw_vlan_strip = dev->data->dev_conf.rxmode.hw_vlan_strip;
+
+		if (!priv->hw_vlan_strip) {
+			ERROR("VLAN stripping is not supported");
+			return;
+		}
+
+		/* Run on every RX queue and set/reset VLAN stripping. */
+		priv_lock(priv);
+		for (i = 0; (i != priv->rxqs_n); i++)
+			priv_vlan_strip_queue_set(priv, i, hw_vlan_strip);
+		priv_unlock(priv);
+	}
 }

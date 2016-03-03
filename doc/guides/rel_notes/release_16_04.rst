@@ -175,6 +175,12 @@ This section should contain new features added in this release. Sample format:
 
   Only available with Mellanox OFED >= 3.2.
 
+* **Added mlx5 RX VLAN stripping support.**
+
+  Added support for RX VLAN stripping.
+
+  Only available with Mellanox OFED >= 3.2.
+
 * **Increased number of next hops for LPM IPv4 to 2^24.**
 
   The next_hop field is extended from 8 bits to 24 bits for IPv4.

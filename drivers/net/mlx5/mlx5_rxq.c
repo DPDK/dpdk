@@ -1224,6 +1224,8 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	      priv->device_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
+	/* Configure VLAN stripping. */
+	tmpl.vlan_strip = dev->data->dev_conf.rxmode.hw_vlan_strip;
 	attr.wq = (struct ibv_exp_wq_init_attr){
 		.wq_context = NULL, /* Could be useful in the future. */
 		.wq_type = IBV_EXP_WQT_RQ,
@@ -1238,8 +1240,18 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 				 MLX5_PMD_SGE_WR_N),
 		.pd = priv->pd,
 		.cq = tmpl.cq,
-		.comp_mask = IBV_EXP_CREATE_WQ_RES_DOMAIN,
+		.comp_mask =
+			IBV_EXP_CREATE_WQ_RES_DOMAIN |
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+			IBV_EXP_CREATE_WQ_VLAN_OFFLOADS |
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+			0,
 		.res_domain = tmpl.rd,
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+		.vlan_offloads = (tmpl.vlan_strip ?
+				  IBV_EXP_RECEIVE_WQ_CVLAN_STRIP :
+				  0),
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	};
 	tmpl.wq = ibv_exp_create_wq(priv->ctx, &attr.wq);
 	if (tmpl.wq == NULL) {
@@ -1262,6 +1274,9 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	DEBUG("%p: RTE port ID: %u", (void *)rxq, tmpl.port_id);
 	attr.params = (struct ibv_exp_query_intf_params){
 		.intf_scope = IBV_EXP_INTF_GLOBAL,
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+		.intf_version = 1,
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		.intf = IBV_EXP_INTF_CQ,
 		.obj = tmpl.cq,
 	};

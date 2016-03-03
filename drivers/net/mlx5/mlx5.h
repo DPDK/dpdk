@@ -101,6 +101,7 @@ struct priv {
 	unsigned int allmulti_req:1; /* All multicast mode requested. */
 	unsigned int hw_csum:1; /* Checksum offload is supported. */
 	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
+	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
 	/* RX/TX queues. */
@@ -211,6 +212,8 @@ void mlx5_stats_reset(struct rte_eth_dev *);
 /* mlx5_vlan.c */
 
 int mlx5_vlan_filter_set(struct rte_eth_dev *, uint16_t, int);
+void mlx5_vlan_offload_set(struct rte_eth_dev *, int);
+void mlx5_vlan_strip_queue_set(struct rte_eth_dev *, uint16_t, int);
 
 /* mlx5_trigger.c */
 

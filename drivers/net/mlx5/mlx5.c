@@ -171,6 +171,10 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.mac_addr_add = mlx5_mac_addr_add,
 	.mac_addr_set = mlx5_mac_addr_set,
 	.mtu_set = mlx5_dev_set_mtu,
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+	.vlan_strip_queue_set = mlx5_vlan_strip_queue_set,
+	.vlan_offload_set = mlx5_vlan_offload_set,
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	.reta_update = mlx5_dev_rss_reta_update,
 	.reta_query = mlx5_dev_rss_reta_query,
 	.rss_hash_update = mlx5_rss_hash_update,
@@ -325,7 +329,11 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 #ifdef HAVE_EXP_QUERY_DEVICE
 		exp_device_attr.comp_mask =
 			IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS |
-			IBV_EXP_DEVICE_ATTR_RX_HASH;
+			IBV_EXP_DEVICE_ATTR_RX_HASH |
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+			IBV_EXP_DEVICE_ATTR_VLAN_OFFLOADS |
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+			0;
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
@@ -396,6 +404,12 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
 		DEBUG("maximum RX indirection table size is %u",
 		      priv->ind_table_max_size);
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+		priv->hw_vlan_strip = !!(exp_device_attr.wq_vlan_offloads_cap &
+					 IBV_EXP_RECEIVE_WQ_CVLAN_STRIP);
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+		DEBUG("VLAN stripping is %ssupported",
+		      (priv->hw_vlan_strip ? "" : "not "));
 
 #else /* HAVE_EXP_QUERY_DEVICE */
 		priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;

@@ -109,7 +109,11 @@ struct rxq {
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_exp_wq *wq; /* Work Queue. */
 	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
+#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
+	struct ibv_exp_cq_family_v1 *if_cq; /* CQ interface. */
+#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
+#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -120,6 +124,7 @@ struct rxq {
 	unsigned int sp:1; /* Use scattered RX elements. */
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
+	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
 	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
