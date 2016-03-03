@@ -853,14 +853,16 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NB_SEGS(pkt_buf) = j;
 		PORT(pkt_buf) = rxq->port_id;
 		PKT_LEN(pkt_buf) = pkt_buf_len;
-		pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
-		pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
+		if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip) {
+			pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
+			pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 #ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
-		if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
-			pkt_buf->ol_flags |= PKT_RX_VLAN_PKT;
-			pkt_buf->vlan_tci = vlan_tci;
-		}
+			if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
+				pkt_buf->ol_flags |= PKT_RX_VLAN_PKT;
+				pkt_buf->vlan_tci = vlan_tci;
+			}
 #endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+		}
 
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
@@ -1006,15 +1008,16 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NEXT(seg) = NULL;
 		PKT_LEN(seg) = len;
 		DATA_LEN(seg) = len;
-		seg->packet_type = rxq_cq_to_pkt_type(flags);
-		seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
+		if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip) {
+			seg->packet_type = rxq_cq_to_pkt_type(flags);
+			seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 #ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
-		if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
-			seg->ol_flags |= PKT_RX_VLAN_PKT;
-			seg->vlan_tci = vlan_tci;
-		}
+			if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
+				seg->ol_flags |= PKT_RX_VLAN_PKT;
+				seg->vlan_tci = vlan_tci;
+			}
 #endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
-
+		}
 		/* Return packet. */
 		*(pkts++) = seg;
 		++pkts_ret;
