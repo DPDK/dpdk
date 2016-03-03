@@ -204,8 +204,6 @@ hash_rxq_special_flow_disable(struct hash_rxq *hash_rxq,
 {
 	if (hash_rxq->special_flow[flow_type] == NULL)
 		return;
-	DEBUG("%p: disabling special flow %s (%d)",
-	      (void *)hash_rxq, hash_rxq_flow_type_str(flow_type), flow_type);
 	claim_zero(ibv_exp_destroy_flow(hash_rxq->special_flow[flow_type]));
 	hash_rxq->special_flow[flow_type] = NULL;
 	DEBUG("%p: special flow %s (%d) disabled",
