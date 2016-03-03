@@ -443,8 +443,11 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int i;
 	unsigned int max;
 	int err;
+	struct rte_mbuf *buf = pkts[0];
 
 	assert(elts_comp_cd != 0);
+	/* Prefetch first packet cacheline. */
+	rte_prefetch0(buf);
 	txq_complete(txq);
 	max = (elts_n - (elts_head - txq->elts_tail));
 	if (max > elts_n)
@@ -458,7 +461,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	if (max > pkts_n)
 		max = pkts_n;
 	for (i = 0; (i != max); ++i) {
-		struct rte_mbuf *buf = pkts[i];
+		struct rte_mbuf *buf_next = pkts[i + 1];
 		unsigned int elts_head_next =
 			(((elts_head + 1) == elts_n) ? 0 : elts_head + 1);
 		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
@@ -481,6 +484,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				tmp = next;
 			} while (tmp != NULL);
 		}
+		if (i + 1 < max)
+			rte_prefetch0(buf_next);
 		/* Request TX completion. */
 		if (unlikely(--elts_comp_cd == 0)) {
 			elts_comp_cd = txq->elts_comp_cd_init;
@@ -502,6 +507,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			uintptr_t addr;
 			uint32_t length;
 			uint32_t lkey;
+			uintptr_t buf_next_addr;
 
 			/* Retrieve buffer information. */
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
@@ -522,6 +528,13 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				rte_prefetch0((volatile void *)
 					      (uintptr_t)addr);
 			RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
+			/* Prefetch next buffer data. */
+			if (i + 1 < max) {
+				buf_next_addr =
+					rte_pktmbuf_mtod(buf_next, uintptr_t);
+				rte_prefetch0((volatile void *)
+					      (uintptr_t)buf_next_addr);
+			}
 			/* Put packet into send queue. */
 #if MLX5_PMD_MAX_INLINE > 0
 			if (length <= txq->max_inline)
@@ -571,6 +584,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #endif /* MLX5_PMD_SGE_WR_N > 1 */
 		}
 		elts_head = elts_head_next;
+		buf = buf_next;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += sent_size;
