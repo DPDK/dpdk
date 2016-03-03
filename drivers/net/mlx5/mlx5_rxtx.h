@@ -105,7 +105,6 @@ struct priv;
 struct rxq {
 	struct priv *priv; /* Back pointer to private data. */
 	struct rte_mempool *mp; /* Memory Pool for allocations. */
-	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_exp_wq *wq; /* Work Queue. */
 	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
@@ -117,19 +116,20 @@ struct rxq {
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
-	union {
-		struct rxq_elt_sp (*sp)[]; /* Scattered RX elements. */
-		struct rxq_elt (*no_sp)[]; /* RX elements. */
-	} elts;
 	unsigned int sp:1; /* Use scattered RX elements. */
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
+	union {
+		struct rxq_elt_sp (*sp)[]; /* Scattered RX elements. */
+		struct rxq_elt (*no_sp)[]; /* RX elements. */
+	} elts;
 	uint32_t mb_len; /* Length of a mp-issued mbuf. */
-	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	struct fdir_queue fdir_queue; /* Flow director queue. */
+	struct ibv_mr *mr; /* Memory Region (for mp). */
 };
 
 /* Hash RX queue types. */
@@ -248,30 +248,31 @@ typedef uint8_t linear_t[16384];
 /* TX queue descriptor. */
 struct txq {
 	struct priv *priv; /* Back pointer to private data. */
-	struct {
-		const struct rte_mempool *mp; /* Cached Memory Pool. */
-		struct ibv_mr *mr; /* Memory Region (for mp). */
-		uint32_t lkey; /* mr->lkey */
-	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
-	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
-	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
+	struct txq_elt (*elts)[]; /* TX elements. */
 #if MLX5_PMD_MAX_INLINE > 0
 	uint32_t max_inline; /* Max inline send size <= MLX5_PMD_MAX_INLINE. */
 #endif
 	unsigned int elts_n; /* (*elts)[] length. */
-	struct txq_elt (*elts)[]; /* TX elements. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
 	unsigned int elts_tail; /* First element awaiting completion. */
 	unsigned int elts_comp; /* Number of completion requests. */
 	unsigned int elts_comp_cd; /* Countdown for next completion request. */
 	unsigned int elts_comp_cd_init; /* Initial value for countdown. */
+	struct {
+		const struct rte_mempool *mp; /* Cached Memory Pool. */
+		struct ibv_mr *mr; /* Memory Region (for mp). */
+		uint32_t lkey; /* mr->lkey */
+	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
+	/* Elements used only for init part are here. */
 	linear_t (*elts_linear)[]; /* Linearized buffers. */
 	struct ibv_mr *mr_linear; /* Memory Region for linearized buffers. */
-	unsigned int socket; /* CPU socket ID for allocations. */
+	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
+	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
+	unsigned int socket; /* CPU socket ID for allocations. */
 };
 
 /* mlx5_rxq.c */
