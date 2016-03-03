@@ -278,6 +278,11 @@ Drivers
 
   A crash could occur when failing to allocate private device context.
 
+* **mlx5: Added port type check.**
+
+  Done to prevent port initialization on non-Ethernet link layers and
+  to report an error.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,
