@@ -1532,7 +1532,8 @@ nfp_net_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
 		break;
 	}
 
-	txd->flags |= PCIE_DESC_TX_CSUM;
+	if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK))
+		txd->flags |= PCIE_DESC_TX_CSUM;
 }
 
 /* nfp_net_rx_cksum - set mbuf checksum flags based on RX descriptor flags */
