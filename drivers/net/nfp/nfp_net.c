@@ -1511,7 +1511,7 @@ static inline void
 nfp_net_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
 		 struct rte_mbuf *mb)
 {
-	uint16_t ol_flags;
+	uint64_t ol_flags;
 	struct nfp_net_hw *hw = txq->hw;
 
 	if (!(hw->cap & NFP_NET_CFG_CTRL_TXCSUM))
