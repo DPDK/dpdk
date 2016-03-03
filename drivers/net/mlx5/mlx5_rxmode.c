@@ -88,6 +88,30 @@ static const struct special_flow_init special_flow_init[] = {
 			1 << HASH_RXQ_ETH |
 			0,
 	},
+	[HASH_RXQ_FLOW_TYPE_BROADCAST] = {
+		.dst_mac_val = "\xff\xff\xff\xff\xff\xff",
+		.dst_mac_mask = "\xff\xff\xff\xff\xff\xff",
+		.hash_types =
+			1 << HASH_RXQ_UDPV4 |
+			1 << HASH_RXQ_IPV4 |
+#ifdef HAVE_FLOW_SPEC_IPV6
+			1 << HASH_RXQ_UDPV6 |
+			1 << HASH_RXQ_IPV6 |
+#endif /* HAVE_FLOW_SPEC_IPV6 */
+			1 << HASH_RXQ_ETH |
+			0,
+	},
+#ifdef HAVE_FLOW_SPEC_IPV6
+	[HASH_RXQ_FLOW_TYPE_IPV6MULTI] = {
+		.dst_mac_val = "\x33\x33\x00\x00\x00\x00",
+		.dst_mac_mask = "\xff\xff\x00\x00\x00\x00",
+		.hash_types =
+			1 << HASH_RXQ_UDPV6 |
+			1 << HASH_RXQ_IPV6 |
+			1 << HASH_RXQ_ETH |
+			0,
+	},
+#endif /* HAVE_FLOW_SPEC_IPV6 */
 };
 
 /**

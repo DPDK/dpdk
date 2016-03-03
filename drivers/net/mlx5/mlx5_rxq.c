@@ -579,8 +579,18 @@ priv_allow_flow_type(struct priv *priv, enum hash_rxq_flow_type type)
 		return !!priv->promisc_req;
 	case HASH_RXQ_FLOW_TYPE_ALLMULTI:
 		return !!priv->allmulti_req;
+	case HASH_RXQ_FLOW_TYPE_BROADCAST:
+#ifdef HAVE_FLOW_SPEC_IPV6
+	case HASH_RXQ_FLOW_TYPE_IPV6MULTI:
+#endif /* HAVE_FLOW_SPEC_IPV6 */
+		/* If allmulti is enabled, broadcast and ipv6multi
+		 * are unnecessary. */
+		return !priv->allmulti_req;
 	case HASH_RXQ_FLOW_TYPE_MAC:
 		return 1;
+	default:
+		/* Unsupported flow type is not allowed. */
+		return 0;
 	}
 	return 0;
 }

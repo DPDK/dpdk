@@ -186,6 +186,8 @@ struct special_flow_init {
 enum hash_rxq_flow_type {
 	HASH_RXQ_FLOW_TYPE_PROMISC,
 	HASH_RXQ_FLOW_TYPE_ALLMULTI,
+	HASH_RXQ_FLOW_TYPE_BROADCAST,
+	HASH_RXQ_FLOW_TYPE_IPV6MULTI,
 	HASH_RXQ_FLOW_TYPE_MAC,
 };
 
@@ -198,6 +200,10 @@ hash_rxq_flow_type_str(enum hash_rxq_flow_type flow_type)
 		return "promiscuous";
 	case HASH_RXQ_FLOW_TYPE_ALLMULTI:
 		return "allmulticast";
+	case HASH_RXQ_FLOW_TYPE_BROADCAST:
+		return "broadcast";
+	case HASH_RXQ_FLOW_TYPE_IPV6MULTI:
+		return "IPv6 multicast";
 	case HASH_RXQ_FLOW_TYPE_MAC:
 		return "MAC";
 	}

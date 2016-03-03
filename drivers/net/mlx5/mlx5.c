@@ -90,6 +90,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	priv_dev_interrupt_handler_uninstall(priv, dev);
 	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_ALLMULTI);
 	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_PROMISC);
+	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_BROADCAST);
+	priv_special_flow_disable(priv, HASH_RXQ_FLOW_TYPE_IPV6MULTI);
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	/* Prevent crashes when queues are still in use. */
@@ -416,13 +418,10 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     mac.addr_bytes[0], mac.addr_bytes[1],
 		     mac.addr_bytes[2], mac.addr_bytes[3],
 		     mac.addr_bytes[4], mac.addr_bytes[5]);
-		/* Register MAC and broadcast addresses. */
+		/* Register MAC address. */
 		claim_zero(priv_mac_addr_add(priv, 0,
 					     (const uint8_t (*)[ETHER_ADDR_LEN])
 					     mac.addr_bytes));
-		claim_zero(priv_mac_addr_add(priv, (RTE_DIM(priv->mac) - 1),
-					     &(const uint8_t [ETHER_ADDR_LEN])
-					     { "\xff\xff\xff\xff\xff\xff" }));
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];

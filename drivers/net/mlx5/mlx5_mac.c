@@ -212,8 +212,7 @@ mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	priv_lock(priv);
 	DEBUG("%p: removing MAC address from index %" PRIu32,
 	      (void *)dev, index);
-	/* Last array entry is reserved for broadcast. */
-	if (index >= (RTE_DIM(priv->mac) - 1))
+	if (index >= RTE_DIM(priv->mac))
 		goto end;
 	priv_mac_addr_del(priv, index);
 end:
@@ -479,8 +478,7 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	priv_lock(priv);
 	DEBUG("%p: adding MAC address at index %" PRIu32,
 	      (void *)dev, index);
-	/* Last array entry is reserved for broadcast. */
-	if (index >= (RTE_DIM(priv->mac) - 1))
+	if (index >= RTE_DIM(priv->mac))
 		goto end;
 	priv_mac_addr_add(priv, index,
 			  (const uint8_t (*)[ETHER_ADDR_LEN])
