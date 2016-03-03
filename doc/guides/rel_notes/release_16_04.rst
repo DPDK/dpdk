@@ -274,6 +274,10 @@ Drivers
   under stress with traffic, which might result in application launch
   failure.
 
+* **mlx5: Fixed possible crash during initialization.**
+
+  A crash could occur when failing to allocate private device context.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,

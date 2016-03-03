@@ -497,8 +497,10 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		continue;
 
 port_error:
-		rte_free(priv->rss_conf);
-		rte_free(priv);
+		if (priv) {
+			rte_free(priv->rss_conf);
+			rte_free(priv);
+		}
 		if (pd)
 			claim_zero(ibv_dealloc_pd(pd));
 		if (ctx)
