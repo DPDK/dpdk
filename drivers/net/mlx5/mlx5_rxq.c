@@ -210,27 +210,27 @@ const size_t rss_hash_default_key_len = sizeof(rss_hash_default_key);
  * information from hash_rxq_init[]. Nothing is written to flow_attr when
  * flow_attr_size is not large enough, but the required size is still returned.
  *
- * @param[in] hash_rxq
- *   Pointer to hash RX queue.
+ * @param priv
+ *   Pointer to private structure.
  * @param[out] flow_attr
  *   Pointer to flow attribute structure to fill. Note that the allocated
  *   area must be larger and large enough to hold all flow specifications.
  * @param flow_attr_size
  *   Entire size of flow_attr and trailing room for flow specifications.
+ * @param type
+ *   Hash RX queue type to use for flow steering rule.
  *
  * @return
  *   Total size of the flow attribute buffer. No errors are defined.
  */
 size_t
-hash_rxq_flow_attr(const struct hash_rxq *hash_rxq,
-		   struct ibv_exp_flow_attr *flow_attr,
-		   size_t flow_attr_size)
+priv_flow_attr(struct priv *priv, struct ibv_exp_flow_attr *flow_attr,
+	       size_t flow_attr_size, enum hash_rxq_type type)
 {
 	size_t offset = sizeof(*flow_attr);
-	enum hash_rxq_type type = hash_rxq->type;
 	const struct hash_rxq_init *init = &hash_rxq_init[type];
 
-	assert(hash_rxq->priv != NULL);
+	assert(priv != NULL);
 	assert((size_t)type < RTE_DIM(hash_rxq_init));
 	do {
 		offset += init->flow_spec.hdr.size;
@@ -244,7 +244,7 @@ hash_rxq_flow_attr(const struct hash_rxq *hash_rxq,
 		.type = IBV_EXP_FLOW_ATTR_NORMAL,
 		.priority = init->flow_priority,
 		.num_of_specs = 0,
-		.port = hash_rxq->priv->port,
+		.port = priv->port,
 		.flags = 0,
 	};
 	do {
