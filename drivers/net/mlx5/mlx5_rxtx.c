@@ -512,16 +512,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Retrieve buffer information. */
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			length = DATA_LEN(buf);
-			/* Retrieve Memory Region key for this memory pool. */
-			lkey = txq_mp2mr(txq, txq_mb2mp(buf));
-			if (unlikely(lkey == (uint32_t)-1)) {
-				/* MR does not exist. */
-				DEBUG("%p: unable to get MP <-> MR"
-				      " association", (void *)txq);
-				/* Clean up TX element. */
-				elt->buf = NULL;
-				goto stop;
-			}
 			/* Update element. */
 			elt->buf = buf;
 			if (txq->priv->vf)
@@ -545,12 +535,25 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					 send_flags);
 			else
 #endif
+			{
+				/* Retrieve Memory Region key for this
+				 * memory pool. */
+				lkey = txq_mp2mr(txq, txq_mb2mp(buf));
+				if (unlikely(lkey == (uint32_t)-1)) {
+					/* MR does not exist. */
+					DEBUG("%p: unable to get MP <-> MR"
+					      " association", (void *)txq);
+					/* Clean up TX element. */
+					elt->buf = NULL;
+					goto stop;
+				}
 				err = txq->send_pending
 					(txq->qp,
 					 addr,
 					 length,
 					 lkey,
 					 send_flags);
+			}
 			if (unlikely(err))
 				goto stop;
 #ifdef MLX5_PMD_SOFT_COUNTERS
