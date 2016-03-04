@@ -60,6 +60,17 @@
 #include "vnic_nic.h"
 #include "enic_vnic_wq.h"
 
+static inline struct rte_mbuf *
+rte_rxmbuf_alloc(struct rte_mempool *mp)
+{
+	struct rte_mbuf *m;
+
+	m = __rte_mbuf_raw_alloc(mp);
+	__rte_mbuf_sanity_check_raw(m, 0);
+	return m;
+}
+
+
 static inline int enic_is_sriov_vf(struct enic *enic)
 {
 	return enic->pdev->id.device_id == PCI_DEVICE_ID_CISCO_VIC_ENET_VF;
@@ -80,15 +91,24 @@ static int is_eth_addr_valid(uint8_t *addr)
 	return !is_mcast_addr(addr) && !is_zero_addr(addr);
 }
 
-static inline struct rte_mbuf *
-enic_rxmbuf_alloc(struct rte_mempool *mp)
+static void
+enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq)
 {
-	struct rte_mbuf *m;
+	uint16_t i;
 
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
+	if (!rq || !rq->mbuf_ring) {
+		dev_debug(enic, "Pointer to rq or mbuf_ring is NULL");
+		return;
+	}
+
+	for (i = 0; i < enic->config.rq_desc_count; i++) {
+		if (rq->mbuf_ring[i]) {
+			rte_pktmbuf_free_seg(rq->mbuf_ring[i]);
+			rq->mbuf_ring[i] = NULL;
+		}
+	}
 }
+
 
 void enic_set_hdr_split_size(struct enic *enic, u16 split_hdr_size)
 {
@@ -262,13 +282,13 @@ void enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
 }
 
 static void
-enic_free_rq_buf(__rte_unused struct vnic_rq *rq, struct vnic_rq_buf *buf)
+enic_free_rq_buf(struct rte_mbuf **mbuf)
 {
-	if (!buf->os_buf)
+	if (*mbuf == NULL)
 		return;
 
-	rte_pktmbuf_free((struct rte_mbuf *)buf->os_buf);
-	buf->os_buf = NULL;
+	rte_pktmbuf_free(*mbuf);
+	mbuf = NULL;
 }
 
 void enic_init_vnic_resources(struct enic *enic)
@@ -314,221 +334,47 @@ void enic_init_vnic_resources(struct enic *enic)
 }
 
 
-static int enic_rq_alloc_buf(struct vnic_rq *rq)
+static int
+enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 {
-	struct enic *enic = vnic_dev_priv(rq->vdev);
+	struct rte_mbuf *mb;
+	struct rq_enet_desc *rqd = rq->ring.descs;
+	unsigned i;
 	dma_addr_t dma_addr;
-	struct rq_enet_desc *desc = vnic_rq_next_desc(rq);
-	uint8_t type = RQ_ENET_TYPE_ONLY_SOP;
-	u16 split_hdr_size = vnic_get_hdr_split_size(enic->vdev);
-	struct rte_mbuf *mbuf = enic_rxmbuf_alloc(rq->mp);
-	struct rte_mbuf *hdr_mbuf = NULL;
 
-	if (!mbuf) {
-		dev_err(enic, "mbuf alloc in enic_rq_alloc_buf failed\n");
-		return -1;
-	}
+	dev_debug(enic, "queue %u, allocating %u rx queue mbufs", rq->index,
+		  rq->ring.desc_count);
 
-	if (unlikely(split_hdr_size)) {
-		if (vnic_rq_desc_avail(rq) < 2) {
-			rte_mempool_put(mbuf->pool, mbuf);
-			return -1;
-		}
-		hdr_mbuf = enic_rxmbuf_alloc(rq->mp);
-		if (!hdr_mbuf) {
-			rte_mempool_put(mbuf->pool, mbuf);
-			dev_err(enic,
-				"hdr_mbuf alloc in enic_rq_alloc_buf failed\n");
-			return -1;
+	for (i = 0; i < rq->ring.desc_count; i++, rqd++) {
+		mb = rte_rxmbuf_alloc(rq->mp);
+		if (mb == NULL) {
+			dev_err(enic, "RX mbuf alloc failed queue_id=%u",
+			(unsigned)rq->index);
+			return -ENOMEM;
 		}
 
-		hdr_mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		dma_addr = (dma_addr_t)(mb->buf_physaddr + mb->data_off);
 
-		hdr_mbuf->nb_segs = 2;
-		hdr_mbuf->port = enic->port_id;
-		hdr_mbuf->next = mbuf;
-
-		dma_addr = (dma_addr_t)
-		    (hdr_mbuf->buf_physaddr + hdr_mbuf->data_off);
-
-		rq_enet_desc_enc(desc, dma_addr, type, split_hdr_size);
-
-		vnic_rq_post(rq, (void *)hdr_mbuf, 0 /*os_buf_index*/, dma_addr,
-			(unsigned int)split_hdr_size, 0 /*wrid*/);
-
-		desc = vnic_rq_next_desc(rq);
-		type = RQ_ENET_TYPE_NOT_SOP;
-	} else {
-		mbuf->nb_segs = 1;
-		mbuf->port = enic->port_id;
+		rq_enet_desc_enc(rqd, dma_addr, RQ_ENET_TYPE_ONLY_SOP,
+				 mb->buf_len);
+		rq->mbuf_ring[i] = mb;
 	}
 
-	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-	mbuf->next = NULL;
+	/* make sure all prior writes are complete before doing the PIO write */
+	rte_rmb();
 
-	dma_addr = (dma_addr_t)
-	    (mbuf->buf_physaddr + mbuf->data_off);
+	/* Post all but the last 2 cache lines' worth of descriptors */
+	rq->posted_index = rq->ring.desc_count - (2 * RTE_CACHE_LINE_SIZE
+			/ sizeof(struct rq_enet_desc));
+	rq->rx_nb_hold = 0;
 
-	rq_enet_desc_enc(desc, dma_addr, type, mbuf->buf_len);
-
-	vnic_rq_post(rq, (void *)mbuf, 0 /*os_buf_index*/, dma_addr,
-		(unsigned int)mbuf->buf_len, 0 /*wrid*/);
+	dev_debug(enic, "port=%u, qidx=%u, Write %u posted idx, %u sw held\n",
+		enic->port_id, rq->index, rq->posted_index, rq->rx_nb_hold);
+	iowrite32(rq->posted_index, &rq->ctrl->posted_index);
+	rte_rmb();
 
 	return 0;
-}
 
-static int enic_rq_indicate_buf(struct vnic_rq *rq,
-	struct cq_desc *cq_desc, struct vnic_rq_buf *buf,
-	int skipped, void *opaque)
-{
-	struct enic *enic = vnic_dev_priv(rq->vdev);
-	struct rte_mbuf **rx_pkt_bucket = (struct rte_mbuf **)opaque;
-	struct rte_mbuf *rx_pkt = NULL;
-	struct rte_mbuf *hdr_rx_pkt = NULL;
-
-	u8 type, color, eop, sop, ingress_port, vlan_stripped;
-	u8 fcoe, fcoe_sof, fcoe_fc_crc_ok, fcoe_enc_error, fcoe_eof;
-	u8 tcp_udp_csum_ok, udp, tcp, ipv4_csum_ok;
-	u8 ipv6, ipv4, ipv4_fragment, fcs_ok, rss_type, csum_not_calc;
-	u8 packet_error;
-	u16 q_number, completed_index, bytes_written, vlan_tci, checksum;
-	u32 rss_hash;
-
-	cq_enet_rq_desc_dec((struct cq_enet_rq_desc *)cq_desc,
-		&type, &color, &q_number, &completed_index,
-		&ingress_port, &fcoe, &eop, &sop, &rss_type,
-		&csum_not_calc, &rss_hash, &bytes_written,
-		&packet_error, &vlan_stripped, &vlan_tci, &checksum,
-		&fcoe_sof, &fcoe_fc_crc_ok, &fcoe_enc_error,
-		&fcoe_eof, &tcp_udp_csum_ok, &udp, &tcp,
-		&ipv4_csum_ok, &ipv6, &ipv4, &ipv4_fragment,
-		&fcs_ok);
-
-	rx_pkt = (struct rte_mbuf *)buf->os_buf;
-	buf->os_buf = NULL;
-
-	if (unlikely(packet_error)) {
-		dev_err(enic, "packet error\n");
-		rx_pkt->data_len = 0;
-		return 0;
-	}
-
-	if (unlikely(skipped)) {
-		rx_pkt->data_len = 0;
-		return 0;
-	}
-
-	if (likely(!vnic_get_hdr_split_size(enic->vdev))) {
-		/* No header split configured */
-		*rx_pkt_bucket = rx_pkt;
-		rx_pkt->pkt_len = bytes_written;
-
-		if (ipv4) {
-			rx_pkt->packet_type = RTE_PTYPE_L3_IPV4;
-			if (!csum_not_calc) {
-				if (unlikely(!ipv4_csum_ok))
-					rx_pkt->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-				if ((tcp || udp) && (!tcp_udp_csum_ok))
-					rx_pkt->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			}
-		} else if (ipv6)
-			rx_pkt->packet_type = RTE_PTYPE_L3_IPV6;
-	} else {
-		/* Header split */
-		if (sop && !eop) {
-			/* This piece is header */
-			*rx_pkt_bucket = rx_pkt;
-			rx_pkt->pkt_len = bytes_written;
-		} else {
-			if (sop && eop) {
-				/* The packet is smaller than split_hdr_size */
-				*rx_pkt_bucket = rx_pkt;
-				rx_pkt->pkt_len = bytes_written;
-				if (ipv4) {
-					rx_pkt->packet_type = RTE_PTYPE_L3_IPV4;
-					if (!csum_not_calc) {
-						if (unlikely(!ipv4_csum_ok))
-							rx_pkt->ol_flags |=
-							    PKT_RX_IP_CKSUM_BAD;
-
-						if ((tcp || udp) &&
-						    (!tcp_udp_csum_ok))
-							rx_pkt->ol_flags |=
-							    PKT_RX_L4_CKSUM_BAD;
-					}
-				} else if (ipv6)
-					rx_pkt->packet_type = RTE_PTYPE_L3_IPV6;
-			} else {
-				/* Payload */
-				hdr_rx_pkt = *rx_pkt_bucket;
-				hdr_rx_pkt->pkt_len += bytes_written;
-				if (ipv4) {
-					hdr_rx_pkt->packet_type =
-						RTE_PTYPE_L3_IPV4;
-					if (!csum_not_calc) {
-						if (unlikely(!ipv4_csum_ok))
-							hdr_rx_pkt->ol_flags |=
-							    PKT_RX_IP_CKSUM_BAD;
-
-						if ((tcp || udp) &&
-						    (!tcp_udp_csum_ok))
-							hdr_rx_pkt->ol_flags |=
-							    PKT_RX_L4_CKSUM_BAD;
-					}
-				} else if (ipv6)
-					hdr_rx_pkt->packet_type =
-						RTE_PTYPE_L3_IPV6;
-			}
-		}
-	}
-
-	rx_pkt->data_len = bytes_written;
-
-	if (rss_hash) {
-		rx_pkt->ol_flags |= PKT_RX_RSS_HASH;
-		rx_pkt->hash.rss = rss_hash;
-	}
-
-	if (vlan_tci) {
-		rx_pkt->ol_flags |= PKT_RX_VLAN_PKT;
-		rx_pkt->vlan_tci = vlan_tci;
-	}
-
-	return eop;
-}
-
-static int enic_rq_service(struct vnic_dev *vdev, struct cq_desc *cq_desc,
-	__rte_unused u8 type, u16 q_number, u16 completed_index, void *opaque)
-{
-	struct enic *enic = vnic_dev_priv(vdev);
-
-	return vnic_rq_service(&enic->rq[q_number], cq_desc,
-		completed_index, VNIC_RQ_RETURN_DESC,
-		enic_rq_indicate_buf, opaque);
-
-}
-
-int enic_poll(struct vnic_rq *rq, struct rte_mbuf **rx_pkts,
-	unsigned int budget, unsigned int *work_done)
-{
-	struct enic *enic = vnic_dev_priv(rq->vdev);
-	unsigned int cq = enic_cq_rq(enic, rq->index);
-	int err = 0;
-
-	*work_done = vnic_cq_service(&enic->cq[cq],
-		budget, enic_rq_service, (void *)rx_pkts);
-
-	if (*work_done) {
-		vnic_rq_fill(rq, enic_rq_alloc_buf);
-
-		/* Need at least one buffer on ring to get going */
-		if (vnic_rq_desc_used(rq) == 0) {
-			dev_err(enic, "Unable to alloc receive buffers\n");
-			err = -1;
-		}
-	}
-	return err;
 }
 
 static void *
@@ -576,6 +422,7 @@ enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
 int enic_enable(struct enic *enic)
 {
 	unsigned int index;
+	int err;
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
@@ -586,15 +433,11 @@ int enic_enable(struct enic *enic)
 		dev_warning(enic, "Init of hash table for clsf failed."\
 			"Flow director feature will not work\n");
 
-	/* Fill RQ bufs */
 	for (index = 0; index < enic->rq_count; index++) {
-		vnic_rq_fill(&enic->rq[index], enic_rq_alloc_buf);
-
-		/* Need at least one buffer on ring to get going
-		*/
-		if (vnic_rq_desc_used(&enic->rq[index]) == 0) {
-			dev_err(enic, "Unable to alloc receive buffers\n");
-			return -1;
+		err = enic_alloc_rx_queue_mbufs(enic, &enic->rq[index]);
+		if (err) {
+			dev_err(enic, "Failed to alloc RX queue mbufs\n");
+			return err;
 		}
 	}
 
@@ -636,6 +479,9 @@ void enic_free_rq(void *rxq)
 	struct vnic_rq *rq = (struct vnic_rq *)rxq;
 	struct enic *enic = vnic_dev_priv(rq->vdev);
 
+	enic_rxmbuf_queue_release(enic, rq);
+	rte_free(rq->mbuf_ring);
+	rq->mbuf_ring = NULL;
 	vnic_rq_free(rq);
 	vnic_cq_free(&enic->cq[rq->index]);
 }
@@ -664,7 +510,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	unsigned int socket_id, struct rte_mempool *mp,
 	uint16_t nb_desc)
 {
-	int err;
+	int rc;
 	struct vnic_rq *rq = &enic->rq[queue_idx];
 
 	rq->socket_id = socket_id;
@@ -687,23 +533,35 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	}
 
 	/* Allocate queue resources */
-	err = vnic_rq_alloc(enic->vdev, &enic->rq[queue_idx], queue_idx,
-		enic->config.rq_desc_count,
-		sizeof(struct rq_enet_desc));
-	if (err) {
+	rc = vnic_rq_alloc(enic->vdev, rq, queue_idx,
+		enic->config.rq_desc_count, sizeof(struct rq_enet_desc));
+	if (rc) {
 		dev_err(enic, "error in allocation of rq\n");
-		return err;
+		goto err_exit;
 	}
 
-	err = vnic_cq_alloc(enic->vdev, &enic->cq[queue_idx], queue_idx,
+	rc = vnic_cq_alloc(enic->vdev, &enic->cq[queue_idx], queue_idx,
 		socket_id, enic->config.rq_desc_count,
 		sizeof(struct cq_enet_rq_desc));
-	if (err) {
-		vnic_rq_free(rq);
+	if (rc) {
 		dev_err(enic, "error in allocation of cq for rq\n");
+		goto err_free_rq_exit;
 	}
 
-	return err;
+	/* Allocate the mbuf ring */
+	rq->mbuf_ring = (struct rte_mbuf **)rte_zmalloc_socket("rq->mbuf_ring",
+			sizeof(struct rte_mbuf *) * enic->config.rq_desc_count,
+			RTE_CACHE_LINE_SIZE, rq->socket_id);
+
+	if (rq->mbuf_ring != NULL)
+		return 0;
+
+	/* cleanup on error */
+	vnic_cq_free(&enic->cq[queue_idx]);
+err_free_rq_exit:
+	vnic_rq_free(rq);
+err_exit:
+	return -ENOMEM;
 }
 
 void enic_free_wq(void *txq)
@@ -790,6 +648,7 @@ int enic_disable(struct enic *enic)
 
 	for (i = 0; i < enic->wq_count; i++)
 		vnic_wq_clean(&enic->wq[i], enic_free_wq_buf);
+
 	for (i = 0; i < enic->rq_count; i++)
 		vnic_rq_clean(&enic->rq[i], enic_free_rq_buf);
 	for (i = 0; i < enic->cq_count; i++)
@@ -1074,7 +933,7 @@ int enic_probe(struct enic *enic)
 
 	/* Set ingress vlan rewrite mode before vnic initialization */
 	err = vnic_dev_set_ig_vlan_rewrite_mode(enic->vdev,
-		IG_VLAN_REWRITE_MODE_PRIORITY_TAG_DEFAULT_VLAN);
+		IG_VLAN_REWRITE_MODE_PASS_THRU);
 	if (err) {
 		dev_err(enic,
 			"Failed to set ingress vlan rewrite mode, aborting.\n");

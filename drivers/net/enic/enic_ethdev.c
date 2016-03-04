@@ -255,7 +255,7 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	uint16_t queue_idx,
 	uint16_t nb_desc,
 	unsigned int socket_id,
-	__rte_unused const struct rte_eth_rxconf *rx_conf,
+	const struct rte_eth_rxconf *rx_conf,
 	struct rte_mempool *mp)
 {
 	int ret;
@@ -269,6 +269,10 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		dev_err(enic, "error in allocating rq\n");
 		return ret;
 	}
+
+	enic->rq[queue_idx].rx_free_thresh = rx_conf->rx_free_thresh;
+	dev_debug(enic, "Set queue_id:%u free thresh:%u\n", queue_idx,
+			enic->rq[queue_idx].rx_free_thresh);
 
 	return enicpmd_dev_setup_intr(enic);
 }
@@ -429,6 +433,9 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 		DEV_TX_OFFLOAD_IPV4_CKSUM  |
 		DEV_TX_OFFLOAD_UDP_CKSUM   |
 		DEV_TX_OFFLOAD_TCP_CKSUM;
+	device_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = ENIC_DEFAULT_RX_FREE_THRESH
+	};
 }
 
 static void enicpmd_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
@@ -538,18 +545,6 @@ static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return index;
 }
 
-static uint16_t enicpmd_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-	uint16_t nb_pkts)
-{
-	struct vnic_rq *rq = (struct vnic_rq *)rx_queue;
-	unsigned int work_done;
-
-	if (enic_poll(rq, rx_pkts, (unsigned int)nb_pkts, &work_done))
-		dev_err(enic, "error in enicpmd poll\n");
-
-	return work_done;
-}
-
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
@@ -606,7 +601,7 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	enic->port_id = eth_dev->data->port_id;
 	enic->rte_dev = eth_dev;
 	eth_dev->dev_ops = &enicpmd_eth_dev_ops;
-	eth_dev->rx_pkt_burst = &enicpmd_recv_pkts;
+	eth_dev->rx_pkt_burst = &enic_recv_pkts;
 	eth_dev->tx_pkt_burst = &enicpmd_xmit_pkts;
 
 	pdev = eth_dev->pci_dev;
@@ -635,8 +630,8 @@ static struct eth_driver rte_enic_pmd = {
  * Register as the [Poll Mode] Driver of Cisco ENIC device.
  */
 static int
-rte_enic_pmd_init(const char *name __rte_unused,
-	const char *params __rte_unused)
+rte_enic_pmd_init(__rte_unused const char *name,
+	 __rte_unused const char *params)
 {
 	ENICPMD_FUNC_TRACE();
 

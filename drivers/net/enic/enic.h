@@ -45,6 +45,7 @@
 #include "vnic_nic.h"
 #include "vnic_rss.h"
 #include "enic_res.h"
+#include "cq_enet_desc.h"
 
 #define DRV_NAME		"enic_pmd"
 #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Poll-mode Driver"
@@ -154,6 +155,16 @@ static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
 	return (struct enic *)eth_dev->data->dev_private;
 }
 
+#define RTE_LIBRTE_ENIC_ASSERT_ENABLE
+#ifdef RTE_LIBRTE_ENIC_ASSERT_ENABLE
+#define ASSERT(x) do {			\
+	if (!(x))			\
+		rte_panic("ENIC: x");	\
+} while (0)
+#else
+#define ASSERT(x)
+#endif
+
 extern void enic_fdir_stats_get(struct enic *enic,
 	struct rte_eth_fdir_stats *stats);
 extern int enic_fdir_add_fltr(struct enic *enic,
@@ -193,9 +204,10 @@ extern void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 			  uint16_t ol_flags, uint16_t vlan_tag);
 
 extern void enic_post_wq_index(struct vnic_wq *wq);
-extern int enic_poll(struct vnic_rq *rq, struct rte_mbuf **rx_pkts,
-	unsigned int budget, unsigned int *work_done);
 extern int enic_probe(struct enic *enic);
 extern int enic_clsf_init(struct enic *enic);
 extern void enic_clsf_destroy(struct enic *enic);
+uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			uint16_t nb_pkts);
+
 #endif /* _ENIC_H_ */

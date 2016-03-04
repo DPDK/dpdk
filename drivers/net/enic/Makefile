@@ -53,6 +53,7 @@ VPATH += $(SRCDIR)/src
 #
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic_main.c
+SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic_rx.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic_clsf.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += enic_res.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += base/vnic_cq.c

@@ -66,42 +66,22 @@ struct vnic_rq_ctrl {
 	u32 pad10;
 };
 
-/* Break the vnic_rq_buf allocations into blocks of 32/64 entries */
-#define VNIC_RQ_BUF_MIN_BLK_ENTRIES 32
-#define VNIC_RQ_BUF_DFLT_BLK_ENTRIES 64
-#define VNIC_RQ_BUF_BLK_ENTRIES(entries) \
-	((unsigned int)((entries < VNIC_RQ_BUF_DFLT_BLK_ENTRIES) ? \
-	VNIC_RQ_BUF_MIN_BLK_ENTRIES : VNIC_RQ_BUF_DFLT_BLK_ENTRIES))
-#define VNIC_RQ_BUF_BLK_SZ(entries) \
-	(VNIC_RQ_BUF_BLK_ENTRIES(entries) * sizeof(struct vnic_rq_buf))
-#define VNIC_RQ_BUF_BLKS_NEEDED(entries) \
-	DIV_ROUND_UP(entries, VNIC_RQ_BUF_BLK_ENTRIES(entries))
-#define VNIC_RQ_BUF_BLKS_MAX VNIC_RQ_BUF_BLKS_NEEDED(4096)
-
-struct vnic_rq_buf {
-	struct vnic_rq_buf *next;
-	dma_addr_t dma_addr;
-	void *os_buf;
-	unsigned int os_buf_index;
-	unsigned int len;
-	unsigned int index;
-	void *desc;
-	uint64_t wr_id;
-};
-
 struct vnic_rq {
 	unsigned int index;
+	unsigned int posted_index;
 	struct vnic_dev *vdev;
-	struct vnic_rq_ctrl __iomem *ctrl;              /* memory-mapped */
+	struct vnic_rq_ctrl __iomem *ctrl;	/* memory-mapped */
 	struct vnic_dev_ring ring;
-	struct vnic_rq_buf *bufs[VNIC_RQ_BUF_BLKS_MAX];
-	struct vnic_rq_buf *to_use;
-	struct vnic_rq_buf *to_clean;
+	struct rte_mbuf **mbuf_ring;		/* array of allocated mbufs */
+	unsigned int mbuf_next_idx;		/* next mb to consume */
 	void *os_buf_head;
 	unsigned int pkts_outstanding;
-
+	uint16_t rx_nb_hold;
+	uint16_t rx_free_thresh;
 	unsigned int socket_id;
 	struct rte_mempool *mp;
+	uint16_t rxst_idx;
+	uint32_t tot_pkts;
 };
 
 static inline unsigned int vnic_rq_desc_avail(struct vnic_rq *rq)
@@ -116,118 +96,12 @@ static inline unsigned int vnic_rq_desc_used(struct vnic_rq *rq)
 	return rq->ring.desc_count - rq->ring.desc_avail - 1;
 }
 
-static inline void *vnic_rq_next_desc(struct vnic_rq *rq)
-{
-	return rq->to_use->desc;
-}
 
-static inline unsigned int vnic_rq_next_index(struct vnic_rq *rq)
-{
-	return rq->to_use->index;
-}
-
-static inline void vnic_rq_post(struct vnic_rq *rq,
-	void *os_buf, unsigned int os_buf_index,
-	dma_addr_t dma_addr, unsigned int len,
-	uint64_t wrid)
-{
-	struct vnic_rq_buf *buf = rq->to_use;
-
-	buf->os_buf = os_buf;
-	buf->os_buf_index = os_buf_index;
-	buf->dma_addr = dma_addr;
-	buf->len = len;
-	buf->wr_id = wrid;
-
-	buf = buf->next;
-	rq->to_use = buf;
-	rq->ring.desc_avail--;
-
-	/* Move the posted_index every nth descriptor
-	 */
-
-#ifndef VNIC_RQ_RETURN_RATE
-#define VNIC_RQ_RETURN_RATE		0xf	/* keep 2^n - 1 */
-#endif
-
-	if ((buf->index & VNIC_RQ_RETURN_RATE) == 0) {
-		/* Adding write memory barrier prevents compiler and/or CPU
-		 * reordering, thus avoiding descriptor posting before
-		 * descriptor is initialized. Otherwise, hardware can read
-		 * stale descriptor fields.
-		 */
-		wmb();
-		iowrite32(buf->index, &rq->ctrl->posted_index);
-	}
-}
-
-static inline void vnic_rq_post_commit(struct vnic_rq *rq,
-	void *os_buf, unsigned int os_buf_index,
-	dma_addr_t dma_addr, unsigned int len)
-{
-	struct vnic_rq_buf *buf = rq->to_use;
-
-	buf->os_buf = os_buf;
-	buf->os_buf_index = os_buf_index;
-	buf->dma_addr = dma_addr;
-	buf->len = len;
-
-	buf = buf->next;
-	rq->to_use = buf;
-	rq->ring.desc_avail--;
-
-	/* Move the posted_index every descriptor
-	 */
-
-	/* Adding write memory barrier prevents compiler and/or CPU
-	 * reordering, thus avoiding descriptor posting before
-	 * descriptor is initialized. Otherwise, hardware can read
-	 * stale descriptor fields.
-	 */
-	wmb();
-	iowrite32(buf->index, &rq->ctrl->posted_index);
-}
-
-static inline void vnic_rq_return_descs(struct vnic_rq *rq, unsigned int count)
-{
-	rq->ring.desc_avail += count;
-}
 
 enum desc_return_options {
 	VNIC_RQ_RETURN_DESC,
 	VNIC_RQ_DEFER_RETURN_DESC,
 };
-
-static inline int vnic_rq_service(struct vnic_rq *rq,
-	struct cq_desc *cq_desc, u16 completed_index,
-	int desc_return, int (*buf_service)(struct vnic_rq *rq,
-	struct cq_desc *cq_desc, struct vnic_rq_buf *buf,
-	int skipped, void *opaque), void *opaque)
-{
-	struct vnic_rq_buf *buf;
-	int skipped;
-	int eop = 0;
-
-	buf = rq->to_clean;
-	while (1) {
-
-		skipped = (buf->index != completed_index);
-
-		if ((*buf_service)(rq, cq_desc, buf, skipped, opaque))
-			eop++;
-
-		if (desc_return == VNIC_RQ_RETURN_DESC)
-			rq->ring.desc_avail++;
-
-		rq->to_clean = buf->next;
-
-		if (!skipped)
-			break;
-
-		buf = rq->to_clean;
-	}
-	return eop;
-}
 
 static inline int vnic_rq_fill(struct vnic_rq *rq,
 	int (*buf_fill)(struct vnic_rq *rq))
@@ -274,8 +148,5 @@ unsigned int vnic_rq_error_status(struct vnic_rq *rq);
 void vnic_rq_enable(struct vnic_rq *rq);
 int vnic_rq_disable(struct vnic_rq *rq);
 void vnic_rq_clean(struct vnic_rq *rq,
-	void (*buf_clean)(struct vnic_rq *rq, struct vnic_rq_buf *buf));
-int vnic_rq_mem_size(struct vnic_rq *rq, unsigned int desc_count,
-	unsigned int desc_size);
-
+	void (*buf_clean)(struct rte_mbuf **buf));
 #endif /* _VNIC_RQ_H_ */
