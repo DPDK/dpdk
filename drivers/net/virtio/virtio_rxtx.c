@@ -209,14 +209,15 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 }
 
 static int
-virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
+virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
+		       int use_indirect)
 {
 	struct vq_desc_extra *dxp;
 	struct vring_desc *start_dp;
 	uint16_t seg_num = cookie->nb_segs;
-	uint16_t needed = 1 + seg_num;
+	uint16_t needed = use_indirect ? 1 : 1 + seg_num;
 	uint16_t head_idx, idx;
-	size_t head_size = txvq->hw->vtnet_hdr_size;
+	unsigned long offs;
 
 	if (unlikely(txvq->vq_free_cnt == 0))
 		return -ENOSPC;
@@ -232,10 +233,37 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	dxp->ndescs = needed;
 
 	start_dp = txvq->vq_ring.desc;
-	start_dp[idx].addr =
-		txvq->virtio_net_hdr_mem + idx * head_size;
-	start_dp[idx].len = head_size;
-	start_dp[idx].flags = VRING_DESC_F_NEXT;
+
+	if (use_indirect) {
+		/* setup tx ring slot to point to indirect
+		 * descriptor list stored in reserved region.
+		 *
+		 * the first slot in indirect ring is already preset
+		 * to point to the header in reserved region
+		 */
+		struct virtio_tx_region *txr = txvq->virtio_net_hdr_mz->addr;
+
+		offs = idx * sizeof(struct virtio_tx_region)
+			+ offsetof(struct virtio_tx_region, tx_indir);
+
+		start_dp[idx].addr  = txvq->virtio_net_hdr_mem + offs;
+		start_dp[idx].len   = (seg_num + 1) * sizeof(struct vring_desc);
+		start_dp[idx].flags = VRING_DESC_F_INDIRECT;
+
+		/* loop below will fill in rest of the indirect elements */
+		start_dp = txr[idx].tx_indir;
+		idx = 0;
+	} else {
+		/* setup first tx ring slot to point to header
+		 * stored in reserved region.
+		 */
+		offs = idx * sizeof(struct virtio_tx_region)
+			+ offsetof(struct virtio_tx_region, tx_hdr);
+
+		start_dp[idx].addr  = txvq->virtio_net_hdr_mem + offs;
+		start_dp[idx].len   = txvq->hw->vtnet_hdr_size;
+		start_dp[idx].flags = VRING_DESC_F_NEXT;
+	}
 
 	for (; ((seg_num > 0) && (cookie != NULL)); seg_num--) {
 		idx = start_dp[idx].next;
@@ -246,7 +274,12 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	}
 
 	start_dp[idx].flags &= ~VRING_DESC_F_NEXT;
-	idx = start_dp[idx].next;
+
+	if (use_indirect)
+		idx = txvq->vq_ring.desc[head_idx].next;
+	else
+		idx = start_dp[idx].next;
+
 	txvq->vq_desc_head_idx = idx;
 	if (txvq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
 		txvq->vq_desc_tail_idx = idx;
@@ -289,10 +322,7 @@ virtio_dev_vring_start(struct virtqueue *vq, int queue_type)
 	vq->vq_free_cnt = vq->vq_nentries;
 	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
 
-	/* Chain all the descriptors in the ring with an END */
-	for (i = 0; i < size - 1; i++)
-		vr->desc[i].next = (uint16_t)(i + 1);
-	vr->desc[i].next = VQ_RING_DESC_CHAIN_END;
+	vring_desc_init(vr->desc, size);
 
 	/*
 	 * Disable device(host) interrupting guest
@@ -852,8 +882,15 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		struct rte_mbuf *txm = tx_pkts[nb_tx];
-		/* Need one more descriptor for virtio header. */
-		int need = txm->nb_segs - txvq->vq_free_cnt + 1;
+		int use_indirect, slots, need;
+
+		use_indirect = vtpci_with_feature(txvq->hw,
+						  VIRTIO_RING_F_INDIRECT_DESC)
+			&& (txm->nb_segs < VIRTIO_MAX_TX_INDIRECT);
+
+		/* How many main ring entries are needed to this Tx? */
+		slots = use_indirect ? 1 : 1 + txm->nb_segs;
+		need = slots - txvq->vq_free_cnt;
 
 		/* Positive value indicates it need free vring descriptors */
 		if (unlikely(need > 0)) {
@@ -862,7 +899,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			need = RTE_MIN(need, (int)nb_used);
 
 			virtio_xmit_cleanup(txvq, need);
-			need = txm->nb_segs - txvq->vq_free_cnt + 1;
+			need = slots - txvq->vq_free_cnt;
 			if (unlikely(need > 0)) {
 				PMD_TX_LOG(ERR,
 					   "No free tx descriptors to transmit");
@@ -880,7 +917,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Enqueue Packet buffers */
-		error = virtqueue_enqueue_xmit(txvq, txm);
+		error = virtqueue_enqueue_xmit(txvq, txm, use_indirect);
 		if (unlikely(error)) {
 			if (error == ENOSPC)
 				PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0");

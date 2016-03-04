@@ -387,27 +387,47 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	vq->virtio_net_hdr_mem = 0;
 
 	if (queue_type == VTNET_TQ) {
+		const struct rte_memzone *hdr_mz;
+		struct virtio_tx_region *txr;
+		unsigned int i;
+
 		/*
 		 * For each xmit packet, allocate a virtio_net_hdr
+		 * and indirect ring elements
 		 */
 		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d_hdrzone",
-			dev->data->port_id, queue_idx);
-		vq->virtio_net_hdr_mz = rte_memzone_reserve_aligned(vq_name,
-			vq_size * hw->vtnet_hdr_size,
-			socket_id, 0, RTE_CACHE_LINE_SIZE);
-		if (vq->virtio_net_hdr_mz == NULL) {
+			 dev->data->port_id, queue_idx);
+		hdr_mz = rte_memzone_reserve_aligned(vq_name,
+						     vq_size * sizeof(*txr),
+						     socket_id, 0,
+						     RTE_CACHE_LINE_SIZE);
+		if (hdr_mz == NULL) {
 			if (rte_errno == EEXIST)
-				vq->virtio_net_hdr_mz =
-					rte_memzone_lookup(vq_name);
-			if (vq->virtio_net_hdr_mz == NULL) {
+				hdr_mz = rte_memzone_lookup(vq_name);
+			if (hdr_mz == NULL) {
 				rte_free(vq);
 				return -ENOMEM;
 			}
 		}
-		vq->virtio_net_hdr_mem =
-			vq->virtio_net_hdr_mz->phys_addr;
-		memset(vq->virtio_net_hdr_mz->addr, 0,
-			vq_size * hw->vtnet_hdr_size);
+		vq->virtio_net_hdr_mz = hdr_mz;
+		vq->virtio_net_hdr_mem = hdr_mz->phys_addr;
+
+		txr = hdr_mz->addr;
+		memset(txr, 0, vq_size * sizeof(*txr));
+		for (i = 0; i < vq_size; i++) {
+			struct vring_desc *start_dp = txr[i].tx_indir;
+
+			vring_desc_init(start_dp, RTE_DIM(txr[i].tx_indir));
+
+			/* first indirect descriptor is always the tx header */
+			start_dp->addr = vq->virtio_net_hdr_mem
+				+ i * sizeof(*txr)
+				+ offsetof(struct virtio_tx_region, tx_hdr);
+
+			start_dp->len = vq->hw->vtnet_hdr_size;
+			start_dp->flags = VRING_DESC_F_NEXT;
+		}
+
 	} else if (queue_type == VTNET_CQ) {
 		/* Allocate a page for control vq command, data and status */
 		snprintf(vq_name, sizeof(vq_name), "port%d_cvq_hdrzone",

@@ -243,6 +243,25 @@ struct virtio_net_hdr_mrg_rxbuf {
 	uint16_t num_buffers; /**< Number of merged rx buffers */
 };
 
+/* Region reserved to allow for transmit header and indirect ring */
+#define VIRTIO_MAX_TX_INDIRECT 8
+struct virtio_tx_region {
+	struct virtio_net_hdr_mrg_rxbuf tx_hdr;
+	struct vring_desc tx_indir[VIRTIO_MAX_TX_INDIRECT]
+			   __attribute__((__aligned__(16)));
+};
+
+/* Chain all the descriptors in the ring with an END */
+static inline void
+vring_desc_init(struct vring_desc *dp, uint16_t n)
+{
+	uint16_t i;
+
+	for (i = 0; i < n - 1; i++)
+		dp[i].next = (uint16_t)(i + 1);
+	dp[i].next = VQ_RING_DESC_CHAIN_END;
+}
+
 /**
  * Tell the backend not to interrupt us.
  */
