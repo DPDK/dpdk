@@ -208,7 +208,7 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 	return 0;
 }
 
-static int
+static inline void
 virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
 		       uint16_t needed, int use_indirect, int can_push)
 {
@@ -219,14 +219,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
 	uint16_t head_size = txvq->hw->vtnet_hdr_size;
 	unsigned long offs;
 
-	if (unlikely(txvq->vq_free_cnt == 0))
-		return -ENOSPC;
-	if (unlikely(txvq->vq_free_cnt < needed))
-		return -EMSGSIZE;
 	head_idx = txvq->vq_desc_head_idx;
-	if (unlikely(head_idx >= txvq->vq_nentries))
-		return -EFAULT;
-
 	idx = head_idx;
 	dxp = &txvq->vq_descx[idx];
 	dxp->cookie = (void *)cookie;
@@ -288,8 +281,6 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
 		txvq->vq_desc_tail_idx = idx;
 	txvq->vq_free_cnt = (uint16_t)(txvq->vq_free_cnt - needed);
 	vq_update_avail_ring(txvq, head_idx);
-
-	return 0;
 }
 
 static inline struct rte_mbuf *
@@ -934,17 +925,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Enqueue Packet buffers */
-		error = virtqueue_enqueue_xmit(txvq, txm, slots,
-					       use_indirect, can_push);
-		if (unlikely(error)) {
-			if (error == ENOSPC)
-				PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0");
-			else if (error == EMSGSIZE)
-				PMD_TX_LOG(ERR, "virtqueue_enqueue Free count < 1");
-			else
-				PMD_TX_LOG(ERR, "virtqueue_enqueue error: %d", error);
-			break;
-		}
+		virtqueue_enqueue_xmit(txvq, txm, slots, use_indirect, can_push);
 
 		txvq->bytes += txm->pkt_len;
 		virtio_update_packet_stats(txvq, txm);
