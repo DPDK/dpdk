@@ -164,6 +164,7 @@ F: lib/librte_eal/linuxapp/eal/
 F: doc/guides/linux_gsg/
 
 Linux UIO
+M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: lib/librte_eal/linuxapp/igb_uio/
 F: lib/librte_eal/linuxapp/eal/*uio*
 
