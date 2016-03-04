@@ -77,12 +77,6 @@
 #include "vmxnet3_logs.h"
 #include "vmxnet3_ethdev.h"
 
-#define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
-
-#define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
-	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
-
 static const uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
 
 static int vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t*, uint8_t);
@@ -377,7 +371,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			   transmit buffer size (16K) is greater than
 			   maximum sizeof mbuf segment size. */
 			gdesc = txq->cmd_ring.base + txq->cmd_ring.next2fill;
-			gdesc->txd.addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
+			gdesc->txd.addr = rte_mbuf_data_dma_addr(m_seg);
 			gdesc->dword[2] = dw2 | m_seg->data_len;
 			gdesc->dword[3] = 0;
 
@@ -475,7 +469,8 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 		buf_info->m = mbuf;
 		buf_info->len = (uint16_t)(mbuf->buf_len -
 					   RTE_PKTMBUF_HEADROOM);
-		buf_info->bufPA = RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf);
+		buf_info->bufPA =
+			rte_mbuf_data_dma_addr_default(mbuf);
 
 		/* Load Rx Descriptor with the buffer's GPA */
 		rxd->addr = buf_info->bufPA;

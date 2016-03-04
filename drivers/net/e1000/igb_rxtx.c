@@ -89,12 +89,6 @@ rte_rxmbuf_alloc(struct rte_mempool *mp)
 	return m;
 }
 
-#define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
-
-#define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
-	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
-
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
@@ -596,7 +590,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 * Set up transmit descriptor.
 			 */
 			slen = (uint16_t) m_seg->data_len;
-			buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
+			buf_dma_addr = rte_mbuf_data_dma_addr(m_seg);
 			txd->read.buffer_addr =
 				rte_cpu_to_le_64(buf_dma_addr);
 			txd->read.cmd_type_len =
@@ -875,7 +869,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
 		dma_addr =
-			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
+			rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
 		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
 
@@ -1061,7 +1055,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
-		dma = rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
+		dma = rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
 		rxdp->read.pkt_addr = dma;
 		rxdp->read.hdr_addr = 0;
 
@@ -1970,7 +1964,7 @@ igb_alloc_rx_queue_mbufs(struct igb_rx_queue *rxq)
 			return -ENOMEM;
 		}
 		dma_addr =
-			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));
+			rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(mbuf));
 		rxd = &rxq->rx_ring[i];
 		rxd->read.hdr_addr = 0;
 		rxd->read.pkt_addr = dma_addr;

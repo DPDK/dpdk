@@ -1985,7 +1985,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				rte_pktmbuf_free_seg(*lmbuf);
 
 			dma_size = pkt->data_len;
-			dma_addr = RTE_MBUF_DATA_DMA_ADDR(pkt);
+			dma_addr = rte_mbuf_data_dma_addr(pkt);
 			PMD_TX_LOG(DEBUG, "Working with mbuf at dma address:"
 				   "%" PRIx64 "\n", dma_addr);
 

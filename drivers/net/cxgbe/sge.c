@@ -1332,9 +1332,6 @@ static struct rte_mbuf *t4_pktgl_to_mbuf(const struct pkt_gl *gl)
 	return t4_pktgl_to_mbuf_usembufs(gl);
 }
 
-#define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
-	((dma_addr_t) ((mb)->buf_physaddr + (mb)->data_off))
-
 /**
  * t4_ethrx_handler - process an ingress ethernet packet
  * @q: the response queue that received the packet

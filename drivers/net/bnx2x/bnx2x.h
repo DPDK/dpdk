@@ -128,9 +128,6 @@ struct bnx2x_device_type {
 	char     *bnx2x_name;
 };
 
-#define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	((uint64_t)((mb)->buf_physaddr + (mb)->data_off))
-
 #define BNX2X_PAGE_SHIFT       12
 #define BNX2X_PAGE_SIZE        (1 << BNX2X_PAGE_SHIFT)
 #define BNX2X_PAGE_MASK        (~(BNX2X_PAGE_SIZE - 1))

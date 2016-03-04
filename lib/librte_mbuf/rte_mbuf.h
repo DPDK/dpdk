@@ -855,6 +855,38 @@ struct rte_mbuf {
 static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
 
 /**
+ * Return the DMA address of the beginning of the mbuf data
+ *
+ * @param mb
+ *   The pointer to the mbuf.
+ * @return
+ *   The physical address of the beginning of the mbuf data
+ */
+static inline phys_addr_t
+rte_mbuf_data_dma_addr(const struct rte_mbuf *mb)
+{
+	return mb->buf_physaddr + mb->data_off;
+}
+
+/**
+ * Return the default DMA address of the beginning of the mbuf data
+ *
+ * This function is used by drivers in their receive function, as it
+ * returns the location where data should be written by the NIC, taking
+ * the default headroom in account.
+ *
+ * @param mb
+ *   The pointer to the mbuf.
+ * @return
+ *   The physical address of the beginning of the mbuf data
+ */
+static inline phys_addr_t
+rte_mbuf_data_dma_addr_default(const struct rte_mbuf *mb)
+{
+	return mb->buf_physaddr + RTE_PKTMBUF_HEADROOM;
+}
+
+/**
  * Return the mbuf owning the data buffer address of an indirect mbuf.
  *
  * @param mi

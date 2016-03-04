@@ -61,12 +61,6 @@
 
 #define RTE_IXGBE_DESCS_PER_LOOP    4
 
-#define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	(uint64_t) ((mb)->buf_physaddr + (mb)->data_off)
-
-#define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
-	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
-
 #ifdef RTE_IXGBE_INC_VECTOR
 #define RTE_IXGBE_RXQ_REARM_THRESH      32
 #define RTE_IXGBE_MAX_RX_BURST          RTE_IXGBE_RXQ_REARM_THRESH

@@ -366,7 +366,7 @@ virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 			txvq->vq_descx[desc_idx + i].cookie = tx_pkts[i];
 		for (i = 0; i < nb_tail; i++) {
 			start_dp[desc_idx].addr =
-				RTE_MBUF_DATA_DMA_ADDR(*tx_pkts);
+				rte_mbuf_data_dma_addr(*tx_pkts);
 			start_dp[desc_idx].len = (*tx_pkts)->pkt_len;
 			tx_pkts++;
 			desc_idx++;
@@ -377,7 +377,7 @@ virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_commit; i++)
 		txvq->vq_descx[desc_idx + i].cookie = tx_pkts[i];
 	for (i = 0; i < nb_commit; i++) {
-		start_dp[desc_idx].addr = RTE_MBUF_DATA_DMA_ADDR(*tx_pkts);
+		start_dp[desc_idx].addr = rte_mbuf_data_dma_addr(*tx_pkts);
 		start_dp[desc_idx].len = (*tx_pkts)->pkt_len;
 		tx_pkts++;
 		desc_idx++;

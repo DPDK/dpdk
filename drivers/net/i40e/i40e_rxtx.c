@@ -78,12 +78,6 @@
 		PKT_TX_L4_MASK |		 \
 		PKT_TX_OUTER_IP_CKSUM)
 
-#define RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb) \
-	(uint64_t) ((mb)->buf_physaddr + RTE_PKTMBUF_HEADROOM)
-
-#define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	((uint64_t)((mb)->buf_physaddr + (mb)->data_off))
-
 static uint16_t i40e_xmit_pkts_simple(void *tx_queue,
 				      struct rte_mbuf **tx_pkts,
 				      uint16_t nb_pkts);
@@ -1098,7 +1092,7 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 		mb->nb_segs = 1;
 		mb->port = rxq->port_id;
 		dma_addr = rte_cpu_to_le_64(\
-			RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mb));
+			rte_mbuf_data_dma_addr_default(mb));
 		rxdp[i].read.hdr_addr = 0;
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
@@ -1245,7 +1239,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
 		dma_addr =
-			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
+			rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
 		rxdp->read.hdr_addr = 0;
 		rxdp->read.pkt_addr = dma_addr;
 
@@ -1356,7 +1350,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
 		dma_addr =
-			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(nmb));
+			rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(nmb));
 
 		/* Set data buffer address and data length of the mbuf */
 		rxdp->read.hdr_addr = 0;
@@ -1691,7 +1685,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			/* Setup TX Descriptor */
 			slen = m_seg->data_len;
-			buf_dma_addr = RTE_MBUF_DATA_DMA_ADDR(m_seg);
+			buf_dma_addr = rte_mbuf_data_dma_addr(m_seg);
 
 			PMD_TX_LOG(DEBUG, "mbuf: %p, TDD[%u]:\n"
 				"buf_dma_addr: %#"PRIx64";\n"
@@ -1790,7 +1784,7 @@ tx4(volatile struct i40e_tx_desc *txdp, struct rte_mbuf **pkts)
 	uint32_t i;
 
 	for (i = 0; i < 4; i++, txdp++, pkts++) {
-		dma_addr = RTE_MBUF_DATA_DMA_ADDR(*pkts);
+		dma_addr = rte_mbuf_data_dma_addr(*pkts);
 		txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
 		txdp->cmd_type_offset_bsz =
 			i40e_build_ctob((uint32_t)I40E_TD_CMD, 0,
@@ -1804,7 +1798,7 @@ tx1(volatile struct i40e_tx_desc *txdp, struct rte_mbuf **pkts)
 {
 	uint64_t dma_addr;
 
-	dma_addr = RTE_MBUF_DATA_DMA_ADDR(*pkts);
+	dma_addr = rte_mbuf_data_dma_addr(*pkts);
 	txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
 	txdp->cmd_type_offset_bsz =
 		i40e_build_ctob((uint32_t)I40E_TD_CMD, 0,
@@ -2741,7 +2735,7 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
 		mbuf->port = rxq->port_id;
 
 		dma_addr =
-			rte_cpu_to_le_64(RTE_MBUF_DATA_DMA_ADDR_DEFAULT(mbuf));
+			rte_cpu_to_le_64(rte_mbuf_data_dma_addr_default(mbuf));
 
 		rxd = &rxq->rx_ring[i];
 		rxd->read.pkt_addr = dma_addr;
