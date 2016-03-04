@@ -63,16 +63,11 @@ Resolved Issues
 
 This section should contain bug fixes added to the relevant sections. Sample format:
 
-* **code/section Fixed issue in the past tense with a full stop.**
+* **code/section: Fixed issue in the past tense with a full stop.**
 
   Add a short 1-2 sentence description of the resolved issue in the past tense.
   The title should contain the code/lib section like a commit message.
   Add the entries in alphabetic order in the relevant sections below.
-
-* **examples/vhost: Fixed frequent mbuf allocation failure.**
-
-  vhost-switch often fails to allocate mbuf when dequeue from vring because it
-  wrongly calculates the number of mbufs needed.
 
 
 EAL
@@ -106,6 +101,11 @@ Libraries
 
 Examples
 ~~~~~~~~
+
+* **examples/vhost: Fixed frequent mbuf allocation failure.**
+
+  vhost-switch often fails to allocate mbuf when dequeue from vring because it
+  wrongly calculates the number of mbufs needed.
 
 
 Other
