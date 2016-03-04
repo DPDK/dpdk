@@ -58,7 +58,7 @@ struct rte_uio_pci_dev {
 	enum rte_intr_mode mode;
 };
 
-static char *intr_mode = NULL;
+static char *intr_mode;
 static enum rte_intr_mode igbuio_intr_mode_preferred = RTE_INTR_MODE_MSIX;
 
 /* sriov sysfs */
@@ -332,7 +332,7 @@ igbuio_pci_setup_iomem(struct pci_dev *dev, struct uio_info *info,
 	unsigned long addr, len;
 	void *internal_addr;
 
-	if (sizeof(info->mem) / sizeof(info->mem[0]) <= n)
+	if (n >= ARRAY_SIZE(info->mem))
 		return -EINVAL;
 
 	addr = pci_resource_start(dev, pci_bar);
@@ -357,7 +357,7 @@ igbuio_pci_setup_ioport(struct pci_dev *dev, struct uio_info *info,
 {
 	unsigned long addr, len;
 
-	if (sizeof(info->port) / sizeof(info->port[0]) <= n)
+	if (n >= ARRAY_SIZE(info->port))
 		return -EINVAL;
 
 	addr = pci_resource_start(dev, pci_bar);
@@ -402,7 +402,7 @@ igbuio_setup_bars(struct pci_dev *dev, struct uio_info *info)
 	iom = 0;
 	iop = 0;
 
-	for (i = 0; i != sizeof(bar_names) / sizeof(bar_names[0]); i++) {
+	for (i = 0; i < ARRAY_SIZE(bar_names); i++) {
 		if (pci_resource_len(dev, i) != 0 &&
 				pci_resource_start(dev, i) != 0) {
 			flags = pci_resource_flags(dev, i);
