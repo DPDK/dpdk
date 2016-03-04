@@ -89,6 +89,8 @@ static void vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
 				       uint16_t vid, int on);
 static void vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static void vmxnet3_mac_addr_set(struct rte_eth_dev *dev,
+				 struct ether_addr *mac_addr);
 
 #if PROCESS_SYS_EVENTS == 1
 static void vmxnet3_process_events(struct vmxnet3_hw *);
@@ -115,6 +117,7 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.allmulticast_disable = vmxnet3_dev_allmulticast_disable,
 	.link_update          = vmxnet3_dev_link_update,
 	.stats_get            = vmxnet3_dev_stats_get,
+	.mac_addr_set	      = vmxnet3_mac_addr_set,
 	.dev_infos_get        = vmxnet3_dev_info_get,
 	.vlan_filter_set      = vmxnet3_dev_vlan_filter_set,
 	.vlan_offload_set     = vmxnet3_dev_vlan_offload_set,
@@ -421,6 +424,23 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+vmxnet3_write_mac(struct vmxnet3_hw *hw, const uint8_t *addr)
+{
+	uint32_t val;
+
+	PMD_INIT_LOG(DEBUG,
+		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
+		     addr[0], addr[1], addr[2],
+		     addr[3], addr[4], addr[5]);
+
+	val = *(const uint32_t *)addr;
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_MACL, val);
+
+	val = (addr[5] << 8) | addr[4];
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_MACH, val);
+}
+
 static int
 vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 {
@@ -429,8 +449,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	uint32_t mtu = dev->data->mtu;
 	Vmxnet3_DriverShared *shared = hw->shared;
 	Vmxnet3_DSDevRead *devRead = &shared->devRead;
-	uint32_t *mac_ptr;
-	uint32_t val, i;
+	uint32_t i;
 	int ret;
 
 	shared->magic = VMXNET3_REV1_MAGIC;
@@ -516,18 +535,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	vmxnet3_dev_vlan_offload_set(dev,
 			     ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK);
 
-	PMD_INIT_LOG(DEBUG,
-		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
-		     hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
-		     hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
-
-	/* Write MAC Address back to device */
-	mac_ptr = (uint32_t *)hw->perm_addr;
-	val = *mac_ptr;
-	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_MACL, val);
-
-	val = (hw->perm_addr[5] << 8) | hw->perm_addr[4];
-	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_MACH, val);
+	vmxnet3_write_mac(hw, hw->perm_addr);
 
 	return VMXNET3_SUCCESS;
 }
@@ -724,6 +732,14 @@ vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev,
 		DEV_TX_OFFLOAD_TCP_CKSUM |
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_TSO;
+}
+
+static void
+vmxnet3_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+
+	vmxnet3_write_mac(hw, mac_addr->addr_bytes);
 }
 
 /* return 0 means link status changed, -1 means not changed */
