@@ -210,13 +210,13 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 
 static int
 virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
-		       int use_indirect)
+		       uint16_t needed, int use_indirect, int can_push)
 {
 	struct vq_desc_extra *dxp;
 	struct vring_desc *start_dp;
 	uint16_t seg_num = cookie->nb_segs;
-	uint16_t needed = use_indirect ? 1 : 1 + seg_num;
 	uint16_t head_idx, idx;
+	uint16_t head_size = txvq->hw->vtnet_hdr_size;
 	unsigned long offs;
 
 	if (unlikely(txvq->vq_free_cnt == 0))
@@ -234,7 +234,12 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
 
 	start_dp = txvq->vq_ring.desc;
 
-	if (use_indirect) {
+	if (can_push) {
+		/* put on zero'd transmit header (no offloads) */
+		void *hdr = rte_pktmbuf_prepend(cookie, head_size);
+
+		memset(hdr, 0, head_size);
+	} else if (use_indirect) {
 		/* setup tx ring slot to point to indirect
 		 * descriptor list stored in reserved region.
 		 *
@@ -252,7 +257,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
 
 		/* loop below will fill in rest of the indirect elements */
 		start_dp = txr[idx].tx_indir;
-		idx = 0;
+		idx = 1;
 	} else {
 		/* setup first tx ring slot to point to header
 		 * stored in reserved region.
@@ -263,22 +268,20 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
 		start_dp[idx].addr  = txvq->virtio_net_hdr_mem + offs;
 		start_dp[idx].len   = txvq->hw->vtnet_hdr_size;
 		start_dp[idx].flags = VRING_DESC_F_NEXT;
+		idx = start_dp[idx].next;
 	}
 
-	for (; ((seg_num > 0) && (cookie != NULL)); seg_num--) {
-		idx = start_dp[idx].next;
+	do {
 		start_dp[idx].addr  = rte_mbuf_data_dma_addr(cookie);
 		start_dp[idx].len   = cookie->data_len;
-		start_dp[idx].flags = VRING_DESC_F_NEXT;
-		cookie = cookie->next;
-	}
+		start_dp[idx].flags = cookie->next ? VRING_DESC_F_NEXT : 0;
+		idx = start_dp[idx].next;
+	} while ((cookie = cookie->next) != NULL);
 
 	start_dp[idx].flags &= ~VRING_DESC_F_NEXT;
 
 	if (use_indirect)
 		idx = txvq->vq_ring.desc[head_idx].next;
-	else
-		idx = start_dp[idx].next;
 
 	txvq->vq_desc_head_idx = idx;
 	if (txvq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
@@ -867,6 +870,8 @@ uint16_t
 virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct virtqueue *txvq = tx_queue;
+	struct virtio_hw *hw = txvq->hw;
+	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint16_t nb_used, nb_tx;
 	int error;
 
@@ -882,14 +887,35 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		struct rte_mbuf *txm = tx_pkts[nb_tx];
-		int use_indirect, slots, need;
+		int can_push = 0, use_indirect = 0, slots, need;
 
-		use_indirect = vtpci_with_feature(txvq->hw,
-						  VIRTIO_RING_F_INDIRECT_DESC)
-			&& (txm->nb_segs < VIRTIO_MAX_TX_INDIRECT);
+		/* Do VLAN tag insertion */
+		if (unlikely(txm->ol_flags & PKT_TX_VLAN_PKT)) {
+			error = rte_vlan_insert(&txm);
+			if (unlikely(error)) {
+				rte_pktmbuf_free(txm);
+				continue;
+			}
+		}
 
-		/* How many main ring entries are needed to this Tx? */
-		slots = use_indirect ? 1 : 1 + txm->nb_segs;
+		/* optimize ring usage */
+		if (vtpci_with_feature(hw, VIRTIO_F_ANY_LAYOUT) &&
+		    rte_mbuf_refcnt_read(txm) == 1 &&
+		    txm->nb_segs == 1 &&
+		    rte_pktmbuf_headroom(txm) >= hdr_size &&
+		    rte_is_aligned(rte_pktmbuf_mtod(txm, char *),
+				   __alignof__(struct virtio_net_hdr_mrg_rxbuf)))
+			can_push = 1;
+		else if (vtpci_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
+			 txm->nb_segs < VIRTIO_MAX_TX_INDIRECT)
+			use_indirect = 1;
+
+		/* How many main ring entries are needed to this Tx?
+		 * any_layout => number of segments
+		 * indirect   => 1
+		 * default    => number of segments + 1
+		 */
+		slots = use_indirect ? 1 : (txm->nb_segs + !can_push);
 		need = slots - txvq->vq_free_cnt;
 
 		/* Positive value indicates it need free vring descriptors */
@@ -907,17 +933,9 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 		}
 
-		/* Do VLAN tag insertion */
-		if (unlikely(txm->ol_flags & PKT_TX_VLAN_PKT)) {
-			error = rte_vlan_insert(&txm);
-			if (unlikely(error)) {
-				rte_pktmbuf_free(txm);
-				continue;
-			}
-		}
-
 		/* Enqueue Packet buffers */
-		error = virtqueue_enqueue_xmit(txvq, txm, use_indirect);
+		error = virtqueue_enqueue_xmit(txvq, txm, slots,
+					       use_indirect, can_push);
 		if (unlikely(error)) {
 			if (error == ENOSPC)
 				PMD_TX_LOG(ERR, "virtqueue_enqueue Free count = 0");
