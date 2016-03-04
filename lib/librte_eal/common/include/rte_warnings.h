@@ -50,7 +50,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
-#ifdef RTE_LIBRTE_EAL_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUXAPP
 #include <dirent.h>
 #endif
 

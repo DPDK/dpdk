@@ -50,52 +50,52 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_ivshmem
 CFLAGS += $(WERROR_FLAGS) -O3
 
 # specific to linuxapp exec-env
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) := eal.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_hugepage_info.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_memory.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) := eal.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_hugepage_info.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_memory.c
 ifeq ($(CONFIG_RTE_LIBRTE_XEN_DOM0),y)
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_xen_memory.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_xen_memory.c
 endif
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_thread.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_log.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci_uio.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci_vfio.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_pci_vfio_mp_sync.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_debug.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_lcore.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_timer.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_interrupts.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_alarm.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_thread.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_log.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci_uio.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci_vfio.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci_vfio_mp_sync.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_debug.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_lcore.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_timer.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_interrupts.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_alarm.c
 ifeq ($(CONFIG_RTE_LIBRTE_IVSHMEM),y)
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_ivshmem.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_ivshmem.c
 endif
 
 # from common dir
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_lcore.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_timer.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_memzone.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_log.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_launch.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_pci.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_pci_uio.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_memory.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_tailqs.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_errno.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_cpuflags.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_string_fns.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_hexdump.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_devargs.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_dev.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_options.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal_common_thread.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += rte_malloc.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += malloc_elem.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += malloc_heap.c
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += rte_keepalive.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_lcore.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_timer.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_memzone.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_log.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_launch.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_pci.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_pci_uio.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_memory.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_tailqs.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_errno.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_cpuflags.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_string_fns.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_hexdump.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_devargs.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_dev.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_options.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_common_thread.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += rte_malloc.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += malloc_elem.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += malloc_heap.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += rte_keepalive.c
 
 # from arch dir
-SRCS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += rte_cpuflags.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += rte_cpuflags.c
 
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_interrupts.o := -D_GNU_SOURCE
@@ -122,10 +122,10 @@ endif
 
 INC := rte_interrupts.h rte_kni_common.h rte_dom0_common.h
 
-SYMLINK-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP)-include/exec-env := \
+SYMLINK-$(CONFIG_RTE_EXEC_ENV_LINUXAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))
 
-DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += lib/librte_eal/common
-DEPDIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += lib/librte_eal/common/arch/$(ARCH_DIR)
+DEPDIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += lib/librte_eal/common
+DEPDIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += lib/librte_eal/common/arch/$(ARCH_DIR)
 
 include $(RTE_SDK)/mk/rte.lib.mk

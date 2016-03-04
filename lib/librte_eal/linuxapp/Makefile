@@ -31,15 +31,9 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-ifeq ($(CONFIG_RTE_EAL_IGB_UIO),y)
-DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += igb_uio
-endif
-DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += eal
-ifeq ($(CONFIG_RTE_KNI_KMOD),y)
-DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += kni
-endif
-ifeq ($(CONFIG_RTE_LIBRTE_XEN_DOM0),y)
-DIRS-$(CONFIG_RTE_LIBRTE_EAL_LINUXAPP) += xen_dom0
-endif
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal
+DIRS-$(CONFIG_RTE_EAL_IGB_UIO) += igb_uio
+DIRS-$(CONFIG_RTE_KNI_KMOD) += kni
+DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += xen_dom0
 
 include $(RTE_SDK)/mk/rte.subdir.mk
