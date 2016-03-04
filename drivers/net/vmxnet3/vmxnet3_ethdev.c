@@ -89,8 +89,6 @@ static void vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
 				       uint16_t vid, int on);
 static void vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
-static void vmxnet3_dev_vlan_offload_set_clear(struct rte_eth_dev *dev,
-						int mask, int clear);
 
 #if PROCESS_SYS_EVENTS == 1
 static void vmxnet3_process_events(struct vmxnet3_hw *);
@@ -294,6 +292,9 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	/* Put device in Quiesce Mode */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
 
+	/* allow untagged pkts */
+	VMXNET3_SET_VFTABLE_ENTRY(hw->shadow_vfta, 0);
+
 	return 0;
 }
 
@@ -430,7 +431,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	Vmxnet3_DSDevRead *devRead = &shared->devRead;
 	uint32_t *mac_ptr;
 	uint32_t val, i;
-	int ret, mask;
+	int ret;
 
 	shared->magic = VMXNET3_REV1_MAGIC;
 	devRead->misc.driverInfo.version = VMXNET3_DRIVER_VERSION_NUM;
@@ -512,14 +513,8 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		devRead->rssConfDesc.confPA  = hw->rss_confPA;
 	}
 
-	mask = 0;
-	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
-		mask |= ETH_VLAN_STRIP_MASK;
-
-	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
-		mask |= ETH_VLAN_FILTER_MASK;
-
-	vmxnet3_dev_vlan_offload_set_clear(dev, mask, 1);
+	vmxnet3_dev_vlan_offload_set(dev,
+			     ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK);
 
 	PMD_INIT_LOG(DEBUG,
 		     "Writing MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
@@ -848,44 +843,31 @@ vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vid, int on)
 }
 
 static void
-vmxnet3_dev_vlan_offload_set_clear(struct rte_eth_dev *dev,
-				   int mask, int clear)
+vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	Vmxnet3_DSDevRead *devRead = &hw->shared->devRead;
 	uint32_t *vf_table = devRead->rxFilterConf.vfTable;
 
-	if (mask & ETH_VLAN_STRIP_MASK)
-		devRead->misc.uptFeatures |= UPT1_F_RXVLAN;
-	else
-		devRead->misc.uptFeatures &= ~UPT1_F_RXVLAN;
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+			devRead->misc.uptFeatures |= UPT1_F_RXVLAN;
+		else
+			devRead->misc.uptFeatures &= ~UPT1_F_RXVLAN;
 
-	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
-			       VMXNET3_CMD_UPDATE_FEATURE);
-
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (clear) {
-			memset(hw->shadow_vfta, 0,
-			       VMXNET3_VFT_TABLE_SIZE);
-			/* allow untagged pkts */
-			VMXNET3_SET_VFTABLE_ENTRY(hw->shadow_vfta, 0);
-		}
-		memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
-	} else {
-		/* allow any pkts -- no filtering */
-		if (clear)
-			memset(hw->shadow_vfta, 0xff, VMXNET3_VFT_TABLE_SIZE);
-		memset(vf_table, 0xff, VMXNET3_VFT_TABLE_SIZE);
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+				       VMXNET3_CMD_UPDATE_FEATURE);
 	}
 
-	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
-			       VMXNET3_CMD_UPDATE_VLAN_FILTERS);
-}
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+			memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
+		else
+			memset(vf_table, 0xff, VMXNET3_VFT_TABLE_SIZE);
 
-static void
-vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
-{
-	vmxnet3_dev_vlan_offload_set_clear(dev, mask, 0);
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+				       VMXNET3_CMD_UPDATE_VLAN_FILTERS);
+	}
 }
 
 #if PROCESS_SYS_EVENTS == 1
