@@ -660,34 +660,10 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxd = (Vmxnet3_RxDesc *)rxq->cmd_ring[ring_idx].base + idx;
 		rbi = rxq->cmd_ring[ring_idx].buf_info + idx;
 
-		if (unlikely(rcd->sop != 1 || rcd->eop != 1)) {
-			rte_pktmbuf_free_seg(rbi->m);
-			PMD_RX_LOG(DEBUG, "Packet spread across multiple buffers\n)");
-			goto rcd_done;
-		}
-
 		PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.", idx, ring_idx);
 
 		VMXNET3_ASSERT(rcd->len <= rxd->len);
 		VMXNET3_ASSERT(rbi->m);
-
-		if (unlikely(rcd->len == 0)) {
-			PMD_RX_LOG(DEBUG, "Rx buf was skipped. rxring[%d][%d]\n)",
-				   ring_idx, idx);
-			VMXNET3_ASSERT(rcd->sop && rcd->eop);
-			rte_pktmbuf_free_seg(rbi->m);
-			goto rcd_done;
-		}
-
-		/* Assuming a packet is coming in a single packet buffer */
-		if (unlikely(rxd->btype != VMXNET3_RXD_BTYPE_HEAD)) {
-			PMD_RX_LOG(DEBUG,
-				   "Alert : Misbehaving device, incorrect "
-				   " buffer type used. Packet dropped.");
-			rte_pktmbuf_free_seg(rbi->m);
-			goto rcd_done;
-		}
-		VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
 
 		/* Get the packet buffer pointer from buf_info */
 		rxm = rbi->m;
@@ -700,7 +676,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxq->cmd_ring[ring_idx].next2comp = idx;
 
 		/* For RCD with EOP set, check if there is frame error */
-		if (unlikely(rcd->err)) {
+		if (unlikely(rcd->eop && rcd->err)) {
 			rxq->stats.drop_total++;
 			rxq->stats.drop_err++;
 
@@ -726,9 +702,47 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->ol_flags = 0;
 		rxm->vlan_tci = 0;
 
-		vmxnet3_rx_offload(rcd, rxm);
+		/*
+		 * If this is the first buffer of the received packet,
+		 * set the pointer to the first mbuf of the packet
+		 * Otherwise, update the total length and the number of segments
+		 * of the current scattered packet, and update the pointer to
+		 * the last mbuf of the current packet.
+		 */
+		if (rcd->sop) {
+			VMXNET3_ASSERT(rxq->start_seg != NULL);
+			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
 
-		rx_pkts[nb_rx++] = rxm;
+			if (unlikely(rcd->len == 0)) {
+				VMXNET3_ASSERT(rcd->eop);
+
+				PMD_RX_LOG(DEBUG,
+					   "Rx buf was skipped. rxring[%d][%d])",
+					   ring_idx, idx);
+				rte_pktmbuf_free_seg(rxm);
+				goto rcd_done;
+			}
+
+			rxq->start_seg = rxm;
+			vmxnet3_rx_offload(rcd, rxm);
+		} else {
+			struct rte_mbuf *start = rxq->start_seg;
+
+			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_BODY);
+			VMXNET3_ASSERT(start != NULL);
+
+			start->pkt_len += rxm->data_len;
+			start->nb_segs++;
+
+			rxq->last_seg->next = rxm;
+		}
+		rxq->last_seg = rxm;
+
+		if (rcd->eop) {
+			rx_pkts[nb_rx++] = rxq->start_seg;
+			rxq->start_seg = NULL;
+		}
+
 rcd_done:
 		rxq->cmd_ring[ring_idx].next2comp = idx;
 		VMXNET3_INC_RING_IDX_ONLY(rxq->cmd_ring[ring_idx].next2comp, rxq->cmd_ring[ring_idx].size);
@@ -897,19 +911,8 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	int size;
 	uint8_t i;
 	char mem_name[32];
-	uint16_t buf_size;
 
 	PMD_INIT_FUNC_TRACE();
-
-	buf_size = rte_pktmbuf_data_room_size(mp) -
-		RTE_PKTMBUF_HEADROOM;
-
-	if (dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size) {
-		PMD_INIT_LOG(ERR, "buf_size = %u, max_pkt_len = %u, "
-			     "VMXNET3 don't support scatter packets yet",
-			     buf_size, dev->data->dev_conf.rxmode.max_rx_pkt_len);
-		return -EINVAL;
-	}
 
 	rxq = rte_zmalloc("ethdev_rx_queue", sizeof(struct vmxnet3_rx_queue), RTE_CACHE_LINE_SIZE);
 	if (rxq == NULL) {
@@ -1029,6 +1032,7 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
 			}
 		}
 		rxq->stopped = FALSE;
+		rxq->start_seg = NULL;
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {

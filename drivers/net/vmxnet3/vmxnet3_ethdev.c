@@ -425,6 +425,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf port_conf = dev->data->dev_conf;
 	struct vmxnet3_hw *hw = dev->data->dev_private;
+	uint32_t mtu = dev->data->mtu;
 	Vmxnet3_DriverShared *shared = hw->shared;
 	Vmxnet3_DSDevRead *devRead = &shared->devRead;
 	uint32_t *mac_ptr;
@@ -442,7 +443,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	devRead->misc.driverInfo.vmxnet3RevSpt = 1;
 	devRead->misc.driverInfo.uptVerSpt     = 1;
 
-	devRead->misc.mtu = rte_le_to_cpu_32(dev->data->mtu);
+	devRead->misc.mtu = rte_le_to_cpu_32(mtu);
 	devRead->misc.queueDescPA  = hw->queueDescPA;
 	devRead->misc.queueDescLen = hw->queue_desc_len;
 	devRead->misc.numTxQueues  = hw->num_tx_queues;

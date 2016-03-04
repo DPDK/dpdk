@@ -158,6 +158,8 @@ typedef struct vmxnet3_rx_queue {
 	uint32_t                    qid1;
 	uint32_t                    qid2;
 	Vmxnet3_RxQueueDesc         *shared;
+	struct rte_mbuf		    *start_seg;
+	struct rte_mbuf		    *last_seg;
 	struct vmxnet3_rxq_stats    stats;
 	bool                        stopped;
 	uint16_t                    queue_id;      /**< Device RX queue index. */

@@ -58,6 +58,11 @@ This section should contain new features added in this release. Sample format:
 
 * **Added vmxnet3 TSO support.**
 
+* **Added vmxnet3 support for jumbo frames.**
+
+  Added support for linking multi-segment buffers together to
+  handle Jumbo packets.
+
 * **Virtio 1.0.**
 
   Enabled virtio 1.0 support for virtio pmd driver.
