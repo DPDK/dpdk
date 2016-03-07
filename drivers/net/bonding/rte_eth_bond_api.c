@@ -231,7 +231,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	internals->port_id = eth_dev->data->port_id;
 	internals->mode = BONDING_MODE_INVALID;
-	internals->current_primary_port = 0;
+	internals->current_primary_port = RTE_MAX_ETHPORTS + 1;
 	internals->balance_xmit_policy = BALANCE_XMIT_POLICY_LAYER2;
 	internals->xmit_hash = xmit_l2_hash;
 	internals->user_defined_mac = 0;
