@@ -178,3 +178,24 @@ load_balancer
 
 As in the case of l3fwd, set configure port_conf.rxmode.hw_ip_checksum=0 to enable vPMD.
 In addition, for improved performance, use -bsz "(32,32),(64,64),(32,32)" in load_balancer to avoid using the default burst size of 144.
+
+
+Malicious Driver Detection not Supported
+----------------------------------------
+
+The Intel x550 series NICs support a feature called MDD (Malcicious
+Driver Detection) which checks the behavior of the VF driver.
+If this feature is enabled, the VF must use the advanced context descriptor
+correctly and set the CC (Check Context) bit.
+DPDK PF doesn't support MDD, but kernel PF does. We may hit problem in this
+scenario kernel PF + DPDK VF. If user enables MDD in kernel PF, DPDK VF will
+not work. Because kernel PF thinks the VF is malicious. But actually it's not.
+The only reason is the VF doesn't act as MDD required.
+There's significant performance impact to support MDD. DPDK should check if
+the advanced context descriptor should be set and set it. And DPDK has to ask
+the info about the header length from the upper layer, because parsing the
+packet itself is not acceptale. So, it's too expensive to support MDD.
+When using kernel PF + DPDK VF on x550, please make sure using the kernel
+driver that disables MDD or can disable MDD. (Some kernel driver can use
+this CLI 'insmod ixgbe.ko MDD=0,0' to disable MDD. Some kernel driver disables
+it by default.)
