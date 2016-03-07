@@ -51,6 +51,11 @@ static const char *valid_arguments[] = {
 	NULL
 };
 
+enum dev_action {
+	DEV_CREATE,
+	DEV_ATTACH
+};
+
 struct ring_queue {
 	struct rte_ring *rng;
 	rte_atomic64_t rx_pkts;
@@ -66,6 +71,7 @@ struct pmd_internals {
 	struct ring_queue tx_ring_queues[RTE_PMD_RING_MAX_TX_RINGS];
 
 	struct ether_addr address;
+	enum dev_action action;
 };
 
 
@@ -252,31 +258,16 @@ static const struct eth_dev_ops ops = {
 	.mac_addr_add = eth_mac_addr_add,
 };
 
-int
-rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
-		const unsigned nb_rx_queues,
-		struct rte_ring *const tx_queues[],
-		const unsigned nb_tx_queues,
-		const unsigned numa_node)
+static int
+do_eth_dev_ring_create(const char *name,
+		struct rte_ring * const rx_queues[], const unsigned nb_rx_queues,
+		struct rte_ring *const tx_queues[], const unsigned nb_tx_queues,
+		const unsigned numa_node, enum dev_action action)
 {
 	struct rte_eth_dev_data *data = NULL;
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	unsigned i;
-
-	/* do some parameter checking */
-	if (rx_queues == NULL && nb_rx_queues > 0) {
-		rte_errno = EINVAL;
-		goto error;
-	}
-	if (tx_queues == NULL && nb_tx_queues > 0) {
-		rte_errno = EINVAL;
-		goto error;
-	}
-	if (nb_rx_queues > RTE_PMD_RING_MAX_RX_RINGS) {
-		rte_errno = EINVAL;
-		goto error;
-	}
 
 	RTE_LOG(INFO, PMD, "Creating rings-backed ethdev on numa socket %u\n",
 			numa_node);
@@ -326,6 +317,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	/* NOTE: we'll replace the data element, of originally allocated eth_dev
 	 * so the rings are local per-process */
 
+	internals->action = action;
 	internals->max_rx_queues = nb_rx_queues;
 	internals->max_tx_queues = nb_tx_queues;
 	for (i = 0; i < nb_rx_queues; i++) {
@@ -373,16 +365,36 @@ error:
 }
 
 int
+rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
+		const unsigned nb_rx_queues,
+		struct rte_ring *const tx_queues[],
+		const unsigned nb_tx_queues,
+		const unsigned numa_node)
+{
+	/* do some parameter checking */
+	if (rx_queues == NULL && nb_rx_queues > 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	if (tx_queues == NULL && nb_tx_queues > 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	if (nb_rx_queues > RTE_PMD_RING_MAX_RX_RINGS) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	return do_eth_dev_ring_create(name, rx_queues, nb_rx_queues,
+			tx_queues, nb_tx_queues, numa_node, DEV_ATTACH);
+}
+
+int
 rte_eth_from_ring(struct rte_ring *r)
 {
 	return rte_eth_from_rings(r->name, &r, 1, &r, 1,
 			r->memzone ? r->memzone->socket_id : SOCKET_ID_ANY);
 }
-
-enum dev_action{
-	DEV_CREATE,
-	DEV_ATTACH
-};
 
 static int
 eth_dev_ring_create(const char *name, const unsigned numa_node,
@@ -407,7 +419,8 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 			return -1;
 	}
 
-	if (rte_eth_from_rings(name, rxtx, num_rings, rxtx, num_rings, numa_node) < 0)
+	if (do_eth_dev_ring_create(name, rxtx, num_rings, rxtx, num_rings,
+		numa_node, action) < 0)
 		return -1;
 
 	return 0;
@@ -569,6 +582,9 @@ static int
 rte_pmd_ring_devuninit(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
+	struct pmd_internals *internals = NULL;
+	struct ring_queue *r = NULL;
+	uint16_t i;
 
 	RTE_LOG(INFO, PMD, "Un-Initializing pmd_ring for %s\n", name);
 
@@ -583,10 +599,23 @@ rte_pmd_ring_devuninit(const char *name)
 	eth_dev_stop(eth_dev);
 
 	if (eth_dev->data) {
+		internals = eth_dev->data->dev_private;
+		if (internals->action == DEV_CREATE) {
+			/*
+			 * it is only necessary to delete the rings in rx_queues because
+			 * they are the same used in tx_queues
+			 */
+			for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+				r = eth_dev->data->rx_queues[i];
+				rte_ring_free(r->rng);
+			}
+		}
+
 		rte_free(eth_dev->data->rx_queues);
 		rte_free(eth_dev->data->tx_queues);
 		rte_free(eth_dev->data->dev_private);
 	}
+
 	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
