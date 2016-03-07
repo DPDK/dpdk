@@ -61,7 +61,7 @@ bonded device and its slave devices.
 Link Bonding Modes Overview
 ---------------------------
 
-Currently the Link Bonding PMD library supports 4 modes of operation:
+Currently the Link Bonding PMD library supports following modes of operation:
 
 *   **Round-Robin (Mode 0):**
 
