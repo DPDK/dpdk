@@ -51,7 +51,7 @@
 #include <sys/pciio.h>
 #include <dev/pci/pcireg.h>
 
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 #include <sys/types.h>
 #include <machine/cpufunc.h>
 #endif
@@ -491,7 +491,7 @@ rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
 	int ret;
 
 	switch (dev->kdrv) {
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	case RTE_KDRV_NIC_UIO:
 		if ((uintptr_t) dev->mem_resource[bar].addr <= UINT16_MAX) {
 			p->base = (uintptr_t)dev->mem_resource[bar].addr;
@@ -515,7 +515,7 @@ static void
 pci_uio_ioport_read(struct rte_pci_ioport *p,
 		    void *data, size_t len, off_t offset)
 {
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	uint8_t *d;
 	int size;
 	unsigned short reg = p->base + offset;
@@ -557,7 +557,7 @@ static void
 pci_uio_ioport_write(struct rte_pci_ioport *p,
 		     const void *data, size_t len, off_t offset)
 {
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	const uint8_t *s;
 	int size;
 	unsigned short reg = p->base + offset;
@@ -601,7 +601,7 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 	int ret;
 
 	switch (p->dev->kdrv) {
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	case RTE_KDRV_NIC_UIO:
 		ret = 0;
 		break;

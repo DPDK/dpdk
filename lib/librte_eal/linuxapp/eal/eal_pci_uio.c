@@ -39,7 +39,7 @@
 #include <sys/mman.h>
 #include <linux/pci_regs.h>
 
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 #include <sys/io.h>
 #endif
 
@@ -372,7 +372,7 @@ int
 pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		   struct rte_pci_ioport *p)
 {
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	char dirname[PATH_MAX];
 	char filename[PATH_MAX];
 	int uio_num;
@@ -424,7 +424,7 @@ void
 pci_uio_ioport_read(struct rte_pci_ioport *p,
 		    void *data, size_t len, off_t offset)
 {
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	uint8_t *d;
 	int size;
 	unsigned short reg = p->base + offset;
@@ -453,7 +453,7 @@ void
 pci_uio_ioport_write(struct rte_pci_ioport *p,
 		     const void *data, size_t len, off_t offset)
 {
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	const uint8_t *s;
 	int size;
 	unsigned short reg = p->base + offset;
@@ -482,7 +482,7 @@ int
 pci_uio_ioport_unmap(struct rte_pci_ioport *p)
 {
 	RTE_SET_USED(p);
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 	/* FIXME close intr fd ? */
 	return 0;
 #else

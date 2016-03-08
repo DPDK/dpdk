@@ -543,7 +543,7 @@ int rte_eal_pci_write_config(const struct rte_pci_device *device,
 	}
 }
 
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 static int
 pci_ioport_map(struct rte_pci_device *dev, int bar __rte_unused,
 	       struct rte_pci_ioport *p)
@@ -622,7 +622,7 @@ rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		ret = pci_uio_ioport_map(dev, bar, p);
 		break;
 	default:
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 		/* special case for x86 ... */
 		ret = pci_ioport_map(dev, bar, p);
 #else
@@ -652,7 +652,7 @@ rte_eal_pci_ioport_read(struct rte_pci_ioport *p,
 		pci_uio_ioport_read(p, data, len, offset);
 		break;
 	default:
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 		/* special case for x86 ... */
 		pci_uio_ioport_read(p, data, len, offset);
 #endif
@@ -675,7 +675,7 @@ rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
 		pci_uio_ioport_write(p, data, len, offset);
 		break;
 	default:
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 		/* special case for x86 ... */
 		pci_uio_ioport_write(p, data, len, offset);
 #endif
@@ -701,7 +701,7 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 		ret = pci_uio_ioport_unmap(p);
 		break;
 	default:
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
+#if defined(RTE_ARCH_X86)
 		/* special case for x86 ... nothing to do */
 		ret = 0;
 #else
