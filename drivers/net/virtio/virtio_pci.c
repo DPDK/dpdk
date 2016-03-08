@@ -622,6 +622,13 @@ next:
 	return 0;
 }
 
+/*
+ * Return -1:
+ *   if there is error mapping with VFIO/UIO.
+ *   if port map error when driver type is KDRV_NONE.
+ * Return 1 if kernel driver is managing the device.
+ * Return 0 on success.
+ */
 int
 vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 {
@@ -641,8 +648,15 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 	}
 
 	PMD_INIT_LOG(INFO, "trying with legacy virtio pci.");
-	if (legacy_virtio_resource_init(dev, hw) < 0)
+	if (legacy_virtio_resource_init(dev, hw) < 0) {
+		if (dev->kdrv == RTE_KDRV_UNKNOWN &&
+		    dev->devargs->type != RTE_DEVTYPE_WHITELISTED_PCI) {
+			PMD_INIT_LOG(INFO,
+				"skip kernel managed virtio device.");
+			return 1;
+		}
 		return -1;
+	}
 
 	hw->vtpci_ops = &legacy_ops;
 	hw->use_msix = legacy_virtio_has_msix(&dev->addr);
