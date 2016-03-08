@@ -216,26 +216,6 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.rss_hash_conf_get    = i40evf_dev_rss_hash_conf_get,
 };
 
-static int
-i40evf_set_mac_type(struct i40e_hw *hw)
-{
-	int status = I40E_ERR_DEVICE_NOT_SUPPORTED;
-
-	if (hw->vendor_id == I40E_INTEL_VENDOR_ID) {
-		switch (hw->device_id) {
-		case I40E_DEV_ID_VF:
-		case I40E_DEV_ID_VF_HV:
-			hw->mac.type = I40E_MAC_VF;
-			status = I40E_SUCCESS;
-			break;
-		default:
-			;
-		}
-	}
-
-	return status;
-}
-
 /*
  * Parse admin queue message.
  *
@@ -1184,7 +1164,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 
 	vf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	vf->dev_data = dev->data;
-	err = i40evf_set_mac_type(hw);
+	err = i40e_set_mac_type(hw);
 	if (err) {
 		PMD_INIT_LOG(ERR, "set_mac_type failed: %d", err);
 		goto err;
