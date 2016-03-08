@@ -607,12 +607,11 @@ int
 rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		       struct rte_pci_ioport *p)
 {
-	int ret;
+	int ret = -1;
 
 	switch (dev->kdrv) {
 #ifdef VFIO_PRESENT
 	case RTE_KDRV_VFIO:
-		ret = -1;
 		if (pci_vfio_is_enabled())
 			ret = pci_vfio_ioport_map(dev, bar, p);
 		break;
@@ -623,10 +622,7 @@ rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		break;
 	default:
 #if defined(RTE_ARCH_X86)
-		/* special case for x86 ... */
 		ret = pci_ioport_map(dev, bar, p);
-#else
-		ret = -1;
 #endif
 		break;
 	}
