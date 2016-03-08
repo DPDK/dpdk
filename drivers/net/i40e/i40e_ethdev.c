@@ -3726,7 +3726,7 @@ i40e_veb_setup(struct i40e_pf *pf, struct i40e_vsi *vsi)
 	veb->uplink_seid = vsi->uplink_seid;
 
 	ret = i40e_aq_add_veb(hw, veb->uplink_seid, vsi->seid,
-		I40E_DEFAULT_TCMAP, false, false, &veb->seid, NULL);
+		I40E_DEFAULT_TCMAP, false, &veb->seid, false, NULL);
 
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Add veb failed, aq_err: %d",

@@ -966,7 +966,8 @@ struct i40e_aqc_add_veb {
 					I40E_AQC_ADD_VEB_PORT_TYPE_SHIFT)
 #define I40E_AQC_ADD_VEB_PORT_TYPE_DEFAULT	0x2
 #define I40E_AQC_ADD_VEB_PORT_TYPE_DATA		0x4
-#define I40E_AQC_ADD_VEB_ENABLE_L2_FILTER	0x8
+#define I40E_AQC_ADD_VEB_ENABLE_L2_FILTER	0x8     /* deprecated */
+#define I40E_AQC_ADD_VEB_ENABLE_DISABLE_STATS	0x10
 	u8	enable_tcs;
 	u8	reserved[9];
 };
