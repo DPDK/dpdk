@@ -37,3 +37,11 @@ DPDK_2.2 {
 	rte_pipeline_table_entry_delete_bulk;
 
 } DPDK_2.1;
+
+DPDK_16.04 {
+	global:
+
+	rte_pipeline_ah_packet_hijack;
+	rte_pipeline_ah_packet_drop;
+
+} DPDK_2.2;

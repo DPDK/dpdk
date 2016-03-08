@@ -1512,6 +1512,26 @@ rte_pipeline_port_out_packet_insert(struct rte_pipeline *p,
 	return 0;
 }
 
+int rte_pipeline_ah_packet_hijack(struct rte_pipeline *p,
+	uint64_t pkts_mask)
+{
+	pkts_mask &= p->pkts_mask;
+	p->pkts_mask &= ~pkts_mask;
+
+	return 0;
+}
+
+int rte_pipeline_ah_packet_drop(struct rte_pipeline *p,
+	uint64_t pkts_mask)
+{
+	pkts_mask &= p->pkts_mask;
+	p->pkts_mask &= ~pkts_mask;
+	p->action_mask0[RTE_PIPELINE_ACTION_DROP] |= pkts_mask;
+
+	RTE_PIPELINE_STATS_AH_DROP_WRITE(p, pkts_mask);
+	return 0;
+}
+
 int rte_pipeline_port_in_stats_read(struct rte_pipeline *p, uint32_t port_id,
 	struct rte_pipeline_port_in_stats *stats, int clear)
 {

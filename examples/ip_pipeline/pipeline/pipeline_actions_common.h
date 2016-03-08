@@ -122,7 +122,7 @@ f_ah(									\
 #define PIPELINE_TABLE_AH_HIT_DROP_TIME(f_ah, f_pkt_work, f_pkt4_work)	\
 static int								\
 f_ah(									\
-	__rte_unused struct rte_pipeline *p,			\
+	struct rte_pipeline *p,						\
 	struct rte_mbuf **pkts,						\
 	uint64_t pkts_mask,						\
 	struct rte_pipeline_table_entry **entries,			\
@@ -158,13 +158,15 @@ f_ah(									\
 			pkts_out_mask ^= mask << pos;			\
 		}							\
 									\
+	rte_pipeline_ah_packet_drop(p, pkts_out_mask ^ pkts_mask);	\
+									\
 	return 0;							\
 }
 
 #define PIPELINE_TABLE_AH_MISS_DROP_TIME(f_ah, f_pkt_work, f_pkt4_work)	\
 static int								\
 f_ah(									\
-	__rte_unused struct rte_pipeline *p,			\
+	struct rte_pipeline *p,						\
 	struct rte_mbuf **pkts,						\
 	uint64_t pkts_mask,						\
 	struct rte_pipeline_table_entry *entry,				\
@@ -198,6 +200,8 @@ f_ah(									\
 			pkts_in_mask &= ~pkt_mask;			\
 			pkts_out_mask ^= mask << pos;			\
 		}							\
+									\
+	rte_pipeline_ah_packet_drop(p, pkts_out_mask ^ pkts_mask);	\
 									\
 	return 0;							\
 }
