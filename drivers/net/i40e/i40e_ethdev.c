@@ -6000,7 +6000,7 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	/* check tunneled type */
 	switch (tunnel_filter->tunnel_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
-		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_XVLAN;
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_VXLAN;
 		break;
 	case RTE_TUNNEL_TYPE_NVGRE:
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_NVGRE_OMAC;

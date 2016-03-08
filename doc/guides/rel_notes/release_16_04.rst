@@ -129,6 +129,15 @@ This section should contain new features added in this release. Sample format:
   Added support for sw-firmware sync for resource sharing.
   Use the PHY token, shared between sw-fw for PHY access on X550EM_a.
 
+* **Updated the i40e base driver.**
+
+  The i40e base driver was updated with changes including the
+  following:
+
+  * Use Rx control AQ commands to read/write Rx control registers.
+  * Add new X722 device IDs, and removed X710 one was never used.
+  * Expose registers for HASH/FD input set configuring.
+
 * **Enabled PCI extended tag for i40e.**
 
   It enabled extended tag by checking and writing corresponding PCI config

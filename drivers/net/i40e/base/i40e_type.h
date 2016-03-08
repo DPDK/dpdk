@@ -187,11 +187,10 @@ enum i40e_memcpy_type {
 	I40E_DMA_TO_NONDMA
 };
 
-
 #ifdef X722_SUPPORT
-#define I40E_FW_API_VERSION_MINOR_X722	0x0003
+#define I40E_FW_API_VERSION_MINOR_X722	0x0004
 #endif
-#define I40E_FW_API_VERSION_MINOR_X710	0x0004
+#define I40E_FW_API_VERSION_MINOR_X710	0x0005
 
 
 /* These are structs for managing the hardware information and the operations.
