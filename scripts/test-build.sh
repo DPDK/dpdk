@@ -64,6 +64,7 @@ print_help () {
 
 J=$DPDK_MAKE_JOBS
 short=false
+maxerr=-Wfatal-errors
 while getopts hj:s ARG ; do
 	case $ARG in
 		j ) J=$OPTARG ;;
@@ -146,7 +147,7 @@ for conf in $configs ; do
 	config $dir $target $options
 
 	echo "================== Build $dir"
-	make -j$J EXTRA_CFLAGS="$DPDK_DEP_CFLAGS" \
+	make -j$J EXTRA_CFLAGS="$maxerr $DPDK_DEP_CFLAGS" \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" O=$dir
 	! $short || break
 	echo "================== Build examples for $dir"
