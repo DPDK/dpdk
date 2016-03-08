@@ -97,6 +97,11 @@ struct vhost_virtqueue {
 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];	/**< for scatter RX. */
 } __rte_cache_aligned;
 
+/* Old kernels have no such macro defined */
+#ifndef VIRTIO_NET_F_GUEST_ANNOUNCE
+ #define VIRTIO_NET_F_GUEST_ANNOUNCE 21
+#endif
+
 
 /*
  * Make an extra wrapper for VIRTIO_NET_F_MQ and
