@@ -5788,11 +5788,11 @@ i40e_pf_disable_rss(struct i40e_pf *pf)
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint64_t hena;
 
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
 	hena &= ~I40E_RSS_HENA_ALL;
-	I40E_WRITE_REG(hw, I40E_PFQF_HENA(0), (uint32_t)hena);
-	I40E_WRITE_REG(hw, I40E_PFQF_HENA(1), (uint32_t)(hena >> 32));
+	i40e_write_rx_ctl(hw, I40E_PFQF_HENA(0), (uint32_t)hena);
+	i40e_write_rx_ctl(hw, I40E_PFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40E_WRITE_FLUSH(hw);
 }
 
@@ -5825,7 +5825,7 @@ i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len)
 		uint16_t i;
 
 		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
-			I40E_WRITE_REG(hw, I40E_PFQF_HKEY(i), hash_key[i]);
+			i40e_write_rx_ctl(hw, I40E_PFQF_HKEY(i), hash_key[i]);
 		I40E_WRITE_FLUSH(hw);
 	}
 
@@ -5854,7 +5854,7 @@ i40e_get_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t *key_len)
 		uint16_t i;
 
 		for (i = 0; i <= I40E_PFQF_HKEY_MAX_INDEX; i++)
-			key_dw[i] = I40E_READ_REG(hw, I40E_PFQF_HKEY(i));
+			key_dw[i] = i40e_read_rx_ctl(hw, I40E_PFQF_HKEY(i));
 	}
 	*key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
 
@@ -5875,12 +5875,12 @@ i40e_hw_rss_hash_set(struct i40e_pf *pf, struct rte_eth_rss_conf *rss_conf)
 		return ret;
 
 	rss_hf = rss_conf->rss_hf;
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
 	hena &= ~I40E_RSS_HENA_ALL;
 	hena |= i40e_config_hena(rss_hf);
-	I40E_WRITE_REG(hw, I40E_PFQF_HENA(0), (uint32_t)hena);
-	I40E_WRITE_REG(hw, I40E_PFQF_HENA(1), (uint32_t)(hena >> 32));
+	i40e_write_rx_ctl(hw, I40E_PFQF_HENA(0), (uint32_t)hena);
+	i40e_write_rx_ctl(hw, I40E_PFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40E_WRITE_FLUSH(hw);
 
 	return 0;
@@ -5895,8 +5895,8 @@ i40e_dev_rss_hash_update(struct rte_eth_dev *dev,
 	uint64_t rss_hf = rss_conf->rss_hf & I40E_RSS_OFFLOAD_ALL;
 	uint64_t hena;
 
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
 	if (!(hena & I40E_RSS_HENA_ALL)) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
 			return -EINVAL;
@@ -5920,8 +5920,8 @@ i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	i40e_get_rss_key(pf->main_vsi, rss_conf->rss_key,
 			 &rss_conf->rss_key_len);
 
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_PFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
 	rss_conf->rss_hf = i40e_parse_hena(hena);
 
 	return 0;
@@ -6435,7 +6435,7 @@ i40e_pf_config_mq_rx(struct i40e_pf *pf)
 static void
 i40e_get_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t *enable)
 {
-	uint32_t reg = I40E_READ_REG(hw, I40E_PRTQF_CTL_0);
+	uint32_t reg = i40e_read_rx_ctl(hw, I40E_PRTQF_CTL_0);
 
 	*enable = reg & I40E_PRTQF_CTL_0_HSYM_ENA_MASK ? 1 : 0;
 }
@@ -6444,7 +6444,7 @@ i40e_get_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t *enable)
 static void
 i40e_set_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t enable)
 {
-	uint32_t reg = I40E_READ_REG(hw, I40E_PRTQF_CTL_0);
+	uint32_t reg = i40e_read_rx_ctl(hw, I40E_PRTQF_CTL_0);
 
 	if (enable > 0) {
 		if (reg & I40E_PRTQF_CTL_0_HSYM_ENA_MASK) {
@@ -6461,7 +6461,7 @@ i40e_set_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t enable)
 		}
 		reg &= ~I40E_PRTQF_CTL_0_HSYM_ENA_MASK;
 	}
-	I40E_WRITE_REG(hw, I40E_PRTQF_CTL_0, reg);
+	i40e_write_rx_ctl(hw, I40E_PRTQF_CTL_0, reg);
 	I40E_WRITE_FLUSH(hw);
 }
 
@@ -6479,7 +6479,7 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 	enum i40e_filter_pctype pctype;
 
 	memset(g_cfg, 0, sizeof(*g_cfg));
-	reg = I40E_READ_REG(hw, I40E_GLQF_CTL);
+	reg = i40e_read_rx_ctl(hw, I40E_GLQF_CTL);
 	if (reg & I40E_GLQF_CTL_HTOEP_MASK)
 		g_cfg->hash_func = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
 	else
@@ -6494,7 +6494,7 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 		/* Bit set indicats the coresponding flow type is supported */
 		g_cfg->valid_bit_mask[0] |= (1UL << i);
 		pctype = i40e_flowtype_to_pctype(i);
-		reg = I40E_READ_REG(hw, I40E_GLQF_HSYM(pctype));
+		reg = i40e_read_rx_ctl(hw, I40E_GLQF_HSYM(pctype));
 		if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK)
 			g_cfg->sym_hash_enable_mask[0] |= (1UL << i);
 	}
@@ -6567,10 +6567,10 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 		pctype = i40e_flowtype_to_pctype(i);
 		reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
 				I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
-		I40E_WRITE_REG(hw, I40E_GLQF_HSYM(pctype), reg);
+		i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(pctype), reg);
 	}
 
-	reg = I40E_READ_REG(hw, I40E_GLQF_CTL);
+	reg = i40e_read_rx_ctl(hw, I40E_GLQF_CTL);
 	if (g_cfg->hash_func == RTE_ETH_HASH_FUNCTION_TOEPLITZ) {
 		/* Toeplitz */
 		if (reg & I40E_GLQF_CTL_HTOEP_MASK) {
@@ -6591,7 +6591,7 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 		/* Use the default, and keep it as it is */
 		goto out;
 
-	I40E_WRITE_REG(hw, I40E_GLQF_CTL, reg);
+	i40e_write_rx_ctl(hw, I40E_GLQF_CTL, reg);
 
 out:
 	I40E_WRITE_FLUSH(hw);
@@ -7014,13 +7014,13 @@ i40e_get_reg_inset(struct i40e_hw *hw, enum rte_filter_type filter,
 	uint64_t reg = 0;
 
 	if (filter == RTE_ETH_FILTER_HASH) {
-		reg = I40E_READ_REG(hw, I40E_GLQF_HASH_INSET(1, pctype));
+		reg = i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(1, pctype));
 		reg <<= I40E_32_BIT_WIDTH;
-		reg |= I40E_READ_REG(hw, I40E_GLQF_HASH_INSET(0, pctype));
+		reg |= i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(0, pctype));
 	} else if (filter == RTE_ETH_FILTER_FDIR) {
-		reg = I40E_READ_REG(hw, I40E_PRTQF_FD_INSET(pctype, 1));
+		reg = i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 1));
 		reg <<= I40E_32_BIT_WIDTH;
-		reg |= I40E_READ_REG(hw, I40E_PRTQF_FD_INSET(pctype, 0));
+		reg |= i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 0));
 	}
 
 	return reg;
@@ -7029,13 +7029,13 @@ i40e_get_reg_inset(struct i40e_hw *hw, enum rte_filter_type filter,
 static void
 i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 {
-	uint32_t reg = I40E_READ_REG(hw, addr);
+	uint32_t reg = i40e_read_rx_ctl(hw, addr);
 
 	PMD_DRV_LOG(DEBUG, "[0x%08x] original: 0x%08x\n", addr, reg);
 	if (reg != val)
-		I40E_WRITE_REG(hw, addr, val);
+		i40e_write_rx_ctl(hw, addr, val);
 	PMD_DRV_LOG(DEBUG, "[0x%08x] after: 0x%08x\n", addr,
-		    (uint32_t)I40E_READ_REG(hw, addr));
+		    (uint32_t)i40e_read_rx_ctl(hw, addr));
 }
 
 static int
@@ -7064,7 +7064,8 @@ i40e_set_hash_inset_mask(struct i40e_hw *hw,
 		uint8_t j, count = 0;
 
 		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
-			reg = I40E_READ_REG(hw, I40E_GLQF_HASH_MSK(i, pctype));
+			reg = i40e_read_rx_ctl(hw,
+					       I40E_GLQF_HASH_MSK(i, pctype));
 			if (reg & I40E_GLQF_HASH_MSK_FIELD)
 				count++;
 		}
@@ -7105,7 +7106,8 @@ i40e_set_fd_inset_mask(struct i40e_hw *hw,
 		uint8_t j, count = 0;
 
 		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
-			reg = I40E_READ_REG(hw, I40E_GLQF_FD_MSK(i, pctype));
+			reg = i40e_read_rx_ctl(hw,
+					       I40E_GLQF_FD_MSK(i, pctype));
 			if (reg & I40E_GLQF_FD_MSK_FIELD)
 				count++;
 		}
@@ -7480,7 +7482,7 @@ i40e_hw_init(struct rte_eth_dev *dev)
 	i40e_enable_extended_tag(dev);
 
 	/* clear the PF Queue Filter control register */
-	I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, 0);
+	i40e_write_rx_ctl(hw, I40E_PFQF_CTL_0, 0);
 
 	/* Disable symmetric hash per port */
 	i40e_set_symmetric_hash_enable_per_port(hw, 0);

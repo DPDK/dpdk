@@ -2229,7 +2229,7 @@ i40evf_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len)
 		uint16_t i;
 
 		for (i = 0; i <= I40E_VFQF_HKEY_MAX_INDEX; i++)
-			I40E_WRITE_REG(hw, I40E_VFQF_HKEY(i), hash_key[i]);
+			i40e_write_rx_ctl(hw, I40E_VFQF_HKEY(i), hash_key[i]);
 		I40EVF_WRITE_FLUSH(hw);
 	}
 
@@ -2258,7 +2258,7 @@ i40evf_get_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t *key_len)
 		uint16_t i;
 
 		for (i = 0; i <= I40E_VFQF_HKEY_MAX_INDEX; i++)
-			key_dw[i] = I40E_READ_REG(hw, I40E_VFQF_HKEY(i));
+			key_dw[i] = i40e_read_rx_ctl(hw, I40E_VFQF_HKEY(i));
 	}
 	*key_len = (I40E_VFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
 
@@ -2278,12 +2278,12 @@ i40evf_hw_rss_hash_set(struct i40e_vf *vf, struct rte_eth_rss_conf *rss_conf)
 		return ret;
 
 	rss_hf = rss_conf->rss_hf;
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
 	hena &= ~I40E_RSS_HENA_ALL;
 	hena |= i40e_config_hena(rss_hf);
-	I40E_WRITE_REG(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
-	I40E_WRITE_REG(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
+	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
+	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40EVF_WRITE_FLUSH(hw);
 
 	return 0;
@@ -2295,11 +2295,11 @@ i40evf_disable_rss(struct i40e_vf *vf)
 	struct i40e_hw *hw = I40E_VF_TO_HW(vf);
 	uint64_t hena;
 
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
 	hena &= ~I40E_RSS_HENA_ALL;
-	I40E_WRITE_REG(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
-	I40E_WRITE_REG(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
+	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
+	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40EVF_WRITE_FLUSH(hw);
 }
 
@@ -2356,8 +2356,8 @@ i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
 	uint64_t rss_hf = rss_conf->rss_hf & I40E_RSS_OFFLOAD_ALL;
 	uint64_t hena;
 
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
 	if (!(hena & I40E_RSS_HENA_ALL)) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
 			return -EINVAL;
@@ -2382,8 +2382,8 @@ i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	i40evf_get_rss_key(&vf->vsi, rss_conf->rss_key,
 			   &rss_conf->rss_key_len);
 
-	hena = (uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(0));
-	hena |= ((uint64_t)I40E_READ_REG(hw, I40E_VFQF_HENA(1))) << 32;
+	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
+	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
 	rss_conf->rss_hf = i40e_parse_hena(hena);
 
 	return 0;

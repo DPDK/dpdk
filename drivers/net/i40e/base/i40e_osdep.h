@@ -117,6 +117,42 @@ do {                                                            \
 					##__VA_ARGS__);         \
 } while (0)
 
+/* AQ commands based interfaces of i40e_read_rx_ctl() and i40e_write_rx_ctl()
+ * are required for reading/writing below registers, as reading/writing it
+ * directly may not function correctly if the device is under heavy small
+ * packet traffic. Note that those interfaces are available from FVL5 and not
+ * suitable before the AdminQ is ready during initialization.
+ *
+ * I40E_PFQF_CTL_0
+ * I40E_PFQF_HENA
+ * I40E_PFQF_FDALLOC
+ * I40E_PFQF_HREGION
+ * I40E_PFLAN_QALLOC
+ * I40E_VPQF_CTL
+ * I40E_VFQF_HENA
+ * I40E_VFQF_HREGION
+ * I40E_VSIQF_CTL
+ * I40E_VSILAN_QBASE
+ * I40E_VSILAN_QTABLE
+ * I40E_VSIQF_TCREGION
+ * I40E_PFQF_HKEY
+ * I40E_VFQF_HKEY
+ * I40E_PRTQF_CTL_0
+ * I40E_GLFCOE_RCTL
+ * I40E_GLFCOE_RSOF
+ * I40E_GLQF_CTL
+ * I40E_GLQF_SWAP
+ * I40E_GLQF_HASH_MSK
+ * I40E_GLQF_HASH_INSET
+ * I40E_GLQF_HSYM
+ * I40E_GLQF_FC_MSK
+ * I40E_GLQF_FC_INSET
+ * I40E_GLQF_FD_MSK
+ * I40E_PRTQF_FD_INSET
+ * I40E_PRTQF_FD_FLXINSET
+ * I40E_PRTQF_FD_MSK
+ */
+
 #define I40E_PCI_REG(reg)         (*((volatile uint32_t *)(reg)))
 #define I40E_PCI_REG_ADDR(a, reg) \
 	((volatile uint32_t *)((char *)(a)->hw_addr + (reg)))

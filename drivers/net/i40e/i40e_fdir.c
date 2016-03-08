@@ -52,6 +52,7 @@
 
 #include "i40e_logs.h"
 #include "base/i40e_type.h"
+#include "base/i40e_prototype.h"
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 
@@ -369,11 +370,11 @@ i40e_init_flx_pld(struct i40e_pf *pf)
 		if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)pctype))
 			continue;
 		pf->fdir.flex_mask[pctype].word_mask = 0;
-		I40E_WRITE_REG(hw, I40E_PRTQF_FD_FLXINSET(pctype), 0);
+		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype), 0);
 		for (i = 0; i < I40E_FDIR_BITMASK_NUM_WORD; i++) {
 			pf->fdir.flex_mask[pctype].bitmask[i].offset = 0;
 			pf->fdir.flex_mask[pctype].bitmask[i].mask = 0;
-			I40E_WRITE_REG(hw, I40E_PRTQF_FD_MSK(pctype, i), 0);
+			i40e_write_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, i), 0);
 		}
 	}
 }
@@ -618,7 +619,7 @@ i40e_set_flex_mask_on_pctype(struct i40e_pf *pf,
 	flxinset = (flex_mask->word_mask <<
 		I40E_PRTQF_FD_FLXINSET_INSET_SHIFT) &
 		I40E_PRTQF_FD_FLXINSET_INSET_MASK;
-	I40E_WRITE_REG(hw, I40E_PRTQF_FD_FLXINSET(pctype), flxinset);
+	i40e_write_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype), flxinset);
 
 	for (i = 0; i < nb_bitmask; i++) {
 		fd_mask = (flex_mask->bitmask[i].mask <<
@@ -628,7 +629,7 @@ i40e_set_flex_mask_on_pctype(struct i40e_pf *pf,
 			I40E_FLX_OFFSET_IN_FIELD_VECTOR) <<
 			I40E_PRTQF_FD_MSK_OFFSET_SHIFT) &
 			I40E_PRTQF_FD_MSK_OFFSET_MASK;
-		I40E_WRITE_REG(hw, I40E_PRTQF_FD_MSK(pctype, i), fd_mask);
+		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, i), fd_mask);
 	}
 }
 
@@ -660,9 +661,9 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 	}
 
 	/* enable FDIR filter */
-	val = I40E_READ_REG(hw, I40E_PFQF_CTL_0);
+	val = i40e_read_rx_ctl(hw, I40E_PFQF_CTL_0);
 	val |= I40E_PFQF_CTL_0_FD_ENA_MASK;
-	I40E_WRITE_REG(hw, I40E_PFQF_CTL_0, val);
+	i40e_write_rx_ctl(hw, I40E_PFQF_CTL_0, val);
 
 	i40e_init_flx_pld(pf); /* set flex config to default value */
 

@@ -224,6 +224,12 @@ Drivers
   It generates a MAC address for each VFs during PF host initialization,
   and keeps the VF MAC address the same among different VF launch.
 
+* **i40e: Fixed failure of reading/writing Rx control registers.**
+
+  Fixed i40e issue of failing to read/write rx control registers when
+  under stress with traffic, which might result in application launch
+  failure.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,

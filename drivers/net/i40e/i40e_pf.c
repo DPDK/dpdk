@@ -82,8 +82,8 @@ i40e_pf_vf_queues_mapping(struct i40e_pf_vf *vf)
 	 * VF should use scatter range queues. So, it needn't
 	 * to set QBASE in this register.
 	 */
-	I40E_WRITE_REG(hw, I40E_VSILAN_QBASE(vsi_id),
-	     I40E_VSILAN_QBASE_VSIQTABLE_ENA_MASK);
+	i40e_write_rx_ctl(hw, I40E_VSILAN_QBASE(vsi_id),
+			  I40E_VSILAN_QBASE_VSIQTABLE_ENA_MASK);
 
 	/* Set to enable VFLAN_QTABLE[] registers valid */
 	I40E_WRITE_REG(hw, I40E_VPLAN_MAPENA(vf_id),
@@ -108,7 +108,7 @@ i40e_pf_vf_queues_mapping(struct i40e_pf_vf *vf)
 			q2 = qbase + 2 * i + 1;
 
 		val = (q2 << I40E_VSILAN_QTABLE_QINDEX_1_SHIFT) + q1;
-		I40E_WRITE_REG(hw, I40E_VSILAN_QTABLE(i, vsi_id), val);
+		i40e_write_rx_ctl(hw, I40E_VSILAN_QTABLE(i, vsi_id), val);
 	}
 	I40E_WRITE_FLUSH(hw);
 
