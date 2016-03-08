@@ -296,7 +296,6 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
 		break;
 	case RTE_CRYPTO_AUTH_AES_GCM:
-	case RTE_CRYPTO_AUTH_AES_GMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
 		break;
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
@@ -313,6 +312,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_MD5:
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 	case RTE_CRYPTO_AUTH_AES_CCM:
+	case RTE_CRYPTO_AUTH_AES_GMAC:
 	case RTE_CRYPTO_AUTH_KASUMI_F9:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
