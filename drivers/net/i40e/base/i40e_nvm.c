@@ -220,7 +220,7 @@ enum i40e_status_code i40e_read_nvm_word(struct i40e_hw *hw, u16 offset,
 	enum i40e_status_code ret_code = I40E_SUCCESS;
 
 #ifdef X722_SUPPORT
-	if (hw->mac.type == I40E_MAC_X722) {
+	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE) {
 		ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 		if (!ret_code) {
 			ret_code = i40e_read_nvm_word_aq(hw, offset, data);
@@ -323,7 +323,7 @@ enum i40e_status_code i40e_read_nvm_buffer(struct i40e_hw *hw, u16 offset,
 	enum i40e_status_code ret_code = I40E_SUCCESS;
 
 #ifdef X722_SUPPORT
-	if (hw->mac.type == I40E_MAC_X722) {
+	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE) {
 		ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 		if (!ret_code) {
 			ret_code = i40e_read_nvm_buffer_aq(hw, offset, words,

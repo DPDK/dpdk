@@ -658,6 +658,9 @@ struct i40e_hw {
 	u16 wol_proxy_vsi_seid;
 
 #endif
+#define I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE BIT_ULL(0)
+	u64 flags;
+
 	/* debug mask */
 	u32 debug_mask;
 #ifndef I40E_NDIS_SUPPORT
