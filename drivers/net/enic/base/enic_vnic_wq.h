@@ -69,11 +69,11 @@ static inline void enic_vnic_post_wq(struct vnic_wq *wq,
 	buf->wr_id = wrid;
 
 	buf = buf->next;
-	if (cq_entry)
-		enic_vnic_post_wq_index(wq);
+	wq->ring.desc_avail -= desc_skip_cnt;
 	wq->to_use = buf;
 
-	wq->ring.desc_avail -= desc_skip_cnt;
+	if (cq_entry)
+		enic_vnic_post_wq_index(wq);
 }
 
 #endif /* _ENIC_VNIC_WQ_H_ */
