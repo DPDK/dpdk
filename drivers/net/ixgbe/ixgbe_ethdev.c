@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1451,7 +1451,6 @@ static int
 eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct ixgbe_hw *hw;
-	unsigned i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1469,18 +1468,6 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* Disable the interrupts for VF */
 	ixgbevf_intr_disable(hw);
-
-	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-		ixgbe_dev_rx_queue_release(eth_dev->data->rx_queues[i]);
-		eth_dev->data->rx_queues[i] = NULL;
-	}
-	eth_dev->data->nb_rx_queues = 0;
-
-	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
-		ixgbe_dev_tx_queue_release(eth_dev->data->tx_queues[i]);
-		eth_dev->data->tx_queues[i] = NULL;
-	}
-	eth_dev->data->nb_tx_queues = 0;
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
