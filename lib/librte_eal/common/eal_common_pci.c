@@ -197,7 +197,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		/* call the driver devinit() function */
 		return dr->devinit(dr, dev);
 	}
-	/* return positive value if driver is not found */
+	/* return positive value if driver doesn't support this device */
 	return 1;
 }
 
@@ -252,7 +252,7 @@ rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
 		return 0;
 	}
 
-	/* return positive value if driver is not found */
+	/* return positive value if driver doesn't support this device */
 	return 1;
 }
 
@@ -276,7 +276,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 			/* negative value is an error */
 			return -1;
 		if (rc > 0)
-			/* positive value means driver not found */
+			/* positive value means driver doesn't support it */
 			continue;
 		return 0;
 	}
@@ -303,7 +303,7 @@ pci_detach_all_drivers(struct rte_pci_device *dev)
 			/* negative value is an error */
 			return -1;
 		if (rc > 0)
-			/* positive value means driver not found */
+			/* positive value means driver doesn't support it */
 			continue;
 		return 0;
 	}
