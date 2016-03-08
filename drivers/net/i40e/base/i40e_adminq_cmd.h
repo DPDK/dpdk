@@ -139,6 +139,12 @@ enum i40e_admin_queue_opc {
 	i40e_aqc_opc_list_func_capabilities	= 0x000A,
 	i40e_aqc_opc_list_dev_capabilities	= 0x000B,
 
+#ifdef X722_SUPPORT
+	/* Proxy commands */
+	i40e_aqc_opc_set_proxy_config		= 0x0104,
+	i40e_aqc_opc_set_ns_proxy_table_entry	= 0x0105,
+
+#endif
 	/* LAA */
 	i40e_aqc_opc_mac_address_read	= 0x0107,
 	i40e_aqc_opc_mac_address_write	= 0x0108,
@@ -277,10 +283,6 @@ enum i40e_admin_queue_opc {
 	i40e_aqc_opc_get_rss_key	= 0x0B04,
 	i40e_aqc_opc_get_rss_lut	= 0x0B05,
 #endif
-
-	/* Proxy commands */
-	i40e_aqc_opc_set_proxy_config	= 0x0104,
-	i40e_aqc_opc_set_ns_proxy_table_entry	= 0x0105,
 
 	/* Async Events */
 	i40e_aqc_opc_event_lan_overflow		= 0x1001,
@@ -2466,40 +2468,4 @@ struct i40e_aqc_debug_modify_internals {
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_debug_modify_internals);
 
-#ifdef X722_SUPPORT
-struct i40e_aqc_set_proxy_config {
-	u8 reserved_1[4];
-	u8 reserved_2[4];
-	__le32	address_high;
-	__le32	address_low;
-};
-
-I40E_CHECK_CMD_LENGTH(i40e_aqc_set_proxy_config);
-
-struct i40e_aqc_set_proxy_config_resp {
-	u8 reserved[8];
-	__le32	address_high;
-	__le32	address_low;
-};
-
-I40E_CHECK_CMD_LENGTH(i40e_aqc_set_proxy_config_resp);
-
-struct i40e_aqc_set_ns_proxy_table_entry {
-	u8 reserved_1[4];
-	u8 reserved_2[4];
-	__le32	address_high;
-	__le32	address_low;
-};
-
-I40E_CHECK_CMD_LENGTH(i40e_aqc_set_ns_proxy_table_entry);
-
-struct i40e_aqc_set_ns_proxy_table_entry_resp {
-	u8 reserved_1[4];
-	u8 reserved_2[4];
-	__le32	address_high;
-	__le32	address_low;
-};
-
-I40E_CHECK_CMD_LENGTH(i40e_aqc_set_ns_proxy_table_entry_resp);
-#endif
 #endif /* _I40E_ADMINQ_CMD_H_ */
