@@ -122,6 +122,11 @@ Drivers
   This made impossible the creation of more than one aesni_mb device
   from command line.
 
+* **qat: Fixed AES GCM decryption.**
+
+  Allowed AES GCM on the cryptodev API, but in some cases gave invalid results
+  due to incorrect IV setting.
+
 
 Libraries
 ~~~~~~~~~
