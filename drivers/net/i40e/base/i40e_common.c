@@ -1316,11 +1316,11 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 	grst_del = (rd32(hw, I40E_GLGEN_RSTCTL) &
 			I40E_GLGEN_RSTCTL_GRSTDEL_MASK) >>
 			I40E_GLGEN_RSTCTL_GRSTDEL_SHIFT;
-#ifdef I40E_ESS_SUPPORT
+
 	/* It can take upto 15 secs for GRST steady state */
 	grst_del = grst_del * 20; /* bump it to 16 secs max to be safe */
-#endif
-	for (cnt = 0; cnt < grst_del + 10; cnt++) {
+
+	for (cnt = 0; cnt < grst_del; cnt++) {
 		reg = rd32(hw, I40E_GLGEN_RSTAT);
 		if (!(reg & I40E_GLGEN_RSTAT_DEVSTATE_MASK))
 			break;
