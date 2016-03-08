@@ -1917,7 +1917,9 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 		if ((nb_rx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool) ||
 		    (nb_tx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool)) {
 			PMD_INIT_LOG(ERR, "SRIOV is active,"
-					" queue number must less equal to %d.",
+					" nb_rx_q=%d nb_tx_q=%d queue number"
+					" must be less than or equal to %d.",
+					nb_rx_q, nb_tx_q,
 					RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool);
 			return -EINVAL;
 		}
