@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright 2015 Intel Shannon Ltd. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@
 #include <rte_log.h>
 #include <rte_keepalive.h>
 #include <rte_malloc.h>
+#include <rte_cycles.h>
 
 struct rte_keepalive {
 	/** Core Liveness. */
@@ -139,8 +140,10 @@ rte_keepalive_create(rte_keepalive_failure_callback_t callback,
 void
 rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 {
-	if (id_core < RTE_KEEPALIVE_MAXCORES)
+	if (id_core < RTE_KEEPALIVE_MAXCORES) {
 		keepcfg->active_cores[id_core] = 1;
+		keepcfg->last_alive[id_core] = rte_rdtsc();
+	}
 }
 
 
