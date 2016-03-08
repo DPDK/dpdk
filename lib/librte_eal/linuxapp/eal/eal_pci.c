@@ -362,7 +362,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 		else
 			dev->kdrv = RTE_KDRV_UNKNOWN;
 	} else
-		dev->kdrv = RTE_KDRV_UNKNOWN;
+		dev->kdrv = RTE_KDRV_NONE;
 
 	/* device is valid, add in list (sorted) */
 	if (TAILQ_EMPTY(&pci_device_list)) {
