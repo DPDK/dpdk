@@ -1540,9 +1540,11 @@ u32 i40e_led_get(struct i40e_hw *hw)
 		if (!gpio_val)
 			continue;
 
-		/* ignore gpio LED src mode entries related to the activity LEDs */
-		current_mode = ((gpio_val & I40E_GLGEN_GPIO_CTL_LED_MODE_MASK) >>
-			I40E_GLGEN_GPIO_CTL_LED_MODE_SHIFT);
+		/* ignore gpio LED src mode entries related to the activity
+		 *  LEDs
+		 */
+		current_mode = ((gpio_val & I40E_GLGEN_GPIO_CTL_LED_MODE_MASK)
+				>> I40E_GLGEN_GPIO_CTL_LED_MODE_SHIFT);
 		switch (current_mode) {
 		case I40E_COMBINED_ACTIVITY:
 		case I40E_FILTER_ACTIVITY:
@@ -1586,9 +1588,11 @@ void i40e_led_set(struct i40e_hw *hw, u32 mode, bool blink)
 		if (!gpio_val)
 			continue;
 
-		/* ignore gpio LED src mode entries related to the activity LEDs */
-		current_mode = ((gpio_val & I40E_GLGEN_GPIO_CTL_LED_MODE_MASK) >>
-			I40E_GLGEN_GPIO_CTL_LED_MODE_SHIFT);
+		/* ignore gpio LED src mode entries related to the activity
+		 * LEDs
+		 */
+		current_mode = ((gpio_val & I40E_GLGEN_GPIO_CTL_LED_MODE_MASK)
+				>> I40E_GLGEN_GPIO_CTL_LED_MODE_SHIFT);
 		switch (current_mode) {
 		case I40E_COMBINED_ACTIVITY:
 		case I40E_FILTER_ACTIVITY:
@@ -2821,6 +2825,7 @@ enum i40e_status_code i40e_aq_get_veb_parameters(struct i40e_hw *hw,
 		*vebs_free = LE16_TO_CPU(cmd_resp->vebs_free);
 	if (floating) {
 		u16 flags = LE16_TO_CPU(cmd_resp->veb_flags);
+
 		if (flags & I40E_AQC_ADD_VEB_FLOATING)
 			*floating = true;
 		else
@@ -5471,7 +5476,7 @@ void i40e_add_filter_to_drop_tx_flow_control_frames(struct i40e_hw *hw,
 	u16 ethtype = I40E_FLOW_CONTROL_ETHTYPE;
 	enum i40e_status_code status;
 
-	status = i40e_aq_add_rem_control_packet_filter(hw, 0, ethtype, flag,
+	status = i40e_aq_add_rem_control_packet_filter(hw, NULL, ethtype, flag,
 						       seid, 0, true, NULL,
 						       NULL);
 	if (status)
