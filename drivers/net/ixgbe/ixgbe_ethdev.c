@@ -4033,8 +4033,12 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 
 	ixgbe_dev_free_queues(dev);
 
-	/* reprogram the RAR[0] in case user changed it. */
-	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
+	/**
+	 * Remove the VF MAC address ro ensure
+	 * that the VF traffic goes to the PF
+	 * after stop, close and detach of the VF
+	 **/
+	ixgbevf_remove_mac_addr(dev, 0);
 }
 
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
