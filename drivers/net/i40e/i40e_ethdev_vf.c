@@ -1180,6 +1180,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	int i, err, bufsz;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct ether_addr *p_mac_addr;
 
 	vf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	vf->dev_data = dev->data;
@@ -1249,13 +1250,12 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	vf->vsi.nb_qps = vf->vsi_res->num_queue_pairs;
 	vf->vsi.adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
-	/* check mac addr, if it's not valid, genrate one */
-	if (I40E_SUCCESS != i40e_validate_mac_addr(\
-			vf->vsi_res->default_mac_addr))
-		eth_random_addr(vf->vsi_res->default_mac_addr);
-
-	ether_addr_copy((struct ether_addr *)vf->vsi_res->default_mac_addr,
-					(struct ether_addr *)hw->mac.addr);
+	/* Store the MAC address configured by host, or generate random one */
+	p_mac_addr = (struct ether_addr *)(vf->vsi_res->default_mac_addr);
+	if (is_valid_assigned_ether_addr(p_mac_addr)) /* Configured by host */
+		ether_addr_copy(p_mac_addr, (struct ether_addr *)hw->mac.addr);
+	else
+		eth_random_addr(hw->mac.addr); /* Generate a random one */
 
 	return 0;
 
