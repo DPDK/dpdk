@@ -86,17 +86,17 @@ Most of these differences are summarized below.
                                         e   e       e   e   e                   e
                                         c   c       c   c   c                   c
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-   link status                        X X
+   link status                        X X                                   X
    link status event                  X X
    Rx interrupt                       X X X X
-   queue start/stop                   X X X X
+   queue start/stop                   X X X X                               X
    MTU update
    jumbo frame                        X X X X
-   scattered Rx                       X X X X
+   scattered Rx                       X X X X                               X
    LRO
    TSO                                X X X X
-   promiscuous mode                   X X X X
-   allmulticast mode                  X X X X
+   promiscuous mode                   X X X X                               X
+   allmulticast mode                  X X X X                               X
    unicast MAC filter                 X X X X
    multicast MAC filter               X X X X
    RSS hash                           X X X X
@@ -125,23 +125,23 @@ Most of these differences are summarized below.
    inner L4 checksum                  X   X
    packet type parsing                X   X
    timesync                           X X
-   basic stats                        X X X X
+   basic stats                        X X X X                               X
    extended stats                     X X X X
-   stats per queue
+   stats per queue                                                          X
    EEPROM dump
    registers dump
    multiprocess aware                 X X X X
    BSD nic_uio                        X X X X
    Linux UIO                          X X X X
    Linux VFIO                         X X X X
-   other kdrv
+   other kdrv                                                               X
    ARMv7
    ARMv8
    Power8
    TILE-Gx
    x86-32                             X X X X
-   x86-64                             X X X X
-   usage doc
+   x86-64                             X X X X                               X
+   usage doc                                                                X
    design doc
    perf doc
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
