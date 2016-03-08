@@ -601,7 +601,7 @@ i40e_get_vsi_from_adapter(struct i40e_adapter *adapter)
                 return NULL;
 
 	hw = I40E_DEV_PRIVATE_TO_HW(adapter);
-	if (hw->mac.type == I40E_MAC_VF) {
+	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
 		struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(adapter);
 		return &vf->vsi;
 	} else {

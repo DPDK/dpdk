@@ -2107,7 +2107,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t base, bsf, tc_mapping;
 	int use_def_burst_func = 1;
 
-	if (hw->mac.type == I40E_MAC_VF) {
+	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
 		struct i40e_vf *vf =
 			I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 		vsi = &vf->vsi;
@@ -2147,7 +2147,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
-	if (hw->mac.type == I40E_MAC_VF)
+	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF)
 		rxq->reg_idx = queue_idx;
 	else /* PF device */
 		rxq->reg_idx = vsi->base_queue +
@@ -2324,7 +2324,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t tx_rs_thresh, tx_free_thresh;
 	uint16_t i, base, bsf, tc_mapping;
 
-	if (hw->mac.type == I40E_MAC_VF) {
+	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
 		struct i40e_vf *vf =
 			I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 		vsi = &vf->vsi;
@@ -2452,7 +2452,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->hthresh = tx_conf->tx_thresh.hthresh;
 	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->queue_id = queue_idx;
-	if (hw->mac.type == I40E_MAC_VF)
+	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF)
 		txq->reg_idx = queue_idx;
 	else /* PF device */
 		txq->reg_idx = vsi->base_queue +

@@ -58,7 +58,6 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		switch (hw->device_id) {
 		case I40E_DEV_ID_SFP_XL710:
 		case I40E_DEV_ID_QEMU:
-		case I40E_DEV_ID_KX_A:
 		case I40E_DEV_ID_KX_B:
 		case I40E_DEV_ID_KX_C:
 		case I40E_DEV_ID_QSFP_A:
@@ -74,6 +73,8 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 #ifdef X722_A0_SUPPORT
 		case I40E_DEV_ID_X722_A0:
 #endif
+		case I40E_DEV_ID_KX_X722:
+		case I40E_DEV_ID_QSFP_X722:
 		case I40E_DEV_ID_SFP_X722:
 		case I40E_DEV_ID_1G_BASE_T_X722:
 		case I40E_DEV_ID_10G_BASE_T_X722:
@@ -81,15 +82,22 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 			break;
 #endif
 #ifdef X722_SUPPORT
+#if defined(INTEGRATED_VF) || defined(VF_DRIVER)
 		case I40E_DEV_ID_X722_VF:
 		case I40E_DEV_ID_X722_VF_HV:
+#ifdef X722_A0_SUPPORT
+		case I40E_DEV_ID_X722_A0_VF:
+#endif
 			hw->mac.type = I40E_MAC_X722_VF;
 			break;
-#endif
+#endif /* INTEGRATED_VF || VF_DRIVER */
+#endif /* X722_SUPPORT */
+#if defined(INTEGRATED_VF) || defined(VF_DRIVER)
 		case I40E_DEV_ID_VF:
 		case I40E_DEV_ID_VF_HV:
 			hw->mac.type = I40E_MAC_VF;
 			break;
+#endif
 		default:
 			hw->mac.type = I40E_MAC_GENERIC;
 			break;

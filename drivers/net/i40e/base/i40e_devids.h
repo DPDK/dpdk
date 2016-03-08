@@ -40,7 +40,6 @@ POSSIBILITY OF SUCH DAMAGE.
 /* Device IDs */
 #define I40E_DEV_ID_SFP_XL710		0x1572
 #define I40E_DEV_ID_QEMU		0x1574
-#define I40E_DEV_ID_KX_A		0x157F
 #define I40E_DEV_ID_KX_B		0x1580
 #define I40E_DEV_ID_KX_C		0x1581
 #define I40E_DEV_ID_QSFP_A		0x1583
@@ -50,17 +49,26 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I40E_DEV_ID_20G_KR2		0x1587
 #define I40E_DEV_ID_20G_KR2_A		0x1588
 #define I40E_DEV_ID_10G_BASE_T4		0x1589
+#if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
 #define I40E_DEV_ID_VF			0x154C
 #define I40E_DEV_ID_VF_HV		0x1571
+#endif /* VF_DRIVER */
 #ifdef X722_SUPPORT
 #ifdef X722_A0_SUPPORT
 #define I40E_DEV_ID_X722_A0		0x374C
+#if defined(INTEGRATED_VF) || defined(VF_DRIVER)
+#define I40E_DEV_ID_X722_A0_VF		0x374D
 #endif
+#endif
+#define I40E_DEV_ID_KX_X722		0x37CE
+#define I40E_DEV_ID_QSFP_X722		0x37CF
 #define I40E_DEV_ID_SFP_X722		0x37D0
 #define I40E_DEV_ID_1G_BASE_T_X722	0x37D1
 #define I40E_DEV_ID_10G_BASE_T_X722	0x37D2
+#if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
 #define I40E_DEV_ID_X722_VF		0x37CD
 #define I40E_DEV_ID_X722_VF_HV		0x37D9
+#endif /* VF_DRIVER */
 #endif /* X722_SUPPORT */
 
 #define i40e_is_40G_device(d)		((d) == I40E_DEV_ID_QSFP_A  || \
