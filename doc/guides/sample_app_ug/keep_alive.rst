@@ -1,6 +1,6 @@
 
 ..  BSD LICENSE
-    Copyright(c) 2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -141,17 +141,17 @@ The Keep-Alive/'Liveliness' conceptual scheme:
 The following sections provide some explanation of the code aspects
 that are specific to the Keep Alive sample application.
 
-The heartbeat functionality is initialized with a struct
-rte_heartbeat and the callback function to invoke in the
+The keepalive functionality is initialized with a struct
+rte_keepalive and the callback function to invoke in the
 case of a timeout.
 
 .. code-block:: c
 
     rte_global_keepalive_info = rte_keepalive_create(&dead_core, NULL);
-    if (rte_global_hbeat_info == NULL)
+    if (rte_global_keepalive_info == NULL)
         rte_exit(EXIT_FAILURE, "keepalive_create() failed");
 
-The function that issues the pings hbeat_dispatch_pings()
+The function that issues the pings keepalive_dispatch_pings()
 is configured to run every check_period milliseconds.
 
 .. code-block:: c
@@ -160,7 +160,8 @@ is configured to run every check_period milliseconds.
             (check_period * rte_get_timer_hz()) / 1000,
             PERIODICAL,
             rte_lcore_id(),
-            &hbeat_dispatch_pings, rte_global_keepalive_info
+            &rte_keepalive_dispatch_pings,
+            rte_global_keepalive_info
             ) != 0 )
         rte_exit(EXIT_FAILURE, "Keepalive setup failure.\n");
 
@@ -171,7 +172,7 @@ functionality and the example random failures.
 
 .. code-block:: c
 
-    rte_keepalive_mark_alive(&rte_global_hbeat_info);
+    rte_keepalive_mark_alive(&rte_global_keepalive_info);
     cur_tsc = rte_rdtsc();
 
     /* Die randomly within 7 secs for demo purposes.. */
@@ -183,7 +184,7 @@ The rte_keepalive_mark_alive function simply sets the core state to alive.
 .. code-block:: c
 
     static inline void
-    rte_keepalive_mark_alive(struct rte_heartbeat *keepcfg)
+    rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
     {
-        keepcfg->state_flags[rte_lcore_id()] = 1;
+        keepcfg->state_flags[rte_lcore_id()] = ALIVE;
     }
