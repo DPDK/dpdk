@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -462,7 +462,6 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 			.arg_create = pipeline_port_out_params_convert(
 				&params->port_out[i]),
 			.f_action = NULL,
-			.f_action_bulk = NULL,
 			.arg_ah = NULL,
 		};
 

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -33,12 +33,19 @@
 #ifndef __INCLUDE_PIPELINE_ACTIONS_COMMON_H__
 #define __INCLUDE_PIPELINE_ACTIONS_COMMON_H__
 
+#include <stdint.h>
+
+#include <rte_common.h>
+#include <rte_cycles.h>
+#include <rte_mbuf.h>
+#include <rte_pipeline.h>
+
 #define PIPELINE_PORT_IN_AH(f_ah, f_pkt_work, f_pkt4_work)		\
 static int								\
 f_ah(									\
+	__rte_unused struct rte_pipeline *p,				\
 	struct rte_mbuf **pkts,						\
 	uint32_t n_pkts,						\
-	uint64_t *pkts_mask,						\
 	void *arg)							\
 {									\
 	uint32_t i;							\
@@ -49,21 +56,18 @@ f_ah(									\
 	for ( ; i < n_pkts; i++)					\
 		f_pkt_work(pkts[i], arg);				\
 									\
-	*pkts_mask = (~0LLU) >> (64 - n_pkts);				\
-									\
 	return 0;							\
 }
 
 #define PIPELINE_TABLE_AH_HIT(f_ah, f_pkt_work, f_pkt4_work)		\
 static int								\
 f_ah(									\
+	__rte_unused struct rte_pipeline *p,				\
 	struct rte_mbuf **pkts,						\
-	uint64_t *pkts_mask,						\
+	uint64_t pkts_in_mask,						\
 	struct rte_pipeline_table_entry **entries,			\
 	void *arg)							\
 {									\
-	uint64_t pkts_in_mask = *pkts_mask;				\
-									\
 	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {			\
 		uint64_t n_pkts = __builtin_popcountll(pkts_in_mask);	\
 		uint32_t i;						\
@@ -88,13 +92,12 @@ f_ah(									\
 #define PIPELINE_TABLE_AH_MISS(f_ah, f_pkt_work, f_pkt4_work)		\
 static int								\
 f_ah(									\
+	__rte_unused struct rte_pipeline *p,				\
 	struct rte_mbuf **pkts,						\
-	uint64_t *pkts_mask,						\
+	uint64_t pkts_in_mask,						\
 	struct rte_pipeline_table_entry *entry,				\
 	void *arg)							\
 {									\
-	uint64_t pkts_in_mask = *pkts_mask;				\
-									\
 	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {			\
 		uint64_t n_pkts = __builtin_popcountll(pkts_in_mask);	\
 		uint32_t i;						\
@@ -119,13 +122,14 @@ f_ah(									\
 #define PIPELINE_TABLE_AH_HIT_DROP_TIME(f_ah, f_pkt_work, f_pkt4_work)	\
 static int								\
 f_ah(									\
+	__rte_unused struct rte_pipeline *p,			\
 	struct rte_mbuf **pkts,						\
-	uint64_t *pkts_mask,						\
+	uint64_t pkts_mask,						\
 	struct rte_pipeline_table_entry **entries,			\
 	void *arg)							\
 {									\
-	uint64_t pkts_in_mask = *pkts_mask;				\
-	uint64_t pkts_out_mask = *pkts_mask;				\
+	uint64_t pkts_in_mask = pkts_mask;				\
+	uint64_t pkts_out_mask = pkts_mask;				\
 	uint64_t time = rte_rdtsc();					\
 									\
 	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {			\
@@ -134,13 +138,13 @@ f_ah(									\
 									\
 		for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4) {		\
 			uint64_t mask = f_pkt4_work(&pkts[i],		\
-				&entries[i], arg, time);	\
+				&entries[i], arg, time);		\
 			pkts_out_mask ^= mask << i;			\
 		}							\
 									\
 		for ( ; i < n_pkts; i++) {				\
 			uint64_t mask = f_pkt_work(pkts[i],		\
-				entries[i], arg, time);		\
+				entries[i], arg, time);			\
 			pkts_out_mask ^= mask << i;			\
 		}							\
 	} else								\
@@ -154,20 +158,20 @@ f_ah(									\
 			pkts_out_mask ^= mask << pos;			\
 		}							\
 									\
-	*pkts_mask = pkts_out_mask;					\
 	return 0;							\
 }
 
 #define PIPELINE_TABLE_AH_MISS_DROP_TIME(f_ah, f_pkt_work, f_pkt4_work)	\
 static int								\
 f_ah(									\
+	__rte_unused struct rte_pipeline *p,			\
 	struct rte_mbuf **pkts,						\
-	uint64_t *pkts_mask,						\
+	uint64_t pkts_mask,						\
 	struct rte_pipeline_table_entry *entry,				\
 	void *arg)							\
 {									\
-	uint64_t pkts_in_mask = *pkts_mask;				\
-	uint64_t pkts_out_mask = *pkts_mask;				\
+	uint64_t pkts_in_mask = pkts_mask;				\
+	uint64_t pkts_out_mask = pkts_mask;				\
 	uint64_t time = rte_rdtsc();					\
 									\
 	if ((pkts_in_mask & (pkts_in_mask + 1)) == 0) {			\
@@ -195,7 +199,6 @@ f_ah(									\
 			pkts_out_mask ^= mask << pos;			\
 		}							\
 									\
-	*pkts_mask = pkts_out_mask;					\
 	return 0;							\
 }
 

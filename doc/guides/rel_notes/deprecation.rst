@@ -41,8 +41,3 @@ Deprecation Notices
 
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.
-
-* librte_pipeline: The prototype for the pipeline input port, output port
-  and table action handlers will be updated:
-  the pipeline parameter will be added, the packets mask parameter will be
-  either removed (for input port action handler) or made input-only.

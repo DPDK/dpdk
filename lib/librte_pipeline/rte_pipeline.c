@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -49,14 +49,30 @@
 #define RTE_TABLE_INVALID                                 UINT32_MAX
 
 #ifdef RTE_PIPELINE_STATS_COLLECT
-#define RTE_PIPELINE_STATS_ADD(counter, val) \
-	({ (counter) += (val); })
 
-#define RTE_PIPELINE_STATS_ADD_M(counter, mask) \
-	({ (counter) += __builtin_popcountll(mask); })
+#define RTE_PIPELINE_STATS_AH_DROP_WRITE(p, mask)			\
+	({ (p)->n_pkts_ah_drop = __builtin_popcountll(mask); })
+
+#define RTE_PIPELINE_STATS_AH_DROP_READ(p, counter)			\
+	({ (counter) += (p)->n_pkts_ah_drop; (p)->n_pkts_ah_drop = 0; })
+
+#define RTE_PIPELINE_STATS_TABLE_DROP0(p)				\
+	({ (p)->pkts_drop_mask = (p)->action_mask0[RTE_PIPELINE_ACTION_DROP]; })
+
+#define RTE_PIPELINE_STATS_TABLE_DROP1(p, counter)			\
+({									\
+	uint64_t mask = (p)->action_mask0[RTE_PIPELINE_ACTION_DROP];	\
+	mask ^= (p)->pkts_drop_mask;					\
+	(counter) += __builtin_popcountll(mask);			\
+})
+
 #else
-#define RTE_PIPELINE_STATS_ADD(counter, val)
-#define RTE_PIPELINE_STATS_ADD_M(counter, mask)
+
+#define RTE_PIPELINE_STATS_AH_DROP_WRITE(p, mask)
+#define RTE_PIPELINE_STATS_AH_DROP_READ(p, counter)
+#define RTE_PIPELINE_STATS_TABLE_DROP0(p)
+#define RTE_PIPELINE_STATS_TABLE_DROP1(p, counter)
+
 #endif
 
 struct rte_port_in {
@@ -75,6 +91,7 @@ struct rte_port_in {
 	/* List of enabled ports */
 	struct rte_port_in *next;
 
+	/* Statistics */
 	uint64_t n_pkts_dropped_by_ah;
 };
 
@@ -82,12 +99,12 @@ struct rte_port_out {
 	/* Input parameters */
 	struct rte_port_out_ops ops;
 	rte_pipeline_port_out_action_handler f_action;
-	rte_pipeline_port_out_action_handler_bulk f_action_bulk;
 	void *arg_ah;
 
 	/* Handle to low-level port */
 	void *h_port;
 
+	/* Statistics */
 	uint64_t n_pkts_dropped_by_ah;
 };
 
@@ -106,7 +123,7 @@ struct rte_table {
 	/* Handle to the low-level table object */
 	void *h_table;
 
-	/* Stats for this table. */
+	/* Statistics */
 	uint64_t n_pkts_dropped_by_lkp_hit_ah;
 	uint64_t n_pkts_dropped_by_lkp_miss_ah;
 	uint64_t n_pkts_dropped_lkp_hit;
@@ -133,13 +150,16 @@ struct rte_pipeline {
 
 	/* List of enabled ports */
 	uint64_t enabled_port_in_mask;
-	struct rte_port_in *port_in_first;
+	struct rte_port_in *port_in_next;
 
 	/* Pipeline run structures */
 	struct rte_mbuf *pkts[RTE_PORT_IN_BURST_SIZE_MAX];
 	struct rte_pipeline_table_entry *entries[RTE_PORT_IN_BURST_SIZE_MAX];
 	uint64_t action_mask0[RTE_PIPELINE_ACTIONS];
 	uint64_t action_mask1[RTE_PIPELINE_ACTIONS];
+	uint64_t pkts_mask;
+	uint64_t n_pkts_ah_drop;
+	uint64_t pkts_drop_mask;
 } __rte_cache_aligned;
 
 static inline uint32_t
@@ -234,7 +254,9 @@ rte_pipeline_create(struct rte_pipeline_params *params)
 	p->num_ports_out = 0;
 	p->num_tables = 0;
 	p->enabled_port_in_mask = 0;
-	p->port_in_first = NULL;
+	p->port_in_next = NULL;
+	p->pkts_mask = 0;
+	p->n_pkts_ah_drop = 0;
 
 	return p;
 }
@@ -759,9 +781,6 @@ rte_pipeline_port_out_check_params(struct rte_pipeline *p,
 		struct rte_pipeline_port_out_params *params,
 		uint32_t *port_id)
 {
-	rte_pipeline_port_out_action_handler f_ah;
-	rte_pipeline_port_out_action_handler_bulk f_ah_bulk;
-
 	if (p == NULL) {
 		RTE_LOG(ERR, PIPELINE, "%s: pipeline parameter NULL\n",
 			__func__);
@@ -794,22 +813,13 @@ rte_pipeline_port_out_check_params(struct rte_pipeline *p,
 
 	if (params->ops->f_tx == NULL) {
 		RTE_LOG(ERR, PIPELINE,
-				"%s: f_tx function pointer NULL\n", __func__);
+			"%s: f_tx function pointer NULL\n", __func__);
 		return -EINVAL;
 	}
 
 	if (params->ops->f_tx_bulk == NULL) {
 		RTE_LOG(ERR, PIPELINE,
 			"%s: f_tx_bulk function pointer NULL\n", __func__);
-		return -EINVAL;
-	}
-
-	f_ah = params->f_action;
-	f_ah_bulk = params->f_action_bulk;
-	if (((f_ah != NULL) && (f_ah_bulk == NULL)) ||
-	    ((f_ah == NULL) && (f_ah_bulk != NULL))) {
-		RTE_LOG(ERR, PIPELINE, "%s: Action handlers have to be either"
-			"both enabled or both disabled\n", __func__);
 		return -EINVAL;
 	}
 
@@ -905,7 +915,6 @@ rte_pipeline_port_out_create(struct rte_pipeline *p,
 	/* Save input parameters */
 	memcpy(&port->ops, params->ops, sizeof(struct rte_port_out_ops));
 	port->f_action = params->f_action;
-	port->f_action_bulk = params->f_action_bulk;
 	port->arg_ah = params->arg_ah;
 
 	/* Initialize port internal data structure */
@@ -959,9 +968,8 @@ int
 rte_pipeline_port_in_enable(struct rte_pipeline *p, uint32_t port_id)
 {
 	struct rte_port_in *port, *port_prev, *port_next;
-	struct rte_port_in *port_first, *port_last;
 	uint64_t port_mask;
-	uint32_t port_prev_id, port_next_id, port_first_id, port_last_id;
+	uint32_t port_prev_id, port_next_id;
 
 	/* Check input arguments */
 	if (p == NULL) {
@@ -977,6 +985,8 @@ rte_pipeline_port_in_enable(struct rte_pipeline *p, uint32_t port_id)
 		return -EINVAL;
 	}
 
+	port = &p->ports_in[port_id];
+
 	/* Return if current input port is already enabled */
 	port_mask = 1LLU << port_id;
 	if (p->enabled_port_in_mask & port_mask)
@@ -990,20 +1000,13 @@ rte_pipeline_port_in_enable(struct rte_pipeline *p, uint32_t port_id)
 
 	port_prev = &p->ports_in[port_prev_id];
 	port_next = &p->ports_in[port_next_id];
-	port = &p->ports_in[port_id];
 
 	port_prev->next = port;
 	port->next = port_next;
 
-	/* Update the first and last input ports in the chain */
-	port_first_id = __builtin_ctzll(p->enabled_port_in_mask);
-	port_last_id = 63 - __builtin_clzll(p->enabled_port_in_mask);
-
-	port_first = &p->ports_in[port_first_id];
-	port_last = &p->ports_in[port_last_id];
-
-	p->port_in_first = port_first;
-	port_last->next = NULL;
+	/* Check if list of enabled ports was previously empty */
+	if (p->enabled_port_in_mask == port_mask)
+		p->port_in_next = port;
 
 	return 0;
 }
@@ -1011,9 +1014,9 @@ rte_pipeline_port_in_enable(struct rte_pipeline *p, uint32_t port_id)
 int
 rte_pipeline_port_in_disable(struct rte_pipeline *p, uint32_t port_id)
 {
-	struct rte_port_in *port_prev, *port_next, *port_first, *port_last;
+	struct rte_port_in *port, *port_prev, *port_next;
 	uint64_t port_mask;
-	uint32_t port_prev_id, port_next_id, port_first_id, port_last_id;
+	uint32_t port_prev_id, port_next_id;
 
 	/* Check input arguments */
 	if (p == NULL) {
@@ -1028,15 +1031,18 @@ rte_pipeline_port_in_disable(struct rte_pipeline *p, uint32_t port_id)
 		return -EINVAL;
 	}
 
+	port = &p->ports_in[port_id];
+
 	/* Return if current input port is already disabled */
 	port_mask = 1LLU << port_id;
 	if ((p->enabled_port_in_mask & port_mask) == 0)
 		return 0;
 
+	p->enabled_port_in_mask &= ~port_mask;
+
 	/* Return if no other enabled ports */
-	if (__builtin_popcountll(p->enabled_port_in_mask) == 1) {
-		p->enabled_port_in_mask &= ~port_mask;
-		p->port_in_first = NULL;
+	if (p->enabled_port_in_mask == 0) {
+		p->port_in_next = NULL;
 
 		return 0;
 	}
@@ -1049,17 +1055,10 @@ rte_pipeline_port_in_disable(struct rte_pipeline *p, uint32_t port_id)
 	port_next = &p->ports_in[port_next_id];
 
 	port_prev->next = port_next;
-	p->enabled_port_in_mask &= ~port_mask;
 
-	/* Update the first and last input ports in the chain */
-	port_first_id = __builtin_ctzll(p->enabled_port_in_mask);
-	port_last_id = 63 - __builtin_clzll(p->enabled_port_in_mask);
-
-	port_first = &p->ports_in[port_first_id];
-	port_last = &p->ports_in[port_last_id];
-
-	p->port_in_first = port_first;
-	port_last->next = NULL;
+	/* Check if the port which has just been disabled is next to serve */
+	if (port == p->port_in_next)
+		p->port_in_next = port_next;
 
 	return 0;
 }
@@ -1149,28 +1148,32 @@ rte_pipeline_compute_masks(struct rte_pipeline *p, uint64_t pkts_mask)
 
 static inline void
 rte_pipeline_action_handler_port_bulk(struct rte_pipeline *p,
-		uint64_t pkts_mask, uint32_t port_id)
+	uint64_t pkts_mask, uint32_t port_id)
 {
 	struct rte_port_out *port_out = &p->ports_out[port_id];
 
-	/* Output port user actions */
-	if (port_out->f_action_bulk != NULL) {
-		uint64_t mask = pkts_mask;
+	p->pkts_mask = pkts_mask;
 
-		port_out->f_action_bulk(p->pkts, &pkts_mask, port_out->arg_ah);
-		p->action_mask0[RTE_PIPELINE_ACTION_DROP] |= pkts_mask ^  mask;
-		RTE_PIPELINE_STATS_ADD_M(port_out->n_pkts_dropped_by_ah,
-				pkts_mask ^  mask);
+	/* Output port user actions */
+	if (port_out->f_action != NULL) {
+		port_out->f_action(p, p->pkts, pkts_mask, port_out->arg_ah);
+
+		RTE_PIPELINE_STATS_AH_DROP_READ(p,
+			port_out->n_pkts_dropped_by_ah);
 	}
 
 	/* Output port TX */
-	if (pkts_mask != 0)
-		port_out->ops.f_tx_bulk(port_out->h_port, p->pkts, pkts_mask);
+	if (p->pkts_mask != 0)
+		port_out->ops.f_tx_bulk(port_out->h_port,
+			p->pkts,
+			p->pkts_mask);
 }
 
 static inline void
 rte_pipeline_action_handler_port(struct rte_pipeline *p, uint64_t pkts_mask)
 {
+	p->pkts_mask = pkts_mask;
+
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
 		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
 		uint32_t i;
@@ -1185,18 +1188,18 @@ rte_pipeline_action_handler_port(struct rte_pipeline *p, uint64_t pkts_mask)
 			if (port_out->f_action == NULL) /* Output port TX */
 				port_out->ops.f_tx(port_out->h_port, pkt);
 			else {
-				uint64_t pkt_mask = 1LLU;
+				uint64_t pkt_mask = 1LLU << i;
 
-				port_out->f_action(pkt, &pkt_mask,
+				port_out->f_action(p,
+					p->pkts,
+					pkt_mask,
 					port_out->arg_ah);
-				p->action_mask0[RTE_PIPELINE_ACTION_DROP] |=
-					(pkt_mask ^ 1LLU) << i;
 
-				RTE_PIPELINE_STATS_ADD(port_out->n_pkts_dropped_by_ah,
-						pkt_mask ^ 1LLU);
+				RTE_PIPELINE_STATS_AH_DROP_READ(p,
+					port_out->n_pkts_dropped_by_ah);
 
 				/* Output port TX */
-				if (pkt_mask != 0)
+				if (pkt_mask & p->pkts_mask)
 					port_out->ops.f_tx(port_out->h_port,
 						pkt);
 			}
@@ -1221,18 +1224,16 @@ rte_pipeline_action_handler_port(struct rte_pipeline *p, uint64_t pkts_mask)
 			if (port_out->f_action == NULL) /* Output port TX */
 				port_out->ops.f_tx(port_out->h_port, pkt);
 			else {
-				pkt_mask = 1LLU;
-
-				port_out->f_action(pkt, &pkt_mask,
+				port_out->f_action(p,
+					p->pkts,
+					pkt_mask,
 					port_out->arg_ah);
-				p->action_mask0[RTE_PIPELINE_ACTION_DROP] |=
-					(pkt_mask ^ 1LLU) << i;
 
-				RTE_PIPELINE_STATS_ADD(port_out->n_pkts_dropped_by_ah,
-						pkt_mask ^ 1LLU);
+				RTE_PIPELINE_STATS_AH_DROP_READ(p,
+					port_out->n_pkts_dropped_by_ah);
 
 				/* Output port TX */
-				if (pkt_mask != 0)
+				if (pkt_mask & p->pkts_mask)
 					port_out->ops.f_tx(port_out->h_port,
 						pkt);
 			}
@@ -1244,6 +1245,8 @@ static inline void
 rte_pipeline_action_handler_port_meta(struct rte_pipeline *p,
 	uint64_t pkts_mask)
 {
+	p->pkts_mask = pkts_mask;
+
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
 		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
 		uint32_t i;
@@ -1260,18 +1263,18 @@ rte_pipeline_action_handler_port_meta(struct rte_pipeline *p,
 			if (port_out->f_action == NULL) /* Output port TX */
 				port_out->ops.f_tx(port_out->h_port, pkt);
 			else {
-				uint64_t pkt_mask = 1LLU;
+				uint64_t pkt_mask = 1LLU << i;
 
-				port_out->f_action(pkt, &pkt_mask,
+				port_out->f_action(p,
+					p->pkts,
+					pkt_mask,
 					port_out->arg_ah);
-				p->action_mask0[RTE_PIPELINE_ACTION_DROP] |=
-					(pkt_mask ^ 1LLU) << i;
 
-				RTE_PIPELINE_STATS_ADD(port_out->n_pkts_dropped_by_ah,
-						pkt_mask ^ 1ULL);
+				RTE_PIPELINE_STATS_AH_DROP_READ(p,
+					port_out->n_pkts_dropped_by_ah);
 
 				/* Output port TX */
-				if (pkt_mask != 0)
+				if (pkt_mask & p->pkts_mask)
 					port_out->ops.f_tx(port_out->h_port,
 						pkt);
 			}
@@ -1297,18 +1300,16 @@ rte_pipeline_action_handler_port_meta(struct rte_pipeline *p,
 			if (port_out->f_action == NULL) /* Output port TX */
 				port_out->ops.f_tx(port_out->h_port, pkt);
 			else {
-				pkt_mask = 1LLU;
-
-				port_out->f_action(pkt, &pkt_mask,
+				port_out->f_action(p,
+					p->pkts,
+					pkt_mask,
 					port_out->arg_ah);
-				p->action_mask0[RTE_PIPELINE_ACTION_DROP] |=
-					(pkt_mask ^ 1LLU) << i;
 
-				RTE_PIPELINE_STATS_ADD(port_out->n_pkts_dropped_by_ah,
-						pkt_mask ^ 1ULL);
+				RTE_PIPELINE_STATS_AH_DROP_READ(p,
+					port_out->n_pkts_dropped_by_ah);
 
 				/* Output port TX */
-				if (pkt_mask != 0)
+				if (pkt_mask & p->pkts_mask)
 					port_out->ops.f_tx(port_out->h_port,
 						pkt);
 			}
@@ -1342,136 +1343,140 @@ rte_pipeline_action_handler_drop(struct rte_pipeline *p, uint64_t pkts_mask)
 int
 rte_pipeline_run(struct rte_pipeline *p)
 {
-	struct rte_port_in *port_in;
+	struct rte_port_in *port_in = p->port_in_next;
+	uint32_t n_pkts, table_id;
 
-	for (port_in = p->port_in_first; port_in != NULL;
-		port_in = port_in->next) {
-		uint64_t pkts_mask;
-		uint32_t n_pkts, table_id;
+	if (port_in == NULL)
+		return 0;
 
-		/* Input port RX */
-		n_pkts = port_in->ops.f_rx(port_in->h_port, p->pkts,
-			port_in->burst_size);
-		if (n_pkts == 0)
-			continue;
-
-		pkts_mask = RTE_LEN2MASK(n_pkts, uint64_t);
-		p->action_mask0[RTE_PIPELINE_ACTION_DROP] = 0;
-		p->action_mask0[RTE_PIPELINE_ACTION_PORT] = 0;
-		p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] = 0;
-		p->action_mask0[RTE_PIPELINE_ACTION_TABLE] = 0;
-
-		/* Input port user actions */
-		if (port_in->f_action != NULL) {
-			uint64_t mask = pkts_mask;
-
-			port_in->f_action(p->pkts, n_pkts, &pkts_mask, port_in->arg_ah);
-			mask ^= pkts_mask;
-			p->action_mask0[RTE_PIPELINE_ACTION_DROP] |= mask;
-			RTE_PIPELINE_STATS_ADD_M(port_in->n_pkts_dropped_by_ah, mask);
-		}
-
-		/* Table */
-		for (table_id = port_in->table_id; pkts_mask != 0; ) {
-			struct rte_table *table;
-			uint64_t lookup_hit_mask, lookup_miss_mask;
-
-			/* Lookup */
-			table = &p->tables[table_id];
-			table->ops.f_lookup(table->h_table, p->pkts, pkts_mask,
-					&lookup_hit_mask, (void **) p->entries);
-			lookup_miss_mask = pkts_mask & (~lookup_hit_mask);
-
-			/* Lookup miss */
-			if (lookup_miss_mask != 0) {
-				struct rte_pipeline_table_entry *default_entry =
-					table->default_entry;
-
-				/* Table user actions */
-				if (table->f_action_miss != NULL) {
-					uint64_t mask = lookup_miss_mask;
-
-					table->f_action_miss(p->pkts,
-						&lookup_miss_mask,
-						default_entry, table->arg_ah);
-					mask ^= lookup_miss_mask;
-					p->action_mask0[RTE_PIPELINE_ACTION_DROP] |= mask;
-					RTE_PIPELINE_STATS_ADD_M(
-						table->n_pkts_dropped_by_lkp_miss_ah, mask);
-				}
-
-				/* Table reserved actions */
-				if ((default_entry->action ==
-					RTE_PIPELINE_ACTION_PORT) &&
-					(lookup_miss_mask != 0))
-					rte_pipeline_action_handler_port_bulk(p,
-						lookup_miss_mask,
-						default_entry->port_id);
-				else {
-					uint32_t pos = default_entry->action;
-
-					p->action_mask0[pos] = lookup_miss_mask;
-					if (pos == RTE_PIPELINE_ACTION_DROP) {
-						RTE_PIPELINE_STATS_ADD_M(table->n_pkts_dropped_lkp_miss,
-							lookup_miss_mask);
-					}
-				}
-			}
-
-			/* Lookup hit */
-			if (lookup_hit_mask != 0) {
-				/* Table user actions */
-				if (table->f_action_hit != NULL) {
-					uint64_t mask = lookup_hit_mask;
-
-					table->f_action_hit(p->pkts,
-						&lookup_hit_mask,
-						p->entries, table->arg_ah);
-					mask ^= lookup_hit_mask;
-					p->action_mask0[RTE_PIPELINE_ACTION_DROP] |= mask;
-					RTE_PIPELINE_STATS_ADD_M(
-						table->n_pkts_dropped_by_lkp_hit_ah, mask);
-				}
-
-				/* Table reserved actions */
-				rte_pipeline_compute_masks(p, lookup_hit_mask);
-				p->action_mask0[RTE_PIPELINE_ACTION_DROP] |=
-					p->action_mask1[
-						RTE_PIPELINE_ACTION_DROP];
-				p->action_mask0[RTE_PIPELINE_ACTION_PORT] |=
-					p->action_mask1[
-						RTE_PIPELINE_ACTION_PORT];
-				p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] |=
-					p->action_mask1[
-						RTE_PIPELINE_ACTION_PORT_META];
-				p->action_mask0[RTE_PIPELINE_ACTION_TABLE] |=
-					p->action_mask1[
-						RTE_PIPELINE_ACTION_TABLE];
-
-				RTE_PIPELINE_STATS_ADD_M(table->n_pkts_dropped_lkp_hit,
-						p->action_mask1[RTE_PIPELINE_ACTION_DROP]);
-			}
-
-			/* Prepare for next iteration */
-			pkts_mask = p->action_mask0[RTE_PIPELINE_ACTION_TABLE];
-			table_id = table->table_next_id;
-			p->action_mask0[RTE_PIPELINE_ACTION_TABLE] = 0;
-		}
-
-		/* Table reserved action PORT */
-		rte_pipeline_action_handler_port(p,
-				p->action_mask0[RTE_PIPELINE_ACTION_PORT]);
-
-		/* Table reserved action PORT META */
-		rte_pipeline_action_handler_port_meta(p,
-				p->action_mask0[RTE_PIPELINE_ACTION_PORT_META]);
-
-		/* Table reserved action DROP */
-		rte_pipeline_action_handler_drop(p,
-				p->action_mask0[RTE_PIPELINE_ACTION_DROP]);
+	/* Input port RX */
+	n_pkts = port_in->ops.f_rx(port_in->h_port, p->pkts,
+		port_in->burst_size);
+	if (n_pkts == 0) {
+		p->port_in_next = port_in->next;
+		return 0;
 	}
 
-	return 0;
+	p->pkts_mask = RTE_LEN2MASK(n_pkts, uint64_t);
+	p->action_mask0[RTE_PIPELINE_ACTION_DROP] = 0;
+	p->action_mask0[RTE_PIPELINE_ACTION_PORT] = 0;
+	p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] = 0;
+	p->action_mask0[RTE_PIPELINE_ACTION_TABLE] = 0;
+
+	/* Input port user actions */
+	if (port_in->f_action != NULL) {
+		port_in->f_action(p, p->pkts, n_pkts, port_in->arg_ah);
+
+		RTE_PIPELINE_STATS_AH_DROP_READ(p,
+			port_in->n_pkts_dropped_by_ah);
+	}
+
+	/* Table */
+	for (table_id = port_in->table_id; p->pkts_mask != 0; ) {
+		struct rte_table *table;
+		uint64_t lookup_hit_mask, lookup_miss_mask;
+
+		/* Lookup */
+		table = &p->tables[table_id];
+		table->ops.f_lookup(table->h_table, p->pkts, p->pkts_mask,
+			&lookup_hit_mask, (void **) p->entries);
+		lookup_miss_mask = p->pkts_mask & (~lookup_hit_mask);
+
+		/* Lookup miss */
+		if (lookup_miss_mask != 0) {
+			struct rte_pipeline_table_entry *default_entry =
+				table->default_entry;
+
+			p->pkts_mask = lookup_miss_mask;
+
+			/* Table user actions */
+			if (table->f_action_miss != NULL) {
+				table->f_action_miss(p,
+					p->pkts,
+					lookup_miss_mask,
+					default_entry,
+					table->arg_ah);
+
+				RTE_PIPELINE_STATS_AH_DROP_READ(p,
+					table->n_pkts_dropped_by_lkp_miss_ah);
+			}
+
+			/* Table reserved actions */
+			if ((default_entry->action == RTE_PIPELINE_ACTION_PORT) &&
+				(p->pkts_mask != 0))
+				rte_pipeline_action_handler_port_bulk(p,
+					p->pkts_mask,
+					default_entry->port_id);
+			else {
+				uint32_t pos = default_entry->action;
+
+				RTE_PIPELINE_STATS_TABLE_DROP0(p);
+
+				p->action_mask0[pos] |= p->pkts_mask;
+
+				RTE_PIPELINE_STATS_TABLE_DROP1(p,
+					table->n_pkts_dropped_lkp_miss);
+			}
+		}
+
+		/* Lookup hit */
+		if (lookup_hit_mask != 0) {
+			p->pkts_mask = lookup_hit_mask;
+
+			/* Table user actions */
+			if (table->f_action_hit != NULL) {
+				table->f_action_hit(p,
+					p->pkts,
+					lookup_hit_mask,
+					p->entries,
+					table->arg_ah);
+
+				RTE_PIPELINE_STATS_AH_DROP_READ(p,
+					table->n_pkts_dropped_by_lkp_hit_ah);
+			}
+
+			/* Table reserved actions */
+			RTE_PIPELINE_STATS_TABLE_DROP0(p);
+			rte_pipeline_compute_masks(p, p->pkts_mask);
+			p->action_mask0[RTE_PIPELINE_ACTION_DROP] |=
+				p->action_mask1[
+					RTE_PIPELINE_ACTION_DROP];
+			p->action_mask0[RTE_PIPELINE_ACTION_PORT] |=
+				p->action_mask1[
+					RTE_PIPELINE_ACTION_PORT];
+			p->action_mask0[RTE_PIPELINE_ACTION_PORT_META] |=
+				p->action_mask1[
+					RTE_PIPELINE_ACTION_PORT_META];
+			p->action_mask0[RTE_PIPELINE_ACTION_TABLE] |=
+				p->action_mask1[
+					RTE_PIPELINE_ACTION_TABLE];
+
+			RTE_PIPELINE_STATS_TABLE_DROP1(p,
+				table->n_pkts_dropped_lkp_hit);
+		}
+
+		/* Prepare for next iteration */
+		p->pkts_mask = p->action_mask0[RTE_PIPELINE_ACTION_TABLE];
+		table_id = table->table_next_id;
+		p->action_mask0[RTE_PIPELINE_ACTION_TABLE] = 0;
+	}
+
+	/* Table reserved action PORT */
+	rte_pipeline_action_handler_port(p,
+		p->action_mask0[RTE_PIPELINE_ACTION_PORT]);
+
+	/* Table reserved action PORT META */
+	rte_pipeline_action_handler_port_meta(p,
+		p->action_mask0[RTE_PIPELINE_ACTION_PORT_META]);
+
+	/* Table reserved action DROP */
+	rte_pipeline_action_handler_drop(p,
+		p->action_mask0[RTE_PIPELINE_ACTION_DROP]);
+
+	/* Pick candidate for next port IN to serve */
+	p->port_in_next = port_in->next;
+
+	return (int) n_pkts;
 }
 
 int
@@ -1498,25 +1503,11 @@ rte_pipeline_flush(struct rte_pipeline *p)
 
 int
 rte_pipeline_port_out_packet_insert(struct rte_pipeline *p,
-		uint32_t port_id, struct rte_mbuf *pkt)
+	uint32_t port_id, struct rte_mbuf *pkt)
 {
 	struct rte_port_out *port_out = &p->ports_out[port_id];
 
-	/* Output port user actions */
-	if (port_out->f_action == NULL)
-		port_out->ops.f_tx(port_out->h_port, pkt); /* Output port TX */
-	else {
-		uint64_t pkt_mask = 1LLU;
-
-		port_out->f_action(pkt, &pkt_mask, port_out->arg_ah);
-
-		if (pkt_mask != 0) /* Output port TX */
-			port_out->ops.f_tx(port_out->h_port, pkt);
-		else {
-			rte_pktmbuf_free(pkt);
-			RTE_PIPELINE_STATS_ADD(port_out->n_pkts_dropped_by_ah, 1);
-		}
-	}
+	port_out->ops.f_tx(port_out->h_port, pkt); /* Output port TX */
 
 	return 0;
 }

@@ -433,7 +433,8 @@ test_pipeline_single_filter(int test_type, int expected_count)
 	RTE_LOG(INFO, PIPELINE, "%s: **** Running %s test\n",
 		__func__, pipeline_test_names[test_type]);
 	/* Run pipeline once */
-	rte_pipeline_run(p);
+	for (i = 0; i < N_PORTS; i++)
+		rte_pipeline_run(p);
 
 
 	ret = rte_pipeline_flush(NULL);
@@ -469,7 +470,8 @@ test_pipeline_single_filter(int test_type, int expected_count)
 		}
 
 	/* Run pipeline once */
-	rte_pipeline_run(p);
+	for (i = 0; i < N_PORTS; i++)
+		rte_pipeline_run(p);
 
    /*
 	* need to flush the pipeline, as there may be less hits than the burst
@@ -535,6 +537,7 @@ test_table_pipeline(void)
 	setup_pipeline(e_TEST_STUB);
 	if (test_pipeline_single_filter(e_TEST_STUB, 4) < 0)
 		return -1;
+#if 0
 
 	/* TEST - one packet per port */
 	action_handler_hit = NULL;
@@ -581,6 +584,8 @@ test_table_pipeline(void)
 	if (test_pipeline_single_filter(e_TEST_STUB, 2) < 0)
 		return -1;
 	connect_miss_action_to_table = 0;
+
+#endif
 
 	if (check_pipeline_invalid_params()) {
 		RTE_LOG(INFO, PIPELINE, "%s: Check pipeline invalid params "

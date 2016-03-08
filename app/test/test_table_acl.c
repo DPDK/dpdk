@@ -702,7 +702,8 @@ test_pipeline_single_filter(int expected_count)
 	}
 
 	/* Run pipeline once */
-	rte_pipeline_run(p);
+	for (i = 0; i< N_PORTS; i++)
+		rte_pipeline_run(p);
 
 	rte_pipeline_flush(p);
 

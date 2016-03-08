@@ -158,6 +158,10 @@ This section should contain API changes. Sample format:
   exactly the amount of memory which is necessary to hold application’s rules.
   The previous ABI is kept for compatibility.
 
+* The prototype for the pipeline input port, output port and table action
+  handlers are updated: the pipeline parameter is added,
+  the packets mask parameter has been either removed or made input-only.
+
 
 ABI Changes
 -----------
@@ -197,7 +201,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_mbuf.so.2
      librte_mempool.so.1
      librte_meter.so.1
-     librte_pipeline.so.2
+   + librte_pipeline.so.3
      librte_pmd_bond.so.1
      librte_pmd_ring.so.2
      librte_port.so.2

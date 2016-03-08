@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -94,7 +94,6 @@ app_main_loop_worker_pipeline_stub(void) {
 			.ops = &rte_port_ring_writer_ops,
 			.arg_create = (void *) &port_ring_params,
 			.f_action = NULL,
-			.f_action_bulk = NULL,
 			.arg_ah = NULL,
 		};
 
