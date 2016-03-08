@@ -65,3 +65,19 @@ The FM10000 family of NICS support a maximum of a 15K jumbo frame. The value
 is fixed and cannot be changed. So, even when the ``rxmode.max_rx_pkt_len``
 member of ``struct rte_eth_conf`` is set to a value lower than 15364, frames
 up to 15364 bytes can still reach the host interface.
+
+Statistic Polling Frequency
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The FM10000 NICs expose a set of statistics via the PCI BARs. These statistics
+are read from the hardware registers when ``rte_eth_stats_get()`` or
+``rte_eth_xstats_get()`` is called. The packet counting registers are 32 bits
+while the byte counting registers are 48 bits. As a result, the statistics must
+be polled regularly in order to ensure the consistency of the returned reads.
+
+Given the PCIe Gen3 x8, about 50Gbps of traffic can occur. With 64 byte packets
+this gives almost 100 million packets/second, causing 32 bit integer overflow
+after approx 40 seconds. To ensure these overflows are detected and accounted
+for in the statistics, it is necessary to read statistic regularly. It is
+suggested to read stats every 20 seconds, which will ensure the statistics
+are accurate.
