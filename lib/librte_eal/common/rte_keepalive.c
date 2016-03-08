@@ -70,7 +70,6 @@ struct rte_keepalive {
 	uint64_t tsc_mhz;
 };
 
-
 static void
 print_trace(const char *msg, struct rte_keepalive *keepcfg, int idx_core)
 {
@@ -80,7 +79,6 @@ print_trace(const char *msg, struct rte_keepalive *keepcfg, int idx_core)
 		/ rte_get_tsc_hz()
 	      );
 }
-
 
 void
 rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
@@ -117,7 +115,6 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 	}
 }
 
-
 struct rte_keepalive *
 rte_keepalive_create(rte_keepalive_failure_callback_t callback,
 	void *data)
@@ -136,7 +133,6 @@ rte_keepalive_create(rte_keepalive_failure_callback_t callback,
 	return keepcfg;
 }
 
-
 void
 rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 {
@@ -145,7 +141,6 @@ rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 		keepcfg->last_alive[id_core] = rte_rdtsc();
 	}
 }
-
 
 void
 rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)

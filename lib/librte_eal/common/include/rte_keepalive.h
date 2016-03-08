@@ -48,7 +48,6 @@
 #define RTE_KEEPALIVE_MAXCORES RTE_MAX_LCORE
 #endif
 
-
 /**
  * Keepalive failure callback.
  *
@@ -59,13 +58,11 @@ typedef void (*rte_keepalive_failure_callback_t)(
 	void *data,
 	const int id_core);
 
-
 /**
  * Keepalive state structure.
  * @internal
  */
 struct rte_keepalive;
-
 
 /**
  * Initialise keepalive sub-system.
@@ -80,14 +77,12 @@ struct rte_keepalive *rte_keepalive_create(
 	rte_keepalive_failure_callback_t callback,
 	void *data);
 
-
 /**
  * Checks & handles keepalive state of monitored cores.
  * @param *ptr_timer Triggering timer (unused)
  * @param *ptr_data  Data pointer (keepalive structure)
  */
 void rte_keepalive_dispatch_pings(void *ptr_timer, void *ptr_data);
-
 
 /**
  * Registers a core for keepalive checks.
@@ -99,7 +94,6 @@ void rte_keepalive_dispatch_pings(void *ptr_timer, void *ptr_data);
 void rte_keepalive_register_core(struct rte_keepalive *keepcfg,
 	const int id_core);
 
-
 /**
  * Per-core keepalive check.
  * @param *keepcfg
@@ -110,6 +104,5 @@ void rte_keepalive_register_core(struct rte_keepalive *keepcfg,
  */
 void
 rte_keepalive_mark_alive(struct rte_keepalive *keepcfg);
-
 
 #endif /* _KEEPALIVE_H_ */
