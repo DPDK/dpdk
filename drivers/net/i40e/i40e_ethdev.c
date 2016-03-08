@@ -137,13 +137,6 @@
 #define I40E_DEFAULT_DCB_APP_NUM    1
 #define I40E_DEFAULT_DCB_APP_PRIO   3
 
-#define I40E_PRTQF_FD_INSET(_i, _j)  (0x00250000 + ((_i) * 64 + (_j) * 32))
-#define I40E_GLQF_FD_MSK(_i, _j)     (0x00267200 + ((_i) * 4 + (_j) * 8))
-#define I40E_GLQF_FD_MSK_FIELD       0x0000FFFF
-#define I40E_GLQF_HASH_INSET(_i, _j) (0x00267600 + ((_i) * 4 + (_j) * 8))
-#define I40E_GLQF_HASH_MSK(_i, _j)   (0x00267A00 + ((_i) * 4 + (_j) * 8))
-#define I40E_GLQF_HASH_MSK_FIELD      0x0000FFFF
-
 #define I40E_INSET_NONE            0x00000000000000000ULL
 
 /* bit0 ~ bit 7 */
@@ -7066,7 +7059,7 @@ i40e_set_hash_inset_mask(struct i40e_hw *hw,
 		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
 			reg = i40e_read_rx_ctl(hw,
 					       I40E_GLQF_HASH_MSK(i, pctype));
-			if (reg & I40E_GLQF_HASH_MSK_FIELD)
+			if (reg & I40E_GLQF_HASH_MSK_MASK_MASK)
 				count++;
 		}
 		if (count + num > I40E_INSET_MASK_NUM_REG)
@@ -7108,7 +7101,7 @@ i40e_set_fd_inset_mask(struct i40e_hw *hw,
 		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
 			reg = i40e_read_rx_ctl(hw,
 					       I40E_GLQF_FD_MSK(i, pctype));
-			if (reg & I40E_GLQF_FD_MSK_FIELD)
+			if (reg & I40E_GLQF_FD_MSK_MASK_MASK)
 				count++;
 		}
 		if (count + num > I40E_INSET_MASK_NUM_REG)
