@@ -2374,6 +2374,37 @@ enum i40e_status_code i40e_aq_set_vsi_broadcast(struct i40e_hw *hw,
 }
 
 /**
+ * i40e_aq_set_vsi_vlan_promisc - control the VLAN promiscuous setting
+ * @hw: pointer to the hw struct
+ * @seid: vsi number
+ * @enable: set MAC L2 layer unicast promiscuous enable/disable for a given VLAN
+ * @cmd_details: pointer to command details structure or NULL
+ **/
+enum i40e_status_code i40e_aq_set_vsi_vlan_promisc(struct i40e_hw *hw,
+				u16 seid, bool enable,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_set_vsi_promiscuous_modes *cmd =
+		(struct i40e_aqc_set_vsi_promiscuous_modes *)&desc.params.raw;
+	enum i40e_status_code status;
+	u16 flags = 0;
+
+	i40e_fill_default_direct_cmd_desc(&desc,
+					i40e_aqc_opc_set_vsi_promiscuous_modes);
+	if (enable)
+		flags |= I40E_AQC_SET_VSI_PROMISC_VLAN;
+
+	cmd->promiscuous_flags = CPU_TO_LE16(flags);
+	cmd->valid_flags = CPU_TO_LE16(I40E_AQC_SET_VSI_PROMISC_VLAN);
+	cmd->seid = CPU_TO_LE16(seid);
+
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
+
+	return status;
+}
+
+/**
  * i40e_get_vsi_params - get VSI configuration info
  * @hw: pointer to the hw struct
  * @vsi_ctx: pointer to a vsi context struct
@@ -2846,6 +2877,137 @@ enum i40e_status_code i40e_aq_remove_macvlan(struct i40e_hw *hw, u16 seid,
 				       cmd_details);
 
 	return status;
+}
+
+/**
+ * i40e_mirrorrule_op - Internal helper function to add/delete mirror rule
+ * @hw: pointer to the hw struct
+ * @opcode: AQ opcode for add or delete mirror rule
+ * @sw_seid: Switch SEID (to which rule refers)
+ * @rule_type: Rule Type (ingress/egress/VLAN)
+ * @id: Destination VSI SEID or Rule ID
+ * @count: length of the list
+ * @mr_list: list of mirrored VSI SEIDs or VLAN IDs
+ * @cmd_details: pointer to command details structure or NULL
+ * @rule_id: Rule ID returned from FW
+ * @rule_used: Number of rules used in internal switch
+ * @rule_free: Number of rules free in internal switch
+ *
+ * Add/Delete a mirror rule to a specific switch. Mirror rules are supported for
+ * VEBs/VEPA elements only
+ **/
+static enum i40e_status_code i40e_mirrorrule_op(struct i40e_hw *hw,
+			u16 opcode, u16 sw_seid, u16 rule_type, u16 id,
+			u16 count, __le16 *mr_list,
+			struct i40e_asq_cmd_details *cmd_details,
+			u16 *rule_id, u16 *rules_used, u16 *rules_free)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_add_delete_mirror_rule *cmd =
+		(struct i40e_aqc_add_delete_mirror_rule *)&desc.params.raw;
+	struct i40e_aqc_add_delete_mirror_rule_completion *resp =
+	(struct i40e_aqc_add_delete_mirror_rule_completion *)&desc.params.raw;
+	enum i40e_status_code status;
+	u16 buf_size;
+
+	buf_size = count * sizeof(*mr_list);
+
+	/* prep the rest of the request */
+	i40e_fill_default_direct_cmd_desc(&desc, opcode);
+	cmd->seid = CPU_TO_LE16(sw_seid);
+	cmd->rule_type = CPU_TO_LE16(rule_type &
+				     I40E_AQC_MIRROR_RULE_TYPE_MASK);
+	cmd->num_entries = CPU_TO_LE16(count);
+	/* Dest VSI for add, rule_id for delete */
+	cmd->destination = CPU_TO_LE16(id);
+	if (mr_list) {
+		desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF |
+						I40E_AQ_FLAG_RD));
+		if (buf_size > I40E_AQ_LARGE_BUF)
+			desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
+	}
+
+	status = i40e_asq_send_command(hw, &desc, mr_list, buf_size,
+				       cmd_details);
+	if (status == I40E_SUCCESS ||
+	    hw->aq.asq_last_status == I40E_AQ_RC_ENOSPC) {
+		if (rule_id)
+			*rule_id = LE16_TO_CPU(resp->rule_id);
+		if (rules_used)
+			*rules_used = LE16_TO_CPU(resp->mirror_rules_used);
+		if (rules_free)
+			*rules_free = LE16_TO_CPU(resp->mirror_rules_free);
+	}
+	return status;
+}
+
+/**
+ * i40e_aq_add_mirrorrule - add a mirror rule
+ * @hw: pointer to the hw struct
+ * @sw_seid: Switch SEID (to which rule refers)
+ * @rule_type: Rule Type (ingress/egress/VLAN)
+ * @dest_vsi: SEID of VSI to which packets will be mirrored
+ * @count: length of the list
+ * @mr_list: list of mirrored VSI SEIDs or VLAN IDs
+ * @cmd_details: pointer to command details structure or NULL
+ * @rule_id: Rule ID returned from FW
+ * @rule_used: Number of rules used in internal switch
+ * @rule_free: Number of rules free in internal switch
+ *
+ * Add mirror rule. Mirror rules are supported for VEBs or VEPA elements only
+ **/
+enum i40e_status_code i40e_aq_add_mirrorrule(struct i40e_hw *hw, u16 sw_seid,
+			u16 rule_type, u16 dest_vsi, u16 count, __le16 *mr_list,
+			struct i40e_asq_cmd_details *cmd_details,
+			u16 *rule_id, u16 *rules_used, u16 *rules_free)
+{
+	if (!(rule_type == I40E_AQC_MIRROR_RULE_TYPE_ALL_INGRESS ||
+	    rule_type == I40E_AQC_MIRROR_RULE_TYPE_ALL_EGRESS)) {
+		if (count == 0 || !mr_list)
+			return I40E_ERR_PARAM;
+	}
+
+	return i40e_mirrorrule_op(hw, i40e_aqc_opc_add_mirror_rule, sw_seid,
+				  rule_type, dest_vsi, count, mr_list,
+				  cmd_details, rule_id, rules_used, rules_free);
+}
+
+/**
+ * i40e_aq_delete_mirrorrule - delete a mirror rule
+ * @hw: pointer to the hw struct
+ * @sw_seid: Switch SEID (to which rule refers)
+ * @rule_type: Rule Type (ingress/egress/VLAN)
+ * @count: length of the list
+ * @rule_id: Rule ID that is returned in the receive desc as part of
+ *		add_mirrorrule.
+ * @mr_list: list of mirrored VLAN IDs to be removed
+ * @cmd_details: pointer to command details structure or NULL
+ * @rule_used: Number of rules used in internal switch
+ * @rule_free: Number of rules free in internal switch
+ *
+ * Delete a mirror rule. Mirror rules are supported for VEBs/VEPA elements only
+ **/
+enum i40e_status_code i40e_aq_delete_mirrorrule(struct i40e_hw *hw, u16 sw_seid,
+			u16 rule_type, u16 rule_id, u16 count, __le16 *mr_list,
+			struct i40e_asq_cmd_details *cmd_details,
+			u16 *rules_used, u16 *rules_free)
+{
+	/* Rule ID has to be valid except rule_type: INGRESS VLAN mirroring */
+	if (rule_type != I40E_AQC_MIRROR_RULE_TYPE_VLAN) {
+		if (!rule_id)
+			return I40E_ERR_PARAM;
+	} else {
+		/* count and mr_list shall be valid for rule_type INGRESS VLAN
+		 * mirroring. For other rule_type, count and rule_type should
+		 * not matter.
+		 */
+		if (count == 0 || !mr_list)
+			return I40E_ERR_PARAM;
+	}
+
+	return i40e_mirrorrule_op(hw, i40e_aqc_opc_delete_mirror_rule, sw_seid,
+				  rule_type, rule_id, count, mr_list,
+				  cmd_details, NULL, rules_used, rules_free);
 }
 
 /**
