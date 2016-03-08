@@ -315,6 +315,8 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf)
 	/* As assume Vf only has single VSI now, always return 0 */
 	vf_res->vsi_res[0].vsi_id = 0;
 	vf_res->vsi_res[0].num_queue_pairs = vf->vsi->nb_qps;
+	ether_addr_copy(&vf->mac_addr,
+		(struct ether_addr *)vf_res->vsi_res[0].default_mac_addr);
 
 send_msg:
 	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_GET_VF_RESOURCES,
@@ -1045,6 +1047,7 @@ i40e_pf_host_init(struct rte_eth_dev *dev)
 		ret = i40e_pf_host_vf_reset(&pf->vfs[i], 0);
 		if (ret != I40E_SUCCESS)
 			goto fail;
+		eth_random_addr(pf->vfs[i].mac_addr.addr_bytes);
 	}
 
 	/* restore irq0 */

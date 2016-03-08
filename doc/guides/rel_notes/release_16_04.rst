@@ -219,6 +219,11 @@ Drivers
   The driver now set the MDIO clock speed prior to initializing PHY ops and
   again after the MAC reset.
 
+* **i40e: Generated MAC address for each VFs.**
+
+  It generates a MAC address for each VFs during PF host initialization,
+  and keeps the VF MAC address the same among different VF launch.
+
 * **aesni_mb: Fixed wrong return value when creating a device.**
 
   cryptodev_aesni_mb_init() was returning the device id of the device created,

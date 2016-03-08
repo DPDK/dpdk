@@ -312,6 +312,7 @@ struct i40e_pf_vf {
 	uint16_t vf_idx; /* VF index in pf->vfs */
 	uint16_t lan_nb_qps; /* Actual queues allocated */
 	uint16_t reset_cnt; /* Total vf reset times */
+	struct ether_addr mac_addr;  /* Default MAC address */
 };
 
 /*
