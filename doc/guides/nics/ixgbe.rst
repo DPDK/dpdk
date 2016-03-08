@@ -199,3 +199,28 @@ When using kernel PF + DPDK VF on x550, please make sure using the kernel
 driver that disables MDD or can disable MDD. (Some kernel driver can use
 this CLI 'insmod ixgbe.ko MDD=0,0' to disable MDD. Some kernel driver disables
 it by default.)
+
+
+Statistics
+----------
+
+The statistics of ixgbe hardware must be polled regularly in order for it to
+remain consistent. Running a DPDK application without polling the statistics will
+cause registers on hardware to count to the maximum value, and "stick" at
+that value.
+
+In order to avoid statistic registers every reaching the maximum value,
+read the statistics from the hardware using ``rte_eth_stats_get()`` or
+``rte_eth_xstats_get()``.
+
+The maximum time between statistics polls that ensures consistent results can
+be calculated as follows:
+
+.. code-block:: c
+
+  max_read_interval = UINT_MAX / max_packets_per_second
+  max_read_interval = 4294967295 / 14880952
+  max_read_interval = 288.6218096127183 (seconds)
+  max_read_interval = ~4 mins 48 sec.
+
+In order to ensure valid results, it is recommended to poll every 4 minutes.
