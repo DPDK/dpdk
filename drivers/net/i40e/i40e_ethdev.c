@@ -3904,6 +3904,45 @@ i40e_vsi_get_bw_config(struct i40e_vsi *vsi)
 	return I40E_SUCCESS;
 }
 
+/* i40e_enable_pf_lb
+ * @pf: pointer to the pf structure
+ *
+ * allow loopback on pf
+ */
+static inline void
+i40e_enable_pf_lb(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_vsi_context ctxt;
+	int ret;
+
+	/* Use the FW API if FW >= v5.0 */
+	if (hw->aq.fw_maj_ver < 5) {
+		PMD_INIT_LOG(ERR, "FW < v5.0, cannot enable loopback");
+		return;
+	}
+
+	memset(&ctxt, 0, sizeof(ctxt));
+	ctxt.seid = pf->main_vsi_seid;
+	ctxt.pf_num = hw->pf_id;
+	ret = i40e_aq_get_vsi_params(hw, &ctxt, NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "cannot get pf vsi config, err %d, aq_err %d",
+			    ret, hw->aq.asq_last_status);
+		return;
+	}
+	ctxt.flags = I40E_AQ_VSI_TYPE_PF;
+	ctxt.info.valid_sections =
+		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID);
+	ctxt.info.switch_id |=
+		rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB);
+
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret)
+		PMD_DRV_LOG(ERR, "update vsi switch failed, aq_err=%d\n",
+			    hw->aq.asq_last_status);
+}
+
 /* Setup a VSI */
 struct i40e_vsi *
 i40e_vsi_setup(struct i40e_pf *pf,
@@ -3939,6 +3978,8 @@ i40e_vsi_setup(struct i40e_pf *pf,
 			PMD_DRV_LOG(ERR, "VEB setup failed");
 			return NULL;
 		}
+		/* set ALLOWLOOPBACk on pf, when veb is created */
+		i40e_enable_pf_lb(pf);
 	}
 
 	vsi = rte_zmalloc("i40e_vsi", sizeof(struct i40e_vsi), 0);
@@ -4111,14 +4152,14 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ctxt.connection_type = 0x1;
 		ctxt.flags = I40E_AQ_VSI_TYPE_VF;
 
-		/**
-		 * Do not configure switch ID to enable VEB switch by
-		 * I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB. Because in Fortville,
-		 * if the source mac address of packet sent from VF is not
-		 * listed in the VEB's mac table, the VEB will switch the
-		 * packet back to the VF. Need to enable it when HW issue
-		 * is fixed.
-		 */
+		/* Use the VEB configuration if FW >= v5.0 */
+		if (hw->aq.fw_maj_ver >= 5) {
+			/* Configure switch ID */
+			ctxt.info.valid_sections |=
+			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID);
+			ctxt.info.switch_id =
+			rte_cpu_to_le_16(I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB);
+		}
 
 		/* Configure port/vlan */
 		ctxt.info.valid_sections |=
