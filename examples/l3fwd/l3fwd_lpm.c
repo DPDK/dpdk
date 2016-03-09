@@ -98,6 +98,7 @@ static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
 	(sizeof(ipv6_l3fwd_lpm_route_array) / sizeof(ipv6_l3fwd_lpm_route_array[0]))
 
 #define IPV4_L3FWD_LPM_MAX_RULES         1024
+#define IPV4_L3FWD_LPM_NUMBER_TBL8S (1 << 8)
 #define IPV6_L3FWD_LPM_MAX_RULES         1024
 #define IPV6_L3FWD_LPM_NUMBER_TBL8S (1 << 16)
 
@@ -203,14 +204,18 @@ void
 setup_lpm(const int socketid)
 {
 	struct rte_lpm6_config config;
+	struct rte_lpm_config config_ipv4;
 	unsigned i;
 	int ret;
 	char s[64];
 
 	/* create the LPM table */
+	config_ipv4.max_rules = IPV4_L3FWD_LPM_MAX_RULES;
+	config_ipv4.number_tbl8s = IPV4_L3FWD_LPM_NUMBER_TBL8S;
+	config_ipv4.flags = 0;
 	snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
-	ipv4_l3fwd_lpm_lookup_struct[socketid] = rte_lpm_create(s, socketid,
-				IPV4_L3FWD_LPM_MAX_RULES, 0);
+	ipv4_l3fwd_lpm_lookup_struct[socketid] =
+			rte_lpm_create(s, socketid, &config_ipv4);
 	if (ipv4_l3fwd_lpm_lookup_struct[socketid] == NULL)
 		rte_exit(EXIT_FAILURE,
 			"Unable to create the l3fwd LPM table on socket %d\n",

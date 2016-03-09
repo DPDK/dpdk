@@ -66,6 +66,9 @@ extern "C" {
 /** @internal Number of entries in a tbl8 group. */
 #define RTE_LPM_TBL8_GROUP_NUM_ENTRIES  256
 
+/** @internal Max number of tbl8 groups in the tbl8. */
+#define RTE_LPM_MAX_TBL8_NUM_GROUPS         (1 << 24)
+
 /** @internal Total number of tbl8 groups in the tbl8. */
 #define RTE_LPM_TBL8_NUM_GROUPS         256
 
@@ -154,6 +157,13 @@ struct rte_lpm_tbl_entry {
 
 #endif
 
+/** LPM configuration structure. */
+struct rte_lpm_config {
+	uint32_t max_rules;      /**< Max number of rules. */
+	uint32_t number_tbl8s;   /**< Number of tbl8s to allocate. */
+	int flags;               /**< This field is currently unused. */
+};
+
 /** @internal Rule structure. */
 struct rte_lpm_rule_v20 {
 	uint32_t ip; /**< Rule IP address. */
@@ -191,15 +201,14 @@ struct rte_lpm {
 	/* LPM metadata. */
 	char name[RTE_LPM_NAMESIZE];        /**< Name of the lpm. */
 	uint32_t max_rules; /**< Max. balanced rules per lpm. */
+	uint32_t number_tbl8s; /**< Number of tbl8s. */
 	struct rte_lpm_rule_info rule_info[RTE_LPM_MAX_DEPTH]; /**< Rule info table. */
 
 	/* LPM Tables. */
 	struct rte_lpm_tbl_entry tbl24[RTE_LPM_TBL24_NUM_ENTRIES]
 			__rte_cache_aligned; /**< LPM tbl24 table. */
-	struct rte_lpm_tbl_entry tbl8[RTE_LPM_TBL8_NUM_ENTRIES]
-			__rte_cache_aligned; /**< LPM tbl8 table. */
-	struct rte_lpm_rule rules_tbl[0] \
-			__rte_cache_aligned; /**< LPM rules. */
+	struct rte_lpm_tbl_entry *tbl8; /**< LPM tbl8 table. */
+	struct rte_lpm_rule *rules_tbl; /**< LPM rules. */
 };
 
 /**
@@ -209,10 +218,8 @@ struct rte_lpm {
  *   LPM object name
  * @param socket_id
  *   NUMA socket ID for LPM table memory allocation
- * @param max_rules
- *   Maximum number of LPM rules that can be added
- * @param flags
- *   This parameter is currently unused
+ * @param config
+ *   Structure containing the configuration
  * @return
  *   Handle to LPM object on success, NULL otherwise with rte_errno set
  *   to an appropriate values. Possible rte_errno values include:
@@ -224,11 +231,13 @@ struct rte_lpm {
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
 struct rte_lpm *
-rte_lpm_create(const char *name, int socket_id, int max_rules, int flags);
+rte_lpm_create(const char *name, int socket_id,
+		const struct rte_lpm_config *config);
 struct rte_lpm_v20 *
 rte_lpm_create_v20(const char *name, int socket_id, int max_rules, int flags);
 struct rte_lpm *
-rte_lpm_create_v1604(const char *name, int socket_id, int max_rules, int flags);
+rte_lpm_create_v1604(const char *name, int socket_id,
+		const struct rte_lpm_config *config);
 
 /**
  * Find an existing LPM object and return a pointer to it.

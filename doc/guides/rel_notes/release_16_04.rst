@@ -154,6 +154,10 @@ This section should contain API changes. Sample format:
 * The LPM ``next_hop`` field is extended from 8 bits to 24 bits for IPv4
   while keeping ABI compatibility.
 
+* A new ``rte_lpm_config`` structure is used so LPM library will allocate
+  exactly the amount of memory which is necessary to hold application’s rules.
+  The previous ABI is kept for compatibility.
+
 
 ABI Changes
 -----------

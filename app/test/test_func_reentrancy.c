@@ -359,6 +359,11 @@ lpm_create_free(__attribute__((unused)) void *arg)
 {
 	unsigned lcore_self = rte_lcore_id();
 	struct rte_lpm *lpm;
+	struct rte_lpm_config config;
+
+	config.max_rules = 4;
+	config.number_tbl8s = 256;
+	config.flags = 0;
 	char lpm_name[MAX_STRING_SIZE];
 	int i;
 
@@ -366,7 +371,7 @@ lpm_create_free(__attribute__((unused)) void *arg)
 
 	/* create the same lpm simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		lpm = rte_lpm_create("fr_test_once",  SOCKET_ID_ANY, 4, 0);
+		lpm = rte_lpm_create("fr_test_once",  SOCKET_ID_ANY, &config);
 		if ((NULL == lpm) && (rte_lpm_find_existing("fr_test_once") == NULL))
 			return -1;
 	}
@@ -374,7 +379,7 @@ lpm_create_free(__attribute__((unused)) void *arg)
 	/* create mutiple fbk tables simultaneously */
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
 		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d", lcore_self, i);
-		lpm = rte_lpm_create(lpm_name, SOCKET_ID_ANY, 4, 0);
+		lpm = rte_lpm_create(lpm_name, SOCKET_ID_ANY, &config);
 		if (NULL == lpm)
 			return -1;
 

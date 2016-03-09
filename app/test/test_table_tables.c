@@ -326,6 +326,8 @@ test_table_lpm(void)
 	struct rte_table_lpm_params lpm_params = {
 		.name = "LPM",
 		.n_rules = 1 << 24,
+		.number_tbl8s = 1 << 8,
+		.flags = 0,
 		.entry_unique_size = entry_size,
 		.offset = APP_METADATA_OFFSET(1)
 	};

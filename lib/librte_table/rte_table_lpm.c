@@ -82,6 +82,8 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 {
 	struct rte_table_lpm_params *p = (struct rte_table_lpm_params *) params;
 	struct rte_table_lpm *lpm;
+	struct rte_lpm_config lpm_config;
+
 	uint32_t total_size, nht_size;
 
 	/* Check input parameters */
@@ -91,6 +93,10 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 	}
 	if (p->n_rules == 0) {
 		RTE_LOG(ERR, TABLE, "%s: Invalid n_rules\n", __func__);
+		return NULL;
+	}
+	if (p->number_tbl8s == 0) {
+		RTE_LOG(ERR, TABLE, "%s: Invalid number_tbl8s\n", __func__);
 		return NULL;
 	}
 	if (p->entry_unique_size == 0) {
@@ -123,7 +129,11 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 	}
 
 	/* LPM low-level table creation */
-	lpm->lpm = rte_lpm_create(p->name, socket_id, p->n_rules, 0);
+	lpm_config.max_rules = p->n_rules;
+	lpm_config.number_tbl8s = p->number_tbl8s;
+	lpm_config.flags = p->flags;
+	lpm->lpm = rte_lpm_create(p->name, socket_id, &lpm_config);
+
 	if (lpm->lpm == NULL) {
 		rte_free(lpm);
 		RTE_LOG(ERR, TABLE, "Unable to create low-level LPM table\n");

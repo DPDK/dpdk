@@ -232,7 +232,12 @@ run_object_creation_tests(void)
 
 #ifdef RTE_LIBRTE_LPM
 	rte_errno=0;
-	if ((rte_lpm_create("test_lpm", size, rte_socket_id(), 0) != NULL) &&
+	struct rte_lpm_config config;
+
+	config.max_rules = rte_socket_id();
+	config.number_tbl8s = 256;
+	config.flags = 0;
+	if ((rte_lpm_create("test_lpm", size, &config) != NULL) &&
 	    (rte_lpm_find_existing("test_lpm") == NULL)){
 		printf("Error: unexpected return value from rte_lpm_create()\n");
 		return -1;

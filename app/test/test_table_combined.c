@@ -295,6 +295,8 @@ test_table_lpm_combined(void)
 	struct rte_table_lpm_params lpm_params = {
 		.name = "LPM",
 		.n_rules = 1 << 16,
+		.number_tbl8s = 1 << 8,
+		.flags = 0,
 		.entry_unique_size = 8,
 		.offset = APP_METADATA_OFFSET(0),
 	};

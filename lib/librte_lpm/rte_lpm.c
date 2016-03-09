@@ -244,13 +244,13 @@ exit:
 VERSION_SYMBOL(rte_lpm_create, _v20, 2.0);
 
 struct rte_lpm *
-rte_lpm_create_v1604(const char *name, int socket_id, int max_rules,
-		__rte_unused int flags)
+rte_lpm_create_v1604(const char *name, int socket_id,
+		const struct rte_lpm_config *config)
 {
 	char mem_name[RTE_LPM_NAMESIZE];
 	struct rte_lpm *lpm = NULL;
 	struct rte_tailq_entry *te;
-	uint32_t mem_size;
+	uint32_t mem_size, rules_size, tbl8s_size;
 	struct rte_lpm_list *lpm_list;
 
 	lpm_list = RTE_TAILQ_CAST(rte_lpm_tailq.head, rte_lpm_list);
@@ -258,7 +258,8 @@ rte_lpm_create_v1604(const char *name, int socket_id, int max_rules,
 	RTE_BUILD_BUG_ON(sizeof(struct rte_lpm_tbl_entry) != 4);
 
 	/* Check user arguments. */
-	if ((name == NULL) || (socket_id < -1) || (max_rules == 0)) {
+	if ((name == NULL) || (socket_id < -1) || (config->max_rules == 0)
+			|| config->number_tbl8s > RTE_LPM_MAX_TBL8_NUM_GROUPS) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -266,7 +267,10 @@ rte_lpm_create_v1604(const char *name, int socket_id, int max_rules,
 	snprintf(mem_name, sizeof(mem_name), "LPM_%s", name);
 
 	/* Determine the amount of memory to allocate. */
-	mem_size = sizeof(*lpm) + (sizeof(lpm->rules_tbl[0]) * max_rules);
+	mem_size = sizeof(*lpm);
+	rules_size = sizeof(struct rte_lpm_rule) * config->max_rules;
+	tbl8s_size = (sizeof(struct rte_lpm_tbl_entry) *
+			RTE_LPM_TBL8_GROUP_NUM_ENTRIES * config->number_tbl8s);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
@@ -295,8 +299,29 @@ rte_lpm_create_v1604(const char *name, int socket_id, int max_rules,
 		goto exit;
 	}
 
+	lpm->rules_tbl = (struct rte_lpm_rule *)rte_zmalloc_socket(NULL,
+			(size_t)rules_size, RTE_CACHE_LINE_SIZE, socket_id);
+
+	if (lpm->rules_tbl == NULL) {
+		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		rte_free(lpm);
+		rte_free(te);
+		goto exit;
+	}
+
+	lpm->tbl8 = (struct rte_lpm_tbl_entry *)rte_zmalloc_socket(NULL,
+			(size_t)tbl8s_size, RTE_CACHE_LINE_SIZE, socket_id);
+
+	if (lpm->tbl8 == NULL) {
+		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		rte_free(lpm);
+		rte_free(te);
+		goto exit;
+	}
+
 	/* Save user arguments. */
-	lpm->max_rules = max_rules;
+	lpm->max_rules = config->max_rules;
+	lpm->number_tbl8s = config->number_tbl8s;
 	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
 
 	te->data = (void *) lpm;
@@ -311,7 +336,7 @@ exit:
 BIND_DEFAULT_SYMBOL(rte_lpm_create, _v1604, 16.04);
 MAP_STATIC_SYMBOL(
 	struct rte_lpm *rte_lpm_create(const char *name, int socket_id,
-			int max_rules, int flags), rte_lpm_create_v1604);
+			const struct rte_lpm_config *config), rte_lpm_create_v1604);
 
 /*
  * Deallocates memory for given LPM table.
@@ -665,14 +690,13 @@ tbl8_alloc_v20(struct rte_lpm_tbl_entry_v20 *tbl8)
 }
 
 static inline int32_t
-tbl8_alloc_v1604(struct rte_lpm_tbl_entry *tbl8)
+tbl8_alloc_v1604(struct rte_lpm_tbl_entry *tbl8, uint32_t number_tbl8s)
 {
 	uint32_t group_idx; /* tbl8 group index. */
 	struct rte_lpm_tbl_entry *tbl8_entry;
 
 	/* Scan through tbl8 to find a free (i.e. INVALID) tbl8 group. */
-	for (group_idx = 0; group_idx < RTE_LPM_TBL8_NUM_GROUPS;
-			group_idx++) {
+	for (group_idx = 0; group_idx < number_tbl8s; group_idx++) {
 		tbl8_entry = &tbl8[group_idx * RTE_LPM_TBL8_GROUP_NUM_ENTRIES];
 		/* If a free tbl8 group is found clean it and set as VALID. */
 		if (!tbl8_entry->valid_group) {
@@ -987,7 +1011,7 @@ add_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 
 	if (!lpm->tbl24[tbl24_index].valid) {
 		/* Search for a free tbl8 group. */
-		tbl8_group_index = tbl8_alloc_v1604(lpm->tbl8);
+		tbl8_group_index = tbl8_alloc_v1604(lpm->tbl8, lpm->number_tbl8s);
 
 		/* Check tbl8 allocation was successful. */
 		if (tbl8_group_index < 0) {
@@ -1024,7 +1048,7 @@ add_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 	} /* If valid entry but not extended calculate the index into Table8. */
 	else if (lpm->tbl24[tbl24_index].valid_group == 0) {
 		/* Search for free tbl8 group. */
-		tbl8_group_index = tbl8_alloc_v1604(lpm->tbl8);
+		tbl8_group_index = tbl8_alloc_v1604(lpm->tbl8, lpm->number_tbl8s);
 
 		if (tbl8_group_index < 0) {
 			return tbl8_group_index;
@@ -1882,7 +1906,8 @@ rte_lpm_delete_all_v1604(struct rte_lpm *lpm)
 	memset(lpm->tbl24, 0, sizeof(lpm->tbl24));
 
 	/* Zero tbl8. */
-	memset(lpm->tbl8, 0, sizeof(lpm->tbl8));
+	memset(lpm->tbl8, 0, sizeof(lpm->tbl8[0])
+			* RTE_LPM_TBL8_GROUP_NUM_ENTRIES * lpm->number_tbl8s);
 
 	/* Delete all rules form the rules table. */
 	memset(lpm->rules_tbl, 0, sizeof(lpm->rules_tbl[0]) * lpm->max_rules);

@@ -927,6 +927,7 @@ init_mem(void)
 	char buf[PATH_MAX];
 	struct rte_lpm *lpm;
 	struct rte_lpm6 *lpm6;
+	struct rte_lpm_config lpm_config;
 	int socket;
 	unsigned lcore_id;
 
@@ -946,7 +947,11 @@ init_mem(void)
 			RTE_LOG(INFO, IP_RSMBL, "Creating LPM table on socket %i\n", socket);
 			snprintf(buf, sizeof(buf), "IP_RSMBL_LPM_%i", socket);
 
-			lpm = rte_lpm_create(buf, socket, LPM_MAX_RULES, 0);
+			lpm_config.max_rules = LPM_MAX_RULES;
+			lpm_config.number_tbl8s = 256;
+			lpm_config.flags = 0;
+
+			lpm = rte_lpm_create(buf, socket, &lpm_config);
 			if (lpm == NULL) {
 				RTE_LOG(ERR, IP_RSMBL, "Cannot create LPM table\n");
 				return -1;

@@ -83,6 +83,12 @@ struct rte_table_lpm_params {
 	/** Maximum number of LPM rules (i.e. IP routes) */
 	uint32_t n_rules;
 
+	/**< Number of tbl8s to allocate. */
+	uint32_t number_tbl8s;
+
+	/**< This field is currently unused. */
+	int flags;
+
 	/** Number of bytes at the start of the table entry that uniquely
 	identify the entry. Cannot be bigger than table entry size. */
 	uint32_t entry_unique_size;

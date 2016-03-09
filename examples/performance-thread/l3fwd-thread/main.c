@@ -3249,14 +3249,18 @@ static void
 setup_lpm(int socketid)
 {
 	struct rte_lpm6_config config;
+	struct rte_lpm_config lpm_ipv4_config;
 	unsigned i;
 	int ret;
 	char s[64];
 
 	/* create the LPM table */
 	snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socketid);
-	ipv4_l3fwd_lookup_struct[socketid] = rte_lpm_create(s, socketid,
-				IPV4_L3FWD_LPM_MAX_RULES, 0);
+	lpm_ipv4_config.max_rules = IPV4_L3FWD_LPM_MAX_RULES;
+	lpm_ipv4_config.number_tbl8s = 256;
+	lpm_ipv4_config.flags = 0;
+	ipv4_l3fwd_lookup_struct[socketid] =
+			rte_lpm_create(s, socketid, &lpm_ipv4_config);
 	if (ipv4_l3fwd_lookup_struct[socketid] == NULL)
 		rte_exit(EXIT_FAILURE, "Unable to create the l3fwd LPM table"
 				" on socket %d\n", socketid);
