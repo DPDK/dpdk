@@ -525,7 +525,7 @@ app_lcore_worker(
 			struct rte_mbuf *pkt;
 			struct ipv4_hdr *ipv4_hdr;
 			uint32_t ipv4_dst, pos;
-			uint8_t port;
+			uint32_t port;
 
 			if (likely(j < bsz_rd - 1)) {
 				APP_WORKER_PREFETCH1(rte_pktmbuf_mtod(lp->mbuf_in.array[j+1], unsigned char *));

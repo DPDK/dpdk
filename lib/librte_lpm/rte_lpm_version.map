@@ -21,3 +21,16 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_16.04 {
+	global:
+
+	rte_lpm_add;
+	rte_lpm_find_existing;
+	rte_lpm_create;
+	rte_lpm_free;
+	rte_lpm_is_rule_present;
+	rte_lpm_delete;
+	rte_lpm_delete_all;
+
+} DPDK_2.0;

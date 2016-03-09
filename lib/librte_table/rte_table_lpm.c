@@ -74,7 +74,7 @@ struct rte_table_lpm {
 
 	/* Next Hop Table (NHT) */
 	uint32_t nht_users[RTE_TABLE_LPM_MAX_NEXT_HOPS];
-	uint8_t nht[0] __rte_cache_aligned;
+	uint32_t nht[0] __rte_cache_aligned;
 };
 
 static void *
@@ -178,7 +178,7 @@ nht_find_existing(struct rte_table_lpm *lpm, void *entry, uint32_t *pos)
 	uint32_t i;
 
 	for (i = 0; i < RTE_TABLE_LPM_MAX_NEXT_HOPS; i++) {
-		uint8_t *nht_entry = &lpm->nht[i * lpm->entry_size];
+		uint32_t *nht_entry = &lpm->nht[i * lpm->entry_size];
 
 		if ((lpm->nht_users[i] > 0) && (memcmp(nht_entry, entry,
 			lpm->entry_unique_size) == 0)) {
@@ -202,7 +202,7 @@ rte_table_lpm_entry_add(
 	struct rte_table_lpm_key *ip_prefix = (struct rte_table_lpm_key *) key;
 	uint32_t nht_pos, nht_pos0_valid;
 	int status;
-	uint8_t nht_pos0 = 0;
+	uint32_t nht_pos0 = 0;
 
 	/* Check input parameters */
 	if (lpm == NULL) {
@@ -232,7 +232,7 @@ rte_table_lpm_entry_add(
 
 	/* Find existing or free NHT entry */
 	if (nht_find_existing(lpm, entry, &nht_pos) == 0) {
-		uint8_t *nht_entry;
+		uint32_t *nht_entry;
 
 		if (nht_find_free(lpm, &nht_pos) == 0) {
 			RTE_LOG(ERR, TABLE, "%s: NHT full\n", __func__);
@@ -244,8 +244,7 @@ rte_table_lpm_entry_add(
 	}
 
 	/* Add rule to low level LPM table */
-	if (rte_lpm_add(lpm->lpm, ip_prefix->ip, ip_prefix->depth,
-		(uint8_t) nht_pos) < 0) {
+	if (rte_lpm_add(lpm->lpm, ip_prefix->ip, ip_prefix->depth, nht_pos) < 0) {
 		RTE_LOG(ERR, TABLE, "%s: LPM rule add failed\n", __func__);
 		return -1;
 	}
@@ -268,7 +267,7 @@ rte_table_lpm_entry_delete(
 {
 	struct rte_table_lpm *lpm = (struct rte_table_lpm *) table;
 	struct rte_table_lpm_key *ip_prefix = (struct rte_table_lpm_key *) key;
-	uint8_t nht_pos;
+	uint32_t nht_pos;
 	int status;
 
 	/* Check input parameters */
@@ -342,7 +341,7 @@ rte_table_lpm_lookup(
 			uint32_t ip = rte_bswap32(
 				RTE_MBUF_METADATA_UINT32(pkt, lpm->offset));
 			int status;
-			uint8_t nht_pos;
+			uint32_t nht_pos;
 
 			status = rte_lpm_lookup(lpm->lpm, ip, &nht_pos);
 			if (status == 0) {

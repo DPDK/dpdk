@@ -631,7 +631,7 @@ static inline uint8_t
 get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr, uint8_t portid,
 		lookup_struct_t *ipv4_l3fwd_lookup_struct)
 {
-	uint8_t next_hop;
+	uint32_t next_hop;
 
 	return (uint8_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
 			rte_be_to_cpu_32(ipv4_hdr->dst_addr), &next_hop) == 0)?

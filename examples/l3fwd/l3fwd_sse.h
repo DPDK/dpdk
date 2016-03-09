@@ -58,7 +58,7 @@
  * to BAD_PORT value.
  */
 static inline __attribute__((always_inline)) void
-rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
+rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint32_t *dp, uint32_t ptype)
 {
 	uint8_t ihl;
 
@@ -85,7 +85,7 @@ rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
  * Perform RFC1812 checks and updates for IPV4 packets.
  */
 static inline void
-processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
+processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint32_t dst_port[FWDSTEP])
 {
 	__m128i te[FWDSTEP];
 	__m128i ve[FWDSTEP];
@@ -297,7 +297,7 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, __m128i dp1, __m128i dp2)
  * Perform RFC1812 checks and updates for IPV4 packets.
  */
 static inline void
-process_packet(struct rte_mbuf *pkt, uint16_t *dst_port)
+process_packet(struct rte_mbuf *pkt, uint32_t *dst_port)
 {
 	struct ether_hdr *eth_hdr;
 	__m128i te, ve;
@@ -397,7 +397,7 @@ send_packetsx4(struct lcore_conf *qconf, uint8_t port, struct rte_mbuf *m[],
  */
 static inline __attribute__((always_inline)) void
 send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
-		uint16_t dst_port[MAX_PKT_BURST], int nb_rx)
+		uint32_t dst_port[MAX_PKT_BURST], int nb_rx)
 {
 	int32_t k;
 	int j = 0;
