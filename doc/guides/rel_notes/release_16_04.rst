@@ -146,6 +146,8 @@ This section should contain new features added in this release. Sample format:
 
 * **Added i40e support for setting VF mac addresses.**
 
+* **Added dump of i40e registers and EEPROM.**
+
 * **Supported ether type setting of single and double VLAN for i40e**
 
 * **Added VMDQ DCB mode in i40e.**

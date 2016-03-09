@@ -61,6 +61,7 @@
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
+#include "i40e_regs.h"
 
 #define I40E_CLEAR_PXE_WAIT_MS     200
 
@@ -423,6 +424,15 @@ static int i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 static int i40e_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					  uint16_t queue_id);
 
+static int i40e_get_reg_length(struct rte_eth_dev *dev);
+
+static int i40e_get_regs(struct rte_eth_dev *dev,
+			 struct rte_dev_reg_info *regs);
+
+static int i40e_get_eeprom_length(struct rte_eth_dev *dev);
+
+static int i40e_get_eeprom(struct rte_eth_dev *dev,
+			   struct rte_dev_eeprom_info *eeprom);
 
 static const struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
@@ -491,6 +501,10 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.timesync_adjust_time         = i40e_timesync_adjust_time,
 	.timesync_read_time           = i40e_timesync_read_time,
 	.timesync_write_time          = i40e_timesync_write_time,
+	.get_reg_length	              = i40e_get_reg_length,
+	.get_reg                      = i40e_get_regs,
+	.get_eeprom_length            = i40e_get_eeprom_length,
+	.get_eeprom                   = i40e_get_eeprom,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -8887,6 +8901,90 @@ i40e_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 						   I40E_RX_VEC_START),
 			       0);
 	I40E_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int i40e_get_reg_length(__rte_unused struct rte_eth_dev *dev)
+{
+	/* Highest base addr + 32-bit word */
+	return I40E_GLGEN_STAT_CLEAR + 4;
+}
+
+static int i40e_get_regs(struct rte_eth_dev *dev,
+			 struct rte_dev_reg_info *regs)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t *ptr_data = regs->data;
+	uint32_t reg_idx, arr_idx, arr_idx2, reg_offset;
+	const struct i40e_reg_info *reg_info;
+
+	/* The first few registers have to be read using AQ operations */
+	reg_idx = 0;
+	while (i40e_regs_adminq[reg_idx].name) {
+		reg_info = &i40e_regs_adminq[reg_idx++];
+		for (arr_idx = 0; arr_idx <= reg_info->count1; arr_idx++)
+			for (arr_idx2 = 0;
+					arr_idx2 <= reg_info->count2;
+					arr_idx2++) {
+				reg_offset = arr_idx * reg_info->stride1 +
+					arr_idx2 * reg_info->stride2;
+				ptr_data[reg_offset >> 2] =
+					i40e_read_rx_ctl(hw, reg_offset);
+			}
+	}
+
+	/* The remaining registers can be read using primitives */
+	reg_idx = 0;
+	while (i40e_regs_others[reg_idx].name) {
+		reg_info = &i40e_regs_others[reg_idx++];
+		for (arr_idx = 0; arr_idx <= reg_info->count1; arr_idx++)
+			for (arr_idx2 = 0;
+					arr_idx2 <= reg_info->count2;
+					arr_idx2++) {
+				reg_offset = arr_idx * reg_info->stride1 +
+					arr_idx2 * reg_info->stride2;
+				ptr_data[reg_offset >> 2] =
+					I40E_READ_REG(hw, reg_offset);
+			}
+	}
+
+	return 0;
+}
+
+static int i40e_get_eeprom_length(struct rte_eth_dev *dev)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Convert word count to byte count */
+	return hw->nvm.sr_size << 1;
+}
+
+static int i40e_get_eeprom(struct rte_eth_dev *dev,
+			   struct rte_dev_eeprom_info *eeprom)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t *data = eeprom->data;
+	uint16_t offset, length, cnt_words;
+	int ret_code;
+
+	offset = eeprom->offset >> 1;
+	length = eeprom->length >> 1;
+	cnt_words = length;
+
+	if (offset > hw->nvm.sr_size ||
+		offset + length > hw->nvm.sr_size) {
+		PMD_DRV_LOG(ERR, "Requested EEPROM bytes out of range.");
+		return -EINVAL;
+	}
+
+	eeprom->magic = hw->vendor_id | (hw->device_id << 16);
+
+	ret_code = i40e_read_nvm_buffer(hw, offset, &cnt_words, data);
+	if (ret_code != I40E_SUCCESS || cnt_words != length) {
+		PMD_DRV_LOG(ERR, "EEPROM read failed.");
+		return -EIO;
+	}
 
 	return 0;
 }
