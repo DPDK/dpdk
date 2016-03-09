@@ -1,0 +1,368 @@
+..  BSD LICENSE
+    Copyright(c) 2016 Intel Corporation. All rights reserved.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+    * Neither the name of Intel Corporation nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+I40E Poll Mode Driver
+======================
+
+The I40E PMD (librte_pmd_i40e) provides poll mode driver support
+for the Intel X710/XL710/X722 10/40 Gbps family of adapters.
+
+
+Features
+--------
+
+Features of the I40E PMD are:
+
+- Multiple queues for TX and RX
+- Receiver Side Scaling (RSS)
+- MAC/VLAN filtering
+- Packet type information
+- Flow director
+- Cloud filter
+- Checksum offload
+- VLAN/QinQ stripping and inserting
+- TSO offload
+- Promiscuous mode
+- Multicast mode
+- Port hardware statistics
+- Jumbo frames
+- Link state information
+- Link flow control
+- Mirror on port, VLAN and VSI
+- Interrupt mode for RX
+- Scattered and gather for TX and RX
+- Vector Poll mode driver
+- DCB
+- VMDQ
+- SR-IOV VF
+- Hot plug
+- IEEE1588/802.1AS timestamping
+
+
+Prerequisites
+-------------
+
+- Identifying your adapter using `Intel Support
+  <http://www.intel.com/support>`_ and get the latest NVM/FW images.
+
+- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+
+- To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
+  section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
+
+
+Pre-Installation Configuration
+------------------------------
+
+Config File Options
+~~~~~~~~~~~~~~~~~~~
+
+The following options can be modified in the ``config`` file.
+Please note that enabling debugging options may affect system performance.
+
+- ``CONFIG_RTE_LIBRTE_I40E_PMD`` (default ``y``)
+
+  Toggle compilation of the ``librte_pmd_i40e`` driver.
+
+- ``CONFIG_RTE_LIBRTE_I40E_DEBUG_*`` (default ``n``)
+
+  Toggle display of generic debugging messages.
+
+- ``CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC`` (default ``y``)
+
+  Toggle bulk allocation for RX.
+
+- ``CONFIG_RTE_LIBRTE_I40E_INC_VECTOR`` (default ``n``)
+
+  Toggle the use of Vector PMD instead of normal RX/TX path.
+  To enable vPMD for RX, bulk allocation for Rx must be allowed.
+
+- ``CONFIG_RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE`` (default ``y``)
+
+  Toggle to enable RX ``olflags``.
+  This is only meaningful when Vector PMD is used.
+
+- ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC`` (default ``n``)
+
+  Toggle to use a 16-byte RX descriptor, by default the RX descriptor is 32 byte.
+
+- ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF`` (default ``64``)
+
+  Number of queues reserved for PF.
+
+- ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF`` (default ``4``)
+
+  Number of queues reserved for each SR-IOV VF.
+
+- ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM`` (default ``4``)
+
+  Number of queues reserved for each VMDQ Pool.
+
+- ``CONFIG_RTE_LIBRTE_I40E_ITR_INTERVAL`` (default ``-1``)
+
+  Interrupt Throttling interval.
+
+
+Driver Compilation
+~~~~~~~~~~~~~~~~~~
+
+To compile the I40E PMD see :ref:`Getting Started Guide for Linux <linux_gsg>` or
+:ref:`Getting Started Guide for FreeBSD <freebsd_gsg>` depending on your platform.
+
+
+Linux
+-----
+
+
+Running testpmd
+~~~~~~~~~~~~~~~
+
+This section demonstrates how to launch ``testpmd`` with Intel XL710/X710
+devices managed by ``librte_pmd_i40e`` in the Linux operating system.
+
+#. Load ``igb_uio`` or ``vfio-pci`` driver:
+
+   .. code-block:: console
+
+      modprobe uio
+      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
+
+   or
+
+   .. code-block:: console
+
+      modprobe vfio-pci
+
+#. Bind the XL710/X710 adapters to ``igb_uio`` or ``vfio-pci`` loaded in the previous step:
+
+   .. code-block:: console
+
+      ./tools/dpdk_nic_bind.py --bind igb_uio 0000:83:00.0
+
+   Or setup VFIO permissions for regular users and then bind to ``vfio-pci``:
+
+   .. code-block:: console
+
+      ./tools/dpdk_nic_bind.py --bind vfio-pci 0000:83:00.0
+
+#. Start ``testpmd`` with basic parameters:
+
+   .. code-block:: console
+
+      ./x86_64-native-linuxapp-gcc/app/testpmd -c 0xf -n 4 -w 83:00.0 -- -i
+
+   Example output:
+
+   .. code-block:: console
+
+      ...
+      EAL: PCI device 0000:83:00.0 on NUMA socket 1
+      EAL: probe driver: 8086:1572 rte_i40e_pmd
+      EAL: PCI memory mapped at 0x7f7f80000000
+      EAL: PCI memory mapped at 0x7f7f80800000
+      PMD: eth_i40e_dev_init(): FW 5.0 API 1.5 NVM 05.00.02 eetrack 8000208a
+      Interactive-mode selected
+      Configuring Port 0 (socket 0)
+      ...
+
+      PMD: i40e_dev_rx_queue_setup(): Rx Burst Bulk Alloc Preconditions are
+      satisfied.Rx Burst Bulk Alloc function will be used on port=0, queue=0.
+
+      ...
+      Port 0: 68:05:CA:26:85:84
+      Checking link statuses...
+      Port 0 Link Up - speed 10000 Mbps - full-duplex
+      Done
+
+      testpmd>
+
+
+SR-IOV: Prerequisites and sample Application Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. Load the kernel module:
+
+   .. code-block:: console
+
+      modprobe i40e
+
+   Check the output in dmesg:
+
+   .. code-block:: console
+
+      i40e 0000:83:00.1 ens802f0: renamed from eth0
+
+#. Bring up the PF ports:
+
+   .. code-block:: console
+
+      ifconfig ens802f0 up
+
+#. Create VF device(s):
+
+   Echo the number of VFs to be created into the ``sriov_numvfs`` sysfs entry
+   of the parent PF.
+
+   Example:
+
+   .. code-block:: console
+
+      echo 2 > /sys/devices/pci0000:00/0000:00:03.0/0000:81:00.0/sriov_numvfs
+
+
+#. Assign VF MAC address:
+
+   Assign MAC address to the VF using iproute2 utility. The syntax is:
+
+   .. code-block:: console
+
+      ip link set <PF netdev id> vf <VF id> mac <macaddr>
+
+   Example:
+
+   .. code-block:: console
+
+      ip link set ens802f0 vf 0 mac a0:b0:c0:d0:e0:f0
+
+#. Assign VF to VM, and bring up the VM.
+   Please see the documenation for the*I40E/IXGBE/IGB Virtual Function Driver*.
+
+
+Sample Application Notes
+------------------------
+
+Vlan filter
+~~~~~~~~~~~
+
+Vlan filter only works when Promiscuous mode is off.
+
+To start ``testpmd``, and add vlan 10 to port 0:
+
+.. code-block:: console
+
+    ./app/testpmd -c ffff -n 4 -- -i --forward-mode=mac
+    ...
+
+    testpmd> set promisc 0 off
+    testpmd> rx_vlan add 10 0
+
+
+Flow Director
+~~~~~~~~~~~~~
+
+The Flow Director works in receive mode to identify specific flows or sets of flows and route them to specific queues.
+The Flow Director filters can match the different fields for different type of packet: flow type, specific input set per flow type and the flexible payload.
+
+The default input set of each flow type is::
+
+   ipv4-other : src_ip_address, dst_ip_address
+   ipv4-frag  : src_ip_address, dst_ip_address
+   ipv4-tcp   : src_ip_address, dst_ip_address, src_port, dst_port
+   ipv4-udp   : src_ip_address, dst_ip_address, src_port, dst_port
+   ipv4-sctp  : src_ip_address, dst_ip_address, src_port, dst_port,
+                verification_tag
+   ipv6-other : src_ip_address, dst_ip_address
+   ipv6-frag  : src_ip_address, dst_ip_address
+   ipv6-tcp   : src_ip_address, dst_ip_address, src_port, dst_port
+   ipv6-udp   : src_ip_address, dst_ip_address, src_port, dst_port
+   ipv6-sctp  : src_ip_address, dst_ip_address, src_port, dst_port,
+                verification_tag
+   l2_payload : ether_type
+
+The flex payload is selected from offset 0 to 15 of packet's payload by default, while it is masked out from matching.
+
+Start ``testpmd`` with ``--disable-rss`` and ``--pkt-filter-mode=perfect``:
+
+.. code-block:: console
+
+   ./app/testpmd -c ffff -n 4 -- -i --disable-rss --pkt-filter-mode=perfect \
+                 --rxq=8 --txq=8 --nb-cores=8 --nb-ports=1
+
+Add a rule to direct ``ipv4-udp`` packet whose ``dst_ip=2.2.2.5, src_ip=2.2.2.3, src_port=32, dst_port=32`` to queue 1:
+
+.. code-block:: console
+
+   testpmd> flow_director_filter 0 mode IP add flow ipv4-udp  \
+            src 2.2.2.3 32 dst 2.2.2.5 32 vlan 0 flexbytes () \
+	    fwd pf queue 1 fd_id 1
+
+Check the flow director status:
+
+.. code-block:: console
+
+   testpmd> show port fdir 0
+
+   ######################## FDIR infos for port 0      ####################
+     MODE:   PERFECT
+     SUPPORTED FLOW TYPE:  ipv4-frag ipv4-tcp ipv4-udp ipv4-sctp ipv4-other
+                           ipv6-frag ipv6-tcp ipv6-udp ipv6-sctp ipv6-other
+			   l2_payload
+     FLEX PAYLOAD INFO:
+     max_len:	    16	        payload_limit: 480
+     payload_unit:  2	        payload_seg:   3
+     bitmask_unit:  2	        bitmask_num:   2
+     MASK:
+       vlan_tci: 0x0000,
+       src_ipv4: 0x00000000,
+       dst_ipv4: 0x00000000,
+       src_port: 0x0000,
+       dst_port: 0x0000
+       src_ipv6: 0x00000000,0x00000000,0x00000000,0x00000000,
+       dst_ipv6: 0x00000000,0x00000000,0x00000000,0x00000000
+     FLEX PAYLOAD SRC OFFSET:
+       L2_PAYLOAD:    0      1	    2	   3	  4	 5	6  ...
+       L3_PAYLOAD:    0      1	    2	   3	  4	 5	6  ...
+       L4_PAYLOAD:    0      1	    2	   3	  4	 5	6  ...
+     FLEX MASK CFG:
+       ipv4-udp:    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv4-tcp:    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv4-sctp:   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv4-other:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv4-frag:   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv6-udp:    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv6-tcp:    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv6-sctp:   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv6-other:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       ipv6-frag:   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+       l2_payload:  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+     guarant_count: 1	        best_count:    0
+     guarant_space: 512         best_space:    7168
+     collision:     0	        free:	       0
+     maxhash:	    0	        maxlen:        0
+     add:	    0	        remove:        0
+     f_add:	    0	        f_remove:      0
+
+
+Delete all flow director rules on a port:
+
+.. code-block:: console
+
+   testpmd> flush_flow_director 0
+

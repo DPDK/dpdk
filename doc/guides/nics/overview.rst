@@ -86,61 +86,61 @@ Most of these differences are summarized below.
                                         e   e       e   e   e                   e
                                         c   c       c   c   c                   c
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-   link status
-   link status event
-   Rx interrupt
-   queue start/stop
+   link status                        X X
+   link status event                  X X
+   Rx interrupt                       X X X X
+   queue start/stop                   X X X X
    MTU update
-   jumbo frame
-   scattered Rx
+   jumbo frame                        X X X X
+   scattered Rx                       X X X X
    LRO
-   TSO
-   promiscuous mode
-   allmulticast mode
-   unicast MAC filter
-   multicast MAC filter
-   RSS hash
-   RSS key update
-   RSS reta update
-   VMDq
-   SR-IOV
-   DCB
-   VLAN filter
-   ethertype filter
+   TSO                                X X X X
+   promiscuous mode                   X X X X
+   allmulticast mode                  X X X X
+   unicast MAC filter                 X X X X
+   multicast MAC filter               X X X X
+   RSS hash                           X X X X
+   RSS key update                     X X X X
+   RSS reta update                    X X X X
+   VMDq                               X X
+   SR-IOV                             X X
+   DCB                                X X
+   VLAN filter                        X X X X
+   ethertype filter                   X X
    n-tuple filter
    SYN filter
-   tunnel filter
+   tunnel filter                      X X
    flexible filter
-   hash filter
-   flow director
-   flow control
+   hash filter                        X X X X
+   flow director                      X X
+   flow control                       X X
    rate limitation
-   traffic mirroring
-   CRC offload
-   VLAN offload
-   QinQ offload
-   L3 checksum offload
-   L4 checksum offload
-   inner L3 checksum
-   inner L4 checksum
-   packet type parsing
-   timesync
-   basic stats
-   extended stats
+   traffic mirroring                  X X
+   CRC offload                        X   X
+   VLAN offload                       X   X
+   QinQ offload                       X   X
+   L3 checksum offload                X   X
+   L4 checksum offload                X   X
+   inner L3 checksum                  X   X
+   inner L4 checksum                  X   X
+   packet type parsing                X   X
+   timesync                           X X
+   basic stats                        X X X X
+   extended stats                     X X X X
    stats per queue
    EEPROM dump
    registers dump
-   multiprocess aware
-   BSD nic_uio
-   Linux UIO
-   Linux VFIO
+   multiprocess aware                 X X X X
+   BSD nic_uio                        X X X X
+   Linux UIO                          X X X X
+   Linux VFIO                         X X X X
    other kdrv
    ARMv7
    ARMv8
    Power8
    TILE-Gx
-   x86-32
-   x86-64
+   x86-32                             X X X X
+   x86-64                             X X X X
    usage doc
    design doc
    perf doc

@@ -41,6 +41,7 @@ Network Interface Controller Drivers
     e1000em
     enic
     fm10k
+    i40e
     ixgbe
     intel_vf
     mlx4
