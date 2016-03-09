@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -156,6 +156,24 @@ int rte_eal_iopl_init(void);
  *   - On failure, a negative error value.
  */
 int rte_eal_init(int argc, char **argv);
+
+/**
+ * Check if a primary process is currently alive
+ *
+ * This function returns true when a primary process is currently
+ * active.
+ *
+ * @param config_file_path
+ *   The config_file_path argument provided should point at the location
+ *   that the primary process will create its config file. If NULL, the default
+ *   config file path is used.
+ *
+ * @return
+ *  - If alive, returns 1.
+ *  - If dead, returns 0.
+ */
+int rte_eal_primary_proc_alive(const char *config_file_path);
+
 /**
  * Usage function typedef used by the application usage function.
  *

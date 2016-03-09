@@ -148,5 +148,6 @@ DPDK_16.04 {
 	rte_eal_pci_ioport_write;
 	rte_eal_pci_map_device;
 	rte_eal_pci_unmap_device;
+	rte_eal_primary_proc_alive;
 
 } DPDK_2.2;

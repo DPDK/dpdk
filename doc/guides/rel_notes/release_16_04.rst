@@ -35,6 +35,13 @@ This section should contain new features added in this release. Sample format:
 
   Refer to the previous release notes for examples.
 
+* **Added function to check primary process state.**
+
+  A new function ``rte_eal_primary_proc_alive()`` has been added
+  to allow the user to detect if a primary process is running.
+  Use cases for this feature include fault detection, and monitoring
+  using secondary processes.
+
 * **Enabled bulk allocation of mbufs.**
 
   A new function ``rte_pktmbuf_alloc_bulk()`` has been added to allow the user
