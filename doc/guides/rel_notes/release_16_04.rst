@@ -144,6 +144,8 @@ This section should contain new features added in this release. Sample format:
   space bytes, to boost the performance. In the meanwhile, it deprecated the
   legacy way via reading/writing sysfile supported by kernel module igb_uio.
 
+* **Added i40e support for setting VF mac addresses.**
+
 * **Supported ether type setting of single and double VLAN for i40e**
 
 * **Added VMDQ DCB mode in i40e.**

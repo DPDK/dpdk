@@ -139,6 +139,11 @@ static int i40evf_dev_tx_queue_start(struct rte_eth_dev *dev,
 				     uint16_t tx_queue_id);
 static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev,
 				    uint16_t tx_queue_id);
+static void i40evf_add_mac_addr(struct rte_eth_dev *dev,
+				struct ether_addr *addr,
+				uint32_t index,
+				uint32_t pool);
+static void i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static int i40evf_dev_rss_reta_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t reta_size);
@@ -210,6 +215,8 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.rx_descriptor_done   = i40e_dev_rx_descriptor_done,
 	.tx_queue_setup       = i40e_dev_tx_queue_setup,
 	.tx_queue_release     = i40e_dev_tx_queue_release,
+	.mac_addr_add	      = i40evf_add_mac_addr,
+	.mac_addr_remove      = i40evf_del_mac_addr,
 	.reta_update          = i40evf_dev_rss_reta_update,
 	.reta_query           = i40evf_dev_rss_reta_query,
 	.rss_hash_update      = i40evf_dev_rss_hash_update,
@@ -855,8 +862,11 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
-i40evf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+static void
+i40evf_add_mac_addr(struct rte_eth_dev *dev,
+		    struct ether_addr *addr,
+		    __rte_unused uint32_t index,
+		    __rte_unused uint32_t pool)
 {
 	struct i40e_virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -870,7 +880,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 			    addr->addr_bytes[0], addr->addr_bytes[1],
 			    addr->addr_bytes[2], addr->addr_bytes[3],
 			    addr->addr_bytes[4], addr->addr_bytes[5]);
-		return -1;
+		return;
 	}
 
 	list = (struct i40e_virtchnl_ether_addr_list *)cmd_buffer;
@@ -889,25 +899,29 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 		PMD_DRV_LOG(ERR, "fail to execute command "
 			    "OP_ADD_ETHER_ADDRESS");
 
-	return err;
+	return;
 }
 
-static int
-i40evf_del_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+static void
+i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct i40e_virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct rte_eth_dev_data *data = dev->data;
+	struct ether_addr *addr;
 	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_ether_addr_list) + \
 			sizeof(struct i40e_virtchnl_ether_addr)];
 	int err;
 	struct vf_cmd_info args;
+
+	addr = &(data->mac_addrs[index]);
 
 	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Invalid mac:%x-%x-%x-%x-%x-%x",
 			    addr->addr_bytes[0], addr->addr_bytes[1],
 			    addr->addr_bytes[2], addr->addr_bytes[3],
 			    addr->addr_bytes[4], addr->addr_bytes[5]);
-		return -1;
+		return;
 	}
 
 	list = (struct i40e_virtchnl_ether_addr_list *)cmd_buffer;
@@ -925,8 +939,7 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
 			    "OP_DEL_ETHER_ADDRESS");
-
-	return err;
+	return;
 }
 
 static int
@@ -1302,16 +1315,18 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	/* copy mac addr */
+	/* allocate memory for mac addr storage */
 	eth_dev->data->mac_addrs = rte_zmalloc("i40evf_mac",
-					ETHER_ADDR_LEN, 0);
+					ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX,
+					0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to "
-				"store MAC addresses", ETHER_ADDR_LEN);
+		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to"
+				" store MAC addresses",
+				ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX);
 		return -ENOMEM;
 	}
 	ether_addr_copy((struct ether_addr *)hw->mac.addr,
-		(struct ether_addr *)eth_dev->data->mac_addrs);
+			&eth_dev->data->mac_addrs[0]);
 
 	return 0;
 }
@@ -1778,13 +1793,69 @@ i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	return 0;
 }
 
+static void
+i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
+{
+	struct i40e_virtchnl_ether_addr_list *list;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int err, i, j;
+	int next_begin = 0;
+	int begin = 0;
+	uint32_t len;
+	struct ether_addr *addr;
+	struct vf_cmd_info args;
+
+	do {
+		j = 0;
+		len = sizeof(struct i40e_virtchnl_ether_addr_list);
+		for (i = begin; i < I40E_NUM_MACADDR_MAX; i++, next_begin++) {
+			if (is_zero_ether_addr(&dev->data->mac_addrs[i]))
+				continue;
+			len += sizeof(struct i40e_virtchnl_ether_addr);
+			if (len >= I40E_AQ_BUF_SZ) {
+				next_begin = i + 1;
+				break;
+			}
+		}
+
+		list = rte_zmalloc("i40evf_del_mac_buffer", len, 0);
+
+		for (i = begin; i < next_begin; i++) {
+			addr = &dev->data->mac_addrs[i];
+			if (is_zero_ether_addr(addr))
+				continue;
+			(void)rte_memcpy(list->list[j].addr, addr->addr_bytes,
+					 sizeof(addr->addr_bytes));
+			PMD_DRV_LOG(DEBUG, "add/rm mac:%x:%x:%x:%x:%x:%x",
+				    addr->addr_bytes[0], addr->addr_bytes[1],
+				    addr->addr_bytes[2], addr->addr_bytes[3],
+				    addr->addr_bytes[4], addr->addr_bytes[5]);
+			j++;
+		}
+		list->vsi_id = vf->vsi_res->vsi_id;
+		list->num_elements = j;
+		args.ops = add ? I40E_VIRTCHNL_OP_ADD_ETHER_ADDRESS :
+			   I40E_VIRTCHNL_OP_DEL_ETHER_ADDRESS;
+		args.in_args = (uint8_t *)list;
+		args.in_args_size = len;
+		args.out_buffer = cmd_result_buffer;
+		args.out_size = I40E_AQ_BUF_SZ;
+		err = i40evf_execute_vf_cmd(dev, &args);
+		if (err)
+			PMD_DRV_LOG(ERR, "fail to execute command %s",
+				    add ? "OP_ADD_ETHER_ADDRESS" :
+				    "OP_DEL_ETHER_ADDRESS");
+		rte_free(list);
+		begin = next_begin;
+	} while (begin < I40E_NUM_MACADDR_MAX);
+}
+
 static int
 i40evf_dev_start(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
-	struct ether_addr mac_addr;
 	uint32_t intr_vector = 0;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1829,13 +1900,8 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 		goto err_queue;
 	}
 
-	/* Set mac addr */
-	(void)rte_memcpy(mac_addr.addr_bytes, hw->mac.addr,
-				sizeof(mac_addr.addr_bytes));
-	if (i40evf_add_mac_addr(dev, &mac_addr)) {
-		PMD_DRV_LOG(ERR, "Failed to add mac addr");
-		goto err_queue;
-	}
+	/* Set all mac addrs */
+	i40evf_add_del_all_mac_addr(dev, TRUE);
 
 	if (i40evf_start_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "enable queues failed");
@@ -1850,7 +1916,7 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 	return 0;
 
 err_mac:
-	i40evf_del_mac_addr(dev, &mac_addr);
+	i40evf_add_del_all_mac_addr(dev, FALSE);
 err_queue:
 	return -1;
 }
@@ -1858,9 +1924,7 @@ err_queue:
 static void
 i40evf_dev_stop(struct rte_eth_dev *dev)
 {
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
-	struct ether_addr mac_addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1874,11 +1938,9 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
-	/* Set mac addr */
-	(void)rte_memcpy(mac_addr.addr_bytes, hw->mac.addr,
-				sizeof(mac_addr.addr_bytes));
-	/* Delete mac addr of this vf */
-	i40evf_del_mac_addr(dev, &mac_addr);
+	/* remove all mac addrs */
+	i40evf_add_del_all_mac_addr(dev, FALSE);
+
 }
 
 static int
@@ -1977,6 +2039,7 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->hash_key_size = (I40E_VFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
 	dev_info->reta_size = ETH_RSS_RETA_SIZE_64;
 	dev_info->flow_type_rss_offloads = I40E_RSS_OFFLOAD_ALL;
+	dev_info->max_mac_addrs = I40E_NUM_MACADDR_MAX;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_QINQ_STRIP |

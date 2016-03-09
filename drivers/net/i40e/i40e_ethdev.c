@@ -62,8 +62,6 @@
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
 
-/* Maximun number of MAC addresses */
-#define I40E_NUM_MACADDR_MAX       64
 #define I40E_CLEAR_PXE_WAIT_MS     200
 
 /* Maximun number of capability elements */

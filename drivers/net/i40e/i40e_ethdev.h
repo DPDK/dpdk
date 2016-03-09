@@ -53,6 +53,9 @@
 #define I40E_DEFAULT_QP_NUM_FDIR  1
 #define I40E_UINT32_BIT_SIZE      (CHAR_BIT * sizeof(uint32_t))
 #define I40E_VFTA_SIZE            (4096 / I40E_UINT32_BIT_SIZE)
+/* Maximun number of MAC addresses */
+#define I40E_NUM_MACADDR_MAX       64
+
 /*
  * vlan_id is a 12 bit number.
  * The VFTA array is actually a 4096 bit array, 128 of 32bit elements.
