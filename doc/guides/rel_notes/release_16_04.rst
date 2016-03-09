@@ -155,6 +155,9 @@ ABI Changes
 * The fields in ethdev structure ``rte_eth_fdir_masks`` were changed
   to be in big endian.
 
+* The RETA entry size in ``rte_eth_rss_reta_entry64`` has been increased
+  from 8-bit to 16-bit.
+
 
 Shared Library Versions
 -----------------------
@@ -165,7 +168,7 @@ The libraries prepended with a plus sign were incremented in this version.
 
 .. code-block:: diff
 
-     libethdev.so.2
+   + libethdev.so.3
      librte_acl.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.1
