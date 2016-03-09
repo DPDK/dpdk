@@ -144,6 +144,9 @@ This section should contain API changes. Sample format:
 * Add a short 1-2 sentence description of the API change. Use fixed width
   quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
 
+* The fields in ethdev structure ``rte_eth_fdir_masks`` were changed
+  to be in big endian.
+
 
 ABI Changes
 -----------
@@ -151,9 +154,6 @@ ABI Changes
 * Add a short 1-2 sentence description of the ABI change that was announced in
   the previous releases and made in this release. Use fixed width quotes for
   ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
-
-* The fields in ethdev structure ``rte_eth_fdir_masks`` were changed
-  to be in big endian.
 
 * The RETA entry size in ``rte_eth_rss_reta_entry64`` has been increased
   from 8-bit to 16-bit.
