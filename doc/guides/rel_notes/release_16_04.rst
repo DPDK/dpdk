@@ -158,6 +158,8 @@ ABI Changes
 * The RETA entry size in ``rte_eth_rss_reta_entry64`` has been increased
   from 8-bit to 16-bit.
 
+* The cmdline buffer size has been increase from 256 to 512.
+
 
 Shared Library Versions
 -----------------------
@@ -171,7 +173,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + libethdev.so.3
      librte_acl.so.2
      librte_cfgfile.so.2
-     librte_cmdline.so.1
+   + librte_cmdline.so.2
      librte_distributor.so.1
      librte_eal.so.2
      librte_hash.so.2
