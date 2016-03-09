@@ -434,6 +434,9 @@ static int i40e_get_eeprom_length(struct rte_eth_dev *dev);
 static int i40e_get_eeprom(struct rte_eth_dev *dev,
 			   struct rte_dev_eeprom_info *eeprom);
 
+static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
+				      struct ether_addr *mac_addr);
+
 static const struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
@@ -505,6 +508,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.get_reg                      = i40e_get_regs,
 	.get_eeprom_length            = i40e_get_eeprom_length,
 	.get_eeprom                   = i40e_get_eeprom,
+	.mac_addr_set                 = i40e_set_default_mac_addr,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -8987,4 +8991,18 @@ static int i40e_get_eeprom(struct rte_eth_dev *dev,
 	}
 
 	return 0;
+}
+
+static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
+				      struct ether_addr *mac_addr)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!is_valid_assigned_ether_addr(mac_addr)) {
+		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
+		return;
+	}
+
+	/* Flags: 0x3 updates port address */
+	i40e_aq_mac_address_write(hw, 0x3, mac_addr->addr_bytes, NULL);
 }

@@ -144,7 +144,7 @@ This section should contain new features added in this release. Sample format:
   space bytes, to boost the performance. In the meanwhile, it deprecated the
   legacy way via reading/writing sysfile supported by kernel module igb_uio.
 
-* **Added i40e support for setting VF mac addresses.**
+* **Added i40e support for setting mac addresses.**
 
 * **Added dump of i40e registers and EEPROM.**
 
