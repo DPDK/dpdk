@@ -151,6 +151,9 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 
 	desc = &vq->desc[desc_idx];
+	if (unlikely(desc->len < vq->vhost_hlen))
+		return -1;
+
 	desc_addr = gpa_to_vva(dev, desc->addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
@@ -444,6 +447,9 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	LOG_DEBUG(VHOST_DATA,
 		"(%"PRIu64") Current Index %d| End Index %d\n",
 		dev->device_fh, cur_idx, res_end_idx);
+
+	if (vq->buf_vec[vec_idx].buf_len < vq->vhost_hlen)
+		return -1;
 
 	desc_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
@@ -739,6 +745,9 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct virtio_net_hdr *hdr;
 
 	desc = &vq->desc[desc_idx];
+	if (unlikely(desc->len < vq->vhost_hlen))
+		return -1;
+
 	desc_addr = gpa_to_vva(dev, desc->addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
