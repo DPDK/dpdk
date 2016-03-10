@@ -77,11 +77,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_LPM)            += -lrte_lpm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_POWER)          += -lrte_power
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += -lrte_acl
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lrte_meter
-
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
-_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
-_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
-
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
@@ -95,11 +91,11 @@ endif
 # The static libraries do not know their dependencies.
 # So linking with static library requires explicit dependencies.
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
-
+_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
+_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
 ifeq ($(CONFIG_RTE_NEXT_ABI),y)
 _LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
 endif
-
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lpcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs

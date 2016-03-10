@@ -160,6 +160,8 @@ CFLAGS += $(WERROR_FLAGS)
 
 CFLAGS += -D_GNU_SOURCE
 
+LDLIBS += -lm
+
 # Disable VTA for memcpy test
 ifeq ($(CC), gcc)
 ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)

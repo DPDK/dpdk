@@ -41,6 +41,9 @@ CFLAGS += $(WERROR_FLAGS)
 
 CFLAGS_rte_red.o := -D_GNU_SOURCE
 
+LDLIBS += -lm
+LDLIBS += -lrt
+
 EXPORT_MAP := rte_sched_version.map
 
 LIBABIVER := 1
