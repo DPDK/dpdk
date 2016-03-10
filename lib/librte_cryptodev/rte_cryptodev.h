@@ -1,6 +1,6 @@
 /*-
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -57,14 +57,14 @@ extern "C" {
 /**< Null crypto PMD device name */
 #define CRYPTODEV_NAME_AESNI_MB_PMD	("cryptodev_aesni_mb_pmd")
 /**< AES-NI Multi buffer PMD device name */
-#define CRYPTODEV_NAME_QAT_PMD		("cryptodev_qat_pmd")
-/**< Intel QAT PMD device name */
+#define CRYPTODEV_NAME_QAT_SYM_PMD	("cryptodev_qat_sym_pmd")
+/**< Intel QAT Symmetric Crypto PMD device name */
 
 /** Crypto device type */
 enum rte_cryptodev_type {
 	RTE_CRYPTODEV_NULL_PMD = 1,	/**< Null crypto PMD */
 	RTE_CRYPTODEV_AESNI_MB_PMD,	/**< AES-NI multi buffer PMD */
-	RTE_CRYPTODEV_QAT_PMD,		/**< QAT PMD */
+	RTE_CRYPTODEV_QAT_SYM_PMD,	/**< QAT PMD Symmetric Crypto */
 };
 
 /* Logging Macros */
@@ -99,8 +99,11 @@ struct rte_cryptodev_info {
 
 	unsigned max_nb_queue_pairs;
 	/**< Maximum number of queues pairs supported by device. */
-	unsigned max_nb_sessions;
-	/**< Maximum number of sessions supported by device. */
+
+	struct {
+		unsigned max_nb_sessions;
+		/**< Maximum number of sessions supported by device. */
+	} sym;
 };
 
 #define RTE_CRYPTODEV_DETACHED  (0)
@@ -575,6 +578,23 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 }
 
 
+/** Cryptodev symmetric crypto session */
+struct rte_cryptodev_sym_session {
+	struct {
+		uint8_t dev_id;
+		/**< Device Id */
+		enum rte_cryptodev_type type;
+		/** Crypto Device type session created on */
+		struct rte_mempool *mp;
+		/**< Mempool session allocated from */
+	} __rte_aligned(8);
+	/**< Public symmetric session details */
+
+	char _private[0];
+	/**< Private session material */
+};
+
+
 /**
  * Initialise a session for symmetric cryptographic operations.
  *
@@ -596,24 +616,24 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
  * @return
  *  Pointer to the created session or NULL
  */
-extern struct rte_cryptodev_session *
-rte_cryptodev_session_create(uint8_t dev_id,
-		struct rte_crypto_xform *xform);
+extern struct rte_cryptodev_sym_session *
+rte_cryptodev_sym_session_create(uint8_t dev_id,
+		struct rte_crypto_sym_xform *xform);
 
 /**
  * Free the memory associated with a previously allocated session.
  *
  * @param	dev_id		The device identifier.
  * @param	session		Session pointer previously allocated by
- *				*rte_cryptodev_session_create*.
+ *				*rte_cryptodev_sym_session_create*.
  *
  * @return
  *   NULL on successful freeing of session.
  *   Session pointer on failure to free session.
  */
-extern struct rte_cryptodev_session *
-rte_cryptodev_session_free(uint8_t dev_id,
-		struct rte_cryptodev_session *session);
+extern struct rte_cryptodev_sym_session *
+rte_cryptodev_sym_session_free(uint8_t dev_id,
+		struct rte_cryptodev_sym_session *session);
 
 
 #ifdef __cplusplus

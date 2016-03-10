@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -63,12 +63,12 @@ struct crypto_testsuite_params {
 #define MAX_NUM_OF_OPS_PER_UT	(128)
 
 struct crypto_unittest_params {
-	struct rte_crypto_xform cipher_xform;
-	struct rte_crypto_xform auth_xform;
+	struct rte_crypto_sym_xform cipher_xform;
+	struct rte_crypto_sym_xform auth_xform;
 
-	struct rte_cryptodev_session *sess;
+	struct rte_cryptodev_sym_session *sess;
 
-	struct rte_crypto_op *op;
+	struct rte_crypto_sym_op *op;
 	struct rte_mbuf_offload *ol;
 
 	struct rte_mbuf *obuf[MAX_NUM_OF_OPS_PER_UT];
@@ -127,7 +127,7 @@ testsuite_setup(void)
 	ts_params->mbuf_ol_pool = rte_pktmbuf_offload_pool_create("CRYPTO_OP_POOL",
 				NUM_MBUFS, MBUF_CACHE_SIZE,
 				DEFAULT_NUM_XFORMS *
-				sizeof(struct rte_crypto_xform),
+				sizeof(struct rte_crypto_sym_xform),
 				rte_socket_id());
 		if (ts_params->mbuf_ol_pool == NULL) {
 			RTE_LOG(ERR, USER1, "Can't create CRYPTO_OP_POOL\n");
@@ -179,7 +179,7 @@ testsuite_setup(void)
 
 	ts_params->conf.nb_queue_pairs = DEFAULT_NUM_QPS_PER_QAT_DEVICE;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
-	ts_params->conf.session_mp.nb_objs = info.max_nb_sessions;
+	ts_params->conf.session_mp.nb_objs = info.sym.max_nb_sessions;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->dev_id,
 			&ts_params->conf),
@@ -252,7 +252,7 @@ ut_teardown(void)
 
 	/* free crypto session structure */
 	if (ut_params->sess)
-		rte_cryptodev_session_free(ts_params->dev_id,
+		rte_cryptodev_sym_session_free(ts_params->dev_id,
 				ut_params->sess);
 
 	/* free crypto operation structure */
@@ -1713,7 +1713,7 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	}
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1723,7 +1723,7 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -1733,7 +1733,7 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA256;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->dev_id,
+	ut_params->sess = rte_cryptodev_sym_session_create(ts_params->dev_id,
 		&ut_params->cipher_xform);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
@@ -1753,12 +1753,12 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 			DIGEST_BYTE_LENGTH_SHA256);
 
 		struct rte_mbuf_offload *ol = rte_pktmbuf_offload_alloc(
-				ts_params->mbuf_ol_pool, RTE_PKTMBUF_OL_CRYPTO);
+			ts_params->mbuf_ol_pool, RTE_PKTMBUF_OL_CRYPTO_SYM);
 		TEST_ASSERT_NOT_NULL(ol, "Failed to allocate pktmbuf offload");
 
-		struct rte_crypto_op *cop = &ol->op.crypto;
+		struct rte_crypto_sym_op *cop = &ol->op.crypto;
 
-		rte_crypto_op_attach_session(cop, ut_params->sess);
+		rte_crypto_sym_op_attach_session(cop, ut_params->sess);
 
 		cop->digest.data = ut_params->digest;
 		cop->digest.phys_addr = rte_pktmbuf_mtophys_offset(tx_mbufs[b],
@@ -1881,7 +1881,7 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 	}
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1890,7 +1890,7 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_IV_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
@@ -1900,7 +1900,7 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA256;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->dev_id,
+	ut_params->sess = rte_cryptodev_sym_session_create(ts_params->dev_id,
 			&ut_params->cipher_xform);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
@@ -1933,12 +1933,12 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 
 			struct rte_mbuf_offload *ol = rte_pktmbuf_offload_alloc(
 						ts_params->mbuf_ol_pool,
-						RTE_PKTMBUF_OL_CRYPTO);
+						RTE_PKTMBUF_OL_CRYPTO_SYM);
 			TEST_ASSERT_NOT_NULL(ol, "Failed to allocate pktmbuf offload");
 
-			struct rte_crypto_op *cop = &ol->op.crypto;
+			struct rte_crypto_sym_op *cop = &ol->op.crypto;
 
-			rte_crypto_op_attach_session(cop, ut_params->sess);
+			rte_crypto_sym_op_attach_session(cop, ut_params->sess);
 
 			cop->digest.data = ut_params->digest;
 			cop->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -2060,7 +2060,7 @@ perftest_aesni_mb_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_qat_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_preftest_devtype = RTE_CRYPTODEV_QAT_PMD;
+	gbl_cryptodev_preftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
 
 	return unit_test_suite_runner(&cryptodev_testsuite);
 }

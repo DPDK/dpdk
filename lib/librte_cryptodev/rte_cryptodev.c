@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -572,8 +572,8 @@ rte_cryptodev_queue_pair_stop(uint8_t dev_id, uint16_t queue_pair_id)
 }
 
 static int
-rte_crypto_session_pool_create(struct rte_cryptodev *dev, unsigned nb_objs,
-		unsigned obj_cache_size, int socket_id);
+rte_cryptodev_sym_session_pool_create(struct rte_cryptodev *dev,
+		unsigned nb_objs, unsigned obj_cache_size, int socket_id);
 
 int
 rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
@@ -604,8 +604,10 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 	}
 
 	/* Setup Session mempool for device */
-	return rte_crypto_session_pool_create(dev, config->session_mp.nb_objs,
-			config->session_mp.cache_size, config->socket_id);
+	return rte_cryptodev_sym_session_pool_create(dev,
+			config->session_mp.nb_objs,
+			config->session_mp.cache_size,
+			config->socket_id);
 }
 
 
@@ -911,12 +913,12 @@ rte_cryptodev_pmd_callback_process(struct rte_cryptodev *dev,
 
 
 static void
-rte_crypto_session_init(struct rte_mempool *mp,
+rte_cryptodev_sym_session_init(struct rte_mempool *mp,
 		void *opaque_arg,
 		void *_sess,
 		__rte_unused unsigned i)
 {
-	struct rte_cryptodev_session *sess = _sess;
+	struct rte_cryptodev_sym_session *sess = _sess;
 	struct rte_cryptodev *dev = opaque_arg;
 
 	memset(sess, 0, mp->elt_size);
@@ -930,8 +932,8 @@ rte_crypto_session_init(struct rte_mempool *mp,
 }
 
 static int
-rte_crypto_session_pool_create(struct rte_cryptodev *dev, unsigned nb_objs,
-		unsigned obj_cache_size, int socket_id)
+rte_cryptodev_sym_session_pool_create(struct rte_cryptodev *dev,
+		unsigned nb_objs, unsigned obj_cache_size, int socket_id)
 {
 	char mp_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	unsigned priv_sess_size;
@@ -951,7 +953,7 @@ rte_crypto_session_pool_create(struct rte_cryptodev *dev, unsigned nb_objs,
 		return -ENOMEM;
 	}
 
-	unsigned elt_size = sizeof(struct rte_cryptodev_session) +
+	unsigned elt_size = sizeof(struct rte_cryptodev_sym_session) +
 			priv_sess_size;
 
 	dev->data->session_pool = rte_mempool_lookup(mp_name);
@@ -975,7 +977,8 @@ rte_crypto_session_pool_create(struct rte_cryptodev *dev, unsigned nb_objs,
 				0, /* private data size */
 				NULL, /* obj initialization constructor */
 				NULL, /* obj initialization constructor arg */
-				rte_crypto_session_init, /* obj constructor */
+				rte_cryptodev_sym_session_init,
+				/**< obj constructor*/
 				dev, /* obj constructor arg */
 				socket_id, /* socket id */
 				0); /* flags */
@@ -990,11 +993,12 @@ rte_crypto_session_pool_create(struct rte_cryptodev *dev, unsigned nb_objs,
 	return 0;
 }
 
-struct rte_cryptodev_session *
-rte_cryptodev_session_create(uint8_t dev_id, struct rte_crypto_xform *xform)
+struct rte_cryptodev_sym_session *
+rte_cryptodev_sym_session_create(uint8_t dev_id,
+		struct rte_crypto_sym_xform *xform)
 {
 	struct rte_cryptodev *dev;
-	struct rte_cryptodev_session *sess;
+	struct rte_cryptodev_sym_session *sess;
 	void *_sess;
 
 	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
@@ -1010,7 +1014,7 @@ rte_cryptodev_session_create(uint8_t dev_id, struct rte_crypto_xform *xform)
 		return NULL;
 	}
 
-	sess = (struct rte_cryptodev_session *)_sess;
+	sess = (struct rte_cryptodev_sym_session *)_sess;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->session_configure, NULL);
 	if (dev->dev_ops->session_configure(dev, xform, sess->_private) ==
@@ -1026,8 +1030,9 @@ rte_cryptodev_session_create(uint8_t dev_id, struct rte_crypto_xform *xform)
 	return sess;
 }
 
-struct rte_cryptodev_session *
-rte_cryptodev_session_free(uint8_t dev_id, struct rte_cryptodev_session *sess)
+struct rte_cryptodev_sym_session *
+rte_cryptodev_sym_session_free(uint8_t dev_id,
+		struct rte_cryptodev_sym_session *sess)
 {
 	struct rte_cryptodev *dev;
 

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -124,13 +124,13 @@ struct l2fwd_crypto_options {
 
 	enum l2fwd_crypto_xform_chain xform_chain;
 
-	struct rte_crypto_xform cipher_xform;
+	struct rte_crypto_sym_xform cipher_xform;
 	uint8_t ckey_data[32];
 
 	struct rte_crypto_key iv_key;
 	uint8_t ivkey_data[16];
 
-	struct rte_crypto_xform auth_xform;
+	struct rte_crypto_sym_xform auth_xform;
 	uint8_t akey_data[128];
 };
 
@@ -141,9 +141,8 @@ struct l2fwd_crypto_params {
 
 	unsigned digest_length;
 	unsigned block_size;
-
 	struct rte_crypto_key iv_key;
-	struct rte_cryptodev_session *session;
+	struct rte_cryptodev_sym_session *session;
 };
 
 /** lcore configuration */
@@ -372,7 +371,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	}
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(&ol->op.crypto, cparams->session);
+	rte_crypto_sym_op_attach_session(&ol->op.crypto, cparams->session);
 
 	/* Append space for digest to end of packet */
 	ol->op.crypto.digest.data = (uint8_t *)rte_pktmbuf_append(m,
@@ -474,11 +473,11 @@ generate_random_key(uint8_t *key, unsigned length)
 		key[i] = rand() % 0xff;
 }
 
-static struct rte_cryptodev_session *
+static struct rte_cryptodev_sym_session *
 initialize_crypto_session(struct l2fwd_crypto_options *options,
 		uint8_t cdev_id)
 {
-	struct rte_crypto_xform *first_xform;
+	struct rte_crypto_sym_xform *first_xform;
 
 	if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH) {
 		first_xform = &options->cipher_xform;
@@ -489,7 +488,7 @@ initialize_crypto_session(struct l2fwd_crypto_options *options,
 	}
 
 	/* Setup Cipher Parameters */
-	return rte_cryptodev_session_create(cdev_id, first_xform);
+	return rte_cryptodev_sym_session_create(cdev_id, first_xform);
 }
 
 static void
@@ -610,7 +609,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				m = pkts_burst[j];
 				ol = rte_pktmbuf_offload_alloc(
 						l2fwd_mbuf_ol_pool,
-						RTE_PKTMBUF_OL_CRYPTO);
+						RTE_PKTMBUF_OL_CRYPTO_SYM);
 				/*
 				 * If we can't allocate a offload, then drop
 				 * the rest of the burst and dequeue and
@@ -689,7 +688,7 @@ parse_cryptodev_type(enum rte_cryptodev_type *type, char *optarg)
 		*type = RTE_CRYPTODEV_AESNI_MB_PMD;
 		return 0;
 	} else if (strcmp("QAT", optarg) == 0) {
-		*type = RTE_CRYPTODEV_QAT_PMD;
+		*type = RTE_CRYPTODEV_QAT_SYM_PMD;
 		return 0;
 	}
 
@@ -937,7 +936,7 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	options->xform_chain = L2FWD_CRYPTO_CIPHER_HASH;
 
 	/* Cipher Data */
-	options->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	options->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	options->cipher_xform.next = NULL;
 
 	options->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -946,12 +945,11 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	generate_random_key(options->ckey_data, sizeof(options->ckey_data));
 
 	options->cipher_xform.cipher.key.data = options->ckey_data;
-	options->cipher_xform.cipher.key.phys_addr = 0;
 	options->cipher_xform.cipher.key.length = 16;
 
 
 	/* Authentication Data */
-	options->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	options->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	options->auth_xform.next = NULL;
 
 	options->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
@@ -963,7 +961,6 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	generate_random_key(options->akey_data, sizeof(options->akey_data));
 
 	options->auth_xform.auth.key.data = options->akey_data;
-	options->auth_xform.auth.key.phys_addr = 0;
 	options->auth_xform.auth.key.length = 20;
 }
 
@@ -982,7 +979,7 @@ l2fwd_crypto_options_print(struct l2fwd_crypto_options *options)
 	switch (options->cdev_type) {
 	case RTE_CRYPTODEV_AESNI_MB_PMD:
 		printf("cryptodev type: AES-NI MB PMD\n"); break;
-	case RTE_CRYPTODEV_QAT_PMD:
+	case RTE_CRYPTODEV_QAT_SYM_PMD:
 		printf("cryptodev type: QAT PMD\n"); break;
 	default:
 		break;
@@ -1179,7 +1176,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports)
 	unsigned i, cdev_id, cdev_count, enabled_cdev_count = 0;
 	int retval;
 
-	if (options->cdev_type == RTE_CRYPTODEV_QAT_PMD) {
+	if (options->cdev_type == RTE_CRYPTODEV_QAT_SYM_PMD) {
 		if (rte_cryptodev_count() < nb_ports)
 			return -1;
 	} else if (options->cdev_type == RTE_CRYPTODEV_AESNI_MB_PMD) {

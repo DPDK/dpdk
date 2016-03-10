@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -89,37 +89,37 @@ void qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
 }
 
 static int
-qat_get_cmd_id(const struct rte_crypto_xform *xform)
+qat_get_cmd_id(const struct rte_crypto_sym_xform *xform)
 {
 	if (xform->next == NULL)
 		return -1;
 
 	/* Cipher Only */
-	if (xform->type == RTE_CRYPTO_XFORM_CIPHER && xform->next == NULL)
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL)
 		return -1; /* return ICP_QAT_FW_LA_CMD_CIPHER; */
 
 	/* Authentication Only */
-	if (xform->type == RTE_CRYPTO_XFORM_AUTH && xform->next == NULL)
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH && xform->next == NULL)
 		return -1; /* return ICP_QAT_FW_LA_CMD_AUTH; */
 
 	/* Cipher then Authenticate */
-	if (xform->type == RTE_CRYPTO_XFORM_CIPHER &&
-			xform->next->type == RTE_CRYPTO_XFORM_AUTH)
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+			xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
 		return ICP_QAT_FW_LA_CMD_CIPHER_HASH;
 
 	/* Authenticate then Cipher */
-	if (xform->type == RTE_CRYPTO_XFORM_AUTH &&
-			xform->next->type == RTE_CRYPTO_XFORM_CIPHER)
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+			xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
 		return ICP_QAT_FW_LA_CMD_HASH_CIPHER;
 
 	return -1;
 }
 
 static struct rte_crypto_auth_xform *
-qat_get_auth_xform(struct rte_crypto_xform *xform)
+qat_get_auth_xform(struct rte_crypto_sym_xform *xform)
 {
 	do {
-		if (xform->type == RTE_CRYPTO_XFORM_AUTH)
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH)
 			return &xform->auth;
 
 		xform = xform->next;
@@ -129,10 +129,10 @@ qat_get_auth_xform(struct rte_crypto_xform *xform)
 }
 
 static struct rte_crypto_cipher_xform *
-qat_get_cipher_xform(struct rte_crypto_xform *xform)
+qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 {
 	do {
-		if (xform->type == RTE_CRYPTO_XFORM_CIPHER)
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
 			return &xform->cipher;
 
 		xform = xform->next;
@@ -144,7 +144,7 @@ qat_get_cipher_xform(struct rte_crypto_xform *xform)
 
 void *
 qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
-		struct rte_crypto_xform *xform, void *session_private)
+		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_pmd_private *internals = dev->data->dev_private;
 
@@ -261,7 +261,7 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		auth_xform->digest_length))
 		goto error_out;
 
-	return (struct rte_cryptodev_session *)session;
+	return (struct rte_crypto_sym_session *)session;
 
 error_out:
 	rte_mempool_put(internals->sess_mp, session);
@@ -275,7 +275,7 @@ unsigned qat_crypto_sym_get_session_private_size(
 }
 
 
-uint16_t qat_crypto_pkt_tx_burst(void *qp, struct rte_mbuf **tx_pkts,
+uint16_t qat_sym_crypto_pkt_tx_burst(void *qp, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
 	register struct qat_queue *queue;
@@ -327,7 +327,8 @@ kick_tail:
 }
 
 uint16_t
-qat_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+qat_sym_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts)
 {
 	struct rte_mbuf_offload *ol;
 	struct qat_queue *queue;
@@ -343,12 +344,13 @@ qat_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			msg_counter != nb_pkts) {
 		rx_mbuf = (struct rte_mbuf *)(uintptr_t)(resp_msg->opaque_data);
-		ol = rte_pktmbuf_offload_get(rx_mbuf, RTE_PKTMBUF_OL_CRYPTO);
-
+		ol = rte_pktmbuf_offload_get(rx_mbuf,
+					RTE_PKTMBUF_OL_CRYPTO_SYM);
 		if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
 				ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
 					resp_msg->comn_hdr.comn_status)) {
-			ol->op.crypto.status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+			ol->op.crypto.status =
+					RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
 			ol->op.crypto.status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		}
@@ -384,20 +386,21 @@ qat_alg_write_mbuf_entry(struct rte_mbuf *mbuf, uint8_t *out_msg)
 	struct icp_qat_fw_la_auth_req_params *auth_param;
 	register struct icp_qat_fw_la_bulk_req *qat_req;
 
-	ol = rte_pktmbuf_offload_get(mbuf, RTE_PKTMBUF_OL_CRYPTO);
+	ol = rte_pktmbuf_offload_get(mbuf, RTE_PKTMBUF_OL_CRYPTO_SYM);
 	if (unlikely(ol == NULL)) {
 		PMD_DRV_LOG(ERR, "No valid crypto off-load operation attached "
 				"to (%p) mbuf.", mbuf);
 		return -EINVAL;
 	}
 
-	if (unlikely(ol->op.crypto.type == RTE_CRYPTO_OP_SESSIONLESS)) {
+	if (unlikely(ol->op.crypto.type == RTE_CRYPTO_SYM_OP_SESSIONLESS)) {
 		PMD_DRV_LOG(ERR, "QAT PMD only supports session oriented"
 				" requests mbuf (%p) is sessionless.", mbuf);
 		return -EINVAL;
 	}
 
-	if (unlikely(ol->op.crypto.session->type != RTE_CRYPTODEV_QAT_PMD)) {
+	if (unlikely(ol->op.crypto.session->type
+					!= RTE_CRYPTODEV_QAT_SYM_PMD)) {
 		PMD_DRV_LOG(ERR, "Session was not created for this device");
 		return -EINVAL;
 	}
@@ -520,8 +523,8 @@ void qat_dev_info_get(__rte_unused struct rte_cryptodev *dev,
 				ADF_NUM_SYM_QPS_PER_BUNDLE *
 				ADF_NUM_BUNDLES_PER_DEV;
 
-		info->max_nb_sessions = internals->max_nb_sessions;
-		info->dev_type = RTE_CRYPTODEV_QAT_PMD;
+		info->sym.max_nb_sessions = internals->max_nb_sessions;
+		info->dev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
 	}
 }
 

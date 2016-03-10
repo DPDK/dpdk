@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -109,7 +109,7 @@ calculate_auth_precomputes(hash_one_block_t one_block_hash,
 
 /** Get xform chain order */
 static int
-aesni_mb_get_chain_order(const struct rte_crypto_xform *xform)
+aesni_mb_get_chain_order(const struct rte_crypto_sym_xform *xform)
 {
 	/*
 	 * Multi-buffer only supports HASH_CIPHER or CIPHER_HASH chained
@@ -119,12 +119,12 @@ aesni_mb_get_chain_order(const struct rte_crypto_xform *xform)
 	if (xform->next == NULL || xform->next->next != NULL)
 		return -1;
 
-	if (xform->type == RTE_CRYPTO_XFORM_AUTH &&
-			xform->next->type == RTE_CRYPTO_XFORM_CIPHER)
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+			xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
 		return HASH_CIPHER;
 
-	if (xform->type == RTE_CRYPTO_XFORM_CIPHER &&
-				xform->next->type == RTE_CRYPTO_XFORM_AUTH)
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+				xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
 		return CIPHER_HASH;
 
 	return -1;
@@ -134,11 +134,11 @@ aesni_mb_get_chain_order(const struct rte_crypto_xform *xform)
 static int
 aesni_mb_set_session_auth_parameters(const struct aesni_mb_ops *mb_ops,
 		struct aesni_mb_session *sess,
-		const struct rte_crypto_xform *xform)
+		const struct rte_crypto_sym_xform *xform)
 {
 	hash_one_block_t hash_oneblock_fn;
 
-	if (xform->type != RTE_CRYPTO_XFORM_AUTH) {
+	if (xform->type != RTE_CRYPTO_SYM_XFORM_AUTH) {
 		MB_LOG_ERR("Crypto xform struct not of type auth");
 		return -1;
 	}
@@ -196,11 +196,11 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_ops *mb_ops,
 static int
 aesni_mb_set_session_cipher_parameters(const struct aesni_mb_ops *mb_ops,
 		struct aesni_mb_session *sess,
-		const struct rte_crypto_xform *xform)
+		const struct rte_crypto_sym_xform *xform)
 {
 	aes_keyexp_t aes_keyexp_fn;
 
-	if (xform->type != RTE_CRYPTO_XFORM_CIPHER) {
+	if (xform->type != RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		MB_LOG_ERR("Crypto xform struct not of type cipher");
 		return -1;
 	}
@@ -259,10 +259,10 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_ops *mb_ops,
 int
 aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
 		struct aesni_mb_session *sess,
-		const struct rte_crypto_xform *xform)
+		const struct rte_crypto_sym_xform *xform)
 {
-	const struct rte_crypto_xform *auth_xform = NULL;
-	const struct rte_crypto_xform *cipher_xform = NULL;
+	const struct rte_crypto_sym_xform *auth_xform = NULL;
+	const struct rte_crypto_sym_xform *cipher_xform = NULL;
 
 	/* Select Crypto operation - hash then cipher / cipher then hash */
 	switch (aesni_mb_get_chain_order(xform)) {
@@ -296,11 +296,11 @@ aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
 
 /** Get multi buffer session */
 static struct aesni_mb_session *
-get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *crypto_op)
+get_session(struct aesni_mb_qp *qp, struct rte_crypto_sym_op *crypto_op)
 {
 	struct aesni_mb_session *sess = NULL;
 
-	if (crypto_op->type == RTE_CRYPTO_OP_WITH_SESSION) {
+	if (crypto_op->type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
 		if (unlikely(crypto_op->session->type !=
 				RTE_CRYPTODEV_AESNI_MB_PMD))
 			return NULL;
@@ -313,7 +313,7 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *crypto_op)
 			return NULL;
 
 		sess = (struct aesni_mb_session *)
-			((struct rte_cryptodev_session *)_sess)->_private;
+			((struct rte_cryptodev_sym_session *)_sess)->_private;
 
 		if (unlikely(aesni_mb_set_session_parameters(qp->ops,
 				sess, crypto_op->xform) != 0)) {
@@ -339,7 +339,8 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *crypto_op)
  */
 static JOB_AES_HMAC *
 process_crypto_op(struct aesni_mb_qp *qp, struct rte_mbuf *m,
-		struct rte_crypto_op *c_op, struct aesni_mb_session *session)
+		struct rte_crypto_sym_op *c_op,
+		struct aesni_mb_session *session)
 {
 	JOB_AES_HMAC *job;
 
@@ -436,14 +437,14 @@ static struct rte_mbuf *
 post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 {
 	struct rte_mbuf *m;
-	struct rte_crypto_op *c_op;
+	struct rte_crypto_sym_op *c_op;
 
 	if (job->user_data == NULL)
 		return NULL;
 
 	/* handled retrieved job */
 	m = (struct rte_mbuf *)job->user_data;
-	c_op = (struct rte_crypto_op *)job->user_data2;
+	c_op = (struct rte_crypto_sym_op *)job->user_data2;
 
 	/* set status as successful by default */
 	c_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -463,7 +464,7 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 	}
 
 	/* Free session if a session-less crypto op */
-	if (c_op->type == RTE_CRYPTO_OP_SESSIONLESS) {
+	if (c_op->type == RTE_CRYPTO_SYM_OP_SESSIONLESS) {
 		rte_mempool_put(qp->sess_mp, c_op->session);
 		c_op->session = NULL;
 	}
@@ -515,7 +516,8 @@ aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_mbuf **bufs,
 	int i, processed_jobs = 0;
 
 	for (i = 0; i < nb_bufs; i++) {
-		ol = rte_pktmbuf_offload_get(bufs[i], RTE_PKTMBUF_OL_CRYPTO);
+		ol = rte_pktmbuf_offload_get(bufs[i],
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 		if (unlikely(ol == NULL)) {
 			qp->stats.enqueue_err_count++;
 			goto flush_jobs;

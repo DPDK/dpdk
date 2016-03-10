@@ -16,8 +16,8 @@ DPDK_2.2 {
 	rte_cryptodev_pmd_driver_register;
 	rte_cryptodev_pmd_release_device;
 	rte_cryptodev_pmd_virtual_dev_init;
-	rte_cryptodev_session_create;
-	rte_cryptodev_session_free;
+	rte_cryptodev_sym_session_create;
+	rte_cryptodev_sym_session_free;
 	rte_cryptodev_socket_id;
 	rte_cryptodev_start;
 	rte_cryptodev_stats_get;

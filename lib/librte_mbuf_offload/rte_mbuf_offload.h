@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -67,7 +67,7 @@ extern "C" {
 enum rte_mbuf_ol_op_type {
 	RTE_PKTMBUF_OL_NOT_SPECIFIED = 0,
 	/**< Off-load not specified */
-	RTE_PKTMBUF_OL_CRYPTO
+	RTE_PKTMBUF_OL_CRYPTO_SYM
 	/**< Crypto offload operation */
 };
 
@@ -84,7 +84,7 @@ struct rte_mbuf_offload {
 
 	enum rte_mbuf_ol_op_type type;	/**< offload type */
 	union {
-		struct rte_crypto_op crypto;	/**< Crypto operation */
+		struct rte_crypto_sym_op crypto;	/**< Crypto operation */
 	} op;
 };
 
@@ -194,8 +194,8 @@ __rte_pktmbuf_offload_reset(struct rte_mbuf_offload *ol,
 	ol->type = type;
 
 	switch (type) {
-	case RTE_PKTMBUF_OL_CRYPTO:
-		__rte_crypto_op_reset(&ol->op.crypto); break;
+	case RTE_PKTMBUF_OL_CRYPTO_SYM:
+		__rte_crypto_sym_op_reset(&ol->op.crypto); break;
 	default:
 		break;
 	}
@@ -278,24 +278,24 @@ __rte_pktmbuf_offload_check_priv_data_size(struct rte_mbuf_offload *ol,
  * - On success returns pointer to first crypto xform in crypto operations chain
  * - On failure returns NULL
  */
-static inline struct rte_crypto_xform *
-rte_pktmbuf_offload_alloc_crypto_xforms(struct rte_mbuf_offload *ol,
+static inline struct rte_crypto_sym_xform *
+rte_pktmbuf_offload_alloc_crypto_sym_xforms(struct rte_mbuf_offload *ol,
 		unsigned nb_xforms)
 {
-	struct rte_crypto_xform *xform;
+	struct rte_crypto_sym_xform *xform;
 	void *priv_data;
 	uint16_t size;
 
-	size = sizeof(struct rte_crypto_xform) * nb_xforms;
+	size = sizeof(struct rte_crypto_sym_xform) * nb_xforms;
 	priv_data = __rte_pktmbuf_offload_check_priv_data_size(ol, size);
 
 	if (priv_data == NULL)
 		return NULL;
 
-	ol->op.crypto.xform = xform = (struct rte_crypto_xform *)priv_data;
+	ol->op.crypto.xform = xform = (struct rte_crypto_sym_xform *)priv_data;
 
 	do {
-		xform->type = RTE_CRYPTO_XFORM_NOT_SPECIFIED;
+		xform->type = RTE_CRYPTO_SYM_XFORM_NOT_SPECIFIED;
 		xform = xform->next = --nb_xforms > 0 ? xform + 1 : NULL;
 	} while (xform);
 

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -108,7 +108,7 @@ aesni_mb_pmd_info_get(struct rte_cryptodev *dev,
 	if (dev_info != NULL) {
 		dev_info->dev_type = dev->dev_type;
 		dev_info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
-		dev_info->max_nb_sessions = internals->max_nb_sessions;
+		dev_info->sym.max_nb_sessions = internals->max_nb_sessions;
 	}
 }
 
@@ -243,7 +243,7 @@ aesni_mb_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 /** Configure a aesni multi-buffer session from a crypto xform chain */
 static void *
 aesni_mb_pmd_session_configure(struct rte_cryptodev *dev,
-		struct rte_crypto_xform *xform,	void *sess)
+		struct rte_crypto_sym_xform *xform,	void *sess)
 {
 	struct aesni_mb_private *internals = dev->data->dev_private;
 

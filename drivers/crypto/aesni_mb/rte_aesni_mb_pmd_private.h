@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -218,7 +218,7 @@ struct aesni_mb_session {
 extern int
 aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
 		struct aesni_mb_session *sess,
-		const struct rte_crypto_xform *xform);
+		const struct rte_crypto_sym_xform *xform);
 
 
 /** device specific operations function pointer structure */

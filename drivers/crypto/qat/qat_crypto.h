@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -109,16 +109,18 @@ qat_crypto_sym_session_init(struct rte_mempool *mempool, void *priv_sess);
 
 extern void *
 qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
-		struct rte_crypto_xform *xform, void *session_private);
+		struct rte_crypto_sym_xform *xform, void *session_private);
 
 extern void
 qat_crypto_sym_clear_session(struct rte_cryptodev *dev, void *session);
 
 
 uint16_t
-qat_crypto_pkt_tx_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+qat_sym_crypto_pkt_tx_burst(void *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 
 uint16_t
-qat_crypto_pkt_rx_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+qat_sym_crypto_pkt_rx_burst(void *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
 
 #endif /* _QAT_CRYPTO_H_ */

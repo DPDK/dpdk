@@ -1,6 +1,6 @@
 /*-
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -358,7 +358,7 @@ typedef uint32_t (*cryptodev_queue_pair_count_t)(struct rte_cryptodev *dev);
  * - On success returns a pointer to a rte_mempool
  * - On failure returns a NULL pointer
  */
-typedef int (*cryptodev_create_session_pool_t)(
+typedef int (*cryptodev_sym_create_session_pool_t)(
 		struct rte_cryptodev *dev, unsigned nb_objs,
 		unsigned obj_cache_size, int socket_id);
 
@@ -372,7 +372,7 @@ typedef int (*cryptodev_create_session_pool_t)(
  *  - On success returns the size of the session structure for device
  *  - On failure returns 0
  */
-typedef unsigned (*cryptodev_get_session_private_size_t)(
+typedef unsigned (*cryptodev_sym_get_session_private_size_t)(
 		struct rte_cryptodev *dev);
 
 /**
@@ -386,7 +386,7 @@ typedef unsigned (*cryptodev_get_session_private_size_t)(
  *  - Returns private session structure on success.
  *  - Returns NULL on failure.
  */
-typedef void (*cryptodev_initialize_session_t)(struct rte_mempool *mempool,
+typedef void (*cryptodev_sym_initialize_session_t)(struct rte_mempool *mempool,
 		void *session_private);
 
 /**
@@ -400,14 +400,14 @@ typedef void (*cryptodev_initialize_session_t)(struct rte_mempool *mempool,
  *  - Returns private session structure on success.
  *  - Returns NULL on failure.
  */
-typedef void * (*cryptodev_configure_session_t)(struct rte_cryptodev *dev,
-		struct rte_crypto_xform *xform, void *session_private);
+typedef void * (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform, void *session_private);
 
 /**
  * Free Crypto session.
  * @param	session		Cryptodev session structure to free
  */
-typedef void (*cryptodev_free_session_t)(struct rte_cryptodev *dev,
+typedef void (*cryptodev_sym_free_session_t)(struct rte_cryptodev *dev,
 		void *session_private);
 
 
@@ -436,13 +436,13 @@ struct rte_cryptodev_ops {
 	cryptodev_queue_pair_count_t queue_pair_count;
 	/**< Get count of the queue pairs. */
 
-	cryptodev_get_session_private_size_t session_get_size;
+	cryptodev_sym_get_session_private_size_t session_get_size;
 	/**< Return private session. */
-	cryptodev_initialize_session_t session_initialize;
+	cryptodev_sym_initialize_session_t session_initialize;
 	/**< Initialization function for private session data */
-	cryptodev_configure_session_t session_configure;
+	cryptodev_sym_configure_session_t session_configure;
 	/**< Configure a Crypto session. */
-	cryptodev_free_session_t session_clear;
+	cryptodev_sym_free_session_t session_clear;
 	/**< Clear a Crypto sessions private data. */
 };
 

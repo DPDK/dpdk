@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -57,13 +57,13 @@ struct crypto_testsuite_params {
 };
 
 struct crypto_unittest_params {
-	struct rte_crypto_xform cipher_xform;
-	struct rte_crypto_xform auth_xform;
+	struct rte_crypto_sym_xform cipher_xform;
+	struct rte_crypto_sym_xform auth_xform;
 
-	struct rte_cryptodev_session *sess;
+	struct rte_cryptodev_sym_session *sess;
 
 	struct rte_mbuf_offload *ol;
-	struct rte_crypto_op *op;
+	struct rte_crypto_sym_op *op;
 
 	struct rte_mbuf *obuf, *ibuf;
 
@@ -78,7 +78,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 		struct crypto_unittest_params *ut_params);
 
 static int
-test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_session *sess,
+test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 		struct crypto_unittest_params *ut_params,
 		struct crypto_testsuite_params *ts_param);
 
@@ -166,7 +166,7 @@ testsuite_setup(void)
 			"MBUF_OFFLOAD_POOL",
 			NUM_MBUFS, MBUF_CACHE_SIZE,
 			DEFAULT_NUM_XFORMS *
-			sizeof(struct rte_crypto_xform),
+			sizeof(struct rte_crypto_sym_xform),
 			rte_socket_id());
 	if (ts_params->mbuf_ol_pool == NULL) {
 		RTE_LOG(ERR, USER1, "Can't create CRYPTO_OP_POOL\n");
@@ -221,7 +221,7 @@ testsuite_setup(void)
 
 		ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 		ts_params->conf.socket_id = SOCKET_ID_ANY;
-		ts_params->conf.session_mp.nb_objs = info.max_nb_sessions;
+		ts_params->conf.session_mp.nb_objs = info.sym.max_nb_sessions;
 
 		TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
 				&ts_params->conf),
@@ -276,7 +276,7 @@ ut_setup(void)
 	ts_params->conf.nb_queue_pairs = DEFAULT_NUM_QPS_PER_QAT_DEVICE;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
 	ts_params->conf.session_mp.nb_objs =
-			(gbl_cryptodev_type == RTE_CRYPTODEV_QAT_PMD) ?
+			(gbl_cryptodev_type == RTE_CRYPTODEV_QAT_SYM_PMD) ?
 					DEFAULT_NUM_OPS_INFLIGHT :
 					DEFAULT_NUM_OPS_INFLIGHT;
 
@@ -320,7 +320,7 @@ ut_teardown(void)
 
 	/* free crypto session structure */
 	if (ut_params->sess) {
-		rte_cryptodev_session_free(ts_params->valid_devs[0],
+		rte_cryptodev_sym_session_free(ts_params->valid_devs[0],
 				ut_params->sess);
 		ut_params->sess = NULL;
 	}
@@ -465,7 +465,7 @@ test_queue_pair_descriptor_setup(void)
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
-	ts_params->conf.session_mp.nb_objs = dev_info.max_nb_sessions;
+	ts_params->conf.session_mp.nb_objs = dev_info.sym.max_nb_sessions;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
 			&ts_params->conf), "Failed to configure cryptodev %u",
@@ -768,7 +768,7 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -777,7 +777,8 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
@@ -787,21 +788,21 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA1;
 
 	/* Create crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(
+	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->valid_devs[0],
 			&ut_params->cipher_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
 	ut_params->op = &ut_params->ol->op.crypto;
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->digest.data = ut_params->digest;
 	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -864,18 +865,18 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest_sessionless(void)
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
 	ut_params->op = &ut_params->ol->op.crypto;
 
-	TEST_ASSERT_NOT_NULL(rte_pktmbuf_offload_alloc_crypto_xforms(
+	TEST_ASSERT_NOT_NULL(rte_pktmbuf_offload_alloc_crypto_sym_xforms(
 			ut_params->ol, 2),
 			"failed to allocate space for crypto transforms");
 
 	/* Set crypto operation data parameters */
-	ut_params->op->xform->type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->op->xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
 	/* cipher parameters */
 	ut_params->op->xform->cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
@@ -884,7 +885,7 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest_sessionless(void)
 	ut_params->op->xform->cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* hash parameters */
-	ut_params->op->xform->next->type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->op->xform->next->type = RTE_CRYPTO_SYM_XFORM_AUTH;
 
 	ut_params->op->xform->next->auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
 	ut_params->op->xform->next->auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
@@ -960,7 +961,7 @@ test_AES_CBC_HMAC_SHA1_decrypt_digest_verify(void)
 			DIGEST_BYTE_LENGTH_SHA1);
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = NULL;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -969,7 +970,7 @@ test_AES_CBC_HMAC_SHA1_decrypt_digest_verify(void)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = &ut_params->cipher_xform;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -979,13 +980,14 @@ test_AES_CBC_HMAC_SHA1_decrypt_digest_verify(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA1;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->valid_devs[0],
-			&ut_params->auth_xform);
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->auth_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -993,7 +995,7 @@ test_AES_CBC_HMAC_SHA1_decrypt_digest_verify(void)
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->digest.data = ut_params->digest;
 	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -1068,7 +1070,7 @@ test_AES_CBC_HMAC_SHA256_encrypt_digest(void)
 	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1077,7 +1079,7 @@ test_AES_CBC_HMAC_SHA256_encrypt_digest(void)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
@@ -1087,13 +1089,14 @@ test_AES_CBC_HMAC_SHA256_encrypt_digest(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA256;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->valid_devs[0],
-			&ut_params->cipher_xform);
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->cipher_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -1101,7 +1104,7 @@ test_AES_CBC_HMAC_SHA256_encrypt_digest(void)
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->digest.data = ut_params->digest;
 	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -1170,7 +1173,7 @@ test_AES_CBC_HMAC_SHA256_decrypt_digest_verify(void)
 			DIGEST_BYTE_LENGTH_SHA256);
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = NULL;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1179,7 +1182,7 @@ test_AES_CBC_HMAC_SHA256_decrypt_digest_verify(void)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = &ut_params->cipher_xform;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -1189,13 +1192,14 @@ test_AES_CBC_HMAC_SHA256_decrypt_digest_verify(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA256;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->valid_devs[0],
-			&ut_params->auth_xform);
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->auth_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -1203,7 +1207,7 @@ test_AES_CBC_HMAC_SHA256_decrypt_digest_verify(void)
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->digest.data = ut_params->digest;
 	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -1283,7 +1287,7 @@ test_AES_CBC_HMAC_SHA512_encrypt_digest(void)
 	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1292,7 +1296,7 @@ test_AES_CBC_HMAC_SHA512_encrypt_digest(void)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
@@ -1302,15 +1306,16 @@ test_AES_CBC_HMAC_SHA512_encrypt_digest(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA512;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->valid_devs[0],
-			&ut_params->cipher_xform);
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->cipher_xform);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -1318,7 +1323,7 @@ test_AES_CBC_HMAC_SHA512_encrypt_digest(void)
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->digest.data = ut_params->digest;
 	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -1371,7 +1376,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 		struct crypto_unittest_params *ut_params);
 
 static int
-test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_session *sess,
+test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 		struct crypto_unittest_params *ut_params,
 		struct crypto_testsuite_params *ts_params);
 
@@ -1386,8 +1391,9 @@ test_AES_CBC_HMAC_SHA512_decrypt_digest_verify(void)
 			"Failed to create session params");
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->valid_devs[0],
-			&ut_params->auth_xform);
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->auth_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	return test_AES_CBC_HMAC_SHA512_decrypt_perform(ut_params->sess,
@@ -1400,7 +1406,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 {
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = NULL;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1409,7 +1415,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = &ut_params->cipher_xform;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -1423,7 +1429,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 
 
 static int
-test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_session *sess,
+test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 		struct crypto_unittest_params *ut_params,
 		struct crypto_testsuite_params *ts_params)
 {
@@ -1443,7 +1449,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_session *sess,
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -1451,7 +1457,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_session *sess,
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, sess);
 
 	ut_params->op->digest.data = ut_params->digest;
 	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -1521,7 +1527,7 @@ test_AES_CBC_HMAC_AES_XCBC_encrypt_digest(void)
 	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1530,7 +1536,7 @@ test_AES_CBC_HMAC_AES_XCBC_encrypt_digest(void)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
@@ -1540,13 +1546,14 @@ test_AES_CBC_HMAC_AES_XCBC_encrypt_digest(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_AES_XCBC;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->valid_devs[0],
-			&ut_params->cipher_xform);
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->cipher_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -1554,7 +1561,7 @@ test_AES_CBC_HMAC_AES_XCBC_encrypt_digest(void)
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->iv.data = (uint8_t *)
 		rte_pktmbuf_prepend(ut_params->ibuf,
@@ -1614,7 +1621,7 @@ test_AES_CBC_HMAC_AES_XCBC_decrypt_digest_verify(void)
 			DIGEST_BYTE_LENGTH_AES_XCBC);
 
 	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = NULL;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
@@ -1623,7 +1630,7 @@ test_AES_CBC_HMAC_AES_XCBC_decrypt_digest_verify(void)
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = &ut_params->cipher_xform;
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -1633,13 +1640,14 @@ test_AES_CBC_HMAC_AES_XCBC_decrypt_digest_verify(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_AES_XCBC;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_session_create(ts_params->valid_devs[0],
-			&ut_params->auth_xform);
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->auth_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -1647,7 +1655,7 @@ test_AES_CBC_HMAC_AES_XCBC_decrypt_digest_verify(void)
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
 			CIPHER_IV_LENGTH_AES_CBC);
@@ -1751,7 +1759,7 @@ test_multi_session(void)
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
 	struct rte_cryptodev_info dev_info;
-	struct rte_cryptodev_session **sessions;
+	struct rte_cryptodev_sym_session **sessions;
 
 	uint16_t i;
 
@@ -1760,12 +1768,13 @@ test_multi_session(void)
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
-	sessions = rte_malloc(NULL, (sizeof(struct rte_cryptodev_session *) *
-			dev_info.max_nb_sessions) + 1, 0);
+	sessions = rte_malloc(NULL,
+			(sizeof(struct rte_cryptodev_sym_session *) *
+			dev_info.sym.max_nb_sessions) + 1, 0);
 
 	/* Create multiple crypto sessions*/
-	for (i = 0; i < dev_info.max_nb_sessions; i++) {
-		sessions[i] = rte_cryptodev_session_create(
+	for (i = 0; i < dev_info.sym.max_nb_sessions; i++) {
+		sessions[i] = rte_cryptodev_sym_session_create(
 				ts_params->valid_devs[0],
 			&ut_params->auth_xform);
 		TEST_ASSERT_NOT_NULL(sessions[i],
@@ -1780,13 +1789,13 @@ test_multi_session(void)
 	}
 
 	/* Next session create should fail */
-	sessions[i] = rte_cryptodev_session_create(ts_params->valid_devs[0],
+	sessions[i] = rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
 			&ut_params->auth_xform);
 	TEST_ASSERT_NULL(sessions[i],
 			"Session creation succeeded unexpectedly!");
 
-	for (i = 0; i < dev_info.max_nb_sessions; i++)
-		rte_cryptodev_session_free(ts_params->valid_devs[0],
+	for (i = 0; i < dev_info.sym.max_nb_sessions; i++)
+		rte_cryptodev_sym_session_free(ts_params->valid_devs[0],
 				sessions[i]);
 
 	rte_free(sessions);
@@ -1805,7 +1814,7 @@ test_not_in_place_crypto(void)
 
 	/* Create multiple crypto sessions*/
 
-	ut_params->sess = rte_cryptodev_session_create(
+	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->valid_devs[0], &ut_params->auth_xform);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
@@ -1827,7 +1836,7 @@ test_not_in_place_crypto(void)
 
 	/* Generate Crypto op data structure */
 	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO);
+				RTE_PKTMBUF_OL_CRYPTO_SYM);
 	TEST_ASSERT_NOT_NULL(ut_params->ol,
 			"Failed to allocate pktmbuf offload");
 
@@ -1835,7 +1844,7 @@ test_not_in_place_crypto(void)
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
 
 	ut_params->op->digest.data = ut_params->digest;
 	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
@@ -1961,7 +1970,7 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 static int
 test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_QAT_PMD;
+	gbl_cryptodev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
 	return unit_test_suite_runner(&cryptodev_qat_testsuite);
 }
 static struct test_command cryptodev_qat_cmd = {
