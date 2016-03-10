@@ -85,7 +85,8 @@
 		PKT_TX_VLAN_PKT |		 \
 		PKT_TX_IP_CKSUM |		 \
 		PKT_TX_L4_MASK |		 \
-		PKT_TX_TCP_SEG)
+		PKT_TX_TCP_SEG |		 \
+		PKT_TX_OUTER_IP_CKSUM)
 
 static inline struct rte_mbuf *
 rte_rxmbuf_alloc(struct rte_mempool *mp)
@@ -364,9 +365,11 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 	uint32_t ctx_idx;
 	uint32_t vlan_macip_lens;
 	union ixgbe_tx_offload tx_offload_mask;
+	uint32_t seqnum_seed = 0;
 
 	ctx_idx = txq->ctx_curr;
-	tx_offload_mask.data = 0;
+	tx_offload_mask.data[0] = 0;
+	tx_offload_mask.data[1] = 0;
 	type_tucmd_mlhl = 0;
 
 	/* Specify which HW CTX to upload. */
@@ -430,18 +433,35 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 		}
 	}
 
+	if (ol_flags & PKT_TX_OUTER_IP_CKSUM) {
+		tx_offload_mask.outer_l2_len |= ~0;
+		tx_offload_mask.outer_l3_len |= ~0;
+		tx_offload_mask.l2_len |= ~0;
+		seqnum_seed |= tx_offload.outer_l3_len
+			       << IXGBE_ADVTXD_OUTER_IPLEN;
+		seqnum_seed |= tx_offload.l2_len
+			       << IXGBE_ADVTXD_TUNNEL_LEN;
+	}
+
 	txq->ctx_cache[ctx_idx].flags = ol_flags;
-	txq->ctx_cache[ctx_idx].tx_offload.data  =
-		tx_offload_mask.data & tx_offload.data;
+	txq->ctx_cache[ctx_idx].tx_offload.data[0]  =
+		tx_offload_mask.data[0] & tx_offload.data[0];
+	txq->ctx_cache[ctx_idx].tx_offload.data[1]  =
+		tx_offload_mask.data[1] & tx_offload.data[1];
 	txq->ctx_cache[ctx_idx].tx_offload_mask    = tx_offload_mask;
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	vlan_macip_lens = tx_offload.l3_len;
-	vlan_macip_lens |= (tx_offload.l2_len << IXGBE_ADVTXD_MACLEN_SHIFT);
+	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+		vlan_macip_lens |= (tx_offload.outer_l2_len <<
+				    IXGBE_ADVTXD_MACLEN_SHIFT);
+	else
+		vlan_macip_lens |= (tx_offload.l2_len <<
+				    IXGBE_ADVTXD_MACLEN_SHIFT);
 	vlan_macip_lens |= ((uint32_t)tx_offload.vlan_tci << IXGBE_ADVTXD_VLAN_SHIFT);
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx   = rte_cpu_to_le_32(mss_l4len_idx);
-	ctx_txd->seqnum_seed     = 0;
+	ctx_txd->seqnum_seed     = seqnum_seed;
 }
 
 /*
@@ -454,16 +474,24 @@ what_advctx_update(struct ixgbe_tx_queue *txq, uint64_t flags,
 {
 	/* If match with the current used context */
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].tx_offload.data ==
-		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data & tx_offload.data)))) {
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data[0] ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[0]
+		 & tx_offload.data[0])) &&
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data[1] ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[1]
+		 & tx_offload.data[1])))) {
 			return txq->ctx_curr;
 	}
 
 	/* What if match with the next context  */
 	txq->ctx_curr ^= 1;
 	if (likely((txq->ctx_cache[txq->ctx_curr].flags == flags) &&
-		(txq->ctx_cache[txq->ctx_curr].tx_offload.data ==
-		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data & tx_offload.data)))) {
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data[0] ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[0]
+		 & tx_offload.data[0])) &&
+		(txq->ctx_cache[txq->ctx_curr].tx_offload.data[1] ==
+		(txq->ctx_cache[txq->ctx_curr].tx_offload_mask.data[1]
+		 & tx_offload.data[1])))) {
 			return txq->ctx_curr;
 	}
 
@@ -492,6 +520,8 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 		cmdtype |= IXGBE_ADVTXD_DCMD_VLE;
 	if (ol_flags & PKT_TX_TCP_SEG)
 		cmdtype |= IXGBE_ADVTXD_DCMD_TSE;
+	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+		cmdtype |= (1 << IXGBE_ADVTXD_OUTERIPCS_SHIFT);
 	return cmdtype;
 }
 
@@ -588,8 +618,10 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t tx_ol_req;
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
-	union ixgbe_tx_offload tx_offload = {0};
+	union ixgbe_tx_offload tx_offload;
 
+	tx_offload.data[0] = 0;
+	tx_offload.data[1] = 0;
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
 	txr     = txq->tx_ring;
@@ -623,6 +655,8 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_offload.l4_len = tx_pkt->l4_len;
 			tx_offload.vlan_tci = tx_pkt->vlan_tci;
 			tx_offload.tso_segsz = tx_pkt->tso_segsz;
+			tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
+			tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
 
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,

@@ -157,7 +157,7 @@ enum ixgbe_advctx_num {
 
 /** Offload features */
 union ixgbe_tx_offload {
-	uint64_t data;
+	uint64_t data[2];
 	struct {
 		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
 		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
@@ -165,6 +165,10 @@ union ixgbe_tx_offload {
 		uint64_t tso_segsz:16; /**< TCP TSO segment size */
 		uint64_t vlan_tci:16;
 		/**< VLAN Tag Control Identifier (CPU order). */
+
+		/* fields for TX offloading of tunnels */
+		uint64_t outer_l3_len:8; /**< Outer L3 (IP) Hdr Length. */
+		uint64_t outer_l2_len:8; /**< Outer L2 (MAC) Hdr Length. */
 	};
 };
 

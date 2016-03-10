@@ -86,6 +86,15 @@ This section should contain new features added in this release. Sample format:
   * Support Forwarding E-tag packets to pools based on
     GRP and E-CID_base.
 
+* **Added support for VxLAN & NVGRE checksum off-load on X550.**
+
+  * Added support for VxLAN & NVGRE RX/TX checksum off-load on
+    X550. RX/TX checksum off-load is provided on both inner and
+    outer IP header and TCP header.
+  * Added functions to support VxLAN port configuration. The
+    default VxLAN port number is 4789 but this can be updated
+    programmatically.
+
 * **Enabled PCI extended tag for i40e.**
 
   It enabled extended tag by checking and writing corresponding PCI config
