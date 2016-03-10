@@ -74,7 +74,7 @@ legacy_write_dev_config(struct virtio_hw *hw, size_t offset,
 static uint64_t
 legacy_get_features(struct virtio_hw *hw)
 {
-	uint64_t dst;
+	uint32_t dst;
 
 	rte_eal_pci_ioport_read(&hw->io, &dst, 4, VIRTIO_PCI_HOST_FEATURES);
 	return dst;
