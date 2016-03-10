@@ -183,6 +183,8 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				/* Room in vring buffer is not enough */
 				return -1;
 			}
+			if (unlikely(desc->next >= vq->size))
+				return -1;
 
 			desc = &vq->desc[desc->next];
 			desc_addr   = gpa_to_vva(dev, desc->addr);
@@ -345,7 +347,7 @@ fill_vec_buf(struct vhost_virtqueue *vq, uint32_t avail_idx,
 	uint32_t len    = *allocated;
 
 	while (1) {
-		if (vec_id >= BUF_VECTOR_MAX)
+		if (unlikely(vec_id >= BUF_VECTOR_MAX || idx >= vq->size))
 			return -1;
 
 		len += vq->desc[idx].len;
@@ -761,6 +763,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	while (desc_avail != 0 || (desc->flags & VRING_DESC_F_NEXT) != 0) {
 		/* This desc reaches to its end, get the next one */
 		if (desc_avail == 0) {
+			if (unlikely(desc->next >= vq->size))
+				return -1;
 			desc = &vq->desc[desc->next];
 
 			desc_addr = gpa_to_vva(dev, desc->addr);
