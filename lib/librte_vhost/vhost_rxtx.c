@@ -745,6 +745,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t cpy_len;
 	struct rte_mbuf *cur = m, *prev = m;
 	struct virtio_net_hdr *hdr;
+	/* A counter to avoid desc dead loop chain */
+	uint32_t nr_desc = 1;
 
 	desc = &vq->desc[desc_idx];
 	if (unlikely(desc->len < vq->vhost_hlen))
@@ -763,7 +765,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	while (desc_avail != 0 || (desc->flags & VRING_DESC_F_NEXT) != 0) {
 		/* This desc reaches to its end, get the next one */
 		if (desc_avail == 0) {
-			if (unlikely(desc->next >= vq->size))
+			if (unlikely(desc->next >= vq->size ||
+				     ++nr_desc >= vq->size))
 				return -1;
 			desc = &vq->desc[desc->next];
 
