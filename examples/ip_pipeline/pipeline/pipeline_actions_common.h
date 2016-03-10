@@ -59,6 +59,28 @@ f_ah(									\
 	return 0;							\
 }
 
+#define PIPELINE_PORT_IN_AH_HIJACK_ALL(f_ah, f_pkt_work, f_pkt4_work) \
+static int								\
+f_ah(									\
+	struct rte_pipeline *p,				\
+	struct rte_mbuf **pkts,					\
+	uint32_t n_pkts,						\
+	void *arg)						\
+{									\
+	uint64_t pkt_mask = RTE_LEN2MASK(n_pkts, uint64_t);	\
+	uint32_t i;							\
+									\
+	rte_pipeline_ah_packet_hijack(p, pkt_mask);	\
+									\
+	for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4)	\
+		f_pkt4_work(&pkts[i], arg);				\
+									\
+	for ( ; i < n_pkts; i++)				\
+		f_pkt_work(pkts[i], arg);			\
+									\
+	return 0;							\
+}
+
 #define PIPELINE_TABLE_AH_HIT(f_ah, f_pkt_work, f_pkt4_work)		\
 static int								\
 f_ah(									\

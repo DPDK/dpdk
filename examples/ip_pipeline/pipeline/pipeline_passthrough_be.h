@@ -47,6 +47,7 @@ struct pipeline_passthrough_params {
 
 	uint32_t dma_hash_enabled;
 	uint32_t dma_hash_offset;
+	uint32_t lb_hash_enabled;
 };
 
 int
