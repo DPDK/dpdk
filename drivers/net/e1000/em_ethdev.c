@@ -945,7 +945,6 @@ eth_em_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	rte_stats->imissed = stats->mpc;
 	rte_stats->ierrors = stats->crcerrs +
 	                     stats->rlec + stats->ruc + stats->roc +
-	                     rte_stats->imissed +
 	                     stats->rxerrc + stats->algnerrc + stats->cexterr;
 
 	/* Tx Errors */

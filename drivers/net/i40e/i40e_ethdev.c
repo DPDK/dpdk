@@ -2092,8 +2092,7 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			pf->main_vsi->eth_stats.rx_discards;
 	stats->ierrors  = ns->crc_errors +
 			ns->rx_length_errors + ns->rx_undersize +
-			ns->rx_oversize + ns->rx_fragments + ns->rx_jabber +
-			stats->imissed;
+			ns->rx_oversize + ns->rx_fragments + ns->rx_jabber;
 
 	PMD_DRV_LOG(DEBUG, "***************** PF stats start *******************");
 	PMD_DRV_LOG(DEBUG, "rx_bytes:            %"PRIu64"", ns->eth.rx_bytes);

@@ -759,7 +759,7 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 		if (cur_fwd_eng == &csum_fwd_engine)
 			printf("  Bad-ipcsum: %-14"PRIu64" Bad-l4csum: %-14"PRIu64" \n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
-		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
+		if ((stats->ierrors + stats->rx_nombuf) > 0) {
 			printf("  RX-error: %-"PRIu64"\n",  stats->ierrors);
 			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
 		}
@@ -778,7 +778,7 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 		if (cur_fwd_eng == &csum_fwd_engine)
 			printf("  Bad-ipcsum:%14"PRIu64"    Bad-l4csum:%14"PRIu64"\n",
 			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
-		if (((stats->ierrors - stats->imissed) + stats->rx_nombuf) > 0) {
+		if ((stats->ierrors + stats->rx_nombuf) > 0) {
 			printf("  RX-error:%"PRIu64"\n", stats->ierrors);
 			printf("  RX-nombufs:             %14"PRIu64"\n",
 			       stats->rx_nombuf);

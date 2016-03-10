@@ -2646,7 +2646,6 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	                  hw_stats->rlec +
 	                  hw_stats->ruc +
 	                  hw_stats->roc +
-	                  total_missed_rx +
 	                  hw_stats->illerrc +
 	                  hw_stats->errbc +
 	                  hw_stats->rfc +

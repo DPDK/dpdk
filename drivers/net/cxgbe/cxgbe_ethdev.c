@@ -662,7 +662,7 @@ static void cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 			      ps.rx_trunc2 + ps.rx_trunc3;
 	eth_stats->ierrors  = ps.rx_symbol_err + ps.rx_fcs_err +
 			      ps.rx_jabber + ps.rx_too_long + ps.rx_runt +
-			      ps.rx_len_err + eth_stats->imissed;
+			      ps.rx_len_err;
 
 	/* TX Stats */
 	eth_stats->opackets = ps.tx_frames;
