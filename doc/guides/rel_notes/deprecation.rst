@@ -34,10 +34,5 @@ Deprecation Notices
   RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
   but release 2.3 will.
 
-* ABI changes are planned for rte_eth_tunnel_filter_conf. Change the fields
-  of outer_mac and inner_mac from pointer to struct in order to keep the
-  code's readability. The release 2.2 does not contain these ABI changes, but
-  release 2.3 will, and no backwards compatibility is planned.
-
 * The scheduler statistics structure will change to allow keeping track of
   RED actions.

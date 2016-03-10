@@ -6669,8 +6669,8 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
 	int ret = 0;
 
-	tunnel_filter_conf.outer_mac = &res->outer_mac;
-	tunnel_filter_conf.inner_mac = &res->inner_mac;
+	ether_addr_copy(&res->outer_mac, &tunnel_filter_conf.outer_mac);
+	ether_addr_copy(&res->inner_mac, &tunnel_filter_conf.inner_mac);
 	tunnel_filter_conf.inner_vlan = res->inner_vlan;
 
 	if (res->ip_value.family == AF_INET) {

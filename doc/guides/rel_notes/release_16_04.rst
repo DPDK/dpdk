@@ -212,6 +212,10 @@ This section should contain API changes. Sample format:
   have been renamed into ``rte_eth_dev_udp_tunnel_port_add`` and
   ``rte_eth_dev_udp_tunnel_port_delete``.
 
+* The ``outer_mac`` and ``inner_mac`` fields in structure
+  ``rte_eth_tunnel_filter_conf`` are changed from pointer to struct in order
+  to keep code's readability.
+
 * The fields in ethdev structure ``rte_eth_fdir_masks`` were changed
   to be in big endian.
 

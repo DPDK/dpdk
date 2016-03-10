@@ -282,8 +282,8 @@ enum rte_tunnel_iptype {
  * Tunneling Packet filter configuration.
  */
 struct rte_eth_tunnel_filter_conf {
-	struct ether_addr *outer_mac;  /**< Outer MAC address filter. */
-	struct ether_addr *inner_mac;  /**< Inner MAC address filter. */
+	struct ether_addr outer_mac;  /**< Outer MAC address filter. */
+	struct ether_addr inner_mac;  /**< Inner MAC address filter. */
 	uint16_t inner_vlan;           /**< Inner VLAN filter. */
 	enum rte_tunnel_iptype ip_type; /**< IP address type. */
 	union {

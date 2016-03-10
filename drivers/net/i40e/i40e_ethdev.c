@@ -5908,10 +5908,8 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	}
 	pfilter = cld_filter;
 
-	(void)rte_memcpy(&pfilter->outer_mac, tunnel_filter->outer_mac,
-			sizeof(struct ether_addr));
-	(void)rte_memcpy(&pfilter->inner_mac, tunnel_filter->inner_mac,
-			sizeof(struct ether_addr));
+	ether_addr_copy(&tunnel_filter->outer_mac, (struct ether_addr*)&pfilter->outer_mac);
+	ether_addr_copy(&tunnel_filter->inner_mac, (struct ether_addr*)&pfilter->inner_mac);
 
 	pfilter->inner_vlan = tunnel_filter->inner_vlan;
 	if (tunnel_filter->ip_type == RTE_TUNNEL_IPTYPE_IPV4) {
@@ -6211,13 +6209,13 @@ i40e_tunnel_filter_param_check(struct i40e_pf *pf,
 	}
 
 	if ((filter->filter_type & ETH_TUNNEL_FILTER_OMAC) &&
-		(is_zero_ether_addr(filter->outer_mac))) {
+		(is_zero_ether_addr(&filter->outer_mac))) {
 		PMD_DRV_LOG(ERR, "Cannot add NULL outer MAC address");
 		return -EINVAL;
 	}
 
 	if ((filter->filter_type & ETH_TUNNEL_FILTER_IMAC) &&
-		(is_zero_ether_addr(filter->inner_mac))) {
+		(is_zero_ether_addr(&filter->inner_mac))) {
 		PMD_DRV_LOG(ERR, "Cannot add NULL inner MAC address");
 		return -EINVAL;
 	}
