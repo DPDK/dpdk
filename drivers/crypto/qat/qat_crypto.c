@@ -169,6 +169,14 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		break;
+	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
+		if (qat_alg_validate_snow3g_key(cipher_xform->key.length,
+					&session->qat_cipher_alg) != 0) {
+			PMD_DRV_LOG(ERR, "Invalid SNOW3G cipher key size");
+			goto error_out;
+		}
+		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
+		break;
 	case RTE_CRYPTO_CIPHER_NULL:
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
@@ -290,6 +298,9 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_AES_GMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
 		break;
+	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2;
+		break;
 	case RTE_CRYPTO_AUTH_NULL:
 	case RTE_CRYPTO_AUTH_SHA1:
 	case RTE_CRYPTO_AUTH_SHA256:
@@ -302,7 +313,6 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 	case RTE_CRYPTO_AUTH_AES_CCM:
 	case RTE_CRYPTO_AUTH_KASUMI_F9:
-	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:

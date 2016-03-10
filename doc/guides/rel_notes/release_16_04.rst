@@ -74,6 +74,12 @@ This section should contain new features added in this release. Sample format:
 
   The next_hop field is extended from 8 bits to 24 bits for IPv4.
 
+* **Added support of SNOW 3G (UEA2 and UIA2) for Intel Quick Assist devices.**
+
+  Enabled support for SNOW 3G wireless algorithm for Intel Quick Assist devices.
+  Support for cipher only, hash only is also provided
+  along with alg-chaining operations.
+
 
 Resolved Issues
 ---------------

@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -47,6 +47,7 @@ Cipher algorithms:
 * ``RTE_CRYPTO_SYM_CIPHER_AES128_CBC``
 * ``RTE_CRYPTO_SYM_CIPHER_AES192_CBC``
 * ``RTE_CRYPTO_SYM_CIPHER_AES256_CBC``
+* ``RTE_CRYPTO_SYM_CIPHER_SNOW3G_UEA2``
 
 Hash algorithms:
 
@@ -54,14 +55,15 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_SHA256_HMAC``
 * ``RTE_CRYPTO_AUTH_SHA512_HMAC``
 * ``RTE_CRYPTO_AUTH_AES_XCBC_MAC``
+* ``RTE_CRYPTO_AUTH_SNOW3G_UIA2``
 
 
 Limitations
 -----------
 
 * Chained mbufs are not supported.
-* Hash only is not supported.
-* Cipher only is not supported.
+* Hash only is not supported except Snow3G UIA2.
+* Cipher only is not supported except Snow3G UEA2.
 * Only in-place is currently supported (destination address is the same as source address).
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * Not performance tuned.
