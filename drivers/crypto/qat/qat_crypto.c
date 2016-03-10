@@ -59,7 +59,6 @@
 #include <rte_mbuf.h>
 #include <rte_string_fns.h>
 #include <rte_spinlock.h>
-#include <rte_mbuf_offload.h>
 #include <rte_hexdump.h>
 
 #include "qat_logs.h"

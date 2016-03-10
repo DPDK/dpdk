@@ -35,7 +35,6 @@
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
-#include <rte_mbuf_offload.h>
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>

@@ -62,7 +62,6 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
-#include <rte_mbuf_offload.h>
 #include <rte_memcpy.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>

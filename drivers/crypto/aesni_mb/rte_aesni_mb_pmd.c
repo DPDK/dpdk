@@ -37,7 +37,6 @@
 #include <rte_dev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
-#include <rte_mbuf_offload.h>
 
 #include "rte_aesni_mb_pmd_private.h"
 

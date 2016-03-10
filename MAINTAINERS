@@ -223,10 +223,6 @@ F: lib/librte_mbuf/
 F: doc/guides/prog_guide/mbuf_lib.rst
 F: app/test/test_mbuf.c
 
-Packet buffer offload - EXPERIMENTAL
-M: Declan Doherty <declan.doherty@intel.com>
-F: lib/librte_mbuf_offload/
-
 Ethernet API
 M: Thomas Monjalon <thomas.monjalon@6wind.com>
 F: lib/librte_ether/
