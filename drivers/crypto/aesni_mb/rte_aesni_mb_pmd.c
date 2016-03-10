@@ -593,7 +593,8 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 static int cryptodev_aesni_mb_uninit(const char *name);
 
 static int
-cryptodev_aesni_mb_create(const char *name, unsigned socket_id)
+cryptodev_aesni_mb_create(const char *name,
+		struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
@@ -627,7 +628,7 @@ cryptodev_aesni_mb_create(const char *name, unsigned socket_id)
 
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
-			sizeof(struct aesni_mb_private), socket_id);
+			sizeof(struct aesni_mb_private), init_params->socket_id);
 	if (dev == NULL) {
 		MB_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
@@ -662,8 +663,8 @@ cryptodev_aesni_mb_create(const char *name, unsigned socket_id)
 	internals = dev->data->dev_private;
 
 	internals->vector_mode = vector_mode;
-	internals->max_nb_queue_pairs = RTE_AESNI_MB_PMD_MAX_NB_QUEUE_PAIRS;
-	internals->max_nb_sessions = RTE_AESNI_MB_PMD_MAX_NB_SESSIONS;
+	internals->max_nb_queue_pairs = init_params->max_nb_queue_pairs;
+	internals->max_nb_sessions = init_params->max_nb_sessions;
 
 	return 0;
 init_error:
@@ -676,11 +677,24 @@ init_error:
 
 static int
 cryptodev_aesni_mb_init(const char *name,
-		const char *params __rte_unused)
+		const char *input_args)
 {
-	RTE_LOG(INFO, PMD, "Initialising %s\n", name);
+	struct rte_crypto_vdev_init_params init_params = {
+		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
+		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
+		rte_socket_id()
+	};
 
-	return cryptodev_aesni_mb_create(name, rte_socket_id());
+	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
+
+	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
+			init_params.socket_id);
+	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
+			init_params.max_nb_queue_pairs);
+	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
+			init_params.max_nb_sessions);
+
+	return cryptodev_aesni_mb_create(name, &init_params);
 }
 
 static int
