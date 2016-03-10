@@ -80,19 +80,17 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lrte_meter
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 
-ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
-endif
-
-ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
-endif
-
 # The static libraries do not know their dependencies.
 # So linking with static library requires explicit dependencies.
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
+endif
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
+endif
 ifeq ($(CONFIG_RTE_NEXT_ABI),y)
 _LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
 endif

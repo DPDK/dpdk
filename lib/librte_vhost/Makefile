@@ -41,13 +41,14 @@ LIBABIVER := 2
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -D_FILE_OFFSET_BITS=64
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),y)
 CFLAGS += -I vhost_user
+LDLIBS += -lpthread
 else
-CFLAGS += -I vhost_cuse -lfuse
-LDFLAGS += -lfuse
+CFLAGS += -I vhost_cuse
+LDLIBS += -lfuse
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
-LDFLAGS += -lnuma
+LDLIBS += -lnuma
 endif
 
 # all source are stored in SRCS-y
