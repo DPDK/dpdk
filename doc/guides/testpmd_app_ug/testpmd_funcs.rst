@@ -546,7 +546,37 @@ tunnel_filter add
 Add a tunnel filter on a port::
 
    testpmd> tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) \
-            (inner_vlan) (tunnel_type) (filter_type) (tenant_id) (queue_id)
+            (inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|\
+            imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)
+
+The available information categories are:
+
+* ``vxlan``: Set tunnel type as VXLAN.
+
+* ``nvgre``: Set tunnel type as NVGRE.
+
+* ``ipingre``: Set tunnel type as IP-in-GRE.
+
+* ``imac-ivlan``: Set filter type as Inner MAC and VLAN.
+
+* ``imac-ivlan-tenid``: Set filter type as Inner MAC, VLAN and tenant ID.
+
+* ``imac-tenid``: Set filter type as Inner MAC and tenant ID.
+
+* ``imac``: Set filter type as Inner MAC.
+
+* ``omac-imac-tenid``: Set filter type as Outer MAC, Inner MAC and tenant ID.
+
+* ``oip``: Set filter type as Outer IP.
+
+* ``iip``: Set filter type as Inner IP.
+
+Example::
+
+   testpmd> tunnel_filter add 0 68:05:CA:28:09:82 00:00:00:00:00:00 \
+            192.168.2.2 0 ipingre oip 1 1
+
+   Set an IP-in-GRE tunnel on port 0, and the filter type is Outer IP.
 
 tunnel_filter remove
 ~~~~~~~~~~~~~~~~~~~~
@@ -554,7 +584,8 @@ tunnel_filter remove
 Remove a tunnel filter on a port::
 
    testpmd> tunnel_filter rm (port_id) (outer_mac) (inner_mac) (ip_addr) \
-            (inner_vlan) (tunnel_type) (filter_type) (tenant_id) (queue_id)
+            (inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|\
+            imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)
 
 rx_vxlan_port add
 ~~~~~~~~~~~~~~~~~

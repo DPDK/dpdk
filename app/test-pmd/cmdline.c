@@ -298,11 +298,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"filtered for VF(s) from port_id.\n\n"
 
 			"tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) "
-			"(inner_vlan) (vxlan|nvgre) (filter_type) (tenant_id) (queue_id)\n"
+			"(inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|"
+			"imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)\n"
 			"   add a tunnel filter of a port.\n\n"
 
 			"tunnel_filter rm (port_id) (outer_mac) (inner_mac) (ip_addr) "
-			"(inner_vlan) (vxlan|nvgre) (filter_type) (tenant_id) (queue_id)\n"
+			"(inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|"
+			"imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)\n"
 			"   remove a tunnel filter of a port.\n\n"
 
 			"rx_vxlan_port add (udp_port) (port_id)\n"
@@ -6669,18 +6671,22 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
 	int ret = 0;
 
+	memset(&tunnel_filter_conf, 0, sizeof(tunnel_filter_conf));
+
 	ether_addr_copy(&res->outer_mac, &tunnel_filter_conf.outer_mac);
 	ether_addr_copy(&res->inner_mac, &tunnel_filter_conf.inner_mac);
 	tunnel_filter_conf.inner_vlan = res->inner_vlan;
 
 	if (res->ip_value.family == AF_INET) {
 		tunnel_filter_conf.ip_addr.ipv4_addr =
-			res->ip_value.addr.ipv4.s_addr;
+			rte_be_to_cpu_32(res->ip_value.addr.ipv4.s_addr);
 		tunnel_filter_conf.ip_type = RTE_TUNNEL_IPTYPE_IPV4;
 	} else {
-		memcpy(&(tunnel_filter_conf.ip_addr.ipv6_addr),
-			&(res->ip_value.addr.ipv6),
-			sizeof(struct in6_addr));
+		int i;
+		for (i = 0; i < 4; i++) {
+			tunnel_filter_conf.ip_addr.ipv6_addr[i] =
+			rte_be_to_cpu_32(res->ip_value.addr.ipv6.s6_addr32[i]);
+		}
 		tunnel_filter_conf.ip_type = RTE_TUNNEL_IPTYPE_IPV6;
 	}
 
@@ -6696,6 +6702,10 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 	else if (!strcmp(res->filter_type, "omac-imac-tenid"))
 		tunnel_filter_conf.filter_type =
 			RTE_TUNNEL_FILTER_OMAC_TENID_IMAC;
+	else if (!strcmp(res->filter_type, "oip"))
+		tunnel_filter_conf.filter_type = ETH_TUNNEL_FILTER_OIP;
+	else if (!strcmp(res->filter_type, "iip"))
+		tunnel_filter_conf.filter_type = ETH_TUNNEL_FILTER_IIP;
 	else {
 		printf("The filter type is not supported");
 		return;
@@ -6705,6 +6715,8 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
 	else if (!strcmp(res->tunnel_type, "nvgre"))
 		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_NVGRE;
+	else if (!strcmp(res->tunnel_type, "ipingre"))
+		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_IP_IN_GRE;
 	else {
 		printf("The tunnel type %s not supported.\n", res->tunnel_type);
 		return;
@@ -6750,11 +6762,11 @@ cmdline_parse_token_ipaddr_t cmd_tunnel_filter_ip_value =
 	ip_value);
 cmdline_parse_token_string_t cmd_tunnel_filter_tunnel_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
-	tunnel_type, "vxlan#nvgre");
+	tunnel_type, "vxlan#nvgre#ipingre");
 
 cmdline_parse_token_string_t cmd_tunnel_filter_filter_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
-	filter_type, "imac-ivlan#imac-ivlan-tenid#imac-tenid#"
+	filter_type, "oip#iip#imac-ivlan#imac-ivlan-tenid#imac-tenid#"
 		"imac#omac-imac-tenid");
 cmdline_parse_token_num_t cmd_tunnel_filter_tenant_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_filter_result,
@@ -6768,8 +6780,8 @@ cmdline_parse_inst_t cmd_tunnel_filter = {
 	.data = (void *)0,
 	.help_str = "add/rm tunnel filter of a port: "
 			"tunnel_filter add port_id outer_mac inner_mac ip "
-			"inner_vlan tunnel_type(vxlan|nvgre) filter_type "
-			"(imac-ivlan|imac-ivlan-tenid|imac-tenid|"
+			"inner_vlan tunnel_type(vxlan|nvgre|ipingre) filter_type "
+			"(oip|iip|imac-ivlan|imac-ivlan-tenid|imac-tenid|"
 			"imac|omac-imac-tenid) "
 			"tenant_id queue_num",
 	.tokens = {
