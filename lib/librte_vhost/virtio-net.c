@@ -444,64 +444,62 @@ static struct virtio_net*
 numa_realloc(struct virtio_net *dev, int index)
 {
 	int oldnode, newnode;
-	struct virtio_net *old_dev, *new_dev = NULL;
-	struct vhost_virtqueue *old_vq, *new_vq = NULL;
+	struct virtio_net *old_dev;
+	struct vhost_virtqueue *old_vq, *vq;
 	int ret;
-	int realloc_dev = 0, realloc_vq = 0;
 
 	old_dev = dev;
-	old_vq  = dev->virtqueue[index];
+	vq = old_vq = dev->virtqueue[index];
 
-	ret  = get_mempolicy(&newnode, NULL, 0, old_vq->desc,
-			MPOL_F_NODE | MPOL_F_ADDR);
-	ret = ret | get_mempolicy(&oldnode, NULL, 0, old_dev,
-			MPOL_F_NODE | MPOL_F_ADDR);
-	if (ret) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"Unable to get vring desc or dev numa information.\n");
-		return dev;
-	}
-	if (oldnode != newnode)
-		realloc_dev = 1;
+	ret = get_mempolicy(&newnode, NULL, 0, old_vq->desc,
+			    MPOL_F_NODE | MPOL_F_ADDR);
 
-	ret = get_mempolicy(&oldnode, NULL, 0, old_vq,
-			MPOL_F_NODE | MPOL_F_ADDR);
+	/* check if we need to reallocate vq */
+	ret |= get_mempolicy(&oldnode, NULL, 0, old_vq,
+			     MPOL_F_NODE | MPOL_F_ADDR);
 	if (ret) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"Unable to get vq numa information.\n");
 		return dev;
 	}
-	if (oldnode != newnode)
-		realloc_vq = 1;
+	if (oldnode != newnode) {
+		RTE_LOG(INFO, VHOST_CONFIG,
+			"reallocate vq from %d to %d node\n", oldnode, newnode);
+		vq = rte_malloc_socket(NULL, sizeof(*vq), 0, newnode);
+		if (!vq)
+			return dev;
 
-	if (realloc_dev == 0 && realloc_vq == 0)
-		return dev;
-
-	if (realloc_dev)
-		new_dev = rte_malloc_socket(NULL,
-			sizeof(struct virtio_net), 0, newnode);
-	if (realloc_vq)
-		new_vq = rte_malloc_socket(NULL,
-			sizeof(struct vhost_virtqueue), 0, newnode);
-	if (!new_dev && !new_vq)
-		return dev;
-
-	if (realloc_vq)
-		memcpy(new_vq, old_vq, sizeof(*new_vq));
-	if (realloc_dev)
-		memcpy(new_dev, old_dev, sizeof(*new_dev));
-
-	(new_dev ? new_dev : old_dev)->virtqueue[index] =
-		new_vq ? new_vq : old_vq;
-	if (realloc_vq)
+		memcpy(vq, old_vq, sizeof(*vq));
 		rte_free(old_vq);
-	if (realloc_dev) {
-		rte_free(old_dev);
-
-		vhost_devices[new_dev->device_fh] = new_dev;
 	}
 
-	return realloc_dev ? new_dev : dev;
+	/* check if we need to reallocate dev */
+	ret = get_mempolicy(&oldnode, NULL, 0, old_dev,
+			    MPOL_F_NODE | MPOL_F_ADDR);
+	if (ret) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Unable to get dev numa information.\n");
+		goto out;
+	}
+	if (oldnode != newnode) {
+		RTE_LOG(INFO, VHOST_CONFIG,
+			"reallocate dev from %d to %d node\n",
+			oldnode, newnode);
+		dev = rte_malloc_socket(NULL, sizeof(*dev), 0, newnode);
+		if (!dev) {
+			dev = old_dev;
+			goto out;
+		}
+
+		memcpy(dev, old_dev, sizeof(*dev));
+		rte_free(old_dev);
+	}
+
+out:
+	dev->virtqueue[index] = vq;
+	vhost_devices[dev->device_fh] = dev;
+
+	return dev;
 }
 #else
 static struct virtio_net*
