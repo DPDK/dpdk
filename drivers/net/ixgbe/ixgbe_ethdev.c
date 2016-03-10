@@ -1326,8 +1326,21 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	 * has already done this work. Only check we don't need a different
 	 * RX function */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
-		if (eth_dev->data->scattered_rx)
-			eth_dev->rx_pkt_burst = ixgbe_recv_pkts_lro_single_alloc;
+		struct ixgbe_tx_queue *txq;
+		/* TX queue function in primary, set by last queue initialized
+		 * Tx queue may not initialized by primary process
+		 */
+		if (eth_dev->data->tx_queues) {
+			txq = eth_dev->data->tx_queues[eth_dev->data->nb_tx_queues - 1];
+			ixgbe_set_tx_function(eth_dev, txq);
+		} else {
+			/* Use default TX function if we get here */
+			PMD_INIT_LOG(NOTICE,
+				"No TX queues configured yet. Using default TX function.");
+		}
+
+		ixgbe_set_rx_function(eth_dev);
+
 		return 0;
 	}
 
