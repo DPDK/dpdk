@@ -55,18 +55,11 @@
 #include "vhost-net.h"
 #include "virtio-net.h"
 
-/*
- * Device linked list structure for configuration.
- */
-struct virtio_net_config_ll {
-	struct virtio_net dev;			/* Virtio device.*/
-	struct virtio_net_config_ll *next;	/* Next dev on linked list.*/
-};
+#define MAX_VHOST_DEVICE	1024
+static struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
 /* device ops to add/remove device to/from data core. */
 struct virtio_net_device_ops const *notify_ops;
-/* root address of the linked list of managed virtio devices */
-static struct virtio_net_config_ll *ll_root;
 
 #define VHOST_USER_F_PROTOCOL_FEATURES	30
 
@@ -116,77 +109,17 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
 }
 
 
-/*
- * Retrieves an entry from the devices configuration linked list.
- */
-static struct virtio_net_config_ll *
-get_config_ll_entry(struct vhost_device_ctx ctx)
-{
-	struct virtio_net_config_ll *ll_dev = ll_root;
-
-	/* Loop through linked list until the device_fh is found. */
-	while (ll_dev != NULL) {
-		if (ll_dev->dev.device_fh == ctx.fh)
-			return ll_dev;
-		ll_dev = ll_dev->next;
-	}
-
-	return NULL;
-}
-
-/*
- * Searches the configuration core linked list and
- * retrieves the device if it exists.
- */
 struct virtio_net *
 get_device(struct vhost_device_ctx ctx)
 {
-	struct virtio_net_config_ll *ll_dev;
+	struct virtio_net *dev = vhost_devices[ctx.fh];
 
-	ll_dev = get_config_ll_entry(ctx);
-
-	if (ll_dev)
-		return &ll_dev->dev;
-
-	RTE_LOG(ERR, VHOST_CONFIG,
-		"(%"PRIu64") Device not found in linked list.\n", ctx.fh);
-	return NULL;
-}
-
-/*
- * Add entry containing a device to the device configuration linked list.
- */
-static void
-add_config_ll_entry(struct virtio_net_config_ll *new_ll_dev)
-{
-	struct virtio_net_config_ll *ll_dev = ll_root;
-
-	/* If ll_dev == NULL then this is the first device so go to else */
-	if (ll_dev) {
-		/* If the 1st device_fh != 0 then we insert our device here. */
-		if (ll_dev->dev.device_fh != 0) {
-			new_ll_dev->dev.device_fh = 0;
-			new_ll_dev->next = ll_dev;
-			ll_root = new_ll_dev;
-		} else {
-			/*
-			 * Increment through the ll until we find un unused
-			 * device_fh. Insert the device at that entry.
-			 */
-			while ((ll_dev->next != NULL) &&
-				(ll_dev->dev.device_fh ==
-					(ll_dev->next->dev.device_fh - 1)))
-				ll_dev = ll_dev->next;
-
-			new_ll_dev->dev.device_fh = ll_dev->dev.device_fh + 1;
-			new_ll_dev->next = ll_dev->next;
-			ll_dev->next = new_ll_dev;
-		}
-	} else {
-		ll_root = new_ll_dev;
-		ll_root->dev.device_fh = 0;
+	if (unlikely(!dev)) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%"PRIu64") device not found.\n", ctx.fh);
 	}
 
+	return dev;
 }
 
 static void
@@ -219,43 +152,14 @@ cleanup_device(struct virtio_net *dev, int destroy)
  * Release virtqueues and device memory.
  */
 static void
-free_device(struct virtio_net_config_ll *ll_dev)
+free_device(struct virtio_net *dev)
 {
 	uint32_t i;
 
-	for (i = 0; i < ll_dev->dev.virt_qp_nb; i++)
-		rte_free(ll_dev->dev.virtqueue[i * VIRTIO_QNUM]);
+	for (i = 0; i < dev->virt_qp_nb; i++)
+		rte_free(dev->virtqueue[i * VIRTIO_QNUM]);
 
-	rte_free(ll_dev);
-}
-
-/*
- * Remove an entry from the device configuration linked list.
- */
-static struct virtio_net_config_ll *
-rm_config_ll_entry(struct virtio_net_config_ll *ll_dev,
-	struct virtio_net_config_ll *ll_dev_last)
-{
-	/* First remove the device and then clean it up. */
-	if (ll_dev == ll_root) {
-		ll_root = ll_dev->next;
-		cleanup_device(&ll_dev->dev, 1);
-		free_device(ll_dev);
-		return ll_root;
-	} else {
-		if (likely(ll_dev_last != NULL)) {
-			ll_dev_last->next = ll_dev->next;
-			cleanup_device(&ll_dev->dev, 1);
-			free_device(ll_dev);
-			return ll_dev_last->next;
-		} else {
-			cleanup_device(&ll_dev->dev, 1);
-			free_device(ll_dev);
-			RTE_LOG(ERR, VHOST_CONFIG,
-				"Remove entry from config_ll failed\n");
-			return NULL;
-		}
-	}
+	rte_free(dev);
 }
 
 static void
@@ -353,23 +257,31 @@ reset_device(struct virtio_net *dev)
 int
 vhost_new_device(struct vhost_device_ctx ctx)
 {
-	struct virtio_net_config_ll *new_ll_dev;
+	struct virtio_net *dev;
+	int i;
 
-	/* Setup device and virtqueues. */
-	new_ll_dev = rte_zmalloc(NULL, sizeof(struct virtio_net_config_ll), 0);
-	if (new_ll_dev == NULL) {
+	dev = rte_zmalloc(NULL, sizeof(struct virtio_net), 0);
+	if (dev == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%"PRIu64") Failed to allocate memory for dev.\n",
 			ctx.fh);
 		return -1;
 	}
 
-	new_ll_dev->next = NULL;
+	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
+		if (vhost_devices[i] == NULL)
+			break;
+	}
+	if (i == MAX_VHOST_DEVICE) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Failed to find a free slot for new device.\n");
+		return -1;
+	}
 
-	/* Add entry to device configuration linked list. */
-	add_config_ll_entry(new_ll_dev);
+	vhost_devices[i] = dev;
+	dev->device_fh   = i;
 
-	return new_ll_dev->dev.device_fh;
+	return i;
 }
 
 /*
@@ -379,30 +291,15 @@ vhost_new_device(struct vhost_device_ctx ctx)
 void
 vhost_destroy_device(struct vhost_device_ctx ctx)
 {
-	struct virtio_net_config_ll *ll_dev_cur_ctx, *ll_dev_last = NULL;
-	struct virtio_net_config_ll *ll_dev_cur = ll_root;
+	struct virtio_net *dev = get_device(ctx);
 
-	/* Find the linked list entry for the device to be removed. */
-	ll_dev_cur_ctx = get_config_ll_entry(ctx);
-	while (ll_dev_cur != NULL) {
-		/*
-		 * If the device is found or
-		 * a device that doesn't exist is found then it is removed.
-		 */
-		if (ll_dev_cur == ll_dev_cur_ctx) {
-			/*
-			 * If the device is running on a data core then call
-			 * the function to remove it from the data core.
-			 */
-			if ((ll_dev_cur->dev.flags & VIRTIO_DEV_RUNNING))
-				notify_ops->destroy_device(&(ll_dev_cur->dev));
-			ll_dev_cur = rm_config_ll_entry(ll_dev_cur,
-					ll_dev_last);
-		} else {
-			ll_dev_last = ll_dev_cur;
-			ll_dev_cur = ll_dev_cur->next;
-		}
-	}
+	if (dev->flags & VIRTIO_DEV_RUNNING)
+		notify_ops->destroy_device(dev);
+
+	cleanup_device(dev, 1);
+	free_device(dev);
+
+	vhost_devices[ctx.fh] = NULL;
 }
 
 void
@@ -547,17 +444,17 @@ static struct virtio_net*
 numa_realloc(struct virtio_net *dev, int index)
 {
 	int oldnode, newnode;
-	struct virtio_net_config_ll *old_ll_dev, *new_ll_dev = NULL;
+	struct virtio_net *old_dev, *new_dev = NULL;
 	struct vhost_virtqueue *old_vq, *new_vq = NULL;
 	int ret;
 	int realloc_dev = 0, realloc_vq = 0;
 
-	old_ll_dev = (struct virtio_net_config_ll *)dev;
-	old_vq = dev->virtqueue[index];
+	old_dev = dev;
+	old_vq  = dev->virtqueue[index];
 
 	ret  = get_mempolicy(&newnode, NULL, 0, old_vq->desc,
 			MPOL_F_NODE | MPOL_F_ADDR);
-	ret = ret | get_mempolicy(&oldnode, NULL, 0, old_ll_dev,
+	ret = ret | get_mempolicy(&oldnode, NULL, 0, old_dev,
 			MPOL_F_NODE | MPOL_F_ADDR);
 	if (ret) {
 		RTE_LOG(ERR, VHOST_CONFIG,
@@ -581,36 +478,30 @@ numa_realloc(struct virtio_net *dev, int index)
 		return dev;
 
 	if (realloc_dev)
-		new_ll_dev = rte_malloc_socket(NULL,
-			sizeof(struct virtio_net_config_ll), 0, newnode);
+		new_dev = rte_malloc_socket(NULL,
+			sizeof(struct virtio_net), 0, newnode);
 	if (realloc_vq)
 		new_vq = rte_malloc_socket(NULL,
 			sizeof(struct vhost_virtqueue), 0, newnode);
-	if (!new_ll_dev && !new_vq)
+	if (!new_dev && !new_vq)
 		return dev;
 
 	if (realloc_vq)
 		memcpy(new_vq, old_vq, sizeof(*new_vq));
 	if (realloc_dev)
-		memcpy(new_ll_dev, old_ll_dev, sizeof(*new_ll_dev));
-	(new_ll_dev ? new_ll_dev : old_ll_dev)->dev.virtqueue[index] =
+		memcpy(new_dev, old_dev, sizeof(*new_dev));
+
+	(new_dev ? new_dev : old_dev)->virtqueue[index] =
 		new_vq ? new_vq : old_vq;
 	if (realloc_vq)
 		rte_free(old_vq);
 	if (realloc_dev) {
-		if (ll_root == old_ll_dev)
-			ll_root = new_ll_dev;
-		else {
-			struct virtio_net_config_ll *prev = ll_root;
-			while (prev->next != old_ll_dev)
-				prev = prev->next;
-			prev->next = new_ll_dev;
-			new_ll_dev->next = old_ll_dev->next;
-		}
-		rte_free(old_ll_dev);
+		rte_free(old_dev);
+
+		vhost_devices[new_dev->device_fh] = new_dev;
 	}
 
-	return realloc_dev ? &new_ll_dev->dev : dev;
+	return realloc_dev ? new_dev : dev;
 }
 #else
 static struct virtio_net*
