@@ -5004,8 +5004,6 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.mac_addr_remove = mlx4_mac_addr_remove,
 	.mac_addr_add = mlx4_mac_addr_add,
 	.mtu_set = mlx4_dev_set_mtu,
-	.udp_tunnel_add = NULL,
-	.udp_tunnel_del = NULL,
 };
 
 /**

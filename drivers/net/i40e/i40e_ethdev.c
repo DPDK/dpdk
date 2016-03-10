@@ -387,10 +387,10 @@ static int i40e_dev_rss_hash_update(struct rte_eth_dev *dev,
 				    struct rte_eth_rss_conf *rss_conf);
 static int i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				      struct rte_eth_rss_conf *rss_conf);
-static int i40e_dev_udp_tunnel_add(struct rte_eth_dev *dev,
-				struct rte_eth_udp_tunnel *udp_tunnel);
-static int i40e_dev_udp_tunnel_del(struct rte_eth_dev *dev,
-				struct rte_eth_udp_tunnel *udp_tunnel);
+static int i40e_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+					struct rte_eth_udp_tunnel *udp_tunnel);
+static int i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+					struct rte_eth_udp_tunnel *udp_tunnel);
 static int i40e_ethertype_filter_set(struct i40e_pf *pf,
 			struct rte_eth_ethertype_filter *filter,
 			bool add);
@@ -485,8 +485,8 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.reta_query                   = i40e_dev_rss_reta_query,
 	.rss_hash_update              = i40e_dev_rss_hash_update,
 	.rss_hash_conf_get            = i40e_dev_rss_hash_conf_get,
-	.udp_tunnel_add               = i40e_dev_udp_tunnel_add,
-	.udp_tunnel_del               = i40e_dev_udp_tunnel_del,
+	.udp_tunnel_port_add          = i40e_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del          = i40e_dev_udp_tunnel_port_del,
 	.filter_ctrl                  = i40e_dev_filter_ctrl,
 	.rxq_info_get                 = i40e_rxq_info_get,
 	.txq_info_get                 = i40e_txq_info_get,
@@ -6056,8 +6056,8 @@ i40e_del_vxlan_port(struct i40e_pf *pf, uint16_t port)
 
 /* Add UDP tunneling port */
 static int
-i40e_dev_udp_tunnel_add(struct rte_eth_dev *dev,
-			struct rte_eth_udp_tunnel *udp_tunnel)
+i40e_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			     struct rte_eth_udp_tunnel *udp_tunnel)
 {
 	int ret = 0;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -6087,8 +6087,8 @@ i40e_dev_udp_tunnel_add(struct rte_eth_dev *dev,
 
 /* Remove UDP tunneling port */
 static int
-i40e_dev_udp_tunnel_del(struct rte_eth_dev *dev,
-			struct rte_eth_udp_tunnel *udp_tunnel)
+i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+			     struct rte_eth_udp_tunnel *udp_tunnel)
 {
 	int ret = 0;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);

@@ -191,7 +191,7 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	/* Configure UDP port for UDP tunneling */
 	tunnel_udp.udp_port = udp_port;
 	tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
-	retval = rte_eth_dev_udp_tunnel_add(port, &tunnel_udp);
+	retval = rte_eth_dev_udp_tunnel_port_add(port, &tunnel_udp);
 	if (retval < 0)
 		return retval;
 	rte_eth_macaddr_get(port, &ports_eth_addr[port]);

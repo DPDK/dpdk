@@ -199,6 +199,10 @@ This section should contain API changes. Sample format:
 * Add a short 1-2 sentence description of the API change. Use fixed width
   quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
 
+* The functions ``rte_eth_dev_udp_tunnel_add`` and ``rte_eth_dev_udp_tunnel_delete``
+  have been renamed into ``rte_eth_dev_udp_tunnel_port_add`` and
+  ``rte_eth_dev_udp_tunnel_port_delete``.
+
 * The fields in ethdev structure ``rte_eth_fdir_masks`` were changed
   to be in big endian.
 

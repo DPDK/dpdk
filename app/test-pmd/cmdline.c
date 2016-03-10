@@ -6811,9 +6811,11 @@ cmd_tunnel_udp_config_parsed(void *parsed_result,
 		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
 
 	if (!strcmp(res->what, "add"))
-		ret = rte_eth_dev_udp_tunnel_add(res->port_id, &tunnel_udp);
+		ret = rte_eth_dev_udp_tunnel_port_add(res->port_id,
+						      &tunnel_udp);
 	else
-		ret = rte_eth_dev_udp_tunnel_delete(res->port_id, &tunnel_udp);
+		ret = rte_eth_dev_udp_tunnel_port_delete(res->port_id,
+							 &tunnel_udp);
 
 	if (ret < 0)
 		printf("udp tunneling add error: (%s)\n", strerror(-ret));

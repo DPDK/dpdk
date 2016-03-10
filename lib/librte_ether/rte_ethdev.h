@@ -749,10 +749,14 @@ struct rte_fdir_conf {
 
 /**
  * UDP tunneling configuration.
+ * Used to config the UDP port for a type of tunnel.
+ * NICs need the UDP port to identify the tunnel type.
+ * Normally a type of tunnel has a default UDP port, this structure can be used
+ * in case if the users want to change or support more UDP port.
  */
 struct rte_eth_udp_tunnel {
-	uint16_t udp_port;
-	uint8_t prot_type;
+	uint16_t udp_port; /**< UDP port used for the tunnel. */
+	uint8_t prot_type; /**< Tunnel type. Defined in rte_eth_tunnel_type. */
 };
 
 /**
@@ -1228,13 +1232,13 @@ typedef int (*eth_mirror_rule_reset_t)(struct rte_eth_dev *dev,
 				  uint8_t rule_id);
 /**< @internal Remove a traffic mirroring rule on an Ethernet device */
 
-typedef int (*eth_udp_tunnel_add_t)(struct rte_eth_dev *dev,
-				    struct rte_eth_udp_tunnel *tunnel_udp);
-/**< @internal Add tunneling UDP info */
+typedef int (*eth_udp_tunnel_port_add_t)(struct rte_eth_dev *dev,
+					 struct rte_eth_udp_tunnel *tunnel_udp);
+/**< @internal Add tunneling UDP port */
 
-typedef int (*eth_udp_tunnel_del_t)(struct rte_eth_dev *dev,
-				    struct rte_eth_udp_tunnel *tunnel_udp);
-/**< @internal Delete tunneling UDP info */
+typedef int (*eth_udp_tunnel_port_del_t)(struct rte_eth_dev *dev,
+					 struct rte_eth_udp_tunnel *tunnel_udp);
+/**< @internal Delete tunneling UDP port */
 
 typedef int (*eth_set_mc_addr_list_t)(struct rte_eth_dev *dev,
 				      struct ether_addr *mc_addr_set,
@@ -1418,8 +1422,10 @@ struct eth_dev_ops {
 	eth_set_vf_rx_t            set_vf_rx;  /**< enable/disable a VF receive */
 	eth_set_vf_tx_t            set_vf_tx;  /**< enable/disable a VF transmit */
 	eth_set_vf_vlan_filter_t   set_vf_vlan_filter;  /**< Set VF VLAN filter */
-	eth_udp_tunnel_add_t       udp_tunnel_add;
-	eth_udp_tunnel_del_t       udp_tunnel_del;
+	/** Add UDP tunnel port. */
+	eth_udp_tunnel_port_add_t udp_tunnel_port_add;
+	/** Del UDP tunnel port. */
+	eth_udp_tunnel_port_del_t udp_tunnel_port_del;
 	eth_set_queue_rate_limit_t set_queue_rate_limit;   /**< Set queue rate limit */
 	eth_set_vf_rate_limit_t    set_vf_rate_limit;   /**< Set VF rate limit */
 	/** Update redirection table. */
@@ -3634,8 +3640,11 @@ rte_eth_dev_rss_hash_conf_get(uint8_t port_id,
 			      struct rte_eth_rss_conf *rss_conf);
 
  /**
- * Add UDP tunneling port of an Ethernet device for filtering a specific
- * tunneling packet by UDP port number.
+ * Add UDP tunneling port for a specific type of tunnel.
+ * The packets with this UDP port will be identified as this type of tunnel.
+ * Before enabling any offloading function for a tunnel, users can call this API
+ * to change or add more UDP port for the tunnel. So the offloading function
+ * can take effect on the packets with the sepcific UDP port.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -3648,11 +3657,16 @@ rte_eth_dev_rss_hash_conf_get(uint8_t port_id,
  *   - (-ENOTSUP) if hardware doesn't support tunnel type.
  */
 int
-rte_eth_dev_udp_tunnel_add(uint8_t port_id,
-			   struct rte_eth_udp_tunnel *tunnel_udp);
+rte_eth_dev_udp_tunnel_port_add(uint8_t port_id,
+				struct rte_eth_udp_tunnel *tunnel_udp);
 
  /**
- * Detete UDP tunneling port configuration of Ethernet device
+ * Delete UDP tunneling port a specific type of tunnel.
+ * The packets with this UDP port will not be identified as this type of tunnel
+ * any more.
+ * Before enabling any offloading function for a tunnel, users can call this API
+ * to delete a UDP port for the tunnel. So the offloading function will not take
+ * effect on the packets with the sepcific UDP port.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -3665,8 +3679,8 @@ rte_eth_dev_udp_tunnel_add(uint8_t port_id,
  *   - (-ENOTSUP) if hardware doesn't support tunnel type.
  */
 int
-rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
-			      struct rte_eth_udp_tunnel *tunnel_udp);
+rte_eth_dev_udp_tunnel_port_delete(uint8_t port_id,
+				   struct rte_eth_udp_tunnel *tunnel_udp);
 
 /**
  * Check whether the filter type is supported on an Ethernet device.

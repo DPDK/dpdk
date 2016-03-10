@@ -77,8 +77,6 @@ DPDK_2.2 {
 	rte_eth_dev_tx_queue_stop;
 	rte_eth_dev_uc_all_hash_table_set;
 	rte_eth_dev_uc_hash_table_set;
-	rte_eth_dev_udp_tunnel_add;
-	rte_eth_dev_udp_tunnel_delete;
 	rte_eth_dev_vlan_filter;
 	rte_eth_dev_wd_timeout_store;
 	rte_eth_dma_zone_reserve;
@@ -124,6 +122,8 @@ DPDK_16.04 {
 	rte_eth_dev_l2_tunnel_eth_type_conf;
 	rte_eth_dev_l2_tunnel_offload_set;
 	rte_eth_dev_set_vlan_ether_type;
+	rte_eth_dev_udp_tunnel_port_add;
+	rte_eth_dev_udp_tunnel_port_delete;
 	rte_eth_tx_buffer_count_callback;
 	rte_eth_tx_buffer_drop_callback;
 	rte_eth_tx_buffer_init;

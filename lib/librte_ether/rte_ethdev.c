@@ -1974,8 +1974,8 @@ rte_eth_dev_rss_hash_conf_get(uint8_t port_id,
 }
 
 int
-rte_eth_dev_udp_tunnel_add(uint8_t port_id,
-			   struct rte_eth_udp_tunnel *udp_tunnel)
+rte_eth_dev_udp_tunnel_port_add(uint8_t port_id,
+				struct rte_eth_udp_tunnel *udp_tunnel)
 {
 	struct rte_eth_dev *dev;
 
@@ -1991,13 +1991,13 @@ rte_eth_dev_udp_tunnel_add(uint8_t port_id,
 	}
 
 	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->udp_tunnel_add, -ENOTSUP);
-	return (*dev->dev_ops->udp_tunnel_add)(dev, udp_tunnel);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->udp_tunnel_port_add, -ENOTSUP);
+	return (*dev->dev_ops->udp_tunnel_port_add)(dev, udp_tunnel);
 }
 
 int
-rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
-			      struct rte_eth_udp_tunnel *udp_tunnel)
+rte_eth_dev_udp_tunnel_port_delete(uint8_t port_id,
+				   struct rte_eth_udp_tunnel *udp_tunnel)
 {
 	struct rte_eth_dev *dev;
 
@@ -2014,8 +2014,8 @@ rte_eth_dev_udp_tunnel_delete(uint8_t port_id,
 		return -EINVAL;
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->udp_tunnel_del, -ENOTSUP);
-	return (*dev->dev_ops->udp_tunnel_del)(dev, udp_tunnel);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->udp_tunnel_port_del, -ENOTSUP);
+	return (*dev->dev_ops->udp_tunnel_port_del)(dev, udp_tunnel);
 }
 
 int
