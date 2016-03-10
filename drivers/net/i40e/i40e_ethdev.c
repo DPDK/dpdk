@@ -5877,6 +5877,12 @@ i40e_dev_get_filter_type(uint16_t filter_type, uint16_t *flag)
 	case ETH_TUNNEL_FILTER_IMAC:
 		*flag = I40E_AQC_ADD_CLOUD_FILTER_IMAC;
 		break;
+	case ETH_TUNNEL_FILTER_OIP:
+		*flag = I40E_AQC_ADD_CLOUD_FILTER_OIP;
+		break;
+	case ETH_TUNNEL_FILTER_IIP:
+		*flag = I40E_AQC_ADD_CLOUD_FILTER_IIP;
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "invalid tunnel filter type");
 		return -EINVAL;
@@ -5891,7 +5897,9 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			uint8_t add)
 {
 	uint16_t ip_type;
-	uint8_t tun_type = 0;
+	uint8_t i, tun_type = 0;
+	/* internal varialbe to convert ipv6 byte order */
+	uint32_t convert_ipv6[4];
 	int val, ret = 0;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi = pf->main_vsi;
@@ -5911,16 +5919,19 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	ether_addr_copy(&tunnel_filter->outer_mac, (struct ether_addr*)&pfilter->outer_mac);
 	ether_addr_copy(&tunnel_filter->inner_mac, (struct ether_addr*)&pfilter->inner_mac);
 
-	pfilter->inner_vlan = tunnel_filter->inner_vlan;
+	pfilter->inner_vlan = rte_cpu_to_le_16(tunnel_filter->inner_vlan);
 	if (tunnel_filter->ip_type == RTE_TUNNEL_IPTYPE_IPV4) {
 		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV4;
-		(void)rte_memcpy(&pfilter->ipaddr.v4.data,
-				&tunnel_filter->ip_addr,
+		rte_memcpy(&pfilter->ipaddr.v4.data,
+				&rte_cpu_to_le_32(tunnel_filter->ip_addr.ipv4_addr),
 				sizeof(pfilter->ipaddr.v4.data));
 	} else {
 		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV6;
-		(void)rte_memcpy(&pfilter->ipaddr.v6.data,
-				&tunnel_filter->ip_addr,
+		for (i = 0; i < 4; i++) {
+			convert_ipv6[i] =
+			rte_cpu_to_le_32(tunnel_filter->ip_addr.ipv6_addr[i]);
+		}
+		rte_memcpy(&pfilter->ipaddr.v6.data, &convert_ipv6,
 				sizeof(pfilter->ipaddr.v6.data));
 	}
 
@@ -5931,6 +5942,9 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 		break;
 	case RTE_TUNNEL_TYPE_NVGRE:
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_NVGRE_OMAC;
+		break;
+	case RTE_TUNNEL_TYPE_IP_IN_GRE:
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_IP;
 		break;
 	default:
 		/* Other tunnel types is not supported. */
@@ -5946,10 +5960,11 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 		return -EINVAL;
 	}
 
-	pfilter->flags |= I40E_AQC_ADD_CLOUD_FLAGS_TO_QUEUE | ip_type |
-		(tun_type << I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT);
-	pfilter->tenant_id = tunnel_filter->tenant_id;
-	pfilter->queue_number = tunnel_filter->queue_id;
+	pfilter->flags |= rte_cpu_to_le_16(
+		I40E_AQC_ADD_CLOUD_FLAGS_TO_QUEUE |
+		ip_type | (tun_type << I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT));
+	pfilter->tenant_id = rte_cpu_to_le_32(tunnel_filter->tenant_id);
+	pfilter->queue_number = rte_cpu_to_le_16(tunnel_filter->queue_id);
 
 	if (add)
 		ret = i40e_aq_add_cloud_filters(hw, vsi->seid, cld_filter, 1);
