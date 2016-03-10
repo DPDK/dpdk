@@ -112,6 +112,12 @@ enum l2fwd_crypto_xform_chain {
 	L2FWD_CRYPTO_HASH_CIPHER
 };
 
+struct l2fwd_key {
+	uint8_t *data;
+	uint32_t length;
+	phys_addr_t phys_addr;
+};
+
 /** l2fwd crypto application command line options */
 struct l2fwd_crypto_options {
 	unsigned portmask;
@@ -127,7 +133,7 @@ struct l2fwd_crypto_options {
 	struct rte_crypto_sym_xform cipher_xform;
 	uint8_t ckey_data[32];
 
-	struct rte_crypto_key iv_key;
+	struct l2fwd_key iv_key;
 	uint8_t ivkey_data[16];
 
 	struct rte_crypto_sym_xform auth_xform;
@@ -141,7 +147,7 @@ struct l2fwd_crypto_params {
 
 	unsigned digest_length;
 	unsigned block_size;
-	struct rte_crypto_key iv_key;
+	struct l2fwd_key iv_key;
 	struct rte_cryptodev_sym_session *session;
 };
 
@@ -744,7 +750,7 @@ parse_cipher_op(enum rte_crypto_cipher_operation *op, char *optarg)
 
 /** Parse crypto key command line argument */
 static int
-parse_key(struct rte_crypto_key *key __rte_unused,
+parse_key(struct l2fwd_key *key __rte_unused,
 		unsigned length __rte_unused, char *arg __rte_unused)
 {
 	printf("Currently an unsupported argument!\n");
@@ -820,11 +826,18 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		return parse_cipher_op(&options->cipher_xform.cipher.op,
 				optarg);
 
-	else if (strcmp(lgopts[option_index].name, "cipher_key") == 0)
-		return parse_key(&options->cipher_xform.cipher.key,
-				sizeof(options->ckey_data), optarg);
+	else if (strcmp(lgopts[option_index].name, "cipher_key") == 0) {
+		struct l2fwd_key key = { 0 };
+		int retval = 0;
 
-	else if (strcmp(lgopts[option_index].name, "iv") == 0)
+		retval = parse_key(&key, sizeof(options->ckey_data), optarg);
+
+		options->cipher_xform.cipher.key.data = key.data;
+		options->cipher_xform.cipher.key.length = key.length;
+
+		return retval;
+
+	} else if (strcmp(lgopts[option_index].name, "iv") == 0)
 		return parse_key(&options->iv_key, sizeof(options->ivkey_data),
 				optarg);
 
@@ -837,11 +850,18 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		return parse_auth_op(&options->auth_xform.auth.op,
 				optarg);
 
-	else if (strcmp(lgopts[option_index].name, "auth_key") == 0)
-		return parse_key(&options->auth_xform.auth.key,
-				sizeof(options->akey_data), optarg);
+	else if (strcmp(lgopts[option_index].name, "auth_key") == 0) {
+		struct l2fwd_key key = { 0 };
+		int retval = 0;
 
-	else if (strcmp(lgopts[option_index].name, "sessionless") == 0) {
+		retval = parse_key(&key, sizeof(options->akey_data), optarg);
+
+		options->auth_xform.auth.key.data = key.data;
+		options->auth_xform.auth.key.length = key.length;
+
+		return retval;
+
+	} else if (strcmp(lgopts[option_index].name, "sessionless") == 0) {
 		options->sessionless = 1;
 		return 0;
 	}

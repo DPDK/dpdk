@@ -111,12 +111,6 @@ enum rte_crypto_cipher_operation {
 	/**< Decrypt cipher operation */
 };
 
-/** Crypto key structure */
-struct rte_crypto_key {
-	uint8_t *data;  /**< pointer to key data */
-	phys_addr_t phys_addr;
-	size_t length;  /**< key length in bytes */
-};
 
 /**
  * Symmetric Cipher Setup Data.
@@ -133,7 +127,10 @@ struct rte_crypto_cipher_xform {
 	enum rte_crypto_cipher_algorithm algo;
 	/**< Cipher algorithm */
 
-	struct rte_crypto_key key;
+	struct {
+		uint8_t *data;  /**< pointer to key data */
+		size_t length;  /**< key length in bytes */
+	} key;
 	/**< Cipher key
 	 *
 	 * For the RTE_CRYPTO_CIPHER_AES_F8 mode of operation, key.data will
@@ -257,7 +254,10 @@ struct rte_crypto_auth_xform {
 	enum rte_crypto_auth_algorithm algo;
 	/**< Authentication algorithm selection */
 
-	struct rte_crypto_key key;
+	struct {
+		uint8_t *data;  /**< pointer to key data */
+		size_t length;  /**< key length in bytes */
+	} key;
 	/**< Authentication key data.
 	 * The authentication key length MUST be less than or equal to the
 	 * block size of the algorithm. It is the callers responsibility to
