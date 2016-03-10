@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,7 @@
 
 #include <rte_common.h>
 #include <rte_log.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
@@ -99,20 +100,15 @@ static uint32_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
 
 static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
-struct mbuf_table {
-	unsigned len;
-	struct rte_mbuf *m_table[MAX_PKT_BURST];
-};
-
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 struct lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
-
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
+
+static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
@@ -189,58 +185,14 @@ print_stats(void)
 	printf("\n====================================================\n");
 }
 
-/* Send the burst of packets on an output interface */
-static int
-l2fwd_send_burst(struct lcore_queue_conf *qconf, unsigned n, uint8_t port)
-{
-	struct rte_mbuf **m_table;
-	unsigned ret;
-	unsigned queueid =0;
-
-	m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
-
-	ret = rte_eth_tx_burst(port, (uint16_t) queueid, m_table, (uint16_t) n);
-	port_statistics[port].tx += ret;
-	if (unlikely(ret < n)) {
-		port_statistics[port].dropped += (n - ret);
-		do {
-			rte_pktmbuf_free(m_table[ret]);
-		} while (++ret < n);
-	}
-
-	return 0;
-}
-
-/* Enqueue packets for TX and prepare them to be sent */
-static int
-l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
-{
-	unsigned lcore_id, len;
-	struct lcore_queue_conf *qconf;
-
-	lcore_id = rte_lcore_id();
-
-	qconf = &lcore_queue_conf[lcore_id];
-	len = qconf->tx_mbufs[port].len;
-	qconf->tx_mbufs[port].m_table[len] = m;
-	len++;
-
-	/* enough pkts to be sent */
-	if (unlikely(len == MAX_PKT_BURST)) {
-		l2fwd_send_burst(qconf, MAX_PKT_BURST, port);
-		len = 0;
-	}
-
-	qconf->tx_mbufs[port].len = len;
-	return 0;
-}
-
 static void
 l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 {
 	struct ether_hdr *eth;
 	void *tmp;
 	unsigned dst_port;
+	int sent;
+	struct rte_eth_dev_tx_buffer *buffer;
 
 	dst_port = l2fwd_dst_ports[portid];
 	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
@@ -252,7 +204,10 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 	/* src addr */
 	ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
 
-	l2fwd_send_packet(m, (uint8_t) dst_port);
+	buffer = tx_buffer[dst_port];
+	sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);
+	if (sent)
+		port_statistics[dst_port].tx += sent;
 }
 
 /* main processing loop */
@@ -261,11 +216,14 @@ l2fwd_main_loop(void)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_mbuf *m;
+	int sent;
 	unsigned lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
 	unsigned i, j, portid, nb_rx;
 	struct lcore_queue_conf *qconf;
-	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S *
+			BURST_TX_DRAIN_US;
+	struct rte_eth_dev_tx_buffer *buffer;
 
 	prev_tsc = 0;
 	timer_tsc = 0;
@@ -285,6 +243,7 @@ l2fwd_main_loop(void)
 		portid = qconf->rx_port_list[i];
 		RTE_LOG(INFO, L2FWD, " -- lcoreid=%u portid=%u\n", lcore_id,
 			portid);
+
 	}
 
 	while (!force_quit) {
@@ -297,13 +256,15 @@ l2fwd_main_loop(void)
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > drain_tsc)) {
 
-			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-				if (qconf->tx_mbufs[portid].len == 0)
-					continue;
-				l2fwd_send_burst(&lcore_queue_conf[lcore_id],
-						 qconf->tx_mbufs[portid].len,
-						 (uint8_t) portid);
-				qconf->tx_mbufs[portid].len = 0;
+			for (i = 0; i < qconf->n_rx_port; i++) {
+
+				portid = l2fwd_dst_ports[qconf->rx_port_list[i]];
+				buffer = tx_buffer[portid];
+
+				sent = rte_eth_tx_buffer_flush(portid, 0, buffer);
+				if (sent)
+					port_statistics[portid].tx += sent;
+
 			}
 
 			/* if timer is enabled */
@@ -687,6 +648,23 @@ main(int argc, char **argv)
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n",
 				ret, (unsigned) portid);
+
+		/* Initialize TX buffers */
+		tx_buffer[portid] = rte_zmalloc_socket("tx_buffer",
+				RTE_ETH_TX_BUFFER_SIZE(MAX_PKT_BURST), 0,
+				rte_eth_dev_socket_id(portid));
+		if (tx_buffer[portid] == NULL)
+			rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx on port %u\n",
+					(unsigned) portid);
+
+		rte_eth_tx_buffer_init(tx_buffer[portid], MAX_PKT_BURST);
+
+		ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[portid],
+				rte_eth_tx_buffer_count_callback,
+				&port_statistics[portid].dropped);
+		if (ret < 0)
+				rte_exit(EXIT_FAILURE, "Cannot set error callback for "
+						"tx buffer on port %u\n", (unsigned) portid);
 
 		/* Start device */
 		ret = rte_eth_dev_start(portid);

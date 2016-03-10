@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,7 @@
 #include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_lcore.h>
+#include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_ring.h>
@@ -54,7 +55,7 @@
 
 #define RING_SIZE 16384
 
-/* uncommnet below line to enable debug logs */
+/* uncomment below line to enable debug logs */
 /* #define DEBUG */
 
 #ifdef DEBUG
@@ -84,11 +85,6 @@ struct worker_thread_args {
 struct send_thread_args {
 	struct rte_ring *ring_in;
 	struct rte_reorder_buffer *buffer;
-};
-
-struct output_buffer {
-	unsigned count;
-	struct rte_mbuf *mbufs[MAX_PKTS_BURST];
 };
 
 volatile struct app_stats {
@@ -232,6 +228,68 @@ parse_args(int argc, char **argv)
 
 	argv[optind-1] = prgname;
 	optind = 0; /* reset getopt lib */
+	return 0;
+}
+
+/*
+ * Tx buffer error callback
+ */
+static void
+flush_tx_error_callback(struct rte_mbuf **unsent, uint16_t count,
+		void *userdata __rte_unused) {
+
+	/* free the mbufs which failed from transmit */
+	app_stats.tx.ro_tx_failed_pkts += count;
+	LOG_DEBUG(REORDERAPP, "%s:Packet loss with tx_burst\n", __func__);
+	pktmbuf_free_bulk(unsent, count);
+
+}
+
+static inline int
+free_tx_buffers(struct rte_eth_dev_tx_buffer *tx_buffer[]) {
+	const uint8_t nb_ports = rte_eth_dev_count();
+	unsigned port_id;
+
+	/* initialize buffers for all ports */
+	for (port_id = 0; port_id < nb_ports; port_id++) {
+		/* skip ports that are not enabled */
+		if ((portmask & (1 << port_id)) == 0)
+			continue;
+
+		rte_free(tx_buffer[port_id]);
+	}
+	return 0;
+}
+
+static inline int
+configure_tx_buffers(struct rte_eth_dev_tx_buffer *tx_buffer[])
+{
+	const uint8_t nb_ports = rte_eth_dev_count();
+	unsigned port_id;
+	int ret;
+
+	/* initialize buffers for all ports */
+	for (port_id = 0; port_id < nb_ports; port_id++) {
+		/* skip ports that are not enabled */
+		if ((portmask & (1 << port_id)) == 0)
+			continue;
+
+		/* Initialize TX buffers */
+		tx_buffer[port_id] = rte_zmalloc_socket("tx_buffer",
+				RTE_ETH_TX_BUFFER_SIZE(MAX_PKTS_BURST), 0,
+				rte_eth_dev_socket_id(port_id));
+		if (tx_buffer[port_id] == NULL)
+			rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx on port %u\n",
+					(unsigned) port_id);
+
+		rte_eth_tx_buffer_init(tx_buffer[port_id], MAX_PKTS_BURST);
+
+		ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[port_id],
+				flush_tx_error_callback, NULL);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "Cannot set error callback for "
+					"tx buffer on port %u\n", (unsigned) port_id);
+	}
 	return 0;
 }
 
@@ -438,22 +496,6 @@ worker_thread(void *args_ptr)
 	return 0;
 }
 
-static inline void
-flush_one_port(struct output_buffer *outbuf, uint8_t outp)
-{
-	unsigned nb_tx = rte_eth_tx_burst(outp, 0, outbuf->mbufs,
-			outbuf->count);
-	app_stats.tx.ro_tx_pkts += nb_tx;
-
-	if (unlikely(nb_tx < outbuf->count)) {
-		/* free the mbufs which failed from transmit */
-		app_stats.tx.ro_tx_failed_pkts += (outbuf->count - nb_tx);
-		LOG_DEBUG(REORDERAPP, "%s:Packet loss with tx_burst\n", __func__);
-		pktmbuf_free_bulk(&outbuf->mbufs[nb_tx], outbuf->count - nb_tx);
-	}
-	outbuf->count = 0;
-}
-
 /**
  * Dequeue mbufs from the workers_to_tx ring and reorder them before
  * transmitting.
@@ -465,11 +507,14 @@ send_thread(struct send_thread_args *args)
 	unsigned int i, dret;
 	uint16_t nb_dq_mbufs;
 	uint8_t outp;
-	static struct output_buffer tx_buffers[RTE_MAX_ETHPORTS];
+	unsigned sent;
 	struct rte_mbuf *mbufs[MAX_PKTS_BURST];
 	struct rte_mbuf *rombufs[MAX_PKTS_BURST] = {NULL};
+	static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
 	RTE_LOG(INFO, REORDERAPP, "%s() started on lcore %u\n", __func__, rte_lcore_id());
+
+	configure_tx_buffers(tx_buffer);
 
 	while (!quit_signal) {
 
@@ -515,7 +560,7 @@ send_thread(struct send_thread_args *args)
 		dret = rte_reorder_drain(args->buffer, rombufs, MAX_PKTS_BURST);
 		for (i = 0; i < dret; i++) {
 
-			struct output_buffer *outbuf;
+			struct rte_eth_dev_tx_buffer *outbuf;
 			uint8_t outp1;
 
 			outp1 = rombufs[i]->port;
@@ -525,12 +570,15 @@ send_thread(struct send_thread_args *args)
 				continue;
 			}
 
-			outbuf = &tx_buffers[outp1];
-			outbuf->mbufs[outbuf->count++] = rombufs[i];
-			if (outbuf->count == MAX_PKTS_BURST)
-				flush_one_port(outbuf, outp1);
+			outbuf = tx_buffer[outp1];
+			sent = rte_eth_tx_buffer(outp1, 0, outbuf, rombufs[i]);
+			if (sent)
+				app_stats.tx.ro_tx_pkts += sent;
 		}
 	}
+
+	free_tx_buffers(tx_buffer);
+
 	return 0;
 }
 
@@ -542,12 +590,16 @@ tx_thread(struct rte_ring *ring_in)
 {
 	uint32_t i, dqnum;
 	uint8_t outp;
-	static struct output_buffer tx_buffers[RTE_MAX_ETHPORTS];
+	unsigned sent;
 	struct rte_mbuf *mbufs[MAX_PKTS_BURST];
-	struct output_buffer *outbuf;
+	struct rte_eth_dev_tx_buffer *outbuf;
+	static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
 	RTE_LOG(INFO, REORDERAPP, "%s() started on lcore %u\n", __func__,
 							rte_lcore_id());
+
+	configure_tx_buffers(tx_buffer);
+
 	while (!quit_signal) {
 
 		/* deque the mbufs from workers_to_tx ring */
@@ -567,10 +619,10 @@ tx_thread(struct rte_ring *ring_in)
 				continue;
 			}
 
-			outbuf = &tx_buffers[outp];
-			outbuf->mbufs[outbuf->count++] = mbufs[i];
-			if (outbuf->count == MAX_PKTS_BURST)
-				flush_one_port(outbuf, outp);
+			outbuf = tx_buffer[outp];
+			sent = rte_eth_tx_buffer(outp, 0, outbuf, mbufs[i]);
+			if (sent)
+				app_stats.tx.ro_tx_pkts += sent;
 		}
 	}
 

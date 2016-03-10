@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,7 @@
 #include <rte_common.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
@@ -171,11 +172,6 @@ enum freq_scale_hint_t
 	FREQ_CURRENT  =       0,
 	FREQ_HIGHER   =       1,
 	FREQ_HIGHEST  =       2
-};
-
-struct mbuf_table {
-	uint16_t len;
-	struct rte_mbuf *m_table[MAX_PKT_BURST];
 };
 
 struct lcore_rx_queue {
@@ -347,8 +343,10 @@ static lookup_struct_t *ipv4_l3fwd_lookup_struct[NB_SOCKETS];
 struct lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
+	uint16_t n_tx_port;
+	uint16_t tx_port_id[RTE_MAX_ETHPORTS];
 	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
-	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
+	struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 	lookup_struct_t * ipv4_lookup_struct;
 	lookup_struct_t * ipv6_lookup_struct;
 } __rte_cache_aligned;
@@ -442,49 +440,19 @@ power_timer_cb(__attribute__((unused)) struct rte_timer *tim,
 	stats[lcore_id].sleep_time = 0;
 }
 
-/* Send burst of packets on an output interface */
-static inline int
-send_burst(struct lcore_conf *qconf, uint16_t n, uint8_t port)
-{
-	struct rte_mbuf **m_table;
-	int ret;
-	uint16_t queueid;
-
-	queueid = qconf->tx_queue_id[port];
-	m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
-
-	ret = rte_eth_tx_burst(port, queueid, m_table, n);
-	if (unlikely(ret < n)) {
-		do {
-			rte_pktmbuf_free(m_table[ret]);
-		} while (++ret < n);
-	}
-
-	return 0;
-}
-
 /* Enqueue a single packet, and send burst if queue is filled */
 static inline int
 send_single_packet(struct rte_mbuf *m, uint8_t port)
 {
 	uint32_t lcore_id;
-	uint16_t len;
 	struct lcore_conf *qconf;
 
 	lcore_id = rte_lcore_id();
-
 	qconf = &lcore_conf[lcore_id];
-	len = qconf->tx_mbufs[port].len;
-	qconf->tx_mbufs[port].m_table[len] = m;
-	len++;
 
-	/* enough pkts to be sent */
-	if (unlikely(len == MAX_PKT_BURST)) {
-		send_burst(qconf, MAX_PKT_BURST, port);
-		len = 0;
-	}
+	rte_eth_tx_buffer(port, qconf->tx_queue_id[port],
+			qconf->tx_buffer[port], m);
 
-	qconf->tx_mbufs[port].len = len;
 	return 0;
 }
 
@@ -905,20 +873,12 @@ main_loop(__attribute__((unused)) void *dummy)
 		 */
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > drain_tsc)) {
-
-			/*
-			 * This could be optimized (use queueid instead of
-			 * portid), but it is not called so often
-			 */
-			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-				if (qconf->tx_mbufs[portid].len == 0)
-					continue;
-				send_burst(&lcore_conf[lcore_id],
-					qconf->tx_mbufs[portid].len,
-					portid);
-				qconf->tx_mbufs[portid].len = 0;
+			for (i = 0; i < qconf->n_tx_port; ++i) {
+				portid = qconf->tx_port_id[i];
+				rte_eth_tx_buffer_flush(portid,
+						qconf->tx_queue_id[portid],
+						qconf->tx_buffer[portid]);
 			}
-
 			prev_tsc = cur_tsc;
 		}
 
@@ -1585,6 +1545,7 @@ main(int argc, char **argv)
 	uint32_t n_tx_queue, nb_lcores;
 	uint32_t dev_rxq_num, dev_txq_num;
 	uint8_t portid, nb_rx_queue, queue, socketid;
+	uint8_t nb_tx_port;
 
 	/* catch SIGINT and restore cpufreq governor to ondemand */
 	signal(SIGINT, signal_exit_now);
@@ -1620,6 +1581,7 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");
 
 	nb_lcores = rte_lcore_count();
+	nb_tx_port = 0;
 
 	/* initialize all ports */
 	for (portid = 0; portid < nb_ports; portid++) {
@@ -1663,6 +1625,22 @@ main(int argc, char **argv)
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "init_mem failed\n");
 
+		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+			if (rte_lcore_is_enabled(lcore_id) == 0)
+				continue;
+
+			/* Initialize TX buffers */
+			qconf = &lcore_conf[lcore_id];
+			qconf->tx_buffer[portid] = rte_zmalloc_socket("tx_buffer",
+				RTE_ETH_TX_BUFFER_SIZE(MAX_PKT_BURST), 0,
+				rte_eth_dev_socket_id(portid));
+			if (qconf->tx_buffer[portid] == NULL)
+				rte_exit(EXIT_FAILURE, "Can't allocate tx buffer for port %u\n",
+						(unsigned) portid);
+
+			rte_eth_tx_buffer_init(qconf->tx_buffer[portid], MAX_PKT_BURST);
+		}
+
 		/* init one TX queue per couple (lcore,port) */
 		queueid = 0;
 		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
@@ -1695,8 +1673,13 @@ main(int argc, char **argv)
 			qconf = &lcore_conf[lcore_id];
 			qconf->tx_queue_id[portid] = queueid;
 			queueid++;
+
+			qconf->n_tx_port = nb_tx_port;
+			qconf->tx_port_id[qconf->n_tx_port] = portid;
 		}
 		printf("\n");
+
+		nb_tx_port++;
 	}
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {

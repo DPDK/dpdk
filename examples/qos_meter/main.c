@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,7 @@
 
 #include <rte_common.h>
 #include <rte_eal.h>
+#include <rte_malloc.h>
 #include <rte_mempool.h>
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
@@ -118,9 +119,7 @@ static struct rte_eth_conf port_conf = {
 static uint8_t port_rx;
 static uint8_t port_tx;
 static struct rte_mbuf *pkts_rx[PKT_RX_BURST_MAX];
-static struct rte_mbuf *pkts_tx[PKT_TX_BURST_MAX];
-static uint16_t pkts_tx_len = 0;
-
+struct rte_eth_dev_tx_buffer *tx_buffer;
 
 struct rte_meter_srtcm_params app_srtcm_params[] = {
 	{.cir = 1000000 * 46,  .cbs = 2048, .ebs = 2048},
@@ -188,27 +187,8 @@ main_loop(__attribute__((unused)) void *dummy)
 		current_time = rte_rdtsc();
 		time_diff = current_time - last_time;
 		if (unlikely(time_diff > TIME_TX_DRAIN)) {
-			int ret;
-
-			if (pkts_tx_len == 0) {
-				last_time = current_time;
-
-				continue;
-			}
-
-			/* Write packet burst to NIC TX */
-			ret = rte_eth_tx_burst(port_tx, NIC_TX_QUEUE, pkts_tx, pkts_tx_len);
-
-			/* Free buffers for any packets not written successfully */
-			if (unlikely(ret < pkts_tx_len)) {
-				for ( ; ret < pkts_tx_len; ret ++) {
-					rte_pktmbuf_free(pkts_tx[ret]);
-				}
-			}
-
-			/* Empty the output buffer */
-			pkts_tx_len = 0;
-
+			/* Flush tx buffer */
+			rte_eth_tx_buffer_flush(port_tx, NIC_TX_QUEUE, tx_buffer);
 			last_time = current_time;
 		}
 
@@ -222,26 +202,8 @@ main_loop(__attribute__((unused)) void *dummy)
 			/* Handle current packet */
 			if (app_pkt_handle(pkt, current_time) == DROP)
 				rte_pktmbuf_free(pkt);
-			else {
-				pkts_tx[pkts_tx_len] = pkt;
-				pkts_tx_len ++;
-			}
-
-			/* Write packets from output buffer to NIC TX when full burst is available */
-			if (unlikely(pkts_tx_len == PKT_TX_BURST_MAX)) {
-				/* Write packet burst to NIC TX */
-				int ret = rte_eth_tx_burst(port_tx, NIC_TX_QUEUE, pkts_tx, PKT_TX_BURST_MAX);
-
-				/* Free buffers for any packets not written successfully */
-				if (unlikely(ret < PKT_TX_BURST_MAX)) {
-					for ( ; ret < PKT_TX_BURST_MAX; ret ++) {
-						rte_pktmbuf_free(pkts_tx[ret]);
-					}
-				}
-
-				/* Empty the output buffer */
-				pkts_tx_len = 0;
-			}
+			else
+				rte_eth_tx_buffer(port_tx, NIC_TX_QUEUE, tx_buffer, pkt);
 		}
 	}
 }
@@ -396,6 +358,15 @@ main(int argc, char **argv)
 				NULL);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d TX queue setup error (%d)\n", port_tx, ret);
+
+	tx_buffer = rte_zmalloc_socket("tx_buffer",
+			RTE_ETH_TX_BUFFER_SIZE(PKT_TX_BURST_MAX), 0,
+			rte_eth_dev_socket_id(port_tx));
+	if (tx_buffer == NULL)
+		rte_exit(EXIT_FAILURE, "Port %d TX buffer allocation error\n",
+				port_tx);
+
+	rte_eth_tx_buffer_init(tx_buffer, PKT_TX_BURST_MAX);
 
 	ret = rte_eth_dev_start(port_rx);
 	if (ret < 0)

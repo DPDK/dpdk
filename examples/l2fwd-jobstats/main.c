@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,7 @@
 #include <rte_alarm.h>
 #include <rte_common.h>
 #include <rte_log.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
@@ -97,18 +98,12 @@ static uint32_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
 
 static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
-struct mbuf_table {
-	uint64_t next_flush_time;
-	unsigned len;
-	struct rte_mbuf *mbufs[MAX_PKT_BURST];
-};
-
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 struct lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
+	uint64_t next_flush_time[RTE_MAX_ETHPORTS];
 
 	struct rte_timer rx_timers[MAX_RX_QUEUE_PER_LCORE];
 	struct rte_jobstats port_fwd_jobs[MAX_RX_QUEUE_PER_LCORE];
@@ -122,6 +117,8 @@ struct lcore_queue_conf {
 	rte_spinlock_t lock;
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
+
+struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
@@ -373,59 +370,14 @@ show_stats_cb(__rte_unused void *param)
 	rte_eal_alarm_set(timer_period * US_PER_S, show_stats_cb, NULL);
 }
 
-/* Send the burst of packets on an output interface */
-static void
-l2fwd_send_burst(struct lcore_queue_conf *qconf, uint8_t port)
-{
-	struct mbuf_table *m_table;
-	uint16_t ret;
-	uint16_t queueid = 0;
-	uint16_t n;
-
-	m_table = &qconf->tx_mbufs[port];
-	n = m_table->len;
-
-	m_table->next_flush_time = rte_get_timer_cycles() + drain_tsc;
-	m_table->len = 0;
-
-	ret = rte_eth_tx_burst(port, queueid, m_table->mbufs, n);
-
-	port_statistics[port].tx += ret;
-	if (unlikely(ret < n)) {
-		port_statistics[port].dropped += (n - ret);
-		do {
-			rte_pktmbuf_free(m_table->mbufs[ret]);
-		} while (++ret < n);
-	}
-}
-
-/* Enqueue packets for TX and prepare them to be sent */
-static int
-l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
-{
-	const unsigned lcore_id = rte_lcore_id();
-	struct lcore_queue_conf *qconf = &lcore_queue_conf[lcore_id];
-	struct mbuf_table *m_table = &qconf->tx_mbufs[port];
-	uint16_t len = qconf->tx_mbufs[port].len;
-
-	m_table->mbufs[len] = m;
-
-	len++;
-	m_table->len = len;
-
-	/* Enough pkts to be sent. */
-	if (unlikely(len == MAX_PKT_BURST))
-		l2fwd_send_burst(qconf, port);
-
-	return 0;
-}
-
 static void
 l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 {
 	struct ether_hdr *eth;
 	void *tmp;
+	int sent;
 	unsigned dst_port;
+	struct rte_eth_dev_tx_buffer *buffer;
 
 	dst_port = l2fwd_dst_ports[portid];
 	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
@@ -437,7 +389,10 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 	/* src addr */
 	ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
 
-	l2fwd_send_packet(m, (uint8_t) dst_port);
+	buffer = tx_buffer[dst_port];
+	sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);
+	if (sent)
+		port_statistics[dst_port].tx += sent;
 }
 
 static void
@@ -511,8 +466,10 @@ l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
 	uint64_t now;
 	unsigned lcore_id;
 	struct lcore_queue_conf *qconf;
-	struct mbuf_table *m_table;
 	uint8_t portid;
+	unsigned i;
+	uint32_t sent;
+	struct rte_eth_dev_tx_buffer *buffer;
 
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_queue_conf[lcore_id];
@@ -522,14 +479,20 @@ l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
 	now = rte_get_timer_cycles();
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_queue_conf[lcore_id];
-	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-		m_table = &qconf->tx_mbufs[portid];
-		if (m_table->len == 0 || m_table->next_flush_time <= now)
+
+	for (i = 0; i < qconf->n_rx_port; i++) {
+		portid = l2fwd_dst_ports[qconf->rx_port_list[i]];
+
+		if (qconf->next_flush_time[portid] <= now)
 			continue;
 
-		l2fwd_send_burst(qconf, portid);
-	}
+		buffer = tx_buffer[portid];
+		sent = rte_eth_tx_buffer_flush(portid, 0, buffer);
+		if (sent)
+			port_statistics[portid].tx += sent;
 
+		qconf->next_flush_time[portid] = rte_get_timer_cycles() + drain_tsc;
+	}
 
 	/* Pass target to indicate that this job is happy of time interwal
 	 * in which it was called. */
@@ -944,6 +907,23 @@ main(int argc, char **argv)
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n",
 				ret, (unsigned) portid);
+
+		/* Initialize TX buffers */
+		tx_buffer[portid] = rte_zmalloc_socket("tx_buffer",
+				RTE_ETH_TX_BUFFER_SIZE(MAX_PKT_BURST), 0,
+				rte_eth_dev_socket_id(portid));
+		if (tx_buffer[portid] == NULL)
+			rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx on port %u\n",
+					(unsigned) portid);
+
+		rte_eth_tx_buffer_init(tx_buffer[portid], MAX_PKT_BURST);
+
+		ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[portid],
+				rte_eth_tx_buffer_count_callback,
+				&port_statistics[portid].dropped);
+		if (ret < 0)
+				rte_exit(EXIT_FAILURE, "Cannot set error callback for "
+						"tx buffer on port %u\n", (unsigned) portid);
 
 		/* Start device */
 		ret = rte_eth_dev_start(portid);
