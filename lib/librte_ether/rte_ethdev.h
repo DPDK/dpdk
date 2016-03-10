@@ -825,6 +825,7 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_TCP_CKSUM   0x00000008
 #define DEV_RX_OFFLOAD_TCP_LRO     0x00000010
 #define DEV_RX_OFFLOAD_QINQ_STRIP  0x00000020
+#define DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000040
 
 /**
  * TX offload capabilities of a device.

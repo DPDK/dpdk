@@ -1003,6 +1003,8 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 static inline uint64_t
 rx_desc_error_to_pkt_flags(uint32_t rx_status)
 {
+	uint64_t pkt_flags;
+
 	/*
 	 * Bit 31: IPE, IPv4 checksum error
 	 * Bit 30: L4I, L4I integrity error
@@ -1011,8 +1013,15 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
 		0,  PKT_RX_L4_CKSUM_BAD, PKT_RX_IP_CKSUM_BAD,
 		PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD
 	};
-	return error_to_pkt_flags_map[(rx_status >>
+	pkt_flags = error_to_pkt_flags_map[(rx_status >>
 		IXGBE_RXDADV_ERR_CKSUM_BIT) & IXGBE_RXDADV_ERR_CKSUM_MSK];
+
+	if ((rx_status & IXGBE_RXD_STAT_OUTERIPCS) &&
+	    (rx_status & IXGBE_RXDADV_ERR_OUTERIPER)) {
+		pkt_flags |= PKT_RX_EIP_CKSUM_BAD;
+	}
+
+	return pkt_flags;
 }
 
 /*

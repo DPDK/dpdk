@@ -253,7 +253,7 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask)
 	case PKT_RX_FDIR: return "PKT_RX_FDIR";
 	case PKT_RX_L4_CKSUM_BAD: return "PKT_RX_L4_CKSUM_BAD";
 	case PKT_RX_IP_CKSUM_BAD: return "PKT_RX_IP_CKSUM_BAD";
-	/* case PKT_RX_EIP_CKSUM_BAD: return "PKT_RX_EIP_CKSUM_BAD"; */
+	case PKT_RX_EIP_CKSUM_BAD: return "PKT_RX_EIP_CKSUM_BAD";
 	/* case PKT_RX_OVERSIZE: return "PKT_RX_OVERSIZE"; */
 	/* case PKT_RX_HBUF_OVERFLOW: return "PKT_RX_HBUF_OVERFLOW"; */
 	/* case PKT_RX_RECIP_ERR: return "PKT_RX_RECIP_ERR"; */

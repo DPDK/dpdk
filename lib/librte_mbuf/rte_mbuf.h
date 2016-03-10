@@ -88,7 +88,7 @@ extern "C" {
 #define PKT_RX_FDIR          (1ULL << 2)  /**< RX packet with FDIR match indicate. */
 #define PKT_RX_L4_CKSUM_BAD  (1ULL << 3)  /**< L4 cksum of RX pkt. is not OK. */
 #define PKT_RX_IP_CKSUM_BAD  (1ULL << 4)  /**< IP cksum of RX pkt. is not OK. */
-#define PKT_RX_EIP_CKSUM_BAD (0ULL << 0)  /**< External IP header checksum error. */
+#define PKT_RX_EIP_CKSUM_BAD (1ULL << 5)  /**< External IP header checksum error. */
 #define PKT_RX_OVERSIZE      (0ULL << 0)  /**< Num of desc of an RX pkt oversize. */
 #define PKT_RX_HBUF_OVERFLOW (0ULL << 0)  /**< Header buffer overflow. */
 #define PKT_RX_RECIP_ERR     (0ULL << 0)  /**< Hardware processing error. */
