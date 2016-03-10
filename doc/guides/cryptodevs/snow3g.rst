@@ -51,6 +51,8 @@ Limitations
 -----------
 
 * Chained mbufs are not supported.
+* Snow3g(UEA2) supported only if cipher length, cipher offset fields are byte-aligned.
+* Snow3g(UIA2) supported only if hash length, hash offset fields are byte-aligned.
 
 Installation
 ------------

@@ -43,6 +43,7 @@
 #include "rte_snow3g_pmd_private.h"
 
 #define SNOW3G_MAX_BURST 8
+#define BYTE_LEN 8
 
 /**
  * Global static parameter used to create a unique name for each SNOW 3G
@@ -203,15 +204,23 @@ process_snow3g_cipher_op(struct rte_crypto_op **ops,
 			break;
 		}
 
+		if (((ops[i]->sym->cipher.data.length % BYTE_LEN) != 0)
+				|| ((ops[i]->sym->cipher.data.offset
+					% BYTE_LEN) != 0)) {
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			SNOW3G_LOG_ERR("Data Length or offset");
+			break;
+		}
+
 		src[i] = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-				ops[i]->sym->cipher.data.offset;
+				(ops[i]->sym->cipher.data.offset >> 3);
 		dst[i] = ops[i]->sym->m_dst ?
-				rte_pktmbuf_mtod(ops[i]->sym->m_dst, uint8_t *) +
-					ops[i]->sym->cipher.data.offset :
-				rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-					ops[i]->sym->cipher.data.offset;
+			rte_pktmbuf_mtod(ops[i]->sym->m_dst, uint8_t *) +
+				(ops[i]->sym->cipher.data.offset >> 3) :
+			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
+				(ops[i]->sym->cipher.data.offset >> 3);
 		IV[i] = ops[i]->sym->cipher.iv.data;
-		num_bytes[i] = ops[i]->sym->cipher.data.length;
+		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
 		processed_ops++;
 	}
@@ -246,10 +255,18 @@ process_snow3g_hash_op(struct rte_crypto_op **ops,
 			break;
 		}
 
-		length_in_bits = ops[i]->sym->auth.data.length * 8;
+		if (((ops[i]->sym->auth.data.length % BYTE_LEN) != 0)
+				|| ((ops[i]->sym->auth.data.offset
+					% BYTE_LEN) != 0)) {
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			SNOW3G_LOG_ERR("Data Length or offset");
+			break;
+		}
+
+		length_in_bits = ops[i]->sym->auth.data.length;
 
 		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-				ops[i]->sym->auth.data.offset;
+				(ops[i]->sym->auth.data.offset >> 3);
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = (uint8_t *)rte_pktmbuf_append(ops[i]->sym->m_src,

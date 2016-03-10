@@ -46,17 +46,33 @@ struct snow3g_test_data {
 
 	struct {
 		uint8_t data[1024];
-		unsigned len;
+		unsigned len; /* length must be in Bits */
 	} plaintext;
 
 	struct {
 		uint8_t data[1024];
-		unsigned len;
+		unsigned len; /* length must be in Bits */
 	} ciphertext;
 
 	struct {
 		unsigned len;
 	} validDataLenInBits;
+
+	struct {
+		unsigned len;
+	} validCipherLenInBits;
+
+	struct {
+		unsigned len;
+	} validCipherOffsetLenInBits;
+
+	struct {
+		unsigned len;
+	} validAuthLenInBits;
+
+	struct {
+		unsigned len;
+	} validAuthOffsetLenInBits;
 
 	struct {
 		uint8_t data[64];
@@ -99,7 +115,7 @@ struct snow3g_test_data snow3g_test_case_1 = {
 			0x39, 0x01, 0xA0, 0x8F, 0x4A, 0xB4, 0x1A, 0xAB,
 			0x9B, 0x13, 0x48, 0x80
 		},
-		.len = 100
+		.len = 800
 	},
 	.ciphertext = {
 		.data = {
@@ -117,10 +133,16 @@ struct snow3g_test_data snow3g_test_case_1 = {
 			0x05, 0x3D, 0xB5, 0x5A, 0x88, 0xC4, 0xC4, 0xF9,
 			0x60, 0x5E, 0x41, 0x40
 		},
-		.len = 100
+		.len = 800
 	},
 	.validDataLenInBits = {
 		.len = 798
+	},
+	.validCipherLenInBits = {
+		.len = 800
+	},
+	.validCipherOffsetLenInBits = {
+		.len = 128
 	},
 	.aad = {
 		.data = {
@@ -157,7 +179,7 @@ struct snow3g_test_data snow3g_test_case_2 = {
 			0x1C, 0xF9, 0x3B, 0x15, 0x10, 0x37, 0x6B, 0x02,
 			0x13, 0x0F, 0x81, 0x2A, 0x9F, 0xA1, 0x69, 0xD8
 		},
-		.len = 64
+		.len = 512
 	},
 	.ciphertext = {
 		.data = {
@@ -170,10 +192,16 @@ struct snow3g_test_data snow3g_test_case_2 = {
 				0x0D, 0xB0, 0xA9, 0xCD, 0x36, 0xC3, 0x4A, 0xE4,
 				0x18, 0x14, 0x90, 0xB2, 0x9F, 0x5F, 0xA2, 0xFC
 		},
-		.len = 64
+		.len = 512
 	},
 	.validDataLenInBits = {
 		.len = 510
+	},
+	.validCipherLenInBits = {
+		.len = 512
+	},
+	.validCipherOffsetLenInBits = {
+		.len = 128
 	},
 	.aad = {
 		.data = {
@@ -204,17 +232,23 @@ struct snow3g_test_data snow3g_test_case_3 = {
 			0xAD, 0x9C, 0x44, 0x1F, 0x89, 0x0B, 0x38, 0xC4,
 			0x57, 0xA4, 0x9D, 0x42, 0x14, 0x07, 0xE8
 		},
-		.len = 15
+		.len = 120
 	},
 	.ciphertext = {
 		.data = {
 			0xBA, 0x0F, 0x31, 0x30, 0x03, 0x34, 0xC5, 0x6B,
 			0x52, 0xA7, 0x49, 0x7C, 0xBA, 0xC0, 0x46
 		},
-		.len = 15
+		.len = 120
 	},
 	.validDataLenInBits = {
 		.len = 120
+	},
+	.validCipherLenInBits = {
+		.len = 120
+	},
+	.validCipherOffsetLenInBits = {
+		.len = 128
 	},
 	.aad = {
 		.data = {
@@ -226,6 +260,12 @@ struct snow3g_test_data snow3g_test_case_3 = {
 	.digest = {
 		.data = {0xE8, 0x60, 0x5A, 0x3E},
 		.len  = 4
+	},
+	.validAuthLenInBits = {
+		.len = 120
+	},
+	.validAuthOffsetLenInBits = {
+		.len = 128
 	}
 };
 
@@ -251,7 +291,7 @@ struct snow3g_test_data snow3g_test_case_4 = {
 			0x8C, 0xE3, 0x3E, 0x2C, 0xC3, 0xC0, 0xB5, 0xFC,
 			0x1F, 0x3D, 0xE8, 0xA6, 0xDC, 0x66, 0xB1, 0xF0
 		},
-		.len = 32
+		.len = 256
 	},
 	.ciphertext = {
 		.data = {
@@ -260,10 +300,16 @@ struct snow3g_test_data snow3g_test_case_4 = {
 			0xA5, 0x6C, 0x40, 0xC0, 0xAB, 0x9D, 0x81, 0xF7,
 			0xA2, 0xA9, 0xBA, 0xC6, 0x0E, 0x11, 0xC4, 0xB0
 		},
-		.len = 32
+		.len = 256
 	},
 	.validDataLenInBits = {
 		.len = 253
+	},
+	.validCipherLenInBits = {
+		.len = 256
+	},
+	.validCipherOffsetLenInBits = {
+		.len = 128
 	}
 };
 
@@ -298,7 +344,7 @@ struct snow3g_test_data snow3g_test_case_5 = {
 			0x98, 0x76, 0x45, 0x98, 0x7A, 0x98, 0x6F, 0x2C,
 			0xB0
 		},
-		.len = 105
+		.len = 840
 	},
 	.ciphertext = {
 		.data = {
@@ -317,10 +363,16 @@ struct snow3g_test_data snow3g_test_case_5 = {
 			0x43, 0x24, 0x85, 0x50, 0x92, 0x2A, 0xC1, 0x28,
 			0x18
 		},
-		.len = 105
+		.len = 840
 	},
 	.validDataLenInBits = {
 		.len = 837
+	},
+	.validCipherLenInBits = {
+		.len = 840
+	},
+	.validCipherOffsetLenInBits = {
+		.len = 128
 	}
 };
 struct snow3g_test_data snow3g_test_case_6 = {
@@ -354,7 +406,7 @@ struct snow3g_test_data snow3g_test_case_6 = {
 			0xB2, 0x4A, 0x03, 0x86, 0x65, 0x42, 0x2B, 0x20,
 			0xA4, 0x99, 0x27, 0x6A, 0x50, 0x42, 0x70, 0x09
 		},
-		.len = 48
+		.len = 384
 	},
 	.ciphertext = {
 	   .data = {
@@ -365,7 +417,7 @@ struct snow3g_test_data snow3g_test_case_6 = {
 			0xBD, 0x91, 0xAA, 0xB6, 0xA4, 0xDC, 0x64, 0xB4,
 			0xCB, 0xEB, 0x97, 0x06, 0x4C, 0xF7, 0x02, 0x3D
 		},
-		.len = 48
+		.len = 384
 	},
 	.digest = {
 		.data = {0x38, 0xB5, 0x54, 0xC0 },
@@ -373,6 +425,18 @@ struct snow3g_test_data snow3g_test_case_6 = {
 	},
 	.validDataLenInBits = {
 		.len = 384
+	},
+	.validCipherLenInBits = {
+		.len = 384
+	},
+	.validCipherOffsetLenInBits = {
+		.len = 128
+	},
+	.validAuthLenInBits = {
+		.len = 384
+	},
+	.validAuthOffsetLenInBits = {
+		.len = 128
 	}
 };
 

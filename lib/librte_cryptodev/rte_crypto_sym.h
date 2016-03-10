@@ -382,6 +382,10 @@ struct rte_crypto_sym_op {
 			  * buffer. The result of the cipher operation will be
 			  * written back into the output buffer starting at
 			  * this location.
+			  *
+			  * @note
+			  * For Snow3G @ RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
+			  * this field should be in bits.
 			  */
 
 			uint32_t length;
@@ -402,6 +406,10 @@ struct rte_crypto_sym_op {
 			  * @note
 			  * For AES-GMAC @ref RTE_CRYPTO_AUTH_AES_GMAC, this
 			  * field should be set to 0.
+			  *
+			  * @note
+			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UEA2
+			  * this field should be in bits.
 			  */
 		} data; /**< Data offsets and length for ciphering */
 
@@ -470,6 +478,10 @@ struct rte_crypto_sym_op {
 			  * @note For AES-GMAC (@ref RTE_CRYPTO_AUTH_AES_GMAC)
 			  * mode of operation, this field specifies the start
 			  * of the AAD data in the source buffer.
+			  *
+			  * @note
+			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
+			  * this field should be in bits.
 			  */
 
 			uint32_t length;
@@ -485,6 +497,10 @@ struct rte_crypto_sym_op {
 			  * For AES-GMAC @ref RTE_CRYPTO_AUTH_AES_GMAC mode
 			  * of operation, this field specifies the length of
 			  * the AAD data in the source buffer.
+			  *
+			  * @note
+			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
+			  * this field should be in bits.
 			  */
 		} data; /**< Data offsets and length for authentication */
 

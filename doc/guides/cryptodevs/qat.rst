@@ -67,6 +67,8 @@ Limitations
 * Only in-place is currently supported (destination address is the same as source address).
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * Not performance tuned.
+* Snow3g(UEA2) supported only if cipher length, cipher offset fields are byte-aligned.
+* Snow3g(UIA2) supported only if hash length, hash offset fields are byte-aligned.
 
 
 Installation

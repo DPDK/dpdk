@@ -66,6 +66,7 @@
 #include "qat_crypto.h"
 #include "adf_transport_access_macros.h"
 
+#define BYTE_LENGTH    8
 
 static inline uint32_t
 adf_modulo(uint32_t data, uint32_t shift);
@@ -506,6 +507,19 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 
 	cipher_param->cipher_length = op->sym->cipher.data.length;
 	cipher_param->cipher_offset = op->sym->cipher.data.offset;
+	if (ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2) {
+		if (unlikely((cipher_param->cipher_length % BYTE_LENGTH != 0) ||
+				(cipher_param->cipher_offset
+					% BYTE_LENGTH != 0))) {
+			PMD_DRV_LOG(ERR, " For Snow3g, QAT PMD only "
+				"supports byte aligned values");
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -EINVAL;
+		}
+		cipher_param->cipher_length >>= 3;
+		cipher_param->cipher_offset >>= 3;
+	}
+
 	if (op->sym->cipher.iv.length && (op->sym->cipher.iv.length <=
 			sizeof(cipher_param->u.cipher_IV_array))) {
 		rte_memcpy(cipher_param->u.cipher_IV_array,
@@ -525,7 +539,17 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	}
 	auth_param->auth_off = op->sym->auth.data.offset;
 	auth_param->auth_len = op->sym->auth.data.length;
-
+	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2) {
+		if (unlikely((auth_param->auth_off % BYTE_LENGTH != 0) ||
+				(auth_param->auth_len % BYTE_LENGTH != 0))) {
+			PMD_DRV_LOG(ERR, " For Snow3g, QAT PMD only "
+				"supports byte aligned values");
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -EINVAL;
+		}
+		auth_param->auth_off >>= 3;
+		auth_param->auth_len >>= 3;
+	}
 	auth_param->u1.aad_adr = op->sym->auth.aad.phys_addr;
 	/* (GCM) aad length(240 max) will be at this location after precompute */
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||

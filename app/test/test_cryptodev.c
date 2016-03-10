@@ -1828,7 +1828,8 @@ create_snow3g_cipher_session(uint8_t dev_id,
 
 static int
 create_snow3g_cipher_operation(const uint8_t *iv, const unsigned iv_len,
-			const unsigned data_len)
+			const unsigned cipher_len,
+			const unsigned cipher_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -1860,8 +1861,8 @@ create_snow3g_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 	sym_op->cipher.iv.length = iv_pad_len;
 
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
-	sym_op->cipher.data.length = data_len;
-	sym_op->cipher.data.offset = iv_pad_len;
+	sym_op->cipher.data.length = cipher_len;
+	sym_op->cipher.data.offset = cipher_offset;
 	return 0;
 }
 
@@ -1958,8 +1959,9 @@ static int
 create_snow3g_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
 		const uint8_t *aad, const unsigned aad_len,
-		const unsigned data_len, unsigned data_pad_len,
-		enum rte_crypto_auth_operation op)
+		unsigned data_pad_len,
+		enum rte_crypto_auth_operation op,
+		const unsigned auth_len, const unsigned auth_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 
@@ -2027,8 +2029,8 @@ create_snow3g_hash_operation(const uint8_t *auth_tag,
 		sym_op->auth.digest.length);
 #endif
 
-	sym_op->auth.data.length = data_len;
-	sym_op->auth.data.offset = aad_buffer_len;
+	sym_op->auth.data.length = auth_len;
+	sym_op->auth.data.offset = auth_offset;
 
 	return 0;
 }
@@ -2037,9 +2039,11 @@ static int
 create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
 		const uint8_t *aad, const unsigned aad_len,
-		const unsigned data_len, unsigned data_pad_len,
+		unsigned data_pad_len,
 		enum rte_crypto_auth_operation op,
-		const uint8_t *iv, const unsigned iv_len)
+		const uint8_t *iv, const unsigned iv_len,
+		const unsigned cipher_len, const unsigned cipher_offset,
+		const unsigned auth_len, const unsigned auth_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -2074,8 +2078,8 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
 
-	sym_op->cipher.data.length = data_len;
-	sym_op->cipher.data.offset = iv_pad_len;
+	sym_op->cipher.data.length = cipher_len;
+	sym_op->cipher.data.offset = cipher_offset;
 
 	/* aad */
 	/*
@@ -2124,8 +2128,8 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 		sym_op->auth.digest.length);
 	#endif
 
-	sym_op->auth.data.length = data_len;
-	sym_op->auth.data.offset = aad_buffer_len;
+	sym_op->auth.data.length = auth_len;
+	sym_op->auth.data.offset = auth_offset;
 
 	return 0;
 }
@@ -2134,7 +2138,9 @@ static int
 create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
 		const uint8_t *iv, const unsigned iv_len,
 		const uint8_t *aad, const unsigned aad_len,
-		const unsigned data_len, unsigned data_pad_len)
+		unsigned data_pad_len,
+		const unsigned cipher_len, const unsigned cipher_offset,
+		const unsigned auth_len, const unsigned auth_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -2213,11 +2219,11 @@ create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
 			sym_op->auth.aad.data, aad_len);
 #endif
 
-	sym_op->cipher.data.length = data_len;
-	sym_op->cipher.data.offset = aad_buffer_len + iv_pad_len;
+	sym_op->cipher.data.length = cipher_len;
+	sym_op->cipher.data.offset = auth_offset + cipher_offset;
 
-	sym_op->auth.data.length = data_len;
-	sym_op->auth.data.offset = aad_buffer_len + iv_pad_len;
+	sym_op->auth.data.length = auth_len;
+	sym_op->auth.data.offset = auth_offset + cipher_offset;
 
 	return 0;
 }
@@ -2248,15 +2254,17 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 
 	/* Append data which is padded to a multiple of */
 	/* the algorithms block size */
-	plaintext_pad_len = tdata->plaintext.len;
+	plaintext_pad_len = tdata->plaintext.len >> 3;
 	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 				plaintext_pad_len);
-	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
+	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len >> 3);
 
 	/* Create SNOW3G opertaion */
 	retval = create_snow3g_hash_operation(NULL, tdata->digest.len,
-			tdata->aad.data, tdata->aad.len, tdata->plaintext.len,
-			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE);
+			tdata->aad.data, tdata->aad.len,
+			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
+			tdata->validAuthLenInBits.len,
+			tdata->validAuthOffsetLenInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2302,17 +2310,19 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 
 	/* Append data which is padded to a multiple */
 	/* of the algorithms block size */
-	plaintext_pad_len = tdata->plaintext.len;
+	plaintext_pad_len = tdata->plaintext.len >> 3;
 	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 					plaintext_pad_len);
-	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
+	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len >> 3);
 
 	/* Create SNOW3G operation */
 	retval = create_snow3g_hash_operation(tdata->digest.data,
 			tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
-			tdata->plaintext.len, plaintext_pad_len,
-			RTE_CRYPTO_AUTH_OP_VERIFY);
+			plaintext_pad_len,
+			RTE_CRYPTO_AUTH_OP_VERIFY,
+			tdata->validAuthLenInBits.len,
+			tdata->validAuthOffsetLenInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2400,18 +2410,20 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	 * Append data which is padded to a
 	 * multiple of the algorithms block size
 	 */
-	plaintext_pad_len = RTE_ALIGN_CEIL(tdata->plaintext.len, 16);
+	/*tdata->plaintext.len = tdata->plaintext.len >> 3;*/
+	plaintext_pad_len = RTE_ALIGN_CEIL((tdata->plaintext.len >> 3), 16);
 
 	plaintext = (uint8_t *) rte_pktmbuf_append(ut_params->ibuf,
 						plaintext_pad_len);
-	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
+	memcpy(plaintext, tdata->plaintext.data, (tdata->plaintext.len >> 3));
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 #endif
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_operation(tdata->iv.data, tdata->iv.len,
-						tdata->plaintext.len);
+					tdata->validCipherLenInBits.len,
+					tdata->validCipherOffsetLenInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2430,7 +2442,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	if (lastByteValidBits == 0)
 		lastByteValidBits = 8;
 	lastByteMask = lastByteMask << (8 - lastByteValidBits);
-	(*(ciphertext + tdata->ciphertext.len - 1)) &= lastByteMask;
+	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
@@ -2439,7 +2451,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 		ciphertext,
 		tdata->ciphertext.data,
-		tdata->ciphertext.len,
+		tdata->ciphertext.len >> 3,
 		"Snow3G Ciphertext data not as expected");
 	return 0;
 }
@@ -2473,18 +2485,19 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	 * Append data which is padded to a
 	 * multiple of the algorithms block size
 	 */
-	ciphertext_pad_len = RTE_ALIGN_CEIL(tdata->ciphertext.len, 16);
+	ciphertext_pad_len = RTE_ALIGN_CEIL((tdata->ciphertext.len >> 3), 16);
 
 	ciphertext = (uint8_t *) rte_pktmbuf_append(ut_params->ibuf,
 						ciphertext_pad_len);
-	memcpy(ciphertext, tdata->ciphertext.data, tdata->ciphertext.len);
+	memcpy(ciphertext, tdata->ciphertext.data, tdata->ciphertext.len >> 3);
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 #endif
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_operation(tdata->iv.data, tdata->iv.len,
-						tdata->ciphertext.len);
+					tdata->validCipherLenInBits.len,
+					tdata->validCipherOffsetLenInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2497,11 +2510,11 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 				+ tdata->iv.len;
 	else
 		plaintext = ciphertext;
-	lastByteValidBits = (tdata->validDataLenInBits.len % 8);
+	lastByteValidBits = (tdata->validDataLenInBits.len  % 8);
 	if (lastByteValidBits == 0)
 		lastByteValidBits = 8;
 	lastByteMask = lastByteMask << (8 - lastByteValidBits);
-	(*(ciphertext + tdata->ciphertext.len - 1)) &= lastByteMask;
+	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
@@ -2509,7 +2522,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(plaintext,
 				tdata->plaintext.data,
-				tdata->plaintext.len,
+				tdata->plaintext.len >> 3,
 				"Snow3G Plaintext data not as expected");
 	return 0;
 }
@@ -2543,11 +2556,11 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 
 	/* Append data which is padded to a multiple */
 	/*  of the algorithms block size */
-	plaintext_pad_len = tdata->plaintext.len;
+	plaintext_pad_len = tdata->plaintext.len >> 3;
 
 	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 			plaintext_pad_len);
-	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
+	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len >> 3);
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
@@ -2556,9 +2569,13 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_hash_operation(tdata->digest.data,
 			tdata->digest.len, tdata->aad.data,
-			tdata->aad.len, tdata->plaintext.len,
+			tdata->aad.len, /*tdata->plaintext.len,*/
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
-			tdata->iv.data, tdata->iv.len);
+			tdata->iv.data, tdata->iv.len,
+			tdata->validCipherLenInBits.len,
+			tdata->validCipherOffsetLenInBits.len,
+			tdata->validAuthLenInBits.len,
+			tdata->validAuthOffsetLenInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2575,7 +2592,7 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	if (lastByteValidBits == 0)
 		lastByteValidBits = 8;
 	lastByteMask = lastByteMask << (8-lastByteValidBits);
-	(*(ciphertext + tdata->ciphertext.len - 1)) &= lastByteMask;
+	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
@@ -2584,7 +2601,7 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			ciphertext,
 			tdata->ciphertext.data,
-			tdata->ciphertext.len,
+			tdata->ciphertext.len >> 3,
 			"Snow3G Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
@@ -2628,11 +2645,11 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 
 	/* Append data which is padded to a multiple */
 	/* of the algorithms block size */
-	plaintext_pad_len = RTE_ALIGN_CEIL(tdata->plaintext.len, 8);
+	plaintext_pad_len = RTE_ALIGN_CEIL((tdata->plaintext.len >> 3), 8);
 
 	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 			plaintext_pad_len);
-	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
+	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len >> 3);
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
@@ -2643,7 +2660,11 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 		tdata->digest.len,
 		tdata->iv.data, tdata->iv.len,
 		tdata->aad.data, tdata->aad.len,
-		tdata->plaintext.len, plaintext_pad_len
+		plaintext_pad_len,
+		tdata->validCipherLenInBits.len,
+		tdata->validCipherOffsetLenInBits.len,
+		tdata->validAuthLenInBits.len,
+		tdata->validAuthOffsetLenInBits.len
 	);
 
 	if (retval < 0)
@@ -2663,10 +2684,9 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 	if (lastByteValidBits == 0)
 		lastByteValidBits = 8;
 	lastByteMask = lastByteMask << (8-lastByteValidBits);
-	(*(ciphertext + tdata->ciphertext.len - 1)) &= lastByteMask;
+	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
 			+ plaintext_pad_len + tdata->aad.len + tdata->iv.len;
-
 	#ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 #endif
@@ -2674,7 +2694,7 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 		ciphertext,
 		tdata->ciphertext.data,
-		tdata->ciphertext.len,
+		tdata->ciphertext.len >> 3,
 		"Snow3G Ciphertext data not as expected");
 
 	/* Validate obuf */
