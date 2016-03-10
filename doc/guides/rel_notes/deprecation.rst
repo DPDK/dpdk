@@ -31,3 +31,12 @@ Deprecation Notices
   code affected is app/test/test_mempool.c and librte_mempool/rte_mempool.[ch].
   The rte_mempool.local_cache will be converted from an array to a pointer to
   allow for dynamic allocation of the per lcore cache memory.
+
+* The rte_mempool struct will be changed in 16.07 to facilitate the new
+  external mempool manager functionality.
+  The ring element will be replaced with a more generic 'pool' opaque pointer
+  to allow new mempool handlers to use their own user-defined mempool
+  layout. Also newly added to rte_mempool is a handler index.
+  The existing API will be backward compatible, but there will be new API
+  functions added to facilitate the creation of mempools using an external
+  handler. The 16.07 release will contain these changes.
