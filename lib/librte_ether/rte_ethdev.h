@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -2654,6 +2654,210 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 
 	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
 }
+
+typedef void (*buffer_tx_error_fn)(struct rte_mbuf **unsent, uint16_t count,
+		void *userdata);
+
+/**
+ * Structure used to buffer packets for future TX
+ * Used by APIs rte_eth_tx_buffer and rte_eth_tx_buffer_flush
+ */
+struct rte_eth_dev_tx_buffer {
+	buffer_tx_error_fn error_callback;
+	void *error_userdata;
+	uint16_t size;           /**< Size of buffer for buffered tx */
+	uint16_t length;         /**< Number of packets in the array */
+	struct rte_mbuf *pkts[];
+	/**< Pending packets to be sent on explicit flush or when full */
+};
+
+/**
+ * Calculate the size of the tx buffer.
+ *
+ * @param sz
+ *   Number of stored packets.
+ */
+#define RTE_ETH_TX_BUFFER_SIZE(sz) \
+	(sizeof(struct rte_eth_dev_tx_buffer) + (sz) * sizeof(struct rte_mbuf *))
+
+/**
+ * Initialize default values for buffered transmitting
+ *
+ * @param buffer
+ *   Tx buffer to be initialized.
+ * @param size
+ *   Buffer size
+ * @return
+ *   0 if no error
+ */
+int
+rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size);
+
+/**
+ * Send any packets queued up for transmission on a port and HW queue
+ *
+ * This causes an explicit flush of packets previously buffered via the
+ * rte_eth_tx_buffer() function. It returns the number of packets successfully
+ * sent to the NIC, and calls the error callback for any unsent packets. Unless
+ * explicitly set up otherwise, the default callback simply frees the unsent
+ * packets back to the owning mempool.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param buffer
+ *   Buffer of packets to be transmit.
+ * @return
+ *   The number of packets successfully sent to the Ethernet device. The error
+ *   callback is called for any packets which could not be sent.
+ */
+static inline uint16_t
+rte_eth_tx_buffer_flush(uint8_t port_id, uint16_t queue_id,
+		struct rte_eth_dev_tx_buffer *buffer)
+{
+	uint16_t sent;
+	uint16_t to_send = buffer->length;
+
+	if (to_send == 0)
+		return 0;
+
+	sent = rte_eth_tx_burst(port_id, queue_id, buffer->pkts, to_send);
+
+	buffer->length = 0;
+
+	/* All packets sent, or to be dealt with by callback below */
+	if (unlikely(sent != to_send))
+		buffer->error_callback(&buffer->pkts[sent], to_send - sent,
+				buffer->error_userdata);
+
+	return sent;
+}
+
+/**
+ * Buffer a single packet for future transmission on a port and queue
+ *
+ * This function takes a single mbuf/packet and buffers it for later
+ * transmission on the particular port and queue specified. Once the buffer is
+ * full of packets, an attempt will be made to transmit all the buffered
+ * packets. In case of error, where not all packets can be transmitted, a
+ * callback is called with the unsent packets as a parameter. If no callback
+ * is explicitly set up, the unsent packets are just freed back to the owning
+ * mempool. The function returns the number of packets actually sent i.e.
+ * 0 if no buffer flush occurred, otherwise the number of packets successfully
+ * flushed
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param buffer
+ *   Buffer used to collect packets to be sent.
+ * @param tx_pkt
+ *   Pointer to the packet mbuf to be sent.
+ * @return
+ *   0 = packet has been buffered for later transmission
+ *   N > 0 = packet has been buffered, and the buffer was subsequently flushed,
+ *     causing N packets to be sent, and the error callback to be called for
+ *     the rest.
+ */
+static inline uint16_t __attribute__((always_inline))
+rte_eth_tx_buffer(uint8_t port_id, uint16_t queue_id,
+		struct rte_eth_dev_tx_buffer *buffer, struct rte_mbuf *tx_pkt)
+{
+	buffer->pkts[buffer->length++] = tx_pkt;
+	if (buffer->length < buffer->size)
+		return 0;
+
+	return rte_eth_tx_buffer_flush(port_id, queue_id, buffer);
+}
+
+/**
+ * Configure a callback for buffered packets which cannot be sent
+ *
+ * Register a specific callback to be called when an attempt is made to send
+ * all packets buffered on an ethernet port, but not all packets can
+ * successfully be sent. The callback registered here will be called only
+ * from calls to rte_eth_tx_buffer() and rte_eth_tx_buffer_flush() APIs.
+ * The default callback configured for each queue by default just frees the
+ * packets back to the calling mempool. If additional behaviour is required,
+ * for example, to count dropped packets, or to retry transmission of packets
+ * which cannot be sent, this function should be used to register a suitable
+ * callback function to implement the desired behaviour.
+ * The example callback "rte_eth_count_unsent_packet_callback()" is also
+ * provided as reference.
+ *
+ * @param buffer
+ *   The port identifier of the Ethernet device.
+ * @param callback
+ *   The function to be used as the callback.
+ * @param userdata
+ *   Arbitrary parameter to be passed to the callback function
+ * @return
+ *   0 on success, or -1 on error with rte_errno set appropriately
+ */
+int
+rte_eth_tx_buffer_set_err_callback(struct rte_eth_dev_tx_buffer *buffer,
+		buffer_tx_error_fn callback, void *userdata);
+
+/**
+ * Callback function for silently dropping unsent buffered packets.
+ *
+ * This function can be passed to rte_eth_tx_buffer_set_err_callback() to
+ * adjust the default behavior when buffered packets cannot be sent. This
+ * function drops any unsent packets silently and is used by tx buffered
+ * operations as default behavior.
+ *
+ * NOTE: this function should not be called directly, instead it should be used
+ *       as a callback for packet buffering.
+ *
+ * NOTE: when configuring this function as a callback with
+ *       rte_eth_tx_buffer_set_err_callback(), the final, userdata parameter
+ *       should point to an uint64_t value.
+ *
+ * @param pkts
+ *   The previously buffered packets which could not be sent
+ * @param unsent
+ *   The number of unsent packets in the pkts array
+ * @param userdata
+ *   Not used
+ */
+void
+rte_eth_tx_buffer_drop_callback(struct rte_mbuf **pkts, uint16_t unsent,
+		void *userdata);
+
+/**
+ * Callback function for tracking unsent buffered packets.
+ *
+ * This function can be passed to rte_eth_tx_buffer_set_err_callback() to
+ * adjust the default behavior when buffered packets cannot be sent. This
+ * function drops any unsent packets, but also updates a user-supplied counter
+ * to track the overall number of packets dropped. The counter should be an
+ * uint64_t variable.
+ *
+ * NOTE: this function should not be called directly, instead it should be used
+ *       as a callback for packet buffering.
+ *
+ * NOTE: when configuring this function as a callback with
+ *       rte_eth_tx_buffer_set_err_callback(), the final, userdata parameter
+ *       should point to an uint64_t value.
+ *
+ * @param pkts
+ *   The previously buffered packets which could not be sent
+ * @param unsent
+ *   The number of unsent packets in the pkts array
+ * @param userdata
+ *   Pointer to an uint64_t value, which will be incremented by unsent
+ */
+void
+rte_eth_tx_buffer_count_callback(struct rte_mbuf **pkts, uint16_t unsent,
+		void *userdata);
 
 /**
  * The eth device event type for interrupt, and maybe others in the future.

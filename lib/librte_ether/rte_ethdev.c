@@ -1271,6 +1271,52 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 }
 
 void
+rte_eth_tx_buffer_drop_callback(struct rte_mbuf **pkts, uint16_t unsent,
+		void *userdata __rte_unused)
+{
+	unsigned i;
+
+	for (i = 0; i < unsent; i++)
+		rte_pktmbuf_free(pkts[i]);
+}
+
+void
+rte_eth_tx_buffer_count_callback(struct rte_mbuf **pkts, uint16_t unsent,
+		void *userdata)
+{
+	uint64_t *count = userdata;
+	unsigned i;
+
+	for (i = 0; i < unsent; i++)
+		rte_pktmbuf_free(pkts[i]);
+
+	*count += unsent;
+}
+
+int
+rte_eth_tx_buffer_set_err_callback(struct rte_eth_dev_tx_buffer *buffer,
+		buffer_tx_error_fn cbfn, void *userdata)
+{
+	buffer->error_callback = cbfn;
+	buffer->error_userdata = userdata;
+	return 0;
+}
+
+int
+rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size)
+{
+	if (buffer == NULL)
+		return -EINVAL;
+
+	buffer->size = size;
+	if (buffer->error_callback == NULL)
+		rte_eth_tx_buffer_set_err_callback(buffer,
+				rte_eth_tx_buffer_drop_callback, NULL);
+
+	return 0;
+}
+
+void
 rte_eth_promiscuous_enable(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;

@@ -117,3 +117,13 @@ DPDK_2.2 {
 
 	local: *;
 };
+
+DPDK_16.04 {
+	global:
+
+	rte_eth_tx_buffer_count_callback;
+	rte_eth_tx_buffer_drop_callback;
+	rte_eth_tx_buffer_init;
+	rte_eth_tx_buffer_set_err_callback;
+
+} DPDK_2.2;
