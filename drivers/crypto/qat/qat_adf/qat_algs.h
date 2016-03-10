@@ -3,7 +3,7 @@
  *  redistributing this file, you may do so under either license.
  *
  *  GPL LICENSE SUMMARY
- *  Copyright(c) 2015 Intel Corporation.
+ *  Copyright(c) 2015-2016 Intel Corporation.
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of version 2 of the GNU General Public License as
  *  published by the Free Software Foundation.
@@ -17,7 +17,7 @@
  *  qat-linux@intel.com
  *
  *  BSD LICENSE
- *  Copyright(c) 2015 Intel Corporation.
+ *  Copyright(c) 2015-2016 Intel Corporation.
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions
  *  are met:
@@ -104,11 +104,15 @@ struct qat_alg_ablkcipher_cd {
 
 int qat_get_inter_state_size(enum icp_qat_hw_auth_algo qat_hash_alg);
 
-int qat_alg_aead_session_create_content_desc(struct qat_session *cd,
-					uint8_t *enckey, uint32_t enckeylen,
-					uint8_t *authkey, uint32_t authkeylen,
-					uint32_t add_auth_data_length,
-					uint32_t digestsize);
+int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cd,
+						uint8_t *enckey,
+						uint32_t enckeylen);
+
+int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
+						uint8_t *authkey,
+						uint32_t authkeylen,
+						uint32_t add_auth_data_length,
+						uint32_t digestsize);
 
 void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header);
 

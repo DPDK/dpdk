@@ -90,16 +90,16 @@ void qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
 static int
 qat_get_cmd_id(const struct rte_crypto_sym_xform *xform)
 {
-	if (xform->next == NULL)
-		return -1;
-
 	/* Cipher Only */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL)
-		return -1; /* return ICP_QAT_FW_LA_CMD_CIPHER; */
+		return ICP_QAT_FW_LA_CMD_CIPHER;
 
 	/* Authentication Only */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH && xform->next == NULL)
-		return -1; /* return ICP_QAT_FW_LA_CMD_AUTH; */
+		return ICP_QAT_FW_LA_CMD_AUTH;
+
+	if (xform->next == NULL)
+		return -1;
 
 	/* Cipher then Authenticate */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
@@ -139,30 +139,15 @@ qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 
 	return NULL;
 }
-
-
 void *
-qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
+qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_pmd_private *internals = dev->data->dev_private;
 
 	struct qat_session *session = session_private;
 
-	struct rte_crypto_auth_xform *auth_xform = NULL;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
-
-	int qat_cmd_id;
-
-	PMD_INIT_FUNC_TRACE();
-
-	/* Get requested QAT command id */
-	qat_cmd_id = qat_get_cmd_id(xform);
-	if (qat_cmd_id < 0 || qat_cmd_id >= ICP_QAT_FW_LA_CMD_DELIMITER) {
-		PMD_DRV_LOG(ERR, "Unsupported xform chain requested");
-		goto error_out;
-	}
-	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
 
 	/* Get cipher xform from crypto xform chain */
 	cipher_xform = qat_get_cipher_xform(xform);
@@ -205,8 +190,87 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 	else
 		session->qat_dir = ICP_QAT_HW_CIPHER_DECRYPT;
 
+	if (qat_alg_aead_session_create_content_desc_cipher(session,
+						cipher_xform->key.data,
+						cipher_xform->key.length))
+		goto error_out;
 
-	/* Get authentication xform from Crypto xform chain */
+	return session;
+
+error_out:
+	rte_mempool_put(internals->sess_mp, session);
+	return NULL;
+}
+
+
+void *
+qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform, void *session_private)
+{
+	struct qat_pmd_private *internals = dev->data->dev_private;
+
+	struct qat_session *session = session_private;
+
+	int qat_cmd_id;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Get requested QAT command id */
+	qat_cmd_id = qat_get_cmd_id(xform);
+	if (qat_cmd_id < 0 || qat_cmd_id >= ICP_QAT_FW_LA_CMD_DELIMITER) {
+		PMD_DRV_LOG(ERR, "Unsupported xform chain requested");
+		goto error_out;
+	}
+	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
+	switch (session->qat_cmd) {
+	case ICP_QAT_FW_LA_CMD_CIPHER:
+	session = qat_crypto_sym_configure_session_cipher(dev, xform, session);
+		break;
+	case ICP_QAT_FW_LA_CMD_AUTH:
+	session = qat_crypto_sym_configure_session_auth(dev, xform, session);
+		break;
+	case ICP_QAT_FW_LA_CMD_CIPHER_HASH:
+	session = qat_crypto_sym_configure_session_cipher(dev, xform, session);
+	session = qat_crypto_sym_configure_session_auth(dev, xform, session);
+		break;
+	case ICP_QAT_FW_LA_CMD_HASH_CIPHER:
+	session = qat_crypto_sym_configure_session_auth(dev, xform, session);
+	session = qat_crypto_sym_configure_session_cipher(dev, xform, session);
+		break;
+	case ICP_QAT_FW_LA_CMD_TRNG_GET_RANDOM:
+	case ICP_QAT_FW_LA_CMD_TRNG_TEST:
+	case ICP_QAT_FW_LA_CMD_SSL3_KEY_DERIVE:
+	case ICP_QAT_FW_LA_CMD_TLS_V1_1_KEY_DERIVE:
+	case ICP_QAT_FW_LA_CMD_TLS_V1_2_KEY_DERIVE:
+	case ICP_QAT_FW_LA_CMD_MGF1:
+	case ICP_QAT_FW_LA_CMD_AUTH_PRE_COMP:
+	case ICP_QAT_FW_LA_CMD_CIPHER_PRE_COMP:
+	case ICP_QAT_FW_LA_CMD_DELIMITER:
+	PMD_DRV_LOG(ERR, "Unsupported Service %u",
+		session->qat_cmd);
+		goto error_out;
+	default:
+	PMD_DRV_LOG(ERR, "Unsupported Service %u",
+		session->qat_cmd);
+		goto error_out;
+	}
+	return session;
+
+error_out:
+	rte_mempool_put(internals->sess_mp, session);
+	return NULL;
+}
+
+struct qat_session *
+qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
+				struct rte_crypto_sym_xform *xform,
+				struct qat_session *session_private)
+{
+
+	struct qat_pmd_private *internals = dev->data->dev_private;
+	struct qat_session *session = session_private;
+	struct rte_crypto_auth_xform *auth_xform = NULL;
+	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 	auth_xform = qat_get_auth_xform(xform);
 
 	switch (auth_xform->algo) {
@@ -250,17 +314,26 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 				auth_xform->algo);
 		goto error_out;
 	}
+	cipher_xform = qat_get_cipher_xform(xform);
 
-	if (qat_alg_aead_session_create_content_desc(session,
-		cipher_xform->key.data,
-		cipher_xform->key.length,
-		auth_xform->key.data,
-		auth_xform->key.length,
-		auth_xform->add_auth_data_length,
-		auth_xform->digest_length))
-		goto error_out;
-
-	return (struct rte_crypto_sym_session *)session;
+	if ((session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128) ||
+			(session->qat_hash_alg ==
+				ICP_QAT_HW_AUTH_ALGO_GALOIS_64))  {
+		if (qat_alg_aead_session_create_content_desc_auth(session,
+				cipher_xform->key.data,
+				cipher_xform->key.length,
+				auth_xform->add_auth_data_length,
+				auth_xform->digest_length))
+			goto error_out;
+	} else {
+		if (qat_alg_aead_session_create_content_desc_auth(session,
+				auth_xform->key.data,
+				auth_xform->key.length,
+				auth_xform->add_auth_data_length,
+				auth_xform->digest_length))
+			goto error_out;
+	}
+	return session;
 
 error_out:
 	rte_mempool_put(internals->sess_mp, session);

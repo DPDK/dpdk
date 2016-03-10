@@ -111,6 +111,16 @@ extern void *
 qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private);
 
+struct qat_session *
+qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
+				struct rte_crypto_sym_xform *xform,
+				struct qat_session *session_private);
+
+void *
+qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform, void *session_private);
+
+
 extern void
 qat_crypto_sym_clear_session(struct rte_cryptodev *dev, void *session);
 
