@@ -319,7 +319,7 @@ app_pipeline_routing_add_route(struct app_params *app,
 		if ((depth == 0) || (depth > 32))
 			return -1;
 
-		netmask = (~0) << (32 - depth);
+		netmask = (~0U) << (32 - depth);
 		key->key.ipv4.ip &= netmask;
 
 		/* data */
@@ -421,7 +421,7 @@ app_pipeline_routing_delete_route(struct app_params *app,
 		if ((depth == 0) || (depth > 32))
 			return -1;
 
-		netmask = (~0) << (32 - depth);
+		netmask = (~0U) << (32 - depth);
 		key->key.ipv4.ip &= netmask;
 	}
 	break;

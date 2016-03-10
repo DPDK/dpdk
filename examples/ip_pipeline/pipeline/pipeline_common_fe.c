@@ -337,7 +337,7 @@ app_link_config(struct app_params *app,
 		return -1;
 	}
 
-	netmask = (~0) << (32 - depth);
+	netmask = (~0U) << (32 - depth);
 	host = ip & netmask;
 	bcast = host | (~netmask);
 
@@ -889,7 +889,7 @@ print_link_info(struct app_link_params *p)
 {
 	struct rte_eth_stats stats;
 	struct ether_addr *mac_addr;
-	uint32_t netmask = (~0) << (32 - p->depth);
+	uint32_t netmask = (~0U) << (32 - p->depth);
 	uint32_t host = p->ip & netmask;
 	uint32_t bcast = host | (~netmask);
 
