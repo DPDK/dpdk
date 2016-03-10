@@ -34,6 +34,8 @@
 #ifndef __L3_FWD_H__
 #define __L3_FWD_H__
 
+#include <rte_vect.h>
+
 #define DO_RFC_1812_CHECKS
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1
@@ -103,7 +105,7 @@ extern uint32_t enabled_port_mask;
 extern int ipv6; /**< ipv6 is false by default. */
 extern uint32_t hash_entry_number;
 
-extern __m128i val_eth[RTE_MAX_ETHPORTS];
+extern xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 

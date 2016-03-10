@@ -112,7 +112,7 @@ volatile bool force_quit;
 uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
 struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
-__m128i val_eth[RTE_MAX_ETHPORTS];
+xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 uint32_t enabled_port_mask;

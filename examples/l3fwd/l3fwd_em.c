@@ -85,7 +85,7 @@ union ipv4_5tuple_host {
 		uint16_t port_src;
 		uint16_t port_dst;
 	};
-	__m128i xmm;
+	xmm_t xmm;
 };
 
 #define XMM_NUM_IN_IPV6_5TUPLE 3
@@ -109,8 +109,10 @@ union ipv6_5tuple_host {
 		uint16_t port_dst;
 		uint64_t reserve;
 	};
-	__m128i xmm[XMM_NUM_IN_IPV6_5TUPLE];
+	xmm_t xmm[XMM_NUM_IN_IPV6_5TUPLE];
 };
+
+
 
 struct ipv4_l3fwd_em_route {
 	struct ipv4_5tuple key;
@@ -236,9 +238,27 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 static uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 static uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 
-static __m128i mask0;
-static __m128i mask1;
-static __m128i mask2;
+static rte_xmm_t mask0;
+static rte_xmm_t mask1;
+static rte_xmm_t mask2;
+
+#if defined(__SSE2__)
+static inline xmm_t
+em_mask_key(void *key, xmm_t mask)
+{
+	__m128i data = _mm_loadu_si128((__m128i *)(key));
+
+	return _mm_and_si128(data, mask);
+}
+#elif defined(__ARM_NEON)
+static inline xmm_t
+em_mask_key(void *key, xmm_t mask)
+{
+	int32x4_t data = vld1q_s32((int32_t *)key);
+
+	return vandq_s32(data, mask);
+}
+#endif
 
 static inline uint8_t
 em_get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid, void *lookup_struct)
@@ -249,13 +269,12 @@ em_get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid, void *lookup_struct)
 		(struct rte_hash *)lookup_struct;
 
 	ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
-	__m128i data = _mm_loadu_si128((__m128i *)(ipv4_hdr));
 
 	/*
 	 * Get 5 tuple: dst port, src port, dst IP address,
 	 * src IP address and protocol.
 	 */
-	key.xmm = _mm_and_si128(data, mask0);
+	key.xmm = em_mask_key(ipv4_hdr, mask0.x);
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
@@ -271,34 +290,30 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 		(struct rte_hash *)lookup_struct;
 
 	ipv6_hdr = (uint8_t *)ipv6_hdr + offsetof(struct ipv6_hdr, payload_len);
-	__m128i data0 =
-		_mm_loadu_si128((__m128i *)(ipv6_hdr));
-	__m128i data1 =
-		_mm_loadu_si128((__m128i *)(((uint8_t *)ipv6_hdr)+
-					sizeof(__m128i)));
-	__m128i data2 =
-		_mm_loadu_si128((__m128i *)(((uint8_t *)ipv6_hdr)+
-					sizeof(__m128i)+sizeof(__m128i)));
+	void *data0 = ipv6_hdr;
+	void *data1 = ((uint8_t *)ipv6_hdr) + sizeof(xmm_t);
+	void *data2 = ((uint8_t *)ipv6_hdr) + sizeof(xmm_t) + sizeof(xmm_t);
 
 	/* Get part of 5 tuple: src IP address lower 96 bits and protocol */
-	key.xmm[0] = _mm_and_si128(data0, mask1);
+	key.xmm[0] = em_mask_key(data0, mask1.x);
 
 	/*
 	 * Get part of 5 tuple: dst IP address lower 96 bits
 	 * and src IP address higher 32 bits.
 	 */
-	key.xmm[1] = data1;
+	key.xmm[1] = *(xmm_t *)data1;
 
 	/*
 	 * Get part of 5 tuple: dst port and src port
 	 * and dst IP address higher 32 bits.
 	 */
-	key.xmm[2] = _mm_and_si128(data2, mask2);
+	key.xmm[2] = em_mask_key(data2, mask2.x);
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv6_l3fwd_lookup_struct, (const void *)&key);
 	return (uint8_t)((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
 }
+
 
 /*
  * Include header file if SSE4_1 is enabled for
@@ -348,14 +363,15 @@ convert_ipv6_5tuple(struct ipv6_5tuple *key1,
 #define BYTE_VALUE_MAX 256
 #define ALL_32_BITS 0xffffffff
 #define BIT_8_TO_15 0x0000ff00
+
 static inline void
 populate_ipv4_few_flow_into_table(const struct rte_hash *h)
 {
 	uint32_t i;
 	int32_t ret;
 
-	mask0 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS,
-				ALL_32_BITS, BIT_8_TO_15);
+	mask0 = (rte_xmm_t){.u32 = {BIT_8_TO_15, ALL_32_BITS,
+				ALL_32_BITS, ALL_32_BITS} };
 
 	for (i = 0; i < IPV4_L3FWD_EM_NUM_ROUTES; i++) {
 		struct ipv4_l3fwd_em_route  entry;
@@ -381,10 +397,10 @@ populate_ipv6_few_flow_into_table(const struct rte_hash *h)
 	uint32_t i;
 	int32_t ret;
 
-	mask1 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS,
-				ALL_32_BITS, BIT_16_TO_23);
+	mask1 = (rte_xmm_t){.u32 = {BIT_16_TO_23, ALL_32_BITS,
+				ALL_32_BITS, ALL_32_BITS} };
 
-	mask2 = _mm_set_epi32(0, 0, ALL_32_BITS, ALL_32_BITS);
+	mask2 = (rte_xmm_t){.u32 = {ALL_32_BITS, ALL_32_BITS, 0, 0} };
 
 	for (i = 0; i < IPV6_L3FWD_EM_NUM_ROUTES; i++) {
 		struct ipv6_l3fwd_em_route entry;
@@ -410,8 +426,8 @@ populate_ipv4_many_flow_into_table(const struct rte_hash *h,
 {
 	unsigned i;
 
-	mask0 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS,
-				ALL_32_BITS, BIT_8_TO_15);
+	mask0 = (rte_xmm_t){.u32 = {BIT_8_TO_15, ALL_32_BITS,
+				ALL_32_BITS, ALL_32_BITS} };
 
 	for (i = 0; i < nr_flow; i++) {
 		struct ipv4_l3fwd_em_route entry;
@@ -462,9 +478,9 @@ populate_ipv6_many_flow_into_table(const struct rte_hash *h,
 {
 	unsigned i;
 
-	mask1 = _mm_set_epi32(ALL_32_BITS, ALL_32_BITS,
-				ALL_32_BITS, BIT_16_TO_23);
-	mask2 = _mm_set_epi32(0, 0, ALL_32_BITS, ALL_32_BITS);
+	mask1 = (rte_xmm_t){.u32 = {BIT_16_TO_23, ALL_32_BITS,
+				ALL_32_BITS, ALL_32_BITS} };
+	mask2 = (rte_xmm_t){.u32 = {ALL_32_BITS, ALL_32_BITS, 0, 0} };
 
 	for (i = 0; i < nr_flow; i++) {
 		struct ipv6_l3fwd_em_route entry;
