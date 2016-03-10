@@ -357,12 +357,14 @@ F: doc/guides/cryptodevs/aesni_gcm.rst
 Intel AES-NI Multi-Buffer
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/aesni_mb/
+F: doc/guides/cryptodevs/aesni_mb.rst
 
 Intel QuickAssist
 M: John Griffin <john.griffin@intel.com>
 M: Fiona Trahe <fiona.trahe@intel.com>
 M: Deepak Kumar Jain <deepak.k.jain@intel.com>
 F: drivers/crypto/qat/
+F: doc/guides/cryptodevs/qat.rst
 
 SNOW 3G PMD
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
