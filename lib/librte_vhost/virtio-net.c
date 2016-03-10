@@ -448,6 +448,13 @@ numa_realloc(struct virtio_net *dev, int index)
 	struct vhost_virtqueue *old_vq, *vq;
 	int ret;
 
+	/*
+	 * vq is allocated on pairs, we should try to do realloc
+	 * on first queue of one queue pair only.
+	 */
+	if (index % VIRTIO_QNUM != 0)
+		return dev;
+
 	old_dev = dev;
 	vq = old_vq = dev->virtqueue[index];
 
@@ -465,11 +472,12 @@ numa_realloc(struct virtio_net *dev, int index)
 	if (oldnode != newnode) {
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"reallocate vq from %d to %d node\n", oldnode, newnode);
-		vq = rte_malloc_socket(NULL, sizeof(*vq), 0, newnode);
+		vq = rte_malloc_socket(NULL, sizeof(*vq) * VIRTIO_QNUM, 0,
+				       newnode);
 		if (!vq)
 			return dev;
 
-		memcpy(vq, old_vq, sizeof(*vq));
+		memcpy(vq, old_vq, sizeof(*vq) * VIRTIO_QNUM);
 		rte_free(old_vq);
 	}
 
@@ -497,6 +505,7 @@ numa_realloc(struct virtio_net *dev, int index)
 
 out:
 	dev->virtqueue[index] = vq;
+	dev->virtqueue[index + 1] = vq + 1;
 	vhost_devices[dev->device_fh] = dev;
 
 	return dev;
