@@ -31,6 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Load config options:
+# - AESNI_MULTI_BUFFER_LIB_PATH
 # - DPDK_BUILD_TEST_CONFIGS (target1+option1+option2 target2)
 # - DPDK_DEP_CFLAGS
 # - DPDK_DEP_LDFLAGS
@@ -118,8 +119,11 @@ config () # <directory> <target> <options>
 		test "$DPDK_DEP_PCAP" != y || \
 		sed -ri               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
-		echo $2 | grep -q '^i686' || \
+		! echo $2 | grep -q '^x86_64' || \
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
+		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
+		! echo $2 | grep -q '^x86_64' || \
+		sed -ri      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config

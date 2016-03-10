@@ -85,6 +85,11 @@ This section should contain new features added in this release. Sample format:
   A new Crypto PMD has been added, which provides SNOW 3G UEA2 ciphering
   and SNOW3G UIA2 hashing.
 
+* **Added AES GCM PMD.**
+
+  Added new Crypto PMD to support AES-GCM authenticated encryption and
+  authenticated decryption in SW.
+
 
 Resolved Issues
 ---------------

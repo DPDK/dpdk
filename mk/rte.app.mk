@@ -102,8 +102,13 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_PMD)       += -libverbs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lsze2
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lxenstore
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lgxio
-# QAT PMD has a dependency on libcrypto (from openssl) for calculating HMAC precomputes
-_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lcrypto
+# QAT / AESNI GCM PMDs are dependent on libcrypto (from openssl)
+# for calculating HMAC precomputes
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT),y)
+_LDLIBS-y                                   += -lcrypto
+else ifeq ($(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM),y)
+_LDLIBS-y                                   += -lcrypto
+endif
 endif # !CONFIG_RTE_BUILD_SHARED_LIBS
 
 _LDLIBS-y += --start-group
@@ -145,9 +150,15 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET)  += -lrte_pmd_af_packet
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL)       += -lrte_pmd_null
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lrte_pmd_qat
 
-# AESNI MULTI BUFFER is dependent on the IPSec_MB library
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB)   += -lrte_pmd_aesni_mb
-_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB)   += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM)   += -lrte_pmd_aesni_gcm
+
+# AESNI MULTI BUFFER / GCM PMDs are dependent on the IPSec_MB library
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_AESNI_MB),y)
+_LDLIBS-y += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
+else ifeq ($(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM),y)
+_LDLIBS-y += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
+endif
 
 # SNOW3G PMD is dependent on the LIBSSO library
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G)     += -lrte_pmd_snow3g

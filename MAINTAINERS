@@ -349,6 +349,11 @@ Null PMD
 M: Tetsuya Mukawa <mukawa@igel.co.jp>
 F: drivers/net/null/
 
+Intel AES-NI GCM PMD
+M: Declan Doherty <declan.doherty@intel.com>
+F: drivers/crypto/aesni_gcm/
+F: doc/guides/cryptodevs/aesni_gcm.rst
+
 Intel AES-NI Multi-Buffer
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/aesni_mb/

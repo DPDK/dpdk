@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2016 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -27,15 +27,40 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Crypto Device Drivers
-=====================
+AES-NI GCM Crypto Poll Mode Driver
+============================================
 
 
-.. toctree::
-    :maxdepth: 2
-    :numbered:
+The AES-NI GCM PMD (**librte_pmd_aesni_gcm**) provides poll mode crypto driver
+support for utilizing Intel multi buffer library (see AES-NI Multi-buffer PMD documentation
+to learn more about it, including installation).
 
-    aesni_mb
-    aesni_gcm
-    snow3g
-    qat
+The AES-NI GCM PMD has current only been tested on Fedora 21 64-bit with gcc.
+
+Features
+--------
+
+AESNI GCM PMD has support for:
+
+Cipher algorithms:
+
+* RTE_CRYPTO_CIPHER_AES_GCM
+
+Authentication algorithms:
+
+* RTE_CRYPTO_AUTH_AES_GCM
+
+Limitations
+-----------
+
+* Chained mbufs are not supported.
+* Hash only is not supported.
+* Cipher only is not supported.
+* Only in-place is currently supported (destination address is the same as source address).
+* Only supports session-oriented API implementation (session-less APIs are not supported).
+*  Not performance tuned.
+
+The environmental variable
+AESNI_MULTI_BUFFER_LIB_PATH must be exported with the path where you extracted
+and built the multi buffer library and finally set
+CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=y in config/common_base.
