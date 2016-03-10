@@ -1741,7 +1741,7 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	/* Generate Crypto op data structure(s) */
 	for (b = 0; b < num_to_submit ; b++) {
 		tx_mbufs[b] = setup_test_string(ts_params->mbuf_mp,
-				(const char *)data_params[0].expected.ciphertext,
+			(const char *)data_params[0].expected.ciphertext,
 				data_params[0].length, 0);
 		TEST_ASSERT_NOT_NULL(tx_mbufs[b], "Failed to allocate tx_buf");
 
@@ -1814,7 +1814,8 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 			rte_delay_ms(1);
 
 			start_cycles = rte_rdtsc_precise();
-			burst_received = rte_cryptodev_dequeue_burst(dev_num,
+			burst_received =
+				rte_cryptodev_dequeue_burst(dev_num,
 						0, rx_mbufs, burst_size);
 			if (burst_received == 0)
 				failed_polls++;
@@ -1823,11 +1824,15 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 			end_cycles = rte_rdtsc_precise();
 			total_cycles += end_cycles - start_cycles;
 		}
-		while (num_received != num_to_submit) {
-			if (gbl_cryptodev_preftest_devtype == RTE_CRYPTODEV_AESNI_MB_PMD)
-				rte_cryptodev_enqueue_burst(dev_num, 0, NULL, 0);
 
-			burst_received = rte_cryptodev_dequeue_burst(dev_num,
+		while (num_received != num_to_submit) {
+			if (gbl_cryptodev_preftest_devtype ==
+					RTE_CRYPTODEV_AESNI_MB_PMD)
+				rte_cryptodev_enqueue_burst(dev_num, 0,
+						NULL, 0);
+
+			burst_received =
+				rte_cryptodev_dequeue_burst(dev_num,
 						0, rx_mbufs, burst_size);
 			if (burst_received == 0)
 				failed_polls++;
@@ -1861,10 +1866,10 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 {
 	uint16_t index;
 	uint32_t burst_sent, burst_received;
-	uint32_t b, num_sent, num_received, throughput;
+	uint32_t b, num_sent, num_received;
 	uint64_t failed_polls, retries, start_cycles, end_cycles;
 	const uint64_t mhz = rte_get_tsc_hz()/1000000;
-	double mmps;
+	double throughput, mmps;
 	struct rte_mbuf *rx_mbufs[DEFAULT_BURST_SIZE], *tx_mbufs[DEFAULT_BURST_SIZE];
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -1904,7 +1909,7 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 			"AES128_CBC_SHA256_HMAC requests with a constant burst "
 			"size of %u while varying payload sizes", DEFAULT_BURST_SIZE);
 	printf("\nDev No\tQP No\tReq Size(B)\tNum Sent\tNum Received\t"
-			"Mrps\tThoughput(Mbps)");
+			"Mrps\tThoughput(Gbps)");
 	printf("\tRetries (Attempted a burst, but the device was busy)");
 	for (index = 0; index < MAX_PACKET_SIZE_INDEX; index++) {
 		num_sent = 0;
@@ -1957,15 +1962,19 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 		}
 		start_cycles = rte_rdtsc_precise();
 		while (num_sent < DEFAULT_NUM_REQS_TO_SUBMIT) {
-			burst_sent = rte_cryptodev_enqueue_burst(dev_num, 0, tx_mbufs,
-				((DEFAULT_NUM_REQS_TO_SUBMIT-num_sent) < DEFAULT_BURST_SIZE) ?
-				DEFAULT_NUM_REQS_TO_SUBMIT-num_sent : DEFAULT_BURST_SIZE);
+			burst_sent = rte_cryptodev_enqueue_burst(dev_num,
+					0, tx_mbufs,
+					((DEFAULT_NUM_REQS_TO_SUBMIT-num_sent)
+							< DEFAULT_BURST_SIZE) ?
+					DEFAULT_NUM_REQS_TO_SUBMIT-num_sent :
+							DEFAULT_BURST_SIZE);
 			if (burst_sent == 0)
 				retries++;
 			else
 				num_sent += burst_sent;
 
-			burst_received = rte_cryptodev_dequeue_burst(dev_num,
+			burst_received =
+				rte_cryptodev_dequeue_burst(dev_num,
 					0, rx_mbufs, DEFAULT_BURST_SIZE);
 			if (burst_received == 0)
 				failed_polls++;
@@ -1973,10 +1982,13 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 				num_received += burst_received;
 		}
 		while (num_received != DEFAULT_NUM_REQS_TO_SUBMIT) {
-			if (gbl_cryptodev_preftest_devtype == RTE_CRYPTODEV_AESNI_MB_PMD)
-				rte_cryptodev_enqueue_burst(dev_num, 0, NULL, 0);
+			if (gbl_cryptodev_preftest_devtype ==
+					RTE_CRYPTODEV_AESNI_MB_PMD)
+				rte_cryptodev_enqueue_burst(dev_num, 0,
+						NULL, 0);
 
-			burst_received = rte_cryptodev_dequeue_burst(dev_num, 0,
+			burst_received =
+				rte_cryptodev_dequeue_burst(dev_num, 0,
 						rx_mbufs, DEFAULT_BURST_SIZE);
 			if (burst_received == 0)
 				failed_polls++;
@@ -1984,11 +1996,14 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 				num_received += burst_received;
 		}
 		end_cycles = rte_rdtsc_precise();
-		mmps = (double)num_received*mhz/(end_cycles - start_cycles);
-		throughput = mmps*data_params[index].length*8;
+		mmps = ((double)num_received * mhz) /
+				(end_cycles - start_cycles);
+		throughput = (mmps * data_params[index].length * 8) / 1000;
+
 		printf("\n%u\t%u\t%u\t\t%u\t%u", dev_num, 0,
-				data_params[index].length, num_sent, num_received);
-		printf("\t%.2f\t%u", mmps, throughput);
+				data_params[index].length,
+				num_sent, num_received);
+		printf("\t%.2f\t%.2f", mmps, throughput);
 		printf("\t\t%"PRIu64, retries);
 		for (b = 0; b < DEFAULT_BURST_SIZE ; b++) {
 			struct rte_mbuf_offload *ol = tx_mbufs[b]->offload_ops;
@@ -2002,6 +2017,7 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 			rte_pktmbuf_free(tx_mbufs[b]);
 		}
 	}
+
 	printf("\n");
 	return TEST_SUCCESS;
 }

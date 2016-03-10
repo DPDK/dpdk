@@ -130,17 +130,6 @@ struct rte_cryptodev_qp_conf {
 typedef void (*rte_cryptodev_cb_fn)(uint8_t dev_id,
 		enum rte_cryptodev_event_type event, void *cb_arg);
 
-#ifdef RTE_CRYPTODEV_PERF
-/**
- * Crypto Device performance counter statistics structure. This structure is
- * used for RDTSC counters for measuring crypto operations.
- */
-struct rte_cryptodev_perf_stats {
-	uint64_t t_accumlated;	/**< Accumulated time processing operation */
-	uint64_t t_min;		/**< Max time */
-	uint64_t t_max;		/**< Min time */
-};
-#endif
 
 /** Crypto Device statistics */
 struct rte_cryptodev_stats {
@@ -153,29 +142,8 @@ struct rte_cryptodev_stats {
 	/**< Total error count on operations enqueued */
 	uint64_t dequeue_err_count;
 	/**< Total error count on operations dequeued */
+};
 
-#ifdef RTE_CRYPTODEV_DETAILED_STATS
-	struct {
-		uint64_t encrypt_ops;	/**< Count of encrypt operations */
-		uint64_t encrypt_bytes;	/**< Number of bytes encrypted */
-
-		uint64_t decrypt_ops;	/**< Count of decrypt operations */
-		uint64_t decrypt_bytes;	/**< Number of bytes decrypted */
-	} cipher; /**< Cipher operations stats */
-
-	struct {
-		uint64_t generate_ops;	/**< Count of generate operations */
-		uint64_t bytes_hashed;	/**< Number of bytes hashed */
-
-		uint64_t verify_ops;	/**< Count of verify operations */
-		uint64_t bytes_verified;/**< Number of bytes verified */
-	} hash;	 /**< Hash operations stats */
-#endif
-
-#ifdef RTE_CRYPTODEV_PERF
-	struct rte_cryptodev_perf_stats op_perf; /**< Operations stats */
-#endif
-} __rte_cache_aligned;
 
 /**
  * Create a virtual crypto device
@@ -631,7 +599,6 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 extern struct rte_cryptodev_session *
 rte_cryptodev_session_create(uint8_t dev_id,
 		struct rte_crypto_xform *xform);
-
 
 /**
  * Free the memory associated with a previously allocated session.

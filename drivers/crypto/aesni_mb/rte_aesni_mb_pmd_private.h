@@ -150,7 +150,7 @@ struct aesni_mb_qp {
 	/**< Ring for placing process packets */
 	struct rte_mempool *sess_mp;
 	/**< Session Mempool */
-	struct rte_cryptodev_stats qp_stats;
+	struct rte_cryptodev_stats stats;
 	/**< Queue pair statistics */
 } __rte_cache_aligned;
 

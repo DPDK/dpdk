@@ -47,8 +47,9 @@
 #define DEFAULT_NUM_XFORMS              (2)
 #define NUM_MBUFS                       (8191)
 #define MBUF_CACHE_SIZE                 (250)
-#define MBUF_SIZE   (2048 + DIGEST_BYTE_LENGTH_SHA512 + \
-				sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATAPAYLOAD_SIZE		(2048 + DIGEST_BYTE_LENGTH_SHA512)
+#define MBUF_SIZE			(sizeof(struct rte_mbuf) + \
+		RTE_PKTMBUF_HEADROOM + MBUF_DATAPAYLOAD_SIZE)
 
 #define BYTE_LENGTH(x)				(x/8)
 /* HASH DIGEST LENGTHS */

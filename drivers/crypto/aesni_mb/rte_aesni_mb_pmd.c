@@ -377,17 +377,21 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_mbuf *m,
 		job->auth_tag_output = (uint8_t *)rte_pktmbuf_append(m,
 				get_digest_byte_length(job->hash_alg));
 
-		if (job->auth_tag_output)
-			memset(job->auth_tag_output, 0,
-				sizeof(get_digest_byte_length(job->hash_alg)));
-		else
+		if (job->auth_tag_output == NULL) {
+			MB_LOG_ERR("failed to allocate space in output mbuf "
+					"for temp digest");
 			return NULL;
+		}
+
+		memset(job->auth_tag_output, 0,
+				sizeof(get_digest_byte_length(job->hash_alg)));
+
 	} else {
 		job->auth_tag_output = c_op->digest.data;
 	}
 
 	/*
-	 * Multiple buffer library current only support returning a truncated
+	 * Multi-buffer library current only support returning a truncated
 	 * digest length as specified in the relevant IPsec RFCs
 	 */
 	job->auth_tag_output_len_in_bytes =
@@ -489,7 +493,7 @@ handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 		if (m)
 			rte_ring_enqueue(qp->processed_pkts, (void *)m);
 		else
-			qp->qp_stats.dequeue_err_count++;
+			qp->stats.dequeue_err_count++;
 
 		job = (*qp->ops->job.get_completed_job)(&qp->mb_mgr);
 	}
@@ -513,19 +517,19 @@ aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_mbuf **bufs,
 	for (i = 0; i < nb_bufs; i++) {
 		ol = rte_pktmbuf_offload_get(bufs[i], RTE_PKTMBUF_OL_CRYPTO);
 		if (unlikely(ol == NULL)) {
-			qp->qp_stats.enqueue_err_count++;
+			qp->stats.enqueue_err_count++;
 			goto flush_jobs;
 		}
 
 		sess = get_session(qp, &ol->op.crypto);
 		if (unlikely(sess == NULL)) {
-			qp->qp_stats.enqueue_err_count++;
+			qp->stats.enqueue_err_count++;
 			goto flush_jobs;
 		}
 
 		job = process_crypto_op(qp, bufs[i], &ol->op.crypto, sess);
 		if (unlikely(job == NULL)) {
-			qp->qp_stats.enqueue_err_count++;
+			qp->stats.enqueue_err_count++;
 			goto flush_jobs;
 		}
 
@@ -543,7 +547,7 @@ aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_mbuf **bufs,
 	if (processed_jobs == 0)
 		goto flush_jobs;
 	else
-		qp->qp_stats.enqueued_count += processed_jobs;
+		qp->stats.enqueued_count += processed_jobs;
 		return i;
 
 flush_jobs:
@@ -553,7 +557,7 @@ flush_jobs:
 	 */
 	job = (*qp->ops->job.flush_job)(&qp->mb_mgr);
 	if (job)
-		qp->qp_stats.enqueued_count += handle_completed_jobs(qp, job);
+		qp->stats.enqueued_count += handle_completed_jobs(qp, job);
 
 	return i;
 }
@@ -568,7 +572,7 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair,
 
 	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts,
 			(void **)bufs, nb_bufs);
-	qp->qp_stats.dequeued_count += nb_dequeued;
+	qp->stats.dequeued_count += nb_dequeued;
 
 	return nb_dequeued;
 }

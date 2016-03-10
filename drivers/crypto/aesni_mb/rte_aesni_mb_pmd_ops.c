@@ -76,11 +76,11 @@ aesni_mb_pmd_stats_get(struct rte_cryptodev *dev,
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
 		struct aesni_mb_qp *qp = dev->data->queue_pairs[qp_id];
 
-		stats->enqueued_count += qp->qp_stats.enqueued_count;
-		stats->dequeued_count += qp->qp_stats.dequeued_count;
+		stats->enqueued_count += qp->stats.enqueued_count;
+		stats->dequeued_count += qp->stats.dequeued_count;
 
-		stats->enqueue_err_count += qp->qp_stats.enqueue_err_count;
-		stats->dequeue_err_count += qp->qp_stats.dequeue_err_count;
+		stats->enqueue_err_count += qp->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->stats.dequeue_err_count;
 	}
 }
 
@@ -93,7 +93,7 @@ aesni_mb_pmd_stats_reset(struct rte_cryptodev *dev)
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
 		struct aesni_mb_qp *qp = dev->data->queue_pairs[qp_id];
 
-		memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+		memset(&qp->stats, 0, sizeof(qp->stats));
 	}
 }
 
@@ -196,7 +196,7 @@ aesni_mb_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->sess_mp = dev->data->session_pool;
 
-	memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+	memset(&qp->stats, 0, sizeof(qp->stats));
 
 	/* Initialise multi-buffer manager */
 	(*qp->ops->job.init_mgr)(&qp->mb_mgr);

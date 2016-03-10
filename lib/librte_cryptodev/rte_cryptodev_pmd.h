@@ -56,11 +56,6 @@ extern "C" {
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
 
-struct rte_cryptodev_stats;
-struct rte_cryptodev_info;
-struct rte_cryptodev_qp_conf;
-
-enum rte_cryptodev_event_type;
 
 #ifdef RTE_LIBRTE_CRYPTODEV_DEBUG
 #define RTE_PMD_DEBUG_TRACE(...) \
@@ -80,7 +75,6 @@ struct rte_cryptodev_session {
 };
 
 struct rte_cryptodev_driver;
-struct rte_cryptodev;
 
 /**
  * Initialisation function of a crypto driver invoked for each matching
@@ -427,9 +421,9 @@ struct rte_cryptodev_ops {
 	cryptodev_info_get_t dev_infos_get;	/**< Get device info. */
 
 	cryptodev_stats_get_t stats_get;
-	/**< Get generic device statistics. */
+	/**< Get device statistics. */
 	cryptodev_stats_reset_t stats_reset;
-	/**< Reset generic device statistics. */
+	/**< Reset device statistics. */
 
 	cryptodev_queue_pair_setup_t queue_pair_setup;
 	/**< Set up a device queue pair. */
