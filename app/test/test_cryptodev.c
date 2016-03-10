@@ -195,6 +195,20 @@ testsuite_setup(void)
 		}
 	}
 
+	/* Create 2 Snow3G devices if required */
+	if (gbl_cryptodev_type == RTE_CRYPTODEV_SNOW3G_PMD) {
+		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
+		if (nb_devs < 2) {
+			for (i = nb_devs; i < 2; i++) {
+				TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
+					CRYPTODEV_NAME_SNOW3G_PMD, NULL),
+					"Failed to create instance %u of"
+					" pmd : %s",
+					i, CRYPTODEV_NAME_SNOW3G_PMD);
+			}
+		}
+	}
+
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
 		RTE_LOG(ERR, USER1, "No crypto devices found?");
@@ -3073,6 +3087,56 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 	}
 };
 
+static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
+	.suite_name = "Crypto Device SW Snow3G Unit Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		/** Snow3G encrypt only (UEA2) */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_5),
+
+
+		/** Snow3G decrypt only (UEA2) */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_generate_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_generate_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_generate_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_verify_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_verify_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_verify_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_authenticated_encryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encrypted_authentication_test_case_1),
+
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static int
 test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 {
@@ -3097,5 +3161,19 @@ static struct test_command cryptodev_aesni_mb_cmd = {
 	.callback = test_cryptodev_aesni_mb,
 };
 
+static int
+test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
+{
+	gbl_cryptodev_type = RTE_CRYPTODEV_SNOW3G_PMD;
+
+	return unit_test_suite_runner(&cryptodev_sw_snow3g_testsuite);
+}
+
+static struct test_command cryptodev_sw_snow3g_cmd = {
+	.command = "cryptodev_sw_snow3g_autotest",
+	.callback = test_cryptodev_sw_snow3g,
+};
+
 REGISTER_TEST_COMMAND(cryptodev_qat_cmd);
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_cmd);
+REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_cmd);

@@ -356,6 +356,11 @@ F: drivers/crypto/aesni_mb/
 Intel QuickAssist
 F: drivers/crypto/qat/
 
+SNOW 3G PMD
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+F: drivers/crypto/snow3g/
+F: doc/guides/cryptodevs/snow3g.rst
+
 
 Packet processing
 -----------------

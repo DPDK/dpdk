@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2016 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -27,14 +27,43 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Crypto Device Drivers
-=====================
+SNOW 3G Crypto Poll Mode Driver
+===============================
 
+The SNOW 3G PMD (**librte_pmd_snow3g**) provides poll mode crypto driver
+support for utilizing Intel Libsso library, which implements F8 and F9 functions
+for SNOW 3G UEA2 cipher and UIA2 hash algorithms.
 
-.. toctree::
-    :maxdepth: 2
-    :numbered:
+Features
+--------
 
-    aesni_mb
-    snow3g
-    qat
+SNOW 3G PMD has support for:
+
+Cipher algorithm:
+
+* RTE_CRYPTO_SYM_CIPHER_SNOW3G_UEA2
+
+Authentication algorithm:
+
+* RTE_CRYPTO_SYM_AUTH_SNOW3G_UIA2
+
+Limitations
+-----------
+
+* Chained mbufs are not supported.
+
+Installation
+------------
+
+To build DPDK with the SNOW3G_PMD the user is required to get
+the export controlled libsso library, sending a request to
+`DPDKUser_software_access@intel.com`, and compile it
+on their user system before building DPDK:
+
+.. code-block:: console
+
+	make -f Makefile_snow3g
+
+The environmental variable LIBSSO_PATH must be exported with the path
+where you extracted and built the libsso library and finally set
+CONFIG_RTE_LIBRTE_PMD_SNOW3G=y in config/common_base.

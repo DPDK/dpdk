@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -33,5 +33,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += snow3g
 
 include $(RTE_SDK)/mk/rte.subdir.mk

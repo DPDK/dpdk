@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2016 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -30,33 +30,35 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-# library name
-LIB = librte_cryptodev.a
+ifeq ($(LIBSSO_PATH),)
+$(error "Please define LIBSSO_PATH environment variable")
+endif
 
-# library version
-LIBABIVER := 1
+# library name
+LIB = librte_pmd_snow3g.a
 
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-# library source files
-SRCS-y += rte_cryptodev.c
-
-# export include files
-SYMLINK-y-include += rte_crypto.h
-SYMLINK-y-include += rte_crypto_sym.h
-SYMLINK-y-include += rte_cryptodev.h
-SYMLINK-y-include += rte_cryptodev_pmd.h
+# library version
+LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_cryptodev_version.map
+EXPORT_MAP := rte_pmd_snow3g_version.map
+
+# external library include paths
+CFLAGS += -I$(LIBSSO_PATH)
+CFLAGS += -I$(LIBSSO_PATH)/include
+CFLAGS += -I$(LIBSSO_PATH)/build
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += rte_snow3g_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += rte_snow3g_pmd_ops.c
 
 # library dependencies
-DEPDIRS-y += lib/librte_eal
-DEPDIRS-y += lib/librte_mempool
-DEPDIRS-y += lib/librte_ring
-DEPDIRS-y += lib/librte_mbuf
-DEPDIRS-y += lib/librte_kvargs
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += lib/librte_cryptodev
 
 include $(RTE_SDK)/mk/rte.lib.mk

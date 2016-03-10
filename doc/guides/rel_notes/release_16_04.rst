@@ -80,6 +80,11 @@ This section should contain new features added in this release. Sample format:
   Support for cipher only, hash only is also provided
   along with alg-chaining operations.
 
+* **Added SNOW3G SW PMD.**
+
+  A new Crypto PMD has been added, which provides SNOW 3G UEA2 ciphering
+  and SNOW3G UIA2 hashing.
+
 
 Resolved Issues
 ---------------
