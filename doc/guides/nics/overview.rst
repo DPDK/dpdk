@@ -86,20 +86,20 @@ Most of these differences are summarized below.
                                         e   e       e   e   e                   e
                                         c   c       c   c   c                   c
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-   link status                        X X                                   X
+   link status                  X     X X                                   X
    link status event                  X X
    Rx interrupt                       X X X X
-   queue start/stop                   X X X X                               X
-   MTU update
-   jumbo frame                        X X X X
-   scattered Rx                       X X X X                               X
+   queue start/stop             X     X X X X                               X
+   MTU update                   X
+   jumbo frame                  X     X X X X
+   scattered Rx                 X     X X X X                               X
    LRO
-   TSO                                X X X X
-   promiscuous mode                   X X X X                               X
-   allmulticast mode                  X X X X                               X
+   TSO                          X     X X X X
+   promiscuous mode             X     X X X X                               X
+   allmulticast mode            X     X X X X                               X
    unicast MAC filter                 X X X X
    multicast MAC filter               X X X X
-   RSS hash                           X X X X
+   RSS hash                     X     X X X X
    RSS key update                     X X X X
    RSS reta update                    X X X X
    VMDq                               X X
@@ -113,35 +113,35 @@ Most of these differences are summarized below.
    flexible filter
    hash filter                        X X X X
    flow director                      X X
-   flow control                       X X
+   flow control                 X     X X
    rate limitation
    traffic mirroring                  X X
-   CRC offload                        X   X
-   VLAN offload                       X   X
+   CRC offload                  X     X   X
+   VLAN offload                 X     X   X
    QinQ offload                       X   X
-   L3 checksum offload                X   X
-   L4 checksum offload                X   X
+   L3 checksum offload          X     X   X
+   L4 checksum offload          X     X   X
    inner L3 checksum                  X   X
    inner L4 checksum                  X   X
-   packet type parsing                X   X
+   packet type parsing          X     X   X
    timesync                           X X
-   basic stats                        X X X X                               X
+   basic stats                  X     X X X X                               X
    extended stats                     X X X X
-   stats per queue                                                          X
+   stats per queue              X                                           X
    EEPROM dump
    registers dump
    multiprocess aware                 X X X X
-   BSD nic_uio                        X X X X
-   Linux UIO                          X X X X
-   Linux VFIO                         X X X X
+   BSD nic_uio                  X     X X X X
+   Linux UIO                    X     X X X X
+   Linux VFIO                   X     X X X X
    other kdrv                                                               X
    ARMv7
    ARMv8
    Power8
    TILE-Gx
-   x86-32                             X X X X
-   x86-64                             X X X X                               X
-   usage doc                                                                X
+   x86-32                       X     X X X X
+   x86-64                       X     X X X X                               X
+   usage doc                    X                                           X
    design doc
    perf doc
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
