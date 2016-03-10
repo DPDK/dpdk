@@ -296,16 +296,16 @@ aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
 
 /** Get multi buffer session */
 static struct aesni_mb_session *
-get_session(struct aesni_mb_qp *qp, struct rte_crypto_sym_op *crypto_op)
+get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 {
 	struct aesni_mb_session *sess = NULL;
 
-	if (crypto_op->type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
-		if (unlikely(crypto_op->session->type !=
+	if (op->sym->type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
+		if (unlikely(op->sym->session->type !=
 				RTE_CRYPTODEV_AESNI_MB_PMD))
 			return NULL;
 
-		sess = (struct aesni_mb_session *)crypto_op->session->_private;
+		sess = (struct aesni_mb_session *)op->sym->session->_private;
 	} else  {
 		void *_sess = NULL;
 
@@ -316,7 +316,7 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_sym_op *crypto_op)
 			((struct rte_cryptodev_sym_session *)_sess)->_private;
 
 		if (unlikely(aesni_mb_set_session_parameters(qp->ops,
-				sess, crypto_op->xform) != 0)) {
+				sess, op->sym->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
 			sess = NULL;
 		}
@@ -338,11 +338,13 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_sym_op *crypto_op)
  * - NULL pointer if completion of JOB_AES_HMAC structure isn't possible
  */
 static JOB_AES_HMAC *
-process_crypto_op(struct aesni_mb_qp *qp, struct rte_mbuf *m,
-		struct rte_crypto_sym_op *c_op,
+process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
 		struct aesni_mb_session *session)
 {
 	JOB_AES_HMAC *job;
+
+	struct rte_mbuf *m_src = op->sym->m_src, *m_dst;
+	uint16_t m_offset = 0;
 
 	job = (*qp->ops->job.get_next)(&qp->mb_mgr);
 	if (unlikely(job == NULL))
@@ -372,10 +374,26 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_mbuf *m,
 	}
 
 	/* Mutable crypto operation parameters */
+	if (op->sym->m_dst) {
+		m_src = m_dst = op->sym->m_dst;
+
+		/* append space for output data to mbuf */
+		char *odata = rte_pktmbuf_append(m_dst,
+				rte_pktmbuf_data_len(op->sym->m_src));
+		if (odata == NULL)
+			MB_LOG_ERR("failed to allocate space in destination "
+					"mbuf for source data");
+
+		memcpy(odata, rte_pktmbuf_mtod(op->sym->m_src, void*),
+				rte_pktmbuf_data_len(op->sym->m_src));
+	} else {
+		m_dst = m_src;
+		m_offset = op->sym->cipher.data.offset;
+	}
 
 	/* Set digest output location */
 	if (job->cipher_direction == DECRYPT) {
-		job->auth_tag_output = (uint8_t *)rte_pktmbuf_append(m,
+		job->auth_tag_output = (uint8_t *)rte_pktmbuf_append(m_dst,
 				get_digest_byte_length(job->hash_alg));
 
 		if (job->auth_tag_output == NULL) {
@@ -388,7 +406,7 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_mbuf *m,
 				sizeof(get_digest_byte_length(job->hash_alg)));
 
 	} else {
-		job->auth_tag_output = c_op->digest.data;
+		job->auth_tag_output = op->sym->auth.digest.data;
 	}
 
 	/*
@@ -399,26 +417,22 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_mbuf *m,
 			get_truncated_digest_byte_length(job->hash_alg);
 
 	/* Set IV parameters */
-	job->iv = c_op->iv.data;
-	job->iv_len_in_bytes = c_op->iv.length;
+	job->iv = op->sym->cipher.iv.data;
+	job->iv_len_in_bytes = op->sym->cipher.iv.length;
 
 	/* Data  Parameter */
-	job->src = rte_pktmbuf_mtod(m, uint8_t *);
-	job->dst = c_op->dst.m ?
-			rte_pktmbuf_mtod(c_op->dst.m, uint8_t *) +
-			c_op->dst.offset :
-			rte_pktmbuf_mtod(m, uint8_t *) +
-			c_op->data.to_cipher.offset;
+	job->src = rte_pktmbuf_mtod(m_src, uint8_t *);
+	job->dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *, m_offset);
 
-	job->cipher_start_src_offset_in_bytes = c_op->data.to_cipher.offset;
-	job->msg_len_to_cipher_in_bytes = c_op->data.to_cipher.length;
+	job->cipher_start_src_offset_in_bytes = op->sym->cipher.data.offset;
+	job->msg_len_to_cipher_in_bytes = op->sym->cipher.data.length;
 
-	job->hash_start_src_offset_in_bytes = c_op->data.to_hash.offset;
-	job->msg_len_to_hash_in_bytes = c_op->data.to_hash.length;
+	job->hash_start_src_offset_in_bytes = op->sym->auth.data.offset;
+	job->msg_len_to_hash_in_bytes = op->sym->auth.data.length;
 
 	/* Set user data to be crypto operation data struct */
-	job->user_data = m;
-	job->user_data2 = c_op;
+	job->user_data = op;
+	job->user_data2 = m_dst;
 
 	return job;
 }
@@ -433,43 +447,41 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_mbuf *m,
  * verification of supplied digest in the case of a HASH_CIPHER operation
  * - Returns NULL on invalid job
  */
-static struct rte_mbuf *
+static struct rte_crypto_op *
 post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 {
-	struct rte_mbuf *m;
-	struct rte_crypto_sym_op *c_op;
+	struct rte_crypto_op *op =
+			(struct rte_crypto_op *)job->user_data;
+	struct rte_mbuf *m_dst =
+			(struct rte_mbuf *)job->user_data2;
 
-	if (job->user_data == NULL)
+	if (op == NULL || m_dst == NULL)
 		return NULL;
 
-	/* handled retrieved job */
-	m = (struct rte_mbuf *)job->user_data;
-	c_op = (struct rte_crypto_sym_op *)job->user_data2;
-
 	/* set status as successful by default */
-	c_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
 	/* check if job has been processed  */
 	if (unlikely(job->status != STS_COMPLETED)) {
-		c_op->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return m;
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return op;
 	} else if (job->chain_order == HASH_CIPHER) {
 		/* Verify digest if required */
-		if (memcmp(job->auth_tag_output, c_op->digest.data,
+		if (memcmp(job->auth_tag_output, op->sym->auth.digest.data,
 				job->auth_tag_output_len_in_bytes) != 0)
-			c_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 		/* trim area used for digest from mbuf */
-		rte_pktmbuf_trim(m, get_digest_byte_length(job->hash_alg));
+		rte_pktmbuf_trim(m_dst, get_digest_byte_length(job->hash_alg));
 	}
 
 	/* Free session if a session-less crypto op */
-	if (c_op->type == RTE_CRYPTO_SYM_OP_SESSIONLESS) {
-		rte_mempool_put(qp->sess_mp, c_op->session);
-		c_op->session = NULL;
+	if (op->sym->type == RTE_CRYPTO_SYM_OP_SESSIONLESS) {
+		rte_mempool_put(qp->sess_mp, op->sym->session);
+		op->sym->session = NULL;
 	}
 
-	return m;
+	return op;
 }
 
 /**
@@ -485,17 +497,16 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 static unsigned
 handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 {
-	struct rte_mbuf *m = NULL;
+	struct rte_crypto_op *op = NULL;
 	unsigned processed_jobs = 0;
 
 	while (job) {
 		processed_jobs++;
-		m = post_process_mb_job(qp, job);
-		if (m)
-			rte_ring_enqueue(qp->processed_pkts, (void *)m);
+		op = post_process_mb_job(qp, job);
+		if (op)
+			rte_ring_enqueue(qp->processed_ops, (void *)op);
 		else
 			qp->stats.dequeue_err_count++;
-
 		job = (*qp->ops->job.get_completed_job)(&qp->mb_mgr);
 	}
 
@@ -503,11 +514,9 @@ handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 }
 
 static uint16_t
-aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_mbuf **bufs,
-		uint16_t nb_bufs)
+aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
 {
-	struct rte_mbuf_offload *ol;
-
 	struct aesni_mb_session *sess;
 	struct aesni_mb_qp *qp = queue_pair;
 
@@ -515,21 +524,23 @@ aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_mbuf **bufs,
 
 	int i, processed_jobs = 0;
 
-	for (i = 0; i < nb_bufs; i++) {
-		ol = rte_pktmbuf_offload_get(bufs[i],
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-		if (unlikely(ol == NULL)) {
+	for (i = 0; i < nb_ops; i++) {
+#ifdef RTE_LIBRTE_AESNI_MB_DEBUG
+		if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
+			MB_LOG_ERR("PMD only supports symmetric crypto "
+				"operation requests, op (%p) is not a "
+				"symmetric operation.", op);
 			qp->stats.enqueue_err_count++;
 			goto flush_jobs;
 		}
-
-		sess = get_session(qp, &ol->op.crypto);
+#endif
+		sess = get_session(qp, ops[i]);
 		if (unlikely(sess == NULL)) {
 			qp->stats.enqueue_err_count++;
 			goto flush_jobs;
 		}
 
-		job = process_crypto_op(qp, bufs[i], &ol->op.crypto, sess);
+		job = process_crypto_op(qp, ops[i], sess);
 		if (unlikely(job == NULL)) {
 			qp->stats.enqueue_err_count++;
 			goto flush_jobs;
@@ -565,15 +576,15 @@ flush_jobs:
 }
 
 static uint16_t
-aesni_mb_pmd_dequeue_burst(void *queue_pair,
-		struct rte_mbuf **bufs,	uint16_t nb_bufs)
+aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
 {
 	struct aesni_mb_qp *qp = queue_pair;
 
 	unsigned nb_dequeued;
 
-	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts,
-			(void **)bufs, nb_bufs);
+	nb_dequeued = rte_ring_dequeue_burst(qp->processed_ops,
+			(void **)ops, nb_ops);
 	qp->stats.dequeued_count += nb_dequeued;
 
 	return nb_dequeued;

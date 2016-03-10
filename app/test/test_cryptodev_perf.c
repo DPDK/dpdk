@@ -50,7 +50,7 @@
 
 struct crypto_testsuite_params {
 	struct rte_mempool *mbuf_mp;
-	struct rte_mempool *mbuf_ol_pool;
+	struct rte_mempool *op_mpool;
 
 	uint16_t nb_queue_pairs;
 
@@ -68,8 +68,7 @@ struct crypto_unittest_params {
 
 	struct rte_cryptodev_sym_session *sess;
 
-	struct rte_crypto_sym_op *op;
-	struct rte_mbuf_offload *ol;
+	struct rte_crypto_op *op;
 
 	struct rte_mbuf *obuf[MAX_NUM_OF_OPS_PER_UT];
 	struct rte_mbuf *ibuf[MAX_NUM_OF_OPS_PER_UT];
@@ -79,7 +78,7 @@ struct crypto_unittest_params {
 
 static struct rte_mbuf *
 setup_test_string(struct rte_mempool *mpool,
-		const char *string, size_t len, uint8_t blocksize)
+		const uint8_t *data, size_t len, uint8_t blocksize)
 {
 	struct rte_mbuf *m = rte_pktmbuf_alloc(mpool);
 	size_t t_len = len - (blocksize ? (len % blocksize) : 0);
@@ -92,7 +91,7 @@ setup_test_string(struct rte_mempool *mpool,
 			return NULL;
 		}
 
-		rte_memcpy(dst, string, t_len);
+		rte_memcpy(dst, (const void *)data, t_len);
 	}
 	return m;
 }
@@ -113,23 +112,24 @@ testsuite_setup(void)
 	ts_params->mbuf_mp = rte_mempool_lookup("CRYPTO_PERF_MBUFPOOL");
 	if (ts_params->mbuf_mp == NULL) {
 		/* Not already created so create */
-		ts_params->mbuf_mp = rte_mempool_create("CRYPTO_PERF_MBUFPOOL", NUM_MBUFS,
-			MBUF_SIZE, MBUF_CACHE_SIZE,
-			sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL, rte_pktmbuf_init, NULL,
-			rte_socket_id(), 0);
+		ts_params->mbuf_mp = rte_pktmbuf_pool_create(
+				"CRYPTO_PERF_MBUFPOOL",
+				NUM_MBUFS, MBUF_CACHE_SIZE, 0, MBUF_SIZE,
+				rte_socket_id());
 		if (ts_params->mbuf_mp == NULL) {
 			RTE_LOG(ERR, USER1, "Can't create CRYPTO_PERF_MBUFPOOL\n");
 			return TEST_FAILED;
 		}
 	}
 
-	ts_params->mbuf_ol_pool = rte_pktmbuf_offload_pool_create("CRYPTO_OP_POOL",
-				NUM_MBUFS, MBUF_CACHE_SIZE,
-				DEFAULT_NUM_XFORMS *
-				sizeof(struct rte_crypto_sym_xform),
-				rte_socket_id());
-		if (ts_params->mbuf_ol_pool == NULL) {
+
+	ts_params->op_mpool = rte_crypto_op_pool_create("CRYPTO_OP_POOL",
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+			NUM_MBUFS, MBUF_CACHE_SIZE,
+			DEFAULT_NUM_XFORMS *
+			sizeof(struct rte_crypto_sym_xform),
+			rte_socket_id());
+		if (ts_params->op_mpool == NULL) {
 			RTE_LOG(ERR, USER1, "Can't create CRYPTO_OP_POOL\n");
 			return TEST_FAILED;
 		}
@@ -256,8 +256,8 @@ ut_teardown(void)
 				ut_params->sess);
 
 	/* free crypto operation structure */
-	if (ut_params->ol)
-		rte_pktmbuf_offload_free(ut_params->ol);
+	if (ut_params->op)
+		rte_crypto_op_free(ut_params->op);
 
 	for (i = 0; i < MAX_NUM_OF_OPS_PER_UT; i++) {
 		if (ut_params->obuf[i])
@@ -1698,11 +1698,12 @@ struct crypto_data_params aes_cbc_hmac_sha256_output[MAX_PACKET_SIZE_INDEX] = {
 static int
 test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 {
-	uint32_t num_to_submit = 2048, max_outstanding_reqs = 512;
-	struct rte_mbuf *rx_mbufs[num_to_submit], *tx_mbufs[num_to_submit];
+	uint32_t num_to_submit = 4096;
+	struct rte_crypto_op *c_ops[num_to_submit];
+	struct rte_crypto_op *proc_ops[num_to_submit];
 	uint64_t failed_polls, retries, start_cycles, end_cycles, total_cycles = 0;
 	uint32_t burst_sent, burst_received;
-	uint32_t b, burst_size, num_sent, num_received;
+	uint32_t i, burst_size, num_sent, num_received;
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct crypto_data_params *data_params = aes_cbc_hmac_sha256_output;
@@ -1739,46 +1740,50 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure(s) */
-	for (b = 0; b < num_to_submit ; b++) {
-		tx_mbufs[b] = setup_test_string(ts_params->mbuf_mp,
-			(const char *)data_params[0].expected.ciphertext,
+	for (i = 0; i < num_to_submit ; i++) {
+		struct rte_mbuf *m = setup_test_string(ts_params->mbuf_mp,
+				data_params[0].expected.ciphertext,
 				data_params[0].length, 0);
-		TEST_ASSERT_NOT_NULL(tx_mbufs[b], "Failed to allocate tx_buf");
+		TEST_ASSERT_NOT_NULL(m, "Failed to allocate tx_buf");
 
-		ut_params->digest = (uint8_t *)rte_pktmbuf_append(tx_mbufs[b],
+		ut_params->digest = (uint8_t *)rte_pktmbuf_append(m,
 				DIGEST_BYTE_LENGTH_SHA256);
-		TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
+		TEST_ASSERT_NOT_NULL(ut_params->digest,
+				"no room to append digest");
 
 		rte_memcpy(ut_params->digest, data_params[0].expected.digest,
 			DIGEST_BYTE_LENGTH_SHA256);
 
-		struct rte_mbuf_offload *ol = rte_pktmbuf_offload_alloc(
-			ts_params->mbuf_ol_pool, RTE_PKTMBUF_OL_CRYPTO_SYM);
-		TEST_ASSERT_NOT_NULL(ol, "Failed to allocate pktmbuf offload");
 
-		struct rte_crypto_sym_op *cop = &ol->op.crypto;
+		struct rte_crypto_op *op =
+				rte_crypto_op_alloc(ts_params->op_mpool,
+						RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 
-		rte_crypto_sym_op_attach_session(cop, ut_params->sess);
+		rte_crypto_op_attach_sym_session(op, ut_params->sess);
 
-		cop->digest.data = ut_params->digest;
-		cop->digest.phys_addr = rte_pktmbuf_mtophys_offset(tx_mbufs[b],
+		op->sym->auth.digest.data = ut_params->digest;
+		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 				data_params[0].length);
-		cop->digest.length = DIGEST_BYTE_LENGTH_SHA256;
+		op->sym->auth.digest.length = DIGEST_BYTE_LENGTH_SHA256;
 
-		cop->iv.data = (uint8_t *)rte_pktmbuf_prepend(tx_mbufs[b],
+		op->sym->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+		op->sym->auth.data.length = data_params[0].length;
+
+
+		op->sym->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(m,
 				CIPHER_IV_LENGTH_AES_CBC);
-		cop->iv.phys_addr = rte_pktmbuf_mtophys(tx_mbufs[b]);
-		cop->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+		op->sym->cipher.iv.phys_addr = rte_pktmbuf_mtophys(m);
+		op->sym->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-		rte_memcpy(cop->iv.data, aes_cbc_iv, CIPHER_IV_LENGTH_AES_CBC);
+		rte_memcpy(op->sym->cipher.iv.data, aes_cbc_iv,
+				CIPHER_IV_LENGTH_AES_CBC);
 
-		cop->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-		cop->data.to_cipher.length = data_params[0].length;
+		op->sym->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+		op->sym->cipher.data.length = data_params[0].length;
 
-		cop->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-		cop->data.to_hash.length = data_params[0].length;
+		op->sym->m_src = m;
 
-		rte_pktmbuf_offload_attach(tx_mbufs[b], ol);
+		c_ops[i] = op;
 	}
 
 	printf("\nTest to measure the IA cycle cost using AES128_CBC_SHA256_HMAC "
@@ -1789,17 +1794,17 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	printf("\nDev No\tQP No\tNum Sent\tNum Received\tTx/Rx burst");
 	printf("\tRetries (Device Busy)\tAverage IA cycle cost "
 			"(assuming 0 retries)");
-	for (b = 2; b <= 128 ; b *= 2) {
+	for (i = 2; i <= 128 ; i *= 2) {
 		num_sent = 0;
 		num_received = 0;
 		retries = 0;
 		failed_polls = 0;
-		burst_size = b;
+		burst_size = i;
 		total_cycles = 0;
 		while (num_sent < num_to_submit) {
 			start_cycles = rte_rdtsc_precise();
-			burst_sent = rte_cryptodev_enqueue_burst(dev_num, 0,
-					&tx_mbufs[num_sent],
+			burst_sent = rte_cryptodev_enqueue_burst(dev_num,
+					0, &c_ops[num_sent],
 					((num_to_submit-num_sent) < burst_size) ?
 					num_to_submit-num_sent : burst_size);
 			if (burst_sent == 0)
@@ -1814,9 +1819,8 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 			rte_delay_ms(1);
 
 			start_cycles = rte_rdtsc_precise();
-			burst_received =
-				rte_cryptodev_dequeue_burst(dev_num,
-						0, rx_mbufs, burst_size);
+			burst_received = rte_cryptodev_dequeue_burst(
+					dev_num, 0, proc_ops, burst_size);
 			if (burst_received == 0)
 				failed_polls++;
 			else
@@ -1831,9 +1835,8 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 				rte_cryptodev_enqueue_burst(dev_num, 0,
 						NULL, 0);
 
-			burst_received =
-				rte_cryptodev_dequeue_burst(dev_num,
-						0, rx_mbufs, burst_size);
+			burst_received = rte_cryptodev_dequeue_burst(
+					dev_num, 0, proc_ops, burst_size);
 			if (burst_received == 0)
 				failed_polls++;
 			else
@@ -1847,16 +1850,9 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	}
 	printf("\n");
 
-	for (b = 0; b < max_outstanding_reqs ; b++) {
-		struct rte_mbuf_offload *ol = tx_mbufs[b]->offload_ops;
-
-		if (ol) {
-			do {
-				rte_pktmbuf_offload_free(ol);
-				ol = ol->next;
-			} while (ol != NULL);
-		}
-		rte_pktmbuf_free(tx_mbufs[b]);
+	for (i = 0; i < num_to_submit ; i++) {
+		rte_pktmbuf_free(c_ops[i]->sym->m_src);
+		rte_crypto_op_free(c_ops[i]);
 	}
 	return TEST_SUCCESS;
 }
@@ -1870,7 +1866,10 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 	uint64_t failed_polls, retries, start_cycles, end_cycles;
 	const uint64_t mhz = rte_get_tsc_hz()/1000000;
 	double throughput, mmps;
-	struct rte_mbuf *rx_mbufs[DEFAULT_BURST_SIZE], *tx_mbufs[DEFAULT_BURST_SIZE];
+
+	struct rte_crypto_op *c_ops[DEFAULT_BURST_SIZE];
+	struct rte_crypto_op *proc_ops[DEFAULT_BURST_SIZE];
+
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct crypto_data_params *data_params = aes_cbc_hmac_sha256_output;
@@ -1919,63 +1918,70 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 
 		/* Generate Crypto op data structure(s) */
 		for (b = 0; b < DEFAULT_BURST_SIZE ; b++) {
-			tx_mbufs[b] = setup_test_string(ts_params->mbuf_mp,
+			struct rte_mbuf *m = setup_test_string(
+					ts_params->mbuf_mp,
+					(const uint8_t *)
 					data_params[index].plaintext,
 					data_params[index].length,
 					0);
 
-			ut_params->digest = (uint8_t *)rte_pktmbuf_append(
-				tx_mbufs[b], DIGEST_BYTE_LENGTH_SHA256);
-			TEST_ASSERT_NOT_NULL(ut_params->digest,	"no room to append digest");
+			ut_params->digest = (uint8_t *)rte_pktmbuf_append(m,
+					DIGEST_BYTE_LENGTH_SHA256);
+			TEST_ASSERT_NOT_NULL(ut_params->digest
+					, "no room to append digest");
 
-			rte_memcpy(ut_params->digest, data_params[index].expected.digest,
-			DIGEST_BYTE_LENGTH_SHA256);
+			rte_memcpy(ut_params->digest,
+					data_params[index].expected.digest,
+					DIGEST_BYTE_LENGTH_SHA256);
 
-			struct rte_mbuf_offload *ol = rte_pktmbuf_offload_alloc(
-						ts_params->mbuf_ol_pool,
-						RTE_PKTMBUF_OL_CRYPTO_SYM);
-			TEST_ASSERT_NOT_NULL(ol, "Failed to allocate pktmbuf offload");
+			struct rte_crypto_op *op = rte_crypto_op_alloc(
+					ts_params->op_mpool,
+					RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 
-			struct rte_crypto_sym_op *cop = &ol->op.crypto;
+			rte_crypto_op_attach_sym_session(op, ut_params->sess);
 
-			rte_crypto_sym_op_attach_session(cop, ut_params->sess);
+			op->sym->auth.digest.data = ut_params->digest;
+			op->sym->auth.digest.phys_addr =
+					rte_pktmbuf_mtophys_offset(m,
+						data_params[index].length);
+			op->sym->auth.digest.length = DIGEST_BYTE_LENGTH_SHA256;
 
-			cop->digest.data = ut_params->digest;
-			cop->digest.phys_addr = rte_pktmbuf_mtophys_offset(
-				tx_mbufs[b], data_params[index].length);
-			cop->digest.length = DIGEST_BYTE_LENGTH_SHA256;
+			op->sym->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+			op->sym->auth.data.length = data_params[index].length;
 
-			cop->iv.data = (uint8_t *)rte_pktmbuf_prepend(tx_mbufs[b],
+			op->sym->cipher.iv.data = (uint8_t *)
+					rte_pktmbuf_prepend(m,
+						CIPHER_IV_LENGTH_AES_CBC);
+			op->sym->cipher.iv.phys_addr = rte_pktmbuf_mtophys(m);
+			op->sym->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
+
+			rte_memcpy(op->sym->cipher.iv.data, aes_cbc_iv,
 					CIPHER_IV_LENGTH_AES_CBC);
-			cop->iv.phys_addr = rte_pktmbuf_mtophys(tx_mbufs[b]);
-			cop->iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-			rte_memcpy(cop->iv.data, aes_cbc_iv, CIPHER_IV_LENGTH_AES_CBC);
+			op->sym->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+			op->sym->cipher.data.length = data_params[index].length;
 
-			cop->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-			cop->data.to_cipher.length = data_params[index].length;
 
-			cop->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-			cop->data.to_hash.length = data_params[index].length;
+			op->sym->m_src = m;
 
-			rte_pktmbuf_offload_attach(tx_mbufs[b], ol);
+			c_ops[b] = op;
 		}
 		start_cycles = rte_rdtsc_precise();
 		while (num_sent < DEFAULT_NUM_REQS_TO_SUBMIT) {
-			burst_sent = rte_cryptodev_enqueue_burst(dev_num,
-					0, tx_mbufs,
-					((DEFAULT_NUM_REQS_TO_SUBMIT-num_sent)
-							< DEFAULT_BURST_SIZE) ?
-					DEFAULT_NUM_REQS_TO_SUBMIT-num_sent :
-							DEFAULT_BURST_SIZE);
+			uint16_t burst_size = (DEFAULT_NUM_REQS_TO_SUBMIT -
+					num_sent) < DEFAULT_BURST_SIZE ?
+						DEFAULT_NUM_REQS_TO_SUBMIT -
+						num_sent : DEFAULT_BURST_SIZE;
+
+			burst_sent = rte_cryptodev_enqueue_burst(
+					dev_num, 0, c_ops, burst_size);
 			if (burst_sent == 0)
 				retries++;
 			else
 				num_sent += burst_sent;
 
-			burst_received =
-				rte_cryptodev_dequeue_burst(dev_num,
-					0, rx_mbufs, DEFAULT_BURST_SIZE);
+			burst_received = rte_cryptodev_dequeue_burst(dev_num,
+					0, proc_ops, DEFAULT_BURST_SIZE);
 			if (burst_received == 0)
 				failed_polls++;
 			else
@@ -1987,9 +1993,9 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 				rte_cryptodev_enqueue_burst(dev_num, 0,
 						NULL, 0);
 
-			burst_received =
-				rte_cryptodev_dequeue_burst(dev_num, 0,
-						rx_mbufs, DEFAULT_BURST_SIZE);
+			burst_received = rte_cryptodev_dequeue_burst(
+					dev_num, 0, proc_ops,
+					DEFAULT_BURST_SIZE);
 			if (burst_received == 0)
 				failed_polls++;
 			else
@@ -2006,15 +2012,8 @@ test_perf_AES_CBC_HMAC_SHA256_encrypt_digest_vary_req_size(uint16_t dev_num)
 		printf("\t%.2f\t%.2f", mmps, throughput);
 		printf("\t\t%"PRIu64, retries);
 		for (b = 0; b < DEFAULT_BURST_SIZE ; b++) {
-			struct rte_mbuf_offload *ol = tx_mbufs[b]->offload_ops;
-
-			if (ol) {
-				do {
-					rte_pktmbuf_offload_free(ol);
-					ol = ol->next;
-				} while (ol != NULL);
-			}
-			rte_pktmbuf_free(tx_mbufs[b]);
+			rte_pktmbuf_free(c_ops[b]->sym->m_src);
+			rte_crypto_op_free(c_ops[b]);
 		}
 	}
 

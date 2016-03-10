@@ -1056,3 +1056,79 @@ rte_cryptodev_sym_session_free(uint8_t dev_id,
 
 	return NULL;
 }
+
+/** Initialise rte_crypto_op mempool element */
+static void
+rte_crypto_op_init(struct rte_mempool *mempool,
+		void *opaque_arg,
+		void *_op_data,
+		__rte_unused unsigned i)
+{
+	struct rte_crypto_op *op = _op_data;
+	enum rte_crypto_op_type type = *(enum rte_crypto_op_type *)opaque_arg;
+
+	memset(_op_data, 0, mempool->elt_size);
+
+	__rte_crypto_op_reset(op, type);
+
+	op->phys_addr = rte_mem_virt2phy(_op_data);
+	op->mempool = mempool;
+}
+
+
+struct rte_mempool *
+rte_crypto_op_pool_create(const char *name, enum rte_crypto_op_type type,
+		unsigned nb_elts, unsigned cache_size, uint16_t priv_size,
+		int socket_id)
+{
+	struct rte_crypto_op_pool_private *priv;
+
+	unsigned elt_size = sizeof(struct rte_crypto_op) +
+			sizeof(struct rte_crypto_sym_op) +
+			priv_size;
+
+	/* lookup mempool in case already allocated */
+	struct rte_mempool *mp = rte_mempool_lookup(name);
+
+	if (mp != NULL) {
+		priv = (struct rte_crypto_op_pool_private *)
+				rte_mempool_get_priv(mp);
+
+		if (mp->elt_size != elt_size ||
+				mp->cache_size < cache_size ||
+				mp->size < nb_elts ||
+				priv->priv_size <  priv_size) {
+			mp = NULL;
+			CDEV_LOG_ERR("Mempool %s already exists but with "
+					"incompatible parameters", name);
+			return NULL;
+		}
+		return mp;
+	}
+
+	mp = rte_mempool_create(
+			name,
+			nb_elts,
+			elt_size,
+			cache_size,
+			sizeof(struct rte_crypto_op_pool_private),
+			NULL,
+			NULL,
+			rte_crypto_op_init,
+			&type,
+			socket_id,
+			0);
+
+	if (mp == NULL) {
+		CDEV_LOG_ERR("Failed to create mempool %s", name);
+		return NULL;
+	}
+
+	priv = (struct rte_crypto_op_pool_private *)
+			rte_mempool_get_priv(mp);
+
+	priv->priv_size = priv_size;
+	priv->type = type;
+
+	return mp;
+}

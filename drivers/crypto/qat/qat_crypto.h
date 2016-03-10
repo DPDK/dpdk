@@ -115,12 +115,12 @@ extern void
 qat_crypto_sym_clear_session(struct rte_cryptodev *dev, void *session);
 
 
-uint16_t
-qat_sym_crypto_pkt_tx_burst(void *txq, struct rte_mbuf **tx_pkts,
-		uint16_t nb_pkts);
+extern uint16_t
+qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
+		uint16_t nb_ops);
 
-uint16_t
-qat_sym_crypto_pkt_rx_burst(void *rxq, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts);
+extern uint16_t
+qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
+		uint16_t nb_ops);
 
 #endif /* _QAT_CRYPTO_H_ */

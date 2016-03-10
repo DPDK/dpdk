@@ -48,7 +48,7 @@ static enum rte_cryptodev_type gbl_cryptodev_type;
 
 struct crypto_testsuite_params {
 	struct rte_mempool *mbuf_pool;
-	struct rte_mempool *mbuf_ol_pool;
+	struct rte_mempool *op_mpool;
 	struct rte_cryptodev_config conf;
 	struct rte_cryptodev_qp_conf qp_conf;
 
@@ -62,8 +62,7 @@ struct crypto_unittest_params {
 
 	struct rte_cryptodev_sym_session *sess;
 
-	struct rte_mbuf_offload *ol;
-	struct rte_crypto_sym_op *op;
+	struct rte_crypto_op *op;
 
 	struct rte_mbuf *obuf, *ibuf;
 
@@ -112,19 +111,21 @@ hexdump_mbuf_data(FILE *f, const char *title, struct rte_mbuf *m)
 }
 #endif
 
-static struct rte_mbuf *
-process_crypto_request(uint8_t dev_id, struct rte_mbuf *ibuf)
+static struct rte_crypto_op *
+process_crypto_request(uint8_t dev_id, struct rte_crypto_op *op)
 {
-	struct rte_mbuf *obuf = NULL;
 #if HEX_DUMP
 	hexdump_mbuf_data(stdout, "Enqueued Packet", ibuf);
 #endif
 
-	if (rte_cryptodev_enqueue_burst(dev_id, 0, &ibuf, 1) != 1) {
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
 		printf("Error sending packet for encryption");
 		return NULL;
 	}
-	while (rte_cryptodev_dequeue_burst(dev_id, 0, &obuf, 1) == 0)
+
+	op = NULL;
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &op, 1) == 0)
 		rte_pause();
 
 #if HEX_DUMP
@@ -132,7 +133,7 @@ process_crypto_request(uint8_t dev_id, struct rte_mbuf *ibuf)
 		hexdump_mbuf_data(stdout, "Dequeued Packet", obuf);
 #endif
 
-	return obuf;
+	return op;
 }
 
 static struct crypto_testsuite_params testsuite_params = { NULL };
@@ -162,13 +163,14 @@ testsuite_setup(void)
 		}
 	}
 
-	ts_params->mbuf_ol_pool = rte_pktmbuf_offload_pool_create(
-			"MBUF_OFFLOAD_POOL",
+	ts_params->op_mpool = rte_crypto_op_pool_create(
+			"MBUF_CRYPTO_SYM_OP_POOL",
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 			NUM_MBUFS, MBUF_CACHE_SIZE,
 			DEFAULT_NUM_XFORMS *
 			sizeof(struct rte_crypto_sym_xform),
 			rte_socket_id());
-	if (ts_params->mbuf_ol_pool == NULL) {
+	if (ts_params->op_mpool == NULL) {
 		RTE_LOG(ERR, USER1, "Can't create CRYPTO_OP_POOL\n");
 		return TEST_FAILED;
 	}
@@ -253,10 +255,9 @@ testsuite_teardown(void)
 		rte_mempool_count(ts_params->mbuf_pool));
 	}
 
-
-	if (ts_params->mbuf_ol_pool != NULL) {
+	if (ts_params->op_mpool != NULL) {
 		RTE_LOG(DEBUG, USER1, "CRYPTO_OP_POOL count %u\n",
-		rte_mempool_count(ts_params->mbuf_ol_pool));
+		rte_mempool_count(ts_params->op_mpool));
 	}
 
 }
@@ -326,8 +327,8 @@ ut_teardown(void)
 	}
 
 	/* free crypto operation structure */
-	if (ut_params->ol)
-		rte_pktmbuf_offload_free(ut_params->ol);
+	if (ut_params->op)
+		rte_crypto_op_free(ut_params->op);
 
 	/*
 	 * free mbuf - both obuf and ibuf are usually the same,
@@ -793,53 +794,59 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 			&ut_params->cipher_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
+	/* Generate crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
-	ut_params->op = &ut_params->ol->op.crypto;
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
-	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+
+	/* Set crypto operation authentication parameters */
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA1;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA1;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	/* Set crypto operation cipher parameters */
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
 			CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
 
 	/* Validate obuf */
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(
-			rte_pktmbuf_mtod(ut_params->obuf, uint8_t *) +
-			CIPHER_IV_LENGTH_AES_CBC,
+	uint8_t *ciphertext = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_src,
+			uint8_t *, CIPHER_IV_LENGTH_AES_CBC);
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(ciphertext,
 			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
 			QUOTE_512_BYTES,
 			"ciphertext data not as expected");
 
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(
-			rte_pktmbuf_mtod(ut_params->obuf, uint8_t *) +
-			CIPHER_IV_LENGTH_AES_CBC + QUOTE_512_BYTES,
+	uint8_t *digest = ciphertext + QUOTE_512_BYTES;
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(digest,
 			catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA1_digest,
 			gbl_cryptodev_type == RTE_CRYPTODEV_AESNI_MB_PMD ?
 					TRUNCATED_DIGEST_BYTE_LENGTH_SHA1 :
@@ -864,60 +871,66 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest_sessionless(void)
 	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
-	ut_params->op = &ut_params->ol->op.crypto;
-
-	TEST_ASSERT_NOT_NULL(rte_pktmbuf_offload_alloc_crypto_sym_xforms(
-			ut_params->ol, 2),
+	TEST_ASSERT_NOT_NULL(rte_crypto_op_sym_xforms_alloc(ut_params->op, 2),
 			"failed to allocate space for crypto transforms");
 
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+
 	/* Set crypto operation data parameters */
-	ut_params->op->xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	sym_op->xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
 	/* cipher parameters */
-	ut_params->op->xform->cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
-	ut_params->op->xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
-	ut_params->op->xform->cipher.key.data = aes_cbc_key;
-	ut_params->op->xform->cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
+	sym_op->xform->cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+	sym_op->xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	sym_op->xform->cipher.key.data = aes_cbc_key;
+	sym_op->xform->cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* hash parameters */
-	ut_params->op->xform->next->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	sym_op->xform->next->type = RTE_CRYPTO_SYM_XFORM_AUTH;
 
-	ut_params->op->xform->next->auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
-	ut_params->op->xform->next->auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
-	ut_params->op->xform->next->auth.key.length = HMAC_KEY_LENGTH_SHA1;
-	ut_params->op->xform->next->auth.key.data = hmac_sha1_key;
-	ut_params->op->xform->next->auth.digest_length =
+	sym_op->xform->next->auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	sym_op->xform->next->auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
+	sym_op->xform->next->auth.key.length = HMAC_KEY_LENGTH_SHA1;
+	sym_op->xform->next->auth.key.data = hmac_sha1_key;
+	sym_op->xform->next->auth.digest_length =
 			DIGEST_BYTE_LENGTH_SHA1;
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA1;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA1;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
 			CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	ut_params->obuf = ut_params->op->sym->m_src;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -986,42 +999,48 @@ test_AES_CBC_HMAC_SHA1_decrypt_digest_verify(void)
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
-	ut_params->op = &ut_params->ol->op.crypto;
+	/* attach symmetric crypto session to crypto operations */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
-	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA1;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA1;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
 			CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	ut_params->obuf = ut_params->op->sym->m_src;
+
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -1089,47 +1108,51 @@ test_AES_CBC_HMAC_SHA256_encrypt_digest(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA256;
 
 	/* Create Crypto session*/
-	ut_params->sess =
-		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
-						&ut_params->cipher_xform);
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0],
+			&ut_params->cipher_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
-	ut_params->op = &ut_params->ol->op.crypto;
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
-	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA256;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA256;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
 			CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	ut_params->obuf = ut_params->op->sym->m_src;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -1198,42 +1221,47 @@ test_AES_CBC_HMAC_SHA256_decrypt_digest_verify(void)
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
-
-	ut_params->op = &ut_params->ol->op.crypto;
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA256;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA256;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
 			ut_params->ibuf, CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	ut_params->obuf = ut_params->op->sym->m_src;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -1312,43 +1340,46 @@ test_AES_CBC_HMAC_SHA512_encrypt_digest(void)
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
-	ut_params->op = &ut_params->ol->op.crypto;
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
-	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA512;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA512;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
 			CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	ut_params->obuf = ut_params->op->sym->m_src;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -1448,43 +1479,46 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 			DIGEST_BYTE_LENGTH_SHA512);
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
-	ut_params->op = &ut_params->ol->op.crypto;
+	rte_crypto_op_attach_sym_session(ut_params->op, sess);
 
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
-	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, sess);
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA512;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA512;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
 			ut_params->ibuf, CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, 0);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	ut_params->obuf = ut_params->op->sym->m_src;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -1522,10 +1556,6 @@ test_AES_CBC_HMAC_AES_XCBC_encrypt_digest(void)
 	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
 			catch_22_quote, QUOTE_512_BYTES, 0);
 
-	ut_params->digest = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-			DIGEST_BYTE_LENGTH_AES_XCBC);
-	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
-
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
@@ -1546,54 +1576,71 @@ test_AES_CBC_HMAC_AES_XCBC_encrypt_digest(void)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_AES_XCBC;
 
 	/* Create Crypto session*/
-	ut_params->sess =
-		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
-						&ut_params->cipher_xform);
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0],
+			&ut_params->cipher_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
-	ut_params->op = &ut_params->ol->op.crypto;
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
-	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
 
-	ut_params->op->iv.data = (uint8_t *)
-		rte_pktmbuf_prepend(ut_params->ibuf,
-				CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	/* Set operation cipher parameters */
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+			sym_op->m_src, CIPHER_IV_LENGTH_AES_CBC);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(sym_op->m_src);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	/* Set operation authentication parameters */
+	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+			sym_op->m_src, DIGEST_BYTE_LENGTH_AES_XCBC);
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			sym_op->m_src,
+			CIPHER_IV_LENGTH_AES_CBC + QUOTE_512_BYTES);
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_AES_XCBC;
+
+	memset(sym_op->auth.digest.data, 0, DIGEST_BYTE_LENGTH_AES_XCBC);
+
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
-			rte_pktmbuf_mtod(ut_params->obuf, uint8_t *) +
-			CIPHER_IV_LENGTH_AES_CBC,
+			rte_pktmbuf_mtod_offset(ut_params->op->sym->m_src,
+					uint8_t *, CIPHER_IV_LENGTH_AES_CBC),
 			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
 			QUOTE_512_BYTES,
 			"Ciphertext data not as expected");
+
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
-			rte_pktmbuf_mtod(ut_params->obuf, uint8_t *) +
-			CIPHER_IV_LENGTH_AES_CBC + QUOTE_512_BYTES,
+			rte_pktmbuf_mtod_offset(
+					ut_params->op->sym->m_src, uint8_t *,
+					CIPHER_IV_LENGTH_AES_CBC +
+					QUOTE_512_BYTES),
 			catch_22_quote_2_512_bytes_HMAC_AES_XCBC_digest,
 			DIGEST_BYTE_LENGTH_AES_XCBC,
 			"Generated digest data not as expected");
@@ -1611,14 +1658,6 @@ test_AES_CBC_HMAC_AES_XCBC_decrypt_digest_verify(void)
 	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
 		(const char *)catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
 		QUOTE_512_BYTES, 0);
-
-	ut_params->digest = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-			DIGEST_BYTE_LENGTH_AES_XCBC);
-	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
-
-	rte_memcpy(ut_params->digest,
-			catch_22_quote_2_512_bytes_HMAC_AES_XCBC_digest,
-			DIGEST_BYTE_LENGTH_AES_XCBC);
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -1646,35 +1685,55 @@ test_AES_CBC_HMAC_AES_XCBC_decrypt_digest_verify(void)
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
-
-	ut_params->op = &ut_params->ol->op.crypto;
-
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
 	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+
+
+	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+				ut_params->ibuf, DIGEST_BYTE_LENGTH_AES_XCBC);
+	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+			"no room to append digest");
+
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			ut_params->ibuf, QUOTE_512_BYTES);
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_AES_XCBC;
+
+	rte_memcpy(sym_op->auth.digest.data,
+			catch_22_quote_2_512_bytes_HMAC_AES_XCBC_digest,
+			DIGEST_BYTE_LENGTH_AES_XCBC);
+
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+			ut_params->ibuf, CIPHER_IV_LENGTH_AES_CBC);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
+
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
-			CIPHER_IV_LENGTH_AES_CBC);
-
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	ut_params->obuf = ut_params->op->sym->m_src;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -1835,50 +1894,53 @@ test_not_in_place_crypto(void)
 			DIGEST_BYTE_LENGTH_SHA512);
 
 	/* Generate Crypto op data structure */
-	ut_params->ol = rte_pktmbuf_offload_alloc(ts_params->mbuf_ol_pool,
-				RTE_PKTMBUF_OL_CRYPTO_SYM);
-	TEST_ASSERT_NOT_NULL(ut_params->ol,
-			"Failed to allocate pktmbuf offload");
-
-	ut_params->op = &ut_params->ol->op.crypto;
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
 
 
 	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(ut_params->op, ut_params->sess);
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
 
-	ut_params->op->digest.data = ut_params->digest;
-	ut_params->op->digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+	sym_op->m_dst = dst_m;
+
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	ut_params->op->digest.length = DIGEST_BYTE_LENGTH_SHA512;
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA512;
 
-	ut_params->op->iv.data = (uint8_t *)rte_pktmbuf_prepend(
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
 			ut_params->ibuf, CIPHER_IV_LENGTH_AES_CBC);
-	ut_params->op->iv.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, 0);
-	ut_params->op->iv.length = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(ut_params->op->iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
-	ut_params->op->data.to_cipher.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_cipher.length = QUOTE_512_BYTES;
-
-	ut_params->op->data.to_hash.offset = CIPHER_IV_LENGTH_AES_CBC;
-	ut_params->op->data.to_hash.length = QUOTE_512_BYTES;
-
-	ut_params->op->dst.m = dst_m;
-	ut_params->op->dst.offset = 0;
-
-	rte_pktmbuf_offload_attach(ut_params->ibuf, ut_params->ol);
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
-	ut_params->obuf = process_crypto_request(ts_params->valid_devs[0],
-			ut_params->ibuf);
-	TEST_ASSERT_NOT_NULL(ut_params->obuf, "failed to retrieve obuf");
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "no crypto operation returned");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto operation processing failed");
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
-			rte_pktmbuf_mtod(ut_params->op->dst.m, char *),
+			rte_pktmbuf_mtod(ut_params->op->sym->m_dst, char *),
 			catch_22_quote,
 			QUOTE_512_BYTES,
 			"Plaintext data not as expected");

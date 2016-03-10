@@ -92,8 +92,8 @@ crypto_qat_dev_init(__attribute__((unused)) struct rte_cryptodev_driver *crypto_
 	cryptodev->dev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
 	cryptodev->dev_ops = &crypto_qat_ops;
 
-	cryptodev->enqueue_burst = qat_sym_crypto_pkt_tx_burst;
-	cryptodev->dequeue_burst = qat_sym_crypto_pkt_rx_burst;
+	cryptodev->enqueue_burst = qat_pmd_enqueue_op_burst;
+	cryptodev->dequeue_burst = qat_pmd_dequeue_op_burst;
 
 
 	internals = cryptodev->data->dev_private;

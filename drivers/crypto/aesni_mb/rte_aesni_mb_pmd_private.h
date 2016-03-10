@@ -146,8 +146,8 @@ struct aesni_mb_qp {
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 	MB_MGR mb_mgr;
 	/**< Multi-buffer instance */
-	struct rte_ring *processed_pkts;
-	/**< Ring for placing process packets */
+	struct rte_ring *processed_ops;
+	/**< Ring for placing process operations */
 	struct rte_mempool *sess_mp;
 	/**< Session Mempool */
 	struct rte_cryptodev_stats stats;

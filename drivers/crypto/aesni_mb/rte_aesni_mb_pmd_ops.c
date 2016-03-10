@@ -138,9 +138,9 @@ aesni_mb_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
 	return 0;
 }
 
-/** Create a ring to place process packets on */
+/** Create a ring to place processed operations on */
 static struct rte_ring *
-aesni_mb_pmd_qp_create_processed_pkts_ring(struct aesni_mb_qp *qp,
+aesni_mb_pmd_qp_create_processed_ops_ring(struct aesni_mb_qp *qp,
 		unsigned ring_size, int socket_id)
 {
 	struct rte_ring *r;
@@ -148,12 +148,12 @@ aesni_mb_pmd_qp_create_processed_pkts_ring(struct aesni_mb_qp *qp,
 	r = rte_ring_lookup(qp->name);
 	if (r) {
 		if (r->prod.size >= ring_size) {
-			MB_LOG_INFO("Reusing existing ring %s for processed packets",
+			MB_LOG_INFO("Reusing existing ring %s for processed ops",
 					 qp->name);
 			return r;
 		}
 
-		MB_LOG_ERR("Unable to reuse existing ring %s for processed packets",
+		MB_LOG_ERR("Unable to reuse existing ring %s for processed ops",
 				 qp->name);
 		return NULL;
 	}
@@ -189,9 +189,9 @@ aesni_mb_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->ops = &job_ops[internals->vector_mode];
 
-	qp->processed_pkts = aesni_mb_pmd_qp_create_processed_pkts_ring(qp,
+	qp->processed_ops = aesni_mb_pmd_qp_create_processed_ops_ring(qp,
 			qp_conf->nb_descriptors, socket_id);
-	if (qp->processed_pkts == NULL)
+	if (qp->processed_ops == NULL)
 		goto qp_setup_cleanup;
 
 	qp->sess_mp = dev->data->session_pool;

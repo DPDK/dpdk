@@ -1,4 +1,4 @@
-DPDK_2.2 {
+DPDK_16.04 {
 	global:
 
 	rte_cryptodevs;
@@ -27,6 +27,7 @@ DPDK_2.2 {
 	rte_cryptodev_queue_pair_setup;
 	rte_cryptodev_queue_pair_start;
 	rte_cryptodev_queue_pair_stop;
+	rte_crypto_op_pool_create;
 
 	local: *;
 };

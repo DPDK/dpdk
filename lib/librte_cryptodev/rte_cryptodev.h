@@ -40,15 +40,13 @@
  * Defines RTE Crypto Device APIs for the provisioning of cipher and
  * authentication operations.
  *
- * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
+ *
  */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "stddef.h"
 
 #include "rte_crypto.h"
 #include "rte_dev.h"
@@ -66,6 +64,9 @@ enum rte_cryptodev_type {
 	RTE_CRYPTODEV_AESNI_MB_PMD,	/**< AES-NI multi buffer PMD */
 	RTE_CRYPTODEV_QAT_SYM_PMD,	/**< QAT PMD Symmetric Crypto */
 };
+
+
+extern const char **rte_cyptodev_names;
 
 /* Logging Macros */
 
@@ -213,8 +214,6 @@ struct rte_cryptodev_config {
 
 /**
  * Configure a device.
- *
- * EXPERIMENTAL: this API file may change without prior notice
  *
  * This function must be invoked first before any other function in the
  * API. This function can also be re-invoked when a device is in the
@@ -411,12 +410,12 @@ rte_cryptodev_callback_unregister(uint8_t dev_id,
 		rte_cryptodev_cb_fn cb_fn, void *cb_arg);
 
 
-typedef uint16_t (*dequeue_pkt_burst_t)(void *qp, struct rte_mbuf **pkts,
-		uint16_t nb_pkts);
+typedef uint16_t (*dequeue_pkt_burst_t)(void *qp,
+		struct rte_crypto_op **ops,	uint16_t nb_ops);
 /**< Dequeue processed packets from queue pair of a device. */
 
-typedef uint16_t (*enqueue_pkt_burst_t)(void *qp, struct rte_mbuf **pkts,
-		uint16_t nb_pkts);
+typedef uint16_t (*enqueue_pkt_burst_t)(void *qp,
+		struct rte_crypto_op **ops,	uint16_t nb_ops);
 /**< Enqueue packets for processing on queue pair of a device. */
 
 
@@ -489,66 +488,65 @@ struct rte_cryptodev_data {
 extern struct rte_cryptodev *rte_cryptodevs;
 /**
  *
- * Dequeue a burst of processed packets from a queue of the crypto device.
- * The dequeued packets are stored in *rte_mbuf* structures whose pointers are
- * supplied in the *pkts* array.
+ * Dequeue a burst of processed crypto operations from a queue on the crypto
+ * device. The dequeued operation are stored in *rte_crypto_op* structures
+ * whose pointers are supplied in the *ops* array.
  *
- * The rte_crypto_dequeue_burst() function returns the number of packets
- * actually dequeued, which is the number of *rte_mbuf* data structures
- * effectively supplied into the *pkts* array.
+ * The rte_cryptodev_dequeue_burst() function returns the number of ops
+ * actually dequeued, which is the number of *rte_crypto_op* data structures
+ * effectively supplied into the *ops* array.
  *
- * A return value equal to *nb_pkts* indicates that the queue contained
- * at least *rx_pkts* packets, and this is likely to signify that other
- * received packets remain in the input queue. Applications implementing
- * a "retrieve as much received packets as possible" policy can check this
- * specific case and keep invoking the rte_crypto_dequeue_burst() function
- * until a value less than *nb_pkts* is returned.
+ * A return value equal to *nb_ops* indicates that the queue contained
+ * at least *nb_ops* operations, and this is likely to signify that other
+ * processed operations remain in the devices output queue. Applications
+ * implementing a "retrieve as many processed operations as possible" policy
+ * can check this specific case and keep invoking the
+ * rte_cryptodev_dequeue_burst() function until a value less than
+ * *nb_ops* is returned.
  *
- * The rte_crypto_dequeue_burst() function does not provide any error
+ * The rte_cryptodev_dequeue_burst() function does not provide any error
  * notification to avoid the corresponding overhead.
  *
- * @param	dev_id		The identifier of the device.
+ * @param	dev_id		The symmetric crypto device identifier
  * @param	qp_id		The index of the queue pair from which to
  *				retrieve processed packets. The value must be
  *				in the range [0, nb_queue_pair - 1] previously
  *				supplied to rte_cryptodev_configure().
- * @param	pkts		The address of an array of pointers to
- *				*rte_mbuf* structures that must be large enough
- *				to store *nb_pkts* pointers in it.
- * @param	nb_pkts		The maximum number of packets to dequeue.
+ * @param	ops		The address of an array of pointers to
+ *				*rte_crypto_op* structures that must be
+ *				large enough to store *nb_ops* pointers in it.
+ * @param	nb_ops		The maximum number of operations to dequeue.
  *
  * @return
- *   - The number of packets actually dequeued, which is the number
- *   of pointers to *rte_mbuf* structures effectively supplied to the
- *   *pkts* array.
+ *   - The number of operations actually dequeued, which is the number
+ *   of pointers to *rte_crypto_op* structures effectively supplied to the
+ *   *ops* array.
  */
 static inline uint16_t
 rte_cryptodev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
-		struct rte_mbuf **pkts, uint16_t nb_pkts)
+		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
 
-	nb_pkts = (*dev->dequeue_burst)
-			(dev->data->queue_pairs[qp_id], pkts, nb_pkts);
+	nb_ops = (*dev->dequeue_burst)
+			(dev->data->queue_pairs[qp_id], ops, nb_ops);
 
-	return nb_pkts;
+	return nb_ops;
 }
 
 /**
- * Enqueue a burst of packets for processing on a crypto device.
+ * Enqueue a burst of operations for processing on a crypto device.
  *
- * The rte_crypto_enqueue_burst() function is invoked to place packets
- * on the queue *queue_id* of the device designated by its *dev_id*.
+ * The rte_cryptodev_enqueue_burst() function is invoked to place
+ * crypto operations on the queue *qp_id* of the device designated by
+ * its *dev_id*.
  *
- * The *nb_pkts* parameter is the number of packets to process which are
- * supplied in the *pkts* array of *rte_mbuf* structures.
+ * The *nb_ops* parameter is the number of operations to process which are
+ * supplied in the *ops* array of *rte_crypto_op* structures.
  *
- * The rte_crypto_enqueue_burst() function returns the number of packets it
- * actually sent. A return value equal to *nb_pkts* means that all packets
- * have been sent.
- *
- * Each mbuf in the *pkts* array must have a valid *rte_mbuf_offload* structure
- * attached which contains a valid crypto operation.
+ * The rte_cryptodev_enqueue_burst() function returns the number of
+ * operations it actually enqueued for processing. A return value equal to
+ * *nb_ops* means that all packets have been enqueued.
  *
  * @param	dev_id		The identifier of the device.
  * @param	qp_id		The index of the queue pair which packets are
@@ -556,25 +554,25 @@ rte_cryptodev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
  *				must be in the range [0, nb_queue_pairs - 1]
  *				previously supplied to
  *				 *rte_cryptodev_configure*.
- * @param	pkts		The address of an array of *nb_pkts* pointers
- *				to *rte_mbuf* structures which contain the
- *				output packets.
- * @param	nb_pkts		The number of packets to transmit.
+ * @param	ops		The address of an array of *nb_ops* pointers
+ *				to *rte_crypto_op* structures which contain
+ *				the crypto operations to be processed.
+ * @param	nb_ops		The number of operations to process.
  *
  * @return
- * The number of packets actually enqueued on the crypto device. The return
- * value can be less than the value of the *nb_pkts* parameter when the
- * crypto devices queue is full or has been filled up.
- * The number of packets is 0 if the device hasn't been started.
+ * The number of operations actually enqueued on the crypto device. The return
+ * value can be less than the value of the *nb_ops* parameter when the
+ * crypto devices queue is full or if invalid parameters are specified in
+ * a *rte_crypto_op*.
  */
 static inline uint16_t
 rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
-		struct rte_mbuf **pkts, uint16_t nb_pkts)
+		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
 
 	return (*dev->enqueue_burst)(
-			dev->data->queue_pairs[qp_id], pkts, nb_pkts);
+			dev->data->queue_pairs[qp_id], ops, nb_ops);
 }
 
 

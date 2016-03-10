@@ -104,6 +104,11 @@ struct pkt_buffer {
 	struct rte_mbuf *buffer[MAX_PKT_BURST];
 };
 
+struct op_buffer {
+	unsigned len;
+	struct rte_crypto_op *buffer[MAX_PKT_BURST];
+};
+
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 
@@ -159,8 +164,8 @@ struct lcore_queue_conf {
 	unsigned nb_crypto_devs;
 	unsigned cryptodev_list[MAX_RX_QUEUE_PER_LCORE];
 
-	struct pkt_buffer crypto_pkt_buf[RTE_MAX_ETHPORTS];
-	struct pkt_buffer tx_pkt_buf[RTE_MAX_ETHPORTS];
+	struct op_buffer op_buf[RTE_MAX_ETHPORTS];
+	struct pkt_buffer pkt_buf[RTE_MAX_ETHPORTS];
 } __rte_cache_aligned;
 
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
@@ -180,7 +185,7 @@ static const struct rte_eth_conf port_conf = {
 };
 
 struct rte_mempool *l2fwd_pktmbuf_pool;
-struct rte_mempool *l2fwd_mbuf_ol_pool;
+struct rte_mempool *l2fwd_crypto_op_pool;
 
 /* Per-port statistics struct */
 struct l2fwd_port_statistics {
@@ -294,20 +299,21 @@ static int
 l2fwd_crypto_send_burst(struct lcore_queue_conf *qconf, unsigned n,
 		struct l2fwd_crypto_params *cparams)
 {
-	struct rte_mbuf **pkt_buffer;
+	struct rte_crypto_op **op_buffer;
 	unsigned ret;
 
-	pkt_buffer = (struct rte_mbuf **)
-			qconf->crypto_pkt_buf[cparams->dev_id].buffer;
+	op_buffer = (struct rte_crypto_op **)
+			qconf->op_buf[cparams->dev_id].buffer;
 
-	ret = rte_cryptodev_enqueue_burst(cparams->dev_id, cparams->qp_id,
-			pkt_buffer, (uint16_t) n);
+	ret = rte_cryptodev_enqueue_burst(cparams->dev_id,
+			cparams->qp_id,	op_buffer, (uint16_t) n);
+
 	crypto_statistics[cparams->dev_id].enqueued += ret;
 	if (unlikely(ret < n)) {
 		crypto_statistics[cparams->dev_id].errors += (n - ret);
 		do {
-			rte_pktmbuf_offload_free(pkt_buffer[ret]->offload_ops);
-			rte_pktmbuf_free(pkt_buffer[ret]);
+			rte_pktmbuf_free(op_buffer[ret]->sym->m_src);
+			rte_crypto_op_free(op_buffer[ret]);
 		} while (++ret < n);
 	}
 
@@ -315,7 +321,8 @@ l2fwd_crypto_send_burst(struct lcore_queue_conf *qconf, unsigned n,
 }
 
 static int
-l2fwd_crypto_enqueue(struct rte_mbuf *m, struct l2fwd_crypto_params *cparams)
+l2fwd_crypto_enqueue(struct rte_crypto_op *op,
+		struct l2fwd_crypto_params *cparams)
 {
 	unsigned lcore_id, len;
 	struct lcore_queue_conf *qconf;
@@ -323,23 +330,23 @@ l2fwd_crypto_enqueue(struct rte_mbuf *m, struct l2fwd_crypto_params *cparams)
 	lcore_id = rte_lcore_id();
 
 	qconf = &lcore_queue_conf[lcore_id];
-	len = qconf->crypto_pkt_buf[cparams->dev_id].len;
-	qconf->crypto_pkt_buf[cparams->dev_id].buffer[len] = m;
+	len = qconf->op_buf[cparams->dev_id].len;
+	qconf->op_buf[cparams->dev_id].buffer[len] = op;
 	len++;
 
-	/* enough pkts to be sent */
+	/* enough ops to be sent */
 	if (len == MAX_PKT_BURST) {
 		l2fwd_crypto_send_burst(qconf, MAX_PKT_BURST, cparams);
 		len = 0;
 	}
 
-	qconf->crypto_pkt_buf[cparams->dev_id].len = len;
+	qconf->op_buf[cparams->dev_id].len = len;
 	return 0;
 }
 
 static int
 l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
-		struct rte_mbuf_offload *ol,
+		struct rte_crypto_op *op,
 		struct l2fwd_crypto_params *cparams)
 {
 	struct ether_hdr *eth_hdr;
@@ -377,43 +384,43 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	}
 
 	/* Set crypto operation data parameters */
-	rte_crypto_sym_op_attach_session(&ol->op.crypto, cparams->session);
+	rte_crypto_op_attach_sym_session(op, cparams->session);
 
 	/* Append space for digest to end of packet */
-	ol->op.crypto.digest.data = (uint8_t *)rte_pktmbuf_append(m,
+	op->sym->auth.digest.data = (uint8_t *)rte_pktmbuf_append(m,
 			cparams->digest_length);
-	ol->op.crypto.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 			rte_pktmbuf_pkt_len(m) - cparams->digest_length);
-	ol->op.crypto.digest.length = cparams->digest_length;
+	op->sym->auth.digest.length = cparams->digest_length;
 
-	ol->op.crypto.iv.data = cparams->iv_key.data;
-	ol->op.crypto.iv.phys_addr = cparams->iv_key.phys_addr;
-	ol->op.crypto.iv.length = cparams->iv_key.length;
+	op->sym->auth.data.offset = ipdata_offset;
+	op->sym->auth.data.length = data_len;
 
-	ol->op.crypto.data.to_cipher.offset = ipdata_offset;
-	ol->op.crypto.data.to_cipher.length = data_len;
 
-	ol->op.crypto.data.to_hash.offset = ipdata_offset;
-	ol->op.crypto.data.to_hash.length = data_len;
+	op->sym->cipher.iv.data = cparams->iv_key.data;
+	op->sym->cipher.iv.phys_addr = cparams->iv_key.phys_addr;
+	op->sym->cipher.iv.length = cparams->iv_key.length;
 
-	rte_pktmbuf_offload_attach(m, ol);
+	op->sym->cipher.data.offset = ipdata_offset;
+	op->sym->cipher.data.length = data_len;
 
-	return l2fwd_crypto_enqueue(m, cparams);
+	op->sym->m_src = m;
+
+	return l2fwd_crypto_enqueue(op, cparams);
 }
 
 
 /* Send the burst of packets on an output interface */
 static int
-l2fwd_send_burst(struct lcore_queue_conf *qconf, unsigned n, uint8_t port)
+l2fwd_send_burst(struct lcore_queue_conf *qconf, unsigned n,
+		uint8_t port)
 {
 	struct rte_mbuf **pkt_buffer;
 	unsigned ret;
-	unsigned queueid = 0;
 
-	pkt_buffer = (struct rte_mbuf **)qconf->tx_pkt_buf[port].buffer;
+	pkt_buffer = (struct rte_mbuf **)qconf->pkt_buf[port].buffer;
 
-	ret = rte_eth_tx_burst(port, (uint16_t) queueid, pkt_buffer,
-			(uint16_t)n);
+	ret = rte_eth_tx_burst(port, 0, pkt_buffer, (uint16_t)n);
 	port_statistics[port].tx += ret;
 	if (unlikely(ret < n)) {
 		port_statistics[port].dropped += (n - ret);
@@ -435,8 +442,8 @@ l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
 	lcore_id = rte_lcore_id();
 
 	qconf = &lcore_queue_conf[lcore_id];
-	len = qconf->tx_pkt_buf[port].len;
-	qconf->tx_pkt_buf[port].buffer[len] = m;
+	len = qconf->pkt_buf[port].len;
+	qconf->pkt_buf[port].buffer[len] = m;
 	len++;
 
 	/* enough pkts to be sent */
@@ -445,7 +452,7 @@ l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
 		len = 0;
 	}
 
-	qconf->tx_pkt_buf[port].len = len;
+	qconf->pkt_buf[port].len = len;
 	return 0;
 }
 
@@ -505,6 +512,8 @@ static void
 l2fwd_main_loop(struct l2fwd_crypto_options *options)
 {
 	struct rte_mbuf *m, *pkts_burst[MAX_PKT_BURST];
+	struct rte_crypto_op *ops_burst[MAX_PKT_BURST];
+
 	unsigned lcore_id = rte_lcore_id();
 	uint64_t prev_tsc = 0, diff_tsc, cur_tsc, timer_tsc = 0;
 	unsigned i, j, portid, nb_rx;
@@ -565,12 +574,12 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 		if (unlikely(diff_tsc > drain_tsc)) {
 
 			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-				if (qconf->tx_pkt_buf[portid].len == 0)
+				if (qconf->pkt_buf[portid].len == 0)
 					continue;
 				l2fwd_send_burst(&lcore_queue_conf[lcore_id],
-						 qconf->tx_pkt_buf[portid].len,
+						 qconf->pkt_buf[portid].len,
 						 (uint8_t) portid);
-				qconf->tx_pkt_buf[portid].len = 0;
+				qconf->pkt_buf[portid].len = 0;
 			}
 
 			/* if timer is enabled */
@@ -599,8 +608,6 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 		 * Read packet from RX queues
 		 */
 		for (i = 0; i < qconf->nb_rx_ports; i++) {
-			struct rte_mbuf_offload *ol;
-
 			portid = qconf->rx_port_list[i];
 
 			cparams = &port_cparams[i];
@@ -610,44 +617,49 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 
 			port_statistics[portid].rx += nb_rx;
 
-			/* Enqueue packets from Crypto device*/
-			for (j = 0; j < nb_rx; j++) {
-				m = pkts_burst[j];
-				ol = rte_pktmbuf_offload_alloc(
-						l2fwd_mbuf_ol_pool,
-						RTE_PKTMBUF_OL_CRYPTO_SYM);
+			if (nb_rx) {
 				/*
-				 * If we can't allocate a offload, then drop
+				 * If we can't allocate a crypto_ops, then drop
 				 * the rest of the burst and dequeue and
 				 * process the packets to free offload structs
 				 */
-				if (unlikely(ol == NULL)) {
-					for (; j < nb_rx; j++) {
-						rte_pktmbuf_free(pkts_burst[j]);
-						port_statistics[portid].dropped++;
-					}
-					break;
+				if (rte_crypto_op_bulk_alloc(
+						l2fwd_crypto_op_pool,
+						RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+						ops_burst, nb_rx) !=
+								nb_rx) {
+					for (j = 0; j < nb_rx; j++)
+						rte_pktmbuf_free(pkts_burst[i]);
+
+					nb_rx = 0;
 				}
 
-				rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-				rte_prefetch0((void *)ol);
+				/* Enqueue packets from Crypto device*/
+				for (j = 0; j < nb_rx; j++) {
+					m = pkts_burst[j];
 
-				l2fwd_simple_crypto_enqueue(m, ol, cparams);
+					l2fwd_simple_crypto_enqueue(m,
+							ops_burst[j], cparams);
+				}
 			}
 
 			/* Dequeue packets from Crypto device */
-			nb_rx = rte_cryptodev_dequeue_burst(
-					cparams->dev_id, cparams->qp_id,
-					pkts_burst, MAX_PKT_BURST);
-			crypto_statistics[cparams->dev_id].dequeued += nb_rx;
+			do {
+				nb_rx = rte_cryptodev_dequeue_burst(
+						cparams->dev_id, cparams->qp_id,
+						ops_burst, MAX_PKT_BURST);
 
-			/* Forward crypto'd packets */
-			for (j = 0; j < nb_rx; j++) {
-				m = pkts_burst[j];
-				rte_pktmbuf_offload_free(m->offload_ops);
-				rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-				l2fwd_simple_forward(m, portid);
-			}
+				crypto_statistics[cparams->dev_id].dequeued +=
+						nb_rx;
+
+				/* Forward crypto'd packets */
+				for (j = 0; j < nb_rx; j++) {
+					m = ops_burst[j]->sym->m_src;
+
+					rte_crypto_op_free(ops_burst[j]);
+					l2fwd_simple_forward(m, portid);
+				}
+			} while (nb_rx == MAX_PKT_BURST);
 		}
 	}
 }
@@ -1384,15 +1396,17 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid L2FWD-CRYPTO arguments\n");
 
 	/* create the mbuf pool */
-	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 128,
-		0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 512,
+			sizeof(struct rte_crypto_op),
+			RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (l2fwd_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
 	/* create crypto op pool */
-	l2fwd_mbuf_ol_pool = rte_pktmbuf_offload_pool_create(
-			"mbuf_offload_pool", NB_MBUF, 128, 0, rte_socket_id());
-	if (l2fwd_mbuf_ol_pool == NULL)
+	l2fwd_crypto_op_pool = rte_crypto_op_pool_create("crypto_op_pool",
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC, NB_MBUF, 128, 0,
+			rte_socket_id());
+	if (l2fwd_crypto_op_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create crypto op pool\n");
 
 	/* Enable Ethernet ports */

@@ -72,7 +72,7 @@ static inline uint32_t
 adf_modulo(uint32_t data, uint32_t shift);
 
 static inline int
-qat_alg_write_mbuf_entry(struct rte_mbuf *mbuf, uint8_t *out_msg);
+qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg);
 
 void qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
 		void *session)
@@ -275,15 +275,16 @@ unsigned qat_crypto_sym_get_session_private_size(
 }
 
 
-uint16_t qat_sym_crypto_pkt_tx_burst(void *qp, struct rte_mbuf **tx_pkts,
-		uint16_t nb_pkts)
+uint16_t
+qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
 {
 	register struct qat_queue *queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
-	register uint32_t nb_pkts_sent = 0;
-	register struct rte_mbuf **cur_tx_pkt = tx_pkts;
+	register uint32_t nb_ops_sent = 0;
+	register struct rte_crypto_op **cur_op = ops;
 	register int ret;
-	uint16_t nb_pkts_possible = nb_pkts;
+	uint16_t nb_ops_possible = nb_ops;
 	register uint8_t *base_addr;
 	register uint32_t tail;
 	int overflow;
@@ -294,47 +295,44 @@ uint16_t qat_sym_crypto_pkt_tx_burst(void *qp, struct rte_mbuf **tx_pkts,
 	tail = queue->tail;
 
 	/* Find how many can actually fit on the ring */
-	overflow = rte_atomic16_add_return(&tmp_qp->inflights16, nb_pkts)
+	overflow = rte_atomic16_add_return(&tmp_qp->inflights16, nb_ops)
 				- queue->max_inflights;
 	if (overflow > 0) {
 		rte_atomic16_sub(&tmp_qp->inflights16, overflow);
-		nb_pkts_possible = nb_pkts - overflow;
-		if (nb_pkts_possible == 0)
+		nb_ops_possible = nb_ops - overflow;
+		if (nb_ops_possible == 0)
 			return 0;
 	}
 
-	while (nb_pkts_sent != nb_pkts_possible) {
-
-		ret = qat_alg_write_mbuf_entry(*cur_tx_pkt,
-			base_addr + tail);
+	while (nb_ops_sent != nb_ops_possible) {
+		ret = qat_write_hw_desc_entry(*cur_op, base_addr + tail);
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
-			if (nb_pkts_sent == 0)
+			if (nb_ops_sent == 0)
 				return 0;
 			goto kick_tail;
 		}
 
 		tail = adf_modulo(tail + queue->msg_size, queue->modulo);
-		nb_pkts_sent++;
-		cur_tx_pkt++;
+		nb_ops_sent++;
+		cur_op++;
 	}
 kick_tail:
 	WRITE_CSR_RING_TAIL(tmp_qp->mmap_bar_addr, queue->hw_bundle_number,
 			queue->hw_queue_number, tail);
 	queue->tail = tail;
-	tmp_qp->stats.enqueued_count += nb_pkts_sent;
-	return nb_pkts_sent;
+	tmp_qp->stats.enqueued_count += nb_ops_sent;
+	return nb_ops_sent;
 }
 
 uint16_t
-qat_sym_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts,
-				uint16_t nb_pkts)
+qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
 {
-	struct rte_mbuf_offload *ol;
 	struct qat_queue *queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
 	uint32_t msg_counter = 0;
-	struct rte_mbuf *rx_mbuf;
+	struct rte_crypto_op *rx_op;
 	struct icp_qat_fw_comn_resp *resp_msg;
 
 	queue = &(tmp_qp->rx_q);
@@ -342,17 +340,20 @@ qat_sym_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts,
 			((uint8_t *)queue->base_addr + queue->head);
 
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
-			msg_counter != nb_pkts) {
-		rx_mbuf = (struct rte_mbuf *)(uintptr_t)(resp_msg->opaque_data);
-		ol = rte_pktmbuf_offload_get(rx_mbuf,
-					RTE_PKTMBUF_OL_CRYPTO_SYM);
+			msg_counter != nb_ops) {
+		rx_op = (struct rte_crypto_op *)(uintptr_t)
+				(resp_msg->opaque_data);
+
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
+		rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
+				sizeof(struct icp_qat_fw_comn_resp));
+#endif
 		if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
 				ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
 					resp_msg->comn_hdr.comn_status)) {
-			ol->op.crypto.status =
-					RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+			rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
-			ol->op.crypto.status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+			rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		}
 		*(uint32_t *)resp_msg = ADF_RING_EMPTY_SIG;
 		queue->head = adf_modulo(queue->head +
@@ -361,9 +362,8 @@ qat_sym_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts,
 		resp_msg = (struct icp_qat_fw_comn_resp *)
 					((uint8_t *)queue->base_addr +
 							queue->head);
-
-		*rx_pkts = rx_mbuf;
-		rx_pkts++;
+		*ops = rx_op;
+		ops++;
 		msg_counter++;
 	}
 	if (msg_counter > 0) {
@@ -377,38 +377,36 @@ qat_sym_crypto_pkt_rx_burst(void *qp, struct rte_mbuf **rx_pkts,
 }
 
 static inline int
-qat_alg_write_mbuf_entry(struct rte_mbuf *mbuf, uint8_t *out_msg)
+qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 {
-	struct rte_mbuf_offload *ol;
-
 	struct qat_session *ctx;
 	struct icp_qat_fw_la_cipher_req_params *cipher_param;
 	struct icp_qat_fw_la_auth_req_params *auth_param;
 	register struct icp_qat_fw_la_bulk_req *qat_req;
 
-	ol = rte_pktmbuf_offload_get(mbuf, RTE_PKTMBUF_OL_CRYPTO_SYM);
-	if (unlikely(ol == NULL)) {
-		PMD_DRV_LOG(ERR, "No valid crypto off-load operation attached "
-				"to (%p) mbuf.", mbuf);
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
+	if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
+		PMD_DRV_LOG(ERR, "QAT PMD only supports symmetric crypto "
+				"operation requests, op (%p) is not a "
+				"symmetric operation.", op);
 		return -EINVAL;
 	}
-
-	if (unlikely(ol->op.crypto.type == RTE_CRYPTO_SYM_OP_SESSIONLESS)) {
+#endif
+	if (unlikely(op->sym->type == RTE_CRYPTO_SYM_OP_SESSIONLESS)) {
 		PMD_DRV_LOG(ERR, "QAT PMD only supports session oriented"
-				" requests mbuf (%p) is sessionless.", mbuf);
+				" requests, op (%p) is sessionless.", op);
 		return -EINVAL;
 	}
 
-	if (unlikely(ol->op.crypto.session->type
-					!= RTE_CRYPTODEV_QAT_SYM_PMD)) {
+	if (unlikely(op->sym->session->type != RTE_CRYPTODEV_QAT_SYM_PMD)) {
 		PMD_DRV_LOG(ERR, "Session was not created for this device");
 		return -EINVAL;
 	}
 
-	ctx = (struct qat_session *)ol->op.crypto.session->_private;
+	ctx = (struct qat_session *)op->sym->session->_private;
 	qat_req = (struct icp_qat_fw_la_bulk_req *)out_msg;
 	*qat_req = ctx->fw_req;
-	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)mbuf;
+	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
 
 	/*
 	 * The following code assumes:
@@ -416,37 +414,37 @@ qat_alg_write_mbuf_entry(struct rte_mbuf *mbuf, uint8_t *out_msg)
 	 * - always in place.
 	 */
 	qat_req->comn_mid.dst_length =
-			qat_req->comn_mid.src_length = mbuf->data_len;
+			qat_req->comn_mid.src_length =
+					rte_pktmbuf_data_len(op->sym->m_src);
 	qat_req->comn_mid.dest_data_addr =
 			qat_req->comn_mid.src_data_addr =
-					rte_pktmbuf_mtophys(mbuf);
-
+					rte_pktmbuf_mtophys(op->sym->m_src);
 	cipher_param = (void *)&qat_req->serv_specif_rqpars;
 	auth_param = (void *)((uint8_t *)cipher_param + sizeof(*cipher_param));
 
-	cipher_param->cipher_length = ol->op.crypto.data.to_cipher.length;
-	cipher_param->cipher_offset = ol->op.crypto.data.to_cipher.offset;
-	if (ol->op.crypto.iv.length &&
-		(ol->op.crypto.iv.length <=
-				sizeof(cipher_param->u.cipher_IV_array))) {
+	cipher_param->cipher_length = op->sym->cipher.data.length;
+	cipher_param->cipher_offset = op->sym->cipher.data.offset;
+	if (op->sym->cipher.iv.length && (op->sym->cipher.iv.length <=
+			sizeof(cipher_param->u.cipher_IV_array))) {
 		rte_memcpy(cipher_param->u.cipher_IV_array,
-				ol->op.crypto.iv.data, ol->op.crypto.iv.length);
+				op->sym->cipher.iv.data,
+				op->sym->cipher.iv.length);
 	} else {
 		ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
 				qat_req->comn_hdr.serv_specif_flags,
 				ICP_QAT_FW_CIPH_IV_64BIT_PTR);
-		cipher_param->u.s.cipher_IV_ptr = ol->op.crypto.iv.phys_addr;
+		cipher_param->u.s.cipher_IV_ptr = op->sym->cipher.iv.phys_addr;
 	}
-	if (ol->op.crypto.digest.phys_addr) {
+	if (op->sym->auth.digest.phys_addr) {
 		ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
 				qat_req->comn_hdr.serv_specif_flags,
 				ICP_QAT_FW_LA_NO_DIGEST_IN_BUFFER);
-		auth_param->auth_res_addr = ol->op.crypto.digest.phys_addr;
+		auth_param->auth_res_addr = op->sym->auth.digest.phys_addr;
 	}
-	auth_param->auth_off = ol->op.crypto.data.to_hash.offset;
-	auth_param->auth_len = ol->op.crypto.data.to_hash.length;
-	auth_param->u1.aad_adr = ol->op.crypto.additional_auth.phys_addr;
+	auth_param->auth_off = op->sym->auth.data.offset;
+	auth_param->auth_len = op->sym->auth.data.length;
 
+	auth_param->u1.aad_adr = op->sym->auth.aad.phys_addr;
 	/* (GCM) aad length(240 max) will be at this location after precompute */
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 		ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
@@ -457,9 +455,19 @@ qat_alg_write_mbuf_entry(struct rte_mbuf *mbuf, uint8_t *out_msg)
 	}
 	auth_param->hash_state_sz = (auth_param->u2.aad_sz) >> 3;
 
-#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_DRIVER
+
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 	rte_hexdump(stdout, "qat_req:", qat_req,
 			sizeof(struct icp_qat_fw_la_bulk_req));
+	rte_hexdump(stdout, "src_data:",
+			rte_pktmbuf_mtod(op->sym->m_src, uint8_t*),
+			rte_pktmbuf_data_len(op->sym->m_src));
+	rte_hexdump(stdout, "iv:", op->sym->cipher.iv.data,
+			op->sym->cipher.iv.length);
+	rte_hexdump(stdout, "digest:", op->sym->auth.digest.data,
+			op->sym->auth.digest.length);
+	rte_hexdump(stdout, "aad:", op->sym->auth.aad.data,
+			op->sym->auth.aad.length);
 #endif
 	return 0;
 }
