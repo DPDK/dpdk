@@ -129,6 +129,16 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 	return;
 }
 
+static inline void
+copy_virtio_net_hdr(struct vhost_virtqueue *vq, uint64_t desc_addr,
+		    struct virtio_net_hdr_mrg_rxbuf hdr)
+{
+	if (vq->vhost_hlen == sizeof(struct virtio_net_hdr_mrg_rxbuf))
+		*(struct virtio_net_hdr_mrg_rxbuf *)(uintptr_t)desc_addr = hdr;
+	else
+		*(struct virtio_net_hdr *)(uintptr_t)desc_addr = hdr.hdr;
+}
+
 static inline int __attribute__((always_inline))
 copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		  struct rte_mbuf *m, uint16_t desc_idx, uint32_t *copied)
@@ -145,8 +155,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 	virtio_enqueue_offload(m, &virtio_hdr.hdr);
-	rte_memcpy((void *)(uintptr_t)desc_addr,
-			(const void *)&virtio_hdr, vq->vhost_hlen);
+	copy_virtio_net_hdr(vq, desc_addr, virtio_hdr);
 	vhost_log_write(dev, desc->addr, vq->vhost_hlen);
 	PRINT_PACKET(dev, (uintptr_t)desc_addr, vq->vhost_hlen, 0);
 
@@ -444,8 +453,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		dev->device_fh, virtio_hdr.num_buffers);
 
 	virtio_enqueue_offload(m, &virtio_hdr.hdr);
-	rte_memcpy((void *)(uintptr_t)desc_addr,
-		(const void *)&virtio_hdr, vq->vhost_hlen);
+	copy_virtio_net_hdr(vq, desc_addr, virtio_hdr);
 	vhost_log_write(dev, vq->buf_vec[vec_idx].buf_addr, vq->vhost_hlen);
 	PRINT_PACKET(dev, (uintptr_t)desc_addr, vq->vhost_hlen, 0);
 
