@@ -352,6 +352,7 @@ static int ixgbe_timesync_read_time(struct rte_eth_dev *dev,
 				   struct timespec *timestamp);
 static int ixgbe_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
+
 static int ixgbe_dev_l2_tunnel_eth_type_conf
 	(struct rte_eth_dev *dev, struct rte_eth_l2_tunnel_conf *l2_tunnel);
 static int ixgbe_dev_l2_tunnel_offload_set
@@ -362,6 +363,11 @@ static int ixgbe_dev_l2_tunnel_offload_set
 static int ixgbe_dev_l2_tunnel_filter_handle(struct rte_eth_dev *dev,
 					     enum rte_filter_op filter_op,
 					     void *arg);
+
+static int ixgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+					 struct rte_eth_udp_tunnel *udp_tunnel);
+static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+					 struct rte_eth_udp_tunnel *udp_tunnel);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -522,6 +528,8 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.timesync_write_time  = ixgbe_timesync_write_time,
 	.l2_tunnel_eth_type_conf = ixgbe_dev_l2_tunnel_eth_type_conf,
 	.l2_tunnel_offload_set   = ixgbe_dev_l2_tunnel_offload_set,
+	.udp_tunnel_port_add  = ixgbe_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del  = ixgbe_dev_udp_tunnel_port_del,
 };
 
 /*
@@ -6788,6 +6796,121 @@ ixgbe_dev_l2_tunnel_offload_set
 			ret = ixgbe_dev_l2_tunnel_forwarding_disable(
 				dev,
 				l2_tunnel->l2_tunnel_type);
+	}
+
+	return ret;
+}
+
+static int
+ixgbe_update_vxlan_port(struct ixgbe_hw *hw,
+			uint16_t port)
+{
+	IXGBE_WRITE_REG(hw, IXGBE_VXLANCTRL, port);
+	IXGBE_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+/* There's only one register for VxLAN UDP port.
+ * So, we cannot add several ports. Will update it.
+ */
+static int
+ixgbe_add_vxlan_port(struct ixgbe_hw *hw,
+		     uint16_t port)
+{
+	if (port == 0) {
+		PMD_DRV_LOG(ERR, "Add VxLAN port 0 is not allowed.");
+		return -EINVAL;
+	}
+
+	return ixgbe_update_vxlan_port(hw, port);
+}
+
+/* We cannot delete the VxLAN port. For there's a register for VxLAN
+ * UDP port, it must have a value.
+ * So, will reset it to the original value 0.
+ */
+static int
+ixgbe_del_vxlan_port(struct ixgbe_hw *hw,
+		     uint16_t port)
+{
+	uint16_t cur_port;
+
+	cur_port = (uint16_t)IXGBE_READ_REG(hw, IXGBE_VXLANCTRL);
+
+	if (cur_port != port) {
+		PMD_DRV_LOG(ERR, "Port %u does not exist.", port);
+		return -EINVAL;
+	}
+
+	return ixgbe_update_vxlan_port(hw, 0);
+}
+
+/* Add UDP tunneling port */
+static int
+ixgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			      struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	int ret = 0;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->mac.type != ixgbe_mac_X550 &&
+	    hw->mac.type != ixgbe_mac_X550EM_x) {
+		return -ENOTSUP;
+	}
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		ret = ixgbe_add_vxlan_port(hw, udp_tunnel->udp_port);
+		break;
+
+	case RTE_TUNNEL_TYPE_GENEVE:
+	case RTE_TUNNEL_TYPE_TEREDO:
+		PMD_DRV_LOG(ERR, "Tunnel type is not supported now.");
+		ret = -EINVAL;
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+/* Remove UDP tunneling port */
+static int
+ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+			      struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	int ret = 0;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->mac.type != ixgbe_mac_X550 &&
+	    hw->mac.type != ixgbe_mac_X550EM_x) {
+		return -ENOTSUP;
+	}
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		ret = ixgbe_del_vxlan_port(hw, udp_tunnel->udp_port);
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+	case RTE_TUNNEL_TYPE_TEREDO:
+		PMD_DRV_LOG(ERR, "Tunnel type is not supported now.");
+		ret = -EINVAL;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
 	}
 
 	return ret;
