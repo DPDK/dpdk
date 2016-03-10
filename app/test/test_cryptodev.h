@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -60,6 +60,7 @@
 #define DIGEST_BYTE_LENGTH_SHA384		(BYTE_LENGTH(384))
 #define DIGEST_BYTE_LENGTH_SHA512		(BYTE_LENGTH(512))
 #define DIGEST_BYTE_LENGTH_AES_XCBC		(BYTE_LENGTH(96))
+#define DIGEST_BYTE_LENGTH_SNOW3G_UIA2		(BYTE_LENGTH(32))
 #define AES_XCBC_MAC_KEY_SZ			(16)
 
 #define TRUNCATED_DIGEST_BYTE_LENGTH_SHA1		(12)
