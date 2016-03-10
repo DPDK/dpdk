@@ -44,6 +44,10 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_ring
 CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
 CFLAGS += $(WERROR_FLAGS) -O3
 
+LDLIBS += -lexecinfo
+LDLIBS += -lpthread
+LDLIBS += -lgcc_s
+
 EXPORT_MAP := rte_eal_version.map
 
 LIBABIVER := 2
