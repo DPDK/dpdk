@@ -82,5 +82,6 @@ DIRS-y += vmdq
 DIRS-y += vmdq_dcb
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += vm_power_manager
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += l2fwd-crypto
+DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += ipsec-secgw
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk

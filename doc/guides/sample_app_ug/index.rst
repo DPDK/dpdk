@@ -73,6 +73,7 @@ Sample Applications User Guide
     proc_info
     ptpclient
     performance_thread
+    ipsec_secgw
 
 **Figures**
 

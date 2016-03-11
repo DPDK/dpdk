@@ -566,6 +566,10 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/helloworld/
 F: doc/guides/sample_app_ug/hello_world.rst
 
+M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
+F: examples/ipsec-secgw/
+F: doc/guides/sample_app_ug/ipsec_secgw.rst
+
 F: examples/ipv4_multicast/
 F: doc/guides/sample_app_ug/ipv4_multicast.rst
 
