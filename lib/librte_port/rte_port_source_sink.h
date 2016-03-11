@@ -69,7 +69,16 @@ struct rte_port_source_params {
 /** source port operations */
 extern struct rte_port_in_ops rte_port_source_ops;
 
-/** sink port parameters: NONE */
+/** sink port parameters */
+struct rte_port_sink_params {
+	/** The full path of the pcap file to write the packets to */
+	char *file_name;
+	/** The maximum number of packets write to the pcap file.
+	 *  If this value is 0, the "infinite" write will be carried
+	 *  out.
+	 */
+	uint32_t max_n_pkts;
+};
 
 /** sink port operations */
 extern struct rte_port_out_ops rte_port_sink_ops;

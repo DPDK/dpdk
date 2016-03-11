@@ -42,9 +42,12 @@
 #include <rte_memcpy.h>
 
 #ifdef RTE_PORT_PCAP
+#include <rte_ether.h>
 #include <pcap.h>
 #endif
 
+#else
+#undef RTE_PORT_PCAP
 #endif
 
 #include "rte_port_source_sink.h"
@@ -400,12 +403,183 @@ rte_port_source_stats_read(void *port,
 
 struct rte_port_sink {
 	struct rte_port_out_stats stats;
+
+	/* PCAP dumper handle and pkts number */
+	void *dumper;
+	uint32_t max_pkts;
+	uint32_t pkt_index;
+	uint32_t dump_finish;
 };
+
+#ifdef RTE_PORT_PCAP
+
+/**
+ * Open PCAP file for dumping packets to the file later
+ *
+ * @param port
+ *   Handle to sink port
+ * @param p
+ *   Sink port parameter
+ * @return
+ *   0 on SUCCESS
+ *   error code otherwise
+ */
+static int
+pcap_sink_open(struct rte_port_sink *port,
+		__rte_unused struct rte_port_sink_params *p)
+{
+	pcap_t *tx_pcap;
+	pcap_dumper_t *pcap_dumper;
+
+	if (p->file_name == NULL) {
+		port->dumper = NULL;
+		port->max_pkts = 0;
+		port->pkt_index = 0;
+		port->dump_finish = 0;
+		return 0;
+	}
+
+	/** Open a dead pcap handler for opening dumper file */
+	tx_pcap = pcap_open_dead(DLT_EN10MB, 65535);
+	if (tx_pcap == NULL)
+		return -ENOENT;
+
+	/* The dumper is created using the previous pcap_t reference */
+	pcap_dumper = pcap_dump_open(tx_pcap, p->file_name);
+	if (pcap_dumper == NULL)
+		return -ENOENT;
+
+	port->dumper = pcap_dumper;
+	port->max_pkts = p->max_n_pkts;
+	port->pkt_index = 0;
+	port->dump_finish = 0;
+
+	return 0;
+}
+
+uint8_t jumbo_pkt_buf[ETHER_MAX_JUMBO_FRAME_LEN];
+
+/**
+ * Dump a packet to PCAP dumper
+ *
+ * @param p
+ *   Handle to sink port
+ * @param mbuf
+ *   Handle to mbuf structure holding the packet
+ */
+static void
+pcap_sink_dump_pkt(struct rte_port_sink *port, struct rte_mbuf *mbuf)
+{
+	uint8_t *pcap_dumper = (uint8_t *)(port->dumper);
+	struct pcap_pkthdr pcap_hdr;
+	uint8_t *pkt;
+
+	/* Maximum num packets already reached */
+	if (port->dump_finish)
+		return;
+
+	pkt = rte_pktmbuf_mtod(mbuf, uint8_t *);
+
+	pcap_hdr.len = mbuf->pkt_len;
+	pcap_hdr.caplen = pcap_hdr.len;
+	gettimeofday(&(pcap_hdr.ts), NULL);
+
+	if (mbuf->nb_segs > 1) {
+		struct rte_mbuf *jumbo_mbuf;
+		uint32_t pkt_index = 0;
+
+		/* if packet size longer than ETHER_MAX_JUMBO_FRAME_LEN,
+		 * ignore it.
+		 */
+		if (mbuf->pkt_len > ETHER_MAX_JUMBO_FRAME_LEN)
+			return;
+
+		for (jumbo_mbuf = mbuf; jumbo_mbuf != NULL;
+				jumbo_mbuf = jumbo_mbuf->next) {
+			rte_memcpy(&jumbo_pkt_buf[pkt_index],
+				rte_pktmbuf_mtod(jumbo_mbuf, uint8_t *),
+				jumbo_mbuf->data_len);
+			pkt_index += jumbo_mbuf->data_len;
+		}
+
+		jumbo_pkt_buf[pkt_index] = '\0';
+
+		pkt = jumbo_pkt_buf;
+	}
+
+	pcap_dump(pcap_dumper, &pcap_hdr, pkt);
+
+	port->pkt_index++;
+
+	if ((port->max_pkts != 0) && (port->pkt_index >= port->max_pkts)) {
+		port->dump_finish = 1;
+		RTE_LOG(INFO, PORT, "Dumped %u packets to file\n",
+				port->pkt_index);
+	}
+
+}
+
+/**
+ * Flush pcap dumper
+ *
+ * @param dumper
+ *   Handle to pcap dumper
+ */
+
+static void
+pcap_sink_flush_pkt(void *dumper)
+{
+	pcap_dumper_t *pcap_dumper = (pcap_dumper_t *)dumper;
+
+	pcap_dump_flush(pcap_dumper);
+}
+
+/**
+ * Close a PCAP dumper handle
+ *
+ * @param dumper
+ *   Handle to pcap dumper
+ */
+static void
+pcap_sink_close(void *dumper)
+{
+	pcap_dumper_t *pcap_dumper = (pcap_dumper_t *)dumper;
+
+	pcap_dump_close(pcap_dumper);
+}
+
+#else
+
+static int
+pcap_sink_open(struct rte_port_sink *port,
+		__rte_unused struct rte_port_sink_params *p)
+{
+	port->dumper = NULL;
+	port->max_pkts = 0;
+	port->pkt_index = 0;
+	port->dump_finish = 0;
+
+	return -ENOTSUP;
+}
+
+static void
+pcap_sink_dump_pkt(__rte_unused struct rte_port_sink *port,
+		__rte_unused struct rte_mbuf *mbuf) {}
+
+static void
+pcap_sink_flush_pkt(__rte_unused void *dumper) {}
+
+static void
+pcap_sink_close(__rte_unused void *dumper) {}
+
+#endif
 
 static void *
 rte_port_sink_create(__rte_unused void *params, int socket_id)
 {
 	struct rte_port_sink *port;
+	struct rte_port_sink_params *p = params;
+	int status;
 
 	/* Memory allocation */
 	port = rte_zmalloc_socket("PORT", sizeof(*port),
@@ -413,6 +587,26 @@ rte_port_sink_create(__rte_unused void *params, int socket_id)
 	if (port == NULL) {
 		RTE_LOG(ERR, PORT, "%s: Failed to allocate port\n", __func__);
 		return NULL;
+	}
+
+	/* Try to open PCAP file for dumping, if possible */
+	status = pcap_sink_open(port, p);
+	if (status == 0) {
+		if (port->dumper != NULL)
+			RTE_LOG(INFO, PORT, "Ready to dump packets "
+				"to file %s\n", p->file_name);
+
+	} else if (status != -ENOTSUP) {
+		if (status == -ENOENT)
+			RTE_LOG(ERR, PORT, "%s: Failed to open pcap file "
+				"%s for writing\n", __func__,
+				p->file_name);
+		else
+			RTE_LOG(ERR, PORT, "%s: Failed to enable pcap "
+				"support for unknown reason\n", __func__);
+
+		rte_free(port);
+		port = NULL;
 	}
 
 	return port;
@@ -424,6 +618,8 @@ rte_port_sink_tx(void *port, struct rte_mbuf *pkt)
 	__rte_unused struct rte_port_sink *p = (struct rte_port_sink *) port;
 
 	RTE_PORT_SINK_STATS_PKTS_IN_ADD(p, 1);
+	if (p->dumper != NULL)
+		pcap_sink_dump_pkt(p, pkt);
 	rte_pktmbuf_free(pkt);
 	RTE_PORT_SINK_STATS_PKTS_DROP_ADD(p, 1);
 
@@ -442,12 +638,34 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 
 		RTE_PORT_SINK_STATS_PKTS_IN_ADD(p, n_pkts);
 		RTE_PORT_SINK_STATS_PKTS_DROP_ADD(p, n_pkts);
+
+		if (p->dumper) {
+			for (i = 0; i < n_pkts; i++) {
+				struct rte_mbuf *pkt = pkts[i];
+
+				pcap_sink_dump_pkt(p, pkt);
+			}
+		}
+
 		for (i = 0; i < n_pkts; i++) {
 			struct rte_mbuf *pkt = pkts[i];
 
 			rte_pktmbuf_free(pkt);
 		}
+
 	} else {
+		if (p->dumper) {
+			uint64_t dump_pkts_mask = pkts_mask;
+			uint32_t pkt_index;
+
+			for ( ; dump_pkts_mask; ) {
+				pkt_index = __builtin_ctzll(
+					dump_pkts_mask);
+				pcap_sink_dump_pkt(p, pkts[pkt_index]);
+				dump_pkts_mask &= ~(1LLU << pkt_index);
+			}
+		}
+
 		for ( ; pkts_mask; ) {
 			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
@@ -459,6 +677,34 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 			pkts_mask &= ~pkt_mask;
 		}
 	}
+
+	return 0;
+}
+
+static int
+rte_port_sink_flush(void *port)
+{
+	struct rte_port_sink *p = (struct rte_port_sink *)port;
+
+	if (p->dumper != NULL)
+		pcap_sink_flush_pkt(p->dumper);
+
+	return 0;
+}
+
+static int
+rte_port_sink_free(void *port)
+{
+	struct rte_port_sink *p =
+			(struct rte_port_sink *)port;
+	/* Check input parameters */
+	if (p == NULL)
+		return 0;
+
+	if (p->dumper != NULL)
+		pcap_sink_close(p->dumper);
+
+	rte_free(p);
 
 	return 0;
 }
@@ -491,9 +737,9 @@ struct rte_port_in_ops rte_port_source_ops = {
 
 struct rte_port_out_ops rte_port_sink_ops = {
 	.f_create = rte_port_sink_create,
-	.f_free = NULL,
+	.f_free = rte_port_sink_free,
 	.f_tx = rte_port_sink_tx,
 	.f_tx_bulk = rte_port_sink_tx_bulk,
-	.f_flush = NULL,
+	.f_flush = rte_port_sink_flush,
 	.f_stats = rte_port_sink_stats_read,
 };
