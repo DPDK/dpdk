@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -137,6 +137,7 @@ struct pipeline_port_out_params {
 		struct rte_port_ring_writer_ipv4_ras_params ring_ipv4_ras;
 		struct rte_port_ring_writer_ipv6_ras_params ring_ipv6_ras;
 		struct rte_port_sched_writer_params sched;
+		struct rte_port_sink_params sink;
 	} params;
 };
 
@@ -163,6 +164,7 @@ pipeline_port_out_params_convert(struct pipeline_port_out_params  *p)
 	case PIPELINE_PORT_OUT_SCHED_WRITER:
 		return (void *) &p->params.sched;
 	case PIPELINE_PORT_OUT_SINK:
+		return (void *) &p->params.sink;
 	default:
 		return NULL;
 	}

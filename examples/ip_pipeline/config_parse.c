@@ -187,6 +187,8 @@ struct app_pktq_source_params default_source_params = {
 
 struct app_pktq_sink_params default_sink_params = {
 	.parsed = 0,
+	.file_name = NULL,
+	.n_pkts_to_dump = 0,
 };
 
 struct app_msgq_params default_msgq_params = {
@@ -1036,6 +1038,85 @@ parse_pipeline_pcap_source(struct app_params *app,
 }
 
 static int
+parse_pipeline_pcap_sink(struct app_params *app,
+	struct app_pipeline_params *p,
+	const char *file_name, const char *n_pkts_to_dump)
+{
+	const char *next = NULL;
+	char *end;
+	uint32_t i;
+	int parse_file = 0;
+
+	if (file_name && !n_pkts_to_dump) {
+		next = file_name;
+		parse_file = 1; /* parse file path */
+	} else if (n_pkts_to_dump && !file_name) {
+		next = n_pkts_to_dump;
+		parse_file = 0; /* parse copy size */
+	} else
+		return -EINVAL;
+
+	char name[APP_PARAM_NAME_SIZE];
+	size_t name_len;
+
+	if (p->n_pktq_out == 0)
+		return -EINVAL;
+
+	for (i = 0; i < p->n_pktq_out; i++) {
+		if (p->pktq_out[i].type != APP_PKTQ_OUT_SINK)
+			return -EINVAL;
+	}
+
+	i = 0;
+	while (*next != '\0') {
+		uint32_t id;
+
+		if (i >= p->n_pktq_out)
+			return -EINVAL;
+
+		id = p->pktq_out[i].id;
+
+		end = strchr(next, ' ');
+		if (!end)
+			name_len = strlen(next);
+		else
+			name_len = end - next;
+
+		if (name_len == 0 || name_len == sizeof(name))
+			return -EINVAL;
+
+		strncpy(name, next, name_len);
+		name[name_len] = '\0';
+		next += name_len;
+		if (*next != '\0')
+			next++;
+
+		if (parse_file) {
+			app->sink_params[id].file_name = strdup(name);
+			if (app->sink_params[id].file_name == NULL)
+				return -ENOMEM;
+		} else {
+			if (parser_read_uint32(
+				&app->sink_params[id].n_pkts_to_dump,
+				name) != 0) {
+				if (app->sink_params[id].file_name !=
+					NULL)
+					free(app->sink_params[id].
+						file_name);
+				return -EINVAL;
+			}
+		}
+
+		i++;
+
+		if (i == p->n_pktq_out)
+			return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int
 parse_pipeline_pktq_in(struct app_params *app,
 	struct app_pipeline_params *p,
 	const char *value)
@@ -1402,6 +1483,24 @@ parse_pipeline(struct app_params *app,
 		if (strcmp(ent->name, "pcap_bytes_rd_per_pkt") == 0) {
 			int status = parse_pipeline_pcap_source(app,
 				param, NULL, ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+			continue;
+		}
+
+		if (strcmp(ent->name, "pcap_file_wr") == 0) {
+			int status = parse_pipeline_pcap_sink(app, param,
+				ent->value, NULL);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+			continue;
+		}
+
+		if (strcmp(ent->name, "pcap_n_pkt_wr") == 0) {
+			int status = parse_pipeline_pcap_sink(app, param,
+				NULL, ent->value);
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
@@ -2124,6 +2223,57 @@ parse_source(struct app_params *app,
 }
 
 static void
+parse_sink(struct app_params *app,
+	const char *section_name,
+	struct rte_cfgfile *cfg)
+{
+	struct app_pktq_sink_params *param;
+	struct rte_cfgfile_entry *entries;
+	int n_entries, i;
+	ssize_t param_idx;
+
+	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
+	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);
+
+	entries = malloc(n_entries * sizeof(struct rte_cfgfile_entry));
+	PARSE_ERROR_MALLOC(entries != NULL);
+
+	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
+
+	param_idx = APP_PARAM_ADD(app->sink_params, section_name);
+	PARSER_PARAM_ADD_CHECK(param_idx, app->sink_params, section_name);
+
+	param = &app->sink_params[param_idx];
+
+	for (i = 0; i < n_entries; i++) {
+		struct rte_cfgfile_entry *ent = &entries[i];
+
+		if (strcmp(ent->name, "pcap_file_wr")) {
+			param->file_name = strdup(ent->value);
+
+			PARSE_ERROR_MALLOC((param->file_name != NULL));
+			continue;
+		}
+
+		if (strcmp(ent->name, "pcap_n_pkt_wr")) {
+			int status = parser_read_uint32(
+				&param->n_pkts_to_dump, ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+			continue;
+		}
+
+		/* unrecognized */
+		PARSE_ERROR_INVALID(0, section_name, ent->name);
+	}
+
+	param->parsed = 1;
+
+	free(entries);
+}
+
+static void
 parse_msgq_req_pipeline(struct app_params *app,
 	const char *section_name,
 	struct rte_cfgfile *cfg)
@@ -2283,6 +2433,7 @@ static const struct config_section cfg_file_scheme[] = {
 	{"SWQ", 1, parse_swq},
 	{"TM", 1, parse_tm},
 	{"SOURCE", 1, parse_source},
+	{"SINK", 1, parse_sink},
 	{"MSGQ-REQ-PIPELINE", 1, parse_msgq_req_pipeline},
 	{"MSGQ-RSP-PIPELINE", 1, parse_msgq_rsp_pipeline},
 	{"MSGQ", 1, parse_msgq},
@@ -2726,6 +2877,26 @@ save_source_params(struct app_params *app, FILE *f)
 }
 
 static void
+save_sink_params(struct app_params *app, FILE *f)
+{
+	struct app_pktq_sink_params *p;
+	size_t i, count;
+
+	count = RTE_DIM(app->sink_params);
+	for (i = 0; i < count; i++) {
+		p = &app->sink_params[i];
+		if (!APP_PARAM_VALID(p))
+			continue;
+
+		fprintf(f, "[%s]\n", p->name);
+		fprintf(f, "%s = %s\n", "pcap_file_wr", p->file_name);
+		fprintf(f, "%s = %" PRIu32 "\n",
+				"pcap_n_pkt_wr", p->n_pkts_to_dump);
+		fputc('\n', f);
+	}
+}
+
+static void
 save_msgq_params(struct app_params *app, FILE *f)
 {
 	struct app_msgq_params *p;
@@ -2908,6 +3079,7 @@ app_config_save(struct app_params *app, const char *file_name)
 	save_swq_params(app, file);
 	save_tm_params(app, file);
 	save_source_params(app, file);
+	save_sink_params(app, file);
 	save_msgq_params(app, file);
 
 	fclose(file);

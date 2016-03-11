@@ -1362,6 +1362,21 @@ static void app_pipeline_params_get(struct app_params *app,
 		}
 		case APP_PKTQ_OUT_SINK:
 			out->type = PIPELINE_PORT_OUT_SINK;
+			if (app->sink_params[in->id].file_name != NULL) {
+				out->params.sink.file_name = strdup(
+					app->sink_params[in->id].
+					file_name);
+				if (out->params.sink.file_name == NULL) {
+					out->params.sink.max_n_pkts = 0;
+					break;
+				}
+				out->params.sink.max_n_pkts =
+					app->sink_params[in->id].
+					n_pkts_to_dump;
+			} else {
+				out->params.sink.file_name = NULL;
+				out->params.sink.max_n_pkts = 0;
+			}
 			break;
 		default:
 			break;

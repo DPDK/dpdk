@@ -156,6 +156,8 @@ struct app_pktq_source_params {
 struct app_pktq_sink_params {
 	char *name;
 	uint8_t parsed;
+	char *file_name; /* Full path of PCAP file to be copied to mbufs */
+	uint32_t n_pkts_to_dump;
 };
 
 struct app_msgq_params {
