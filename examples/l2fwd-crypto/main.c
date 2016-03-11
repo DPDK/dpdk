@@ -84,6 +84,7 @@
  */
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
+
 static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
@@ -209,7 +210,7 @@ struct l2fwd_crypto_statistics crypto_statistics[RTE_MAX_ETHPORTS];
 
 /* A tsc-based timer responsible for triggering statistics printout */
 #define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
-#define MAX_TIMER_PERIOD 86400 /* 1 day max */
+#define MAX_TIMER_PERIOD 86400UL /* 1 day max */
 
 /* default period is 10 seconds */
 static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000;
@@ -847,7 +848,6 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		options->cipher_xform.cipher.key.length = key.length;
 
 		return retval;
-
 	} else if (strcmp(lgopts[option_index].name, "iv") == 0)
 		return parse_key(&options->iv_key, sizeof(options->ivkey_data),
 				optarg);
@@ -871,7 +871,6 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		options->auth_xform.auth.key.length = key.length;
 
 		return retval;
-
 	} else if (strcmp(lgopts[option_index].name, "sessionless") == 0) {
 		options->sessionless = 1;
 		return 0;
@@ -932,16 +931,16 @@ l2fwd_crypto_parse_timer_period(struct l2fwd_crypto_options *options,
 		const char *q_arg)
 {
 	char *end = NULL;
-	long int n;
+	unsigned long n;
 
 	/* parse number string */
-	n = strtol(q_arg, &end, 10);
+	n = (unsigned)strtol(q_arg, &end, 10);
 	if ((q_arg[0] == '\0') || (end == NULL) || (*end != '\0'))
 		n = 0;
 
 	if (n >= MAX_TIMER_PERIOD) {
-		printf("Warning refresh period specified %ld is greater than "
-				"max value %d! using max value",
+		printf("Warning refresh period specified %lu is greater than "
+				"max value %lu! using max value",
 				n, MAX_TIMER_PERIOD);
 		n = MAX_TIMER_PERIOD;
 	}
@@ -961,9 +960,9 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	options->nb_ports_per_lcore = 1;
 	options->refresh_period = 10000;
 	options->single_lcore = 0;
+	options->sessionless = 0;
 
 	options->cdev_type = RTE_CRYPTODEV_AESNI_MB_PMD;
-	options->sessionless = 0;
 	options->xform_chain = L2FWD_CRYPTO_CIPHER_HASH;
 
 	/* Cipher Data */
@@ -1018,39 +1017,6 @@ l2fwd_crypto_options_print(struct l2fwd_crypto_options *options)
 
 	printf("sessionless crypto: %s\n",
 			options->sessionless ? "enabled" : "disabled");
-#if 0
-	options->xform_chain = L2FWD_CRYPTO_CIPHER_HASH;
-
-	/* Cipher Data */
-	options->cipher_xform.type = RTE_CRYPTO_XFORM_CIPHER;
-	options->cipher_xform.next = NULL;
-
-	options->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
-	options->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
-
-	generate_random_key(options->ckey_data, sizeof(options->ckey_data));
-
-	options->cipher_xform.cipher.key.data = options->ckey_data;
-	options->cipher_xform.cipher.key.phys_addr = 0;
-	options->cipher_xform.cipher.key.length = 16;
-
-
-	/* Authentication Data */
-	options->auth_xform.type = RTE_CRYPTO_XFORM_AUTH;
-	options->auth_xform.next = NULL;
-
-	options->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
-	options->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
-
-	options->auth_xform.auth.add_auth_data_length = 0;
-	options->auth_xform.auth.digest_length = 20;
-
-	generate_random_key(options->akey_data, sizeof(options->akey_data));
-
-	options->auth_xform.auth.key.data = options->akey_data;
-	options->auth_xform.auth.key.phys_addr = 0;
-	options->auth_xform.auth.key.length = 20;
-#endif
 }
 
 /* Parse the argument given in the command line of the application */
@@ -1078,6 +1044,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 			{ "iv", required_argument, 0, 0 },
 
 			{ "sessionless", no_argument, 0, 0 },
+
 			{ NULL, 0, 0, 0 }
 	};
 
