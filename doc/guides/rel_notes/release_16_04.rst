@@ -64,6 +64,28 @@ This section should contain new features added in this release. Sample format:
 
 * **Added vhost-user live migration support.**
 
+* **Added support for E-tag on X550.**
+
+  E-tag is defined in 802.1br. Please reference
+  http://www.ieee802.org/1/pages/802.1br.html.
+
+  This feature is for VF, but the settings are on PF. It means
+  the CLIs should be used on PF, but some of their effects will be shown on VF.
+  The forwarding of E-tag packets based on GRP and E-CID_base will have effect
+  on PF. Theoretically the E-tag packets can be forwarded to any pool/queue.
+  But normally we'd like to forward the packets to the pools/queues belonging
+  to the VFs. And E-tag insertion and stripping will have effect on VFs. When
+  VF receives E-tag packets, it should strip the E-tag. When VF transmits
+  packets, it should insert the E-tag. Both can be offloaded.
+
+  When we want to use this E-tag support feature, the forwarding should be
+  enabled to forward the packets received by PF to indicated VFs. And insertion
+  and stripping should be enabled for VFs to offload the effort to HW.
+
+  * Support E-tag offloading of insertion and stripping.
+  * Support Forwarding E-tag packets to pools based on
+    GRP and E-CID_base.
+
 * **Enabled PCI extended tag for i40e.**
 
   It enabled extended tag by checking and writing corresponding PCI config
