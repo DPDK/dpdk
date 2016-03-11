@@ -38,6 +38,179 @@
 
 #include "rte_aesni_mb_pmd_private.h"
 
+
+static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
+	{	/* MD5 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_MD5_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 64,
+					.max = 64,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				},
+				.aad_size = { 0 }
+			}
+		}
+	},
+	{	/* SHA1 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 64,
+					.max = 64,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				},
+				.aad_size = { 0 }
+			}
+		}
+	},
+	{	/* SHA224 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA224_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 64,
+					.max = 64,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 14,
+					.max = 14,
+					.increment = 0
+				},
+				.aad_size = { 0 }
+			}
+		}
+	},
+	{	/* SHA256 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA256_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 64,
+					.max = 64,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.aad_size = { 0 }
+			}
+		}
+	},
+	{	/* SHA384 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,
+				.block_size = 128,
+				.key_size = {
+					.min = 128,
+					.max = 128,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 24,
+					.max = 24,
+					.increment = 0
+				},
+				.aad_size = { 0 }
+			}
+		}
+	},
+	{	/* SHA512 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA512_HMAC,
+				.block_size = 128,
+				.key_size = {
+					.min = 128,
+					.max = 128,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.aad_size = { 0 }
+			}
+		}
+	},
+	{	/* AES XCBC HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_AES_XCBC_MAC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				},
+				.aad_size = { 0 }
+			}
+		}
+	},
+	{	/* AES CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_CBC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}
+		}
+	},
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
+
 /** Configure device */
 static int
 aesni_mb_pmd_config(__rte_unused struct rte_cryptodev *dev)
@@ -107,6 +280,8 @@ aesni_mb_pmd_info_get(struct rte_cryptodev *dev,
 
 	if (dev_info != NULL) {
 		dev_info->dev_type = dev->dev_type;
+		dev_info->feature_flags = dev->feature_flags;
+		dev_info->capabilities = aesni_mb_pmd_capabilities;
 		dev_info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
 		dev_info->sym.max_nb_sessions = internals->max_nb_sessions;
 	}

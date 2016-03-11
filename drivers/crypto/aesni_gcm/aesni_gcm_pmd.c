@@ -445,6 +445,24 @@ aesni_gcm_create(const char *name,
 	dev->dequeue_burst = aesni_gcm_pmd_dequeue_burst;
 	dev->enqueue_burst = aesni_gcm_pmd_enqueue_burst;
 
+	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_CPU_AESNI;
+
+	switch (vector_mode) {
+	case RTE_AESNI_GCM_SSE:
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
+		break;
+	case RTE_AESNI_GCM_AVX:
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
+		break;
+	case RTE_AESNI_GCM_AVX2:
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX2;
+		break;
+	default:
+		break;
+	}
+
 	/* Set vector instructions mode supported */
 	internals = dev->data->dev_private;
 

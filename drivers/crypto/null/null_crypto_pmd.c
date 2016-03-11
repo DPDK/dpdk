@@ -215,6 +215,9 @@ cryptodev_null_create(const char *name,
 	dev->dequeue_burst = null_crypto_pmd_dequeue_burst;
 	dev->enqueue_burst = null_crypto_pmd_enqueue_burst;
 
+	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+
 	internals = dev->data->dev_private;
 
 	internals->max_nb_qpairs = init_params->max_nb_queue_pairs;

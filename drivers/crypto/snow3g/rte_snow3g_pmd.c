@@ -490,6 +490,9 @@ cryptodev_snow3g_create(const char *name,
 	dev->dequeue_burst = snow3g_pmd_dequeue_burst;
 	dev->enqueue_burst = snow3g_pmd_enqueue_burst;
 
+	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+
 	internals = dev->data->dev_private;
 
 	internals->max_nb_queue_pairs = init_params->max_nb_queue_pairs;

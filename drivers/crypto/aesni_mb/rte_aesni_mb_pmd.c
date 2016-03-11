@@ -640,6 +640,24 @@ cryptodev_aesni_mb_create(const char *name, unsigned socket_id)
 	dev->dequeue_burst = aesni_mb_pmd_dequeue_burst;
 	dev->enqueue_burst = aesni_mb_pmd_enqueue_burst;
 
+	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_CPU_AESNI;
+
+	switch (vector_mode) {
+	case RTE_AESNI_MB_SSE:
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
+		break;
+	case RTE_AESNI_MB_AVX:
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
+		break;
+	case RTE_AESNI_MB_AVX2:
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX2;
+		break;
+	default:
+		break;
+	}
+
 	/* Set vector instructions mode supported */
 	internals = dev->data->dev_private;
 

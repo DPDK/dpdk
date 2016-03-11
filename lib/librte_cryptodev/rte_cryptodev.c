@@ -102,6 +102,34 @@ struct rte_cryptodev_callback {
 	uint32_t active;			/**< Callback is executing */
 };
 
+
+const char *
+rte_cryptodev_get_feature_name(uint64_t flag)
+{
+	switch (flag) {
+	case RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO:
+		return "SYMMETRIC_CRYPTO";
+	case RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO:
+		return "ASYMMETRIC_CRYPTO";
+	case RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING:
+		return "SYM_OPERATION_CHAINING";
+	case RTE_CRYPTODEV_FF_CPU_SSE:
+		return "CPU_SSE";
+	case RTE_CRYPTODEV_FF_CPU_AVX:
+		return "CPU_AVX";
+	case RTE_CRYPTODEV_FF_CPU_AVX2:
+		return "CPU_AVX2";
+	case RTE_CRYPTODEV_FF_CPU_AESNI:
+		return "CPU_AESNI";
+	case RTE_CRYPTODEV_FF_HW_ACCELERATED:
+		return "HW_ACCELERATED";
+
+	default:
+		return NULL;
+	}
+}
+
+
 int
 rte_cryptodev_create_vdev(const char *name, const char *args)
 {

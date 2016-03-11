@@ -98,11 +98,144 @@ extern const char **rte_cyptodev_names;
 #define CDEV_PMD_TRACE(fmt, args...)
 #endif
 
+/**
+ * Symmetric Crypto Capability
+ */
+struct rte_cryptodev_symmetric_capability {
+	enum rte_crypto_sym_xform_type xform_type;
+	/**< Transform type : Authentication / Cipher */
+	union {
+		struct {
+			enum rte_crypto_auth_algorithm algo;
+			/**< authentication algorithm */
+			uint16_t block_size;
+			/**< algorithm block size */
+			struct {
+				uint16_t min;	/**< minimum key size */
+				uint16_t max;	/**< maximum key size */
+				uint16_t increment;
+				/**< if a range of sizes are supported,
+				 * this parameter is used to indicate
+				 * increments in byte size that are supported
+				 * between the minimum and maximum */
+			} key_size;
+			/**< auth key size range */
+			struct {
+				uint16_t min;	/**< minimum digest size */
+				uint16_t max;	/**< maximum digest size */
+				uint16_t increment;
+				/**< if a range of sizes are supported,
+				 * this parameter is used to indicate
+				 * increments in byte size that are supported
+				 * between the minimum and maximum */
+			} digest_size;
+			/**< digest size range */
+			struct {
+				uint16_t min;	/**< minimum aad size */
+				uint16_t max;	/**< maximum aad size */
+				uint16_t increment;
+				/**< if a range of sizes are supported,
+				 * this parameter is used to indicate
+				 * increments in byte size that are supported
+				 * between the minimum and maximum */
+			} aad_size;
+			/**< Additional authentication data size range */
+		} auth;
+		/**< Symmetric Authentication transform capabilities */
+		struct {
+			enum rte_crypto_cipher_algorithm algo;
+			/**< cipher algorithm */
+			uint16_t block_size;
+			/**< algorithm block size */
+			struct {
+				uint16_t min;	/**< minimum key size */
+				uint16_t max;	/**< maximum key size */
+				uint16_t increment;
+				/**< if a range of sizes are supported,
+				 * this parameter is used to indicate
+				 * increments in byte size that are supported
+				 * between the minimum and maximum */
+			} key_size;
+			/**< cipher key size range */
+			struct {
+				uint16_t min;	/**< minimum iv size */
+				uint16_t max;	/**< maximum iv size */
+				uint16_t increment;
+				/**< if a range of sizes are supported,
+				 * this parameter is used to indicate
+				 * increments in byte size that are supported
+				 * between the minimum and maximum */
+			} iv_size;
+			/**< Initialisation vector data size range */
+		} cipher;
+		/**< Symmetric Cipher transform capabilities */
+	};
+};
+
+/** Structure used to capture a capability of a crypto device */
+struct rte_cryptodev_capabilities {
+	enum rte_crypto_op_type op;
+	/**< Operation type */
+
+	union {
+		struct rte_cryptodev_symmetric_capability sym;
+		/**< Symmetric operation capability parameters */
+	};
+};
+
+/** Macro used at end of crypto PMD list */
+#define RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST() \
+	{ RTE_CRYPTO_OP_TYPE_UNDEFINED }
+
+
+/**
+ * Crypto device supported feature flags
+ *
+ * Note:
+ * New features flags should be added to the end of the list
+ *
+ * Keep these flags synchronised with rte_cryptodev_get_feature_name()
+ */
+#define	RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO	(1ULL << 0)
+/**< Symmetric crypto operations are supported */
+#define	RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO	(1ULL << 1)
+/**< Asymmetric crypto operations are supported */
+#define	RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING	(1ULL << 2)
+/**< Chaining symmetric crypto operations are supported */
+#define	RTE_CRYPTODEV_FF_CPU_SSE		(1ULL << 3)
+/**< Utilises CPU SIMD SSE instructions */
+#define	RTE_CRYPTODEV_FF_CPU_AVX		(1ULL << 4)
+/**< Utilises CPU SIMD AVX instructions */
+#define	RTE_CRYPTODEV_FF_CPU_AVX2		(1ULL << 5)
+/**< Utilises CPU SIMD AVX2 instructions */
+#define	RTE_CRYPTODEV_FF_CPU_AESNI		(1ULL << 6)
+/**< Utilises CPU AES-NI instructions */
+#define	RTE_CRYPTODEV_FF_HW_ACCELERATED		(1ULL << 7)
+/**< Operations are off-loaded to an external hardware accelerator */
+
+
+/**
+ * Get the name of a crypto device feature flag
+ *
+ * @param	flag	The mask describing the flag.
+ *
+ * @return
+ *   The name of this flag, or NULL if it's not a valid feature flag.
+ */
+
+extern const char *
+rte_cryptodev_get_feature_name(uint64_t flag);
+
 /**  Crypto device information */
 struct rte_cryptodev_info {
 	const char *driver_name;		/**< Driver name. */
 	enum rte_cryptodev_type dev_type;	/**< Device type */
 	struct rte_pci_device *pci_dev;		/**< PCI information. */
+
+	uint64_t feature_flags;			/**< Feature flags */
+
+	const struct rte_cryptodev_capabilities *capabilities;
+	/**< Array of devices supported capabilities */
 
 	unsigned max_nb_queue_pairs;
 	/**< Maximum number of queues pairs supported by device. */
@@ -540,6 +673,8 @@ typedef uint16_t (*enqueue_pkt_burst_t)(void *qp,
 /**< Enqueue packets for processing on queue pair of a device. */
 
 
+
+
 struct rte_cryptodev_callback;
 
 /** Structure to keep track of registered callbacks */
@@ -558,6 +693,8 @@ struct rte_cryptodev {
 	/**< Pointer to device data */
 	struct rte_cryptodev_ops *dev_ops;
 	/**< Functions exported by PMD */
+	uint64_t feature_flags;
+	/**< Supported features */
 	struct rte_pci_device *pci_dev;
 	/**< PCI info. supplied by probing */
 

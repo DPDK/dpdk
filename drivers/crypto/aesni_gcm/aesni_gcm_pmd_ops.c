@@ -38,6 +38,55 @@
 
 #include "aesni_gcm_pmd_private.h"
 
+static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
+	{	/* AES GCM (AUTH) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			.auth = {
+				.algo = RTE_CRYPTO_AUTH_AES_GCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 8,
+					.max = 16,
+					.increment = 4
+				},
+				.aad_size = {
+					.min = 8,
+					.max = 12,
+					.increment = 4
+				}
+			}
+		}
+	},
+	{	/* AES GCM (CIPHER) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_GCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}
+		}
+	},
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
 /** Configure device */
 static int
 aesni_gcm_pmd_config(__rte_unused struct rte_cryptodev *dev)
@@ -107,6 +156,8 @@ aesni_gcm_pmd_info_get(struct rte_cryptodev *dev,
 
 	if (dev_info != NULL) {
 		dev_info->dev_type = dev->dev_type;
+                dev_info->feature_flags = dev->feature_flags;
+                dev_info->capabilities = aesni_gcm_pmd_capabilities;
 
 		dev_info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
 		dev_info->sym.max_nb_sessions = internals->max_nb_sessions;
