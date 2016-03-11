@@ -138,6 +138,8 @@
 
 #define IXGBE_CYCLECOUNTER_MASK   0xffffffffffffffffULL
 
+#define IXGBE_VT_CTL_POOLING_MODE_MASK         0x00030000
+
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
@@ -1739,6 +1741,14 @@ ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 	ctrl  = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
 	ctrl |= IXGBE_EXTENDED_VLAN;
 	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl);
+
+	/* Clear pooling mode of PFVTCTL. It's required by X550. */
+	if (hw->mac.type == ixgbe_mac_X550 ||
+	    hw->mac.type == ixgbe_mac_X550EM_x) {
+		ctrl = IXGBE_READ_REG(hw, IXGBE_VT_CTL);
+		ctrl &= ~IXGBE_VT_CTL_POOLING_MODE_MASK;
+		IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, ctrl);
+	}
 
 	/*
 	 * VET EXT field in the EXVET register = 0x8100 by default
