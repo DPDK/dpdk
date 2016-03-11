@@ -90,6 +90,9 @@ This section should contain new features added in this release. Sample format:
   Added new Crypto PMD to support AES-GCM authenticated encryption and
   authenticated decryption in SW.
 
+* **Added NULL Crypto PMD**
+
+  Added new Crypto PMD to support null crypto operations in SW.
 
 Resolved Issues
 ---------------

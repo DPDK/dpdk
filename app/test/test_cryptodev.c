@@ -226,6 +226,23 @@ testsuite_setup(void)
 		}
 	}
 
+	/* Create 2 NULL devices if required */
+	if (gbl_cryptodev_type == RTE_CRYPTODEV_NULL_PMD) {
+		nb_devs = rte_cryptodev_count_devtype(
+				RTE_CRYPTODEV_NULL_PMD);
+		if (nb_devs < 2) {
+			for (i = nb_devs; i < 2; i++) {
+				int dev_id = rte_eal_vdev_init(
+					CRYPTODEV_NAME_NULL_PMD, NULL);
+
+				TEST_ASSERT(dev_id >= 0,
+					"Failed to create instance %u of"
+					" pmd : %s",
+					i, CRYPTODEV_NAME_NULL_PMD);
+			}
+		}
+	}
+
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
 		RTE_LOG(ERR, USER1, "No crypto devices found?");
@@ -3396,14 +3413,361 @@ test_not_in_place_crypto(void)
 			QUOTE_512_BYTES,
 			"Plaintext data not as expected");
 
-	/* Validate obuf */
+	return TEST_SUCCESS;
+}
+
+static int
+test_null_cipher_only_operation(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Generate test mbuf data and space for digest */
+	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
+			catch_22_quote, QUOTE_512_BYTES, 0);
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = NULL;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0], &ut_params->cipher_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	/* Set crypto operation data parameters */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+
+	sym_op->cipher.data.offset = 0;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
+
+	/* Process crypto operation */
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "no crypto operation returned");
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
-			"Digest verification failed");
+			"crypto operation processing failed");
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			rte_pktmbuf_mtod(ut_params->op->sym->m_src, uint8_t *),
+			catch_22_quote,
+			QUOTE_512_BYTES,
+			"Ciphertext data not as expected");
 
 	return TEST_SUCCESS;
 }
 
+static int
+test_null_auth_only_operation(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Generate test mbuf data and space for digest */
+	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
+			catch_22_quote, QUOTE_512_BYTES, 0);
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_NULL;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0], &ut_params->auth_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	/* Set crypto operation data parameters */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	sym_op->m_src = ut_params->ibuf;
+
+	sym_op->auth.data.offset = 0;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	/* Process crypto operation */
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "no crypto operation returned");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto operation processing failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_null_cipher_auth_operation(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Generate test mbuf data and space for digest */
+	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
+			catch_22_quote, QUOTE_512_BYTES, 0);
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_NULL;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0], &ut_params->cipher_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	/* Set crypto operation data parameters */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	sym_op->m_src = ut_params->ibuf;
+
+	sym_op->cipher.data.offset = 0;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
+
+	sym_op->auth.data.offset = 0;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	/* Process crypto operation */
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "no crypto operation returned");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto operation processing failed");
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			rte_pktmbuf_mtod(ut_params->op->sym->m_src, uint8_t *),
+			catch_22_quote,
+			QUOTE_512_BYTES,
+			"Ciphertext data not as expected");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_null_auth_cipher_operation(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Generate test mbuf data and space for digest */
+	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
+			catch_22_quote, QUOTE_512_BYTES, 0);
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = NULL;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = &ut_params->cipher_xform;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_NULL;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0], &ut_params->cipher_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	/* Set crypto operation data parameters */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	sym_op->m_src = ut_params->ibuf;
+
+	sym_op->cipher.data.offset = 0;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
+
+	sym_op->auth.data.offset = 0;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	/* Process crypto operation */
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "no crypto operation returned");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto operation processing failed");
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			rte_pktmbuf_mtod(ut_params->op->sym->m_src, uint8_t *),
+			catch_22_quote,
+			QUOTE_512_BYTES,
+			"Ciphertext data not as expected");
+
+	return TEST_SUCCESS;
+}
+
+
+static int
+test_null_invalid_operation(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = NULL;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0], &ut_params->cipher_xform);
+	TEST_ASSERT_NULL(ut_params->sess,
+			"Session creation succeeded unexpectedly");
+
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0], &ut_params->auth_xform);
+	TEST_ASSERT_NULL(ut_params->sess,
+			"Session creation succeeded unexpectedly");
+
+	return TEST_SUCCESS;
+}
+
+
+#define NULL_BURST_LENGTH (32)
+
+static int
+test_null_burst_operation(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	unsigned i, burst_len = NULL_BURST_LENGTH;
+
+	struct rte_crypto_op *burst[NULL_BURST_LENGTH] = { NULL };
+	struct rte_crypto_op *burst_dequeued[NULL_BURST_LENGTH] = { NULL };
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_NULL;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0], &ut_params->cipher_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	TEST_ASSERT_EQUAL(rte_crypto_op_bulk_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC, burst, burst_len),
+			burst_len, "failed to generate burst of crypto ops");
+
+	/* Generate an operation for each mbuf in burst */
+	for (i = 0; i < burst_len; i++) {
+		struct rte_mbuf *m = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+		TEST_ASSERT_NOT_NULL(m, "Failed to allocate mbuf");
+
+		unsigned *data = (unsigned *)rte_pktmbuf_append(m,
+				sizeof(unsigned));
+		*data = i;
+
+		rte_crypto_op_attach_sym_session(burst[i], ut_params->sess);
+
+		burst[i]->sym->m_src = m;
+	}
+
+	/* Process crypto operation */
+	TEST_ASSERT_EQUAL(rte_cryptodev_enqueue_burst(ts_params->valid_devs[0],
+			0, burst, burst_len),
+			burst_len,
+			"Error enqueuing burst");
+
+	TEST_ASSERT_EQUAL(rte_cryptodev_dequeue_burst(ts_params->valid_devs[0],
+			0, burst_dequeued, burst_len),
+			burst_len,
+			"Error dequeuing burst");
+
+
+	for (i = 0; i < burst_len; i++) {
+		TEST_ASSERT_EQUAL(
+			*rte_pktmbuf_mtod(burst[i]->sym->m_src, uint32_t *),
+			*rte_pktmbuf_mtod(burst_dequeued[i]->sym->m_src,
+					uint32_t *),
+			"data not as expected");
+
+		rte_pktmbuf_free(burst[i]->sym->m_src);
+		rte_crypto_op_free(burst[i]);
+	}
+
+	return TEST_SUCCESS;
+}
 
 static struct unit_test_suite cryptodev_qat_testsuite  = {
 	.suite_name = "Crypto QAT Unit Test Suite",
@@ -3641,6 +4005,28 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 	}
 };
 
+static struct unit_test_suite cryptodev_null_testsuite  = {
+	.suite_name = "Crypto Device NULL Unit Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_auth_only_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_cipher_only_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_cipher_auth_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_auth_cipher_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_invalid_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_burst_operation),
+
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static int
 test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 {
@@ -3679,6 +4065,19 @@ static struct test_command cryptodev_aesni_gcm_cmd = {
 };
 
 static int
+test_cryptodev_null(void)
+{
+	gbl_cryptodev_type = RTE_CRYPTODEV_NULL_PMD;
+
+	return unit_test_suite_runner(&cryptodev_null_testsuite);
+}
+
+static struct test_command cryptodev_null_cmd = {
+	.command = "cryptodev_null_autotest",
+	.callback = test_cryptodev_null,
+};
+
+static int
 test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 {
 	gbl_cryptodev_type = RTE_CRYPTODEV_SNOW3G_PMD;
@@ -3694,4 +4093,5 @@ static struct test_command cryptodev_sw_snow3g_cmd = {
 REGISTER_TEST_COMMAND(cryptodev_qat_cmd);
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_cmd);
 REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_cmd);
+REGISTER_TEST_COMMAND(cryptodev_null_cmd);
 REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_cmd);

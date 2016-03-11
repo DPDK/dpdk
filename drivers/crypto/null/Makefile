@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2016 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,10 +30,30 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += snow3g
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# library name
+LIB = librte_pmd_null_crypto.a
+
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_pmd_null_crypto_version.map
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null_crypto_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null_crypto_pmd_ops.c
+
+# export include files
+SYMLINK-y-include +=
+
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_cryptodev
+
+include $(RTE_SDK)/mk/rte.lib.mk
