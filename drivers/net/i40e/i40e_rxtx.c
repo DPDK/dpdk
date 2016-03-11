@@ -192,7 +192,7 @@ i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
 static inline uint32_t
 i40e_rxd_pkt_type_mapping(uint8_t ptype)
 {
-	static const uint32_t ptype_table[UINT8_MAX] __rte_cache_aligned = {
+	static const uint32_t type_table[UINT8_MAX + 1] __rte_cache_aligned = {
 		/* L2 types */
 		/* [0] reserved */
 		[1] = RTE_PTYPE_L2_ETHER,
@@ -718,7 +718,7 @@ i40e_rxd_pkt_type_mapping(uint8_t ptype)
 		/* All others reserved */
 	};
 
-	return ptype_table[ptype];
+	return type_table[ptype];
 }
 
 #define I40E_RX_DESC_EXT_STATUS_FLEXBH_MASK   0x03
