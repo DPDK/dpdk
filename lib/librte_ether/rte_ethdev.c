@@ -3248,3 +3248,57 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_de
 	eth_dev->data->numa_node = pci_dev->numa_node;
 	eth_dev->data->drv_name = pci_dev->driver->name;
 }
+
+int
+rte_eth_dev_l2_tunnel_eth_type_conf(uint8_t port_id,
+				    struct rte_eth_l2_tunnel_conf *l2_tunnel)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	if (l2_tunnel == NULL) {
+		RTE_PMD_DEBUG_TRACE("Invalid l2_tunnel parameter\n");
+		return -EINVAL;
+	}
+
+	if (l2_tunnel->l2_tunnel_type >= RTE_TUNNEL_TYPE_MAX) {
+		RTE_PMD_DEBUG_TRACE("Invalid tunnel type\n");
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->l2_tunnel_eth_type_conf,
+				-ENOTSUP);
+	return (*dev->dev_ops->l2_tunnel_eth_type_conf)(dev, l2_tunnel);
+}
+
+int
+rte_eth_dev_l2_tunnel_offload_set(uint8_t port_id,
+				  struct rte_eth_l2_tunnel_conf *l2_tunnel,
+				  uint32_t mask,
+				  uint8_t en)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (l2_tunnel == NULL) {
+		RTE_PMD_DEBUG_TRACE("Invalid l2_tunnel parameter\n");
+		return -EINVAL;
+	}
+
+	if (l2_tunnel->l2_tunnel_type >= RTE_TUNNEL_TYPE_MAX) {
+		RTE_PMD_DEBUG_TRACE("Invalid tunnel type.\n");
+		return -EINVAL;
+	}
+
+	if (mask == 0) {
+		RTE_PMD_DEBUG_TRACE("Mask should have a value.\n");
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->l2_tunnel_offload_set,
+				-ENOTSUP);
+	return (*dev->dev_ops->l2_tunnel_offload_set)(dev, l2_tunnel, mask, en);
+}

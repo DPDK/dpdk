@@ -968,6 +968,19 @@ TAILQ_HEAD(rte_eth_dev_cb_list, rte_eth_dev_callback);
 	} \
 } while (0)
 
+/**
+ * l2 tunnel configuration.
+ */
+
+/**< l2 tunnel enable mask */
+#define ETH_L2_TUNNEL_ENABLE_MASK       0x00000001
+/**< l2 tunnel insertion mask */
+#define ETH_L2_TUNNEL_INSERTION_MASK    0x00000002
+/**< l2 tunnel stripping mask */
+#define ETH_L2_TUNNEL_STRIPPING_MASK    0x00000004
+/**< l2 tunnel forwarding mask */
+#define ETH_L2_TUNNEL_FORWARDING_MASK   0x00000008
+
 /*
  * Definitions of all functions exported by an Ethernet driver through the
  * the generic structure of type *eth_dev_ops* supplied in the *rte_eth_dev*
@@ -1272,6 +1285,17 @@ typedef int (*eth_set_eeprom_t)(struct rte_eth_dev *dev,
 				struct rte_dev_eeprom_info *info);
 /**< @internal Program eeprom data  */
 
+typedef int (*eth_l2_tunnel_eth_type_conf_t)
+	(struct rte_eth_dev *dev, struct rte_eth_l2_tunnel_conf *l2_tunnel);
+/**< @internal config l2 tunnel ether type */
+
+typedef int (*eth_l2_tunnel_offload_set_t)
+	(struct rte_eth_dev *dev,
+	 struct rte_eth_l2_tunnel_conf *l2_tunnel,
+	 uint32_t mask,
+	 uint8_t en);
+/**< @internal enable/disable the l2 tunnel offload functions */
+
 #ifdef RTE_NIC_BYPASS
 
 enum {
@@ -1454,6 +1478,10 @@ struct eth_dev_ops {
 	eth_timesync_read_time timesync_read_time;
 	/** Set the device clock time. */
 	eth_timesync_write_time timesync_write_time;
+	/** Config ether type of l2 tunnel */
+	eth_l2_tunnel_eth_type_conf_t l2_tunnel_eth_type_conf;
+	/** Enable/disable l2 tunnel offload functions */
+	eth_l2_tunnel_offload_set_t l2_tunnel_offload_set;
 };
 
 /**
@@ -4098,6 +4126,53 @@ const struct rte_memzone *
 rte_eth_dma_zone_reserve(const struct rte_eth_dev *eth_dev, const char *name,
 			 uint16_t queue_id, size_t size,
 			 unsigned align, int socket_id);
+
+/**
+ * Config l2 tunnel ether type of an Ethernet device for filtering specific
+ * tunnel packets by ether type.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param l2_tunnel
+ *   l2 tunnel configuration.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support tunnel type.
+ */
+int
+rte_eth_dev_l2_tunnel_eth_type_conf(uint8_t port_id,
+				    struct rte_eth_l2_tunnel_conf *l2_tunnel);
+
+/**
+ * Enable/disable l2 tunnel offload functions. Include,
+ * 1, The ability of parsing a type of l2 tunnel of an Ethernet device.
+ *    Filtering, forwarding and offloading this type of tunnel packets depend on
+ *    this ability.
+ * 2, Stripping the l2 tunnel tag.
+ * 3, Insertion of the l2 tunnel tag.
+ * 4, Forwarding the packets based on the l2 tunnel tag.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param l2_tunnel
+ *   l2 tunnel parameters.
+ * @param mask
+ *   Indicate the offload function.
+ * @param en
+ *   Enable or disable this function.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if port identifier is invalid.
+ *   - (-ENOTSUP) if hardware doesn't support tunnel type.
+ */
+int
+rte_eth_dev_l2_tunnel_offload_set(uint8_t port_id,
+				  struct rte_eth_l2_tunnel_conf *l2_tunnel,
+				  uint32_t mask,
+				  uint8_t en);
 
 #ifdef __cplusplus
 }

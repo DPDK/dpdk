@@ -89,6 +89,7 @@ enum rte_filter_type {
 	RTE_ETH_FILTER_TUNNEL,
 	RTE_ETH_FILTER_FDIR,
 	RTE_ETH_FILTER_HASH,
+	RTE_ETH_FILTER_L2_TUNNEL,
 	RTE_ETH_FILTER_MAX
 };
 
@@ -244,6 +245,7 @@ enum rte_eth_tunnel_type {
 	RTE_TUNNEL_TYPE_GENEVE,
 	RTE_TUNNEL_TYPE_TEREDO,
 	RTE_TUNNEL_TYPE_NVGRE,
+	RTE_L2_TUNNEL_TYPE_E_TAG,
 	RTE_TUNNEL_TYPE_MAX,
 };
 
@@ -811,6 +813,17 @@ struct rte_eth_hash_filter_info {
 		/** Global configurations of hash filter input set */
 		struct rte_eth_input_set_conf input_set_conf;
 	} info;
+};
+
+/**
+ * l2 tunnel configuration.
+ */
+struct rte_eth_l2_tunnel_conf {
+	enum rte_eth_tunnel_type l2_tunnel_type;
+	uint16_t ether_type; /* ether type in l2 header */
+	uint32_t tunnel_id; /* port tag id for e-tag */
+	uint16_t vf_id; /* VF id for tag insertion */
+	uint32_t pool; /* destination pool for tag based forwarding */
 };
 
 #ifdef __cplusplus
