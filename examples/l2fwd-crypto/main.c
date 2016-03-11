@@ -144,6 +144,9 @@ struct l2fwd_crypto_options {
 
 	struct rte_crypto_sym_xform auth_xform;
 	uint8_t akey_param;
+
+	struct l2fwd_key aad;
+	unsigned aad_param;
 };
 
 /** l2fwd crypto lcore params */
@@ -154,6 +157,7 @@ struct l2fwd_crypto_params {
 	unsigned digest_length;
 	unsigned block_size;
 	struct l2fwd_key iv;
+	struct l2fwd_key aad;
 	struct rte_cryptodev_sym_session *session;
 };
 
@@ -404,6 +408,12 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	op->sym->cipher.iv.phys_addr = cparams->iv.phys_addr;
 	op->sym->cipher.iv.length = cparams->iv.length;
 
+	if (cparams->aad.length) {
+		op->sym->auth.aad.data = cparams->aad.data;
+		op->sym->auth.aad.phys_addr = cparams->aad.phys_addr;
+		op->sym->auth.aad.length = cparams->aad.length;
+	}
+
 	op->sym->cipher.data.offset = ipdata_offset;
 	op->sym->cipher.data.length = data_len;
 
@@ -556,6 +566,15 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 			generate_random_key(options->iv.data,
 					port_cparams[i].iv.length);
 
+		port_cparams[i].aad.length =
+				options->auth_xform.auth.add_auth_data_length;
+		port_cparams[i].aad.phys_addr = options->aad.phys_addr;
+		port_cparams[i].aad.data = options->aad.data;
+		if (!options->aad_param)
+			generate_random_key(options->aad.data,
+					port_cparams[i].aad.length);
+
+
 		port_cparams[i].session = initialize_crypto_session(options,
 				port_cparams[i].dev_id);
 
@@ -695,6 +714,7 @@ l2fwd_crypto_usage(const char *prgname)
 		"  --auth_algo ALGO\n"
 		"  --auth_op GENERATE / VERIFY\n"
 		"  --auth_key KEY\n"
+		"  --aad AAD\n"
 
 		"  --sessionless\n",
 	       prgname);
@@ -871,6 +891,11 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		return parse_key(options->auth_xform.auth.key.data, optarg);
 	}
 
+	else if (strcmp(lgopts[option_index].name, "aad") == 0) {
+		options->aad_param = 1;
+		return parse_key(options->aad.data, optarg);
+	}
+
 	else if (strcmp(lgopts[option_index].name, "sessionless") == 0) {
 		options->sessionless = 1;
 		return 0;
@@ -981,6 +1006,7 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	options->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	options->auth_xform.next = NULL;
 	options->akey_param = 0;
+	options->aad_param = 0;
 
 	options->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
 	options->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -1039,6 +1065,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 			{ "auth_key", required_argument, 0, 0 },
 
 			{ "iv", required_argument, 0, 0 },
+			{ "aad", required_argument, 0, 0 },
 
 			{ "sessionless", no_argument, 0, 0 },
 
@@ -1354,6 +1381,11 @@ reserve_key_memory(struct l2fwd_crypto_options *options)
 	if (options->iv.data == NULL)
 		rte_exit(EXIT_FAILURE, "Failed to allocate memory for IV");
 	options->iv.phys_addr = rte_malloc_virt2phy(options->iv.data);
+
+	options->aad.data = rte_malloc("aad", MAX_KEY_SIZE, 0);
+	if (options->aad.data == NULL)
+		rte_exit(EXIT_FAILURE, "Failed to allocate memory for AAD");
+	options->aad.phys_addr = rte_malloc_virt2phy(options->aad.data);
 }
 
 int
