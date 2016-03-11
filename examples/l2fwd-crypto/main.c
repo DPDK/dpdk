@@ -76,6 +76,7 @@
 
 #define NB_MBUF   8192
 
+#define MAX_KEY_SIZE 128
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
@@ -136,13 +137,13 @@ struct l2fwd_crypto_options {
 	enum l2fwd_crypto_xform_chain xform_chain;
 
 	struct rte_crypto_sym_xform cipher_xform;
-	uint8_t ckey_data[32];
+	unsigned ckey_param;
 
-	struct l2fwd_key iv_key;
-	uint8_t ivkey_data[16];
+	struct l2fwd_key iv;
+	unsigned iv_param;
 
 	struct rte_crypto_sym_xform auth_xform;
-	uint8_t akey_data[128];
+	uint8_t akey_param;
 };
 
 /** l2fwd crypto lcore params */
@@ -152,7 +153,7 @@ struct l2fwd_crypto_params {
 
 	unsigned digest_length;
 	unsigned block_size;
-	struct l2fwd_key iv_key;
+	struct l2fwd_key iv;
 	struct rte_cryptodev_sym_session *session;
 };
 
@@ -172,6 +173,8 @@ struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
+		.mq_mode = ETH_MQ_RX_NONE,
+		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.header_split   = 0, /**< Header Split disabled */
 		.hw_ip_checksum = 0, /**< IP checksum offload disabled */
@@ -397,9 +400,9 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	op->sym->auth.data.length = data_len;
 
 
-	op->sym->cipher.iv.data = cparams->iv_key.data;
-	op->sym->cipher.iv.phys_addr = cparams->iv_key.phys_addr;
-	op->sym->cipher.iv.length = cparams->iv_key.length;
+	op->sym->cipher.iv.data = cparams->iv.data;
+	op->sym->cipher.iv.phys_addr = cparams->iv.phys_addr;
+	op->sym->cipher.iv.length = cparams->iv.length;
 
 	op->sym->cipher.data.offset = ipdata_offset;
 	op->sym->cipher.data.length = data_len;
@@ -546,13 +549,12 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 		port_cparams[i].block_size = 64;
 		port_cparams[i].digest_length = 20;
 
-		port_cparams[i].iv_key.data =
-				(uint8_t *)rte_malloc(NULL, 16, 8);
-		port_cparams[i].iv_key.length = 16;
-		port_cparams[i].iv_key.phys_addr = rte_malloc_virt2phy(
-				(void *)port_cparams[i].iv_key.data);
-		generate_random_key(port_cparams[i].iv_key.data,
-				sizeof(cparams[i].iv_key.length));
+		port_cparams[i].iv.length = 16;
+		port_cparams[i].iv.data = options->iv.data;
+		port_cparams[i].iv.phys_addr = options->iv.phys_addr;
+		if (!options->iv_param)
+			generate_random_key(options->iv.data,
+					port_cparams[i].iv.length);
 
 		port_cparams[i].session = initialize_crypto_session(options,
 				port_cparams[i].dev_id);
@@ -762,11 +764,24 @@ parse_cipher_op(enum rte_crypto_cipher_operation *op, char *optarg)
 
 /** Parse crypto key command line argument */
 static int
-parse_key(struct l2fwd_key *key __rte_unused,
-		unsigned length __rte_unused, char *arg __rte_unused)
+parse_key(uint8_t *data, char *input_arg)
 {
-	printf("Currently an unsupported argument!\n");
-	return -1;
+	unsigned byte_count;
+	char *token;
+
+	for (byte_count = 0, token = strtok(input_arg, ":");
+			(byte_count < MAX_KEY_SIZE) && (token != NULL);
+			token = strtok(NULL, ":")) {
+
+		int number = (int)strtol(token, NULL, 16);
+
+		if (errno == EINVAL || errno == ERANGE || number > 0xFF)
+			return -1;
+
+		data[byte_count++] = (uint8_t)number;
+	}
+
+	return 0;
 }
 
 /** Parse crypto cipher operation command line argument */
@@ -833,18 +848,14 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 				optarg);
 
 	else if (strcmp(lgopts[option_index].name, "cipher_key") == 0) {
-		struct l2fwd_key key = { 0 };
-		int retval = 0;
+		options->ckey_param = 1;
+		return parse_key(options->cipher_xform.cipher.key.data, optarg);
+	}
 
-		retval = parse_key(&key, sizeof(options->ckey_data), optarg);
-
-		options->cipher_xform.cipher.key.data = key.data;
-		options->cipher_xform.cipher.key.length = key.length;
-
-		return retval;
-	} else if (strcmp(lgopts[option_index].name, "iv") == 0)
-		return parse_key(&options->iv_key, sizeof(options->ivkey_data),
-				optarg);
+	else if (strcmp(lgopts[option_index].name, "iv") == 0) {
+		options->iv_param = 1;
+		return parse_key(options->iv.data, optarg);
+	}
 
 	/* Authentication options */
 	else if (strcmp(lgopts[option_index].name, "auth_algo") == 0)
@@ -856,16 +867,11 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 				optarg);
 
 	else if (strcmp(lgopts[option_index].name, "auth_key") == 0) {
-		struct l2fwd_key key = { 0 };
-		int retval = 0;
+		options->akey_param = 1;
+		return parse_key(options->auth_xform.auth.key.data, optarg);
+	}
 
-		retval = parse_key(&key, sizeof(options->akey_data), optarg);
-
-		options->auth_xform.auth.key.data = key.data;
-		options->auth_xform.auth.key.length = key.length;
-
-		return retval;
-	} else if (strcmp(lgopts[option_index].name, "sessionless") == 0) {
+	else if (strcmp(lgopts[option_index].name, "sessionless") == 0) {
 		options->sessionless = 1;
 		return 0;
 	}
@@ -962,19 +968,19 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	/* Cipher Data */
 	options->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	options->cipher_xform.next = NULL;
+	options->ckey_param = 0;
+	options->iv_param = 0;
 
 	options->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
 	options->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 
-	generate_random_key(options->ckey_data, sizeof(options->ckey_data));
-
-	options->cipher_xform.cipher.key.data = options->ckey_data;
 	options->cipher_xform.cipher.key.length = 16;
 
 
 	/* Authentication Data */
 	options->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	options->auth_xform.next = NULL;
+	options->akey_param = 0;
 
 	options->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
 	options->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -982,9 +988,6 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	options->auth_xform.auth.add_auth_data_length = 0;
 	options->auth_xform.auth.digest_length = 20;
 
-	generate_random_key(options->akey_data, sizeof(options->akey_data));
-
-	options->auth_xform.auth.key.data = options->akey_data;
 	options->auth_xform.auth.key.length = 20;
 }
 
@@ -1333,6 +1336,26 @@ initialize_ports(struct l2fwd_crypto_options *options)
 	return enabled_portcount;
 }
 
+static void
+reserve_key_memory(struct l2fwd_crypto_options *options)
+{
+	options->cipher_xform.cipher.key.data = rte_malloc("crypto key",
+						MAX_KEY_SIZE, 0);
+	if (options->cipher_xform.cipher.key.data == NULL)
+		rte_exit(EXIT_FAILURE, "Failed to allocate memory for cipher key");
+
+
+	options->auth_xform.auth.key.data = rte_malloc("auth key",
+						MAX_KEY_SIZE, 0);
+	if (options->auth_xform.auth.key.data == NULL)
+		rte_exit(EXIT_FAILURE, "Failed to allocate memory for auth key");
+
+	options->iv.data = rte_malloc("iv", MAX_KEY_SIZE, 0);
+	if (options->iv.data == NULL)
+		rte_exit(EXIT_FAILURE, "Failed to allocate memory for IV");
+	options->iv.phys_addr = rte_malloc_virt2phy(options->iv.data);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1349,6 +1372,9 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
 	argc -= ret;
 	argv += ret;
+
+	/* reserve memory for Cipher/Auth key and IV */
+	reserve_key_memory(&options);
 
 	/* parse application arguments (after the EAL ones) */
 	ret = l2fwd_crypto_parse_args(&options, argc, argv);
@@ -1463,6 +1489,13 @@ main(int argc, char **argv)
 				(unsigned)cdev_id);
 	}
 
+	if (!options.akey_param)
+		generate_random_key(options.auth_xform.auth.key.data,
+				options.auth_xform.auth.key.length);
+
+	if (!options.ckey_param)
+		generate_random_key(options.cipher_xform.cipher.key.data,
+				options.cipher_xform.cipher.key.length);
 
 
 	/* launch per-lcore init on every lcore */
