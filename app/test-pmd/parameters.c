@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -810,21 +810,25 @@ launch_args_parse(int argc, char** argv)
 				rss_hf = ETH_RSS_UDP;
 			if (!strcmp(lgopts[opt_idx].name, "rxq")) {
 				n = atoi(optarg);
-				if (n >= 1 && n <= (int) MAX_QUEUE_ID)
+				if (n >= 0 && n <= (int) MAX_QUEUE_ID)
 					nb_rxq = (queueid_t) n;
 				else
 					rte_exit(EXIT_FAILURE, "rxq %d invalid - must be"
-						  " >= 1 && <= %d\n", n,
+						  " >= 0 && <= %d\n", n,
 						  (int) MAX_QUEUE_ID);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txq")) {
 				n = atoi(optarg);
-				if (n >= 1 && n <= (int) MAX_QUEUE_ID)
+				if (n >= 0 && n <= (int) MAX_QUEUE_ID)
 					nb_txq = (queueid_t) n;
 				else
 					rte_exit(EXIT_FAILURE, "txq %d invalid - must be"
-						  " >= 1 && <= %d\n", n,
+						  " >= 0 && <= %d\n", n,
 						  (int) MAX_QUEUE_ID);
+			}
+			if (!nb_rxq && !nb_txq) {
+				rte_exit(EXIT_FAILURE, "Either rx or tx queues should "
+						"be non-zero\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "burst")) {
 				n = atoi(optarg);

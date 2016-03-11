@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -608,6 +608,7 @@ init_fwd_streams(void)
 	portid_t pid;
 	struct rte_port *port;
 	streamid_t sm_id, nb_fwd_streams_new;
+	queueid_t q;
 
 	/* set socket id according to numa or not */
 	FOREACH_PORT(pid, ports) {
@@ -643,7 +644,12 @@ init_fwd_streams(void)
 		}
 	}
 
-	nb_fwd_streams_new = (streamid_t)(nb_ports * nb_rxq);
+	q = RTE_MAX(nb_rxq, nb_txq);
+	if (q == 0) {
+		printf("Fail: Cannot allocate fwd streams as number of queues is 0\n");
+		return -1;
+	}
+	nb_fwd_streams_new = (streamid_t)(nb_ports * q);
 	if (nb_fwd_streams_new == nb_fwd_streams)
 		return 0;
 	/* clear the old */
@@ -954,6 +960,19 @@ start_packet_forwarding(int with_tx_first)
 	unsigned int i;
 	portid_t   pt_id;
 	streamid_t sm_id;
+
+	if (strcmp(cur_fwd_eng->fwd_mode_name, "rxonly") == 0 && !nb_rxq)
+		rte_exit(EXIT_FAILURE, "rxq are 0, cannot use rxonly fwd mode\n");
+
+	if (strcmp(cur_fwd_eng->fwd_mode_name, "txonly") == 0 && !nb_txq)
+		rte_exit(EXIT_FAILURE, "txq are 0, cannot use txonly fwd mode\n");
+
+	if ((strcmp(cur_fwd_eng->fwd_mode_name, "rxonly") != 0 &&
+		strcmp(cur_fwd_eng->fwd_mode_name, "txonly") != 0) &&
+		(!nb_rxq || !nb_txq))
+		rte_exit(EXIT_FAILURE,
+			"Either rxq or txq are 0, cannot use %s fwd mode\n",
+			cur_fwd_eng->fwd_mode_name);
 
 	if (all_ports_started() == 0) {
 		printf("Not all ports were started\n");
@@ -2037,7 +2056,10 @@ main(int argc, char** argv)
 	if (argc > 1)
 		launch_args_parse(argc, argv);
 
-	if (nb_rxq > nb_txq)
+	if (!nb_rxq && !nb_txq)
+		printf("Warning: Either rx or tx queues should be non-zero\n");
+
+	if (nb_rxq > 1 && nb_rxq > nb_txq)
 		printf("Warning: nb_rxq=%d enables RSS configuration, "
 		       "but nb_txq=%d will prevent to fully test it.\n",
 		       nb_rxq, nb_txq);

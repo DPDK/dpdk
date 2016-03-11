@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  *
@@ -1190,17 +1190,16 @@ cmd_config_rx_tx_parsed(void *parsed_result,
 		printf("Please stop all ports first\n");
 		return;
 	}
-
 	if (!strcmp(res->name, "rxq")) {
-		if (res->value <= 0) {
-			printf("rxq %d invalid - must be > 0\n", res->value);
+		if (!res->value && !nb_txq) {
+			printf("Warning: Either rx or tx queues should be non zero\n");
 			return;
 		}
 		nb_rxq = res->value;
 	}
 	else if (!strcmp(res->name, "txq")) {
-		if (res->value <= 0) {
-			printf("txq %d invalid - must be > 0\n", res->value);
+		if (!res->value && !nb_rxq) {
+			printf("Warning: Either rx or tx queues should be non zero\n");
 			return;
 		}
 		nb_txq = res->value;
