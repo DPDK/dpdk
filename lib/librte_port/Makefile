@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,14 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 #
 LIB = librte_port.a
+
+ifeq ($(CONFIG_RTE_NEXT_ABI),y)
+
+ifeq ($(CONFIG_RTE_PORT_PCAP),y)
+LDLIBS += -lpcap
+endif
+
+endif
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

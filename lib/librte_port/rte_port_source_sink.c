@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,16 @@
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 
+#ifdef RTE_NEXT_ABI
+
+#include <rte_memcpy.h>
+
+#ifdef RTE_PORT_PCAP
+#include <pcap.h>
+#endif
+
+#endif
+
 #include "rte_port_source_sink.h"
 
 /*
@@ -60,7 +70,173 @@ struct rte_port_source {
 	struct rte_port_in_stats stats;
 
 	struct rte_mempool *mempool;
+
+#ifdef RTE_NEXT_ABI
+	/* PCAP buffers and indexes */
+	uint8_t **pkts;
+	uint8_t *pkt_buff;
+	uint32_t *pkt_len;
+	uint32_t n_pkts;
+	uint32_t pkt_index;
+#endif
 };
+
+#ifdef RTE_NEXT_ABI
+
+#ifdef RTE_PORT_PCAP
+
+/**
+ * Load PCAP file, allocate and copy packets in the file to memory
+ *
+ * @param p
+ *   Parameters for source port
+ * @param port
+ *   Handle to source port
+ * @param socket_id
+ *   Socket id where the memory is created
+ * @return
+ *   0 on SUCCESS
+ *   error code otherwise
+ */
+static int
+pcap_source_load(struct rte_port_source_params *p,
+		struct rte_port_source *port,
+		int socket_id)
+{
+	uint32_t status = 0;
+	uint32_t n_pkts = 0;
+	uint32_t i;
+	uint32_t *pkt_len_aligns = NULL;
+	size_t total_buff_len = 0;
+	pcap_t *pcap_handle;
+	char pcap_errbuf[PCAP_ERRBUF_SIZE];
+	uint32_t max_len;
+	struct pcap_pkthdr pcap_hdr;
+	const uint8_t *pkt;
+	uint8_t *buff = NULL;
+	uint32_t pktmbuf_maxlen = (uint32_t)
+			(rte_pktmbuf_data_room_size(port->mempool) -
+			RTE_PKTMBUF_HEADROOM);
+
+	if (p->file_name == NULL)
+		return 0;
+
+	if (p->n_bytes_per_pkt == 0)
+		max_len = pktmbuf_maxlen;
+	else
+		max_len = RTE_MIN(p->n_bytes_per_pkt, pktmbuf_maxlen);
+
+	/* first time open, get packet number */
+	pcap_handle = pcap_open_offline(p->file_name, pcap_errbuf);
+	if (pcap_handle == NULL) {
+		status = -ENOENT;
+		goto error_exit;
+	}
+
+	while ((pkt = pcap_next(pcap_handle, &pcap_hdr)) != NULL)
+		n_pkts++;
+
+	pcap_close(pcap_handle);
+
+	port->pkt_len = rte_zmalloc_socket("PCAP",
+		(sizeof(*port->pkt_len) * n_pkts), 0, socket_id);
+	if (port->pkt_len == NULL) {
+		status = -ENOMEM;
+		goto error_exit;
+	}
+
+	pkt_len_aligns = rte_malloc("PCAP",
+		(sizeof(*pkt_len_aligns) * n_pkts), 0);
+	if (pkt_len_aligns == NULL) {
+		status = -ENOMEM;
+		goto error_exit;
+	}
+
+	port->pkts = rte_zmalloc_socket("PCAP",
+		(sizeof(*port->pkts) * n_pkts), 0, socket_id);
+	if (port->pkts == NULL) {
+		status = -ENOMEM;
+		goto error_exit;
+	}
+
+	/* open 2nd time, get pkt_len */
+	pcap_handle = pcap_open_offline(p->file_name, pcap_errbuf);
+	if (pcap_handle == NULL) {
+		status = -ENOENT;
+		goto error_exit;
+	}
+
+	for (i = 0; i < n_pkts; i++) {
+		pkt = pcap_next(pcap_handle, &pcap_hdr);
+		port->pkt_len[i] = RTE_MIN(max_len, pcap_hdr.len);
+		pkt_len_aligns[i] = RTE_CACHE_LINE_ROUNDUP(
+			port->pkt_len[i]);
+		total_buff_len += pkt_len_aligns[i];
+	}
+
+	pcap_close(pcap_handle);
+
+	/* allocate a big trunk of data for pcap file load */
+	buff = rte_zmalloc_socket("PCAP",
+		total_buff_len, 0, socket_id);
+	if (buff == NULL) {
+		status = -ENOMEM;
+		goto error_exit;
+	}
+
+	port->pkt_buff = buff;
+
+	/* open file one last time to copy the pkt content */
+	pcap_handle = pcap_open_offline(p->file_name, pcap_errbuf);
+	if (pcap_handle == NULL) {
+		status = -ENOENT;
+		goto error_exit;
+	}
+
+	for (i = 0; i < n_pkts; i++) {
+		pkt = pcap_next(pcap_handle, &pcap_hdr);
+		rte_memcpy(buff, pkt, port->pkt_len[i]);
+		port->pkts[i] = buff;
+		buff += pkt_len_aligns[i];
+	}
+
+	pcap_close(pcap_handle);
+
+	port->n_pkts = n_pkts;
+
+	rte_free(pkt_len_aligns);
+
+	return 0;
+
+error_exit:
+	if (pkt_len_aligns)
+		rte_free(pkt_len_aligns);
+	if (port->pkt_len)
+		rte_free(port->pkt_len);
+	if (port->pkts)
+		rte_free(port->pkts);
+	if (port->pkt_buff)
+		rte_free(port->pkt_buff);
+
+	return status;
+}
+
+#else
+static int
+pcap_source_load(__rte_unused struct rte_port_source_params *p,
+		struct rte_port_source *port,
+		__rte_unused int socket_id)
+{
+	port->pkt_buff = NULL;
+	port->pkt_len = NULL;
+	port->pkts = NULL;
+	port->pkt_index = 0;
+
+	return -ENOTSUP;
+}
+#endif /* RTE_PORT_PCAP */
+
+#endif
 
 static void *
 rte_port_source_create(void *params, int socket_id)
@@ -86,17 +262,66 @@ rte_port_source_create(void *params, int socket_id)
 	/* Initialization */
 	port->mempool = (struct rte_mempool *) p->mempool;
 
+#ifdef RTE_NEXT_ABI
+
+	/* pcap file load and initialization */
+	int status = pcap_source_load(p, port, socket_id);
+
+	if (status == 0) {
+		if (port->pkt_buff != NULL) {
+			RTE_LOG(INFO, PORT, "Successfully load pcap file "
+				"'%s' with %u pkts\n",
+				p->file_name, port->n_pkts);
+		}
+	} else if (status != -ENOTSUP) {
+		/* ENOTSUP is not treated as error */
+		switch (status) {
+		case -ENOENT:
+			RTE_LOG(ERR, PORT, "%s: Failed to open pcap file "
+				"'%s' for reading\n",
+				__func__, p->file_name);
+			break;
+		case -ENOMEM:
+			RTE_LOG(ERR, PORT, "%s: Not enough memory\n",
+				__func__);
+			break;
+		default:
+			RTE_LOG(ERR, PORT, "%s: Failed to enable PCAP "
+				"support for unknown reason\n",
+				__func__);
+			break;
+		}
+
+		rte_free(port);
+		port = NULL;
+	}
+
+#endif
+
 	return port;
 }
 
 static int
 rte_port_source_free(void *port)
 {
+	struct rte_port_source *p =
+			(struct rte_port_source *)port;
+
 	/* Check input parameters */
-	if (port == NULL)
+	if (p == NULL)
 		return 0;
 
-	rte_free(port);
+#ifdef RTE_NEXT_ABI
+
+	if (p->pkt_len)
+		rte_free(p->pkt_len);
+	if (p->pkts)
+		rte_free(p->pkts);
+	if (p->pkt_buff)
+		rte_free(p->pkt_buff);
+#endif
+
+	rte_free(p);
 
 	return 0;
 }
@@ -114,6 +339,26 @@ rte_port_source_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 		rte_mbuf_refcnt_set(pkts[i], 1);
 		rte_pktmbuf_reset(pkts[i]);
 	}
+
+#ifdef RTE_NEXT_ABI
+
+	if (p->pkt_buff != NULL) {
+		for (i = 0; i < n_pkts; i++) {
+			uint8_t *pkt_data = rte_pktmbuf_mtod(pkts[i],
+				uint8_t *);
+
+			rte_memcpy(pkt_data, p->pkts[p->pkt_index],
+					p->pkt_len[p->pkt_index]);
+			pkts[i]->data_len = p->pkt_len[p->pkt_index];
+			pkts[i]->pkt_len = pkts[i]->data_len;
+
+			p->pkt_index++;
+			if (p->pkt_index >= p->n_pkts)
+				p->pkt_index = 0;
+		}
+	}
+
+#endif
 
 	RTE_PORT_SOURCE_STATS_PKTS_IN_ADD(p, n_pkts);
 

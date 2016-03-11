@@ -95,6 +95,11 @@ endif
 # The static libraries do not know their dependencies.
 # So linking with static library requires explicit dependencies.
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
+
+ifeq ($(CONFIG_RTE_NEXT_ABI),y)
+_LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
+endif
+
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lpcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs
