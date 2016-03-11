@@ -478,7 +478,11 @@ static inline void
 rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 	uint32_t defv);
 
+#if defined(RTE_ARCH_ARM) || defined(RTE_ARCH_ARM64)
+#include "rte_lpm_neon.h"
+#else
 #include "rte_lpm_sse.h"
+#endif
 
 #ifdef __cplusplus
 }
