@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1221,6 +1221,24 @@ static void app_pipeline_params_get(struct app_params *app,
 			out->type = PIPELINE_PORT_IN_SOURCE;
 			out->params.source.mempool = app->mempool[mempool_id];
 			out->burst_size = app->source_params[in->id].burst;
+
+#ifdef RTE_NEXT_ABI
+			if (app->source_params[in->id].file_name
+				!= NULL) {
+				out->params.source.file_name = strdup(
+					app->source_params[in->id].
+					file_name);
+				if (out->params.source.file_name == NULL) {
+					out->params.source.
+						n_bytes_per_pkt = 0;
+					break;
+				}
+				out->params.source.n_bytes_per_pkt =
+					app->source_params[in->id].
+					n_bytes_per_pkt;
+			}
+#endif
+
 			break;
 		default:
 			break;

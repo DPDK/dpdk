@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -181,6 +181,8 @@ struct app_pktq_source_params default_source_params = {
 	.parsed = 0,
 	.mempool_id = 0,
 	.burst = 32,
+	.file_name = NULL,
+	.n_bytes_per_pkt = 0,
 };
 
 struct app_pktq_sink_params default_sink_params = {
@@ -955,6 +957,85 @@ parse_eal(struct app_params *app,
 }
 
 static int
+parse_pipeline_pcap_source(struct app_params *app,
+	struct app_pipeline_params *p,
+	const char *file_name, const char *cp_size)
+{
+	const char *next = NULL;
+	char *end;
+	uint32_t i;
+	int parse_file = 0;
+
+	if (file_name && !cp_size) {
+		next = file_name;
+		parse_file = 1; /* parse file path */
+	} else if (cp_size && !file_name) {
+		next = cp_size;
+		parse_file = 0; /* parse copy size */
+	} else
+		return -EINVAL;
+
+	char name[APP_PARAM_NAME_SIZE];
+	size_t name_len;
+
+	if (p->n_pktq_in == 0)
+		return -EINVAL;
+
+	for (i = 0; i < p->n_pktq_in; i++) {
+		if (p->pktq_in[i].type != APP_PKTQ_IN_SOURCE)
+			return -EINVAL;
+	}
+
+	i = 0;
+	while (*next != '\0') {
+		uint32_t id;
+
+		if (i >= p->n_pktq_in)
+			return -EINVAL;
+
+		id = p->pktq_in[i].id;
+
+		end = strchr(next, ' ');
+		if (!end)
+			name_len = strlen(next);
+		else
+			name_len = end - next;
+
+		if (name_len == 0 || name_len == sizeof(name))
+			return -EINVAL;
+
+		strncpy(name, next, name_len);
+		name[name_len] = '\0';
+		next += name_len;
+		if (*next != '\0')
+			next++;
+
+		if (parse_file) {
+			app->source_params[id].file_name = strdup(name);
+			if (app->source_params[id].file_name == NULL)
+				return -ENOMEM;
+		} else {
+			if (parser_read_uint32(
+				&app->source_params[id].n_bytes_per_pkt,
+				name) != 0) {
+				if (app->source_params[id].
+					file_name != NULL)
+					free(app->source_params[id].
+						file_name);
+				return -EINVAL;
+			}
+		}
+
+		i++;
+
+		if (i == p->n_pktq_in)
+			return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int
 parse_pipeline_pktq_in(struct app_params *app,
 	struct app_pipeline_params *p,
 	const char *value)
@@ -1303,6 +1384,24 @@ parse_pipeline(struct app_params *app,
 			int status = parser_read_uint32(
 				&param->timer_period,
 				ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+			continue;
+		}
+
+		if (strcmp(ent->name, "pcap_file_rd") == 0) {
+			int status = parse_pipeline_pcap_source(app,
+				param, ent->value, NULL);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+			continue;
+		}
+
+		if (strcmp(ent->name, "pcap_bytes_rd_per_pkt") == 0) {
+			int status = parse_pipeline_pcap_source(app,
+				param, NULL, ent->value);
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
@@ -2000,6 +2099,21 @@ parse_source(struct app_params *app,
 			continue;
 		}
 
+		if (strcmp(ent->name, "pcap_file_rd")) {
+			param->file_name = strdup(ent->value);
+
+			PARSE_ERROR_MALLOC(param->file_name != NULL);
+			continue;
+		}
+
+		if (strcmp(ent->name, "pcap_bytes_rd_per_pkt") == 0) {
+			int status = parser_read_uint32(
+				&param->n_bytes_per_pkt, ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+		}
+
 		/* unrecognized */
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
@@ -2604,6 +2718,9 @@ save_source_params(struct app_params *app, FILE *f)
 			"mempool",
 			app->mempool_params[p->mempool_id].name);
 		fprintf(f, "%s = %" PRIu32 "\n", "burst", p->burst);
+		fprintf(f, "%s = %s\n", "pcap_file_rd", p->file_name);
+		fprintf(f, "%s = %" PRIu32 "\n", "pcap_bytes_rd_per_pkt",
+			p->n_bytes_per_pkt);
 		fputc('\n', f);
 	}
 }
