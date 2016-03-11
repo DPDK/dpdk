@@ -115,7 +115,9 @@ struct op_buffer {
 
 enum l2fwd_crypto_xform_chain {
 	L2FWD_CRYPTO_CIPHER_HASH,
-	L2FWD_CRYPTO_HASH_CIPHER
+	L2FWD_CRYPTO_HASH_CIPHER,
+	L2FWD_CRYPTO_CIPHER_ONLY,
+	L2FWD_CRYPTO_HASH_ONLY
 };
 
 struct l2fwd_key {
@@ -159,6 +161,9 @@ struct l2fwd_crypto_params {
 	struct l2fwd_key iv;
 	struct l2fwd_key aad;
 	struct rte_cryptodev_sym_session *session;
+
+	uint8_t do_cipher;
+	uint8_t do_hash;
 };
 
 /** lcore configuration */
@@ -393,29 +398,32 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	/* Set crypto operation data parameters */
 	rte_crypto_op_attach_sym_session(op, cparams->session);
 
-	/* Append space for digest to end of packet */
-	op->sym->auth.digest.data = (uint8_t *)rte_pktmbuf_append(m,
-			cparams->digest_length);
-	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
-			rte_pktmbuf_pkt_len(m) - cparams->digest_length);
-	op->sym->auth.digest.length = cparams->digest_length;
+	if (cparams->do_hash) {
+		/* Append space for digest to end of packet */
+		op->sym->auth.digest.data = (uint8_t *)rte_pktmbuf_append(m,
+				cparams->digest_length);
+		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+				rte_pktmbuf_pkt_len(m) - cparams->digest_length);
+		op->sym->auth.digest.length = cparams->digest_length;
 
-	op->sym->auth.data.offset = ipdata_offset;
-	op->sym->auth.data.length = data_len;
+		op->sym->auth.data.offset = ipdata_offset;
+		op->sym->auth.data.length = data_len;
 
-
-	op->sym->cipher.iv.data = cparams->iv.data;
-	op->sym->cipher.iv.phys_addr = cparams->iv.phys_addr;
-	op->sym->cipher.iv.length = cparams->iv.length;
-
-	if (cparams->aad.length) {
-		op->sym->auth.aad.data = cparams->aad.data;
-		op->sym->auth.aad.phys_addr = cparams->aad.phys_addr;
-		op->sym->auth.aad.length = cparams->aad.length;
+		if (cparams->aad.length) {
+			op->sym->auth.aad.data = cparams->aad.data;
+			op->sym->auth.aad.phys_addr = cparams->aad.phys_addr;
+			op->sym->auth.aad.length = cparams->aad.length;
+		}
 	}
 
-	op->sym->cipher.data.offset = ipdata_offset;
-	op->sym->cipher.data.length = data_len;
+	if (cparams->do_cipher) {
+		op->sym->cipher.iv.data = cparams->iv.data;
+		op->sym->cipher.iv.phys_addr = cparams->iv.phys_addr;
+		op->sym->cipher.iv.length = cparams->iv.length;
+
+		op->sym->cipher.data.offset = ipdata_offset;
+		op->sym->cipher.data.length = data_len;
+	}
 
 	op->sym->m_src = m;
 
@@ -508,9 +516,13 @@ initialize_crypto_session(struct l2fwd_crypto_options *options,
 	if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH) {
 		first_xform = &options->cipher_xform;
 		first_xform->next = &options->auth_xform;
-	} else {
+	} else if (options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER) {
 		first_xform = &options->auth_xform;
 		first_xform->next = &options->cipher_xform;
+	} else if (options->xform_chain == L2FWD_CRYPTO_CIPHER_ONLY) {
+		first_xform = &options->cipher_xform;
+	} else {
+		first_xform = &options->auth_xform;
 	}
 
 	/* Setup Cipher Parameters */
@@ -553,26 +565,48 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 	}
 
 	for (i = 0; i < qconf->nb_crypto_devs; i++) {
+		port_cparams[i].do_cipher = 0;
+		port_cparams[i].do_hash = 0;
+
+		switch (options->xform_chain) {
+		case L2FWD_CRYPTO_CIPHER_HASH:
+		case L2FWD_CRYPTO_HASH_CIPHER:
+			port_cparams[i].do_cipher = 1;
+			port_cparams[i].do_hash = 1;
+			break;
+		case L2FWD_CRYPTO_HASH_ONLY:
+			port_cparams[i].do_hash = 1;
+			break;
+		case L2FWD_CRYPTO_CIPHER_ONLY:
+			port_cparams[i].do_cipher = 1;
+			break;
+		}
+
 		port_cparams[i].dev_id = qconf->cryptodev_list[i];
 		port_cparams[i].qp_id = 0;
 
 		port_cparams[i].block_size = 64;
-		port_cparams[i].digest_length = 20;
 
-		port_cparams[i].iv.length = 16;
-		port_cparams[i].iv.data = options->iv.data;
-		port_cparams[i].iv.phys_addr = options->iv.phys_addr;
-		if (!options->iv_param)
-			generate_random_key(options->iv.data,
+		if (port_cparams[i].do_hash) {
+			port_cparams[i].digest_length = 20;
+
+			port_cparams[i].aad.length =
+					options->auth_xform.auth.add_auth_data_length;
+			port_cparams[i].aad.phys_addr = options->aad.phys_addr;
+			port_cparams[i].aad.data = options->aad.data;
+			if (!options->aad_param)
+				generate_random_key(options->aad.data,
+						port_cparams[i].aad.length);
+		}
+
+		if (port_cparams[i].do_cipher) {
+			port_cparams[i].iv.length = 16;
+			port_cparams[i].iv.data = options->iv.data;
+			port_cparams[i].iv.phys_addr = options->iv.phys_addr;
+			if (!options->iv_param)
+				generate_random_key(options->iv.data,
 					port_cparams[i].iv.length);
-
-		port_cparams[i].aad.length =
-				options->auth_xform.auth.add_auth_data_length;
-		port_cparams[i].aad.phys_addr = options->aad.phys_addr;
-		port_cparams[i].aad.data = options->aad.data;
-		if (!options->aad_param)
-			generate_random_key(options->aad.data,
-					port_cparams[i].aad.length);
+		}
 
 
 		port_cparams[i].session = initialize_crypto_session(options,
@@ -744,6 +778,12 @@ parse_crypto_opt_chain(struct l2fwd_crypto_options *options, char *optarg)
 		return 0;
 	} else if (strcmp("HASH_CIPHER", optarg) == 0) {
 		options->xform_chain = L2FWD_CRYPTO_HASH_CIPHER;
+		return 0;
+	} else if (strcmp("CIPHER_ONLY", optarg) == 0) {
+		options->xform_chain = L2FWD_CRYPTO_CIPHER_ONLY;
+		return 0;
+	} else if (strcmp("HASH_ONLY", optarg) == 0) {
+		options->xform_chain = L2FWD_CRYPTO_HASH_ONLY;
 		return 0;
 	}
 
