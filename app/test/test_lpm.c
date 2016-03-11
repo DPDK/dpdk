@@ -49,6 +49,7 @@
 
 #include "rte_lpm.h"
 #include "test_lpm_routes.h"
+#include "test_xmmt_ops.h"
 
 #define TEST_LPM_ASSERT(cond) do {                                            \
 	if (!(cond)) {                                                        \
@@ -345,7 +346,7 @@ test6(void)
 int32_t
 test7(void)
 {
-	__m128i ipx4;
+	xmm_t ipx4;
 	uint32_t hop[4];
 	struct rte_lpm *lpm = NULL;
 	struct rte_lpm_config config;
@@ -366,7 +367,7 @@ test7(void)
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
 
-	ipx4 = _mm_set_epi32(ip, ip + 0x100, ip - 0x100, ip);
+	ipx4 = vect_set_epi32(ip, ip + 0x100, ip - 0x100, ip);
 	rte_lpm_lookupx4(lpm, ipx4, hop, UINT32_MAX);
 	TEST_LPM_ASSERT(hop[0] == next_hop_add);
 	TEST_LPM_ASSERT(hop[1] == UINT32_MAX);
@@ -396,7 +397,7 @@ test7(void)
 int32_t
 test8(void)
 {
-	__m128i ipx4;
+	xmm_t ipx4;
 	uint32_t hop[4];
 	struct rte_lpm *lpm = NULL;
 	struct rte_lpm_config config;
@@ -428,7 +429,7 @@ test8(void)
 		TEST_LPM_ASSERT((status == 0) &&
 			(next_hop_return == next_hop_add));
 
-		ipx4 = _mm_set_epi32(ip2, ip1, ip2, ip1);
+		ipx4 = vect_set_epi32(ip2, ip1, ip2, ip1);
 		rte_lpm_lookupx4(lpm, ipx4, hop, UINT32_MAX);
 		TEST_LPM_ASSERT(hop[0] == UINT32_MAX);
 		TEST_LPM_ASSERT(hop[1] == next_hop_add);
@@ -455,7 +456,7 @@ test8(void)
 		status = rte_lpm_lookup(lpm, ip1, &next_hop_return);
 		TEST_LPM_ASSERT(status == -ENOENT);
 
-		ipx4 = _mm_set_epi32(ip1, ip1, ip2, ip2);
+		ipx4 = vect_set_epi32(ip1, ip1, ip2, ip2);
 		rte_lpm_lookupx4(lpm, ipx4, hop, UINT32_MAX);
 		if (depth != 1) {
 			TEST_LPM_ASSERT(hop[0] == next_hop_add);
@@ -912,7 +913,7 @@ test11(void)
 int32_t
 test12(void)
 {
-	__m128i ipx4;
+	xmm_t ipx4;
 	uint32_t hop[4];
 	struct rte_lpm *lpm = NULL;
 	struct rte_lpm_config config;
@@ -939,7 +940,7 @@ test12(void)
 		TEST_LPM_ASSERT((status == 0) &&
 				(next_hop_return == next_hop_add));
 
-		ipx4 = _mm_set_epi32(ip, ip + 1, ip, ip - 1);
+		ipx4 = vect_set_epi32(ip, ip + 1, ip, ip - 1);
 		rte_lpm_lookupx4(lpm, ipx4, hop, UINT32_MAX);
 		TEST_LPM_ASSERT(hop[0] == UINT32_MAX);
 		TEST_LPM_ASSERT(hop[1] == next_hop_add);
@@ -1386,10 +1387,10 @@ perf_test(void)
 		begin = rte_rdtsc();
 		for (j = 0; j < BATCH_SIZE; j += RTE_DIM(next_hops)) {
 			unsigned k;
-			__m128i ipx4;
+			xmm_t ipx4;
 
-			ipx4 = _mm_loadu_si128((__m128i *)(ip_batch + j));
-			ipx4 = *(__m128i *)(ip_batch + j);
+			ipx4 = vect_loadu_sil128((xmm_t *)(ip_batch + j));
+			ipx4 = *(xmm_t *)(ip_batch + j);
 			rte_lpm_lookupx4(lpm, ipx4, next_hops, UINT32_MAX);
 			for (k = 0; k < RTE_DIM(next_hops); k++)
 				if (unlikely(next_hops[k] == UINT32_MAX))
