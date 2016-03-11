@@ -51,9 +51,13 @@ ifeq ($(CONFIG_RTE_LIBRTE_LPM),y)
 DIRS-$(CONFIG_RTE_IP_FRAG) += ip_reassembly
 DIRS-$(CONFIG_RTE_IP_FRAG) += ip_fragmentation
 endif
+ifeq ($(CONFIG_RTE_LIBRTE_ACL)$(CONFIG_RTE_LIBRTE_HASH)$(CONFIG_RTE_LIBRTE_LPM),yyy)
+DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += ipsec-secgw
+endif
 DIRS-y += ipv4_multicast
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += kni
 DIRS-y += l2fwd
+DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += l2fwd-crypto
 DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += l2fwd-ivshmem
 DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += l2fwd-jobstats
 DIRS-y += l2fwd-keepalive
@@ -81,7 +85,5 @@ DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += vhost_xen
 DIRS-y += vmdq
 DIRS-y += vmdq_dcb
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += vm_power_manager
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += l2fwd-crypto
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += ipsec-secgw
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk
