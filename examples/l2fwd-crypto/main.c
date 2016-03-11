@@ -773,29 +773,23 @@ parse_key(struct l2fwd_key *key __rte_unused,
 static int
 parse_auth_algo(enum rte_crypto_auth_algorithm *algo, char *optarg)
 {
-	if (strcmp("SHA1", optarg) == 0) {
-		*algo = RTE_CRYPTO_AUTH_SHA1;
+	if (strcmp("MD5_HMAC", optarg) == 0) {
+		*algo = RTE_CRYPTO_AUTH_MD5_HMAC;
 		return 0;
 	} else if (strcmp("SHA1_HMAC", optarg) == 0) {
 		*algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
 		return 0;
-	} else if (strcmp("SHA224", optarg) == 0) {
-		*algo = RTE_CRYPTO_AUTH_SHA224;
-		return 0;
 	} else if (strcmp("SHA224_HMAC", optarg) == 0) {
 		*algo = RTE_CRYPTO_AUTH_SHA224_HMAC;
-		return 0;
-	} else if (strcmp("SHA256", optarg) == 0) {
-		*algo = RTE_CRYPTO_AUTH_SHA256;
 		return 0;
 	} else if (strcmp("SHA256_HMAC", optarg) == 0) {
 		*algo = RTE_CRYPTO_AUTH_SHA256_HMAC;
 		return 0;
-	} else if (strcmp("SHA512", optarg) == 0) {
-		*algo = RTE_CRYPTO_AUTH_SHA256;
+	}  else if (strcmp("SHA384_HMAC", optarg) == 0) {
+		*algo = RTE_CRYPTO_AUTH_SHA384_HMAC;
 		return 0;
 	} else if (strcmp("SHA512_HMAC", optarg) == 0) {
-		*algo = RTE_CRYPTO_AUTH_SHA256_HMAC;
+		*algo = RTE_CRYPTO_AUTH_SHA512_HMAC;
 		return 0;
 	}
 
