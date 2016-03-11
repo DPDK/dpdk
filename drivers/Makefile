@@ -32,6 +32,6 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-y += net
-DIRS-y += crypto
+DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
 
 include $(RTE_SDK)/mk/rte.subdir.mk
