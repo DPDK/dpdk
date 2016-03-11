@@ -910,6 +910,32 @@ Set link down for a port::
 
    testpmd> set link-down port (port id)
 
+E-tag set
+~~~~~~~~~
+
+Enable E-tag insertion for a VF on a port::
+
+   testpmd> E-tag set insertion on port-tag-id (value) port (port_id) vf (vf_id)
+
+Disable E-tag insertion for a VF on a port::
+
+   testpmd> E-tag set insertion off port (port_id) vf (vf_id)
+
+Enable/disable E-tag stripping on a port::
+
+   testpmd> E-tag set stripping (on|off) port (port_id)
+
+Enable/disable E-tag based forwarding on a port::
+
+   testpmd> E-tag set forwarding (on|off) port (port_id)
+
+Add an E-tag forwarding filter on a port::
+
+   testpmd> E-tag set filter add e-tag-id (value) dst-pool (pool_id) port (port_id)
+
+Delete an E-tag forwarding filter on a port::
+   testpmd> E-tag set filter del e-tag-id (value) port (port_id)
+
 
 Port Functions
 --------------
