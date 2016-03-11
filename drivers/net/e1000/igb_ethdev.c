@@ -125,7 +125,9 @@ static int  eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int eth_igb_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
-static void eth_igb_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid_id);
+static int eth_igb_vlan_tpid_set(struct rte_eth_dev *dev,
+				 enum rte_vlan_type vlan_type,
+				 uint16_t tpid_id);
 static void eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 
 static void igb_vlan_hw_filter_enable(struct rte_eth_dev *dev);
@@ -2184,15 +2186,28 @@ eth_igb_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	return 0;
 }
 
-static void
-eth_igb_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid)
+static int
+eth_igb_vlan_tpid_set(struct rte_eth_dev *dev,
+		      enum rte_vlan_type vlan_type,
+		      uint16_t tpid)
 {
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t reg = ETHER_TYPE_VLAN ;
+	uint32_t reg = ETHER_TYPE_VLAN;
+	int ret = 0;
 
-	reg |= (tpid << 16);
-	E1000_WRITE_REG(hw, E1000_VET, reg);
+	switch (vlan_type) {
+	case ETH_VLAN_TYPE_INNER:
+		reg |= (tpid << 16);
+		E1000_WRITE_REG(hw, E1000_VET, reg);
+		break;
+	default:
+		ret = -EINVAL;
+		PMD_DRV_LOG(ERR, "Unsupported vlan type %d\n", vlan_type);
+		break;
+	}
+
+	return ret;
 }
 
 static void

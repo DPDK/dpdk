@@ -70,6 +70,8 @@ This section should contain new features added in this release. Sample format:
   space bytes, to boost the performance. In the meanwhile, it deprecated the
   legacy way via reading/writing sysfile supported by kernel module igb_uio.
 
+* **Supported ether type setting of single and double VLAN for i40e**
+
 * **Increased number of next hops for LPM IPv4 to 2^24.**
 
   The next_hop field is extended from 8 bits to 24 bits for IPv4.
@@ -177,6 +179,9 @@ This section should contain API changes. Sample format:
 
 * The fields in ethdev structure ``rte_eth_fdir_masks`` were changed
   to be in big endian.
+
+* A parameter ``vlan_type`` has been added to the function
+  ``rte_eth_dev_set_vlan_ether_type``.
 
 * The LPM ``next_hop`` field is extended from 8 bits to 24 bits for IPv4
   while keeping ABI compatibility.

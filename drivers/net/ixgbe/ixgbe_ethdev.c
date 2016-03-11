@@ -172,7 +172,9 @@ static int ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int ixgbe_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
-static void ixgbe_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid_id);
+static int ixgbe_vlan_tpid_set(struct rte_eth_dev *dev,
+			       enum rte_vlan_type vlan_type,
+			       uint16_t tpid_id);
 static void ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 		uint16_t queue, bool on);
 static void ixgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue,
@@ -1516,14 +1518,27 @@ ixgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 		ixgbe_vlan_hw_strip_disable(dev, queue);
 }
 
-static void
-ixgbe_vlan_tpid_set(struct rte_eth_dev *dev, uint16_t tpid)
+static int
+ixgbe_vlan_tpid_set(struct rte_eth_dev *dev,
+		    enum rte_vlan_type vlan_type,
+		    uint16_t tpid)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret = 0;
 
-	/* Only the high 16-bits is valid */
-	IXGBE_WRITE_REG(hw, IXGBE_EXVET, tpid << 16);
+	switch (vlan_type) {
+	case ETH_VLAN_TYPE_INNER:
+		/* Only the high 16-bits is valid */
+		IXGBE_WRITE_REG(hw, IXGBE_EXVET, tpid << 16);
+		break;
+	default:
+		ret = -EINVAL;
+		PMD_DRV_LOG(ERR, "Unsupported vlan type %d\n", vlan_type);
+		break;
+	}
+
+	return ret;
 }
 
 void

@@ -121,6 +121,7 @@ DPDK_2.2 {
 DPDK_16.04 {
 	global:
 
+	rte_eth_dev_set_vlan_ether_type;
 	rte_eth_tx_buffer_count_callback;
 	rte_eth_tx_buffer_drop_callback;
 	rte_eth_tx_buffer_init;

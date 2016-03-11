@@ -1703,16 +1703,17 @@ rte_eth_dev_set_vlan_strip_on_queue(uint8_t port_id, uint16_t rx_queue_id, int o
 }
 
 int
-rte_eth_dev_set_vlan_ether_type(uint8_t port_id, uint16_t tpid)
+rte_eth_dev_set_vlan_ether_type(uint8_t port_id,
+				enum rte_vlan_type vlan_type,
+				uint16_t tpid)
 {
 	struct rte_eth_dev *dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_tpid_set, -ENOTSUP);
-	(*dev->dev_ops->vlan_tpid_set)(dev, tpid);
 
-	return 0;
+	return (*dev->dev_ops->vlan_tpid_set)(dev, vlan_type, tpid);
 }
 
 int

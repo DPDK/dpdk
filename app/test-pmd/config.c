@@ -1821,19 +1821,20 @@ rx_vlan_all_filter_set(portid_t port_id, int on)
 }
 
 void
-vlan_tpid_set(portid_t port_id, uint16_t tp_id)
+vlan_tpid_set(portid_t port_id, enum rte_vlan_type vlan_type, uint16_t tp_id)
 {
 	int diag;
+
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	diag = rte_eth_dev_set_vlan_ether_type(port_id, tp_id);
+	diag = rte_eth_dev_set_vlan_ether_type(port_id, vlan_type, tp_id);
 	if (diag == 0)
 		return;
 
-	printf("tx_vlan_tpid_set(port_pi=%d, tpid=%d) failed "
+	printf("tx_vlan_tpid_set(port_pi=%d, vlan_type=%d, tpid=%d) failed "
 	       "diag=%d\n",
-	       port_id, tp_id, diag);
+	       port_id, vlan_type, tp_id, diag);
 }
 
 void

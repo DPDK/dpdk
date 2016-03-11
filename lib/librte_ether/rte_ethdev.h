@@ -351,6 +351,17 @@ struct rte_eth_rxmode {
 };
 
 /**
+ * VLAN types to indicate if it is for single VLAN, inner VLAN or outer VLAN.
+ * Note that single VLAN is treated the same as inner VLAN.
+ */
+enum rte_vlan_type {
+	ETH_VLAN_TYPE_UNKNOWN = 0,
+	ETH_VLAN_TYPE_INNER, /**< Single VLAN, or inner VLAN. */
+	ETH_VLAN_TYPE_OUTER, /**< Outer VLAN. */
+	ETH_VLAN_TYPE_MAX,
+};
+
+/**
  * A structure used to configure the Receive Side Scaling (RSS) feature
  * of an Ethernet port.
  * If not NULL, the *rss_key* pointer of the *rss_conf* structure points
@@ -1076,8 +1087,8 @@ typedef int (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 				  int on);
 /**< @internal filtering of a VLAN Tag Identifier by an Ethernet device. */
 
-typedef void (*vlan_tpid_set_t)(struct rte_eth_dev *dev,
-				  uint16_t tpid);
+typedef int (*vlan_tpid_set_t)(struct rte_eth_dev *dev,
+			       enum rte_vlan_type type, uint16_t tpid);
 /**< @internal set the outer VLAN-TPID by an Ethernet device. */
 
 typedef void (*vlan_offload_set_t)(struct rte_eth_dev *dev, int mask);
@@ -2344,6 +2355,8 @@ int rte_eth_dev_set_vlan_strip_on_queue(uint8_t port_id, uint16_t rx_queue_id,
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @param vlan_type
+ *   The vlan type.
  * @param tag_type
  *   The Tag Protocol ID
  * @return
@@ -2351,7 +2364,9 @@ int rte_eth_dev_set_vlan_strip_on_queue(uint8_t port_id, uint16_t rx_queue_id,
  *   - (-ENOSUP) if hardware-assisted VLAN TPID setup is not supported.
  *   - (-ENODEV) if *port_id* invalid.
  */
-int rte_eth_dev_set_vlan_ether_type(uint8_t port_id, uint16_t tag_type);
+int rte_eth_dev_set_vlan_ether_type(uint8_t port_id,
+				    enum rte_vlan_type vlan_type,
+				    uint16_t tag_type);
 
 /**
  * Set VLAN offload configuration on an Ethernet device

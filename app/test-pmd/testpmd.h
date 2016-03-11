@@ -508,7 +508,8 @@ void rx_vlan_filter_set(portid_t port_id, int on);
 void rx_vlan_all_filter_set(portid_t port_id, int on);
 int rx_vft_set(portid_t port_id, uint16_t vlan_id, int on);
 void vlan_extend_set(portid_t port_id, int on);
-void vlan_tpid_set(portid_t port_id, uint16_t tp_id);
+void vlan_tpid_set(portid_t port_id, enum rte_vlan_type vlan_type,
+		   uint16_t tp_id);
 void tx_vlan_set(portid_t port_id, uint16_t vlan_id);
 void tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer);
 void tx_vlan_reset(portid_t port_id);

@@ -498,9 +498,9 @@ Set the VLAN QinQ (extended queue in queue) on for a port::
 vlan set tpid
 ~~~~~~~~~~~~~
 
-Set the outer VLAN TPID for packet filtering on a port::
+Set the inner or outer VLAN TPID for packet filtering on a port::
 
-   testpmd> vlan set tpid (value) (port_id)
+   testpmd> vlan set (inner|outer) tpid (value) (port_id)
 
 .. note::
 
@@ -539,13 +539,6 @@ rx_vlan rm (for VF)
 Remove a VLAN ID, from the set of VLAN identifiers filtered for VF(s) for port ID::
 
    testpmd> rx_vlan rm (vlan_id) port (port_id) vf (vf_mask)
-
-rx_vlan set tpid
-~~~~~~~~~~~~~~~~
-
-Set the outer VLAN TPID for packet filtering on a port::
-
-   testpmd> rx_vlan set tpid (value) (port_id)
 
 tunnel_filter add
 ~~~~~~~~~~~~~~~~~

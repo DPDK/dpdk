@@ -277,8 +277,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the VLAN QinQ (extended queue in queue)"
 			" on a port.\n\n"
 
-			"vlan set tpid (value) (port_id)\n"
-			"    Set the outer VLAN TPID for Packet Filtering on"
+			"vlan set (inner|outer) tpid (value) (port_id)\n"
+			"    Set the VLAN TPID for Packet Filtering on"
 			" a port\n\n"
 
 			"rx_vlan add (vlan_id|all) (port_id)\n"
@@ -296,10 +296,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"rx_vlan rm (vlan_id) port (port_id) vf (vf_mask)\n"
 			"    Remove a vlan_id, to the set of VLAN identifiers"
 			"filtered for VF(s) from port_id.\n\n"
-
-			"rx_vlan set tpid (value) (port_id)\n"
-			"    Set the outer VLAN TPID for Packet Filtering on"
-			" a port\n\n"
 
 			"tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) "
 			"(inner_vlan) (vxlan|nvgre) (filter_type) (tenant_id) (queue_id)\n"
@@ -2747,6 +2743,7 @@ cmdline_parse_inst_t cmd_rx_vlan_filter_all = {
 struct cmd_vlan_offload_result {
 	cmdline_fixed_string_t vlan;
 	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t vlan_type;
 	cmdline_fixed_string_t what;
 	cmdline_fixed_string_t on;
 	cmdline_fixed_string_t port_id;
@@ -2847,6 +2844,7 @@ cmdline_parse_inst_t cmd_vlan_offload = {
 struct cmd_vlan_tpid_result {
 	cmdline_fixed_string_t vlan;
 	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t vlan_type;
 	cmdline_fixed_string_t what;
 	uint16_t tp_id;
 	uint8_t port_id;
@@ -2858,8 +2856,17 @@ cmd_vlan_tpid_parsed(void *parsed_result,
 			  __attribute__((unused)) void *data)
 {
 	struct cmd_vlan_tpid_result *res = parsed_result;
-	vlan_tpid_set(res->port_id, res->tp_id);
-	return;
+	enum rte_vlan_type vlan_type;
+
+	if (!strcmp(res->vlan_type, "inner"))
+		vlan_type = ETH_VLAN_TYPE_INNER;
+	else if (!strcmp(res->vlan_type, "outer"))
+		vlan_type = ETH_VLAN_TYPE_OUTER;
+	else {
+		printf("Unknown vlan type\n");
+		return;
+	}
+	vlan_tpid_set(res->port_id, vlan_type, res->tp_id);
 }
 
 cmdline_parse_token_string_t cmd_vlan_tpid_vlan =
@@ -2868,6 +2875,9 @@ cmdline_parse_token_string_t cmd_vlan_tpid_vlan =
 cmdline_parse_token_string_t cmd_vlan_tpid_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_vlan_tpid_result,
 				 set, "set");
+cmdline_parse_token_string_t cmd_vlan_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_vlan_tpid_result,
+				 vlan_type, "inner#outer");
 cmdline_parse_token_string_t cmd_vlan_tpid_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_vlan_tpid_result,
 				 what, "tpid");
@@ -2881,10 +2891,12 @@ cmdline_parse_token_num_t cmd_vlan_tpid_portid =
 cmdline_parse_inst_t cmd_vlan_tpid = {
 	.f = cmd_vlan_tpid_parsed,
 	.data = NULL,
-	.help_str = "set tpid tp_id port_id, set the Outer VLAN Ether type",
+	.help_str = "set inner|outer tpid tp_id port_id, set the VLAN "
+		    "Ether type",
 	.tokens = {
 		(void *)&cmd_vlan_tpid_vlan,
 		(void *)&cmd_vlan_tpid_set,
+		(void *)&cmd_vlan_type,
 		(void *)&cmd_vlan_tpid_what,
 		(void *)&cmd_vlan_tpid_tpid,
 		(void *)&cmd_vlan_tpid_portid,
