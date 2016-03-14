@@ -89,6 +89,8 @@ struct vhost_virtqueue {
 	uint16_t		vhost_hlen;		/**< Vhost header length (varies depending on RX merge buffers. */
 	volatile uint16_t	last_used_idx;		/**< Last index used on the available ring */
 	volatile uint16_t	last_used_idx_res;	/**< Used for multiple devices reserving buffers. */
+#define VIRTIO_INVALID_EVENTFD		(-1)
+#define VIRTIO_UNINITIALIZED_EVENTFD	(-2)
 	int			callfd;			/**< Used to notify the guest (trigger interrupt). */
 	int			kickfd;			/**< Currently unused as polling mode is enabled. */
 	int			enabled;

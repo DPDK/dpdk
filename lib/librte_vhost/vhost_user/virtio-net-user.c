@@ -225,8 +225,8 @@ static int
 vq_is_ready(struct vhost_virtqueue *vq)
 {
 	return vq && vq->desc   &&
-	       vq->kickfd != -1 &&
-	       vq->callfd != -1;
+	       vq->kickfd != VIRTIO_UNINITIALIZED_EVENTFD &&
+	       vq->callfd != VIRTIO_UNINITIALIZED_EVENTFD;
 }
 
 static int
@@ -258,7 +258,7 @@ user_set_vring_call(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 
 	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
 	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
-		file.fd = -1;
+		file.fd = VIRTIO_INVALID_EVENTFD;
 	else
 		file.fd = pmsg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
@@ -279,7 +279,7 @@ user_set_vring_kick(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 
 	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
 	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
-		file.fd = -1;
+		file.fd = VIRTIO_INVALID_EVENTFD;
 	else
 		file.fd = pmsg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
@@ -316,10 +316,10 @@ user_get_vring_base(struct vhost_device_ctx ctx,
 	 * sent and only sent in vhost_vring_stop.
 	 * TODO: cleanup the vring, it isn't usable since here.
 	 */
-	if (dev->virtqueue[state->index]->kickfd >= 0) {
+	if (dev->virtqueue[state->index]->kickfd >= 0)
 		close(dev->virtqueue[state->index]->kickfd);
-		dev->virtqueue[state->index]->kickfd = -1;
-	}
+
+	dev->virtqueue[state->index]->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 
 	return 0;
 }

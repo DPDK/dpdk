@@ -167,8 +167,8 @@ init_vring_queue(struct vhost_virtqueue *vq, int qp_idx)
 {
 	memset(vq, 0, sizeof(struct vhost_virtqueue));
 
-	vq->kickfd = -1;
-	vq->callfd = -1;
+	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
+	vq->callfd = VIRTIO_UNINITIALIZED_EVENTFD;
 
 	/* Backends are set to -1 indicating an inactive device. */
 	vq->backend = -1;

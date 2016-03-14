@@ -333,7 +333,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	rte_mb();
 
 	/* Kick the guest if necessary. */
-	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
+	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
+			&& (vq->callfd >= 0))
 		eventfd_write(vq->callfd, (eventfd_t)1);
 	return count;
 }
@@ -586,7 +587,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		rte_mb();
 
 		/* Kick the guest if necessary. */
-		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
+		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
+				&& (vq->callfd >= 0))
 			eventfd_write(vq->callfd, (eventfd_t)1);
 	}
 
@@ -929,7 +931,8 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 			sizeof(vq->used->idx));
 
 	/* Kick guest if required. */
-	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
+	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
+			&& (vq->callfd >= 0))
 		eventfd_write(vq->callfd, (eventfd_t)1);
 
 out:
