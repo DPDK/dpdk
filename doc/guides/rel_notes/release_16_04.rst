@@ -235,6 +235,15 @@ This section should contain new features added in this release. Sample format:
 
   Added new Crypto PMD to support null crypto operations in SW.
 
+* **Improved IP Pipeline Application.**
+
+  The following features have been added to ip_pipeline application;
+
+  * Added CPU utilization measurement and idle cycle rate computation.
+  * Added link idenfication support through existing port-mask option or by
+    specifying PCI device in every LINK section in the configuration file.
+  * Added load balancing support in passthrough pipeline.
+
 * **Added IPsec security gateway example.**
 
   New application implementing an IPsec Security Gateway.
@@ -341,6 +350,10 @@ Libraries
 
   Fix crc32c hash functions to return a valid crc32c value for data lengths
   not multiple of 4 bytes.
+
+* **librte_port: Fixed segmentation fault for ring and ethdev writer nodrop.**
+
+  Fixed core dump issue on txq and swq when dropless is set to yes.
 
 
 Examples
