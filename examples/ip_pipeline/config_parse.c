@@ -678,6 +678,8 @@ parse_eal(struct app_params *app,
 				p->pci_blacklist[i] =
 					strdup(entry->value);
 				PARSE_ERROR_MALLOC(p->pci_blacklist[i]);
+
+				break;
 			}
 
 			PARSE_ERROR_MESSAGE((i < APP_MAX_LINKS),
@@ -702,6 +704,8 @@ parse_eal(struct app_params *app,
 
 				p->pci_whitelist[i] = strdup(entry->value);
 				PARSE_ERROR_MALLOC(p->pci_whitelist[i]);
+
+				break;
 			}
 
 			PARSE_ERROR_MESSAGE((i < APP_MAX_LINKS),
@@ -720,6 +724,8 @@ parse_eal(struct app_params *app,
 
 				p->vdev[i] = strdup(entry->value);
 				PARSE_ERROR_MALLOC(p->vdev[i]);
+
+				break;
 			}
 
 			PARSE_ERROR_MESSAGE((i < APP_MAX_LINKS),
