@@ -347,6 +347,7 @@ nfp_net_reset_tx_queue(struct nfp_net_txq *txq)
 	txq->wr_p = 0;
 	txq->rd_p = 0;
 	txq->tail = 0;
+	txq->qcp_rd_p = 0;
 }
 
 static int
