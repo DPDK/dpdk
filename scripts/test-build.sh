@@ -38,7 +38,7 @@
 # - DPDK_DEP_MOFED (y/[n])
 # - DPDK_DEP_PCAP (y/[n])
 # - DPDK_NOTIFY (notify-send)
-. scripts/load-devel-config.sh
+. $(dirname $(readlink -e $0))/load-devel-config.sh
 
 print_usage () {
 	echo "usage: $(basename $0) [-h] [-jX] [-s] [config1 [config2] ...]]"
