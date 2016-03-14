@@ -427,7 +427,7 @@ grep_meminfo()
 #
 show_nics()
 {
-	if  /sbin/lsmod | grep -q -e igb_uio -e vfio_pci; then
+	if [ -d /sys/module/vfio_pci -o -d /sys/module/igb_uio ]; then
 		${RTE_SDK}/tools/dpdk_nic_bind.py --status
 	else
 		echo "# Please load the 'igb_uio' or 'vfio-pci' kernel module before "
@@ -440,7 +440,7 @@ show_nics()
 #
 bind_nics_to_vfio()
 {
-	if /sbin/lsmod  | grep -q vfio_pci ; then
+	if [ -d /sys/module/vfio_pci ]; then
 		${RTE_SDK}/tools/dpdk_nic_bind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to VFIO driver: "
@@ -458,7 +458,7 @@ bind_nics_to_vfio()
 #
 bind_nics_to_igb_uio()
 {
-	if  /sbin/lsmod  | grep -q igb_uio ; then
+	if [ -d /sys/module/igb_uio ]; then
 		${RTE_SDK}/tools/dpdk_nic_bind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to IGB UIO driver: "
