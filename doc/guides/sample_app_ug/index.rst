@@ -49,6 +49,7 @@ Sample Applications User Guide
     keep_alive
     l2_forward_job_stats
     l2_forward_real_virtual
+    l2_forward_cat
     l3_forward
     l3_forward_power_man
     l3_forward_access_ctrl
