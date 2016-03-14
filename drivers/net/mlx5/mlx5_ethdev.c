@@ -525,6 +525,25 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	priv_unlock(priv);
 }
 
+const uint32_t *
+mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/* refers to rxq_cq_to_pkt_type() */
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_INNER_L3_IPV4,
+		RTE_PTYPE_INNER_L3_IPV6,
+		RTE_PTYPE_UNKNOWN
+
+	};
+
+	if (dev->rx_pkt_burst == mlx5_rx_burst ||
+	    dev->rx_pkt_burst == mlx5_rx_burst_sp)
+		return ptypes;
+	return NULL;
+}
+
 /**
  * DPDK callback to retrieve physical link information (unlocked version).
  *

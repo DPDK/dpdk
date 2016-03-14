@@ -1050,6 +1050,9 @@ typedef void (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				    struct rte_eth_dev_info *dev_info);
 /**< @internal Get specific informations of an Ethernet device. */
 
+typedef const uint32_t *(*eth_dev_supported_ptypes_get_t)(struct rte_eth_dev *dev);
+/**< @internal Get supported ptypes of an Ethernet device. */
+
 typedef int (*eth_queue_start_t)(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
 /**< @internal Start rx and tx of a queue of an Ethernet device. */
@@ -1387,6 +1390,8 @@ struct eth_dev_ops {
 	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
 	/**< Configure per queue stat counter mapping. */
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
+	eth_dev_supported_ptypes_get_t dev_supported_ptypes_get;
+	/**< Get packet types supported and identified by device*/
 	mtu_set_t                  mtu_set; /**< Set MTU. */
 	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
 	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer VLAN TPID Setup. */
@@ -2314,6 +2319,29 @@ void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr *mac_addr);
  *   the contextual information of the Ethernet device.
  */
 void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info);
+
+/**
+ * Retrieve the supported packet types of an Ethernet device.
+ *
+ * @note
+ *   Better to invoke this API after the device is already started or rx burst
+ *   function is decided, to obtain correct supported ptypes.
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param ptype_mask
+ *   A hint of what kind of packet type which the caller is interested in.
+ * @param ptypes
+ *   An array pointer to store adequent packet types, allocated by caller.
+ * @param num
+ *  Size of the array pointed by param ptypes.
+ * @return
+ *   - (>0) Number of supported ptypes. If it exceeds param num, exceeding
+ *          packet types will not be filled in the given array.
+ *   - (0 or -ENOTSUP) if PMD does not fill the specified ptype.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+int rte_eth_dev_get_supported_ptypes(uint8_t port_id, uint32_t ptype_mask,
+				     uint32_t *ptypes, int num);
 
 /**
  * Retrieve the MTU of an Ethernet device.

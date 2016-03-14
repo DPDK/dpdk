@@ -438,6 +438,19 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	};
 }
 
+static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == enic_recv_pkts)
+		return ptypes;
+	return NULL;
+}
+
 static void enicpmd_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct enic *enic = pmd_priv(eth_dev);
@@ -561,6 +574,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.stats_reset          = enicpmd_dev_stats_reset,
 	.queue_stats_mapping_set = NULL,
 	.dev_infos_get        = enicpmd_dev_info_get,
+	.dev_supported_ptypes_get = enicpmd_dev_supported_ptypes_get,
 	.mtu_set              = NULL,
 	.vlan_filter_set      = enicpmd_vlan_filter_set,
 	.vlan_tpid_set        = NULL,

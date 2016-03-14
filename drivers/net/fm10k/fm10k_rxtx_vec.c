@@ -149,6 +149,9 @@ fm10k_desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	rx_pkts[3]->ol_flags = vol.e[3];
 }
 
+/* @note: When this function is changed, make corresponding change to
+ * fm10k_dev_supported_ptypes_get().
+ */
 static inline void
 fm10k_desc_to_pktype_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 {

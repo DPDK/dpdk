@@ -185,6 +185,7 @@ static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint8_t is_rx);
 static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
+static const uint32_t *ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static void ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 				 struct rte_eth_dev_info *dev_info);
 static int ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
@@ -467,6 +468,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.xstats_reset         = ixgbe_dev_xstats_reset,
 	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
 	.dev_infos_get        = ixgbe_dev_info_get,
+	.dev_supported_ptypes_get = ixgbe_dev_supported_ptypes_get,
 	.mtu_set              = ixgbe_dev_mtu_set,
 	.vlan_filter_set      = ixgbe_vlan_filter_set,
 	.vlan_tpid_set        = ixgbe_vlan_tpid_set,
@@ -557,6 +559,7 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.allmulticast_enable  = ixgbevf_dev_allmulticast_enable,
 	.allmulticast_disable = ixgbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ixgbevf_dev_info_get,
+	.dev_supported_ptypes_get = ixgbe_dev_supported_ptypes_get,
 	.mtu_set              = ixgbevf_dev_set_mtu,
 	.vlan_filter_set      = ixgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ixgbevf_vlan_strip_queue_set,
@@ -2928,6 +2931,41 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->hash_key_size = IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
 	dev_info->reta_size = ixgbe_reta_size_get(hw->mac.type);
 	dev_info->flow_type_rss_offloads = IXGBE_RSS_OFFLOAD_ALL;
+}
+
+static const uint32_t *
+ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/* For non-vec functions,
+		 * refers to ixgbe_rxd_pkt_info_to_pkt_type();
+		 * for vec functions,
+		 * refers to _recv_raw_pkts_vec().
+		 */
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_TUNNEL_IP,
+		RTE_PTYPE_INNER_L3_IPV6,
+		RTE_PTYPE_INNER_L3_IPV6_EXT,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == ixgbe_recv_pkts ||
+	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_single_alloc ||
+	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_bulk_alloc ||
+	    dev->rx_pkt_burst == ixgbe_recv_pkts_bulk_alloc ||
+	    dev->rx_pkt_burst == ixgbe_recv_pkts_vec ||
+	    dev->rx_pkt_burst == ixgbe_recv_scattered_pkts_vec)
+		return ptypes;
+	return NULL;
 }
 
 static void

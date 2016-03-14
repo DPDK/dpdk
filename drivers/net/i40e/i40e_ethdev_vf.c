@@ -201,6 +201,7 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.xstats_reset         = i40evf_dev_xstats_reset,
 	.dev_close            = i40evf_dev_close,
 	.dev_infos_get        = i40evf_dev_info_get,
+	.dev_supported_ptypes_get = i40e_dev_supported_ptypes_get,
 	.vlan_filter_set      = i40evf_vlan_filter_set,
 	.vlan_offload_set     = i40evf_vlan_offload_set,
 	.vlan_pvid_set        = i40evf_vlan_pvid_set,

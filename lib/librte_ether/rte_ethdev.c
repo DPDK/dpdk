@@ -1627,6 +1627,33 @@ rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 	dev_info->driver_name = dev->data->drv_name;
 }
 
+int
+rte_eth_dev_get_supported_ptypes(uint8_t port_id, uint32_t ptype_mask,
+				 uint32_t *ptypes, int num)
+{
+	int i, j;
+	struct rte_eth_dev *dev;
+	const uint32_t *all_ptypes;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_supported_ptypes_get,
+				-ENOTSUP);
+	all_ptypes = (*dev->dev_ops->dev_supported_ptypes_get)(dev);
+
+	if (!all_ptypes)
+		return 0;
+
+	for (i = 0, j = 0; all_ptypes[i] != RTE_PTYPE_UNKNOWN; ++i)
+		if (all_ptypes[i] & ptype_mask) {
+			if (j < num)
+				ptypes[j] = all_ptypes[i];
+			j++;
+		}
+
+	return j;
+}
+
 void
 rte_eth_macaddr_get(uint8_t port_id, struct ether_addr *mac_addr)
 {

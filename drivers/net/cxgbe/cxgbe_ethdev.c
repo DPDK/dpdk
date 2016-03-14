@@ -767,6 +767,20 @@ static int cxgbe_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			     &pi->link_cfg);
 }
 
+static const uint32_t *
+cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (eth_dev->rx_pkt_burst == cxgbe_recv_pkts)
+		return ptypes;
+	return NULL;
+}
+
 static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -777,6 +791,7 @@ static struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.allmulticast_disable	= cxgbe_dev_allmulticast_disable,
 	.dev_configure		= cxgbe_dev_configure,
 	.dev_infos_get		= cxgbe_dev_info_get,
+	.dev_supported_ptypes_get = cxgbe_dev_supported_ptypes_get,
 	.link_update		= cxgbe_dev_link_update,
 	.mtu_set		= cxgbe_dev_mtu_set,
 	.tx_queue_setup         = cxgbe_dev_tx_queue_setup,

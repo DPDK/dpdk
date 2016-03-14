@@ -200,6 +200,7 @@ int i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+const uint32_t *i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			    uint16_t queue_idx,
 			    uint16_t nb_desc,

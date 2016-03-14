@@ -2876,6 +2876,8 @@ rxq_cleanup(struct rxq *rxq)
  * @param flags
  *   RX completion flags returned by poll_length_flags().
  *
+ * @note: fix mlx4_dev_supported_ptypes_get() if any change here.
+ *
  * @return
  *   Packet type for struct rte_mbuf.
  */
@@ -4304,6 +4306,24 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	priv_unlock(priv);
 }
 
+static const uint32_t *
+mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/* refers to rxq_cq_to_pkt_type() */
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_INNER_L3_IPV4,
+		RTE_PTYPE_INNER_L3_IPV6,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == mlx4_rx_burst ||
+	    dev->rx_pkt_burst == mlx4_rx_burst_sp)
+		return ptypes;
+	return NULL;
+}
+
 /**
  * DPDK callback to get device statistics.
  *
@@ -5041,6 +5061,7 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.stats_reset = mlx4_stats_reset,
 	.queue_stats_mapping_set = NULL,
 	.dev_infos_get = mlx4_dev_infos_get,
+	.dev_supported_ptypes_get = mlx4_dev_supported_ptypes_get,
 	.vlan_filter_set = mlx4_vlan_filter_set,
 	.vlan_tpid_set = NULL,
 	.vlan_strip_queue_set = NULL,

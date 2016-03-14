@@ -670,6 +670,8 @@ stop:
  * @param flags
  *   RX completion flags returned by poll_length_flags().
  *
+ * @note: fix mlx5_dev_supported_ptypes_get() if any change here.
+ *
  * @return
  *   Packet type for struct rte_mbuf.
  */

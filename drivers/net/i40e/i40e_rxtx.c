@@ -188,7 +188,10 @@ i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
 }
 #endif
 
-/* For each value it means, datasheet of hardware can tell more details */
+/* For each value it means, datasheet of hardware can tell more details
+ *
+ * @note: fix i40e_dev_supported_ptypes_get() if any change here.
+ */
 static inline uint32_t
 i40e_rxd_pkt_type_mapping(uint8_t ptype)
 {
@@ -2085,6 +2088,47 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	return 0;
+}
+
+const uint32_t *
+i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/* refers to i40e_rxd_pkt_type_mapping() */
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_TIMESYNC,
+		RTE_PTYPE_L2_ETHER_LLDP,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_TUNNEL_GRENAT,
+		RTE_PTYPE_TUNNEL_IP,
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_INNER_L4_NONFRAG,
+		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == i40e_recv_pkts ||
+#ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
+	    dev->rx_pkt_burst == i40e_recv_pkts_bulk_alloc ||
+#endif
+	    dev->rx_pkt_burst == i40e_recv_scattered_pkts)
+		return ptypes;
+	return NULL;
 }
 
 int

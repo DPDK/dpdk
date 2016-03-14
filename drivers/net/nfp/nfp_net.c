@@ -1063,6 +1063,23 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
 }
 
+static const uint32_t *
+nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/* refers to nfp_net_set_hash() */
+		RTE_PTYPE_INNER_L3_IPV4,
+		RTE_PTYPE_INNER_L3_IPV6,
+		RTE_PTYPE_INNER_L3_IPV6_EXT,
+		RTE_PTYPE_INNER_L4_MASK,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == nfp_net_recv_pkts)
+		return ptypes;
+	return NULL;
+}
+
 static uint32_t
 nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
@@ -2283,6 +2300,7 @@ static struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.stats_get		= nfp_net_stats_get,
 	.stats_reset		= nfp_net_stats_reset,
 	.dev_infos_get		= nfp_net_infos_get,
+	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
 	.mtu_set		= nfp_net_dev_mtu_set,
 	.vlan_offload_set	= nfp_net_vlan_offload_set,
 	.reta_update		= nfp_net_reta_update,

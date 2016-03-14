@@ -941,6 +941,8 @@ end_of_tx:
 #define IXGBE_PACKET_TYPE_MAX               0X80
 #define IXGBE_PACKET_TYPE_MASK              0X7F
 #define IXGBE_PACKET_TYPE_SHIFT             0X04
+
+/* @note: fix ixgbe_dev_supported_ptypes_get() if any change here. */
 static inline uint32_t
 ixgbe_rxd_pkt_info_to_pkt_type(uint16_t pkt_info)
 {
@@ -1298,7 +1300,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 /* split requests into chunks of size RTE_PMD_IXGBE_RX_MAX_BURST */
-static uint16_t
+uint16_t
 ixgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts)
 {

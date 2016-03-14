@@ -461,6 +461,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.xstats_reset                 = i40e_dev_stats_reset,
 	.queue_stats_mapping_set      = i40e_dev_queue_stats_mapping_set,
 	.dev_infos_get                = i40e_dev_info_get,
+	.dev_supported_ptypes_get     = i40e_dev_supported_ptypes_get,
 	.vlan_filter_set              = i40e_vlan_filter_set,
 	.vlan_tpid_set                = i40e_vlan_tpid_set,
 	.vlan_offload_set             = i40e_vlan_offload_set,

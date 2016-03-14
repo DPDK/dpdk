@@ -65,6 +65,9 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 }
 #endif
 
+/* @note: When this function is changed, make corresponding change to
+ * fm10k_dev_supported_ptypes_get()
+ */
 static inline void
 rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 {
