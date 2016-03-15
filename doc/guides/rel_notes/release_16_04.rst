@@ -127,6 +127,11 @@ This section should contain new features added in this release. Sample format:
 
   Added new Crypto PMD to support null crypto operations in SW.
 
+* **Added IPsec security gateway example.**
+
+  New application implementing an IPsec Security Gateway.
+
+
 Resolved Issues
 ---------------
 
@@ -181,9 +186,6 @@ Examples
   vhost-switch often fails to allocate mbuf when dequeue from vring because it
   wrongly calculates the number of mbufs needed.
 
-* **examples/ipsec-secgw: ipsec security gateway**
-
-  New application implementing an IPsec Security Gateway.
 
 Other
 ~~~~~
