@@ -620,7 +620,11 @@ rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		ret = pci_uio_ioport_map(dev, bar, p);
 		break;
 	case RTE_KDRV_UIO_GENERIC:
+#if defined(RTE_ARCH_X86)
+		ret = pci_ioport_map(dev, bar, p);
+#else
 		ret = pci_uio_ioport_map(dev, bar, p);
+#endif
 		break;
 	case RTE_KDRV_NONE:
 #if defined(RTE_ARCH_X86)
@@ -705,7 +709,11 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 		ret = pci_uio_ioport_unmap(p);
 		break;
 	case RTE_KDRV_UIO_GENERIC:
+#if defined(RTE_ARCH_X86)
+		ret = 0;
+#else
 		ret = pci_uio_ioport_unmap(p);
+#endif
 		break;
 	case RTE_KDRV_NONE:
 #if defined(RTE_ARCH_X86)
