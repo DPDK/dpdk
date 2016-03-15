@@ -425,7 +425,7 @@ static int
 test_pmd_ring(void)
 {
 	struct rte_ring *rxtx[NUM_RINGS];
-	int cmdl_port0 = 0;
+	int port, cmdl_port0 = -1;
 	uint8_t nb_ports;
 
 	nb_ports = rte_eth_dev_count();
@@ -501,8 +501,18 @@ test_pmd_ring(void)
 	if (test_pmd_ring_pair_create_attach(rxtx_portd, rxtx_porte) < 0)
 		return -1;
 
-	if (nb_ports > 0) {
-		/* test port 0 created with the --vdev=eth_ring0 command line option */
+	/* find a port created with the --vdev=eth_ring0 command line option */
+	for (port = 0; port < nb_ports; port++) {
+		struct rte_eth_dev_info dev_info;
+
+		rte_eth_dev_info_get(port, &dev_info);
+		if (!strcmp(dev_info.driver_name, "Rings PMD")) {
+			printf("found a command line ring port=%d\n", port);
+			cmdl_port0 = port;
+			break;
+		}
+	}
+	if (cmdl_port0 != -1) {
 		if (test_ethdev_configure_port(cmdl_port0) < 0)
 			return -1;
 		if (test_send_basic_packets_port(cmdl_port0) < 0)
