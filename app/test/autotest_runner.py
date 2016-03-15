@@ -72,6 +72,7 @@ def run_test_group(cmdline, test_group):
 		startuplog = StringIO.StringIO()
 
 		print >>startuplog, "\n%s %s\n" % ("="*20, test_group["Prefix"])
+		print >>startuplog, "\ncmdline=%s" % cmdline
 
 		child = pexpect.spawn(cmdline, logfile=startuplog)
 
