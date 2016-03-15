@@ -649,11 +649,12 @@ rte_eal_pci_ioport_read(struct rte_pci_ioport *p,
 	case RTE_KDRV_UIO_GENERIC:
 		pci_uio_ioport_read(p, data, len, offset);
 		break;
-	default:
+	case RTE_KDRV_NONE:
 #if defined(RTE_ARCH_X86)
-		/* special case for x86 ... */
 		pci_uio_ioport_read(p, data, len, offset);
 #endif
+		break;
+	default:
 		break;
 	}
 }
@@ -672,11 +673,12 @@ rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
 	case RTE_KDRV_UIO_GENERIC:
 		pci_uio_ioport_write(p, data, len, offset);
 		break;
-	default:
+	case RTE_KDRV_NONE:
 #if defined(RTE_ARCH_X86)
-		/* special case for x86 ... */
 		pci_uio_ioport_write(p, data, len, offset);
 #endif
+		break;
+	default:
 		break;
 	}
 }
@@ -697,11 +699,12 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 	case RTE_KDRV_UIO_GENERIC:
 		ret = pci_uio_ioport_unmap(p);
 		break;
-	default:
+	case RTE_KDRV_NONE:
 #if defined(RTE_ARCH_X86)
-		/* special case for x86 ... nothing to do */
 		ret = 0;
 #endif
+		break;
+	default:
 		break;
 	}
 
