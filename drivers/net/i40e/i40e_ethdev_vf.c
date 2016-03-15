@@ -103,9 +103,6 @@ enum i40evf_aq_result {
 	I40EVF_MSG_CMD,      /* Read async command result */
 };
 
-/* A share buffer to store the command result from PF driver */
-static uint8_t cmd_result_buffer[I40E_AQ_BUF_SZ];
-
 static int i40evf_dev_configure(struct rte_eth_dev *dev);
 static int i40evf_dev_start(struct rte_eth_dev *dev);
 static void i40evf_dev_stop(struct rte_eth_dev *dev);
@@ -225,31 +222,37 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 };
 
 /*
- * Parse admin queue message.
- *
- * return value:
- *  < 0: meet error
- *  0: read sys msg
- *  > 0: read cmd result
+ * Read data in admin queue to get msg from pf driver
  */
 static enum i40evf_aq_result
-i40evf_parse_pfmsg(struct i40e_vf *vf,
-		   struct i40e_arq_event_info *event,
-		   struct i40evf_arq_msg_info *data)
+i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
 {
-	enum i40e_virtchnl_ops opcode = (enum i40e_virtchnl_ops)\
-			rte_le_to_cpu_32(event->desc.cookie_high);
-	enum i40e_status_code retval = (enum i40e_status_code)\
-			rte_le_to_cpu_32(event->desc.cookie_low);
-	enum i40evf_aq_result ret = I40EVF_MSG_CMD;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_arq_event_info event;
+	enum i40e_virtchnl_ops opcode;
+	enum i40e_status_code retval;
+	int ret;
+	enum i40evf_aq_result result = I40EVF_MSG_NON;
 
+	event.buf_len = data->buf_len;
+	event.msg_buf = data->msg;
+	ret = i40e_clean_arq_element(hw, &event, NULL);
+	/* Can't read any msg from adminQ */
+	if (ret) {
+		if (ret != I40E_ERR_ADMIN_QUEUE_NO_WORK)
+			result = I40EVF_MSG_ERR;
+		return result;
+	}
+
+	opcode = (enum i40e_virtchnl_ops)rte_le_to_cpu_32(event.desc.cookie_high);
+	retval = (enum i40e_status_code)rte_le_to_cpu_32(event.desc.cookie_low);
 	/* pf sys event */
 	if (opcode == I40E_VIRTCHNL_OP_EVENT) {
 		struct i40e_virtchnl_pf_event *vpe =
-			(struct i40e_virtchnl_pf_event *)event->msg_buf;
+			(struct i40e_virtchnl_pf_event *)event.msg_buf;
 
-		/* Initialize ret to sys event */
-		ret = I40EVF_MSG_SYS;
+		result = I40EVF_MSG_SYS;
 		switch (vpe->event) {
 		case I40E_VIRTCHNL_EVENT_LINK_CHANGE:
 			vf->link_up =
@@ -274,72 +277,15 @@ i40evf_parse_pfmsg(struct i40e_vf *vf,
 		}
 	} else {
 		/* async reply msg on command issued by vf previously */
-		ret = I40EVF_MSG_CMD;
+		result = I40EVF_MSG_CMD;
 		/* Actual data length read from PF */
-		data->msg_len = event->msg_len;
+		data->msg_len = event.msg_len;
 	}
-	/* fill the ops and result to notify VF */
+
 	data->result = retval;
 	data->ops = opcode;
 
-	return ret;
-}
-
-/*
- * Read data in admin queue to get msg from pf driver
- */
-static enum i40evf_aq_result
-i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
-{
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_arq_event_info event;
-	int ret;
-	enum i40evf_aq_result result = I40EVF_MSG_NON;
-
-	event.buf_len = data->buf_len;
-	event.msg_buf = data->msg;
-	ret = i40e_clean_arq_element(hw, &event, NULL);
-	/* Can't read any msg from adminQ */
-	if (ret) {
-		if (ret == I40E_ERR_ADMIN_QUEUE_NO_WORK)
-			result = I40EVF_MSG_NON;
-		else
-			result = I40EVF_MSG_ERR;
-		return result;
-	}
-
-	/* Parse the event */
-	result = i40evf_parse_pfmsg(vf, &event, data);
-
 	return result;
-}
-
-/*
- * Polling read until command result return from pf driver or meet error.
- */
-static int
-i40evf_wait_cmd_done(struct rte_eth_dev *dev,
-		     struct i40evf_arq_msg_info *data)
-{
-	int i = 0;
-	enum i40evf_aq_result ret;
-
-#define MAX_TRY_TIMES 20
-#define ASQ_DELAY_MS  100
-	do {
-		/* Delay some time first */
-		rte_delay_ms(ASQ_DELAY_MS);
-		ret = i40evf_read_pfmsg(dev, data);
-		if (ret == I40EVF_MSG_CMD)
-			return 0;
-		else if (ret == I40EVF_MSG_ERR)
-			return -1;
-
-		/* If don't read msg or read sys event, continue */
-	} while(i++ < MAX_TRY_TIMES);
-
-	return -1;
 }
 
 /**
@@ -368,13 +314,18 @@ _atomic_set_cmd(struct i40e_vf *vf, enum i40e_virtchnl_ops ops)
 	return !ret;
 }
 
+#define MAX_TRY_TIMES 200
+#define ASQ_DELAY_MS  10
+
 static int
 i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	int err = -1;
 	struct i40evf_arq_msg_info info;
+	enum i40evf_aq_result ret;
+	int err = -1;
+	int i = 0;
 
 	if (_atomic_set_cmd(vf, args->ops))
 		return -1;
@@ -392,19 +343,21 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		return err;
 	}
 
-	err = i40evf_wait_cmd_done(dev, &info);
-	/* read message and it's expected one */
-	if (!err && args->ops == info.ops)
-		_clear_cmd(vf);
-	else if (err) {
-		PMD_DRV_LOG(ERR, "Failed to read message from AdminQ");
-		_clear_cmd(vf);
-	}
-	else if (args->ops != info.ops)
-		PMD_DRV_LOG(ERR, "command mismatch, expect %u, get %u",
-			    args->ops, info.ops);
+	do {
+		ret = i40evf_read_pfmsg(dev, &info);
+		if (ret == I40EVF_MSG_CMD) {
+			err = 0;
+			break;
+		} else if (ret == I40EVF_MSG_ERR) {
+			err = -1;
+			break;
+		}
+		rte_delay_ms(ASQ_DELAY_MS);
+		/* If don't read msg or read sys event, continue */
+	} while (i++ < MAX_TRY_TIMES);
+	_clear_cmd(vf);
 
-	return err | info.result;
+	return err | vf->cmd_retval;
 }
 
 /*
@@ -424,7 +377,7 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 	args.ops = I40E_VIRTCHNL_OP_VERSION;
 	args.in_args = (uint8_t *)&version;
 	args.in_args_size = sizeof(version);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 
 	err = i40evf_execute_vf_cmd(dev, &args);
@@ -462,7 +415,7 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 	uint32_t caps, len;
 
 	args.ops = I40E_VIRTCHNL_OP_GET_VF_RESOURCES;
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	if (PF_IS_V11(vf)) {
 		caps = I40E_VIRTCHNL_VF_OFFLOAD_L2 |
@@ -515,7 +468,7 @@ i40evf_config_promisc(struct rte_eth_dev *dev,
 	args.ops = I40E_VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE;
 	args.in_args = (uint8_t *)&promisc;
 	args.in_args_size = sizeof(promisc);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 
 	err = i40evf_execute_vf_cmd(dev, &args);
@@ -542,7 +495,7 @@ i40evf_config_vlan_offload(struct rte_eth_dev *dev,
 	args.ops = (enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD;
 	args.in_args = (uint8_t *)&offload;
 	args.in_args_size = sizeof(offload);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 
 	err = i40evf_execute_vf_cmd(dev, &args);
@@ -573,7 +526,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 	args.ops = (enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_PVID;
 	args.in_args = (uint8_t *)&tpid_info;
 	args.in_args_size = sizeof(tpid_info);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 
 	err = i40evf_execute_vf_cmd(dev, &args);
@@ -652,7 +605,7 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 	args.ops = I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES;
 	args.in_args = (uint8_t *)vc_vqci;
 	args.in_args_size = size;
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	ret = i40evf_execute_vf_cmd(dev, &args);
 	if (ret)
@@ -705,7 +658,7 @@ i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
 		(enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT;
 	args.in_args = (uint8_t *)vc_vqcei;
 	args.in_args_size = size;
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	ret = i40evf_execute_vf_cmd(dev, &args);
 	if (ret)
@@ -767,7 +720,7 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	args.ops = I40E_VIRTCHNL_OP_CONFIG_IRQ_MAP;
 	args.in_args = (u8 *)cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
@@ -798,7 +751,7 @@ i40evf_switch_queue(struct rte_eth_dev *dev, bool isrx, uint16_t qid,
 		args.ops = I40E_VIRTCHNL_OP_DISABLE_QUEUES;
 	args.in_args = (u8 *)&queue_select;
 	args.in_args_size = sizeof(queue_select);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
@@ -893,7 +846,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 	args.ops = I40E_VIRTCHNL_OP_ADD_ETHER_ADDRESS;
 	args.in_args = cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
@@ -934,7 +887,7 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	args.ops = I40E_VIRTCHNL_OP_DEL_ETHER_ADDRESS;
 	args.in_args = cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
@@ -956,7 +909,7 @@ i40evf_update_stats(struct rte_eth_dev *dev, struct i40e_eth_stats **pstats)
 	args.ops = I40E_VIRTCHNL_OP_GET_STATS;
 	args.in_args = (u8 *)&q_stats;
 	args.in_args_size = sizeof(q_stats);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 
 	err = i40evf_execute_vf_cmd(dev, &args);
@@ -1050,7 +1003,7 @@ i40evf_add_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 	args.ops = I40E_VIRTCHNL_OP_ADD_VLAN;
 	args.in_args = (u8 *)&cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
@@ -1077,7 +1030,7 @@ i40evf_del_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 	args.ops = I40E_VIRTCHNL_OP_DEL_VLAN;
 	args.in_args = (u8 *)&cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
@@ -1089,6 +1042,7 @@ i40evf_del_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 static int
 i40evf_get_link_status(struct rte_eth_dev *dev, struct rte_eth_link *link)
 {
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int err;
 	struct vf_cmd_info args;
 	struct rte_eth_link *new_link;
@@ -1096,7 +1050,7 @@ i40evf_get_link_status(struct rte_eth_dev *dev, struct rte_eth_link *link)
 	args.ops = (enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_GET_LINK_STAT;
 	args.in_args = NULL;
 	args.in_args_size = 0;
-	args.out_buffer = cmd_result_buffer;
+	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err) {
@@ -1191,7 +1145,6 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 		goto err;
 	}
 
-
 	/* Reset VF and wait until it's complete */
 	if (i40evf_reset_vf(hw)) {
 		PMD_INIT_LOG(ERR, "reset NIC failed");
@@ -1208,6 +1161,11 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	if (i40e_init_adminq(hw) != I40E_SUCCESS) {
 		PMD_INIT_LOG(ERR, "init_adminq failed");
 		return -1;
+	}
+	vf->aq_resp = rte_zmalloc("vf_aq_resp", I40E_AQ_BUF_SZ, 0);
+	if (!vf->aq_resp) {
+		PMD_INIT_LOG(ERR, "unable to allocate vf_aq_resp memory");
+			goto err_aq;
 	}
 	if (i40evf_check_api_version(dev) != 0) {
 		PMD_INIT_LOG(ERR, "check_api version failed");
@@ -1273,6 +1231,8 @@ i40evf_uninit_vf(struct rte_eth_dev *dev)
 		i40evf_dev_close(dev);
 	rte_free(vf->vf_res);
 	vf->vf_res = NULL;
+	rte_free(vf->aq_resp);
+	vf->aq_resp = NULL;
 
 	return 0;
 }
@@ -1839,7 +1799,7 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 			   I40E_VIRTCHNL_OP_DEL_ETHER_ADDRESS;
 		args.in_args = (uint8_t *)list;
 		args.in_args_size = len;
-		args.out_buffer = cmd_result_buffer;
+		args.out_buffer = vf->aq_resp;
 		args.out_size = I40E_AQ_BUF_SZ;
 		err = i40evf_execute_vf_cmd(dev, &args);
 		if (err)
