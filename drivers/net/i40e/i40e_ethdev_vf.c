@@ -74,8 +74,6 @@
 #define I40EVF_BUSY_WAIT_DELAY 10
 #define I40EVF_BUSY_WAIT_COUNT 50
 #define MAX_RESET_WAIT_CNT     20
-/*ITR index for NOITR*/
-#define I40E_QINT_RQCTL_MSIX_INDX_NOITR     3
 
 struct i40evf_arq_msg_info {
 	enum i40e_virtchnl_ops ops;
@@ -156,6 +154,9 @@ static int
 i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 static int
 i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
+static void i40evf_handle_pf_event(__rte_unused struct rte_eth_dev *dev,
+				   uint8_t *msg,
+				   uint16_t msglen);
 
 /* Default hash key buffer for RSS */
 static uint32_t rss_key_default[I40E_VFQF_HKEY_MAX_INDEX + 1];
@@ -343,19 +344,40 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		return err;
 	}
 
-	do {
-		ret = i40evf_read_pfmsg(dev, &info);
-		if (ret == I40EVF_MSG_CMD) {
-			err = 0;
-			break;
-		} else if (ret == I40EVF_MSG_ERR) {
-			err = -1;
-			break;
-		}
-		rte_delay_ms(ASQ_DELAY_MS);
-		/* If don't read msg or read sys event, continue */
-	} while (i++ < MAX_TRY_TIMES);
-	_clear_cmd(vf);
+	switch (args->ops) {
+	case I40E_VIRTCHNL_OP_RESET_VF:
+		/*no need to process in this function */
+		break;
+	case I40E_VIRTCHNL_OP_VERSION:
+	case I40E_VIRTCHNL_OP_GET_VF_RESOURCES:
+		/* for init adminq commands, need to poll the response */
+		do {
+			ret = i40evf_read_pfmsg(dev, &info);
+			if (ret == I40EVF_MSG_CMD) {
+				err = 0;
+				break;
+			} else if (ret == I40EVF_MSG_ERR) {
+				err = -1;
+				break;
+			}
+			rte_delay_ms(ASQ_DELAY_MS);
+			/* If don't read msg or read sys event, continue */
+		} while (i++ < MAX_TRY_TIMES);
+		_clear_cmd(vf);
+		break;
+
+	default:
+		/* for other adminq in running time, waiting the cmd done flag */
+		do {
+			if (vf->pend_cmd == I40E_VIRTCHNL_OP_UNKNOWN) {
+				err = 0;
+				break;
+			}
+			rte_delay_ms(ASQ_DELAY_MS);
+			/* If don't read msg or read sys event, continue */
+		} while (i++ < MAX_TRY_TIMES);
+		break;
+	}
 
 	return err | vf->cmd_retval;
 }
@@ -704,7 +726,7 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 
 	map_info = (struct i40e_virtchnl_irq_map_info *)cmd_buffer;
 	map_info->num_vectors = 1;
-	map_info->vecmap[0].rxitr_idx = I40E_QINT_RQCTL_MSIX_INDX_NOITR;
+	map_info->vecmap[0].rxitr_idx = I40E_ITR_INDEX_DEFAULT;
 	map_info->vecmap[0].vsi_id = vf->vsi_res->vsi_id;
 	/* Alway use default dynamic MSIX interrupt */
 	map_info->vecmap[0].vector_id = vector_id;
@@ -1084,6 +1106,38 @@ i40evf_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* Disable IRQ0 */
+static inline void
+i40evf_disable_irq0(struct i40e_hw *hw)
+{
+	/* Disable all interrupt types */
+	I40E_WRITE_REG(hw, I40E_VFINT_ICR0_ENA1, 0);
+	I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
+		       I40E_VFINT_DYN_CTL01_ITR_INDX_MASK);
+	I40EVF_WRITE_FLUSH(hw);
+}
+
+/* Enable IRQ0 */
+static inline void
+i40evf_enable_irq0(struct i40e_hw *hw)
+{
+	/* Enable admin queue interrupt trigger */
+	uint32_t val;
+
+	i40evf_disable_irq0(hw);
+	val = I40E_READ_REG(hw, I40E_VFINT_ICR0_ENA1);
+	val |= I40E_VFINT_ICR0_ENA1_ADMINQ_MASK |
+		I40E_VFINT_ICR0_ENA1_LINK_STAT_CHANGE_MASK;
+	I40E_WRITE_REG(hw, I40E_VFINT_ICR0_ENA1, val);
+
+	I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
+		I40E_VFINT_DYN_CTL01_INTENA_MASK |
+		I40E_VFINT_DYN_CTL01_CLEARPBA_MASK |
+		I40E_VFINT_DYN_CTL01_ITR_INDX_MASK);
+
+	I40EVF_WRITE_FLUSH(hw);
+}
+
 static int
 i40evf_reset_vf(struct i40e_hw *hw)
 {
@@ -1129,6 +1183,8 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct ether_addr *p_mac_addr;
+	uint16_t interval =
+		i40e_calc_itr_interval(I40E_QUEUE_ITR_INTERVAL_MAX);
 
 	vf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	vf->dev_data = dev->data;
@@ -1209,6 +1265,16 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	else
 		eth_random_addr(hw->mac.addr); /* Generate a random one */
 
+	/* If the PF host is not DPDK, set the interval of ITR0 to max*/
+	if (vf->version_major != I40E_DPDK_VERSION_MAJOR) {
+		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
+			       (I40E_ITR_INDEX_DEFAULT <<
+				I40E_VFINT_DYN_CTL0_ITR_INDX_SHIFT) |
+			       (interval <<
+				I40E_VFINT_DYN_CTL0_INTERVAL_SHIFT));
+		I40EVF_WRITE_FLUSH(hw);
+	}
+
 	return 0;
 
 err_alloc:
@@ -1237,11 +1303,141 @@ i40evf_uninit_vf(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+i40evf_handle_pf_event(__rte_unused struct rte_eth_dev *dev,
+			   uint8_t *msg,
+			   __rte_unused uint16_t msglen)
+{
+	struct i40e_virtchnl_pf_event *pf_msg =
+			(struct i40e_virtchnl_pf_event *)msg;
+
+	switch (pf_msg->event) {
+	case I40E_VIRTCHNL_EVENT_RESET_IMPENDING:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event\n");
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET);
+		break;
+	case I40E_VIRTCHNL_EVENT_LINK_CHANGE:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event\n");
+		break;
+	case I40E_VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event\n");
+		break;
+	default:
+		PMD_DRV_LOG(ERR, " unknown event received %u", pf_msg->event);
+		break;
+	}
+}
+
+static void
+i40evf_handle_aq_msg(struct rte_eth_dev *dev)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_arq_event_info info;
+	struct i40e_virtchnl_msg *v_msg;
+	uint16_t pending, opcode;
+	int ret;
+
+	info.buf_len = I40E_AQ_BUF_SZ;
+	if (!vf->aq_resp) {
+		PMD_DRV_LOG(ERR, "Buffer for adminq resp should not be NULL");
+		return;
+	}
+	info.msg_buf = vf->aq_resp;
+	v_msg = (struct i40e_virtchnl_msg *)&info.desc;
+
+	pending = 1;
+	while (pending) {
+		ret = i40e_clean_arq_element(hw, &info, &pending);
+
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(INFO, "Failed to read msg from AdminQ,"
+				    "ret: %d", ret);
+			break;
+		}
+		opcode = rte_le_to_cpu_16(info.desc.opcode);
+
+		switch (opcode) {
+		case i40e_aqc_opc_send_msg_to_vf:
+			if (v_msg->v_opcode == I40E_VIRTCHNL_OP_EVENT)
+				/* process event*/
+				i40evf_handle_pf_event(dev, info.msg_buf,
+						       info.msg_len);
+			else {
+				/* read message and it's expected one */
+				if (v_msg->v_opcode == vf->pend_cmd) {
+					vf->cmd_retval = v_msg->v_retval;
+					/* prevent compiler reordering */
+					rte_compiler_barrier();
+					_clear_cmd(vf);
+				} else
+					PMD_DRV_LOG(ERR, "command mismatch,"
+						"expect %u, get %u",
+						vf->pend_cmd, v_msg->v_opcode);
+				PMD_DRV_LOG(DEBUG, "adminq response is received,"
+					     " opcode = %d\n", v_msg->v_opcode);
+			}
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "Request %u is not supported yet",
+				    opcode);
+			break;
+		}
+	}
+}
+
+/**
+ * Interrupt handler triggered by NIC  for handling
+ * specific interrupt. Only adminq interrupt is processed in VF.
+ *
+ * @param handle
+ *  Pointer to interrupt handle.
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *
+ * @return
+ *  void
+ */
+static void
+i40evf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+			     void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t icr0;
+
+	i40evf_disable_irq0(hw);
+
+	/* read out interrupt causes */
+	icr0 = I40E_READ_REG(hw, I40E_VFINT_ICR01);
+
+	/* No interrupt event indicated */
+	if (!(icr0 & I40E_VFINT_ICR01_INTEVENT_MASK)) {
+		PMD_DRV_LOG(DEBUG, "No interrupt event, nothing to do\n");
+		goto done;
+	}
+
+	if (icr0 & I40E_VFINT_ICR01_ADMINQ_MASK) {
+		PMD_DRV_LOG(DEBUG, "ICR01_ADMINQ is reported\n");
+		i40evf_handle_aq_msg(dev);
+	}
+
+	/* Link Status Change interrupt */
+	if (icr0 & I40E_VFINT_ICR01_LINK_STAT_CHANGE_MASK)
+		PMD_DRV_LOG(DEBUG, "LINK_STAT_CHANGE is reported,"
+				   " do nothing\n");
+
+done:
+	i40evf_enable_irq0(hw);
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+}
+
 static int
 i40evf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(\
 			eth_dev->data->dev_private);
+	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1276,7 +1472,17 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	/* allocate memory for mac addr storage */
+	/* register callback func to eal lib */
+	rte_intr_callback_register(&pci_dev->intr_handle,
+		i40evf_dev_interrupt_handler, (void *)eth_dev);
+
+	/* enable uio intr after callback register */
+	rte_intr_enable(&pci_dev->intr_handle);
+
+	/* configure and enable device interrupt */
+	i40evf_enable_irq0(hw);
+
+	/* copy mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("i40evf_mac",
 					ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX,
 					0);
@@ -1655,7 +1861,8 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 		I40E_WRITE_REG(hw,
 			       I40E_VFINT_DYN_CTL01,
 			       I40E_VFINT_DYN_CTL01_INTENA_MASK |
-			       I40E_VFINT_DYN_CTL01_CLEARPBA_MASK);
+			       I40E_VFINT_DYN_CTL01_CLEARPBA_MASK |
+			       I40E_VFINT_DYN_CTL01_ITR_INDX_MASK);
 		I40EVF_WRITE_FLUSH(hw);
 		return;
 	}
@@ -1666,11 +1873,11 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 			I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR - 1),
 			I40E_VFINT_DYN_CTLN1_INTENA_MASK |
 			I40E_VFINT_DYN_CTLN_CLEARPBA_MASK);
-	else
-		/* To support Linux PF host */
-		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
-				I40E_VFINT_DYN_CTL01_INTENA_MASK |
-				I40E_VFINT_DYN_CTL01_CLEARPBA_MASK);
+	/* If host driver is kernel driver, do nothing.
+	 * Interrupt 0 is used for rx packets, but don't set
+	 * I40E_VFINT_DYN_CTL01,
+	 * because it is already done in i40evf_enable_irq0.
+	 */
 
 	I40EVF_WRITE_FLUSH(hw);
 }
@@ -1683,7 +1890,8 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
 
 	if (!rte_intr_allow_others(intr_handle)) {
-		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
+		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
+			       I40E_VFINT_DYN_CTL01_ITR_INDX_MASK);
 		I40EVF_WRITE_FLUSH(hw);
 		return;
 	}
@@ -1693,8 +1901,11 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 			       I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR
 						    - 1),
 			       0);
-	else
-		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01, 0);
+	/* If host driver is kernel driver, do nothing.
+	 * Interrupt 0 is used for rx packets, but don't zero
+	 * I40E_VFINT_DYN_CTL01,
+	 * because interrupt 0 is also used for adminq processing.
+	 */
 
 	I40EVF_WRITE_FLUSH(hw);
 }
@@ -1868,10 +2079,6 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "enable queues failed");
 		goto err_mac;
 	}
-
-	/* vf don't allow intr except for rxq intr */
-	if (dev->data->dev_conf.intr_conf.rxq != 0)
-		rte_intr_enable(intr_handle);
 
 	i40evf_enable_queues_intr(dev);
 	return 0;
@@ -2061,12 +2268,20 @@ static void
 i40evf_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	i40evf_dev_stop(dev);
 	hw->adapter_stopped = 1;
 	i40e_dev_free_queues(dev);
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(&pci_dev->intr_handle);
+
+	/* unregister callback func from eal lib */
+	rte_intr_callback_unregister(&pci_dev->intr_handle,
+		i40evf_dev_interrupt_handler, (void *)dev);
+	i40evf_disable_irq0(hw);
 }
 
 static int

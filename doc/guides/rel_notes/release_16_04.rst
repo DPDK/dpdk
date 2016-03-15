@@ -182,6 +182,8 @@ This section should contain new features added in this release. Sample format:
 
 * **Added i40e VEB switching support.**
 
+* **Added PF reset event reporting in i40e VF driver.**
+
 * **Added fm10k Rx interrupt support.**
 
 * **Optimized fm10k Tx.**
