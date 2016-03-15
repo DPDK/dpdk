@@ -617,6 +617,8 @@ rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		break;
 #endif
 	case RTE_KDRV_IGB_UIO:
+		ret = pci_uio_ioport_map(dev, bar, p);
+		break;
 	case RTE_KDRV_UIO_GENERIC:
 		ret = pci_uio_ioport_map(dev, bar, p);
 		break;
@@ -646,6 +648,8 @@ rte_eal_pci_ioport_read(struct rte_pci_ioport *p,
 		break;
 #endif
 	case RTE_KDRV_IGB_UIO:
+		pci_uio_ioport_read(p, data, len, offset);
+		break;
 	case RTE_KDRV_UIO_GENERIC:
 		pci_uio_ioport_read(p, data, len, offset);
 		break;
@@ -670,6 +674,8 @@ rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
 		break;
 #endif
 	case RTE_KDRV_IGB_UIO:
+		pci_uio_ioport_write(p, data, len, offset);
+		break;
 	case RTE_KDRV_UIO_GENERIC:
 		pci_uio_ioport_write(p, data, len, offset);
 		break;
@@ -696,6 +702,8 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 		break;
 #endif
 	case RTE_KDRV_IGB_UIO:
+		ret = pci_uio_ioport_unmap(p);
+		break;
 	case RTE_KDRV_UIO_GENERIC:
 		ret = pci_uio_ioport_unmap(p);
 		break;
