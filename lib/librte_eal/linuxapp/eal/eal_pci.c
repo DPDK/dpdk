@@ -684,12 +684,11 @@ rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
 int
 rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 {
-	int ret;
+	int ret = -1;
 
 	switch (p->dev->kdrv) {
 #ifdef VFIO_PRESENT
 	case RTE_KDRV_VFIO:
-		ret = -1;
 		if (pci_vfio_is_enabled())
 			ret = pci_vfio_ioport_unmap(p);
 		break;
@@ -702,8 +701,6 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 #if defined(RTE_ARCH_X86)
 		/* special case for x86 ... nothing to do */
 		ret = 0;
-#else
-		ret = -1;
 #endif
 		break;
 	}
