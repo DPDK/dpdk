@@ -1178,6 +1178,14 @@ i40e_recv_pkts_bulk_alloc(void *rx_queue,
 
 	return nb_rx;
 }
+#else
+static uint16_t
+i40e_recv_pkts_bulk_alloc(void __rte_unused *rx_queue,
+			  struct rte_mbuf __rte_unused **rx_pkts,
+			  uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
 #endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
 
 uint16_t
