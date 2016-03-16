@@ -46,7 +46,7 @@
 
 static inline void
 em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
-		uint8_t portid, uint16_t dst_port[8])
+		uint8_t portid, uint32_t dst_port[8])
 {
 	int32_t ret[8];
 	union ipv4_5tuple_host key[8];
@@ -77,14 +77,14 @@ em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 				sizeof(struct ether_hdr) +
 				offsetof(struct ipv4_hdr, time_to_live)));
 
-	key[0].xmm = _mm_and_si128(data[0], mask0);
-	key[1].xmm = _mm_and_si128(data[1], mask0);
-	key[2].xmm = _mm_and_si128(data[2], mask0);
-	key[3].xmm = _mm_and_si128(data[3], mask0);
-	key[4].xmm = _mm_and_si128(data[4], mask0);
-	key[5].xmm = _mm_and_si128(data[5], mask0);
-	key[6].xmm = _mm_and_si128(data[6], mask0);
-	key[7].xmm = _mm_and_si128(data[7], mask0);
+	key[0].xmm = _mm_and_si128(data[0], mask0.x);
+	key[1].xmm = _mm_and_si128(data[1], mask0.x);
+	key[2].xmm = _mm_and_si128(data[2], mask0.x);
+	key[3].xmm = _mm_and_si128(data[3], mask0.x);
+	key[4].xmm = _mm_and_si128(data[4], mask0.x);
+	key[5].xmm = _mm_and_si128(data[5], mask0.x);
+	key[6].xmm = _mm_and_si128(data[6], mask0.x);
+	key[7].xmm = _mm_and_si128(data[7], mask0.x);
 
 	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
 				&key[4], &key[5], &key[6], &key[7]};
@@ -170,19 +170,19 @@ get_ipv6_5tuple(struct rte_mbuf *m0, __m128i mask0,
 
 static inline void
 em_get_dst_port_ipv6x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
-		uint8_t portid, uint16_t dst_port[8])
+		uint8_t portid, uint32_t dst_port[8])
 {
 	int32_t ret[8];
 	union ipv6_5tuple_host key[8];
 
-	get_ipv6_5tuple(m[0], mask1, mask2, &key[0]);
-	get_ipv6_5tuple(m[1], mask1, mask2, &key[1]);
-	get_ipv6_5tuple(m[2], mask1, mask2, &key[2]);
-	get_ipv6_5tuple(m[3], mask1, mask2, &key[3]);
-	get_ipv6_5tuple(m[4], mask1, mask2, &key[4]);
-	get_ipv6_5tuple(m[5], mask1, mask2, &key[5]);
-	get_ipv6_5tuple(m[6], mask1, mask2, &key[6]);
-	get_ipv6_5tuple(m[7], mask1, mask2, &key[7]);
+	get_ipv6_5tuple(m[0], mask1.x, mask2.x, &key[0]);
+	get_ipv6_5tuple(m[1], mask1.x, mask2.x, &key[1]);
+	get_ipv6_5tuple(m[2], mask1.x, mask2.x, &key[2]);
+	get_ipv6_5tuple(m[3], mask1.x, mask2.x, &key[3]);
+	get_ipv6_5tuple(m[4], mask1.x, mask2.x, &key[4]);
+	get_ipv6_5tuple(m[5], mask1.x, mask2.x, &key[5]);
+	get_ipv6_5tuple(m[6], mask1.x, mask2.x, &key[6]);
+	get_ipv6_5tuple(m[7], mask1.x, mask2.x, &key[7]);
 
 	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
 			&key[4], &key[5], &key[6], &key[7]};
@@ -292,7 +292,7 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 		uint8_t portid, struct lcore_conf *qconf)
 {
 	int32_t j;
-	uint16_t dst_port[MAX_PKT_BURST];
+	uint32_t dst_port[MAX_PKT_BURST];
 
 	/*
 	 * Send nb_rx - nb_rx%8 packets
