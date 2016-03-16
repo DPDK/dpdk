@@ -94,8 +94,6 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t qp_nb)
 static void
 virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 {
-	memset(net_hdr, 0, sizeof(struct virtio_net_hdr));
-
 	if (m_buf->ol_flags & PKT_TX_L4_MASK) {
 		net_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 		net_hdr->csum_start = m_buf->l2_len + m_buf->l3_len;
