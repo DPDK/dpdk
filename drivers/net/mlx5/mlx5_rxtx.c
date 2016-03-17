@@ -333,6 +333,36 @@ txq_mp2mr_iter(const struct rte_mempool *mp, void *arg)
 	txq_mp2mr(txq, mp);
 }
 
+/**
+ * Insert VLAN using mbuf headroom space.
+ *
+ * @param buf
+ *   Buffer for VLAN insertion.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static inline int
+insert_vlan_sw(struct rte_mbuf *buf)
+{
+	uintptr_t addr;
+	uint32_t vlan;
+	uint16_t head_room_len = rte_pktmbuf_headroom(buf);
+
+	if (head_room_len < 4)
+		return EINVAL;
+
+	addr = rte_pktmbuf_mtod(buf, uintptr_t);
+	vlan = htonl(0x81000000 | buf->vlan_tci);
+	memmove((void *)(addr - 4), (void *)addr, 12);
+	memcpy((void *)(addr + 8), &vlan, sizeof(vlan));
+
+	SET_DATA_OFF(buf, head_room_len - 4);
+	DATA_LEN(buf) += 4;
+
+	return 0;
+}
+
 #if MLX5_PMD_SGE_WR_N > 1
 
 /**
@@ -534,6 +564,9 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		unsigned int sent_size = 0;
 #endif
 		uint32_t send_flags = 0;
+#ifdef HAVE_VERBS_VLAN_INSERTION
+		int insert_vlan = 0;
+#endif /* HAVE_VERBS_VLAN_INSERTION */
 
 		if (i + 1 < max)
 			rte_prefetch0(buf_next);
@@ -553,6 +586,18 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 * tunnels are currently supported. */
 			if (RTE_ETH_IS_TUNNEL_PKT(buf->packet_type))
 				send_flags |= IBV_EXP_QP_BURST_TUNNEL;
+		}
+		if (buf->ol_flags & PKT_TX_VLAN_PKT) {
+#ifdef HAVE_VERBS_VLAN_INSERTION
+			if (!txq->priv->mps)
+				insert_vlan = 1;
+			else
+#endif /* HAVE_VERBS_VLAN_INSERTION */
+			{
+				err = insert_vlan_sw(buf);
+				if (unlikely(err))
+					goto stop;
+			}
 		}
 		if (likely(segs == 1)) {
 			uintptr_t addr;
@@ -577,13 +622,23 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 			/* Put packet into send queue. */
 #if MLX5_PMD_MAX_INLINE > 0
-			if (length <= txq->max_inline)
-				err = txq->send_pending_inline
-					(txq->qp,
-					 (void *)addr,
-					 length,
-					 send_flags);
-			else
+			if (length <= txq->max_inline) {
+#ifdef HAVE_VERBS_VLAN_INSERTION
+				if (insert_vlan)
+					err = txq->send_pending_inline_vlan
+						(txq->qp,
+						 (void *)addr,
+						 length,
+						 send_flags,
+						 &buf->vlan_tci);
+				else
+#endif /* HAVE_VERBS_VLAN_INSERTION */
+					err = txq->send_pending_inline
+						(txq->qp,
+						 (void *)addr,
+						 length,
+						 send_flags);
+			} else
 #endif
 			{
 				/* Retrieve Memory Region key for this
@@ -597,12 +652,23 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					elt->buf = NULL;
 					goto stop;
 				}
-				err = txq->send_pending
-					(txq->qp,
-					 addr,
-					 length,
-					 lkey,
-					 send_flags);
+#ifdef HAVE_VERBS_VLAN_INSERTION
+				if (insert_vlan)
+					err = txq->send_pending_vlan
+						(txq->qp,
+						 addr,
+						 length,
+						 lkey,
+						 send_flags,
+						 &buf->vlan_tci);
+				else
+#endif /* HAVE_VERBS_VLAN_INSERTION */
+					err = txq->send_pending
+						(txq->qp,
+						 addr,
+						 length,
+						 lkey,
+						 send_flags);
 			}
 			if (unlikely(err))
 				goto stop;
@@ -619,11 +685,21 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (ret.length == (unsigned int)-1)
 				goto stop;
 			/* Put SG list into send queue. */
-			err = txq->send_pending_sg_list
-				(txq->qp,
-				 sges,
-				 ret.num,
-				 send_flags);
+#ifdef HAVE_VERBS_VLAN_INSERTION
+			if (insert_vlan)
+				err = txq->send_pending_sg_list_vlan
+					(txq->qp,
+					 sges,
+					 ret.num,
+					 send_flags,
+					 &buf->vlan_tci);
+			else
+#endif /* HAVE_VERBS_VLAN_INSERTION */
+				err = txq->send_pending_sg_list
+					(txq->qp,
+					 sges,
+					 ret.num,
+					 send_flags);
 			if (unlikely(err))
 				goto stop;
 #ifdef MLX5_PMD_SOFT_COUNTERS

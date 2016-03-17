@@ -255,11 +255,20 @@ struct txq {
 	struct priv *priv; /* Back pointer to private data. */
 	int32_t (*poll_cnt)(struct ibv_cq *cq, uint32_t max);
 	int (*send_pending)();
+#ifdef HAVE_VERBS_VLAN_INSERTION
+	int (*send_pending_vlan)();
+#endif
 #if MLX5_PMD_MAX_INLINE > 0
 	int (*send_pending_inline)();
+#ifdef HAVE_VERBS_VLAN_INSERTION
+	int (*send_pending_inline_vlan)();
+#endif
 #endif
 #if MLX5_PMD_SGE_WR_N > 1
 	int (*send_pending_sg_list)();
+#ifdef HAVE_VERBS_VLAN_INSERTION
+	int (*send_pending_sg_list_vlan)();
+#endif
 #endif
 	int (*send_flush)(struct ibv_qp *qp);
 	struct ibv_cq *cq; /* Completion Queue. */
@@ -283,7 +292,11 @@ struct txq {
 	/* Elements used only for init part are here. */
 	linear_t (*elts_linear)[]; /* Linearized buffers. */
 	struct ibv_mr *mr_linear; /* Memory Region for linearized buffers. */
+#ifdef HAVE_VERBS_VLAN_INSERTION
+	struct ibv_exp_qp_burst_family_v1 *if_qp; /* QP burst interface. */
+#else
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
+#endif
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	unsigned int socket; /* CPU socket ID for allocations. */

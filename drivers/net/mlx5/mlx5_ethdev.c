@@ -544,12 +544,12 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		  DEV_RX_OFFLOAD_UDP_CKSUM |
 		  DEV_RX_OFFLOAD_TCP_CKSUM) :
 		 0);
-	info->tx_offload_capa =
-		(priv->hw_csum ?
-		 (DEV_TX_OFFLOAD_IPV4_CKSUM |
-		  DEV_TX_OFFLOAD_UDP_CKSUM |
-		  DEV_TX_OFFLOAD_TCP_CKSUM) :
-		 0);
+	info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
+	if (priv->hw_csum)
+		info->tx_offload_capa |=
+			(DEV_TX_OFFLOAD_IPV4_CKSUM |
+			 DEV_TX_OFFLOAD_UDP_CKSUM |
+			 DEV_TX_OFFLOAD_TCP_CKSUM);
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	/* FIXME: RETA update/query API expects the callee to know the size of

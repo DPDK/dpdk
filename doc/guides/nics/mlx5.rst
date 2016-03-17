@@ -79,6 +79,7 @@ Features
 - Support for multiple MAC addresses.
 - VLAN filtering.
 - RX VLAN stripping.
+- TX VLAN insertion.
 - RX CRC stripping configuration.
 - Promiscuous mode.
 - Multicast promiscuous mode.
@@ -242,6 +243,7 @@ Currently supported by DPDK:
 
     - Flow director.
     - RX VLAN stripping.
+    - TX VLAN insertion.
     - RX CRC stripping configuration.
 
 - Minimum firmware version:
