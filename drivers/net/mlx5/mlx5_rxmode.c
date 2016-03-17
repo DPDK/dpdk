@@ -396,6 +396,9 @@ mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (mlx5_is_secondary())
+		return;
+
 	priv_lock(priv);
 	priv->promisc_req = 1;
 	ret = priv_rehash_flows(priv);
@@ -416,6 +419,9 @@ mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	int ret;
+
+	if (mlx5_is_secondary())
+		return;
 
 	priv_lock(priv);
 	priv->promisc_req = 0;
@@ -438,6 +444,9 @@ mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (mlx5_is_secondary())
+		return;
+
 	priv_lock(priv);
 	priv->allmulti_req = 1;
 	ret = priv_rehash_flows(priv);
@@ -458,6 +467,9 @@ mlx5_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	int ret;
+
+	if (mlx5_is_secondary())
+		return;
 
 	priv_lock(priv);
 	priv->allmulti_req = 0;

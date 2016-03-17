@@ -64,6 +64,9 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	int err;
 
+	if (mlx5_is_secondary())
+		return -E_RTE_SECONDARY;
+
 	priv_lock(priv);
 	if (priv->started) {
 		priv_unlock(priv);
@@ -103,6 +106,9 @@ void
 mlx5_dev_stop(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+
+	if (mlx5_is_secondary())
+		return;
 
 	priv_lock(priv);
 	if (!priv->started) {

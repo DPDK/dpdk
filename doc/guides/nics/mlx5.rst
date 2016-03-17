@@ -83,6 +83,7 @@ Features
 - Multicast promiscuous mode.
 - Hardware checksum offloads.
 - Flow director (RTE_FDIR_MODE_PERFECT and RTE_FDIR_MODE_PERFECT_MAC_VLAN).
+- Secondary process TX is supported.
 
 Limitations
 -----------
@@ -91,7 +92,7 @@ Limitations
 - Inner RSS for VXLAN frames is not supported yet.
 - Port statistics through software counters only.
 - Hardware checksum offloads for VXLAN inner header are not supported yet.
-- Secondary processes are not supported yet.
+- Secondary process RX is not supported.
 
 Configuration
 -------------

@@ -209,6 +209,9 @@ mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct priv *priv = dev->data->dev_private;
 
+	if (mlx5_is_secondary())
+		return;
+
 	priv_lock(priv);
 	DEBUG("%p: removing MAC address from index %" PRIu32,
 	      (void *)dev, index);
@@ -473,6 +476,9 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		  uint32_t index, uint32_t vmdq)
 {
 	struct priv *priv = dev->data->dev_private;
+
+	if (mlx5_is_secondary())
+		return;
 
 	(void)vmdq;
 	priv_lock(priv);

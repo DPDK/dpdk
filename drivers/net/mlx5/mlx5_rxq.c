@@ -1395,6 +1395,9 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct rxq *rxq = (*priv->rxqs)[idx];
 	int ret;
 
+	if (mlx5_is_secondary())
+		return -E_RTE_SECONDARY;
+
 	priv_lock(priv);
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
@@ -1453,6 +1456,9 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 	struct priv *priv;
 	unsigned int i;
 
+	if (mlx5_is_secondary())
+		return;
+
 	if (rxq == NULL)
 		return;
 	priv = rxq->priv;
@@ -1467,4 +1473,44 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 	rxq_cleanup(rxq);
 	rte_free(rxq);
 	priv_unlock(priv);
+}
+
+/**
+ * DPDK callback for RX in secondary processes.
+ *
+ * This function configures all queues from primary process information
+ * if necessary before reverting to the normal RX burst callback.
+ *
+ * @param dpdk_rxq
+ *   Generic pointer to RX queue structure.
+ * @param[out] pkts
+ *   Array to store received packets.
+ * @param pkts_n
+ *   Maximum number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully received (<= pkts_n).
+ */
+uint16_t
+mlx5_rx_burst_secondary_setup(void *dpdk_rxq, struct rte_mbuf **pkts,
+			      uint16_t pkts_n)
+{
+	struct rxq *rxq = dpdk_rxq;
+	struct priv *priv = mlx5_secondary_data_setup(rxq->priv);
+	struct priv *primary_priv;
+	unsigned int index;
+
+	if (priv == NULL)
+		return 0;
+	primary_priv =
+		mlx5_secondary_data[priv->dev->data->port_id].primary_priv;
+	/* Look for queue index in both private structures. */
+	for (index = 0; index != priv->rxqs_n; ++index)
+		if (((*primary_priv->rxqs)[index] == rxq) ||
+		    ((*priv->rxqs)[index] == rxq))
+			break;
+	if (index == priv->rxqs_n)
+		return 0;
+	rxq = (*priv->rxqs)[index];
+	return priv->dev->rx_pkt_burst(rxq, pkts, pkts_n);
 }

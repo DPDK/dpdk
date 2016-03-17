@@ -55,7 +55,7 @@
 void
 mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx5_get_priv(dev);
 	struct rte_eth_stats tmp = {0};
 	unsigned int i;
 	unsigned int idx;

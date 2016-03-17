@@ -255,11 +255,11 @@ txq_cleanup(struct txq *txq)
  * @return
  *   0 on success, errno value on failure.
  */
-static int
+int
 txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	  unsigned int socket, const struct rte_eth_txconf *conf)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct priv *priv = mlx5_get_priv(dev);
 	struct txq tmpl = {
 		.priv = priv,
 		.socket = socket
@@ -464,6 +464,9 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct txq *txq = (*priv->txqs)[idx];
 	int ret;
 
+	if (mlx5_is_secondary())
+		return -E_RTE_SECONDARY;
+
 	priv_lock(priv);
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
@@ -519,6 +522,9 @@ mlx5_tx_queue_release(void *dpdk_txq)
 	struct priv *priv;
 	unsigned int i;
 
+	if (mlx5_is_secondary())
+		return;
+
 	if (txq == NULL)
 		return;
 	priv = txq->priv;
@@ -533,4 +539,44 @@ mlx5_tx_queue_release(void *dpdk_txq)
 	txq_cleanup(txq);
 	rte_free(txq);
 	priv_unlock(priv);
+}
+
+/**
+ * DPDK callback for TX in secondary processes.
+ *
+ * This function configures all queues from primary process information
+ * if necessary before reverting to the normal TX burst callback.
+ *
+ * @param dpdk_txq
+ *   Generic pointer to TX queue structure.
+ * @param[in] pkts
+ *   Packets to transmit.
+ * @param pkts_n
+ *   Number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully transmitted (<= pkts_n).
+ */
+uint16_t
+mlx5_tx_burst_secondary_setup(void *dpdk_txq, struct rte_mbuf **pkts,
+			      uint16_t pkts_n)
+{
+	struct txq *txq = dpdk_txq;
+	struct priv *priv = mlx5_secondary_data_setup(txq->priv);
+	struct priv *primary_priv;
+	unsigned int index;
+
+	if (priv == NULL)
+		return 0;
+	primary_priv =
+		mlx5_secondary_data[priv->dev->data->port_id].primary_priv;
+	/* Look for queue index in both private structures. */
+	for (index = 0; index != priv->txqs_n; ++index)
+		if (((*primary_priv->txqs)[index] == txq) ||
+		    ((*priv->txqs)[index] == txq))
+			break;
+	if (index == priv->txqs_n)
+		return 0;
+	txq = (*priv->txqs)[index];
+	return priv->dev->tx_pkt_burst(txq, pkts, pkts_n);
 }
