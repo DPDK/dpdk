@@ -40,3 +40,11 @@ Deprecation Notices
   The existing API will be backward compatible, but there will be new API
   functions added to facilitate the creation of mempools using an external
   handler. The 16.07 release will contain these changes.
+
+* The rte_mempool allocation will be changed in 16.07:
+  allocation of large mempool in several virtual memory chunks, new API
+  to populate a mempool, new API to free a mempool, allocation in
+  anonymous mapping, drop of specific dom0 code. These changes will
+  induce a modification of the rte_mempool structure, plus a
+  modification of the API of rte_mempool_obj_iter(), implying a breakage
+  of the ABI.
