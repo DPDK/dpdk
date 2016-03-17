@@ -1282,6 +1282,21 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	      tmpl.crc_present << 2);
 #endif /* HAVE_VERBS_FCS */
 
+#ifdef HAVE_VERBS_RX_END_PADDING
+	if (!mlx5_getenv_int("MLX5_PMD_ENABLE_PADDING"))
+		; /* Nothing else to do. */
+	else if (priv->hw_padding) {
+		INFO("%p: enabling packet padding on queue %p",
+		     (void *)dev, (void *)rxq);
+		attr.wq.flags |= IBV_EXP_CREATE_WQ_FLAG_RX_END_PADDING;
+		attr.wq.comp_mask |= IBV_EXP_CREATE_WQ_FLAGS;
+	} else
+		WARN("%p: packet padding has been requested but is not"
+		     " supported, make sure MLNX_OFED and firmware are"
+		     " up to date",
+		     (void *)dev);
+#endif /* HAVE_VERBS_RX_END_PADDING */
+
 	tmpl.wq = ibv_exp_create_wq(priv->ctx, &attr.wq);
 	if (tmpl.wq == NULL) {
 		ret = (errno ? errno : EINVAL);

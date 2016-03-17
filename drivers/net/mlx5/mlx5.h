@@ -104,6 +104,7 @@ struct priv {
 	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
 	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
+	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
 	/* RX/TX queues. */
@@ -159,6 +160,10 @@ priv_unlock(struct priv *priv)
 {
 	rte_spinlock_unlock(&priv->lock);
 }
+
+/* mlx5.c */
+
+int mlx5_getenv_int(const char *);
 
 /* mlx5_ethdev.c */
 

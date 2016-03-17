@@ -151,6 +151,20 @@ Environment variables
   lower performance when there is no backpressure, it is not enabled by
   default.
 
+- ``MLX5_PMD_ENABLE_PADDING``
+
+  Enables HW packet padding in PCI bus transactions.
+
+  When packet size is cache aligned and CRC stripping is enabled, 4 fewer
+  bytes are written to the PCI bus. Enabling padding makes such packets
+  aligned again.
+
+  In cases where PCI bandwidth is the bottleneck, padding can improve
+  performance by 10%.
+
+  This is disabled by default since this can also decrease performance for
+  unaligned packet sizes.
+
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 

@@ -223,6 +223,13 @@ This section should contain new features added in this release. Sample format:
 
   Only available with Mellanox OFED >= 3.2.
 
+* **Added mlx5 optional packet padding by HW.**
+
+  Added an option to make PCI bus transactions rounded to multiple of a
+  cache line size for better alignment.
+
+  Only available with Mellanox OFED >= 3.2.
+
 * **Changed szedata2 type of driver from vdev to pdev.**
 
   Previously szedata2 device had to be added by ``--vdev`` option.

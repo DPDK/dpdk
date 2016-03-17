@@ -68,6 +68,25 @@
 #include "mlx5_defs.h"
 
 /**
+ * Retrieve integer value from environment variable.
+ *
+ * @param[in] name
+ *   Environment variable name.
+ *
+ * @return
+ *   Integer value, 0 if the variable is not set.
+ */
+int
+mlx5_getenv_int(const char *name)
+{
+	const char *val = getenv(name);
+
+	if (val == NULL)
+		return 0;
+	return atoi(val);
+}
+
+/**
  * DPDK callback to close the device.
  *
  * Destroy all queues and objects, free memory.
@@ -333,6 +352,9 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 #ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 			IBV_EXP_DEVICE_ATTR_VLAN_OFFLOADS |
 #endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+#ifdef HAVE_VERBS_RX_END_PADDING
+			IBV_EXP_DEVICE_ATTR_RX_PAD_END_ALIGN |
+#endif /* HAVE_VERBS_RX_END_PADDING */
 			0;
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
@@ -424,6 +446,12 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 #endif /* HAVE_VERBS_FCS */
 		DEBUG("FCS stripping configuration is %ssupported",
 		      (priv->hw_fcs_strip ? "" : "not "));
+
+#ifdef HAVE_VERBS_RX_END_PADDING
+		priv->hw_padding = !!exp_device_attr.rx_pad_end_addr_align;
+#endif /* HAVE_VERBS_RX_END_PADDING */
+		DEBUG("hardware RX end alignment padding is %ssupported",
+		      (priv->hw_padding ? "" : "not "));
 
 #else /* HAVE_EXP_QUERY_DEVICE */
 		priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
