@@ -261,6 +261,14 @@ Linux AF_PACKET
 M: John W. Linville <linville@tuxdriver.com>
 F: drivers/net/af_packet/
 
+Amazon ENA
+M: Jan Medala <jan@semihalf.com>
+M: Jakub Palider <jpa@semihalf.com>
+M: Netanel Belgazal <netanel@amazon.com>
+M: Evgeny Schemeilin <evgenys@amazon.com>
+F: drivers/net/ena/
+F: doc/guides/nics/ena.rst
+
 Chelsio cxgbe
 M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
 F: drivers/net/cxgbe/

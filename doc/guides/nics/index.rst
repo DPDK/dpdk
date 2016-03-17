@@ -39,6 +39,7 @@ Network Interface Controller Drivers
     bnx2x
     cxgbe
     e1000em
+    ena
     enic
     fm10k
     i40e
