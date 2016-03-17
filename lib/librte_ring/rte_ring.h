@@ -431,6 +431,11 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	uint32_t mask = r->prod.mask;
 	int ret;
 
+	/* Avoid the unnecessary cmpset operation below, which is also
+	 * potentially harmful when n equals 0. */
+	if (n == 0)
+		return 0;
+
 	/* move prod.head atomically */
 	do {
 		/* Reset n to the initial burst count */
@@ -617,6 +622,11 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	int success;
 	unsigned i, rep = 0;
 	uint32_t mask = r->prod.mask;
+
+	/* Avoid the unnecessary cmpset operation below, which is also
+	 * potentially harmful when n equals 0. */
+	if (n == 0)
+		return 0;
 
 	/* move cons.head atomically */
 	do {
