@@ -116,6 +116,7 @@ struct rxq {
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
+	unsigned int crc_present:1; /* CRC must be subtracted. */
 	union {
 		struct rxq_elt_sp (*sp)[]; /* Scattered RX elements. */
 		struct rxq_elt (*no_sp)[]; /* RX elements. */

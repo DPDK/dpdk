@@ -1258,6 +1258,30 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 				  0),
 #endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	};
+
+#ifdef HAVE_VERBS_FCS
+	/* By default, FCS (CRC) is stripped by hardware. */
+	if (dev->data->dev_conf.rxmode.hw_strip_crc) {
+		tmpl.crc_present = 0;
+	} else if (priv->hw_fcs_strip) {
+		/* Ask HW/Verbs to leave CRC in place when supported. */
+		attr.wq.flags |= IBV_EXP_CREATE_WQ_FLAG_SCATTER_FCS;
+		attr.wq.comp_mask |= IBV_EXP_CREATE_WQ_FLAGS;
+		tmpl.crc_present = 1;
+	} else {
+		WARN("%p: CRC stripping has been disabled but will still"
+		     " be performed by hardware, make sure MLNX_OFED and"
+		     " firmware are up to date",
+		     (void *)dev);
+		tmpl.crc_present = 0;
+	}
+	DEBUG("%p: CRC stripping is %s, %u bytes will be subtracted from"
+	      " incoming frames to hide it",
+	      (void *)dev,
+	      tmpl.crc_present ? "disabled" : "enabled",
+	      tmpl.crc_present << 2);
+#endif /* HAVE_VERBS_FCS */
+
 	tmpl.wq = ibv_exp_create_wq(priv->ctx, &attr.wq);
 	if (tmpl.wq == NULL) {
 		ret = (errno ? errno : EINVAL);

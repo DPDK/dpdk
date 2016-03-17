@@ -217,6 +217,12 @@ This section should contain new features added in this release. Sample format:
 
   Implemented TX support in secondary processes (like mlx4).
 
+* **Added mlx5 RX CRC stripping configuration.**
+
+  Until now, CRC was always stripped. It can now be configured.
+
+  Only available with Mellanox OFED >= 3.2.
+
 * **Changed szedata2 type of driver from vdev to pdev.**
 
   Previously szedata2 device had to be added by ``--vdev`` option.

@@ -830,7 +830,8 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		if (ret == 0)
 			break;
-		len = ret;
+		assert(ret >= (rxq->crc_present << 2));
+		len = ret - (rxq->crc_present << 2);
 		pkt_buf_len = len;
 		/*
 		 * Replace spent segments with new ones, concatenate and
@@ -1042,7 +1043,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		if (ret == 0)
 			break;
-		len = ret;
+		assert(ret >= (rxq->crc_present << 2));
+		len = ret - (rxq->crc_present << 2);
 		rep = __rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
 			/*

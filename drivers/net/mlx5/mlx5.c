@@ -418,6 +418,13 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("VLAN stripping is %ssupported",
 		      (priv->hw_vlan_strip ? "" : "not "));
 
+#ifdef HAVE_VERBS_FCS
+		priv->hw_fcs_strip = !!(exp_device_attr.exp_device_cap_flags &
+					IBV_EXP_DEVICE_SCATTER_FCS);
+#endif /* HAVE_VERBS_FCS */
+		DEBUG("FCS stripping configuration is %ssupported",
+		      (priv->hw_fcs_strip ? "" : "not "));
+
 #else /* HAVE_EXP_QUERY_DEVICE */
 		priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
 #endif /* HAVE_EXP_QUERY_DEVICE */
