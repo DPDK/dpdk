@@ -266,7 +266,6 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = rq->rx_nb_hold;	/* mbufs held by software */
 
 	while (nb_rx < nb_pkts) {
-		uint16_t rx_pkt_len;
 		volatile struct rq_enet_desc *rqd_ptr;
 		dma_addr_t dma_addr;
 		struct cq_desc cqd;
@@ -295,10 +294,6 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* A packet error means descriptor and data are untrusted */
 		packet_error = enic_cq_rx_to_pkt_err_flags(&cqd, &ol_err_flags);
-		if (!packet_error)
-			rx_pkt_len = enic_cq_rx_desc_n_bytes(&cqd);
-		else
-			rx_pkt_len = 0;
 
 		/* Get the mbuf to return and replace with one just allocated */
 		rxmb = rq->mbuf_ring[rx_id];
@@ -327,16 +322,17 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxmb->data_off = RTE_PKTMBUF_HEADROOM;
 		rxmb->nb_segs = 1;
 		rxmb->next = NULL;
-		rxmb->pkt_len = rx_pkt_len;
-		rxmb->data_len = rx_pkt_len;
 		rxmb->port = enic->port_id;
 		if (!packet_error) {
+			rxmb->pkt_len = enic_cq_rx_desc_n_bytes(&cqd);
 			rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
 			enic_cq_rx_to_pkt_flags(&cqd, rxmb);
 		} else {
+			rxmb->pkt_len = 0;
 			rxmb->packet_type = 0;
 			rxmb->ol_flags = 0;
 		}
+		rxmb->data_len = rxmb->pkt_len;
 
 		/* prefetch mbuf data for caller */
 		rte_packet_prefetch(RTE_PTR_ADD(rxmb->buf_addr,
