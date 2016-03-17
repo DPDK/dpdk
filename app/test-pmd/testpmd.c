@@ -410,7 +410,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		 unsigned int socket_id)
 {
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
-	struct rte_mempool *rte_mp;
+	struct rte_mempool *rte_mp = NULL;
 	uint32_t mb_size;
 
 	mb_size = sizeof(struct rte_mbuf) + mbuf_seg_size;
@@ -423,23 +423,22 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		rte_pktmbuf_pool_init, NULL,
 		rte_pktmbuf_init, NULL,
 		socket_id, 0);
-
-
-
-#else
-	if (mp_anon != 0)
-		rte_mp = mempool_anon_create(pool_name, nb_mbuf, mb_size,
-				    (unsigned) mb_mempool_cache,
-				    sizeof(struct rte_pktmbuf_pool_private),
-				    rte_pktmbuf_pool_init, NULL,
-				    rte_pktmbuf_init, NULL,
-				    socket_id, 0);
-	else
-		/* wrapper to rte_mempool_create() */
-		rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
-			mb_mempool_cache, 0, mbuf_seg_size, socket_id);
-
 #endif
+
+	/* if the former XEN allocation failed fall back to normal allocation */
+	if (rte_mp == NULL) {
+		if (mp_anon != 0)
+			rte_mp = mempool_anon_create(pool_name, nb_mbuf,
+					mb_size, (unsigned) mb_mempool_cache,
+					sizeof(struct rte_pktmbuf_pool_private),
+					rte_pktmbuf_pool_init, NULL,
+					rte_pktmbuf_init, NULL,
+					socket_id, 0);
+		else
+			/* wrapper to rte_mempool_create() */
+			rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
+				mb_mempool_cache, 0, mbuf_seg_size, socket_id);
+	}
 
 	if (rte_mp == NULL) {
 		rte_exit(EXIT_FAILURE, "Creation of mbuf pool for socket %u "
