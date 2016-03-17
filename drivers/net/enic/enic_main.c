@@ -342,13 +342,13 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 	unsigned i;
 	dma_addr_t dma_addr;
 
-	dev_debug(enic, "queue %u, allocating %u rx queue mbufs", rq->index,
+	dev_debug(enic, "queue %u, allocating %u rx queue mbufs\n", rq->index,
 		  rq->ring.desc_count);
 
 	for (i = 0; i < rq->ring.desc_count; i++, rqd++) {
 		mb = rte_rxmbuf_alloc(rq->mp);
 		if (mb == NULL) {
-			dev_err(enic, "RX mbuf alloc failed queue_id=%u",
+			dev_err(enic, "RX mbuf alloc failed queue_id=%u\n",
 			(unsigned)rq->index);
 			return -ENOMEM;
 		}
@@ -388,7 +388,7 @@ enic_alloc_consistent(__rte_unused void *priv, size_t size,
 	rz = rte_memzone_reserve_aligned((const char *)name,
 					 size, SOCKET_ID_ANY, 0, ENIC_ALIGN);
 	if (!rz) {
-		pr_err("%s : Failed to allocate memory requested for %s",
+		pr_err("%s : Failed to allocate memory requested for %s\n",
 			__func__, name);
 		return NULL;
 	}
