@@ -129,13 +129,6 @@ enic_cq_rx_desc_rss_hash(struct cq_enet_rq_desc *cqrd)
 	return le32_to_cpu(cqrd->rss_hash);
 }
 
-static inline uint8_t
-enic_cq_rx_desc_fcs_ok(struct cq_enet_rq_desc *cqrd)
-{
-	return ((cqrd->flags & CQ_ENET_RQ_DESC_FLAGS_FCS_OK) ==
-		CQ_ENET_RQ_DESC_FLAGS_FCS_OK);
-}
-
 static inline uint16_t
 enic_cq_rx_desc_vlan(struct cq_enet_rq_desc *cqrd)
 {
@@ -150,25 +143,21 @@ enic_cq_rx_desc_n_bytes(struct cq_desc *cqd)
 		CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK;
 }
 
-static inline uint64_t
-enic_cq_rx_to_pkt_err_flags(struct cq_desc *cqd)
+static inline uint8_t
+enic_cq_rx_to_pkt_err_flags(struct cq_desc *cqd, uint64_t *pkt_err_flags_out)
 {
 	struct cq_enet_rq_desc *cqrd = (struct cq_enet_rq_desc *)cqd;
 	uint16_t bwflags;
+	int ret = 0;
 	uint64_t pkt_err_flags = 0;
 
 	bwflags = enic_cq_rx_desc_bwflags(cqrd);
-
-	/* Check for packet error. Can't be more specific than MAC error */
-	if (enic_cq_rx_desc_packet_error(bwflags)) {
-		pkt_err_flags |= PKT_RX_MAC_ERR;
+	if (unlikely(enic_cq_rx_desc_packet_error(bwflags))) {
+		pkt_err_flags = PKT_RX_MAC_ERR;
+		ret = 1;
 	}
-
-	/* Check for bad FCS. MAC error isn't quite, but no other choice */
-	if (!enic_cq_rx_desc_fcs_ok(cqrd)) {
-		pkt_err_flags |= PKT_RX_MAC_ERR;
-	}
-	return pkt_err_flags;
+	*pkt_err_flags_out = pkt_err_flags;
+	return ret;
 }
 
 /*
@@ -282,6 +271,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		dma_addr_t dma_addr;
 		struct cq_desc cqd;
 		uint64_t ol_err_flags;
+		uint8_t packet_error;
 
 		/* Check for pkts available */
 		color = (cqd_ptr->type_color >> CQ_DESC_COLOR_SHIFT)
@@ -303,9 +293,9 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		}
 
-		/* Check for FCS or packet errors */
-		ol_err_flags = enic_cq_rx_to_pkt_err_flags(&cqd);
-		if (ol_err_flags == 0)
+		/* A packet error means descriptor and data are untrusted */
+		packet_error = enic_cq_rx_to_pkt_err_flags(&cqd, &ol_err_flags);
+		if (!packet_error)
 			rx_pkt_len = enic_cq_rx_desc_n_bytes(&cqd);
 		else
 			rx_pkt_len = 0;
@@ -340,10 +330,13 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxmb->pkt_len = rx_pkt_len;
 		rxmb->data_len = rx_pkt_len;
 		rxmb->port = enic->port_id;
-		rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
-		rxmb->ol_flags = ol_err_flags;
-		if (!ol_err_flags)
+		if (!packet_error) {
+			rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
 			enic_cq_rx_to_pkt_flags(&cqd, rxmb);
+		} else {
+			rxmb->packet_type = 0;
+			rxmb->ol_flags = 0;
+		}
 
 		/* prefetch mbuf data for caller */
 		rte_packet_prefetch(RTE_PTR_ADD(rxmb->buf_addr,
