@@ -169,6 +169,8 @@ void mlx5_dev_link_status_handler(void *);
 void mlx5_dev_interrupt_handler(struct rte_intr_handle *, void *);
 void priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
 void priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
+int mlx5_set_link_down(struct rte_eth_dev *dev);
+int mlx5_set_link_up(struct rte_eth_dev *dev);
 
 /* mlx5_mac.c */
 

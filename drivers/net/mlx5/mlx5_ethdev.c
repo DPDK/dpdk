@@ -987,3 +987,88 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 					   dev);
 	}
 }
+
+/**
+ * Change the link state (UP / DOWN).
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param up
+ *   Nonzero for link up, otherwise link down.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_set_link(struct priv *priv, int up)
+{
+	struct rte_eth_dev *dev = priv->dev;
+	int err;
+	unsigned int i;
+
+	if (up) {
+		err = priv_set_flags(priv, ~IFF_UP, IFF_UP);
+		if (err)
+			return err;
+		for (i = 0; i < priv->rxqs_n; i++)
+			if ((*priv->rxqs)[i]->sp)
+				break;
+		/* Check if an sp queue exists.
+		 * Note: Some old frames might be received.
+		 */
+		if (i == priv->rxqs_n)
+			dev->rx_pkt_burst = mlx5_rx_burst;
+		else
+			dev->rx_pkt_burst = mlx5_rx_burst_sp;
+		dev->tx_pkt_burst = mlx5_tx_burst;
+	} else {
+		err = priv_set_flags(priv, ~IFF_UP, ~IFF_UP);
+		if (err)
+			return err;
+		dev->rx_pkt_burst = removed_rx_burst;
+		dev->tx_pkt_burst = removed_tx_burst;
+	}
+	return 0;
+}
+
+/**
+ * DPDK callback to bring the link DOWN.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+mlx5_set_link_down(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	int err;
+
+	priv_lock(priv);
+	err = priv_set_link(priv, 0);
+	priv_unlock(priv);
+	return err;
+}
+
+/**
+ * DPDK callback to bring the link UP.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+mlx5_set_link_up(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	int err;
+
+	priv_lock(priv);
+	err = priv_set_link(priv, 1);
+	priv_unlock(priv);
+	return err;
+}
