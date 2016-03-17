@@ -47,6 +47,10 @@
 
 #include "main.h"
 
+#ifndef PIPELINE_LPM_TABLE_NUMBER_TABLE8s
+#define PIPELINE_LPM_TABLE_NUMBER_TABLE8s 256
+#endif
+
 void
 app_main_loop_worker_pipeline_lpm(void) {
 	struct rte_pipeline_params pipeline_params = {
@@ -113,6 +117,8 @@ app_main_loop_worker_pipeline_lpm(void) {
 		struct rte_table_lpm_params table_lpm_params = {
 			.name = "LPM",
 			.n_rules = 1 << 24,
+			.number_tbl8s = PIPELINE_LPM_TABLE_NUMBER_TABLE8s,
+			.flags = 0,
 			.entry_unique_size =
 				sizeof(struct rte_pipeline_table_entry),
 			.offset = APP_METADATA_OFFSET(32),

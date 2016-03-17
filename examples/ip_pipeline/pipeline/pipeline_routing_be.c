@@ -67,6 +67,10 @@
 
 #define MAC_SRC_DEFAULT 0x112233445566
 
+#ifndef PIPELINE_ROUTING_LPM_TABLE_NUMBER_TABLE8s
+#define PIPELINE_ROUTING_LPM_TABLE_NUMBER_TABLE8s 256
+#endif
+
 struct pipeline_routing {
 	struct pipeline p;
 	struct pipeline_routing_params params;
@@ -1284,6 +1288,8 @@ pipeline_routing_init(struct pipeline_params *params,
 		struct rte_table_lpm_params table_lpm_params = {
 			.name = p->name,
 			.n_rules = p_rt->params.n_routes,
+			.number_tbl8s = PIPELINE_ROUTING_LPM_TABLE_NUMBER_TABLE8s,
+			.flags = 0,
 			.entry_unique_size = sizeof(struct routing_table_entry),
 			.offset = p_rt->params.ip_hdr_offset +
 				__builtin_offsetof(struct ipv4_hdr, dst_addr),
