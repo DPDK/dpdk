@@ -210,7 +210,7 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 	ciflags = enic_cq_rx_desc_ciflags(cqrd);
 	bwflags = enic_cq_rx_desc_bwflags(cqrd);
 
-	ASSERT(mbuf->ol_flags == 0);
+	mbuf->ol_flags = 0;
 
 	/* flags are meaningless if !EOP */
 	if (unlikely(!enic_cq_rx_desc_eop(ciflags)))
@@ -340,10 +340,10 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxmb->pkt_len = rx_pkt_len;
 		rxmb->data_len = rx_pkt_len;
 		rxmb->port = enic->port_id;
+		rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
 		rxmb->ol_flags = ol_err_flags;
 		if (!ol_err_flags)
 			enic_cq_rx_to_pkt_flags(&cqd, rxmb);
-		rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
 
 		/* prefetch mbuf data for caller */
 		rte_packet_prefetch(RTE_PTR_ADD(rxmb->buf_addr,
