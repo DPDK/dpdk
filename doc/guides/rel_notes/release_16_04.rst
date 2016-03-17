@@ -47,6 +47,12 @@ This section should contain new features added in this release. Sample format:
   A new function ``rte_pktmbuf_alloc_bulk()`` has been added to allow the user
   to allocate a bulk of mbufs.
 
+* **Added new poll-mode driver for Amazon Elastic Network Adapters (ENA).**
+
+  The driver operates variety of ENA adapters through feature negotiation
+  with the adapter and upgradable commands set.
+  ENA driver handles PCI Physical and Virtual ENA functions.
+
 * **Restored vmxnet3 Tx data ring.**
 
   Tx data ring has been shown to improve small pkt forwarding performance
