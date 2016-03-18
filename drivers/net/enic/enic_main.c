@@ -524,24 +524,22 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 				"policy.  Applying the value in the adapter "\
 				"policy (%d).\n",
 				queue_idx, nb_desc, enic->config.rq_desc_count);
-		} else if (nb_desc != enic->config.rq_desc_count) {
-			enic->config.rq_desc_count = nb_desc;
-			dev_info(enic,
-				"RX Queues - effective number of descs:%d\n",
-				nb_desc);
+			nb_desc = enic->config.rq_desc_count;
 		}
+		dev_info(enic, "RX Queues - effective number of descs:%d\n",
+			 nb_desc);
 	}
 
 	/* Allocate queue resources */
 	rc = vnic_rq_alloc(enic->vdev, rq, queue_idx,
-		enic->config.rq_desc_count, sizeof(struct rq_enet_desc));
+		nb_desc, sizeof(struct rq_enet_desc));
 	if (rc) {
 		dev_err(enic, "error in allocation of rq\n");
 		goto err_exit;
 	}
 
 	rc = vnic_cq_alloc(enic->vdev, &enic->cq[queue_idx], queue_idx,
-		socket_id, enic->config.rq_desc_count,
+		socket_id, nb_desc,
 		sizeof(struct cq_enet_rq_desc));
 	if (rc) {
 		dev_err(enic, "error in allocation of cq for rq\n");
@@ -550,7 +548,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 
 	/* Allocate the mbuf ring */
 	rq->mbuf_ring = (struct rte_mbuf **)rte_zmalloc_socket("rq->mbuf_ring",
-			sizeof(struct rte_mbuf *) * enic->config.rq_desc_count,
+			sizeof(struct rte_mbuf *) * nb_desc,
 			RTE_CACHE_LINE_SIZE, rq->socket_id);
 
 	if (rq->mbuf_ring != NULL)
