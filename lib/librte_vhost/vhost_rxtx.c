@@ -313,7 +313,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 			rte_prefetch0(&vq->desc[desc_indexes[i+1]]);
 	}
 
-	rte_compiler_barrier();
+	rte_smp_wmb();
 
 	/* Wait until it's our turn to add our buffer to the used ring. */
 	while (unlikely(vq->last_used_idx != res_start_idx))
@@ -563,7 +563,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		nr_used = copy_mbuf_to_desc_mergeable(dev, vq, start, end,
 						      pkts[pkt_idx]);
-		rte_compiler_barrier();
+		rte_smp_wmb();
 
 		/*
 		 * Wait until it's our turn to add our buffer
@@ -921,7 +921,8 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 				sizeof(vq->used->ring[used_idx]));
 	}
 
-	rte_compiler_barrier();
+	rte_smp_wmb();
+	rte_smp_rmb();
 	vq->used->idx += i;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
