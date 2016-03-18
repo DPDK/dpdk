@@ -156,12 +156,6 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 						rss_conf->rss_key,
 						rss_conf->rss_key_len,
 						rss_conf->rss_hf);
-	else
-		err = rss_hash_rss_conf_new_key(priv,
-						rss_hash_default_key,
-						rss_hash_default_key_len,
-						ETH_RSS_PROTO_MASK);
-
 	/* Store protocols for which RSS is enabled. */
 	priv->rss_hf = rss_conf->rss_hf;
 	priv_unlock(priv);
