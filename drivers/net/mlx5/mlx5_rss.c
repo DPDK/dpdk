@@ -162,11 +162,8 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 						rss_hash_default_key_len,
 						ETH_RSS_PROTO_MASK);
 
-	/* Store the configuration set into port configure.
-	 * This will enable/disable hash RX queues associated to the protocols
-	 * enabled/disabled by this update. */
-	priv->dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf =
-		rss_conf->rss_hf;
+	/* Store protocols for which RSS is enabled. */
+	priv->rss_hf = rss_conf->rss_hf;
 	priv_unlock(priv);
 	assert(err >= 0);
 	return -err;

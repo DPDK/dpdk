@@ -312,7 +312,7 @@ priv_make_ind_table_init(struct priv *priv,
 	/* Mandatory to receive frames not handled by normal hash RX queues. */
 	unsigned int hash_types_sup = 1 << HASH_RXQ_ETH;
 
-	rss_hf = priv->dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
+	rss_hf = priv->rss_hf;
 	/* Process other protocols only if more than one queue. */
 	if (priv->rxqs_n > 1)
 		for (i = 0; (i != hash_rxq_init_n); ++i)

@@ -122,6 +122,7 @@ struct priv {
 	unsigned int hash_rxqs_n; /* Hash RX QPs array size. */
 	/* RSS configuration array indexed by hash RX queue type. */
 	struct rte_eth_rss_conf *(*rss_conf)[];
+	uint64_t rss_hf; /* RSS DPDK bit field of active RSS. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */

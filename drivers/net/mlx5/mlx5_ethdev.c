@@ -447,6 +447,7 @@ dev_configure(struct rte_eth_dev *dev)
 	unsigned int j;
 	unsigned int reta_idx_n;
 
+	priv->rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
 	if (txqs_n != priv->txqs_n) {
