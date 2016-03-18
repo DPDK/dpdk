@@ -250,7 +250,7 @@ em_mask_key(void *key, xmm_t mask)
 
 	return _mm_and_si128(data, mask);
 }
-#elif defined(__ARM_NEON)
+#elif defined(RTE_MACHINE_CPUFLAG_NEON)
 static inline xmm_t
 em_mask_key(void *key, xmm_t mask)
 {
@@ -320,7 +320,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
  * buffer optimization i.e. ENABLE_MULTI_BUFFER_OPTIMIZE=1.
  */
 #if defined(__SSE4_1__)
-#ifndef HASH_MULTI_LOOKUP
+#if defined(NO_HASH_MULTI_LOOKUP)
 #include "l3fwd_em_sse.h"
 #else
 #include "l3fwd_em_hlm_sse.h"
@@ -568,8 +568,8 @@ em_main_loop(__attribute__((unused)) void *dummy)
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > drain_tsc)) {
 
-			for (i = 0; i < qconf->n_rx_queue; i++) {
-				portid = qconf->rx_queue_list[i].port_id;
+			for (i = 0; i < qconf->n_tx_port; ++i) {
+				portid = qconf->tx_port_id[i];
 				if (qconf->tx_mbufs[portid].len == 0)
 					continue;
 				send_burst(qconf,

@@ -34,6 +34,15 @@
 #ifndef __L3FWD_EM_SSE_H__
 #define __L3FWD_EM_SSE_H__
 
+/**
+ * @file
+ * This is an optional implementation of packet classification in Exact-Match
+ * path using sequential packet classification method.
+ * While hash lookup multi seems to provide better performance, it's disabled
+ * by default and can be enabled with NO_HASH_LOOKUP_MULTI global define in
+ * compilation time.
+ */
+
 #include "l3fwd_sse.h"
 
 static inline __attribute__((always_inline)) uint16_t

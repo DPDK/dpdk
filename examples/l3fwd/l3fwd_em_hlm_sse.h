@@ -34,17 +34,9 @@
 #ifndef __L3FWD_EM_HLM_SSE_H__
 #define __L3FWD_EM_HLM_SSE_H__
 
-/**
- * @file
- * This is an optional implementation of packet classification in Exact-Match
- * path using rte_hash_lookup_multi method from previous implementation.
- * While sequential classification seems to be faster, it's disabled by default
- * and can be enabled with HASH_LOOKUP_MULTI global define in compilation time.
- */
-
 #include "l3fwd_sse.h"
 
-static inline void
+static inline __attribute__((always_inline)) void
 em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 		uint8_t portid, uint32_t dst_port[8])
 {
@@ -168,7 +160,7 @@ get_ipv6_5tuple(struct rte_mbuf *m0, __m128i mask0,
 	key->xmm[2] = _mm_and_si128(tmpdata2, mask1);
 }
 
-static inline void
+static inline __attribute__((always_inline)) void
 em_get_dst_port_ipv6x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 		uint8_t portid, uint32_t dst_port[8])
 {
@@ -322,17 +314,17 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 		} else {
 			dst_port[j]   = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+1] = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+2] = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+3] = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+4] = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+5] = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+6] = em_get_dst_port(qconf, pkts_burst[j], portid);
-			dst_port[j+7] = em_get_dst_port(qconf, pkts_burst[j], portid);
+			dst_port[j+1] = em_get_dst_port(qconf, pkts_burst[j+1], portid);
+			dst_port[j+2] = em_get_dst_port(qconf, pkts_burst[j+2], portid);
+			dst_port[j+3] = em_get_dst_port(qconf, pkts_burst[j+3], portid);
+			dst_port[j+4] = em_get_dst_port(qconf, pkts_burst[j+4], portid);
+			dst_port[j+5] = em_get_dst_port(qconf, pkts_burst[j+5], portid);
+			dst_port[j+6] = em_get_dst_port(qconf, pkts_burst[j+6], portid);
+			dst_port[j+7] = em_get_dst_port(qconf, pkts_burst[j+7], portid);
 		}
 	}
 
-	for (; j < n; j++)
+	for (; j < nb_rx; j++)
 		dst_port[j] = em_get_dst_port(qconf, pkts_burst[j], portid);
 
 	send_packets_multi(qconf, pkts_burst, dst_port, nb_rx);
