@@ -218,4 +218,4 @@ Any questions or bugs should be reported to DPDK community and to the ENIC PMD
 maintainers:
 
 - John Daley <johndale@cisco.com>
-- Sujith Sankar <ssujith@cisco.com>
+- Nelson Escobar <neescoba@cisco.com>
