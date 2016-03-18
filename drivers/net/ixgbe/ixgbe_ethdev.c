@@ -3741,11 +3741,11 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_reta_entry64 *reta_conf,
 			  uint16_t reta_size)
 {
-	uint8_t i, j, mask;
+	uint16_t i, sp_reta_size;
+	uint8_t j, mask;
 	uint32_t reta, r;
 	uint16_t idx, shift;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint16_t sp_reta_size;
 	uint32_t reta_reg;
 
 	PMD_INIT_FUNC_TRACE();
@@ -3795,11 +3795,11 @@ ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_reta_entry64 *reta_conf,
 			 uint16_t reta_size)
 {
-	uint8_t i, j, mask;
+	uint16_t i, sp_reta_size;
+	uint8_t j, mask;
 	uint32_t reta;
 	uint16_t idx, shift;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint16_t sp_reta_size;
 	uint32_t reta_reg;
 
 	PMD_INIT_FUNC_TRACE();
