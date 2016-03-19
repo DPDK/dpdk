@@ -62,6 +62,4 @@ ifdef CONFIG_RTE_ARCH_ARM_TUNE
 MACHINE_CFLAGS += -mtune=$(CONFIG_RTE_ARCH_ARM_TUNE)
 endif
 
-ifeq ($(CONFIG_RTE_ARCH_ARM_NEON),y)
 MACHINE_CFLAGS += -mfpu=neon
-endif
