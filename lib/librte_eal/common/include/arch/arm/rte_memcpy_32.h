@@ -42,7 +42,11 @@ extern "C" {
 
 #include "generic/rte_memcpy.h"
 
-#ifdef __ARM_NEON_FP
+#ifdef RTE_ARCH_ARM_NEON_MEMCPY
+
+#ifndef RTE_MACHINE_CPUFLAG_NEON
+#error "Cannot optimize memcpy by NEON as the CPU seems to not support this"
+#endif
 
 /* ARM NEON Intrinsics are used to copy data */
 #include <arm_neon.h>
@@ -325,7 +329,7 @@ rte_memcpy_func(void *dst, const void *src, size_t n)
 	return memcpy(dst, src, n);
 }
 
-#endif /* __ARM_NEON_FP */
+#endif /* RTE_ARCH_ARM_NEON_MEMCPY */
 
 #ifdef __cplusplus
 }
