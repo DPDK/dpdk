@@ -39,6 +39,8 @@ LIB = librte_pmd_nfp.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+LDLIBS += -lm
+
 EXPORT_MAP := rte_pmd_nfp_version.map
 
 LIBABIVER := 1

@@ -39,6 +39,8 @@ LIB = librte_meter.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+LDLIBS += -lm
+
 EXPORT_MAP := rte_meter_version.map
 
 LIBABIVER := 1

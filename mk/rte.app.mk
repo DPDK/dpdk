@@ -85,6 +85,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
+_LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lm
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
 endif
@@ -101,6 +102,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_PMD)       += -libverbs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lsze2
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lxenstore
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lgxio
+_LDLIBS-$(CONFIG_RTE_LIBRTE_NFP_PMD)        += -lm
 # QAT / AESNI GCM PMDs are dependent on libcrypto (from openssl)
 # for calculating HMAC precomputes
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT),y)
