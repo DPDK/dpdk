@@ -174,6 +174,10 @@ _LDLIBS-y += --no-whole-archive
 
 LDLIBS += $(_LDLIBS-y) $(CPU_LDLIBS) $(EXTRA_LDLIBS)
 
+# Eliminate duplicates without sorting
+LDLIBS := $(shell echo $(LDLIBS) | \
+	awk '{for (i = 1; i <= NF; i++) { if (!seen[$$i]++) print $$i }}')
+
 .PHONY: all
 all: install
 
