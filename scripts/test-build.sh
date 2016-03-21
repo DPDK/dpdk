@@ -74,11 +74,13 @@ print_help () {
 
 J=$DPDK_MAKE_JOBS
 short=false
+unset verbose
 maxerr=-Wfatal-errors
-while getopts hj:s ARG ; do
+while getopts hj:sv ARG ; do
 	case $ARG in
 		j ) J=$OPTARG ;;
 		s ) short=true ;;
+		v ) verbose='V=1' ;;
 		h ) print_help ; exit 0 ;;
 		? ) print_usage ; exit 1 ;;
 	esac
@@ -193,17 +195,17 @@ for conf in $configs ; do
 
 	echo "================== Build $dir"
 	make -j$J EXTRA_CFLAGS="$maxerr $DPDK_DEP_CFLAGS" \
-		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" O=$dir
+		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose O=$dir
 	! $short || break
 	echo "================== Build examples for $dir"
 	export RTE_SDK=$(pwd)
 	export RTE_TARGET=$dir
 	make -j$J -sC examples \
-		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" \
+		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
 		O=$(readlink -m $dir/examples)
 	! echo $target | grep -q '^x86_64' || \
 	make -j$J -sC examples/performance-thread \
-		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" \
+		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
 		O=$(readlink -m $dir/examples/performance-thread)
 	unset RTE_TARGET
 	echo "################## $dir done."
