@@ -105,10 +105,6 @@ static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
 struct rte_lpm *ipv4_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 struct rte_lpm6 *ipv6_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 
-/*
- * Include header file if SSE4_1 is enabled for
- * buffer optimization i.e. ENABLE_MULTI_BUFFER_OPTIMIZE=1.
- */
 #if defined(__SSE4_1__)
 #include "l3fwd_lpm_sse.h"
 #else
@@ -183,10 +179,6 @@ lpm_main_loop(__attribute__((unused)) void *dummy)
 			if (nb_rx == 0)
 				continue;
 
-			/*
-			 * For SSE4_1 use ENABLE_MULTI_BUFFER_OPTIMIZE=1
-			 * code.
-			 */
 #if defined(__SSE4_1__)
 			l3fwd_lpm_send_packets(nb_rx, pkts_burst,
 						portid, qconf);

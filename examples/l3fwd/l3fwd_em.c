@@ -314,11 +314,6 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 	return (uint8_t)((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
 }
 
-
-/*
- * Include header file if SSE4_1 is enabled for
- * buffer optimization i.e. ENABLE_MULTI_BUFFER_OPTIMIZE=1.
- */
 #if defined(__SSE4_1__)
 #if defined(NO_HASH_MULTI_LOOKUP)
 #include "l3fwd_em_sse.h"
@@ -592,10 +587,6 @@ em_main_loop(__attribute__((unused)) void *dummy)
 			if (nb_rx == 0)
 				continue;
 
-			/*
-			 * For SSE4_1 use ENABLE_MULTI_BUFFER_OPTIMIZE=1
-			 * code.
-			 */
 #if defined(__SSE4_1__)
 			l3fwd_em_send_packets(nb_rx, pkts_burst,
 							portid, qconf);
