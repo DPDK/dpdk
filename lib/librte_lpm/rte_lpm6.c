@@ -277,15 +277,13 @@ rte_lpm6_free(struct rte_lpm6 *lpm)
 		if (te->data == (void *) lpm)
 			break;
 	}
-	if (te == NULL) {
-		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-		return;
-	}
 
-	TAILQ_REMOVE(lpm_list, te, next);
+	if (te != NULL)
+		TAILQ_REMOVE(lpm_list, te, next);
 
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
+	rte_free(lpm->rules_tbl);
 	rte_free(lpm);
 	rte_free(te);
 }
