@@ -160,6 +160,7 @@ config () # <directory> <target> <options>
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
 		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config
+		build_config_hook $1 $2 $3
 
 		# Explicit enabler/disabler (uppercase)
 		for option in $(echo $3 | sed 's,[~+], &,g') ; do
@@ -171,6 +172,12 @@ config () # <directory> <target> <options>
 			fi
 		done
 	fi
+}
+
+# default empty hook to override in devel config
+build_config_hook () # <directory> <target> <options>
+{
+	:
 }
 
 for conf in $configs ; do
