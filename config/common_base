@@ -524,6 +524,12 @@ CONFIG_RTE_LIBRTE_VHOST_NUMA=n
 CONFIG_RTE_LIBRTE_VHOST_DEBUG=n
 
 #
+# Compile vhost PMD
+# To compile, CONFIG_RTE_LIBRTE_VHOST should be enabled.
+#
+CONFIG_RTE_LIBRTE_PMD_VHOST=n
+
+#
 #Compile Xen domain0 support
 #
 CONFIG_RTE_LIBRTE_XEN_DOM0=n

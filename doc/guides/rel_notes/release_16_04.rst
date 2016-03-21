@@ -86,6 +86,10 @@ This section should contain new features added in this release. Sample format:
 
 * **Added vhost-user live migration support.**
 
+* **Added vhost driver.**
+
+  Added virtual PMD that wraps librte_vhost.
+
 * **Added multicast promiscuous mode support on VF for ixgbe.**
 
   Added multicast promiscuous mode support on ixgbe VF driver. So all the VFs

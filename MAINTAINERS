@@ -343,6 +343,11 @@ M: Yong Wang <yongwang@vmware.com>
 F: drivers/net/vmxnet3/
 F: doc/guides/nics/vmxnet3.rst
 
+Vhost PMD
+M: Tetsuya Mukawa <mukawa@igel.co.jp>
+M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+F: drivers/net/vhost/
+
 PCAP PMD
 M: Nicolás Pernas Maradei <nicolas.pernas.maradei@emutex.com>
 M: John McNamara <john.mcnamara@intel.com>

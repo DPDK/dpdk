@@ -74,20 +74,21 @@ Most of these differences are summarized below.
 
 .. table:: Features availability in networking drivers
 
-   ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-   Feature              a b b b c e e e i i i i i i i i i i f f m m m n n p r s v v v x
-                        f n n o x 1 n n 4 4 4 4 g g x x x x m m l l p f u c i z i i m e
-                        p x x n g 0 a i 0 0 0 0 b b g g g g 1 1 x x i p l a n e r r x n
-                        a 2 2 d b 0   c e e e e   v b b b b 0 0 4 5 p   l p g d t t n v
-                        c x x i e 0       . v v   f e e e e k k     e         a i i e i
-                        k   v n           . f f       . v v   .               t o o t r
-                        e   f g           .   .       . f f   .               a   . 3 t
-                        t                 v   v       v   v   v               2   v
-                                          e   e       e   e   e                   e
-                                          c   c       c   c   c                   c
-   ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-   link status                  X       X X                                   X
-   link status event                    X X
+   ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+   Feature              a b b b c e e e i i i i i i i i i i f f m m m n n p r s v v v v x
+                        f n n o x 1 n n 4 4 4 4 g g x x x x m m l l p f u c i z h i i m e
+                        p x x n g 0 a i 0 0 0 0 b b g g g g 1 1 x x i p l a n e o r r x n
+                        a 2 2 d b 0   c e e e e   v b b b b 0 0 4 5 p   l p g d s t t n v
+                        c x x i e 0       . v v   f e e e e k k     e         a t i i e i
+                        k   v n           . f f       . v v   .               t   o o t r
+                        e   f g           .   .       . f f   .               a     . 3 t
+                        t                 v   v       v   v   v               2     v
+                                          e   e       e   e   e                     e
+                                          c   c       c   c   c                     c
+   ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+   link status                  X       X X                                   X X
+   link status event                    X X                                     X
+   queue status event                                                           X
    Rx interrupt                         X X X X
    queue start/stop             X   X   X X X X                               X
    MTU update                   X   X
@@ -125,7 +126,7 @@ Most of these differences are summarized below.
    inner L4 checksum                X   X   X
    packet type parsing          X       X   X
    timesync                             X X
-   basic stats                  X   X   X X X X                               X
+   basic stats                  X   X   X X X X                               X X
    extended stats                   X   X X X X
    stats per queue              X                                             X
    EEPROM dump
@@ -139,9 +140,9 @@ Most of these differences are summarized below.
    ARMv8
    Power8
    TILE-Gx
-   x86-32                       X   X   X X X X
-   x86-64                       X   X   X X X X                               X
+   x86-32                       X   X   X X X X                                 X
+   x86-64                       X   X   X X X X                               X X
    usage doc                    X                                             X
    design doc
    perf doc
-   ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+   ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
