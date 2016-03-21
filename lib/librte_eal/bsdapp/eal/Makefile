@@ -92,6 +92,8 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_keepalive.c
 # from arch dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_cpuflags.c
 
+CFLAGS_eal_common_cpuflags.o := $(CPUFLAGS_LIST)
+
 CFLAGS_eal.o := -D_GNU_SOURCE
 #CFLAGS_eal_thread.o := -D_GNU_SOURCE
 CFLAGS_eal_log.o := -D_GNU_SOURCE
