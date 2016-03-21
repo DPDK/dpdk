@@ -303,8 +303,9 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 			(size_t)rules_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm->rules_tbl == NULL) {
-		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		RTE_LOG(ERR, LPM, "LPM rules_tbl memory allocation failed\n");
 		rte_free(lpm);
+		lpm = NULL;
 		rte_free(te);
 		goto exit;
 	}
@@ -313,8 +314,9 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 			(size_t)tbl8s_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm->tbl8 == NULL) {
-		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		RTE_LOG(ERR, LPM, "LPM tbl8 memory allocation failed\n");
 		rte_free(lpm);
+		lpm = NULL;
 		rte_free(te);
 		goto exit;
 	}
