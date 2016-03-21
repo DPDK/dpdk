@@ -360,15 +360,12 @@ rte_lpm_free_v20(struct rte_lpm_v20 *lpm)
 		if (te->data == (void *) lpm)
 			break;
 	}
-	if (te == NULL) {
-		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-		return;
-	}
-
-	TAILQ_REMOVE(lpm_list, te, next);
+	if (te != NULL)
+		TAILQ_REMOVE(lpm_list, te, next);
 
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
+	rte_free(lpm->rules_tbl);
 	rte_free(lpm);
 	rte_free(te);
 }
@@ -393,15 +390,12 @@ rte_lpm_free_v1604(struct rte_lpm *lpm)
 		if (te->data == (void *) lpm)
 			break;
 	}
-	if (te == NULL) {
-		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
-		return;
-	}
-
-	TAILQ_REMOVE(lpm_list, te, next);
+	if (te != NULL)
+		TAILQ_REMOVE(lpm_list, te, next);
 
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
+	rte_free(lpm->rules_tbl);
 	rte_free(lpm);
 	rte_free(te);
 }
