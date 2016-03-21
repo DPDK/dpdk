@@ -781,7 +781,7 @@ cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 	return NULL;
 }
 
-static struct eth_dev_ops cxgbe_eth_dev_ops = {
+static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
 	.dev_close		= cxgbe_dev_close,

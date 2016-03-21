@@ -2142,25 +2142,25 @@ bond_ethdev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-struct eth_dev_ops default_dev_ops = {
-		.dev_start            = bond_ethdev_start,
-		.dev_stop             = bond_ethdev_stop,
-		.dev_close            = bond_ethdev_close,
-		.dev_configure        = bond_ethdev_configure,
-		.dev_infos_get        = bond_ethdev_info,
-		.rx_queue_setup       = bond_ethdev_rx_queue_setup,
-		.tx_queue_setup       = bond_ethdev_tx_queue_setup,
-		.rx_queue_release     = bond_ethdev_rx_queue_release,
-		.tx_queue_release     = bond_ethdev_tx_queue_release,
-		.link_update          = bond_ethdev_link_update,
-		.stats_get            = bond_ethdev_stats_get,
-		.stats_reset          = bond_ethdev_stats_reset,
-		.promiscuous_enable   = bond_ethdev_promiscuous_enable,
-		.promiscuous_disable  = bond_ethdev_promiscuous_disable,
-		.reta_update          = bond_ethdev_rss_reta_update,
-		.reta_query           = bond_ethdev_rss_reta_query,
-		.rss_hash_update      = bond_ethdev_rss_hash_update,
-		.rss_hash_conf_get    = bond_ethdev_rss_hash_conf_get
+const struct eth_dev_ops default_dev_ops = {
+	.dev_start            = bond_ethdev_start,
+	.dev_stop             = bond_ethdev_stop,
+	.dev_close            = bond_ethdev_close,
+	.dev_configure        = bond_ethdev_configure,
+	.dev_infos_get        = bond_ethdev_info,
+	.rx_queue_setup       = bond_ethdev_rx_queue_setup,
+	.tx_queue_setup       = bond_ethdev_tx_queue_setup,
+	.rx_queue_release     = bond_ethdev_rx_queue_release,
+	.tx_queue_release     = bond_ethdev_tx_queue_release,
+	.link_update          = bond_ethdev_link_update,
+	.stats_get            = bond_ethdev_stats_get,
+	.stats_reset          = bond_ethdev_stats_reset,
+	.promiscuous_enable   = bond_ethdev_promiscuous_enable,
+	.promiscuous_disable  = bond_ethdev_promiscuous_disable,
+	.reta_update          = bond_ethdev_rss_reta_update,
+	.reta_query           = bond_ethdev_rss_reta_query,
+	.rss_hash_update      = bond_ethdev_rss_hash_update,
+	.rss_hash_conf_get    = bond_ethdev_rss_hash_conf_get
 };
 
 static int

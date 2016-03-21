@@ -348,7 +348,7 @@ bnx2x_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 		sc->mac_ops.mac_addr_remove(dev, index);
 }
 
-static struct eth_dev_ops bnx2x_eth_dev_ops = {
+static const struct eth_dev_ops bnx2x_eth_dev_ops = {
 	.dev_configure                = bnx2x_dev_configure,
 	.dev_start                    = bnx2x_dev_start,
 	.dev_stop                     = bnx2x_dev_stop,
@@ -371,7 +371,7 @@ static struct eth_dev_ops bnx2x_eth_dev_ops = {
 /*
  * dev_ops for virtual function
  */
-static struct eth_dev_ops bnx2xvf_eth_dev_ops = {
+static const struct eth_dev_ops bnx2xvf_eth_dev_ops = {
 	.dev_configure                = bnx2x_dev_configure,
 	.dev_start                    = bnx2x_dev_start,
 	.dev_stop                     = bnx2x_dev_stop,

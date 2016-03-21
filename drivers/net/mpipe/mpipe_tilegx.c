@@ -1165,7 +1165,7 @@ mpipe_promiscuous_disable(struct rte_eth_dev *dev)
 	}
 }
 
-static struct eth_dev_ops mpipe_dev_ops = {
+static const struct eth_dev_ops mpipe_dev_ops = {
 	.dev_infos_get	         = mpipe_infos_get,
 	.dev_configure	         = mpipe_configure,
 	.dev_start	         = mpipe_start,

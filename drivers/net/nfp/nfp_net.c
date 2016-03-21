@@ -2289,7 +2289,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 }
 
 /* Initialise and register driver with DPDK Application */
-static struct eth_dev_ops nfp_net_eth_dev_ops = {
+static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.dev_configure		= nfp_net_configure,
 	.dev_start		= nfp_net_start,
 	.dev_stop		= nfp_net_stop,
