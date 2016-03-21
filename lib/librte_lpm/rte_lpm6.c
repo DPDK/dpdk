@@ -206,8 +206,9 @@ rte_lpm6_create(const char *name, int socket_id,
 			(size_t)rules_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (lpm->rules_tbl == NULL) {
-		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		RTE_LOG(ERR, LPM, "LPM rules_tbl allocation failed\n");
 		rte_free(lpm);
+		lpm = NULL;
 		rte_free(te);
 		goto exit;
 	}
