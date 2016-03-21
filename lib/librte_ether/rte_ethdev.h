@@ -2945,6 +2945,8 @@ rte_eth_tx_buffer_count_callback(struct rte_mbuf **pkts, uint16_t unsent,
 enum rte_eth_event_type {
 	RTE_ETH_EVENT_UNKNOWN,  /**< unknown event type */
 	RTE_ETH_EVENT_INTR_LSC, /**< lsc interrupt event */
+	RTE_ETH_EVENT_QUEUE_STATE,
+				/**< queue state event (enabled/disabled) */
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 
