@@ -531,8 +531,10 @@ fm10k_dev_rss_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->nb_rx_queues == 1 ||
 	    dev_conf->rxmode.mq_mode != ETH_MQ_RX_RSS ||
-	    dev_conf->rx_adv_conf.rss_conf.rss_hf == 0)
+	    dev_conf->rx_adv_conf.rss_conf.rss_hf == 0) {
+		FM10K_WRITE_REG(hw, FM10K_MRQC(0), 0);
 		return;
+	}
 
 	/* random key is rss_intel_key (default) or user provided (rss_key) */
 	if (dev_conf->rx_adv_conf.rss_conf.rss_key == NULL)
