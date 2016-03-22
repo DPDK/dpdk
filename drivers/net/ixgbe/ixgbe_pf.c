@@ -236,9 +236,9 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	vfre_slot = (vf_num >> VFRE_SHIFT) > 0 ? 1 : 0;
 
 	/* Enable pools reserved to PF only */
-	IXGBE_WRITE_REG(hw, IXGBE_VFRE(vfre_slot), (~0) << vfre_offset);
+	IXGBE_WRITE_REG(hw, IXGBE_VFRE(vfre_slot), (~0U) << vfre_offset);
 	IXGBE_WRITE_REG(hw, IXGBE_VFRE(vfre_slot ^ 1), vfre_slot - 1);
-	IXGBE_WRITE_REG(hw, IXGBE_VFTE(vfre_slot), (~0) << vfre_offset);
+	IXGBE_WRITE_REG(hw, IXGBE_VFTE(vfre_slot), (~0U) << vfre_offset);
 	IXGBE_WRITE_REG(hw, IXGBE_VFTE(vfre_slot ^ 1), vfre_slot - 1);
 
 	/* PFDMA Tx General Switch Control Enables VMDQ loopback */
