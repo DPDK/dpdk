@@ -2961,9 +2961,7 @@ ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	if (dev->rx_pkt_burst == ixgbe_recv_pkts ||
 	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_single_alloc ||
 	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_bulk_alloc ||
-	    dev->rx_pkt_burst == ixgbe_recv_pkts_bulk_alloc ||
-	    dev->rx_pkt_burst == ixgbe_recv_pkts_vec ||
-	    dev->rx_pkt_burst == ixgbe_recv_scattered_pkts_vec)
+	    dev->rx_pkt_burst == ixgbe_recv_pkts_bulk_alloc)
 		return ptypes;
 	return NULL;
 }
