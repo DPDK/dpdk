@@ -9723,14 +9723,14 @@ cmdline_parse_token_num_t cmd_config_l2_tunnel_eth_type_eth_type_val =
 		(struct cmd_config_l2_tunnel_eth_type_result,
 		 eth_type_val, UINT16);
 
-static uint32_t
+static enum rte_eth_tunnel_type
 str2fdir_l2_tunnel_type(char *string)
 {
 	uint32_t i = 0;
 
 	static const struct {
 		char str[32];
-		uint32_t type;
+		enum rte_eth_tunnel_type type;
 	} l2_tunnel_type_str[] = {
 		{"E-tag", RTE_L2_TUNNEL_TYPE_E_TAG},
 	};
