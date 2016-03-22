@@ -394,6 +394,10 @@ This section should contain API changes. Sample format:
 * Add a short 1-2 sentence description of the API change. Use fixed width
   quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
 
+* The ethdev statistics counter imissed is considered to be independent of ierrors.
+  All drivers are now counting the missed packets only once, i.e. drivers will
+  not increment ierrors anymore for missed packets.
+
 * The functions ``rte_eth_dev_udp_tunnel_add`` and ``rte_eth_dev_udp_tunnel_delete``
   have been renamed into ``rte_eth_dev_udp_tunnel_port_add`` and
   ``rte_eth_dev_udp_tunnel_port_delete``.
