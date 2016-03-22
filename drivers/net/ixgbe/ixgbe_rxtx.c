@@ -1616,7 +1616,7 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 		struct ixgbe_rx_entry *rxe;
 		struct ixgbe_scattered_rx_entry *sc_entry;
 		struct ixgbe_scattered_rx_entry *next_sc_entry;
-		struct ixgbe_rx_entry *next_rxe;
+		struct ixgbe_rx_entry *next_rxe = NULL;
 		struct rte_mbuf *first_seg;
 		struct rte_mbuf *rxm;
 		struct rte_mbuf *nmb;
@@ -1793,7 +1793,7 @@ next_desc:
 		 * the pointer to the first mbuf at the NEXTP entry in the
 		 * sw_sc_ring and continue to parse the RX ring.
 		 */
-		if (!eop) {
+		if (!eop && next_rxe) {
 			rxm->next = next_rxe->mbuf;
 			next_sc_entry->fbuf = first_seg;
 			goto next_desc;
