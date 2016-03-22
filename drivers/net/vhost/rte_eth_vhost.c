@@ -88,6 +88,7 @@ struct vhost_queue {
 struct pmd_internal {
 	char *dev_name;
 	char *iface_name;
+	uint16_t max_queues;
 
 	volatile uint16_t once;
 };
@@ -554,11 +555,19 @@ static void
 eth_dev_info(struct rte_eth_dev *dev,
 	     struct rte_eth_dev_info *dev_info)
 {
+	struct pmd_internal *internal;
+
+	internal = dev->data->dev_private;
+	if (internal == NULL) {
+		RTE_LOG(ERR, PMD, "Invalid device specified\n");
+		return;
+	}
+
 	dev_info->driver_name = drivername;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)-1;
-	dev_info->max_rx_queues = dev->data->nb_rx_queues;
-	dev_info->max_tx_queues = dev->data->nb_tx_queues;
+	dev_info->max_rx_queues = internal->max_queues;
+	dev_info->max_tx_queues = internal->max_queues;
 	dev_info->min_rx_bufsize = 0;
 }
 
@@ -750,6 +759,7 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	memmove(data->name, eth_dev->data->name, sizeof(data->name));
 	data->nb_rx_queues = queues;
 	data->nb_tx_queues = queues;
+	internal->max_queues = queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = eth_addr;
 
