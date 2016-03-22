@@ -582,6 +582,10 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: examples/l2fwd/
 F: doc/guides/sample_app_ug/l2_forward_real_virtual.rst
 
+M: Tomasz Kantecki <tomasz.kantecki@intel.com>
+F: doc/guides/sample_app_ug/l2_forward_cat.rst
+F: examples/l2fwd-cat/
+
 F: examples/l3fwd/
 F: doc/guides/sample_app_ug/l3_forward.rst
 
@@ -602,6 +606,10 @@ M: Ian Betts <ian.betts@intel.com>
 F: examples/performance-thread/
 F: doc/guides/sample_app_ug/performance_thread.rst
 
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+M: Daniel Mrzyglod <danielx.t.mrzyglod@intel.com>
+F: examples/ptpclient/
+
 F: examples/quota_watermark/
 F: doc/guides/sample_app_ug/quota_watermark.rst
 
@@ -621,11 +629,3 @@ F: examples/tep_termination/
 F: examples/vmdq/
 F: examples/vmdq_dcb/
 F: doc/guides/sample_app_ug/vmdq_dcb_forwarding.rst
-
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-M: Daniel Mrzyglod <danielx.t.mrzyglod@intel.com>
-F: examples/ptpclient/
-
-M: Tomasz Kantecki <tomasz.kantecki@intel.com>
-F: doc/guides/sample_app_ug/l2_forward_cat.rst
-F: examples/l2wd-cat/
