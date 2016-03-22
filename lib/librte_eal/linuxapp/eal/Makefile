@@ -52,6 +52,7 @@ CFLAGS += $(WERROR_FLAGS) -O3
 LDLIBS += -ldl
 LDLIBS += -lpthread
 LDLIBS += -lgcc_s
+LDLIBS += -lrt
 
 # specific to linuxapp exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) := eal.c
