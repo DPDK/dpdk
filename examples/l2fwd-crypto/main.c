@@ -178,6 +178,9 @@ struct l2fwd_crypto_params {
 	uint8_t do_cipher;
 	uint8_t do_hash;
 	uint8_t hash_verify;
+
+	enum rte_crypto_cipher_algorithm cipher_algo;
+	enum rte_crypto_auth_algorithm auth_algo;
 };
 
 /** lcore configuration */
@@ -426,8 +429,14 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 				rte_pktmbuf_pkt_len(m) - cparams->digest_length);
 		op->sym->auth.digest.length = cparams->digest_length;
 
-		op->sym->auth.data.offset = ipdata_offset;
-		op->sym->auth.data.length = data_len;
+		/* For SNOW3G algorithms, offset/length must be in bits */
+		if (cparams->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
+			op->sym->auth.data.offset = ipdata_offset << 3;
+			op->sym->auth.data.length = data_len << 3;
+		} else {
+			op->sym->auth.data.offset = ipdata_offset;
+			op->sym->auth.data.length = data_len;
+		}
 
 		if (cparams->aad.length) {
 			op->sym->auth.aad.data = cparams->aad.data;
@@ -441,13 +450,25 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		op->sym->cipher.iv.phys_addr = cparams->iv.phys_addr;
 		op->sym->cipher.iv.length = cparams->iv.length;
 
-		op->sym->cipher.data.offset = ipdata_offset;
-		if (cparams->do_hash && cparams->hash_verify)
-			/* Do not cipher the hash tag */
-			op->sym->cipher.data.length = data_len -
-				cparams->digest_length;
-		else
-			op->sym->cipher.data.length = data_len;
+		/* For SNOW3G algorithms, offset/length must be in bits */
+		if (cparams->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2) {
+			op->sym->cipher.data.offset = ipdata_offset << 3;
+			if (cparams->do_hash && cparams->hash_verify)
+				/* Do not cipher the hash tag */
+				op->sym->cipher.data.length = (data_len -
+					cparams->digest_length) << 3;
+			else
+				op->sym->cipher.data.length = data_len << 3;
+
+		} else {
+			op->sym->cipher.data.offset = ipdata_offset;
+			if (cparams->do_hash && cparams->hash_verify)
+				/* Do not cipher the hash tag */
+				op->sym->cipher.data.length = data_len -
+					cparams->digest_length;
+			else
+				op->sym->cipher.data.length = data_len;
+		}
 	}
 
 	op->sym->m_src = m;
@@ -630,6 +651,8 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				port_cparams[i].hash_verify = 1;
 			else
 				port_cparams[i].hash_verify = 0;
+
+			port_cparams[i].auth_algo = options->auth_xform.auth.algo;
 		}
 
 		if (port_cparams[i].do_cipher) {
@@ -640,6 +663,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				generate_random_key(port_cparams[i].iv.data,
 						sizeof(port_cparams[i].iv.length));
 
+			port_cparams[i].cipher_algo = options->cipher_xform.cipher.algo;
 		}
 
 		port_cparams[i].session = initialize_crypto_session(options,
@@ -835,6 +859,9 @@ parse_cipher_algo(enum rte_crypto_cipher_algorithm *algo, char *optarg)
 	} else if (strcmp("AES_GCM", optarg) == 0) {
 		*algo = RTE_CRYPTO_CIPHER_AES_GCM;
 		return 0;
+	} else if (strcmp("SNOW3G_UEA2", optarg) == 0) {
+		*algo = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
+		return 0;
 	}
 
 	printf("Cipher algorithm  not supported!\n");
@@ -900,6 +927,9 @@ parse_auth_algo(enum rte_crypto_auth_algorithm *algo, char *optarg)
 		return 0;
 	} else if (strcmp("SHA512_HMAC", optarg) == 0) {
 		*algo = RTE_CRYPTO_AUTH_SHA512_HMAC;
+		return 0;
+	} else if (strcmp("SNOW3G_UIA2", optarg) == 0) {
+		*algo = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
 		return 0;
 	}
 
