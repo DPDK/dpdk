@@ -6683,14 +6683,12 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 
 	if (res->ip_value.family == AF_INET) {
 		tunnel_filter_conf.ip_addr.ipv4_addr =
-			rte_be_to_cpu_32(res->ip_value.addr.ipv4.s_addr);
+			res->ip_value.addr.ipv4.s_addr;
 		tunnel_filter_conf.ip_type = RTE_TUNNEL_IPTYPE_IPV4;
 	} else {
-		int i;
-		for (i = 0; i < 4; i++) {
-			tunnel_filter_conf.ip_addr.ipv6_addr[i] =
-			rte_be_to_cpu_32(res->ip_value.addr.ipv6.s6_addr32[i]);
-		}
+		memcpy(&(tunnel_filter_conf.ip_addr.ipv6_addr),
+			&(res->ip_value.addr.ipv6),
+			sizeof(struct in6_addr));
 		tunnel_filter_conf.ip_type = RTE_TUNNEL_IPTYPE_IPV6;
 	}
 
