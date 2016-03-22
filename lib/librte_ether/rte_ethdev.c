@@ -1495,8 +1495,9 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 		/* Retrieve the xstats from the driver at the end of the
 		 * xstats struct.
 		 */
-		xcount = (*dev->dev_ops->xstats_get)(dev, &xstats[count],
-			 (n > count) ? n - count : 0);
+		xcount = (*dev->dev_ops->xstats_get)(dev,
+				     xstats ? xstats + count : NULL,
+				     (n > count) ? n - count : 0);
 
 		if (xcount < 0)
 			return xcount;
