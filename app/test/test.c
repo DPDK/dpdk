@@ -162,9 +162,10 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 	int test_success;
 	unsigned total = 0, executed = 0, skipped = 0, succeeded = 0, failed = 0;
 
-	if (suite->suite_name)
+	if (suite->suite_name) {
 		printf(" + ------------------------------------------------------- +\n");
 		printf(" + Test Suite : %s\n", suite->suite_name);
+	}
 
 	if (suite->setup)
 		if (suite->setup() != 0)
