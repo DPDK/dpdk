@@ -4447,10 +4447,11 @@ ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 	if (ixgbe_vmdq_mode_check(hw) < 0)
 		return -ENOTSUP;
 	for (pool_idx = 0; pool_idx < ETH_64_POOLS; pool_idx++) {
-		if (pool_mask & ((uint64_t)(1ULL << pool_idx)))
+		if (pool_mask & ((uint64_t)(1ULL << pool_idx))) {
 			ret = hw->mac.ops.set_vfta(hw,vlan,pool_idx,vlan_on);
 			if (ret < 0)
 				return ret;
+		}
 	}
 
 	return ret;
