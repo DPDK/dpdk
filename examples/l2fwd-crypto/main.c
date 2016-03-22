@@ -910,7 +910,10 @@ parse_key(uint8_t *data, char *input_arg)
 static int
 parse_auth_algo(enum rte_crypto_auth_algorithm *algo, char *optarg)
 {
-	if (strcmp("MD5_HMAC", optarg) == 0) {
+	if (strcmp("AES_GCM", optarg) == 0) {
+		*algo = RTE_CRYPTO_AUTH_AES_GCM;
+		return 0;
+	} else if (strcmp("MD5_HMAC", optarg) == 0) {
 		*algo = RTE_CRYPTO_AUTH_MD5_HMAC;
 		return 0;
 	} else if (strcmp("SHA1_HMAC", optarg) == 0) {
