@@ -666,13 +666,14 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	if (rte_intr_allow_others(intr_handle)) {
 		/* check if lsc interrupt is enabled */
-		if (dev->data->dev_conf.intr_conf.lsc != 0)
+		if (dev->data->dev_conf.intr_conf.lsc != 0) {
 			ret = eth_em_interrupt_setup(dev);
 			if (ret) {
 				PMD_INIT_LOG(ERR, "Unable to setup interrupts");
 				em_dev_clear_queues(dev);
 				return ret;
 			}
+		}
 	} else {
 		rte_intr_callback_unregister(intr_handle,
 						eth_em_interrupt_handler,
