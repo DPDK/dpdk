@@ -172,8 +172,8 @@ int igb_pf_host_configure(struct rte_eth_dev *eth_dev)
 	E1000_WRITE_REG(hw, E1000_VT_CTL, vtctl);
 
 	/* Enable pools reserved to PF only */
-	E1000_WRITE_REG(hw, E1000_VFRE, (~0) << vf_num);
-	E1000_WRITE_REG(hw, E1000_VFTE, (~0) << vf_num);
+	E1000_WRITE_REG(hw, E1000_VFRE, (~0U) << vf_num);
+	E1000_WRITE_REG(hw, E1000_VFTE, (~0U) << vf_num);
 
 	/* PFDMA Tx General Switch Control Enables VMDQ loopback */
 	if (hw->mac.type == e1000_i350)
