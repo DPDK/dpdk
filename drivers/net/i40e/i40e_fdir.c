@@ -66,7 +66,9 @@
 #define I40E_FDIR_IP_DEFAULT_TTL            0x40
 #define I40E_FDIR_IP_DEFAULT_VERSION_IHL    0x45
 #define I40E_FDIR_TCP_DEFAULT_DATAOFF       0x50
-#define I40E_FDIR_IPv6_DEFAULT_VTC_FLOW     0x60300000
+#define I40E_FDIR_IPv6_DEFAULT_VTC_FLOW     0x60000000
+#define I40E_FDIR_IPv6_TC_OFFSET            20
+
 #define I40E_FDIR_IPv6_DEFAULT_HOP_LIMITS   0xFF
 #define I40E_FDIR_IPv6_PAYLOAD_LEN          380
 #define I40E_FDIR_UDP_DEFAULT_LEN           400
@@ -720,7 +722,13 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		ip->version_ihl = I40E_FDIR_IP_DEFAULT_VERSION_IHL;
 		/* set len to by default */
 		ip->total_length = rte_cpu_to_be_16(I40E_FDIR_IP_DEFAULT_LEN);
-		ip->time_to_live = I40E_FDIR_IP_DEFAULT_TTL;
+		ip->next_proto_id = fdir_input->flow.ip4_flow.proto ?
+					fdir_input->flow.ip4_flow.proto :
+					next_proto[fdir_input->flow_type];
+		ip->time_to_live = fdir_input->flow.ip4_flow.ttl ?
+					fdir_input->flow.ip4_flow.ttl :
+					I40E_FDIR_IP_DEFAULT_TTL;
+		ip->type_of_service = fdir_input->flow.ip4_flow.tos;
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -728,7 +736,6 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		 */
 		ip->src_addr = fdir_input->flow.ip4_flow.dst_ip;
 		ip->dst_addr = fdir_input->flow.ip4_flow.src_ip;
-		ip->next_proto_id = next_proto[fdir_input->flow_type];
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
@@ -739,11 +746,17 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 
 		ether->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
 		ip6->vtc_flow =
-			rte_cpu_to_be_32(I40E_FDIR_IPv6_DEFAULT_VTC_FLOW);
+			rte_cpu_to_be_32(I40E_FDIR_IPv6_DEFAULT_VTC_FLOW |
+					 (fdir_input->flow.ipv6_flow.tc <<
+					  I40E_FDIR_IPv6_TC_OFFSET));
 		ip6->payload_len =
 			rte_cpu_to_be_16(I40E_FDIR_IPv6_PAYLOAD_LEN);
-		ip6->hop_limits = I40E_FDIR_IPv6_DEFAULT_HOP_LIMITS;
-
+		ip6->proto = fdir_input->flow.ipv6_flow.proto ?
+					fdir_input->flow.ipv6_flow.proto :
+					next_proto[fdir_input->flow_type];
+		ip6->hop_limits = fdir_input->flow.ipv6_flow.hop_limits ?
+					fdir_input->flow.ipv6_flow.hop_limits :
+					I40E_FDIR_IPv6_DEFAULT_HOP_LIMITS;
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -755,7 +768,6 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		rte_memcpy(&(ip6->dst_addr),
 			   &(fdir_input->flow.ipv6_flow.src_ip),
 			   IPV6_ADDR_LEN);
-		ip6->proto = next_proto[fdir_input->flow_type];
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown flow type %u.",
