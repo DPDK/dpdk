@@ -774,7 +774,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set_fdir_input_set (port_id) "
 			"(ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
 			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|"
-			"l2_payload) (ethertype|src-ipv4|dst-ipv4|src-ipv6|"
+			"l2_payload) (ivlan|ethertype|src-ipv4|dst-ipv4|src-ipv6|"
 			"dst-ipv6|ipv4-tos|ipv4-proto|ipv4-ttl|ipv6-tc|"
 			"ipv6-next-header|ipv6-hop-limits|udp-src-port|"
 			"udp-dst-port|tcp-src-port|tcp-dst-port|"
@@ -9651,7 +9651,7 @@ cmdline_parse_token_string_t cmd_set_fdir_input_set_flow_type =
 cmdline_parse_token_string_t cmd_set_fdir_input_set_field =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
 	inset_field,
-	"ethertype#src-ipv4#dst-ipv4#src-ipv6#dst-ipv6#"
+	"ivlan#ethertype#src-ipv4#dst-ipv4#src-ipv6#dst-ipv6#"
 	"ipv4-tos#ipv4-proto#ipv4-ttl#ipv6-tc#ipv6-next-header#"
 	"ipv6-hop-limits#udp-src-port#udp-dst-port#"
 	"tcp-src-port#tcp-dst-port#sctp-src-port#sctp-dst-port#"
@@ -9666,7 +9666,7 @@ cmdline_parse_inst_t cmd_set_fdir_input_set = {
 	.help_str = "set_fdir_input_set <port_id> "
 	"ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
 	"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
-	"ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|"
+	"ivlan|ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|"
 	"ipv4-tos|ipv4-proto|ipv4-ttl|ipv6-tc|ipv6-next-header|"
 	"ipv6-hop-limits|udp-src-port|udp-dst-port|"
 	"tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|"

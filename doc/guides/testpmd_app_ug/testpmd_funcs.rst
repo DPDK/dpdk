@@ -1929,7 +1929,7 @@ Set the input set for flow director::
 
    set_fdir_input_set (port_id) (ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
    ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
-   l2_payload) (ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos| \
+   l2_payload) (ivlan|ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos| \
    ipv4-proto|ipv4-ttl|ipv6-tc|ipv6-next-header|ipv6-hop-limits| \
    tudp-src-port|udp-dst-port|cp-src-port|tcp-dst-port|sctp-src-port| \
    sctp-dst-port|sctp-veri-tag|none) (select|add)
