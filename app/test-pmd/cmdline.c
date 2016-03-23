@@ -669,6 +669,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"flow_director_filter (port_id) mode IP (add|del|update)"
 			" flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)"
 			" src (src_ip_address) dst (dst_ip_address)"
+			" tos (tos_value) proto (proto_value) ttl (ttl_value)"
 			" vlan (vlan_value) flexbytes (flexbytes_value)"
 			" (drop|fwd) pf|vf(vf_id) queue (queue_id)"
 			" fd_id (fd_id_value)\n"
@@ -678,6 +679,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" flow (ipv4-tcp|ipv4-udp|ipv6-tcp|ipv6-udp)"
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
+			" tos (tos_value) ttl (ttl_value)"
 			" vlan (vlan_value) flexbytes (flexbytes_value)"
 			" (drop|fwd) pf|vf(vf_id) queue (queue_id)"
 			" fd_id (fd_id_value)\n"
@@ -687,7 +689,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" flow (ipv4-sctp|ipv6-sctp)"
 			" src (src_ip_address) (src_port)"
 			" dst (dst_ip_address) (dst_port)"
-			" tag (verification_tag) vlan (vlan_value)"
+			" tag (verification_tag) "
+			" tos (tos_value) ttl (ttl_value)"
+			" vlan (vlan_value)"
 			" flexbytes (flexbytes_value) (drop|fwd)"
 			" pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)\n"
 			"    Add/Del a SCTP type flow director filter.\n\n"
@@ -767,14 +771,15 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"fld-8th|none) (select|add)\n"
 			"    Set the input set for hash.\n\n"
 
-			"set_fdir_input_set (port_id) (ipv4|ipv4-frag|"
-			"ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|"
+			"set_fdir_input_set (port_id) "
+			"(ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
 			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|"
-			"l2_payload) (src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|"
-			"udp-src-port|udp-dst-port|tcp-src-port|tcp-dst-port|"
-			"sctp-src-port|sctp-dst-port|sctp-veri-tag|fld-1st|"
-			"fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th|"
-			"fld-8th|none) (select|add)\n"
+			"l2_payload) (ethertype|src-ipv4|dst-ipv4|src-ipv6|"
+			"dst-ipv6|ipv4-tos|ipv4-proto|ipv4-ttl|ipv6-tc|"
+			"ipv6-next-header|ipv6-hop-limits|udp-src-port|"
+			"udp-dst-port|tcp-src-port|tcp-dst-port|"
+			"sctp-src-port|sctp-dst-port|sctp-veri-tag|none)"
+			" (select|add)\n"
 			"    Set the input set for FDir.\n\n"
 		);
 	}
@@ -8027,6 +8032,12 @@ struct cmd_flow_director_result {
 	uint16_t port_dst;
 	cmdline_fixed_string_t verify_tag;
 	uint32_t verify_tag_value;
+	cmdline_ipaddr_t tos;
+	uint8_t tos_value;
+	cmdline_ipaddr_t proto;
+	uint8_t proto_value;
+	cmdline_ipaddr_t ttl;
+	uint8_t ttl_value;
 	cmdline_fixed_string_t vlan;
 	uint16_t vlan_value;
 	cmdline_fixed_string_t flexbytes;
@@ -8206,12 +8217,15 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	switch (entry.input.flow_type) {
 	case RTE_ETH_FLOW_FRAG_IPV4:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
+		entry.input.flow.ip4_flow.proto = res->proto_value;
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 		IPV4_ADDR_TO_UINT(res->ip_dst,
 			entry.input.flow.ip4_flow.dst_ip);
 		IPV4_ADDR_TO_UINT(res->ip_src,
 			entry.input.flow.ip4_flow.src_ip);
+		entry.input.flow.ip4_flow.tos = res->tos_value;
+		entry.input.flow.ip4_flow.ttl = res->ttl_value;
 		/* need convert to big endian. */
 		entry.input.flow.udp4_flow.dst_port =
 				rte_cpu_to_be_16(res->port_dst);
@@ -8223,6 +8237,8 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 			entry.input.flow.sctp4_flow.ip.dst_ip);
 		IPV4_ADDR_TO_UINT(res->ip_src,
 			entry.input.flow.sctp4_flow.ip.src_ip);
+		entry.input.flow.ip4_flow.tos = res->tos_value;
+		entry.input.flow.ip4_flow.ttl = res->ttl_value;
 		/* need convert to big endian. */
 		entry.input.flow.sctp4_flow.dst_port =
 				rte_cpu_to_be_16(res->port_dst);
@@ -8233,12 +8249,15 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		break;
 	case RTE_ETH_FLOW_FRAG_IPV6:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
+		entry.input.flow.ipv6_flow.proto = res->proto_value;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 		IPV6_ADDR_TO_ARRAY(res->ip_dst,
 			entry.input.flow.ipv6_flow.dst_ip);
 		IPV6_ADDR_TO_ARRAY(res->ip_src,
 			entry.input.flow.ipv6_flow.src_ip);
+		entry.input.flow.ipv6_flow.tc = res->tos_value;
+		entry.input.flow.ipv6_flow.hop_limits = res->ttl_value;
 		/* need convert to big endian. */
 		entry.input.flow.udp6_flow.dst_port =
 				rte_cpu_to_be_16(res->port_dst);
@@ -8250,6 +8269,8 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 			entry.input.flow.sctp6_flow.ip.dst_ip);
 		IPV6_ADDR_TO_ARRAY(res->ip_src,
 			entry.input.flow.sctp6_flow.ip.src_ip);
+		entry.input.flow.ipv6_flow.tc = res->tos_value;
+		entry.input.flow.ipv6_flow.hop_limits = res->ttl_value;
 		/* need convert to big endian. */
 		entry.input.flow.sctp6_flow.dst_port =
 				rte_cpu_to_be_16(res->port_dst);
@@ -8377,6 +8398,24 @@ cmdline_parse_token_string_t cmd_flow_director_verify_tag =
 cmdline_parse_token_num_t cmd_flow_director_verify_tag_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
 			      verify_tag_value, UINT32);
+cmdline_parse_token_string_t cmd_flow_director_tos =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 tos, "tos");
+cmdline_parse_token_num_t cmd_flow_director_tos_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      tos_value, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_proto =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 proto, "proto");
+cmdline_parse_token_num_t cmd_flow_director_proto_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      proto_value, UINT8);
+cmdline_parse_token_string_t cmd_flow_director_ttl =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
+				 ttl, "ttl");
+cmdline_parse_token_num_t cmd_flow_director_ttl_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_result,
+			      ttl_value, UINT8);
 cmdline_parse_token_string_t cmd_flow_director_vlan =
 	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_result,
 				 vlan, "vlan");
@@ -8455,6 +8494,12 @@ cmdline_parse_inst_t cmd_add_del_ip_flow_director = {
 		(void *)&cmd_flow_director_ip_src,
 		(void *)&cmd_flow_director_dst,
 		(void *)&cmd_flow_director_ip_dst,
+		(void *)&cmd_flow_director_tos,
+		(void *)&cmd_flow_director_tos_value,
+		(void *)&cmd_flow_director_proto,
+		(void *)&cmd_flow_director_proto_value,
+		(void *)&cmd_flow_director_ttl,
+		(void *)&cmd_flow_director_ttl_value,
 		(void *)&cmd_flow_director_vlan,
 		(void *)&cmd_flow_director_vlan_value,
 		(void *)&cmd_flow_director_flexbytes,
@@ -8487,6 +8532,10 @@ cmdline_parse_inst_t cmd_add_del_udp_flow_director = {
 		(void *)&cmd_flow_director_dst,
 		(void *)&cmd_flow_director_ip_dst,
 		(void *)&cmd_flow_director_port_dst,
+		(void *)&cmd_flow_director_tos,
+		(void *)&cmd_flow_director_tos_value,
+		(void *)&cmd_flow_director_ttl,
+		(void *)&cmd_flow_director_ttl_value,
 		(void *)&cmd_flow_director_vlan,
 		(void *)&cmd_flow_director_vlan_value,
 		(void *)&cmd_flow_director_flexbytes,
@@ -8521,6 +8570,10 @@ cmdline_parse_inst_t cmd_add_del_sctp_flow_director = {
 		(void *)&cmd_flow_director_port_dst,
 		(void *)&cmd_flow_director_verify_tag,
 		(void *)&cmd_flow_director_verify_tag_value,
+		(void *)&cmd_flow_director_tos,
+		(void *)&cmd_flow_director_tos_value,
+		(void *)&cmd_flow_director_ttl,
+		(void *)&cmd_flow_director_ttl_value,
 		(void *)&cmd_flow_director_vlan,
 		(void *)&cmd_flow_director_vlan_value,
 		(void *)&cmd_flow_director_flexbytes,
@@ -9447,16 +9500,19 @@ str2inset(char *string)
 		char str[32];
 		enum rte_eth_input_set_field inset;
 	} inset_table[] = {
+		{"ethertype", RTE_ETH_INPUT_SET_L2_ETHERTYPE},
 		{"ovlan", RTE_ETH_INPUT_SET_L2_OUTER_VLAN},
 		{"ivlan", RTE_ETH_INPUT_SET_L2_INNER_VLAN},
 		{"src-ipv4", RTE_ETH_INPUT_SET_L3_SRC_IP4},
 		{"dst-ipv4", RTE_ETH_INPUT_SET_L3_DST_IP4},
 		{"ipv4-tos", RTE_ETH_INPUT_SET_L3_IP4_TOS},
 		{"ipv4-proto", RTE_ETH_INPUT_SET_L3_IP4_PROTO},
+		{"ipv4-ttl", RTE_ETH_INPUT_SET_L3_IP4_TTL},
 		{"src-ipv6", RTE_ETH_INPUT_SET_L3_SRC_IP6},
 		{"dst-ipv6", RTE_ETH_INPUT_SET_L3_DST_IP6},
 		{"ipv6-tc", RTE_ETH_INPUT_SET_L3_IP6_TC},
 		{"ipv6-next-header", RTE_ETH_INPUT_SET_L3_IP6_NEXT_HEADER},
+		{"ipv6-hop-limits", RTE_ETH_INPUT_SET_L3_IP6_HOP_LIMITS},
 		{"udp-src-port", RTE_ETH_INPUT_SET_L4_UDP_SRC_PORT},
 		{"udp-dst-port", RTE_ETH_INPUT_SET_L4_UDP_DST_PORT},
 		{"tcp-src-port", RTE_ETH_INPUT_SET_L4_TCP_SRC_PORT},
@@ -9515,7 +9571,7 @@ cmdline_parse_token_num_t cmd_set_hash_input_set_port_id =
 cmdline_parse_token_string_t cmd_set_hash_input_set_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
 		flow_type,
-		"ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#ipv6#"
+		"ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#"
 		"ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#ipv6-other#l2_payload");
 cmdline_parse_token_string_t cmd_set_hash_input_set_field =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
@@ -9534,8 +9590,8 @@ cmdline_parse_inst_t cmd_set_hash_input_set = {
 	.f = cmd_set_hash_input_set_parsed,
 	.data = NULL,
 	.help_str = "set_hash_input_set <port_id> "
-	"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag|"
-	"ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
+	"ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
+	"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
 	"ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos|ipv4-proto|"
 	"ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port|tcp-src-port|"
 	"tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag|udp-key|"
@@ -9590,15 +9646,16 @@ cmdline_parse_token_num_t cmd_set_fdir_input_set_port_id =
 cmdline_parse_token_string_t cmd_set_fdir_input_set_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
 	flow_type,
-	"ipv4#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#ipv6#"
+	"ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#"
 	"ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#ipv6-other#l2_payload");
 cmdline_parse_token_string_t cmd_set_fdir_input_set_field =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
 	inset_field,
-	"src-ipv4#dst-ipv4#src-ipv6#dst-ipv6#udp-src-port#udp-dst-port#"
+	"ethertype#src-ipv4#dst-ipv4#src-ipv6#dst-ipv6#"
+	"ipv4-tos#ipv4-proto#ipv4-ttl#ipv6-tc#ipv6-next-header#"
+	"ipv6-hop-limits#udp-src-port#udp-dst-port#"
 	"tcp-src-port#tcp-dst-port#sctp-src-port#sctp-dst-port#"
-	"sctp-veri-tag#fld-1st#fld-2nd#fld-3rd#fld-4th#fld-5th#fld-6th#"
-	"fld-7th#fld-8th#none");
+	"sctp-veri-tag#none");
 cmdline_parse_token_string_t cmd_set_fdir_input_set_select =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_fdir_input_set_result,
 	select, "select#add");
@@ -9607,12 +9664,13 @@ cmdline_parse_inst_t cmd_set_fdir_input_set = {
 	.f = cmd_set_fdir_input_set_parsed,
 	.data = NULL,
 	.help_str = "set_fdir_input_set <port_id> "
-	"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag|"
-	"ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
-	"src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|udp-src-port|udp-dst-port|"
-	"tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag|"
-	"fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|"
-	"fld-7th|fld-8th|none select|add",
+	"ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
+	"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
+	"ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|"
+	"ipv4-tos|ipv4-proto|ipv4-ttl|ipv6-tc|ipv6-next-header|"
+	"ipv6-hop-limits|udp-src-port|udp-dst-port|"
+	"tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|"
+	"sctp-veri-tag|none select|add",
 	.tokens = {
 		(void *)&cmd_set_fdir_input_set_cmd,
 		(void *)&cmd_set_fdir_input_set_port_id,

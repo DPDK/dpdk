@@ -1739,8 +1739,9 @@ Different NICs may have different capabilities, command show port fdir (port_id)
 # Commands to add flow director filters of different flow types::
 
    flow_director_filter (port_id) mode IP (add|del|update) \
-                        flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)
+                        flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag) \
                         src (src_ip_address) dst (dst_ip_address) \
+                        tos (tos_value) proto (proto_value) ttl (ttl_value) \
                         vlan (vlan_value) flexbytes (flexbytes_value) \
                         (drop|fwd) pf|vf(vf_id) queue (queue_id) \
                         fd_id (fd_id_value)
@@ -1749,6 +1750,7 @@ Different NICs may have different capabilities, command show port fdir (port_id)
                         flow (ipv4-tcp|ipv4-udp|ipv6-tcp|ipv6-udp) \
                         src (src_ip_address) (src_port) \
                         dst (dst_ip_address) (dst_port) \
+                        tos (tos_value) ttl (ttl_value) \
                         vlan (vlan_value) flexbytes (flexbytes_value) \
                         (drop|fwd) queue pf|vf(vf_id) (queue_id) \
                         fd_id (fd_id_value)
@@ -1756,7 +1758,8 @@ Different NICs may have different capabilities, command show port fdir (port_id)
    flow_director_filter (port_id) mode IP (add|del|update) \
                         flow (ipv4-sctp|ipv6-sctp) \
                         src (src_ip_address) (src_port) \
-                        dst (dst_ip_address) (dst_port)
+                        dst (dst_ip_address) (dst_port) \
+                        tos (tos_value) ttl (ttl_value) \
                         tag (verification_tag) vlan (vlan_value) \
                         flexbytes (flexbytes_value) (drop|fwd) \
                         pf|vf(vf_id) queue (queue_id) fd_id (fd_id_value)
@@ -1780,12 +1783,14 @@ Different NICs may have different capabilities, command show port fdir (port_id)
 For example, to add an ipv4-udp flow type filter::
 
    testpmd> flow_director_filter 0 add flow ipv4-udp src 2.2.2.3 32 \
-            dst 2.2.2.5 33 vlan 0x1 flexbytes (0x88,0x48) fwd pf queue 1 fd_id 1
+            dst 2.2.2.5 33 tos 2 ttl 40 vlan 0x1 flexbytes (0x88,0x48) \
+            fwd pf queue 1 fd_id 1
 
 For example, add an ipv4-other flow type filter::
 
    testpmd> flow_director_filter 0 add flow ipv4-other src 2.2.2.3 \
-             dst 2.2.2.5 vlan 0x1 flexbytes (0x88,0x48) fwd pf queue 1 fd_id 1
+             dst 2.2.2.5 tos 2 proto 20 ttl 40 vlan 0x1 \
+             flexbytes (0x88,0x48) fwd pf queue 1 fd_id 1
 
 flush_flow_director
 ~~~~~~~~~~~~~~~~~~~
@@ -1902,33 +1907,36 @@ set_hash_input_set
 
 Set the input set for hash::
 
-   set_hash_input_set (port_id) (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
-   ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
+   set_hash_input_set (port_id) (ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
+   ipv4-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
    l2_payload) (ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos| \
    ipv4-proto|ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port| \
    tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag| \
    udp-key|gre-key|fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th| \
    fld-8th|none) (select|add)
 
-For example, to add source IP to hash input set for flow type of ipv4 on port 0::
+For example, to add source IP to hash input set for flow type of ipv4-udp on port 0::
 
-   testpmd> set_hash_input_set 0 ipv4 src-ipv4 add
+   testpmd> set_hash_input_set 0 ipv4-udp src-ipv4 add
 
 set_fdir_input_set
 ~~~~~~~~~~~~~~~~~~
 
-Set the input set for Fdir::
+The Flow Director filters can match the different fields for different type of packet, i.e. specific input set
+on per flow type and the flexible payload. This command can be used to change input set for each flow type.
 
-   set_fdir_input_set (port_id) (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
-   ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload)
-   (src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|udp-src-port|udp-dst-port| \
-   tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag| \
-   fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th|fld-8th|none) \
-   (select|add)
+Set the input set for flow director::
 
-For example to add source IP to FD input set for flow type of ipv4 on port 0::
+   set_fdir_input_set (port_id) (ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
+   ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
+   l2_payload) (ethertype|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos| \
+   ipv4-proto|ipv4-ttl|ipv6-tc|ipv6-next-header|ipv6-hop-limits| \
+   tudp-src-port|udp-dst-port|cp-src-port|tcp-dst-port|sctp-src-port| \
+   sctp-dst-port|sctp-veri-tag|none) (select|add)
 
-   testpmd> set_fdir_input_set 0 ipv4 src-ipv4 add
+For example to add source IP to FD input set for flow type of ipv4-udp on port 0::
+
+   testpmd> set_fdir_input_set 0 ipv4-udp src-ipv4 add
 
 global_config
 ~~~~~~~~~~~~~
