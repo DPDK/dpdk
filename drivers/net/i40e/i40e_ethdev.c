@@ -254,7 +254,8 @@
 #define I40E_REG_INSET_FLEX_PAYLOAD_WORD7        0x0000000000000080ULL
 /* 8th word of flex payload */
 #define I40E_REG_INSET_FLEX_PAYLOAD_WORD8        0x0000000000000040ULL
-
+/* all 8 words flex payload */
+#define I40E_REG_INSET_FLEX_PAYLOAD_WORDS        0x0000000000003FC0ULL
 #define I40E_REG_INSET_MASK_DEFAULT              0x0000000000000000ULL
 
 #define I40E_TRANSLATE_INSET 0
@@ -6756,43 +6757,32 @@ i40e_get_valid_input_set(enum i40e_filter_pctype pctype,
 	 */
 	static const uint64_t valid_fdir_inset_table[] = {
 		[I40E_FILTER_PCTYPE_FRAG_IPV4] =
-		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST,
 		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] =
 		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
-		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT,
 		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] =
-		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
-		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST,
 		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] =
 		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
 		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
-		I40E_INSET_SCTP_VT | I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_SCTP_VT,
 		[I40E_FILTER_PCTYPE_NONF_IPV4_OTHER] =
-		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_IPV4_SRC | I40E_INSET_IPV4_DST,
 		[I40E_FILTER_PCTYPE_FRAG_IPV6] =
-		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_UDP] =
-		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
-		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP] =
-		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
-		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_SCTP] =
 		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
 		I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT |
-		I40E_INSET_SCTP_VT | I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_SCTP_VT,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] =
-		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST |
-		I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_IPV6_SRC | I40E_INSET_IPV6_DST,
 		[I40E_FILTER_PCTYPE_L2_PAYLOAD] =
-		I40E_INSET_LAST_ETHER_TYPE | I40E_INSET_FLEX_PAYLOAD,
+		I40E_INSET_LAST_ETHER_TYPE,
 	};
 
 	if (pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD)
@@ -7020,7 +7010,7 @@ i40e_translate_input_set_reg(uint64_t input)
 	return val;
 }
 
-static uint8_t
+static int
 i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask, uint8_t nb_elem)
 {
 	uint8_t i, idx = 0;
@@ -7038,16 +7028,13 @@ i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask, uint8_t nb_elem)
 	if (!inset || !mask || !nb_elem)
 		return 0;
 
-	if (!inset && nb_elem >= I40E_INSET_MASK_NUM_REG) {
-		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++)
-			mask[i] = 0;
-		return I40E_INSET_MASK_NUM_REG;
-	}
 
 	for (i = 0, idx = 0; i < RTE_DIM(inset_mask_map); i++) {
-		if (idx >= nb_elem)
-			break;
-		if (inset & inset_mask_map[i].inset) {
+		if ((inset & inset_mask_map[i].inset) == inset_mask_map[i].inset) {
+			if (idx >= nb_elem) {
+				PMD_DRV_LOG(ERR, "exceed maximal number of bitmasks");
+				return -EINVAL;
+			}
 			mask[idx] = inset_mask_map[i].mask;
 			idx++;
 		}
@@ -7182,7 +7169,13 @@ i40e_fdir_filter_inset_select(struct i40e_pf *pf,
 	inset_reg <<= I40E_32_BIT_WIDTH;
 	inset_reg |= i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 0));
 
-	if (conf->op == RTE_ETH_INPUT_SET_ADD)
+	/* Can not change the inset reg for flex payload for fdir,
+	 * it is done by writing I40E_PRTQF_FD_FLXINSET
+	 * in i40e_set_flex_mask_on_pctype.
+	 */
+	if (conf->op == RTE_ETH_INPUT_SET_SELECT)
+		inset_reg &= I40E_REG_INSET_FLEX_PAYLOAD_WORDS;
+	else
 		input_set |= pf->fdir.input_set[pctype];
 	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
 					   I40E_INSET_MASK_NUM_REG);
