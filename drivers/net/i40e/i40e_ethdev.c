@@ -384,6 +384,7 @@ static int i40e_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 					struct rte_eth_udp_tunnel *udp_tunnel);
 static int i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					struct rte_eth_udp_tunnel *udp_tunnel);
+static void i40e_filter_input_set_init(struct i40e_pf *pf);
 static int i40e_ethertype_filter_set(struct i40e_pf *pf,
 			struct rte_eth_ethertype_filter *filter,
 			bool add);
@@ -816,6 +817,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	 * It should be removed once issues are fixed in NVM.
 	 */
 	i40e_flex_payload_reg_init(hw);
+
+	/* Initialize the input set for filters (hash and fd) to default value */
+	i40e_filter_input_set_init(pf);
 
 	/* Initialize the parameters for adminq */
 	i40e_init_adminq_parameter(hw);
@@ -7053,6 +7057,59 @@ i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 		i40e_write_rx_ctl(hw, addr, val);
 	PMD_DRV_LOG(DEBUG, "[0x%08x] after: 0x%08x\n", addr,
 		    (uint32_t)i40e_read_rx_ctl(hw, addr));
+}
+
+static void
+i40e_filter_input_set_init(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	enum i40e_filter_pctype pctype;
+	uint64_t input_set, inset_reg;
+	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
+	int num, i;
+
+	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
+	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++) {
+		if (!I40E_VALID_PCTYPE(pctype))
+			continue;
+		input_set = i40e_get_default_input_set(pctype);
+
+		num = i40e_generate_inset_mask_reg(input_set, mask_reg,
+						   I40E_INSET_MASK_NUM_REG);
+		if (num < 0)
+			return;
+		inset_reg = i40e_translate_input_set_reg(input_set);
+
+		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
+				      (uint32_t)(inset_reg & UINT32_MAX));
+		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 1),
+				     (uint32_t)((inset_reg >>
+				     I40E_32_BIT_WIDTH) & UINT32_MAX));
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
+				      (uint32_t)(inset_reg & UINT32_MAX));
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
+				     (uint32_t)((inset_reg >>
+				     I40E_32_BIT_WIDTH) & UINT32_MAX));
+
+		for (i = 0; i < num; i++) {
+			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+					     mask_reg[i]);
+			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+					     mask_reg[i]);
+		}
+		/*clear unused mask registers of the pctype */
+		for (i = num; i < I40E_INSET_MASK_NUM_REG; i++) {
+			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+					     0);
+			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+					     0);
+		}
+		I40E_WRITE_FLUSH(hw);
+
+		/* store the default input set */
+		pf->hash_input_set[pctype] = input_set;
+		pf->fdir.input_set[pctype] = input_set;
+	}
 }
 
 int
