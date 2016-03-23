@@ -1362,7 +1362,6 @@ i40e_fdir_filter_set(struct rte_eth_dev *dev,
 		     struct rte_eth_fdir_filter_info *info)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	int ret = 0;
 
 	if (!info) {
@@ -1372,8 +1371,8 @@ i40e_fdir_filter_set(struct rte_eth_dev *dev,
 
 	switch (info->info_type) {
 	case RTE_ETH_FDIR_FILTER_INPUT_SET_SELECT:
-		ret = i40e_filter_inset_select(hw,
-			&(info->info.input_set_conf), RTE_ETH_FILTER_FDIR);
+		ret = i40e_fdir_filter_inset_select(pf,
+				&(info->info.input_set_conf));
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "FD filter info type (%d) not supported",

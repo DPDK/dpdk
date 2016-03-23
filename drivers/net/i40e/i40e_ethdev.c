@@ -7056,25 +7056,6 @@ i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask, uint8_t nb_elem)
 	return idx;
 }
 
-static uint64_t
-i40e_get_reg_inset(struct i40e_hw *hw, enum rte_filter_type filter,
-			    enum i40e_filter_pctype pctype)
-{
-	uint64_t reg = 0;
-
-	if (filter == RTE_ETH_FILTER_HASH) {
-		reg = i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(1, pctype));
-		reg <<= I40E_32_BIT_WIDTH;
-		reg |= i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(0, pctype));
-	} else if (filter == RTE_ETH_FILTER_FDIR) {
-		reg = i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 1));
-		reg <<= I40E_32_BIT_WIDTH;
-		reg |= i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 0));
-	}
-
-	return reg;
-}
-
 static void
 i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 {
@@ -7087,114 +7068,30 @@ i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 		    (uint32_t)i40e_read_rx_ctl(hw, addr));
 }
 
-static int
-i40e_set_hash_inset_mask(struct i40e_hw *hw,
-			 enum i40e_filter_pctype pctype,
-			 enum rte_filter_input_set_op op,
-			 uint32_t *mask_reg,
-			 uint8_t num)
-{
-	uint32_t reg;
-	uint8_t i;
-
-	if (!mask_reg || num > RTE_ETH_INPUT_SET_SELECT)
-		return -EINVAL;
-
-	if (op == RTE_ETH_INPUT_SET_SELECT) {
-		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
-			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
-					     0);
-			if (i >= num)
-				continue;
-			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
-					     mask_reg[i]);
-		}
-	} else if (op == RTE_ETH_INPUT_SET_ADD) {
-		uint8_t j, count = 0;
-
-		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
-			reg = i40e_read_rx_ctl(hw,
-					       I40E_GLQF_HASH_MSK(i, pctype));
-			if (reg & I40E_GLQF_HASH_MSK_MASK_MASK)
-				count++;
-		}
-		if (count + num > I40E_INSET_MASK_NUM_REG)
-			return -EINVAL;
-
-		for (i = count, j = 0; i < I40E_INSET_MASK_NUM_REG; i++, j++)
-			i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
-					     mask_reg[j]);
-	}
-
-	return 0;
-}
-
-static int
-i40e_set_fd_inset_mask(struct i40e_hw *hw,
-		       enum i40e_filter_pctype pctype,
-		       enum rte_filter_input_set_op op,
-		       uint32_t *mask_reg,
-		       uint8_t num)
-{
-	uint32_t reg;
-	uint8_t i;
-
-	if (!mask_reg || num > RTE_ETH_INPUT_SET_SELECT)
-		return -EINVAL;
-
-	if (op == RTE_ETH_INPUT_SET_SELECT) {
-		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
-			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
-					     0);
-			if (i >= num)
-				continue;
-			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
-					     mask_reg[i]);
-		}
-	} else if (op == RTE_ETH_INPUT_SET_ADD) {
-		uint8_t j, count = 0;
-
-		for (i = 0; i < I40E_INSET_MASK_NUM_REG; i++) {
-			reg = i40e_read_rx_ctl(hw,
-					       I40E_GLQF_FD_MSK(i, pctype));
-			if (reg & I40E_GLQF_FD_MSK_MASK_MASK)
-				count++;
-		}
-		if (count + num > I40E_INSET_MASK_NUM_REG)
-			return -EINVAL;
-
-		for (i = count, j = 0; i < I40E_INSET_MASK_NUM_REG; i++, j++)
-			i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
-					     mask_reg[j]);
-	}
-
-	return 0;
-}
-
 int
-i40e_filter_inset_select(struct i40e_hw *hw,
-			 struct rte_eth_input_set_conf *conf,
-			 enum rte_filter_type filter)
+i40e_hash_filter_inset_select(struct i40e_hw *hw,
+			 struct rte_eth_input_set_conf *conf)
 {
+	struct i40e_pf *pf = &((struct i40e_adapter *)hw->back)->pf;
 	enum i40e_filter_pctype pctype;
-	uint64_t inset_reg = 0, input_set;
-	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG];
-	uint8_t num;
-	int ret;
+	uint64_t input_set, inset_reg = 0;
+	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
+	int ret, i, num;
 
-	if (!hw || !conf) {
+	if (!conf) {
 		PMD_DRV_LOG(ERR, "Invalid pointer");
 		return -EFAULT;
+	}
+	if (conf->op != RTE_ETH_INPUT_SET_SELECT &&
+	    conf->op != RTE_ETH_INPUT_SET_ADD) {
+		PMD_DRV_LOG(ERR, "Unsupported input set operation");
+		return -EINVAL;
 	}
 
 	pctype = i40e_flowtype_to_pctype(conf->flow_type);
 	if (pctype == 0 || pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
 		PMD_DRV_LOG(ERR, "Not supported flow type (%u)",
 			    conf->flow_type);
-		return -EINVAL;
-	}
-	if (filter != RTE_ETH_FILTER_HASH && filter != RTE_ETH_FILTER_FDIR) {
-		PMD_DRV_LOG(ERR, "Not supported filter type (%u)", filter);
 		return -EINVAL;
 	}
 
@@ -7204,49 +7101,112 @@ i40e_filter_inset_select(struct i40e_hw *hw,
 		PMD_DRV_LOG(ERR, "Failed to parse input set");
 		return -EINVAL;
 	}
-	if (i40e_validate_input_set(pctype, filter, input_set) != 0) {
+	if (i40e_validate_input_set(pctype, RTE_ETH_FILTER_HASH,
+				    input_set) != 0) {
+		PMD_DRV_LOG(ERR, "Invalid input set");
+		return -EINVAL;
+	}
+	if (conf->op == RTE_ETH_INPUT_SET_ADD) {
+		/* get inset value in register */
+		inset_reg = i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(1, pctype));
+		inset_reg <<= I40E_32_BIT_WIDTH;
+		inset_reg |= i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(0, pctype));
+		input_set |= pf->hash_input_set[pctype];
+	}
+	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
+					   I40E_INSET_MASK_NUM_REG);
+	if (num < 0)
+		return -EINVAL;
+
+	inset_reg |= i40e_translate_input_set_reg(input_set);
+
+	i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
+			      (uint32_t)(inset_reg & UINT32_MAX));
+	i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
+			     (uint32_t)((inset_reg >>
+			     I40E_32_BIT_WIDTH) & UINT32_MAX));
+
+	for (i = 0; i < num; i++)
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+				     mask_reg[i]);
+	/*clear unused mask registers of the pctype */
+	for (i = num; i < I40E_INSET_MASK_NUM_REG; i++)
+		i40e_check_write_reg(hw, I40E_GLQF_HASH_MSK(i, pctype),
+				     0);
+	I40E_WRITE_FLUSH(hw);
+
+	pf->hash_input_set[pctype] = input_set;
+	return 0;
+}
+
+int
+i40e_fdir_filter_inset_select(struct i40e_pf *pf,
+			 struct rte_eth_input_set_conf *conf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	enum i40e_filter_pctype pctype;
+	uint64_t input_set, inset_reg = 0;
+	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
+	int ret, i, num;
+
+	if (!hw || !conf) {
+		PMD_DRV_LOG(ERR, "Invalid pointer");
+		return -EFAULT;
+	}
+	if (conf->op != RTE_ETH_INPUT_SET_SELECT &&
+	    conf->op != RTE_ETH_INPUT_SET_ADD) {
+		PMD_DRV_LOG(ERR, "Unsupported input set operation");
+		return -EINVAL;
+	}
+
+	pctype = i40e_flowtype_to_pctype(conf->flow_type);
+	if (pctype == 0 || pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
+		PMD_DRV_LOG(ERR, "Not supported flow type (%u)",
+			    conf->flow_type);
+		return -EINVAL;
+	}
+	ret = i40e_parse_input_set(&input_set, pctype, conf->field,
+				   conf->inset_size);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to parse input set");
+		return -EINVAL;
+	}
+	if (i40e_validate_input_set(pctype, RTE_ETH_FILTER_FDIR,
+				    input_set) != 0) {
 		PMD_DRV_LOG(ERR, "Invalid input set");
 		return -EINVAL;
 	}
 
-	if (conf->op == RTE_ETH_INPUT_SET_ADD) {
-		inset_reg |= i40e_get_reg_inset(hw, filter, pctype);
-	} else if (conf->op != RTE_ETH_INPUT_SET_SELECT) {
-		PMD_DRV_LOG(ERR, "Unsupported input set operation");
-		return -EINVAL;
-	}
+	/* get inset value in register */
+	inset_reg = i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 1));
+	inset_reg <<= I40E_32_BIT_WIDTH;
+	inset_reg |= i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 0));
+
+	if (conf->op == RTE_ETH_INPUT_SET_ADD)
+		input_set |= pf->fdir.input_set[pctype];
 	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
 					   I40E_INSET_MASK_NUM_REG);
+	if (num < 0)
+		return -EINVAL;
+
 	inset_reg |= i40e_translate_input_set_reg(input_set);
 
-	if (filter == RTE_ETH_FILTER_HASH) {
-		ret = i40e_set_hash_inset_mask(hw, pctype, conf->op, mask_reg,
-					       num);
-		if (ret)
-			return -EINVAL;
+	i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
+			      (uint32_t)(inset_reg & UINT32_MAX));
+	i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 1),
+			     (uint32_t)((inset_reg >>
+			     I40E_32_BIT_WIDTH) & UINT32_MAX));
 
-		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
-				      (uint32_t)(inset_reg & UINT32_MAX));
-		i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(1, pctype),
-				     (uint32_t)((inset_reg >>
-				     I40E_32_BIT_WIDTH) & UINT32_MAX));
-	} else if (filter == RTE_ETH_FILTER_FDIR) {
-		ret = i40e_set_fd_inset_mask(hw, pctype, conf->op, mask_reg,
-					     num);
-		if (ret)
-			return -EINVAL;
-
-		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
-				      (uint32_t)(inset_reg & UINT32_MAX));
-		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 1),
-				     (uint32_t)((inset_reg >>
-				     I40E_32_BIT_WIDTH) & UINT32_MAX));
-	} else {
-		PMD_DRV_LOG(ERR, "Not supported filter type (%u)", filter);
-		return -EINVAL;
-	}
+	for (i = 0; i < num; i++)
+		i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+				     mask_reg[i]);
+	/*clear unused mask registers of the pctype */
+	for (i = num; i < I40E_INSET_MASK_NUM_REG; i++)
+		i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+				     0);
 	I40E_WRITE_FLUSH(hw);
 
+	pf->fdir.input_set[pctype] = input_set;
 	return 0;
 }
 
@@ -7298,9 +7258,8 @@ i40e_hash_filter_set(struct i40e_hw *hw, struct rte_eth_hash_filter_info *info)
 				&(info->info.global_conf));
 		break;
 	case RTE_ETH_HASH_FILTER_INPUT_SET_SELECT:
-		ret = i40e_filter_inset_select(hw,
-					       &(info->info.input_set_conf),
-					       RTE_ETH_FILTER_HASH);
+		ret = i40e_hash_filter_inset_select(hw,
+					       &(info->info.input_set_conf));
 		break;
 
 	default:

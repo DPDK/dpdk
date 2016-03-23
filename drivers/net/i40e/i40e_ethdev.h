@@ -367,6 +367,8 @@ struct i40e_fdir_info {
 	struct i40e_rx_queue *rxq;
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
+	/* input set bits for each pctype */
+	uint64_t input_set[I40E_FILTER_PCTYPE_MAX];
 	/*
 	 * the rule how bytes stream is extracted as flexible payload
 	 * for each payload layer, the setting can up to three elements
@@ -433,6 +435,8 @@ struct i40e_pf {
 	uint16_t fdir_qp_offset;
 
 	uint16_t hash_lut_size; /* The size of hash lookup table */
+	/* input set bits for each pctype */
+	uint64_t hash_input_set[I40E_FILTER_PCTYPE_MAX];
 	/* store VXLAN UDP ports */
 	uint16_t vxlan_ports[I40E_MAX_PF_UDP_OFFLOAD_PORTS];
 	uint16_t vxlan_bitmap; /* Vxlan bit mask */
@@ -578,9 +582,10 @@ int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 int i40e_select_filter_input_set(struct i40e_hw *hw,
 				 struct rte_eth_input_set_conf *conf,
 				 enum rte_filter_type filter);
-int i40e_filter_inset_select(struct i40e_hw *hw,
-			     struct rte_eth_input_set_conf *conf,
-			     enum rte_filter_type filter);
+int i40e_hash_filter_inset_select(struct i40e_hw *hw,
+			     struct rte_eth_input_set_conf *conf);
+int i40e_fdir_filter_inset_select(struct i40e_pf *pf,
+			     struct rte_eth_input_set_conf *conf);
 
 void i40e_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
