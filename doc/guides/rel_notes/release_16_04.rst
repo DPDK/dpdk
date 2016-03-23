@@ -476,6 +476,9 @@ ABI Changes
 * The RETA entry size in ``rte_eth_rss_reta_entry64`` has been increased
   from 8-bit to 16-bit.
 
+* The ethdev flow director structure ``rte_eth_fdir_flow`` structure was
+  changed. New fields were added to extend flow director's input set.
+
 * The cmdline buffer size has been increase from 256 to 512.
 
 

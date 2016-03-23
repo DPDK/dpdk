@@ -22,14 +22,6 @@ Deprecation Notices
 * The ethdev structures rte_eth_link, rte_eth_dev_info and rte_eth_conf
   must be updated to support 100G link and to have a cleaner link speed API.
 
-* ABI changes are planned for struct rte_eth_fdir_flow in order to support
-  extend flow director's input set. The release 2.2 does not contain these ABI
-  changes, but release 2.3 will, and no backwards compatibility is planned.
-
-* ABI changes are planned for rte_eth_ipv4_flow and rte_eth_ipv6_flow to
-  include more fields to be matched against. The release 2.2 does not
-  contain these ABI changes, but release 2.3 will.
-
 * ABI changes are planned for adding four new flow types. This impacts
   RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
   but release 2.3 will.
