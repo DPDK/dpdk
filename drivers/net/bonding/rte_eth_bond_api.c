@@ -352,6 +352,7 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 
 		/* Make primary slave */
 		internals->primary_port = slave_port_id;
+		internals->current_primary_port = slave_port_id;
 
 		/* Inherit queues settings from first slave */
 		internals->nb_rx_queues = slave_eth_dev->data->nb_rx_queues;
