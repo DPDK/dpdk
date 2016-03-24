@@ -901,6 +901,9 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		return -EBUSY;
 	}
 
+	/* Copy the dev_conf parameter into the dev structure */
+	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
+
 	/*
 	 * Check that the numbers of RX and TX queues are not greater
 	 * than the maximum number of RX and TX queues supported by the
@@ -924,9 +927,6 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				port_id, nb_tx_q, dev_info.max_tx_queues);
 		return -EINVAL;
 	}
-
-	/* Copy the dev_conf parameter into the dev structure */
-	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
 
 	/*
 	 * If link state interrupt is enabled, check that the
