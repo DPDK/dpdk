@@ -218,8 +218,7 @@ int igb_pf_host_configure(struct rte_eth_dev *eth_dev)
 static void
 set_rx_mode(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev_data *dev_data =
-		(struct rte_eth_dev_data*)dev->data->dev_private;
+	struct rte_eth_dev_data *dev_data = dev->data;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t fctrl, vmolr = E1000_VMOLR_BAM | E1000_VMOLR_AUPE;
 	uint16_t vfn = dev_num_vf(dev);
