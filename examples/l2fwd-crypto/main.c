@@ -762,14 +762,14 @@ l2fwd_launch_one_lcore(void *arg)
 static void
 l2fwd_crypto_usage(const char *prgname)
 {
-	printf("%s [EAL options] -- --cdev TYPE [optional parameters]\n"
+	printf("%s [EAL options] --\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -q NQ: number of queue (=ports) per lcore (default is 1)\n"
 		"  -s manage all ports from single lcore"
 		"  -t PERIOD: statistics will be refreshed each PERIOD seconds"
 		" (0 to disable, 10 default, 86400 maximum)\n"
 
-		"  --cdev AESNI_MB / QAT\n"
+		"  --cdev_type HW / SW / ANY\n"
 		"  --chain HASH_CIPHER / CIPHER_HASH\n"
 
 		"  --cipher_algo ALGO\n"
