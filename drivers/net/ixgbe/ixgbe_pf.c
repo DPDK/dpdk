@@ -312,8 +312,7 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 static void
 set_rx_mode(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev_data *dev_data =
-		(struct rte_eth_dev_data*)dev->data->dev_private;
+	struct rte_eth_dev_data *dev_data = dev->data;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	u32 fctrl, vmolr = IXGBE_VMOLR_BAM | IXGBE_VMOLR_AUPE;
 	uint16_t vfn = dev_num_vf(dev);
