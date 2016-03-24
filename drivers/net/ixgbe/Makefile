@@ -49,6 +49,8 @@ ifeq ($(CC), icc)
 #
 CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
 
+CFLAGS_ixgbe_rxtx.o += -wd3656
+
 else ifeq ($(CC), clang)
 #
 # CFLAGS for clang
