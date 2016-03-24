@@ -1865,7 +1865,7 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
-	uint16_t nb_tx_q = dev->data->nb_rx_queues;
+	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 
 	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
 		/* check multi-queue mode */
