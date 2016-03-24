@@ -343,6 +343,12 @@ Drivers
   The driver now set the MDIO clock speed prior to initializing PHY ops and
   again after the MAC reset.
 
+* **ixgbe: Fixed maximum number of available TX queues.**
+
+  In IXGBE, the maximum number of TX queues varies depending on the NIC operating
+  mode. This was not being updated in the device information, providing
+  an incorrect number in some cases.
+
 * **i40e: Generated MAC address for each VFs.**
 
   It generates a MAC address for each VFs during PF host initialization,

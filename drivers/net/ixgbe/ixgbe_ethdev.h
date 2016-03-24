@@ -61,6 +61,7 @@
 #define IXGBE_MAX_RX_QUEUE_NUM	128
 #define IXGBE_VMDQ_DCB_NB_QUEUES     IXGBE_MAX_RX_QUEUE_NUM
 #define IXGBE_DCB_NB_QUEUES          IXGBE_MAX_RX_QUEUE_NUM
+#define IXGBE_NONE_MODE_TX_NB_QUEUES 64
 
 #ifndef NBBY
 #define NBBY	8	/* number of bits in a byte */

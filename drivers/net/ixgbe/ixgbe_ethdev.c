@@ -1864,6 +1864,7 @@ static int
 ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 
@@ -2002,6 +2003,21 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 				PMD_INIT_LOG(ERR, "DCB selected, nb_tcs != %d"
 						" and nb_tcs != %d.",
 						ETH_4_TCS, ETH_8_TCS);
+				return -EINVAL;
+			}
+		}
+
+		/*
+		 * When DCB/VT is off, maximum number of queues changes,
+		 * except for 82598EB, which remains constant.
+		 */
+		if (dev_conf->txmode.mq_mode == ETH_MQ_TX_NONE &&
+				hw->mac.type != ixgbe_mac_82598EB) {
+			if (nb_tx_q > IXGBE_NONE_MODE_TX_NB_QUEUES) {
+				PMD_INIT_LOG(ERR,
+					     "Neither VT nor DCB are enabled, "
+					     "nb_tx_q > %d.",
+					     IXGBE_NONE_MODE_TX_NB_QUEUES);
 				return -EINVAL;
 			}
 		}
@@ -2859,9 +2875,19 @@ static void
 ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
+	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+		/*
+		 * When DCB/VT is off, maximum number of queues changes,
+		 * except for 82598EB, which remains constant.
+		 */
+		if (dev_conf->txmode.mq_mode == ETH_MQ_TX_NONE &&
+				hw->mac.type != ixgbe_mac_82598EB)
+			dev_info->max_tx_queues = IXGBE_NONE_MODE_TX_NB_QUEUES;
+	}
 	dev_info->min_rx_bufsize = 1024; /* cf BSIZEPACKET in SRRCTL register */
 	dev_info->max_rx_pktlen = 15872; /* includes CRC, cf MAXFRS register */
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
