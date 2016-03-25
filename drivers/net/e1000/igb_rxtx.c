@@ -325,9 +325,9 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	}
 
 	txq->ctx_cache[ctx_curr].flags = ol_flags;
-	txq->ctx_cache[ctx_idx].tx_offload.data =
+	txq->ctx_cache[ctx_curr].tx_offload.data =
 		tx_offload_mask.data & tx_offload.data;
-	txq->ctx_cache[ctx_idx].tx_offload_mask = tx_offload_mask;
+	txq->ctx_cache[ctx_curr].tx_offload_mask = tx_offload_mask;
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	vlan_macip_lens = (uint32_t)tx_offload.data;
@@ -450,7 +450,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			ctx = what_advctx_update(txq, tx_ol_req, tx_offload);
 			/* Only allocate context descriptor if required*/
 			new_ctx = (ctx == IGB_CTX_NUM);
-			ctx = txq->ctx_curr;
+			ctx = txq->ctx_curr + txq->ctx_start;
 			tx_last = (uint16_t) (tx_last + new_ctx);
 		}
 		if (tx_last >= txq->nb_tx_desc)
