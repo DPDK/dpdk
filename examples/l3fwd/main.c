@@ -263,9 +263,14 @@ get_port_n_rx_queues(const uint8_t port)
 	uint16_t i;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
-		if (lcore_params[i].port_id == port &&
-			lcore_params[i].queue_id > queue)
-			queue = lcore_params[i].queue_id;
+		if (lcore_params[i].port_id == port) {
+			if (lcore_params[i].queue_id == queue+1)
+				queue = lcore_params[i].queue_id;
+			else
+				rte_exit(EXIT_FAILURE, "queue ids of the port %d must be"
+						" in sequence and must start with 0\n",
+						lcore_params[i].port_id);
+		}
 	}
 	return (uint8_t)(++queue);
 }
