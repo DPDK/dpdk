@@ -698,7 +698,7 @@ txq_cleanup(struct txq *txq);
 
 static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
-	  unsigned int socket, const struct rte_eth_rxconf *conf,
+	  unsigned int socket, int inactive, const struct rte_eth_rxconf *conf,
 	  struct rte_mempool *mp);
 
 static void
@@ -734,12 +734,15 @@ dev_configure(struct rte_eth_dev *dev)
 	}
 	if (rxqs_n == priv->rxqs_n)
 		return 0;
-	if ((rxqs_n & (rxqs_n - 1)) != 0) {
-		ERROR("%p: invalid number of RX queues (%u),"
-		      " must be a power of 2",
-		      (void *)dev, rxqs_n);
-		return EINVAL;
+	if (!rte_is_power_of_2(rxqs_n)) {
+		unsigned n_active;
+
+		n_active = rte_align32pow2(rxqs_n + 1) >> 1;
+		WARN("%p: number of RX queues must be a power"
+			" of 2: %u queues among %u will be active",
+			(void *)dev, n_active, rxqs_n);
 	}
+
 	INFO("%p: RX queues number update: %u -> %u",
 	     (void *)dev, priv->rxqs_n, rxqs_n);
 	/* If RSS is enabled, disable it first. */
@@ -775,7 +778,7 @@ dev_configure(struct rte_eth_dev *dev)
 	priv->rss = 1;
 	tmp = priv->rxqs_n;
 	priv->rxqs_n = rxqs_n;
-	ret = rxq_setup(dev, &priv->rxq_parent, 0, 0, NULL, NULL);
+	ret = rxq_setup(dev, &priv->rxq_parent, 0, 0, 0, NULL, NULL);
 	if (!ret)
 		return 0;
 	/* Failure, rollback. */
@@ -3468,7 +3471,8 @@ rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 		attr.qpg.qpg_type = IBV_EXP_QPG_PARENT;
 		/* TSS isn't necessary. */
 		attr.qpg.parent_attrib.tss_child_count = 0;
-		attr.qpg.parent_attrib.rss_child_count = priv->rxqs_n;
+		attr.qpg.parent_attrib.rss_child_count =
+			rte_align32pow2(priv->rxqs_n + 1) >> 1;
 		DEBUG("initializing parent RSS queue");
 	} else {
 		attr.qpg.qpg_type = IBV_EXP_QPG_CHILD_RX;
@@ -3691,6 +3695,9 @@ skip_rtr:
  *   Number of descriptors to configure in queue.
  * @param socket
  *   NUMA socket on which memory must be allocated.
+ * @param inactive
+ *   If true, the queue is disabled because its index is higher or
+ *   equal to the real number of queues, which must be a power of 2.
  * @param[in] conf
  *   Thresholds parameters.
  * @param mp
@@ -3701,7 +3708,7 @@ skip_rtr:
  */
 static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
-	  unsigned int socket, const struct rte_eth_rxconf *conf,
+	  unsigned int socket, int inactive, const struct rte_eth_rxconf *conf,
 	  struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
@@ -3802,7 +3809,7 @@ skip_mr:
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
 #ifdef RSS_SUPPORT
-	if (priv->rss)
+	if (priv->rss && !inactive)
 		tmpl.qp = rxq_setup_qp_rss(priv, tmpl.cq, desc, parent,
 					   tmpl.rd);
 	else
@@ -3938,6 +3945,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 {
 	struct priv *priv = dev->data->dev_private;
 	struct rxq *rxq = (*priv->rxqs)[idx];
+	int inactive = 0;
 	int ret;
 
 	if (mlx4_is_secondary())
@@ -3969,7 +3977,9 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -ENOMEM;
 		}
 	}
-	ret = rxq_setup(dev, rxq, desc, socket, conf, mp);
+	if (idx >= rte_align32pow2(priv->rxqs_n + 1) >> 1)
+		inactive = 1;
+	ret = rxq_setup(dev, rxq, desc, socket, inactive, conf, mp);
 	if (ret)
 		rte_free(rxq);
 	else {
