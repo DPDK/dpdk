@@ -52,8 +52,6 @@
 #include <rte_virtio_net.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
-#include <rte_udp.h>
-#include <rte_sctp.h>
 
 #include "main.h"
 
@@ -1161,42 +1159,15 @@ static void virtio_tx_offload(struct rte_mbuf *m)
 	void *l3_hdr;
 	struct ipv4_hdr *ipv4_hdr = NULL;
 	struct tcp_hdr *tcp_hdr = NULL;
-	struct udp_hdr *udp_hdr = NULL;
-	struct sctp_hdr *sctp_hdr = NULL;
 	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
 	l3_hdr = (char *)eth_hdr + m->l2_len;
 
-	if (m->tso_segsz != 0) {
-		ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
-		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + m->l3_len);
-		m->ol_flags |= PKT_TX_IP_CKSUM;
-		ipv4_hdr->hdr_checksum = 0;
-		tcp_hdr->cksum = get_psd_sum(l3_hdr, m->ol_flags);
-		return;
-	}
-
-	if (m->ol_flags & PKT_TX_L4_MASK) {
-		switch (m->ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_TCP_CKSUM:
-			tcp_hdr = (struct tcp_hdr *)
-					((char *)l3_hdr + m->l3_len);
-			tcp_hdr->cksum = get_psd_sum(l3_hdr, m->ol_flags);
-			break;
-		case PKT_TX_UDP_CKSUM:
-			udp_hdr = (struct udp_hdr *)
-					((char *)l3_hdr + m->l3_len);
-			udp_hdr->dgram_cksum = get_psd_sum(l3_hdr, m->ol_flags);
-			break;
-		case PKT_TX_SCTP_CKSUM:
-			sctp_hdr = (struct sctp_hdr *)
-					((char *)l3_hdr + m->l3_len);
-			sctp_hdr->cksum = 0;
-			break;
-		default:
-			break;
-		}
-	}
+	ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
+	tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + m->l3_len);
+	m->ol_flags |= PKT_TX_IP_CKSUM;
+	ipv4_hdr->hdr_checksum = 0;
+	tcp_hdr->cksum = get_psd_sum(l3_hdr, m->ol_flags);
 }
 
 /*
@@ -1265,7 +1236,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 		m->vlan_tci = vlan_tag;
 	}
 
-	if ((m->ol_flags & PKT_TX_L4_MASK) || (m->ol_flags & PKT_TX_TCP_SEG))
+	if (m->ol_flags & PKT_TX_TCP_SEG)
 		virtio_tx_offload(m);
 
 	tx_q->m_table[len] = m;
