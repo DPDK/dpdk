@@ -3349,17 +3349,21 @@ i40e_res_pool_init (struct i40e_res_pool_info *pool, uint32_t base,
 static void
 i40e_res_pool_destroy(struct i40e_res_pool_info *pool)
 {
-	struct pool_entry *entry;
+	struct pool_entry *entry, *next_entry;
 
 	if (pool == NULL)
 		return;
 
-	LIST_FOREACH(entry, &pool->alloc_list, next) {
+	for (entry = LIST_FIRST(&pool->alloc_list);
+			entry && (next_entry = LIST_NEXT(entry, next), 1);
+			entry = next_entry) {
 		LIST_REMOVE(entry, next);
 		rte_free(entry);
 	}
 
-	LIST_FOREACH(entry, &pool->free_list, next) {
+	for (entry = LIST_FIRST(&pool->free_list);
+			entry && (next_entry = LIST_NEXT(entry, next), 1);
+			entry = next_entry) {
 		LIST_REMOVE(entry, next);
 		rte_free(entry);
 	}
