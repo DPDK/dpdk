@@ -24,4 +24,4 @@ Deprecation Notices
 
 * ABI changes are planned for adding four new flow types. This impacts
   RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
-  but release 2.3 will.
+  but release 2.3 will. [postponed]
