@@ -360,6 +360,12 @@ Drivers
   under stress with traffic, which might result in application launch
   failure.
 
+* **i40e: Enabled vector driver by default.**
+
+  Previously, vector driver is disabled by default as it cannot fill packet type
+  info for l3fwd to work well. Now there is an option for l3fwd to analysis
+  packet type softly, so enable vector driver by default.
+
 * **mlx5: Fixed possible crash during initialization.**
 
   A crash could occur when failing to allocate private device context.
