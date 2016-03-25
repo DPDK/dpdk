@@ -412,6 +412,11 @@ Examples
   other than IPv4 or IPv6, the mbuf was not released, and caused
   a memory leak.
 
+* **l3fwd: Fixed using packet type blindly.**
+
+  l3fwd makes use of packet type information without even query if devices or PMDs
+  really set it. For those don't set ptypes, add an option to parse it softly.
+
 * **examples/vhost: Fixed frequent mbuf allocation failure.**
 
   vhost-switch often fails to allocate mbuf when dequeue from vring because it

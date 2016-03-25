@@ -103,6 +103,8 @@ static int l3fwd_lpm_on;
 static int l3fwd_em_on;
 
 static int numa_on = 1; /**< NUMA is enabled by default. */
+static int parse_ptype; /**< Parse packet type using rx callback, and */
+			/**< disabled by default */
 
 /* Global variables. */
 
@@ -172,6 +174,8 @@ static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
 
 struct l3fwd_lkp_mode {
 	void  (*setup)(int);
+	int   (*check_ptype)(int);
+	rte_rx_callback_fn cb_parse_ptype;
 	int   (*main_loop)(void *);
 	void* (*get_ipv4_lookup_struct)(int);
 	void* (*get_ipv6_lookup_struct)(int);
@@ -181,6 +185,8 @@ static struct l3fwd_lkp_mode l3fwd_lkp;
 
 static struct l3fwd_lkp_mode l3fwd_em_lkp = {
 	.setup                  = setup_hash,
+	.check_ptype		= em_check_ptype,
+	.cb_parse_ptype		= em_cb_parse_ptype,
 	.main_loop              = em_main_loop,
 	.get_ipv4_lookup_struct = em_get_ipv4_l3fwd_lookup_struct,
 	.get_ipv6_lookup_struct = em_get_ipv6_l3fwd_lookup_struct,
@@ -188,6 +194,8 @@ static struct l3fwd_lkp_mode l3fwd_em_lkp = {
 
 static struct l3fwd_lkp_mode l3fwd_lpm_lkp = {
 	.setup                  = setup_lpm,
+	.check_ptype		= lpm_check_ptype,
+	.cb_parse_ptype		= lpm_cb_parse_ptype,
 	.main_loop              = lpm_main_loop,
 	.get_ipv4_lookup_struct = lpm_get_ipv4_l3fwd_lookup_struct,
 	.get_ipv6_lookup_struct = lpm_get_ipv6_l3fwd_lookup_struct,
@@ -461,6 +469,7 @@ parse_eth_dest(const char *optarg)
 #define CMD_LINE_OPT_IPV6 "ipv6"
 #define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
 #define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
+#define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
 
 /*
  * This expression is used to calculate the number of mbufs needed
@@ -491,6 +500,7 @@ parse_args(int argc, char **argv)
 		{CMD_LINE_OPT_IPV6, 0, 0, 0},
 		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
 		{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, 0},
+		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -617,6 +627,14 @@ parse_args(int argc, char **argv)
 					return -1;
 				}
 			}
+
+			if (!strncmp(lgopts[option_index].name,
+				     CMD_LINE_OPT_PARSE_PTYPE,
+				     sizeof(CMD_LINE_OPT_PARSE_PTYPE))) {
+				printf("soft parse-ptype is enabled\n");
+				parse_ptype = 1;
+			}
+
 			break;
 
 		default:
@@ -782,6 +800,28 @@ signal_handler(int signum)
 				signum);
 		force_quit = true;
 	}
+}
+
+static int
+prepare_ptype_parser(uint8_t portid, uint16_t queueid)
+{
+	if (parse_ptype) {
+		printf("Port %d: softly parse packet type info\n", portid);
+		if (rte_eth_add_rx_callback(portid, queueid,
+					    l3fwd_lkp.cb_parse_ptype,
+					    NULL))
+			return 1;
+
+		printf("Failed to add rx callback: port=%d\n", portid);
+		return 0;
+	}
+
+	if (l3fwd_lkp.check_ptype(portid))
+		return 1;
+
+	printf("port %d cannot parse packet type, please add --%s\n",
+	       portid, CMD_LINE_OPT_PARSE_PTYPE);
+	return 0;
 }
 
 int
@@ -976,6 +1016,21 @@ main(int argc, char **argv)
 		if (promiscuous_on)
 			rte_eth_promiscuous_enable(portid);
 	}
+
+	printf("\n");
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (rte_lcore_is_enabled(lcore_id) == 0)
+			continue;
+		qconf = &lcore_conf[lcore_id];
+		for (queue = 0; queue < qconf->n_rx_queue; ++queue) {
+			portid = qconf->rx_queue_list[queue].port_id;
+			queueid = qconf->rx_queue_list[queue].queue_id;
+			if (prepare_ptype_parser(portid, queueid) == 0)
+				rte_exit(EXIT_FAILURE, "ptype check fails\n");
+		}
+	}
+
 
 	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);
 

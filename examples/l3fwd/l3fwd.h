@@ -206,6 +206,20 @@ void
 setup_hash(const int socketid);
 
 int
+em_check_ptype(int portid);
+
+int
+lpm_check_ptype(int portid);
+
+uint16_t
+em_cb_parse_ptype(uint8_t port, uint16_t queue, struct rte_mbuf *pkts[],
+		  uint16_t nb_pkts, uint16_t max_pkts, void *user_param);
+
+uint16_t
+lpm_cb_parse_ptype(uint8_t port, uint16_t queue, struct rte_mbuf *pkts[],
+		   uint16_t nb_pkts, uint16_t max_pkts, void *user_param);
+
+int
 em_main_loop(__attribute__((unused)) void *dummy);
 
 int

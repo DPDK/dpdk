@@ -41,10 +41,14 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	uint8_t dst_port;
+	uint32_t tcp_or_udp;
+	uint32_t l3_ptypes;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	tcp_or_udp = m->packet_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
+	l3_ptypes = m->packet_type & RTE_PTYPE_L3_MASK;
 
-	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
+	if (tcp_or_udp && (l3_ptypes == RTE_PTYPE_L3_IPV4)) {
 		/* Handle IPv4 headers.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
 						   sizeof(struct ether_hdr));
@@ -56,7 +60,7 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 			return;
 		}
 #endif
-		 dst_port = em_get_ipv4_dst_port(ipv4_hdr, portid,
+		dst_port = em_get_ipv4_dst_port(ipv4_hdr, portid,
 						qconf->ipv4_lookup_struct);
 
 		if (dst_port >= RTE_MAX_ETHPORTS ||
@@ -75,7 +79,7 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 		send_single_packet(qconf, m, dst_port);
-	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
+	} else if (tcp_or_udp && (l3_ptypes == RTE_PTYPE_L3_IPV6)) {
 		/* Handle IPv6 headers.*/
 		struct ipv6_hdr *ipv6_hdr;
 

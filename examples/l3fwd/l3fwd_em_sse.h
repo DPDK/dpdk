@@ -52,8 +52,13 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	uint8_t next_hop;
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
+	uint32_t tcp_or_udp;
+	uint32_t l3_ptypes;
 
-	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
+	tcp_or_udp = pkt->packet_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
+	l3_ptypes = pkt->packet_type & RTE_PTYPE_L3_MASK;
+
+	if (tcp_or_udp && (l3_ptypes == RTE_PTYPE_L3_IPV4)) {
 
 		/* Handle IPv4 headers.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
@@ -68,7 +73,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 
 		return next_hop;
 
-	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
+	} else if (tcp_or_udp && (l3_ptypes == RTE_PTYPE_L3_IPV6)) {
 
 		/* Handle IPv6 headers.*/
 		ipv6_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv6_hdr *,

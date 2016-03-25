@@ -42,6 +42,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <netinet/in.h>
 
 #include <rte_debug.h>
 #include <rte_ether.h>
@@ -517,6 +518,114 @@ populate_ipv6_many_flow_into_table(const struct rte_hash *h,
 
 	}
 	printf("Hash: Adding 0x%x keys\n", nr_flow);
+}
+
+/* Requirements:
+ * 1. IP packets without extension;
+ * 2. L4 payload should be either TCP or UDP.
+ */
+int
+em_check_ptype(int portid)
+{
+	int i, ret;
+	int ptype_l3_ipv4_ext = 0;
+	int ptype_l3_ipv6_ext = 0;
+	int ptype_l4_tcp = 0;
+	int ptype_l4_udp = 0;
+	uint32_t ptype_mask = RTE_PTYPE_L3_MASK | RTE_PTYPE_L4_MASK;
+
+	ret = rte_eth_dev_get_supported_ptypes(portid, ptype_mask, NULL, 0);
+	if (ret <= 0)
+		return 0;
+
+	uint32_t ptypes[ret];
+
+	ret = rte_eth_dev_get_supported_ptypes(portid, ptype_mask, ptypes, ret);
+	for (i = 0; i < ret; ++i) {
+		switch (ptypes[i]) {
+		case RTE_PTYPE_L3_IPV4_EXT:
+			ptype_l3_ipv4_ext = 1;
+			break;
+		case RTE_PTYPE_L3_IPV6_EXT:
+			ptype_l3_ipv6_ext = 1;
+			break;
+		case RTE_PTYPE_L4_TCP:
+			ptype_l4_tcp = 1;
+			break;
+		case RTE_PTYPE_L4_UDP:
+			ptype_l4_udp = 1;
+			break;
+		}
+	}
+
+	if (ptype_l3_ipv4_ext == 0)
+		printf("port %d cannot parse RTE_PTYPE_L3_IPV4_EXT\n", portid);
+	if (ptype_l3_ipv6_ext == 0)
+		printf("port %d cannot parse RTE_PTYPE_L3_IPV6_EXT\n", portid);
+	if (!ptype_l3_ipv4_ext || !ptype_l3_ipv6_ext)
+		return 0;
+
+	if (ptype_l4_tcp == 0)
+		printf("port %d cannot parse RTE_PTYPE_L4_TCP\n", portid);
+	if (ptype_l4_udp == 0)
+		printf("port %d cannot parse RTE_PTYPE_L4_UDP\n", portid);
+	if (ptype_l4_tcp && ptype_l4_udp)
+		return 1;
+
+	return 0;
+}
+
+static inline void
+em_parse_ptype(struct rte_mbuf *m)
+{
+	struct ether_hdr *eth_hdr;
+	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
+	uint16_t ether_type;
+	void *l3;
+	int hdr_len;
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+
+	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	ether_type = eth_hdr->ether_type;
+	l3 = (uint8_t *)eth_hdr + sizeof(struct ether_hdr);
+	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+		ipv4_hdr = (struct ipv4_hdr *)l3;
+		hdr_len = (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
+			  IPV4_IHL_MULTIPLIER;
+		if (hdr_len == sizeof(struct ipv4_hdr)) {
+			packet_type |= RTE_PTYPE_L3_IPV4;
+			if (ipv4_hdr->next_proto_id == IPPROTO_TCP)
+				packet_type |= RTE_PTYPE_L4_TCP;
+			else if (ipv4_hdr->next_proto_id == IPPROTO_UDP)
+				packet_type |= RTE_PTYPE_L4_UDP;
+		} else
+			packet_type |= RTE_PTYPE_L3_IPV4_EXT;
+	} else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+		ipv6_hdr = (struct ipv6_hdr *)l3;
+		if (ipv6_hdr->proto == IPPROTO_TCP)
+			packet_type |= RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP;
+		else if (ipv6_hdr->proto == IPPROTO_UDP)
+			packet_type |= RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP;
+		else
+			packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+	}
+
+	m->packet_type = packet_type;
+}
+
+uint16_t
+em_cb_parse_ptype(uint8_t port __rte_unused, uint16_t queue __rte_unused,
+		  struct rte_mbuf *pkts[], uint16_t nb_pkts,
+		  uint16_t max_pkts __rte_unused,
+		  void *user_param __rte_unused)
+{
+	unsigned i;
+
+	for (i = 0; i < nb_pkts; ++i)
+		em_parse_ptype(pkts[i]);
+
+	return nb_pkts;
 }
 
 /* main processing loop */
