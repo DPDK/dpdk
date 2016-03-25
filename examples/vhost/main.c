@@ -1163,10 +1163,13 @@ static void virtio_tx_offload(struct rte_mbuf *m)
 
 	l3_hdr = (char *)eth_hdr + m->l2_len;
 
-	ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
+	if (m->ol_flags & PKT_TX_IPV4) {
+		ipv4_hdr = l3_hdr;
+		ipv4_hdr->hdr_checksum = 0;
+		m->ol_flags |= PKT_TX_IP_CKSUM;
+	}
+
 	tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + m->l3_len);
-	m->ol_flags |= PKT_TX_IP_CKSUM;
-	ipv4_hdr->hdr_checksum = 0;
 	tcp_hdr->cksum = get_psd_sum(l3_hdr, m->ol_flags);
 }
 
