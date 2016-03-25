@@ -1791,7 +1791,8 @@ ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 
 	/* Clear pooling mode of PFVTCTL. It's required by X550. */
 	if (hw->mac.type == ixgbe_mac_X550 ||
-	    hw->mac.type == ixgbe_mac_X550EM_x) {
+	    hw->mac.type == ixgbe_mac_X550EM_x ||
+	    hw->mac.type == ixgbe_mac_X550EM_a) {
 		ctrl = IXGBE_READ_REG(hw, IXGBE_VT_CTL);
 		ctrl &= ~IXGBE_VT_CTL_POOLING_MODE_MASK;
 		IXGBE_WRITE_REG(hw, IXGBE_VT_CTL, ctrl);
@@ -2914,7 +2915,8 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
 
 	if (hw->mac.type == ixgbe_mac_X550 ||
-	    hw->mac.type == ixgbe_mac_X550EM_x)
+	    hw->mac.type == ixgbe_mac_X550EM_x ||
+	    hw->mac.type == ixgbe_mac_X550EM_a)
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 	dev_info->tx_offload_capa =
@@ -2926,7 +2928,8 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_TCP_TSO;
 
 	if (hw->mac.type == ixgbe_mac_X550 ||
-	    hw->mac.type == ixgbe_mac_X550EM_x)
+	    hw->mac.type == ixgbe_mac_X550EM_x ||
+	    hw->mac.type == ixgbe_mac_X550EM_a)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -5062,7 +5065,8 @@ ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 
 #define MAC_TYPE_FILTER_SUP(type)    do {\
 	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
-		(type) != ixgbe_mac_X550)\
+		(type) != ixgbe_mac_X550 && (type) != ixgbe_mac_X550EM_x &&\
+		(type) != ixgbe_mac_X550EM_a)\
 		return -ENOTSUP;\
 } while (0)
 
@@ -6397,7 +6401,8 @@ ixgbe_update_e_tag_eth_type(struct ixgbe_hw *hw,
 	uint32_t etag_etype;
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6441,7 +6446,8 @@ ixgbe_e_tag_enable(struct ixgbe_hw *hw)
 	uint32_t etag_etype;
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6481,7 +6487,8 @@ ixgbe_e_tag_disable(struct ixgbe_hw *hw)
 	uint32_t etag_etype;
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6524,7 +6531,8 @@ ixgbe_e_tag_filter_del(struct rte_eth_dev *dev,
 	uint32_t rar_low, rar_high;
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6559,7 +6567,8 @@ ixgbe_e_tag_filter_add(struct rte_eth_dev *dev,
 	uint32_t rar_low, rar_high;
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6678,7 +6687,8 @@ ixgbe_e_tag_forwarding_en_dis(struct rte_eth_dev *dev, bool en)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6751,7 +6761,8 @@ ixgbe_e_tag_insertion_en_dis(struct rte_eth_dev *dev,
 	}
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6821,7 +6832,8 @@ ixgbe_e_tag_stripping_en_dis(struct rte_eth_dev *dev,
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -6994,7 +7006,8 @@ ixgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
@@ -7030,7 +7043,8 @@ ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
-	    hw->mac.type != ixgbe_mac_X550EM_x) {
+	    hw->mac.type != ixgbe_mac_X550EM_x &&
+	    hw->mac.type != ixgbe_mac_X550EM_a) {
 		return -ENOTSUP;
 	}
 
