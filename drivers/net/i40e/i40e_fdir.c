@@ -113,29 +113,11 @@
 
 #define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
 
-static int i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq);
-static int i40e_check_fdir_flex_conf(
-	const struct rte_eth_fdir_flex_conf *conf);
-static void i40e_set_flx_pld_cfg(struct i40e_pf *pf,
-			 const struct rte_eth_flex_payload_cfg *cfg);
-static void i40e_set_flex_mask_on_pctype(struct i40e_pf *pf,
-		enum i40e_filter_pctype pctype,
-		const struct rte_eth_fdir_flex_mask *mask_cfg);
-static int i40e_fdir_construct_pkt(struct i40e_pf *pf,
-				     const struct rte_eth_fdir_input *fdir_input,
-				     unsigned char *raw_pkt);
-static int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
-			    const struct rte_eth_fdir_filter *filter,
-			    bool add);
 static int i40e_fdir_filter_programming(struct i40e_pf *pf,
 			enum i40e_filter_pctype pctype,
 			const struct rte_eth_fdir_filter *filter,
 			bool add);
 static int i40e_fdir_flush(struct rte_eth_dev *dev);
-static void i40e_fdir_info_get(struct rte_eth_dev *dev,
-			   struct rte_eth_fdir_info *fdir);
-static void i40e_fdir_stats_get(struct rte_eth_dev *dev,
-			   struct rte_eth_fdir_stats *stat);
 
 static int
 i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
