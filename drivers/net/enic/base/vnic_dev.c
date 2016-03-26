@@ -768,11 +768,9 @@ int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr)
 	static u32 instance;
 
 	if (vdev->notify || vdev->notify_pa) {
-		pr_warn("notify block %p still allocated.\n" \
-			"Ignore if restarting port\n", vdev->notify);
-		return -EINVAL;
+		return vnic_dev_notify_setcmd(vdev, vdev->notify,
+					      vdev->notify_pa, intr);
 	}
-
 	if (!vnic_dev_in_reset(vdev)) {
 		snprintf((char *)name, sizeof(name),
 			"vnic_notify-%d", instance++);
