@@ -523,7 +523,7 @@ static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, __rte_unused ui
 static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts)
 {
-	unsigned int index;
+	uint16_t index;
 	unsigned int frags;
 	unsigned int pkt_len;
 	unsigned int seg_len;
@@ -535,6 +535,7 @@ static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	unsigned short vlan_id;
 	unsigned short ol_flags;
 	uint8_t last_seg, eop;
+	unsigned int host_tx_descs = 0;
 
 	for (index = 0; index < nb_pkts; index++) {
 		tx_pkt = *tx_pkts++;
@@ -550,6 +551,7 @@ static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				return index;
 			}
 		}
+
 		pkt_len = tx_pkt->pkt_len;
 		vlan_id = tx_pkt->vlan_tci;
 		ol_flags = tx_pkt->ol_flags;
@@ -559,9 +561,19 @@ static uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			next_tx_pkt = tx_pkt->next;
 			seg_len = tx_pkt->data_len;
 			inc_len += seg_len;
-			eop = (pkt_len == inc_len) || (!next_tx_pkt);
-			last_seg = eop &&
-				(index == ((unsigned int)nb_pkts - 1));
+
+			host_tx_descs++;
+			last_seg = 0;
+			eop = 0;
+			if ((pkt_len == inc_len) || !next_tx_pkt) {
+				eop = 1;
+				/* post if last packet in batch or > thresh */
+				if ((index == (nb_pkts - 1)) ||
+				   (host_tx_descs > ENIC_TX_POST_THRESH)) {
+					last_seg = 1;
+					host_tx_descs = 0;
+				}
+			}
 			enic_send_pkt(enic, wq, tx_pkt, (unsigned short)seg_len,
 				      !frags, eop, last_seg, ol_flags, vlan_id);
 			tx_pkt = next_tx_pkt;
