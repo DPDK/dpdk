@@ -1454,18 +1454,11 @@ slave_add(struct bond_dev_private *internals,
 	slave_details->port_id = slave_eth_dev->data->port_id;
 	slave_details->last_link_status = 0;
 
-	/* If slave device doesn't support interrupts then we need to enabled
-	 * polling to monitor link status */
+	/* Mark slave devices that don't support interrupts so we can
+	 * compensate when we start the bond
+	 */
 	if (!(slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)) {
 		slave_details->link_status_poll_enabled = 1;
-
-		if (!internals->link_status_polling_enabled) {
-			internals->link_status_polling_enabled = 1;
-
-			rte_eal_alarm_set(internals->link_status_polling_interval_ms * 1000,
-					bond_ethdev_slave_link_status_change_monitor,
-					(void *)&rte_eth_devices[internals->port_id]);
-		}
 	}
 
 	slave_details->link_status_wait_to_complete = 0;
@@ -1550,6 +1543,18 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 					eth_dev->data->port_id, internals->slaves[i].port_id);
 			return -1;
 		}
+		/* We will need to poll for link status if any slave doesn't
+		 * support interrupts
+		 */
+		if (internals->slaves[i].link_status_poll_enabled)
+			internals->link_status_polling_enabled = 1;
+	}
+	/* start polling if needed */
+	if (internals->link_status_polling_enabled) {
+		rte_eal_alarm_set(
+			internals->link_status_polling_interval_ms * 1000,
+			bond_ethdev_slave_link_status_change_monitor,
+			(void *)&rte_eth_devices[internals->port_id]);
 	}
 
 	if (internals->user_defined_primary_port)
@@ -1622,6 +1627,8 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 
 	internals->active_slave_count = 0;
 	internals->link_status_polling_enabled = 0;
+	for (i = 0; i < internals->slave_count; i++)
+		internals->slaves[i].last_link_status = 0;
 
 	eth_dev->data->dev_link.link_status = 0;
 	eth_dev->data->dev_started = 0;
