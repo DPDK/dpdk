@@ -1077,7 +1077,7 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
  * @pf: board private structure
  * @pctype: pctype
  * @filter: fdir filter entry
- * @add: 0 - delelet, 1 - add
+ * @add: 0 - delete, 1 - add
  */
 static int
 i40e_fdir_filter_programming(struct i40e_pf *pf,
