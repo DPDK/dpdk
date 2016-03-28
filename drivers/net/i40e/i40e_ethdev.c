@@ -8892,7 +8892,7 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 	struct i40e_vsi *vsi = pf->main_vsi;
 	struct i40e_dcbx_config *dcb_cfg = &hw->local_dcbx_config;
 	uint16_t bsf, tc_mapping;
-	int i, j;
+	int i, j = 0;
 
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_DCB_FLAG)
 		dcb_info->nb_tcs = rte_bsf32(vsi->enabled_tc + 1);
@@ -8903,13 +8903,12 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 	for (i = 0; i < dcb_info->nb_tcs; i++)
 		dcb_info->tc_bws[i] = dcb_cfg->etscfg.tcbwtable[i];
 
-	j = 0;
-	do {
+	/* get queue mapping if vmdq is disabled */
+	if (!pf->nb_cfg_vmdq_vsi) {
 		for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
 			if (!(vsi->enabled_tc & (1 << i)))
 				continue;
 			tc_mapping = rte_le_to_cpu_16(vsi->info.tc_mapping[i]);
-			/* only main vsi support multi TCs */
 			dcb_info->tc_queue.tc_rxq[j][i].base =
 				(tc_mapping & I40E_AQ_VSI_TC_QUE_OFFSET_MASK) >>
 				I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT;
@@ -8921,7 +8920,27 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 			dcb_info->tc_queue.tc_txq[j][i].nb_queue =
 				dcb_info->tc_queue.tc_rxq[j][i].nb_queue;
 		}
+		return 0;
+	}
+
+	/* get queue mapping if vmdq is enabled */
+	do {
 		vsi = pf->vmdq[j].vsi;
+		for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+			if (!(vsi->enabled_tc & (1 << i)))
+				continue;
+			tc_mapping = rte_le_to_cpu_16(vsi->info.tc_mapping[i]);
+			dcb_info->tc_queue.tc_rxq[j][i].base =
+				(tc_mapping & I40E_AQ_VSI_TC_QUE_OFFSET_MASK) >>
+				I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT;
+			dcb_info->tc_queue.tc_txq[j][i].base =
+				dcb_info->tc_queue.tc_rxq[j][i].base;
+			bsf = (tc_mapping & I40E_AQ_VSI_TC_QUE_NUMBER_MASK) >>
+				I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT;
+			dcb_info->tc_queue.tc_rxq[j][i].nb_queue = 1 << bsf;
+			dcb_info->tc_queue.tc_txq[j][i].nb_queue =
+				dcb_info->tc_queue.tc_rxq[j][i].nb_queue;
+		}
 		j++;
 	} while (j < RTE_MIN(pf->nb_cfg_vmdq_vsi, ETH_MAX_VMDQ_POOL));
 	return 0;
