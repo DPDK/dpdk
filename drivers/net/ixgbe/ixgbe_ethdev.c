@@ -2131,6 +2131,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	     !RTE_ETH_DEV_SRIOV(dev).active) &&
 	    dev->data->dev_conf.intr_conf.rxq != 0) {
 		intr_vector = dev->data->nb_rx_queues;
+		if (intr_vector > IXGBE_MAX_INTR_QUEUE_NUM) {
+			PMD_INIT_LOG(ERR, "At most %d intr queues supported",
+					IXGBE_MAX_INTR_QUEUE_NUM);
+			return -ENOTSUP;
+		}
 		if (rte_intr_efd_enable(intr_handle, intr_vector))
 			return -1;
 	}
