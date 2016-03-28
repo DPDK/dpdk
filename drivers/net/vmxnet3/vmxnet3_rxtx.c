@@ -811,7 +811,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMS) !=
+	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMSCTP) !=
 	    ETH_TXQ_FLAGS_NOXSUMSCTP) {
 		PMD_INIT_LOG(ERR, "SCTP checksum offload not supported");
 		return -EINVAL;

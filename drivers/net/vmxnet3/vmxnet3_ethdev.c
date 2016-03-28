@@ -709,8 +709,7 @@ vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev,
 	dev_info->max_rx_pktlen = 16384; /* includes CRC, cf MAXFRS register */
 	dev_info->max_mac_addrs = VMXNET3_MAX_MAC_ADDRS;
 
-	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
-						ETH_TXQ_FLAGS_NOOFFLOADS;
+	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOXSUMSCTP;
 	dev_info->flow_type_rss_offloads = VMXNET3_RSS_OFFLOAD_ALL;
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
