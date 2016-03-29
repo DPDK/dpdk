@@ -300,7 +300,9 @@ F: doc/guides/nics/intel_vf.rst
 
 Intel i40e
 M: Helin Zhang <helin.zhang@intel.com>
+M: Jingjing Wu <jingjing.wu@intel.com>
 F: drivers/net/i40e/
+F: doc/guides/nics/i40e.rst
 F: doc/guides/nics/intel_vf.rst
 
 Intel fm10k
