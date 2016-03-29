@@ -34,7 +34,7 @@ default_path=$PATH
 
 # Load config options:
 # - AESNI_MULTI_BUFFER_LIB_PATH
-# - DPDK_BUILD_TEST_CONFIGS (target1+option1+option2 target2)
+# - DPDK_BUILD_TEST_CONFIGS (defconfig1+option1+option2 defconfig2)
 # - DPDK_DEP_CFLAGS
 # - DPDK_DEP_LDFLAGS
 # - DPDK_DEP_MOFED (y/[n])
@@ -61,10 +61,14 @@ print_help () {
 	        -jX   use X parallel jobs in "make"
 	        -s    short test with only first config without examples/doc
 
-	config: defconfig name followed by switches delimited with "+" sign
-	        Example: x86_64-native-linuxapp-gcc+next+shared
-	        Default is to enable most of the options.
+	config: defconfig[[~][+]option1[[~][+]option2...]]
+	        Example: x86_64-native-linuxapp-gcc+debug~RXTX_CALLBACKS
+	        The lowercase options are defined inside $(basename $0).
+	        The uppercase options can be the end of a defconfig option
+	        to enable if prefixed with '+' or to disable if prefixed with '~'.
+	        Default is to automatically enable most of the options.
 	        The external dependencies are setup with DPDK_DEP_* variables.
+	        If no config on command line, DPDK_BUILD_TEST_CONFIGS is used.
 	END_OF_HELP
 }
 
@@ -120,10 +124,19 @@ config () # <directory> <target> <options>
 	if [ ! -e $1/.config ] ; then
 		echo "================== Configure $1"
 		make T=$2 O=$1 config
-		echo $3 | grep -q next || \
+
+		echo 'Customize configuration'
+		# Built-in options (lowercase)
+		! echo $3 | grep -q '+default' || \
+		sed -ri 's,(RTE_MACHINE=")native,\1default,' $1/.config
+		echo $3 | grep -q '+next' || \
 		sed -ri           's,(NEXT_ABI=)y,\1n,' $1/.config
-		! echo $3 | grep -q shared || \
+		! echo $3 | grep -q '+shared' || \
 		sed -ri         's,(SHARED_LIB=)n,\1y,' $1/.config
+		! echo $3 | grep -q '+debug' || \
+		sed -ri            's,(DEBUG.*=)n,\1y,' $1/.config
+
+		# Automatic configuration
 		! echo $2 | grep -q '^x86_64' || \
 		sed -ri               's,(NUMA=)n,\1y,' $1/.config
 		sed -ri         's,(PCI_CONFIG=)n,\1y,' $1/.config
@@ -147,23 +160,28 @@ config () # <directory> <target> <options>
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
 		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config
-		sed -ri            's,(DEBUG.*=)n,\1y,' $1/.config
+
+		# Explicit enabler/disabler (uppercase)
+		for option in $(echo $3 | sed 's,[~+], &,g') ; do
+			pattern=$(echo $option | cut -c2-)
+			if echo $option | grep -q '^~' ; then
+				sed -ri "s,($pattern=)y,\1n," $1/.config
+			elif echo $option | grep -q '^+' ; then
+				sed -ri "s,($pattern=)n,\1y," $1/.config
+			fi
+		done
 	fi
 }
 
 for conf in $configs ; do
-	target=$(echo $conf | cut -d'+' -f1)
+	target=$(echo $conf | sed 's,[~+].*,,')
 	# reload config with DPDK_TARGET set
 	DPDK_TARGET=$target
 	reset_env
 	. $(dirname $(readlink -e $0))/load-devel-config.sh
 
-	options=$(echo $conf | cut -d'+' -sf2- --output-delimiter='-')
-	if [ -z "$options" ] ; then
-		dir=$target
-	else
-		dir=$target-$options
-	fi
+	options=$(echo $conf | sed 's,[^~+]*,,')
+	dir=$conf
 	config $dir $target $options
 
 	echo "================== Build $dir"
