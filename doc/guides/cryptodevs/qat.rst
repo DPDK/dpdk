@@ -62,7 +62,6 @@ Limitations
 * Chained mbufs are not supported.
 * Hash only is not supported except Snow3G UIA2.
 * Cipher only is not supported except Snow3G UEA2.
-* Only in-place is currently supported (destination address is the same as source address).
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * Not performance tuned.
 * Snow3g(UEA2) supported only if cipher length, cipher offset fields are byte-aligned.

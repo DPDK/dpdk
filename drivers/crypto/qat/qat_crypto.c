@@ -692,17 +692,21 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	*qat_req = ctx->fw_req;
 	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
 
-	/*
-	 * The following code assumes:
-	 * - single entry buffer.
-	 * - always in place.
-	 */
 	qat_req->comn_mid.dst_length =
-			qat_req->comn_mid.src_length =
-					rte_pktmbuf_data_len(op->sym->m_src);
+		qat_req->comn_mid.src_length =
+				rte_pktmbuf_data_len(op->sym->m_src);
+
 	qat_req->comn_mid.dest_data_addr =
-			qat_req->comn_mid.src_data_addr =
-					rte_pktmbuf_mtophys(op->sym->m_src);
+		qat_req->comn_mid.src_data_addr =
+			    rte_pktmbuf_mtophys(op->sym->m_src);
+
+	if (unlikely(op->sym->m_dst != NULL)) {
+		qat_req->comn_mid.dest_data_addr =
+				rte_pktmbuf_mtophys(op->sym->m_dst);
+		qat_req->comn_mid.dst_length =
+				rte_pktmbuf_data_len(op->sym->m_dst);
+	}
+
 	cipher_param = (void *)&qat_req->serv_specif_rqpars;
 	auth_param = (void *)((uint8_t *)cipher_param + sizeof(*cipher_param));
 
