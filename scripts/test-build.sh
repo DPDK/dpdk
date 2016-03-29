@@ -30,6 +30,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+default_path=$PATH
+
 # Load config options:
 # - AESNI_MULTI_BUFFER_LIB_PATH
 # - DPDK_BUILD_TEST_CONFIGS (target1+option1+option2 target2)
@@ -37,6 +39,10 @@
 # - DPDK_DEP_LDFLAGS
 # - DPDK_DEP_MOFED (y/[n])
 # - DPDK_DEP_PCAP (y/[n])
+# - DPDK_DEP_SSL (y/[n])
+# - DPDK_DEP_SZE (y/[n])
+# - DPDK_DEP_ZLIB (y/[n])
+# - DPDK_MAKE_JOBS (int)
 # - DPDK_NOTIFY (notify-send)
 . $(dirname $(readlink -e $0))/load-devel-config.sh
 
@@ -94,6 +100,21 @@ trap on_exit EXIT
 
 cd $(dirname $(readlink -m $0))/..
 
+reset_env ()
+{
+	export PATH=$default_path
+	unset CROSS
+	unset DPDK_DEP_CFLAGS
+	unset DPDK_DEP_LDFLAGS
+	unset DPDK_DEP_MOFED
+	unset DPDK_DEP_PCAP
+	unset DPDK_DEP_SSL
+	unset DPDK_DEP_SZE
+	unset DPDK_DEP_ZLIB
+	unset AESNI_MULTI_BUFFER_LIB_PATH
+	unset PQOS_INSTALL_PATH
+}
+
 config () # <directory> <target> <options>
 {
 	if [ ! -e $1/.config ] ; then
@@ -103,16 +124,14 @@ config () # <directory> <target> <options>
 		sed -ri           's,(NEXT_ABI=)y,\1n,' $1/.config
 		! echo $3 | grep -q shared || \
 		sed -ri         's,(SHARED_LIB=)n,\1y,' $1/.config
-		echo $2 | grep -q '^i686' || \
+		! echo $2 | grep -q '^x86_64' || \
 		sed -ri               's,(NUMA=)n,\1y,' $1/.config
 		sed -ri         's,(PCI_CONFIG=)n,\1y,' $1/.config
 		sed -ri    's,(LIBRTE_IEEE1588=)n,\1y,' $1/.config
 		sed -ri             's,(BYPASS=)n,\1y,' $1/.config
 		test "$DPDK_DEP_MOFED" != y || \
-		echo $2 | grep -q '^clang$' || \
 		sed -ri           's,(MLX._PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \
-		echo $2 | grep -q '^i686' || \
 		sed -ri       's,(PMD_SZEDATA2=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ZLIB" != y || \
 		sed -ri          's,(BNX2X_PMD=)n,\1y,' $1/.config
@@ -120,17 +139,13 @@ config () # <directory> <target> <options>
 		test "$DPDK_DEP_PCAP" != y || \
 		sed -ri               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
-		! echo $2 | grep -q '^x86_64' || \
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
-		! echo $2 | grep -q '^x86_64' || \
 		sed -ri      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
-		! echo $2 | grep -q '^i686' || \
-		sed -ri              's,(POWER=)y,\1n,' $1/.config
 		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config
 		sed -ri            's,(DEBUG.*=)n,\1y,' $1/.config
 	fi
@@ -138,6 +153,11 @@ config () # <directory> <target> <options>
 
 for conf in $configs ; do
 	target=$(echo $conf | cut -d'+' -f1)
+	# reload config with DPDK_TARGET set
+	DPDK_TARGET=$target
+	reset_env
+	. $(dirname $(readlink -e $0))/load-devel-config.sh
+
 	options=$(echo $conf | cut -d'+' -sf2- --output-delimiter='-')
 	if [ -z "$options" ] ; then
 		dir=$target
