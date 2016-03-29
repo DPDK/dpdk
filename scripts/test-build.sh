@@ -96,7 +96,7 @@ cd $(dirname $(readlink -m $0))/..
 config () # <directory> <target> <options>
 {
 	if [ ! -e $1/.config ] ; then
-		echo Custom configuration
+		echo "================== Configure $1"
 		make T=$2 O=$1 config
 		echo $3 | grep -q next || \
 		sed -ri           's,(NEXT_ABI=)y,\1n,' $1/.config
@@ -140,21 +140,23 @@ for conf in $configs ; do
 	options=$(echo $conf | cut -d'+' -sf2- --output-delimiter='-')
 	if [ -z "$options" ] ; then
 		dir=$target
-		config $dir $target
-		# Use install rule
-		make -j$J T=$target install EXTRA_CFLAGS="$DPDK_DEP_CFLAGS" EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS"
-		$short || make -j$J T=$target examples O=$dir/examples EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS"
 	else
 		dir=$target-$options
-		config $dir $target $options
-		echo "================== Build $dir"
-		# Use O variable without install
-		make -j$J O=$dir EXTRA_CFLAGS="$DPDK_DEP_CFLAGS" EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS"
-		echo "================== Build examples for $dir"
-		make -j$J -sC examples RTE_SDK=$(pwd) RTE_TARGET=$dir O=$(readlink -m $dir/examples) EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS"
 	fi
-	echo "################## $dir done."
+	config $dir $target $options
+
+	echo "================== Build $dir"
+	make -j$J EXTRA_CFLAGS="$DPDK_DEP_CFLAGS" \
+		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" O=$dir
 	! $short || break
+	echo "================== Build examples for $dir"
+	export RTE_SDK=$(pwd)
+	export RTE_TARGET=$dir
+	make -j$J -sC examples \
+		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" \
+		O=$(readlink -m $dir/examples)
+	unset RTE_TARGET
+	echo "################## $dir done."
 done
 
 if ! $short ; then
