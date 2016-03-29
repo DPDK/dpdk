@@ -114,7 +114,7 @@ rte_hash_create(const struct rte_hash_parameters *params);
  * in multi-process mode.
  *
  * @param h
- *   Hash table to reset
+ *   Hash table for which the function is to be changed
  * @param func
  *   New compare function
  */
