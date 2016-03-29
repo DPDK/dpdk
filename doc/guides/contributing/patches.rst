@@ -258,6 +258,14 @@ Where:
 * ``-v``: verbose.
 * ``patchX``: path to one or more patches.
 
+Then the git logs should be checked using the ``check-git-log.sh`` script.
+
+The script usage is::
+
+   check-git-log.sh [range]
+
+Where the range is a ``git log`` option.
+
 
 .. _contrib_check_compilation:
 
