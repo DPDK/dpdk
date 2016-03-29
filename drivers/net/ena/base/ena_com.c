@@ -303,7 +303,7 @@ ena_com_submit_admin_cmd(struct ena_com_admin_queue *admin_queue,
 			 struct ena_admin_acq_entry *comp,
 			 size_t comp_size_in_bytes)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct ena_comp_ctx *comp_ctx;
 
 	ENA_SPINLOCK_LOCK(admin_queue->q_lock, flags);
@@ -526,7 +526,7 @@ ena_com_wait_and_process_admin_cq_interrupts(
 		struct ena_comp_ctx *comp_ctx,
 		struct ena_com_admin_queue *admin_queue)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	int ret = 0;
 
 	ENA_WAIT_EVENT_WAIT(comp_ctx->wait_event,
@@ -571,7 +571,7 @@ static u32 ena_com_reg_bar_read32(struct ena_com_dev *ena_dev, u16 offset)
 	volatile struct ena_admin_ena_mmio_req_read_less_resp *read_resp =
 		mmio_read->read_resp;
 	u32 mmio_read_reg, ret;
-	unsigned long flags;
+	unsigned long flags = 0;
 	int i;
 
 	ENA_MIGHT_SLEEP();
@@ -1248,7 +1248,7 @@ void ena_com_abort_admin_commands(struct ena_com_dev *ena_dev)
 void ena_com_wait_for_abort_completion(struct ena_com_dev *ena_dev)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	ENA_SPINLOCK_LOCK(admin_queue->q_lock, flags);
 	while (ATOMIC32_READ(&admin_queue->outstanding_cmds) != 0) {
@@ -1293,7 +1293,7 @@ bool ena_com_get_admin_running_state(struct ena_com_dev *ena_dev)
 void ena_com_set_admin_running_state(struct ena_com_dev *ena_dev, bool state)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	ENA_SPINLOCK_LOCK(admin_queue->q_lock, flags);
 	ena_dev->admin_queue.running_state = state;
@@ -2190,7 +2190,7 @@ int ena_com_get_hash_function(struct ena_com_dev *ena_dev,
 	if (unlikely(rc))
 		return rc;
 
-	rss->hash_func = get_resp.u.flow_hash_func.selected_func;
+	rss->hash_func = (enum ena_admin_hash_functions)get_resp.u.flow_hash_func.selected_func;
 	if (func)
 		*func = rss->hash_func;
 
@@ -2276,7 +2276,7 @@ int ena_com_set_default_hash_ctrl(struct ena_com_dev *ena_dev)
 	int rc, i;
 
 	/* Get the supported hash input */
-	rc = ena_com_get_hash_ctrl(ena_dev, 0, NULL);
+	rc = ena_com_get_hash_ctrl(ena_dev, (enum ena_admin_flow_hash_proto)0, NULL);
 	if (unlikely(rc))
 		return rc;
 
@@ -2323,7 +2323,7 @@ int ena_com_set_default_hash_ctrl(struct ena_com_dev *ena_dev)
 
 	/* In case of failure, restore the old hash ctrl */
 	if (unlikely(rc))
-		ena_com_get_hash_ctrl(ena_dev, 0, NULL);
+		ena_com_get_hash_ctrl(ena_dev, (enum ena_admin_flow_hash_proto)0, NULL);
 
 	return rc;
 }
@@ -2360,7 +2360,7 @@ int ena_com_fill_hash_ctrl(struct ena_com_dev *ena_dev,
 
 	/* In case of failure, restore the old hash ctrl */
 	if (unlikely(rc))
-		ena_com_get_hash_ctrl(ena_dev, 0, NULL);
+		ena_com_get_hash_ctrl(ena_dev, (enum ena_admin_flow_hash_proto)0, NULL);
 
 	return 0;
 }
