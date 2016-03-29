@@ -570,6 +570,9 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 	register uint32_t tail;
 	int overflow;
 
+	if (unlikely(nb_ops == 0))
+		return 0;
+
 	/* read params used a lot in main loop into registers */
 	queue = &(tmp_qp->tx_q);
 	base_addr = (uint8_t *)queue->base_addr;
