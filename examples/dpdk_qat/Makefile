@@ -53,7 +53,7 @@ ifeq ($(CROSS_COMPILE),)
         ifneq ($(LBITS),i686)
         $(error The RTE_TARGET chosen is not compatible with this environment \
         (x86_64), for this application. Please change the definition of the \
-        RTE_TARGET environment variable, or run the application on a 32-bit OS)
+        RTE_TARGET environment variable, or run the application on a i686 OS)
         endif
     endif
 endif
