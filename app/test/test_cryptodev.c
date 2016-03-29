@@ -101,11 +101,26 @@ setup_test_string(struct rte_mempool *mpool,
 			rte_pktmbuf_free(m);
 			return NULL;
 		}
-
-		rte_memcpy(dst, string, t_len);
+		if (string != NULL)
+			rte_memcpy(dst, string, t_len);
+		else
+			memset(dst, 0, t_len);
 	}
 
 	return m;
+}
+static int
+setup_oop_test_mbufs(struct rte_mbuf **ibuf, struct rte_mbuf **obuf,
+		struct rte_mempool *mpool,	const char *string, size_t len,
+		uint8_t blocksize) {
+	*ibuf = setup_test_string(mpool, string, len, blocksize);
+	if (*ibuf == NULL)
+		return -(EFAULT);
+	*obuf = setup_test_string(mpool, NULL, len, blocksize);
+	if (*obuf == NULL)
+		return -(EFAULT);
+
+	return 0;
 }
 
 #if HEX_DUMP
@@ -906,6 +921,241 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 
 	return TEST_SUCCESS;
 }
+
+
+static int
+test_AES_CBC_HMAC_SHA1_encrypt_digest_oop(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Generate test mbuf data and space for digest */
+
+	TEST_ASSERT_EQUAL(setup_oop_test_mbufs(&ut_params->ibuf,
+			&ut_params->obuf, ts_params->mbuf_pool, catch_22_quote,
+			QUOTE_512_BYTES, 0), 0,
+			"Allocation of rte_mbuf failed");
+
+	ut_params->digest = (uint8_t *)rte_pktmbuf_append(ut_params->obuf,
+				DIGEST_BYTE_LENGTH_SHA1);
+
+	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
+
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+	ut_params->cipher_xform.cipher.key.data = aes_cbc_key;
+	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
+
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
+	ut_params->auth_xform.auth.key.length = HMAC_KEY_LENGTH_SHA1;
+	ut_params->auth_xform.auth.key.data = hmac_sha1_key;
+	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA1;
+
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0],
+			&ut_params->cipher_xform);
+
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+
+
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+	sym_op->m_dst = ut_params->obuf;
+
+	sym_op->auth.digest.data = ut_params->digest;
+
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			ut_params->obuf, QUOTE_512_BYTES);
+
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA1;
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	/* Set crypto operation cipher parameters */
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+			CIPHER_IV_LENGTH_AES_CBC);
+
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data,
+			"Failed to prepend place for iv input");
+
+	TEST_ASSERT_NOT_NULL(rte_pktmbuf_prepend(ut_params->obuf,
+			CIPHER_IV_LENGTH_AES_CBC),
+			"Failed to prepend place for iv output");
+
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
+
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
+			CIPHER_IV_LENGTH_AES_CBC);
+
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
+
+
+	/* Process crypto operation */
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	/* Validate obuf */
+	uint8_t *ciphertext;
+
+	ciphertext = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_dst,
+			uint8_t *, CIPHER_IV_LENGTH_AES_CBC);
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(ciphertext,
+			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
+			QUOTE_512_BYTES,
+			"ciphertext data not as expected");
+
+	uint8_t *digest = ciphertext + QUOTE_512_BYTES;
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(digest,
+			catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA1_digest,
+			gbl_cryptodev_type == RTE_CRYPTODEV_AESNI_MB_PMD ?
+					TRUNCATED_DIGEST_BYTE_LENGTH_SHA1 :
+					DIGEST_BYTE_LENGTH_SHA1,
+			"Generated digest data not as expected");
+
+
+	return TEST_SUCCESS;
+}
+
+
+static int
+test_AES_CBC_HMAC_SHA1_decrypt_digest_oop_ver(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Generate test mbuf data and digest */
+
+	TEST_ASSERT_EQUAL(setup_oop_test_mbufs(&ut_params->ibuf,
+			&ut_params->obuf, ts_params->mbuf_pool,
+			(const char *)
+			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
+			QUOTE_512_BYTES, 0), 0,
+			"Allocation of rte_mbuf failed");
+
+	ut_params->digest = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			DIGEST_BYTE_LENGTH_SHA1);
+
+	TEST_ASSERT_NOT_NULL(ut_params->digest,	"no room to append digest");
+
+	rte_memcpy(ut_params->digest,
+			catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA1_digest,
+			DIGEST_BYTE_LENGTH_SHA1);
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = NULL;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	ut_params->cipher_xform.cipher.key.data = aes_cbc_key;
+	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = &ut_params->cipher_xform;
+
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
+	ut_params->auth_xform.auth.key.length = HMAC_KEY_LENGTH_SHA1;
+	ut_params->auth_xform.auth.key.data = hmac_sha1_key;
+	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA1;
+
+	/* Create Crypto session*/
+	ut_params->sess =
+		rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+						&ut_params->auth_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	/* attach symmetric crypto session to crypto operations */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+	sym_op->m_dst = ut_params->obuf;
+
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			ut_params->ibuf, QUOTE_512_BYTES);
+	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA1;
+
+	sym_op->auth.data.length = QUOTE_512_BYTES;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
+			CIPHER_IV_LENGTH_AES_CBC);
+
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data,
+			"Failed to prepend place for iv input");
+
+	TEST_ASSERT_NOT_NULL(rte_pktmbuf_prepend(ut_params->obuf,
+			CIPHER_IV_LENGTH_AES_CBC),
+			"Failed to prepend place for iv output");
+
+	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
+
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
+			CIPHER_IV_LENGTH_AES_CBC);
+
+	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.length = QUOTE_512_BYTES;
+
+
+	/* Process crypto operation */
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"Digest verification failed");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			rte_pktmbuf_mtod(ut_params->obuf, uint8_t *) +
+			CIPHER_IV_LENGTH_AES_CBC,
+			catch_22_quote,
+			QUOTE_512_BYTES,
+			"Ciphertext data not as expected");
+
+
+	return TEST_SUCCESS;
+}
+
 
 static int
 test_AES_CBC_HMAC_SHA1_encrypt_digest_sessionless(void)
@@ -1900,6 +2150,46 @@ create_snow3g_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 	return 0;
 }
 
+static int
+create_snow3g_cipher_operation_oop(const uint8_t *iv, const unsigned iv_len,
+			const unsigned cipher_len,
+			const unsigned cipher_offset)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	unsigned iv_pad_len = 0;
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+				"Failed to allocate pktmbuf offload");
+
+	/* Set crypto operation data parameters */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+	sym_op->m_dst = ut_params->obuf;
+
+	/* iv */
+	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf
+			, iv_pad_len);
+
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
+
+	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = iv_pad_len;
+
+	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
+	sym_op->cipher.data.length = cipher_len;
+	sym_op->cipher.data.offset = cipher_offset;
+	return 0;
+}
 
 static int
 create_snow3g_cipher_auth_session(uint8_t dev_id,
@@ -2421,7 +2711,6 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
 	int retval;
-
 	uint8_t *plaintext, *ciphertext;
 	uint8_t plaintext_pad_len;
 	uint8_t lastByteValidBits = 8;
@@ -2465,7 +2754,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 						ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 
-	ut_params->obuf = ut_params->op->sym->m_src;
+	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
 				+ tdata->iv.len;
@@ -2489,6 +2778,94 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 		"Snow3G Ciphertext data not as expected");
 	return 0;
 }
+
+
+static int
+test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	uint8_t *plaintext, *ciphertext;
+
+	int retval;
+	uint8_t plaintext_pad_len;
+	uint8_t lastByteValidBits = 8;
+	uint8_t lastByteMask = 0xFF;
+
+	/* Create SNOW3G session */
+	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
+			"Failed to allocate input buffer in mempool");
+	TEST_ASSERT_NOT_NULL(ut_params->obuf,
+			"Failed to allocate output buffer in mempool");
+
+	/* Clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+	       rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	/*
+	 * Append data which is padded to a
+	 * multiple of the algorithms block size
+	 */
+	/*tdata->plaintext.len = tdata->plaintext.len >> 3;*/
+	plaintext_pad_len = RTE_ALIGN_CEIL((tdata->plaintext.len >> 3), 16);
+
+	plaintext = (uint8_t *) rte_pktmbuf_append(ut_params->ibuf,
+						plaintext_pad_len);
+
+	rte_pktmbuf_append(ut_params->obuf,
+						plaintext_pad_len);
+
+	memcpy(plaintext, tdata->plaintext.data, (tdata->plaintext.len >> 3));
+
+#ifdef RTE_APP_TEST_DEBUG
+	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+#endif
+	/* Create SNOW3G operation */
+	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
+					tdata->iv.len,
+					tdata->validCipherLenInBits.len,
+					tdata->validCipherOffsetLenInBits.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+				+ tdata->iv.len;
+	else
+		ciphertext = plaintext;
+
+	lastByteValidBits = (tdata->validDataLenInBits.len % 8);
+	if (lastByteValidBits == 0)
+		lastByteValidBits = 8;
+	lastByteMask = lastByteMask << (8 - lastByteValidBits);
+	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
+
+#ifdef RTE_APP_TEST_DEBUG
+	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+#endif
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+		ciphertext,
+		tdata->ciphertext.data,
+		tdata->ciphertext.len >> 3,
+		"Snow3G Ciphertext data not as expected");
+	return 0;
+}
+
 
 static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 {
@@ -2549,6 +2926,91 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 		lastByteValidBits = 8;
 	lastByteMask = lastByteMask << (8 - lastByteValidBits);
 	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
+
+#ifdef RTE_APP_TEST_DEBUG
+	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+#endif
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(plaintext,
+				tdata->plaintext.data,
+				tdata->plaintext.len >> 3,
+				"Snow3G Plaintext data not as expected");
+	return 0;
+}
+
+static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	uint8_t *plaintext, *ciphertext;
+	uint8_t ciphertext_pad_len;
+	uint8_t lastByteValidBits = 8;
+	uint8_t lastByteMask = 0xFF;
+
+	/* Create SNOW3G session */
+	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_DECRYPT,
+					tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
+			"Failed to allocate input buffer");
+	TEST_ASSERT_NOT_NULL(ut_params->obuf,
+			"Failed to allocate output buffer");
+
+	/* Clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+	       rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	memset(rte_pktmbuf_mtod(ut_params->obuf, uint8_t *), 0,
+		       rte_pktmbuf_tailroom(ut_params->obuf));
+
+	/*
+	 * Append data which is padded to a
+	 * multiple of the algorithms block size
+	 */
+	ciphertext_pad_len = RTE_ALIGN_CEIL((tdata->ciphertext.len >> 3), 16);
+
+	ciphertext = (uint8_t *) rte_pktmbuf_append(ut_params->ibuf,
+						ciphertext_pad_len);
+
+	rte_pktmbuf_append(ut_params->obuf,
+						ciphertext_pad_len);
+
+	memcpy(ciphertext, tdata->ciphertext.data, tdata->ciphertext.len >> 3);
+
+#ifdef RTE_APP_TEST_DEBUG
+	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+#endif
+	/* Create SNOW3G operation */
+	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
+					tdata->iv.len,
+					tdata->validCipherLenInBits.len,
+					tdata->validCipherOffsetLenInBits.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+				+ tdata->iv.len;
+	else
+		plaintext = ciphertext;
+	lastByteValidBits = (tdata->validDataLenInBits.len  % 8);
+	if (lastByteValidBits == 0)
+		lastByteValidBits = 8;
+	lastByteMask = lastByteMask << (8 - lastByteValidBits);
+	(*(plaintext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
@@ -2747,6 +3209,12 @@ test_snow3g_encryption_test_case_1(void)
 }
 
 static int
+test_snow3g_encryption_test_case_1_oop(void)
+{
+	return test_snow3g_encryption_oop(&snow3g_test_case_1);
+}
+
+static int
 test_snow3g_encryption_test_case_2(void)
 {
 	return test_snow3g_encryption(&snow3g_test_case_2);
@@ -2774,6 +3242,12 @@ static int
 test_snow3g_decryption_test_case_1(void)
 {
 	return test_snow3g_decryption(&snow3g_test_case_1);
+}
+
+static int
+test_snow3g_decryption_test_case_1_oop(void)
+{
+	return test_snow3g_decryption_oop(&snow3g_test_case_1);
 }
 
 static int
@@ -3769,6 +4243,9 @@ test_null_burst_operation(void)
 	return TEST_SUCCESS;
 }
 
+
+
+
 static struct unit_test_suite cryptodev_qat_testsuite  = {
 	.suite_name = "Crypto QAT Unit Test Suite",
 	.setup = testsuite_setup,
@@ -3782,6 +4259,11 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 				test_queue_pair_descriptor_setup),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CBC_HMAC_SHA1_encrypt_digest_oop),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CBC_HMAC_SHA1_decrypt_digest_oop_ver),
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_AES_CBC_HMAC_SHA1_encrypt_digest),
@@ -3847,6 +4329,11 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_snow3g_encryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_5),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_1_oop),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_test_case_1_oop),
 
 		/** Snow3G decrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
