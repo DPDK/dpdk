@@ -57,6 +57,9 @@ typedef uint16_t u16;
 typedef uint8_t u8;
 
 typedef uint64_t dma_addr_t;
+#ifndef ETIME
+#define ETIME ETIMEDOUT
+#endif
 
 #define ena_atomic32_t rte_atomic32_t
 #define ena_mem_handle_t void *

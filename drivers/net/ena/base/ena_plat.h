@@ -42,6 +42,8 @@
 #else
 #include "ena_plat_dpdk.h"
 #endif
+#elif defined(__FreeBSD__)
+#include "ena_plat_dpdk.h"
 #elif defined(_WIN32)
 #include "ena_plat_windows.h"
 #else
