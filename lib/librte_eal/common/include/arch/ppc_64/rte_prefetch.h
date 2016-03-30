@@ -41,17 +41,17 @@ extern "C" {
 
 static inline void rte_prefetch0(const volatile void *p)
 {
-	asm volatile ("dcbt 0,%[p],1" : : [p] "r" (p));
+	asm volatile ("dcbt 0,%[p],0" : : [p] "r" (p));
 }
 
 static inline void rte_prefetch1(const volatile void *p)
 {
-	asm volatile ("dcbt 0,%[p],1" : : [p] "r" (p));
+	asm volatile ("dcbt 0,%[p],0" : : [p] "r" (p));
 }
 
 static inline void rte_prefetch2(const volatile void *p)
 {
-	asm volatile ("dcbt 0,%[p],1" : : [p] "r" (p));
+	asm volatile ("dcbt 0,%[p],0" : : [p] "r" (p));
 }
 
 static inline void rte_prefetch_non_temporal(const volatile void *p)
