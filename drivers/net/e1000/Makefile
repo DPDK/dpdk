@@ -54,6 +54,9 @@ else
 #
 CFLAGS_BASE_DRIVER = -Wno-uninitialized -Wno-unused-parameter
 CFLAGS_BASE_DRIVER += -Wno-unused-variable
+ifeq ($(shell test $(GCC_VERSION) -ge 60 && echo 1), 1)
+CFLAGS_BASE_DRIVER += -Wno-misleading-indentation
+endif
 endif
 
 #
