@@ -246,6 +246,8 @@ void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 	r_stats->ierrors = stats->rx.rx_errors;
 	r_stats->oerrors = stats->tx.tx_errors;
 
+	r_stats->imissed = stats->rx.rx_drop;
+
 	r_stats->imcasts = stats->rx.rx_multicast_frames_ok;
 	r_stats->rx_nombuf = stats->rx.rx_no_bufs;
 }
