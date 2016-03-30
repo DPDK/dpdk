@@ -41,9 +41,9 @@
 static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 	{	/* AES GCM (AUTH) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-		.sym = {
+		{.sym = {
 			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
-			.auth = {
+			{.auth = {
 				.algo = RTE_CRYPTO_AUTH_AES_GCM,
 				.block_size = 16,
 				.key_size = {
@@ -61,14 +61,14 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 					.max = 12,
 					.increment = 4
 				}
-			}
-		}
+			}, }
+		}, }
 	},
 	{	/* AES GCM (CIPHER) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-		.sym = {
+		{.sym = {
 			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-			.cipher = {
+			{.cipher = {
 				.algo = RTE_CRYPTO_CIPHER_AES_GCM,
 				.block_size = 16,
 				.key_size = {
@@ -81,8 +81,8 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				}
-			}
-		}
+			}, }
+		}, }
 	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
