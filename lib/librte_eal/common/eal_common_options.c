@@ -797,8 +797,7 @@ eal_parse_common_option(int opt, const char *optarg,
 	/* force number of channels */
 	case 'n':
 		conf->force_nchannel = atoi(optarg);
-		if (conf->force_nchannel == 0 ||
-		    conf->force_nchannel > 4) {
+		if (conf->force_nchannel == 0) {
 			RTE_LOG(ERR, EAL, "invalid channel number\n");
 			return -1;
 		}
