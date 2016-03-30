@@ -710,7 +710,6 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * the last mbuf of the current packet.
 		 */
 		if (rcd->sop) {
-			VMXNET3_ASSERT(rxq->start_seg != NULL);
 			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
 
 			if (unlikely(rcd->len == 0)) {
@@ -729,7 +728,6 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			struct rte_mbuf *start = rxq->start_seg;
 
 			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_BODY);
-			VMXNET3_ASSERT(start != NULL);
 
 			start->pkt_len += rxm->data_len;
 			start->nb_segs++;
