@@ -744,11 +744,11 @@ add_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 				lpm->tbl24[i].depth <= depth)) {
 
 			struct rte_lpm_tbl_entry_v20 new_tbl24_entry = {
-				{ .next_hop = next_hop, },
 				.valid = VALID,
 				.valid_group = 0,
 				.depth = depth,
 			};
+			new_tbl24_entry.next_hop = next_hop;
 
 			/* Setting tbl24 entry in one go to avoid race
 			 * conditions
@@ -775,8 +775,8 @@ add_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip, uint8_t depth,
 						.valid = VALID,
 						.valid_group = VALID,
 						.depth = depth,
-						.next_hop = next_hop,
 					};
+					new_tbl8_entry.next_hop = next_hop;
 
 					/*
 					 * Setting tbl8 entry in one go to avoid
@@ -975,10 +975,9 @@ add_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked, uint8_t depth,
 				struct rte_lpm_tbl_entry_v20 new_tbl8_entry = {
 					.valid = VALID,
 					.depth = depth,
-					.next_hop = next_hop,
 					.valid_group = lpm->tbl8[i].valid_group,
 				};
-
+				new_tbl8_entry.next_hop = next_hop;
 				/*
 				 * Setting tbl8 entry in one go to avoid race
 				 * condition
@@ -1375,9 +1374,9 @@ delete_depth_small_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 			.valid = VALID,
 			.valid_group = VALID,
 			.depth = sub_rule_depth,
-			.next_hop = lpm->rules_tbl
-			[sub_rule_index].next_hop,
 		};
+		new_tbl8_entry.next_hop =
+				lpm->rules_tbl[sub_rule_index].next_hop;
 
 		for (i = tbl24_index; i < (tbl24_index + tbl24_range); i++) {
 
@@ -1639,9 +1638,10 @@ delete_depth_big_v20(struct rte_lpm_v20 *lpm, uint32_t ip_masked,
 			.valid = VALID,
 			.depth = sub_rule_depth,
 			.valid_group = lpm->tbl8[tbl8_group_start].valid_group,
-			.next_hop = lpm->rules_tbl[sub_rule_index].next_hop,
 		};
 
+		new_tbl8_entry.next_hop =
+				lpm->rules_tbl[sub_rule_index].next_hop;
 		/*
 		 * Loop through the range of entries on tbl8 for which the
 		 * rule_to_delete must be modified.
