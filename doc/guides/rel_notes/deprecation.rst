@@ -54,3 +54,8 @@ Deprecation Notices
   induce a modification of the rte_mempool structure, plus a
   modification of the API of rte_mempool_obj_iter(), implying a breakage
   of the ABI.
+
+* ABI changes are planned for struct rte_port_source_params in order to
+  support PCAP file reading feature. The release 16.04 contains this ABI
+  change wrapped by RTE_NEXT_ABI macro. Release 16.07 will contain this
+  change, and no backwards compatibility is planned.
