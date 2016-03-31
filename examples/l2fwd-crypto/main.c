@@ -804,16 +804,16 @@ l2fwd_crypto_usage(const char *prgname)
 
 		"  --cipher_algo ALGO\n"
 		"  --cipher_op ENCRYPT / DECRYPT\n"
-		"  --cipher_key KEY\n"
+		"  --cipher_key KEY (bytes separated with \":\")\n"
 		"  --cipher_key_random_size SIZE: size of cipher key when generated randomly\n"
-		"  --iv IV\n"
+		"  --iv IV (bytes separated with \":\")\n"
 		"  --iv_random_size SIZE: size of IV when generated randomly\n"
 
 		"  --auth_algo ALGO\n"
 		"  --auth_op GENERATE / VERIFY\n"
-		"  --auth_key KEY\n"
+		"  --auth_key KEY (bytes separated with \":\")\n"
 		"  --auth_key_random_size SIZE: size of auth key when generated randomly\n"
-		"  --aad AAD\n"
+		"  --aad AAD (bytes separated with \":\")\n"
 		"  --aad_random_size SIZE: size of AAD when generated randomly\n"
 		"  --digest_size SIZE: size of digest to be generated/verified\n"
 
