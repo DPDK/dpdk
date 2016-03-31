@@ -55,6 +55,7 @@ struct pipeline_flow_classification {
 	uint32_t key_offset;
 	uint32_t hash_offset;
 	uint8_t key_mask[PIPELINE_FC_FLOW_KEY_MAX_SIZE];
+	uint32_t key_mask_present;
 	uint32_t flow_id_offset;
 
 } __rte_cache_aligned;
@@ -308,7 +309,7 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 				"\"%s\" is too long", params->name,
 				arg_name);
 
-			snprintf(key_mask_str, mask_str_len, "%s",
+			snprintf(key_mask_str, sizeof(key_mask_str), "%s",
 				arg_value);
 
 			continue;
@@ -370,10 +371,20 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 		uint32_t key_size = p->key_size;
 		int status;
 
+		PIPELINE_ARG_CHECK(((key_size == 8) || (key_size == 16)),
+			"Parse error in section \"%s\": entry key_mask "
+			"only allowed for key_size of 8 or 16 bytes",
+			params->name);
+
 		PIPELINE_ARG_CHECK((strlen(key_mask_str) ==
 			(key_size * 2)), "Parse error in section "
 			"\"%s\": key_mask should have exactly %u hex "
 			"digits", params->name, (key_size * 2));
+
+		PIPELINE_ARG_CHECK((hash_offset_present == 0), "Parse "
+			"error in section \"%s\": entry hash_offset only "
+			"allowed when key_mask is not present",
+			params->name);
 
 		status = parse_hex_string(key_mask_str, p->key_mask,
 			&p->key_size);
@@ -382,6 +393,8 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 			(key_size == p->key_size)), params->name,
 			"key_mask", key_mask_str);
 	}
+
+	p->key_mask_present = key_mask_present;
 
 	return 0;
 }
@@ -486,7 +499,8 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 			.signature_offset = p_fc->hash_offset,
 			.key_offset = p_fc->key_offset,
 			.f_hash = hash_func[(p_fc->key_size / 8) - 1],
-			.key_mask = p_fc->key_mask,
+			.key_mask = (p_fc->key_mask_present) ?
+				p_fc->key_mask : NULL,
 			.seed = 0,
 		};
 
@@ -497,7 +511,8 @@ static void *pipeline_fc_init(struct pipeline_params *params,
 			.signature_offset = p_fc->hash_offset,
 			.key_offset = p_fc->key_offset,
 			.f_hash = hash_func[(p_fc->key_size / 8) - 1],
-			.key_mask = p_fc->key_mask,
+			.key_mask = (p_fc->key_mask_present) ?
+				p_fc->key_mask : NULL,
 			.seed = 0,
 		};
 
