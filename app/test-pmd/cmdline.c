@@ -988,6 +988,49 @@ struct cmd_config_speed_all {
 	cmdline_fixed_string_t value2;
 };
 
+static int
+parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint16_t *speed)
+{
+
+	int duplex;
+
+	if (!strcmp(duplexstr, "half")) {
+		duplex = ETH_LINK_HALF_DUPLEX;
+	} else if (!strcmp(duplexstr, "full")) {
+		duplex = ETH_LINK_FULL_DUPLEX;
+	} else if (!strcmp(duplexstr, "auto")) {
+		duplex = ETH_LINK_FULL_DUPLEX;
+	} else {
+		printf("Unknown duplex parameter\n");
+		return -1;
+	}
+
+	if (!strcmp(speedstr, "10")) {
+		*speed = ETH_LINK_SPEED_10;
+	} else if (!strcmp(speedstr, "100")) {
+		*speed = ETH_LINK_SPEED_100;
+	} else {
+		if (duplex != ETH_LINK_FULL_DUPLEX) {
+			printf("Invalid speed/duplex parameters\n");
+			return -1;
+		}
+		if (!strcmp(speedstr, "1000")) {
+			*speed = ETH_LINK_SPEED_1000;
+		} else if (!strcmp(speedstr, "10000")) {
+			*speed = ETH_LINK_SPEED_10G;
+		} else if (!strcmp(speedstr, "40000")) {
+			*speed = ETH_LINK_SPEED_40G;
+		} else if (!strcmp(speedstr, "auto")) {
+			*speed = ETH_LINK_SPEED_AUTONEG;
+		} else {
+			printf("Unknown speed parameter\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static void
 cmd_config_speed_all_parsed(void *parsed_result,
 			__attribute__((unused)) struct cmdline *cl,
@@ -1003,33 +1046,9 @@ cmd_config_speed_all_parsed(void *parsed_result,
 		return;
 	}
 
-	if (!strcmp(res->value1, "10"))
-		link_speed = ETH_LINK_SPEED_10;
-	else if (!strcmp(res->value1, "100"))
-		link_speed = ETH_LINK_SPEED_100;
-	else if (!strcmp(res->value1, "1000"))
-		link_speed = ETH_LINK_SPEED_1000;
-	else if (!strcmp(res->value1, "10000"))
-		link_speed = ETH_LINK_SPEED_10G;
-	else if (!strcmp(res->value1, "40000"))
-		link_speed = ETH_LINK_SPEED_40G;
-	else if (!strcmp(res->value1, "auto"))
-		link_speed = ETH_LINK_SPEED_AUTONEG;
-	else {
-		printf("Unknown parameter\n");
+	if (parse_and_check_speed_duplex(res->value1, res->value2,
+			&link_speed) < 0)
 		return;
-	}
-
-	if (!strcmp(res->value2, "half"))
-		link_duplex = ETH_LINK_HALF_DUPLEX;
-	else if (!strcmp(res->value2, "full"))
-		link_duplex = ETH_LINK_FULL_DUPLEX;
-	else if (!strcmp(res->value2, "auto"))
-		link_duplex = ETH_LINK_AUTONEG_DUPLEX;
-	else {
-		printf("Unknown parameter\n");
-		return;
-	}
 
 	FOREACH_PORT(pid, ports) {
 		ports[pid].dev_conf.link_speed = link_speed;
@@ -1102,33 +1121,9 @@ cmd_config_speed_specific_parsed(void *parsed_result,
 	if (port_id_is_invalid(res->id, ENABLED_WARN))
 		return;
 
-	if (!strcmp(res->value1, "10"))
-		link_speed = ETH_LINK_SPEED_10;
-	else if (!strcmp(res->value1, "100"))
-		link_speed = ETH_LINK_SPEED_100;
-	else if (!strcmp(res->value1, "1000"))
-		link_speed = ETH_LINK_SPEED_1000;
-	else if (!strcmp(res->value1, "10000"))
-		link_speed = ETH_LINK_SPEED_10000;
-	else if (!strcmp(res->value1, "40000"))
-		link_speed = ETH_LINK_SPEED_40G;
-	else if (!strcmp(res->value1, "auto"))
-		link_speed = ETH_LINK_SPEED_AUTONEG;
-	else {
-		printf("Unknown parameter\n");
+	if (parse_and_check_speed_duplex(res->value1, res->value2,
+			&link_speed) < 0)
 		return;
-	}
-
-	if (!strcmp(res->value2, "half"))
-		link_duplex = ETH_LINK_HALF_DUPLEX;
-	else if (!strcmp(res->value2, "full"))
-		link_duplex = ETH_LINK_FULL_DUPLEX;
-	else if (!strcmp(res->value2, "auto"))
-		link_duplex = ETH_LINK_AUTONEG_DUPLEX;
-	else {
-		printf("Unknown parameter\n");
-		return;
-	}
 
 	ports[res->id].dev_conf.link_speed = link_speed;
 	ports[res->id].dev_conf.link_duplex = link_duplex;
