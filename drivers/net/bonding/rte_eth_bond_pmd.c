@@ -1499,7 +1499,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	eth_dev->data->dev_link.link_status = 0;
+	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	eth_dev->data->dev_started = 1;
 
 	internals = eth_dev->data->dev_private;
@@ -1630,7 +1630,7 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < internals->slave_count; i++)
 		internals->slaves[i].last_link_status = 0;
 
-	eth_dev->data->dev_link.link_status = 0;
+	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	eth_dev->data->dev_started = 0;
 }
 
@@ -1796,7 +1796,7 @@ bond_ethdev_link_update(struct rte_eth_dev *bonded_eth_dev,
 
 	if (!bonded_eth_dev->data->dev_started ||
 		internals->active_slave_count == 0) {
-		bonded_eth_dev->data->dev_link.link_status = 0;
+		bonded_eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 		return 0;
 	} else {
 		struct rte_eth_dev *slave_eth_dev;
@@ -1807,7 +1807,7 @@ bond_ethdev_link_update(struct rte_eth_dev *bonded_eth_dev,
 
 			(*slave_eth_dev->dev_ops->link_update)(slave_eth_dev,
 					wait_to_complete);
-			if (slave_eth_dev->data->dev_link.link_status == 1) {
+			if (slave_eth_dev->data->dev_link.link_status == ETH_LINK_UP) {
 				link_up = 1;
 				break;
 			}
@@ -1976,7 +1976,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		/* if no active slave ports then set this port to be primary port */
 		if (internals->active_slave_count < 1) {
 			/* If first active slave, then change link status */
-			bonded_eth_dev->data->dev_link.link_status = 1;
+			bonded_eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 			internals->current_primary_port = port_id;
 			lsc_flag = 1;
 
@@ -2004,7 +2004,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		 * link properties */
 		if (internals->active_slave_count < 1) {
 			lsc_flag = 1;
-			bonded_eth_dev->data->dev_link.link_status = 0;
+			bonded_eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 
 			link_properties_reset(bonded_eth_dev);
 		}

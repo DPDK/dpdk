@@ -79,7 +79,7 @@ static void  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
 	void *pkt = NULL;
 	struct virtual_ethdev_private *prv = eth_dev->data->dev_private;
 
-	eth_dev->data->dev_link.link_status = 0;
+	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	eth_dev->data->dev_started = 0;
 	while (rte_ring_dequeue(prv->rx_queue, &pkt) != -ENOENT)
 		rte_pktmbuf_free(pkt);
@@ -199,7 +199,7 @@ virtual_ethdev_link_update_success(struct rte_eth_dev *bonded_eth_dev,
 		int wait_to_complete __rte_unused)
 {
 	if (!bonded_eth_dev->data->dev_started)
-		bonded_eth_dev->data->dev_link.link_status = 0;
+		bonded_eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 
 	return 0;
 }
@@ -603,7 +603,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
-	eth_dev->data->dev_link.link_status = 0;
+	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	eth_dev->data->dev_link.link_speed = ETH_LINK_SPEED_10000;
 	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
 

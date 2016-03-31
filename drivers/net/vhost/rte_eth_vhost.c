@@ -110,7 +110,7 @@ static pthread_t session_th;
 static struct rte_eth_link pmd_link = {
 		.link_speed = 10000,
 		.link_duplex = ETH_LINK_FULL_DUPLEX,
-		.link_status = 0
+		.link_status = ETH_LINK_DOWN
 };
 
 struct rte_vhost_vring_state {
@@ -265,7 +265,7 @@ new_device(struct virtio_net *dev)
 
 	dev->flags |= VIRTIO_DEV_RUNNING;
 	dev->priv = eth_dev;
-	eth_dev->data->dev_link.link_status = 1;
+	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		vq = eth_dev->data->rx_queues[i];
@@ -323,7 +323,7 @@ destroy_device(volatile struct virtio_net *dev)
 			rte_pause();
 	}
 
-	eth_dev->data->dev_link.link_status = 0;
+	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 
 	dev->priv = NULL;
 	dev->flags &= ~VIRTIO_DEV_RUNNING;

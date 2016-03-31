@@ -125,7 +125,7 @@ static const char *drivername = "Pcap PMD";
 static struct rte_eth_link pmd_link = {
 		.link_speed = 10000,
 		.link_duplex = ETH_LINK_FULL_DUPLEX,
-		.link_status = 0
+		.link_status = ETH_LINK_DOWN,
 };
 
 static int
@@ -428,7 +428,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 
 status_up:
 
-	dev->data->dev_link.link_status = 1;
+	dev->data->dev_link.link_status = ETH_LINK_UP;
 	return 0;
 }
 
@@ -479,7 +479,7 @@ eth_dev_stop(struct rte_eth_dev *dev)
 	}
 
 status_down:
-	dev->data->dev_link.link_status = 0;
+	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 }
 
 static int

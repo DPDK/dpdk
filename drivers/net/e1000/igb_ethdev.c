@@ -2059,11 +2059,11 @@ eth_igb_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	if (link_check) {
 		hw->mac.ops.get_link_up_info(hw, &link.link_speed,
 					  &link.link_duplex);
-		link.link_status = 1;
+		link.link_status = ETH_LINK_UP;
 	} else if (!link_check) {
 		link.link_speed = 0;
 		link.link_duplex = 0;
-		link.link_status = 0;
+		link.link_status = ETH_LINK_DOWN;
 	}
 	rte_igb_dev_atomic_write_link_status(dev, &link);
 

@@ -397,11 +397,11 @@ mpipe_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		if (speed == GXIO_MPIPE_LINK_1G) {
 			new.link_speed = ETH_LINK_SPEED_1000;
 			new.link_duplex = ETH_LINK_FULL_DUPLEX;
-			new.link_status = 1;
+			new.link_status = ETH_LINK_UP;
 		} else if (speed == GXIO_MPIPE_LINK_10G) {
 			new.link_speed = ETH_LINK_SPEED_10000;
 			new.link_duplex = ETH_LINK_FULL_DUPLEX;
-			new.link_status = 1;
+			new.link_status = ETH_LINK_UP;
 		}
 
 		rc = mpipe_link_compare(&old, &new);
@@ -848,9 +848,9 @@ mpipe_start(struct rte_eth_dev *dev)
 
 	/* Start xmit/recv on queues. */
 	for (queue = 0; queue < priv->nb_tx_queues; queue++)
-		mpipe_tx_queue(priv, queue)->q.link_status = 1;
+		mpipe_tx_queue(priv, queue)->q.link_status = ETH_LINK_UP;
 	for (queue = 0; queue < priv->nb_rx_queues; queue++)
-		mpipe_rx_queue(priv, queue)->q.link_status = 1;
+		mpipe_rx_queue(priv, queue)->q.link_status = ETH_LINK_UP;
 	priv->running = 1;
 
 	return 0;
@@ -865,9 +865,9 @@ mpipe_stop(struct rte_eth_dev *dev)
 	int rc;
 
 	for (queue = 0; queue < priv->nb_tx_queues; queue++)
-		mpipe_tx_queue(priv, queue)->q.link_status = 0;
+		mpipe_tx_queue(priv, queue)->q.link_status = ETH_LINK_DOWN;
 	for (queue = 0; queue < priv->nb_rx_queues; queue++)
-		mpipe_rx_queue(priv, queue)->q.link_status = 0;
+		mpipe_rx_queue(priv, queue)->q.link_status = ETH_LINK_DOWN;
 
 	/* Make sure the link_status writes land. */
 	rte_wmb();

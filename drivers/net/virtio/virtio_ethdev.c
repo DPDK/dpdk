@@ -1410,16 +1410,16 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 				offsetof(struct virtio_net_config, status),
 				&status, sizeof(status));
 		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
-			link.link_status = 0;
+			link.link_status = ETH_LINK_DOWN;
 			PMD_INIT_LOG(DEBUG, "Port %d is down",
 				     dev->data->port_id);
 		} else {
-			link.link_status = 1;
+			link.link_status = ETH_LINK_UP;
 			PMD_INIT_LOG(DEBUG, "Port %d is up",
 				     dev->data->port_id);
 		}
 	} else {
-		link.link_status = 1;   /* Link up */
+		link.link_status = ETH_LINK_UP;
 	}
 	virtio_dev_atomic_write_link_status(dev, &link);
 

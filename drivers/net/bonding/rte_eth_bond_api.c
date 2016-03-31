@@ -205,7 +205,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
-	eth_dev->data->dev_link.link_status = 0;
+	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 
 	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, ETHER_ADDR_LEN, 0,
 			socket_id);
@@ -420,7 +420,7 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	if (bonded_eth_dev->data->dev_started) {
 		rte_eth_link_get_nowait(slave_port_id, &link_props);
 
-		 if (link_props.link_status == 1) {
+		 if (link_props.link_status == ETH_LINK_UP) {
 			if (internals->active_slave_count == 0 &&
 			    !internals->user_defined_primary_port)
 				bond_ethdev_primary_set(internals,

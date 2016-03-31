@@ -817,7 +817,7 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
 	if (nn_link_status & NFP_NET_CFG_STS_LINK)
-		link.link_status = 1;
+		link.link_status = ETH_LINK_UP;
 
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	/* Other cards can limit the tx and rx rate per VF */

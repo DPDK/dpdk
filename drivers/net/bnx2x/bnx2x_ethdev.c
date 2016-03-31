@@ -266,7 +266,7 @@ bnx2xvf_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_comple
 	if (sc->old_bulletin.valid_bitmap & (1 << CHANNEL_DOWN)) {
 		PMD_DRV_LOG(ERR, "PF indicated channel is down."
 				"VF device is no longer operational");
-		dev->data->dev_link.link_status = 0;
+		dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	}
 
 	return old_link_status == dev->data->dev_link.link_status ? -1 : 0;

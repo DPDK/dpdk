@@ -1172,7 +1172,7 @@ eth_link_update(struct rte_eth_dev *dev,
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 
 	link.link_status = (cgmii_ibuf_is_enabled(ibuf) &&
-			cgmii_ibuf_is_link_up(ibuf)) ? 1 : 0;
+			cgmii_ibuf_is_link_up(ibuf)) ? ETH_LINK_UP : ETH_LINK_DOWN;
 
 	rte_atomic64_cmpset((uint64_t *)dev_link, *(uint64_t *)dev_link,
 			*(uint64_t *)link_ptr);

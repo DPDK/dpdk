@@ -3064,7 +3064,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	int link_up;
 	int diag;
 
-	link.link_status = 0;
+	link.link_status = ETH_LINK_DOWN;
 	link.link_speed = 0;
 	link.link_duplex = 0;
 	memset(&old, 0, sizeof(old));
@@ -3093,7 +3093,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 			return -1;
 		return 0;
 	}
-	link.link_status = 1;
+	link.link_status = ETH_LINK_UP;
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 
 	switch (link_speed) {

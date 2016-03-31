@@ -856,7 +856,7 @@ app_check_link(struct app_params *app)
 			link_params.link_speed / 1000,
 			link_params.link_status ? "UP" : "DOWN");
 
-		if (link_params.link_status == 0)
+		if (link_params.link_status == ETH_LINK_DOWN)
 			all_links_up = 0;
 	}
 

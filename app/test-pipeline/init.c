@@ -205,7 +205,7 @@ app_ports_check_link(void)
 			link.link_speed / 1000,
 			link.link_status ? "UP" : "DOWN");
 
-		if (link.link_status == 0)
+		if (link.link_status == ETH_LINK_DOWN)
 			all_ports_up = 0;
 	}
 

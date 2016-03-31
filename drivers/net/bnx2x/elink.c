@@ -6312,7 +6312,7 @@ elink_status_t elink_link_update(struct elink_params * params,
 	for (phy_index = ELINK_INT_PHY; phy_index < params->num_phys;
 	     phy_index++) {
 		phy_vars[phy_index].flow_ctrl = 0;
-		phy_vars[phy_index].link_status = 0;
+		phy_vars[phy_index].link_status = ETH_LINK_DOWN;
 		phy_vars[phy_index].line_speed = 0;
 		phy_vars[phy_index].duplex = DUPLEX_FULL;
 		phy_vars[phy_index].phy_link_up = 0;
