@@ -101,8 +101,10 @@ enum rte_crypto_cipher_algorithm {
 	RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 	/**< SNOW3G algorithm in UEA2 mode */
 
-	RTE_CRYPTO_CIPHER_ZUC_EEA3
+	RTE_CRYPTO_CIPHER_ZUC_EEA3,
 	/**< ZUC algorithm in EEA3 mode */
+
+	RTE_CRYPTO_CIPHER_LIST_END
 };
 
 /** Symmetric Cipher Direction */
@@ -234,6 +236,8 @@ enum rte_crypto_auth_algorithm {
 
 	RTE_CRYPTO_AUTH_ZUC_EIA3,
 	/**< ZUC algorithm in EIA3 mode */
+
+	RTE_CRYPTO_AUTH_LIST_END
 };
 
 /** Symmetric Authentication / Hash Operations */
