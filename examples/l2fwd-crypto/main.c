@@ -71,6 +71,7 @@
 #include <rte_prefetch.h>
 #include <rte_random.h>
 #include <rte_ring.h>
+#include <rte_hexdump.h>
 
 enum cdev_type {
 	CDEV_TYPE_ANY,
@@ -634,8 +635,6 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 
 	RTE_LOG(INFO, L2FWD, "entering main loop on lcore %u\n", lcore_id);
 
-	l2fwd_crypto_options_print(options);
-
 	for (i = 0; i < qconf->nb_rx_ports; i++) {
 
 		portid = qconf->rx_port_list[i];
@@ -708,6 +707,14 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				port_cparams[i].dev_id);
 	}
 
+	l2fwd_crypto_options_print(options);
+
+	/*
+	 * Initialize previous tsc timestamp before the loop,
+	 * to avoid showing the port statistics immediately,
+	 * so user can see the crypto information.
+	 */
+	prev_tsc = rte_rdtsc();
 	while (1) {
 
 		cur_tsc = rte_rdtsc();
@@ -1213,8 +1220,45 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 }
 
 static void
+display_cipher_info(struct l2fwd_crypto_options *options)
+{
+	printf("\n---- Cipher information ---\n");
+	printf("Algorithm: %s\n",
+		supported_cipher_algo[options->cipher_xform.cipher.algo]);
+	rte_hexdump(stdout, "Cipher key:",
+			options->cipher_xform.cipher.key.data,
+			options->cipher_xform.cipher.key.length);
+	rte_hexdump(stdout, "IV:", options->iv.data, options->iv.length);
+}
+
+static void
+display_auth_info(struct l2fwd_crypto_options *options)
+{
+	printf("\n---- Authentication information ---\n");
+	printf("Algorithm: %s\n",
+		supported_auth_algo[options->auth_xform.auth.algo]);
+	rte_hexdump(stdout, "Auth key:",
+			options->auth_xform.auth.key.data,
+			options->auth_xform.auth.key.length);
+	rte_hexdump(stdout, "AAD:", options->aad.data, options->aad.length);
+}
+
+static void
 l2fwd_crypto_options_print(struct l2fwd_crypto_options *options)
 {
+	char string_cipher_op[MAX_STR_LEN];
+	char string_auth_op[MAX_STR_LEN];
+
+	if (options->cipher_xform.cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+		strcpy(string_cipher_op, "Encrypt");
+	else
+		strcpy(string_cipher_op, "Decrypt");
+
+	if (options->auth_xform.auth.op == RTE_CRYPTO_AUTH_OP_GENERATE)
+		strcpy(string_auth_op, "Auth generate");
+	else
+		strcpy(string_auth_op, "Auth verify");
+
 	printf("Options:-\nn");
 	printf("portmask: %x\n", options->portmask);
 	printf("ports per lcore: %u\n", options->nb_ports_per_lcore);
@@ -1226,6 +1270,42 @@ l2fwd_crypto_options_print(struct l2fwd_crypto_options *options)
 
 	printf("sessionless crypto: %s\n",
 			options->sessionless ? "enabled" : "disabled");
+
+	if (options->ckey_param && (options->ckey_random_size != -1))
+		printf("Cipher key already parsed, ignoring size of random key\n");
+
+	if (options->akey_param && (options->akey_random_size != -1))
+		printf("Auth key already parsed, ignoring size of random key\n");
+
+	if (options->iv_param && (options->iv_random_size != -1))
+		printf("IV already parsed, ignoring size of random IV\n");
+
+	if (options->aad_param && (options->aad_random_size != -1))
+		printf("AAD already parsed, ignoring size of random AAD\n");
+
+	printf("\nCrypto chain: ");
+	switch (options->xform_chain) {
+	case L2FWD_CRYPTO_CIPHER_HASH:
+		printf("Input --> %s --> %s --> Output\n",
+			string_cipher_op, string_auth_op);
+		display_cipher_info(options);
+		display_auth_info(options);
+		break;
+	case L2FWD_CRYPTO_HASH_CIPHER:
+		printf("Input --> %s --> %s --> Output\n",
+			string_auth_op, string_cipher_op);
+		display_cipher_info(options);
+		display_auth_info(options);
+		break;
+	case L2FWD_CRYPTO_HASH_ONLY:
+		printf("Input --> %s --> Output\n", string_auth_op);
+		display_auth_info(options);
+		break;
+	case L2FWD_CRYPTO_CIPHER_ONLY:
+		printf("Input --> %s --> Output\n", string_cipher_op);
+		display_cipher_info(options);
+		break;
+	}
 }
 
 /* Parse the argument given in the command line of the application */
