@@ -566,7 +566,8 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			ETH_LINK_SPEED_25G |
 			ETH_LINK_SPEED_40G |
 			ETH_LINK_SPEED_50G |
-			ETH_LINK_SPEED_56G;
+			ETH_LINK_SPEED_56G |
+			ETH_LINK_SPEED_100G;
 	priv_unlock(priv);
 }
 

@@ -1415,7 +1415,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 
 	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G |
 			ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G |
-			ETH_LINK_SPEED_40G;
+			ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G;
 }
 
 #ifdef RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE

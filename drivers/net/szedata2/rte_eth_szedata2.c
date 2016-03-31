@@ -1036,6 +1036,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = internals->max_rx_queues;
 	dev_info->max_tx_queues = internals->max_tx_queues;
 	dev_info->min_rx_bufsize = 0;
+	dev_info->speed_capa = ETH_LINK_SPEED_100G;
 }
 
 static void
@@ -1155,13 +1156,7 @@ eth_link_update(struct rte_eth_dev *dev,
 		link.link_speed = ETH_SPEED_NUM_40G;
 		break;
 	case SZEDATA2_LINK_SPEED_100G:
-		/*
-		 * TODO
-		 * If link_speed value from rte_eth_link structure
-		 * will be changed to support 100Gbps speed change
-		 * this value to 100G.
-		 */
-		link.link_speed = ETH_SPEED_NUM_10G;
+		link.link_speed = ETH_SPEED_NUM_100G;
 		break;
 	default:
 		link.link_speed = ETH_SPEED_NUM_10G;

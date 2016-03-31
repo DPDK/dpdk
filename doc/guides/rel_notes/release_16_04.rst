@@ -320,6 +320,11 @@ EAL
 Drivers
 ~~~~~~~
 
+* **ethdev: Fixed overflow for 100Gbps.**
+
+  100Gbps in Mbps (100000) was exceeding 16-bit max value of ``link_speed``
+  in ``rte_eth_link``.
+
 * **ethdev: Fixed byte order consistency between fdir flow and mask.**
 
   Fixed issue in ethdev library that the structure for setting

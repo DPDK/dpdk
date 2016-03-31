@@ -1155,7 +1155,7 @@ port config - speed
 
 Set the speed and duplex mode for all ports or a specific port::
 
-   testpmd> port config (port_id|all) speed (10|100|1000|10000|auto) \
+   testpmd> port config (port_id|all) speed (10|100|1000|10000|40000|100000|auto) \
             duplex (half|full|auto)
 
 port config - queues/descriptors

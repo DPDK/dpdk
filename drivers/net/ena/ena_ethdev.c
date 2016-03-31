@@ -1177,7 +1177,8 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 			ETH_LINK_SPEED_10G  |
 			ETH_LINK_SPEED_25G  |
 			ETH_LINK_SPEED_40G  |
-			ETH_LINK_SPEED_50G;
+			ETH_LINK_SPEED_50G  |
+			ETH_LINK_SPEED_100G;
 
 	/* Get supported features from HW */
 	rc = ena_com_get_dev_attr_feat(ena_dev, &feat);

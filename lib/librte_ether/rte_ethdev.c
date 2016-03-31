@@ -892,6 +892,8 @@ rte_eth_speed_bitflag(uint32_t speed, int duplex)
 		return ETH_LINK_SPEED_50G;
 	case ETH_SPEED_NUM_56G:
 		return ETH_LINK_SPEED_56G;
+	case ETH_SPEED_NUM_100G:
+		return ETH_LINK_SPEED_100G;
 	default:
 		return 0;
 	}

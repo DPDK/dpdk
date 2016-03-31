@@ -148,9 +148,3 @@ Example output:
      TX threshold registers: pthresh=0 hthresh=0 wthresh=0
      TX RS bit threshold=0 - TXQ flags=0x0
    testpmd>
-
-.. note::
-
-   Link speed API currently supports speeds up to 40 Gbps.
-   Therefore there is used 10G constant for 100 Gbps cards until the link speed
-   API is not changed.

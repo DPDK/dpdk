@@ -259,6 +259,7 @@ struct rte_eth_stats {
 #define ETH_LINK_SPEED_40G      (1 << 11)  /**<  40 Gbps */
 #define ETH_LINK_SPEED_50G      (1 << 12)  /**<  50 Gbps */
 #define ETH_LINK_SPEED_56G      (1 << 13)  /**<  56 Gbps */
+#define ETH_LINK_SPEED_100G     (1 << 14)  /**< 100 Gbps */
 
 /**
  * Ethernet numeric link speeds in Mbps
@@ -275,12 +276,13 @@ struct rte_eth_stats {
 #define ETH_SPEED_NUM_40G      40000 /**<  40 Gbps */
 #define ETH_SPEED_NUM_50G      50000 /**<  50 Gbps */
 #define ETH_SPEED_NUM_56G      56000 /**<  56 Gbps */
+#define ETH_SPEED_NUM_100G    100000 /**< 100 Gbps */
 
 /**
  * A structure used to retrieve link-level information of an Ethernet port.
  */
 struct rte_eth_link {
-	uint16_t link_speed;        /**< ETH_SPEED_NUM_ */
+	uint32_t link_speed;        /**< ETH_SPEED_NUM_ */
 	uint16_t link_duplex  : 1;  /**< ETH_LINK_[HALF/FULL]_DUPLEX */
 	uint16_t link_autoneg : 1;  /**< ETH_LINK_SPEED_[AUTONEG/FIXED] */
 	uint16_t link_status  : 1;  /**< ETH_LINK_[DOWN/UP] */
