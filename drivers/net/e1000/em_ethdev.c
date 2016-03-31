@@ -1055,6 +1055,10 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_min = E1000_MIN_RING_DESC,
 		.nb_align = EM_TXD_ALIGN,
 	};
+
+	dev_info->speed_capa = ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |
+			ETH_LINK_SPEED_100M_HD | ETH_LINK_SPEED_100M |
+			ETH_LINK_SPEED_1G;
 }
 
 /* return 0 means link status changed, -1 means not changed */

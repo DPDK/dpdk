@@ -1170,6 +1170,15 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	ena_dev = &adapter->ena_dev;
 	ena_assert_msg(ena_dev != NULL, "Uninitialized device");
 
+	dev_info->speed_capa =
+			ETH_LINK_SPEED_1G   |
+			ETH_LINK_SPEED_2_5G |
+			ETH_LINK_SPEED_5G   |
+			ETH_LINK_SPEED_10G  |
+			ETH_LINK_SPEED_25G  |
+			ETH_LINK_SPEED_40G  |
+			ETH_LINK_SPEED_50G;
+
 	/* Get supported features from HW */
 	rc = ena_com_get_dev_attr_feat(ena_dev, &feat);
 	if (unlikely(rc)) {

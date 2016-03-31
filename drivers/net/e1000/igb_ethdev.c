@@ -1921,6 +1921,10 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
+
+	dev_info->speed_capa = ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |
+			ETH_LINK_SPEED_100M_HD | ETH_LINK_SPEED_100M |
+			ETH_LINK_SPEED_1G;
 }
 
 static const uint32_t *

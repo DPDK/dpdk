@@ -242,6 +242,23 @@ struct rte_eth_stats {
 };
 
 /**
+ * Device supported speeds bitmap flags
+ */
+#define ETH_LINK_SPEED_10M_HD   (1 <<  1)  /**<  10 Mbps half-duplex */
+#define ETH_LINK_SPEED_10M      (1 <<  2)  /**<  10 Mbps full-duplex */
+#define ETH_LINK_SPEED_100M_HD  (1 <<  3)  /**< 100 Mbps half-duplex */
+#define ETH_LINK_SPEED_100M     (1 <<  4)  /**< 100 Mbps full-duplex */
+#define ETH_LINK_SPEED_1G       (1 <<  5)  /**<   1 Gbps */
+#define ETH_LINK_SPEED_2_5G     (1 <<  6)  /**< 2.5 Gbps */
+#define ETH_LINK_SPEED_5G       (1 <<  7)  /**<   5 Gbps */
+#define ETH_LINK_SPEED_10G      (1 <<  8)  /**<  10 Gbps */
+#define ETH_LINK_SPEED_20G      (1 <<  9)  /**<  20 Gbps */
+#define ETH_LINK_SPEED_25G      (1 << 10)  /**<  25 Gbps */
+#define ETH_LINK_SPEED_40G      (1 << 11)  /**<  40 Gbps */
+#define ETH_LINK_SPEED_50G      (1 << 12)  /**<  50 Gbps */
+#define ETH_LINK_SPEED_56G      (1 << 13)  /**<  56 Gbps */
+
+/**
  * Ethernet numeric link speeds in Mbps
  */
 #define ETH_LINK_SPEED_AUTONEG     0 /**< Auto-negotiate link speed. */
@@ -850,6 +867,9 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000080 /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_QINQ_INSERT 0x00000100
 
+/**
+ * Ethernet device information
+ */
 struct rte_eth_dev_info {
 	struct rte_pci_device *pci_dev; /**< Device PCI information. */
 	const char *driver_name; /**< Device Driver name. */
@@ -878,6 +898,7 @@ struct rte_eth_dev_info {
 	uint16_t vmdq_pool_base;  /**< First ID of VMDQ pools. */
 	struct rte_eth_desc_lim rx_desc_lim;  /**< RX descriptors limits */
 	struct rte_eth_desc_lim tx_desc_lim;  /**< TX descriptors limits */
+	uint32_t speed_capa;  /**< Supported speeds bitmap (ETH_LINK_SPEED_). */
 };
 
 /**

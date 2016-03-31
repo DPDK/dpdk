@@ -86,6 +86,7 @@ Most of these differences are summarized below.
                                           e   e       e   e   e                     e
                                           c   c       c   c   c                     c
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+   speed capabilities
    link status                  X       X X                                   X X
    link status event                    X X                                     X
    queue status event                                                           X

@@ -47,6 +47,11 @@ This section should contain new features added in this release. Sample format:
   A new function ``rte_pktmbuf_alloc_bulk()`` has been added to allow the user
   to allocate a bulk of mbufs.
 
+* **Added device link speed capabilities.**
+
+  The structure ``rte_eth_dev_info`` has now a ``speed_capa`` bitmap, which
+  allows the application to know the supported speeds of each device.
+
 * **Added new poll-mode driver for Amazon Elastic Network Adapters (ENA).**
 
   The driver operates variety of ENA adapters through feature negotiation
@@ -463,6 +468,9 @@ This section should contain API changes. Sample format:
 * The ethdev statistics counter imissed is considered to be independent of ierrors.
   All drivers are now counting the missed packets only once, i.e. drivers will
   not increment ierrors anymore for missed packets.
+
+* The ethdev structure ``rte_eth_dev_info`` was changed to support device
+  speed capabilities.
 
 * The functions ``rte_eth_dev_udp_tunnel_add`` and ``rte_eth_dev_udp_tunnel_delete``
   have been renamed into ``rte_eth_dev_udp_tunnel_port_add`` and

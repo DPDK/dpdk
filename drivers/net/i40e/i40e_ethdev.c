@@ -2287,6 +2287,7 @@ static void
 i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *vsi = pf->main_vsi;
 
 	dev_info->max_rx_queues = vsi->nb_qps;
@@ -2358,6 +2359,13 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->max_rx_queues += dev_info->vmdq_queue_num;
 		dev_info->max_tx_queues += dev_info->vmdq_queue_num;
 	}
+
+	if (i40e_is_40G_device(hw->device_id))
+		/* For XL710 */
+		dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G;
+	else
+		/* For X710 */
+		dev_info->speed_capa = ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G;
 }
 
 static int
