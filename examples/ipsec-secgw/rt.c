@@ -34,6 +34,7 @@
 /*
  * Routing Table (RT)
  */
+#include <sys/types.h>
 #include <rte_lpm.h>
 #include <rte_errno.h>
 

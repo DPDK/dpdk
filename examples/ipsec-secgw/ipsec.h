@@ -35,8 +35,6 @@
 #define __IPSEC_H__
 
 #include <stdint.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
 
 #include <rte_byteorder.h>
 #include <rte_ip.h>

@@ -36,6 +36,8 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <sys/types.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
 #include <string.h>
 #include <sys/queue.h>
 #include <stdarg.h>
