@@ -19,9 +19,6 @@ Deprecation Notices
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
 
-* The ethdev structures rte_eth_link, rte_eth_dev_info and rte_eth_conf
-  must be updated to support 100G link and to have a cleaner link speed API.
-
 * ABI changes are planned for adding four new flow types. This impacts
   RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
   but release 2.3 will. [postponed]

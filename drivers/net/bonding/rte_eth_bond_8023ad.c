@@ -708,7 +708,7 @@ link_speed_key(uint16_t speed) {
 	uint16_t key_speed;
 
 	switch (speed) {
-	case ETH_LINK_SPEED_AUTONEG:
+	case ETH_SPEED_NUM_NONE:
 		key_speed = 0x00;
 		break;
 	case ETH_SPEED_NUM_10M:

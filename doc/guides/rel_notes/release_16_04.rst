@@ -52,6 +52,12 @@ This section should contain new features added in this release. Sample format:
   The structure ``rte_eth_dev_info`` has now a ``speed_capa`` bitmap, which
   allows the application to know the supported speeds of each device.
 
+* **Added bitmap of link speeds to advertise.**
+
+  Allow defining a set of advertised speeds for auto-negotiation,
+  explicitly disabling link auto-negotiation (single speed)
+  and full auto-negotiation.
+
 * **Added new poll-mode driver for Amazon Elastic Network Adapters (ENA).**
 
   The driver operates variety of ENA adapters through feature negotiation
@@ -471,6 +477,9 @@ This section should contain API changes. Sample format:
 
 * The ethdev structure ``rte_eth_dev_info`` was changed to support device
   speed capabilities.
+
+* The ethdev structures ``rte_eth_link`` and ``rte_eth_conf`` were changed to
+  support the new link API.
 
 * The functions ``rte_eth_dev_udp_tunnel_add`` and ``rte_eth_dev_udp_tunnel_delete``
   have been renamed into ``rte_eth_dev_udp_tunnel_port_add`` and

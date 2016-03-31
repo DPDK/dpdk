@@ -87,8 +87,7 @@ static const struct app_link_params link_params_default = {
 	.pci_bdf = {0},
 
 	.conf = {
-		.link_speed = 0,
-		.link_duplex = 0,
+		.link_speeds = 0,
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_NONE,
 

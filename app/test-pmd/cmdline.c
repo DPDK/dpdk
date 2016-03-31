@@ -989,7 +989,7 @@ struct cmd_config_speed_all {
 };
 
 static int
-parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint16_t *speed)
+parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint32_t *speed)
 {
 
 	int duplex;
@@ -1006,20 +1006,22 @@ parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint16_t *speed)
 	}
 
 	if (!strcmp(speedstr, "10")) {
-		*speed = ETH_SPEED_NUM_10M;
+		*speed = (duplex == ETH_LINK_HALF_DUPLEX) ?
+				ETH_LINK_SPEED_10M_HD : ETH_LINK_SPEED_10M;
 	} else if (!strcmp(speedstr, "100")) {
-		*speed = ETH_SPEED_NUM_100M;
+		*speed = (duplex == ETH_LINK_HALF_DUPLEX) ?
+				ETH_LINK_SPEED_100M_HD : ETH_LINK_SPEED_100M;
 	} else {
 		if (duplex != ETH_LINK_FULL_DUPLEX) {
 			printf("Invalid speed/duplex parameters\n");
 			return -1;
 		}
 		if (!strcmp(speedstr, "1000")) {
-			*speed = ETH_SPEED_NUM_1G;
+			*speed = ETH_LINK_SPEED_1G;
 		} else if (!strcmp(speedstr, "10000")) {
-			*speed = ETH_SPEED_NUM_10G;
+			*speed = ETH_LINK_SPEED_10G;
 		} else if (!strcmp(speedstr, "40000")) {
-			*speed = ETH_SPEED_NUM_40G;
+			*speed = ETH_LINK_SPEED_40G;
 		} else if (!strcmp(speedstr, "auto")) {
 			*speed = ETH_LINK_SPEED_AUTONEG;
 		} else {
@@ -1037,8 +1039,7 @@ cmd_config_speed_all_parsed(void *parsed_result,
 			__attribute__((unused)) void *data)
 {
 	struct cmd_config_speed_all *res = parsed_result;
-	uint16_t link_speed = ETH_LINK_SPEED_AUTONEG;
-	uint16_t link_duplex = 0;
+	uint32_t link_speed;
 	portid_t pid;
 
 	if (!all_ports_stopped()) {
@@ -1051,8 +1052,7 @@ cmd_config_speed_all_parsed(void *parsed_result,
 		return;
 
 	FOREACH_PORT(pid, ports) {
-		ports[pid].dev_conf.link_speed = link_speed;
-		ports[pid].dev_conf.link_duplex = link_duplex;
+		ports[pid].dev_conf.link_speeds = link_speed;
 	}
 
 	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
@@ -1110,8 +1110,7 @@ cmd_config_speed_specific_parsed(void *parsed_result,
 				__attribute__((unused)) void *data)
 {
 	struct cmd_config_speed_specific *res = parsed_result;
-	uint16_t link_speed = ETH_LINK_SPEED_AUTONEG;
-	uint16_t link_duplex = 0;
+	uint32_t link_speed;
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -1125,8 +1124,7 @@ cmd_config_speed_specific_parsed(void *parsed_result,
 			&link_speed) < 0)
 		return;
 
-	ports[res->id].dev_conf.link_speed = link_speed;
-	ports[res->id].dev_conf.link_duplex = link_duplex;
+	ports[res->id].dev_conf.link_speeds = link_speed;
 
 	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
 }

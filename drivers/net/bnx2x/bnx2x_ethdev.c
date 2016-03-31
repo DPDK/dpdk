@@ -44,9 +44,9 @@ bnx2x_link_update(struct rte_eth_dev *dev)
 		case DUPLEX_HALF:
 			dev->data->dev_link.link_duplex = ETH_LINK_HALF_DUPLEX;
 			break;
-		default:
-			dev->data->dev_link.link_duplex = ETH_LINK_AUTONEG_DUPLEX;
 	}
+	dev->data->dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+			ETH_LINK_SPEED_FIXED);
 	dev->data->dev_link.link_status = sc->link_vars.link_up;
 }
 

@@ -2121,12 +2121,13 @@ i40evf_dev_link_update(struct rte_eth_dev *dev,
 	 * DPDK pf host provide interfacet to acquire link status
 	 * while Linux driver does not
 	 */
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR) {
 		i40evf_get_link_status(dev, &new_link);
-	else {
+	} else {
 		/* Always assume it's up, for Linux driver PF host */
-		new_link.link_duplex = ETH_LINK_AUTONEG_DUPLEX;
 		new_link.link_speed  = ETH_SPEED_NUM_10G;
+		new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		new_link.link_autoneg = ETH_LINK_SPEED_AUTONEG;
 		new_link.link_status = ETH_LINK_UP;
 	}
 	i40evf_dev_atomic_write_link_status(dev, &new_link);

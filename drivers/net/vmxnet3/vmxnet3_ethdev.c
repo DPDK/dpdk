@@ -779,6 +779,7 @@ vmxnet3_dev_link_update(struct rte_eth_dev *dev, __attribute__((unused)) int wai
 		link.link_status = ETH_LINK_UP;
 		link.link_duplex = ETH_LINK_FULL_DUPLEX;
 		link.link_speed = ETH_SPEED_NUM_10G;
+		link.link_autoneg = ETH_LINK_SPEED_FIXED;
 	}
 
 	vmxnet3_dev_atomic_write_link_status(dev, &link);

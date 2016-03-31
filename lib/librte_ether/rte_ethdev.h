@@ -244,6 +244,8 @@ struct rte_eth_stats {
 /**
  * Device supported speeds bitmap flags
  */
+#define ETH_LINK_SPEED_AUTONEG  (0 <<  0)  /**< Autonegotiate (all speeds) */
+#define ETH_LINK_SPEED_FIXED    (1 <<  0)  /**< Disable autoneg (fixed speed) */
 #define ETH_LINK_SPEED_10M_HD   (1 <<  1)  /**<  10 Mbps half-duplex */
 #define ETH_LINK_SPEED_10M      (1 <<  2)  /**<  10 Mbps full-duplex */
 #define ETH_LINK_SPEED_100M_HD  (1 <<  3)  /**< 100 Mbps half-duplex */
@@ -261,7 +263,7 @@ struct rte_eth_stats {
 /**
  * Ethernet numeric link speeds in Mbps
  */
-#define ETH_LINK_SPEED_AUTONEG     0 /**< Auto-negotiate link speed. */
+#define ETH_SPEED_NUM_NONE         0 /**< Not defined */
 #define ETH_SPEED_NUM_10M         10 /**<  10 Mbps */
 #define ETH_SPEED_NUM_100M       100 /**< 100 Mbps */
 #define ETH_SPEED_NUM_1G        1000 /**<   1 Gbps */
@@ -278,17 +280,19 @@ struct rte_eth_stats {
  * A structure used to retrieve link-level information of an Ethernet port.
  */
 struct rte_eth_link {
-	uint16_t link_speed;      /**< ETH_SPEED_NUM_ */
-	uint16_t link_duplex;     /**< ETH_LINK_[HALF/FULL]_DUPLEX */
-	uint8_t  link_status : 1; /**< ETH_LINK_[DOWN/UP] */
-}__attribute__((aligned(8)));     /**< aligned for atomic64 read/write */
+	uint16_t link_speed;        /**< ETH_SPEED_NUM_ */
+	uint16_t link_duplex  : 1;  /**< ETH_LINK_[HALF/FULL]_DUPLEX */
+	uint16_t link_autoneg : 1;  /**< ETH_LINK_SPEED_[AUTONEG/FIXED] */
+	uint16_t link_status  : 1;  /**< ETH_LINK_[DOWN/UP] */
+} __attribute__((aligned(8)));      /**< aligned for atomic64 read/write */
 
 /* Utility constants */
-#define ETH_LINK_AUTONEG_DUPLEX 0       /**< Auto-negotiate duplex. */
-#define ETH_LINK_HALF_DUPLEX    1       /**< Half-duplex connection. */
-#define ETH_LINK_FULL_DUPLEX    2       /**< Full-duplex connection. */
+#define ETH_LINK_HALF_DUPLEX    0 /**< Half-duplex connection. */
+#define ETH_LINK_FULL_DUPLEX    1 /**< Full-duplex connection. */
 #define ETH_LINK_DOWN           0 /**< Link is down. */
 #define ETH_LINK_UP             1 /**< Link is up. */
+#define ETH_LINK_FIXED          0 /**< No autonegotiation. */
+#define ETH_LINK_AUTONEG        1 /**< Autonegotiated. */
 
 /**
  * A structure used to configure the ring threshold registers of an RX/TX
@@ -802,10 +806,13 @@ struct rte_intr_conf {
  * configuration settings may be needed.
  */
 struct rte_eth_conf {
-	uint16_t link_speed;
-	/**< ETH_SPEED_NUM_ or 0 for autonegotiation */
-	uint16_t link_duplex;
-	/**< ETH_LINK_[HALF_DUPLEX|FULL_DUPLEX], or 0 for autonegotation */
+	uint32_t link_speeds; /**< bitmap of ETH_LINK_SPEED_XXX of speeds to be
+				used. ETH_LINK_SPEED_FIXED disables link
+				autonegotiation, and a unique speed shall be
+				set. Otherwise, the bitmap defines the set of
+				speeds to be advertised. If the special value
+				ETH_LINK_SPEED_AUTONEG (0) is used, all speeds
+				supported are advertised. */
 	struct rte_eth_rxmode rxmode; /**< Port RX configuration. */
 	struct rte_eth_txmode txmode; /**< Port TX configuration. */
 	uint32_t lpbk_mode; /**< Loopback operation mode. By default the value
