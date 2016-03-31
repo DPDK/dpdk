@@ -102,7 +102,7 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 			uint8_t portid, struct lcore_conf *qconf)
 {
 	int32_t j;
-	uint32_t dst_port[MAX_PKT_BURST];
+	uint16_t dst_port[MAX_PKT_BURST];
 
 	for (j = 0; j < nb_rx; j++)
 		dst_port[j] = em_get_dst_port(qconf, pkts_burst[j], portid);

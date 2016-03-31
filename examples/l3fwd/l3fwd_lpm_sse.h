@@ -145,9 +145,9 @@ static inline void
 processx4_step2(const struct lcore_conf *qconf,
 		__m128i dip,
 		uint32_t ipv4_flag,
-		uint32_t portid,
+		uint8_t portid,
 		struct rte_mbuf *pkt[FWDSTEP],
-		uint32_t dprt[FWDSTEP])
+		uint16_t dprt[FWDSTEP])
 {
 	rte_xmm_t dst;
 	const  __m128i bswap_mask = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11,
@@ -158,7 +158,11 @@ processx4_step2(const struct lcore_conf *qconf,
 
 	/* if all 4 packets are IPV4. */
 	if (likely(ipv4_flag)) {
-		rte_lpm_lookupx4(qconf->ipv4_lookup_struct, dip, dprt, portid);
+		rte_lpm_lookupx4(qconf->ipv4_lookup_struct, dip, dst.u32,
+			portid);
+		/* get rid of unused upper 16 bit for each dport. */
+		dst.x = _mm_packs_epi32(dst.x, dst.x);
+		*(uint64_t *)dprt = dst.u64[0];
 	} else {
 		dst.x = dip;
 		dprt[0] = lpm_get_dst_port_with_ipv4(qconf, pkt[0], dst.u32[0], portid);
@@ -177,7 +181,7 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 			uint8_t portid, struct lcore_conf *qconf)
 {
 	int32_t j;
-	uint32_t dst_port[MAX_PKT_BURST];
+	uint16_t dst_port[MAX_PKT_BURST];
 	__m128i dip[MAX_PKT_BURST / FWDSTEP];
 	uint32_t ipv4_flag[MAX_PKT_BURST / FWDSTEP];
 	const int32_t k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);

@@ -38,7 +38,7 @@
 
 static inline __attribute__((always_inline)) void
 em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
-		uint8_t portid, uint32_t dst_port[8])
+		uint8_t portid, uint16_t dst_port[8])
 {
 	int32_t ret[8];
 	union ipv4_5tuple_host key[8];
@@ -162,7 +162,7 @@ get_ipv6_5tuple(struct rte_mbuf *m0, __m128i mask0,
 
 static inline __attribute__((always_inline)) void
 em_get_dst_port_ipv6x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
-		uint8_t portid, uint32_t dst_port[8])
+		uint8_t portid, uint16_t dst_port[8])
 {
 	int32_t ret[8];
 	union ipv6_5tuple_host key[8];
@@ -289,7 +289,7 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 		uint8_t portid, struct lcore_conf *qconf)
 {
 	int32_t j;
-	uint32_t dst_port[MAX_PKT_BURST];
+	uint16_t dst_port[MAX_PKT_BURST];
 
 	/*
 	 * Send nb_rx - nb_rx%8 packets

@@ -34,14 +34,14 @@
 #ifndef __L3FWD_LPM_H__
 #define __L3FWD_LPM_H__
 
-static inline uint32_t
+static inline uint8_t
 lpm_get_ipv4_dst_port(void *ipv4_hdr,  uint8_t portid, void *lookup_struct)
 {
 	uint32_t next_hop;
 	struct rte_lpm *ipv4_l3fwd_lookup_struct =
 		(struct rte_lpm *)lookup_struct;
 
-	return (uint32_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
+	return (uint8_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
 		rte_be_to_cpu_32(((struct ipv4_hdr *)ipv4_hdr)->dst_addr),
 		&next_hop) == 0) ? next_hop : portid);
 }
