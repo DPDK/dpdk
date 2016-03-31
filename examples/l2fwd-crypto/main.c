@@ -790,7 +790,7 @@ l2fwd_crypto_usage(const char *prgname)
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -q NQ: number of queue (=ports) per lcore (default is 1)\n"
 		"  -s manage all ports from single lcore\n"
-		"  -t PERIOD: statistics will be refreshed each PERIOD seconds"
+		"  -T PERIOD: statistics will be refreshed each PERIOD seconds"
 		" (0 to disable, 10 default, 86400 maximum)\n"
 
 		"  --cdev_type HW / SW / ANY\n"
@@ -1220,7 +1220,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 			break;
 
 		/* timer period */
-		case 't':
+		case 'T':
 			retval = l2fwd_crypto_parse_timer_period(options,
 					optarg);
 			if (retval < 0) {
