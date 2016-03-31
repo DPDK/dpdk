@@ -144,14 +144,20 @@ error:
 static void
 txq_free_elts(struct txq *txq)
 {
-	unsigned int i;
 	unsigned int elts_n = txq->elts_n;
+	unsigned int elts_head = txq->elts_head;
+	unsigned int elts_tail = txq->elts_tail;
 	struct txq_elt (*elts)[elts_n] = txq->elts;
 	linear_t (*elts_linear)[elts_n] = txq->elts_linear;
 	struct ibv_mr *mr_linear = txq->mr_linear;
 
 	DEBUG("%p: freeing WRs", (void *)txq);
 	txq->elts_n = 0;
+	txq->elts_head = 0;
+	txq->elts_tail = 0;
+	txq->elts_comp = 0;
+	txq->elts_comp_cd = 0;
+	txq->elts_comp_cd_init = 0;
 	txq->elts = NULL;
 	txq->elts_linear = NULL;
 	txq->mr_linear = NULL;
@@ -161,12 +167,17 @@ txq_free_elts(struct txq *txq)
 	rte_free(elts_linear);
 	if (elts == NULL)
 		return;
-	for (i = 0; (i != RTE_DIM(*elts)); ++i) {
-		struct txq_elt *elt = &(*elts)[i];
+	while (elts_tail != elts_head) {
+		struct txq_elt *elt = &(*elts)[elts_tail];
 
-		if (elt->buf == NULL)
-			continue;
+		assert(elt->buf != NULL);
 		rte_pktmbuf_free(elt->buf);
+#ifndef NDEBUG
+		/* Poisoning. */
+		memset(elt, 0x77, sizeof(*elt));
+#endif
+		if (++elts_tail == elts_n)
+			elts_tail = 0;
 	}
 	rte_free(elts);
 }

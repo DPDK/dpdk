@@ -120,6 +120,10 @@ txq_complete(struct txq *txq)
 		struct rte_mbuf *tmp = elt->buf;
 		struct txq_elt *elt_next = &(*txq->elts)[elts_free_next];
 
+#ifndef NDEBUG
+		/* Poisoning. */
+		memset(elt, 0x66, sizeof(*elt));
+#endif
 		RTE_MBUF_PREFETCH_TO_FREE(elt_next->buf);
 		/* Faster than rte_pktmbuf_free(). */
 		do {
