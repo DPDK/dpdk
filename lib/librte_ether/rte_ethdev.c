@@ -866,6 +866,37 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	return 0;
 }
 
+uint32_t
+rte_eth_speed_bitflag(uint32_t speed, int duplex)
+{
+	switch (speed) {
+	case ETH_SPEED_NUM_10M:
+		return duplex ? ETH_LINK_SPEED_10M : ETH_LINK_SPEED_10M_HD;
+	case ETH_SPEED_NUM_100M:
+		return duplex ? ETH_LINK_SPEED_100M : ETH_LINK_SPEED_100M_HD;
+	case ETH_SPEED_NUM_1G:
+		return ETH_LINK_SPEED_1G;
+	case ETH_SPEED_NUM_2_5G:
+		return ETH_LINK_SPEED_2_5G;
+	case ETH_SPEED_NUM_5G:
+		return ETH_LINK_SPEED_5G;
+	case ETH_SPEED_NUM_10G:
+		return ETH_LINK_SPEED_10G;
+	case ETH_SPEED_NUM_20G:
+		return ETH_LINK_SPEED_20G;
+	case ETH_SPEED_NUM_25G:
+		return ETH_LINK_SPEED_25G;
+	case ETH_SPEED_NUM_40G:
+		return ETH_LINK_SPEED_40G;
+	case ETH_SPEED_NUM_50G:
+		return ETH_LINK_SPEED_50G;
+	case ETH_SPEED_NUM_56G:
+		return ETH_LINK_SPEED_56G;
+	default:
+		return 0;
+	}
+}
+
 int
 rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)

@@ -1878,6 +1878,19 @@ struct eth_driver {
 void rte_eth_driver_register(struct eth_driver *eth_drv);
 
 /**
+ * Convert a numerical speed in Mbps to a bitmap flag that can be used in
+ * the bitmap link_speeds of the struct rte_eth_conf
+ *
+ * @param speed
+ *   Numerical speed value in Mbps
+ * @param duplex
+ *   ETH_LINK_[HALF/FULL]_DUPLEX (only for 10/100M speeds)
+ * @return
+ *   0 if the speed cannot be mapped
+ */
+uint32_t rte_eth_speed_bitflag(uint32_t speed, int duplex);
+
+/**
  * Configure an Ethernet device.
  * This function must be invoked first before any other function in the
  * Ethernet API. This function can also be re-invoked when a device is in the
