@@ -968,8 +968,12 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 {
 	int retval;
 
-	if (strcmp(lgopts[option_index].name, "cdev_type") == 0)
-		return parse_cryptodev_type(&options->type, optarg);
+	if (strcmp(lgopts[option_index].name, "cdev_type") == 0) {
+		retval = parse_cryptodev_type(&options->type, optarg);
+		if (retval == 0)
+			strcpy(options->string_type, optarg);
+		return retval;
+	}
 
 	else if (strcmp(lgopts[option_index].name, "chain") == 0)
 		return parse_crypto_opt_chain(options, optarg);
