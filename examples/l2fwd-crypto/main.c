@@ -643,7 +643,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				port_cparams[i].aad.phys_addr = options->aad.phys_addr;
 				if (!options->aad_param)
 					generate_random_key(port_cparams[i].aad.data,
-						sizeof(port_cparams[i].aad.length));
+						port_cparams[i].aad.length);
 
 			}
 
@@ -661,7 +661,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 			port_cparams[i].iv.phys_addr = options->iv.phys_addr;
 			if (!options->iv_param)
 				generate_random_key(port_cparams[i].iv.data,
-						sizeof(port_cparams[i].iv.length));
+						port_cparams[i].iv.length);
 
 			port_cparams[i].cipher_algo = options->cipher_xform.cipher.algo;
 		}
