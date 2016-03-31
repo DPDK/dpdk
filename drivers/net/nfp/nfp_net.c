@@ -821,7 +821,7 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	/* Other cards can limit the tx and rx rate per VF */
-	link.link_speed = ETH_LINK_SPEED_40G;
+	link.link_speed = ETH_SPEED_NUM_40G;
 
 	if (old.link_status != link.link_status) {
 		nfp_net_dev_atomic_write_link_status(dev, &link);

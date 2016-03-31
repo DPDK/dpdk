@@ -77,7 +77,7 @@ struct pmd_internals {
 
 static const char *drivername = "Rings PMD";
 static struct rte_eth_link pmd_link = {
-		.link_speed = 10000,
+		.link_speed = ETH_SPEED_NUM_10G,
 		.link_duplex = ETH_LINK_FULL_DUPLEX,
 		.link_status = ETH_LINK_DOWN,
 };

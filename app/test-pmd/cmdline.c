@@ -1006,20 +1006,20 @@ parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint16_t *speed)
 	}
 
 	if (!strcmp(speedstr, "10")) {
-		*speed = ETH_LINK_SPEED_10;
+		*speed = ETH_SPEED_NUM_10M;
 	} else if (!strcmp(speedstr, "100")) {
-		*speed = ETH_LINK_SPEED_100;
+		*speed = ETH_SPEED_NUM_100M;
 	} else {
 		if (duplex != ETH_LINK_FULL_DUPLEX) {
 			printf("Invalid speed/duplex parameters\n");
 			return -1;
 		}
 		if (!strcmp(speedstr, "1000")) {
-			*speed = ETH_LINK_SPEED_1000;
+			*speed = ETH_SPEED_NUM_1G;
 		} else if (!strcmp(speedstr, "10000")) {
-			*speed = ETH_LINK_SPEED_10G;
+			*speed = ETH_SPEED_NUM_10G;
 		} else if (!strcmp(speedstr, "40000")) {
-			*speed = ETH_LINK_SPEED_40G;
+			*speed = ETH_SPEED_NUM_40G;
 		} else if (!strcmp(speedstr, "auto")) {
 			*speed = ETH_LINK_SPEED_AUTONEG;
 		} else {

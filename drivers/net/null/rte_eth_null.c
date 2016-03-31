@@ -89,7 +89,7 @@ struct pmd_internals {
 static struct ether_addr eth_addr = { .addr_bytes = {0} };
 static const char *drivername = "Null PMD";
 static struct rte_eth_link pmd_link = {
-	.link_speed = 10000,
+	.link_speed = ETH_SPEED_NUM_10G,
 	.link_duplex = ETH_LINK_FULL_DUPLEX,
 	.link_status = ETH_LINK_DOWN,
 };

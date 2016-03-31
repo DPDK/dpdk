@@ -711,22 +711,22 @@ link_speed_key(uint16_t speed) {
 	case ETH_LINK_SPEED_AUTONEG:
 		key_speed = 0x00;
 		break;
-	case ETH_LINK_SPEED_10:
+	case ETH_SPEED_NUM_10M:
 		key_speed = BOND_LINK_SPEED_KEY_10M;
 		break;
-	case ETH_LINK_SPEED_100:
+	case ETH_SPEED_NUM_100M:
 		key_speed = BOND_LINK_SPEED_KEY_100M;
 		break;
-	case ETH_LINK_SPEED_1000:
+	case ETH_SPEED_NUM_1G:
 		key_speed = BOND_LINK_SPEED_KEY_1000M;
 		break;
-	case ETH_LINK_SPEED_10G:
+	case ETH_SPEED_NUM_10G:
 		key_speed = BOND_LINK_SPEED_KEY_10G;
 		break;
-	case ETH_LINK_SPEED_20G:
+	case ETH_SPEED_NUM_20G:
 		key_speed = BOND_LINK_SPEED_KEY_20G;
 		break;
-	case ETH_LINK_SPEED_40G:
+	case ETH_SPEED_NUM_40G:
 		key_speed = BOND_LINK_SPEED_KEY_40G;
 		break;
 	default:

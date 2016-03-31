@@ -242,22 +242,29 @@ struct rte_eth_stats {
 };
 
 /**
+ * Ethernet numeric link speeds in Mbps
+ */
+#define ETH_LINK_SPEED_AUTONEG     0 /**< Auto-negotiate link speed. */
+#define ETH_SPEED_NUM_10M         10 /**<  10 Mbps */
+#define ETH_SPEED_NUM_100M       100 /**< 100 Mbps */
+#define ETH_SPEED_NUM_1G        1000 /**<   1 Gbps */
+#define ETH_SPEED_NUM_2_5G      2500 /**< 2.5 Gbps */
+#define ETH_SPEED_NUM_5G        5000 /**<   5 Gbps */
+#define ETH_SPEED_NUM_10G      10000 /**<  10 Gbps */
+#define ETH_SPEED_NUM_20G      20000 /**<  20 Gbps */
+#define ETH_SPEED_NUM_25G      25000 /**<  25 Gbps */
+#define ETH_SPEED_NUM_40G      40000 /**<  40 Gbps */
+#define ETH_SPEED_NUM_50G      50000 /**<  50 Gbps */
+#define ETH_SPEED_NUM_56G      56000 /**<  56 Gbps */
+
+/**
  * A structure used to retrieve link-level information of an Ethernet port.
  */
 struct rte_eth_link {
-	uint16_t link_speed;      /**< ETH_LINK_SPEED_[10, 100, 1000, 10000] */
+	uint16_t link_speed;      /**< ETH_SPEED_NUM_ */
 	uint16_t link_duplex;     /**< ETH_LINK_[HALF/FULL]_DUPLEX */
 	uint8_t  link_status : 1; /**< ETH_LINK_[DOWN/UP] */
 }__attribute__((aligned(8)));     /**< aligned for atomic64 read/write */
-
-#define ETH_LINK_SPEED_AUTONEG  0       /**< Auto-negotiate link speed. */
-#define ETH_LINK_SPEED_10       10      /**< 10 megabits/second. */
-#define ETH_LINK_SPEED_100      100     /**< 100 megabits/second. */
-#define ETH_LINK_SPEED_1000     1000    /**< 1 gigabits/second. */
-#define ETH_LINK_SPEED_10000    10000   /**< 10 gigabits/second. */
-#define ETH_LINK_SPEED_10G      10000   /**< alias of 10 gigabits/second. */
-#define ETH_LINK_SPEED_20G      20000   /**< 20 gigabits/second. */
-#define ETH_LINK_SPEED_40G      40000   /**< 40 gigabits/second. */
 
 /* Utility constants */
 #define ETH_LINK_AUTONEG_DUPLEX 0       /**< Auto-negotiate duplex. */
@@ -779,7 +786,7 @@ struct rte_intr_conf {
  */
 struct rte_eth_conf {
 	uint16_t link_speed;
-	/**< ETH_LINK_SPEED_10[0|00|000], or 0 for autonegotation */
+	/**< ETH_SPEED_NUM_ or 0 for autonegotiation */
 	uint16_t link_duplex;
 	/**< ETH_LINK_[HALF_DUPLEX|FULL_DUPLEX], or 0 for autonegotation */
 	struct rte_eth_rxmode rxmode; /**< Port RX configuration. */

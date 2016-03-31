@@ -1386,19 +1386,19 @@ i40e_parse_link_speed(uint16_t eth_link_speed)
 	uint8_t link_speed = I40E_LINK_SPEED_UNKNOWN;
 
 	switch (eth_link_speed) {
-	case ETH_LINK_SPEED_40G:
+	case ETH_SPEED_NUM_40G:
 		link_speed = I40E_LINK_SPEED_40GB;
 		break;
-	case ETH_LINK_SPEED_20G:
+	case ETH_SPEED_NUM_20G:
 		link_speed = I40E_LINK_SPEED_20GB;
 		break;
-	case ETH_LINK_SPEED_10G:
+	case ETH_SPEED_NUM_10G:
 		link_speed = I40E_LINK_SPEED_10GB;
 		break;
-	case ETH_LINK_SPEED_1000:
+	case ETH_SPEED_NUM_1G:
 		link_speed = I40E_LINK_SPEED_1GB;
 		break;
-	case ETH_LINK_SPEED_100:
+	case ETH_SPEED_NUM_100M:
 		link_speed = I40E_LINK_SPEED_100MB;
 		break;
 	}
@@ -1768,7 +1768,7 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 		/* Get link status information from hardware */
 		status = i40e_aq_get_link_info(hw, false, &link_status, NULL);
 		if (status != I40E_SUCCESS) {
-			link.link_speed = ETH_LINK_SPEED_100;
+			link.link_speed = ETH_SPEED_NUM_100M;
 			link.link_duplex = ETH_LINK_FULL_DUPLEX;
 			PMD_DRV_LOG(ERR, "Failed to get link info");
 			goto out;
@@ -1790,22 +1790,22 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 	/* Parse the link status */
 	switch (link_status.link_speed) {
 	case I40E_LINK_SPEED_100MB:
-		link.link_speed = ETH_LINK_SPEED_100;
+		link.link_speed = ETH_SPEED_NUM_100M;
 		break;
 	case I40E_LINK_SPEED_1GB:
-		link.link_speed = ETH_LINK_SPEED_1000;
+		link.link_speed = ETH_SPEED_NUM_1G;
 		break;
 	case I40E_LINK_SPEED_10GB:
-		link.link_speed = ETH_LINK_SPEED_10G;
+		link.link_speed = ETH_SPEED_NUM_10G;
 		break;
 	case I40E_LINK_SPEED_20GB:
-		link.link_speed = ETH_LINK_SPEED_20G;
+		link.link_speed = ETH_SPEED_NUM_20G;
 		break;
 	case I40E_LINK_SPEED_40GB:
-		link.link_speed = ETH_LINK_SPEED_40G;
+		link.link_speed = ETH_SPEED_NUM_40G;
 		break;
 	default:
-		link.link_speed = ETH_LINK_SPEED_100;
+		link.link_speed = ETH_SPEED_NUM_100M;
 		break;
 	}
 
@@ -8158,15 +8158,15 @@ i40e_start_timecounters(struct rte_eth_dev *dev)
 	rte_i40e_dev_atomic_read_link_status(dev, &link);
 
 	switch (link.link_speed) {
-	case ETH_LINK_SPEED_40G:
+	case ETH_SPEED_NUM_40G:
 		tsync_inc_l = I40E_PTP_40GB_INCVAL & 0xFFFFFFFF;
 		tsync_inc_h = I40E_PTP_40GB_INCVAL >> 32;
 		break;
-	case ETH_LINK_SPEED_10G:
+	case ETH_SPEED_NUM_10G:
 		tsync_inc_l = I40E_PTP_10GB_INCVAL & 0xFFFFFFFF;
 		tsync_inc_h = I40E_PTP_10GB_INCVAL >> 32;
 		break;
-	case ETH_LINK_SPEED_1000:
+	case ETH_SPEED_NUM_1G:
 		tsync_inc_l = I40E_PTP_1GB_INCVAL & 0xFFFFFFFF;
 		tsync_inc_h = I40E_PTP_1GB_INCVAL >> 32;
 		break;

@@ -395,11 +395,11 @@ mpipe_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		speed = state & GXIO_MPIPE_LINK_SPEED_MASK;
 
 		if (speed == GXIO_MPIPE_LINK_1G) {
-			new.link_speed = ETH_LINK_SPEED_1000;
+			new.link_speed = ETH_SPEED_NUM_1G;
 			new.link_duplex = ETH_LINK_FULL_DUPLEX;
 			new.link_status = ETH_LINK_UP;
 		} else if (speed == GXIO_MPIPE_LINK_10G) {
-			new.link_speed = ETH_LINK_SPEED_10000;
+			new.link_speed = ETH_SPEED_NUM_10G;
 			new.link_duplex = ETH_LINK_FULL_DUPLEX;
 			new.link_status = ETH_LINK_UP;
 		}

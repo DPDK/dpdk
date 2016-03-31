@@ -2204,17 +2204,17 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 				IXGBE_LINK_SPEED_82599_AUTONEG :
 				IXGBE_LINK_SPEED_82598_AUTONEG;
 		break;
-	case ETH_LINK_SPEED_100:
+	case ETH_SPEED_NUM_100M:
 		/*
 		 * Invalid for 82598 but error will be detected by
 		 * ixgbe_setup_link()
 		 */
 		speed = IXGBE_LINK_SPEED_100_FULL;
 		break;
-	case ETH_LINK_SPEED_1000:
+	case ETH_SPEED_NUM_1G:
 		speed = IXGBE_LINK_SPEED_1GB_FULL;
 		break;
-	case ETH_LINK_SPEED_10000:
+	case ETH_SPEED_NUM_10G:
 		speed = IXGBE_LINK_SPEED_10GB_FULL;
 		break;
 	default:
@@ -3079,7 +3079,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		diag = ixgbe_check_link(hw, &link_speed, &link_up, 1);
 
 	if (diag != 0) {
-		link.link_speed = ETH_LINK_SPEED_100;
+		link.link_speed = ETH_SPEED_NUM_100M;
 		link.link_duplex = ETH_LINK_HALF_DUPLEX;
 		rte_ixgbe_dev_atomic_write_link_status(dev, &link);
 		if (link.link_status == old.link_status)
@@ -3100,19 +3100,19 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	default:
 	case IXGBE_LINK_SPEED_UNKNOWN:
 		link.link_duplex = ETH_LINK_HALF_DUPLEX;
-		link.link_speed = ETH_LINK_SPEED_100;
+		link.link_speed = ETH_SPEED_NUM_100M;
 		break;
 
 	case IXGBE_LINK_SPEED_100_FULL:
-		link.link_speed = ETH_LINK_SPEED_100;
+		link.link_speed = ETH_SPEED_NUM_100M;
 		break;
 
 	case IXGBE_LINK_SPEED_1GB_FULL:
-		link.link_speed = ETH_LINK_SPEED_1000;
+		link.link_speed = ETH_SPEED_NUM_1G;
 		break;
 
 	case IXGBE_LINK_SPEED_10GB_FULL:
-		link.link_speed = ETH_LINK_SPEED_10000;
+		link.link_speed = ETH_SPEED_NUM_10G;
 		break;
 	}
 	rte_ixgbe_dev_atomic_write_link_status(dev, &link);
@@ -5915,15 +5915,15 @@ ixgbe_start_timecounters(struct rte_eth_dev *dev)
 	rte_ixgbe_dev_atomic_read_link_status(dev, &link);
 
 	switch (link.link_speed) {
-	case ETH_LINK_SPEED_100:
+	case ETH_SPEED_NUM_100M:
 		incval = IXGBE_INCVAL_100;
 		shift = IXGBE_INCVAL_SHIFT_100;
 		break;
-	case ETH_LINK_SPEED_1000:
+	case ETH_SPEED_NUM_1G:
 		incval = IXGBE_INCVAL_1GB;
 		shift = IXGBE_INCVAL_SHIFT_1GB;
 		break;
-	case ETH_LINK_SPEED_10000:
+	case ETH_SPEED_NUM_10G:
 	default:
 		incval = IXGBE_INCVAL_10GB;
 		shift = IXGBE_INCVAL_SHIFT_10GB;

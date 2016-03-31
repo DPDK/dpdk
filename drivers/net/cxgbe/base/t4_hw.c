@@ -2159,13 +2159,13 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 		if (stat & F_FW_PORT_CMD_TXPAUSE)
 			fc |= PAUSE_TX;
 		if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_100M))
-			speed = ETH_LINK_SPEED_100;
+			speed = ETH_SPEED_NUM_100M;
 		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_1G))
-			speed = ETH_LINK_SPEED_1000;
+			speed = ETH_SPEED_NUM_1G;
 		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_10G))
-			speed = ETH_LINK_SPEED_10000;
+			speed = ETH_SPEED_NUM_10G;
 		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_40G))
-			speed = ETH_LINK_SPEED_40G;
+			speed = ETH_SPEED_NUM_40G;
 
 		for_each_port(adap, i) {
 			pi = adap2pinfo(adap, i);

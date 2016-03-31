@@ -1149,10 +1149,10 @@ eth_link_update(struct rte_eth_dev *dev,
 
 	switch (cgmii_link_speed(ibuf)) {
 	case SZEDATA2_LINK_SPEED_10G:
-		link.link_speed = ETH_LINK_SPEED_10G;
+		link.link_speed = ETH_SPEED_NUM_10G;
 		break;
 	case SZEDATA2_LINK_SPEED_40G:
-		link.link_speed = ETH_LINK_SPEED_40G;
+		link.link_speed = ETH_SPEED_NUM_40G;
 		break;
 	case SZEDATA2_LINK_SPEED_100G:
 		/*
@@ -1161,10 +1161,10 @@ eth_link_update(struct rte_eth_dev *dev,
 		 * will be changed to support 100Gbps speed change
 		 * this value to 100G.
 		 */
-		link.link_speed = ETH_LINK_SPEED_10G;
+		link.link_speed = ETH_SPEED_NUM_10G;
 		break;
 	default:
-		link.link_speed = ETH_LINK_SPEED_10G;
+		link.link_speed = ETH_SPEED_NUM_10G;
 		break;
 	}
 
