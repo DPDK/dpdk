@@ -3066,7 +3066,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	link.link_status = ETH_LINK_DOWN;
 	link.link_speed = 0;
-	link.link_duplex = 0;
+	link.link_duplex = ETH_LINK_HALF_DUPLEX;
 	memset(&old, 0, sizeof(old));
 	rte_ixgbe_dev_atomic_read_link_status(dev, &old);
 

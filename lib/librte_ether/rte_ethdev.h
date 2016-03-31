@@ -246,7 +246,7 @@ struct rte_eth_stats {
  */
 struct rte_eth_link {
 	uint16_t link_speed;      /**< ETH_LINK_SPEED_[10, 100, 1000, 10000] */
-	uint16_t link_duplex;     /**< ETH_LINK_[HALF_DUPLEX, FULL_DUPLEX] */
+	uint16_t link_duplex;     /**< ETH_LINK_[HALF/FULL]_DUPLEX */
 	uint8_t  link_status : 1; /**< ETH_LINK_[DOWN/UP] */
 }__attribute__((aligned(8)));     /**< aligned for atomic64 read/write */
 

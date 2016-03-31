@@ -42,8 +42,6 @@
 #define SPEED_100	100
 #define SPEED_1000	1000
 #define SPEED_10G	10000
-#define HALF_DUPLEX	1
-#define FULL_DUPLEX	2
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096

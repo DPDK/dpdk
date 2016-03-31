@@ -2062,7 +2062,7 @@ eth_igb_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		link.link_status = ETH_LINK_UP;
 	} else if (!link_check) {
 		link.link_speed = 0;
-		link.link_duplex = 0;
+		link.link_duplex = ETH_LINK_HALF_DUPLEX;
 		link.link_status = ETH_LINK_DOWN;
 	}
 	rte_igb_dev_atomic_write_link_status(dev, &link);
