@@ -988,11 +988,6 @@ parse_pipeline_pcap_source(struct app_params *app,
 	if (p->n_pktq_in == 0)
 		return -EINVAL;
 
-	for (i = 0; i < p->n_pktq_in; i++) {
-		if (p->pktq_in[i].type != APP_PKTQ_IN_SOURCE)
-			return -EINVAL;
-	}
-
 	i = 0;
 	while (*next != '\0') {
 		uint32_t id;
@@ -1066,11 +1061,6 @@ parse_pipeline_pcap_sink(struct app_params *app,
 
 	if (p->n_pktq_out == 0)
 		return -EINVAL;
-
-	for (i = 0; i < p->n_pktq_out; i++) {
-		if (p->pktq_out[i].type != APP_PKTQ_OUT_SINK)
-			return -EINVAL;
-	}
 
 	i = 0;
 	while (*next != '\0') {
@@ -1477,7 +1467,13 @@ parse_pipeline(struct app_params *app,
 		}
 
 		if (strcmp(ent->name, "pcap_file_rd") == 0) {
-			int status = parse_pipeline_pcap_source(app,
+			int status;
+
+#ifndef RTE_PORT_PCAP
+			PARSE_ERROR_INVALID(0, section_name, ent->name);
+#endif
+
+			status = parse_pipeline_pcap_source(app,
 				param, ent->value, NULL);
 
 			PARSE_ERROR((status == 0), section_name,
@@ -1486,7 +1482,13 @@ parse_pipeline(struct app_params *app,
 		}
 
 		if (strcmp(ent->name, "pcap_bytes_rd_per_pkt") == 0) {
-			int status = parse_pipeline_pcap_source(app,
+			int status;
+
+#ifndef RTE_PORT_PCAP
+			PARSE_ERROR_INVALID(0, section_name, ent->name);
+#endif
+
+			status = parse_pipeline_pcap_source(app,
 				param, NULL, ent->value);
 
 			PARSE_ERROR((status == 0), section_name,
@@ -1495,7 +1497,13 @@ parse_pipeline(struct app_params *app,
 		}
 
 		if (strcmp(ent->name, "pcap_file_wr") == 0) {
-			int status = parse_pipeline_pcap_sink(app, param,
+			int status;
+
+#ifndef RTE_PORT_PCAP
+			PARSE_ERROR_INVALID(0, section_name, ent->name);
+#endif
+
+			status = parse_pipeline_pcap_sink(app, param,
 				ent->value, NULL);
 
 			PARSE_ERROR((status == 0), section_name,
@@ -1504,7 +1512,13 @@ parse_pipeline(struct app_params *app,
 		}
 
 		if (strcmp(ent->name, "pcap_n_pkt_wr") == 0) {
-			int status = parse_pipeline_pcap_sink(app, param,
+			int status;
+
+#ifndef RTE_PORT_PCAP
+			PARSE_ERROR_INVALID(0, section_name, ent->name);
+#endif
+
+			status = parse_pipeline_pcap_sink(app, param,
 				NULL, ent->value);
 
 			PARSE_ERROR((status == 0), section_name,
@@ -2162,6 +2176,8 @@ parse_source(struct app_params *app,
 	struct rte_cfgfile_entry *entries;
 	int n_entries, i;
 	ssize_t param_idx;
+	uint32_t pcap_file_present = 0;
+	uint32_t pcap_size_present = 0;
 
 	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
 	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);
@@ -2204,18 +2220,31 @@ parse_source(struct app_params *app,
 		}
 
 		if (strcmp(ent->name, "pcap_file_rd")) {
+			PARSE_ERROR_DUPLICATE((pcap_file_present == 0),
+				section_name, ent->name);
+
 			param->file_name = strdup(ent->value);
 
 			PARSE_ERROR_MALLOC(param->file_name != NULL);
+			pcap_file_present = 1;
+
 			continue;
 		}
 
 		if (strcmp(ent->name, "pcap_bytes_rd_per_pkt") == 0) {
-			int status = parser_read_uint32(
+			int status;
+
+			PARSE_ERROR_DUPLICATE((pcap_size_present == 0),
+				section_name, ent->name);
+
+			status = parser_read_uint32(
 				&param->n_bytes_per_pkt, ent->value);
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
+			pcap_size_present = 1;
+
+			continue;
 		}
 
 		/* unrecognized */
@@ -2236,6 +2265,8 @@ parse_sink(struct app_params *app,
 	struct rte_cfgfile_entry *entries;
 	int n_entries, i;
 	ssize_t param_idx;
+	uint32_t pcap_file_present = 0;
+	uint32_t pcap_n_pkt_present = 0;
 
 	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
 	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);
@@ -2254,18 +2285,28 @@ parse_sink(struct app_params *app,
 		struct rte_cfgfile_entry *ent = &entries[i];
 
 		if (strcmp(ent->name, "pcap_file_wr")) {
+			PARSE_ERROR_DUPLICATE((pcap_file_present == 0),
+				section_name, ent->name);
+
 			param->file_name = strdup(ent->value);
 
 			PARSE_ERROR_MALLOC((param->file_name != NULL));
+
 			continue;
 		}
 
 		if (strcmp(ent->name, "pcap_n_pkt_wr")) {
-			int status = parser_read_uint32(
+			int status;
+
+			PARSE_ERROR_DUPLICATE((pcap_n_pkt_present == 0),
+				section_name, ent->name);
+
+			status = parser_read_uint32(
 				&param->n_pkts_to_dump, ent->value);
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
+
 			continue;
 		}
 
@@ -2578,6 +2619,23 @@ app_config_parse(struct app_params *app, const char *file_name)
 	APP_PARAM_COUNT(app->sink_params, app->n_pktq_sink);
 	APP_PARAM_COUNT(app->msgq_params, app->n_msgq);
 	APP_PARAM_COUNT(app->pipeline_params, app->n_pipelines);
+
+#ifdef RTE_PORT_PCAP
+	for (i = 0; i < (int)app->n_pktq_source; i++) {
+		struct app_pktq_source_params *p = &app->source_params[i];
+
+		APP_CHECK((p->file_name), "Parse error: missing "
+			"mandatory field \"pcap_file_rd\" for \"%s\"",
+			p->name);
+	}
+#else
+	for (i = 0; i < (int)app->n_pktq_source; i++) {
+		struct app_pktq_source_params *p = &app->source_params[i];
+
+		APP_CHECK((!p->file_name), "Parse error: invalid field "
+			"\"pcap_file_rd\" for \"%s\"", p->name);
+	}
+#endif
 
 	if (app->port_mask == 0)
 		assign_link_pmd_id_from_pci_bdf(app);
