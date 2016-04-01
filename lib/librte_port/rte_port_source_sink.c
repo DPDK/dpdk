@@ -36,7 +36,6 @@
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_malloc.h>
-
 #include <rte_memcpy.h>
 
 #ifdef RTE_NEXT_ABI
@@ -286,15 +285,12 @@ rte_port_source_free(void *port)
 	if (p == NULL)
 		return 0;
 
-#ifdef RTE_NEXT_ABI
-
 	if (p->pkt_len)
 		rte_free(p->pkt_len);
 	if (p->pkts)
 		rte_free(p->pkts);
 	if (p->pkt_buff)
 		rte_free(p->pkt_buff);
-#endif
 
 	rte_free(p);
 
@@ -315,8 +311,6 @@ rte_port_source_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 		rte_pktmbuf_reset(pkts[i]);
 	}
 
-#ifdef RTE_NEXT_ABI
-
 	if (p->pkt_buff != NULL) {
 		for (i = 0; i < n_pkts; i++) {
 			uint8_t *pkt_data = rte_pktmbuf_mtod(pkts[i],
@@ -332,8 +326,6 @@ rte_port_source_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 				p->pkt_index = 0;
 		}
 	}
-
-#endif
 
 	RTE_PORT_SOURCE_STATS_PKTS_IN_ADD(p, n_pkts);
 
@@ -419,21 +411,12 @@ pcap_sink_open(struct rte_port_sink *port,
 	return 0;
 }
 
-uint8_t jumbo_pkt_buf[ETHER_MAX_JUMBO_FRAME_LEN];
-
-/**
- * Dump a packet to PCAP dumper
- *
- * @param p
- *   Handle to sink port
- * @param mbuf
- *   Handle to mbuf structure holding the packet
- */
 static void
-pcap_sink_dump_pkt(struct rte_port_sink *port, struct rte_mbuf *mbuf)
+pcap_sink_write_pkt(struct rte_port_sink *port, struct rte_mbuf *mbuf)
 {
 	uint8_t *pcap_dumper = (uint8_t *)(port->dumper);
 	struct pcap_pkthdr pcap_hdr;
+	uint8_t jumbo_pkt_buf[ETHER_MAX_JUMBO_FRAME_LEN];
 	uint8_t *pkt;
 
 	/* Maximum num packets already reached */
@@ -481,37 +464,23 @@ pcap_sink_dump_pkt(struct rte_port_sink *port, struct rte_mbuf *mbuf)
 
 }
 
-/**
- * Flush pcap dumper
- *
- * @param dumper
- *   Handle to pcap dumper
- */
-
-static void
-pcap_sink_flush_pkt(void *dumper)
-{
-	pcap_dumper_t *pcap_dumper = (pcap_dumper_t *)dumper;
-
-	pcap_dump_flush(pcap_dumper);
-}
-
-/**
- * Close a PCAP dumper handle
- *
- * @param dumper
- *   Handle to pcap dumper
- */
-static void
-pcap_sink_close(void *dumper)
-{
-	pcap_dumper_t *pcap_dumper = (pcap_dumper_t *)dumper;
-
-	pcap_dump_close(pcap_dumper);
-}
-
 #define PCAP_SINK_OPEN(port, file_name, max_n_pkts)		\
 	pcap_sink_open(port, file_name, max_n_pkts)
+
+#define PCAP_SINK_WRITE_PKT(port, mbuf)				\
+	pcap_sink_write_pkt(port, mbuf)
+
+#define PCAP_SINK_FLUSH_PKT(dumper)				\
+do {								\
+	if (dumper)						\
+		pcap_dump_flush((pcap_dumper_t *)dumper);	\
+} while (0)
+
+#define PCAP_SINK_CLOSE(dumper)					\
+do {								\
+	if (dumper)						\
+		pcap_dump_close((pcap_dumper_t *)dumper);	\
+} while (0)
 
 #else
 
@@ -528,15 +497,11 @@ pcap_sink_close(void *dumper)
 	_ret;							\
 })
 
-static void
-pcap_sink_dump_pkt(__rte_unused struct rte_port_sink *port,
-		__rte_unused struct rte_mbuf *mbuf) {}
+#define PCAP_SINK_WRITE_PKT(port, mbuf) {}
 
-static void
-pcap_sink_flush_pkt(__rte_unused void *dumper) {}
+#define PCAP_SINK_FLUSH_PKT(dumper)
 
-static void
-pcap_sink_close(__rte_unused void *dumper) {}
+#define PCAP_SINK_CLOSE(dumper)
 
 #endif
 
@@ -573,11 +538,11 @@ rte_port_sink_create(void *params, int socket_id)
 static int
 rte_port_sink_tx(void *port, struct rte_mbuf *pkt)
 {
-	__rte_unused struct rte_port_sink *p = (struct rte_port_sink *) port;
+	struct rte_port_sink *p = (struct rte_port_sink *) port;
 
 	RTE_PORT_SINK_STATS_PKTS_IN_ADD(p, 1);
 	if (p->dumper != NULL)
-		pcap_sink_dump_pkt(p, pkt);
+		PCAP_SINK_WRITE_PKT(p, pkt);
 	rte_pktmbuf_free(pkt);
 	RTE_PORT_SINK_STATS_PKTS_DROP_ADD(p, 1);
 
@@ -588,7 +553,7 @@ static int
 rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 	uint64_t pkts_mask)
 {
-	__rte_unused struct rte_port_sink *p = (struct rte_port_sink *) port;
+	struct rte_port_sink *p = (struct rte_port_sink *) port;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
 		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
@@ -598,11 +563,8 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 		RTE_PORT_SINK_STATS_PKTS_DROP_ADD(p, n_pkts);
 
 		if (p->dumper) {
-			for (i = 0; i < n_pkts; i++) {
-				struct rte_mbuf *pkt = pkts[i];
-
-				pcap_sink_dump_pkt(p, pkt);
-			}
+			for (i = 0; i < n_pkts; i++)
+				PCAP_SINK_WRITE_PKT(p, pkts[i]);
 		}
 
 		for (i = 0; i < n_pkts; i++) {
@@ -619,7 +581,7 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 			for ( ; dump_pkts_mask; ) {
 				pkt_index = __builtin_ctzll(
 					dump_pkts_mask);
-				pcap_sink_dump_pkt(p, pkts[pkt_index]);
+				PCAP_SINK_WRITE_PKT(p, pkts[pkt_index]);
 				dump_pkts_mask &= ~(1LLU << pkt_index);
 			}
 		}
@@ -642,10 +604,13 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 static int
 rte_port_sink_flush(void *port)
 {
-	struct rte_port_sink *p = (struct rte_port_sink *)port;
+	struct rte_port_sink *p =
+			(struct rte_port_sink *)port;
 
-	if (p->dumper != NULL)
-		pcap_sink_flush_pkt(p->dumper);
+	if (p == NULL)
+		return 0;
+
+	PCAP_SINK_FLUSH_PKT(p->dumper);
 
 	return 0;
 }
@@ -655,12 +620,11 @@ rte_port_sink_free(void *port)
 {
 	struct rte_port_sink *p =
 			(struct rte_port_sink *)port;
-	/* Check input parameters */
+
 	if (p == NULL)
 		return 0;
 
-	if (p->dumper != NULL)
-		pcap_sink_close(p->dumper);
+	PCAP_SINK_CLOSE(p->dumper);
 
 	rte_free(p);
 

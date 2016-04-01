@@ -92,9 +92,7 @@ endif
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
 endif
-ifeq ($(CONFIG_RTE_NEXT_ABI),y)
 _LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
-endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lpcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lz
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs

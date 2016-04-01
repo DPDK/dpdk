@@ -35,13 +35,8 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 #
 LIB = librte_port.a
-
-ifeq ($(CONFIG_RTE_NEXT_ABI),y)
-
 ifeq ($(CONFIG_RTE_PORT_PCAP),y)
 LDLIBS += -lpcap
-endif
-
 endif
 
 CFLAGS += -O3
