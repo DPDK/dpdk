@@ -890,7 +890,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	/* The size of the mempool should be at least:
 	 * the sum of the TX descriptors + BOND_MODE_8023AX_SLAVE_TX_PKTS */
 	total_tx_desc = BOND_MODE_8023AX_SLAVE_TX_PKTS;
-	for (q_id = 0; q_id < bond_dev->data->nb_rx_queues; q_id++) {
+	for (q_id = 0; q_id < bond_dev->data->nb_tx_queues; q_id++) {
 		bd_tx_q = (struct bond_tx_queue*)bond_dev->data->tx_queues[q_id];
 		total_tx_desc += bd_tx_q->nb_tx_desc;
 	}
