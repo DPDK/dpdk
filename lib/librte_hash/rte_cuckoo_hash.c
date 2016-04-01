@@ -59,7 +59,7 @@
 #include <rte_compat.h>
 
 #include "rte_hash.h"
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_X32)
+#if defined(RTE_ARCH_X86)
 #include "rte_cmp_x86.h"
 #endif
 
@@ -287,8 +287,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
  * If x86 architecture is used, select appropriate compare function,
  * which may use x86 instrinsics, otherwise use memcmp
  */
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686) ||\
-	 defined(RTE_ARCH_X86_X32) || defined(RTE_ARCH_ARM64)
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/* Select function to compare keys */
 	switch (params->key_len) {
 	case 16:
