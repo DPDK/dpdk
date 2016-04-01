@@ -87,6 +87,14 @@ or stored in the hash table itself.
 The example hash tables in the L2/L3 Forwarding sample applications defines which port to forward a packet to based on a packet flow identified by the five-tuple lookup.
 However, this table could also be used for more sophisticated features and provide many other functions and actions that could be performed on the packets and flows.
 
+Multi-process support
+---------------------
+
+The hash library can be used in a multi-process environment, minding that only lookups are thread-safe.
+The only function that can only be used in single-process mode is rte_hash_set_cmp_func(), which sets up
+a custom compare function, which is assigned to a function pointer (therefore, it is not supported in
+multi-process mode).
+
 Implementation Details
 ----------------------
 

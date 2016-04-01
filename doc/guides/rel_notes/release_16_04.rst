@@ -404,6 +404,14 @@ Libraries
   Fix crc32c hash functions to return a valid crc32c value for data lengths
   not multiple of 4 bytes.
 
+* **hash: Fixed hash library to support multi-process mode.**
+
+  Fix hash library to support multi-process mode, using a jump table,
+  instead of storing a function pointer to the key compare function.
+  Multi-process mode only works with the built-in compare functions,
+  however a custom compare function (not in the jump table) can only
+  be used in single-process mode.
+
 * **librte_port: Fixed segmentation fault for ring and ethdev writer nodrop.**
 
   Fixed core dump issue on txq and swq when dropless is set to yes.

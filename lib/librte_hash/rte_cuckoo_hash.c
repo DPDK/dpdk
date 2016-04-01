@@ -102,6 +102,63 @@ EAL_REGISTER_TAILQ(rte_hash_tailq)
 
 #define LCORE_CACHE_SIZE		8
 
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
+/*
+ * All different options to select a key compare function,
+ * based on the key size and custom function.
+ */
+enum cmp_jump_table_case {
+	KEY_CUSTOM = 0,
+	KEY_16_BYTES,
+	KEY_32_BYTES,
+	KEY_48_BYTES,
+	KEY_64_BYTES,
+	KEY_80_BYTES,
+	KEY_96_BYTES,
+	KEY_112_BYTES,
+	KEY_128_BYTES,
+	KEY_OTHER_BYTES,
+	NUM_KEY_CMP_CASES,
+};
+
+/*
+ * Table storing all different key compare functions
+ * (multi-process supported)
+ */
+const rte_hash_cmp_eq_t cmp_jump_table[NUM_KEY_CMP_CASES] = {
+	NULL,
+	rte_hash_k16_cmp_eq,
+	rte_hash_k32_cmp_eq,
+	rte_hash_k48_cmp_eq,
+	rte_hash_k64_cmp_eq,
+	rte_hash_k80_cmp_eq,
+	rte_hash_k96_cmp_eq,
+	rte_hash_k112_cmp_eq,
+	rte_hash_k128_cmp_eq,
+	memcmp
+};
+#else
+/*
+ * All different options to select a key compare function,
+ * based on the key size and custom function.
+ */
+enum cmp_jump_table_case {
+	KEY_CUSTOM = 0,
+	KEY_OTHER_BYTES,
+	NUM_KEY_CMP_CASES,
+};
+
+/*
+ * Table storing all different key compare functions
+ * (multi-process supported)
+ */
+const rte_hash_cmp_eq_t cmp_jump_table[NUM_KEY_CMP_CASES] = {
+	NULL,
+	memcmp
+};
+
+#endif
+
 struct lcore_cache {
 	unsigned len; /**< Cache len */
 	void *objs[LCORE_CACHE_SIZE]; /**< Cache objects */
@@ -115,7 +172,10 @@ struct rte_hash {
 	uint32_t key_len;               /**< Length of hash key. */
 	rte_hash_function hash_func;    /**< Function used to calculate hash. */
 	uint32_t hash_func_init_val;    /**< Init value used by hash_func. */
-	rte_hash_cmp_eq_t rte_hash_cmp_eq; /**< Function used to compare keys. */
+	rte_hash_cmp_eq_t rte_hash_custom_cmp_eq;
+	/**< Custom function used to compare keys. */
+	enum cmp_jump_table_case cmp_jump_table_idx;
+	/**< Indicates which compare function to use. */
 	uint32_t bucket_bitmask;        /**< Bitmask for getting bucket index
 						from hash signature. */
 	uint32_t key_entry_size;         /**< Size of each key entry. */
@@ -187,7 +247,16 @@ rte_hash_find_existing(const char *name)
 
 void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func)
 {
-	h->rte_hash_cmp_eq = func;
+	h->rte_hash_custom_cmp_eq = func;
+}
+
+static inline int
+rte_hash_cmp_eq(const void *key1, const void *key2, const struct rte_hash *h)
+{
+	if (h->cmp_jump_table_idx == KEY_CUSTOM)
+		return h->rte_hash_custom_cmp_eq(key1, key2, h->key_len);
+	else
+		return cmp_jump_table[h->cmp_jump_table_idx](key1, key2, h->key_len);
 }
 
 struct rte_hash *
@@ -291,35 +360,35 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	/* Select function to compare keys */
 	switch (params->key_len) {
 	case 16:
-		h->rte_hash_cmp_eq = rte_hash_k16_cmp_eq;
+		h->cmp_jump_table_idx = KEY_16_BYTES;
 		break;
 	case 32:
-		h->rte_hash_cmp_eq = rte_hash_k32_cmp_eq;
+		h->cmp_jump_table_idx = KEY_32_BYTES;
 		break;
 	case 48:
-		h->rte_hash_cmp_eq = rte_hash_k48_cmp_eq;
+		h->cmp_jump_table_idx = KEY_48_BYTES;
 		break;
 	case 64:
-		h->rte_hash_cmp_eq = rte_hash_k64_cmp_eq;
+		h->cmp_jump_table_idx = KEY_64_BYTES;
 		break;
 	case 80:
-		h->rte_hash_cmp_eq = rte_hash_k80_cmp_eq;
+		h->cmp_jump_table_idx = KEY_80_BYTES;
 		break;
 	case 96:
-		h->rte_hash_cmp_eq = rte_hash_k96_cmp_eq;
+		h->cmp_jump_table_idx = KEY_96_BYTES;
 		break;
 	case 112:
-		h->rte_hash_cmp_eq = rte_hash_k112_cmp_eq;
+		h->cmp_jump_table_idx = KEY_112_BYTES;
 		break;
 	case 128:
-		h->rte_hash_cmp_eq = rte_hash_k128_cmp_eq;
+		h->cmp_jump_table_idx = KEY_128_BYTES;
 		break;
 	default:
 		/* If key is not multiple of 16, use generic memcmp */
-		h->rte_hash_cmp_eq = memcmp;
+		h->cmp_jump_table_idx = KEY_OTHER_BYTES;
 	}
 #else
-	h->rte_hash_cmp_eq = memcmp;
+	h->cmp_jump_table_idx = KEY_OTHER_BYTES;
 #endif
 
 	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
@@ -593,7 +662,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				prim_bkt->signatures[i].alt == alt_hash) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					prim_bkt->key_idx[i] * h->key_entry_size);
-			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				/* Enqueue index of free slot back in the ring. */
 				enqueue_slot_back(h, cached_free_slots, slot_id);
 				/* Update data */
@@ -613,7 +682,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				sec_bkt->signatures[i].current == alt_hash) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					sec_bkt->key_idx[i] * h->key_entry_size);
-			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				/* Enqueue index of free slot back in the ring. */
 				enqueue_slot_back(h, cached_free_slots, slot_id);
 				/* Update data */
@@ -724,7 +793,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 				bkt->signatures[i].sig != NULL_SIGNATURE) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
-			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				if (data != NULL)
 					*data = k->pdata;
 				/*
@@ -747,7 +816,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 				bkt->signatures[i].alt == sig) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
-			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				if (data != NULL)
 					*data = k->pdata;
 				/*
@@ -839,7 +908,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				bkt->signatures[i].sig != NULL_SIGNATURE) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
-			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				remove_entry(h, bkt, i);
 
 				/*
@@ -862,7 +931,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				bkt->signatures[i].sig != NULL_SIGNATURE) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
-			if (h->rte_hash_cmp_eq(key, k->key, h->key_len) == 0) {
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				remove_entry(h, bkt, i);
 
 				/*
@@ -979,7 +1048,7 @@ lookup_stage3(unsigned idx, const struct rte_hash_key *key_slot, const void * co
 	unsigned hit;
 	unsigned key_idx;
 
-	hit = !h->rte_hash_cmp_eq(key_slot->key, keys[idx], h->key_len);
+	hit = !rte_hash_cmp_eq(key_slot->key, keys[idx], h);
 	if (data != NULL)
 		data[idx] = key_slot->pdata;
 
