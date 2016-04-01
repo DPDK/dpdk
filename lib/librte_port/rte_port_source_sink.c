@@ -385,46 +385,36 @@ struct rte_port_sink {
 
 #ifdef RTE_PORT_PCAP
 
-/**
- * Open PCAP file for dumping packets to the file later
- *
- * @param port
- *   Handle to sink port
- * @param p
- *   Sink port parameter
- * @return
- *   0 on SUCCESS
- *   error code otherwise
- */
 static int
 pcap_sink_open(struct rte_port_sink *port,
-		__rte_unused struct rte_port_sink_params *p)
+	const char *file_name,
+	uint32_t max_n_pkts)
 {
 	pcap_t *tx_pcap;
 	pcap_dumper_t *pcap_dumper;
 
-	if (p->file_name == NULL) {
-		port->dumper = NULL;
-		port->max_pkts = 0;
-		port->pkt_index = 0;
-		port->dump_finish = 0;
-		return 0;
-	}
-
 	/** Open a dead pcap handler for opening dumper file */
 	tx_pcap = pcap_open_dead(DLT_EN10MB, 65535);
-	if (tx_pcap == NULL)
-		return -ENOENT;
+	if (tx_pcap == NULL) {
+		RTE_LOG(ERR, PORT, "Cannot open pcap dead handler\n");
+		return -1;
+	}
 
 	/* The dumper is created using the previous pcap_t reference */
-	pcap_dumper = pcap_dump_open(tx_pcap, p->file_name);
-	if (pcap_dumper == NULL)
-		return -ENOENT;
+	pcap_dumper = pcap_dump_open(tx_pcap, file_name);
+	if (pcap_dumper == NULL) {
+		RTE_LOG(ERR, PORT, "Failed to open pcap file "
+			"\"%s\" for writing\n", file_name);
+		return -1;
+	}
 
 	port->dumper = pcap_dumper;
-	port->max_pkts = p->max_n_pkts;
+	port->max_pkts = max_n_pkts;
 	port->pkt_index = 0;
 	port->dump_finish = 0;
+
+	RTE_LOG(INFO, PORT, "Ready to dump packets to file \"%s\"\n",
+		file_name);
 
 	return 0;
 }
@@ -520,19 +510,23 @@ pcap_sink_close(void *dumper)
 	pcap_dump_close(pcap_dumper);
 }
 
+#define PCAP_SINK_OPEN(port, file_name, max_n_pkts)		\
+	pcap_sink_open(port, file_name, max_n_pkts)
+
 #else
 
-static int
-pcap_sink_open(struct rte_port_sink *port,
-		__rte_unused struct rte_port_sink_params *p)
-{
-	port->dumper = NULL;
-	port->max_pkts = 0;
-	port->pkt_index = 0;
-	port->dump_finish = 0;
-
-	return -ENOTSUP;
-}
+#define PCAP_SINK_OPEN(port, file_name, max_n_pkts)		\
+({								\
+	int _ret = 0;						\
+								\
+	if (file_name) {					\
+		RTE_LOG(ERR, PORT, "Sink port field "		\
+			"\"file_name\" is not NULL.\n");	\
+		_ret = -1;					\
+	}							\
+								\
+	_ret;							\
+})
 
 static void
 pcap_sink_dump_pkt(__rte_unused struct rte_port_sink *port,
@@ -547,11 +541,10 @@ pcap_sink_close(__rte_unused void *dumper) {}
 #endif
 
 static void *
-rte_port_sink_create(__rte_unused void *params, int socket_id)
+rte_port_sink_create(void *params, int socket_id)
 {
 	struct rte_port_sink *port;
 	struct rte_port_sink_params *p = params;
-	int status;
 
 	/* Memory allocation */
 	port = rte_zmalloc_socket("PORT", sizeof(*port),
@@ -561,24 +554,17 @@ rte_port_sink_create(__rte_unused void *params, int socket_id)
 		return NULL;
 	}
 
-	/* Try to open PCAP file for dumping, if possible */
-	status = pcap_sink_open(port, p);
-	if (status == 0) {
-		if (port->dumper != NULL)
-			RTE_LOG(INFO, PORT, "Ready to dump packets "
-				"to file %s\n", p->file_name);
+	if (!p)
+		return port;
 
-	} else if (status != -ENOTSUP) {
-		if (status == -ENOENT)
-			RTE_LOG(ERR, PORT, "%s: Failed to open pcap file "
-				"%s for writing\n", __func__,
-				p->file_name);
-		else
-			RTE_LOG(ERR, PORT, "%s: Failed to enable pcap "
-				"support for unknown reason\n", __func__);
+	if (p->file_name) {
+		int status = PCAP_SINK_OPEN(port, p->file_name,
+			p->max_n_pkts);
 
-		rte_free(port);
-		port = NULL;
+		if (status < 0) {
+			rte_free(port);
+			port = NULL;
+		}
 	}
 
 	return port;
