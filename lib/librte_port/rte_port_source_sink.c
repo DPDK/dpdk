@@ -37,9 +37,9 @@
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 
-#ifdef RTE_NEXT_ABI
-
 #include <rte_memcpy.h>
+
+#ifdef RTE_NEXT_ABI
 
 #ifdef RTE_PORT_PCAP
 #include <rte_ether.h>
@@ -74,39 +74,24 @@ struct rte_port_source {
 
 	struct rte_mempool *mempool;
 
-#ifdef RTE_NEXT_ABI
-	/* PCAP buffers and indexes */
+	/* PCAP buffers and indices */
 	uint8_t **pkts;
 	uint8_t *pkt_buff;
 	uint32_t *pkt_len;
 	uint32_t n_pkts;
 	uint32_t pkt_index;
-#endif
 };
 
 #ifdef RTE_NEXT_ABI
 
 #ifdef RTE_PORT_PCAP
 
-/**
- * Load PCAP file, allocate and copy packets in the file to memory
- *
- * @param p
- *   Parameters for source port
- * @param port
- *   Handle to source port
- * @param socket_id
- *   Socket id where the memory is created
- * @return
- *   0 on SUCCESS
- *   error code otherwise
- */
 static int
-pcap_source_load(struct rte_port_source_params *p,
-		struct rte_port_source *port,
+pcap_source_load(struct rte_port_source *port,
+		const char *file_name,
+		uint32_t n_bytes_per_pkt,
 		int socket_id)
 {
-	uint32_t status = 0;
 	uint32_t n_pkts = 0;
 	uint32_t i;
 	uint32_t *pkt_len_aligns = NULL;
@@ -121,18 +106,16 @@ pcap_source_load(struct rte_port_source_params *p,
 			(rte_pktmbuf_data_room_size(port->mempool) -
 			RTE_PKTMBUF_HEADROOM);
 
-	if (p->file_name == NULL)
-		return 0;
-
-	if (p->n_bytes_per_pkt == 0)
+	if (n_bytes_per_pkt == 0)
 		max_len = pktmbuf_maxlen;
 	else
-		max_len = RTE_MIN(p->n_bytes_per_pkt, pktmbuf_maxlen);
+		max_len = RTE_MIN(n_bytes_per_pkt, pktmbuf_maxlen);
 
 	/* first time open, get packet number */
-	pcap_handle = pcap_open_offline(p->file_name, pcap_errbuf);
+	pcap_handle = pcap_open_offline(file_name, pcap_errbuf);
 	if (pcap_handle == NULL) {
-		status = -ENOENT;
+		RTE_LOG(ERR, PORT, "Failed to open pcap file "
+			"'%s' for reading\n", file_name);
 		goto error_exit;
 	}
 
@@ -144,28 +127,29 @@ pcap_source_load(struct rte_port_source_params *p,
 	port->pkt_len = rte_zmalloc_socket("PCAP",
 		(sizeof(*port->pkt_len) * n_pkts), 0, socket_id);
 	if (port->pkt_len == NULL) {
-		status = -ENOMEM;
+		RTE_LOG(ERR, PORT, "No enough memory\n");
 		goto error_exit;
 	}
 
 	pkt_len_aligns = rte_malloc("PCAP",
 		(sizeof(*pkt_len_aligns) * n_pkts), 0);
 	if (pkt_len_aligns == NULL) {
-		status = -ENOMEM;
+		RTE_LOG(ERR, PORT, "No enough memory\n");
 		goto error_exit;
 	}
 
 	port->pkts = rte_zmalloc_socket("PCAP",
 		(sizeof(*port->pkts) * n_pkts), 0, socket_id);
 	if (port->pkts == NULL) {
-		status = -ENOMEM;
+		RTE_LOG(ERR, PORT, "No enough memory\n");
 		goto error_exit;
 	}
 
 	/* open 2nd time, get pkt_len */
-	pcap_handle = pcap_open_offline(p->file_name, pcap_errbuf);
+	pcap_handle = pcap_open_offline(file_name, pcap_errbuf);
 	if (pcap_handle == NULL) {
-		status = -ENOENT;
+		RTE_LOG(ERR, PORT, "Failed to open pcap file "
+			"'%s' for reading\n", file_name);
 		goto error_exit;
 	}
 
@@ -183,16 +167,17 @@ pcap_source_load(struct rte_port_source_params *p,
 	buff = rte_zmalloc_socket("PCAP",
 		total_buff_len, 0, socket_id);
 	if (buff == NULL) {
-		status = -ENOMEM;
+		RTE_LOG(ERR, PORT, "No enough memory\n");
 		goto error_exit;
 	}
 
 	port->pkt_buff = buff;
 
 	/* open file one last time to copy the pkt content */
-	pcap_handle = pcap_open_offline(p->file_name, pcap_errbuf);
+	pcap_handle = pcap_open_offline(file_name, pcap_errbuf);
 	if (pcap_handle == NULL) {
-		status = -ENOENT;
+		RTE_LOG(ERR, PORT, "Failed to open pcap file "
+			"'%s' for reading\n", file_name);
 		goto error_exit;
 	}
 
@@ -209,6 +194,10 @@ pcap_source_load(struct rte_port_source_params *p,
 
 	rte_free(pkt_len_aligns);
 
+	RTE_LOG(INFO, PORT, "Successfully load pcap file "
+		"'%s' with %u pkts\n",
+		file_name, port->n_pkts);
+
 	return 0;
 
 error_exit:
@@ -221,25 +210,30 @@ error_exit:
 	if (port->pkt_buff)
 		rte_free(port->pkt_buff);
 
-	return status;
+	return -1;
 }
 
-#else
-static int
-pcap_source_load(__rte_unused struct rte_port_source_params *p,
-		struct rte_port_source *port,
-		__rte_unused int socket_id)
-{
-	port->pkt_buff = NULL;
-	port->pkt_len = NULL;
-	port->pkts = NULL;
-	port->pkt_index = 0;
+#define PCAP_SOURCE_LOAD(port, file_name, n_bytes, socket_id)	\
+	pcap_source_load(port, file_name, n_bytes, socket_id)
 
-	return -ENOTSUP;
-}
+#else /* RTE_PORT_PCAP */
+
+#define PCAP_SOURCE_LOAD(port, file_name, n_bytes, socket_id)	\
+({								\
+	int _ret = 0;						\
+								\
+	if (file_name) {					\
+		RTE_LOG(ERR, PORT, "Source port field "		\
+			"\"file_name\" is not NULL.\n");	\
+		_ret = -1;					\
+	}							\
+								\
+	_ret;							\
+})
+
 #endif /* RTE_PORT_PCAP */
 
-#endif
+#endif /* RTE_NEXT_ABI */
 
 static void *
 rte_port_source_create(void *params, int socket_id)
@@ -267,36 +261,14 @@ rte_port_source_create(void *params, int socket_id)
 
 #ifdef RTE_NEXT_ABI
 
-	/* pcap file load and initialization */
-	int status = pcap_source_load(p, port, socket_id);
+	if (p->file_name) {
+		int status = PCAP_SOURCE_LOAD(port, p->file_name,
+			p->n_bytes_per_pkt, socket_id);
 
-	if (status == 0) {
-		if (port->pkt_buff != NULL) {
-			RTE_LOG(INFO, PORT, "Successfully load pcap file "
-				"'%s' with %u pkts\n",
-				p->file_name, port->n_pkts);
+		if (status < 0) {
+			rte_free(port);
+			port = NULL;
 		}
-	} else if (status != -ENOTSUP) {
-		/* ENOTSUP is not treated as error */
-		switch (status) {
-		case -ENOENT:
-			RTE_LOG(ERR, PORT, "%s: Failed to open pcap file "
-				"'%s' for reading\n",
-				__func__, p->file_name);
-			break;
-		case -ENOMEM:
-			RTE_LOG(ERR, PORT, "%s: Not enough memory\n",
-				__func__);
-			break;
-		default:
-			RTE_LOG(ERR, PORT, "%s: Failed to enable PCAP "
-				"support for unknown reason\n",
-				__func__);
-			break;
-		}
-
-		rte_free(port);
-		port = NULL;
 	}
 
 #endif
