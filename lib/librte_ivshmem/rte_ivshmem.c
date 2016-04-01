@@ -471,9 +471,20 @@ add_memzone_to_metadata(const struct rte_memzone * mz,
 		struct ivshmem_config * config)
 {
 	struct rte_ivshmem_metadata_entry * entry;
-	unsigned i;
+	unsigned i, idx;
+	struct rte_mem_config *mcfg;
+
+	if (mz->len == 0) {
+		RTE_LOG(ERR, EAL, "Trying to add an empty memzone\n");
+		return -1;
+	}
 
 	rte_spinlock_lock(&config->sl);
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	/* it prevents the memzone being freed while we add it to the metadata */
+	rte_rwlock_write_lock(&mcfg->mlock);
 
 	/* find free slot in this config */
 	for (i = 0; i < RTE_DIM(config->metadata->entry); i++) {
@@ -504,13 +515,6 @@ add_memzone_to_metadata(const struct rte_memzone * mz,
 				config->metadata->name);
 		goto fail;
 	}
-#ifdef RTE_LIBRTE_IVSHMEM
-	struct rte_mem_config *mcfg;
-	unsigned int idx;
-
-	mcfg = rte_eal_get_configuration()->mem_config;
-
-	rte_rwlock_write_lock(&mcfg->mlock);
 
 	idx = ((uintptr_t)mz - (uintptr_t)mcfg->memzone);
 	idx = idx / sizeof(struct rte_memzone);
@@ -519,10 +523,10 @@ add_memzone_to_metadata(const struct rte_memzone * mz,
 	mcfg->memzone[idx].ioremap_addr = mz->phys_addr;
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
-#endif
 	rte_spinlock_unlock(&config->sl);
 	return 0;
 fail:
+	rte_rwlock_write_unlock(&mcfg->mlock);
 	rte_spinlock_unlock(&config->sl);
 	return -1;
 }
