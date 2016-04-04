@@ -369,7 +369,7 @@ struct rte_crypto_sym_op {
 	struct rte_mbuf *m_src;	/**< source mbuf */
 	struct rte_mbuf *m_dst;	/**< destination mbuf */
 
-	enum rte_crypto_sym_op_sess_type type;
+	enum rte_crypto_sym_op_sess_type sess_type;
 
 	union {
 		struct rte_cryptodev_sym_session *session;
@@ -607,7 +607,7 @@ __rte_crypto_sym_op_reset(struct rte_crypto_sym_op *op)
 {
 	memset(op, 0, sizeof(*op));
 
-	op->type = RTE_CRYPTO_SYM_OP_SESSIONLESS;
+	op->sess_type = RTE_CRYPTO_SYM_OP_SESSIONLESS;
 }
 
 
@@ -649,7 +649,7 @@ __rte_crypto_sym_op_attach_sym_session(struct rte_crypto_sym_op *sym_op,
 		struct rte_cryptodev_sym_session *sess)
 {
 	sym_op->session = sess;
-	sym_op->type = RTE_CRYPTO_SYM_OP_WITH_SESSION;
+	sym_op->sess_type = RTE_CRYPTO_SYM_OP_WITH_SESSION;
 
 	return 0;
 }

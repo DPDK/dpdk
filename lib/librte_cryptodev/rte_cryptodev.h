@@ -839,7 +839,7 @@ struct rte_cryptodev_sym_session {
 	struct {
 		uint8_t dev_id;
 		/**< Device Id */
-		enum rte_cryptodev_type type;
+		enum rte_cryptodev_type dev_type;
 		/** Crypto Device type session created on */
 		struct rte_mempool *mp;
 		/**< Mempool session allocated from */

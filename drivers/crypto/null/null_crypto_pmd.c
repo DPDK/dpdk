@@ -114,9 +114,9 @@ get_session(struct null_crypto_qp *qp, struct rte_crypto_sym_op *op)
 {
 	struct null_crypto_session *sess;
 
-	if (op->type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
+	if (op->sess_type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
 		if (unlikely(op->session == NULL ||
-				op->session->type != RTE_CRYPTODEV_NULL_PMD))
+			     op->session->dev_type != RTE_CRYPTODEV_NULL_PMD))
 			return NULL;
 
 		sess = (struct null_crypto_session *)op->session->_private;

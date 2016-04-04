@@ -952,7 +952,7 @@ rte_cryptodev_sym_session_init(struct rte_mempool *mp,
 	memset(sess, 0, mp->elt_size);
 
 	sess->dev_id = dev->data->dev_id;
-	sess->type = dev->dev_type;
+	sess->dev_type = dev->dev_type;
 	sess->mp = mp;
 
 	if (dev->dev_ops->session_initialize)
@@ -1072,7 +1072,7 @@ rte_cryptodev_sym_session_free(uint8_t dev_id,
 	dev = &rte_crypto_devices[dev_id];
 
 	/* Check the session belongs to this device type */
-	if (sess->type != dev->dev_type)
+	if (sess->dev_type != dev->dev_type)
 		return sess;
 
 	/* Let device implementation clear session material */
