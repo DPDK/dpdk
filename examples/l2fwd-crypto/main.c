@@ -902,7 +902,7 @@ parse_cipher_algo(enum rte_crypto_cipher_algorithm *algo, char *optarg)
 
 	for (i = 0; i < RTE_CRYPTO_CIPHER_LIST_END; i++) {
 		if (!strcmp(supported_cipher_algo[i], optarg)) {
-			*algo = i;
+			*algo = (enum rte_crypto_cipher_algorithm)i;
 			return 0;
 		}
 	}
@@ -978,7 +978,7 @@ parse_auth_algo(enum rte_crypto_auth_algorithm *algo, char *optarg)
 
 	for (i = 0; i < RTE_CRYPTO_AUTH_LIST_END; i++) {
 		if (!strcmp(supported_auth_algo[i], optarg)) {
-			*algo = i;
+			*algo = (enum rte_crypto_auth_algorithm)i;
 			return 0;
 		}
 	}
