@@ -27,7 +27,7 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Null Crytpo Poll Mode Driver
+Null Crypto Poll Mode Driver
 ============================
 
 The Null Crypto PMD (**librte_pmd_null_crypto**) provides a crypto poll mode

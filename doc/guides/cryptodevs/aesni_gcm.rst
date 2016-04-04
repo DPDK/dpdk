@@ -28,7 +28,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 AES-NI GCM Crypto Poll Mode Driver
-============================================
+==================================
 
 
 The AES-NI GCM PMD (**librte_pmd_aesni_gcm**) provides poll mode crypto driver
