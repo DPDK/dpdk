@@ -1536,7 +1536,7 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
 			return xcount;
 	}
 
-	if (n < count + xcount)
+	if (n < count + xcount || xstats == NULL)
 		return count + xcount;
 
 	/* now fill the xstats structure */
