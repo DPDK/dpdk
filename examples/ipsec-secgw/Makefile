@@ -42,6 +42,10 @@ APP = ipsec-secgw
 
 CFLAGS += -O3 -gdwarf-2
 CFLAGS += $(WERROR_FLAGS)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
+CFLAGS_sa.o += -diag-disable=vec
+endif
+
 
 VPATH += $(SRCDIR)/librte_ipsec
 

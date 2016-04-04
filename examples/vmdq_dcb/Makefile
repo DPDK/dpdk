@@ -51,7 +51,9 @@ CFLAGS += $(WERROR_FLAGS)
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_main.o += -Wno-return-type
 endif
-
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
+CFLAGS_main.o += -diag-disable=vec
+endif
 EXTRA_CFLAGS += -O3 -g
 
 include $(RTE_SDK)/mk/rte.extapp.mk
