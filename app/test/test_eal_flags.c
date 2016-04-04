@@ -698,8 +698,8 @@ test_invalid_n_flag(void)
 	const char *argv1[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n"};
 	/* bad numeric value */
 	const char *argv2[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n", "e" };
-	/* out-of-range value */
-	const char *argv3[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n", "9" };
+	/* zero is invalid */
+	const char *argv3[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n", "0" };
 	/* sanity test - check with good value */
 	const char *argv4[] = { prgname, prefix, no_huge, no_shconf, "-c", "1", "-n", "2" };
 	/* sanity test - check with no -n flag */
