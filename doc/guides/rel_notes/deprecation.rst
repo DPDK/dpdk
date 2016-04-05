@@ -43,6 +43,13 @@ Deprecation Notices
   The rte_mempool.local_cache will be converted from an array to a pointer to
   allow for dynamic allocation of the per lcore cache memory.
 
+* ABI will change for rte_mempool struct to move the cache-related fields
+  to the more appropriate rte_mempool_cache struct. The mempool API is
+  also changed to enable external cache management that is not tied to EAL
+  threads. Some mempool get and put calls are removed in favor of a more
+  compact API. The ones that remain are backwards compatible and use the
+  per-lcore default cache if available. This change targets release 16.07.
+
 * The rte_mempool struct will be changed in 16.07 to facilitate the new
   external mempool manager functionality.
   The ring element will be replaced with a more generic 'pool' opaque pointer
