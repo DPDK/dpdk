@@ -109,7 +109,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_2",
-	"Memory" :	"64",
+	"Memory" :	"128",
 	"Tests" :
 	[
 		{
