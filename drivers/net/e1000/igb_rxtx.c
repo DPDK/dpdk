@@ -1466,7 +1466,8 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->pthresh = rx_conf->rx_thresh.pthresh;
 	rxq->hthresh = rx_conf->rx_thresh.hthresh;
 	rxq->wthresh = rx_conf->rx_thresh.wthresh;
-	if (rxq->wthresh > 0 && hw->mac.type == e1000_82576)
+	if (rxq->wthresh > 0 &&
+	    (hw->mac.type == e1000_82576 || hw->mac.type == e1000_vfadapt_i350))
 		rxq->wthresh = 1;
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
