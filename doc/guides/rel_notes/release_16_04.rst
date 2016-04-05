@@ -382,6 +382,12 @@ Drivers
   info for l3fwd to work well. Now there is an option for l3fwd to analysis
   packet type softly, so enable vector driver by default.
 
+* **i40e: Fixed link info of VF.**
+
+  Previously, the VF's link speed kept as 10G and status always was up.
+  It did not change even the physical link's status changed.
+  Now this issue is fixed to make VF's link info consistent with physical link.
+
 * **mlx5: Fixed possible crash during initialization.**
 
   A crash could occur when failing to allocate private device context.

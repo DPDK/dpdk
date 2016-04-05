@@ -258,6 +258,8 @@ i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
 		case I40E_VIRTCHNL_EVENT_LINK_CHANGE:
 			vf->link_up =
 				vpe->event_data.link_event.link_status;
+			vf->link_speed =
+				vpe->event_data.link_event.link_speed;
 			vf->pend_msg |= PFMSG_LINK_CHANGE;
 			PMD_DRV_LOG(INFO, "Link status update:%s",
 				    vf->link_up ? "up" : "down");
@@ -1310,6 +1312,7 @@ i40evf_handle_pf_event(__rte_unused struct rte_eth_dev *dev,
 {
 	struct i40e_virtchnl_pf_event *pf_msg =
 			(struct i40e_virtchnl_pf_event *)msg;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	switch (pf_msg->event) {
 	case I40E_VIRTCHNL_EVENT_RESET_IMPENDING:
@@ -1318,6 +1321,8 @@ i40evf_handle_pf_event(__rte_unused struct rte_eth_dev *dev,
 		break;
 	case I40E_VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event\n");
+		vf->link_up = pf_msg->event_data.link_event.link_status;
+		vf->link_speed = pf_msg->event_data.link_event.link_speed;
 		break;
 	case I40E_VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event\n");
@@ -2121,14 +2126,34 @@ i40evf_dev_link_update(struct rte_eth_dev *dev,
 	 * DPDK pf host provide interfacet to acquire link status
 	 * while Linux driver does not
 	 */
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR) {
+	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
 		i40evf_get_link_status(dev, &new_link);
-	} else {
-		/* Always assume it's up, for Linux driver PF host */
-		new_link.link_speed  = ETH_SPEED_NUM_10G;
+	else {
+		/* Linux driver PF host */
+		switch (vf->link_speed) {
+		case I40E_LINK_SPEED_100MB:
+			new_link.link_speed = ETH_SPEED_NUM_100M;
+			break;
+		case I40E_LINK_SPEED_1GB:
+			new_link.link_speed = ETH_SPEED_NUM_1G;
+			break;
+		case I40E_LINK_SPEED_10GB:
+			new_link.link_speed = ETH_SPEED_NUM_10G;
+			break;
+		case I40E_LINK_SPEED_20GB:
+			new_link.link_speed = ETH_SPEED_NUM_20G;
+			break;
+		case I40E_LINK_SPEED_40GB:
+			new_link.link_speed = ETH_SPEED_NUM_40G;
+			break;
+		default:
+			new_link.link_speed = ETH_SPEED_NUM_100M;
+			break;
+		}
+		/* full duplex only */
 		new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-		new_link.link_autoneg = ETH_LINK_SPEED_AUTONEG;
-		new_link.link_status = ETH_LINK_UP;
+		new_link.link_status = vf->link_up ? ETH_LINK_UP :
+						     ETH_LINK_DOWN;
 	}
 	i40evf_dev_atomic_write_link_status(dev, &new_link);
 

@@ -502,6 +502,7 @@ struct i40e_vf {
 	/* Event from pf */
 	bool dev_closed;
 	bool link_up;
+	enum i40e_aq_link_speed link_speed;
 	bool vf_reset;
 	volatile uint32_t pend_cmd; /* pending command not finished yet */
 	uint32_t cmd_retval; /* return value of the cmd response from PF */
