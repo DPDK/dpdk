@@ -87,27 +87,27 @@ Most of these differences are summarized below.
                                           c   c       c   c   c                     c
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
    speed capabilities
-   link status                  X X     X X     X   X X X X     X X           X X
+   link status                  X X   X X X     X   X X X X     X X           X X
    link status event              X     X X     X   X X         X X             X
    queue status event                                                           X
    Rx interrupt                   X     X X X X X X X X X X
-   queue start/stop             X   X   X X X X     X X         X X           X
+   queue start/stop             X   X X X X X X     X X         X X           X
    MTU update                   X X X           X   X X X X     X X
-   jumbo frame                  X X X   X X X X X   X X X X     X X
+   jumbo frame                  X X X X X X X X X   X X X X     X X
    scattered Rx                 X X X   X X X X X X X X X X     X X           X
    LRO                                              X X X X
    TSO                          X   X   X X X X X X X X X X
-   promiscuous mode             X X     X X X X X X X X         X X           X
+   promiscuous mode             X X   X X X X X X X X X         X X           X
    allmulticast mode            X X     X X X X X X X X X X     X X           X
-   unicast MAC filter             X     X X X X X X X X X X
-   multicast MAC filter                 X X X X
-   RSS hash                     X   X   X X X X X   X X X X     X X
+   unicast MAC filter             X   X X X X X X X X X X X
+   multicast MAC filter               X X X X X
+   RSS hash                     X   X X X X X X X   X X X X     X X
    RSS key update                   X   X X X X X   X X X X       X
    RSS reta update                  X   X X X X X   X X X X       X
    VMDq                                 X X     X   X X
    SR-IOV                           X   X X     X   X X         X X
    DCB                                  X X     X   X X
-   VLAN filter                    X     X X X X X X X X X X     X X
+   VLAN filter                    X   X X X X X X X X X X X     X X
    ethertype filter                     X X     X   X X
    n-tuple filter                               X   X X
    SYN filter                                   X   X X
@@ -118,32 +118,32 @@ Most of these differences are summarized below.
    flow control                 X X     X X     X   X X
    rate limitation                                  X X
    traffic mirroring                    X X         X X
-   CRC offload                  X X X   X   X   X X X   X         X
-   VLAN offload                 X X X   X   X   X X X   X         X
+   CRC offload                  X X X X X   X   X X X   X         X
+   VLAN offload                 X X X X X   X   X X X   X         X
    QinQ offload                   X     X   X   X X X   X
-   L3 checksum offload          X X X   X   X   X X X   X       X X
-   L4 checksum offload          X X X   X   X   X X X   X       X X
+   L3 checksum offload          X X X X X   X   X X X   X       X X
+   L4 checksum offload          X X X X X   X   X X X   X       X X
    inner L3 checksum                X   X   X       X   X       X
    inner L4 checksum                X   X   X       X   X       X
-   packet type parsing          X       X   X   X X X   X       X X
+   packet type parsing          X     X X   X   X X X   X       X X
    timesync                             X X     X   X X
-   basic stats                  X X X   X X X X X X X X X X     X X           X X
+   basic stats                  X X X X X X X X X X X X X X     X X           X X
    extended stats                   X   X X X X X X X X X X
    stats per queue              X                               X X           X
    EEPROM dump                                  X   X X
    registers dump                               X X X X X X
    multiprocess aware                   X X X X     X X X X     X X
-   BSD nic_uio                  X X     X X X X X X X X X X
-   Linux UIO                    X X X   X X X X X X X X X X
-   Linux VFIO                   X X     X X X X X X X X X X
+   BSD nic_uio                  X X   X X X X X X X X X X X
+   Linux UIO                    X X X X X X X X X X X X X X
+   Linux VFIO                   X X   X X X X X X X X X X X
    other kdrv                                                                 X
    ARMv7
    ARMv8
    Power8                                                       X X
    TILE-Gx
-   x86-32                       X X X   X X X X X X X X X X     X X             X
-   x86-64                       X X X   X X X X X X X X X X     X X           X X
-   usage doc                    X                               X X           X
+   x86-32                       X X X X X X X X X X X X X X     X X             X
+   x86-64                       X X X X X X X X X X X X X X     X X           X X
+   usage doc                    X     X                         X X           X
    design doc
    perf doc
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
