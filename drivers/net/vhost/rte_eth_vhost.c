@@ -229,6 +229,9 @@ new_device(struct virtio_net *dev)
 	struct pmd_internal *internal;
 	struct vhost_queue *vq;
 	unsigned i;
+#ifdef RTE_LIBRTE_VHOST_NUMA
+	int newnode, ret;
+#endif
 
 	if (dev == NULL) {
 		RTE_LOG(INFO, PMD, "Invalid argument\n");
@@ -243,6 +246,17 @@ new_device(struct virtio_net *dev)
 
 	eth_dev = list->eth_dev;
 	internal = eth_dev->data->dev_private;
+
+#ifdef RTE_LIBRTE_VHOST_NUMA
+	ret  = get_mempolicy(&newnode, NULL, 0, dev,
+			MPOL_F_NODE | MPOL_F_ADDR);
+	if (ret < 0) {
+		RTE_LOG(ERR, PMD, "Unknown numa node\n");
+		return -1;
+	}
+
+	eth_dev->data->numa_node = newnode;
+#endif
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		vq = eth_dev->data->rx_queues[i];
@@ -352,9 +366,6 @@ vring_state_changed(struct virtio_net *dev, uint16_t vring, int enable)
 	struct rte_vhost_vring_state *state;
 	struct rte_eth_dev *eth_dev;
 	struct internal_list *list;
-#ifdef RTE_LIBRTE_VHOST_NUMA
-	int newnode, ret;
-#endif
 
 	if (dev == NULL) {
 		RTE_LOG(ERR, PMD, "Invalid argument\n");
@@ -370,17 +381,6 @@ vring_state_changed(struct virtio_net *dev, uint16_t vring, int enable)
 	eth_dev = list->eth_dev;
 	/* won't be NULL */
 	state = vring_states[eth_dev->data->port_id];
-
-#ifdef RTE_LIBRTE_VHOST_NUMA
-	ret  = get_mempolicy(&newnode, NULL, 0, dev,
-			MPOL_F_NODE | MPOL_F_ADDR);
-	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "Unknown numa node\n");
-		return -1;
-	}
-
-	eth_dev->data->numa_node = newnode;
-#endif
 	rte_spinlock_lock(&state->lock);
 	state->cur[vring] = enable;
 	state->max_vring = RTE_MAX(vring, state->max_vring);
