@@ -231,7 +231,7 @@ M: Thomas Monjalon <thomas.monjalon@6wind.com>
 F: lib/librte_ether/
 F: scripts/test-null.sh
 
-Crypto API - EXPERIMENTAL
+Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_cryptodev/
 F: app/test/test_cryptodev*
