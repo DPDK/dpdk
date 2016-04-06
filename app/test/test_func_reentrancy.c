@@ -83,6 +83,7 @@ typedef void (*case_clean_t)(unsigned lcore_id);
 
 #define MAX_LCORES	RTE_MAX_MEMZONE / (MAX_ITER_TIMES * 4U)
 
+static rte_atomic32_t obj_count = RTE_ATOMIC32_INIT(0);
 static rte_atomic32_t synchro = RTE_ATOMIC32_INIT(0);
 
 #define WAIT_SYNCHRO_FOR_SLAVES()   do{ \
@@ -100,6 +101,7 @@ test_eal_init_once(__attribute__((unused)) void *arg)
 
 	WAIT_SYNCHRO_FOR_SLAVES();
 
+	rte_atomic32_set(&obj_count, 1); /* silent the check in the caller */
 	if (rte_eal_init(0, NULL) != -1)
 		return -1;
 
@@ -122,8 +124,8 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 	/* create the same ring simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		rp = rte_ring_create("fr_test_once", 4096, SOCKET_ID_ANY, 0);
-		if ((NULL == rp) && (rte_ring_lookup("fr_test_once") == NULL))
-			return -1;
+		if (rp != NULL)
+			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create/lookup new ring several times */
@@ -172,8 +174,8 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 					NULL, NULL,
 					my_obj_init, NULL,
 					SOCKET_ID_ANY, 0);
-		if ((NULL == mp) && (rte_mempool_lookup("fr_test_once") == NULL))
-			return -1;
+		if (mp != NULL)
+			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create/lookup new ring several times */
@@ -238,8 +240,8 @@ hash_create_free(__attribute__((unused)) void *arg)
 	hash_params.name = "fr_test_once";
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		handle = rte_hash_create(&hash_params);
-		if ((NULL == handle) && (rte_hash_find_existing("fr_test_once") == NULL))
-			return -1;
+		if (handle != NULL)
+			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create mutiple times simultaneously */
@@ -306,8 +308,8 @@ fbk_create_free(__attribute__((unused)) void *arg)
 	fbk_params.name = "fr_test_once";
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		handle = rte_fbk_hash_create(&fbk_params);
-		if ((NULL == handle) && (rte_fbk_hash_find_existing("fr_test_once") == NULL))
-			return -1;
+		if (handle != NULL)
+			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create mutiple fbk tables simultaneously */
@@ -372,8 +374,8 @@ lpm_create_free(__attribute__((unused)) void *arg)
 	/* create the same lpm simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		lpm = rte_lpm_create("fr_test_once",  SOCKET_ID_ANY, &config);
-		if ((NULL == lpm) && (rte_lpm_find_existing("fr_test_once") == NULL))
-			return -1;
+		if (lpm != NULL)
+			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create mutiple fbk tables simultaneously */
@@ -432,10 +434,12 @@ launch_test(struct test_case *pt_case)
 	unsigned lcore_id;
 	unsigned cores_save = rte_lcore_count();
 	unsigned cores = RTE_MIN(cores_save, MAX_LCORES);
+	unsigned count;
 
 	if (pt_case->func == NULL)
 		return -1;
 
+	rte_atomic32_set(&obj_count, 0);
 	rte_atomic32_set(&synchro, 0);
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
@@ -460,6 +464,13 @@ launch_test(struct test_case *pt_case)
 
 		if (pt_case->clean != NULL)
 			pt_case->clean(lcore_id);
+	}
+
+	count = rte_atomic32_read(&obj_count);
+	if (count != 1) {
+		printf("%s: common object allocated %d times (should be 1)\n",
+			pt_case->name, count);
+		ret = -1;
 	}
 
 	return ret;
