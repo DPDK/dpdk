@@ -222,7 +222,7 @@ test1(void)
 
 	/* rte_lpm6_create: lpm name == LPM2 */
 	lpm3 = rte_lpm6_create("LPM1", SOCKET_ID_ANY, &config);
-	TEST_LPM_ASSERT(lpm3 == lpm1);
+	TEST_LPM_ASSERT(lpm3 == NULL);
 
 	rte_lpm6_free(lpm1);
 	rte_lpm6_free(lpm2);

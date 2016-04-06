@@ -209,8 +209,11 @@ rte_lpm_create_v20(const char *name, int socket_id, int max_rules,
 		if (strncmp(name, lpm->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
-	if (te != NULL)
+	lpm = NULL;
+	if (te != NULL) {
+		rte_errno = EEXIST;
 		goto exit;
+	}
 
 	/* allocate tailq entry */
 	te = rte_zmalloc("LPM_TAILQ_ENTRY", sizeof(*te), 0);
@@ -280,8 +283,11 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 		if (strncmp(name, lpm->name, RTE_LPM_NAMESIZE) == 0)
 			break;
 	}
-	if (te != NULL)
+	lpm = NULL;
+	if (te != NULL) {
+		rte_errno = EEXIST;
 		goto exit;
+	}
 
 	/* allocate tailq entry */
 	te = rte_zmalloc("LPM_TAILQ_ENTRY", sizeof(*te), 0);
