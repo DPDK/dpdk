@@ -295,43 +295,6 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	if (params->extra_flag & RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT)
 		hw_trans_mem_support = 1;
 
-	snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
-
-	/* Guarantee there's no existing */
-	h = rte_hash_find_existing(params->name);
-	if (h != NULL) {
-		rte_errno = EEXIST;
-		return NULL;
-	}
-
-	te = rte_zmalloc("HASH_TAILQ_ENTRY", sizeof(*te), 0);
-	if (te == NULL) {
-		RTE_LOG(ERR, HASH, "tailq entry allocation failed\n");
-		goto err;
-	}
-
-	h = (struct rte_hash *)rte_zmalloc_socket(hash_name, sizeof(struct rte_hash),
-					RTE_CACHE_LINE_SIZE, params->socket_id);
-
-	if (h == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
-		goto err;
-	}
-
-	const uint32_t num_buckets = rte_align32pow2(params->entries)
-					/ RTE_HASH_BUCKET_ENTRIES;
-
-	buckets = rte_zmalloc_socket(NULL,
-				num_buckets * sizeof(struct rte_hash_bucket),
-				RTE_CACHE_LINE_SIZE, params->socket_id);
-
-	if (buckets == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
-		goto err;
-	}
-
-	const uint32_t key_entry_size = sizeof(struct rte_hash_key) + params->key_len;
-
 	/* Store all keys and leave the first entry as a dummy entry for lookup_bulk */
 	if (hw_trans_mem_support)
 		/*
@@ -344,6 +307,59 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	else
 		num_key_slots = params->entries + 1;
 
+	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
+	r = rte_ring_create(ring_name, rte_align32pow2(num_key_slots),
+			params->socket_id, 0);
+	if (r == NULL) {
+		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		goto err;
+	}
+
+	snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	/* guarantee there's no existing: this is normally already checked
+	 * by ring creation above */
+	TAILQ_FOREACH(te, hash_list, next) {
+		h = (struct rte_hash *) te->data;
+		if (strncmp(params->name, h->name, RTE_HASH_NAMESIZE) == 0)
+			break;
+	}
+	h = NULL;
+	if (te != NULL) {
+		rte_errno = EEXIST;
+		te = NULL;
+		goto err_unlock;
+	}
+
+	te = rte_zmalloc("HASH_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, HASH, "tailq entry allocation failed\n");
+		goto err_unlock;
+	}
+
+	h = (struct rte_hash *)rte_zmalloc_socket(hash_name, sizeof(struct rte_hash),
+					RTE_CACHE_LINE_SIZE, params->socket_id);
+
+	if (h == NULL) {
+		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		goto err_unlock;
+	}
+
+	const uint32_t num_buckets = rte_align32pow2(params->entries)
+					/ RTE_HASH_BUCKET_ENTRIES;
+
+	buckets = rte_zmalloc_socket(NULL,
+				num_buckets * sizeof(struct rte_hash_bucket),
+				RTE_CACHE_LINE_SIZE, params->socket_id);
+
+	if (buckets == NULL) {
+		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		goto err_unlock;
+	}
+
+	const uint32_t key_entry_size = sizeof(struct rte_hash_key) + params->key_len;
 	const uint64_t key_tbl_size = (uint64_t) key_entry_size * num_key_slots;
 
 	k = rte_zmalloc_socket(NULL, key_tbl_size,
@@ -351,7 +367,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	if (k == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
-		goto err;
+		goto err_unlock;
 	}
 
 /*
@@ -393,14 +409,6 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	h->cmp_jump_table_idx = KEY_OTHER_BYTES;
 #endif
 
-	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
-	r = rte_ring_create(ring_name, rte_align32pow2(num_key_slots),
-			params->socket_id, 0);
-	if (r == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
-		goto err;
-	}
-
 	if (hw_trans_mem_support) {
 		h->local_free_slots = rte_zmalloc_socket(NULL,
 				sizeof(struct lcore_cache) * RTE_MAX_LCORE,
@@ -427,13 +435,15 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	for (i = 1; i < params->entries + 1; i++)
 		rte_ring_sp_enqueue(r, (void *)((uintptr_t) i));
 
-	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 	te->data = (void *) h;
 	TAILQ_INSERT_TAIL(hash_list, te, next);
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	return h;
+err_unlock:
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 err:
+	rte_ring_free(r);
 	rte_free(te);
 	rte_free(h);
 	rte_free(buckets);
