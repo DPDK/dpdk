@@ -299,8 +299,10 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	/* Guarantee there's no existing */
 	h = rte_hash_find_existing(params->name);
-	if (h != NULL)
-		return h;
+	if (h != NULL) {
+		rte_errno = EEXIST;
+		return NULL;
+	}
 
 	te = rte_zmalloc("HASH_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {

@@ -434,6 +434,15 @@ Libraries
   however a custom compare function (not in the jump table) can only
   be used in single-process mode.
 
+* **hash: Fixed return value when allocating an existing hash table.**
+
+  Changed the ``rte_hash*_create()`` functions to return ``NULL`` and set
+  ``rte_errno`` to ``EEXIST`` when the object name already exists. This is
+  the behavior described in the API documentation in the header file.
+  The previous behavior was to return a pointer to the existing object in
+  that case, preventing the caller to know if the object had to be freed
+  or not.
+
 * **lpm: Fixed return value when allocating an existing object.**
 
   Changed the ``rte_lpm*_create()`` functions to return ``NULL`` and set

@@ -140,8 +140,11 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 		if (strncmp(params->name, ht->name, RTE_FBK_HASH_NAMESIZE) == 0)
 			break;
 	}
-	if (te != NULL)
+	ht = NULL;
+	if (te != NULL) {
+		rte_errno = EEXIST;
 		goto exit;
+	}
 
 	te = rte_zmalloc("FBK_HASH_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
