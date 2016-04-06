@@ -71,3 +71,10 @@ Deprecation Notices
   support PCAP file reading feature. The release 16.04 contains this ABI
   change wrapped by RTE_NEXT_ABI macro. Release 16.07 will contain this
   change, and no backwards compatibility is planned.
+
+* A librte_vhost public structures refactor is planned for DPDK 16.07
+  that requires both ABI and API change.
+  The proposed refactor would expose DPDK vhost dev to applications as
+  a handle, like the way kernel exposes an fd to user for locating a
+  specific file, and to keep all major structures internally, so that
+  we are likely to be free from ABI violations in future.
