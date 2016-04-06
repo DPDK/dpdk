@@ -478,7 +478,7 @@ ena_com_wait_and_process_admin_cq_polling(
 		struct ena_comp_ctx *comp_ctx,
 		struct ena_com_admin_queue *admin_queue)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	u64 start_time;
 	int ret;
 
@@ -1964,7 +1964,7 @@ int ena_com_get_dev_extended_stats(struct ena_com_dev *ena_dev, char *buff,
 	int ret = 0;
 	struct ena_admin_aq_get_stats_cmd get_cmd;
 	struct ena_admin_acq_get_stats_resp get_resp;
-	ena_mem_handle_t mem_handle;
+	ena_mem_handle_t mem_handle = 0;
 	void *virt_addr;
 	dma_addr_t phys_addr;
 
