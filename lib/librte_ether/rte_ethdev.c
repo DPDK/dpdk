@@ -1670,8 +1670,7 @@ rte_eth_dev_get_supported_ptypes(uint8_t port_id, uint32_t ptype_mask,
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_supported_ptypes_get,
-				-ENOTSUP);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_supported_ptypes_get, 0);
 	all_ptypes = (*dev->dev_ops->dev_supported_ptypes_get)(dev);
 
 	if (!all_ptypes)

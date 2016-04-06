@@ -2379,6 +2379,9 @@ void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info);
  * @note
  *   Better to invoke this API after the device is already started or rx burst
  *   function is decided, to obtain correct supported ptypes.
+ * @note
+ *   if a given PMD does not report what ptypes it supports, then the supported
+ *   ptype count is reported as 0.
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param ptype_mask
@@ -2388,9 +2391,9 @@ void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info);
  * @param num
  *  Size of the array pointed by param ptypes.
  * @return
- *   - (>0) Number of supported ptypes. If it exceeds param num, exceeding
- *          packet types will not be filled in the given array.
- *   - (0 or -ENOTSUP) if PMD does not fill the specified ptype.
+ *   - (>=0) Number of supported ptypes. If the number of types exceeds num,
+ *           only num entries will be filled into the ptypes array, but the full
+ *           count of supported ptypes will be returned.
  *   - (-ENODEV) if *port_id* invalid.
  */
 int rte_eth_dev_get_supported_ptypes(uint8_t port_id, uint32_t ptype_mask,
