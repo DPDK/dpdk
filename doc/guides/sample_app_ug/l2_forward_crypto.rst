@@ -39,7 +39,7 @@ the Data Plane Development Kit (DPDK), in conjunction with the Cryptodev library
 Overview
 --------
 
-The L2 Forwarding with Crypto sample appplication performs a crypto operation (cipher/hash)
+The L2 Forwarding with Crypto sample application performs a crypto operation (cipher/hash)
 specified by the user from command line (or using the default values),
 with a crypto device capable of doing that operation,
 for each packet that is received on a RX_PORT and performs L2 forwarding.
@@ -231,7 +231,7 @@ to make sure that it is supported by the crypto devices.
 Crypto device initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Once the cryption operation is defined, crypto devices are initialized.
+Once the encryption operation is defined, crypto devices are initialized.
 The crypto devices must be either bound to a DPDK driver (if they are physical devices)
 or created using the EAL option --vdev (if they are virtual devices),
 when running the application.
@@ -381,8 +381,8 @@ the mbuf which will be transformed is attached to it::
 Since no destination mbuf is set, the source mbuf will be overwritten
 after the operation is done (in-place).
 
-Crypto operation enqueueing/dequeueing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Crypto operation enqueuing/dequeuing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once the operation has been created, it has to be enqueued in one of the crypto devices.
 Before doing so, for performance reasons, the operation stays in a buffer.

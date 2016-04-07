@@ -183,7 +183,7 @@ In addition, for improved performance, use -bsz "(32,32),(64,64),(32,32)" in loa
 Malicious Driver Detection not Supported
 ----------------------------------------
 
-The Intel x550 series NICs support a feature called MDD (Malcicious
+The Intel x550 series NICs support a feature called MDD (Malicious
 Driver Detection) which checks the behavior of the VF driver.
 If this feature is enabled, the VF must use the advanced context descriptor
 correctly and set the CC (Check Context) bit.
@@ -194,7 +194,7 @@ The only reason is the VF doesn't act as MDD required.
 There's significant performance impact to support MDD. DPDK should check if
 the advanced context descriptor should be set and set it. And DPDK has to ask
 the info about the header length from the upper layer, because parsing the
-packet itself is not acceptale. So, it's too expensive to support MDD.
+packet itself is not acceptable. So, it's too expensive to support MDD.
 When using kernel PF + DPDK VF on x550, please make sure using the kernel
 driver that disables MDD or can disable MDD. (Some kernel driver can use
 this CLI 'insmod ixgbe.ko MDD=0,0' to disable MDD. Some kernel driver disables

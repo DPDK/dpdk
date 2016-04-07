@@ -252,7 +252,7 @@ SR-IOV: Prerequisites and sample Application Notes
       ip link set ens802f0 vf 0 mac a0:b0:c0:d0:e0:f0
 
 #. Assign VF to VM, and bring up the VM.
-   Please see the documenation for the*I40E/IXGBE/IGB Virtual Function Driver*.
+   Please see the documentation for the *I40E/IXGBE/IGB Virtual Function Driver*.
 
 
 Sample Application Notes

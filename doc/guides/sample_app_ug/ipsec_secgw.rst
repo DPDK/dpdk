@@ -69,7 +69,7 @@ Path for IPsec Outbound traffic:
 *  Read packets from the port
 *  Outbound SP check using ACL of all IPv4 traffic
 *  Outbound SA lookup for packets that need IPsec protection
-*  Add ESP and outter IP header
+*  Add ESP and outer IP header
 *  Encryption/Digest
 *  Routing
 *  Write packet to port
@@ -200,8 +200,8 @@ hardware devices having priority.
 This means that if the application is using a single core and both hardware
 and software crypto devices are detected, hardware devices will be used.
 
-A way to achive the case where you want to force the use of virtual crypto
-devices is to whitelist the ethernet devices needed and therefore implicitely
+A way to achieve the case where you want to force the use of virtual crypto
+devices is to whitelist the Ethernet devices needed and therefore implicitly
 blacklisting all hardware crypto devices.
 
 For example, something like the following command line:

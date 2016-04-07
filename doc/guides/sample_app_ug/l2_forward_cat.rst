@@ -236,7 +236,7 @@ queried for system CPU information and L3CA capabilities via
 ``pqos_cap_get(...)`` and ``pqos_cap_get_type(..., PQOS_CAP_TYPE_L3CA, ...)``
 calls. When all capability and topology information is collected, the requested
 CAT configuration is validated. A check is then performed (on per socket basis)
-for a sufficient number of unassociated COS. COS are selected and
+for a sufficient number of un-associated COS. COS are selected and
 configured via the ``pqos_l3ca_set(...)`` call. Finally, COS are associated to
 relevant CPUs via ``pqos_l3ca_assoc_set(...)`` calls.
 
