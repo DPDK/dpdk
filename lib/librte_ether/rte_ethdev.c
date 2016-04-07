@@ -1342,15 +1342,18 @@ rte_eth_tx_buffer_set_err_callback(struct rte_eth_dev_tx_buffer *buffer,
 int
 rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size)
 {
+	int ret = 0;
+
 	if (buffer == NULL)
 		return -EINVAL;
 
 	buffer->size = size;
-	if (buffer->error_callback == NULL)
-		rte_eth_tx_buffer_set_err_callback(buffer,
-				rte_eth_tx_buffer_drop_callback, NULL);
+	if (buffer->error_callback == NULL) {
+		ret = rte_eth_tx_buffer_set_err_callback(
+			buffer, rte_eth_tx_buffer_drop_callback, NULL);
+	}
 
-	return 0;
+	return ret;
 }
 
 void
