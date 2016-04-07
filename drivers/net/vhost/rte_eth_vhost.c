@@ -265,7 +265,6 @@ new_device(struct virtio_net *dev)
 		vq->device = dev;
 		vq->internal = internal;
 		vq->port = eth_dev->data->port_id;
-		rte_vhost_enable_guest_notification(dev, vq->virtqueue_id, 0);
 	}
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
 		vq = eth_dev->data->tx_queues[i];
@@ -274,8 +273,10 @@ new_device(struct virtio_net *dev)
 		vq->device = dev;
 		vq->internal = internal;
 		vq->port = eth_dev->data->port_id;
-		rte_vhost_enable_guest_notification(dev, vq->virtqueue_id, 0);
 	}
+
+	for (i = 0; i < dev->virt_qp_nb * VIRTIO_QNUM; i++)
+		rte_vhost_enable_guest_notification(dev, i, 0);
 
 	dev->flags |= VIRTIO_DEV_RUNNING;
 	dev->priv = eth_dev;
