@@ -184,21 +184,21 @@ overlap(const struct rte_memzone * mz1, const struct rte_memzone * mz2)
 	i_end2 = mz2->ioremap_addr + mz2->len;
 
 	/* check for overlap in virtual addresses */
-	if (start1 >= start2 && start1 < end2)
+	if (start1 > start2 && start1 < end2)
 		result |= VIRT;
 	if (start2 >= start1 && start2 < end1)
 		result |= VIRT;
 
 	/* check for overlap in physical addresses */
-	if (p_start1 >= p_start2 && p_start1 < p_end2)
+	if (p_start1 > p_start2 && p_start1 < p_end2)
 		result |= PHYS;
-	if (p_start2 >= p_start1 && p_start2 < p_end1)
+	if (p_start2 > p_start1 && p_start2 < p_end1)
 		result |= PHYS;
 
 	/* check for overlap in ioremap addresses */
-	if (i_start1 >= i_start2 && i_start1 < i_end2)
+	if (i_start1 > i_start2 && i_start1 < i_end2)
 		result |= IOREMAP;
-	if (i_start2 >= i_start1 && i_start2 < i_end1)
+	if (i_start2 > i_start1 && i_start2 < i_end1)
 		result |= IOREMAP;
 
 	return result;
@@ -254,17 +254,14 @@ adjacent(const struct rte_memzone * mz1, const struct rte_memzone * mz2)
 static int
 has_adjacent_segments(struct ivshmem_segment * ms, int len)
 {
-	int i, j, a;
+	int i, j;
 
 	for (i = 0; i < len; i++)
 		for (j = i + 1; j < len; j++) {
-			a = adjacent(&ms[i].entry.mz, &ms[j].entry.mz);
-
-			/* check if segments are adjacent virtually and/or physically but
-			 * not ioremap (since that would indicate that they are from
-			 * different PCI devices and thus don't need to be concatenated.
+			/* we're only interested in fully adjacent segments; partially
+			 * adjacent segments can coexist.
 			 */
-			if ((a & (VIRT|PHYS)) > 0 && (a & IOREMAP) == 0)
+			if (adjacent(&ms[i].entry.mz, &ms[j].entry.mz) == FULL)
 				return 1;
 		}
 	return 0;
