@@ -60,6 +60,7 @@ The features not yet supported include:
 - LRO/TSO offload
 - Checksum offload
 - SR-IOV PF
+- Rx TX scatter gather
 
 Co-existence considerations
 ---------------------------
