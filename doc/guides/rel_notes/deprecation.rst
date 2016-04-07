@@ -8,6 +8,18 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* The ethdev hotplug API is going to be moved to EAL with a notification
+  mechanism added to crypto and ethdev libraries so that hotplug is now
+  available to both of them. This API will be stripped of the device arguments
+  so that it only cares about hotplugging.
+
+* Structures embodying pci and vdev devices are going to be reworked to
+  integrate new common rte_device / rte_driver objects (see
+  http://dpdk.org/ml/archives/dev/2016-January/031390.html).
+  ethdev and crypto libraries will then only handle those objects so that they
+  do not need to care about the kind of devices that are being used, making it
+  easier to add new buses later.
+
 * The EAL function pci_config_space_set is deprecated in release 16.04
   and will be removed from 16.07.
   Macros CONFIG_RTE_PCI_CONFIG, CONFIG_RTE_PCI_EXTENDED_TAG and
