@@ -154,7 +154,8 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	/* pkt type + vlan olflags mask */
 	const __m128i pkttype_msk = _mm_set_epi16(
 			0x0000, 0x0000, 0x0000, 0x0000,
-			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT);
+			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT,
+			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT);
 
 	/* mask everything except rss type */
 	const __m128i rsstype_msk = _mm_set_epi16(
@@ -228,18 +229,21 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_IXGBE_DESCS_PER_LOOP);
 
 	/* Just the act of getting into the function from the application is
-	 * going to cost about 7 cycles */
+	 * going to cost about 7 cycles
+	 */
 	rxdp = rxq->rx_ring + rxq->rx_tail;
 
 	_mm_prefetch((const void *)rxdp, _MM_HINT_T0);
 
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
-	 * of time to act */
+	 * of time to act
+	 */
 	if (rxq->rxrearm_nb > RTE_IXGBE_RXQ_REARM_THRESH)
 		ixgbe_rxq_rearm(rxq);
 
 	/* Before we start moving massive data around, check to see if
-	 * there is actually a packet available */
+	 * there is actually a packet available
+	 */
 	if (!(rxdp->wb.upper.status_error &
 				rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
 		return 0;
@@ -262,7 +266,8 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		);
 
 	/* Cache is empty -> need to scan the buffer rings, but first move
-	 * the next 'n' mbufs into the cache */
+	 * the next 'n' mbufs into the cache
+	 */
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
 
 	/* A. load 4 packet in one loop
@@ -359,7 +364,8 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			/* the staterr values are not in order, as the count
 			 * count of dd bits doesn't care. However, for end of
 			 * packet tracking, we do care, so shuffle. This also
-			 * compresses the 32-bit values to 8-bit */
+			 * compresses the 32-bit values to 8-bit
+			 */
 			eop_bits = _mm_shuffle_epi8(eop_bits, eop_shuf_mask);
 			/* store the resulting 32-bit value */
 			*(int *)split_packet = _mm_cvtsi128_si32(eop_bits);
@@ -416,12 +422,12 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 static inline uint16_t
 reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
-		uint16_t nb_bufs, uint8_t *split_flags)
+		   uint16_t nb_bufs, uint8_t *split_flags)
 {
 	struct rte_mbuf *pkts[nb_bufs]; /*finished pkts*/
 	struct rte_mbuf *start = rxq->pkt_first_seg;
 	struct rte_mbuf *end =  rxq->pkt_last_seg;
-	unsigned pkt_idx, buf_idx;
+	unsigned int pkt_idx, buf_idx;
 
 	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
 		if (end != NULL) {
@@ -535,6 +541,7 @@ vtx(volatile union ixgbe_adv_tx_desc *txdp,
 		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
 {
 	int i;
+
 	for (i = 0; i < nb_pkts; ++i, ++txdp, ++pkt)
 		vtx1(txdp, *pkt, flags);
 }
@@ -601,6 +608,7 @@ tx_backlog_entry(struct ixgbe_tx_entry_v *txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
+
 	for (i = 0; i < (int)nb_pkts; ++i)
 		txep[i].mbuf = tx_pkts[i];
 }
@@ -675,7 +683,7 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 static void __attribute__((cold))
 ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 {
-	unsigned i;
+	unsigned int i;
 	struct ixgbe_tx_entry_v *txe;
 	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
 
@@ -701,8 +709,8 @@ ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 void __attribute__((cold))
 ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 {
-	const unsigned mask = rxq->nb_rx_desc - 1;
-	unsigned i;
+	const unsigned int mask = rxq->nb_rx_desc - 1;
+	unsigned int i;
 
 	if (rxq->sw_ring == NULL || rxq->rxrearm_nb >= rxq->nb_rx_desc)
 		return;
@@ -731,7 +739,7 @@ ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 static void __attribute__((cold))
 ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
-	static const union ixgbe_adv_tx_desc zeroed_desc = {{0}};
+	static const union ixgbe_adv_tx_desc zeroed_desc = { { 0 } };
 	struct ixgbe_tx_entry_v *txe = txq->sw_ring_v;
 	uint16_t i;
 
@@ -742,6 +750,7 @@ ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 	/* Initialize SW ring entries */
 	for (i = 0; i < txq->nb_tx_desc; i++) {
 		volatile union ixgbe_adv_tx_desc *txd = &txq->tx_ring[i];
+
 		txd->wb.status = IXGBE_TXD_STAT_DD;
 		txe[i].mbuf = NULL;
 	}

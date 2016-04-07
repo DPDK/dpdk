@@ -82,7 +82,7 @@ ixgbe_bypass_set_time(struct ixgbe_adapter *adapter)
 	       BYPASS_CTL1_VALID_M |
 	       BYPASS_CTL1_OFFTRST_M;
 	value = (sec & BYPASS_CTL1_TIME_M) |
-	        BYPASS_CTL1_VALID |
+		BYPASS_CTL1_VALID |
 		BYPASS_CTL1_OFFTRST;
 
 	FUNC_PTR_OR_RET(adapter->bps.ops.bypass_set);
@@ -275,8 +275,8 @@ s32
 ixgbe_bypass_wd_timeout_store(struct rte_eth_dev *dev, u32 timeout)
 {
 	struct ixgbe_hw *hw;
-        u32 status;
-        u32 mask;
+	u32 status;
+	u32 mask;
 	s32 ret_val;
 	struct ixgbe_adapter *adapter = IXGBE_DEV_TO_ADPATER(dev);
 

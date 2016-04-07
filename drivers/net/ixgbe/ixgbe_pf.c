@@ -97,9 +97,9 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	struct ixgbe_vf_info **vfinfo =
 		IXGBE_DEV_PRIVATE_TO_P_VFDATA(eth_dev->data->dev_private);
 	struct ixgbe_mirror_info *mirror_info =
-        IXGBE_DEV_PRIVATE_TO_PFDATA(eth_dev->data->dev_private);
+	IXGBE_DEV_PRIVATE_TO_PFDATA(eth_dev->data->dev_private);
 	struct ixgbe_uta_info *uta_info =
-        IXGBE_DEV_PRIVATE_TO_UTA(eth_dev->data->dev_private);
+	IXGBE_DEV_PRIVATE_TO_UTA(eth_dev->data->dev_private);
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	uint16_t vf_num;
@@ -108,15 +108,16 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	RTE_ETH_DEV_SRIOV(eth_dev).active = 0;
-	if (0 == (vf_num = dev_num_vf(eth_dev)))
+	vf_num = dev_num_vf(eth_dev);
+	if (vf_num == 0)
 		return;
 
 	*vfinfo = rte_zmalloc("vf_info", sizeof(struct ixgbe_vf_info) * vf_num, 0);
 	if (*vfinfo == NULL)
 		rte_panic("Cannot allocate memory for private VF data\n");
 
-	memset(mirror_info,0,sizeof(struct ixgbe_mirror_info));
-	memset(uta_info,0,sizeof(struct ixgbe_uta_info));
+	memset(mirror_info, 0, sizeof(struct ixgbe_mirror_info));
+	memset(uta_info, 0, sizeof(struct ixgbe_uta_info));
 	hw->mac.mc_filter_type = 0;
 
 	if (vf_num >= ETH_32_POOLS) {
@@ -141,8 +142,6 @@ void ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 
 	/* set mb interrupt mask */
 	ixgbe_mb_intr_setup(eth_dev);
-
-	return;
 }
 
 void ixgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
@@ -220,7 +219,8 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	uint32_t vlanctrl;
 	int i;
 
-	if (0 == (vf_num = dev_num_vf(eth_dev)))
+	vf_num = dev_num_vf(eth_dev);
+	if (vf_num == 0)
 		return -1;
 
 	/* enable VMDq and set the default pool for PF */
@@ -280,19 +280,18 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	}
 
 	IXGBE_WRITE_REG(hw, IXGBE_GCR_EXT, gcr_ext);
-        IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
+	IXGBE_WRITE_REG(hw, IXGBE_GPIE, gpie);
 
-        /*
+	/*
 	 * enable vlan filtering and allow all vlan tags through
 	 */
-        vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
-        vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
-        IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
+	vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+	vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
+	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
 
-        /* VFTA - enable all vlan filters */
-        for (i = 0; i < IXGBE_MAX_VFTA; i++) {
-                IXGBE_WRITE_REG(hw, IXGBE_VFTA(i), 0xFFFFFFFF);
-        }
+	/* VFTA - enable all vlan filters */
+	for (i = 0; i < IXGBE_MAX_VFTA; i++)
+		IXGBE_WRITE_REG(hw, IXGBE_VFTA(i), 0xFFFFFFFF);
 
 	/* Enable MAC Anti-Spoofing */
 	hw->mac.ops.set_mac_anti_spoofing(hw, FALSE, vf_num);
@@ -481,7 +480,7 @@ ixgbe_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	int rar_entry = hw->mac.num_rar_entries - (vf + 1);
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
 
-	if (is_valid_assigned_ether_addr((struct ether_addr*)new_mac)) {
+	if (is_valid_assigned_ether_addr((struct ether_addr *)new_mac)) {
 		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac, 6);
 		return hw->mac.ops.set_rar(hw, rar_entry, new_mac, vf, IXGBE_RAH_AV);
 	}
@@ -678,6 +677,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	/* perform VF reset */
 	if (msgbuf[0] == IXGBE_VF_RESET) {
 		int ret = ixgbe_vf_reset(dev, vf, msgbuf);
+
 		vfinfo[vf].clear_to_send = true;
 		return ret;
 	}

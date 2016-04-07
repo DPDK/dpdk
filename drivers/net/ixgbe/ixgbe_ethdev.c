@@ -232,7 +232,7 @@ static void ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 static void ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
 					   struct ether_addr *mac_addr);
-static void ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config);
+static void ixgbe_dcb_init(struct ixgbe_hw *hw, struct ixgbe_dcb_config *dcb_config);
 
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
@@ -264,14 +264,14 @@ static void ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
 /* For Eth VMDQ APIs support */
 static int ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct
-		ether_addr* mac_addr,uint8_t on);
-static int ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev,uint8_t on);
+		ether_addr * mac_addr, uint8_t on);
+static int ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on);
 static int  ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev,  uint16_t pool,
 		uint16_t rx_mask, uint8_t on);
-static int ixgbe_set_pool_rx(struct rte_eth_dev *dev,uint16_t pool,uint8_t on);
-static int ixgbe_set_pool_tx(struct rte_eth_dev *dev,uint16_t pool,uint8_t on);
+static int ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on);
+static int ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on);
 static int ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
-		uint64_t pool_mask,uint8_t vlan_on);
+		uint64_t pool_mask, uint8_t vlan_on);
 static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		struct rte_eth_mirror_conf *mirror_conf,
 		uint8_t rule_id, uint8_t on);
@@ -397,21 +397,21 @@ static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	last = latest;                                           \
 }
 
-#define IXGBE_SET_HWSTRIP(h, q) do{\
-		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
-		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
+#define IXGBE_SET_HWSTRIP(h, q) do {\
+		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof((h)->bitmap[0]) * NBBY); \
 		(h)->bitmap[idx] |= 1 << bit;\
 	} while (0)
 
-#define IXGBE_CLEAR_HWSTRIP(h, q) do{\
-		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
-		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
+#define IXGBE_CLEAR_HWSTRIP(h, q) do {\
+		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof((h)->bitmap[0]) * NBBY); \
 		(h)->bitmap[idx] &= ~(1 << bit);\
 	} while (0)
 
-#define IXGBE_GET_HWSTRIP(h, q, r) do{\
-		uint32_t idx = (q) / (sizeof ((h)->bitmap[0]) * NBBY); \
-		uint32_t bit = (q) % (sizeof ((h)->bitmap[0]) * NBBY); \
+#define IXGBE_GET_HWSTRIP(h, q, r) do {\
+		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof((h)->bitmap[0]) * NBBY); \
 		(r) = (h)->bitmap[idx] >> bit & 1;\
 	} while (0)
 
@@ -901,8 +901,7 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 		PMD_INIT_LOG(DEBUG, "Write 0x%x to RX IXGBE stat mapping reg:%d",
 			     stat_mappings->rqsmr[n], n);
 		IXGBE_WRITE_REG(hw, IXGBE_RQSMR(n), stat_mappings->rqsmr[n]);
-	}
-	else {
+	} else {
 		PMD_INIT_LOG(DEBUG, "Write 0x%x to TX IXGBE stat mapping reg:%d",
 			     stat_mappings->tqsm[n], n);
 		IXGBE_WRITE_REG(hw, IXGBE_TQSM(n), stat_mappings->tqsm[n]);
@@ -911,7 +910,7 @@ ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 }
 
 static void
-ixgbe_restore_statistics_mapping(struct rte_eth_dev * dev)
+ixgbe_restore_statistics_mapping(struct rte_eth_dev *dev)
 {
 	struct ixgbe_stat_mapping_registers *stat_mappings =
 		IXGBE_DEV_PRIVATE_TO_STAT_MAPPINGS(dev->data->dev_private);
@@ -929,7 +928,7 @@ ixgbe_restore_statistics_mapping(struct rte_eth_dev * dev)
 }
 
 static void
-ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
+ixgbe_dcb_init(struct ixgbe_hw *hw, struct ixgbe_dcb_config *dcb_config)
 {
 	uint8_t i;
 	struct ixgbe_dcb_tc_config *tc;
@@ -952,7 +951,7 @@ ixgbe_dcb_init(struct ixgbe_hw *hw,struct ixgbe_dcb_config *dcb_config)
 	tc = &dcb_config->tc_config[0];
 	tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = 0xFF;
 	tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = 0xFF;
-	for (i = 0; i< IXGBE_DCB_MAX_BW_GROUP; i++) {
+	for (i = 0; i < IXGBE_DCB_MAX_BW_GROUP; i++) {
 		dcb_config->bw_percentage[IXGBE_DCB_TX_CONFIG][i] = 100;
 		dcb_config->bw_percentage[IXGBE_DCB_RX_CONFIG][i] = 100;
 	}
@@ -1016,7 +1015,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	struct ixgbe_vfta * shadow_vfta =
+	struct ixgbe_vfta *shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 	struct ixgbe_hwstrip *hwstrip =
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
@@ -1039,17 +1038,18 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	 * has already done this work. Only check we don't need a different
 	 * RX and TX function.
 	 */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		struct ixgbe_tx_queue *txq;
 		/* TX queue function in primary, set by last queue initialized
-		 * Tx queue may not initialized by primary process */
+		 * Tx queue may not initialized by primary process
+		 */
 		if (eth_dev->data->tx_queues) {
 			txq = eth_dev->data->tx_queues[eth_dev->data->nb_tx_queues-1];
 			ixgbe_set_tx_function(eth_dev, txq);
 		} else {
 			/* Use default TX function if we get here */
 			PMD_INIT_LOG(NOTICE, "No TX queues configured yet. "
-			                     "Using default TX function.");
+				     "Using default TX function.");
 		}
 
 		ixgbe_set_rx_function(eth_dev);
@@ -1086,7 +1086,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Initialize DCB configuration*/
 	memset(dcb_config, 0, sizeof(struct ixgbe_dcb_config));
-	ixgbe_dcb_init(hw,dcb_config);
+	ixgbe_dcb_init(hw, dcb_config);
 	/* Get Hardware Flow Control setting */
 	hw->fc.requested_mode = ixgbe_fc_full;
 	hw->fc.current_mode = ixgbe_fc_full;
@@ -1127,11 +1127,11 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (diag == IXGBE_ERR_EEPROM_VERSION) {
 		PMD_INIT_LOG(ERR, "This device is a pre-production adapter/"
-		    "LOM.  Please be aware there may be issues associated "
-		    "with your hardware.");
+			     "LOM.  Please be aware there may be issues associated "
+			     "with your hardware.");
 		PMD_INIT_LOG(ERR, "If you are experiencing problems "
-		    "please contact your Intel or hardware representative "
-		    "who provided you with this hardware.");
+			     "please contact your Intel or hardware representative "
+			     "who provided you with this hardware.");
 	} else if (diag == IXGBE_ERR_SFP_NOT_SUPPORTED)
 		PMD_INIT_LOG(ERR, "Unsupported SFP+ Module");
 	if (diag) {
@@ -1150,12 +1150,12 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("ixgbe", ETHER_ADDR_LEN *
-			hw->mac.num_rar_entries, 0);
+					       hw->mac.num_rar_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
-			"Failed to allocate %u bytes needed to store "
-			"MAC addresses",
-			ETHER_ADDR_LEN * hw->mac.num_rar_entries);
+			     "Failed to allocate %u bytes needed to store "
+			     "MAC addresses",
+			     ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
 	}
 	/* Copy the permanent MAC address */
@@ -1164,11 +1164,11 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Allocate memory for storing hash filter MAC addresses */
 	eth_dev->data->hash_mac_addrs = rte_zmalloc("ixgbe", ETHER_ADDR_LEN *
-			IXGBE_VMDQ_NUM_UC_MAC, 0);
+						    IXGBE_VMDQ_NUM_UC_MAC, 0);
 	if (eth_dev->data->hash_mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
-			"Failed to allocate %d bytes needed to store MAC addresses",
-			ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC);
+			     "Failed to allocate %d bytes needed to store MAC addresses",
+			     ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC);
 		return -ENOMEM;
 	}
 
@@ -1198,8 +1198,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 			     (int) hw->mac.type, (int) hw->phy.type);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
-			eth_dev->data->port_id, pci_dev->id.vendor_id,
-			pci_dev->id.device_id);
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id);
 
 	rte_intr_callback_register(&pci_dev->intr_handle,
 				   ixgbe_dev_interrupt_handler,
@@ -1214,7 +1214,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize 5tuple filter list */
 	TAILQ_INIT(&filter_info->fivetuple_list);
 	memset(filter_info->fivetuple_mask, 0,
-		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
+	       sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
 	return 0;
 }
@@ -1313,7 +1313,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	struct ixgbe_vfta * shadow_vfta =
+	struct ixgbe_vfta *shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 	struct ixgbe_hwstrip *hwstrip =
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
@@ -1327,8 +1327,9 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
-	 * RX function */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY){
+	 * RX function
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		struct ixgbe_tx_queue *txq;
 		/* TX queue function in primary, set by last queue initialized
 		 * Tx queue may not initialized by primary process
@@ -1339,7 +1340,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		} else {
 			/* Use default TX function if we get here */
 			PMD_INIT_LOG(NOTICE,
-				"No TX queues configured yet. Using default TX function.");
+				     "No TX queues configured yet. Using default TX function.");
 		}
 
 		ixgbe_set_rx_function(eth_dev);
@@ -1398,12 +1399,12 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("ixgbevf", ETHER_ADDR_LEN *
-			hw->mac.num_rar_entries, 0);
+					       hw->mac.num_rar_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
-			"Failed to allocate %u bytes needed to store "
-			"MAC addresses",
-			ETHER_ADDR_LEN * hw->mac.num_rar_entries);
+			     "Failed to allocate %u bytes needed to store "
+			     "MAC addresses",
+			     ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
 	}
 
@@ -1433,12 +1434,12 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	/* reset the hardware with the new settings */
 	diag = hw->mac.ops.start_hw(hw);
 	switch (diag) {
-		case  0:
-			break;
+	case  0:
+		break;
 
-		default:
-			PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
-			return -EIO;
+	default:
+		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
+		return -EIO;
 	}
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
@@ -1537,7 +1538,7 @@ ixgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vfta * shadow_vfta =
+	struct ixgbe_vfta *shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
 	uint32_t vfta;
 	uint32_t vid_idx;
@@ -1611,7 +1612,7 @@ ixgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vfta * shadow_vfta =
+	struct ixgbe_vfta *shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
 	uint32_t vlnctrl;
 	uint16_t i;
@@ -1659,12 +1660,12 @@ ixgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev, uint16_t queue)
 		PMD_INIT_LOG(NOTICE, "82598EB not support queue level hw strip");
 		return;
 	}
-	else {
-		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
-		ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
-		ctrl &= ~IXGBE_RXDCTL_VME;
-		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
-	}
+
+	/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
+	ctrl &= ~IXGBE_RXDCTL_VME;
+	IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
+
 	/* record those setting for HW strip per queue */
 	ixgbe_vlan_hw_strip_bitmap_set(dev, queue, 0);
 }
@@ -1683,12 +1684,12 @@ ixgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue)
 		PMD_INIT_LOG(NOTICE, "82598EB not support queue level hw strip");
 		return;
 	}
-	else {
-		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
-		ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
-		ctrl |= IXGBE_RXDCTL_VME;
-		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
-	}
+
+	/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(queue));
+	ctrl |= IXGBE_RXDCTL_VME;
+	IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
+
 	/* record those setting for HW strip per queue */
 	ixgbe_vlan_hw_strip_bitmap_set(dev, queue, 1);
 }
@@ -1707,8 +1708,7 @@ ixgbe_vlan_hw_strip_disable_all(struct rte_eth_dev *dev)
 		ctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
 		ctrl &= ~IXGBE_VLNCTRL_VME;
 		IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, ctrl);
-	}
-	else {
+	} else {
 		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(i));
@@ -1735,8 +1735,7 @@ ixgbe_vlan_hw_strip_enable_all(struct rte_eth_dev *dev)
 		ctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
 		ctrl |= IXGBE_VLNCTRL_VME;
 		IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, ctrl);
-	}
-	else {
+	} else {
 		/* Other 10G NIC, the VLAN strip can be setup per queue in RXDCTL */
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			ctrl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(i));
@@ -1836,6 +1835,7 @@ ixgbe_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	/* VLNCTRL: enable vlan filtering and allow all vlan tags through */
 	uint32_t vlanctrl = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+
 	vlanctrl |= IXGBE_VLNCTRL_VFE; /* enable vlan filters */
 	IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, vlanctrl);
 }
@@ -2116,7 +2116,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	ixgbe_stop_adapter(hw);
 
 	/* reinitialize adapter
-	 * this calls reset and start */
+	 * this calls reset and start
+	 */
 	status = ixgbe_pf_reset_hw(hw);
 	if (status != 0)
 		return -1;
@@ -2251,7 +2252,7 @@ skip_link_setup:
 	/* resume enabled intr since hw reset */
 	ixgbe_enable_intr(dev);
 
-	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
 		ETH_VLAN_EXTEND_MASK;
 	ixgbe_vlan_offload_set(dev, mask);
 
@@ -2471,8 +2472,8 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	hw_stats->mspdc += IXGBE_READ_REG(hw, IXGBE_MSPDC);
 
 	for (i = 0; i < 8; i++) {
-		uint32_t mp;
-		mp = IXGBE_READ_REG(hw, IXGBE_MPC(i));
+		uint32_t mp = IXGBE_READ_REG(hw, IXGBE_MPC(i));
+
 		/* global total per queue */
 		hw_stats->mpc[i] += mp;
 		/* Running comprehensive total for stats display */
@@ -2664,15 +2665,15 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* Rx Errors */
 	stats->imissed  = total_missed_rx;
 	stats->ierrors  = hw_stats->crcerrs +
-	                  hw_stats->mspdc +
-	                  hw_stats->rlec +
-	                  hw_stats->ruc +
-	                  hw_stats->roc +
-	                  hw_stats->illerrc +
-	                  hw_stats->errbc +
-	                  hw_stats->rfc +
-	                  hw_stats->fccrc +
-	                  hw_stats->fclast;
+			  hw_stats->mspdc +
+			  hw_stats->rlec +
+			  hw_stats->ruc +
+			  hw_stats->roc +
+			  hw_stats->illerrc +
+			  hw_stats->errbc +
+			  hw_stats->rfc +
+			  hw_stats->fccrc +
+			  hw_stats->fclast;
 
 	/* Tx Errors */
 	stats->oerrors  = 0;
@@ -2786,7 +2787,7 @@ static void
 ixgbevf_update_stats(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats*)
+	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats *)
 			  IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
 	/* Good Rx packet, include VF loopback */
@@ -2857,7 +2858,7 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 static void
 ixgbevf_dev_stats_reset(struct rte_eth_dev *dev)
 {
-	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats*)
+	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats *)
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
 	/* Sync HW register to the last stats */
@@ -3352,7 +3353,7 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 
 	if (intr_enable_delay) {
 		if (rte_eal_alarm_set(timeout * 1000,
-				      ixgbe_dev_interrupt_delayed_handler, (void*)dev) < 0)
+				      ixgbe_dev_interrupt_delayed_handler, (void *)dev) < 0)
 			PMD_DRV_LOG(ERR, "Error setting alarm");
 	} else {
 		PMD_DRV_LOG(DEBUG, "enable intr immediately");
@@ -3571,7 +3572,7 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
  *  Enable flow control according to the current settings.
  */
 static int
-ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
+ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw, uint8_t tc_num)
 {
 	int ret_val = 0;
 	uint32_t mflcn_reg, fccfg_reg;
@@ -3618,13 +3619,13 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 		 * and the TX pause can not be disabled
 		 */
 		nb_rx_en = 0;
-		for (i =0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
+		for (i = 0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
 			reg = IXGBE_READ_REG(hw, IXGBE_FCRTH_82599(i));
 			if (reg & IXGBE_FCRTH_FCEN)
 				nb_rx_en++;
 		}
 		if (nb_rx_en > 1)
-			fccfg_reg |=IXGBE_FCCFG_TFCE_PRIORITY;
+			fccfg_reg |= IXGBE_FCCFG_TFCE_PRIORITY;
 		break;
 	case ixgbe_fc_rx_pause:
 		/*
@@ -3641,20 +3642,20 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 		 * and the TX pause can not be disabled
 		 */
 		nb_rx_en = 0;
-		for (i =0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
+		for (i = 0; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
 			reg = IXGBE_READ_REG(hw, IXGBE_FCRTH_82599(i));
 			if (reg & IXGBE_FCRTH_FCEN)
 				nb_rx_en++;
 		}
 		if (nb_rx_en > 1)
-			fccfg_reg |=IXGBE_FCCFG_TFCE_PRIORITY;
+			fccfg_reg |= IXGBE_FCCFG_TFCE_PRIORITY;
 		break;
 	case ixgbe_fc_tx_pause:
 		/*
 		 * Tx Flow control is enabled, and Rx Flow control is
 		 * disabled by software override.
 		 */
-		fccfg_reg |=IXGBE_FCCFG_TFCE_PRIORITY;
+		fccfg_reg |= IXGBE_FCCFG_TFCE_PRIORITY;
 		break;
 	case ixgbe_fc_full:
 		/* Flow control (both Rx and Tx) is enabled by SW override. */
@@ -3665,7 +3666,6 @@ ixgbe_dcb_pfc_enable_generic(struct ixgbe_hw *hw,uint8_t tc_num)
 		PMD_DRV_LOG(DEBUG, "Flow control param set incorrectly");
 		ret_val = IXGBE_ERR_CONFIG;
 		goto out;
-		break;
 	}
 
 	/* Set 802.3x based flow control settings. */
@@ -3704,13 +3704,13 @@ out:
 }
 
 static int
-ixgbe_dcb_pfc_enable(struct rte_eth_dev *dev,uint8_t tc_num)
+ixgbe_dcb_pfc_enable(struct rte_eth_dev *dev, uint8_t tc_num)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int32_t ret_val = IXGBE_NOT_IMPLEMENTED;
 
 	if (hw->mac.type != ixgbe_mac_82598EB) {
-		ret_val = ixgbe_dcb_pfc_enable_generic(hw,tc_num);
+		ret_val = ixgbe_dcb_pfc_enable_generic(hw, tc_num);
 	}
 	return ret_val;
 }
@@ -3724,9 +3724,9 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	uint8_t tc_num;
 	uint8_t  map[IXGBE_DCB_MAX_USER_PRIORITY] = { 0 };
 	struct ixgbe_hw *hw =
-                IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_dcb_config *dcb_config =
-                IXGBE_DEV_PRIVATE_TO_DCB_CFG(dev->data->dev_private);
+		IXGBE_DEV_PRIVATE_TO_DCB_CFG(dev->data->dev_private);
 
 	enum ixgbe_fc_mode rte_fcmode_2_ixgbe_fcmode[] = {
 		ixgbe_fc_none,
@@ -3759,7 +3759,7 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	hw->fc.low_water[tc_num] =  pfc_conf->fc.low_water;
 	hw->fc.high_water[tc_num] = pfc_conf->fc.high_water;
 
-	err = ixgbe_dcb_pfc_enable(dev,tc_num);
+	err = ixgbe_dcb_pfc_enable(dev, tc_num);
 
 	/* Not negotiated is not an error case */
 	if ((err == IXGBE_SUCCESS) || (err == IXGBE_ERR_FC_NOT_NEGOTIATED))
@@ -3907,7 +3907,8 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 
 	/* refuse mtu that requires the support of scattered packets when this
-	 * feature has not been enabled before. */
+	 * feature has not been enabled before.
+	 */
 	if (!dev->data->scattered_rx &&
 	    (frame_size + 2 * IXGBE_VLAN_TAG_SIZE >
 	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM))
@@ -3967,7 +3968,7 @@ ixgbevf_intr_enable(struct ixgbe_hw *hw)
 static int
 ixgbevf_dev_configure(struct rte_eth_dev *dev)
 {
-	struct rte_eth_conf* conf = &dev->data->dev_conf;
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
 	struct ixgbe_adapter *adapter =
 			(struct ixgbe_adapter *)dev->data->dev_private;
 
@@ -4029,10 +4030,10 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Set vfta */
-	ixgbevf_set_vfta_all(dev,1);
+	ixgbevf_set_vfta_all(dev, 1);
 
 	/* Set HW strip */
-	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
 		ETH_VLAN_EXTEND_MASK;
 	ixgbevf_vlan_offload_set(dev, mask);
 
@@ -4080,7 +4081,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	  * Clear what we set, but we still keep shadow_vfta to
 	  * restore after device starts
 	  */
-	ixgbevf_set_vfta_all(dev,0);
+	ixgbevf_set_vfta_all(dev, 0);
 
 	/* Clear stored conf */
 	dev->data->scattered_rx = 0;
@@ -4119,18 +4120,18 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vfta * shadow_vfta =
+	struct ixgbe_vfta *shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
 	int i = 0, j = 0, vfta = 0, mask = 1;
 
-	for (i = 0; i < IXGBE_VFTA_SIZE; i++){
+	for (i = 0; i < IXGBE_VFTA_SIZE; i++) {
 		vfta = shadow_vfta->vfta[i];
 		if (vfta) {
 			mask = 1;
-			for (j = 0; j < 32; j++){
+			for (j = 0; j < 32; j++) {
 				if (vfta & mask)
 					ixgbe_set_vfta(hw, (i<<5)+j, 0, on);
-				mask<<=1;
+				mask <<= 1;
 			}
 		}
 	}
@@ -4142,7 +4143,7 @@ ixgbevf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vfta * shadow_vfta =
+	struct ixgbe_vfta *shadow_vfta =
 		IXGBE_DEV_PRIVATE_TO_VFTA(dev->data->dev_private);
 	uint32_t vid_idx = 0;
 	uint32_t vid_bit = 0;
@@ -4187,7 +4188,7 @@ ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 		ctrl &= ~IXGBE_RXDCTL_VME;
 	IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(queue), ctrl);
 
-	ixgbe_vlan_hw_strip_bitmap_set( dev, queue, on);
+	ixgbe_vlan_hw_strip_bitmap_set(dev, queue, on);
 }
 
 static void
@@ -4203,7 +4204,7 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		on = !!(dev->data->dev_conf.rxmode.hw_vlan_strip);
 
 		for (i = 0; i < hw->mac.max_rx_queues; i++)
-			ixgbevf_vlan_strip_queue_set(dev,i,on);
+			ixgbevf_vlan_strip_queue_set(dev, i, on);
 	}
 }
 
@@ -4223,9 +4224,10 @@ ixgbe_vmdq_mode_check(struct ixgbe_hw *hw)
 }
 
 static uint32_t
-ixgbe_uta_vector(struct ixgbe_hw *hw, struct ether_addr* uc_addr)
+ixgbe_uta_vector(struct ixgbe_hw *hw, struct ether_addr *uc_addr)
 {
 	uint32_t vector = 0;
+
 	switch (hw->mac.mc_filter_type) {
 	case 0:   /* use bits [47:36] of the address */
 		vector = ((uc_addr->addr_bytes[4] >> 4) |
@@ -4253,8 +4255,8 @@ ixgbe_uta_vector(struct ixgbe_hw *hw, struct ether_addr* uc_addr)
 }
 
 static int
-ixgbe_uc_hash_table_set(struct rte_eth_dev *dev,struct ether_addr* mac_addr,
-			       uint8_t on)
+ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+			uint8_t on)
 {
 	uint32_t vector;
 	uint32_t uta_idx;
@@ -4275,7 +4277,7 @@ ixgbe_uc_hash_table_set(struct rte_eth_dev *dev,struct ether_addr* mac_addr,
 	if (hw->mac.type < ixgbe_mac_82599EB)
 		return -ENOTSUP;
 
-	vector = ixgbe_uta_vector(hw,mac_addr);
+	vector = ixgbe_uta_vector(hw, mac_addr);
 	uta_idx = (vector >> ixgbe_uta_bit_shift) & ixgbe_uta_idx_mask;
 	uta_shift = vector & ixgbe_uta_bit_mask;
 
@@ -4300,7 +4302,7 @@ ixgbe_uc_hash_table_set(struct rte_eth_dev *dev,struct ether_addr* mac_addr,
 		IXGBE_WRITE_REG(hw, IXGBE_MCSTCTRL,
 				IXGBE_MCSTCTRL_MFE | hw->mac.mc_filter_type);
 	else
-		IXGBE_WRITE_REG(hw, IXGBE_MCSTCTRL,hw->mac.mc_filter_type);
+		IXGBE_WRITE_REG(hw, IXGBE_MCSTCTRL, hw->mac.mc_filter_type);
 
 	return 0;
 }
@@ -4385,7 +4387,7 @@ ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
 static int
 ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 {
-	uint32_t reg,addr;
+	uint32_t reg, addr;
 	uint32_t val;
 	const uint8_t bit1 = 0x1;
 
@@ -4404,7 +4406,7 @@ ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 	else
 		reg &= ~val;
 
-	IXGBE_WRITE_REG(hw, addr,reg);
+	IXGBE_WRITE_REG(hw, addr, reg);
 
 	return 0;
 }
@@ -4412,7 +4414,7 @@ ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 static int
 ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 {
-	uint32_t reg,addr;
+	uint32_t reg, addr;
 	uint32_t val;
 	const uint8_t bit1 = 0x1;
 
@@ -4431,7 +4433,7 @@ ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 	else
 		reg &= ~val;
 
-	IXGBE_WRITE_REG(hw, addr,reg);
+	IXGBE_WRITE_REG(hw, addr, reg);
 
 	return 0;
 }
@@ -4449,7 +4451,7 @@ ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 		return -ENOTSUP;
 	for (pool_idx = 0; pool_idx < ETH_64_POOLS; pool_idx++) {
 		if (pool_mask & ((uint64_t)(1ULL << pool_idx))) {
-			ret = hw->mac.ops.set_vfta(hw,vlan,pool_idx,vlan_on);
+			ret = hw->mac.ops.set_vfta(hw, vlan, pool_idx, vlan_on);
 			if (ret < 0)
 				return ret;
 		}
@@ -4471,7 +4473,7 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 			struct rte_eth_mirror_conf *mirror_conf,
 			uint8_t rule_id, uint8_t on)
 {
-	uint32_t mr_ctl,vlvf;
+	uint32_t mr_ctl, vlvf;
 	uint32_t mp_lsb = 0;
 	uint32_t mv_msb = 0;
 	uint32_t mv_lsb = 0;
@@ -4484,7 +4486,7 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 	const uint8_t vlan_mask_offset = 32;
 	const uint8_t dst_pool_offset = 8;
 	const uint8_t rule_mr_offset  = 4;
-	const uint8_t mirror_rule_mask= 0x0F;
+	const uint8_t mirror_rule_mask = 0x0F;
 
 	struct ixgbe_mirror_info *mr_info =
 			(IXGBE_DEV_PRIVATE_TO_PFDATA(dev->data->dev_private));
@@ -4507,7 +4509,7 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 	if (mirror_conf->rule_type & ETH_MIRROR_VLAN) {
 		mirror_type |= IXGBE_MRCTL_VLME;
 		/* Check if vlan id is valid and find conresponding VLAN ID index in VLVF */
-		for (i = 0;i < IXGBE_VLVF_ENTRIES; i++) {
+		for (i = 0; i < IXGBE_VLVF_ENTRIES; i++) {
 			if (mirror_conf->vlan.vlan_mask & (1ULL << i)) {
 				/* search vlan id related pool vlan filter index */
 				reg_index = ixgbe_find_vlvf_slot(hw,
@@ -5302,7 +5304,8 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 
 	/* refuse mtu that requires the support of scattered packets when this
-	 * feature has not been enabled before. */
+	 * feature has not been enabled before.
+	 */
 	if (!dev->data->scattered_rx &&
 	    (max_frame + 2 * IXGBE_VLAN_TAG_SIZE >
 	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM))

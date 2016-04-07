@@ -297,8 +297,8 @@ ixgbe_bypass_init_hw(struct ixgbe_hw *hw)
 {
 	int rc;
 
-	if ((rc  = ixgbe_init_hw(hw)) == 0 &&
-			hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
+	rc  = ixgbe_init_hw(hw);
+	if (rc == 0 && hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
 
 		hw->mac.ops.setup_link =
 			&ixgbe_setup_mac_link_multispeed_fixed_fiber;
@@ -306,8 +306,8 @@ ixgbe_bypass_init_hw(struct ixgbe_hw *hw)
 		hw->mac.ops.get_media_type = &ixgbe_bypass_get_media_type;
 
 		hw->mac.ops.disable_tx_laser = NULL;
-                hw->mac.ops.enable_tx_laser = NULL;
-                hw->mac.ops.flap_tx_laser = NULL;
+		hw->mac.ops.enable_tx_laser = NULL;
+		hw->mac.ops.flap_tx_laser = NULL;
 	}
 
 	return rc;
