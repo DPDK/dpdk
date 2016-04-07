@@ -2362,10 +2362,10 @@ create_snow3g_hash_operation(const uint8_t *auth_tag,
 static int
 create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
-		const uint8_t *aad, const unsigned aad_len,
+		const uint8_t *aad, const uint8_t aad_len,
 		unsigned data_pad_len,
 		enum rte_crypto_auth_operation op,
-		const uint8_t *iv, const unsigned iv_len,
+		const uint8_t *iv, const uint8_t iv_len,
 		const unsigned cipher_len, const unsigned cipher_offset,
 		const unsigned auth_len, const unsigned auth_offset)
 {
@@ -2460,8 +2460,8 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 
 static int
 create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
-		const uint8_t *iv, const unsigned iv_len,
-		const uint8_t *aad, const unsigned aad_len,
+		const uint8_t *iv, const uint8_t iv_len,
+		const uint8_t *aad, const uint8_t aad_len,
 		unsigned data_pad_len,
 		const unsigned cipher_len, const unsigned cipher_offset,
 		const unsigned auth_len, const unsigned auth_offset)
