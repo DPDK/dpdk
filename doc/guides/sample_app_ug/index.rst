@@ -47,6 +47,7 @@ Sample Applications User Guide
     ip_reassembly
     kernel_nic_interface
     keep_alive
+    l2_forward_crypto
     l2_forward_job_stats
     l2_forward_real_virtual
     l2_forward_cat
@@ -89,6 +90,8 @@ Sample Applications User Guide
 :numref:`figure_l2_fwd_benchmark_setup` :ref:`figure_l2_fwd_benchmark_setup`
 
 :numref:`figure_l2_fwd_virtenv_benchmark_setup` :ref:`figure_l2_fwd_virtenv_benchmark_setup`
+
+:numref:`figure_l2_fwd_encrypt_flow` :ref:`figure_l2_fwd_encrypt_flow`
 
 :numref:`figure_ipv4_acl_rule` :ref:`figure_ipv4_acl_rule`
 
