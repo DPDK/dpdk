@@ -129,7 +129,7 @@ Most of these differences are summarized below.
    timesync                             X X     X   X X
    basic stats                  X X X X X X X X X X X X X X X X X X X X           X X X X
    extended stats                   X   X X X X X X X X X X X X X X                   X X
-   stats per queue              X                           X X X X X X           X   X X
+   stats per queue              X                   X X     X X X X X X           X   X X
    EEPROM dump                                  X   X X
    registers dump                               X X X X X X
    multiprocess aware                   X X X X     X X X X X X X X X X
