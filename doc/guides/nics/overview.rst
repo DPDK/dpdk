@@ -99,8 +99,8 @@ Most of these differences are summarized below.
    TSO                          X   X   X X X X X X X X X X X X X X
    promiscuous mode             X X   X X X X X X X X X     X X     X X           X   X X
    allmulticast mode            X X     X X X X X X X X X X X X     X X           X   X X
-   unicast MAC filter             X   X X X X X X X X X X X X X                       X X
-   multicast MAC filter               X X X X X             X X                       X X
+   unicast MAC filter             X   X X X X X X X X X X X X X     X X               X X
+   multicast MAC filter               X X X X X             X X     X X               X X
    RSS hash                     X   X X X X X X X   X X X X X X X X X X
    RSS key update                   X   X X X X X   X X X X X X X X   X
    RSS reta update                  X   X X X X X   X X X X X X X X   X
@@ -136,7 +136,7 @@ Most of these differences are summarized below.
    BSD nic_uio                  X X   X X X X X X X X X X X X X X X                   X X
    Linux UIO                    X X X X X X X X X X X X X X X X X X                   X X
    Linux VFIO                   X X   X X X X X X X X X X X X X X X                   X X
-   other kdrv                                                                     X
+   other kdrv                                                       X X           X
    ARMv7                                                                              X X
    ARMv8                                                                              X X
    Power8                                                           X X
