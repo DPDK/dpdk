@@ -834,7 +834,7 @@ app_pipeline_firewall_add_bulk(struct app_params *app,
 		rules[i] = app_pipeline_firewall_rule_find(p, &keys[i]);
 		new_rules[i] = (rules[i] == NULL);
 		if (rules[i] == NULL) {
-			rules[i] = rte_malloc(NULL, sizeof(rules[i]),
+			rules[i] = rte_malloc(NULL, sizeof(*rules[i]),
 					RTE_CACHE_LINE_SIZE);
 
 			if (rules[i] == NULL) {
