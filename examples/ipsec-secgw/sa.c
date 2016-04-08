@@ -209,15 +209,17 @@ static uint8_t cipher_key[256] = "sixteenbytes key";
 const struct rte_crypto_sym_xform aescbc_enc_xf = {
 	NULL,
 	RTE_CRYPTO_SYM_XFORM_CIPHER,
-	.cipher = { RTE_CRYPTO_CIPHER_OP_ENCRYPT, RTE_CRYPTO_CIPHER_AES_CBC,
+	{.cipher = { RTE_CRYPTO_CIPHER_OP_ENCRYPT, RTE_CRYPTO_CIPHER_AES_CBC,
 		.key = { cipher_key, 16 } }
+	}
 };
 
 const struct rte_crypto_sym_xform aescbc_dec_xf = {
 	NULL,
 	RTE_CRYPTO_SYM_XFORM_CIPHER,
-	.cipher = { RTE_CRYPTO_CIPHER_OP_DECRYPT, RTE_CRYPTO_CIPHER_AES_CBC,
+	{.cipher = { RTE_CRYPTO_CIPHER_OP_DECRYPT, RTE_CRYPTO_CIPHER_AES_CBC,
 		.key = { cipher_key, 16 } }
+	}
 };
 
 static uint8_t auth_key[256] = "twentybytes hash key";
@@ -226,28 +228,32 @@ static uint8_t auth_key[256] = "twentybytes hash key";
 const struct rte_crypto_sym_xform sha1hmac_gen_xf = {
 	NULL,
 	RTE_CRYPTO_SYM_XFORM_AUTH,
-	.auth = { RTE_CRYPTO_AUTH_OP_GENERATE, RTE_CRYPTO_AUTH_SHA1_HMAC,
+	{.auth = { RTE_CRYPTO_AUTH_OP_GENERATE, RTE_CRYPTO_AUTH_SHA1_HMAC,
 		.key = { auth_key, 20 }, 12, 0 }
+	}
 };
 
 const struct rte_crypto_sym_xform sha1hmac_verify_xf = {
 	NULL,
 	RTE_CRYPTO_SYM_XFORM_AUTH,
-	.auth = { RTE_CRYPTO_AUTH_OP_VERIFY, RTE_CRYPTO_AUTH_SHA1_HMAC,
+	{.auth = { RTE_CRYPTO_AUTH_OP_VERIFY, RTE_CRYPTO_AUTH_SHA1_HMAC,
 		.key = { auth_key, 20 }, 12, 0 }
+	}
 };
 
 /* AES CBC xform */
 const struct rte_crypto_sym_xform null_cipher_xf = {
 	NULL,
 	RTE_CRYPTO_SYM_XFORM_CIPHER,
-	.cipher = { .algo = RTE_CRYPTO_CIPHER_NULL }
+	{.cipher = { .algo = RTE_CRYPTO_CIPHER_NULL }
+	}
 };
 
 const struct rte_crypto_sym_xform null_auth_xf = {
 	NULL,
 	RTE_CRYPTO_SYM_XFORM_AUTH,
-	.auth = { .algo = RTE_CRYPTO_AUTH_NULL }
+	{.auth = { .algo = RTE_CRYPTO_AUTH_NULL }
+	}
 };
 
 struct sa_ctx {
