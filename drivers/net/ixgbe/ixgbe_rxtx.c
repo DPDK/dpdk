@@ -938,14 +938,59 @@ end_of_tx:
 #define IXGBE_PACKET_TYPE_IPV4_IPV6_EXT     0X0D
 #define IXGBE_PACKET_TYPE_IPV4_IPV6_EXT_TCP 0X1D
 #define IXGBE_PACKET_TYPE_IPV4_IPV6_EXT_UDP 0X2D
+
+#define IXGBE_PACKET_TYPE_NVGRE                   0X00
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4              0X01
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_TCP          0X11
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_UDP          0X21
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_SCTP         0X41
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_EXT          0X03
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_EXT_SCTP     0X43
+#define IXGBE_PACKET_TYPE_NVGRE_IPV6              0X04
+#define IXGBE_PACKET_TYPE_NVGRE_IPV6_TCP          0X14
+#define IXGBE_PACKET_TYPE_NVGRE_IPV6_UDP          0X24
+#define IXGBE_PACKET_TYPE_NVGRE_IPV6_EXT          0X0C
+#define IXGBE_PACKET_TYPE_NVGRE_IPV6_EXT_TCP      0X1C
+#define IXGBE_PACKET_TYPE_NVGRE_IPV6_EXT_UDP      0X2C
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6         0X05
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_TCP     0X15
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_UDP     0X25
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_EXT     0X0D
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_EXT_TCP 0X1D
+#define IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_EXT_UDP 0X2D
+
+#define IXGBE_PACKET_TYPE_VXLAN                   0X80
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4              0X81
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_TCP          0x91
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_UDP          0xA1
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_SCTP         0xC1
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_EXT          0x83
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_EXT_SCTP     0XC3
+#define IXGBE_PACKET_TYPE_VXLAN_IPV6              0X84
+#define IXGBE_PACKET_TYPE_VXLAN_IPV6_TCP          0X94
+#define IXGBE_PACKET_TYPE_VXLAN_IPV6_UDP          0XA4
+#define IXGBE_PACKET_TYPE_VXLAN_IPV6_EXT          0X8C
+#define IXGBE_PACKET_TYPE_VXLAN_IPV6_EXT_TCP      0X9C
+#define IXGBE_PACKET_TYPE_VXLAN_IPV6_EXT_UDP      0XAC
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6         0X85
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_TCP     0X95
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_UDP     0XA5
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_EXT     0X8D
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_EXT_TCP 0X9D
+#define IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_EXT_UDP 0XAD
+
 #define IXGBE_PACKET_TYPE_MAX               0X80
-#define IXGBE_PACKET_TYPE_MASK              0X7F
+#define IXGBE_PACKET_TYPE_TN_MAX            0X100
 #define IXGBE_PACKET_TYPE_SHIFT             0X04
 
 /* @note: fix ixgbe_dev_supported_ptypes_get() if any change here. */
 static inline uint32_t
-ixgbe_rxd_pkt_info_to_pkt_type(uint16_t pkt_info)
+ixgbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptype_mask)
 {
+	/**
+	 * Use 2 different table for normal packet and tunnel packet
+	 * to save the space.
+	 */
 	static const uint32_t
 		ptype_table[IXGBE_PACKET_TYPE_MAX] __rte_cache_aligned = {
 		[IXGBE_PACKET_TYPE_IPV4] = RTE_PTYPE_L2_ETHER |
@@ -991,11 +1036,172 @@ ixgbe_rxd_pkt_info_to_pkt_type(uint16_t pkt_info)
 		[IXGBE_PACKET_TYPE_IPV4_EXT_SCTP] = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_SCTP,
 	};
+
+	static const uint32_t
+		ptype_table_tn[IXGBE_PACKET_TYPE_TN_MAX] __rte_cache_aligned = {
+		[IXGBE_PACKET_TYPE_NVGRE] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4_EXT,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV6] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV6,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV6_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV6_EXT,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4 |
+			RTE_PTYPE_INNER_L4_TCP,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV6_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV6 |
+			RTE_PTYPE_INNER_L4_TCP,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV6_EXT_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV6_EXT |
+			RTE_PTYPE_INNER_L4_TCP,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_EXT_TCP] =
+			RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4 |
+			RTE_PTYPE_INNER_L4_UDP,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV6_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV6 |
+			RTE_PTYPE_INNER_L4_UDP,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV6_EXT_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV6_EXT |
+			RTE_PTYPE_INNER_L4_UDP,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_IPV6_EXT_UDP] =
+			RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_SCTP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4 |
+			RTE_PTYPE_INNER_L4_SCTP,
+		[IXGBE_PACKET_TYPE_NVGRE_IPV4_EXT_SCTP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4_EXT |
+			RTE_PTYPE_INNER_L4_SCTP,
+
+		[IXGBE_PACKET_TYPE_VXLAN] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4_EXT,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV6] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV6_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6_EXT,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_EXT] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4 | RTE_PTYPE_INNER_L4_TCP,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV6_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6 | RTE_PTYPE_INNER_L4_TCP,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV6_EXT_TCP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6_EXT | RTE_PTYPE_INNER_L4_TCP,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_EXT_TCP] =
+			RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_UDP | RTE_PTYPE_TUNNEL_VXLAN |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4 | RTE_PTYPE_INNER_L4_UDP,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV6_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6 | RTE_PTYPE_INNER_L4_UDP,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV6_EXT_UDP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6_EXT | RTE_PTYPE_INNER_L4_UDP,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_IPV6_EXT_UDP] =
+			RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+			RTE_PTYPE_L4_UDP | RTE_PTYPE_TUNNEL_VXLAN |
+			RTE_PTYPE_INNER_L2_ETHER | RTE_PTYPE_INNER_L3_IPV4,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_SCTP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4 | RTE_PTYPE_INNER_L4_SCTP,
+		[IXGBE_PACKET_TYPE_VXLAN_IPV4_EXT_SCTP] = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP |
+			RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4_EXT | RTE_PTYPE_INNER_L4_SCTP,
+	};
+
 	if (unlikely(pkt_info & IXGBE_RXDADV_PKTTYPE_ETQF))
 		return RTE_PTYPE_UNKNOWN;
 
-	pkt_info = (pkt_info >> IXGBE_PACKET_TYPE_SHIFT) &
-				IXGBE_PACKET_TYPE_MASK;
+	pkt_info = (pkt_info >> IXGBE_PACKET_TYPE_SHIFT) & ptype_mask;
+
+	/* For tunnel packet */
+	if (pkt_info & IXGBE_PACKET_TYPE_TUNNEL_BIT) {
+		/* Remove the tunnel bit to save the space. */
+		pkt_info &= IXGBE_PACKET_TYPE_MASK_TUNNEL;
+		return ptype_table_tn[pkt_info];
+	}
+
+	/**
+	 * For x550, if it's not tunnel,
+	 * tunnel type bit should be set to 0.
+	 * Reuse 82599's mask.
+	 */
+	pkt_info &= IXGBE_PACKET_TYPE_MASK_82599;
 
 	return ptype_table[pkt_info];
 }
@@ -1089,7 +1295,7 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 	uint64_t pkt_flags;
 	int nb_dd;
 	uint32_t s[LOOK_AHEAD];
-	uint16_t pkt_info[LOOK_AHEAD];
+	uint32_t pkt_info[LOOK_AHEAD];
 	int i, j, nb_rx = 0;
 	uint32_t status;
 
@@ -1114,8 +1320,8 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 			s[j] = rte_le_to_cpu_32(rxdp[j].wb.upper.status_error);
 
 		for (j = LOOK_AHEAD - 1; j >= 0; --j)
-			pkt_info[j] = rxdp[j].wb.lower.lo_dword.
-						hs_rss.pkt_info;
+			pkt_info[j] = rte_le_to_cpu_32(rxdp[j].wb.lower.
+						       lo_dword.data);
 
 		/* Compute how many status bits were set */
 		nb_dd = 0;
@@ -1136,11 +1342,12 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 			/* convert descriptor fields to rte mbuf flags */
 			pkt_flags = rx_desc_status_to_pkt_flags(s[j]);
 			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
-			pkt_flags |=
-				ixgbe_rxd_pkt_info_to_pkt_flags(pkt_info[j]);
+			pkt_flags |= ixgbe_rxd_pkt_info_to_pkt_flags
+					((uint16_t)pkt_info[j]);
 			mb->ol_flags = pkt_flags;
 			mb->packet_type =
-				ixgbe_rxd_pkt_info_to_pkt_type(pkt_info[j]);
+				ixgbe_rxd_pkt_info_to_pkt_type
+					(pkt_info[j], rxq->pkt_type_mask);
 
 			if (likely(pkt_flags & PKT_RX_RSS_HASH))
 				mb->hash.rss = rte_le_to_cpu_32(
@@ -1459,17 +1666,18 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->data_len = pkt_len;
 		rxm->port = rxq->port_id;
 
-		pkt_info = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.hs_rss.
-								pkt_info);
+		pkt_info = rte_le_to_cpu_32(rxd.wb.lower.lo_dword.data);
 		/* Only valid if PKT_RX_VLAN_PKT set in pkt_flags */
 		rxm->vlan_tci = rte_le_to_cpu_16(rxd.wb.upper.vlan);
 
 		pkt_flags = rx_desc_status_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags | rx_desc_error_to_pkt_flags(staterr);
 		pkt_flags = pkt_flags |
-			ixgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
+			ixgbe_rxd_pkt_info_to_pkt_flags((uint16_t)pkt_info);
 		rxm->ol_flags = pkt_flags;
-		rxm->packet_type = ixgbe_rxd_pkt_info_to_pkt_type(pkt_info);
+		rxm->packet_type =
+			ixgbe_rxd_pkt_info_to_pkt_type(pkt_info,
+						       rxq->pkt_type_mask);
 
 		if (likely(pkt_flags & PKT_RX_RSS_HASH))
 			rxm->hash.rss = rte_le_to_cpu_32(
@@ -1536,30 +1744,31 @@ ixgbe_rsc_count(union ixgbe_adv_rx_desc *rx)
  *      - error flags
  * @head HEAD of the packet cluster
  * @desc HW descriptor to get data from
- * @port_id Port ID of the Rx queue
+ * @rxq Pointer to the Rx queue
  */
 static inline void
 ixgbe_fill_cluster_head_buf(
 	struct rte_mbuf *head,
 	union ixgbe_adv_rx_desc *desc,
-	uint8_t port_id,
+	struct ixgbe_rx_queue *rxq,
 	uint32_t staterr)
 {
-	uint16_t pkt_info;
+	uint32_t pkt_info;
 	uint64_t pkt_flags;
 
-	head->port = port_id;
+	head->port = rxq->port_id;
 
 	/* The vlan_tci field is only valid when PKT_RX_VLAN_PKT is
 	 * set in the pkt_flags field.
 	 */
 	head->vlan_tci = rte_le_to_cpu_16(desc->wb.upper.vlan);
-	pkt_info = rte_le_to_cpu_32(desc->wb.lower.lo_dword.hs_rss.pkt_info);
+	pkt_info = rte_le_to_cpu_32(desc->wb.lower.lo_dword.data);
 	pkt_flags = rx_desc_status_to_pkt_flags(staterr);
 	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
-	pkt_flags |= ixgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
+	pkt_flags |= ixgbe_rxd_pkt_info_to_pkt_flags((uint16_t)pkt_info);
 	head->ol_flags = pkt_flags;
-	head->packet_type = ixgbe_rxd_pkt_info_to_pkt_type(pkt_info);
+	head->packet_type =
+		ixgbe_rxd_pkt_info_to_pkt_type(pkt_info, rxq->pkt_type_mask);
 
 	if (likely(pkt_flags & PKT_RX_RSS_HASH))
 		head->hash.rss = rte_le_to_cpu_32(desc->wb.lower.hi_dword.rss);
@@ -1806,8 +2015,7 @@ next_desc:
 		rxm->next = NULL;
 
 		/* Initialize the first mbuf of the returned packet */
-		ixgbe_fill_cluster_head_buf(first_seg, &rxd, rxq->port_id,
-					    staterr);
+		ixgbe_fill_cluster_head_buf(first_seg, &rxd, rxq, staterr);
 
 		/*
 		 * Deal with the case, when HW CRC srip is disabled.
@@ -2426,6 +2634,21 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 							0 : ETHER_CRC_LEN);
 	rxq->drop_en = rx_conf->rx_drop_en;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
+
+	/*
+	 * The packet type in RX descriptor is different for different NICs.
+	 * Some bits are used for x550 but reserved for other NICS.
+	 * So set different masks for different NICs.
+	 */
+	if (hw->mac.type == ixgbe_mac_X550 ||
+	    hw->mac.type == ixgbe_mac_X550EM_x ||
+	    hw->mac.type == ixgbe_mac_X550EM_a ||
+	    hw->mac.type == ixgbe_mac_X550_vf ||
+	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
+	    hw->mac.type == ixgbe_mac_X550EM_a_vf)
+		rxq->pkt_type_mask = IXGBE_PACKET_TYPE_MASK_X550;
+	else
+		rxq->pkt_type_mask = IXGBE_PACKET_TYPE_MASK_82599;
 
 	/*
 	 * Allocate RX ring hardware descriptors. A memzone large enough to

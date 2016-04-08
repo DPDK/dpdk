@@ -80,6 +80,11 @@
 #define RTE_IXGBE_WAIT_100_US               100
 #define RTE_IXGBE_VMTXSW_REGISTER_COUNT     2
 
+#define IXGBE_PACKET_TYPE_MASK_82599        0X7F
+#define IXGBE_PACKET_TYPE_MASK_X550         0X10FF
+#define IXGBE_PACKET_TYPE_MASK_TUNNEL       0XFF
+#define IXGBE_PACKET_TYPE_TUNNEL_BIT        0X1000
+
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
@@ -136,6 +141,7 @@ struct ixgbe_rx_queue {
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id; /**< RX queue index. */
 	uint16_t            reg_idx;  /**< RX queue register index. */
+	uint16_t            pkt_type_mask;  /**< Packet type mask for different NICs. */
 	uint8_t             port_id;  /**< Device port identifier. */
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
