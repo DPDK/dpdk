@@ -38,6 +38,10 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifneq ($(CONFIG_RTE_ARCH),"x86_64")
+$(error This application is only supported for x86_64 targets)
+endif
+
 DIRS-y += l3fwd-thread
 DIRS-y += pthread_shim
 
