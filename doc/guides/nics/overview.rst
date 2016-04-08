@@ -93,7 +93,7 @@ Most of these differences are summarized below.
    Rx interrupt                   X     X X X X X X X X X X X X X X
    queue start/stop             X   X X X X X X     X X     X X X X X X           X   X X
    MTU update                   X X X           X   X X X X         X X
-   jumbo frame                  X X X X X X X X X   X X X X X X X X X X
+   jumbo frame                  X X X X X X X X X   X X X X X X X X X X       X
    scattered Rx                 X X X   X X X X X X X X X X X X X X X X           X   X
    LRO                                              X X X X
    TSO                          X   X   X X X X X X X X X X X X X X
@@ -127,23 +127,23 @@ Most of these differences are summarized below.
    inner L4 checksum                X   X   X       X   X           X
    packet type parsing          X     X X   X   X X X   X   X X X X X X
    timesync                             X X     X   X X
-   basic stats            X X   X X X X X X X X X X X X X X X X X X X X           X X X X
+   basic stats            X X   X X X X X X X X X X X X X X X X X X X X       X   X X X X
    extended stats                   X   X X X X X X X X X X X X X X                   X X
    stats per queue              X                   X X     X X X X X X           X   X X
    EEPROM dump                                  X   X X
    registers dump                               X X X X X X
-   multiprocess aware                   X X X X     X X X X X X X X X X
+   multiprocess aware                   X X X X     X X X X X X X X X X       X
    BSD nic_uio                  X X   X X X X X X X X X X X X X X X                   X X
    Linux UIO              X X   X X X X X X X X X X X X X X X X X X                   X X
    Linux VFIO                   X X   X X X X X X X X X X X X X X X                   X X
    other kdrv                                                       X X           X
-   ARMv7                                                                              X X
-   ARMv8                                                                              X X
-   Power8                                                           X X
-   TILE-Gx
-   x86-32                       X X X X X X X X X X X X X X X X X X X X             X X X
-   x86-64                 X X   X X X X X X X X X X X X X X X X X X X X           X X X X
-   usage doc              X X   X     X                             X X           X   X
+   ARMv7                                                                      X       X X
+   ARMv8                                                                      X       X X
+   Power8                                                           X X       X
+   TILE-Gx                                                                    X
+   x86-32                       X X X X X X X X X X X X X X X X X X X X       X     X X X
+   x86-64                 X X   X X X X X X X X X X X X X X X X X X X X       X   X X X X
+   usage doc              X X   X     X                             X X       X   X   X
    design doc
    perf doc
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
