@@ -35,6 +35,7 @@ Crypto Device Drivers
     :maxdepth: 2
     :numbered:
 
+    overview
     aesni_mb
     aesni_gcm
     null
