@@ -353,7 +353,7 @@ F: drivers/net/vhost/
 
 PCAP PMD
 M: Nicolás Pernas Maradei <nicolas.pernas.maradei@emutex.com>
-M: John McNamara <john.mcnamara@intel.com>
+M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
 
