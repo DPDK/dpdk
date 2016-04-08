@@ -137,8 +137,10 @@ config () # <directory> <target> <options>
 		sed -ri           's,(NEXT_ABI=)y,\1n,' $1/.config
 		! echo $3 | grep -q '+shared' || \
 		sed -ri         's,(SHARED_LIB=)n,\1y,' $1/.config
-		! echo $3 | grep -q '+debug' || \
-		sed -ri            's,(DEBUG.*=)n,\1y,' $1/.config
+		! echo $3 | grep -q '+debug' || ( \
+		sed -ri           's,(_DEBUG.*=)n,\1y,' $1/.config
+		sed -ri            's,(_STAT.*=)n,\1y,' $1/.config
+		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config )
 
 		# Automatic configuration
 		! echo $2 | grep -q '^x86_64' || \
@@ -165,7 +167,6 @@ config () # <directory> <target> <options>
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
-		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config
 		build_config_hook $1 $2 $3
 
 		# Explicit enabler/disabler (uppercase)
