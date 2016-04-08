@@ -42,6 +42,7 @@ Programmer's Guide
     mempool_lib
     mbuf_lib
     poll_mode_drv
+    cryptodev_lib
     ivshmem_lib
     link_bonding_poll_mode_drv_lib
     timer_lib
