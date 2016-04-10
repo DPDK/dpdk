@@ -231,7 +231,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	start_dp[idx].flags = VRING_DESC_F_NEXT;
 	start_dp[idx].addr  = (uintptr_t)NULL;
 	idx = start_dp[idx].next;
-	start_dp[idx].addr  = rte_pktmbuf_mtod(cookie, uint64_t);
+	start_dp[idx].addr  = (uint64_t)rte_pktmbuf_mtod(cookie, uintptr_t);
 	start_dp[idx].len   = cookie->data_len;
 	start_dp[idx].flags = 0;
 	idx = start_dp[idx].next;
