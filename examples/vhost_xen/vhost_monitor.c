@@ -285,9 +285,13 @@ virtio_net_config_ll *new_device(unsigned int virtio_idx, struct xen_guest *gues
 	new_ll_dev->dev.mem = malloc(sizeof(struct virtio_memory) + sizeof(struct virtio_memory_regions) * MAX_XENVIRT_MEMPOOL);
 	new_ll_dev->dev.mem->nregions = guest->pool_num;
 	for (i = 0; i < guest->pool_num; i++) {
-		gpa = new_ll_dev->dev.mem->regions[i].guest_phys_address = (uint64_t)guest->mempool[i].gva;
-		new_ll_dev->dev.mem->regions[i].guest_phys_address_end = gpa + guest->mempool[i].mempfn_num * getpagesize();
-		new_ll_dev->dev.mem->regions[i].address_offset = (uint64_t)guest->mempool[i].hva - gpa;
+		gpa = new_ll_dev->dev.mem->regions[i].guest_phys_address =
+				(uint64_t)((uintptr_t)guest->mempool[i].gva);
+		new_ll_dev->dev.mem->regions[i].guest_phys_address_end =
+				gpa + guest->mempool[i].mempfn_num * getpagesize();
+		new_ll_dev->dev.mem->regions[i].address_offset =
+				(uint64_t)((uintptr_t)guest->mempool[i].hva -
+					(uintptr_t)gpa);
 	}
 
 	new_ll_dev->next = NULL;
