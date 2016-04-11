@@ -535,6 +535,7 @@ pci_vfio_get_group_fd(int iommu_group_no)
 		/* if the fd is valid, create a new group for it */
 		if (vfio_cfg.vfio_group_idx == VFIO_MAX_GROUPS) {
 			RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
+			close(vfio_group_fd);
 			return -1;
 		}
 		vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].group_no = iommu_group_no;
