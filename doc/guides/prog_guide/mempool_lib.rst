@@ -98,6 +98,8 @@ no padding is required between objects (except for objects whose size are n x 3 
 
 When creating a new pool, the user can specify to use this feature or not.
 
+.. _mempool_local_cache:
+
 Local Cache
 -----------
 

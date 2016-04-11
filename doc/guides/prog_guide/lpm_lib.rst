@@ -62,6 +62,8 @@ The main methods exported by the LPM component are:
     the algorithm picks the rule with the highest depth as the best match rule,
     which means that the rule has the highest number of most significant bits matching between the input key and the rule key.
 
+.. _lpm4_details:
+
 Implementation Details
 ----------------------
 

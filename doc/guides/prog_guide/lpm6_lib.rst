@@ -75,7 +75,7 @@ The main methods exported for the LPM component are:
 Implementation Details
 ~~~~~~~~~~~~~~~~~~~~~~
 
-This is a modification of the algorithm used for IPv4 (see Section 19.2 "Implementation Details").
+This is a modification of the algorithm used for IPv4 (see :ref:`lpm4_details`).
 In this case, instead of using two levels, one with a tbl24 and a second with a tbl8, 14 levels are used.
 
 The implementation can be seen as a multi-bit trie where the *stride*

@@ -154,7 +154,8 @@ Command Line Arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The L2 Forwarding sample application takes specific parameters,
-in addition to Environment Abstraction Layer (EAL) arguments (see Section 9.3).
+in addition to Environment Abstraction Layer (EAL) arguments
+(see `Running the Application`_).
 The preferred way to parse parameters is to use the getopt() function,
 since it is part of a well-defined and portable library.
 
@@ -344,7 +345,7 @@ The list of queues that must be polled for a given lcore is stored in a private 
 Values of struct lcore_queue_conf:
 
 *   n_rx_port and rx_port_list[] are used in the main packet processing loop
-    (see Section 9.4.6 "Receive, Process and Transmit Packets" later in this chapter).
+    (see Section `Receive, Process and Transmit Packets`_ later in this chapter).
 
 *   rx_timers and flush_timer are used to ensure forced TX on low packet rate.
 

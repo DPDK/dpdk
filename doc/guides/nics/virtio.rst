@@ -140,7 +140,7 @@ Host2VM communication example
     For each physical port, kni also creates a kernel thread that retrieves packets from the kni receive queue,
     place them onto kni's raw socket's queue and wake up the vhost kernel thread to exchange packets with the virtio virt queue.
 
-    For more details about kni, please refer to Chapter 24 "Kernel NIC Interface".
+    For more details about kni, please refer to :ref:`kni`.
 
 #.  Enable the kni raw socket functionality for the specified physical NIC port,
     get the generated file descriptor and set it in the qemu command line parameter.

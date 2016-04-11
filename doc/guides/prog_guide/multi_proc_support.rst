@@ -80,7 +80,7 @@ and point to the same objects, in both processes.
 
 .. note::
 
-    Refer to Section 23.3 "Multi-process Limitations" for details of
+    Refer to `Multi-process Limitations`_ for details of
     how Linux kernel Address-Space Layout Randomization (ASLR) can affect memory sharing.
 
 .. _figure_multi_process_memory:

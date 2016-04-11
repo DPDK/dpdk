@@ -495,7 +495,7 @@ For threads/processes not created in that way, either pinned to a core or not, t
 rte_lcore_id() function will not work in the correct way.
 However, sometimes these threads/processes still need the unique ID mechanism to do easy access on structures or resources.
 For example, the DPDK mempool library provides a local cache mechanism
-(refer to *DPDK Programmer's Guide* , Section 6.4, "Local Cache")
+(refer to :ref:`mempool_local_cache`)
 for fast element allocation and freeing.
 If using a non-unique ID or a fake one,
 a race condition occurs if two or more threads/ processes with the same core ID try to use the local cache.

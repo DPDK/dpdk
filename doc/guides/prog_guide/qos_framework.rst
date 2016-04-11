@@ -147,7 +147,7 @@ these packets are later on removed and handed over to the NIC TX with the packet
 
 The hierarchical scheduler is optimized for a large number of packet queues.
 When only a small number of queues are needed, message passing queues should be used instead of this block.
-See Section 26.2.5 "Worst Case Scenarios for Performance" for a more detailed discussion.
+See `Worst Case Scenarios for Performance`_ for a more detailed discussion.
 
 Scheduling Hierarchy
 ~~~~~~~~~~~~~~~~~~~~
@@ -712,7 +712,7 @@ where, r = port line rate (in bytes per second).
    |   |                         |     of the grinders), update the credits for the pipe and its subport.      |
    |   |                         |                                                                             |
    |   |                         | The current implementation is using option 3.  According to Section         |
-   |   |                         | 26.2.4.4 "Dequeue State Machine", the pipe and subport credits are          |
+   |   |                         | `Dequeue State Machine`_, the pipe and subport credits are                  |
    |   |                         | updated every time a pipe is selected by the dequeue process before the     |
    |   |                         | pipe and subport credits are actually used.                                 |
    |   |                         |                                                                             |
@@ -783,7 +783,7 @@ as described in :numref:`table_qos_10` and :numref:`table_qos_11`.
    | 1 | tc_time               | Bytes | Time of the next update (upper limit refill) for the 4 TCs of the     |
    |   |                       |       | current subport / pipe.                                               |
    |   |                       |       |                                                                       |
-   |   |                       |       | See  Section 26.2.4.5.1, "Internal Time Reference" for the            |
+   |   |                       |       | See  Section `Internal Time Reference`_ for the                       |
    |   |                       |       | explanation of why the time is maintained in byte units.              |
    |   |                       |       |                                                                       |
    +---+-----------------------+-------+-----------------------------------------------------------------------+
@@ -1334,7 +1334,7 @@ Where:
 
 The time reference is in units of bytes,
 where a byte signifies the time duration required by the physical interface to send out a byte on the transmission medium
-(see Section 26.2.4.5.1 "Internal Time Reference").
+(see Section `Internal Time Reference`_).
 The parameter s is defined in the dropper module as a constant with the value: s=2^22.
 This corresponds to the time required by every leaf node in a hierarchy with 64K leaf nodes
 to transmit one 64-byte packet onto the wire and represents the worst case scenario.

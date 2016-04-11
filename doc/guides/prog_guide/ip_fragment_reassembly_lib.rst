@@ -54,7 +54,7 @@ Finally 'direct' and 'indirect' mbufs for each fragment are linked together via 
 
 The caller has an ability to explicitly specify which mempools should be used to allocate 'direct' and 'indirect' mbufs from.
 
-For more information about direct and indirect mbufs, refer to the *DPDK Programmers guide 7.7 Direct and Indirect Buffers.*
+For more information about direct and indirect mbufs, refer to :ref:`direct_indirect_buffer`.
 
 Packet reassembly
 -----------------

@@ -113,7 +113,7 @@ it is advised to use the DPDK ring API, which provides a lockless ring implement
 
 The ring supports bulk and burst access,
 meaning that it is possible to read several elements from the ring with only one costly atomic operation
-(see Chapter 5 "Ring Library").
+(see :doc:`ring_lib`).
 Performance is greatly improved when using bulk access operations.
 
 The code algorithm that dequeues messages may be something similar to the following:

@@ -235,6 +235,8 @@ The list of flags and their precise meaning is described in the mbuf API
 documentation (rte_mbuf.h). Also refer to the testpmd source code
 (specifically the csumonly.c file) for details.
 
+.. _direct_indirect_buffer:
+
 Direct and Indirect Buffers
 ---------------------------
 
