@@ -1673,8 +1673,10 @@ list_pkt_forwarding_modes(void)
 
 	if (strlen (fwd_modes) == 0) {
 		while ((fwd_eng = fwd_engines[i++]) != NULL) {
-			strcat(fwd_modes, fwd_eng->fwd_mode_name);
-			strcat(fwd_modes, separator);
+			strncat(fwd_modes, fwd_eng->fwd_mode_name,
+					sizeof(fwd_modes) - strlen(fwd_modes) - 1);
+			strncat(fwd_modes, separator,
+					sizeof(fwd_modes) - strlen(fwd_modes) - 1);
 		}
 		fwd_modes[strlen(fwd_modes) - strlen(separator)] = '\0';
 	}
