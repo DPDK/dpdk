@@ -278,13 +278,6 @@ New Features
 Resolved Issues
 ---------------
 
-* **code/section: Fixed issue in the past tense with a full stop.**
-
-  Add a short 1-2 sentence description of the resolved issue in the past tense.
-  The title should contain the code/lib section like a commit message.
-  Add the entries in alphabetic order in the relevant sections below.
-
-
 Drivers
 ~~~~~~~
 
