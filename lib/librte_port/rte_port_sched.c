@@ -214,7 +214,7 @@ rte_port_sched_writer_tx_bulk(void *port,
 		uint64_t pkts_mask)
 {
 	struct rte_port_sched_writer *p = (struct rte_port_sched_writer *) port;
-	uint32_t bsz_mask = p->bsz_mask;
+	uint64_t bsz_mask = p->bsz_mask;
 	uint32_t tx_buf_count = p->tx_buf_count;
 	uint64_t expr = (pkts_mask & (pkts_mask + 1)) |
 			((pkts_mask & bsz_mask) ^ bsz_mask);

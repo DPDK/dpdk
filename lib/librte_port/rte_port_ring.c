@@ -300,7 +300,7 @@ rte_port_ring_writer_tx_bulk_internal(void *port,
 	struct rte_port_ring_writer *p =
 		(struct rte_port_ring_writer *) port;
 
-	uint32_t bsz_mask = p->bsz_mask;
+	uint64_t bsz_mask = p->bsz_mask;
 	uint32_t tx_buf_count = p->tx_buf_count;
 	uint64_t expr = (pkts_mask & (pkts_mask + 1)) |
 			((pkts_mask & bsz_mask) ^ bsz_mask);
@@ -614,7 +614,7 @@ rte_port_ring_writer_nodrop_tx_bulk_internal(void *port,
 	struct rte_port_ring_writer_nodrop *p =
 		(struct rte_port_ring_writer_nodrop *) port;
 
-	uint32_t bsz_mask = p->bsz_mask;
+	uint64_t bsz_mask = p->bsz_mask;
 	uint32_t tx_buf_count = p->tx_buf_count;
 	uint64_t expr = (pkts_mask & (pkts_mask + 1)) |
 			((pkts_mask & bsz_mask) ^ bsz_mask);
