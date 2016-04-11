@@ -251,7 +251,11 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table * wait)
 		mask |= POLLIN | POLLRDNORM;
 
 	if (sock_writeable(&q->sk) ||
+#ifdef SOCKWQ_ASYNC_NOSPACE
+	    (!test_and_set_bit(SOCKWQ_ASYNC_NOSPACE, &q->sock->flags) &&
+#else
 	    (!test_and_set_bit(SOCK_ASYNC_NOSPACE, &q->sock->flags) &&
+#endif
 	     sock_writeable(&q->sk)))
 		mask |= POLLOUT | POLLWRNORM;
 
@@ -619,8 +623,11 @@ kni_sk_write_space(struct sock *sk)
 	wait_queue_head_t *wqueue;
 
 	if (!sock_writeable(sk) ||
-	    !test_and_clear_bit(SOCK_ASYNC_NOSPACE,
-				&sk->sk_socket->flags))
+#ifdef SOCKWQ_ASYNC_NOSPACE
+	    !test_and_clear_bit(SOCKWQ_ASYNC_NOSPACE, &sk->sk_socket->flags))
+#else
+	    !test_and_clear_bit(SOCK_ASYNC_NOSPACE, &sk->sk_socket->flags))
+#endif
 		return;
 	wqueue = sk_sleep(sk);
 	if (wqueue && waitqueue_active(wqueue))
@@ -666,8 +673,14 @@ kni_vhost_backend_init(struct kni_dev *kni)
 	if (kni->vhost_queue != NULL)
 		return -1;
 
-	if (!(q = (struct kni_vhost_queue *)sk_alloc(
-		      net, AF_UNSPEC, GFP_KERNEL, &kni_raw_proto)))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+	q = (struct kni_vhost_queue *)sk_alloc(net, AF_UNSPEC, GFP_KERNEL,
+			&kni_raw_proto, 0);
+#else
+	q = (struct kni_vhost_queue *)sk_alloc(net, AF_UNSPEC, GFP_KERNEL,
+			&kni_raw_proto);
+#endif
+	if (!q)
 		return -ENOMEM;
 
 	err = sock_create_lite(AF_UNSPEC, SOCK_RAW, IPPROTO_RAW, &q->sock);
