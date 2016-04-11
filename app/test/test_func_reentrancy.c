@@ -78,7 +78,7 @@ typedef void (*case_clean_t)(unsigned lcore_id);
 #define MAX_ITER_TIMES                      (16)
 #define MAX_LPM_ITER_TIMES                  (8)
 
-#define MEMPOOL_ELT_SIZE                    (0)
+#define MEMPOOL_ELT_SIZE                    (sizeof(uint32_t))
 #define MEMPOOL_SIZE                        (4)
 
 #define MAX_LCORES	RTE_MAX_MEMZONE / (MAX_ITER_TIMES * 4U)
