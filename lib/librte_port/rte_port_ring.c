@@ -179,7 +179,7 @@ rte_port_ring_reader_stats_read(void *port,
 struct rte_port_ring_writer {
 	struct rte_port_out_stats stats;
 
-	struct rte_mbuf *tx_buf[RTE_PORT_IN_BURST_SIZE_MAX];
+	struct rte_mbuf *tx_buf[2 * RTE_PORT_IN_BURST_SIZE_MAX];
 	struct rte_ring *ring;
 	uint32_t tx_burst_sz;
 	uint32_t tx_buf_count;
@@ -447,7 +447,7 @@ rte_port_ring_writer_stats_read(void *port,
 struct rte_port_ring_writer_nodrop {
 	struct rte_port_out_stats stats;
 
-	struct rte_mbuf *tx_buf[RTE_PORT_IN_BURST_SIZE_MAX];
+	struct rte_mbuf *tx_buf[2 * RTE_PORT_IN_BURST_SIZE_MAX];
 	struct rte_ring *ring;
 	uint32_t tx_burst_sz;
 	uint32_t tx_buf_count;
