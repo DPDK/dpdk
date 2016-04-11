@@ -86,64 +86,69 @@ Most of these differences are summarized below.
                                           e   e       e   e   e   e                     e
                                           c   c       c   c   c   c                     c
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-   speed capabilities
-   link status            X X   X X   X X X     X   X X X X         X X           X X X X
-   link status event      X X     X     X X     X   X X             X X             X
-   queue status event                                                               X
-   Rx interrupt                   X     X X X X X X X X X X X X X X
-   queue start/stop             X   X X X X X X     X X     X X X X X X           X   X X
-   MTU update                   X X X           X   X X X X         X X
-   jumbo frame                  X X X X X X X X X   X X X X X X X X X X       X
-   scattered Rx                 X X X   X X X X X X X X X X X X X X X X           X   X
-   LRO                                              X X X X
-   TSO                          X   X   X X X X X X X X X X X X X X
-   promiscuous mode       X X   X X   X X X X X X X X X     X X     X X           X   X X
-   allmulticast mode            X X     X X X X X X X X X X X X     X X           X   X X
-   unicast MAC filter     X X     X   X X X X X X X X X X X X X     X X               X X
-   multicast MAC filter   X X         X X X X X             X X     X X               X X
-   RSS hash                     X   X X X X X X X   X X X X X X X X X X
-   RSS key update                   X   X X X X X   X X X X X X X X   X
-   RSS reta update                  X   X X X X X   X X X X X X X X   X
-   VMDq                                 X X     X   X X     X X
-   SR-IOV                   X       X   X X     X   X X             X X
-   DCB                                  X X     X   X X
-   VLAN filter                    X   X X X X X X X X X X X X X     X X               X X
-   ethertype filter                     X X     X   X X
-   n-tuple filter                               X   X X
-   SYN filter                                   X   X X
-   tunnel filter                        X X         X X
-   flexible filter                              X
-   hash filter                          X X X X
-   flow director                        X X         X X               X
-   flow control                 X X     X X     X   X X
-   rate limitation                                  X X
-   traffic mirroring                    X X         X X
-   CRC offload                  X X X X X   X   X X X   X   X X X X   X
-   VLAN offload                 X X X X X   X   X X X   X   X X X X   X
-   QinQ offload                   X     X   X   X X X   X
-   L3 checksum offload          X X X X X   X   X X X   X   X X X X X X
-   L4 checksum offload          X X X X X   X   X X X   X   X X X X X X
-   inner L3 checksum                X   X   X       X   X           X
-   inner L4 checksum                X   X   X       X   X           X
-   packet type parsing          X     X X   X   X X X   X   X X X X X X
-   timesync                             X X     X   X X
-   basic stats            X X   X X X X X X X X X X X X X X X X X X X X       X   X X X X
-   extended stats                   X   X X X X X X X X X X X X X X                   X X
-   stats per queue              X                   X X     X X X X X X           X   X X
-   EEPROM dump                                  X   X X
-   registers dump                               X X X X X X
-   multiprocess aware                   X X X X     X X X X X X X X X X       X
-   BSD nic_uio                  X X   X X X X X X X X X X X X X X X                   X X
-   Linux UIO              X X   X X X X X X X X X X X X X X X X X X                   X X
-   Linux VFIO                   X X   X X X X X X X X X X X X X X X                   X X
-   other kdrv                                                       X X           X
-   ARMv7                                                                      X       X X
-   ARMv8                                                                      X       X X
-   Power8                                                           X X       X
-   TILE-Gx                                                                    X
-   x86-32                       X X X X X X X X X X X X X X X X X X X X       X     X X X
-   x86-64                 X X   X X X X X X X X X X X X X X X X X X X X       X   X X X X
-   usage doc              X X   X     X                             X X       X   X   X
-   design doc
-   perf doc
+   Speed capabilities
+   Link status            Y Y   Y Y   Y Y Y     Y   Y Y Y Y         Y Y           Y Y Y Y
+   Link status event      Y Y     Y     Y Y     Y   Y Y             Y Y             Y
+   Queue status event                                                               Y
+   Rx interrupt                   Y     Y Y Y Y Y Y Y Y Y Y Y Y Y Y
+   Queue start/stop             Y   Y Y Y Y Y Y     Y Y     Y Y Y Y Y Y           Y   Y Y
+   MTU update                   Y Y Y           Y   Y Y Y Y         Y Y
+   Jumbo frame                  Y Y Y Y Y Y Y Y Y   Y Y Y Y Y Y Y Y Y Y       Y
+   Scattered Rx                 Y Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y           Y   Y
+   LRO                                              Y Y Y Y
+   TSO                          Y   Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y
+   Promiscuous mode       Y Y   Y Y   Y Y Y Y Y Y Y Y Y     Y Y     Y Y           Y   Y Y
+   Allmulticast mode            Y Y     Y Y Y Y Y Y Y Y Y Y Y Y     Y Y           Y   Y Y
+   Unicast MAC filter     Y Y     Y   Y Y Y Y Y Y Y Y Y Y Y Y Y     Y Y               Y Y
+   Multicast MAC filter   Y Y         Y Y Y Y Y             Y Y     Y Y               Y Y
+   RSS hash                     Y   Y Y Y Y Y Y Y   Y Y Y Y Y Y Y Y Y Y
+   RSS key update                   Y   Y Y Y Y Y   Y Y Y Y Y Y Y Y   Y
+   RSS reta update                  Y   Y Y Y Y Y   Y Y Y Y Y Y Y Y   Y
+   VMDq                                 Y Y     Y   Y Y     Y Y
+   SR-IOV                   Y       Y   Y Y     Y   Y Y             Y Y
+   DCB                                  Y Y     Y   Y Y
+   VLAN filter                    Y   Y Y Y Y Y Y Y Y Y Y Y Y Y     Y Y               Y Y
+   Ethertype filter                     Y Y     Y   Y Y
+   N-tuple filter                               Y   Y Y
+   SYN filter                                   Y   Y Y
+   Tunnel filter                        Y Y         Y Y
+   Flexible filter                              Y
+   Hash filter                          Y Y Y Y
+   Flow director                        Y Y         Y Y               Y
+   Flow control                 Y Y     Y Y     Y   Y Y
+   Rate limitation                                  Y Y
+   Traffic mirroring                    Y Y         Y Y
+   CRC offload                  Y Y Y Y Y   Y   Y Y Y   Y   Y Y Y Y   Y
+   VLAN offload                 Y Y Y Y Y   Y   Y Y Y   Y   Y Y Y Y   Y
+   QinQ offload                   Y     Y   Y   Y Y Y   Y
+   L3 checksum offload          Y Y Y Y Y   Y   Y Y Y   Y   Y Y Y Y Y Y
+   L4 checksum offload          Y Y Y Y Y   Y   Y Y Y   Y   Y Y Y Y Y Y
+   Inner L3 checksum                Y   Y   Y       Y   Y           Y
+   Inner L4 checksum                Y   Y   Y       Y   Y           Y
+   Packet type parsing          Y     Y Y   Y   Y Y Y   Y   Y Y Y Y Y Y
+   Timesync                             Y Y     Y   Y Y
+   Basic stats            Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y       Y   Y Y Y Y
+   Extended stats                   Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y                   Y Y
+   Stats per queue              Y                   Y Y     Y Y Y Y Y Y           Y   Y Y
+   EEPROM dump                                  Y   Y Y
+   Registers dump                               Y Y Y Y Y Y
+   Multiprocess aware                   Y Y Y Y     Y Y Y Y Y Y Y Y Y Y       Y
+   BSD nic_uio                  Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y                   Y Y
+   Linux UIO              Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y                   Y Y
+   Linux VFIO                   Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y                   Y Y
+   Other kdrv                                                       Y Y           Y
+   ARMv7                                                                      Y       Y Y
+   ARMv8                                                                      Y       Y Y
+   Power8                                                           Y Y       Y
+   TILE-Gx                                                                    Y
+   x86-32                       Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y       Y     Y Y Y
+   x86-64                 Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y       Y   Y Y Y Y
+   Usage doc              Y Y   Y     Y                             Y Y       Y   Y   Y
+   Design doc
+   Perf doc
    ==================== = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+.. Note::
+
+   Features marked with "*" are partially supported. Refer to the appropriate
+   NIC guide in the following sections for details.
