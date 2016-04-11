@@ -29,6 +29,10 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+ifneq ($(shell pkg-config --atleast-version=0.9.3 libvirt; echo $$?), 0)
+$(error vm_power_manager requires libvirt >= 0.9.3)
+else
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -57,3 +61,5 @@ CFLAGS_main.o += -Wno-return-type
 endif
 
 include $(RTE_SDK)/mk/rte.extapp.mk
+
+endif # libvirt check
