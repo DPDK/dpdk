@@ -1489,6 +1489,15 @@ check_supported_size(uint16_t length, uint16_t min, uint16_t max,
 {
 	uint16_t supp_size;
 
+	/* Single value */
+	if (increment == 0) {
+		if (length == min)
+			return 0;
+		else
+			return -1;
+	}
+
+	/* Range of values */
 	for (supp_size = min; supp_size <= max; supp_size += increment) {
 		if (length == supp_size)
 			return 0;
