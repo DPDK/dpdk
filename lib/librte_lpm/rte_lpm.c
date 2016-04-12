@@ -373,7 +373,6 @@ rte_lpm_free_v20(struct rte_lpm_v20 *lpm)
 
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
-	rte_free(lpm->rules_tbl);
 	rte_free(lpm);
 	rte_free(te);
 }
