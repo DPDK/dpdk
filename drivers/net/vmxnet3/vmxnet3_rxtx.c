@@ -577,12 +577,6 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 static void
 vmxnet3_rx_offload(const Vmxnet3_RxCompDesc *rcd, struct rte_mbuf *rxm)
 {
-	/* Check for hardware stripped VLAN tag */
-	if (rcd->ts) {
-		rxm->ol_flags |= (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
-		rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
-	}
-
 	/* Check for RSS */
 	if (rcd->rssType != VMXNET3_RCD_RSS_TYPE_NONE) {
 		rxm->ol_flags |= PKT_RX_RSS_HASH;
@@ -728,7 +722,15 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxq->last_seg = rxm;
 
 		if (rcd->eop) {
-			rx_pkts[nb_rx++] = rxq->start_seg;
+			struct rte_mbuf *start = rxq->start_seg;
+
+			/* Check for hardware stripped VLAN tag */
+			if (rcd->ts) {
+				start->ol_flags |= (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
+				start->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
+			}
+
+			rx_pkts[nb_rx++] = start;
 			rxq->start_seg = NULL;
 		}
 
