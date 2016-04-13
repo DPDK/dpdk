@@ -232,6 +232,7 @@ rte_cfgfile_load(const char *filename, int flags)
 	return cfg;
 
 error1:
+	cfg->num_sections = curr_section + 1;
 	rte_cfgfile_close(cfg);
 error2:
 	fclose(f);
