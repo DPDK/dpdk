@@ -9030,6 +9030,7 @@ static int i40e_get_regs(struct rte_eth_dev *dev,
 					arr_idx2++) {
 				reg_offset = arr_idx * reg_info->stride1 +
 					arr_idx2 * reg_info->stride2;
+				reg_offset += reg_info->base_addr;
 				ptr_data[reg_offset >> 2] =
 					i40e_read_rx_ctl(hw, reg_offset);
 			}
@@ -9045,6 +9046,7 @@ static int i40e_get_regs(struct rte_eth_dev *dev,
 					arr_idx2++) {
 				reg_offset = arr_idx * reg_info->stride1 +
 					arr_idx2 * reg_info->stride2;
+				reg_offset += reg_info->base_addr;
 				ptr_data[reg_offset >> 2] =
 					I40E_READ_REG(hw, reg_offset);
 			}
