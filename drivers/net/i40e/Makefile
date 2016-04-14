@@ -102,6 +102,12 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_ethdev_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_pf.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_fdir.c
 
+# vector PMD driver needs SSE4.1 support
+ifeq ($(findstring RTE_MACHINE_CPUFLAG_SSE4_1,$(CFLAGS)),)
+CFLAGS_i40e_rxtx_vec.o += -msse4.1
+endif
+
+
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_mempool lib/librte_mbuf

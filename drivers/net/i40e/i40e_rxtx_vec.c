@@ -751,6 +751,10 @@ i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 
+	/* need SSE4.1 support */
+	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+		return -1;
+
 #ifndef RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE
 	/* whithout rx ol_flags, no VP flag report */
 	if (rxmode->hw_vlan_strip != 0 ||
