@@ -415,7 +415,7 @@ struct app_eal_params {
 #endif
 
 #ifndef APP_EAL_ARGC
-#define APP_EAL_ARGC                             32
+#define APP_EAL_ARGC                             64
 #endif
 
 #ifndef APP_MAX_PIPELINE_TYPES
