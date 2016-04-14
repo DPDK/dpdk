@@ -1221,8 +1221,6 @@ static void app_pipeline_params_get(struct app_params *app,
 			out->type = PIPELINE_PORT_IN_SOURCE;
 			out->params.source.mempool = app->mempool[mempool_id];
 			out->burst_size = app->source_params[in->id].burst;
-
-#ifdef RTE_NEXT_ABI
 			if (app->source_params[in->id].file_name
 				!= NULL) {
 				out->params.source.file_name = strdup(
@@ -1237,8 +1235,6 @@ static void app_pipeline_params_get(struct app_params *app,
 					app->source_params[in->id].
 					n_bytes_per_pkt;
 			}
-#endif
-
 			break;
 		default:
 			break;

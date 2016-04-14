@@ -38,15 +38,9 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 
-#ifdef RTE_NEXT_ABI
-
 #ifdef RTE_PORT_PCAP
 #include <rte_ether.h>
 #include <pcap.h>
-#endif
-
-#else
-#undef RTE_PORT_PCAP
 #endif
 
 #include "rte_port_source_sink.h"
@@ -80,8 +74,6 @@ struct rte_port_source {
 	uint32_t n_pkts;
 	uint32_t pkt_index;
 };
-
-#ifdef RTE_NEXT_ABI
 
 #ifdef RTE_PORT_PCAP
 
@@ -232,8 +224,6 @@ error_exit:
 
 #endif /* RTE_PORT_PCAP */
 
-#endif /* RTE_NEXT_ABI */
-
 static void *
 rte_port_source_create(void *params, int socket_id)
 {
@@ -258,8 +248,6 @@ rte_port_source_create(void *params, int socket_id)
 	/* Initialization */
 	port->mempool = (struct rte_mempool *) p->mempool;
 
-#ifdef RTE_NEXT_ABI
-
 	if (p->file_name) {
 		int status = PCAP_SOURCE_LOAD(port, p->file_name,
 			p->n_bytes_per_pkt, socket_id);
@@ -269,8 +257,6 @@ rte_port_source_create(void *params, int socket_id)
 			port = NULL;
 		}
 	}
-
-#endif
 
 	return port;
 }

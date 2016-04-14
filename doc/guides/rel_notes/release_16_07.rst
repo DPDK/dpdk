@@ -94,6 +94,9 @@ ABI Changes
   the previous releases and made in this release. Use fixed width quotes for
   ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
 
+* The ``rte_port_source_params`` structure has new fields to support PCAP file.
+  It was already in release 16.04 with ``RTE_NEXT_ABI`` flag.
+
 
 Shared Library Versions
 -----------------------
@@ -123,7 +126,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pipeline.so.3
      librte_pmd_bond.so.1
      librte_pmd_ring.so.2
-     librte_port.so.2
+   + librte_port.so.3
      librte_power.so.1
      librte_reorder.so.1
      librte_ring.so.1

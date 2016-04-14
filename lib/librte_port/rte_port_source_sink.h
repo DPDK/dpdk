@@ -53,7 +53,6 @@ extern "C" {
 struct rte_port_source_params {
 	/** Pre-initialized buffer pool */
 	struct rte_mempool *mempool;
-#ifdef RTE_NEXT_ABI
 
 	/** The full path of the pcap file to read packets from */
 	char *file_name;
@@ -62,8 +61,6 @@ struct rte_port_source_params {
 	 *  if it is bigger than packet size, the generated packets
 	 *  will contain the whole packet */
 	uint32_t n_bytes_per_pkt;
-
-#endif
 };
 
 /** source port operations */
