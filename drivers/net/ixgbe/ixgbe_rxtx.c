@@ -4817,12 +4817,12 @@ ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rxdctl &= ~IXGBE_RXDCTL_ENABLE;
 		IXGBE_WRITE_REG(hw, IXGBE_RXDCTL(rxq->reg_idx), rxdctl);
 
-		/* Wait until RX Enable ready */
+		/* Wait until RX Enable bit clear */
 		poll_ms = RTE_IXGBE_REGISTER_POLL_WAIT_10_MS;
 		do {
 			rte_delay_ms(1);
 			rxdctl = IXGBE_READ_REG(hw, IXGBE_RXDCTL(rxq->reg_idx));
-		} while (--poll_ms && (rxdctl | IXGBE_RXDCTL_ENABLE));
+		} while (--poll_ms && (rxdctl & IXGBE_RXDCTL_ENABLE));
 		if (!poll_ms)
 			PMD_INIT_LOG(ERR, "Could not disable Rx Queue %d",
 				     rx_queue_id);
@@ -4920,14 +4920,14 @@ ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	txdctl &= ~IXGBE_TXDCTL_ENABLE;
 	IXGBE_WRITE_REG(hw, IXGBE_TXDCTL(txq->reg_idx), txdctl);
 
-	/* Wait until TX Enable ready */
+	/* Wait until TX Enable bit clear */
 	if (hw->mac.type == ixgbe_mac_82599EB) {
 		poll_ms = RTE_IXGBE_REGISTER_POLL_WAIT_10_MS;
 		do {
 			rte_delay_ms(1);
 			txdctl = IXGBE_READ_REG(hw,
 						IXGBE_TXDCTL(txq->reg_idx));
-		} while (--poll_ms && (txdctl | IXGBE_TXDCTL_ENABLE));
+		} while (--poll_ms && (txdctl & IXGBE_TXDCTL_ENABLE));
 		if (!poll_ms)
 			PMD_INIT_LOG(ERR, "Could not disable "
 				     "Tx Queue %d", tx_queue_id);
