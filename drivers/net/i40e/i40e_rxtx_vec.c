@@ -184,37 +184,7 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 #define desc_to_olflags_v(desc, rx_pkts) do {} while (0)
 #endif
 
-#define PKTLEN_SHIFT     (6)
-#define PKTLEN_MASK      (0x3FFF)
-/* Handling the pkt len field is not aligned with 1byte, so shift is
- * needed to let it align
- */
-static inline void
-desc_pktlen_align(__m128i descs[4])
-{
-	__m128i pktlen0, pktlen1;
-
-	/* mask everything except pktlen field*/
-	const __m128i pktlen_msk = _mm_set_epi32(PKTLEN_MASK, PKTLEN_MASK,
-						PKTLEN_MASK, PKTLEN_MASK);
-
-	pktlen0 = _mm_unpackhi_epi32(descs[0], descs[2]);
-	pktlen1 = _mm_unpackhi_epi32(descs[1], descs[3]);
-	pktlen0 = _mm_unpackhi_epi32(pktlen0, pktlen1);
-
-	pktlen0 = _mm_srli_epi32(pktlen0, PKTLEN_SHIFT);
-	pktlen0 = _mm_and_si128(pktlen0, pktlen_msk);
-
-	pktlen0 = _mm_packs_epi32(pktlen0, pktlen0);
-
-	descs[3] = _mm_blend_epi16(descs[3], pktlen0, 0x80);
-	pktlen0 = _mm_slli_epi64(pktlen0, 16);
-	descs[2] = _mm_blend_epi16(descs[2], pktlen0, 0x80);
-	pktlen0 = _mm_slli_epi64(pktlen0, 16);
-	descs[1] = _mm_blend_epi16(descs[1], pktlen0, 0x80);
-	pktlen0 = _mm_slli_epi64(pktlen0, 16);
-	descs[0] = _mm_blend_epi16(descs[0], pktlen0, 0x80);
-}
+#define PKTLEN_SHIFT     10
 
  /*
  * Notice:
@@ -333,11 +303,16 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
 		}
 
-		/*shift the pktlen field*/
-		desc_pktlen_align(descs);
-
 		/* avoid compiler reorder optimization */
 		rte_compiler_barrier();
+
+		/* pkt 3,4 shift the pktlen field to be 16-bit aligned*/
+		const __m128i len3 = _mm_slli_epi32(descs[3], PKTLEN_SHIFT);
+		const __m128i len2 = _mm_slli_epi32(descs[2], PKTLEN_SHIFT);
+
+		/* merge the now-aligned packet length fields back in */
+		descs[3] = _mm_blend_epi16(descs[3], len3, 0x80);
+		descs[2] = _mm_blend_epi16(descs[2], len2, 0x80);
 
 		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
 		pkt_mb4 = _mm_shuffle_epi8(descs[3], shuf_msk);
@@ -353,6 +328,14 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
 		pkt_mb3 = _mm_add_epi16(pkt_mb3, crc_adjust);
+
+		/* pkt 1,2 shift the pktlen field to be 16-bit aligned*/
+		const __m128i len1 = _mm_slli_epi32(descs[1], PKTLEN_SHIFT);
+		const __m128i len0 = _mm_slli_epi32(descs[0], PKTLEN_SHIFT);
+
+		/* merge the now-aligned packet length fields back in */
+		descs[1] = _mm_blend_epi16(descs[1], len1, 0x80);
+		descs[0] = _mm_blend_epi16(descs[0], len0, 0x80);
 
 		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
 		pkt_mb2 = _mm_shuffle_epi8(descs[1], shuf_msk);
