@@ -95,7 +95,6 @@ struct rte_mempool_debug_stats {
 } __rte_cache_aligned;
 #endif
 
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 /**
  * A structure that stores a per-core object cache.
  */
@@ -107,7 +106,6 @@ struct rte_mempool_cache {
 	 */
 	void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 3]; /**< Cache objects */
 } __rte_cache_aligned;
-#endif /* RTE_MEMPOOL_CACHE_MAX_SIZE > 0 */
 
 /**
  * A structure that stores the size of mempool elements.
@@ -194,10 +192,7 @@ struct rte_mempool {
 
 	unsigned private_data_size;      /**< Size of private data. */
 
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
-	/** Per-lcore local cache. */
-	struct rte_mempool_cache local_cache[RTE_MAX_LCORE];
-#endif
+	struct rte_mempool_cache *local_cache; /**< Per-lcore local cache */
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	/** Per-lcore statistics. */
@@ -247,16 +242,25 @@ struct rte_mempool {
 #endif
 
 /**
+ * Size of elt_pa array size based on number of pages. (Internal use)
+ */
+#define __PA_SIZE(mp, pgn) \
+	RTE_ALIGN_CEIL((((pgn) - RTE_DIM((mp)->elt_pa)) * \
+	sizeof((mp)->elt_pa[0])), RTE_CACHE_LINE_SIZE)
+
+/**
  * Calculate the size of the mempool header.
  *
  * @param mp
  *   Pointer to the memory pool.
  * @param pgn
  *   Number of pages used to store mempool objects.
+ * @param cs
+ *   Size of the per-lcore cache.
  */
-#define	MEMPOOL_HEADER_SIZE(mp, pgn)	(sizeof(*(mp)) + \
-	RTE_ALIGN_CEIL(((pgn) - RTE_DIM((mp)->elt_pa)) * \
-	sizeof ((mp)->elt_pa[0]), RTE_CACHE_LINE_SIZE))
+#define MEMPOOL_HEADER_SIZE(mp, pgn, cs) \
+	(sizeof(*(mp)) + __PA_SIZE(mp, pgn) + (((cs) == 0) ? 0 : \
+	(sizeof(struct rte_mempool_cache) * RTE_MAX_LCORE)))
 
 /**
  * Return true if the whole mempool is in contiguous memory.
@@ -755,19 +759,16 @@ static inline void __attribute__((always_inline))
 __mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 		    unsigned n, int is_mp)
 {
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	struct rte_mempool_cache *cache;
 	uint32_t index;
 	void **cache_objs;
 	unsigned lcore_id = rte_lcore_id();
 	uint32_t cache_size = mp->cache_size;
 	uint32_t flushthresh = mp->cache_flushthresh;
-#endif /* RTE_MEMPOOL_CACHE_MAX_SIZE > 0 */
 
 	/* increment stat now, adding in mempool always success */
 	__MEMPOOL_STAT_ADD(mp, put, n);
 
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	/* cache is not enabled or single producer or non-EAL thread */
 	if (unlikely(cache_size == 0 || is_mp == 0 ||
 		     lcore_id >= RTE_MAX_LCORE))
@@ -802,7 +803,6 @@ __mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 	return;
 
 ring_enqueue:
-#endif /* RTE_MEMPOOL_CACHE_MAX_SIZE > 0 */
 
 	/* push remaining objects in ring */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
@@ -946,7 +946,6 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 		   unsigned n, int is_mc)
 {
 	int ret;
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	struct rte_mempool_cache *cache;
 	uint32_t index, len;
 	void **cache_objs;
@@ -992,7 +991,6 @@ __mempool_get_bulk(struct rte_mempool *mp, void **obj_table,
 	return 0;
 
 ring_dequeue:
-#endif /* RTE_MEMPOOL_CACHE_MAX_SIZE > 0 */
 
 	/* get remaining objects from ring */
 	if (is_mc)
@@ -1293,7 +1291,8 @@ void rte_mempool_audit(const struct rte_mempool *mp);
  */
 static inline void *rte_mempool_get_priv(struct rte_mempool *mp)
 {
-	return (char *)mp + MEMPOOL_HEADER_SIZE(mp, mp->pg_num);
+	return (char *)mp +
+		MEMPOOL_HEADER_SIZE(mp, mp->pg_num, mp->cache_size);
 }
 
 /**

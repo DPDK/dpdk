@@ -122,8 +122,8 @@ test_mempool_basic(void)
 		return -1;
 
 	printf("get private data\n");
-	if (rte_mempool_get_priv(mp) !=
-			(char*) mp + MEMPOOL_HEADER_SIZE(mp, mp->pg_num))
+	if (rte_mempool_get_priv(mp) != (char *)mp +
+			MEMPOOL_HEADER_SIZE(mp, mp->pg_num, mp->cache_size))
 		return -1;
 
 	printf("get physical address of an object\n");

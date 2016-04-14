@@ -452,12 +452,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
 			  RTE_CACHE_LINE_MASK) != 0);
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool_cache) &
 			  RTE_CACHE_LINE_MASK) != 0);
-	RTE_BUILD_BUG_ON((offsetof(struct rte_mempool, local_cache) &
-			  RTE_CACHE_LINE_MASK) != 0);
-#endif
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool_debug_stats) &
 			  RTE_CACHE_LINE_MASK) != 0);
@@ -527,9 +523,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		 */
 		int head = sizeof(struct rte_mempool);
 		int new_size = (private_data_size + head) % page_size;
-		if (new_size) {
+		if (new_size)
 			private_data_size += page_size - new_size;
-		}
 	}
 
 	/* try to allocate tailq entry */
@@ -544,7 +539,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	 * store mempool objects. Otherwise reserve a memzone that is large
 	 * enough to hold mempool header and metadata plus mempool objects.
 	 */
-	mempool_size = MEMPOOL_HEADER_SIZE(mp, pg_num) + private_data_size;
+	mempool_size = MEMPOOL_HEADER_SIZE(mp, pg_num, cache_size);
+	mempool_size += private_data_size;
 	mempool_size = RTE_ALIGN_CEIL(mempool_size, RTE_MEMPOOL_ALIGN);
 	if (vaddr == NULL)
 		mempool_size += (size_t)objsz.total_size * n;
@@ -591,8 +587,15 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mp->cache_flushthresh = CALC_CACHE_FLUSHTHRESH(cache_size);
 	mp->private_data_size = private_data_size;
 
+	/*
+	 * local_cache pointer is set even if cache_size is zero.
+	 * The local_cache points to just past the elt_pa[] array.
+	 */
+	mp->local_cache = (struct rte_mempool_cache *)
+		RTE_PTR_ADD(mp, MEMPOOL_HEADER_SIZE(mp, pg_num, 0));
+
 	/* calculate address of the first element for continuous mempool. */
-	obj = (char *)mp + MEMPOOL_HEADER_SIZE(mp, pg_num) +
+	obj = (char *)mp + MEMPOOL_HEADER_SIZE(mp, pg_num, cache_size) +
 		private_data_size;
 	obj = RTE_PTR_ALIGN_CEIL(obj, RTE_MEMPOOL_ALIGN);
 
@@ -606,9 +609,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		mp->elt_va_start = (uintptr_t)obj;
 		mp->elt_pa[0] = mp->phys_addr +
 			(mp->elt_va_start - (uintptr_t)mp);
-
-	/* mempool elements in a separate chunk of memory. */
 	} else {
+		/* mempool elements in a separate chunk of memory. */
 		mp->elt_va_start = (uintptr_t)vaddr;
 		memcpy(mp->elt_pa, paddr, sizeof (mp->elt_pa[0]) * pg_num);
 	}
@@ -643,19 +645,15 @@ unsigned
 rte_mempool_count(const struct rte_mempool *mp)
 {
 	unsigned count;
+	unsigned lcore_id;
 
 	count = rte_ring_count(mp->ring);
 
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
-	{
-		unsigned lcore_id;
-		if (mp->cache_size == 0)
-			return count;
+	if (mp->cache_size == 0)
+		return count;
 
-		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
-			count += mp->local_cache[lcore_id].len;
-	}
-#endif
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
+		count += mp->local_cache[lcore_id].len;
 
 	/*
 	 * due to race condition (access to len is not locked), the
@@ -670,13 +668,16 @@ rte_mempool_count(const struct rte_mempool *mp)
 static unsigned
 rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 {
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 	unsigned lcore_id;
 	unsigned count = 0;
 	unsigned cache_count;
 
 	fprintf(f, "  cache infos:\n");
 	fprintf(f, "    cache_size=%"PRIu32"\n", mp->cache_size);
+
+	if (mp->cache_size == 0)
+		return count;
+
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		cache_count = mp->local_cache[lcore_id].len;
 		fprintf(f, "    cache_count[%u]=%u\n", lcore_id, cache_count);
@@ -684,11 +685,6 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 	}
 	fprintf(f, "    total_cache_count=%u\n", count);
 	return count;
-#else
-	RTE_SET_USED(mp);
-	fprintf(f, "  cache disabled\n");
-	return 0;
-#endif
 }
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
@@ -753,13 +749,16 @@ mempool_audit_cookies(const struct rte_mempool *mp)
 #define mempool_audit_cookies(mp) do {} while(0)
 #endif
 
-#if RTE_MEMPOOL_CACHE_MAX_SIZE > 0
 /* check cookies before and after objects */
 static void
 mempool_audit_cache(const struct rte_mempool *mp)
 {
 	/* check cache size consistency */
 	unsigned lcore_id;
+
+	if (mp->cache_size == 0)
+		return;
+
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (mp->local_cache[lcore_id].len > mp->cache_flushthresh) {
 			RTE_LOG(CRIT, MEMPOOL, "badness on cache[%u]\n",
@@ -768,10 +767,6 @@ mempool_audit_cache(const struct rte_mempool *mp)
 		}
 	}
 }
-#else
-#define mempool_audit_cache(mp) do {} while(0)
-#endif
-
 
 /* check the consistency of mempool (size, cookies, ...) */
 void

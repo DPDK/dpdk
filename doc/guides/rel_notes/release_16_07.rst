@@ -34,6 +34,10 @@ New Features
 
      Refer to the previous release notes for examples.
 
+* **Removed mempool cache if not needed.**
+
+  The size of the mempool structure is reduced if the per-lcore cache is disabled.
+
 
 Resolved Issues
 ---------------
@@ -132,7 +136,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_kvargs.so.1
      librte_lpm.so.2
      librte_mbuf.so.2
-     librte_mempool.so.1
+   + librte_mempool.so.2
      librte_meter.so.1
      librte_pipeline.so.3
      librte_pmd_bond.so.1
