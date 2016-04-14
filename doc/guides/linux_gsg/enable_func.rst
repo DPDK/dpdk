@@ -186,21 +186,6 @@ Check with the local Intel's Network Division application engineers for firmware
 The base driver to support firmware version of FVL3E will be integrated in the next
 DPDK release, so currently the validated firmware version is 4.2.6.
 
-Enabling Extended Tag
-~~~~~~~~~~~~~~~~~~~~~
-
-PCI configuration of ``extended_tag`` has big impact on small packet size
-performance of 40G ports. Enabling ``extended_tag`` can help 40G port to
-achieve the best performance, especially for small packet size.
-
-* Disabling/enabling ``extended_tag`` can be done in some BIOS implementations.
-
-* If BIOS does not enable it, and does not support changing it, tools
-  (e.g. ``setpci`` on Linux) can be used to enable or disable ``extended_tag``.
-
-* From release 16.04, ``extended_tag`` is enabled by default during port
-  initialization, users don't need to care about that anymore.
-
 Use 16 Bytes RX Descriptor Size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

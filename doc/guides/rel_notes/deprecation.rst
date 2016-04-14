@@ -20,13 +20,6 @@ Deprecation Notices
   do not need to care about the kind of devices that are being used, making it
   easier to add new buses later.
 
-* The EAL function pci_config_space_set is deprecated in release 16.04
-  and will be removed from 16.07.
-  Macros CONFIG_RTE_PCI_CONFIG, CONFIG_RTE_PCI_EXTENDED_TAG and
-  CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE will be removed.
-  The /sys entries extended_tag and max_read_request_size created by igb_uio
-  will be removed.
-
 * ABI changes are planned for struct rte_pci_id, i.e., add new field ``class``.
   This new added ``class`` field can be used to probe pci device by class
   related info. This change should impact size of struct rte_pci_id and struct

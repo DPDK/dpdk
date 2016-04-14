@@ -81,62 +81,10 @@ store_max_vfs(struct device *dev, struct device_attribute *attr,
 	return err ? err : count;
 }
 
-#ifdef RTE_PCI_CONFIG
-static ssize_t
-show_extended_tag(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	dev_info(dev, "Deprecated\n");
-
-	return 0;
-}
-
-static ssize_t
-store_extended_tag(struct device *dev,
-		   struct device_attribute *attr,
-		   const char *buf,
-		   size_t count)
-{
-	dev_info(dev, "Deprecated\n");
-
-	return 0;
-}
-
-static ssize_t
-show_max_read_request_size(struct device *dev,
-			   struct device_attribute *attr,
-			   char *buf)
-{
-	dev_info(dev, "Deprecated\n");
-
-	return 0;
-}
-
-static ssize_t
-store_max_read_request_size(struct device *dev,
-			    struct device_attribute *attr,
-			    const char *buf,
-			    size_t count)
-{
-	dev_info(dev, "Deprecated\n");
-
-	return 0;
-}
-#endif
-
 static DEVICE_ATTR(max_vfs, S_IRUGO | S_IWUSR, show_max_vfs, store_max_vfs);
-#ifdef RTE_PCI_CONFIG
-static DEVICE_ATTR(extended_tag, S_IRUGO | S_IWUSR, show_extended_tag,
-	store_extended_tag);
-static DEVICE_ATTR(max_read_request_size, S_IRUGO | S_IWUSR,
-	show_max_read_request_size, store_max_read_request_size);
-#endif
 
 static struct attribute *dev_attrs[] = {
 	&dev_attr_max_vfs.attr,
-#ifdef RTE_PCI_CONFIG
-	&dev_attr_extended_tag.attr,
-	&dev_attr_max_read_request_size.attr,
-#endif
 	NULL,
 };
 

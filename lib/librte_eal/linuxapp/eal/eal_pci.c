@@ -481,18 +481,6 @@ error:
 	return -1;
 }
 
-#ifdef RTE_PCI_CONFIG
-/*
- * It is deprecated, all its configurations have been moved into
- * each PMD respectively.
- */
-void
-pci_config_space_set(__rte_unused struct rte_pci_device *dev)
-{
-	RTE_LOG(DEBUG, EAL, "Nothing here, as it is deprecated\n");
-}
-#endif
-
 /* Read PCI config space. */
 int rte_eal_pci_read_config(const struct rte_pci_device *device,
 			    void *buf, size_t len, off_t offset)

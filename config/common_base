@@ -101,14 +101,6 @@ CONFIG_RTE_MALLOC_DEBUG=n
 CONFIG_RTE_EAL_PMD_PATH=""
 
 #
-# Special configurations in PCI Config Space for high performance
-# They are all deprecated, and will be removed later.
-#
-CONFIG_RTE_PCI_CONFIG=n
-CONFIG_RTE_PCI_EXTENDED_TAG=""
-CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE=0
-
-#
 # Compile Environment Abstraction Layer to support Vmware TSC map
 #
 CONFIG_RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT=y
