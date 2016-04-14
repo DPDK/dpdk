@@ -192,11 +192,7 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 static inline void
 desc_pktlen_align(__m128i descs[4])
 {
-	__m128i pktlen0, pktlen1, zero;
-	union {
-		uint16_t e[4];
-		uint64_t dword;
-	} vol;
+	__m128i pktlen0, pktlen1;
 
 	/* mask everything except pktlen field*/
 	const __m128i pktlen_msk = _mm_set_epi32(PKTLEN_MASK, PKTLEN_MASK,
@@ -206,18 +202,18 @@ desc_pktlen_align(__m128i descs[4])
 	pktlen1 = _mm_unpackhi_epi32(descs[1], descs[3]);
 	pktlen0 = _mm_unpackhi_epi32(pktlen0, pktlen1);
 
-	zero = _mm_xor_si128(pktlen0, pktlen0);
-
 	pktlen0 = _mm_srli_epi32(pktlen0, PKTLEN_SHIFT);
 	pktlen0 = _mm_and_si128(pktlen0, pktlen_msk);
 
-	pktlen0 = _mm_packs_epi32(pktlen0, zero);
-	vol.dword = _mm_cvtsi128_si64(pktlen0);
-	/* let the descriptor byte 15-14 store the pkt len */
-	*((uint16_t *)&descs[0]+7) = vol.e[0];
-	*((uint16_t *)&descs[1]+7) = vol.e[1];
-	*((uint16_t *)&descs[2]+7) = vol.e[2];
-	*((uint16_t *)&descs[3]+7) = vol.e[3];
+	pktlen0 = _mm_packs_epi32(pktlen0, pktlen0);
+
+	descs[3] = _mm_blend_epi16(descs[3], pktlen0, 0x80);
+	pktlen0 = _mm_slli_epi64(pktlen0, 16);
+	descs[2] = _mm_blend_epi16(descs[2], pktlen0, 0x80);
+	pktlen0 = _mm_slli_epi64(pktlen0, 16);
+	descs[1] = _mm_blend_epi16(descs[1], pktlen0, 0x80);
+	pktlen0 = _mm_slli_epi64(pktlen0, 16);
+	descs[0] = _mm_blend_epi16(descs[0], pktlen0, 0x80);
 }
 
  /*
