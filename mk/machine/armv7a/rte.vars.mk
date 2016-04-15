@@ -54,8 +54,6 @@
 # CPU_LDFLAGS =
 # CPU_ASFLAGS =
 
-CPU_CFLAGS += -mfloat-abi=softfp
-
 MACHINE_CFLAGS += -march=armv7-a
 
 ifdef CONFIG_RTE_ARCH_ARM_TUNE
