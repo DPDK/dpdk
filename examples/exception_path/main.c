@@ -350,8 +350,7 @@ setup_port_lcore_affinities(void)
 			}
 
 			port_ids[i] = rx_port++;
-		}
-		else if (output_cores_mask & (1ULL << i)) {
+		} else if (output_cores_mask & (1ULL << (i & 0x3f))) {
 			/* Skip ports that are not enabled */
 			while ((ports_mask & (1 << tx_port)) == 0) {
 				tx_port++;
