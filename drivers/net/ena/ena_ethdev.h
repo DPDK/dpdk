@@ -121,7 +121,6 @@ enum ena_adapter_state {
 struct ena_driver_stats {
 	rte_atomic64_t ierrors;
 	rte_atomic64_t oerrors;
-	rte_atomic64_t imcasts;
 	rte_atomic64_t rx_nombuf;
 };
 

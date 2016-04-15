@@ -200,27 +200,9 @@ struct rte_eth_stats {
 	/**< Total of RX packets dropped by the HW,
 	 * because there are no available mbufs (i.e. RX queues are full).
 	 */
-	uint64_t ibadcrc __rte_deprecated;
-	/**< Deprecated; Total of RX packets with CRC error. */
-	uint64_t ibadlen __rte_deprecated;
-	/**< Deprecated; Total of RX packets with bad length. */
 	uint64_t ierrors;   /**< Total number of erroneous received packets. */
 	uint64_t oerrors;   /**< Total number of failed transmitted packets. */
-	uint64_t imcasts;
-	/**< Deprecated; Total number of multicast received packets. */
 	uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
-	uint64_t fdirmatch __rte_deprecated;
-	/**< Deprecated; Total number of RX packets matching a filter. */
-	uint64_t fdirmiss __rte_deprecated;
-	/**< Deprecated; Total number of RX packets not matching any filter. */
-	uint64_t tx_pause_xon __rte_deprecated;
-	 /**< Deprecated; Total nb. of XON pause frame sent. */
-	uint64_t rx_pause_xon __rte_deprecated;
-	/**< Deprecated; Total nb. of XON pause frame received. */
-	uint64_t tx_pause_xoff __rte_deprecated;
-	/**< Deprecated; Total nb. of XOFF pause frame sent. */
-	uint64_t rx_pause_xoff __rte_deprecated;
-	/**< Deprecated; Total nb. of XOFF pause frame received. */
 	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	/**< Total number of queue RX packets. */
 	uint64_t q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
@@ -231,14 +213,6 @@ struct rte_eth_stats {
 	/**< Total number of successfully transmitted queue bytes. */
 	uint64_t q_errors[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	/**< Total number of queue packets received that are dropped. */
-	uint64_t ilbpackets;
-	/**< Total number of good packets received from loopback,VF Only */
-	uint64_t olbpackets;
-	/**< Total number of good packets transmitted to loopback,VF Only */
-	uint64_t ilbbytes;
-	/**< Total number of good bytes received from loopback,VF Only */
-	uint64_t olbbytes;
-	/**< Total number of good bytes transmitted to loopback,VF Only */
 };
 
 /**

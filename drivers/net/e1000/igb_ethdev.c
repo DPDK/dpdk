@@ -1805,11 +1805,6 @@ eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	rte_stats->ibytes = hw_stats->gorc;
 	rte_stats->opackets = hw_stats->gptc;
 	rte_stats->obytes = hw_stats->gotc;
-	rte_stats->imcasts = hw_stats->mprc;
-	rte_stats->ilbpackets = hw_stats->gprlbc;
-	rte_stats->ilbbytes = hw_stats->gorlbc;
-	rte_stats->olbpackets = hw_stats->gptlbc;
-	rte_stats->olbbytes = hw_stats->gotlbc;
 }
 
 static void

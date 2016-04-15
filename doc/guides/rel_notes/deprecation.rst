@@ -26,10 +26,6 @@ Deprecation Notices
   rte_pci_device. The release 16.04 does not contain these ABI changes, but
   release 16.07 will.
 
-* The following fields have been deprecated in rte_eth_stats:
-  ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
-  tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff
-
 * The xstats API and rte_eth_xstats struct will be changed to allow retrieval
   of values without any string copies or parsing.
   No backwards compatibility is planned, as it would require code duplication

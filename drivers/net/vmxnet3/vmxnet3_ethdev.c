@@ -694,7 +694,6 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 		stats->q_errors[i] = rxStats->pktsRxError;
 		stats->ierrors += rxStats->pktsRxError;
-		stats->imcasts += rxStats->mcastPktsRxOK;
 		stats->rx_nombuf += rxStats->pktsRxOutOfBuf;
 	}
 }

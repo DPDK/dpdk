@@ -902,11 +902,6 @@ nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	nfp_dev_stats.obytes -= hw->eth_stats_base.obytes;
 
-	nfp_dev_stats.imcasts =
-		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
-
-	nfp_dev_stats.imcasts -= hw->eth_stats_base.imcasts;
-
 	/* reading general device stats */
 	nfp_dev_stats.ierrors =
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
@@ -917,12 +912,6 @@ nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_ERRORS);
 
 	nfp_dev_stats.oerrors -= hw->eth_stats_base.oerrors;
-
-	/* Multicast frames received */
-	nfp_dev_stats.imcasts =
-		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
-
-	nfp_dev_stats.imcasts -= hw->eth_stats_base.imcasts;
 
 	/* RX ring mbuf allocation failures */
 	nfp_dev_stats.rx_nombuf = dev->data->rx_mbuf_alloc_failed;
@@ -985,19 +974,12 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 	hw->eth_stats_base.obytes =
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_OCTETS);
 
-	hw->eth_stats_base.imcasts =
-		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
-
 	/* reading general device stats */
 	hw->eth_stats_base.ierrors =
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
 
 	hw->eth_stats_base.oerrors =
 		nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_ERRORS);
-
-	/* Multicast frames received */
-	hw->eth_stats_base.imcasts =
-		nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_MC_FRAMES);
 
 	/* RX ring mbuf allocation failures */
 	dev->data->rx_mbuf_alloc_failed = 0;

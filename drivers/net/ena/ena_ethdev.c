@@ -605,7 +605,6 @@ static void ena_stats_restart(struct rte_eth_dev *dev)
 
 	rte_atomic64_init(&adapter->drv_stats->ierrors);
 	rte_atomic64_init(&adapter->drv_stats->oerrors);
-	rte_atomic64_init(&adapter->drv_stats->imcasts);
 	rte_atomic64_init(&adapter->drv_stats->rx_nombuf);
 }
 
@@ -643,7 +642,6 @@ static void ena_stats_get(struct rte_eth_dev *dev,
 	/* Driver related stats */
 	stats->ierrors = rte_atomic64_read(&adapter->drv_stats->ierrors);
 	stats->oerrors = rte_atomic64_read(&adapter->drv_stats->oerrors);
-	stats->imcasts = rte_atomic64_read(&adapter->drv_stats->imcasts);
 	stats->rx_nombuf = rte_atomic64_read(&adapter->drv_stats->rx_nombuf);
 }
 

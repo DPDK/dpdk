@@ -86,6 +86,10 @@ This section should contain API changes. Sample format:
 * Add a short 1-2 sentence description of the API change. Use fixed width
   quotes for ``rte_function_names`` or ``rte_struct_names``. Use the past tense.
 
+* The following counters are removed from ``rte_eth_stats`` structure:
+  ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
+  tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff.
+
 
 ABI Changes
 -----------
@@ -107,7 +111,7 @@ The libraries prepended with a plus sign were incremented in this version.
 
 .. code-block:: diff
 
-     libethdev.so.3
+   + libethdev.so.4
      librte_acl.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2

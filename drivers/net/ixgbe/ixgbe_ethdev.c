@@ -2852,8 +2852,6 @@ ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ibytes = hw_stats->vfgorc;
 	stats->opackets = hw_stats->vfgptc;
 	stats->obytes = hw_stats->vfgotc;
-	stats->imcasts = hw_stats->vfmprc;
-	/* stats->imcasts should be removed as imcasts is deprecated */
 }
 
 static void
@@ -2870,8 +2868,6 @@ ixgbevf_dev_stats_reset(struct rte_eth_dev *dev)
 	hw_stats->vfgorc = 0;
 	hw_stats->vfgptc = 0;
 	hw_stats->vfgotc = 0;
-	hw_stats->vfmprc = 0;
-
 }
 
 static void

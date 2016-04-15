@@ -2099,7 +2099,6 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->obytes   = ns->eth.tx_bytes;
 	stats->oerrors  = ns->eth.tx_errors +
 			pf->main_vsi->eth_stats.tx_errors;
-	stats->imcasts  = pf->main_vsi->eth_stats.rx_multicast;
 
 	/* Rx Errors */
 	stats->imissed  = ns->eth.rx_discards +

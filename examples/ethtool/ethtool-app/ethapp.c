@@ -535,7 +535,6 @@ static void pcmd_portstats_callback(__rte_unused void *ptr_params,
 	}
 	stat = rte_ethtool_net_get_stats64(params->port, &stat_info);
 	if (stat == 0) {
-		/* Most of rte_eth_stats is deprecated.. */
 		printf("Port %i stats\n", params->port);
 		printf("   In: %" PRIu64 " (%" PRIu64 " bytes)\n"
 			"  Out: %"PRIu64" (%"PRIu64 " bytes)\n"

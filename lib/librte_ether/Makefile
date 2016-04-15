@@ -41,7 +41,7 @@ CFLAGS += $(WERROR_FLAGS)
 
 EXPORT_MAP := rte_ether_version.map
 
-LIBABIVER := 3
+LIBABIVER := 4
 
 SRCS-y += rte_ethdev.c
 

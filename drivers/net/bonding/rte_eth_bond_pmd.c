@@ -1836,7 +1836,6 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->imissed += slave_stats.imissed;
 		stats->ierrors += slave_stats.ierrors;
 		stats->oerrors += slave_stats.oerrors;
-		stats->imcasts += slave_stats.imcasts;
 		stats->rx_nombuf += slave_stats.rx_nombuf;
 
 		for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {

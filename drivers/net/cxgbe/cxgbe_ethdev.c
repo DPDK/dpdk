@@ -656,7 +656,6 @@ static void cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 	/* RX Stats */
 	eth_stats->ipackets = ps.rx_frames;
 	eth_stats->ibytes   = ps.rx_octets;
-	eth_stats->imcasts  = ps.rx_mcast_frames;
 	eth_stats->imissed  = ps.rx_ovflow0 + ps.rx_ovflow1 +
 			      ps.rx_ovflow2 + ps.rx_ovflow3 +
 			      ps.rx_trunc0 + ps.rx_trunc1 +
