@@ -72,7 +72,7 @@ struct rte_cfgfile_entry {
 * @param flags
 *   Config file flags, Reserved for future use. Must be set to 0.
 * @return
-*   Handle to configuration file
+*   Handle to configuration file on success, NULL otherwise
 */
 struct rte_cfgfile *rte_cfgfile_load(const char *filename, int flags);
 
