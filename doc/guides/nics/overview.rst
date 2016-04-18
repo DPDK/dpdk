@@ -53,10 +53,15 @@ Most of these differences are summarized below.
 .. raw:: html
 
    <style>
+      table#id1 {
+         cursor: default;
+      }
+      table#id1 th, table#id1 td {
+         text-align: center;
+      }
       table#id1 th {
          font-size: 80%;
          white-space: pre-wrap;
-         text-align: center;
          vertical-align: top;
          padding: 2px;
       }
@@ -69,6 +74,7 @@ Most of these differences are summarized below.
       }
       table#id1 td:first-child {
          padding-left: 1em;
+         text-align: left;
       }
    </style>
 
