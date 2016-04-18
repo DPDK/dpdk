@@ -538,7 +538,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 	struct vf_cmd_info args;
 	struct i40e_virtchnl_pvid_info tpid_info;
 
-	if (dev == NULL || info == NULL) {
+	if (info == NULL) {
 		PMD_DRV_LOG(ERR, "invalid parameters");
 		return I40E_ERR_PARAM;
 	}
