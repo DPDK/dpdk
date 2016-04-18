@@ -606,8 +606,11 @@ fm10k_reassemble_packets(struct fm10k_rx_queue *rxq,
 
 			if (!split_flags[buf_idx]) {
 				/* it's the last packet of the set */
+#ifdef RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE
 				start->hash = end->hash;
 				start->ol_flags = end->ol_flags;
+				start->packet_type = end->packet_type;
+#endif
 				pkts[pkt_idx++] = start;
 				start = end = NULL;
 			}
