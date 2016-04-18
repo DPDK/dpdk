@@ -39,6 +39,9 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include <sys/user.h>
+#ifndef PAGE_SIZE
+#define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
+#endif
 #include <linux/binfmts.h>
 #include <xen/xen-compat.h>
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x00040200
