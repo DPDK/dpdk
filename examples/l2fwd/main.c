@@ -80,6 +80,7 @@ static volatile bool force_quit;
 
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
+#define MEMPOOL_CACHE_SIZE 256
 
 /*
  * Configurable number of RX/TX ring descriptors
@@ -545,8 +546,9 @@ main(int argc, char **argv)
 	timer_period *= rte_get_timer_hz();
 
 	/* create the mbuf pool */
-	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 32,
-		0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF,
+		MEMPOOL_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+		rte_socket_id());
 	if (l2fwd_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 
