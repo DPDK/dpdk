@@ -324,7 +324,7 @@ The key code snippet of simple_ipv4_fwd_4pkts() is shown below:
 
         const void *key_array[4] = {&key[0], &key[1], &key[2],&key[3]};
 
-        rte_hash_lookup_multi(qconf->ipv4_lookup_struct, &key_array[0], 4, ret);
+        rte_hash_lookup_bulk(qconf->ipv4_lookup_struct, &key_array[0], 4, ret);
 
         dst_port[0] = (ret[0] < 0)? portid:ipv4_l3fwd_out_if[ret[0]];
         dst_port[1] = (ret[1] < 0)? portid:ipv4_l3fwd_out_if[ret[1]];

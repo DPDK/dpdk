@@ -486,7 +486,7 @@ static int test_five_keys(void)
 	for(i = 0; i < 5; i++)
 		key_array[i] = &keys[i];
 
-	ret = rte_hash_lookup_multi(handle, &key_array[0], 5, (int32_t *)pos);
+	ret = rte_hash_lookup_bulk(handle, &key_array[0], 5, (int32_t *)pos);
 	if(ret == 0)
 		for(i = 0; i < 5; i++) {
 			print_key_info("Lkp", key_array[i], pos[i]);
@@ -527,7 +527,7 @@ static int test_five_keys(void)
 	}
 
 	/* Lookup multi */
-	ret = rte_hash_lookup_multi(handle, &key_array[0], 5, (int32_t *)pos);
+	ret = rte_hash_lookup_bulk(handle, &key_array[0], 5, (int32_t *)pos);
 	if (ret == 0)
 		for (i = 0; i < 5; i++) {
 			print_key_info("Lkp", key_array[i], pos[i]);

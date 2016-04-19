@@ -362,8 +362,6 @@ rte_hash_lookup_with_hash(const struct rte_hash *h,
 hash_sig_t
 rte_hash_hash(const struct rte_hash *h, const void *key);
 
-#define rte_hash_lookup_multi rte_hash_lookup_bulk
-#define rte_hash_lookup_multi_data rte_hash_lookup_bulk_data
 /**
  * Find multiple keys in the hash table.
  * This operation is multi-thread safe.

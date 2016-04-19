@@ -81,7 +81,7 @@ em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
 				&key[4], &key[5], &key[6], &key[7]};
 
-	rte_hash_lookup_multi(qconf->ipv4_lookup_struct, &key_array[0], 8, ret);
+	rte_hash_lookup_bulk(qconf->ipv4_lookup_struct, &key_array[0], 8, ret);
 
 	dst_port[0] = (uint8_t) ((ret[0] < 0) ?
 			portid : ipv4_l3fwd_out_if[ret[0]]);
@@ -179,7 +179,7 @@ em_get_dst_port_ipv6x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
 			&key[4], &key[5], &key[6], &key[7]};
 
-	rte_hash_lookup_multi(qconf->ipv6_lookup_struct, &key_array[0], 8, ret);
+	rte_hash_lookup_bulk(qconf->ipv6_lookup_struct, &key_array[0], 8, ret);
 
 	dst_port[0] = (uint8_t) ((ret[0] < 0) ?
 			portid : ipv6_l3fwd_out_if[ret[0]]);

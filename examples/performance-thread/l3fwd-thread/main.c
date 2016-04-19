@@ -996,7 +996,7 @@ simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
 	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
 			&key[4], &key[5], &key[6], &key[7]};
 
-	rte_hash_lookup_multi(RTE_PER_LCORE(lcore_conf)->ipv4_lookup_struct,
+	rte_hash_lookup_bulk(RTE_PER_LCORE(lcore_conf)->ipv4_lookup_struct,
 			&key_array[0], 8, ret);
 	dst_port[0] = (uint8_t) ((ret[0] < 0) ? portid : ipv4_l3fwd_out_if[ret[0]]);
 	dst_port[1] = (uint8_t) ((ret[1] < 0) ? portid : ipv4_l3fwd_out_if[ret[1]]);
@@ -1150,7 +1150,7 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
 	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
 			&key[4], &key[5], &key[6], &key[7]};
 
-	rte_hash_lookup_multi(RTE_PER_LCORE(lcore_conf)->ipv6_lookup_struct,
+	rte_hash_lookup_bulk(RTE_PER_LCORE(lcore_conf)->ipv6_lookup_struct,
 			&key_array[0], 4, ret);
 	dst_port[0] = (uint8_t) ((ret[0] < 0) ? portid : ipv6_l3fwd_out_if[ret[0]]);
 	dst_port[1] = (uint8_t) ((ret[1] < 0) ? portid : ipv6_l3fwd_out_if[ret[1]]);
