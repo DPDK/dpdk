@@ -680,7 +680,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		if (unlikely(virtqueue_kick_prepare(rxvq))) {
 			virtqueue_notify(rxvq);
-			PMD_RX_LOG(DEBUG, "Notified\n");
+			PMD_RX_LOG(DEBUG, "Notified");
 		}
 	}
 
@@ -710,7 +710,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 
 	virtio_rmb();
 
-	PMD_RX_LOG(DEBUG, "used:%d\n", nb_used);
+	PMD_RX_LOG(DEBUG, "used:%d", nb_used);
 
 	hw = rxvq->hw;
 	nb_rx = 0;
@@ -733,13 +733,13 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 
 		i++;
 
-		PMD_RX_LOG(DEBUG, "dequeue:%d\n", num);
-		PMD_RX_LOG(DEBUG, "packet len:%d\n", len[0]);
+		PMD_RX_LOG(DEBUG, "dequeue:%d", num);
+		PMD_RX_LOG(DEBUG, "packet len:%d", len[0]);
 
 		rxm = rcv_pkts[0];
 
 		if (unlikely(len[0] < hdr_size + ETHER_HDR_LEN)) {
-			PMD_RX_LOG(ERR, "Packet drop\n");
+			PMD_RX_LOG(ERR, "Packet drop");
 			nb_enqueued++;
 			virtio_discard_rxbuf(rxvq, rxm);
 			rxvq->errors++;
@@ -781,7 +781,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 				rcv_cnt = rx_num;
 			} else {
 				PMD_RX_LOG(ERR,
-					"No enough segments for packet.\n");
+					   "No enough segments for packet.");
 				nb_enqueued++;
 				virtio_discard_rxbuf(rxvq, rxm);
 				rxvq->errors++;

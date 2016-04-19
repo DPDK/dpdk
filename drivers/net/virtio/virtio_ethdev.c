@@ -827,7 +827,7 @@ virtio_mac_table_set(struct virtio_hw *hw,
 	int err, len[2];
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_MAC_ADDR)) {
-		PMD_DRV_LOG(INFO, "host does not support mac table\n");
+		PMD_DRV_LOG(INFO, "host does not support mac table");
 		return;
 	}
 
