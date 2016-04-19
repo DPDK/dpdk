@@ -65,10 +65,6 @@
 extern "C" {
 #endif
 
-/* deprecated options */
-#pragma GCC poison RTE_MBUF_SCATTER_GATHER
-#pragma GCC poison RTE_MBUF_REFCNT
-
 /*
  * Packet Offload Features Flags. It also carry packet type information.
  * Critical resources. Both rx/tx shared these bits. Be cautious on any change

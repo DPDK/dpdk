@@ -213,8 +213,6 @@ struct rte_pci_driver {
 
 /** Device needs PCI BAR mapping (done with either IGB_UIO or VFIO) */
 #define RTE_PCI_DRV_NEED_MAPPING 0x0001
-/** Device driver must be registered several times until failure - deprecated */
-#pragma GCC poison RTE_PCI_DRV_MULTIPLE
 /** Device needs to be unbound even if no module is provided */
 #define RTE_PCI_DRV_FORCE_UNBIND 0x0004
 /** Device driver supports link state interrupt */
