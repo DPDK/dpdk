@@ -80,12 +80,6 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
 
 #define rte_memcpy(d, s, n)	memcpy((d), (s), (n))
 
-static inline void *
-rte_memcpy_func(void *dst, const void *src, size_t n)
-{
-	return memcpy(dst, src, n);
-}
-
 #ifdef __cplusplus
 }
 #endif

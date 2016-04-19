@@ -323,12 +323,6 @@ rte_memcpy(void *dst, const void *src, size_t n)
 	return memcpy(dst, src, n);
 }
 
-static inline void *
-rte_memcpy_func(void *dst, const void *src, size_t n)
-{
-	return memcpy(dst, src, n);
-}
-
 #endif /* RTE_ARCH_ARM_NEON_MEMCPY */
 
 #ifdef __cplusplus

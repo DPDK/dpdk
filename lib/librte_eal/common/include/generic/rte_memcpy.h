@@ -134,11 +134,4 @@ rte_memcpy(void *dst, const void *src, size_t n);
 
 #endif /* __DOXYGEN__ */
 
-/*
- * memcpy() function used by rte_memcpy macro
- */
-static inline void *
-rte_memcpy_func(void *dst, const void *src, size_t n) __attribute__((always_inline));
-
-
 #endif /* _RTE_MEMCPY_H_ */
