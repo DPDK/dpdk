@@ -134,10 +134,9 @@ struct l2fwd_port_statistics {
 } __rte_cache_aligned;
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
-/* A tsc-based timer responsible for triggering statistics printout */
-#define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
-static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000; /* default period is 10 seconds */
+/* A tsc-based timer responsible for triggering statistics printout */
+static uint64_t timer_period = 10; /* default period is 10 seconds */
 
 /* Print out statistics on packets dropped */
 static void
@@ -274,7 +273,7 @@ l2fwd_main_loop(void)
 				timer_tsc += diff_tsc;
 
 				/* if timer has reached its timeout */
-				if (unlikely(timer_tsc >= (uint64_t) timer_period)) {
+				if (unlikely(timer_tsc >= timer_period)) {
 
 					/* do this only on master core */
 					if (lcore_id == rte_get_master_lcore()) {
@@ -381,7 +380,7 @@ l2fwd_parse_timer_period(const char *q_arg)
 static int
 l2fwd_parse_args(int argc, char **argv)
 {
-	int opt, ret;
+	int opt, ret, timer_secs;
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
@@ -417,12 +416,13 @@ l2fwd_parse_args(int argc, char **argv)
 
 		/* timer period */
 		case 'T':
-			timer_period = l2fwd_parse_timer_period(optarg) * 1000 * TIMER_MILLISECOND;
-			if (timer_period < 0) {
+			timer_secs = l2fwd_parse_timer_period(optarg);
+			if (timer_secs < 0) {
 				printf("invalid timer period\n");
 				l2fwd_usage(prgname);
 				return -1;
 			}
+			timer_period = timer_secs;
 			break;
 
 		/* long options */
@@ -540,6 +540,9 @@ main(int argc, char **argv)
 	ret = l2fwd_parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
+
+	/* convert to number of cycles */
+	timer_period *= rte_get_timer_hz();
 
 	/* create the mbuf pool */
 	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 32,
