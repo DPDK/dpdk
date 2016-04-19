@@ -165,19 +165,25 @@ struct lcore_params {
 	struct rte_mempool *mem_pool;
 };
 
-static void
+static int
 quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 {
 	const unsigned num_workers = rte_lcore_count() - 2;
 	unsigned i;
 	struct rte_mbuf *bufs[num_workers];
-	rte_mempool_get_bulk(p, (void *)bufs, num_workers);
+
+	if (rte_mempool_get_bulk(p, (void *)bufs, num_workers) != 0) {
+		printf("line %d: Error getting mbufs from pool\n", __LINE__);
+		return -1;
+	}
 
 	for (i = 0; i < num_workers; i++)
 		bufs[i]->hash.rss = i << 1;
 
 	rte_distributor_process(d, bufs, num_workers);
 	rte_mempool_put_bulk(p, (void *)bufs, num_workers);
+
+	return 0;
 }
 
 static int
@@ -246,7 +252,8 @@ lcore_rx(struct lcore_params *p)
 	 * get packets till quit_signal is actually been
 	 * received and they gracefully shutdown
 	 */
-	quit_workers(d, mem_pool);
+	if (quit_workers(d, mem_pool) != 0)
+		return -1;
 	/* rx thread should quit at last */
 	return 0;
 }
@@ -577,7 +584,9 @@ main(int argc, char *argv[])
 	}
 	/* call lcore_main on master core only */
 	struct lcore_params p = { 0, d, output_ring, mbuf_pool};
-	lcore_rx(&p);
+
+	if (lcore_rx(&p) != 0)
+		return -1;
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
