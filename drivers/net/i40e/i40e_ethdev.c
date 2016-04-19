@@ -934,6 +934,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		goto err_setup_pf_switch;
 	}
 
+	/* reset all stats of the device, including pf and main vsi */
+	i40e_dev_stats_reset(dev);
+
 	vsi = pf->main_vsi;
 
 	/* Disable double vlan by default */
