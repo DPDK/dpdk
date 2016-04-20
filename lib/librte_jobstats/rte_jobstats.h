@@ -85,7 +85,7 @@ struct rte_jobstats {
 	/**< Minimum execute time. */
 
 	uint64_t max_exec_time;
-	/**< Minimum execute time. */
+	/**< Maximum execute time. */
 
 	uint64_t exec_cnt;
 	/**< Execute count. */
