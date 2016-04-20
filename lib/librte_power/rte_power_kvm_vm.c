@@ -106,7 +106,8 @@ send_msg(unsigned lcore_id, uint32_t scale_direction)
 	ret = guest_channel_send_msg(&pkt[lcore_id], lcore_id);
 	if (ret == 0)
 		return 1;
-	RTE_LOG(DEBUG, POWER, "Error sending message: %s\n", strerror(ret));
+	RTE_LOG(DEBUG, POWER, "Error sending message: %s\n",
+			ret > 0 ? strerror(ret) : "channel not connected");
 	return -1;
 }
 
