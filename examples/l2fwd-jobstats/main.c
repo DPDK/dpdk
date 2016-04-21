@@ -987,7 +987,7 @@ main(int argc, char **argv)
 			struct rte_jobstats *job = &qconf->port_fwd_jobs[i];
 
 			portid = qconf->rx_port_list[i];
-			printf("Setting forward jon for port %u\n", portid);
+			printf("Setting forward job for port %u\n", portid);
 
 			snprintf(name, RTE_DIM(name), "port %u fwd", portid);
 			/* Setup forward job.
