@@ -272,7 +272,7 @@ app_parse_flow_conf(const char *conf_str)
 	}
 	if (pconf->tx_port >= RTE_MAX_ETHPORTS) {
 		RTE_LOG(ERR, APP, "pfc %u: invalid tx port %"PRIu8" index\n",
-				nb_pfc, pconf->rx_port);
+				nb_pfc, pconf->tx_port);
 		return -1;
 	}
 
