@@ -162,7 +162,7 @@ static int
 app_parse_opt_vals(const char *conf_str, char separator, uint32_t n_vals, uint32_t *opt_vals)
 {
 	char *string;
-	uint32_t i, n_tokens;
+	int i, n_tokens;
 	char *tokens[MAX_OPT_VALUES];
 
 	if (conf_str == NULL || opt_vals == NULL || n_vals == 0 || n_vals > MAX_OPT_VALUES)
