@@ -41,11 +41,12 @@
  * Reassemble fragments into one packet.
  */
 struct rte_mbuf *
-ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
+ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 {
 	struct ipv4_hdr *ip_hdr;
 	struct rte_mbuf *m, *prev;
 	uint32_t i, n, ofs, first_len;
+	uint32_t curr_idx = 0;
 
 	first_len = fp->frags[IP_FIRST_FRAG_IDX].len;
 	n = fp->last_idx - 1;
@@ -53,6 +54,7 @@ ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
 	/*start from the last fragment. */
 	m = fp->frags[IP_LAST_FRAG_IDX].mb;
 	ofs = fp->frags[IP_LAST_FRAG_IDX].ofs;
+	curr_idx = IP_LAST_FRAG_IDX;
 
 	while (ofs != first_len) {
 
@@ -66,6 +68,10 @@ ipv4_frag_reassemble(const struct ip_frag_pkt *fp)
 				/* adjust start of the last fragment data. */
 				rte_pktmbuf_adj(m, (uint16_t)(m->l2_len + m->l3_len));
 				rte_pktmbuf_chain(fp->frags[i].mb, m);
+
+				/* this mbuf should not be accessed directly */
+				fp->frags[curr_idx].mb = NULL;
+				curr_idx = i;
 
 				/* update our last fragment and offset. */
 				m = fp->frags[i].mb;

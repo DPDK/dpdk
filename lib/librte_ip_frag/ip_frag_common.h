@@ -76,8 +76,8 @@ struct ip_frag_pkt * ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 	struct ip_frag_pkt **free, struct ip_frag_pkt **stale);
 
 /* these functions need to be declared here as ip_frag_process relies on them */
-struct rte_mbuf * ipv4_frag_reassemble(const struct ip_frag_pkt *fp);
-struct rte_mbuf * ipv6_frag_reassemble(const struct ip_frag_pkt *fp);
+struct rte_mbuf *ipv4_frag_reassemble(struct ip_frag_pkt *fp);
+struct rte_mbuf *ipv6_frag_reassemble(struct ip_frag_pkt *fp);
 
 
 
