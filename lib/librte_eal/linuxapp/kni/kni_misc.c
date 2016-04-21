@@ -26,6 +26,7 @@
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 #include <linux/netdevice.h>
+#include <linux/etherdevice.h>
 #include <linux/pci.h>
 #include <linux/kthread.h>
 #include <linux/rwsem.h>
@@ -541,6 +542,15 @@ kni_ioctl_create(struct net *net,
 	}
 	if (pci)
 		pci_dev_put(pci);
+
+	if (kni->lad_dev)
+		memcpy(net_dev->dev_addr, kni->lad_dev->dev_addr, ETH_ALEN);
+	else
+		/*
+		 * Generate random mac address. eth_random_addr() is the newer
+		 * version of generating mac address in linux kernel.
+		 */
+		random_ether_addr(net_dev->dev_addr);
 
 	ret = register_netdev(net_dev);
 	if (ret) {

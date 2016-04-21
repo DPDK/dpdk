@@ -69,15 +69,6 @@ kni_net_open(struct net_device *dev)
 	struct rte_kni_request req;
 	struct kni_dev *kni = netdev_priv(dev);
 
-	if (kni->lad_dev)
-		memcpy(dev->dev_addr, kni->lad_dev->dev_addr, ETH_ALEN);
-	else
-		/*
-		 * Generate random mac address. eth_random_addr() is the newer
-		 * version of generating mac address in linux kernel.
-		 */
-		random_ether_addr(dev->dev_addr);
-
 	netif_start_queue(dev);
 
 	memset(&req, 0, sizeof(req));
