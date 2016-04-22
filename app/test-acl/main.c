@@ -901,7 +901,7 @@ search_ip5tuples(__attribute__((unused)) void *arg)
 		"%s  @lcore %u: %" PRIu32 " iterations, %" PRIu64 " pkts, %"
 		PRIu32 " categories, %" PRIu64 " cycles, %#Lf cycles/pkt\n",
 		__func__, lcore, i, pkt, config.run_categories,
-		tm, (long double)tm / pkt);
+		tm, (pkt == 0) ? 0 : (long double)tm / pkt);
 
 	return 0;
 }
