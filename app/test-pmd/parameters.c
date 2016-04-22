@@ -526,6 +526,7 @@ launch_args_parse(int argc, char** argv)
 		{ "pkt-filter-drop-queue",      1, 0, 0 },
 		{ "crc-strip",                  0, 0, 0 },
 		{ "enable-rx-cksum",            0, 0, 0 },
+		{ "enable-scatter",             0, 0, 0 },
 		{ "disable-hw-vlan",            0, 0, 0 },
 		{ "disable-hw-vlan-filter",     0, 0, 0 },
 		{ "disable-hw-vlan-strip",      0, 0, 0 },
@@ -764,6 +765,8 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "crc-strip"))
 				rx_mode.hw_strip_crc = 1;
+			if (!strcmp(lgopts[opt_idx].name, "enable-scatter"))
+				rx_mode.enable_scatter = 1;
 			if (!strcmp(lgopts[opt_idx].name, "enable-rx-cksum"))
 				rx_mode.hw_ip_checksum = 1;
 

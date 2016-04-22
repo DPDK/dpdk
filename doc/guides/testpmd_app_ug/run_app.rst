@@ -289,6 +289,10 @@ The commandline options are:
 
     Enable hardware RX checksum offload.
 
+*   ``--enable-scatter``
+
+    Enable scatter (multi-segment) RX.
+
 *   ``--disable-hw-vlan``
 
     Disable hardware VLAN.
