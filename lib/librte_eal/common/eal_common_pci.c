@@ -165,12 +165,9 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 
 		struct rte_pci_addr *loc = &dev->addr;
 
-		RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
+		RTE_LOG(INFO, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
 				loc->domain, loc->bus, loc->devid, loc->function,
 				dev->numa_node);
-
-		RTE_LOG(DEBUG, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
-				dev->id.device_id, dr->name);
 
 		/* no initialization when blacklisted, return without error */
 		if (dev->devargs != NULL &&
@@ -178,6 +175,9 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 			RTE_LOG(DEBUG, EAL, "  Device is blacklisted, not initializing\n");
 			return 1;
 		}
+
+		RTE_LOG(INFO, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
+				dev->id.device_id, dr->name);
 
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 			/* map resources for devices that use igb_uio */

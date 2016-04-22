@@ -104,7 +104,7 @@ rte_eal_cpu_init(void)
 	RTE_LOG(DEBUG, EAL,
 		"Support maximum %u logical core(s) by configuration.\n",
 		RTE_MAX_LCORE);
-	RTE_LOG(DEBUG, EAL, "Detected %u lcore(s)\n", config->lcore_count);
+	RTE_LOG(INFO, EAL, "Detected %u lcore(s)\n", config->lcore_count);
 
 	return 0;
 }
