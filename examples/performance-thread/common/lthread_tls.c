@@ -94,7 +94,7 @@ void _lthread_key_pool_init(void)
 
 		pool = rte_ring_create(name,
 					LTHREAD_MAX_KEYS, 0, 0);
-		LTHREAD_ASSERT(pool);
+		RTE_ASSERT(pool);
 
 		int i;
 
@@ -240,7 +240,7 @@ void _lthread_tls_alloc(struct lthread *lt)
 
 	tls = _lthread_objcache_alloc((THIS_SCHED)->tls_cache);
 
-	LTHREAD_ASSERT(tls != NULL);
+	RTE_ASSERT(tls != NULL);
 
 	tls->root_sched = (THIS_SCHED);
 	lt->tls = tls;

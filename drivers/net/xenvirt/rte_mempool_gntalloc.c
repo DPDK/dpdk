@@ -202,7 +202,7 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 				obj_init, obj_init_arg,
 				socket_id, flags, va, pa_arr, rpg_num, pg_shift);
 
-		RTE_VERIFY(elt_num == mp->size);
+		RTE_ASSERT(elt_num == mp->size);
 	}
 	mgi.mp = mp;
 	mgi.pg_num = rpg_num;

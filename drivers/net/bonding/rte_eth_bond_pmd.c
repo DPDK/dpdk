@@ -1608,11 +1608,11 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 		for (i = 0; i < internals->active_slave_count; i++) {
 			port = &mode_8023ad_ports[internals->active_slaves[i]];
 
-			RTE_VERIFY(port->rx_ring != NULL);
+			RTE_ASSERT(port->rx_ring != NULL);
 			while (rte_ring_dequeue(port->rx_ring, &pkt) != -ENOENT)
 				rte_pktmbuf_free(pkt);
 
-			RTE_VERIFY(port->tx_ring != NULL);
+			RTE_ASSERT(port->tx_ring != NULL);
 			while (rte_ring_dequeue(port->tx_ring, &pkt) != -ENOENT)
 				rte_pktmbuf_free(pkt);
 		}

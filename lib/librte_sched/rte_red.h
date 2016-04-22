@@ -63,19 +63,6 @@ extern "C" {
 #define RTE_RED_INT16_NBITS                 (sizeof(uint16_t) * CHAR_BIT)
 #define RTE_RED_WQ_LOG2_NUM                 (RTE_RED_WQ_LOG2_MAX - RTE_RED_WQ_LOG2_MIN + 1)
 
-#ifdef RTE_RED_DEBUG
-
-#define RTE_RED_ASSERT(exp)                                      \
-if (!(exp)) {                                                    \
-	rte_panic("line%d\tassert \"" #exp "\" failed\n", __LINE__); \
-}
-
-#else
-
-#define RTE_RED_ASSERT(exp)                 do { } while(0)
-
-#endif /* RTE_RED_DEBUG */
-
 /**
  * Externs
  *
@@ -246,8 +233,8 @@ rte_red_enqueue_empty(const struct rte_red_config *red_cfg,
 {
 	uint64_t time_diff = 0, m = 0;
 
-	RTE_RED_ASSERT(red_cfg != NULL);
-	RTE_RED_ASSERT(red != NULL);
+	RTE_ASSERT(red_cfg != NULL);
+	RTE_ASSERT(red != NULL);
 
 	red->count ++;
 
@@ -361,8 +348,8 @@ rte_red_enqueue_nonempty(const struct rte_red_config *red_cfg,
 	struct rte_red *red,
 	const unsigned q)
 {
-	RTE_RED_ASSERT(red_cfg != NULL);
-	RTE_RED_ASSERT(red != NULL);
+	RTE_ASSERT(red_cfg != NULL);
+	RTE_ASSERT(red != NULL);
 
 	/**
 	* EWMA filter (Sally Floyd and Van Jacobson):
@@ -424,8 +411,8 @@ rte_red_enqueue(const struct rte_red_config *red_cfg,
 	const unsigned q,
 	const uint64_t time)
 {
-	RTE_RED_ASSERT(red_cfg != NULL);
-	RTE_RED_ASSERT(red != NULL);
+	RTE_ASSERT(red_cfg != NULL);
+	RTE_ASSERT(red != NULL);
 
 	if (q != 0) {
 		return rte_red_enqueue_nonempty(red_cfg, red, q);

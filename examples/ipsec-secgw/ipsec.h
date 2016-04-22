@@ -47,15 +47,6 @@
 #define MAX_PKT_BURST 32
 #define MAX_QP_PER_LCORE 256
 
-#ifdef IPSEC_DEBUG
-#define IPSEC_ASSERT(exp)                                            \
-if (!(exp)) {                                                        \
-	rte_panic("line%d\tassert \"" #exp "\" failed\n", __LINE__); \
-}
-#else
-#define IPSEC_ASSERT(exp) do {} while (0)
-#endif /* IPSEC_DEBUG */
-
 #define MAX_DIGEST_SIZE 32 /* Bytes -- 256 bits */
 
 #define uint32_t_to_char(ip, a, b, c, d) do {\

@@ -95,7 +95,7 @@ activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 		internals->tlb_slaves_order[active_count] = port_id;
 	}
 
-	RTE_VERIFY(internals->active_slave_count <
+	RTE_ASSERT(internals->active_slave_count <
 			(RTE_DIM(internals->active_slaves) - 1));
 
 	internals->active_slaves[internals->active_slave_count] = port_id;
@@ -134,7 +134,7 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 					sizeof(internals->active_slaves[0]));
 	}
 
-	RTE_VERIFY(active_count < RTE_DIM(internals->active_slaves));
+	RTE_ASSERT(active_count < RTE_DIM(internals->active_slaves));
 	internals->active_slave_count = active_count;
 
 	if (eth_dev->data->dev_started) {

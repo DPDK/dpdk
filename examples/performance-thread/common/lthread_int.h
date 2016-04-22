@@ -197,16 +197,4 @@ struct lthread {
 	uint64_t diag_ref;			/* ref to user diag data */
 } __rte_cache_aligned;
 
-/*
- * Assert
- */
-#if LTHREAD_DIAG
-#define LTHREAD_ASSERT(expr) do {					\
-	if (!(expr))							\
-		rte_panic("line%d\tassert \"" #expr "\" failed\n", __LINE__);\
-} while (0)
-#else
-#define LTHREAD_ASSERT(expr) do {} while (0)
-#endif
-
 #endif				/* LTHREAD_INT_H */

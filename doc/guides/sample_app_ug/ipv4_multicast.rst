@@ -193,7 +193,7 @@ Firstly, the Ethernet* header is removed from the packet and the IPv4 address is
     /* Remove the Ethernet header from the input packet */
 
     iphdr = (struct ipv4_hdr *)rte_pktmbuf_adj(m, sizeof(struct ether_hdr));
-    RTE_MBUF_ASSERT(iphdr != NULL);
+    RTE_ASSERT(iphdr != NULL);
     dest_addr = rte_be_to_cpu_32(iphdr->dst_addr);
 
 Then, the packet is checked to see if it has a multicast destination address and
@@ -271,7 +271,7 @@ The actual packet transmission is done in the mcast_send_pkt() function:
 
         ethdr = (struct ether_hdr *)rte_pktmbuf_prepend(pkt, (uint16_t) sizeof(*ethdr));
 
-        RTE_MBUF_ASSERT(ethdr != NULL);
+        RTE_ASSERT(ethdr != NULL);
 
         ether_addr_copy(dest_addr, &ethdr->d_addr);
         ether_addr_copy(&ports_eth_addr[port], &ethdr->s_addr);

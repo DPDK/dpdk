@@ -138,14 +138,14 @@ _qnode_pool_create(const char *name, int prealloc_size) {
 					RTE_CACHE_LINE_SIZE,
 					rte_socket_id());
 
-	LTHREAD_ASSERT(p);
+	RTE_ASSERT(p);
 
 	p->stub = rte_malloc_socket(NULL,
 				sizeof(struct qnode),
 				RTE_CACHE_LINE_SIZE,
 				rte_socket_id());
 
-	LTHREAD_ASSERT(p->stub);
+	RTE_ASSERT(p->stub);
 
 	if (name != NULL)
 		strncpy(p->name, name, LT_MAX_NAME_SIZE);

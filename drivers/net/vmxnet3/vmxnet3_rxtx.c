@@ -296,7 +296,7 @@ vmxnet3_unmap_pkt(uint16_t eop_idx, vmxnet3_tx_queue_t *txq)
 	struct rte_mbuf *mbuf;
 
 	/* Release cmd_ring descriptor and free mbuf */
-	VMXNET3_ASSERT(txq->cmd_ring.base[eop_idx].txd.eop == 1);
+	RTE_ASSERT(txq->cmd_ring.base[eop_idx].txd.eop == 1);
 
 	mbuf = txq->cmd_ring.buf_info[eop_idx].m;
 	if (mbuf == NULL)
@@ -307,7 +307,7 @@ vmxnet3_unmap_pkt(uint16_t eop_idx, vmxnet3_tx_queue_t *txq)
 
 	while (txq->cmd_ring.next2comp != eop_idx) {
 		/* no out-of-order completion */
-		VMXNET3_ASSERT(txq->cmd_ring.base[txq->cmd_ring.next2comp].txd.cq == 0);
+		RTE_ASSERT(txq->cmd_ring.base[txq->cmd_ring.next2comp].txd.cq == 0);
 		vmxnet3_cmd_ring_adv_next2comp(&txq->cmd_ring);
 		completed++;
 	}
@@ -454,7 +454,7 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (tso) {
 			uint16_t mss = txm->tso_segsz;
 
-			VMXNET3_ASSERT(mss > 0);
+			RTE_ASSERT(mss > 0);
 
 			gdesc->txd.hlen = txm->l2_len + txm->l3_len + txm->l4_len;
 			gdesc->txd.om = VMXNET3_OM_TSO;
@@ -658,12 +658,13 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		idx = rcd->rxdIdx;
 		ring_idx = (uint8_t)((rcd->rqID == rxq->qid1) ? 0 : 1);
 		rxd = (Vmxnet3_RxDesc *)rxq->cmd_ring[ring_idx].base + idx;
+		RTE_SET_USED(rxd); /* used only for assert when enabled */
 		rbi = rxq->cmd_ring[ring_idx].buf_info + idx;
 
 		PMD_RX_LOG(DEBUG, "rxd idx: %d ring idx: %d.", idx, ring_idx);
 
-		VMXNET3_ASSERT(rcd->len <= rxd->len);
-		VMXNET3_ASSERT(rbi->m);
+		RTE_ASSERT(rcd->len <= rxd->len);
+		RTE_ASSERT(rbi->m);
 
 		/* Get the packet buffer pointer from buf_info */
 		rxm = rbi->m;
@@ -710,10 +711,10 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * the last mbuf of the current packet.
 		 */
 		if (rcd->sop) {
-			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
+			RTE_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_HEAD);
 
 			if (unlikely(rcd->len == 0)) {
-				VMXNET3_ASSERT(rcd->eop);
+				RTE_ASSERT(rcd->eop);
 
 				PMD_RX_LOG(DEBUG,
 					   "Rx buf was skipped. rxring[%d][%d])",
@@ -727,7 +728,7 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		} else {
 			struct rte_mbuf *start = rxq->start_seg;
 
-			VMXNET3_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_BODY);
+			RTE_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_BODY);
 
 			start->pkt_len += rxm->data_len;
 			start->nb_segs++;

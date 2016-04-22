@@ -58,7 +58,7 @@ random_iv_u64(uint64_t *buf, uint16_t n)
 	unsigned left = n & 0x7;
 	unsigned i;
 
-	IPSEC_ASSERT((n & 0x3) == 0);
+	RTE_ASSERT((n & 0x3) == 0);
 
 	for (i = 0; i < (n >> 3); i++)
 		buf[i] = rte_rand();
@@ -75,9 +75,9 @@ esp4_tunnel_inbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 	int32_t payload_len;
 	struct rte_crypto_sym_op *sym_cop;
 
-	IPSEC_ASSERT(m != NULL);
-	IPSEC_ASSERT(sa != NULL);
-	IPSEC_ASSERT(cop != NULL);
+	RTE_ASSERT(m != NULL);
+	RTE_ASSERT(sa != NULL);
+	RTE_ASSERT(cop != NULL);
 
 	payload_len = rte_pktmbuf_pkt_len(m) - IP_ESP_HDR_SZ - sa->iv_len -
 		sa->digest_len;
@@ -124,9 +124,9 @@ esp4_tunnel_inbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 	uint8_t *padding;
 	uint16_t i;
 
-	IPSEC_ASSERT(m != NULL);
-	IPSEC_ASSERT(sa != NULL);
-	IPSEC_ASSERT(cop != NULL);
+	RTE_ASSERT(m != NULL);
+	RTE_ASSERT(sa != NULL);
+	RTE_ASSERT(cop != NULL);
 
 	if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
 		RTE_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");
@@ -165,9 +165,9 @@ esp4_tunnel_outbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 	char *padding;
 	struct rte_crypto_sym_op *sym_cop;
 
-	IPSEC_ASSERT(m != NULL);
-	IPSEC_ASSERT(sa != NULL);
-	IPSEC_ASSERT(cop != NULL);
+	RTE_ASSERT(m != NULL);
+	RTE_ASSERT(sa != NULL);
+	RTE_ASSERT(cop != NULL);
 
 	/* Payload length */
 	pad_payload_len = RTE_ALIGN_CEIL(rte_pktmbuf_pkt_len(m) + 2,
@@ -186,7 +186,7 @@ esp4_tunnel_outbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 	padding = rte_pktmbuf_append(m, pad_len + sa->digest_len);
 
-	IPSEC_ASSERT(padding != NULL);
+	RTE_ASSERT(padding != NULL);
 
 	ip = ip4ip_outbound(m, sizeof(struct esp_hdr) + sa->iv_len,
 			sa->src, sa->dst);
@@ -238,9 +238,9 @@ esp4_tunnel_outbound_post_crypto(struct rte_mbuf *m __rte_unused,
 		struct ipsec_sa *sa __rte_unused,
 		struct rte_crypto_op *cop)
 {
-	IPSEC_ASSERT(m != NULL);
-	IPSEC_ASSERT(sa != NULL);
-	IPSEC_ASSERT(cop != NULL);
+	RTE_ASSERT(m != NULL);
+	RTE_ASSERT(sa != NULL);
+	RTE_ASSERT(cop != NULL);
 
 	if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
 		RTE_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");

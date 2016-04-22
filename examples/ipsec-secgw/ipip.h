@@ -49,13 +49,13 @@ ip4ip_outbound(struct rte_mbuf *m, uint32_t offset, uint32_t src, uint32_t dst)
 
 	inip = rte_pktmbuf_mtod(m, struct ip*);
 
-	IPSEC_ASSERT(inip->ip_v == IPVERSION || inip->ip_v == IPV6_VERSION);
+	RTE_ASSERT(inip->ip_v == IPVERSION || inip->ip_v == IPV6_VERSION);
 
 	offset += sizeof(struct ip);
 
 	outip = (struct ip *)rte_pktmbuf_prepend(m, offset);
 
-	IPSEC_ASSERT(outip != NULL);
+	RTE_ASSERT(outip != NULL);
 
 	/* Per RFC4301 5.1.2.1 */
 	outip->ip_v = IPVERSION;
@@ -83,14 +83,14 @@ ip4ip_inbound(struct rte_mbuf *m, uint32_t offset)
 
 	outip = rte_pktmbuf_mtod(m, struct ip*);
 
-	IPSEC_ASSERT(outip->ip_v == IPVERSION);
+	RTE_ASSERT(outip->ip_v == IPVERSION);
 
 	offset += sizeof(struct ip);
 	inip = (struct ip *)rte_pktmbuf_adj(m, offset);
-	IPSEC_ASSERT(inip->ip_v == IPVERSION || inip->ip_v == IPV6_VERSION);
+	RTE_ASSERT(inip->ip_v == IPVERSION || inip->ip_v == IPV6_VERSION);
 
 	/* Check packet is still bigger than IP header (inner) */
-	IPSEC_ASSERT(rte_pktmbuf_pkt_len(m) > sizeof(struct ip));
+	RTE_ASSERT(rte_pktmbuf_pkt_len(m) > sizeof(struct ip));
 
 	/* RFC4301 5.1.2.1 Note 6 */
 	if ((inip->ip_tos & htons(IPTOS_ECN_ECT0 | IPTOS_ECN_ECT1)) &&

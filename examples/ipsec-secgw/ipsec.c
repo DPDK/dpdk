@@ -117,7 +117,7 @@ ipsec_processing(struct ipsec_ctx *ipsec_ctx, struct rte_mbuf *pkts[],
 		sa = sas[i];
 		priv->sa = sa;
 
-		IPSEC_ASSERT(sa != NULL);
+		RTE_ASSERT(sa != NULL);
 
 		priv->cop.type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 
@@ -139,7 +139,7 @@ ipsec_processing(struct ipsec_ctx *ipsec_ctx, struct rte_mbuf *pkts[],
 			continue;
 		}
 
-		IPSEC_ASSERT(sa->cdev_id_qp < ipsec_ctx->nb_qps);
+		RTE_ASSERT(sa->cdev_id_qp < ipsec_ctx->nb_qps);
 		enqueue_cop(&ipsec_ctx->tbl[sa->cdev_id_qp], &priv->cop);
 	}
 
@@ -166,7 +166,7 @@ ipsec_processing(struct ipsec_ctx *ipsec_ctx, struct rte_mbuf *pkts[],
 			priv = get_priv(pkt);
 			sa = priv->sa;
 
-			IPSEC_ASSERT(sa != NULL);
+			RTE_ASSERT(sa != NULL);
 
 			ret = sa->post_crypto(pkt, sa, cops[j]);
 			if (unlikely(ret))

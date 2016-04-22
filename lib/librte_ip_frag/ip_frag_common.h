@@ -38,17 +38,9 @@
 
 /* logging macros. */
 #ifdef RTE_LIBRTE_IP_FRAG_DEBUG
-
 #define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, USER1, fmt, ##args)
-
-#define	IP_FRAG_ASSERT(exp)					\
-if (!(exp))	{							\
-	rte_panic("function %s, line%d\tassert \"" #exp "\" failed\n",	\
-		__func__, __LINE__);					\
-}
 #else
 #define	IP_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
-#define IP_FRAG_ASSERT(exp)	do {} while (0)
 #endif /* IP_FRAG_DEBUG */
 
 #define IPV4_KEYLEN 1

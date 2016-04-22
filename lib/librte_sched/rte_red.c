@@ -77,7 +77,7 @@ __rte_red_init_tables(void)
 
 	scale = 1024.0;
 
-	RTE_RED_ASSERT(RTE_RED_WQ_LOG2_NUM == RTE_DIM(rte_red_log2_1_minus_Wq));
+	RTE_ASSERT(RTE_RED_WQ_LOG2_NUM == RTE_DIM(rte_red_log2_1_minus_Wq));
 
 	for (i = RTE_RED_WQ_LOG2_MIN; i <= RTE_RED_WQ_LOG2_MAX; i++) {
 		double n = (double)i;

@@ -512,7 +512,7 @@ mux_machine(struct bond_dev_private *internals, uint8_t slave_id)
 
 	if (!ACTOR_STATE(port, SYNCHRONIZATION)) {
 		/* attach mux to aggregator */
-		RTE_VERIFY((port->actor_state & (STATE_COLLECTING |
+		RTE_ASSERT((port->actor_state & (STATE_COLLECTING |
 			STATE_DISTRIBUTING)) == 0);
 
 		ACTOR_STATE_SET(port, SYNCHRONIZATION);
@@ -813,7 +813,7 @@ bond_mode_8023ad_periodic_cb(void *arg)
 			struct lacpdu_header *lacp;
 
 			lacp = rte_pktmbuf_mtod(lacp_pkt, struct lacpdu_header *);
-			RTE_VERIFY(lacp->lacpdu.subtype == SLOW_SUBTYPE_LACP);
+			RTE_ASSERT(lacp->lacpdu.subtype == SLOW_SUBTYPE_LACP);
 
 			/* This is LACP frame so pass it to rx_machine */
 			rx_machine(internals, slave_id, &lacp->lacpdu);
@@ -856,8 +856,9 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	uint16_t q_id;
 
 	/* Given slave mus not be in active list */
-	RTE_VERIFY(find_slave_by_id(internals->active_slaves,
+	RTE_ASSERT(find_slave_by_id(internals->active_slaves,
 	internals->active_slave_count, slave_id) == internals->active_slave_count);
+	RTE_SET_USED(internals); /* used only for assert when enabled */
 
 	memcpy(&port->actor, &initial, sizeof(struct port_params));
 	/* Standard requires that port ID must be grater than 0.
@@ -880,8 +881,8 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	if (port->mbuf_pool != NULL)
 		return;
 
-	RTE_VERIFY(port->rx_ring == NULL);
-	RTE_VERIFY(port->tx_ring == NULL);
+	RTE_ASSERT(port->rx_ring == NULL);
+	RTE_ASSERT(port->tx_ring == NULL);
 	socket_id = rte_eth_devices[slave_id].data->numa_node;
 
 	element_size = sizeof(struct slow_protocol_frame) + sizeof(struct rte_mbuf)
@@ -939,7 +940,7 @@ bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev,
 	uint8_t i;
 
 	/* Given slave must be in active list */
-	RTE_VERIFY(find_slave_by_id(internals->active_slaves,
+	RTE_ASSERT(find_slave_by_id(internals->active_slaves,
 	internals->active_slave_count, slave_id) < internals->active_slave_count);
 
 	/* Exclude slave from transmit policy. If this slave is an aggregator

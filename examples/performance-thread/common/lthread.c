@@ -143,7 +143,7 @@ struct lthread_stack *_stack_alloc(void)
 	struct lthread_stack *s;
 
 	s = _lthread_objcache_alloc((THIS_SCHED)->stack_cache);
-	LTHREAD_ASSERT(s != NULL);
+	RTE_ASSERT(s != NULL);
 
 	s->root_sched = THIS_SCHED;
 	s->stack_size = LTHREAD_MAX_STACK_SIZE;

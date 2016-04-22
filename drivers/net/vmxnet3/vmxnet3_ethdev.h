@@ -34,14 +34,6 @@
 #ifndef _VMXNET3_ETHDEV_H_
 #define _VMXNET3_ETHDEV_H_
 
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER
-#define VMXNET3_ASSERT(x) do {			   \
-	if (!(x)) rte_panic("VMXNET3: %s\n", #x); \
-} while(0)
-#else
-#define VMXNET3_ASSERT(x) do { (void)(x); } while (0)
-#endif
-
 #define VMXNET3_MAX_MAC_ADDRS 1
 
 /* UPT feature to negotiate */

@@ -938,12 +938,6 @@ struct rte_pktmbuf_pool_private {
 		rte_mbuf_sanity_check(m, is_h);          \
 } while (0)
 
-/**  MBUF asserts in debug mode */
-#define RTE_MBUF_ASSERT(exp)                                         \
-if (!(exp)) {                                                        \
-	rte_panic("line%d\tassert \"" #exp "\" failed\n", __LINE__); \
-}
-
 #else /*  RTE_LIBRTE_MBUF_DEBUG */
 
 /**  check mbuf type in debug mode */
@@ -951,9 +945,6 @@ if (!(exp)) {                                                        \
 
 /**  check mbuf type in debug mode if mbuf pointer is not null */
 #define __rte_mbuf_sanity_check_raw(m, is_h) do { } while (0)
-
-/**  MBUF asserts in debug mode */
-#define RTE_MBUF_ASSERT(exp)                do { } while (0)
 
 #endif /*  RTE_LIBRTE_MBUF_DEBUG */
 
@@ -1084,7 +1075,7 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	if (rte_mempool_get(mp, &mb) < 0)
 		return NULL;
 	m = (struct rte_mbuf *)mb;
-	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
+	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 0);
 	rte_mbuf_refcnt_set(m, 1);
 	return m;
 }
@@ -1100,7 +1091,7 @@ static inline struct rte_mbuf *__rte_mbuf_raw_alloc(struct rte_mempool *mp)
 static inline void __attribute__((always_inline))
 __rte_mbuf_raw_free(struct rte_mbuf *m)
 {
-	RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(m) == 0);
+	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 0);
 	rte_mempool_put(m->pool, m);
 }
 
@@ -1388,22 +1379,22 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	switch (count % 4) {
 	case 0:
 		while (idx != count) {
-			RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
+			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 	case 3:
-			RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
+			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 	case 2:
-			RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
+			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 	case 1:
-			RTE_MBUF_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
+			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
@@ -1431,7 +1422,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
 {
 	struct rte_mbuf *md;
 
-	RTE_MBUF_ASSERT(RTE_MBUF_DIRECT(mi) &&
+	RTE_ASSERT(RTE_MBUF_DIRECT(mi) &&
 	    rte_mbuf_refcnt_read(mi) == 1);
 
 	/* if m is not direct, get the mbuf that embeds the data */

@@ -155,16 +155,6 @@ static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
 	return (struct enic *)eth_dev->data->dev_private;
 }
 
-#define RTE_LIBRTE_ENIC_ASSERT_ENABLE
-#ifdef RTE_LIBRTE_ENIC_ASSERT_ENABLE
-#define ASSERT(x) do {			\
-	if (!(x))			\
-		rte_panic("ENIC: x");	\
-} while (0)
-#else
-#define ASSERT(x)
-#endif
-
 extern void enic_fdir_stats_get(struct enic *enic,
 	struct rte_eth_fdir_stats *stats);
 extern int enic_fdir_add_fltr(struct enic *enic,

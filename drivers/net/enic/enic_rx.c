@@ -238,8 +238,8 @@ static inline uint32_t
 enic_ring_add(uint32_t n_descriptors, uint32_t i0, uint32_t i1)
 {
 	uint32_t d = i0 + i1;
-	ASSERT(i0 < n_descriptors);
-	ASSERT(i1 < n_descriptors);
+	RTE_ASSERT(i0 < n_descriptors);
+	RTE_ASSERT(i1 < n_descriptors);
 	d -= (d >= n_descriptors) ? n_descriptors : 0;
 	return d;
 }

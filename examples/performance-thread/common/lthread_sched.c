@@ -268,7 +268,7 @@ struct lthread_sched *_lthread_sched_create(size_t stack_size)
 	struct lthread_sched *new_sched;
 	unsigned lcoreid = rte_lcore_id();
 
-	LTHREAD_ASSERT(stack_size <= LTHREAD_MAX_STACK_SIZE);
+	RTE_ASSERT(stack_size <= LTHREAD_MAX_STACK_SIZE);
 
 	if (stack_size == 0)
 		stack_size = LTHREAD_MAX_STACK_SIZE;
