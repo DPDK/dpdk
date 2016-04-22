@@ -52,11 +52,8 @@
 if (!(exp)) {                                                        \
 	rte_panic("line%d\tassert \"" #exp "\" failed\n", __LINE__); \
 }
-
-#define IPSEC_LOG RTE_LOG
 #else
 #define IPSEC_ASSERT(exp) do {} while (0)
-#define IPSEC_LOG(...) do {} while (0)
 #endif /* IPSEC_DEBUG */
 
 #define MAX_DIGEST_SIZE 32 /* Bytes -- 256 bits */

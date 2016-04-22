@@ -52,19 +52,6 @@
 #define BURST_SIZE 32
 #define RTE_RING_SZ 1024
 
-/* uncommnet below line to enable debug logs */
-/* #define DEBUG */
-
-#ifdef DEBUG
-#define LOG_LEVEL RTE_LOG_DEBUG
-#define LOG_DEBUG(log_type, fmt, args...) do {	\
-	RTE_LOG(DEBUG, log_type, fmt, ##args);		\
-} while (0)
-#else
-#define LOG_LEVEL RTE_LOG_INFO
-#define LOG_DEBUG(log_type, fmt, args...) do {} while (0)
-#endif
-
 #define RTE_LOGTYPE_DISTRAPP RTE_LOGTYPE_USER1
 
 /* mask of enabled ports */
@@ -240,7 +227,8 @@ lcore_rx(struct lcore_params *p)
 		uint16_t sent = rte_ring_enqueue_burst(r, (void *)bufs, nb_ret);
 		app_stats.rx.enqueued_pkts += sent;
 		if (unlikely(sent < nb_ret)) {
-			LOG_DEBUG(DISTRAPP, "%s:Packet loss due to full ring\n", __func__);
+			RTE_LOG(DEBUG, DISTRAPP,
+				"%s:Packet loss due to full ring\n", __func__);
 			while (sent < nb_ret)
 				rte_pktmbuf_free(bufs[sent++]);
 		}
@@ -271,7 +259,8 @@ flush_one_port(struct output_buffer *outbuf, uint8_t outp)
 	app_stats.tx.tx_pkts += nb_tx;
 
 	if (unlikely(nb_tx < outbuf->count)) {
-		LOG_DEBUG(DISTRAPP, "%s:Packet loss with tx_burst\n", __func__);
+		RTE_LOG(DEBUG, DISTRAPP,
+			"%s:Packet loss with tx_burst\n", __func__);
 		do {
 			rte_pktmbuf_free(outbuf->mbufs[nb_tx]);
 		} while (++nb_tx < outbuf->count);

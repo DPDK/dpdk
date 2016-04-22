@@ -72,6 +72,9 @@
 #include <rte_string_fns.h>
 #include <rte_acl.h>
 
+#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+#define L3FWDACL_DEBUG
+#endif
 #define DO_RFC_1812_CHECKS
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1

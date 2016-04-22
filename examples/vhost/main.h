@@ -34,18 +34,6 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-//#define DEBUG
-
-#ifdef DEBUG
-#define LOG_LEVEL RTE_LOG_DEBUG
-#define LOG_DEBUG(log_type, fmt, args...) do {	\
-	RTE_LOG(DEBUG, log_type, fmt, ##args);		\
-} while (0)
-#else
-#define LOG_LEVEL RTE_LOG_INFO
-#define LOG_DEBUG(log_type, fmt, args...) do{} while(0)
-#endif
-
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER2

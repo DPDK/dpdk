@@ -507,32 +507,6 @@ static unsigned check_ports_num(unsigned nb_ports)
 }
 
 /*
- * Macro to print out packet contents. Wrapped in debug define so that the
- * data path is not effected when debug is disabled.
- */
-#ifdef DEBUG
-#define PRINT_PACKET(device, addr, size, header) do {																\
-	char *pkt_addr = (char*)(addr);																					\
-	unsigned int index;																								\
-	char packet[MAX_PRINT_BUFF];																					\
-																													\
-	if ((header))																									\
-		snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Header size %d: ", (device->device_fh), (size));				\
-	else																											\
-		snprintf(packet, MAX_PRINT_BUFF, "(%"PRIu64") Packet size %d: ", (device->device_fh), (size));				\
-	for (index = 0; index < (size); index++) {																		\
-		snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF),	\
-			"%02hhx ", pkt_addr[index]);																			\
-	}																												\
-	snprintf(packet + strnlen(packet, MAX_PRINT_BUFF), MAX_PRINT_BUFF - strnlen(packet, MAX_PRINT_BUFF), "\n");	\
-																													\
-	LOG_DEBUG(VHOST_DATA, "%s", packet);																					\
-} while(0)
-#else
-#define PRINT_PACKET(device, addr, size, header) do{} while(0)
-#endif
-
-/*
  * Function to convert guest physical addresses to vhost virtual addresses. This
  * is used to convert virtio buffer addresses.
  */
@@ -551,7 +525,7 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 			break;
 		}
 	}
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") GPA %p| VVA %p\n",
+	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") GPA %p| VVA %p\n",
 		dev->device_fh, (void*)(uintptr_t)guest_pa, (void*)(uintptr_t)vhost_va);
 
 	return vhost_va;
@@ -581,7 +555,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 	uint8_t success = 0;
 	void *userdata;
 
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_rx()\n", dev->device_fh);
+	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") virtio_dev_rx()\n", dev->device_fh);
 	vq = dev->virtqueue_rx;
 	count = (count > MAX_PKT_BURST) ? MAX_PKT_BURST : count;
 	/* As many data cores may want access to available buffers, they need to be reserved. */
@@ -606,7 +580,8 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 									res_end_idx);
 	} while (unlikely(success == 0));
 	res_cur_idx = res_base_idx;
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Current Index %d| End Index %d\n", dev->device_fh, res_cur_idx, res_end_idx);
+	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") Current Index %d| End Index %d\n",
+		dev->device_fh, res_cur_idx, res_end_idx);
 
 	/* Prefetch available ring to retrieve indexes. */
 	rte_prefetch0(&vq->avail->ring[res_cur_idx & (vq->size - 1)]);
@@ -800,17 +775,22 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 
 			/* Drop the packet if the TX packet is destined for the TX device. */
 			if (dev_ll->dev->device_fh == dev->device_fh) {
-				LOG_DEBUG(VHOST_DATA, "(%"PRIu64") TX: Source and destination MAC addresses are the same. Dropping packet.\n",
-							dev_ll->dev->device_fh);
+				RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
+					"Source and destination MAC addresses are the same. "
+					"Dropping packet.\n",
+					dev_ll->dev->device_fh);
 				return 0;
 			}
 
 
-			LOG_DEBUG(VHOST_DATA, "(%"PRIu64") TX: MAC address is local\n", dev_ll->dev->device_fh);
+			RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
+				"MAC address is local\n", dev_ll->dev->device_fh);
 
 			if (dev_ll->dev->remove) {
 				/*drop the packet if the device is marked for removal*/
-				LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Device is marked for removal\n", dev_ll->dev->device_fh);
+				RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") "
+					"Device is marked for removal\n",
+					dev_ll->dev->device_fh);
 			} else {
 				/*send the packet to the local virtio device*/
 				ret = virtio_dev_rx(dev_ll->dev, &m, 1);
@@ -849,7 +829,8 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 		return;
 	}
 
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") TX: MAC address is external\n", dev->device_fh);
+	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
+		"MAC address is external\n", dev->device_fh);
 
 	/*Add packet to the port tx queue*/
 	tx_q = &lcore_tx_queue[lcore_id];
@@ -922,7 +903,8 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 	if (vq->last_used_idx == avail_idx)
 		return;
 
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_tx()\n", dev->device_fh);
+	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") virtio_dev_tx()\n",
+		dev->device_fh);
 
 	/* Prefetch available ring to retrieve head indexes. */
 	rte_prefetch0(&vq->avail->ring[vq->last_used_idx & (vq->size - 1)]);
@@ -931,7 +913,8 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 	free_entries = avail_idx - vq->last_used_idx;
 	free_entries = unlikely(free_entries < MAX_PKT_BURST) ? free_entries : MAX_PKT_BURST;
 
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") Buffers available %d\n", dev->device_fh, free_entries);
+	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") Buffers available %d\n",
+		dev->device_fh, free_entries);
 	/* Retrieve all of the head indexes first to avoid caching issues. */
 	for (i = 0; i < free_entries; i++)
 		head[i] = vq->avail->ring[(vq->last_used_idx + i) & (vq->size - 1)];
@@ -1020,7 +1003,9 @@ switch_worker(__attribute__((unused)) void *arg)
 		if (unlikely(diff_tsc > drain_tsc)) {
 
 			if (tx_q->len) {
-				LOG_DEBUG(VHOST_DATA, "TX queue drained after timeout with burst size %u \n", tx_q->len);
+				RTE_LOG(DEBUG, VHOST_DATA,
+					"TX queue drained after timeout with burst size %u\n",
+					tx_q->len);
 
 				/*Tx any packets in the queue*/
 				ret = rte_eth_tx_burst(ports[0], (uint16_t)tx_q->txq_id,
@@ -1481,9 +1466,6 @@ main(int argc, char *argv[])
 		RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
-
-	/* Set log level. */
-	rte_set_log_level(LOG_LEVEL);
 
 	/* initialize all ports */
 	for (portid = 0; portid < nb_ports; portid++) {

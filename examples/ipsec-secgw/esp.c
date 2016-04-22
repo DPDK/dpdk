@@ -83,7 +83,7 @@ esp4_tunnel_inbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 		sa->digest_len;
 
 	if ((payload_len & (sa->block_size - 1)) || (payload_len <= 0)) {
-		IPSEC_LOG(DEBUG, IPSEC_ESP, "payload %d not multiple of %u\n",
+		RTE_LOG(DEBUG, IPSEC_ESP, "payload %d not multiple of %u\n",
 				payload_len, sa->block_size);
 		return -EINVAL;
 	}
@@ -129,7 +129,7 @@ esp4_tunnel_inbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 	IPSEC_ASSERT(cop != NULL);
 
 	if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		IPSEC_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");
+		RTE_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");
 		return -1;
 	}
 
@@ -140,13 +140,13 @@ esp4_tunnel_inbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 	padding = pad_len - *pad_len;
 	for (i = 0; i < *pad_len; i++) {
 		if (padding[i] != i) {
-			IPSEC_LOG(ERR, IPSEC_ESP, "invalid pad_len field\n");
+			RTE_LOG(ERR, IPSEC_ESP, "invalid pad_len field\n");
 			return -EINVAL;
 		}
 	}
 
 	if (rte_pktmbuf_trim(m, *pad_len + 2 + sa->digest_len)) {
-		IPSEC_LOG(ERR, IPSEC_ESP,
+		RTE_LOG(ERR, IPSEC_ESP,
 				"failed to remove pad_len + digest\n");
 		return -EINVAL;
 	}
@@ -180,7 +180,7 @@ esp4_tunnel_outbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 	/* Check maximum packet size */
 	if (unlikely(IP_ESP_HDR_SZ + sa->iv_len + pad_payload_len +
 				sa->digest_len > IP_MAXPACKET)) {
-		IPSEC_LOG(DEBUG, IPSEC_ESP, "ipsec packet is too big\n");
+		RTE_LOG(DEBUG, IPSEC_ESP, "ipsec packet is too big\n");
 		return -EINVAL;
 	}
 
@@ -195,7 +195,7 @@ esp4_tunnel_outbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 	esp->spi = sa->spi;
 	esp->seq = htonl(sa->seq++);
 
-	IPSEC_LOG(DEBUG, IPSEC_ESP, "pktlen %u\n", rte_pktmbuf_pkt_len(m));
+	RTE_LOG(DEBUG, IPSEC_ESP, "pktlen %u\n", rte_pktmbuf_pkt_len(m));
 
 	/* Fill pad_len using default sequential scheme */
 	for (i = 0; i < pad_len - 2; i++)
@@ -243,7 +243,7 @@ esp4_tunnel_outbound_post_crypto(struct rte_mbuf *m __rte_unused,
 	IPSEC_ASSERT(cop != NULL);
 
 	if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		IPSEC_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");
+		RTE_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");
 		return -1;
 	}
 
