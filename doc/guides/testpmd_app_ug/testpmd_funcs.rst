@@ -1198,6 +1198,15 @@ RX scatter mode is off by default.
 
 The ``on`` option is equivalent to the ``--enable-scatter`` command-line option.
 
+port config - TX queue flags
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set a hexadecimal bitmap of TX queue flags for all ports::
+
+   testpmd> port config all txqflags value
+
+This command is equivalent to the ``--txqflags`` command-line option.
+
 port config - RX Checksum
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
