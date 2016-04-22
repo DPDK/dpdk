@@ -287,7 +287,10 @@ pci_vfio_mp_sync_thread(void __rte_unused * arg)
 		struct linger l;
 		l.l_onoff = 1;
 		l.l_linger = 60;
-		setsockopt(conn_sock, SOL_SOCKET, SO_LINGER, &l, sizeof(l));
+
+		if (setsockopt(conn_sock, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0)
+			RTE_LOG(WARNING, EAL, "Cannot set SO_LINGER option "
+					"on listen socket (%s)\n", strerror(errno));
 
 		ret = vfio_mp_sync_receive_request(conn_sock);
 
