@@ -4397,9 +4397,19 @@ ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 	if (ixgbe_vmdq_mode_check(hw) < 0)
 		return -ENOTSUP;
 
-	addr = IXGBE_VFRE(pool >= ETH_64_POOLS/2);
+	if (pool >= ETH_64_POOLS)
+		return -EINVAL;
+
+	/* for pool >= 32, set bit in PFVFRE[1], otherwise PFVFRE[0] */
+	if (pool >= 32) {
+		addr = IXGBE_VFRE(1);
+		val = bit1 << (pool - 32);
+	} else {
+		addr = IXGBE_VFRE(0);
+		val = bit1 << pool;
+	}
+
 	reg = IXGBE_READ_REG(hw, addr);
-	val = bit1 << pool;
 
 	if (on)
 		reg |= val;
@@ -4424,9 +4434,19 @@ ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
 	if (ixgbe_vmdq_mode_check(hw) < 0)
 		return -ENOTSUP;
 
-	addr = IXGBE_VFTE(pool >= ETH_64_POOLS/2);
+	if (pool >= ETH_64_POOLS)
+		return -EINVAL;
+
+	/* for pool >= 32, set bit in PFVFTE[1], otherwise PFVFTE[0] */
+	if (pool >= 32) {
+		addr = IXGBE_VFTE(1);
+		val = bit1 << (pool - 32);
+	} else {
+		addr = IXGBE_VFTE(0);
+		val = bit1 << pool;
+	}
+
 	reg = IXGBE_READ_REG(hw, addr);
-	val = bit1 << pool;
 
 	if (on)
 		reg |= val;
