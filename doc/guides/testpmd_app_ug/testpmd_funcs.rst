@@ -1187,6 +1187,17 @@ CRC stripping is off by default.
 
 The ``on`` option is equivalent to the ``--crc-strip`` command-line option.
 
+port config - scatter
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Set RX scatter mode on or off for all ports::
+
+   testpmd> port config all scatter (on|off)
+
+RX scatter mode is off by default.
+
+The ``on`` option is equivalent to the ``--enable-scatter`` command-line option.
+
 port config - RX Checksum
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

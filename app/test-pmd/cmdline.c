@@ -559,10 +559,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config all max-pkt-len (value)\n"
 			"    Set the max packet length.\n\n"
 
-			"port config all (crc-strip|rx-cksum|hw-vlan|hw-vlan-filter|"
+			"port config all (crc-strip|scatter|rx-cksum|hw-vlan|hw-vlan-filter|"
 			"hw-vlan-strip|hw-vlan-extend|drop-en)"
 			" (on|off)\n"
-			"    Set crc-strip/rx-checksum/hardware-vlan/drop_en"
+			"    Set crc-strip/scatter/rx-checksum/hardware-vlan/drop_en"
 			" for ports.\n\n"
 
 			"port config all rss (all|ip|tcp|udp|sctp|ether|none)\n"
@@ -1410,6 +1410,15 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 			printf("Unknown parameter\n");
 			return;
 		}
+	} else if (!strcmp(res->name, "scatter")) {
+		if (!strcmp(res->value, "on"))
+			rx_mode.enable_scatter = 1;
+		else if (!strcmp(res->value, "off"))
+			rx_mode.enable_scatter = 0;
+		else {
+			printf("Unknown parameter\n");
+			return;
+		}
 	} else if (!strcmp(res->name, "rx-cksum")) {
 		if (!strcmp(res->value, "on"))
 			rx_mode.hw_ip_checksum = 1;
@@ -1487,7 +1496,7 @@ cmdline_parse_token_string_t cmd_config_rx_mode_flag_all =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, all, "all");
 cmdline_parse_token_string_t cmd_config_rx_mode_flag_name =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, name,
-					"crc-strip#rx-cksum#hw-vlan#"
+					"crc-strip#scatter#rx-cksum#hw-vlan#"
 					"hw-vlan-filter#hw-vlan-strip#hw-vlan-extend");
 cmdline_parse_token_string_t cmd_config_rx_mode_flag_value =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rx_mode_flag, value,
@@ -1496,7 +1505,7 @@ cmdline_parse_token_string_t cmd_config_rx_mode_flag_value =
 cmdline_parse_inst_t cmd_config_rx_mode_flag = {
 	.f = cmd_config_rx_mode_flag_parsed,
 	.data = NULL,
-	.help_str = "port config all crc-strip|rx-cksum|hw-vlan|"
+	.help_str = "port config all crc-strip|scatter|rx-cksum|hw-vlan|"
 		"hw-vlan-filter|hw-vlan-strip|hw-vlan-extend on|off",
 	.tokens = {
 		(void *)&cmd_config_rx_mode_flag_port,
