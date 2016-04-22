@@ -88,9 +88,7 @@ the wrong socket, the application simply will not start.
 On application startup, there is a lot of EAL information printed. Is there any way to reduce this?
 ---------------------------------------------------------------------------------------------------
 
-Yes, each EAL has a configuration file that is located in the /config directory. Within each configuration file, you will find CONFIG_RTE_LOG_LEVEL=8.
-You can change this to a lower value, such as 6 to reduce this printout of debug information. The following is a list of LOG levels that can be found in the rte_log.h file.
-You must remove, then rebuild, the EAL directory for the change to become effective as the configuration file creates the rte_config.h file in the EAL directory.
+Yes, the option ``--log-level=`` accepts one of these numbers:
 
 .. code-block:: c
 
@@ -102,6 +100,9 @@ You must remove, then rebuild, the EAL directory for the change to become effect
     #define RTE_LOG_NOTICE 6U   /* Normal but significant condition. */
     #define RTE_LOG_INFO 7U     /* Informational. */
     #define RTE_LOG_DEBUG 8U    /* Debug-level messages. */
+
+It is also possible to change the maximum (and default level) at compile time
+with ``CONFIG_RTE_LOG_LEVEL``.
 
 
 How can I tune my network application to achieve lower latency?

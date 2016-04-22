@@ -333,5 +333,10 @@ rte_eal_common_log_init(FILE *default_log)
 
 	default_log_stream = default_log;
 	rte_openlog_stream(default_log);
+
+#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+	RTE_LOG(NOTICE, EAL, "Debug logs available - lower performance\n");
+#endif
+
 	return 0;
 }

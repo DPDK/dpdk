@@ -139,7 +139,11 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 
 	internal_cfg->syslog_facility = LOG_DAEMON;
 	/* default value from build option */
+#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+	internal_cfg->log_level = RTE_LOG_INFO;
+#else
 	internal_cfg->log_level = RTE_LOG_LEVEL;
+#endif
 
 	internal_cfg->xen_dom0_support = 0;
 
