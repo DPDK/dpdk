@@ -271,8 +271,6 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie,
 		idx = start_dp[idx].next;
 	} while ((cookie = cookie->next) != NULL);
 
-	start_dp[idx].flags &= ~VRING_DESC_F_NEXT;
-
 	if (use_indirect)
 		idx = txvq->vq_ring.desc[head_idx].next;
 
