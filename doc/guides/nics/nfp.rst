@@ -61,9 +61,8 @@ instructions.
 
 DPDK runs in userspace and PMDs uses the Linux kernel UIO interface to
 allow access to physical devices from userspace. The NFP PMD requires
-a separate UIO driver, **nfp_uio**, to perform correct
-initialization. This driver is part of Netronome´s BSP and it is
-equivalent to Intel's igb_uio driver.
+the **igb_uio** UIO driver, available with DPDK, to perform correct
+initialization.
 
 Building the software
 ---------------------
@@ -201,27 +200,18 @@ Using the NFP PMD is not different to using other PMDs. Usual steps are:
 
    The module should now be listed by the lsmod command.
 
-#. **To install the nfp_uio kernel module (manually):** This module supports
-   NFP-6xxx devices through the UIO interface.
-
-   This module is part of Netronome´s BSP and it should be available when the
-   BSP is installed.
+#. **To install the igb_uio kernel module (manually):** This module is part
+   of DPDK sources and configured by default (CONFIG_RTE_EAL_IGB_UIO=y).
 
    .. code-block:: console
 
-      modprobe nfp_uio.ko
+      modprobe igb_uio.ko
 
    The module should now be listed by the lsmod command.
 
-   Depending on which NFP modules are loaded, nfp_uio may be automatically
-   bound to the NFP PCI devices by the system. Otherwise the binding needs
-   to be done explicitly. This is the case when nfp_netvf, the Linux kernel
-   driver for NFP VFs, was loaded when VFs were created. As described later
-   in this document this configuration may also be performed using scripts
-   provided by the Netronome´s BSP.
-
-   First the device needs to be unbound, for example from the nfp_netvf
-   driver:
+   Depending on which NFP modules are loaded, it could be necessary to
+   detach NFP devices from the nfp_netvf module. If this is the case the
+   device needs to be unbound, for example:
 
    .. code-block:: console
 
@@ -232,30 +222,25 @@ Using the NFP PMD is not different to using other PMDs. Usual steps are:
    The output of lspci should now show that 0000:03:08.0 is not bound to
    any driver.
 
-   The next step is to add the NFP PCI ID to the NFP UIO driver:
+   The next step is to add the NFP PCI ID to the IGB UIO driver:
 
    .. code-block:: console
 
-      echo 19ee 6003 > /sys/bus/pci/drivers/nfp_uio/new_id
+      echo 19ee 6003 > /sys/bus/pci/drivers/igb_uio/new_id
 
-   And then to bind the device to the nfp_uio driver:
+   And then to bind the device to the igb_uio driver:
 
    .. code-block:: console
 
-      echo 0000:03:08.0 > /sys/bus/pci/drivers/nfp_uio/bind
+      echo 0000:03:08.0 > /sys/bus/pci/drivers/igb_uio/bind
 
       lspci -d19ee: -k
 
-   lspci should show that device bound to nfp_uio driver.
+   lspci should show that device bound to igb_uio driver.
 
-#. **Using tools from Netronome´s BSP to install and bind modules:** DPDK provides
-   scripts which are useful for installing the UIO modules and for binding the
-   right device to those modules avoiding doing so manually. However, these scripts
-   have not support for Netronome´s UIO driver. Along with drivers, the BSP installs
-   those DPDK scripts slightly modified with support for Netronome´s UIO driver.
-
-   Those specific scripts can be found in Netronome´s BSP installation directory.
-   Refer to BSP documentation for more information.
+#. **Using scripts to install and bind modules:** DPDK provides scripts which are
+   useful for installing the UIO modules and for binding the right device to those
+   modules avoiding doing so manually:
 
    * **setup.sh**
    * **dpdk_nic_bind.py**
