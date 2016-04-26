@@ -38,6 +38,7 @@ LIB = librte_pmd_vhost.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lrte_vhost
 
 EXPORT_MAP := rte_pmd_vhost_version.map
 
