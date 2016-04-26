@@ -1658,9 +1658,9 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, __m128i dp1, __m128i dp2)
 
 	/* if dest port value has changed. */
 	if (v != GRPMSK) {
-		lp = pnum->u16 + gptbl[v].idx;
-		lp[0] = 1;
 		pnum->u64 = gptbl[v].pnum;
+		pnum->u16[FWDSTEP] = 1;
+		lp = pnum->u16 + gptbl[v].idx;
 	}
 
 	return lp;
