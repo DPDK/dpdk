@@ -147,7 +147,8 @@ kni_net_rx_normal(struct kni_dev *kni)
 	/* Transfer received packets to netif */
 	for (i = 0; i < num_rx; i++) {
 		kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
-		len = kva->data_len;
+		len = kva->pkt_len;
+
 		data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va
 				+ kni->mbuf_kva;
 
@@ -156,22 +157,41 @@ kni_net_rx_normal(struct kni_dev *kni)
 			KNI_ERR("Out of mem, dropping pkts\n");
 			/* Update statistics */
 			kni->stats.rx_dropped++;
+			continue;
 		}
-		else {
-			/* Align IP on 16B boundary */
-			skb_reserve(skb, 2);
+
+		/* Align IP on 16B boundary */
+		skb_reserve(skb, 2);
+
+		if (kva->nb_segs == 1) {
 			memcpy(skb_put(skb, len), data_kva, len);
-			skb->dev = dev;
-			skb->protocol = eth_type_trans(skb, dev);
-			skb->ip_summed = CHECKSUM_UNNECESSARY;
+		} else {
+			int nb_segs;
+			int kva_nb_segs = kva->nb_segs;
 
-			/* Call netif interface */
-			netif_rx_ni(skb);
+			for (nb_segs = 0; nb_segs < kva_nb_segs; nb_segs++) {
+				memcpy(skb_put(skb, kva->data_len),
+					data_kva, kva->data_len);
 
-			/* Update statistics */
-			kni->stats.rx_bytes += len;
-			kni->stats.rx_packets++;
+				if (!kva->next)
+					break;
+
+				kva = kva->next - kni->mbuf_va + kni->mbuf_kva;
+				data_kva = kva->buf_addr + kva->data_off
+					- kni->mbuf_va + kni->mbuf_kva;
+			}
 		}
+
+		skb->dev = dev;
+		skb->protocol = eth_type_trans(skb, dev);
+		skb->ip_summed = CHECKSUM_UNNECESSARY;
+
+		/* Call netif interface */
+		netif_rx_ni(skb);
+
+		/* Update statistics */
+		kni->stats.rx_bytes += len;
+		kni->stats.rx_packets++;
 	}
 
 	/* Burst enqueue mbufs into free_q */
@@ -308,7 +328,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	/* Copy mbufs to sk buffer and then call tx interface */
 	for (i = 0; i < num; i++) {
 		kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
-		len = kva->data_len;
+		len = kva->pkt_len;
 		data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va +
 				kni->mbuf_kva;
 
@@ -329,20 +349,39 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		if (skb == NULL) {
 			KNI_ERR("Out of mem, dropping pkts\n");
 			kni->stats.rx_dropped++;
+			continue;
 		}
-		else {
-			/* Align IP on 16B boundary */
-			skb_reserve(skb, 2);
+
+		/* Align IP on 16B boundary */
+		skb_reserve(skb, 2);
+
+		if (kva->nb_segs == 1) {
 			memcpy(skb_put(skb, len), data_kva, len);
-			skb->dev = dev;
-			skb->ip_summed = CHECKSUM_UNNECESSARY;
+		} else {
+			int nb_segs;
+			int kva_nb_segs = kva->nb_segs;
 
-			kni->stats.rx_bytes += len;
-			kni->stats.rx_packets++;
+			for (nb_segs = 0; nb_segs < kva_nb_segs; nb_segs++) {
+				memcpy(skb_put(skb, kva->data_len),
+					data_kva, kva->data_len);
 
-			/* call tx interface */
-			kni_net_tx(skb, dev);
+				if (!kva->next)
+					break;
+
+				kva = kva->next - kni->mbuf_va + kni->mbuf_kva;
+				data_kva = kva->buf_addr + kva->data_off
+					- kni->mbuf_va + kni->mbuf_kva;
+			}
 		}
+
+		skb->dev = dev;
+		skb->ip_summed = CHECKSUM_UNNECESSARY;
+
+		kni->stats.rx_bytes += len;
+		kni->stats.rx_packets++;
+
+		/* call tx interface */
+		kni_net_tx(skb, dev);
 	}
 
 	/* enqueue all the mbufs from rx_q into free_q */
