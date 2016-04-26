@@ -259,6 +259,8 @@ em_mask_key(void *key, xmm_t mask)
 
 	return vandq_s32(data, mask);
 }
+#else
+#error No vector engine (SSE, NEON) available, check your toolchain
 #endif
 
 static inline uint8_t
