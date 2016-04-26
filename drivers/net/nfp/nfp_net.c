@@ -323,7 +323,7 @@ nfp_net_tx_queue_release_mbufs(struct nfp_net_txq *txq)
 
 	for (i = 0; i < txq->tx_count; i++) {
 		if (txq->txbufs[i].mbuf) {
-			rte_pktmbuf_free_seg(txq->txbufs[i].mbuf);
+			rte_pktmbuf_free(txq->txbufs[i].mbuf);
 			txq->txbufs[i].mbuf = NULL;
 		}
 	}
@@ -1976,11 +1976,16 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 */
 		pkt_size = pkt->pkt_len;
 
-		while (pkt_size) {
-			/* Releasing mbuf which was prefetched above */
-			if (*lmbuf)
-				rte_pktmbuf_free_seg(*lmbuf);
+		/* Releasing mbuf which was prefetched above */
+		if (*lmbuf)
+			rte_pktmbuf_free(*lmbuf);
+		/*
+		 * Linking mbuf with descriptor for being released
+		 * next time descriptor is used
+		 */
+		*lmbuf = pkt;
 
+		while (pkt_size) {
 			dma_size = pkt->data_len;
 			dma_addr = rte_mbuf_data_dma_addr(pkt);
 			PMD_TX_LOG(DEBUG, "Working with mbuf at dma address:"
@@ -1993,12 +1998,6 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txds->dma_addr_lo = (dma_addr & 0xffffffff);
 			ASSERT(free_descs > 0);
 			free_descs--;
-
-			/*
-			 * Linking mbuf with descriptor for being released
-			 * next time descriptor is used
-			 */
-			*lmbuf = pkt;
 
 			txq->wr_p++;
 			txq->tail++;
