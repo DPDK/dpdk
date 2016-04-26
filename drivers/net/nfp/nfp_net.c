@@ -2466,7 +2466,8 @@ static struct eth_driver rte_nfp_net_pmd = {
 	{
 		.name = "rte_nfp_net_pmd",
 		.id_table = pci_id_nfp_net_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+			     RTE_PCI_DRV_DETACHABLE,
 	},
 	.eth_dev_init = nfp_net_init,
 	.dev_private_size = sizeof(struct nfp_net_adapter),
