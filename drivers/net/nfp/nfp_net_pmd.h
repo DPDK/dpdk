@@ -406,6 +406,7 @@ struct nfp_net_hw {
 	int stride_tx;
 
 	uint8_t *qcp_cfg;
+	rte_spinlock_t reconfig_lock;
 
 	uint32_t max_tx_queues;
 	uint32_t max_rx_queues;

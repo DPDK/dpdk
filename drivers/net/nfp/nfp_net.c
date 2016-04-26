@@ -54,6 +54,7 @@
 #include <rte_version.h>
 #include <rte_string_fns.h>
 #include <rte_alarm.h>
+#include <rte_spinlock.h>
 
 #include "nfp_net_pmd.h"
 #include "nfp_net_logs.h"
@@ -407,12 +408,16 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 	PMD_DRV_LOG(DEBUG, "nfp_net_reconfig: ctrl=%08x update=%08x\n",
 		    ctrl, update);
 
+	rte_spinlock_lock(&hw->reconfig_lock);
+
 	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, ctrl);
 	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
 
 	rte_wmb();
 
 	err = __nfp_net_reconfig(hw, update);
+
+	rte_spinlock_unlock(&hw->reconfig_lock);
 
 	if (!err)
 		return 0;
@@ -2398,6 +2403,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u\n",
 		     hw->max_rx_queues, hw->max_tx_queues);
+
+	/* Initializing spinlock for reconfigs */
+	rte_spinlock_init(&hw->reconfig_lock);
 
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", ETHER_ADDR_LEN, 0);
