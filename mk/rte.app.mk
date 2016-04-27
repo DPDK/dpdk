@@ -101,6 +101,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SZEDATA2)   += -lsze2
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lxenstore
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lgxio
 _LDLIBS-$(CONFIG_RTE_LIBRTE_NFP_PMD)        += -lm
+_LDLIBS-$(CONFIG_RTE_LIBRTE_QEDE_PMD)       += -lz
 # QAT / AESNI GCM PMDs are dependent on libcrypto (from openssl)
 # for calculating HMAC precomputes
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT),y)
@@ -147,6 +148,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_MPIPE_PMD)      += -lrte_pmd_mpipe
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_RING)       += -lrte_pmd_ring
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_PCAP)       += -lrte_pmd_pcap
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET)  += -lrte_pmd_af_packet
+_LDLIBS-$(CONFIG_RTE_LIBRTE_QEDE_PMD)       += -lrte_pmd_qede
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL)       += -lrte_pmd_null
 
 ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
