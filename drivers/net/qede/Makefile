@@ -74,6 +74,7 @@ $(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS+=$(CFLAGS_BASE_DRIVER)))
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_dev.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_hw.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_cxt.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_l2.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_sp_commands.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_init_fw_funcs.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_spq.c
@@ -82,6 +83,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_mcp.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_int.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/bcm_osal.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_eth_if.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_main.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_rxtx.c
 

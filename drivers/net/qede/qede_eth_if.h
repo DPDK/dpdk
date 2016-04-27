@@ -168,7 +168,7 @@ struct qed_eth_ops {
 
 extern const struct qed_common_ops qed_common_ops_pass;
 
-void qed_put_eth_ops(void);
+const struct qed_eth_ops *qed_get_eth_ops();
 
 int qed_configure_filter_rx_mode(struct ecore_dev *edev,
 				 enum qed_filter_rx_mode_type type);

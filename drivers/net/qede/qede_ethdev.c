@@ -420,6 +420,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->max_mac_addrs = qdev->dev_info.num_mac_addrs;
 	dev_info->max_vfs = (uint16_t)NUM_OF_VFS(&qdev->edev);
 	dev_info->driver_name = qdev->drv_ver;
+	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
 	dev_info->flow_type_rss_offloads = (uint64_t)QEDE_RSS_OFFLOAD_ALL;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -637,6 +638,14 @@ static int qede_dev_set_link_down(struct rte_eth_dev *eth_dev)
 	return qede_dev_set_link_state(eth_dev, false);
 }
 
+static void qede_reset_stats(struct rte_eth_dev *eth_dev)
+{
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+
+	ecore_reset_vport_stats(edev);
+}
+
 static void qede_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	enum qed_filter_rx_mode_type type =
@@ -751,6 +760,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_stop = qede_dev_stop,
 	.dev_close = qede_dev_close,
 	.stats_get = qede_get_stats,
+	.stats_reset = qede_reset_stats,
 	.mac_addr_add = qede_mac_addr_add,
 	.mac_addr_remove = qede_mac_addr_remove,
 	.mac_addr_set = qede_mac_addr_set,
@@ -813,6 +823,14 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	pci_dev = eth_dev->pci_dev;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
+	qed_ver = qed_get_protocol_version(QED_PROTOCOL_ETH);
+
+	qed_ops = qed_get_eth_ops();
+	if (!qed_ops) {
+		DP_ERR(edev, "Failed to get qed_eth_ops_pass\n");
+		return -EINVAL;
+	}
 
 	DP_INFO(edev, "Starting qede probe\n");
 

@@ -236,6 +236,8 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 		return rc;
 	}
 
+	ecore_reset_vport_stats(edev);
+
 	return 0;
 
 	ecore_hw_stop(edev);

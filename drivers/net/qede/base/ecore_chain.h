@@ -251,6 +251,12 @@ static OSAL_INLINE u32 ecore_chain_get_page_cnt(struct ecore_chain *p_chain)
 	return p_chain->page_cnt;
 }
 
+static OSAL_INLINE
+dma_addr_t ecore_chain_get_pbl_phys(struct ecore_chain *p_chain)
+{
+	return p_chain->pbl.p_phys_table;
+}
+
 /**
  * @brief ecore_chain_advance_page -
  *

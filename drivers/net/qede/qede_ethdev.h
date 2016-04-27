@@ -18,6 +18,7 @@
 #include "base/bcm_osal.h"
 #include "base/ecore.h"
 #include "base/ecore_dev_api.h"
+#include "base/ecore_l2_api.h"
 #include "base/ecore_sp_api.h"
 #include "base/ecore_mcp_api.h"
 #include "base/ecore_hsi_common.h"

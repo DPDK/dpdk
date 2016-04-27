@@ -529,6 +529,196 @@ qede_rxfh_indir_default(uint32_t index, uint32_t n_rx_rings)
 	return index % n_rx_rings;
 }
 
+static void qede_prandom_bytes(uint32_t *buff, size_t bytes)
+{
+	unsigned int i;
+
+	srand((unsigned int)time(NULL));
+
+	for (i = 0; i < ECORE_RSS_KEY_SIZE; i++)
+		buff[i] = rand();
+}
+
+static int
+qede_config_rss(struct rte_eth_dev *eth_dev,
+		struct qed_update_vport_rss_params *rss_params)
+{
+	enum rte_eth_rx_mq_mode mode = eth_dev->data->dev_conf.rxmode.mq_mode;
+	struct rte_eth_rss_conf rss_conf =
+	    eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+	unsigned int i;
+
+	PMD_INIT_FUNC_TRACE(edev);
+
+	/* Check if RSS conditions are met.
+	 * Note: Even though its meaningless to enable RSS with one queue, it
+	 * could be used to produce RSS Hash, so skipping that check.
+	 */
+
+	if (!(mode & ETH_MQ_RX_RSS)) {
+		DP_INFO(edev, "RSS flag is not set\n");
+		return -EINVAL;
+	}
+
+	DP_INFO(edev, "RSS flag is set\n");
+
+	if (rss_conf.rss_hf == 0) {
+		DP_NOTICE(edev, false, "No RSS hash function to apply\n");
+		return -EINVAL;
+	}
+
+	if (rss_conf.rss_key != NULL) {
+		DP_NOTICE(edev, false,
+			  "User provided RSS key is not supported\n");
+		return -EINVAL;
+	}
+
+	memset(rss_params, 0, sizeof(*rss_params));
+
+	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++)
+		rss_params->rss_ind_table[i] = qede_rxfh_indir_default(i,
+							QEDE_RSS_CNT(qdev));
+
+	qede_prandom_bytes(rss_params->rss_key,
+			   sizeof(rss_params->rss_key));
+
+	DP_INFO(edev, "RSS check passes\n");
+
+	return 0;
+}
+
+static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
+{
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+	struct qed_update_vport_rss_params *rss_params = &qdev->rss_params;
+	struct qed_dev_info *qed_info = &qdev->dev_info.common;
+	struct qed_update_vport_params vport_update_params;
+	struct qed_start_vport_params start = { 0 };
+	int vlan_removal_en = 1;
+	int rc, tc, i;
+
+	if (!qdev->num_rss) {
+		DP_ERR(edev,
+		       "Cannot update V-VPORT as active as "
+		       "there are no Rx queues\n");
+		return -EINVAL;
+	}
+
+	start.remove_inner_vlan = vlan_removal_en;
+	start.gro_enable = !qdev->gro_disable;
+	start.mtu = qdev->mtu;
+	start.vport_id = 0;
+	start.drop_ttl0 = true;
+	start.clear_stats = clear_stats;
+
+	rc = qdev->ops->vport_start(edev, &start);
+	if (rc) {
+		DP_ERR(edev, "Start V-PORT failed %d\n", rc);
+		return rc;
+	}
+
+	DP_INFO(edev,
+		"Start vport ramrod passed, vport_id = %d,"
+		" MTU = %d, vlan_removal_en = %d\n",
+		start.vport_id, qdev->mtu, vlan_removal_en);
+
+	for_each_rss(i) {
+		struct qede_fastpath *fp = &qdev->fp_array[i];
+		dma_addr_t p_phys_table;
+		uint16_t page_cnt;
+
+		p_phys_table = ecore_chain_get_pbl_phys(&fp->rxq->rx_comp_ring);
+		page_cnt = ecore_chain_get_page_cnt(&fp->rxq->rx_comp_ring);
+
+		ecore_sb_ack(fp->sb_info, IGU_INT_DISABLE, 0);	/* @DPDK */
+
+		rc = qdev->ops->q_rx_start(edev, i, i, 0,
+					   fp->sb_info->igu_sb_id,
+					   RX_PI,
+					   fp->rxq->rx_buf_size,
+					   fp->rxq->rx_bd_ring.p_phys_addr,
+					   p_phys_table,
+					   page_cnt,
+					   &fp->rxq->hw_rxq_prod_addr);
+		if (rc) {
+			DP_ERR(edev, "Start RXQ #%d failed %d\n", i, rc);
+			return rc;
+		}
+
+		fp->rxq->hw_cons_ptr = &fp->sb_info->sb_virt->pi_array[RX_PI];
+
+		qede_update_rx_prod(qdev, fp->rxq);
+
+		for (tc = 0; tc < qdev->num_tc; tc++) {
+			struct qede_tx_queue *txq = fp->txqs[tc];
+			int txq_index = tc * QEDE_RSS_CNT(qdev) + i;
+
+			p_phys_table = ecore_chain_get_pbl_phys(&txq->tx_pbl);
+			page_cnt = ecore_chain_get_page_cnt(&txq->tx_pbl);
+			rc = qdev->ops->q_tx_start(edev, i, txq_index,
+						   0,
+						   fp->sb_info->igu_sb_id,
+						   TX_PI(tc),
+						   p_phys_table, page_cnt,
+						   &txq->doorbell_addr);
+			if (rc) {
+				DP_ERR(edev, "Start txq %u failed %d\n",
+				       txq_index, rc);
+				return rc;
+			}
+
+			txq->hw_cons_ptr =
+			    &fp->sb_info->sb_virt->pi_array[TX_PI(tc)];
+			SET_FIELD(txq->tx_db.data.params,
+				  ETH_DB_DATA_DEST, DB_DEST_XCM);
+			SET_FIELD(txq->tx_db.data.params, ETH_DB_DATA_AGG_CMD,
+				  DB_AGG_CMD_SET);
+			SET_FIELD(txq->tx_db.data.params,
+				  ETH_DB_DATA_AGG_VAL_SEL,
+				  DQ_XCM_ETH_TX_BD_PROD_CMD);
+
+			txq->tx_db.data.agg_flags = DQ_XCM_ETH_DQ_CF_CMD;
+		}
+	}
+
+	/* Prepare and send the vport enable */
+	memset(&vport_update_params, 0, sizeof(vport_update_params));
+	vport_update_params.vport_id = start.vport_id;
+	vport_update_params.update_vport_active_flg = 1;
+	vport_update_params.vport_active_flg = 1;
+
+	/* @DPDK */
+	if (qed_info->mf_mode == MF_NPAR && qed_info->tx_switching) {
+		/* TBD: Check SRIOV enabled for VF */
+		vport_update_params.update_tx_switching_flg = 1;
+		vport_update_params.tx_switching_flg = 1;
+	}
+
+	if (!qede_config_rss(eth_dev, rss_params)) {
+		vport_update_params.update_rss_flg = 1;
+
+		qdev->rss_enabled = 1;
+		DP_INFO(edev, "Updating RSS flag\n");
+	} else {
+		qdev->rss_enabled = 0;
+		DP_INFO(edev, "Not Updating RSS flag\n");
+	}
+
+	rte_memcpy(&vport_update_params.rss_params, rss_params,
+	       sizeof(*rss_params));
+
+	rc = qdev->ops->vport_update(edev, &vport_update_params);
+	if (rc) {
+		DP_ERR(edev, "Update V-PORT failed %d\n", rc);
+		return rc;
+	}
+
+	return 0;
+}
+
 #ifdef ENC_SUPPORTED
 static bool qede_tunn_exist(uint16_t flag)
 {
@@ -976,6 +1166,8 @@ int qede_dev_start(struct rte_eth_dev *eth_dev)
 			eth_dev->data->port_id);
 		return -EINVAL;
 	}
+
+	rc = qede_start_queues(eth_dev, true);
 
 	if (rc) {
 		DP_ERR(edev, "Failed to start queues\n");
