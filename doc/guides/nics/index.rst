@@ -48,6 +48,7 @@ Network Interface Controller Drivers
     mlx4
     mlx5
     nfp
+    qede
     szedata2
     virtio
     vhost

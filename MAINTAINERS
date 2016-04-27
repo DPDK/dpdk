@@ -337,6 +337,7 @@ M: Harish Patil <harish.patil@qlogic.com>
 M: Rasesh Mody <rasesh.mody@qlogic.com>
 M: Sony Chacko <sony.chacko@qlogic.com>
 F: drivers/net/qede/
+F: doc/guides/nics/qede.rst
 
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>

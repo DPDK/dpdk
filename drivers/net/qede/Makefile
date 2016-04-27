@@ -6,8 +6,17 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+#
+# library name
+#
+LIB = librte_pmd_qede.a
+
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+
+EXPORT_MAP := rte_pmd_qede_version.map
+
+LIBABIVER := 1
 
 #
 # OS
@@ -72,6 +81,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_init_ops.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_mcp.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_int.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/bcm_osal.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_main.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_rxtx.c
 
 # dependent libs:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += lib/librte_eal lib/librte_ether
