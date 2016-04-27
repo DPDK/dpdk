@@ -354,10 +354,11 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 			return -ENOMEM;
 		}
 
-		dma_addr = (dma_addr_t)(mb->buf_physaddr + mb->data_off);
+		dma_addr = (dma_addr_t)(mb->buf_physaddr
+			   + RTE_PKTMBUF_HEADROOM);
 
 		rq_enet_desc_enc(rqd, dma_addr, RQ_ENET_TYPE_ONLY_SOP,
-				 mb->buf_len);
+				 mb->buf_len - RTE_PKTMBUF_HEADROOM);
 		rq->mbuf_ring[i] = mb;
 	}
 

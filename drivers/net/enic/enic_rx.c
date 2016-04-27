@@ -314,9 +314,11 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				 + rx_id);
 
 		/* Push descriptor for newly allocated mbuf */
-		dma_addr = (dma_addr_t)(nmb->buf_physaddr + nmb->data_off);
+		dma_addr = (dma_addr_t)(nmb->buf_physaddr
+			   + RTE_PKTMBUF_HEADROOM);
 		rqd_ptr->address = rte_cpu_to_le_64(dma_addr);
-		rqd_ptr->length_type = cpu_to_le16(nmb->buf_len);
+		rqd_ptr->length_type = cpu_to_le16(nmb->buf_len
+				       - RTE_PKTMBUF_HEADROOM);
 
 		/* Fill in the rest of the mbuf */
 		rxmb->data_off = RTE_PKTMBUF_HEADROOM;
