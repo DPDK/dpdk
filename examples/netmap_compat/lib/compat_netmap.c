@@ -865,6 +865,9 @@ rte_netmap_poll(struct pollfd *fds, nfds_t nfds, int timeout)
 	uint32_t i, idx, port;
 	uint32_t want_rx, want_tx;
 
+	if (timeout > 0)
+		return -1;
+
 	ret = 0;
 	do {
 		for (i = 0; i < nfds; i++) {
