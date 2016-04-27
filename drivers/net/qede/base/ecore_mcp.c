@@ -14,6 +14,8 @@
 #include "reg_addr.h"
 #include "ecore_hw.h"
 #include "ecore_init_fw_funcs.h"
+#include "ecore_sriov.h"
+#include "ecore_iov_api.h"
 #include "ecore_gtt_reg_addr.h"
 #include "ecore_iro.h"
 
@@ -517,6 +519,9 @@ static void ecore_mcp_handle_vf_flr(struct ecore_hwfn *p_hwfn,
 			   "FLR-ed VFs [%08x,...,%08x] - %08x\n",
 			   i * 32, (i + 1) * 32 - 1, disabled_vfs[i]);
 	}
+
+	if (ecore_iov_mark_vf_flr(p_hwfn, disabled_vfs))
+		OSAL_VF_FLR_UPDATE(p_hwfn);
 }
 
 enum _ecore_status_t ecore_mcp_ack_vf_flr(struct ecore_hwfn *p_hwfn,
@@ -793,6 +798,10 @@ u32 ecore_get_process_kill_counter(struct ecore_hwfn *p_hwfn,
 {
 	u32 path_offsize_addr, path_offsize, path_addr, proc_kill_cnt;
 
+	/* TODO - Add support for VFs */
+	if (IS_VF(p_hwfn->p_dev))
+		return ECORE_INVAL;
+
 	path_offsize_addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
 						 PUBLIC_PATH);
 	path_offsize = ecore_rd(p_hwfn, p_ptt, path_offsize_addr);
@@ -1054,6 +1063,20 @@ enum _ecore_status_t ecore_mcp_get_mfw_ver(struct ecore_dev *p_dev,
 	}
 #endif
 
+	if (IS_VF(p_dev)) {
+		if (p_hwfn->vf_iov_info) {
+			struct pfvf_acquire_resp_tlv *p_resp;
+
+			p_resp = &p_hwfn->vf_iov_info->acquire_resp;
+			*p_mfw_ver = p_resp->pfdev_info.mfw_ver;
+			return ECORE_SUCCESS;
+		}
+
+		DP_VERBOSE(p_dev, ECORE_MSG_IOV,
+			   "VF requested MFW vers prior to ACQUIRE\n");
+		return ECORE_INVAL;
+	}
+
 	global_offsize = ecore_rd(p_hwfn, p_ptt,
 				  SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->
 						       public_base,
@@ -1079,6 +1102,10 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_dev *p_dev,
 {
 	struct ecore_hwfn *p_hwfn = &p_dev->hwfns[0];
 	struct ecore_ptt *p_ptt;
+
+	/* TODO - Add support for VFs */
+	if (IS_VF(p_dev))
+		return ECORE_INVAL;
 
 	if (!ecore_mcp_is_init(p_hwfn)) {
 		DP_NOTICE(p_hwfn, true, "MFW is not initialized !\n");
@@ -1294,6 +1321,9 @@ enum _ecore_status_t ecore_mcp_get_flash_size(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 	}
 #endif
+
+	if (IS_VF(p_hwfn->p_dev))
+		return ECORE_INVAL;
 
 	flash_size = ecore_rd(p_hwfn, p_ptt, MCP_REG_NVM_CFG4);
 	flash_size = (flash_size & MCP_REG_NVM_CFG4_FLASH_SIZE) >>

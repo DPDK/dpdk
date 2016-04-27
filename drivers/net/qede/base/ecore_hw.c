@@ -13,6 +13,7 @@
 #include "ecore_hw.h"
 #include "reg_addr.h"
 #include "ecore_utils.h"
+#include "ecore_iov_api.h"
 
 #ifndef ASIC_ONLY
 #define ECORE_EMUL_FACTOR 2000
@@ -243,8 +244,12 @@ static void ecore_memcpy_hw(struct ecore_hwfn *p_hwfn,
 		quota = OSAL_MIN_T(osal_size_t, n - done,
 				   PXP_EXTERNAL_BAR_PF_WINDOW_SINGLE_SIZE);
 
-		ecore_ptt_set_win(p_hwfn, p_ptt, hw_addr + done);
-		hw_offset = ecore_ptt_get_bar_addr(p_ptt);
+		if (IS_PF(p_hwfn->p_dev)) {
+			ecore_ptt_set_win(p_hwfn, p_ptt, hw_addr + done);
+			hw_offset = ecore_ptt_get_bar_addr(p_ptt);
+		} else {
+			hw_offset = hw_addr + done;
+		}
 
 		dw_count = quota / 4;
 		host_addr = (u32 *)((u8 *)addr + done);

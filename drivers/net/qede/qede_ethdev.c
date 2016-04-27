@@ -143,6 +143,14 @@ qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	int rc;
 
+	if (IS_VF(edev) && !ecore_vf_check_mac(ECORE_LEADING_HWFN(edev),
+					       mac_addr->addr_bytes)) {
+		DP_ERR(edev, "Setting MAC address is not allowed\n");
+		ether_addr_copy(&qdev->primary_mac,
+				&eth_dev->data->mac_addrs[0]);
+		return;
+	}
+
 	/* First remove the primary mac */
 	rc = qede_set_ucast_rx_mac(qdev, QED_FILTER_XCAST_TYPE_DEL,
 				   qdev->primary_mac.addr_bytes);
@@ -418,7 +426,10 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->max_rx_queues = (uint16_t)QEDE_MAX_RSS_CNT(qdev);
 	dev_info->max_tx_queues = dev_info->max_rx_queues;
 	dev_info->max_mac_addrs = qdev->dev_info.num_mac_addrs;
-	dev_info->max_vfs = (uint16_t)NUM_OF_VFS(&qdev->edev);
+	if (IS_VF(edev))
+		dev_info->max_vfs = 0;
+	else
+		dev_info->max_vfs = (uint16_t)NUM_OF_VFS(&qdev->edev);
 	dev_info->driver_name = qdev->drv_ver;
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
 	dev_info->flow_type_rss_offloads = (uint64_t)QEDE_RSS_OFFLOAD_ALL;
@@ -771,6 +782,30 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_supported_ptypes_get = qede_dev_supported_ptypes_get,
 };
 
+static const struct eth_dev_ops qede_eth_vf_dev_ops = {
+	.dev_configure = qede_dev_configure,
+	.dev_infos_get = qede_dev_info_get,
+	.rx_queue_setup = qede_rx_queue_setup,
+	.rx_queue_release = qede_rx_queue_release,
+	.tx_queue_setup = qede_tx_queue_setup,
+	.tx_queue_release = qede_tx_queue_release,
+	.dev_start = qede_dev_start,
+	.dev_set_link_up = qede_dev_set_link_up,
+	.dev_set_link_down = qede_dev_set_link_down,
+	.link_update = qede_link_update,
+	.promiscuous_enable = qede_promiscuous_enable,
+	.promiscuous_disable = qede_promiscuous_disable,
+	.allmulticast_enable = qede_allmulticast_enable,
+	.allmulticast_disable = qede_allmulticast_disable,
+	.dev_stop = qede_dev_stop,
+	.dev_close = qede_dev_close,
+	.stats_get = qede_get_stats,
+	.stats_reset = qede_reset_stats,
+	.vlan_offload_set = qede_vlan_offload_set,
+	.vlan_filter_set = qede_vlan_filter_set,
+	.dev_supported_ptypes_get = qede_dev_supported_ptypes_get,
+};
+
 static void qede_update_pf_params(struct ecore_dev *edev)
 {
 	struct ecore_pf_params pf_params;
@@ -884,7 +919,8 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 			(uint32_t)RESC_NUM(ECORE_LEADING_HWFN(edev),
 					    ECORE_MAC);
 	else
-		adapter->dev_info.num_mac_addrs = 1;
+		ecore_vf_get_num_mac_filters(ECORE_LEADING_HWFN(edev),
+					     &adapter->dev_info.num_mac_addrs);
 
 	/* Allocate memory for storing MAC addr */
 	eth_dev->data->mac_addrs = rte_zmalloc(edev->name,
@@ -899,11 +935,35 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		return -ENOMEM;
 	}
 
-	ether_addr_copy((struct ether_addr *)edev->hwfns[0].
+	if (!is_vf) {
+		ether_addr_copy((struct ether_addr *)edev->hwfns[0].
 				hw_info.hw_mac_addr,
 				&eth_dev->data->mac_addrs[0]);
+		ether_addr_copy(&eth_dev->data->mac_addrs[0],
+				&adapter->primary_mac);
+	} else {
+		ecore_vf_read_bulletin(ECORE_LEADING_HWFN(edev),
+				       &bulletin_change);
+		if (bulletin_change) {
+			is_mac_exist =
+			    ecore_vf_bulletin_get_forced_mac(
+						ECORE_LEADING_HWFN(edev),
+						vf_mac,
+						&is_mac_forced);
+			if (is_mac_exist && is_mac_forced) {
+				DP_INFO(edev, "VF macaddr received from PF\n");
+				ether_addr_copy((struct ether_addr *)&vf_mac,
+						&eth_dev->data->mac_addrs[0]);
+				ether_addr_copy(&eth_dev->data->mac_addrs[0],
+						&adapter->primary_mac);
+			} else {
+				DP_NOTICE(edev, false,
+					  "No VF macaddr assigned\n");
+			}
+		}
+	}
 
-	eth_dev->dev_ops = &qede_eth_dev_ops;
+	eth_dev->dev_ops = (is_vf) ? &qede_eth_vf_dev_ops : &qede_eth_dev_ops;
 
 	if (do_once) {
 		qede_print_adapter_info(adapter);

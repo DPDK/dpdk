@@ -22,6 +22,8 @@
 #include "reg_addr.h"
 #include "ecore_int.h"
 #include "ecore_hw.h"
+#include "ecore_vf.h"
+#include "ecore_sriov.h"
 #include "ecore_mcp.h"
 
 #define ECORE_MAX_SGES_NUM 16
@@ -106,6 +108,14 @@ enum _ecore_status_t
 ecore_sp_vport_start(struct ecore_hwfn *p_hwfn,
 		     struct ecore_sp_vport_start_params *p_params)
 {
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_pf_vport_start(p_hwfn, p_params->vport_id,
+					       p_params->mtu,
+					       p_params->remove_inner_vlan,
+					       p_params->tpa_mode,
+					       p_params->max_buffers_per_cqe,
+					       p_params->only_untagged);
+
 	return ecore_sp_eth_vport_start(p_hwfn, p_params);
 }
 
@@ -339,6 +349,11 @@ ecore_sp_vport_update(struct ecore_hwfn *p_hwfn,
 	u8 abs_vport_id = 0, val;
 	u16 wordval;
 
+	if (IS_VF(p_hwfn->p_dev)) {
+		rc = ecore_vf_pf_vport_update(p_hwfn, p_params);
+		return rc;
+	}
+
 	rc = ecore_fw_vport(p_hwfn, p_params->vport_id, &abs_vport_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
@@ -428,6 +443,9 @@ enum _ecore_status_t ecore_sp_vport_stop(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 	u8 abs_vport_id = 0;
 
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_pf_vport_stop(p_hwfn);
+
 	rc = ecore_fw_vport(p_hwfn, vport_id, &abs_vport_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
@@ -448,6 +466,19 @@ enum _ecore_status_t ecore_sp_vport_stop(struct ecore_hwfn *p_hwfn,
 	p_ramrod->vport_id = abs_vport_id;
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
+}
+
+static enum _ecore_status_t
+ecore_vf_pf_accept_flags(struct ecore_hwfn *p_hwfn,
+			 struct ecore_filter_accept_flags *p_accept_flags)
+{
+	struct ecore_sp_vport_update_params s_params;
+
+	OSAL_MEMSET(&s_params, 0, sizeof(s_params));
+	OSAL_MEMCPY(&s_params.accept_flags, p_accept_flags,
+		    sizeof(struct ecore_filter_accept_flags));
+
+	return ecore_vf_pf_vport_update(p_hwfn, &s_params);
 }
 
 enum _ecore_status_t
@@ -473,6 +504,13 @@ ecore_filter_accept_cmd(struct ecore_dev *p_dev,
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 
 		update_params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+
+		if (IS_VF(p_dev)) {
+			rc = ecore_vf_pf_accept_flags(p_hwfn, &accept_flags);
+			if (rc != ECORE_SUCCESS)
+				return rc;
+			continue;
+		}
 
 		rc = ecore_sp_vport_update(p_hwfn, &update_params,
 					   comp_mode, p_comp_data);
@@ -593,6 +631,17 @@ enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 	u64 init_prod_val = 0;
 
+	if (IS_VF(p_hwfn->p_dev)) {
+		return ecore_vf_pf_rxq_start(p_hwfn,
+					     rx_queue_id,
+					     sb,
+					     sb_index,
+					     bd_max_bytes,
+					     bd_chain_phys_addr,
+					     cqe_pbl_addr,
+					     cqe_pbl_size, pp_prod);
+	}
+
 	rc = ecore_fw_l2_queue(p_hwfn, rx_queue_id, &abs_l2_queue);
 	if (rc != ECORE_SUCCESS)
 		return rc;
@@ -651,6 +700,13 @@ ecore_sp_eth_rx_queues_update(struct ecore_hwfn *p_hwfn,
 	u16 qid, abs_rx_q_id = 0;
 	u8 i;
 
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_pf_rxqs_update(p_hwfn,
+					       rx_queue_id,
+					       num_rxqs,
+					       complete_cqe_flg,
+					       complete_event_flg);
+
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
 	init_data.comp_mode = comp_mode;
 	init_data.p_comp_data = p_comp_data;
@@ -696,6 +752,10 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
 	u16 abs_rx_q_id = 0;
+
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_pf_rxq_stop(p_hwfn, rx_queue_id,
+					    cqe_completion);
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -814,6 +874,14 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 	u8 abs_stats_id = 0;
 
+	if (IS_VF(p_hwfn->p_dev)) {
+		return ecore_vf_pf_txq_start(p_hwfn,
+					     tx_queue_id,
+					     sb,
+					     sb_index,
+					     pbl_addr, pbl_size, pp_doorbell);
+	}
+
 	rc = ecore_fw_vport(p_hwfn, stats_id, &abs_stats_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
@@ -866,6 +934,9 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_stop(struct ecore_hwfn *p_hwfn,
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
+
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_pf_txq_stop(p_hwfn, tx_queue_id);
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -1274,6 +1345,11 @@ ecore_filter_mcast_cmd(struct ecore_dev *p_dev,
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 
+		if (IS_VF(p_dev)) {
+			ecore_vf_pf_filter_mcast(p_hwfn, p_filter_cmd);
+			continue;
+		}
+
 		rc = ecore_sp_eth_filter_mcast(p_hwfn,
 					       p_hwfn->hw_info.opaque_fid,
 					       p_filter_cmd,
@@ -1297,6 +1373,11 @@ ecore_filter_ucast_cmd(struct ecore_dev *p_dev,
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 
+		if (IS_VF(p_dev)) {
+			rc = ecore_vf_pf_filter_ucast(p_hwfn, p_filter_cmd);
+			continue;
+		}
+
 		rc = ecore_sp_eth_filter_ucast(p_hwfn,
 					       p_hwfn->hw_info.opaque_fid,
 					       p_filter_cmd,
@@ -1308,14 +1389,93 @@ ecore_filter_ucast_cmd(struct ecore_dev *p_dev,
 	return rc;
 }
 
+/* IOV related */
+enum _ecore_status_t ecore_sp_vf_start(struct ecore_hwfn *p_hwfn,
+				       u32 concrete_vfid, u16 opaque_vfid)
+{
+	struct vf_start_ramrod_data *p_ramrod = OSAL_NULL;
+	struct ecore_spq_entry *p_ent = OSAL_NULL;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
+	struct ecore_sp_init_data init_data;
+
+	/* Get SPQ entry */
+	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
+	init_data.cid = ecore_spq_get_cid(p_hwfn);
+	init_data.opaque_fid = opaque_vfid;
+	init_data.comp_mode = ECORE_SPQ_MODE_EBLOCK;
+
+	rc = ecore_sp_init_request(p_hwfn, &p_ent,
+				   COMMON_RAMROD_VF_START,
+				   PROTOCOLID_COMMON, &init_data);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	p_ramrod = &p_ent->ramrod.vf_start;
+
+	p_ramrod->vf_id = GET_FIELD(concrete_vfid, PXP_CONCRETE_FID_VFID);
+	p_ramrod->opaque_fid = OSAL_CPU_TO_LE16(opaque_vfid);
+
+	switch (p_hwfn->hw_info.personality) {
+	case ECORE_PCI_ETH:
+		p_ramrod->personality = PERSONALITY_ETH;
+		break;
+	default:
+		DP_NOTICE(p_hwfn, true, "Unknown VF personality %d\n",
+			  p_hwfn->hw_info.personality);
+		return ECORE_INVAL;
+	}
+
+	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
+}
+
+enum _ecore_status_t ecore_sp_vf_update(struct ecore_hwfn *p_hwfn)
+{
+	return ECORE_NOTIMPL;
+}
+
+enum _ecore_status_t ecore_sp_vf_stop(struct ecore_hwfn *p_hwfn,
+				      u32 concrete_vfid, u16 opaque_vfid)
+{
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
+	struct vf_stop_ramrod_data *p_ramrod = OSAL_NULL;
+	struct ecore_spq_entry *p_ent = OSAL_NULL;
+	struct ecore_sp_init_data init_data;
+
+	/* Get SPQ entry */
+	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
+	init_data.cid = ecore_spq_get_cid(p_hwfn);
+	init_data.opaque_fid = opaque_vfid;
+	init_data.comp_mode = ECORE_SPQ_MODE_EBLOCK;
+
+	rc = ecore_sp_init_request(p_hwfn, &p_ent,
+				   COMMON_RAMROD_VF_STOP,
+				   PROTOCOLID_COMMON, &init_data);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	p_ramrod = &p_ent->ramrod.vf_stop;
+
+	p_ramrod->vf_id = GET_FIELD(concrete_vfid, PXP_CONCRETE_FID_VFID);
+
+	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
+}
+
 /* Statistics related code */
 static void __ecore_get_vport_pstats_addrlen(struct ecore_hwfn *p_hwfn,
 					     u32 *p_addr, u32 *p_len,
 					     u16 statistics_bin)
 {
-	*p_addr = BAR0_MAP_REG_PSDM_RAM +
+	if (IS_PF(p_hwfn->p_dev)) {
+		*p_addr = BAR0_MAP_REG_PSDM_RAM +
 		    PSTORM_QUEUE_STAT_OFFSET(statistics_bin);
-	*p_len = sizeof(struct eth_pstorm_per_queue_stat);
+		*p_len = sizeof(struct eth_pstorm_per_queue_stat);
+	} else {
+		struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+		struct pfvf_acquire_resp_tlv *p_resp = &p_iov->acquire_resp;
+
+		*p_addr = p_resp->pfdev_info.stats_info.pstats.address;
+		*p_len = p_resp->pfdev_info.stats_info.pstats.len;
+	}
 }
 
 static void __ecore_get_vport_pstats(struct ecore_hwfn *p_hwfn,
@@ -1349,9 +1509,17 @@ static void __ecore_get_vport_tstats(struct ecore_hwfn *p_hwfn,
 	struct tstorm_per_port_stat tstats;
 	u32 tstats_addr, tstats_len;
 
-	tstats_addr = BAR0_MAP_REG_TSDM_RAM +
+	if (IS_PF(p_hwfn->p_dev)) {
+		tstats_addr = BAR0_MAP_REG_TSDM_RAM +
 		    TSTORM_PORT_STAT_OFFSET(MFW_PORT(p_hwfn));
-	tstats_len = sizeof(struct tstorm_per_port_stat);
+		tstats_len = sizeof(struct tstorm_per_port_stat);
+	} else {
+		struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+		struct pfvf_acquire_resp_tlv *p_resp = &p_iov->acquire_resp;
+
+		tstats_addr = p_resp->pfdev_info.stats_info.tstats.address;
+		tstats_len = p_resp->pfdev_info.stats_info.tstats.len;
+	}
 
 	OSAL_MEMSET(&tstats, 0, sizeof(tstats));
 	ecore_memcpy_from(p_hwfn, p_ptt, &tstats, tstats_addr, tstats_len);
@@ -1366,9 +1534,17 @@ static void __ecore_get_vport_ustats_addrlen(struct ecore_hwfn *p_hwfn,
 					     u32 *p_addr, u32 *p_len,
 					     u16 statistics_bin)
 {
-	*p_addr = BAR0_MAP_REG_USDM_RAM +
+	if (IS_PF(p_hwfn->p_dev)) {
+		*p_addr = BAR0_MAP_REG_USDM_RAM +
 		    USTORM_QUEUE_STAT_OFFSET(statistics_bin);
-	*p_len = sizeof(struct eth_ustorm_per_queue_stat);
+		*p_len = sizeof(struct eth_ustorm_per_queue_stat);
+	} else {
+		struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+		struct pfvf_acquire_resp_tlv *p_resp = &p_iov->acquire_resp;
+
+		*p_addr = p_resp->pfdev_info.stats_info.ustats.address;
+		*p_len = p_resp->pfdev_info.stats_info.ustats.len;
+	}
 }
 
 static void __ecore_get_vport_ustats(struct ecore_hwfn *p_hwfn,
@@ -1397,9 +1573,17 @@ static void __ecore_get_vport_mstats_addrlen(struct ecore_hwfn *p_hwfn,
 					     u32 *p_addr, u32 *p_len,
 					     u16 statistics_bin)
 {
-	*p_addr = BAR0_MAP_REG_MSDM_RAM +
+	if (IS_PF(p_hwfn->p_dev)) {
+		*p_addr = BAR0_MAP_REG_MSDM_RAM +
 		    MSTORM_QUEUE_STAT_OFFSET(statistics_bin);
-	*p_len = sizeof(struct eth_mstorm_per_queue_stat);
+		*p_len = sizeof(struct eth_mstorm_per_queue_stat);
+	} else {
+		struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+		struct pfvf_acquire_resp_tlv *p_resp = &p_iov->acquire_resp;
+
+		*p_addr = p_resp->pfdev_info.stats_info.mstats.address;
+		*p_len = p_resp->pfdev_info.stats_info.mstats.len;
+	}
 }
 
 static void __ecore_get_vport_mstats(struct ecore_hwfn *p_hwfn,
@@ -1524,24 +1708,28 @@ static void _ecore_get_vport_stats(struct ecore_dev *p_dev,
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
-		struct ecore_ptt *p_ptt = ecore_ptt_acquire(p_hwfn);
+		struct ecore_ptt *p_ptt = IS_PF(p_dev) ?
+		    ecore_ptt_acquire(p_hwfn) : OSAL_NULL;
 
-		/* The main vport index is relative first */
-		if (ecore_fw_vport(p_hwfn, 0, &fw_vport)) {
-			DP_ERR(p_hwfn, "No vport available!\n");
-			goto out;
+		if (IS_PF(p_dev)) {
+			/* The main vport index is relative first */
+			if (ecore_fw_vport(p_hwfn, 0, &fw_vport)) {
+				DP_ERR(p_hwfn, "No vport available!\n");
+				goto out;
+			}
 		}
 
-		if (!p_ptt) {
+		if (IS_PF(p_dev) && !p_ptt) {
 			DP_ERR(p_hwfn, "Failed to acquire ptt\n");
 			continue;
 		}
 
 		__ecore_get_vport_stats(p_hwfn, p_ptt, stats, fw_vport,
-					true);
+					IS_PF(p_dev) ? true : false);
 
 out:
-		ecore_ptt_release(p_hwfn, p_ptt);
+		if (IS_PF(p_dev))
+			ecore_ptt_release(p_hwfn, p_ptt);
 	}
 }
 
@@ -1575,10 +1763,11 @@ void ecore_reset_vport_stats(struct ecore_dev *p_dev)
 		struct eth_mstorm_per_queue_stat mstats;
 		struct eth_ustorm_per_queue_stat ustats;
 		struct eth_pstorm_per_queue_stat pstats;
-		struct ecore_ptt *p_ptt = ecore_ptt_acquire(p_hwfn);
+		struct ecore_ptt *p_ptt = IS_PF(p_dev) ?
+		    ecore_ptt_acquire(p_hwfn) : OSAL_NULL;
 		u32 addr = 0, len = 0;
 
-		if (!p_ptt) {
+		if (IS_PF(p_dev) && !p_ptt) {
 			DP_ERR(p_hwfn, "Failed to acquire ptt\n");
 			continue;
 		}
@@ -1595,7 +1784,8 @@ void ecore_reset_vport_stats(struct ecore_dev *p_dev)
 		__ecore_get_vport_pstats_addrlen(p_hwfn, &addr, &len, 0);
 		ecore_memcpy_to(p_hwfn, p_ptt, addr, &pstats, len);
 
-		ecore_ptt_release(p_hwfn, p_ptt);
+		if (IS_PF(p_dev))
+			ecore_ptt_release(p_hwfn, p_ptt);
 	}
 
 	/* PORT statistics are not necessarily reset, so we need to

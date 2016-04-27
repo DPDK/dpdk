@@ -14,6 +14,7 @@
 #include "bcm_osal.h"
 #include "ecore.h"
 #include "ecore_hw.h"
+#include "ecore_iov_api.h"
 
 unsigned long qede_log2_align(unsigned long n)
 {
@@ -79,6 +80,14 @@ inline u32 qede_find_first_zero_bit(unsigned long *addr, u32 limit)
 		if (~(addr[i] != 0))
 			break;
 	return (i == nwords) ? limit : i * OSAL_BITS_PER_UL + qede_ffz(addr[i]);
+}
+
+void qede_vf_fill_driver_data(struct ecore_hwfn *hwfn,
+			      __rte_unused struct vf_pf_resc_request *resc_req,
+			      struct ecore_vf_acquire_sw_info *vf_sw_info)
+{
+	vf_sw_info->os_type = VFPF_ACQUIRE_OS_LINUX_USERSPACE;
+	vf_sw_info->override_fw_version = 1;
 }
 
 void *osal_dma_alloc_coherent(struct ecore_dev *p_dev,

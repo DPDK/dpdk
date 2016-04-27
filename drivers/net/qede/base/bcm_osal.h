@@ -22,6 +22,9 @@
 /* Forward declaration */
 struct ecore_dev;
 struct ecore_hwfn;
+struct ecore_vf_acquire_sw_info;
+struct vf_pf_resc_request;
+void qed_link_update(struct ecore_hwfn *hwfn);
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #undef __BIG_ENDIAN
@@ -302,7 +305,7 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_BUILD_BUG_ON(cond)		nothing
 #define ETH_ALEN			ETHER_ADDR_LEN
 
-#define OSAL_LINK_UPDATE(hwfn) nothing
+#define OSAL_LINK_UPDATE(hwfn) qed_link_update(hwfn)
 
 /* SR-IOV channel */
 
@@ -315,12 +318,15 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_IOV_VF_ACQUIRE(hwfn, vfid) 0
 #define OSAL_IOV_VF_CLEANUP(hwfn, vfid) nothing
 #define OSAL_IOV_VF_VPORT_UPDATE(hwfn, vfid, p_params, p_mask) 0
-#define OSAL_VF_FILL_ACQUIRE_RESC_REQ(_dev_p, _resc_req, _os_info) nothing
 #define OSAL_VF_UPDATE_ACQUIRE_RESC_RESP(_dev_p, _resc_resp) 0
 #define OSAL_IOV_GET_OS_TYPE() 0
 
 u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 		   u8 *input_buf, u32 max_size, u8 *unzip_buf);
+void qede_vf_fill_driver_data(struct ecore_hwfn *, struct vf_pf_resc_request *,
+			      struct ecore_vf_acquire_sw_info *);
+#define OSAL_VF_FILL_ACQUIRE_RESC_REQ(_dev_p, _resc_req, _os_info) \
+	qede_vf_fill_driver_data(_dev_p, _resc_req, _os_info)
 
 #define OSAL_UNZIP_DATA(p_hwfn, input_len, buf, max_size, unzip_buf) \
 	qede_unzip_data(p_hwfn, input_len, buf, max_size, unzip_buf)

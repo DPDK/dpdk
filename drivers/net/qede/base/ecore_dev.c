@@ -21,6 +21,8 @@
 #include "ecore_init_fw_funcs.h"
 #include "ecore_sp_commands.h"
 #include "ecore_dev_api.h"
+#include "ecore_sriov.h"
+#include "ecore_vf.h"
 #include "ecore_mcp.h"
 #include "ecore_hw_defs.h"
 #include "mcp_public.h"
@@ -126,6 +128,9 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 {
 	int i;
 
+	if (IS_VF(p_dev))
+		return;
+
 	OSAL_FREE(p_dev, p_dev->fw_data);
 	p_dev->fw_data = OSAL_NULL;
 
@@ -149,6 +154,7 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_eq_free(p_hwfn, p_hwfn->p_eq);
 		ecore_consq_free(p_hwfn, p_hwfn->p_consq);
 		ecore_int_free(p_hwfn);
+		ecore_iov_free(p_hwfn);
 		ecore_dmae_info_free(p_hwfn);
 		/* @@@TBD Flush work-queue ? */
 	}
@@ -161,7 +167,11 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
 	struct init_qm_port_params *p_qm_port;
 	u16 num_pqs, multi_cos_tcs = 1;
+#ifdef CONFIG_ECORE_SRIOV
+	u16 num_vfs = p_hwfn->p_dev->sriov_info.total_vfs;
+#else
 	u16 num_vfs = 0;
+#endif
 
 	OSAL_MEM_ZERO(qm_info, sizeof(*qm_info));
 
@@ -363,6 +373,9 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 	struct ecore_eq *p_eq;
 	int i;
 
+	if (IS_VF(p_dev))
+		return rc;
+
 	p_dev->fw_data = OSAL_ZALLOC(p_dev, GFP_KERNEL,
 				     sizeof(struct ecore_fw_data));
 	if (!p_dev->fw_data)
@@ -440,6 +453,10 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 		if (rc)
 			goto alloc_err;
 
+		rc = ecore_iov_alloc(p_hwfn);
+		if (rc)
+			goto alloc_err;
+
 		/* EQ */
 		p_eq = ecore_eq_alloc(p_hwfn, 256);
 		if (!p_eq)
@@ -481,6 +498,9 @@ void ecore_resc_setup(struct ecore_dev *p_dev)
 {
 	int i;
 
+	if (IS_VF(p_dev))
+		return;
+
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 
@@ -496,6 +516,8 @@ void ecore_resc_setup(struct ecore_dev *p_dev)
 			    p_hwfn->mcp_info->mfw_mb_length);
 
 		ecore_int_setup(p_hwfn, p_hwfn->p_main_ptt);
+
+		ecore_iov_setup(p_hwfn, p_hwfn->p_main_ptt);
 	}
 }
 
@@ -1250,12 +1272,21 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	u32 load_code, param;
 	int i, j;
 
-	rc = ecore_init_fw_data(p_dev, bin_fw_data);
-	if (rc != ECORE_SUCCESS)
-		return rc;
+	if (IS_PF(p_dev)) {
+		rc = ecore_init_fw_data(p_dev, bin_fw_data);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+	}
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
+
+		if (IS_VF(p_dev)) {
+			rc = ecore_vf_pf_init(p_hwfn);
+			if (rc)
+				return rc;
+			continue;
+		}
 
 		/* Enable DMAE in PXP */
 		rc = ecore_change_pci_hwfn(p_hwfn, p_hwfn->p_main_ptt, true);
@@ -1416,6 +1447,11 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IFDOWN, "Stopping hw/fw\n");
 
+		if (IS_VF(p_dev)) {
+			ecore_vf_pf_int_cleanup(p_hwfn);
+			continue;
+		}
+
 		/* mark the hw as uninitialized... */
 		p_hwfn->hw_init_done = false;
 
@@ -1454,14 +1490,16 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		OSAL_MSLEEP(1);
 	}
 
-	/* Disable DMAE in PXP - in CMT, this should only be done for
-	 * first hw-function, and only after all transactions have
-	 * stopped for all active hw-functions.
-	 */
-	t_rc = ecore_change_pci_hwfn(&p_dev->hwfns[0],
-				     p_dev->hwfns[0].p_main_ptt, false);
-	if (t_rc != ECORE_SUCCESS)
-		rc = t_rc;
+	if (IS_PF(p_dev)) {
+		/* Disable DMAE in PXP - in CMT, this should only be done for
+		 * first hw-function, and only after all transactions have
+		 * stopped for all active hw-functions.
+		 */
+		t_rc = ecore_change_pci_hwfn(&p_dev->hwfns[0],
+					     p_dev->hwfns[0].p_main_ptt, false);
+		if (t_rc != ECORE_SUCCESS)
+			rc = t_rc;
+	}
 
 	return rc;
 }
@@ -1473,6 +1511,11 @@ void ecore_hw_stop_fastpath(struct ecore_dev *p_dev)
 	for_each_hwfn(p_dev, j) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[j];
 		struct ecore_ptt *p_ptt = p_hwfn->p_main_ptt;
+
+		if (IS_VF(p_dev)) {
+			ecore_vf_pf_int_cleanup(p_hwfn);
+			continue;
+		}
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IFDOWN,
 			   "Shutting down the fastpath\n");
@@ -1498,6 +1541,9 @@ void ecore_hw_stop_fastpath(struct ecore_dev *p_dev)
 void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_ptt *p_ptt = p_hwfn->p_main_ptt;
+
+	if (IS_VF(p_hwfn->p_dev))
+		return;
 
 	/* Re-open incoming traffic */
 	ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
@@ -1527,6 +1573,13 @@ enum _ecore_status_t ecore_hw_reset(struct ecore_dev *p_dev)
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
+
+		if (IS_VF(p_dev)) {
+			rc = ecore_vf_pf_reset(p_hwfn);
+			if (rc)
+				return rc;
+			continue;
+		}
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IFDOWN, "Resetting hw/fw\n");
 
@@ -1657,7 +1710,11 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn)
 
 	OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
 
+#ifdef CONFIG_ECORE_SRIOV
+	max_vf_vlan_filters = ECORE_ETH_MAX_VF_NUM_VLAN_FILTERS;
+#else
 	max_vf_vlan_filters = 0;
+#endif
 
 	ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
 	resc_num[ECORE_SB] = OSAL_MIN_T(u32,
@@ -2020,6 +2077,10 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn,
 {
 	enum _ecore_status_t rc;
 
+	rc = ecore_iov_hw_info(p_hwfn, p_hwfn->p_main_ptt);
+	if (rc)
+		return rc;
+
 	/* TODO In get_hw_info, amoungst others:
 	 * Get MCP FW revision and determine according to it the supported
 	 * featrues (e.g. DCB)
@@ -2177,6 +2238,9 @@ void ecore_prepare_hibernate(struct ecore_dev *p_dev)
 {
 	int j;
 
+	if (IS_VF(p_dev))
+		return;
+
 	for_each_hwfn(p_dev, j) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[j];
 
@@ -2276,6 +2340,9 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev, int personality)
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	enum _ecore_status_t rc;
 
+	if (IS_VF(p_dev))
+		return ecore_vf_hw_prepare(p_dev);
+
 	/* Store the precompiled init data ptrs */
 	ecore_init_iro_array(p_dev);
 
@@ -2326,6 +2393,11 @@ void ecore_hw_remove(struct ecore_dev *p_dev)
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
+
+		if (IS_VF(p_dev)) {
+			ecore_vf_pf_release(p_hwfn);
+			continue;
+		}
 
 		ecore_init_free(p_hwfn);
 		ecore_hw_hwfn_free(p_hwfn);
@@ -2953,6 +3025,11 @@ static enum _ecore_status_t ecore_set_coalesce(struct ecore_hwfn *p_hwfn,
 					       u8 timeset)
 {
 	struct coalescing_timeset *p_coalesce_timeset;
+
+	if (IS_VF(p_hwfn->p_dev)) {
+		DP_NOTICE(p_hwfn, true, "VF coalescing config not supported\n");
+		return ECORE_INVAL;
+	}
 
 	if (p_hwfn->p_dev->int_coalescing_mode != ECORE_COAL_MODE_ENABLE) {
 		DP_NOTICE(p_hwfn, true,

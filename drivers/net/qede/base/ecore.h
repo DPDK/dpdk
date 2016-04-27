@@ -50,6 +50,7 @@ enum ecore_nvm_cmd {
 #ifndef LINUX_REMOVE
 #if !defined(CONFIG_ECORE_L2)
 #define CONFIG_ECORE_L2
+#define CONFIG_ECORE_SRIOV
 #endif
 #endif
 
@@ -75,6 +76,15 @@ static OSAL_INLINE u32 DB_ADDR(u32 cid, u32 DEMS)
 {
 	u32 db_addr = FIELD_VALUE(DB_LEGACY_ADDR_DEMS, DEMS) |
 	    (cid * ECORE_PF_DEMS_SIZE);
+
+	return db_addr;
+}
+
+/* @DPDK: This is a backport from latest ecore for TSS fix */
+static OSAL_INLINE u32 DB_ADDR_VF(u32 cid, u32 DEMS)
+{
+	u32 db_addr = FIELD_VALUE(DB_LEGACY_ADDR_DEMS, DEMS) |
+		      FIELD_VALUE(DB_LEGACY_ADDR_ICID, cid);
 
 	return db_addr;
 }

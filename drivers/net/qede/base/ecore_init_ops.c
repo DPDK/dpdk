@@ -16,6 +16,7 @@
 #include "ecore_init_fw_funcs.h"
 
 #include "ecore_iro_values.h"
+#include "ecore_sriov.h"
 #include "ecore_gtt_values.h"
 #include "reg_addr.h"
 #include "ecore_init_ops.h"
@@ -101,6 +102,9 @@ static enum _ecore_status_t ecore_init_rt(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_init_alloc(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_rt_data *rt_data = &p_hwfn->rt_data;
+
+	if (IS_VF(p_hwfn->p_dev))
+		return ECORE_SUCCESS;
 
 	rt_data->b_valid = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
 				       sizeof(bool) * RUNTIME_ARRAY_SIZE);

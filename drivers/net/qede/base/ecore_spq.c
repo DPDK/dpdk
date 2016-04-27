@@ -20,6 +20,7 @@
 #include "ecore_dev_api.h"
 #include "ecore_mcp.h"
 #include "ecore_hw.h"
+#include "ecore_sriov.h"
 
 /***************************************************************************
  * Structures & Definitions
@@ -250,7 +251,9 @@ ecore_async_event_completion(struct ecore_hwfn *p_hwfn,
 {
 	switch (p_eqe->protocol_id) {
 	case PROTOCOLID_COMMON:
-		return ECORE_SUCCESS;
+		return ecore_sriov_eqe_event(p_hwfn,
+					     p_eqe->opcode,
+					     p_eqe->echo, &p_eqe->data);
 	default:
 		DP_NOTICE(p_hwfn,
 			  true, "Unknown Async completion for protocol: %d\n",
@@ -386,6 +389,9 @@ static enum _ecore_status_t ecore_cqe_completion(struct ecore_hwfn *p_hwfn,
 						 *cqe,
 						 enum protocol_type protocol)
 {
+	if (IS_VF(p_hwfn->p_dev))
+		return OSAL_VF_CQE_COMPLETION(p_hwfn, cqe, protocol);
+
 	/* @@@tmp - it's possible we'll eventually want to handle some
 	 * actual commands that can arrive here, but for now this is only
 	 * used to complete the ramrod using the echo value on the cqe

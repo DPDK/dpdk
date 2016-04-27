@@ -16,6 +16,8 @@
 #include "ecore_int.h"
 #include "reg_addr.h"
 #include "ecore_hw.h"
+#include "ecore_sriov.h"
+#include "ecore_vf.h"
 #include "ecore_hw_defs.h"
 #include "ecore_hsi_common.h"
 #include "ecore_mcp.h"
@@ -373,6 +375,9 @@ void ecore_int_cau_conf_pi(struct ecore_hwfn *p_hwfn,
 	struct cau_pi_entry pi_entry;
 	u32 sb_offset, pi_offset;
 
+	if (IS_VF(p_hwfn->p_dev))
+		return;		/* @@@TBD MichalK- VF CAU... */
+
 	sb_offset = igu_sb_id * PIS_PER_SB;
 	OSAL_MEMSET(&pi_entry, 0, sizeof(struct cau_pi_entry));
 
@@ -401,7 +406,8 @@ void ecore_int_sb_setup(struct ecore_hwfn *p_hwfn,
 	sb_info->sb_ack = 0;
 	OSAL_MEMSET(sb_info->sb_virt, 0, sizeof(*sb_info->sb_virt));
 
-	ecore_int_cau_conf_sb(p_hwfn, p_ptt, sb_info->sb_phys,
+	if (IS_PF(p_hwfn->p_dev))
+		ecore_int_cau_conf_sb(p_hwfn, p_ptt, sb_info->sb_phys,
 				      sb_info->igu_sb_id, 0, 0);
 }
 
@@ -421,8 +427,10 @@ static u16 ecore_get_igu_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id)
 	/* Assuming continuous set of IGU SBs dedicated for given PF */
 	if (sb_id == ECORE_SP_SB_ID)
 		igu_sb_id = p_hwfn->hw_info.p_igu_info->igu_dsb_id;
-	else
+	else if (IS_PF(p_hwfn->p_dev))
 		igu_sb_id = sb_id + p_hwfn->hw_info.p_igu_info->igu_base_sb;
+	else
+		igu_sb_id = ecore_vf_get_igu_sb_id(p_hwfn, sb_id);
 
 	if (sb_id == ECORE_SP_SB_ID)
 		DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
@@ -457,8 +465,16 @@ enum _ecore_status_t ecore_int_sb_init(struct ecore_hwfn *p_hwfn,
 	/* The igu address will hold the absolute address that needs to be
 	 * written to for a specific status block
 	 */
-	sb_info->igu_addr = (u8 OSAL_IOMEM *)p_hwfn->regview +
+	if (IS_PF(p_hwfn->p_dev)) {
+		sb_info->igu_addr = (u8 OSAL_IOMEM *)p_hwfn->regview +
 		    GTT_BAR0_MAP_REG_IGU_CMD + (sb_info->igu_sb_id << 3);
+
+	} else {
+		sb_info->igu_addr =
+		    (u8 OSAL_IOMEM *)p_hwfn->regview +
+		    PXP_VF_BAR0_START_IGU +
+		    ((IGU_CMD_INT_ACK_BASE + sb_info->igu_sb_id) << 3);
+	}
 
 	sb_info->flags |= ECORE_SB_INFO_INIT;
 
@@ -687,6 +703,9 @@ void ecore_int_igu_disable_int(struct ecore_hwfn *p_hwfn,
 {
 	p_hwfn->b_int_enabled = 0;
 
+	if (IS_VF(p_hwfn->p_dev))
+		return;
+
 	ecore_wr(p_hwfn, p_ptt, IGU_REG_PF_CONFIGURATION, 0);
 }
 
@@ -853,8 +872,14 @@ enum _ecore_status_t ecore_int_igu_read_cam(struct ecore_hwfn *p_hwfn,
 	p_igu_info->igu_dsb_id = 0xffff;
 	p_igu_info->igu_base_sb_iov = 0xffff;
 
+#ifdef CONFIG_ECORE_SRIOV
+	min_vf = p_hwfn->hw_info.first_vf_in_pf;
+	max_vf = p_hwfn->hw_info.first_vf_in_pf +
+	    p_hwfn->p_dev->sriov_info.total_vfs;
+#else
 	min_vf = 0;
 	max_vf = 0;
+#endif
 
 	for (sb_id = 0; sb_id < ECORE_MAPPING_MEMORY_SIZE(p_hwfn->p_dev);
 	     sb_id++) {
