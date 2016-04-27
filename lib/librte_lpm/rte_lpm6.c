@@ -601,7 +601,7 @@ int
 rte_lpm6_lookup(const struct rte_lpm6 *lpm, uint8_t *ip, uint8_t *next_hop)
 {
 	const struct rte_lpm6_tbl_entry *tbl;
-	const struct rte_lpm6_tbl_entry *tbl_next;
+	const struct rte_lpm6_tbl_entry *tbl_next = NULL;
 	int status;
 	uint8_t first_byte;
 	uint32_t tbl24_index;
@@ -636,7 +636,7 @@ rte_lpm6_lookup_bulk_func(const struct rte_lpm6 *lpm,
 {
 	unsigned i;
 	const struct rte_lpm6_tbl_entry *tbl;
-	const struct rte_lpm6_tbl_entry *tbl_next;
+	const struct rte_lpm6_tbl_entry *tbl_next = NULL;
 	uint32_t tbl24_index;
 	uint8_t first_byte, next_hop;
 	int status;
