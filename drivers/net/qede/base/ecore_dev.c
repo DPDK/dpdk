@@ -30,6 +30,7 @@
 #include "nvm_cfg.h"
 #include "ecore_dev_api.h"
 #include "ecore_attn_values.h"
+#include "ecore_dcbx.h"
 
 /* Configurable */
 #define ECORE_MIN_DPIS		(4)	/* The minimal number of DPIs required
@@ -157,6 +158,7 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_int_free(p_hwfn);
 		ecore_iov_free(p_hwfn);
 		ecore_dmae_info_free(p_hwfn);
+		ecore_dcbx_info_free(p_hwfn, p_hwfn->p_dcbx_info);
 		/* @@@TBD Flush work-queue ? */
 	}
 }
@@ -279,6 +281,9 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 	for (i = 0; i < num_ports; i++) {
 		p_qm_port = &qm_info->qm_port_params[i];
 		p_qm_port->active = 1;
+		/* @@@TMP - was NUM_OF_PHYS_TCS; Changed until dcbx will
+		 * be in place
+		 */
 		if (num_ports == 4)
 			p_qm_port->num_active_phys_tcs = 2;
 		else
@@ -475,6 +480,14 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 			DP_NOTICE(p_hwfn, true,
 				  "Failed to allocate memory for"
 				  " dmae_info structure\n");
+			goto alloc_err;
+		}
+
+		/* DCBX initialization */
+		rc = ecore_dcbx_info_alloc(p_hwfn);
+		if (rc) {
+			DP_NOTICE(p_hwfn, true,
+				  "Failed to allocate memory for dcbxstruct\n");
 			goto alloc_err;
 		}
 	}
@@ -1434,6 +1447,20 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		if (mfw_rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
 				  "Failed sending LOAD_DONE command\n");
+			return mfw_rc;
+		}
+
+		/* send DCBX attention request command */
+		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
+			   "sending phony dcbx set command to trigger DCBx"
+			   " attention handling\n");
+		mfw_rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
+				       DRV_MSG_CODE_SET_DCBX,
+				       1 << DRV_MB_PARAM_DCBX_NOTIFY_SHIFT,
+				       &load_code, &param);
+		if (mfw_rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, true,
+				  "Failed to send DCBX attention request\n");
 			return mfw_rc;
 		}
 

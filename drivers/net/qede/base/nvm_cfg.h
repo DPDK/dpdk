@@ -553,6 +553,12 @@ struct nvm_cfg1_port {
 #define NVM_CFG1_PORT_LED_MODE_PHY10                            0xD
 #define NVM_CFG1_PORT_LED_MODE_PHY11                            0xE
 #define NVM_CFG1_PORT_LED_MODE_PHY12                            0xF
+#define NVM_CFG1_PORT_DCBX_MODE_MASK                            0x000F0000
+#define NVM_CFG1_PORT_DCBX_MODE_OFFSET                          16
+#define NVM_CFG1_PORT_DCBX_MODE_DISABLED                        0x0
+#define NVM_CFG1_PORT_DCBX_MODE_IEEE                            0x1
+#define NVM_CFG1_PORT_DCBX_MODE_CEE                             0x2
+#define NVM_CFG1_PORT_DCBX_MODE_DYNAMIC                         0x3
 #define NVM_CFG1_PORT_DEFAULT_ENABLED_PROTOCOLS_MASK            0x00F00000
 #define NVM_CFG1_PORT_DEFAULT_ENABLED_PROTOCOLS_OFFSET          20
 #define NVM_CFG1_PORT_DEFAULT_ENABLED_PROTOCOLS_ETHERNET        0x1

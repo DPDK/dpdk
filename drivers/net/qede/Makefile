@@ -81,6 +81,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_spq.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_init_ops.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_mcp.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_int.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_dcbx.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/bcm_osal.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_sriov.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_vf.c

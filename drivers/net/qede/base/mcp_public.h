@@ -183,6 +183,184 @@ struct couple_mode_teaming {
 #define PORT_CMT_TEAM1              (1 << 2)
 };
 
+/**************************************
+ *     LLDP and DCBX HSI structures
+ **************************************/
+#define LLDP_CHASSIS_ID_STAT_LEN 4
+#define LLDP_PORT_ID_STAT_LEN 4
+#define DCBX_MAX_APP_PROTOCOL		32
+#define MAX_SYSTEM_LLDP_TLV_DATA    32
+
+typedef enum _lldp_agent_e {
+	LLDP_NEAREST_BRIDGE = 0,
+	LLDP_NEAREST_NON_TPMR_BRIDGE,
+	LLDP_NEAREST_CUSTOMER_BRIDGE,
+	LLDP_MAX_LLDP_AGENTS
+} lldp_agent_e;
+
+struct lldp_config_params_s {
+	u32 config;
+#define LLDP_CONFIG_TX_INTERVAL_MASK        0x000000ff
+#define LLDP_CONFIG_TX_INTERVAL_SHIFT       0
+#define LLDP_CONFIG_HOLD_MASK               0x00000f00
+#define LLDP_CONFIG_HOLD_SHIFT              8
+#define LLDP_CONFIG_MAX_CREDIT_MASK         0x0000f000
+#define LLDP_CONFIG_MAX_CREDIT_SHIFT        12
+#define LLDP_CONFIG_ENABLE_RX_MASK          0x40000000
+#define LLDP_CONFIG_ENABLE_RX_SHIFT         30
+#define LLDP_CONFIG_ENABLE_TX_MASK          0x80000000
+#define LLDP_CONFIG_ENABLE_TX_SHIFT         31
+	/* Holds local Chassis ID TLV header, subtype and 9B of payload.
+	 * If firtst byte is 0, then we will use default chassis ID
+	 */
+	u32 local_chassis_id[LLDP_CHASSIS_ID_STAT_LEN];
+	/* Holds local Port ID TLV header, subtype and 9B of payload.
+	 * If firtst byte is 0, then we will use default port ID
+	 */
+	u32 local_port_id[LLDP_PORT_ID_STAT_LEN];
+};
+
+struct lldp_status_params_s {
+	u32 prefix_seq_num;
+	u32 status;		/* TBD */
+	/* Holds remote Chassis ID TLV header, subtype and 9B of payload.
+	 */
+	u32 local_port_id[LLDP_PORT_ID_STAT_LEN];
+	u32 peer_chassis_id[LLDP_CHASSIS_ID_STAT_LEN];
+	/* Holds remote Port ID TLV header, subtype and 9B of payload.
+	 */
+	u32 peer_port_id[LLDP_PORT_ID_STAT_LEN];
+	u32 suffix_seq_num;
+};
+
+struct dcbx_ets_feature {
+	u32 flags;
+#define DCBX_ETS_ENABLED_MASK                   0x00000001
+#define DCBX_ETS_ENABLED_SHIFT                  0
+#define DCBX_ETS_WILLING_MASK                   0x00000002
+#define DCBX_ETS_WILLING_SHIFT                  1
+#define DCBX_ETS_ERROR_MASK                     0x00000004
+#define DCBX_ETS_ERROR_SHIFT                    2
+#define DCBX_ETS_CBS_MASK                       0x00000008
+#define DCBX_ETS_CBS_SHIFT                      3
+#define DCBX_ETS_MAX_TCS_MASK                   0x000000f0
+#define DCBX_ETS_MAX_TCS_SHIFT                  4
+	u32 pri_tc_tbl[1];
+#define DCBX_CEE_STRICT_PRIORITY		0xf
+#define DCBX_CEE_STRICT_PRIORITY_TC		0x7
+	u32 tc_bw_tbl[2];
+	u32 tc_tsa_tbl[2];
+#define DCBX_ETS_TSA_STRICT			0
+#define DCBX_ETS_TSA_CBS			1
+#define DCBX_ETS_TSA_ETS			2
+};
+
+struct dcbx_app_priority_entry {
+	u32 entry;
+#define DCBX_APP_PRI_MAP_MASK       0x000000ff
+#define DCBX_APP_PRI_MAP_SHIFT      0
+#define DCBX_APP_PRI_0              0x01
+#define DCBX_APP_PRI_1              0x02
+#define DCBX_APP_PRI_2              0x04
+#define DCBX_APP_PRI_3              0x08
+#define DCBX_APP_PRI_4              0x10
+#define DCBX_APP_PRI_5              0x20
+#define DCBX_APP_PRI_6              0x40
+#define DCBX_APP_PRI_7              0x80
+#define DCBX_APP_SF_MASK            0x00000300
+#define DCBX_APP_SF_SHIFT           8
+#define DCBX_APP_SF_ETHTYPE         0
+#define DCBX_APP_SF_PORT            1
+#define DCBX_APP_PROTOCOL_ID_MASK   0xffff0000
+#define DCBX_APP_PROTOCOL_ID_SHIFT  16
+};
+
+/* FW structure in BE */
+struct dcbx_app_priority_feature {
+	u32 flags;
+#define DCBX_APP_ENABLED_MASK           0x00000001
+#define DCBX_APP_ENABLED_SHIFT          0
+#define DCBX_APP_WILLING_MASK           0x00000002
+#define DCBX_APP_WILLING_SHIFT          1
+#define DCBX_APP_ERROR_MASK             0x00000004
+#define DCBX_APP_ERROR_SHIFT            2
+	/* Not in use
+	 * #define DCBX_APP_DEFAULT_PRI_MASK       0x00000f00
+	 * #define DCBX_APP_DEFAULT_PRI_SHIFT      8
+	 */
+#define DCBX_APP_MAX_TCS_MASK           0x0000f000
+#define DCBX_APP_MAX_TCS_SHIFT          12
+#define DCBX_APP_NUM_ENTRIES_MASK       0x00ff0000
+#define DCBX_APP_NUM_ENTRIES_SHIFT      16
+	struct dcbx_app_priority_entry app_pri_tbl[DCBX_MAX_APP_PROTOCOL];
+};
+
+/* FW structure in BE */
+struct dcbx_features {
+	/* PG feature */
+	struct dcbx_ets_feature ets;
+	/* PFC feature */
+	u32 pfc;
+#define DCBX_PFC_PRI_EN_BITMAP_MASK             0x000000ff
+#define DCBX_PFC_PRI_EN_BITMAP_SHIFT            0
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_0            0x01
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_1            0x02
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_2            0x04
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_3            0x08
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_4            0x10
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_5            0x20
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_6            0x40
+#define DCBX_PFC_PRI_EN_BITMAP_PRI_7            0x80
+
+#define DCBX_PFC_FLAGS_MASK                     0x0000ff00
+#define DCBX_PFC_FLAGS_SHIFT                    8
+#define DCBX_PFC_CAPS_MASK                      0x00000f00
+#define DCBX_PFC_CAPS_SHIFT                     8
+#define DCBX_PFC_MBC_MASK                       0x00004000
+#define DCBX_PFC_MBC_SHIFT                      14
+#define DCBX_PFC_WILLING_MASK                   0x00008000
+#define DCBX_PFC_WILLING_SHIFT                  15
+#define DCBX_PFC_ENABLED_MASK                   0x00010000
+#define DCBX_PFC_ENABLED_SHIFT                  16
+#define DCBX_PFC_ERROR_MASK                     0x00020000
+#define DCBX_PFC_ERROR_SHIFT                    17
+
+	/* APP feature */
+	struct dcbx_app_priority_feature app;
+};
+
+struct dcbx_local_params {
+	u32 config;
+#define DCBX_CONFIG_VERSION_MASK            0x00000003
+#define DCBX_CONFIG_VERSION_SHIFT           0
+#define DCBX_CONFIG_VERSION_DISABLED        0
+#define DCBX_CONFIG_VERSION_IEEE            1
+#define DCBX_CONFIG_VERSION_CEE             2
+
+	u32 flags;
+	struct dcbx_features features;
+};
+
+struct dcbx_mib {
+	u32 prefix_seq_num;
+	u32 flags;
+	/*
+	 * #define DCBX_CONFIG_VERSION_MASK            0x00000003
+	 * #define DCBX_CONFIG_VERSION_SHIFT           0
+	 * #define DCBX_CONFIG_VERSION_DISABLED        0
+	 * #define DCBX_CONFIG_VERSION_IEEE            1
+	 * #define DCBX_CONFIG_VERSION_CEE             2
+	 */
+	struct dcbx_features features;
+	u32 suffix_seq_num;
+};
+
+struct lldp_system_tlvs_buffer_s {
+	u16 valid;
+	u16 length;
+	u32 data[MAX_SYSTEM_LLDP_TLV_DATA];
+};
+
 /**************************************/
 /*                                    */
 /*     P U B L I C      G L O B A L   */
@@ -385,6 +563,16 @@ struct public_port {
 #define LINK_FLAP_COUNT_MASK			0x00ff0000
 
 	u32 link_change_count;
+
+	/* LLDP params */
+	struct lldp_config_params_s lldp_config_params[LLDP_MAX_LLDP_AGENTS];
+	struct lldp_status_params_s lldp_status_params[LLDP_MAX_LLDP_AGENTS];
+	struct lldp_system_tlvs_buffer_s system_lldp_tlvs_buf;
+
+	/* DCBX related MIB */
+	struct dcbx_local_params local_admin_dcbx_mib;
+	struct dcbx_mib remote_dcbx_mib;
+	struct dcbx_mib operational_dcbx_mib;
 
 	/* FC_NPIV table offset & size in NVRAM value of 0 means not present */
 	u32 fc_npiv_nvram_tbl_addr;
@@ -631,6 +819,9 @@ struct public_drv_mb {
 	/*        - DONT_CARE - Don't flap the link if up */
 #define DRV_MSG_CODE_LINK_RESET			0x23000000
 
+	/* Vitaly: LLDP commands */
+#define DRV_MSG_CODE_SET_LLDP                   0x24000000
+#define DRV_MSG_CODE_SET_DCBX                   0x25000000
 	/* OneView feature driver HSI */
 #define DRV_MSG_CODE_OV_UPDATE_CURR_CFG		0x26000000
 #define DRV_MSG_CODE_OV_UPDATE_BUS_NUM		0x27000000
@@ -701,6 +892,14 @@ struct public_drv_mb {
 	/* INIT_PHY params */
 #define DRV_MB_PARAM_INIT_PHY_FORCE		0x00000001
 #define DRV_MB_PARAM_INIT_PHY_DONT_CARE		0x00000002
+
+	/* LLDP / DCBX params */
+#define DRV_MB_PARAM_LLDP_SEND_MASK		0x00000001
+#define DRV_MB_PARAM_LLDP_SEND_SHIFT		0
+#define DRV_MB_PARAM_LLDP_AGENT_MASK		0x00000006
+#define DRV_MB_PARAM_LLDP_AGENT_SHIFT		1
+#define DRV_MB_PARAM_DCBX_NOTIFY_MASK		0x00000008
+#define DRV_MB_PARAM_DCBX_NOTIFY_SHIFT		3
 
 #define DRV_MB_PARAM_NIG_DRAIN_PERIOD_MS_MASK	0x000000FF
 #define DRV_MB_PARAM_NIG_DRAIN_PERIOD_MS_SHIFT	0
@@ -808,6 +1007,9 @@ struct public_drv_mb {
 #define FW_MSG_CODE_INIT_PHY_DONE		0x21200000
 #define FW_MSG_CODE_INIT_PHY_ERR_INVALID_ARGS	0x21300000
 #define FW_MSG_CODE_LINK_RESET_DONE		0x23000000
+#define FW_MSG_CODE_SET_LLDP_DONE               0x24000000
+#define FW_MSG_CODE_SET_LLDP_UNSUPPORTED_AGENT  0x24010000
+#define FW_MSG_CODE_SET_DCBX_DONE               0x25000000
 #define FW_MSG_CODE_UPDATE_CURR_CFG_DONE        0x26000000
 #define FW_MSG_CODE_UPDATE_BUS_NUM_DONE         0x27000000
 #define FW_MSG_CODE_UPDATE_BOOT_PROGRESS_DONE   0x28000000
@@ -918,6 +1120,9 @@ enum MFW_DRV_MSG_TYPE {
 	MFW_DRV_MSG_LINK_CHANGE,
 	MFW_DRV_MSG_FLR_FW_ACK_FAILED,
 	MFW_DRV_MSG_VF_DISABLED,
+	MFW_DRV_MSG_LLDP_DATA_UPDATED,
+	MFW_DRV_MSG_DCBX_REMOTE_MIB_UPDATED,
+	MFW_DRV_MSG_DCBX_OPERATIONAL_MIB_UPDATED,
 	MFW_DRV_MSG_ERROR_RECOVERY,
 	MFW_DRV_MSG_BW_UPDATE,
 	MFW_DRV_MSG_S_TAG_UPDATE,

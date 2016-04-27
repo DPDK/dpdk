@@ -161,6 +161,7 @@ struct ecore_dma_mem;
 struct ecore_sb_sp_info;
 struct ecore_igu_info;
 struct ecore_mcp_info;
+struct ecore_dcbx_info;
 
 struct ecore_rt_data {
 	u32 *init_val;
@@ -508,6 +509,7 @@ struct ecore_hwfn {
 	struct ecore_vf_iov *vf_iov_info;
 	struct ecore_pf_iov *pf_iov_info;
 	struct ecore_mcp_info *mcp_info;
+	struct ecore_dcbx_info *p_dcbx_info;
 
 	struct ecore_hw_cid_data *p_tx_cids;
 	struct ecore_hw_cid_data *p_rx_cids;

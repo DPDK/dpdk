@@ -306,6 +306,7 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define ETH_ALEN			ETHER_ADDR_LEN
 
 #define OSAL_LINK_UPDATE(hwfn) qed_link_update(hwfn)
+#define OSAL_DCBX_AEN(hwfn, mib_type) nothing
 
 /* SR-IOV channel */
 

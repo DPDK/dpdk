@@ -20,6 +20,7 @@
 #include "reg_addr.h"
 #include "ecore_int.h"
 #include "ecore_hw.h"
+#include "ecore_dcbx.h"
 
 enum _ecore_status_t ecore_sp_init_request(struct ecore_hwfn *p_hwfn,
 					   struct ecore_spq_entry **pp_ent,
@@ -429,6 +430,9 @@ enum _ecore_status_t ecore_sp_pf_update(struct ecore_hwfn *p_hwfn)
 				   &init_data);
 	if (rc != ECORE_SUCCESS)
 		return rc;
+
+	ecore_dcbx_set_pf_update_params(&p_hwfn->p_dcbx_info->results,
+					&p_ent->ramrod.pf_update);
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }

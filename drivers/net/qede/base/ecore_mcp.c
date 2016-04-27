@@ -18,6 +18,7 @@
 #include "ecore_iov_api.h"
 #include "ecore_gtt_reg_addr.h"
 #include "ecore_iro.h"
+#include "ecore_dcbx.h"
 
 #define CHIP_MCP_RESP_ITER_US 10
 #define EMUL_MCP_RESP_ITER_US (1000 * 1000)
@@ -726,6 +727,9 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 
 	p_link->sfp_tx_fault = !!(status & LINK_STATUS_SFP_TX_FAULT);
 
+	if (p_link->link_up)
+		ecore_dcbx_eagle_workaround(p_hwfn, p_ptt, p_link->pfc_enabled);
+
 	OSAL_LINK_UPDATE(p_hwfn);
 }
 
@@ -997,6 +1001,18 @@ enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 			break;
 		case MFW_DRV_MSG_VF_DISABLED:
 			ecore_mcp_handle_vf_flr(p_hwfn, p_ptt);
+			break;
+		case MFW_DRV_MSG_LLDP_DATA_UPDATED:
+			ecore_dcbx_mib_update_event(p_hwfn, p_ptt,
+						    ECORE_DCBX_REMOTE_LLDP_MIB);
+			break;
+		case MFW_DRV_MSG_DCBX_REMOTE_MIB_UPDATED:
+			ecore_dcbx_mib_update_event(p_hwfn, p_ptt,
+						    ECORE_DCBX_REMOTE_MIB);
+			break;
+		case MFW_DRV_MSG_DCBX_OPERATIONAL_MIB_UPDATED:
+			ecore_dcbx_mib_update_event(p_hwfn, p_ptt,
+						    ECORE_DCBX_OPERATIONAL_MIB);
 			break;
 		case MFW_DRV_MSG_ERROR_RECOVERY:
 			ecore_mcp_handle_process_kill(p_hwfn, p_ptt);
