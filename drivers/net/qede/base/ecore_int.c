@@ -21,6 +21,7 @@
 #include "ecore_hw_defs.h"
 #include "ecore_hsi_common.h"
 #include "ecore_mcp.h"
+#include "ecore_attn_values.h"
 
 struct ecore_pi_info {
 	ecore_int_comp_cb_t comp_cb;
@@ -74,7 +75,602 @@ struct aeu_invert_reg {
 	struct aeu_invert_reg_bit bits[32];
 };
 
+#define MAX_ATTN_GRPS		(8)
 #define NUM_ATTN_REGS		(9)
+
+static enum _ecore_status_t ecore_mcp_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+	u32 tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, MCP_REG_CPU_STATE);
+
+	DP_INFO(p_hwfn->p_dev, "MCP_REG_CPU_STATE: %08x - Masking...\n", tmp);
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, MCP_REG_CPU_EVENT_MASK, 0xffffffff);
+
+	return ECORE_SUCCESS;
+}
+
+#define ECORE_PSWHST_ATTENTION_DISABLED_PF_MASK		(0x3c000)
+#define ECORE_PSWHST_ATTENTION_DISABLED_PF_SHIFT	(14)
+#define ECORE_PSWHST_ATTENTION_DISABLED_VF_MASK		(0x03fc0)
+#define ECORE_PSWHST_ATTENTION_DISABLED_VF_SHIFT	(6)
+#define ECORE_PSWHST_ATTENTION_DISABLED_VALID_MASK	(0x00020)
+#define ECORE_PSWHST_ATTENTION_DISABLED_VALID_SHIFT	(5)
+#define ECORE_PSWHST_ATTENTION_DISABLED_CLIENT_MASK	(0x0001e)
+#define ECORE_PSWHST_ATTENTION_DISABLED_CLIENT_SHIFT	(1)
+#define ECORE_PSWHST_ATTENTION_DISABLED_WRITE_MASK	(0x1)
+#define ECORE_PSWHST_ATTNETION_DISABLED_WRITE_SHIFT	(0)
+#define ECORE_PSWHST_ATTENTION_VF_DISABLED		(0x1)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS		(0x1)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_WR_MASK	(0x1)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_WR_SHIFT	(0)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_CLIENT_MASK	(0x1e)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_CLIENT_SHIFT	(1)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_VALID_MASK	(0x20)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_VALID_SHIFT	(5)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_ID_MASK	(0x3fc0)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_ID_SHIFT	(6)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_PF_ID_MASK	(0x3c000)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_PF_ID_SHIFT	(14)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_BYTE_EN_MASK	(0x3fc0000)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_BYTE_EN_SHIFT	(18)
+static enum _ecore_status_t ecore_pswhst_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+	u32 tmp =
+	    ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		     PSWHST_REG_VF_DISABLED_ERROR_VALID);
+
+	/* Disabled VF access */
+	if (tmp & ECORE_PSWHST_ATTENTION_VF_DISABLED) {
+		u32 addr, data;
+
+		addr = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				PSWHST_REG_VF_DISABLED_ERROR_ADDRESS);
+		data = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				PSWHST_REG_VF_DISABLED_ERROR_DATA);
+		DP_INFO(p_hwfn->p_dev,
+			"PF[0x%02x] VF [0x%02x] [Valid 0x%02x] Client [0x%02x]"
+			" Write [0x%02x] Addr [0x%08x]\n",
+			(u8)((data & ECORE_PSWHST_ATTENTION_DISABLED_PF_MASK)
+			     >> ECORE_PSWHST_ATTENTION_DISABLED_PF_SHIFT),
+			(u8)((data & ECORE_PSWHST_ATTENTION_DISABLED_VF_MASK)
+			     >> ECORE_PSWHST_ATTENTION_DISABLED_VF_SHIFT),
+			(u8)((data &
+			      ECORE_PSWHST_ATTENTION_DISABLED_VALID_MASK) >>
+			      ECORE_PSWHST_ATTENTION_DISABLED_VALID_SHIFT),
+			(u8)((data &
+			      ECORE_PSWHST_ATTENTION_DISABLED_CLIENT_MASK) >>
+			      ECORE_PSWHST_ATTENTION_DISABLED_CLIENT_SHIFT),
+			(u8)((data &
+			      ECORE_PSWHST_ATTENTION_DISABLED_WRITE_MASK) >>
+			      ECORE_PSWHST_ATTNETION_DISABLED_WRITE_SHIFT),
+			addr);
+	}
+
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       PSWHST_REG_INCORRECT_ACCESS_VALID);
+	if (tmp & ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS) {
+		u32 addr, data, length;
+
+		addr = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				PSWHST_REG_INCORRECT_ACCESS_ADDRESS);
+		data = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				PSWHST_REG_INCORRECT_ACCESS_DATA);
+		length = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				  PSWHST_REG_INCORRECT_ACCESS_LENGTH);
+
+		DP_INFO(p_hwfn->p_dev,
+			"Incorrect access to %08x of length %08x - PF [%02x]"
+			" VF [%04x] [valid %02x] client [%02x] write [%02x]"
+			" Byte-Enable [%04x] [%08x]\n",
+			addr, length,
+			(u8)((data &
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_PF_ID_MASK) >>
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_PF_ID_SHIFT),
+			(u8)((data &
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_ID_MASK) >>
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_ID_SHIFT),
+			(u8)((data &
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_VALID_MASK) >>
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_VF_VALID_SHIFT),
+			(u8)((data &
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_CLIENT_MASK) >>
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_CLIENT_SHIFT),
+			(u8)((data &
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_WR_MASK) >>
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_WR_SHIFT),
+			(u8)((data &
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_BYTE_EN_MASK) >>
+		      ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_BYTE_EN_SHIFT),
+			data);
+	}
+
+	/* TODO - We know 'some' of these are legal due to virtualization,
+	 * but is it true for all of them?
+	 */
+	return ECORE_SUCCESS;
+}
+
+#define ECORE_GRC_ATTENTION_VALID_BIT		(1 << 0)
+#define ECORE_GRC_ATTENTION_ADDRESS_MASK	(0x7fffff << 0)
+#define ECORE_GRC_ATTENTION_RDWR_BIT		(1 << 23)
+#define ECORE_GRC_ATTENTION_MASTER_MASK		(0xf << 24)
+#define ECORE_GRC_ATTENTION_MASTER_SHIFT	(24)
+#define ECORE_GRC_ATTENTION_PF_MASK		(0xf)
+#define ECORE_GRC_ATTENTION_VF_MASK		(0xff << 4)
+#define ECORE_GRC_ATTENTION_VF_SHIFT		(4)
+#define ECORE_GRC_ATTENTION_PRIV_MASK		(0x3 << 14)
+#define ECORE_GRC_ATTENTION_PRIV_SHIFT		(14)
+#define ECORE_GRC_ATTENTION_PRIV_VF		(0)
+static const char *grc_timeout_attn_master_to_str(u8 master)
+{
+	switch (master) {
+	case 1:
+		return "PXP";
+	case 2:
+		return "MCP";
+	case 3:
+		return "MSDM";
+	case 4:
+		return "PSDM";
+	case 5:
+		return "YSDM";
+	case 6:
+		return "USDM";
+	case 7:
+		return "TSDM";
+	case 8:
+		return "XSDM";
+	case 9:
+		return "DBU";
+	case 10:
+		return "DMAE";
+	default:
+		return "Unknown";
+	}
+}
+
+static enum _ecore_status_t ecore_grc_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+	u32 tmp, tmp2;
+
+	/* We've already cleared the timeout interrupt register, so we learn
+	 * of interrupts via the validity register
+	 */
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       GRC_REG_TIMEOUT_ATTN_ACCESS_VALID);
+	if (!(tmp & ECORE_GRC_ATTENTION_VALID_BIT))
+		goto out;
+
+	/* Read the GRC timeout information */
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       GRC_REG_TIMEOUT_ATTN_ACCESS_DATA_0);
+	tmp2 = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+			GRC_REG_TIMEOUT_ATTN_ACCESS_DATA_1);
+
+	DP_INFO(p_hwfn->p_dev,
+		"GRC timeout [%08x:%08x] - %s Address [%08x] [Master %s]"
+		" [PF: %02x %s %02x]\n",
+		tmp2, tmp,
+		(tmp & ECORE_GRC_ATTENTION_RDWR_BIT) ? "Write to" : "Read from",
+		(tmp & ECORE_GRC_ATTENTION_ADDRESS_MASK) << 2,
+		grc_timeout_attn_master_to_str((tmp &
+					ECORE_GRC_ATTENTION_MASTER_MASK) >>
+				       ECORE_GRC_ATTENTION_MASTER_SHIFT),
+		(tmp2 & ECORE_GRC_ATTENTION_PF_MASK),
+		(((tmp2 & ECORE_GRC_ATTENTION_PRIV_MASK) >>
+		  ECORE_GRC_ATTENTION_PRIV_SHIFT) ==
+		 ECORE_GRC_ATTENTION_PRIV_VF) ? "VF" : "(Irrelevant:)",
+		(tmp2 & ECORE_GRC_ATTENTION_VF_MASK) >>
+		ECORE_GRC_ATTENTION_VF_SHIFT);
+
+out:
+	/* Regardles of anything else, clean the validity bit */
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt,
+		 GRC_REG_TIMEOUT_ATTN_ACCESS_VALID, 0);
+	return ECORE_SUCCESS;
+}
+
+#define ECORE_PGLUE_ATTENTION_VALID (1 << 29)
+#define ECORE_PGLUE_ATTENTION_RD_VALID (1 << 26)
+#define ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK (0xf << 20)
+#define ECORE_PGLUE_ATTENTION_DETAILS_PFID_SHIFT (20)
+#define ECORE_PGLUE_ATTENTION_DETAILS_VF_VALID (1 << 19)
+#define ECORE_PGLUE_ATTENTION_DETAILS_VFID_MASK (0xff << 24)
+#define ECORE_PGLUE_ATTENTION_DETAILS_VFID_SHIFT (24)
+#define ECORE_PGLUE_ATTENTION_DETAILS2_WAS_ERR (1 << 21)
+#define ECORE_PGLUE_ATTENTION_DETAILS2_BME	(1 << 22)
+#define ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN (1 << 23)
+#define ECORE_PGLUE_ATTENTION_ICPL_VALID (1 << 23)
+#define ECORE_PGLUE_ATTENTION_ZLR_VALID (1 << 25)
+#define ECORE_PGLUE_ATTENTION_ILT_VALID (1 << 23)
+static enum _ecore_status_t ecore_pglub_rbc_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+	u32 tmp, reg_addr;
+
+	reg_addr =
+	    attn_blocks[BLOCK_PGLUE_B].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
+	    int_regs[0]->mask_addr;
+
+	/* Mask unnecessary attentions -@TBD move to MFW */
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr);
+	tmp |= (1 << 19);	/* Was PGL_PCIE_ATTN */
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr, tmp);
+
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       PGLUE_B_REG_TX_ERR_WR_DETAILS2);
+	if (tmp & ECORE_PGLUE_ATTENTION_VALID) {
+		u32 addr_lo, addr_hi, details;
+
+		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_TX_ERR_WR_ADD_31_0);
+		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_TX_ERR_WR_ADD_63_32);
+		details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_TX_ERR_WR_DETAILS);
+
+		DP_INFO(p_hwfn,
+			"Illegal write by chip to [%08x:%08x] blocked."
+			"Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x]"
+			" Details2 %08x [Was_error %02x BME deassert %02x"
+			" FID_enable deassert %02x]\n",
+			addr_hi, addr_lo, details,
+			(u8)((details &
+			      ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK) >>
+			     ECORE_PGLUE_ATTENTION_DETAILS_PFID_SHIFT),
+			(u8)((details &
+			      ECORE_PGLUE_ATTENTION_DETAILS_VFID_MASK) >>
+			     ECORE_PGLUE_ATTENTION_DETAILS_VFID_SHIFT),
+			(u8)((details & ECORE_PGLUE_ATTENTION_DETAILS_VF_VALID)
+			     ? 1 : 0), tmp,
+			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_WAS_ERR) ? 1
+			     : 0),
+			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_BME) ? 1 :
+			     0),
+			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN) ? 1
+			     : 0));
+	}
+
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       PGLUE_B_REG_TX_ERR_RD_DETAILS2);
+	if (tmp & ECORE_PGLUE_ATTENTION_RD_VALID) {
+		u32 addr_lo, addr_hi, details;
+
+		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_TX_ERR_RD_ADD_31_0);
+		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_TX_ERR_RD_ADD_63_32);
+		details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_TX_ERR_RD_DETAILS);
+
+		DP_INFO(p_hwfn,
+			"Illegal read by chip from [%08x:%08x] blocked."
+			" Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x]"
+			" Details2 %08x [Was_error %02x BME deassert %02x"
+			" FID_enable deassert %02x]\n",
+			addr_hi, addr_lo, details,
+			(u8)((details &
+			      ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK) >>
+			     ECORE_PGLUE_ATTENTION_DETAILS_PFID_SHIFT),
+			(u8)((details &
+			      ECORE_PGLUE_ATTENTION_DETAILS_VFID_MASK) >>
+			     ECORE_PGLUE_ATTENTION_DETAILS_VFID_SHIFT),
+			(u8)((details & ECORE_PGLUE_ATTENTION_DETAILS_VF_VALID)
+			     ? 1 : 0), tmp,
+			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_WAS_ERR) ? 1
+			     : 0),
+			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_BME) ? 1 :
+			     0),
+			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN) ? 1
+			     : 0));
+	}
+
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       PGLUE_B_REG_TX_ERR_WR_DETAILS_ICPL);
+	if (tmp & ECORE_PGLUE_ATTENTION_ICPL_VALID)
+		DP_INFO(p_hwfn, "ICPL error - %08x\n", tmp);
+
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       PGLUE_B_REG_MASTER_ZLR_ERR_DETAILS);
+	if (tmp & ECORE_PGLUE_ATTENTION_ZLR_VALID) {
+		u32 addr_hi, addr_lo;
+
+		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_MASTER_ZLR_ERR_ADD_31_0);
+		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_MASTER_ZLR_ERR_ADD_63_32);
+
+		DP_INFO(p_hwfn, "ICPL error - %08x [Address %08x:%08x]\n",
+			tmp, addr_hi, addr_lo);
+	}
+
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		       PGLUE_B_REG_VF_ILT_ERR_DETAILS2);
+	if (tmp & ECORE_PGLUE_ATTENTION_ILT_VALID) {
+		u32 addr_hi, addr_lo, details;
+
+		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_VF_ILT_ERR_ADD_31_0);
+		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_VF_ILT_ERR_ADD_63_32);
+		details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   PGLUE_B_REG_VF_ILT_ERR_DETAILS);
+
+		DP_INFO(p_hwfn,
+			"ILT error - Details %08x Details2 %08x"
+			" [Address %08x:%08x]\n",
+			details, tmp, addr_hi, addr_lo);
+	}
+
+	/* Clear the indications */
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt,
+		 PGLUE_B_REG_LATCHED_ERRORS_CLR, (1 << 2));
+
+	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t ecore_nig_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+	u32 tmp, reg_addr;
+
+	/* Mask unnecessary attentions -@TBD move to MFW */
+	reg_addr =
+	    attn_blocks[BLOCK_NIG].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
+	    int_regs[3]->mask_addr;
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr);
+	tmp |= (1 << 0);	/* Was 3_P0_TX_PAUSE_TOO_LONG_INT */
+	tmp |= NIG_REG_INT_MASK_3_P0_LB_TC1_PAUSE_TOO_LONG_INT;
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr, tmp);
+
+	reg_addr =
+	    attn_blocks[BLOCK_NIG].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
+	    int_regs[5]->mask_addr;
+	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr);
+	tmp |= (1 << 0);	/* Was 5_P1_TX_PAUSE_TOO_LONG_INT */
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr, tmp);
+
+	/* TODO - a bit risky to return success here; But alternative is to
+	 * actually read the multitdue of interrupt register of the block.
+	 */
+	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t ecore_fw_assertion(struct ecore_hwfn *p_hwfn)
+{
+	DP_NOTICE(p_hwfn, false, "FW assertion!\n");
+
+	ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_FW_ASSERT);
+
+	return ECORE_INVAL;
+}
+
+static enum _ecore_status_t
+ecore_general_attention_35(struct ecore_hwfn *p_hwfn)
+{
+	DP_INFO(p_hwfn, "General attention 35!\n");
+
+	return ECORE_SUCCESS;
+}
+
+#define ECORE_DORQ_ATTENTION_REASON_MASK (0xfffff)
+#define ECORE_DORQ_ATTENTION_OPAQUE_MASK (0xffff)
+#define ECORE_DORQ_ATTENTION_SIZE_MASK	 (0x7f)
+#define ECORE_DORQ_ATTENTION_SIZE_SHIFT	 (16)
+
+static enum _ecore_status_t ecore_dorq_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+	u32 reason;
+
+	reason = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, DORQ_REG_DB_DROP_REASON) &
+	    ECORE_DORQ_ATTENTION_REASON_MASK;
+	if (reason) {
+		u32 details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				       DORQ_REG_DB_DROP_DETAILS);
+
+		DP_INFO(p_hwfn->p_dev,
+			"DORQ db_drop: address 0x%08x Opaque FID 0x%04x"
+			" Size [bytes] 0x%08x Reason: 0x%08x\n",
+			ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				 DORQ_REG_DB_DROP_DETAILS_ADDRESS),
+			(u16)(details & ECORE_DORQ_ATTENTION_OPAQUE_MASK),
+			((details & ECORE_DORQ_ATTENTION_SIZE_MASK) >>
+			 ECORE_DORQ_ATTENTION_SIZE_SHIFT) * 4, reason);
+	}
+
+	return ECORE_INVAL;
+}
+
+static enum _ecore_status_t ecore_tm_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_EMUL_B0(p_hwfn->p_dev)) {
+		u32 val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				   TM_REG_INT_STS_1);
+
+		if (val & ~(TM_REG_INT_STS_1_PEND_TASK_SCAN |
+			    TM_REG_INT_STS_1_PEND_CONN_SCAN))
+			return ECORE_INVAL;
+
+		if (val & (TM_REG_INT_STS_1_PEND_TASK_SCAN |
+			   TM_REG_INT_STS_1_PEND_CONN_SCAN))
+			DP_INFO(p_hwfn,
+				"TM attention on emulation - most likely"
+				" results of clock-ratios\n");
+		val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, TM_REG_INT_MASK_1);
+		val |= TM_REG_INT_MASK_1_PEND_CONN_SCAN |
+		    TM_REG_INT_MASK_1_PEND_TASK_SCAN;
+		ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, TM_REG_INT_MASK_1, val);
+
+		return ECORE_SUCCESS;
+	}
+#endif
+
+	return ECORE_INVAL;
+}
+
+/* Notice aeu_invert_reg must be defined in the same order of bits as HW;  */
+static struct aeu_invert_reg aeu_descs[NUM_ATTN_REGS] = {
+	{
+	 {			/* After Invert 1 */
+	  {"GPIO0 function%d", (32 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
+	   MAX_BLOCK_ID},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 2 */
+	  {"PGLUE config_space", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"PGLUE misc_flr", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"PGLUE B RBC", ATTENTION_PAR_INT, ecore_pglub_rbc_attn_cb,
+	   BLOCK_PGLUE_B},
+	  {"PGLUE misc_mctp", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"Flash event", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"SMB event", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"Main Power", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"SW timers #%d",
+	   (8 << ATTENTION_LENGTH_SHIFT) | (1 << ATTENTION_OFFSET_SHIFT),
+	   OSAL_NULL, MAX_BLOCK_ID},
+	  {"PCIE glue/PXP VPD %d", (16 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
+	   BLOCK_PGLCS},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 3 */
+	  {"General Attention %d", (32 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
+	   MAX_BLOCK_ID},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 4 */
+	  {"General Attention 32", ATTENTION_SINGLE | ATTENTION_CLEAR_ENABLE,
+	   ecore_fw_assertion, MAX_BLOCK_ID},
+	  {"General Attention %d",
+	   (2 << ATTENTION_LENGTH_SHIFT) | (33 << ATTENTION_OFFSET_SHIFT),
+	   OSAL_NULL, MAX_BLOCK_ID},
+	  {"General Attention 35", ATTENTION_SINGLE | ATTENTION_CLEAR_ENABLE,
+	   ecore_general_attention_35, MAX_BLOCK_ID},
+	  {"CNIG port %d", (4 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
+	   BLOCK_CNIG},
+	  {"MCP CPU", ATTENTION_SINGLE, ecore_mcp_attn_cb, MAX_BLOCK_ID},
+	  {"MCP Watchdog timer", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"MCP M2P", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"AVS stop status ready", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"MSTAT", ATTENTION_PAR_INT, OSAL_NULL, MAX_BLOCK_ID},
+	  {"MSTAT per-path", ATTENTION_PAR_INT, OSAL_NULL, MAX_BLOCK_ID},
+	  {"Reserved %d", (6 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
+	   MAX_BLOCK_ID},
+	  {"NIG", ATTENTION_PAR_INT, ecore_nig_attn_cb, BLOCK_NIG},
+	  {"BMB/OPTE/MCP", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_BMB},
+	  {"BTB", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_BTB},
+	  {"BRB", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_BRB},
+	  {"PRS", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PRS},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 5 */
+	  {"SRC", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_SRC},
+	  {"PB Client1", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PBF_PB1},
+	  {"PB Client2", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PBF_PB2},
+	  {"RPB", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_RPB},
+	  {"PBF", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PBF},
+	  {"QM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_QM},
+	  {"TM", ATTENTION_PAR_INT, ecore_tm_attn_cb, BLOCK_TM},
+	  {"MCM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_MCM},
+	  {"MSDM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_MSDM},
+	  {"MSEM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_MSEM},
+	  {"PCM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PCM},
+	  {"PSDM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSDM},
+	  {"PSEM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSEM},
+	  {"TCM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_TCM},
+	  {"TSDM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_TSDM},
+	  {"TSEM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_TSEM},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 6 */
+	  {"UCM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_UCM},
+	  {"USDM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_USDM},
+	  {"USEM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_USEM},
+	  {"XCM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_XCM},
+	  {"XSDM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_XSDM},
+	  {"XSEM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_XSEM},
+	  {"YCM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_YCM},
+	  {"YSDM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_YSDM},
+	  {"YSEM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_YSEM},
+	  {"XYLD", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_XYLD},
+	  {"TMLD", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_TMLD},
+	  {"MYLD", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_MULD},
+	  {"YULD", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_YULD},
+	  {"DORQ", ATTENTION_PAR_INT, ecore_dorq_attn_cb, BLOCK_DORQ},
+	  {"DBG", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_DBG},
+	  {"IPC", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_IPC},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 7 */
+	  {"CCFC", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_CCFC},
+	  {"CDU", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_CDU},
+	  {"DMAE", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_DMAE},
+	  {"IGU", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_IGU},
+	  {"ATC", ATTENTION_PAR_INT, OSAL_NULL, MAX_BLOCK_ID},
+	  {"CAU", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_CAU},
+	  {"PTU", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PTU},
+	  {"PRM", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PRM},
+	  {"TCFC", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_TCFC},
+	  {"RDIF", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_RDIF},
+	  {"TDIF", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_TDIF},
+	  {"RSS", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_RSS},
+	  {"MISC", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_MISC},
+	  {"MISCS", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_MISCS},
+	  {"PCIE", ATTENTION_PAR, OSAL_NULL, BLOCK_PCIE},
+	  {"Vaux PCI core", ATTENTION_SINGLE, OSAL_NULL, BLOCK_PGLCS},
+	  {"PSWRQ", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSWRQ},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 8 */
+	  {"PSWRQ (pci_clk)", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSWRQ2},
+	  {"PSWWR", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSWWR},
+	  {"PSWWR (pci_clk)", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSWWR2},
+	  {"PSWRD", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSWRD},
+	  {"PSWRD (pci_clk)", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSWRD2},
+	  {"PSWHST", ATTENTION_PAR_INT, ecore_pswhst_attn_cb, BLOCK_PSWHST},
+	  {"PSWHST (pci_clk)", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_PSWHST2},
+	  {"GRC", ATTENTION_PAR_INT, ecore_grc_attn_cb, BLOCK_GRC},
+	  {"CPMU", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_CPMU},
+	  {"NCSI", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_NCSI},
+	  {"MSEM PRAM", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"PSEM PRAM", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"TSEM PRAM", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"USEM PRAM", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"XSEM PRAM", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"YSEM PRAM", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"pxp_misc_mps", ATTENTION_PAR, OSAL_NULL, BLOCK_PGLCS},
+	  {"PCIE glue/PXP Exp. ROM", ATTENTION_SINGLE, OSAL_NULL, BLOCK_PGLCS},
+	  {"PERST_B assertion", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"PERST_B deassertion", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
+	  {"Reserved %d", (2 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
+	   MAX_BLOCK_ID},
+	  }
+	 },
+
+	{
+	 {			/* After Invert 9 */
+	  {"MCP Latched memory", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"MCP Latched scratchpad cache", ATTENTION_SINGLE, OSAL_NULL,
+	   MAX_BLOCK_ID},
+	  {"MCP Latched ump_tx", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"MCP Latched scratchpad", ATTENTION_PAR, OSAL_NULL, MAX_BLOCK_ID},
+	  {"Reserved %d", (28 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
+	   MAX_BLOCK_ID},
+	  }
+	 },
+
+};
 
 #define ATTN_STATE_BITS		(0xfff)
 #define ATTN_BITS_MASKABLE	(0x3ff)
@@ -113,6 +709,436 @@ static u16 ecore_attn_update_idx(struct ecore_hwfn *p_hwfn,
 	}
 
 	OSAL_MMIOWB(p_hwfn->p_dev);
+
+	return rc;
+}
+
+/**
+ * @brief ecore_int_assertion - handles asserted attention bits
+ *
+ * @param p_hwfn
+ * @param asserted_bits newly asserted bits
+ * @return enum _ecore_status_t
+ */
+static enum _ecore_status_t ecore_int_assertion(struct ecore_hwfn *p_hwfn,
+						u16 asserted_bits)
+{
+	struct ecore_sb_attn_info *sb_attn_sw = p_hwfn->p_sb_attn;
+	u32 igu_mask;
+
+	/* Mask the source of the attention in the IGU */
+	igu_mask = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+			    IGU_REG_ATTENTION_ENABLE);
+	DP_VERBOSE(p_hwfn, ECORE_MSG_INTR, "IGU mask: 0x%08x --> 0x%08x\n",
+		   igu_mask, igu_mask & ~(asserted_bits & ATTN_BITS_MASKABLE));
+	igu_mask &= ~(asserted_bits & ATTN_BITS_MASKABLE);
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, IGU_REG_ATTENTION_ENABLE, igu_mask);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
+		   "inner known ATTN state: 0x%04x --> 0x%04x\n",
+		   sb_attn_sw->known_attn,
+		   sb_attn_sw->known_attn | asserted_bits);
+	sb_attn_sw->known_attn |= asserted_bits;
+
+	/* Handle MCP events */
+	if (asserted_bits & 0x100) {
+		ecore_mcp_handle_events(p_hwfn, p_hwfn->p_dpc_ptt);
+		/* Clean the MCP attention */
+		ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt,
+			 sb_attn_sw->mfw_attn_addr, 0);
+	}
+
+	/* FIXME - this will change once we'll have GOOD gtt definitions */
+	DIRECT_REG_WR(p_hwfn,
+		      (u8 OSAL_IOMEM *) p_hwfn->regview +
+		      GTT_BAR0_MAP_REG_IGU_CMD +
+		      ((IGU_CMD_ATTN_BIT_SET_UPPER -
+			IGU_CMD_INT_ACK_BASE) << 3), (u32)asserted_bits);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_INTR, "set cmd IGU: 0x%04x\n",
+		   asserted_bits);
+
+	return ECORE_SUCCESS;
+}
+
+static void ecore_int_deassertion_print_bit(struct ecore_hwfn *p_hwfn,
+					    struct attn_hw_reg *p_reg_desc,
+					    struct attn_hw_block *p_block,
+					    enum ecore_attention_type type,
+					    u32 val, u32 mask)
+{
+	int j;
+#ifdef ATTN_DESC
+	const char **description;
+
+	if (type == ECORE_ATTN_TYPE_ATTN)
+		description = p_block->int_desc;
+	else
+		description = p_block->prty_desc;
+#endif
+
+	for (j = 0; j < p_reg_desc->num_of_bits; j++) {
+		if (val & (1 << j)) {
+#ifdef ATTN_DESC
+			DP_NOTICE(p_hwfn, false,
+				  "%s (%s): %s [reg %d [0x%08x], bit %d]%s\n",
+				  p_block->name,
+				  type == ECORE_ATTN_TYPE_ATTN ? "Interrupt" :
+				  "Parity",
+				  description[p_reg_desc->bit_attn_idx[j]],
+				  p_reg_desc->reg_idx,
+				  p_reg_desc->sts_addr, j,
+				  (mask & (1 << j)) ? " [MASKED]" : "");
+#else
+			DP_NOTICE(p_hwfn->p_dev, false,
+				  "%s (%s): [reg %d [0x%08x], bit %d]%s\n",
+				  p_block->name,
+				  type == ECORE_ATTN_TYPE_ATTN ? "Interrupt" :
+				  "Parity",
+				  p_reg_desc->reg_idx,
+				  p_reg_desc->sts_addr, j,
+				  (mask & (1 << j)) ? " [MASKED]" : "");
+#endif
+		}
+	}
+}
+
+/**
+ * @brief ecore_int_deassertion_aeu_bit - handles the effects of a single
+ * cause of the attention
+ *
+ * @param p_hwfn
+ * @param p_aeu - descriptor of an AEU bit which caused the attention
+ * @param aeu_en_reg - register offset of the AEU enable reg. which configured
+ *  this bit to this group.
+ * @param bit_index - index of this bit in the aeu_en_reg
+ *
+ * @return enum _ecore_status_t
+ */
+static enum _ecore_status_t
+ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
+			      struct aeu_invert_reg_bit *p_aeu,
+			      u32 aeu_en_reg, u32 bitmask)
+{
+	enum _ecore_status_t rc = ECORE_INVAL;
+	u32 val, mask;
+
+#ifndef REMOVE_DBG
+	u32 interrupts[20];	/* TODO- change into HSI define once supplied */
+
+	OSAL_MEMSET(interrupts, 0, sizeof(u32) * 20);	/* FIXME real size) */
+#endif
+
+	DP_INFO(p_hwfn, "Deasserted attention `%s'[%08x]\n",
+		p_aeu->bit_name, bitmask);
+
+	/* Call callback before clearing the interrupt status */
+	if (p_aeu->cb) {
+		DP_INFO(p_hwfn, "`%s (attention)': Calling Callback function\n",
+			p_aeu->bit_name);
+		rc = p_aeu->cb(p_hwfn);
+	}
+
+	/* Handle HW block interrupt registers */
+	if (p_aeu->block_index != MAX_BLOCK_ID) {
+		u16 chip_type = ECORE_GET_TYPE(p_hwfn->p_dev);
+		struct attn_hw_block *p_block;
+		int i;
+
+		p_block = &attn_blocks[p_aeu->block_index];
+
+		/* Handle each interrupt register */
+		for (i = 0;
+		     i < p_block->chip_regs[chip_type].num_of_int_regs; i++) {
+			struct attn_hw_reg *p_reg_desc;
+			u32 sts_addr;
+
+			p_reg_desc = p_block->chip_regs[chip_type].int_regs[i];
+
+			/* In case of fatal attention, don't clear the status
+			 * so it would appear in idle check.
+			 */
+			if (rc == ECORE_SUCCESS)
+				sts_addr = p_reg_desc->sts_clr_addr;
+			else
+				sts_addr = p_reg_desc->sts_addr;
+
+			val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, sts_addr);
+			mask = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+					p_reg_desc->mask_addr);
+			ecore_int_deassertion_print_bit(p_hwfn, p_reg_desc,
+							p_block,
+							ECORE_ATTN_TYPE_ATTN,
+							val, mask);
+
+#ifndef REMOVE_DBG
+			interrupts[i] = val;
+#endif
+		}
+	}
+
+	/* Reach assertion if attention is fatal */
+	if (rc != ECORE_SUCCESS) {
+		DP_NOTICE(p_hwfn, true, "`%s': Fatal attention\n",
+			  p_aeu->bit_name);
+
+		ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_HW_ATTN);
+	}
+
+	/* Prevent this Attention from being asserted in the future */
+	if (p_aeu->flags & ATTENTION_CLEAR_ENABLE) {
+		u32 val;
+		u32 mask = ~bitmask;
+		val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg);
+		ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg, (val & mask));
+		DP_INFO(p_hwfn, "`%s' - Disabled future attentions\n",
+			p_aeu->bit_name);
+	}
+
+	if (p_aeu->flags & (ATTENTION_FW_DUMP | ATTENTION_PANIC_DUMP)) {
+		/* @@@TODO - what to dump? <yuvalmin 04/02/13> */
+		DP_ERR(p_hwfn->p_dev, "`%s' - Dumps aren't implemented yet\n",
+		       p_aeu->bit_name);
+		return ECORE_NOTIMPL;
+	}
+
+	return rc;
+}
+
+static void ecore_int_parity_print(struct ecore_hwfn *p_hwfn,
+				   struct aeu_invert_reg_bit *p_aeu,
+				   struct attn_hw_block *p_block, u8 bit_index)
+{
+	u16 chip_type = ECORE_GET_TYPE(p_hwfn->p_dev);
+	int i;
+
+	for (i = 0; i < p_block->chip_regs[chip_type].num_of_prty_regs; i++) {
+		struct attn_hw_reg *p_reg_desc;
+		u32 val, mask;
+
+		p_reg_desc = p_block->chip_regs[chip_type].prty_regs[i];
+
+		val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+			       p_reg_desc->sts_clr_addr);
+		mask = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				p_reg_desc->mask_addr);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
+			   "%s[%d] - parity register[%d] is %08x [mask is %08x]\n",
+			   p_aeu->bit_name, bit_index, i, val, mask);
+		ecore_int_deassertion_print_bit(p_hwfn, p_reg_desc,
+						p_block,
+						ECORE_ATTN_TYPE_PARITY,
+						val, mask);
+	}
+}
+
+/**
+ * @brief ecore_int_deassertion_parity - handle a single parity AEU source
+ *
+ * @param p_hwfn
+ * @param p_aeu - descriptor of an AEU bit which caused the
+ *              parity
+ * @param bit_index
+ */
+static void ecore_int_deassertion_parity(struct ecore_hwfn *p_hwfn,
+					 struct aeu_invert_reg_bit *p_aeu,
+					 u8 bit_index)
+{
+	u32 block_id = p_aeu->block_index;
+
+	DP_INFO(p_hwfn->p_dev, "%s[%d] parity attention is set\n",
+		p_aeu->bit_name, bit_index);
+
+	if (block_id != MAX_BLOCK_ID) {
+		ecore_int_parity_print(p_hwfn, p_aeu, &attn_blocks[block_id],
+				       bit_index);
+
+		/* In A0, there's a single parity bit for several blocks */
+		if (block_id == BLOCK_BTB) {
+			ecore_int_parity_print(p_hwfn, p_aeu,
+					       &attn_blocks[BLOCK_OPTE],
+					       bit_index);
+			ecore_int_parity_print(p_hwfn, p_aeu,
+					       &attn_blocks[BLOCK_MCP],
+					       bit_index);
+		}
+	}
+}
+
+/**
+ * @brief - handles deassertion of previously asserted attentions.
+ *
+ * @param p_hwfn
+ * @param deasserted_bits - newly deasserted bits
+ * @return enum _ecore_status_t
+ *
+ */
+static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
+						  u16 deasserted_bits)
+{
+	struct ecore_sb_attn_info *sb_attn_sw = p_hwfn->p_sb_attn;
+	u32 aeu_inv_arr[NUM_ATTN_REGS], aeu_mask;
+	bool b_parity = false;
+	u8 i, j, k, bit_idx;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	/* Read the attention registers in the AEU */
+	for (i = 0; i < NUM_ATTN_REGS; i++) {
+		aeu_inv_arr[i] = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+					  MISC_REG_AEU_AFTER_INVERT_1_IGU +
+					  i * 0x4);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
+			   "Deasserted bits [%d]: %08x\n", i, aeu_inv_arr[i]);
+	}
+
+	/* Handle parity attentions first */
+	for (i = 0; i < NUM_ATTN_REGS; i++) {
+		struct aeu_invert_reg *p_aeu = &sb_attn_sw->p_aeu_desc[i];
+		u32 en = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+				  MISC_REG_AEU_ENABLE1_IGU_OUT_0 +
+				  i * sizeof(u32));
+
+		u32 parities = sb_attn_sw->parity_mask[i] & aeu_inv_arr[i] & en;
+
+		/* Skip register in which no parity bit is currently set */
+		if (!parities)
+			continue;
+
+		for (j = 0, bit_idx = 0; bit_idx < 32; j++) {
+			struct aeu_invert_reg_bit *p_bit = &p_aeu->bits[j];
+
+			if ((p_bit->flags & ATTENTION_PARITY) &&
+			    !!(parities & (1 << bit_idx))) {
+				ecore_int_deassertion_parity(p_hwfn, p_bit,
+							     bit_idx);
+				b_parity = true;
+			}
+
+			bit_idx += ATTENTION_LENGTH(p_bit->flags);
+		}
+	}
+
+	/* Find non-parity cause for attention and act */
+	for (k = 0; k < MAX_ATTN_GRPS; k++) {
+		struct aeu_invert_reg_bit *p_aeu;
+
+		/* Handle only groups whose attention is currently deasserted */
+		if (!(deasserted_bits & (1 << k)))
+			continue;
+
+		for (i = 0; i < NUM_ATTN_REGS; i++) {
+			u32 aeu_en = MISC_REG_AEU_ENABLE1_IGU_OUT_0 +
+			    i * sizeof(u32) + k * sizeof(u32) * NUM_ATTN_REGS;
+			u32 en = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en);
+			u32 bits = aeu_inv_arr[i] & en;
+
+			/* Skip if no bit from this group is currently set */
+			if (!bits)
+				continue;
+
+			/* Find all set bits from current register which belong
+			 * to current group, making them responsible for the
+			 * previous assertion.
+			 */
+			for (j = 0, bit_idx = 0; bit_idx < 32; j++) {
+				u8 bit, bit_len;
+				u32 bitmask;
+
+				p_aeu = &sb_attn_sw->p_aeu_desc[i].bits[j];
+
+				/* No need to handle attention-only bits */
+				if (p_aeu->flags == ATTENTION_PAR)
+					continue;
+
+				bit = bit_idx;
+				bit_len = ATTENTION_LENGTH(p_aeu->flags);
+				if (p_aeu->flags & ATTENTION_PAR_INT) {
+					/* Skip Parity */
+					bit++;
+					bit_len--;
+				}
+
+				bitmask = bits & (((1 << bit_len) - 1) << bit);
+				if (bitmask) {
+					/* Handle source of the attention */
+					ecore_int_deassertion_aeu_bit(p_hwfn,
+								      p_aeu,
+								      aeu_en,
+								      bitmask);
+				}
+
+				bit_idx += ATTENTION_LENGTH(p_aeu->flags);
+			}
+		}
+	}
+
+	/* Clear IGU indication for the deasserted bits */
+	/* FIXME - this will change once we'll have GOOD gtt definitions */
+	DIRECT_REG_WR(p_hwfn,
+		      (u8 OSAL_IOMEM *) p_hwfn->regview +
+		      GTT_BAR0_MAP_REG_IGU_CMD +
+		      ((IGU_CMD_ATTN_BIT_CLR_UPPER -
+			IGU_CMD_INT_ACK_BASE) << 3), ~((u32)deasserted_bits));
+
+	/* Unmask deasserted attentions in IGU */
+	aeu_mask = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+			    IGU_REG_ATTENTION_ENABLE);
+	aeu_mask |= (deasserted_bits & ATTN_BITS_MASKABLE);
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, IGU_REG_ATTENTION_ENABLE, aeu_mask);
+
+	/* Clear deassertion from inner state */
+	sb_attn_sw->known_attn &= ~deasserted_bits;
+
+	return rc;
+}
+
+static enum _ecore_status_t ecore_int_attentions(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_sb_attn_info *p_sb_attn_sw = p_hwfn->p_sb_attn;
+	struct atten_status_block *p_sb_attn = p_sb_attn_sw->sb_attn;
+	u16 index = 0, asserted_bits, deasserted_bits;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	u32 attn_bits = 0, attn_acks = 0;
+
+	/* Read current attention bits/acks - safeguard against attentions
+	 * by guaranting work on a synchronized timeframe
+	 */
+	do {
+		index = OSAL_LE16_TO_CPU(p_sb_attn->sb_index);
+		attn_bits = OSAL_LE32_TO_CPU(p_sb_attn->atten_bits);
+		attn_acks = OSAL_LE32_TO_CPU(p_sb_attn->atten_ack);
+	} while (index != OSAL_LE16_TO_CPU(p_sb_attn->sb_index));
+	p_sb_attn->sb_index = index;
+
+	/* Attention / Deassertion are meaningful (and in correct state)
+	 * only when they differ and consistent with known state - deassertion
+	 * when previous attention & current ack, and assertion when current
+	 * attention with no previous attention
+	 */
+	asserted_bits = (attn_bits & ~attn_acks & ATTN_STATE_BITS) &
+	    ~p_sb_attn_sw->known_attn;
+	deasserted_bits = (~attn_bits & attn_acks & ATTN_STATE_BITS) &
+	    p_sb_attn_sw->known_attn;
+
+	if ((asserted_bits & ~0x100) || (deasserted_bits & ~0x100))
+		DP_INFO(p_hwfn,
+			"Attention: Index: 0x%04x, Bits: 0x%08x, Acks: 0x%08x, asserted: 0x%04x, De-asserted 0x%04x [Prev. known: 0x%04x]\n",
+			index, attn_bits, attn_acks, asserted_bits,
+			deasserted_bits, p_sb_attn_sw->known_attn);
+	else if (asserted_bits == 0x100)
+		DP_INFO(p_hwfn, "MFW indication via attention\n");
+	else
+		DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
+			   "MFW indication [deassertion]\n");
+
+	if (asserted_bits) {
+		rc = ecore_int_assertion(p_hwfn, asserted_bits);
+		if (rc)
+			return rc;
+	}
+
+	if (deasserted_bits)
+		rc = ecore_int_deassertion(p_hwfn, deasserted_bits);
 
 	return rc;
 }
@@ -218,6 +1244,9 @@ void ecore_int_sp_dpc(osal_int_ptr_t hwfn_cookie)
 		return;
 	}
 
+	if (rc & ECORE_SB_ATT_IDX)
+		ecore_int_attentions(p_hwfn);
+
 	if (rc & ECORE_SB_IDX) {
 		int pi;
 
@@ -256,6 +1285,93 @@ static void ecore_int_sb_attn_free(struct ecore_hwfn *p_hwfn)
 				       SB_ATTN_ALIGNED_SIZE(p_hwfn));
 	}
 	OSAL_FREE(p_hwfn->p_dev, p_sb);
+}
+
+static void ecore_int_sb_attn_setup(struct ecore_hwfn *p_hwfn,
+				    struct ecore_ptt *p_ptt)
+{
+	struct ecore_sb_attn_info *sb_info = p_hwfn->p_sb_attn;
+
+	OSAL_MEMSET(sb_info->sb_attn, 0, sizeof(*sb_info->sb_attn));
+
+	sb_info->index = 0;
+	sb_info->known_attn = 0;
+
+	/* Configure Attention Status Block in IGU */
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_ATTN_MSG_ADDR_L,
+		 DMA_LO(p_hwfn->p_sb_attn->sb_phys));
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_ATTN_MSG_ADDR_H,
+		 DMA_HI(p_hwfn->p_sb_attn->sb_phys));
+}
+
+static void ecore_int_sb_attn_init(struct ecore_hwfn *p_hwfn,
+				   struct ecore_ptt *p_ptt,
+				   void *sb_virt_addr, dma_addr_t sb_phy_addr)
+{
+	struct ecore_sb_attn_info *sb_info = p_hwfn->p_sb_attn;
+	int i, j, k;
+
+	sb_info->sb_attn = sb_virt_addr;
+	sb_info->sb_phys = sb_phy_addr;
+
+	/* Set the pointer to the AEU descriptors */
+	sb_info->p_aeu_desc = aeu_descs;
+
+	/* Calculate Parity Masks */
+	OSAL_MEMSET(sb_info->parity_mask, 0, sizeof(u32) * NUM_ATTN_REGS);
+	for (i = 0; i < NUM_ATTN_REGS; i++) {
+		/* j is array index, k is bit index */
+		for (j = 0, k = 0; k < 32; j++) {
+			unsigned int flags = aeu_descs[i].bits[j].flags;
+
+			if (flags & ATTENTION_PARITY)
+				sb_info->parity_mask[i] |= 1 << k;
+
+			k += ATTENTION_LENGTH(flags);
+		}
+		DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
+			   "Attn Mask [Reg %d]: 0x%08x\n",
+			   i, sb_info->parity_mask[i]);
+	}
+
+	/* Set the address of cleanup for the mcp attention */
+	sb_info->mfw_attn_addr = (p_hwfn->rel_pf_id << 3) +
+	    MISC_REG_AEU_GENERAL_ATTN_0;
+
+	ecore_int_sb_attn_setup(p_hwfn, p_ptt);
+}
+
+static enum _ecore_status_t ecore_int_sb_attn_alloc(struct ecore_hwfn *p_hwfn,
+						    struct ecore_ptt *p_ptt)
+{
+	struct ecore_dev *p_dev = p_hwfn->p_dev;
+	struct ecore_sb_attn_info *p_sb;
+	dma_addr_t p_phys = 0;
+	void *p_virt;
+
+	/* SB struct */
+	p_sb = OSAL_ALLOC(p_dev, GFP_KERNEL, sizeof(struct ecore_sb_attn_info));
+	if (!p_sb) {
+		DP_NOTICE(p_dev, true,
+			  "Failed to allocate `struct ecore_sb_attn_info'");
+		return ECORE_NOMEM;
+	}
+
+	/* SB ring  */
+	p_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_phys,
+					 SB_ATTN_ALIGNED_SIZE(p_hwfn));
+	if (!p_virt) {
+		DP_NOTICE(p_dev, true,
+			  "Failed to allocate status block (attentions)");
+		OSAL_FREE(p_dev, p_sb);
+		return ECORE_NOMEM;
+	}
+
+	/* Attention setup */
+	p_hwfn->p_sb_attn = p_sb;
+	ecore_int_sb_attn_init(p_hwfn, p_ptt, p_virt, p_phys);
+
+	return ECORE_SUCCESS;
 }
 
 /* coalescing timeout = timeset << (timer_res + 1) */
@@ -678,6 +1794,16 @@ ecore_int_igu_enable(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	tmp &= ~0x800;
 	ecore_wr(p_hwfn, p_ptt, MISC_REG_AEU_ENABLE4_IGU_OUT_0, tmp);
 
+	/* @@@tmp - Mask interrupt sources - should move to init tool;
+	 * Also, correct for A0 [might still change in B0.
+	 */
+	reg_addr =
+	    attn_blocks[BLOCK_BRB].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
+	    int_regs[0]->mask_addr;
+	tmp = ecore_rd(p_hwfn, p_ptt, reg_addr);
+	tmp |= (1 << 21);	/* Was PKT4_LEN_ERROR */
+	ecore_wr(p_hwfn, p_ptt, reg_addr, tmp);
+
 	ecore_int_igu_enable_attn(p_hwfn, p_ptt);
 
 	if ((int_mode != ECORE_INT_MODE_INTA) || IS_LEAD_HWFN(p_hwfn)) {
@@ -1035,6 +2161,10 @@ enum _ecore_status_t ecore_int_alloc(struct ecore_hwfn *p_hwfn,
 		return rc;
 	}
 
+	rc = ecore_int_sb_attn_alloc(p_hwfn, p_ptt);
+	if (rc != ECORE_SUCCESS)
+		DP_ERR(p_hwfn->p_dev, "Failed to allocate sb attn mem\n");
+
 	return rc;
 }
 
@@ -1051,6 +2181,7 @@ void ecore_int_setup(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 		return;
 
 	ecore_int_sb_setup(p_hwfn, p_ptt, &p_hwfn->p_sp_sb->sb_info);
+	ecore_int_sb_attn_setup(p_hwfn, p_ptt);
 	ecore_int_sp_dpc_setup(p_hwfn);
 }
 
