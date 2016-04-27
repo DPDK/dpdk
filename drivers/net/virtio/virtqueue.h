@@ -302,7 +302,8 @@ vq_update_avail_ring(struct virtqueue *vq, uint16_t desc_idx)
 	 * descriptor.
 	 */
 	avail_idx = (uint16_t)(vq->vq_avail_idx & (vq->vq_nentries - 1));
-	vq->vq_ring.avail->ring[avail_idx] = desc_idx;
+	if (unlikely(vq->vq_ring.avail->ring[avail_idx] != desc_idx))
+		vq->vq_ring.avail->ring[avail_idx] = desc_idx;
 	vq->vq_avail_idx++;
 }
 
