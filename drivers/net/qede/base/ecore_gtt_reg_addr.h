@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2016 QLogic Corporation.
+ * All rights reserved.
+ * www.qlogic.com
+ *
+ * See LICENSE.qede_pmd for copyright and licensing details.
+ */
+
+#ifndef GTT_REG_ADDR_H
+#define GTT_REG_ADDR_H
+
+/* Win 2 */
+#define GTT_BAR0_MAP_REG_IGU_CMD 0x00f000UL
+
+/* Win 3 */
+#define GTT_BAR0_MAP_REG_TSDM_RAM 0x010000UL
+
+/* Win 4 */
+#define GTT_BAR0_MAP_REG_MSDM_RAM 0x011000UL
+
+/* Win 5 */
+#define GTT_BAR0_MAP_REG_MSDM_RAM_1024 0x012000UL
+
+/* Win 6 */
+#define GTT_BAR0_MAP_REG_USDM_RAM 0x013000UL
+
+/* Win 7 */
+#define GTT_BAR0_MAP_REG_USDM_RAM_1024 0x014000UL
+
+/* Win 8 */
+#define GTT_BAR0_MAP_REG_USDM_RAM_2048 0x015000UL
+
+/* Win 9 */
+#define GTT_BAR0_MAP_REG_XSDM_RAM  0x016000UL
+
+/* Win 10 */
+#define GTT_BAR0_MAP_REG_YSDM_RAM 0x017000UL
+
+/* Win 11 */
+#define GTT_BAR0_MAP_REG_PSDM_RAM 0x018000UL
+
+#endif

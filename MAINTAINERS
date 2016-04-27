@@ -332,6 +332,12 @@ M: Rasesh Mody <rasesh.mody@qlogic.com>
 F: drivers/net/bnx2x/
 F: doc/guides/nics/bnx2x.rst
 
+QLogic qede PMD
+M: Harish Patil <harish.patil@qlogic.com>
+M: Rasesh Mody <rasesh.mody@qlogic.com>
+M: Sony Chacko <sony.chacko@qlogic.com>
+F: drivers/net/qede/
+
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
