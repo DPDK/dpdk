@@ -38,6 +38,8 @@
  * RTE Longest Prefix Match for IPv6 (LPM6)
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
