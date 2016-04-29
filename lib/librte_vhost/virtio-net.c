@@ -717,8 +717,8 @@ vhost_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	 * we add the device.
 	 */
 	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
-		if (((int)dev->virtqueue[VIRTIO_TXQ]->backend != VIRTIO_DEV_STOPPED) &&
-			((int)dev->virtqueue[VIRTIO_RXQ]->backend != VIRTIO_DEV_STOPPED)) {
+		if (dev->virtqueue[VIRTIO_TXQ]->backend != VIRTIO_DEV_STOPPED &&
+		    dev->virtqueue[VIRTIO_RXQ]->backend != VIRTIO_DEV_STOPPED) {
 			return notify_ops->new_device(dev);
 		}
 	/* Otherwise we remove it. */

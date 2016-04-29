@@ -85,7 +85,7 @@ struct vhost_virtqueue {
 	struct vring_avail	*avail;			/**< Virtqueue available ring. */
 	struct vring_used	*used;			/**< Virtqueue used ring. */
 	uint32_t		size;			/**< Size of descriptor ring. */
-	uint32_t		backend;		/**< Backend value to determine if device should started/stopped. */
+	int			backend;		/**< Backend value to determine if device should started/stopped. */
 	uint16_t		vhost_hlen;		/**< Vhost header length (varies depending on RX merge buffers. */
 	volatile uint16_t	last_used_idx;		/**< Last index used on the available ring */
 	volatile uint16_t	last_used_idx_res;	/**< Used for multiple devices reserving buffers. */
