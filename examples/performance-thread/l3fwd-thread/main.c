@@ -1343,24 +1343,23 @@ get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint8_t portid)
 	struct ether_hdr *eth_hdr;
 
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
-		if (rte_lpm_lookup(RTE_PER_LCORE(lcore_conf)->ipv4_lookup_struct,
-				dst_ipv4, &next_hop_ipv4) != 0) {
-			next_hop_ipv4 = portid;
-			return next_hop_ipv4;
-		}
+		return (uint16_t) ((rte_lpm_lookup(
+				RTE_PER_LCORE(lcore_conf)->ipv4_lookup_struct, dst_ipv4,
+				&next_hop_ipv4) == 0) ? next_hop_ipv4 : portid);
+
 	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
+
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
 		ipv6_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
-		if (rte_lpm6_lookup(RTE_PER_LCORE(lcore_conf)->ipv6_lookup_struct,
-				ipv6_hdr->dst_addr, &next_hop_ipv6) != 0) {
-			next_hop_ipv6 = portid;
-			return next_hop_ipv6;
-		}
-	} else {
-		next_hop_ipv4 = portid;
-		return next_hop_ipv4;
+
+		return (uint16_t) ((rte_lpm6_lookup(
+				RTE_PER_LCORE(lcore_conf)->ipv6_lookup_struct,
+				ipv6_hdr->dst_addr, &next_hop_ipv6) == 0) ? next_hop_ipv6 :
+						portid);
+
 	}
 
+	return portid;
 }
 
 static inline void
