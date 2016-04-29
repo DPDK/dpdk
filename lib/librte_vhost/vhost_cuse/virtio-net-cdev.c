@@ -289,7 +289,7 @@ cuse_set_mem_table(struct vhost_device_ctx ctx,
 		sizeof(struct virtio_memory_regions) * nregions);
 	if (dev->mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to allocate memory for dev->mem\n",
+			"(%d) failed to allocate memory for dev->mem\n",
 			dev->device_fh);
 		return -1;
 	}
@@ -393,8 +393,7 @@ get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int 
 	ret = ioctl(fd_tap, TUNGETIFF, &ifr);
 
 	if (close(fd_tap) < 0)
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") fd close failed\n",
+		RTE_LOG(ERR, VHOST_CONFIG, "(%d) fd close failed\n",
 			dev->device_fh);
 
 	if (ret >= 0) {
@@ -402,7 +401,7 @@ get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int 
 		vhost_set_ifname(ctx, ifr.ifr_name, ifr_size);
 	} else
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") TUNGETIFF ioctl failed\n",
+			"(%d) TUNGETIFF ioctl failed\n",
 			dev->device_fh);
 
 	return 0;

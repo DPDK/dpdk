@@ -252,7 +252,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 	if (unlikely(portid > VXLAN_N_PORTS)) {
 		RTE_LOG(INFO, VHOST_DATA,
-			"(%"PRIu64") WARNING: Not configuring device,"
+			"(%d) WARNING: Not configuring device,"
 			"as already have %d ports for VXLAN.",
 			dev->device_fh, VXLAN_N_PORTS);
 		return -1;
@@ -262,7 +262,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 	if (is_same_ether_addr(&(pkt_hdr->s_addr), &vdev->mac_address)) {
 		RTE_LOG(INFO, VHOST_DATA,
-			"(%"PRIu64") WARNING: This device is using an existing"
+			"(%d) WARNING: This device is using an existing"
 			" MAC address and has not been registered.\n",
 			dev->device_fh);
 		return -1;

@@ -132,7 +132,7 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 		sizeof(struct orig_region_map) * memory.nregions);
 	if (dev->mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to allocate memory for dev->mem\n",
+			"(%d) failed to allocate memory for dev->mem\n",
 			dev->device_fh);
 		return -1;
 	}

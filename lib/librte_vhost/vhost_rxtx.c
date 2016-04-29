@@ -264,11 +264,10 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	uint16_t desc_indexes[MAX_PKT_BURST];
 	uint32_t i;
 
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_rx()\n", dev->device_fh);
+	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->device_fh, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
-		RTE_LOG(ERR, VHOST_DATA,
-			"%s (%"PRIu64"): virtqueue idx:%d invalid.\n",
-			__func__, dev->device_fh, queue_id);
+		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
+			dev->device_fh, __func__, queue_id);
 		return 0;
 	}
 
@@ -280,8 +279,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	if (count == 0)
 		return 0;
 
-	LOG_DEBUG(VHOST_DATA,
-		"(%"PRIu64") res_start_idx %d| res_end_idx Index %d\n",
+	LOG_DEBUG(VHOST_DATA, "(%d) res_start_idx %d | res_end_idx Index %d\n",
 		dev->device_fh, res_start_idx, res_end_idx);
 
 	/* Retrieve all of the desc indexes first to avoid caching issues. */
@@ -443,8 +441,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	if (unlikely(m == NULL))
 		return 0;
 
-	LOG_DEBUG(VHOST_DATA,
-		"(%"PRIu64") Current Index %d| End Index %d\n",
+	LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
 		dev->device_fh, cur_idx, res_end_idx);
 
 	if (vq->buf_vec[vec_idx].buf_len < vq->vhost_hlen)
@@ -454,7 +451,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 	virtio_hdr.num_buffers = res_end_idx - res_start_idx;
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") RX: Num merge buffers %d\n",
+	LOG_DEBUG(VHOST_DATA, "(%d) RX: num merge buffers %d\n",
 		dev->device_fh, virtio_hdr.num_buffers);
 
 	virtio_enqueue_offload(m, &virtio_hdr.hdr);
@@ -533,12 +530,10 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	uint32_t pkt_idx = 0, nr_used = 0;
 	uint16_t start, end;
 
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") virtio_dev_merge_rx()\n",
-		dev->device_fh);
+	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->device_fh, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
-		RTE_LOG(ERR, VHOST_DATA,
-			"%s (%"PRIu64"): virtqueue idx:%d invalid.\n",
-			__func__, dev->device_fh, queue_id);
+		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
+			dev->device_fh, __func__, queue_id);
 		return 0;
 	}
 
@@ -556,7 +551,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		if (unlikely(reserve_avail_buf_mergeable(vq, pkt_len,
 							 &start, &end) < 0)) {
 			LOG_DEBUG(VHOST_DATA,
-				"(%" PRIu64 ") Failed to get enough desc from vring\n",
+				"(%d) failed to get enough desc from vring\n",
 				dev->device_fh);
 			break;
 		}
@@ -832,9 +827,8 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	uint16_t avail_idx;
 
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->virt_qp_nb))) {
-		RTE_LOG(ERR, VHOST_DATA,
-			"%s (%"PRIu64"): virtqueue idx:%d invalid.\n",
-			__func__, dev->device_fh, queue_id);
+		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
+			dev->device_fh, __func__, queue_id);
 		return 0;
 	}
 
@@ -870,7 +864,7 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	if (free_entries == 0)
 		goto out;
 
-	LOG_DEBUG(VHOST_DATA, "%s (%"PRIu64")\n", __func__, dev->device_fh);
+	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->device_fh, __func__);
 
 	/* Prefetch available ring to retrieve head indexes. */
 	used_idx = vq->last_used_idx & (vq->size - 1);
@@ -878,7 +872,7 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 
 	count = RTE_MIN(count, MAX_PKT_BURST);
 	count = RTE_MIN(count, free_entries);
-	LOG_DEBUG(VHOST_DATA, "(%"PRIu64") about to dequeue %u buffers\n",
+	LOG_DEBUG(VHOST_DATA, "(%d) about to dequeue %u buffers\n",
 			dev->device_fh, count);
 
 	/* Retrieve all of the head indexes first to avoid caching issues. */

@@ -716,7 +716,7 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 	if (find_vhost_dev(&pkt_hdr->s_addr)) {
 		RTE_LOG(ERR, VHOST_DATA,
-			"Device (%" PRIu64 ") is using a registered MAC!\n",
+			"(%d) device is using a registered MAC!\n",
 			dev->device_fh);
 		return -1;
 	}
@@ -728,7 +728,8 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 	vdev->vlan_tag = vlan_tags[dev->device_fh];
 
 	/* Print out VMDQ registration info. */
-	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") MAC_ADDRESS %02x:%02x:%02x:%02x:%02x:%02x and VLAN_TAG %d registered\n",
+	RTE_LOG(INFO, VHOST_DATA,
+		"(%d) mac %02x:%02x:%02x:%02x:%02x:%02x and vlan %d registered\n",
 		dev->device_fh,
 		vdev->mac_address.addr_bytes[0], vdev->mac_address.addr_bytes[1],
 		vdev->mac_address.addr_bytes[2], vdev->mac_address.addr_bytes[3],
@@ -739,8 +740,9 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 	ret = rte_eth_dev_mac_addr_add(ports[0], &vdev->mac_address,
 				(uint32_t)dev->device_fh + vmdq_pool_base);
 	if (ret)
-		RTE_LOG(ERR, VHOST_DATA, "(%"PRIu64") Failed to add device MAC address to VMDQ\n",
-					dev->device_fh);
+		RTE_LOG(ERR, VHOST_DATA,
+			"(%d) failed to add device MAC address to VMDQ\n",
+			dev->device_fh);
 
 	/* Enable stripping of the vlan tag as we handle routing. */
 	if (vlan_strip)
@@ -812,7 +814,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct ether_hdr *pkt_hdr;
 	struct vhost_dev *dst_vdev;
-	uint64_t fh;
+	int fh;
 
 	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
@@ -823,17 +825,16 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 	fh = dst_vdev->dev->device_fh;
 	if (fh == vdev->dev->device_fh) {
 		RTE_LOG(DEBUG, VHOST_DATA,
-			"(%" PRIu64 ") TX: src and dst MAC is same. "
-			"Dropping packet.\n", fh);
+			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
+			fh);
 		return 0;
 	}
 
-	RTE_LOG(DEBUG, VHOST_DATA,
-		"(%" PRIu64 ") TX: MAC address is local\n", fh);
+	RTE_LOG(DEBUG, VHOST_DATA, "(%d) TX: MAC address is local\n", fh);
 
 	if (unlikely(dst_vdev->remove)) {
-		RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") "
-			"Device is marked for removal\n", fh);
+		RTE_LOG(DEBUG, VHOST_DATA,
+			"(%d) device is marked for removal\n", fh);
 		return 0;
 	}
 
@@ -858,8 +859,8 @@ find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
 
 	if (dst_vdev->dev->device_fh == dev->device_fh) {
 		RTE_LOG(DEBUG, VHOST_DATA,
-			"(%" PRIu64 ") TX: src and dst MAC is same. "
-			" Dropping packet.\n", dst_vdev->dev->device_fh);
+			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
+			dst_vdev->dev->device_fh);
 		return -1;
 	}
 
@@ -872,8 +873,7 @@ find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
 	*vlan_tag = vlan_tags[(uint16_t)dst_vdev->dev->device_fh];
 
 	RTE_LOG(DEBUG, VHOST_DATA,
-		"(%" PRIu64 ") TX: pkt to local VM device id: (%" PRIu64 ") "
-		"vlan tag: %u.\n",
+		"(%d) TX: pkt to local VM device id (%d) vlan tag: %u.\n",
 		dev->device_fh, dst_vdev->dev->device_fh, *vlan_tag);
 
 	return 0;
@@ -964,8 +964,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 		}
 	}
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
-		"MAC address is external\n", dev->device_fh);
+	RTE_LOG(DEBUG, VHOST_DATA,
+		"(%d) TX: MAC is external\n", dev->device_fh);
 
 queue2nic:
 
@@ -1209,7 +1209,7 @@ destroy_device (volatile struct virtio_net *dev)
 	lcore_info[vdev->coreid].device_num--;
 
 	RTE_LOG(INFO, VHOST_DATA,
-		"(%" PRIu64 ") Device has been removed from data core\n",
+		"(%d) device has been removed from data core\n",
 		dev->device_fh);
 
 	rte_free(vdev);
@@ -1228,7 +1228,8 @@ new_device (struct virtio_net *dev)
 
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
-		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Couldn't allocate memory for vhost dev\n",
+		RTE_LOG(INFO, VHOST_DATA,
+			"(%d) Couldn't allocate memory for vhost dev\n",
 			dev->device_fh);
 		return -1;
 	}
@@ -1260,7 +1261,9 @@ new_device (struct virtio_net *dev)
 	rte_vhost_enable_guest_notification(dev, VIRTIO_RXQ, 0);
 	rte_vhost_enable_guest_notification(dev, VIRTIO_TXQ, 0);
 
-	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been added to data core %d\n", dev->device_fh, vdev->coreid);
+	RTE_LOG(INFO, VHOST_DATA,
+		"(%d) device has been added to data core %d\n",
+		dev->device_fh, vdev->coreid);
 
 	return 0;
 }
@@ -1304,7 +1307,7 @@ print_stats(void)
 			rx         = rte_atomic64_read(&vdev->stats.rx_atomic);
 			rx_dropped = rx_total - rx;
 
-			printf("Statistics for device %" PRIu64 "\n"
+			printf("Statistics for device %d\n"
 				"-----------------------\n"
 				"TX total:              %" PRIu64 "\n"
 				"TX dropped:            %" PRIu64 "\n"

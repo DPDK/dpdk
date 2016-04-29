@@ -568,7 +568,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 	const uint16_t lcore_id = rte_lcore_id();
 	struct virtio_net *dev = vdev->dev;
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: MAC address is external\n",
+	RTE_LOG(DEBUG, VHOST_DATA, "(%d) TX: MAC address is external\n",
 		dev->device_fh);
 
 	/* Add packet to the port tx queue */
@@ -944,7 +944,7 @@ destroy_device(volatile struct virtio_net *dev)
 
 	if (ll_lcore_dev_cur == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find the dev to be destroy.\n",
+			"(%d) Failed to find the dev to be destroy.\n",
 			dev->device_fh);
 		return;
 	}
@@ -992,7 +992,7 @@ destroy_device(volatile struct virtio_net *dev)
 	/* Decrement number of device on the lcore. */
 	lcore_info[vdev->coreid].lcore_ll->device_num--;
 
-	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been removed "
+	RTE_LOG(INFO, VHOST_DATA, "(%d) Device has been removed "
 		"from data core\n", dev->device_fh);
 
 	rte_free(vdev);
@@ -1014,7 +1014,7 @@ new_device(struct virtio_net *dev)
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
-			"(%"PRIu64") Couldn't allocate memory for vhost dev\n",
+			"(%d) Couldn't allocate memory for vhost dev\n",
 			dev->device_fh);
 		return -1;
 	}
@@ -1023,7 +1023,7 @@ new_device(struct virtio_net *dev)
 	/* Add device to main ll */
 	ll_dev = get_data_ll_free_entry(&ll_root_free);
 	if (ll_dev == NULL) {
-		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") No free entry found in"
+		RTE_LOG(INFO, VHOST_DATA, "(%d) No free entry found in"
 			" linked list Device limit of %d devices per core"
 			" has been reached\n", dev->device_fh, nb_devices);
 		if (vdev->regions_hpa)
@@ -1050,7 +1050,7 @@ new_device(struct virtio_net *dev)
 	ll_dev = get_data_ll_free_entry(&lcore_info[core_add].lcore_ll->ll_root_free);
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
-			"(%"PRIu64") Failed to add device to data core\n",
+			"(%d) Failed to add device to data core\n",
 			dev->device_fh);
 		vdev->ready = DEVICE_SAFE_REMOVE;
 		destroy_device(dev);
@@ -1074,7 +1074,7 @@ new_device(struct virtio_net *dev)
 	lcore_info[vdev->coreid].lcore_ll->device_num++;
 	dev->flags |= VIRTIO_DEV_RUNNING;
 
-	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been added to data core %d\n",
+	RTE_LOG(INFO, VHOST_DATA, "(%d) Device has been added to data core %d\n",
 		dev->device_fh, vdev->coreid);
 
 	return 0;

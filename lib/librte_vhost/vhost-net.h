@@ -57,9 +57,9 @@
 	char packet[VHOST_MAX_PRINT_BUFF]; \
 	\
 	if ((header)) \
-		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%" PRIu64 ") Header size %d: ", (device->device_fh), (size)); \
+		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%d) Header size %d: ", (device->device_fh), (size)); \
 	else \
-		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%" PRIu64 ") Packet size %d: ", (device->device_fh), (size)); \
+		snprintf(packet, VHOST_MAX_PRINT_BUFF, "(%d) Packet size %d: ", (device->device_fh), (size)); \
 	for (index = 0; index < (size); index++) { \
 		snprintf(packet + strnlen(packet, VHOST_MAX_PRINT_BUFF), VHOST_MAX_PRINT_BUFF - strnlen(packet, VHOST_MAX_PRINT_BUFF), \
 			"%02hhx ", pkt_addr[index]); \
@@ -79,8 +79,8 @@
  * Structure used to identify device context.
  */
 struct vhost_device_ctx {
-	pid_t		pid;	/* PID of process calling the IOCTL. */
-	uint64_t	fh;	/* Populated with fi->fh to track the device index. */
+	pid_t	pid;	/* PID of process calling the IOCTL. */
+	int	fh;	/* Populated with fi->fh to track the device index. */
 };
 
 int vhost_new_device(struct vhost_device_ctx);

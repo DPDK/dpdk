@@ -58,7 +58,7 @@ static void vserver_message_handler(int fd, void *dat, int *remove);
 
 struct connfd_ctx {
 	struct vhost_server *vserver;
-	uint32_t fh;
+	int fh;
 };
 
 #define MAX_VHOST_SERVER 1024

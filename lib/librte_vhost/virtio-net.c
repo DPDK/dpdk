@@ -116,7 +116,7 @@ get_device(struct vhost_device_ctx ctx)
 
 	if (unlikely(!dev)) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") device not found.\n", ctx.fh);
+			"(%d) device not found.\n", ctx.fh);
 	}
 
 	return dev;
@@ -263,8 +263,7 @@ vhost_new_device(struct vhost_device_ctx ctx)
 	dev = rte_zmalloc(NULL, sizeof(struct virtio_net), 0);
 	if (dev == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to allocate memory for dev.\n",
-			ctx.fh);
+			"(%d) failed to allocate memory for dev.\n", ctx.fh);
 		return -1;
 	}
 
@@ -408,7 +407,7 @@ vhost_set_features(struct vhost_device_ctx ctx, uint64_t *pu)
 		vhost_hlen = sizeof(struct virtio_net_hdr);
 	}
 	LOG_DEBUG(VHOST_CONFIG,
-		"(%"PRIu64") Mergeable RX buffers %s, virtio 1 %s\n",
+		"(%d) mergeable RX buffers %s, virtio 1 %s\n",
 		dev->device_fh,
 		(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) ? "on" : "off",
 		(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ? "on" : "off");
@@ -549,7 +548,7 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 			addr->desc_user_addr);
 	if (vq->desc == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find desc ring address.\n",
+			"(%d) failed to find desc ring address.\n",
 			dev->device_fh);
 		return -1;
 	}
@@ -561,7 +560,7 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 			addr->avail_user_addr);
 	if (vq->avail == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find avail ring address.\n",
+			"(%d) failed to find avail ring address.\n",
 			dev->device_fh);
 		return -1;
 	}
@@ -570,20 +569,20 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 			addr->used_user_addr);
 	if (vq->used == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find used ring address.\n",
+			"(%d) failed to find used ring address.\n",
 			dev->device_fh);
 		return -1;
 	}
 
 	vq->log_guest_addr = addr->log_guest_addr;
 
-	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address desc: %p\n",
+	LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address desc: %p\n",
 			dev->device_fh, vq->desc);
-	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address avail: %p\n",
+	LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address avail: %p\n",
 			dev->device_fh, vq->avail);
-	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") mapped address used: %p\n",
+	LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address used: %p\n",
 			dev->device_fh, vq->used);
-	LOG_DEBUG(VHOST_CONFIG, "(%"PRIu64") log_guest_addr: %"PRIx64"\n",
+	LOG_DEBUG(VHOST_CONFIG, "(%d) log_guest_addr: %" PRIx64 "\n",
 			dev->device_fh, vq->log_guest_addr);
 
 	return 0;
