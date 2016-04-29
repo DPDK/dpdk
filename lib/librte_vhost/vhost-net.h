@@ -83,28 +83,26 @@ struct vhost_device_ctx {
 	int	vid;	/* Virtio-net device ID */
 };
 
-int vhost_new_device(struct vhost_device_ctx);
-void vhost_destroy_device(struct vhost_device_ctx);
+int vhost_new_device(void);
+void vhost_destroy_device(int);
 
-void vhost_set_ifname(struct vhost_device_ctx,
-	const char *if_name, unsigned int if_len);
+void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 
-int vhost_get_features(struct vhost_device_ctx, uint64_t *);
-int vhost_set_features(struct vhost_device_ctx, uint64_t *);
+int vhost_get_features(int, uint64_t *);
+int vhost_set_features(int, uint64_t *);
 
-int vhost_set_vring_num(struct vhost_device_ctx, struct vhost_vring_state *);
-int vhost_set_vring_addr(struct vhost_device_ctx, struct vhost_vring_addr *);
-int vhost_set_vring_base(struct vhost_device_ctx, struct vhost_vring_state *);
-int vhost_get_vring_base(struct vhost_device_ctx,
-	uint32_t, struct vhost_vring_state *);
+int vhost_set_vring_num(int, struct vhost_vring_state *);
+int vhost_set_vring_addr(int, struct vhost_vring_addr *);
+int vhost_set_vring_base(int, struct vhost_vring_state *);
+int vhost_get_vring_base(int, uint32_t, struct vhost_vring_state *);
 
-int vhost_set_vring_kick(struct vhost_device_ctx, struct vhost_vring_file *);
-int vhost_set_vring_call(struct vhost_device_ctx, struct vhost_vring_file *);
+int vhost_set_vring_kick(int, struct vhost_vring_file *);
+int vhost_set_vring_call(int, struct vhost_vring_file *);
 
-int vhost_set_backend(struct vhost_device_ctx, struct vhost_vring_file *);
+int vhost_set_backend(int, struct vhost_vring_file *);
 
-int vhost_set_owner(struct vhost_device_ctx);
-int vhost_reset_owner(struct vhost_device_ctx);
+int vhost_set_owner(int);
+int vhost_reset_owner(int);
 
 /*
  * Backend-specific cleanup. Defined by vhost-cuse and vhost-user.

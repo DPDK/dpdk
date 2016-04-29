@@ -38,6 +38,6 @@
 #include "rte_virtio_net.h"
 
 struct virtio_net_device_ops const *notify_ops;
-struct virtio_net *get_device(struct vhost_device_ctx ctx);
+struct virtio_net *get_device(int vid);
 
 #endif

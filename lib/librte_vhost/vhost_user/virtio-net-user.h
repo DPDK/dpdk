@@ -45,20 +45,18 @@
 					 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |\
 					 (1ULL << VHOST_USER_PROTOCOL_F_RARP))
 
-int user_set_mem_table(struct vhost_device_ctx, struct VhostUserMsg *);
+int user_set_mem_table(int, struct VhostUserMsg *);
 
-void user_set_vring_call(struct vhost_device_ctx, struct VhostUserMsg *);
+void user_set_vring_call(int, struct VhostUserMsg *);
 
-void user_set_vring_kick(struct vhost_device_ctx, struct VhostUserMsg *);
+void user_set_vring_kick(int, struct VhostUserMsg *);
 
-void user_set_protocol_features(struct vhost_device_ctx ctx,
-				uint64_t protocol_features);
-int user_set_log_base(struct vhost_device_ctx ctx, struct VhostUserMsg *);
-int user_send_rarp(struct vhost_device_ctx ctx, struct VhostUserMsg *);
+void user_set_protocol_features(int vid, uint64_t protocol_features);
+int user_set_log_base(int vid, struct VhostUserMsg *);
+int user_send_rarp(int vid, struct VhostUserMsg *);
 
-int user_get_vring_base(struct vhost_device_ctx, struct vhost_vring_state *);
+int user_get_vring_base(int, struct vhost_vring_state *);
 
-int user_set_vring_enable(struct vhost_device_ctx ctx,
-			  struct vhost_vring_state *state);
+int user_set_vring_enable(int vid, struct vhost_vring_state *state);
 
 #endif

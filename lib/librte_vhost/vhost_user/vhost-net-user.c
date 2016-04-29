@@ -286,7 +286,6 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 	int conn_fd;
 	struct connfd_ctx *ctx;
 	int vid;
-	struct vhost_device_ctx vdev_ctx = { (pid_t)0, 0 };
 	unsigned int size;
 
 	conn_fd = accept(fd, NULL, NULL);
@@ -301,17 +300,15 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 		return;
 	}
 
-	vid = vhost_new_device(vdev_ctx);
+	vid = vhost_new_device();
 	if (vid == -1) {
 		free(ctx);
 		close(conn_fd);
 		return;
 	}
 
-	vdev_ctx.vid = vid;
 	size = strnlen(vserver->path, PATH_MAX);
-	vhost_set_ifname(vdev_ctx, vserver->path,
-		size);
+	vhost_set_ifname(vid, vserver->path, size);
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
@@ -325,13 +322,13 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 static void
 vserver_message_handler(int connfd, void *dat, int *remove)
 {
-	struct vhost_device_ctx ctx;
+	int vid;
 	struct connfd_ctx *cfd_ctx = (struct connfd_ctx *)dat;
 	struct VhostUserMsg msg;
 	uint64_t features;
 	int ret;
 
-	ctx.vid = cfd_ctx->vid;
+	vid = cfd_ctx->vid;
 	ret = read_vhost_message(connfd, &msg);
 	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
 		if (ret < 0)
@@ -347,7 +344,7 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		close(connfd);
 		*remove = 1;
 		free(cfd_ctx);
-		vhost_destroy_device(ctx);
+		vhost_destroy_device(vid);
 
 		return;
 	}
@@ -356,14 +353,14 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		vhost_message_str[msg.request]);
 	switch (msg.request) {
 	case VHOST_USER_GET_FEATURES:
-		ret = vhost_get_features(ctx, &features);
+		ret = vhost_get_features(vid, &features);
 		msg.payload.u64 = features;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(connfd, &msg);
 		break;
 	case VHOST_USER_SET_FEATURES:
 		features = msg.payload.u64;
-		vhost_set_features(ctx, &features);
+		vhost_set_features(vid, &features);
 		break;
 
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
@@ -372,22 +369,22 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		send_vhost_message(connfd, &msg);
 		break;
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
-		user_set_protocol_features(ctx, msg.payload.u64);
+		user_set_protocol_features(vid, msg.payload.u64);
 		break;
 
 	case VHOST_USER_SET_OWNER:
-		vhost_set_owner(ctx);
+		vhost_set_owner(vid);
 		break;
 	case VHOST_USER_RESET_OWNER:
-		vhost_reset_owner(ctx);
+		vhost_reset_owner(vid);
 		break;
 
 	case VHOST_USER_SET_MEM_TABLE:
-		user_set_mem_table(ctx, &msg);
+		user_set_mem_table(vid, &msg);
 		break;
 
 	case VHOST_USER_SET_LOG_BASE:
-		user_set_log_base(ctx, &msg);
+		user_set_log_base(vid, &msg);
 
 		/* it needs a reply */
 		msg.size = sizeof(msg.payload.u64);
@@ -399,26 +396,26 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		break;
 
 	case VHOST_USER_SET_VRING_NUM:
-		vhost_set_vring_num(ctx, &msg.payload.state);
+		vhost_set_vring_num(vid, &msg.payload.state);
 		break;
 	case VHOST_USER_SET_VRING_ADDR:
-		vhost_set_vring_addr(ctx, &msg.payload.addr);
+		vhost_set_vring_addr(vid, &msg.payload.addr);
 		break;
 	case VHOST_USER_SET_VRING_BASE:
-		vhost_set_vring_base(ctx, &msg.payload.state);
+		vhost_set_vring_base(vid, &msg.payload.state);
 		break;
 
 	case VHOST_USER_GET_VRING_BASE:
-		ret = user_get_vring_base(ctx, &msg.payload.state);
+		ret = user_get_vring_base(vid, &msg.payload.state);
 		msg.size = sizeof(msg.payload.state);
 		send_vhost_message(connfd, &msg);
 		break;
 
 	case VHOST_USER_SET_VRING_KICK:
-		user_set_vring_kick(ctx, &msg);
+		user_set_vring_kick(vid, &msg);
 		break;
 	case VHOST_USER_SET_VRING_CALL:
-		user_set_vring_call(ctx, &msg);
+		user_set_vring_call(vid, &msg);
 		break;
 
 	case VHOST_USER_SET_VRING_ERR:
@@ -434,10 +431,10 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 		break;
 
 	case VHOST_USER_SET_VRING_ENABLE:
-		user_set_vring_enable(ctx, &msg.payload.state);
+		user_set_vring_enable(vid, &msg.payload.state);
 		break;
 	case VHOST_USER_SEND_RARP:
-		user_send_rarp(ctx, &msg);
+		user_send_rarp(vid, &msg);
 		break;
 
 	default:

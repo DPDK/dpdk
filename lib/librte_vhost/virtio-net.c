@@ -108,15 +108,14 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
 	return vhost_va;
 }
 
-
 struct virtio_net *
-get_device(struct vhost_device_ctx ctx)
+get_device(int vid)
 {
-	struct virtio_net *dev = vhost_devices[ctx.vid];
+	struct virtio_net *dev = vhost_devices[vid];
 
 	if (unlikely(!dev)) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) device not found.\n", ctx.vid);
+			"(%d) device not found.\n", vid);
 	}
 
 	return dev;
@@ -255,7 +254,7 @@ reset_device(struct virtio_net *dev)
  * list.
  */
 int
-vhost_new_device(struct vhost_device_ctx ctx)
+vhost_new_device(void)
 {
 	struct virtio_net *dev;
 	int i;
@@ -263,7 +262,7 @@ vhost_new_device(struct vhost_device_ctx ctx)
 	dev = rte_zmalloc(NULL, sizeof(struct virtio_net), 0);
 	if (dev == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) failed to allocate memory for dev.\n", ctx.vid);
+			"Failed to allocate memory for new dev.\n");
 		return -1;
 	}
 
@@ -288,9 +287,9 @@ vhost_new_device(struct vhost_device_ctx ctx)
  * cleanup the device and remove it from device configuration linked list.
  */
 void
-vhost_destroy_device(struct vhost_device_ctx ctx)
+vhost_destroy_device(int vid)
 {
-	struct virtio_net *dev = get_device(ctx);
+	struct virtio_net *dev = get_device(vid);
 
 	if (dev == NULL)
 		return;
@@ -303,17 +302,16 @@ vhost_destroy_device(struct vhost_device_ctx ctx)
 	cleanup_device(dev, 1);
 	free_device(dev);
 
-	vhost_devices[ctx.vid] = NULL;
+	vhost_devices[vid] = NULL;
 }
 
 void
-vhost_set_ifname(struct vhost_device_ctx ctx,
-	const char *if_name, unsigned int if_len)
+vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
 {
 	struct virtio_net *dev;
 	unsigned int len;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return;
 
@@ -331,11 +329,11 @@ vhost_set_ifname(struct vhost_device_ctx ctx,
  * the device hasn't been initialised.
  */
 int
-vhost_set_owner(struct vhost_device_ctx ctx)
+vhost_set_owner(int vid)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -346,11 +344,11 @@ vhost_set_owner(struct vhost_device_ctx ctx)
  * Called from CUSE IOCTL: VHOST_RESET_OWNER
  */
 int
-vhost_reset_owner(struct vhost_device_ctx ctx)
+vhost_reset_owner(int vid)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -369,11 +367,11 @@ vhost_reset_owner(struct vhost_device_ctx ctx)
  * The features that we support are requested.
  */
 int
-vhost_get_features(struct vhost_device_ctx ctx, uint64_t *pu)
+vhost_get_features(int vid, uint64_t *pu)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -387,13 +385,13 @@ vhost_get_features(struct vhost_device_ctx ctx, uint64_t *pu)
  * We receive the negotiated features supported by us and the virtio device.
  */
 int
-vhost_set_features(struct vhost_device_ctx ctx, uint64_t *pu)
+vhost_set_features(int vid, uint64_t *pu)
 {
 	struct virtio_net *dev;
 	uint16_t vhost_hlen;
 	uint16_t i;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 	if (*pu & ~VHOST_FEATURES)
@@ -427,12 +425,11 @@ vhost_set_features(struct vhost_device_ctx ctx, uint64_t *pu)
  * The virtio device sends us the size of the descriptor ring.
  */
 int
-vhost_set_vring_num(struct vhost_device_ctx ctx,
-	struct vhost_vring_state *state)
+vhost_set_vring_num(int vid, struct vhost_vring_state *state)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -531,12 +528,12 @@ numa_realloc(struct virtio_net *dev, int index __rte_unused)
  * This function then converts these to our address space.
  */
 int
-vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
+vhost_set_vring_addr(int vid, struct vhost_vring_addr *addr)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if ((dev == NULL) || (dev->mem == NULL))
 		return -1;
 
@@ -593,12 +590,11 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
  * The virtio device sends us the available ring last used index.
  */
 int
-vhost_set_vring_base(struct vhost_device_ctx ctx,
-	struct vhost_vring_state *state)
+vhost_set_vring_base(int vid, struct vhost_vring_state *state)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -614,12 +610,12 @@ vhost_set_vring_base(struct vhost_device_ctx ctx,
  * We send the virtio device our available ring last used index.
  */
 int
-vhost_get_vring_base(struct vhost_device_ctx ctx, uint32_t index,
+vhost_get_vring_base(int vid, uint32_t index,
 	struct vhost_vring_state *state)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -637,13 +633,13 @@ vhost_get_vring_base(struct vhost_device_ctx ctx, uint32_t index,
  * copied into our process space.
  */
 int
-vhost_set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+vhost_set_vring_call(int vid, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
 	uint32_t cur_qp_idx = file->index / VIRTIO_QNUM;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -674,12 +670,12 @@ vhost_set_vring_call(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
  * This fd gets copied into our process space.
  */
 int
-vhost_set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+vhost_set_vring_kick(int vid, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 
@@ -704,11 +700,11 @@ vhost_set_vring_kick(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
  * The device will still exist in the device configuration linked list.
  */
 int
-vhost_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+vhost_set_backend(int vid, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
 

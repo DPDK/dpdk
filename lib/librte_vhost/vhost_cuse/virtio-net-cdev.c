@@ -274,7 +274,7 @@ cuse_set_mem_table(struct vhost_device_ctx ctx,
 	uint64_t base_address = 0, mapped_address, mapped_size;
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(ctx.vid);
 	if (dev == NULL)
 		return -1;
 
@@ -379,7 +379,7 @@ cuse_set_mem_table(struct vhost_device_ctx ctx,
  * save it in the device structure.
  */
 static int
-get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int pid)
+get_ifname(int vid, int tap_fd, int pid)
 {
 	int fd_tap;
 	struct ifreq ifr;
@@ -393,16 +393,14 @@ get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int 
 	ret = ioctl(fd_tap, TUNGETIFF, &ifr);
 
 	if (close(fd_tap) < 0)
-		RTE_LOG(ERR, VHOST_CONFIG, "(%d) fd close failed\n",
-			dev->vid);
+		RTE_LOG(ERR, VHOST_CONFIG, "(%d) fd close failed\n", vid);
 
 	if (ret >= 0) {
 		ifr_size = strnlen(ifr.ifr_name, sizeof(ifr.ifr_name));
-		vhost_set_ifname(ctx, ifr.ifr_name, ifr_size);
+		vhost_set_ifname(vid, ifr.ifr_name, ifr_size);
 	} else
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) TUNGETIFF ioctl failed\n",
-			dev->vid);
+			"(%d) TUNGETIFF ioctl failed\n", vid);
 
 	return 0;
 }
@@ -411,14 +409,14 @@ int cuse_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 
-	dev = get_device(ctx);
+	dev = get_device(ctx.vid);
 	if (dev == NULL)
 		return -1;
 
 	if (!(dev->flags & VIRTIO_DEV_RUNNING) && file->fd != VIRTIO_DEV_STOPPED)
-		get_ifname(ctx, dev, file->fd, ctx.pid);
+		get_ifname(ctx.vid, file->fd, ctx.pid);
 
-	return vhost_set_backend(ctx, file);
+	return vhost_set_backend(ctx.vid, file);
 }
 
 void

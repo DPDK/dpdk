@@ -82,19 +82,18 @@ fuse_req_to_vhost_ctx(fuse_req_t req, struct fuse_file_info *fi)
 static void
 vhost_net_open(fuse_req_t req, struct fuse_file_info *fi)
 {
-	struct vhost_device_ctx ctx = fuse_req_to_vhost_ctx(req, fi);
-	int err = 0;
+	int vid = 0;
 
-	err = vhost_new_device(ctx);
-	if (err == -1) {
+	vid = vhost_new_device();
+	if (vid == -1) {
 		fuse_reply_err(req, EPERM);
 		return;
 	}
 
-	fi->fh = err;
+	fi->fh = vid;
 
 	RTE_LOG(INFO, VHOST_CONFIG,
-		"(%d) device configuration started\n", err);
+		"(%d) device configuration started\n", vid);
 	fuse_reply_open(req, fi);
 }
 
@@ -107,17 +106,17 @@ vhost_net_release(fuse_req_t req, struct fuse_file_info *fi)
 	int err = 0;
 	struct vhost_device_ctx ctx = fuse_req_to_vhost_ctx(req, fi);
 
-	vhost_destroy_device(ctx);
+	vhost_destroy_device(ctx.vid);
 	RTE_LOG(INFO, VHOST_CONFIG, "(%d) device released\n", ctx.vid);
 	fuse_reply_err(req, err);
 }
 
 /*
  * Boilerplate code for CUSE IOCTL
- * Implicit arguments: ctx, req, result.
+ * Implicit arguments: vid, req, result.
  */
 #define VHOST_IOCTL(func) do {	\
-	result = (func)(ctx);	\
+	result = (func)(vid);	\
 	fuse_reply_ioctl(req, result, NULL, 0);	\
 } while (0)
 
@@ -134,41 +133,41 @@ vhost_net_release(fuse_req_t req, struct fuse_file_info *fi)
 
 /*
  * Boilerplate code for CUSE Read IOCTL
- * Implicit arguments: ctx, req, result, in_bufsz, in_buf.
+ * Implicit arguments: vid, req, result, in_bufsz, in_buf.
  */
 #define VHOST_IOCTL_R(type, var, func) do {	\
 	if (!in_bufsz) {	\
 		VHOST_IOCTL_RETRY(sizeof(type), 0);\
 	} else {	\
 		(var) = *(const type*)in_buf;	\
-		result = func(ctx, &(var));	\
+		result = func(vid, &(var));	\
 		fuse_reply_ioctl(req, result, NULL, 0);\
 	}	\
 } while (0)
 
 /*
  * Boilerplate code for CUSE Write IOCTL
- * Implicit arguments: ctx, req, result, out_bufsz.
+ * Implicit arguments: vid, req, result, out_bufsz.
  */
 #define VHOST_IOCTL_W(type, var, func) do {	\
 	if (!out_bufsz) {	\
 		VHOST_IOCTL_RETRY(0, sizeof(type));\
 	} else {	\
-		result = (func)(ctx, &(var));\
+		result = (func)(vid, &(var));\
 		fuse_reply_ioctl(req, result, &(var), sizeof(type));\
 	} \
 } while (0)
 
 /*
  * Boilerplate code for CUSE Read/Write IOCTL
- * Implicit arguments: ctx, req, result, in_bufsz, in_buf.
+ * Implicit arguments: vid, req, result, in_bufsz, in_buf.
  */
 #define VHOST_IOCTL_RW(type1, var1, type2, var2, func) do {	\
 	if (!in_bufsz) {	\
 		VHOST_IOCTL_RETRY(sizeof(type1), sizeof(type2));\
 	} else {	\
 		(var1) = *(const type1*) (in_buf);	\
-		result = (func)(ctx, (var1), &(var2));	\
+		result = (func)(vid, (var1), &(var2));	\
 		fuse_reply_ioctl(req, result, &(var2), sizeof(type2));\
 	}	\
 } while (0)
@@ -190,6 +189,7 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 	uint64_t features;
 	uint32_t index;
 	int result = 0;
+	int vid = ctx.vid;
 
 	switch (cmd) {
 	case VHOST_NET_SET_BACKEND:
@@ -206,32 +206,32 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 
 	case VHOST_GET_FEATURES:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_GET_FEATURES\n", ctx.vid);
+			"(%d) IOCTL: VHOST_GET_FEATURES\n", vid);
 		VHOST_IOCTL_W(uint64_t, features, vhost_get_features);
 		break;
 
 	case VHOST_SET_FEATURES:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_SET_FEATURES\n", ctx.vid);
+			"(%d) IOCTL: VHOST_SET_FEATURES\n", vid);
 		VHOST_IOCTL_R(uint64_t, features, vhost_set_features);
 		break;
 
 	case VHOST_RESET_OWNER:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_RESET_OWNER\n", ctx.vid);
+			"(%d) IOCTL: VHOST_RESET_OWNER\n", vid);
 		VHOST_IOCTL(vhost_reset_owner);
 		break;
 
 	case VHOST_SET_OWNER:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_SET_OWNER\n", ctx.vid);
+			"(%d) IOCTL: VHOST_SET_OWNER\n", vid);
 		VHOST_IOCTL(vhost_set_owner);
 		break;
 
 	case VHOST_SET_MEM_TABLE:
 		/*TODO fix race condition.*/
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_SET_MEM_TABLE\n", ctx.vid);
+			"(%d) IOCTL: VHOST_SET_MEM_TABLE\n", vid);
 		static struct vhost_memory mem_temp;
 
 		switch (in_bufsz) {
@@ -264,28 +264,28 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 
 	case VHOST_SET_VRING_NUM:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_SET_VRING_NUM\n", ctx.vid);
+			"(%d) IOCTL: VHOST_SET_VRING_NUM\n", vid);
 		VHOST_IOCTL_R(struct vhost_vring_state, state,
 			vhost_set_vring_num);
 		break;
 
 	case VHOST_SET_VRING_BASE:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_SET_VRING_BASE\n", ctx.vid);
+			"(%d) IOCTL: VHOST_SET_VRING_BASE\n", vid);
 		VHOST_IOCTL_R(struct vhost_vring_state, state,
 			vhost_set_vring_base);
 		break;
 
 	case VHOST_GET_VRING_BASE:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_GET_VRING_BASE\n", ctx.vid);
+			"(%d) IOCTL: VHOST_GET_VRING_BASE\n", vid);
 		VHOST_IOCTL_RW(uint32_t, index,
 			struct vhost_vring_state, state, vhost_get_vring_base);
 		break;
 
 	case VHOST_SET_VRING_ADDR:
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: VHOST_SET_VRING_ADDR\n", ctx.vid);
+			"(%d) IOCTL: VHOST_SET_VRING_ADDR\n", vid);
 		VHOST_IOCTL_R(struct vhost_vring_addr, addr,
 			vhost_set_vring_addr);
 		break;
@@ -294,12 +294,10 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 	case VHOST_SET_VRING_CALL:
 		if (cmd == VHOST_SET_VRING_KICK)
 			LOG_DEBUG(VHOST_CONFIG,
-				"(%d) IOCTL: VHOST_SET_VRING_KICK\n",
-			ctx.vid);
+				"(%d) IOCTL: VHOST_SET_VRING_KICK\n", vid);
 		else
 			LOG_DEBUG(VHOST_CONFIG,
-				"(%d) IOCTL: VHOST_SET_VRING_CALL\n",
-			ctx.vid);
+				"(%d) IOCTL: VHOST_SET_VRING_CALL\n", vid);
 		if (!in_buf)
 			VHOST_IOCTL_RETRY(sizeof(struct vhost_vring_file), 0);
 		else {
@@ -315,10 +313,10 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 			}
 			file.fd = fd;
 			if (cmd == VHOST_SET_VRING_KICK) {
-				result = vhost_set_vring_kick(ctx, &file);
+				result = vhost_set_vring_kick(vid, &file);
 				fuse_reply_ioctl(req, result, NULL, 0);
 			} else {
-				result = vhost_set_vring_call(ctx, &file);
+				result = vhost_set_vring_call(vid, &file);
 				fuse_reply_ioctl(req, result, NULL, 0);
 			}
 		}
@@ -326,17 +324,17 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 
 	default:
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) IOCTL: DOESN NOT EXIST\n", ctx.vid);
+			"(%d) IOCTL: DOESN NOT EXIST\n", vid);
 		result = -1;
 		fuse_reply_ioctl(req, result, NULL, 0);
 	}
 
 	if (result < 0)
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: FAIL\n", ctx.vid);
+			"(%d) IOCTL: FAIL\n", vid);
 	else
 		LOG_DEBUG(VHOST_CONFIG,
-			"(%d) IOCTL: SUCCESS\n", ctx.vid);
+			"(%d) IOCTL: SUCCESS\n", vid);
 }
 
 /*
