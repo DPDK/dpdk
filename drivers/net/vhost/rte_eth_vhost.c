@@ -278,7 +278,6 @@ new_device(struct virtio_net *dev)
 	for (i = 0; i < dev->virt_qp_nb * VIRTIO_QNUM; i++)
 		rte_vhost_enable_guest_notification(dev, i, 0);
 
-	dev->flags |= VIRTIO_DEV_RUNNING;
 	dev->priv = eth_dev;
 	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
@@ -341,7 +340,6 @@ destroy_device(volatile struct virtio_net *dev)
 	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 
 	dev->priv = NULL;
-	dev->flags &= ~VIRTIO_DEV_RUNNING;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		vq = eth_dev->data->rx_queues[i];

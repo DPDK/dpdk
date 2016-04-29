@@ -296,8 +296,10 @@ vhost_destroy_device(struct vhost_device_ctx ctx)
 	if (dev == NULL)
 		return;
 
-	if (dev->flags & VIRTIO_DEV_RUNNING)
+	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		dev->flags &= ~VIRTIO_DEV_RUNNING;
 		notify_ops->destroy_device(dev);
+	}
 
 	cleanup_device(dev, 1);
 	free_device(dev);
@@ -353,8 +355,10 @@ vhost_reset_owner(struct vhost_device_ctx ctx)
 	if (dev == NULL)
 		return -1;
 
-	if (dev->flags & VIRTIO_DEV_RUNNING)
+	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		dev->flags &= ~VIRTIO_DEV_RUNNING;
 		notify_ops->destroy_device(dev);
+	}
 
 	cleanup_device(dev, 0);
 	reset_device(dev);
@@ -719,12 +723,15 @@ vhost_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
 	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
 		if (dev->virtqueue[VIRTIO_TXQ]->backend != VIRTIO_DEV_STOPPED &&
 		    dev->virtqueue[VIRTIO_RXQ]->backend != VIRTIO_DEV_STOPPED) {
-			return notify_ops->new_device(dev);
+			if (notify_ops->new_device(dev) < 0)
+				return -1;
+			dev->flags |= VIRTIO_DEV_RUNNING;
 		}
-	/* Otherwise we remove it. */
-	} else
-		if (file->fd == VIRTIO_DEV_STOPPED)
-			notify_ops->destroy_device(dev);
+	} else if (file->fd == VIRTIO_DEV_STOPPED) {
+		dev->flags &= ~VIRTIO_DEV_RUNNING;
+		notify_ops->destroy_device(dev);
+	}
+
 	return 0;
 }
 

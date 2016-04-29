@@ -1180,8 +1180,6 @@ destroy_device (volatile struct virtio_net *dev)
 	struct vhost_dev *vdev;
 	int lcore;
 
-	dev->flags &= ~VIRTIO_DEV_RUNNING;
-
 	vdev = (struct vhost_dev *)dev->priv;
 	/*set the remove flag. */
 	vdev->remove = 1;
@@ -1261,7 +1259,6 @@ new_device (struct virtio_net *dev)
 	/* Disable notifications. */
 	rte_vhost_enable_guest_notification(dev, VIRTIO_RXQ, 0);
 	rte_vhost_enable_guest_notification(dev, VIRTIO_TXQ, 0);
-	dev->flags |= VIRTIO_DEV_RUNNING;
 
 	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been added to data core %d\n", dev->device_fh, vdev->coreid);
 

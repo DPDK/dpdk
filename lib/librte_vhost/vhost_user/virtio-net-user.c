@@ -115,8 +115,10 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 		return -1;
 
 	/* Remove from the data plane. */
-	if (dev->flags & VIRTIO_DEV_RUNNING)
+	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		dev->flags &= ~VIRTIO_DEV_RUNNING;
 		notify_ops->destroy_device(dev);
+	}
 
 	if (dev->mem) {
 		free_mem_region(dev);
@@ -286,9 +288,10 @@ user_set_vring_kick(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 		"vring kick idx:%d file:%d\n", file.index, file.fd);
 	vhost_set_vring_kick(ctx, &file);
 
-	if (virtio_is_ready(dev) &&
-		!(dev->flags & VIRTIO_DEV_RUNNING))
-			notify_ops->new_device(dev);
+	if (virtio_is_ready(dev) && !(dev->flags & VIRTIO_DEV_RUNNING)) {
+		if (notify_ops->new_device(dev) == 0)
+			dev->flags |= VIRTIO_DEV_RUNNING;
+	}
 }
 
 /*
