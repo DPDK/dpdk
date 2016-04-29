@@ -38,11 +38,19 @@
 
 #include "vhost-net.h"
 
+/*
+ * Structure used to identify device context.
+ */
+struct vhost_cuse_device_ctx {
+	pid_t	pid;	/* PID of process calling the IOCTL. */
+	int	vid;	/* Virtio-net device ID */
+};
+
 int
-cuse_set_mem_table(struct vhost_device_ctx ctx,
+cuse_set_mem_table(struct vhost_cuse_device_ctx ctx,
 	const struct vhost_memory *mem_regions_addr, uint32_t nregions);
 
 int
-cuse_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *);
+cuse_set_backend(struct vhost_cuse_device_ctx ctx, struct vhost_vring_file *);
 
 #endif

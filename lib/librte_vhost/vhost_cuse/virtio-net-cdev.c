@@ -263,7 +263,7 @@ host_memory_map(pid_t pid, uint64_t addr,
 }
 
 int
-cuse_set_mem_table(struct vhost_device_ctx ctx,
+cuse_set_mem_table(struct vhost_cuse_device_ctx ctx,
 	const struct vhost_memory *mem_regions_addr, uint32_t nregions)
 {
 	uint64_t size = offsetof(struct vhost_memory, regions);
@@ -405,7 +405,9 @@ get_ifname(int vid, int tap_fd, int pid)
 	return 0;
 }
 
-int cuse_set_backend(struct vhost_device_ctx ctx, struct vhost_vring_file *file)
+int
+cuse_set_backend(struct vhost_cuse_device_ctx ctx,
+		 struct vhost_vring_file *file)
 {
 	struct virtio_net *dev;
 

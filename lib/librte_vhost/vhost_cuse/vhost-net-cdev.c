@@ -60,13 +60,14 @@ static const char default_cdev[] = "vhost-net";
 static struct fuse_session *session;
 
 /*
- * Returns vhost_device_ctx from given fuse_req_t. The index is populated later
- * when the device is added to the device linked list.
+ * Returns vhost_cuse_device_ctx from given fuse_req_t. The
+ * index is populated later when the device is added to the
+ * device linked list.
  */
-static struct vhost_device_ctx
+static struct vhost_cuse_device_ctx
 fuse_req_to_vhost_ctx(fuse_req_t req, struct fuse_file_info *fi)
 {
-	struct vhost_device_ctx ctx;
+	struct vhost_cuse_device_ctx ctx;
 	struct fuse_ctx const *const req_ctx = fuse_req_ctx(req);
 
 	ctx.pid = req_ctx->pid;
@@ -104,7 +105,7 @@ static void
 vhost_net_release(fuse_req_t req, struct fuse_file_info *fi)
 {
 	int err = 0;
-	struct vhost_device_ctx ctx = fuse_req_to_vhost_ctx(req, fi);
+	struct vhost_cuse_device_ctx ctx = fuse_req_to_vhost_ctx(req, fi);
 
 	vhost_destroy_device(ctx.vid);
 	RTE_LOG(INFO, VHOST_CONFIG, "(%d) device released\n", ctx.vid);
@@ -182,7 +183,7 @@ vhost_net_ioctl(fuse_req_t req, int cmd, void *arg,
 		struct fuse_file_info *fi, __rte_unused unsigned flags,
 		const void *in_buf, size_t in_bufsz, size_t out_bufsz)
 {
-	struct vhost_device_ctx ctx = fuse_req_to_vhost_ctx(req, fi);
+	struct vhost_cuse_device_ctx ctx = fuse_req_to_vhost_ctx(req, fi);
 	struct vhost_vring_file file;
 	struct vhost_vring_state state;
 	struct vhost_vring_addr addr;

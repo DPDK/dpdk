@@ -75,14 +75,6 @@
 #endif
 
 
-/*
- * Structure used to identify device context.
- */
-struct vhost_device_ctx {
-	pid_t	pid;	/* PID of process calling the IOCTL. */
-	int	vid;	/* Virtio-net device ID */
-};
-
 int vhost_new_device(void);
 void vhost_destroy_device(int);
 
