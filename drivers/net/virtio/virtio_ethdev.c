@@ -285,6 +285,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	unsigned int vq_size, size;
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = NULL;
+	const char *queue_names[] = {"rvq", "txq", "cvq"};
 
 	PMD_INIT_LOG(DEBUG, "setting up queue: %u", vtpci_queue_idx);
 
@@ -304,34 +305,29 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	if (queue_type == VTNET_RQ) {
-		snprintf(vq_name, sizeof(vq_name), "port%d_rvq%d",
-			dev->data->port_id, queue_idx);
-		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
-		vq->sw_ring = rte_zmalloc_socket("rxq->sw_ring",
-			(RTE_PMD_VIRTIO_RX_MAX_BURST + vq_size) *
-			sizeof(vq->sw_ring[0]), RTE_CACHE_LINE_SIZE, socket_id);
-	} else if (queue_type == VTNET_TQ) {
-		snprintf(vq_name, sizeof(vq_name), "port%d_tvq%d",
-			dev->data->port_id, queue_idx);
-		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra), RTE_CACHE_LINE_SIZE);
-	} else if (queue_type == VTNET_CQ) {
-		snprintf(vq_name, sizeof(vq_name), "port%d_cvq",
-			dev->data->port_id);
-		vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
-			vq_size * sizeof(struct vq_desc_extra),
-			RTE_CACHE_LINE_SIZE);
-	}
+	snprintf(vq_name, sizeof(vq_name), "port%d_%s%d",
+		 dev->data->port_id, queue_names[queue_type], queue_idx);
+	vq = rte_zmalloc(vq_name, sizeof(struct virtqueue) +
+			 vq_size * sizeof(struct vq_desc_extra),
+			 RTE_CACHE_LINE_SIZE);
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "Can not allocate virtqueue");
 		return -ENOMEM;
 	}
-	if (queue_type == VTNET_RQ && vq->sw_ring == NULL) {
-		PMD_INIT_LOG(ERR, "Can not allocate RX soft ring");
-		rte_free(vq);
-		return -ENOMEM;
+
+	if (queue_type == VTNET_RQ) {
+		size_t sz_sw;
+
+		sz_sw = (RTE_PMD_VIRTIO_RX_MAX_BURST + vq_size) *
+			sizeof(vq->sw_ring[0]);
+		vq->sw_ring = rte_zmalloc_socket("rxq->sw_ring", sz_sw,
+						 RTE_CACHE_LINE_SIZE,
+						 socket_id);
+		if (!vq->sw_ring) {
+			PMD_INIT_LOG(ERR, "Can not allocate RX soft ring");
+			rte_free(vq);
+			return -ENOMEM;
+		}
 	}
 
 	vq->hw = hw;
