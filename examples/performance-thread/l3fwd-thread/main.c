@@ -1307,7 +1307,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid)
  * to BAD_PORT value.
  */
 static inline __attribute__((always_inline)) void
-rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint32_t *dp, uint32_t ptype)
+rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
 {
 	uint8_t ihl;
 
@@ -1326,7 +1326,7 @@ rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint32_t *dp, uint32_t ptype)
 }
 
 #else
-#define	rfc1812_process(mb, dp)	do { } while (0)
+#define	rfc1812_process(mb, dp, ptype)	do { } while (0)
 #endif /* DO_RFC_1812_CHECKS */
 #endif /* APP_LOOKUP_LPM && ENABLE_MULTI_BUFFER_OPTIMIZE */
 
@@ -1363,7 +1363,7 @@ get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint8_t portid)
 }
 
 static inline void
-process_packet(struct rte_mbuf *pkt, uint32_t *dst_port, uint8_t portid)
+process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint8_t portid)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
@@ -1430,9 +1430,9 @@ processx4_step1(struct rte_mbuf *pkt[FWDSTEP],
 static inline void
 processx4_step2(__m128i dip,
 		uint32_t ipv4_flag,
-		uint32_t portid,
+		uint8_t portid,
 		struct rte_mbuf *pkt[FWDSTEP],
-		uint32_t dprt[FWDSTEP])
+		uint16_t dprt[FWDSTEP])
 {
 	rte_xmm_t dst;
 	const __m128i bswap_mask = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11,
@@ -1444,7 +1444,11 @@ processx4_step2(__m128i dip,
 	/* if all 4 packets are IPV4. */
 	if (likely(ipv4_flag)) {
 		rte_lpm_lookupx4(RTE_PER_LCORE(lcore_conf)->ipv4_lookup_struct, dip,
-				dprt, portid);
+				dst.u32, portid);
+
+		/* get rid of unused upper 16 bit for each dport. */
+		dst.x = _mm_packs_epi32(dst.x, dst.x);
+		*(uint64_t *)dprt = dst.u64[0];
 	} else {
 		dst.x = dip;
 		dprt[0] = get_dst_port(pkt[0], dst.u32[0], portid);
@@ -1459,7 +1463,7 @@ processx4_step2(__m128i dip,
  * Perform RFC1812 checks and updates for IPV4 packets.
  */
 static inline void
-processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint32_t dst_port[FWDSTEP])
+processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 {
 	__m128i te[FWDSTEP];
 	__m128i ve[FWDSTEP];
@@ -1678,7 +1682,7 @@ process_burst(struct rte_mbuf *pkts_burst[MAX_PKT_BURST], int nb_rx,
 	int32_t k;
 	uint16_t dlp;
 	uint16_t *lp;
-	uint32_t dst_port[MAX_PKT_BURST];
+	uint16_t dst_port[MAX_PKT_BURST];
 	__m128i dip[MAX_PKT_BURST / FWDSTEP];
 	uint32_t ipv4_flag[MAX_PKT_BURST / FWDSTEP];
 	uint16_t pnum[MAX_PKT_BURST + 1];
