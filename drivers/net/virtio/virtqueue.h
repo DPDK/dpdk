@@ -201,6 +201,8 @@ struct virtqueue {
 
 	uint16_t	*notify_addr;
 
+	int		configured;
+
 	struct vq_desc_extra {
 		void              *cookie;
 		uint16_t          ndescs;

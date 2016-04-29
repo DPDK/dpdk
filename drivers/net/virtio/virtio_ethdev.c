@@ -260,12 +260,18 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 }
 
 void
-virtio_dev_queue_release(struct virtqueue *vq) {
+virtio_dev_queue_release(struct virtqueue *vq)
+{
 	struct virtio_hw *hw;
 
 	if (vq) {
 		hw = vq->hw;
-		hw->vtpci_ops->del_queue(hw, vq);
+		if (vq->configured)
+			hw->vtpci_ops->del_queue(hw, vq);
+
+		rte_memzone_free(vq->mz);
+		if (vq->virtio_net_hdr_mz)
+			rte_memzone_free(vq->virtio_net_hdr_mz);
 
 		rte_free(vq->sw_ring);
 		rte_free(vq);
@@ -325,7 +331,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 						 socket_id);
 		if (!vq->sw_ring) {
 			PMD_INIT_LOG(ERR, "Can not allocate RX soft ring");
-			rte_free(vq);
+			virtio_dev_queue_release(vq);
 			return -ENOMEM;
 		}
 	}
@@ -353,7 +359,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		if (rte_errno == EEXIST)
 			mz = rte_memzone_lookup(vq_name);
 		if (mz == NULL) {
-			rte_free(vq);
+			virtio_dev_queue_release(vq);
 			return -ENOMEM;
 		}
 	}
@@ -365,7 +371,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	 */
 	if ((mz->phys_addr + vq->vq_ring_size - 1) >> (VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
 		PMD_INIT_LOG(ERR, "vring address shouldn't be above 16TB!");
-		rte_free(vq);
+		virtio_dev_queue_release(vq);
 		return -ENOMEM;
 	}
 
@@ -397,7 +403,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			if (rte_errno == EEXIST)
 				hdr_mz = rte_memzone_lookup(vq_name);
 			if (hdr_mz == NULL) {
-				rte_free(vq);
+				virtio_dev_queue_release(vq);
 				return -ENOMEM;
 			}
 		}
@@ -431,7 +437,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 				vq->virtio_net_hdr_mz =
 					rte_memzone_lookup(vq_name);
 			if (vq->virtio_net_hdr_mz == NULL) {
-				rte_free(vq);
+				virtio_dev_queue_release(vq);
 				return -ENOMEM;
 			}
 		}
@@ -442,6 +448,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 
 	hw->vtpci_ops->setup_queue(hw, vq);
 
+	vq->configured = 1;
 	*pvq = vq;
 	return 0;
 }
