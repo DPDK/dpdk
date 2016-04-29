@@ -76,9 +76,10 @@ struct cmdline_token_ops cmdline_token_string_ops = {
 	.get_help = cmdline_get_help_string,
 };
 
-#define MULTISTRING_HELP "Mul-choice STRING"
-#define ANYSTRING_HELP   "Any STRING"
-#define FIXEDSTRING_HELP "Fixed STRING"
+#define CHOICESTRING_HELP "Mul-choice STRING"
+#define ANYSTRING_HELP    "Any STRING"
+#define ANYSTRINGS_HELP   "Any STRINGS"
+#define FIXEDSTRING_HELP  "Fixed STRING"
 
 static unsigned int
 get_token_len(const char *s)
@@ -123,8 +124,8 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
 
 	sd = &tk2->string_data;
 
-	/* fixed string */
-	if (sd->str) {
+	/* fixed string (known single token) */
+	if ((sd->str != NULL) && (strcmp(sd->str, TOKEN_STRING_MULTI) != 0)) {
 		str = sd->str;
 		do {
 			token_len = get_token_len(str);
@@ -148,7 +149,21 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
 		if (!str)
 			return -1;
 	}
-	/* unspecified string */
+	/* multi string */
+	else if (sd->str != NULL) {
+		if (ressize < STR_MULTI_TOKEN_SIZE)
+			return -1;
+
+		token_len = 0;
+		while (!cmdline_isendofcommand(buf[token_len]) &&
+		      token_len < (STR_MULTI_TOKEN_SIZE - 1))
+			token_len++;
+
+		/* return if token too long */
+		if (token_len >= (STR_MULTI_TOKEN_SIZE - 1))
+			return -1;
+	}
+	/* unspecified string (unknown single token) */
 	else {
 		token_len = 0;
 		while(!cmdline_isendoftoken(buf[token_len]) &&
@@ -162,11 +177,15 @@ cmdline_parse_string(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
 	}
 
 	if (res) {
-		/* we are sure that token_len is < STR_TOKEN_SIZE-1 */
-		snprintf(res, STR_TOKEN_SIZE, "%s", buf);
+		if ((sd->str != NULL) && (strcmp(sd->str, TOKEN_STRING_MULTI) == 0))
+			/* we are sure that token_len is < STR_MULTI_TOKEN_SIZE-1 */
+			snprintf(res, STR_MULTI_TOKEN_SIZE, "%s", buf);
+		else
+			/* we are sure that token_len is < STR_TOKEN_SIZE-1 */
+			snprintf(res, STR_TOKEN_SIZE, "%s", buf);
+
 		*((char *)res + token_len) = 0;
 	}
-
 
 	return token_len;
 }
@@ -242,8 +261,10 @@ int cmdline_get_help_string(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 	s = sd->str;
 
 	if (s) {
-		if (get_next_token(s))
-			snprintf(dstbuf, size, MULTISTRING_HELP);
+		if (strcmp(s, TOKEN_STRING_MULTI) == 0)
+			snprintf(dstbuf, size, ANYSTRINGS_HELP);
+		else if (get_next_token(s))
+			snprintf(dstbuf, size, CHOICESTRING_HELP);
 		else
 			snprintf(dstbuf, size, FIXEDSTRING_HELP);
 	} else

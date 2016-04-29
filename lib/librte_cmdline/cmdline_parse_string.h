@@ -70,7 +70,12 @@ extern "C" {
 /* size of a parsed string */
 #define STR_TOKEN_SIZE 128
 
+/* size of a parsed multi string */
+#define STR_MULTI_TOKEN_SIZE 4096
+
 typedef char cmdline_fixed_string_t[STR_TOKEN_SIZE];
+
+typedef char cmdline_multi_string_t[STR_MULTI_TOKEN_SIZE];
 
 struct cmdline_token_string_data {
 	const char *str;
@@ -91,6 +96,16 @@ int cmdline_complete_get_elt_string(cmdline_parse_token_hdr_t *tk, int idx,
 				    char *dstbuf, unsigned int size);
 int cmdline_get_help_string(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			    unsigned int size);
+
+/**
+* Token marked as TOKEN_STRING_MULTI takes entire parsing string
+* until “#” sign appear. Everything after “#” sign is treated as a comment.
+*
+* Note:
+* In this case second parameter of TOKEN_STRING_INITIALIZER must be a type of
+* cmdline_multi_string_t.
+*/
+#define TOKEN_STRING_MULTI ""
 
 #define TOKEN_STRING_INITIALIZER(structure, field, string)  \
 {                                                           \

@@ -118,6 +118,14 @@ cmdline_isendoftoken(char c)
 	return 0;
 }
 
+int
+cmdline_isendofcommand(char c)
+{
+	if (!c || iscomment(c) || isendofline(c))
+		return 1;
+	return 0;
+}
+
 static unsigned int
 nb_common_chars(const char * s1, const char * s2)
 {

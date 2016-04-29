@@ -35,6 +35,7 @@
 #include <string.h>
 #include <inttypes.h>
 
+#include <rte_common.h>
 #include <rte_string_fns.h>
 
 #include <cmdline_parse.h>
@@ -65,9 +66,10 @@ struct string_elt_str string_elt_strs[] = {
 		{"one#two\nwith\nnewlines#three", "two\nwith\nnewlines", 1},
 };
 
-#if CMDLINE_TEST_BUFSIZE < STR_TOKEN_SIZE
+#if (CMDLINE_TEST_BUFSIZE < STR_TOKEN_SIZE) \
+|| (CMDLINE_TEST_BUFSIZE < STR_MULTI_TOKEN_SIZE)
 #undef CMDLINE_TEST_BUFSIZE
-#define CMDLINE_TEST_BUFSIZE STR_TOKEN_SIZE
+#define CMDLINE_TEST_BUFSIZE RTE_MAX(STR_TOKEN_SIZE, STR_MULTI_TOKEN_SIZE)
 #endif
 
 struct string_nb_str {
@@ -97,6 +99,11 @@ struct string_parse_str string_parse_strs[] = {
 		{"two with\rgarbage\tcharacters\n",
 				"one#two with\rgarbage\tcharacters\n#three",
 				"two with\rgarbage\tcharacters\n"},
+		{"one two", "one", "one"}, /* fixed string */
+		{"one two", TOKEN_STRING_MULTI, "one two"}, /* multi string */
+		{"one two", NULL, "one"}, /* any string */
+		{"one two #three", TOKEN_STRING_MULTI, "one two "},
+		/* multi string with comment */
 };
 
 
@@ -124,7 +131,6 @@ struct string_invalid_str string_invalid_strs[] = {
 		 "toolong!!!toolong!!!toolong!!!toolong!!!toolong!!!toolong!!!"
 		 "toolong!!!toolong!!!toolong!!!toolong!!!toolong!!!toolong!!!"
 		 "toolong!!!" },
-		 {"invalid", ""},
 		 {"", "invalid"}
 };
 
@@ -350,8 +356,7 @@ test_parse_string_valid(void)
 					string_parse_strs[i].str, help_str);
 			return -1;
 		}
-		if (strncmp(buf, string_parse_strs[i].result,
-				sizeof(string_parse_strs[i].result) - 1) != 0) {
+		if (strcmp(buf, string_parse_strs[i].result) != 0) {
 			printf("Error: result mismatch!\n");
 			return -1;
 		}

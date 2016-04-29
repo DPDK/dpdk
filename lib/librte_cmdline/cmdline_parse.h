@@ -184,6 +184,9 @@ int cmdline_complete(struct cmdline *cl, const char *buf, int *state,
  * isendofline(c)) */
 int cmdline_isendoftoken(char c);
 
+/* return true if(!c || iscomment(c) || isendofline(c)) */
+int cmdline_isendofcommand(char c);
+
 #ifdef __cplusplus
 }
 #endif
