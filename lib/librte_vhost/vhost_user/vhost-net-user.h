@@ -47,6 +47,8 @@ struct vhost_server {
 
 /* refer to hw/virtio/vhost-user.c */
 
+#define VHOST_MEMORY_MAX_NREGIONS 8
+
 typedef enum VhostUserRequest {
 	VHOST_USER_NONE = 0,
 	VHOST_USER_GET_FEATURES = 1,
