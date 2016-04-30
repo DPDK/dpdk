@@ -54,7 +54,6 @@
 #include "rte_virtio_net.h"
 #include "vhost-net.h"
 #include "virtio-net-cdev.h"
-#include "virtio-net.h"
 #include "eventfd_copy.h"
 
 /* Line size for reading maps file. */

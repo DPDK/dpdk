@@ -220,6 +220,9 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 	return vhost_va;
 }
 
+struct virtio_net_device_ops const *notify_ops;
+struct virtio_net *get_device(int vid);
+
 int vhost_new_device(void);
 void vhost_destroy_device(int);
 

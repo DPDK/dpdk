@@ -46,7 +46,6 @@
 #include <rte_arp.h>
 
 #include "vhost-net.h"
-#include "virtio-net.h"
 
 #define MAX_PKT_BURST 32
 #define VHOST_LOG_PAGE	4096

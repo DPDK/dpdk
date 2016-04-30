@@ -43,7 +43,6 @@
 #include <rte_common.h>
 #include <rte_log.h>
 
-#include "virtio-net.h"
 #include "virtio-net-user.h"
 #include "vhost-net-user.h"
 #include "vhost-net.h"

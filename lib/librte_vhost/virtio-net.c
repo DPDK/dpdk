@@ -53,7 +53,6 @@
 #include <rte_virtio_net.h>
 
 #include "vhost-net.h"
-#include "virtio-net.h"
 
 #define MAX_VHOST_DEVICE	1024
 static struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
