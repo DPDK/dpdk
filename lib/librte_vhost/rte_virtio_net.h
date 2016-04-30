@@ -66,6 +66,8 @@ struct virtio_net_device_ops {
 	void (*destroy_device)(int vid);	/**< Remove device. */
 
 	int (*vring_state_changed)(int vid, uint16_t queue_id, int enable);	/**< triggered when a vring is enabled or disabled */
+
+	void *reserved[5]; /**< Reserved for future extension */
 };
 
 /**
