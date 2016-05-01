@@ -88,7 +88,6 @@ struct vhost_virtqueue {
 
 	/* Physical address of used ring, for logging */
 	uint64_t		log_guest_addr;
-	uint64_t		reserved[15];
 	struct buf_vector	buf_vec[BUF_VECTOR_MAX];
 } __rte_cache_aligned;
 
@@ -133,14 +132,12 @@ struct virtio_net {
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
 	char			ifname[IF_NAME_SZ];
 	uint32_t		virt_qp_nb;
-	void			*priv;
 	uint64_t		log_size;
 	uint64_t		log_base;
 	struct ether_addr	mac;
 
 	/* to tell if we need broadcast rarp packet */
 	rte_atomic16_t		broadcast_rarp;
-	uint64_t		reserved[61];
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
 } __rte_cache_aligned;
 
