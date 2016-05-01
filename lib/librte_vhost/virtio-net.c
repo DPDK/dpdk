@@ -387,8 +387,6 @@ int
 vhost_set_features(int vid, uint64_t *pu)
 {
 	struct virtio_net *dev;
-	uint16_t vhost_hlen;
-	uint16_t i;
 
 	dev = get_device(vid);
 	if (dev == NULL)
@@ -399,22 +397,15 @@ vhost_set_features(int vid, uint64_t *pu)
 	dev->features = *pu;
 	if (dev->features &
 		((1 << VIRTIO_NET_F_MRG_RXBUF) | (1ULL << VIRTIO_F_VERSION_1))) {
-		vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
+		dev->vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	} else {
-		vhost_hlen = sizeof(struct virtio_net_hdr);
+		dev->vhost_hlen = sizeof(struct virtio_net_hdr);
 	}
 	LOG_DEBUG(VHOST_CONFIG,
 		"(%d) mergeable RX buffers %s, virtio 1 %s\n",
 		dev->vid,
 		(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) ? "on" : "off",
 		(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ? "on" : "off");
-
-	for (i = 0; i < dev->virt_qp_nb; i++) {
-		uint16_t base_idx = i * VIRTIO_QNUM;
-
-		dev->virtqueue[base_idx + VIRTIO_RXQ]->vhost_hlen = vhost_hlen;
-		dev->virtqueue[base_idx + VIRTIO_TXQ]->vhost_hlen = vhost_hlen;
-	}
 
 	return 0;
 }

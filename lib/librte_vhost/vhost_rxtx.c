@@ -126,10 +126,10 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 }
 
 static inline void
-copy_virtio_net_hdr(struct vhost_virtqueue *vq, uint64_t desc_addr,
+copy_virtio_net_hdr(struct virtio_net *dev, uint64_t desc_addr,
 		    struct virtio_net_hdr_mrg_rxbuf hdr)
 {
-	if (vq->vhost_hlen == sizeof(struct virtio_net_hdr_mrg_rxbuf))
+	if (dev->vhost_hlen == sizeof(struct virtio_net_hdr_mrg_rxbuf))
 		*(struct virtio_net_hdr_mrg_rxbuf *)(uintptr_t)desc_addr = hdr;
 	else
 		*(struct virtio_net_hdr *)(uintptr_t)desc_addr = hdr.hdr;
@@ -147,19 +147,19 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 
 	desc = &vq->desc[desc_idx];
-	if (unlikely(desc->len < vq->vhost_hlen))
+	if (unlikely(desc->len < dev->vhost_hlen))
 		return -1;
 
 	desc_addr = gpa_to_vva(dev, desc->addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 	virtio_enqueue_offload(m, &virtio_hdr.hdr);
-	copy_virtio_net_hdr(vq, desc_addr, virtio_hdr);
-	vhost_log_write(dev, desc->addr, vq->vhost_hlen);
-	PRINT_PACKET(dev, (uintptr_t)desc_addr, vq->vhost_hlen, 0);
+	copy_virtio_net_hdr(dev, desc_addr, virtio_hdr);
+	vhost_log_write(dev, desc->addr, dev->vhost_hlen);
+	PRINT_PACKET(dev, (uintptr_t)desc_addr, dev->vhost_hlen, 0);
 
-	desc_offset = vq->vhost_hlen;
-	desc_avail  = desc->len - vq->vhost_hlen;
+	desc_offset = dev->vhost_hlen;
+	desc_avail  = desc->len - dev->vhost_hlen;
 
 	*copied = rte_pktmbuf_pkt_len(m);
 	mbuf_avail  = rte_pktmbuf_data_len(m);
@@ -300,9 +300,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		vq->used->ring[used_idx].id = desc_idx;
 		if (unlikely(err))
-			vq->used->ring[used_idx].len = vq->vhost_hlen;
+			vq->used->ring[used_idx].len = dev->vhost_hlen;
 		else
-			vq->used->ring[used_idx].len = copied + vq->vhost_hlen;
+			vq->used->ring[used_idx].len = copied + dev->vhost_hlen;
 		vhost_log_used_vring(dev, vq,
 			offsetof(struct vring_used, ring[used_idx]),
 			sizeof(vq->used->ring[used_idx]));
@@ -444,7 +444,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
 		dev->vid, cur_idx, res_end_idx);
 
-	if (vq->buf_vec[vec_idx].buf_len < vq->vhost_hlen)
+	if (vq->buf_vec[vec_idx].buf_len < dev->vhost_hlen)
 		return -1;
 
 	desc_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
@@ -455,12 +455,12 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		dev->vid, virtio_hdr.num_buffers);
 
 	virtio_enqueue_offload(m, &virtio_hdr.hdr);
-	copy_virtio_net_hdr(vq, desc_addr, virtio_hdr);
-	vhost_log_write(dev, vq->buf_vec[vec_idx].buf_addr, vq->vhost_hlen);
-	PRINT_PACKET(dev, (uintptr_t)desc_addr, vq->vhost_hlen, 0);
+	copy_virtio_net_hdr(dev, desc_addr, virtio_hdr);
+	vhost_log_write(dev, vq->buf_vec[vec_idx].buf_addr, dev->vhost_hlen);
+	PRINT_PACKET(dev, (uintptr_t)desc_addr, dev->vhost_hlen, 0);
 
-	desc_avail  = vq->buf_vec[vec_idx].buf_len - vq->vhost_hlen;
-	desc_offset = vq->vhost_hlen;
+	desc_avail  = vq->buf_vec[vec_idx].buf_len - dev->vhost_hlen;
+	desc_offset = dev->vhost_hlen;
 
 	mbuf_avail  = rte_pktmbuf_data_len(m);
 	mbuf_offset = 0;
@@ -546,7 +546,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		return 0;
 
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
-		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + vq->vhost_hlen;
+		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
 
 		if (unlikely(reserve_avail_buf_mergeable(vq, pkt_len,
 							 &start, &end) < 0)) {
@@ -747,7 +747,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t nr_desc = 1;
 
 	desc = &vq->desc[desc_idx];
-	if (unlikely(desc->len < vq->vhost_hlen))
+	if (unlikely(desc->len < dev->vhost_hlen))
 		return -1;
 
 	desc_addr = gpa_to_vva(dev, desc->addr);
@@ -755,8 +755,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	/* Retrieve virtio net header */
 	hdr = (struct virtio_net_hdr *)((uintptr_t)desc_addr);
-	desc_avail  = desc->len - vq->vhost_hlen;
-	desc_offset = vq->vhost_hlen;
+	desc_avail  = desc->len - dev->vhost_hlen;
+	desc_offset = dev->vhost_hlen;
 
 	mbuf_offset = 0;
 	mbuf_avail  = m->buf_len - RTE_PKTMBUF_HEADROOM;

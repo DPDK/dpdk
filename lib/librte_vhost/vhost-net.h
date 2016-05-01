@@ -69,7 +69,6 @@ struct vhost_virtqueue {
 	struct vring_avail	*avail;
 	struct vring_used	*used;
 	uint32_t		size;
-	uint16_t		vhost_hlen;
 
 	/* Last index used on the available ring */
 	volatile uint16_t	last_used_idx;
@@ -129,6 +128,7 @@ struct virtio_net {
 	uint64_t		protocol_features;
 	int			vid;
 	uint32_t		flags;
+	uint16_t		vhost_hlen;
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
 	char			ifname[IF_NAME_SZ];
 	uint32_t		virt_qp_nb;
