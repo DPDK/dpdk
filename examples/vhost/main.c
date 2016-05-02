@@ -806,6 +806,21 @@ unlink_vmdq(struct vhost_dev *vdev)
 	}
 }
 
+static inline void __attribute__((always_inline))
+virtio_xmit(struct virtio_net *dst_dev, struct virtio_net *src_dev,
+	    struct rte_mbuf *m)
+{
+	uint16_t ret;
+
+	ret = rte_vhost_enqueue_burst(dst_dev, VIRTIO_RXQ, &m, 1);
+	if (enable_stats) {
+		rte_atomic64_inc(&dev_statistics[dst_dev->device_fh].rx_total_atomic);
+		rte_atomic64_add(&dev_statistics[dst_dev->device_fh].rx_atomic, ret);
+		dev_statistics[src_dev->device_fh].tx_total++;
+		dev_statistics[src_dev->device_fh].tx += ret;
+	}
+}
+
 /*
  * Check if the packet destination MAC address is for a local device. If so then put
  * the packet on that devices RX queue. If not then return.
@@ -814,7 +829,6 @@ static inline int __attribute__((always_inline))
 virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct ether_hdr *pkt_hdr;
-	uint64_t ret = 0;
 	struct vhost_dev *dst_vdev;
 	uint64_t fh;
 
@@ -841,15 +855,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 		return 0;
 	}
 
-	/* send the packet to the local virtio device */
-	ret = rte_vhost_enqueue_burst(dst_vdev->dev, VIRTIO_RXQ, &m, 1);
-	if (enable_stats) {
-		rte_atomic64_inc(&dev_statistics[fh].rx_total_atomic);
-		rte_atomic64_add(&dev_statistics[fh].rx_atomic, ret);
-		dev_statistics[vdev->dev->device_fh].tx_total++;
-		dev_statistics[vdev->dev->device_fh].tx += ret;
-	}
-
+	virtio_xmit(dst_vdev->dev, vdev->dev, m);
 	return 0;
 }
 
@@ -933,6 +939,17 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	struct virtio_net *dev = vdev->dev;
 	struct ether_hdr *nh;
 
+
+	nh = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	if (unlikely(is_broadcast_ether_addr(&nh->d_addr))) {
+		struct vhost_dev *vdev2;
+
+		TAILQ_FOREACH(vdev2, &vhost_dev_list, next) {
+			virtio_xmit(vdev2->dev, vdev->dev, m);
+		}
+		goto queue2nic;
+	}
+
 	/*check if destination is local VM*/
 	if ((vm2vm_mode == VM2VM_SOFTWARE) && (virtio_tx_local(vdev, m) == 0)) {
 		rte_pktmbuf_free(m);
@@ -948,6 +965,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 
 	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
 		"MAC address is external\n", dev->device_fh);
+
+queue2nic:
 
 	/*Add packet to the port tx queue*/
 	tx_q = &lcore_tx_queue[lcore_id];
