@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -85,10 +85,6 @@
 #define DEVICE_MAC_LEARNING 0
 #define DEVICE_RX			1
 #define DEVICE_SAFE_REMOVE	2
-
-/* Config_core_flag status definitions. */
-#define REQUEST_DEV_REMOVAL 1
-#define ACK_DEV_REMOVAL 0
 
 /* Configurable number of RX/TX ring descriptors */
 #define RTE_TEST_RX_DESC_DEFAULT 1024
@@ -215,11 +211,9 @@ const uint16_t vlan_tags[] = {
 /* ethernet addresses of ports */
 static struct ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
 
-/* heads for the main used and free linked lists for the data path. */
-static struct virtio_net_data_ll *ll_root_used = NULL;
-static struct virtio_net_data_ll *ll_root_free = NULL;
+static struct vhost_dev_tailq_list vhost_dev_list =
+	TAILQ_HEAD_INITIALIZER(vhost_dev_list);
 
-/* Array of data core structures containing information on individual core linked lists. */
 static struct lcore_info lcore_info[RTE_MAX_LCORE];
 
 /* Used for queueing bursts of TX packets. */
@@ -722,6 +716,20 @@ ether_addr_cmp(struct ether_addr *ea, struct ether_addr *eb)
 	return ((*(uint64_t *)ea ^ *(uint64_t *)eb) & MAC_ADDR_CMP) == 0;
 }
 
+static inline struct vhost_dev *__attribute__((always_inline))
+find_vhost_dev(struct ether_addr *mac)
+{
+	struct vhost_dev *vdev;
+
+	TAILQ_FOREACH(vdev, &vhost_dev_list, next) {
+		if (vdev->ready == DEVICE_RX &&
+		    ether_addr_cmp(mac, &vdev->mac_address))
+			return vdev;
+	}
+
+	return NULL;
+}
+
 /*
  * This function learns the MAC address of the device and registers this along with a
  * vlan tag to a VMDQ.
@@ -730,21 +738,17 @@ static int
 link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct ether_hdr *pkt_hdr;
-	struct virtio_net_data_ll *dev_ll;
 	struct virtio_net *dev = vdev->dev;
 	int i, ret;
 
 	/* Learn MAC address of guest device from packet */
 	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
-	dev_ll = ll_root_used;
-
-	while (dev_ll != NULL) {
-		if (ether_addr_cmp(&(pkt_hdr->s_addr), &dev_ll->vdev->mac_address)) {
-			RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") WARNING: This device is using an existing MAC address and has not been registered.\n", dev->device_fh);
-			return -1;
-		}
-		dev_ll = dev_ll->next;
+	if (find_vhost_dev(&pkt_hdr->s_addr)) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"Device (%" PRIu64 ") is using a registered MAC!\n",
+			dev->device_fh);
+		return -1;
 	}
 
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
@@ -821,60 +825,44 @@ unlink_vmdq(struct vhost_dev *vdev)
 static inline int __attribute__((always_inline))
 virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
-	struct virtio_net_data_ll *dev_ll;
 	struct ether_hdr *pkt_hdr;
 	uint64_t ret = 0;
-	struct virtio_net *dev = vdev->dev;
-	struct virtio_net *tdev; /* destination virito device */
+	struct vhost_dev *dst_vdev;
+	uint64_t fh;
 
 	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
-	/*get the used devices list*/
-	dev_ll = ll_root_used;
+	dst_vdev = find_vhost_dev(&pkt_hdr->d_addr);
+	if (!dst_vdev)
+		return -1;
 
-	while (dev_ll != NULL) {
-		if ((dev_ll->vdev->ready == DEVICE_RX) && ether_addr_cmp(&(pkt_hdr->d_addr),
-				          &dev_ll->vdev->mac_address)) {
-
-			/* Drop the packet if the TX packet is destined for the TX device. */
-			if (dev_ll->vdev->dev->device_fh == dev->device_fh) {
-				RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
-					"Source and destination MAC addresses are the same. "
-					"Dropping packet.\n",
-					dev->device_fh);
-				return 0;
-			}
-			tdev = dev_ll->vdev->dev;
-
-
-			RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
-				"MAC address is local\n", tdev->device_fh);
-
-			if (unlikely(dev_ll->vdev->remove)) {
-				/*drop the packet if the device is marked for removal*/
-				RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") "
-					"Device is marked for removal\n", tdev->device_fh);
-			} else {
-				/*send the packet to the local virtio device*/
-				ret = rte_vhost_enqueue_burst(tdev, VIRTIO_RXQ, &m, 1);
-				if (enable_stats) {
-					rte_atomic64_add(
-					&dev_statistics[tdev->device_fh].rx_total_atomic,
-					1);
-					rte_atomic64_add(
-					&dev_statistics[tdev->device_fh].rx_atomic,
-					ret);
-					dev_statistics[dev->device_fh].tx_total++;
-					dev_statistics[dev->device_fh].tx += ret;
-				}
-			}
-
-			return 0;
-		}
-		dev_ll = dev_ll->next;
+	fh = dst_vdev->dev->device_fh;
+	if (fh == vdev->dev->device_fh) {
+		RTE_LOG(DEBUG, VHOST_DATA,
+			"(%" PRIu64 ") TX: src and dst MAC is same. "
+			"Dropping packet.\n", fh);
+		return 0;
 	}
 
-	return -1;
+	RTE_LOG(DEBUG, VHOST_DATA,
+		"(%" PRIu64 ") TX: MAC address is local\n", fh);
+
+	if (unlikely(dst_vdev->remove)) {
+		RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") "
+			"Device is marked for removal\n", fh);
+		return 0;
+	}
+
+	/* send the packet to the local virtio device */
+	ret = rte_vhost_enqueue_burst(dst_vdev->dev, VIRTIO_RXQ, &m, 1);
+	if (enable_stats) {
+		rte_atomic64_inc(&dev_statistics[fh].rx_total_atomic);
+		rte_atomic64_add(&dev_statistics[fh].rx_atomic, ret);
+		dev_statistics[vdev->dev->device_fh].tx_total++;
+		dev_statistics[vdev->dev->device_fh].tx += ret;
+	}
+
+	return 0;
 }
 
 /*
@@ -885,46 +873,33 @@ static inline int __attribute__((always_inline))
 find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
 	uint32_t *offset, uint16_t *vlan_tag)
 {
-	struct virtio_net_data_ll *dev_ll = ll_root_used;
+	struct vhost_dev *dst_vdev;
 	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
-	while (dev_ll != NULL) {
-		if ((dev_ll->vdev->ready == DEVICE_RX)
-			&& ether_addr_cmp(&(pkt_hdr->d_addr),
-		&dev_ll->vdev->mac_address)) {
-			/*
-			 * Drop the packet if the TX packet is
-			 * destined for the TX device.
-			 */
-			if (dev_ll->vdev->dev->device_fh == dev->device_fh) {
-				RTE_LOG(DEBUG, VHOST_DATA,
-				"(%"PRIu64") TX: Source and destination"
-				" MAC addresses are the same. Dropping "
-				"packet.\n",
-				dev_ll->vdev->dev->device_fh);
-				return -1;
-			}
+	dst_vdev = find_vhost_dev(&pkt_hdr->d_addr);
+	if (!dst_vdev)
+		return 0;
 
-			/*
-			 * HW vlan strip will reduce the packet length
-			 * by minus length of vlan tag, so need restore
-			 * the packet length by plus it.
-			 */
-			*offset = VLAN_HLEN;
-			*vlan_tag =
-			(uint16_t)
-			vlan_tags[(uint16_t)dev_ll->vdev->dev->device_fh];
-
-			RTE_LOG(DEBUG, VHOST_DATA,
-			"(%"PRIu64") TX: pkt to local VM device id:"
-			"(%"PRIu64") vlan tag: %d.\n",
-			dev->device_fh, dev_ll->vdev->dev->device_fh,
-			(int)*vlan_tag);
-
-			break;
-		}
-		dev_ll = dev_ll->next;
+	if (dst_vdev->dev->device_fh == dev->device_fh) {
+		RTE_LOG(DEBUG, VHOST_DATA,
+			"(%" PRIu64 ") TX: src and dst MAC is same. "
+			" Dropping packet.\n", dst_vdev->dev->device_fh);
+		return -1;
 	}
+
+	/*
+	 * HW vlan strip will reduce the packet length
+	 * by minus length of vlan tag, so need restore
+	 * the packet length by plus it.
+	 */
+	*offset  = VLAN_HLEN;
+	*vlan_tag = vlan_tags[(uint16_t)dst_vdev->dev->device_fh];
+
+	RTE_LOG(DEBUG, VHOST_DATA,
+		"(%" PRIu64 ") TX: pkt to local VM device id: (%" PRIu64 ") "
+		"vlan tag: %u.\n",
+		dev->device_fh, dst_vdev->dev->device_fh, *vlan_tag);
+
 	return 0;
 }
 
@@ -1060,9 +1035,7 @@ switch_worker(__attribute__((unused)) void *arg)
 	struct virtio_net *dev = NULL;
 	struct vhost_dev *vdev = NULL;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	struct virtio_net_data_ll *dev_ll;
 	struct mbuf_table *tx_q;
-	volatile struct lcore_ll_info *lcore_ll;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 	uint64_t prev_tsc, diff_tsc, cur_tsc, ret_count = 0;
 	unsigned ret, i;
@@ -1073,7 +1046,6 @@ switch_worker(__attribute__((unused)) void *arg)
 	uint32_t retry = 0;
 
 	RTE_LOG(INFO, VHOST_DATA, "Procesing on Core %u started\n", lcore_id);
-	lcore_ll = lcore_info[lcore_id].lcore_ll;
 	prev_tsc = 0;
 
 	tx_q = &lcore_tx_queue[lcore_id];
@@ -1114,30 +1086,28 @@ switch_worker(__attribute__((unused)) void *arg)
 
 		}
 
-		rte_prefetch0(lcore_ll->ll_root_used);
 		/*
-		 * Inform the configuration core that we have exited the linked list and that no devices are
-		 * in use if requested.
+		 * Inform the configuration core that we have exited the
+		 * linked list and that no devices are in use if requested.
 		 */
-		if (lcore_ll->dev_removal_flag == REQUEST_DEV_REMOVAL)
-			lcore_ll->dev_removal_flag = ACK_DEV_REMOVAL;
+		if (lcore_info[lcore_id].dev_removal_flag == REQUEST_DEV_REMOVAL)
+			lcore_info[lcore_id].dev_removal_flag = ACK_DEV_REMOVAL;
 
 		/*
 		 * Process devices
 		 */
-		dev_ll = lcore_ll->ll_root_used;
+		TAILQ_FOREACH(vdev, &lcore_info[lcore_id].vdev_list, next) {
+			uint64_t fh;
 
-		while (dev_ll != NULL) {
-			/*get virtio device ID*/
-			vdev = dev_ll->vdev;
 			dev = vdev->dev;
+			fh  = dev->device_fh;
 
 			if (unlikely(vdev->remove)) {
-				dev_ll = dev_ll->next;
 				unlink_vmdq(vdev);
 				vdev->ready = DEVICE_SAFE_REMOVE;
 				continue;
 			}
+
 			if (likely(vdev->ready == DEVICE_RX)) {
 				/*Handle guest RX*/
 				rx_count = rte_eth_rx_burst(ports[0],
@@ -1158,10 +1128,11 @@ switch_worker(__attribute__((unused)) void *arg)
 					ret_count = rte_vhost_enqueue_burst(dev, VIRTIO_RXQ, pkts_burst, rx_count);
 					if (enable_stats) {
 						rte_atomic64_add(
-						&dev_statistics[dev_ll->vdev->dev->device_fh].rx_total_atomic,
-						rx_count);
+							&dev_statistics[fh].rx_total_atomic,
+							rx_count);
 						rte_atomic64_add(
-						&dev_statistics[dev_ll->vdev->dev->device_fh].rx_atomic, ret_count);
+							&dev_statistics[fh].rx_atomic,
+							ret_count);
 					}
 					while (likely(rx_count)) {
 						rx_count--;
@@ -1186,9 +1157,6 @@ switch_worker(__attribute__((unused)) void *arg)
 						vlan_tags[(uint16_t)dev->device_fh]);
 				}
 			}
-
-			/*move to the next device in the list*/
-			dev_ll = dev_ll->next;
 		}
 	}
 
@@ -1196,156 +1164,14 @@ switch_worker(__attribute__((unused)) void *arg)
 }
 
 /*
- * Add an entry to a used linked list. A free entry must first be found
- * in the free linked list using get_data_ll_free_entry();
- */
-static void
-add_data_ll_entry(struct virtio_net_data_ll **ll_root_addr,
-	struct virtio_net_data_ll *ll_dev)
-{
-	struct virtio_net_data_ll *ll = *ll_root_addr;
-
-	/* Set next as NULL and use a compiler barrier to avoid reordering. */
-	ll_dev->next = NULL;
-	rte_compiler_barrier();
-
-	/* If ll == NULL then this is the first device. */
-	if (ll) {
-		/* Increment to the tail of the linked list. */
-		while ((ll->next != NULL) )
-			ll = ll->next;
-
-		ll->next = ll_dev;
-	} else {
-		*ll_root_addr = ll_dev;
-	}
-}
-
-/*
- * Remove an entry from a used linked list. The entry must then be added to
- * the free linked list using put_data_ll_free_entry().
- */
-static void
-rm_data_ll_entry(struct virtio_net_data_ll **ll_root_addr,
-	struct virtio_net_data_ll *ll_dev,
-	struct virtio_net_data_ll *ll_dev_last)
-{
-	struct virtio_net_data_ll *ll = *ll_root_addr;
-
-	if (unlikely((ll == NULL) || (ll_dev == NULL)))
-		return;
-
-	if (ll_dev == ll)
-		*ll_root_addr = ll_dev->next;
-	else
-		if (likely(ll_dev_last != NULL))
-			ll_dev_last->next = ll_dev->next;
-		else
-			RTE_LOG(ERR, VHOST_CONFIG, "Remove entry form ll failed.\n");
-}
-
-/*
- * Find and return an entry from the free linked list.
- */
-static struct virtio_net_data_ll *
-get_data_ll_free_entry(struct virtio_net_data_ll **ll_root_addr)
-{
-	struct virtio_net_data_ll *ll_free = *ll_root_addr;
-	struct virtio_net_data_ll *ll_dev;
-
-	if (ll_free == NULL)
-		return NULL;
-
-	ll_dev = ll_free;
-	*ll_root_addr = ll_free->next;
-
-	return ll_dev;
-}
-
-/*
- * Place an entry back on to the free linked list.
- */
-static void
-put_data_ll_free_entry(struct virtio_net_data_ll **ll_root_addr,
-	struct virtio_net_data_ll *ll_dev)
-{
-	struct virtio_net_data_ll *ll_free = *ll_root_addr;
-
-	if (ll_dev == NULL)
-		return;
-
-	ll_dev->next = ll_free;
-	*ll_root_addr = ll_dev;
-}
-
-/*
- * Creates a linked list of a given size.
- */
-static struct virtio_net_data_ll *
-alloc_data_ll(uint32_t size)
-{
-	struct virtio_net_data_ll *ll_new;
-	uint32_t i;
-
-	/* Malloc and then chain the linked list. */
-	ll_new = malloc(size * sizeof(struct virtio_net_data_ll));
-	if (ll_new == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG, "Failed to allocate memory for ll_new.\n");
-		return NULL;
-	}
-
-	for (i = 0; i < size - 1; i++) {
-		ll_new[i].vdev = NULL;
-		ll_new[i].next = &ll_new[i+1];
-	}
-	ll_new[i].next = NULL;
-
-	return ll_new;
-}
-
-/*
- * Create the main linked list along with each individual cores linked list. A used and a free list
- * are created to manage entries.
- */
-static int
-init_data_ll (void)
-{
-	int lcore;
-
-	RTE_LCORE_FOREACH_SLAVE(lcore) {
-		lcore_info[lcore].lcore_ll = malloc(sizeof(struct lcore_ll_info));
-		if (lcore_info[lcore].lcore_ll == NULL) {
-			RTE_LOG(ERR, VHOST_CONFIG, "Failed to allocate memory for lcore_ll.\n");
-			return -1;
-		}
-
-		lcore_info[lcore].lcore_ll->device_num = 0;
-		lcore_info[lcore].lcore_ll->dev_removal_flag = ACK_DEV_REMOVAL;
-		lcore_info[lcore].lcore_ll->ll_root_used = NULL;
-		if (num_devices % num_switching_cores)
-			lcore_info[lcore].lcore_ll->ll_root_free = alloc_data_ll((num_devices / num_switching_cores) + 1);
-		else
-			lcore_info[lcore].lcore_ll->ll_root_free = alloc_data_ll(num_devices / num_switching_cores);
-	}
-
-	/* Allocate devices up to a maximum of MAX_DEVICES. */
-	ll_root_free = alloc_data_ll(MIN((num_devices), MAX_DEVICES));
-
-	return 0;
-}
-
-/*
- * Remove a device from the specific data core linked list and from the main linked list. Synchonization
- * occurs through the use of the lcore dev_removal_flag. Device is made volatile here to avoid re-ordering
+ * Remove a device from the specific data core linked list and from the
+ * main linked list. Synchonization  occurs through the use of the
+ * lcore dev_removal_flag. Device is made volatile here to avoid re-ordering
  * of dev->remove=1 which can cause an infinite loop in the rte_pause loop.
  */
 static void
 destroy_device (volatile struct virtio_net *dev)
 {
-	struct virtio_net_data_ll *ll_lcore_dev_cur;
-	struct virtio_net_data_ll *ll_main_dev_cur;
-	struct virtio_net_data_ll *ll_lcore_dev_last = NULL;
-	struct virtio_net_data_ll *ll_main_dev_last = NULL;
 	struct vhost_dev *vdev;
 	int lcore;
 
@@ -1358,67 +1184,30 @@ destroy_device (volatile struct virtio_net *dev)
 		rte_pause();
 	}
 
-	/* Search for entry to be removed from lcore ll */
-	ll_lcore_dev_cur = lcore_info[vdev->coreid].lcore_ll->ll_root_used;
-	while (ll_lcore_dev_cur != NULL) {
-		if (ll_lcore_dev_cur->vdev == vdev) {
-			break;
-		} else {
-			ll_lcore_dev_last = ll_lcore_dev_cur;
-			ll_lcore_dev_cur = ll_lcore_dev_cur->next;
-		}
-	}
-
-	if (ll_lcore_dev_cur == NULL) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%"PRIu64") Failed to find the dev to be destroy.\n",
-			dev->device_fh);
-		return;
-	}
-
-	/* Search for entry to be removed from main ll */
-	ll_main_dev_cur = ll_root_used;
-	ll_main_dev_last = NULL;
-	while (ll_main_dev_cur != NULL) {
-		if (ll_main_dev_cur->vdev == vdev) {
-			break;
-		} else {
-			ll_main_dev_last = ll_main_dev_cur;
-			ll_main_dev_cur = ll_main_dev_cur->next;
-		}
-	}
-
-	/* Remove entries from the lcore and main ll. */
-	rm_data_ll_entry(&lcore_info[vdev->coreid].lcore_ll->ll_root_used, ll_lcore_dev_cur, ll_lcore_dev_last);
-	rm_data_ll_entry(&ll_root_used, ll_main_dev_cur, ll_main_dev_last);
+	TAILQ_REMOVE(&lcore_info[vdev->coreid].vdev_list, vdev, next);
+	TAILQ_REMOVE(&vhost_dev_list, vdev, next);
 
 	/* Set the dev_removal_flag on each lcore. */
-	RTE_LCORE_FOREACH_SLAVE(lcore) {
-		lcore_info[lcore].lcore_ll->dev_removal_flag = REQUEST_DEV_REMOVAL;
-	}
+	RTE_LCORE_FOREACH_SLAVE(lcore)
+		lcore_info[lcore].dev_removal_flag = REQUEST_DEV_REMOVAL;
 
 	/*
-	 * Once each core has set the dev_removal_flag to ACK_DEV_REMOVAL we can be sure that
-	 * they can no longer access the device removed from the linked lists and that the devices
-	 * are no longer in use.
+	 * Once each core has set the dev_removal_flag to ACK_DEV_REMOVAL
+	 * we can be sure that they can no longer access the device removed
+	 * from the linked lists and that the devices are no longer in use.
 	 */
 	RTE_LCORE_FOREACH_SLAVE(lcore) {
-		while (lcore_info[lcore].lcore_ll->dev_removal_flag != ACK_DEV_REMOVAL) {
+		while (lcore_info[lcore].dev_removal_flag != ACK_DEV_REMOVAL)
 			rte_pause();
-		}
 	}
 
-	/* Add the entries back to the lcore and main free ll.*/
-	put_data_ll_free_entry(&lcore_info[vdev->coreid].lcore_ll->ll_root_free, ll_lcore_dev_cur);
-	put_data_ll_free_entry(&ll_root_free, ll_main_dev_cur);
+	lcore_info[vdev->coreid].device_num--;
 
-	/* Decrement number of device on the lcore. */
-	lcore_info[vdev->coreid].lcore_ll->device_num--;
-
-	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been removed from data core\n", dev->device_fh);
+	RTE_LOG(INFO, VHOST_DATA,
+		"(%" PRIu64 ") Device has been removed from data core\n",
+		dev->device_fh);
 
 	rte_free(vdev);
-
 }
 
 /*
@@ -1428,7 +1217,6 @@ destroy_device (volatile struct virtio_net *dev)
 static int
 new_device (struct virtio_net *dev)
 {
-	struct virtio_net_data_ll *ll_dev;
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
@@ -1442,17 +1230,7 @@ new_device (struct virtio_net *dev)
 	vdev->dev = dev;
 	dev->priv = vdev;
 
-	/* Add device to main ll */
-	ll_dev = get_data_ll_free_entry(&ll_root_free);
-	if (ll_dev == NULL) {
-		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") No free entry found in linked list. Device limit "
-			"of %d devices per core has been reached\n",
-			dev->device_fh, num_devices);
-		rte_free(vdev);
-		return -1;
-	}
-	ll_dev->vdev = vdev;
-	add_data_ll_entry(&ll_root_used, ll_dev);
+	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, next);
 	vdev->vmdq_rx_q
 		= dev->device_fh * queues_per_pool + vmdq_queue_base;
 
@@ -1462,24 +1240,15 @@ new_device (struct virtio_net *dev)
 
 	/* Find a suitable lcore to add the device. */
 	RTE_LCORE_FOREACH_SLAVE(lcore) {
-		if (lcore_info[lcore].lcore_ll->device_num < device_num_min) {
-			device_num_min = lcore_info[lcore].lcore_ll->device_num;
+		if (lcore_info[lcore].device_num < device_num_min) {
+			device_num_min = lcore_info[lcore].device_num;
 			core_add = lcore;
 		}
 	}
-	/* Add device to lcore ll */
-	ll_dev = get_data_ll_free_entry(&lcore_info[core_add].lcore_ll->ll_root_free);
-	if (ll_dev == NULL) {
-		RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Failed to add device to data core\n", dev->device_fh);
-		vdev->ready = DEVICE_SAFE_REMOVE;
-		destroy_device(dev);
-		rte_free(vdev);
-		return -1;
-	}
-	ll_dev->vdev = vdev;
 	vdev->coreid = core_add;
 
-	add_data_ll_entry(&lcore_info[vdev->coreid].lcore_ll->ll_root_used, ll_dev);
+	TAILQ_INSERT_TAIL(&lcore_info[vdev->coreid].vdev_list, vdev, next);
+	lcore_info[vdev->coreid].device_num++;
 
 	/* Initialize device stats */
 	memset(&dev_statistics[dev->device_fh], 0, sizeof(struct device_statistics));
@@ -1487,7 +1256,6 @@ new_device (struct virtio_net *dev)
 	/* Disable notifications. */
 	rte_vhost_enable_guest_notification(dev, VIRTIO_RXQ, 0);
 	rte_vhost_enable_guest_notification(dev, VIRTIO_TXQ, 0);
-	lcore_info[vdev->coreid].lcore_ll->device_num++;
 	dev->flags |= VIRTIO_DEV_RUNNING;
 
 	RTE_LOG(INFO, VHOST_DATA, "(%"PRIu64") Device has been added to data core %d\n", dev->device_fh, vdev->coreid);
@@ -1512,7 +1280,7 @@ static const struct virtio_net_device_ops virtio_net_device_ops =
 static void
 print_stats(void)
 {
-	struct virtio_net_data_ll *dev_ll;
+	struct vhost_dev *vdev;
 	uint64_t tx_dropped, rx_dropped;
 	uint64_t tx, tx_total, rx, rx_total;
 	uint32_t device_fh;
@@ -1527,9 +1295,8 @@ print_stats(void)
 
 		printf("\nDevice statistics ====================================");
 
-		dev_ll = ll_root_used;
-		while (dev_ll != NULL) {
-			device_fh = (uint32_t)dev_ll->vdev->dev->device_fh;
+		TAILQ_FOREACH(vdev, &vhost_dev_list, next) {
+			device_fh = vdev->dev->device_fh;
 			tx_total = dev_statistics[device_fh].tx_total;
 			tx = dev_statistics[device_fh].tx;
 			tx_dropped = tx_total - tx;
@@ -1553,8 +1320,6 @@ print_stats(void)
 					rx_total,
 					rx_dropped,
 					rx);
-
-			dev_ll = dev_ll->next;
 		}
 		printf("\n======================================================\n");
 	}
@@ -1600,6 +1365,8 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Invalid argument\n");
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
+		TAILQ_INIT(&lcore_info[lcore_id].vdev_list);
+
 		if (rte_lcore_is_enabled(lcore_id))
 			lcore_ids[core_id ++] = lcore_id;
 
@@ -1652,10 +1419,6 @@ main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE,
 				"Cannot initialize network ports\n");
 	}
-
-	/* Initialise all linked lists. */
-	if (init_data_ll() == -1)
-		rte_exit(EXIT_FAILURE, "Failed to initialize linked list\n");
 
 	/* Initialize device stats */
 	memset(&dev_statistics, 0, sizeof(dev_statistics));

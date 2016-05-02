@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,8 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#include <sys/queue.h>
+
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER2
@@ -59,28 +61,26 @@ struct vhost_dev {
 	volatile uint8_t ready;
 	/**< Device is marked for removal from the data core. */
 	volatile uint8_t remove;
+
+	TAILQ_ENTRY(vhost_dev) next;
 } __rte_cache_aligned;
 
-struct virtio_net_data_ll
-{
-	struct vhost_dev		*vdev;	/* Pointer to device created by configuration core. */
-	struct virtio_net_data_ll	*next;  /* Pointer to next device in linked list. */
-};
+TAILQ_HEAD(vhost_dev_tailq_list, vhost_dev);
+
+
+#define REQUEST_DEV_REMOVAL	1
+#define ACK_DEV_REMOVAL		0
 
 /*
  * Structure containing data core specific information.
  */
-struct lcore_ll_info
-{
-	struct virtio_net_data_ll	*ll_root_free; 		/* Pointer to head in free linked list. */
-	struct virtio_net_data_ll	*ll_root_used;		/* Pointer to head of used linked list. */
-	uint32_t 					device_num;			/* Number of devices on lcore. */
-	volatile uint8_t			dev_removal_flag;	/* Flag to synchronize device removal. */
-};
+struct lcore_info {
+	uint32_t		device_num;
 
-struct lcore_info
-{
-	struct lcore_ll_info	*lcore_ll;	/* Pointer to data core specific lcore_ll_info struct */
+	/* Flag to synchronize device removal. */
+	volatile uint8_t	dev_removal_flag;
+
+	struct vhost_dev_tailq_list vdev_list;
 };
 
 #endif /* _MAIN_H_ */
