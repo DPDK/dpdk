@@ -62,14 +62,6 @@
 /* the maximum number of external ports supported */
 #define MAX_SUP_PORTS 1
 
-/*
- * Calculate the number of buffers needed per port
- */
-#define NUM_MBUFS_PER_PORT ((MAX_QUEUES*RTE_TEST_RX_DESC_DEFAULT) +		\
-							(num_switching_cores*MAX_PKT_BURST) +  			\
-							(num_switching_cores*RTE_TEST_TX_DESC_DEFAULT) +\
-							((num_switching_cores+1)*MBUF_CACHE_SIZE))
-
 #define MBUF_CACHE_SIZE	128
 #define MBUF_DATA_SIZE	RTE_MBUF_DEFAULT_BUF_SIZE
 
@@ -109,9 +101,6 @@ static uint32_t enabled_port_mask = 0;
 
 /* Promiscuous mode */
 static uint32_t promiscuous;
-
-/*Number of switching cores enabled*/
-static uint32_t num_switching_cores = 0;
 
 /* number of devices/queues to support*/
 static uint32_t num_queues = 0;
@@ -1344,6 +1333,57 @@ sigint_handler(__rte_unused int signum)
 }
 
 /*
+ * While creating an mbuf pool, one key thing is to figure out how
+ * many mbuf entries is enough for our use. FYI, here are some
+ * guidelines:
+ *
+ * - Each rx queue would reserve @nr_rx_desc mbufs at queue setup stage
+ *
+ * - For each switch core (A CPU core does the packet switch), we need
+ *   also make some reservation for receiving the packets from virtio
+ *   Tx queue. How many is enough depends on the usage. It's normally
+ *   a simple calculation like following:
+ *
+ *       MAX_PKT_BURST * max packet size / mbuf size
+ *
+ *   So, we definitely need allocate more mbufs when TSO is enabled.
+ *
+ * - Similarly, for each switching core, we should serve @nr_rx_desc
+ *   mbufs for receiving the packets from physical NIC device.
+ *
+ * - We also need make sure, for each switch core, we have allocated
+ *   enough mbufs to fill up the mbuf cache.
+ */
+static void
+create_mbuf_pool(uint16_t nr_port, uint32_t nr_switch_core, uint32_t mbuf_size,
+	uint32_t nr_queues, uint32_t nr_rx_desc, uint32_t nr_mbuf_cache)
+{
+	uint32_t nr_mbufs;
+	uint32_t nr_mbufs_per_core;
+	uint32_t mtu = 1500;
+
+	if (mergeable)
+		mtu = 9000;
+	if (enable_tso)
+		mtu = 64 * 1024;
+
+	nr_mbufs_per_core  = (mtu + mbuf_size) * MAX_PKT_BURST /
+			(mbuf_size - RTE_PKTMBUF_HEADROOM) * MAX_PKT_BURST;
+	nr_mbufs_per_core += nr_rx_desc;
+	nr_mbufs_per_core  = RTE_MAX(nr_mbufs_per_core, nr_mbuf_cache);
+
+	nr_mbufs  = nr_queues * nr_rx_desc;
+	nr_mbufs += nr_mbufs_per_core * nr_switch_core;
+	nr_mbufs *= nr_port;
+
+	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", nr_mbufs,
+					    nr_mbuf_cache, 0, mbuf_size,
+					    rte_socket_id());
+	if (mbuf_pool == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
+}
+
+/*
  * Main function, does initialisation and calls the per-lcore functions. The CUSE
  * device is also registered here to handle the IOCTLs.
  */
@@ -1380,9 +1420,6 @@ main(int argc, char *argv[])
 	if (rte_lcore_count() > RTE_MAX_LCORE)
 		rte_exit(EXIT_FAILURE,"Not enough cores\n");
 
-	/*set the number of swithcing cores available*/
-	num_switching_cores = rte_lcore_count()-1;
-
 	/* Get the number of physical ports. */
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports > RTE_MAX_ETHPORTS)
@@ -1400,12 +1437,14 @@ main(int argc, char *argv[])
 		return -1;
 	}
 
-	/* Create the mbuf pool. */
-	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
-		NUM_MBUFS_PER_PORT * valid_num_ports, MBUF_CACHE_SIZE,
-		0, MBUF_DATA_SIZE, rte_socket_id());
-	if (mbuf_pool == NULL)
-		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
+	/*
+	 * FIXME: here we are trying to allocate mbufs big enough for
+	 * @MAX_QUEUES, but the truth is we're never going to use that
+	 * many queues here. We probably should only do allocation for
+	 * those queues we are going to use.
+	 */
+	create_mbuf_pool(valid_num_ports, rte_lcore_count() - 1, MBUF_DATA_SIZE,
+			 MAX_QUEUES, RTE_TEST_RX_DESC_DEFAULT, MBUF_CACHE_SIZE);
 
 	if (vm2vm_mode == VM2VM_HARDWARE) {
 		/* Enable VT loop back to let L2 switch to do it. */
