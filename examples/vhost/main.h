@@ -41,9 +41,13 @@
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER2
 #define RTE_LOGTYPE_VHOST_PORT   RTE_LOGTYPE_USER3
 
-/*
- * Device linked list structure for data path.
- */
+struct device_statistics {
+	uint64_t	tx;
+	uint64_t	tx_total;
+	rte_atomic64_t	rx_atomic;
+	rte_atomic64_t	rx_total_atomic;
+};
+
 struct vhost_dev {
 	/**< Pointer to device created by vhost lib. */
 	struct virtio_net      *dev;
@@ -62,6 +66,7 @@ struct vhost_dev {
 	/**< Device is marked for removal from the data core. */
 	volatile uint8_t remove;
 
+	struct device_statistics stats;
 	TAILQ_ENTRY(vhost_dev) next;
 } __rte_cache_aligned;
 

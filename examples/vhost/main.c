@@ -216,15 +216,6 @@ struct mbuf_table lcore_tx_queue[RTE_MAX_LCORE];
 				 / US_PER_S * BURST_TX_DRAIN_US)
 #define VLAN_HLEN       4
 
-/* Per-device statistics struct */
-struct device_statistics {
-	uint64_t tx_total;
-	rte_atomic64_t rx_total_atomic;
-	uint64_t tx;
-	rte_atomic64_t rx_atomic;
-} __rte_cache_aligned;
-struct device_statistics dev_statistics[MAX_DEVICES];
-
 /*
  * Builds up the correct configuration for VMDQ VLAN pool map
  * according to the pool & queue limits.
@@ -798,17 +789,17 @@ unlink_vmdq(struct vhost_dev *vdev)
 }
 
 static inline void __attribute__((always_inline))
-virtio_xmit(struct virtio_net *dst_dev, struct virtio_net *src_dev,
+virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 	    struct rte_mbuf *m)
 {
 	uint16_t ret;
 
-	ret = rte_vhost_enqueue_burst(dst_dev, VIRTIO_RXQ, &m, 1);
+	ret = rte_vhost_enqueue_burst(dst_vdev->dev, VIRTIO_RXQ, &m, 1);
 	if (enable_stats) {
-		rte_atomic64_inc(&dev_statistics[dst_dev->device_fh].rx_total_atomic);
-		rte_atomic64_add(&dev_statistics[dst_dev->device_fh].rx_atomic, ret);
-		dev_statistics[src_dev->device_fh].tx_total++;
-		dev_statistics[src_dev->device_fh].tx += ret;
+		rte_atomic64_inc(&dst_vdev->stats.rx_total_atomic);
+		rte_atomic64_add(&dst_vdev->stats.rx_atomic, ret);
+		src_vdev->stats.tx_total++;
+		src_vdev->stats.tx += ret;
 	}
 }
 
@@ -846,7 +837,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 		return 0;
 	}
 
-	virtio_xmit(dst_vdev->dev, vdev->dev, m);
+	virtio_xmit(dst_vdev, vdev, m);
 	return 0;
 }
 
@@ -955,7 +946,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 		struct vhost_dev *vdev2;
 
 		TAILQ_FOREACH(vdev2, &vhost_dev_list, next) {
-			virtio_xmit(vdev2->dev, vdev->dev, m);
+			virtio_xmit(vdev2, vdev, m);
 		}
 		goto queue2nic;
 	}
@@ -1019,8 +1010,8 @@ queue2nic:
 
 	tx_q->m_table[tx_q->len++] = m;
 	if (enable_stats) {
-		dev_statistics[dev->device_fh].tx_total++;
-		dev_statistics[dev->device_fh].tx++;
+		vdev->stats.tx_total++;
+		vdev->stats.tx++;
 	}
 
 	if (unlikely(tx_q->len == MAX_PKT_BURST))
@@ -1081,10 +1072,8 @@ drain_eth_rx(struct vhost_dev *vdev)
 	enqueue_count = rte_vhost_enqueue_burst(dev, VIRTIO_RXQ,
 						pkts, rx_count);
 	if (enable_stats) {
-		uint64_t fh = dev->device_fh;
-
-		rte_atomic64_add(&dev_statistics[fh].rx_total_atomic, rx_count);
-		rte_atomic64_add(&dev_statistics[fh].rx_atomic, enqueue_count);
+		rte_atomic64_add(&vdev->stats.rx_total_atomic, rx_count);
+		rte_atomic64_add(&vdev->stats.rx_atomic, enqueue_count);
 	}
 
 	free_pkts(pkts, rx_count);
@@ -1265,9 +1254,6 @@ new_device (struct virtio_net *dev)
 	TAILQ_INSERT_TAIL(&lcore_info[vdev->coreid].vdev_list, vdev, next);
 	lcore_info[vdev->coreid].device_num++;
 
-	/* Initialize device stats */
-	memset(&dev_statistics[dev->device_fh], 0, sizeof(struct device_statistics));
-
 	/* Disable notifications. */
 	rte_vhost_enable_guest_notification(dev, VIRTIO_RXQ, 0);
 	rte_vhost_enable_guest_notification(dev, VIRTIO_TXQ, 0);
@@ -1298,7 +1284,6 @@ print_stats(void)
 	struct vhost_dev *vdev;
 	uint64_t tx_dropped, rx_dropped;
 	uint64_t tx, tx_total, rx, rx_total;
-	uint32_t device_fh;
 	const char clr[] = { 27, '[', '2', 'J', '\0' };
 	const char top_left[] = { 27, '[', '1', ';', '1', 'H','\0' };
 
@@ -1306,37 +1291,32 @@ print_stats(void)
 		sleep(enable_stats);
 
 		/* Clear screen and move to top left */
-		printf("%s%s", clr, top_left);
-
-		printf("\nDevice statistics ====================================");
+		printf("%s%s\n", clr, top_left);
+		printf("Device statistics =================================\n");
 
 		TAILQ_FOREACH(vdev, &vhost_dev_list, next) {
-			device_fh = vdev->dev->device_fh;
-			tx_total = dev_statistics[device_fh].tx_total;
-			tx = dev_statistics[device_fh].tx;
+			tx_total   = vdev->stats.tx_total;
+			tx         = vdev->stats.tx;
 			tx_dropped = tx_total - tx;
-			rx_total = rte_atomic64_read(
-				&dev_statistics[device_fh].rx_total_atomic);
-			rx = rte_atomic64_read(
-				&dev_statistics[device_fh].rx_atomic);
+
+			rx_total   = rte_atomic64_read(&vdev->stats.rx_total_atomic);
+			rx         = rte_atomic64_read(&vdev->stats.rx_atomic);
 			rx_dropped = rx_total - rx;
 
-			printf("\nStatistics for device %"PRIu32" ------------------------------"
-					"\nTX total: 		%"PRIu64""
-					"\nTX dropped: 		%"PRIu64""
-					"\nTX successful: 		%"PRIu64""
-					"\nRX total: 		%"PRIu64""
-					"\nRX dropped: 		%"PRIu64""
-					"\nRX successful: 		%"PRIu64"",
-					device_fh,
-					tx_total,
-					tx_dropped,
-					tx,
-					rx_total,
-					rx_dropped,
-					rx);
+			printf("Statistics for device %" PRIu64 "\n"
+				"-----------------------\n"
+				"TX total:              %" PRIu64 "\n"
+				"TX dropped:            %" PRIu64 "\n"
+				"TX successful:         %" PRIu64 "\n"
+				"RX total:              %" PRIu64 "\n"
+				"RX dropped:            %" PRIu64 "\n"
+				"RX successful:         %" PRIu64 "\n",
+				vdev->dev->device_fh,
+				tx_total, tx_dropped, tx,
+				rx_total, rx_dropped, rx);
 		}
-		printf("\n======================================================\n");
+
+		printf("===================================================\n");
 	}
 }
 
@@ -1484,9 +1464,6 @@ main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE,
 				"Cannot initialize network ports\n");
 	}
-
-	/* Initialize device stats */
-	memset(&dev_statistics, 0, sizeof(dev_statistics));
 
 	/* Enable stats if the user option is set. */
 	if (enable_stats) {
