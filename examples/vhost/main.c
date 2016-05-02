@@ -104,9 +104,6 @@
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
 
-/* Used to compare MAC addresses. */
-#define MAC_ADDR_CMP 0xFFFFFFFFFFFFULL
-
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
 
@@ -707,15 +704,6 @@ static unsigned check_ports_num(unsigned nb_ports)
 	return valid_num_ports;
 }
 
-/*
- * Compares a packet destination MAC address to a device MAC address.
- */
-static inline int __attribute__((always_inline))
-ether_addr_cmp(struct ether_addr *ea, struct ether_addr *eb)
-{
-	return ((*(uint64_t *)ea ^ *(uint64_t *)eb) & MAC_ADDR_CMP) == 0;
-}
-
 static inline struct vhost_dev *__attribute__((always_inline))
 find_vhost_dev(struct ether_addr *mac)
 {
@@ -723,7 +711,7 @@ find_vhost_dev(struct ether_addr *mac)
 
 	TAILQ_FOREACH(vdev, &vhost_dev_list, next) {
 		if (vdev->ready == DEVICE_RX &&
-		    ether_addr_cmp(mac, &vdev->mac_address))
+		    is_same_ether_addr(mac, &vdev->mac_address))
 			return vdev;
 	}
 
