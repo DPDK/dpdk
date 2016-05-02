@@ -111,9 +111,6 @@
 /* Used to compare MAC addresses. */
 #define MAC_ADDR_CMP 0xFFFFFFFFFFFFULL
 
-/* Number of descriptors per cacheline. */
-#define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
-
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
 
@@ -235,18 +232,7 @@ struct mbuf_table {
 /* TX queue for each data core. */
 struct mbuf_table lcore_tx_queue[RTE_MAX_LCORE];
 
-/* Vlan header struct used to insert vlan tags on TX. */
-struct vlan_ethhdr {
-	unsigned char   h_dest[ETH_ALEN];
-	unsigned char   h_source[ETH_ALEN];
-	__be16          h_vlan_proto;
-	__be16          h_vlan_TCI;
-	__be16          h_vlan_encapsulated_proto;
-};
-
-/* Header lengths. */
 #define VLAN_HLEN       4
-#define VLAN_ETH_HLEN   18
 
 /* Per-device statistics struct */
 struct device_statistics {
