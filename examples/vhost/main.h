@@ -39,21 +39,6 @@
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER2
 #define RTE_LOGTYPE_VHOST_PORT   RTE_LOGTYPE_USER3
 
-/**
- * Information relating to memory regions including offsets to
- * addresses in host physical space.
- */
-struct virtio_memory_regions_hpa {
-	/**< Base guest physical address of region. */
-	uint64_t    guest_phys_address;
-	/**< End guest physical address of region. */
-	uint64_t    guest_phys_address_end;
-	/**< Size of region. */
-	uint64_t    memory_size;
-	/**< Offset of region for gpa to hpa translation. */
-	uint64_t    host_phys_addr_offset;
-};
-
 /*
  * Device linked list structure for data path.
  */
@@ -62,8 +47,6 @@ struct vhost_dev {
 	struct virtio_net      *dev;
 	/**< Number of memory regions for gpa to hpa translation. */
 	uint32_t nregions_hpa;
-	/**< Memory region information for gpa to hpa translation. */
-	struct virtio_memory_regions_hpa *regions_hpa;
 	/**< Device MAC address (Obtained on first TX packet). */
 	struct ether_addr mac_address;
 	/**< RX VMDQ queue number. */

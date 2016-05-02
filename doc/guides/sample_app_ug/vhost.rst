@@ -491,39 +491,9 @@ The default value is 15.
      -- --rx-retry 1 --rx-retry-delay 20
 
 **Zero copy.**
-The zero copy option enables/disables the zero copy mode for RX/TX packet,
-in the zero copy mode the packet buffer address from guest translate into host physical address
-and then set directly as DMA address.
-If the zero copy mode is disabled, then one copy mode is utilized in the sample.
-This option is disabled by default.
-
-.. code-block:: console
-
-    ./vhost-switch -c f -n 4 --socket-mem 1024 --huge-dir /mnt/huge \
-     -- --zero-copy [0,1]
-
-**RX descriptor number.**
-The RX descriptor number option specify the Ethernet RX descriptor number,
-Linux legacy virtio-net has different behavior in how to use the vring descriptor from DPDK based virtio-net PMD,
-the former likely allocate half for virtio header, another half for frame buffer,
-while the latter allocate all for frame buffer,
-this lead to different number for available frame buffer in vring,
-and then lead to different Ethernet RX descriptor number could be used in zero copy mode.
-So it is valid only in zero copy mode is enabled. The value is 32 by default.
-
-.. code-block:: console
-
-    ./vhost-switch -c f -n 4 --socket-mem 1024 --huge-dir /mnt/huge \
-     -- --zero-copy 1 --rx-desc-num [0, n]
-
-**TX descriptor number.**
-The TX descriptor number option specify the Ethernet TX descriptor number, it is valid only in zero copy mode is enabled.
-The value is 64 by default.
-
-.. code-block:: console
-
-    ./vhost-switch -c f -n 4 --socket-mem 1024 --huge-dir /mnt/huge \
-     -- --zero-copy 1 --tx-desc-num [0, n]
+Zero copy mode is removed, due to it has not been working for a while. And
+due to the large and complex code, it's better to redesign it than fixing
+it to make it work again. Hence, zero copy may be added back later.
 
 **VLAN strip.**
 The VLAN strip option enable/disable the VLAN strip on host, if disabled, the guest will receive the packets with VLAN tag.
