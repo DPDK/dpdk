@@ -212,6 +212,8 @@ struct mbuf_table {
 /* TX queue for each data core. */
 struct mbuf_table lcore_tx_queue[RTE_MAX_LCORE];
 
+#define MBUF_TABLE_DRAIN_TSC	((rte_get_tsc_hz() + US_PER_S - 1) \
+				 / US_PER_S * BURST_TX_DRAIN_US)
 #define VLAN_HLEN       4
 
 /* Per-device statistics struct */
@@ -914,16 +916,35 @@ static void virtio_tx_offload(struct rte_mbuf *m)
 	tcp_hdr->cksum = get_psd_sum(l3_hdr, m->ol_flags);
 }
 
+static inline void
+free_pkts(struct rte_mbuf **pkts, uint16_t n)
+{
+	while (n--)
+		rte_pktmbuf_free(pkts[n]);
+}
+
+static inline void __attribute__((always_inline))
+do_drain_mbuf_table(struct mbuf_table *tx_q)
+{
+	uint16_t count;
+
+	count = rte_eth_tx_burst(ports[0], tx_q->txq_id,
+				 tx_q->m_table, tx_q->len);
+	if (unlikely(count < tx_q->len))
+		free_pkts(&tx_q->m_table[count], tx_q->len - count);
+
+	tx_q->len = 0;
+}
+
 /*
- * This function routes the TX packet to the correct interface. This may be a local device
- * or the physical port.
+ * This function routes the TX packet to the correct interface. This
+ * may be a local device or the physical port.
  */
 static inline void __attribute__((always_inline))
 virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 {
 	struct mbuf_table *tx_q;
-	struct rte_mbuf **m_table;
-	unsigned len, ret, offset = 0;
+	unsigned offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
 	struct virtio_net *dev = vdev->dev;
 	struct ether_hdr *nh;
@@ -959,7 +980,6 @@ queue2nic:
 
 	/*Add packet to the port tx queue*/
 	tx_q = &lcore_tx_queue[lcore_id];
-	len = tx_q->len;
 
 	nh = rte_pktmbuf_mtod(m, struct ether_hdr *);
 	if (unlikely(nh->ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN))) {
@@ -997,55 +1017,130 @@ queue2nic:
 	if (m->ol_flags & PKT_TX_TCP_SEG)
 		virtio_tx_offload(m);
 
-	tx_q->m_table[len] = m;
-	len++;
+	tx_q->m_table[tx_q->len++] = m;
 	if (enable_stats) {
 		dev_statistics[dev->device_fh].tx_total++;
 		dev_statistics[dev->device_fh].tx++;
 	}
 
-	if (unlikely(len == MAX_PKT_BURST)) {
-		m_table = (struct rte_mbuf **)tx_q->m_table;
-		ret = rte_eth_tx_burst(ports[0], (uint16_t)tx_q->txq_id, m_table, (uint16_t) len);
-		/* Free any buffers not handled by TX and update the port stats. */
-		if (unlikely(ret < len)) {
-			do {
-				rte_pktmbuf_free(m_table[ret]);
-			} while (++ret < len);
-		}
+	if (unlikely(tx_q->len == MAX_PKT_BURST))
+		do_drain_mbuf_table(tx_q);
+}
 
-		len = 0;
+
+static inline void __attribute__((always_inline))
+drain_mbuf_table(struct mbuf_table *tx_q)
+{
+	static uint64_t prev_tsc;
+	uint64_t cur_tsc;
+
+	if (tx_q->len == 0)
+		return;
+
+	cur_tsc = rte_rdtsc();
+	if (unlikely(cur_tsc - prev_tsc > MBUF_TABLE_DRAIN_TSC)) {
+		prev_tsc = cur_tsc;
+
+		RTE_LOG(DEBUG, VHOST_DATA,
+			"TX queue drained after timeout with burst size %u\n",
+			tx_q->len);
+		do_drain_mbuf_table(tx_q);
+	}
+}
+
+static inline void __attribute__((always_inline))
+drain_eth_rx(struct vhost_dev *vdev)
+{
+	uint16_t rx_count, enqueue_count;
+	struct virtio_net *dev = vdev->dev;
+	struct rte_mbuf *pkts[MAX_PKT_BURST];
+
+	rx_count = rte_eth_rx_burst(ports[0], vdev->vmdq_rx_q,
+				    pkts, MAX_PKT_BURST);
+	if (!rx_count)
+		return;
+
+	/*
+	 * When "enable_retry" is set, here we wait and retry when there
+	 * is no enough free slots in the queue to hold @rx_count packets,
+	 * to diminish packet loss.
+	 */
+	if (enable_retry &&
+	    unlikely(rx_count > rte_vring_available_entries(dev,
+			VIRTIO_RXQ))) {
+		uint32_t retry;
+
+		for (retry = 0; retry < burst_rx_retry_num; retry++) {
+			rte_delay_us(burst_rx_delay_time);
+			if (rx_count <= rte_vring_available_entries(dev,
+					VIRTIO_RXQ))
+				break;
+		}
 	}
 
-	tx_q->len = len;
-	return;
+	enqueue_count = rte_vhost_enqueue_burst(dev, VIRTIO_RXQ,
+						pkts, rx_count);
+	if (enable_stats) {
+		uint64_t fh = dev->device_fh;
+
+		rte_atomic64_add(&dev_statistics[fh].rx_total_atomic, rx_count);
+		rte_atomic64_add(&dev_statistics[fh].rx_atomic, enqueue_count);
+	}
+
+	free_pkts(pkts, rx_count);
 }
+
+static inline void __attribute__((always_inline))
+drain_virtio_tx(struct vhost_dev *vdev)
+{
+	struct rte_mbuf *pkts[MAX_PKT_BURST];
+	uint16_t count;
+	uint16_t i;
+
+	count = rte_vhost_dequeue_burst(vdev->dev, VIRTIO_TXQ, mbuf_pool,
+					pkts, MAX_PKT_BURST);
+
+	/* setup VMDq for the first packet */
+	if (unlikely(vdev->ready == DEVICE_MAC_LEARNING) && count) {
+		if (vdev->remove || link_vmdq(vdev, pkts[0]) == -1)
+			free_pkts(pkts, count);
+	}
+
+	for (i = 0; i < count; ++i) {
+		virtio_tx_route(vdev, pkts[i],
+			vlan_tags[(uint16_t)vdev->dev->device_fh]);
+	}
+}
+
 /*
- * This function is called by each data core. It handles all RX/TX registered with the
- * core. For TX the specific lcore linked list is used. For RX, MAC addresses are compared
- * with all devices in the main linked list.
+ * Main function of vhost-switch. It basically does:
+ *
+ * for each vhost device {
+ *    - drain_eth_rx()
+ *
+ *      Which drains the host eth Rx queue linked to the vhost device,
+ *      and deliver all of them to guest virito Rx ring associated with
+ *      this vhost device.
+ *
+ *    - drain_virtio_tx()
+ *
+ *      Which drains the guest virtio Tx queue and deliver all of them
+ *      to the target, which could be another vhost device, or the
+ *      physical eth dev. The route is done in function "virtio_tx_route".
+ * }
  */
 static int
-switch_worker(__attribute__((unused)) void *arg)
+switch_worker(void *arg __rte_unused)
 {
-	struct virtio_net *dev = NULL;
-	struct vhost_dev *vdev = NULL;
-	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	unsigned i;
+	unsigned lcore_id = rte_lcore_id();
+	struct vhost_dev *vdev;
 	struct mbuf_table *tx_q;
-	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
-	uint64_t prev_tsc, diff_tsc, cur_tsc, ret_count = 0;
-	unsigned ret, i;
-	const uint16_t lcore_id = rte_lcore_id();
-	const uint16_t num_cores = (uint16_t)rte_lcore_count();
-	uint16_t rx_count = 0;
-	uint16_t tx_count;
-	uint32_t retry = 0;
 
 	RTE_LOG(INFO, VHOST_DATA, "Procesing on Core %u started\n", lcore_id);
-	prev_tsc = 0;
 
 	tx_q = &lcore_tx_queue[lcore_id];
-	for (i = 0; i < num_cores; i ++) {
+	for (i = 0; i < rte_lcore_count(); i++) {
 		if (lcore_ids[i] == lcore_id) {
 			tx_q->txq_id = i;
 			break;
@@ -1053,34 +1148,7 @@ switch_worker(__attribute__((unused)) void *arg)
 	}
 
 	while(1) {
-		cur_tsc = rte_rdtsc();
-		/*
-		 * TX burst queue drain
-		 */
-		diff_tsc = cur_tsc - prev_tsc;
-		if (unlikely(diff_tsc > drain_tsc)) {
-
-			if (tx_q->len) {
-				RTE_LOG(DEBUG, VHOST_DATA,
-					"TX queue drained after timeout with burst size %u\n",
-					tx_q->len);
-
-				/*Tx any packets in the queue*/
-				ret = rte_eth_tx_burst(ports[0], (uint16_t)tx_q->txq_id,
-									   (struct rte_mbuf **)tx_q->m_table,
-									   (uint16_t)tx_q->len);
-				if (unlikely(ret < tx_q->len)) {
-					do {
-						rte_pktmbuf_free(tx_q->m_table[ret]);
-					} while (++ret < tx_q->len);
-				}
-
-				tx_q->len = 0;
-			}
-
-			prev_tsc = cur_tsc;
-
-		}
+		drain_mbuf_table(tx_q);
 
 		/*
 		 * Inform the configuration core that we have exited the
@@ -1090,69 +1158,20 @@ switch_worker(__attribute__((unused)) void *arg)
 			lcore_info[lcore_id].dev_removal_flag = ACK_DEV_REMOVAL;
 
 		/*
-		 * Process devices
+		 * Process vhost devices
 		 */
 		TAILQ_FOREACH(vdev, &lcore_info[lcore_id].vdev_list, next) {
-			uint64_t fh;
-
-			dev = vdev->dev;
-			fh  = dev->device_fh;
-
 			if (unlikely(vdev->remove)) {
 				unlink_vmdq(vdev);
 				vdev->ready = DEVICE_SAFE_REMOVE;
 				continue;
 			}
 
-			if (likely(vdev->ready == DEVICE_RX)) {
-				/*Handle guest RX*/
-				rx_count = rte_eth_rx_burst(ports[0],
-					vdev->vmdq_rx_q, pkts_burst, MAX_PKT_BURST);
+			if (likely(vdev->ready == DEVICE_RX))
+				drain_eth_rx(vdev);
 
-				if (rx_count) {
-					/*
-					* Retry is enabled and the queue is full then we wait and retry to avoid packet loss
-					* Here MAX_PKT_BURST must be less than virtio queue size
-					*/
-					if (enable_retry && unlikely(rx_count > rte_vring_available_entries(dev, VIRTIO_RXQ))) {
-						for (retry = 0; retry < burst_rx_retry_num; retry++) {
-							rte_delay_us(burst_rx_delay_time);
-							if (rx_count <= rte_vring_available_entries(dev, VIRTIO_RXQ))
-								break;
-						}
-					}
-					ret_count = rte_vhost_enqueue_burst(dev, VIRTIO_RXQ, pkts_burst, rx_count);
-					if (enable_stats) {
-						rte_atomic64_add(
-							&dev_statistics[fh].rx_total_atomic,
-							rx_count);
-						rte_atomic64_add(
-							&dev_statistics[fh].rx_atomic,
-							ret_count);
-					}
-					while (likely(rx_count)) {
-						rx_count--;
-						rte_pktmbuf_free(pkts_burst[rx_count]);
-					}
-
-				}
-			}
-
-			if (likely(!vdev->remove)) {
-				/* Handle guest TX*/
-				tx_count = rte_vhost_dequeue_burst(dev, VIRTIO_TXQ, mbuf_pool, pkts_burst, MAX_PKT_BURST);
-				/* If this is the first received packet we need to learn the MAC and setup VMDQ */
-				if (unlikely(vdev->ready == DEVICE_MAC_LEARNING) && tx_count) {
-					if (vdev->remove || (link_vmdq(vdev, pkts_burst[0]) == -1)) {
-						while (tx_count)
-							rte_pktmbuf_free(pkts_burst[--tx_count]);
-					}
-				}
-				for (i = 0; i < tx_count; ++i) {
-					virtio_tx_route(vdev, pkts_burst[i],
-						vlan_tags[(uint16_t)dev->device_fh]);
-				}
-			}
+			if (likely(!vdev->remove))
+				drain_virtio_tx(vdev);
 		}
 	}
 
