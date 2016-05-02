@@ -335,7 +335,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 static inline int
 fill_vec_buf(struct vhost_virtqueue *vq, uint32_t avail_idx,
-	     uint32_t *allocated, uint32_t *vec_idx)
+	     uint32_t *allocated, uint32_t *vec_idx,
+	     struct buf_vector *buf_vec)
 {
 	uint16_t idx = vq->avail->ring[avail_idx & (vq->size - 1)];
 	uint32_t vec_id = *vec_idx;
@@ -346,9 +347,9 @@ fill_vec_buf(struct vhost_virtqueue *vq, uint32_t avail_idx,
 			return -1;
 
 		len += vq->desc[idx].len;
-		vq->buf_vec[vec_id].buf_addr = vq->desc[idx].addr;
-		vq->buf_vec[vec_id].buf_len  = vq->desc[idx].len;
-		vq->buf_vec[vec_id].desc_idx = idx;
+		buf_vec[vec_id].buf_addr = vq->desc[idx].addr;
+		buf_vec[vec_id].buf_len  = vq->desc[idx].len;
+		buf_vec[vec_id].desc_idx = idx;
 		vec_id++;
 
 		if ((vq->desc[idx].flags & VRING_DESC_F_NEXT) == 0)
@@ -371,7 +372,8 @@ fill_vec_buf(struct vhost_virtqueue *vq, uint32_t avail_idx,
  */
 static inline int
 reserve_avail_buf_mergeable(struct vhost_virtqueue *vq, uint32_t size,
-			    uint16_t *start, uint16_t *end)
+			    uint16_t *start, uint16_t *end,
+			    struct buf_vector *buf_vec)
 {
 	uint16_t res_start_idx;
 	uint16_t res_cur_idx;
@@ -393,7 +395,7 @@ again:
 			return -1;
 
 		if (unlikely(fill_vec_buf(vq, res_cur_idx, &allocated,
-					  &vec_idx) < 0))
+					  &vec_idx, buf_vec) < 0))
 			return -1;
 
 		res_cur_idx++;
@@ -427,7 +429,7 @@ again:
 static inline uint32_t __attribute__((always_inline))
 copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			    uint16_t res_start_idx, uint16_t res_end_idx,
-			    struct rte_mbuf *m)
+			    struct rte_mbuf *m, struct buf_vector *buf_vec)
 {
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 	uint32_t vec_idx = 0;
@@ -444,10 +446,10 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
 		dev->vid, cur_idx, res_end_idx);
 
-	if (vq->buf_vec[vec_idx].buf_len < dev->vhost_hlen)
+	if (buf_vec[vec_idx].buf_len < dev->vhost_hlen)
 		return -1;
 
-	desc_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
+	desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 	virtio_hdr.num_buffers = res_end_idx - res_start_idx;
@@ -456,10 +458,10 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	virtio_enqueue_offload(m, &virtio_hdr.hdr);
 	copy_virtio_net_hdr(dev, desc_addr, virtio_hdr);
-	vhost_log_write(dev, vq->buf_vec[vec_idx].buf_addr, dev->vhost_hlen);
+	vhost_log_write(dev, buf_vec[vec_idx].buf_addr, dev->vhost_hlen);
 	PRINT_PACKET(dev, (uintptr_t)desc_addr, dev->vhost_hlen, 0);
 
-	desc_avail  = vq->buf_vec[vec_idx].buf_len - dev->vhost_hlen;
+	desc_avail  = buf_vec[vec_idx].buf_len - dev->vhost_hlen;
 	desc_offset = dev->vhost_hlen;
 
 	mbuf_avail  = rte_pktmbuf_data_len(m);
@@ -467,7 +469,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	while (mbuf_avail != 0 || m->next != NULL) {
 		/* done with current desc buf, get the next one */
 		if (desc_avail == 0) {
-			desc_idx = vq->buf_vec[vec_idx].desc_idx;
+			desc_idx = buf_vec[vec_idx].desc_idx;
 
 			if (!(vq->desc[desc_idx].flags & VRING_DESC_F_NEXT)) {
 				/* Update used ring with desc information */
@@ -481,12 +483,12 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			}
 
 			vec_idx++;
-			desc_addr = gpa_to_vva(dev, vq->buf_vec[vec_idx].buf_addr);
+			desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
 
 			/* Prefetch buffer address. */
 			rte_prefetch0((void *)(uintptr_t)desc_addr);
 			desc_offset = 0;
-			desc_avail  = vq->buf_vec[vec_idx].buf_len;
+			desc_avail  = buf_vec[vec_idx].buf_len;
 		}
 
 		/* done with current mbuf, get the next one */
@@ -501,7 +503,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		rte_memcpy((void *)((uintptr_t)(desc_addr + desc_offset)),
 			rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
 			cpy_len);
-		vhost_log_write(dev, vq->buf_vec[vec_idx].buf_addr + desc_offset,
+		vhost_log_write(dev, buf_vec[vec_idx].buf_addr + desc_offset,
 			cpy_len);
 		PRINT_PACKET(dev, (uintptr_t)(desc_addr + desc_offset),
 			cpy_len, 0);
@@ -513,7 +515,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 
 	used_idx = cur_idx & (vq->size - 1);
-	vq->used->ring[used_idx].id = vq->buf_vec[vec_idx].desc_idx;
+	vq->used->ring[used_idx].id = buf_vec[vec_idx].desc_idx;
 	vq->used->ring[used_idx].len = desc_offset;
 	vhost_log_used_vring(dev, vq,
 		offsetof(struct vring_used, ring[used_idx]),
@@ -529,6 +531,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct vhost_virtqueue *vq;
 	uint32_t pkt_idx = 0, nr_used = 0;
 	uint16_t start, end;
+	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 
 	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
@@ -548,8 +551,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
 
-		if (unlikely(reserve_avail_buf_mergeable(vq, pkt_len,
-							 &start, &end) < 0)) {
+		if (unlikely(reserve_avail_buf_mergeable(vq, pkt_len, &start,
+							 &end, buf_vec) < 0)) {
 			LOG_DEBUG(VHOST_DATA,
 				"(%d) failed to get enough desc from vring\n",
 				dev->vid);
@@ -557,7 +560,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		}
 
 		nr_used = copy_mbuf_to_desc_mergeable(dev, vq, start, end,
-						      pkts[pkt_idx]);
+						      pkts[pkt_idx], buf_vec);
 		rte_smp_wmb();
 
 		/*

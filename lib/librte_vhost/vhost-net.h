@@ -87,7 +87,6 @@ struct vhost_virtqueue {
 
 	/* Physical address of used ring, for logging */
 	uint64_t		log_guest_addr;
-	struct buf_vector	buf_vec[BUF_VECTOR_MAX];
 } __rte_cache_aligned;
 
 /* Old kernels have no such macro defined */
