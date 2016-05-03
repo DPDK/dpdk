@@ -677,9 +677,6 @@ int main(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
-
 	/*
 	 * reserve memzone to communicate with VMs - we cannot use rte_malloc here
 	 * because while it is technically possible, it is a very bad idea to share

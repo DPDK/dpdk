@@ -318,8 +318,6 @@ main_loop(__rte_unused void *arg)
 	};
 	enum lcore_rxtx flag = LCORE_NONE;
 
-	nb_ports = (uint8_t)(nb_ports < RTE_MAX_ETHPORTS ?
-				nb_ports : RTE_MAX_ETHPORTS);
 	for (i = 0; i < nb_ports; i++) {
 		if (!kni_port_params_array[i])
 			continue;

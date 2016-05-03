@@ -145,9 +145,6 @@ To fully understand this code, it is recommended to study the chapters that rela
     if (nb_ports == 0)
         rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-    if (nb_ports > RTE_MAX_ETHPORTS)
-        nb_ports = RTE_MAX_ETHPORTS;
-
     /*
      * Each logical core is assigned a dedicated TX queue on each port.
      */

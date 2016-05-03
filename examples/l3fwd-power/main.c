@@ -1572,10 +1572,7 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init_lcore_rx_queues failed\n");
 
-
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
 
 	if (check_port_config(nb_ports) < 0)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");

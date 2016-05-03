@@ -636,8 +636,6 @@ check_params(void)
 	}
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
@@ -1286,8 +1284,6 @@ main(int32_t argc, char **argv)
 				unprotected_port_mask);
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
 
 	if (check_params() < 0)
 		rte_exit(EXIT_FAILURE, "check_params failed\n");

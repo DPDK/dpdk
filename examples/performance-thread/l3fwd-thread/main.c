@@ -3482,8 +3482,6 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "init_rx_rings failed\n");
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
 
 	if (check_port_config(nb_ports) < 0)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");

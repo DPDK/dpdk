@@ -327,10 +327,6 @@ main(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
-
 	/* If no port mask was specified*/
 	if (enabled_port_mask == 0)
 		enabled_port_mask = 0xffff;

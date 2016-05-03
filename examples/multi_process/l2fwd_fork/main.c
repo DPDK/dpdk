@@ -979,9 +979,6 @@ main(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
-
 	/* create the mbuf pool */
 	for (portid = 0; portid < nb_ports; portid++) {
 		/* skip ports that are not enabled */

@@ -661,8 +661,6 @@ main(int argc, char **argv)
 		return -1;
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
 
 	if (check_port_config(nb_ports) < 0)
 		rte_panic("check_port_config failed\n");

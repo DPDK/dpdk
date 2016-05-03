@@ -709,9 +709,6 @@ test_pmd_perf(void)
 		return -1;
 	}
 
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
-
 	nb_lcores = rte_lcore_count();
 
 	memset(lcore_conf, 0, sizeof(lcore_conf));

@@ -1785,9 +1785,6 @@ initialize_ports(struct l2fwd_crypto_options *options)
 		return -1;
 	}
 
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
-
 	/* Reset l2fwd_dst_ports */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
 		l2fwd_dst_ports[portid] = 0;

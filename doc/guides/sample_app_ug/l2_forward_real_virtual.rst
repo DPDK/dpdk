@@ -242,9 +242,6 @@ in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
     if (nb_ports == 0)
         rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-    if (nb_ports > RTE_MAX_ETHPORTS)
-        nb_ports = RTE_MAX_ETHPORTS;
-
     /* reset l2fwd_dst_ports */
 
     for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)

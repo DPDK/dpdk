@@ -662,8 +662,6 @@ main(int argc, char *argv[])
 	}
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
 
 	/*
 	 * Update the global var NUM_PORTS and global array PORTS

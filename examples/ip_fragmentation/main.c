@@ -824,9 +824,7 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid arguments");
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
-	else if (nb_ports == 0)
+	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No ports found!\n");
 
 	nb_lcores = rte_lcore_count();

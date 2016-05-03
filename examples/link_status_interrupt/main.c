@@ -580,9 +580,6 @@ main(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_panic("No Ethernet port - bye\n");
 
-	if (nb_ports > RTE_MAX_ETHPORTS)
-		nb_ports = RTE_MAX_ETHPORTS;
-
 	/*
 	 * Each logical core is assigned a dedicated TX queue on each port.
 	 */
