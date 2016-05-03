@@ -756,18 +756,49 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		return -1;
 
 	desc_addr = gpa_to_vva(dev, desc->addr);
-	rte_prefetch0((void *)(uintptr_t)desc_addr);
-
-	/* Retrieve virtio net header */
 	hdr = (struct virtio_net_hdr *)((uintptr_t)desc_addr);
-	desc_avail  = desc->len - dev->vhost_hlen;
-	desc_offset = dev->vhost_hlen;
+	rte_prefetch0(hdr);
+
+	/*
+	 * A virtio driver normally uses at least 2 desc buffers
+	 * for Tx: the first for storing the header, and others
+	 * for storing the data.
+	 */
+	if (likely((desc->len == dev->vhost_hlen) &&
+		   (desc->flags & VRING_DESC_F_NEXT) != 0)) {
+		desc = &vq->desc[desc->next];
+
+		desc_addr = gpa_to_vva(dev, desc->addr);
+		rte_prefetch0((void *)(uintptr_t)desc_addr);
+
+		desc_offset = 0;
+		desc_avail  = desc->len;
+		nr_desc    += 1;
+
+		PRINT_PACKET(dev, (uintptr_t)desc_addr, desc->len, 0);
+	} else {
+		desc_avail  = desc->len - dev->vhost_hlen;
+		desc_offset = dev->vhost_hlen;
+	}
 
 	mbuf_offset = 0;
 	mbuf_avail  = m->buf_len - RTE_PKTMBUF_HEADROOM;
-	while (desc_avail != 0 || (desc->flags & VRING_DESC_F_NEXT) != 0) {
+	while (1) {
+		cpy_len = RTE_MIN(desc_avail, mbuf_avail);
+		rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *, mbuf_offset),
+			(void *)((uintptr_t)(desc_addr + desc_offset)),
+			cpy_len);
+
+		mbuf_avail  -= cpy_len;
+		mbuf_offset += cpy_len;
+		desc_avail  -= cpy_len;
+		desc_offset += cpy_len;
+
 		/* This desc reaches to its end, get the next one */
 		if (desc_avail == 0) {
+			if ((desc->flags & VRING_DESC_F_NEXT) == 0)
+				break;
+
 			if (unlikely(desc->next >= vq->size ||
 				     ++nr_desc >= vq->size))
 				return -1;
@@ -803,16 +834,6 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			mbuf_offset = 0;
 			mbuf_avail  = cur->buf_len - RTE_PKTMBUF_HEADROOM;
 		}
-
-		cpy_len = RTE_MIN(desc_avail, mbuf_avail);
-		rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *, mbuf_offset),
-			(void *)((uintptr_t)(desc_addr + desc_offset)),
-			cpy_len);
-
-		mbuf_avail  -= cpy_len;
-		mbuf_offset += cpy_len;
-		desc_avail  -= cpy_len;
-		desc_offset += cpy_len;
 	}
 
 	prev->data_len = mbuf_offset;
