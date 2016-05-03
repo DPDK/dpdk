@@ -179,6 +179,9 @@ pkt_burst_receive(struct fwd_stream *fs)
 			case RTE_PTYPE_L2_ETHER_LLDP:
 				printf(" - (outer) L2 type: ETHER_LLDP");
 				break;
+			case RTE_PTYPE_L2_ETHER_NSH:
+				printf(" - (outer) L2 type: ETHER_NSH");
+				break;
 			default:
 				printf(" - (outer) L2 type: Unknown");
 				break;

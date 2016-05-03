@@ -308,6 +308,13 @@ extern "C" {
  */
 #define RTE_PTYPE_L2_ETHER_LLDP             0x00000004
 /**
+ * NSH (Network Service Header) packet type.
+ *
+ * Packet format:
+ * <'ether type'=0x894F>
+ */
+#define RTE_PTYPE_L2_ETHER_NSH              0x00000005
+/**
  * Mask of layer 2 packet types.
  * It is used for outer packet for tunneling cases.
  */
