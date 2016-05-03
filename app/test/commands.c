@@ -439,7 +439,7 @@ int commands_init(void)
 		commands_len += strlen(t->command) + 1;
 	}
 
-	commands = malloc(commands_len);
+	commands = malloc(commands_len + 1);
 	if (!commands)
 		return -1;
 
