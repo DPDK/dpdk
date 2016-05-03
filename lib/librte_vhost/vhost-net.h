@@ -128,16 +128,16 @@ struct virtio_net {
 	int			vid;
 	uint32_t		flags;
 	uint16_t		vhost_hlen;
+	/* to tell if we need broadcast rarp packet */
+	rte_atomic16_t		broadcast_rarp;
+	uint32_t		virt_qp_nb;
+	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
 	char			ifname[IF_NAME_SZ];
-	uint32_t		virt_qp_nb;
 	uint64_t		log_size;
 	uint64_t		log_base;
 	struct ether_addr	mac;
 
-	/* to tell if we need broadcast rarp packet */
-	rte_atomic16_t		broadcast_rarp;
-	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
 } __rte_cache_aligned;
 
 /**
