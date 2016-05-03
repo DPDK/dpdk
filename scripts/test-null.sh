@@ -36,7 +36,6 @@ build=${1:-build}
 coremask=${2:-3} # default using cores 0 and 1
 
 if grep -q SHARED_LIB=y $build/.config; then
-	export LD_LIBRARY_PATH=$build/lib:$LD_LIBRARY_PATH
 	pmd='-d librte_pmd_null.so'
 fi
 
