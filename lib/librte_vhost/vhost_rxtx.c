@@ -137,7 +137,7 @@ copy_virtio_net_hdr(struct virtio_net *dev, uint64_t desc_addr,
 
 static inline int __attribute__((always_inline))
 copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		  struct rte_mbuf *m, uint16_t desc_idx, uint32_t *copied)
+		  struct rte_mbuf *m, uint16_t desc_idx)
 {
 	uint32_t desc_avail, desc_offset;
 	uint32_t mbuf_avail, mbuf_offset;
@@ -161,7 +161,6 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	desc_offset = dev->vhost_hlen;
 	desc_avail  = desc->len - dev->vhost_hlen;
 
-	*copied = rte_pktmbuf_pkt_len(m);
 	mbuf_avail  = rte_pktmbuf_data_len(m);
 	mbuf_offset = 0;
 	while (mbuf_avail != 0 || m->next != NULL) {
@@ -262,6 +261,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct vhost_virtqueue *vq;
 	uint16_t res_start_idx, res_end_idx;
 	uint16_t desc_indexes[MAX_PKT_BURST];
+	uint16_t used_idx;
 	uint32_t i;
 
 	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
@@ -285,27 +285,29 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	/* Retrieve all of the desc indexes first to avoid caching issues. */
 	rte_prefetch0(&vq->avail->ring[res_start_idx & (vq->size - 1)]);
 	for (i = 0; i < count; i++) {
-		desc_indexes[i] = vq->avail->ring[(res_start_idx + i) &
-						  (vq->size - 1)];
+		used_idx = (res_start_idx + i) & (vq->size - 1);
+		desc_indexes[i] = vq->avail->ring[used_idx];
+		vq->used->ring[used_idx].id = desc_indexes[i];
+		vq->used->ring[used_idx].len = pkts[i]->pkt_len +
+					       dev->vhost_hlen;
+		vhost_log_used_vring(dev, vq,
+			offsetof(struct vring_used, ring[used_idx]),
+			sizeof(vq->used->ring[used_idx]));
 	}
 
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
 	for (i = 0; i < count; i++) {
 		uint16_t desc_idx = desc_indexes[i];
-		uint16_t used_idx = (res_start_idx + i) & (vq->size - 1);
-		uint32_t copied;
 		int err;
 
-		err = copy_mbuf_to_desc(dev, vq, pkts[i], desc_idx, &copied);
-
-		vq->used->ring[used_idx].id = desc_idx;
-		if (unlikely(err))
+		err = copy_mbuf_to_desc(dev, vq, pkts[i], desc_idx);
+		if (unlikely(err)) {
+			used_idx = (res_start_idx + i) & (vq->size - 1);
 			vq->used->ring[used_idx].len = dev->vhost_hlen;
-		else
-			vq->used->ring[used_idx].len = copied + dev->vhost_hlen;
-		vhost_log_used_vring(dev, vq,
-			offsetof(struct vring_used, ring[used_idx]),
-			sizeof(vq->used->ring[used_idx]));
+			vhost_log_used_vring(dev, vq,
+				offsetof(struct vring_used, ring[used_idx]),
+				sizeof(vq->used->ring[used_idx]));
+		}
 
 		if (i + 1 < count)
 			rte_prefetch0(&vq->desc[desc_indexes[i+1]]);
@@ -882,6 +884,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	/* Prefetch available ring to retrieve head indexes. */
 	used_idx = vq->last_used_idx & (vq->size - 1);
 	rte_prefetch0(&vq->avail->ring[used_idx]);
+	rte_prefetch0(&vq->used->ring[used_idx]);
 
 	count = RTE_MIN(count, MAX_PKT_BURST);
 	count = RTE_MIN(count, free_entries);
@@ -890,22 +893,23 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	/* Retrieve all of the head indexes first to avoid caching issues. */
 	for (i = 0; i < count; i++) {
-		desc_indexes[i] = vq->avail->ring[(vq->last_used_idx + i) &
-					(vq->size - 1)];
+		used_idx = (vq->last_used_idx + i) & (vq->size - 1);
+		desc_indexes[i] = vq->avail->ring[used_idx];
+
+		vq->used->ring[used_idx].id  = desc_indexes[i];
+		vq->used->ring[used_idx].len = 0;
+		vhost_log_used_vring(dev, vq,
+				offsetof(struct vring_used, ring[used_idx]),
+				sizeof(vq->used->ring[used_idx]));
 	}
 
 	/* Prefetch descriptor index. */
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
-	rte_prefetch0(&vq->used->ring[vq->last_used_idx & (vq->size - 1)]);
-
 	for (i = 0; i < count; i++) {
 		int err;
 
-		if (likely(i + 1 < count)) {
+		if (likely(i + 1 < count))
 			rte_prefetch0(&vq->desc[desc_indexes[i + 1]]);
-			rte_prefetch0(&vq->used->ring[(used_idx + 1) &
-						      (vq->size - 1)]);
-		}
 
 		pkts[i] = rte_pktmbuf_alloc(mbuf_pool);
 		if (unlikely(pkts[i] == NULL)) {
@@ -919,18 +923,12 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			rte_pktmbuf_free(pkts[i]);
 			break;
 		}
-
-		used_idx = vq->last_used_idx++ & (vq->size - 1);
-		vq->used->ring[used_idx].id  = desc_indexes[i];
-		vq->used->ring[used_idx].len = 0;
-		vhost_log_used_vring(dev, vq,
-				offsetof(struct vring_used, ring[used_idx]),
-				sizeof(vq->used->ring[used_idx]));
 	}
 
 	rte_smp_wmb();
 	rte_smp_rmb();
 	vq->used->idx += i;
+	vq->last_used_idx += i;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
 
