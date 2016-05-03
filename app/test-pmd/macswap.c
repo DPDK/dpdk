@@ -113,6 +113,9 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_QINQ)
 		ol_flags |= PKT_TX_QINQ_PKT;
 	for (i = 0; i < nb_rx; i++) {
+		if (likely(i < nb_rx - 1))
+			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
+						       void *));
 		mb = pkts_burst[i];
 		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 

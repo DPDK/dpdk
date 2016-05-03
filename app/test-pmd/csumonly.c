@@ -676,6 +676,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	info.tso_segsz = txp->tso_segsz;
 
 	for (i = 0; i < nb_rx; i++) {
+		if (likely(i < nb_rx - 1))
+			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
+						       void *));
 
 		ol_flags = 0;
 		info.is_tunnel = 0;
