@@ -1650,7 +1650,7 @@ struct rte_eth_dev {
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	uint8_t attached; /**< Flag indicating the port is attached */
 	enum rte_eth_dev_type dev_type; /**< Flag indicating the device type */
-};
+} __rte_cache_aligned;
 
 struct rte_eth_dev_sriov {
 	uint8_t active;               /**< SRIOV is active with 16, 32 or 64 pools */
