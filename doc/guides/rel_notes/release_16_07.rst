@@ -83,6 +83,8 @@ New Features
 
   It can be turned off if flag ``RTE_VHOST_USER_NO_RECONNECT`` is set.
 
+* **Added NSH packet recognition in i40e.**
+
 * **Added AES-CTR support to AESNI MB PMD.**
 
   Now AESNI MB PMD supports 128/192/256-bit counter mode AES encryption and
