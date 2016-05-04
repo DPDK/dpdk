@@ -145,7 +145,7 @@ i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 	rx_ctx.lrxqthresh = 2;
 	rx_ctx.crcstrip = 0;
 	rx_ctx.l2tsel = 1;
-	rx_ctx.showiv = 1;
+	rx_ctx.showiv = 0;
 	rx_ctx.prefena = 1;
 
 	err = i40e_clear_lan_rx_queue_context(hw, rxq->reg_idx);

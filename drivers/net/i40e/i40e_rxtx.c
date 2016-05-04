@@ -2904,7 +2904,12 @@ i40e_rx_queue_init(struct i40e_rx_queue *rxq)
 	rx_ctx.lrxqthresh = 2;
 	rx_ctx.crcstrip = (rxq->crc_len == 0) ? 1 : 0;
 	rx_ctx.l2tsel = 1;
-	rx_ctx.showiv = 1;
+	/* showiv indicates if inner VLAN is stripped inside of tunnel
+	 * packet. When set it to 1, vlan information is stripped from
+	 * the inner header, but the hardware does not put it in the
+	 * descriptor. So set it zero by default.
+	 */
+	rx_ctx.showiv = 0;
 	rx_ctx.prefena = 1;
 
 	err = i40e_clear_lan_rx_queue_context(hw, pf_q);

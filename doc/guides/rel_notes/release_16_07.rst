@@ -54,6 +54,13 @@ EAL
 Drivers
 ~~~~~~~
 
+* **i40e: Fixed vlan stripping from inner header.**
+
+  Previously, for tunnel packets, such as VXLAN/NVGRE, the vlan
+  tags of the inner header will be stripped without putting vlan
+  info to descriptor.
+  Now this issue is fixed by disabling vlan stripping from inner header.
+
 
 Libraries
 ~~~~~~~~~
