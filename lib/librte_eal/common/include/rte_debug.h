@@ -44,6 +44,7 @@
  */
 
 #include "rte_log.h"
+#include "rte_branch_prediction.h"
 
 #ifdef __cplusplus
 extern "C" {
