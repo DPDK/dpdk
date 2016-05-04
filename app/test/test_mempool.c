@@ -74,7 +74,7 @@
 #define N 65536
 #define TIME_S 5
 #define MEMPOOL_ELT_SIZE 2048
-#define MAX_KEEP 128
+#define MAX_KEEP 16
 #define MEMPOOL_SIZE ((rte_lcore_count()*(MAX_KEEP+RTE_MEMPOOL_CACHE_MAX_SIZE))-1)
 
 #define RET_ERR() do {							\
@@ -224,7 +224,7 @@ static int test_mempool_single_producer(void)
 	unsigned int i;
 	void *obj = NULL;
 	uint64_t start_cycles, end_cycles;
-	uint64_t duration = rte_get_timer_hz() * 8;
+	uint64_t duration = rte_get_timer_hz() / 4;
 
 	start_cycles = rte_get_timer_cycles();
 	while (1) {
@@ -264,7 +264,7 @@ static int test_mempool_single_consumer(void)
 	unsigned int i;
 	void * obj;
 	uint64_t start_cycles, end_cycles;
-	uint64_t duration = rte_get_timer_hz() * 5;
+	uint64_t duration = rte_get_timer_hz() / 8;
 
 	start_cycles = rte_get_timer_cycles();
 	while (1) {

@@ -45,8 +45,8 @@
 
 #define US_PER_MS 1000
 
-#define RTE_TEST_ALARM_TIMEOUT 3000 /* ms */
-#define RTE_TEST_CHECK_PERIOD  1000 /* ms */
+#define RTE_TEST_ALARM_TIMEOUT 10 /* ms */
+#define RTE_TEST_CHECK_PERIOD   3 /* ms */
 
 static volatile int flag;
 
@@ -100,17 +100,17 @@ test_multi_alarms(void)
 
 	printf("Expect 6 callbacks in order...\n");
 	/* add two alarms in order */
-	rte_eal_alarm_set(1000 * US_PER_MS, test_multi_cb, (void *)1);
-	rte_eal_alarm_set(2000 * US_PER_MS, test_multi_cb, (void *)2);
+	rte_eal_alarm_set(10 * US_PER_MS, test_multi_cb, (void *)1);
+	rte_eal_alarm_set(20 * US_PER_MS, test_multi_cb, (void *)2);
 
 	/* now add in reverse order */
-	rte_eal_alarm_set(6000 * US_PER_MS, test_multi_cb, (void *)6);
-	rte_eal_alarm_set(5000 * US_PER_MS, test_multi_cb, (void *)5);
-	rte_eal_alarm_set(4000 * US_PER_MS, test_multi_cb, (void *)4);
-	rte_eal_alarm_set(3000 * US_PER_MS, test_multi_cb, (void *)3);
+	rte_eal_alarm_set(60 * US_PER_MS, test_multi_cb, (void *)6);
+	rte_eal_alarm_set(50 * US_PER_MS, test_multi_cb, (void *)5);
+	rte_eal_alarm_set(40 * US_PER_MS, test_multi_cb, (void *)4);
+	rte_eal_alarm_set(30 * US_PER_MS, test_multi_cb, (void *)3);
 
 	/* wait for expiry */
-	rte_delay_ms(6500);
+	rte_delay_ms(65);
 	if (cb_count.cnt != 6) {
 		printf("Missing callbacks\n");
 		/* remove any callbacks that might remain */
@@ -121,12 +121,12 @@ test_multi_alarms(void)
 	cb_count.cnt = 0;
 	printf("Expect only callbacks with args 1 and 3...\n");
 	/* Add 3 flags, then delete one */
-	rte_eal_alarm_set(3000 * US_PER_MS, test_multi_cb, (void *)3);
-	rte_eal_alarm_set(2000 * US_PER_MS, test_multi_cb, (void *)2);
-	rte_eal_alarm_set(1000 * US_PER_MS, test_multi_cb, (void *)1);
+	rte_eal_alarm_set(30 * US_PER_MS, test_multi_cb, (void *)3);
+	rte_eal_alarm_set(20 * US_PER_MS, test_multi_cb, (void *)2);
+	rte_eal_alarm_set(10 * US_PER_MS, test_multi_cb, (void *)1);
 	rm_count = rte_eal_alarm_cancel(test_multi_cb, (void *)2);
 
-	rte_delay_ms(3500);
+	rte_delay_ms(35);
 	if (cb_count.cnt != 2 || rm_count != 1) {
 		printf("Error: invalid flags count or alarm removal failure"
 				" -  flags value = %d, expected = %d\n",
@@ -138,9 +138,9 @@ test_multi_alarms(void)
 
 	printf("Testing adding and then removing multiple alarms\n");
 	/* finally test that no callbacks are called if we delete them all*/
-	rte_eal_alarm_set(1000 * US_PER_MS, test_multi_cb, (void *)1);
-	rte_eal_alarm_set(1000 * US_PER_MS, test_multi_cb, (void *)2);
-	rte_eal_alarm_set(1000 * US_PER_MS, test_multi_cb, (void *)3);
+	rte_eal_alarm_set(10 * US_PER_MS, test_multi_cb, (void *)1);
+	rte_eal_alarm_set(10 * US_PER_MS, test_multi_cb, (void *)2);
+	rte_eal_alarm_set(10 * US_PER_MS, test_multi_cb, (void *)3);
 	rm_count = rte_eal_alarm_cancel(test_alarm_callback, (void *)-1);
 	if (rm_count != 0) {
 		printf("Error removing non-existant alarm succeeded\n");
@@ -157,19 +157,19 @@ test_multi_alarms(void)
 	 * Also test that we can cancel head-of-line callbacks ok.*/
 	flag = 0;
 	recursive_error = 0;
-	rte_eal_alarm_set(1000 * US_PER_MS, test_remove_in_callback, (void *)1);
-	rte_eal_alarm_set(2000 * US_PER_MS, test_remove_in_callback, (void *)2);
+	rte_eal_alarm_set(10 * US_PER_MS, test_remove_in_callback, (void *)1);
+	rte_eal_alarm_set(20 * US_PER_MS, test_remove_in_callback, (void *)2);
 	rm_count = rte_eal_alarm_cancel(test_remove_in_callback, (void *)1);
 	if (rm_count != 1) {
 		printf("Error cancelling head-of-list callback\n");
 		return -1;
 	}
-	rte_delay_ms(1500);
+	rte_delay_ms(15);
 	if (flag != 0) {
 		printf("Error, cancelling head-of-list leads to premature callback\n");
 		return -1;
 	}
-	rte_delay_ms(1000);
+	rte_delay_ms(10);
 	if (flag != 2) {
 		printf("Error - expected callback not called\n");
 		rte_eal_alarm_cancel(test_remove_in_callback, (void *)-1);
@@ -181,10 +181,10 @@ test_multi_alarms(void)
 	/* Check if it can cancel all for the same callback */
 	printf("Testing canceling all for the same callback\n");
 	flag_2 = 0;
-	rte_eal_alarm_set(1000 * US_PER_MS, test_remove_in_callback, (void *)1);
-	rte_eal_alarm_set(2000 * US_PER_MS, test_remove_in_callback_2, (void *)2);
-	rte_eal_alarm_set(3000 * US_PER_MS, test_remove_in_callback_2, (void *)3);
-	rte_eal_alarm_set(4000 * US_PER_MS, test_remove_in_callback, (void *)4);
+	rte_eal_alarm_set(10 * US_PER_MS, test_remove_in_callback, (void *)1);
+	rte_eal_alarm_set(20 * US_PER_MS, test_remove_in_callback_2, (void *)2);
+	rte_eal_alarm_set(30 * US_PER_MS, test_remove_in_callback_2, (void *)3);
+	rte_eal_alarm_set(40 * US_PER_MS, test_remove_in_callback, (void *)4);
 	rm_count = rte_eal_alarm_cancel(test_remove_in_callback_2, (void *)-1);
 	if (rm_count != 2) {
 		printf("Error, cannot cancel all for the same callback\n");

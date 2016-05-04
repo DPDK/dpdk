@@ -129,7 +129,7 @@ test_spinlock_recursive_per_core(__attribute__((unused)) void *arg)
 static rte_spinlock_t lk = RTE_SPINLOCK_INITIALIZER;
 static uint64_t lock_count[RTE_MAX_LCORE] = {0};
 
-#define TIME_S 5
+#define TIME_MS 100
 
 static int
 load_loop_fn(void *func_param)
@@ -145,7 +145,7 @@ load_loop_fn(void *func_param)
 		while (rte_atomic32_read(&synchro) == 0);
 
 	begin = rte_get_timer_cycles();
-	while (time_diff / hz < TIME_S) {
+	while (time_diff < hz * TIME_MS / 1000) {
 		if (use_lock)
 			rte_spinlock_lock(&lk);
 		lcount++;
@@ -258,7 +258,7 @@ test_spinlock(void)
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 		rte_spinlock_unlock(&sl_tab[i]);
-		rte_delay_ms(100);
+		rte_delay_ms(10);
 	}
 
 	rte_eal_mp_wait_lcore();

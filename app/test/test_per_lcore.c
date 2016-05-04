@@ -92,8 +92,8 @@ display_vars(__attribute__((unused)) void *arg)
 static int
 test_per_lcore_delay(__attribute__((unused)) void *arg)
 {
-	rte_delay_ms(5000);
-	printf("wait 5000ms on lcore %u\n", rte_lcore_id());
+	rte_delay_ms(100);
+	printf("wait 100ms on lcore %u\n", rte_lcore_id());
 
 	return 0;
 }

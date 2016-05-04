@@ -137,7 +137,7 @@
 #include <rte_random.h>
 #include <rte_malloc.h>
 
-#define TEST_DURATION_S 20 /* in seconds */
+#define TEST_DURATION_S 1 /* in seconds */
 #define NB_TIMER 4
 
 #define RTE_LOGTYPE_TESTTIMER RTE_LOGTYPE_USER3
@@ -305,7 +305,7 @@ timer_stress2_main_loop(__attribute__((unused)) void *arg)
 {
 	static struct rte_timer *timers;
 	int i, ret;
-	uint64_t delay = rte_get_timer_hz() / 4;
+	uint64_t delay = rte_get_timer_hz() / 20;
 	unsigned lcore_id = rte_lcore_id();
 	unsigned master = rte_get_master_lcore();
 	int32_t my_collisions = 0;
@@ -346,7 +346,7 @@ timer_stress2_main_loop(__attribute__((unused)) void *arg)
 		rte_atomic32_add(&collisions, my_collisions);
 
 	/* wait long enough for timers to expire */
-	rte_delay_ms(500);
+	rte_delay_ms(100);
 
 	/* all cores rendezvous */
 	if (lcore_id == master) {
@@ -396,7 +396,7 @@ timer_stress2_main_loop(__attribute__((unused)) void *arg)
 	}
 
 	/* wait long enough for timers to expire */
-	rte_delay_ms(500);
+	rte_delay_ms(100);
 
 	/* now check that we get the right number of callbacks */
 	if (lcore_id == master) {
@@ -495,13 +495,13 @@ timer_basic_main_loop(__attribute__((unused)) void *arg)
 
 	/* launch all timers on core 0 */
 	if (lcore_id == rte_get_master_lcore()) {
-		mytimer_reset(&mytiminfo[0], hz, SINGLE, lcore_id,
+		mytimer_reset(&mytiminfo[0], hz/4, SINGLE, lcore_id,
 			      timer_basic_cb);
-		mytimer_reset(&mytiminfo[1], hz*2, SINGLE, lcore_id,
+		mytimer_reset(&mytiminfo[1], hz/2, SINGLE, lcore_id,
 			      timer_basic_cb);
-		mytimer_reset(&mytiminfo[2], hz, PERIODICAL, lcore_id,
+		mytimer_reset(&mytiminfo[2], hz/4, PERIODICAL, lcore_id,
 			      timer_basic_cb);
-		mytimer_reset(&mytiminfo[3], hz, PERIODICAL,
+		mytimer_reset(&mytiminfo[3], hz/4, PERIODICAL,
 			      rte_get_next_lcore(lcore_id, 0, 1),
 			      timer_basic_cb);
 	}
@@ -591,7 +591,7 @@ test_timer(void)
 	end_time = cur_time + (hz * TEST_DURATION_S);
 
 	/* start other cores */
-	printf("Start timer stress tests (%d seconds)\n", TEST_DURATION_S);
+	printf("Start timer stress tests\n");
 	rte_eal_mp_remote_launch(timer_stress_main_loop, NULL, CALL_MASTER);
 	rte_eal_mp_wait_lcore();
 
@@ -612,7 +612,7 @@ test_timer(void)
 	end_time = cur_time + (hz * TEST_DURATION_S);
 
 	/* start other cores */
-	printf("\nStart timer basic tests (%d seconds)\n", TEST_DURATION_S);
+	printf("\nStart timer basic tests\n");
 	rte_eal_mp_remote_launch(timer_basic_main_loop, NULL, CALL_MASTER);
 	rte_eal_mp_wait_lcore();
 

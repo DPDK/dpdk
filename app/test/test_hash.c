@@ -176,7 +176,7 @@ static struct rte_hash_parameters ut_params = {
 	.socket_id = 0,
 };
 
-#define CRC32_ITERATIONS (1U << 20)
+#define CRC32_ITERATIONS (1U << 10)
 #define CRC32_DWORDS (1U << 6)
 /*
  * Test if all CRC32 implementations yield the same hash value
@@ -1081,7 +1081,7 @@ test_hash_creation_with_good_parameters(void)
 	return 0;
 }
 
-#define ITERATIONS 50
+#define ITERATIONS 3
 /*
  * Test to see the average table utilization (entries added/max entries)
  * before hitting a random entry that cannot be added
@@ -1098,7 +1098,7 @@ static int test_average_table_utilization(void)
 	       "\n  before adding elements begins to fail\n");
 	printf("Measuring performance, please wait");
 	fflush(stdout);
-	ut_params.entries = 1 << 20;
+	ut_params.entries = 1 << 16;
 	ut_params.name = "test_average_utilization";
 	ut_params.hash_func = rte_jhash;
 	handle = rte_hash_create(&ut_params);
@@ -1138,7 +1138,7 @@ static int test_average_table_utilization(void)
 	return 0;
 }
 
-#define NUM_ENTRIES 1024
+#define NUM_ENTRIES 256
 static int test_hash_iteration(void)
 {
 	struct rte_hash *handle;

@@ -130,7 +130,7 @@ check_live_watermark_change(__attribute__((unused)) void *dummy)
 
 	/* init the object table */
 	memset(obj_table, 0, sizeof(obj_table));
-	end_time = rte_get_timer_cycles() + (hz * 2);
+	end_time = rte_get_timer_cycles() + (hz / 4);
 
 	/* check that bulk and watermark are 4 and 32 (respectively) */
 	while (diff >= 0) {
@@ -194,9 +194,9 @@ test_live_watermark_change(void)
 	 * watermark and quota */
 	rte_eal_remote_launch(check_live_watermark_change, NULL, lcore_id2);
 
-	rte_delay_ms(1000);
+	rte_delay_ms(100);
 	rte_ring_set_water_mark(r, 32);
-	rte_delay_ms(1000);
+	rte_delay_ms(100);
 
 	if (rte_eal_wait_lcore(lcore_id2) < 0)
 		return -1;

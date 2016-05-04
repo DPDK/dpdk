@@ -220,7 +220,7 @@ test1(void)
 }
 
 /*
- * Create lpm table then delete lpm table 100 times
+ * Create lpm table then delete lpm table 20 times
  * Use a slightly different rules size each time
  */
 int32_t
@@ -234,7 +234,7 @@ test2(void)
 	config.flags = 0;
 
 	/* rte_lpm6_free: Free NULL */
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 20; i++) {
 		config.max_rules = MAX_RULES - i;
 		lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 		TEST_LPM_ASSERT(lpm != NULL);
@@ -693,7 +693,7 @@ test13(void)
 }
 
 /*
- * Add 2^16 routes with different first 16 bits and depth 25.
+ * Add 2^12 routes with different first 12 bits and depth 25.
  * Add one more route with the same depth and check that results in a failure.
  * After that delete the last rule and create the one that was attempted to be
  * created. This checks tbl8 exhaustion.
@@ -706,10 +706,10 @@ test14(void)
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	uint8_t depth = 25, next_hop_add = 100;
 	int32_t status = 0;
-	int i, j;
+	int i;
 
 	config.max_rules = MAX_RULES;
-	config.number_tbl8s = NUMBER_TBL8S;
+	config.number_tbl8s = 256;
 	config.flags = 0;
 
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
@@ -717,28 +717,22 @@ test14(void)
 
 	for (i = 0; i < 256; i++) {
 		ip[0] = (uint8_t)i;
-		for (j = 0; j < 256; j++) {
-			ip[1] = (uint8_t)j;
-			status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
-			TEST_LPM_ASSERT(status == 0);
-		}
+		status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
+		TEST_LPM_ASSERT(status == 0);
 	}
 
 	ip[0] = 255;
-	ip[1] = 255;
-	ip[2] = 1;
+	ip[1] = 1;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == -ENOSPC);
 
 	ip[0] = 255;
-	ip[1] = 255;
-	ip[2] = 0;
+	ip[1] = 0;
 	status = rte_lpm6_delete(lpm, ip, depth);
 	TEST_LPM_ASSERT(status == 0);
 
 	ip[0] = 255;
-	ip[1] = 255;
-	ip[2] = 1;
+	ip[1] = 1;
 	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
 
@@ -847,7 +841,7 @@ test17(void)
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	/* Loop with rte_lpm6_add. */
-	for (depth = 1; depth <= 128; depth++) {
+	for (depth = 1; depth <= 16; depth++) {
 		/* Let the next_hop_add value = depth. Just for change. */
 		next_hop_add = depth;
 
@@ -864,7 +858,7 @@ test17(void)
 	}
 
 	/* Loop with rte_lpm6_delete. */
-	for (depth = 128; depth >= 1; depth--) {
+	for (depth = 16; depth >= 1; depth--) {
 		next_hop_add = (uint8_t) (depth - 1);
 
 		status = rte_lpm6_delete(lpm, ip2, depth);
@@ -1493,7 +1487,7 @@ test22(void)
 
 /*
  * Add an extended rule (i.e. depth greater than 24, lookup (hit), delete,
- * lookup (miss) in a for loop of 1000 times. This will check tbl8 extension
+ * lookup (miss) in a for loop of 30 times. This will check tbl8 extension
  * and contraction.
  */
 int32_t
@@ -1517,7 +1511,7 @@ test23(void)
 	depth = 128;
 	next_hop_add = 100;
 
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < 30; i++) {
 		status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 		TEST_LPM_ASSERT(status == 0);
 
@@ -1760,6 +1754,7 @@ test_lpm6(void)
 	int status = -1, global_status = 0;
 
 	for (i = 0; i < NUM_LPM6_TESTS; i++) {
+		printf("# test %02d\n", i);
 		status = tests6[i]();
 
 		if (status < 0) {

@@ -752,7 +752,7 @@ test_refcnt_iter(unsigned lcore, unsigned iter)
 			    __func__, lcore, iter, tref);
 			return;
 		}
-		rte_delay_ms(1000);
+		rte_delay_ms(100);
 	}
 
 	rte_panic("(lcore=%u, iter=%u): after %us only "
