@@ -65,26 +65,25 @@ test_logs(void)
 	rte_set_log_type(RTE_LOGTYPE_TESTAPP1, 1);
 	rte_set_log_type(RTE_LOGTYPE_TESTAPP2, 1);
 
-	/* log in debug level */
-	rte_set_log_level(RTE_LOG_DEBUG);
-	RTE_LOG(DEBUG, TESTAPP1, "this is a debug level message\n");
-	RTE_LOG(INFO, TESTAPP1, "this is a info level message\n");
-	RTE_LOG(WARNING, TESTAPP1, "this is a warning level message\n");
+	/* log in error level */
+	rte_set_log_level(RTE_LOG_ERR);
+	RTE_LOG(ERR, TESTAPP1, "error message\n");
+	RTE_LOG(CRIT, TESTAPP1, "critical message\n");
 
-	/* log in info level */
-	rte_set_log_level(RTE_LOG_INFO);
-	RTE_LOG(DEBUG, TESTAPP2, "debug level message (not displayed)\n");
-	RTE_LOG(INFO, TESTAPP2, "this is a info level message\n");
-	RTE_LOG(WARNING, TESTAPP2, "this is a warning level message\n");
+	/* log in critical level */
+	rte_set_log_level(RTE_LOG_CRIT);
+	RTE_LOG(ERR, TESTAPP2, "error message (not displayed)\n");
+	RTE_LOG(CRIT, TESTAPP2, "critical message\n");
 
 	/* disable one log type */
 	rte_set_log_type(RTE_LOGTYPE_TESTAPP2, 0);
 
-	/* log in debug level */
-	rte_set_log_level(RTE_LOG_DEBUG);
-	RTE_LOG(DEBUG, TESTAPP1, "this is a debug level message\n");
-	RTE_LOG(DEBUG, TESTAPP2, "debug level message (not displayed)\n");
+	/* log in error level */
+	rte_set_log_level(RTE_LOG_ERR);
+	RTE_LOG(ERR, TESTAPP1, "error message\n");
+	RTE_LOG(ERR, TESTAPP2, "error message (not displayed)\n");
 
+	/* print again the previous logs */
 	rte_log_dump_history(stdout);
 
 	return 0;

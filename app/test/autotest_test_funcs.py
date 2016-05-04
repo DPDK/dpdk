@@ -144,19 +144,16 @@ def logs_autotest(child, test_name):
 	i = 0
 	child.sendline(test_name)
 
+	# logs sequence is printed twice because of history dump
 	log_list = [
-		"TESTAPP1: this is a debug level message",
-		"TESTAPP1: this is a info level message",
-		"TESTAPP1: this is a warning level message",
-		"TESTAPP2: this is a info level message",
-		"TESTAPP2: this is a warning level message",
-		"TESTAPP1: this is a debug level message",
-		"TESTAPP1: this is a debug level message",
-		"TESTAPP1: this is a info level message",
-		"TESTAPP1: this is a warning level message",
-		"TESTAPP2: this is a info level message",
-		"TESTAPP2: this is a warning level message",
-		"TESTAPP1: this is a debug level message",
+		"TESTAPP1: error message",
+		"TESTAPP1: critical message",
+		"TESTAPP2: critical message",
+		"TESTAPP1: error message",
+		"TESTAPP1: error message",
+		"TESTAPP1: critical message",
+		"TESTAPP2: critical message",
+		"TESTAPP1: error message",
 	]
 
 	for log_msg in log_list:
