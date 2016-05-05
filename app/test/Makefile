@@ -89,7 +89,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_functions.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_scaling.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm.c
+SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm_perf.c
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm6.c
+SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm6_perf.c
 
 SRCS-y += test_debug.c
 SRCS-y += test_errno.c

@@ -174,6 +174,12 @@ parallel_test_group_list = [
 		 "Report" :	None,
 		},
 		{
+			"Name" :    "LPM6 autotest",
+			"Command" : "lpm6_autotest",
+			"Func" :    default_autotest,
+			"Report" :  None,
+		},
+		{
 		 "Name" :	"IVSHMEM autotest",
 		 "Command" : 	"ivshmem_autotest",
 		 "Func" :	default_autotest,
@@ -447,19 +453,6 @@ non_parallel_test_group_list = [
 		 "Func" :       default_autotest,
 		 "Report" :     None,
 		},
-	]
-},
-{
-	"Prefix" :	"lpm6",
-	"Memory" :	"512",
-	"Tests" :
-	[
-		{
-                 "Name" :       "LPM6 autotest",
-                 "Command" :    "lpm6_autotest",
-                 "Func" :       default_autotest,
-                 "Report" :     None,
-                },
 	]
 },
 {
