@@ -427,7 +427,7 @@ int rte_eal_pci_read_config(const struct rte_pci_device *dev,
 		goto error;
 	}
 
-	fd = open("/dev/pci", O_RDONLY);
+	fd = open("/dev/pci", O_RDWR);
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "%s(): error opening /dev/pci\n", __func__);
 		goto error;
@@ -471,7 +471,7 @@ int rte_eal_pci_write_config(const struct rte_pci_device *dev,
 
 	memcpy(&pi.pi_data, buf, len);
 
-	fd = open("/dev/pci", O_RDONLY);
+	fd = open("/dev/pci", O_RDWR);
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "%s(): error opening /dev/pci\n", __func__);
 		goto error;
