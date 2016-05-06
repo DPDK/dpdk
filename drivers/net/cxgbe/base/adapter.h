@@ -318,6 +318,9 @@ struct adapter {
 	unsigned int mbox;     /* associated mailbox */
 	unsigned int pf;       /* associated physical function id */
 
+	unsigned int vpd_busy;
+	unsigned int vpd_flag;
+
 	int use_unpacked_mode; /* unpacked rx mode state */
 };
 
@@ -435,6 +438,10 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 #define PCI_CAP_LIST_ID         0       /* Capability ID */
 #define PCI_CAP_LIST_NEXT       1       /* Next capability in the list */
 #define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
+#define PCI_CAP_ID_VPD          0x03    /* Vital Product Data */
+#define PCI_VPD_ADDR            2       /* Address to access (15 bits!) */
+#define PCI_VPD_ADDR_F          0x8000  /* Write 0, 1 indicates completion */
+#define PCI_VPD_DATA            4       /* 32-bits of data returned here */
 
 /**
  * t4_os_pci_write_cfg4 - 32-bit write to PCI config space

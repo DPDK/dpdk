@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2016 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -398,4 +398,7 @@ int t4_init_sge_params(struct adapter *adapter);
 int t4_init_tp_params(struct adapter *adap);
 int t4_filter_field_shift(const struct adapter *adap, unsigned int filter_sel);
 int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl);
+int t4_seeprom_read(struct adapter *adapter, u32 addr, u32 *data);
+int t4_seeprom_write(struct adapter *adapter, u32 addr, u32 data);
+int t4_seeprom_wp(struct adapter *adapter, int enable);
 #endif /* __CHELSIO_COMMON_H */

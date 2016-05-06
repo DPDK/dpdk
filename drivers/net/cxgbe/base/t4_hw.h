@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2016 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,9 @@
 
 enum {
 	NCHAN           = 4,     /* # of HW channels */
+	EEPROMSIZE      = 17408, /* Serial EEPROM physical size */
+	EEPROMVSIZE     = 32768, /* Serial EEPROM virtual address space size */
+	EEPROMPFSIZE    = 1024,  /* EEPROM writable area size for PFn, n>0 */
 	NMTUS           = 16,    /* size of MTU table */
 	NCCTRL_WIN      = 32,    /* # of congestion control windows */
 	MBOX_LEN        = 64,    /* mailbox size in bytes */

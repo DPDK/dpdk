@@ -569,6 +569,185 @@ int t4_wr_mbox_meat(struct adapter *adap, int mbox, const void *cmd, int size,
 				       FW_CMD_MAX_TIMEOUT);
 }
 
+/* EEPROM reads take a few tens of us while writes can take a bit over 5 ms. */
+#define EEPROM_DELAY            10              /* 10us per poll spin */
+#define EEPROM_MAX_POLL         5000            /* x 5000 == 50ms */
+
+#define EEPROM_STAT_ADDR        0x7bfc
+
+/**
+ * Small utility function to wait till any outstanding VPD Access is complete.
+ * We have a per-adapter state variable "VPD Busy" to indicate when we have a
+ * VPD Access in flight.  This allows us to handle the problem of having a
+ * previous VPD Access time out and prevent an attempt to inject a new VPD
+ * Request before any in-flight VPD request has completed.
+ */
+static int t4_seeprom_wait(struct adapter *adapter)
+{
+	unsigned int base = adapter->params.pci.vpd_cap_addr;
+	int max_poll;
+
+	/* If no VPD Access is in flight, we can just return success right
+	 * away.
+	 */
+	if (!adapter->vpd_busy)
+		return 0;
+
+	/* Poll the VPD Capability Address/Flag register waiting for it
+	 * to indicate that the operation is complete.
+	 */
+	max_poll = EEPROM_MAX_POLL;
+	do {
+		u16 val;
+
+		udelay(EEPROM_DELAY);
+		t4_os_pci_read_cfg2(adapter, base + PCI_VPD_ADDR, &val);
+
+		/* If the operation is complete, mark the VPD as no longer
+		 * busy and return success.
+		 */
+		if ((val & PCI_VPD_ADDR_F) == adapter->vpd_flag) {
+			adapter->vpd_busy = 0;
+			return 0;
+		}
+	} while (--max_poll);
+
+	/* Failure!  Note that we leave the VPD Busy status set in order to
+	 * avoid pushing a new VPD Access request into the VPD Capability till
+	 * the current operation eventually succeeds.  It's a bug to issue a
+	 * new request when an existing request is in flight and will result
+	 * in corrupt hardware state.
+	 */
+	return -ETIMEDOUT;
+}
+
+/**
+ * t4_seeprom_read - read a serial EEPROM location
+ * @adapter: adapter to read
+ * @addr: EEPROM virtual address
+ * @data: where to store the read data
+ *
+ * Read a 32-bit word from a location in serial EEPROM using the card's PCI
+ * VPD capability.  Note that this function must be called with a virtual
+ * address.
+ */
+int t4_seeprom_read(struct adapter *adapter, u32 addr, u32 *data)
+{
+	unsigned int base = adapter->params.pci.vpd_cap_addr;
+	int ret;
+
+	/* VPD Accesses must alway be 4-byte aligned!
+	 */
+	if (addr >= EEPROMVSIZE || (addr & 3))
+		return -EINVAL;
+
+	/* Wait for any previous operation which may still be in flight to
+	 * complete.
+	 */
+	ret = t4_seeprom_wait(adapter);
+	if (ret) {
+		dev_err(adapter, "VPD still busy from previous operation\n");
+		return ret;
+	}
+
+	/* Issue our new VPD Read request, mark the VPD as being busy and wait
+	 * for our request to complete.  If it doesn't complete, note the
+	 * error and return it to our caller.  Note that we do not reset the
+	 * VPD Busy status!
+	 */
+	t4_os_pci_write_cfg2(adapter, base + PCI_VPD_ADDR, (u16)addr);
+	adapter->vpd_busy = 1;
+	adapter->vpd_flag = PCI_VPD_ADDR_F;
+	ret = t4_seeprom_wait(adapter);
+	if (ret) {
+		dev_err(adapter, "VPD read of address %#x failed\n", addr);
+		return ret;
+	}
+
+	/* Grab the returned data, swizzle it into our endianness and
+	 * return success.
+	 */
+	t4_os_pci_read_cfg4(adapter, base + PCI_VPD_DATA, data);
+	*data = le32_to_cpu(*data);
+	return 0;
+}
+
+/**
+ * t4_seeprom_write - write a serial EEPROM location
+ * @adapter: adapter to write
+ * @addr: virtual EEPROM address
+ * @data: value to write
+ *
+ * Write a 32-bit word to a location in serial EEPROM using the card's PCI
+ * VPD capability.  Note that this function must be called with a virtual
+ * address.
+ */
+int t4_seeprom_write(struct adapter *adapter, u32 addr, u32 data)
+{
+	unsigned int base = adapter->params.pci.vpd_cap_addr;
+	int ret;
+	u32 stats_reg;
+	int max_poll;
+
+	/* VPD Accesses must alway be 4-byte aligned!
+	 */
+	if (addr >= EEPROMVSIZE || (addr & 3))
+		return -EINVAL;
+
+	/* Wait for any previous operation which may still be in flight to
+	 * complete.
+	 */
+	ret = t4_seeprom_wait(adapter);
+	if (ret) {
+		dev_err(adapter, "VPD still busy from previous operation\n");
+		return ret;
+	}
+
+	/* Issue our new VPD Read request, mark the VPD as being busy and wait
+	 * for our request to complete.  If it doesn't complete, note the
+	 * error and return it to our caller.  Note that we do not reset the
+	 * VPD Busy status!
+	 */
+	t4_os_pci_write_cfg4(adapter, base + PCI_VPD_DATA,
+			     cpu_to_le32(data));
+	t4_os_pci_write_cfg2(adapter, base + PCI_VPD_ADDR,
+			     (u16)addr | PCI_VPD_ADDR_F);
+	adapter->vpd_busy = 1;
+	adapter->vpd_flag = 0;
+	ret = t4_seeprom_wait(adapter);
+	if (ret) {
+		dev_err(adapter, "VPD write of address %#x failed\n", addr);
+		return ret;
+	}
+
+	/* Reset PCI_VPD_DATA register after a transaction and wait for our
+	 * request to complete. If it doesn't complete, return error.
+	 */
+	t4_os_pci_write_cfg4(adapter, base + PCI_VPD_DATA, 0);
+	max_poll = EEPROM_MAX_POLL;
+	do {
+		udelay(EEPROM_DELAY);
+		t4_seeprom_read(adapter, EEPROM_STAT_ADDR, &stats_reg);
+	} while ((stats_reg & 0x1) && --max_poll);
+	if (!max_poll)
+		return -ETIMEDOUT;
+
+	/* Return success! */
+	return 0;
+}
+
+/**
+ * t4_seeprom_wp - enable/disable EEPROM write protection
+ * @adapter: the adapter
+ * @enable: whether to enable or disable write protection
+ *
+ * Enables or disables write protection on the serial EEPROM.
+ */
+int t4_seeprom_wp(struct adapter *adapter, int enable)
+{
+	return t4_seeprom_write(adapter, EEPROM_STAT_ADDR, enable ? 0xc : 0);
+}
+
 /**
  * t4_config_rss_range - configure a portion of the RSS mapping table
  * @adapter: the adapter
@@ -2383,6 +2562,9 @@ int t4_prep_adapter(struct adapter *adapter)
 			__func__, adapter->params.pci.device_id);
 		return -EINVAL;
 	}
+
+	adapter->params.pci.vpd_cap_addr =
+		t4_os_find_pci_capability(adapter, PCI_CAP_ID_VPD);
 
 	ret = t4_get_flash_params(adapter);
 	if (ret < 0)

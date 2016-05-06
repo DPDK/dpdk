@@ -781,6 +781,145 @@ cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 	return NULL;
 }
 
+static int cxgbe_get_eeprom_length(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+	return EEPROMSIZE;
+}
+
+/**
+ * eeprom_ptov - translate a physical EEPROM address to virtual
+ * @phys_addr: the physical EEPROM address
+ * @fn: the PCI function number
+ * @sz: size of function-specific area
+ *
+ * Translate a physical EEPROM address to virtual.  The first 1K is
+ * accessed through virtual addresses starting at 31K, the rest is
+ * accessed through virtual addresses starting at 0.
+ *
+ * The mapping is as follows:
+ * [0..1K) -> [31K..32K)
+ * [1K..1K+A) -> [31K-A..31K)
+ * [1K+A..ES) -> [0..ES-A-1K)
+ *
+ * where A = @fn * @sz, and ES = EEPROM size.
+ */
+static int eeprom_ptov(unsigned int phys_addr, unsigned int fn, unsigned int sz)
+{
+	fn *= sz;
+	if (phys_addr < 1024)
+		return phys_addr + (31 << 10);
+	if (phys_addr < 1024 + fn)
+		return fn + phys_addr - 1024;
+	if (phys_addr < EEPROMSIZE)
+		return phys_addr - 1024 - fn;
+	if (phys_addr < EEPROMVSIZE)
+		return phys_addr - 1024;
+	return -EINVAL;
+}
+
+/* The next two routines implement eeprom read/write from physical addresses.
+ */
+static int eeprom_rd_phys(struct adapter *adap, unsigned int phys_addr, u32 *v)
+{
+	int vaddr = eeprom_ptov(phys_addr, adap->pf, EEPROMPFSIZE);
+
+	if (vaddr >= 0)
+		vaddr = t4_seeprom_read(adap, vaddr, v);
+	return vaddr < 0 ? vaddr : 0;
+}
+
+static int eeprom_wr_phys(struct adapter *adap, unsigned int phys_addr, u32 v)
+{
+	int vaddr = eeprom_ptov(phys_addr, adap->pf, EEPROMPFSIZE);
+
+	if (vaddr >= 0)
+		vaddr = t4_seeprom_write(adap, vaddr, v);
+	return vaddr < 0 ? vaddr : 0;
+}
+
+#define EEPROM_MAGIC 0x38E2F10C
+
+static int cxgbe_get_eeprom(struct rte_eth_dev *dev,
+			    struct rte_dev_eeprom_info *e)
+{
+	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	u32 i, err = 0;
+	u8 *buf = rte_zmalloc(NULL, EEPROMSIZE, 0);
+
+	if (!buf)
+		return -ENOMEM;
+
+	e->magic = EEPROM_MAGIC;
+	for (i = e->offset & ~3; !err && i < e->offset + e->length; i += 4)
+		err = eeprom_rd_phys(adapter, i, (u32 *)&buf[i]);
+
+	if (!err)
+		rte_memcpy(e->data, buf + e->offset, e->length);
+	rte_free(buf);
+	return err;
+}
+
+static int cxgbe_set_eeprom(struct rte_eth_dev *dev,
+			    struct rte_dev_eeprom_info *eeprom)
+{
+	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+	u8 *buf;
+	int err = 0;
+	u32 aligned_offset, aligned_len, *p;
+
+	if (eeprom->magic != EEPROM_MAGIC)
+		return -EINVAL;
+
+	aligned_offset = eeprom->offset & ~3;
+	aligned_len = (eeprom->length + (eeprom->offset & 3) + 3) & ~3;
+
+	if (adapter->pf > 0) {
+		u32 start = 1024 + adapter->pf * EEPROMPFSIZE;
+
+		if (aligned_offset < start ||
+		    aligned_offset + aligned_len > start + EEPROMPFSIZE)
+			return -EPERM;
+	}
+
+	if (aligned_offset != eeprom->offset || aligned_len != eeprom->length) {
+		/* RMW possibly needed for first or last words.
+		 */
+		buf = rte_zmalloc(NULL, aligned_len, 0);
+		if (!buf)
+			return -ENOMEM;
+		err = eeprom_rd_phys(adapter, aligned_offset, (u32 *)buf);
+		if (!err && aligned_len > 4)
+			err = eeprom_rd_phys(adapter,
+					     aligned_offset + aligned_len - 4,
+					     (u32 *)&buf[aligned_len - 4]);
+		if (err)
+			goto out;
+		rte_memcpy(buf + (eeprom->offset & 3), eeprom->data,
+			   eeprom->length);
+	} else {
+		buf = eeprom->data;
+	}
+
+	err = t4_seeprom_wp(adapter, false);
+	if (err)
+		goto out;
+
+	for (p = (u32 *)buf; !err && aligned_len; aligned_len -= 4, p++) {
+		err = eeprom_wr_phys(adapter, aligned_offset, *p);
+		aligned_offset += 4;
+	}
+
+	if (!err)
+		err = t4_seeprom_wp(adapter, true);
+out:
+	if (buf != eeprom->data)
+		rte_free(buf);
+	return err;
+}
+
 static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -806,6 +945,9 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.stats_reset		= cxgbe_dev_stats_reset,
 	.flow_ctrl_get		= cxgbe_flow_ctrl_get,
 	.flow_ctrl_set		= cxgbe_flow_ctrl_set,
+	.get_eeprom_length	= cxgbe_get_eeprom_length,
+	.get_eeprom		= cxgbe_get_eeprom,
+	.set_eeprom		= cxgbe_set_eeprom,
 };
 
 /*
