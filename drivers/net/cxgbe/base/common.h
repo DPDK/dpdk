@@ -50,6 +50,10 @@ enum {
 };
 
 enum {
+	T5_REGMAP_SIZE = (332 * 1024),
+};
+
+enum {
 	MEMWIN0_APERTURE = 2048,
 	MEMWIN0_BASE     = 0x1b800,
 };
@@ -398,6 +402,8 @@ int t4_init_sge_params(struct adapter *adapter);
 int t4_init_tp_params(struct adapter *adap);
 int t4_filter_field_shift(const struct adapter *adap, unsigned int filter_sel);
 int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl);
+unsigned int t4_get_regs_len(struct adapter *adap);
+void t4_get_regs(struct adapter *adap, void *buf, size_t buf_size);
 int t4_seeprom_read(struct adapter *adapter, u32 addr, u32 *data);
 int t4_seeprom_write(struct adapter *adapter, u32 addr, u32 data);
 int t4_seeprom_wp(struct adapter *adapter, int enable);

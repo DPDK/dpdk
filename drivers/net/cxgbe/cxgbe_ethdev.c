@@ -920,6 +920,29 @@ out:
 	return err;
 }
 
+static int cxgbe_get_regs_len(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+
+	return t4_get_regs_len(adapter) / sizeof(uint32_t);
+}
+
+static int cxgbe_get_regs(struct rte_eth_dev *eth_dev,
+			  struct rte_dev_reg_info *regs)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adapter = pi->adapter;
+
+	regs->length = cxgbe_get_regs_len(eth_dev);
+	regs->version = CHELSIO_CHIP_VERSION(adapter->params.chip) |
+			(CHELSIO_CHIP_RELEASE(adapter->params.chip) << 10) |
+			(1 << 16);
+	t4_get_regs(adapter, regs->data, (regs->length * sizeof(uint32_t)));
+
+	return 0;
+}
+
 static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -948,6 +971,8 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.get_eeprom_length	= cxgbe_get_eeprom_length,
 	.get_eeprom		= cxgbe_get_eeprom,
 	.set_eeprom		= cxgbe_set_eeprom,
+	.get_reg_length		= cxgbe_get_regs_len,
+	.get_reg		= cxgbe_get_regs,
 };
 
 /*

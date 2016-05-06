@@ -131,7 +131,7 @@ Most of these differences are summarized below.
    Extended stats                   Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y                   Y Y
    Stats per queue              Y                   Y Y     Y Y Y Y Y Y         Y Y   Y   Y Y
    EEPROM dump                  Y               Y   Y Y
-   Registers dump                               Y Y Y Y Y Y
+   Registers dump               Y               Y Y Y Y Y Y
    Multiprocess aware                   Y Y Y Y     Y Y Y Y Y Y Y Y Y Y       Y Y Y
    BSD nic_uio                  Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y                       Y Y
    Linux UIO              Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y             Y Y       Y Y
