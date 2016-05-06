@@ -732,7 +732,7 @@ pipeline_firewall_msg_req_add_bulk_handler(struct pipeline *p, void *msg)
 	n_keys = req->n_keys;
 
 	for (i = 0; i < n_keys; i++) {
-		entries[i] = rte_malloc(NULL,
+		entries[i] = rte_zmalloc(NULL,
 				sizeof(struct firewall_table_entry),
 				RTE_CACHE_LINE_SIZE);
 		if (entries[i] == NULL) {
@@ -740,7 +740,7 @@ pipeline_firewall_msg_req_add_bulk_handler(struct pipeline *p, void *msg)
 			return rsp;
 		}
 
-		params[i] = rte_malloc(NULL,
+		params[i] = rte_zmalloc(NULL,
 				sizeof(struct rte_table_acl_rule_add_params),
 				RTE_CACHE_LINE_SIZE);
 		if (params[i] == NULL) {
@@ -814,7 +814,7 @@ pipeline_firewall_msg_req_del_bulk_handler(struct pipeline *p, void *msg)
 	n_keys = req->n_keys;
 
 	for (i = 0; i < n_keys; i++) {
-		params[i] = rte_malloc(NULL,
+		params[i] = rte_zmalloc(NULL,
 				sizeof(struct rte_table_acl_rule_delete_params),
 				RTE_CACHE_LINE_SIZE);
 		if (params[i] == NULL) {
