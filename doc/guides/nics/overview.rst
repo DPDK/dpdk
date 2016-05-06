@@ -138,7 +138,7 @@ Most of these differences are summarized below.
    Linux VFIO                   Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y                       Y Y
    Other kdrv                                                       Y Y               Y
    ARMv7                                                                      Y           Y Y
-   ARMv8                                                                      Y           Y Y
+   ARMv8                                            Y Y Y Y                   Y           Y Y
    Power8                                                           Y Y       Y
    TILE-Gx                                                                    Y
    x86-32                       Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y       Y         Y Y Y
