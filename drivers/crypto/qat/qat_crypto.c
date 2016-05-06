@@ -263,6 +263,26 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* AES CTR */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_CTR,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
@@ -369,6 +389,14 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		break;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		if (qat_alg_validate_aes_key(cipher_xform->key.length,
+				&session->qat_cipher_alg) != 0) {
+			PMD_DRV_LOG(ERR, "Invalid AES cipher key size");
+			goto error_out;
+		}
+		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
+		break;
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 		if (qat_alg_validate_snow3g_key(cipher_xform->key.length,
 					&session->qat_cipher_alg) != 0) {
@@ -381,7 +409,6 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
-	case RTE_CRYPTO_CIPHER_AES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_CCM:
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
 		PMD_DRV_LOG(ERR, "Crypto: Unsupported Cipher alg %u",

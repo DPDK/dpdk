@@ -47,6 +47,11 @@ New Features
   * Dropped specific Xen Dom0 code.
   * Dropped specific anonymous mempool code in testpmd.
 
+* **Added support of AES counter mode for Intel QuickAssist devices.**
+
+  Enabled support for the AES CTR algorithm for Intel QuickAssist devices.
+  Provided support for algorithm-chaining operations.
+
 
 Resolved Issues
 ---------------
