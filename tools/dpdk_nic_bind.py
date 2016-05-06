@@ -38,8 +38,8 @@ import getopt
 import subprocess
 from os.path import exists, abspath, dirname, basename
 
-# The PCI device class for ETHERNET devices
-ETHERNET_CLASS = "0200"
+# The PCI base class for NETWORK devices
+NETWORK_BASE_CLASS = "02"
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
@@ -248,7 +248,7 @@ def get_nic_details():
     dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
     for dev_line in dev_lines:
         if (len(dev_line) == 0):
-            if dev["Class"] == ETHERNET_CLASS:
+            if dev["Class"][0:2] == NETWORK_BASE_CLASS:
                 # convert device and vendor ids to numbers, then add to global
                 dev["Vendor"] = int(dev["Vendor"], 16)
                 dev["Device"] = int(dev["Device"], 16)
