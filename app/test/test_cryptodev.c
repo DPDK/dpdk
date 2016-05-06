@@ -42,6 +42,8 @@
 
 #include "test.h"
 #include "test_cryptodev.h"
+
+#include "test_cryptodev_aes_ctr_test_vectors.h"
 #include "test_cryptodev_snow3g_test_vectors.h"
 #include "test_cryptodev_snow3g_hash_test_vectors.h"
 #include "test_cryptodev_gcm_test_vectors.h"
@@ -1356,6 +1358,245 @@ test_AES_CBC_HMAC_SHA1_decrypt_digest_verify(void)
 
 
 	return TEST_SUCCESS;
+}
+
+    /* **** AES counter mode tests **** */
+
+static int
+test_AES_CTR_encrypt_digest(const struct aes_ctr_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_crypto_sym_op *sym_op;
+
+	uint8_t hash_key[tdata->auth_key.len];
+	uint8_t cipher_key[tdata->key.len];
+
+	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
+			(const char *)tdata->plaintext.data,
+			tdata->plaintext.len, 0);
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CTR;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	rte_memcpy(cipher_key, tdata->key.data, tdata->key.len);
+	ut_params->cipher_xform.cipher.key.data = cipher_key;
+	ut_params->cipher_xform.cipher.key.length =
+			tdata->key.len;
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	ut_params->auth_xform.auth.algo = tdata->auth_key.algo;
+	ut_params->auth_xform.auth.key.length =
+			tdata->auth_key.len;
+	rte_memcpy(hash_key, tdata->auth_key.data, tdata->auth_key.len);
+	ut_params->auth_xform.auth.key.data = hash_key;
+	ut_params->auth_xform.auth.digest_length = tdata->digest.len;
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0],
+			&ut_params->cipher_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+
+	/* Set operation cipher parameters */
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+			sym_op->m_src, tdata->iv.len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(sym_op->m_src);
+	sym_op->cipher.iv.length = tdata->iv.len;
+
+	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data,
+			tdata->iv.len);
+
+	sym_op->cipher.data.offset = tdata->iv.len;
+	sym_op->cipher.data.length = tdata->plaintext.len;
+
+	/* Set operation authentication parameters */
+	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+			sym_op->m_src, tdata->digest.len);
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			sym_op->m_src,
+			tdata->iv.len + tdata->ciphertext.len);
+	sym_op->auth.digest.length = tdata->digest.len;
+
+	memset(sym_op->auth.digest.data, 0, tdata->digest.len);
+
+	sym_op->auth.data.offset = tdata->iv.len;
+	sym_op->auth.data.length = tdata->plaintext.len;
+
+	/* Process crypto operation */
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	uint8_t *ciphertext = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_src,
+			uint8_t *, tdata->iv.len);
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(ciphertext,
+			tdata->ciphertext.data,
+			tdata->ciphertext.len,
+			"ciphertext data not as expected");
+
+	uint8_t *digest = ciphertext + tdata->ciphertext.len;
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(digest,
+			tdata->digest.data, tdata->digest.len,
+			"Generated digest data not as expected");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_CTR_encrypt_digest_case_1(void)
+{
+	return test_AES_CTR_encrypt_digest(&aes_ctr_test_case_1);
+}
+static int
+test_AES_CTR_encrypt_digest_case_2(void)
+{
+	return test_AES_CTR_encrypt_digest(&aes_ctr_test_case_2);
+}
+static int
+test_AES_CTR_encrypt_digest_case_3(void)
+{
+	return test_AES_CTR_encrypt_digest(&aes_ctr_test_case_3);
+}
+
+static int
+test_AES_CTR_digest_verify_decrypt(const struct aes_ctr_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_crypto_sym_op *sym_op;
+
+	uint8_t hash_key[tdata->auth_key.len];
+	uint8_t cipher_key[tdata->key.len];
+
+	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
+			(const char *)tdata->ciphertext.data,
+			tdata->ciphertext.len, 0);
+
+	ut_params->digest = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			tdata->digest.len);
+
+	TEST_ASSERT_NOT_NULL(ut_params->digest,	"no room to append digest");
+
+	rte_memcpy(ut_params->digest,
+			tdata->digest.data,
+			tdata->digest.len);
+
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = &ut_params->cipher_xform;
+
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
+	ut_params->auth_xform.auth.algo = tdata->auth_key.algo;
+	ut_params->auth_xform.auth.key.length = tdata->auth_key.len;
+	rte_memcpy(hash_key, tdata->auth_key.data, tdata->auth_key.len);
+	ut_params->auth_xform.auth.key.data =
+			hash_key;
+	ut_params->auth_xform.auth.digest_length = tdata->digest.len;
+
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = NULL;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CTR;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+
+	rte_memcpy(cipher_key, tdata->key.data, tdata->key.len);
+	ut_params->cipher_xform.cipher.key.data =
+			cipher_key;
+	ut_params->cipher_xform.cipher.key.length = tdata->key.len;
+
+	ut_params->sess = rte_cryptodev_sym_session_create(
+			ts_params->valid_devs[0],
+			&ut_params->auth_xform);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	sym_op = ut_params->op->sym;
+
+	sym_op->m_src = ut_params->ibuf;
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+			sym_op->m_src, tdata->iv.len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(sym_op->m_src);
+	sym_op->cipher.iv.length = tdata->iv.len;
+
+	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data,
+			tdata->iv.len);
+
+	sym_op->cipher.data.offset = tdata->iv.len;
+	sym_op->cipher.data.length = tdata->ciphertext.len;
+
+	sym_op->auth.digest.data = ut_params->digest;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			sym_op->m_src,
+			tdata->iv.len + tdata->ciphertext.len);
+	sym_op->auth.digest.length = tdata->digest.len;
+
+	sym_op->auth.data.offset = tdata->iv.len;
+	sym_op->auth.data.length = tdata->ciphertext.len;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	uint8_t *plaintext = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_src,
+			uint8_t *, tdata->iv.len);
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(plaintext,
+			tdata->plaintext.data,
+			tdata->plaintext.len,
+			"plaintext data not as expected");
+
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_CTR_digest_verify_decrypt_case_1(void)
+{
+	return test_AES_CTR_digest_verify_decrypt(&aes_ctr_test_case_1);
+}
+static int
+test_AES_CTR_digest_verify_decrypt_case_2(void)
+{
+	return test_AES_CTR_digest_verify_decrypt(&aes_ctr_test_case_2);
+}
+static int
+test_AES_CTR_digest_verify_decrypt_case_3(void)
+{
+	return test_AES_CTR_digest_verify_decrypt(&aes_ctr_test_case_3);
 }
 
 
@@ -4279,6 +4520,19 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 				test_AES_CBC_HMAC_SHA512_encrypt_digest),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_AES_CBC_HMAC_SHA512_decrypt_digest_verify),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_encrypt_digest_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_encrypt_digest_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_encrypt_digest_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_digest_verify_decrypt_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_digest_verify_decrypt_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_digest_verify_decrypt_case_3),
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_AES_CBC_HMAC_AES_XCBC_encrypt_digest),
