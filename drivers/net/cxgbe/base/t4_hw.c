@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2016 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -2326,6 +2326,21 @@ int t4_get_flash_params(struct adapter *adapter)
 	return 0;
 }
 
+static void set_pcie_completion_timeout(struct adapter *adapter,
+					u8 range)
+{
+	u32 pcie_cap;
+	u16 val;
+
+	pcie_cap = t4_os_find_pci_capability(adapter, PCI_CAP_ID_EXP);
+	if (pcie_cap) {
+		t4_os_pci_read_cfg2(adapter, pcie_cap + PCI_EXP_DEVCTL2, &val);
+		val &= 0xfff0;
+		val |= range;
+		t4_os_pci_write_cfg2(adapter, pcie_cap + PCI_EXP_DEVCTL2, val);
+	}
+}
+
 /**
  * t4_prep_adapter - prepare SW and HW for operation
  * @adapter: the adapter
@@ -2384,6 +2399,8 @@ int t4_prep_adapter(struct adapter *adapter)
 	adapter->params.portvec = 1;
 	adapter->params.vpd.cclk = 50000;
 
+	/* Set pci completion timeout value to 4 seconds. */
+	set_pcie_completion_timeout(adapter, 0xd);
 	return 0;
 }
 

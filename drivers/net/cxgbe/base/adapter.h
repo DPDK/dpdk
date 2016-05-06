@@ -431,8 +431,10 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 #define PCI_STATUS_CAP_LIST     0x10    /* Support Capability List */
 #define PCI_CAPABILITY_LIST     0x34
 /* Offset of first capability list entry */
+#define PCI_CAP_ID_EXP          0x10    /* PCI Express */
 #define PCI_CAP_LIST_ID         0       /* Capability ID */
 #define PCI_CAP_LIST_NEXT       1       /* Next capability in the list */
+#define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
 
 /**
  * t4_os_pci_write_cfg4 - 32-bit write to PCI config space
