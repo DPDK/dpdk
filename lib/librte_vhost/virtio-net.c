@@ -561,6 +561,15 @@ vhost_set_vring_addr(int vid, struct vhost_vring_addr *addr)
 		return -1;
 	}
 
+	if (vq->last_used_idx != vq->used->idx) {
+		RTE_LOG(WARNING, VHOST_CONFIG,
+			"last_used_idx (%u) and vq->used->idx (%u) mismatches; "
+			"some packets maybe resent for Tx and dropped for Rx\n",
+			vq->last_used_idx, vq->used->idx);
+		vq->last_used_idx     = vq->used->idx;
+		vq->last_used_idx_res = vq->used->idx;
+	}
+
 	vq->log_guest_addr = addr->log_guest_addr;
 
 	LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address desc: %p\n",
