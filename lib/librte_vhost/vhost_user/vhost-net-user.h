@@ -38,12 +38,6 @@
 #include <linux/vhost.h>
 
 #include "rte_virtio_net.h"
-#include "fd_man.h"
-
-struct vhost_server {
-	char *path; /**< The path the uds is bind to. */
-	int listenfd;     /**< The listener sockfd. */
-};
 
 /* refer to hw/virtio/vhost-user.c */
 

@@ -51,32 +51,41 @@
 #include "vhost-net.h"
 #include "virtio-net-user.h"
 
-#define MAX_VIRTIO_BACKLOG 128
+/*
+ * Every time rte_vhost_driver_register() is invoked, an associated
+ * vhost_user_socket struct will be created.
+ */
+struct vhost_user_socket {
+	char *path;
+	int listenfd;
+};
 
-static void vserver_new_vq_conn(int fd, void *data, int *remove);
-static void vserver_message_handler(int fd, void *dat, int *remove);
-
-struct connfd_ctx {
-	struct vhost_server *vserver;
+struct vhost_user_connection {
+	struct vhost_user_socket *vsocket;
 	int vid;
 };
 
-#define MAX_VHOST_SERVER 1024
-struct _vhost_server {
-	struct vhost_server *server[MAX_VHOST_SERVER];
+#define MAX_VHOST_SOCKET 1024
+struct vhost_user {
+	struct vhost_user_socket *vsockets[MAX_VHOST_SOCKET];
 	struct fdset fdset;
-	int vserver_cnt;
-	pthread_mutex_t server_mutex;
+	int vsocket_cnt;
+	pthread_mutex_t mutex;
 };
 
-static struct _vhost_server g_vhost_server = {
+#define MAX_VIRTIO_BACKLOG 128
+
+static void vhost_user_new_connection(int fd, void *data, int *remove);
+static void vhost_user_msg_handler(int fd, void *dat, int *remove);
+
+static struct vhost_user vhost_user = {
 	.fdset = {
 		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
 		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
 		.num = 0
 	},
-	.vserver_cnt = 0,
-	.server_mutex = PTHREAD_MUTEX_INITIALIZER,
+	.vsocket_cnt = 0,
+	.mutex = PTHREAD_MUTEX_INITIALIZER,
 };
 
 static const char *vhost_message_str[VHOST_USER_MAX] = {
@@ -278,13 +287,13 @@ send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 	return ret;
 }
 
-/* call back when there is new virtio connection.  */
+/* call back when there is new vhost-user connection.  */
 static void
-vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
+vhost_user_new_connection(int fd, void *dat, int *remove __rte_unused)
 {
-	struct vhost_server *vserver = (struct vhost_server *)dat;
+	struct vhost_user_socket *vsocket = dat;
 	int conn_fd;
-	struct connfd_ctx *ctx;
+	struct vhost_user_connection *conn;
 	int vid;
 	unsigned int size;
 
@@ -294,41 +303,41 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 	if (conn_fd < 0)
 		return;
 
-	ctx = calloc(1, sizeof(*ctx));
-	if (ctx == NULL) {
+	conn = calloc(1, sizeof(*conn));
+	if (conn == NULL) {
 		close(conn_fd);
 		return;
 	}
 
 	vid = vhost_new_device();
 	if (vid == -1) {
-		free(ctx);
+		free(conn);
 		close(conn_fd);
 		return;
 	}
 
-	size = strnlen(vserver->path, PATH_MAX);
-	vhost_set_ifname(vid, vserver->path, size);
+	size = strnlen(vsocket->path, PATH_MAX);
+	vhost_set_ifname(vid, vsocket->path, size);
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
-	ctx->vserver = vserver;
-	ctx->vid = vid;
-	fdset_add(&g_vhost_server.fdset,
-		conn_fd, vserver_message_handler, NULL, ctx);
+	conn->vsocket = vsocket;
+	conn->vid = vid;
+	fdset_add(&vhost_user.fdset,
+		conn_fd, vhost_user_msg_handler, NULL, conn);
 }
 
 /* callback when there is message on the connfd */
 static void
-vserver_message_handler(int connfd, void *dat, int *remove)
+vhost_user_msg_handler(int connfd, void *dat, int *remove)
 {
 	int vid;
-	struct connfd_ctx *cfd_ctx = (struct connfd_ctx *)dat;
+	struct vhost_user_connection *conn = dat;
 	struct VhostUserMsg msg;
 	uint64_t features;
 	int ret;
 
-	vid = cfd_ctx->vid;
+	vid = conn->vid;
 	ret = read_vhost_message(connfd, &msg);
 	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
 		if (ret < 0)
@@ -343,7 +352,7 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 
 		close(connfd);
 		*remove = 1;
-		free(cfd_ctx);
+		free(conn);
 		vhost_destroy_device(vid);
 
 		return;
@@ -449,37 +458,37 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 int
 rte_vhost_driver_register(const char *path)
 {
-	struct vhost_server *vserver;
+	struct vhost_user_socket *vsocket;
 
-	pthread_mutex_lock(&g_vhost_server.server_mutex);
+	pthread_mutex_lock(&vhost_user.mutex);
 
-	if (g_vhost_server.vserver_cnt == MAX_VHOST_SERVER) {
+	if (vhost_user.vsocket_cnt == MAX_VHOST_SOCKET) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"error: the number of servers reaches maximum\n");
-		pthread_mutex_unlock(&g_vhost_server.server_mutex);
+		pthread_mutex_unlock(&vhost_user.mutex);
 		return -1;
 	}
 
-	vserver = calloc(sizeof(struct vhost_server), 1);
-	if (vserver == NULL) {
-		pthread_mutex_unlock(&g_vhost_server.server_mutex);
+	vsocket = calloc(sizeof(struct vhost_user_socket), 1);
+	if (vsocket == NULL) {
+		pthread_mutex_unlock(&vhost_user.mutex);
 		return -1;
 	}
 
-	vserver->listenfd = uds_socket(path);
-	if (vserver->listenfd < 0) {
-		free(vserver);
-		pthread_mutex_unlock(&g_vhost_server.server_mutex);
+	vsocket->listenfd = uds_socket(path);
+	if (vsocket->listenfd < 0) {
+		free(vsocket);
+		pthread_mutex_unlock(&vhost_user.mutex);
 		return -1;
 	}
 
-	vserver->path = strdup(path);
+	vsocket->path = strdup(path);
 
-	fdset_add(&g_vhost_server.fdset, vserver->listenfd,
-		vserver_new_vq_conn, NULL, vserver);
+	fdset_add(&vhost_user.fdset, vsocket->listenfd,
+		vhost_user_new_connection, NULL, vsocket);
 
-	g_vhost_server.server[g_vhost_server.vserver_cnt++] = vserver;
-	pthread_mutex_unlock(&g_vhost_server.server_mutex);
+	vhost_user.vsockets[vhost_user.vsocket_cnt++] = vsocket;
+	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return 0;
 }
@@ -494,28 +503,28 @@ rte_vhost_driver_unregister(const char *path)
 	int i;
 	int count;
 
-	pthread_mutex_lock(&g_vhost_server.server_mutex);
+	pthread_mutex_lock(&vhost_user.mutex);
 
-	for (i = 0; i < g_vhost_server.vserver_cnt; i++) {
-		if (!strcmp(g_vhost_server.server[i]->path, path)) {
-			fdset_del(&g_vhost_server.fdset,
-				g_vhost_server.server[i]->listenfd);
+	for (i = 0; i < vhost_user.vsocket_cnt; i++) {
+		if (!strcmp(vhost_user.vsockets[i]->path, path)) {
+			fdset_del(&vhost_user.fdset,
+				vhost_user.vsockets[i]->listenfd);
 
-			close(g_vhost_server.server[i]->listenfd);
-			free(g_vhost_server.server[i]->path);
-			free(g_vhost_server.server[i]);
+			close(vhost_user.vsockets[i]->listenfd);
+			free(vhost_user.vsockets[i]->path);
+			free(vhost_user.vsockets[i]);
 
 			unlink(path);
 
-			count = --g_vhost_server.vserver_cnt;
-			g_vhost_server.server[i] = g_vhost_server.server[count];
-			g_vhost_server.server[count] = NULL;
-			pthread_mutex_unlock(&g_vhost_server.server_mutex);
+			count = --vhost_user.vsocket_cnt;
+			vhost_user.vsockets[i] = vhost_user.vsockets[count];
+			vhost_user.vsockets[count] = NULL;
+			pthread_mutex_unlock(&vhost_user.mutex);
 
 			return 0;
 		}
 	}
-	pthread_mutex_unlock(&g_vhost_server.server_mutex);
+	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return -1;
 }
@@ -523,6 +532,6 @@ rte_vhost_driver_unregister(const char *path)
 int
 rte_vhost_driver_session_start(void)
 {
-	fdset_event_dispatch(&g_vhost_server.fdset);
+	fdset_event_dispatch(&vhost_user.fdset);
 	return 0;
 }
