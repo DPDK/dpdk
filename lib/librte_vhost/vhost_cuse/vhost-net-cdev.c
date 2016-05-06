@@ -352,7 +352,7 @@ static const struct cuse_lowlevel_ops vhost_net_ops = {
  * vhost_net_device_ops are also passed when the device is registered in app.
  */
 int
-rte_vhost_driver_register(const char *dev_name)
+rte_vhost_driver_register(const char *dev_name, uint64_t flags)
 {
 	struct cuse_info cuse_info;
 	char device_name[PATH_MAX] = "";
@@ -363,6 +363,12 @@ rte_vhost_driver_register(const char *dev_name)
 	char fuse_opt_fore[] = FUSE_OPT_FORE;
 	char fuse_opt_nomulti[] = FUSE_OPT_NOMULTI;
 	char *fuse_argv[] = {fuse_opt_dummy, fuse_opt_fore, fuse_opt_nomulti};
+
+	if (flags) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"vhost-cuse does not support any flags so far\n");
+		return -1;
+	}
 
 	if (access(cuse_device_name, R_OK | W_OK) < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,

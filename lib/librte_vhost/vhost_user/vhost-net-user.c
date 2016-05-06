@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -58,6 +59,7 @@
 struct vhost_user_socket {
 	char *path;
 	int listenfd;
+	bool is_server;
 };
 
 struct vhost_user_connection {
@@ -75,7 +77,7 @@ struct vhost_user {
 
 #define MAX_VIRTIO_BACKLOG 128
 
-static void vhost_user_new_connection(int fd, void *data, int *remove);
+static void vhost_user_server_new_connection(int fd, void *data, int *remove);
 static void vhost_user_msg_handler(int fd, void *dat, int *remove);
 
 static struct vhost_user vhost_user = {
@@ -110,48 +112,6 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
 	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
 };
-
-/**
- * Create a unix domain socket, bind to path and listen for connection.
- * @return
- *  socket fd or -1 on failure
- */
-static int
-uds_socket(const char *path)
-{
-	struct sockaddr_un un;
-	int sockfd;
-	int ret;
-
-	if (path == NULL)
-		return -1;
-
-	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (sockfd < 0)
-		return -1;
-	RTE_LOG(INFO, VHOST_CONFIG, "socket created, fd:%d\n", sockfd);
-
-	memset(&un, 0, sizeof(un));
-	un.sun_family = AF_UNIX;
-	snprintf(un.sun_path, sizeof(un.sun_path), "%s", path);
-	ret = bind(sockfd, (struct sockaddr *)&un, sizeof(un));
-	if (ret == -1) {
-		RTE_LOG(ERR, VHOST_CONFIG, "fail to bind fd:%d, remove file:%s and try again.\n",
-			sockfd, path);
-		goto err;
-	}
-	RTE_LOG(INFO, VHOST_CONFIG, "bind to %s\n", path);
-
-	ret = listen(sockfd, MAX_VIRTIO_BACKLOG);
-	if (ret == -1)
-		goto err;
-
-	return sockfd;
-
-err:
-	close(sockfd);
-	return -1;
-}
 
 /* return bytes# of read on success or negative val on failure. */
 static int
@@ -287,32 +247,24 @@ send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 	return ret;
 }
 
-/* call back when there is new vhost-user connection.  */
+
 static void
-vhost_user_new_connection(int fd, void *dat, int *remove __rte_unused)
+vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 {
-	struct vhost_user_socket *vsocket = dat;
-	int conn_fd;
-	struct vhost_user_connection *conn;
 	int vid;
-	unsigned int size;
+	size_t size;
+	struct vhost_user_connection *conn;
 
-	conn_fd = accept(fd, NULL, NULL);
-	RTE_LOG(INFO, VHOST_CONFIG,
-		"new virtio connection is %d\n", conn_fd);
-	if (conn_fd < 0)
-		return;
-
-	conn = calloc(1, sizeof(*conn));
+	conn = malloc(sizeof(*conn));
 	if (conn == NULL) {
-		close(conn_fd);
+		close(fd);
 		return;
 	}
 
 	vid = vhost_new_device();
 	if (vid == -1) {
+		close(fd);
 		free(conn);
-		close(conn_fd);
 		return;
 	}
 
@@ -323,8 +275,21 @@ vhost_user_new_connection(int fd, void *dat, int *remove __rte_unused)
 
 	conn->vsocket = vsocket;
 	conn->vid = vid;
-	fdset_add(&vhost_user.fdset,
-		conn_fd, vhost_user_msg_handler, NULL, conn);
+	fdset_add(&vhost_user.fdset, fd, vhost_user_msg_handler, NULL, conn);
+}
+
+/* call back when there is new vhost-user connection from client  */
+static void
+vhost_user_server_new_connection(int fd, void *dat, int *remove __rte_unused)
+{
+	struct vhost_user_socket *vsocket = dat;
+
+	fd = accept(fd, NULL, NULL);
+	if (fd < 0)
+		return;
+
+	RTE_LOG(INFO, VHOST_CONFIG, "new vhost user connection is %d\n", fd);
+	vhost_user_add_connection(fd, vsocket);
 }
 
 /* callback when there is message on the connfd */
@@ -452,50 +417,135 @@ vhost_user_msg_handler(int connfd, void *dat, int *remove)
 	}
 }
 
-/**
- * Creates and initialise the vhost server.
+static int
+create_unix_socket(const char *path, struct sockaddr_un *un, bool is_server)
+{
+	int fd;
+
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0)
+		return -1;
+	RTE_LOG(INFO, VHOST_CONFIG, "vhost-user %s: socket created, fd: %d\n",
+		is_server ? "server" : "client", fd);
+
+	memset(un, 0, sizeof(*un));
+	un->sun_family = AF_UNIX;
+	strncpy(un->sun_path, path, sizeof(un->sun_path));
+
+	return fd;
+}
+
+static int
+vhost_user_create_server(struct vhost_user_socket *vsocket)
+{
+	int fd;
+	int ret;
+	struct sockaddr_un un;
+	const char *path = vsocket->path;
+
+	fd = create_unix_socket(path, &un, vsocket->is_server);
+	if (fd < 0)
+		return -1;
+
+	ret = bind(fd, (struct sockaddr *)&un, sizeof(un));
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to bind to %s: %s; remove it and try again\n",
+			path, strerror(errno));
+		goto err;
+	}
+	RTE_LOG(INFO, VHOST_CONFIG, "bind to %s\n", path);
+
+	ret = listen(fd, MAX_VIRTIO_BACKLOG);
+	if (ret < 0)
+		goto err;
+
+	vsocket->listenfd = fd;
+	fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection,
+		  NULL, vsocket);
+
+	return 0;
+
+err:
+	close(fd);
+	return -1;
+}
+
+static int
+vhost_user_create_client(struct vhost_user_socket *vsocket)
+{
+	int fd;
+	int ret;
+	struct sockaddr_un un;
+	const char *path = vsocket->path;
+
+	fd = create_unix_socket(path, &un, vsocket->is_server);
+	if (fd < 0)
+		return -1;
+
+	ret = connect(fd, (struct sockaddr *)&un, sizeof(un));
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG, "failed to connect to %s: %s\n",
+			path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	vhost_user_add_connection(fd, vsocket);
+
+	return 0;
+}
+
+/*
+ * Register a new vhost-user socket; here we could act as server
+ * (the default case), or client (when RTE_VHOST_USER_CLIENT) flag
+ * is set.
  */
 int
-rte_vhost_driver_register(const char *path)
+rte_vhost_driver_register(const char *path, uint64_t flags)
 {
+	int ret = -1;
 	struct vhost_user_socket *vsocket;
+
+	if (!path)
+		return -1;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 
 	if (vhost_user.vsocket_cnt == MAX_VHOST_SOCKET) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"error: the number of servers reaches maximum\n");
-		pthread_mutex_unlock(&vhost_user.mutex);
-		return -1;
+			"error: the number of vhost sockets reaches maximum\n");
+		goto out;
 	}
 
-	vsocket = calloc(sizeof(struct vhost_user_socket), 1);
-	if (vsocket == NULL) {
-		pthread_mutex_unlock(&vhost_user.mutex);
-		return -1;
-	}
-
-	vsocket->listenfd = uds_socket(path);
-	if (vsocket->listenfd < 0) {
-		free(vsocket);
-		pthread_mutex_unlock(&vhost_user.mutex);
-		return -1;
-	}
-
+	vsocket = malloc(sizeof(struct vhost_user_socket));
+	if (!vsocket)
+		goto out;
+	memset(vsocket, 0, sizeof(struct vhost_user_socket));
 	vsocket->path = strdup(path);
 
-	fdset_add(&vhost_user.fdset, vsocket->listenfd,
-		vhost_user_new_connection, NULL, vsocket);
+	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
+		ret = vhost_user_create_client(vsocket);
+	} else {
+		vsocket->is_server = true;
+		ret = vhost_user_create_server(vsocket);
+	}
+	if (ret < 0) {
+		free(vsocket->path);
+		free(vsocket);
+		goto out;
+	}
 
 	vhost_user.vsockets[vhost_user.vsocket_cnt++] = vsocket;
+
+out:
 	pthread_mutex_unlock(&vhost_user.mutex);
 
-	return 0;
+	return ret;
 }
 
-
 /**
- * Unregister the specified vhost server
+ * Unregister the specified vhost socket
  */
 int
 rte_vhost_driver_unregister(const char *path)
@@ -507,14 +557,15 @@ rte_vhost_driver_unregister(const char *path)
 
 	for (i = 0; i < vhost_user.vsocket_cnt; i++) {
 		if (!strcmp(vhost_user.vsockets[i]->path, path)) {
-			fdset_del(&vhost_user.fdset,
-				vhost_user.vsockets[i]->listenfd);
+			if (vhost_user.vsockets[i]->is_server) {
+				fdset_del(&vhost_user.fdset,
+					vhost_user.vsockets[i]->listenfd);
+				close(vhost_user.vsockets[i]->listenfd);
+				unlink(path);
+			}
 
-			close(vhost_user.vsockets[i]->listenfd);
 			free(vhost_user.vsockets[i]->path);
 			free(vhost_user.vsockets[i]);
-
-			unlink(path);
 
 			count = --vhost_user.vsocket_cnt;
 			vhost_user.vsockets[i] = vhost_user.vsockets[count];

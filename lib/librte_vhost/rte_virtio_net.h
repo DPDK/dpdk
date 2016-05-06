@@ -51,6 +51,8 @@
 #include <rte_mempool.h>
 #include <rte_ether.h>
 
+#define RTE_VHOST_USER_CLIENT		(1ULL << 0)
+
 /* Enum for virtqueue management. */
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 
@@ -85,11 +87,14 @@ uint64_t rte_vhost_feature_get(void);
 
 int rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable);
 
-/* Register vhost driver. dev_name could be different for multiple instance support. */
-int rte_vhost_driver_register(const char *dev_name);
+/**
+ * Register vhost driver. path could be different for multiple
+ * instance support.
+ */
+int rte_vhost_driver_register(const char *path, uint64_t flags);
 
 /* Unregister vhost driver. This is only meaningful to vhost user. */
-int rte_vhost_driver_unregister(const char *dev_name);
+int rte_vhost_driver_unregister(const char *path);
 
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(struct virtio_net_device_ops const * const);

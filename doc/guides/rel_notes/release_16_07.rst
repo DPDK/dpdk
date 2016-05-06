@@ -51,6 +51,18 @@ New Features
 
   The ioports are mapped in memory when using Linux UIO.
 
+* **Added vhost-user client mode.**
+
+  DPDK vhost-user could be the server as well as the client. It supports
+  server mode only before, now it also supports client mode. Client mode
+  is enabled when ``RTE_VHOST_USER_CLIENT`` flag is set while calling
+  ``rte_vhost_driver_register``.
+
+  When DPDK vhost-user restarts from normal or abnormal quit (say crash),
+  the client mode would allow DPDK to establish the connect again.  Note
+  that a brand new QEMU version (v2.7 or above) is needed, otherwise, the
+  reconnect won't work.
+
 * **Added AES-CTR support to AESNI MB PMD.**
 
   Now AESNI MB PMD supports 128/192/256-bit counter mode AES encryption and

@@ -1488,7 +1488,7 @@ main(int argc, char *argv[])
 		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
 	/* Register vhost(cuse or user) driver to handle vhost messages. */
-	ret = rte_vhost_driver_register((char *)&dev_basename);
+	ret = rte_vhost_driver_register(dev_basename, 0);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "vhost driver register failure.\n");
 

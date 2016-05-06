@@ -1254,7 +1254,7 @@ main(int argc, char *argv[])
 	rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
 	/* Register CUSE device to handle IOCTLs. */
-	ret = rte_vhost_driver_register((char *)&dev_basename);
+	ret = rte_vhost_driver_register((char *)&dev_basename, 0);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "CUSE device setup failure.\n");
 

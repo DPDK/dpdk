@@ -467,7 +467,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 	int ret = 0;
 
 	if (rte_atomic16_cmpset(&internal->once, 0, 1)) {
-		ret = rte_vhost_driver_register(internal->iface_name);
+		ret = rte_vhost_driver_register(internal->iface_name, 0);
 		if (ret)
 			return ret;
 	}
