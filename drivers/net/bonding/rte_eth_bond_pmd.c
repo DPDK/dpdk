@@ -1650,7 +1650,8 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_mac_addrs = 1;
 
-	dev_info->max_rx_pktlen = (uint32_t)2048;
+	dev_info->max_rx_pktlen = internals->candidate_max_rx_pktlen ?
+				  internals->candidate_max_rx_pktlen : 2048;
 
 	dev_info->max_rx_queues = (uint16_t)128;
 	dev_info->max_tx_queues = (uint16_t)512;
@@ -2292,6 +2293,9 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				internals->reta_conf[i].reta[j] = j % dev->data->nb_rx_queues;
 		}
 	}
+
+	/* set the max_rx_pktlen */
+	internals->max_rx_pktlen = internals->candidate_max_rx_pktlen;
 
 	/*
 	 * if no kvlist, it means that this bonded device has been created
