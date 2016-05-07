@@ -15,6 +15,9 @@
 #include "ecore.h"
 #include "ecore_hw.h"
 #include "ecore_iov_api.h"
+#include "ecore_mcp_api.h"
+#include "ecore_l2_api.h"
+
 
 unsigned long qede_log2_align(unsigned long n)
 {
@@ -178,4 +181,22 @@ u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 	}
 
 	return p_hwfn->stream->total_out / 4;
+}
+
+void
+qede_get_mcp_proto_stats(struct ecore_dev *edev,
+			 enum ecore_mcp_protocol_type type,
+			 union ecore_mcp_protocol_stats *stats)
+{
+	struct ecore_eth_stats lan_stats;
+
+	if (type == ECORE_MCP_LAN_STATS) {
+		ecore_get_vport_stats(edev, &lan_stats);
+		stats->lan_stats.ucast_rx_pkts = lan_stats.rx_ucast_pkts;
+		stats->lan_stats.ucast_tx_pkts = lan_stats.tx_ucast_pkts;
+		stats->lan_stats.fcs_err = -1;
+	} else {
+		DP_INFO(edev, "Statistics request type %d not supported\n",
+		       type);
+	}
 }

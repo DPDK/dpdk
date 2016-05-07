@@ -24,6 +24,9 @@ struct ecore_dev;
 struct ecore_hwfn;
 struct ecore_vf_acquire_sw_info;
 struct vf_pf_resc_request;
+enum ecore_mcp_protocol_type;
+union ecore_mcp_protocol_stats;
+
 void qed_link_update(struct ecore_hwfn *hwfn);
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
@@ -390,7 +393,11 @@ u32 qede_osal_log2(u32);
 #define OSAL_MAX_T(type, __max1, __max2)	\
 	((type)(__max1) > (type)(__max2) ? (type)(__max1) : (type)(__max2))
 
-#define	OSAL_GET_PROTOCOL_STATS(p_hwfn, type, stats) (0)
+void qede_get_mcp_proto_stats(struct ecore_dev *, enum ecore_mcp_protocol_type,
+			      union ecore_mcp_protocol_stats *);
+#define	OSAL_GET_PROTOCOL_STATS(dev, type, stats) \
+	qede_get_mcp_proto_stats(dev, type, stats)
+
 #define	OSAL_SLOWPATH_IRQ_REQ(p_hwfn) (0)
 
 #endif /* __BCM_OSAL_H */
