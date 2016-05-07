@@ -106,7 +106,7 @@ enabling debugging options may affect system performance.
 
   Toggle display of generic debugging messages.
 
-- ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_DRV`` (default **n**)
+- ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_DRIVER`` (default **n**)
 
   Toggle display of ecore related messages.
 

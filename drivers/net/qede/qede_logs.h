@@ -36,7 +36,7 @@
 
 #endif
 
-#ifdef RTE_LIBRTE_QEDE_DEBUG_DRV
+#ifdef RTE_LIBRTE_QEDE_DEBUG_DRIVER
 #define DP_VERBOSE(p_dev, module, fmt, ...) \
 do { \
 	if ((p_dev)->dp_module & module) \
