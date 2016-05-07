@@ -50,12 +50,14 @@
 
 #define ETH_VHOST_IFACE_ARG		"iface"
 #define ETH_VHOST_QUEUES_ARG		"queues"
+#define ETH_VHOST_CLIENT_ARG		"client"
 
 static const char *drivername = "VHOST PMD";
 
 static const char *valid_arguments[] = {
 	ETH_VHOST_IFACE_ARG,
 	ETH_VHOST_QUEUES_ARG,
+	ETH_VHOST_CLIENT_ARG,
 	NULL
 };
 
@@ -89,6 +91,7 @@ struct pmd_internal {
 	char *dev_name;
 	char *iface_name;
 	uint16_t max_queues;
+	uint64_t flags;
 
 	volatile uint16_t once;
 };
@@ -467,7 +470,8 @@ eth_dev_start(struct rte_eth_dev *dev)
 	int ret = 0;
 
 	if (rte_atomic16_cmpset(&internal->once, 0, 1)) {
-		ret = rte_vhost_driver_register(internal->iface_name, 0);
+		ret = rte_vhost_driver_register(internal->iface_name,
+						internal->flags);
 		if (ret)
 			return ret;
 	}
@@ -672,7 +676,7 @@ static const struct eth_dev_ops ops = {
 
 static int
 eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
-		     const unsigned numa_node)
+		     const unsigned numa_node, uint64_t flags)
 {
 	struct rte_eth_dev_data *data = NULL;
 	struct pmd_internal *internal = NULL;
@@ -729,6 +733,7 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	internal->iface_name = strdup(iface_name);
 	if (internal->iface_name == NULL)
 		goto error;
+	internal->flags = flags;
 
 	list->eth_dev = eth_dev;
 	pthread_mutex_lock(&internal_list_lock);
@@ -793,18 +798,15 @@ open_iface(const char *key __rte_unused, const char *value, void *extra_args)
 }
 
 static inline int
-open_queues(const char *key __rte_unused, const char *value, void *extra_args)
+open_int(const char *key __rte_unused, const char *value, void *extra_args)
 {
-	uint16_t *q = extra_args;
+	uint16_t *n = extra_args;
 
 	if (value == NULL || extra_args == NULL)
 		return -EINVAL;
 
-	*q = (uint16_t)strtoul(value, NULL, 0);
-	if (*q == USHRT_MAX && errno == ERANGE)
-		return -1;
-
-	if (*q > RTE_MAX_QUEUES_PER_PORT)
+	*n = (uint16_t)strtoul(value, NULL, 0);
+	if (*n == USHRT_MAX && errno == ERANGE)
 		return -1;
 
 	return 0;
@@ -817,6 +819,8 @@ rte_pmd_vhost_devinit(const char *name, const char *params)
 	int ret = 0;
 	char *iface_name;
 	uint16_t queues;
+	uint64_t flags = 0;
+	int client_mode = 0;
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_vhost for %s\n", name);
 
@@ -836,14 +840,24 @@ rte_pmd_vhost_devinit(const char *name, const char *params)
 
 	if (rte_kvargs_count(kvlist, ETH_VHOST_QUEUES_ARG) == 1) {
 		ret = rte_kvargs_process(kvlist, ETH_VHOST_QUEUES_ARG,
-					 &open_queues, &queues);
-		if (ret < 0)
+					 &open_int, &queues);
+		if (ret < 0 || queues > RTE_MAX_QUEUES_PER_PORT)
 			goto out_free;
 
 	} else
 		queues = 1;
 
-	eth_dev_vhost_create(name, iface_name, queues, rte_socket_id());
+	if (rte_kvargs_count(kvlist, ETH_VHOST_CLIENT_ARG) == 1) {
+		ret = rte_kvargs_process(kvlist, ETH_VHOST_CLIENT_ARG,
+					 &open_int, &client_mode);
+		if (ret < 0)
+			goto out_free;
+
+		if (client_mode)
+			flags |= RTE_VHOST_USER_CLIENT;
+	}
+
+	eth_dev_vhost_create(name, iface_name, queues, rte_socket_id(), flags);
 
 out_free:
 	rte_kvargs_free(kvlist);
