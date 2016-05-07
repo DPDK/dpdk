@@ -132,6 +132,8 @@ static uint32_t enable_tx_csum;
 /* Disable TSO offload */
 static uint32_t enable_tso;
 
+static int client_mode;
+
 /* Specify timeout (in useconds) between retries on RX. */
 static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
 /* Specify the number of retries on RX. */
@@ -458,7 +460,8 @@ us_vhost_usage(const char *prgname)
 	"		--stats [0-N]: 0: Disable stats, N: Time in seconds to print stats\n"
 	"		--dev-basename: The basename to be used for the character device.\n"
 	"		--tx-csum [0|1] disable/enable TX checksum offload.\n"
-	"		--tso [0|1] disable/enable TCP segment offload.\n",
+	"		--tso [0|1] disable/enable TCP segment offload.\n"
+	"		--client register a vhost-user socket as client mode.\n",
 	       prgname);
 }
 
@@ -483,6 +486,7 @@ us_vhost_parse_args(int argc, char **argv)
 		{"dev-basename", required_argument, NULL, 0},
 		{"tx-csum", required_argument, NULL, 0},
 		{"tso", required_argument, NULL, 0},
+		{"client", no_argument, &client_mode, 1},
 		{NULL, 0, 0, 0},
 	};
 
@@ -1397,6 +1401,7 @@ main(int argc, char *argv[])
 	uint8_t portid;
 	static pthread_t tid;
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	uint64_t flags = 0;
 
 	signal(SIGINT, sigint_handler);
 
@@ -1487,8 +1492,11 @@ main(int argc, char *argv[])
 	if (mergeable == 0)
 		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
+	if (client_mode)
+		flags |= RTE_VHOST_USER_CLIENT;
+
 	/* Register vhost(cuse or user) driver to handle vhost messages. */
-	ret = rte_vhost_driver_register(dev_basename, 0);
+	ret = rte_vhost_driver_register(dev_basename, flags);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "vhost driver register failure.\n");
 
