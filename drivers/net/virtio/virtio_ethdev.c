@@ -59,7 +59,6 @@
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
 
-
 static int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
@@ -491,7 +490,6 @@ static void
 virtio_dev_close(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 
@@ -499,7 +497,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 		virtio_dev_stop(dev);
 
 	/* reset the NIC */
-	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
 	vtpci_reset(hw);
 	virtio_dev_free_mbufs(dev);
@@ -1034,6 +1032,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	struct virtio_net_config *config;
 	struct virtio_net_config local_config;
 	struct rte_pci_device *pci_dev;
+	uint32_t dev_flags = RTE_ETH_DEV_DETACHABLE;
 	int ret;
 
 	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr_mrg_rxbuf));
@@ -1057,7 +1056,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = eth_dev->pci_dev;
 
-	ret = vtpci_init(pci_dev, hw);
+	ret = vtpci_init(pci_dev, hw, &dev_flags);
 	if (ret)
 		return ret;
 
@@ -1074,9 +1073,10 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* If host does not support status then disable LSC */
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS))
-		pci_dev->driver->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+		dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags = dev_flags;
 
 	rx_func_get(eth_dev);
 
@@ -1155,7 +1155,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 			pci_dev->id.device_id);
 
 	/* Setup interrupt callback  */
-	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		rte_intr_callback_register(&pci_dev->intr_handle,
 				   virtio_interrupt_handler, eth_dev);
 
@@ -1190,7 +1190,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = NULL;
 
 	/* reset interrupt callback  */
-	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		rte_intr_callback_unregister(&pci_dev->intr_handle,
 						virtio_interrupt_handler,
 						eth_dev);
@@ -1240,7 +1240,6 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	PMD_INIT_LOG(DEBUG, "configure");
 
@@ -1258,7 +1257,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		if (vtpci_irq_config(hw, 0) == VIRTIO_MSI_NO_VECTOR) {
 			PMD_DRV_LOG(ERR, "failed to set config vector");
 			return -EBUSY;
@@ -1273,11 +1272,10 @@ virtio_dev_start(struct rte_eth_dev *dev)
 {
 	uint16_t nb_queues, i;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct rte_pci_device *pci_dev = dev->pci_dev;
 
 	/* check if lsc interrupt feature is enabled */
 	if (dev->data->dev_conf.intr_conf.lsc) {
-		if (!(pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)) {
+		if (!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)) {
 			PMD_DRV_LOG(ERR, "link status not supported by host");
 			return -ENOTSUP;
 		}

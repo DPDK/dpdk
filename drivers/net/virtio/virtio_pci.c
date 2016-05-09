@@ -199,15 +199,15 @@ legacy_virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
 
 static int
 legacy_virtio_resource_init(struct rte_pci_device *pci_dev,
-			    struct virtio_hw *hw)
+			    struct virtio_hw *hw, uint32_t *dev_flags)
 {
 	if (rte_eal_pci_ioport_map(pci_dev, 0, &hw->io) < 0)
 		return -1;
 
 	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UNKNOWN)
-		pci_dev->driver->drv_flags |= RTE_PCI_DRV_INTR_LSC;
+		*dev_flags |= RTE_ETH_DEV_INTR_LSC;
 	else
-		pci_dev->driver->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
+		*dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
 
 	return 0;
 }
@@ -630,7 +630,8 @@ next:
  * Return 0 on success.
  */
 int
-vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
+vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw,
+	   uint32_t *dev_flags)
 {
 	hw->dev = dev;
 
@@ -643,12 +644,12 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 		PMD_INIT_LOG(INFO, "modern virtio pci detected.");
 		hw->vtpci_ops = &modern_ops;
 		hw->modern    = 1;
-		dev->driver->drv_flags |= RTE_PCI_DRV_INTR_LSC;
+		*dev_flags |= RTE_ETH_DEV_INTR_LSC;
 		return 0;
 	}
 
 	PMD_INIT_LOG(INFO, "trying with legacy virtio pci.");
-	if (legacy_virtio_resource_init(dev, hw) < 0) {
+	if (legacy_virtio_resource_init(dev, hw, dev_flags) < 0) {
 		if (dev->kdrv == RTE_KDRV_UNKNOWN &&
 		    dev->devargs->type != RTE_DEVTYPE_WHITELISTED_PCI) {
 			PMD_INIT_LOG(INFO,

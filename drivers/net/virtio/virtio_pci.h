@@ -293,7 +293,8 @@ vtpci_with_feature(struct virtio_hw *hw, uint64_t bit)
 /*
  * Function declaration from virtio_pci.c
  */
-int vtpci_init(struct rte_pci_device *, struct virtio_hw *);
+int vtpci_init(struct rte_pci_device *, struct virtio_hw *,
+	       uint32_t *dev_flags);
 void vtpci_reset(struct virtio_hw *);
 
 void vtpci_reinit_complete(struct virtio_hw *);
