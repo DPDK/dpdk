@@ -873,6 +873,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/* optimize ring usage */
 		if (vtpci_with_feature(hw, VIRTIO_F_ANY_LAYOUT) &&
 		    rte_mbuf_refcnt_read(txm) == 1 &&
+		    RTE_MBUF_DIRECT(txm) &&
 		    txm->nb_segs == 1 &&
 		    rte_pktmbuf_headroom(txm) >= hdr_size &&
 		    rte_is_aligned(rte_pktmbuf_mtod(txm, char *),
