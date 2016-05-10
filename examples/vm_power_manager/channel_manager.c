@@ -667,6 +667,7 @@ add_vm(const char *vm_name)
 		return -1;
 	}
 	strncpy(new_domain->name, vm_name, sizeof(new_domain->name));
+	new_domain->name[sizeof(new_domain->name) - 1] = '\0';
 	new_domain->channel_mask = 0;
 	new_domain->num_channels = 0;
 
