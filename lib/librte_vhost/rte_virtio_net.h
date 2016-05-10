@@ -268,6 +268,23 @@ int rte_vhost_get_numa_node(int vid);
 uint32_t rte_vhost_get_queue_num(int vid);
 
 /**
+ * Get the virtio net device's ifname. For vhost-cuse, ifname is the
+ * path of the char device. For vhost-user, ifname is the vhost-user
+ * socket file path.
+ *
+ * @param vid
+ *  virtio-net device ID
+ * @param buf
+ *  The buffer to stored the queried ifname
+ * @param len
+ *  The length of buf
+ *
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_get_ifname(int vid, char *buf, size_t len);
+
+/**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtual device. A packet
  * count is returned to indicate the number of packets that were succesfully

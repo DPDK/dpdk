@@ -229,6 +229,7 @@ new_device(struct virtio_net *dev)
 	struct pmd_internal *internal;
 	struct vhost_queue *vq;
 	unsigned i;
+	char ifname[PATH_MAX];
 #ifdef RTE_LIBRTE_VHOST_NUMA
 	int newnode;
 #endif
@@ -238,9 +239,10 @@ new_device(struct virtio_net *dev)
 		return -1;
 	}
 
-	list = find_internal_resource(dev->ifname);
+	rte_vhost_get_ifname(dev->vid, ifname, sizeof(ifname));
+	list = find_internal_resource(ifname);
 	if (list == NULL) {
-		RTE_LOG(INFO, PMD, "Invalid device name\n");
+		RTE_LOG(INFO, PMD, "Invalid device name: %s\n", ifname);
 		return -1;
 	}
 
@@ -360,15 +362,17 @@ vring_state_changed(struct virtio_net *dev, uint16_t vring, int enable)
 	struct rte_vhost_vring_state *state;
 	struct rte_eth_dev *eth_dev;
 	struct internal_list *list;
+	char ifname[PATH_MAX];
 
 	if (dev == NULL) {
 		RTE_LOG(ERR, PMD, "Invalid argument\n");
 		return -1;
 	}
 
-	list = find_internal_resource(dev->ifname);
+	rte_vhost_get_ifname(dev->vid, ifname, sizeof(ifname));
+	list = find_internal_resource(ifname);
 	if (list == NULL) {
-		RTE_LOG(ERR, PMD, "Invalid interface name: %s\n", dev->ifname);
+		RTE_LOG(ERR, PMD, "Invalid interface name: %s\n", ifname);
 		return -1;
 	}
 

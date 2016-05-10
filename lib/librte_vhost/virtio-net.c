@@ -767,6 +767,22 @@ rte_vhost_get_queue_num(int vid)
 	return dev->virt_qp_nb;
 }
 
+int
+rte_vhost_get_ifname(int vid, char *buf, size_t len)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return -1;
+
+	len = RTE_MIN(len, sizeof(dev->ifname));
+
+	strncpy(buf, dev->ifname, len);
+	buf[len - 1] = '\0';
+
+	return 0;
+}
+
 int rte_vhost_enable_guest_notification(struct virtio_net *dev,
 	uint16_t queue_id, int enable)
 {
