@@ -334,8 +334,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40evf_arq_msg_info info;
 	enum i40evf_aq_result ret;
-	int err = -1;
-	int i = 0;
+	int err, i = 0;
 
 	if (_atomic_set_cmd(vf, args->ops))
 		return -1;
@@ -356,19 +355,19 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 	switch (args->ops) {
 	case I40E_VIRTCHNL_OP_RESET_VF:
 		/*no need to process in this function */
+		err = 0;
 		break;
 	case I40E_VIRTCHNL_OP_VERSION:
 	case I40E_VIRTCHNL_OP_GET_VF_RESOURCES:
 		/* for init adminq commands, need to poll the response */
+		err = -1;
 		do {
 			ret = i40evf_read_pfmsg(dev, &info);
 			if (ret == I40EVF_MSG_CMD) {
 				err = 0;
 				break;
-			} else if (ret == I40EVF_MSG_ERR) {
-				err = -1;
+			} else if (ret == I40EVF_MSG_ERR)
 				break;
-			}
 			rte_delay_ms(ASQ_DELAY_MS);
 			/* If don't read msg or read sys event, continue */
 		} while (i++ < MAX_TRY_TIMES);
@@ -377,6 +376,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 
 	default:
 		/* for other adminq in running time, waiting the cmd done flag */
+		err = -1;
 		do {
 			if (vf->pend_cmd == I40E_VIRTCHNL_OP_UNKNOWN) {
 				err = 0;
