@@ -27,7 +27,6 @@ OS_TYPE := $(shell uname -s)
 # CFLAGS
 #
 CFLAGS_BASE_DRIVER = -Wno-unused-parameter
-CFLAGS_BASE_DRIVER += -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-sign-compare
 CFLAGS_BASE_DRIVER += -Wno-missing-prototypes
 CFLAGS_BASE_DRIVER += -Wno-cast-qual
@@ -35,10 +34,14 @@ CFLAGS_BASE_DRIVER += -Wno-unused-function
 CFLAGS_BASE_DRIVER += -Wno-unused-variable
 CFLAGS_BASE_DRIVER += -Wno-strict-aliasing
 CFLAGS_BASE_DRIVER += -Wno-missing-prototypes
+
+ifneq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
+CFLAGS_BASE_DRIVER += -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 ifeq ($(OS_TYPE),Linux)
 ifeq ($(shell clang -Wno-shift-negative-value -Werror -E - < /dev/null > /dev/null 2>&1; echo $$?),0)
 CFLAGS_BASE_DRIVER += -Wno-shift-negative-value
+endif
 endif
 endif
 
@@ -57,7 +60,7 @@ ifeq ($(shell clang -Wno-pointer-bool-conversion -Werror -E - < /dev/null > /dev
 CFLAGS_BASE_DRIVER += -Wno-pointer-bool-conversion
 endif
 else
-#icc flags
+CFLAGS_BASE_DRIVER += -wd188 #188: enumerated type mixed with another type
 endif
 
 #
