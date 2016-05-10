@@ -783,6 +783,23 @@ rte_vhost_get_ifname(int vid, char *buf, size_t len)
 	return 0;
 }
 
+uint16_t
+rte_vhost_avail_entries(int vid, uint16_t queue_id)
+{
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (!dev)
+		return 0;
+
+	vq = dev->virtqueue[queue_id];
+	if (!vq->enabled)
+		return 0;
+
+	return *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx_res;
+}
+
 int rte_vhost_enable_guest_notification(struct virtio_net *dev,
 	uint16_t queue_id, int enable)
 {

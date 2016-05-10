@@ -709,11 +709,11 @@ switch_worker(__rte_unused void *arg)
 					* must be less than virtio queue size
 					*/
 					if (enable_retry && unlikely(rx_count >
-						rte_vring_available_entries(dev, VIRTIO_RXQ))) {
+						rte_vhost_avail_entries(dev->vid, VIRTIO_RXQ))) {
 						for (retry = 0; retry < burst_rx_retry_num;
 							retry++) {
 							rte_delay_us(burst_rx_delay_time);
-							if (rx_count <= rte_vring_available_entries(dev, VIRTIO_RXQ))
+							if (rx_count <= rte_vhost_avail_entries(dev->vid, VIRTIO_RXQ))
 								break;
 						}
 					}

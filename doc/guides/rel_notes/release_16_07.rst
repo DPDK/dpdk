@@ -161,6 +161,9 @@ API Changes
 * The function ``rte_eth_dev_info_get`` fill the new fields ``nb_rx_queues``
   and ``nb_tx_queues`` in the structure ``rte_eth_dev_info``.
 
+* The vhost function ``rte_vring_available_entries`` is renamed to
+  ``rte_vhost_avail_entries``.
+
 
 ABI Changes
 -----------

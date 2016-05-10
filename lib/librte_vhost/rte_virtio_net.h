@@ -184,17 +184,6 @@ struct virtio_net_device_ops {
 	int (*vring_state_changed)(struct virtio_net *dev, uint16_t queue_id, int enable);	/**< triggered when a vring is enabled or disabled */
 };
 
-static inline uint16_t __attribute__((always_inline))
-rte_vring_available_entries(struct virtio_net *dev, uint16_t queue_id)
-{
-	struct vhost_virtqueue *vq = dev->virtqueue[queue_id];
-
-	if (!vq->enabled)
-		return 0;
-
-	return *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx_res;
-}
-
 /**
  * Function to convert guest physical addresses to vhost virtual addresses.
  * This is used to convert guest virtio buffer addresses.
@@ -283,6 +272,19 @@ uint32_t rte_vhost_get_queue_num(int vid);
  *  0 on success, -1 on failure
  */
 int rte_vhost_get_ifname(int vid, char *buf, size_t len);
+
+/**
+ * Get how many avail entries are left in the queue
+ *
+ * @param vid
+ *  virtio-net device ID
+ * @param queue_id
+ *  virtio queue index
+ *
+ * @return
+ *  num of avail entires left
+ */
+uint16_t rte_vhost_avail_entries(int vid, uint16_t queue_id);
 
 /**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
