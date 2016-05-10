@@ -756,6 +756,17 @@ rte_vhost_get_numa_node(int vid)
 #endif
 }
 
+uint32_t
+rte_vhost_get_queue_num(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return 0;
+
+	return dev->virt_qp_nb;
+}
+
 int rte_vhost_enable_guest_notification(struct virtio_net *dev,
 	uint16_t queue_id, int enable)
 {

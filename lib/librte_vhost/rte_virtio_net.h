@@ -257,6 +257,17 @@ int rte_vhost_driver_session_start(void);
 int rte_vhost_get_numa_node(int vid);
 
 /**
+ * Get the number of queues the device supports.
+ *
+ * @param vid
+ *  virtio-net device ID
+ *
+ * @return
+ *  The number of queues, 0 on failure
+ */
+uint32_t rte_vhost_get_queue_num(int vid);
+
+/**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtual device. A packet
  * count is returned to indicate the number of packets that were succesfully

@@ -25,5 +25,6 @@ DPDK_16.07 {
 	global:
 
 	rte_vhost_get_numa_node;
+	rte_vhost_get_queue_num;
 
 } DPDK_2.1;

@@ -270,7 +270,7 @@ new_device(struct virtio_net *dev)
 		vq->port = eth_dev->data->port_id;
 	}
 
-	for (i = 0; i < dev->virt_qp_nb * VIRTIO_QNUM; i++)
+	for (i = 0; i < rte_vhost_get_queue_num(dev->vid) * VIRTIO_QNUM; i++)
 		rte_vhost_enable_guest_notification(dev, i, 0);
 
 	dev->priv = eth_dev;
