@@ -20,3 +20,10 @@ DPDK_2.1 {
 	rte_vhost_driver_unregister;
 
 } DPDK_2.0;
+
+DPDK_16.07 {
+	global:
+
+	rte_vhost_get_numa_node;
+
+} DPDK_2.1;

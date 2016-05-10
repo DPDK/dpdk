@@ -245,6 +245,18 @@ int rte_vhost_driver_callback_register(struct virtio_net_device_ops const * cons
 int rte_vhost_driver_session_start(void);
 
 /**
+ * Get the numa node from which the virtio net device's memory
+ * is allocated.
+ *
+ * @param vid
+ *  virtio-net device ID
+ *
+ * @return
+ *  The numa node, -1 on failure
+ */
+int rte_vhost_get_numa_node(int vid);
+
+/**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtual device. A packet
  * count is returned to indicate the number of packets that were succesfully

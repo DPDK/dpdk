@@ -230,7 +230,7 @@ new_device(struct virtio_net *dev)
 	struct vhost_queue *vq;
 	unsigned i;
 #ifdef RTE_LIBRTE_VHOST_NUMA
-	int newnode, ret;
+	int newnode;
 #endif
 
 	if (dev == NULL) {
@@ -248,14 +248,9 @@ new_device(struct virtio_net *dev)
 	internal = eth_dev->data->dev_private;
 
 #ifdef RTE_LIBRTE_VHOST_NUMA
-	ret  = get_mempolicy(&newnode, NULL, 0, dev,
-			MPOL_F_NODE | MPOL_F_ADDR);
-	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "Unknown numa node\n");
-		return -1;
-	}
-
-	eth_dev->data->numa_node = newnode;
+	newnode = rte_vhost_get_numa_node(dev->vid);
+	if (newnode >= 0)
+		eth_dev->data->numa_node = newnode;
 #endif
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {

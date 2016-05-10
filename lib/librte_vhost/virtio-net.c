@@ -730,6 +730,32 @@ vhost_set_backend(int vid, struct vhost_vring_file *file)
 	return 0;
 }
 
+int
+rte_vhost_get_numa_node(int vid)
+{
+#ifdef RTE_LIBRTE_VHOST_NUMA
+	struct virtio_net *dev = get_device(vid);
+	int numa_node;
+	int ret;
+
+	if (dev == NULL)
+		return -1;
+
+	ret = get_mempolicy(&numa_node, NULL, 0, dev,
+			    MPOL_F_NODE | MPOL_F_ADDR);
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%d) failed to query numa node: %d\n", vid, ret);
+		return -1;
+	}
+
+	return numa_node;
+#else
+	RTE_SET_USED(vid);
+	return -1;
+#endif
+}
+
 int rte_vhost_enable_guest_notification(struct virtio_net *dev,
 	uint16_t queue_id, int enable)
 {
