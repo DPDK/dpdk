@@ -320,6 +320,7 @@ vhost_set_ifname(struct vhost_device_ctx ctx,
 		sizeof(dev->ifname) : if_len;
 
 	strncpy(dev->ifname, if_name, len);
+	dev->ifname[sizeof(dev->ifname) - 1] = '\0';
 }
 
 
