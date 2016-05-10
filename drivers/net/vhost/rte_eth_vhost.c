@@ -275,7 +275,6 @@ new_device(struct virtio_net *dev)
 	for (i = 0; i < rte_vhost_get_queue_num(dev->vid) * VIRTIO_QNUM; i++)
 		rte_vhost_enable_guest_notification(dev, i, 0);
 
-	dev->priv = eth_dev;
 	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
@@ -303,6 +302,8 @@ destroy_device(volatile struct virtio_net *dev)
 {
 	struct rte_eth_dev *eth_dev;
 	struct vhost_queue *vq;
+	struct internal_list *list;
+	char ifname[PATH_MAX];
 	unsigned i;
 
 	if (dev == NULL) {
@@ -310,11 +311,13 @@ destroy_device(volatile struct virtio_net *dev)
 		return;
 	}
 
-	eth_dev = (struct rte_eth_dev *)dev->priv;
-	if (eth_dev == NULL) {
-		RTE_LOG(INFO, PMD, "Failed to find a ethdev\n");
+	rte_vhost_get_ifname(dev->vid, ifname, sizeof(ifname));
+	list = find_internal_resource(ifname);
+	if (list == NULL) {
+		RTE_LOG(ERR, PMD, "Invalid interface name: %s\n", ifname);
 		return;
 	}
+	eth_dev = list->eth_dev;
 
 	/* Wait until rx/tx_pkt_burst stops accessing vhost device */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
@@ -335,8 +338,6 @@ destroy_device(volatile struct virtio_net *dev)
 	}
 
 	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
-
-	dev->priv = NULL;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		vq = eth_dev->data->rx_queues[i];

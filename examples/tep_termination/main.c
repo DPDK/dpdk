@@ -919,12 +919,20 @@ destroy_device(volatile struct virtio_net *dev)
 	struct virtio_net_data_ll *ll_main_dev_cur;
 	struct virtio_net_data_ll *ll_lcore_dev_last = NULL;
 	struct virtio_net_data_ll *ll_main_dev_last = NULL;
-	struct vhost_dev *vdev;
+	struct vhost_dev *vdev = NULL;
 	int lcore;
 
 	dev->flags &= ~VIRTIO_DEV_RUNNING;
 
-	vdev = (struct vhost_dev *)dev->priv;
+	ll_main_dev_cur = ll_root_used;
+	while (ll_main_dev_cur != NULL) {
+		if (ll_main_dev_cur->vdev->vid == dev->vid) {
+			vdev = ll_main_dev_cur->vdev;
+			break;
+		}
+	}
+	if (!vdev)
+		return;
 
 	/* set the remove flag. */
 	vdev->remove = 1;
@@ -1019,7 +1027,7 @@ new_device(struct virtio_net *dev)
 		return -1;
 	}
 	vdev->dev = dev;
-	dev->priv = vdev;
+	vdev->vid = dev->vid;
 	/* Add device to main ll */
 	ll_dev = get_data_ll_free_entry(&ll_root_free);
 	if (ll_dev == NULL) {

@@ -1173,10 +1173,15 @@ switch_worker(void *arg __rte_unused)
 static void
 destroy_device (volatile struct virtio_net *dev)
 {
-	struct vhost_dev *vdev;
+	struct vhost_dev *vdev = NULL;
 	int lcore;
 
-	vdev = (struct vhost_dev *)dev->priv;
+	TAILQ_FOREACH(vdev, &vhost_dev_list, global_vdev_entry) {
+		if (vdev->vid == dev->vid)
+			break;
+	}
+	if (!vdev)
+		return;
 	/*set the remove flag. */
 	vdev->remove = 1;
 	while(vdev->ready != DEVICE_SAFE_REMOVE) {
@@ -1231,7 +1236,6 @@ new_device (struct virtio_net *dev)
 		return -1;
 	}
 	vdev->dev = dev;
-	dev->priv = vdev;
 	vdev->vid = vid;
 
 	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, global_vdev_entry);
