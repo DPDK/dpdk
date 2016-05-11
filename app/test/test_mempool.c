@@ -71,8 +71,6 @@
  *      put them back in the pool.
  */
 
-#define N 65536
-#define TIME_S 5
 #define MEMPOOL_ELT_SIZE 2048
 #define MAX_KEEP 16
 #define MEMPOOL_SIZE ((rte_lcore_count()*(MAX_KEEP+RTE_MEMPOOL_CACHE_MAX_SIZE))-1)

@@ -100,8 +100,6 @@
 
 #define RING_SIZE 4096
 #define MAX_BULK 32
-#define N 65536
-#define TIME_S 5
 
 static rte_atomic32_t synchro;
 

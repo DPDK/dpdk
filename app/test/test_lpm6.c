@@ -113,8 +113,6 @@ rte_lpm6_test tests6[] = {
 };
 
 #define NUM_LPM6_TESTS                (sizeof(tests6)/sizeof(tests6[0]))
-#define RTE_LPM6_TBL24_NUM_ENTRIES                             (1 << 24)
-#define RTE_LPM6_LOOKUP_SUCCESS                               0x04000000
 #define MAX_DEPTH                                                    128
 #define MAX_RULES                                                1000000
 #define NUMBER_TBL8S                                           (1 << 16)

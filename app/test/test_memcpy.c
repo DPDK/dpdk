@@ -37,10 +37,7 @@
 #include <stdlib.h>
 
 #include <rte_common.h>
-#include <rte_cycles.h>
 #include <rte_random.h>
-#include <rte_malloc.h>
-
 #include <rte_memcpy.h>
 
 #include "test.h"
@@ -64,18 +61,6 @@ static size_t buf_sizes[] = {
 static size_t buf_sizes[TEST_VALUE_RANGE];
 #define SMALL_BUFFER_SIZE       TEST_VALUE_RANGE
 #endif /* TEST_VALUE_RANGE == 0 */
-
-
-/*
- * Arrays of this size are used for measuring uncached memory accesses by
- * picking a random location within the buffer. Make this smaller if there are
- * memory allocation errors.
- */
-#define LARGE_BUFFER_SIZE       (100 * 1024 * 1024)
-
-/* How many times to run timing loop for performance tests */
-#define TEST_ITERATIONS         1000000
-#define TEST_BATCH_SIZE         100
 
 /* Data is aligned on this many bytes (power of 2) */
 #define ALIGNMENT_UNIT          32
