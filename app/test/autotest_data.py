@@ -58,6 +58,12 @@ parallel_test_group_list = [
 	"Tests" :
 	[
 		{
+		 "Name" :	"Cycles autotest",
+		 "Command" : 	"cycles_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+		{
 		 "Name" :	"Timer autotest",
 		 "Command" : 	"timer_autotest",
 		 "Func" :	timer_autotest,
@@ -376,12 +382,6 @@ non_parallel_test_group_list = [
 	"Memory" :	per_sockets(256),
 	"Tests" :
 	[
-		{
-		 "Name" :	"Cycles autotest",
-		 "Command" : 	"cycles_autotest",
-		 "Func" :	default_autotest,
-		 "Report" :	None,
-		},
 		{
 		 "Name" :	"Mempool performance autotest",
 		 "Command" : 	"mempool_perf_autotest",
