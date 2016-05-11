@@ -88,17 +88,6 @@
 		PKT_TX_TCP_SEG |		 \
 		PKT_TX_OUTER_IP_CKSUM)
 
-static inline struct rte_mbuf *
-rte_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
-}
-
-
 #if 1
 #define RTE_PMD_USE_PREFETCH
 #endif
@@ -1609,7 +1598,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   (unsigned) rx_id, (unsigned) staterr,
 			   (unsigned) rte_le_to_cpu_16(rxd.wb.upper.length));
 
-		nmb = rte_rxmbuf_alloc(rxq->mb_pool);
+		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
 				   "queue_id=%u", (unsigned) rxq->port_id,
@@ -1880,7 +1869,7 @@ next_desc:
 			   rte_le_to_cpu_16(rxd.wb.upper.length));
 
 		if (!bulk_alloc) {
-			nmb = rte_rxmbuf_alloc(rxq->mb_pool);
+			nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
 			if (nmb == NULL) {
 				PMD_RX_LOG(DEBUG, "RX mbuf alloc failed "
 						  "port_id=%u queue_id=%u",
@@ -3861,7 +3850,7 @@ ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 	/* Initialize software ring entries */
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
 		volatile union ixgbe_adv_rx_desc *rxd;
-		struct rte_mbuf *mbuf = rte_rxmbuf_alloc(rxq->mb_pool);
+		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
 
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed queue_id=%u",

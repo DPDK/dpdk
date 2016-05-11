@@ -57,16 +57,6 @@
 #define rte_packet_prefetch(p) do {} while (0)
 #endif
 
-static inline struct rte_mbuf *
-rte_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
-}
-
 static inline uint16_t
 enic_cq_rx_desc_ciflags(struct cq_enet_rq_desc *crd)
 {
@@ -283,7 +273,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rqd_ptr = (struct rq_enet_desc *)(rq->ring.descs) + rx_id;
 
 		/* allocate a new mbuf */
-		nmb = rte_rxmbuf_alloc(rq->mp);
+		nmb = rte_mbuf_raw_alloc(rq->mp);
 		if (nmb == NULL) {
 			dev_err(enic, "RX mbuf alloc failed port=%u qid=%u",
 			enic->port_id, (unsigned)rq->index);

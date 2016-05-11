@@ -841,17 +841,6 @@ i40e_txd_enable_checksum(uint64_t ol_flags,
 	}
 }
 
-static inline struct rte_mbuf *
-rte_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-
-	return m;
-}
-
 /* Construct the tx flags */
 static inline uint64_t
 i40e_build_ctob(uint32_t td_cmd,
@@ -1225,7 +1214,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (!(rx_status & (1 << I40E_RX_DESC_STATUS_DD_SHIFT)))
 			break;
 
-		nmb = rte_rxmbuf_alloc(rxq->mp);
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!nmb))
 			break;
 		rxd = *rxdp;
@@ -1336,7 +1325,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		if (!(rx_status & (1 << I40E_RX_DESC_STATUS_DD_SHIFT)))
 			break;
 
-		nmb = rte_rxmbuf_alloc(rxq->mp);
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!nmb))
 			break;
 		rxd = *rxdp;
@@ -2774,7 +2763,7 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
 
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
 		volatile union i40e_rx_desc *rxd;
-		struct rte_mbuf *mbuf = rte_rxmbuf_alloc(rxq->mp);
+		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mp);
 
 		if (unlikely(!mbuf)) {
 			PMD_DRV_LOG(ERR, "Failed to allocate mbuf for RX");

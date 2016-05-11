@@ -89,17 +89,6 @@ static struct ether_addr cfg_ether_dst	=
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
-static inline struct rte_mbuf *
-tx_mbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
-}
-
-
 static inline uint16_t
 ip_sum(const unaligned_uint16_t *hdr, int hdr_len)
 {
@@ -167,7 +156,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	ol_flags = ports[fs->tx_port].tx_ol_flags;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
-		pkt = tx_mbuf_alloc(mbp);
+		pkt = rte_mbuf_raw_alloc(mbp);
 		if (!pkt)
 			break;
 

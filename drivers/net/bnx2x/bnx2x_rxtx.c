@@ -11,17 +11,6 @@
 #include "bnx2x.h"
 #include "bnx2x_rxtx.h"
 
-static inline struct rte_mbuf *
-bnx2x_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check(m, 0);
-
-	return m;
-}
-
 static const struct rte_memzone *
 ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 		      uint16_t queue_id, uint32_t ring_size, int socket_id)
@@ -148,7 +137,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Initialize software ring entries */
 	rxq->rx_mbuf_alloc = 0;
 	for (idx = 0; idx < rxq->nb_rx_desc; idx = NEXT_RX_BD(idx)) {
-		mbuf = bnx2x_rxmbuf_alloc(mp);
+		mbuf = rte_mbuf_raw_alloc(mp);
 		if (NULL == mbuf) {
 			PMD_RX_LOG(ERR, "RX mbuf alloc failed queue_id=%u, idx=%d",
 				   (unsigned)rxq->queue_id, idx);
@@ -405,7 +394,7 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		len = cqe_fp->pkt_len_or_gro_seg_len;
 		pad = cqe_fp->placement_offset;
 
-		new_mb = bnx2x_rxmbuf_alloc(rxq->mb_pool);
+		new_mb = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(!new_mb)) {
 			PMD_RX_LOG(ERR, "mbuf alloc fail fp[%02d]", fp->index);
 			goto next_rx;

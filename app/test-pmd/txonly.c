@@ -86,16 +86,6 @@
 static struct ipv4_hdr  pkt_ip_hdr;  /**< IP header of transmitted packets. */
 static struct udp_hdr pkt_udp_hdr; /**< UDP header of transmitted packets. */
 
-static inline struct rte_mbuf *
-tx_mbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
-}
-
 static void
 copy_buf_to_pkt_segs(void* buf, unsigned len, struct rte_mbuf *pkt,
 		     unsigned offset)
@@ -225,7 +215,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_QINQ)
 		ol_flags |= PKT_TX_QINQ_PKT;
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
-		pkt = tx_mbuf_alloc(mbp);
+		pkt = rte_mbuf_raw_alloc(mbp);
 		if (pkt == NULL) {
 		nomore_mbuf:
 			if (nb_pkt == 0)
@@ -240,7 +230,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			nb_segs = tx_pkt_nb_segs;
 		pkt_len = pkt->data_len;
 		for (i = 1; i < nb_segs; i++) {
-			pkt_seg->next = tx_mbuf_alloc(mbp);
+			pkt_seg->next = rte_mbuf_raw_alloc(mbp);
 			if (pkt_seg->next == NULL) {
 				pkt->nb_segs = i;
 				rte_pktmbuf_free(pkt);

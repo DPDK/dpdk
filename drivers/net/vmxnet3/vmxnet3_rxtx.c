@@ -86,16 +86,6 @@ static void vmxnet3_rxq_dump(struct vmxnet3_rx_queue *);
 static void vmxnet3_txq_dump(struct vmxnet3_tx_queue *);
 #endif
 
-static struct rte_mbuf *
-rte_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
-}
-
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
 static void
 vmxnet3_rxq_dump(struct vmxnet3_rx_queue *rxq)
@@ -544,7 +534,7 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 		rxd = (struct Vmxnet3_RxDesc *)(ring->base + ring->next2fill);
 
 		/* Allocate blank mbuf for the current Rx Descriptor */
-		mbuf = rte_rxmbuf_alloc(rxq->mp);
+		mbuf = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(mbuf == NULL)) {
 			PMD_RX_LOG(ERR, "Error allocating mbuf");
 			rxq->stats.rx_buf_alloc_failure++;

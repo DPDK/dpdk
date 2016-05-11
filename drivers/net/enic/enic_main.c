@@ -60,17 +60,6 @@
 #include "vnic_nic.h"
 #include "enic_vnic_wq.h"
 
-static inline struct rte_mbuf *
-rte_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check_raw(m, 0);
-	return m;
-}
-
-
 static inline int enic_is_sriov_vf(struct enic *enic)
 {
 	return enic->pdev->id.device_id == PCI_DEVICE_ID_CISCO_VIC_ENET_VF;
@@ -347,7 +336,7 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 		  rq->ring.desc_count);
 
 	for (i = 0; i < rq->ring.desc_count; i++, rqd++) {
-		mb = rte_rxmbuf_alloc(rq->mp);
+		mb = rte_mbuf_raw_alloc(rq->mp);
 		if (mb == NULL) {
 			dev_err(enic, "RX mbuf alloc failed queue_id=%u\n",
 			(unsigned)rq->index);

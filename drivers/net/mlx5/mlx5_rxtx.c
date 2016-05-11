@@ -929,7 +929,7 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 * cacheline while allocating rep.
 			 */
 			rte_prefetch0(seg);
-			rep = __rte_mbuf_raw_alloc(rxq->mp);
+			rep = rte_mbuf_raw_alloc(rxq->mp);
 			if (unlikely(rep == NULL)) {
 				/*
 				 * Unable to allocate a replacement mbuf,
@@ -1125,7 +1125,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			break;
 		assert(ret >= (rxq->crc_present << 2));
 		len = ret - (rxq->crc_present << 2);
-		rep = __rte_mbuf_raw_alloc(rxq->mp);
+		rep = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
 			/*
 			 * Unable to allocate a replacement mbuf,

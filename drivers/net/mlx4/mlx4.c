@@ -3075,7 +3075,7 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 * cacheline while allocating rep.
 			 */
 			rte_prefetch0(seg);
-			rep = __rte_mbuf_raw_alloc(rxq->mp);
+			rep = rte_mbuf_raw_alloc(rxq->mp);
 			if (unlikely(rep == NULL)) {
 				/*
 				 * Unable to allocate a replacement mbuf,
@@ -3274,7 +3274,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (ret == 0)
 			break;
 		len = ret;
-		rep = __rte_mbuf_raw_alloc(rxq->mp);
+		rep = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
 			/*
 			 * Unable to allocate a replacement mbuf,

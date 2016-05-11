@@ -10,17 +10,6 @@
 
 static bool gro_disable = 1;	/* mod_param */
 
-static inline struct
-rte_mbuf *qede_rxmbuf_alloc(struct rte_mempool *mp)
-{
-	struct rte_mbuf *m;
-
-	m = __rte_mbuf_raw_alloc(mp);
-	__rte_mbuf_sanity_check(m, 0);
-
-	return m;
-}
-
 static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 {
 	struct rte_mbuf *new_mb = NULL;
@@ -28,7 +17,7 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 	dma_addr_t mapping;
 	uint16_t idx = rxq->sw_rx_prod & NUM_RX_BDS(rxq);
 
-	new_mb = qede_rxmbuf_alloc(rxq->mb_pool);
+	new_mb = rte_mbuf_raw_alloc(rxq->mb_pool);
 	if (unlikely(!new_mb)) {
 		PMD_RX_LOG(ERR, rxq,
 			   "Failed to allocate rx buffer "
