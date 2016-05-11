@@ -86,8 +86,8 @@ bad=$(echo "$headlines" | grep \
 [ -z "$bad" ] || printf "Wrong headline uppercase:\n$bad\n"
 
 # check headline uppercase (Rx/Tx, VF, L2, MAC, Linux, ARM...)
-bad=$(echo "$headlines" | grep \
-	-e 'rx\|tx\|RX\|TX' \
+bad=$(echo "$headlines" | grep -E \
+	-e '\<(rx|tx|RX|TX)\>' \
 	-e '\<[pv]f\>' \
 	-e '\<l[234]\>' \
 	-e ':.*\<dma\>' \
