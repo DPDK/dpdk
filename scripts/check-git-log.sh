@@ -55,7 +55,7 @@ tags=$(git log --format='%b' $range | grep -i -e 'by *:' -e 'fix.*:')
 fixes=$(git log --format='%h %s' $range | grep -i ': *fix' | cut -d' ' -f1)
 
 # check headline format (spacing, no punctuation, no code)
-bad=$(echo "$headlines" | grep \
+bad=$(echo "$headlines" | grep --color=always \
 	-e '	' \
 	-e '^ ' \
 	-e ' $' \
@@ -69,7 +69,7 @@ bad=$(echo "$headlines" | grep \
 [ -z "$bad" ] || printf "Wrong headline format:\n$bad\n"
 
 # check headline label for common typos
-bad=$(echo "$headlines" | grep \
+bad=$(echo "$headlines" | grep --color=always \
 	-e '^example[:/]' \
 	-e '^apps/' \
 	-e '^testpmd' \
@@ -79,14 +79,14 @@ bad=$(echo "$headlines" | grep \
 [ -z "$bad" ] || printf "Wrong headline label:\n$bad\n"
 
 # check headline lowercase for first words
-bad=$(echo "$headlines" | grep \
+bad=$(echo "$headlines" | grep --color=always \
 	-e '^.*[A-Z].*:' \
 	-e ': *[A-Z]' \
 	| sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong headline uppercase:\n$bad\n"
 
 # check headline uppercase (Rx/Tx, VF, L2, MAC, Linux, ARM...)
-bad=$(echo "$headlines" | grep -E \
+bad=$(echo "$headlines" | grep -E --color=always \
 	-e '\<(rx|tx|RX|TX)\>' \
 	-e '\<[pv]f\>' \
 	-e '\<l[234]\>' \
