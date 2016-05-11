@@ -123,7 +123,7 @@ app_eal_core_mask(void)
 	uint64_t cm = 0;
 	struct rte_config *cfg = rte_eal_get_configuration();
 
-	for (i = 0; i < RTE_MAX_LCORE; i++) {
+	for (i = 0; i < APP_MAX_LCORE; i++) {
 		if (cfg->lcore_role[i] == ROLE_RTE)
 			cm |= (1ULL << i);
 	}
@@ -142,7 +142,7 @@ app_cpu_core_count(void)
 	char path[PATH_MAX];
 	uint32_t ncores = 0;
 
-	for(i = 0; i < RTE_MAX_LCORE; i++) {
+	for (i = 0; i < APP_MAX_LCORE; i++) {
 		len = snprintf(path, sizeof(path), SYS_CPU_DIR, i);
 		if (len <= 0 || (unsigned)len >= sizeof(path))
 			continue;
