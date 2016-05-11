@@ -46,11 +46,13 @@ DIR := $(shell basename $(RTE_OUTPUT))
 #
 # test: launch auto-tests, very simple for now.
 #
-PHONY: test fast_test
+.PHONY: test fast_test perf_test coverage
 
-coverage: BLACKLIST=-Mempool_perf,Memcpy_perf,Hash_perf
-fast_test: BLACKLIST=-Ring_perf,Mempool_perf,Memcpy_perf,Hash_perf,Lpm6
-perf_test:WHITELIST=Mempool_perf,Memcpy_perf,Hash_perf,Ring_perf
+PERFLIST=ring_perf,mempool_perf,memcpy_perf,hash_perf,timer_perf
+coverage: BLACKLIST=-$(PERFLIST)
+fast_test: BLACKLIST=-$(PERFLIST)
+perf_test: WHITELIST=$(PERFLIST)
+
 test fast_test perf_test:
 	@mkdir -p $(AUTOTEST_DIR) ; \
 	cd $(AUTOTEST_DIR) ; \
