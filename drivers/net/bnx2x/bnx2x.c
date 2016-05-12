@@ -2113,10 +2113,12 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
  * the mbuf and return to the caller.
  *
  * Returns:
- *   0 = Success, !0 = Failure
+ *   void.
+ *
  *   Note the side effect that an mbuf may be freed if it causes a problem.
  */
-int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head, int m_pkts)
+void bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head,
+		    int m_pkts)
 {
 	struct rte_mbuf *m0;
 	struct eth_tx_start_bd *tx_start_bd;
@@ -2135,12 +2137,6 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head, int m_p
 	for (m_tx = 0; m_tx < m_pkts; m_tx++) {
 
 		m0 = *m_head++;
-
-		if (unlikely(txq->nb_tx_avail < 3)) {
-			PMD_TX_LOG(ERR, "no enough bds %d/%d",
-				   bd_prod, txq->nb_tx_avail);
-			return -ENOMEM;
-		}
 
 		txq->sw_ring[TX_BD(pkt_prod, txq)] = m0;
 
@@ -2252,8 +2248,6 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head, int m_p
 	fp->tx_db.data.prod += (m_pkts << 1) + nbds;
 	DOORBELL(sc, txq->queue_id, fp->tx_db.raw);
 	mb();
-
-	return 0;
 }
 
 static uint16_t bnx2x_cid_ilt_lines(struct bnx2x_softc *sc)

@@ -167,6 +167,8 @@ struct bnx2x_device_type {
 #define TX_PAGE(x)              (((x) & ~USABLE_TX_BD_PER_PAGE) >> 8)
 #define TX_IDX(x)               ((x) & USABLE_TX_BD_PER_PAGE)
 
+#define BDS_PER_TX_PKT		(3)
+
 /*
  * Trigger pending transmits when the number of available BDs is greater
  * than 1/8 of the total number of usable BDs.
@@ -1864,7 +1866,8 @@ int bnx2x_alloc_hsi_mem(struct bnx2x_softc *sc);
 int bnx2x_alloc_ilt_mem(struct bnx2x_softc *sc);
 void bnx2x_free_ilt_mem(struct bnx2x_softc *sc);
 void bnx2x_dump_tx_chain(struct bnx2x_fastpath * fp, int bd_prod, int count);
-int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head, int m_pkts);
+void bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head,
+	int m_pkts);
 uint8_t bnx2x_txeof(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp);
 void bnx2x_print_adapter_info(struct bnx2x_softc *sc);
 int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp);
