@@ -397,6 +397,8 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		new_mb = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(!new_mb)) {
 			PMD_RX_LOG(ERR, "mbuf alloc fail fp[%02d]", fp->index);
+			rte_eth_devices[rxq->port_id].data->
+					rx_mbuf_alloc_failed++;
 			goto next_rx;
 		}
 

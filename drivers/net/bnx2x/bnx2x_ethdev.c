@@ -276,6 +276,9 @@ static void
 bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
+	uint32_t brb_truncate_discard;
+	uint64_t brb_drops;
+	uint64_t brb_truncates;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -316,6 +319,19 @@ bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->rx_nombuf =
 		HILO_U64(sc->eth_stats.no_buff_discard_hi,
 				sc->eth_stats.no_buff_discard_lo);
+
+	brb_drops =
+		HILO_U64(sc->eth_stats.brb_drop_hi,
+			 sc->eth_stats.brb_drop_lo);
+
+	brb_truncates =
+		HILO_U64(sc->eth_stats.brb_truncate_hi,
+			 sc->eth_stats.brb_truncate_lo);
+
+	brb_truncate_discard = sc->eth_stats.brb_truncate_discard;
+
+	stats->imissed = brb_drops + brb_truncates +
+			 brb_truncate_discard + stats->rx_nombuf;
 }
 
 static void
