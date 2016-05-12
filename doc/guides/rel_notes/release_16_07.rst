@@ -63,6 +63,13 @@ New Features
   that a brand new QEMU version (v2.7 or above) is needed, otherwise, the
   reconnect won't work.
 
+  DPDK vhost-user will also try to reconnect by default when
+
+  * the first connect fails (when QEMU is not started yet)
+  * the connection is broken (when QEMU restarts)
+
+  It can be turned off if flag ``RTE_VHOST_USER_NO_RECONNECT`` is set.
+
 * **Added AES-CTR support to AESNI MB PMD.**
 
   Now AESNI MB PMD supports 128/192/256-bit counter mode AES encryption and

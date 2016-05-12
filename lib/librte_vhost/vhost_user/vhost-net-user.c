@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/queue.h>
 #include <errno.h>
 #include <pthread.h>
 
@@ -60,6 +61,7 @@ struct vhost_user_socket {
 	char *path;
 	int listenfd;
 	bool is_server;
+	bool reconnect;
 };
 
 struct vhost_user_connection {
@@ -79,6 +81,7 @@ struct vhost_user {
 
 static void vhost_user_server_new_connection(int fd, void *data, int *remove);
 static void vhost_user_msg_handler(int fd, void *dat, int *remove);
+static int vhost_user_create_client(struct vhost_user_socket *vsocket);
 
 static struct vhost_user vhost_user = {
 	.fdset = {
@@ -305,6 +308,8 @@ vhost_user_msg_handler(int connfd, void *dat, int *remove)
 	vid = conn->vid;
 	ret = read_vhost_message(connfd, &msg);
 	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
+		struct vhost_user_socket *vsocket = conn->vsocket;
+
 		if (ret < 0)
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"vhost read message failed\n");
@@ -319,6 +324,9 @@ vhost_user_msg_handler(int connfd, void *dat, int *remove)
 		*remove = 1;
 		free(conn);
 		vhost_destroy_device(vid);
+
+		if (vsocket->reconnect)
+			vhost_user_create_client(vsocket);
 
 		return;
 	}
@@ -471,6 +479,73 @@ err:
 	return -1;
 }
 
+struct vhost_user_reconnect {
+	struct sockaddr_un un;
+	int fd;
+	struct vhost_user_socket *vsocket;
+
+	TAILQ_ENTRY(vhost_user_reconnect) next;
+};
+
+TAILQ_HEAD(vhost_user_reconnect_tailq_list, vhost_user_reconnect);
+struct vhost_user_reconnect_list {
+	struct vhost_user_reconnect_tailq_list head;
+	pthread_mutex_t mutex;
+};
+
+static struct vhost_user_reconnect_list reconn_list;
+static pthread_t reconn_tid;
+
+static void *
+vhost_user_client_reconnect(void *arg __rte_unused)
+{
+	struct vhost_user_reconnect *reconn, *next;
+
+	while (1) {
+		pthread_mutex_lock(&reconn_list.mutex);
+
+		/*
+		 * An equal implementation of TAILQ_FOREACH_SAFE,
+		 * which does not exist on all platforms.
+		 */
+		for (reconn = TAILQ_FIRST(&reconn_list.head);
+		     reconn != NULL; reconn = next) {
+			next = TAILQ_NEXT(reconn, next);
+
+			if (connect(reconn->fd, (struct sockaddr *)&reconn->un,
+				    sizeof(reconn->un)) < 0)
+				continue;
+
+			RTE_LOG(INFO, VHOST_CONFIG,
+				"%s: connected\n", reconn->vsocket->path);
+			vhost_user_add_connection(reconn->fd, reconn->vsocket);
+			TAILQ_REMOVE(&reconn_list.head, reconn, next);
+			free(reconn);
+		}
+
+		pthread_mutex_unlock(&reconn_list.mutex);
+		sleep(1);
+	}
+
+	return NULL;
+}
+
+static int
+vhost_user_reconnect_init(void)
+{
+	int ret;
+
+	pthread_mutex_init(&reconn_list.mutex, NULL);
+	TAILQ_INIT(&reconn_list.head);
+
+	ret = pthread_create(&reconn_tid, NULL,
+			     vhost_user_client_reconnect, NULL);
+	if (ret < 0)
+		RTE_LOG(ERR, VHOST_CONFIG, "failed to create reconnect thread");
+
+	return ret;
+}
+
 static int
 vhost_user_create_client(struct vhost_user_socket *vsocket)
 {
@@ -478,20 +553,35 @@ vhost_user_create_client(struct vhost_user_socket *vsocket)
 	int ret;
 	struct sockaddr_un un;
 	const char *path = vsocket->path;
+	struct vhost_user_reconnect *reconn;
 
 	fd = create_unix_socket(path, &un, vsocket->is_server);
 	if (fd < 0)
 		return -1;
 
 	ret = connect(fd, (struct sockaddr *)&un, sizeof(un));
-	if (ret < 0) {
-		RTE_LOG(ERR, VHOST_CONFIG, "failed to connect to %s: %s\n",
-			path, strerror(errno));
+	if (ret == 0) {
+		vhost_user_add_connection(fd, vsocket);
+		return 0;
+	}
+
+	RTE_LOG(ERR, VHOST_CONFIG,
+		"failed to connect to %s: %s\n",
+		path, strerror(errno));
+
+	if (!vsocket->reconnect) {
 		close(fd);
 		return -1;
 	}
 
-	vhost_user_add_connection(fd, vsocket);
+	RTE_LOG(ERR, VHOST_CONFIG, "%s: reconnecting...\n", path);
+	reconn = malloc(sizeof(*reconn));
+	reconn->un = un;
+	reconn->fd = fd;
+	reconn->vsocket = vsocket;
+	pthread_mutex_lock(&reconn_list.mutex);
+	TAILQ_INSERT_TAIL(&reconn_list.head, reconn, next);
+	pthread_mutex_unlock(&reconn_list.mutex);
 
 	return 0;
 }
@@ -525,6 +615,11 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->path = strdup(path);
 
 	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
+		vsocket->reconnect = !(flags & RTE_VHOST_USER_NO_RECONNECT);
+		if (vsocket->reconnect && reconn_tid == 0) {
+			if (vhost_user_reconnect_init() < 0)
+				goto out;
+		}
 		ret = vhost_user_create_client(vsocket);
 	} else {
 		vsocket->is_server = true;

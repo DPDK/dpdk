@@ -52,6 +52,7 @@
 #include <rte_ether.h>
 
 #define RTE_VHOST_USER_CLIENT		(1ULL << 0)
+#define RTE_VHOST_USER_NO_RECONNECT	(1ULL << 1)
 
 /* Enum for virtqueue management. */
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
