@@ -32,18 +32,20 @@
 #define BNX2X_PMD_VER_PREFIX "BNX2X PMD"
 #define BNX2X_PMD_VERSION_MAJOR 1
 #define BNX2X_PMD_VERSION_MINOR 0
-#define BNX2X_PMD_VERSION_PATCH 0
+#define BNX2X_PMD_VERSION_REVISION 1
+#define BNX2X_PMD_VERSION_PATCH 1
 
 static inline const char *
 bnx2x_pmd_version(void)
 {
 	static char version[32];
 
-	snprintf(version, sizeof(version), "%s %s_%d.%d.%d",
+	snprintf(version, sizeof(version), "%s %s_%d.%d.%d.%d",
 			BNX2X_PMD_VER_PREFIX,
 			BNX2X_DRIVER_VERSION,
 			BNX2X_PMD_VERSION_MAJOR,
 			BNX2X_PMD_VERSION_MINOR,
+			BNX2X_PMD_VERSION_REVISION,
 			BNX2X_PMD_VERSION_PATCH);
 
 	return version;
