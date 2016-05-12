@@ -532,25 +532,6 @@ Cannot set link speed on Intel® 40G Ethernet controller
    Poll Mode Driver (PMD).
 
 
-Stopping the port does not down the link on Intel® 40G Ethernet controller
---------------------------------------------------------------------------
-
-**Description**:
-   On Intel® 40G Ethernet Controller stopping the port does not really down the port link.
-
-**Implication**:
-   The port link will be still up after stopping the port.
-
-**Resolution/Workaround**:
-   None
-
-**Affected Environment/Platform**:
-   All.
-
-**Driver/Module**:
-   Poll Mode Driver (PMD).
-
-
 Devices bound to igb_uio with VT-d enabled do not work on Linux kernel 3.15-3.17
 --------------------------------------------------------------------------------
 
