@@ -1866,8 +1866,7 @@ int bnx2x_alloc_hsi_mem(struct bnx2x_softc *sc);
 int bnx2x_alloc_ilt_mem(struct bnx2x_softc *sc);
 void bnx2x_free_ilt_mem(struct bnx2x_softc *sc);
 void bnx2x_dump_tx_chain(struct bnx2x_fastpath * fp, int bd_prod, int count);
-void bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head,
-	int m_pkts);
+int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0);
 uint8_t bnx2x_txeof(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp);
 void bnx2x_print_adapter_info(struct bnx2x_softc *sc);
 int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp);

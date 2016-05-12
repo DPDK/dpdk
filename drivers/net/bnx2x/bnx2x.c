@@ -1293,7 +1293,7 @@ bnx2x_free_tx_pkt(__rte_unused struct bnx2x_fastpath *fp, struct bnx2x_tx_queue 
 	struct rte_mbuf *tx_mbuf = txq->sw_ring[TX_BD(pkt_idx, txq)];
 
 	if (likely(tx_mbuf != NULL)) {
-		rte_pktmbuf_free(tx_mbuf);
+		rte_pktmbuf_free_seg(tx_mbuf);
 	} else {
 		PMD_RX_LOG(ERR, "fp[%02d] lost mbuf %lu",
 			   fp->index, (unsigned long)TX_BD(pkt_idx, txq));
@@ -2113,141 +2113,127 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
  * the mbuf and return to the caller.
  *
  * Returns:
- *   void.
+ *     int: Number of TX BDs used for the mbuf
  *
  *   Note the side effect that an mbuf may be freed if it causes a problem.
  */
-void bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf **m_head,
-		    int m_pkts)
+int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 {
-	struct rte_mbuf *m0;
 	struct eth_tx_start_bd *tx_start_bd;
 	uint16_t bd_prod, pkt_prod;
-	int m_tx;
 	struct bnx2x_softc *sc;
 	uint32_t nbds = 0;
-	struct bnx2x_fastpath *fp;
 
 	sc = txq->sc;
-	fp = &sc->fp[txq->queue_id];
-
 	bd_prod = txq->tx_bd_tail;
 	pkt_prod = txq->tx_pkt_tail;
 
-	for (m_tx = 0; m_tx < m_pkts; m_tx++) {
+	txq->sw_ring[TX_BD(pkt_prod, txq)] = m0;
 
-		m0 = *m_head++;
+	tx_start_bd = &txq->tx_ring[TX_BD(bd_prod, txq)].start_bd;
 
-		txq->sw_ring[TX_BD(pkt_prod, txq)] = m0;
+	tx_start_bd->addr =
+	    rte_cpu_to_le_64(rte_mbuf_data_dma_addr(m0));
+	tx_start_bd->nbytes = rte_cpu_to_le_16(m0->data_len);
+	tx_start_bd->bd_flags.as_bitfield = ETH_TX_BD_FLAGS_START_BD;
+	tx_start_bd->general_data =
+	    (1 << ETH_TX_START_BD_HDR_NBDS_SHIFT);
 
-		tx_start_bd = &txq->tx_ring[TX_BD(bd_prod, txq)].start_bd;
+	tx_start_bd->nbd = rte_cpu_to_le_16(2);
 
-		tx_start_bd->addr =
-		    rte_cpu_to_le_64(rte_mbuf_data_dma_addr(m0));
-		tx_start_bd->nbytes = rte_cpu_to_le_16(m0->data_len);
-		tx_start_bd->bd_flags.as_bitfield = ETH_TX_BD_FLAGS_START_BD;
-		tx_start_bd->general_data =
-		    (1 << ETH_TX_START_BD_HDR_NBDS_SHIFT);
-
-		tx_start_bd->nbd = rte_cpu_to_le_16(2);
-
-		if (m0->ol_flags & PKT_TX_VLAN_PKT) {
+	if (m0->ol_flags & PKT_TX_VLAN_PKT) {
+		tx_start_bd->vlan_or_ethertype =
+		    rte_cpu_to_le_16(m0->vlan_tci);
+		tx_start_bd->bd_flags.as_bitfield |=
+		    (X_ETH_OUTBAND_VLAN <<
+		     ETH_TX_BD_FLAGS_VLAN_MODE_SHIFT);
+	} else {
+		if (IS_PF(sc))
 			tx_start_bd->vlan_or_ethertype =
-			    rte_cpu_to_le_16(m0->vlan_tci);
-			tx_start_bd->bd_flags.as_bitfield |=
-			    (X_ETH_OUTBAND_VLAN <<
-			     ETH_TX_BD_FLAGS_VLAN_MODE_SHIFT);
-		} else {
-			if (IS_PF(sc))
-				tx_start_bd->vlan_or_ethertype =
-				    rte_cpu_to_le_16(pkt_prod);
-			else {
-				struct ether_hdr *eh
-				    = rte_pktmbuf_mtod(m0, struct ether_hdr *);
+			    rte_cpu_to_le_16(pkt_prod);
+		else {
+			struct ether_hdr *eh =
+			    rte_pktmbuf_mtod(m0, struct ether_hdr *);
 
-				tx_start_bd->vlan_or_ethertype
-				    = rte_cpu_to_le_16(rte_be_to_cpu_16(eh->ether_type));
-			}
-		}
-
-		bd_prod = NEXT_TX_BD(bd_prod);
-		if (IS_VF(sc)) {
-			struct eth_tx_parse_bd_e2 *tx_parse_bd;
-			const struct ether_hdr *eh = rte_pktmbuf_mtod(m0, struct ether_hdr *);
-			uint8_t mac_type = UNICAST_ADDRESS;
-
-			tx_parse_bd =
-			    &txq->tx_ring[TX_BD(bd_prod, txq)].parse_bd_e2;
-			if (is_multicast_ether_addr(&eh->d_addr)) {
-				if (is_broadcast_ether_addr(&eh->d_addr))
-					mac_type = BROADCAST_ADDRESS;
-				else
-					mac_type = MULTICAST_ADDRESS;
-			}
-			tx_parse_bd->parsing_data =
-			    (mac_type << ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE_SHIFT);
-
-			rte_memcpy(&tx_parse_bd->data.mac_addr.dst_hi,
-				   &eh->d_addr.addr_bytes[0], 2);
-			rte_memcpy(&tx_parse_bd->data.mac_addr.dst_mid,
-				   &eh->d_addr.addr_bytes[2], 2);
-			rte_memcpy(&tx_parse_bd->data.mac_addr.dst_lo,
-				   &eh->d_addr.addr_bytes[4], 2);
-			rte_memcpy(&tx_parse_bd->data.mac_addr.src_hi,
-				   &eh->s_addr.addr_bytes[0], 2);
-			rte_memcpy(&tx_parse_bd->data.mac_addr.src_mid,
-				   &eh->s_addr.addr_bytes[2], 2);
-			rte_memcpy(&tx_parse_bd->data.mac_addr.src_lo,
-				   &eh->s_addr.addr_bytes[4], 2);
-
-			tx_parse_bd->data.mac_addr.dst_hi =
-			    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.dst_hi);
-			tx_parse_bd->data.mac_addr.dst_mid =
-			    rte_cpu_to_be_16(tx_parse_bd->data.
-					     mac_addr.dst_mid);
-			tx_parse_bd->data.mac_addr.dst_lo =
-			    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.dst_lo);
-			tx_parse_bd->data.mac_addr.src_hi =
-			    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.src_hi);
-			tx_parse_bd->data.mac_addr.src_mid =
-			    rte_cpu_to_be_16(tx_parse_bd->data.
-					     mac_addr.src_mid);
-			tx_parse_bd->data.mac_addr.src_lo =
-			    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.src_lo);
-
-			PMD_TX_LOG(DEBUG,
-				   "PBD dst %x %x %x src %x %x %x p_data %x",
-				   tx_parse_bd->data.mac_addr.dst_hi,
-				   tx_parse_bd->data.mac_addr.dst_mid,
-				   tx_parse_bd->data.mac_addr.dst_lo,
-				   tx_parse_bd->data.mac_addr.src_hi,
-				   tx_parse_bd->data.mac_addr.src_mid,
-				   tx_parse_bd->data.mac_addr.src_lo,
-				   tx_parse_bd->parsing_data);
-		}
-
-		PMD_TX_LOG(DEBUG,
-			   "start bd: nbytes %d flags %x vlan %x\n",
-			   tx_start_bd->nbytes,
-			   tx_start_bd->bd_flags.as_bitfield,
-			   tx_start_bd->vlan_or_ethertype);
-
-		bd_prod = NEXT_TX_BD(bd_prod);
-		pkt_prod++;
-
-		if (TX_IDX(bd_prod) < 2) {
-			nbds++;
+			tx_start_bd->vlan_or_ethertype =
+			    rte_cpu_to_le_16(rte_be_to_cpu_16(eh->ether_type));
 		}
 	}
 
-	txq->nb_tx_avail -= m_pkts << 1;
+	bd_prod = NEXT_TX_BD(bd_prod);
+	if (IS_VF(sc)) {
+		struct eth_tx_parse_bd_e2 *tx_parse_bd;
+		const struct ether_hdr *eh =
+		    rte_pktmbuf_mtod(m0, struct ether_hdr *);
+		uint8_t mac_type = UNICAST_ADDRESS;
+
+		tx_parse_bd =
+		    &txq->tx_ring[TX_BD(bd_prod, txq)].parse_bd_e2;
+		if (is_multicast_ether_addr(&eh->d_addr)) {
+			if (is_broadcast_ether_addr(&eh->d_addr))
+				mac_type = BROADCAST_ADDRESS;
+			else
+				mac_type = MULTICAST_ADDRESS;
+		}
+		tx_parse_bd->parsing_data =
+		    (mac_type << ETH_TX_PARSE_BD_E2_ETH_ADDR_TYPE_SHIFT);
+
+		rte_memcpy(&tx_parse_bd->data.mac_addr.dst_hi,
+			   &eh->d_addr.addr_bytes[0], 2);
+		rte_memcpy(&tx_parse_bd->data.mac_addr.dst_mid,
+			   &eh->d_addr.addr_bytes[2], 2);
+		rte_memcpy(&tx_parse_bd->data.mac_addr.dst_lo,
+			   &eh->d_addr.addr_bytes[4], 2);
+		rte_memcpy(&tx_parse_bd->data.mac_addr.src_hi,
+			   &eh->s_addr.addr_bytes[0], 2);
+		rte_memcpy(&tx_parse_bd->data.mac_addr.src_mid,
+			   &eh->s_addr.addr_bytes[2], 2);
+		rte_memcpy(&tx_parse_bd->data.mac_addr.src_lo,
+			   &eh->s_addr.addr_bytes[4], 2);
+
+		tx_parse_bd->data.mac_addr.dst_hi =
+		    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.dst_hi);
+		tx_parse_bd->data.mac_addr.dst_mid =
+		    rte_cpu_to_be_16(tx_parse_bd->data.
+				     mac_addr.dst_mid);
+		tx_parse_bd->data.mac_addr.dst_lo =
+		    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.dst_lo);
+		tx_parse_bd->data.mac_addr.src_hi =
+		    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.src_hi);
+		tx_parse_bd->data.mac_addr.src_mid =
+		    rte_cpu_to_be_16(tx_parse_bd->data.
+				     mac_addr.src_mid);
+		tx_parse_bd->data.mac_addr.src_lo =
+		    rte_cpu_to_be_16(tx_parse_bd->data.mac_addr.src_lo);
+
+		PMD_TX_LOG(DEBUG,
+			   "PBD dst %x %x %x src %x %x %x p_data %x",
+			   tx_parse_bd->data.mac_addr.dst_hi,
+			   tx_parse_bd->data.mac_addr.dst_mid,
+			   tx_parse_bd->data.mac_addr.dst_lo,
+			   tx_parse_bd->data.mac_addr.src_hi,
+			   tx_parse_bd->data.mac_addr.src_mid,
+			   tx_parse_bd->data.mac_addr.src_lo,
+			   tx_parse_bd->parsing_data);
+	}
+
+	PMD_TX_LOG(DEBUG,
+		   "start bd: nbytes %d flags %x vlan %x\n",
+		   tx_start_bd->nbytes,
+		   tx_start_bd->bd_flags.as_bitfield,
+		   tx_start_bd->vlan_or_ethertype);
+
+	bd_prod = NEXT_TX_BD(bd_prod);
+	pkt_prod++;
+
+	if (TX_IDX(bd_prod) < 2)
+		nbds++;
+
+	txq->nb_tx_avail -= 2;
 	txq->tx_bd_tail = bd_prod;
 	txq->tx_pkt_tail = pkt_prod;
 
-	mb();
-	fp->tx_db.data.prod += (m_pkts << 1) + nbds;
-	DOORBELL(sc, txq->queue_id, fp->tx_db.raw);
-	mb();
+	return nbds + 2;
 }
 
 static uint16_t bnx2x_cid_ilt_lines(struct bnx2x_softc *sc)

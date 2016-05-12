@@ -211,10 +211,9 @@ bnx2x_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct bnx2x_tx_queue *txq;
 	struct bnx2x_softc *sc;
 	struct bnx2x_fastpath *fp;
-	uint32_t burst;
-	struct rte_mbuf **m = tx_pkts;
 	uint16_t nb_tx_pkts;
 	uint16_t nb_pkt_sent = 0;
+	uint32_t ret;
 
 	txq = p_txq;
 	sc = txq->sc;
@@ -228,18 +227,22 @@ bnx2x_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	if (unlikely(nb_tx_pkts == 0))
 		return 0;
 
-	burst = RTE_MIN(nb_tx_pkts, RTE_PMD_BNX2X_TX_MAX_BURST);
-
 	while (nb_tx_pkts--) {
+		struct rte_mbuf *m = *tx_pkts++;
 		assert(m != NULL);
-		bnx2x_tx_encap(txq, m, burst);
-		bnx2x_update_fp_sb_idx(fp);
-		if ((txq->nb_tx_desc - txq->nb_tx_avail) >
-					txq->tx_free_thresh)
-			bnx2x_txeof(sc, fp);
-		m += burst;
+		ret = bnx2x_tx_encap(txq, m);
+		fp->tx_db.data.prod += ret;
 		nb_pkt_sent++;
 	}
+
+	bnx2x_update_fp_sb_idx(fp);
+	mb();
+	DOORBELL(sc, txq->queue_id, fp->tx_db.raw);
+	mb();
+
+	if ((txq->nb_tx_desc - txq->nb_tx_avail) >
+				txq->tx_free_thresh)
+		bnx2x_txeof(sc, fp);
 
 	return nb_pkt_sent;
 }
