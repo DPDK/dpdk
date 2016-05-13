@@ -51,7 +51,7 @@ enum policer_action policer_table[e_RTE_METER_COLORS][e_RTE_METER_COLORS] =
 #if APP_MODE == APP_MODE_FWD
 
 #define FUNC_METER(a,b,c,d) color, flow_id=flow_id, pkt_len=pkt_len, time=time
-#define FUNC_CONFIG(a,b)
+#define FUNC_CONFIG(a, b) 0
 #define PARAMS	app_srtcm_params
 #define FLOW_METER int
 

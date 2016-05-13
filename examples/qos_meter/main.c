@@ -133,14 +133,20 @@ struct rte_meter_trtcm_params app_trtcm_params[] = {
 
 FLOW_METER app_flows[APP_FLOWS_MAX];
 
-static void
+static int
 app_configure_flow_table(void)
 {
 	uint32_t i, j;
+	int ret;
 
-	for (i = 0, j = 0; i < APP_FLOWS_MAX; i ++, j = (j + 1) % RTE_DIM(PARAMS)){
-		FUNC_CONFIG(&app_flows[i], &PARAMS[j]);
+	for (i = 0, j = 0; i < APP_FLOWS_MAX;
+			i ++, j = (j + 1) % RTE_DIM(PARAMS)) {
+		ret = FUNC_CONFIG(&app_flows[i], &PARAMS[j]);
+		if (ret)
+			return ret;
 	}
+
+	return 0;
 }
 
 static inline void
@@ -381,7 +387,9 @@ main(int argc, char **argv)
 	rte_eth_promiscuous_enable(port_tx);
 
 	/* App configuration */
-	app_configure_flow_table();
+	ret = app_configure_flow_table();
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Invalid configure flow table\n");
 
 	/* Launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);
