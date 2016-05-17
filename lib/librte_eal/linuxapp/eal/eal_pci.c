@@ -190,12 +190,13 @@ pci_find_max_end_va(void)
 	return RTE_PTR_ADD(last->addr, last->len);
 }
 
-/* parse the "resource" sysfs file */
+/* parse one line of the "resource" sysfs file (note that the 'line'
+ * string is modified)
+ */
 static int
-pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
+pci_parse_one_sysfs_resource(char *line, size_t len, uint64_t *phys_addr,
+	uint64_t *end_addr, uint64_t *flags)
 {
-	FILE *f;
-	char buf[BUFSIZ];
 	union pci_resource_info {
 		struct {
 			char *phys_addr;
@@ -204,6 +205,31 @@ pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 		};
 		char *ptrs[PCI_RESOURCE_FMT_NVAL];
 	} res_info;
+
+	if (rte_strsplit(line, len, res_info.ptrs, 3, ' ') != 3) {
+		RTE_LOG(ERR, EAL,
+			"%s(): bad resource format\n", __func__);
+		return -1;
+	}
+	errno = 0;
+	*phys_addr = strtoull(res_info.phys_addr, NULL, 16);
+	*end_addr = strtoull(res_info.end_addr, NULL, 16);
+	*flags = strtoull(res_info.flags, NULL, 16);
+	if (errno != 0) {
+		RTE_LOG(ERR, EAL,
+			"%s(): bad resource format\n", __func__);
+		return -1;
+	}
+
+	return 0;
+}
+
+/* parse the "resource" sysfs file */
+static int
+pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
+{
+	FILE *f;
+	char buf[BUFSIZ];
 	int i;
 	uint64_t phys_addr, end_addr, flags;
 
@@ -220,21 +246,9 @@ pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 				"%s(): cannot read resource\n", __func__);
 			goto error;
 		}
-
-		if (rte_strsplit(buf, sizeof(buf), res_info.ptrs, 3, ' ') != 3) {
-			RTE_LOG(ERR, EAL,
-				"%s(): bad resource format\n", __func__);
+		if (pci_parse_one_sysfs_resource(buf, sizeof(buf), &phys_addr,
+				&end_addr, &flags) < 0)
 			goto error;
-		}
-		errno = 0;
-		phys_addr = strtoull(res_info.phys_addr, NULL, 16);
-		end_addr = strtoull(res_info.end_addr, NULL, 16);
-		flags = strtoull(res_info.flags, NULL, 16);
-		if (errno != 0) {
-			RTE_LOG(ERR, EAL,
-				"%s(): bad resource format\n", __func__);
-			goto error;
-		}
 
 		if (flags & IORESOURCE_MEM) {
 			dev->mem_resource[i].phys_addr = phys_addr;
