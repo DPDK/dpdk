@@ -130,6 +130,7 @@ struct cmdline *
 cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out)
 {
 	struct cmdline *cl;
+	int ret;
 
 	if (!ctx || !prompt)
 		return NULL;
@@ -142,8 +143,13 @@ cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out)
 	cl->s_out = s_out;
 	cl->ctx = ctx;
 
-	rdline_init(&cl->rdl, cmdline_write_char,
-		    cmdline_valid_buffer, cmdline_complete_buffer);
+	ret = rdline_init(&cl->rdl, cmdline_write_char, cmdline_valid_buffer,
+			cmdline_complete_buffer);
+	if (ret != 0) {
+		free(cl);
+		return NULL;
+	}
+
 	cl->rdl.opaque = cl;
 	cmdline_set_prompt(cl, prompt);
 	rdline_newline(&cl->rdl, cl->prompt);
