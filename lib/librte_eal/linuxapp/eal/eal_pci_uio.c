@@ -309,7 +309,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 		struct mapped_pci_resource *uio_res, int map_idx)
 {
 	int fd;
-	char devname[PATH_MAX]; /* contains the /dev/uioX */
+	char devname[PATH_MAX];
 	void *mapaddr;
 	struct rte_pci_addr *loc;
 	struct pci_map *maps;
