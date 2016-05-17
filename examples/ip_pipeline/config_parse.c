@@ -964,154 +964,6 @@ parse_eal(struct app_params *app,
 }
 
 static int
-parse_pipeline_pcap_source(struct app_params *app,
-	struct app_pipeline_params *p,
-	const char *file_name, const char *cp_size)
-{
-	const char *next = NULL;
-	char *end;
-	uint32_t i;
-	int parse_file = 0;
-
-	if (file_name && !cp_size) {
-		next = file_name;
-		parse_file = 1; /* parse file path */
-	} else if (cp_size && !file_name) {
-		next = cp_size;
-		parse_file = 0; /* parse copy size */
-	} else
-		return -EINVAL;
-
-	char name[APP_PARAM_NAME_SIZE];
-	size_t name_len;
-
-	if (p->n_pktq_in == 0)
-		return -EINVAL;
-
-	i = 0;
-	while (*next != '\0') {
-		uint32_t id;
-
-		if (i >= p->n_pktq_in)
-			return -EINVAL;
-
-		id = p->pktq_in[i].id;
-
-		end = strchr(next, ' ');
-		if (!end)
-			name_len = strlen(next);
-		else
-			name_len = end - next;
-
-		if (name_len == 0 || name_len == sizeof(name))
-			return -EINVAL;
-
-		strncpy(name, next, name_len);
-		name[name_len] = '\0';
-		next += name_len;
-		if (*next != '\0')
-			next++;
-
-		if (parse_file) {
-			app->source_params[id].file_name = strdup(name);
-			if (app->source_params[id].file_name == NULL)
-				return -ENOMEM;
-		} else {
-			if (parser_read_uint32(
-				&app->source_params[id].n_bytes_per_pkt,
-				name) != 0) {
-				if (app->source_params[id].
-					file_name != NULL)
-					free(app->source_params[id].
-						file_name);
-				return -EINVAL;
-			}
-		}
-
-		i++;
-
-		if (i == p->n_pktq_in)
-			return 0;
-	}
-
-	return -EINVAL;
-}
-
-static int
-parse_pipeline_pcap_sink(struct app_params *app,
-	struct app_pipeline_params *p,
-	const char *file_name, const char *n_pkts_to_dump)
-{
-	const char *next = NULL;
-	char *end;
-	uint32_t i;
-	int parse_file = 0;
-
-	if (file_name && !n_pkts_to_dump) {
-		next = file_name;
-		parse_file = 1; /* parse file path */
-	} else if (n_pkts_to_dump && !file_name) {
-		next = n_pkts_to_dump;
-		parse_file = 0; /* parse copy size */
-	} else
-		return -EINVAL;
-
-	char name[APP_PARAM_NAME_SIZE];
-	size_t name_len;
-
-	if (p->n_pktq_out == 0)
-		return -EINVAL;
-
-	i = 0;
-	while (*next != '\0') {
-		uint32_t id;
-
-		if (i >= p->n_pktq_out)
-			return -EINVAL;
-
-		id = p->pktq_out[i].id;
-
-		end = strchr(next, ' ');
-		if (!end)
-			name_len = strlen(next);
-		else
-			name_len = end - next;
-
-		if (name_len == 0 || name_len == sizeof(name))
-			return -EINVAL;
-
-		strncpy(name, next, name_len);
-		name[name_len] = '\0';
-		next += name_len;
-		if (*next != '\0')
-			next++;
-
-		if (parse_file) {
-			app->sink_params[id].file_name = strdup(name);
-			if (app->sink_params[id].file_name == NULL)
-				return -ENOMEM;
-		} else {
-			if (parser_read_uint32(
-				&app->sink_params[id].n_pkts_to_dump,
-				name) != 0) {
-				if (app->sink_params[id].file_name !=
-					NULL)
-					free(app->sink_params[id].
-						file_name);
-				return -EINVAL;
-			}
-		}
-
-		i++;
-
-		if (i == p->n_pktq_out)
-			return 0;
-	}
-
-	return -EINVAL;
-}
-
-static int
 parse_pipeline_pktq_in(struct app_params *app,
 	struct app_pipeline_params *p,
 	const char *value)
@@ -1460,66 +1312,6 @@ parse_pipeline(struct app_params *app,
 			int status = parser_read_uint32(
 				&param->timer_period,
 				ent->value);
-
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
-			continue;
-		}
-
-		if (strcmp(ent->name, "pcap_file_rd") == 0) {
-			int status;
-
-#ifndef RTE_PORT_PCAP
-			PARSE_ERROR_INVALID(0, section_name, ent->name);
-#endif
-
-			status = parse_pipeline_pcap_source(app,
-				param, ent->value, NULL);
-
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
-			continue;
-		}
-
-		if (strcmp(ent->name, "pcap_bytes_rd_per_pkt") == 0) {
-			int status;
-
-#ifndef RTE_PORT_PCAP
-			PARSE_ERROR_INVALID(0, section_name, ent->name);
-#endif
-
-			status = parse_pipeline_pcap_source(app,
-				param, NULL, ent->value);
-
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
-			continue;
-		}
-
-		if (strcmp(ent->name, "pcap_file_wr") == 0) {
-			int status;
-
-#ifndef RTE_PORT_PCAP
-			PARSE_ERROR_INVALID(0, section_name, ent->name);
-#endif
-
-			status = parse_pipeline_pcap_sink(app, param,
-				ent->value, NULL);
-
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
-			continue;
-		}
-
-		if (strcmp(ent->name, "pcap_n_pkt_wr") == 0) {
-			int status;
-
-#ifndef RTE_PORT_PCAP
-			PARSE_ERROR_INVALID(0, section_name, ent->name);
-#endif
-
-			status = parse_pipeline_pcap_sink(app, param,
-				NULL, ent->value);
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
@@ -2219,7 +2011,7 @@ parse_source(struct app_params *app,
 			continue;
 		}
 
-		if (strcmp(ent->name, "pcap_file_rd")) {
+		if (strcmp(ent->name, "pcap_file_rd") == 0) {
 			PARSE_ERROR_DUPLICATE((pcap_file_present == 0),
 				section_name, ent->name);
 
@@ -2284,7 +2076,7 @@ parse_sink(struct app_params *app,
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
 
-		if (strcmp(ent->name, "pcap_file_wr")) {
+		if (strcmp(ent->name, "pcap_file_wr") == 0) {
 			PARSE_ERROR_DUPLICATE((pcap_file_present == 0),
 				section_name, ent->name);
 
@@ -2295,7 +2087,7 @@ parse_sink(struct app_params *app,
 			continue;
 		}
 
-		if (strcmp(ent->name, "pcap_n_pkt_wr")) {
+		if (strcmp(ent->name, "pcap_n_pkt_wr") == 0) {
 			int status;
 
 			PARSE_ERROR_DUPLICATE((pcap_n_pkt_present == 0),
@@ -2619,23 +2411,6 @@ app_config_parse(struct app_params *app, const char *file_name)
 	APP_PARAM_COUNT(app->sink_params, app->n_pktq_sink);
 	APP_PARAM_COUNT(app->msgq_params, app->n_msgq);
 	APP_PARAM_COUNT(app->pipeline_params, app->n_pipelines);
-
-#ifdef RTE_PORT_PCAP
-	for (i = 0; i < (int)app->n_pktq_source; i++) {
-		struct app_pktq_source_params *p = &app->source_params[i];
-
-		APP_CHECK((p->file_name), "Parse error: missing "
-			"mandatory field \"pcap_file_rd\" for \"%s\"",
-			p->name);
-	}
-#else
-	for (i = 0; i < (int)app->n_pktq_source; i++) {
-		struct app_pktq_source_params *p = &app->source_params[i];
-
-		APP_CHECK((!p->file_name), "Parse error: invalid field "
-			"\"pcap_file_rd\" for \"%s\"", p->name);
-	}
-#endif
 
 	if (app->port_mask == 0)
 		assign_link_pmd_id_from_pci_bdf(app);
@@ -3155,6 +2930,10 @@ app_config_init(struct app_params *app)
 	size_t i;
 
 	memcpy(app, &app_params_default, sizeof(struct app_params));
+
+	/* configure default_source_params */
+	default_source_params.file_name = strdup("./config/packets.pcap");
+	PARSE_ERROR_MALLOC(default_source_params.file_name != NULL);
 
 	for (i = 0; i < RTE_DIM(app->mempool_params); i++)
 		memcpy(&app->mempool_params[i],

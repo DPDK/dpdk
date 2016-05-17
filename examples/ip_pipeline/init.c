@@ -1133,7 +1133,6 @@ static void app_pipeline_params_get(struct app_params *app,
 	struct pipeline_params *p_out)
 {
 	uint32_t i;
-	uint32_t mempool_id;
 
 	snprintf(p_out->name, PIPELINE_NAME_SIZE, "%s", p_in->name);
 
@@ -1217,25 +1216,19 @@ static void app_pipeline_params_get(struct app_params *app,
 			out->burst_size = app->tm_params[in->id].burst_read;
 			break;
 		case APP_PKTQ_IN_SOURCE:
-			mempool_id = app->source_params[in->id].mempool_id;
+		{
+			uint32_t mempool_id =
+				app->source_params[in->id].mempool_id;
+
 			out->type = PIPELINE_PORT_IN_SOURCE;
 			out->params.source.mempool = app->mempool[mempool_id];
 			out->burst_size = app->source_params[in->id].burst;
-			if (app->source_params[in->id].file_name
-				!= NULL) {
-				out->params.source.file_name = strdup(
-					app->source_params[in->id].
-					file_name);
-				if (out->params.source.file_name == NULL) {
-					out->params.source.
-						n_bytes_per_pkt = 0;
-					break;
-				}
-				out->params.source.n_bytes_per_pkt =
-					app->source_params[in->id].
-					n_bytes_per_pkt;
-			}
+			out->params.source.file_name =
+				app->source_params[in->id].file_name;
+			out->params.source.n_bytes_per_pkt =
+				app->source_params[in->id].n_bytes_per_pkt;
 			break;
+		}
 		default:
 			break;
 		}
@@ -1357,23 +1350,16 @@ static void app_pipeline_params_get(struct app_params *app,
 			break;
 		}
 		case APP_PKTQ_OUT_SINK:
+		{
 			out->type = PIPELINE_PORT_OUT_SINK;
-			if (app->sink_params[in->id].file_name != NULL) {
-				out->params.sink.file_name = strdup(
-					app->sink_params[in->id].
-					file_name);
-				if (out->params.sink.file_name == NULL) {
-					out->params.sink.max_n_pkts = 0;
-					break;
-				}
-				out->params.sink.max_n_pkts =
-					app->sink_params[in->id].
-					n_pkts_to_dump;
-			} else {
-				out->params.sink.file_name = NULL;
-				out->params.sink.max_n_pkts = 0;
-			}
+			out->params.sink.file_name =
+				app->sink_params[in->id].file_name;
+			out->params.sink.max_n_pkts =
+				app->sink_params[in->id].
+				n_pkts_to_dump;
+
 			break;
+		}
 		default:
 			break;
 		}
