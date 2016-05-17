@@ -715,12 +715,8 @@ rte_eal_iopl_init(void)
 #if defined(RTE_ARCH_X86)
 	if (iopl(3) != 0)
 		return -1;
-	return 0;
-#elif defined(RTE_ARCH_ARM) || defined(RTE_ARCH_ARM64)
-	return 0; /* iopl syscall not supported for ARM/ARM64 */
-#else
-	return -1;
 #endif
+	return 0;
 }
 
 /* Launch threads, called at application init(). */
