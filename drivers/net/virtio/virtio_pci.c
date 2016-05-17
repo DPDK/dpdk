@@ -55,20 +55,88 @@
  */
 #define VIRTIO_PCI_CONFIG(hw) (((hw)->use_msix) ? 24 : 20)
 
+/*
+ * Since we are in legacy mode:
+ * http://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
+ *
+ * "Note that this is possible because while the virtio header is PCI (i.e.
+ * little) endian, the device-specific region is encoded in the native endian of
+ * the guest (where such distinction is applicable)."
+ *
+ * For powerpc which supports both, qemu supposes that cpu is big endian and
+ * enforces this for the virtio-net stuff.
+ */
+
 static void
 legacy_read_dev_config(struct virtio_hw *hw, size_t offset,
 		       void *dst, int length)
 {
+#ifdef RTE_ARCH_PPC_64
+	int size;
+
+	while (length > 0) {
+		if (length >= 4) {
+			size = 4;
+			rte_eal_pci_ioport_read(&hw->io, dst, size,
+				VIRTIO_PCI_CONFIG(hw) + offset);
+			*(uint32_t *)dst = rte_be_to_cpu_32(*(uint32_t *)dst);
+		} else if (length >= 2) {
+			size = 2;
+			rte_eal_pci_ioport_read(&hw->io, dst, size,
+				VIRTIO_PCI_CONFIG(hw) + offset);
+			*(uint16_t *)dst = rte_be_to_cpu_16(*(uint16_t *)dst);
+		} else {
+			size = 1;
+			rte_eal_pci_ioport_read(&hw->io, dst, size,
+				VIRTIO_PCI_CONFIG(hw) + offset);
+		}
+
+		dst = (char *)dst + size;
+		offset += size;
+		length -= size;
+	}
+#else
 	rte_eal_pci_ioport_read(&hw->io, dst, length,
 				VIRTIO_PCI_CONFIG(hw) + offset);
+#endif
 }
 
 static void
 legacy_write_dev_config(struct virtio_hw *hw, size_t offset,
 			const void *src, int length)
 {
+#ifdef RTE_ARCH_PPC_64
+	union {
+		uint32_t u32;
+		uint16_t u16;
+	} tmp;
+	int size;
+
+	while (length > 0) {
+		if (length >= 4) {
+			size = 4;
+			tmp.u32 = rte_cpu_to_be_32(*(const uint32_t *)src);
+			rte_eal_pci_ioport_write(&hw->io, &tmp.u32, size,
+				VIRTIO_PCI_CONFIG(hw) + offset);
+		} else if (length >= 2) {
+			size = 2;
+			tmp.u16 = rte_cpu_to_be_16(*(const uint16_t *)src);
+			rte_eal_pci_ioport_write(&hw->io, &tmp.u16, size,
+				VIRTIO_PCI_CONFIG(hw) + offset);
+		} else {
+			size = 1;
+			rte_eal_pci_ioport_write(&hw->io, src, size,
+				VIRTIO_PCI_CONFIG(hw) + offset);
+		}
+
+		src = (const char *)src + size;
+		offset += size;
+		length -= size;
+	}
+#else
 	rte_eal_pci_ioport_write(&hw->io, src, length,
 				 VIRTIO_PCI_CONFIG(hw) + offset);
+#endif
 }
 
 static uint64_t
