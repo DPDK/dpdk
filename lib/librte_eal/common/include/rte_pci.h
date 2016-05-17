@@ -525,12 +525,13 @@ struct rte_pci_ioport {
 };
 
 /**
- * Initialises a rte_pci_ioport object for a pci device io resource.
+ * Initialize a rte_pci_ioport object for a pci device io resource.
+ *
  * This object is then used to gain access to those io resources (see below).
  *
  * @param dev
- *   A pointer to a rte_pci_device structure describing the device.
- *   to use
+ *   A pointer to a rte_pci_device structure describing the device
+ *   to use.
  * @param bar
  *   Index of the io pci resource we want to access.
  * @param p
@@ -546,6 +547,8 @@ int rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
  *
  * @param p
  *   The rte_pci_ioport object to be uninitialized.
+ * @return
+ *  0 on success, negative on error.
  */
 int rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p);
 
