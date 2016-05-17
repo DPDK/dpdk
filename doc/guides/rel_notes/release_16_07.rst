@@ -47,6 +47,10 @@ New Features
   * Dropped specific Xen Dom0 code.
   * Dropped specific anonymous mempool code in testpmd.
 
+* **Supported virtio on IBM POWER8.**
+
+  The ioports are mapped in memory when using Linux UIO.
+
 * **Added AES-CTR support to AESNI MB PMD.**
 
   Now AESNI MB PMD supports 128/192/256-bit counter mode AES encryption and
