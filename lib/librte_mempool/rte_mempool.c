@@ -223,23 +223,6 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 		sz->trailer_size = new_size - sz->header_size - sz->elt_size;
 	}
 
-	if (! rte_eal_has_hugepages()) {
-		/*
-		 * compute trailer size so that pool elements fit exactly in
-		 * a standard page
-		 */
-		int page_size = getpagesize();
-		int new_size = page_size - sz->header_size - sz->elt_size;
-		if (new_size < 0 || (unsigned int)new_size < sz->trailer_size) {
-			printf("When hugepages are disabled, pool objects "
-			       "can't exceed PAGE_SIZE: %d + %d + %d > %d\n",
-			       sz->header_size, sz->elt_size, sz->trailer_size,
-			       page_size);
-			return 0;
-		}
-		sz->trailer_size = new_size;
-	}
-
 	/* this is the size of an object, including header and trailer */
 	sz->total_size = sz->header_size + sz->elt_size + sz->trailer_size;
 
@@ -511,16 +494,74 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 	return cnt;
 }
 
-/* Default function to populate the mempool: allocate memory in mezones,
+/* Populate the mempool with a virtual area. Return the number of
+ * objects added, or a negative value on error.
+ */
+static int
+rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
+	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque)
+{
+	phys_addr_t paddr;
+	size_t off, phys_len;
+	int ret, cnt = 0;
+
+	/* mempool must not be populated */
+	if (mp->nb_mem_chunks != 0)
+		return -EEXIST;
+	/* address and len must be page-aligned */
+	if (RTE_PTR_ALIGN_CEIL(addr, pg_sz) != addr)
+		return -EINVAL;
+	if (RTE_ALIGN_CEIL(len, pg_sz) != len)
+		return -EINVAL;
+
+	for (off = 0; off + pg_sz <= len &&
+		     mp->populated_size < mp->size; off += phys_len) {
+
+		paddr = rte_mem_virt2phy(addr + off);
+		if (paddr == RTE_BAD_PHYS_ADDR) {
+			ret = -EINVAL;
+			goto fail;
+		}
+
+		/* populate with the largest group of contiguous pages */
+		for (phys_len = pg_sz; off + phys_len < len; phys_len += pg_sz) {
+			phys_addr_t paddr_tmp;
+
+			paddr_tmp = rte_mem_virt2phy(addr + off + phys_len);
+			paddr_tmp = rte_mem_phy2mch(-1, paddr_tmp);
+
+			if (paddr_tmp != paddr + phys_len)
+				break;
+		}
+
+		ret = rte_mempool_populate_phys(mp, addr + off, paddr,
+			phys_len, free_cb, opaque);
+		if (ret < 0)
+			goto fail;
+		/* no need to call the free callback for next chunks */
+		free_cb = NULL;
+		cnt += ret;
+	}
+
+	return cnt;
+
+ fail:
+	rte_mempool_free_memchunks(mp);
+	return ret;
+}
+
+/* Default function to populate the mempool: allocate memory in memzones,
  * and populate them. Return the number of objects added, or a negative
  * value on error.
  */
-static int rte_mempool_populate_default(struct rte_mempool *mp)
+static int
+rte_mempool_populate_default(struct rte_mempool *mp)
 {
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
-	size_t size, total_elt_sz, align;
+	size_t size, total_elt_sz, align, pg_sz, pg_shift;
 	unsigned mz_id, n;
 	int ret;
 
@@ -528,10 +569,19 @@ static int rte_mempool_populate_default(struct rte_mempool *mp)
 	if (mp->nb_mem_chunks != 0)
 		return -EEXIST;
 
-	align = RTE_CACHE_LINE_SIZE;
+	if (rte_eal_has_hugepages()) {
+		pg_shift = 0; /* not needed, zone is physically contiguous */
+		pg_sz = 0;
+		align = RTE_CACHE_LINE_SIZE;
+	} else {
+		pg_sz = getpagesize();
+		pg_shift = rte_bsf32(pg_sz);
+		align = pg_sz;
+	}
+
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 	for (mz_id = 0, n = mp->size; n > 0; mz_id++, n -= ret) {
-		size = rte_mempool_xmem_size(n, total_elt_sz, 0);
+		size = rte_mempool_xmem_size(n, total_elt_sz, pg_shift);
 
 		ret = snprintf(mz_name, sizeof(mz_name),
 			RTE_MEMPOOL_MZ_FORMAT "_%d", mp->name, mz_id);
@@ -551,9 +601,16 @@ static int rte_mempool_populate_default(struct rte_mempool *mp)
 			goto fail;
 		}
 
-		ret = rte_mempool_populate_phys(mp, mz->addr, mz->phys_addr,
-			mz->len, rte_mempool_memchunk_mz_free,
-			(void *)(uintptr_t)mz);
+		if (rte_eal_has_hugepages())
+			ret = rte_mempool_populate_phys(mp, mz->addr,
+				mz->phys_addr, mz->len,
+				rte_mempool_memchunk_mz_free,
+				(void *)(uintptr_t)mz);
+		else
+			ret = rte_mempool_populate_virt(mp, mz->addr,
+				mz->len, pg_sz,
+				rte_mempool_memchunk_mz_free,
+				(void *)(uintptr_t)mz);
 		if (ret < 0)
 			goto fail;
 	}

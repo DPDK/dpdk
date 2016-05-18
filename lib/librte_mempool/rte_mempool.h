@@ -1150,19 +1150,10 @@ rte_mempool_empty(const struct rte_mempool *mp)
 static inline phys_addr_t
 rte_mempool_virt2phy(__rte_unused const struct rte_mempool *mp, const void *elt)
 {
-	if (rte_eal_has_hugepages()) {
-		const struct rte_mempool_objhdr *hdr;
-		hdr = (const struct rte_mempool_objhdr *)RTE_PTR_SUB(elt,
-			sizeof(*hdr));
-		return hdr->physaddr;
-	} else {
-		/*
-		 * If huge pages are disabled, we cannot assume the
-		 * memory region to be physically contiguous.
-		 * Lookup for each element.
-		 */
-		return rte_mem_virt2phy(elt);
-	}
+	const struct rte_mempool_objhdr *hdr;
+	hdr = (const struct rte_mempool_objhdr *)RTE_PTR_SUB(elt,
+		sizeof(*hdr));
+	return hdr->physaddr;
 }
 
 /**
