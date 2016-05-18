@@ -323,6 +323,17 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 #endif /* RTE_LIBRTE_MEMPOOL_DEBUG */
 
 /**
+ * An object callback function for mempool.
+ *
+ * Arguments are the mempool, the opaque pointer given by the user in
+ * rte_mempool_create(), the pointer to the element and the index of
+ * the element in the pool.
+ */
+typedef void (rte_mempool_obj_cb_t)(struct rte_mempool *mp,
+		void *opaque, void *obj, unsigned obj_idx);
+typedef rte_mempool_obj_cb_t rte_mempool_obj_ctor_t; /* compat */
+
+/**
  * A mempool object iterator callback function.
  */
 typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
@@ -369,16 +380,6 @@ uint32_t rte_mempool_obj_iter(void *vaddr,
 	uint32_t elt_num, size_t elt_sz, size_t align,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
 	rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg);
-
-/**
- * An object constructor callback function for mempool.
- *
- * Arguments are the mempool, the opaque pointer given by the user in
- * rte_mempool_create(), the pointer to the element and the index of
- * the element in the pool.
- */
-typedef void (rte_mempool_obj_ctor_t)(struct rte_mempool *, void *,
-				      void *, unsigned);
 
 /**
  * A mempool constructor callback function.
@@ -473,7 +474,7 @@ struct rte_mempool *
 rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   unsigned cache_size, unsigned private_data_size,
 		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		   rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 		   int socket_id, unsigned flags);
 
 /**
@@ -539,7 +540,7 @@ struct rte_mempool *
 rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		unsigned cache_size, unsigned private_data_size,
 		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 		int socket_id, unsigned flags, void *vaddr,
 		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
 
@@ -628,7 +629,7 @@ struct rte_mempool *
 rte_dom0_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		unsigned cache_size, unsigned private_data_size,
 		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 		int socket_id, unsigned flags);
 
 

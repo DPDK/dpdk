@@ -86,7 +86,7 @@ struct rte_mempool *
 mempool_anon_create(const char *name, unsigned elt_num, unsigned elt_size,
 		   unsigned cache_size, unsigned private_data_size,
 		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		   rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 		   int socket_id, unsigned flags)
 {
 	struct rte_mempool *mp;
@@ -190,7 +190,7 @@ mempool_anon_create(__rte_unused const char *name,
 	__rte_unused unsigned private_data_size,
 	__rte_unused rte_mempool_ctor_t *mp_init,
 	__rte_unused void *mp_init_arg,
-	__rte_unused rte_mempool_obj_ctor_t *obj_init,
+	__rte_unused rte_mempool_obj_cb_t *obj_init,
 	__rte_unused void *obj_init_arg,
 	__rte_unused int socket_id, __rte_unused unsigned flags)
 {

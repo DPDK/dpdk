@@ -128,7 +128,7 @@ static unsigned optimize_object_size(unsigned obj_size)
 
 static void
 mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
-	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg)
+	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg)
 {
 	struct rte_mempool_objhdr *hdr;
 	struct rte_mempool_objtlr *tlr __rte_unused;
@@ -225,7 +225,7 @@ rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
 
 struct mempool_populate_arg {
 	struct rte_mempool     *mp;
-	rte_mempool_obj_ctor_t *obj_init;
+	rte_mempool_obj_cb_t   *obj_init;
 	void                   *obj_init_arg;
 };
 
@@ -240,7 +240,7 @@ mempool_obj_populate(void *arg, void *start, void *end, uint32_t idx)
 
 static void
 mempool_populate(struct rte_mempool *mp, size_t num, size_t align,
-	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg)
+	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg)
 {
 	uint32_t elt_sz;
 	struct mempool_populate_arg arg;
@@ -431,7 +431,7 @@ struct rte_mempool *
 rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		unsigned cache_size, unsigned private_data_size,
 		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 		int socket_id, unsigned flags, void *vaddr,
 		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
 {

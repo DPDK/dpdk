@@ -83,7 +83,7 @@ struct rte_mempool *
 rte_dom0_mempool_create(const char *name, unsigned elt_num, unsigned elt_size,
 	unsigned cache_size, unsigned private_data_size,
 	rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-	rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
+	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 	int socket_id, unsigned flags)
 {
 	struct rte_mempool *mp = NULL;
