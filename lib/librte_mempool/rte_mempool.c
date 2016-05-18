@@ -136,8 +136,7 @@ typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
 	uint32_t /*obj_index */);
 
 static void
-mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
-	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg)
+mempool_add_elem(struct rte_mempool *mp, void *obj)
 {
 	struct rte_mempool_objhdr *hdr;
 	struct rte_mempool_objtlr *tlr __rte_unused;
@@ -154,9 +153,6 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 	tlr = __mempool_get_trailer(obj);
 	tlr->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
 #endif
-	/* call the initializer */
-	if (obj_init)
-		obj_init(mp, obj_init_arg, obj, obj_idx);
 
 	/* enqueue in ring */
 	rte_ring_sp_enqueue(mp->ring, obj);
@@ -251,37 +247,27 @@ rte_mempool_obj_iter(struct rte_mempool *mp,
  * Populate  mempool with the objects.
  */
 
-struct mempool_populate_arg {
-	struct rte_mempool     *mp;
-	rte_mempool_obj_cb_t   *obj_init;
-	void                   *obj_init_arg;
-};
-
 static void
-mempool_obj_populate(void *arg, void *start, void *end, uint32_t idx)
+mempool_obj_populate(void *arg, void *start, void *end,
+	__rte_unused uint32_t idx)
 {
-	struct mempool_populate_arg *pa = arg;
+	struct rte_mempool *mp = arg;
 
-	mempool_add_elem(pa->mp, start, idx, pa->obj_init, pa->obj_init_arg);
-	pa->mp->elt_va_end = (uintptr_t)end;
+	mempool_add_elem(mp, start);
+	mp->elt_va_end = (uintptr_t)end;
 }
 
 static void
-mempool_populate(struct rte_mempool *mp, size_t num, size_t align,
-	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg)
+mempool_populate(struct rte_mempool *mp, size_t num, size_t align)
 {
 	uint32_t elt_sz;
-	struct mempool_populate_arg arg;
 
 	elt_sz = mp->elt_size + mp->header_size + mp->trailer_size;
-	arg.mp = mp;
-	arg.obj_init = obj_init;
-	arg.obj_init_arg = obj_init_arg;
 
 	mp->size = rte_mempool_obj_mem_iter((void *)mp->elt_va_start,
 		num, elt_sz, align,
 		mp->elt_pa, mp->pg_num, mp->pg_shift,
-		mempool_obj_populate, &arg);
+		mempool_obj_populate, mp);
 }
 
 /* get the header, trailer and total size of a mempool element. */
@@ -651,7 +637,11 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	if (mp_init)
 		mp_init(mp, mp_init_arg);
 
-	mempool_populate(mp, n, 1, obj_init, obj_init_arg);
+	mempool_populate(mp, n, 1);
+
+	/* call the initializer */
+	if (obj_init)
+		rte_mempool_obj_iter(mp, obj_init, obj_init_arg);
 
 	te->data = (void *) mp;
 
