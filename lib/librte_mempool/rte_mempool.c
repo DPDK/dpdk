@@ -246,6 +246,22 @@ rte_mempool_obj_iter(struct rte_mempool *mp,
 	return n;
 }
 
+/* call mem_cb() for each mempool memory chunk */
+uint32_t
+rte_mempool_mem_iter(struct rte_mempool *mp,
+	rte_mempool_mem_cb_t *mem_cb, void *mem_cb_arg)
+{
+	struct rte_mempool_memhdr *hdr;
+	unsigned n = 0;
+
+	STAILQ_FOREACH(hdr, &mp->mem_list, next) {
+		mem_cb(mp, mem_cb_arg, hdr, n);
+		n++;
+	}
+
+	return n;
+}
+
 /* get the header, trailer and total size of a mempool element. */
 uint32_t
 rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,

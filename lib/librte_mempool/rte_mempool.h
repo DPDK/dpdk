@@ -336,6 +336,15 @@ typedef void (rte_mempool_obj_cb_t)(struct rte_mempool *mp,
 typedef rte_mempool_obj_cb_t rte_mempool_obj_ctor_t; /* compat */
 
 /**
+ * A memory callback function for mempool.
+ *
+ * Used by rte_mempool_mem_iter().
+ */
+typedef void (rte_mempool_mem_cb_t)(struct rte_mempool *mp,
+		void *opaque, struct rte_mempool_memhdr *memhdr,
+		unsigned mem_idx);
+
+/**
  * A mempool constructor callback function.
  *
  * Arguments are the mempool and the opaque pointer given by the user in
@@ -604,6 +613,24 @@ rte_dom0_mempool_create(const char *name, unsigned n, unsigned elt_size,
  */
 uint32_t rte_mempool_obj_iter(struct rte_mempool *mp,
 	rte_mempool_obj_cb_t *obj_cb, void *obj_cb_arg);
+
+/**
+ * Call a function for each mempool memory chunk
+ *
+ * Iterate across all memory chunks attached to a rte_mempool and call
+ * the callback function on it.
+ *
+ * @param mp
+ *   A pointer to an initialized mempool.
+ * @param mem_cb
+ *   A function pointer that is called for each memory chunk.
+ * @param mem_cb_arg
+ *   An opaque pointer passed to the callback function.
+ * @return
+ *   Number of memory chunks iterated.
+ */
+uint32_t rte_mempool_mem_iter(struct rte_mempool *mp,
+	rte_mempool_mem_cb_t *mem_cb, void *mem_cb_arg);
 
 /**
  * Dump the status of the mempool to the console.

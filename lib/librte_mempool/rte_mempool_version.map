@@ -22,6 +22,7 @@ DPDK_16.07 {
 
 	rte_mempool_check_cookies;
 	rte_mempool_obj_iter;
+	rte_mempool_mem_iter;
 
 	local: *;
 } DPDK_2.0;
