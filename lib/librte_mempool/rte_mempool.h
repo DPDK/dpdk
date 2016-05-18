@@ -204,7 +204,7 @@ struct rte_mempool_memhdr {
 struct rte_mempool {
 	char name[RTE_MEMPOOL_NAMESIZE]; /**< Name of mempool. */
 	struct rte_ring *ring;           /**< Ring to store objects. */
-	phys_addr_t phys_addr;           /**< Phys. addr. of mempool struct. */
+	const struct rte_memzone *mz;    /**< Memzone where pool is allocated */
 	int flags;                       /**< Flags of the mempool. */
 	int socket_id;                   /**< Socket id passed at mempool creation. */
 	uint32_t size;                   /**< Max size of the mempool. */

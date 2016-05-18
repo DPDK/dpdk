@@ -725,7 +725,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	/* init the mempool structure */
 	memset(mp, 0, sizeof(*mp));
 	snprintf(mp->name, sizeof(mp->name), "%s", name);
-	mp->phys_addr = mz->phys_addr;
+	mp->mz = mz;
 	mp->socket_id = socket_id;
 	mp->size = n;
 	mp->flags = flags;
@@ -993,7 +993,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	fprintf(f, "mempool <%s>@%p\n", mp->name, mp);
 	fprintf(f, "  flags=%x\n", mp->flags);
 	fprintf(f, "  ring=<%s>@%p\n", mp->ring->name, mp->ring);
-	fprintf(f, "  phys_addr=0x%" PRIx64 "\n", mp->phys_addr);
+	fprintf(f, "  phys_addr=0x%" PRIx64 "\n", mp->mz->phys_addr);
 	fprintf(f, "  nb_mem_chunks=%u\n", mp->nb_mem_chunks);
 	fprintf(f, "  size=%"PRIu32"\n", mp->size);
 	fprintf(f, "  populated_size=%"PRIu32"\n", mp->populated_size);
