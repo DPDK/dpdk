@@ -152,6 +152,14 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 	rte_ring_sp_enqueue(mp->ring, obj);
 }
 
+/* Iterate through objects at the given address
+ *
+ * Given the pointer to the memory, and its topology in physical memory
+ * (the physical addresses table), iterate through the "elt_num" objects
+ * of size "total_elt_sz" aligned at "align". For each object in this memory
+ * chunk, invoke a callback. It returns the effective number of objects
+ * in this memory.
+ */
 uint32_t
 rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
@@ -341,9 +349,8 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz, uint32_t pg_shift)
 	return sz;
 }
 
-/*
- * Calculate how much memory would be actually required with the
- * given memory footprint to store required number of elements.
+/* Callback used by rte_mempool_xmem_usage(): it sets the opaque
+ * argument to the end of the object.
  */
 static void
 mempool_lelem_iter(void *arg, __rte_unused void *start, void *end,
@@ -352,6 +359,10 @@ mempool_lelem_iter(void *arg, __rte_unused void *start, void *end,
 	*(uintptr_t *)arg = (uintptr_t)end;
 }
 
+/*
+ * Calculate how much memory would be actually required with the
+ * given memory footprint to store required number of elements.
+ */
 ssize_t
 rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)

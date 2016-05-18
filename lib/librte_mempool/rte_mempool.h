@@ -214,7 +214,7 @@ struct rte_mempool {
 
 }  __rte_cache_aligned;
 
-#define MEMPOOL_F_NO_SPREAD      0x0001 /**< Do not spread in memory. */
+#define MEMPOOL_F_NO_SPREAD      0x0001 /**< Do not spread among memory channels. */
 #define MEMPOOL_F_NO_CACHE_ALIGN 0x0002 /**< Do not align objs on cache lines.*/
 #define MEMPOOL_F_SP_PUT         0x0004 /**< Default put is "single-producer".*/
 #define MEMPOOL_F_SC_GET         0x0008 /**< Default get is "single-consumer".*/
@@ -272,7 +272,8 @@ struct rte_mempool {
 /* return the header of a mempool object (internal) */
 static inline struct rte_mempool_objhdr *__mempool_get_header(void *obj)
 {
-	return (struct rte_mempool_objhdr *)RTE_PTR_SUB(obj, sizeof(struct rte_mempool_objhdr));
+	return (struct rte_mempool_objhdr *)RTE_PTR_SUB(obj,
+		sizeof(struct rte_mempool_objhdr));
 }
 
 /**
@@ -546,8 +547,9 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 /**
  * Create a new mempool named *name* in memory.
  *
- * This function uses ``memzone_reserve()`` to allocate memory. The
- * pool contains n elements of elt_size. Its size is set to n.
+ * The pool contains n elements of elt_size. Its size is set to n.
+ * This function uses ``memzone_reserve()`` to allocate the mempool header
+ * (and the objects if vaddr is NULL).
  * Depending on the input parameters, mempool elements can be either allocated
  * together with the mempool header, or an externally provided memory buffer
  * could be used to store mempool objects. In later case, that external
@@ -562,18 +564,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  * @param elt_size
  *   The size of each element.
  * @param cache_size
- *   If cache_size is non-zero, the rte_mempool library will try to
- *   limit the accesses to the common lockless pool, by maintaining a
- *   per-lcore object cache. This argument must be lower or equal to
- *   CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE. It is advised to choose
- *   cache_size to have "n modulo cache_size == 0": if this is
- *   not the case, some elements will always stay in the pool and will
- *   never be used. The access to the per-lcore table is of course
- *   faster than the multi-producer/consumer pool. The cache can be
- *   disabled if the cache_size argument is set to 0; it can be useful to
- *   avoid losing objects in cache. Note that even if not used, the
- *   memory space for cache is always reserved in a mempool structure,
- *   except if CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE is set to 0.
+ *   Size of the cache. See rte_mempool_create() for details.
  * @param private_data_size
  *   The size of the private data appended after the mempool
  *   structure. This is useful for storing some private data after the
@@ -587,35 +578,17 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   An opaque pointer to data that can be used in the mempool
  *   constructor function.
  * @param obj_init
- *   A function pointer that is called for each object at
- *   initialization of the pool. The user can set some meta data in
- *   objects if needed. This parameter can be NULL if not needed.
- *   The obj_init() function takes the mempool pointer, the init_arg,
- *   the object pointer and the object number as parameters.
+ *   A function called for each object at initialization of the pool.
+ *   See rte_mempool_create() for details.
  * @param obj_init_arg
- *   An opaque pointer to data that can be used as an argument for
- *   each call to the object constructor function.
+ *   An opaque pointer passed to the object constructor function.
  * @param socket_id
  *   The *socket_id* argument is the socket identifier in the case of
  *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
  *   constraint for the reserved zone.
  * @param flags
- *   The *flags* arguments is an OR of following flags:
- *   - MEMPOOL_F_NO_SPREAD: By default, objects addresses are spread
- *     between channels in RAM: the pool allocator will add padding
- *     between objects depending on the hardware configuration. See
- *     Memory alignment constraints for details. If this flag is set,
- *     the allocator will just align them to a cache line.
- *   - MEMPOOL_F_NO_CACHE_ALIGN: By default, the returned objects are
- *     cache-aligned. This flag removes this constraint, and no
- *     padding will be present between objects. This flag implies
- *     MEMPOOL_F_NO_SPREAD.
- *   - MEMPOOL_F_SP_PUT: If this flag is set, the default behavior
- *     when using rte_mempool_put() or rte_mempool_put_bulk() is
- *     "single-producer". Otherwise, it is "multi-producers".
- *   - MEMPOOL_F_SC_GET: If this flag is set, the default behavior
- *     when using rte_mempool_get() or rte_mempool_get_bulk() is
- *     "single-consumer". Otherwise, it is "multi-consumers".
+ *   Flags controlling the behavior of the mempool. See
+ *   rte_mempool_create() for details.
  * @param vaddr
  *   Virtual address of the externally allocated memory buffer.
  *   Will be used to store mempool objects.
@@ -628,13 +601,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   LOG2 of the physical pages size.
  * @return
  *   The pointer to the new allocated mempool, on success. NULL on error
- *   with rte_errno set appropriately. Possible rte_errno values include:
- *    - E_RTE_NO_CONFIG - function could not get pointer to rte_config structure
- *    - E_RTE_SECONDARY - function was called from a secondary process instance
- *    - EINVAL - cache size provided is too large
- *    - ENOSPC - the maximum number of memzones has already been allocated
- *    - EEXIST - a memzone with the same name already exists
- *    - ENOMEM - no appropriate memory area found in which to create memzone
+ *   with rte_errno set appropriately. See rte_mempool_create() for details.
  */
 struct rte_mempool *
 rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
