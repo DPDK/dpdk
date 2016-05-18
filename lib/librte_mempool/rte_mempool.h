@@ -159,6 +159,7 @@ struct rte_mempool_objsz {
 struct rte_mempool_objhdr {
 	STAILQ_ENTRY(rte_mempool_objhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;          /**< The mempool owning the object. */
+	phys_addr_t physaddr;            /**< Physical address of the object. */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	uint64_t cookie;                 /**< Debug cookie. */
 #endif
@@ -1131,13 +1132,13 @@ rte_mempool_empty(const struct rte_mempool *mp)
  *   The physical address of the elt element.
  */
 static inline phys_addr_t
-rte_mempool_virt2phy(const struct rte_mempool *mp, const void *elt)
+rte_mempool_virt2phy(__rte_unused const struct rte_mempool *mp, const void *elt)
 {
 	if (rte_eal_has_hugepages()) {
-		uintptr_t off;
-
-		off = (const char *)elt - (const char *)mp->elt_va_start;
-		return mp->elt_pa[off >> mp->pg_shift] + (off & mp->pg_mask);
+		const struct rte_mempool_objhdr *hdr;
+		hdr = (const struct rte_mempool_objhdr *)RTE_PTR_SUB(elt,
+			sizeof(*hdr));
+		return hdr->physaddr;
 	} else {
 		/*
 		 * If huge pages are disabled, we cannot assume the

@@ -133,19 +133,22 @@ static unsigned optimize_object_size(unsigned obj_size)
 typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
 	void * /*obj_start*/,
 	void * /*obj_end*/,
-	uint32_t /*obj_index */);
+	uint32_t /*obj_index */,
+	phys_addr_t /*physaddr*/);
 
 static void
-mempool_add_elem(struct rte_mempool *mp, void *obj)
+mempool_add_elem(struct rte_mempool *mp, void *obj, phys_addr_t physaddr)
 {
 	struct rte_mempool_objhdr *hdr;
 	struct rte_mempool_objtlr *tlr __rte_unused;
 
 	obj = (char *)obj + mp->header_size;
+	physaddr += mp->header_size;
 
 	/* set mempool ptr in header */
 	hdr = RTE_PTR_SUB(obj, sizeof(*hdr));
 	hdr->mp = mp;
+	hdr->physaddr = physaddr;
 	STAILQ_INSERT_TAIL(&mp->elt_list, hdr, next);
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
@@ -175,6 +178,7 @@ rte_mempool_obj_mem_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
 	uint32_t pgn, pgf;
 	uintptr_t end, start, va;
 	uintptr_t pg_sz;
+	phys_addr_t physaddr;
 
 	pg_sz = (uintptr_t)1 << pg_shift;
 	va = (uintptr_t)vaddr;
@@ -210,9 +214,10 @@ rte_mempool_obj_mem_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
 		 * otherwise, just skip that chunk unused.
 		 */
 		if (k == pgn) {
+			physaddr = paddr[k] + (start & (pg_sz - 1));
 			if (obj_iter != NULL)
 				obj_iter(obj_iter_arg, (void *)start,
-					(void *)end, i);
+					(void *)end, i, physaddr);
 			va = end;
 			j += pgf;
 			i++;
@@ -249,11 +254,11 @@ rte_mempool_obj_iter(struct rte_mempool *mp,
 
 static void
 mempool_obj_populate(void *arg, void *start, void *end,
-	__rte_unused uint32_t idx)
+	__rte_unused uint32_t idx, phys_addr_t physaddr)
 {
 	struct rte_mempool *mp = arg;
 
-	mempool_add_elem(mp, start);
+	mempool_add_elem(mp, start, physaddr);
 	mp->elt_va_end = (uintptr_t)end;
 }
 
@@ -358,7 +363,7 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift)
  */
 static void
 mempool_lelem_iter(void *arg, __rte_unused void *start, void *end,
-	__rte_unused uint32_t idx)
+	__rte_unused uint32_t idx, __rte_unused phys_addr_t physaddr)
 {
 	*(uintptr_t *)arg = (uintptr_t)end;
 }
