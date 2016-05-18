@@ -3283,8 +3283,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * Fetch initial bytes of packet descriptor into a
 		 * cacheline while allocating rep.
 		 */
-		rte_prefetch0(seg);
-		rte_prefetch0(&seg->cacheline1);
+		rte_mbuf_prefetch_part1(seg);
+		rte_mbuf_prefetch_part2(seg);
 		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
 						    &flags);
 		if (unlikely(ret < 0)) {

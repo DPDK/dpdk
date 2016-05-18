@@ -298,7 +298,7 @@ prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint8_t port)
 	const int32_t prefetch_offset = 2;
 
 	for (i = 0; i < (nb_pkts - prefetch_offset); i++) {
-		rte_prefetch0(pkts[i + prefetch_offset]->cacheline1);
+		rte_mbuf_prefetch_part2(pkts[i + prefetch_offset]);
 		prepare_tx_pkt(pkts[i], port);
 	}
 	/* Process left packets */

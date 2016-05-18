@@ -487,10 +487,10 @@ fm10k_recv_raw_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rte_compiler_barrier();
 
 		if (split_packet) {
-			rte_prefetch0(&rx_pkts[pos]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 1]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 2]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
+			rte_mbuf_prefetch_part2(rx_pkts[pos]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 1]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 2]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 3]);
 		}
 
 		/* D.1 pkt 3,4 convert format from desc to pktmbuf */

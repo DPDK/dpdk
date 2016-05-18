@@ -297,10 +297,10 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		_mm_storeu_si128((__m128i *)&rx_pkts[pos+2], mbp2);
 
 		if (split_packet) {
-			rte_prefetch0(&rx_pkts[pos]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 1]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 2]->cacheline1);
-			rte_prefetch0(&rx_pkts[pos + 3]->cacheline1);
+			rte_mbuf_prefetch_part2(rx_pkts[pos]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 1]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 2]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 3]);
 		}
 
 		/* avoid compiler reorder optimization */

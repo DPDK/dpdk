@@ -842,6 +842,44 @@ struct rte_mbuf {
 	uint16_t timesync;
 } __rte_cache_aligned;
 
+/**
+ * Prefetch the first part of the mbuf
+ *
+ * The first 64 bytes of the mbuf corresponds to fields that are used early
+ * in the receive path. If the cache line of the architecture is higher than
+ * 64B, the second part will also be prefetched.
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ */
+static inline void
+rte_mbuf_prefetch_part1(struct rte_mbuf *m)
+{
+	rte_prefetch0(&m->cacheline0);
+}
+
+/**
+ * Prefetch the second part of the mbuf
+ *
+ * The next 64 bytes of the mbuf corresponds to fields that are used in the
+ * transmit path. If the cache line of the architecture is higher than 64B,
+ * this function does nothing as it is expected that the full mbuf is
+ * already in cache.
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ */
+static inline void
+rte_mbuf_prefetch_part2(struct rte_mbuf *m)
+{
+#if RTE_CACHE_LINE_SIZE == 64
+	rte_prefetch0(&m->cacheline1);
+#else
+	RTE_SET_USED(m);
+#endif
+}
+
+
 static inline uint16_t rte_pktmbuf_priv_size(struct rte_mempool *mp);
 
 /**
