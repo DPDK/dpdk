@@ -1261,7 +1261,7 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  *   The size of each element, including header and trailer, as returned
  *   by rte_mempool_calc_obj_size().
  * @param pg_shift
- *   LOG2 of the physical pages size.
+ *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
  * @return
  *   Required memory size aligned at page boundary.
  */

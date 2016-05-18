@@ -253,18 +253,18 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 size_t
 rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift)
 {
-	size_t n, pg_num, pg_sz, sz;
+	size_t obj_per_page, pg_num, pg_sz;
+
+	if (pg_shift == 0)
+		return total_elt_sz * elt_num;
 
 	pg_sz = (size_t)1 << pg_shift;
+	obj_per_page = pg_sz / total_elt_sz;
+	if (obj_per_page == 0)
+		return RTE_ALIGN_CEIL(total_elt_sz, pg_sz) * elt_num;
 
-	if ((n = pg_sz / total_elt_sz) > 0) {
-		pg_num = (elt_num + n - 1) / n;
-		sz = pg_num << pg_shift;
-	} else {
-		sz = RTE_ALIGN_CEIL(total_elt_sz, pg_sz) * elt_num;
-	}
-
-	return sz;
+	pg_num = (elt_num + obj_per_page - 1) / obj_per_page;
+	return pg_num << pg_shift;
 }
 
 /*
