@@ -787,7 +787,7 @@ mempool_obj_audit(void *arg, void *start, void *end, uint32_t idx)
 }
 
 static void
-mempool_audit_cookies(const struct rte_mempool *mp)
+mempool_audit_cookies(struct rte_mempool *mp)
 {
 	uint32_t elt_sz, num;
 	struct mempool_audit_arg arg;
@@ -845,7 +845,7 @@ mempool_audit_cache(const struct rte_mempool *mp)
 
 /* check the consistency of mempool (size, cookies, ...) */
 void
-rte_mempool_audit(const struct rte_mempool *mp)
+rte_mempool_audit(struct rte_mempool *mp)
 {
 	mempool_audit_cache(mp);
 	mempool_audit_cookies(mp);
@@ -856,7 +856,7 @@ rte_mempool_audit(const struct rte_mempool *mp)
 
 /* dump the status of the mempool on the console */
 void
-rte_mempool_dump(FILE *f, const struct rte_mempool *mp)
+rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 {
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	struct rte_mempool_debug_stats sum;
@@ -927,7 +927,7 @@ rte_mempool_dump(FILE *f, const struct rte_mempool *mp)
 void
 rte_mempool_list_dump(FILE *f)
 {
-	const struct rte_mempool *mp = NULL;
+	struct rte_mempool *mp = NULL;
 	struct rte_tailq_entry *te;
 	struct rte_mempool_list *mempool_list;
 

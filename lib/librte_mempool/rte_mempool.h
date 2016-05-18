@@ -650,7 +650,7 @@ rte_dom0_mempool_create(const char *name, unsigned n, unsigned elt_size,
  * @param mp
  *   A pointer to the mempool structure.
  */
-void rte_mempool_dump(FILE *f, const struct rte_mempool *mp);
+void rte_mempool_dump(FILE *f, struct rte_mempool *mp);
 
 /**
  * @internal Put several objects back in the mempool; used internally.
@@ -1188,7 +1188,7 @@ rte_mempool_virt2phy(const struct rte_mempool *mp, const void *elt)
  * @param mp
  *   A pointer to the mempool structure.
  */
-void rte_mempool_audit(const struct rte_mempool *mp);
+void rte_mempool_audit(struct rte_mempool *mp);
 
 /**
  * Return a pointer to the private data in an mempool structure.
