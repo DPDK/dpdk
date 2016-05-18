@@ -156,12 +156,26 @@ get_xen_memory_size(void)
  * Based on physical address to caculate MFN in Xen Dom0.
  */
 phys_addr_t
-rte_xen_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr)
+rte_xen_mem_phy2mch(int32_t memseg_id, const phys_addr_t phy_addr)
 {
-	int mfn_id;
+	int mfn_id, i;
 	uint64_t mfn, mfn_offset;
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct rte_memseg *memseg = mcfg->memseg;
+
+	/* find the memory segment owning the physical address */
+	if (memseg_id == -1) {
+		for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+			if ((phy_addr >= memseg[i].phys_addr) &&
+					(phys_addr < memseg[i].phys_addr +
+						memseg[i].size)) {
+				memseg_id = i;
+				break;
+			}
+		}
+		if (memseg_id == -1)
+			return RTE_BAD_PHYS_ADDR;
+	}
 
 	mfn_id = (phy_addr - memseg[memseg_id].phys_addr) / RTE_PGSIZE_2M;
 

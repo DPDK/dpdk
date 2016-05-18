@@ -200,21 +200,22 @@ unsigned rte_memory_get_nrank(void);
 int rte_xen_dom0_supported(void);
 
 /**< Internal use only - phys to virt mapping for xen */
-phys_addr_t rte_xen_mem_phy2mch(uint32_t, const phys_addr_t);
+phys_addr_t rte_xen_mem_phy2mch(int32_t, const phys_addr_t);
 
 /**
  * Return the physical address of elt, which is an element of the pool mp.
  *
  * @param memseg_id
- *   The mempool is from which memory segment.
+ *   Identifier of the memory segment owning the physical address. If
+ *   set to -1, find it automatically.
  * @param phy_addr
  *   physical address of elt.
  *
  * @return
- *   The physical address or error.
+ *   The physical address or RTE_BAD_PHYS_ADDR on error.
  */
 static inline phys_addr_t
-rte_mem_phy2mch(uint32_t memseg_id, const phys_addr_t phy_addr)
+rte_mem_phy2mch(int32_t memseg_id, const phys_addr_t phy_addr)
 {
 	if (rte_xen_dom0_supported())
 		return rte_xen_mem_phy2mch(memseg_id, phy_addr);
@@ -250,7 +251,7 @@ static inline int rte_xen_dom0_supported(void)
 }
 
 static inline phys_addr_t
-rte_mem_phy2mch(uint32_t memseg_id __rte_unused, const phys_addr_t phy_addr)
+rte_mem_phy2mch(int32_t memseg_id __rte_unused, const phys_addr_t phy_addr)
 {
 	return phy_addr;
 }
