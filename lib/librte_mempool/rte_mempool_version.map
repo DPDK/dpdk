@@ -9,7 +9,6 @@ DPDK_2.0 {
 	rte_mempool_dump;
 	rte_mempool_list_dump;
 	rte_mempool_lookup;
-	rte_mempool_obj_iter;
 	rte_mempool_walk;
 	rte_mempool_xmem_create;
 	rte_mempool_xmem_size;
@@ -22,6 +21,7 @@ DPDK_16.07 {
 	global:
 
 	rte_mempool_check_cookies;
+	rte_mempool_obj_iter;
 
 	local: *;
 } DPDK_2.0;

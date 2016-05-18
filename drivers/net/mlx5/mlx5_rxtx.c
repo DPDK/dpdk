@@ -262,7 +262,6 @@ txq_mp2mr(struct txq *txq, const struct rte_mempool *mp)
 }
 
 struct txq_mp2mr_mbuf_check_data {
-	const struct rte_mempool *mp;
 	int ret;
 };
 
@@ -270,34 +269,26 @@ struct txq_mp2mr_mbuf_check_data {
  * Callback function for rte_mempool_obj_iter() to check whether a given
  * mempool object looks like a mbuf.
  *
- * @param[in, out] arg
- *   Context data (struct txq_mp2mr_mbuf_check_data). Contains mempool pointer
- *   and return value.
- * @param[in] start
- *   Object start address.
- * @param[in] end
- *   Object end address.
+ * @param[in] mp
+ *   The mempool pointer
+ * @param[in] arg
+ *   Context data (struct txq_mp2mr_mbuf_check_data). Contains the
+ *   return value.
+ * @param[in] obj
+ *   Object address.
  * @param index
- *   Unused.
- *
- * @return
- *   Nonzero value when object is not a mbuf.
+ *   Object index, unused.
  */
 static void
-txq_mp2mr_mbuf_check(void *arg, void *start, void *end,
-		     uint32_t index __rte_unused)
+txq_mp2mr_mbuf_check(struct rte_mempool *mp, void *arg, void *obj,
+	uint32_t index __rte_unused)
 {
 	struct txq_mp2mr_mbuf_check_data *data = arg;
-	struct rte_mbuf *buf =
-		(void *)((uintptr_t)start + data->mp->header_size);
+	struct rte_mbuf *buf = obj;
 
-	(void)index;
 	/* Check whether mbuf structure fits element size and whether mempool
 	 * pointer is valid. */
-	if (((uintptr_t)end >= (uintptr_t)(buf + 1)) &&
-	    (buf->pool == data->mp))
-		data->ret = 0;
-	else
+	if (sizeof(*buf) > mp->elt_size || buf->pool != mp)
 		data->ret = -1;
 }
 
@@ -315,24 +306,12 @@ txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 {
 	struct txq *txq = arg;
 	struct txq_mp2mr_mbuf_check_data data = {
-		.mp = mp,
-		.ret = -1,
+		.ret = 0,
 	};
 
-	/* Discard empty mempools. */
-	if (mp->size == 0)
-		return;
 	/* Register mempool only if the first element looks like a mbuf. */
-	rte_mempool_obj_iter((void *)mp->elt_va_start,
-			     1,
-			     mp->header_size + mp->elt_size + mp->trailer_size,
-			     1,
-			     mp->elt_pa,
-			     mp->pg_num,
-			     mp->pg_shift,
-			     txq_mp2mr_mbuf_check,
-			     &data);
-	if (data.ret)
+	if (rte_mempool_obj_iter(mp, txq_mp2mr_mbuf_check, &data) == 0 ||
+			data.ret == -1)
 		return;
 	txq_mp2mr(txq, mp);
 }

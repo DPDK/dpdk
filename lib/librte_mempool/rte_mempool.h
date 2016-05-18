@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -334,61 +335,11 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 /**
  * An object callback function for mempool.
  *
- * Arguments are the mempool, the opaque pointer given by the user in
- * rte_mempool_create(), the pointer to the element and the index of
- * the element in the pool.
+ * Used by rte_mempool_create() and rte_mempool_obj_iter().
  */
 typedef void (rte_mempool_obj_cb_t)(struct rte_mempool *mp,
 		void *opaque, void *obj, unsigned obj_idx);
 typedef rte_mempool_obj_cb_t rte_mempool_obj_ctor_t; /* compat */
-
-/**
- * A mempool object iterator callback function.
- */
-typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
-	void * /*obj_start*/,
-	void * /*obj_end*/,
-	uint32_t /*obj_index */);
-
-/**
- * Call a function for each mempool object in a memory chunk
- *
- * Iterate across objects of the given size and alignment in the
- * provided chunk of memory. The given memory buffer can consist of
- * disjointed physical pages.
- *
- * For each object, call the provided callback (if any). This function
- * is used to populate a mempool, or walk through all the elements of a
- * mempool, or estimate how many elements of the given size could be
- * created in the given memory buffer.
- *
- * @param vaddr
- *   Virtual address of the memory buffer.
- * @param elt_num
- *   Maximum number of objects to iterate through.
- * @param elt_sz
- *   Size of each object.
- * @param align
- *   Alignment of each object.
- * @param paddr
- *   Array of physical addresses of the pages that comprises given memory
- *   buffer.
- * @param pg_num
- *   Number of elements in the paddr array.
- * @param pg_shift
- *   LOG2 of the physical pages size.
- * @param obj_iter
- *   Object iterator callback function (could be NULL).
- * @param obj_iter_arg
- *   User defined parameter for the object iterator callback function.
- *
- * @return
- *   Number of objects iterated through.
- */
-uint32_t rte_mempool_obj_iter(void *vaddr,
-	uint32_t elt_num, size_t elt_sz, size_t align,
-	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
-	rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg);
 
 /**
  * A mempool constructor callback function.
@@ -641,6 +592,24 @@ rte_dom0_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 		int socket_id, unsigned flags);
 
+
+/**
+ * Call a function for each mempool element
+ *
+ * Iterate across all objects attached to a rte_mempool and call the
+ * callback function on it.
+ *
+ * @param mp
+ *   A pointer to an initialized mempool.
+ * @param obj_cb
+ *   A function pointer that is called for each object.
+ * @param obj_cb_arg
+ *   An opaque pointer passed to the callback function.
+ * @return
+ *   Number of objects iterated.
+ */
+uint32_t rte_mempool_obj_iter(struct rte_mempool *mp,
+	rte_mempool_obj_cb_t *obj_cb, void *obj_cb_arg);
 
 /**
  * Dump the status of the mempool to the console.

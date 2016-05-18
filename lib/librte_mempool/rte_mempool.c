@@ -2,6 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016 6WIND S.A.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -126,6 +127,14 @@ static unsigned optimize_object_size(unsigned obj_size)
 	return new_obj_size * RTE_MEMPOOL_ALIGN;
 }
 
+/**
+ * A mempool object iterator callback function.
+ */
+typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
+	void * /*obj_start*/,
+	void * /*obj_end*/,
+	uint32_t /*obj_index */);
+
 static void
 mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg)
@@ -161,8 +170,8 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
  * chunk, invoke a callback. It returns the effective number of objects
  * in this memory.
  */
-uint32_t
-rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
+static uint32_t
+rte_mempool_obj_mem_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
 	size_t align, const phys_addr_t paddr[], uint32_t pg_num,
 	uint32_t pg_shift, rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg)
 {
@@ -220,6 +229,24 @@ rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
 	return i;
 }
 
+/* call obj_cb() for each mempool element */
+uint32_t
+rte_mempool_obj_iter(struct rte_mempool *mp,
+	rte_mempool_obj_cb_t *obj_cb, void *obj_cb_arg)
+{
+	struct rte_mempool_objhdr *hdr;
+	void *obj;
+	unsigned n = 0;
+
+	STAILQ_FOREACH(hdr, &mp->elt_list, next) {
+		obj = (char *)hdr + sizeof(*hdr);
+		obj_cb(mp, obj_cb_arg, obj, n);
+		n++;
+	}
+
+	return n;
+}
+
 /*
  * Populate  mempool with the objects.
  */
@@ -251,7 +278,7 @@ mempool_populate(struct rte_mempool *mp, size_t num, size_t align,
 	arg.obj_init = obj_init;
 	arg.obj_init_arg = obj_init_arg;
 
-	mp->size = rte_mempool_obj_iter((void *)mp->elt_va_start,
+	mp->size = rte_mempool_obj_mem_iter((void *)mp->elt_va_start,
 		num, elt_sz, align,
 		mp->elt_pa, mp->pg_num, mp->pg_shift,
 		mempool_obj_populate, &arg);
@@ -366,7 +393,7 @@ rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
 	va = (uintptr_t)vaddr;
 	uv = va;
 
-	if ((n = rte_mempool_obj_iter(vaddr, elt_num, total_elt_sz, 1,
+	if ((n = rte_mempool_obj_mem_iter(vaddr, elt_num, total_elt_sz, 1,
 			paddr, pg_num, pg_shift, mempool_lelem_iter,
 			&uv)) != elt_num) {
 		return -(ssize_t)n;
@@ -798,7 +825,7 @@ mempool_audit_cookies(struct rte_mempool *mp)
 	arg.obj_end = mp->elt_va_start;
 	arg.obj_num = 0;
 
-	num = rte_mempool_obj_iter((void *)mp->elt_va_start,
+	num = rte_mempool_obj_mem_iter((void *)mp->elt_va_start,
 		mp->size, elt_sz, 1,
 		mp->elt_pa, mp->pg_num, mp->pg_shift,
 		mempool_obj_audit, &arg);
