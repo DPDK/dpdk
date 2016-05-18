@@ -311,7 +311,7 @@ rte_eal_common_log_init(FILE *default_log)
 				LOG_ELT_SIZE, 0, 0,
 				NULL, NULL,
 				NULL, NULL,
-				SOCKET_ID_ANY, 0);
+				SOCKET_ID_ANY, MEMPOOL_F_NO_PHYS_CONTIG);
 
 	if ((log_history_mp == NULL) &&
 	    ((log_history_mp = rte_mempool_lookup(LOG_HISTORY_MP_NAME)) == NULL)){

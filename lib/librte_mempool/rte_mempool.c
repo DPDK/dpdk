@@ -413,7 +413,11 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 
 	while (off + total_elt_sz <= len && mp->populated_size < mp->size) {
 		off += mp->header_size;
-		mempool_add_elem(mp, (char *)vaddr + off, paddr + off);
+		if (paddr == RTE_BAD_PHYS_ADDR)
+			mempool_add_elem(mp, (char *)vaddr + off,
+				RTE_BAD_PHYS_ADDR);
+		else
+			mempool_add_elem(mp, (char *)vaddr + off, paddr + off);
 		off += mp->elt_size + mp->trailer_size;
 		i++;
 	}
@@ -442,6 +446,10 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 	/* mempool must not be populated */
 	if (mp->nb_mem_chunks != 0)
 		return -EEXIST;
+
+	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
+		return rte_mempool_populate_phys(mp, vaddr, RTE_BAD_PHYS_ADDR,
+			pg_num * pg_sz, free_cb, opaque);
 
 	for (i = 0; i < pg_num && mp->populated_size < mp->size; i += n) {
 
@@ -483,6 +491,10 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		return -EINVAL;
 	if (RTE_ALIGN_CEIL(len, pg_sz) != len)
 		return -EINVAL;
+
+	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
+		return rte_mempool_populate_phys(mp, addr, RTE_BAD_PHYS_ADDR,
+			len, free_cb, opaque);
 
 	for (off = 0; off + pg_sz <= len &&
 		     mp->populated_size < mp->size; off += phys_len) {
@@ -534,6 +546,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 	size_t size, total_elt_sz, align, pg_sz, pg_shift;
+	phys_addr_t paddr;
 	unsigned mz_id, n;
 	int ret;
 
@@ -573,10 +586,14 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 			goto fail;
 		}
 
-		/* use memzone physical address if it is valid */
+		if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG)
+			paddr = RTE_BAD_PHYS_ADDR;
+		else
+			paddr = mz->phys_addr;
+
 		if (rte_eal_has_hugepages() && !rte_xen_dom0_supported())
 			ret = rte_mempool_populate_phys(mp, mz->addr,
-				mz->phys_addr, mz->len,
+				paddr, mz->len,
 				rte_mempool_memchunk_mz_free,
 				(void *)(uintptr_t)mz);
 		else

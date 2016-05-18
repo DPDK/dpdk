@@ -236,6 +236,7 @@ struct rte_mempool {
 #define MEMPOOL_F_SP_PUT         0x0004 /**< Default put is "single-producer".*/
 #define MEMPOOL_F_SC_GET         0x0008 /**< Default get is "single-consumer".*/
 #define MEMPOOL_F_RING_CREATED   0x0010 /**< Internal: ring is created */
+#define MEMPOOL_F_NO_PHYS_CONTIG 0x0020 /**< Don't need physically contiguous objs. */
 
 /**
  * @internal When debug is enabled, store some statistics.
@@ -421,6 +422,8 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *   - MEMPOOL_F_SC_GET: If this flag is set, the default behavior
  *     when using rte_mempool_get() or rte_mempool_get_bulk() is
  *     "single-consumer". Otherwise, it is "multi-consumers".
+ *   - MEMPOOL_F_NO_PHYS_CONTIG: If set, allocated objects won't
+ *     necessarilly be contiguous in physical memory.
  * @return
  *   The pointer to the new allocated mempool, on success. NULL on error
  *   with rte_errno set appropriately. Possible rte_errno values include:
@@ -1226,6 +1229,8 @@ rte_mempool_empty(const struct rte_mempool *mp)
  *   A pointer (virtual address) to the element of the pool.
  * @return
  *   The physical address of the elt element.
+ *   If the mempool was created with MEMPOOL_F_NO_PHYS_CONTIG, the
+ *   returned value is RTE_BAD_PHYS_ADDR.
  */
 static inline phys_addr_t
 rte_mempool_virt2phy(__rte_unused const struct rte_mempool *mp, const void *elt)
