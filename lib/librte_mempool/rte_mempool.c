@@ -40,6 +40,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
+#include <sys/mman.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -589,6 +590,69 @@ rte_mempool_populate_default(struct rte_mempool *mp)
  fail:
 	rte_mempool_free_memchunks(mp);
 	return ret;
+}
+
+/* return the memory size required for mempool objects in anonymous mem */
+static size_t
+get_anon_size(const struct rte_mempool *mp)
+{
+	size_t size, total_elt_sz, pg_sz, pg_shift;
+
+	pg_sz = getpagesize();
+	pg_shift = rte_bsf32(pg_sz);
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+	size = rte_mempool_xmem_size(mp->size, total_elt_sz, pg_shift);
+
+	return size;
+}
+
+/* unmap a memory zone mapped by rte_mempool_populate_anon() */
+static void
+rte_mempool_memchunk_anon_free(struct rte_mempool_memhdr *memhdr,
+	void *opaque)
+{
+	munmap(opaque, get_anon_size(memhdr->mp));
+}
+
+/* populate the mempool with an anonymous mapping */
+__rte_unused static int
+rte_mempool_populate_anon(struct rte_mempool *mp)
+{
+	size_t size;
+	int ret;
+	char *addr;
+
+	/* mempool is already populated, error */
+	if (!STAILQ_EMPTY(&mp->mem_list)) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	/* get chunk of virtually continuous memory */
+	size = get_anon_size(mp);
+	addr = mmap(NULL, size, PROT_READ | PROT_WRITE,
+		MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	if (addr == MAP_FAILED) {
+		rte_errno = errno;
+		return 0;
+	}
+	/* can't use MMAP_LOCKED, it does not exist on BSD */
+	if (mlock(addr, size) < 0) {
+		rte_errno = errno;
+		munmap(addr, size);
+		return 0;
+	}
+
+	ret = rte_mempool_populate_virt(mp, addr, size, getpagesize(),
+		rte_mempool_memchunk_anon_free, addr);
+	if (ret == 0)
+		goto fail;
+
+	return mp->populated_size;
+
+ fail:
+	rte_mempool_free_memchunks(mp);
+	return 0;
 }
 
 /* free a mempool */
