@@ -58,11 +58,7 @@ SRCS-y += txonly.c
 SRCS-y += csumonly.c
 SRCS-y += icmpecho.c
 SRCS-$(CONFIG_RTE_LIBRTE_IEEE1588) += ieee1588fwd.c
-SRCS-y += mempool_anon.c
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-CFLAGS_mempool_anon.o := -D_GNU_SOURCE
-endif
 CFLAGS_cmdline.o := -D_GNU_SOURCE
 
 # this application needs libraries first

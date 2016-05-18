@@ -77,7 +77,6 @@
 #endif
 
 #include "testpmd.h"
-#include "mempool_osdep.h"
 
 uint16_t verbose_level = 0; /**< Silent by default. */
 
@@ -427,17 +426,23 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 
 	/* if the former XEN allocation failed fall back to normal allocation */
 	if (rte_mp == NULL) {
-		if (mp_anon != 0)
-			rte_mp = mempool_anon_create(pool_name, nb_mbuf,
-					mb_size, (unsigned) mb_mempool_cache,
-					sizeof(struct rte_pktmbuf_pool_private),
-					rte_pktmbuf_pool_init, NULL,
-					rte_pktmbuf_init, NULL,
-					socket_id, 0);
-		else
+		if (mp_anon != 0) {
+			rte_mp = rte_mempool_create_empty(pool_name, nb_mbuf,
+				mb_size, (unsigned) mb_mempool_cache,
+				sizeof(struct rte_pktmbuf_pool_private),
+				socket_id, 0);
+
+			if (rte_mempool_populate_anon(rte_mp) == 0) {
+				rte_mempool_free(rte_mp);
+				rte_mp = NULL;
+			}
+			rte_pktmbuf_pool_init(rte_mp, NULL);
+			rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
+		} else {
 			/* wrapper to rte_mempool_create() */
 			rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
 				mb_mempool_cache, 0, mbuf_seg_size, socket_id);
+		}
 	}
 
 	if (rte_mp == NULL) {
