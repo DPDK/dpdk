@@ -391,7 +391,7 @@ rte_mempool_ring_create(struct rte_mempool *mp)
 }
 
 /* free a memchunk allocated with rte_memzone_reserve() */
-__rte_unused static void
+static void
 rte_mempool_memchunk_mz_free(__rte_unused struct rte_mempool_memhdr *memhdr,
 	void *opaque)
 {
@@ -511,6 +511,60 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 	return cnt;
 }
 
+/* Default function to populate the mempool: allocate memory in mezones,
+ * and populate them. Return the number of objects added, or a negative
+ * value on error.
+ */
+static int rte_mempool_populate_default(struct rte_mempool *mp)
+{
+	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+	size_t size, total_elt_sz, align;
+	unsigned mz_id, n;
+	int ret;
+
+	/* mempool must not be populated */
+	if (mp->nb_mem_chunks != 0)
+		return -EEXIST;
+
+	align = RTE_CACHE_LINE_SIZE;
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+	for (mz_id = 0, n = mp->size; n > 0; mz_id++, n -= ret) {
+		size = rte_mempool_xmem_size(n, total_elt_sz, 0);
+
+		ret = snprintf(mz_name, sizeof(mz_name),
+			RTE_MEMPOOL_MZ_FORMAT "_%d", mp->name, mz_id);
+		if (ret < 0 || ret >= (int)sizeof(mz_name)) {
+			ret = -ENAMETOOLONG;
+			goto fail;
+		}
+
+		mz = rte_memzone_reserve_aligned(mz_name, size,
+			mp->socket_id, mz_flags, align);
+		/* not enough memory, retry with the biggest zone we have */
+		if (mz == NULL)
+			mz = rte_memzone_reserve_aligned(mz_name, 0,
+				mp->socket_id, mz_flags, align);
+		if (mz == NULL) {
+			ret = -rte_errno;
+			goto fail;
+		}
+
+		ret = rte_mempool_populate_phys(mp, mz->addr, mz->phys_addr,
+			mz->len, rte_mempool_memchunk_mz_free,
+			(void *)(uintptr_t)mz);
+		if (ret < 0)
+			goto fail;
+	}
+
+	return mp->size;
+
+ fail:
+	rte_mempool_free_memchunks(mp);
+	return ret;
+}
+
 /*
  * Create the mempool over already allocated chunk of memory.
  * That external memory buffer can consists of physically disjoint pages.
@@ -530,13 +584,10 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	struct rte_mempool_list *mempool_list;
 	struct rte_mempool *mp = NULL;
 	struct rte_tailq_entry *te = NULL;
-	const struct rte_memzone *mz;
+	const struct rte_memzone *mz = NULL;
 	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
-	void *obj;
 	struct rte_mempool_objsz objsz;
-	void *startaddr;
-	int page_size = getpagesize();
 	int ret;
 
 	/* compilation-time checks */
@@ -591,16 +642,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	private_data_size = (private_data_size +
 			     RTE_MEMPOOL_ALIGN_MASK) & (~RTE_MEMPOOL_ALIGN_MASK);
 
-	if (! rte_eal_has_hugepages()) {
-		/*
-		 * expand private data size to a whole page, so that the
-		 * first pool element will start on a new standard page
-		 */
-		int head = sizeof(struct rte_mempool);
-		int new_size = (private_data_size + head) % page_size;
-		if (new_size)
-			private_data_size += page_size - new_size;
-	}
 
 	/* try to allocate tailq entry */
 	te = rte_zmalloc("MEMPOOL_TAILQ_ENTRY", sizeof(*te), 0);
@@ -617,17 +658,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mempool_size = MEMPOOL_HEADER_SIZE(mp, cache_size);
 	mempool_size += private_data_size;
 	mempool_size = RTE_ALIGN_CEIL(mempool_size, RTE_MEMPOOL_ALIGN);
-	if (vaddr == NULL)
-		mempool_size += (size_t)objsz.total_size * n;
-
-	if (! rte_eal_has_hugepages()) {
-		/*
-		 * we want the memory pool to start on a page boundary,
-		 * because pool elements crossing page boundaries would
-		 * result in discontiguous physical addresses
-		 */
-		mempool_size += page_size;
-	}
 
 	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 
@@ -635,20 +665,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	if (mz == NULL)
 		goto exit_unlock;
 
-	if (rte_eal_has_hugepages()) {
-		startaddr = (void*)mz->addr;
-	} else {
-		/* align memory pool start address on a page boundary */
-		unsigned long addr = (unsigned long)mz->addr;
-		if (addr & (page_size - 1)) {
-			addr += page_size;
-			addr &= ~(page_size - 1);
-		}
-		startaddr = (void*)addr;
-	}
-
 	/* init the mempool structure */
-	mp = startaddr;
 	memset(mp, 0, sizeof(*mp));
 	snprintf(mp->name, sizeof(mp->name), "%s", name);
 	mp->phys_addr = mz->phys_addr;
@@ -679,22 +696,17 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		mp_init(mp, mp_init_arg);
 
 	/* mempool elements allocated together with mempool */
-	if (vaddr == NULL) {
-		/* calculate address of the first elt for continuous mempool. */
-		obj = (char *)mp + MEMPOOL_HEADER_SIZE(mp, cache_size) +
-			private_data_size;
-		obj = RTE_PTR_ALIGN_CEIL(obj, RTE_MEMPOOL_ALIGN);
-
-		ret = rte_mempool_populate_phys(mp, obj,
-			mp->phys_addr + ((char *)obj - (char *)mp),
-			objsz.total_size * n, NULL, NULL);
-		if (ret != (int)mp->size)
-			goto exit_unlock;
-	} else {
+	if (vaddr == NULL)
+		ret = rte_mempool_populate_default(mp);
+	else
 		ret = rte_mempool_populate_phys_tab(mp, vaddr,
 			paddr, pg_num, pg_shift, NULL, NULL);
-		if (ret != (int)mp->size)
-			goto exit_unlock;
+	if (ret < 0) {
+		rte_errno = -ret;
+		goto exit_unlock;
+	} else if (ret != (int)mp->size) {
+		rte_errno = EINVAL;
+		goto exit_unlock;
 	}
 
 	/* call the initializer */
@@ -717,6 +729,8 @@ exit_unlock:
 		rte_ring_free(mp->ring);
 	}
 	rte_free(te);
+	if (mz != NULL)
+		rte_memzone_free(mz);
 
 	return NULL;
 }

@@ -140,8 +140,71 @@ txq_complete(struct txq *txq)
 	return 0;
 }
 
+struct mlx5_check_mempool_data {
+	int ret;
+	char *start;
+	char *end;
+};
+
+/* Called by mlx5_check_mempool() when iterating the memory chunks. */
+static void mlx5_check_mempool_cb(struct rte_mempool *mp,
+	void *opaque, struct rte_mempool_memhdr *memhdr,
+	unsigned mem_idx)
+{
+	struct mlx5_check_mempool_data *data = opaque;
+
+	(void)mp;
+	(void)mem_idx;
+
+	/* It already failed, skip the next chunks. */
+	if (data->ret != 0)
+		return;
+	/* It is the first chunk. */
+	if (data->start == NULL && data->end == NULL) {
+		data->start = memhdr->addr;
+		data->end = data->start + memhdr->len;
+		return;
+	}
+	if (data->end == memhdr->addr) {
+		data->end += memhdr->len;
+		return;
+	}
+	if (data->start == (char *)memhdr->addr + memhdr->len) {
+		data->start -= memhdr->len;
+		return;
+	}
+	/* Error, mempool is not virtually contigous. */
+	data->ret = -1;
+}
+
+/**
+ * Check if a mempool can be used: it must be virtually contiguous.
+ *
+ * @param[in] mp
+ *   Pointer to memory pool.
+ * @param[out] start
+ *   Pointer to the start address of the mempool virtual memory area
+ * @param[out] end
+ *   Pointer to the end address of the mempool virtual memory area
+ *
+ * @return
+ *   0 on success (mempool is virtually contiguous), -1 on error.
+ */
+static int mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
+	uintptr_t *end)
+{
+	struct mlx5_check_mempool_data data;
+
+	memset(&data, 0, sizeof(data));
+	rte_mempool_mem_iter(mp, mlx5_check_mempool_cb, &data);
+	*start = (uintptr_t)data.start;
+	*end = (uintptr_t)data.end;
+
+	return data.ret;
+}
+
 /* For best performance, this function should not be inlined. */
-struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, const struct rte_mempool *)
+struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, struct rte_mempool *)
 	__attribute__((noinline));
 
 /**
@@ -156,15 +219,21 @@ struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, const struct rte_mempool *)
  *   Memory region pointer, NULL in case of error.
  */
 struct ibv_mr *
-mlx5_mp2mr(struct ibv_pd *pd, const struct rte_mempool *mp)
+mlx5_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 {
 	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	uintptr_t start = (uintptr_t)STAILQ_FIRST(&mp->mem_list)->addr;
-	uintptr_t end = start + STAILQ_FIRST(&mp->mem_list)->len;
+	uintptr_t start;
+	uintptr_t end;
 	unsigned int i;
 
+	if (mlx5_check_mempool(mp, &start, &end) != 0) {
+		ERROR("mempool %p: not virtually contiguous",
+			(void *)mp);
+		return NULL;
+	}
+
 	DEBUG("mempool %p area start=%p end=%p size=%zu",
-	      (const void *)mp, (void *)start, (void *)end,
+	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
 	/* Round start and end to page boundary if found in memory segments. */
 	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
@@ -178,7 +247,7 @@ mlx5_mp2mr(struct ibv_pd *pd, const struct rte_mempool *mp)
 			end = RTE_ALIGN_CEIL(end, align);
 	}
 	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
-	      (const void *)mp, (void *)start, (void *)end,
+	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
 	return ibv_reg_mr(pd,
 			  (void *)start,
@@ -218,7 +287,7 @@ txq_mb2mp(struct rte_mbuf *buf)
  *   mr->lkey on success, (uint32_t)-1 on failure.
  */
 static uint32_t
-txq_mp2mr(struct txq *txq, const struct rte_mempool *mp)
+txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 {
 	unsigned int i;
 	struct ibv_mr *mr;
@@ -236,7 +305,7 @@ txq_mp2mr(struct txq *txq, const struct rte_mempool *mp)
 	}
 	/* Add a new entry, register MR first. */
 	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
-	      (void *)txq, mp->name, (const void *)mp);
+	      (void *)txq, mp->name, (void *)mp);
 	mr = mlx5_mp2mr(txq->priv->pd, mp);
 	if (unlikely(mr == NULL)) {
 		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
@@ -257,7 +326,7 @@ txq_mp2mr(struct txq *txq, const struct rte_mempool *mp)
 	txq->mp2mr[i].mr = mr;
 	txq->mp2mr[i].lkey = mr->lkey;
 	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
-	      (void *)txq, mp->name, (const void *)mp, txq->mp2mr[i].lkey);
+	      (void *)txq, mp->name, (void *)mp, txq->mp2mr[i].lkey);
 	return txq->mp2mr[i].lkey;
 }
 

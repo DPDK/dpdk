@@ -125,17 +125,6 @@ struct rte_mempool_objsz {
 /* "MP_<name>" */
 #define	RTE_MEMPOOL_MZ_FORMAT	RTE_MEMPOOL_MZ_PREFIX "%s"
 
-#ifdef RTE_LIBRTE_XEN_DOM0
-
-/* "<name>_MP_elt" */
-#define	RTE_MEMPOOL_OBJ_NAME	"%s_" RTE_MEMPOOL_MZ_PREFIX "elt"
-
-#else
-
-#define	RTE_MEMPOOL_OBJ_NAME	RTE_MEMPOOL_MZ_FORMAT
-
-#endif /* RTE_LIBRTE_XEN_DOM0 */
-
 #define	MEMPOOL_PG_SHIFT_MAX	(sizeof(uintptr_t) * CHAR_BIT - 1)
 
 /** Mempool over one chunk of physically continuous memory */

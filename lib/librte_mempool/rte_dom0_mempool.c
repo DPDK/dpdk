@@ -110,7 +110,7 @@ rte_dom0_mempool_create(const char *name, unsigned elt_num, unsigned elt_size,
 	if (pa == NULL)
 		return mp;
 
-	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_OBJ_NAME, name);
+	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT "_elt", name);
 	mz = rte_memzone_reserve(mz_name, sz, socket_id, mz_flags);
 	if (mz == NULL) {
 		free(pa);
