@@ -126,12 +126,11 @@ test_mempool_basic(void)
 			MEMPOOL_HEADER_SIZE(mp, mp->pg_num, mp->cache_size))
 		return -1;
 
+#ifndef RTE_EXEC_ENV_BSDAPP /* rte_mem_virt2phy() not supported on bsd */
 	printf("get physical address of an object\n");
-	if (MEMPOOL_IS_CONTIG(mp) &&
-			rte_mempool_virt2phy(mp, obj) !=
-			(phys_addr_t) (mp->phys_addr +
-			(phys_addr_t) ((char*) obj - (char*) mp)))
+	if (rte_mempool_virt2phy(mp, obj) != rte_mem_virt2phy(obj))
 		return -1;
+#endif
 
 	printf("put the object back\n");
 	rte_mempool_put(mp, obj);

@@ -274,13 +274,6 @@ struct rte_mempool {
 	(sizeof(*(mp)) + __PA_SIZE(mp, pgn) + (((cs) == 0) ? 0 : \
 	(sizeof(struct rte_mempool_cache) * RTE_MAX_LCORE)))
 
-/**
- * Return true if the whole mempool is in contiguous memory.
- */
-#define	MEMPOOL_IS_CONTIG(mp)                      \
-	((mp)->pg_num == MEMPOOL_PG_NUM_DEFAULT && \
-	(mp)->phys_addr == (mp)->elt_pa[0])
-
 /* return the header of a mempool object (internal) */
 static inline struct rte_mempool_objhdr *__mempool_get_header(void *obj)
 {
