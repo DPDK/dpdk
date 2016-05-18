@@ -265,24 +265,13 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 
 	sz = (sz != NULL) ? sz : &lsz;
 
-	/*
-	 * In header, we have at least the pointer to the pool, and
-	 * optionaly a 64 bits cookie.
-	 */
-	sz->header_size = 0;
-	sz->header_size += sizeof(struct rte_mempool *); /* ptr to pool */
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	sz->header_size += sizeof(uint64_t); /* cookie */
-#endif
+	sz->header_size = sizeof(struct rte_mempool_objhdr);
 	if ((flags & MEMPOOL_F_NO_CACHE_ALIGN) == 0)
 		sz->header_size = RTE_ALIGN_CEIL(sz->header_size,
 			RTE_MEMPOOL_ALIGN);
 
-	/* trailer contains the cookie in debug mode */
-	sz->trailer_size = 0;
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-	sz->trailer_size += sizeof(uint64_t); /* cookie */
-#endif
+	sz->trailer_size = sizeof(struct rte_mempool_objtlr);
+
 	/* element size is 8 bytes-aligned at least */
 	sz->elt_size = RTE_ALIGN_CEIL(elt_size, sizeof(uint64_t));
 
