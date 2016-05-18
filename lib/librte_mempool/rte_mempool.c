@@ -319,30 +319,6 @@ rte_dom0_mempool_create(const char *name __rte_unused,
 }
 #endif
 
-/* create the mempool */
-struct rte_mempool *
-rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
-		   unsigned cache_size, unsigned private_data_size,
-		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		   rte_mempool_obj_ctor_t *obj_init, void *obj_init_arg,
-		   int socket_id, unsigned flags)
-{
-	if (rte_xen_dom0_supported())
-		return rte_dom0_mempool_create(name, n, elt_size,
-					       cache_size, private_data_size,
-					       mp_init, mp_init_arg,
-					       obj_init, obj_init_arg,
-					       socket_id, flags);
-	else
-		return rte_mempool_xmem_create(name, n, elt_size,
-					       cache_size, private_data_size,
-					       mp_init, mp_init_arg,
-					       obj_init, obj_init_arg,
-					       socket_id, flags,
-					       NULL, NULL, MEMPOOL_PG_NUM_DEFAULT,
-					       MEMPOOL_PG_SHIFT_MAX);
-}
-
 /* create the internal ring */
 static int
 rte_mempool_ring_create(struct rte_mempool *mp)
@@ -651,20 +627,11 @@ rte_mempool_free(struct rte_mempool *mp)
 	rte_memzone_free(mp->mz);
 }
 
-/*
- * Create the mempool over already allocated chunk of memory.
- * That external memory buffer can consists of physically disjoint pages.
- * Setting vaddr to NULL, makes mempool to fallback to original behaviour
- * and allocate space for mempool and it's elements as one big chunk of
- * physically continuos memory.
- * */
-struct rte_mempool *
-rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
-		unsigned cache_size, unsigned private_data_size,
-		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
-		int socket_id, unsigned flags, void *vaddr,
-		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
+/* create an empty mempool */
+static struct rte_mempool *
+rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
+	unsigned cache_size, unsigned private_data_size,
+	int socket_id, unsigned flags)
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	struct rte_mempool_list *mempool_list;
@@ -674,7 +641,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	struct rte_mempool_objsz objsz;
-	int ret;
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
@@ -693,18 +659,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	/* asked cache too big */
 	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE ||
 	    CALC_CACHE_FLUSHTHRESH(cache_size) > n) {
-		rte_errno = EINVAL;
-		return NULL;
-	}
-
-	/* check that we have both VA and PA */
-	if (vaddr != NULL && paddr == NULL) {
-		rte_errno = EINVAL;
-		return NULL;
-	}
-
-	/* Check that pg_num and pg_shift parameters are valid. */
-	if (pg_num == 0 || pg_shift > MEMPOOL_PG_SHIFT_MAX) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -736,11 +690,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		goto exit_unlock;
 	}
 
-	/*
-	 * If user provided an external memory buffer, then use it to
-	 * store mempool objects. Otherwise reserve a memzone that is large
-	 * enough to hold mempool header and metadata plus mempool objects.
-	 */
 	mempool_size = MEMPOOL_HEADER_SIZE(mp, cache_size);
 	mempool_size += private_data_size;
 	mempool_size = RTE_ALIGN_CEIL(mempool_size, RTE_MEMPOOL_ALIGN);
@@ -752,12 +701,14 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		goto exit_unlock;
 
 	/* init the mempool structure */
+	mp = mz->addr;
 	memset(mp, 0, sizeof(*mp));
 	snprintf(mp->name, sizeof(mp->name), "%s", name);
 	mp->mz = mz;
 	mp->socket_id = socket_id;
 	mp->size = n;
 	mp->flags = flags;
+	mp->socket_id = socket_id;
 	mp->elt_size = objsz.elt_size;
 	mp->header_size = objsz.header_size;
 	mp->trailer_size = objsz.trailer_size;
@@ -777,30 +728,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mp->local_cache = (struct rte_mempool_cache *)
 		RTE_PTR_ADD(mp, MEMPOOL_HEADER_SIZE(mp, 0));
 
-	/* call the initializer */
-	if (mp_init)
-		mp_init(mp, mp_init_arg);
-
-	/* mempool elements allocated together with mempool */
-	if (vaddr == NULL)
-		ret = rte_mempool_populate_default(mp);
-	else
-		ret = rte_mempool_populate_phys_tab(mp, vaddr,
-			paddr, pg_num, pg_shift, NULL, NULL);
-	if (ret < 0) {
-		rte_errno = -ret;
-		goto exit_unlock;
-	} else if (ret != (int)mp->size) {
-		rte_errno = EINVAL;
-		goto exit_unlock;
-	}
-
-	/* call the initializer */
-	if (obj_init)
-		rte_mempool_obj_iter(mp, obj_init, obj_init_arg);
-
-	te->data = (void *) mp;
-
+	te->data = mp;
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_INSERT_TAIL(mempool_list, te, next);
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
@@ -810,8 +738,109 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 exit_unlock:
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
+	rte_free(te);
 	rte_mempool_free(mp);
+	return NULL;
+}
 
+/* create the mempool */
+struct rte_mempool *
+rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
+	unsigned cache_size, unsigned private_data_size,
+	rte_mempool_ctor_t *mp_init, void *mp_init_arg,
+	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
+	int socket_id, unsigned flags)
+{
+	struct rte_mempool *mp;
+
+	if (rte_xen_dom0_supported())
+		return rte_dom0_mempool_create(name, n, elt_size,
+					       cache_size, private_data_size,
+					       mp_init, mp_init_arg,
+					       obj_init, obj_init_arg,
+					       socket_id, flags);
+
+	mp = rte_mempool_create_empty(name, n, elt_size, cache_size,
+		private_data_size, socket_id, flags);
+	if (mp == NULL)
+		return NULL;
+
+	/* call the mempool priv initializer */
+	if (mp_init)
+		mp_init(mp, mp_init_arg);
+
+	if (rte_mempool_populate_default(mp) < 0)
+		goto fail;
+
+	/* call the object initializers */
+	if (obj_init)
+		rte_mempool_obj_iter(mp, obj_init, obj_init_arg);
+
+	return mp;
+
+ fail:
+	rte_mempool_free(mp);
+	return NULL;
+}
+
+/*
+ * Create the mempool over already allocated chunk of memory.
+ * That external memory buffer can consists of physically disjoint pages.
+ * Setting vaddr to NULL, makes mempool to fallback to original behaviour
+ * and allocate space for mempool and it's elements as one big chunk of
+ * physically continuos memory.
+ */
+struct rte_mempool *
+rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
+		unsigned cache_size, unsigned private_data_size,
+		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
+		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
+		int socket_id, unsigned flags, void *vaddr,
+		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
+{
+	struct rte_mempool *mp = NULL;
+	int ret;
+
+	/* no virtual address supplied, use rte_mempool_create() */
+	if (vaddr == NULL)
+		return rte_mempool_create(name, n, elt_size, cache_size,
+			private_data_size, mp_init, mp_init_arg,
+			obj_init, obj_init_arg, socket_id, flags);
+
+	/* check that we have both VA and PA */
+	if (paddr == NULL) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* Check that pg_shift parameter is valid. */
+	if (pg_shift > MEMPOOL_PG_SHIFT_MAX) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	mp = rte_mempool_create_empty(name, n, elt_size, cache_size,
+		private_data_size, socket_id, flags);
+	if (mp == NULL)
+		return NULL;
+
+	/* call the mempool priv initializer */
+	if (mp_init)
+		mp_init(mp, mp_init_arg);
+
+	ret = rte_mempool_populate_phys_tab(mp, vaddr, paddr, pg_num, pg_shift,
+		NULL, NULL);
+	if (ret < 0 || ret != (int)mp->size)
+		goto fail;
+
+	/* call the object initializers */
+	if (obj_init)
+		rte_mempool_obj_iter(mp, obj_init, obj_init_arg);
+
+	return mp;
+
+ fail:
+	rte_mempool_free(mp);
 	return NULL;
 }
 
