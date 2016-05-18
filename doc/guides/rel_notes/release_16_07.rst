@@ -38,6 +38,15 @@ New Features
 
   The size of the mempool structure is reduced if the per-lcore cache is disabled.
 
+* **Changed the memory allocation in mempool library.**
+
+  * Added ability to allocate a large mempool in virtually fragmented memory.
+  * Added new APIs to populate a mempool with memory.
+  * Added an API to free a mempool.
+  * Modified the API of rte_mempool_obj_iter() function.
+  * Dropped specific Xen Dom0 code.
+  * Dropped specific anonymous mempool code in testpmd.
+
 
 Resolved Issues
 ---------------
