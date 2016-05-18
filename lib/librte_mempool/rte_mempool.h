@@ -150,16 +150,23 @@ struct rte_mempool_objsz {
  * Mempool object header structure
  *
  * Each object stored in mempools are prefixed by this header structure,
- * it allows to retrieve the mempool pointer from the object. When debug
- * is enabled, a cookie is also added in this structure preventing
- * corruptions and double-frees.
+ * it allows to retrieve the mempool pointer from the object and to
+ * iterate on all objects attached to a mempool. When debug is enabled,
+ * a cookie is also added in this structure preventing corruptions and
+ * double-frees.
  */
 struct rte_mempool_objhdr {
+	STAILQ_ENTRY(rte_mempool_objhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;          /**< The mempool owning the object. */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	uint64_t cookie;                 /**< Debug cookie. */
 #endif
 };
+
+/**
+ * A list of object headers type
+ */
+STAILQ_HEAD(rte_mempool_objhdr_list, rte_mempool_objhdr);
 
 /**
  * Mempool object trailer structure
@@ -193,6 +200,8 @@ struct rte_mempool {
 	unsigned private_data_size;      /**< Size of private data. */
 
 	struct rte_mempool_cache *local_cache; /**< Per-lcore local cache */
+
+	struct rte_mempool_objhdr_list elt_list; /**< List of objects in pool */
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	/** Per-lcore statistics. */

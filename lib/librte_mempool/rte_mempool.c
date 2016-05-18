@@ -138,6 +138,7 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
 	/* set mempool ptr in header */
 	hdr = RTE_PTR_SUB(obj, sizeof(*hdr));
 	hdr->mp = mp;
+	STAILQ_INSERT_TAIL(&mp->elt_list, hdr, next);
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
@@ -587,6 +588,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mp->cache_size = cache_size;
 	mp->cache_flushthresh = CALC_CACHE_FLUSHTHRESH(cache_size);
 	mp->private_data_size = private_data_size;
+	STAILQ_INIT(&mp->elt_list);
 
 	/*
 	 * local_cache pointer is set even if cache_size is zero.
