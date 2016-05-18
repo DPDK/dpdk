@@ -434,6 +434,36 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 					       MEMPOOL_PG_SHIFT_MAX);
 }
 
+/* create the internal ring */
+static int
+rte_mempool_ring_create(struct rte_mempool *mp)
+{
+	int rg_flags = 0;
+	char rg_name[RTE_RING_NAMESIZE];
+	struct rte_ring *r;
+
+	snprintf(rg_name, sizeof(rg_name), RTE_MEMPOOL_MZ_FORMAT, mp->name);
+
+	/* ring flags */
+	if (mp->flags & MEMPOOL_F_SP_PUT)
+		rg_flags |= RING_F_SP_ENQ;
+	if (mp->flags & MEMPOOL_F_SC_GET)
+		rg_flags |= RING_F_SC_DEQ;
+
+	/* Allocate the ring that will be used to store objects.
+	 * Ring functions will return appropriate errors if we are
+	 * running as a secondary process etc., so no checks made
+	 * in this function for that condition.
+	 */
+	r = rte_ring_create(rg_name, rte_align32pow2(mp->size + 1),
+		mp->socket_id, rg_flags);
+	if (r == NULL)
+		return -rte_errno;
+
+	mp->ring = r;
+	return 0;
+}
+
 /*
  * Create the mempool over already allocated chunk of memory.
  * That external memory buffer can consists of physically disjoint pages.
@@ -450,15 +480,12 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	char rg_name[RTE_RING_NAMESIZE];
 	struct rte_mempool_list *mempool_list;
 	struct rte_mempool *mp = NULL;
 	struct rte_tailq_entry *te = NULL;
-	struct rte_ring *r = NULL;
 	const struct rte_memzone *mz;
 	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
-	int rg_flags = 0;
 	void *obj;
 	struct rte_mempool_objsz objsz;
 	void *startaddr;
@@ -501,12 +528,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	if (flags & MEMPOOL_F_NO_CACHE_ALIGN)
 		flags |= MEMPOOL_F_NO_SPREAD;
 
-	/* ring flags */
-	if (flags & MEMPOOL_F_SP_PUT)
-		rg_flags |= RING_F_SP_ENQ;
-	if (flags & MEMPOOL_F_SC_GET)
-		rg_flags |= RING_F_SC_DEQ;
-
 	/* calculate mempool object sizes. */
 	if (!rte_mempool_calc_obj_size(elt_size, flags, &objsz)) {
 		rte_errno = EINVAL;
@@ -514,15 +535,6 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	}
 
 	rte_rwlock_write_lock(RTE_EAL_MEMPOOL_RWLOCK);
-
-	/* allocate the ring that will be used to store objects */
-	/* Ring functions will return appropriate errors if we are
-	 * running as a secondary process etc., so no checks made
-	 * in this function for that condition */
-	snprintf(rg_name, sizeof(rg_name), RTE_MEMPOOL_MZ_FORMAT, name);
-	r = rte_ring_create(rg_name, rte_align32pow2(n+1), socket_id, rg_flags);
-	if (r == NULL)
-		goto exit_unlock;
 
 	/*
 	 * reserve a memory zone for this mempool: private data is
@@ -592,7 +604,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	memset(mp, 0, sizeof(*mp));
 	snprintf(mp->name, sizeof(mp->name), "%s", name);
 	mp->phys_addr = mz->phys_addr;
-	mp->ring = r;
+	mp->socket_id = socket_id;
 	mp->size = n;
 	mp->flags = flags;
 	mp->elt_size = objsz.elt_size;
@@ -602,6 +614,9 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mp->cache_flushthresh = CALC_CACHE_FLUSHTHRESH(cache_size);
 	mp->private_data_size = private_data_size;
 	STAILQ_INIT(&mp->elt_list);
+
+	if (rte_mempool_ring_create(mp) < 0)
+		goto exit_unlock;
 
 	/*
 	 * local_cache pointer is set even if cache_size is zero.
@@ -654,7 +669,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 exit_unlock:
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
-	rte_ring_free(r);
+	if (mp != NULL)
+		rte_ring_free(mp->ring);
 	rte_free(te);
 
 	return NULL;

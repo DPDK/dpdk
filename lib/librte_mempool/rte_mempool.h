@@ -189,6 +189,7 @@ struct rte_mempool {
 	struct rte_ring *ring;           /**< Ring to store objects. */
 	phys_addr_t phys_addr;           /**< Phys. addr. of mempool struct. */
 	int flags;                       /**< Flags of the mempool. */
+	int socket_id;                   /**< Socket id passed at mempool creation. */
 	uint32_t size;                   /**< Size of the mempool. */
 	uint32_t cache_size;             /**< Size of per-lcore local cache. */
 	uint32_t cache_flushthresh;
