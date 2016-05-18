@@ -1217,8 +1217,8 @@ static struct ibv_mr *
 mlx4_mp2mr(struct ibv_pd *pd, const struct rte_mempool *mp)
 {
 	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	uintptr_t start = mp->elt_va_start;
-	uintptr_t end = mp->elt_va_end;
+	uintptr_t start = (uintptr_t)STAILQ_FIRST(&mp->mem_list)->addr;
+	uintptr_t end = start + STAILQ_FIRST(&mp->mem_list)->len;
 	unsigned int i;
 
 	DEBUG("mempool %p area start=%p end=%p size=%zu",

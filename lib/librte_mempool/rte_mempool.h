@@ -183,6 +183,25 @@ struct rte_mempool_objtlr {
 };
 
 /**
+ * A list of memory where objects are stored
+ */
+STAILQ_HEAD(rte_mempool_memhdr_list, rte_mempool_memhdr);
+
+/**
+ * Mempool objects memory header structure
+ *
+ * The memory chunks where objects are stored. Each chunk is virtually
+ * and physically contiguous.
+ */
+struct rte_mempool_memhdr {
+	STAILQ_ENTRY(rte_mempool_memhdr) next; /**< Next in list. */
+	struct rte_mempool *mp;  /**< The mempool owning the chunk */
+	void *addr;              /**< Virtual address of the chunk */
+	phys_addr_t phys_addr;   /**< Physical address of the chunk */
+	size_t len;              /**< length of the chunk */
+};
+
+/**
  * The RTE mempool structure.
  */
 struct rte_mempool {
@@ -191,7 +210,7 @@ struct rte_mempool {
 	phys_addr_t phys_addr;           /**< Phys. addr. of mempool struct. */
 	int flags;                       /**< Flags of the mempool. */
 	int socket_id;                   /**< Socket id passed at mempool creation. */
-	uint32_t size;                   /**< Size of the mempool. */
+	uint32_t size;                   /**< Max size of the mempool. */
 	uint32_t cache_size;             /**< Size of per-lcore local cache. */
 	uint32_t cache_flushthresh;
 	/**< Threshold before we flush excess elements. */
@@ -204,26 +223,15 @@ struct rte_mempool {
 
 	struct rte_mempool_cache *local_cache; /**< Per-lcore local cache */
 
+	uint32_t populated_size;         /**< Number of populated objects. */
 	struct rte_mempool_objhdr_list elt_list; /**< List of objects in pool */
+	uint32_t nb_mem_chunks;          /**< Number of memory chunks */
+	struct rte_mempool_memhdr_list mem_list; /**< List of memory chunks */
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	/** Per-lcore statistics. */
 	struct rte_mempool_debug_stats stats[RTE_MAX_LCORE];
 #endif
-
-	/* Address translation support, starts from next cache line. */
-
-	/** Number of elements in the elt_pa array. */
-	uint32_t    pg_num __rte_cache_aligned;
-	uint32_t    pg_shift;     /**< LOG2 of the physical pages. */
-	uintptr_t   pg_mask;      /**< physical page mask value. */
-	uintptr_t   elt_va_start;
-	/**< Virtual address of the first mempool object. */
-	uintptr_t   elt_va_end;
-	/**< Virtual address of the <size + 1> mempool object. */
-	phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
-	/**< Array of physical page addresses for the mempool objects buffer. */
-
 }  __rte_cache_aligned;
 
 #define MEMPOOL_F_NO_SPREAD      0x0001 /**< Do not spread among memory channels. */
@@ -254,24 +262,15 @@ struct rte_mempool {
 #endif
 
 /**
- * Size of elt_pa array size based on number of pages. (Internal use)
- */
-#define __PA_SIZE(mp, pgn) \
-	RTE_ALIGN_CEIL((((pgn) - RTE_DIM((mp)->elt_pa)) * \
-	sizeof((mp)->elt_pa[0])), RTE_CACHE_LINE_SIZE)
-
-/**
  * Calculate the size of the mempool header.
  *
  * @param mp
  *   Pointer to the memory pool.
- * @param pgn
- *   Number of pages used to store mempool objects.
  * @param cs
  *   Size of the per-lcore cache.
  */
-#define MEMPOOL_HEADER_SIZE(mp, pgn, cs) \
-	(sizeof(*(mp)) + __PA_SIZE(mp, pgn) + (((cs) == 0) ? 0 : \
+#define MEMPOOL_HEADER_SIZE(mp, cs) \
+	(sizeof(*(mp)) + (((cs) == 0) ? 0 : \
 	(sizeof(struct rte_mempool_cache) * RTE_MAX_LCORE)))
 
 /* return the header of a mempool object (internal) */
@@ -1165,7 +1164,7 @@ void rte_mempool_audit(struct rte_mempool *mp);
 static inline void *rte_mempool_get_priv(struct rte_mempool *mp)
 {
 	return (char *)mp +
-		MEMPOOL_HEADER_SIZE(mp, mp->pg_num, mp->cache_size);
+		MEMPOOL_HEADER_SIZE(mp, mp->cache_size);
 }
 
 /**

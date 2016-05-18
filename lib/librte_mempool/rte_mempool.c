@@ -142,14 +142,12 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, phys_addr_t physaddr)
 	struct rte_mempool_objhdr *hdr;
 	struct rte_mempool_objtlr *tlr __rte_unused;
 
-	obj = (char *)obj + mp->header_size;
-	physaddr += mp->header_size;
-
 	/* set mempool ptr in header */
 	hdr = RTE_PTR_SUB(obj, sizeof(*hdr));
 	hdr->mp = mp;
 	hdr->physaddr = physaddr;
 	STAILQ_INSERT_TAIL(&mp->elt_list, hdr, next);
+	mp->populated_size++;
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
@@ -246,33 +244,6 @@ rte_mempool_obj_iter(struct rte_mempool *mp,
 	}
 
 	return n;
-}
-
-/*
- * Populate  mempool with the objects.
- */
-
-static void
-mempool_obj_populate(void *arg, void *start, void *end,
-	__rte_unused uint32_t idx, phys_addr_t physaddr)
-{
-	struct rte_mempool *mp = arg;
-
-	mempool_add_elem(mp, start, physaddr);
-	mp->elt_va_end = (uintptr_t)end;
-}
-
-static void
-mempool_populate(struct rte_mempool *mp, size_t num, size_t align)
-{
-	uint32_t elt_sz;
-
-	elt_sz = mp->elt_size + mp->header_size + mp->trailer_size;
-
-	mp->size = rte_mempool_obj_mem_iter((void *)mp->elt_va_start,
-		num, elt_sz, align,
-		mp->elt_pa, mp->pg_num, mp->pg_shift,
-		mempool_obj_populate, mp);
 }
 
 /* get the header, trailer and total size of a mempool element. */
@@ -469,6 +440,110 @@ rte_mempool_ring_create(struct rte_mempool *mp)
 	return 0;
 }
 
+/* Free memory chunks used by a mempool. Objects must be in pool */
+static void
+rte_mempool_free_memchunks(struct rte_mempool *mp)
+{
+	struct rte_mempool_memhdr *memhdr;
+	void *elt;
+
+	while (!STAILQ_EMPTY(&mp->elt_list)) {
+		rte_ring_sc_dequeue(mp->ring, &elt);
+		(void)elt;
+		STAILQ_REMOVE_HEAD(&mp->elt_list, next);
+		mp->populated_size--;
+	}
+
+	while (!STAILQ_EMPTY(&mp->mem_list)) {
+		memhdr = STAILQ_FIRST(&mp->mem_list);
+		STAILQ_REMOVE_HEAD(&mp->mem_list, next);
+		rte_free(memhdr);
+		mp->nb_mem_chunks--;
+	}
+}
+
+/* Add objects in the pool, using a physically contiguous memory
+ * zone. Return the number of objects added, or a negative value
+ * on error.
+ */
+static int
+rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
+	phys_addr_t paddr, size_t len)
+{
+	unsigned total_elt_sz;
+	unsigned i = 0;
+	size_t off;
+	struct rte_mempool_memhdr *memhdr;
+
+	/* mempool is already populated */
+	if (mp->populated_size >= mp->size)
+		return -ENOSPC;
+
+	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
+
+	memhdr = rte_zmalloc("MEMPOOL_MEMHDR", sizeof(*memhdr), 0);
+	if (memhdr == NULL)
+		return -ENOMEM;
+
+	memhdr->mp = mp;
+	memhdr->addr = vaddr;
+	memhdr->phys_addr = paddr;
+	memhdr->len = len;
+
+	if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
+		off = RTE_PTR_ALIGN_CEIL(vaddr, 8) - vaddr;
+	else
+		off = RTE_PTR_ALIGN_CEIL(vaddr, RTE_CACHE_LINE_SIZE) - vaddr;
+
+	while (off + total_elt_sz <= len && mp->populated_size < mp->size) {
+		off += mp->header_size;
+		mempool_add_elem(mp, (char *)vaddr + off, paddr + off);
+		off += mp->elt_size + mp->trailer_size;
+		i++;
+	}
+
+	/* not enough room to store one object */
+	if (i == 0)
+		return -EINVAL;
+
+	STAILQ_INSERT_TAIL(&mp->mem_list, memhdr, next);
+	mp->nb_mem_chunks++;
+	return i;
+}
+
+/* Add objects in the pool, using a table of physical pages. Return the
+ * number of objects added, or a negative value on error.
+ */
+static int
+rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
+{
+	uint32_t i, n;
+	int ret, cnt = 0;
+	size_t pg_sz = (size_t)1 << pg_shift;
+
+	/* mempool must not be populated */
+	if (mp->nb_mem_chunks != 0)
+		return -EEXIST;
+
+	for (i = 0; i < pg_num && mp->populated_size < mp->size; i += n) {
+
+		/* populate with the largest group of contiguous pages */
+		for (n = 1; (i + n) < pg_num &&
+			     paddr[i] + pg_sz == paddr[i+n]; n++)
+			;
+
+		ret = rte_mempool_populate_phys(mp, vaddr + i * pg_sz,
+			paddr[i], n * pg_sz);
+		if (ret < 0) {
+			rte_mempool_free_memchunks(mp);
+			return ret;
+		}
+		cnt += ret;
+	}
+	return cnt;
+}
+
 /*
  * Create the mempool over already allocated chunk of memory.
  * That external memory buffer can consists of physically disjoint pages.
@@ -495,6 +570,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	struct rte_mempool_objsz objsz;
 	void *startaddr;
 	int page_size = getpagesize();
+	int ret;
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
@@ -524,7 +600,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	}
 
 	/* Check that pg_num and pg_shift parameters are valid. */
-	if (pg_num < RTE_DIM(mp->elt_pa) || pg_shift > MEMPOOL_PG_SHIFT_MAX) {
+	if (pg_num == 0 || pg_shift > MEMPOOL_PG_SHIFT_MAX) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -571,7 +647,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	 * store mempool objects. Otherwise reserve a memzone that is large
 	 * enough to hold mempool header and metadata plus mempool objects.
 	 */
-	mempool_size = MEMPOOL_HEADER_SIZE(mp, pg_num, cache_size);
+	mempool_size = MEMPOOL_HEADER_SIZE(mp, cache_size);
 	mempool_size += private_data_size;
 	mempool_size = RTE_ALIGN_CEIL(mempool_size, RTE_MEMPOOL_ALIGN);
 	if (vaddr == NULL)
@@ -619,6 +695,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	mp->cache_flushthresh = CALC_CACHE_FLUSHTHRESH(cache_size);
 	mp->private_data_size = private_data_size;
 	STAILQ_INIT(&mp->elt_list);
+	STAILQ_INIT(&mp->mem_list);
 
 	if (rte_mempool_ring_create(mp) < 0)
 		goto exit_unlock;
@@ -628,36 +705,30 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 	 * The local_cache points to just past the elt_pa[] array.
 	 */
 	mp->local_cache = (struct rte_mempool_cache *)
-		RTE_PTR_ADD(mp, MEMPOOL_HEADER_SIZE(mp, pg_num, 0));
-
-	/* calculate address of the first element for continuous mempool. */
-	obj = (char *)mp + MEMPOOL_HEADER_SIZE(mp, pg_num, cache_size) +
-		private_data_size;
-	obj = RTE_PTR_ALIGN_CEIL(obj, RTE_MEMPOOL_ALIGN);
-
-	/* populate address translation fields. */
-	mp->pg_num = pg_num;
-	mp->pg_shift = pg_shift;
-	mp->pg_mask = RTE_LEN2MASK(mp->pg_shift, typeof(mp->pg_mask));
-
-	/* mempool elements allocated together with mempool */
-	if (vaddr == NULL) {
-		mp->elt_va_start = (uintptr_t)obj;
-		mp->elt_pa[0] = mp->phys_addr +
-			(mp->elt_va_start - (uintptr_t)mp);
-	} else {
-		/* mempool elements in a separate chunk of memory. */
-		mp->elt_va_start = (uintptr_t)vaddr;
-		memcpy(mp->elt_pa, paddr, sizeof (mp->elt_pa[0]) * pg_num);
-	}
-
-	mp->elt_va_end = mp->elt_va_start;
+		RTE_PTR_ADD(mp, MEMPOOL_HEADER_SIZE(mp, 0));
 
 	/* call the initializer */
 	if (mp_init)
 		mp_init(mp, mp_init_arg);
 
-	mempool_populate(mp, n, 1);
+	/* mempool elements allocated together with mempool */
+	if (vaddr == NULL) {
+		/* calculate address of the first elt for continuous mempool. */
+		obj = (char *)mp + MEMPOOL_HEADER_SIZE(mp, cache_size) +
+			private_data_size;
+		obj = RTE_PTR_ALIGN_CEIL(obj, RTE_MEMPOOL_ALIGN);
+
+		ret = rte_mempool_populate_phys(mp, obj,
+			mp->phys_addr + ((char *)obj - (char *)mp),
+			objsz.total_size * n);
+		if (ret != (int)mp->size)
+			goto exit_unlock;
+	} else {
+		ret = rte_mempool_populate_phys_tab(mp, vaddr,
+			paddr, pg_num, pg_shift);
+		if (ret != (int)mp->size)
+			goto exit_unlock;
+	}
 
 	/* call the initializer */
 	if (obj_init)
@@ -674,8 +745,10 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 exit_unlock:
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
-	if (mp != NULL)
+	if (mp != NULL) {
+		rte_mempool_free_memchunks(mp);
 		rte_ring_free(mp->ring);
+	}
 	rte_free(te);
 
 	return NULL;
@@ -871,8 +944,10 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	struct rte_mempool_debug_stats sum;
 	unsigned lcore_id;
 #endif
+	struct rte_mempool_memhdr *memhdr;
 	unsigned common_count;
 	unsigned cache_count;
+	size_t mem_len = 0;
 
 	RTE_ASSERT(f != NULL);
 	RTE_ASSERT(mp != NULL);
@@ -881,7 +956,9 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	fprintf(f, "  flags=%x\n", mp->flags);
 	fprintf(f, "  ring=<%s>@%p\n", mp->ring->name, mp->ring);
 	fprintf(f, "  phys_addr=0x%" PRIx64 "\n", mp->phys_addr);
+	fprintf(f, "  nb_mem_chunks=%u\n", mp->nb_mem_chunks);
 	fprintf(f, "  size=%"PRIu32"\n", mp->size);
+	fprintf(f, "  populated_size=%"PRIu32"\n", mp->populated_size);
 	fprintf(f, "  header_size=%"PRIu32"\n", mp->header_size);
 	fprintf(f, "  elt_size=%"PRIu32"\n", mp->elt_size);
 	fprintf(f, "  trailer_size=%"PRIu32"\n", mp->trailer_size);
@@ -889,17 +966,13 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	       mp->header_size + mp->elt_size + mp->trailer_size);
 
 	fprintf(f, "  private_data_size=%"PRIu32"\n", mp->private_data_size);
-	fprintf(f, "  pg_num=%"PRIu32"\n", mp->pg_num);
-	fprintf(f, "  pg_shift=%"PRIu32"\n", mp->pg_shift);
-	fprintf(f, "  pg_mask=%#tx\n", mp->pg_mask);
-	fprintf(f, "  elt_va_start=%#tx\n", mp->elt_va_start);
-	fprintf(f, "  elt_va_end=%#tx\n", mp->elt_va_end);
-	fprintf(f, "  elt_pa[0]=0x%" PRIx64 "\n", mp->elt_pa[0]);
 
-	if (mp->size != 0)
+	STAILQ_FOREACH(memhdr, &mp->mem_list, next)
+		mem_len += memhdr->len;
+	if (mem_len != 0) {
 		fprintf(f, "  avg bytes/object=%#Lf\n",
-			(long double)(mp->elt_va_end - mp->elt_va_start) /
-			mp->size);
+			(long double)mem_len / mp->size);
+	}
 
 	cache_count = rte_mempool_dump_cache(f, mp);
 	common_count = rte_ring_count(mp->ring);

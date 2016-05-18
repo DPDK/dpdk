@@ -123,7 +123,7 @@ test_mempool_basic(void)
 
 	printf("get private data\n");
 	if (rte_mempool_get_priv(mp) != (char *)mp +
-			MEMPOOL_HEADER_SIZE(mp, mp->pg_num, mp->cache_size))
+			MEMPOOL_HEADER_SIZE(mp, mp->cache_size))
 		return -1;
 
 #ifndef RTE_EXEC_ENV_BSDAPP /* rte_mem_virt2phy() not supported on bsd */
