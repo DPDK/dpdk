@@ -126,6 +126,7 @@ static const struct rte_memzone *
 memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		int socket_id, unsigned flags, unsigned align, unsigned bound)
 {
+	struct rte_memzone *mz;
 	struct rte_mem_config *mcfg;
 	size_t requested_len;
 	int socket, i;
@@ -143,6 +144,13 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	/* zone already exist */
 	if ((memzone_lookup_thread_unsafe(name)) != NULL) {
 		RTE_LOG(DEBUG, EAL, "%s(): memzone <%s> already exists\n",
+			__func__, name);
+		rte_errno = EEXIST;
+		return NULL;
+	}
+
+	if (strlen(name) >= sizeof(mz->name) - 1) {
+		RTE_LOG(DEBUG, EAL, "%s(): memzone <%s>: name too long\n",
 			__func__, name);
 		rte_errno = EEXIST;
 		return NULL;
@@ -223,7 +231,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	const struct malloc_elem *elem = malloc_elem_from_data(mz_addr);
 
 	/* fill the zone in config */
-	struct rte_memzone *mz = get_next_free_memzone();
+	mz = get_next_free_memzone();
 
 	if (mz == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): Cannot find free memzone but there is room "

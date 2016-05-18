@@ -122,6 +122,8 @@ int
 rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 	unsigned flags)
 {
+	int ret;
+
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_ring) &
 			  RTE_CACHE_LINE_MASK) != 0);
@@ -140,7 +142,9 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 
 	/* init the ring structure */
 	memset(r, 0, sizeof(*r));
-	snprintf(r->name, sizeof(r->name), "%s", name);
+	ret = snprintf(r->name, sizeof(r->name), "%s", name);
+	if (ret < 0 || ret >= (int)sizeof(r->name))
+		return -ENAMETOOLONG;
 	r->flags = flags;
 	r->prod.watermark = count;
 	r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
@@ -165,6 +169,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	ssize_t ring_size;
 	int mz_flags = 0;
 	struct rte_ring_list* ring_list = NULL;
+	int ret;
 
 	ring_list = RTE_TAILQ_CAST(rte_ring_tailq.head, rte_ring_list);
 
@@ -174,14 +179,19 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		return NULL;
 	}
 
+	ret = snprintf(mz_name, sizeof(mz_name), "%s%s",
+		RTE_RING_MZ_PREFIX, name);
+	if (ret < 0 || ret >= (int)sizeof(mz_name)) {
+		rte_errno = ENAMETOOLONG;
+		return NULL;
+	}
+
 	te = rte_zmalloc("RING_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
 		RTE_LOG(ERR, RING, "Cannot reserve memory for tailq\n");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-
-	snprintf(mz_name, sizeof(mz_name), "%s%s", RTE_RING_MZ_PREFIX, name);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 

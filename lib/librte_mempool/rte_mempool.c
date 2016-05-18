@@ -304,11 +304,14 @@ rte_mempool_xmem_usage(__rte_unused void *vaddr, uint32_t elt_num,
 static int
 rte_mempool_ring_create(struct rte_mempool *mp)
 {
-	int rg_flags = 0;
+	int rg_flags = 0, ret;
 	char rg_name[RTE_RING_NAMESIZE];
 	struct rte_ring *r;
 
-	snprintf(rg_name, sizeof(rg_name), RTE_MEMPOOL_MZ_FORMAT, mp->name);
+	ret = snprintf(rg_name, sizeof(rg_name),
+		RTE_MEMPOOL_MZ_FORMAT, mp->name);
+	if (ret < 0 || ret >= (int)sizeof(rg_name))
+		return -ENAMETOOLONG;
 
 	/* ring flags */
 	if (mp->flags & MEMPOOL_F_SP_PUT)
@@ -698,6 +701,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	struct rte_mempool_objsz objsz;
+	int ret;
 
 	/* compilation-time checks */
 	RTE_BUILD_BUG_ON((sizeof(struct rte_mempool) &
@@ -751,7 +755,11 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	mempool_size += private_data_size;
 	mempool_size = RTE_ALIGN_CEIL(mempool_size, RTE_MEMPOOL_ALIGN);
 
-	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
+	ret = snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
+	if (ret < 0 || ret >= (int)sizeof(mz_name)) {
+		rte_errno = ENAMETOOLONG;
+		goto exit_unlock;
+	}
 
 	mz = rte_memzone_reserve(mz_name, mempool_size, socket_id, mz_flags);
 	if (mz == NULL)
@@ -760,7 +768,11 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	/* init the mempool structure */
 	mp = mz->addr;
 	memset(mp, 0, sizeof(*mp));
-	snprintf(mp->name, sizeof(mp->name), "%s", name);
+	ret = snprintf(mp->name, sizeof(mp->name), "%s", name);
+	if (ret < 0 || ret >= (int)sizeof(mp->name)) {
+		rte_errno = ENAMETOOLONG;
+		goto exit_unlock;
+	}
 	mp->mz = mz;
 	mp->socket_id = socket_id;
 	mp->size = n;

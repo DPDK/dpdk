@@ -407,21 +407,25 @@ test_mempool_same_name_twice_creation(void)
 {
 	struct rte_mempool *mp_tc;
 
-	mp_tc = rte_mempool_create("test_mempool_same_name_twice_creation", MEMPOOL_SIZE,
+	mp_tc = rte_mempool_create("test_mempool_same_name", MEMPOOL_SIZE,
 						MEMPOOL_ELT_SIZE, 0, 0,
 						NULL, NULL,
 						NULL, NULL,
 						SOCKET_ID_ANY, 0);
-	if (NULL == mp_tc)
+	if (mp_tc == NULL) {
+		printf("cannot create mempool\n");
 		return -1;
+	}
 
-	mp_tc = rte_mempool_create("test_mempool_same_name_twice_creation", MEMPOOL_SIZE,
+	mp_tc = rte_mempool_create("test_mempool_same_name", MEMPOOL_SIZE,
 						MEMPOOL_ELT_SIZE, 0, 0,
 						NULL, NULL,
 						NULL, NULL,
 						SOCKET_ID_ANY, 0);
-	if (NULL != mp_tc)
+	if (mp_tc != NULL) {
+		printf("should not be able to create mempool\n");
 		return -1;
+	}
 
 	return 0;
 }
