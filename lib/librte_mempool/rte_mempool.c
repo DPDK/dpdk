@@ -326,6 +326,7 @@ rte_mempool_ring_create(struct rte_mempool *mp)
 		return -rte_errno;
 
 	mp->ring = r;
+	mp->flags |= MEMPOOL_F_RING_CREATED;
 	return 0;
 }
 
@@ -375,6 +376,14 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	unsigned i = 0;
 	size_t off;
 	struct rte_mempool_memhdr *memhdr;
+	int ret;
+
+	/* create the internal ring if not already done */
+	if ((mp->flags & MEMPOOL_F_RING_CREATED) == 0) {
+		ret = rte_mempool_ring_create(mp);
+		if (ret < 0)
+			return ret;
+	}
 
 	/* mempool is already populated */
 	if (mp->populated_size >= mp->size)
@@ -701,9 +710,6 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	mp->private_data_size = private_data_size;
 	STAILQ_INIT(&mp->elt_list);
 	STAILQ_INIT(&mp->mem_list);
-
-	if (rte_mempool_ring_create(mp) < 0)
-		goto exit_unlock;
 
 	/*
 	 * local_cache pointer is set even if cache_size is zero.

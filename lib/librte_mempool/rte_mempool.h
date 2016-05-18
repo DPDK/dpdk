@@ -235,6 +235,7 @@ struct rte_mempool {
 #define MEMPOOL_F_NO_CACHE_ALIGN 0x0002 /**< Do not align objs on cache lines.*/
 #define MEMPOOL_F_SP_PUT         0x0004 /**< Default put is "single-producer".*/
 #define MEMPOOL_F_SC_GET         0x0008 /**< Default get is "single-consumer".*/
+#define MEMPOOL_F_RING_CREATED   0x0010 /**< Internal: ring is created */
 
 /**
  * @internal When debug is enabled, store some statistics.
