@@ -60,18 +60,14 @@ check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev)
 int
 valid_bonded_port_id(uint8_t port_id)
 {
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -1;
-
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -1);
 	return check_for_bonded_ethdev(&rte_eth_devices[port_id]);
 }
 
 int
 valid_slave_port_id(uint8_t port_id)
 {
-	/* Verify that port id's are valid */
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -1;
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -1);
 
 	/* Verify that port_id refers to a non bonded port */
 	if (check_for_bonded_ethdev(&rte_eth_devices[port_id]) == 0)

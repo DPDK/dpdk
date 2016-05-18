@@ -51,8 +51,7 @@ rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo)
 	if (drvinfo == NULL)
 		return -EINVAL;
 
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -ENODEV;
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
 	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(port_id, &dev_info);
@@ -120,8 +119,7 @@ rte_ethtool_get_link(uint8_t port_id)
 {
 	struct rte_eth_link link;
 
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -ENODEV;
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	rte_eth_link_get(port_id, &link);
 	return link.link_status;
 }
@@ -267,8 +265,7 @@ rte_ethtool_net_open(uint8_t port_id)
 int
 rte_ethtool_net_stop(uint8_t port_id)
 {
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -ENODEV;
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	rte_eth_dev_stop(port_id);
 
 	return 0;
@@ -277,8 +274,7 @@ rte_ethtool_net_stop(uint8_t port_id)
 int
 rte_ethtool_net_get_mac_addr(uint8_t port_id, struct ether_addr *addr)
 {
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -ENODEV;
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	if (addr == NULL)
 		return -EINVAL;
 	rte_eth_macaddr_get(port_id, addr);
