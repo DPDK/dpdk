@@ -16,12 +16,19 @@ DPDK_2.0 {
 	local: *;
 };
 
-DPDK_16.07 {
+DPDK_16.7 {
 	global:
 
 	rte_mempool_check_cookies;
 	rte_mempool_obj_iter;
 	rte_mempool_mem_iter;
+	rte_mempool_create_empty;
+	rte_mempool_populate_phys;
+	rte_mempool_populate_phys_tab;
+	rte_mempool_populate_virt;
+	rte_mempool_populate_default;
+	rte_mempool_populate_anon;
+	rte_mempool_free;
 
 	local: *;
 } DPDK_2.0;

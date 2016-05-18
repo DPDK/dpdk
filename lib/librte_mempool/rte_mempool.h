@@ -506,6 +506,174 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 		const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
 
 /**
+ * Create an empty mempool
+ *
+ * The mempool is allocated and initialized, but it is not populated: no
+ * memory is allocated for the mempool elements. The user has to call
+ * rte_mempool_populate_*() or to add memory chunks to the pool. Once
+ * populated, the user may also want to initialize each object with
+ * rte_mempool_obj_iter().
+ *
+ * @param name
+ *   The name of the mempool.
+ * @param n
+ *   The maximum number of elements that can be added in the mempool.
+ *   The optimum size (in terms of memory usage) for a mempool is when n
+ *   is a power of two minus one: n = (2^q - 1).
+ * @param elt_size
+ *   The size of each element.
+ * @param cache_size
+ *   Size of the cache. See rte_mempool_create() for details.
+ * @param private_data_size
+ *   The size of the private data appended after the mempool
+ *   structure. This is useful for storing some private data after the
+ *   mempool structure, as is done for rte_mbuf_pool for example.
+ * @param socket_id
+ *   The *socket_id* argument is the socket identifier in the case of
+ *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
+ *   constraint for the reserved zone.
+ * @param flags
+ *   Flags controlling the behavior of the mempool. See
+ *   rte_mempool_create() for details.
+ * @return
+ *   The pointer to the new allocated mempool, on success. NULL on error
+ *   with rte_errno set appropriately. See rte_mempool_create() for details.
+ */
+struct rte_mempool *
+rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
+	unsigned cache_size, unsigned private_data_size,
+	int socket_id, unsigned flags);
+/**
+ * Free a mempool
+ *
+ * Unlink the mempool from global list, free the memory chunks, and all
+ * memory referenced by the mempool. The objects must not be used by
+ * other cores as they will be freed.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ */
+void
+rte_mempool_free(struct rte_mempool *mp);
+
+/**
+ * Add physically contiguous memory for objects in the pool at init
+ *
+ * Add a virtually and physically contiguous memory chunk in the pool
+ * where objects can be instanciated.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ * @param vaddr
+ *   The virtual address of memory that should be used to store objects.
+ * @param paddr
+ *   The physical address
+ * @param len
+ *   The length of memory in bytes.
+ * @param free_cb
+ *   The callback used to free this chunk when destroying the mempool.
+ * @param opaque
+ *   An opaque argument passed to free_cb.
+ * @return
+ *   The number of objects added on success.
+ *   On error, the chunk is not added in the memory list of the
+ *   mempool and a negative errno is returned.
+ */
+int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
+	phys_addr_t paddr, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque);
+
+/**
+ * Add physical memory for objects in the pool at init
+ *
+ * Add a virtually contiguous memory chunk in the pool where objects can
+ * be instanciated. The physical addresses corresponding to the virtual
+ * area are described in paddr[], pg_num, pg_shift.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ * @param vaddr
+ *   The virtual address of memory that should be used to store objects.
+ * @param paddr
+ *   An array of physical addresses of each page composing the virtual
+ *   area.
+ * @param pg_num
+ *   Number of elements in the paddr array.
+ * @param pg_shift
+ *   LOG2 of the physical pages size.
+ * @param free_cb
+ *   The callback used to free this chunk when destroying the mempool.
+ * @param opaque
+ *   An opaque argument passed to free_cb.
+ * @return
+ *   The number of objects added on success.
+ *   On error, the chunks are not added in the memory list of the
+ *   mempool and a negative errno is returned.
+ */
+int rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
+	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque);
+
+/**
+ * Add virtually contiguous memory for objects in the pool at init
+ *
+ * Add a virtually contiguous memory chunk in the pool where objects can
+ * be instanciated.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ * @param addr
+ *   The virtual address of memory that should be used to store objects.
+ *   Must be page-aligned.
+ * @param len
+ *   The length of memory in bytes. Must be page-aligned.
+ * @param pg_sz
+ *   The size of memory pages in this virtual area.
+ * @param free_cb
+ *   The callback used to free this chunk when destroying the mempool.
+ * @param opaque
+ *   An opaque argument passed to free_cb.
+ * @return
+ *   The number of objects added on success.
+ *   On error, the chunk is not added in the memory list of the
+ *   mempool and a negative errno is returned.
+ */
+int
+rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
+	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque);
+
+/**
+ * Add memory for objects in the pool at init
+ *
+ * This is the default function used by rte_mempool_create() to populate
+ * the mempool. It adds memory allocated using rte_memzone_reserve().
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ * @return
+ *   The number of objects added on success.
+ *   On error, the chunk is not added in the memory list of the
+ *   mempool and a negative errno is returned.
+ */
+int rte_mempool_populate_default(struct rte_mempool *mp);
+
+/**
+ * Add memory from anonymous mapping for objects in the pool at init
+ *
+ * This function mmap an anonymous memory zone that is locked in
+ * memory to store the objects of the mempool.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ * @return
+ *   The number of objects added on success.
+ *   On error, the chunk is not added in the memory list of the
+ *   mempool and a negative errno is returned.
+ */
+int rte_mempool_populate_anon(struct rte_mempool *mp);
+
+/**
  * Call a function for each mempool element
  *
  * Iterate across all objects attached to a rte_mempool and call the

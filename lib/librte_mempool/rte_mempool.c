@@ -368,7 +368,7 @@ rte_mempool_free_memchunks(struct rte_mempool *mp)
  * zone. Return the number of objects added, or a negative value
  * on error.
  */
-static int
+int
 rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	phys_addr_t paddr, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque)
@@ -427,7 +427,7 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 /* Add objects in the pool, using a table of physical pages. Return the
  * number of objects added, or a negative value on error.
  */
-static int
+int
 rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
 	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque)
@@ -463,7 +463,7 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 /* Populate the mempool with a virtual area. Return the number of
  * objects added, or a negative value on error.
  */
-static int
+int
 rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque)
@@ -524,7 +524,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
  * and populate them. Return the number of objects added, or a negative
  * value on error.
  */
-static int
+int
 rte_mempool_populate_default(struct rte_mempool *mp)
 {
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
@@ -615,7 +615,7 @@ rte_mempool_memchunk_anon_free(struct rte_mempool_memhdr *memhdr,
 }
 
 /* populate the mempool with an anonymous mapping */
-__rte_unused static int
+int
 rte_mempool_populate_anon(struct rte_mempool *mp)
 {
 	size_t size;
@@ -656,7 +656,7 @@ rte_mempool_populate_anon(struct rte_mempool *mp)
 }
 
 /* free a mempool */
-static void
+void
 rte_mempool_free(struct rte_mempool *mp)
 {
 	struct rte_mempool_list *mempool_list = NULL;
@@ -685,7 +685,7 @@ rte_mempool_free(struct rte_mempool *mp)
 }
 
 /* create an empty mempool */
-static struct rte_mempool *
+struct rte_mempool *
 rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	unsigned cache_size, unsigned private_data_size,
 	int socket_id, unsigned flags)
