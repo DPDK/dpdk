@@ -156,14 +156,14 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, uint32_t obj_idx,
  *
  * Given the pointer to the memory, and its topology in physical memory
  * (the physical addresses table), iterate through the "elt_num" objects
- * of size "total_elt_sz" aligned at "align". For each object in this memory
+ * of size "elt_sz" aligned at "align". For each object in this memory
  * chunk, invoke a callback. It returns the effective number of objects
  * in this memory.
  */
 uint32_t
-rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
-	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
-	rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg)
+rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
+	size_t align, const phys_addr_t paddr[], uint32_t pg_num,
+	uint32_t pg_shift, rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg)
 {
 	uint32_t i, j, k;
 	uint32_t pgn, pgf;
@@ -179,7 +179,7 @@ rte_mempool_obj_iter(void *vaddr, uint32_t elt_num, size_t elt_sz, size_t align,
 	while (i != elt_num && j != pg_num) {
 
 		start = RTE_ALIGN_CEIL(va, align);
-		end = start + elt_sz;
+		end = start + total_elt_sz;
 
 		/* index of the first page for the next element. */
 		pgf = (end >> pg_shift) - (start >> pg_shift);
@@ -256,6 +256,7 @@ mempool_populate(struct rte_mempool *mp, size_t num, size_t align,
 		mempool_obj_populate, &arg);
 }
 
+/* get the header, trailer and total size of a mempool element. */
 uint32_t
 rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	struct rte_mempool_objsz *sz)
@@ -333,17 +334,17 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  * Calculate maximum amount of memory required to store given number of objects.
  */
 size_t
-rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz, uint32_t pg_shift)
+rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift)
 {
 	size_t n, pg_num, pg_sz, sz;
 
 	pg_sz = (size_t)1 << pg_shift;
 
-	if ((n = pg_sz / elt_sz) > 0) {
+	if ((n = pg_sz / total_elt_sz) > 0) {
 		pg_num = (elt_num + n - 1) / n;
 		sz = pg_num << pg_shift;
 	} else {
-		sz = RTE_ALIGN_CEIL(elt_sz, pg_sz) * elt_num;
+		sz = RTE_ALIGN_CEIL(total_elt_sz, pg_sz) * elt_num;
 	}
 
 	return sz;
@@ -364,7 +365,7 @@ mempool_lelem_iter(void *arg, __rte_unused void *start, void *end,
  * given memory footprint to store required number of elements.
  */
 ssize_t
-rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
+rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
 	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
 {
 	uint32_t n;
@@ -375,7 +376,7 @@ rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
 	va = (uintptr_t)vaddr;
 	uv = va;
 
-	if ((n = rte_mempool_obj_iter(vaddr, elt_num, elt_sz, 1,
+	if ((n = rte_mempool_obj_iter(vaddr, elt_num, total_elt_sz, 1,
 			paddr, pg_num, pg_shift, mempool_lelem_iter,
 			&uv)) != elt_num) {
 		return -(ssize_t)n;

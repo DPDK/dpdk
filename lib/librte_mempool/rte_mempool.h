@@ -1291,7 +1291,7 @@ struct rte_mempool *rte_mempool_lookup(const char *name);
  * calculates header, trailer, body and total sizes of the mempool object.
  *
  * @param elt_size
- *   The size of each element.
+ *   The size of each element, without header and trailer.
  * @param flags
  *   The flags used for the mempool creation.
  *   Consult rte_mempool_create() for more information about possible values.
@@ -1317,14 +1317,15 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  *
  * @param elt_num
  *   Number of elements.
- * @param elt_sz
- *   The size of each element.
+ * @param total_elt_sz
+ *   The size of each element, including header and trailer, as returned
+ *   by rte_mempool_calc_obj_size().
  * @param pg_shift
  *   LOG2 of the physical pages size.
  * @return
  *   Required memory size aligned at page boundary.
  */
-size_t rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz,
+size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
 	uint32_t pg_shift);
 
 /**
@@ -1338,8 +1339,9 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz,
  *   Will be used to store mempool objects.
  * @param elt_num
  *   Number of elements.
- * @param elt_sz
- *   The size of each element.
+ * @param total_elt_sz
+ *   The size of each element, including header and trailer, as returned
+ *   by rte_mempool_calc_obj_size().
  * @param paddr
  *   Array of physical addresses of the pages that comprises given memory
  *   buffer.
@@ -1353,8 +1355,9 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t elt_sz,
  *   buffer is too small, return a negative value whose absolute value
  *   is the actual number of elements that can be stored in that buffer.
  */
-ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t elt_sz,
-	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift);
+ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num,
+	size_t total_elt_sz, const phys_addr_t paddr[], uint32_t pg_num,
+	uint32_t pg_shift);
 
 /**
  * Walk list of all memory pools
