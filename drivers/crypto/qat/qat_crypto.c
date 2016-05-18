@@ -276,14 +276,15 @@ void qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
 		void *session)
 {
 	struct qat_session *sess = session;
-	phys_addr_t cd_paddr = sess->cd_paddr;
+	phys_addr_t cd_paddr;
 
 	PMD_INIT_FUNC_TRACE();
 	if (session) {
+		cd_paddr = sess->cd_paddr;
 		memset(sess, 0, qat_crypto_sym_get_session_private_size(dev));
-
 		sess->cd_paddr = cd_paddr;
-	}
+	} else
+		PMD_DRV_LOG(ERR, "NULL session");
 }
 
 static int
