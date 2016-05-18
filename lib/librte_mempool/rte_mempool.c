@@ -699,8 +699,6 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 	return count;
 }
 
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
-/* check cookies before and after objects */
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
@@ -711,6 +709,80 @@ struct mempool_audit_arg {
 	uint32_t obj_num;
 };
 
+/* check and update cookies or panic (internal) */
+void rte_mempool_check_cookies(const struct rte_mempool *mp,
+	void * const *obj_table_const, unsigned n, int free)
+{
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	struct rte_mempool_objhdr *hdr;
+	struct rte_mempool_objtlr *tlr;
+	uint64_t cookie;
+	void *tmp;
+	void *obj;
+	void **obj_table;
+
+	/* Force to drop the "const" attribute. This is done only when
+	 * DEBUG is enabled */
+	tmp = (void *) obj_table_const;
+	obj_table = (void **) tmp;
+
+	while (n--) {
+		obj = obj_table[n];
+
+		if (rte_mempool_from_obj(obj) != mp)
+			rte_panic("MEMPOOL: object is owned by another "
+				  "mempool\n");
+
+		hdr = __mempool_get_header(obj);
+		cookie = hdr->cookie;
+
+		if (free == 0) {
+			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1) {
+				rte_log_set_history(0);
+				RTE_LOG(CRIT, MEMPOOL,
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+					obj, (const void *) mp, cookie);
+				rte_panic("MEMPOOL: bad header cookie (put)\n");
+			}
+			hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
+		} else if (free == 1) {
+			if (cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
+				rte_log_set_history(0);
+				RTE_LOG(CRIT, MEMPOOL,
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+					obj, (const void *) mp, cookie);
+				rte_panic("MEMPOOL: bad header cookie (get)\n");
+			}
+			hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE1;
+		} else if (free == 2) {
+			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1 &&
+			    cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
+				rte_log_set_history(0);
+				RTE_LOG(CRIT, MEMPOOL,
+					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+					obj, (const void *) mp, cookie);
+				rte_panic("MEMPOOL: bad header cookie (audit)\n");
+			}
+		}
+		tlr = __mempool_get_trailer(obj);
+		cookie = tlr->cookie;
+		if (cookie != RTE_MEMPOOL_TRAILER_COOKIE) {
+			rte_log_set_history(0);
+			RTE_LOG(CRIT, MEMPOOL,
+				"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+				obj, (const void *) mp, cookie);
+			rte_panic("MEMPOOL: bad trailer cookie\n");
+		}
+	}
+#else
+	RTE_SET_USED(mp);
+	RTE_SET_USED(obj_table_const);
+	RTE_SET_USED(n);
+	RTE_SET_USED(free);
+#endif
+}
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 static void
 mempool_obj_audit(void *arg, void *start, void *end, uint32_t idx)
 {
@@ -753,12 +825,12 @@ mempool_audit_cookies(const struct rte_mempool *mp)
 			arg.obj_num, mp->size);
 	}
 }
+#else
+#define mempool_audit_cookies(mp) do {} while(0)
+#endif
 
 #ifndef __INTEL_COMPILER
 #pragma GCC diagnostic error "-Wcast-qual"
-#endif
-#else
-#define mempool_audit_cookies(mp) do {} while(0)
 #endif
 
 /* check cookies before and after objects */

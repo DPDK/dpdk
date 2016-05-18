@@ -17,3 +17,11 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_16.07 {
+	global:
+
+	rte_mempool_check_cookies;
+
+	local: *;
+} DPDK_2.0;
