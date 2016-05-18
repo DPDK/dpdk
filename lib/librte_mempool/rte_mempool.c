@@ -127,15 +127,6 @@ static unsigned optimize_object_size(unsigned obj_size)
 	return new_obj_size * RTE_MEMPOOL_ALIGN;
 }
 
-/**
- * A mempool object iterator callback function.
- */
-typedef void (*rte_mempool_obj_iter_t)(void * /*obj_iter_arg*/,
-	void * /*obj_start*/,
-	void * /*obj_end*/,
-	uint32_t /*obj_index */,
-	phys_addr_t /*physaddr*/);
-
 static void
 mempool_add_elem(struct rte_mempool *mp, void *obj, phys_addr_t physaddr)
 {
@@ -157,75 +148,6 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, phys_addr_t physaddr)
 
 	/* enqueue in ring */
 	rte_ring_sp_enqueue(mp->ring, obj);
-}
-
-/* Iterate through objects at the given address
- *
- * Given the pointer to the memory, and its topology in physical memory
- * (the physical addresses table), iterate through the "elt_num" objects
- * of size "elt_sz" aligned at "align". For each object in this memory
- * chunk, invoke a callback. It returns the effective number of objects
- * in this memory.
- */
-static uint32_t
-rte_mempool_obj_mem_iter(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
-	size_t align, const phys_addr_t paddr[], uint32_t pg_num,
-	uint32_t pg_shift, rte_mempool_obj_iter_t obj_iter, void *obj_iter_arg)
-{
-	uint32_t i, j, k;
-	uint32_t pgn, pgf;
-	uintptr_t end, start, va;
-	uintptr_t pg_sz;
-	phys_addr_t physaddr;
-
-	pg_sz = (uintptr_t)1 << pg_shift;
-	va = (uintptr_t)vaddr;
-
-	i = 0;
-	j = 0;
-
-	while (i != elt_num && j != pg_num) {
-
-		start = RTE_ALIGN_CEIL(va, align);
-		end = start + total_elt_sz;
-
-		/* index of the first page for the next element. */
-		pgf = (end >> pg_shift) - (start >> pg_shift);
-
-		/* index of the last page for the current element. */
-		pgn = ((end - 1) >> pg_shift) - (start >> pg_shift);
-		pgn += j;
-
-		/* do we have enough space left for the element. */
-		if (pgn >= pg_num)
-			break;
-
-		for (k = j;
-				k != pgn &&
-				paddr[k] + pg_sz == paddr[k + 1];
-				k++)
-			;
-
-		/*
-		 * if next pgn chunks of memory physically continuous,
-		 * use it to create next element.
-		 * otherwise, just skip that chunk unused.
-		 */
-		if (k == pgn) {
-			physaddr = paddr[k] + (start & (pg_sz - 1));
-			if (obj_iter != NULL)
-				obj_iter(obj_iter_arg, (void *)start,
-					(void *)end, i, physaddr);
-			va = end;
-			j += pgf;
-			i++;
-		} else {
-			va = RTE_ALIGN_CEIL((va + 1), pg_sz);
-			j++;
-		}
-	}
-
-	return i;
 }
 
 /* call obj_cb() for each mempool element */
@@ -345,41 +267,53 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift)
 	return sz;
 }
 
-/* Callback used by rte_mempool_xmem_usage(): it sets the opaque
- * argument to the end of the object.
- */
-static void
-mempool_lelem_iter(void *arg, __rte_unused void *start, void *end,
-	__rte_unused uint32_t idx, __rte_unused phys_addr_t physaddr)
-{
-	*(uintptr_t *)arg = (uintptr_t)end;
-}
-
 /*
  * Calculate how much memory would be actually required with the
  * given memory footprint to store required number of elements.
  */
 ssize_t
-rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num, size_t total_elt_sz,
-	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
+rte_mempool_xmem_usage(__rte_unused void *vaddr, uint32_t elt_num,
+	size_t total_elt_sz, const phys_addr_t paddr[], uint32_t pg_num,
+	uint32_t pg_shift)
 {
-	uint32_t n;
-	uintptr_t va, uv;
-	size_t pg_sz, usz;
+	uint32_t elt_cnt = 0;
+	phys_addr_t start, end;
+	uint32_t paddr_idx;
+	size_t pg_sz = (size_t)1 << pg_shift;
 
-	pg_sz = (size_t)1 << pg_shift;
-	va = (uintptr_t)vaddr;
-	uv = va;
+	/* if paddr is NULL, assume contiguous memory */
+	if (paddr == NULL) {
+		start = 0;
+		end = pg_sz * pg_num;
+		paddr_idx = pg_num;
+	} else {
+		start = paddr[0];
+		end = paddr[0] + pg_sz;
+		paddr_idx = 1;
+	}
+	while (elt_cnt < elt_num) {
 
-	if ((n = rte_mempool_obj_mem_iter(vaddr, elt_num, total_elt_sz, 1,
-			paddr, pg_num, pg_shift, mempool_lelem_iter,
-			&uv)) != elt_num) {
-		return -(ssize_t)n;
+		if (end - start >= total_elt_sz) {
+			/* enough contiguous memory, add an object */
+			start += total_elt_sz;
+			elt_cnt++;
+		} else if (paddr_idx < pg_num) {
+			/* no room to store one obj, add a page */
+			if (end == paddr[paddr_idx]) {
+				end += pg_sz;
+			} else {
+				start = paddr[paddr_idx];
+				end = paddr[paddr_idx] + pg_sz;
+			}
+			paddr_idx++;
+
+		} else {
+			/* no more page, return how many elements fit */
+			return -(size_t)elt_cnt;
+		}
 	}
 
-	uv = RTE_ALIGN_CEIL(uv, pg_sz);
-	usz = uv - va;
-	return usz;
+	return (size_t)paddr_idx << pg_shift;
 }
 
 #ifndef RTE_LIBRTE_XEN_DOM0
