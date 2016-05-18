@@ -721,12 +721,6 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
-struct mempool_audit_arg {
-	const struct rte_mempool *mp;
-	uintptr_t obj_end;
-	uint32_t obj_num;
-};
-
 /* check and update cookies or panic (internal) */
 void rte_mempool_check_cookies(const struct rte_mempool *mp,
 	void * const *obj_table_const, unsigned n, int free)
@@ -802,45 +796,22 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 static void
-mempool_obj_audit(void *arg, void *start, void *end, uint32_t idx)
+mempool_obj_audit(struct rte_mempool *mp, __rte_unused void *opaque,
+	void *obj, __rte_unused unsigned idx)
 {
-	struct mempool_audit_arg *pa = arg;
-	void *obj;
-
-	obj = (char *)start + pa->mp->header_size;
-	pa->obj_end = (uintptr_t)end;
-	pa->obj_num = idx + 1;
-	__mempool_check_cookies(pa->mp, &obj, 1, 2);
+	__mempool_check_cookies(mp, &obj, 1, 2);
 }
 
 static void
 mempool_audit_cookies(struct rte_mempool *mp)
 {
-	uint32_t elt_sz, num;
-	struct mempool_audit_arg arg;
+	unsigned num;
 
-	elt_sz = mp->elt_size + mp->header_size + mp->trailer_size;
-
-	arg.mp = mp;
-	arg.obj_end = mp->elt_va_start;
-	arg.obj_num = 0;
-
-	num = rte_mempool_obj_mem_iter((void *)mp->elt_va_start,
-		mp->size, elt_sz, 1,
-		mp->elt_pa, mp->pg_num, mp->pg_shift,
-		mempool_obj_audit, &arg);
-
+	num = rte_mempool_obj_iter(mp, mempool_obj_audit, NULL);
 	if (num != mp->size) {
-			rte_panic("rte_mempool_obj_iter(mempool=%p, size=%u) "
+		rte_panic("rte_mempool_obj_iter(mempool=%p, size=%u) "
 			"iterated only over %u elements\n",
 			mp, mp->size, num);
-	} else if (arg.obj_end != mp->elt_va_end || arg.obj_num != mp->size) {
-			rte_panic("rte_mempool_obj_iter(mempool=%p, size=%u) "
-			"last callback va_end: %#tx (%#tx expeceted), "
-			"num of objects: %u (%u expected)\n",
-			mp, mp->size,
-			arg.obj_end, mp->elt_va_end,
-			arg.obj_num, mp->size);
 	}
 }
 #else
