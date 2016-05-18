@@ -1309,7 +1309,7 @@ ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num,
  * @param arg
  *   Argument passed to iterator
  */
-void rte_mempool_walk(void (*func)(const struct rte_mempool *, void *arg),
+void rte_mempool_walk(void (*func)(struct rte_mempool *, void *arg),
 		      void *arg);
 
 #ifdef __cplusplus

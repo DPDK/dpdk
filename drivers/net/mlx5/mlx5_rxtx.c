@@ -311,7 +311,7 @@ txq_mp2mr_mbuf_check(void *arg, void *start, void *end,
  *   Pointer to TX queue structure.
  */
 void
-txq_mp2mr_iter(const struct rte_mempool *mp, void *arg)
+txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 {
 	struct txq *txq = arg;
 	struct txq_mp2mr_mbuf_check_data data = {

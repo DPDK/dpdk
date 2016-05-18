@@ -971,7 +971,7 @@ rte_mempool_lookup(const char *name)
 	return mp;
 }
 
-void rte_mempool_walk(void (*func)(const struct rte_mempool *, void *),
+void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 		      void *arg)
 {
 	struct rte_tailq_entry *te = NULL;
