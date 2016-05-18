@@ -1,7 +1,6 @@
 DPDK_2.0 {
 	global:
 
-	rte_dom0_mempool_create;
 	rte_mempool_audit;
 	rte_mempool_calc_obj_size;
 	rte_mempool_count;

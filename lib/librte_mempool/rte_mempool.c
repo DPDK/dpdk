@@ -299,26 +299,6 @@ rte_mempool_xmem_usage(__rte_unused void *vaddr, uint32_t elt_num,
 	return (size_t)paddr_idx << pg_shift;
 }
 
-#ifndef RTE_LIBRTE_XEN_DOM0
-/* stub if DOM0 support not configured */
-struct rte_mempool *
-rte_dom0_mempool_create(const char *name __rte_unused,
-			unsigned n __rte_unused,
-			unsigned elt_size __rte_unused,
-			unsigned cache_size __rte_unused,
-			unsigned private_data_size __rte_unused,
-			rte_mempool_ctor_t *mp_init __rte_unused,
-			void *mp_init_arg __rte_unused,
-			rte_mempool_obj_ctor_t *obj_init __rte_unused,
-			void *obj_init_arg __rte_unused,
-			int socket_id __rte_unused,
-			unsigned flags __rte_unused)
-{
-	rte_errno = EINVAL;
-	return NULL;
-}
-#endif
-
 /* create the internal ring */
 static int
 rte_mempool_ring_create(struct rte_mempool *mp)
@@ -495,6 +475,9 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		     mp->populated_size < mp->size; off += phys_len) {
 
 		paddr = rte_mem_virt2phy(addr + off);
+		/* required for xen_dom0 to get the machine address */
+		paddr = rte_mem_phy2mch(-1, paddr);
+
 		if (paddr == RTE_BAD_PHYS_ADDR) {
 			ret = -EINVAL;
 			goto fail;
@@ -577,7 +560,8 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 			goto fail;
 		}
 
-		if (rte_eal_has_hugepages())
+		/* use memzone physical address if it is valid */
+		if (rte_eal_has_hugepages() && !rte_xen_dom0_supported())
 			ret = rte_mempool_populate_phys(mp, mz->addr,
 				mz->phys_addr, mz->len,
 				rte_mempool_memchunk_mz_free,
@@ -752,13 +736,6 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	int socket_id, unsigned flags)
 {
 	struct rte_mempool *mp;
-
-	if (rte_xen_dom0_supported())
-		return rte_dom0_mempool_create(name, n, elt_size,
-					       cache_size, private_data_size,
-					       mp_init, mp_init_arg,
-					       obj_init, obj_init_arg,
-					       socket_id, flags);
 
 	mp = rte_mempool_create_empty(name, n, elt_size, cache_size,
 		private_data_size, socket_id, flags);

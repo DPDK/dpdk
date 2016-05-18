@@ -180,7 +180,6 @@ Linux Xen
 F: lib/librte_eal/linuxapp/xen_dom0/
 F: lib/librte_eal/linuxapp/eal/*xen*
 F: lib/librte_eal/linuxapp/eal/include/exec-env/rte_dom0_common.h
-F: lib/librte_mempool/rte_dom0_mempool.c
 F: drivers/net/xenvirt/
 F: doc/guides/xen/
 F: app/test-pmd/mempool_*
