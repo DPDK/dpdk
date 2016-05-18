@@ -390,6 +390,15 @@ rte_mempool_ring_create(struct rte_mempool *mp)
 	return 0;
 }
 
+/* free a memchunk allocated with rte_memzone_reserve() */
+__rte_unused static void
+rte_mempool_memchunk_mz_free(__rte_unused struct rte_mempool_memhdr *memhdr,
+	void *opaque)
+{
+	const struct rte_memzone *mz = opaque;
+	rte_memzone_free(mz);
+}
+
 /* Free memory chunks used by a mempool. Objects must be in pool */
 static void
 rte_mempool_free_memchunks(struct rte_mempool *mp)
@@ -407,6 +416,8 @@ rte_mempool_free_memchunks(struct rte_mempool *mp)
 	while (!STAILQ_EMPTY(&mp->mem_list)) {
 		memhdr = STAILQ_FIRST(&mp->mem_list);
 		STAILQ_REMOVE_HEAD(&mp->mem_list, next);
+		if (memhdr->free_cb != NULL)
+			memhdr->free_cb(memhdr, memhdr->opaque);
 		rte_free(memhdr);
 		mp->nb_mem_chunks--;
 	}
@@ -418,7 +429,8 @@ rte_mempool_free_memchunks(struct rte_mempool *mp)
  */
 static int
 rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
-	phys_addr_t paddr, size_t len)
+	phys_addr_t paddr, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque)
 {
 	unsigned total_elt_sz;
 	unsigned i = 0;
@@ -439,6 +451,8 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	memhdr->addr = vaddr;
 	memhdr->phys_addr = paddr;
 	memhdr->len = len;
+	memhdr->free_cb = free_cb;
+	memhdr->opaque = opaque;
 
 	if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
 		off = RTE_PTR_ALIGN_CEIL(vaddr, 8) - vaddr;
@@ -466,7 +480,8 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
  */
 static int
 rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
-	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift)
+	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
+	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque)
 {
 	uint32_t i, n;
 	int ret, cnt = 0;
@@ -484,11 +499,13 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 			;
 
 		ret = rte_mempool_populate_phys(mp, vaddr + i * pg_sz,
-			paddr[i], n * pg_sz);
+			paddr[i], n * pg_sz, free_cb, opaque);
 		if (ret < 0) {
 			rte_mempool_free_memchunks(mp);
 			return ret;
 		}
+		/* no need to call the free callback for next chunks */
+		free_cb = NULL;
 		cnt += ret;
 	}
 	return cnt;
@@ -670,12 +687,12 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 		ret = rte_mempool_populate_phys(mp, obj,
 			mp->phys_addr + ((char *)obj - (char *)mp),
-			objsz.total_size * n);
+			objsz.total_size * n, NULL, NULL);
 		if (ret != (int)mp->size)
 			goto exit_unlock;
 	} else {
 		ret = rte_mempool_populate_phys_tab(mp, vaddr,
-			paddr, pg_num, pg_shift);
+			paddr, pg_num, pg_shift, NULL, NULL);
 		if (ret != (int)mp->size)
 			goto exit_unlock;
 	}

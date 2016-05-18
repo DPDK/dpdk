@@ -188,6 +188,12 @@ struct rte_mempool_objtlr {
 STAILQ_HEAD(rte_mempool_memhdr_list, rte_mempool_memhdr);
 
 /**
+ * Callback used to free a memory chunk
+ */
+typedef void (rte_mempool_memchunk_free_cb_t)(struct rte_mempool_memhdr *memhdr,
+	void *opaque);
+
+/**
  * Mempool objects memory header structure
  *
  * The memory chunks where objects are stored. Each chunk is virtually
@@ -199,6 +205,8 @@ struct rte_mempool_memhdr {
 	void *addr;              /**< Virtual address of the chunk */
 	phys_addr_t phys_addr;   /**< Physical address of the chunk */
 	size_t len;              /**< length of the chunk */
+	rte_mempool_memchunk_free_cb_t *free_cb; /**< Free callback */
+	void *opaque;            /**< Argument passed to the free callback */
 };
 
 /**
