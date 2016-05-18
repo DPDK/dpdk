@@ -105,9 +105,6 @@ const char *pci_get_sysfs_path(void);
 /** Nb. of values in PCI resource format. */
 #define PCI_RESOURCE_FMT_NVAL 3
 
-/** IO resource type: memory address space */
-#define IORESOURCE_MEM        0x00000200
-
 /**
  * A structure describing a PCI resource.
  */
@@ -522,6 +519,7 @@ int rte_eal_pci_write_config(const struct rte_pci_device *device,
 struct rte_pci_ioport {
 	struct rte_pci_device *dev;
 	uint64_t base;
+	uint64_t len; /* only filled for memory mapped ports */
 };
 
 /**

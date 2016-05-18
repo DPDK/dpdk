@@ -36,11 +36,21 @@
 
 #include "eal_vfio.h"
 
+/** IO resource type: */
+#define IORESOURCE_IO         0x00000100
+#define IORESOURCE_MEM        0x00000200
+
 /*
  * Helper function to map PCI resources right after hugepages in virtual memory
  */
 extern void *pci_map_addr;
 void *pci_find_max_end_va(void);
+
+/* parse one line of the "resource" sysfs file (note that the 'line'
+ * string is modified)
+ */
+int pci_parse_one_sysfs_resource(char *line, size_t len, uint64_t *phys_addr,
+	uint64_t *end_addr, uint64_t *flags);
 
 int pci_uio_alloc_resource(struct rte_pci_device *dev,
 		struct mapped_pci_resource **uio_res);
