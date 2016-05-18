@@ -622,6 +622,35 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	return ret;
 }
 
+/* free a mempool */
+static void
+rte_mempool_free(struct rte_mempool *mp)
+{
+	struct rte_mempool_list *mempool_list = NULL;
+	struct rte_tailq_entry *te;
+
+	if (mp == NULL)
+		return;
+
+	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+	/* find out tailq entry */
+	TAILQ_FOREACH(te, mempool_list, next) {
+		if (te->data == (void *)mp)
+			break;
+	}
+
+	if (te != NULL) {
+		TAILQ_REMOVE(mempool_list, te, next);
+		rte_free(te);
+	}
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
+	rte_mempool_free_memchunks(mp);
+	rte_ring_free(mp->ring);
+	rte_memzone_free(mp->mz);
+}
+
 /*
  * Create the mempool over already allocated chunk of memory.
  * That external memory buffer can consists of physically disjoint pages.
@@ -781,13 +810,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 
 exit_unlock:
 	rte_rwlock_write_unlock(RTE_EAL_MEMPOOL_RWLOCK);
-	if (mp != NULL) {
-		rte_mempool_free_memchunks(mp);
-		rte_ring_free(mp->ring);
-	}
-	rte_free(te);
-	if (mz != NULL)
-		rte_memzone_free(mz);
+	rte_mempool_free(mp);
 
 	return NULL;
 }
