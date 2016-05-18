@@ -1412,6 +1412,8 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
  *
  * After attachment we refer the mbuf we attached as 'indirect',
  * while mbuf we attached to as 'direct'.
+ * The direct mbuf's reference counter is incremented.
+ *
  * Right now, not supported:
  *  - attachment for already indirect mbuf (e.g. - mi has to be direct).
  *  - mbuf we trying to attach (mi) is used by someone else
@@ -1465,13 +1467,17 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
  *
  *  - restore original mbuf address and length values.
  *  - reset pktmbuf data and data_len to their default values.
- *  All other fields of the given packet mbuf will be left intact.
+ *  - decrement the direct mbuf's reference counter. When the
+ *  reference counter becomes 0, the direct mbuf is freed.
+ *
+ * All other fields of the given packet mbuf will be left intact.
  *
  * @param m
  *   The indirect attached packet mbuf.
  */
 static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 {
+	struct rte_mbuf *md = rte_mbuf_from_indirect(m);
 	struct rte_mempool *mp = m->pool;
 	uint32_t mbuf_size, buf_len, priv_size;
 
@@ -1486,6 +1492,9 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 	m->data_off = RTE_MIN(RTE_PKTMBUF_HEADROOM, (uint16_t)m->buf_len);
 	m->data_len = 0;
 	m->ol_flags = 0;
+
+	if (rte_mbuf_refcnt_update(md, -1) == 0)
+		__rte_mbuf_raw_free(md);
 }
 
 static inline struct rte_mbuf* __attribute__((always_inline))
@@ -1494,17 +1503,9 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 	__rte_mbuf_sanity_check(m, 0);
 
 	if (likely(rte_mbuf_refcnt_update(m, -1) == 0)) {
-
-		/* if this is an indirect mbuf, then
-		 *  - detach mbuf
-		 *  - free attached mbuf segment
-		 */
-		if (RTE_MBUF_INDIRECT(m)) {
-			struct rte_mbuf *md = rte_mbuf_from_indirect(m);
+		/* if this is an indirect mbuf, it is detached. */
+		if (RTE_MBUF_INDIRECT(m))
 			rte_pktmbuf_detach(m);
-			if (rte_mbuf_refcnt_update(md, -1) == 0)
-				__rte_mbuf_raw_free(md);
-		}
 		return m;
 	}
 	return NULL;

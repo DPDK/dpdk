@@ -69,6 +69,12 @@ Drivers
 Libraries
 ~~~~~~~~~
 
+* **mbuf: Fixed refcnt update when detaching.**
+
+  Fix the ``rte_pktmbuf_detach()`` function to decrement the direct
+  mbuf's reference counter. The previous behavior was not to affect
+  the reference counter. It lead a memory leak of the direct mbuf.
+
 
 Examples
 ~~~~~~~~
