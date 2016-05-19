@@ -65,3 +65,7 @@ Deprecation Notices
   renamed to something more consistent (net and crypto prefixes) in 16.11.
   Some of these driver names are used publicly, to create virtual devices,
   so a deprecation notice is necessary.
+
+* API will change for ``rte_port_source_params`` and ``rte_port_sink_params``
+  structures. The member ``file_name`` data type will be changed from
+  ``char *`` to ``const char *``. This change targets release 16.11.
