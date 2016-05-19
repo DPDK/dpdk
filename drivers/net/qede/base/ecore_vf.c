@@ -325,8 +325,8 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_dev *p_dev)
 	}
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "VF's Request mailbox [%p virt 0x%lx phys], Response"
-		   " mailbox [%p virt 0x%lx phys]\n",
+		   "VF's Request mailbox [%p virt 0x%" PRIx64 " phys], "
+		   "Response mailbox [%p virt 0x%" PRIx64 " phys]\n",
 		   p_sriov->vf2pf_request,
 		   (u64)p_sriov->vf2pf_request_phys,
 		   p_sriov->pf2vf_reply, (u64)p_sriov->pf2vf_reply_phys);
@@ -339,7 +339,7 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_dev *p_dev)
 							   p_sriov->bulletin.
 							   size);
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "VF's bulletin Board [%p virt 0x%lx phys 0x%08x bytes]\n",
+		   "VF's bulletin Board [%p virt 0x%" PRIx64 " phys 0x%08x bytes]\n",
 		   p_sriov->bulletin.p_virt, (u64)p_sriov->bulletin.phys,
 		   p_sriov->bulletin.size);
 

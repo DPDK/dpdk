@@ -115,7 +115,7 @@ void *osal_dma_alloc_coherent(struct ecore_dev *p_dev,
 	}
 	*phys = mz->phys_addr;
 	DP_VERBOSE(p_dev, ECORE_MSG_PROBE,
-		   "size=%zu phys=0x%lx virt=%p on socket=%u\n",
+		   "size=%zu phys=0x%" PRIx64 " virt=%p on socket=%u\n",
 		   mz->len, mz->phys_addr, mz->addr, socket_id);
 	return mz->addr;
 }
@@ -144,7 +144,7 @@ void *osal_dma_alloc_coherent_aligned(struct ecore_dev *p_dev,
 	}
 	*phys = mz->phys_addr;
 	DP_VERBOSE(p_dev, ECORE_MSG_PROBE,
-		   "aligned memory size=%zu phys=0x%lx virt=%p core=%d\n",
+		   "aligned memory size=%zu phys=0x%" PRIx64 " virt=%p core=%d\n",
 		   mz->len, mz->phys_addr, mz->addr, core_id);
 	return mz->addr;
 }

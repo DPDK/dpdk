@@ -297,9 +297,9 @@ static enum _ecore_status_t ecore_iov_allocate_vfdb(struct ecore_hwfn *p_hwfn)
 		return ECORE_NOMEM;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "PF's Requests mailbox [%p virt 0x%lx phys],  Response"
-		   " mailbox [%p virt 0x%lx phys] Bulletins"
-		   " [%p virt 0x%lx phys]\n",
+		   "PF's Requests mailbox [%p virt 0x%" PRIx64 " phys], "
+		   "Response mailbox [%p virt 0x%" PRIx64 " phys] Bulletins"
+		   " [%p virt 0x%" PRIx64 " phys]\n",
 		   p_iov_info->mbx_msg_virt_addr,
 		   (u64)p_iov_info->mbx_msg_phys_addr,
 		   p_iov_info->mbx_reply_virt_addr,
@@ -1250,7 +1250,7 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 		   "VF[%d] ACQUIRE_RESPONSE: pfdev_info- chip_num=0x%x,"
-		   " db_size=%d, idx_per_sb=%d, pf_cap=0x%lx\n"
+		   " db_size=%d, idx_per_sb=%d, pf_cap=0x%" PRIx64 "\n"
 		   "resources- n_rxq-%d, n_txq-%d, n_sbs-%d, n_macs-%d,"
 		   " n_vlans-%d, n_mcs-%d\n",
 		   vf->abs_vf_id, resp->pfdev_info.chip_num,

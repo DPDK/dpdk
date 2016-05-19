@@ -1197,8 +1197,8 @@ enum _ecore_status_t ecore_mcp_fill_shmem_func_info(struct ecore_hwfn *p_hwfn,
 	DP_VERBOSE(p_hwfn, (ECORE_MSG_SP | ECORE_MSG_IFUP),
 		   "Read configuration from shmem: pause_on_host %02x"
 		    " protocol %02x BW [%02x - %02x]"
-		    " MAC %02x:%02x:%02x:%02x:%02x:%02x wwn port %lx"
-		    " node %lx ovlan %04x\n",
+		    " MAC %02x:%02x:%02x:%02x:%02x:%02x wwn port %" PRIx64
+		    " node %" PRIx64 " ovlan %04x\n",
 		   info->pause_on_host, info->protocol,
 		   info->bandwidth_min, info->bandwidth_max,
 		   info->mac[0], info->mac[1], info->mac[2],

@@ -876,8 +876,8 @@ ecore_ilt_blk_alloc(struct ecore_hwfn *p_hwfn,
 		ilt_shadow[line].size = size;
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_ILT,
-			   "ILT shadow: Line [%d] Physical 0x%lx "
-			   "Virtual %p Size %d\n",
+			   "ILT shadow: Line [%d] Physical 0x%" PRIx64
+			   " Virtual %p Size %d\n",
 			   line, (u64)p_phys, p_virt, size);
 
 		sz_left -= size;
@@ -1474,7 +1474,7 @@ static void ecore_ilt_init_pf(struct ecore_hwfn *p_hwfn)
 				DP_VERBOSE(p_hwfn, ECORE_MSG_ILT,
 					"Setting RT[0x%08x] from"
 					" ILT[0x%08x] [Client is %d] to"
-					" Physical addr: 0x%lx\n",
+					" Physical addr: 0x%" PRIx64 "\n",
 					rt_offst, line, i,
 					(u64)(p_shdw[line].p_phys >> 12));
 			}
