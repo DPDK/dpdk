@@ -239,6 +239,9 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift)
 {
 	size_t obj_per_page, pg_num, pg_sz;
 
+	if (total_elt_sz == 0)
+		return 0;
+
 	if (pg_shift == 0)
 		return total_elt_sz * elt_num;
 
