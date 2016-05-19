@@ -56,7 +56,6 @@ F: scripts/auto-config-h.sh
 F: scripts/depdirs-rule.sh
 F: scripts/gen-build-mk.sh
 F: scripts/gen-config-h.sh
-F: scripts/merge-maps.sh
 F: scripts/relpath.sh
 F: doc/build-sdk-quick.txt
 F: doc/guides/prog_guide/build_app.rst
