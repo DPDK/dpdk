@@ -236,8 +236,6 @@ rte_table_acl_build(struct rte_table_acl *acl, struct rte_acl_ctx **acl_ctx)
 		return -1;
 	}
 
-	rte_acl_dump(ctx);
-
 	*acl_ctx = ctx;
 	return 0;
 }
