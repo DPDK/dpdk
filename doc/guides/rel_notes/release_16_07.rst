@@ -217,6 +217,9 @@ API Changes
 * The function ``rte_vhost_enqueue_burst`` no longer supports concurrent enqueuing
   packets to the same queue.
 
+* The function ``rte_eth_dev_set_mtu`` adds a new return value ``-EBUSY``, which
+  indicates the operation is forbidden because the port is running.
+
 
 ABI Changes
 -----------

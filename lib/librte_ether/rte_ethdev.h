@@ -2456,6 +2456,7 @@ int rte_eth_dev_get_mtu(uint8_t port_id, uint16_t *mtu);
  *   - (-ENOTSUP) if operation is not supported.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if *mtu* invalid.
+ *   - (-EBUSY) if operation is not allowed when the port is running
  */
 int rte_eth_dev_set_mtu(uint8_t port_id, uint16_t mtu);
 

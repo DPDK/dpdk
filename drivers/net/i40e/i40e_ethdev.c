@@ -450,6 +450,8 @@ static int i40e_get_eeprom(struct rte_eth_dev *dev,
 static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 				      struct ether_addr *mac_addr);
 
+static int i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+
 static const struct rte_pci_id pci_id_i40e_map[] = {
 #define RTE_PCI_DEV_ID_DECL_I40E(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
 #include "rte_pci_dev_ids.h"
@@ -524,6 +526,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.get_eeprom_length            = i40e_get_eeprom_length,
 	.get_eeprom                   = i40e_get_eeprom,
 	.mac_addr_set                 = i40e_set_default_mac_addr,
+	.mtu_set                      = i40e_dev_mtu_set,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -9205,4 +9208,35 @@ static void i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 
 	/* Flags: 0x3 updates port address */
 	i40e_aq_mac_address_write(hw, 0x3, mac_addr->addr_bytes, NULL);
+}
+
+static int
+i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_eth_dev_data *dev_data = pf->dev_data;
+	uint32_t frame_size = mtu + ETHER_HDR_LEN
+			      + ETHER_CRC_LEN + I40E_VLAN_TAG_SIZE;
+	int ret = 0;
+
+	/* check if mtu is within the allowed range */
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > I40E_FRAME_SIZE_MAX))
+		return -EINVAL;
+
+	/* mtu setting is forbidden if port is start */
+	if (dev_data->dev_started) {
+		PMD_DRV_LOG(ERR,
+			    "port %d must be stopped before configuration\n",
+			    dev_data->port_id);
+		return -EBUSY;
+	}
+
+	if (frame_size > ETHER_MAX_LEN)
+		dev_data->dev_conf.rxmode.jumbo_frame = 1;
+	else
+		dev_data->dev_conf.rxmode.jumbo_frame = 0;
+
+	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+
+	return ret;
 }
