@@ -1143,7 +1143,8 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 	fdirdp->dtype_cmd_cntindex |=
 			rte_cpu_to_le_32(I40E_TXD_FLTR_QW1_CNT_ENA_MASK);
 	fdirdp->dtype_cmd_cntindex |=
-			rte_cpu_to_le_32((pf->fdir.match_counter_index <<
+			rte_cpu_to_le_32(
+			((uint32_t)pf->fdir.match_counter_index <<
 			I40E_TXD_FLTR_QW1_CNTINDEX_SHIFT) &
 			I40E_TXD_FLTR_QW1_CNTINDEX_MASK);
 
