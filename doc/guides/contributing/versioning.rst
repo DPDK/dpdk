@@ -475,7 +475,7 @@ Where ``REV1`` and ``REV2`` are valid gitrevisions(7)
 https://www.kernel.org/pub/software/scm/git/docs/gitrevisions.html
 on the local repo and target is the usual DPDK compilation target.
 
-For example:
+For example::
 
    # Check between the previous and latest commit:
    ./scripts/validate-abi.sh HEAD~1 HEAD x86_64-native-linuxapp-gcc
