@@ -113,6 +113,9 @@ void rte_kni_init(unsigned int max_kni_ifaces);
  * The rte_kni_alloc shall not be called before rte_kni_init() has been
  * called. rte_kni_alloc is thread safe.
  *
+ * The mempool should have capacity of more than "2 x KNI_FIFO_COUNT_MAX"
+ * elements for each KNI interface allocated.
+ *
  * @param pktmbuf_pool
  *  The mempool for allocting mbufs for packets.
  * @param conf
