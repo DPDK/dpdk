@@ -160,8 +160,8 @@ int rte_kni_handle_request(struct rte_kni *kni);
 /**
  * Retrieve a burst of packets from a KNI interface. The retrieved packets are
  * stored in rte_mbuf structures whose pointers are supplied in the array of
- * mbufs, and the maximum number is indicated by num. It handles the freeing of
- * the mbufs in the free queue of KNI interface.
+ * mbufs, and the maximum number is indicated by num. It handles allocating
+ * the mbufs for KNI interface alloc queue.
  *
  * @param kni
  *  The KNI interface context.
@@ -179,8 +179,8 @@ unsigned rte_kni_rx_burst(struct rte_kni *kni, struct rte_mbuf **mbufs,
 /**
  * Send a burst of packets to a KNI interface. The packets to be sent out are
  * stored in rte_mbuf structures whose pointers are supplied in the array of
- * mbufs, and the maximum number is indicated by num. It handles allocating
- * the mbufs for KNI interface alloc queue.
+ * mbufs, and the maximum number is indicated by num. It handles the freeing of
+ * the mbufs in the free queue of KNI interface.
  *
  * @param kni
  *  The KNI interface context.
