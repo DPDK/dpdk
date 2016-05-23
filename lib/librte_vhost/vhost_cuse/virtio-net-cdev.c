@@ -290,7 +290,7 @@ cuse_set_mem_table(struct vhost_device_ctx ctx,
 	if (dev->mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to allocate memory for dev->mem\n",
-			dev->device_fh);
+			dev->vid);
 		return -1;
 	}
 
@@ -394,7 +394,7 @@ get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int 
 
 	if (close(fd_tap) < 0)
 		RTE_LOG(ERR, VHOST_CONFIG, "(%d) fd close failed\n",
-			dev->device_fh);
+			dev->vid);
 
 	if (ret >= 0) {
 		ifr_size = strnlen(ifr.ifr_name, sizeof(ifr.ifr_name));
@@ -402,7 +402,7 @@ get_ifname(struct vhost_device_ctx ctx, struct virtio_net *dev, int tap_fd, int 
 	} else
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) TUNGETIFF ioctl failed\n",
-			dev->device_fh);
+			dev->vid);
 
 	return 0;
 }

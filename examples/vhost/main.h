@@ -66,7 +66,7 @@ struct vhost_dev {
 	/**< Device is marked for removal from the data core. */
 	volatile uint8_t remove;
 
-	int device_fh;
+	int vid;
 	struct device_statistics stats;
 	TAILQ_ENTRY(vhost_dev) global_vdev_entry;
 	TAILQ_ENTRY(vhost_dev) lcore_vdev_entry;

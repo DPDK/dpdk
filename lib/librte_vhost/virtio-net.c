@@ -112,11 +112,11 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
 struct virtio_net *
 get_device(struct vhost_device_ctx ctx)
 {
-	struct virtio_net *dev = vhost_devices[ctx.fh];
+	struct virtio_net *dev = vhost_devices[ctx.vid];
 
 	if (unlikely(!dev)) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) device not found.\n", ctx.fh);
+			"(%d) device not found.\n", ctx.vid);
 	}
 
 	return dev;
@@ -233,7 +233,7 @@ alloc_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
 
 /*
  * Reset some variables in device structure, while keeping few
- * others untouched, such as device_fh, ifname, virt_qp_nb: they
+ * others untouched, such as vid, ifname, virt_qp_nb: they
  * should be same unless the device is removed.
  */
 static void
@@ -263,7 +263,7 @@ vhost_new_device(struct vhost_device_ctx ctx)
 	dev = rte_zmalloc(NULL, sizeof(struct virtio_net), 0);
 	if (dev == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) failed to allocate memory for dev.\n", ctx.fh);
+			"(%d) failed to allocate memory for dev.\n", ctx.vid);
 		return -1;
 	}
 
@@ -278,7 +278,7 @@ vhost_new_device(struct vhost_device_ctx ctx)
 	}
 
 	vhost_devices[i] = dev;
-	dev->device_fh   = i;
+	dev->vid = i;
 
 	return i;
 }
@@ -303,7 +303,7 @@ vhost_destroy_device(struct vhost_device_ctx ctx)
 	cleanup_device(dev, 1);
 	free_device(dev);
 
-	vhost_devices[ctx.fh] = NULL;
+	vhost_devices[ctx.vid] = NULL;
 }
 
 void
@@ -408,7 +408,7 @@ vhost_set_features(struct vhost_device_ctx ctx, uint64_t *pu)
 	}
 	LOG_DEBUG(VHOST_CONFIG,
 		"(%d) mergeable RX buffers %s, virtio 1 %s\n",
-		dev->device_fh,
+		dev->vid,
 		(dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF)) ? "on" : "off",
 		(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ? "on" : "off");
 
@@ -513,7 +513,7 @@ numa_realloc(struct virtio_net *dev, int index)
 out:
 	dev->virtqueue[index] = vq;
 	dev->virtqueue[index + 1] = vq + 1;
-	vhost_devices[dev->device_fh] = dev;
+	vhost_devices[dev->vid] = dev;
 
 	return dev;
 }
@@ -549,7 +549,7 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 	if (vq->desc == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to find desc ring address.\n",
-			dev->device_fh);
+			dev->vid);
 		return -1;
 	}
 
@@ -561,7 +561,7 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 	if (vq->avail == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to find avail ring address.\n",
-			dev->device_fh);
+			dev->vid);
 		return -1;
 	}
 
@@ -570,20 +570,20 @@ vhost_set_vring_addr(struct vhost_device_ctx ctx, struct vhost_vring_addr *addr)
 	if (vq->used == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to find used ring address.\n",
-			dev->device_fh);
+			dev->vid);
 		return -1;
 	}
 
 	vq->log_guest_addr = addr->log_guest_addr;
 
 	LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address desc: %p\n",
-			dev->device_fh, vq->desc);
+			dev->vid, vq->desc);
 	LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address avail: %p\n",
-			dev->device_fh, vq->avail);
+			dev->vid, vq->avail);
 	LOG_DEBUG(VHOST_CONFIG, "(%d) mapped address used: %p\n",
-			dev->device_fh, vq->used);
+			dev->vid, vq->used);
 	LOG_DEBUG(VHOST_CONFIG, "(%d) log_guest_addr: %" PRIx64 "\n",
-			dev->device_fh, vq->log_guest_addr);
+			dev->vid, vq->log_guest_addr);
 
 	return 0;
 }

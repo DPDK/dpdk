@@ -245,7 +245,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 	int i, ret;
 	struct ether_hdr *pkt_hdr;
 	struct virtio_net *dev = vdev->dev;
-	uint64_t portid = dev->device_fh;
+	uint64_t portid = dev->vid;
 	struct ipv4_hdr *ip;
 
 	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
@@ -254,7 +254,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) WARNING: Not configuring device,"
 			"as already have %d ports for VXLAN.",
-			dev->device_fh, VXLAN_N_PORTS);
+			dev->vid, VXLAN_N_PORTS);
 		return -1;
 	}
 
@@ -264,7 +264,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) WARNING: This device is using an existing"
 			" MAC address and has not been registered.\n",
-			dev->device_fh);
+			dev->vid);
 		return -1;
 	}
 
@@ -436,11 +436,11 @@ vxlan_rx_pkts(struct virtio_net *dev, struct rte_mbuf **pkts_burst,
 	for (i = 0; i < rx_count; i++) {
 		if (enable_stats) {
 			rte_atomic64_add(
-				&dev_statistics[dev->device_fh].rx_bad_ip_csum,
+				&dev_statistics[dev->vid].rx_bad_ip_csum,
 				(pkts_burst[i]->ol_flags & PKT_RX_IP_CKSUM_BAD)
 				!= 0);
 			rte_atomic64_add(
-				&dev_statistics[dev->device_fh].rx_bad_ip_csum,
+				&dev_statistics[dev->vid].rx_bad_ip_csum,
 				(pkts_burst[i]->ol_flags & PKT_RX_L4_CKSUM_BAD)
 				!= 0);
 		}

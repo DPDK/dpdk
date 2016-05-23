@@ -569,7 +569,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 	struct virtio_net *dev = vdev->dev;
 
 	RTE_LOG(DEBUG, VHOST_DATA, "(%d) TX: MAC address is external\n",
-		dev->device_fh);
+		dev->vid);
 
 	/* Add packet to the port tx queue */
 	tx_q = &lcore_tx_queue[lcore_id];
@@ -578,8 +578,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 	tx_q->m_table[len] = m;
 	len++;
 	if (enable_stats) {
-		dev_statistics[dev->device_fh].tx_total++;
-		dev_statistics[dev->device_fh].tx++;
+		dev_statistics[dev->vid].tx_total++;
+		dev_statistics[dev->vid].tx++;
 	}
 
 	if (unlikely(len == MAX_PKT_BURST)) {
@@ -721,10 +721,10 @@ switch_worker(__rte_unused void *arg)
 					ret_count = overlay_options.rx_handle(dev, pkts_burst, rx_count);
 					if (enable_stats) {
 						rte_atomic64_add(
-						&dev_statistics[dev->device_fh].rx_total_atomic,
+						&dev_statistics[dev->vid].rx_total_atomic,
 						rx_count);
 						rte_atomic64_add(
-						&dev_statistics[dev->device_fh].rx_atomic, ret_count);
+						&dev_statistics[dev->vid].rx_atomic, ret_count);
 					}
 					while (likely(rx_count)) {
 						rx_count--;
@@ -945,7 +945,7 @@ destroy_device(volatile struct virtio_net *dev)
 	if (ll_lcore_dev_cur == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) Failed to find the dev to be destroy.\n",
-			dev->device_fh);
+			dev->vid);
 		return;
 	}
 
@@ -993,7 +993,7 @@ destroy_device(volatile struct virtio_net *dev)
 	lcore_info[vdev->coreid].lcore_ll->device_num--;
 
 	RTE_LOG(INFO, VHOST_DATA, "(%d) Device has been removed "
-		"from data core\n", dev->device_fh);
+		"from data core\n", dev->vid);
 
 	rte_free(vdev);
 
@@ -1015,7 +1015,7 @@ new_device(struct virtio_net *dev)
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) Couldn't allocate memory for vhost dev\n",
-			dev->device_fh);
+			dev->vid);
 		return -1;
 	}
 	vdev->dev = dev;
@@ -1025,7 +1025,7 @@ new_device(struct virtio_net *dev)
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA, "(%d) No free entry found in"
 			" linked list Device limit of %d devices per core"
-			" has been reached\n", dev->device_fh, nb_devices);
+			" has been reached\n", dev->vid, nb_devices);
 		if (vdev->regions_hpa)
 			rte_free(vdev->regions_hpa);
 		rte_free(vdev);
@@ -1033,7 +1033,7 @@ new_device(struct virtio_net *dev)
 	}
 	ll_dev->vdev = vdev;
 	add_data_ll_entry(&ll_root_used, ll_dev);
-	vdev->rx_q = dev->device_fh;
+	vdev->rx_q = dev->vid;
 
 	/* reset ready flag */
 	vdev->ready = DEVICE_MAC_LEARNING;
@@ -1051,7 +1051,7 @@ new_device(struct virtio_net *dev)
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) Failed to add device to data core\n",
-			dev->device_fh);
+			dev->vid);
 		vdev->ready = DEVICE_SAFE_REMOVE;
 		destroy_device(dev);
 		rte_free(vdev->regions_hpa);
@@ -1065,7 +1065,7 @@ new_device(struct virtio_net *dev)
 			ll_dev);
 
 	/* Initialize device stats */
-	memset(&dev_statistics[dev->device_fh], 0,
+	memset(&dev_statistics[dev->vid], 0,
 		sizeof(struct device_statistics));
 
 	/* Disable notifications. */
@@ -1075,7 +1075,7 @@ new_device(struct virtio_net *dev)
 	dev->flags |= VIRTIO_DEV_RUNNING;
 
 	RTE_LOG(INFO, VHOST_DATA, "(%d) Device has been added to data core %d\n",
-		dev->device_fh, vdev->coreid);
+		dev->vid, vdev->coreid);
 
 	return 0;
 }
@@ -1099,7 +1099,7 @@ print_stats(void)
 	struct virtio_net_data_ll *dev_ll;
 	uint64_t tx_dropped, rx_dropped;
 	uint64_t tx, tx_total, rx, rx_total, rx_ip_csum, rx_l4_csum;
-	uint32_t device_fh;
+	int vid;
 	const char clr[] = { 27, '[', '2', 'J', '\0' };
 	const char top_left[] = { 27, '[', '1', ';', '1', 'H', '\0' };
 
@@ -1113,22 +1113,22 @@ print_stats(void)
 
 		dev_ll = ll_root_used;
 		while (dev_ll != NULL) {
-			device_fh = (uint32_t)dev_ll->vdev->dev->device_fh;
-			tx_total = dev_statistics[device_fh].tx_total;
-			tx = dev_statistics[device_fh].tx;
+			vid = dev_ll->vdev->dev->vid;
+			tx_total = dev_statistics[vid].tx_total;
+			tx = dev_statistics[vid].tx;
 			tx_dropped = tx_total - tx;
 
 			rx_total = rte_atomic64_read(
-				&dev_statistics[device_fh].rx_total_atomic);
+				&dev_statistics[vid].rx_total_atomic);
 			rx = rte_atomic64_read(
-				&dev_statistics[device_fh].rx_atomic);
+				&dev_statistics[vid].rx_atomic);
 			rx_dropped = rx_total - rx;
 			rx_ip_csum = rte_atomic64_read(
-				&dev_statistics[device_fh].rx_bad_ip_csum);
+				&dev_statistics[vid].rx_bad_ip_csum);
 			rx_l4_csum = rte_atomic64_read(
-				&dev_statistics[device_fh].rx_bad_l4_csum);
+				&dev_statistics[vid].rx_bad_l4_csum);
 
-			printf("\nStatistics for device %"PRIu32" ----------"
+			printf("\nStatistics for device %d ----------"
 					"\nTX total:		%"PRIu64""
 					"\nTX dropped:		%"PRIu64""
 					"\nTX successful:		%"PRIu64""
@@ -1137,7 +1137,7 @@ print_stats(void)
 					"\nRX bad L4 csum:      %"PRIu64""
 					"\nRX dropped:		%"PRIu64""
 					"\nRX successful:		%"PRIu64"",
-					device_fh,
+					vid,
 					tx_total,
 					tx_dropped,
 					tx,

@@ -133,7 +133,7 @@ user_set_mem_table(struct vhost_device_ctx ctx, struct VhostUserMsg *pmsg)
 	if (dev->mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to allocate memory for dev->mem\n",
-			dev->device_fh);
+			dev->vid);
 		return -1;
 	}
 	dev->mem->nregions = memory.nregions;

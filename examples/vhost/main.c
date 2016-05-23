@@ -716,7 +716,7 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 	if (find_vhost_dev(&pkt_hdr->s_addr)) {
 		RTE_LOG(ERR, VHOST_DATA,
 			"(%d) device is using a registered MAC!\n",
-			vdev->device_fh);
+			vdev->vid);
 		return -1;
 	}
 
@@ -724,12 +724,12 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 		vdev->mac_address.addr_bytes[i] = pkt_hdr->s_addr.addr_bytes[i];
 
 	/* vlan_tag currently uses the device_id. */
-	vdev->vlan_tag = vlan_tags[vdev->device_fh];
+	vdev->vlan_tag = vlan_tags[vdev->vid];
 
 	/* Print out VMDQ registration info. */
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) mac %02x:%02x:%02x:%02x:%02x:%02x and vlan %d registered\n",
-		vdev->device_fh,
+		vdev->vid,
 		vdev->mac_address.addr_bytes[0], vdev->mac_address.addr_bytes[1],
 		vdev->mac_address.addr_bytes[2], vdev->mac_address.addr_bytes[3],
 		vdev->mac_address.addr_bytes[4], vdev->mac_address.addr_bytes[5],
@@ -737,11 +737,11 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 	/* Register the MAC address. */
 	ret = rte_eth_dev_mac_addr_add(ports[0], &vdev->mac_address,
-				(uint32_t)vdev->device_fh + vmdq_pool_base);
+				(uint32_t)vdev->vid + vmdq_pool_base);
 	if (ret)
 		RTE_LOG(ERR, VHOST_DATA,
 			"(%d) failed to add device MAC address to VMDQ\n",
-			vdev->device_fh);
+			vdev->vid);
 
 	/* Enable stripping of the vlan tag as we handle routing. */
 	if (vlan_strip)
@@ -820,19 +820,19 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 	if (!dst_vdev)
 		return -1;
 
-	if (vdev->device_fh == dst_vdev->device_fh) {
+	if (vdev->vid == dst_vdev->vid) {
 		RTE_LOG(DEBUG, VHOST_DATA,
 			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
-			vdev->device_fh);
+			vdev->vid);
 		return 0;
 	}
 
 	RTE_LOG(DEBUG, VHOST_DATA,
-		"(%d) TX: MAC address is local\n", dst_vdev->device_fh);
+		"(%d) TX: MAC address is local\n", dst_vdev->vid);
 
 	if (unlikely(dst_vdev->remove)) {
 		RTE_LOG(DEBUG, VHOST_DATA,
-			"(%d) device is marked for removal\n", dst_vdev->device_fh);
+			"(%d) device is marked for removal\n", dst_vdev->vid);
 		return 0;
 	}
 
@@ -855,10 +855,10 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	if (!dst_vdev)
 		return 0;
 
-	if (vdev->device_fh == dst_vdev->device_fh) {
+	if (vdev->vid == dst_vdev->vid) {
 		RTE_LOG(DEBUG, VHOST_DATA,
 			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
-			vdev->device_fh);
+			vdev->vid);
 		return -1;
 	}
 
@@ -868,11 +868,11 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	 * the packet length by plus it.
 	 */
 	*offset  = VLAN_HLEN;
-	*vlan_tag = vlan_tags[vdev->device_fh];
+	*vlan_tag = vlan_tags[vdev->vid];
 
 	RTE_LOG(DEBUG, VHOST_DATA,
 		"(%d) TX: pkt to local VM device id: (%d), vlan tag: %u.\n",
-		vdev->device_fh, dst_vdev->device_fh, *vlan_tag);
+		vdev->vid, dst_vdev->vid, *vlan_tag);
 
 	return 0;
 }
@@ -963,7 +963,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	}
 
 	RTE_LOG(DEBUG, VHOST_DATA,
-		"(%d) TX: MAC address is external\n", vdev->device_fh);
+		"(%d) TX: MAC address is external\n", vdev->vid);
 
 queue2nic:
 
@@ -1094,7 +1094,7 @@ drain_virtio_tx(struct vhost_dev *vdev)
 	}
 
 	for (i = 0; i < count; ++i)
-		virtio_tx_route(vdev, pkts[i], vlan_tags[vdev->device_fh]);
+		virtio_tx_route(vdev, pkts[i], vlan_tags[vdev->vid]);
 }
 
 /*
@@ -1206,7 +1206,7 @@ destroy_device (volatile struct virtio_net *dev)
 
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) device has been removed from data core\n",
-		vdev->device_fh);
+		vdev->vid);
 
 	rte_free(vdev);
 }
@@ -1221,21 +1221,21 @@ new_device (struct virtio_net *dev)
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
-	int device_fh = dev->device_fh;
+	int vid = dev->vid;
 
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) couldn't allocate memory for vhost dev\n",
-			device_fh);
+			vid);
 		return -1;
 	}
 	vdev->dev = dev;
 	dev->priv = vdev;
-	vdev->device_fh = device_fh;
+	vdev->vid = vid;
 
 	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, global_vdev_entry);
-	vdev->vmdq_rx_q = device_fh * queues_per_pool + vmdq_queue_base;
+	vdev->vmdq_rx_q = vid * queues_per_pool + vmdq_queue_base;
 
 	/*reset ready flag*/
 	vdev->ready = DEVICE_MAC_LEARNING;
@@ -1260,7 +1260,7 @@ new_device (struct virtio_net *dev)
 
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) device has been added to data core %d\n",
-		device_fh, vdev->coreid);
+		vid, vdev->coreid);
 
 	return 0;
 }
@@ -1312,7 +1312,7 @@ print_stats(void)
 				"RX total:              %" PRIu64 "\n"
 				"RX dropped:            %" PRIu64 "\n"
 				"RX successful:         %" PRIu64 "\n",
-				vdev->dev->device_fh,
+				vdev->dev->vid,
 				tx_total, tx_dropped, tx,
 				rx_total, rx_dropped, rx);
 		}

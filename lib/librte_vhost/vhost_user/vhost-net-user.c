@@ -58,7 +58,7 @@ static void vserver_message_handler(int fd, void *dat, int *remove);
 
 struct connfd_ctx {
 	struct vhost_server *vserver;
-	int fh;
+	int vid;
 };
 
 #define MAX_VHOST_SERVER 1024
@@ -285,7 +285,7 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 	struct vhost_server *vserver = (struct vhost_server *)dat;
 	int conn_fd;
 	struct connfd_ctx *ctx;
-	int fh;
+	int vid;
 	struct vhost_device_ctx vdev_ctx = { (pid_t)0, 0 };
 	unsigned int size;
 
@@ -301,22 +301,22 @@ vserver_new_vq_conn(int fd, void *dat, __rte_unused int *remove)
 		return;
 	}
 
-	fh = vhost_new_device(vdev_ctx);
-	if (fh == -1) {
+	vid = vhost_new_device(vdev_ctx);
+	if (vid == -1) {
 		free(ctx);
 		close(conn_fd);
 		return;
 	}
 
-	vdev_ctx.fh = fh;
+	vdev_ctx.vid = vid;
 	size = strnlen(vserver->path, PATH_MAX);
 	vhost_set_ifname(vdev_ctx, vserver->path,
 		size);
 
-	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", fh);
+	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
 	ctx->vserver = vserver;
-	ctx->fh = fh;
+	ctx->vid = vid;
 	fdset_add(&g_vhost_server.fdset,
 		conn_fd, vserver_message_handler, NULL, ctx);
 }
@@ -331,7 +331,7 @@ vserver_message_handler(int connfd, void *dat, int *remove)
 	uint64_t features;
 	int ret;
 
-	ctx.fh = cfd_ctx->fh;
+	ctx.vid = cfd_ctx->vid;
 	ret = read_vhost_message(connfd, &msg);
 	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
 		if (ret < 0)
