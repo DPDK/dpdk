@@ -708,7 +708,6 @@ static int
 link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct ether_hdr *pkt_hdr;
-	struct virtio_net *dev = vdev->dev;
 	int i, ret;
 
 	/* Learn MAC address of guest device from packet */
@@ -717,7 +716,7 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 	if (find_vhost_dev(&pkt_hdr->s_addr)) {
 		RTE_LOG(ERR, VHOST_DATA,
 			"(%d) device is using a registered MAC!\n",
-			dev->device_fh);
+			vdev->device_fh);
 		return -1;
 	}
 
@@ -725,12 +724,12 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 		vdev->mac_address.addr_bytes[i] = pkt_hdr->s_addr.addr_bytes[i];
 
 	/* vlan_tag currently uses the device_id. */
-	vdev->vlan_tag = vlan_tags[dev->device_fh];
+	vdev->vlan_tag = vlan_tags[vdev->device_fh];
 
 	/* Print out VMDQ registration info. */
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) mac %02x:%02x:%02x:%02x:%02x:%02x and vlan %d registered\n",
-		dev->device_fh,
+		vdev->device_fh,
 		vdev->mac_address.addr_bytes[0], vdev->mac_address.addr_bytes[1],
 		vdev->mac_address.addr_bytes[2], vdev->mac_address.addr_bytes[3],
 		vdev->mac_address.addr_bytes[4], vdev->mac_address.addr_bytes[5],
@@ -738,11 +737,11 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 	/* Register the MAC address. */
 	ret = rte_eth_dev_mac_addr_add(ports[0], &vdev->mac_address,
-				(uint32_t)dev->device_fh + vmdq_pool_base);
+				(uint32_t)vdev->device_fh + vmdq_pool_base);
 	if (ret)
 		RTE_LOG(ERR, VHOST_DATA,
 			"(%d) failed to add device MAC address to VMDQ\n",
-			dev->device_fh);
+			vdev->device_fh);
 
 	/* Enable stripping of the vlan tag as we handle routing. */
 	if (vlan_strip)
@@ -814,7 +813,6 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct ether_hdr *pkt_hdr;
 	struct vhost_dev *dst_vdev;
-	int fh;
 
 	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
@@ -822,19 +820,19 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 	if (!dst_vdev)
 		return -1;
 
-	fh = dst_vdev->dev->device_fh;
-	if (fh == vdev->dev->device_fh) {
+	if (vdev->device_fh == dst_vdev->device_fh) {
 		RTE_LOG(DEBUG, VHOST_DATA,
 			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
-			fh);
+			vdev->device_fh);
 		return 0;
 	}
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%d) TX: MAC address is local\n", fh);
+	RTE_LOG(DEBUG, VHOST_DATA,
+		"(%d) TX: MAC address is local\n", dst_vdev->device_fh);
 
 	if (unlikely(dst_vdev->remove)) {
 		RTE_LOG(DEBUG, VHOST_DATA,
-			"(%d) device is marked for removal\n", fh);
+			"(%d) device is marked for removal\n", dst_vdev->device_fh);
 		return 0;
 	}
 
@@ -847,7 +845,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
  * and get its vlan tag, and offset if it is.
  */
 static inline int __attribute__((always_inline))
-find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
+find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	uint32_t *offset, uint16_t *vlan_tag)
 {
 	struct vhost_dev *dst_vdev;
@@ -857,10 +855,10 @@ find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
 	if (!dst_vdev)
 		return 0;
 
-	if (dst_vdev->dev->device_fh == dev->device_fh) {
+	if (vdev->device_fh == dst_vdev->device_fh) {
 		RTE_LOG(DEBUG, VHOST_DATA,
 			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
-			dst_vdev->dev->device_fh);
+			vdev->device_fh);
 		return -1;
 	}
 
@@ -870,11 +868,11 @@ find_local_dest(struct virtio_net *dev, struct rte_mbuf *m,
 	 * the packet length by plus it.
 	 */
 	*offset  = VLAN_HLEN;
-	*vlan_tag = vlan_tags[(uint16_t)dst_vdev->dev->device_fh];
+	*vlan_tag = vlan_tags[vdev->device_fh];
 
 	RTE_LOG(DEBUG, VHOST_DATA,
-		"(%d) TX: pkt to local VM device id (%d) vlan tag: %u.\n",
-		dev->device_fh, dst_vdev->dev->device_fh, *vlan_tag);
+		"(%d) TX: pkt to local VM device id: (%d), vlan tag: %u.\n",
+		vdev->device_fh, dst_vdev->device_fh, *vlan_tag);
 
 	return 0;
 }
@@ -937,7 +935,6 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	struct mbuf_table *tx_q;
 	unsigned offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
-	struct virtio_net *dev = vdev->dev;
 	struct ether_hdr *nh;
 
 
@@ -958,14 +955,15 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	}
 
 	if (unlikely(vm2vm_mode == VM2VM_HARDWARE)) {
-		if (unlikely(find_local_dest(dev, m, &offset, &vlan_tag) != 0)) {
+		if (unlikely(find_local_dest(vdev, m, &offset,
+					     &vlan_tag) != 0)) {
 			rte_pktmbuf_free(m);
 			return;
 		}
 	}
 
 	RTE_LOG(DEBUG, VHOST_DATA,
-		"(%d) TX: MAC is external\n", dev->device_fh);
+		"(%d) TX: MAC address is external\n", vdev->device_fh);
 
 queue2nic:
 
@@ -1095,10 +1093,8 @@ drain_virtio_tx(struct vhost_dev *vdev)
 			free_pkts(pkts, count);
 	}
 
-	for (i = 0; i < count; ++i) {
-		virtio_tx_route(vdev, pkts[i],
-			vlan_tags[(uint16_t)vdev->dev->device_fh]);
-	}
+	for (i = 0; i < count; ++i)
+		virtio_tx_route(vdev, pkts[i], vlan_tags[vdev->device_fh]);
 }
 
 /*
@@ -1210,7 +1206,7 @@ destroy_device (volatile struct virtio_net *dev)
 
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) device has been removed from data core\n",
-		dev->device_fh);
+		vdev->device_fh);
 
 	rte_free(vdev);
 }
@@ -1225,20 +1221,21 @@ new_device (struct virtio_net *dev)
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
+	int device_fh = dev->device_fh;
 
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
-			"(%d) Couldn't allocate memory for vhost dev\n",
-			dev->device_fh);
+			"(%d) couldn't allocate memory for vhost dev\n",
+			device_fh);
 		return -1;
 	}
 	vdev->dev = dev;
 	dev->priv = vdev;
+	vdev->device_fh = device_fh;
 
 	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, global_vdev_entry);
-	vdev->vmdq_rx_q
-		= dev->device_fh * queues_per_pool + vmdq_queue_base;
+	vdev->vmdq_rx_q = device_fh * queues_per_pool + vmdq_queue_base;
 
 	/*reset ready flag*/
 	vdev->ready = DEVICE_MAC_LEARNING;
@@ -1263,7 +1260,7 @@ new_device (struct virtio_net *dev)
 
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) device has been added to data core %d\n",
-		dev->device_fh, vdev->coreid);
+		device_fh, vdev->coreid);
 
 	return 0;
 }
