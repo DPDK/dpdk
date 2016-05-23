@@ -170,5 +170,5 @@ setup_shared_variables(void)
         rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
 
     quota = qw_memzone->addr;
-    low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
+    low_watermark = (unsigned int *) qw_memzone->addr + 1;
 }

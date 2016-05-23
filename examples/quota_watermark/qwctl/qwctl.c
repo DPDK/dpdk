@@ -68,7 +68,7 @@ setup_shared_variables(void)
         rte_exit(EXIT_FAILURE, "Couldn't find memzone\n");
 
     quota = qw_memzone->addr;
-    low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
+    low_watermark = (unsigned int *) qw_memzone->addr + 1;
 }
 
 int main(int argc, char **argv)
