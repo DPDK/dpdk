@@ -116,9 +116,9 @@ install-runtime:
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(libdir))
 	$(Q)cp -a    $O/lib/* $(DESTDIR)$(libdir)
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(bindir))
-	$(Q)tar -cf -      -C $O app  --exclude 'app/*.map' \
+	$(Q)tar -cf -      -C $O --exclude 'app/*.map' \
 		--exclude 'app/cmdline*' --exclude app/test \
-		--exclude app/testacl --exclude app/testpipeline | \
+		--exclude app/testacl --exclude app/testpipeline app | \
 	    tar -xf -      -C $(DESTDIR)$(bindir) --strip-components=1 \
 		--keep-newer-files --warning=no-ignore-newer
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(datadir))
