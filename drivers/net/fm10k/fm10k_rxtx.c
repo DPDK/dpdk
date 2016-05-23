@@ -96,22 +96,6 @@ rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 
 	if (d->w.pkt_info & FM10K_RXD_RSSTYPE_MASK)
 		m->ol_flags |= PKT_RX_RSS_HASH;
-
-	if (unlikely((d->d.staterr &
-		(FM10K_RXD_STATUS_IPCS | FM10K_RXD_STATUS_IPE)) ==
-		(FM10K_RXD_STATUS_IPCS | FM10K_RXD_STATUS_IPE)))
-		m->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-	if (unlikely((d->d.staterr &
-		(FM10K_RXD_STATUS_L4CS | FM10K_RXD_STATUS_L4E)) ==
-		(FM10K_RXD_STATUS_L4CS | FM10K_RXD_STATUS_L4E)))
-		m->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-
-	if (unlikely(d->d.staterr & FM10K_RXD_STATUS_HBO))
-		m->ol_flags |= PKT_RX_HBUF_OVERFLOW;
-
-	if (unlikely(d->d.staterr & FM10K_RXD_STATUS_RXE))
-		m->ol_flags |= PKT_RX_RECIP_ERR;
 }
 
 uint16_t

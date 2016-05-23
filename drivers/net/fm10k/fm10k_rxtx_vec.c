@@ -101,7 +101,7 @@ fm10k_desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	const __m128i rxe_flag = _mm_set_epi8(0, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0,
-			0, 0, PKT_RX_RECIP_ERR, 0);
+			0, 0, 0, 0);
 
 	/* map rss type to rss hash flag */
 	const __m128i rss_flags = _mm_set_epi8(0, 0, 0, 0,

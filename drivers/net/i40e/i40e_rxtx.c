@@ -140,27 +140,12 @@ i40e_rxd_error_to_pkt_flags(uint64_t qword)
 #define I40E_RX_ERR_BITS 0x3f
 	if (likely((error_bits & I40E_RX_ERR_BITS) == 0))
 		return flags;
-	/* If RXE bit set, all other status bits are meaningless */
-	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_RXE_SHIFT))) {
-		flags |= PKT_RX_MAC_ERR;
-		return flags;
-	}
-
-	/* If RECIPE bit set, all other status indications should be ignored */
-	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_RECIPE_SHIFT))) {
-		flags |= PKT_RX_RECIP_ERR;
-		return flags;
-	}
-	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_HBO_SHIFT)))
-		flags |= PKT_RX_HBUF_OVERFLOW;
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_IPE_SHIFT)))
 		flags |= PKT_RX_IP_CKSUM_BAD;
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_L4E_SHIFT)))
 		flags |= PKT_RX_L4_CKSUM_BAD;
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_EIPE_SHIFT)))
 		flags |= PKT_RX_EIP_CKSUM_BAD;
-	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_OVERSIZE_SHIFT)))
-		flags |= PKT_RX_OVERSIZE;
 
 	return flags;
 }
