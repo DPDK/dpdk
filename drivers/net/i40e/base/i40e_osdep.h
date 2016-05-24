@@ -204,6 +204,13 @@ struct i40e_virt_mem {
 #define LE32_TO_CPU(c) rte_le_to_cpu_32(c)
 #define LE64_TO_CPU(k) rte_le_to_cpu_64(k)
 
+#define cpu_to_le16(o) rte_cpu_to_le_16(o)
+#define cpu_to_le32(s) rte_cpu_to_le_32(s)
+#define cpu_to_le64(h) rte_cpu_to_le_64(h)
+#define le16_to_cpu(a) rte_le_to_cpu_16(a)
+#define le32_to_cpu(c) rte_le_to_cpu_32(c)
+#define le64_to_cpu(k) rte_le_to_cpu_64(k)
+
 /* SW spinlock */
 struct i40e_spinlock {
 	rte_spinlock_t spinlock;

@@ -5422,6 +5422,35 @@ void i40e_add_filter_to_drop_tx_flow_control_frames(struct i40e_hw *hw,
 }
 
 /**
+ * i40e_fix_up_geneve_vni - adjust Geneve VNI for HW issue
+ * @filters: list of cloud filters
+ * @filter_count: length of list
+ *
+ * There's an issue in the device where the Geneve VNI layout needs
+ * to be shifted 1 byte over from the VxLAN VNI
+ **/
+STATIC void i40e_fix_up_geneve_vni(
+	struct i40e_aqc_add_remove_cloud_filters_element_data *filters,
+	u8 filter_count)
+{
+	struct i40e_aqc_add_remove_cloud_filters_element_data *f = filters;
+	int i;
+
+	for (i = 0; i < filter_count; i++) {
+		u16 tnl_type;
+		u32 ti;
+
+		tnl_type = (le16_to_cpu(f[i].flags) &
+			   I40E_AQC_ADD_CLOUD_TNL_TYPE_MASK) >>
+			   I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT;
+		if (tnl_type == I40E_AQC_ADD_CLOUD_TNL_TYPE_GENEVE) {
+			ti = le32_to_cpu(f[i].tenant_id);
+			f[i].tenant_id = cpu_to_le32(ti << 8);
+		}
+	}
+}
+
+/**
  * i40e_aq_add_cloud_filters
  * @hw: pointer to the hardware structure
  * @seid: VSI seid to add cloud filters from
@@ -5441,8 +5470,8 @@ enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 	struct i40e_aq_desc desc;
 	struct i40e_aqc_add_remove_cloud_filters *cmd =
 	(struct i40e_aqc_add_remove_cloud_filters *)&desc.params.raw;
-	u16 buff_len;
 	enum i40e_status_code status;
+	u16 buff_len;
 
 	i40e_fill_default_direct_cmd_desc(&desc,
 					  i40e_aqc_opc_add_cloud_filters);
@@ -5452,6 +5481,8 @@ enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 	cmd->num_filters = filter_count;
 	cmd->seid = CPU_TO_LE16(seid);
+
+	i40e_fix_up_geneve_vni(filters, filter_count);
 
 	status = i40e_asq_send_command(hw, &desc, filters, buff_len, NULL);
 
@@ -5489,6 +5520,8 @@ enum i40e_status_code i40e_aq_remove_cloud_filters(struct i40e_hw *hw,
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 	cmd->num_filters = filter_count;
 	cmd->seid = CPU_TO_LE16(seid);
+
+	i40e_fix_up_geneve_vni(filters, filter_count);
 
 	status = i40e_asq_send_command(hw, &desc, filters, buff_len, NULL);
 
