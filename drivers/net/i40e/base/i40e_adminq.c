@@ -680,7 +680,7 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 
 	/* pre-emptive resource lock release */
 	i40e_aq_release_resource(hw, I40E_NVM_RESOURCE_ID, 0, NULL);
-	hw->aq.nvm_release_on_done = false;
+	hw->nvm_release_on_done = false;
 	hw->nvmupd_state = I40E_NVMUPD_STATE_INIT;
 
 #endif /* PF_DRIVER */
@@ -1117,9 +1117,9 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 
 #ifdef PF_DRIVER
 	if (i40e_is_nvm_update_op(&e->desc)) {
-		if (hw->aq.nvm_release_on_done) {
+		if (hw->nvm_release_on_done) {
 			i40e_release_nvm(hw);
-			hw->aq.nvm_release_on_done = false;
+			hw->nvm_release_on_done = false;
 		}
 
 		switch (hw->nvmupd_state) {

@@ -875,7 +875,7 @@ enum i40e_status_code i40e_nvmupd_command(struct i40e_hw *hw,
 	i40e_debug(hw, I40E_DEBUG_NVM, "%s state %d nvm_release_on_hold %d cmd 0x%08x config 0x%08x offset 0x%08x data_size 0x%08x\n",
 		   i40e_nvm_update_state_str[upd_cmd],
 		   hw->nvmupd_state,
-		   hw->aq.nvm_release_on_done,
+		   hw->nvm_release_on_done,
 		   cmd->command, cmd->config, cmd->offset, cmd->data_size);
 
 	if (upd_cmd == I40E_NVMUPD_INVALID) {
@@ -980,7 +980,7 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 			if (status) {
 				i40e_release_nvm(hw);
 			} else {
-				hw->aq.nvm_release_on_done = true;
+				hw->nvm_release_on_done = true;
 				hw->nvmupd_state = I40E_NVMUPD_STATE_INIT_WAIT;
 			}
 		}
@@ -996,7 +996,7 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 			if (status) {
 				i40e_release_nvm(hw);
 			} else {
-				hw->aq.nvm_release_on_done = true;
+				hw->nvm_release_on_done = true;
 				hw->nvmupd_state = I40E_NVMUPD_STATE_INIT_WAIT;
 			}
 		}
@@ -1030,7 +1030,7 @@ STATIC enum i40e_status_code i40e_nvmupd_state_init(struct i40e_hw *hw,
 				   -EIO;
 				i40e_release_nvm(hw);
 			} else {
-				hw->aq.nvm_release_on_done = true;
+				hw->nvm_release_on_done = true;
 				hw->nvmupd_state = I40E_NVMUPD_STATE_INIT_WAIT;
 			}
 		}
@@ -1138,7 +1138,7 @@ retry:
 				   -EIO;
 			hw->nvmupd_state = I40E_NVMUPD_STATE_INIT;
 		} else {
-			hw->aq.nvm_release_on_done = true;
+			hw->nvm_release_on_done = true;
 			hw->nvmupd_state = I40E_NVMUPD_STATE_INIT_WAIT;
 		}
 		break;
@@ -1167,7 +1167,7 @@ retry:
 				   -EIO;
 			hw->nvmupd_state = I40E_NVMUPD_STATE_INIT;
 		} else {
-			hw->aq.nvm_release_on_done = true;
+			hw->nvm_release_on_done = true;
 			hw->nvmupd_state = I40E_NVMUPD_STATE_INIT_WAIT;
 		}
 		break;
