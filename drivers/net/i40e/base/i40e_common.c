@@ -67,6 +67,8 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_10G_BASE_T4:
 		case I40E_DEV_ID_20G_KR2:
 		case I40E_DEV_ID_20G_KR2_A:
+		case I40E_DEV_ID_25G_B:
+		case I40E_DEV_ID_25G_SFP28:
 			hw->mac.type = I40E_MAC_XL710;
 			break;
 #ifdef X722_SUPPORT
@@ -78,6 +80,8 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_SFP_X722:
 		case I40E_DEV_ID_1G_BASE_T_X722:
 		case I40E_DEV_ID_10G_BASE_T_X722:
+		case I40E_DEV_ID_SFP_I_X722:
+		case I40E_DEV_ID_QSFP_I_X722:
 			hw->mac.type = I40E_MAC_X722;
 			break;
 #endif
