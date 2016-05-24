@@ -683,10 +683,6 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	hw->aq.nvm_release_on_done = false;
 	hw->nvmupd_state = I40E_NVMUPD_STATE_INIT;
 
-	ret_code = i40e_aq_set_hmc_resource_profile(hw,
-						    I40E_HMC_PROFILE_DEFAULT,
-						    0,
-						    NULL);
 #endif /* PF_DRIVER */
 	ret_code = I40E_SUCCESS;
 

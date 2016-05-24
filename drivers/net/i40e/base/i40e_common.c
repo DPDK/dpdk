@@ -3240,67 +3240,6 @@ enum i40e_status_code i40e_aq_debug_write_register(struct i40e_hw *hw,
 }
 
 /**
- * i40e_aq_get_hmc_resource_profile
- * @hw: pointer to the hw struct
- * @profile: type of profile the HMC is to be set as
- * @pe_vf_enabled_count: the number of PE enabled VFs the system has
- * @cmd_details: pointer to command details structure or NULL
- *
- * query the HMC profile of the device.
- **/
-enum i40e_status_code i40e_aq_get_hmc_resource_profile(struct i40e_hw *hw,
-				enum i40e_aq_hmc_profile *profile,
-				u8 *pe_vf_enabled_count,
-				struct i40e_asq_cmd_details *cmd_details)
-{
-	struct i40e_aq_desc desc;
-	struct i40e_aq_get_set_hmc_resource_profile *resp =
-		(struct i40e_aq_get_set_hmc_resource_profile *)&desc.params.raw;
-	enum i40e_status_code status;
-
-	i40e_fill_default_direct_cmd_desc(&desc,
-				i40e_aqc_opc_query_hmc_resource_profile);
-	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
-
-	*profile = (enum i40e_aq_hmc_profile)(resp->pm_profile &
-		   I40E_AQ_GET_HMC_RESOURCE_PROFILE_PM_MASK);
-	*pe_vf_enabled_count = resp->pe_vf_enabled &
-			       I40E_AQ_GET_HMC_RESOURCE_PROFILE_COUNT_MASK;
-
-	return status;
-}
-
-/**
- * i40e_aq_set_hmc_resource_profile
- * @hw: pointer to the hw struct
- * @profile: type of profile the HMC is to be set as
- * @pe_vf_enabled_count: the number of PE enabled VFs the system has
- * @cmd_details: pointer to command details structure or NULL
- *
- * set the HMC profile of the device.
- **/
-enum i40e_status_code i40e_aq_set_hmc_resource_profile(struct i40e_hw *hw,
-				enum i40e_aq_hmc_profile profile,
-				u8 pe_vf_enabled_count,
-				struct i40e_asq_cmd_details *cmd_details)
-{
-	struct i40e_aq_desc desc;
-	struct i40e_aq_get_set_hmc_resource_profile *cmd =
-		(struct i40e_aq_get_set_hmc_resource_profile *)&desc.params.raw;
-	enum i40e_status_code status;
-
-	i40e_fill_default_direct_cmd_desc(&desc,
-					i40e_aqc_opc_set_hmc_resource_profile);
-
-	cmd->pm_profile = (u8)profile;
-	cmd->pe_vf_enabled = pe_vf_enabled_count;
-
-	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
-
-	return status;
-}
-
-/**
  * i40e_aq_request_resource
  * @hw: pointer to the hw struct
  * @resource: resource id
