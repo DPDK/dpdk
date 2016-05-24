@@ -810,7 +810,7 @@ i40e_pf_host_process_cmd_config_promisc_mode(
 	if (promisc->flags & I40E_FLAG_VF_UNICAST_PROMISC)
 		unicast = TRUE;
 	ret = i40e_aq_set_vsi_unicast_promiscuous(hw,
-			vf->vsi->seid, unicast, NULL);
+			vf->vsi->seid, unicast, NULL, true);
 	if (ret != I40E_SUCCESS)
 		goto send_msg;
 

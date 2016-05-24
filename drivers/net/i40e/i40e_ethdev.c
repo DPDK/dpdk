@@ -1719,7 +1719,7 @@ i40e_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	int status;
 
 	status = i40e_aq_set_vsi_unicast_promiscuous(hw, vsi->seid,
-							true, NULL);
+						     true, NULL, true);
 	if (status != I40E_SUCCESS)
 		PMD_DRV_LOG(ERR, "Failed to enable unicast promiscuous");
 
@@ -1739,7 +1739,7 @@ i40e_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	int status;
 
 	status = i40e_aq_set_vsi_unicast_promiscuous(hw, vsi->seid,
-							false, NULL);
+						     false, NULL, true);
 	if (status != I40E_SUCCESS)
 		PMD_DRV_LOG(ERR, "Failed to disable unicast promiscuous");
 
