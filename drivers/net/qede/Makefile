@@ -14,6 +14,8 @@ LIB = librte_pmd_qede.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+LDLIBS += -lz
+
 EXPORT_MAP := rte_pmd_qede_version.map
 
 LIBABIVER := 1
