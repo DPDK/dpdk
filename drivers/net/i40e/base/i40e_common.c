@@ -1317,8 +1317,7 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 			I40E_GLGEN_RSTCTL_GRSTDEL_MASK) >>
 			I40E_GLGEN_RSTCTL_GRSTDEL_SHIFT;
 
-	/* It can take upto 15 secs for GRST steady state */
-	grst_del = grst_del * 20; /* bump it to 16 secs max to be safe */
+	grst_del = grst_del * 20;
 
 	for (cnt = 0; cnt < grst_del; cnt++) {
 		reg = rd32(hw, I40E_GLGEN_RSTAT);
@@ -4425,7 +4424,7 @@ enum i40e_status_code i40e_aq_delete_element(struct i40e_hw *hw, u16 seid,
 }
 
 /**
- * i40_aq_add_pvirt - Instantiate a Port Virtualizer on a port
+ * i40e_aq_add_pvirt - Instantiate a Port Virtualizer on a port
  * @hw: pointer to the hw struct
  * @flags: component flags
  * @mac_seid: uplink seid (MAC SEID)

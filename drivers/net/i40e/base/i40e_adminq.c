@@ -572,6 +572,26 @@ shutdown_arq_out:
 	i40e_release_spinlock(&hw->aq.arq_spinlock);
 	return ret_code;
 }
+#ifdef PF_DRIVER
+
+/**
+ *  i40e_resume_aq - resume AQ processing from 0
+ *  @hw: pointer to the hardware structure
+ **/
+STATIC void i40e_resume_aq(struct i40e_hw *hw)
+{
+	/* Registers are reset after PF reset */
+	hw->aq.asq.next_to_use = 0;
+	hw->aq.asq.next_to_clean = 0;
+
+	i40e_config_asq_regs(hw);
+
+	hw->aq.arq.next_to_use = 0;
+	hw->aq.arq.next_to_clean = 0;
+
+	i40e_config_arq_regs(hw);
+}
+#endif /* PF_DRIVER */
 
 /**
  *  i40e_init_adminq - main initialization routine for Admin Queue
@@ -586,12 +606,15 @@ shutdown_arq_out:
  **/
 enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 {
+#ifdef PF_DRIVER
+	u16 cfg_ptr, oem_hi, oem_lo;
+	u16 eetrack_lo, eetrack_hi;
+#endif
 	enum i40e_status_code ret_code;
 #ifdef PF_DRIVER
-	u16 eetrack_lo, eetrack_hi;
-	u16 cfg_ptr, oem_hi, oem_lo;
 	int retry = 0;
 #endif
+
 	/* verify input for valid configuration */
 	if ((hw->aq.num_arq_entries == 0) ||
 	    (hw->aq.num_asq_entries == 0) ||
@@ -600,8 +623,6 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 		ret_code = I40E_ERR_CONFIG;
 		goto init_adminq_exit;
 	}
-
-	/* initialize spin locks */
 	i40e_init_spinlock(&hw->aq.asq_spinlock);
 	i40e_init_spinlock(&hw->aq.arq_spinlock);
 
@@ -704,8 +725,6 @@ enum i40e_status_code i40e_shutdown_adminq(struct i40e_hw *hw)
 
 	i40e_shutdown_asq(hw);
 	i40e_shutdown_arq(hw);
-
-	/* destroy the spinlocks */
 	i40e_destroy_spinlock(&hw->aq.asq_spinlock);
 	i40e_destroy_spinlock(&hw->aq.arq_spinlock);
 
@@ -731,7 +750,6 @@ u16 i40e_clean_asq(struct i40e_hw *hw)
 
 	desc = I40E_ADMINQ_DESC(*asq, ntc);
 	details = I40E_ADMINQ_DETAILS(*asq, ntc);
-
 	while (rd32(hw, hw->aq.asq.head) != ntc) {
 		i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE,
 			   "ntc %d head %d.\n", ntc, rd32(hw, hw->aq.asq.head));
@@ -764,7 +782,11 @@ u16 i40e_clean_asq(struct i40e_hw *hw)
  *  Returns true if the firmware has processed all descriptors on the
  *  admin send queue. Returns false if there are still requests pending.
  **/
+#ifdef VF_DRIVER
 bool i40e_asq_done(struct i40e_hw *hw)
+#else
+STATIC bool i40e_asq_done(struct i40e_hw *hw)
+#endif
 {
 	/* AQ designers suggest use of head for better
 	 * timing reliability than DD bit
@@ -922,7 +944,6 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 			 */
 			if (i40e_asq_done(hw))
 				break;
-			/* ugh! delay while spin_lock */
 			i40e_msec_delay(1);
 			total_delay++;
 		} while (total_delay < hw->aq.asq_cmd_timeout);
@@ -1105,7 +1126,7 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 
 #ifdef PF_DRIVER
 	i40e_nvmupd_check_wait_event(hw, LE16_TO_CPU(e->desc.opcode));
-#endif
+#endif /* PF_DRIVER */
 clean_arq_element_out:
 	/* Set pending if needed, unlock and return */
 	if (pending != NULL)
@@ -1116,16 +1137,3 @@ clean_arq_element_err:
 	return ret_code;
 }
 
-void i40e_resume_aq(struct i40e_hw *hw)
-{
-	/* Registers are reset after PF reset */
-	hw->aq.asq.next_to_use = 0;
-	hw->aq.asq.next_to_clean = 0;
-
-	i40e_config_asq_regs(hw);
-
-	hw->aq.arq.next_to_use = 0;
-	hw->aq.arq.next_to_clean = 0;
-
-	i40e_config_arq_regs(hw);
-}
