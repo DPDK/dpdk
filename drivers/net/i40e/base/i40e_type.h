@@ -188,7 +188,7 @@ enum i40e_memcpy_type {
 };
 
 #ifdef X722_SUPPORT
-#define I40E_FW_API_VERSION_MINOR_X722	0x0004
+#define I40E_FW_API_VERSION_MINOR_X722	0x0005
 #endif
 #define I40E_FW_API_VERSION_MINOR_X710	0x0005
 
