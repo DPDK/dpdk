@@ -37,18 +37,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "i40e_adminq.h"
 #include "i40e_prototype.h"
 
-#ifdef PF_DRIVER
-/**
- * i40e_is_nvm_update_op - return true if this is an NVM update operation
- * @desc: API request descriptor
- **/
-STATIC INLINE bool i40e_is_nvm_update_op(struct i40e_aq_desc *desc)
-{
-	return (desc->opcode == CPU_TO_LE16(i40e_aqc_opc_nvm_erase) ||
-		desc->opcode == CPU_TO_LE16(i40e_aqc_opc_nvm_update));
-}
-
-#endif /* PF_DRIVER */
 /**
  *  i40e_adminq_init_regs - Initialize AdminQ registers
  *  @hw: pointer to the hardware structure
@@ -1116,26 +1104,7 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	hw->aq.arq.next_to_use = ntu;
 
 #ifdef PF_DRIVER
-	if (i40e_is_nvm_update_op(&e->desc)) {
-		if (hw->nvm_release_on_done) {
-			i40e_release_nvm(hw);
-			hw->nvm_release_on_done = false;
-		}
-
-		switch (hw->nvmupd_state) {
-		case I40E_NVMUPD_STATE_INIT_WAIT:
-			hw->nvmupd_state = I40E_NVMUPD_STATE_INIT;
-			break;
-
-		case I40E_NVMUPD_STATE_WRITE_WAIT:
-			hw->nvmupd_state = I40E_NVMUPD_STATE_WRITING;
-			break;
-
-		default:
-			break;
-		}
-	}
-
+	i40e_nvmupd_check_wait_event(hw, LE16_TO_CPU(e->desc.opcode));
 #endif
 clean_arq_element_out:
 	/* Set pending if needed, unlock and return */
