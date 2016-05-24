@@ -375,14 +375,16 @@ void i40e_debug_aq(struct i40e_hw *hw, enum i40e_debug_mask mask, void *desc,
 		/* the most we could have left is 16 bytes, pad with zeros */
 		if (i < len) {
 			char d_buf[16];
-			int j;
+			int j, i_sav;
 
+			i_sav = i;
 			memset(d_buf, 0, sizeof(d_buf));
 			for (j = 0; i < len; j++, i++)
 				d_buf[j] = buf[i];
 			i40e_debug(hw, mask,
 				   "\t0x%04X  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
-				   i, d_buf[0], d_buf[1], d_buf[2], d_buf[3],
+				   i_sav, d_buf[0], d_buf[1],
+				   d_buf[2], d_buf[3],
 				   d_buf[4], d_buf[5], d_buf[6], d_buf[7],
 				   d_buf[8], d_buf[9], d_buf[10], d_buf[11],
 				   d_buf[12], d_buf[13], d_buf[14], d_buf[15]);
