@@ -175,6 +175,9 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
 				id_table->subsystem_device_id != PCI_ANY_ID)
 			continue;
+		if (id_table->class_id != dev->id.class_id &&
+				id_table->class_id != RTE_CLASS_ANY_ID)
+			continue;
 
 		struct rte_pci_addr *loc = &dev->addr;
 

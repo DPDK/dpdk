@@ -125,6 +125,7 @@ struct rte_pci_resource {
  * table of these IDs for each device that it supports.
  */
 struct rte_pci_id {
+	uint32_t class_id;            /**< Class ID (class, subclass, pi) or RTE_CLASS_ANY_ID. */
 	uint16_t vendor_id;           /**< Vendor ID or PCI_ANY_ID. */
 	uint16_t device_id;           /**< Device ID or PCI_ANY_ID. */
 	uint16_t subsystem_vendor_id; /**< Subsystem vendor ID or PCI_ANY_ID. */
@@ -170,10 +171,12 @@ struct rte_pci_device {
 
 /** Any PCI device identifier (vendor, device, ...) */
 #define PCI_ANY_ID (0xffff)
+#define RTE_CLASS_ANY_ID (0xffffff)
 
 #ifdef __cplusplus
 /** C++ macro used to help building up tables of device IDs */
 #define RTE_PCI_DEVICE(vend, dev) \
+	RTE_CLASS_ANY_ID,         \
 	(vend),                   \
 	(dev),                    \
 	PCI_ANY_ID,               \
@@ -181,6 +184,7 @@ struct rte_pci_device {
 #else
 /** Macro used to help building up tables of device IDs */
 #define RTE_PCI_DEVICE(vend, dev)          \
+	.class_id = RTE_CLASS_ANY_ID,      \
 	.vendor_id = (vend),               \
 	.device_id = (dev),                \
 	.subsystem_vendor_id = PCI_ANY_ID, \

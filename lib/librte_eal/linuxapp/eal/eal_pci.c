@@ -306,6 +306,16 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	}
 	dev->id.subsystem_device_id = (uint16_t)tmp;
 
+	/* get class_id */
+	snprintf(filename, sizeof(filename), "%s/class",
+		 dirname);
+	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
+		free(dev);
+		return -1;
+	}
+	/* the least 24 bits are valid: class, subclass, program interface */
+	dev->id.class_id = (uint32_t)tmp & RTE_CLASS_ANY_ID;
+
 	/* get max_vfs */
 	dev->max_vfs = 0;
 	snprintf(filename, sizeof(filename), "%s/max_vfs", dirname);

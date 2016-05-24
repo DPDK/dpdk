@@ -278,6 +278,11 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	/* get subsystem_device id */
 	dev->id.subsystem_device_id = conf->pc_subdevice;
 
+	/* get class id */
+	dev->id.class_id = (conf->pc_class << 16) |
+			   (conf->pc_subclass << 8) |
+			   (conf->pc_progif);
+
 	/* TODO: get max_vfs */
 	dev->max_vfs = 0;
 
