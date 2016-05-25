@@ -45,6 +45,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
@@ -588,10 +590,18 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 static void
 generate_random_key(uint8_t *key, unsigned length)
 {
-	unsigned i;
+	int fd;
+	int ret;
 
-	for (i = 0; i < length; i++)
-		key[i] = rand() % 0xff;
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd < 0)
+		rte_exit(EXIT_FAILURE, "Failed to generate random key\n");
+
+	ret = read(fd, key, length);
+	close(fd);
+
+	if (ret != (signed)length)
+		rte_exit(EXIT_FAILURE, "Failed to generate random key\n");
 }
 
 static struct rte_cryptodev_sym_session *
@@ -1195,8 +1205,6 @@ l2fwd_crypto_parse_timer_period(struct l2fwd_crypto_options *options,
 static void
 l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 {
-	srand(time(NULL));
-
 	options->portmask = 0xffffffff;
 	options->nb_ports_per_lcore = 1;
 	options->refresh_period = 10000;
