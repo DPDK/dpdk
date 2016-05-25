@@ -341,6 +341,8 @@ fill_supported_algorithm_tables(void)
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_GCM], "AES_GCM");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_MD5_HMAC], "MD5_HMAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_NULL], "NULL");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_XCBC_MAC],
+		"AES_XCBC_MAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA1_HMAC], "SHA1_HMAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA224_HMAC], "SHA224_HMAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA256_HMAC], "SHA256_HMAC");
