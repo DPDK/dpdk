@@ -78,6 +78,7 @@ struct pkt_rx_queue {
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long err_pkts;
+	volatile unsigned long rx_bytes;
 };
 
 struct pkt_tx_queue {
@@ -90,6 +91,7 @@ struct pkt_tx_queue {
 
 	volatile unsigned long tx_pkts;
 	volatile unsigned long err_pkts;
+	volatile unsigned long tx_bytes;
 };
 
 struct pmd_internals {
@@ -131,6 +133,7 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint8_t *pbuf;
 	struct pkt_rx_queue *pkt_q = queue;
 	uint16_t num_rx = 0;
+	unsigned long num_rx_bytes = 0;
 	unsigned int framecount, framenum;
 
 	if (unlikely(nb_pkts == 0))
@@ -167,9 +170,11 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		/* account for the receive frame */
 		bufs[i] = mbuf;
 		num_rx++;
+		num_rx_bytes += mbuf->pkt_len;
 	}
 	pkt_q->framenum = framenum;
 	pkt_q->rx_pkts += num_rx;
+	pkt_q->rx_bytes += num_rx_bytes;
 	return num_rx;
 }
 
@@ -186,6 +191,7 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct pollfd pfd;
 	struct pkt_tx_queue *pkt_q = queue;
 	uint16_t num_tx = 0;
+	unsigned long num_tx_bytes = 0;
 	int i;
 
 	if (unlikely(nb_pkts == 0))
@@ -219,6 +225,7 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		ppd = (struct tpacket2_hdr *) pkt_q->rd[framenum].iov_base;
 
 		num_tx++;
+		num_tx_bytes += mbuf->pkt_len;
 		rte_pktmbuf_free(mbuf);
 	}
 
@@ -229,6 +236,7 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	pkt_q->framenum = framenum;
 	pkt_q->tx_pkts += num_tx;
 	pkt_q->err_pkts += nb_pkts - num_tx;
+	pkt_q->tx_bytes += num_tx_bytes;
 	return num_tx;
 }
 
@@ -287,13 +295,16 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 {
 	unsigned i, imax;
 	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
+	unsigned long rx_bytes_total = 0, tx_bytes_total = 0;
 	const struct pmd_internals *internal = dev->data->dev_private;
 
 	imax = (internal->nb_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS ?
 	        internal->nb_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	for (i = 0; i < imax; i++) {
 		igb_stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
+		igb_stats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
 		rx_total += igb_stats->q_ipackets[i];
+		rx_bytes_total += igb_stats->q_ibytes[i];
 	}
 
 	imax = (internal->nb_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS ?
@@ -301,13 +312,17 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	for (i = 0; i < imax; i++) {
 		igb_stats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
 		igb_stats->q_errors[i] = internal->tx_queue[i].err_pkts;
+		igb_stats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
 		tx_total += igb_stats->q_opackets[i];
 		tx_err_total += igb_stats->q_errors[i];
+		tx_bytes_total += igb_stats->q_obytes[i];
 	}
 
 	igb_stats->ipackets = rx_total;
+	igb_stats->ibytes = rx_bytes_total;
 	igb_stats->opackets = tx_total;
 	igb_stats->oerrors = tx_err_total;
+	igb_stats->obytes = tx_bytes_total;
 }
 
 static void
@@ -316,12 +331,15 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	unsigned i;
 	struct pmd_internals *internal = dev->data->dev_private;
 
-	for (i = 0; i < internal->nb_queues; i++)
+	for (i = 0; i < internal->nb_queues; i++) {
 		internal->rx_queue[i].rx_pkts = 0;
+		internal->rx_queue[i].rx_bytes = 0;
+	}
 
 	for (i = 0; i < internal->nb_queues; i++) {
 		internal->tx_queue[i].tx_pkts = 0;
 		internal->tx_queue[i].err_pkts = 0;
+		internal->tx_queue[i].tx_bytes = 0;
 	}
 }
 
