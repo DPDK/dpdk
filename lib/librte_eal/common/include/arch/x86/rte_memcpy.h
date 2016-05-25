@@ -363,71 +363,26 @@ rte_mov128(uint8_t *dst, const uint8_t *src)
 }
 
 /**
- * Copy 256 bytes from one location to another,
+ * Copy 128-byte blocks from one location to another,
  * locations should not overlap.
  */
 static inline void
-rte_mov256(uint8_t *dst, const uint8_t *src)
+rte_mov128blocks(uint8_t *dst, const uint8_t *src, size_t n)
 {
-	rte_mov32((uint8_t *)dst + 0 * 32, (const uint8_t *)src + 0 * 32);
-	rte_mov32((uint8_t *)dst + 1 * 32, (const uint8_t *)src + 1 * 32);
-	rte_mov32((uint8_t *)dst + 2 * 32, (const uint8_t *)src + 2 * 32);
-	rte_mov32((uint8_t *)dst + 3 * 32, (const uint8_t *)src + 3 * 32);
-	rte_mov32((uint8_t *)dst + 4 * 32, (const uint8_t *)src + 4 * 32);
-	rte_mov32((uint8_t *)dst + 5 * 32, (const uint8_t *)src + 5 * 32);
-	rte_mov32((uint8_t *)dst + 6 * 32, (const uint8_t *)src + 6 * 32);
-	rte_mov32((uint8_t *)dst + 7 * 32, (const uint8_t *)src + 7 * 32);
-}
+	__m256i ymm0, ymm1, ymm2, ymm3;
 
-/**
- * Copy 64-byte blocks from one location to another,
- * locations should not overlap.
- */
-static inline void
-rte_mov64blocks(uint8_t *dst, const uint8_t *src, size_t n)
-{
-	__m256i ymm0, ymm1;
-
-	while (n >= 64) {
+	while (n >= 128) {
 		ymm0 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 0 * 32));
-		n -= 64;
-		ymm1 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 1 * 32));
-		src = (const uint8_t *)src + 64;
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 0 * 32), ymm0);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 1 * 32), ymm1);
-		dst = (uint8_t *)dst + 64;
-	}
-}
-
-/**
- * Copy 256-byte blocks from one location to another,
- * locations should not overlap.
- */
-static inline void
-rte_mov256blocks(uint8_t *dst, const uint8_t *src, size_t n)
-{
-	__m256i ymm0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7;
-
-	while (n >= 256) {
-		ymm0 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 0 * 32));
-		n -= 256;
+		n -= 128;
 		ymm1 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 1 * 32));
 		ymm2 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 2 * 32));
 		ymm3 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 3 * 32));
-		ymm4 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 4 * 32));
-		ymm5 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 5 * 32));
-		ymm6 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 6 * 32));
-		ymm7 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)src + 7 * 32));
-		src = (const uint8_t *)src + 256;
+		src = (const uint8_t *)src + 128;
 		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 0 * 32), ymm0);
 		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 1 * 32), ymm1);
 		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 2 * 32), ymm2);
 		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 3 * 32), ymm3);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 4 * 32), ymm4);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 5 * 32), ymm5);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 6 * 32), ymm6);
-		_mm256_storeu_si256((__m256i *)((uint8_t *)dst + 7 * 32), ymm7);
-		dst = (uint8_t *)dst + 256;
+		dst = (uint8_t *)dst + 128;
 	}
 }
 
@@ -466,51 +421,56 @@ rte_memcpy(void *dst, const void *src, size_t n)
 	}
 
 	/**
-	 * Fast way when copy size doesn't exceed 512 bytes
+	 * Fast way when copy size doesn't exceed 256 bytes
 	 */
 	if (n <= 32) {
 		rte_mov16((uint8_t *)dst, (const uint8_t *)src);
-		rte_mov16((uint8_t *)dst - 16 + n, (const uint8_t *)src - 16 + n);
+		rte_mov16((uint8_t *)dst - 16 + n,
+				(const uint8_t *)src - 16 + n);
+		return ret;
+	}
+	if (n <= 48) {
+		rte_mov16((uint8_t *)dst, (const uint8_t *)src);
+		rte_mov16((uint8_t *)dst + 16, (const uint8_t *)src + 16);
+		rte_mov16((uint8_t *)dst - 16 + n,
+				(const uint8_t *)src - 16 + n);
 		return ret;
 	}
 	if (n <= 64) {
 		rte_mov32((uint8_t *)dst, (const uint8_t *)src);
-		rte_mov32((uint8_t *)dst - 32 + n, (const uint8_t *)src - 32 + n);
+		rte_mov32((uint8_t *)dst - 32 + n,
+				(const uint8_t *)src - 32 + n);
 		return ret;
 	}
-	if (n <= 512) {
-		if (n >= 256) {
-			n -= 256;
-			rte_mov256((uint8_t *)dst, (const uint8_t *)src);
-			src = (const uint8_t *)src + 256;
-			dst = (uint8_t *)dst + 256;
-		}
+	if (n <= 256) {
 		if (n >= 128) {
 			n -= 128;
 			rte_mov128((uint8_t *)dst, (const uint8_t *)src);
 			src = (const uint8_t *)src + 128;
 			dst = (uint8_t *)dst + 128;
 		}
+COPY_BLOCK_128_BACK31:
 		if (n >= 64) {
 			n -= 64;
 			rte_mov64((uint8_t *)dst, (const uint8_t *)src);
 			src = (const uint8_t *)src + 64;
 			dst = (uint8_t *)dst + 64;
 		}
-COPY_BLOCK_64_BACK31:
 		if (n > 32) {
 			rte_mov32((uint8_t *)dst, (const uint8_t *)src);
-			rte_mov32((uint8_t *)dst - 32 + n, (const uint8_t *)src - 32 + n);
+			rte_mov32((uint8_t *)dst - 32 + n,
+					(const uint8_t *)src - 32 + n);
 			return ret;
 		}
 		if (n > 0) {
-			rte_mov32((uint8_t *)dst - 32 + n, (const uint8_t *)src - 32 + n);
+			rte_mov32((uint8_t *)dst - 32 + n,
+					(const uint8_t *)src - 32 + n);
 		}
 		return ret;
 	}
 
 	/**
-	 * Make store aligned when copy size exceeds 512 bytes
+	 * Make store aligned when copy size exceeds 256 bytes
 	 */
 	dstofss = (uintptr_t)dst & 0x1F;
 	if (dstofss > 0) {
@@ -522,35 +482,19 @@ COPY_BLOCK_64_BACK31:
 	}
 
 	/**
-	 * Copy 256-byte blocks.
-	 * Use copy block function for better instruction order control,
-	 * which is important when load is unaligned.
+	 * Copy 128-byte blocks
 	 */
-	rte_mov256blocks((uint8_t *)dst, (const uint8_t *)src, n);
+	rte_mov128blocks((uint8_t *)dst, (const uint8_t *)src, n);
 	bits = n;
-	n = n & 255;
+	n = n & 127;
 	bits -= n;
 	src = (const uint8_t *)src + bits;
 	dst = (uint8_t *)dst + bits;
 
 	/**
-	 * Copy 64-byte blocks.
-	 * Use copy block function for better instruction order control,
-	 * which is important when load is unaligned.
-	 */
-	if (n >= 64) {
-		rte_mov64blocks((uint8_t *)dst, (const uint8_t *)src, n);
-		bits = n;
-		n = n & 63;
-		bits -= n;
-		src = (const uint8_t *)src + bits;
-		dst = (uint8_t *)dst + bits;
-	}
-
-	/**
 	 * Copy whatever left
 	 */
-	goto COPY_BLOCK_64_BACK31;
+	goto COPY_BLOCK_128_BACK31;
 }
 
 #else /* RTE_MACHINE_CPUFLAG */
