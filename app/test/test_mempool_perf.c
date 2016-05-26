@@ -110,7 +110,7 @@ static unsigned n_keep;
 
 /* number of enqueues / dequeues */
 struct mempool_test_stats {
-	unsigned enq_count;
+	uint64_t enq_count;
 } __rte_cache_aligned;
 
 static struct mempool_test_stats stats[RTE_MAX_LCORE];
@@ -189,7 +189,7 @@ static int
 launch_cores(unsigned cores)
 {
 	unsigned lcore_id;
-	unsigned rate;
+	uint64_t rate;
 	int ret;
 	unsigned cores_save = cores;
 
@@ -238,7 +238,7 @@ launch_cores(unsigned cores)
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
 		rate += (stats[lcore_id].enq_count / TIME_S);
 
-	printf("rate_persec=%u\n", rate);
+	printf("rate_persec=%" PRIu64 "\n", rate);
 
 	return 0;
 }
