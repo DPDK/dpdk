@@ -43,7 +43,7 @@ EXPORT_MAP := rte_pmd_e1000_version.map
 
 LIBABIVER := 1
 
-ifeq ($(CC), icc)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 #
 # CFLAGS for icc
 #

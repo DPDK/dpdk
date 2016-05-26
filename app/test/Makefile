@@ -166,7 +166,7 @@ CFLAGS += -D_GNU_SOURCE
 LDLIBS += -lm
 
 # Disable VTA for memcpy test
-ifeq ($(CC), gcc)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS_test_memcpy.o += -fno-var-tracking-assignments
 CFLAGS_test_memcpy_perf.o += -fno-var-tracking-assignments

@@ -48,9 +48,9 @@ LIBABIVER := 1
 # Add extra flags for base driver files (also known as shared code)
 # to disable warnings
 #
-ifeq ($(CC), icc)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS_BASE_DRIVER = -wd593 -wd188
-else ifeq ($(CC), clang)
+else ifeq ($(CONFIG_RTE_TOOLCHAIN_CLANG),y)
 CFLAGS_BASE_DRIVER += -Wno-sign-compare
 CFLAGS_BASE_DRIVER += -Wno-unused-value
 CFLAGS_BASE_DRIVER += -Wno-unused-parameter

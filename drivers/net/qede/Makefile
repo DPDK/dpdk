@@ -47,7 +47,7 @@ endif
 endif
 endif
 
-ifneq (,$(filter gcc gcc48,$(CC)))
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
 CFLAGS_BASE_DRIVER += -Wno-missing-declarations
 CFLAGS_BASE_DRIVER += -Wno-maybe-uninitialized
@@ -55,7 +55,7 @@ CFLAGS_BASE_DRIVER += -Wno-strict-prototypes
 ifeq ($(shell test $(GCC_VERSION) -ge 60 && echo 1), 1)
 CFLAGS_BASE_DRIVER += -Wno-shift-negative-value
 endif
-else ifeq ($(CC), clang)
+else ifeq ($(CONFIG_RTE_TOOLCHAIN_CLANG),y)
 CFLAGS_BASE_DRIVER += -Wno-format-extra-args
 CFLAGS_BASE_DRIVER += -Wno-visibility
 CFLAGS_BASE_DRIVER += -Wno-empty-body

@@ -43,13 +43,14 @@ EXPORT_MAP := rte_pmd_fm10k_version.map
 
 LIBABIVER := 1
 
-ifeq ($(CC), icc)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 #
 # CFLAGS for icc
 #
 CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
 
-else ifeq ($(CC), clang)
+else ifeq ($(CONFIG_RTE_TOOLCHAIN_CLANG),y)
+
 #
 ## CFLAGS for clang
 #

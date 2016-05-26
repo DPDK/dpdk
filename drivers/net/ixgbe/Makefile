@@ -43,7 +43,7 @@ EXPORT_MAP := rte_pmd_ixgbe_version.map
 
 LIBABIVER := 1
 
-ifeq ($(CC), icc)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 #
 # CFLAGS for icc
 #
@@ -51,7 +51,7 @@ CFLAGS_BASE_DRIVER = -wd174 -wd593 -wd869 -wd981 -wd2259
 
 CFLAGS_ixgbe_rxtx.o += -wd3656
 
-else ifeq ($(CC), clang)
+else ifeq ($(CONFIG_RTE_TOOLCHAIN_CLANG),y)
 #
 # CFLAGS for clang
 #

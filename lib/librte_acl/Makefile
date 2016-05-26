@@ -73,7 +73,7 @@ else
 	$(shell $(CC) -march=core-avx2 -dM -E - </dev/null 2>&1 | \
 	grep -q AVX2 && echo 1)
 	ifeq ($(CC_AVX2_SUPPORT), 1)
-		ifeq ($(CC), icc)
+		ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 		CFLAGS_acl_run_avx2.o += -march=core-avx2
 		else
 		CFLAGS_acl_run_avx2.o += -mavx2

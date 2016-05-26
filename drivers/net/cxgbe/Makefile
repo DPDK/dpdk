@@ -45,7 +45,7 @@ EXPORT_MAP := rte_pmd_cxgbe_version.map
 
 LIBABIVER := 1
 
-ifeq ($(CC), icc)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 #
 # CFLAGS for icc
 #
@@ -54,8 +54,10 @@ else
 #
 # CFLAGS for gcc/clang
 #
-ifeq ($(shell test $(CC) = gcc && test $(GCC_VERSION) -ge 44 && echo 1), 1)
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
+endif
 endif
 CFLAGS_BASE_DRIVER =
 
