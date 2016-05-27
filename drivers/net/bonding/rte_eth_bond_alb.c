@@ -90,14 +90,14 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev)
 		if (internals->mode6.mempool == NULL) {
 			RTE_LOG(ERR, PMD, "%s: Failed to initialize ALB mempool.\n",
 					bond_dev->data->name);
-			rte_panic(
-					"Failed to allocate memory pool ('%s')\n"
-					"for bond device '%s'\n",
-					mem_name, bond_dev->data->name);
+			goto mempool_alloc_error;
 		}
 	}
 
 	return 0;
+
+mempool_alloc_error:
+	return -ENOMEM;
 }
 
 void bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
