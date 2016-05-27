@@ -151,6 +151,8 @@ static struct rte_eth_conf default_pmd_conf = {
 	.lpbk_mode = 0,
 };
 
+static uint8_t lacpdu_rx_count[RTE_MAX_ETHPORTS] = {0, };
+
 #define FOR_EACH(_i, _item, _array, _size) \
 	for (_i = 0, _item = &_array[0]; _i < _size && (_item = &_array[_i]); _i++)
 
@@ -320,8 +322,26 @@ remove_slave(struct slave_conf *slave)
 	return 0;
 }
 
+static void
+lacp_recv_cb(uint8_t slave_id, struct rte_mbuf *lacp_pkt)
+{
+	struct ether_hdr *hdr;
+	struct slow_protocol_frame *slow_hdr;
+
+	RTE_VERIFY(lacp_pkt != NULL);
+
+	hdr = rte_pktmbuf_mtod(lacp_pkt, struct ether_hdr *);
+	RTE_VERIFY(hdr->ether_type == rte_cpu_to_be_16(ETHER_TYPE_SLOW));
+
+	slow_hdr = rte_pktmbuf_mtod(lacp_pkt, struct slow_protocol_frame *);
+	RTE_VERIFY(slow_hdr->slow_protocol.subtype == SLOW_SUBTYPE_LACP);
+
+	lacpdu_rx_count[slave_id]++;
+	rte_pktmbuf_free(lacp_pkt);
+}
+
 static int
-initialize_bonded_device_with_slaves(uint8_t slave_count, uint8_t start)
+initialize_bonded_device_with_slaves(uint8_t slave_count, uint8_t external_sm)
 {
 	uint8_t i;
 
@@ -337,9 +357,17 @@ initialize_bonded_device_with_slaves(uint8_t slave_count, uint8_t start)
 	rte_eth_bond_8023ad_setup(test_params.bonded_port_id, NULL);
 	rte_eth_promiscuous_disable(test_params.bonded_port_id);
 
-	if (start)
-		TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params.bonded_port_id),
-			"Failed to start bonded device");
+	if (external_sm) {
+		struct rte_eth_bond_8023ad_conf conf;
+
+		rte_eth_bond_8023ad_conf_get(test_params.bonded_port_id, &conf);
+		conf.slowrx_cb = lacp_recv_cb;
+		rte_eth_bond_8023ad_setup(test_params.bonded_port_id, &conf);
+
+	}
+
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params.bonded_port_id),
+		"Failed to start bonded device");
 
 	return TEST_SUCCESS;
 }
@@ -640,7 +668,7 @@ test_mode4_lacp(void)
 {
 	int retval;
 
-	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 1);
+	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
 	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
 
 	/* Test LACP handshake function */
@@ -738,7 +766,8 @@ test_mode4_rx(void)
 	struct ether_addr dst_mac;
 	struct ether_addr bonded_mac;
 
-	retval = initialize_bonded_device_with_slaves(TEST_PROMISC_SLAVE_COUNT, 1);
+	retval = initialize_bonded_device_with_slaves(TEST_PROMISC_SLAVE_COUNT,
+						      0);
 	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
 
 	retval = bond_handshake();
@@ -915,7 +944,7 @@ test_mode4_tx_burst(void)
 	struct ether_addr dst_mac = { { 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00 } };
 	struct ether_addr bonded_mac;
 
-	retval = initialize_bonded_device_with_slaves(TEST_TX_SLAVE_COUNT, 1);
+	retval = initialize_bonded_device_with_slaves(TEST_TX_SLAVE_COUNT, 0);
 	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
 
 	retval = bond_handshake();
@@ -1099,7 +1128,8 @@ test_mode4_marker(void)
 	uint8_t i, j;
 	const uint16_t ethtype_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
 
-	retval = initialize_bonded_device_with_slaves(TEST_MARKER_SLAVE_COUT, 1);
+	retval = initialize_bonded_device_with_slaves(TEST_MARKER_SLAVE_COUT,
+						      0);
 	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
 
 	/* Test LACP handshake function */
@@ -1184,7 +1214,8 @@ test_mode4_expired(void)
 
 	struct rte_eth_bond_8023ad_conf conf;
 
-	retval = initialize_bonded_device_with_slaves(TEST_EXPIRED_SLAVE_COUNT, 1);
+	retval = initialize_bonded_device_with_slaves(TEST_EXPIRED_SLAVE_COUNT,
+						      0);
 	/* Set custom timeouts to make test last shorter. */
 	rte_eth_bond_8023ad_conf_get(test_params.bonded_port_id, &conf);
 	conf.fast_periodic_ms = 100;
@@ -1257,6 +1288,156 @@ test_mode4_expired(void)
 		else
 			TEST_ASSERT_EQUAL(bond_handshake_done(slave), 1,
 				"Slave %u should be operational.", slave->port_id);
+	}
+
+	retval = remove_slaves_and_stop_bonded_device();
+	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_mode4_ext_ctrl(void)
+{
+	/*
+	 * configure bonded interface without the external sm enabled
+	 *   . try to transmit lacpdu (should fail)
+	 *   . try to set collecting and distributing flags (should fail)
+	 * reconfigure w/external sm
+	 *   . transmit one lacpdu on each slave using new api
+	 *   . make sure each slave receives one lacpdu using the callback api
+	 *   . transmit one data pdu on each slave (should fail)
+	 *   . enable distribution and collection, send one data pdu each again
+	 */
+
+	int retval;
+	struct slave_conf *slave = NULL;
+	uint8_t i;
+
+	struct rte_mbuf *lacp_tx_buf[SLAVE_COUNT];
+	struct ether_addr src_mac, dst_mac;
+	struct lacpdu_header lacpdu = {
+		.lacpdu = {
+			.subtype = SLOW_SUBTYPE_LACP,
+		},
+	};
+
+	ether_addr_copy(&parnter_system, &src_mac);
+	ether_addr_copy(&slow_protocol_mac_addr, &dst_mac);
+
+	initialize_eth_header(&lacpdu.eth_hdr, &src_mac, &dst_mac,
+			      ETHER_TYPE_SLOW, 0, 0);
+
+	for (i = 0; i < SLAVE_COUNT; i++) {
+		lacp_tx_buf[i] = rte_pktmbuf_alloc(test_params.mbuf_pool);
+		rte_memcpy(rte_pktmbuf_mtod(lacp_tx_buf[i], char *),
+			   &lacpdu, sizeof(lacpdu));
+		rte_pktmbuf_pkt_len(lacp_tx_buf[i]) = sizeof(lacpdu);
+	}
+
+	retval = initialize_bonded_device_with_slaves(TEST_TX_SLAVE_COUNT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+
+	FOR_EACH_SLAVE(i, slave) {
+		TEST_ASSERT_FAIL(rte_eth_bond_8023ad_ext_slowtx(
+						test_params.bonded_port_id,
+						slave->port_id, lacp_tx_buf[i]),
+				 "Slave should not allow manual LACP xmit");
+		TEST_ASSERT_FAIL(rte_eth_bond_8023ad_ext_collect(
+						test_params.bonded_port_id,
+						slave->port_id, 1),
+				 "Slave should not allow external state controls");
+	}
+
+	free_pkts(lacp_tx_buf, RTE_DIM(lacp_tx_buf));
+
+	retval = remove_slaves_and_stop_bonded_device();
+	TEST_ASSERT_SUCCESS(retval, "Bonded device cleanup failed.");
+
+	return TEST_SUCCESS;
+}
+
+
+static int
+test_mode4_ext_lacp(void)
+{
+	int retval;
+	struct slave_conf *slave = NULL;
+	uint8_t all_slaves_done = 0, i;
+	uint16_t nb_pkts;
+	const unsigned int delay = bond_get_update_timeout_ms();
+
+	struct rte_mbuf *lacp_tx_buf[SLAVE_COUNT];
+	struct rte_mbuf *buf[SLAVE_COUNT];
+	struct ether_addr src_mac, dst_mac;
+	struct lacpdu_header lacpdu = {
+		.lacpdu = {
+			.subtype = SLOW_SUBTYPE_LACP,
+		},
+	};
+
+	ether_addr_copy(&parnter_system, &src_mac);
+	ether_addr_copy(&slow_protocol_mac_addr, &dst_mac);
+
+	initialize_eth_header(&lacpdu.eth_hdr, &src_mac, &dst_mac,
+			      ETHER_TYPE_SLOW, 0, 0);
+
+	for (i = 0; i < SLAVE_COUNT; i++) {
+		lacp_tx_buf[i] = rte_pktmbuf_alloc(test_params.mbuf_pool);
+		rte_memcpy(rte_pktmbuf_mtod(lacp_tx_buf[i], char *),
+			   &lacpdu, sizeof(lacpdu));
+		rte_pktmbuf_pkt_len(lacp_tx_buf[i]) = sizeof(lacpdu);
+	}
+
+	retval = initialize_bonded_device_with_slaves(TEST_TX_SLAVE_COUNT, 1);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+
+	memset(lacpdu_rx_count, 0, sizeof(lacpdu_rx_count));
+
+	/* Wait for new settings to be applied. */
+	for (i = 0; i < 30; ++i)
+		rte_delay_ms(delay);
+
+	FOR_EACH_SLAVE(i, slave) {
+		retval = rte_eth_bond_8023ad_ext_slowtx(
+						test_params.bonded_port_id,
+						slave->port_id, lacp_tx_buf[i]);
+		TEST_ASSERT_SUCCESS(retval,
+				    "Slave should allow manual LACP xmit");
+	}
+
+	nb_pkts = bond_tx(NULL, 0);
+	TEST_ASSERT_EQUAL(nb_pkts, 0, "Packets transmitted unexpectedly");
+
+	FOR_EACH_SLAVE(i, slave) {
+		nb_pkts = slave_get_pkts(slave, buf, RTE_DIM(buf));
+		TEST_ASSERT_EQUAL(nb_pkts, 1, "found %u packets on slave %d\n",
+				  nb_pkts, i);
+		slave_put_pkts(slave, buf, nb_pkts);
+	}
+
+	nb_pkts = bond_rx(buf, RTE_DIM(buf));
+	free_pkts(buf, nb_pkts);
+	TEST_ASSERT_EQUAL(nb_pkts, 0, "Packets received unexpectedly");
+
+	/* wait for the periodic callback to run */
+	for (i = 0; i < 30 && all_slaves_done == 0; ++i) {
+		uint8_t s, total = 0;
+
+		rte_delay_ms(delay);
+		FOR_EACH_SLAVE(s, slave) {
+			total += lacpdu_rx_count[slave->port_id];
+		}
+
+		if (total >= SLAVE_COUNT)
+			all_slaves_done = 1;
+	}
+
+	FOR_EACH_SLAVE(i, slave) {
+		TEST_ASSERT_EQUAL(lacpdu_rx_count[slave->port_id], 1,
+				  "Slave port %u should have received 1 lacpdu (count=%u)",
+				  slave->port_id,
+				  lacpdu_rx_count[slave->port_id]);
 	}
 
 	retval = remove_slaves_and_stop_bonded_device();
@@ -1381,6 +1562,18 @@ test_mode4_expired_wrapper(void)
 	return test_mode4_executor(&test_mode4_expired);
 }
 
+static int
+test_mode4_ext_ctrl_wrapper(void)
+{
+	return test_mode4_executor(&test_mode4_ext_ctrl);
+}
+
+static int
+test_mode4_ext_lacp_wrapper(void)
+{
+	return test_mode4_executor(&test_mode4_ext_lacp);
+}
+
 static struct unit_test_suite link_bonding_mode4_test_suite  = {
 	.suite_name = "Link Bonding mode 4 Unit Test Suite",
 	.setup = test_setup,
@@ -1391,6 +1584,10 @@ static struct unit_test_suite link_bonding_mode4_test_suite  = {
 		TEST_CASE_NAMED("test_mode4_tx_burst", test_mode4_tx_burst_wrapper),
 		TEST_CASE_NAMED("test_mode4_marker", test_mode4_marker_wrapper),
 		TEST_CASE_NAMED("test_mode4_expired", test_mode4_expired_wrapper),
+		TEST_CASE_NAMED("test_mode4_ext_ctrl",
+				test_mode4_ext_ctrl_wrapper),
+		TEST_CASE_NAMED("test_mode4_ext_lacp",
+				test_mode4_ext_lacp_wrapper),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
