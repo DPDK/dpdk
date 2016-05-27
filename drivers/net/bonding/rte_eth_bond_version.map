@@ -27,3 +27,19 @@ DPDK_2.1 {
 	rte_eth_bond_free;
 
 } DPDK_2.0;
+
+DPDK_16.04 {
+};
+
+DPDK_16.07 {
+	global:
+
+	rte_eth_bond_8023ad_ext_collect;
+	rte_eth_bond_8023ad_ext_collect_get;
+	rte_eth_bond_8023ad_ext_distrib;
+	rte_eth_bond_8023ad_ext_distrib_get;
+	rte_eth_bond_8023ad_ext_slowtx;
+	rte_eth_bond_8023ad_conf_get;
+	rte_eth_bond_8023ad_setup;
+
+} DPDK_16.04;

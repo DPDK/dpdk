@@ -173,6 +173,8 @@ struct mode8023ad_private {
 	uint64_t tx_period_timeout;
 	uint64_t rx_marker_timeout;
 	uint64_t update_timeout_us;
+	rte_eth_bond_8023ad_ext_slowrx_fn slowrx_cb;
+	uint8_t external_sm;
 };
 
 /**
@@ -185,18 +187,6 @@ extern struct port mode_8023ad_ports[];
 /* Forward declaration */
 struct bond_dev_private;
 
-/**
- * @internal
- *
- * Get configuration of bonded interface.
- *
- *
- * @param dev Bonded interface
- * @param conf returned configuration
- */
-void
-bond_mode_8023ad_conf_get(struct rte_eth_dev *dev,
-		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
  * @internal

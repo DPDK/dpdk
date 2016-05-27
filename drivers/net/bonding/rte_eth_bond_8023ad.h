@@ -64,6 +64,9 @@ extern "C" {
 #define MARKER_TLV_TYPE_INFO                0x01
 #define MARKER_TLV_TYPE_RESP                0x02
 
+typedef void (*rte_eth_bond_8023ad_ext_slowrx_fn)(uint8_t slave_id,
+						  struct rte_mbuf *lacp_pkt);
+
 enum rte_bond_8023ad_selection {
 	UNSELECTED,
 	STANDBY,
@@ -157,6 +160,7 @@ struct rte_eth_bond_8023ad_conf {
 	uint32_t tx_period_ms;
 	uint32_t rx_marker_period_ms;
 	uint32_t update_timeout_ms;
+	rte_eth_bond_8023ad_ext_slowrx_fn slowrx_cb;
 };
 
 struct rte_eth_bond_8023ad_slave_info {
@@ -183,6 +187,12 @@ struct rte_eth_bond_8023ad_slave_info {
 int
 rte_eth_bond_8023ad_conf_get(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
+int
+rte_eth_bond_8023ad_conf_get_v1604(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf);
+int
+rte_eth_bond_8023ad_conf_get_v1607(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
  * @internal
@@ -197,6 +207,12 @@ rte_eth_bond_8023ad_conf_get(uint8_t port_id,
  */
 int
 rte_eth_bond_8023ad_setup(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf);
+int
+rte_eth_bond_8023ad_setup_v1604(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf);
+int
+rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
@@ -218,5 +234,72 @@ rte_eth_bond_8023ad_slave_info(uint8_t port_id, uint8_t slave_id,
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * Configure a slave port to start collecting.
+ *
+ * @param port_id	Bonding device id
+ * @param slave_id	Port id of valid slave.
+ * @param enabled	Non-zero when collection enabled.
+ * @return
+ *   0 - if ok
+ *   -EINVAL if slave is not valid.
+ */
+int
+rte_eth_bond_8023ad_ext_collect(uint8_t port_id, uint8_t slave_id, int enabled);
+
+/**
+ * Get COLLECTING flag from slave port actor state.
+ *
+ * @param port_id	Bonding device id
+ * @param slave_id	Port id of valid slave.
+ * @return
+ *   0 - if not set
+ *   1 - if set
+ *   -EINVAL if slave is not valid.
+ */
+int
+rte_eth_bond_8023ad_ext_collect_get(uint8_t port_id, uint8_t slave_id);
+
+/**
+ * Configure a slave port to start distributing.
+ *
+ * @param port_id	Bonding device id
+ * @param slave_id	Port id of valid slave.
+ * @param enabled	Non-zero when distribution enabled.
+ * @return
+ *   0 - if ok
+ *   -EINVAL if slave is not valid.
+ */
+int
+rte_eth_bond_8023ad_ext_distrib(uint8_t port_id, uint8_t slave_id, int enabled);
+
+/**
+ * Get DISTRIBUTING flag from slave port actor state.
+ *
+ * @param port_id	Bonding device id
+ * @param slave_id	Port id of valid slave.
+ * @return
+ *   0 - if not set
+ *   1 - if set
+ *   -EINVAL if slave is not valid.
+ */
+int
+rte_eth_bond_8023ad_ext_distrib_get(uint8_t port_id, uint8_t slave_id);
+
+/**
+ * LACPDU transmit path for external 802.3ad state machine.  Caller retains
+ * ownership of the packet on failure.
+ *
+ * @param port_id	Bonding device id
+ * @param slave_id	Port ID of valid slave device.
+ * @param lacp_pkt	mbuf containing LACPDU.
+ *
+ * @return
+ *   0 on success, negative value otherwise.
+ */
+int
+rte_eth_bond_8023ad_ext_slowtx(uint8_t port_id, uint8_t slave_id,
+		struct rte_mbuf *lacp_pkt);
 
 #endif /* RTE_ETH_BOND_8023AD_H_ */
