@@ -69,6 +69,7 @@ struct null_queue {
 struct pmd_internals {
 	unsigned packet_size;
 	unsigned packet_copy;
+	uint8_t port_id;
 
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 	struct null_queue tx_null_queues[RTE_MAX_QUEUES_PER_PORT];
@@ -114,6 +115,7 @@ eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		bufs[i]->pkt_len = packet_size;
 		bufs[i]->nb_segs = 1;
 		bufs[i]->next = NULL;
+		bufs[i]->port = h->internals->port_id;
 	}
 
 	rte_atomic64_add(&(h->rx_pkts), i);
@@ -142,6 +144,7 @@ eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		bufs[i]->pkt_len = packet_size;
 		bufs[i]->nb_segs = 1;
 		bufs[i]->next = NULL;
+		bufs[i]->port = h->internals->port_id;
 	}
 
 	rte_atomic64_add(&(h->rx_pkts), i);
@@ -529,6 +532,7 @@ eth_dev_null_create(const char *name,
 
 	internals->packet_size = packet_size;
 	internals->packet_copy = packet_copy;
+	internals->port_id = eth_dev->data->port_id;
 
 	internals->flow_type_rss_offloads =  ETH_RSS_PROTO_MASK;
 	internals->reta_size = RTE_DIM(internals->reta_conf) * RTE_RETA_GROUP_SIZE;
