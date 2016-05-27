@@ -978,8 +978,8 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	unsigned numa_node, using_dumpers = 0;
 	int ret;
 	struct rte_kvargs *kvlist;
-	struct rx_pcaps pcaps;
-	struct tx_pcaps dumpers;
+	struct rx_pcaps pcaps = {0};
+	struct tx_pcaps dumpers = {0};
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_pcap for %s\n", name);
 
