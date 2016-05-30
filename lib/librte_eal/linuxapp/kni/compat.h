@@ -14,19 +14,17 @@
 
 #endif /* < 2.6.39 */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
 #define sk_sleep(s) (s)->sk_sleep
+#endif
 
-#endif /* < 2.6.35 */
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 #define HAVE_IOV_ITER_MSGHDR
 #endif
 
-#if ( LINUX_VERSION_CODE < KERNEL_VERSION(4,1,0) )
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 #define HAVE_KIOCB_MSG_PARAM
-#endif /* < 4.1.0 */
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 #define HAVE_TRANS_START_HELPER
