@@ -81,6 +81,11 @@ static const struct app_link_params link_params_default = {
 	.tcp_local_q = 0,
 	.udp_local_q = 0,
 	.sctp_local_q = 0,
+	.rss_qs = {0},
+	.n_rss_qs = 0,
+	.rss_proto_ipv4 = ETH_RSS_IPV4,
+	.rss_proto_ipv6 = ETH_RSS_IPV6,
+	.rss_proto_l2 = 0,
 	.state = 0,
 	.ip = 0,
 	.depth = 0,
@@ -103,6 +108,13 @@ static const struct app_link_params link_params_default = {
 
 			.max_rx_pkt_len = 9000, /* Jumbo frame max packet len */
 			.split_hdr_size = 0, /* Header split buffer size */
+		},
+		.rx_adv_conf = {
+			.rss_conf = {
+				.rss_key = NULL,
+				.rss_key_len = 40,
+				.rss_hf = 0,
+			},
 		},
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
@@ -1125,6 +1137,149 @@ parse_mempool(struct app_params *app,
 	free(entries);
 }
 
+static int
+parse_link_rss_qs(struct app_link_params *p,
+	char *value)
+{
+	p->n_rss_qs = 0;
+
+	while (1) {
+		char *token = strtok_r(value, PARSE_DELIMITER, &value);
+
+		if (token == NULL)
+			break;
+
+		if (p->n_rss_qs == RTE_DIM(p->rss_qs))
+			return -ENOMEM;
+
+		if (parser_read_uint32(&p->rss_qs[p->n_rss_qs++], token))
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+parse_link_rss_proto_ipv4(struct app_link_params *p,
+	char *value)
+{
+	uint64_t mask = 0;
+
+	while (1) {
+		char *token = strtok_r(value, PARSE_DELIMITER, &value);
+
+		if (token == NULL)
+			break;
+
+		if (strcmp(token, "IP") == 0) {
+			mask |= ETH_RSS_IPV4;
+			continue;
+		}
+		if (strcmp(token, "FRAG") == 0) {
+			mask |= ETH_RSS_FRAG_IPV4;
+			continue;
+		}
+		if (strcmp(token, "TCP") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV4_TCP;
+			continue;
+		}
+		if (strcmp(token, "UDP") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV4_UDP;
+			continue;
+		}
+		if (strcmp(token, "SCTP") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV4_SCTP;
+			continue;
+		}
+		if (strcmp(token, "OTHER") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV4_OTHER;
+			continue;
+		}
+		return -EINVAL;
+	}
+
+	p->rss_proto_ipv4 = mask;
+	return 0;
+}
+
+static int
+parse_link_rss_proto_ipv6(struct app_link_params *p,
+	char *value)
+{
+	uint64_t mask = 0;
+
+	while (1) {
+		char *token = strtok_r(value, PARSE_DELIMITER, &value);
+
+		if (token == NULL)
+			break;
+
+		if (strcmp(token, "IP") == 0) {
+			mask |= ETH_RSS_IPV6;
+			continue;
+		}
+		if (strcmp(token, "FRAG") == 0) {
+			mask |= ETH_RSS_FRAG_IPV6;
+			continue;
+		}
+		if (strcmp(token, "TCP") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV6_TCP;
+			continue;
+		}
+		if (strcmp(token, "UDP") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV6_UDP;
+			continue;
+		}
+		if (strcmp(token, "SCTP") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV6_SCTP;
+			continue;
+		}
+		if (strcmp(token, "OTHER") == 0) {
+			mask |= ETH_RSS_NONFRAG_IPV6_OTHER;
+			continue;
+		}
+		if (strcmp(token, "IP_EX") == 0) {
+			mask |= ETH_RSS_IPV6_EX;
+			continue;
+		}
+		if (strcmp(token, "TCP_EX") == 0) {
+			mask |= ETH_RSS_IPV6_TCP_EX;
+			continue;
+		}
+		if (strcmp(token, "UDP_EX") == 0) {
+			mask |= ETH_RSS_IPV6_UDP_EX;
+			continue;
+		}
+		return -EINVAL;
+	}
+
+	p->rss_proto_ipv6 = mask;
+	return 0;
+}
+
+static int
+parse_link_rss_proto_l2(struct app_link_params *p,
+	char *value)
+{
+	uint64_t mask = 0;
+
+	while (1) {
+		char *token = strtok_r(value, PARSE_DELIMITER, &value);
+
+		if (token == NULL)
+			break;
+
+		if (strcmp(token, "L2") == 0) {
+			mask |= ETH_RSS_L2_PAYLOAD;
+			continue;
+		}
+		return -EINVAL;
+	}
+
+	p->rss_proto_l2 = mask;
+	return 0;
+}
+
 static void
 parse_link(struct app_params *app,
 	const char *section_name,
@@ -1133,6 +1288,10 @@ parse_link(struct app_params *app,
 	struct app_link_params *param;
 	struct rte_cfgfile_entry *entries;
 	int n_entries, i;
+	int rss_qs_present = 0;
+	int rss_proto_ipv4_present = 0;
+	int rss_proto_ipv6_present = 0;
+	int rss_proto_l2_present = 0;
 	int pci_bdf_present = 0;
 	ssize_t param_idx;
 
@@ -1186,7 +1345,6 @@ parse_link(struct app_params *app,
 			continue;
 		}
 
-
 		if (strcmp(ent->name, "tcp_local_q") == 0) {
 			int status = parser_read_uint32(
 				&param->tcp_local_q, ent->value);
@@ -1214,6 +1372,44 @@ parse_link(struct app_params *app,
 			continue;
 		}
 
+		if (strcmp(ent->name, "rss_qs") == 0) {
+			int status = parse_link_rss_qs(param, ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+			rss_qs_present = 1;
+			continue;
+		}
+
+		if (strcmp(ent->name, "rss_proto_ipv4") == 0) {
+			int status =
+				parse_link_rss_proto_ipv4(param, ent->value);
+
+			PARSE_ERROR((status != -EINVAL), section_name,
+				ent->name);
+			rss_proto_ipv4_present = 1;
+			continue;
+		}
+
+		if (strcmp(ent->name, "rss_proto_ipv6") == 0) {
+			int status =
+				parse_link_rss_proto_ipv6(param, ent->value);
+
+			PARSE_ERROR((status != -EINVAL), section_name,
+				ent->name);
+			rss_proto_ipv6_present = 1;
+			continue;
+		}
+
+		if (strcmp(ent->name, "rss_proto_l2") == 0) {
+			int status = parse_link_rss_proto_l2(param, ent->value);
+
+			PARSE_ERROR((status != -EINVAL), section_name,
+				ent->name);
+			rss_proto_l2_present = 1;
+			continue;
+		}
+
 		if (strcmp(ent->name, "pci_bdf") == 0) {
 			PARSE_ERROR_DUPLICATE((pci_bdf_present == 0),
 				section_name, ent->name);
@@ -1238,6 +1434,29 @@ parse_link(struct app_params *app,
 			section_name, "pci_bdf",
 			"this entry is mandatory (port_mask is not "
 			"provided)");
+
+	if (rss_proto_ipv4_present)
+		PARSE_ERROR_MESSAGE((rss_qs_present),
+			section_name, "rss_proto_ipv4",
+			"entry not allowed (rss_qs entry is not provided)");
+	if (rss_proto_ipv6_present)
+		PARSE_ERROR_MESSAGE((rss_qs_present),
+			section_name, "rss_proto_ipv6",
+			"entry not allowed (rss_qs entry is not provided)");
+	if (rss_proto_l2_present)
+		PARSE_ERROR_MESSAGE((rss_qs_present),
+			section_name, "rss_proto_l2",
+			"entry not allowed (rss_qs entry is not provided)");
+	if (rss_proto_ipv4_present |
+		rss_proto_ipv6_present |
+		rss_proto_l2_present){
+		if (rss_proto_ipv4_present == 0)
+			param->rss_proto_ipv4 = 0;
+		if (rss_proto_ipv6_present == 0)
+			param->rss_proto_ipv6 = 0;
+		if (rss_proto_l2_present == 0)
+			param->rss_proto_l2 = 0;
+	}
 
 	free(entries);
 }
@@ -2236,6 +2455,84 @@ save_links_params(struct app_params *app, FILE *f)
 		fprintf(f, "%s = %" PRIu32 "\n", "udp_local_q", p->udp_local_q);
 		fprintf(f, "%s = %" PRIu32 "\n", "sctp_local_q",
 			p->sctp_local_q);
+
+		if (p->n_rss_qs) {
+			uint32_t j;
+
+			/* rss_qs */
+			fprintf(f, "rss_qs = ");
+			for (j = 0; j < p->n_rss_qs; j++)
+				fprintf(f, "%" PRIu32 " ",	p->rss_qs[j]);
+			fputc('\n', f);
+
+			/* rss_proto_ipv4 */
+			if (p->rss_proto_ipv4) {
+				fprintf(f, "rss_proto_ipv4 = ");
+				if (p->rss_proto_ipv4 & ETH_RSS_IPV4)
+					fprintf(f, "IP ");
+				if (p->rss_proto_ipv4 & ETH_RSS_FRAG_IPV4)
+					fprintf(f, "FRAG ");
+				if (p->rss_proto_ipv4 &
+					ETH_RSS_NONFRAG_IPV4_TCP)
+					fprintf(f, "TCP ");
+				if (p->rss_proto_ipv4 &
+					ETH_RSS_NONFRAG_IPV4_UDP)
+					fprintf(f, "UDP ");
+				if (p->rss_proto_ipv4 &
+					ETH_RSS_NONFRAG_IPV4_SCTP)
+					fprintf(f, "SCTP ");
+				if (p->rss_proto_ipv4 &
+					ETH_RSS_NONFRAG_IPV4_OTHER)
+					fprintf(f, "OTHER ");
+				fprintf(f, "\n");
+			} else
+				fprintf(f, "; rss_proto_ipv4 = <NONE>\n");
+
+			/* rss_proto_ipv6 */
+			if (p->rss_proto_ipv6) {
+				fprintf(f, "rss_proto_ipv6 = ");
+				if (p->rss_proto_ipv6 & ETH_RSS_IPV6)
+					fprintf(f, "IP ");
+				if (p->rss_proto_ipv6 & ETH_RSS_FRAG_IPV6)
+					fprintf(f, "FRAG ");
+				if (p->rss_proto_ipv6 &
+					ETH_RSS_NONFRAG_IPV6_TCP)
+					fprintf(f, "TCP ");
+				if (p->rss_proto_ipv6 &
+					ETH_RSS_NONFRAG_IPV6_UDP)
+					fprintf(f, "UDP ");
+				if (p->rss_proto_ipv6 &
+					ETH_RSS_NONFRAG_IPV6_SCTP)
+					fprintf(f, "SCTP ");
+				if (p->rss_proto_ipv6 &
+					ETH_RSS_NONFRAG_IPV6_OTHER)
+					fprintf(f, "OTHER ");
+				if (p->rss_proto_ipv6 & ETH_RSS_IPV6_EX)
+					fprintf(f, "IP_EX ");
+				if (p->rss_proto_ipv6 &
+					ETH_RSS_IPV6_TCP_EX)
+					fprintf(f, "TCP_EX ");
+				if (p->rss_proto_ipv6 &
+					ETH_RSS_IPV6_UDP_EX)
+					fprintf(f, "UDP_EX ");
+				fprintf(f, "\n");
+			} else
+				fprintf(f, "; rss_proto_ipv6 = <NONE>\n");
+
+			/* rss_proto_l2 */
+			if (p->rss_proto_l2) {
+				fprintf(f, "rss_proto_l2 = ");
+				if (p->rss_proto_l2 & ETH_RSS_L2_PAYLOAD)
+					fprintf(f, "L2 ");
+				fprintf(f, "\n");
+			} else
+				fprintf(f, "; rss_proto_l2 = <NONE>\n");
+		} else {
+			fprintf(f, "; rss_qs = <NONE>\n");
+			fprintf(f, "; rss_proto_ipv4 = <NONE>\n");
+			fprintf(f, "; rss_proto_ipv6 = <NONE>\n");
+			fprintf(f, "; rss_proto_l2 = <NONE>\n");
+		}
 
 		if (strlen(p->pci_bdf))
 			fprintf(f, "%s = %s\n", "pci_bdf", p->pci_bdf);

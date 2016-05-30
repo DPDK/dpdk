@@ -57,6 +57,13 @@ New Features
   Enabled support for the AES CTR algorithm for Intel QuickAssist devices.
   Provided support for algorithm-chaining operations.
 
+* **Improved IP Pipeline Application.**
+
+  The following features have been added to ip_pipeline application:
+
+  * Enable RSS per network interface through the configuration file.
+  * Streamline the CLI code.
+
 
 Resolved Issues
 ---------------

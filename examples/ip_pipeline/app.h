@@ -51,6 +51,14 @@
 #define APP_PARAM_NAME_SIZE                      PIPELINE_NAME_SIZE
 #define APP_LINK_PCI_BDF_SIZE                    16
 
+#ifndef APP_LINK_MAX_HWQ_IN
+#define APP_LINK_MAX_HWQ_IN                      64
+#endif
+
+#ifndef APP_LINK_MAX_HWQ_OUT
+#define APP_LINK_MAX_HWQ_OUT                     64
+#endif
+
 struct app_mempool_params {
 	char *name;
 	uint32_t parsed;
@@ -70,6 +78,12 @@ struct app_link_params {
 	uint32_t tcp_local_q; /* 0 = Disabled (pkts go to default queue 0) */
 	uint32_t udp_local_q; /* 0 = Disabled (pkts go to default queue 0) */
 	uint32_t sctp_local_q; /* 0 = Disabled (pkts go to default queue 0) */
+	uint32_t rss_qs[APP_LINK_MAX_HWQ_IN];
+	uint32_t n_rss_qs;
+	uint64_t rss_proto_ipv4;
+	uint64_t rss_proto_ipv6;
+	uint64_t rss_proto_l2;
+	uint32_t promisc;
 	uint32_t state; /* DOWN = 0, UP = 1 */
 	uint32_t ip; /* 0 = Invalid */
 	uint32_t depth; /* Valid only when IP is valid */
@@ -77,7 +91,6 @@ struct app_link_params {
 	char pci_bdf[APP_LINK_PCI_BDF_SIZE];
 
 	struct rte_eth_conf conf;
-	uint8_t promisc;
 };
 
 struct app_pktq_hwq_in_params {
@@ -383,17 +396,9 @@ struct app_eal_params {
 #define APP_MAX_MEMPOOLS                         8
 #endif
 
-#ifndef APP_LINK_MAX_HWQ_IN
-#define APP_LINK_MAX_HWQ_IN                      64
-#endif
+#define APP_MAX_HWQ_IN                  (APP_MAX_LINKS * APP_LINK_MAX_HWQ_IN)
 
-#ifndef APP_LINK_MAX_HWQ_OUT
-#define APP_LINK_MAX_HWQ_OUT                     64
-#endif
-
-#define APP_MAX_HWQ_IN                     (APP_MAX_LINKS * APP_LINK_MAX_HWQ_IN)
-
-#define APP_MAX_HWQ_OUT                   (APP_MAX_LINKS * APP_LINK_MAX_HWQ_OUT)
+#define APP_MAX_HWQ_OUT                 (APP_MAX_LINKS * APP_LINK_MAX_HWQ_OUT)
 
 #ifndef APP_MAX_PKTQ_SWQ
 #define APP_MAX_PKTQ_SWQ                         256

@@ -55,6 +55,8 @@
 
 #define APP_NAME_SIZE	32
 
+#define APP_RETA_SIZE_MAX     (ETH_RSS_RETA_SIZE_512 / RTE_RETA_GROUP_SIZE)
+
 static void
 app_init_core_map(struct app_params *app)
 {
@@ -902,6 +904,67 @@ app_get_cpu_socket_id(uint32_t pmd_id)
 	return (status != SOCKET_ID_ANY) ? status : 0;
 }
 
+static inline int
+app_link_rss_enabled(struct app_link_params *cp)
+{
+	return (cp->n_rss_qs) ? 1 : 0;
+}
+
+static void
+app_link_rss_setup(struct app_link_params *cp)
+{
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rss_reta_entry64 reta_conf[APP_RETA_SIZE_MAX];
+	uint32_t i;
+	int status;
+
+    /* Get RETA size */
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(cp->pmd_id, &dev_info);
+
+	if (dev_info.reta_size == 0)
+		rte_panic("%s (%u): RSS setup error (null RETA size)\n",
+			cp->name, cp->pmd_id);
+
+	if (dev_info.reta_size > ETH_RSS_RETA_SIZE_512)
+		rte_panic("%s (%u): RSS setup error (RETA size too big)\n",
+			cp->name, cp->pmd_id);
+
+	/* Setup RETA contents */
+	memset(reta_conf, 0, sizeof(reta_conf));
+
+	for (i = 0; i < dev_info.reta_size; i++)
+		reta_conf[i / RTE_RETA_GROUP_SIZE].mask = UINT64_MAX;
+
+	for (i = 0; i < dev_info.reta_size; i++) {
+		uint32_t reta_id = i / RTE_RETA_GROUP_SIZE;
+		uint32_t reta_pos = i % RTE_RETA_GROUP_SIZE;
+		uint32_t rss_qs_pos = i % cp->n_rss_qs;
+
+		reta_conf[reta_id].reta[reta_pos] =
+			(uint16_t) cp->rss_qs[rss_qs_pos];
+	}
+
+	/* RETA update */
+	status = rte_eth_dev_rss_reta_update(cp->pmd_id,
+		reta_conf,
+		dev_info.reta_size);
+	if (status != 0)
+		rte_panic("%s (%u): RSS setup error (RETA update failed)\n",
+			cp->name, cp->pmd_id);
+}
+
+static void
+app_init_link_set_config(struct app_link_params *p)
+{
+	if (p->n_rss_qs) {
+		p->conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+		p->conf.rx_adv_conf.rss_conf.rss_hf = p->rss_proto_ipv4 |
+			p->rss_proto_ipv6 |
+			p->rss_proto_l2;
+	}
+}
+
 static void
 app_init_link(struct app_params *app)
 {
@@ -917,6 +980,7 @@ app_init_link(struct app_params *app)
 		sscanf(p_link->name, "LINK%" PRIu32, &link_id);
 		n_hwq_in = app_link_get_n_rxq(app, p_link);
 		n_hwq_out = app_link_get_n_txq(app, p_link);
+		app_init_link_set_config(p_link);
 
 		APP_LOG(app, HIGH, "Initializing %s (%" PRIu32") "
 			"(%" PRIu32 " RXQ, %" PRIu32 " TXQ) ...",
@@ -1001,9 +1065,13 @@ app_init_link(struct app_params *app)
 			rte_panic("Cannot start %s (error %" PRId32 ")\n",
 				p_link->name, status);
 
-		/* LINK UP */
+		/* LINK FILTERS */
 		app_link_set_arp_filter(app, p_link);
 		app_link_set_tcp_syn_filter(app, p_link);
+		if (app_link_rss_enabled(p_link))
+			app_link_rss_setup(p_link);
+
+		/* LINK UP */
 		app_link_up_internal(app, p_link);
 	}
 
