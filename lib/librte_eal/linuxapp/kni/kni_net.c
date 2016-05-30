@@ -641,7 +641,7 @@ kni_net_header(struct sk_buff *skb, struct net_device *dev,
 /*
  * Re-fill the eth header
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0))
+#ifdef HAVE_REBUILD_HEADER
 static int
 kni_net_rebuild_header(struct sk_buff *skb)
 {
@@ -671,7 +671,7 @@ static int kni_net_set_mac(struct net_device *netdev, void *p)
 	return 0;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#ifdef HAVE_CHANGE_CARRIER_CB
 static int kni_net_change_carrier(struct net_device *dev, bool new_carrier)
 {
 	if (new_carrier)
@@ -684,7 +684,7 @@ static int kni_net_change_carrier(struct net_device *dev, bool new_carrier)
 
 static const struct header_ops kni_net_header_ops = {
 	.create  = kni_net_header,
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0))
+#ifdef HAVE_REBUILD_HEADER
 	.rebuild = kni_net_rebuild_header,
 #endif /* < 4.1.0  */
 	.cache   = NULL,  /* disable caching */
@@ -701,7 +701,7 @@ static const struct net_device_ops kni_net_netdev_ops = {
 	.ndo_get_stats = kni_net_stats,
 	.ndo_tx_timeout = kni_net_tx_timeout,
 	.ndo_set_mac_address = kni_net_set_mac,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#ifdef HAVE_CHANGE_CARRIER_CB
 	.ndo_change_carrier = kni_net_change_carrier,
 #endif
 };
