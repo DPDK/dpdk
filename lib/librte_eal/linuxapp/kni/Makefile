@@ -47,7 +47,7 @@ MODULE_CFLAGS += -Wall -Werror
 ifeq ($(shell lsb_release -si 2>/dev/null),Ubuntu)
 MODULE_CFLAGS += -DUBUNTU_RELEASE_CODE=$(shell lsb_release -sr | tr -d .)
 UBUNTU_KERNEL_CODE := $(shell echo `grep UTS_RELEASE $(RTE_KERNELDIR)/include/generated/utsrelease.h \
-	 | cut -d '"' -f2 | cut -d- -f1,2 | tr .- $(comma)`,1)
+	 | cut -d '"' -f2 | cut -d- -f1,2 | tr .- ,`,1)
 MODULE_CFLAGS += -D"UBUNTU_KERNEL_CODE=UBUNTU_KERNEL_VERSION($(UBUNTU_KERNEL_CODE))"
 endif
 
