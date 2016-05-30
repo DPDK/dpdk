@@ -49,6 +49,7 @@
 #include <inttypes.h>
 
 #include <rte_common.h>
+#include <rte_errno.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_debug.h>
@@ -415,6 +416,10 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 	mb_size = sizeof(struct rte_mbuf) + mbuf_seg_size;
 	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name));
 
+	RTE_LOG(INFO, USER1,
+		"create a new mbuf pool <%s>: n=%u, size=%u, socket=%u\n",
+		pool_name, nb_mbuf, mbuf_seg_size, socket_id);
+
 #ifdef RTE_LIBRTE_PMD_XENVIRT
 	rte_mp = rte_mempool_gntalloc_create(pool_name, nb_mbuf, mb_size,
 		(unsigned) mb_mempool_cache,
@@ -446,8 +451,9 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 	}
 
 	if (rte_mp == NULL) {
-		rte_exit(EXIT_FAILURE, "Creation of mbuf pool for socket %u "
-						"failed\n", socket_id);
+		rte_exit(EXIT_FAILURE,
+			"Creation of mbuf pool for socket %u failed: %s\n",
+			socket_id, rte_strerror(rte_errno));
 	} else if (verbose_level > 0) {
 		rte_mempool_dump(stdout, rte_mp);
 	}
