@@ -80,6 +80,8 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <signal.h>
+#include <setjmp.h>
 
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -309,6 +311,22 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 	return addr;
 }
 
+static sigjmp_buf huge_jmpenv;
+
+static void huge_sigbus_handler(int signo __rte_unused)
+{
+	siglongjmp(huge_jmpenv, 1);
+}
+
+/* Put setjmp into a wrap method to avoid compiling error. Any non-volatile,
+ * non-static local variable in the stack frame calling sigsetjmp might be
+ * clobbered by a call to longjmp.
+ */
+static int huge_wrap_sigsetjmp(void)
+{
+	return sigsetjmp(huge_jmpenv, 1);
+}
+
 /*
  * Mmap all hugepages of hugepage table: it first open a file in
  * hugetlbfs, then mmap() hugepage_sz data in it. If orig is set, the
@@ -316,7 +334,7 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
  * in hugepg_tbl[i].final_va. The second mapping (when orig is 0) tries to
  * map continguous physical blocks in contiguous virtual blocks.
  */
-static int
+static unsigned
 map_all_hugepages(struct hugepage_file *hugepg_tbl,
 		struct hugepage_info *hpi, int orig)
 {
@@ -394,9 +412,9 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 		/* try to create hugepage file */
 		fd = open(hugepg_tbl[i].filepath, O_CREAT | O_RDWR, 0755);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "%s(): open failed: %s\n", __func__,
+			RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n", __func__,
 					strerror(errno));
-			return -1;
+			return i;
 		}
 
 		/* map the segment, and populate page tables,
@@ -404,10 +422,10 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 		virtaddr = mmap(vma_addr, hugepage_sz, PROT_READ | PROT_WRITE,
 				MAP_SHARED | MAP_POPULATE, fd, 0);
 		if (virtaddr == MAP_FAILED) {
-			RTE_LOG(ERR, EAL, "%s(): mmap failed: %s\n", __func__,
+			RTE_LOG(DEBUG, EAL, "%s(): mmap failed: %s\n", __func__,
 					strerror(errno));
 			close(fd);
-			return -1;
+			return i;
 		}
 
 		if (orig) {
@@ -417,12 +435,33 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 			hugepg_tbl[i].final_va = virtaddr;
 		}
 
+		if (orig) {
+			/* In linux, hugetlb limitations, like cgroup, are
+			 * enforced at fault time instead of mmap(), even
+			 * with the option of MAP_POPULATE. Kernel will send
+			 * a SIGBUS signal. To avoid to be killed, save stack
+			 * environment here, if SIGBUS happens, we can jump
+			 * back here.
+			 */
+			if (huge_wrap_sigsetjmp()) {
+				RTE_LOG(DEBUG, EAL, "SIGBUS: Cannot mmap more "
+					"hugepages of size %u MB\n",
+					(unsigned)(hugepage_sz / 0x100000));
+				munmap(virtaddr, hugepage_sz);
+				close(fd);
+				unlink(hugepg_tbl[i].filepath);
+				return i;
+			}
+			*(int *)virtaddr = 0;
+		}
+
+
 		/* set shared flock on the file. */
 		if (flock(fd, LOCK_SH | LOCK_NB) == -1) {
-			RTE_LOG(ERR, EAL, "%s(): Locking file failed:%s \n",
+			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed:%s \n",
 				__func__, strerror(errno));
 			close(fd);
-			return -1;
+			return i;
 		}
 
 		close(fd);
@@ -430,7 +469,8 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 		vma_addr = (char *)vma_addr + hugepage_sz;
 		vma_len -= hugepage_sz;
 	}
-	return 0;
+
+	return i;
 }
 
 #ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
@@ -1036,6 +1076,51 @@ calc_num_pages_per_socket(uint64_t * memory,
 	return total_num_pages;
 }
 
+static inline size_t
+eal_get_hugepage_mem_size(void)
+{
+	uint64_t size = 0;
+	unsigned i, j;
+
+	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
+		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
+		if (hpi->hugedir != NULL) {
+			for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
+				size += hpi->hugepage_sz * hpi->num_pages[j];
+			}
+		}
+	}
+
+	return (size < SIZE_MAX) ? (size_t)(size) : SIZE_MAX;
+}
+
+static struct sigaction huge_action_old;
+static int huge_need_recover;
+
+static void
+huge_register_sigbus(void)
+{
+	sigset_t mask;
+	struct sigaction action;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGBUS);
+	action.sa_flags = 0;
+	action.sa_mask = mask;
+	action.sa_handler = huge_sigbus_handler;
+
+	huge_need_recover = !sigaction(SIGBUS, &action, &huge_action_old);
+}
+
+static void
+huge_recover_sigbus(void)
+{
+	if (huge_need_recover) {
+		sigaction(SIGBUS, &huge_action_old, NULL);
+		huge_need_recover = 0;
+	}
+}
+
 /*
  * Prepare physical memory mapping: fill configuration structure with
  * these infos, return 0 on success.
@@ -1122,8 +1207,11 @@ rte_eal_hugepage_init(void)
 
 	hp_offset = 0; /* where we start the current page size entries */
 
+	huge_register_sigbus();
+
 	/* map all hugepages and sort them */
 	for (i = 0; i < (int)internal_config.num_hugepage_sizes; i ++){
+		unsigned pages_old, pages_new;
 		struct hugepage_info *hpi;
 
 		/*
@@ -1137,10 +1225,28 @@ rte_eal_hugepage_init(void)
 			continue;
 
 		/* map all hugepages available */
-		if (map_all_hugepages(&tmp_hp[hp_offset], hpi, 1) < 0){
-			RTE_LOG(DEBUG, EAL, "Failed to mmap %u MB hugepages\n",
-					(unsigned)(hpi->hugepage_sz / 0x100000));
+		pages_old = hpi->num_pages[0];
+		pages_new = map_all_hugepages(&tmp_hp[hp_offset], hpi, 1);
+		if (pages_new < pages_old) {
+#ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
+			RTE_LOG(ERR, EAL,
+				"%d not %d hugepages of size %u MB allocated\n",
+				pages_new, pages_old,
+				(unsigned)(hpi->hugepage_sz / 0x100000));
 			goto fail;
+#else
+			RTE_LOG(DEBUG, EAL,
+				"%d not %d hugepages of size %u MB allocated\n",
+				pages_new, pages_old,
+				(unsigned)(hpi->hugepage_sz / 0x100000));
+
+			int pages = pages_old - pages_new;
+
+			nr_hugepages -= pages;
+			hpi->num_pages[0] = pages_new;
+			if (pages_new == 0)
+				continue;
+#endif
 		}
 
 		/* find physical addresses and sockets for each hugepage */
@@ -1172,8 +1278,9 @@ rte_eal_hugepage_init(void)
 		hp_offset += new_pages_count[i];
 #else
 		/* remap all hugepages */
-		if (map_all_hugepages(&tmp_hp[hp_offset], hpi, 0) < 0){
-			RTE_LOG(DEBUG, EAL, "Failed to remap %u MB pages\n",
+		if (map_all_hugepages(&tmp_hp[hp_offset], hpi, 0) !=
+		    hpi->num_pages[0]) {
+			RTE_LOG(ERR, EAL, "Failed to remap %u MB pages\n",
 					(unsigned)(hpi->hugepage_sz / 0x100000));
 			goto fail;
 		}
@@ -1186,6 +1293,11 @@ rte_eal_hugepage_init(void)
 		hp_offset += hpi->num_pages[0];
 #endif
 	}
+
+	huge_recover_sigbus();
+
+	if (internal_config.memory == 0 && internal_config.force_sockets == 0)
+		internal_config.memory = eal_get_hugepage_mem_size();
 
 #ifdef RTE_EAL_SINGLE_FILE_SEGMENTS
 	nr_hugefiles = 0;
@@ -1373,6 +1485,7 @@ rte_eal_hugepage_init(void)
 	return 0;
 
 fail:
+	huge_recover_sigbus();
 	free(tmp_hp);
 	return -1;
 }

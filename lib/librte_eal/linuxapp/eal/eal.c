@@ -465,24 +465,6 @@ eal_parse_vfio_intr(const char *mode)
 	return -1;
 }
 
-static inline size_t
-eal_get_hugepage_mem_size(void)
-{
-	uint64_t size = 0;
-	unsigned i, j;
-
-	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
-		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
-		if (hpi->hugedir != NULL) {
-			for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
-				size += hpi->hugepage_sz * hpi->num_pages[j];
-			}
-		}
-	}
-
-	return (size < SIZE_MAX) ? (size_t)(size) : SIZE_MAX;
-}
-
 /* Parse the arguments for --log-level only */
 static void
 eal_log_level_parse(int argc, char **argv)
@@ -762,8 +744,6 @@ rte_eal_init(int argc, char **argv)
 	if (internal_config.memory == 0 && internal_config.force_sockets == 0) {
 		if (internal_config.no_hugetlbfs)
 			internal_config.memory = MEMSIZE_IF_NO_HUGE_PAGE;
-		else
-			internal_config.memory = eal_get_hugepage_mem_size();
 	}
 
 	if (internal_config.vmware_tsc_map == 1) {
