@@ -188,7 +188,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		/* no initialization when blacklisted, return without error */
 		if (dev->devargs != NULL &&
 			dev->devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
-			RTE_LOG(DEBUG, EAL, "  Device is blacklisted, not initializing\n");
+			RTE_LOG(INFO, EAL, "  Device is blacklisted, not initializing\n");
 			return 1;
 		}
 
