@@ -34,9 +34,36 @@
 #include "pipeline_passthrough.h"
 #include "pipeline_passthrough_be.h"
 
+static int
+app_pipeline_passthrough_track(struct pipeline_params *p,
+	uint32_t port_in,
+	uint32_t *port_out)
+{
+	struct pipeline_passthrough_params pp;
+	int status;
+
+	/* Check input arguments */
+	if ((p == NULL) ||
+		(port_in >= p->n_ports_in) ||
+		(port_out == NULL))
+		return -1;
+
+	status = pipeline_passthrough_parse_args(&pp, p);
+	if (status)
+		return -1;
+
+	if (pp.lb_hash_enabled)
+		return -1;
+
+	*port_out = port_in / (p->n_ports_in / p->n_ports_out);
+	return 0;
+}
+
 static struct pipeline_fe_ops pipeline_passthrough_fe_ops = {
 	.f_init = NULL,
+	.f_post_init = NULL,
 	.f_free = NULL,
+	.f_track = app_pipeline_passthrough_track,
 	.cmds = NULL,
 };
 

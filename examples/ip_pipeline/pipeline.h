@@ -42,13 +42,22 @@
  * Pipeline type front-end operations
  */
 
-typedef void* (*pipeline_fe_op_init)(struct pipeline_params *params, void *arg);
+typedef void* (*pipeline_fe_op_init)(struct pipeline_params *params,
+	void *arg);
+
+typedef int (*pipeline_fe_op_post_init)(void *pipeline);
 
 typedef int (*pipeline_fe_op_free)(void *pipeline);
 
+typedef int (*pipeline_fe_op_track)(struct pipeline_params *params,
+	uint32_t port_in,
+	uint32_t *port_out);
+
 struct pipeline_fe_ops {
 	pipeline_fe_op_init f_init;
+	pipeline_fe_op_post_init f_post_init;
 	pipeline_fe_op_free f_free;
+	pipeline_fe_op_track f_track;
 	cmdline_parse_ctx_t *cmds;
 };
 

@@ -1196,13 +1196,15 @@ app_init_msgq(struct app_params *app)
 	}
 }
 
-static void app_pipeline_params_get(struct app_params *app,
+void app_pipeline_params_get(struct app_params *app,
 	struct app_pipeline_params *p_in,
 	struct pipeline_params *p_out)
 {
 	uint32_t i;
 
 	snprintf(p_out->name, PIPELINE_NAME_SIZE, "%s", p_in->name);
+
+	snprintf(p_out->type, PIPELINE_TYPE_SIZE, "%s", p_in->type);
 
 	p_out->socket_id = (int) p_in->socket_id;
 
@@ -1499,6 +1501,27 @@ app_init_pipelines(struct app_params *app)
 }
 
 static void
+app_post_init_pipelines(struct app_params *app)
+{
+	uint32_t p_id;
+
+	for (p_id = 0; p_id < app->n_pipelines; p_id++) {
+		struct app_pipeline_params *params =
+			&app->pipeline_params[p_id];
+		struct app_pipeline_data *data = &app->pipeline_data[p_id];
+		int status;
+
+		if (data->ptype->fe_ops->f_post_init == NULL)
+			continue;
+
+		status = data->ptype->fe_ops->f_post_init(data->fe);
+		if (status)
+			rte_panic("Pipeline instance \"%s\" front-end "
+				"post-init error\n", params->name);
+	}
+}
+
+static void
 app_init_threads(struct app_params *app)
 {
 	uint64_t time = rte_get_tsc_cycles();
@@ -1597,6 +1620,13 @@ int app_init(struct app_params *app)
 
 	app_init_pipelines(app);
 	app_init_threads(app);
+
+	return 0;
+}
+
+int app_post_init(struct app_params *app)
+{
+	app_post_init_pipelines(app);
 
 	return 0;
 }

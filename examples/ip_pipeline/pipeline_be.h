@@ -203,6 +203,10 @@ pipeline_port_out_params_get_ops(struct pipeline_port_out_params  *p)
 #define PIPELINE_NAME_SIZE                       64
 #endif
 
+#ifndef PIPELINE_TYPE_SIZE
+#define PIPELINE_TYPE_SIZE                       64
+#endif
+
 #ifndef PIPELINE_MAX_PORT_IN
 #define PIPELINE_MAX_PORT_IN                     64
 #endif
@@ -229,6 +233,7 @@ pipeline_port_out_params_get_ops(struct pipeline_port_out_params  *p)
 
 struct pipeline_params {
 	char name[PIPELINE_NAME_SIZE];
+	char type[PIPELINE_TYPE_SIZE];
 
 	struct pipeline_port_in_params port_in[PIPELINE_MAX_PORT_IN];
 	struct pipeline_port_out_params port_out[PIPELINE_MAX_PORT_OUT];
@@ -261,16 +266,11 @@ typedef int (*pipeline_be_op_run)(void *pipeline);
 
 typedef int (*pipeline_be_op_timer)(void *pipeline);
 
-typedef int (*pipeline_be_op_track)(void *pipeline,
-	uint32_t port_in,
-	uint32_t *port_out);
-
 struct pipeline_be_ops {
 	pipeline_be_op_init f_init;
 	pipeline_be_op_free f_free;
 	pipeline_be_op_run f_run;
 	pipeline_be_op_timer f_timer;
-	pipeline_be_op_track f_track;
 };
 
 /* Pipeline specific config parse error messages */

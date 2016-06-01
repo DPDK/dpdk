@@ -1892,7 +1892,9 @@ static cmdline_parse_ctx_t pipeline_cmds[] = {
 
 static struct pipeline_fe_ops pipeline_flow_classification_fe_ops = {
 	.f_init = app_pipeline_fc_init,
+	.f_post_init = NULL,
 	.f_free = app_pipeline_fc_free,
+	.f_track = app_pipeline_track_default,
 	.cmds = pipeline_cmds,
 };
 

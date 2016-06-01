@@ -382,8 +382,6 @@ app_pipeline_routing_add_route(struct app_params *app,
 		p->n_routes++;
 	}
 
-	print_route(entry);
-
 	/* Message buffer free */
 	app_msg_free(app, rsp);
 	return 0;
@@ -675,8 +673,6 @@ app_pipeline_routing_add_arp_entry(struct app_params *app, uint32_t pipeline_id,
 		TAILQ_INSERT_TAIL(&p->arp_entries, entry, node);
 		p->n_arp_entries++;
 	}
-
-	print_arp_entry(entry);
 
 	/* Message buffer free */
 	app_msg_free(app, rsp);
@@ -1390,7 +1386,9 @@ static cmdline_parse_ctx_t pipeline_cmds[] = {
 
 static struct pipeline_fe_ops pipeline_routing_fe_ops = {
 	.f_init = pipeline_routing_init,
+	.f_post_init = NULL,
 	.f_free = app_pipeline_routing_free,
+	.f_track = app_pipeline_track_default,
 	.cmds = pipeline_cmds,
 };
 

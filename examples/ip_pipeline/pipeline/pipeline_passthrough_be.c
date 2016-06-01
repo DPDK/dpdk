@@ -547,6 +547,18 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 			"dma_src_mask", dma_mask_str);
 	}
 
+	if (p->lb_hash_enabled)
+		PIPELINE_ARG_CHECK((params->n_ports_out > 1),
+			"Parse error in section \"%s\": entry \"lb\" not "
+			"allowed for single output port pipeline",
+			params->name);
+	else
+		PIPELINE_ARG_CHECK(((params->n_ports_in >= params->n_ports_out)
+			&& ((params->n_ports_in % params->n_ports_out) == 0)),
+			"Parse error in section \"%s\": n_ports_in needs to be "
+			"a multiple of n_ports_out (lb mode disabled)",
+			params->name);
+
 	return 0;
 }
 
@@ -579,9 +591,7 @@ pipeline_passthrough_init(struct pipeline_params *params,
 	/* Check input arguments */
 	if ((params == NULL) ||
 		(params->n_ports_in == 0) ||
-		(params->n_ports_out == 0) ||
-		(params->n_ports_in < params->n_ports_out) ||
-		(params->n_ports_in % params->n_ports_out))
+		(params->n_ports_out == 0))
 		return NULL;
 
 	/* Memory allocation */
@@ -702,10 +712,13 @@ pipeline_passthrough_init(struct pipeline_params *params,
 
 	/* Add entries to tables */
 	for (i = 0; i < p->n_ports_in; i++) {
+		uint32_t port_out_id = (p_pt->params.lb_hash_enabled == 0) ?
+			(i / (p->n_ports_in / p->n_ports_out)) :
+			0;
+
 		struct rte_pipeline_table_entry default_entry = {
 			.action = RTE_PIPELINE_ACTION_PORT,
-			{.port_id = p->port_out_id[
-				i / (p->n_ports_in / p->n_ports_out)]},
+			{.port_id = p->port_out_id[port_out_id]},
 		};
 
 		struct rte_pipeline_table_entry *default_entry_ptr;
@@ -780,25 +793,9 @@ pipeline_passthrough_timer(void *pipeline)
 	return 0;
 }
 
-static int
-pipeline_passthrough_track(void *pipeline, uint32_t port_in, uint32_t *port_out)
-{
-	struct pipeline *p = (struct pipeline *) pipeline;
-
-	/* Check input arguments */
-	if ((p == NULL) ||
-		(port_in >= p->n_ports_in) ||
-		(port_out == NULL))
-		return -1;
-
-	*port_out = port_in / p->n_ports_in;
-	return 0;
-}
-
 struct pipeline_be_ops pipeline_passthrough_be_ops = {
 	.f_init = pipeline_passthrough_init,
 	.f_free = pipeline_passthrough_free,
 	.f_run = NULL,
 	.f_timer = pipeline_passthrough_timer,
-	.f_track = pipeline_passthrough_track,
 };

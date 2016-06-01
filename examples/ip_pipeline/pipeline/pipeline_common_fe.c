@@ -47,6 +47,115 @@
 #include "pipeline_common_fe.h"
 #include "parser.h"
 
+struct app_link_params *
+app_pipeline_track_pktq_out_to_link(struct app_params *app,
+	uint32_t pipeline_id,
+	uint32_t pktq_out_id)
+{
+	struct app_pipeline_params *p;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return NULL;
+
+	APP_PARAM_FIND_BY_ID(app->pipeline_params, "PIPELINE", pipeline_id, p);
+	if (p == NULL)
+		return NULL;
+
+	for ( ; ; ) {
+		struct app_pktq_out_params *pktq_out =
+			&p->pktq_out[pktq_out_id];
+
+		switch (pktq_out->type) {
+		case APP_PKTQ_OUT_HWQ:
+		{
+			struct app_pktq_hwq_out_params *hwq_out;
+
+			hwq_out = &app->hwq_out_params[pktq_out->id];
+
+			return app_get_link_for_txq(app, hwq_out);
+		}
+
+		case APP_PKTQ_OUT_SWQ:
+		{
+			struct pipeline_params pp;
+			struct pipeline_type *ptype;
+			struct app_pktq_swq_params *swq;
+			uint32_t pktq_in_id;
+			int status;
+
+			swq = &app->swq_params[pktq_out->id];
+			p = app_swq_get_reader(app, swq, &pktq_in_id);
+			if (p == NULL)
+				return NULL;
+
+			ptype = app_pipeline_type_find(app, p->type);
+			if ((ptype == NULL) || (ptype->fe_ops->f_track == NULL))
+				return NULL;
+
+			app_pipeline_params_get(app, p, &pp);
+			status = ptype->fe_ops->f_track(&pp,
+				pktq_in_id,
+				&pktq_out_id);
+			if (status)
+				return NULL;
+
+			break;
+		}
+
+		case APP_PKTQ_OUT_TM:
+		{
+			struct pipeline_params pp;
+			struct pipeline_type *ptype;
+			struct app_pktq_tm_params *tm;
+			uint32_t pktq_in_id;
+			int status;
+
+			tm = &app->tm_params[pktq_out->id];
+			p = app_tm_get_reader(app, tm, &pktq_in_id);
+			if (p == NULL)
+				return NULL;
+
+			ptype = app_pipeline_type_find(app, p->type);
+			if ((ptype == NULL) || (ptype->fe_ops->f_track == NULL))
+				return NULL;
+
+			app_pipeline_params_get(app, p, &pp);
+			status = ptype->fe_ops->f_track(&pp,
+				pktq_in_id,
+				&pktq_out_id);
+			if (status)
+				return NULL;
+
+			break;
+		}
+
+		case APP_PKTQ_OUT_SINK:
+		default:
+			return NULL;
+		}
+	}
+}
+
+int
+app_pipeline_track_default(struct pipeline_params *p,
+	uint32_t port_in,
+	uint32_t *port_out)
+{
+	/* Check input arguments */
+	if ((p == NULL) ||
+		(port_in >= p->n_ports_in) ||
+		(port_out == NULL))
+		return -1;
+
+	if (p->n_ports_out == 1) {
+		*port_out = 0;
+		return 0;
+	}
+
+	return -1;
+}
+
 int
 app_pipeline_ping(struct app_params *app,
 	uint32_t pipeline_id)

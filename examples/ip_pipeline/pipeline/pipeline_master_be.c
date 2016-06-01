@@ -48,6 +48,7 @@
 struct pipeline_master {
 	struct app_params *app;
 	struct cmdline *cl;
+	int post_init_done;
 	int script_file_done;
 } __rte_cache_aligned;
 
@@ -77,6 +78,7 @@ pipeline_init(__rte_unused struct pipeline_params *params, void *arg)
 		return NULL;
 	}
 
+	p->post_init_done = 0;
 	p->script_file_done = 0;
 	if (app->script_file == NULL)
 		p->script_file_done = 1;
@@ -102,8 +104,17 @@ static int
 pipeline_run(void *pipeline)
 {
 	struct pipeline_master *p = (struct pipeline_master *) pipeline;
+	struct app_params *app = p->app;
 	int status;
 
+	/* Application post-init phase */
+	if (p->post_init_done == 0) {
+		app_post_init(app);
+
+		p->post_init_done = 1;
+	}
+
+	/* Run startup script file */
 	if (p->script_file_done == 0) {
 		struct app_params *app = p->app;
 		int fd = open(app->script_file, O_RDONLY);
@@ -124,6 +135,7 @@ pipeline_run(void *pipeline)
 		p->script_file_done = 1;
 	}
 
+	/* Command Line Interface (CLI) */
 	status = cmdline_poll(p->cl);
 	if (status < 0)
 		rte_panic("CLI poll error (%" PRId32 ")\n", status);
@@ -146,5 +158,4 @@ struct pipeline_be_ops pipeline_master_be_ops = {
 		.f_free = pipeline_free,
 		.f_run = pipeline_run,
 		.f_timer = pipeline_timer,
-		.f_track = NULL,
 };

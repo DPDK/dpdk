@@ -1419,27 +1419,6 @@ pipeline_routing_free(void *pipeline)
 }
 
 static int
-pipeline_routing_track(void *pipeline,
-	__rte_unused uint32_t port_in,
-	uint32_t *port_out)
-{
-	struct pipeline *p = (struct pipeline *) pipeline;
-
-	/* Check input arguments */
-	if ((p == NULL) ||
-		(port_in >= p->n_ports_in) ||
-		(port_out == NULL))
-		return -1;
-
-	if (p->n_ports_in == 1) {
-		*port_out = 0;
-		return 0;
-	}
-
-	return -1;
-}
-
-static int
 pipeline_routing_timer(void *pipeline)
 {
 	struct pipeline *p = (struct pipeline *) pipeline;
@@ -1966,5 +1945,4 @@ struct pipeline_be_ops pipeline_routing_be_ops = {
 	.f_free = pipeline_routing_free,
 	.f_run = NULL,
 	.f_timer = pipeline_routing_timer,
-	.f_track = pipeline_routing_track,
 };
