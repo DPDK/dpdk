@@ -47,6 +47,13 @@ New Features
   * Dropped specific Xen Dom0 code.
   * Dropped specific anonymous mempool code in testpmd.
 
+* **Added mailbox interrupt support for ixgbe VF.**
+
+  When the physical NIC link comes down or up, the PF driver will send a
+  mailbox message to notify each VF. To handle this link up/down event,
+  add mailbox interrupts support to receive the message and allow the app to
+  register a callback for it.
+
 * **Updated the i40e base driver.**
 
   Updated the i40e base driver, which includes support for new devices IDs.

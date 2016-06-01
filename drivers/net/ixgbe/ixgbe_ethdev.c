@@ -150,6 +150,7 @@
 #define IXGBE_VMVIR_TAGA_ETAG_INSERT           0x08000000
 #define IXGBE_VMTIR(_i) (0x00017000 + ((_i) * 4)) /* 64 of these (0-63) */
 #define IXGBE_QDE_STRIP_TAG                    0x00000004
+#define IXGBE_VTEICR_MASK                      0x07
 
 enum ixgbevf_xcast_modes {
 	IXGBEVF_XCAST_MODE_NONE = 0,
@@ -365,6 +366,8 @@ static int ixgbe_timesync_read_time(struct rte_eth_dev *dev,
 				   struct timespec *timestamp);
 static int ixgbe_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
+static void ixgbevf_dev_interrupt_handler(struct rte_intr_handle *handle,
+					  void *param);
 
 static int ixgbe_dev_l2_tunnel_eth_type_conf
 	(struct rte_eth_dev *dev, struct rte_eth_l2_tunnel_conf *l2_tunnel);
@@ -1450,6 +1453,12 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		return -EIO;
 	}
 
+	rte_intr_callback_register(&pci_dev->intr_handle,
+				   ixgbevf_dev_interrupt_handler,
+				   (void *)eth_dev);
+	rte_intr_enable(&pci_dev->intr_handle);
+	ixgbevf_intr_enable(hw);
+
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id, "ixgbe_mac_82599_vf");
@@ -1463,6 +1472,7 @@ static int
 eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct ixgbe_hw *hw;
+	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1483,6 +1493,11 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
+
+	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_callback_unregister(&pci_dev->intr_handle,
+				     ixgbevf_dev_interrupt_handler,
+				     (void *)eth_dev);
 
 	return 0;
 }
@@ -4153,6 +4168,8 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	ixgbevf_intr_disable(hw);
+
 	hw->adapter_stopped = 1;
 	ixgbe_stop_adapter(hw);
 
@@ -4897,6 +4914,9 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 	uint32_t q_idx;
 	uint32_t vector_idx = IXGBE_MISC_VEC_ID;
 
+	/* Configure VF other cause ivar */
+	ixgbevf_set_ivar_map(hw, -1, 1, vector_idx);
+
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd.
 	 */
@@ -4911,9 +4931,6 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 		ixgbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
 		intr_handle->intr_vec[q_idx] = vector_idx;
 	}
-
-	/* Configure VF other cause ivar */
-	ixgbevf_set_ivar_map(hw, -1, 1, vector_idx);
 }
 
 /**
@@ -7231,6 +7248,67 @@ ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	ixgbevf_update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE);
+}
+
+static void ixgbevf_mbx_process(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	u32 in_msg = 0;
+
+	if (ixgbe_read_mbx(hw, &in_msg, 1, 0))
+		return;
+
+	/* PF reset VF event */
+	if (in_msg == IXGBE_PF_CONTROL_MSG)
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET);
+}
+
+static int
+ixgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
+{
+	uint32_t eicr;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	ixgbevf_intr_disable(hw);
+
+	/* read-on-clear nic registers here */
+	eicr = IXGBE_READ_REG(hw, IXGBE_VTEICR);
+	intr->flags = 0;
+
+	/* only one misc vector supported - mailbox */
+	eicr &= IXGBE_VTEICR_MASK;
+	if (eicr == IXGBE_MISC_VEC_ID)
+		intr->flags |= IXGBE_FLAG_MAILBOX;
+
+	return 0;
+}
+
+static int
+ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	if (intr->flags & IXGBE_FLAG_MAILBOX) {
+		ixgbevf_mbx_process(dev);
+		intr->flags &= ~IXGBE_FLAG_MAILBOX;
+	}
+
+	ixgbevf_intr_enable(hw);
+
+	return 0;
+}
+
+static void
+ixgbevf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+			      void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	ixgbevf_dev_interrupt_get_status(dev);
+	ixgbevf_dev_interrupt_action(dev);
 }
 
 static struct rte_driver rte_ixgbe_driver = {
