@@ -419,6 +419,40 @@ app_pipeline_port_in_disable(struct app_params *app,
 }
 
 int
+app_link_set_op(struct app_params *app,
+	uint32_t link_id,
+	uint32_t pipeline_id,
+	app_link_op op,
+	void *arg)
+{
+	struct app_pipeline_params *pp;
+	struct app_link_params *lp;
+	struct app_link_data *ld;
+	uint32_t ppos, lpos;
+
+	/* Check input arguments */
+	if ((app == NULL) ||
+		(op == NULL))
+		return -1;
+
+	APP_PARAM_FIND_BY_ID(app->link_params, "LINK", link_id, lp);
+	if (lp == NULL)
+		return -1;
+	lpos = lp - app->link_params;
+	ld = &app->link_data[lpos];
+
+	APP_PARAM_FIND_BY_ID(app->pipeline_params, "PIPELINE", pipeline_id, pp);
+	if (pp == NULL)
+		return -1;
+	ppos = pp - app->pipeline_params;
+
+	ld->f_link[ppos] = op;
+	ld->arg[ppos] = arg;
+
+	return 0;
+}
+
+int
 app_link_config(struct app_params *app,
 	uint32_t link_id,
 	uint32_t ip,
@@ -489,6 +523,8 @@ app_link_up(struct app_params *app,
 	uint32_t link_id)
 {
 	struct app_link_params *p;
+	struct app_link_data *d;
+	int i;
 
 	/* Check input arguments */
 	if (app == NULL)
@@ -500,6 +536,8 @@ app_link_up(struct app_params *app,
 			link_id);
 		return -1;
 	}
+
+	d = &app->link_data[p - app->link_params];
 
 	/* Check link state */
 	if (p->state) {
@@ -515,6 +553,11 @@ app_link_up(struct app_params *app,
 
 	app_link_up_internal(app, p);
 
+	/* Callbacks */
+	for (i = 0; i < APP_MAX_PIPELINES; i++)
+		if (d->f_link[i])
+			d->f_link[i](app, link_id, 1, d->arg[i]);
+
 	return 0;
 }
 
@@ -523,6 +566,8 @@ app_link_down(struct app_params *app,
 	uint32_t link_id)
 {
 	struct app_link_params *p;
+	struct app_link_data *d;
+	uint32_t i;
 
 	/* Check input arguments */
 	if (app == NULL)
@@ -535,6 +580,8 @@ app_link_down(struct app_params *app,
 		return -1;
 	}
 
+	d = &app->link_data[p - app->link_params];
+
 	/* Check link state */
 	if (p->state == 0) {
 		APP_LOG(app, HIGH, "%s is already DOWN", p->name);
@@ -542,6 +589,11 @@ app_link_down(struct app_params *app,
 	}
 
 	app_link_down_internal(app, p);
+
+	/* Callbacks */
+	for (i = 0; i < APP_MAX_PIPELINES; i++)
+		if (d->f_link[i])
+			d->f_link[i](app, link_id, 0, d->arg[i]);
 
 	return 0;
 }

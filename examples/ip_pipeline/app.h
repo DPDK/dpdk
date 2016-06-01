@@ -241,6 +241,22 @@ struct app_pipeline_params {
 	uint32_t n_args;
 };
 
+struct app_params;
+
+typedef void (*app_link_op)(struct app_params *app,
+	uint32_t link_id,
+	uint32_t up,
+	void *arg);
+
+#ifndef APP_MAX_PIPELINES
+#define APP_MAX_PIPELINES                        64
+#endif
+
+struct app_link_data {
+	app_link_op f_link[APP_MAX_PIPELINES];
+	void *arg[APP_MAX_PIPELINES];
+};
+
 struct app_pipeline_data {
 	void *be;
 	void *fe;
@@ -416,10 +432,6 @@ struct app_eal_params {
 #define APP_MAX_MSGQ                             256
 #endif
 
-#ifndef APP_MAX_PIPELINES
-#define APP_MAX_PIPELINES                        64
-#endif
-
 #ifndef APP_EAL_ARGC
 #define APP_EAL_ARGC                             64
 #endif
@@ -480,6 +492,7 @@ struct app_params {
 	struct cpu_core_map *core_map;
 	uint64_t core_mask;
 	struct rte_mempool *mempool[APP_MAX_MEMPOOLS];
+	struct app_link_data link_data[APP_MAX_LINKS];
 	struct rte_ring *swq[APP_MAX_PKTQ_SWQ];
 	struct rte_sched_port *tm[APP_MAX_PKTQ_TM];
 	struct rte_ring *msgq[APP_MAX_MSGQ];

@@ -930,6 +930,7 @@ pipeline_routing_parse_args(struct pipeline_routing_params *p,
 	struct pipeline_params *params)
 {
 	uint32_t n_routes_present = 0;
+	uint32_t port_local_dest_present = 0;
 	uint32_t encap_present = 0;
 	uint32_t qinq_sched_present = 0;
 	uint32_t mpls_color_mark_present = 0;
@@ -942,6 +943,7 @@ pipeline_routing_parse_args(struct pipeline_routing_params *p,
 
 	/* default values */
 	p->n_routes = PIPELINE_ROUTING_N_ROUTES_DEFAULT;
+	p->port_local_dest = params->n_ports_out - 1;
 	p->encap = PIPELINE_ROUTING_ENCAP_ETHERNET;
 	p->qinq_sched = 0;
 	p->mpls_color_mark = 0;
@@ -967,6 +969,23 @@ pipeline_routing_parse_args(struct pipeline_routing_params *p,
 				(p->n_routes != 0)), params->name,
 				arg_name, arg_value);
 			PIPELINE_PARSE_ERR_OUT_RNG((status != -ERANGE),
+				params->name, arg_name, arg_value);
+
+			continue;
+		}
+		/* port_local_dest */
+		if (strcmp(arg_name, "port_local_dest") == 0) {
+			int status;
+
+			PIPELINE_PARSE_ERR_DUPLICATE(
+				port_local_dest_present == 0, params->name,
+				arg_name);
+			port_local_dest_present = 1;
+
+			status = parser_read_uint32(&p->port_local_dest,
+				arg_value);
+			PIPELINE_PARSE_ERR_INV_VAL(((status == 0) &&
+				(p->port_local_dest < params->n_ports_out)),
 				params->name, arg_name, arg_value);
 
 			continue;

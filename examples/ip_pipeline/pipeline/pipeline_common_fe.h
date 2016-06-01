@@ -225,6 +225,13 @@ app_pipeline_port_in_disable(struct app_params *app,
 	uint32_t port_id);
 
 int
+app_link_set_op(struct app_params *app,
+	uint32_t link_id,
+	uint32_t pipeline_id,
+	app_link_op op,
+	void *arg);
+
+int
 app_link_config(struct app_params *app,
 	uint32_t link_id,
 	uint32_t ip,

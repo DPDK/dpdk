@@ -64,6 +64,9 @@ struct pipeline_routing {
 	uint32_t n_ports_out;
 	struct pipeline_routing_params rp;
 
+	/* Links */
+	uint32_t link_id[PIPELINE_MAX_PORT_OUT];
+
 	/* Routes */
 	TAILQ_HEAD(, app_pipeline_routing_route) routes;
 	uint32_t n_routes;
@@ -80,6 +83,143 @@ struct pipeline_routing {
 	uint32_t default_arp_entry_port_id;
 	void *default_arp_entry_ptr;
 };
+
+static int
+app_pipeline_routing_find_link(struct pipeline_routing *p,
+	uint32_t link_id,
+	uint32_t *port_id)
+{
+	uint32_t i;
+
+	for (i = 0; i < p->n_ports_out; i++)
+		if (p->link_id[i] == link_id) {
+			*port_id = i;
+			return 0;
+		}
+
+	return -1;
+}
+
+static void
+app_pipeline_routing_link_op(__rte_unused struct app_params *app,
+	uint32_t link_id,
+	uint32_t up,
+	void *arg)
+{
+	struct pipeline_routing_route_key key0, key1;
+	struct pipeline_routing *p = arg;
+	struct app_link_params *lp;
+	uint32_t port_id, netmask;
+	int status;
+
+	if (app == NULL)
+		return;
+
+	APP_PARAM_FIND_BY_ID(app->link_params, "LINK", link_id, lp);
+	if (lp == NULL)
+		return;
+
+	status = app_pipeline_routing_find_link(p,
+		link_id,
+		&port_id);
+	if (status)
+		return;
+
+	netmask = (~0U) << (32 - lp->depth);
+
+	/* Local network (directly attached network) */
+	key0.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key0.key.ipv4.ip = lp->ip & netmask;
+	key0.key.ipv4.depth = lp->depth;
+
+	/* Local termination */
+	key1.type = PIPELINE_ROUTING_ROUTE_IPV4;
+	key1.key.ipv4.ip = lp->ip;
+	key1.key.ipv4.depth = 32;
+
+	if (up) {
+		struct pipeline_routing_route_data data0, data1;
+
+		/* Local network (directly attached network) */
+		memset(&data0, 0, sizeof(data0));
+		data0.flags = PIPELINE_ROUTING_ROUTE_LOCAL |
+			PIPELINE_ROUTING_ROUTE_ARP;
+		if (p->rp.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_QINQ)
+			data0.flags |= PIPELINE_ROUTING_ROUTE_QINQ;
+		if (p->rp.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_MPLS) {
+			data0.flags |= PIPELINE_ROUTING_ROUTE_MPLS;
+			data0.l2.mpls.n_labels = 1;
+		}
+		data0.port_id = port_id;
+
+		if (p->rp.n_arp_entries)
+			app_pipeline_routing_add_route(app,
+				p->pipeline_id,
+				&key0,
+				&data0);
+
+		/* Local termination */
+		memset(&data1, 0, sizeof(data1));
+		data1.flags = PIPELINE_ROUTING_ROUTE_LOCAL |
+			PIPELINE_ROUTING_ROUTE_ARP;
+		if (p->rp.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_QINQ)
+			data1.flags |= PIPELINE_ROUTING_ROUTE_QINQ;
+		if (p->rp.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_MPLS) {
+			data1.flags |= PIPELINE_ROUTING_ROUTE_MPLS;
+			data1.l2.mpls.n_labels = 1;
+		}
+		data1.port_id = p->rp.port_local_dest;
+
+		app_pipeline_routing_add_route(app,
+			p->pipeline_id,
+			&key1,
+			&data1);
+	} else {
+		/* Local network (directly attached network) */
+		if (p->rp.n_arp_entries)
+			app_pipeline_routing_delete_route(app,
+				p->pipeline_id,
+				&key0);
+
+		/* Local termination */
+		app_pipeline_routing_delete_route(app,
+			p->pipeline_id,
+			&key1);
+	}
+}
+
+static int
+app_pipeline_routing_set_link_op(
+	struct app_params *app,
+	struct pipeline_routing *p)
+{
+	uint32_t port_id;
+
+	for (port_id = 0; port_id < p->n_ports_out; port_id++) {
+		struct app_link_params *link;
+		uint32_t link_id;
+		int status;
+
+		link = app_pipeline_track_pktq_out_to_link(app,
+			p->pipeline_id,
+			port_id);
+		if (link == NULL)
+			continue;
+
+		link_id = link - app->link_params;
+		p->link_id[port_id] = link_id;
+
+		status = app_link_set_op(app,
+			link_id,
+			p->pipeline_id,
+			app_pipeline_routing_link_op,
+			(void *) p);
+		if (status)
+			return status;
+	}
+
+	return 0;
+}
 
 static void *
 app_pipeline_routing_init(struct pipeline_params *params,
@@ -120,6 +260,8 @@ app_pipeline_routing_init(struct pipeline_params *params,
 
 	TAILQ_INIT(&p->arp_entries);
 	p->n_arp_entries = 0;
+
+	app_pipeline_routing_set_link_op(app, p);
 
 	return p;
 }
@@ -223,7 +365,9 @@ print_route(const struct app_pipeline_routing_route *route)
 			key->depth,
 			route->data.port_id);
 
-		if (route->data.flags & PIPELINE_ROUTING_ROUTE_ARP)
+		if (route->data.flags & PIPELINE_ROUTING_ROUTE_LOCAL)
+			printf(", Local");
+		else if (route->data.flags & PIPELINE_ROUTING_ROUTE_ARP)
 			printf(
 				", Next Hop IP = %" PRIu32 ".%" PRIu32
 				".%" PRIu32 ".%" PRIu32,

@@ -54,6 +54,7 @@ enum pipeline_routing_encap {
 struct pipeline_routing_params {
 	/* routing */
 	uint32_t n_routes;
+	uint32_t port_local_dest;
 
 	/* routing packet encapsulation */
 	enum pipeline_routing_encap encap;
