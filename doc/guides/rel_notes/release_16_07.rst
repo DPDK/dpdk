@@ -61,6 +61,7 @@ New Features
 
   The following features have been added to ip_pipeline application:
 
+  * Configure the MAC address in the routing pipeline.
   * Enable RSS per network interface through the configuration file.
   * Streamline the CLI code.
 

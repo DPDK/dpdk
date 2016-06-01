@@ -160,6 +160,7 @@ enum pipeline_routing_msg_req_type {
 	PIPELINE_ROUTING_MSG_REQ_ARP_DEL,
 	PIPELINE_ROUTING_MSG_REQ_ARP_ADD_DEFAULT,
 	PIPELINE_ROUTING_MSG_REQ_ARP_DEL_DEFAULT,
+	PIPELINE_ROUTING_MSG_REQ_SET_MACADDR,
 	PIPELINE_ROUTING_MSG_REQS
 };
 
@@ -288,6 +289,20 @@ struct pipeline_routing_arp_delete_default_msg_req {
 };
 
 struct pipeline_routing_arp_delete_default_msg_rsp {
+	int status;
+};
+
+/*
+ * MSG SET MACADDR
+ */
+struct pipeline_routing_set_macaddr_msg_req {
+	enum pipeline_msg_req_type type;
+	enum pipeline_routing_msg_req_type subtype;
+
+	uint64_t macaddr[PIPELINE_MAX_PORT_OUT];
+};
+
+struct pipeline_routing_set_macaddr_msg_rsp {
 	int status;
 };
 

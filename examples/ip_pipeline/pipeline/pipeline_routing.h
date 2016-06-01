@@ -86,6 +86,13 @@ app_pipeline_routing_delete_default_arp_entry(struct app_params *app,
 	uint32_t pipeline_id);
 
 /*
+ * SETTINGS
+ */
+int
+app_pipeline_routing_set_macaddr(struct app_params *app,
+	uint32_t pipeline_id);
+
+/*
  * Pipeline type
  */
 extern struct pipeline_type pipeline_routing;

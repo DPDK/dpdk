@@ -65,7 +65,9 @@
 	((((uint64_t) (pipe)) & 0xFFFFFFFF) << 32))
 
 
-#define MAC_SRC_DEFAULT 0x112233445566ULL
+/* Network Byte Order (NBO) */
+#define SLAB_NBO_MACADDRSRC_ETHERTYPE(macaddr, ethertype)	\
+	(((uint64_t) macaddr) | (((uint64_t) rte_cpu_to_be_16(ethertype)) << 48))
 
 #ifndef PIPELINE_ROUTING_LPM_TABLE_NUMBER_TABLE8s
 #define PIPELINE_ROUTING_LPM_TABLE_NUMBER_TABLE8s 256
@@ -75,6 +77,7 @@ struct pipeline_routing {
 	struct pipeline p;
 	struct pipeline_routing_params params;
 	pipeline_msg_req_handler custom_handlers[PIPELINE_ROUTING_MSG_REQS];
+	uint64_t macaddr[PIPELINE_MAX_PORT_OUT];
 } __rte_cache_aligned;
 
 /*
@@ -132,6 +135,10 @@ static void *
 pipeline_routing_msg_req_arp_del_default_handler(struct pipeline *p,
 	void *msg);
 
+static void *
+pipeline_routing_msg_req_set_macaddr_handler(struct pipeline *p,
+	void *msg);
+
 static pipeline_msg_req_handler custom_handlers[] = {
 	[PIPELINE_ROUTING_MSG_REQ_ROUTE_ADD] =
 		pipeline_routing_msg_req_route_add_handler,
@@ -149,6 +156,8 @@ static pipeline_msg_req_handler custom_handlers[] = {
 		pipeline_routing_msg_req_arp_add_default_handler,
 	[PIPELINE_ROUTING_MSG_REQ_ARP_DEL_DEFAULT] =
 		pipeline_routing_msg_req_arp_del_default_handler,
+	[PIPELINE_ROUTING_MSG_REQ_SET_MACADDR] =
+		pipeline_routing_msg_req_set_macaddr_handler,
 };
 
 /*
@@ -1513,7 +1522,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 	/* Ether - ARP off */
 	if ((p_rt->params.encap == PIPELINE_ROUTING_ENCAP_ETHERNET) &&
 		(p_rt->params.n_arp_entries == 0)) {
-		uint64_t macaddr_src = MAC_SRC_DEFAULT;
+		uint64_t macaddr_src = p_rt->macaddr[req->data.port_id];
 		uint64_t macaddr_dst;
 		uint64_t ethertype = ETHER_TYPE_IPv4;
 
@@ -1521,7 +1530,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 		macaddr_dst = rte_bswap64(macaddr_dst << 16);
 
 		entry_arp0.slab[0] =
-			rte_bswap64((macaddr_src << 16) | ethertype);
+			SLAB_NBO_MACADDRSRC_ETHERTYPE(macaddr_src, ethertype);
 		entry_arp0.slab_offset[0] = p_rt->params.ip_hdr_offset - 8;
 
 		entry_arp0.slab[1] = rte_bswap64(macaddr_dst);
@@ -1535,11 +1544,11 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 	/* Ether - ARP on */
 	if ((p_rt->params.encap == PIPELINE_ROUTING_ENCAP_ETHERNET) &&
 		p_rt->params.n_arp_entries) {
-		uint64_t macaddr_src = MAC_SRC_DEFAULT;
+		uint64_t macaddr_src = p_rt->macaddr[req->data.port_id];
 		uint64_t ethertype = ETHER_TYPE_IPv4;
 
-		entry_arp1.slab[0] = rte_bswap64((macaddr_src << 16) |
-			ethertype);
+		entry_arp1.slab[0] =
+			SLAB_NBO_MACADDRSRC_ETHERTYPE(macaddr_src, ethertype);
 		entry_arp1.slab_offset[0] = p_rt->params.ip_hdr_offset - 8;
 
 		entry_arp1.data_offset = entry_arp1.slab_offset[0] - 6
@@ -1550,7 +1559,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 	/* Ether QinQ - ARP off */
 	if ((p_rt->params.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_QINQ) &&
 		(p_rt->params.n_arp_entries == 0)) {
-		uint64_t macaddr_src = MAC_SRC_DEFAULT;
+		uint64_t macaddr_src = p_rt->macaddr[req->data.port_id];
 		uint64_t macaddr_dst;
 		uint64_t ethertype_ipv4 = ETHER_TYPE_IPv4;
 		uint64_t ethertype_vlan = 0x8100;
@@ -1567,8 +1576,8 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 			ethertype_ipv4);
 		entry_arp0.slab_offset[0] = p_rt->params.ip_hdr_offset - 8;
 
-		entry_arp0.slab[1] = rte_bswap64((macaddr_src << 16) |
-			ethertype_qinq);
+		entry_arp0.slab[1] =
+			SLAB_NBO_MACADDRSRC_ETHERTYPE(macaddr_src, ethertype_qinq);
 		entry_arp0.slab_offset[1] = p_rt->params.ip_hdr_offset - 2 * 8;
 
 		entry_arp0.slab[2] = rte_bswap64(macaddr_dst);
@@ -1582,7 +1591,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 	/* Ether QinQ - ARP on */
 	if ((p_rt->params.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_QINQ) &&
 		p_rt->params.n_arp_entries) {
-		uint64_t macaddr_src = MAC_SRC_DEFAULT;
+		uint64_t macaddr_src = p_rt->macaddr[req->data.port_id];
 		uint64_t ethertype_ipv4 = ETHER_TYPE_IPv4;
 		uint64_t ethertype_vlan = 0x8100;
 		uint64_t ethertype_qinq = 0x9100;
@@ -1595,8 +1604,8 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 			ethertype_ipv4);
 		entry_arp1.slab_offset[0] = p_rt->params.ip_hdr_offset - 8;
 
-		entry_arp1.slab[1] = rte_bswap64((macaddr_src << 16) |
-			ethertype_qinq);
+		entry_arp1.slab[1] =
+			SLAB_NBO_MACADDRSRC_ETHERTYPE(macaddr_src, ethertype_qinq);
 		entry_arp1.slab_offset[1] = p_rt->params.ip_hdr_offset - 2 * 8;
 
 		entry_arp1.data_offset = entry_arp1.slab_offset[1] - 6
@@ -1607,7 +1616,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 	/* Ether MPLS - ARP off */
 	if ((p_rt->params.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_MPLS) &&
 		(p_rt->params.n_arp_entries == 0)) {
-		uint64_t macaddr_src = MAC_SRC_DEFAULT;
+		uint64_t macaddr_src = p_rt->macaddr[req->data.port_id];
 		uint64_t macaddr_dst;
 		uint64_t ethertype_mpls = 0x8847;
 
@@ -1676,8 +1685,8 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 			return rsp;
 		}
 
-		entry_arp0.slab[2] = rte_bswap64((macaddr_src << 16) |
-			ethertype_mpls);
+		entry_arp0.slab[2] =
+			SLAB_NBO_MACADDRSRC_ETHERTYPE(macaddr_src, ethertype_mpls);
 		entry_arp0.slab_offset[2] = p_rt->params.ip_hdr_offset -
 			(n_labels * 4 + 8);
 
@@ -1693,7 +1702,7 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 	/* Ether MPLS - ARP on */
 	if ((p_rt->params.encap == PIPELINE_ROUTING_ENCAP_ETHERNET_MPLS) &&
 		p_rt->params.n_arp_entries) {
-		uint64_t macaddr_src = MAC_SRC_DEFAULT;
+		uint64_t macaddr_src = p_rt->macaddr[req->data.port_id];
 		uint64_t ethertype_mpls = 0x8847;
 
 		uint64_t label0 = req->data.l2.mpls.labels[0];
@@ -1758,8 +1767,8 @@ pipeline_routing_msg_req_route_add_handler(struct pipeline *p, void *msg)
 			return rsp;
 		}
 
-		entry_arp1.slab[2] = rte_bswap64((macaddr_src << 16) |
-			ethertype_mpls);
+		entry_arp1.slab[2] =
+			SLAB_NBO_MACADDRSRC_ETHERTYPE(macaddr_src, ethertype_mpls);
 		entry_arp1.slab_offset[2] = p_rt->params.ip_hdr_offset -
 			(n_labels * 4 + 8);
 
@@ -1936,6 +1945,22 @@ pipeline_routing_msg_req_arp_del_default_handler(struct pipeline *p, void *msg)
 	rsp->status = rte_pipeline_table_default_entry_delete(p->p,
 		p->table_id[1],
 		NULL);
+
+	return rsp;
+}
+
+void *
+pipeline_routing_msg_req_set_macaddr_handler(struct pipeline *p, void *msg)
+{
+	struct pipeline_routing *p_rt = (struct pipeline_routing *) p;
+	struct pipeline_routing_set_macaddr_msg_req *req = msg;
+	struct pipeline_routing_set_macaddr_msg_rsp *rsp = msg;
+	uint32_t port_id;
+
+	for (port_id = 0; port_id < p->n_ports_out; port_id++)
+		p_rt->macaddr[port_id] = req->macaddr[port_id];
+
+	rsp->status = 0;
 
 	return rsp;
 }

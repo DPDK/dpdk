@@ -58,8 +58,11 @@ struct app_pipeline_routing_arp_entry {
 
 struct pipeline_routing {
 	/* Parameters */
+	struct app_params *app;
+	uint32_t pipeline_id;
 	uint32_t n_ports_in;
 	uint32_t n_ports_out;
+	struct pipeline_routing_params rp;
 
 	/* Routes */
 	TAILQ_HEAD(, app_pipeline_routing_route) routes;
@@ -79,17 +82,21 @@ struct pipeline_routing {
 };
 
 static void *
-pipeline_routing_init(struct pipeline_params *params,
-	__rte_unused void *arg)
+app_pipeline_routing_init(struct pipeline_params *params,
+	void *arg)
 {
+	struct app_params *app = (struct app_params *) arg;
 	struct pipeline_routing *p;
-	uint32_t size;
+	uint32_t pipeline_id, size;
+	int status;
 
 	/* Check input arguments */
 	if ((params == NULL) ||
 		(params->n_ports_in == 0) ||
 		(params->n_ports_out == 0))
 		return NULL;
+
+	APP_PARAM_GET_ID(params, "PIPELINE", pipeline_id);
 
 	/* Memory allocation */
 	size = RTE_CACHE_LINE_ROUNDUP(sizeof(struct pipeline_routing));
@@ -98,9 +105,16 @@ pipeline_routing_init(struct pipeline_params *params,
 		return NULL;
 
 	/* Initialization */
+	p->app = app;
+	p->pipeline_id = pipeline_id;
 	p->n_ports_in = params->n_ports_in;
 	p->n_ports_out = params->n_ports_out;
 
+	status = pipeline_routing_parse_args(&p->rp, params);
+	if (status) {
+		rte_free(p);
+		return NULL;
+	}
 	TAILQ_INIT(&p->routes);
 	p->n_routes = 0;
 
@@ -108,6 +122,18 @@ pipeline_routing_init(struct pipeline_params *params,
 	p->n_arp_entries = 0;
 
 	return p;
+}
+
+static int
+app_pipeline_routing_post_init(void *pipeline)
+{
+	struct pipeline_routing *p = pipeline;
+
+	/* Check input arguments */
+	if (p == NULL)
+		return -1;
+
+	return app_pipeline_routing_set_macaddr(p->app, p->pipeline_id);
 }
 
 static int
@@ -848,6 +874,59 @@ app_pipeline_routing_delete_default_arp_entry(struct app_params *app,
 	return 0;
 }
 
+int
+app_pipeline_routing_set_macaddr(struct app_params *app,
+	uint32_t pipeline_id)
+{
+	struct app_pipeline_params *p;
+	struct pipeline_routing_set_macaddr_msg_req *req;
+	struct pipeline_routing_set_macaddr_msg_rsp *rsp;
+	uint32_t port_id;
+
+	/* Check input arguments */
+	if (app == NULL)
+		return -EINVAL;
+
+	APP_PARAM_FIND_BY_ID(app->pipeline_params, "PIPELINE", pipeline_id, p);
+	if (p == NULL)
+		return -EINVAL;
+
+	/* Allocate and write request */
+	req = app_msg_alloc(app);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->type = PIPELINE_MSG_REQ_CUSTOM;
+	req->subtype = PIPELINE_ROUTING_MSG_REQ_SET_MACADDR;
+
+	memset(req->macaddr, 0, sizeof(req->macaddr));
+	for (port_id = 0; port_id < p->n_pktq_out; port_id++) {
+		struct app_link_params *link;
+
+		link = app_pipeline_track_pktq_out_to_link(app,
+			pipeline_id,
+			port_id);
+		if (link)
+			req->macaddr[port_id] = link->mac_addr;
+	}
+
+	/* Send request and wait for response */
+	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
+	if (rsp == NULL)
+		return -ETIMEDOUT;
+
+	/* Read response and write entry */
+	if (rsp->status) {
+		app_msg_free(app, rsp);
+		return rsp->status;
+	}
+
+	/* Free response */
+	app_msg_free(app, rsp);
+
+	return 0;
+}
+
 /*
  * route
  *
@@ -1385,8 +1464,8 @@ static cmdline_parse_ctx_t pipeline_cmds[] = {
 };
 
 static struct pipeline_fe_ops pipeline_routing_fe_ops = {
-	.f_init = pipeline_routing_init,
-	.f_post_init = NULL,
+	.f_init = app_pipeline_routing_init,
+	.f_post_init = app_pipeline_routing_post_init,
 	.f_free = app_pipeline_routing_free,
 	.f_track = app_pipeline_track_default,
 	.cmds = pipeline_cmds,
