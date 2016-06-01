@@ -86,6 +86,12 @@
 #define E1000_INCVALUE_82576         (16 << IGB_82576_TSYNC_SHIFT)
 #define E1000_TSAUXC_DISABLE_SYSTIME 0x80000000
 
+#define E1000_VTIVAR_MISC                0x01740
+#define E1000_VTIVAR_MISC_MASK           0xFF
+#define E1000_VTIVAR_VALID               0x80
+#define E1000_VTIVAR_MISC_MAILBOX        0
+#define E1000_VTIVAR_MISC_INTR_MASK      0x3
+
 static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
@@ -265,6 +271,9 @@ static void eth_igb_assign_msix_vector(struct e1000_hw *hw, int8_t direction,
 static void eth_igb_write_ivar(struct e1000_hw *hw, uint8_t msix_vector,
 			       uint8_t index, uint8_t offset);
 static void eth_igb_configure_msix_intr(struct rte_eth_dev *dev);
+static void eth_igbvf_interrupt_handler(struct rte_intr_handle *handle,
+					void *param);
+static void igbvf_mbx_process(struct rte_eth_dev *dev);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -560,6 +569,41 @@ igb_intr_disable(struct e1000_hw *hw)
 {
 	E1000_WRITE_REG(hw, E1000_IMC, ~0);
 	E1000_WRITE_FLUSH(hw);
+}
+
+static inline void
+igbvf_intr_enable(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* only for mailbox */
+	E1000_WRITE_REG(hw, E1000_EIAM, 1 << E1000_VTIVAR_MISC_MAILBOX);
+	E1000_WRITE_REG(hw, E1000_EIAC, 1 << E1000_VTIVAR_MISC_MAILBOX);
+	E1000_WRITE_REG(hw, E1000_EIMS, 1 << E1000_VTIVAR_MISC_MAILBOX);
+	E1000_WRITE_FLUSH(hw);
+}
+
+/* only for mailbox now. If RX/TX needed, should extend this function.  */
+static void
+igbvf_set_ivar_map(struct e1000_hw *hw, uint8_t msix_vector)
+{
+	uint32_t tmp = 0;
+
+	/* mailbox */
+	tmp |= (msix_vector & E1000_VTIVAR_MISC_INTR_MASK);
+	tmp |= E1000_VTIVAR_VALID;
+	E1000_WRITE_REG(hw, E1000_VTIVAR_MISC, tmp);
+}
+
+static void
+eth_igbvf_configure_msix_intr(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Configure VF other cause ivar */
+	igbvf_set_ivar_map(hw, E1000_VTIVAR_MISC_MAILBOX);
 }
 
 static inline int32_t
@@ -950,6 +994,10 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id, "igb_mac_82576_vf");
 
+	rte_intr_callback_register(&pci_dev->intr_handle,
+				   eth_igbvf_interrupt_handler,
+				   (void *)eth_dev);
+
 	return 0;
 }
 
@@ -958,6 +1006,7 @@ eth_igbvf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
+	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -973,6 +1022,12 @@ eth_igbvf_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_callback_unregister(&pci_dev->intr_handle,
+				     eth_igbvf_interrupt_handler,
+				     (void *)eth_dev);
 
 	return 0;
 }
@@ -2606,6 +2661,69 @@ eth_igb_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 }
 
 static int
+eth_igbvf_interrupt_get_status(struct rte_eth_dev *dev)
+{
+	uint32_t eicr;
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_interrupt *intr =
+		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	igbvf_intr_disable(hw);
+
+	/* read-on-clear nic registers here */
+	eicr = E1000_READ_REG(hw, E1000_EICR);
+	intr->flags = 0;
+
+	if (eicr == E1000_VTIVAR_MISC_MAILBOX)
+		intr->flags |= E1000_FLAG_MAILBOX;
+
+	return 0;
+}
+
+void igbvf_mbx_process(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_mbx_info *mbx = &hw->mbx;
+	u32 in_msg = 0;
+
+	if (mbx->ops.read(hw, &in_msg, 1, 0))
+		return;
+
+	/* PF reset VF event */
+	if (in_msg == E1000_PF_CONTROL_MSG)
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET);
+}
+
+static int
+eth_igbvf_interrupt_action(struct rte_eth_dev *dev)
+{
+	struct e1000_interrupt *intr =
+		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	if (intr->flags & E1000_FLAG_MAILBOX) {
+		igbvf_mbx_process(dev);
+		intr->flags &= ~E1000_FLAG_MAILBOX;
+	}
+
+	igbvf_intr_enable(dev);
+	rte_intr_enable(&dev->pci_dev->intr_handle);
+
+	return 0;
+}
+
+static void
+eth_igbvf_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+			    void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	eth_igbvf_interrupt_get_status(dev);
+	eth_igbvf_interrupt_action(dev);
+}
+
+static int
 eth_igb_led_on(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw;
@@ -2876,6 +2994,8 @@ igbvf_dev_start(struct rte_eth_dev *dev)
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(dev->data->dev_private);
 	int ret;
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	uint32_t intr_vector = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2895,12 +3015,41 @@ igbvf_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+	/* check and configure queue intr-vector mapping */
+	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		intr_vector = dev->data->nb_rx_queues;
+		ret = rte_intr_efd_enable(intr_handle, intr_vector);
+		if (ret)
+			return ret;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (!intr_handle->intr_vec) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec\n", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+
+	eth_igbvf_configure_msix_intr(dev);
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(intr_handle);
+
+	/* resume enabled intr since hw reset */
+	igbvf_intr_enable(dev);
+
 	return 0;
 }
 
 static void
 igbvf_dev_stop(struct rte_eth_dev *dev)
 {
+	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+
 	PMD_INIT_FUNC_TRACE();
 
 	igbvf_stop_adapter(dev);
@@ -2912,6 +3061,16 @@ igbvf_dev_stop(struct rte_eth_dev *dev)
 	igbvf_set_vfta_all(dev,0);
 
 	igb_dev_clear_queues(dev);
+
+	/* disable intr eventfd mapping */
+	rte_intr_disable(intr_handle);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
 }
 
 static void

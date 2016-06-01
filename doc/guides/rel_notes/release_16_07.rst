@@ -47,7 +47,7 @@ New Features
   * Dropped specific Xen Dom0 code.
   * Dropped specific anonymous mempool code in testpmd.
 
-* **Added mailbox interrupt support for ixgbe VF.**
+* **Added mailbox interrupt support for ixgbe and igb VFs.**
 
   When the physical NIC link comes down or up, the PF driver will send a
   mailbox message to notify each VF. To handle this link up/down event,
