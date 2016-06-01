@@ -956,7 +956,7 @@ rte_cryptodev_sym_session_init(struct rte_mempool *mp,
 	sess->mp = mp;
 
 	if (dev->dev_ops->session_initialize)
-		(*dev->dev_ops->session_initialize)(mp, sess->_private);
+		(*dev->dev_ops->session_initialize)(mp, sess);
 }
 
 static int

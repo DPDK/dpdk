@@ -808,12 +808,15 @@ static inline uint32_t adf_modulo(uint32_t data, uint32_t shift)
 	return data - mult;
 }
 
-void qat_crypto_sym_session_init(struct rte_mempool *mp, void *priv_sess)
+void qat_crypto_sym_session_init(struct rte_mempool *mp, void *sym_sess)
 {
-	struct qat_session *s = priv_sess;
+	struct rte_cryptodev_sym_session *sess = sym_sess;
+	struct qat_session *s = (void *)sess->_private;
 
 	PMD_INIT_FUNC_TRACE();
-	s->cd_paddr = rte_mempool_virt2phy(mp, &s->cd);
+	s->cd_paddr = rte_mempool_virt2phy(mp, sess) +
+		offsetof(struct qat_session, cd) +
+		offsetof(struct rte_cryptodev_sym_session, _private);
 }
 
 int qat_dev_config(__rte_unused struct rte_cryptodev *dev)
