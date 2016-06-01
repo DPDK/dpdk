@@ -52,11 +52,11 @@
 #define APP_LINK_PCI_BDF_SIZE                    16
 
 #ifndef APP_LINK_MAX_HWQ_IN
-#define APP_LINK_MAX_HWQ_IN                      64
+#define APP_LINK_MAX_HWQ_IN                      128
 #endif
 
 #ifndef APP_LINK_MAX_HWQ_OUT
-#define APP_LINK_MAX_HWQ_OUT                     64
+#define APP_LINK_MAX_HWQ_OUT                     128
 #endif
 
 struct app_mempool_params {
@@ -261,7 +261,7 @@ struct app_thread_pipeline_data {
 };
 
 #ifndef APP_MAX_THREAD_PIPELINES
-#define APP_MAX_THREAD_PIPELINES                 16
+#define APP_MAX_THREAD_PIPELINES                 64
 #endif
 
 #ifndef APP_THREAD_TIMER_PERIOD
@@ -407,15 +407,15 @@ struct app_eal_params {
 #define APP_MAX_PKTQ_TM                          APP_MAX_LINKS
 
 #ifndef APP_MAX_PKTQ_SOURCE
-#define APP_MAX_PKTQ_SOURCE                      16
+#define APP_MAX_PKTQ_SOURCE                      64
 #endif
 
 #ifndef APP_MAX_PKTQ_SINK
-#define APP_MAX_PKTQ_SINK                        16
+#define APP_MAX_PKTQ_SINK                        64
 #endif
 
 #ifndef APP_MAX_MSGQ
-#define APP_MAX_MSGQ                             64
+#define APP_MAX_MSGQ                             256
 #endif
 
 #ifndef APP_MAX_PIPELINES
