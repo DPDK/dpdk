@@ -79,6 +79,8 @@ The following is a simple guide to using the IVSHMEM Library API:
     Only data structures fully residing in DPDK hugepage memory work correctly.
     Supported data structures created by malloc(), mmap()
     or otherwise using non-DPDK memory cause undefined behavior and even a segmentation fault.
+    Specifically, because the memzone field in an rte_ring refers to a memzone structure residing in local memory,
+    accessing the memzone field in a shared rte_ring will cause an immediate segmentation fault.
 
 IVSHMEM Environment Configuration
 ---------------------------------
