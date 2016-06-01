@@ -40,6 +40,7 @@
 #include <rte_ethdev.h>
 
 struct virtqueue;
+struct virtnet_ctl;
 
 /* VirtIO PCI vendor/device ID. */
 #define VIRTIO_PCI_VENDORID     0x1AF4
@@ -242,7 +243,7 @@ struct virtio_pci_ops {
 struct virtio_net_config;
 
 struct virtio_hw {
-	struct virtqueue *cvq;
+	struct virtnet_ctl *cvq;
 	struct rte_pci_ioport io;
 	uint64_t    guest_features;
 	uint32_t    max_tx_queues;

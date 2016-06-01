@@ -153,23 +153,29 @@ struct virtio_pmd_ctrl {
 	uint8_t data[VIRTIO_MAX_CTRL_DATA];
 };
 
+struct vq_desc_extra {
+	void *cookie;
+	uint16_t ndescs;
+};
+
 struct virtqueue {
-	struct virtio_hw         *hw;     /**< virtio_hw structure pointer. */
-	const struct rte_memzone *mz;     /**< mem zone to populate RX ring. */
-	const struct rte_memzone *virtio_net_hdr_mz; /**< memzone to populate hdr. */
-	struct rte_mempool       *mpool;  /**< mempool for mbuf allocation */
-	uint16_t    queue_id;             /**< DPDK queue index. */
-	uint8_t     port_id;              /**< Device port identifier. */
-	uint16_t    vq_queue_index;       /**< PCI queue index */
+	struct virtio_hw  *hw; /**< virtio_hw structure pointer. */
+	struct vring vq_ring;  /**< vring keeping desc, used and avail */
+	/**
+	 * Last consumed descriptor in the used table,
+	 * trails vq_ring.used->idx.
+	 */
+	uint16_t vq_used_cons_idx;
+	uint16_t vq_nentries;  /**< vring desc numbers */
+	uint16_t vq_free_cnt;  /**< num of desc available */
+	uint16_t vq_avail_idx; /**< sync until needed */
+	uint16_t vq_free_thresh; /**< free threshold */
 
-	void        *vq_ring_virt_mem;    /**< linear address of vring*/
+	void *vq_ring_virt_mem;  /**< linear address of vring*/
 	unsigned int vq_ring_size;
-	phys_addr_t vq_ring_mem;          /**< physical address of vring */
 
-	struct vring vq_ring;    /**< vring keeping desc, used and avail */
-	uint16_t    vq_free_cnt; /**< num of desc available */
-	uint16_t    vq_nentries; /**< vring desc numbers */
-	uint16_t    vq_free_thresh; /**< free threshold */
+	phys_addr_t vq_ring_mem; /**< physical address of vring */
+
 	/**
 	 * Head of the free chain in the descriptor table. If
 	 * there are no free descriptors, this will be set to
@@ -177,36 +183,11 @@ struct virtqueue {
 	 */
 	uint16_t  vq_desc_head_idx;
 	uint16_t  vq_desc_tail_idx;
-	/**
-	 * Last consumed descriptor in the used table,
-	 * trails vq_ring.used->idx.
-	 */
-	uint16_t vq_used_cons_idx;
-	uint16_t vq_avail_idx;
-	uint64_t mbuf_initializer; /**< value to init mbufs. */
-	phys_addr_t virtio_net_hdr_mem; /**< hdr for each xmit packet */
-
-	struct rte_mbuf **sw_ring; /**< RX software ring. */
-	/* dummy mbuf, for wraparound when processing RX ring. */
-	struct rte_mbuf fake_mbuf;
-
-	/* Statistics */
-	uint64_t	packets;
-	uint64_t	bytes;
-	uint64_t	errors;
-	uint64_t	multicast;
-	uint64_t	broadcast;
-	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
-	uint64_t	size_bins[8];
-
-	uint16_t	*notify_addr;
-
-	int		configured;
-
-	struct vq_desc_extra {
-		void              *cookie;
-		uint16_t          ndescs;
-	} vq_descx[0];
+	uint16_t  vq_queue_index;   /**< PCI queue index */
+	uint16_t  *notify_addr;
+	int configured;
+	struct rte_mbuf **sw_ring;  /**< RX software ring. */
+	struct vq_desc_extra vq_descx[0];
 };
 
 /* If multiqueue is provided by host, then we suppport it. */

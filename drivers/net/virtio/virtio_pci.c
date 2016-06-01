@@ -218,7 +218,7 @@ legacy_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 
 	rte_eal_pci_ioport_write(&hw->io, &vq->vq_queue_index, 2,
 			 VIRTIO_PCI_QUEUE_SEL);
-	src = vq->mz->phys_addr >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
+	src = vq->vq_ring_mem >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
 	rte_eal_pci_ioport_write(&hw->io, &src, 4, VIRTIO_PCI_QUEUE_PFN);
 }
 
@@ -441,7 +441,7 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	uint64_t desc_addr, avail_addr, used_addr;
 	uint16_t notify_off;
 
-	desc_addr = vq->mz->phys_addr;
+	desc_addr = vq->vq_ring_mem;
 	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct vring_desc);
 	used_addr = RTE_ALIGN_CEIL(avail_addr + offsetof(struct vring_avail,
 							 ring[vq->vq_nentries]),
