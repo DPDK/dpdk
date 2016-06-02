@@ -77,7 +77,6 @@ reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 							end->data_len);
 					secondlast->next = NULL;
 					rte_pktmbuf_free_seg(end);
-					end = secondlast;
 				}
 				pkts[pkt_idx++] = start;
 				start = end = NULL;
