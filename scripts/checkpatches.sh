@@ -48,17 +48,19 @@ NEW_TYPEDEFS,COMPARISON_TO_NULL"
 
 print_usage () {
 	cat <<- END_OF_HELP
-	usage: $(basename $0) [-q] [-v] [patch1 [patch2] ...]]
+	usage: $(basename $0) [-q] [-v] [-nX|patch1 [patch2] ...]]
 
 	Run Linux kernel checkpatch.pl with DPDK options.
 	The environment variable DPDK_CHECKPATCH_PATH must be set.
 	END_OF_HELP
 }
 
+number=0
 quiet=false
 verbose=false
-while getopts hqv ARG ; do
+while getopts hn:qv ARG ; do
 	case $ARG in
+		n ) number=$OPTARG ;;
 		q ) quiet=true && options="$options --no-summary" ;;
 		v ) verbose=true ;;
 		h ) print_usage ; exit 0 ;;
@@ -74,17 +76,42 @@ if [ ! -x "$DPDK_CHECKPATCH_PATH" ] ; then
 	exit 1
 fi
 
+total=0
 status=0
-for p in "$@" ; do
-	! $verbose || printf '\n### %s\n\n' "$p"
-	report=$($DPDK_CHECKPATCH_PATH $options "$p" 2>/dev/null)
+
+check () { # <patch> <commit> <title>
+	total=$(($total + 1))
+	! $verbose || printf '\n### %s\n\n' "$3"
+	if [ -n "$1" ] ; then
+		report=$($DPDK_CHECKPATCH_PATH $options "$1" 2>/dev/null)
+	elif [ -n "$2" ] ; then
+		report=$(git format-patch --no-stat --stdout -1 $commit |
+			$DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
+	fi
 	[ $? -ne 0 ] || continue
-	$verbose || printf '\n### %s\n\n' "$p"
+	$verbose || printf '\n### %s\n\n' "$3"
 	printf '%s\n' "$report" | head -n -6
 	status=$(($status + 1))
-done
-pass=$(($# - $status))
-$quiet || printf '%d/%d valid patch' $pass $#
+}
+
+if [ -z "$1" ] ; then
+	if [ $number -eq 0 ] ; then
+		commits=$(git rev-list origin/master..)
+	else
+		commits=$(git rev-list --max-count=$number HEAD)
+	fi
+	for commit in $commits ; do
+		subject=$(git log --format='%s' -1 $commit)
+		check '' $commit "$subject"
+	done
+else
+	for patch in "$@" ; do
+		subject=$(sed -n 's,^Subject: ,,p' "$patch")
+		check "$patch" '' "$subject"
+	done
+fi
+pass=$(($total - $status))
+$quiet || printf '%d/%d valid patch' $pass $total
 $quiet || [ $pass -le 1 ] || printf 'es'
 $quiet || printf '\n'
 exit $status
