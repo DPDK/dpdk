@@ -53,7 +53,7 @@
 
 #define ENIC_NON_TSO_MAX_DESC		16
 #define ENIC_DEFAULT_RX_FREE_THRESH	32
-#define ENIC_TX_POST_THRESH		(ENIC_MIN_WQ_DESCS / 2)
+#define ENIC_TX_XMIT_MAX		64
 
 #define ENIC_SETTING(enic, f) ((enic->config.flags & VENETF_##f) ? 1 : 0)
 

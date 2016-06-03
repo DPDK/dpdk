@@ -67,6 +67,7 @@ struct vnic_wq_ctrl {
 
 /* 16 bytes */
 struct vnic_wq_buf {
+	struct rte_mempool *pool;
 	void *mb;
 };
 
