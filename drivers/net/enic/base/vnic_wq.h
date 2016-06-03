@@ -177,33 +177,6 @@ buf_idx_incr(uint32_t n_descriptors, uint32_t idx)
 	return idx;
 }
 
-static inline void vnic_wq_service(struct vnic_wq *wq,
-	struct cq_desc *cq_desc, u16 completed_index,
-	void (*buf_service)(struct vnic_wq *wq,
-	struct cq_desc *cq_desc, struct vnic_wq_buf *buf, void *opaque),
-	void *opaque)
-{
-	struct vnic_wq_buf *buf;
-	unsigned int to_clean = wq->tail_idx;
-
-	buf = &wq->bufs[to_clean];
-	while (1) {
-
-		(*buf_service)(wq, cq_desc, buf, opaque);
-
-		wq->ring.desc_avail++;
-
-
-		to_clean = buf_idx_incr(wq->ring.desc_count, to_clean);
-
-		if (to_clean == completed_index)
-			break;
-
-		buf = &wq->bufs[to_clean];
-	}
-	wq->tail_idx = to_clean;
-}
-
 void vnic_wq_free(struct vnic_wq *wq);
 int vnic_wq_alloc(struct vnic_dev *vdev, struct vnic_wq *wq, unsigned int index,
 	unsigned int desc_count, unsigned int desc_size);

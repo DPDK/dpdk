@@ -326,33 +326,49 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rx;
 }
 
-static void enic_wq_free_buf(struct vnic_wq *wq,
-	__rte_unused struct cq_desc *cq_desc,
-	struct vnic_wq_buf *buf,
-	__rte_unused void *opaque)
+static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 {
-	enic_free_wq_buf(wq, buf);
+	struct vnic_wq_buf *buf;
+	struct rte_mbuf *m, *free[ENIC_MAX_WQ_DESCS];
+	unsigned int nb_to_free, nb_free = 0, i;
+	struct rte_mempool *pool;
+	unsigned int tail_idx;
+	unsigned int desc_count = wq->ring.desc_count;
+
+	nb_to_free = enic_ring_sub(desc_count, wq->tail_idx, completed_index)
+				   + 1;
+	tail_idx = wq->tail_idx;
+	buf = &wq->bufs[tail_idx];
+	pool = ((struct rte_mbuf *)buf->mb)->pool;
+	for (i = 0; i < nb_to_free; i++) {
+		buf = &wq->bufs[tail_idx];
+		m = (struct rte_mbuf *)(buf->mb);
+		if (likely(m->pool == pool)) {
+			free[nb_free++] = m;
+		} else {
+			rte_mempool_put_bulk(pool, (void *)free, nb_free);
+			free[0] = m;
+			nb_free = 1;
+			pool = m->pool;
+		}
+		tail_idx = enic_ring_incr(desc_count, tail_idx);
+		buf->mb = NULL;
+	}
+
+	rte_mempool_put_bulk(pool, (void **)free, nb_free);
+
+	wq->tail_idx = tail_idx;
+	wq->ring.desc_avail += nb_to_free;
 }
 
-static int enic_wq_service(struct vnic_dev *vdev, struct cq_desc *cq_desc,
-	__rte_unused u8 type, u16 q_number, u16 completed_index, void *opaque)
+unsigned int enic_cleanup_wq(__rte_unused struct enic *enic, struct vnic_wq *wq)
 {
-	struct enic *enic = vnic_dev_priv(vdev);
+	u16 completed_index;
 
-	vnic_wq_service(&enic->wq[q_number], cq_desc,
-		completed_index, enic_wq_free_buf,
-		opaque);
-
-	return 0;
-}
-
-unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq)
-{
-	u16 completed_index = *((uint32_t *)wq->cqmsg_rz->addr) & 0xffff;
+	completed_index = *((uint32_t *)wq->cqmsg_rz->addr) & 0xffff;
 
 	if (wq->last_completed_index != completed_index) {
-		enic_wq_service(enic->vdev, NULL, 0, wq->index,
-				completed_index, NULL);
+		enic_free_wq_bufs(wq, completed_index);
 		wq->last_completed_index = completed_index;
 	}
 	return 0;
