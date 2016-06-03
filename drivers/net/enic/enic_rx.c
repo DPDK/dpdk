@@ -275,10 +275,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* allocate a new mbuf */
 		nmb = rte_mbuf_raw_alloc(rq->mp);
 		if (nmb == NULL) {
-			dev_err(enic, "RX mbuf alloc failed port=%u qid=%u",
-			enic->port_id, (unsigned)rq->index);
-			rte_eth_devices[enic->port_id].
-					data->rx_mbuf_alloc_failed++;
+			rte_atomic64_inc(&enic->soft_stats.rx_nombuf);
 			break;
 		}
 

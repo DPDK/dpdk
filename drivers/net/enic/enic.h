@@ -91,6 +91,10 @@ struct enic_fdir {
 	struct enic_fdir_node *nodes[ENICPMD_FDIR_MAX];
 };
 
+struct enic_soft_stats {
+	rte_atomic64_t rx_nombuf;
+};
+
 /* Per-instance private data structure */
 struct enic {
 	struct enic *next;
@@ -133,6 +137,9 @@ struct enic {
 	/* interrupt resource */
 	struct vnic_intr intr;
 	unsigned int intr_count;
+
+	/* software counters */
+	struct enic_soft_stats soft_stats;
 };
 
 static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned int rq)
