@@ -64,40 +64,19 @@ struct vnic_wq_ctrl {
 	u32 pad9;
 };
 
+/* 16 bytes */
 struct vnic_wq_buf {
-	struct vnic_wq_buf *next;
-	dma_addr_t dma_addr;
-	void *os_buf;
-	unsigned int len;
-	unsigned int index;
-	int sop;
-	void *desc;
-	uint64_t wr_id; /* Cookie */
-	uint8_t cq_entry; /* Gets completion event from hw */
-	uint8_t desc_skip_cnt; /* Num descs to occupy */
-	uint8_t compressed_send; /* Both hdr and payload in one desc */
+	void *mb;
 };
-
-/* Break the vnic_wq_buf allocations into blocks of 32/64 entries */
-#define VNIC_WQ_BUF_MIN_BLK_ENTRIES 32
-#define VNIC_WQ_BUF_DFLT_BLK_ENTRIES 64
-#define VNIC_WQ_BUF_BLK_ENTRIES(entries) \
-	((unsigned int)((entries < VNIC_WQ_BUF_DFLT_BLK_ENTRIES) ? \
-	VNIC_WQ_BUF_MIN_BLK_ENTRIES : VNIC_WQ_BUF_DFLT_BLK_ENTRIES))
-#define VNIC_WQ_BUF_BLK_SZ(entries) \
-	(VNIC_WQ_BUF_BLK_ENTRIES(entries) * sizeof(struct vnic_wq_buf))
-#define VNIC_WQ_BUF_BLKS_NEEDED(entries) \
-	DIV_ROUND_UP(entries, VNIC_WQ_BUF_BLK_ENTRIES(entries))
-#define VNIC_WQ_BUF_BLKS_MAX VNIC_WQ_BUF_BLKS_NEEDED(4096)
 
 struct vnic_wq {
 	unsigned int index;
 	struct vnic_dev *vdev;
 	struct vnic_wq_ctrl __iomem *ctrl;              /* memory-mapped */
 	struct vnic_dev_ring ring;
-	struct vnic_wq_buf *bufs[VNIC_WQ_BUF_BLKS_MAX];
-	struct vnic_wq_buf *to_use;
-	struct vnic_wq_buf *to_clean;
+	struct vnic_wq_buf *bufs;
+	unsigned int head_idx;
+	unsigned int tail_idx;
 	unsigned int pkts_outstanding;
 	unsigned int socket_id;
 };
@@ -112,11 +91,6 @@ static inline unsigned int vnic_wq_desc_used(struct vnic_wq *wq)
 {
 	/* how many does HW own? */
 	return wq->ring.desc_count - wq->ring.desc_avail - 1;
-}
-
-static inline void *vnic_wq_next_desc(struct vnic_wq *wq)
-{
-	return wq->to_use->desc;
 }
 
 #define PI_LOG2_CACHE_LINE_SIZE        5
@@ -191,6 +165,15 @@ static inline u64 vnic_cached_posted_index(dma_addr_t addr, unsigned int len,
 	PI_PREFETCH_ADDR_MASK) << PI_PREFETCH_ADDR_OFF);
 }
 
+static inline uint32_t
+buf_idx_incr(uint32_t n_descriptors, uint32_t idx)
+{
+	idx++;
+	if (unlikely(idx == n_descriptors))
+		idx = 0;
+	return idx;
+}
+
 static inline void vnic_wq_service(struct vnic_wq *wq,
 	struct cq_desc *cq_desc, u16 completed_index,
 	void (*buf_service)(struct vnic_wq *wq,
@@ -198,21 +181,24 @@ static inline void vnic_wq_service(struct vnic_wq *wq,
 	void *opaque)
 {
 	struct vnic_wq_buf *buf;
+	unsigned int to_clean = wq->tail_idx;
 
-	buf = wq->to_clean;
+	buf = &wq->bufs[to_clean];
 	while (1) {
 
 		(*buf_service)(wq, cq_desc, buf, opaque);
 
 		wq->ring.desc_avail++;
 
-		wq->to_clean = buf->next;
 
-		if (buf->index == completed_index)
+		to_clean = buf_idx_incr(wq->ring.desc_count, to_clean);
+
+		if (to_clean == completed_index)
 			break;
 
-		buf = wq->to_clean;
+		buf = &wq->bufs[to_clean];
 	}
+	wq->tail_idx = to_clean;
 }
 
 void vnic_wq_free(struct vnic_wq *wq);

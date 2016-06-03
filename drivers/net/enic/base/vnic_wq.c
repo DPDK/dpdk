@@ -59,69 +59,28 @@ int vnic_wq_alloc_ring(struct vnic_dev *vdev, struct vnic_wq *wq,
 
 static int vnic_wq_alloc_bufs(struct vnic_wq *wq)
 {
-	struct vnic_wq_buf *buf;
-	unsigned int i, j, count = wq->ring.desc_count;
-	unsigned int blks = VNIC_WQ_BUF_BLKS_NEEDED(count);
-
-	for (i = 0; i < blks; i++) {
-		wq->bufs[i] = kzalloc(VNIC_WQ_BUF_BLK_SZ(count), GFP_ATOMIC);
-		if (!wq->bufs[i])
-			return -ENOMEM;
-	}
-
-	for (i = 0; i < blks; i++) {
-		buf = wq->bufs[i];
-		for (j = 0; j < VNIC_WQ_BUF_BLK_ENTRIES(count); j++) {
-			buf->index = i * VNIC_WQ_BUF_BLK_ENTRIES(count) + j;
-			buf->desc = (u8 *)wq->ring.descs +
-				wq->ring.desc_size * buf->index;
-			if (buf->index + 1 == count) {
-				buf->next = wq->bufs[0];
-				break;
-			} else if (j + 1 == VNIC_WQ_BUF_BLK_ENTRIES(count)) {
-				buf->next = wq->bufs[i + 1];
-			} else {
-				buf->next = buf + 1;
-				buf++;
-			}
-		}
-	}
-
-	wq->to_use = wq->to_clean = wq->bufs[0];
-
+	unsigned int count = wq->ring.desc_count;
+       /* Allocate the mbuf ring */
+	wq->bufs = (struct vnic_wq_buf *)rte_zmalloc_socket("wq->bufs",
+		    sizeof(struct vnic_wq_buf) * count,
+		    RTE_CACHE_LINE_SIZE, wq->socket_id);
+	wq->head_idx = 0;
+	wq->tail_idx = 0;
+	if (wq->bufs == NULL)
+		return -ENOMEM;
 	return 0;
 }
 
 void vnic_wq_free(struct vnic_wq *wq)
 {
 	struct vnic_dev *vdev;
-	unsigned int i;
 
 	vdev = wq->vdev;
 
 	vnic_dev_free_desc_ring(vdev, &wq->ring);
 
-	for (i = 0; i < VNIC_WQ_BUF_BLKS_MAX; i++) {
-		if (wq->bufs[i]) {
-			kfree(wq->bufs[i]);
-			wq->bufs[i] = NULL;
-		}
-	}
-
+	rte_free(wq->bufs);
 	wq->ctrl = NULL;
-}
-
-int vnic_wq_mem_size(struct vnic_wq *wq, unsigned int desc_count,
-	unsigned int desc_size)
-{
-	int mem_size = 0;
-
-	mem_size += vnic_dev_desc_ring_size(&wq->ring, desc_count, desc_size);
-
-	mem_size += VNIC_WQ_BUF_BLKS_NEEDED(wq->ring.desc_count) *
-		VNIC_WQ_BUF_BLK_SZ(wq->ring.desc_count);
-
-	return mem_size;
 }
 
 
@@ -172,9 +131,8 @@ void vnic_wq_init_start(struct vnic_wq *wq, unsigned int cq_index,
 	iowrite32(error_interrupt_offset, &wq->ctrl->error_interrupt_offset);
 	iowrite32(0, &wq->ctrl->error_status);
 
-	wq->to_use = wq->to_clean =
-		&wq->bufs[fetch_index / VNIC_WQ_BUF_BLK_ENTRIES(count)]
-			[fetch_index % VNIC_WQ_BUF_BLK_ENTRIES(count)];
+	wq->head_idx = fetch_index;
+	wq->tail_idx = wq->head_idx;
 }
 
 void vnic_wq_init(struct vnic_wq *wq, unsigned int cq_index,
@@ -223,18 +181,21 @@ void vnic_wq_clean(struct vnic_wq *wq,
 	void (*buf_clean)(struct vnic_wq *wq, struct vnic_wq_buf *buf))
 {
 	struct vnic_wq_buf *buf;
+	unsigned int  to_clean = wq->tail_idx;
 
-	buf = wq->to_clean;
+	buf = &wq->bufs[to_clean];
 
 	while (vnic_wq_desc_used(wq) > 0) {
 
 		(*buf_clean)(wq, buf);
+		to_clean = buf_idx_incr(wq->ring.desc_count, to_clean);
 
-		buf = wq->to_clean = buf->next;
+		buf = &wq->bufs[to_clean];
 		wq->ring.desc_avail++;
 	}
 
-	wq->to_use = wq->to_clean = wq->bufs[0];
+	wq->head_idx = 0;
+	wq->tail_idx = 0;
 
 	iowrite32(0, &wq->ctrl->fetch_index);
 	iowrite32(0, &wq->ctrl->posted_index);

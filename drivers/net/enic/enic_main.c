@@ -105,10 +105,10 @@ void enic_set_hdr_split_size(struct enic *enic, u16 split_hdr_size)
 
 void enic_free_wq_buf(__rte_unused struct vnic_wq *wq, struct vnic_wq_buf *buf)
 {
-	struct rte_mbuf *mbuf = (struct rte_mbuf *)buf->os_buf;
+	struct rte_mbuf *mbuf = (struct rte_mbuf *)buf->mb;
 
 	rte_mempool_put(mbuf->pool, mbuf);
-	buf->os_buf = NULL;
+	buf->mb = NULL;
 }
 
 static void enic_log_q_error(struct enic *enic)

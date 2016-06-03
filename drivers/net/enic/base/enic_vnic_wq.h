@@ -40,37 +40,21 @@
 
 static inline void enic_vnic_post_wq_index(struct vnic_wq *wq)
 {
-	struct vnic_wq_buf *buf = wq->to_use;
-
 	/* Adding write memory barrier prevents compiler and/or CPU
 	 * reordering, thus avoiding descriptor posting before
 	 * descriptor is initialized. Otherwise, hardware can read
 	 * stale descriptor fields.
 	*/
 	wmb();
-	iowrite32(buf->index, &wq->ctrl->posted_index);
+	iowrite32(wq->head_idx, &wq->ctrl->posted_index);
 }
 
 static inline void enic_vnic_post_wq(struct vnic_wq *wq,
-				     void *os_buf, dma_addr_t dma_addr,
-				     unsigned int len, int sop,
-				     uint8_t desc_skip_cnt, uint8_t cq_entry,
-				     uint8_t compressed_send, uint64_t wrid)
+				     void *os_buf, uint8_t cq_entry)
 {
-	struct vnic_wq_buf *buf = wq->to_use;
-
-	buf->sop = sop;
-	buf->cq_entry = cq_entry;
-	buf->compressed_send = compressed_send;
-	buf->desc_skip_cnt = desc_skip_cnt;
-	buf->os_buf = os_buf;
-	buf->dma_addr = dma_addr;
-	buf->len = len;
-	buf->wr_id = wrid;
-
-	buf = buf->next;
-	wq->ring.desc_avail -= desc_skip_cnt;
-	wq->to_use = buf;
+	struct vnic_wq_buf *buf = &wq->bufs[wq->head_idx];
+	buf->mb = os_buf;
+	wq->head_idx = enic_ring_incr(wq->ring.desc_count, wq->head_idx);
 
 	if (cq_entry)
 		enic_vnic_post_wq_index(wq);

@@ -214,17 +214,6 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 	mbuf->ol_flags = pkt_flags;
 }
 
-static inline uint32_t
-enic_ring_add(uint32_t n_descriptors, uint32_t i0, uint32_t i1)
-{
-	uint32_t d = i0 + i1;
-	RTE_ASSERT(i0 < n_descriptors);
-	RTE_ASSERT(i1 < n_descriptors);
-	d -= (d >= n_descriptors) ? n_descriptors : 0;
-	return d;
-}
-
-
 uint16_t
 enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	       uint16_t nb_pkts)
@@ -376,11 +365,14 @@ void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 		   uint8_t sop, uint8_t eop, uint8_t cq_entry,
 		   uint16_t ol_flags, uint16_t vlan_tag)
 {
-	struct wq_enet_desc *desc = vnic_wq_next_desc(wq);
+	struct wq_enet_desc *desc, *descs;
 	uint16_t mss = 0;
 	uint8_t vlan_tag_insert = 0;
 	uint64_t bus_addr = (dma_addr_t)
 	    (tx_pkt->buf_physaddr + tx_pkt->data_off);
+
+	descs = (struct wq_enet_desc *)wq->ring.descs;
+	desc = descs + wq->head_idx;
 
 	if (sop) {
 		if (ol_flags & PKT_TX_VLAN_PKT)
@@ -408,12 +400,7 @@ void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 		vlan_tag,
 		0 /* loopback */);
 
-	enic_vnic_post_wq(wq, (void *)tx_pkt, bus_addr, len,
-			  sop,
-			  1 /*desc_skip_cnt*/,
-			  cq_entry,
-			  0 /*compressed send*/,
-			  0 /*wrid*/);
+	enic_vnic_post_wq(wq, (void *)tx_pkt, cq_entry);
 }
 
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,

@@ -163,6 +163,30 @@ static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
 	return (struct enic *)eth_dev->data->dev_private;
 }
 
+static inline uint32_t
+enic_ring_add(uint32_t n_descriptors, uint32_t i0, uint32_t i1)
+{
+	uint32_t d = i0 + i1;
+	d -= (d >= n_descriptors) ? n_descriptors : 0;
+	return d;
+}
+
+static inline uint32_t
+enic_ring_sub(uint32_t n_descriptors, uint32_t i0, uint32_t i1)
+{
+	int32_t d = i1 - i0;
+	return (uint32_t)((d < 0) ? ((int32_t)n_descriptors + d) : d);
+}
+
+static inline uint32_t
+enic_ring_incr(uint32_t n_descriptors, uint32_t idx)
+{
+	idx++;
+	if (unlikely(idx == n_descriptors))
+		idx = 0;
+	return idx;
+}
+
 extern void enic_fdir_stats_get(struct enic *enic,
 	struct rte_eth_fdir_stats *stats);
 extern int enic_fdir_add_fltr(struct enic *enic,
