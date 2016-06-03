@@ -79,7 +79,6 @@ struct vnic_wq {
 	struct vnic_wq_buf *bufs;
 	unsigned int head_idx;
 	unsigned int tail_idx;
-	unsigned int pkts_outstanding;
 	unsigned int socket_id;
 	const struct rte_memzone *cqmsg_rz;
 	uint16_t last_completed_index;
@@ -193,8 +192,5 @@ unsigned int vnic_wq_error_status(struct vnic_wq *wq);
 void vnic_wq_enable(struct vnic_wq *wq);
 int vnic_wq_disable(struct vnic_wq *wq);
 void vnic_wq_clean(struct vnic_wq *wq,
-	void (*buf_clean)(struct vnic_wq *wq, struct vnic_wq_buf *buf));
-int vnic_wq_mem_size(struct vnic_wq *wq, unsigned int desc_count,
-	unsigned int desc_size);
-
+		   void (*buf_clean)(struct vnic_wq_buf *buf));
 #endif /* _VNIC_WQ_H_ */

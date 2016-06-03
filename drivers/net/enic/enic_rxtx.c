@@ -37,7 +37,6 @@
 #include "enic_compat.h"
 #include "rq_enet_desc.h"
 #include "enic.h"
-#include "enic_vnic_wq.h"
 
 #define RTE_PMD_USE_PREFETCH
 

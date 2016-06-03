@@ -179,7 +179,7 @@ int vnic_wq_disable(struct vnic_wq *wq)
 }
 
 void vnic_wq_clean(struct vnic_wq *wq,
-	void (*buf_clean)(struct vnic_wq *wq, struct vnic_wq_buf *buf))
+		   void (*buf_clean)(struct vnic_wq_buf *buf))
 {
 	struct vnic_wq_buf *buf;
 	unsigned int  to_clean = wq->tail_idx;
@@ -188,7 +188,7 @@ void vnic_wq_clean(struct vnic_wq *wq,
 
 	while (vnic_wq_desc_used(wq) > 0) {
 
-		(*buf_clean)(wq, buf);
+		(*buf_clean)(buf);
 		to_clean = buf_idx_incr(wq->ring.desc_count, to_clean);
 
 		buf = &wq->bufs[to_clean];
