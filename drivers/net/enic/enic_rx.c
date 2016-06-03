@@ -134,20 +134,15 @@ enic_cq_rx_desc_n_bytes(struct cq_desc *cqd)
 }
 
 static inline uint8_t
-enic_cq_rx_to_pkt_err_flags(struct cq_desc *cqd, uint64_t *pkt_err_flags_out)
+enic_cq_rx_check_err(struct cq_desc *cqd)
 {
 	struct cq_enet_rq_desc *cqrd = (struct cq_enet_rq_desc *)cqd;
 	uint16_t bwflags;
-	int ret = 0;
-	uint64_t pkt_err_flags = 0;
 
 	bwflags = enic_cq_rx_desc_bwflags(cqrd);
-	if (unlikely(enic_cq_rx_desc_packet_error(bwflags))) {
-		pkt_err_flags = PKT_RX_MAC_ERR;
-		ret = 1;
-	}
-	*pkt_err_flags_out = pkt_err_flags;
-	return ret;
+	if (unlikely(enic_cq_rx_desc_packet_error(bwflags)))
+		return 1;
+	return 0;
 }
 
 /*
@@ -243,7 +238,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct enic *enic = vnic_dev_priv(rq->vdev);
 	unsigned int rx_id;
 	struct rte_mbuf *nmb, *rxmb;
-	uint16_t nb_rx = 0;
+	uint16_t nb_rx = 0, nb_err = 0;
 	uint16_t nb_hold;
 	struct vnic_cq *cq;
 	volatile struct cq_desc *cqd_ptr;
@@ -259,7 +254,6 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		volatile struct rq_enet_desc *rqd_ptr;
 		dma_addr_t dma_addr;
 		struct cq_desc cqd;
-		uint64_t ol_err_flags;
 		uint8_t packet_error;
 
 		/* Check for pkts available */
@@ -280,7 +274,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		/* A packet error means descriptor and data are untrusted */
-		packet_error = enic_cq_rx_to_pkt_err_flags(&cqd, &ol_err_flags);
+		packet_error = enic_cq_rx_check_err(&cqd);
 
 		/* Get the mbuf to return and replace with one just allocated */
 		rxmb = rq->mbuf_ring[rx_id];
@@ -307,20 +301,21 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rqd_ptr->length_type = cpu_to_le16(nmb->buf_len
 				       - RTE_PKTMBUF_HEADROOM);
 
+		/* Drop incoming bad packet */
+		if (unlikely(packet_error)) {
+			rte_pktmbuf_free(rxmb);
+			nb_err++;
+			continue;
+		}
+
 		/* Fill in the rest of the mbuf */
 		rxmb->data_off = RTE_PKTMBUF_HEADROOM;
 		rxmb->nb_segs = 1;
 		rxmb->next = NULL;
 		rxmb->port = enic->port_id;
-		if (!packet_error) {
-			rxmb->pkt_len = enic_cq_rx_desc_n_bytes(&cqd);
-			rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
-			enic_cq_rx_to_pkt_flags(&cqd, rxmb);
-		} else {
-			rxmb->pkt_len = 0;
-			rxmb->packet_type = 0;
-			rxmb->ol_flags = 0;
-		}
+		rxmb->pkt_len = enic_cq_rx_desc_n_bytes(&cqd);
+		rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
+		enic_cq_rx_to_pkt_flags(&cqd, rxmb);
 		rxmb->data_len = rxmb->pkt_len;
 
 		/* prefetch mbuf data for caller */
@@ -331,7 +326,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rx_pkts[nb_rx++] = rxmb;
 	}
 
-	nb_hold += nb_rx;
+	nb_hold += nb_rx + nb_err;
 	cq->to_clean = rx_id;
 
 	if (nb_hold > rq->rx_free_thresh) {
