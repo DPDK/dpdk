@@ -352,6 +352,7 @@ fill_supported_algorithm_tables(void)
 		strcpy(supported_cipher_algo[i], "NOT_SUPPORTED");
 
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_AES_CBC], "AES_CBC");
+	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_AES_CTR], "AES_CTR");
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_AES_GCM], "AES_GCM");
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_NULL], "NULL");
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_SNOW3G_UEA2], "SNOW3G_UEA2");
