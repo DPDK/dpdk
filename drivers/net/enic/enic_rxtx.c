@@ -384,7 +384,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct vnic_wq *wq = (struct vnic_wq *)tx_queue;
 	struct enic *enic = vnic_dev_priv(wq->vdev);
 	unsigned short vlan_id;
-	unsigned short ol_flags;
+	uint64_t ol_flags;
 	unsigned int wq_desc_avail;
 	int head_idx;
 	struct vnic_wq_buf *buf;
