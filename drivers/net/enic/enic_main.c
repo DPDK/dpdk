@@ -97,7 +97,6 @@ enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq)
 	}
 }
 
-
 void enic_set_hdr_split_size(struct enic *enic, u16 split_hdr_size)
 {
 	vnic_set_hdr_split_size(enic->vdev, split_hdr_size);
@@ -235,25 +234,16 @@ void enic_init_vnic_resources(struct enic *enic)
 	unsigned int error_interrupt_enable = 1;
 	unsigned int error_interrupt_offset = 0;
 	unsigned int index = 0;
+	unsigned int cq_idx;
 
 	for (index = 0; index < enic->rq_count; index++) {
 		vnic_rq_init(&enic->rq[index],
 			enic_cq_rq(enic, index),
 			error_interrupt_enable,
 			error_interrupt_offset);
-	}
 
-	for (index = 0; index < enic->wq_count; index++) {
-		vnic_wq_init(&enic->wq[index],
-			enic_cq_wq(enic, index),
-			error_interrupt_enable,
-			error_interrupt_offset);
-	}
-
-	vnic_dev_stats_clear(enic->vdev);
-
-	for (index = 0; index < enic->cq_count; index++) {
-		vnic_cq_init(&enic->cq[index],
+		cq_idx = enic_cq_rq(enic, index);
+		vnic_cq_init(&enic->cq[cq_idx],
 			0 /* flow_control_enable */,
 			1 /* color_enable */,
 			0 /* cq_head */,
@@ -264,6 +254,26 @@ void enic_init_vnic_resources(struct enic *enic)
 			0 /* cq_message_enable */,
 			0 /* interrupt offset */,
 			0 /* cq_message_addr */);
+	}
+
+	for (index = 0; index < enic->wq_count; index++) {
+		vnic_wq_init(&enic->wq[index],
+			enic_cq_wq(enic, index),
+			error_interrupt_enable,
+			error_interrupt_offset);
+
+		cq_idx = enic_cq_wq(enic, index);
+		vnic_cq_init(&enic->cq[cq_idx],
+			0 /* flow_control_enable */,
+			1 /* color_enable */,
+			0 /* cq_head */,
+			0 /* cq_tail */,
+			1 /* cq_tail_color */,
+			0 /* interrupt_enable */,
+			0 /* cq_entry_enable */,
+			1 /* cq_message_enable */,
+			0 /* interrupt offset */,
+			(u64)enic->wq[index].cqmsg_rz->phys_addr);
 	}
 
 	vnic_intr_init(&enic->intr,
@@ -507,6 +517,7 @@ void enic_free_wq(void *txq)
 	struct vnic_wq *wq = (struct vnic_wq *)txq;
 	struct enic *enic = vnic_dev_priv(wq->vdev);
 
+	rte_memzone_free(wq->cqmsg_rz);
 	vnic_wq_free(wq);
 	vnic_cq_free(&enic->cq[enic->rq_count + wq->index]);
 }
@@ -517,6 +528,8 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 	int err;
 	struct vnic_wq *wq = &enic->wq[queue_idx];
 	unsigned int cq_index = enic_cq_wq(enic, queue_idx);
+	char name[NAME_MAX];
+	static int instance;
 
 	wq->socket_id = socket_id;
 	if (nb_desc) {
@@ -551,6 +564,18 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 		vnic_wq_free(wq);
 		dev_err(enic, "error in allocation of cq for wq\n");
 	}
+
+	/* setup up CQ message */
+	snprintf((char *)name, sizeof(name),
+		 "vnic_cqmsg-%s-%d-%d", enic->bdf_name, queue_idx,
+		instance++);
+
+	wq->cqmsg_rz = rte_memzone_reserve_aligned((const char *)name,
+						   sizeof(uint32_t),
+						   SOCKET_ID_ANY, 0,
+						   ENIC_ALIGN);
+	if (!wq->cqmsg_rz)
+		return -ENOMEM;
 
 	return err;
 }

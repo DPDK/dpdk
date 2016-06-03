@@ -348,11 +348,14 @@ static int enic_wq_service(struct vnic_dev *vdev, struct cq_desc *cq_desc,
 
 unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq)
 {
-	unsigned int cq = enic_cq_wq(enic, wq->index);
+	u16 completed_index = *((uint32_t *)wq->cqmsg_rz->addr) & 0xffff;
 
-	/* Return the work done */
-	return vnic_cq_service(&enic->cq[cq],
-		-1 /*wq_work_to_do*/, enic_wq_service, NULL);
+	if (wq->last_completed_index != completed_index) {
+		enic_wq_service(enic->vdev, NULL, 0, wq->index,
+				completed_index, NULL);
+		wq->last_completed_index = completed_index;
+	}
+	return 0;
 }
 
 void enic_post_wq_index(struct vnic_wq *wq)
