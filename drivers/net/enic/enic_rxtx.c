@@ -385,10 +385,10 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct enic *enic = vnic_dev_priv(wq->vdev);
 	unsigned short vlan_id;
 	uint64_t ol_flags;
+	uint64_t ol_flags_mask;
 	unsigned int wq_desc_avail;
 	int head_idx;
 	struct vnic_wq_buf *buf;
-	unsigned int hw_ip_cksum_enabled;
 	unsigned int desc_count;
 	struct wq_enet_desc *descs, *desc_p, desc_tmp;
 	uint16_t mss;
@@ -400,10 +400,10 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	wq_desc_avail = vnic_wq_desc_avail(wq);
 	head_idx = wq->head_idx;
 	desc_count = wq->ring.desc_count;
+	ol_flags_mask = PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK;
 
 	nb_pkts = RTE_MIN(nb_pkts, ENIC_TX_XMIT_MAX);
 
-	hw_ip_cksum_enabled = enic->hw_ip_checksum;
 	for (index = 0; index < nb_pkts; index++) {
 		tx_pkt = *tx_pkts++;
 		nb_segs = tx_pkt->nb_segs;
@@ -415,10 +415,9 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		pkt_len = tx_pkt->pkt_len;
 		data_len = tx_pkt->data_len;
-		vlan_id = tx_pkt->vlan_tci;
 		ol_flags = tx_pkt->ol_flags;
-
 		mss = 0;
+		vlan_id = 0;
 		vlan_tag_insert = 0;
 		bus_addr = (dma_addr_t)
 			   (tx_pkt->buf_physaddr + tx_pkt->data_off);
@@ -428,14 +427,23 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		eop = (data_len == pkt_len);
 
-		if (ol_flags & PKT_TX_VLAN_PKT)
-			vlan_tag_insert = 1;
+		if (ol_flags & ol_flags_mask) {
+			if (ol_flags & PKT_TX_VLAN_PKT) {
+				vlan_tag_insert = 1;
+				vlan_id = tx_pkt->vlan_tci;
+			}
 
-		if (hw_ip_cksum_enabled && (ol_flags & PKT_TX_IP_CKSUM))
-			mss |= ENIC_CALC_IP_CKSUM;
+			if (ol_flags & PKT_TX_IP_CKSUM)
+				mss |= ENIC_CALC_IP_CKSUM;
 
-		if (hw_ip_cksum_enabled && (ol_flags & PKT_TX_TCP_UDP_CKSUM))
-			mss |= ENIC_CALC_TCP_UDP_CKSUM;
+			/* Nic uses just 1 bit for UDP and TCP */
+			switch (ol_flags & PKT_TX_L4_MASK) {
+			case PKT_TX_TCP_CKSUM:
+			case PKT_TX_UDP_CKSUM:
+				mss |= ENIC_CALC_TCP_UDP_CKSUM;
+				break;
+			}
+		}
 
 		wq_enet_desc_enc(&desc_tmp, bus_addr, data_len, mss, 0, 0, eop,
 				 eop, 0, vlan_tag_insert, vlan_id, 0);

@@ -62,7 +62,6 @@
 #define ENICPMD_SETTING(enic, f) ((enic->config.flags & VENETF_##f) ? 1 : 0)
 
 #define ENICPMD_BDF_LENGTH      13   /* 0000:00:00.0'\0' */
-#define PKT_TX_TCP_UDP_CKSUM    0x6000
 #define ENIC_CALC_IP_CKSUM      1
 #define ENIC_CALC_TCP_UDP_CKSUM 2
 #define ENIC_MAX_MTU            9000
