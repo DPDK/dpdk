@@ -1,5 +1,4 @@
-/*
- * Copyright 2008-2014 Cisco Systems, Inc.  All rights reserved.
+/* Copyright 2008-2016 Cisco Systems, Inc.  All rights reserved.
  * Copyright 2007 Nuova Systems, Inc.  All rights reserved.
  *
  * Copyright (c) 2014, Cisco Systems, Inc.
@@ -29,7 +28,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 #include <rte_mbuf.h>
@@ -39,13 +37,12 @@
 #include "enic_compat.h"
 #include "rq_enet_desc.h"
 #include "enic.h"
+#include "enic_vnic_wq.h"
 
 #define RTE_PMD_USE_PREFETCH
 
 #ifdef RTE_PMD_USE_PREFETCH
-/*
- * Prefetch a cache line into all cache levels.
- */
+/*Prefetch a cache line into all cache levels. */
 #define rte_enic_prefetch(p) rte_prefetch0(p)
 #else
 #define rte_enic_prefetch(p) do {} while (0)
@@ -66,15 +63,15 @@ enic_cq_rx_desc_ciflags(struct cq_enet_rq_desc *crd)
 static inline uint16_t
 enic_cq_rx_desc_bwflags(struct cq_enet_rq_desc *crd)
 {
-	return(le16_to_cpu(crd->bytes_written_flags) &
-		~CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK);
+	return le16_to_cpu(crd->bytes_written_flags) &
+			   ~CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK;
 }
 
 static inline uint8_t
 enic_cq_rx_desc_packet_error(uint16_t bwflags)
 {
-	return((bwflags & CQ_ENET_RQ_DESC_FLAGS_TRUNCATED) ==
-		CQ_ENET_RQ_DESC_FLAGS_TRUNCATED);
+	return (bwflags & CQ_ENET_RQ_DESC_FLAGS_TRUNCATED) ==
+		CQ_ENET_RQ_DESC_FLAGS_TRUNCATED;
 }
 
 static inline uint8_t
@@ -87,23 +84,23 @@ enic_cq_rx_desc_eop(uint16_t ciflags)
 static inline uint8_t
 enic_cq_rx_desc_csum_not_calc(struct cq_enet_rq_desc *cqrd)
 {
-	return ((le16_to_cpu(cqrd->q_number_rss_type_flags) &
+	return (le16_to_cpu(cqrd->q_number_rss_type_flags) &
 		CQ_ENET_RQ_DESC_FLAGS_CSUM_NOT_CALC) ==
-		CQ_ENET_RQ_DESC_FLAGS_CSUM_NOT_CALC);
+		CQ_ENET_RQ_DESC_FLAGS_CSUM_NOT_CALC;
 }
 
 static inline uint8_t
 enic_cq_rx_desc_ipv4_csum_ok(struct cq_enet_rq_desc *cqrd)
 {
-	return ((cqrd->flags & CQ_ENET_RQ_DESC_FLAGS_IPV4_CSUM_OK) ==
-		CQ_ENET_RQ_DESC_FLAGS_IPV4_CSUM_OK);
+	return (cqrd->flags & CQ_ENET_RQ_DESC_FLAGS_IPV4_CSUM_OK) ==
+		CQ_ENET_RQ_DESC_FLAGS_IPV4_CSUM_OK;
 }
 
 static inline uint8_t
 enic_cq_rx_desc_tcp_udp_csum_ok(struct cq_enet_rq_desc *cqrd)
 {
-	return((cqrd->flags & CQ_ENET_RQ_DESC_FLAGS_TCP_UDP_CSUM_OK) ==
-		CQ_ENET_RQ_DESC_FLAGS_TCP_UDP_CSUM_OK);
+	return (cqrd->flags & CQ_ENET_RQ_DESC_FLAGS_TCP_UDP_CSUM_OK) ==
+		CQ_ENET_RQ_DESC_FLAGS_TCP_UDP_CSUM_OK;
 }
 
 static inline uint8_t
@@ -145,9 +142,7 @@ enic_cq_rx_check_err(struct cq_desc *cqd)
 	return 0;
 }
 
-/*
- * Lookup table to translate RX CQ flags to mbuf flags.
- */
+/* Lookup table to translate RX CQ flags to mbuf flags. */
 static inline uint32_t
 enic_cq_rx_flags_to_pkt_type(struct cq_desc *cqd)
 {
@@ -340,4 +335,147 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rq->rx_nb_hold = nb_hold;
 
 	return nb_rx;
+}
+
+static void enic_wq_free_buf(struct vnic_wq *wq,
+	__rte_unused struct cq_desc *cq_desc,
+	struct vnic_wq_buf *buf,
+	__rte_unused void *opaque)
+{
+	enic_free_wq_buf(wq, buf);
+}
+
+static int enic_wq_service(struct vnic_dev *vdev, struct cq_desc *cq_desc,
+	__rte_unused u8 type, u16 q_number, u16 completed_index, void *opaque)
+{
+	struct enic *enic = vnic_dev_priv(vdev);
+
+	vnic_wq_service(&enic->wq[q_number], cq_desc,
+		completed_index, enic_wq_free_buf,
+		opaque);
+
+	return 0;
+}
+
+unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq)
+{
+	unsigned int cq = enic_cq_wq(enic, wq->index);
+
+	/* Return the work done */
+	return vnic_cq_service(&enic->cq[cq],
+		-1 /*wq_work_to_do*/, enic_wq_service, NULL);
+}
+
+void enic_post_wq_index(struct vnic_wq *wq)
+{
+	enic_vnic_post_wq_index(wq);
+}
+
+void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
+		   struct rte_mbuf *tx_pkt, unsigned short len,
+		   uint8_t sop, uint8_t eop, uint8_t cq_entry,
+		   uint16_t ol_flags, uint16_t vlan_tag)
+{
+	struct wq_enet_desc *desc = vnic_wq_next_desc(wq);
+	uint16_t mss = 0;
+	uint8_t vlan_tag_insert = 0;
+	uint64_t bus_addr = (dma_addr_t)
+	    (tx_pkt->buf_physaddr + tx_pkt->data_off);
+
+	if (sop) {
+		if (ol_flags & PKT_TX_VLAN_PKT)
+			vlan_tag_insert = 1;
+
+		if (enic->hw_ip_checksum) {
+			if (ol_flags & PKT_TX_IP_CKSUM)
+				mss |= ENIC_CALC_IP_CKSUM;
+
+			if (ol_flags & PKT_TX_TCP_UDP_CKSUM)
+				mss |= ENIC_CALC_TCP_UDP_CKSUM;
+		}
+	}
+
+	wq_enet_desc_enc(desc,
+		bus_addr,
+		len,
+		mss,
+		0 /* header_length */,
+		0 /* offload_mode WQ_ENET_OFFLOAD_MODE_CSUM */,
+		eop,
+		cq_entry,
+		0 /* fcoe_encap */,
+		vlan_tag_insert,
+		vlan_tag,
+		0 /* loopback */);
+
+	enic_vnic_post_wq(wq, (void *)tx_pkt, bus_addr, len,
+			  sop,
+			  1 /*desc_skip_cnt*/,
+			  cq_entry,
+			  0 /*compressed send*/,
+			  0 /*wrid*/);
+}
+
+uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+	uint16_t nb_pkts)
+{
+	uint16_t index;
+	unsigned int frags;
+	unsigned int pkt_len;
+	unsigned int seg_len;
+	unsigned int inc_len;
+	unsigned int nb_segs;
+	struct rte_mbuf *tx_pkt, *next_tx_pkt;
+	struct vnic_wq *wq = (struct vnic_wq *)tx_queue;
+	struct enic *enic = vnic_dev_priv(wq->vdev);
+	unsigned short vlan_id;
+	unsigned short ol_flags;
+	uint8_t last_seg, eop;
+	unsigned int host_tx_descs = 0;
+
+	for (index = 0; index < nb_pkts; index++) {
+		tx_pkt = *tx_pkts++;
+		inc_len = 0;
+		nb_segs = tx_pkt->nb_segs;
+		if (nb_segs > vnic_wq_desc_avail(wq)) {
+			if (index > 0)
+				enic_post_wq_index(wq);
+
+			/* wq cleanup and try again */
+			if (!enic_cleanup_wq(enic, wq) ||
+				(nb_segs > vnic_wq_desc_avail(wq))) {
+				return index;
+			}
+		}
+
+		pkt_len = tx_pkt->pkt_len;
+		vlan_id = tx_pkt->vlan_tci;
+		ol_flags = tx_pkt->ol_flags;
+		for (frags = 0; inc_len < pkt_len; frags++) {
+			if (!tx_pkt)
+				break;
+			next_tx_pkt = tx_pkt->next;
+			seg_len = tx_pkt->data_len;
+			inc_len += seg_len;
+
+			host_tx_descs++;
+			last_seg = 0;
+			eop = 0;
+			if ((pkt_len == inc_len) || !next_tx_pkt) {
+				eop = 1;
+				/* post if last packet in batch or > thresh */
+				if ((index == (nb_pkts - 1)) ||
+				   (host_tx_descs > ENIC_TX_POST_THRESH)) {
+					last_seg = 1;
+					host_tx_descs = 0;
+				}
+			}
+			enic_send_pkt(enic, wq, tx_pkt, (unsigned short)seg_len,
+				      !frags, eop, last_seg, ol_flags, vlan_id);
+			tx_pkt = next_tx_pkt;
+		}
+	}
+
+	enic_cleanup_wq(enic, wq);
+	return index;
 }

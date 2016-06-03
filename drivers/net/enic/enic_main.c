@@ -58,7 +58,6 @@
 #include "vnic_cq.h"
 #include "vnic_intr.h"
 #include "vnic_nic.h"
-#include "enic_vnic_wq.h"
 
 static inline int enic_is_sriov_vf(struct enic *enic)
 {
@@ -104,32 +103,12 @@ void enic_set_hdr_split_size(struct enic *enic, u16 split_hdr_size)
 	vnic_set_hdr_split_size(enic->vdev, split_hdr_size);
 }
 
-static void enic_free_wq_buf(__rte_unused struct vnic_wq *wq, struct vnic_wq_buf *buf)
+void enic_free_wq_buf(__rte_unused struct vnic_wq *wq, struct vnic_wq_buf *buf)
 {
 	struct rte_mbuf *mbuf = (struct rte_mbuf *)buf->os_buf;
 
 	rte_mempool_put(mbuf->pool, mbuf);
 	buf->os_buf = NULL;
-}
-
-static void enic_wq_free_buf(struct vnic_wq *wq,
-	__rte_unused struct cq_desc *cq_desc,
-	struct vnic_wq_buf *buf,
-	__rte_unused void *opaque)
-{
-	enic_free_wq_buf(wq, buf);
-}
-
-static int enic_wq_service(struct vnic_dev *vdev, struct cq_desc *cq_desc,
-	__rte_unused u8 type, u16 q_number, u16 completed_index, void *opaque)
-{
-	struct enic *enic = vnic_dev_priv(vdev);
-
-	vnic_wq_service(&enic->wq[q_number], cq_desc,
-		completed_index, enic_wq_free_buf,
-		opaque);
-
-	return 0;
 }
 
 static void enic_log_q_error(struct enic *enic)
@@ -150,65 +129,6 @@ static void enic_log_q_error(struct enic *enic)
 			dev_err(enic, "RQ[%d] error_status %d\n", i,
 				error_status);
 	}
-}
-
-unsigned int enic_cleanup_wq(struct enic *enic, struct vnic_wq *wq)
-{
-	unsigned int cq = enic_cq_wq(enic, wq->index);
-
-	/* Return the work done */
-	return vnic_cq_service(&enic->cq[cq],
-		-1 /*wq_work_to_do*/, enic_wq_service, NULL);
-}
-
-void enic_post_wq_index(struct vnic_wq *wq)
-{
-	enic_vnic_post_wq_index(wq);
-}
-
-void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
-		   struct rte_mbuf *tx_pkt, unsigned short len,
-		   uint8_t sop, uint8_t eop, uint8_t cq_entry,
-		   uint16_t ol_flags, uint16_t vlan_tag)
-{
-	struct wq_enet_desc *desc = vnic_wq_next_desc(wq);
-	uint16_t mss = 0;
-	uint8_t vlan_tag_insert = 0;
-	uint64_t bus_addr = (dma_addr_t)
-	    (tx_pkt->buf_physaddr + tx_pkt->data_off);
-
-	if (sop) {
-		if (ol_flags & PKT_TX_VLAN_PKT)
-			vlan_tag_insert = 1;
-
-		if (enic->hw_ip_checksum) {
-			if (ol_flags & PKT_TX_IP_CKSUM)
-				mss |= ENIC_CALC_IP_CKSUM;
-
-			if (ol_flags & PKT_TX_TCP_UDP_CKSUM)
-				mss |= ENIC_CALC_TCP_UDP_CKSUM;
-		}
-	}
-
-	wq_enet_desc_enc(desc,
-		bus_addr,
-		len,
-		mss,
-		0 /* header_length */,
-		0 /* offload_mode WQ_ENET_OFFLOAD_MODE_CSUM */,
-		eop,
-		cq_entry,
-		0 /* fcoe_encap */,
-		vlan_tag_insert,
-		vlan_tag,
-		0 /* loopback */);
-
-	enic_vnic_post_wq(wq, (void *)tx_pkt, bus_addr, len,
-			  sop,
-			  1 /*desc_skip_cnt*/,
-			  cq_entry,
-			  0 /*compressed send*/,
-			  0 /*wrid*/);
 }
 
 static void enic_clear_soft_stats(struct enic *enic)

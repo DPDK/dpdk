@@ -208,4 +208,7 @@ extern void enic_clsf_destroy(struct enic *enic);
 uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
 
+uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			   uint16_t nb_pkts);
+void enic_free_wq_buf(__rte_unused struct vnic_wq *wq, struct vnic_wq_buf *buf);
 #endif /* _ENIC_H_ */
