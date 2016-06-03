@@ -548,25 +548,39 @@ add_ring_to_metadata(const struct rte_ring * r,
 }
 
 static int
-add_mempool_to_metadata(const struct rte_mempool * mp,
-		struct ivshmem_config * config)
+add_mempool_memzone_to_metadata(const void *addr,
+		struct ivshmem_config *config)
 {
-	struct rte_memzone * mz;
-	int ret;
+	struct rte_memzone *mz;
 
-	mz = get_memzone_by_addr(mp);
-	ret = 0;
+	mz = get_memzone_by_addr(addr);
 
 	if (!mz) {
 		RTE_LOG(ERR, EAL, "Cannot find memzone for mempool!\n");
 		return -1;
 	}
 
-	/* mempool consists of memzone and ring */
-	ret = add_memzone_to_metadata(mz, config);
+	return add_memzone_to_metadata(mz, config);
+}
+
+static int
+add_mempool_to_metadata(const struct rte_mempool *mp,
+		struct ivshmem_config *config)
+{
+	struct rte_mempool_memhdr *memhdr;
+	int ret;
+
+	ret = add_mempool_memzone_to_metadata(mp, config);
 	if (ret < 0)
 		return -1;
 
+	STAILQ_FOREACH(memhdr, &mp->mem_list, next) {
+		ret = add_mempool_memzone_to_metadata(memhdr->addr, config);
+		if (ret < 0)
+			return -1;
+	}
+
+	/* mempool consists of memzone and ring */
 	return add_ring_to_metadata(mp->ring, config);
 }
 
