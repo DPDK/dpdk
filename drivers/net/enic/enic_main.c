@@ -215,12 +215,14 @@ static void enic_clear_soft_stats(struct enic *enic)
 {
 	struct enic_soft_stats *soft_stats = &enic->soft_stats;
 	rte_atomic64_clear(&soft_stats->rx_nombuf);
+	rte_atomic64_clear(&soft_stats->rx_packet_errors);
 }
 
 static void enic_init_soft_stats(struct enic *enic)
 {
 	struct enic_soft_stats *soft_stats = &enic->soft_stats;
 	rte_atomic64_init(&soft_stats->rx_nombuf);
+	rte_atomic64_init(&soft_stats->rx_packet_errors);
 	enic_clear_soft_stats(enic);
 }
 
@@ -234,14 +236,26 @@ void enic_dev_stats_clear(struct enic *enic)
 void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 {
 	struct vnic_stats *stats;
-	struct enic_soft_stats *soft_stats;
+	struct enic_soft_stats *soft_stats = &enic->soft_stats;
+	int64_t rx_truncated;
+	uint64_t rx_packet_errors;
 
 	if (vnic_dev_stats_dump(enic->vdev, &stats)) {
 		dev_err(enic, "Error in getting stats\n");
 		return;
 	}
 
-	r_stats->ipackets = stats->rx.rx_frames_ok;
+	/* The number of truncated packets can only be calculated by
+	 * subtracting a hardware counter from error packets received by
+	 * the driver. Note: this causes transient inaccuracies in the
+	 * ipackets count. Also, the length of truncated packets are
+	 * counted in ibytes even though truncated packets are dropped
+	 * which can make ibytes be slightly higher than it should be.
+	 */
+	rx_packet_errors = rte_atomic64_read(&soft_stats->rx_packet_errors);
+	rx_truncated = rx_packet_errors - stats->rx.rx_errors;
+
+	r_stats->ipackets = stats->rx.rx_frames_ok - rx_truncated;
 	r_stats->opackets = stats->tx.tx_frames_ok;
 
 	r_stats->ibytes = stats->rx.rx_bytes_ok;
@@ -250,9 +264,8 @@ void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 	r_stats->ierrors = stats->rx.rx_errors + stats->rx.rx_drop;
 	r_stats->oerrors = stats->tx.tx_errors;
 
-	r_stats->imissed = stats->rx.rx_no_bufs;
+	r_stats->imissed = stats->rx.rx_no_bufs + rx_truncated;
 
-	soft_stats = &enic->soft_stats;
 	r_stats->rx_nombuf = rte_atomic64_read(&soft_stats->rx_nombuf);
 }
 

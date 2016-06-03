@@ -93,6 +93,7 @@ struct enic_fdir {
 
 struct enic_soft_stats {
 	rte_atomic64_t rx_nombuf;
+	rte_atomic64_t rx_packet_errors;
 };
 
 /* Per-instance private data structure */
