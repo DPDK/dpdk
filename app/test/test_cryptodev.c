@@ -4649,6 +4649,19 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 			test_AES_CBC_HMAC_SHA1_encrypt_digest_sessionless),
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_encrypt_digest_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_encrypt_digest_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_encrypt_digest_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_digest_verify_decrypt_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_digest_verify_decrypt_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_CTR_digest_verify_decrypt_case_3),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_not_in_place_crypto),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */

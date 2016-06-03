@@ -55,9 +55,9 @@ Supported Cipher Algorithms
    "AES_CBC_128",x,,x,,
    "AES_CBC_192",x,,x,,
    "AES_CBC_256",x,,x,,
-   "AES_CTR_128",x,,,,
-   "AES_CTR_192",x,,,,
-   "AES_CTR_256",x,,,,
+   "AES_CTR_128",x,,x,,
+   "AES_CTR_192",x,,x,,
+   "AES_CTR_256",x,,x,,
    "SNOW3G_UEA2",x,,,,x
 
 Supported Authentication Algorithms

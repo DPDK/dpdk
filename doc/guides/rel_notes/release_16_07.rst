@@ -47,6 +47,11 @@ New Features
   * Dropped specific Xen Dom0 code.
   * Dropped specific anonymous mempool code in testpmd.
 
+* **Added AES-CTR support to AESNI MB PMD.**
+
+  Now AESNI MB PMD supports 128/192/256-bit counter mode AES encryption and
+  decryption.
+
 * **Added support of AES counter mode for Intel QuickAssist devices.**
 
   Enabled support for the AES CTR algorithm for Intel QuickAssist devices.

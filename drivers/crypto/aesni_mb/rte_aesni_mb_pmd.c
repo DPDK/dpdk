@@ -222,6 +222,9 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_ops *mb_ops,
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		sess->cipher.mode = CBC;
 		break;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		sess->cipher.mode = CNTR;
+		break;
 	default:
 		MB_LOG_ERR("Unsupported cipher mode parameter");
 		return -1;
