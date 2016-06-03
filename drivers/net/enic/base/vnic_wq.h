@@ -191,51 +191,6 @@ static inline u64 vnic_cached_posted_index(dma_addr_t addr, unsigned int len,
 	PI_PREFETCH_ADDR_MASK) << PI_PREFETCH_ADDR_OFF);
 }
 
-static inline void vnic_wq_post(struct vnic_wq *wq,
-	void *os_buf, dma_addr_t dma_addr,
-	unsigned int len, int sop, int eop,
-	uint8_t desc_skip_cnt, uint8_t cq_entry,
-	uint8_t compressed_send, uint64_t wrid)
-{
-	struct vnic_wq_buf *buf = wq->to_use;
-
-	buf->sop = sop;
-	buf->cq_entry = cq_entry;
-	buf->compressed_send = compressed_send;
-	buf->desc_skip_cnt = desc_skip_cnt;
-	buf->os_buf = os_buf;
-	buf->dma_addr = dma_addr;
-	buf->len = len;
-	buf->wr_id = wrid;
-
-	buf = buf->next;
-	if (eop) {
-#ifdef DO_PREFETCH
-		uint64_t wr = vnic_cached_posted_index(dma_addr, len,
-							buf->index);
-#endif
-		/* Adding write memory barrier prevents compiler and/or CPU
-		 * reordering, thus avoiding descriptor posting before
-		 * descriptor is initialized. Otherwise, hardware can read
-		 * stale descriptor fields.
-		 */
-		wmb();
-#ifdef DO_PREFETCH
-		/* Intel chipsets seem to limit the rate of PIOs that we can
-		 * push on the bus.  Thus, it is very important to do a single
-		 * 64 bit write here.  With two 32-bit writes, my maximum
-		 * pkt/sec rate was cut almost in half. -AJF
-		 */
-		iowrite64((uint64_t)wr, &wq->ctrl->posted_index);
-#else
-		iowrite32(buf->index, &wq->ctrl->posted_index);
-#endif
-	}
-	wq->to_use = buf;
-
-	wq->ring.desc_avail -= desc_skip_cnt;
-}
-
 static inline void vnic_wq_service(struct vnic_wq *wq,
 	struct cq_desc *cq_desc, u16 completed_index,
 	void (*buf_service)(struct vnic_wq *wq,

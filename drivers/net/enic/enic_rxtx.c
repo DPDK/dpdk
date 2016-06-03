@@ -416,7 +416,7 @@ void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 			  0 /*wrid*/);
 }
 
-uint16_t enicpmd_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts)
 {
 	uint16_t index;
