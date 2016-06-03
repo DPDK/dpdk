@@ -187,6 +187,18 @@ enic_ring_incr(uint32_t n_descriptors, uint32_t idx)
 	return idx;
 }
 
+#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+#define ENIC_ASSERT(cond)				\
+	do {								\
+		if (unlikely(!(cond))) {				\
+			rte_panic("line %d\tassert \"" #cond "\""	\
+					"failed\n", __LINE__);		\
+		}							\
+	} while (0)
+#else
+#define ENIC_ASSERT(cond) do {} while (0)
+#endif
+
 extern void enic_fdir_stats_get(struct enic *enic,
 	struct rte_eth_fdir_stats *stats);
 extern int enic_fdir_add_fltr(struct enic *enic,
