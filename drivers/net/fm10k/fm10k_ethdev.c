@@ -947,7 +947,7 @@ fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Return if it didn't acquire valid glort range */
-	if (!fm10k_glort_valid(hw))
+	if ((hw->mac.type == fm10k_mac_pf) && !fm10k_glort_valid(hw))
 		return;
 
 	fm10k_mbx_lock(hw);
@@ -969,7 +969,7 @@ fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Return if it didn't acquire valid glort range */
-	if (!fm10k_glort_valid(hw))
+	if ((hw->mac.type == fm10k_mac_pf) && !fm10k_glort_valid(hw))
 		return;
 
 	if (dev->data->all_multicast == 1)
@@ -995,7 +995,7 @@ fm10k_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Return if it didn't acquire valid glort range */
-	if (!fm10k_glort_valid(hw))
+	if ((hw->mac.type == fm10k_mac_pf) && !fm10k_glort_valid(hw))
 		return;
 
 	/* If promiscuous mode is enabled, it doesn't make sense to enable
@@ -1026,7 +1026,7 @@ fm10k_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Return if it didn't acquire valid glort range */
-	if (!fm10k_glort_valid(hw))
+	if ((hw->mac.type == fm10k_mac_pf) && !fm10k_glort_valid(hw))
 		return;
 
 	if (dev->data->promiscuous) {
