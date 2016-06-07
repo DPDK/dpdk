@@ -77,6 +77,13 @@ else
 _CPU_LDFLAGS := $(CPU_LDFLAGS)
 endif
 
+# Translate DEPDIRS-y into LDLIBS
+# Ignore (sub)directory dependencies which do not provide an actual library
+_IGNORE_DIRS = lib/librte_eal/% lib/librte_net lib/librte_compat
+_DEPDIRS = $(filter-out $(_IGNORE_DIRS),$(DEPDIRS-y))
+_LDDIRS = $(subst librte_ether,libethdev,$(_DEPDIRS))
+LDLIBS += $(subst lib/lib,-l,$(_LDDIRS))
+
 O_TO_A = $(AR) crDs $(LIB) $(OBJS-y)
 O_TO_A_STR = $(subst ','\'',$(O_TO_A)) #'# fix syntax highlight
 O_TO_A_DISP = $(if $(V),"$(O_TO_A_STR)","  AR $(@)")
