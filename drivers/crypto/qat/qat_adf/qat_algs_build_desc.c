@@ -616,10 +616,11 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		 * Write (the length of AAD) into bytes 16-19 of state2
 		 * in big-endian format. This field is 8 bytes
 		 */
-		*(uint32_t *)&(hash->sha.state1[
+		uint32_t *aad_len = (uint32_t *)&hash->sha.state1[
 					ICP_QAT_HW_GALOIS_128_STATE1_SZ +
-					ICP_QAT_HW_GALOIS_H_SZ]) =
-			rte_bswap32(add_auth_data_length);
+					ICP_QAT_HW_GALOIS_H_SZ];
+		*aad_len = rte_bswap32(add_auth_data_length);
+
 		proto = ICP_QAT_FW_LA_GCM_PROTO;
 	} else if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2)  {
 		proto = ICP_QAT_FW_LA_SNOW_3G_PROTO;
