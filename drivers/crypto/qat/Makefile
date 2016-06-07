@@ -38,6 +38,7 @@ LIBABIVER := 1
 
 # build flags
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -O3
 
 # external library include paths
 CFLAGS += -I$(SRCDIR)/qat_adf
