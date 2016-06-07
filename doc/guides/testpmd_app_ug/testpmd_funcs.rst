@@ -1808,13 +1808,13 @@ Different NICs may have different capabilities, command show port fdir (port_id)
 
 For example, to add an ipv4-udp flow type filter::
 
-   testpmd> flow_director_filter 0 add flow ipv4-udp src 2.2.2.3 32 \
+   testpmd> flow_director_filter 0 mode IP add flow ipv4-udp src 2.2.2.3 32 \
             dst 2.2.2.5 33 tos 2 ttl 40 vlan 0x1 flexbytes (0x88,0x48) \
             fwd pf queue 1 fd_id 1
 
 For example, add an ipv4-other flow type filter::
 
-   testpmd> flow_director_filter 0 add flow ipv4-other src 2.2.2.3 \
+   testpmd> flow_director_filter 0 mode IP add flow ipv4-other src 2.2.2.3 \
              dst 2.2.2.5 tos 2 proto 20 ttl 40 vlan 0x1 \
              flexbytes (0x88,0x48) fwd pf queue 1 fd_id 1
 
@@ -1847,7 +1847,7 @@ Set flow director's input masks::
 
 Example, to set flow director mask on port 0::
 
-   testpmd> flow_director_mask 0 vlan 0xefff \
+   testpmd> flow_director_mask 0 mode IP vlan 0xefff \
             src_mask 255.255.255.255 \
                 FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF \
             dst_mask 255.255.255.255 \
