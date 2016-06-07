@@ -560,7 +560,7 @@ aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		goto flush_jobs;
 	else
 		qp->stats.enqueued_count += processed_jobs;
-		return i;
+	return i;
 
 flush_jobs:
 	/*
