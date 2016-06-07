@@ -67,7 +67,8 @@ struct vhost_dev {
 	volatile uint8_t remove;
 
 	struct device_statistics stats;
-	TAILQ_ENTRY(vhost_dev) next;
+	TAILQ_ENTRY(vhost_dev) global_vdev_entry;
+	TAILQ_ENTRY(vhost_dev) lcore_vdev_entry;
 } __rte_cache_aligned;
 
 TAILQ_HEAD(vhost_dev_tailq_list, vhost_dev);

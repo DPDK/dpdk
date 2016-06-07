@@ -691,7 +691,7 @@ find_vhost_dev(struct ether_addr *mac)
 {
 	struct vhost_dev *vdev;
 
-	TAILQ_FOREACH(vdev, &vhost_dev_list, next) {
+	TAILQ_FOREACH(vdev, &vhost_dev_list, global_vdev_entry) {
 		if (vdev->ready == DEVICE_RX &&
 		    is_same_ether_addr(mac, &vdev->mac_address))
 			return vdev;
@@ -945,7 +945,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	if (unlikely(is_broadcast_ether_addr(&nh->d_addr))) {
 		struct vhost_dev *vdev2;
 
-		TAILQ_FOREACH(vdev2, &vhost_dev_list, next) {
+		TAILQ_FOREACH(vdev2, &vhost_dev_list, global_vdev_entry) {
 			virtio_xmit(vdev2, vdev, m);
 		}
 		goto queue2nic;
@@ -1149,7 +1149,8 @@ switch_worker(void *arg __rte_unused)
 		/*
 		 * Process vhost devices
 		 */
-		TAILQ_FOREACH(vdev, &lcore_info[lcore_id].vdev_list, next) {
+		TAILQ_FOREACH(vdev, &lcore_info[lcore_id].vdev_list,
+			      lcore_vdev_entry) {
 			if (unlikely(vdev->remove)) {
 				unlink_vmdq(vdev);
 				vdev->ready = DEVICE_SAFE_REMOVE;
@@ -1188,8 +1189,10 @@ destroy_device (volatile struct virtio_net *dev)
 		rte_pause();
 	}
 
-	TAILQ_REMOVE(&lcore_info[vdev->coreid].vdev_list, vdev, next);
-	TAILQ_REMOVE(&vhost_dev_list, vdev, next);
+	TAILQ_REMOVE(&lcore_info[vdev->coreid].vdev_list, vdev,
+		     lcore_vdev_entry);
+	TAILQ_REMOVE(&vhost_dev_list, vdev, global_vdev_entry);
+
 
 	/* Set the dev_removal_flag on each lcore. */
 	RTE_LCORE_FOREACH_SLAVE(lcore)
@@ -1234,7 +1237,7 @@ new_device (struct virtio_net *dev)
 	vdev->dev = dev;
 	dev->priv = vdev;
 
-	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, next);
+	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, global_vdev_entry);
 	vdev->vmdq_rx_q
 		= dev->device_fh * queues_per_pool + vmdq_queue_base;
 
@@ -1251,7 +1254,8 @@ new_device (struct virtio_net *dev)
 	}
 	vdev->coreid = core_add;
 
-	TAILQ_INSERT_TAIL(&lcore_info[vdev->coreid].vdev_list, vdev, next);
+	TAILQ_INSERT_TAIL(&lcore_info[vdev->coreid].vdev_list, vdev,
+			  lcore_vdev_entry);
 	lcore_info[vdev->coreid].device_num++;
 
 	/* Disable notifications. */
@@ -1294,7 +1298,7 @@ print_stats(void)
 		printf("%s%s\n", clr, top_left);
 		printf("Device statistics =================================\n");
 
-		TAILQ_FOREACH(vdev, &vhost_dev_list, next) {
+		TAILQ_FOREACH(vdev, &vhost_dev_list, global_vdev_entry) {
 			tx_total   = vdev->stats.tx_total;
 			tx         = vdev->stats.tx;
 			tx_dropped = tx_total - tx;
