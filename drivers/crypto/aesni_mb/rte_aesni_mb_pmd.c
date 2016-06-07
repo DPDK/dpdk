@@ -379,9 +379,11 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
 		/* append space for output data to mbuf */
 		char *odata = rte_pktmbuf_append(m_dst,
 				rte_pktmbuf_data_len(op->sym->m_src));
-		if (odata == NULL)
+		if (odata == NULL) {
 			MB_LOG_ERR("failed to allocate space in destination "
 					"mbuf for source data");
+			return NULL;
+		}
 
 		memcpy(odata, rte_pktmbuf_mtod(op->sym->m_src, void*),
 				rte_pktmbuf_data_len(op->sym->m_src));
