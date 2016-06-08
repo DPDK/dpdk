@@ -980,7 +980,9 @@ The following sections show functions for configuring ports.
 port attach
 ~~~~~~~~~~~
 
-Attach a port specified by pci address or virtual device args.
+Attach a port specified by pci address or virtual device args::
+
+   testpmd> port attach (identifier)
 
 To attach a new pci device, the device should be recognized by kernel first.
 Then it should be moved under DPDK management.
@@ -1013,8 +1015,6 @@ For example, to move a pci device using ixgbe under DPDK management:
    0000:0a:00.0 '82599ES 10-Gigabit' drv=igb_uio unused=
 
 To attach a port created by virtual device, above steps are not needed.
-
-port attach (identifier)
 
 For example, to attach a port whose pci address is 0000:0a:00.0.
 
@@ -1061,16 +1061,19 @@ the mode and slave parameters must be given.
 port detach
 ~~~~~~~~~~~
 
-Detach a specific port.
-
-Before detaching a port, the port should be closed::
+Detach a specific port::
 
    testpmd> port detach (port_id)
+
+Before detaching a port, the port should be stopped and closed.
 
 For example, to detach a pci device port 0.
 
 .. code-block:: console
 
+   testpmd> port stop 0
+   Stopping ports...
+   Done
    testpmd> port close 0
    Closing ports...
    Done
@@ -1088,6 +1091,9 @@ For example, to detach a virtual device port 0.
 
 .. code-block:: console
 
+   testpmd> port stop 0
+   Stopping ports...
+   Done
    testpmd> port close 0
    Closing ports...
    Done
