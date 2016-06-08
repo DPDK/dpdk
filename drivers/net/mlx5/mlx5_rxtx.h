@@ -231,7 +231,8 @@ struct hash_rxq {
 	struct ibv_qp *qp; /* Hash RX QP. */
 	enum hash_rxq_type type; /* Hash RX queue type. */
 	/* MAC flow steering rules, one per VLAN ID. */
-	struct ibv_exp_flow *mac_flow[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
+	struct ibv_exp_flow *mac_flow
+		[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
 	struct ibv_exp_flow *special_flow
 		[MLX5_MAX_SPECIAL_FLOWS][MLX5_MAX_VLAN_IDS];
 };
@@ -322,21 +323,17 @@ int rxq_setup(struct rte_eth_dev *, struct rxq *, uint16_t, unsigned int,
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
 void mlx5_rx_queue_release(void *);
-uint16_t mlx5_rx_burst_secondary_setup(void *dpdk_rxq, struct rte_mbuf **pkts,
-			      uint16_t pkts_n);
-
+uint16_t mlx5_rx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 
 /* mlx5_txq.c */
 
 void txq_cleanup(struct txq *);
-int txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
-	  unsigned int socket, const struct rte_eth_txconf *conf);
-
+int txq_setup(struct rte_eth_dev *, struct txq *, uint16_t, unsigned int,
+	      const struct rte_eth_txconf *);
 int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);
 void mlx5_tx_queue_release(void *);
-uint16_t mlx5_tx_burst_secondary_setup(void *dpdk_txq, struct rte_mbuf **pkts,
-			      uint16_t pkts_n);
+uint16_t mlx5_tx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 
 /* mlx5_rxtx.c */
 
