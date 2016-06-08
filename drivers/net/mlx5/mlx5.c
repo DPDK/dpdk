@@ -260,7 +260,7 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
 	struct ibv_device_attr device_attr;
-	unsigned int vf;
+	unsigned int sriov;
 	unsigned int mps;
 	int idx;
 	int i;
@@ -303,17 +303,17 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		    (pci_dev->addr.devid != pci_addr.devid) ||
 		    (pci_dev->addr.function != pci_addr.function))
 			continue;
-		vf = ((pci_dev->id.device_id ==
+		sriov = ((pci_dev->id.device_id ==
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX4VF) ||
 		      (pci_dev->id.device_id ==
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF));
 		/* Multi-packet send is only supported by ConnectX-4 Lx PF. */
 		mps = (pci_dev->id.device_id ==
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX4LX);
-		INFO("PCI information matches, using device \"%s\" (VF: %s,"
-		     " MPS: %s)",
+		INFO("PCI information matches, using device \"%s\""
+		     " (SR-IOV: %s, MPS: %s)",
 		     list[i]->name,
-		     vf ? "true" : "false",
+		     sriov ? "true" : "false",
 		     mps ? "true" : "false");
 		attr_ctx = ibv_open_device(list[i]);
 		err = errno;
@@ -351,6 +351,7 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_exp_device_attr exp_device_attr;
 #endif /* HAVE_EXP_QUERY_DEVICE */
 		struct ether_addr mac;
+		uint16_t num_vfs = 0;
 
 #ifdef HAVE_EXP_QUERY_DEVICE
 		exp_device_attr.comp_mask =
@@ -464,7 +465,8 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
-		priv->vf = vf;
+		priv_get_num_vfs(priv, &num_vfs);
+		priv->sriov = (num_vfs || sriov);
 		priv->mps = mps;
 		/* Allocate and register default RSS hash keys. */
 		priv->rss_conf = rte_calloc(__func__, hash_rxq_init_n,

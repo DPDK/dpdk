@@ -507,7 +507,7 @@ tx_burst_sg(struct txq *txq, unsigned int segs, struct txq_elt *elt,
 		}
 		/* Update SGE. */
 		sge->addr = rte_pktmbuf_mtod(buf, uintptr_t);
-		if (txq->priv->vf)
+		if (txq->priv->sriov)
 			rte_prefetch0((volatile void *)
 				      (uintptr_t)sge->addr);
 		sge->length = DATA_LEN(buf);
@@ -662,7 +662,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			length = DATA_LEN(buf);
 			/* Update element. */
 			elt->buf = buf;
-			if (txq->priv->vf)
+			if (txq->priv->sriov)
 				rte_prefetch0((volatile void *)
 					      (uintptr_t)addr);
 			/* Prefetch next buffer data. */
