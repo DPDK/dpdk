@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -42,12 +42,10 @@
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
-#include <cmdline_parse_ipaddr.h>
-#include <cmdline_parse_etheraddr.h>
-#include <cmdline_socket.h>
 #include <cmdline.h>
 
 #include "pipeline_common_fe.h"
+#include "parser.h"
 
 int
 app_pipeline_ping(struct app_params *app,
@@ -464,16 +462,16 @@ cmd_ping_parsed(
 		printf("Command failed\n");
 }
 
-cmdline_parse_token_string_t cmd_ping_p_string =
+static cmdline_parse_token_string_t cmd_ping_p_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_ping_result, p_string, "p");
 
-cmdline_parse_token_num_t cmd_ping_pipeline_id =
+static cmdline_parse_token_num_t cmd_ping_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_ping_result, pipeline_id, UINT32);
 
-cmdline_parse_token_string_t cmd_ping_ping_string =
+static cmdline_parse_token_string_t cmd_ping_ping_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_ping_result, ping_string, "ping");
 
-cmdline_parse_inst_t cmd_ping = {
+static cmdline_parse_inst_t cmd_ping = {
 	.f = cmd_ping_parsed,
 	.data = NULL,
 	.help_str = "Pipeline ping",
@@ -498,6 +496,7 @@ struct cmd_stats_port_in_result {
 	uint32_t port_in_id;
 
 };
+
 static void
 cmd_stats_port_in_parsed(
 	void *parsed_result,
@@ -531,23 +530,23 @@ cmd_stats_port_in_parsed(
 		stats.stats.n_pkts_drop);
 }
 
-cmdline_parse_token_string_t cmd_stats_port_in_p_string =
+static cmdline_parse_token_string_t cmd_stats_port_in_p_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_in_result, p_string,
 		"p");
 
-cmdline_parse_token_num_t cmd_stats_port_in_pipeline_id =
+static cmdline_parse_token_num_t cmd_stats_port_in_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_stats_port_in_result, pipeline_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_stats_port_in_stats_string =
+static cmdline_parse_token_string_t cmd_stats_port_in_stats_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_in_result, stats_string,
 		"stats");
 
-cmdline_parse_token_string_t cmd_stats_port_in_port_string =
+static cmdline_parse_token_string_t cmd_stats_port_in_port_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_in_result, port_string,
 		"port");
 
-cmdline_parse_token_string_t cmd_stats_port_in_in_string =
+static cmdline_parse_token_string_t cmd_stats_port_in_in_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_in_result, in_string,
 		"in");
 
@@ -555,7 +554,7 @@ cmdline_parse_token_string_t cmd_stats_port_in_in_string =
 	TOKEN_NUM_INITIALIZER(struct cmd_stats_port_in_result, port_in_id,
 		UINT32);
 
-cmdline_parse_inst_t cmd_stats_port_in = {
+static cmdline_parse_inst_t cmd_stats_port_in = {
 	.f = cmd_stats_port_in_parsed,
 	.data = NULL,
 	.help_str = "Pipeline input port stats",
@@ -617,31 +616,31 @@ cmd_stats_port_out_parsed(
 		stats.stats.n_pkts_drop);
 }
 
-cmdline_parse_token_string_t cmd_stats_port_out_p_string =
+static cmdline_parse_token_string_t cmd_stats_port_out_p_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_out_result, p_string,
 	"p");
 
-cmdline_parse_token_num_t cmd_stats_port_out_pipeline_id =
+static cmdline_parse_token_num_t cmd_stats_port_out_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_stats_port_out_result, pipeline_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_stats_port_out_stats_string =
+static cmdline_parse_token_string_t cmd_stats_port_out_stats_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_out_result, stats_string,
 		"stats");
 
-cmdline_parse_token_string_t cmd_stats_port_out_port_string =
+static cmdline_parse_token_string_t cmd_stats_port_out_port_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_out_result, port_string,
 		"port");
 
-cmdline_parse_token_string_t cmd_stats_port_out_out_string =
+static cmdline_parse_token_string_t cmd_stats_port_out_out_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_port_out_result, out_string,
 		"out");
 
-cmdline_parse_token_num_t cmd_stats_port_out_port_out_id =
+static cmdline_parse_token_num_t cmd_stats_port_out_port_out_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_stats_port_out_result, port_out_id,
 		UINT32);
 
-cmdline_parse_inst_t cmd_stats_port_out = {
+static cmdline_parse_inst_t cmd_stats_port_out = {
 	.f = cmd_stats_port_out_parsed,
 	.data = NULL,
 	.help_str = "Pipeline output port stats",
@@ -707,26 +706,26 @@ cmd_stats_table_parsed(
 		stats.n_pkts_dropped_lkp_miss);
 }
 
-cmdline_parse_token_string_t cmd_stats_table_p_string =
+static cmdline_parse_token_string_t cmd_stats_table_p_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_table_result, p_string,
 		"p");
 
-cmdline_parse_token_num_t cmd_stats_table_pipeline_id =
+static cmdline_parse_token_num_t cmd_stats_table_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_stats_table_result, pipeline_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_stats_table_stats_string =
+static cmdline_parse_token_string_t cmd_stats_table_stats_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_table_result, stats_string,
 		"stats");
 
-cmdline_parse_token_string_t cmd_stats_table_table_string =
+static cmdline_parse_token_string_t cmd_stats_table_table_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_table_result, table_string,
 		"table");
 
-cmdline_parse_token_num_t cmd_stats_table_table_id =
+static cmdline_parse_token_num_t cmd_stats_table_table_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_stats_table_result, table_id, UINT32);
 
-cmdline_parse_inst_t cmd_stats_table = {
+static cmdline_parse_inst_t cmd_stats_table = {
 	.f = cmd_stats_table_parsed,
 	.data = NULL,
 	.help_str = "Pipeline table stats",
@@ -771,31 +770,31 @@ cmd_port_in_enable_parsed(
 		printf("Command failed\n");
 }
 
-cmdline_parse_token_string_t cmd_port_in_enable_p_string =
+static cmdline_parse_token_string_t cmd_port_in_enable_p_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_enable_result, p_string,
 		"p");
 
-cmdline_parse_token_num_t cmd_port_in_enable_pipeline_id =
+static cmdline_parse_token_num_t cmd_port_in_enable_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_in_enable_result, pipeline_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_port_in_enable_port_string =
+static cmdline_parse_token_string_t cmd_port_in_enable_port_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_enable_result, port_string,
 	"port");
 
-cmdline_parse_token_string_t cmd_port_in_enable_in_string =
+static cmdline_parse_token_string_t cmd_port_in_enable_in_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_enable_result, in_string,
 		"in");
 
-cmdline_parse_token_num_t cmd_port_in_enable_port_in_id =
+static cmdline_parse_token_num_t cmd_port_in_enable_port_in_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_in_enable_result, port_in_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_port_in_enable_enable_string =
+static cmdline_parse_token_string_t cmd_port_in_enable_enable_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_enable_result,
 		enable_string, "enable");
 
-cmdline_parse_inst_t cmd_port_in_enable = {
+static cmdline_parse_inst_t cmd_port_in_enable = {
 	.f = cmd_port_in_enable_parsed,
 	.data = NULL,
 	.help_str = "Pipeline input port enable",
@@ -841,31 +840,31 @@ cmd_port_in_disable_parsed(
 		printf("Command failed\n");
 }
 
-cmdline_parse_token_string_t cmd_port_in_disable_p_string =
+static cmdline_parse_token_string_t cmd_port_in_disable_p_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_disable_result, p_string,
 		"p");
 
-cmdline_parse_token_num_t cmd_port_in_disable_pipeline_id =
+static cmdline_parse_token_num_t cmd_port_in_disable_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_in_disable_result, pipeline_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_port_in_disable_port_string =
+static cmdline_parse_token_string_t cmd_port_in_disable_port_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_disable_result, port_string,
 		"port");
 
-cmdline_parse_token_string_t cmd_port_in_disable_in_string =
+static cmdline_parse_token_string_t cmd_port_in_disable_in_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_disable_result, in_string,
 		"in");
 
-cmdline_parse_token_num_t cmd_port_in_disable_port_in_id =
+static cmdline_parse_token_num_t cmd_port_in_disable_port_in_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_in_disable_result, port_in_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_port_in_disable_disable_string =
+static cmdline_parse_token_string_t cmd_port_in_disable_disable_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_in_disable_result,
 		disable_string, "disable");
 
-cmdline_parse_inst_t cmd_port_in_disable = {
+static cmdline_parse_inst_t cmd_port_in_disable = {
 	.f = cmd_port_in_disable_parsed,
 	.data = NULL,
 	.help_str = "Pipeline input port disable",
@@ -963,219 +962,144 @@ print_link_info(struct app_link_params *p)
 	printf("\n");
 }
 
-struct cmd_link_config_result {
+/*
+ * link
+ *
+ * link config:
+ *    link <linkid> config <ipaddr> <depth>
+ *
+ * link up:
+ *    link <linkid> up
+ *
+ * link down:
+ *    link <linkid> down
+ *
+ * link ls:
+ *    link ls
+ */
+
+struct cmd_link_result {
 	cmdline_fixed_string_t link_string;
-	uint32_t link_id;
-	cmdline_fixed_string_t config_string;
-	cmdline_ipaddr_t ip;
-	uint32_t depth;
+	cmdline_multi_string_t multi_string;
 };
 
 static void
-cmd_link_config_parsed(
+cmd_link_parsed(
 	void *parsed_result,
 	__attribute__((unused)) struct cmdline *cl,
 	 void *data)
 {
-	struct cmd_link_config_result *params = parsed_result;
+	struct cmd_link_result *params = parsed_result;
 	struct app_params *app = data;
+
+	char *tokens[16];
+	uint32_t n_tokens = RTE_DIM(tokens);
 	int status;
 
-	uint32_t link_id = params->link_id;
-	uint32_t ip  = rte_bswap32((uint32_t) params->ip.addr.ipv4.s_addr);
-	uint32_t depth = params->depth;
-
-	status = app_link_config(app, link_id, ip, depth);
-	if (status)
-		printf("Command failed\n");
-	else {
-		struct app_link_params *p;
-
-		APP_PARAM_FIND_BY_ID(app->link_params, "LINK", link_id, p);
-		print_link_info(p);
-	}
-}
-
-cmdline_parse_token_string_t cmd_link_config_link_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_config_result, link_string,
-		"link");
-
-cmdline_parse_token_num_t cmd_link_config_link_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_link_config_result, link_id, UINT32);
-
-cmdline_parse_token_string_t cmd_link_config_config_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_config_result, config_string,
-		"config");
-
-cmdline_parse_token_ipaddr_t cmd_link_config_ip =
-	TOKEN_IPV4_INITIALIZER(struct cmd_link_config_result, ip);
-
-cmdline_parse_token_num_t cmd_link_config_depth =
-	TOKEN_NUM_INITIALIZER(struct cmd_link_config_result, depth, UINT32);
-
-cmdline_parse_inst_t cmd_link_config = {
-	.f = cmd_link_config_parsed,
-	.data = NULL,
-	.help_str = "Link configuration",
-	.tokens = {
-		(void *)&cmd_link_config_link_string,
-		(void *)&cmd_link_config_link_id,
-		(void *)&cmd_link_config_config_string,
-		(void *)&cmd_link_config_ip,
-		(void *)&cmd_link_config_depth,
-		NULL,
-	},
-};
-
-/*
- * link up
- */
-
-struct cmd_link_up_result {
-	cmdline_fixed_string_t link_string;
-	uint32_t link_id;
-	cmdline_fixed_string_t up_string;
-};
-
-static void
-cmd_link_up_parsed(
-	void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	void *data)
-{
-	struct cmd_link_up_result *params = parsed_result;
-	struct app_params *app = data;
-	int status;
-
-	status = app_link_up(app, params->link_id);
-	if (status != 0)
-		printf("Command failed\n");
-	else {
-		struct app_link_params *p;
-
-		APP_PARAM_FIND_BY_ID(app->link_params, "LINK", params->link_id,
-			p);
-		print_link_info(p);
-	}
-}
-
-cmdline_parse_token_string_t cmd_link_up_link_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_up_result, link_string,
-		"link");
-
-cmdline_parse_token_num_t cmd_link_up_link_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_link_up_result, link_id, UINT32);
-
-cmdline_parse_token_string_t cmd_link_up_up_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_up_result, up_string, "up");
-
-cmdline_parse_inst_t cmd_link_up = {
-	.f = cmd_link_up_parsed,
-	.data = NULL,
-	.help_str = "Link UP",
-	.tokens = {
-		(void *)&cmd_link_up_link_string,
-		(void *)&cmd_link_up_link_id,
-		(void *)&cmd_link_up_up_string,
-		NULL,
-	},
-};
-
-/*
- * link down
- */
-
-struct cmd_link_down_result {
-	cmdline_fixed_string_t link_string;
-	uint32_t link_id;
-	cmdline_fixed_string_t down_string;
-};
-
-static void
-cmd_link_down_parsed(
-	void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	void *data)
-{
-	struct cmd_link_down_result *params = parsed_result;
-	struct app_params *app = data;
-	int status;
-
-	status = app_link_down(app, params->link_id);
-	if (status != 0)
-		printf("Command failed\n");
-	else {
-		struct app_link_params *p;
-
-		APP_PARAM_FIND_BY_ID(app->link_params, "LINK", params->link_id,
-			p);
-		print_link_info(p);
-	}
-}
-
-cmdline_parse_token_string_t cmd_link_down_link_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_down_result, link_string,
-		"link");
-
-cmdline_parse_token_num_t cmd_link_down_link_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_link_down_result, link_id, UINT32);
-
-cmdline_parse_token_string_t cmd_link_down_down_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_down_result, down_string,
-		"down");
-
-cmdline_parse_inst_t cmd_link_down = {
-	.f = cmd_link_down_parsed,
-	.data = NULL,
-	.help_str = "Link DOWN",
-	.tokens = {
-		(void *) &cmd_link_down_link_string,
-		(void *) &cmd_link_down_link_id,
-		(void *) &cmd_link_down_down_string,
-		NULL,
-	},
-};
-
-/*
- * link ls
- */
-
-struct cmd_link_ls_result {
-	cmdline_fixed_string_t link_string;
-	cmdline_fixed_string_t ls_string;
-};
-
-static void
-cmd_link_ls_parsed(
-	__attribute__((unused)) void *parsed_result,
-	__attribute__((unused)) struct cmdline *cl,
-	 void *data)
-{
-	struct app_params *app = data;
 	uint32_t link_id;
 
-	for (link_id = 0; link_id < app->n_links; link_id++) {
-		struct app_link_params *p;
-
-		APP_PARAM_FIND_BY_ID(app->link_params, "LINK", link_id, p);
-		print_link_info(p);
+	status = parse_tokenize_string(params->multi_string, tokens, &n_tokens);
+	if (status != 0) {
+		printf(CMD_MSG_TOO_MANY_ARGS, "link");
+		return;
 	}
+
+	/* link ls */
+	if ((n_tokens == 1) && (strcmp(tokens[0], "ls") == 0)) {
+		for (link_id = 0; link_id < app->n_links; link_id++) {
+			struct app_link_params *p;
+
+			APP_PARAM_FIND_BY_ID(app->link_params, "LINK", link_id, p);
+			print_link_info(p);
+		}
+		return;
+	} /* link ls */
+
+	if (n_tokens < 2) {
+		printf(CMD_MSG_MISMATCH_ARGS, "link");
+		return;
+	}
+
+	if (parser_read_uint32(&link_id, tokens[0])) {
+		printf(CMD_MSG_INVALID_ARG, "linkid");
+		return;
+	}
+
+	/* link config */
+	if (strcmp(tokens[1], "config") == 0) {
+		struct in_addr ipaddr_ipv4;
+		uint32_t depth;
+
+		if (n_tokens != 4) {
+			printf(CMD_MSG_MISMATCH_ARGS, "link config");
+			return;
+		}
+
+		if (parse_ipv4_addr(tokens[2], &ipaddr_ipv4)) {
+			printf(CMD_MSG_INVALID_ARG, "ipaddr");
+			return;
+		}
+
+		if (parser_read_uint32(&depth, tokens[3])) {
+			printf(CMD_MSG_INVALID_ARG, "depth");
+			return;
+		}
+
+		status = app_link_config(app,
+			link_id,
+			rte_be_to_cpu_32(ipaddr_ipv4.s_addr),
+			depth);
+		if (status)
+			printf(CMD_MSG_FAIL, "link config");
+
+		return;
+	} /* link config */
+
+	/* link up */
+	if (strcmp(tokens[1], "up") == 0) {
+		if (n_tokens != 2) {
+			printf(CMD_MSG_MISMATCH_ARGS, "link up");
+			return;
+		}
+
+		status = app_link_up(app, link_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "link up");
+
+		return;
+	} /* link up */
+
+	/* link down */
+	if (strcmp(tokens[1], "down") == 0) {
+		if (n_tokens != 2) {
+			printf(CMD_MSG_MISMATCH_ARGS, "link down");
+			return;
+		}
+
+		status = app_link_down(app, link_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "link down");
+
+		return;
+	} /* link down */
+
+	printf(CMD_MSG_MISMATCH_ARGS, "link");
 }
 
-cmdline_parse_token_string_t cmd_link_ls_link_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_ls_result, link_string,
-		"link");
+static cmdline_parse_token_string_t cmd_link_link_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_result, link_string, "link");
 
-cmdline_parse_token_string_t cmd_link_ls_ls_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_link_ls_result, ls_string, "ls");
+static cmdline_parse_token_string_t cmd_link_multi_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_result, multi_string,
+	TOKEN_STRING_MULTI);
 
-cmdline_parse_inst_t cmd_link_ls = {
-	.f = cmd_link_ls_parsed,
+static cmdline_parse_inst_t cmd_link = {
+	.f = cmd_link_parsed,
 	.data = NULL,
-	.help_str = "Link list",
+	.help_str = "link config / up / down / ls",
 	.tokens = {
-		(void *)&cmd_link_ls_link_string,
-		(void *)&cmd_link_ls_ls_string,
+		(void *) &cmd_link_link_string,
+		(void *) &cmd_link_multi_string,
 		NULL,
 	},
 };
@@ -1212,6 +1136,11 @@ static cmdline_parse_inst_t cmd_quit = {
 
 /*
  * run
+ *
+ *    run <file>
+ *    run <file> [<count> [<interval>]]
+	 <count> default is 1
+ *       <interval> is measured in milliseconds, default is 1 second
  */
 
 static void
@@ -1233,9 +1162,9 @@ app_run_file(
 	close(fd);
 }
 
-struct cmd_run_file_result {
+struct cmd_run_result {
 	cmdline_fixed_string_t run_string;
-	char file_name[APP_FILE_NAME_SIZE];
+	cmdline_multi_string_t multi_string;
 };
 
 static void
@@ -1244,25 +1173,87 @@ cmd_run_parsed(
 	struct cmdline *cl,
 	__attribute__((unused)) void *data)
 {
-	struct cmd_run_file_result *params = parsed_result;
+	struct cmd_run_result *params = parsed_result;
 
-	app_run_file(cl->ctx, params->file_name);
+	char *tokens[16];
+	uint32_t n_tokens = RTE_DIM(tokens);
+	int status;
+
+	char *file_name;
+	uint32_t count, interval, i;
+
+	status = parse_tokenize_string(params->multi_string, tokens, &n_tokens);
+	if (status) {
+		printf(CMD_MSG_TOO_MANY_ARGS, "run");
+		return;
+	}
+
+	switch (n_tokens) {
+	case 0:
+		printf(CMD_MSG_NOT_ENOUGH_ARGS, "run");
+		return;
+
+	case 1:
+		file_name = tokens[0];
+		count = 1;
+		interval = 1000;
+		break;
+
+	case 2:
+		file_name = tokens[0];
+
+		if (parser_read_uint32(&count, tokens[1]) ||
+			(count == 0)) {
+			printf(CMD_MSG_INVALID_ARG, "count");
+			return;
+		}
+
+		interval = 1000;
+		break;
+
+	case 3:
+		file_name = tokens[0];
+
+		if (parser_read_uint32(&count, tokens[1]) ||
+			(count == 0)) {
+			printf(CMD_MSG_INVALID_ARG, "count");
+			return;
+		}
+
+		if (parser_read_uint32(&interval, tokens[2]) ||
+			(interval == 0)) {
+			printf(CMD_MSG_INVALID_ARG, "interval");
+			return;
+		}
+		break;
+
+	default:
+		printf(CMD_MSG_MISMATCH_ARGS, "run");
+		return;
+	}
+
+	for (i = 0; i < count; i++) {
+		app_run_file(cl->ctx, file_name);
+		if (interval)
+			usleep(interval * 1000);
+	}
 }
 
-cmdline_parse_token_string_t cmd_run_run_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_run_file_result, run_string,
-		"run");
+static cmdline_parse_token_string_t cmd_run_run_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_run_result, run_string, "run");
 
-cmdline_parse_token_string_t cmd_run_file_name =
-	TOKEN_STRING_INITIALIZER(struct cmd_run_file_result, file_name, NULL);
+static cmdline_parse_token_string_t cmd_run_multi_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_run_result, multi_string,
+	TOKEN_STRING_MULTI);
 
-cmdline_parse_inst_t cmd_run = {
+
+static cmdline_parse_inst_t cmd_run = {
 	.f = cmd_run_parsed,
 	.data = NULL,
 	.help_str = "Run CLI script file",
 	.tokens = {
 		(void *) &cmd_run_run_string,
-		(void *) &cmd_run_file_name,
+		(void *) &cmd_run_multi_string,
 		NULL,
 	},
 };
@@ -1270,12 +1261,7 @@ cmdline_parse_inst_t cmd_run = {
 static cmdline_parse_ctx_t pipeline_common_cmds[] = {
 	(cmdline_parse_inst_t *) &cmd_quit,
 	(cmdline_parse_inst_t *) &cmd_run,
-
-	(cmdline_parse_inst_t *) &cmd_link_config,
-	(cmdline_parse_inst_t *) &cmd_link_up,
-	(cmdline_parse_inst_t *) &cmd_link_down,
-	(cmdline_parse_inst_t *) &cmd_link_ls,
-
+	(cmdline_parse_inst_t *) &cmd_link,
 	(cmdline_parse_inst_t *) &cmd_ping,
 	(cmdline_parse_inst_t *) &cmd_stats_port_in,
 	(cmdline_parse_inst_t *) &cmd_stats_port_out,

@@ -231,4 +231,13 @@ app_link_down(struct app_params *app,
 int
 app_pipeline_common_cmd_push(struct app_params *app);
 
+#define CMD_MSG_OUT_OF_MEMORY	"Not enough memory\n"
+#define CMD_MSG_NOT_ENOUGH_ARGS	"Not enough arguments for command \"%s\"\n"
+#define CMD_MSG_TOO_MANY_ARGS	"Too many arguments for command \"%s\"\n"
+#define CMD_MSG_MISMATCH_ARGS	"Incorrect set of arguments for command \"%s\"\n"
+#define CMD_MSG_INVALID_ARG	"Invalid value for argument \"%s\"\n"
+#define CMD_MSG_ARG_NOT_FOUND	"Syntax error: \"%s\" not found\n"
+#define CMD_MSG_FILE_ERR	"Error in file \"%s\" at line %u\n"
+#define CMD_MSG_FAIL		"Command \"%s\" failed\n"
+
 #endif

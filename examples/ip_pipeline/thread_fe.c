@@ -5,10 +5,6 @@
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
-#include <cmdline_parse_ipaddr.h>
-#include <cmdline_parse_etheraddr.h>
-#include <cmdline_socket.h>
-#include <cmdline.h>
 
 #include "thread.h"
 #include "thread_fe.h"
@@ -259,26 +255,26 @@ cmd_pipeline_enable_parsed(
 		printf("Command failed\n");
 }
 
-cmdline_parse_token_string_t cmd_pipeline_enable_t_string =
+static cmdline_parse_token_string_t cmd_pipeline_enable_t_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_enable_result, t_string, "t");
 
-cmdline_parse_token_string_t cmd_pipeline_enable_t_id_string =
+static cmdline_parse_token_string_t cmd_pipeline_enable_t_id_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_enable_result, t_id_string,
 		NULL);
 
-cmdline_parse_token_string_t cmd_pipeline_enable_pipeline_string =
+static cmdline_parse_token_string_t cmd_pipeline_enable_pipeline_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_enable_result, pipeline_string,
 		"pipeline");
 
-cmdline_parse_token_num_t cmd_pipeline_enable_pipeline_id =
+static cmdline_parse_token_num_t cmd_pipeline_enable_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_pipeline_enable_result, pipeline_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_pipeline_enable_enable_string =
+static cmdline_parse_token_string_t cmd_pipeline_enable_enable_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_enable_result, enable_string,
 		"enable");
 
-cmdline_parse_inst_t cmd_pipeline_enable = {
+static cmdline_parse_inst_t cmd_pipeline_enable = {
 	.f = cmd_pipeline_enable_parsed,
 	.data = NULL,
 	.help_str = "Enable pipeline on specified core",
@@ -333,26 +329,26 @@ cmd_pipeline_disable_parsed(
 		printf("Command failed\n");
 }
 
-cmdline_parse_token_string_t cmd_pipeline_disable_t_string =
+static cmdline_parse_token_string_t cmd_pipeline_disable_t_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_disable_result, t_string, "t");
 
-cmdline_parse_token_string_t cmd_pipeline_disable_t_id_string =
+static cmdline_parse_token_string_t cmd_pipeline_disable_t_id_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_disable_result, t_id_string,
 		NULL);
 
-cmdline_parse_token_string_t cmd_pipeline_disable_pipeline_string =
+static cmdline_parse_token_string_t cmd_pipeline_disable_pipeline_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_disable_result,
 		pipeline_string, "pipeline");
 
-cmdline_parse_token_num_t cmd_pipeline_disable_pipeline_id =
+static cmdline_parse_token_num_t cmd_pipeline_disable_pipeline_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_pipeline_disable_result, pipeline_id,
 		UINT32);
 
-cmdline_parse_token_string_t cmd_pipeline_disable_disable_string =
+static cmdline_parse_token_string_t cmd_pipeline_disable_disable_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_pipeline_disable_result, disable_string,
 		"disable");
 
-cmdline_parse_inst_t cmd_pipeline_disable = {
+static cmdline_parse_inst_t cmd_pipeline_disable = {
 	.f = cmd_pipeline_disable_parsed,
 	.data = NULL,
 	.help_str = "Disable pipeline on specified core",
@@ -405,19 +401,19 @@ cmd_thread_headroom_parsed(
 		printf("Command failed\n");
 }
 
-cmdline_parse_token_string_t cmd_thread_headroom_t_string =
+static cmdline_parse_token_string_t cmd_thread_headroom_t_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_thread_headroom_result,
 	t_string, "t");
 
-cmdline_parse_token_string_t cmd_thread_headroom_t_id_string =
+static cmdline_parse_token_string_t cmd_thread_headroom_t_id_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_thread_headroom_result,
 	t_id_string, NULL);
 
-cmdline_parse_token_string_t cmd_thread_headroom_headroom_string =
+static cmdline_parse_token_string_t cmd_thread_headroom_headroom_string =
 	TOKEN_STRING_INITIALIZER(struct cmd_thread_headroom_result,
 		headroom_string, "headroom");
 
-cmdline_parse_inst_t cmd_thread_headroom = {
+static cmdline_parse_inst_t cmd_thread_headroom = {
 	.f = cmd_thread_headroom_parsed,
 	.data = NULL,
 	.help_str = "Display thread headroom",
