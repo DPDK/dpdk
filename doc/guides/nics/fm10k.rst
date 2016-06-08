@@ -157,10 +157,9 @@ Switch manager
 The Intel FM10000 family of NICs integrate a hardware switch and multiple host
 interfaces. The FM10000 PMD driver only manages host interfaces. For the
 switch component another switch driver has to be loaded prior to to the
-FM10000 PMD driver.  The switch driver can be acquired for Intel support or
-from the `Match Interface <https://github.com/match-interface>`_ project.
+FM10000 PMD driver. The switch driver can be acquired from Intel support.
 Only Testpoint is validated with DPDK, the latest version that has been
-validated with DPDK2.2 is 4.1.6.
+validated with DPDK is 4.1.6.
 
 CRC striping
 ~~~~~~~~~~~~
