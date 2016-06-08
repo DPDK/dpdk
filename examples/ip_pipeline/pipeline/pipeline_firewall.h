@@ -72,6 +72,18 @@ int
 app_pipeline_firewall_delete_default_rule(struct app_params *app,
 	uint32_t pipeline_id);
 
+#ifndef APP_PIPELINE_FIREWALL_MAX_RULES_IN_FILE
+#define APP_PIPELINE_FIREWALL_MAX_RULES_IN_FILE		65536
+#endif
+
+int
+app_pipeline_firewall_load_file(char *filename,
+	struct pipeline_firewall_key *keys,
+	uint32_t *priorities,
+	uint32_t *port_ids,
+	uint32_t *n_keys,
+	uint32_t *line);
+
 extern struct pipeline_type pipeline_firewall;
 
 #endif

@@ -1,0 +1,9 @@
+#
+# p <pipelineid> firewall add bulk ./config/firewall.txt
+# p <pipelineid> firewall del bulk ./config/firewall.txt
+#
+
+priority 1 ipv4 0.0.0.0 0 100.0.0.0 10 0 65535 0 65535 6 0xF port 0
+priority 1 ipv4 0.0.0.0 0 100.64.0.0 10 0 65535 0 65535 6 0xF port 1
+priority 1 ipv4 0.0.0.0 0 100.128.0.0 10 0 65535 0 65535 6 0xF port 2
+priority 1 ipv4 0.0.0.0 0 100.192.0.0 10 0 65535 0 65535 6 0xF port 3
