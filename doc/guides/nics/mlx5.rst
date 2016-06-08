@@ -86,11 +86,11 @@ Features
 - Hardware checksum offloads.
 - Flow director (RTE_FDIR_MODE_PERFECT and RTE_FDIR_MODE_PERFECT_MAC_VLAN).
 - Secondary process TX is supported.
+- KVM and VMware ESX SR-IOV modes are supported.
 
 Limitations
 -----------
 
-- KVM and VMware ESX SR-IOV modes are not supported yet.
 - Inner RSS for VXLAN frames is not supported yet.
 - Port statistics through software counters only.
 - Hardware checksum offloads for VXLAN inner header are not supported yet.
