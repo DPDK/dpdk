@@ -717,6 +717,7 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* Reconfigure each RX queue. */
 	for (i = 0; (i != priv->rxqs_n); ++i) {
 		struct rxq *rxq = (*priv->rxqs)[i];
+		unsigned int mb_len;
 		unsigned int max_frame_len;
 		int sp;
 
@@ -726,7 +727,9 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		 * toggle scattered support (sp) if necessary. */
 		max_frame_len = (priv->mtu + ETHER_HDR_LEN +
 				 (ETHER_MAX_VLAN_FRAME_LEN - ETHER_MAX_LEN));
-		sp = (max_frame_len > (rxq->mb_len - RTE_PKTMBUF_HEADROOM));
+		mb_len = rte_pktmbuf_data_room_size(rxq->mp);
+		assert(mb_len >= RTE_PKTMBUF_HEADROOM);
+		sp = (max_frame_len > (mb_len - RTE_PKTMBUF_HEADROOM));
 		/* Provide new values to rxq_setup(). */
 		dev->data->dev_conf.rxmode.jumbo_frame = sp;
 		dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_len;

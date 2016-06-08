@@ -121,7 +121,6 @@ struct rxq {
 		struct rxq_elt_sp (*sp)[]; /* Scattered RX elements. */
 		struct rxq_elt (*no_sp)[]; /* RX elements. */
 	} elts;
-	uint32_t mb_len; /* Length of a mp-issued mbuf. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct mlx5_rxq_stats stats; /* RX queue counters. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */

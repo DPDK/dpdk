@@ -1005,7 +1005,6 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rep->ol_flags = -1;
 #endif
 			assert(rep->buf_len == seg->buf_len);
-			assert(rep->buf_len == rxq->mb_len);
 			/* Reconfigure sge to use rep instead of seg. */
 			assert(sge->lkey == rxq->mr->lkey);
 			sge->addr = ((uintptr_t)rep->buf_addr + seg_headroom);

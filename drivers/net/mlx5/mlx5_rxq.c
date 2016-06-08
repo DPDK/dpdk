@@ -973,6 +973,7 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	struct rte_mbuf **pool;
 	unsigned int i, k;
 	struct ibv_exp_wq_attr mod;
+	unsigned int mb_len = rte_pktmbuf_data_room_size(rxq->mp);
 	int err;
 
 	DEBUG("%p: rehashing queue %p", (void *)dev, (void *)rxq);
@@ -989,9 +990,10 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		rxq->csum_l2tun = tmpl.csum_l2tun;
 	}
 	/* Enable scattered packets support for this queue if necessary. */
+	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
-	     (tmpl.mb_len - RTE_PKTMBUF_HEADROOM))) {
+	     (mb_len - RTE_PKTMBUF_HEADROOM))) {
 		tmpl.sp = 1;
 		desc_n /= MLX5_PMD_SGE_WR_N;
 	} else
@@ -1156,7 +1158,7 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		struct ibv_exp_wq_init_attr wq;
 	} attr;
 	enum ibv_exp_query_intf_status status;
-	struct rte_mbuf *buf;
+	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
 	int ret = 0;
 	unsigned int i;
 	unsigned int cq_size = desc;
@@ -1167,26 +1169,16 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		      " multiple of %d)", (void *)dev, MLX5_PMD_SGE_WR_N);
 		return EINVAL;
 	}
-	/* Get mbuf length. */
-	buf = rte_pktmbuf_alloc(mp);
-	if (buf == NULL) {
-		ERROR("%p: unable to allocate mbuf", (void *)dev);
-		return ENOMEM;
-	}
-	tmpl.mb_len = buf->buf_len;
-	assert((rte_pktmbuf_headroom(buf) +
-		rte_pktmbuf_tailroom(buf)) == tmpl.mb_len);
-	assert(rte_pktmbuf_headroom(buf) == RTE_PKTMBUF_HEADROOM);
-	rte_pktmbuf_free(buf);
 	/* Toggle RX checksum offload if hardware supports it. */
 	if (priv->hw_csum)
 		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	if (priv->hw_csum_l2tun)
 		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	/* Enable scattered packets support for this queue if necessary. */
+	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
-	     (tmpl.mb_len - RTE_PKTMBUF_HEADROOM))) {
+	     (mb_len - RTE_PKTMBUF_HEADROOM))) {
 		tmpl.sp = 1;
 		desc /= MLX5_PMD_SGE_WR_N;
 	}
