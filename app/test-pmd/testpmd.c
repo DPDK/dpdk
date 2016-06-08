@@ -1508,7 +1508,7 @@ close_port(portid_t pid)
 
 		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_HANDLING, RTE_PORT_CLOSED) == 0)
-			printf("Port %d can not be set into stopped\n", pi);
+			printf("Port %d cannot be set to closed\n", pi);
 	}
 
 	printf("Done\n");
