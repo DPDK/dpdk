@@ -397,7 +397,15 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
 static int
 priv_set_mtu(struct priv *priv, uint16_t mtu)
 {
-	return priv_set_sysfs_ulong(priv, "mtu", mtu);
+	uint16_t new_mtu;
+
+	if (priv_set_sysfs_ulong(priv, "mtu", mtu) ||
+	    priv_get_mtu(priv, &new_mtu))
+		return -1;
+	if (new_mtu == mtu)
+		return 0;
+	errno = EINVAL;
+	return -1;
 }
 
 /**
