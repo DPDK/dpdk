@@ -50,6 +50,7 @@
 
 #define APP_PARAM_NAME_SIZE                      PIPELINE_NAME_SIZE
 #define APP_LINK_PCI_BDF_SIZE                    16
+
 struct app_mempool_params {
 	char *name;
 	uint32_t parsed;
@@ -370,6 +371,8 @@ struct app_eal_params {
 	/* Support running on Xen dom0 without hugetlbfs */
 	uint32_t xen_dom0_present;
 	int xen_dom0;
+
+	uint32_t parsed;
 };
 
 #ifndef APP_APPNAME_SIZE
@@ -528,28 +531,6 @@ do {									\
 do									\
 	sscanf(obj->name, prefix "%" SCNu32, &id);				\
 while (0)								\
-
-#define APP_PARAM_ADD(obj_array, obj_name)				\
-({									\
-	ssize_t obj_idx;						\
-	const ssize_t obj_count = RTE_DIM(obj_array);			\
-									\
-	obj_idx = APP_PARAM_FIND(obj_array, obj_name);			\
-	if (obj_idx < 0) {						\
-		for (obj_idx = 0; obj_idx < obj_count; obj_idx++) {	\
-			if (!APP_PARAM_VALID(&((obj_array)[obj_idx])))	\
-				break;					\
-		}							\
-									\
-		if (obj_idx < obj_count) {				\
-			(obj_array)[obj_idx].name = strdup(obj_name);   \
-			if ((obj_array)[obj_idx].name == NULL)          \
-				obj_idx = -EINVAL;			\
-		} else							\
-			obj_idx = -ENOMEM;				\
-	}								\
-	obj_idx;							\
-})
 
 #define	APP_CHECK(exp, fmt, ...)					\
 do {									\

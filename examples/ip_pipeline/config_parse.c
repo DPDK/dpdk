@@ -1,4 +1,4 @@
-/*-
+﻿/*-
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
@@ -230,48 +230,122 @@ app_print_usage(char *prgname)
 	rte_exit(0, app_usage, prgname, app_params_default.config_file);
 }
 
-#define PARSER_PARAM_ADD_CHECK(result, params_array, section_name)	\
+#define APP_PARAM_ADD(set, key)						\
+({									\
+	ssize_t pos = APP_PARAM_FIND(set, key);				\
+	ssize_t size = RTE_DIM(set);					\
+									\
+	if (pos < 0) {							\
+		for (pos = 0; pos < size; pos++) {			\
+			if (!APP_PARAM_VALID(&((set)[pos])))		\
+				break;					\
+		}							\
+									\
+		APP_CHECK((pos < size),					\
+			"Parse error: size of %s is limited to %u elements",\
+			#set, (uint32_t) size);				\
+									\
+		(set)[pos].name = strdup(key);				\
+		APP_CHECK(((set)[pos].name),				\
+			"Parse error: no free memory");			\
+	}								\
+	pos;								\
+})
+
+#define APP_PARAM_ADD_LINK_FOR_RXQ(app, rxq_name)			\
+({									\
+	char link_name[APP_PARAM_NAME_SIZE];				\
+	ssize_t link_param_pos;						\
+	uint32_t link_id, queue_id;				\
+									\
+	sscanf((rxq_name), "RXQ%" SCNu32 ".%" SCNu32, &link_id, &queue_id);\
+	sprintf(link_name, "LINK%" PRIu32, link_id);			\
+	link_param_pos = APP_PARAM_ADD((app)->link_params, link_name);	\
+	link_param_pos;							\
+})
+
+#define APP_PARAM_ADD_LINK_FOR_TXQ(app, txq_name)			\
+({									\
+	char link_name[APP_PARAM_NAME_SIZE];				\
+	ssize_t link_param_pos;						\
+	uint32_t link_id, queue_id;					\
+									\
+	sscanf((txq_name), "TXQ%" SCNu32 ".%" SCNu32, &link_id, &queue_id);\
+	sprintf(link_name, "LINK%" PRIu32, link_id);			\
+	link_param_pos = APP_PARAM_ADD((app)->link_params, link_name);	\
+	link_param_pos;							\
+})
+
+#define APP_PARAM_ADD_LINK_FOR_TM(app, tm_name)				\
+({									\
+	char link_name[APP_PARAM_NAME_SIZE];				\
+	ssize_t link_param_pos;						\
+	uint32_t link_id;						\
+									\
+	sscanf((tm_name), "TM%" SCNu32, &link_id);			\
+	sprintf(link_name, "LINK%" PRIu32, link_id);			\
+	link_param_pos = APP_PARAM_ADD((app)->link_params, link_name);	\
+	link_param_pos;							\
+})
+
+#define PARSE_CHECK_DUPLICATE_SECTION(obj)				\
 do {									\
-	APP_CHECK((result != -EINVAL),					\
-		"Parse error: no free memory");				\
-	APP_CHECK((result != -ENOMEM),					\
-		"Parse error: too many \"%s\" sections", section_name);	\
-	APP_CHECK(((result >= 0) && (params_array)[result].parsed == 0),\
-		"Parse error: duplicate \"%s\" section", section_name);	\
-	APP_CHECK((result >= 0),					\
-		"Parse error in section \"%s\"", section_name);		\
+	APP_CHECK(((obj)->parsed == 0),					\
+		"Parse error: duplicate \"%s\" section", (obj)->name);	\
+	(obj)->parsed++;					\
+} while (0)
+
+#define PARSE_CHECK_DUPLICATE_SECTION_EAL(obj)				\
+do {									\
+	APP_CHECK(((obj)->parsed == 0),					\
+		"Parse error: duplicate \"%s\" section", "EAL");	\
+	(obj)->parsed++;					\
 } while (0)
 
 #define PARSE_ERROR(exp, section, entry)				\
-APP_CHECK(exp, "Parse error in section \"%s\": entry \"%s\"\n", section, entry)
+APP_CHECK(exp, "Parse error in section \"%s\": entry \"%s\"", section, entry)
 
 #define PARSE_ERROR_MESSAGE(exp, section, entry, message)		\
-APP_CHECK(exp, "Parse error in section \"%s\", entry \"%s\": %s\n",	\
+APP_CHECK(exp, "Parse error in section \"%s\", entry \"%s\": %s",	\
 	section, entry, message)
 
+#define PARSE_ERROR_NO_ELEMENTS(exp, section, entry)			\
+APP_CHECK(exp, "Parse error in section \"%s\", entry \"%s\": "		\
+	"no elements detected",						\
+	section, entry)
+
+#define PARSE_ERROR_TOO_MANY_ELEMENTS(exp, section, entry, max)		\
+APP_CHECK(exp, "Parse error in section \"%s\", entry \"%s\": "		\
+	"maximum number of elements allowed is %u",			\
+	section, entry, max)
+
+#define PARSE_ERROR_INVALID_ELEMENT(exp, section, entry, value)		\
+APP_CHECK(exp, "Parse error in section \"%s\", entry \"%s\": "		\
+	"Invalid element value \"%s\"",					\
+	section, entry, value)
 
 #define PARSE_ERROR_MALLOC(exp)						\
-APP_CHECK(exp, "Parse error: no free memory\n")
+APP_CHECK(exp, "Parse error: no free memory")
 
 #define PARSE_ERROR_SECTION(exp, section)				\
 APP_CHECK(exp, "Parse error in section \"%s\"", section)
 
 #define PARSE_ERROR_SECTION_NO_ENTRIES(exp, section)			\
-APP_CHECK(exp, "Parse error in section \"%s\": no entries\n", section)
+APP_CHECK(exp, "Parse error in section \"%s\": no entries", section)
 
 #define PARSE_WARNING_IGNORED(exp, section, entry)			\
 do									\
 if (!(exp))								\
 	fprintf(stderr, "Parse warning in section \"%s\": "		\
-		"entry \"%s\" is ignored\n", section, entry);		\
+		"entry \"%s\" is ignored", section, entry);		\
 while (0)
 
 #define PARSE_ERROR_INVALID(exp, section, entry)			\
-APP_CHECK(exp, "Parse error in section \"%s\": unrecognized entry \"%s\"\n",\
+APP_CHECK(exp, "Parse error in section \"%s\": unrecognized entry \"%s\"",\
 	section, entry)
 
 #define PARSE_ERROR_DUPLICATE(exp, section, entry)			\
-APP_CHECK(exp, "Parse error in section \"%s\": duplicate entry \"%s\"\n",\
+APP_CHECK(exp, "Parse error in section \"%s\": duplicate entry \"%s\"",	\
 	section, entry)
 
 static int
@@ -328,6 +402,8 @@ parse_eal(struct app_params *app,
 	PARSE_ERROR_MALLOC(entries != NULL);
 
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
+
+	PARSE_CHECK_DUPLICATE_SECTION_EAL(p);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *entry = &entries[i];
@@ -708,265 +784,154 @@ parse_eal(struct app_params *app,
 	free(entries);
 }
 
-static int
+static void
 parse_pipeline_pktq_in(struct app_params *app,
 	struct app_pipeline_params *p,
-	const char *value)
+	char *value)
 {
-	const char *next = value;
-	char *end;
-	char name[APP_PARAM_NAME_SIZE];
-	size_t name_len;
+	p->n_pktq_in = 0;
 
-	while (*next != '\0') {
+	while (1) {
 		enum app_pktq_in_type type;
 		int id;
-		char *end_space;
-		char *end_tab;
+		char *name = strtok_r(value, PARSE_DELIMITER, &value);
 
-		next = skip_white_spaces(next);
-		if (!next)
+		if (name == NULL)
 			break;
 
-		end_space = strchr(next, ' ');
-		end_tab = strchr(next, '	');
-
-		if (end_space && (!end_tab))
-			end = end_space;
-		else if ((!end_space) && end_tab)
-			end = end_tab;
-		else if (end_space && end_tab)
-			end = RTE_MIN(end_space, end_tab);
-		else
-			end = NULL;
-
-		if (!end)
-			name_len = strlen(next);
-		else
-			name_len = end - next;
-
-		if (name_len == 0 || name_len == sizeof(name))
-			return -EINVAL;
-
-		strncpy(name, next, name_len);
-		name[name_len] = '\0';
-		next += name_len;
-		if (*next != '\0')
-			next++;
+		PARSE_ERROR_TOO_MANY_ELEMENTS(
+			(p->n_pktq_in < RTE_DIM(p->pktq_in)),
+			p->name, "pktq_in", (uint32_t)RTE_DIM(p->pktq_in));
 
 		if (validate_name(name, "RXQ", 2) == 0) {
 			type = APP_PKTQ_IN_HWQ;
 			id = APP_PARAM_ADD(app->hwq_in_params, name);
+			APP_PARAM_ADD_LINK_FOR_RXQ(app, name);
 		} else if (validate_name(name, "SWQ", 1) == 0) {
 			type = APP_PKTQ_IN_SWQ;
 			id = APP_PARAM_ADD(app->swq_params, name);
 		} else if (validate_name(name, "TM", 1) == 0) {
 			type = APP_PKTQ_IN_TM;
 			id = APP_PARAM_ADD(app->tm_params, name);
+			APP_PARAM_ADD_LINK_FOR_TM(app, name);
 		} else if (validate_name(name, "SOURCE", 1) == 0) {
 			type = APP_PKTQ_IN_SOURCE;
 			id = APP_PARAM_ADD(app->source_params, name);
 		} else
-			return -EINVAL;
-
-		if (id < 0)
-			return id;
+			PARSE_ERROR_INVALID_ELEMENT(0,
+				p->name, "pktq_in", name);
 
 		p->pktq_in[p->n_pktq_in].type = type;
 		p->pktq_in[p->n_pktq_in].id = (uint32_t) id;
 		p->n_pktq_in++;
 	}
 
-	return 0;
+	PARSE_ERROR_NO_ELEMENTS((p->n_pktq_in > 0), p->name, "pktq_in");
 }
 
-static int
+static void
 parse_pipeline_pktq_out(struct app_params *app,
 	struct app_pipeline_params *p,
-	const char *value)
+	char *value)
 {
-	const char *next = value;
-	char *end;
-	char name[APP_PARAM_NAME_SIZE];
-	size_t name_len;
+	p->n_pktq_out = 0;
 
-	while (*next != '\0') {
+	while (1) {
 		enum app_pktq_out_type type;
 		int id;
-		char *end_space;
-		char *end_tab;
+		char *name = strtok_r(value, PARSE_DELIMITER, &value);
 
-		next = skip_white_spaces(next);
-		if (!next)
+		if (name == NULL)
 			break;
 
-		end_space = strchr(next, ' ');
-		end_tab = strchr(next, '	');
+		PARSE_ERROR_TOO_MANY_ELEMENTS(
+			(p->n_pktq_out < RTE_DIM(p->pktq_out)),
+			p->name, "pktq_out", (uint32_t)RTE_DIM(p->pktq_out));
 
-		if (end_space && (!end_tab))
-			end = end_space;
-		else if ((!end_space) && end_tab)
-			end = end_tab;
-		else if (end_space && end_tab)
-			end = RTE_MIN(end_space, end_tab);
-		else
-			end = NULL;
-
-		if (!end)
-			name_len = strlen(next);
-		else
-			name_len = end - next;
-
-		if (name_len == 0 || name_len == sizeof(name))
-			return -EINVAL;
-
-		strncpy(name, next, name_len);
-		name[name_len] = '\0';
-		next += name_len;
-		if (*next != '\0')
-			next++;
 		if (validate_name(name, "TXQ", 2) == 0) {
 			type = APP_PKTQ_OUT_HWQ;
 			id = APP_PARAM_ADD(app->hwq_out_params, name);
+			APP_PARAM_ADD_LINK_FOR_TXQ(app, name);
 		} else if (validate_name(name, "SWQ", 1) == 0) {
 			type = APP_PKTQ_OUT_SWQ;
 			id = APP_PARAM_ADD(app->swq_params, name);
 		} else if (validate_name(name, "TM", 1) == 0) {
 			type = APP_PKTQ_OUT_TM;
 			id = APP_PARAM_ADD(app->tm_params, name);
+			APP_PARAM_ADD_LINK_FOR_TM(app, name);
 		} else if (validate_name(name, "SINK", 1) == 0) {
 			type = APP_PKTQ_OUT_SINK;
 			id = APP_PARAM_ADD(app->sink_params, name);
 		} else
-			return -EINVAL;
-
-		if (id < 0)
-			return id;
+			PARSE_ERROR_INVALID_ELEMENT(0,
+				p->name, "pktq_out", name);
 
 		p->pktq_out[p->n_pktq_out].type = type;
 		p->pktq_out[p->n_pktq_out].id = id;
 		p->n_pktq_out++;
 	}
 
-	return 0;
+	PARSE_ERROR_NO_ELEMENTS((p->n_pktq_out > 0), p->name, "pktq_out");
 }
 
-static int
+static void
 parse_pipeline_msgq_in(struct app_params *app,
 	struct app_pipeline_params *p,
-	const char *value)
+	char *value)
 {
-	const char *next = value;
-	char *end;
-	char name[APP_PARAM_NAME_SIZE];
-	size_t name_len;
-	ssize_t idx;
+	p->n_msgq_in = 0;
 
-	while (*next != '\0') {
-		char *end_space;
-		char *end_tab;
+	while (1) {
+		int idx;
+		char *name = strtok_r(value, PARSE_DELIMITER, &value);
 
-		next = skip_white_spaces(next);
-		if (!next)
+		if (name == NULL)
 			break;
 
-		end_space = strchr(next, ' ');
-		end_tab = strchr(next, '	');
+		PARSE_ERROR_TOO_MANY_ELEMENTS(
+			(p->n_msgq_in < RTE_DIM(p->msgq_in)),
+			p->name, "msgq_in", (uint32_t)(RTE_DIM(p->msgq_in)));
 
-		if (end_space && (!end_tab))
-			end = end_space;
-		else if ((!end_space) && end_tab)
-			end = end_tab;
-		else if (end_space && end_tab)
-			end = RTE_MIN(end_space, end_tab);
-		else
-			end = NULL;
-
-		if (!end)
-			name_len = strlen(next);
-		else
-			name_len = end - next;
-
-		if (name_len == 0 || name_len == sizeof(name))
-			return -EINVAL;
-
-		strncpy(name, next, name_len);
-		name[name_len] = '\0';
-		next += name_len;
-		if (*next != '\0')
-			next++;
-
-		if (validate_name(name, "MSGQ", 1) != 0)
-			return -EINVAL;
+		PARSE_ERROR_INVALID_ELEMENT(
+			(validate_name(name, "MSGQ", 1) == 0),
+			p->name, "msgq_in", name);
 
 		idx = APP_PARAM_ADD(app->msgq_params, name);
-		if (idx < 0)
-			return idx;
-
 		p->msgq_in[p->n_msgq_in] = idx;
 		p->n_msgq_in++;
 	}
 
-	return 0;
+	PARSE_ERROR_NO_ELEMENTS((p->n_msgq_in > 0), p->name, "msgq_in");
 }
 
-static int
+static void
 parse_pipeline_msgq_out(struct app_params *app,
 	struct app_pipeline_params *p,
-	const char *value)
+	char *value)
 {
-	const char *next = value;
-	char *end;
-	char name[APP_PARAM_NAME_SIZE];
-	size_t name_len;
-	ssize_t idx;
+	p->n_msgq_out = 0;
 
-	while (*next != '\0') {
-		char *end_space;
-		char *end_tab;
+	while (1) {
+		int idx;
+		char *name = strtok_r(value, PARSE_DELIMITER, &value);
 
-		next = skip_white_spaces(next);
-		if (!next)
+		if (name == NULL)
 			break;
 
-		end_space = strchr(next, ' ');
-		end_tab = strchr(next, '	');
+		PARSE_ERROR_TOO_MANY_ELEMENTS(
+			(p->n_msgq_out < RTE_DIM(p->msgq_out)),
+			p->name, "msgq_out", (uint32_t)RTE_DIM(p->msgq_out));
 
-		if (end_space && (!end_tab))
-			end = end_space;
-		else if ((!end_space) && end_tab)
-			end = end_tab;
-		else if (end_space && end_tab)
-			end = RTE_MIN(end_space, end_tab);
-		else
-			end = NULL;
-
-		if (!end)
-			name_len = strlen(next);
-		else
-			name_len = end - next;
-
-		if (name_len == 0 || name_len == sizeof(name))
-			return -EINVAL;
-
-		strncpy(name, next, name_len);
-		name[name_len] = '\0';
-		next += name_len;
-		if (*next != '\0')
-			next++;
-
-		if (validate_name(name, "MSGQ", 1) != 0)
-			return -EINVAL;
+		PARSE_ERROR_INVALID_ELEMENT(
+			(validate_name(name, "MSGQ", 1) == 0),
+			p->name, "msgq_out", name);
 
 		idx = APP_PARAM_ADD(app->msgq_params, name);
-		if (idx < 0)
-			return idx;
-
 		p->msgq_out[p->n_msgq_out] = idx;
 		p->n_msgq_out++;
 	}
 
-	return 0;
+	PARSE_ERROR_NO_ELEMENTS((p->n_msgq_out > 0), p->name, "msgq_out");
 }
 
 static void
@@ -989,9 +954,8 @@ parse_pipeline(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->pipeline_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->pipeline_params, section_name);
-
 	param = &app->pipeline_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1018,38 +982,26 @@ parse_pipeline(struct app_params *app,
 		}
 
 		if (strcmp(ent->name, "pktq_in") == 0) {
-			int status = parse_pipeline_pktq_in(app, param,
-				ent->value);
+			parse_pipeline_pktq_in(app, param, ent->value);
 
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
 			continue;
 		}
 
 		if (strcmp(ent->name, "pktq_out") == 0) {
-			int status = parse_pipeline_pktq_out(app, param,
-				ent->value);
+			parse_pipeline_pktq_out(app, param, ent->value);
 
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
 			continue;
 		}
 
 		if (strcmp(ent->name, "msgq_in") == 0) {
-			int status = parse_pipeline_msgq_in(app, param,
-				ent->value);
+			parse_pipeline_msgq_in(app, param, ent->value);
 
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
 			continue;
 		}
 
 		if (strcmp(ent->name, "msgq_out") == 0) {
-			int status = parse_pipeline_msgq_out(app, param,
-				ent->value);
+			parse_pipeline_msgq_out(app, param, ent->value);
 
-			PARSE_ERROR((status == 0), section_name,
-				ent->name);
 			continue;
 		}
 
@@ -1078,17 +1030,13 @@ parse_pipeline(struct app_params *app,
 		param->n_args++;
 	}
 
-	param->parsed = 1;
-
 	snprintf(name, sizeof(name), "MSGQ-REQ-%s", section_name);
 	param_idx = APP_PARAM_ADD(app->msgq_params, name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, name);
 	app->msgq_params[param_idx].cpu_socket_id = param->socket_id;
 	param->msgq_in[param->n_msgq_in++] = param_idx;
 
 	snprintf(name, sizeof(name), "MSGQ-RSP-%s", section_name);
 	param_idx = APP_PARAM_ADD(app->msgq_params, name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, name);
 	app->msgq_params[param_idx].cpu_socket_id = param->socket_id;
 	param->msgq_out[param->n_msgq_out++] = param_idx;
 
@@ -1097,7 +1045,6 @@ parse_pipeline(struct app_params *app,
 		param->core_id,
 		(param->hyper_th_id) ? "h" : "");
 	param_idx = APP_PARAM_ADD(app->msgq_params, name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, name);
 	app->msgq_params[param_idx].cpu_socket_id = param->socket_id;
 
 	snprintf(name, sizeof(name), "MSGQ-RSP-CORE-s%" PRIu32 "c%" PRIu32 "%s",
@@ -1105,7 +1052,6 @@ parse_pipeline(struct app_params *app,
 		param->core_id,
 		(param->hyper_th_id) ? "h" : "");
 	param_idx = APP_PARAM_ADD(app->msgq_params, name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, name);
 	app->msgq_params[param_idx].cpu_socket_id = param->socket_id;
 
 	free(entries);
@@ -1130,9 +1076,8 @@ parse_mempool(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->mempool_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->mempool_params, section_name);
-
 	param = &app->mempool_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1177,8 +1122,6 @@ parse_mempool(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	param->parsed = 1;
-
 	free(entries);
 }
 
@@ -1202,9 +1145,8 @@ parse_link(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->link_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->link_params, section_name);
-
 	param = &app->link_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1297,8 +1239,6 @@ parse_link(struct app_params *app,
 			"this entry is mandatory (port_mask is not "
 			"provided)");
 
-	param->parsed = 1;
-
 	free(entries);
 }
 
@@ -1321,9 +1261,10 @@ parse_rxq(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->hwq_in_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->hwq_in_params, section_name);
-
 	param = &app->hwq_in_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
+
+	APP_PARAM_ADD_LINK_FOR_RXQ(app, section_name);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1335,10 +1276,8 @@ parse_rxq(struct app_params *app,
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
-			idx = APP_PARAM_ADD(app->mempool_params,
-				ent->value);
-			PARSER_PARAM_ADD_CHECK(idx, app->mempool_params,
-				section_name);
+
+			idx = APP_PARAM_ADD(app->mempool_params, ent->value);
 			param->mempool_id = idx;
 			continue;
 		}
@@ -1365,8 +1304,6 @@ parse_rxq(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	param->parsed = 1;
-
 	free(entries);
 }
 
@@ -1389,9 +1326,10 @@ parse_txq(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->hwq_out_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->hwq_out_params, section_name);
-
 	param = &app->hwq_out_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
+
+	APP_PARAM_ADD_LINK_FOR_TXQ(app, section_name);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1428,8 +1366,6 @@ parse_txq(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	param->parsed = 1;
-
 	free(entries);
 }
 
@@ -1457,9 +1393,8 @@ parse_swq(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->swq_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->swq_params, section_name);
-
 	param = &app->swq_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1587,11 +1522,9 @@ parse_swq(struct app_params *app,
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
 
-			idx = APP_PARAM_ADD(app->mempool_params,
-				ent->value);
-			PARSER_PARAM_ADD_CHECK(idx, app->mempool_params,
-				section_name);
+			idx = APP_PARAM_ADD(app->mempool_params, ent->value);
 			param->mempool_direct_id = idx;
+
 			mempool_direct_present = 1;
 			continue;
 		}
@@ -1603,11 +1536,10 @@ parse_swq(struct app_params *app,
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
-			idx = APP_PARAM_ADD(app->mempool_params,
-				ent->value);
-			PARSER_PARAM_ADD_CHECK(idx, app->mempool_params,
-				section_name);
+
+			idx = APP_PARAM_ADD(app->mempool_params, ent->value);
 			param->mempool_indirect_id = idx;
+
 			mempool_indirect_present = 1;
 			continue;
 		}
@@ -1616,31 +1548,29 @@ parse_swq(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	APP_CHECK(((mtu_present) &&
+	APP_CHECK(((mtu_present == 0) ||
 		((param->ipv4_frag == 1) || (param->ipv6_frag == 1))),
 		"Parse error in section \"%s\": IPv4/IPv6 fragmentation "
 		"is off, therefore entry \"mtu\" is not allowed",
 		section_name);
 
-	APP_CHECK(((metadata_size_present) &&
+	APP_CHECK(((metadata_size_present == 0) ||
 		((param->ipv4_frag == 1) || (param->ipv6_frag == 1))),
 		"Parse error in section \"%s\": IPv4/IPv6 fragmentation "
 		"is off, therefore entry \"metadata_size\" is "
 		"not allowed", section_name);
 
-	APP_CHECK(((mempool_direct_present) &&
+	APP_CHECK(((mempool_direct_present == 0) ||
 		((param->ipv4_frag == 1) || (param->ipv6_frag == 1))),
 		"Parse error in section \"%s\": IPv4/IPv6 fragmentation "
 		"is off, therefore entry \"mempool_direct\" is "
 		"not allowed", section_name);
 
-	APP_CHECK(((mempool_indirect_present) &&
+	APP_CHECK(((mempool_indirect_present == 0) ||
 		((param->ipv4_frag == 1) || (param->ipv6_frag == 1))),
 		"Parse error in section \"%s\": IPv4/IPv6 fragmentation "
 		"is off, therefore entry \"mempool_indirect\" is "
 		"not allowed", section_name);
-
-	param->parsed = 1;
 
 	free(entries);
 }
@@ -1664,9 +1594,10 @@ parse_tm(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->tm_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->tm_params, section_name);
-
 	param = &app->tm_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
+
+	APP_PARAM_ADD_LINK_FOR_TXQ(app, section_name);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1699,8 +1630,6 @@ parse_tm(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	param->parsed = 1;
-
 	free(entries);
 }
 
@@ -1725,9 +1654,8 @@ parse_source(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->source_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->source_params, section_name);
-
 	param = &app->source_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1739,10 +1667,8 @@ parse_source(struct app_params *app,
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
-			idx = APP_PARAM_ADD(app->mempool_params,
-				ent->value);
-			PARSER_PARAM_ADD_CHECK(idx, app->mempool_params,
-				section_name);
+
+			idx = APP_PARAM_ADD(app->mempool_params, ent->value);
 			param->mempool_id = idx;
 			continue;
 		}
@@ -1788,8 +1714,6 @@ parse_source(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	param->parsed = 1;
-
 	free(entries);
 }
 
@@ -1814,9 +1738,8 @@ parse_sink(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->sink_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->sink_params, section_name);
-
 	param = &app->sink_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1851,8 +1774,6 @@ parse_sink(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	param->parsed = 1;
-
 	free(entries);
 }
 
@@ -1875,9 +1796,8 @@ parse_msgq_req_pipeline(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->msgq_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, section_name);
-
 	param = &app->msgq_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1895,7 +1815,6 @@ parse_msgq_req_pipeline(struct app_params *app,
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
 
-	param->parsed = 1;
 	free(entries);
 }
 
@@ -1918,9 +1837,8 @@ parse_msgq_rsp_pipeline(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->msgq_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, section_name);
-
 	param = &app->msgq_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1937,8 +1855,6 @@ parse_msgq_rsp_pipeline(struct app_params *app,
 		/* unrecognized */
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
-
-	param->parsed = 1;
 
 	free(entries);
 }
@@ -1962,9 +1878,8 @@ parse_msgq(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	param_idx = APP_PARAM_ADD(app->msgq_params, section_name);
-	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, section_name);
-
 	param = &app->msgq_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1990,8 +1905,6 @@ parse_msgq(struct app_params *app,
 		/* unrecognized */
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
-
-	param->parsed = 1;
 
 	free(entries);
 }
@@ -2025,10 +1938,7 @@ static const struct config_section cfg_file_scheme[] = {
 static void
 create_implicit_mempools(struct app_params *app)
 {
-	ssize_t idx;
-
-	idx = APP_PARAM_ADD(app->mempool_params, "MEMPOOL0");
-	PARSER_PARAM_ADD_CHECK(idx, app->mempool_params, "start-up");
+	APP_PARAM_ADD(app->mempool_params, "MEMPOOL0");
 }
 
 static void
@@ -2047,7 +1957,6 @@ create_implicit_links_from_port_mask(struct app_params *app,
 
 		snprintf(name, sizeof(name), "LINK%" PRIu32, link_id);
 		idx = APP_PARAM_ADD(app->link_params, name);
-		PARSER_PARAM_ADD_CHECK(idx, app->link_params, name);
 
 		app->link_params[idx].pmd_id = pmd_id;
 		link_id++;
@@ -2061,6 +1970,11 @@ assign_link_pmd_id_from_pci_bdf(struct app_params *app)
 
 	for (i = 0; i < app->n_links; i++) {
 		struct app_link_params *link = &app->link_params[i];
+
+		APP_CHECK((strlen(link->pci_bdf)),
+			"Parse error: %s pci_bdf is not configured "
+			"(port_mask is not provided)",
+			link->name);
 
 		link->pmd_id = i;
 	}
