@@ -997,7 +997,7 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 	}
 	mr_linear =
 		ibv_reg_mr(txq->priv->pd, elts_linear, sizeof(*elts_linear),
-			   (IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE));
+			   IBV_ACCESS_LOCAL_WRITE);
 	if (mr_linear == NULL) {
 		ERROR("%p: unable to configure MR, ibv_reg_mr() failed",
 		      (void *)txq);
@@ -1309,7 +1309,7 @@ mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 	return ibv_reg_mr(pd,
 			  (void *)start,
 			  end - start,
-			  IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+			  IBV_ACCESS_LOCAL_WRITE);
 }
 
 /**
