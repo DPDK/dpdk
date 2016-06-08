@@ -1,0 +1,17 @@
+#
+# p <pipelineid> flow add qinq bulk ./config/flow.txt
+#
+
+#qinq 100 200 port 0 id 0
+#qinq 101 201 port 1 id 1
+#qinq 102 202 port 2 id 2
+#qinq 103 203 port 3 id 3
+
+#
+# p <pipelineid> flow add ipv4 bulk ./config/flow.txt
+#
+
+ipv4 100.0.0.10 200.0.0.10 100 200 6 port 0 id 0
+ipv4 100.0.0.11 200.0.0.11 101 201 6 port 1 id 1
+ipv4 100.0.0.12 200.0.0.12 102 202 6 port 2 id 2
+ipv4 100.0.0.13 200.0.0.13 103 203 6 port 3 id 3

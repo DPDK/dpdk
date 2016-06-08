@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@
 #include <string.h>
 #include <sys/queue.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_hexdump.h>
@@ -43,13 +44,12 @@
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
-#include <cmdline_parse_ipaddr.h>
-#include <cmdline_parse_etheraddr.h>
 
 #include "app.h"
 #include "pipeline_common_fe.h"
 #include "pipeline_flow_classification.h"
 #include "hash_func.h"
+#include "parser.h"
 
 /*
  * Key conversion
@@ -96,9 +96,9 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 		struct pkt_key_qinq *qinq = key_buffer;
 
 		qinq->ethertype_svlan = 0;
-		qinq->svlan = rte_bswap16(key_in->key.qinq.svlan);
+		qinq->svlan = rte_cpu_to_be_16(key_in->key.qinq.svlan);
 		qinq->ethertype_cvlan = 0;
-		qinq->cvlan = rte_bswap16(key_in->key.qinq.cvlan);
+		qinq->cvlan = rte_cpu_to_be_16(key_in->key.qinq.cvlan);
 
 		if (signature)
 			*signature = (uint32_t) hash_default_key8(qinq, 8, 0);
@@ -112,10 +112,10 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 		ipv4->ttl = 0;
 		ipv4->proto = key_in->key.ipv4_5tuple.proto;
 		ipv4->checksum = 0;
-		ipv4->ip_src = rte_bswap32(key_in->key.ipv4_5tuple.ip_src);
-		ipv4->ip_dst = rte_bswap32(key_in->key.ipv4_5tuple.ip_dst);
-		ipv4->port_src = rte_bswap16(key_in->key.ipv4_5tuple.port_src);
-		ipv4->port_dst = rte_bswap16(key_in->key.ipv4_5tuple.port_dst);
+		ipv4->ip_src = rte_cpu_to_be_32(key_in->key.ipv4_5tuple.ip_src);
+		ipv4->ip_dst = rte_cpu_to_be_32(key_in->key.ipv4_5tuple.ip_dst);
+		ipv4->port_src = rte_cpu_to_be_16(key_in->key.ipv4_5tuple.port_src);
+		ipv4->port_dst = rte_cpu_to_be_16(key_in->key.ipv4_5tuple.port_dst);
 
 		if (signature)
 			*signature = (uint32_t) hash_default_key16(ipv4, 16, 0);
@@ -132,8 +132,8 @@ app_pipeline_fc_key_convert(struct pipeline_fc_key *key_in,
 		ipv6->hop_limit = 0;
 		memcpy(&ipv6->ip_src, &key_in->key.ipv6_5tuple.ip_src, 16);
 		memcpy(&ipv6->ip_dst, &key_in->key.ipv6_5tuple.ip_dst, 16);
-		ipv6->port_src = rte_bswap16(key_in->key.ipv6_5tuple.port_src);
-		ipv6->port_dst = rte_bswap16(key_in->key.ipv6_5tuple.port_dst);
+		ipv6->port_src = rte_cpu_to_be_16(key_in->key.ipv6_5tuple.port_src);
+		ipv6->port_dst = rte_cpu_to_be_16(key_in->key.ipv6_5tuple.port_dst);
 
 		if (signature)
 			*signature = (uint32_t) hash_default_key64(ipv6, 64, 0);
@@ -276,6 +276,283 @@ app_pipeline_fc_key_check(struct pipeline_fc_key *key)
 		return -1;
 	}
 }
+
+int
+app_pipeline_fc_load_file_qinq(char *filename,
+	struct pipeline_fc_key *keys,
+	uint32_t *port_ids,
+	uint32_t *flow_ids,
+	uint32_t *n_keys,
+	uint32_t *line)
+{
+	FILE *f = NULL;
+	char file_buf[1024];
+	uint32_t i, l;
+
+	/* Check input arguments */
+	if ((filename == NULL) ||
+		(keys == NULL) ||
+		(port_ids == NULL) ||
+		(flow_ids == NULL) ||
+		(n_keys == NULL) ||
+		(*n_keys == 0) ||
+		(line == NULL)) {
+		if (line)
+			*line = 0;
+		return -1;
+		}
+
+	/* Open input file */
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		*line = 0;
+		return -1;
+	}
+
+	/* Read file */
+	for (i = 0, l = 1; i < *n_keys; l++) {
+		char *tokens[32];
+		uint32_t n_tokens = RTE_DIM(tokens);
+
+		uint16_t svlan, cvlan;
+		uint32_t portid, flowid;
+		int status;
+
+		if (fgets(file_buf, sizeof(file_buf), f) == NULL)
+			break;
+
+		status = parse_tokenize_string(file_buf, tokens, &n_tokens);
+		if (status)
+			goto error1;
+
+		if ((n_tokens == 0) || (tokens[0][0] == '#'))
+			continue;
+
+		if ((n_tokens != 7) ||
+			strcmp(tokens[0], "qinq") ||
+			parser_read_uint16(&svlan, tokens[1]) ||
+			parser_read_uint16(&cvlan, tokens[2]) ||
+			strcmp(tokens[3], "port") ||
+			parser_read_uint32(&portid, tokens[4]) ||
+			strcmp(tokens[5], "id") ||
+			parser_read_uint32(&flowid, tokens[6]))
+			goto error1;
+
+		keys[i].type = FLOW_KEY_QINQ;
+		keys[i].key.qinq.svlan = svlan;
+		keys[i].key.qinq.cvlan = cvlan;
+
+		port_ids[i] = portid;
+		flow_ids[i] = flowid;
+
+		if (app_pipeline_fc_key_check(&keys[i]))
+			goto error1;
+
+		i++;
+	}
+
+	/* Close file */
+	*n_keys = i;
+	fclose(f);
+	return 0;
+
+error1:
+	*line = l;
+	fclose(f);
+	return -1;
+}
+
+int
+app_pipeline_fc_load_file_ipv4(char *filename,
+	struct pipeline_fc_key *keys,
+	uint32_t *port_ids,
+	uint32_t *flow_ids,
+	uint32_t *n_keys,
+	uint32_t *line)
+{
+	FILE *f = NULL;
+	char file_buf[1024];
+	uint32_t i, l;
+
+	/* Check input arguments */
+	if ((filename == NULL) ||
+		(keys == NULL) ||
+		(port_ids == NULL) ||
+		(flow_ids == NULL) ||
+		(n_keys == NULL) ||
+		(*n_keys == 0) ||
+		(line == NULL)) {
+		if (line)
+			*line = 0;
+		return -1;
+		}
+
+	/* Open input file */
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		*line = 0;
+		return -1;
+	}
+
+	/* Read file */
+	for (i = 0, l = 1; i < *n_keys; l++) {
+		char *tokens[32];
+		uint32_t n_tokens = RTE_DIM(tokens);
+
+		struct in_addr sipaddr, dipaddr;
+		uint16_t sport, dport;
+		uint8_t proto;
+		uint32_t portid, flowid;
+		int status;
+
+		if (fgets(file_buf, sizeof(file_buf), f) == NULL)
+			break;
+
+		status = parse_tokenize_string(file_buf, tokens, &n_tokens);
+		if (status)
+			goto error2;
+
+		if ((n_tokens == 0) || (tokens[0][0] == '#'))
+			continue;
+
+		if ((n_tokens != 10) ||
+			strcmp(tokens[0], "ipv4") ||
+			parse_ipv4_addr(tokens[1], &sipaddr) ||
+			parse_ipv4_addr(tokens[2], &dipaddr) ||
+			parser_read_uint16(&sport, tokens[3]) ||
+			parser_read_uint16(&dport, tokens[4]) ||
+			parser_read_uint8(&proto, tokens[5]) ||
+			strcmp(tokens[6], "port") ||
+			parser_read_uint32(&portid, tokens[7]) ||
+			strcmp(tokens[8], "id") ||
+			parser_read_uint32(&flowid, tokens[9]))
+			goto error2;
+
+		keys[i].type = FLOW_KEY_IPV4_5TUPLE;
+		keys[i].key.ipv4_5tuple.ip_src = rte_be_to_cpu_32(sipaddr.s_addr);
+		keys[i].key.ipv4_5tuple.ip_dst = rte_be_to_cpu_32(dipaddr.s_addr);
+		keys[i].key.ipv4_5tuple.port_src = sport;
+		keys[i].key.ipv4_5tuple.port_dst = dport;
+		keys[i].key.ipv4_5tuple.proto = proto;
+
+		port_ids[i] = portid;
+		flow_ids[i] = flowid;
+
+		if (app_pipeline_fc_key_check(&keys[i]))
+			goto error2;
+
+		i++;
+	}
+
+	/* Close file */
+	*n_keys = i;
+	fclose(f);
+	return 0;
+
+error2:
+	*line = l;
+	fclose(f);
+	return -1;
+}
+
+int
+app_pipeline_fc_load_file_ipv6(char *filename,
+	struct pipeline_fc_key *keys,
+	uint32_t *port_ids,
+	uint32_t *flow_ids,
+	uint32_t *n_keys,
+	uint32_t *line)
+{
+	FILE *f = NULL;
+	char file_buf[1024];
+	uint32_t i, l;
+
+	/* Check input arguments */
+	if ((filename == NULL) ||
+		(keys == NULL) ||
+		(port_ids == NULL) ||
+		(flow_ids == NULL) ||
+		(n_keys == NULL) ||
+		(*n_keys == 0) ||
+		(line == NULL)) {
+		if (line)
+			*line = 0;
+		return -1;
+		}
+
+	/* Open input file */
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		*line = 0;
+		return -1;
+	}
+
+	/* Read file */
+	for (i = 0, l = 1; i < *n_keys; l++) {
+		char *tokens[32];
+		uint32_t n_tokens = RTE_DIM(tokens);
+
+		struct in6_addr sipaddr, dipaddr;
+		uint16_t sport, dport;
+		uint8_t proto;
+		uint32_t portid, flowid;
+		int status;
+
+		if (fgets(file_buf, sizeof(file_buf), f) == NULL)
+			break;
+
+		status = parse_tokenize_string(file_buf, tokens, &n_tokens);
+		if (status)
+			goto error3;
+
+		if ((n_tokens == 0) || (tokens[0][0] == '#'))
+			continue;
+
+		if ((n_tokens != 10) ||
+			strcmp(tokens[0], "ipv6") ||
+			parse_ipv6_addr(tokens[1], &sipaddr) ||
+			parse_ipv6_addr(tokens[2], &dipaddr) ||
+			parser_read_uint16(&sport, tokens[3]) ||
+			parser_read_uint16(&dport, tokens[4]) ||
+			parser_read_uint8(&proto, tokens[5]) ||
+			strcmp(tokens[6], "port") ||
+			parser_read_uint32(&portid, tokens[7]) ||
+			strcmp(tokens[8], "id") ||
+			parser_read_uint32(&flowid, tokens[9]))
+			goto error3;
+
+		keys[i].type = FLOW_KEY_IPV6_5TUPLE;
+		memcpy(keys[i].key.ipv6_5tuple.ip_src,
+			sipaddr.s6_addr,
+			sizeof(sipaddr.s6_addr));
+		memcpy(keys[i].key.ipv6_5tuple.ip_dst,
+			dipaddr.s6_addr,
+			sizeof(dipaddr.s6_addr));
+		keys[i].key.ipv6_5tuple.port_src = sport;
+		keys[i].key.ipv6_5tuple.port_dst = dport;
+		keys[i].key.ipv6_5tuple.proto = proto;
+
+		port_ids[i] = portid;
+		flow_ids[i] = flowid;
+
+		if (app_pipeline_fc_key_check(&keys[i]))
+			goto error3;
+
+		i++;
+	}
+
+	/* Close file */
+	*n_keys = i;
+	fclose(f);
+	return 0;
+
+error3:
+	*line = l;
+	fclose(f);
+	return -1;
+}
+
+
 
 int
 app_pipeline_fc_add(struct app_params *app,
@@ -896,1309 +1173,720 @@ app_pipeline_fc_ls(struct app_params *app,
 
 	return 0;
 }
-
 /*
- * flow add qinq
+ * flow
+ *
+ * flow add:
+ *    p <pipelineid> flow add qinq <svlan> <cvlan> port <portid> id <flowid>
+ *    p <pipelineid> flow add qinq bulk <file>
+ *    p <pipelineid> flow add ipv4 <sipaddr> <dipaddr> <sport> <dport> <proto> port <port ID> id <flowid>
+ *    p <pipelineid> flow add ipv4 bulk <file>
+ *    p <pipelineid> flow add ipv6 <sipaddr> <dipaddr> <sport> <dport> <proto> port <port ID> id <flowid>
+ *    p <pipelineid> flow add ipv6 bulk <file>
+ *
+ * flow add default:
+ *    p <pipelineid> flow add default <portid>
+ *
+ * flow del:
+ *    p <pipelineid> flow del qinq <svlan> <cvlan>
+ *    p <pipelineid> flow del ipv4 <sipaddr> <dipaddr> <sport> <dport> <proto>
+ *    p <pipelineid> flow del ipv6 <sipaddr> <dipaddr> <sport> <dport> <proto>
+ *
+ * flow del default:
+ *    p <pipelineid> flow del default
+ *
+ * flow ls:
+ *    p <pipelineid> flow ls
  */
 
-struct cmd_fc_add_qinq_result {
+struct cmd_flow_result {
 	cmdline_fixed_string_t p_string;
 	uint32_t pipeline_id;
 	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t add_string;
-	cmdline_fixed_string_t qinq_string;
-	uint16_t svlan;
-	uint16_t cvlan;
-	cmdline_fixed_string_t port_string;
-	uint32_t port;
-	cmdline_fixed_string_t flowid_string;
-	uint32_t flow_id;
+	cmdline_multi_string_t multi_string;
 };
 
 static void
-cmd_fc_add_qinq_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_add_qinq_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key key;
-	int status;
-
-	memset(&key, 0, sizeof(key));
-	key.type = FLOW_KEY_QINQ;
-	key.key.qinq.svlan = params->svlan;
-	key.key.qinq.cvlan = params->cvlan;
-
-	status = app_pipeline_fc_add(app,
-		params->pipeline_id,
-		&key,
-		params->port,
-		params->flow_id);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, p_string, "p");
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, pipeline_id,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, flow_string,
-		"flow");
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, add_string,
-		"add");
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_qinq_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, qinq_string,
-		"qinq");
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_svlan =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, svlan, UINT16);
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_cvlan =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, cvlan, UINT16);
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_port_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, port_string,
-		"port");
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_port =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, port, UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_flowid_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_result, flowid_string,
-		"flowid");
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_flow_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_result, flow_id, UINT32);
-
-cmdline_parse_inst_t cmd_fc_add_qinq = {
-	.f = cmd_fc_add_qinq_parsed,
-	.data = NULL,
-	.help_str = "Flow add (Q-in-Q)",
-	.tokens = {
-		(void *) &cmd_fc_add_qinq_p_string,
-		(void *) &cmd_fc_add_qinq_pipeline_id,
-		(void *) &cmd_fc_add_qinq_flow_string,
-		(void *) &cmd_fc_add_qinq_add_string,
-		(void *) &cmd_fc_add_qinq_qinq_string,
-		(void *) &cmd_fc_add_qinq_svlan,
-		(void *) &cmd_fc_add_qinq_cvlan,
-		(void *) &cmd_fc_add_qinq_port_string,
-		(void *) &cmd_fc_add_qinq_port,
-		(void *) &cmd_fc_add_qinq_flowid_string,
-		(void *) &cmd_fc_add_qinq_flow_id,
-		NULL,
-	},
-};
-
-/*
- * flow add qinq all
- */
-
-struct cmd_fc_add_qinq_all_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t add_string;
-	cmdline_fixed_string_t qinq_string;
-	cmdline_fixed_string_t all_string;
-	uint32_t n_flows;
-	uint32_t n_ports;
-};
-
-#ifndef N_FLOWS_BULK
-#define N_FLOWS_BULK					4096
-#endif
-
-static void
-cmd_fc_add_qinq_all_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_add_qinq_all_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key *key;
-	uint32_t *port_id;
-	uint32_t *flow_id;
-	uint32_t id;
-
-	/* Check input arguments */
-	if (params->n_flows == 0) {
-		printf("Invalid number of flows\n");
-		return;
-	}
-
-	if (params->n_ports == 0) {
-		printf("Invalid number of output ports\n");
-		return;
-	}
-
-	/* Memory allocation */
-	key = rte_zmalloc(NULL,
-		N_FLOWS_BULK * sizeof(*key),
-		RTE_CACHE_LINE_SIZE);
-	if (key == NULL) {
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	port_id = rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(*port_id),
-		RTE_CACHE_LINE_SIZE);
-	if (port_id == NULL) {
-		rte_free(key);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	flow_id = rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(*flow_id),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_id == NULL) {
-		rte_free(port_id);
-		rte_free(key);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	/* Flow add */
-	for (id = 0; id < params->n_flows; id++) {
-		uint32_t pos = id & (N_FLOWS_BULK - 1);
-
-		key[pos].type = FLOW_KEY_QINQ;
-		key[pos].key.qinq.svlan = id >> 12;
-		key[pos].key.qinq.cvlan = id & 0xFFF;
-
-		port_id[pos] = id % params->n_ports;
-		flow_id[pos] = id;
-
-		if ((pos == N_FLOWS_BULK - 1) ||
-			(id == params->n_flows - 1)) {
-			int status;
-
-			status = app_pipeline_fc_add_bulk(app,
-				params->pipeline_id,
-				key,
-				port_id,
-				flow_id,
-				pos + 1);
-
-			if (status != 0) {
-				printf("Command failed\n");
-
-				break;
-			}
-		}
-	}
-
-	/* Memory free */
-	rte_free(flow_id);
-	rte_free(port_id);
-	rte_free(key);
-}
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_all_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_all_result, p_string,
-		"p");
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_all_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_all_result, pipeline_id,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_all_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_all_result, flow_string,
-		"flow");
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_all_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_all_result, add_string,
-		"add");
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_all_qinq_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_all_result, qinq_string,
-		"qinq");
-
-cmdline_parse_token_string_t cmd_fc_add_qinq_all_all_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_qinq_all_result, all_string,
-		"all");
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_all_n_flows =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_all_result, n_flows,
-		UINT32);
-
-cmdline_parse_token_num_t cmd_fc_add_qinq_all_n_ports =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_qinq_all_result, n_ports,
-		UINT32);
-
-cmdline_parse_inst_t cmd_fc_add_qinq_all = {
-	.f = cmd_fc_add_qinq_all_parsed,
-	.data = NULL,
-	.help_str = "Flow add all (Q-in-Q)",
-	.tokens = {
-		(void *) &cmd_fc_add_qinq_all_p_string,
-		(void *) &cmd_fc_add_qinq_all_pipeline_id,
-		(void *) &cmd_fc_add_qinq_all_flow_string,
-		(void *) &cmd_fc_add_qinq_all_add_string,
-		(void *) &cmd_fc_add_qinq_all_qinq_string,
-		(void *) &cmd_fc_add_qinq_all_all_string,
-		(void *) &cmd_fc_add_qinq_all_n_flows,
-		(void *) &cmd_fc_add_qinq_all_n_ports,
-		NULL,
-	},
-};
-
-/*
- * flow add ipv4_5tuple
- */
-
-struct cmd_fc_add_ipv4_5tuple_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t add_string;
-	cmdline_fixed_string_t ipv4_5tuple_string;
-	cmdline_ipaddr_t ip_src;
-	cmdline_ipaddr_t ip_dst;
-	uint16_t port_src;
-	uint16_t port_dst;
-	uint32_t proto;
-	cmdline_fixed_string_t port_string;
-	uint32_t port;
-	cmdline_fixed_string_t flowid_string;
-	uint32_t flow_id;
-};
-
-static void
-cmd_fc_add_ipv4_5tuple_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_add_ipv4_5tuple_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key key;
-	int status;
-
-	memset(&key, 0, sizeof(key));
-	key.type = FLOW_KEY_IPV4_5TUPLE;
-	key.key.ipv4_5tuple.ip_src = rte_bswap32(
-		params->ip_src.addr.ipv4.s_addr);
-	key.key.ipv4_5tuple.ip_dst = rte_bswap32(
-		params->ip_dst.addr.ipv4.s_addr);
-	key.key.ipv4_5tuple.port_src = params->port_src;
-	key.key.ipv4_5tuple.port_dst = params->port_dst;
-	key.key.ipv4_5tuple.proto = params->proto;
-
-	status = app_pipeline_fc_add(app,
-		params->pipeline_id,
-		&key,
-		params->port,
-		params->flow_id);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, p_string,
-		"p");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, pipeline_id,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result,
-		flow_string, "flow");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result,
-		add_string, "add");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_ipv4_5tuple_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result,
-		ipv4_5tuple_string, "ipv4_5tuple");
-
-cmdline_parse_token_ipaddr_t cmd_fc_add_ipv4_5tuple_ip_src =
-	TOKEN_IPV4_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, ip_src);
-
-cmdline_parse_token_ipaddr_t cmd_fc_add_ipv4_5tuple_ip_dst =
-	TOKEN_IPV4_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, ip_dst);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_port_src =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, port_src,
-		UINT16);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_port_dst =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, port_dst,
-		UINT16);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_proto =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, proto,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_port_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, port_string,
-		"port");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_port =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, port,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_flowid_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result,
-		flowid_string, "flowid");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_flow_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_result, flow_id,
-		UINT32);
-
-cmdline_parse_inst_t cmd_fc_add_ipv4_5tuple = {
-	.f = cmd_fc_add_ipv4_5tuple_parsed,
-	.data = NULL,
-	.help_str = "Flow add (IPv4 5-tuple)",
-	.tokens = {
-		(void *) &cmd_fc_add_ipv4_5tuple_p_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_pipeline_id,
-		(void *) &cmd_fc_add_ipv4_5tuple_flow_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_add_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_ipv4_5tuple_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_ip_src,
-		(void *) &cmd_fc_add_ipv4_5tuple_ip_dst,
-		(void *) &cmd_fc_add_ipv4_5tuple_port_src,
-		(void *) &cmd_fc_add_ipv4_5tuple_port_dst,
-		(void *) &cmd_fc_add_ipv4_5tuple_proto,
-		(void *) &cmd_fc_add_ipv4_5tuple_port_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_port,
-		(void *) &cmd_fc_add_ipv4_5tuple_flowid_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_flow_id,
-		NULL,
-	},
-};
-
-/*
- * flow add ipv4_5tuple all
- */
-
-struct cmd_fc_add_ipv4_5tuple_all_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t add_string;
-	cmdline_fixed_string_t ipv4_5tuple_string;
-	cmdline_fixed_string_t all_string;
-	uint32_t n_flows;
-	uint32_t n_ports;
-};
-
-static void
-cmd_fc_add_ipv4_5tuple_all_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_add_ipv4_5tuple_all_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key *key;
-	uint32_t *port_id;
-	uint32_t *flow_id;
-	uint32_t id;
-
-	/* Check input parameters */
-	if (params->n_flows == 0) {
-		printf("Invalid number of flows\n");
-		return;
-	}
-
-	if (params->n_ports == 0) {
-		printf("Invalid number of ports\n");
-		return;
-	}
-
-	/* Memory allocation */
-	key = rte_zmalloc(NULL,
-		N_FLOWS_BULK * sizeof(*key),
-		RTE_CACHE_LINE_SIZE);
-	if (key == NULL) {
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	port_id = rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(*port_id),
-		RTE_CACHE_LINE_SIZE);
-	if (port_id == NULL) {
-		rte_free(key);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	flow_id = rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(*flow_id),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_id == NULL) {
-		rte_free(port_id);
-		rte_free(key);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	/* Flow add */
-	for (id = 0; id < params->n_flows; id++) {
-		uint32_t pos = id & (N_FLOWS_BULK - 1);
-
-		key[pos].type = FLOW_KEY_IPV4_5TUPLE;
-		key[pos].key.ipv4_5tuple.ip_src = 0;
-		key[pos].key.ipv4_5tuple.ip_dst = id;
-		key[pos].key.ipv4_5tuple.port_src = 0;
-		key[pos].key.ipv4_5tuple.port_dst = 0;
-		key[pos].key.ipv4_5tuple.proto = 6;
-
-		port_id[pos] = id % params->n_ports;
-		flow_id[pos] = id;
-
-		if ((pos == N_FLOWS_BULK - 1) ||
-			(id == params->n_flows - 1)) {
-			int status;
-
-			status = app_pipeline_fc_add_bulk(app,
-				params->pipeline_id,
-				key,
-				port_id,
-				flow_id,
-				pos + 1);
-
-			if (status != 0) {
-				printf("Command failed\n");
-
-				break;
-			}
-		}
-	}
-
-	/* Memory free */
-	rte_free(flow_id);
-	rte_free(port_id);
-	rte_free(key);
-}
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_all_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		p_string, "p");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_all_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_all_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		flow_string, "flow");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_all_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		add_string, "add");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_all_ipv4_5tuple_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		ipv4_5tuple_string, "ipv4_5tuple");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv4_5tuple_all_all_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		all_string, "all");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_all_n_flows =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		n_flows, UINT32);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv4_5tuple_all_n_ports =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv4_5tuple_all_result,
-		n_ports, UINT32);
-
-cmdline_parse_inst_t cmd_fc_add_ipv4_5tuple_all = {
-	.f = cmd_fc_add_ipv4_5tuple_all_parsed,
-	.data = NULL,
-	.help_str = "Flow add all (IPv4 5-tuple)",
-	.tokens = {
-		(void *) &cmd_fc_add_ipv4_5tuple_all_p_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_all_pipeline_id,
-		(void *) &cmd_fc_add_ipv4_5tuple_all_flow_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_all_add_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_all_ipv4_5tuple_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_all_all_string,
-		(void *) &cmd_fc_add_ipv4_5tuple_all_n_flows,
-		(void *) &cmd_fc_add_ipv4_5tuple_all_n_ports,
-		NULL,
-	},
-};
-
-/*
- * flow add ipv6_5tuple
- */
-
-struct cmd_fc_add_ipv6_5tuple_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t add_string;
-	cmdline_fixed_string_t ipv6_5tuple_string;
-	cmdline_ipaddr_t ip_src;
-	cmdline_ipaddr_t ip_dst;
-	uint16_t port_src;
-	uint16_t port_dst;
-	uint32_t proto;
-	cmdline_fixed_string_t port_string;
-	uint32_t port;
-	cmdline_fixed_string_t flowid_string;
-	uint32_t flow_id;
-};
-
-static void
-cmd_fc_add_ipv6_5tuple_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_add_ipv6_5tuple_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key key;
-	int status;
-
-	memset(&key, 0, sizeof(key));
-	key.type = FLOW_KEY_IPV6_5TUPLE;
-	memcpy(key.key.ipv6_5tuple.ip_src,
-		params->ip_src.addr.ipv6.s6_addr,
-		16);
-	memcpy(key.key.ipv6_5tuple.ip_dst,
-		params->ip_dst.addr.ipv6.s6_addr,
-		16);
-	key.key.ipv6_5tuple.port_src = params->port_src;
-	key.key.ipv6_5tuple.port_dst = params->port_dst;
-	key.key.ipv6_5tuple.proto = params->proto;
-
-	status = app_pipeline_fc_add(app,
-		params->pipeline_id,
-		&key,
-		params->port,
-		params->flow_id);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
-		p_string, "p");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, pipeline_id,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
-		flow_string, "flow");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
-		add_string, "add");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_ipv6_5tuple_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
-		ipv6_5tuple_string, "ipv6_5tuple");
-
-cmdline_parse_token_ipaddr_t cmd_fc_add_ipv6_5tuple_ip_src =
-	TOKEN_IPV6_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, ip_src);
-
-cmdline_parse_token_ipaddr_t cmd_fc_add_ipv6_5tuple_ip_dst =
-	TOKEN_IPV6_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, ip_dst);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_port_src =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, port_src,
-		UINT16);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_port_dst =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, port_dst,
-		UINT16);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_proto =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, proto,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_port_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
-		port_string, "port");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_port =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, port,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_flowid_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result,
-		flowid_string, "flowid");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_flow_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_result, flow_id,
-		UINT32);
-
-cmdline_parse_inst_t cmd_fc_add_ipv6_5tuple = {
-	.f = cmd_fc_add_ipv6_5tuple_parsed,
-	.data = NULL,
-	.help_str = "Flow add (IPv6 5-tuple)",
-	.tokens = {
-		(void *) &cmd_fc_add_ipv6_5tuple_p_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_pipeline_id,
-		(void *) &cmd_fc_add_ipv6_5tuple_flow_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_add_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_ipv6_5tuple_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_ip_src,
-		(void *) &cmd_fc_add_ipv6_5tuple_ip_dst,
-		(void *) &cmd_fc_add_ipv6_5tuple_port_src,
-		(void *) &cmd_fc_add_ipv6_5tuple_port_dst,
-		(void *) &cmd_fc_add_ipv6_5tuple_proto,
-		(void *) &cmd_fc_add_ipv6_5tuple_port_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_port,
-		(void *) &cmd_fc_add_ipv6_5tuple_flowid_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_flow_id,
-		NULL,
-	},
-};
-
-/*
- * flow add ipv6_5tuple all
- */
-
-struct cmd_fc_add_ipv6_5tuple_all_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t add_string;
-	cmdline_fixed_string_t ipv6_5tuple_string;
-	cmdline_fixed_string_t all_string;
-	uint32_t n_flows;
-	uint32_t n_ports;
-};
-
-static void
-cmd_fc_add_ipv6_5tuple_all_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_add_ipv6_5tuple_all_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key *key;
-	uint32_t *port_id;
-	uint32_t *flow_id;
-	uint32_t id;
-
-	/* Check input parameters */
-	if (params->n_flows == 0) {
-		printf("Invalid number of flows\n");
-		return;
-	}
-
-	if (params->n_ports == 0) {
-		printf("Invalid number of ports\n");
-		return;
-	}
-
-	/* Memory allocation */
-	key = rte_zmalloc(NULL,
-		N_FLOWS_BULK * sizeof(*key),
-		RTE_CACHE_LINE_SIZE);
-	if (key == NULL) {
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	port_id = rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(*port_id),
-		RTE_CACHE_LINE_SIZE);
-	if (port_id == NULL) {
-		rte_free(key);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	flow_id = rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(*flow_id),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_id == NULL) {
-		rte_free(port_id);
-		rte_free(key);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	/* Flow add */
-	for (id = 0; id < params->n_flows; id++) {
-		uint32_t pos = id & (N_FLOWS_BULK - 1);
-		uint32_t *x;
-
-		key[pos].type = FLOW_KEY_IPV6_5TUPLE;
-		x = (uint32_t *) key[pos].key.ipv6_5tuple.ip_dst;
-		*x = rte_bswap32(id);
-		key[pos].key.ipv6_5tuple.proto = 6;
-
-		port_id[pos] = id % params->n_ports;
-		flow_id[pos] = id;
-
-		if ((pos == N_FLOWS_BULK - 1) ||
-			(id == params->n_flows - 1)) {
-			int status;
-
-			status = app_pipeline_fc_add_bulk(app,
-				params->pipeline_id,
-				key,
-				port_id,
-				flow_id,
-				pos + 1);
-
-			if (status != 0) {
-				printf("Command failed\n");
-
-				break;
-			}
-		}
-	}
-
-	/* Memory free */
-	rte_free(flow_id);
-	rte_free(port_id);
-	rte_free(key);
-}
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_all_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		p_string, "p");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_all_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_all_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		flow_string, "flow");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_all_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		add_string, "add");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_all_ipv6_5tuple_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		ipv6_5tuple_string, "ipv6_5tuple");
-
-cmdline_parse_token_string_t cmd_fc_add_ipv6_5tuple_all_all_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		all_string, "all");
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_all_n_flows =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		n_flows, UINT32);
-
-cmdline_parse_token_num_t cmd_fc_add_ipv6_5tuple_all_n_ports =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_ipv6_5tuple_all_result,
-		n_ports, UINT32);
-
-cmdline_parse_inst_t cmd_fc_add_ipv6_5tuple_all = {
-	.f = cmd_fc_add_ipv6_5tuple_all_parsed,
-	.data = NULL,
-	.help_str = "Flow add all (ipv6 5-tuple)",
-	.tokens = {
-		(void *) &cmd_fc_add_ipv6_5tuple_all_p_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_all_pipeline_id,
-		(void *) &cmd_fc_add_ipv6_5tuple_all_flow_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_all_add_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_all_ipv6_5tuple_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_all_all_string,
-		(void *) &cmd_fc_add_ipv6_5tuple_all_n_flows,
-		(void *) &cmd_fc_add_ipv6_5tuple_all_n_ports,
-		NULL,
-	},
-};
-
-/*
- * flow del qinq
- */
-struct cmd_fc_del_qinq_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t del_string;
-	cmdline_fixed_string_t qinq_string;
-	uint16_t svlan;
-	uint16_t cvlan;
-};
-
-static void
-cmd_fc_del_qinq_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_del_qinq_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key key;
-	int status;
-
-	memset(&key, 0, sizeof(key));
-	key.type = FLOW_KEY_QINQ;
-	key.key.qinq.svlan = params->svlan;
-	key.key.qinq.cvlan = params->cvlan;
-	status = app_pipeline_fc_del(app, params->pipeline_id, &key);
-
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_del_qinq_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_qinq_result, p_string, "p");
-
-cmdline_parse_token_num_t cmd_fc_del_qinq_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_qinq_result, pipeline_id,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_del_qinq_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_qinq_result, flow_string,
-		"flow");
-
-cmdline_parse_token_string_t cmd_fc_del_qinq_del_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_qinq_result, del_string,
-		"del");
-
-cmdline_parse_token_string_t cmd_fc_del_qinq_qinq_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_qinq_result, qinq_string,
-		"qinq");
-
-cmdline_parse_token_num_t cmd_fc_del_qinq_svlan =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_qinq_result, svlan, UINT16);
-
-cmdline_parse_token_num_t cmd_fc_del_qinq_cvlan =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_qinq_result, cvlan, UINT16);
-
-cmdline_parse_inst_t cmd_fc_del_qinq = {
-	.f = cmd_fc_del_qinq_parsed,
-	.data = NULL,
-	.help_str = "Flow delete (Q-in-Q)",
-	.tokens = {
-		(void *) &cmd_fc_del_qinq_p_string,
-		(void *) &cmd_fc_del_qinq_pipeline_id,
-		(void *) &cmd_fc_del_qinq_flow_string,
-		(void *) &cmd_fc_del_qinq_del_string,
-		(void *) &cmd_fc_del_qinq_qinq_string,
-		(void *) &cmd_fc_del_qinq_svlan,
-		(void *) &cmd_fc_del_qinq_cvlan,
-		NULL,
-	},
-};
-
-/*
- * flow del ipv4_5tuple
- */
-
-struct cmd_fc_del_ipv4_5tuple_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t del_string;
-	cmdline_fixed_string_t ipv4_5tuple_string;
-	cmdline_ipaddr_t ip_src;
-	cmdline_ipaddr_t ip_dst;
-	uint16_t port_src;
-	uint16_t port_dst;
-	uint32_t proto;
-};
-
-static void
-cmd_fc_del_ipv4_5tuple_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_del_ipv4_5tuple_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key key;
-	int status;
-
-	memset(&key, 0, sizeof(key));
-	key.type = FLOW_KEY_IPV4_5TUPLE;
-	key.key.ipv4_5tuple.ip_src = rte_bswap32(
-		params->ip_src.addr.ipv4.s_addr);
-	key.key.ipv4_5tuple.ip_dst = rte_bswap32(
-		params->ip_dst.addr.ipv4.s_addr);
-	key.key.ipv4_5tuple.port_src = params->port_src;
-	key.key.ipv4_5tuple.port_dst = params->port_dst;
-	key.key.ipv4_5tuple.proto = params->proto;
-
-	status = app_pipeline_fc_del(app, params->pipeline_id, &key);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_del_ipv4_5tuple_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		p_string, "p");
-
-cmdline_parse_token_num_t cmd_fc_del_ipv4_5tuple_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fc_del_ipv4_5tuple_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		flow_string, "flow");
-
-cmdline_parse_token_string_t cmd_fc_del_ipv4_5tuple_del_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		del_string, "del");
-
-cmdline_parse_token_string_t cmd_fc_del_ipv4_5tuple_ipv4_5tuple_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		ipv4_5tuple_string, "ipv4_5tuple");
-
-cmdline_parse_token_ipaddr_t cmd_fc_del_ipv4_5tuple_ip_src =
-	TOKEN_IPV4_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		ip_src);
-
-cmdline_parse_token_ipaddr_t cmd_fc_del_ipv4_5tuple_ip_dst =
-	TOKEN_IPV4_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result, ip_dst);
-
-cmdline_parse_token_num_t cmd_fc_del_ipv4_5tuple_port_src =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		port_src, UINT16);
-
-cmdline_parse_token_num_t cmd_fc_del_ipv4_5tuple_port_dst =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		port_dst, UINT16);
-
-cmdline_parse_token_num_t cmd_fc_del_ipv4_5tuple_proto =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv4_5tuple_result,
-		proto, UINT32);
-
-cmdline_parse_inst_t cmd_fc_del_ipv4_5tuple = {
-	.f = cmd_fc_del_ipv4_5tuple_parsed,
-	.data = NULL,
-	.help_str = "Flow delete (IPv4 5-tuple)",
-	.tokens = {
-		(void *) &cmd_fc_del_ipv4_5tuple_p_string,
-		(void *) &cmd_fc_del_ipv4_5tuple_pipeline_id,
-		(void *) &cmd_fc_del_ipv4_5tuple_flow_string,
-		(void *) &cmd_fc_del_ipv4_5tuple_del_string,
-		(void *) &cmd_fc_del_ipv4_5tuple_ipv4_5tuple_string,
-		(void *) &cmd_fc_del_ipv4_5tuple_ip_src,
-		(void *) &cmd_fc_del_ipv4_5tuple_ip_dst,
-		(void *) &cmd_fc_del_ipv4_5tuple_port_src,
-		(void *) &cmd_fc_del_ipv4_5tuple_port_dst,
-		(void *) &cmd_fc_del_ipv4_5tuple_proto,
-		NULL,
-	},
-};
-
-/*
- * flow del ipv6_5tuple
- */
-
-struct cmd_fc_del_ipv6_5tuple_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t del_string;
-	cmdline_fixed_string_t ipv6_5tuple_string;
-	cmdline_ipaddr_t ip_src;
-	cmdline_ipaddr_t ip_dst;
-	uint16_t port_src;
-	uint16_t port_dst;
-	uint32_t proto;
-};
-
-static void
-cmd_fc_del_ipv6_5tuple_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_del_ipv6_5tuple_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fc_key key;
-	int status;
-
-	memset(&key, 0, sizeof(key));
-	key.type = FLOW_KEY_IPV6_5TUPLE;
-	memcpy(key.key.ipv6_5tuple.ip_src,
-		params->ip_src.addr.ipv6.s6_addr,
-		16);
-	memcpy(key.key.ipv6_5tuple.ip_dst,
-		params->ip_dst.addr.ipv6.s6_addr,
-		16);
-	key.key.ipv6_5tuple.port_src = params->port_src;
-	key.key.ipv6_5tuple.port_dst = params->port_dst;
-	key.key.ipv6_5tuple.proto = params->proto;
-
-	status = app_pipeline_fc_del(app, params->pipeline_id, &key);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_del_ipv6_5tuple_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result,
-		p_string, "p");
-
-cmdline_parse_token_num_t cmd_fc_del_ipv6_5tuple_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result,
-		pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fc_del_ipv6_5tuple_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result,
-		flow_string, "flow");
-
-cmdline_parse_token_string_t cmd_fc_del_ipv6_5tuple_del_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result,
-		del_string, "del");
-
-cmdline_parse_token_string_t cmd_fc_del_ipv6_5tuple_ipv6_5tuple_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result,
-		ipv6_5tuple_string, "ipv6_5tuple");
-
-cmdline_parse_token_ipaddr_t cmd_fc_del_ipv6_5tuple_ip_src =
-	TOKEN_IPV6_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result, ip_src);
-
-cmdline_parse_token_ipaddr_t cmd_fc_del_ipv6_5tuple_ip_dst =
-	TOKEN_IPV6_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result, ip_dst);
-
-cmdline_parse_token_num_t cmd_fc_del_ipv6_5tuple_port_src =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result, port_src,
-		UINT16);
-
-cmdline_parse_token_num_t cmd_fc_del_ipv6_5tuple_port_dst =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result, port_dst,
-		UINT16);
-
-cmdline_parse_token_num_t cmd_fc_del_ipv6_5tuple_proto =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_ipv6_5tuple_result, proto,
-		UINT32);
-
-cmdline_parse_inst_t cmd_fc_del_ipv6_5tuple = {
-	.f = cmd_fc_del_ipv6_5tuple_parsed,
-	.data = NULL,
-	.help_str = "Flow delete (IPv6 5-tuple)",
-	.tokens = {
-		(void *) &cmd_fc_del_ipv6_5tuple_p_string,
-		(void *) &cmd_fc_del_ipv6_5tuple_pipeline_id,
-		(void *) &cmd_fc_del_ipv6_5tuple_flow_string,
-		(void *) &cmd_fc_del_ipv6_5tuple_del_string,
-		(void *) &cmd_fc_del_ipv6_5tuple_ipv6_5tuple_string,
-		(void *) &cmd_fc_del_ipv6_5tuple_ip_src,
-		(void *) &cmd_fc_del_ipv6_5tuple_ip_dst,
-		(void *) &cmd_fc_del_ipv6_5tuple_port_src,
-		(void *) &cmd_fc_del_ipv6_5tuple_port_dst,
-		(void *) &cmd_fc_del_ipv6_5tuple_proto,
-		NULL,
-	},
-};
-
-/*
- * flow add default
- */
-
-struct cmd_fc_add_default_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t add_string;
-	cmdline_fixed_string_t default_string;
-	uint32_t port;
-};
-
-static void
-cmd_fc_add_default_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_add_default_result *params = parsed_result;
-	struct app_params *app = data;
-	int status;
-
-	status = app_pipeline_fc_add_default(app, params->pipeline_id,
-		params->port);
-
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_add_default_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_default_result, p_string,
-		"p");
-
-cmdline_parse_token_num_t cmd_fc_add_default_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_default_result, pipeline_id,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_add_default_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_default_result, flow_string,
-		"flow");
-
-cmdline_parse_token_string_t cmd_fc_add_default_add_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_default_result, add_string,
-		"add");
-
-cmdline_parse_token_string_t cmd_fc_add_default_default_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_add_default_result,
-		default_string, "default");
-
-cmdline_parse_token_num_t cmd_fc_add_default_port =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_add_default_result, port, UINT32);
-
-cmdline_parse_inst_t cmd_fc_add_default = {
-	.f = cmd_fc_add_default_parsed,
-	.data = NULL,
-	.help_str = "Flow add default",
-	.tokens = {
-		(void *) &cmd_fc_add_default_p_string,
-		(void *) &cmd_fc_add_default_pipeline_id,
-		(void *) &cmd_fc_add_default_flow_string,
-		(void *) &cmd_fc_add_default_add_string,
-		(void *) &cmd_fc_add_default_default_string,
-		(void *) &cmd_fc_add_default_port,
-		NULL,
-	},
-};
-
-/*
- * flow del default
- */
-
-struct cmd_fc_del_default_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t del_string;
-	cmdline_fixed_string_t default_string;
-};
-
-static void
-cmd_fc_del_default_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fc_del_default_result *params = parsed_result;
-	struct app_params *app = data;
-	int status;
-
-	status = app_pipeline_fc_del_default(app, params->pipeline_id);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fc_del_default_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_default_result, p_string,
-		"p");
-
-cmdline_parse_token_num_t cmd_fc_del_default_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_del_default_result, pipeline_id,
-		UINT32);
-
-cmdline_parse_token_string_t cmd_fc_del_default_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_default_result, flow_string,
-		"flow");
-
-cmdline_parse_token_string_t cmd_fc_del_default_del_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_default_result, del_string,
-		"del");
-
-cmdline_parse_token_string_t cmd_fc_del_default_default_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_del_default_result,
-		default_string, "default");
-
-cmdline_parse_inst_t cmd_fc_del_default = {
-	.f = cmd_fc_del_default_parsed,
-	.data = NULL,
-	.help_str = "Flow delete default",
-	.tokens = {
-		(void *) &cmd_fc_del_default_p_string,
-		(void *) &cmd_fc_del_default_pipeline_id,
-		(void *) &cmd_fc_del_default_flow_string,
-		(void *) &cmd_fc_del_default_del_string,
-		(void *) &cmd_fc_del_default_default_string,
-		NULL,
-	},
-};
-
-/*
- * flow ls
- */
-
-struct cmd_fc_ls_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t ls_string;
-};
-
-static void
-cmd_fc_ls_parsed(
-	void *parsed_result,
+cmd_flow_parsed(void *parsed_result,
 	__attribute__((unused)) struct cmdline *cl,
 	void *data)
 {
-	struct cmd_fc_ls_result *params = parsed_result;
+	struct cmd_flow_result *results = parsed_result;
 	struct app_params *app = data;
+
+	char *tokens[16];
+	uint32_t n_tokens = RTE_DIM(tokens);
 	int status;
 
-	status = app_pipeline_fc_ls(app, params->pipeline_id);
-	if (status != 0)
-		printf("Command failed\n");
+	status = parse_tokenize_string(results->multi_string, tokens, &n_tokens);
+	if (status) {
+		printf(CMD_MSG_TOO_MANY_ARGS, "flow");
+		return;
+	}
+
+	/* flow add qinq */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "add") == 0) &&
+		(strcmp(tokens[1], "qinq") == 0) &&
+		strcmp(tokens[2], "bulk")) {
+		struct pipeline_fc_key key;
+		uint32_t svlan;
+		uint32_t cvlan;
+		uint32_t port_id;
+		uint32_t flow_id;
+
+		memset(&key, 0, sizeof(key));
+
+		if (n_tokens != 8) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow add qinq");
+			return;
+		}
+
+		if (parser_read_uint32(&svlan, tokens[2]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "svlan");
+			return;
+		}
+
+		if (parser_read_uint32(&cvlan, tokens[3]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "cvlan");
+			return;
+		}
+
+		if (strcmp(tokens[4], "port") != 0) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "port");
+			return;
+		}
+
+		if (parser_read_uint32(&port_id, tokens[5]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "portid");
+			return;
+		}
+
+		if (strcmp(tokens[6], "id") != 0) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "id");
+			return;
+		}
+
+		if (parser_read_uint32(&flow_id, tokens[7]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "flowid");
+			return;
+		}
+
+		key.type = FLOW_KEY_QINQ;
+		key.key.qinq.svlan = svlan;
+		key.key.qinq.cvlan = cvlan;
+
+		status = app_pipeline_fc_add(app,
+			results->pipeline_id,
+			&key,
+			port_id,
+			flow_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow add qinq");
+
+		return;
+	} /* flow add qinq */
+
+	/* flow add ipv4 */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "add") == 0) &&
+		(strcmp(tokens[1], "ipv4") == 0) &&
+		strcmp(tokens[2], "bulk")) {
+		struct pipeline_fc_key key;
+		struct in_addr sipaddr;
+		struct in_addr dipaddr;
+		uint32_t sport;
+		uint32_t dport;
+		uint32_t proto;
+		uint32_t port_id;
+		uint32_t flow_id;
+
+		memset(&key, 0, sizeof(key));
+
+		if (n_tokens != 11) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow add ipv4");
+			return;
+		}
+
+		if (parse_ipv4_addr(tokens[2], &sipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sipv4addr");
+			return;
+		}
+		if (parse_ipv4_addr(tokens[3], &dipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dipv4addr");
+			return;
+		}
+
+		if (parser_read_uint32(&sport, tokens[4]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sport");
+			return;
+		}
+
+		if (parser_read_uint32(&dport, tokens[5]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dport");
+			return;
+		}
+
+		if (parser_read_uint32(&proto, tokens[6]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "proto");
+			return;
+		}
+
+		if (strcmp(tokens[7], "port") != 0) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "port");
+			return;
+		}
+
+		if (parser_read_uint32(&port_id, tokens[8]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "portid");
+			return;
+		}
+
+		if (strcmp(tokens[9], "id") != 0) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "id");
+			return;
+		}
+
+		if (parser_read_uint32(&flow_id, tokens[10]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "flowid");
+			return;
+		}
+
+		key.type = FLOW_KEY_IPV4_5TUPLE;
+		key.key.ipv4_5tuple.ip_src = rte_be_to_cpu_32(sipaddr.s_addr);
+		key.key.ipv4_5tuple.ip_dst = rte_be_to_cpu_32(dipaddr.s_addr);
+		key.key.ipv4_5tuple.port_src = sport;
+		key.key.ipv4_5tuple.port_dst = dport;
+		key.key.ipv4_5tuple.proto = proto;
+
+		status = app_pipeline_fc_add(app,
+			results->pipeline_id,
+			&key,
+			port_id,
+			flow_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow add ipv4");
+
+		return;
+	} /* flow add ipv4 */
+
+	/* flow add ipv6 */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "add") == 0) &&
+		(strcmp(tokens[1], "ipv6") == 0) &&
+		strcmp(tokens[2], "bulk")) {
+		struct pipeline_fc_key key;
+		struct in6_addr sipaddr;
+		struct in6_addr dipaddr;
+		uint32_t sport;
+		uint32_t dport;
+		uint32_t proto;
+		uint32_t port_id;
+		uint32_t flow_id;
+
+		memset(&key, 0, sizeof(key));
+
+		if (n_tokens != 11) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow add ipv6");
+			return;
+		}
+
+		if (parse_ipv6_addr(tokens[2], &sipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sipv6addr");
+			return;
+		}
+		if (parse_ipv6_addr(tokens[3], &dipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dipv6addr");
+			return;
+		}
+
+		if (parser_read_uint32(&sport, tokens[4]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sport");
+			return;
+		}
+
+		if (parser_read_uint32(&dport, tokens[5]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dport");
+			return;
+		}
+
+		if (parser_read_uint32(&proto, tokens[6]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "proto");
+			return;
+		}
+
+		if (strcmp(tokens[7], "port") != 0) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "port");
+			return;
+		}
+
+		if (parser_read_uint32(&port_id, tokens[8]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "portid");
+			return;
+		}
+
+		if (strcmp(tokens[9], "id") != 0) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "id");
+			return;
+		}
+
+		if (parser_read_uint32(&flow_id, tokens[10]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "flowid");
+			return;
+		}
+
+		key.type = FLOW_KEY_IPV6_5TUPLE;
+		memcpy(key.key.ipv6_5tuple.ip_src, (void *)&sipaddr, 16);
+		memcpy(key.key.ipv6_5tuple.ip_dst, (void *)&dipaddr, 16);
+		key.key.ipv6_5tuple.port_src = sport;
+		key.key.ipv6_5tuple.port_dst = dport;
+		key.key.ipv6_5tuple.proto = proto;
+
+		status = app_pipeline_fc_add(app,
+			results->pipeline_id,
+			&key,
+			port_id,
+			flow_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow add ipv6");
+
+		return;
+	} /* flow add ipv6 */
+
+	/* flow add qinq bulk */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "add") == 0) &&
+		(strcmp(tokens[1], "qinq") == 0) &&
+		(strcmp(tokens[2], "bulk") == 0)) {
+		struct pipeline_fc_key *keys;
+		uint32_t *port_ids, *flow_ids, n_keys, line;
+		char *filename;
+
+		if (n_tokens != 4) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow add qinq bulk");
+			return;
+		}
+
+		filename = tokens[3];
+
+		n_keys = APP_PIPELINE_FC_MAX_FLOWS_IN_FILE;
+		keys = malloc(n_keys * sizeof(struct pipeline_fc_key));
+		if (keys == NULL)
+			return;
+		memset(keys, 0, n_keys * sizeof(struct pipeline_fc_key));
+
+		port_ids = malloc(n_keys * sizeof(uint32_t));
+		if (port_ids == NULL) {
+			free(keys);
+			return;
+		}
+
+		flow_ids = malloc(n_keys * sizeof(uint32_t));
+		if (flow_ids == NULL) {
+			free(port_ids);
+			free(keys);
+			return;
+		}
+
+		status = app_pipeline_fc_load_file_qinq(filename,
+			keys,
+			port_ids,
+			flow_ids,
+			&n_keys,
+			&line);
+		if (status != 0) {
+			printf(CMD_MSG_FILE_ERR, filename, line);
+			free(flow_ids);
+			free(port_ids);
+			free(keys);
+			return;
+		}
+
+		status = app_pipeline_fc_add_bulk(app,
+			results->pipeline_id,
+			keys,
+			port_ids,
+			flow_ids,
+			n_keys);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow add qinq bulk");
+
+		free(flow_ids);
+		free(port_ids);
+		free(keys);
+		return;
+	} /* flow add qinq bulk */
+
+	/* flow add ipv4 bulk */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "add") == 0) &&
+		(strcmp(tokens[1], "ipv4") == 0) &&
+		(strcmp(tokens[2], "bulk") == 0)) {
+		struct pipeline_fc_key *keys;
+		uint32_t *port_ids, *flow_ids, n_keys, line;
+		char *filename;
+
+		if (n_tokens != 4) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow add ipv4 bulk");
+			return;
+		}
+
+		filename = tokens[3];
+
+		n_keys = APP_PIPELINE_FC_MAX_FLOWS_IN_FILE;
+		keys = malloc(n_keys * sizeof(struct pipeline_fc_key));
+		if (keys == NULL)
+			return;
+		memset(keys, 0, n_keys * sizeof(struct pipeline_fc_key));
+
+		port_ids = malloc(n_keys * sizeof(uint32_t));
+		if (port_ids == NULL) {
+			free(keys);
+			return;
+		}
+
+		flow_ids = malloc(n_keys * sizeof(uint32_t));
+		if (flow_ids == NULL) {
+			free(port_ids);
+			free(keys);
+			return;
+		}
+
+		status = app_pipeline_fc_load_file_ipv4(filename,
+			keys,
+			port_ids,
+			flow_ids,
+			&n_keys,
+			&line);
+		if (status != 0) {
+			printf(CMD_MSG_FILE_ERR, filename, line);
+			free(flow_ids);
+			free(port_ids);
+			free(keys);
+			return;
+		}
+
+		status = app_pipeline_fc_add_bulk(app,
+			results->pipeline_id,
+			keys,
+			port_ids,
+			flow_ids,
+			n_keys);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow add ipv4 bulk");
+
+		free(flow_ids);
+		free(port_ids);
+		free(keys);
+		return;
+	} /* flow add ipv4 bulk */
+
+	/* flow add ipv6 bulk */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "add") == 0) &&
+		(strcmp(tokens[1], "ipv6") == 0) &&
+		(strcmp(tokens[2], "bulk") == 0)) {
+		struct pipeline_fc_key *keys;
+		uint32_t *port_ids, *flow_ids, n_keys, line;
+		char *filename;
+
+		if (n_tokens != 4) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow add ipv6 bulk");
+			return;
+		}
+
+		filename = tokens[3];
+
+		n_keys = APP_PIPELINE_FC_MAX_FLOWS_IN_FILE;
+		keys = malloc(n_keys * sizeof(struct pipeline_fc_key));
+		if (keys == NULL)
+			return;
+		memset(keys, 0, n_keys * sizeof(struct pipeline_fc_key));
+
+		port_ids = malloc(n_keys * sizeof(uint32_t));
+		if (port_ids == NULL) {
+			free(keys);
+			return;
+		}
+
+		flow_ids = malloc(n_keys * sizeof(uint32_t));
+		if (flow_ids == NULL) {
+			free(port_ids);
+			free(keys);
+			return;
+		}
+
+		status = app_pipeline_fc_load_file_ipv6(filename,
+			keys,
+			port_ids,
+			flow_ids,
+			&n_keys,
+			&line);
+		if (status != 0) {
+			printf(CMD_MSG_FILE_ERR, filename, line);
+			free(flow_ids);
+			free(port_ids);
+			free(keys);
+			return;
+		}
+
+		status = app_pipeline_fc_add_bulk(app,
+			results->pipeline_id,
+			keys,
+			port_ids,
+			flow_ids,
+			n_keys);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow add ipv6 bulk");
+
+		free(flow_ids);
+		free(port_ids);
+		free(keys);
+		return;
+	} /* flow add ipv6 bulk */
+
+	/* flow add default*/
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "add") == 0) &&
+		(strcmp(tokens[1], "default") == 0)) {
+		uint32_t port_id;
+
+		if (n_tokens != 3) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow add default");
+			return;
+		}
+
+		if (parser_read_uint32(&port_id, tokens[2]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "portid");
+			return;
+		}
+
+		status = app_pipeline_fc_add_default(app,
+			results->pipeline_id,
+			port_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow add default");
+
+		return;
+	} /* flow add default */
+
+	/* flow del qinq */
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "del") == 0) &&
+		(strcmp(tokens[1], "qinq") == 0)) {
+		struct pipeline_fc_key key;
+		uint32_t svlan;
+		uint32_t cvlan;
+
+		memset(&key, 0, sizeof(key));
+
+		if (n_tokens != 4) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow del qinq");
+			return;
+		}
+
+		if (parser_read_uint32(&svlan, tokens[2]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "svlan");
+			return;
+		}
+
+		if (parser_read_uint32(&cvlan, tokens[3]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "cvlan");
+			return;
+		}
+
+		key.type = FLOW_KEY_QINQ;
+		key.key.qinq.svlan = svlan;
+		key.key.qinq.cvlan = cvlan;
+
+		status = app_pipeline_fc_del(app,
+			results->pipeline_id,
+			&key);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow del qinq");
+
+		return;
+	} /* flow del qinq */
+
+	/* flow del ipv4 */
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "del") == 0) &&
+		(strcmp(tokens[1], "ipv4") == 0)) {
+		struct pipeline_fc_key key;
+		struct in_addr sipaddr;
+		struct in_addr dipaddr;
+		uint32_t sport;
+		uint32_t dport;
+		uint32_t proto;
+
+		memset(&key, 0, sizeof(key));
+
+		if (n_tokens != 7) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow del ipv4");
+			return;
+		}
+
+		if (parse_ipv4_addr(tokens[2], &sipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sipv4addr");
+			return;
+		}
+		if (parse_ipv4_addr(tokens[3], &dipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dipv4addr");
+			return;
+		}
+
+		if (parser_read_uint32(&sport, tokens[4]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sport");
+			return;
+		}
+
+		if (parser_read_uint32(&dport, tokens[5]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dport");
+			return;
+		}
+
+		if (parser_read_uint32(&proto, tokens[6]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "proto");
+			return;
+		}
+
+		key.type = FLOW_KEY_IPV4_5TUPLE;
+		key.key.ipv4_5tuple.ip_src = rte_be_to_cpu_32(sipaddr.s_addr);
+		key.key.ipv4_5tuple.ip_dst = rte_be_to_cpu_32(dipaddr.s_addr);
+		key.key.ipv4_5tuple.port_src = sport;
+		key.key.ipv4_5tuple.port_dst = dport;
+		key.key.ipv4_5tuple.proto = proto;
+
+		status = app_pipeline_fc_del(app,
+			results->pipeline_id,
+			&key);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow del ipv4");
+
+		return;
+	} /* flow del ipv4 */
+
+	/* flow del ipv6 */
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "del") == 0) &&
+		(strcmp(tokens[1], "ipv6") == 0)) {
+		struct pipeline_fc_key key;
+		struct in6_addr sipaddr;
+		struct in6_addr dipaddr;
+		uint32_t sport;
+		uint32_t dport;
+		uint32_t proto;
+
+		memset(&key, 0, sizeof(key));
+
+		if (n_tokens != 7) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow del ipv6");
+			return;
+		}
+
+		if (parse_ipv6_addr(tokens[2], &sipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sipv6addr");
+			return;
+		}
+
+		if (parse_ipv6_addr(tokens[3], &dipaddr) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dipv6addr");
+			return;
+		}
+
+		if (parser_read_uint32(&sport, tokens[4]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "sport");
+			return;
+		}
+
+		if (parser_read_uint32(&dport, tokens[5]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "dport");
+			return;
+		}
+
+		if (parser_read_uint32(&proto, tokens[6]) != 0) {
+			printf(CMD_MSG_INVALID_ARG, "proto");
+			return;
+		}
+
+		key.type = FLOW_KEY_IPV6_5TUPLE;
+		memcpy(key.key.ipv6_5tuple.ip_src, &sipaddr, 16);
+		memcpy(key.key.ipv6_5tuple.ip_dst, &dipaddr, 16);
+		key.key.ipv6_5tuple.port_src = sport;
+		key.key.ipv6_5tuple.port_dst = dport;
+		key.key.ipv6_5tuple.proto = proto;
+
+		status = app_pipeline_fc_del(app,
+			results->pipeline_id,
+			&key);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow del ipv6");
+
+		return;
+	} /* flow del ipv6 */
+
+	/* flow del default*/
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "del") == 0) &&
+		(strcmp(tokens[1], "default") == 0)) {
+		if (n_tokens != 2) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow del default");
+			return;
+		}
+
+		status = app_pipeline_fc_del_default(app,
+			results->pipeline_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow del default");
+
+		return;
+	} /* flow del default */
+
+	/* flow ls */
+	if ((n_tokens >= 1) && (strcmp(tokens[0], "ls") == 0)) {
+		if (n_tokens != 1) {
+			printf(CMD_MSG_MISMATCH_ARGS, "flow ls");
+			return;
+		}
+
+		status = app_pipeline_fc_ls(app, results->pipeline_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "flow ls");
+
+		return;
+	} /* flow ls */
+
+	printf(CMD_MSG_MISMATCH_ARGS, "flow");
 }
 
-cmdline_parse_token_string_t cmd_fc_ls_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_ls_result, p_string, "p");
+static cmdline_parse_token_string_t cmd_flow_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_result, p_string, "p");
 
-cmdline_parse_token_num_t cmd_fc_ls_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fc_ls_result, pipeline_id, UINT32);
+static cmdline_parse_token_num_t cmd_flow_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_flow_result, pipeline_id, UINT32);
 
-cmdline_parse_token_string_t cmd_fc_ls_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_ls_result,
-	flow_string, "flow");
+static cmdline_parse_token_string_t cmd_flow_flow_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_result, flow_string, "flow");
 
-cmdline_parse_token_string_t cmd_fc_ls_ls_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fc_ls_result, ls_string,
-	"ls");
+static cmdline_parse_token_string_t cmd_flow_multi_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_flow_result, multi_string,
+		TOKEN_STRING_MULTI);
 
-cmdline_parse_inst_t cmd_fc_ls = {
-	.f = cmd_fc_ls_parsed,
+static cmdline_parse_inst_t cmd_flow = {
+	.f = cmd_flow_parsed,
 	.data = NULL,
-	.help_str = "Flow list",
+	.help_str = "flow add / add bulk / add default / del / del default / ls",
 	.tokens = {
-		(void *) &cmd_fc_ls_p_string,
-		(void *) &cmd_fc_ls_pipeline_id,
-		(void *) &cmd_fc_ls_flow_string,
-		(void *) &cmd_fc_ls_ls_string,
+		(void *) &cmd_flow_p_string,
+		(void *) &cmd_flow_pipeline_id,
+		(void *) &cmd_flow_flow_string,
+		(void *) &cmd_flow_multi_string,
 		NULL,
 	},
 };
 
 static cmdline_parse_ctx_t pipeline_cmds[] = {
-	(cmdline_parse_inst_t *) &cmd_fc_add_qinq,
-	(cmdline_parse_inst_t *) &cmd_fc_add_ipv4_5tuple,
-	(cmdline_parse_inst_t *) &cmd_fc_add_ipv6_5tuple,
-
-	(cmdline_parse_inst_t *) &cmd_fc_del_qinq,
-	(cmdline_parse_inst_t *) &cmd_fc_del_ipv4_5tuple,
-	(cmdline_parse_inst_t *) &cmd_fc_del_ipv6_5tuple,
-
-	(cmdline_parse_inst_t *) &cmd_fc_add_default,
-	(cmdline_parse_inst_t *) &cmd_fc_del_default,
-
-	(cmdline_parse_inst_t *) &cmd_fc_add_qinq_all,
-	(cmdline_parse_inst_t *) &cmd_fc_add_ipv4_5tuple_all,
-	(cmdline_parse_inst_t *) &cmd_fc_add_ipv6_5tuple_all,
-
-	(cmdline_parse_inst_t *) &cmd_fc_ls,
+	(cmdline_parse_inst_t *) &cmd_flow,
 	NULL,
 };
 

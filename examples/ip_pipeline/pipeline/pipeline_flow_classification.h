@@ -102,6 +102,34 @@ int
 app_pipeline_fc_del_default(struct app_params *app,
 	uint32_t pipeline_id);
 
+#ifndef APP_PIPELINE_FC_MAX_FLOWS_IN_FILE
+#define APP_PIPELINE_FC_MAX_FLOWS_IN_FILE	(16 * 1024 * 1024)
+#endif
+
+int
+app_pipeline_fc_load_file_qinq(char *filename,
+	struct pipeline_fc_key *keys,
+	uint32_t *port_ids,
+	uint32_t *flow_ids,
+	uint32_t *n_keys,
+	uint32_t *line);
+
+int
+app_pipeline_fc_load_file_ipv4(char *filename,
+	struct pipeline_fc_key *keys,
+	uint32_t *port_ids,
+	uint32_t *flow_ids,
+	uint32_t *n_keys,
+	uint32_t *line);
+
+int
+app_pipeline_fc_load_file_ipv6(char *filename,
+	struct pipeline_fc_key *keys,
+	uint32_t *port_ids,
+	uint32_t *flow_ids,
+	uint32_t *n_keys,
+	uint32_t *line);
+
 extern struct pipeline_type pipeline_flow_classification;
 
 #endif
