@@ -1222,7 +1222,8 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
 	/* Configure VLAN stripping. */
-	tmpl.vlan_strip = dev->data->dev_conf.rxmode.hw_vlan_strip;
+	tmpl.vlan_strip = (priv->hw_vlan_strip &&
+			   !!dev->data->dev_conf.rxmode.hw_vlan_strip);
 	attr.wq = (struct ibv_exp_wq_init_attr){
 		.wq_context = NULL, /* Could be useful in the future. */
 		.wq_type = IBV_EXP_WQT_RQ,
