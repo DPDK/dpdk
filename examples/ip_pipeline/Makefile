@@ -50,6 +50,7 @@ INC += $(wildcard *.h) $(wildcard pipeline/*.h)
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := main.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse.c
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += parser.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_parse_tm.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += config_check.c
 SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) += init.c

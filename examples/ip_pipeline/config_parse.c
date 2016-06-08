@@ -30,6 +30,7 @@
  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -229,13 +230,6 @@ app_print_usage(char *prgname)
 	rte_exit(0, app_usage, prgname, app_params_default.config_file);
 }
 
-#define skip_white_spaces(pos)			\
-({						\
-	__typeof__(pos) _p = (pos);		\
-	for ( ; isspace(*_p); _p++);		\
-	_p;					\
-})
-
 #define PARSER_PARAM_ADD_CHECK(result, params_array, section_name)	\
 do {									\
 	APP_CHECK((result != -EINVAL),					\
@@ -247,44 +241,6 @@ do {									\
 	APP_CHECK((result >= 0),					\
 		"Parse error in section \"%s\"", section_name);		\
 } while (0)
-
-int
-parser_read_arg_bool(const char *p)
-{
-	p = skip_white_spaces(p);
-	int result = -EINVAL;
-
-	if (((p[0] == 'y') && (p[1] == 'e') && (p[2] == 's')) ||
-		((p[0] == 'Y') && (p[1] == 'E') && (p[2] == 'S'))) {
-		p += 3;
-		result = 1;
-	}
-
-	if (((p[0] == 'o') && (p[1] == 'n')) ||
-		((p[0] == 'O') && (p[1] == 'N'))) {
-		p += 2;
-		result = 1;
-	}
-
-	if (((p[0] == 'n') && (p[1] == 'o')) ||
-		((p[0] == 'N') && (p[1] == 'O'))) {
-		p += 2;
-		result = 0;
-	}
-
-	if (((p[0] == 'o') && (p[1] == 'f') && (p[2] == 'f')) ||
-		((p[0] == 'O') && (p[1] == 'F') && (p[2] == 'F'))) {
-		p += 3;
-		result = 0;
-	}
-
-	p = skip_white_spaces(p);
-
-	if (p[0] != '\0')
-		return -EINVAL;
-
-	return result;
-}
 
 #define PARSE_ERROR(exp, section, entry)				\
 APP_CHECK(exp, "Parse error in section \"%s\": entry \"%s\"\n", section, entry)
@@ -317,217 +273,6 @@ APP_CHECK(exp, "Parse error in section \"%s\": unrecognized entry \"%s\"\n",\
 #define PARSE_ERROR_DUPLICATE(exp, section, entry)			\
 APP_CHECK(exp, "Parse error in section \"%s\": duplicate entry \"%s\"\n",\
 	section, entry)
-
-int
-parser_read_uint64(uint64_t *value, const char *p)
-{
-	char *next;
-	uint64_t val;
-
-	p = skip_white_spaces(p);
-	if (!isdigit(*p))
-		return -EINVAL;
-
-	val = strtoul(p, &next, 10);
-	if (p == next)
-		return -EINVAL;
-
-	p = next;
-	switch (*p) {
-	case 'T':
-		val *= 1024ULL;
-		/* fall through */
-	case 'G':
-		val *= 1024ULL;
-		/* fall through */
-	case 'M':
-		val *= 1024ULL;
-		/* fall through */
-	case 'k':
-	case 'K':
-		val *= 1024ULL;
-		p++;
-		break;
-	}
-
-	p = skip_white_spaces(p);
-	if (*p != '\0')
-		return -EINVAL;
-
-	*value = val;
-	return 0;
-}
-
-int
-parser_read_uint32(uint32_t *value, const char *p)
-{
-	uint64_t val = 0;
-	int ret = parser_read_uint64(&val, p);
-
-	if (ret < 0)
-		return ret;
-
-	if (val > UINT32_MAX)
-		return -ERANGE;
-
-	*value = val;
-	return 0;
-}
-
-int
-parse_pipeline_core(uint32_t *socket,
-	uint32_t *core,
-	uint32_t *ht,
-	const char *entry)
-{
-	size_t num_len;
-	char num[8];
-
-	uint32_t s = 0, c = 0, h = 0, val;
-	uint8_t s_parsed = 0, c_parsed = 0, h_parsed = 0;
-	const char *next = skip_white_spaces(entry);
-	char type;
-
-	/* Expect <CORE> or [sX][cY][h]. At least one parameter is required. */
-	while (*next != '\0') {
-		/* If everything parsed nothing should left */
-		if (s_parsed && c_parsed && h_parsed)
-			return -EINVAL;
-
-		type = *next;
-		switch (type) {
-		case 's':
-		case 'S':
-			if (s_parsed || c_parsed || h_parsed)
-				return -EINVAL;
-			s_parsed = 1;
-			next++;
-			break;
-		case 'c':
-		case 'C':
-			if (c_parsed || h_parsed)
-				return -EINVAL;
-			c_parsed = 1;
-			next++;
-			break;
-		case 'h':
-		case 'H':
-			if (h_parsed)
-				return -EINVAL;
-			h_parsed = 1;
-			next++;
-			break;
-		default:
-			/* If it start from digit it must be only core id. */
-			if (!isdigit(*next) || s_parsed || c_parsed || h_parsed)
-				return -EINVAL;
-
-			type = 'C';
-		}
-
-		for (num_len = 0; *next != '\0'; next++, num_len++) {
-			if (num_len == RTE_DIM(num))
-				return -EINVAL;
-
-			if (!isdigit(*next))
-				break;
-
-			num[num_len] = *next;
-		}
-
-		if (num_len == 0 && type != 'h' && type != 'H')
-			return -EINVAL;
-
-		if (num_len != 0 && (type == 'h' || type == 'H'))
-			return -EINVAL;
-
-		num[num_len] = '\0';
-		val = strtol(num, NULL, 10);
-
-		h = 0;
-		switch (type) {
-		case 's':
-		case 'S':
-			s = val;
-			break;
-		case 'c':
-		case 'C':
-			c = val;
-			break;
-		case 'h':
-		case 'H':
-			h = 1;
-			break;
-		}
-	}
-
-	*socket = s;
-	*core = c;
-	*ht = h;
-	return 0;
-}
-
-static uint32_t
-get_hex_val(char c)
-{
-	switch (c) {
-	case '0': case '1': case '2': case '3': case '4': case '5':
-	case '6': case '7': case '8': case '9':
-		return c - '0';
-	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
-		return c - 'A' + 10;
-	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
-		return c - 'a' + 10;
-	default:
-		return 0;
-	}
-}
-
-int
-parse_hex_string(char *src, uint8_t *dst, uint32_t *size)
-{
-	char *c;
-	uint32_t len, i;
-
-	/* Check input parameters */
-	if ((src == NULL) ||
-		(dst == NULL) ||
-		(size == NULL) ||
-		(*size == 0))
-		return -1;
-
-	len = strlen(src);
-	if (((len & 3) != 0) ||
-		(len > (*size) * 2))
-		return -1;
-	*size = len / 2;
-
-	for (c = src; *c != 0; c++) {
-		if ((((*c) >= '0') && ((*c) <= '9')) ||
-			(((*c) >= 'A') && ((*c) <= 'F')) ||
-			(((*c) >= 'a') && ((*c) <= 'f')))
-			continue;
-
-		return -1;
-	}
-
-	/* Convert chars to bytes */
-	for (i = 0; i < *size; i++)
-		dst[i] = get_hex_val(src[2 * i]) * 16 +
-			get_hex_val(src[2 * i + 1]);
-
-	return 0;
-}
-
-static size_t
-skip_digits(const char *src)
-{
-	size_t i;
-
-	for (i = 0; isdigit(src[i]); i++);
-
-	return i;
-}
 
 static int
 validate_name(const char *name, const char *prefix, int num)
