@@ -35,6 +35,7 @@
 #include <string.h>
 #include <sys/queue.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_hexdump.h>
@@ -43,13 +44,12 @@
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
-#include <cmdline_parse_ipaddr.h>
-#include <cmdline_parse_etheraddr.h>
 
 #include "app.h"
 #include "pipeline_common_fe.h"
 #include "pipeline_flow_actions.h"
 #include "hash_func.h"
+#include "parser.h"
 
 /*
  * Flow actions pipeline
@@ -689,1115 +689,612 @@ app_pipeline_fa_dscp_ls(struct app_params *app,
 	return 0;
 }
 
-/*
- * Flow meter configuration (single flow)
- *
- * p <pipeline ID> flow <flow ID> meter <meter ID> trtcm <trtcm params>
- */
-
-struct cmd_fa_meter_config_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	uint32_t flow_id;
-	cmdline_fixed_string_t meter_string;
-	uint32_t meter_id;
-	cmdline_fixed_string_t trtcm_string;
-	uint64_t cir;
-	uint64_t pir;
-	uint64_t cbs;
-	uint64_t pbs;
-};
-
-static void
-cmd_fa_meter_config_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
+int
+app_pipeline_fa_load_file(char *filename,
+	uint32_t *flow_ids,
+	struct pipeline_fa_flow_params *p,
+	uint32_t *n_flows,
+	uint32_t *line)
 {
-	struct cmd_fa_meter_config_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fa_flow_params flow_params;
-	int status;
+	FILE *f = NULL;
+	char file_buf[1024];
+	uint32_t i, l;
 
-	if (params->meter_id >= PIPELINE_FA_N_TC_MAX) {
-		printf("Command failed\n");
-		return;
-	}
-
-	flow_params.m[params->meter_id].cir = params->cir;
-	flow_params.m[params->meter_id].pir = params->pir;
-	flow_params.m[params->meter_id].cbs = params->cbs;
-	flow_params.m[params->meter_id].pbs = params->pbs;
-
-	status = app_pipeline_fa_flow_config(app,
-		params->pipeline_id,
-		params->flow_id,
-		1 << params->meter_id,
-		0,
-		0,
-		&flow_params);
-
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fa_meter_config_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_meter_config_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_result,
-	flow_string, "flow");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_flow_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_result,
-	flow_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_meter_config_meter_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_result,
-	meter_string, "meter");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_meter_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_result,
-	meter_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_meter_config_trtcm_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_result,
-	trtcm_string, "trtcm");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_cir =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_result, cir, UINT64);
-
-cmdline_parse_token_num_t cmd_fa_meter_config_pir =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_result, pir, UINT64);
-
-cmdline_parse_token_num_t cmd_fa_meter_config_cbs =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_result, cbs, UINT64);
-
-cmdline_parse_token_num_t cmd_fa_meter_config_pbs =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_result, pbs, UINT64);
-
-cmdline_parse_inst_t cmd_fa_meter_config = {
-	.f = cmd_fa_meter_config_parsed,
-	.data = NULL,
-	.help_str = "Flow meter configuration (single flow) ",
-	.tokens = {
-		(void *) &cmd_fa_meter_config_p_string,
-		(void *) &cmd_fa_meter_config_pipeline_id,
-		(void *) &cmd_fa_meter_config_flow_string,
-		(void *) &cmd_fa_meter_config_flow_id,
-		(void *) &cmd_fa_meter_config_meter_string,
-		(void *) &cmd_fa_meter_config_meter_id,
-		(void *) &cmd_fa_meter_config_trtcm_string,
-		(void *) &cmd_fa_meter_config_cir,
-		(void *) &cmd_fa_meter_config_pir,
-		(void *) &cmd_fa_meter_config_cbs,
-		(void *) &cmd_fa_meter_config_pbs,
-		NULL,
-	},
-};
-
-/*
- * Flow meter configuration (multiple flows)
- *
- * p <pipeline ID> flows <n_flows> meter <meter ID> trtcm <trtcm params>
- */
-
-struct cmd_fa_meter_config_bulk_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flows_string;
-	uint32_t n_flows;
-	cmdline_fixed_string_t meter_string;
-	uint32_t meter_id;
-	cmdline_fixed_string_t trtcm_string;
-	uint64_t cir;
-	uint64_t pir;
-	uint64_t cbs;
-	uint64_t pbs;
-};
-
-static void
-cmd_fa_meter_config_bulk_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_meter_config_bulk_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fa_flow_params flow_template, *flow_params;
-	uint32_t *flow_id;
-	uint32_t i;
-
-	if ((params->n_flows == 0) ||
-		(params->meter_id >= PIPELINE_FA_N_TC_MAX)) {
-		printf("Invalid arguments\n");
-		return;
-	}
-
-	flow_id = (uint32_t *) rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(uint32_t),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_id == NULL) {
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	flow_params = (struct pipeline_fa_flow_params *) rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(struct pipeline_fa_flow_params),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_params == NULL) {
-		rte_free(flow_id);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	memset(&flow_template, 0, sizeof(flow_template));
-	flow_template.m[params->meter_id].cir = params->cir;
-	flow_template.m[params->meter_id].pir = params->pir;
-	flow_template.m[params->meter_id].cbs = params->cbs;
-	flow_template.m[params->meter_id].pbs = params->pbs;
-
-	for (i = 0; i < params->n_flows; i++) {
-		uint32_t pos = i % N_FLOWS_BULK;
-
-		flow_id[pos] = i;
-		memcpy(&flow_params[pos],
-			&flow_template,
-			sizeof(flow_template));
-
-		if ((pos == N_FLOWS_BULK - 1) ||
-			(i == params->n_flows - 1)) {
-			int status;
-
-			status = app_pipeline_fa_flow_config_bulk(app,
-				params->pipeline_id,
-				flow_id,
-				pos + 1,
-				1 << params->meter_id,
-				0,
-				0,
-				flow_params);
-
-			if (status != 0) {
-				printf("Command failed\n");
-
-				break;
-			}
+	/* Check input arguments */
+	if ((filename == NULL) ||
+		(flow_ids == NULL) ||
+		(p == NULL) ||
+		(n_flows == NULL) ||
+		(*n_flows == 0) ||
+		(line == NULL)) {
+		if (line)
+			*line = 0;
+		return -1;
 		}
+
+	/* Open input file */
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		*line = 0;
+		return -1;
 	}
 
-	rte_free(flow_params);
-	rte_free(flow_id);
+	/* Read file */
+	for (i = 0, l = 1; i < *n_flows; l++) {
+		char *tokens[64];
+		uint32_t n_tokens = RTE_DIM(tokens);
 
+		int status;
+
+		if (fgets(file_buf, sizeof(file_buf), f) == NULL)
+			break;
+
+		status = parse_tokenize_string(file_buf, tokens, &n_tokens);
+		if (status)
+			goto error1;
+
+		if ((n_tokens == 0) || (tokens[0][0] == '#'))
+			continue;
+
+
+		if ((n_tokens != 64) ||
+			/* flow */
+			strcmp(tokens[0], "flow") ||
+			parser_read_uint32(&flow_ids[i], tokens[1]) ||
+
+			/* meter & policer 0 */
+			strcmp(tokens[2], "meter") ||
+			strcmp(tokens[3], "0") ||
+			strcmp(tokens[4], "trtcm") ||
+			parser_read_uint64(&p[i].m[0].cir, tokens[5]) ||
+			parser_read_uint64(&p[i].m[0].pir, tokens[6]) ||
+			parser_read_uint64(&p[i].m[0].cbs, tokens[7]) ||
+			parser_read_uint64(&p[i].m[0].pbs, tokens[8]) ||
+			strcmp(tokens[9], "policer") ||
+			strcmp(tokens[10], "0") ||
+			strcmp(tokens[11], "g") ||
+			string_to_policer_action(tokens[12],
+				&p[i].p[0].action[e_RTE_METER_GREEN]) ||
+			strcmp(tokens[13], "y") ||
+			string_to_policer_action(tokens[14],
+				&p[i].p[0].action[e_RTE_METER_YELLOW]) ||
+			strcmp(tokens[15], "r") ||
+			string_to_policer_action(tokens[16],
+				&p[i].p[0].action[e_RTE_METER_RED]) ||
+
+			/* meter & policer 1 */
+			strcmp(tokens[17], "meter") ||
+			strcmp(tokens[18], "1") ||
+			strcmp(tokens[19], "trtcm") ||
+			parser_read_uint64(&p[i].m[1].cir, tokens[20]) ||
+			parser_read_uint64(&p[i].m[1].pir, tokens[21]) ||
+			parser_read_uint64(&p[i].m[1].cbs, tokens[22]) ||
+			parser_read_uint64(&p[i].m[1].pbs, tokens[23]) ||
+			strcmp(tokens[24], "policer") ||
+			strcmp(tokens[25], "1") ||
+			strcmp(tokens[26], "g") ||
+			string_to_policer_action(tokens[27],
+				&p[i].p[1].action[e_RTE_METER_GREEN]) ||
+			strcmp(tokens[28], "y") ||
+			string_to_policer_action(tokens[29],
+				&p[i].p[1].action[e_RTE_METER_YELLOW]) ||
+			strcmp(tokens[30], "r") ||
+			string_to_policer_action(tokens[31],
+				&p[i].p[1].action[e_RTE_METER_RED]) ||
+
+			/* meter & policer 2 */
+			strcmp(tokens[32], "meter") ||
+			strcmp(tokens[33], "2") ||
+			strcmp(tokens[34], "trtcm") ||
+			parser_read_uint64(&p[i].m[2].cir, tokens[35]) ||
+			parser_read_uint64(&p[i].m[2].pir, tokens[36]) ||
+			parser_read_uint64(&p[i].m[2].cbs, tokens[37]) ||
+			parser_read_uint64(&p[i].m[2].pbs, tokens[38]) ||
+			strcmp(tokens[39], "policer") ||
+			strcmp(tokens[40], "2") ||
+			strcmp(tokens[41], "g") ||
+			string_to_policer_action(tokens[42],
+				&p[i].p[2].action[e_RTE_METER_GREEN]) ||
+			strcmp(tokens[43], "y") ||
+			string_to_policer_action(tokens[44],
+				&p[i].p[2].action[e_RTE_METER_YELLOW]) ||
+			strcmp(tokens[45], "r") ||
+			string_to_policer_action(tokens[46],
+				&p[i].p[2].action[e_RTE_METER_RED]) ||
+
+			/* meter & policer 3 */
+			strcmp(tokens[47], "meter") ||
+			strcmp(tokens[48], "3") ||
+			strcmp(tokens[49], "trtcm") ||
+			parser_read_uint64(&p[i].m[3].cir, tokens[50]) ||
+			parser_read_uint64(&p[i].m[3].pir, tokens[51]) ||
+			parser_read_uint64(&p[i].m[3].cbs, tokens[52]) ||
+			parser_read_uint64(&p[i].m[3].pbs, tokens[53]) ||
+			strcmp(tokens[54], "policer") ||
+			strcmp(tokens[55], "3") ||
+			strcmp(tokens[56], "g") ||
+			string_to_policer_action(tokens[57],
+				&p[i].p[3].action[e_RTE_METER_GREEN]) ||
+			strcmp(tokens[58], "y") ||
+			string_to_policer_action(tokens[59],
+				&p[i].p[3].action[e_RTE_METER_YELLOW]) ||
+			strcmp(tokens[60], "r") ||
+			string_to_policer_action(tokens[61],
+				&p[i].p[3].action[e_RTE_METER_RED]) ||
+
+			/* port */
+			strcmp(tokens[62], "port") ||
+			parser_read_uint32(&p[i].port_id, tokens[63]))
+			goto error1;
+
+		i++;
+	}
+
+	/* Close file */
+	*n_flows = i;
+	fclose(f);
+	return 0;
+
+error1:
+	*line = l;
+	fclose(f);
+	return -1;
 }
 
-cmdline_parse_token_string_t cmd_fa_meter_config_bulk_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_bulk_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_meter_config_bulk_flows_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	flows_string, "flows");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_bulk_n_flows =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	n_flows, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_meter_config_bulk_meter_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	meter_string, "meter");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_bulk_meter_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	meter_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_meter_config_bulk_trtcm_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	trtcm_string, "trtcm");
-
-cmdline_parse_token_num_t cmd_fa_meter_config_bulk_cir =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	cir, UINT64);
-
-cmdline_parse_token_num_t cmd_fa_meter_config_bulk_pir =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	pir, UINT64);
-
-cmdline_parse_token_num_t cmd_fa_meter_config_bulk_cbs =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	cbs, UINT64);
-
-cmdline_parse_token_num_t cmd_fa_meter_config_bulk_pbs =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_meter_config_bulk_result,
-	pbs, UINT64);
-
-cmdline_parse_inst_t cmd_fa_meter_config_bulk = {
-	.f = cmd_fa_meter_config_bulk_parsed,
-	.data = NULL,
-	.help_str = "Flow meter configuration (multiple flows)",
-	.tokens = {
-		(void *) &cmd_fa_meter_config_bulk_p_string,
-		(void *) &cmd_fa_meter_config_bulk_pipeline_id,
-		(void *) &cmd_fa_meter_config_bulk_flows_string,
-		(void *) &cmd_fa_meter_config_bulk_n_flows,
-		(void *) &cmd_fa_meter_config_bulk_meter_string,
-		(void *) &cmd_fa_meter_config_bulk_meter_id,
-		(void *) &cmd_fa_meter_config_bulk_trtcm_string,
-		(void *) &cmd_fa_meter_config_cir,
-		(void *) &cmd_fa_meter_config_pir,
-		(void *) &cmd_fa_meter_config_cbs,
-		(void *) &cmd_fa_meter_config_pbs,
-		NULL,
-	},
-};
-
 /*
- * Flow policer configuration (single flow)
+ * action
  *
- * p <pipeline ID> flow <flow ID> policer <policer ID>
- *    G <action> Y <action> R <action>
+ * flow meter, policer and output port configuration:
+ *    p <pipelineid> action flow <flowid> meter <meterid> trtcm <cir> <pir> <cbs> <pbs>
  *
- * <action> = G (green) | Y (yellow) | R (red) | D (drop)
- */
+ *    p <pipelineid> action flow <flowid> policer <policerid> g <gaction> y <yaction> r <raction>
+ *  <action> is one of the following:
+ *      G = recolor to green
+ *      Y = recolor as yellow
+ *      R = recolor as red
+ *      D = drop
+ *
+ *    p <pipelineid> action flow <flowid> port <port ID>
+ *
+ *    p <pipelineid> action flow bulk <file>
+ *
+ * flow policer stats read:
+ *    p <pipelineid> action flow <flowid> stats
+ *
+ * flow ls:
+ *    p <pipelineid> action flow ls
+ *
+ * dscp table configuration:
+ *    p <pipelineid> action dscp <dscpid> class <class ID> color <color>
+ *
+ * dscp table ls:
+ *    p <pipelineid> action dscp ls
+**/
 
-struct cmd_fa_policer_config_result {
+struct cmd_action_result {
 	cmdline_fixed_string_t p_string;
 	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	uint32_t flow_id;
-	cmdline_fixed_string_t policer_string;
-	uint32_t policer_id;
-	cmdline_fixed_string_t green_string;
-	cmdline_fixed_string_t g_action;
-	cmdline_fixed_string_t yellow_string;
-	cmdline_fixed_string_t y_action;
-	cmdline_fixed_string_t red_string;
-	cmdline_fixed_string_t r_action;
+	cmdline_fixed_string_t action_string;
+	cmdline_multi_string_t multi_string;
 };
 
 static void
-cmd_fa_policer_config_parsed(
+cmd_action_parsed(
 	void *parsed_result,
 	__rte_unused struct cmdline *cl,
 	void *data)
 {
-	struct cmd_fa_policer_config_result *params = parsed_result;
+	struct cmd_action_result *params = parsed_result;
 	struct app_params *app = data;
-	struct pipeline_fa_flow_params flow_params;
+
+	char *tokens[16];
+	uint32_t n_tokens = RTE_DIM(tokens);
 	int status;
 
-	if (params->policer_id >= PIPELINE_FA_N_TC_MAX) {
-		printf("Command failed\n");
-		return;
-	}
-
-	status = string_to_policer_action(params->g_action,
-		&flow_params.p[params->policer_id].action[e_RTE_METER_GREEN]);
-	if (status)
-		printf("Invalid policer green action\n");
-
-	status = string_to_policer_action(params->y_action,
-		&flow_params.p[params->policer_id].action[e_RTE_METER_YELLOW]);
-	if (status)
-		printf("Invalid policer yellow action\n");
-
-	status = string_to_policer_action(params->r_action,
-		&flow_params.p[params->policer_id].action[e_RTE_METER_RED]);
-	if (status)
-		printf("Invalid policer red action\n");
-
-	status = app_pipeline_fa_flow_config(app,
-		params->pipeline_id,
-		params->flow_id,
-		0,
-		1 << params->policer_id,
-		0,
-		&flow_params);
-
-	if (status != 0)
-		printf("Command failed\n");
-
-}
-
-cmdline_parse_token_string_t cmd_fa_policer_config_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_policer_config_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_config_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_policer_config_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	flow_string, "flow");
-
-cmdline_parse_token_num_t cmd_fa_policer_config_flow_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_config_result,
-	flow_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_policer_config_policer_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	policer_string, "policer");
-
-cmdline_parse_token_num_t cmd_fa_policer_config_policer_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_config_result,
-	policer_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_policer_config_green_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	green_string, "G");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_g_action =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	g_action, "R#Y#G#D");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_yellow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	yellow_string, "Y");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_y_action =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	y_action, "R#Y#G#D");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_red_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	red_string, "R");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_r_action =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_result,
-	r_action, "R#Y#G#D");
-
-cmdline_parse_inst_t cmd_fa_policer_config = {
-	.f = cmd_fa_policer_config_parsed,
-	.data = NULL,
-	.help_str = "Flow policer configuration (single flow)",
-	.tokens = {
-		(void *) &cmd_fa_policer_config_p_string,
-		(void *) &cmd_fa_policer_config_pipeline_id,
-		(void *) &cmd_fa_policer_config_flow_string,
-		(void *) &cmd_fa_policer_config_flow_id,
-		(void *) &cmd_fa_policer_config_policer_string,
-		(void *) &cmd_fa_policer_config_policer_id,
-		(void *) &cmd_fa_policer_config_green_string,
-		(void *) &cmd_fa_policer_config_g_action,
-		(void *) &cmd_fa_policer_config_yellow_string,
-		(void *) &cmd_fa_policer_config_y_action,
-		(void *) &cmd_fa_policer_config_red_string,
-		(void *) &cmd_fa_policer_config_r_action,
-		NULL,
-	},
-};
-
-/*
- * Flow policer configuration (multiple flows)
- *
- * p <pipeline ID> flows <n_flows> policer <policer ID>
- *    G <action> Y <action> R <action>
- *
- * <action> = G (green) | Y (yellow) | R (red) | D (drop)
- */
-
-struct cmd_fa_policer_config_bulk_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flows_string;
-	uint32_t n_flows;
-	cmdline_fixed_string_t policer_string;
-	uint32_t policer_id;
-	cmdline_fixed_string_t green_string;
-	cmdline_fixed_string_t g_action;
-	cmdline_fixed_string_t yellow_string;
-	cmdline_fixed_string_t y_action;
-	cmdline_fixed_string_t red_string;
-	cmdline_fixed_string_t r_action;
-};
-
-static void
-cmd_fa_policer_config_bulk_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_policer_config_bulk_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fa_flow_params flow_template, *flow_params;
-	uint32_t *flow_id, i;
-	int status;
-
-	if ((params->n_flows == 0) ||
-		(params->policer_id >= PIPELINE_FA_N_TC_MAX)) {
-		printf("Invalid arguments\n");
-		return;
-	}
-
-	flow_id = (uint32_t *) rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(uint32_t),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_id == NULL) {
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	flow_params = (struct pipeline_fa_flow_params *) rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(struct pipeline_fa_flow_params),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_params == NULL) {
-		rte_free(flow_id);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	memset(&flow_template, 0, sizeof(flow_template));
-
-	status = string_to_policer_action(params->g_action,
-		&flow_template.p[params->policer_id].action[e_RTE_METER_GREEN]);
-	if (status)
-		printf("Invalid policer green action\n");
-
-	status = string_to_policer_action(params->y_action,
-	 &flow_template.p[params->policer_id].action[e_RTE_METER_YELLOW]);
-	if (status)
-		printf("Invalid policer yellow action\n");
-
-	status = string_to_policer_action(params->r_action,
-		&flow_template.p[params->policer_id].action[e_RTE_METER_RED]);
-	if (status)
-		printf("Invalid policer red action\n");
-
-	for (i = 0; i < params->n_flows; i++) {
-		uint32_t pos = i % N_FLOWS_BULK;
-
-		flow_id[pos] = i;
-		memcpy(&flow_params[pos], &flow_template,
-			sizeof(flow_template));
-
-		if ((pos == N_FLOWS_BULK - 1) ||
-			(i == params->n_flows - 1)) {
-			int status;
-
-			status = app_pipeline_fa_flow_config_bulk(app,
-				params->pipeline_id,
-				flow_id,
-				pos + 1,
-				0,
-				1 << params->policer_id,
-				0,
-				flow_params);
-
-			if (status != 0) {
-				printf("Command failed\n");
-
-				break;
-			}
-		}
-	}
-
-	rte_free(flow_params);
-	rte_free(flow_id);
-
-}
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_policer_config_bulk_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_flows_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	flows_string, "flows");
-
-cmdline_parse_token_num_t cmd_fa_policer_config_bulk_n_flows =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	n_flows, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_policer_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	policer_string, "policer");
-
-cmdline_parse_token_num_t cmd_fa_policer_config_bulk_policer_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	policer_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_green_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	green_string, "G");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_g_action =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	g_action, "R#Y#G#D");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_yellow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	yellow_string, "Y");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_y_action =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	y_action, "R#Y#G#D");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_red_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	red_string, "R");
-
-cmdline_parse_token_string_t cmd_fa_policer_config_bulk_r_action =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_config_bulk_result,
-	r_action, "R#Y#G#D");
-
-cmdline_parse_inst_t cmd_fa_policer_config_bulk = {
-	.f = cmd_fa_policer_config_bulk_parsed,
-	.data = NULL,
-	.help_str = "Flow policer configuration (multiple flows)",
-	.tokens = {
-		(void *) &cmd_fa_policer_config_bulk_p_string,
-		(void *) &cmd_fa_policer_config_bulk_pipeline_id,
-		(void *) &cmd_fa_policer_config_bulk_flows_string,
-		(void *) &cmd_fa_policer_config_bulk_n_flows,
-		(void *) &cmd_fa_policer_config_bulk_policer_string,
-		(void *) &cmd_fa_policer_config_bulk_policer_id,
-		(void *) &cmd_fa_policer_config_bulk_green_string,
-		(void *) &cmd_fa_policer_config_bulk_g_action,
-		(void *) &cmd_fa_policer_config_bulk_yellow_string,
-		(void *) &cmd_fa_policer_config_bulk_y_action,
-		(void *) &cmd_fa_policer_config_bulk_red_string,
-		(void *) &cmd_fa_policer_config_bulk_r_action,
-		NULL,
-	},
-};
-
-/*
- * Flow output port configuration (single flow)
- *
- * p <pipeline ID> flow <flow ID> port <port ID>
- */
-
-struct cmd_fa_output_port_config_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	uint32_t flow_id;
-	cmdline_fixed_string_t port_string;
-	uint32_t port_id;
-};
-
-static void
-cmd_fa_output_port_config_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_output_port_config_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fa_flow_params flow_params;
-	int status;
-
-	flow_params.port_id = params->port_id;
-
-	status = app_pipeline_fa_flow_config(app,
-		params->pipeline_id,
-		params->flow_id,
-		0,
-		0,
-		1,
-		&flow_params);
-
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fa_output_port_config_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_output_port_config_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_output_port_config_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_output_port_config_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_output_port_config_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_output_port_config_result,
-	flow_string, "flow");
-
-cmdline_parse_token_num_t cmd_fa_output_port_config_flow_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_output_port_config_result,
-	flow_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_output_port_config_port_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_output_port_config_result,
-	port_string, "port");
-
-cmdline_parse_token_num_t cmd_fa_output_port_config_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_output_port_config_result,
-	port_id, UINT32);
-
-cmdline_parse_inst_t cmd_fa_output_port_config = {
-	.f = cmd_fa_output_port_config_parsed,
-	.data = NULL,
-	.help_str = "Flow output port configuration (single flow)",
-	.tokens = {
-		(void *) &cmd_fa_output_port_config_p_string,
-		(void *) &cmd_fa_output_port_config_pipeline_id,
-		(void *) &cmd_fa_output_port_config_flow_string,
-		(void *) &cmd_fa_output_port_config_flow_id,
-		(void *) &cmd_fa_output_port_config_port_string,
-		(void *) &cmd_fa_output_port_config_port_id,
-		NULL,
-	},
-};
-
-/*
- * Flow output port configuration (multiple flows)
- *
- * p <pipeline ID> flows <n_flows> ports <n_ports>
- */
-
-struct cmd_fa_output_port_config_bulk_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flows_string;
-	uint32_t n_flows;
-	cmdline_fixed_string_t ports_string;
-	uint32_t n_ports;
-};
-
-static void
-cmd_fa_output_port_config_bulk_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_output_port_config_bulk_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fa_flow_params *flow_params;
-	uint32_t *flow_id;
-	uint32_t i;
-
-	if (params->n_flows == 0) {
-		printf("Invalid arguments\n");
-		return;
-	}
-
-	flow_id = (uint32_t *) rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(uint32_t),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_id == NULL) {
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	flow_params = (struct pipeline_fa_flow_params *) rte_malloc(NULL,
-		N_FLOWS_BULK * sizeof(struct pipeline_fa_flow_params),
-		RTE_CACHE_LINE_SIZE);
-	if (flow_params == NULL) {
-		rte_free(flow_id);
-		printf("Memory allocation failed\n");
-		return;
-	}
-
-	for (i = 0; i < params->n_flows; i++) {
-		uint32_t pos = i % N_FLOWS_BULK;
-		uint32_t port_id = i % params->n_ports;
-
-		flow_id[pos] = i;
-
-		memset(&flow_params[pos], 0, sizeof(flow_params[pos]));
-		flow_params[pos].port_id = port_id;
-
-		if ((pos == N_FLOWS_BULK - 1) ||
-			(i == params->n_flows - 1)) {
-			int status;
-
-			status = app_pipeline_fa_flow_config_bulk(app,
-				params->pipeline_id,
-				flow_id,
-				pos + 1,
-				0,
-				0,
-				1,
-				flow_params);
-
-			if (status != 0) {
-				printf("Command failed\n");
-
-				break;
-			}
-		}
-	}
-
-	rte_free(flow_params);
-	rte_free(flow_id);
-
-}
-
-cmdline_parse_token_string_t cmd_fa_output_port_config_bulk_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_output_port_config_bulk_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_output_port_config_bulk_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_output_port_config_bulk_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_output_port_config_bulk_flows_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_output_port_config_bulk_result,
-	flows_string, "flows");
-
-cmdline_parse_token_num_t cmd_fa_output_port_config_bulk_n_flows =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_output_port_config_bulk_result,
-	n_flows, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_output_port_config_bulk_ports_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_output_port_config_bulk_result,
-	ports_string, "ports");
-
-cmdline_parse_token_num_t cmd_fa_output_port_config_bulk_n_ports =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_output_port_config_bulk_result,
-	n_ports, UINT32);
-
-cmdline_parse_inst_t cmd_fa_output_port_config_bulk = {
-	.f = cmd_fa_output_port_config_bulk_parsed,
-	.data = NULL,
-	.help_str = "Flow output port configuration (multiple flows)",
-	.tokens = {
-		(void *) &cmd_fa_output_port_config_bulk_p_string,
-		(void *) &cmd_fa_output_port_config_bulk_pipeline_id,
-		(void *) &cmd_fa_output_port_config_bulk_flows_string,
-		(void *) &cmd_fa_output_port_config_bulk_n_flows,
-		(void *) &cmd_fa_output_port_config_bulk_ports_string,
-		(void *) &cmd_fa_output_port_config_bulk_n_ports,
-		NULL,
-	},
-};
-
-/*
- * Flow DiffServ Code Point (DSCP) translation table configuration
- *
- * p <pipeline ID> dscp <DSCP ID> class <traffic class ID> color <color>
- *
- * <color> = G (green) | Y (yellow) | R (red)
-*/
-
-struct cmd_fa_dscp_config_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t dscp_string;
-	uint32_t dscp_id;
-	cmdline_fixed_string_t class_string;
-	uint32_t traffic_class_id;
-	cmdline_fixed_string_t color_string;
-	cmdline_fixed_string_t color;
-
-};
-
-static void
-cmd_fa_dscp_config_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_dscp_config_result *params = parsed_result;
-	struct app_params *app = data;
-	enum rte_meter_color color;
-	int status;
-
-	status = string_to_color(params->color, &color);
-	if (status) {
-		printf("Invalid color\n");
-		return;
-	}
-
-	status = app_pipeline_fa_dscp_config(app,
-		params->pipeline_id,
-		params->dscp_id,
-		params->traffic_class_id,
-		color);
-
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fa_dscp_config_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_config_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_dscp_config_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_dscp_config_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_dscp_config_dscp_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_config_result,
-	dscp_string, "dscp");
-
-cmdline_parse_token_num_t cmd_fa_dscp_config_dscp_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_dscp_config_result,
-	dscp_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_dscp_config_class_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_config_result,
-	class_string, "class");
-
-cmdline_parse_token_num_t cmd_fa_dscp_config_traffic_class_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_dscp_config_result,
-	traffic_class_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_dscp_config_color_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_config_result,
-	color_string, "color");
-
-cmdline_parse_token_string_t cmd_fa_dscp_config_color =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_config_result,
-	color, "G#Y#R");
-
-cmdline_parse_inst_t cmd_fa_dscp_config = {
-	.f = cmd_fa_dscp_config_parsed,
-	.data = NULL,
-	.help_str = "Flow DSCP translation table configuration",
-	.tokens = {
-		(void *) &cmd_fa_dscp_config_p_string,
-		(void *) &cmd_fa_dscp_config_pipeline_id,
-		(void *) &cmd_fa_dscp_config_dscp_string,
-		(void *) &cmd_fa_dscp_config_dscp_id,
-		(void *) &cmd_fa_dscp_config_class_string,
-		(void *) &cmd_fa_dscp_config_traffic_class_id,
-		(void *) &cmd_fa_dscp_config_color_string,
-		(void *) &cmd_fa_dscp_config_color,
-		NULL,
-	},
-};
-
-/*
- * Flow policer stats read
- *
- * p <pipeline ID> flow <flow ID> policer <policer ID> stats
- */
-
-struct cmd_fa_policer_stats_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	uint32_t flow_id;
-	cmdline_fixed_string_t policer_string;
-	uint32_t policer_id;
-	cmdline_fixed_string_t stats_string;
-};
-
-static void
-cmd_fa_policer_stats_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_policer_stats_result *params = parsed_result;
-	struct app_params *app = data;
-	struct pipeline_fa_policer_stats stats;
-	int status;
-
-	status = app_pipeline_fa_flow_policer_stats_read(app,
-		params->pipeline_id,
-		params->flow_id,
-		params->policer_id,
-		1,
-		&stats);
+	status = parse_tokenize_string(params->multi_string, tokens, &n_tokens);
 	if (status != 0) {
-		printf("Command failed\n");
+		printf(CMD_MSG_TOO_MANY_ARGS, "action");
 		return;
 	}
 
-	/* Display stats */
-	printf("\tPkts G: %" PRIu64
-		"\tPkts Y: %" PRIu64
-		"\tPkts R: %" PRIu64
-		"\tPkts D: %" PRIu64 "\n",
-		stats.n_pkts[e_RTE_METER_GREEN],
-		stats.n_pkts[e_RTE_METER_YELLOW],
-		stats.n_pkts[e_RTE_METER_RED],
-		stats.n_pkts_drop);
+	/* action flow meter */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "flow") == 0) &&
+		strcmp(tokens[1], "bulk") &&
+		strcmp(tokens[1], "ls") &&
+		(strcmp(tokens[2], "meter") == 0)) {
+		struct pipeline_fa_flow_params flow_params;
+		uint32_t flow_id, meter_id;
+
+		if (n_tokens != 9) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action flow meter");
+			return;
+		}
+
+		memset(&flow_params, 0, sizeof(flow_params));
+
+		if (parser_read_uint32(&flow_id, tokens[1])) {
+			printf(CMD_MSG_INVALID_ARG, "flowid");
+			return;
+		}
+
+		if (parser_read_uint32(&meter_id, tokens[3]) ||
+			(meter_id >= PIPELINE_FA_N_TC_MAX)) {
+			printf(CMD_MSG_INVALID_ARG, "meterid");
+			return;
+		}
+
+		if (strcmp(tokens[4], "trtcm")) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "trtcm");
+			return;
+		}
+
+		if (parser_read_uint64(&flow_params.m[meter_id].cir, tokens[5])) {
+			printf(CMD_MSG_INVALID_ARG, "cir");
+			return;
+		}
+
+		if (parser_read_uint64(&flow_params.m[meter_id].pir, tokens[6])) {
+			printf(CMD_MSG_INVALID_ARG, "pir");
+			return;
+		}
+
+		if (parser_read_uint64(&flow_params.m[meter_id].cbs, tokens[7])) {
+			printf(CMD_MSG_INVALID_ARG, "cbs");
+			return;
+		}
+
+		if (parser_read_uint64(&flow_params.m[meter_id].pbs, tokens[8])) {
+			printf(CMD_MSG_INVALID_ARG, "pbs");
+			return;
+		}
+
+		status = app_pipeline_fa_flow_config(app,
+			params->pipeline_id,
+			flow_id,
+			1 << meter_id,
+			0,
+			0,
+			&flow_params);
+		if (status)
+			printf(CMD_MSG_FAIL, "action flow meter");
+
+		return;
+	} /* action flow meter */
+
+	/* action flow policer */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "flow") == 0) &&
+		strcmp(tokens[1], "bulk") &&
+		strcmp(tokens[1], "ls") &&
+		(strcmp(tokens[2], "policer") == 0)) {
+		struct pipeline_fa_flow_params flow_params;
+		uint32_t flow_id, policer_id;
+
+		if (n_tokens != 10) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action flow policer");
+			return;
+		}
+
+		memset(&flow_params, 0, sizeof(flow_params));
+
+		if (parser_read_uint32(&flow_id, tokens[1])) {
+			printf(CMD_MSG_INVALID_ARG, "flowid");
+			return;
+		}
+
+		if (parser_read_uint32(&policer_id, tokens[3]) ||
+			(policer_id >= PIPELINE_FA_N_TC_MAX)) {
+			printf(CMD_MSG_INVALID_ARG, "policerid");
+			return;
+		}
+
+		if (strcmp(tokens[4], "g")) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "g");
+			return;
+		}
+
+		if (string_to_policer_action(tokens[5],
+			&flow_params.p[policer_id].action[e_RTE_METER_GREEN])) {
+			printf(CMD_MSG_INVALID_ARG, "gaction");
+			return;
+		}
+
+		if (strcmp(tokens[6], "y")) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "y");
+			return;
+		}
+
+		if (string_to_policer_action(tokens[7],
+			&flow_params.p[policer_id].action[e_RTE_METER_YELLOW])) {
+			printf(CMD_MSG_INVALID_ARG, "yaction");
+			return;
+		}
+
+		if (strcmp(tokens[8], "r")) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "r");
+			return;
+		}
+
+		if (string_to_policer_action(tokens[9],
+			&flow_params.p[policer_id].action[e_RTE_METER_RED])) {
+			printf(CMD_MSG_INVALID_ARG, "raction");
+			return;
+		}
+
+		status = app_pipeline_fa_flow_config(app,
+			params->pipeline_id,
+			flow_id,
+			0,
+			1 << policer_id,
+			0,
+			&flow_params);
+		if (status != 0)
+			printf(CMD_MSG_FAIL, "action flow policer");
+
+		return;
+	} /* action flow policer */
+
+	/* action flow port */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "flow") == 0) &&
+		strcmp(tokens[1], "bulk") &&
+		strcmp(tokens[1], "ls") &&
+		(strcmp(tokens[2], "port") == 0)) {
+		struct pipeline_fa_flow_params flow_params;
+		uint32_t flow_id, port_id;
+
+		if (n_tokens != 4) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action flow port");
+			return;
+		}
+
+		memset(&flow_params, 0, sizeof(flow_params));
+
+		if (parser_read_uint32(&flow_id, tokens[1])) {
+			printf(CMD_MSG_INVALID_ARG, "flowid");
+			return;
+		}
+
+		if (parser_read_uint32(&port_id, tokens[3])) {
+			printf(CMD_MSG_INVALID_ARG, "portid");
+			return;
+		}
+
+		flow_params.port_id = port_id;
+
+		status = app_pipeline_fa_flow_config(app,
+			params->pipeline_id,
+			flow_id,
+			0,
+			0,
+			1,
+			&flow_params);
+		if (status)
+			printf(CMD_MSG_FAIL, "action flow port");
+
+		return;
+	} /* action flow port */
+
+	/* action flow stats */
+	if ((n_tokens >= 3) &&
+		(strcmp(tokens[0], "flow") == 0) &&
+		strcmp(tokens[1], "bulk") &&
+		strcmp(tokens[1], "ls") &&
+		(strcmp(tokens[2], "stats") == 0)) {
+		struct pipeline_fa_policer_stats stats;
+		uint32_t flow_id, policer_id;
+
+		if (n_tokens != 3) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action flow stats");
+			return;
+		}
+
+		if (parser_read_uint32(&flow_id, tokens[1])) {
+			printf(CMD_MSG_INVALID_ARG, "flowid");
+			return;
+		}
+
+		for (policer_id = 0;
+			policer_id < PIPELINE_FA_N_TC_MAX;
+			policer_id++) {
+			status = app_pipeline_fa_flow_policer_stats_read(app,
+				params->pipeline_id,
+				flow_id,
+				policer_id,
+				1,
+				&stats);
+			if (status != 0) {
+				printf(CMD_MSG_FAIL, "action flow stats");
+				return;
+			}
+
+			/* Display stats */
+			printf("\tPolicer: %" PRIu32
+				"\tPkts G: %" PRIu64
+				"\tPkts Y: %" PRIu64
+				"\tPkts R: %" PRIu64
+				"\tPkts D: %" PRIu64 "\n",
+				policer_id,
+				stats.n_pkts[e_RTE_METER_GREEN],
+				stats.n_pkts[e_RTE_METER_YELLOW],
+				stats.n_pkts[e_RTE_METER_RED],
+				stats.n_pkts_drop);
+		}
+
+		return;
+	} /* action flow stats */
+
+	/* action flow bulk */
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "flow") == 0) &&
+		(strcmp(tokens[1], "bulk") == 0)) {
+		struct pipeline_fa_flow_params *flow_params;
+		uint32_t *flow_ids, n_flows, line;
+		char *filename;
+
+		if (n_tokens != 3) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action flow bulk");
+			return;
+		}
+
+		filename = tokens[2];
+
+		n_flows = APP_PIPELINE_FA_MAX_RECORDS_IN_FILE;
+		flow_ids = malloc(n_flows * sizeof(uint32_t));
+		if (flow_ids == NULL) {
+			printf(CMD_MSG_OUT_OF_MEMORY);
+			return;
+		}
+
+		flow_params = malloc(n_flows * sizeof(struct pipeline_fa_flow_params));
+		if (flow_params == NULL) {
+			printf(CMD_MSG_OUT_OF_MEMORY);
+			free(flow_ids);
+			return;
+		}
+
+		status = app_pipeline_fa_load_file(filename,
+			flow_ids,
+			flow_params,
+			&n_flows,
+			&line);
+		if (status) {
+			printf(CMD_MSG_FILE_ERR, filename, line);
+			free(flow_params);
+			free(flow_ids);
+			return;
+		}
+
+		status = app_pipeline_fa_flow_config_bulk(app,
+			params->pipeline_id,
+			flow_ids,
+			n_flows,
+			0xF,
+			0xF,
+			1,
+			flow_params);
+		if (status)
+			printf(CMD_MSG_FAIL, "action flow bulk");
+
+		free(flow_params);
+		free(flow_ids);
+		return;
+	} /* action flow bulk */
+
+	/* action flow ls */
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "flow") == 0) &&
+		(strcmp(tokens[1], "ls") == 0)) {
+		if (n_tokens != 2) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action flow ls");
+			return;
+		}
+
+		status = app_pipeline_fa_flow_ls(app,
+			params->pipeline_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "action flow ls");
+
+		return;
+	} /* action flow ls */
+
+	/* action dscp */
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "dscp") == 0) &&
+		strcmp(tokens[1], "ls")) {
+		uint32_t dscp_id, tc_id;
+		enum rte_meter_color color;
+
+		if (n_tokens != 6) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action dscp");
+			return;
+		}
+
+		if (parser_read_uint32(&dscp_id, tokens[1])) {
+			printf(CMD_MSG_INVALID_ARG, "dscpid");
+			return;
+		}
+
+		if (strcmp(tokens[2], "class")) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "class");
+			return;
+		}
+
+		if (parser_read_uint32(&tc_id, tokens[3])) {
+			printf(CMD_MSG_INVALID_ARG, "classid");
+			return;
+		}
+
+		if (strcmp(tokens[4], "color")) {
+			printf(CMD_MSG_ARG_NOT_FOUND, "color");
+			return;
+		}
+
+		if (string_to_color(tokens[5], &color)) {
+			printf(CMD_MSG_INVALID_ARG, "colorid");
+			return;
+		}
+
+		status = app_pipeline_fa_dscp_config(app,
+			params->pipeline_id,
+			dscp_id,
+			tc_id,
+			color);
+		if (status != 0)
+			printf(CMD_MSG_FAIL, "action dscp");
+
+		return;
+	} /* action dscp */
+
+	/* action dscp ls */
+	if ((n_tokens >= 2) &&
+		(strcmp(tokens[0], "dscp") == 0) &&
+		(strcmp(tokens[1], "ls") == 0)) {
+		if (n_tokens != 2) {
+			printf(CMD_MSG_MISMATCH_ARGS, "action dscp ls");
+			return;
+		}
+
+		status = app_pipeline_fa_dscp_ls(app,
+			params->pipeline_id);
+		if (status)
+			printf(CMD_MSG_FAIL, "action dscp ls");
+
+		return;
+	} /* action dscp ls */
+
+	printf(CMD_MSG_FAIL, "action");
 }
 
-cmdline_parse_token_string_t cmd_fa_policer_stats_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_stats_result,
-	p_string, "p");
+static cmdline_parse_token_string_t cmd_action_p_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_action_result, p_string, "p");
 
-cmdline_parse_token_num_t cmd_fa_policer_stats_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_stats_result,
-	pipeline_id, UINT32);
+static cmdline_parse_token_num_t cmd_action_pipeline_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_action_result, pipeline_id, UINT32);
 
-cmdline_parse_token_string_t cmd_fa_policer_stats_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_stats_result,
-	flow_string, "flow");
+static cmdline_parse_token_string_t cmd_action_action_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_action_result, action_string, "action");
 
-cmdline_parse_token_num_t cmd_fa_policer_stats_flow_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_stats_result,
-	flow_id, UINT32);
+static cmdline_parse_token_string_t cmd_action_multi_string =
+	TOKEN_STRING_INITIALIZER(struct cmd_action_result, multi_string,
+	TOKEN_STRING_MULTI);
 
-cmdline_parse_token_string_t cmd_fa_policer_stats_policer_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_stats_result,
-	policer_string, "policer");
-
-cmdline_parse_token_num_t cmd_fa_policer_stats_policer_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_policer_stats_result,
-	policer_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_policer_stats_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_policer_stats_result,
-	stats_string, "stats");
-
-cmdline_parse_inst_t cmd_fa_policer_stats = {
-	.f = cmd_fa_policer_stats_parsed,
+cmdline_parse_inst_t cmd_action = {
+	.f = cmd_action_parsed,
 	.data = NULL,
-	.help_str = "Flow policer stats read",
+	.help_str = "flow actions (meter, policer, policer stats, dscp table)",
 	.tokens = {
-		(void *) &cmd_fa_policer_stats_p_string,
-		(void *) &cmd_fa_policer_stats_pipeline_id,
-		(void *) &cmd_fa_policer_stats_flow_string,
-		(void *) &cmd_fa_policer_stats_flow_id,
-		(void *) &cmd_fa_policer_stats_policer_string,
-		(void *) &cmd_fa_policer_stats_policer_id,
-		(void *) &cmd_fa_policer_stats_string,
-		NULL,
-	},
-};
-
-/*
- * Flow list
- *
- * p <pipeline ID> flow ls
- */
-
-struct cmd_fa_flow_ls_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t flow_string;
-	cmdline_fixed_string_t actions_string;
-	cmdline_fixed_string_t ls_string;
-};
-
-static void
-cmd_fa_flow_ls_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_flow_ls_result *params = parsed_result;
-	struct app_params *app = data;
-	int status;
-
-	status = app_pipeline_fa_flow_ls(app, params->pipeline_id);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fa_flow_ls_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_flow_ls_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_flow_ls_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_flow_ls_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_flow_ls_flow_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_flow_ls_result,
-	flow_string, "flow");
-
-cmdline_parse_token_string_t cmd_fa_flow_ls_actions_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_flow_ls_result,
-	actions_string, "actions");
-
-cmdline_parse_token_string_t cmd_fa_flow_ls_ls_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_flow_ls_result,
-	ls_string, "ls");
-
-cmdline_parse_inst_t cmd_fa_flow_ls = {
-	.f = cmd_fa_flow_ls_parsed,
-	.data = NULL,
-	.help_str = "Flow actions list",
-	.tokens = {
-		(void *) &cmd_fa_flow_ls_p_string,
-		(void *) &cmd_fa_flow_ls_pipeline_id,
-		(void *) &cmd_fa_flow_ls_flow_string,
-		(void *) &cmd_fa_flow_ls_actions_string,
-		(void *) &cmd_fa_flow_ls_ls_string,
-		NULL,
-	},
-};
-
-/*
- * Flow DiffServ Code Point (DSCP) translation table list
- *
- * p <pipeline ID> dscp ls
- */
-
-struct cmd_fa_dscp_ls_result {
-	cmdline_fixed_string_t p_string;
-	uint32_t pipeline_id;
-	cmdline_fixed_string_t dscp_string;
-	cmdline_fixed_string_t ls_string;
-};
-
-static void
-cmd_fa_dscp_ls_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	void *data)
-{
-	struct cmd_fa_dscp_ls_result *params = parsed_result;
-	struct app_params *app = data;
-	int status;
-
-	status = app_pipeline_fa_dscp_ls(app, params->pipeline_id);
-	if (status != 0)
-		printf("Command failed\n");
-}
-
-cmdline_parse_token_string_t cmd_fa_dscp_ls_p_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_ls_result,
-	p_string, "p");
-
-cmdline_parse_token_num_t cmd_fa_dscp_ls_pipeline_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_fa_dscp_ls_result,
-	pipeline_id, UINT32);
-
-cmdline_parse_token_string_t cmd_fa_dscp_ls_dscp_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_ls_result,
-	dscp_string, "dscp");
-
-cmdline_parse_token_string_t cmd_fa_dscp_ls_string =
-	TOKEN_STRING_INITIALIZER(struct cmd_fa_dscp_ls_result, ls_string,
-	"ls");
-
-cmdline_parse_inst_t cmd_fa_dscp_ls = {
-	.f = cmd_fa_dscp_ls_parsed,
-	.data = NULL,
-	.help_str = "Flow DSCP translaton table list",
-	.tokens = {
-		(void *) &cmd_fa_dscp_ls_p_string,
-		(void *) &cmd_fa_dscp_ls_pipeline_id,
-		(void *) &cmd_fa_dscp_ls_dscp_string,
-		(void *) &cmd_fa_dscp_ls_string,
+		(void *) &cmd_action_p_string,
+		(void *) &cmd_action_pipeline_id,
+		(void *) &cmd_action_action_string,
+		(void *) &cmd_action_multi_string,
 		NULL,
 	},
 };
 
 static cmdline_parse_ctx_t pipeline_cmds[] = {
-	(cmdline_parse_inst_t *) &cmd_fa_meter_config,
-	(cmdline_parse_inst_t *) &cmd_fa_meter_config_bulk,
-	(cmdline_parse_inst_t *) &cmd_fa_policer_config,
-	(cmdline_parse_inst_t *) &cmd_fa_policer_config_bulk,
-	(cmdline_parse_inst_t *) &cmd_fa_output_port_config,
-	(cmdline_parse_inst_t *) &cmd_fa_output_port_config_bulk,
-	(cmdline_parse_inst_t *) &cmd_fa_dscp_config,
-	(cmdline_parse_inst_t *) &cmd_fa_policer_stats,
-	(cmdline_parse_inst_t *) &cmd_fa_flow_ls,
-	(cmdline_parse_inst_t *) &cmd_fa_dscp_ls,
+	(cmdline_parse_inst_t *) &cmd_action,
 	NULL,
 };
 

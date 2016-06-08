@@ -73,6 +73,17 @@ app_pipeline_fa_flow_policer_stats_read(struct app_params *app,
 	int clear,
 	struct pipeline_fa_policer_stats *stats);
 
+#ifndef APP_PIPELINE_FA_MAX_RECORDS_IN_FILE
+#define APP_PIPELINE_FA_MAX_RECORDS_IN_FILE		65536
+#endif
+
+int
+app_pipeline_fa_load_file(char *filename,
+	uint32_t *flow_ids,
+	struct pipeline_fa_flow_params *p,
+	uint32_t *n_flows,
+	uint32_t *line);
+
 extern struct pipeline_type pipeline_flow_actions;
 
 #endif

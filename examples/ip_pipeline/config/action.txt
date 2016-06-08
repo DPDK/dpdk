@@ -1,0 +1,8 @@
+#
+# p <pipelineid> action flow bulk ./config/action.txt
+#
+
+flow 0 meter 0 trtcm 1250000000 1250000000 1000000 1000000 policer 0 g G y Y r R meter 1 trtcm 1250000000 1250000000 1000000 1000000 policer 1 g G y Y r R meter 2 trtcm 1250000000 1250000000 1000000 1000000 policer 2 g G y Y r R meter 3 trtcm 1250000000 1250000000 1000000 1000000 policer 3 g G y Y r R port 0
+flow 1 meter 0 trtcm 1250000000 1250000000 1000000 1000000 policer 0 g G y Y r R meter 1 trtcm 1250000000 1250000000 1000000 1000000 policer 1 g G y Y r R meter 2 trtcm 1250000000 1250000000 1000000 1000000 policer 2 g G y Y r R meter 3 trtcm 1250000000 1250000000 1000000 1000000 policer 3 g G y Y r R port 1
+flow 2 meter 0 trtcm 1250000000 1250000000 1000000 1000000 policer 0 g G y Y r R meter 1 trtcm 1250000000 1250000000 1000000 1000000 policer 1 g G y Y r R meter 2 trtcm 1250000000 1250000000 1000000 1000000 policer 2 g G y Y r R meter 3 trtcm 1250000000 1250000000 1000000 1000000 policer 3 g G y Y r R port 2
+flow 3 meter 0 trtcm 1250000000 1250000000 1000000 1000000 policer 0 g G y Y r R meter 1 trtcm 1250000000 1250000000 1000000 1000000 policer 1 g G y Y r R meter 2 trtcm 1250000000 1250000000 1000000 1000000 policer 2 g G y Y r R meter 3 trtcm 1250000000 1250000000 1000000 1000000 policer 3 g G y Y r R port 3
