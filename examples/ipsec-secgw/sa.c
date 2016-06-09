@@ -37,12 +37,14 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 
 #include <rte_memzone.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #include <rte_byteorder.h>
 #include <rte_errno.h>
+#include <rte_ip.h>
 
 #include "ipsec.h"
 #include "esp.h"
@@ -51,108 +53,148 @@
 const struct ipsec_sa sa_out[] = {
 	{
 	.spi = 5,
-	.src = IPv4(172, 16, 1, 5),
-	.dst = IPv4(172, 16, 2, 5),
+	.src.ip4 = IPv4(172, 16, 1, 5),
+	.dst.ip4 = IPv4(172, 16, 2, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
 	.iv_len = 16,
 	.block_size = 16,
+	.flags = IP4_TUNNEL
 	},
 	{
 	.spi = 6,
-	.src = IPv4(172, 16, 1, 6),
-	.dst = IPv4(172, 16, 2, 6),
+	.src.ip4 = IPv4(172, 16, 1, 6),
+	.dst.ip4 = IPv4(172, 16, 2, 6),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
 	.iv_len = 16,
 	.block_size = 16,
+	.flags = IP4_TUNNEL
 	},
 	{
-	.spi = 7,
-	.src = IPv4(172, 16, 1, 7),
-	.dst = IPv4(172, 16, 2, 7),
-	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
-	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
-	.digest_len = 12,
-	.iv_len = 16,
-	.block_size = 16,
-	},
-	{
-	.spi = 8,
-	.src = IPv4(172, 16, 1, 8),
-	.dst = IPv4(172, 16, 2, 8),
-	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
-	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
-	.digest_len = 12,
-	.iv_len = 16,
-	.block_size = 16,
-	},
-	{
-	.spi = 9,
-	.src = IPv4(172, 16, 1, 9),
-	.dst = IPv4(172, 16, 2, 9),
+	.spi = 15,
+	.src.ip4 = IPv4(172, 16, 1, 5),
+	.dst.ip4 = IPv4(172, 16, 2, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.digest_len = 0,
 	.iv_len = 0,
 	.block_size = 4,
-	}
+	.flags = IP4_TUNNEL
+	},
+	{
+	.spi = 16,
+	.src.ip4 = IPv4(172, 16, 1, 6),
+	.dst.ip4 = IPv4(172, 16, 2, 6),
+	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.digest_len = 0,
+	.iv_len = 0,
+	.block_size = 4,
+	.flags = IP4_TUNNEL
+	},
+	{
+	.spi = 25,
+	.src.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x55, 0x55 },
+	.dst.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x55, 0x55 },
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = IP6_TUNNEL
+	},
+	{
+	.spi = 26,
+	.src.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x66, 0x66 },
+	.dst.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x66, 0x66 },
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = IP6_TUNNEL
+	},
 };
 
 /* SAs Inbound */
 const struct ipsec_sa sa_in[] = {
 	{
-	.spi = 55,
-	.src = IPv4(172, 16, 2, 5),
-	.dst = IPv4(172, 16, 1, 5),
+	.spi = 105,
+	.src.ip4 = IPv4(172, 16, 2, 5),
+	.dst.ip4 = IPv4(172, 16, 1, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
 	.iv_len = 16,
 	.block_size = 16,
+	.flags = IP4_TUNNEL
 	},
 	{
-	.spi = 56,
-	.src = IPv4(172, 16, 2, 6),
-	.dst = IPv4(172, 16, 1, 6),
+	.spi = 106,
+	.src.ip4 = IPv4(172, 16, 2, 6),
+	.dst.ip4 = IPv4(172, 16, 1, 6),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
 	.iv_len = 16,
 	.block_size = 16,
+	.flags = IP4_TUNNEL
 	},
 	{
-	.spi = 57,
-	.src = IPv4(172, 16, 2, 7),
-	.dst = IPv4(172, 16, 1, 7),
-	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
-	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
-	.digest_len = 12,
-	.iv_len = 16,
-	.block_size = 16,
-	},
-	{
-	.spi = 58,
-	.src = IPv4(172, 16, 2, 8),
-	.dst = IPv4(172, 16, 1, 8),
-	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
-	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
-	.digest_len = 12,
-	.iv_len = 16,
-	.block_size = 16,
-	},
-	{
-	.spi = 59,
-	.src = IPv4(172, 16, 2, 9),
-	.dst = IPv4(172, 16, 1, 9),
+	.spi = 115,
+	.src.ip4 = IPv4(172, 16, 2, 5),
+	.dst.ip4 = IPv4(172, 16, 1, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.digest_len = 0,
 	.iv_len = 0,
 	.block_size = 4,
-	}
+	.flags = IP4_TUNNEL
+	},
+	{
+	.spi = 116,
+	.src.ip4 = IPv4(172, 16, 2, 6),
+	.dst.ip4 = IPv4(172, 16, 1, 6),
+	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.digest_len = 0,
+	.iv_len = 0,
+	.block_size = 4,
+	.flags = IP4_TUNNEL
+	},
+	{
+	.spi = 125,
+	.src.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x55, 0x55 },
+	.dst.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x55, 0x55 },
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = IP6_TUNNEL
+	},
+	{
+	.spi = 126,
+	.src.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x66, 0x66 },
+	.dst.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x66, 0x66 },
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = IP6_TUNNEL
+	},
 };
 
 static uint8_t cipher_key[256] = "sixteenbytes key";
@@ -217,11 +259,11 @@ struct sa_ctx {
 };
 
 static struct sa_ctx *
-sa_ipv4_create(const char *name, int socket_id)
+sa_create(const char *name, int32_t socket_id)
 {
 	char s[PATH_MAX];
 	struct sa_ctx *sa_ctx;
-	unsigned mz_size;
+	uint32_t mz_size;
 	const struct rte_memzone *mz;
 
 	snprintf(s, sizeof(s), "%s_%u", name, socket_id);
@@ -246,10 +288,10 @@ sa_ipv4_create(const char *name, int socket_id)
 
 static int
 sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
-		unsigned nb_entries, unsigned inbound)
+		uint32_t nb_entries, uint32_t inbound)
 {
 	struct ipsec_sa *sa;
-	unsigned i, idx;
+	uint32_t i, idx;
 
 	for (i = 0; i < nb_entries; i++) {
 		idx = SPI2IDX(entries[i].spi);
@@ -260,8 +302,14 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			return -EINVAL;
 		}
 		*sa = entries[i];
-		sa->src = rte_cpu_to_be_32(sa->src);
-		sa->dst = rte_cpu_to_be_32(sa->dst);
+		sa->seq = 0;
+
+		switch (sa->flags) {
+		case IP4_TUNNEL:
+			sa->src.ip4 = rte_cpu_to_be_32(sa->src.ip4);
+			sa->dst.ip4 = rte_cpu_to_be_32(sa->dst.ip4);
+		}
+
 		if (inbound) {
 			if (sa->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 				sa_ctx->xf[idx].a = null_auth_xf;
@@ -289,33 +337,33 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 static inline int
 sa_out_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
-		unsigned nb_entries)
+		uint32_t nb_entries)
 {
 	return sa_add_rules(sa_ctx, entries, nb_entries, 0);
 }
 
 static inline int
 sa_in_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
-		unsigned nb_entries)
+		uint32_t nb_entries)
 {
 	return sa_add_rules(sa_ctx, entries, nb_entries, 1);
 }
 
 void
-sa_init(struct socket_ctx *ctx, int socket_id, unsigned ep)
+sa_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep)
 {
 	const struct ipsec_sa *sa_out_entries, *sa_in_entries;
-	unsigned nb_out_entries, nb_in_entries;
+	uint32_t nb_out_entries, nb_in_entries;
 	const char *name;
 
 	if (ctx == NULL)
 		rte_exit(EXIT_FAILURE, "NULL context.\n");
 
-	if (ctx->sa_ipv4_in != NULL)
+	if (ctx->sa_in != NULL)
 		rte_exit(EXIT_FAILURE, "Inbound SA DB for socket %u already "
 				"initialized\n", socket_id);
 
-	if (ctx->sa_ipv4_out != NULL)
+	if (ctx->sa_out != NULL)
 		rte_exit(EXIT_FAILURE, "Outbound SA DB for socket %u already "
 				"initialized\n", socket_id);
 
@@ -333,21 +381,21 @@ sa_init(struct socket_ctx *ctx, int socket_id, unsigned ep)
 		rte_exit(EXIT_FAILURE, "Invalid EP value %u. "
 				"Only 0 or 1 supported.\n", ep);
 
-	name = "sa_ipv4_in";
-	ctx->sa_ipv4_in = sa_ipv4_create(name, socket_id);
-	if (ctx->sa_ipv4_in == NULL)
+	name = "sa_in";
+	ctx->sa_in = sa_create(name, socket_id);
+	if (ctx->sa_in == NULL)
 		rte_exit(EXIT_FAILURE, "Error [%d] creating SA context %s "
 				"in socket %d\n", rte_errno, name, socket_id);
 
-	name = "sa_ipv4_out";
-	ctx->sa_ipv4_out = sa_ipv4_create(name, socket_id);
-	if (ctx->sa_ipv4_out == NULL)
+	name = "sa_out";
+	ctx->sa_out = sa_create(name, socket_id);
+	if (ctx->sa_out == NULL)
 		rte_exit(EXIT_FAILURE, "Error [%d] creating SA context %s "
 				"in socket %d\n", rte_errno, name, socket_id);
 
-	sa_in_add_rules(ctx->sa_ipv4_in, sa_in_entries, nb_in_entries);
+	sa_in_add_rules(ctx->sa_in, sa_in_entries, nb_in_entries);
 
-	sa_out_add_rules(ctx->sa_ipv4_out, sa_out_entries, nb_out_entries);
+	sa_out_add_rules(ctx->sa_out, sa_out_entries, nb_out_entries);
 }
 
 int
@@ -360,38 +408,63 @@ inbound_sa_check(struct sa_ctx *sa_ctx, struct rte_mbuf *m, uint32_t sa_idx)
 	return (sa_ctx->sa[sa_idx].spi == priv->sa->spi);
 }
 
+static inline void
+single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
+		struct ipsec_sa **sa_ret)
+{
+	struct esp_hdr *esp;
+	struct ip *ip;
+	uint32_t *src4_addr;
+	uint8_t *src6_addr;
+	struct ipsec_sa *sa;
+
+	*sa_ret = NULL;
+
+	ip = rte_pktmbuf_mtod(pkt, struct ip *);
+	if (ip->ip_v == IPVERSION)
+		esp = (struct esp_hdr *)(ip + 1);
+	else
+		esp = (struct esp_hdr *)(((struct ip6_hdr *)ip) + 1);
+
+	if (esp->spi == INVALID_SPI)
+		return;
+
+	sa = &sadb[SPI2IDX(rte_be_to_cpu_32(esp->spi))];
+	if (rte_be_to_cpu_32(esp->spi) != sa->spi)
+		return;
+
+	switch (sa->flags) {
+	case IP4_TUNNEL:
+		src4_addr = RTE_PTR_ADD(ip, offsetof(struct ip, ip_src));
+		if ((ip->ip_v == IPVERSION) &&
+				(sa->src.ip4 == *src4_addr) &&
+				(sa->dst.ip4 == *(src4_addr + 1)))
+			*sa_ret = sa;
+		break;
+	case IP6_TUNNEL:
+		src6_addr = RTE_PTR_ADD(ip, offsetof(struct ip6_hdr, ip6_src));
+		if ((ip->ip_v == IP6_VERSION) &&
+				!memcmp(&sa->src.ip6, src6_addr, 16) &&
+				!memcmp(&sa->dst.ip6, src6_addr + 16, 16))
+			*sa_ret = sa;
+	}
+}
+
 void
 inbound_sa_lookup(struct sa_ctx *sa_ctx, struct rte_mbuf *pkts[],
 		struct ipsec_sa *sa[], uint16_t nb_pkts)
 {
-	unsigned i;
-	uint32_t *src, spi;
+	uint32_t i;
 
-	for (i = 0; i < nb_pkts; i++) {
-		spi = rte_pktmbuf_mtod_offset(pkts[i], struct esp_hdr *,
-				sizeof(struct ip))->spi;
-
-		if (spi == INVALID_SPI)
-			continue;
-
-		sa[i] = &sa_ctx->sa[SPI2IDX(spi)];
-		if (spi != sa[i]->spi) {
-			sa[i] = NULL;
-			continue;
-		}
-
-		src = rte_pktmbuf_mtod_offset(pkts[i], uint32_t *,
-				offsetof(struct ip, ip_src));
-		if ((sa[i]->src != *src) || (sa[i]->dst != *(src + 1)))
-			sa[i] = NULL;
-	}
+	for (i = 0; i < nb_pkts; i++)
+		single_inbound_lookup(sa_ctx->sa, pkts[i], &sa[i]);
 }
 
 void
 outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
 		struct ipsec_sa *sa[], uint16_t nb_pkts)
 {
-	unsigned i;
+	uint32_t i;
 
 	for (i = 0; i < nb_pkts; i++)
 		sa[i] = &sa_ctx->sa[sa_idx[i]];

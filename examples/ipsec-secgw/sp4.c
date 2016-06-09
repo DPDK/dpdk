@@ -39,6 +39,7 @@
 #include <netinet/ip.h>
 
 #include <rte_acl.h>
+#include <rte_ip.h>
 
 #include "ipsec.h"
 
@@ -71,7 +72,7 @@ enum {
 	RTE_ACL_IPV4_NUM
 };
 
-struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
+struct rte_acl_field_def ip4_defs[NUM_FIELDS_IPV4] = {
 	{
 	.type = RTE_ACL_FIELD_TYPE_BITMASK,
 	.size = sizeof(uint8_t),
@@ -110,7 +111,7 @@ struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 	},
 };
 
-RTE_ACL_RULE_DEF(acl4_rules, RTE_DIM(ipv4_defs));
+RTE_ACL_RULE_DEF(acl4_rules, RTE_DIM(ip4_defs));
 
 const struct acl4_rules acl4_rules_out[] = {
 	{
@@ -124,7 +125,7 @@ const struct acl4_rules acl4_rules_out[] = {
 	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
-	.data = {.userdata = PROTECT(6), .category_mask = 1, .priority = 2},
+	.data = {.userdata = PROTECT(6), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
 	.field[2] = {.value.u32 = IPv4(192, 168, 106, 0),
 				.mask_range.u32 = 24,},
@@ -134,27 +135,7 @@ const struct acl4_rules acl4_rules_out[] = {
 	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
-	.data = {.userdata = PROTECT(7), .category_mask = 1, .priority = 3},
-	/* destination IPv4 */
-	.field[2] = {.value.u32 = IPv4(192, 168, 107, 0),
-				.mask_range.u32 = 24,},
-	/* source port */
-	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
-	/* destination port */
-	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
-	},
-	{
-	.data = {.userdata = PROTECT(8), .category_mask = 1, .priority = 4},
-	/* destination IPv4 */
-	.field[2] = {.value.u32 = IPv4(192, 168, 108, 0),
-				.mask_range.u32 = 24,},
-	/* source port */
-	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
-	/* destination port */
-	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
-	},
-	{
-	.data = {.userdata = PROTECT(9), .category_mask = 1, .priority = 5},
+	.data = {.userdata = PROTECT(15), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
 	.field[2] = {.value.u32 = IPv4(192, 168, 200, 0),
 				.mask_range.u32 = 24,},
@@ -164,9 +145,49 @@ const struct acl4_rules acl4_rules_out[] = {
 	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
-	.data = {.userdata = BYPASS, .category_mask = 1, .priority = 6},
+	.data = {.userdata = PROTECT(16), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
-	.field[2] = {.value.u32 = IPv4(192, 168, 250, 0),
+	.field[2] = {.value.u32 = IPv4(192, 168, 201, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(25), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 55, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(26), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 56, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = BYPASS, .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 240, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = BYPASS, .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 241, 0),
 				.mask_range.u32 = 24,},
 	/* source port */
 	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
@@ -177,7 +198,7 @@ const struct acl4_rules acl4_rules_out[] = {
 
 const struct acl4_rules acl4_rules_in[] = {
 	{
-	.data = {.userdata = PROTECT(5), .category_mask = 1, .priority = 1},
+	.data = {.userdata = PROTECT(105), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
 	.field[2] = {.value.u32 = IPv4(192, 168, 115, 0),
 				.mask_range.u32 = 24,},
@@ -187,7 +208,7 @@ const struct acl4_rules acl4_rules_in[] = {
 	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
-	.data = {.userdata = PROTECT(6), .category_mask = 1, .priority = 2},
+	.data = {.userdata = PROTECT(106), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
 	.field[2] = {.value.u32 = IPv4(192, 168, 116, 0),
 				.mask_range.u32 = 24,},
@@ -197,27 +218,7 @@ const struct acl4_rules acl4_rules_in[] = {
 	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
-	.data = {.userdata = PROTECT(7), .category_mask = 1, .priority = 3},
-	/* destination IPv4 */
-	.field[2] = {.value.u32 = IPv4(192, 168, 117, 0),
-				.mask_range.u32 = 24,},
-	/* source port */
-	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
-	/* destination port */
-	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
-	},
-	{
-	.data = {.userdata = PROTECT(8), .category_mask = 1, .priority = 4},
-	/* destination IPv4 */
-	.field[2] = {.value.u32 = IPv4(192, 168, 118, 0),
-				.mask_range.u32 = 24,},
-	/* source port */
-	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
-	/* destination port */
-	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
-	},
-	{
-	.data = {.userdata = PROTECT(9), .category_mask = 1, .priority = 5},
+	.data = {.userdata = PROTECT(115), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
 	.field[2] = {.value.u32 = IPv4(192, 168, 210, 0),
 				.mask_range.u32 = 24,},
@@ -227,9 +228,49 @@ const struct acl4_rules acl4_rules_in[] = {
 	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
-	.data = {.userdata = BYPASS, .category_mask = 1, .priority = 6},
+	.data = {.userdata = PROTECT(116), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
-	.field[2] = {.value.u32 = IPv4(192, 168, 240, 0),
+	.field[2] = {.value.u32 = IPv4(192, 168, 211, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(125), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 65, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(126), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 66, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = BYPASS, .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 245, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = BYPASS, .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 246, 0),
 				.mask_range.u32 = 24,},
 	/* source port */
 	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
@@ -239,9 +280,9 @@ const struct acl4_rules acl4_rules_in[] = {
 };
 
 static void
-print_one_ipv4_rule(const struct acl4_rules *rule, int extra)
+print_one_ip4_rule(const struct acl4_rules *rule, int32_t extra)
 {
-	unsigned char a, b, c, d;
+	uint8_t a, b, c, d;
 
 	uint32_t_to_char(rule->field[SRC_FIELD_IPV4].value.u32,
 			&a, &b, &c, &d);
@@ -266,20 +307,20 @@ print_one_ipv4_rule(const struct acl4_rules *rule, int extra)
 }
 
 static inline void
-dump_ipv4_rules(const struct acl4_rules *rule, int num, int extra)
+dump_ip4_rules(const struct acl4_rules *rule, int32_t num, int32_t extra)
 {
-	int i;
+	int32_t i;
 
 	for (i = 0; i < num; i++, rule++) {
 		printf("\t%d:", i + 1);
-		print_one_ipv4_rule(rule, extra);
+		print_one_ip4_rule(rule, extra);
 		printf("\n");
 	}
 }
 
 static struct rte_acl_ctx *
-acl4_init(const char *name, int socketid, const struct acl4_rules *rules,
-		unsigned rules_nb)
+acl4_init(const char *name, int32_t socketid, const struct acl4_rules *rules,
+		uint32_t rules_nb)
 {
 	char s[PATH_MAX];
 	struct rte_acl_param acl_param;
@@ -294,11 +335,11 @@ acl4_init(const char *name, int socketid, const struct acl4_rules *rules,
 	snprintf(s, sizeof(s), "%s_%d", name, socketid);
 
 	printf("IPv4 %s entries [%u]:\n", s, rules_nb);
-	dump_ipv4_rules(rules, rules_nb, 1);
+	dump_ip4_rules(rules, rules_nb, 1);
 
 	acl_param.name = s;
 	acl_param.socket_id = socketid;
-	acl_param.rule_size = RTE_ACL_RULE_SZ(RTE_DIM(ipv4_defs));
+	acl_param.rule_size = RTE_ACL_RULE_SZ(RTE_DIM(ip4_defs));
 	acl_param.max_rule_num = MAX_ACL_RULE_NUM;
 
 	ctx = rte_acl_create(&acl_param);
@@ -313,8 +354,8 @@ acl4_init(const char *name, int socketid, const struct acl4_rules *rules,
 	memset(&acl_build_param, 0, sizeof(acl_build_param));
 
 	acl_build_param.num_categories = DEFAULT_MAX_CATEGORIES;
-	acl_build_param.num_fields = RTE_DIM(ipv4_defs);
-	memcpy(&acl_build_param.defs, ipv4_defs, sizeof(ipv4_defs));
+	acl_build_param.num_fields = RTE_DIM(ip4_defs);
+	memcpy(&acl_build_param.defs, ip4_defs, sizeof(ip4_defs));
 
 	if (rte_acl_build(ctx, &acl_build_param) != 0)
 		rte_exit(EXIT_FAILURE, "Failed to build ACL trie\n");
@@ -325,20 +366,20 @@ acl4_init(const char *name, int socketid, const struct acl4_rules *rules,
 }
 
 void
-sp_init(struct socket_ctx *ctx, int socket_id, unsigned ep)
+sp4_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep)
 {
 	const char *name;
 	const struct acl4_rules *rules_out, *rules_in;
-	unsigned nb_out_rules, nb_in_rules;
+	uint32_t nb_out_rules, nb_in_rules;
 
 	if (ctx == NULL)
 		rte_exit(EXIT_FAILURE, "NULL context.\n");
 
-	if (ctx->sp_ipv4_in != NULL)
+	if (ctx->sp_ip4_in != NULL)
 		rte_exit(EXIT_FAILURE, "Inbound SP DB for socket %u already "
 				"initialized\n", socket_id);
 
-	if (ctx->sp_ipv4_out != NULL)
+	if (ctx->sp_ip4_out != NULL)
 		rte_exit(EXIT_FAILURE, "Outbound SP DB for socket %u already "
 				"initialized\n", socket_id);
 
@@ -356,11 +397,11 @@ sp_init(struct socket_ctx *ctx, int socket_id, unsigned ep)
 		rte_exit(EXIT_FAILURE, "Invalid EP value %u. "
 				"Only 0 or 1 supported.\n", ep);
 
-	name = "sp_ipv4_in";
-	ctx->sp_ipv4_in = (struct sp_ctx *)acl4_init(name, socket_id,
+	name = "sp_ip4_in";
+	ctx->sp_ip4_in = (struct sp_ctx *)acl4_init(name, socket_id,
 			rules_in, nb_in_rules);
 
-	name = "sp_ipv4_out";
-	ctx->sp_ipv4_out = (struct sp_ctx *)acl4_init(name, socket_id,
+	name = "sp_ip4_out";
+	ctx->sp_ip4_out = (struct sp_ctx *)acl4_init(name, socket_id,
 			rules_out, nb_out_rules);
 }

@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <string.h>
 #include <sys/queue.h>
 #include <stdarg.h>
@@ -65,6 +66,7 @@
 #include <rte_mbuf.h>
 #include <rte_acl.h>
 #include <rte_lpm.h>
+#include <rte_lpm6.h>
 #include <rte_hash.h>
 #include <rte_jhash.h>
 #include <rte_cryptodev.h>
@@ -192,7 +194,8 @@ struct lcore_conf {
 	struct buffer tx_mbufs[RTE_MAX_ETHPORTS];
 	struct ipsec_ctx inbound;
 	struct ipsec_ctx outbound;
-	struct rt_ctx *rt_ctx;
+	struct rt_ctx *rt4_ctx;
+	struct rt_ctx *rt6_ctx;
 } __rte_cache_aligned;
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
@@ -230,27 +233,39 @@ struct traffic_type {
 };
 
 struct ipsec_traffic {
-	struct traffic_type ipsec4;
-	struct traffic_type ipv4;
+	struct traffic_type ipsec;
+	struct traffic_type ip4;
+	struct traffic_type ip6;
 };
 
 static inline void
 prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 {
 	uint8_t *nlp;
+	struct ether_hdr *eth;
 
-	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
-		rte_pktmbuf_adj(pkt, ETHER_HDR_LEN);
-		nlp = rte_pktmbuf_mtod_offset(pkt, uint8_t *,
-				offsetof(struct ip, ip_p));
+	eth = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	if (eth->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, ETHER_HDR_LEN);
+		nlp = RTE_PTR_ADD(nlp, offsetof(struct ip, ip_p));
 		if (*nlp == IPPROTO_ESP)
-			t->ipsec4.pkts[(t->ipsec4.num)++] = pkt;
+			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
 		else {
-			t->ipv4.data[t->ipv4.num] = nlp;
-			t->ipv4.pkts[(t->ipv4.num)++] = pkt;
+			t->ip4.data[t->ip4.num] = nlp;
+			t->ip4.pkts[(t->ip4.num)++] = pkt;
+		}
+	} else if (eth->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6)) {
+		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, ETHER_HDR_LEN);
+		nlp = RTE_PTR_ADD(nlp, offsetof(struct ip6_hdr, ip6_nxt));
+		if (*nlp == IPPROTO_ESP)
+			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
+		else {
+			t->ip6.data[t->ip6.num] = nlp;
+			t->ip6.pkts[(t->ip6.num)++] = pkt;
 		}
 	} else {
 		/* Unknown/Unsupported type, drop the packet */
+		RTE_LOG(ERR, IPSEC, "Unsupported packet type\n");
 		rte_pktmbuf_free(pkt);
 	}
 }
@@ -261,8 +276,9 @@ prepare_traffic(struct rte_mbuf **pkts, struct ipsec_traffic *t,
 {
 	int32_t i;
 
-	t->ipsec4.num = 0;
-	t->ipv4.num = 0;
+	t->ipsec.num = 0;
+	t->ip4.num = 0;
+	t->ip6.num = 0;
 
 	for (i = 0; i < (nb_pkts - PREFETCH_OFFSET); i++) {
 		rte_prefetch0(rte_pktmbuf_mtod(pkts[i + PREFETCH_OFFSET],
@@ -277,14 +293,27 @@ prepare_traffic(struct rte_mbuf **pkts, struct ipsec_traffic *t,
 static inline void
 prepare_tx_pkt(struct rte_mbuf *pkt, uint8_t port)
 {
-	pkt->ol_flags |= PKT_TX_IP_CKSUM | PKT_TX_IPV4;
-	pkt->l3_len = sizeof(struct ip);
-	pkt->l2_len = ETHER_HDR_LEN;
+	struct ip *ip;
+	struct ether_hdr *ethhdr;
 
-	struct ether_hdr *ethhdr = (struct ether_hdr *)rte_pktmbuf_prepend(pkt,
-			ETHER_HDR_LEN);
+	ip = rte_pktmbuf_mtod(pkt, struct ip *);
 
-	ethhdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	ethhdr = (struct ether_hdr *)rte_pktmbuf_prepend(pkt, ETHER_HDR_LEN);
+
+	if (ip->ip_v == IPVERSION) {
+		pkt->ol_flags |= PKT_TX_IP_CKSUM | PKT_TX_IPV4;
+		pkt->l3_len = sizeof(struct ip);
+		pkt->l2_len = ETHER_HDR_LEN;
+
+		ethhdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	} else {
+		pkt->ol_flags |= PKT_TX_IPV6;
+		pkt->l3_len = sizeof(struct ip6_hdr);
+		pkt->l2_len = ETHER_HDR_LEN;
+
+		ethhdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+	}
+
 	memcpy(&ethhdr->s_addr, &ethaddr_tbl[port].src,
 			sizeof(struct ether_addr));
 	memcpy(&ethhdr->d_addr, &ethaddr_tbl[port].dst,
@@ -355,51 +384,100 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 }
 
 static inline void
+inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip)
+{
+	struct rte_mbuf *m;
+	uint32_t i, j, res, sa_idx;
+
+	if (ip->num == 0)
+		return;
+
+	rte_acl_classify((struct rte_acl_ctx *)sp, ip->data, ip->res,
+			ip->num, DEFAULT_MAX_CATEGORIES);
+
+	j = 0;
+	for (i = 0; i < ip->num; i++) {
+		m = ip->pkts[i];
+		res = ip->res[i];
+		if (res & DISCARD) {
+			rte_pktmbuf_free(m);
+			continue;
+		}
+		if (res & BYPASS) {
+			ip->pkts[j++] = m;
+			continue;
+		}
+		/* Check return SA SPI matches pkt SPI */
+		sa_idx = ip->res[i] & PROTECT_MASK;
+		if (sa_idx == 0 || !inbound_sa_check(sa, m, sa_idx)) {
+			rte_pktmbuf_free(m);
+			continue;
+		}
+		ip->pkts[j++] = m;
+	}
+	ip->num = j;
+}
+
+static inline void
 process_pkts_inbound(struct ipsec_ctx *ipsec_ctx,
 		struct ipsec_traffic *traffic)
 {
 	struct rte_mbuf *m;
-	uint16_t idx, nb_pkts_in, i, j;
-	uint32_t sa_idx, res;
+	uint16_t idx, nb_pkts_in, i;
 
-	nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec4.pkts,
-			traffic->ipsec4.num, MAX_PKT_BURST);
+	nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
+			traffic->ipsec.num, MAX_PKT_BURST);
 
-	/* SP/ACL Inbound check ipsec and ipv4 */
+	/* SP/ACL Inbound check ipsec and ip4 */
 	for (i = 0; i < nb_pkts_in; i++) {
-		idx = traffic->ipv4.num++;
-		m = traffic->ipsec4.pkts[i];
-		traffic->ipv4.pkts[idx] = m;
-		traffic->ipv4.data[idx] = rte_pktmbuf_mtod_offset(m,
-				uint8_t *, offsetof(struct ip, ip_p));
+		m = traffic->ipsec.pkts[i];
+		struct ip *ip = rte_pktmbuf_mtod(m, struct ip *);
+		if (ip->ip_v == IPVERSION) {
+			idx = traffic->ip4.num++;
+			traffic->ip4.pkts[idx] = m;
+			traffic->ip4.data[idx] = rte_pktmbuf_mtod_offset(m,
+					uint8_t *, offsetof(struct ip, ip_p));
+		} else if (ip->ip_v == IP6_VERSION) {
+			idx = traffic->ip6.num++;
+			traffic->ip6.pkts[idx] = m;
+			traffic->ip6.data[idx] = rte_pktmbuf_mtod_offset(m,
+					uint8_t *,
+					offsetof(struct ip6_hdr, ip6_nxt));
+		} else
+			rte_pktmbuf_free(m);
 	}
 
-	rte_acl_classify((struct rte_acl_ctx *)ipsec_ctx->sp_ctx,
-			traffic->ipv4.data, traffic->ipv4.res,
-			traffic->ipv4.num, DEFAULT_MAX_CATEGORIES);
+	inbound_sp_sa(ipsec_ctx->sp4_ctx, ipsec_ctx->sa_ctx, &traffic->ip4);
+
+	inbound_sp_sa(ipsec_ctx->sp6_ctx, ipsec_ctx->sa_ctx, &traffic->ip6);
+}
+
+static inline void
+outbound_sp(struct sp_ctx *sp, struct traffic_type *ip,
+		struct traffic_type *ipsec)
+{
+	struct rte_mbuf *m;
+	uint32_t i, j, sa_idx;
+
+	if (ip->num == 0)
+		return;
+
+	rte_acl_classify((struct rte_acl_ctx *)sp, ip->data, ip->res,
+			ip->num, DEFAULT_MAX_CATEGORIES);
 
 	j = 0;
-	for (i = 0; i < traffic->ipv4.num - nb_pkts_in; i++) {
-		m = traffic->ipv4.pkts[i];
-		res = traffic->ipv4.res[i];
-		if (res & ~BYPASS) {
+	for (i = 0; i < ip->num; i++) {
+		m = ip->pkts[i];
+		sa_idx = ip->res[i] & PROTECT_MASK;
+		if ((ip->res[i] == 0) || (ip->res[i] & DISCARD))
 			rte_pktmbuf_free(m);
-			continue;
-		}
-		traffic->ipv4.pkts[j++] = m;
+		else if (sa_idx != 0) {
+			ipsec->res[ipsec->num] = sa_idx;
+			ipsec->pkts[ipsec->num++] = m;
+		} else /* BYPASS */
+			ip->pkts[j++] = m;
 	}
-	/* Check return SA SPI matches pkt SPI */
-	for ( ; i < traffic->ipv4.num; i++) {
-		m = traffic->ipv4.pkts[i];
-		sa_idx = traffic->ipv4.res[i] & PROTECT_MASK;
-		if (sa_idx == 0 || !inbound_sa_check(ipsec_ctx->sa_ctx,
-					m, sa_idx)) {
-			rte_pktmbuf_free(m);
-			continue;
-		}
-		traffic->ipv4.pkts[j++] = m;
-	}
-	traffic->ipv4.num = j;
+	ip->num = j;
 }
 
 static inline void
@@ -407,42 +485,32 @@ process_pkts_outbound(struct ipsec_ctx *ipsec_ctx,
 		struct ipsec_traffic *traffic)
 {
 	struct rte_mbuf *m;
-	uint16_t idx, nb_pkts_out, i, j;
-	uint32_t sa_idx, res;
-
-	rte_acl_classify((struct rte_acl_ctx *)ipsec_ctx->sp_ctx,
-			traffic->ipv4.data, traffic->ipv4.res,
-			traffic->ipv4.num, DEFAULT_MAX_CATEGORIES);
+	uint16_t idx, nb_pkts_out, i;
 
 	/* Drop any IPsec traffic from protected ports */
-	for (i = 0; i < traffic->ipsec4.num; i++)
-		rte_pktmbuf_free(traffic->ipsec4.pkts[i]);
+	for (i = 0; i < traffic->ipsec.num; i++)
+		rte_pktmbuf_free(traffic->ipsec.pkts[i]);
 
-	traffic->ipsec4.num = 0;
+	traffic->ipsec.num = 0;
 
-	j = 0;
-	for (i = 0; i < traffic->ipv4.num; i++) {
-		m = traffic->ipv4.pkts[i];
-		res = traffic->ipv4.res[i];
-		sa_idx = res & PROTECT_MASK;
-		if ((res == 0) || (res & DISCARD))
-			rte_pktmbuf_free(m);
-		else if (sa_idx != 0) {
-			traffic->ipsec4.res[traffic->ipsec4.num] = sa_idx;
-			traffic->ipsec4.pkts[traffic->ipsec4.num++] = m;
-		} else /* BYPASS */
-			traffic->ipv4.pkts[j++] = m;
-	}
-	traffic->ipv4.num = j;
+	outbound_sp(ipsec_ctx->sp4_ctx, &traffic->ip4, &traffic->ipsec);
 
-	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipsec4.pkts,
-			traffic->ipsec4.res, traffic->ipsec4.num,
+	outbound_sp(ipsec_ctx->sp6_ctx, &traffic->ip6, &traffic->ipsec);
+
+	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipsec.pkts,
+			traffic->ipsec.res, traffic->ipsec.num,
 			MAX_PKT_BURST);
 
 	for (i = 0; i < nb_pkts_out; i++) {
-		idx = traffic->ipv4.num++;
-		m = traffic->ipsec4.pkts[i];
-		traffic->ipv4.pkts[idx] = m;
+		m = traffic->ipsec.pkts[i];
+		struct ip *ip = rte_pktmbuf_mtod(m, struct ip *);
+		if (ip->ip_v == IPVERSION) {
+			idx = traffic->ip4.num++;
+			traffic->ip4.pkts[idx] = m;
+		} else {
+			idx = traffic->ip6.num++;
+			traffic->ip6.pkts[idx] = m;
+		}
 	}
 }
 
@@ -450,47 +518,72 @@ static inline void
 process_pkts_inbound_nosp(struct ipsec_ctx *ipsec_ctx,
 		struct ipsec_traffic *traffic)
 {
-	uint16_t nb_pkts_in, i;
+	struct rte_mbuf *m;
+	uint32_t nb_pkts_in, i, idx;
 
 	/* Drop any IPv4 traffic from unprotected ports */
-	for (i = 0; i < traffic->ipv4.num; i++)
-		rte_pktmbuf_free(traffic->ipv4.pkts[i]);
+	for (i = 0; i < traffic->ip4.num; i++)
+		rte_pktmbuf_free(traffic->ip4.pkts[i]);
 
-	traffic->ipv4.num = 0;
+	traffic->ip4.num = 0;
 
-	nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec4.pkts,
-			traffic->ipsec4.num, MAX_PKT_BURST);
+	/* Drop any IPv6 traffic from unprotected ports */
+	for (i = 0; i < traffic->ip6.num; i++)
+		rte_pktmbuf_free(traffic->ip6.pkts[i]);
 
-	for (i = 0; i < nb_pkts_in; i++)
-		traffic->ipv4.pkts[i] = traffic->ipsec4.pkts[i];
+	traffic->ip6.num = 0;
 
-	traffic->ipv4.num = nb_pkts_in;
+	nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
+			traffic->ipsec.num, MAX_PKT_BURST);
+
+	for (i = 0; i < nb_pkts_in; i++) {
+		m = traffic->ipsec.pkts[i];
+		struct ip *ip = rte_pktmbuf_mtod(m, struct ip *);
+		if (ip->ip_v == IPVERSION) {
+			idx = traffic->ip4.num++;
+			traffic->ip4.pkts[idx] = m;
+		} else {
+			idx = traffic->ip6.num++;
+			traffic->ip6.pkts[idx] = m;
+		}
+	}
 }
 
 static inline void
 process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 		struct ipsec_traffic *traffic)
 {
-	uint16_t nb_pkts_out, i;
+	struct rte_mbuf *m;
+	uint32_t nb_pkts_out, i;
+	struct ip *ip;
 
 	/* Drop any IPsec traffic from protected ports */
-	for (i = 0; i < traffic->ipsec4.num; i++)
-		rte_pktmbuf_free(traffic->ipsec4.pkts[i]);
+	for (i = 0; i < traffic->ipsec.num; i++)
+		rte_pktmbuf_free(traffic->ipsec.pkts[i]);
 
-	traffic->ipsec4.num = 0;
+	traffic->ipsec.num = 0;
 
-	for (i = 0; i < traffic->ipv4.num; i++)
-		traffic->ipv4.res[i] = single_sa_idx;
+	for (i = 0; i < traffic->ip4.num; i++)
+		traffic->ip4.res[i] = single_sa_idx;
 
-	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipv4.pkts,
-			traffic->ipv4.res, traffic->ipv4.num,
+	for (i = 0; i < traffic->ip6.num; i++)
+		traffic->ip6.res[i] = single_sa_idx;
+
+	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ip4.pkts,
+			traffic->ip4.res, traffic->ip4.num,
 			MAX_PKT_BURST);
 
-	traffic->ipv4.num = nb_pkts_out;
+	/* They all sue the same SA (ip4 or ip6 tunnel) */
+	m = traffic->ipsec.pkts[i];
+	ip = rte_pktmbuf_mtod(m, struct ip *);
+	if (ip->ip_v == IPVERSION)
+		traffic->ip4.num = nb_pkts_out;
+	else
+		traffic->ip6.num = nb_pkts_out;
 }
 
 static inline void
-route_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
+route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 {
 	uint32_t hop[MAX_PKT_BURST * 2];
 	uint32_t dst_ip[MAX_PKT_BURST * 2];
@@ -518,6 +611,35 @@ route_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 }
 
 static inline void
+route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
+{
+	int16_t hop[MAX_PKT_BURST * 2];
+	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
+	uint8_t *ip6_dst;
+	uint16_t i, offset;
+
+	if (nb_pkts == 0)
+		return;
+
+	for (i = 0; i < nb_pkts; i++) {
+		offset = offsetof(struct ip6_hdr, ip6_dst);
+		ip6_dst = rte_pktmbuf_mtod_offset(pkts[i], uint8_t *, offset);
+		memcpy(&dst_ip[i][0], ip6_dst, 16);
+	}
+
+	rte_lpm6_lookup_bulk_func((struct rte_lpm6 *)rt_ctx, dst_ip,
+			hop, nb_pkts);
+
+	for (i = 0; i < nb_pkts; i++) {
+		if (hop[i] == -1) {
+			rte_pktmbuf_free(pkts[i]);
+			continue;
+		}
+		send_single_packet(pkts[i], hop[i] & 0xff);
+	}
+}
+
+static inline void
 process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
 		uint8_t nb_pkts, uint8_t portid)
 {
@@ -525,7 +647,7 @@ process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
 
 	prepare_traffic(pkts, &traffic, nb_pkts);
 
-	if (single_sa) {
+	if (unlikely(single_sa)) {
 		if (UNPROTECTED_PORT(portid))
 			process_pkts_inbound_nosp(&qconf->inbound, &traffic);
 		else
@@ -537,7 +659,8 @@ process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
 			process_pkts_outbound(&qconf->outbound, &traffic);
 	}
 
-	route_pkts(qconf->rt_ctx, traffic.ipv4.pkts, traffic.ipv4.num);
+	route4_pkts(qconf->rt4_ctx, traffic.ip4.pkts, traffic.ip4.num);
+	route6_pkts(qconf->rt6_ctx, traffic.ip6.pkts, traffic.ip6.num);
 }
 
 static inline void
@@ -576,12 +699,15 @@ main_loop(__attribute__((unused)) void *dummy)
 	rxql = qconf->rx_queue_list;
 	socket_id = rte_lcore_to_socket_id(lcore_id);
 
-	qconf->rt_ctx = socket_ctx[socket_id].rt_ipv4;
-	qconf->inbound.sp_ctx = socket_ctx[socket_id].sp_ipv4_in;
-	qconf->inbound.sa_ctx = socket_ctx[socket_id].sa_ipv4_in;
+	qconf->rt4_ctx = socket_ctx[socket_id].rt_ip4;
+	qconf->rt6_ctx = socket_ctx[socket_id].rt_ip6;
+	qconf->inbound.sp4_ctx = socket_ctx[socket_id].sp_ip4_in;
+	qconf->inbound.sp6_ctx = socket_ctx[socket_id].sp_ip6_in;
+	qconf->inbound.sa_ctx = socket_ctx[socket_id].sa_in;
 	qconf->inbound.cdev_map = cdev_map_in;
-	qconf->outbound.sp_ctx = socket_ctx[socket_id].sp_ipv4_out;
-	qconf->outbound.sa_ctx = socket_ctx[socket_id].sa_ipv4_out;
+	qconf->outbound.sp4_ctx = socket_ctx[socket_id].sp_ip4_out;
+	qconf->outbound.sp6_ctx = socket_ctx[socket_id].sp_ip6_out;
+	qconf->outbound.sa_ctx = socket_ctx[socket_id].sa_out;
 	qconf->outbound.cdev_map = cdev_map_out;
 
 	if (qconf->nb_rx_queue == 0) {
@@ -760,7 +886,7 @@ parse_config(const char *q_arg)
 		FLD_LCORE,
 		_NUM_FLD
 	};
-	int long int_fld[_NUM_FLD];
+	unsigned long int_fld[_NUM_FLD];
 	char *str_fld[_NUM_FLD];
 	int32_t i;
 	uint32_t size;
@@ -1309,7 +1435,9 @@ main(int32_t argc, char **argv)
 
 		sa_init(&socket_ctx[socket_id], socket_id, ep);
 
-		sp_init(&socket_ctx[socket_id], socket_id, ep);
+		sp4_init(&socket_ctx[socket_id], socket_id, ep);
+
+		sp6_init(&socket_ctx[socket_id], socket_id, ep);
 
 		rt_init(&socket_ctx[socket_id], socket_id, ep);
 

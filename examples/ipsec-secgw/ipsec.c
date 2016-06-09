@@ -66,7 +66,8 @@ create_session(struct ipsec_ctx *ipsec_ctx __rte_unused, struct ipsec_sa *sa)
 	}
 
 	RTE_LOG(DEBUG, IPSEC, "Create session for SA spi %u on cryptodev "
-			"%u qp %u\n", sa->spi, ipsec_ctx->tbl[cdev_id_qp].id,
+			"%u qp %u\n", sa->spi,
+			ipsec_ctx->tbl[cdev_id_qp].id,
 			ipsec_ctx->tbl[cdev_id_qp].qp);
 
 	sa->crypto_session = rte_cryptodev_sym_session_create(
@@ -80,7 +81,7 @@ create_session(struct ipsec_ctx *ipsec_ctx __rte_unused, struct ipsec_sa *sa)
 static inline void
 enqueue_cop(struct cdev_qp *cqp, struct rte_crypto_op *cop)
 {
-	int ret, i;
+	int32_t ret, i;
 
 	cqp->buf[cqp->len++] = cop;
 
@@ -105,7 +106,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 		struct rte_mbuf *pkts[], struct ipsec_sa *sas[],
 		uint16_t nb_pkts)
 {
-	int ret = 0, i;
+	int32_t ret = 0, i;
 	struct ipsec_mbuf_metadata *priv;
 	struct ipsec_sa *sa;
 
@@ -151,7 +152,7 @@ static inline int
 ipsec_dequeue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 		struct rte_mbuf *pkts[], uint16_t max_pkts)
 {
-	int nb_pkts = 0, ret = 0, i, j, nb_cops;
+	int32_t nb_pkts = 0, ret = 0, i, j, nb_cops;
 	struct ipsec_mbuf_metadata *priv;
 	struct rte_crypto_op *cops[max_pkts];
 	struct ipsec_sa *sa;

@@ -47,7 +47,7 @@ CFLAGS_sa.o += -diag-disable=vec
 endif
 
 ifeq ($(DEBUG),1)
-CFLAGS += -DIPSEC_DEBUG -fstack-protector-all
+CFLAGS += -DIPSEC_DEBUG -fstack-protector-all -O0
 endif
 
 #
@@ -55,7 +55,8 @@ endif
 #
 SRCS-y += ipsec.c
 SRCS-y += esp.c
-SRCS-y += sp.c
+SRCS-y += sp4.c
+SRCS-y += sp6.c
 SRCS-y += sa.c
 SRCS-y += rt.c
 SRCS-y += ipsec-secgw.c

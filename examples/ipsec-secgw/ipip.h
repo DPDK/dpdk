@@ -37,67 +37,144 @@
 #include <stdint.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 
 #include <rte_mbuf.h>
 
-#define IPV6_VERSION (6)
-
-static inline  struct ip *
-ip4ip_outbound(struct rte_mbuf *m, uint32_t offset, uint32_t src, uint32_t dst)
+static inline void *
+ipip_outbound(struct rte_mbuf *m, uint32_t offset, uint32_t is_ipv6,
+		struct ip_addr *src,  struct ip_addr *dst)
 {
-	struct ip *inip, *outip;
+	struct ip *inip4, *outip4;
+	struct ip6_hdr *inip6, *outip6;
+	uint8_t ds_ecn;
 
-	inip = rte_pktmbuf_mtod(m, struct ip*);
+	inip4 = rte_pktmbuf_mtod(m, struct ip *);
 
-	RTE_ASSERT(inip->ip_v == IPVERSION || inip->ip_v == IPV6_VERSION);
+	RTE_ASSERT(inip4->ip_v == IPVERSION || inip4->ip_v == IP6_VERSION);
+
+	if (inip4->ip_v == IPVERSION) {
+		/* XXX This should be done by the forwarding engine instead */
+		inip4->ip_ttl -= 1;
+		ds_ecn = inip4->ip_tos;
+	} else {
+		inip6 = (struct ip6_hdr *)inip4;
+		/* XXX This should be done by the forwarding engine instead */
+		inip6->ip6_hops -= 1;
+		ds_ecn = ntohl(inip6->ip6_flow) >> 20;
+	}
+
+	if (is_ipv6) {
+		offset += sizeof(struct ip6_hdr);
+		outip6 = (struct ip6_hdr *)rte_pktmbuf_prepend(m, offset);
+
+		RTE_ASSERT(outip6 != NULL);
+
+		/* Per RFC4301 5.1.2.1 */
+		outip6->ip6_flow = htonl(IP6_VERSION << 28 | ds_ecn << 20);
+		outip6->ip6_plen = htons(rte_pktmbuf_data_len(m));
+
+		outip6->ip6_nxt = IPPROTO_ESP;
+		outip6->ip6_hops = IPDEFTTL;
+
+		memcpy(&outip6->ip6_src.s6_addr, src, 16);
+		memcpy(&outip6->ip6_dst.s6_addr, dst, 16);
+
+		return outip6;
+	}
 
 	offset += sizeof(struct ip);
+	outip4 = (struct ip *)rte_pktmbuf_prepend(m, offset);
 
-	outip = (struct ip *)rte_pktmbuf_prepend(m, offset);
-
-	RTE_ASSERT(outip != NULL);
+	RTE_ASSERT(outip4 != NULL);
 
 	/* Per RFC4301 5.1.2.1 */
-	outip->ip_v = IPVERSION;
-	outip->ip_hl = 5;
-	outip->ip_tos = inip->ip_tos;
-	outip->ip_len = htons(rte_pktmbuf_data_len(m));
+	outip4->ip_v = IPVERSION;
+	outip4->ip_hl = 5;
+	outip4->ip_tos = ds_ecn;
+	outip4->ip_len = htons(rte_pktmbuf_data_len(m));
 
-	outip->ip_id = 0;
-	outip->ip_off = 0;
+	outip4->ip_id = 0;
+	outip4->ip_off = 0;
 
-	outip->ip_ttl = IPDEFTTL;
-	outip->ip_p = IPPROTO_ESP;
+	outip4->ip_ttl = IPDEFTTL;
+	outip4->ip_p = IPPROTO_ESP;
 
-	outip->ip_src.s_addr = src;
-	outip->ip_dst.s_addr = dst;
+	outip4->ip_src.s_addr = src->ip4;
+	outip4->ip_dst.s_addr = dst->ip4;
 
-	return outip;
+	return outip4;
 }
 
-static inline int
-ip4ip_inbound(struct rte_mbuf *m, uint32_t offset)
+static inline struct ip *
+ip4ip_outbound(struct rte_mbuf *m, uint32_t offset,
+		struct ip_addr *src,  struct ip_addr *dst)
 {
-	struct ip *inip;
-	struct ip *outip;
+	return ipip_outbound(m, offset, 0, src, dst);
+}
 
-	outip = rte_pktmbuf_mtod(m, struct ip*);
+static inline struct ip6_hdr *
+ip6ip_outbound(struct rte_mbuf *m, uint32_t offset,
+		struct ip_addr *src,  struct ip_addr *dst)
+{
+	return ipip_outbound(m, offset, 1, src, dst);
+}
 
-	RTE_ASSERT(outip->ip_v == IPVERSION);
+static inline void
+ip4_ecn_setup(struct ip *ip4)
+{
+	if (ip4->ip_tos & IPTOS_ECN_MASK)
+		ip4->ip_tos |= IPTOS_ECN_CE;
+}
 
-	offset += sizeof(struct ip);
-	inip = (struct ip *)rte_pktmbuf_adj(m, offset);
-	RTE_ASSERT(inip->ip_v == IPVERSION || inip->ip_v == IPV6_VERSION);
+static inline void
+ip6_ecn_setup(struct ip6_hdr *ip6)
+{
+	if ((ntohl(ip6->ip6_flow) >> 20) & IPTOS_ECN_MASK)
+		ip6->ip6_flow = htonl(ntohl(ip6->ip6_flow) |
+					(IPTOS_ECN_CE << 20));
+}
+
+static inline void
+ipip_inbound(struct rte_mbuf *m, uint32_t offset)
+{
+	struct ip *inip4, *outip4;
+	struct ip6_hdr *inip6, *outip6;
+	uint32_t ip_len, set_ecn;
+
+	outip4 = rte_pktmbuf_mtod(m, struct ip*);
+
+	RTE_ASSERT(outip4->ip_v == IPVERSION || outip4->ip_v == IP6_VERSION);
+
+	if (outip4->ip_v == IPVERSION) {
+		ip_len = sizeof(struct ip);
+		set_ecn = ((outip4->ip_tos & IPTOS_ECN_CE) == IPTOS_ECN_CE);
+	} else {
+		outip6 = (struct ip6_hdr *)outip4;
+		ip_len = sizeof(struct ip6_hdr);
+		set_ecn = ntohl(outip6->ip6_flow) >> 20;
+		set_ecn = ((set_ecn & IPTOS_ECN_CE) == IPTOS_ECN_CE);
+	}
+
+	inip4 = (struct ip *)rte_pktmbuf_adj(m, offset + ip_len);
+	RTE_ASSERT(inip4->ip_v == IPVERSION || inip4->ip_v == IP6_VERSION);
 
 	/* Check packet is still bigger than IP header (inner) */
-	RTE_ASSERT(rte_pktmbuf_pkt_len(m) > sizeof(struct ip));
+	RTE_ASSERT(rte_pktmbuf_pkt_len(m) > ip_len);
 
 	/* RFC4301 5.1.2.1 Note 6 */
-	if ((inip->ip_tos & htons(IPTOS_ECN_ECT0 | IPTOS_ECN_ECT1)) &&
-			((outip->ip_tos & htons(IPTOS_ECN_CE)) == IPTOS_ECN_CE))
-		inip->ip_tos |= htons(IPTOS_ECN_CE);
-
-	return 0;
+	if (inip4->ip_v == IPVERSION) {
+		if (set_ecn)
+			ip4_ecn_setup(inip4);
+		/* XXX This should be done by the forwarding engine instead */
+		inip4->ip_ttl -= 1;
+	} else {
+		inip6 = (struct ip6_hdr *)inip4;
+		if (set_ecn)
+			ip6_ecn_setup(inip6);
+		/* XXX This should be done by the forwarding engine instead */
+		inip6->ip6_hops -= 1;
+	}
 }
 
 #endif /* __IPIP_H__ */

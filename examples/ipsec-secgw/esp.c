@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -50,13 +51,11 @@
 #include "esp.h"
 #include "ipip.h"
 
-#define IP_ESP_HDR_SZ (sizeof(struct ip) + sizeof(struct esp_hdr))
-
 static inline void
 random_iv_u64(uint64_t *buf, uint16_t n)
 {
-	unsigned left = n & 0x7;
-	unsigned i;
+	uint32_t left = n & 0x7;
+	uint32_t i;
 
 	RTE_ASSERT((n & 0x3) == 0);
 
@@ -71,15 +70,25 @@ int
 esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
-	int32_t payload_len;
+	int32_t payload_len, ip_hdr_len;
 	struct rte_crypto_sym_op *sym_cop;
 
 	RTE_ASSERT(m != NULL);
 	RTE_ASSERT(sa != NULL);
 	RTE_ASSERT(cop != NULL);
 
-	payload_len = rte_pktmbuf_pkt_len(m) - IP_ESP_HDR_SZ - sa->iv_len -
-		sa->digest_len;
+	ip_hdr_len = 0;
+	switch (sa->flags) {
+	case IP4_TUNNEL:
+		ip_hdr_len = sizeof(struct ip);
+		break;
+	case IP6_TUNNEL:
+		ip_hdr_len = sizeof(struct ip6_hdr);
+		break;
+	}
+
+	payload_len = rte_pktmbuf_pkt_len(m) - ip_hdr_len -
+		sizeof(struct esp_hdr) - sa->iv_len - sa->digest_len;
 
 	if ((payload_len & (sa->block_size - 1)) || (payload_len <= 0)) {
 		RTE_LOG(DEBUG, IPSEC_ESP, "payload %d not multiple of %u\n",
@@ -90,21 +99,19 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	sym_cop = (struct rte_crypto_sym_op *)(cop + 1);
 
 	sym_cop->m_src = m;
-	sym_cop->cipher.data.offset = IP_ESP_HDR_SZ + sa->iv_len;
+	sym_cop->cipher.data.offset =  ip_hdr_len + sizeof(struct esp_hdr) +
+		sa->iv_len;
 	sym_cop->cipher.data.length = payload_len;
 
 	sym_cop->cipher.iv.data = rte_pktmbuf_mtod_offset(m, void*,
-			IP_ESP_HDR_SZ);
+			 ip_hdr_len + sizeof(struct esp_hdr));
 	sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(m,
-			IP_ESP_HDR_SZ);
+			 ip_hdr_len + sizeof(struct esp_hdr));
 	sym_cop->cipher.iv.length = sa->iv_len;
 
-	sym_cop->auth.data.offset = sizeof(struct ip);
-	if (sa->auth_algo == RTE_CRYPTO_AUTH_AES_GCM)
-		sym_cop->auth.data.length = sizeof(struct esp_hdr);
-	else
-		sym_cop->auth.data.length = sizeof(struct esp_hdr) +
-			sa->iv_len + payload_len;
+	sym_cop->auth.data.offset = ip_hdr_len;
+	sym_cop->auth.data.length = sizeof(struct esp_hdr) +
+		sa->iv_len + payload_len;
 
 	sym_cop->auth.digest.data = rte_pktmbuf_mtod_offset(m, void*,
 			rte_pktmbuf_pkt_len(m) - sa->digest_len);
@@ -150,17 +157,20 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		return -EINVAL;
 	}
 
-	return ip4ip_inbound(m, sizeof(struct esp_hdr) + sa->iv_len);
+	ipip_inbound(m, sizeof(struct esp_hdr) + sa->iv_len);
+
+	return 0;
 }
 
 int
 esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
-	uint16_t pad_payload_len, pad_len;
-	struct ip *ip;
+	uint16_t pad_payload_len, pad_len, ip_hdr_len;
+	struct ip *ip4;
+	struct ip6_hdr *ip6;
 	struct esp_hdr *esp;
-	int i;
+	int32_t i;
 	char *padding;
 	struct rte_crypto_sym_op *sym_cop;
 
@@ -173,61 +183,86 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 			sa->block_size);
 	pad_len = pad_payload_len - rte_pktmbuf_pkt_len(m);
 
-	rte_prefetch0(rte_pktmbuf_mtod_offset(m, void *,
-				rte_pktmbuf_pkt_len(m)));
+	ip_hdr_len = 0;
+	switch (sa->flags) {
+	case IP4_TUNNEL:
+		ip_hdr_len = sizeof(struct ip);
+		break;
+	case IP6_TUNNEL:
+		ip_hdr_len = sizeof(struct ip6_hdr);
+		break;
+	}
 
 	/* Check maximum packet size */
-	if (unlikely(IP_ESP_HDR_SZ + sa->iv_len + pad_payload_len +
-				sa->digest_len > IP_MAXPACKET)) {
-		RTE_LOG(DEBUG, IPSEC_ESP, "ipsec packet is too big\n");
+	if (unlikely(ip_hdr_len + sizeof(struct esp_hdr) + sa->iv_len +
+			pad_payload_len + sa->digest_len > IP_MAXPACKET)) {
+		RTE_LOG(ERR, IPSEC_ESP, "ipsec packet is too big\n");
 		return -EINVAL;
 	}
 
 	padding = rte_pktmbuf_append(m, pad_len + sa->digest_len);
+	if (unlikely(padding == NULL)) {
+		RTE_LOG(ERR, IPSEC_ESP, "not enough mbuf trailing space\n");
+		return -ENOSPC;
+	}
+	rte_prefetch0(padding);
 
-	RTE_ASSERT(padding != NULL);
+	switch (sa->flags) {
+	case IP4_TUNNEL:
+		ip4 = ip4ip_outbound(m, sizeof(struct esp_hdr) + sa->iv_len,
+				&sa->src, &sa->dst);
+		esp = (struct esp_hdr *)(ip4 + 1);
+		break;
+	case IP6_TUNNEL:
+		ip6 = ip6ip_outbound(m, sizeof(struct esp_hdr) + sa->iv_len,
+				&sa->src, &sa->dst);
+		esp = (struct esp_hdr *)(ip6 + 1);
+		break;
+	default:
+		RTE_LOG(ERR, IPSEC_ESP, "Unsupported SA flags: 0x%x\n",
+				sa->flags);
+		return -EINVAL;
+	}
 
-	ip = ip4ip_outbound(m, sizeof(struct esp_hdr) + sa->iv_len,
-			sa->src, sa->dst);
+	sa->seq++;
+	esp->spi = rte_cpu_to_be_32(sa->spi);
+	esp->seq = rte_cpu_to_be_32(sa->seq);
 
-	esp = (struct esp_hdr *)(ip + 1);
-	esp->spi = sa->spi;
-	esp->seq = htonl(sa->seq++);
-
-	RTE_LOG(DEBUG, IPSEC_ESP, "pktlen %u\n", rte_pktmbuf_pkt_len(m));
+	if (sa->cipher_algo == RTE_CRYPTO_CIPHER_AES_CBC)
+		random_iv_u64((uint64_t *)(esp + 1), sa->iv_len);
 
 	/* Fill pad_len using default sequential scheme */
 	for (i = 0; i < pad_len - 2; i++)
 		padding[i] = i + 1;
-
 	padding[pad_len - 2] = pad_len - 2;
-	padding[pad_len - 1] = IPPROTO_IPIP;
+
+	if (RTE_ETH_IS_IPV4_HDR(m->packet_type))
+		padding[pad_len - 1] = IPPROTO_IPIP;
+	else
+		padding[pad_len - 1] = IPPROTO_IPV6;
 
 	sym_cop = (struct rte_crypto_sym_op *)(cop + 1);
 
 	sym_cop->m_src = m;
-	sym_cop->cipher.data.offset = IP_ESP_HDR_SZ + sa->iv_len;
+	sym_cop->cipher.data.offset = ip_hdr_len + sizeof(struct esp_hdr) +
+			sa->iv_len;
 	sym_cop->cipher.data.length = pad_payload_len;
 
 	sym_cop->cipher.iv.data = rte_pktmbuf_mtod_offset(m, uint8_t *,
-			IP_ESP_HDR_SZ);
+			 ip_hdr_len + sizeof(struct esp_hdr));
 	sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(m,
-			IP_ESP_HDR_SZ);
+			 ip_hdr_len + sizeof(struct esp_hdr));
 	sym_cop->cipher.iv.length = sa->iv_len;
 
-	sym_cop->auth.data.offset = sizeof(struct ip);
+	sym_cop->auth.data.offset = ip_hdr_len;
 	sym_cop->auth.data.length = sizeof(struct esp_hdr) + sa->iv_len +
 		pad_payload_len;
 
 	sym_cop->auth.digest.data = rte_pktmbuf_mtod_offset(m, uint8_t *,
-			IP_ESP_HDR_SZ + sa->iv_len + pad_payload_len);
+			rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
-			IP_ESP_HDR_SZ + sa->iv_len + pad_payload_len);
+			rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	sym_cop->auth.digest.length = sa->digest_len;
-
-	if (sa->cipher_algo == RTE_CRYPTO_CIPHER_AES_CBC)
-		random_iv_u64((uint64_t *)sym_cop->cipher.iv.data,
-				sym_cop->cipher.iv.length);
 
 	return 0;
 }

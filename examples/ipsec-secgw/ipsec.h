@@ -37,7 +37,6 @@
 #include <stdint.h>
 
 #include <rte_byteorder.h>
-#include <rte_ip.h>
 #include <rte_crypto.h>
 
 #define RTE_LOGTYPE_IPSEC       RTE_LOGTYPE_USER1
@@ -50,15 +49,15 @@
 #define MAX_DIGEST_SIZE 32 /* Bytes -- 256 bits */
 
 #define uint32_t_to_char(ip, a, b, c, d) do {\
-		*a = (unsigned char)(ip >> 24 & 0xff);\
-		*b = (unsigned char)(ip >> 16 & 0xff);\
-		*c = (unsigned char)(ip >> 8 & 0xff);\
-		*d = (unsigned char)(ip & 0xff);\
+		*a = (uint8_t)(ip >> 24 & 0xff);\
+		*b = (uint8_t)(ip >> 16 & 0xff);\
+		*c = (uint8_t)(ip >> 8 & 0xff);\
+		*d = (uint8_t)(ip & 0xff);\
 	} while (0)
 
 #define DEFAULT_MAX_CATEGORIES	1
 
-#define IPSEC_SA_MAX_ENTRIES (64) /* must be power of 2, max 2 power 30 */
+#define IPSEC_SA_MAX_ENTRIES (128) /* must be power of 2, max 2 power 30 */
 #define SPI2IDX(spi) (spi & (IPSEC_SA_MAX_ENTRIES - 1))
 #define INVALID_SPI (0)
 
@@ -69,6 +68,8 @@
 
 #define IPSEC_XFORM_MAX 2
 
+#define IP6_VERSION (6)
+
 struct rte_crypto_xform;
 struct ipsec_xform;
 struct rte_cryptodev_session;
@@ -76,23 +77,35 @@ struct rte_mbuf;
 
 struct ipsec_sa;
 
-typedef int (*ipsec_xform_fn)(struct rte_mbuf *m, struct ipsec_sa *sa,
+typedef int32_t (*ipsec_xform_fn)(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop);
+
+struct ip_addr {
+	union {
+		uint32_t ip4;
+		union {
+			uint64_t ip6[2];
+			uint8_t ip6_b[16];
+		};
+	};
+};
 
 struct ipsec_sa {
 	uint32_t spi;
 	uint32_t cdev_id_qp;
-	uint32_t src;
-	uint32_t dst;
 	struct rte_cryptodev_sym_session *crypto_session;
-	struct rte_crypto_sym_xform *xforms;
+	uint32_t seq;
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
 	uint16_t digest_len;
 	uint16_t iv_len;
 	uint16_t block_size;
 	uint16_t flags;
-	uint32_t seq;
+#define IP4_TUNNEL (1 << 0)
+#define IP6_TUNNEL (1 << 1)
+	struct ip_addr src;
+	struct ip_addr dst;
+	struct rte_crypto_sym_xform *xforms;
 } __rte_cache_aligned;
 
 struct ipsec_mbuf_metadata {
@@ -111,7 +124,8 @@ struct cdev_qp {
 
 struct ipsec_ctx {
 	struct rte_hash *cdev_map;
-	struct sp_ctx *sp_ctx;
+	struct sp_ctx *sp4_ctx;
+	struct sp_ctx *sp6_ctx;
 	struct sa_ctx *sa_ctx;
 	uint16_t nb_qps;
 	uint16_t last_qp;
@@ -125,11 +139,14 @@ struct cdev_key {
 };
 
 struct socket_ctx {
-	struct sa_ctx *sa_ipv4_in;
-	struct sa_ctx *sa_ipv4_out;
-	struct sp_ctx *sp_ipv4_in;
-	struct sp_ctx *sp_ipv4_out;
-	struct rt_ctx *rt_ipv4;
+	struct sa_ctx *sa_in;
+	struct sa_ctx *sa_out;
+	struct sp_ctx *sp_ip4_in;
+	struct sp_ctx *sp_ip4_out;
+	struct sp_ctx *sp_ip6_in;
+	struct sp_ctx *sp_ip6_out;
+	struct rt_ctx *rt_ip4;
+	struct rt_ctx *rt_ip6;
 	struct rte_mempool *mbuf_pool;
 };
 
@@ -165,12 +182,15 @@ outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
 		struct ipsec_sa *sa[], uint16_t nb_pkts);
 
 void
-sp_init(struct socket_ctx *ctx, int socket_id, unsigned ep);
+sp4_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
 
 void
-sa_init(struct socket_ctx *ctx, int socket_id, unsigned ep);
+sp6_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
 
 void
-rt_init(struct socket_ctx *ctx, int socket_id, unsigned ep);
+sa_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
+
+void
+rt_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
 
 #endif /* __IPSEC_H__ */
