@@ -46,7 +46,7 @@
 static inline int
 create_session(struct ipsec_ctx *ipsec_ctx __rte_unused, struct ipsec_sa *sa)
 {
-	uint32_t cdev_id_qp = 0;
+	unsigned long cdev_id_qp = 0;
 	int32_t ret;
 	struct cdev_key key = { 0 };
 
