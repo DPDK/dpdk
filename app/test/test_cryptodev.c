@@ -2392,7 +2392,7 @@ create_snow3g_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 }
 
 static int
-create_snow3g_cipher_operation_oop(const uint8_t *iv, const unsigned iv_len,
+create_snow3g_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
 			const unsigned cipher_len,
 			const unsigned cipher_offset)
 {
