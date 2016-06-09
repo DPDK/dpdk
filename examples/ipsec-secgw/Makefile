@@ -46,8 +46,9 @@ ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS_sa.o += -diag-disable=vec
 endif
 
-
-VPATH += $(SRCDIR)/librte_ipsec
+ifeq ($(DEBUG),1)
+CFLAGS += -DIPSEC_DEBUG -fstack-protector-all
+endif
 
 #
 # all source are stored in SRCS-y
