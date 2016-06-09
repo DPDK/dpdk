@@ -110,14 +110,17 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 	struct ipsec_sa *sa;
 
 	for (i = 0; i < nb_pkts; i++) {
+		if (unlikely(sas[i] == NULL)) {
+			rte_pktmbuf_free(pkts[i]);
+			continue;
+		}
+
 		rte_prefetch0(sas[i]);
 		rte_prefetch0(pkts[i]);
 
 		priv = get_priv(pkts[i]);
 		sa = sas[i];
 		priv->sa = sa;
-
-		RTE_ASSERT(sa != NULL);
 
 		priv->cop.type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 
