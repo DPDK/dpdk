@@ -112,7 +112,7 @@ struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 
 RTE_ACL_RULE_DEF(acl4_rules, RTE_DIM(ipv4_defs));
 
-const struct acl4_rules acl4_rules_in[] = {
+const struct acl4_rules acl4_rules_out[] = {
 	{
 	.data = {.userdata = PROTECT(5), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
@@ -175,7 +175,7 @@ const struct acl4_rules acl4_rules_in[] = {
 	}
 };
 
-const struct acl4_rules acl4_rules_out[] = {
+const struct acl4_rules acl4_rules_in[] = {
 	{
 	.data = {.userdata = PROTECT(5), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
@@ -343,15 +343,15 @@ sp_init(struct socket_ctx *ctx, int socket_id, unsigned ep)
 				"initialized\n", socket_id);
 
 	if (ep == 0) {
-		rules_out = acl4_rules_in;
-		nb_out_rules = RTE_DIM(acl4_rules_in);
-		rules_in = acl4_rules_out;
-		nb_in_rules = RTE_DIM(acl4_rules_out);
-	} else if (ep == 1) {
 		rules_out = acl4_rules_out;
 		nb_out_rules = RTE_DIM(acl4_rules_out);
 		rules_in = acl4_rules_in;
 		nb_in_rules = RTE_DIM(acl4_rules_in);
+	} else if (ep == 1) {
+		rules_out = acl4_rules_in;
+		nb_out_rules = RTE_DIM(acl4_rules_in);
+		rules_in = acl4_rules_out;
+		nb_in_rules = RTE_DIM(acl4_rules_out);
 	} else
 		rte_exit(EXIT_FAILURE, "Invalid EP value %u. "
 				"Only 0 or 1 supported.\n", ep);
