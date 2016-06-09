@@ -139,7 +139,7 @@ esp4_tunnel_inbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 	padding = pad_len - *pad_len;
 	for (i = 0; i < *pad_len; i++) {
-		if (padding[i] != i) {
+		if (padding[i] != i + 1) {
 			RTE_LOG(ERR, IPSEC_ESP, "invalid pad_len field\n");
 			return -EINVAL;
 		}
