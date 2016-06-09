@@ -170,6 +170,30 @@ const struct acl6_rules acl6_rules_out[] = {
 	.field[10] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
+	.data = {.userdata = PROTECT(10), .category_mask = 1, .priority = 1},
+	/* destination IPv6 */
+	.field[5] = {.value.u32 = 0x0, .mask_range.u32 = 32,},
+	.field[6] = {.value.u32 = 0x11111111, .mask_range.u32 = 32,},
+	.field[7] = {.value.u32 = 0x00000000, .mask_range.u32 = 32,},
+	.field[8] = {.value.u32 = 0x0, .mask_range.u32 = 0,},
+	/* source port */
+	.field[9] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[10] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(11), .category_mask = 1, .priority = 1},
+	/* destination IPv6 */
+	.field[5] = {.value.u32 = 0x0, .mask_range.u32 = 32,},
+	.field[6] = {.value.u32 = 0x11111111, .mask_range.u32 = 32,},
+	.field[7] = {.value.u32 = 0x11111111, .mask_range.u32 = 32,},
+	.field[8] = {.value.u32 = 0x0, .mask_range.u32 = 0,},
+	/* source port */
+	.field[9] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[10] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
 	.data = {.userdata = PROTECT(25), .category_mask = 1, .priority = 1},
 	/* destination IPv6 */
 	.field[5] = {.value.u32 = 0x0, .mask_range.u32 = 32,},
@@ -214,6 +238,30 @@ const struct acl6_rules acl6_rules_in[] = {
 	.field[5] = {.value.u32 = 0xffff0000, .mask_range.u32 = 32,},
 	.field[6] = {.value.u32 = 0x0, .mask_range.u32 = 32,},
 	.field[7] = {.value.u32 = 0x66666666, .mask_range.u32 = 32,},
+	.field[8] = {.value.u32 = 0x0, .mask_range.u32 = 0,},
+	/* source port */
+	.field[9] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[10] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(110), .category_mask = 1, .priority = 1},
+	/* destination IPv6 */
+	.field[5] = {.value.u32 = 0xffff0000, .mask_range.u32 = 32,},
+	.field[6] = {.value.u32 = 0x11111111, .mask_range.u32 = 32,},
+	.field[7] = {.value.u32 = 0x00000000, .mask_range.u32 = 32,},
+	.field[8] = {.value.u32 = 0x0, .mask_range.u32 = 0,},
+	/* source port */
+	.field[9] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[10] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(111), .category_mask = 1, .priority = 1},
+	/* destination IPv6 */
+	.field[5] = {.value.u32 = 0xffff0000, .mask_range.u32 = 32,},
+	.field[6] = {.value.u32 = 0x11111111, .mask_range.u32 = 32,},
+	.field[7] = {.value.u32 = 0x11111111, .mask_range.u32 = 32,},
 	.field[8] = {.value.u32 = 0x0, .mask_range.u32 = 0,},
 	/* source port */
 	.field[9] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},

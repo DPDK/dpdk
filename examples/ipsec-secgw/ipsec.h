@@ -103,6 +103,7 @@ struct ipsec_sa {
 	uint16_t flags;
 #define IP4_TUNNEL (1 << 0)
 #define IP6_TUNNEL (1 << 1)
+#define TRANSPORT  (1 << 2)
 	struct ip_addr src;
 	struct ip_addr dst;
 	struct rte_crypto_sym_xform *xforms;

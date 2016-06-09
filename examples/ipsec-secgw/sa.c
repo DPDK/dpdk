@@ -74,6 +74,24 @@ const struct ipsec_sa sa_out[] = {
 	.flags = IP4_TUNNEL
 	},
 	{
+	.spi = 10,
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = TRANSPORT
+	},
+	{
+	.spi = 11,
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = TRANSPORT
+	},
+	{
 	.spi = 15,
 	.src.ip4 = IPv4(172, 16, 1, 5),
 	.dst.ip4 = IPv4(172, 16, 2, 5),
@@ -146,6 +164,24 @@ const struct ipsec_sa sa_in[] = {
 	.iv_len = 16,
 	.block_size = 16,
 	.flags = IP4_TUNNEL
+	},
+	{
+	.spi = 110,
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = TRANSPORT
+	},
+	{
+	.spi = 111,
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	.flags = TRANSPORT
 	},
 	{
 	.spi = 115,
@@ -447,6 +483,9 @@ single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
 				!memcmp(&sa->src.ip6, src6_addr, 16) &&
 				!memcmp(&sa->dst.ip6, src6_addr + 16, 16))
 			*sa_ret = sa;
+		break;
+	case TRANSPORT:
+		*sa_ret = sa;
 	}
 }
 

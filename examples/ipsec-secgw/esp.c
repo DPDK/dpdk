@@ -42,7 +42,6 @@
 #include <unistd.h>
 
 #include <rte_common.h>
-#include <rte_memcpy.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #include <rte_random.h>
@@ -70,21 +69,24 @@ int
 esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
-	int32_t payload_len, ip_hdr_len;
+	struct ip *ip4;
 	struct rte_crypto_sym_op *sym_cop;
+	int32_t payload_len, ip_hdr_len;
 
 	RTE_ASSERT(m != NULL);
 	RTE_ASSERT(sa != NULL);
 	RTE_ASSERT(cop != NULL);
 
-	ip_hdr_len = 0;
-	switch (sa->flags) {
-	case IP4_TUNNEL:
-		ip_hdr_len = sizeof(struct ip);
-		break;
-	case IP6_TUNNEL:
+	ip4 = rte_pktmbuf_mtod(m, struct ip *);
+	if (likely(ip4->ip_v == IPVERSION))
+		ip_hdr_len = ip4->ip_hl * 4;
+	else if (ip4->ip_v == IP6_VERSION)
+		/* XXX No option headers supported */
 		ip_hdr_len = sizeof(struct ip6_hdr);
-		break;
+	else {
+		RTE_LOG(ERR, IPSEC_ESP, "invalid IP packet type %d\n",
+				ip4->ip_v);
+		return -EINVAL;
 	}
 
 	payload_len = rte_pktmbuf_pkt_len(m) - ip_hdr_len -
@@ -126,6 +128,8 @@ int
 esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
+	struct ip *ip4, *ip;
+	struct ip6_hdr *ip6;
 	uint8_t *nexthdr, *pad_len;
 	uint8_t *padding;
 	uint16_t i;
@@ -135,7 +139,7 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 	RTE_ASSERT(cop != NULL);
 
 	if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		RTE_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");
+		RTE_LOG(ERR, IPSEC_ESP, "failed crypto op\n");
 		return -1;
 	}
 
@@ -146,7 +150,7 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 	padding = pad_len - *pad_len;
 	for (i = 0; i < *pad_len; i++) {
 		if (padding[i] != i + 1) {
-			RTE_LOG(ERR, IPSEC_ESP, "invalid pad_len field\n");
+			RTE_LOG(ERR, IPSEC_ESP, "invalid padding\n");
 			return -EINVAL;
 		}
 	}
@@ -157,7 +161,23 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		return -EINVAL;
 	}
 
-	ipip_inbound(m, sizeof(struct esp_hdr) + sa->iv_len);
+	if (unlikely(sa->flags == TRANSPORT)) {
+		ip = rte_pktmbuf_mtod(m, struct ip *);
+		ip4 = (struct ip *)rte_pktmbuf_adj(m,
+				sizeof(struct esp_hdr) + sa->iv_len);
+		if (likely(ip->ip_v == IPVERSION)) {
+			memmove(ip4, ip, ip->ip_hl * 4);
+			ip4->ip_p = *nexthdr;
+			ip4->ip_len = htons(rte_pktmbuf_data_len(m));
+		} else {
+			ip6 = (struct ip6_hdr *)ip4;
+			/* XXX No option headers supported */
+			memmove(ip6, ip, sizeof(struct ip6_hdr));
+			ip6->ip6_nxt = *nexthdr;
+			ip6->ip6_plen = htons(rte_pktmbuf_data_len(m));
+		}
+	} else
+		ipip_inbound(m, sizeof(struct esp_hdr) + sa->iv_len);
 
 	return 0;
 }
@@ -166,31 +186,57 @@ int
 esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
-	uint16_t pad_payload_len, pad_len, ip_hdr_len;
 	struct ip *ip4;
 	struct ip6_hdr *ip6;
-	struct esp_hdr *esp;
-	int32_t i;
-	char *padding;
+	struct esp_hdr *esp = NULL;
+	uint8_t *padding, *new_ip, nlp;
 	struct rte_crypto_sym_op *sym_cop;
+	int32_t i;
+	uint16_t pad_payload_len, pad_len, ip_hdr_len;
 
 	RTE_ASSERT(m != NULL);
 	RTE_ASSERT(sa != NULL);
 	RTE_ASSERT(cop != NULL);
 
-	/* Payload length */
-	pad_payload_len = RTE_ALIGN_CEIL(rte_pktmbuf_pkt_len(m) + 2,
-			sa->block_size);
-	pad_len = pad_payload_len - rte_pktmbuf_pkt_len(m);
-
 	ip_hdr_len = 0;
-	switch (sa->flags) {
-	case IP4_TUNNEL:
+
+	ip4 = rte_pktmbuf_mtod(m, struct ip *);
+	if (likely(ip4->ip_v == IPVERSION)) {
+		if (unlikely(sa->flags == TRANSPORT)) {
+			ip_hdr_len = ip4->ip_hl * 4;
+			nlp = ip4->ip_p;
+		} else
+			nlp = IPPROTO_IPIP;
+	} else if (ip4->ip_v == IP6_VERSION) {
+		if (unlikely(sa->flags == TRANSPORT)) {
+			/* XXX No option headers supported */
+			ip_hdr_len = sizeof(struct ip6_hdr);
+			ip6 = (struct ip6_hdr *)ip4;
+			nlp = ip6->ip6_nxt;
+		} else
+			nlp = IPPROTO_IPV6;
+	} else {
+		RTE_LOG(ERR, IPSEC_ESP, "invalid IP packet type %d\n",
+				ip4->ip_v);
+		return -EINVAL;
+	}
+
+	/* Padded payload length */
+	pad_payload_len = RTE_ALIGN_CEIL(rte_pktmbuf_pkt_len(m) -
+			ip_hdr_len + 2, sa->block_size);
+	pad_len = pad_payload_len + ip_hdr_len - rte_pktmbuf_pkt_len(m);
+
+	RTE_ASSERT(sa->flags == IP4_TUNNEL || sa->flags == IP6_TUNNEL ||
+			sa->flags == TRANSPORT);
+
+	if (likely(sa->flags == IP4_TUNNEL))
 		ip_hdr_len = sizeof(struct ip);
-		break;
-	case IP6_TUNNEL:
+	else if (sa->flags == IP6_TUNNEL)
 		ip_hdr_len = sizeof(struct ip6_hdr);
-		break;
+	else if (sa->flags != TRANSPORT) {
+		RTE_LOG(ERR, IPSEC_ESP, "Unsupported SA flags: 0x%x\n",
+				sa->flags);
+		return -EINVAL;
 	}
 
 	/* Check maximum packet size */
@@ -200,7 +246,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		return -EINVAL;
 	}
 
-	padding = rte_pktmbuf_append(m, pad_len + sa->digest_len);
+	padding = (uint8_t *)rte_pktmbuf_append(m, pad_len + sa->digest_len);
 	if (unlikely(padding == NULL)) {
 		RTE_LOG(ERR, IPSEC_ESP, "not enough mbuf trailing space\n");
 		return -ENOSPC;
@@ -218,10 +264,20 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 				&sa->src, &sa->dst);
 		esp = (struct esp_hdr *)(ip6 + 1);
 		break;
-	default:
-		RTE_LOG(ERR, IPSEC_ESP, "Unsupported SA flags: 0x%x\n",
-				sa->flags);
-		return -EINVAL;
+	case TRANSPORT:
+		new_ip = (uint8_t *)rte_pktmbuf_prepend(m,
+				sizeof(struct esp_hdr) + sa->iv_len);
+		memmove(new_ip, ip4, ip_hdr_len);
+		esp = (struct esp_hdr *)(new_ip + ip_hdr_len);
+		if (likely(ip4->ip_v == IPVERSION)) {
+			ip4 = (struct ip *)new_ip;
+			ip4->ip_p = IPPROTO_ESP;
+			ip4->ip_len = htons(rte_pktmbuf_data_len(m));
+		} else {
+			ip6 = (struct ip6_hdr *)new_ip;
+			ip6->ip6_nxt = IPPROTO_ESP;
+			ip6->ip6_plen = htons(rte_pktmbuf_data_len(m));
+		}
 	}
 
 	sa->seq++;
@@ -235,11 +291,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	for (i = 0; i < pad_len - 2; i++)
 		padding[i] = i + 1;
 	padding[pad_len - 2] = pad_len - 2;
-
-	if (RTE_ETH_IS_IPV4_HDR(m->packet_type))
-		padding[pad_len - 1] = IPPROTO_IPIP;
-	else
-		padding[pad_len - 1] = IPPROTO_IPV6;
+	padding[pad_len - 1] = nlp;
 
 	sym_cop = (struct rte_crypto_sym_op *)(cop + 1);
 

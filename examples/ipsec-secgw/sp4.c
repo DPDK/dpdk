@@ -135,6 +135,26 @@ const struct acl4_rules acl4_rules_out[] = {
 	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
 	},
 	{
+	.data = {.userdata = PROTECT(10), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 175, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(11), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 176, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
 	.data = {.userdata = PROTECT(15), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
 	.field[2] = {.value.u32 = IPv4(192, 168, 200, 0),
@@ -211,6 +231,26 @@ const struct acl4_rules acl4_rules_in[] = {
 	.data = {.userdata = PROTECT(106), .category_mask = 1, .priority = 1},
 	/* destination IPv4 */
 	.field[2] = {.value.u32 = IPv4(192, 168, 116, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(110), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 185, 0),
+				.mask_range.u32 = 24,},
+	/* source port */
+	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
+	/* destination port */
+	.field[4] = {.value.u16 = 0, .mask_range.u16 = 0xffff,}
+	},
+	{
+	.data = {.userdata = PROTECT(111), .category_mask = 1, .priority = 1},
+	/* destination IPv4 */
+	.field[2] = {.value.u32 = IPv4(192, 168, 186, 0),
 				.mask_range.u32 = 24,},
 	/* source port */
 	.field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
