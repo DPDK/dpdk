@@ -86,8 +86,6 @@ struct ipsec_sa {
 	uint32_t dst;
 	struct rte_cryptodev_sym_session *crypto_session;
 	struct rte_crypto_sym_xform *xforms;
-	ipsec_xform_fn pre_crypto;
-	ipsec_xform_fn post_crypto;
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
 	uint16_t digest_len;

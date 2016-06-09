@@ -46,21 +46,20 @@ struct esp_hdr {
 	/* Integrity Check Value - ICV */
 };
 
-/* IPv4 Tunnel */
 int
-esp4_tunnel_inbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
+esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop);
 
 int
-esp4_tunnel_inbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
+esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop);
 
 int
-esp4_tunnel_outbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
+esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop);
 
 int
-esp4_tunnel_outbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
+esp_outbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop);
 
 #endif /* __RTE_IPSEC_XFORM_ESP_H__ */

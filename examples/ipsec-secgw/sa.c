@@ -47,160 +47,112 @@
 #include "ipsec.h"
 #include "esp.h"
 
-/* SAs EP0 Outbound */
-const struct ipsec_sa sa_ep0_out[] = {
-	{ 5, 0, IPv4(172, 16, 1, 5), IPv4(172, 16, 2, 5),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 6, 0, IPv4(172, 16, 1, 6), IPv4(172, 16, 2, 6),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 7, 0, IPv4(172, 16, 1, 7), IPv4(172, 16, 2, 7),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 8, 0, IPv4(172, 16, 1, 8), IPv4(172, 16, 2, 8),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 9, 0, IPv4(172, 16, 1, 5), IPv4(172, 16, 2, 5),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_NULL, RTE_CRYPTO_AUTH_NULL,
-		0, 0, 4,
-		0, 0 },
+/* SAs Outbound */
+const struct ipsec_sa sa_out[] = {
+	{
+	.spi = 5,
+	.src = IPv4(172, 16, 1, 5),
+	.dst = IPv4(172, 16, 2, 5),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 6,
+	.src = IPv4(172, 16, 1, 6),
+	.dst = IPv4(172, 16, 2, 6),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 7,
+	.src = IPv4(172, 16, 1, 7),
+	.dst = IPv4(172, 16, 2, 7),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 8,
+	.src = IPv4(172, 16, 1, 8),
+	.dst = IPv4(172, 16, 2, 8),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 9,
+	.src = IPv4(172, 16, 1, 9),
+	.dst = IPv4(172, 16, 2, 9),
+	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.digest_len = 0,
+	.iv_len = 0,
+	.block_size = 4,
+	}
 };
 
-/* SAs EP0 Inbound */
-const struct ipsec_sa sa_ep0_in[] = {
-	{ 5, 0, IPv4(172, 16, 2, 5), IPv4(172, 16, 1, 5),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 6, 0, IPv4(172, 16, 2, 6), IPv4(172, 16, 1, 6),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 7, 0, IPv4(172, 16, 2, 7), IPv4(172, 16, 1, 7),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 8, 0, IPv4(172, 16, 2, 8), IPv4(172, 16, 1, 8),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 9, 0, IPv4(172, 16, 2, 5), IPv4(172, 16, 1, 5),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_NULL, RTE_CRYPTO_AUTH_NULL,
-		0, 0, 4,
-		0, 0 },
-};
-
-/* SAs EP1 Outbound */
-const struct ipsec_sa sa_ep1_out[] = {
-	{ 5, 0, IPv4(172, 16, 2, 5), IPv4(172, 16, 1, 5),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 6, 0, IPv4(172, 16, 2, 6), IPv4(172, 16, 1, 6),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 7, 0, IPv4(172, 16, 2, 7), IPv4(172, 16, 1, 7),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 8, 0, IPv4(172, 16, 2, 8), IPv4(172, 16, 1, 8),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 9, 0, IPv4(172, 16, 2, 5), IPv4(172, 16, 1, 5),
-		NULL, NULL,
-		esp4_tunnel_outbound_pre_crypto,
-		esp4_tunnel_outbound_post_crypto,
-		RTE_CRYPTO_CIPHER_NULL, RTE_CRYPTO_AUTH_NULL,
-		0, 0, 4,
-		0, 0 },
-};
-
-/* SAs EP1 Inbound */
-const struct ipsec_sa sa_ep1_in[] = {
-	{ 5, 0, IPv4(172, 16, 1, 5), IPv4(172, 16, 2, 5),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 6, 0, IPv4(172, 16, 1, 6), IPv4(172, 16, 2, 6),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 7, 0, IPv4(172, 16, 1, 7), IPv4(172, 16, 2, 7),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 8, 0, IPv4(172, 16, 1, 8), IPv4(172, 16, 2, 8),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_AES_CBC, RTE_CRYPTO_AUTH_SHA1_HMAC,
-		12, 16, 16,
-		0, 0 },
-	{ 9, 0, IPv4(172, 16, 1, 5), IPv4(172, 16, 2, 5),
-		NULL, NULL,
-		esp4_tunnel_inbound_pre_crypto,
-		esp4_tunnel_inbound_post_crypto,
-		RTE_CRYPTO_CIPHER_NULL, RTE_CRYPTO_AUTH_NULL,
-		0, 0, 4,
-		0, 0 },
+/* SAs Inbound */
+const struct ipsec_sa sa_in[] = {
+	{
+	.spi = 55,
+	.src = IPv4(172, 16, 2, 5),
+	.dst = IPv4(172, 16, 1, 5),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 56,
+	.src = IPv4(172, 16, 2, 6),
+	.dst = IPv4(172, 16, 1, 6),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 57,
+	.src = IPv4(172, 16, 2, 7),
+	.dst = IPv4(172, 16, 1, 7),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 58,
+	.src = IPv4(172, 16, 2, 8),
+	.dst = IPv4(172, 16, 1, 8),
+	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
+	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
+	.digest_len = 12,
+	.iv_len = 16,
+	.block_size = 16,
+	},
+	{
+	.spi = 59,
+	.src = IPv4(172, 16, 2, 9),
+	.dst = IPv4(172, 16, 1, 9),
+	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.digest_len = 0,
+	.iv_len = 0,
+	.block_size = 4,
+	}
 };
 
 static uint8_t cipher_key[256] = "sixteenbytes key";
@@ -368,15 +320,15 @@ sa_init(struct socket_ctx *ctx, int socket_id, unsigned ep)
 				"initialized\n", socket_id);
 
 	if (ep == 0) {
-		sa_out_entries = sa_ep0_out;
-		nb_out_entries = RTE_DIM(sa_ep0_out);
-		sa_in_entries = sa_ep0_in;
-		nb_in_entries = RTE_DIM(sa_ep0_in);
+		sa_out_entries = sa_out;
+		nb_out_entries = RTE_DIM(sa_out);
+		sa_in_entries = sa_in;
+		nb_in_entries = RTE_DIM(sa_in);
 	} else if (ep == 1) {
-		sa_out_entries = sa_ep1_out;
-		nb_out_entries = RTE_DIM(sa_ep1_out);
-		sa_in_entries = sa_ep1_in;
-		nb_in_entries = RTE_DIM(sa_ep1_in);
+		sa_out_entries = sa_in;
+		nb_out_entries = RTE_DIM(sa_in);
+		sa_in_entries = sa_out;
+		nb_in_entries = RTE_DIM(sa_out);
 	} else
 		rte_exit(EXIT_FAILURE, "Invalid EP value %u. "
 				"Only 0 or 1 supported.\n", ep);

@@ -67,9 +67,8 @@ random_iv_u64(uint64_t *buf, uint16_t n)
 		*((uint32_t *)&buf[i]) = (uint32_t)lrand48();
 }
 
-/* IPv4 Tunnel */
 int
-esp4_tunnel_inbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
+esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
 	int32_t payload_len;
@@ -117,7 +116,7 @@ esp4_tunnel_inbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 }
 
 int
-esp4_tunnel_inbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
+esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
 	uint8_t *nexthdr, *pad_len;
@@ -155,7 +154,7 @@ esp4_tunnel_inbound_post_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 }
 
 int
-esp4_tunnel_outbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
+esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
 {
 	uint16_t pad_payload_len, pad_len;
@@ -234,7 +233,7 @@ esp4_tunnel_outbound_pre_crypto(struct rte_mbuf *m, struct ipsec_sa *sa,
 }
 
 int
-esp4_tunnel_outbound_post_crypto(struct rte_mbuf *m __rte_unused,
+esp_outbound_post(struct rte_mbuf *m __rte_unused,
 		struct ipsec_sa *sa __rte_unused,
 		struct rte_crypto_op *cop)
 {
