@@ -49,7 +49,6 @@
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 #include <rte_ring.h>
-#include <rte_mempool.h>
 #include <rte_malloc.h>
 #include <rte_common.h>
 #include <rte_ivshmem.h>

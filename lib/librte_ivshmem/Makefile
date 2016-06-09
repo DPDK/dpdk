@@ -46,7 +46,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_IVSHMEM) := rte_ivshmem.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_IVSHMEM)-include := rte_ivshmem.h
 
-# this lib needs eal
+# this lib needs EAL, ring and mempool
+DEPDIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += lib/librte_ring
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += lib/librte_mempool
 
 include $(RTE_SDK)/mk/rte.lib.mk

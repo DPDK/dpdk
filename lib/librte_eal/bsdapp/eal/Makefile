@@ -40,7 +40,6 @@ VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
 CFLAGS += -I$(SRCDIR)/include
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
-CFLAGS += -I$(RTE_SDK)/lib/librte_ring
 CFLAGS += $(WERROR_FLAGS) -O3
 
 LDLIBS += -lexecinfo
