@@ -36,7 +36,7 @@ Supported Feature Flags
    :header: "Feature Flags", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g"
    :stub-columns: 1
 
-   "RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO",x,x,,,
+   "RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO",x,x,x,x,x
    "RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO",,,,,
    "RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING",x,x,x,x,x
    "RTE_CRYPTODEV_FF_CPU_SSE",,,x,x,x
