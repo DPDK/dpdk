@@ -83,9 +83,6 @@ test_logs(void)
 	RTE_LOG(ERR, TESTAPP1, "error message\n");
 	RTE_LOG(ERR, TESTAPP2, "error message (not displayed)\n");
 
-	/* print again the previous logs */
-	rte_log_dump_history(stdout);
-
 	return 0;
 }
 

@@ -1003,7 +1003,6 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 
 		if (free == 0) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1) {
-				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
 					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 					obj, (const void *) mp, cookie);
@@ -1012,7 +1011,6 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 			hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
 		} else if (free == 1) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
-				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
 					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 					obj, (const void *) mp, cookie);
@@ -1022,7 +1020,6 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 		} else if (free == 2) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1 &&
 			    cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
-				rte_log_set_history(0);
 				RTE_LOG(CRIT, MEMPOOL,
 					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 					obj, (const void *) mp, cookie);
@@ -1032,7 +1029,6 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 		tlr = __mempool_get_trailer(obj);
 		cookie = tlr->cookie;
 		if (cookie != RTE_MEMPOOL_TRAILER_COOKIE) {
-			rte_log_set_history(0);
 			RTE_LOG(CRIT, MEMPOOL,
 				"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
 				obj, (const void *) mp, cookie);

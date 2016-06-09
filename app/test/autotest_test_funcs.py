@@ -144,12 +144,7 @@ def logs_autotest(child, test_name):
 	i = 0
 	child.sendline(test_name)
 
-	# logs sequence is printed twice because of history dump
 	log_list = [
-		"TESTAPP1: error message",
-		"TESTAPP1: critical message",
-		"TESTAPP2: critical message",
-		"TESTAPP1: error message",
 		"TESTAPP1: error message",
 		"TESTAPP1: critical message",
 		"TESTAPP2: critical message",

@@ -77,9 +77,6 @@ void __rte_panic(const char *funcname, const char *format, ...)
 {
 	va_list ap;
 
-	/* disable history */
-	rte_log_set_history(0);
-
 	rte_log(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, "PANIC in %s():\n", funcname);
 	va_start(ap, format);
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);
@@ -97,9 +94,6 @@ void
 rte_exit(int exit_code, const char *format, ...)
 {
 	va_list ap;
-
-	/* disable history */
-	rte_log_set_history(0);
 
 	if (exit_code != 0)
 		RTE_LOG(CRIT, EAL, "Error - exiting with code: %d\n"

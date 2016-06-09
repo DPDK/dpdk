@@ -49,9 +49,6 @@ int rte_eal_memzone_init(void);
 /**
  * Common log initialization function (private to eal).
  *
- * Called by environment-specific log initialization function to initialize
- * log history.
- *
  * @param default_log
  *   The default log stream to be used.
  * @return

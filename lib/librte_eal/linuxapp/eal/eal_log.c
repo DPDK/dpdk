@@ -50,8 +50,7 @@
 #include "eal_private.h"
 
 /*
- * default log function, used once mempool (hence log history) is
- * available
+ * default log function
  */
 static ssize_t
 console_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)
@@ -59,9 +58,6 @@ console_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)
 	char copybuf[BUFSIZ + 1];
 	ssize_t ret;
 	uint32_t loglevel;
-
-	/* add this log in history */
-	rte_log_add_in_history(buf, size);
 
 	/* write on stdout */
 	ret = fwrite(buf, 1, size, stdout);
@@ -110,8 +106,7 @@ rte_eal_log_init(const char *id, int facility)
 /* early logs */
 
 /*
- * early log function, used during boot when mempool (hence log
- * history) is not available
+ * early log function, used before rte_eal_log_init
  */
 static ssize_t
 early_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)

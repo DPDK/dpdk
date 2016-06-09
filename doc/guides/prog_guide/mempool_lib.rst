@@ -38,9 +38,7 @@ In the DPDK, it is identified by name and uses a ring to store free objects.
 It provides some other optional services such as a per-core object cache and
 an alignment helper to ensure that objects are padded to spread them equally on all DRAM or DDR3 channels.
 
-This library is used by the
-:ref:`Mbuf Library <Mbuf_Library>` and the
-:ref:`Environment Abstraction Layer <Environment_Abstraction_Layer>` (for logging history).
+This library is used by the :ref:`Mbuf Library <Mbuf_Library>`.
 
 Cookies
 -------

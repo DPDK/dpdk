@@ -94,12 +94,6 @@ parallel_test_group_list = [
 		 "Report" :	None,
 		},
 		{
-		 "Name" :	"Dump log history",
-		 "Command" :	"dump_log_history",
-		 "Func" :	dump_autotest,
-		 "Report" :	None,
-		},
-		{
 		 "Name" :	"Dump rings",
 		 "Command" :	"dump_ring",
 		 "Func" :	dump_autotest,

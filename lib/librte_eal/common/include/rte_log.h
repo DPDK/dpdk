@@ -42,6 +42,8 @@
  * This file provides a log API to RTE applications.
  */
 
+#include "rte_common.h" /* for __rte_deprecated macro */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -179,22 +181,27 @@ int rte_log_cur_msg_loglevel(void);
 int rte_log_cur_msg_logtype(void);
 
 /**
+ * @deprecated
  * Enable or disable the history (enabled by default)
  *
  * @param enable
  *   true to enable, or 0 to disable history.
  */
+__rte_deprecated
 void rte_log_set_history(int enable);
 
 /**
+ * @deprecated
  * Dump the log history to a file
  *
  * @param f
  *   A pointer to a file for output
  */
+__rte_deprecated
 void rte_log_dump_history(FILE *f);
 
 /**
+ * @deprecated
  * Add a log message to the history.
  *
  * This function can be called from a user-defined log stream. It adds
@@ -209,6 +216,7 @@ void rte_log_dump_history(FILE *f);
  *   - 0: Success.
  *   - (-ENOBUFS) if there is no room to store the message.
  */
+__rte_deprecated
 int rte_log_add_in_history(const char *buf, size_t size);
 
 /**

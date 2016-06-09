@@ -150,8 +150,6 @@ static void cmd_dump_parsed(void *parsed_result,
 		rte_dump_physmem_layout(stdout);
 	else if (!strcmp(res->dump, "dump_memzone"))
 		rte_memzone_dump(stdout);
-	else if (!strcmp(res->dump, "dump_log_history"))
-		rte_log_dump_history(stdout);
 	else if (!strcmp(res->dump, "dump_struct_sizes"))
 		dump_struct_sizes();
 	else if (!strcmp(res->dump, "dump_ring"))
@@ -164,7 +162,7 @@ static void cmd_dump_parsed(void *parsed_result,
 
 cmdline_parse_token_string_t cmd_dump_dump =
 	TOKEN_STRING_INITIALIZER(struct cmd_dump_result, dump,
-				 "dump_physmem#dump_memzone#dump_log_history#"
+				 "dump_physmem#dump_memzone#"
 				 "dump_struct_sizes#dump_ring#dump_mempool#"
 				 "dump_devargs");
 
