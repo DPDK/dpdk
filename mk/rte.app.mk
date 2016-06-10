@@ -95,8 +95,6 @@ endif
 _LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
 endif # !CONFIG_RTE_BUILD_SHARED_LIBS
 
-_LDLIBS-y += --start-group
-
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KVARGS)         += -lrte_kvargs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MBUF)           += -lrte_mbuf
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
@@ -151,7 +149,7 @@ endif # CONFIG_RTE_LIBRTE_CRYPTODEV
 endif # ! $(CONFIG_RTE_BUILD_SHARED_LIB)
 
 _LDLIBS-y += $(EXECENV_LDLIBS)
-_LDLIBS-y += --end-group
+
 _LDLIBS-y += --no-whole-archive
 
 LDLIBS += $(_LDLIBS-y) $(CPU_LDLIBS) $(EXTRA_LDLIBS)
