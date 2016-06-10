@@ -9552,8 +9552,10 @@ static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 static void bnx2x_init_rte(struct bnx2x_softc *sc)
 {
 	if (IS_VF(sc)) {
-		sc->max_tx_queues = BNX2X_VF_MAX_QUEUES_PER_VF;
-		sc->max_rx_queues = BNX2X_VF_MAX_QUEUES_PER_VF;
+		sc->max_tx_queues = min(BNX2X_VF_MAX_QUEUES_PER_VF,
+					sc->igu_sb_cnt);
+		sc->max_rx_queues = min(BNX2X_VF_MAX_QUEUES_PER_VF,
+					sc->igu_sb_cnt);
 	} else {
 		sc->max_tx_queues = 128;
 		sc->max_rx_queues = 128;
@@ -9695,7 +9697,7 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 		pci_read(sc,
 			 (sc->devinfo.pcie_msix_cap_reg + PCIR_MSIX_CTRL), &val,
 			 2);
-		sc->igu_sb_cnt = (val & PCIM_MSIXCTRL_TABLE_SIZE);
+		sc->igu_sb_cnt = (val & PCIM_MSIXCTRL_TABLE_SIZE) + 1;
 	} else {
 		sc->igu_sb_cnt = 1;
 	}
