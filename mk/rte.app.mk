@@ -62,9 +62,6 @@ _LDLIBS-y += -L$(RTE_SDK_BIN)/lib
 
 _LDLIBS-y += --whole-archive
 
-_LDLIBS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR)    += -lrte_distributor
-_LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
-
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KNI)            += -lrte_kni
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IVSHMEM)        += -lrte_ivshmem
@@ -73,34 +70,23 @@ endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += -lrte_pipeline
 _LDLIBS-$(CONFIG_RTE_LIBRTE_TABLE)          += -lrte_table
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PORT)           += -lrte_port
-_LDLIBS-$(CONFIG_RTE_LIBRTE_TIMER)          += -lrte_timer
-_LDLIBS-$(CONFIG_RTE_LIBRTE_HASH)           += -lrte_hash
-_LDLIBS-$(CONFIG_RTE_LIBRTE_JOBSTATS)       += -lrte_jobstats
-_LDLIBS-$(CONFIG_RTE_LIBRTE_LPM)            += -lrte_lpm
-_LDLIBS-$(CONFIG_RTE_LIBRTE_POWER)          += -lrte_power
-_LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += -lrte_acl
+
+_LDLIBS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR)    += -lrte_distributor
+_LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
+_LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lrte_meter
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
-_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
+_LDLIBS-$(CONFIG_RTE_LIBRTE_LPM)            += -lrte_lpm
+_LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += -lrte_acl
+_LDLIBS-$(CONFIG_RTE_LIBRTE_JOBSTATS)       += -lrte_jobstats
+_LDLIBS-$(CONFIG_RTE_LIBRTE_POWER)          += -lrte_power
 
-# The static libraries do not know their dependencies.
-# So linking with static library requires explicit dependencies.
-ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
-_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
-_LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lm
-ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
-endif
-ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
-endif
-_LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
-endif # !CONFIG_RTE_BUILD_SHARED_LIBS
+_LDLIBS-$(CONFIG_RTE_LIBRTE_TIMER)          += -lrte_timer
+_LDLIBS-$(CONFIG_RTE_LIBRTE_HASH)           += -lrte_hash
+_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KVARGS)         += -lrte_kvargs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MBUF)           += -lrte_mbuf
-_LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ETHER)          += -lethdev
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CRYPTODEV)      += -lrte_cryptodev
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MEMPOOL)        += -lrte_mempool
@@ -108,6 +94,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_RING)           += -lrte_ring
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lrte_eal
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CMDLINE)        += -lrte_cmdline
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CFGFILE)        += -lrte_cfgfile
+
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BOND)       += -lrte_pmd_bond
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lrte_pmd_xenvirt -lxenstore
 
@@ -149,7 +136,22 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G)     += -lrte_pmd_snow3g
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G)     += -L$(LIBSSO_PATH)/build -lsso
 endif # CONFIG_RTE_LIBRTE_CRYPTODEV
 
-endif # ! $(CONFIG_RTE_BUILD_SHARED_LIB)
+endif # !CONFIG_RTE_BUILD_SHARED_LIBS
+
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
+# The static libraries do not know their dependencies.
+# So linking with static library requires explicit dependencies.
+_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
+_LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
+_LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lm
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
+endif
+ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
+endif
+_LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
+endif # !CONFIG_RTE_BUILD_SHARED_LIBS
 
 _LDLIBS-y += $(EXECENV_LDLIBS)
 
