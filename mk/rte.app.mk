@@ -60,8 +60,6 @@ _LDLIBS-y += -L$(RTE_SDK_BIN)/lib
 # Order is important: from higher level to lower level
 #
 
-_LDLIBS-y += --whole-archive
-
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KNI)            += -lrte_kni
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IVSHMEM)        += -lrte_ivshmem
@@ -80,6 +78,8 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_LPM)            += -lrte_lpm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += -lrte_acl
 _LDLIBS-$(CONFIG_RTE_LIBRTE_JOBSTATS)       += -lrte_jobstats
 _LDLIBS-$(CONFIG_RTE_LIBRTE_POWER)          += -lrte_power
+
+_LDLIBS-y += --whole-archive
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_TIMER)          += -lrte_timer
 _LDLIBS-$(CONFIG_RTE_LIBRTE_HASH)           += -lrte_hash
@@ -138,6 +138,8 @@ endif # CONFIG_RTE_LIBRTE_CRYPTODEV
 
 endif # !CONFIG_RTE_BUILD_SHARED_LIBS
 
+_LDLIBS-y += --no-whole-archive
+
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 # The static libraries do not know their dependencies.
 # So linking with static library requires explicit dependencies.
@@ -154,8 +156,6 @@ _LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
 endif # !CONFIG_RTE_BUILD_SHARED_LIBS
 
 _LDLIBS-y += $(EXECENV_LDLIBS)
-
-_LDLIBS-y += --no-whole-archive
 
 LDLIBS += $(_LDLIBS-y) $(CPU_LDLIBS) $(EXTRA_LDLIBS)
 
