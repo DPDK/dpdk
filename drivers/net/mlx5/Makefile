@@ -108,7 +108,9 @@ ifndef V
 AUTOCONF_OUTPUT := >/dev/null
 endif
 
-mlx5_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
+mlx5_autoconf.h.new: FORCE
+
+mlx5_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
 		HAVE_EXP_QUERY_DEVICE \
@@ -149,9 +151,16 @@ mlx5_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
 		enum IBV_EXP_RECEIVE_WQ_CVLAN_INSERTION \
 		$(AUTOCONF_OUTPUT)
 
+# Create mlx5_autoconf.h or update it in case it differs from the new one.
+
+mlx5_autoconf.h: mlx5_autoconf.h.new
+	$Q [ -f '$@' ] && \
+		cmp '$<' '$@' $(AUTOCONF_OUTPUT) || \
+		mv '$<' '$@'
+
 $(SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD):.c=.o): mlx5_autoconf.h
 
 clean_mlx5: FORCE
-	$Q rm -f -- mlx5_autoconf.h
+	$Q rm -f -- mlx5_autoconf.h mlx5_autoconf.h.new
 
 clean: clean_mlx5

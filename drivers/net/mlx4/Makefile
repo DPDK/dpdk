@@ -100,7 +100,9 @@ ifndef V
 AUTOCONF_OUTPUT := >/dev/null
 endif
 
-mlx4_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
+mlx4_autoconf.h.new: FORCE
+
+mlx4_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
 		RSS_SUPPORT \
@@ -120,9 +122,16 @@ mlx4_autoconf.h: $(RTE_SDK)/scripts/auto-config-h.sh
 		enum IBV_EXP_QP_BURST_CREATE_DISABLE_ETH_LOOPBACK \
 		$(AUTOCONF_OUTPUT)
 
+# Create mlx4_autoconf.h or update it in case it differs from the new one.
+
+mlx4_autoconf.h: mlx4_autoconf.h.new
+	$Q [ -f '$@' ] && \
+		cmp '$<' '$@' $(AUTOCONF_OUTPUT) || \
+		mv '$<' '$@'
+
 mlx4.o: mlx4_autoconf.h
 
 clean_mlx4: FORCE
-	$Q rm -f -- mlx4_autoconf.h
+	$Q rm -f -- mlx4_autoconf.h mlx4_autoconf.h.new
 
 clean: clean_mlx4
