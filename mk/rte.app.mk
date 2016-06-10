@@ -50,6 +50,9 @@ ifeq ($(NO_LDSCRIPT),)
 LDSCRIPT = $(RTE_LDSCRIPT)
 endif
 
+# Link only the libraries used in the application
+LDFLAGS += --as-needed
+
 # default path for libs
 _LDLIBS-y += -L$(RTE_SDK_BIN)/lib
 
