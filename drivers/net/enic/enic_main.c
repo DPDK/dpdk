@@ -826,22 +826,32 @@ static void enic_dev_deinit(struct enic *enic)
 int enic_set_vnic_res(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
+	int rc = 0;
 
-	if ((enic->rq_count < eth_dev->data->nb_rx_queues) ||
-		(enic->wq_count < eth_dev->data->nb_tx_queues)) {
-		dev_err(dev, "Not enough resources configured, aborting\n");
-		return -1;
+	if (enic->rq_count < eth_dev->data->nb_rx_queues) {
+		dev_err(dev, "Not enough Receive queues. Requested:%u, Configured:%u\n",
+			eth_dev->data->nb_rx_queues, enic->rq_count);
+		rc = -EINVAL;
+	}
+	if (enic->wq_count < eth_dev->data->nb_tx_queues) {
+		dev_err(dev, "Not enough Transmit queues. Requested:%u, Configured:%u\n",
+			eth_dev->data->nb_tx_queues, enic->wq_count);
+		rc = -EINVAL;
 	}
 
-	enic->rq_count = eth_dev->data->nb_rx_queues;
-	enic->wq_count = eth_dev->data->nb_tx_queues;
 	if (enic->cq_count < (enic->rq_count + enic->wq_count)) {
-		dev_err(dev, "Not enough resources configured, aborting\n");
-		return -1;
+		dev_err(dev, "Not enough Completion queues. Required:%u, Configured:%u\n",
+			enic->rq_count + enic->wq_count, enic->cq_count);
+		rc = -EINVAL;
 	}
 
-	enic->cq_count = enic->rq_count + enic->wq_count;
-	return 0;
+	if (rc == 0) {
+		enic->rq_count = eth_dev->data->nb_rx_queues;
+		enic->wq_count = eth_dev->data->nb_tx_queues;
+		enic->cq_count = enic->rq_count + enic->wq_count;
+	}
+
+	return rc;
 }
 
 static int enic_dev_init(struct enic *enic)
