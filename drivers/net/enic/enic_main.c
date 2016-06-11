@@ -426,9 +426,14 @@ int enic_alloc_intr_resources(struct enic *enic)
 
 void enic_free_rq(void *rxq)
 {
-	struct vnic_rq *rq = (struct vnic_rq *)rxq;
-	struct enic *enic = vnic_dev_priv(rq->vdev);
+	struct vnic_rq *rq;
+	struct enic *enic;
 
+	if (rxq == NULL)
+		return;
+
+	rq = (struct vnic_rq *)rxq;
+	enic = vnic_dev_priv(rq->vdev);
 	enic_rxmbuf_queue_release(enic, rq);
 	rte_free(rq->mbuf_ring);
 	rq->mbuf_ring = NULL;
@@ -514,9 +519,14 @@ err_exit:
 
 void enic_free_wq(void *txq)
 {
-	struct vnic_wq *wq = (struct vnic_wq *)txq;
-	struct enic *enic = vnic_dev_priv(wq->vdev);
+	struct vnic_wq *wq;
+	struct enic *enic;
 
+	if (txq == NULL)
+		return;
+
+	wq = (struct vnic_wq *)txq;
+	enic = vnic_dev_priv(wq->vdev);
 	rte_memzone_free(wq->cqmsg_rz);
 	vnic_wq_free(wq);
 	vnic_cq_free(&enic->cq[enic->rq_count + wq->index]);
