@@ -300,7 +300,7 @@ struct app_thread_data {
 	uint64_t headroom_time;
 	uint64_t headroom_cycles;
 	double headroom_ratio;
-};
+} __rte_cache_aligned;
 
 #ifndef APP_MAX_LINKS
 #define APP_MAX_LINKS                            16
