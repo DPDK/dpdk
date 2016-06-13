@@ -785,7 +785,7 @@ init_mem(void)
 			RTE_LOG(INFO, IP_FRAG, "Creating LPM6 table on socket %i\n", socket);
 			snprintf(buf, sizeof(buf), "IP_FRAG_LPM_%i", socket);
 
-			lpm6 = rte_lpm6_create("IP_FRAG_LPM6", socket, &lpm6_config);
+			lpm6 = rte_lpm6_create(buf, socket, &lpm6_config);
 			if (lpm6 == NULL) {
 				RTE_LOG(ERR, IP_FRAG, "Cannot create LPM table\n");
 				return -1;
