@@ -31,6 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/queue.h>
@@ -58,6 +59,40 @@ const struct resource *resource_find(const char *name)
 	}
 
 	return NULL;
+}
+
+int resource_fwrite(const struct resource *r, FILE *f)
+{
+	const size_t goal = resource_size(r);
+	size_t total = 0;
+
+	while (total < goal) {
+		size_t wlen = fwrite(r->begin + total, 1, goal - total, f);
+		if (wlen == 0) {
+			perror(__func__);
+			return -1;
+		}
+
+		total += wlen;
+	}
+
+	return 0;
+}
+
+int resource_fwrite_file(const struct resource *r, const char *fname)
+{
+	FILE *f;
+	int ret;
+
+	f = fopen(fname, "w");
+	if (f == NULL) {
+		perror(__func__);
+		return -1;
+	}
+
+	ret = resource_fwrite(r, f);
+	fclose(f);
+	return ret;
 }
 
 void resource_register(struct resource *r)

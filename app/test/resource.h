@@ -45,6 +45,7 @@
  */
 
 #include <sys/queue.h>
+#include <stdio.h>
 #include <stddef.h>
 
 #include <rte_eal.h>
@@ -73,6 +74,19 @@ size_t resource_size(const struct resource *r);
  * Find a resource by name in the global list of resources.
  */
 const struct resource *resource_find(const char *name);
+
+/**
+ * Write the raw data of the resource to the given file.
+ * @return 0 on success
+ */
+int resource_fwrite(const struct resource *r, FILE *f);
+
+/**
+ * Write the raw data of the resource to the given file given by name.
+ * The name is relative to the current working directory.
+ * @return 0 on success
+ */
+int resource_fwrite_file(const struct resource *r, const char *fname);
 
 /**
  * Register a resource in the global list of resources.

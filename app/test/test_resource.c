@@ -65,12 +65,22 @@ REGISTER_LINKED_RESOURCE(test_resource_c);
 static int test_resource_c(void)
 {
 	const struct resource *r;
+	FILE *f;
 
 	r = resource_find("test_resource_c");
 	TEST_ASSERT_NOT_NULL(r, "No test_resource_c found");
 	TEST_ASSERT(!strcmp(r->name, "test_resource_c"),
 			"Found resource %s, expected test_resource_c",
 			r->name);
+
+	TEST_ASSERT_SUCCESS(resource_fwrite_file(r, "test_resource.c"),
+			"Failed to to write file %s", r->name);
+
+	f = fopen("test_resource.c", "r");
+	TEST_ASSERT_NOT_NULL(f,
+			"Missing extracted file resource.c");
+	fclose(f);
+	remove("test_resource.c");
 
 	return 0;
 }
