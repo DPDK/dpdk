@@ -81,6 +81,9 @@ app_pipeline_enable(struct app_params *app,
 	p_params = &app->pipeline_params[pipeline_id];
 	p_type = app_pipeline_type_find(app, p_params->type);
 
+	if (p_type == NULL)
+		return -1;
+
 	if (p->enabled == 1)
 		return -1;
 
