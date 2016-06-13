@@ -61,3 +61,8 @@ ifneq ($(shell echo | $(CC) $(CPU_CFLAGS) -E - 2>/dev/null 1>/dev/null && echo 0
 endif
 
 export ARCH CROSS CPU_CFLAGS CPU_LDFLAGS CPU_ASFLAGS
+
+RTE_OBJCOPY_TARGET = elf32-x86-64
+RTE_OBJCOPY_ARCH = i386:x86-64
+
+export RTE_OBJCOPY_TARGET RTE_OBJCOPY_ARCH
