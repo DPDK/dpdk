@@ -187,6 +187,9 @@ API Changes
   as the parameter have been changed due to the ABI refactoring mentioned
   below: it's replaced by ``int vid``.
 
+* The function ``rte_vhost_enqueue_burst`` no longer supports concurrent enqueuing
+  packets to the same queue.
+
 
 ABI Changes
 -----------
