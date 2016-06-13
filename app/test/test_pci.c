@@ -144,21 +144,24 @@ static void free_devargs_list(void)
 	}
 }
 
+/* backup real drivers (not used for testing) */
+struct pci_driver_list real_pci_driver_list =
+	TAILQ_HEAD_INITIALIZER(real_pci_driver_list);
+
 int
 test_pci(void)
 {
 	struct rte_devargs_list save_devargs_list;
 	struct rte_pci_driver *dr = NULL;
-	struct rte_pci_driver *save_pci_driver_list[NUM_MAX_DRIVERS];
-	unsigned i, num_drivers = 0;
 
 	printf("Dump all devices\n");
 	rte_eal_pci_dump(stdout);
 
 	/* Unregister all previous drivers */
-	TAILQ_FOREACH(dr, &pci_driver_list, next) {
+	while (!TAILQ_EMPTY(&pci_driver_list)) {
+		dr = TAILQ_FIRST(&pci_driver_list);
 		rte_eal_pci_unregister(dr);
-		save_pci_driver_list[num_drivers++] = dr;
+		TAILQ_INSERT_TAIL(&real_pci_driver_list, dr, next);
 	}
 
 	rte_eal_pci_register(&my_driver);
@@ -197,8 +200,11 @@ test_pci(void)
 	rte_eal_pci_unregister(&my_driver2);
 
 	/* Restore original driver list */
-	for (i = 0; i < num_drivers; i++)
-		rte_eal_pci_register(save_pci_driver_list[i]);
+	while (!TAILQ_EMPTY(&real_pci_driver_list)) {
+		dr = TAILQ_FIRST(&real_pci_driver_list);
+		TAILQ_REMOVE(&real_pci_driver_list, dr, next);
+		rte_eal_pci_register(dr);
+	}
 
 	return 0;
 }
