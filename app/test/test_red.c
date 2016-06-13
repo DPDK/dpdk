@@ -57,6 +57,7 @@
 #define MSEC_PER_SEC           1000      /**< Milli-seconds per second */
 #define USEC_PER_MSEC          1000      /**< Micro-seconds per milli-second */
 #define USEC_PER_SEC           1000000   /**< Micro-seconds per second */
+#define NSEC_PER_SEC           (USEC_PER_SEC * 1000) /**< Nano-seconds per second */
 
 /**< structures for testing rte_red performance and function */
 struct test_rte_red_config {        /**< Test structure for RTE_RED config */
@@ -280,12 +281,15 @@ static uint64_t get_machclk_freq(void)
 	uint64_t start = 0;
 	uint64_t end = 0;
 	uint64_t diff = 0;
-	uint64_t clk_freq_hz = 0;
+	static uint64_t clk_freq_hz;
 	struct timespec tv_start = {0, 0}, tv_end = {0, 0};
 	struct timespec req = {0, 0};
 
-	req.tv_sec = 1;
-	req.tv_nsec = 0;
+	if (clk_freq_hz != 0)
+		return clk_freq_hz;
+
+	req.tv_sec = 0;
+	req.tv_nsec = NSEC_PER_SEC / 4;
 
 	clock_gettime(CLOCK_REALTIME, &tv_start);
 	start = rte_rdtsc();
@@ -435,8 +439,8 @@ static struct test_queue ft_tqueue = {
 };
 
 static struct test_var ft_tvar = {
-	.wait_usec = 250000,
-	.num_iterations = 20,
+	.wait_usec = 10000,
+	.num_iterations = 5,
 	.num_ops = 10000,
 	.clk_freq = 0,
 	.dropped = ft_dropped,
@@ -1747,6 +1751,16 @@ struct tests func_tests[] = {
 	{ &ovfl_test1_config, ovfl_test1 },
 };
 
+struct tests func_tests_quick[] = {
+	{ &func_test1_config, func_test1 },
+	{ &func_test2_config, func_test2 },
+	{ &func_test3_config, func_test3 },
+	/* no test 4 as it takes a lot of time */
+	{ &func_test5_config, func_test5 },
+	{ &func_test6_config, func_test6 },
+	{ &ovfl_test1_config, ovfl_test1 },
+};
+
 struct tests perf_tests[] = {
 	{ &perf1_test1_config, perf1_test },
 	{ &perf1_test2_config, perf1_test },
@@ -1850,27 +1864,60 @@ test_invalid_parameters(void)
 	return 0;
 }
 
+static void
+show_stats(const uint32_t num_tests, const uint32_t num_pass)
+{
+	if (num_pass == num_tests)
+		printf("[total: %u, pass: %u]\n", num_tests, num_pass);
+	else
+		printf("[total: %u, pass: %u, fail: %u]\n", num_tests, num_pass,
+		       num_tests - num_pass);
+}
+
+static int
+tell_the_result(const uint32_t num_tests, const uint32_t num_pass)
+{
+	return (num_pass == num_tests) ? 0 : 1;
+}
+
 static int
 test_red(void)
 {
 	uint32_t num_tests = 0;
 	uint32_t num_pass = 0;
-	int ret = 0;
+
+	if (test_invalid_parameters() < 0)
+		return -1;
+	run_tests(func_tests_quick, RTE_DIM(func_tests_quick),
+		  &num_tests, &num_pass);
+	show_stats(num_tests, num_pass);
+	return tell_the_result(num_tests, num_pass);
+}
+
+static int
+test_red_perf(void)
+{
+	uint32_t num_tests = 0;
+	uint32_t num_pass = 0;
+
+	run_tests(perf_tests, RTE_DIM(perf_tests), &num_tests, &num_pass);
+	show_stats(num_tests, num_pass);
+	return tell_the_result(num_tests, num_pass);
+}
+
+static int
+test_red_all(void)
+{
+	uint32_t num_tests = 0;
+	uint32_t num_pass = 0;
 
 	if (test_invalid_parameters() < 0)
 		return -1;
 
 	run_tests(func_tests, RTE_DIM(func_tests), &num_tests, &num_pass);
 	run_tests(perf_tests, RTE_DIM(perf_tests), &num_tests, &num_pass);
-
-	if (num_pass == num_tests) {
-		printf("[total: %u, pass: %u]\n", num_tests, num_pass);
-		ret = 0;
-	} else {
-		printf("[total: %u, pass: %u, fail: %u]\n", num_tests, num_pass, num_tests - num_pass);
-		ret = -1;
-	}
-	return ret;
+	show_stats(num_tests, num_pass);
+	return tell_the_result(num_tests, num_pass);
 }
 
 static struct test_command red_cmd = {
@@ -1878,3 +1925,15 @@ static struct test_command red_cmd = {
 	.callback = test_red,
 };
 REGISTER_TEST_COMMAND(red_cmd);
+
+static struct test_command red_cmd_perf = {
+	.command = "red_perf",
+	.callback = test_red_perf,
+};
+REGISTER_TEST_COMMAND(red_cmd_perf);
+
+static struct test_command red_cmd_all = {
+	.command = "red_all",
+	.callback = test_red_all,
+};
+REGISTER_TEST_COMMAND(red_cmd_all);
