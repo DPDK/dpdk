@@ -56,6 +56,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += rte_eth_vhost.c
 SYMLINK-y-include += rte_eth_vhost.h
 
 # this lib depends upon:
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += lib/librte_eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += lib/librte_kvargs
