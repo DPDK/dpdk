@@ -82,6 +82,16 @@ const struct resource *resource_find(const char *name);
 void resource_register(struct resource *r);
 
 /**
+ * Definition of a resource linked externally (by means of the used toolchain).
+ * Only the base name of the resource is expected. The name refers to the
+ * linked pointers beg_<name> and end_<name> provided externally.
+ */
+#define REGISTER_LINKED_RESOURCE(n) \
+extern const char beg_ ##n;         \
+extern const char end_ ##n;         \
+REGISTER_RESOURCE(n, &beg_ ##n, &end_ ##n) \
+
+/**
  * Definition of a resource described by its name, and pointers begin, end.
  */
 #define REGISTER_RESOURCE(n, b, e) \

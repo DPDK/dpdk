@@ -33,6 +33,24 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 ifeq ($(CONFIG_RTE_APP_TEST),y)
 
+# Define an externally linked resource. A linked resource is an arbitrary
+# file that is linked into the test binary. The application refers to this
+# resource by name. The linked generates identifiers beg_<name> and end_<name>
+# for referencing by the C code.
+#
+# Parameters: <unique name>, <file to be linked>
+define linked_resource
+SRCS-y += $(1).res.o
+$(1).res.o: $(2)
+	$(OBJCOPY) -I binary -B $(RTE_OBJCOPY_ARCH) -O $(RTE_OBJCOPY_TARGET) \
+		--rename-section                                         \
+			.data=.rodata,alloc,load,data,contents,readonly  \
+		--redefine-sym _binary__dev_stdin_start=beg_$(1)         \
+		--redefine-sym _binary__dev_stdin_end=end_$(1)           \
+		--redefine-sym _binary__dev_stdin_size=siz_$(1)          \
+		/dev/stdin $$@ < $$<
+endef
+
 #
 # library name
 #
@@ -45,6 +63,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) := commands.c
 SRCS-y += test.c
 SRCS-y += resource.c
 SRCS-y += test_resource.c
+$(eval $(call linked_resource,test_resource_c,resource.c))
 SRCS-y += test_pci.c
 SRCS-y += test_prefetch.c
 SRCS-y += test_byteorder.c

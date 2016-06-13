@@ -60,9 +60,27 @@ static int test_resource_dpdk(void)
 	return 0;
 }
 
+REGISTER_LINKED_RESOURCE(test_resource_c);
+
+static int test_resource_c(void)
+{
+	const struct resource *r;
+
+	r = resource_find("test_resource_c");
+	TEST_ASSERT_NOT_NULL(r, "No test_resource_c found");
+	TEST_ASSERT(!strcmp(r->name, "test_resource_c"),
+			"Found resource %s, expected test_resource_c",
+			r->name);
+
+	return 0;
+}
+
 static int test_resource(void)
 {
 	if (test_resource_dpdk())
+		return -1;
+
+	if (test_resource_c())
 		return -1;
 
 	return 0;
