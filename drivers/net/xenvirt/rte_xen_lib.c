@@ -423,6 +423,7 @@ grant_gntalloc_mbuf_pool(struct rte_mempool *mpool, uint32_t pg_num, uint32_t *g
 {
 	char key_str[PATH_MAX] = {0};
 	char val_str[PATH_MAX] = {0};
+	void *mempool_obj_va;
 
 	if (grant_node_create(pg_num, gref_arr, pa_arr, val_str, sizeof(val_str))) {
 		return -1;
@@ -437,7 +438,14 @@ grant_gntalloc_mbuf_pool(struct rte_mempool *mpool, uint32_t pg_num, uint32_t *g
 	if (snprintf(key_str, sizeof(key_str),
 		DPDK_XENSTORE_PATH"%d"MEMPOOL_VA_XENSTORE_STR, mempool_idx) == -1)
 		return -1;
-	if (snprintf(val_str, sizeof(val_str), "%"PRIxPTR, (uintptr_t)mpool->elt_va_start) == -1)
+	if (mpool->nb_mem_chunks != 1) {
+		RTE_LOG(ERR, PMD,
+			"mempool with more than 1 chunk is not supported\n");
+		return -1;
+	}
+	mempool_obj_va = STAILQ_FIRST(&mpool->mem_list)->addr;
+	if (snprintf(val_str, sizeof(val_str), "%"PRIxPTR,
+			(uintptr_t)mempool_obj_va) == -1)
 		return -1;
 	if (xenstore_write(key_str, val_str) == -1)
 		return -1;
