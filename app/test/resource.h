@@ -89,6 +89,19 @@ int resource_fwrite(const struct resource *r, FILE *f);
 int resource_fwrite_file(const struct resource *r, const char *fname);
 
 /**
+ * Treat the given resource as a tar archive. Extract
+ * the archive to the current directory.
+ */
+int resource_untar(const struct resource *res);
+
+/**
+ * Treat the given resource as a tar archive. Remove
+ * all files (related to the current directory) listed
+ * in the tar archive.
+ */
+int resource_rm_by_tar(const struct resource *res);
+
+/**
  * Register a resource in the global list of resources.
  * Not intended for direct use, please check the REGISTER_RESOURCE
  * macro.

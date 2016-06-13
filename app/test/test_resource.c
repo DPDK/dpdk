@@ -85,12 +85,41 @@ static int test_resource_c(void)
 	return 0;
 }
 
+REGISTER_LINKED_RESOURCE(test_resource_tar);
+
+static int test_resource_tar(void)
+{
+	const struct resource *r;
+	FILE *f;
+
+	r = resource_find("test_resource_tar");
+	TEST_ASSERT_NOT_NULL(r, "No test_resource_tar found");
+	TEST_ASSERT(!strcmp(r->name, "test_resource_tar"),
+			"Found resource %s, expected test_resource_tar",
+			r->name);
+
+	TEST_ASSERT_SUCCESS(resource_untar(r),
+			"Failed to to untar %s", r->name);
+
+	f = fopen("test_resource.c", "r");
+	TEST_ASSERT_NOT_NULL(f,
+			"Missing extracted file test_resource.c");
+	fclose(f);
+
+	TEST_ASSERT_SUCCESS(resource_rm_by_tar(r),
+			"Failed to remove extracted contents of %s", r->name);
+	return 0;
+}
+
 static int test_resource(void)
 {
 	if (test_resource_dpdk())
 		return -1;
 
 	if (test_resource_c())
+		return -1;
+
+	if (test_resource_tar())
 		return -1;
 
 	return 0;

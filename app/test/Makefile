@@ -51,6 +51,13 @@ $(1).res.o: $(2)
 		/dev/stdin $$@ < $$<
 endef
 
+define linked_tar_resource
+$(1).tar: $(2)
+	tar -C $$(dir $$<) -cf $$@ $$(notdir $$<)
+
+$(call linked_resource,$(1),$(1).tar)
+endef
+
 #
 # library name
 #
@@ -64,6 +71,7 @@ SRCS-y += test.c
 SRCS-y += resource.c
 SRCS-y += test_resource.c
 $(eval $(call linked_resource,test_resource_c,resource.c))
+$(eval $(call linked_tar_resource,test_resource_tar,test_resource.c))
 SRCS-y += test_pci.c
 SRCS-y += test_prefetch.c
 SRCS-y += test_byteorder.c
@@ -185,6 +193,7 @@ CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -D_GNU_SOURCE
 
 LDLIBS += -lm
+LDLIBS += -larchive
 
 # Disable VTA for memcpy test
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
