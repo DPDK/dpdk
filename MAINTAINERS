@@ -92,6 +92,7 @@ F: app/test/test_interrupts.c
 F: app/test/test_logs.c
 F: app/test/test_memcpy*
 F: app/test/test_pci.c
+F: app/test/test_pci_sysfs/
 F: app/test/test_per_lcore.c
 F: app/test/test_prefetch.c
 F: app/test/test_rwlock.c

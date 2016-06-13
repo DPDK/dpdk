@@ -91,7 +91,7 @@ extern struct pci_driver_list pci_driver_list; /**< Global list of PCI drivers. 
 extern struct pci_device_list pci_device_list; /**< Global list of PCI devices. */
 
 /** Pathname of PCI devices directory. */
-#define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
+const char *pci_get_sysfs_path(void);
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8

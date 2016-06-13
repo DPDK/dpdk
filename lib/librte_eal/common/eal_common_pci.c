@@ -85,6 +85,19 @@
 struct pci_driver_list pci_driver_list;
 struct pci_device_list pci_device_list;
 
+#define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
+
+const char *pci_get_sysfs_path(void)
+{
+	const char *path = NULL;
+
+	path = getenv("SYSFS_PCI_DEVICES");
+	if (path == NULL)
+		return SYSFS_PCI_DEVICES;
+
+	return path;
+}
+
 static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 {
 	struct rte_devargs *devargs;

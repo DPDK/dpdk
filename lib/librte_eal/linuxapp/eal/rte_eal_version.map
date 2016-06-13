@@ -154,3 +154,10 @@ DPDK_16.04 {
 	rte_eal_primary_proc_alive;
 
 } DPDK_2.2;
+
+DPDK_16.07 {
+	global:
+
+	pci_get_sysfs_path;
+
+} DPDK_16.04;

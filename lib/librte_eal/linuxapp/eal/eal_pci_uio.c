@@ -161,14 +161,14 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 	 * or uio:uioX */
 
 	snprintf(dirname, sizeof(dirname),
-			SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/uio",
+			"%s/" PCI_PRI_FMT "/uio", pci_get_sysfs_path(),
 			loc->domain, loc->bus, loc->devid, loc->function);
 
 	dir = opendir(dirname);
 	if (dir == NULL) {
 		/* retry with the parent directory */
 		snprintf(dirname, sizeof(dirname),
-				SYSFS_PCI_DEVICES "/" PCI_PRI_FMT,
+				"%s/" PCI_PRI_FMT, pci_get_sysfs_path(),
 				loc->domain, loc->bus, loc->devid, loc->function);
 		dir = opendir(dirname);
 
@@ -319,7 +319,8 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 
 	/* update devname for mmap  */
 	snprintf(devname, sizeof(devname),
-			SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%d",
+			"%s/" PCI_PRI_FMT "/resource%d",
+			pci_get_sysfs_path(),
 			loc->domain, loc->bus, loc->devid,
 			loc->function, res_idx);
 

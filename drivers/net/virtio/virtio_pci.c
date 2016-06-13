@@ -179,7 +179,7 @@ legacy_virtio_has_msix(const struct rte_pci_addr *loc)
 	char dirname[PATH_MAX];
 
 	snprintf(dirname, sizeof(dirname),
-		     SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/msi_irqs",
+		     "%s/" PCI_PRI_FMT "/msi_irqs", pci_get_sysfs_path(),
 		     loc->domain, loc->bus, loc->devid, loc->function);
 
 	d = opendir(dirname);

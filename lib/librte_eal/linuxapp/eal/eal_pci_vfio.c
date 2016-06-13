@@ -602,7 +602,7 @@ pci_vfio_get_group_no(const char *pci_addr, int *iommu_group_no)
 
 	/* try to find out IOMMU group for this device */
 	snprintf(linkname, sizeof(linkname),
-			 SYSFS_PCI_DEVICES "/%s/iommu_group", pci_addr);
+			 "%s/%s/iommu_group", pci_get_sysfs_path(), pci_addr);
 
 	ret = readlink(linkname, filename, sizeof(filename));
 

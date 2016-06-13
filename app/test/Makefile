@@ -73,6 +73,7 @@ SRCS-y += test_resource.c
 $(eval $(call linked_resource,test_resource_c,resource.c))
 $(eval $(call linked_tar_resource,test_resource_tar,test_resource.c))
 SRCS-y += test_pci.c
+$(eval $(call linked_tar_resource,test_pci_sysfs,test_pci_sysfs))
 SRCS-y += test_prefetch.c
 SRCS-y += test_byteorder.c
 SRCS-y += test_per_lcore.c

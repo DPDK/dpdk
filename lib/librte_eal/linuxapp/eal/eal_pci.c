@@ -66,8 +66,8 @@ pci_unbind_kernel_driver(struct rte_pci_device *dev)
 
 	/* open /sys/bus/pci/devices/AAAA:BB:CC.D/driver */
 	snprintf(filename, sizeof(filename),
-	         SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/driver/unbind",
-	         loc->domain, loc->bus, loc->devid, loc->function);
+		"%s/" PCI_PRI_FMT "/driver/unbind", pci_get_sysfs_path(),
+		loc->domain, loc->bus, loc->devid, loc->function);
 
 	f = fopen(filename, "w");
 	if (f == NULL) /* device was not bound */
@@ -453,7 +453,7 @@ rte_eal_pci_scan(void)
 	uint16_t domain;
 	uint8_t bus, devid, function;
 
-	dir = opendir(SYSFS_PCI_DEVICES);
+	dir = opendir(pci_get_sysfs_path());
 	if (dir == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): opendir failed: %s\n",
 			__func__, strerror(errno));
@@ -468,8 +468,8 @@ rte_eal_pci_scan(void)
 				&bus, &devid, &function) != 0)
 			continue;
 
-		snprintf(dirname, sizeof(dirname), "%s/%s", SYSFS_PCI_DEVICES,
-			 e->d_name);
+		snprintf(dirname, sizeof(dirname), "%s/%s",
+				pci_get_sysfs_path(), e->d_name);
 		if (pci_scan_one(dirname, domain, bus, devid, function) < 0)
 			goto error;
 	}

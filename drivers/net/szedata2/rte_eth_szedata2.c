@@ -1481,7 +1481,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 	snprintf(rsc_filename, PATH_MAX,
-		SYSFS_PCI_DEVICES "/" PCI_PRI_FMT "/resource%u",
+		"%s/" PCI_PRI_FMT "/resource%u", pci_get_sysfs_path(),
 		pci_addr->domain, pci_addr->bus,
 		pci_addr->devid, pci_addr->function, PCI_RESOURCE_NUMBER);
 	fd = open(rsc_filename, O_RDWR);
