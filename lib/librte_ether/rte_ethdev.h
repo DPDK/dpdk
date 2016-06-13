@@ -2683,7 +2683,8 @@ rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
  * on the output queue *queue_id* of the Ethernet device designated by its
  * *port_id*.
  * The *nb_pkts* parameter is the number of packets to send which are
- * supplied in the *tx_pkts* array of *rte_mbuf* structures.
+ * supplied in the *tx_pkts* array of *rte_mbuf* structures, each of them
+ * allocated from a pool created with rte_pktmbuf_pool_create().
  * The rte_eth_tx_burst() function loops, sending *nb_pkts* packets,
  * up to the number of transmit descriptors available in the TX ring of the
  * transmit queue.
