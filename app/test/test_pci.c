@@ -238,7 +238,8 @@ test_pci_blacklist(void)
 	struct rte_devargs_list save_devargs_list;
 
 	printf("Dump all devices\n");
-	rte_eal_pci_dump(stdout);
+	TEST_ASSERT(TAILQ_EMPTY(&pci_driver_list),
+			"pci_driver_list not empty");
 
 	rte_eal_pci_register(&my_driver);
 	rte_eal_pci_register(&my_driver2);
