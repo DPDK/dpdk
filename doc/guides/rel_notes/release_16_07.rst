@@ -164,6 +164,10 @@ API Changes
 * The vhost function ``rte_vring_available_entries`` is renamed to
   ``rte_vhost_avail_entries``.
 
+* All existing vhost APIs and callbacks with ``virtio_net`` struct pointer
+  as the parameter have been changed due to the ABI refactoring mentioned
+  below: it's replaced by ``int vid``.
+
 
 ABI Changes
 -----------
@@ -177,6 +181,10 @@ ABI Changes
 
 * The ``rte_eth_dev_info`` structure has new fields ``nb_rx_queues`` and ``nb_tx_queues``
   to support number of queues configured by software.
+
+* vhost ABI refactoring has been made: ``virtio_net`` structure is never
+  exported to application any more. Instead, a handle, ``vid``, has been
+  used to represent this structure internally.
 
 
 Shared Library Versions
@@ -214,7 +222,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_sched.so.1
      librte_table.so.2
      librte_timer.so.1
-     librte_vhost.so.2
+   + librte_vhost.so.3
 
 
 Tested Platforms

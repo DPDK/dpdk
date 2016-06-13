@@ -49,8 +49,6 @@ struct device_statistics {
 };
 
 struct vhost_dev {
-	/**< Pointer to device created by vhost lib. */
-	struct virtio_net      *dev;
 	/**< Number of memory regions for gpa to hpa translation. */
 	uint32_t nregions_hpa;
 	/**< Device MAC address (Obtained on first TX packet). */

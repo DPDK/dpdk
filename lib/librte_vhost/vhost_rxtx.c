@@ -46,6 +46,7 @@
 #include <rte_arp.h>
 
 #include "vhost-net.h"
+#include "virtio-net.h"
 
 #define MAX_PKT_BURST 32
 #define VHOST_LOG_PAGE	4096
@@ -587,9 +588,14 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 }
 
 uint16_t
-rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id,
+rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
 	struct rte_mbuf **pkts, uint16_t count)
 {
+	struct virtio_net *dev = get_device(vid);
+
+	if (!dev)
+		return 0;
+
 	if (dev->features & (1 << VIRTIO_NET_F_MRG_RXBUF))
 		return virtio_dev_merge_rx(dev, queue_id, pkts, count);
 	else
@@ -815,9 +821,10 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 uint16_t
-rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
+rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
+	struct virtio_net *dev;
 	struct rte_mbuf *rarp_mbuf = NULL;
 	struct vhost_virtqueue *vq;
 	uint32_t desc_indexes[MAX_PKT_BURST];
@@ -825,6 +832,10 @@ rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
 	uint32_t i = 0;
 	uint16_t free_entries;
 	uint16_t avail_idx;
+
+	dev = get_device(vid);
+	if (!dev)
+		return 0;
 
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->virt_qp_nb))) {
 		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",

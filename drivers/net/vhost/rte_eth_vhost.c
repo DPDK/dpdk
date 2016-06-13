@@ -71,9 +71,9 @@ static struct ether_addr base_eth_addr = {
 };
 
 struct vhost_queue {
+	int vid;
 	rte_atomic32_t allow_queuing;
 	rte_atomic32_t while_queuing;
-	struct virtio_net *device;
 	struct pmd_internal *internal;
 	struct rte_mempool *mb_pool;
 	uint8_t port;
@@ -139,7 +139,7 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		goto out;
 
 	/* Dequeue packets from guest TX queue */
-	nb_rx = rte_vhost_dequeue_burst(r->device,
+	nb_rx = rte_vhost_dequeue_burst(r->vid,
 			r->virtqueue_id, r->mb_pool, bufs, nb_bufs);
 
 	r->rx_pkts += nb_rx;
@@ -170,7 +170,7 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		goto out;
 
 	/* Enqueue packets to guest RX queue */
-	nb_tx = rte_vhost_enqueue_burst(r->device,
+	nb_tx = rte_vhost_enqueue_burst(r->vid,
 			r->virtqueue_id, bufs, nb_bufs);
 
 	r->tx_pkts += nb_tx;
@@ -222,7 +222,7 @@ find_internal_resource(char *ifname)
 }
 
 static int
-new_device(struct virtio_net *dev)
+new_device(int vid)
 {
 	struct rte_eth_dev *eth_dev;
 	struct internal_list *list;
@@ -234,12 +234,7 @@ new_device(struct virtio_net *dev)
 	int newnode;
 #endif
 
-	if (dev == NULL) {
-		RTE_LOG(INFO, PMD, "Invalid argument\n");
-		return -1;
-	}
-
-	rte_vhost_get_ifname(dev->vid, ifname, sizeof(ifname));
+	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	list = find_internal_resource(ifname);
 	if (list == NULL) {
 		RTE_LOG(INFO, PMD, "Invalid device name: %s\n", ifname);
@@ -250,7 +245,7 @@ new_device(struct virtio_net *dev)
 	internal = eth_dev->data->dev_private;
 
 #ifdef RTE_LIBRTE_VHOST_NUMA
-	newnode = rte_vhost_get_numa_node(dev->vid);
+	newnode = rte_vhost_get_numa_node(vid);
 	if (newnode >= 0)
 		eth_dev->data->numa_node = newnode;
 #endif
@@ -259,7 +254,7 @@ new_device(struct virtio_net *dev)
 		vq = eth_dev->data->rx_queues[i];
 		if (vq == NULL)
 			continue;
-		vq->device = dev;
+		vq->vid = vid;
 		vq->internal = internal;
 		vq->port = eth_dev->data->port_id;
 	}
@@ -267,13 +262,13 @@ new_device(struct virtio_net *dev)
 		vq = eth_dev->data->tx_queues[i];
 		if (vq == NULL)
 			continue;
-		vq->device = dev;
+		vq->vid = vid;
 		vq->internal = internal;
 		vq->port = eth_dev->data->port_id;
 	}
 
-	for (i = 0; i < rte_vhost_get_queue_num(dev->vid) * VIRTIO_QNUM; i++)
-		rte_vhost_enable_guest_notification(dev, i, 0);
+	for (i = 0; i < rte_vhost_get_queue_num(vid) * VIRTIO_QNUM; i++)
+		rte_vhost_enable_guest_notification(vid, i, 0);
 
 	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
@@ -298,7 +293,7 @@ new_device(struct virtio_net *dev)
 }
 
 static void
-destroy_device(volatile struct virtio_net *dev)
+destroy_device(int vid)
 {
 	struct rte_eth_dev *eth_dev;
 	struct vhost_queue *vq;
@@ -306,12 +301,7 @@ destroy_device(volatile struct virtio_net *dev)
 	char ifname[PATH_MAX];
 	unsigned i;
 
-	if (dev == NULL) {
-		RTE_LOG(INFO, PMD, "Invalid argument\n");
-		return;
-	}
-
-	rte_vhost_get_ifname(dev->vid, ifname, sizeof(ifname));
+	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	list = find_internal_resource(ifname);
 	if (list == NULL) {
 		RTE_LOG(ERR, PMD, "Invalid interface name: %s\n", ifname);
@@ -343,13 +333,13 @@ destroy_device(volatile struct virtio_net *dev)
 		vq = eth_dev->data->rx_queues[i];
 		if (vq == NULL)
 			continue;
-		vq->device = NULL;
+		vq->vid = -1;
 	}
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
 		vq = eth_dev->data->tx_queues[i];
 		if (vq == NULL)
 			continue;
-		vq->device = NULL;
+		vq->vid = -1;
 	}
 
 	RTE_LOG(INFO, PMD, "Connection closed\n");
@@ -358,19 +348,14 @@ destroy_device(volatile struct virtio_net *dev)
 }
 
 static int
-vring_state_changed(struct virtio_net *dev, uint16_t vring, int enable)
+vring_state_changed(int vid, uint16_t vring, int enable)
 {
 	struct rte_vhost_vring_state *state;
 	struct rte_eth_dev *eth_dev;
 	struct internal_list *list;
 	char ifname[PATH_MAX];
 
-	if (dev == NULL) {
-		RTE_LOG(ERR, PMD, "Invalid argument\n");
-		return -1;
-	}
-
-	rte_vhost_get_ifname(dev->vid, ifname, sizeof(ifname));
+	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	list = find_internal_resource(ifname);
 	if (list == NULL) {
 		RTE_LOG(ERR, PMD, "Invalid interface name: %s\n", ifname);

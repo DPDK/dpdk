@@ -36,7 +36,7 @@ LIB = librte_vhost.a
 
 EXPORT_MAP := rte_vhost_version.map
 
-LIBABIVER := 2
+LIBABIVER := 3
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -D_FILE_OFFSET_BITS=64
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),y)

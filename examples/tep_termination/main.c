@@ -566,10 +566,9 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 	struct rte_mbuf **m_table;
 	unsigned len, ret = 0;
 	const uint16_t lcore_id = rte_lcore_id();
-	struct virtio_net *dev = vdev->dev;
 
 	RTE_LOG(DEBUG, VHOST_DATA, "(%d) TX: MAC address is external\n",
-		dev->vid);
+		vdev->vid);
 
 	/* Add packet to the port tx queue */
 	tx_q = &lcore_tx_queue[lcore_id];
@@ -578,8 +577,8 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 	tx_q->m_table[len] = m;
 	len++;
 	if (enable_stats) {
-		dev_statistics[dev->vid].tx_total++;
-		dev_statistics[dev->vid].tx++;
+		dev_statistics[vdev->vid].tx_total++;
+		dev_statistics[vdev->vid].tx++;
 	}
 
 	if (unlikely(len == MAX_PKT_BURST)) {
@@ -614,7 +613,6 @@ static int
 switch_worker(__rte_unused void *arg)
 {
 	struct rte_mempool *mbuf_pool = arg;
-	struct virtio_net *dev = NULL;
 	struct vhost_dev *vdev = NULL;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct virtio_net_data_ll *dev_ll;
@@ -688,7 +686,6 @@ switch_worker(__rte_unused void *arg)
 
 		while (dev_ll != NULL) {
 			vdev = dev_ll->vdev;
-			dev = vdev->dev;
 
 			if (unlikely(vdev->remove)) {
 				dev_ll = dev_ll->next;
@@ -709,22 +706,22 @@ switch_worker(__rte_unused void *arg)
 					* must be less than virtio queue size
 					*/
 					if (enable_retry && unlikely(rx_count >
-						rte_vhost_avail_entries(dev->vid, VIRTIO_RXQ))) {
+						rte_vhost_avail_entries(vdev->vid, VIRTIO_RXQ))) {
 						for (retry = 0; retry < burst_rx_retry_num;
 							retry++) {
 							rte_delay_us(burst_rx_delay_time);
-							if (rx_count <= rte_vhost_avail_entries(dev->vid, VIRTIO_RXQ))
+							if (rx_count <= rte_vhost_avail_entries(vdev->vid, VIRTIO_RXQ))
 								break;
 						}
 					}
 
-					ret_count = overlay_options.rx_handle(dev, pkts_burst, rx_count);
+					ret_count = overlay_options.rx_handle(vdev->vid, pkts_burst, rx_count);
 					if (enable_stats) {
 						rte_atomic64_add(
-						&dev_statistics[dev->vid].rx_total_atomic,
+						&dev_statistics[vdev->vid].rx_total_atomic,
 						rx_count);
 						rte_atomic64_add(
-						&dev_statistics[dev->vid].rx_atomic, ret_count);
+						&dev_statistics[vdev->vid].rx_atomic, ret_count);
 					}
 					while (likely(rx_count)) {
 						rx_count--;
@@ -736,7 +733,7 @@ switch_worker(__rte_unused void *arg)
 
 			if (likely(!vdev->remove)) {
 				/* Handle guest TX*/
-				tx_count = rte_vhost_dequeue_burst(dev,
+				tx_count = rte_vhost_dequeue_burst(vdev->vid,
 						VIRTIO_TXQ, mbuf_pool,
 						pkts_burst, MAX_PKT_BURST);
 				/* If this is the first received packet we need to learn the MAC */
@@ -908,12 +905,10 @@ init_data_ll(void)
 /**
  * Remove a device from the specific data core linked list and
  * from the main linked list. Synchonization occurs through the use
- * of the lcore dev_removal_flag. Device is made volatile here
- * to avoid re-ordering of dev->remove=1 which can cause an infinite
- * loop in the rte_pause loop.
+ * of the lcore dev_removal_flag.
  */
 static void
-destroy_device(volatile struct virtio_net *dev)
+destroy_device(int vid)
 {
 	struct virtio_net_data_ll *ll_lcore_dev_cur;
 	struct virtio_net_data_ll *ll_main_dev_cur;
@@ -922,11 +917,9 @@ destroy_device(volatile struct virtio_net *dev)
 	struct vhost_dev *vdev = NULL;
 	int lcore;
 
-	dev->flags &= ~VIRTIO_DEV_RUNNING;
-
 	ll_main_dev_cur = ll_root_used;
 	while (ll_main_dev_cur != NULL) {
-		if (ll_main_dev_cur->vdev->vid == dev->vid) {
+		if (ll_main_dev_cur->vdev->vid == vid) {
 			vdev = ll_main_dev_cur->vdev;
 			break;
 		}
@@ -952,8 +945,7 @@ destroy_device(volatile struct virtio_net *dev)
 
 	if (ll_lcore_dev_cur == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) Failed to find the dev to be destroy.\n",
-			dev->vid);
+			"(%d) Failed to find the dev to be destroy.\n", vid);
 		return;
 	}
 
@@ -1001,7 +993,7 @@ destroy_device(volatile struct virtio_net *dev)
 	lcore_info[vdev->coreid].lcore_ll->device_num--;
 
 	RTE_LOG(INFO, VHOST_DATA, "(%d) Device has been removed "
-		"from data core\n", dev->vid);
+		"from data core\n", vid);
 
 	rte_free(vdev);
 
@@ -1012,7 +1004,7 @@ destroy_device(volatile struct virtio_net *dev)
  * to the main linked list and the allocated to a specific data core.
  */
 static int
-new_device(struct virtio_net *dev)
+new_device(int vid)
 {
 	struct virtio_net_data_ll *ll_dev;
 	int lcore, core_add = 0;
@@ -1022,18 +1014,16 @@ new_device(struct virtio_net *dev)
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
-			"(%d) Couldn't allocate memory for vhost dev\n",
-			dev->vid);
+			"(%d) Couldn't allocate memory for vhost dev\n", vid);
 		return -1;
 	}
-	vdev->dev = dev;
-	vdev->vid = dev->vid;
+	vdev->vid = vid;
 	/* Add device to main ll */
 	ll_dev = get_data_ll_free_entry(&ll_root_free);
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA, "(%d) No free entry found in"
 			" linked list Device limit of %d devices per core"
-			" has been reached\n", dev->vid, nb_devices);
+			" has been reached\n", vid, nb_devices);
 		if (vdev->regions_hpa)
 			rte_free(vdev->regions_hpa);
 		rte_free(vdev);
@@ -1041,7 +1031,7 @@ new_device(struct virtio_net *dev)
 	}
 	ll_dev->vdev = vdev;
 	add_data_ll_entry(&ll_root_used, ll_dev);
-	vdev->rx_q = dev->vid;
+	vdev->rx_q = vid;
 
 	/* reset ready flag */
 	vdev->ready = DEVICE_MAC_LEARNING;
@@ -1059,9 +1049,9 @@ new_device(struct virtio_net *dev)
 	if (ll_dev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) Failed to add device to data core\n",
-			dev->vid);
+			vid);
 		vdev->ready = DEVICE_SAFE_REMOVE;
-		destroy_device(dev);
+		destroy_device(vid);
 		rte_free(vdev->regions_hpa);
 		rte_free(vdev);
 		return -1;
@@ -1073,17 +1063,16 @@ new_device(struct virtio_net *dev)
 			ll_dev);
 
 	/* Initialize device stats */
-	memset(&dev_statistics[dev->vid], 0,
+	memset(&dev_statistics[vid], 0,
 		sizeof(struct device_statistics));
 
 	/* Disable notifications. */
-	rte_vhost_enable_guest_notification(dev, VIRTIO_RXQ, 0);
-	rte_vhost_enable_guest_notification(dev, VIRTIO_TXQ, 0);
+	rte_vhost_enable_guest_notification(vid, VIRTIO_RXQ, 0);
+	rte_vhost_enable_guest_notification(vid, VIRTIO_TXQ, 0);
 	lcore_info[vdev->coreid].lcore_ll->device_num++;
-	dev->flags |= VIRTIO_DEV_RUNNING;
 
 	RTE_LOG(INFO, VHOST_DATA, "(%d) Device has been added to data core %d\n",
-		dev->vid, vdev->coreid);
+		vid, vdev->coreid);
 
 	return 0;
 }
@@ -1121,7 +1110,7 @@ print_stats(void)
 
 		dev_ll = ll_root_used;
 		while (dev_ll != NULL) {
-			vid = dev_ll->vdev->dev->vid;
+			vid = dev_ll->vdev->vid;
 			tx_total = dev_statistics[vid].tx_total;
 			tx = dev_statistics[vid].tx;
 			tx_dropped = tx_total - tx;

@@ -55,10 +55,10 @@ typedef void (*ol_tunnel_destroy_t)(struct vhost_dev *vdev);
 typedef int (*ol_tx_handle_t)(uint8_t port_id, uint16_t queue_id,
 			      struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
-typedef int (*ol_rx_handle_t)(struct virtio_net *dev, struct rte_mbuf **pkts,
+typedef int (*ol_rx_handle_t)(int vid, struct rte_mbuf **pkts,
 			      uint32_t count);
 
-typedef int (*ol_param_handle)(struct virtio_net *dev);
+typedef int (*ol_param_handle)(int vid);
 
 struct ol_switch_ops {
 	ol_port_configure_t        port_configure;
@@ -82,6 +82,6 @@ int
 vxlan_tx_pkts(uint8_t port_id, uint16_t queue_id,
 			struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 int
-vxlan_rx_pkts(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count);
+vxlan_rx_pkts(int vid, struct rte_mbuf **pkts, uint32_t count);
 
 #endif /* VXLAN_SETUP_H_ */

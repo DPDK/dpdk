@@ -795,7 +795,7 @@ virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 {
 	uint16_t ret;
 
-	ret = rte_vhost_enqueue_burst(dst_vdev->dev, VIRTIO_RXQ, &m, 1);
+	ret = rte_vhost_enqueue_burst(dst_vdev->vid, VIRTIO_RXQ, &m, 1);
 	if (enable_stats) {
 		rte_atomic64_inc(&dst_vdev->stats.rx_total_atomic);
 		rte_atomic64_add(&dst_vdev->stats.rx_atomic, ret);
@@ -1041,7 +1041,6 @@ static inline void __attribute__((always_inline))
 drain_eth_rx(struct vhost_dev *vdev)
 {
 	uint16_t rx_count, enqueue_count;
-	struct virtio_net *dev = vdev->dev;
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 
 	rx_count = rte_eth_rx_burst(ports[0], vdev->vmdq_rx_q,
@@ -1055,19 +1054,19 @@ drain_eth_rx(struct vhost_dev *vdev)
 	 * to diminish packet loss.
 	 */
 	if (enable_retry &&
-	    unlikely(rx_count > rte_vhost_avail_entries(dev->vid,
+	    unlikely(rx_count > rte_vhost_avail_entries(vdev->vid,
 			VIRTIO_RXQ))) {
 		uint32_t retry;
 
 		for (retry = 0; retry < burst_rx_retry_num; retry++) {
 			rte_delay_us(burst_rx_delay_time);
-			if (rx_count <= rte_vhost_avail_entries(dev->vid,
+			if (rx_count <= rte_vhost_avail_entries(vdev->vid,
 					VIRTIO_RXQ))
 				break;
 		}
 	}
 
-	enqueue_count = rte_vhost_enqueue_burst(dev, VIRTIO_RXQ,
+	enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
 						pkts, rx_count);
 	if (enable_stats) {
 		rte_atomic64_add(&vdev->stats.rx_total_atomic, rx_count);
@@ -1084,7 +1083,7 @@ drain_virtio_tx(struct vhost_dev *vdev)
 	uint16_t count;
 	uint16_t i;
 
-	count = rte_vhost_dequeue_burst(vdev->dev, VIRTIO_TXQ, mbuf_pool,
+	count = rte_vhost_dequeue_burst(vdev->vid, VIRTIO_TXQ, mbuf_pool,
 					pkts, MAX_PKT_BURST);
 
 	/* setup VMDq for the first packet */
@@ -1171,13 +1170,13 @@ switch_worker(void *arg __rte_unused)
  * of dev->remove=1 which can cause an infinite loop in the rte_pause loop.
  */
 static void
-destroy_device (volatile struct virtio_net *dev)
+destroy_device(int vid)
 {
 	struct vhost_dev *vdev = NULL;
 	int lcore;
 
 	TAILQ_FOREACH(vdev, &vhost_dev_list, global_vdev_entry) {
-		if (vdev->vid == dev->vid)
+		if (vdev->vid == vid)
 			break;
 	}
 	if (!vdev)
@@ -1221,12 +1220,11 @@ destroy_device (volatile struct virtio_net *dev)
  * and the allocated to a specific data core.
  */
 static int
-new_device (struct virtio_net *dev)
+new_device(int vid)
 {
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
-	int vid = dev->vid;
 
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
@@ -1235,7 +1233,6 @@ new_device (struct virtio_net *dev)
 			vid);
 		return -1;
 	}
-	vdev->dev = dev;
 	vdev->vid = vid;
 
 	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, global_vdev_entry);
@@ -1259,8 +1256,8 @@ new_device (struct virtio_net *dev)
 	lcore_info[vdev->coreid].device_num++;
 
 	/* Disable notifications. */
-	rte_vhost_enable_guest_notification(dev, VIRTIO_RXQ, 0);
-	rte_vhost_enable_guest_notification(dev, VIRTIO_TXQ, 0);
+	rte_vhost_enable_guest_notification(vid, VIRTIO_RXQ, 0);
+	rte_vhost_enable_guest_notification(vid, VIRTIO_TXQ, 0);
 
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) device has been added to data core %d\n",
@@ -1316,7 +1313,7 @@ print_stats(void)
 				"RX total:              %" PRIu64 "\n"
 				"RX dropped:            %" PRIu64 "\n"
 				"RX successful:         %" PRIu64 "\n",
-				vdev->dev->vid,
+				vdev->vid,
 				tx_total, tx_dropped, tx,
 				rx_total, rx_dropped, rx);
 		}

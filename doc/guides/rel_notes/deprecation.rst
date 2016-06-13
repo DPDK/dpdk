@@ -43,13 +43,6 @@ Deprecation Notices
   functions added to facilitate the creation of mempools using an external
   handler. The 16.07 release will contain these changes.
 
-* A librte_vhost public structures refactor is planned for DPDK 16.07
-  that requires both ABI and API change.
-  The proposed refactor would expose DPDK vhost dev to applications as
-  a handle, like the way kernel exposes an fd to user for locating a
-  specific file, and to keep all major structures internally, so that
-  we are likely to be free from ABI violations in future.
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and

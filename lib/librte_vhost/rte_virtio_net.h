@@ -178,10 +178,10 @@ struct virtio_memory {
  *
  */
 struct virtio_net_device_ops {
-	int (*new_device)(struct virtio_net *);	/**< Add device. */
-	void (*destroy_device)(volatile struct virtio_net *);	/**< Remove device. */
+	int (*new_device)(int vid);		/**< Add device. */
+	void (*destroy_device)(int vid);	/**< Remove device. */
 
-	int (*vring_state_changed)(struct virtio_net *dev, uint16_t queue_id, int enable);	/**< triggered when a vring is enabled or disabled */
+	int (*vring_state_changed)(int vid, uint16_t queue_id, int enable);	/**< triggered when a vring is enabled or disabled */
 };
 
 /**
@@ -220,7 +220,7 @@ int rte_vhost_feature_enable(uint64_t feature_mask);
 /* Returns currently supported vhost features */
 uint64_t rte_vhost_feature_get(void);
 
-int rte_vhost_enable_guest_notification(struct virtio_net *dev, uint16_t queue_id, int enable);
+int rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable);
 
 /* Register vhost driver. dev_name could be different for multiple instance support. */
 int rte_vhost_driver_register(const char *dev_name);
@@ -291,8 +291,8 @@ uint16_t rte_vhost_avail_entries(int vid, uint16_t queue_id);
  * be received from the physical port or from another virtual device. A packet
  * count is returned to indicate the number of packets that were succesfully
  * added to the RX queue.
- * @param dev
- *  virtio-net device
+ * @param vid
+ *  virtio-net device ID
  * @param queue_id
  *  virtio queue index in mq case
  * @param pkts
@@ -302,14 +302,14 @@ uint16_t rte_vhost_avail_entries(int vid, uint16_t queue_id);
  * @return
  *  num of packets enqueued
  */
-uint16_t rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id,
+uint16_t rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
 	struct rte_mbuf **pkts, uint16_t count);
 
 /**
  * This function gets guest buffers from the virtio device TX virtqueue,
  * construct host mbufs, copies guest buffer content to host mbufs and
  * store them in pkts to be processed.
- * @param dev
+ * @param vid
  *  virtio-net device
  * @param queue_id
  *  virtio queue index in mq case
@@ -322,7 +322,7 @@ uint16_t rte_vhost_enqueue_burst(struct virtio_net *dev, uint16_t queue_id,
  * @return
  *  num of packets dequeued
  */
-uint16_t rte_vhost_dequeue_burst(struct virtio_net *dev, uint16_t queue_id,
+uint16_t rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count);
 
 #endif /* _VIRTIO_NET_H_ */

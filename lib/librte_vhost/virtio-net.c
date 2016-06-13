@@ -296,7 +296,7 @@ vhost_destroy_device(int vid)
 
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(dev);
+		notify_ops->destroy_device(vid);
 	}
 
 	cleanup_device(dev, 1);
@@ -354,7 +354,7 @@ vhost_reset_owner(int vid)
 
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(dev);
+		notify_ops->destroy_device(vid);
 	}
 
 	cleanup_device(dev, 0);
@@ -718,13 +718,13 @@ vhost_set_backend(int vid, struct vhost_vring_file *file)
 	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
 		if (dev->virtqueue[VIRTIO_TXQ]->backend != VIRTIO_DEV_STOPPED &&
 		    dev->virtqueue[VIRTIO_RXQ]->backend != VIRTIO_DEV_STOPPED) {
-			if (notify_ops->new_device(dev) < 0)
+			if (notify_ops->new_device(vid) < 0)
 				return -1;
 			dev->flags |= VIRTIO_DEV_RUNNING;
 		}
 	} else if (file->fd == VIRTIO_DEV_STOPPED) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(dev);
+		notify_ops->destroy_device(vid);
 	}
 
 	return 0;
@@ -800,9 +800,14 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 	return *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx_res;
 }
 
-int rte_vhost_enable_guest_notification(struct virtio_net *dev,
-	uint16_t queue_id, int enable)
+int
+rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 {
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return -1;
+
 	if (enable) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"guest notification isn't supported.\n");
