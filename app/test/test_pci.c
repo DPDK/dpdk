@@ -148,21 +148,46 @@ static void free_devargs_list(void)
 struct pci_driver_list real_pci_driver_list =
 	TAILQ_HEAD_INITIALIZER(real_pci_driver_list);
 
-int
-test_pci(void)
+static int
+test_pci_setup(void)
 {
-	struct rte_devargs_list save_devargs_list;
-	struct rte_pci_driver *dr = NULL;
+	struct rte_pci_driver *dr;
 
-	printf("Dump all devices\n");
-	rte_eal_pci_dump(stdout);
-
-	/* Unregister all previous drivers */
+	/* Unregister original driver list */
 	while (!TAILQ_EMPTY(&pci_driver_list)) {
 		dr = TAILQ_FIRST(&pci_driver_list);
 		rte_eal_pci_unregister(dr);
 		TAILQ_INSERT_TAIL(&real_pci_driver_list, dr, next);
 	}
+
+	return 0;
+}
+
+static int
+test_pci_cleanup(void)
+{
+	struct rte_pci_driver *dr;
+
+	/* Restore original driver list */
+	while (!TAILQ_EMPTY(&real_pci_driver_list)) {
+		dr = TAILQ_FIRST(&real_pci_driver_list);
+		TAILQ_REMOVE(&real_pci_driver_list, dr, next);
+		rte_eal_pci_register(dr);
+	}
+
+	return 0;
+}
+
+int
+test_pci(void)
+{
+	struct rte_devargs_list save_devargs_list;
+
+	printf("Dump all devices\n");
+	rte_eal_pci_dump(stdout);
+
+	if (test_pci_setup())
+		return -1;
 
 	rte_eal_pci_register(&my_driver);
 	rte_eal_pci_register(&my_driver2);
@@ -199,12 +224,8 @@ test_pci(void)
 	rte_eal_pci_unregister(&my_driver);
 	rte_eal_pci_unregister(&my_driver2);
 
-	/* Restore original driver list */
-	while (!TAILQ_EMPTY(&real_pci_driver_list)) {
-		dr = TAILQ_FIRST(&real_pci_driver_list);
-		TAILQ_REMOVE(&real_pci_driver_list, dr, next);
-		rte_eal_pci_register(dr);
-	}
+	if (test_pci_cleanup())
+		return -1;
 
 	return 0;
 }
