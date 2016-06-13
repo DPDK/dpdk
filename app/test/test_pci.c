@@ -178,16 +178,13 @@ test_pci_cleanup(void)
 	return 0;
 }
 
-int
-test_pci(void)
+static int
+test_pci_blacklist(void)
 {
 	struct rte_devargs_list save_devargs_list;
 
 	printf("Dump all devices\n");
 	rte_eal_pci_dump(stdout);
-
-	if (test_pci_setup())
-		return -1;
 
 	rte_eal_pci_register(&my_driver);
 	rte_eal_pci_register(&my_driver2);
@@ -223,6 +220,18 @@ test_pci(void)
 
 	rte_eal_pci_unregister(&my_driver);
 	rte_eal_pci_unregister(&my_driver2);
+
+	return 0;
+}
+
+int
+test_pci(void)
+{
+	if (test_pci_setup())
+		return -1;
+
+	if (test_pci_blacklist())
+		return -1;
 
 	if (test_pci_cleanup())
 		return -1;
