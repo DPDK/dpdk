@@ -36,6 +36,8 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_vhost.a
 
+LDLIBS += -lpthread
+
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
