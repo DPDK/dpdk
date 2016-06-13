@@ -554,9 +554,11 @@ F: app/test/commands.c
 F: app/test/packet_burst_generator.c
 F: app/test/packet_burst_generator.h
 F: app/test/process.h
+F: app/test/resource.*
 F: app/test/test.c
 F: app/test/test.h
 F: app/test/test_pmd_perf.c
+F: app/test/test_resource.c
 F: app/test/virtual_pmd.c
 F: app/test/virtual_pmd.h
 

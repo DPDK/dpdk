@@ -94,6 +94,12 @@ parallel_test_group_list = [
 		 "Report" :	None,
 		},
 		{
+		 "Name" :	"Resource autotest",
+		 "Command" :	"resource_autotest",
+		 "Func" :	default_autotest,
+		 "Report" :	None,
+		},
+		{
 		 "Name" :	"Dump rings",
 		 "Command" :	"dump_ring",
 		 "Func" :	dump_autotest,
