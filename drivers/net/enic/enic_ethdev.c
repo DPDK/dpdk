@@ -455,8 +455,12 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
 	static const uint32_t ptypes[] = {
-		RTE_PTYPE_L3_IPV4,
-		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_NONFRAG,
 		RTE_PTYPE_UNKNOWN
 	};
 
