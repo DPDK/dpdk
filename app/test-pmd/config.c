@@ -92,6 +92,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
+#include <rte_cycles.h>
 
 #include "testpmd.h"
 
@@ -150,6 +151,11 @@ print_ethaddr(const char *name, struct ether_addr *eth_addr)
 void
 nic_stats_display(portid_t port_id)
 {
+	static uint64_t prev_pkts_rx[RTE_MAX_ETHPORTS];
+	static uint64_t prev_pkts_tx[RTE_MAX_ETHPORTS];
+	static uint64_t prev_cycles[RTE_MAX_ETHPORTS];
+	uint64_t diff_pkts_rx, diff_pkts_tx, diff_cycles;
+	uint64_t mpps_rx, mpps_tx;
 	struct rte_eth_stats stats;
 	struct rte_port *port = &ports[port_id];
 	uint8_t i;
@@ -208,6 +214,23 @@ nic_stats_display(portid_t port_id)
 			       i, stats.q_opackets[i], stats.q_obytes[i]);
 		}
 	}
+
+	diff_cycles = prev_cycles[port_id];
+	prev_cycles[port_id] = rte_rdtsc();
+	if (diff_cycles > 0)
+		diff_cycles = prev_cycles[port_id] - diff_cycles;
+
+	diff_pkts_rx = stats.ipackets - prev_pkts_rx[port_id];
+	diff_pkts_tx = stats.opackets - prev_pkts_tx[port_id];
+	prev_pkts_rx[port_id] = stats.ipackets;
+	prev_pkts_tx[port_id] = stats.opackets;
+	mpps_rx = diff_cycles > 0 ?
+		diff_pkts_rx * rte_get_tsc_hz() / diff_cycles : 0;
+	mpps_tx = diff_cycles > 0 ?
+		diff_pkts_tx * rte_get_tsc_hz() / diff_cycles : 0;
+	printf("\n  Throughput (since last show)\n");
+	printf("  Rx-pps: %12"PRIu64"\n  Tx-pps: %12"PRIu64"\n",
+			mpps_rx, mpps_tx);
 
 	printf("  %s############################%s\n",
 	       nic_stats_border, nic_stats_border);
