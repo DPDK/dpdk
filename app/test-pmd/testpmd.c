@@ -1517,17 +1517,12 @@ close_port(portid_t pid)
 void
 attach_port(char *identifier)
 {
-	portid_t i, j, pi = 0;
+	portid_t pi = 0;
 
 	printf("Attaching a new port...\n");
 
 	if (identifier == NULL) {
 		printf("Invalid parameters are specified\n");
-		return;
-	}
-
-	if (test_done == 0) {
-		printf("Please stop forwarding first\n");
 		return;
 	}
 
@@ -1540,16 +1535,6 @@ attach_port(char *identifier)
 
 	nb_ports = rte_eth_dev_count();
 
-	/* set_default_fwd_ports_config(); */
-	memset(fwd_ports_ids, 0, sizeof(fwd_ports_ids));
-	i = 0;
-	FOREACH_PORT(j, ports) {
-		fwd_ports_ids[i] = j;
-		i++;
-	}
-	nb_cfg_ports = nb_ports;
-	nb_fwd_ports++;
-
 	ports[pi].port_status = RTE_PORT_STOPPED;
 
 	printf("Port %d is attached. Now total ports is %d\n", pi, nb_ports);
@@ -1559,7 +1544,6 @@ attach_port(char *identifier)
 void
 detach_port(uint8_t port_id)
 {
-	portid_t i, pi = 0;
 	char name[RTE_ETH_NAME_MAX_LEN];
 
 	printf("Detaching a port...\n");
@@ -1574,16 +1558,6 @@ detach_port(uint8_t port_id)
 
 	ports[port_id].enabled = 0;
 	nb_ports = rte_eth_dev_count();
-
-	/* set_default_fwd_ports_config(); */
-	memset(fwd_ports_ids, 0, sizeof(fwd_ports_ids));
-	i = 0;
-	FOREACH_PORT(pi, ports) {
-		fwd_ports_ids[i] = pi;
-		i++;
-	}
-	nb_cfg_ports = nb_ports;
-	nb_fwd_ports--;
 
 	printf("Port '%s' is detached. Now total ports is %d\n",
 			name, nb_ports);
