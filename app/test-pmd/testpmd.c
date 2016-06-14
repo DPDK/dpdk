@@ -1527,6 +1527,7 @@ void
 attach_port(char *identifier)
 {
 	portid_t pi = 0;
+	unsigned int socket_id;
 
 	printf("Attaching a new port...\n");
 
@@ -1539,7 +1540,11 @@ attach_port(char *identifier)
 		return;
 
 	ports[pi].enabled = 1;
-	reconfig(pi, rte_eth_dev_socket_id(pi));
+	socket_id = (unsigned)rte_eth_dev_socket_id(pi);
+	/* if socket_id is invalid, set to 0 */
+	if (check_socket_id(socket_id) < 0)
+		socket_id = 0;
+	reconfig(pi, socket_id);
 	rte_eth_promiscuous_enable(pi);
 
 	nb_ports = rte_eth_dev_count();
