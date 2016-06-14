@@ -1381,7 +1381,7 @@ fwd_config_setup(void)
 		simple_fwd_config_setup();
 }
 
-static void
+void
 pkt_fwd_config_display(struct fwd_config *cfg)
 {
 	struct fwd_stream *fs;
@@ -1418,14 +1418,6 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 		printf("\n");
 	}
 	printf("\n");
-}
-
-
-void
-fwd_config_display(void)
-{
-	fwd_config_setup();
-	pkt_fwd_config_display(&cur_fwd_config);
 }
 
 int

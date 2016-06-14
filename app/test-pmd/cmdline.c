@@ -1223,6 +1223,8 @@ cmd_config_rx_tx_parsed(void *parsed_result,
 		return;
 	}
 
+	fwd_config_setup();
+
 	init_port_config();
 
 	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
@@ -2520,16 +2522,20 @@ static void cmd_set_list_parsed(void *parsed_result,
 		nb_item = parse_item_list(res->list_of_items, "core",
 					  RTE_MAX_LCORE,
 					  parsed_items.lcorelist, 1);
-		if (nb_item > 0)
+		if (nb_item > 0) {
 			set_fwd_lcores_list(parsed_items.lcorelist, nb_item);
+			fwd_config_setup();
+		}
 		return;
 	}
 	if (!strcmp(res->list_name, "portlist")) {
 		nb_item = parse_item_list(res->list_of_items, "port",
 					  RTE_MAX_ETHPORTS,
 					  parsed_items.portlist, 1);
-		if (nb_item > 0)
+		if (nb_item > 0) {
 			set_fwd_ports_list(parsed_items.portlist, nb_item);
+			fwd_config_setup();
+		}
 	}
 }
 
@@ -2573,10 +2579,13 @@ static void cmd_set_mask_parsed(void *parsed_result,
 		printf("Please stop forwarding first\n");
 		return;
 	}
-	if (!strcmp(res->mask, "coremask"))
+	if (!strcmp(res->mask, "coremask")) {
 		set_fwd_lcores_mask(res->hexavalue);
-	else if (!strcmp(res->mask, "portmask"))
+		fwd_config_setup();
+	} else if (!strcmp(res->mask, "portmask")) {
 		set_fwd_ports_mask(res->hexavalue);
+		fwd_config_setup();
+	}
 }
 
 cmdline_parse_token_string_t cmd_setmask_set =
@@ -2613,11 +2622,13 @@ static void cmd_set_parsed(void *parsed_result,
 			   __attribute__((unused)) void *data)
 {
 	struct cmd_set_result *res = parsed_result;
-	if (!strcmp(res->what, "nbport"))
+	if (!strcmp(res->what, "nbport")) {
 		set_fwd_ports_number(res->value);
-	else if (!strcmp(res->what, "nbcore"))
+		fwd_config_setup();
+	} else if (!strcmp(res->what, "nbcore")) {
 		set_fwd_lcores_number(res->value);
-	else if (!strcmp(res->what, "burst"))
+		fwd_config_setup();
+	} else if (!strcmp(res->what, "burst"))
 		set_nb_pkt_per_burst(res->value);
 	else if (!strcmp(res->what, "verbose"))
 		set_verbose_level(res->value);
@@ -5413,7 +5424,7 @@ static void cmd_showcfg_parsed(void *parsed_result,
 	else if (!strcmp(res->what, "cores"))
 		fwd_lcores_config_display();
 	else if (!strcmp(res->what, "fwd"))
-		fwd_config_display();
+		pkt_fwd_config_display(&cur_fwd_config);
 	else if (!strcmp(res->what, "txpkts"))
 		show_tx_pkt_segments();
 }

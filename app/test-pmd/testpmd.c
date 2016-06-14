@@ -591,6 +591,8 @@ init_config(void)
 	/* Configuration of packet forwarding streams. */
 	if (init_fwd_streams() < 0)
 		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
+
+	fwd_config_setup();
 }
 
 
