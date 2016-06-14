@@ -98,9 +98,11 @@ Start packet forwarding with current configuration::
 start tx_first
 ~~~~~~~~~~~~~~
 
-Start packet forwarding with current configuration after sending one burst of packets::
+Start packet forwarding with current configuration after sending specified number of bursts of packets::
 
-   testpmd> start tx_first
+   testpmd> start tx_first (""|burst_num)
+
+The default burst number is 1 when ``burst_num`` not presented.
 
 stop
 ~~~~

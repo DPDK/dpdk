@@ -1057,8 +1057,11 @@ start_packet_forwarding(int with_tx_first)
 			for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++)
 				(*port_fwd_begin)(fwd_ports_ids[i]);
 		}
-		launch_packet_forwarding(run_one_txonly_burst_on_core);
-		rte_eal_mp_wait_lcore();
+		while (with_tx_first--) {
+			launch_packet_forwarding(
+					run_one_txonly_burst_on_core);
+			rte_eal_mp_wait_lcore();
+		}
 		port_fwd_end = tx_only_engine.port_fwd_end;
 		if (port_fwd_end != NULL) {
 			for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++)
