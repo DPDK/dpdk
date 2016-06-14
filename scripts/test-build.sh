@@ -35,6 +35,7 @@ default_path=$PATH
 # Load config options:
 # - AESNI_MULTI_BUFFER_LIB_PATH
 # - DPDK_BUILD_TEST_CONFIGS (defconfig1+option1+option2 defconfig2)
+# - DPDK_DEP_ARCHIVE
 # - DPDK_DEP_CFLAGS
 # - DPDK_DEP_LDFLAGS
 # - DPDK_DEP_MOFED (y/[n])
@@ -111,6 +112,7 @@ reset_env ()
 {
 	export PATH=$default_path
 	unset CROSS
+	unset DPDK_DEP_ARCHIVE
 	unset DPDK_DEP_CFLAGS
 	unset DPDK_DEP_LDFLAGS
 	unset DPDK_DEP_MOFED
@@ -149,6 +151,8 @@ config () # <directory> <target> <options>
 		sed -ri         's,(PCI_CONFIG=)n,\1y,' $1/.config
 		sed -ri    's,(LIBRTE_IEEE1588=)n,\1y,' $1/.config
 		sed -ri             's,(BYPASS=)n,\1y,' $1/.config
+		test "$DPDK_DEP_ARCHIVE" != y || \
+		sed -ri       's,(RESOURCE_TAR=)n,\1y,' $1/.config
 		test "$DPDK_DEP_MOFED" != y || \
 		sed -ri           's,(MLX._PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \

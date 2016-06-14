@@ -101,6 +101,9 @@ Compilation of the DPDK
 *   libpcap headers and libraries (libpcap-devel) to compile and use the libpcap-based poll-mode driver.
     This driver is disabled by default and can be enabled by setting ``CONFIG_RTE_LIBRTE_PMD_PCAP=y`` in the build time config file.
 
+*   libarchive headers and library are needed for some unit tests using tar to get their resources.
+
+
 Running DPDK Applications
 -------------------------
 

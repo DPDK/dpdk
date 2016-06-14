@@ -85,6 +85,7 @@ static int test_resource_c(void)
 	return 0;
 }
 
+#ifdef RTE_APP_TEST_RESOURCE_TAR
 REGISTER_LINKED_RESOURCE(test_resource_tar);
 
 static int test_resource_tar(void)
@@ -111,6 +112,8 @@ static int test_resource_tar(void)
 	return 0;
 }
 
+#endif /* RTE_APP_TEST_RESOURCE_TAR */
+
 static int test_resource(void)
 {
 	if (test_resource_dpdk())
@@ -119,8 +122,10 @@ static int test_resource(void)
 	if (test_resource_c())
 		return -1;
 
+#ifdef RTE_APP_TEST_RESOURCE_TAR
 	if (test_resource_tar())
 		return -1;
+#endif /* RTE_APP_TEST_RESOURCE_TAR */
 
 	return 0;
 }

@@ -51,12 +51,15 @@ $(1).res.o: $(2)
 		/dev/stdin $$@ < $$<
 endef
 
+ifeq ($(CONFIG_RTE_APP_TEST_RESOURCE_TAR),y)
 define linked_tar_resource
 $(1).tar: $(2)
 	tar -C $$(dir $$<) -cf $$@ $$(notdir $$<)
-
 $(call linked_resource,$(1),$(1).tar)
 endef
+else # ! CONFIG_RTE_APP_TEST_RESOURCE_TAR
+linked_tar_resource =
+endif # CONFIG_RTE_APP_TEST_RESOURCE_TAR
 
 #
 # library name
@@ -72,7 +75,7 @@ SRCS-y += resource.c
 SRCS-y += test_resource.c
 $(eval $(call linked_resource,test_resource_c,resource.c))
 $(eval $(call linked_tar_resource,test_resource_tar,test_resource.c))
-SRCS-y += test_pci.c
+SRCS-$(CONFIG_RTE_APP_TEST_RESOURCE_TAR) += test_pci.c
 $(eval $(call linked_tar_resource,test_pci_sysfs,test_pci_sysfs))
 SRCS-y += test_prefetch.c
 SRCS-y += test_byteorder.c
@@ -194,7 +197,6 @@ CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -D_GNU_SOURCE
 
 LDLIBS += -lm
-LDLIBS += -larchive
 
 # Disable VTA for memcpy test
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
@@ -216,6 +218,10 @@ ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 LDLIBS += -lrte_pmd_ring
 endif
 endif
+endif
+
+ifeq ($(CONFIG_RTE_APP_TEST_RESOURCE_TAR),y)
+LDLIBS += -larchive
 endif
 
 include $(RTE_SDK)/mk/rte.app.mk

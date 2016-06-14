@@ -33,8 +33,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <archive.h>
-#include <archive_entry.h>
 #include <errno.h>
 #include <sys/queue.h>
 
@@ -96,6 +94,10 @@ int resource_fwrite_file(const struct resource *r, const char *fname)
 	fclose(f);
 	return ret;
 }
+
+#ifdef RTE_APP_TEST_RESOURCE_TAR
+#include <archive.h>
+#include <archive_entry.h>
 
 static int do_copy(struct archive *r, struct archive *w)
 {
@@ -294,6 +296,8 @@ fail:
 	rte_panic("Failed: %s\n", archive_error_string(r));
 	return -1;
 }
+
+#endif /* RTE_APP_TEST_RESOURCE_TAR */
 
 void resource_register(struct resource *r)
 {

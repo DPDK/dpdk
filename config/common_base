@@ -546,6 +546,7 @@ CONFIG_RTE_INSECURE_FUNCTION_WARNING=n
 # Compile the test application
 #
 CONFIG_RTE_APP_TEST=y
+CONFIG_RTE_APP_TEST_RESOURCE_TAR=n
 
 #
 # Compile the PMD test application
