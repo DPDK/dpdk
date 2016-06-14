@@ -333,7 +333,6 @@ The commandline options are:
 
        io (the default)
        mac
-       mac_retry
        mac_swap
        flowgen
        rxonly

@@ -144,7 +144,6 @@ streamid_t nb_fwd_streams;       /**< Is equal to (nb_ports * nb_rxq). */
 struct fwd_engine * fwd_engines[] = {
 	&io_fwd_engine,
 	&mac_fwd_engine,
-	&mac_retry_fwd_engine,
 	&mac_swap_engine,
 	&flow_gen_engine,
 	&rx_only_engine,
@@ -159,6 +158,9 @@ struct fwd_engine * fwd_engines[] = {
 
 struct fwd_config cur_fwd_config;
 struct fwd_engine *cur_fwd_eng = &io_fwd_engine; /**< IO mode by default. */
+uint32_t retry_enabled;
+uint32_t burst_tx_delay_time = BURST_TX_WAIT_US;
+uint32_t burst_tx_retry_num = BURST_TX_RETRIES;
 
 uint16_t mbuf_data_size = DEFAULT_MBUF_DATA_SIZE; /**< Mbuf data space size. */
 uint32_t param_total_num_mbufs = 0;  /**< number of mbufs in all pools - if

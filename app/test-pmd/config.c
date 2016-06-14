@@ -893,8 +893,9 @@ fwd_lcores_config_display(void)
 void
 rxtx_config_display(void)
 {
-	printf("  %s packet forwarding - CRC stripping %s - "
+	printf("  %s packet forwarding%s - CRC stripping %s - "
 	       "packets/burst=%d\n", cur_fwd_eng->fwd_mode_name,
+	       retry_enabled == 0 ? "" : " with retry",
 	       rx_mode.hw_strip_crc ? "enabled" : "disabled",
 	       nb_pkt_per_burst);
 
@@ -1131,6 +1132,7 @@ simple_fwd_config_setup(void)
 		fwd_streams[i]->tx_port   = fwd_ports_ids[j];
 		fwd_streams[i]->tx_queue  = 0;
 		fwd_streams[i]->peer_addr = j;
+		fwd_streams[i]->retry_enabled = retry_enabled;
 
 		if (port_topology == PORT_TOPOLOGY_PAIRED) {
 			fwd_streams[j]->rx_port   = fwd_ports_ids[j];
@@ -1138,6 +1140,7 @@ simple_fwd_config_setup(void)
 			fwd_streams[j]->tx_port   = fwd_ports_ids[i];
 			fwd_streams[j]->tx_queue  = 0;
 			fwd_streams[j]->peer_addr = i;
+			fwd_streams[j]->retry_enabled = retry_enabled;
 		}
 	}
 }
@@ -1206,6 +1209,7 @@ rss_fwd_config_setup(void)
 		fs->tx_port = fwd_ports_ids[txp];
 		fs->tx_queue = rxq;
 		fs->peer_addr = fs->tx_port;
+		fs->retry_enabled = retry_enabled;
 		rxq = (queueid_t) (rxq + 1);
 		if (rxq < nb_q)
 			continue;
@@ -1280,6 +1284,7 @@ dcb_fwd_config_setup(void)
 				fs->tx_port = fwd_ports_ids[txp];
 				fs->tx_queue = txq + j % nb_tx_queue;
 				fs->peer_addr = fs->tx_port;
+				fs->retry_enabled = retry_enabled;
 			}
 			fwd_lcores[lc_id]->stream_nb +=
 				rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue;
@@ -1350,6 +1355,7 @@ icmp_echo_config_setup(void)
 			fs->tx_port = fs->rx_port;
 			fs->tx_queue = rxq;
 			fs->peer_addr = fs->tx_port;
+			fs->retry_enabled = retry_enabled;
 			if (verbose_level > 0)
 				printf("  stream=%d port=%d rxq=%d txq=%d\n",
 				       sm_id, fs->rx_port, fs->rx_queue,
@@ -1388,14 +1394,15 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 	lcoreid_t  lc_id;
 	streamid_t sm_id;
 
-	printf("%s packet forwarding - ports=%d - cores=%d - streams=%d - "
+	printf("%s packet forwarding%s - ports=%d - cores=%d - streams=%d - "
 		"NUMA support %s, MP over anonymous pages %s\n",
 		cfg->fwd_eng->fwd_mode_name,
+		retry_enabled == 0 ? "" : " with retry",
 		cfg->nb_fwd_ports, cfg->nb_fwd_lcores, cfg->nb_fwd_streams,
 		numa_support == 1 ? "enabled" : "disabled",
 		mp_anon != 0 ? "enabled" : "disabled");
 
-	if (strcmp(cfg->fwd_eng->fwd_mode_name, "mac_retry") == 0)
+	if (retry_enabled)
 		printf("TX retry num: %u, delay between TX retries: %uus\n",
 			burst_tx_retry_num, burst_tx_delay_time);
 	for (lc_id = 0; lc_id < cfg->nb_fwd_lcores; lc_id++) {
@@ -1692,6 +1699,31 @@ list_pkt_forwarding_modes(void)
 	return fwd_modes;
 }
 
+char*
+list_pkt_forwarding_retry_modes(void)
+{
+	static char fwd_modes[128] = "";
+	const char *separator = "|";
+	struct fwd_engine *fwd_eng;
+	unsigned i = 0;
+
+	if (strlen(fwd_modes) == 0) {
+		while ((fwd_eng = fwd_engines[i++]) != NULL) {
+			if (fwd_eng == &rx_only_engine)
+				continue;
+			strncat(fwd_modes, fwd_eng->fwd_mode_name,
+					sizeof(fwd_modes) -
+					strlen(fwd_modes) - 1);
+			strncat(fwd_modes, separator,
+					sizeof(fwd_modes) -
+					strlen(fwd_modes) - 1);
+		}
+		fwd_modes[strlen(fwd_modes) - strlen(separator)] = '\0';
+	}
+
+	return fwd_modes;
+}
+
 void
 set_pkt_forwarding_mode(const char *fwd_mode_name)
 {
@@ -1701,8 +1733,9 @@ set_pkt_forwarding_mode(const char *fwd_mode_name)
 	i = 0;
 	while ((fwd_eng = fwd_engines[i]) != NULL) {
 		if (! strcmp(fwd_eng->fwd_mode_name, fwd_mode_name)) {
-			printf("Set %s packet forwarding mode\n",
-			       fwd_mode_name);
+			printf("Set %s packet forwarding mode%s\n",
+			       fwd_mode_name,
+			       retry_enabled == 0 ? "" : " with retry");
 			cur_fwd_eng = fwd_eng;
 			return;
 		}

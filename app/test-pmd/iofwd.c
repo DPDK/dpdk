@@ -80,6 +80,8 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	uint16_t nb_rx;
 	uint16_t nb_tx;
+	uint32_t retry;
+
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
 	uint64_t end_tsc;
@@ -93,16 +95,28 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 	/*
 	 * Receive a burst of packets and forward them.
 	 */
-	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
-				 nb_pkt_per_burst);
+	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue,
+			pkts_burst, nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
 		return;
+	fs->rx_packets += nb_rx;
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
 #endif
-	fs->rx_packets += nb_rx;
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
+	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
+			pkts_burst, nb_rx);
+	/*
+	 * Retry if necessary
+	 */
+	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
+		retry = 0;
+		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
+			rte_delay_us(burst_tx_delay_time);
+			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
+					&pkts_burst[nb_tx], nb_rx - nb_tx);
+		}
+	}
 	fs->tx_packets += nb_tx;
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;

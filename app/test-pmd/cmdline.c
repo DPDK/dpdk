@@ -246,8 +246,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set number of packets per burst.\n\n"
 
 			"set burst tx delay (microseconds) retry (num)\n"
-			"    Set the transmit delay time and number of retries"
-			" in mac_retry forwarding mode.\n\n"
+			"    Set the transmit delay time and number of retries,"
+			" effective when retry is enabled.\n\n"
 
 			"set txpkts (x[,y]*)\n"
 			"    Set the length of each segment of TXONLY"
@@ -4568,6 +4568,7 @@ static void cmd_set_fwd_mode_parsed(void *parsed_result,
 {
 	struct cmd_set_fwd_mode_result *res = parsed_result;
 
+	retry_enabled = 0;
 	set_pkt_forwarding_mode(res->mode);
 }
 
@@ -4610,6 +4611,74 @@ static void cmd_set_fwd_mode_init(void)
 		else
 			*c++ = *modes;
 	token_struct = (cmdline_parse_token_string_t*)cmd_set_fwd_mode.tokens[2];
+	token_struct->string_data.str = token;
+}
+
+/* *** SET RETRY FORWARDING MODE *** */
+struct cmd_set_fwd_retry_mode_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t fwd;
+	cmdline_fixed_string_t mode;
+	cmdline_fixed_string_t retry;
+};
+
+static void cmd_set_fwd_retry_mode_parsed(void *parsed_result,
+			    __attribute__((unused)) struct cmdline *cl,
+			    __attribute__((unused)) void *data)
+{
+	struct cmd_set_fwd_retry_mode_result *res = parsed_result;
+
+	retry_enabled = 1;
+	set_pkt_forwarding_mode(res->mode);
+}
+
+cmdline_parse_token_string_t cmd_setfwd_retry_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_retry_mode_result,
+			set, "set");
+cmdline_parse_token_string_t cmd_setfwd_retry_fwd =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_retry_mode_result,
+			fwd, "fwd");
+cmdline_parse_token_string_t cmd_setfwd_retry_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_retry_mode_result,
+			mode,
+		"" /* defined at init */);
+cmdline_parse_token_string_t cmd_setfwd_retry_retry =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_retry_mode_result,
+			retry, "retry");
+
+cmdline_parse_inst_t cmd_set_fwd_retry_mode = {
+	.f = cmd_set_fwd_retry_mode_parsed,
+	.data = NULL,
+	.help_str = NULL, /* defined at init */
+	.tokens = {
+		(void *)&cmd_setfwd_retry_set,
+		(void *)&cmd_setfwd_retry_fwd,
+		(void *)&cmd_setfwd_retry_mode,
+		(void *)&cmd_setfwd_retry_retry,
+		NULL,
+	},
+};
+
+static void cmd_set_fwd_retry_mode_init(void)
+{
+	char *modes, *c;
+	static char token[128];
+	static char help[256];
+	cmdline_parse_token_string_t *token_struct;
+
+	modes = list_pkt_forwarding_retry_modes();
+	snprintf(help, sizeof(help), "set fwd %s retry - "
+		"set packet forwarding mode with retry", modes);
+	cmd_set_fwd_retry_mode.help_str = help;
+
+	/* string token separator is # */
+	for (c = token; *modes != '\0'; modes++)
+		if (*modes == '|')
+			*c++ = '#';
+		else
+			*c++ = *modes;
+	token_struct = (cmdline_parse_token_string_t *)
+		cmd_set_fwd_retry_mode.tokens[2];
 	token_struct->string_data.str = token;
 }
 
@@ -10493,6 +10562,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_fwd_list,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mask,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mode,
+	(cmdline_parse_inst_t *)&cmd_set_fwd_retry_mode,
 	(cmdline_parse_inst_t *)&cmd_set_burst_tx_retry,
 	(cmdline_parse_inst_t *)&cmd_set_promisc_mode_one,
 	(cmdline_parse_inst_t *)&cmd_set_promisc_mode_all,
@@ -10632,6 +10702,7 @@ prompt(void)
 {
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
+	cmd_set_fwd_retry_mode_init();
 
 	testpmd_cl = cmdline_stdin_new(main_ctx, "testpmd> ");
 	if (testpmd_cl == NULL)

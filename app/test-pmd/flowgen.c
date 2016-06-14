@@ -131,6 +131,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
 	uint16_t i;
+	uint32_t retry;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
 	uint64_t end_tsc;
@@ -207,6 +208,17 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	}
 
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
+	/*
+	 * Retry if necessary
+	 */
+	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
+		retry = 0;
+		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
+			rte_delay_us(burst_tx_delay_time);
+			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
+					&pkts_burst[nb_tx], nb_rx - nb_tx);
+		}
+	}
 	fs->tx_packets += nb_tx;
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS

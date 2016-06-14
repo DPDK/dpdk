@@ -643,6 +643,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t i;
 	uint64_t ol_flags;
 	uint16_t testpmd_ol_flags;
+	uint32_t retry;
 	uint32_t rx_bad_ip_csum;
 	uint32_t rx_bad_l4_csum;
 	struct testpmd_offload_info info;
@@ -848,6 +849,17 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		}
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
+	/*
+	 * Retry if necessary
+	 */
+	if (unlikely(nb_tx < nb_rx) && fs->retry_enabled) {
+		retry = 0;
+		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
+			rte_delay_us(burst_tx_delay_time);
+			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
+					&pkts_burst[nb_tx], nb_rx - nb_tx);
+		}
+	}
 	fs->tx_packets += nb_tx;
 	fs->rx_bad_ip_csum += rx_bad_ip_csum;
 	fs->rx_bad_l4_csum += rx_bad_l4_csum;

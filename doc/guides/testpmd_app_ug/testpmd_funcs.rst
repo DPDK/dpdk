@@ -249,8 +249,10 @@ set fwd
 
 Set the packet forwarding mode::
 
-   testpmd> set fwd (io|mac|mac_retry|macswap|flowgen| \
-                     rxonly|txonly|csum|icmpecho)
+   testpmd> set fwd (io|mac|macswap|flowgen| \
+                     rxonly|txonly|csum|icmpecho) (""|retry)
+
+``retry`` can be specified for forwarding engines except ``rx_only``.
 
 The available information categories are:
 
@@ -259,8 +261,6 @@ The available information categories are:
   This is the default mode.
 
 * ``mac``: Changes the source and the destination Ethernet addresses of packets before forwarding them.
-
-* ``mac_retry``: Same as "mac" forwarding mode, but includes retries if the destination queue is full.
 
 * ``macswap``: MAC swap forwarding mode.
   Swaps the source and the destination Ethernet addresses of packets before forwarding them.
@@ -392,9 +392,9 @@ Set number of packets per burst::
 
 This is equivalent to the ``--burst command-line`` option.
 
-In ``mac_retry`` forwarding mode, the transmit delay time and number of retries can also be set::
+When retry is enabled, the transmit delay time and number of retries can also be set::
 
-   testpmd> set burst tx delay (micrseconds) retry (num)
+   testpmd> set burst tx delay (microseconds) retry (num)
 
 set txpkts
 ~~~~~~~~~~
