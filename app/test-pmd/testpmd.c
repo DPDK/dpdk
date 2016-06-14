@@ -1024,6 +1024,7 @@ start_packet_forwarding(int with_tx_first)
 		flush_fwd_rx_queues();
 
 	fwd_config_setup();
+	pkt_fwd_config_display(&cur_fwd_config);
 	rxtx_config_display();
 
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
