@@ -67,21 +67,14 @@ static int my_driver_init(struct rte_pci_driver *dr,
 
 /* IXGBE NICS */
 struct rte_pci_id my_driver_id[] = {
-
-#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#include <rte_pci_dev_ids.h>
-
-{ .vendor_id = 0, /* sentinel */ },
+	{RTE_PCI_DEVICE(0x0001, 0x1234)},
+	{ .vendor_id = 0, /* sentinel */ },
 };
 
 struct rte_pci_id my_driver_id2[] = {
-
-/* IGB & EM NICS */
-#define RTE_PCI_DEV_ID_DECL_EM(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#include <rte_pci_dev_ids.h>
-
-{ .vendor_id = 0, /* sentinel */ },
+	{RTE_PCI_DEVICE(0x0001, 0x4444)},
+	{RTE_PCI_DEVICE(0x0002, 0xabcd)},
+	{ .vendor_id = 0, /* sentinel */ },
 };
 
 struct rte_pci_driver my_driver = {
