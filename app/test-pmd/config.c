@@ -1199,19 +1199,13 @@ rss_fwd_config_setup(void)
 	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
 	cur_fwd_config.nb_fwd_streams =
 		(streamid_t) (nb_q * cur_fwd_config.nb_fwd_ports);
-	if (cur_fwd_config.nb_fwd_streams > cur_fwd_config.nb_fwd_lcores)
-		cur_fwd_config.nb_fwd_streams =
-			(streamid_t)cur_fwd_config.nb_fwd_lcores;
-	else
-		cur_fwd_config.nb_fwd_lcores =
-			(lcoreid_t)cur_fwd_config.nb_fwd_streams;
 
 	/* reinitialize forwarding streams */
 	init_fwd_streams();
 
 	setup_fwd_config_of_each_lcore(&cur_fwd_config);
 	rxp = 0; rxq = 0;
-	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
+	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_streams; lc_id++) {
 		struct fwd_stream *fs;
 
 		fs = fwd_streams[lc_id];
