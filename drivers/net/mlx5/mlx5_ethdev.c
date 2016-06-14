@@ -1114,7 +1114,7 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 		rte_eal_alarm_cancel(mlx5_dev_link_status_handler, dev);
 	priv->pending_alarm = 0;
 	priv->intr_handle.fd = 0;
-	priv->intr_handle.type = 0;
+	priv->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 }
 
 /**

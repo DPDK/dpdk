@@ -269,7 +269,7 @@ priv_flow_attr(struct priv *priv, struct ibv_exp_flow_attr *flow_attr,
 static enum hash_rxq_type
 hash_rxq_type_from_pos(const struct ind_table_init *table, unsigned int pos)
 {
-	enum hash_rxq_type type = 0;
+	enum hash_rxq_type type = HASH_RXQ_TCPV4;
 
 	assert(pos < table->hash_types_n);
 	do {
@@ -609,9 +609,11 @@ priv_allow_flow_type(struct priv *priv, enum hash_rxq_flow_type type)
 int
 priv_rehash_flows(struct priv *priv)
 {
-	unsigned int i;
+	enum hash_rxq_flow_type i;
 
-	for (i = 0; (i != RTE_DIM((*priv->hash_rxqs)[0].special_flow)); ++i)
+	for (i = HASH_RXQ_FLOW_TYPE_PROMISC;
+			i != RTE_DIM((*priv->hash_rxqs)[0].special_flow);
+			++i)
 		if (!priv_allow_flow_type(priv, i)) {
 			priv_special_flow_disable(priv, i);
 		} else {

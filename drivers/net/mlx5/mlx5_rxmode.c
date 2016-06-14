@@ -347,7 +347,9 @@ priv_special_flow_enable_all(struct priv *priv)
 {
 	enum hash_rxq_flow_type flow_type;
 
-	for (flow_type = 0; flow_type != HASH_RXQ_FLOW_TYPE_MAC; ++flow_type) {
+	for (flow_type = HASH_RXQ_FLOW_TYPE_PROMISC;
+			flow_type != HASH_RXQ_FLOW_TYPE_MAC;
+			++flow_type) {
 		int ret;
 
 		ret = priv_special_flow_enable(priv, flow_type);
@@ -372,7 +374,9 @@ priv_special_flow_disable_all(struct priv *priv)
 {
 	enum hash_rxq_flow_type flow_type;
 
-	for (flow_type = 0; flow_type != HASH_RXQ_FLOW_TYPE_MAC; ++flow_type)
+	for (flow_type = HASH_RXQ_FLOW_TYPE_PROMISC;
+			flow_type != HASH_RXQ_FLOW_TYPE_MAC;
+			++flow_type)
 		priv_special_flow_disable(priv, flow_type);
 }
 
