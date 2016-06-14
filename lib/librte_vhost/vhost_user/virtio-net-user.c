@@ -63,9 +63,10 @@ static uint64_t
 get_blk_size(int fd)
 {
 	struct stat stat;
+	int ret;
 
-	fstat(fd, &stat);
-	return (uint64_t)stat.st_blksize;
+	ret = fstat(fd, &stat);
+	return ret == -1 ? (uint64_t)-1 : (uint64_t)stat.st_blksize;
 }
 
 static void
@@ -167,6 +168,11 @@ user_set_mem_table(int vid, struct VhostUserMsg *pmsg)
 		 * aligned.
 		 */
 		alignment = get_blk_size(pmsg->fds[idx]);
+		if (alignment == (uint64_t)-1) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"couldn't get hugepage size through fstat\n");
+			goto err_mmap;
+		}
 		mapped_size = RTE_ALIGN_CEIL(mapped_size, alignment);
 
 		mapped_address = (uint64_t)(uintptr_t)mmap(NULL,
