@@ -80,7 +80,7 @@ static int is_eth_addr_valid(uint8_t *addr)
 }
 
 static void
-enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq)
+enic_rxmbuf_queue_release(__rte_unused struct enic *enic, struct vnic_rq *rq)
 {
 	uint16_t i;
 
@@ -89,7 +89,7 @@ enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq)
 		return;
 	}
 
-	for (i = 0; i < enic->config.rq_desc_count; i++) {
+	for (i = 0; i < rq->ring.desc_count; i++) {
 		if (rq->mbuf_ring[i]) {
 			rte_pktmbuf_free_seg(rq->mbuf_ring[i]);
 			rq->mbuf_ring[i] = NULL;
