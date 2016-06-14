@@ -532,6 +532,8 @@ void dev_set_link_down(portid_t pid);
 void init_port_config(void);
 void set_port_slave_flag(portid_t slave_pid);
 void clear_port_slave_flag(portid_t slave_pid);
+uint8_t port_is_bonding_slave(portid_t slave_pid);
+
 int init_port_dcb_config(portid_t pid, enum dcb_mode_enable dcb_mode,
 		     enum rte_eth_nb_tcs num_tcs,
 		     uint8_t pfc_en);

@@ -1449,6 +1449,11 @@ stop_port(portid_t pid)
 			continue;
 		}
 
+		if (port_is_bonding_slave(pi)) {
+			printf("Please remove port %d from bonded device.\n", pi);
+			continue;
+		}
+
 		port = &ports[pi];
 		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STARTED,
 						RTE_PORT_HANDLING) == 0)
@@ -1484,6 +1489,11 @@ close_port(portid_t pid)
 
 		if (port_is_forwarding(pi) != 0 && test_done == 0) {
 			printf("Please remove port %d from forwarding configuration.\n", pi);
+			continue;
+		}
+
+		if (port_is_bonding_slave(pi)) {
+			printf("Please remove port %d from bonded device.\n", pi);
 			continue;
 		}
 
@@ -1822,6 +1832,14 @@ void clear_port_slave_flag(portid_t slave_pid)
 
 	port = &ports[slave_pid];
 	port->slave_flag = 0;
+}
+
+uint8_t port_is_bonding_slave(portid_t slave_pid)
+{
+	struct rte_port *port;
+
+	port = &ports[slave_pid];
+	return port->slave_flag;
 }
 
 const uint16_t vlan_tags[] = {
