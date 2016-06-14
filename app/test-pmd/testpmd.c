@@ -994,6 +994,12 @@ start_packet_forwarding(int with_tx_first)
 		printf("Packet forwarding already started\n");
 		return;
 	}
+
+	if (init_fwd_streams() < 0) {
+		printf("Fail from init_fwd_streams()\n");
+		return;
+	}
+
 	if(dcb_test) {
 		for (i = 0; i < nb_fwd_ports; i++) {
 			pt_id = fwd_ports_ids[i];
@@ -1283,11 +1289,6 @@ start_port(portid_t pid)
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;
-
-	if (init_fwd_streams() < 0) {
-		printf("Fail from init_fwd_streams()\n");
-		return -1;
-	}
 
 	if(dcb_config)
 		dcb_test = 1;
