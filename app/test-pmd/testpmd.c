@@ -1360,7 +1360,7 @@ start_port(portid_t pid)
 					if (mp == NULL) {
 						printf("Failed to setup RX queue:"
 							"No mempool allocation"
-							"on the socket %d\n",
+							" on the socket %d\n",
 							rxring_numa[pi]);
 						return -1;
 					}
@@ -1368,16 +1368,22 @@ start_port(portid_t pid)
 					diag = rte_eth_rx_queue_setup(pi, qi,
 					     nb_rxd,rxring_numa[pi],
 					     &(port->rx_conf),mp);
-				}
-				else
+				} else {
+					struct rte_mempool *mp =
+						mbuf_pool_find(port->socket_id);
+					if (mp == NULL) {
+						printf("Failed to setup RX queue:"
+							"No mempool allocation"
+							" on the socket %d\n",
+							port->socket_id);
+						return -1;
+					}
 					diag = rte_eth_rx_queue_setup(pi, qi,
 					     nb_rxd,port->socket_id,
-					     &(port->rx_conf),
-				             mbuf_pool_find(port->socket_id));
-
+					     &(port->rx_conf), mp);
+				}
 				if (diag == 0)
 					continue;
-
 
 				/* Fail to setup rx queue, return */
 				if (rte_atomic16_cmpset(&(port->port_status),
