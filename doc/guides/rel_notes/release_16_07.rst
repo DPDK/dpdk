@@ -47,6 +47,10 @@ New Features
   * Dropped specific Xen Dom0 code.
   * Dropped specific anonymous mempool code in testpmd.
 
+* **Updated the i40e base driver.**
+
+  Updated the i40e base driver, which includes support for new devices IDs.
+
 * **Supported virtio on IBM POWER8.**
 
   The ioports are mapped in memory when using Linux UIO.

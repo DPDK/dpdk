@@ -85,7 +85,7 @@ VPATH += $(SRCDIR)/base
 
 #
 # all source are stored in SRCS-y
-# base driver is based on the package of dpdk-i40e.2016.01.07.14.tar.gz.
+# base driver is based on the package of dpdk-i40e.2016.04.18.12.tar.gz.
 #
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_adminq.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_common.c
