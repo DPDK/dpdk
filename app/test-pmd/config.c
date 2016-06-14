@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1563,6 +1563,22 @@ set_fwd_ports_number(uint16_t nb_pt)
 	nb_fwd_ports = (portid_t) nb_pt;
 	printf("Number of forwarding ports set to %u\n",
 	       (unsigned int) nb_fwd_ports);
+}
+
+int
+port_is_forwarding(portid_t port_id)
+{
+	unsigned int i;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return -1;
+
+	for (i = 0; i < nb_fwd_ports; i++) {
+		if (fwd_ports_ids[i] == port_id)
+			return 1;
+	}
+
+	return 0;
 }
 
 void

@@ -1279,11 +1279,6 @@ start_port(portid_t pid)
 	struct rte_port *port;
 	struct ether_addr mac_addr;
 
-	if (test_done == 0) {
-		printf("Please stop forwarding first\n");
-		return -1;
-	}
-
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;
 
@@ -1435,10 +1430,6 @@ stop_port(portid_t pid)
 	struct rte_port *port;
 	int need_check_link_status = 0;
 
-	if (test_done == 0) {
-		printf("Please stop forwarding first\n");
-		return;
-	}
 	if (dcb_test) {
 		dcb_test = 0;
 		dcb_config = 0;
@@ -1452,6 +1443,11 @@ stop_port(portid_t pid)
 	FOREACH_PORT(pi, ports) {
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
+
+		if (port_is_forwarding(pi) != 0 && test_done == 0) {
+			printf("Please remove port %d from forwarding configuration.\n", pi);
+			continue;
+		}
 
 		port = &ports[pi];
 		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STARTED,
@@ -1477,11 +1473,6 @@ close_port(portid_t pid)
 	portid_t pi;
 	struct rte_port *port;
 
-	if (test_done == 0) {
-		printf("Please stop forwarding first\n");
-		return;
-	}
-
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return;
 
@@ -1490,6 +1481,11 @@ close_port(portid_t pid)
 	FOREACH_PORT(pi, ports) {
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
+
+		if (port_is_forwarding(pi) != 0 && test_done == 0) {
+			printf("Please remove port %d from forwarding configuration.\n", pi);
+			continue;
+		}
 
 		port = &ports[pi];
 		if (rte_atomic16_cmpset(&(port->port_status),

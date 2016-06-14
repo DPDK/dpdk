@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -500,6 +500,7 @@ void set_fwd_lcores_number(uint16_t nb_lc);
 void set_fwd_ports_list(unsigned int *portlist, unsigned int nb_pt);
 void set_fwd_ports_mask(uint64_t portmask);
 void set_fwd_ports_number(uint16_t nb_pt);
+int port_is_forwarding(portid_t port_id);
 
 void rx_vlan_strip_set(portid_t port_id, int on);
 void rx_vlan_strip_set_on_queue(portid_t port_id, uint16_t queue_id, int on);
