@@ -144,12 +144,13 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 		uint64_t dword;
 	} vol;
 
-	/* mask everything except rss and vlan flags
-	*bit2 is for vlan tag, bits 13:12 for rss
-	*/
+	/* mask everything except RSS, flow director and VLAN flags
+	 * bit2 is for VLAN tag, bit11 for flow director indication
+	 * bit13:12 for RSS indication.
+	 */
 	const __m128i rss_vlan_msk = _mm_set_epi16(
 			0x0000, 0x0000, 0x0000, 0x0000,
-			0x3004, 0x3004, 0x3004, 0x3004);
+			0x3804, 0x3804, 0x3804, 0x3804);
 
 	/* map rss and vlan type to rss hash and vlan flag */
 	const __m128i vlan_flags = _mm_set_epi8(0, 0, 0, 0,
@@ -159,8 +160,8 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 
 	const __m128i rss_flags = _mm_set_epi8(0, 0, 0, 0,
 			0, 0, 0, 0,
-			0, 0, 0, 0,
-			PKT_RX_FDIR, 0, PKT_RX_RSS_HASH, 0);
+			PKT_RX_RSS_HASH | PKT_RX_FDIR, PKT_RX_RSS_HASH, 0, 0,
+			0, 0, PKT_RX_FDIR, 0);
 
 	vlan0 = _mm_unpackhi_epi16(descs[0], descs[1]);
 	vlan1 = _mm_unpackhi_epi16(descs[2], descs[3]);
@@ -169,7 +170,7 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	vlan1 = _mm_and_si128(vlan0, rss_vlan_msk);
 	vlan0 = _mm_shuffle_epi8(vlan_flags, vlan1);
 
-	rss = _mm_srli_epi16(vlan1, 12);
+	rss = _mm_srli_epi16(vlan1, 11);
 	rss = _mm_shuffle_epi8(rss_flags, rss);
 
 	vlan0 = _mm_or_si128(vlan0, rss);
