@@ -119,6 +119,9 @@ find_heap_max_free_elem(int *s, unsigned align)
 		}
 	}
 
+	if (len < MALLOC_ELEM_OVERHEAD + align)
+		return 0;
+
 	return len - MALLOC_ELEM_OVERHEAD - align;
 }
 
@@ -197,8 +200,13 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	if (len == 0) {
 		if (bound != 0)
 			requested_len = bound;
-		else
+		else {
 			requested_len = find_heap_max_free_elem(&socket_id, align);
+			if (requested_len == 0) {
+				rte_errno = ENOMEM;
+				return NULL;
+			}
+		}
 	}
 
 	if (socket_id == SOCKET_ID_ANY)
