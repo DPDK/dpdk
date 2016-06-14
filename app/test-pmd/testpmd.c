@@ -1089,10 +1089,6 @@ stop_packet_forwarding(void)
 #endif
 	static const char *acc_stats_border = "+++++++++++++++";
 
-	if (all_ports_started() == 0) {
-		printf("Not all ports were started\n");
-		return;
-	}
 	if (test_done) {
 		printf("Packet forwarding not started\n");
 		return;
