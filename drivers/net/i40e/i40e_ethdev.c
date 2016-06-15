@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -306,6 +306,9 @@ static void i40e_dev_stats_get(struct rte_eth_dev *dev,
 			       struct rte_eth_stats *stats);
 static int i40e_dev_xstats_get(struct rte_eth_dev *dev,
 			       struct rte_eth_xstats *xstats, unsigned n);
+static int i40e_dev_xstats_get_names(struct rte_eth_dev *dev,
+				     struct rte_eth_xstat_name *xstats_names,
+				     unsigned limit);
 static void i40e_dev_stats_reset(struct rte_eth_dev *dev);
 static int i40e_dev_queue_stats_mapping_set(struct rte_eth_dev *dev,
 					    uint16_t queue_id,
@@ -467,6 +470,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.link_update                  = i40e_dev_link_update,
 	.stats_get                    = i40e_dev_stats_get,
 	.xstats_get                   = i40e_dev_xstats_get,
+	.xstats_get_names             = i40e_dev_xstats_get_names,
 	.stats_reset                  = i40e_dev_stats_reset,
 	.xstats_reset                 = i40e_dev_stats_reset,
 	.queue_stats_mapping_set      = i40e_dev_queue_stats_mapping_set,
@@ -2205,6 +2209,60 @@ i40e_xstats_calc_num(void)
 		(I40E_NB_TXQ_PRIO_XSTATS * 8);
 }
 
+static int i40e_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+				     struct rte_eth_xstat_name *xstats_names,
+				     __rte_unused unsigned limit)
+{
+	unsigned count = 0;
+	unsigned i, prio;
+
+	if (xstats_names == NULL)
+		return i40e_xstats_calc_num();
+
+	/* Note: limit checked in rte_eth_xstats_names() */
+
+	/* Get stats from i40e_eth_stats struct */
+	for (i = 0; i < I40E_NB_ETH_XSTATS; i++) {
+		snprintf(xstats_names[count].name,
+			 sizeof(xstats_names[count].name),
+			 "%s", rte_i40e_stats_strings[i].name);
+		xstats_names[count].id = count;
+		count++;
+	}
+
+	/* Get individiual stats from i40e_hw_port struct */
+	for (i = 0; i < I40E_NB_HW_PORT_XSTATS; i++) {
+		snprintf(xstats_names[count].name,
+			sizeof(xstats_names[count].name),
+			 "%s", rte_i40e_hw_port_strings[i].name);
+		xstats_names[count].id = count;
+		count++;
+	}
+
+	for (i = 0; i < I40E_NB_RXQ_PRIO_XSTATS; i++) {
+		for (prio = 0; prio < 8; prio++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "rx_priority%u_%s", prio,
+				 rte_i40e_rxq_prio_strings[i].name);
+			xstats_names[count].id = count;
+			count++;
+		}
+	}
+
+	for (i = 0; i < I40E_NB_TXQ_PRIO_XSTATS; i++) {
+		for (prio = 0; prio < 8; prio++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "tx_priority%u_%s", prio,
+				 rte_i40e_txq_prio_strings[i].name);
+			xstats_names[count].id = count;
+			count++;
+		}
+	}
+	return count;
+}
+
 static int
 i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		    unsigned n)
@@ -2227,8 +2285,8 @@ i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* Get stats from i40e_eth_stats struct */
 	for (i = 0; i < I40E_NB_ETH_XSTATS; i++) {
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "%s", rte_i40e_stats_strings[i].name);
+		xstats[count].name[0] = '\0';
+		xstats[count].id = count;
 		xstats[count].value = *(uint64_t *)(((char *)&hw_stats->eth) +
 			rte_i40e_stats_strings[i].offset);
 		count++;
@@ -2236,19 +2294,17 @@ i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* Get individiual stats from i40e_hw_port struct */
 	for (i = 0; i < I40E_NB_HW_PORT_XSTATS; i++) {
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "%s", rte_i40e_hw_port_strings[i].name);
+		xstats[count].name[0] = '\0';
+		xstats[count].id = count;
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
-				rte_i40e_hw_port_strings[i].offset);
+			rte_i40e_hw_port_strings[i].offset);
 		count++;
 	}
 
 	for (i = 0; i < I40E_NB_RXQ_PRIO_XSTATS; i++) {
 		for (prio = 0; prio < 8; prio++) {
-			snprintf(xstats[count].name,
-				 sizeof(xstats[count].name),
-				 "rx_priority%u_%s", prio,
-				 rte_i40e_rxq_prio_strings[i].name);
+			xstats[count].name[0] = '\0';
+			xstats[count].id = count;
 			xstats[count].value =
 				*(uint64_t *)(((char *)hw_stats) +
 				rte_i40e_rxq_prio_strings[i].offset +
@@ -2259,10 +2315,8 @@ i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	for (i = 0; i < I40E_NB_TXQ_PRIO_XSTATS; i++) {
 		for (prio = 0; prio < 8; prio++) {
-			snprintf(xstats[count].name,
-				 sizeof(xstats[count].name),
-				 "tx_priority%u_%s", prio,
-				 rte_i40e_txq_prio_strings[i].name);
+			xstats[count].name[0] = '\0';
+			xstats[count].id = count;
 			xstats[count].value =
 				*(uint64_t *)(((char *)hw_stats) +
 				rte_i40e_txq_prio_strings[i].offset +

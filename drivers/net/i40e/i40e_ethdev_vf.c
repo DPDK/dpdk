@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -112,6 +112,9 @@ static void i40evf_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstats *xstats, unsigned n);
+static int i40evf_dev_xstats_get_names(struct rte_eth_dev *dev,
+				       struct rte_eth_xstat_name *xstats_names,
+				       unsigned limit);
 static void i40evf_dev_xstats_reset(struct rte_eth_dev *dev);
 static int i40evf_vlan_filter_set(struct rte_eth_dev *dev,
 				  uint16_t vlan_id, int on);
@@ -196,6 +199,7 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.link_update          = i40evf_dev_link_update,
 	.stats_get            = i40evf_dev_stats_get,
 	.xstats_get           = i40evf_dev_xstats_get,
+	.xstats_get_names     = i40evf_dev_xstats_get_names,
 	.xstats_reset         = i40evf_dev_xstats_reset,
 	.dev_close            = i40evf_dev_close,
 	.dev_infos_get        = i40evf_dev_info_get,
@@ -984,6 +988,22 @@ i40evf_dev_xstats_reset(struct rte_eth_dev *dev)
 	vf->vsi.eth_stats_offset = vf->vsi.eth_stats;
 }
 
+static int i40evf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+				      struct rte_eth_xstat_name *xstats_names,
+				      __rte_unused unsigned limit)
+{
+	unsigned i;
+
+	if (xstats_names != NULL)
+		for (i = 0; i < I40EVF_NB_XSTATS; i++) {
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name),
+				"%s", rte_i40evf_stats_strings[i].name);
+			xstats_names[i].id = i;
+		}
+	return I40EVF_NB_XSTATS;
+}
+
 static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstats *xstats, unsigned n)
 {
@@ -1003,8 +1023,8 @@ static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 
 	/* loop over xstats array and values from pstats */
 	for (i = 0; i < I40EVF_NB_XSTATS; i++) {
-		snprintf(xstats[i].name, sizeof(xstats[i].name),
-			 "%s", rte_i40evf_stats_strings[i].name);
+		xstats[i].name[0] = '\0';
+		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)pstats) +
 			rte_i40evf_stats_strings[i].offset);
 	}
