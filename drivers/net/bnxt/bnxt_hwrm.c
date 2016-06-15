@@ -135,6 +135,24 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg, uint32_t msg_len)
 		} \
 	}
 
+int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, void *fwd_cmd)
+{
+	int rc;
+	struct hwrm_exec_fwd_resp_input req = {.req_type = 0 };
+	struct hwrm_exec_fwd_resp_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, EXEC_FWD_RESP, -1, resp);
+
+	memcpy(req.encap_request, fwd_cmd,
+	       sizeof(req.encap_request));
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 {
 	int rc = 0;

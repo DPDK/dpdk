@@ -31,29 +31,58 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _BNXT_HWRM_H_
-#define _BNXT_HWRM_H_
+#ifndef _BNXT_CPR_H_
+#define _BNXT_CPR_H_
 
-#include <inttypes.h>
-#include <stdbool.h>
+#include "hsi_struct_def_dpdk.h"
 
-#include "bnxt.h"
+#define CMP_VALID(cmp, raw_cons, ring)					\
+	(!!(((struct cmpl_base *)(cmp))->info3_v & CMPL_BASE_V) ==	\
+	 !((raw_cons) & ((ring)->ring_size)))
 
-#define HWRM_SEQ_ID_INVALID -1U
+#define CMP_TYPE(cmp)						\
+	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
 
-int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, void *fwd_cmd);
+#define ADV_RAW_CMP(idx, n)	((idx) + (n))
+#define NEXT_RAW_CMP(idx)	ADV_RAW_CMP(idx, 1)
+#define RING_CMP(ring, idx)	((idx) & (ring)->ring_mask)
+#define NEXT_CMP(idx)		RING_CMP(ADV_RAW_CMP(idx, 1))
 
-int bnxt_hwrm_func_driver_register(struct bnxt *bp, uint32_t flags,
-				   uint32_t *vf_req_fwd);
-int bnxt_hwrm_func_qcaps(struct bnxt *bp);
-int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
+#define DB_CP_REARM_FLAGS	(DB_KEY_CP | DB_IDX_VALID)
+#define DB_CP_FLAGS		(DB_KEY_CP | DB_IDX_VALID | DB_IRQ_DIS)
 
-int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
+#define B_CP_DB_REARM(cpr, raw_cons)					\
+		(*(uint32_t *)((cpr)->cp_doorbell) = (DB_CP_REARM_FLAGS | \
+				RING_CMP(&cpr->cp_ring_struct, raw_cons)))
 
-int bnxt_hwrm_ver_get(struct bnxt *bp);
+#define B_CP_DIS_DB(cpr, raw_cons)					\
+		(*(uint32_t *)((cpr)->cp_doorbell) = (DB_CP_FLAGS |	\
+				RING_CMP(&cpr->cp_ring_struct, raw_cons)))
 
-void bnxt_free_hwrm_resources(struct bnxt *bp);
-int bnxt_alloc_hwrm_resources(struct bnxt *bp);
-int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up);
+struct bnxt_ring;
+struct bnxt_cp_ring_info {
+	uint32_t		cp_raw_cons;
+	void			*cp_doorbell;
+
+	struct cmpl_base	*cp_desc_ring;
+
+	phys_addr_t		cp_desc_mapping;
+
+	struct ctx_hw_stats	*hw_stats;
+	phys_addr_t		hw_stats_map;
+	uint32_t		hw_stats_ctx_id;
+
+	struct bnxt_ring	*cp_ring_struct;
+};
+
+#define RX_CMP_L2_ERRORS						\
+	(RX_PKT_CMPL_ERRORS_BUFFER_ERROR_MASK | RX_PKT_CMPL_ERRORS_CRC_ERROR)
+
+
+struct bnxt;
+void bnxt_free_def_cp_ring(struct bnxt *bp);
+void bnxt_init_def_ring_struct(struct bnxt *bp);
+void bnxt_handle_async_event(struct bnxt *bp, struct cmpl_base *cmp);
+void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmp);
 
 #endif

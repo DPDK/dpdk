@@ -59,6 +59,137 @@
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
 #define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
 #define HWRM_QUEUE_QPORTCFG		(UINT32_C(0x30))
+#define HWRM_CFA_L2_FILTER_ALLOC	(UINT32_C(0x90))
+#define HWRM_CFA_L2_FILTER_FREE		(UINT32_C(0x91))
+#define HWRM_CFA_L2_FILTER_CFG		(UINT32_C(0x92))
+#define HWRM_CFA_L2_SET_RX_MASK		(UINT32_C(0x93))
+#define HWRM_EXEC_FWD_RESP		(UINT32_C(0xd0))
+
+/* Return Codes */
+#define HWRM_ERR_CODE_INVALID_PARAMS                      (UINT32_C(0x2))
+#define HWRM_ERR_CODE_RESOURCE_ACCESS_DENIED              (UINT32_C(0x3))
+
+/* HWRM Forwarded Request (16 bytes) */
+struct hwrm_fwd_req_cmpl {
+	/* Length of forwarded request in bytes. */
+	/*
+	 * This field indicates the exact type of the completion. By convention,
+	 * the LSB identifies the length of the record in 16B units. Even values
+	 * indicate 16B records. Odd values indicate 32B records.
+	 */
+	#define HWRM_FWD_REQ_CMPL_TYPE_MASK		UINT32_C(0x3f)
+	#define HWRM_FWD_REQ_CMPL_TYPE_SFT		0
+		/* Forwarded HWRM Request */
+	#define HWRM_FWD_REQ_CMPL_TYPE_HWRM_FWD_REQ	(UINT32_C(0x22) << 0)
+	/* Length of forwarded request in bytes. */
+	#define HWRM_FWD_REQ_CMPL_REQ_LEN_MASK		UINT32_C(0xffc0)
+	#define HWRM_FWD_REQ_CMPL_REQ_LEN_SFT		6
+	uint16_t req_len_type;
+
+	/*
+	 * Source ID of this request. Typically used in forwarding requests and
+	 * responses. 0x0 - 0xFFF8 - Used for function ids 0xFFF8 - 0xFFFE -
+	 * Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t source_id;
+
+	uint32_t unused_0;
+
+	/* Address of forwarded request. */
+	/*
+	 * This value is written by the NIC such that it will be different for
+	 * each pass through the completion queue. The even passes will write 1.
+	 * The odd passes will write 0.
+	 */
+	#define HWRM_FWD_REQ_CMPL_V			UINT32_C(0x1)
+	/* Address of forwarded request. */
+	#define HWRM_FWD_REQ_CMPL_REQ_BUF_ADDR_MASK	UINT32_C(0xfffffffe)
+	#define HWRM_FWD_REQ_CMPL_REQ_BUF_ADDR_SFT	1
+	uint64_t req_buf_addr_v;
+} __attribute__((packed));
+
+/* HWRM Asynchronous Event Completion Record (16 bytes) */
+struct hwrm_async_event_cmpl {
+	/*
+	 * This field indicates the exact type of the completion. By convention,
+	 * the LSB identifies the length of the record in 16B units. Even values
+	 * indicate 16B records. Odd values indicate 32B records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_TYPE_MASK		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_TYPE_SFT		0
+		/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_TYPE_HWRM_ASYNC_EVENT \
+							(UINT32_C(0x2e) << 0)
+	uint16_t type;
+
+	/* Identifiers of events. */
+		/* Link status changed */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_STATUS_CHANGE \
+							(UINT32_C(0x0) << 0)
+		/* Link MTU changed */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_MTU_CHANGE \
+							(UINT32_C(0x1) << 0)
+		/* Link speed changed */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CHANGE \
+							(UINT32_C(0x2) << 0)
+		/* DCB Configuration changed */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DCB_CONFIG_CHANGE \
+							(UINT32_C(0x3) << 0)
+		/* Port connection not allowed */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED \
+							(UINT32_C(0x4) << 0)
+		/* Link speed configuration was not allowed */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CFG_NOT_ALLOWED \
+							(UINT32_C(0x5) << 0)
+		/* Function driver unloaded */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_FUNC_DRVR_UNLOAD \
+							(UINT32_C(0x10) << 0)
+		/* Function driver loaded */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_FUNC_DRVR_LOAD \
+							(UINT32_C(0x11) << 0)
+		/* PF driver unloaded */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PF_DRVR_UNLOAD \
+							(UINT32_C(0x20) << 0)
+		/* PF driver loaded */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PF_DRVR_LOAD \
+							(UINT32_C(0x21) << 0)
+		/* VF Function Level Reset (FLR) */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_FLR	(UINT32_C(0x30) << 0)
+		/* VF MAC Address Change */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_MAC_ADDR_CHANGE \
+							(UINT32_C(0x31) << 0)
+		/* PF-VF communication channel status change. */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PF_VF_COMM_STATUS_CHANGE \
+							(UINT32_C(0x32) << 0)
+		/* HWRM Error */
+	#define HWRM_ASYNC_EVENT_CMPL_EVENT_ID_HWRM_ERROR \
+							(UINT32_C(0xff) << 0)
+	uint16_t event_id;
+
+	/* Event specific data */
+	uint32_t event_data2;
+
+	/* opaque is 7 b */
+	/*
+	 * This value is written by the NIC such that it will be different for
+	 * each pass through the completion queue. The even passes will write 1.
+	 * The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_V				UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_OPAQUE_MASK		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_OPAQUE_SFT		1
+	uint8_t opaque_v;
+
+	/* 8-lsb timestamp from POR (100-msec resolution) */
+	uint8_t timestamp_lo;
+
+	/* 16-lsb timestamp from POR (100-msec resolution) */
+	uint16_t timestamp_hi;
+
+	/* Event specific data */
+	uint32_t event_data1;
+} __attribute__((packed));
 
 /*
  * Note: The Hardware Resource Manager (HWRM) manages various hardware resources
@@ -120,6 +251,102 @@ struct output {
 	 * has been completely written to memory.
 	 */
 	uint16_t resp_len;
+} __attribute__((packed));
+
+/* hwrm_exec_fwd_resp */
+/*
+ * Description: This command is used to send an encapsulated request to the
+ * HWRM. This command instructs the HWRM to execute the request and forward the
+ * response of the encapsulated request to the location specified in the
+ * original request that is encapsulated. The target id of this command shall be
+ * set to 0xFFFF (HWRM). The response location in this command shall be used to
+ * acknowledge the receipt of the encapsulated request and forwarding of the
+ * response.
+ */
+
+/* Input (128 bytes) */
+struct hwrm_exec_fwd_resp_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * This is an encapsulated request. This request should be executed by
+	 * the HWRM and the response should be provided in the response buffer
+	 * inside the encapsulated request.
+	 */
+	uint32_t encap_request[26];
+
+	/*
+	 * This value indicates the target id of the response to the
+	 * encapsulated request. 0x0 - 0xFFF8 - Used for function ids 0xFFF8 -
+	 * 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t encap_resp_target_id;
+
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_exec_fwd_resp_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
 } __attribute__((packed));
 
 /* hwrm_func_qcaps */
