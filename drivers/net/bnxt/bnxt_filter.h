@@ -31,35 +31,44 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _BNXT_HWRM_H_
-#define _BNXT_HWRM_H_
+#ifndef _BNXT_FILTER_H_
+#define _BNXT_FILTER_H_
 
-#include <inttypes.h>
-#include <stdbool.h>
+#include <rte_ether.h>
 
-#include "bnxt.h"
+struct bnxt;
+struct bnxt_filter_info {
+	STAILQ_ENTRY(bnxt_filter_info)	next;
+	uint64_t		fw_l2_filter_id;
+#define INVALID_MAC_INDEX	((uint16_t)-1)
+	uint16_t		mac_index;
 
-#define HWRM_SEQ_ID_INVALID -1U
+	/* Filter Characteristics */
+	uint32_t		flags;
+	uint32_t		enables;
+	uint8_t			l2_addr[ETHER_ADDR_LEN];
+	uint8_t			l2_addr_mask[ETHER_ADDR_LEN];
+	uint16_t		l2_ovlan;
+	uint16_t		l2_ovlan_mask;
+	uint16_t		l2_ivlan;
+	uint16_t		l2_ivlan_mask;
+	uint8_t			t_l2_addr[ETHER_ADDR_LEN];
+	uint8_t			t_l2_addr_mask[ETHER_ADDR_LEN];
+	uint16_t		t_l2_ovlan;
+	uint16_t		t_l2_ovlan_mask;
+	uint16_t		t_l2_ivlan;
+	uint16_t		t_l2_ivlan_mask;
+	uint8_t			tunnel_type;
+	uint16_t		mirror_vnic_id;
+	uint32_t		vni;
+	uint8_t			pri_hint;
+	uint64_t		l2_filter_id_hint;
+};
 
-int bnxt_hwrm_clear_filter(struct bnxt *bp,
-			   struct bnxt_filter_info *filter);
-int bnxt_hwrm_set_filter(struct bnxt *bp,
-			 struct bnxt_vnic_info *vnic,
-			 struct bnxt_filter_info *filter);
-
-int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, void *fwd_cmd);
-
-int bnxt_hwrm_func_driver_register(struct bnxt *bp, uint32_t flags,
-				   uint32_t *vf_req_fwd);
-int bnxt_hwrm_func_qcaps(struct bnxt *bp);
-int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
-
-int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
-
-int bnxt_hwrm_ver_get(struct bnxt *bp);
-
-void bnxt_free_hwrm_resources(struct bnxt *bp);
-int bnxt_alloc_hwrm_resources(struct bnxt *bp);
-int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up);
+struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);
+void bnxt_init_filters(struct bnxt *bp);
+void bnxt_free_all_filters(struct bnxt *bp);
+void bnxt_free_filter_mem(struct bnxt *bp);
+int bnxt_alloc_filter_mem(struct bnxt *bp);
 
 #endif

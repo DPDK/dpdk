@@ -253,6 +253,462 @@ struct output {
 	uint16_t resp_len;
 } __attribute__((packed));
 
+/* hwrm_cfa_l2_filter_alloc */
+/*
+ * A filter is used to identify traffic that contains a matching set of
+ * parameters like unicast or broadcast MAC address or a VLAN tag amongst
+ * other things which then allows the ASIC to direct the  incoming traffic
+ * to an appropriate VNIC or Rx ring.
+ */
+
+/* Input (96 bytes) */
+struct hwrm_cfa_l2_filter_alloc_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * Enumeration denoting the RX, TX type of the resource. This
+	 * enumeration is used for resources that are similar for both TX and RX
+	 * paths of the chip.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH \
+							UINT32_C(0x1)
+		/* tx path */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_TX \
+							(UINT32_C(0x0) << 0)
+		/* rx path */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX \
+							(UINT32_C(0x1) << 0)
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_LAST \
+				HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX
+	/*
+	 * Setting of this flag indicates the applicability to the loopback
+	 * path.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_LOOPBACK \
+							UINT32_C(0x2)
+	/*
+	 * Setting of this flag indicates drop action. If this flag is not set,
+	 * then it should be considered accept action.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_DROP \
+							UINT32_C(0x4)
+	/*
+	 * If this flag is set, all t_l2_* fields are invalid and they should
+	 * not be specified. If this flag is set, then l2_* fields refer to
+	 * fields of outermost L2 header.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST \
+							UINT32_C(0x8)
+	uint32_t flags;
+
+	/* This bit must be '1' for the l2_addr field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR \
+							UINT32_C(0x1)
+	/* This bit must be '1' for the l2_addr_mask field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK \
+							UINT32_C(0x2)
+	/* This bit must be '1' for the l2_ovlan field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN \
+							UINT32_C(0x4)
+	/* This bit must be '1' for the l2_ovlan_mask field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN_MASK \
+							UINT32_C(0x8)
+	/* This bit must be '1' for the l2_ivlan field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN \
+							UINT32_C(0x10)
+	/* This bit must be '1' for the l2_ivlan_mask field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN_MASK \
+							UINT32_C(0x20)
+	/* This bit must be '1' for the t_l2_addr field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_T_L2_ADDR \
+							UINT32_C(0x40)
+	/*
+	 * This bit must be '1' for the t_l2_addr_mask field to be configured.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_T_L2_ADDR_MASK \
+							UINT32_C(0x80)
+	/* This bit must be '1' for the t_l2_ovlan field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_T_L2_OVLAN \
+							UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the t_l2_ovlan_mask field to be configured.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_T_L2_OVLAN_MASK \
+							UINT32_C(0x200)
+	/* This bit must be '1' for the t_l2_ivlan field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_T_L2_IVLAN \
+							UINT32_C(0x400)
+	/*
+	 * This bit must be '1' for the t_l2_ivlan_mask field to be configured.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_T_L2_IVLAN_MASK \
+							UINT32_C(0x800)
+	/* This bit must be '1' for the src_type field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_TYPE \
+							UINT32_C(0x1000)
+	/* This bit must be '1' for the src_id field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_ID \
+							UINT32_C(0x2000)
+	/* This bit must be '1' for the tunnel_type field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_TUNNEL_TYPE \
+							UINT32_C(0x4000)
+	/* This bit must be '1' for the dst_id field to be configured. */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_DST_ID \
+							UINT32_C(0x8000)
+	/*
+	 * This bit must be '1' for the mirror_vnic_id field to be configured.
+	 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_MIRROR_VNIC_ID \
+							UINT32_C(0x10000)
+	uint32_t enables;
+
+	/*
+	 * This value sets the match value for the L2 MAC address. Destination
+	 * MAC address for RX path. Source MAC address for TX path.
+	 */
+	uint8_t l2_addr[6];
+
+	uint8_t unused_0;
+	uint8_t unused_1;
+
+	/*
+	 * This value sets the mask value for the L2 address. A value of 0 will
+	 * mask the corresponding bit from compare.
+	 */
+	uint8_t l2_addr_mask[6];
+
+	/* This value sets VLAN ID value for outer VLAN. */
+	uint16_t l2_ovlan;
+
+	/*
+	 * This value sets the mask value for the ovlan id. A value of 0 will
+	 * mask the corresponding bit from compare.
+	 */
+	uint16_t l2_ovlan_mask;
+
+	/* This value sets VLAN ID value for inner VLAN. */
+	uint16_t l2_ivlan;
+
+	/*
+	 * This value sets the mask value for the ivlan id. A value of 0 will
+	 * mask the corresponding bit from compare.
+	 */
+	uint16_t l2_ivlan_mask;
+
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This value sets the match value for the tunnel L2 MAC address.
+	 * Destination MAC address for RX path. Source MAC address for TX path.
+	 */
+	uint8_t t_l2_addr[6];
+
+	uint8_t unused_4;
+	uint8_t unused_5;
+
+	/*
+	 * This value sets the mask value for the tunnel L2 address. A value of
+	 * 0 will mask the corresponding bit from compare.
+	 */
+	uint8_t t_l2_addr_mask[6];
+
+	/* This value sets VLAN ID value for tunnel outer VLAN. */
+	uint16_t t_l2_ovlan;
+
+	/*
+	 * This value sets the mask value for the tunnel ovlan id. A value of 0
+	 * will mask the corresponding bit from compare.
+	 */
+	uint16_t t_l2_ovlan_mask;
+
+	/* This value sets VLAN ID value for tunnel inner VLAN. */
+	uint16_t t_l2_ivlan;
+
+	/*
+	 * This value sets the mask value for the tunnel ivlan id. A value of 0
+	 * will mask the corresponding bit from compare.
+	 */
+	uint16_t t_l2_ivlan_mask;
+
+	/* This value identifies the type of source of the packet. */
+		/* Network port */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_NPORT \
+							(UINT32_C(0x0) << 0)
+		/* Physical function */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_PF \
+							(UINT32_C(0x1) << 0)
+		/* Virtual function */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_VF \
+							(UINT32_C(0x2) << 0)
+		/* Virtual NIC of a function */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_VNIC \
+							(UINT32_C(0x3) << 0)
+		/* Embedded processor for CFA management */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_KONG \
+							(UINT32_C(0x4) << 0)
+		/* Embedded processor for OOB management */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_APE \
+							(UINT32_C(0x5) << 0)
+		/* Embedded processor for RoCE */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_BONO \
+							(UINT32_C(0x6) << 0)
+		/* Embedded processor for network proxy functions */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_SRC_TYPE_TANG \
+							(UINT32_C(0x7) << 0)
+	uint8_t src_type;
+
+	uint8_t unused_6;
+	/*
+	 * This value is the id of the source. For a network port, it represents
+	 * port_id. For a physical function, it represents fid. For a virtual
+	 * function, it represents vf_id. For a vnic, it represents vnic_id. For
+	 * embedded processors, this id is not valid. Notes: 1. The function ID
+	 * is implied if it src_id is not provided for a src_type that is either
+	 */
+	uint32_t src_id;
+
+	/* Tunnel Type. */
+		/* Non-tunnel */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_NONTUNNEL \
+							(UINT32_C(0x0) << 0)
+		/* Virtual eXtensible Local Area Network (VXLAN) */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_VXLAN \
+							(UINT32_C(0x1) << 0)
+		/*
+		 * Network Virtualization Generic Routing Encapsulation (NVGRE)
+		 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_NVGRE \
+							(UINT32_C(0x2) << 0)
+		/*
+		 * Generic Routing Encapsulation (GRE) inside Ethernet payload
+		 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_L2GRE \
+							(UINT32_C(0x3) << 0)
+		/* IP in IP */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_IPIP \
+							(UINT32_C(0x4) << 0)
+		/* Generic Network Virtualization Encapsulation (Geneve) */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_GENEVE \
+							(UINT32_C(0x5) << 0)
+		/* Multi-Protocol Lable Switching (MPLS) */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_MPLS \
+							(UINT32_C(0x6) << 0)
+		/* Stateless Transport Tunnel (STT) */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_STT \
+							(UINT32_C(0x7) << 0)
+		/*
+		 * Generic Routing Encapsulation (GRE) inside IP datagram
+		 * payload
+		 */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_IPGRE \
+							(UINT32_C(0x8) << 0)
+		/* Any tunneled traffic */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL \
+							(UINT32_C(0xff) << 0)
+	uint8_t tunnel_type;
+
+	uint8_t unused_7;
+
+	/*
+	 * If set, this value shall represent the Logical VNIC ID of the
+	 * destination VNIC for the RX path and network port id of the
+	 * destination port for the TX path.
+	 */
+	uint16_t dst_id;
+
+	/* Logical VNIC ID of the VNIC where traffic is mirrored. */
+	uint16_t mirror_vnic_id;
+
+	/*
+	 * This hint is provided to help in placing the filter in the filter
+	 * table.
+	 */
+		/* No preference */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_PRI_HINT_NO_PREFER \
+							(UINT32_C(0x0) << 0)
+		/* Above the given filter */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_PRI_HINT_ABOVE_FILTER \
+							(UINT32_C(0x1) << 0)
+		/* Below the given filter */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_PRI_HINT_BELOW_FILTER \
+							(UINT32_C(0x2) << 0)
+		/* As high as possible */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_PRI_HINT_MAX \
+							(UINT32_C(0x3) << 0)
+		/* As low as possible */
+	#define HWRM_CFA_L2_FILTER_ALLOC_INPUT_PRI_HINT_MIN \
+							(UINT32_C(0x4) << 0)
+	uint8_t pri_hint;
+
+	uint8_t unused_8;
+	uint32_t unused_9;
+
+	/*
+	 * This is the ID of the filter that goes along with the pri_hint. This
+	 * field is valid only for the following values. 1 - Above the given
+	 * filter 2 - Below the given filter
+	 */
+	uint64_t l2_filter_id_hint;
+} __attribute__((packed));
+
+/* Output (24 bytes) */
+struct hwrm_cfa_l2_filter_alloc_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	/*
+	 * This value identifies a set of CFA data structures used for an L2
+	 * context.
+	 */
+	uint64_t l2_filter_id;
+
+	/*
+	 * This is the ID of the flow associated with this filter. This value
+	 * shall be used to match and associate the flow identifier returned in
+	 * completion records. A value of 0xFFFFFFFF shall indicate no flow id.
+	 */
+	uint32_t flow_id;
+
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_cfa_l2_filter_free */
+/*
+ * Description: Free a L2 filter. The HWRM shall free all associated filter
+ * resources with the L2 filter.
+ */
+
+/* Input (24 bytes) */
+struct hwrm_cfa_l2_filter_free_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * This value identifies a set of CFA data structures used for an L2
+	 * context.
+	 */
+	uint64_t l2_filter_id;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_cfa_l2_filter_free_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
 /* hwrm_exec_fwd_resp */
 /*
  * Description: This command is used to send an encapsulated request to the
