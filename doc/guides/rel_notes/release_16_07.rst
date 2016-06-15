@@ -51,6 +51,19 @@ New Features
 
   The ioports are mapped in memory when using Linux UIO.
 
+* **Virtio support for containers.**
+
+  Add a new virtual device, named virtio-user, to support virtio for containers.
+
+  Known limitations:
+
+  * Control queue and multi-queue are not supported yet.
+  * Cannot work with --huge-unlink.
+  * Cannot work with --no-huge.
+  * Cannot work when there are more than VHOST_MEMORY_MAX_NREGIONS(8) hugepages.
+  * Root privilege is a must for sorting hugepages by physical address.
+  * Can only be used with vhost user backend.
+
 * **Added vhost-user client mode.**
 
   DPDK vhost-user could be the server as well as the client. It supports

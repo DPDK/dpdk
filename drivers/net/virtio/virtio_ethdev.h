@@ -113,6 +113,8 @@ uint16_t virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 uint16_t virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
+int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
+
 /*
  * The VIRTIO_NET_F_GUEST_TSO[46] features permit the host to send us
  * frames larger than 1514 bytes. We do not yet support software LRO

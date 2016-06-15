@@ -59,7 +59,6 @@
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
 
-static int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
 static int  virtio_dev_start(struct rte_eth_dev *dev);
@@ -1130,7 +1129,7 @@ rx_func_get(struct rte_eth_dev *eth_dev)
  * This function is based on probe() function in virtio_pci.c
  * It returns 0 on success.
  */
-static int
+int
 eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
@@ -1161,9 +1160,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = eth_dev->pci_dev;
 
-	ret = vtpci_init(pci_dev, hw, &dev_flags);
-	if (ret)
-		return ret;
+	if (pci_dev) {
+		ret = vtpci_init(pci_dev, hw, &dev_flags);
+		if (ret)
+			return ret;
+	}
 
 	/* Reset the device although not necessary at startup */
 	vtpci_reset(hw);
@@ -1255,7 +1256,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(DEBUG, "hw->max_rx_queues=%d   hw->max_tx_queues=%d",
 			hw->max_rx_queues, hw->max_tx_queues);
-	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
+	if (pci_dev)
+		PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
 
@@ -1543,7 +1545,10 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
 
-	dev_info->driver_name = dev->driver->pci_drv.name;
+	if (dev->pci_dev)
+		dev_info->driver_name = dev->driver->pci_drv.name;
+	else
+		dev_info->driver_name = "virtio-user PMD";
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
 	dev_info->min_rx_bufsize = VIRTIO_MIN_RX_BUFSIZE;
