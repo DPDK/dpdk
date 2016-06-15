@@ -62,14 +62,6 @@ static struct rte_pci_id bnxt_pci_id_map[] = {
 	{.device_id = 0},
 };
 
-static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
-{
-	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
-
-	rte_free(eth_dev->data->mac_addrs);
-	bnxt_free_hwrm_resources(bp);
-}
-
 /***********************/
 
 /*
@@ -386,6 +378,16 @@ error:
 	bnxt_free_rx_mbufs(bp);
 	bnxt_free_mem(bp);
 	return rc;
+}
+
+static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	bnxt_free_tx_mbufs(bp);
+	bnxt_free_rx_mbufs(bp);
+	bnxt_free_mem(bp);
+	rte_free(eth_dev->data->mac_addrs);
 }
 
 /* Unload the driver, release resources */
