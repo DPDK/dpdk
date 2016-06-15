@@ -582,6 +582,60 @@ static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
 }
 
+static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
+			    struct rte_eth_rss_reta_entry64 *reta_conf,
+			    uint16_t reta_size)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct bnxt_vnic_info *vnic;
+	int i;
+
+	if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG))
+		return -EINVAL;
+
+	if (reta_size != HW_HASH_INDEX_SIZE) {
+		RTE_LOG(ERR, PMD, "The configured hash table lookup size "
+			"(%d) must equal the size supported by the hardware "
+			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
+		return -EINVAL;
+	}
+	/* Update the RSS VNIC(s) */
+	for (i = 0; i < MAX_FF_POOLS; i++) {
+		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
+			memcpy(vnic->rss_table, reta_conf, reta_size);
+
+			bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+		}
+	}
+	return 0;
+}
+
+static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
+			      struct rte_eth_rss_reta_entry64 *reta_conf,
+			      uint16_t reta_size)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+
+	/* Retrieve from the default VNIC */
+	if (!vnic)
+		return -EINVAL;
+	if (!vnic->rss_table)
+		return -EINVAL;
+
+	if (reta_size != HW_HASH_INDEX_SIZE) {
+		RTE_LOG(ERR, PMD, "The configured hash table lookup size "
+			"(%d) must equal the size supported by the hardware "
+			"(%d)\n", reta_size, HW_HASH_INDEX_SIZE);
+		return -EINVAL;
+	}
+	/* EW - need to revisit here copying from u64 to u16 */
+	memcpy(reta_conf, vnic->rss_table, reta_size);
+
+	return 0;
+}
+
 /*
  * Initialization
  */
@@ -600,6 +654,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.rx_queue_release = bnxt_rx_queue_release_op,
 	.tx_queue_setup = bnxt_tx_queue_setup_op,
 	.tx_queue_release = bnxt_tx_queue_release_op,
+	.reta_update = bnxt_reta_update_op,
+	.reta_query = bnxt_reta_query_op,
 	.link_update = bnxt_link_update_op,
 	.promiscuous_enable = bnxt_promiscuous_enable_op,
 	.promiscuous_disable = bnxt_promiscuous_disable_op,
