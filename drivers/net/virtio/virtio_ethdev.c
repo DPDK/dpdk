@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -80,6 +80,9 @@ static void virtio_dev_stats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_stats *stats);
 static int virtio_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstats *xstats, unsigned n);
+static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
+				       struct rte_eth_xstat_name *xstats_names,
+				       unsigned limit);
 static void virtio_dev_stats_reset(struct rte_eth_dev *dev);
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
 static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
@@ -615,6 +618,7 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.dev_infos_get           = virtio_dev_info_get,
 	.stats_get               = virtio_dev_stats_get,
 	.xstats_get              = virtio_dev_xstats_get,
+	.xstats_get_names        = virtio_dev_xstats_get_names,
 	.stats_reset             = virtio_dev_stats_reset,
 	.xstats_reset            = virtio_dev_stats_reset,
 	.link_update             = virtio_dev_link_update,
@@ -708,6 +712,52 @@ virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 }
 
+static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
+				       struct rte_eth_xstat_name *xstats_names,
+				       __rte_unused unsigned limit)
+{
+	unsigned i;
+	unsigned count = 0;
+	unsigned t;
+
+	unsigned nstats = dev->data->nb_tx_queues * VIRTIO_NB_Q_XSTATS +
+		dev->data->nb_rx_queues * VIRTIO_NB_Q_XSTATS;
+
+	if (xstats_names == NULL) {
+		/* Note: limit checked in rte_eth_xstats_names() */
+
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			struct virtqueue *rxvq = dev->data->rx_queues[i];
+			if (rxvq == NULL)
+				continue;
+			for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"rx_q%u_%s", i,
+					rte_virtio_q_stat_strings[t].name);
+				xstats_names[count].id = count;
+				count++;
+			}
+		}
+
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			struct virtqueue *txvq = dev->data->tx_queues[i];
+			if (txvq == NULL)
+				continue;
+			for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"tx_q%u_%s", i,
+					rte_virtio_q_stat_strings[t].name);
+				xstats_names[count].id = count;
+				count++;
+			}
+		}
+		return count;
+	}
+	return nstats;
+}
+
 static int
 virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		      unsigned n)
@@ -730,9 +780,8 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		unsigned t;
 
 		for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
-			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				 "rx_q%u_%s", i,
-				 rte_virtio_q_stat_strings[t].name);
+			xstats[count].name[0] = '\0';
+			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)rxvq) +
 				rte_virtio_q_stat_strings[t].offset);
 			count++;
@@ -748,9 +797,8 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		unsigned t;
 
 		for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
-			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				 "tx_q%u_%s", i,
-				 rte_virtio_q_stat_strings[t].name);
+			xstats[count].name[0] = '\0';
+			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)txvq) +
 				rte_virtio_q_stat_strings[t].offset);
 			count++;
