@@ -36,6 +36,7 @@
 #include <rte_malloc.h>
 
 #include "bnxt.h"
+#include "bnxt_cpr.h"
 #include "bnxt_ring.h"
 #include "bnxt_txq.h"
 

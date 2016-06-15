@@ -39,8 +39,11 @@
 #include <rte_version.h>
 
 #include "bnxt.h"
+#include "bnxt_cpr.h"
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
+#include "bnxt_rxq.h"
+#include "bnxt_txq.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 
@@ -480,9 +483,55 @@ int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
+{
+	int rc = 0;
+	struct hwrm_stat_ctx_clr_stats_input req = {.req_type = 0 };
+	struct hwrm_stat_ctx_clr_stats_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, STAT_CTX_CLR_STATS, -1, resp);
+
+	if (cpr->hw_stats_ctx_id == (uint32_t)HWRM_NA_SIGNATURE)
+		return rc;
+
+	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
+	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 /*
  * HWRM utility functions
  */
+
+int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp)
+{
+	unsigned int i;
+	int rc = 0;
+
+	for (i = 0; i < bp->rx_cp_nr_rings + bp->tx_cp_nr_rings; i++) {
+		struct bnxt_tx_queue *txq;
+		struct bnxt_rx_queue *rxq;
+		struct bnxt_cp_ring_info *cpr;
+
+		if (i >= bp->rx_cp_nr_rings) {
+			txq = bp->tx_queues[i - bp->rx_cp_nr_rings];
+			cpr = txq->cp_ring;
+		} else {
+			rxq = bp->rx_queues[i];
+			cpr = rxq->cp_ring;
+		}
+
+		rc = bnxt_hwrm_stat_clear(bp, cpr);
+		if (rc)
+			return rc;
+	}
+	return 0;
+}
 
 void bnxt_free_hwrm_resources(struct bnxt *bp)
 {

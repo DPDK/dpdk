@@ -37,7 +37,9 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#include "bnxt.h"
+struct bnxt;
+struct bnxt_filter_info;
+struct bnxt_cp_ring_info;
 
 #define HWRM_SEQ_ID_INVALID -1U
 
@@ -56,8 +58,11 @@ int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
 
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
 
+int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
+
 int bnxt_hwrm_ver_get(struct bnxt *bp);
 
+int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);
 void bnxt_free_hwrm_resources(struct bnxt *bp);
 int bnxt_alloc_hwrm_resources(struct bnxt *bp);
 int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up);

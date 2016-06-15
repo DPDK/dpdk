@@ -42,6 +42,7 @@
 #include "bnxt.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_rxq.h"
+#include "bnxt_stats.h"
 #include "bnxt_txq.h"
 
 #define DRV_MODULE_NAME		"bnxt"
@@ -187,6 +188,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.dev_infos_get = bnxt_dev_info_get_op,
 	.dev_close = bnxt_dev_close_op,
 	.dev_configure = bnxt_dev_configure_op,
+	.stats_get = bnxt_stats_get_op,
+	.stats_reset = bnxt_stats_reset_op,
 	.rx_queue_setup = bnxt_rx_queue_setup_op,
 	.rx_queue_release = bnxt_rx_queue_release_op,
 	.tx_queue_setup = bnxt_tx_queue_setup_op,

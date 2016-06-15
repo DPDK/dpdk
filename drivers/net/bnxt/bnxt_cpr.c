@@ -35,6 +35,7 @@
 #include "bnxt_cpr.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_ring.h"
+#include "hsi_struct_def_dpdk.h"
 
 /*
  * Async event handling
