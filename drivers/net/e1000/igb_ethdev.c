@@ -100,6 +100,9 @@ static void eth_igb_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
 static int eth_igb_xstats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_xstats *xstats, unsigned n);
+static int eth_igb_xstats_get_names(struct rte_eth_dev *dev,
+				    struct rte_eth_xstat_name *xstats_names,
+				    unsigned limit);
 static void eth_igb_stats_reset(struct rte_eth_dev *dev);
 static void eth_igb_xstats_reset(struct rte_eth_dev *dev);
 static void eth_igb_infos_get(struct rte_eth_dev *dev,
@@ -165,6 +168,9 @@ static void eth_igbvf_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
 static int eth_igbvf_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstats *xstats, unsigned n);
+static int eth_igbvf_xstats_get_names(struct rte_eth_dev *dev,
+				      struct rte_eth_xstat_name *xstats_names,
+				      unsigned limit);
 static void eth_igbvf_stats_reset(struct rte_eth_dev *dev);
 static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
@@ -324,6 +330,7 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.link_update          = eth_igb_link_update,
 	.stats_get            = eth_igb_stats_get,
 	.xstats_get           = eth_igb_xstats_get,
+	.xstats_get_names     = eth_igb_xstats_get_names,
 	.stats_reset          = eth_igb_stats_reset,
 	.xstats_reset         = eth_igb_xstats_reset,
 	.dev_infos_get        = eth_igb_infos_get,
@@ -385,6 +392,7 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.link_update          = eth_igb_link_update,
 	.stats_get            = eth_igbvf_stats_get,
 	.xstats_get           = eth_igbvf_xstats_get,
+	.xstats_get_names     = eth_igbvf_xstats_get_names,
 	.stats_reset          = eth_igbvf_stats_reset,
 	.xstats_reset         = eth_igbvf_stats_reset,
 	.vlan_filter_set      = igbvf_vlan_filter_set,
@@ -1691,6 +1699,26 @@ eth_igb_xstats_reset(struct rte_eth_dev *dev)
 	memset(stats, 0, sizeof(*stats));
 }
 
+static int eth_igb_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names,
+	__rte_unused unsigned limit)
+{
+	unsigned i;
+
+	if (xstats_names == NULL)
+		return IGB_NB_XSTATS;
+
+	/* Note: limit checked in rte_eth_xstats_names() */
+
+	for (i = 0; i < IGB_NB_XSTATS; i++) {
+		snprintf(xstats_names[i].name, sizeof(xstats_names[i].name),
+			 "%s", rte_igb_stats_strings[i].name);
+		xstats_names[i].id = i;
+	}
+
+	return IGB_NB_XSTATS;
+}
+
 static int
 eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		   unsigned n)
@@ -1713,8 +1741,8 @@ eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* Extended stats */
 	for (i = 0; i < IGB_NB_XSTATS; i++) {
-		snprintf(xstats[i].name, sizeof(xstats[i].name),
-			 "%s", rte_igb_stats_strings[i].name);
+		xstats[i].name[0] = '\0';
+		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
 			rte_igb_stats_strings[i].offset);
 	}
@@ -1762,6 +1790,22 @@ igbvf_read_stats_registers(struct e1000_hw *hw, struct e1000_vf_stats *hw_stats)
 	    hw_stats->last_gotlbc, hw_stats->gotlbc);
 }
 
+static int eth_igbvf_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+				     struct rte_eth_xstat_name *xstats_names,
+				     __rte_unused unsigned limit)
+{
+	unsigned i;
+
+	if (xstats_names != NULL)
+		for (i = 0; i < IGBVF_NB_XSTATS; i++) {
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name), "%s",
+				rte_igbvf_stats_strings[i].name);
+			xstats_names[i].id = i;
+		}
+	return IGBVF_NB_XSTATS;
+}
+
 static int
 eth_igbvf_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		     unsigned n)
@@ -1780,8 +1824,8 @@ eth_igbvf_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		return 0;
 
 	for (i = 0; i < IGBVF_NB_XSTATS; i++) {
-		snprintf(xstats[i].name, sizeof(xstats[i].name), "%s",
-			 rte_igbvf_stats_strings[i].name);
+		xstats[i].name[0] = '\0';
+		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
 			rte_igbvf_stats_strings[i].offset);
 	}
