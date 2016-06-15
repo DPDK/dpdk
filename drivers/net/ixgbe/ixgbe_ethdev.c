@@ -179,6 +179,10 @@ static int ixgbevf_dev_xstats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_xstats *xstats, unsigned n);
 static void ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static void ixgbe_dev_xstats_reset(struct rte_eth_dev *dev);
+static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit);
+static int ixgbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit);
 static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint16_t queue_id,
 					     uint8_t stat_idx,
@@ -466,6 +470,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.xstats_get           = ixgbe_dev_xstats_get,
 	.stats_reset          = ixgbe_dev_stats_reset,
 	.xstats_reset         = ixgbe_dev_xstats_reset,
+	.xstats_get_names     = ixgbe_dev_xstats_get_names,
 	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.dev_supported_ptypes_get = ixgbe_dev_supported_ptypes_get,
@@ -555,6 +560,7 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.xstats_get           = ixgbevf_dev_xstats_get,
 	.stats_reset          = ixgbevf_dev_stats_reset,
 	.xstats_reset         = ixgbevf_dev_stats_reset,
+	.xstats_get_names     = ixgbevf_dev_xstats_get_names,
 	.dev_close            = ixgbevf_dev_close,
 	.allmulticast_enable  = ixgbevf_dev_allmulticast_enable,
 	.allmulticast_disable = ixgbevf_dev_allmulticast_disable,
@@ -685,6 +691,7 @@ static const struct rte_ixgbe_xstats_name_off rte_ixgbe_rxq_strings[] = {
 
 #define IXGBE_NB_RXQ_PRIO_STATS (sizeof(rte_ixgbe_rxq_strings) / \
 			   sizeof(rte_ixgbe_rxq_strings[0]))
+#define IXGBE_NB_RXQ_PRIO_VALUES 8
 
 static const struct rte_ixgbe_xstats_name_off rte_ixgbe_txq_strings[] = {
 	{"xon_packets", offsetof(struct ixgbe_hw_stats, pxontxc)},
@@ -695,6 +702,7 @@ static const struct rte_ixgbe_xstats_name_off rte_ixgbe_txq_strings[] = {
 
 #define IXGBE_NB_TXQ_PRIO_STATS (sizeof(rte_ixgbe_txq_strings) / \
 			   sizeof(rte_ixgbe_txq_strings[0]))
+#define IXGBE_NB_TXQ_PRIO_VALUES 8
 
 static const struct rte_ixgbe_xstats_name_off rte_ixgbevf_stats_strings[] = {
 	{"rx_multicast_packets", offsetof(struct ixgbevf_hw_stats, vfmprc)},
@@ -2706,8 +2714,75 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 /* This function calculates the number of xstats based on the current config */
 static unsigned
 ixgbe_xstats_calc_num(void) {
-	return IXGBE_NB_HW_STATS + (IXGBE_NB_RXQ_PRIO_STATS * 8) +
-		(IXGBE_NB_TXQ_PRIO_STATS * 8);
+	return IXGBE_NB_HW_STATS +
+		(IXGBE_NB_RXQ_PRIO_STATS * IXGBE_NB_RXQ_PRIO_VALUES) +
+		(IXGBE_NB_TXQ_PRIO_STATS * IXGBE_NB_TXQ_PRIO_VALUES);
+}
+
+static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit)
+{
+	const unsigned cnt_stats = ixgbe_xstats_calc_num();
+	unsigned stat, i, count;
+
+	if (xstats_names != NULL) {
+		count = 0;
+
+		/* Note: limit >= cnt_stats checked upstream
+		 * in rte_eth_xstats_names()
+		 */
+
+		/* Extended stats from ixgbe_hw_stats */
+		for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
+			xstats_names[count].id = count;
+			snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"%s",
+				rte_ixgbe_stats_strings[i].name);
+			count++;
+		}
+
+		/* RX Priority Stats */
+		for (stat = 0; stat < IXGBE_NB_RXQ_PRIO_STATS; stat++) {
+			for (i = 0; i < IXGBE_NB_RXQ_PRIO_VALUES; i++) {
+				xstats_names[count].id = count;
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"rx_priority%u_%s", i,
+					rte_ixgbe_rxq_strings[stat].name);
+				count++;
+			}
+		}
+
+		/* TX Priority Stats */
+		for (stat = 0; stat < IXGBE_NB_TXQ_PRIO_STATS; stat++) {
+			for (i = 0; i < IXGBE_NB_TXQ_PRIO_VALUES; i++) {
+				xstats_names[count].id = count;
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"tx_priority%u_%s", i,
+					rte_ixgbe_txq_strings[stat].name);
+				count++;
+			}
+		}
+	}
+	return cnt_stats;
+}
+
+static int ixgbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned limit)
+{
+	unsigned i;
+
+	if (limit < IXGBEVF_NB_XSTATS && xstats_names != NULL)
+		return -ENOMEM;
+
+	if (xstats_names != NULL)
+		for (i = 0; i < IXGBEVF_NB_XSTATS; i++)
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name),
+				"%s", rte_ixgbevf_stats_strings[i].name);
+	return IXGBEVF_NB_XSTATS;
 }
 
 static int
@@ -2743,8 +2818,8 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	/* Extended stats from ixgbe_hw_stats */
 	count = 0;
 	for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
-		snprintf(xstats[count].name, sizeof(xstats[count].name), "%s",
-			 rte_ixgbe_stats_strings[i].name);
+		xstats[count].id = count;
+		xstats[count].name[0] = '\0';
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 				rte_ixgbe_stats_strings[i].offset);
 		count++;
@@ -2752,10 +2827,9 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* RX Priority Stats */
 	for (stat = 0; stat < IXGBE_NB_RXQ_PRIO_STATS; stat++) {
-		for (i = 0; i < 8; i++) {
-			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				 "rx_priority%u_%s", i,
-				 rte_ixgbe_rxq_strings[stat].name);
+		for (i = 0; i < IXGBE_NB_RXQ_PRIO_VALUES; i++) {
+			xstats[count].id = count;
+			xstats[count].name[0] = '\0';
 			xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 					rte_ixgbe_rxq_strings[stat].offset +
 					(sizeof(uint64_t) * i));
@@ -2765,17 +2839,15 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* TX Priority Stats */
 	for (stat = 0; stat < IXGBE_NB_TXQ_PRIO_STATS; stat++) {
-		for (i = 0; i < 8; i++) {
-			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				 "tx_priority%u_%s", i,
-				 rte_ixgbe_txq_strings[stat].name);
+		for (i = 0; i < IXGBE_NB_TXQ_PRIO_VALUES; i++) {
+			xstats[count].id = count;
+			xstats[count].name[0] = '\0';
 			xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 					rte_ixgbe_txq_strings[stat].offset +
 					(sizeof(uint64_t) * i));
 			count++;
 		}
 	}
-
 	return count;
 }
 
@@ -2840,8 +2912,7 @@ ixgbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* Extended stats */
 	for (i = 0; i < IXGBEVF_NB_XSTATS; i++) {
-		snprintf(xstats[i].name, sizeof(xstats[i].name),
-			 "%s", rte_ixgbevf_stats_strings[i].name);
+		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
 			rte_ixgbevf_stats_strings[i].offset);
 	}
