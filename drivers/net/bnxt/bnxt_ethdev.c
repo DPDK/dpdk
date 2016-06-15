@@ -61,10 +61,105 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 }
 
 /*
+ * Device configuration and status function
+ */
+
+static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
+				  struct rte_eth_dev_info *dev_info)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint16_t max_vnics, i, j, vpool, vrxq;
+
+	/* MAC Specifics */
+	dev_info->max_mac_addrs = MAX_NUM_MAC_ADDR;
+	dev_info->max_hash_mac_addrs = 0;
+
+	/* PF/VF specifics */
+	if (BNXT_PF(bp)) {
+		dev_info->max_rx_queues = bp->pf.max_rx_rings;
+		dev_info->max_tx_queues = bp->pf.max_tx_rings;
+		dev_info->max_vfs = bp->pf.active_vfs;
+		dev_info->reta_size = bp->pf.max_rsscos_ctx;
+		max_vnics = bp->pf.max_vnics;
+	} else {
+		dev_info->max_rx_queues = bp->vf.max_rx_rings;
+		dev_info->max_tx_queues = bp->vf.max_tx_rings;
+		dev_info->reta_size = bp->vf.max_rsscos_ctx;
+		max_vnics = bp->vf.max_vnics;
+	}
+
+	/* Fast path specifics */
+	dev_info->min_rx_bufsize = 1;
+	dev_info->max_rx_pktlen = BNXT_MAX_MTU + ETHER_HDR_LEN + ETHER_CRC_LEN
+				  + VLAN_TAG_SIZE;
+	dev_info->rx_offload_capa = 0;
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_IPV4_CKSUM |
+					DEV_TX_OFFLOAD_TCP_CKSUM |
+					DEV_TX_OFFLOAD_UDP_CKSUM |
+					DEV_TX_OFFLOAD_TCP_TSO;
+
+	/* *INDENT-OFF* */
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = 8,
+			.hthresh = 8,
+			.wthresh = 0,
+		},
+		.rx_free_thresh = 32,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = 32,
+			.hthresh = 0,
+			.wthresh = 0,
+		},
+		.tx_free_thresh = 32,
+		.tx_rs_thresh = 32,
+		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
+			     ETH_TXQ_FLAGS_NOOFFLOADS,
+	};
+	/* *INDENT-ON* */
+
+	/*
+	 * TODO: default_rxconf, default_txconf, rx_desc_lim, and tx_desc_lim
+	 *       need further investigation.
+	 */
+
+	/* VMDq resources */
+	vpool = 64; /* ETH_64_POOLS */
+	vrxq = 128; /* ETH_VMDQ_DCB_NUM_QUEUES */
+	for (i = 0; i < 4; vpool >>= 1, i++) {
+		if (max_vnics > vpool) {
+			for (j = 0; j < 5; vrxq >>= 1, j++) {
+				if (dev_info->max_rx_queues > vrxq) {
+					if (vpool > vrxq)
+						vpool = vrxq;
+					goto found;
+				}
+			}
+			/* Not enough resources to support VMDq */
+			break;
+		}
+	}
+	/* Not enough resources to support VMDq */
+	vpool = 0;
+	vrxq = 0;
+found:
+	dev_info->max_vmdq_pools = vpool;
+	dev_info->vmdq_queue_num = vrxq;
+
+	dev_info->vmdq_pool_base = 0;
+	dev_info->vmdq_queue_base = 0;
+}
+
+/*
  * Initialization
  */
 
 static struct eth_dev_ops bnxt_dev_ops = {
+	.dev_infos_get = bnxt_dev_info_get_op,
 	.dev_close = bnxt_dev_close_op,
 };
 

@@ -42,6 +42,9 @@
 #include <rte_lcore.h>
 #include <rte_spinlock.h>
 
+#define BNXT_MAX_MTU		9000
+#define VLAN_TAG_SIZE		4
+
 struct bnxt_vf_info {
 	uint16_t		fw_fid;
 	uint8_t			mac_addr[ETHER_ADDR_LEN];

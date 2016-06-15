@@ -83,7 +83,7 @@ static int bnxt_hwrm_send_message_locked(struct bnxt *bp, void *msg,
 		/* Sanity check on the resp->resp_len */
 		rte_rmb();
 		if (resp->resp_len && resp->resp_len <=
-		    bp->max_resp_len) {
+				bp->max_resp_len) {
 			/* Last byte of resp contains the valid key */
 			valid = (uint8_t *)resp + resp->resp_len - 1;
 			if (*valid == HWRM_RESP_VALID_KEY)
