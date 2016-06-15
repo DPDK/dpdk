@@ -63,11 +63,12 @@
  * This file contains a list of the PCI device IDs recognised by DPDK, which
  * can be used to fill out an array of structures describing the devices.
  *
- * Currently four families of devices are recognised: those supported by the
- * IGB driver, by EM driver, those supported by the IXGBE driver, and by virtio
- * driver which is a para virtualization driver running in guest virtual machine.
- * The inclusion of these in an array built using this file depends on the
- * definition of
+ * Currently five families of devices are recognised: those supported by the
+ * IGB driver, by EM driver, those supported by the IXGBE driver, those
+ * supported by the BNXT driver, and by virtio driver which is a para
+ * virtualization driver running in guest virtual machine. The inclusion of
+ * these in an array built using this file depends on the definition of
+ * RTE_PCI_DEV_ID_DECL_BNXT
  * RTE_PCI_DEV_ID_DECL_EM
  * RTE_PCI_DEV_ID_DECL_IGB
  * RTE_PCI_DEV_ID_DECL_IGBVF
@@ -150,6 +151,10 @@
 
 #ifndef RTE_PCI_DEV_ID_DECL_BNX2XVF
 #define RTE_PCI_DEV_ID_DECL_BNX2XVF(vend, dev)
+#endif
+
+#ifndef RTE_PCI_DEV_ID_DECL_BNXT
+#define RTE_PCI_DEV_ID_DECL_BNXT(vend, dev)
 #endif
 
 #ifndef PCI_VENDOR_ID_INTEL
@@ -694,6 +699,28 @@ RTE_PCI_DEV_ID_DECL_BNX2X(PCI_VENDOR_ID_BROADCOM, BNX2X_DEV_ID_57811_MF)
 RTE_PCI_DEV_ID_DECL_BNX2X(PCI_VENDOR_ID_BROADCOM, BNX2X_DEV_ID_57840_MF)
 #endif
 
+/****************** Broadcom bnxt devices ******************/
+
+#define BROADCOM_DEV_ID_57301                  0x16c8
+#define BROADCOM_DEV_ID_57302                  0x16c9
+#define BROADCOM_DEV_ID_57304_PF               0x16ca
+#define BROADCOM_DEV_ID_57304_VF               0x16cb
+#define BROADCOM_DEV_ID_57402                  0x16d0
+#define BROADCOM_DEV_ID_57404                  0x16d1
+#define BROADCOM_DEV_ID_57406_PF               0x16d2
+#define BROADCOM_DEV_ID_57406_VF               0x16d3
+#define BROADCOM_DEV_ID_57406_MF               0x16d4
+
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57301)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57302)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57304_PF)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57304_VF)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57402)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57404)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57406_PF)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57406_VF)
+RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57406_MF)
+
 /*
  * Undef all RTE_PCI_DEV_ID_DECL_* here.
  */
@@ -710,3 +737,4 @@ RTE_PCI_DEV_ID_DECL_BNX2X(PCI_VENDOR_ID_BROADCOM, BNX2X_DEV_ID_57840_MF)
 #undef RTE_PCI_DEV_ID_DECL_VMXNET3
 #undef RTE_PCI_DEV_ID_DECL_FM10K
 #undef RTE_PCI_DEV_ID_DECL_FM10KVF
+#undef RTE_PCI_DEV_ID_DECL_BNXT

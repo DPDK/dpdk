@@ -1,6 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-    All rights reserved.
+    Copyright 2016 Broadcom Limited
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -12,7 +11,7 @@
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
     distribution.
-    * Neither the name of Intel Corporation nor the names of its
+    * Neither the name of Broadcom Limited nor the names of its
     contributors may be used to endorse or promote products derived
     from this software without specific prior written permission.
 
@@ -28,50 +27,23 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Network Interface Controller Drivers
-====================================
+bnxt poll mode driver library
+=============================
 
-.. toctree::
-    :maxdepth: 3
-    :numbered:
+The bnxt poll mode library (**librte_pmd_bnxt**) implements support for
+**Broadcom NetXtreme® C-Series**.  These adapters support Standards-
+compliant 10/25/50Gbps 30MPPS full-duplex throughput.
 
-    overview
-    bnx2x
-    bnxt
-    cxgbe
-    e1000em
-    ena
-    enic
-    fm10k
-    i40e
-    ixgbe
-    intel_vf
-    mlx4
-    mlx5
-    nfp
-    qede
-    szedata2
-    virtio
-    vhost
-    vmxnet3
-    pcap_ring
+Information about this family of adapters can be found in the
+`NetXtreme® Brand section <https://www.broadcom.com/products/ethernet-communication-and-switching?technology%5B%5D=88>`_
+of the `Broadcom web site <http://www.broadcom.com/>`_.
 
-**Figures**
+Limitations
+-----------
 
-:numref:`figure_single_port_nic` :ref:`figure_single_port_nic`
+With the current driver, allocated mbufs must be large enough to hold
+the entire received frame.  If the mbufs are not large enough, the
+packets will be dropped.  This is most limiting when jumbo frames are
+used.
 
-:numref:`figure_perf_benchmark` :ref:`figure_perf_benchmark`
-
-:numref:`figure_fast_pkt_proc` :ref:`figure_fast_pkt_proc`
-
-:numref:`figure_inter_vm_comms` :ref:`figure_inter_vm_comms`
-
-:numref:`figure_host_vm_comms` :ref:`figure_host_vm_comms`
-
-:numref:`figure_host_vm_comms_qemu` :ref:`figure_host_vm_comms_qemu`
-
-:numref:`figure_vmxnet3_int` :ref:`figure_vmxnet3_int`
-
-:numref:`figure_vswitch_vm` :ref:`figure_vswitch_vm`
-
-:numref:`figure_vm_vm_comms` :ref:`figure_vm_vm_comms`
+SR-IOV is not supported.

@@ -47,6 +47,12 @@ New Features
   * Dropped specific Xen Dom0 code.
   * Dropped specific anonymous mempool code in testpmd.
 
+* **Added new driver for Broadcom NetXtreme-C devices.**
+
+  Added the new bnxt driver for Broadcom NetXtreme-C devices. See the
+  "Network Interface Controller Drivers" document for more details on this
+  new driver.
+
 * **Added mailbox interrupt support for ixgbe and igb VFs.**
 
   When the physical NIC link comes down or up, the PF driver will send a

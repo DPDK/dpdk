@@ -269,6 +269,11 @@ M: Evgeny Schemeilin <evgenys@amazon.com>
 F: drivers/net/ena/
 F: doc/guides/nics/ena.rst
 
+Broadcom bnxt
+M: Stephen Hurd <stephen.hurd@broadcom.com>
+F: drivers/net/bnxt/
+F: doc/guides/nics/bnxt.rst
+
 Chelsio cxgbe
 M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
 F: drivers/net/cxgbe/

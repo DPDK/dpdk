@@ -245,6 +245,11 @@ CONFIG_RTE_LIBRTE_NFP_PMD=n
 CONFIG_RTE_LIBRTE_NFP_DEBUG=n
 
 #
+# Compile burst-oriented Broadcom BNXT PMD driver
+#
+CONFIG_RTE_LIBRTE_BNXT_PMD=y
+
+#
 # Compile software PMD backed by SZEDATA2 device
 #
 CONFIG_RTE_LIBRTE_PMD_SZEDATA2=n
