@@ -446,6 +446,79 @@ struct tx_bd_long_hi {
 	uint32_t cfa_meta;
 } __attribute__((packed));
 
+/* RX Producer Packet BD (16 bytes) */
+struct rx_prod_pkt_bd {
+	/* This value identifies the type of buffer descriptor. */
+	#define RX_PROD_PKT_BD_TYPE_MASK		UINT32_C(0x3f)
+	#define RX_PROD_PKT_BD_TYPE_SFT			0
+		/*
+		 * Indicates that this BD is 16B long and is an RX Producer (ie.
+		 * empty) buffer descriptor.
+		 */
+	#define RX_PROD_PKT_BD_TYPE_RX_PROD_PKT		(UINT32_C(0x4) << 0)
+	/*
+	 * If set to 1, the packet will be placed at the address plus 2B. The 2
+	 * Bytes of padding will be written as zero.
+	 */
+	/*
+	 * This is intended to be used when the host buffer is cache-line
+	 * aligned to produce packets that are easy to parse in host memory
+	 * while still allowing writes to be cache line aligned.
+	 */
+	#define RX_PROD_PKT_BD_FLAGS_SOP_PAD		UINT32_C(0x40)
+	/*
+	 * If set to 1, the packet write will be padded out to the nearest
+	 * cache-line with zero value padding.
+	 */
+	/*
+	 * If receive buffers start/end on cache-line boundaries, this feature
+	 * will ensure that all data writes on the PCI bus start/end on cache
+	 * line boundaries.
+	 */
+	#define RX_PROD_PKT_BD_FLAGS_EOP_PAD		UINT32_C(0x80)
+	/*
+	 * This value is the number of additional buffers in the ring that
+	 * describe the buffer space to be consumed for the this packet. If the
+	 * value is zero, then the packet must fit within the space described by
+	 * this BD. If this value is 1 or more, it indicates how many additional
+	 * "buffer" BDs are in the ring immediately following this BD to be used
+	 * for the same network packet. Even if the packet to be placed does not
+	 * need all the additional buffers, they will be consumed anyway.
+	 */
+	#define RX_PROD_PKT_BD_FLAGS_BUFFERS_MASK	UINT32_C(0x300)
+	#define RX_PROD_PKT_BD_FLAGS_BUFFERS_SFT	8
+	#define RX_PROD_PKT_BD_FLAGS_MASK		UINT32_C(0xffc0)
+	#define RX_PROD_PKT_BD_FLAGS_SFT		6
+	uint16_t flags_type;
+
+	/*
+	 * This is the length in Bytes of the host physical buffer where data
+	 * for the packet may be placed in host memory.
+	 */
+	/*
+	 * While this is a Byte resolution value, it is often advantageous to
+	 * ensure that the buffers provided end on a host cache line.
+	 */
+	uint16_t len;
+
+	/*
+	 * The opaque data field is pass through to the completion and can be
+	 * used for any data that the driver wants to associate with this
+	 * receive buffer set.
+	 */
+	uint32_t opaque;
+
+	/*
+	 * This is the host physical address where data for the packet may by
+	 * placed in host memory.
+	 */
+	/*
+	 * While this is a Byte resolution value, it is often advantageous to
+	 * ensure that the buffers provide start on a host cache line.
+	 */
+	uint64_t addr;
+} __attribute__((packed));
+
 /* Completion Ring Structures */
 /* Note: This structure is used by the HWRM to communicate HWRM Error. */
 /* Base Completion Record (16 bytes) */
@@ -610,6 +683,407 @@ struct tx_cmpl {
 	uint16_t unused_1;
 	uint32_t unused_2;
 } __attribute__((packed)) tx_cmpl_t, *ptx_cmpl_t;
+
+/* RX Packet Completion Record (32 bytes split to 2 16-byte struct) */
+struct rx_pkt_cmpl {
+	/*
+	 * This field indicates the exact type of the completion. By convention,
+	 * the LSB identifies the length of the record in 16B units. Even values
+	 * indicate 16B records. Odd values indicate 32B records.
+	 */
+	#define RX_PKT_CMPL_TYPE_MASK			UINT32_C(0x3f)
+	#define RX_PKT_CMPL_TYPE_SFT			0
+		/*
+		 * RX L2 completion: Completion of and L2 RX packet.
+		 * Length = 32B
+		 */
+	#define RX_PKT_CMPL_TYPE_RX_L2			(UINT32_C(0x11) << 0)
+	/*
+	 * When this bit is '1', it indicates a packet that has an error of some
+	 * type. Type of error is indicated in error_flags.
+	 */
+	#define RX_PKT_CMPL_FLAGS_ERROR			UINT32_C(0x40)
+	/* This field indicates how the packet was placed in the buffer. */
+	#define RX_PKT_CMPL_FLAGS_PLACEMENT_MASK	UINT32_C(0x380)
+	#define RX_PKT_CMPL_FLAGS_PLACEMENT_SFT		7
+		/* Normal: Packet was placed using normal algorithm. */
+	#define RX_PKT_CMPL_FLAGS_PLACEMENT_NORMAL	(UINT32_C(0x0) << 7)
+		/* Jumbo: Packet was placed using jumbo algorithm. */
+	#define RX_PKT_CMPL_FLAGS_PLACEMENT_JUMBO	(UINT32_C(0x1) << 7)
+		/*
+		 * Header/Data Separation: Packet was placed using Header/Data
+		 * separation algorithm. The separation location is indicated by
+		 * the itype field.
+		 */
+	#define RX_PKT_CMPL_FLAGS_PLACEMENT_HDS		(UINT32_C(0x2) << 7)
+	#define RX_PKT_CMPL_FLAGS_PLACEMENT_LAST \
+						RX_PKT_CMPL_FLAGS_PLACEMENT_HDS
+	/* This bit is '1' if the RSS field in this completion is valid. */
+	#define RX_PKT_CMPL_FLAGS_RSS_VALID		UINT32_C(0x400)
+	/*
+	 * This value indicates what the inner packet determined for the packet
+	 * was.
+	 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_MASK		UINT32_C(0xf000)
+	#define RX_PKT_CMPL_FLAGS_ITYPE_SFT		12
+		/* Not Known: Indicates that the packet type was not known. */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_NOT_KNOWN	(UINT32_C(0x0) << 12)
+		/*
+		 * IP Packet: Indicates that the packet was an IP packet, but
+		 * further classification was not possible.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_IP		(UINT32_C(0x1) << 12)
+		/*
+		 * TCP Packet: Indicates that the packet was IP and TCP. This
+		 * indicates that the payload_offset field is valid.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_TCP		(UINT32_C(0x2) << 12)
+		/*
+		 * UDP Packet: Indicates that the packet was IP and UDP. This
+		 * indicates that the payload_offset field is valid.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_UDP		(UINT32_C(0x3) << 12)
+		/*
+		 * FCoE Packet: Indicates that the packet was recognized as a
+		 * FCoE. This also indicates that the payload_offset field is
+		 * valid.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_FCOE		(UINT32_C(0x4) << 12)
+		/*
+		 * RoCE Packet: Indicates that the packet was recognized as a
+		 * RoCE. This also indicates that the payload_offset field is
+		 * valid.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_ROCE		(UINT32_C(0x5) << 12)
+		/*
+		 * ICMP Packet: Indicates that the packet was recognized as
+		 * ICMP. This indicates that the payload_offset field is valid.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_ICMP		(UINT32_C(0x7) << 12)
+		/*
+		 * PtP packet wo/timestamp: Indicates that the packet was
+		 * recognized as a PtP packet.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_PTP_WO_TIMESTAMP \
+							(UINT32_C(0x8) << 12)
+		/*
+		 * PtP packet w/timestamp: Indicates that the packet was
+		 * recognized as a PtP packet and that a timestamp was taken for
+		 * the packet.
+		 */
+	#define RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP	(UINT32_C(0x9) << 12)
+	#define RX_PKT_CMPL_FLAGS_ITYPE_LAST \
+					RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP
+	#define RX_PKT_CMPL_FLAGS_MASK			UINT32_C(0xffc0)
+	#define RX_PKT_CMPL_FLAGS_SFT			6
+	uint16_t flags_type;
+
+	/*
+	 * This is the length of the data for the packet stored in the buffer(s)
+	 * identified by the opaque value. This includes the packet BD and any
+	 * associated buffer BDs. This does not include the the length of any
+	 * data places in aggregation BDs.
+	 */
+	uint16_t len;
+
+	/*
+	 * This is a copy of the opaque field from the RX BD this completion
+	 * corresponds to.
+	 */
+	uint32_t opaque;
+
+	/*
+	 * This value is written by the NIC such that it will be different for
+	 * each pass through the completion queue. The even passes will write 1.
+	 * The odd passes will write 0.
+	 */
+	#define RX_PKT_CMPL_V1				UINT32_C(0x1)
+	/*
+	 * This value is the number of aggregation buffers that follow this
+	 * entry in the completion ring that are a part of this packet. If the
+	 * value is zero, then the packet is completely contained in the buffer
+	 * space provided for the packet in the RX ring.
+	 */
+	#define RX_PKT_CMPL_AGG_BUFS_MASK		UINT32_C(0x3e)
+	#define RX_PKT_CMPL_AGG_BUFS_SFT		1
+	uint8_t agg_bufs_v1;
+
+	/*
+	 * This is the RSS hash type for the packet. The value is packed
+	 * {tuple_extrac_op[1:0],rss_profile_id[4:0],tuple_extrac_op[2]}.
+	 */
+	uint8_t rss_hash_type;
+
+	/*
+	 * This value indicates the offset from the beginning of the packet
+	 * where the inner payload starts. This value is valid for TCP, UDP,
+	 * FCoE, and RoCE packets.
+	 */
+	uint8_t payload_offset;
+
+	uint8_t unused_1;
+
+	/*
+	 * This value is the RSS hash value calculated for the packet based on
+	 * the mode bits and key value in the VNIC.
+	 */
+	uint32_t rss_hash;
+} __attribute__((packed));
+
+/* last 16 bytes of RX Packet Completion Record */
+struct rx_pkt_cmpl_hi {
+	/*
+	 * This indicates that the ip checksum was calculated for the inner
+	 * packet and that the ip_cs_error field indicates if there was an
+	 * error.
+	 */
+	#define RX_PKT_CMPL_FLAGS2_IP_CS_CALC		UINT32_C(0x1)
+	/*
+	 * This indicates that the TCP, UDP or ICMP checksum was calculated for
+	 * the inner packet and that the l4_cs_error field indicates if there
+	 * was an error.
+	 */
+	#define RX_PKT_CMPL_FLAGS2_L4_CS_CALC		UINT32_C(0x2)
+	/*
+	 * This indicates that the ip checksum was calculated for the tunnel
+	 * header and that the t_ip_cs_error field indicates if there was an
+	 * error.
+	 */
+	#define RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC		UINT32_C(0x4)
+	/*
+	 * This indicates that the UDP checksum was calculated for the tunnel
+	 * packet and that the t_l4_cs_error field indicates if there was an
+	 * error.
+	 */
+	#define RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC		UINT32_C(0x8)
+	/* This value indicates what format the metadata field is. */
+	#define RX_PKT_CMPL_FLAGS2_META_FORMAT_MASK	UINT32_C(0xf0)
+	#define RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT	4
+		/* No metadata informtaion. Value is zero. */
+	#define RX_PKT_CMPL_FLAGS2_META_FORMAT_NONE	(UINT32_C(0x0) << 4)
+		/*
+		 * The metadata field contains the VLAN tag and TPID value. -
+		 * metadata[11:0] contains the vlan VID value. - metadata[12]
+		 * contains the vlan DE value. - metadata[15:13] contains the
+		 * vlan PRI value. - metadata[31:16] contains the vlan TPID
+		 * value.
+		 */
+	#define RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN	(UINT32_C(0x1) << 4)
+	#define RX_PKT_CMPL_FLAGS2_META_FORMAT_LAST \
+					RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN
+	/*
+	 * This field indicates the IP type for the inner-most IP header. A
+	 * value of '0' indicates IPv4. A value of '1' indicates IPv6. This
+	 * value is only valid if itype indicates a packet with an IP header.
+	 */
+	#define RX_PKT_CMPL_FLAGS2_IP_TYPE		UINT32_C(0x100)
+	uint32_t flags2;
+
+	/*
+	 * This is data from the CFA block as indicated by the meta_format
+	 * field.
+	 */
+	/* When meta_format=1, this value is the VLAN VID. */
+	#define RX_PKT_CMPL_METADATA_VID_MASK		UINT32_C(0xfff)
+	#define RX_PKT_CMPL_METADATA_VID_SFT		0
+	/* When meta_format=1, this value is the VLAN DE. */
+	#define RX_PKT_CMPL_METADATA_DE			UINT32_C(0x1000)
+	/* When meta_format=1, this value is the VLAN PRI. */
+	#define RX_PKT_CMPL_METADATA_PRI_MASK		UINT32_C(0xe000)
+	#define RX_PKT_CMPL_METADATA_PRI_SFT		13
+	/* When meta_format=1, this value is the VLAN TPID. */
+	#define RX_PKT_CMPL_METADATA_TPID_MASK		UINT32_C(0xffff0000)
+	#define RX_PKT_CMPL_METADATA_TPID_SFT		16
+	uint32_t metadata;
+
+	/*
+	 * This value is written by the NIC such that it will be different for
+	 * each pass through the completion queue. The even passes will write 1.
+	 * The odd passes will write 0.
+	 */
+	#define RX_PKT_CMPL_V2				UINT32_C(0x1)
+	/*
+	 * This error indicates that there was some sort of problem with the BDs
+	 * for the packet that was found after part of the packet was already
+	 * placed. The packet should be treated as invalid.
+	 */
+	#define RX_PKT_CMPL_ERRORS_BUFFER_ERROR_MASK	UINT32_C(0xe)
+	#define RX_PKT_CMPL_ERRORS_BUFFER_ERROR_SFT	1
+		/* No buffer error */
+	#define RX_PKT_CMPL_ERRORS_BUFFER_ERROR_NO_BUFFER \
+							(UINT32_C(0x0) << 1)
+		/*
+		 * Did Not Fit: Packet did not fit into packet buffer provided.
+		 * For regular placement, this means the packet did not fit in
+		 * the buffer provided. For HDS and jumbo placement, this means
+		 * that the packet could not be placed into 7 physical buffers
+		 * or less.
+		 */
+	#define RX_PKT_CMPL_ERRORS_BUFFER_ERROR_DID_NOT_FIT \
+							(UINT32_C(0x1) << 1)
+		/*
+		 * Not On Chip: All BDs needed for the packet were not on-chip
+		 * when the packet arrived.
+		 */
+	#define RX_PKT_CMPL_ERRORS_BUFFER_ERROR_NOT_ON_CHIP \
+							(UINT32_C(0x2) << 1)
+		/* Bad Format: BDs were not formatted correctly. */
+	#define RX_PKT_CMPL_ERRORS_BUFFER_ERROR_BAD_FORMAT \
+							(UINT32_C(0x3) << 1)
+	#define RX_PKT_CMPL_ERRORS_BUFFER_ERROR_LAST \
+				RX_PKT_CMPL_ERRORS_BUFFER_ERROR_BAD_FORMAT
+	/* This indicates that there was an error in the IP header checksum. */
+	#define RX_PKT_CMPL_ERRORS_IP_CS_ERROR		UINT32_C(0x10)
+	/*
+	 * This indicates that there was an error in the TCP, UDP or ICMP
+	 * checksum.
+	 */
+	#define RX_PKT_CMPL_ERRORS_L4_CS_ERROR		UINT32_C(0x20)
+	/*
+	 * This indicates that there was an error in the tunnel IP header
+	 * checksum.
+	 */
+	#define RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR	UINT32_C(0x40)
+	/* This indicates that there was an error in the tunnel UDP checksum. */
+	#define RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR	UINT32_C(0x80)
+	/*
+	 * This indicates that there was a CRC error on either an FCoE or RoCE
+	 * packet. The itype indicates the packet type.
+	 */
+	#define RX_PKT_CMPL_ERRORS_CRC_ERROR		UINT32_C(0x100)
+	/*
+	 * This indicates that there was an error in the tunnel portion of the
+	 * packet when this field is non-zero.
+	 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_MASK	UINT32_C(0xe00)
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_SFT	9
+		/*
+		 * No additional error occurred on the tunnel portion of the
+		 * packet of the packet does not have a tunnel.
+		 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_NO_ERROR	(UINT32_C(0x0) << 9)
+		/*
+		 * Indicates that IP header version does not match expectation
+		 * from L2 Ethertype for IPv4 and IPv6 in the tunnel header.
+		 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_T_L3_BAD_VERSION \
+							(UINT32_C(0x1) << 9)
+		/*
+		 * Indicates that header length is out of range in the tunnel
+		 * header. Valid for IPv4.
+		 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_T_L3_BAD_HDR_LEN \
+							(UINT32_C(0x2) << 9)
+		/*
+		 * Indicates that the physical packet is shorter than that
+		 * claimed by the PPPoE header length for a tunnel PPPoE packet.
+		 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_TUNNEL_TOTAL_ERROR \
+							(UINT32_C(0x3) << 9)
+		/*
+		 * Indicates that physical packet is shorter than that claimed
+		 * by the tunnel l3 header length. Valid for IPv4, or IPv6
+		 * tunnel packet packets.
+		 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_T_IP_TOTAL_ERROR \
+							(UINT32_C(0x4) << 9)
+		/*
+		 * Indicates that the physical packet is shorter than that
+		 * claimed by the tunnel UDP header length for a tunnel UDP
+		 * packet that is not fragmented.
+		 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_T_UDP_TOTAL_ERROR \
+							(UINT32_C(0x5) << 9)
+		/*
+		 * indicates that the IPv4 TTL or IPv6 hop limit check have
+		 * failed (e.g. TTL = 0) in the tunnel header. Valid for IPv4,
+		 * and IPv6.
+		 */
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_T_L3_BAD_TTL \
+							(UINT32_C(0x6) << 9)
+	#define RX_PKT_CMPL_ERRORS_T_PKT_ERROR_LAST \
+				RX_PKT_CMPL_ERRORS_T_PKT_ERROR_T_L3_BAD_TTL
+	/*
+	 * This indicates that there was an error in the inner portion of the
+	 * packet when this field is non-zero.
+	 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_MASK	UINT32_C(0xf000)
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_SFT	12
+		/*
+		 * No additional error occurred on the tunnel portion of the
+		 * packet of the packet does not have a tunnel.
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_NO_ERROR	(UINT32_C(0x0) << 12)
+		/*
+		 * Indicates that IP header version does not match expectation
+		 * from L2 Ethertype for IPv4 and IPv6 or that option other than
+		 * VFT was parsed on FCoE packet.
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_L3_BAD_VERSION \
+							(UINT32_C(0x1) << 12)
+		/*
+		 * indicates that header length is out of range. Valid for IPv4
+		 * and RoCE
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_L3_BAD_HDR_LEN \
+							(UINT32_C(0x2) << 12)
+		/*
+		 * indicates that the IPv4 TTL or IPv6 hop limit check have
+		 * failed (e.g. TTL = 0). Valid for IPv4, and IPv6
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_L3_BAD_TTL	(UINT32_C(0x3) << 12)
+		/*
+		 * Indicates that physical packet is shorter than that claimed
+		 * by the l3 header length. Valid for IPv4, IPv6 packet or RoCE
+		 * packets.
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_IP_TOTAL_ERROR \
+							(UINT32_C(0x4) << 12)
+		/*
+		 * Indicates that the physical packet is shorter than that
+		 * claimed by the UDP header length for a UDP packet that is not
+		 * fragmented.
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_UDP_TOTAL_ERROR \
+							(UINT32_C(0x5) << 12)
+		/*
+		 * Indicates that TCP header length > IP payload. Valid for TCP
+		 * packets only.
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_L4_BAD_HDR_LEN \
+							(UINT32_C(0x6) << 12)
+		/* Indicates that TCP header length < 5. Valid for TCP. */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_L4_BAD_HDR_LEN_TOO_SMALL \
+							(UINT32_C(0x7) << 12)
+		/*
+		 * Indicates that TCP option headers result in a TCP header size
+		 * that does not match data offset in TCP header. Valid for TCP.
+		 */
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_L4_BAD_OPT_LEN \
+							(UINT32_C(0x8) << 12)
+	#define RX_PKT_CMPL_ERRORS_PKT_ERROR_LAST \
+				RX_PKT_CMPL_ERRORS_PKT_ERROR_L4_BAD_OPT_LEN
+	#define RX_PKT_CMPL_ERRORS_MASK			UINT32_C(0xfffe)
+	#define RX_PKT_CMPL_ERRORS_SFT			1
+	uint16_t errors_v2;
+
+	/*
+	 * This field identifies the CFA action rule that was used for this
+	 * packet.
+	 */
+	uint16_t cfa_code;
+
+	/*
+	 * This value holds the reordering sequence number for the packet. If
+	 * the reordering sequence is not valid, then this value is zero. The
+	 * reordering domain for the packet is in the bottom 8 to 10b of the
+	 * rss_hash value. The bottom 20b of this value contain the ordering
+	 * domain value for the packet.
+	 */
+	#define RX_PKT_CMPL_REORDER_MASK		UINT32_C(0xffffff)
+	#define RX_PKT_CMPL_REORDER_SFT			0
+	uint32_t reorder;
+} __attribute__((packed));
 
 /* HWRM Forwarded Request (16 bytes) */
 struct hwrm_fwd_req_cmpl {

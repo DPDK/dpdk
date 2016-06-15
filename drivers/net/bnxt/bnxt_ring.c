@@ -36,6 +36,7 @@
 #include "bnxt.h"
 #include "bnxt_cpr.h"
 #include "bnxt_ring.h"
+#include "bnxt_rxr.h"
 #include "bnxt_txr.h"
 
 #include "hsi_struct_def_dpdk.h"
@@ -74,8 +75,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 {
 	struct bnxt_ring *cp_ring = cp_ring_info->cp_ring_struct;
 	struct bnxt_ring *tx_ring;
-	/* TODO: RX ring */
-	/* struct bnxt_ring *rx_ring; */
+	struct bnxt_ring *rx_ring;
 	struct rte_pci_device *pdev = bp->pdev;
 	const struct rte_memzone *mz = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
@@ -92,12 +92,9 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 						tx_ring_struct->vmem_size) : 0;
 
 	int rx_vmem_start = tx_vmem_start + tx_vmem_len;
-	/* TODO: RX ring */
-	int rx_vmem_len = 0;
-	/*
-	 * rx_ring_info ? RTE_CACHE_LINE_ROUNDUP(rx_ring_info->
-	 * rx_ring_struct->vmem_size) : 0;
-	 */
+	int rx_vmem_len = rx_ring_info ?
+		RTE_CACHE_LINE_ROUNDUP(rx_ring_info->
+						rx_ring_struct->vmem_size) : 0;
 
 	int cp_ring_start = rx_vmem_start + rx_vmem_len;
 	int cp_ring_len = RTE_CACHE_LINE_ROUNDUP(cp_ring->ring_size *
@@ -109,13 +106,9 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 				   sizeof(struct tx_bd_long)) : 0;
 
 	int rx_ring_start = tx_ring_start + tx_ring_len;
-	/* TODO: RX ring */
-	int rx_ring_len = 0;
-	/*
-	 * rx_ring_info ?
-	 * RTE_CACHE_LINE_ROUNDUP(rx_ring_info->rx_ring_struct->ring_size *
-	 * sizeof(struct rx_prod_pkt_bd)) : 0;
-	 */
+	int rx_ring_len =  rx_ring_info ?
+		RTE_CACHE_LINE_ROUNDUP(rx_ring_info->rx_ring_struct->ring_size *
+		sizeof(struct rx_prod_pkt_bd)) : 0;
 
 	int total_alloc_len = rx_ring_start + rx_ring_len;
 
@@ -153,26 +146,24 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		}
 	}
 
-/*
- *	if (rx_ring_info) {
- *		rx_ring = &rx_ring_info->rx_ring_struct;
- *
- *		rx_ring->bd = ((char *)mz->addr + rx_ring_start);
- *		rx_ring_info->rx_desc_ring =
- *		    (struct rx_prod_pkt_bd *)rx_ring->bd;
- *		rx_ring->bd_dma = mz->phys_addr + rx_ring_start;
- *		rx_ring_info->rx_desc_mapping = rx_ring->bd_dma;
- *
- *		if (!rx_ring->bd)
- *			return -ENOMEM;
- *		if (rx_ring->vmem_size) {
- *			rx_ring->vmem =
- *			    (void **)((char *)mz->addr + rx_vmem_start);
- *			rx_ring_info->rx_buf_ring =
- *			    (struct bnxt_sw_rx_bd *)rx_ring->vmem;
- *		}
- *	}
- */
+	if (rx_ring_info) {
+		rx_ring = rx_ring_info->rx_ring_struct;
+
+		rx_ring->bd = ((char *)mz->addr + rx_ring_start);
+		rx_ring_info->rx_desc_ring =
+		    (struct rx_prod_pkt_bd *)rx_ring->bd;
+		rx_ring->bd_dma = mz->phys_addr + rx_ring_start;
+		rx_ring_info->rx_desc_mapping = rx_ring->bd_dma;
+
+		if (!rx_ring->bd)
+			return -ENOMEM;
+		if (rx_ring->vmem_size) {
+			rx_ring->vmem =
+			    (void **)((char *)mz->addr + rx_vmem_start);
+			rx_ring_info->rx_buf_ring =
+			    (struct bnxt_sw_rx_bd *)rx_ring->vmem;
+		}
+	}
 
 	cp_ring->bd = ((char *)mz->addr + cp_ring_start);
 	cp_ring->bd_dma = mz->phys_addr + cp_ring_start;

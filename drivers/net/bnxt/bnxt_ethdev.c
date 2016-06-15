@@ -42,6 +42,7 @@
 #include "bnxt.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_rxq.h"
+#include "bnxt_rxr.h"
 #include "bnxt_stats.h"
 #include "bnxt_txq.h"
 #include "bnxt_txr.h"
@@ -269,7 +270,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error;
 	}
 	eth_dev->dev_ops = &bnxt_dev_ops;
-	/* eth_dev->rx_pkt_burst = &bnxt_recv_pkts; */
+	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
 
 	rc = bnxt_alloc_hwrm_resources(bp);
