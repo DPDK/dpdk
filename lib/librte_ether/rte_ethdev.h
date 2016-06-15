@@ -3866,6 +3866,34 @@ int rte_eth_dev_get_dcb_info(uint8_t port_id,
 void *rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param);
 
+/*
+* Add a callback that must be called first on packet RX on a given port
+* and queue.
+*
+* This API configures a first function to be called for each burst of
+* packets received on a given NIC port queue. The return value is a pointer
+* that can be used to later remove the callback using
+* rte_eth_remove_rx_callback().
+*
+* Multiple functions are called in the order that they are added.
+*
+* @param port_id
+*   The port identifier of the Ethernet device.
+* @param queue_id
+*   The queue on the Ethernet device on which the callback is to be added.
+* @param fn
+*   The callback function
+* @param user_param
+*   A generic pointer parameter which will be passed to each invocation of the
+*   callback function on this port and queue.
+*
+* @return
+*   NULL on error.
+*   On success, a pointer value which can later be used to remove the callback.
+*/
+void *rte_eth_add_first_rx_callback(uint8_t port_id, uint16_t queue_id,
+		rte_rx_callback_fn fn, void *user_param);
+
 /**
  * Add a callback to be called on packet TX on a given port and queue.
  *

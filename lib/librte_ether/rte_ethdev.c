@@ -3013,6 +3013,41 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 }
 
 void *
+rte_eth_add_first_rx_callback(uint8_t port_id, uint16_t queue_id,
+		rte_rx_callback_fn fn, void *user_param)
+{
+#ifndef RTE_ETHDEV_RXTX_CALLBACKS
+	rte_errno = ENOTSUP;
+	return NULL;
+#endif
+	/* check input parameters */
+	if (!rte_eth_dev_is_valid_port(port_id) || fn == NULL ||
+		queue_id >= rte_eth_devices[port_id].data->nb_rx_queues) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	struct rte_eth_rxtx_callback *cb = rte_zmalloc(NULL, sizeof(*cb), 0);
+
+	if (cb == NULL) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	cb->fn.rx = fn;
+	cb->param = user_param;
+
+	rte_spinlock_lock(&rte_eth_rx_cb_lock);
+	/* Add the callbacks at fisrt position*/
+	cb->next = rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
+	rte_smp_wmb();
+	rte_eth_devices[port_id].post_rx_burst_cbs[queue_id] = cb;
+	rte_spinlock_unlock(&rte_eth_rx_cb_lock);
+
+	return cb;
+}
+
+void *
 rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
 		rte_tx_callback_fn fn, void *user_param)
 {
