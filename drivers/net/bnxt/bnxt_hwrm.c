@@ -43,6 +43,7 @@
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_rxq.h"
+#include "bnxt_ring.h"
 #include "bnxt_txq.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
@@ -235,6 +236,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT;
 
+	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
 	if (BNXT_PF(bp)) {
 		struct bnxt_pf_info *pf = &bp->pf;
 
@@ -518,6 +520,36 @@ int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 
 	HWRM_CHECK_RESULT;
 
+	return rc;
+}
+
+int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0, i, j;
+	struct hwrm_vnic_alloc_input req = {.req_type = 0 };
+	struct hwrm_vnic_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+
+	/* map ring groups to this vnic */
+	for (i = vnic->start_grp_id, j = 0; i <= vnic->end_grp_id; i++, j++) {
+		if (bp->grp_info[i].fw_grp_id == (uint16_t)HWRM_NA_SIGNATURE) {
+			RTE_LOG(ERR, PMD,
+				"Not enough ring groups avail:%x req:%x\n", j,
+				(vnic->end_grp_id - vnic->start_grp_id) + 1);
+			break;
+		}
+		vnic->fw_grp_ids[j] = bp->grp_info[i].fw_grp_id;
+	}
+
+	vnic->fw_rss_cos_lb_ctx = (uint16_t)HWRM_NA_SIGNATURE;
+	vnic->ctx_is_rss_cos_lb = HW_CONTEXT_NONE;
+
+	HWRM_PREP(req, VNIC_ALLOC, -1, resp);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	vnic->fw_vnic_id = rte_le_to_cpu_16(resp->vnic_id);
 	return rc;
 }
 

@@ -141,6 +141,8 @@ struct bnxt {
 
 	/* Default completion ring */
 	struct bnxt_cp_ring_info	*def_cp_ring;
+	uint32_t		max_ring_grps;
+	struct bnxt_ring_grp_info	*grp_info;
 
 	unsigned int		nr_vnics;
 

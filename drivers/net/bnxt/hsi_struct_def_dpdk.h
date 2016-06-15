@@ -89,6 +89,7 @@ struct ctx_hw_stats64 {
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
 #define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
 #define HWRM_QUEUE_QPORTCFG		(UINT32_C(0x30))
+#define HWRM_VNIC_ALLOC			(UINT32_C(0x40))
 #define HWRM_CFA_L2_FILTER_ALLOC	(UINT32_C(0x90))
 #define HWRM_CFA_L2_FILTER_FREE		(UINT32_C(0x91))
 #define HWRM_CFA_L2_FILTER_CFG		(UINT32_C(0x92))
@@ -3108,6 +3109,104 @@ struct hwrm_stat_ctx_clr_stats_output {
 	uint8_t unused_1;
 	uint8_t unused_2;
 	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_vnic_alloc */
+/*
+ * Description: This VNIC is a resource in the RX side of the chip that is used
+ * to represent a virtual host "interface". # At the time of VNIC allocation or
+ * configuration, the function can specify whether it wants the requested VNIC
+ * to be the default VNIC for the function or not. # If a function requests
+ * allocation of a VNIC for the first time and a VNIC is successfully allocated
+ * by the HWRM, then the HWRM shall make the allocated VNIC as the default VNIC
+ * for that function. # The default VNIC shall be used for the default action
+ * for a partition or function. # For each VNIC allocated on a function, a
+ * mapping on the RX side to map the allocated VNIC to source virtual interface
+ * shall be performed by the HWRM. This should be hidden to the function driver
+ * requesting the VNIC allocation. This enables broadcast/multicast replication
+ * with source knockout. # If multicast replication with source knockout is
+ * enabled, then the internal VNIC to SVIF mapping data structures shall be
+ * programmed at the time of VNIC allocation.
+ */
+
+/* Input (24 bytes) */
+struct hwrm_vnic_alloc_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * When this bit is '1', this VNIC is requested to be the default VNIC
+	 * for this function.
+	 */
+	#define HWRM_VNIC_ALLOC_INPUT_FLAGS_DEFAULT                UINT32_C(0x1)
+	uint32_t flags;
+
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_alloc_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	/* Logical vnic ID */
+	uint32_t vnic_id;
+
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
 
 	/*
 	 * This field is used in Output records to indicate that the output is
