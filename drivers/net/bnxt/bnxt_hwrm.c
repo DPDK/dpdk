@@ -553,6 +553,27 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+	struct hwrm_vnic_free_input req = {.req_type = 0 };
+	struct hwrm_vnic_free_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
+		return rc;
+
+	HWRM_PREP(req, VNIC_FREE, -1, resp);
+
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	vnic->fw_vnic_id = INVALID_HW_RING_ID;
+	return rc;
+}
+
 /*
  * HWRM utility functions
  */
