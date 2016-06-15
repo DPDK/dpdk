@@ -553,6 +553,40 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+	struct hwrm_vnic_cfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_CFG, -1, resp);
+
+	/* Only RSS support for now TBD: COS & LB */
+	req.enables =
+	    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP |
+			     HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE |
+			     HWRM_VNIC_CFG_INPUT_ENABLES_MRU);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+	req.dflt_ring_grp =
+		rte_cpu_to_le_16(bp->grp_info[vnic->start_grp_id].fw_grp_id);
+	req.rss_rule = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
+	req.cos_rule = rte_cpu_to_le_16(0xffff);
+	req.lb_rule = rte_cpu_to_le_16(0xffff);
+	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
+				   ETHER_CRC_LEN + VLAN_TAG_SIZE);
+	if (vnic->func_default)
+		req.flags = 1;
+	if (vnic->vlan_strip)
+		req.flags |=
+		    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_VLAN_STRIP_MODE);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
