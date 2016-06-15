@@ -41,6 +41,7 @@
 
 #include "bnxt.h"
 #include "bnxt_hwrm.h"
+#include "bnxt_txq.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -185,6 +186,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.dev_infos_get = bnxt_dev_info_get_op,
 	.dev_close = bnxt_dev_close_op,
 	.dev_configure = bnxt_dev_configure_op,
+	.tx_queue_setup = bnxt_tx_queue_setup_op,
+	.tx_queue_release = bnxt_tx_queue_release_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
