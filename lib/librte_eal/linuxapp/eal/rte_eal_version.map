@@ -159,5 +159,7 @@ DPDK_16.07 {
 	global:
 
 	pci_get_sysfs_path;
+	rte_keepalive_register_alive_callback;
+	rte_keepalive_register_relay_callback;
 
 } DPDK_16.04;

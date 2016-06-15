@@ -64,6 +64,15 @@ struct rte_keepalive {
 	void *callback_data;
 	uint64_t tsc_initial;
 	uint64_t tsc_mhz;
+
+	/** Core state relay handler. */
+	rte_keepalive_relay_callback_t relay_callback;
+
+	/**
+	 * Core state relay handler app data.
+	 * Pointer is passed to live core handler.
+	 */
+	void *relay_callback_data;
 };
 
 static void
@@ -116,6 +125,13 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 		case RTE_KA_STATE_SLEEP: /* Idled core */
 			break;
 		}
+		if (keepcfg->relay_callback)
+			keepcfg->relay_callback(
+				keepcfg->relay_callback_data,
+				idx_core,
+				keepcfg->state_flags[idx_core],
+				keepcfg->last_alive[idx_core]
+				);
 	}
 }
 
@@ -137,6 +153,14 @@ rte_keepalive_create(rte_keepalive_failure_callback_t callback,
 	return keepcfg;
 }
 
+void rte_keepalive_register_relay_callback(struct rte_keepalive *keepcfg,
+	rte_keepalive_relay_callback_t callback,
+	void *data)
+{
+	keepcfg->relay_callback = callback;
+	keepcfg->relay_callback_data = data;
+}
+
 void
 rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 {
@@ -150,4 +174,10 @@ void
 rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
 {
 	keepcfg->state_flags[rte_lcore_id()] = RTE_KA_STATE_ALIVE;
+}
+
+void
+rte_keepalive_mark_sleep(struct rte_keepalive *keepcfg)
+{
+	keepcfg->state_flags[rte_lcore_id()] = RTE_KA_STATE_DOZING;
 }

@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2014 6WIND S.A.
+#   Copyright(c) 2016 6WIND S.A.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions

@@ -70,6 +70,12 @@ New Features
   * Enable RSS per network interface through the configuration file.
   * Streamline the CLI code.
 
+* **Added keepalive enhancements.**
+
+  Adds support for reporting of core states other than dead to
+  monitoring applications, enabling the support of broader liveness
+  reporting to external processes.
+
 
 Resolved Issues
 ---------------
