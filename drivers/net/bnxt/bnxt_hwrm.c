@@ -521,6 +521,43 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 	return rc;
 }
 
+static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
+				   struct bnxt_link_info *link_info)
+{
+	int rc = 0;
+	struct hwrm_port_phy_qcfg_input req = {.req_type = 0};
+	struct hwrm_port_phy_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, PORT_PHY_QCFG, -1, resp);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	link_info->phy_link_status = resp->link;
+	if (link_info->phy_link_status == HWRM_PORT_PHY_QCFG_OUTPUT_LINK_LINK) {
+		link_info->link_up = 1;
+		link_info->link_speed = rte_le_to_cpu_16(resp->link_speed);
+	} else {
+		link_info->link_up = 0;
+		link_info->link_speed = 0;
+	}
+	link_info->duplex = resp->duplex;
+	link_info->pause = resp->pause;
+	link_info->auto_pause = resp->auto_pause;
+	link_info->force_pause = resp->force_pause;
+	link_info->auto_mode = resp->auto_mode;
+
+	link_info->support_speeds = rte_le_to_cpu_16(resp->support_speeds);
+	link_info->auto_link_speed = rte_le_to_cpu_16(resp->auto_link_speed);
+	link_info->preemphasis = rte_le_to_cpu_32(resp->preemphasis);
+	link_info->phy_ver[0] = resp->phy_maj;
+	link_info->phy_ver[1] = resp->phy_min;
+	link_info->phy_ver[2] = resp->phy_bld;
+
+	return rc;
+}
+
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 {
 	int rc = 0;
@@ -1324,6 +1361,89 @@ static uint16_t bnxt_parse_eth_link_speed_mask(uint32_t link_speed)
 	if (link_speed & ETH_LINK_SPEED_50G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_50GB;
 	return ret;
+}
+
+static uint32_t bnxt_parse_hw_link_speed(uint16_t hw_link_speed)
+{
+	uint32_t eth_link_speed = ETH_SPEED_NUM_NONE;
+
+	switch (hw_link_speed) {
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB:
+		eth_link_speed = ETH_SPEED_NUM_100M;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_1GB:
+		eth_link_speed = ETH_SPEED_NUM_1G;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_2_5GB:
+		eth_link_speed = ETH_SPEED_NUM_2_5G;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_10GB:
+		eth_link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_20GB:
+		eth_link_speed = ETH_SPEED_NUM_20G;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_25GB:
+		eth_link_speed = ETH_SPEED_NUM_25G;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_40GB:
+		eth_link_speed = ETH_SPEED_NUM_40G;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_50GB:
+		eth_link_speed = ETH_SPEED_NUM_50G;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_2GB:
+	default:
+		RTE_LOG(ERR, PMD, "HWRM link speed %d not defined\n",
+			hw_link_speed);
+		break;
+	}
+	return eth_link_speed;
+}
+
+static uint16_t bnxt_parse_hw_link_duplex(uint16_t hw_link_duplex)
+{
+	uint16_t eth_link_duplex = ETH_LINK_FULL_DUPLEX;
+
+	switch (hw_link_duplex) {
+	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_BOTH:
+	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_FULL:
+		eth_link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_HALF:
+		eth_link_duplex = ETH_LINK_HALF_DUPLEX;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "HWRM link duplex %d not defined\n",
+			hw_link_duplex);
+		break;
+	}
+	return eth_link_duplex;
+}
+
+int bnxt_get_hwrm_link_config(struct bnxt *bp, struct rte_eth_link *link)
+{
+	int rc = 0;
+	struct bnxt_link_info *link_info = &bp->link_info;
+
+	rc = bnxt_hwrm_port_phy_qcfg(bp, link_info);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"Get link config failed with rc %d\n", rc);
+		goto exit;
+	}
+	if (link_info->link_up)
+		link->link_speed =
+			bnxt_parse_hw_link_speed(link_info->link_speed);
+	else
+		link->link_speed = ETH_LINK_SPEED_10M;
+	link->link_duplex = bnxt_parse_hw_link_duplex(link_info->duplex);
+	link->link_status = link_info->link_up;
+	link->link_autoneg = link_info->auto_mode ==
+		HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE ?
+		ETH_LINK_SPEED_FIXED : ETH_LINK_SPEED_AUTONEG;
+exit:
+	return rc;
 }
 
 int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)

@@ -88,6 +88,7 @@ struct ctx_hw_stats64 {
 #define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
 #define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
+#define HWRM_PORT_PHY_QCFG		(UINT32_C(0x27))
 #define HWRM_QUEUE_QPORTCFG		(UINT32_C(0x30))
 #define HWRM_VNIC_ALLOC			(UINT32_C(0x40))
 #define HWRM_VNIC_FREE			(UINT32_C(0x41))
@@ -2782,6 +2783,795 @@ struct hwrm_port_phy_cfg_output {
 	uint8_t unused_1;
 	uint8_t unused_2;
 	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_port_phy_qcfg */
+/* Description: This command queries the PHY configuration for the port. */
+/* Input (24 bytes) */
+
+struct hwrm_port_phy_qcfg_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/* Port ID of port that is to be queried. */
+	uint16_t port_id;
+
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (96 bytes) */
+struct hwrm_port_phy_qcfg_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	/* This value indicates the current link status. */
+		/* There is no link or cable detected. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_NO_LINK	(UINT32_C(0x0) << 0)
+		/* There is no link, but a cable has been detected. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SIGNAL	(UINT32_C(0x1) << 0)
+		/* There is a link. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_LINK	(UINT32_C(0x2) << 0)
+	uint8_t link;
+
+	uint8_t unused_0;
+
+	/* This value indicates the current link speed of the connection. */
+		/* 100Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB \
+							(UINT32_C(0x1) << 0)
+		/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_1GB \
+							(UINT32_C(0xa) << 0)
+		/* 2Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_2GB \
+							(UINT32_C(0x14) << 0)
+		/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_2_5GB \
+							(UINT32_C(0x19) << 0)
+		/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_10GB \
+							(UINT32_C(0x64) << 0)
+		/* 20Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_20GB \
+							(UINT32_C(0xc8) << 0)
+		/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_25GB \
+							(UINT32_C(0xfa) << 0)
+		/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_40GB \
+							(UINT32_C(0x190) << 0)
+		/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_50GB \
+							(UINT32_C(0x1f4) << 0)
+		/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100GB \
+							(UINT32_C(0x3e8) << 0)
+		/* 10Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_10MB \
+							(UINT32_C(0xffff) << 0)
+	uint16_t link_speed;
+
+	/* This value is indicates the duplex of the current connection. */
+		/* Half Duplex connection. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_DUPLEX_HALF	(UINT32_C(0x0) << 0)
+		/* Full duplex connection. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_DUPLEX_FULL	(UINT32_C(0x1) << 0)
+	uint8_t duplex;
+
+	/*
+	 * This value is used to indicate the current pause configuration. When
+	 * autoneg is enabled, this value represents the autoneg results of
+	 * pause configuration.
+	 */
+	/*
+	 * When this bit is '1', Generation of tx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_TX	UINT32_C(0x1)
+	/*
+	 * When this bit is '1', Reception of rx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_RX	UINT32_C(0x2)
+	uint8_t pause;
+
+	/*
+	 * The supported speeds for the port. This is a bit mask. For each speed
+	 * that is supported, the corrresponding bit will be set to '1'.
+	 */
+	/* 100Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100MBHD \
+							UINT32_C(0x1)
+	/* 100Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100MB \
+							UINT32_C(0x2)
+	/* 1Gb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_1GBHD \
+							UINT32_C(0x4)
+	/* 1Gb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_1GB \
+							UINT32_C(0x8)
+	/* 2Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_2GB \
+							UINT32_C(0x10)
+	/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_2_5GB \
+							UINT32_C(0x20)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_10GB \
+							UINT32_C(0x40)
+	/* 20Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_20GB \
+							UINT32_C(0x80)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_25GB \
+							UINT32_C(0x100)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_40GB \
+							UINT32_C(0x200)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_50GB \
+							UINT32_C(0x400)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100GB \
+							UINT32_C(0x800)
+	/* 10Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_10MBHD \
+							UINT32_C(0x1000)
+	/* 10Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_10MB \
+							UINT32_C(0x2000)
+	uint16_t support_speeds;
+
+	/*
+	 * Current setting of forced link speed. When the link speed is not
+	 * being forced, this value shall be set to 0.
+	 */
+		/* 100Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_100MB \
+							(UINT32_C(0x1) << 0)
+		/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_1GB \
+							(UINT32_C(0xa) << 0)
+		/* 2Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_2GB \
+							(UINT32_C(0x14) << 0)
+		/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_2_5GB \
+							(UINT32_C(0x19) << 0)
+		/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_10GB \
+							(UINT32_C(0x64) << 0)
+		/* 20Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_20GB \
+							(UINT32_C(0xc8) << 0)
+		/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_25GB \
+							(UINT32_C(0xfa) << 0)
+		/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_40GB \
+							(UINT32_C(0x190) << 0)
+		/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_50GB \
+							(UINT32_C(0x1f4) << 0)
+		/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_100GB \
+							(UINT32_C(0x3e8) << 0)
+		/* 10Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_10MB \
+							(UINT32_C(0xffff) << 0)
+	uint16_t force_link_speed;
+
+	/* Current setting of auto negotiation mode. */
+		/*
+		 * Disable autoneg or autoneg disabled. No speeds are selected.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE \
+							(UINT32_C(0x0) << 0)
+		/* Select all possible speeds for autoneg mode. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_ALL_SPEEDS \
+							(UINT32_C(0x1) << 0)
+		/*
+		 * Select only the auto_link_speed speed for autoneg mode. This
+		 * mode has been DEPRECATED. An HWRM client should not use this
+		 * mode.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_ONE_SPEED \
+							(UINT32_C(0x2) << 0)
+		/*
+		 * Select the auto_link_speed or any speed below that speed for
+		 * autoneg. This mode has been DEPRECATED. An HWRM client should
+		 * not use this mode.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_ONE_OR_BELOW \
+							(UINT32_C(0x3) << 0)
+		/*
+		 * Select the speeds based on the corresponding link speed mask
+		 * value that is provided.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_SPEED_MASK \
+							(UINT32_C(0x4) << 0)
+	uint8_t auto_mode;
+
+	/*
+	 * Current setting of pause autonegotiation. Move autoneg_pause flag
+	 * here.
+	 */
+	/*
+	 * When this bit is '1', Generation of tx pause messages has been
+	 * requested. Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_PAUSE_TX	UINT32_C(0x1)
+	/*
+	 * When this bit is '1', Reception of rx pause messages has been
+	 * requested. Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_PAUSE_RX	UINT32_C(0x2)
+	/*
+	 * When set to 1, the advertisement of pause is enabled. # When the
+	 * auto_mode is not set to none and this flag is set to 1, then the
+	 * auto_pause bits on this port are being advertised and autoneg pause
+	 * results are being interpreted. # When the auto_mode is not set to
+	 * none and this flag is set to 0, the pause is forced as indicated in
+	 * force_pause, and also advertised as auto_pause bits, but the autoneg
+	 * results are not interpreted since the pause configuration is being
+	 * forced. # When the auto_mode is set to none and this flag is set to
+	 * 1, auto_pause bits should be ignored and should be set to 0.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_PAUSE_AUTONEG_PAUSE \
+							UINT32_C(0x4)
+	uint8_t auto_pause;
+
+	/*
+	 * Current setting for auto_link_speed. This field is only valid when
+	 * auto_mode is set to "one_speed" or "one_or_below".
+	 */
+		/* 100Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_100MB \
+							(UINT32_C(0x1) << 0)
+		/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_1GB \
+							(UINT32_C(0xa) << 0)
+		/* 2Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_2GB \
+							(UINT32_C(0x14) << 0)
+		/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_2_5GB \
+							(UINT32_C(0x19) << 0)
+		/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_10GB \
+							(UINT32_C(0x64) << 0)
+		/* 20Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_20GB \
+							(UINT32_C(0xc8) << 0)
+		/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_25GB \
+							(UINT32_C(0xfa) << 0)
+		/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_40GB \
+							(UINT32_C(0x190) << 0)
+		/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_50GB \
+							(UINT32_C(0x1f4) << 0)
+		/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_100GB \
+							(UINT32_C(0x3e8) << 0)
+		/* 10Mb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_10MB \
+							(UINT32_C(0xffff) << 0)
+	uint16_t auto_link_speed;
+
+	/*
+	 * Current setting for auto_link_speed_mask that is used to advertise
+	 * speeds during autonegotiation. This field is only valid when
+	 * auto_mode is set to "mask". The speeds specified in this field shall
+	 * be a subset of supported speeds on this port.
+	 */
+	/* 100Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_100MBHD \
+							UINT32_C(0x1)
+	/* 100Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_100MB \
+							UINT32_C(0x2)
+	/* 1Gb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_1GBHD \
+							UINT32_C(0x4)
+	/* 1Gb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_1GB \
+							UINT32_C(0x8)
+	/* 2Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_2GB \
+							UINT32_C(0x10)
+	/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_2_5GB \
+							UINT32_C(0x20)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_10GB \
+							UINT32_C(0x40)
+	/* 20Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_20GB \
+							UINT32_C(0x80)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_25GB \
+							UINT32_C(0x100)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_40GB \
+							UINT32_C(0x200)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_50GB \
+							UINT32_C(0x400)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_100GB \
+							UINT32_C(0x800)
+	/* 10Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_10MBHD \
+							UINT32_C(0x1000)
+	/* 10Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_10MB \
+							UINT32_C(0x2000)
+	uint16_t auto_link_speed_mask;
+
+	/* Current setting for wirespeed. */
+		/* Wirespeed feature is disabled. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_WIRESPEED_OFF	(UINT32_C(0x0) << 0)
+		/* Wirespeed feature is enabled. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_WIRESPEED_ON	(UINT32_C(0x1) << 0)
+	uint8_t wirespeed;
+
+	/* Current setting for loopback. */
+		/* No loopback is selected. Normal operation. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LPBK_NONE	(UINT32_C(0x0) << 0)
+		/*
+		 * The HW will be configured with local loopback such that host
+		 * data is sent back to the host without modification.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LPBK_LOCAL	(UINT32_C(0x1) << 0)
+		/*
+		 * The HW will be configured with remote loopback such that port
+		 * logic will send packets back out the transmitter that are
+		 * received.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LPBK_REMOTE	(UINT32_C(0x2) << 0)
+	uint8_t lpbk;
+
+	/*
+	 * Current setting of forced pause. When the pause configuration is not
+	 * being forced, then this value shall be set to 0.
+	 */
+	/*
+	 * When this bit is '1', Generation of tx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_PAUSE_TX \
+							UINT32_C(0x1)
+	/*
+	 * When this bit is '1', Reception of rx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_PAUSE_RX \
+							UINT32_C(0x2)
+	uint8_t force_pause;
+
+	/*
+	 * This value indicates the current status of the optics module on this
+	 * port.
+	 */
+		/* Module is inserted and accepted */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MODULE_STATUS_NONE \
+							(UINT32_C(0x0) << 0)
+		/* Module is rejected and transmit side Laser is disabled. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MODULE_STATUS_DISABLETX \
+							(UINT32_C(0x1) << 0)
+		/* Module mismatch warning. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MODULE_STATUS_WARNINGMSG \
+							(UINT32_C(0x2) << 0)
+		/* Module is rejected and powered down. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MODULE_STATUS_PWRDOWN \
+							(UINT32_C(0x3) << 0)
+		/* Module is not inserted. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MODULE_STATUS_NOTINSERTED \
+							(UINT32_C(0x4) << 0)
+		/* Module status is not applicable. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MODULE_STATUS_NOTAPPLICABLE \
+							(UINT32_C(0xff) << 0)
+	uint8_t module_status;
+
+	/* Current setting for preemphasis. */
+	uint32_t preemphasis;
+
+	/* This field represents the major version of the PHY. */
+	uint8_t phy_maj;
+
+	/* This field represents the minor version of the PHY. */
+	uint8_t phy_min;
+
+	/* This field represents the build version of the PHY. */
+	uint8_t phy_bld;
+
+	/* This value represents a PHY type. */
+		/* Unknown */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_UNKNOWN \
+							(UINT32_C(0x0) << 0)
+		/* BASE-CR */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASECR \
+							(UINT32_C(0x1) << 0)
+		/* BASE-KR4 (Deprecated) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASEKR4 \
+							(UINT32_C(0x2) << 0)
+		/* BASE-LR */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASELR \
+							(UINT32_C(0x3) << 0)
+		/* BASE-SR */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASESR \
+							(UINT32_C(0x4) << 0)
+		/* BASE-KR2 (Deprecated) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASEKR2 \
+							(UINT32_C(0x5) << 0)
+		/* BASE-KX */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASEKX \
+							(UINT32_C(0x6) << 0)
+		/* BASE-KR */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASEKR \
+							(UINT32_C(0x7) << 0)
+		/* BASE-T */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASET \
+							(UINT32_C(0x8) << 0)
+		/* EEE capable BASE-T */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASETE \
+							(UINT32_C(0x9) << 0)
+		/* SGMII connected external PHY */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_SGMIIEXTPHY \
+							(UINT32_C(0xa) << 0)
+	uint8_t phy_type;
+
+	/* This value represents a media type. */
+		/* Unknown */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MEDIA_TYPE_UNKNOWN \
+							(UINT32_C(0x0) << 0)
+		/* Twisted Pair */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MEDIA_TYPE_TP	(UINT32_C(0x1) << 0)
+		/* Direct Attached Copper */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MEDIA_TYPE_DAC \
+							(UINT32_C(0x2) << 0)
+		/* Fiber */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_MEDIA_TYPE_FIBRE \
+							(UINT32_C(0x3) << 0)
+	uint8_t media_type;
+
+	/* This value represents a transceiver type. */
+		/* PHY and MAC are in the same package */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_PKG_TYPE_XCVR_INTERNAL \
+							(UINT32_C(0x1) << 0)
+		/* PHY and MAC are in different packages */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_PKG_TYPE_XCVR_EXTERNAL \
+							(UINT32_C(0x2) << 0)
+	uint8_t xcvr_pkg_type;
+
+	/*
+	 * This field represents flags related to EEE configuration. These EEE
+	 * configuration flags are valid only when the auto_mode is not set to
+	 * none (in other words autonegotiation is enabled).
+	 */
+	/* This field represents PHY address. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_ADDR_MASK	UINT32_C(0x1f)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_ADDR_SFT	0
+	/*
+	 * When set to 1, Energy Efficient Ethernet (EEE) mode is enabled.
+	 * Speeds for autoneg with EEE mode enabled are based on
+	 * eee_link_speed_mask.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_EEE_CONFIG_EEE_ENABLED \
+							UINT32_C(0x20)
+	/*
+	 * This flag is valid only when eee_enabled is set to 1. # If
+	 * eee_enabled is set to 0, then EEE mode is disabled and this flag
+	 * shall be ignored. # If eee_enabled is set to 1 and this flag is set
+	 * to 1, then Energy Efficient Ethernet (EEE) mode is enabled and in
+	 * use. # If eee_enabled is set to 1 and this flag is set to 0, then
+	 * Energy Efficient Ethernet (EEE) mode is enabled but is currently not
+	 * in use.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_EEE_CONFIG_EEE_ACTIVE \
+							UINT32_C(0x40)
+	/*
+	 * This flag is valid only when eee_enabled is set to 1. # If
+	 * eee_enabled is set to 0, then EEE mode is disabled and this flag
+	 * shall be ignored. # If eee_enabled is set to 1 and this flag is set
+	 * to 1, then Energy Efficient Ethernet (EEE) mode is enabled and TX LPI
+	 * is enabled. # If eee_enabled is set to 1 and this flag is set to 0,
+	 * then Energy Efficient Ethernet (EEE) mode is enabled but TX LPI is
+	 * disabled.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_EEE_CONFIG_EEE_TX_LPI \
+							UINT32_C(0x80)
+	/*
+	 * This field represents flags related to EEE configuration. These EEE
+	 * configuration flags are valid only when the auto_mode is not set to
+	 * none (in other words autonegotiation is enabled).
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_EEE_CONFIG_MASK \
+							UINT32_C(0xe0)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_EEE_CONFIG_SFT	5
+	uint8_t eee_config_phy_addr;
+
+	/* Reserved field, set to 0 */
+	/*
+	 * When set to 1, the parallel detection is used to determine the speed
+	 * of the link partner. Parallel detection is used when a
+	 * autonegotiation capable device is connected to a link parter that is
+	 * not capable of autonegotiation.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PARALLEL_DETECT \
+							UINT32_C(0x1)
+	/* Reserved field, set to 0 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_RESERVED_MASK	UINT32_C(0xfe)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_RESERVED_SFT	1
+	uint8_t parallel_detect;
+
+	/*
+	 * The advertised speeds for the port by the link partner. Each
+	 * advertised speed will be set to '1'.
+	 */
+	/* 100Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_100MBHD \
+							UINT32_C(0x1)
+	/* 100Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_100MB \
+							UINT32_C(0x2)
+	/* 1Gb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_1GBHD \
+							UINT32_C(0x4)
+	/* 1Gb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_1GB \
+							UINT32_C(0x8)
+	/* 2Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_2GB \
+							UINT32_C(0x10)
+	/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_2_5GB \
+							UINT32_C(0x20)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_10GB \
+							UINT32_C(0x40)
+	/* 20Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_20GB \
+							UINT32_C(0x80)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_25GB \
+							UINT32_C(0x100)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_40GB \
+							UINT32_C(0x200)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_50GB \
+							UINT32_C(0x400)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_100GB \
+							UINT32_C(0x800)
+	/* 10Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_10MBHD \
+							UINT32_C(0x1000)
+	/* 10Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_SPEEDS_10MB \
+							UINT32_C(0x2000)
+	uint16_t link_partner_adv_speeds;
+
+	/*
+	 * The advertised autoneg for the port by the link partner. This field
+	 * is deprecated and should be set to 0.
+	 */
+		/*
+		 * Disable autoneg or autoneg disabled. No speeds are selected.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_AUTO_MODE_NONE \
+							(UINT32_C(0x0) << 0)
+		/* Select all possible speeds for autoneg mode. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_AUTO_MODE_ALL_SPEEDS\
+							(UINT32_C(0x1) << 0)
+		/*
+		 * Select only the auto_link_speed speed for autoneg mode. This
+		 * mode has been DEPRECATED. An HWRM client should not use this
+		 * mode.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_AUTO_MODE_ONE_SPEED \
+							(UINT32_C(0x2) << 0)
+		/*
+		 * Select the auto_link_speed or any speed below that speed for
+		 * autoneg. This mode has been DEPRECATED. An HWRM client should
+		 * not use this mode.
+		 */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_AUTO_MODE_ONE_OR_BELOW \
+							(UINT32_C(0x3) << 0)
+		/*
+		 * Select the speeds based on the corresponding link speed mask
+		 * value that is provided.
+		 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_AUTO_MODE_SPEED_MASK\
+							(UINT32_C(0x4) << 0)
+	uint8_t link_partner_adv_auto_mode;
+
+	/* The advertised pause settings on the port by the link partner. */
+	/*
+	 * When this bit is '1', Generation of tx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_PAUSE_TX \
+							UINT32_C(0x1)
+	/*
+	 * When this bit is '1', Reception of rx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_PAUSE_RX \
+							UINT32_C(0x2)
+	uint8_t link_partner_adv_pause;
+
+	/*
+	 * Current setting for link speed mask that is used to advertise speeds
+	 * during autonegotiation when EEE is enabled. This field is valid only
+	 * when eee_enabled flags is set to 1. The speeds specified in this
+	 * field shall be a subset of speeds specified in auto_link_speed_mask.
+	 */
+	/* Reserved */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_ADV_EEE_LINK_SPEED_MASK_RSVD1 \
+							UINT32_C(0x1)
+	/* 100Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_ADV_EEE_LINK_SPEED_MASK_100MB \
+							UINT32_C(0x2)
+	/* Reserved */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_ADV_EEE_LINK_SPEED_MASK_RSVD2 \
+							UINT32_C(0x4)
+	/* 1Gb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_ADV_EEE_LINK_SPEED_MASK_1GB \
+							UINT32_C(0x8)
+	/* Reserved */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_ADV_EEE_LINK_SPEED_MASK_RSVD3 \
+							UINT32_C(0x10)
+	/* Reserved */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_ADV_EEE_LINK_SPEED_MASK_RSVD4 \
+							UINT32_C(0x20)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_ADV_EEE_LINK_SPEED_MASK_10GB \
+							UINT32_C(0x40)
+	uint16_t adv_eee_link_speed_mask;
+
+	/*
+	 * Current setting for link speed mask that is advertised by the link
+	 * partner when EEE is enabled. This field is valid only when
+	 * eee_enabled flags is set to 1.
+	 */
+	/* Reserved */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_EEE_LINK_SPEED_MASK_RSVD1 \
+							UINT32_C(0x1)
+	/* 100Mb link speed (Full-duplex) */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_EEE_LINK_SPEED_MASK_100MB \
+							UINT32_C(0x2)
+	/* Reserved */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_EEE_LINK_SPEED_MASK_RSVD2 \
+							UINT32_C(0x4)
+	/* 1Gb link speed (Full-duplex) */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_EEE_LINK_SPEED_MASK_1GB \
+							UINT32_C(0x8)
+	/* Reserved */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_EEE_LINK_SPEED_MASK_RSVD3 \
+							UINT32_C(0x10)
+	/* Reserved */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_EEE_LINK_SPEED_MASK_RSVD4 \
+							UINT32_C(0x20)
+	/* 10Gb link speed */
+	#define \
+	HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_ADV_EEE_LINK_SPEED_MASK_10GB \
+							UINT32_C(0x40)
+	uint16_t link_partner_adv_eee_link_speed_mask;
+
+	/* This value represents transceiver identifier type. */
+	/*
+	 * Current setting of TX LPI timer in microseconds. This field is valid
+	 * only when_eee_enabled flag is set to 1 and tx_lpi_enabled is set to
+	 * 1.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_TX_LPI_TIMER_MASK \
+							UINT32_C(0xffffff)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_TX_LPI_TIMER_SFT         0
+	/* This value represents transceiver identifier type. */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_IDENTIFIER_TYPE_MASK \
+							UINT32_C(0xff000000)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_IDENTIFIER_TYPE_SFT \
+							24
+		/* Unknown */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_IDENTIFIER_TYPE_UNKNOWN \
+							(UINT32_C(0x0) << 24)
+		/* SFP/SFP+/SFP28 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_IDENTIFIER_TYPE_SFP \
+							(UINT32_C(0x3) << 24)
+		/* QSFP */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_IDENTIFIER_TYPE_QSFP \
+							(UINT32_C(0xc) << 24)
+		/* QSFP+ */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_IDENTIFIER_TYPE_QSFPPLUS \
+							(UINT32_C(0xd) << 24)
+		/* QSFP28 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_XCVR_IDENTIFIER_TYPE_QSFP28 \
+							(UINT32_C(0x11) << 24)
+	uint32_t xcvr_identifier_type_tx_lpi_timer;
+
+	uint32_t unused_1;
+
+	/*
+	 * Up to 16 bytes of null padded ASCII string representing PHY vendor.
+	 * If the string is set to null, then the vendor name is not available.
+	 */
+	char phy_vendor_name[16];
+
+	/*
+	 * Up to 16 bytes of null padded ASCII string that identifies vendor
+	 * specific part number of the PHY. If the string is set to null, then
+	 * the vendor specific part number is not available.
+	 */
+	char phy_vendor_partnumber[16];
+
+	uint32_t unused_2;
+	uint8_t unused_3;
+	uint8_t unused_4;
+	uint8_t unused_5;
 
 	/*
 	 * This field is used in Output records to indicate that the output is
