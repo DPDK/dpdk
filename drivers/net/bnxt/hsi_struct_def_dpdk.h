@@ -92,6 +92,8 @@ struct ctx_hw_stats64 {
 #define HWRM_VNIC_ALLOC			(UINT32_C(0x40))
 #define HWRM_VNIC_FREE			(UINT32_C(0x41))
 #define HWRM_VNIC_CFG			(UINT32_C(0x42))
+#define HWRM_VNIC_RSS_COS_LB_CTX_ALLOC	(UINT32_C(0x70))
+#define HWRM_VNIC_RSS_COS_LB_CTX_FREE	(UINT32_C(0x71))
 #define HWRM_CFA_L2_FILTER_ALLOC	(UINT32_C(0x90))
 #define HWRM_CFA_L2_FILTER_FREE		(UINT32_C(0x91))
 #define HWRM_CFA_L2_FILTER_CFG		(UINT32_C(0x92))
@@ -3542,6 +3544,157 @@ struct hwrm_vnic_rss_cfg_input {
 
 /* Output (16 bytes) */
 struct hwrm_vnic_rss_cfg_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* Input (16 bytes) */
+struct hwrm_vnic_rss_cos_lb_ctx_alloc_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+
+struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	/* rss_cos_lb_ctx_id is 16 b */
+	uint16_t rss_cos_lb_ctx_id;
+
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t unused_4;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_vnic_rss_cos_lb_ctx_free */
+/* Description: This function can be used to free COS/Load Balance context. */
+/* Input (24 bytes) */
+
+struct hwrm_vnic_rss_cos_lb_ctx_free_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/* rss_cos_lb_ctx_id is 16 b */
+	uint16_t rss_cos_lb_ctx_id;
+
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_rss_cos_lb_ctx_free_output {
 	/*
 	 * Pass/Fail or error type Note: receiver to verify the in parameters,
 	 * and fail the call with an error when appropriate

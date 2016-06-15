@@ -587,6 +587,44 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+	struct hwrm_vnic_rss_cos_lb_ctx_alloc_input req = {.req_type = 0 };
+	struct hwrm_vnic_rss_cos_lb_ctx_alloc_output *resp =
+						bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_RSS_COS_LB_CTX_ALLOC, -1, resp);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	vnic->fw_rss_cos_lb_ctx = rte_le_to_cpu_16(resp->rss_cos_lb_ctx_id);
+
+	return rc;
+}
+
+int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+	struct hwrm_vnic_rss_cos_lb_ctx_free_input req = {.req_type = 0 };
+	struct hwrm_vnic_rss_cos_lb_ctx_free_output *resp =
+						bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_RSS_COS_LB_CTX_FREE, -1, resp);
+
+	req.rss_cos_lb_ctx_id = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	vnic->fw_rss_cos_lb_ctx = INVALID_HW_RING_ID;
+
+	return rc;
+}
+
 int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
