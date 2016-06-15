@@ -95,6 +95,8 @@ struct ctx_hw_stats64 {
 #define HWRM_VNIC_RSS_CFG		(UINT32_C(0x46))
 #define HWRM_RING_ALLOC			(UINT32_C(0x50))
 #define HWRM_RING_FREE			(UINT32_C(0x51))
+#define HWRM_RING_GRP_ALLOC		(UINT32_C(0x60))
+#define HWRM_RING_GRP_FREE		(UINT32_C(0x61))
 #define HWRM_VNIC_RSS_COS_LB_CTX_ALLOC	(UINT32_C(0x70))
 #define HWRM_VNIC_RSS_COS_LB_CTX_FREE	(UINT32_C(0x71))
 #define HWRM_CFA_L2_FILTER_ALLOC	(UINT32_C(0x90))
@@ -3455,6 +3457,189 @@ struct hwrm_ring_free_input {
 
 /* Output (16 bytes) */
 struct hwrm_ring_free_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_ring_grp_alloc */
+/*
+ * Description: This API allocates and does basic preparation for a ring group.
+ */
+
+/* Input (24 bytes) */
+struct hwrm_ring_grp_alloc_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/* This value identifies the CR associated with the ring group. */
+	uint16_t cr;
+
+	/* This value identifies the main RR associated with the ring group. */
+	uint16_t rr;
+
+	/*
+	 * This value identifies the aggregation RR associated with the ring
+	 * group. If this value is 0xFF... (All Fs), then no Aggregation ring
+	 * will be set.
+	 */
+	uint16_t ar;
+
+	/*
+	 * This value identifies the statistics context associated with the ring
+	 * group.
+	 */
+	uint16_t sc;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_ring_grp_alloc_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	/*
+	 * This is the ring group ID value. Use this value to program the
+	 * default ring group for the VNIC or as table entries in an RSS/COS
+	 * context.
+	 */
+	uint32_t ring_group_id;
+
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_ring_grp_free */
+/*
+ * Description: This API frees a ring group and associated resources. # If a
+ * ring in the ring group is reset or free, then the associated rings in the
+ * ring group shall also be reset/free using hwrm_ring_free. # A function driver
+ * shall always use hwrm_ring_grp_free after freeing all rings in a group. # As
+ * a part of executing this command, the HWRM shall reset all associated ring
+ * group resources.
+ */
+
+/* Input (24 bytes) */
+struct hwrm_ring_grp_free_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/* This is the ring group ID value. */
+	uint32_t ring_group_id;
+
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_ring_grp_free_output {
 	/*
 	 * Pass/Fail or error type Note: receiver to verify the in parameters,
 	 * and fail the call with an error when appropriate

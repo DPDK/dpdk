@@ -655,6 +655,47 @@ int bnxt_hwrm_ring_free(struct bnxt *bp,
 	return 0;
 }
 
+int bnxt_hwrm_ring_grp_alloc(struct bnxt *bp, unsigned int idx)
+{
+	int rc = 0;
+	struct hwrm_ring_grp_alloc_input req = {.req_type = 0 };
+	struct hwrm_ring_grp_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, RING_GRP_ALLOC, -1, resp);
+
+	req.cr = rte_cpu_to_le_16(bp->grp_info[idx].cp_fw_ring_id);
+	req.rr = rte_cpu_to_le_16(bp->grp_info[idx].rx_fw_ring_id);
+	req.ar = rte_cpu_to_le_16(bp->grp_info[idx].ag_fw_ring_id);
+	req.sc = rte_cpu_to_le_16(bp->grp_info[idx].fw_stats_ctx);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	bp->grp_info[idx].fw_grp_id =
+	    rte_le_to_cpu_16(resp->ring_group_id);
+
+	return rc;
+}
+
+int bnxt_hwrm_ring_grp_free(struct bnxt *bp, unsigned int idx)
+{
+	int rc;
+	struct hwrm_ring_grp_free_input req = {.req_type = 0 };
+	struct hwrm_ring_grp_free_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, RING_GRP_FREE, -1, resp);
+
+	req.ring_group_id = rte_cpu_to_le_16(bp->grp_info[idx].fw_grp_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	bp->grp_info[idx].fw_grp_id = INVALID_HW_RING_ID;
+	return rc;
+}
+
 int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 {
 	int rc = 0;
@@ -897,6 +938,49 @@ int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp)
 		}
 
 		rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr, idx);
+
+		if (rc)
+			return rc;
+	}
+	return rc;
+}
+
+int bnxt_free_all_hwrm_ring_grps(struct bnxt *bp)
+{
+	uint16_t i;
+	uint32_t rc = 0;
+
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+		unsigned int idx = i + 1;
+
+		if (bp->grp_info[idx].fw_grp_id == INVALID_HW_RING_ID) {
+			RTE_LOG(ERR, PMD,
+				"Attempt to free invalid ring group %d\n",
+				idx);
+			continue;
+		}
+
+		rc = bnxt_hwrm_ring_grp_free(bp, idx);
+
+		if (rc)
+			return rc;
+	}
+	return rc;
+}
+
+int bnxt_alloc_all_hwrm_ring_grps(struct bnxt *bp)
+{
+	uint16_t i;
+	uint32_t rc = 0;
+
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+		unsigned int idx = i + 1;
+
+		if (bp->grp_info[idx].cp_fw_ring_id == INVALID_HW_RING_ID ||
+		    bp->grp_info[idx].rx_fw_ring_id == INVALID_HW_RING_ID)
+			continue;
+
+		rc = bnxt_hwrm_ring_grp_alloc(bp, idx);
 
 		if (rc)
 			return rc;
