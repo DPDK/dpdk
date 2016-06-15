@@ -402,6 +402,75 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_shutdown_nic(bp);
 }
 
+static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
+				    uint32_t index)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint64_t pool_mask = eth_dev->data->mac_pool_sel[index];
+	struct bnxt_vnic_info *vnic;
+	struct bnxt_filter_info *filter, *temp_filter;
+	int i;
+
+	/*
+	 * Loop through all VNICs from the specified filter flow pools to
+	 * remove the corresponding MAC addr filter
+	 */
+	for (i = 0; i < MAX_FF_POOLS; i++) {
+		if (!(pool_mask & (1 << i)))
+			continue;
+
+		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
+			filter = STAILQ_FIRST(&vnic->filter);
+			while (filter) {
+				temp_filter = STAILQ_NEXT(filter, next);
+				if (filter->mac_index == index) {
+					STAILQ_REMOVE(&vnic->filter, filter,
+						      bnxt_filter_info, next);
+					bnxt_hwrm_clear_filter(bp, filter);
+					filter->mac_index = INVALID_MAC_INDEX;
+					memset(&filter->l2_addr, 0,
+					       ETHER_ADDR_LEN);
+					STAILQ_INSERT_TAIL(
+							&bp->free_filter_list,
+							filter, next);
+				}
+				filter = temp_filter;
+			}
+		}
+	}
+}
+
+static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
+				 struct ether_addr *mac_addr,
+				 uint32_t index, uint32_t pool)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt_vnic_info *vnic = STAILQ_FIRST(&bp->ff_pool[pool]);
+	struct bnxt_filter_info *filter;
+
+	if (!vnic) {
+		RTE_LOG(ERR, PMD, "VNIC not found for pool %d!\n", pool);
+		return;
+	}
+	/* Attach requested MAC address to the new l2_filter */
+	STAILQ_FOREACH(filter, &vnic->filter, next) {
+		if (filter->mac_index == index) {
+			RTE_LOG(ERR, PMD,
+				"MAC addr already existed for pool %d\n", pool);
+			return;
+		}
+	}
+	filter = bnxt_alloc_filter(bp);
+	if (!filter) {
+		RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
+		return;
+	}
+	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+	filter->mac_index = index;
+	memcpy(filter->l2_addr, mac_addr, ETHER_ADDR_LEN);
+	bnxt_hwrm_set_filter(bp, vnic, filter);
+}
+
 static int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
 			       int wait_to_complete)
 {
@@ -516,6 +585,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.promiscuous_disable = bnxt_promiscuous_disable_op,
 	.allmulticast_enable = bnxt_allmulticast_enable_op,
 	.allmulticast_disable = bnxt_allmulticast_disable_op,
+	.mac_addr_add = bnxt_mac_addr_add_op,
+	.mac_addr_remove = bnxt_mac_addr_remove_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
