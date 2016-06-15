@@ -265,6 +265,23 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_func_reset(struct bnxt *bp)
+{
+	int rc = 0;
+	struct hwrm_func_reset_input req = {.req_type = 0 };
+	struct hwrm_func_reset_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, FUNC_RESET, -1, resp);
+
+	req.enables = rte_cpu_to_le_32(0);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_func_driver_register(struct bnxt *bp, uint32_t flags,
 				   uint32_t *vf_req_fwd)
 {

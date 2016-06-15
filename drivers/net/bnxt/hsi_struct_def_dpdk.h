@@ -83,6 +83,7 @@ struct ctx_hw_stats64 {
  * Request types
  */
 #define HWRM_VER_GET			(UINT32_C(0x0))
+#define HWRM_FUNC_RESET			(UINT32_C(0x11))
 #define HWRM_FUNC_QCAPS			(UINT32_C(0x15))
 #define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
@@ -2037,6 +2038,134 @@ struct hwrm_func_qcaps_output {
 	uint8_t unused_0;
 	uint8_t unused_1;
 	uint8_t unused_2;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_func_reset */
+/*
+ * Description: This command resets a hardware function (PCIe function) and
+ * frees any resources used by the function. This command shall be initiated by
+ * the driver after an FLR has occurred to prepare the function for re-use. This
+ * command may also be initiated by a driver prior to doing it's own
+ * configuration. This command puts the function into the reset state. In the
+ * reset state, global and port related features of the chip are not available.
+ */
+/*
+ * Note: This command will reset a function that has already been disabled or
+ * idled. The command returns all the resources owned by the function so a new
+ * driver may allocate and configure resources normally.
+ */
+
+/* Input (24 bytes) */
+struct hwrm_func_reset_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/* This bit must be '1' for the vf_id_valid field to be configured. */
+	#define HWRM_FUNC_RESET_INPUT_ENABLES_VF_ID_VALID \
+							UINT32_C(0x1)
+	uint32_t enables;
+
+	/*
+	 * The ID of the VF that this PF is trying to reset. Only the parent PF
+	 * shall be allowed to reset a child VF. A parent PF driver shall use
+	 * this field only when a specific child VF is requested to be reset.
+	 */
+	uint16_t vf_id;
+
+	/* This value indicates the level of a function reset. */
+		/*
+		 * Reset the caller function and its children VFs (if any). If
+		 * no children functions exist, then reset the caller function
+		 * only.
+		 */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETALL \
+							(UINT32_C(0x0) << 0)
+		/* Reset the caller function only */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETME \
+							(UINT32_C(0x1) << 0)
+		/*
+		 * Reset all children VFs of the caller function driver if the
+		 * caller is a PF driver. It is an error to specify this level
+		 * by a VF driver. It is an error to specify this level by a PF
+		 * driver with no children VFs.
+		 */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETCHILDREN \
+							(UINT32_C(0x2) << 0)
+		/*
+		 * Reset a specific VF of the caller function driver if the
+		 * caller is the parent PF driver. It is an error to specify
+		 * this level by a VF driver. It is an error to specify this
+		 * level by a PF driver that is not the parent of the VF that is
+		 * being requested to reset.
+		 */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETVF \
+							(UINT32_C(0x3) << 0)
+	uint8_t func_reset_level;
+
+	uint8_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_func_reset_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
 
 	/*
 	 * This field is used in Output records to indicate that the output is
