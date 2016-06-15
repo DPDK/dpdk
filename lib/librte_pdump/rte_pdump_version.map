@@ -1,0 +1,13 @@
+DPDK_16.07 {
+	global:
+
+	rte_pdump_disable;
+	rte_pdump_disable_by_deviceid;
+	rte_pdump_enable;
+	rte_pdump_enable_by_deviceid;
+	rte_pdump_init;
+	rte_pdump_set_socket_dir;
+	rte_pdump_uninit;
+
+	local: *;
+};

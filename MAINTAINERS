@@ -442,6 +442,11 @@ F: app/test/test_sched.c
 F: examples/qos_sched/
 F: doc/guides/sample_app_ug/qos_scheduler.rst
 
+Packet capture
+M: Reshma Pattan <reshma.pattan@intel.com>
+F: lib/librte_pdump/
+F: doc/guides/prog_guide/pdump_lib.rst
+
 
 Packet Framework
 ----------------

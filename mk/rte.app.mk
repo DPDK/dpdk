@@ -69,6 +69,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += -lrte_pipeline
 _LDLIBS-$(CONFIG_RTE_LIBRTE_TABLE)          += -lrte_table
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PORT)           += -lrte_port
 
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PDUMP)          += -lrte_pdump
 _LDLIBS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR)    += -lrte_distributor
 _LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag

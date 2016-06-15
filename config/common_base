@@ -516,6 +516,11 @@ CONFIG_RTE_KNI_VHOST_DEBUG_RX=n
 CONFIG_RTE_KNI_VHOST_DEBUG_TX=n
 
 #
+# Compile the pdump library
+#
+CONFIG_RTE_LIBRTE_PDUMP=y
+
+#
 # Compile vhost library
 # fuse-devel is needed to run vhost-cuse.
 # fuse-devel enables user space char driver development

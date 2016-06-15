@@ -76,6 +76,10 @@ New Features
   monitoring applications, enabling the support of broader liveness
   reporting to external processes.
 
+* **Added packet capture framework.**
+
+  * A new library ``librte_pdump`` is added to provide packet capture API.
+
 
 Resolved Issues
 ---------------
