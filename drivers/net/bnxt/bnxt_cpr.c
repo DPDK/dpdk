@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <rte_malloc.h>
+
 #include "bnxt.h"
 #include "bnxt_cpr.h"
 #include "bnxt_hwrm.h"
@@ -121,21 +123,37 @@ reject:
 void bnxt_free_def_cp_ring(struct bnxt *bp)
 {
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-	struct bnxt_ring *ring = cpr->cp_ring_struct;
 
-	bnxt_free_ring(ring);
+	bnxt_free_ring(cpr->cp_ring_struct);
+	rte_free(cpr->cp_ring_struct);
+	rte_free(cpr);
 }
 
 /* For the default completion ring only */
-void bnxt_init_def_ring_struct(struct bnxt *bp)
+int bnxt_init_def_ring_struct(struct bnxt *bp, unsigned int socket_id)
 {
-	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
-	struct bnxt_ring *ring = cpr->cp_ring_struct;
+	struct bnxt_cp_ring_info *cpr;
+	struct bnxt_ring *ring;
 
+	cpr = rte_zmalloc_socket("cpr",
+				 sizeof(struct bnxt_cp_ring_info),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (cpr == NULL)
+		return -ENOMEM;
+	bp->def_cp_ring = cpr;
+
+	ring = rte_zmalloc_socket("bnxt_cp_ring_struct",
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (ring == NULL)
+		return -ENOMEM;
+	cpr->cp_ring_struct = ring;
 	ring->bd = (void *)cpr->cp_desc_ring;
 	ring->bd_dma = cpr->cp_desc_mapping;
 	ring->ring_size = rte_align32pow2(DEFAULT_CP_RING_SIZE);
 	ring->ring_mask = ring->ring_size - 1;
 	ring->vmem_size = 0;
 	ring->vmem = NULL;
+
+	return 0;
 }

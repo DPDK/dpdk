@@ -59,9 +59,12 @@ void bnxt_free_tx_rings(struct bnxt *bp)
 			continue;
 
 		bnxt_free_ring(txq->tx_ring->tx_ring_struct);
-		/* TODO: free() txq->tx_ring and txq->tx_ring->tx_ring_struct */
+		rte_free(txq->tx_ring->tx_ring_struct);
+		rte_free(txq->tx_ring);
+
 		bnxt_free_ring(txq->cp_ring->cp_ring_struct);
-		/* TODO: free() txq->cp_ring and txq->cp_ring->cp_ring_struct */
+		rte_free(txq->cp_ring->cp_ring_struct);
+		rte_free(txq->cp_ring);
 
 		rte_free(txq);
 		bp->tx_queues[i] = NULL;
@@ -79,15 +82,25 @@ int bnxt_init_one_tx_ring(struct bnxt_tx_queue *txq)
 	return 0;
 }
 
-void bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq)
+int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id)
 {
 	struct bnxt_cp_ring_info *cpr;
 	struct bnxt_tx_ring_info *txr;
 	struct bnxt_ring *ring;
 
-	/* TODO: These need to be allocated */
-	txr = txq->tx_ring;
-	ring = txr->tx_ring_struct;
+	txr = rte_zmalloc_socket("bnxt_tx_ring",
+				 sizeof(struct bnxt_tx_ring_info),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (txr == NULL)
+		return -ENOMEM;
+	txq->tx_ring = txr;
+
+	ring = rte_zmalloc_socket("bnxt_tx_ring_struct",
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (ring == NULL)
+		return -ENOMEM;
+	txr->tx_ring_struct = ring;
 	ring->ring_size = rte_align32pow2(txq->nb_tx_desc + 1);
 	ring->ring_mask = ring->ring_size - 1;
 	ring->bd = (void *)txr->tx_desc_ring;
@@ -95,15 +108,27 @@ void bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq)
 	ring->vmem_size = ring->ring_size * sizeof(struct bnxt_sw_tx_bd);
 	ring->vmem = (void **)&txr->tx_buf_ring;
 
-	/* TODO: These need to be allocated */
-	cpr = txq->cp_ring;
-	ring = cpr->cp_ring_struct;
+	cpr = rte_zmalloc_socket("bnxt_tx_ring",
+				 sizeof(struct bnxt_cp_ring_info),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (cpr == NULL)
+		return -ENOMEM;
+	txq->cp_ring = cpr;
+
+	ring = rte_zmalloc_socket("bnxt_tx_ring_struct",
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (ring == NULL)
+		return -ENOMEM;
+	cpr->cp_ring_struct = ring;
 	ring->ring_size = txr->tx_ring_struct->ring_size;
 	ring->ring_mask = ring->ring_size - 1;
 	ring->bd = (void *)cpr->cp_desc_ring;
 	ring->bd_dma = cpr->cp_desc_mapping;
 	ring->vmem_size = 0;
 	ring->vmem = NULL;
+
+	return 0;
 }
 
 static inline uint32_t bnxt_tx_avail(struct bnxt_tx_ring_info *txr)

@@ -51,6 +51,7 @@ void bnxt_free_ring(struct bnxt_ring *ring)
 		memset((char *)*ring->vmem, 0, ring->vmem_size);
 		*ring->vmem = NULL;
 	}
+	rte_memzone_free((const struct rte_memzone *)ring->mem_zone);
 }
 
 /*
@@ -135,6 +136,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		tx_ring_info->tx_desc_ring = (struct tx_bd_long *)tx_ring->bd;
 		tx_ring->bd_dma = mz->phys_addr + tx_ring_start;
 		tx_ring_info->tx_desc_mapping = tx_ring->bd_dma;
+		tx_ring->mem_zone = (const void *)mz;
 
 		if (!tx_ring->bd)
 			return -ENOMEM;
@@ -154,6 +156,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		    (struct rx_prod_pkt_bd *)rx_ring->bd;
 		rx_ring->bd_dma = mz->phys_addr + rx_ring_start;
 		rx_ring_info->rx_desc_mapping = rx_ring->bd_dma;
+		rx_ring->mem_zone = (const void *)mz;
 
 		if (!rx_ring->bd)
 			return -ENOMEM;
@@ -169,6 +172,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	cp_ring->bd_dma = mz->phys_addr + cp_ring_start;
 	cp_ring_info->cp_desc_ring = cp_ring->bd;
 	cp_ring_info->cp_desc_mapping = cp_ring->bd_dma;
+	cp_ring->mem_zone = (const void *)mz;
 
 	if (!cp_ring->bd)
 		return -ENOMEM;

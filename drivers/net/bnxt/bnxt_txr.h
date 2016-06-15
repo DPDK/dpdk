@@ -64,7 +64,7 @@ struct bnxt_sw_tx_bd {
 
 void bnxt_free_tx_rings(struct bnxt *bp);
 int bnxt_init_one_tx_ring(struct bnxt_tx_queue *txq);
-void bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq);
+int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id);
 uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
 

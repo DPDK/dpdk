@@ -56,7 +56,7 @@ struct bnxt_rx_ring_info {
 uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			       uint16_t nb_pkts);
 void bnxt_free_rx_rings(struct bnxt *bp);
-void bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq);
+int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id);
 int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq);
 
 #endif

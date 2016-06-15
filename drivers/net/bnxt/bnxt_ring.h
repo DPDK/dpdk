@@ -76,6 +76,7 @@ struct bnxt_ring {
 	void			**vmem;
 
 	uint16_t		fw_ring_id; /* Ring id filled by Chimp FW */
+	const void		*mem_zone;
 };
 
 struct bnxt_ring_grp_info {

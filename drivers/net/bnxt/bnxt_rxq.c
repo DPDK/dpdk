@@ -53,8 +53,6 @@ void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 {
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
-	/* 'Unreserve' rte_memzone */
-
 	if (cpr->hw_stats)
 		cpr->hw_stats = NULL;
 }
@@ -272,10 +270,12 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_rx_queue *rxq;
+	int rc = 0;
 
 	if (!nb_desc || nb_desc > MAX_RX_DESC_CNT) {
 		RTE_LOG(ERR, PMD, "nb_desc %d is invalid", nb_desc);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto out;
 	}
 
 	if (eth_dev->data->rx_queues) {
@@ -287,14 +287,17 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
 		RTE_LOG(ERR, PMD, "bnxt_rx_queue allocation failed!");
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto out;
 	}
 	rxq->bp = bp;
 	rxq->mb_pool = mp;
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 
-	bnxt_init_rx_ring_struct(rxq);
+	rc = bnxt_init_rx_ring_struct(rxq, socket_id);
+	if (rc)
+		goto out;
 
 	rxq->queue_id = queue_idx;
 	rxq->port_id = eth_dev->data->port_id;
@@ -307,8 +310,10 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			"rxr")) {
 		RTE_LOG(ERR, PMD, "ring_dma_zone_reserve for rx_ring failed!");
 		bnxt_rx_queue_release_op(rxq);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto out;
 	}
 
-	return 0;
+out:
+	return rc;
 }
