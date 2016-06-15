@@ -2404,8 +2404,8 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
 #ifdef RTE_APP_TEST_DEBUG
 		rte_hexdump(stdout, "digest:",
-				ut_params->op->digest.data,
-				ut_params->op->digest.length);
+				sym_op->auth.digest.data,
+				sym_op->auth.digest.length);
 #endif
 	}
 
@@ -2447,9 +2447,9 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
 
 #ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "iv:", ut_params->op->iv.data, iv_pad_len);
+	rte_hexdump(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
 	rte_hexdump(stdout, "aad:",
-			ut_params->op->additional_auth.data, aad_len);
+			sym_op->auth.aad.data, aad_len);
 #endif
 	sym_op->cipher.data.length = data_len;
 	sym_op->cipher.data.offset = aad_buffer_len + iv_pad_len;
