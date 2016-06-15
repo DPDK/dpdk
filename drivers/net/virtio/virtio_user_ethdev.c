@@ -42,6 +42,7 @@
 #include "virtio_logs.h"
 #include "virtio_pci.h"
 #include "virtqueue.h"
+#include "virtio_rxtx.h"
 #include "virtio_user/virtio_user_dev.h"
 
 #define virtio_user_get_dev(hw) \
@@ -199,6 +200,11 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
 	uint64_t buf = 1;
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
+
+	if (hw->cvq && (hw->cvq->vq == vq)) {
+		virtio_user_handle_cq(dev, vq->vq_queue_index);
+		return;
+	}
 
 	if (write(dev->kickfds[vq->vq_queue_index], &buf, sizeof(buf)) < 0)
 		PMD_DRV_LOG(ERR, "failed to kick backend: %s\n",
@@ -360,6 +366,13 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_CQ_NUM) == 1)
 		rte_kvargs_process(kvlist, VIRTIO_USER_ARG_CQ_NUM,
 				   &get_integer_arg, &cq);
+	else if (queues > 1)
+		cq = 1;
+
+	if (queues > 1 && cq == 0) {
+		PMD_INIT_LOG(ERR, "multi-q requires ctrl-q");
+		goto end;
+	}
 
 	eth_dev = virtio_user_eth_dev_alloc(name);
 	if (!eth_dev) {
