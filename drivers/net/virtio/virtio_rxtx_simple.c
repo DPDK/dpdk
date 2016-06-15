@@ -80,8 +80,8 @@ virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
 	vq->sw_ring[desc_idx] = cookie;
 
 	start_dp = vq->vq_ring.desc;
-	start_dp[desc_idx].addr = (uint64_t)((uintptr_t)cookie->buf_physaddr +
-		RTE_PKTMBUF_HEADROOM - vq->hw->vtnet_hdr_size);
+	start_dp[desc_idx].addr = MBUF_DATA_DMA_ADDR(cookie, vq->offset) -
+				  vq->hw->vtnet_hdr_size;
 	start_dp[desc_idx].len = cookie->buf_len -
 		RTE_PKTMBUF_HEADROOM + vq->hw->vtnet_hdr_size;
 
@@ -120,8 +120,8 @@ virtio_rxq_rearm_vec(struct virtnet_rx *rxvq)
 		*(uint64_t *)p = rxvq->mbuf_initializer;
 
 		start_dp[i].addr =
-			(uint64_t)((uintptr_t)sw_ring[i]->buf_physaddr +
-			RTE_PKTMBUF_HEADROOM - vq->hw->vtnet_hdr_size);
+			MBUF_DATA_DMA_ADDR(sw_ring[i], vq->offset) -
+			vq->hw->vtnet_hdr_size;
 		start_dp[i].len = sw_ring[i]->buf_len -
 			RTE_PKTMBUF_HEADROOM + vq->hw->vtnet_hdr_size;
 	}
@@ -369,7 +369,7 @@ virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 			vq->vq_descx[desc_idx + i].cookie = tx_pkts[i];
 		for (i = 0; i < nb_tail; i++) {
 			start_dp[desc_idx].addr =
-				rte_mbuf_data_dma_addr(*tx_pkts);
+				MBUF_DATA_DMA_ADDR(*tx_pkts, vq->offset);
 			start_dp[desc_idx].len = (*tx_pkts)->pkt_len;
 			tx_pkts++;
 			desc_idx++;
@@ -380,7 +380,8 @@ virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_commit; i++)
 		vq->vq_descx[desc_idx + i].cookie = tx_pkts[i];
 	for (i = 0; i < nb_commit; i++) {
-		start_dp[desc_idx].addr = rte_mbuf_data_dma_addr(*tx_pkts);
+		start_dp[desc_idx].addr =
+			MBUF_DATA_DMA_ADDR(*tx_pkts, vq->offset);
 		start_dp[desc_idx].len = (*tx_pkts)->pkt_len;
 		tx_pkts++;
 		desc_idx++;

@@ -191,14 +191,14 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	 * One RX packet for ACK.
 	 */
 	vq->vq_ring.desc[head].flags = VRING_DESC_F_NEXT;
-	vq->vq_ring.desc[head].addr = cvq->virtio_net_hdr_mz->phys_addr;
+	vq->vq_ring.desc[head].addr = cvq->virtio_net_hdr_mem;
 	vq->vq_ring.desc[head].len = sizeof(struct virtio_net_ctrl_hdr);
 	vq->vq_free_cnt--;
 	i = vq->vq_ring.desc[head].next;
 
 	for (k = 0; k < pkt_num; k++) {
 		vq->vq_ring.desc[i].flags = VRING_DESC_F_NEXT;
-		vq->vq_ring.desc[i].addr = cvq->virtio_net_hdr_mz->phys_addr
+		vq->vq_ring.desc[i].addr = cvq->virtio_net_hdr_mem
 			+ sizeof(struct virtio_net_ctrl_hdr)
 			+ sizeof(ctrl->status) + sizeof(uint8_t)*sum;
 		vq->vq_ring.desc[i].len = dlen[k];
@@ -208,7 +208,7 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	}
 
 	vq->vq_ring.desc[i].flags = VRING_DESC_F_WRITE;
-	vq->vq_ring.desc[i].addr = cvq->virtio_net_hdr_mz->phys_addr
+	vq->vq_ring.desc[i].addr = cvq->virtio_net_hdr_mem
 			+ sizeof(struct virtio_net_ctrl_hdr);
 	vq->vq_ring.desc[i].len = sizeof(ctrl->status);
 	vq->vq_free_cnt--;
@@ -311,9 +311,9 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_memzone *mz = NULL, *hdr_mz = NULL;
 	unsigned int vq_size, size;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtnet_rx *rxvq;
-	struct virtnet_tx *txvq;
-	struct virtnet_ctl *cvq;
+	struct virtnet_rx *rxvq = NULL;
+	struct virtnet_tx *txvq = NULL;
+	struct virtnet_ctl *cvq = NULL;
 	struct virtqueue *vq;
 	const char *queue_names[] = {"rvq", "txq", "cvq"};
 	size_t sz_vq, sz_q = 0, sz_hdr_mz = 0;
@@ -437,9 +437,6 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		rxvq->mz = mz;
 		*pvq = rxvq;
 	} else if (queue_type == VTNET_TQ) {
-		struct virtio_tx_region *txr;
-		unsigned int i;
-
 		txvq = (struct virtnet_tx *)RTE_PTR_ADD(vq, sz_vq);
 		txvq->vq = vq;
 		txvq->port_id = dev->data->port_id;
@@ -447,6 +444,36 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		txvq->mz = mz;
 		txvq->virtio_net_hdr_mz = hdr_mz;
 		txvq->virtio_net_hdr_mem = hdr_mz->phys_addr;
+
+		*pvq = txvq;
+	} else if (queue_type == VTNET_CQ) {
+		cvq = (struct virtnet_ctl *)RTE_PTR_ADD(vq, sz_vq);
+		cvq->vq = vq;
+		cvq->mz = mz;
+		cvq->virtio_net_hdr_mz = hdr_mz;
+		cvq->virtio_net_hdr_mem = hdr_mz->phys_addr;
+		memset(cvq->virtio_net_hdr_mz->addr, 0, PAGE_SIZE);
+		*pvq = cvq;
+	}
+
+	/* For virtio-user case (that is when dev->pci_dev is NULL), we use
+	 * virtual address. And we need properly set _offset_, please see
+	 * MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
+	 */
+	if (dev->pci_dev)
+		vq->offset = offsetof(struct rte_mbuf, buf_physaddr);
+	else {
+		vq->vq_ring_mem = (uintptr_t)mz->addr;
+		vq->offset = offsetof(struct rte_mbuf, buf_addr);
+		if (queue_type == VTNET_TQ)
+			txvq->virtio_net_hdr_mem = (uintptr_t)hdr_mz->addr;
+		else if (queue_type == VTNET_CQ)
+			cvq->virtio_net_hdr_mem = (uintptr_t)hdr_mz->addr;
+	}
+
+	if (queue_type == VTNET_TQ) {
+		struct virtio_tx_region *txr;
+		unsigned int i;
 
 		txr = hdr_mz->addr;
 		memset(txr, 0, vq_size * sizeof(*txr));
@@ -463,16 +490,6 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 			start_dp->len = hw->vtnet_hdr_size;
 			start_dp->flags = VRING_DESC_F_NEXT;
 		}
-
-		*pvq = txvq;
-	} else if (queue_type == VTNET_CQ) {
-		cvq = (struct virtnet_ctl *)RTE_PTR_ADD(vq, sz_vq);
-		cvq->vq = vq;
-		cvq->mz = mz;
-		cvq->virtio_net_hdr_mz = hdr_mz;
-		cvq->virtio_net_hdr_mem = hdr_mz->phys_addr;
-		memset(cvq->virtio_net_hdr_mz->addr, 0, PAGE_SIZE);
-		*pvq = cvq;
 	}
 
 	if (hw->vtpci_ops->setup_queue(hw, vq) < 0) {

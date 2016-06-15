@@ -66,6 +66,14 @@ struct rte_mbuf;
 
 #define VIRTQUEUE_MAX_NAME_SZ 32
 
+#ifdef RTE_VIRTIO_USER
+#define MBUF_DATA_DMA_ADDR(mb, offset) \
+	((uint64_t)((uintptr_t)(*(void **)((uintptr_t)mb + offset)) \
+			+ (mb)->data_off))
+#else /* RTE_VIRTIO_USER */
+#define MBUF_DATA_DMA_ADDR(mb, offset) rte_mbuf_data_dma_addr(mb)
+#endif /* RTE_VIRTIO_USER */
+
 #define VTNET_SQ_RQ_QUEUE_IDX 0
 #define VTNET_SQ_TQ_QUEUE_IDX 1
 #define VTNET_SQ_CQ_QUEUE_IDX 2
@@ -175,6 +183,7 @@ struct virtqueue {
 	unsigned int vq_ring_size;
 
 	phys_addr_t vq_ring_mem; /**< physical address of vring */
+				/**< use virtual address for virtio-user. */
 
 	/**
 	 * Head of the free chain in the descriptor table. If
@@ -184,6 +193,7 @@ struct virtqueue {
 	uint16_t  vq_desc_head_idx;
 	uint16_t  vq_desc_tail_idx;
 	uint16_t  vq_queue_index;   /**< PCI queue index */
+	uint16_t offset; /**< relative offset to obtain addr in mbuf */
 	uint16_t  *notify_addr;
 	int configured;
 	struct rte_mbuf **sw_ring;  /**< RX software ring. */
