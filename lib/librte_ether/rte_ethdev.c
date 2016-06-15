@@ -406,7 +406,7 @@ rte_eth_dev_get_addr_by_port(uint8_t port_id, struct rte_pci_addr *addr)
 	return 0;
 }
 
-static int
+int
 rte_eth_dev_get_name_by_port(uint8_t port_id, char *name)
 {
 	char *tmp;
@@ -425,7 +425,7 @@ rte_eth_dev_get_name_by_port(uint8_t port_id, char *name)
 	return 0;
 }
 
-static int
+int
 rte_eth_dev_get_port_by_name(const char *name, uint8_t *port_id)
 {
 	int i;

@@ -137,5 +137,7 @@ DPDK_16.07 {
 	global:
 
 	rte_eth_add_first_rx_callback;
+	rte_eth_dev_get_name_by_port;
+	rte_eth_dev_get_port_by_name;
 	rte_eth_xstats_get_names;
 } DPDK_16.04;
