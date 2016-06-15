@@ -41,7 +41,10 @@
 
 #define HWRM_SEQ_ID_INVALID -1U
 
+int bnxt_hwrm_func_driver_register(struct bnxt *bp, uint32_t flags,
+				   uint32_t *vf_req_fwd);
 int bnxt_hwrm_func_qcaps(struct bnxt *bp);
+int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
 
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
 

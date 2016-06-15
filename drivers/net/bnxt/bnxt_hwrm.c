@@ -36,6 +36,7 @@
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
+#include <rte_version.h>
 
 #include "bnxt.h"
 #include "bnxt_hwrm.h"
@@ -178,6 +179,34 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_func_driver_register(struct bnxt *bp, uint32_t flags,
+				   uint32_t *vf_req_fwd)
+{
+	int rc;
+	struct hwrm_func_drv_rgtr_input req = {.req_type = 0 };
+	struct hwrm_func_drv_rgtr_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (bp->flags & BNXT_FLAG_REGISTERED)
+		return 0;
+
+	HWRM_PREP(req, FUNC_DRV_RGTR, -1, resp);
+	req.flags = flags;
+	req.enables = HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VER;
+	req.ver_maj = RTE_VER_YEAR;
+	req.ver_min = RTE_VER_MONTH;
+	req.ver_upd = RTE_VER_MINOR;
+
+	memcpy(req.vf_req_fwd, vf_req_fwd, sizeof(req.vf_req_fwd));
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	bp->flags |= BNXT_FLAG_REGISTERED;
+
+	return rc;
+}
+
 int bnxt_hwrm_ver_get(struct bnxt *bp)
 {
 	int rc = 0;
@@ -261,6 +290,27 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 
 error:
 	rte_spinlock_unlock(&bp->hwrm_lock);
+	return rc;
+}
+
+int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags)
+{
+	int rc;
+	struct hwrm_func_drv_unrgtr_input req = {.req_type = 0 };
+	struct hwrm_func_drv_unrgtr_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (!(bp->flags & BNXT_FLAG_REGISTERED))
+		return 0;
+
+	HWRM_PREP(req, FUNC_DRV_UNRGTR, -1, resp);
+	req.flags = flags;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	bp->flags &= ~BNXT_FLAG_REGISTERED;
+
 	return rc;
 }
 

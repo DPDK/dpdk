@@ -91,6 +91,7 @@ struct bnxt {
 	struct rte_pci_device		*pdev;
 
 	uint32_t		flags;
+#define BNXT_FLAG_REGISTERED	(1 << 0)
 #define BNXT_FLAG_VF		(1 << 1)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)

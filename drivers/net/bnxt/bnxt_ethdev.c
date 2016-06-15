@@ -176,17 +176,38 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		memcpy(bp->mac_addr, bp->vf.mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
 
-	return -EPERM;
+	rc = bnxt_hwrm_func_driver_register(bp, 0,
+					    bp->pf.vf_req_fwd);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"Failed to register driver");
+		rc = -EBUSY;
+		goto error_free;
+	}
+
+	RTE_LOG(INFO, PMD,
+		DRV_MODULE_NAME " found at mem %" PRIx64 ", node addr %pM\n",
+		eth_dev->pci_dev->mem_resource[0].phys_addr,
+		eth_dev->pci_dev->mem_resource[0].addr);
+
+	return 0;
 
 error_free:
-	bnxt_dev_close_op(eth_dev);
+	eth_dev->driver->eth_dev_uninit(eth_dev);
 error:
 	return rc;
 }
 
 static int
-bnxt_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused) {
-	return 0;
+bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
+	struct bnxt *bp = eth_dev->data->dev_private;
+	int rc;
+
+	if (eth_dev->data->mac_addrs)
+		rte_free(eth_dev->data->mac_addrs);
+	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
+	bnxt_free_hwrm_resources(bp);
+	return rc;
 }
 
 static struct eth_driver bnxt_rte_pmd = {

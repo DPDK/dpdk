@@ -52,6 +52,8 @@
  */
 #define HWRM_VER_GET			(UINT32_C(0x0))
 #define HWRM_FUNC_QCAPS			(UINT32_C(0x15))
+#define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
+#define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
 #define HWRM_QUEUE_QPORTCFG		(UINT32_C(0x30))
 
 /*
@@ -940,6 +942,275 @@ struct hwrm_queue_qportcfg_output {
 	#define HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID7_SERVICE_PROFILE_UNKNOWN \
 							(UINT32_C(0xff) << 0)
 	uint8_t queue_id7_service_profile;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_func_drv_rgtr */
+/*
+ * Description: This command is used by the function driver to register its
+ * information with the HWRM. A function driver shall implement this command. A
+ * function driver shall use this command during the driver initialization right
+ * after the HWRM version discovery and default ring resources allocation.
+ */
+
+/* Input (80 bytes) */
+struct hwrm_func_drv_rgtr_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * When this bit is '1', the function driver is requesting all requests
+	 * from its children VF drivers to be forwarded to itself. This flag can
+	 * only be set by the PF driver. If a VF driver sets this flag, it
+	 * should be ignored by the HWRM.
+	 */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_FWD_ALL_MODE        UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the function is requesting none of the requests
+	 * from its children VF drivers to be forwarded to itself. This flag can
+	 * only be set by the PF driver. If a VF driver sets this flag, it
+	 * should be ignored by the HWRM.
+	 */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_FWD_NONE_MODE       UINT32_C(0x2)
+	uint32_t flags;
+
+	/* This bit must be '1' for the os_type field to be configured. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_OS_TYPE           UINT32_C(0x1)
+	/* This bit must be '1' for the ver field to be configured. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VER               UINT32_C(0x2)
+	/* This bit must be '1' for the timestamp field to be configured. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_TIMESTAMP         UINT32_C(0x4)
+	/* This bit must be '1' for the vf_req_fwd field to be configured. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_VF_REQ_FWD        UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the async_event_fwd field to be configured.
+	 */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_ENABLES_ASYNC_EVENT_FWD \
+								UINT32_C(0x10)
+	uint32_t enables;
+
+	/* This value indicates the type of OS. */
+		/* Unknown */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_UNKNOWN \
+							(UINT32_C(0x0) << 0)
+		/* Other OS not listed below. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_OTHER \
+							(UINT32_C(0x1) << 0)
+		/* MSDOS OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_MSDOS \
+							(UINT32_C(0xe) << 0)
+		/* Windows OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_WINDOWS \
+							(UINT32_C(0x12) << 0)
+		/* Solaris OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_SOLARIS \
+							(UINT32_C(0x1d) << 0)
+		/* Linux OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_LINUX \
+							(UINT32_C(0x24) << 0)
+		/* FreeBSD OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_FREEBSD \
+							(UINT32_C(0x2a) << 0)
+		/* VMware ESXi OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_ESXI \
+							(UINT32_C(0x68) << 0)
+		/* Microsoft Windows 8 64-bit OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_WIN864 \
+							(UINT32_C(0x73) << 0)
+		/* Microsoft Windows Server 2012 R2 OS. */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_OS_TYPE_WIN2012R2 \
+							(UINT32_C(0x74) << 0)
+	uint16_t os_type;
+
+	/* This is the major version of the driver. */
+	uint8_t ver_maj;
+
+	/* This is the minor version of the driver. */
+	uint8_t ver_min;
+
+	/* This is the update version of the driver. */
+	uint8_t ver_upd;
+
+	uint8_t unused_0;
+	uint16_t unused_1;
+
+	/*
+	 * This is a 32-bit timestamp provided by the driver for keep alive. The
+	 * timestamp is in multiples of 1ms.
+	 */
+	uint32_t timestamp;
+
+	uint32_t unused_2;
+
+	/*
+	 * This is a 256-bit bit mask provided by the PF driver for letting the
+	 * HWRM know what commands issued by the VF driver to the HWRM should be
+	 * forwarded to the PF driver. Nth bit refers to the Nth req_type.
+	 * Setting Nth bit to 1 indicates that requests from the VF driver with
+	 * req_type equal to N shall be forwarded to the parent PF driver. This
+	 * field is not valid for the VF driver.
+	 */
+	uint32_t vf_req_fwd[8];
+
+	/*
+	 * This is a 256-bit bit mask provided by the function driver (PF or VF
+	 * driver) to indicate the list of asynchronous event completions to be
+	 * forwarded. Nth bit refers to the Nth event_id. Setting Nth bit to 1
+	 * by the function driver shall result in the HWRM forwarding
+	 * asynchronous event completion with event_id equal to N. If all bits
+	 * are set to 0 (value of 0), then the HWRM shall not forward any
+	 * asynchronous event completion to this function driver.
+	 */
+	uint32_t async_event_fwd[8];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+
+struct hwrm_func_drv_rgtr_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_func_drv_unrgtr */
+/*
+ * Description: This command is used by the function driver to un register with
+ * the HWRM. A function driver shall implement this command. A function driver
+ * shall use this command during the driver unloading.
+ */
+/* Input (24 bytes) */
+
+struct hwrm_func_drv_unrgtr_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * When this bit is '1', the function driver is notifying the HWRM to
+	 * prepare for the shutdown.
+	 */
+	#define HWRM_FUNC_DRV_UNRGTR_INPUT_FLAGS_PREPARE_FOR_SHUTDOWN \
+							UINT32_C(0x1)
+	uint32_t flags;
+
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_func_drv_unrgtr_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
 
 	/*
 	 * This field is used in Output records to indicate that the output is
