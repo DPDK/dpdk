@@ -81,6 +81,29 @@ struct bnxt_pf_info {
 	struct bnxt_vf_info	*vf;
 };
 
+/* Max wait time is 10 * 100ms = 1s */
+#define BNXT_LINK_WAIT_CNT	10
+#define BNXT_LINK_WAIT_INTERVAL	100
+struct bnxt_link_info {
+	uint8_t			phy_flags;
+	uint8_t			mac_type;
+	uint8_t			phy_link_status;
+	uint8_t			loop_back;
+	uint8_t			link_up;
+	uint8_t			duplex;
+	uint8_t			pause;
+	uint8_t			force_pause;
+	uint8_t			auto_pause;
+	uint8_t			auto_mode;
+#define PHY_VER_LEN		3
+	uint8_t			phy_ver[PHY_VER_LEN];
+	uint16_t		link_speed;
+	uint16_t		support_speeds;
+	uint16_t		auto_link_speed;
+	uint16_t		auto_link_speed_mask;
+	uint32_t		preemphasis;
+};
+
 #define BNXT_COS_QUEUE_COUNT	8
 struct bnxt_cos_queue_info {
 	uint8_t	id;
@@ -99,6 +122,14 @@ struct bnxt {
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 
+	unsigned int		rx_nr_rings;
+	unsigned int		rx_cp_nr_rings;
+	struct bnxt_rx_queue **rx_queues;
+
+	unsigned int		tx_nr_rings;
+	unsigned int		tx_cp_nr_rings;
+	struct bnxt_tx_queue **tx_queues;
+
 #define MAX_NUM_MAC_ADDR	32
 	uint8_t			mac_addr[ETHER_ADDR_LEN];
 
@@ -109,6 +140,7 @@ struct bnxt {
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;
 
+	struct bnxt_link_info	link_info;
 	struct bnxt_cos_queue_info	cos_queue[BNXT_COS_QUEUE_COUNT];
 
 	struct bnxt_pf_info		pf;

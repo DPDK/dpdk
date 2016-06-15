@@ -52,5 +52,6 @@ int bnxt_hwrm_ver_get(struct bnxt *bp);
 
 void bnxt_free_hwrm_resources(struct bnxt *bp);
 int bnxt_alloc_hwrm_resources(struct bnxt *bp);
+int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up);
 
 #endif

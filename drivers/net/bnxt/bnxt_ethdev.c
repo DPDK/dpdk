@@ -154,6 +154,29 @@ found:
 	dev_info->vmdq_queue_base = 0;
 }
 
+/* Configure the device based on the configuration provided */
+static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	int rc;
+
+	bp->rx_queues = (void *)eth_dev->data->rx_queues;
+	bp->tx_queues = (void *)eth_dev->data->tx_queues;
+
+	/* Inherit new configurations */
+	bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
+	bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
+	bp->rx_cp_nr_rings = bp->rx_nr_rings;
+	bp->tx_cp_nr_rings = bp->tx_nr_rings;
+
+	if (eth_dev->data->dev_conf.rxmode.jumbo_frame)
+		eth_dev->data->mtu =
+				eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
+				ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE;
+	rc = bnxt_set_hwrm_link_config(bp, true);
+	return rc;
+}
+
 /*
  * Initialization
  */
@@ -161,6 +184,7 @@ found:
 static struct eth_dev_ops bnxt_dev_ops = {
 	.dev_infos_get = bnxt_dev_info_get_op,
 	.dev_close = bnxt_dev_close_op,
+	.dev_configure = bnxt_dev_configure_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)

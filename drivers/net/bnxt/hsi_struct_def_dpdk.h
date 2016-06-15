@@ -54,6 +54,7 @@
 #define HWRM_FUNC_QCAPS			(UINT32_C(0x15))
 #define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
+#define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
 #define HWRM_QUEUE_QPORTCFG		(UINT32_C(0x30))
 
 /*
@@ -334,6 +335,475 @@ struct hwrm_func_qcaps_output {
 	uint8_t unused_0;
 	uint8_t unused_1;
 	uint8_t unused_2;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
+/* hwrm_port_phy_cfg */
+/*
+ * Description: This command configures the PHY device for the port. It allows
+ * setting of the most generic settings for the PHY. The HWRM shall complete
+ * this command as soon as PHY settings are configured. They may not be applied
+ * when the command response is provided. A VF driver shall not be allowed to
+ * configure PHY using this command. In a network partition mode, a PF driver
+ * shall not be allowed to configure PHY using this command.
+ */
+
+/* Input (56 bytes) */
+struct hwrm_port_phy_cfg_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * When this bit is set to '1', the PHY for the port shall be reset. #
+	 * If this bit is set to 1, then the HWRM shall reset the PHY after
+	 * applying PHY configuration changes specified in this command. # In
+	 * order to guarantee that PHY configuration changes specified in this
+	 * command take effect, the HWRM client should set this flag to 1. # If
+	 * this bit is not set to 1, then the HWRM may reset the PHY depending
+	 * on the current PHY configuration and settings specified in this
+	 * command.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY            UINT32_C(0x1)
+	/*
+	 * When this bit is set to '1', the link shall be forced to be taken
+	 * down. # When this bit is set to '1", all other command input settings
+	 * related to the link speed shall be ignored. Once the link state is
+	 * forced down, it can be explicitly cleared from that state by setting
+	 * this flag to '0'. # If this flag is set to '0', then the link shall
+	 * be cleared from forced down state if the link is in forced down
+	 * state. There may be conditions (e.g. out-of-band or sideband
+	 * configuration changes for the link) outside the scope of the HWRM
+	 * implementation that may clear forced down link state.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE_LINK_DOWN      UINT32_C(0x2)
+	/*
+	 * When this bit is set to '1', the link shall be forced to the
+	 * force_link_speed value. When this bit is set to '1', the HWRM client
+	 * should not enable any of the auto negotiation related fields
+	 * represented by auto_XXX fields in this command. When this bit is set
+	 * to '1' and the HWRM client has enabled a auto_XXX field in this
+	 * command, then the HWRM shall ignore the enabled auto_XXX field. When
+	 * this bit is set to zero, the link shall be allowed to autoneg.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE                UINT32_C(0x4)
+	/*
+	 * When this bit is set to '1', the auto-negotiation process shall be
+	 * restarted on the link.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG      UINT32_C(0x8)
+	/*
+	 * When this bit is set to '1', Energy Efficient Ethernet (EEE) is
+	 * requested to be enabled on this link. If EEE is not supported on this
+	 * port, then this flag shall be ignored by the HWRM.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_EEE_ENABLE	UINT32_C(0x10)
+	/*
+	 * When this bit is set to '1', Energy Efficient Ethernet (EEE) is
+	 * requested to be disabled on this link. If EEE is not supported on
+	 * this port, then this flag shall be ignored by the HWRM.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_EEE_DISABLE	UINT32_C(0x20)
+	/*
+	 * When this bit is set to '1' and EEE is enabled on this link, then TX
+	 * LPI is requested to be enabled on the link. If EEE is not supported
+	 * on this port, then this flag shall be ignored by the HWRM. If EEE is
+	 * disabled on this port, then this flag shall be ignored by the HWRM.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_EEE_TX_LPI	UINT32_C(0x40)
+	uint32_t flags;
+
+	/* This bit must be '1' for the auto_mode field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE          UINT32_C(0x1)
+	/* This bit must be '1' for the auto_duplex field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_DUPLEX        UINT32_C(0x2)
+	/* This bit must be '1' for the auto_pause field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_PAUSE         UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the auto_link_speed field to be configured.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED    UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the auto_link_speed_mask field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK \
+								UINT32_C(0x10)
+	/* This bit must be '1' for the wirespeed field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_WIRESPEED	UINT32_C(0x20)
+	/* This bit must be '1' for the lpbk field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_LPBK		UINT32_C(0x40)
+	/* This bit must be '1' for the preemphasis field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_PREEMPHASIS	UINT32_C(0x80)
+	/* This bit must be '1' for the force_pause field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_FORCE_PAUSE	UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the eee_link_speed_mask field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_EEE_LINK_SPEED_MASK \
+								UINT32_C(0x200)
+	/* This bit must be '1' for the tx_lpi_timer field to be configured. */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_TX_LPI_TIMER	UINT32_C(0x400)
+	uint32_t enables;
+
+	/* Port ID of port that is to be configured. */
+	uint16_t port_id;
+
+	/*
+	 * This is the speed that will be used if the force bit is '1'. If
+	 * unsupported speed is selected, an error will be generated.
+	 */
+		/* 100Mb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100MB \
+							(UINT32_C(0x1) << 0)
+		/* 1Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_1GB \
+							(UINT32_C(0xa) << 0)
+		/* 2Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_2GB \
+							(UINT32_C(0x14) << 0)
+		/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_2_5GB \
+							(UINT32_C(0x19) << 0)
+		/* 10Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_10GB \
+							(UINT32_C(0x64) << 0)
+		/* 20Mb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_20GB \
+							(UINT32_C(0xc8) << 0)
+		/* 25Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_25GB \
+							(UINT32_C(0xfa) << 0)
+		/* 40Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_40GB \
+							(UINT32_C(0x190) << 0)
+		/* 50Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB \
+							(UINT32_C(0x1f4) << 0)
+		/* 100Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB \
+							(UINT32_C(0x3e8) << 0)
+		/* 10Mb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_10MB \
+							(UINT32_C(0xffff) << 0)
+	uint16_t force_link_speed;
+
+	/*
+	 * This value is used to identify what autoneg mode is used when the
+	 * link speed is not being forced.
+	 */
+		/*
+		 * Disable autoneg or autoneg disabled. No speeds are selected.
+		 */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_NONE	(UINT32_C(0x0) << 0)
+		/* Select all possible speeds for autoneg mode. */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ALL_SPEEDS \
+							(UINT32_C(0x1) << 0)
+		/*
+		 * Select only the auto_link_speed speed for autoneg mode. This
+		 * mode has been DEPRECATED. An HWRM client should not use this
+		 * mode.
+		 */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ONE_SPEED \
+							(UINT32_C(0x2) << 0)
+		/*
+		 * Select the auto_link_speed or any speed below that speed for
+		 * autoneg. This mode has been DEPRECATED. An HWRM client should
+		 * not use this mode.
+		 */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ONE_OR_BELOW \
+							(UINT32_C(0x3) << 0)
+		/*
+		 * Select the speeds based on the corresponding link speed mask
+		 * value that is provided.
+		 */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK \
+							(UINT32_C(0x4) << 0)
+	uint8_t auto_mode;
+
+	/*
+	 * This is the duplex setting that will be used if the autoneg_mode is
+	 * "one_speed" or "one_or_below".
+	 */
+		/* Half Duplex will be requested. */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_HALF \
+							(UINT32_C(0x0) << 0)
+		/* Full duplex will be requested. */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_FULL \
+							(UINT32_C(0x1) << 0)
+		/* Both Half and Full dupex will be requested. */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_BOTH \
+							(UINT32_C(0x2) << 0)
+	uint8_t auto_duplex;
+
+	/*
+	 * This value is used to configure the pause that will be used for
+	 * autonegotiation. Add text on the usage of auto_pause and force_pause.
+	 */
+	/*
+	 * When this bit is '1', Generation of tx pause messages has been
+	 * requested. Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX              UINT32_C(0x1)
+	/*
+	 * When this bit is '1', Reception of rx pause messages has been
+	 * requested. Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX              UINT32_C(0x2)
+	/*
+	 * When set to 1, the advertisement of pause is enabled. # When the
+	 * auto_mode is not set to none and this flag is set to 1, then the
+	 * auto_pause bits on this port are being advertised and autoneg pause
+	 * results are being interpreted. # When the auto_mode is not set to
+	 * none and this flag is set to 0, the pause is forced as indicated in
+	 * force_pause, and also advertised as auto_pause bits, but the autoneg
+	 * results are not interpreted since the pause configuration is being
+	 * forced. # When the auto_mode is set to none and this flag is set to
+	 * 1, auto_pause bits should be ignored and should be set to 0.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_AUTONEG_PAUSE   UINT32_C(0x4)
+	uint8_t auto_pause;
+
+	uint8_t unused_0;
+
+	/*
+	 * This is the speed that will be used if the autoneg_mode is
+	 * "one_speed" or "one_or_below". If an unsupported speed is selected,
+	 * an error will be generated.
+	 */
+		/* 100Mb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_100MB \
+							(UINT32_C(0x1) << 0)
+		/* 1Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_1GB \
+							(UINT32_C(0xa) << 0)
+		/* 2Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_2GB \
+							(UINT32_C(0x14) << 0)
+		/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_2_5GB \
+							(UINT32_C(0x19) << 0)
+		/* 10Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_10GB \
+							(UINT32_C(0x64) << 0)
+		/* 20Mb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_20GB \
+							(UINT32_C(0xc8) << 0)
+		/* 25Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_25GB \
+							(UINT32_C(0xfa) << 0)
+		/* 40Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_40GB \
+							(UINT32_C(0x190) << 0)
+		/* 50Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_50GB \
+							(UINT32_C(0x1f4) << 0)
+		/* 100Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_100GB \
+							(UINT32_C(0x3e8) << 0)
+		/* 10Mb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_10MB \
+							(UINT32_C(0xffff) << 0)
+	uint16_t auto_link_speed;
+
+	/*
+	 * This is a mask of link speeds that will be used if autoneg_mode is
+	 * "mask". If unsupported speed is enabled an error will be generated.
+	 */
+	/* 100Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100MBHD \
+							UINT32_C(0x1)
+	/* 100Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100MB \
+							UINT32_C(0x2)
+	/* 1Gb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_1GBHD \
+							UINT32_C(0x4)
+	/* 1Gb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_1GB \
+							UINT32_C(0x8)
+	/* 2Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_2GB \
+							UINT32_C(0x10)
+	/* 2.5Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_2_5GB \
+							UINT32_C(0x20)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_10GB \
+							UINT32_C(0x40)
+	/* 20Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_20GB \
+							UINT32_C(0x80)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_25GB \
+							UINT32_C(0x100)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_40GB \
+							UINT32_C(0x200)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_50GB \
+							UINT32_C(0x400)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100GB \
+							UINT32_C(0x800)
+	/* 10Mb link speed (Half-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_10MBHD \
+							UINT32_C(0x1000)
+	/* 10Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_10MB \
+							UINT32_C(0x2000)
+	uint16_t auto_link_speed_mask;
+
+	/* This value controls the wirespeed feature. */
+		/* Wirespeed feature is disabled. */
+	#define HWRM_PORT_PHY_CFG_INPUT_WIRESPEED_OFF	(UINT32_C(0x0) << 0)
+		/* Wirespeed feature is enabled. */
+	#define HWRM_PORT_PHY_CFG_INPUT_WIRESPEED_ON	(UINT32_C(0x1) << 0)
+	uint8_t wirespeed;
+
+	/* This value controls the loopback setting for the PHY. */
+		/* No loopback is selected. Normal operation. */
+	#define HWRM_PORT_PHY_CFG_INPUT_LPBK_NONE	(UINT32_C(0x0) << 0)
+		/*
+		 * The HW will be configured with local loopback such that host
+		 * data is sent back to the host without modification.
+		 */
+	#define HWRM_PORT_PHY_CFG_INPUT_LPBK_LOCAL	(UINT32_C(0x1) << 0)
+		/*
+		 * The HW will be configured with remote loopback such that port
+		 * logic will send packets back out the transmitter that are
+		 * received.
+		 */
+	#define HWRM_PORT_PHY_CFG_INPUT_LPBK_REMOTE	(UINT32_C(0x2) << 0)
+	uint8_t lpbk;
+
+	/*
+	 * This value is used to configure the pause that will be used for force
+	 * mode.
+	 */
+	/*
+	 * When this bit is '1', Generation of tx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX             UINT32_C(0x1)
+	/*
+	 * When this bit is '1', Reception of rx pause messages is supported.
+	 * Disabled otherwise.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX             UINT32_C(0x2)
+	uint8_t force_pause;
+
+	uint8_t unused_1;
+
+	/*
+	 * This value controls the pre-emphasis to be used for the link. Driver
+	 * should not set this value (use enable.preemphasis = 0) unless driver
+	 * is sure of setting. Normally HWRM FW will determine proper pre-
+	 * emphasis.
+	 */
+	uint32_t preemphasis;
+
+	/*
+	 * Setting for link speed mask that is used to advertise speeds during
+	 * autonegotiation when EEE is enabled. This field is valid only when
+	 * EEE is enabled. The speeds specified in this field shall be a subset
+	 * of speeds specified in auto_link_speed_mask. If EEE is enabled,then
+	 * at least one speed shall be provided in this mask.
+	 */
+	/* Reserved */
+	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_RSVD1  UINT32_C(0x1)
+	/* 100Mb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_100MB  UINT32_C(0x2)
+	/* Reserved */
+	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_RSVD2  UINT32_C(0x4)
+	/* 1Gb link speed (Full-duplex) */
+	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_1GB    UINT32_C(0x8)
+	/* Reserved */
+	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_RSVD3 \
+								UINT32_C(0x10)
+	/* Reserved */
+	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_RSVD4 \
+								UINT32_C(0x20)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_10GB \
+								UINT32_C(0x40)
+	uint16_t eee_link_speed_mask;
+
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * Reuested setting of TX LPI timer in microseconds. This field is valid
+	 * only when EEE is enabled and TX LPI is enabled.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_TX_LPI_TIMER_MASK \
+							UINT32_C(0xffffff)
+	#define HWRM_PORT_PHY_CFG_INPUT_TX_LPI_TIMER_SFT           0
+	uint32_t tx_lpi_timer;
+
+	uint32_t unused_4;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_port_phy_cfg_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
 
 	/*
 	 * This field is used in Output records to indicate that the output is
