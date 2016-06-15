@@ -62,6 +62,14 @@ static struct rte_pci_id bnxt_pci_id_map[] = {
 	{.device_id = 0},
 };
 
+#define BNXT_ETH_RSS_SUPPORT (	\
+	ETH_RSS_IPV4 |		\
+	ETH_RSS_NONFRAG_IPV4_TCP |	\
+	ETH_RSS_NONFRAG_IPV4_UDP |	\
+	ETH_RSS_IPV6 |		\
+	ETH_RSS_NONFRAG_IPV6_TCP |	\
+	ETH_RSS_NONFRAG_IPV6_UDP)
+
 /***********************/
 
 /*
@@ -636,6 +644,117 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
+				   struct rte_eth_rss_conf *rss_conf)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct bnxt_vnic_info *vnic;
+	uint16_t hash_type = 0;
+	int i;
+
+	/*
+	 * If RSS enablement were different than dev_configure,
+	 * then return -EINVAL
+	 */
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+		if (!rss_conf->rss_hf)
+			return -EINVAL;
+	} else {
+		if (rss_conf->rss_hf & BNXT_ETH_RSS_SUPPORT)
+			return -EINVAL;
+	}
+	if (rss_conf->rss_hf & ETH_RSS_IPV4)
+		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
+	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
+	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
+	if (rss_conf->rss_hf & ETH_RSS_IPV6)
+		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
+	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+
+	/* Update the RSS VNIC(s) */
+	for (i = 0; i < MAX_FF_POOLS; i++) {
+		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
+			vnic->hash_type = hash_type;
+
+			/*
+			 * Use the supplied key if the key length is
+			 * acceptable and the rss_key is not NULL
+			 */
+			if (rss_conf->rss_key &&
+			    rss_conf->rss_key_len <= HW_HASH_KEY_SIZE)
+				memcpy(vnic->rss_hash_key, rss_conf->rss_key,
+				       rss_conf->rss_key_len);
+
+			bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+		}
+	}
+	return 0;
+}
+
+static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
+				     struct rte_eth_rss_conf *rss_conf)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	int len;
+	uint32_t hash_types;
+
+	/* RSS configuration is the same for all VNICs */
+	if (vnic && vnic->rss_hash_key) {
+		if (rss_conf->rss_key) {
+			len = rss_conf->rss_key_len <= HW_HASH_KEY_SIZE ?
+			      rss_conf->rss_key_len : HW_HASH_KEY_SIZE;
+			memcpy(rss_conf->rss_key, vnic->rss_hash_key, len);
+		}
+
+		hash_types = vnic->hash_type;
+		rss_conf->rss_hf = 0;
+		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4) {
+			rss_conf->rss_hf |= ETH_RSS_IPV4;
+			hash_types &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
+		}
+		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4) {
+			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+			hash_types &=
+				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
+		}
+		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4) {
+			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+			hash_types &=
+				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
+		}
+		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6) {
+			rss_conf->rss_hf |= ETH_RSS_IPV6;
+			hash_types &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+		}
+		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6) {
+			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+			hash_types &=
+				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
+		}
+		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6) {
+			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+			hash_types &=
+				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+		}
+		if (hash_types) {
+			RTE_LOG(ERR, PMD,
+				"Unknwon RSS config from firmware (%08x), RSS disabled",
+				vnic->hash_type);
+			return -ENOTSUP;
+		}
+	} else {
+		rss_conf->rss_hf = 0;
+	}
+	return 0;
+}
+
 /*
  * Initialization
  */
@@ -656,6 +775,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.tx_queue_release = bnxt_tx_queue_release_op,
 	.reta_update = bnxt_reta_update_op,
 	.reta_query = bnxt_reta_query_op,
+	.rss_hash_update = bnxt_rss_hash_update_op,
+	.rss_hash_conf_get = bnxt_rss_hash_conf_get_op,
 	.link_update = bnxt_link_update_op,
 	.promiscuous_enable = bnxt_promiscuous_enable_op,
 	.promiscuous_disable = bnxt_promiscuous_disable_op,
