@@ -465,6 +465,34 @@ static void bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
 }
 
+static void bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt_vnic_info *vnic;
+
+	if (bp->vnic_info == NULL)
+		return;
+
+	vnic = &bp->vnic_info[0];
+
+	vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+}
+
+static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct bnxt_vnic_info *vnic;
+
+	if (bp->vnic_info == NULL)
+		return;
+
+	vnic = &bp->vnic_info[0];
+
+	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+}
+
 /*
  * Initialization
  */
@@ -484,6 +512,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.link_update = bnxt_link_update_op,
 	.promiscuous_enable = bnxt_promiscuous_enable_op,
 	.promiscuous_disable = bnxt_promiscuous_disable_op,
+	.allmulticast_enable = bnxt_allmulticast_enable_op,
+	.allmulticast_disable = bnxt_allmulticast_disable_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
