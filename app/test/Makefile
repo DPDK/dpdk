@@ -189,6 +189,7 @@ endif
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring_perf.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev_aes.c
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev_perf.c
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev.c
 
