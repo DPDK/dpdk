@@ -40,12 +40,17 @@
 #include <rte_cycles.h>
 
 #include "bnxt.h"
+#include "bnxt_cpr.h"
+#include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
+#include "bnxt_ring.h"
 #include "bnxt_rxq.h"
 #include "bnxt_rxr.h"
 #include "bnxt_stats.h"
 #include "bnxt_txq.h"
 #include "bnxt_txr.h"
+#include "bnxt_vnic.h"
+#include "hsi_struct_def_dpdk.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -63,6 +68,177 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 
 	rte_free(eth_dev->data->mac_addrs);
 	bnxt_free_hwrm_resources(bp);
+}
+
+/***********************/
+
+/*
+ * High level utility functions
+ */
+
+static void bnxt_free_mem(struct bnxt *bp)
+{
+	bnxt_free_filter_mem(bp);
+	bnxt_free_vnic_attributes(bp);
+	bnxt_free_vnic_mem(bp);
+
+	bnxt_free_stats(bp);
+	bnxt_free_tx_rings(bp);
+	bnxt_free_rx_rings(bp);
+	bnxt_free_def_cp_ring(bp);
+}
+
+static int bnxt_alloc_mem(struct bnxt *bp)
+{
+	int rc;
+
+	/* Default completion ring */
+	rc = bnxt_init_def_ring_struct(bp, SOCKET_ID_ANY);
+	if (rc)
+		goto alloc_mem_err;
+
+	rc = bnxt_alloc_rings(bp, 0, NULL, NULL,
+			      bp->def_cp_ring, "def_cp");
+	if (rc)
+		goto alloc_mem_err;
+
+	rc = bnxt_alloc_vnic_mem(bp);
+	if (rc)
+		goto alloc_mem_err;
+
+	rc = bnxt_alloc_vnic_attributes(bp);
+	if (rc)
+		goto alloc_mem_err;
+
+	rc = bnxt_alloc_filter_mem(bp);
+	if (rc)
+		goto alloc_mem_err;
+
+	return 0;
+
+alloc_mem_err:
+	bnxt_free_mem(bp);
+	return rc;
+}
+
+static int bnxt_init_chip(struct bnxt *bp)
+{
+	unsigned int i, rss_idx, fw_idx;
+	int rc;
+
+	rc = bnxt_alloc_all_hwrm_stat_ctxs(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "HWRM stat ctx alloc failure rc: %x\n", rc);
+		goto err_out;
+	}
+
+	rc = bnxt_alloc_hwrm_rings(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "HWRM ring alloc failure rc: %x\n", rc);
+		goto err_out;
+	}
+
+	rc = bnxt_alloc_all_hwrm_ring_grps(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "HWRM ring grp alloc failure: %x\n", rc);
+		goto err_out;
+	}
+
+	rc = bnxt_mq_rx_configure(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "MQ mode configure failure rc: %x\n", rc);
+		goto err_out;
+	}
+
+	/* VNIC configuration */
+	for (i = 0; i < bp->nr_vnics; i++) {
+		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+
+		rc = bnxt_hwrm_vnic_alloc(bp, vnic);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM vnic alloc failure rc: %x\n",
+				rc);
+			goto err_out;
+		}
+
+		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
+		if (rc) {
+			RTE_LOG(ERR, PMD,
+				"HWRM vnic ctx alloc failure rc: %x\n", rc);
+			goto err_out;
+		}
+
+		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM vnic cfg failure rc: %x\n", rc);
+			goto err_out;
+		}
+
+		rc = bnxt_set_hwrm_vnic_filters(bp, vnic);
+		if (rc) {
+			RTE_LOG(ERR, PMD, "HWRM vnic filter failure rc: %x\n",
+				rc);
+			goto err_out;
+		}
+		if (vnic->rss_table && vnic->hash_type) {
+			/*
+			 * Fill the RSS hash & redirection table with
+			 * ring group ids for all VNICs
+			 */
+			for (rss_idx = 0, fw_idx = 0;
+			     rss_idx < HW_HASH_INDEX_SIZE;
+			     rss_idx++, fw_idx++) {
+				if (vnic->fw_grp_ids[fw_idx] ==
+				    INVALID_HW_RING_ID)
+					fw_idx = 0;
+				vnic->rss_table[rss_idx] =
+						vnic->fw_grp_ids[fw_idx];
+			}
+			rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+			if (rc) {
+				RTE_LOG(ERR, PMD,
+					"HWRM vnic set RSS failure rc: %x\n",
+					rc);
+				goto err_out;
+			}
+		}
+	}
+	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0]);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"HWRM cfa l2 rx mask failure rc: %x\n", rc);
+		goto err_out;
+	}
+
+	return 0;
+
+err_out:
+	bnxt_free_all_hwrm_resources(bp);
+
+	return rc;
+}
+
+static int bnxt_shutdown_nic(struct bnxt *bp)
+{
+	bnxt_free_all_hwrm_resources(bp);
+	bnxt_free_all_filters(bp);
+	bnxt_free_all_vnics(bp);
+	return 0;
+}
+
+static int bnxt_init_nic(struct bnxt *bp)
+{
+	int rc;
+
+	bnxt_init_ring_grps(bp);
+	bnxt_init_vnics(bp);
+	bnxt_init_filters(bp);
+
+	rc = bnxt_init_chip(bp);
+	if (rc)
+		return rc;
+
+	return 0;
 }
 
 /*
@@ -182,6 +358,85 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	return rc;
 }
 
+static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	int rc;
+
+	rc = bnxt_hwrm_func_reset(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
+		rc = -1;
+		goto error;
+	}
+
+	rc = bnxt_alloc_mem(bp);
+	if (rc)
+		goto error;
+
+	rc = bnxt_init_nic(bp);
+	if (rc)
+		goto error;
+
+	return 0;
+
+error:
+	bnxt_shutdown_nic(bp);
+	bnxt_free_tx_mbufs(bp);
+	bnxt_free_rx_mbufs(bp);
+	bnxt_free_mem(bp);
+	return rc;
+}
+
+/* Unload the driver, release resources */
+static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	if (bp->eth_dev->data->dev_started) {
+		/* TBD: STOP HW queues DMA */
+		eth_dev->data->dev_link.link_status = 0;
+	}
+	bnxt_shutdown_nic(bp);
+}
+
+static int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
+			       int wait_to_complete)
+{
+	int rc = 0;
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	struct rte_eth_link new;
+	unsigned int cnt = BNXT_LINK_WAIT_CNT;
+
+	memset(&new, 0, sizeof(new));
+	do {
+		/* Retrieve link info from hardware */
+		rc = bnxt_get_hwrm_link_config(bp, &new);
+		if (rc) {
+			new.link_speed = ETH_LINK_SPEED_100M;
+			new.link_duplex = ETH_LINK_FULL_DUPLEX;
+			RTE_LOG(ERR, PMD,
+				"Failed to retrieve link rc = 0x%x!", rc);
+			goto out;
+		}
+		if (!wait_to_complete)
+			break;
+
+		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
+
+	} while (!new.link_status && cnt--);
+
+	/* Timed out or success */
+	if (new.link_status) {
+		/* Update only if success */
+		eth_dev->data->dev_link.link_duplex = new.link_duplex;
+		eth_dev->data->dev_link.link_speed = new.link_speed;
+	}
+	eth_dev->data->dev_link.link_status = new.link_status;
+out:
+	return rc;
+}
+
 /*
  * Initialization
  */
@@ -190,12 +445,15 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.dev_infos_get = bnxt_dev_info_get_op,
 	.dev_close = bnxt_dev_close_op,
 	.dev_configure = bnxt_dev_configure_op,
+	.dev_start = bnxt_dev_start_op,
+	.dev_stop = bnxt_dev_stop_op,
 	.stats_get = bnxt_stats_get_op,
 	.stats_reset = bnxt_stats_reset_op,
 	.rx_queue_setup = bnxt_rx_queue_setup_op,
 	.rx_queue_release = bnxt_rx_queue_release_op,
 	.tx_queue_setup = bnxt_tx_queue_setup_op,
 	.tx_queue_release = bnxt_tx_queue_release_op,
+	.link_update = bnxt_link_update_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
@@ -305,6 +563,15 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	else
 		memcpy(bp->mac_addr, bp->vf.mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
+	bp->grp_info = rte_zmalloc("bnxt_grp_info",
+				sizeof(*bp->grp_info) * bp->max_ring_grps, 0);
+	if (!bp->grp_info) {
+		RTE_LOG(ERR, PMD,
+			"Failed to alloc %zu bytes needed to store group info table\n",
+			sizeof(*bp->grp_info) * bp->max_ring_grps);
+		rc = -ENOMEM;
+		goto error_free;
+	}
 
 	rc = bnxt_hwrm_func_driver_register(bp, 0,
 					    bp->pf.vf_req_fwd);
@@ -335,6 +602,8 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 
 	if (eth_dev->data->mac_addrs)
 		rte_free(eth_dev->data->mac_addrs);
+	if (bp->grp_info)
+		rte_free(bp->grp_info);
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bnxt_free_hwrm_resources(bp);
 	return rc;
