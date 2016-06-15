@@ -131,11 +131,14 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 		}
 	}
 
-	/* After setup all virtqueues, we need to set_features so that
-	 * these features can be set into each virtqueue in vhost side.
-	 * And before that, make sure VIRTIO_NET_F_MAC is stripped.
+	/* After setup all virtqueues, we need to set_features so that these
+	 * features can be set into each virtqueue in vhost side. And before
+	 * that, make sure VHOST_USER_F_PROTOCOL_FEATURES is added if mq is
+	 * enabled, and VIRTIO_NET_F_MAC is stripped.
 	 */
 	features = dev->features;
+	if (dev->max_queue_pairs > 1)
+		features |= VHOST_USER_MQ;
 	features &= ~(1ull << VIRTIO_NET_F_MAC);
 	ret = vhost_user_sock(dev->vhostfd, VHOST_USER_SET_FEATURES, &features);
 	if (ret < 0)
@@ -185,8 +188,6 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->mac_specified = 0;
 	parse_mac(dev, mac);
 	dev->vhostfd = -1;
-	/* TODO: cq */
-	RTE_SET_USED(cq);
 
 	dev->vhostfd = vhost_user_setup(dev->path);
 	if (dev->vhostfd < 0) {
@@ -205,9 +206,31 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	}
 	if (dev->mac_specified)
 		dev->features |= (1ull << VIRTIO_NET_F_MAC);
-	/* disable it until we support CQ */
-	dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
-	dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_RX);
+
+	if (!cq) {
+		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
+		/* Also disable features depends on VIRTIO_NET_F_CTRL_VQ */
+		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_RX);
+		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_VLAN);
+		dev->features &= ~(1ull << VIRTIO_NET_F_GUEST_ANNOUNCE);
+		dev->features &= ~(1ull << VIRTIO_NET_F_MQ);
+		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
+	} else {
+		/* vhost user backend does not need to know ctrl-q, so
+		 * actually we need add this bit into features. However,
+		 * DPDK vhost-user does send features with this bit, so we
+		 * check it instead of OR it for now.
+		 */
+		if (!(dev->features & (1ull << VIRTIO_NET_F_CTRL_VQ)))
+			PMD_INIT_LOG(INFO, "vhost does not support ctrl-q");
+	}
+
+	if (dev->max_queue_pairs > 1) {
+		if (!(dev->features & VHOST_USER_MQ)) {
+			PMD_INIT_LOG(ERR, "MQ not supported by the backend");
+			return -1;
+		}
+	}
 
 	return 0;
 }
@@ -223,4 +246,88 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 	}
 
 	close(dev->vhostfd);
+}
+
+static uint8_t
+virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
+{
+	uint16_t i;
+	uint8_t ret = 0;
+
+	if (q_pairs > dev->max_queue_pairs) {
+		PMD_INIT_LOG(ERR, "multi-q config %u, but only %u supported",
+			     q_pairs, dev->max_queue_pairs);
+		return -1;
+	}
+
+	for (i = 0; i < q_pairs; ++i)
+		ret |= vhost_user_enable_queue_pair(dev->vhostfd, i, 1);
+	for (i = q_pairs; i < dev->max_queue_pairs; ++i)
+		ret |= vhost_user_enable_queue_pair(dev->vhostfd, i, 0);
+
+	dev->queue_pairs = q_pairs;
+
+	return ret;
+}
+
+static uint32_t
+virtio_user_handle_ctrl_msg(struct virtio_user_dev *dev, struct vring *vring,
+			    uint16_t idx_hdr)
+{
+	struct virtio_net_ctrl_hdr *hdr;
+	virtio_net_ctrl_ack status = ~0;
+	uint16_t i, idx_data, idx_status;
+	uint32_t n_descs = 0;
+
+	/* locate desc for header, data, and status */
+	idx_data = vring->desc[idx_hdr].next;
+	n_descs++;
+
+	i = idx_data;
+	while (vring->desc[i].flags == VRING_DESC_F_NEXT) {
+		i = vring->desc[i].next;
+		n_descs++;
+	}
+
+	/* locate desc for status */
+	idx_status = i;
+	n_descs++;
+
+	hdr = (void *)(uintptr_t)vring->desc[idx_hdr].addr;
+	if (hdr->class == VIRTIO_NET_CTRL_MQ &&
+	    hdr->cmd == VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET) {
+		uint16_t queues;
+
+		queues = *(uint16_t *)(uintptr_t)vring->desc[idx_data].addr;
+		status = virtio_user_handle_mq(dev, queues);
+	}
+
+	/* Update status */
+	*(virtio_net_ctrl_ack *)(uintptr_t)vring->desc[idx_status].addr = status;
+
+	return n_descs;
+}
+
+void
+virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx)
+{
+	uint16_t avail_idx, desc_idx;
+	struct vring_used_elem *uep;
+	uint32_t n_descs;
+	struct vring *vring = &dev->vrings[queue_idx];
+
+	/* Consume avail ring, using used ring idx as first one */
+	while (vring->used->idx != vring->avail->idx) {
+		avail_idx = (vring->used->idx) & (vring->num - 1);
+		desc_idx = vring->avail->ring[avail_idx];
+
+		n_descs = virtio_user_handle_ctrl_msg(dev, vring, desc_idx);
+
+		/* Update used ring */
+		uep = &vring->used->ring[avail_idx];
+		uep->id = avail_idx;
+		uep->len = n_descs;
+
+		vring->used->idx++;
+	}
 }
