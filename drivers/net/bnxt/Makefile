@@ -50,6 +50,7 @@ EXPORT_MAP := rte_pmd_bnxt_version.map
 #
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_hwrm.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_ring.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_vnic.c
 
 #
