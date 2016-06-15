@@ -543,14 +543,12 @@ test_AES_one_case(const struct aes_test_case *t,
 		goto error_exit;
 	}
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "m_src:",
+	TEST_HEXDUMP(stdout, "m_src:",
 		rte_pktmbuf_mtod(sym_op->m_src, uint8_t *), buf_len);
 	if (t->feature_mask & AES_TEST_FEATURE_OOP)
-		rte_hexdump(stdout, "m_dst:",
+		TEST_HEXDUMP(stdout, "m_dst:",
 			rte_pktmbuf_mtod(sym_op->m_dst, uint8_t *),
 			buf_len);
-#endif
 
 	/* Verify results */
 	if (op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {

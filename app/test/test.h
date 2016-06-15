@@ -35,6 +35,7 @@
 #define _TEST_H_
 #include <stddef.h>
 #include <sys/queue.h>
+#include "rte_log.h"
 
 #define TEST_SUCCESS  (0)
 #define TEST_FAILED  (-1)
@@ -149,6 +150,12 @@ struct unit_test_case {
 		#testcase " failed ", 0 }
 
 #define TEST_CASES_END() { NULL, NULL, NULL, NULL, NULL, 0 }
+
+#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+#define TEST_HEXDUMP(file, title, buf, len) rte_hexdump(file, title, buf, len)
+#else
+#define TEST_HEXDUMP(file, title, buf, len) do {} while (0)
+#endif
 
 struct unit_test_suite {
 	const char *suite_name;

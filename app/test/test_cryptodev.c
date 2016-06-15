@@ -1075,9 +1075,9 @@ create_snow3g_hash_session(uint8_t dev_id,
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
 	memcpy(hash_key, key, key_len);
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "key:", key, key_len);
-#endif
+
+	TEST_HEXDUMP(stdout, "key:", key, key_len);
+
 	/* Setup Authentication Parameters */
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
@@ -1113,9 +1113,8 @@ create_snow3g_cipher_session(uint8_t dev_id,
 	ut_params->cipher_xform.cipher.key.data = cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "key:", key, key_len);
-#endif
+	TEST_HEXDUMP(stdout, "key:", key, key_len);
+
 	/* Create Crypto session */
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
 						&ut_params->
@@ -1239,9 +1238,8 @@ create_snow3g_cipher_auth_session(uint8_t dev_id,
 	ut_params->cipher_xform.cipher.key.data = cipher_auth_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "key:", key, key_len);
-#endif
+	TEST_HEXDUMP(stdout, "key:", key, key_len);
+
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
 				&ut_params->cipher_xform);
@@ -1281,9 +1279,8 @@ create_snow3g_auth_cipher_session(uint8_t dev_id,
 	ut_params->cipher_xform.cipher.key.data = auth_cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "key:", key, key_len);
-#endif
+	TEST_HEXDUMP(stdout, "key:", key, key_len);
+
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
 				&ut_params->auth_xform);
@@ -1341,10 +1338,8 @@ create_snow3g_hash_operation(const uint8_t *auth_tag,
 	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
 	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "aad:",
+	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
-#endif
 
 	/* digest */
 	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
@@ -1361,11 +1356,9 @@ create_snow3g_hash_operation(const uint8_t *auth_tag,
 	else
 		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "digest:",
+	TEST_HEXDUMP(stdout, "digest:",
 		sym_op->auth.digest.data,
 		sym_op->auth.digest.length);
-#endif
 
 	sym_op->auth.data.length = auth_len;
 	sym_op->auth.data.offset = auth_offset;
@@ -1440,10 +1433,8 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
 	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "aad:",
+	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
-#endif
 
 	/* digest */
 	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
@@ -1460,11 +1451,9 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 	else
 		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
 
-	#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "digest:",
+	TEST_HEXDUMP(stdout, "digest:",
 		sym_op->auth.digest.data,
 		sym_op->auth.digest.length);
-	#endif
 
 	sym_op->auth.data.length = auth_len;
 	sym_op->auth.data.offset = auth_offset;
@@ -1513,11 +1502,10 @@ create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
 
 	memset(sym_op->auth.digest.data, 0, auth_tag_len);
 
-	#ifdef RTE_APP_TEST_DEBUG
-		rte_hexdump(stdout, "digest:",
+	TEST_HEXDUMP(stdout, "digest:",
 			sym_op->auth.digest.data,
 			sym_op->auth.digest.length);
-	#endif
+
 	/* iv */
 	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
 
@@ -1552,10 +1540,8 @@ create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
 	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
 	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "aad:",
+	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
-#endif
 
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = auth_offset + cipher_offset;
@@ -1754,9 +1740,8 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 						plaintext_pad_len);
 	memcpy(plaintext, tdata->plaintext.data, (tdata->plaintext.len >> 3));
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
@@ -1781,9 +1766,8 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	lastByteMask = lastByteMask << (8 - lastByteValidBits);
 	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 		ciphertext,
@@ -1840,9 +1824,8 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 
 	memcpy(plaintext, tdata->plaintext.data, (tdata->plaintext.len >> 3));
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
@@ -1868,9 +1851,8 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	lastByteMask = lastByteMask << (8 - lastByteValidBits);
 	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 		ciphertext,
@@ -1916,9 +1898,8 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 						ciphertext_pad_len);
 	memcpy(ciphertext, tdata->ciphertext.data, tdata->ciphertext.len >> 3);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
@@ -1941,9 +1922,8 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	lastByteMask = lastByteMask << (8 - lastByteValidBits);
 	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(plaintext,
 				tdata->plaintext.data,
@@ -2000,9 +1980,8 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 
 	memcpy(ciphertext, tdata->ciphertext.data, tdata->ciphertext.len >> 3);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
@@ -2026,9 +2005,8 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	lastByteMask = lastByteMask << (8 - lastByteValidBits);
 	(*(plaintext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(plaintext,
 				tdata->plaintext.data,
@@ -2072,9 +2050,7 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 			plaintext_pad_len);
 	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len >> 3);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Create SNOW3G operation */
 	retval = create_snow3g_cipher_hash_operation(tdata->digest.data,
@@ -2104,9 +2080,8 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	lastByteMask = lastByteMask << (8-lastByteValidBits);
 	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			ciphertext,
@@ -2161,9 +2136,7 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 			plaintext_pad_len);
 	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len >> 3);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Create SNOW3G operation */
 	retval = create_snow3g_auth_cipher_operation(
@@ -2197,9 +2170,8 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
 			+ plaintext_pad_len + tdata->aad.len + tdata->iv.len;
-	#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 		ciphertext,
@@ -2322,9 +2294,8 @@ create_gcm_session(uint8_t dev_id, enum rte_crypto_cipher_operation op,
 	ut_params->cipher_xform.cipher.key.data = cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "key:", key, key_len);
-#endif
+	TEST_HEXDUMP(stdout, "key:", key, key_len);
+
 	/* Setup Authentication Parameters */
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
@@ -2385,11 +2356,9 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 
 	if (op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
 		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
-#ifdef RTE_APP_TEST_DEBUG
-		rte_hexdump(stdout, "digest:",
+		TEST_HEXDUMP(stdout, "digest:",
 				sym_op->auth.digest.data,
 				sym_op->auth.digest.length);
-#endif
 	}
 
 	/* iv */
@@ -2429,11 +2398,10 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
 	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
-	rte_hexdump(stdout, "aad:",
+	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
+	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
-#endif
+
 	sym_op->cipher.data.length = data_len;
 	sym_op->cipher.data.offset = aad_buffer_len + iv_pad_len;
 
@@ -2479,9 +2447,8 @@ test_mb_AES_GCM_authenticated_encryption(const struct gcm_test_data *tdata)
 			plaintext_pad_len);
 	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+
 	/* Create GCM opertaion */
 	retval = create_gcm_operation(RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			tdata->auth_tag.data, tdata->auth_tag.len,
@@ -2512,10 +2479,9 @@ test_mb_AES_GCM_authenticated_encryption(const struct gcm_test_data *tdata)
 		auth_tag = plaintext + plaintext_pad_len;
 	}
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-	rte_hexdump(stdout, "auth tag:", auth_tag, tdata->auth_tag.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+	TEST_HEXDUMP(stdout, "auth tag:", auth_tag, tdata->auth_tag.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			ciphertext,
@@ -2607,9 +2573,8 @@ test_mb_AES_GCM_authenticated_decryption(const struct gcm_test_data *tdata)
 			ciphertext_pad_len);
 	memcpy(ciphertext, tdata->ciphertext.data, tdata->ciphertext.len);
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
+
 	/* Create GCM opertaion */
 	retval = create_gcm_operation(RTE_CRYPTO_CIPHER_OP_DECRYPT,
 			tdata->auth_tag.data, tdata->auth_tag.len,
@@ -2637,9 +2602,8 @@ test_mb_AES_GCM_authenticated_decryption(const struct gcm_test_data *tdata)
 	else
 		plaintext = ciphertext;
 
-#ifdef RTE_APP_TEST_DEBUG
-	rte_hexdump(stdout, "plaintext:", plaintext, tdata->ciphertext.len);
-#endif
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->ciphertext.len);
+
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			plaintext,
