@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2013-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2013-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1256,6 +1256,47 @@ fm10k_link_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int fm10k_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit)
+{
+	unsigned i, q;
+	unsigned count = 0;
+
+	if (xstats_names != NULL) {
+		/* Note: limit checked in rte_eth_xstats_names() */
+
+		/* Global stats */
+		for (i = 0; i < FM10K_NB_HW_XSTATS; i++) {
+			snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"%s", fm10k_hw_stats_strings[count].name);
+			xstats_names[count].id = count;
+			count++;
+		}
+
+		/* PF queue stats */
+		for (q = 0; q < FM10K_MAX_QUEUES_PF; q++) {
+			for (i = 0; i < FM10K_NB_RX_Q_XSTATS; i++) {
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"rx_q%u_%s", q,
+					fm10k_hw_stats_rx_q_strings[i].name);
+				xstats_names[count].id = count;
+				count++;
+			}
+			for (i = 0; i < FM10K_NB_TX_Q_XSTATS; i++) {
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"tx_q%u_%s", q,
+					fm10k_hw_stats_tx_q_strings[i].name);
+				xstats_names[count].id = count;
+				count++;
+			}
+		}
+	}
+	return FM10K_NB_XSTATS;
+}
+
 static int
 fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		 unsigned n)
@@ -1269,8 +1310,7 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* Global stats */
 	for (i = 0; i < FM10K_NB_HW_XSTATS; i++) {
-		snprintf(xstats[count].name, sizeof(xstats[count].name),
-			 "%s", fm10k_hw_stats_strings[count].name);
+		xstats[count].name[0] = '\0';
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 			fm10k_hw_stats_strings[count].offset);
 		count++;
@@ -1279,18 +1319,14 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	/* PF queue stats */
 	for (q = 0; q < FM10K_MAX_QUEUES_PF; q++) {
 		for (i = 0; i < FM10K_NB_RX_Q_XSTATS; i++) {
-			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				 "rx_q%u_%s", q,
-				 fm10k_hw_stats_rx_q_strings[i].name);
+			xstats[count].name[0] = '\0';
 			xstats[count].value =
 				*(uint64_t *)(((char *)&hw_stats->q[q]) +
 				fm10k_hw_stats_rx_q_strings[i].offset);
 			count++;
 		}
 		for (i = 0; i < FM10K_NB_TX_Q_XSTATS; i++) {
-			snprintf(xstats[count].name, sizeof(xstats[count].name),
-				 "tx_q%u_%s", q,
-				 fm10k_hw_stats_tx_q_strings[i].name);
+			xstats[count].name[0] = '\0';
 			xstats[count].value =
 				*(uint64_t *)(((char *)&hw_stats->q[q]) +
 				fm10k_hw_stats_tx_q_strings[i].offset);
@@ -2629,6 +2665,7 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.allmulticast_disable   = fm10k_dev_allmulticast_disable,
 	.stats_get		= fm10k_stats_get,
 	.xstats_get		= fm10k_xstats_get,
+	.xstats_get_names	= fm10k_xstats_get_names,
 	.stats_reset		= fm10k_stats_reset,
 	.xstats_reset		= fm10k_stats_reset,
 	.link_update		= fm10k_link_update,
