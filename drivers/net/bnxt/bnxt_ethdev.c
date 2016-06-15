@@ -755,6 +755,87 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int bnxt_flow_ctrl_get_op(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf __rte_unused)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct rte_eth_link link_info;
+	int rc;
+
+	rc = bnxt_get_hwrm_link_config(bp, &link_info);
+	if (rc)
+		return rc;
+
+	memset(fc_conf, 0, sizeof(*fc_conf));
+	if (bp->link_info.auto_pause)
+		fc_conf->autoneg = 1;
+	switch (bp->link_info.pause) {
+	case 0:
+		fc_conf->mode = RTE_FC_NONE;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_TX:
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+		break;
+	case HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_RX:
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+		break;
+	case (HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_TX |
+			HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_RX):
+		fc_conf->mode = RTE_FC_FULL;
+		break;
+	}
+	return 0;
+}
+
+static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+
+	switch (fc_conf->mode) {
+	case RTE_FC_NONE:
+		bp->link_info.auto_pause = 0;
+		bp->link_info.force_pause = 0;
+		break;
+	case RTE_FC_RX_PAUSE:
+		if (fc_conf->autoneg) {
+			bp->link_info.auto_pause =
+					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX;
+			bp->link_info.force_pause = 0;
+		} else {
+			bp->link_info.auto_pause = 0;
+			bp->link_info.force_pause =
+					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX;
+		}
+		break;
+	case RTE_FC_TX_PAUSE:
+		if (fc_conf->autoneg) {
+			bp->link_info.auto_pause =
+					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX;
+			bp->link_info.force_pause = 0;
+		} else {
+			bp->link_info.auto_pause = 0;
+			bp->link_info.force_pause =
+					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX;
+		}
+		break;
+	case RTE_FC_FULL:
+		if (fc_conf->autoneg) {
+			bp->link_info.auto_pause =
+					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX |
+					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX;
+			bp->link_info.force_pause = 0;
+		} else {
+			bp->link_info.auto_pause = 0;
+			bp->link_info.force_pause =
+					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX |
+					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX;
+		}
+		break;
+	}
+	return bnxt_set_hwrm_link_config(bp, true);
+}
+
 /*
  * Initialization
  */
@@ -784,6 +865,8 @@ static struct eth_dev_ops bnxt_dev_ops = {
 	.allmulticast_disable = bnxt_allmulticast_disable_op,
 	.mac_addr_add = bnxt_mac_addr_add_op,
 	.mac_addr_remove = bnxt_mac_addr_remove_op,
+	.flow_ctrl_get = bnxt_flow_ctrl_get_op,
+	.flow_ctrl_set = bnxt_flow_ctrl_set_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
