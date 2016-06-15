@@ -1535,6 +1535,7 @@ cmd_config_rss_parsed(void *parsed_result,
 {
 	struct cmd_config_rss *res = parsed_result;
 	struct rte_eth_rss_conf rss_conf;
+	int diag;
 	uint8_t i;
 
 	if (!strcmp(res->value, "all"))
@@ -1558,8 +1559,13 @@ cmd_config_rss_parsed(void *parsed_result,
 		return;
 	}
 	rss_conf.rss_key = NULL;
-	for (i = 0; i < rte_eth_dev_count(); i++)
-		rte_eth_dev_rss_hash_update(i, &rss_conf);
+	for (i = 0; i < rte_eth_dev_count(); i++) {
+		diag = rte_eth_dev_rss_hash_update(i, &rss_conf);
+		if (diag < 0)
+			printf("Configuration of RSS hash at ethernet port %d "
+				"failed with error (%d): %s.\n",
+				i, -diag, strerror(-diag));
+	}
 }
 
 cmdline_parse_token_string_t cmd_config_rss_port =
