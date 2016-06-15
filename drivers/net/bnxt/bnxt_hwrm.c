@@ -1059,6 +1059,32 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 	return 0;
 }
 
+int bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	struct bnxt_filter_info *filter;
+	int rc = 0;
+
+	STAILQ_FOREACH(filter, &vnic->filter, next) {
+		rc = bnxt_hwrm_clear_filter(bp, filter);
+		if (rc)
+			break;
+	}
+	return rc;
+}
+
+int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	struct bnxt_filter_info *filter;
+	int rc = 0;
+
+	STAILQ_FOREACH(filter, &vnic->filter, next) {
+		rc = bnxt_hwrm_set_filter(bp, vnic, filter);
+		if (rc)
+			break;
+	}
+	return rc;
+}
+
 static uint16_t bnxt_parse_eth_link_duplex(uint32_t conf_link_speed)
 {
 	uint8_t hw_link_duplex = HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_BOTH;
