@@ -43,8 +43,11 @@
  * Following is the signature for HWRM message field that indicates not
  * applicable (All F's). Need to cast it the size of the field if needed.
  */
+#define HWRM_NA_SIGNATURE        ((uint32_t)(-1))
 #define HWRM_MAX_REQ_LEN	(128)  /* hwrm_func_buf_rgtr */
 #define HWRM_MAX_RESP_LEN	(176)  /* hwrm_func_qstats */
+#define HW_HASH_INDEX_SIZE      0x80    /* 7 bit indirection table index. */
+#define HW_HASH_KEY_SIZE        40
 #define HWRM_RESP_VALID_KEY	1 /* valid key for HWRM response */
 
 /*

@@ -45,6 +45,13 @@
 #define BNXT_MAX_MTU		9000
 #define VLAN_TAG_SIZE		4
 
+enum bnxt_hw_context {
+	HW_CONTEXT_NONE     = 0,
+	HW_CONTEXT_IS_RSS   = 1,
+	HW_CONTEXT_IS_COS   = 2,
+	HW_CONTEXT_IS_LB    = 3,
+};
+
 struct bnxt_vf_info {
 	uint16_t		fw_fid;
 	uint8_t			mac_addr[ETHER_ADDR_LEN];
@@ -129,6 +136,13 @@ struct bnxt {
 	unsigned int		tx_nr_rings;
 	unsigned int		tx_cp_nr_rings;
 	struct bnxt_tx_queue **tx_queues;
+
+	struct bnxt_vnic_info	*vnic_info;
+	STAILQ_HEAD(, bnxt_vnic_info)	free_vnic_list;
+
+	/* VNIC pointer for flow filter (VMDq) pools */
+#define MAX_FF_POOLS	ETH_64_POOLS
+	STAILQ_HEAD(, bnxt_vnic_info)	ff_pool[MAX_FF_POOLS];
 
 #define MAX_NUM_MAC_ADDR	32
 	uint8_t			mac_addr[ETHER_ADDR_LEN];
