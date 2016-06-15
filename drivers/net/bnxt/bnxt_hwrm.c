@@ -646,6 +646,30 @@ int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
+			   struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_RSS_CFG, -1, resp);
+
+	req.hash_type = rte_cpu_to_le_32(vnic->hash_type);
+
+	req.ring_grp_tbl_addr =
+	    rte_cpu_to_le_64(vnic->rss_table_dma_addr);
+	req.hash_key_tbl_addr =
+	    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
+	req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_rss_cos_lb_ctx);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 /*
  * HWRM utility functions
  */

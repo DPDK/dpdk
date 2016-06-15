@@ -68,6 +68,8 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic);
+int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
+			   struct bnxt_vnic_info *vnic);
 
 int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);
 void bnxt_free_hwrm_resources(struct bnxt *bp);
