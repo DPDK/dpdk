@@ -77,6 +77,12 @@ static uint8_t nb_ports;
 /* spinlock for eth device callbacks */
 static rte_spinlock_t rte_eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
+/* spinlock for add/remove rx callbacks */
+static rte_spinlock_t rte_eth_rx_cb_lock = RTE_SPINLOCK_INITIALIZER;
+
+/* spinlock for add/remove tx callbacks */
+static rte_spinlock_t rte_eth_tx_cb_lock = RTE_SPINLOCK_INITIALIZER;
+
 /* store statistics names and its offset in stats structure  */
 struct rte_eth_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -1708,7 +1714,6 @@ rte_eth_dev_set_rx_queue_stats_mapping(uint8_t port_id, uint16_t rx_queue_id,
 			STAT_QMAP_RX);
 }
 
-
 void
 rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 {
@@ -2979,7 +2984,6 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 		rte_errno = EINVAL;
 		return NULL;
 	}
-
 	struct rte_eth_rxtx_callback *cb = rte_zmalloc(NULL, sizeof(*cb), 0);
 
 	if (cb == NULL) {
@@ -2990,6 +2994,7 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 	cb->fn.rx = fn;
 	cb->param = user_param;
 
+	rte_spinlock_lock(&rte_eth_rx_cb_lock);
 	/* Add the callbacks in fifo order. */
 	struct rte_eth_rxtx_callback *tail =
 		rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
@@ -3002,6 +3007,7 @@ rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 			tail = tail->next;
 		tail->next = cb;
 	}
+	rte_spinlock_unlock(&rte_eth_rx_cb_lock);
 
 	return cb;
 }
@@ -3031,6 +3037,7 @@ rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
 	cb->fn.tx = fn;
 	cb->param = user_param;
 
+	rte_spinlock_lock(&rte_eth_tx_cb_lock);
 	/* Add the callbacks in fifo order. */
 	struct rte_eth_rxtx_callback *tail =
 		rte_eth_devices[port_id].pre_tx_burst_cbs[queue_id];
@@ -3043,6 +3050,7 @@ rte_eth_add_tx_callback(uint8_t port_id, uint16_t queue_id,
 			tail = tail->next;
 		tail->next = cb;
 	}
+	rte_spinlock_unlock(&rte_eth_tx_cb_lock);
 
 	return cb;
 }
@@ -3061,29 +3069,24 @@ rte_eth_remove_rx_callback(uint8_t port_id, uint16_t queue_id,
 		return -EINVAL;
 
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];
-	struct rte_eth_rxtx_callback *prev_cb;
+	struct rte_eth_rxtx_callback *cb;
+	struct rte_eth_rxtx_callback **prev_cb;
+	int ret = -EINVAL;
 
-	/* Reset head pointer and remove user cb if first in the list. */
-	if (cb == user_cb) {
-		dev->post_rx_burst_cbs[queue_id] = user_cb->next;
-		return 0;
-	}
-
-	/* Remove the user cb from the callback list. */
-	do {
-		prev_cb = cb;
-		cb = cb->next;
-
+	rte_spinlock_lock(&rte_eth_rx_cb_lock);
+	prev_cb = &dev->post_rx_burst_cbs[queue_id];
+	for (; *prev_cb != NULL; prev_cb = &cb->next) {
+		cb = *prev_cb;
 		if (cb == user_cb) {
-			prev_cb->next = user_cb->next;
-			return 0;
+			/* Remove the user cb from the callback list. */
+			*prev_cb = cb->next;
+			ret = 0;
+			break;
 		}
+	}
+	rte_spinlock_unlock(&rte_eth_rx_cb_lock);
 
-	} while (cb != NULL);
-
-	/* Callback wasn't found. */
-	return -EINVAL;
+	return ret;
 }
 
 int
@@ -3100,29 +3103,24 @@ rte_eth_remove_tx_callback(uint8_t port_id, uint16_t queue_id,
 		return -EINVAL;
 
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-	struct rte_eth_rxtx_callback *cb = dev->pre_tx_burst_cbs[queue_id];
-	struct rte_eth_rxtx_callback *prev_cb;
+	int ret = -EINVAL;
+	struct rte_eth_rxtx_callback *cb;
+	struct rte_eth_rxtx_callback **prev_cb;
 
-	/* Reset head pointer and remove user cb if first in the list. */
-	if (cb == user_cb) {
-		dev->pre_tx_burst_cbs[queue_id] = user_cb->next;
-		return 0;
-	}
-
-	/* Remove the user cb from the callback list. */
-	do {
-		prev_cb = cb;
-		cb = cb->next;
-
+	rte_spinlock_lock(&rte_eth_tx_cb_lock);
+	prev_cb = &dev->pre_tx_burst_cbs[queue_id];
+	for (; *prev_cb != NULL; prev_cb = &cb->next) {
+		cb = *prev_cb;
 		if (cb == user_cb) {
-			prev_cb->next = user_cb->next;
-			return 0;
+			/* Remove the user cb from the callback list. */
+			*prev_cb = cb->next;
+			ret = 0;
+			break;
 		}
+	}
+	rte_spinlock_unlock(&rte_eth_tx_cb_lock);
 
-	} while (cb != NULL);
-
-	/* Callback wasn't found. */
-	return -EINVAL;
+	return ret;
 }
 
 int
