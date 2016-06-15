@@ -148,6 +148,9 @@ API Changes
 * The extended statistics are fetched by ids with ``rte_eth_xstats_get``
   after a lookup by name ``rte_eth_xstats_get_names``.
 
+* The function ``rte_eth_dev_info_get`` fill the new fields ``nb_rx_queues``
+  and ``nb_tx_queues`` in the structure ``rte_eth_dev_info``.
+
 
 ABI Changes
 -----------
@@ -158,6 +161,9 @@ ABI Changes
 
 * The ``rte_port_source_params`` structure has new fields to support PCAP file.
   It was already in release 16.04 with ``RTE_NEXT_ABI`` flag.
+
+* The ``rte_eth_dev_info`` structure has new fields ``nb_rx_queues`` and ``nb_tx_queues``
+  to support number of queues configured by software.
 
 
 Shared Library Versions
