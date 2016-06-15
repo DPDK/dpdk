@@ -38,7 +38,6 @@
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #include <rte_cycles.h>
-#include <rte_hexdump.h>
 
 #include "test.h"
 #include "test_cryptodev.h"
