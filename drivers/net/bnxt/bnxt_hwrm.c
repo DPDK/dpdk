@@ -141,6 +141,51 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg, uint32_t msg_len)
 		} \
 	}
 
+int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+	struct hwrm_cfa_l2_set_rx_mask_input req = {.req_type = 0 };
+	struct hwrm_cfa_l2_set_rx_mask_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, CFA_L2_SET_RX_MASK, -1, resp);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+	req.mask = 0;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	int rc = 0;
+	struct hwrm_cfa_l2_set_rx_mask_input req = {.req_type = 0 };
+	struct hwrm_cfa_l2_set_rx_mask_output *resp = bp->hwrm_cmd_resp_addr;
+	uint32_t mask = 0;
+
+	HWRM_PREP(req, CFA_L2_SET_RX_MASK, -1, resp);
+	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+
+	/* FIXME add multicast flag, when multicast adding options is supported
+	 * by ethtool.
+	 */
+	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
+		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
+		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
+	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST |
+				    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
+				    mask);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_clear_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter)
 {

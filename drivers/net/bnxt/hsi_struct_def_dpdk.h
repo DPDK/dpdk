@@ -1732,6 +1732,141 @@ struct hwrm_cfa_l2_filter_free_output {
 	uint8_t valid;
 } __attribute__((packed));
 
+/* hwrm_cfa_l2_set_rx_mask */
+/* Description: This command will set rx mask of the function. */
+
+/* Input (40 bytes) */
+struct hwrm_cfa_l2_set_rx_mask_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/* VNIC ID */
+	uint32_t vnic_id;
+
+	/* Reserved for future use. */
+	#define HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_RESERVED	UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the function is requested to accept multi-cast
+	 * packets specified by the multicast addr table.
+	 */
+	#define HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST	UINT32_C(0x2)
+	/*
+	 * When this bit is '1', the function is requested to accept all multi-
+	 * cast packets.
+	 */
+	#define HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST	UINT32_C(0x4)
+	/*
+	 * When this bit is '1', the function is requested to accept broadcast
+	 * packets.
+	 */
+	#define HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST	UINT32_C(0x8)
+	/*
+	 * When this bit is '1', the function is requested to be put in the
+	 * promiscuous mode. The HWRM should accept any function to set up
+	 * promiscuous mode. The HWRM shall follow the semantics below for the
+	 * promiscuous mode support. # When partitioning is not enabled on a
+	 * port (i.e. single PF on the port), then the PF shall be allowed to be
+	 * in the promiscuous mode. When the PF is in the promiscuous mode, then
+	 * it shall receive all host bound traffic on that port. # When
+	 * partitioning is enabled on a port (i.e. multiple PFs per port) and a
+	 * PF on that port is in the promiscuous mode, then the PF receives all
+	 * traffic within that partition as identified by a unique identifier
+	 * for the PF (e.g. S-Tag). If a unique outer VLAN for the PF is
+	 * specified, then the setting of promiscuous mode on that PF shall
+	 * result in the PF receiving all host bound traffic with matching outer
+	 * VLAN. # A VF shall can be set in the promiscuous mode. In the
+	 * promiscuous mode, the VF does not receive any traffic unless a unique
+	 * outer VLAN for the VF is specified. If a unique outer VLAN for the VF
+	 * is specified, then the setting of promiscuous mode on that VF shall
+	 * result in the VF receiving all host bound traffic with the matching
+	 * outer VLAN. # The HWRM shall allow the setting of promiscuous mode on
+	 * a function independently from the promiscuous mode settings on other
+	 * functions.
+	 */
+	#define HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS	UINT32_C(0x10)
+	/*
+	 * If this flag is set, the corresponding RX filters shall be set up to
+	 * cover multicast/broadcast filters for the outermost Layer 2
+	 * destination MAC address field.
+	 */
+	#define HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_OUTERMOST	UINT32_C(0x20)
+	uint32_t mask;
+
+	/* This is the address for mcast address tbl. */
+	uint64_t mc_tbl_addr;
+
+	/*
+	 * This value indicates how many entries in mc_tbl are valid. Each entry
+	 * is 6 bytes.
+	 */
+	uint32_t num_mc_entries;
+
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_cfa_l2_set_rx_mask_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
 /* hwrm_exec_fwd_resp */
 /*
  * Description: This command is used to send an encapsulated request to the

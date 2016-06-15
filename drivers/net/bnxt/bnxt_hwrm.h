@@ -43,6 +43,9 @@ struct bnxt_cp_ring_info;
 
 #define HWRM_SEQ_ID_INVALID -1U
 
+int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
+				   struct bnxt_vnic_info *vnic);
+int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_clear_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter);
 int bnxt_hwrm_set_filter(struct bnxt *bp,
