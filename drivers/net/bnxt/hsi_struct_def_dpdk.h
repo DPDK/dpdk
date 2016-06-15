@@ -1897,6 +1897,127 @@ struct hwrm_queue_qportcfg_input {
 	uint16_t unused_0;
 } __attribute__((packed));
 
+/* hwrm_vnic_rss_cfg */
+/* Description: This function is used to enable RSS configuration. */
+
+/* Input (48 bytes) */
+struct hwrm_vnic_rss_cfg_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over source and
+	 * destination IPv4 addresses of IPv4 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv4 addresses and source/destination ports of
+	 * TCP/IPv4 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4	UINT32_C(0x2)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv4 addresses and source/destination ports of
+	 * UDP/IPv4 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4	UINT32_C(0x4)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over source and
+	 * destination IPv4 addresses of IPv6 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6		UINT32_C(0x8)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv6 addresses and source/destination ports of
+	 * TCP/IPv6 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6	UINT32_C(0x10)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv6 addresses and source/destination ports of
+	 * UDP/IPv6 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6	UINT32_C(0x20)
+	uint32_t hash_type;
+
+	uint32_t unused_0;
+
+	/* This is the address for rss ring group table */
+	uint64_t ring_grp_tbl_addr;
+
+	/* This is the address for rss hash key table */
+	uint64_t hash_key_tbl_addr;
+
+	/* Index to the rss indirection table. */
+	uint16_t rss_ctx_idx;
+
+	uint16_t unused_1[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_rss_cfg_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
+
 /* Output (32 bytes) */
 struct hwrm_queue_qportcfg_output {
 	/*

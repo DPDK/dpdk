@@ -142,6 +142,8 @@ struct bnxt {
 	/* Default completion ring */
 	struct bnxt_cp_ring_info	*def_cp_ring;
 
+	unsigned int		nr_vnics;
+
 	struct bnxt_vnic_info	*vnic_info;
 	STAILQ_HEAD(, bnxt_vnic_info)	free_vnic_list;
 
