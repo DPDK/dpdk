@@ -58,6 +58,7 @@ endif
 ifeq ($(CONFIG_RTE_VIRTIO_USER),y)
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_user/vhost_user.c
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_user/virtio_user_dev.c
+SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_user_ethdev.c
 endif
 
 # this lib depends upon:
