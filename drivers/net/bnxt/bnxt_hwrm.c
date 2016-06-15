@@ -547,6 +547,114 @@ int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_ring_alloc(struct bnxt *bp,
+			 struct bnxt_ring *ring,
+			 uint32_t ring_type, uint32_t map_index,
+			 uint32_t stats_ctx_id)
+{
+	int rc = 0;
+	struct hwrm_ring_alloc_input req = {.req_type = 0 };
+	struct hwrm_ring_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, RING_ALLOC, -1, resp);
+
+	req.enables = rte_cpu_to_le_32(0);
+
+	req.page_tbl_addr = rte_cpu_to_le_64(ring->bd_dma);
+	req.fbo = rte_cpu_to_le_32(0);
+	/* Association of ring index with doorbell index */
+	req.logical_id = rte_cpu_to_le_16(map_index);
+
+	switch (ring_type) {
+	case HWRM_RING_ALLOC_INPUT_RING_TYPE_TX:
+		req.queue_id = bp->cos_queue[0].id;
+	case HWRM_RING_ALLOC_INPUT_RING_TYPE_RX:
+		req.ring_type = ring_type;
+		req.cmpl_ring_id =
+		    rte_cpu_to_le_16(bp->grp_info[map_index].cp_fw_ring_id);
+		req.length = rte_cpu_to_le_32(ring->ring_size);
+		req.stat_ctx_id = rte_cpu_to_le_16(stats_ctx_id);
+		req.enables = rte_cpu_to_le_32(rte_le_to_cpu_32(req.enables) |
+			HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID);
+		break;
+	case HWRM_RING_ALLOC_INPUT_RING_TYPE_CMPL:
+		req.ring_type = ring_type;
+		req.int_mode = HWRM_RING_ALLOC_INPUT_INT_MODE_POLL;
+		req.length = rte_cpu_to_le_32(ring->ring_size);
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "hwrm alloc invalid ring type %d\n",
+			ring_type);
+		return -1;
+	}
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	if (rc || resp->error_code) {
+		if (rc == 0 && resp->error_code)
+			rc = rte_le_to_cpu_16(resp->error_code);
+		switch (ring_type) {
+		case HWRM_RING_FREE_INPUT_RING_TYPE_CMPL:
+			RTE_LOG(ERR, PMD,
+				"hwrm_ring_alloc cp failed. rc:%d\n", rc);
+			return rc;
+		case HWRM_RING_FREE_INPUT_RING_TYPE_RX:
+			RTE_LOG(ERR, PMD,
+				"hwrm_ring_alloc rx failed. rc:%d\n", rc);
+			return rc;
+		case HWRM_RING_FREE_INPUT_RING_TYPE_TX:
+			RTE_LOG(ERR, PMD,
+				"hwrm_ring_alloc tx failed. rc:%d\n", rc);
+			return rc;
+		default:
+			RTE_LOG(ERR, PMD, "Invalid ring. rc:%d\n", rc);
+			return rc;
+		}
+	}
+
+	ring->fw_ring_id = rte_le_to_cpu_16(resp->ring_id);
+	return rc;
+}
+
+int bnxt_hwrm_ring_free(struct bnxt *bp,
+			struct bnxt_ring *ring, uint32_t ring_type)
+{
+	int rc;
+	struct hwrm_ring_free_input req = {.req_type = 0 };
+	struct hwrm_ring_free_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, RING_FREE, -1, resp);
+
+	req.ring_type = ring_type;
+	req.ring_id = rte_cpu_to_le_16(ring->fw_ring_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	if (rc || resp->error_code) {
+		if (rc == 0 && resp->error_code)
+			rc = rte_le_to_cpu_16(resp->error_code);
+
+		switch (ring_type) {
+		case HWRM_RING_FREE_INPUT_RING_TYPE_CMPL:
+			RTE_LOG(ERR, PMD, "hwrm_ring_free cp failed. rc:%d\n",
+				rc);
+			return rc;
+		case HWRM_RING_FREE_INPUT_RING_TYPE_RX:
+			RTE_LOG(ERR, PMD, "hwrm_ring_free rx failed. rc:%d\n",
+				rc);
+			return rc;
+		case HWRM_RING_FREE_INPUT_RING_TYPE_TX:
+			RTE_LOG(ERR, PMD, "hwrm_ring_free tx failed. rc:%d\n",
+				rc);
+			return rc;
+		default:
+			RTE_LOG(ERR, PMD, "Invalid ring, rc:%d\n", rc);
+			return rc;
+		}
+	}
+	return 0;
+}
+
 int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 {
 	int rc = 0;
