@@ -79,6 +79,7 @@ New Features
 * **Added packet capture framework.**
 
   * A new library ``librte_pdump`` is added to provide packet capture API.
+  * A new ``app/pdump`` tool is added to capture packets in DPDK.
 
 
 Resolved Issues

@@ -446,6 +446,8 @@ Packet capture
 M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/librte_pdump/
 F: doc/guides/prog_guide/pdump_lib.rst
+F: app/pdump/
+F: doc/guides/sample_app_ug/pdump.rst
 
 
 Packet Framework

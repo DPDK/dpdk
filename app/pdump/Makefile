@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2016 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -31,12 +31,19 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_APP_TEST) += test
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += test-acl
-DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += test-pipeline
-DIRS-$(CONFIG_RTE_TEST_PMD) += test-pmd
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_test
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += proc_info
-DIRS-$(CONFIG_RTE_LIBRTE_PDUMP) += pdump
+ifeq ($(CONFIG_RTE_LIBRTE_PDUMP),y)
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+APP = dpdk_pdump
+
+CFLAGS += $(WERROR_FLAGS)
+
+# all source are stored in SRCS-y
+
+SRCS-y := main.c
+
+# this application needs libraries first
+DEPDIRS-y += lib
+
+include $(RTE_SDK)/mk/rte.app.mk
+
+endif

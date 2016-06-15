@@ -76,6 +76,7 @@ Sample Applications User Guide
     ptpclient
     performance_thread
     ipsec_secgw
+    pdump
 
 **Figures**
 
