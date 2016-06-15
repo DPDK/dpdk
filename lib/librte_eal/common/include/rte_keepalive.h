@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright 2015 Intel Shannon Ltd. All rights reserved.
+ *   Copyright 2015-2016 Intel Shannon Ltd. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -47,6 +47,16 @@
  * @note Must be larger than the highest core id. */
 #define RTE_KEEPALIVE_MAXCORES RTE_MAX_LCORE
 #endif
+
+enum rte_keepalive_state {
+	RTE_KA_STATE_UNUSED = 0,
+	RTE_KA_STATE_ALIVE = 1,
+	RTE_KA_STATE_MISSING = 4,
+	RTE_KA_STATE_DEAD = 2,
+	RTE_KA_STATE_GONE = 3,
+	RTE_KA_STATE_DOZING = 5,
+	RTE_KA_STATE_SLEEP = 6
+};
 
 /**
  * Keepalive failure callback.

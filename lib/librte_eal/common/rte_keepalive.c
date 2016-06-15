@@ -42,12 +42,8 @@
 
 struct rte_keepalive {
 	/** Core Liveness. */
-	enum rte_keepalive_state {
-		ALIVE = 1,
-		MISSING = 0,
-		DEAD = 2,
-		GONE = 3
-	} __rte_cache_aligned state_flags[RTE_KEEPALIVE_MAXCORES];
+	enum rte_keepalive_state __rte_cache_aligned state_flags[
+		RTE_KEEPALIVE_MAXCORES];
 
 	/** Last-seen-alive timestamps */
 	uint64_t last_alive[RTE_KEEPALIVE_MAXCORES];
@@ -92,16 +88,18 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 			continue;
 
 		switch (keepcfg->state_flags[idx_core]) {
-		case ALIVE: /* Alive */
-			keepcfg->state_flags[idx_core] = MISSING;
+		case RTE_KA_STATE_UNUSED:
+			break;
+		case RTE_KA_STATE_ALIVE: /* Alive */
+			keepcfg->state_flags[idx_core] = RTE_KA_STATE_MISSING;
 			keepcfg->last_alive[idx_core] = rte_rdtsc();
 			break;
-		case MISSING: /* MIA */
+		case RTE_KA_STATE_MISSING: /* MIA */
 			print_trace("Core MIA. ", keepcfg, idx_core);
-			keepcfg->state_flags[idx_core] = DEAD;
+			keepcfg->state_flags[idx_core] = RTE_KA_STATE_DEAD;
 			break;
-		case DEAD: /* Dead */
-			keepcfg->state_flags[idx_core] = GONE;
+		case RTE_KA_STATE_DEAD: /* Dead */
+			keepcfg->state_flags[idx_core] = RTE_KA_STATE_GONE;
 			print_trace("Core died. ", keepcfg, idx_core);
 			if (keepcfg->callback)
 				keepcfg->callback(
@@ -109,7 +107,13 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 					idx_core
 					);
 			break;
-		case GONE: /* Buried */
+		case RTE_KA_STATE_GONE: /* Buried */
+			break;
+		case RTE_KA_STATE_DOZING: /* Core going idle */
+			keepcfg->state_flags[idx_core] = RTE_KA_STATE_SLEEP;
+			keepcfg->last_alive[idx_core] = rte_rdtsc();
+			break;
+		case RTE_KA_STATE_SLEEP: /* Idled core */
 			break;
 		}
 	}
@@ -137,7 +141,7 @@ void
 rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 {
 	if (id_core < RTE_KEEPALIVE_MAXCORES) {
-		keepcfg->active_cores[id_core] = 1;
+		keepcfg->active_cores[id_core] = RTE_KA_STATE_ALIVE;
 		keepcfg->last_alive[id_core] = rte_rdtsc();
 	}
 }
@@ -145,5 +149,5 @@ rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 void
 rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
 {
-	keepcfg->state_flags[rte_lcore_id()] = ALIVE;
+	keepcfg->state_flags[rte_lcore_id()] = RTE_KA_STATE_ALIVE;
 }
