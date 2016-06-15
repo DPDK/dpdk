@@ -139,6 +139,9 @@ API Changes
   ibadcrc, ibadlen, imcasts, fdirmatch, fdirmiss,
   tx_pause_xon, rx_pause_xon, tx_pause_xoff, rx_pause_xoff.
 
+* The extended statistics are fetched by ids with ``rte_eth_xstats_get``
+  after a lookup by name ``rte_eth_xstats_get_names``.
+
 
 ABI Changes
 -----------

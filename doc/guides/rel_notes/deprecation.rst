@@ -23,11 +23,6 @@ Deprecation Notices
   do not need to care about the kind of devices that are being used, making it
   easier to add new buses later.
 
-* The xstats API and rte_eth_xstats struct will be changed to allow retrieval
-  of values without any string copies or parsing.
-  No backwards compatibility is planned, as it would require code duplication
-  in every PMD that supports xstats.
-
 * ABI changes are planned for adding four new flow types. This impacts
   RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
   but release 2.3 will. [postponed]

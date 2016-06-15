@@ -79,7 +79,7 @@ static void virtio_get_hwaddr(struct virtio_hw *hw);
 static void virtio_dev_stats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_stats *stats);
 static int virtio_dev_xstats_get(struct rte_eth_dev *dev,
-				 struct rte_eth_xstats *xstats, unsigned n);
+				 struct rte_eth_xstat *xstats, unsigned n);
 static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 				       struct rte_eth_xstat_name *xstats_names,
 				       unsigned limit);
@@ -759,7 +759,7 @@ static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 }
 
 static int
-virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		      unsigned n)
 {
 	unsigned i;
@@ -780,7 +780,6 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		unsigned t;
 
 		for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
-			xstats[count].name[0] = '\0';
 			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)rxvq) +
 				rte_virtio_q_stat_strings[t].offset);
@@ -797,7 +796,6 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		unsigned t;
 
 		for (t = 0; t < VIRTIO_NB_Q_XSTATS; t++) {
-			xstats[count].name[0] = '\0';
 			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)txvq) +
 				rte_virtio_q_stat_strings[t].offset);

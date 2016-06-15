@@ -914,8 +914,7 @@ struct rte_eth_txq_info {
  * statistics that are not provided in the generic rte_eth_stats
  * structure.
  */
-struct rte_eth_xstats {
-	char name[RTE_ETH_XSTATS_NAME_SIZE];
+struct rte_eth_xstat {
 	uint64_t id;
 	uint64_t value;
 };
@@ -1060,7 +1059,7 @@ typedef void (*eth_stats_reset_t)(struct rte_eth_dev *dev);
 /**< @internal Reset global I/O statistics of an Ethernet device to 0. */
 
 typedef int (*eth_xstats_get_t)(struct rte_eth_dev *dev,
-	struct rte_eth_xstats *stats, unsigned n);
+	struct rte_eth_xstat *stats, unsigned n);
 /**< @internal Get extended stats of an Ethernet device. */
 
 typedef void (*eth_xstats_reset_t)(struct rte_eth_dev *dev);
@@ -2314,7 +2313,7 @@ int rte_eth_xstats_get_names(uint8_t port_id,
  *     shall not be used by the caller.
  *   - negative value on error (invalid port id)
  */
-int rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstats *xstats,
+int rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 		unsigned n);
 
 /**

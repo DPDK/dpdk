@@ -111,7 +111,7 @@ static int i40evf_dev_link_update(struct rte_eth_dev *dev,
 static void i40evf_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
-				 struct rte_eth_xstats *xstats, unsigned n);
+				 struct rte_eth_xstat *xstats, unsigned n);
 static int i40evf_dev_xstats_get_names(struct rte_eth_dev *dev,
 				       struct rte_eth_xstat_name *xstats_names,
 				       unsigned limit);
@@ -1005,7 +1005,7 @@ static int i40evf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 }
 
 static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
-				 struct rte_eth_xstats *xstats, unsigned n)
+				 struct rte_eth_xstat *xstats, unsigned n)
 {
 	int ret;
 	unsigned i;
@@ -1023,7 +1023,6 @@ static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 
 	/* loop over xstats array and values from pstats */
 	for (i = 0; i < I40EVF_NB_XSTATS; i++) {
-		xstats[i].name[0] = '\0';
 		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)pstats) +
 			rte_i40evf_stats_strings[i].offset);

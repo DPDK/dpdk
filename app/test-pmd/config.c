@@ -255,29 +255,57 @@ nic_stats_clear(portid_t port_id)
 void
 nic_xstats_display(portid_t port_id)
 {
-	struct rte_eth_xstats *xstats;
-	int len, ret, i;
+	struct rte_eth_xstat *xstats;
+	int cnt_xstats, idx_xstat, idx_name;
+	struct rte_eth_xstat_name *xstats_names;
 
 	printf("###### NIC extended statistics for port %-2d\n", port_id);
-
-	len = rte_eth_xstats_get(port_id, NULL, 0);
-	if (len < 0) {
-		printf("Cannot get xstats count\n");
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		printf("Error: Invalid port number %i\n", port_id);
 		return;
 	}
-	xstats = malloc(sizeof(xstats[0]) * len);
+
+	/* Get count */
+	cnt_xstats = rte_eth_xstats_get_names(port_id, NULL, 0);
+	if (cnt_xstats  < 0) {
+		printf("Error: Cannot get count of xstats\n");
+		return;
+	}
+
+	/* Get id-name lookup table */
+	xstats_names = malloc(sizeof(struct rte_eth_xstat_name) * cnt_xstats);
+	if (xstats_names == NULL) {
+		printf("Cannot allocate memory for xstats lookup\n");
+		return;
+	}
+	if (cnt_xstats != rte_eth_xstats_get_names(
+			port_id, xstats_names, cnt_xstats)) {
+		printf("Error: Cannot get xstats lookup\n");
+		return;
+	}
+
+	/* Get stats themselves */
+	xstats = malloc(sizeof(struct rte_eth_xstat) * cnt_xstats);
 	if (xstats == NULL) {
 		printf("Cannot allocate memory for xstats\n");
+		free(xstats_names);
 		return;
 	}
-	ret = rte_eth_xstats_get(port_id, xstats, len);
-	if (ret < 0 || ret > len) {
-		printf("Cannot get xstats\n");
-		free(xstats);
+	if (cnt_xstats != rte_eth_xstats_get(port_id, xstats, cnt_xstats)) {
+		printf("Error: Unable to get xstats\n");
 		return;
 	}
-	for (i = 0; i < len; i++)
-		printf("%s: %"PRIu64"\n", xstats[i].name, xstats[i].value);
+
+	/* Display xstats */
+	for (idx_xstat = 0; idx_xstat < cnt_xstats; idx_xstat++)
+		for (idx_name = 0; idx_name < cnt_xstats; idx_name++)
+			if (xstats_names[idx_name].id == xstats[idx_xstat].id) {
+				printf("%s: %"PRIu64"\n",
+					xstats_names[idx_name].name,
+					xstats[idx_xstat].value);
+				break;
+			}
+	free(xstats_names);
 	free(xstats);
 }
 

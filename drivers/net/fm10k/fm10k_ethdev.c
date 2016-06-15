@@ -1298,7 +1298,7 @@ static int fm10k_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 }
 
 static int
-fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		 unsigned n)
 {
 	struct fm10k_hw_stats *hw_stats =
@@ -1310,7 +1310,6 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* Global stats */
 	for (i = 0; i < FM10K_NB_HW_XSTATS; i++) {
-		xstats[count].name[0] = '\0';
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 			fm10k_hw_stats_strings[count].offset);
 		count++;
@@ -1319,14 +1318,12 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 	/* PF queue stats */
 	for (q = 0; q < FM10K_MAX_QUEUES_PF; q++) {
 		for (i = 0; i < FM10K_NB_RX_Q_XSTATS; i++) {
-			xstats[count].name[0] = '\0';
 			xstats[count].value =
 				*(uint64_t *)(((char *)&hw_stats->q[q]) +
 				fm10k_hw_stats_rx_q_strings[i].offset);
 			count++;
 		}
 		for (i = 0; i < FM10K_NB_TX_Q_XSTATS; i++) {
-			xstats[count].name[0] = '\0';
 			xstats[count].value =
 				*(uint64_t *)(((char *)&hw_stats->q[q]) +
 				fm10k_hw_stats_tx_q_strings[i].offset);

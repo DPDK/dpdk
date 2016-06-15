@@ -99,7 +99,7 @@ static int  eth_igb_link_update(struct rte_eth_dev *dev,
 static void eth_igb_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
 static int eth_igb_xstats_get(struct rte_eth_dev *dev,
-			      struct rte_eth_xstats *xstats, unsigned n);
+			      struct rte_eth_xstat *xstats, unsigned n);
 static int eth_igb_xstats_get_names(struct rte_eth_dev *dev,
 				    struct rte_eth_xstat_name *xstats_names,
 				    unsigned limit);
@@ -167,7 +167,7 @@ static int eth_igbvf_link_update(struct e1000_hw *hw);
 static void eth_igbvf_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
 static int eth_igbvf_xstats_get(struct rte_eth_dev *dev,
-				struct rte_eth_xstats *xstats, unsigned n);
+				struct rte_eth_xstat *xstats, unsigned n);
 static int eth_igbvf_xstats_get_names(struct rte_eth_dev *dev,
 				      struct rte_eth_xstat_name *xstats_names,
 				      unsigned limit);
@@ -1720,7 +1720,7 @@ static int eth_igb_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 }
 
 static int
-eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		   unsigned n)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1741,7 +1741,6 @@ eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 
 	/* Extended stats */
 	for (i = 0; i < IGB_NB_XSTATS; i++) {
-		xstats[i].name[0] = '\0';
 		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
 			rte_igb_stats_strings[i].offset);
@@ -1807,7 +1806,7 @@ static int eth_igbvf_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 }
 
 static int
-eth_igbvf_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
+eth_igbvf_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		     unsigned n)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1824,7 +1823,6 @@ eth_igbvf_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstats *xstats,
 		return 0;
 
 	for (i = 0; i < IGBVF_NB_XSTATS; i++) {
-		xstats[i].name[0] = '\0';
 		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
 			rte_igbvf_stats_strings[i].offset);
