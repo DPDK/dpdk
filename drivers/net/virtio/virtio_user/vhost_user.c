@@ -235,6 +235,7 @@ static const char * const vhost_msg_strings[] = {
 	[VHOST_USER_SET_VRING_ADDR] = "VHOST_USER_SET_VRING_ADDR",
 	[VHOST_USER_SET_VRING_KICK] = "VHOST_USER_SET_VRING_KICK",
 	[VHOST_USER_SET_MEM_TABLE] = "VHOST_USER_SET_MEM_TABLE",
+	[VHOST_USER_SET_VRING_ENABLE] = "VHOST_USER_SET_VRING_ENABLE",
 	NULL,
 };
 
@@ -287,6 +288,7 @@ vhost_user_sock(int vhostfd, uint64_t req, void *arg)
 
 	case VHOST_USER_SET_VRING_NUM:
 	case VHOST_USER_SET_VRING_BASE:
+	case VHOST_USER_SET_VRING_ENABLE:
 		memcpy(&msg.payload.state, arg, sizeof(msg.payload.state));
 		msg.size = sizeof(m.payload.state);
 		break;
@@ -402,4 +404,23 @@ vhost_user_setup(const char *path)
 	}
 
 	return fd;
+}
+
+int
+vhost_user_enable_queue_pair(int vhostfd, uint16_t pair_idx, int enable)
+{
+	int i;
+
+	for (i = 0; i < 2; ++i) {
+		struct vhost_vring_state state = {
+			.index = pair_idx * 2 + i,
+			.num   = enable,
+		};
+
+		if (vhost_user_sock(vhostfd,
+				    VHOST_USER_SET_VRING_ENABLE, &state))
+			return -1;
+	}
+
+	return 0;
 }

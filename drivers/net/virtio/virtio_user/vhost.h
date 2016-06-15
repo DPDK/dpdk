@@ -136,6 +136,11 @@ struct vhost_user_msg {
 /* The version of the protocol we support */
 #define VHOST_USER_VERSION    0x1
 
+#define VHOST_USER_F_PROTOCOL_FEATURES 30
+#define VHOST_USER_MQ (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)
+
 int vhost_user_sock(int vhostfd, uint64_t req, void *arg);
 int vhost_user_setup(const char *path);
+int vhost_user_enable_queue_pair(int vhostfd, uint16_t pair_idx, int enable);
+
 #endif
