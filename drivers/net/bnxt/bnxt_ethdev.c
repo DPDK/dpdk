@@ -39,6 +39,9 @@
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 
+#include "bnxt.h"
+#include "bnxt_hwrm.h"
+
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
 	"Broadcom Cumulus driver " DRV_MODULE_NAME "\n";
@@ -49,14 +52,68 @@ static struct rte_pci_id bnxt_pci_id_map[] = {
 	{.device_id = 0},
 };
 
+static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	rte_free(eth_dev->data->mac_addrs);
+	bnxt_free_hwrm_resources(bp);
+}
+
 /*
  * Initialization
  */
+
+static struct eth_dev_ops bnxt_dev_ops = {
+	.dev_close = bnxt_dev_close_op,
+};
+
+static bool bnxt_vf_pciid(uint16_t id)
+{
+	if (id == BROADCOM_DEV_ID_57304_VF ||
+	    id == BROADCOM_DEV_ID_57406_VF)
+		return true;
+	return false;
+}
+
+static int bnxt_init_board(struct rte_eth_dev *eth_dev)
+{
+	int rc;
+	struct bnxt *bp = eth_dev->data->dev_private;
+
+	/* enable device (incl. PCI PM wakeup), and bus-mastering */
+	if (!eth_dev->pci_dev->mem_resource[0].addr) {
+		RTE_LOG(ERR, PMD,
+			"Cannot find PCI device base address, aborting\n");
+		rc = -ENODEV;
+		goto init_err_disable;
+	}
+
+	bp->eth_dev = eth_dev;
+	bp->pdev = eth_dev->pci_dev;
+
+	bp->bar0 = (void *)eth_dev->pci_dev->mem_resource[0].addr;
+	if (!bp->bar0) {
+		RTE_LOG(ERR, PMD, "Cannot map device registers, aborting\n");
+		rc = -ENOMEM;
+		goto init_err_release;
+	}
+	return 0;
+
+init_err_release:
+	if (bp->bar0)
+		bp->bar0 = NULL;
+
+init_err_disable:
+
+	return rc;
+}
 
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
 	static int version_printed;
+	struct bnxt *bp;
 	int rc;
 
 	if (version_printed++ == 0)
@@ -71,8 +128,58 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_eth_copy_pci_info(eth_dev, eth_dev->pci_dev);
-	rc = -EPERM;
+	bp = eth_dev->data->dev_private;
 
+	if (bnxt_vf_pciid(eth_dev->pci_dev->id.device_id))
+		bp->flags |= BNXT_FLAG_VF;
+
+	rc = bnxt_init_board(eth_dev);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"Board initialization failed rc: %x\n", rc);
+		goto error;
+	}
+	eth_dev->dev_ops = &bnxt_dev_ops;
+	/* eth_dev->rx_pkt_burst = &bnxt_recv_pkts; */
+	/* eth_dev->tx_pkt_burst = &bnxt_xmit_pkts; */
+
+	rc = bnxt_alloc_hwrm_resources(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"hwrm resource allocation failure rc: %x\n", rc);
+		goto error_free;
+	}
+	rc = bnxt_hwrm_ver_get(bp);
+	if (rc)
+		goto error_free;
+	bnxt_hwrm_queue_qportcfg(bp);
+
+	/* Get the MAX capabilities for this function */
+	rc = bnxt_hwrm_func_qcaps(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm query capability failure rc: %x\n", rc);
+		goto error_free;
+	}
+	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
+					ETHER_ADDR_LEN * MAX_NUM_MAC_ADDR, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		RTE_LOG(ERR, PMD,
+			"Failed to alloc %u bytes needed to store MAC addr tbl",
+			ETHER_ADDR_LEN * MAX_NUM_MAC_ADDR);
+		rc = -ENOMEM;
+		goto error_free;
+	}
+	/* Copy the permanent MAC from the qcap response address now. */
+	if (BNXT_PF(bp))
+		memcpy(bp->mac_addr, bp->pf.mac_addr, sizeof(bp->mac_addr));
+	else
+		memcpy(bp->mac_addr, bp->vf.mac_addr, sizeof(bp->mac_addr));
+	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
+
+	return -EPERM;
+
+error_free:
+	bnxt_dev_close_op(eth_dev);
 error:
 	return rc;
 }
@@ -90,7 +197,7 @@ static struct eth_driver bnxt_rte_pmd = {
 		    },
 	.eth_dev_init = bnxt_dev_init,
 	.eth_dev_uninit = bnxt_dev_uninit,
-	.dev_private_size = 32 /* this must be non-zero apparently */,
+	.dev_private_size = sizeof(struct bnxt),
 };
 
 static int bnxt_rte_pmd_init(const char *name, const char *params __rte_unused)

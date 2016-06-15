@@ -49,6 +49,7 @@ EXPORT_MAP := rte_pmd_bnxt_version.map
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_hwrm.c
 
 #
 # Export include files
