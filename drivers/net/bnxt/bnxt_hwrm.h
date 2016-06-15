@@ -63,6 +63,8 @@ int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
 
 int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
+int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp,
+			     struct bnxt_cp_ring_info *cpr, unsigned int idx);
 
 int bnxt_hwrm_ver_get(struct bnxt *bp);
 
@@ -74,6 +76,7 @@ int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 			   struct bnxt_vnic_info *vnic);
 
+int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);
 void bnxt_free_hwrm_resources(struct bnxt *bp);
 int bnxt_alloc_hwrm_resources(struct bnxt *bp);
