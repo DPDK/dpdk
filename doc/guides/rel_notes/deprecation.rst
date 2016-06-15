@@ -54,3 +54,8 @@ Deprecation Notices
   a handle, like the way kernel exposes an fd to user for locating a
   specific file, and to keep all major structures internally, so that
   we are likely to be free from ABI violations in future.
+
+* The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
+  are respectively replaced by PKT_RX_VLAN_STRIPPED and
+  PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
+  their behavior will be kept in 16.07 and will be removed in 16.11.

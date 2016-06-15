@@ -258,8 +258,10 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask)
 	/* case PKT_RX_HBUF_OVERFLOW: return "PKT_RX_HBUF_OVERFLOW"; */
 	/* case PKT_RX_RECIP_ERR: return "PKT_RX_RECIP_ERR"; */
 	/* case PKT_RX_MAC_ERR: return "PKT_RX_MAC_ERR"; */
+	case PKT_RX_VLAN_STRIPPED: return "PKT_RX_VLAN_STRIPPED";
 	case PKT_RX_IEEE1588_PTP: return "PKT_RX_IEEE1588_PTP";
 	case PKT_RX_IEEE1588_TMST: return "PKT_RX_IEEE1588_TMST";
+	case PKT_RX_QINQ_STRIPPED: return "PKT_RX_QINQ_STRIPPED";
 	default: return NULL;
 	}
 }

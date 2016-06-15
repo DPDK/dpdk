@@ -1636,6 +1636,7 @@ ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
 {
 	struct ixgbe_hwstrip *hwstrip =
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(dev->data->dev_private);
+	struct ixgbe_rx_queue *rxq;
 
 	if (queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return;
@@ -1644,6 +1645,16 @@ ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
 		IXGBE_SET_HWSTRIP(hwstrip, queue);
 	else
 		IXGBE_CLEAR_HWSTRIP(hwstrip, queue);
+
+	if (queue >= dev->data->nb_rx_queues)
+		return;
+
+	rxq = dev->data->rx_queues[queue];
+
+	if (on)
+		rxq->vlan_flags = PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED;
+	else
+		rxq->vlan_flags = PKT_RX_VLAN_PKT;
 }
 
 static void

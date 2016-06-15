@@ -729,7 +729,8 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status)
 	uint64_t pkt_flags;
 
 	/* Check if VLAN present */
-	pkt_flags = (rx_status & E1000_RXD_STAT_VP) ?  PKT_RX_VLAN_PKT : 0;
+	pkt_flags = ((rx_status & E1000_RXD_STAT_VP) ?
+		PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED : 0);
 
 #if defined(RTE_LIBRTE_IEEE1588)
 	if (rx_status & E1000_RXD_STAT_TMST)

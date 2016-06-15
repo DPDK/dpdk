@@ -579,7 +579,7 @@ vmxnet3_rx_offload(const Vmxnet3_RxCompDesc *rcd, struct rte_mbuf *rxm)
 {
 	/* Check for hardware stripped VLAN tag */
 	if (rcd->ts) {
-		rxm->ol_flags |= PKT_RX_VLAN_PKT;
+		rxm->ol_flags |= (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
 		rxm->vlan_tci = rte_le_to_cpu_16((uint16_t)rcd->tci);
 	}
 

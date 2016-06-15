@@ -1051,7 +1051,8 @@ mlx5_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 #ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 			if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
-				pkt_buf->ol_flags |= PKT_RX_VLAN_PKT;
+				pkt_buf->ol_flags |= PKT_RX_VLAN_PKT |
+					PKT_RX_VLAN_STRIPPED;
 				pkt_buf->vlan_tci = vlan_tci;
 			}
 #endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
@@ -1207,7 +1208,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
 #ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 			if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
-				seg->ol_flags |= PKT_RX_VLAN_PKT;
+				seg->ol_flags |= PKT_RX_VLAN_PKT |
+					PKT_RX_VLAN_STRIPPED;
 				seg->vlan_tci = vlan_tci;
 			}
 #endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */

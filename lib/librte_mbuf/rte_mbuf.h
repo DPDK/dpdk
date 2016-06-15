@@ -79,7 +79,15 @@ extern "C" {
  * Keep these flags synchronized with rte_get_rx_ol_flag_name() and
  * rte_get_tx_ol_flag_name().
  */
-#define PKT_RX_VLAN_PKT      (1ULL << 0)  /**< RX packet is a 802.1q VLAN packet. */
+
+/**
+ * RX packet is a 802.1q VLAN packet. This flag was set by PMDs when
+ * the packet is recognized as a VLAN, but the behavior between PMDs
+ * was not the same. This flag is kept for some time to avoid breaking
+ * applications and should be replaced by PKT_RX_VLAN_STRIPPED.
+ */
+#define PKT_RX_VLAN_PKT      (1ULL << 0)
+
 #define PKT_RX_RSS_HASH      (1ULL << 1)  /**< RX packet with RSS hash result. */
 #define PKT_RX_FDIR          (1ULL << 2)  /**< RX packet with FDIR match indicate. */
 #define PKT_RX_L4_CKSUM_BAD  (1ULL << 3)  /**< L4 cksum of RX pkt. is not OK. */
@@ -89,11 +97,37 @@ extern "C" {
 #define PKT_RX_HBUF_OVERFLOW (0ULL << 0)  /**< Header buffer overflow. */
 #define PKT_RX_RECIP_ERR     (0ULL << 0)  /**< Hardware processing error. */
 #define PKT_RX_MAC_ERR       (0ULL << 0)  /**< MAC error. */
+
+/**
+ * A vlan has been stripped by the hardware and its tci is saved in
+ * mbuf->vlan_tci. This can only happen if vlan stripping is enabled
+ * in the RX configuration of the PMD.
+ */
+#define PKT_RX_VLAN_STRIPPED (1ULL << 6)
+
+/* hole, some bits can be reused here  */
+
 #define PKT_RX_IEEE1588_PTP  (1ULL << 9)  /**< RX IEEE1588 L2 Ethernet PT Packet. */
 #define PKT_RX_IEEE1588_TMST (1ULL << 10) /**< RX IEEE1588 L2/L4 timestamped packet.*/
 #define PKT_RX_FDIR_ID       (1ULL << 13) /**< FD id reported if FDIR match. */
 #define PKT_RX_FDIR_FLX      (1ULL << 14) /**< Flexible bytes reported if FDIR match. */
-#define PKT_RX_QINQ_PKT      (1ULL << 15)  /**< RX packet with double VLAN stripped. */
+
+/**
+ * The 2 vlans have been stripped by the hardware and their tci are
+ * saved in mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
+ * This can only happen if vlan stripping is enabled in the RX
+ * configuration of the PMD. If this flag is set, PKT_RX_VLAN_STRIPPED
+ * must also be set.
+ */
+#define PKT_RX_QINQ_STRIPPED (1ULL << 15)
+
+/**
+ * Deprecated.
+ * RX packet with double VLAN stripped.
+ * This flag is replaced by PKT_RX_QINQ_STRIPPED.
+ */
+#define PKT_RX_QINQ_PKT      PKT_RX_QINQ_STRIPPED
+
 /* add new RX flags here */
 
 /* add new TX flags here */
@@ -761,7 +795,10 @@ struct rte_mbuf {
 
 	/*
 	 * The packet type, which is the combination of outer/inner L2, L3, L4
-	 * and tunnel types.
+	 * and tunnel types. The packet_type is about data really present in the
+	 * mbuf. Example: if vlan stripping is enabled, a received vlan packet
+	 * would have RTE_PTYPE_L2_ETHER and not RTE_PTYPE_L2_VLAN because the
+	 * vlan is stripped from the data.
 	 */
 	union {
 		uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
@@ -778,7 +815,8 @@ struct rte_mbuf {
 
 	uint32_t pkt_len;         /**< Total pkt len: sum of all segments. */
 	uint16_t data_len;        /**< Amount of data in segment buffer. */
-	uint16_t vlan_tci;        /**< VLAN Tag Control Identifier (CPU order) */
+	/** VLAN TCI (CPU order), valid if PKT_RX_VLAN_STRIPPED is set. */
+	uint16_t vlan_tci;
 
 	union {
 		uint32_t rss;     /**< RSS hash result if RSS enabled */
@@ -804,7 +842,8 @@ struct rte_mbuf {
 
 	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
 
-	uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+	/** Outer VLAN TCI (CPU order), valid if PKT_RX_QINQ_STRIPPED is set. */
+	uint16_t vlan_tci_outer;
 
 	/* second cache line - fields only used in slow path or on TX */
 	MARKER cacheline1 __rte_cache_min_aligned;

@@ -197,7 +197,7 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 
 	/* VLAN stripping */
 	if (bwflags & CQ_ENET_RQ_DESC_FLAGS_VLAN_STRIPPED) {
-		pkt_flags |= PKT_RX_VLAN_PKT;
+		pkt_flags |= PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED;
 		mbuf->vlan_tci = enic_cq_rx_desc_vlan(cqrd);
 	} else {
 		mbuf->vlan_tci = 0;

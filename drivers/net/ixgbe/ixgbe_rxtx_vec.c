@@ -140,22 +140,15 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
  */
 #ifdef RTE_IXGBE_RX_OLFLAGS_ENABLE
 
-#define VTAG_SHIFT     (3)
-
 static inline void
-desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
+desc_to_olflags_v(__m128i descs[4], uint8_t vlan_flags,
+	struct rte_mbuf **rx_pkts)
 {
 	__m128i ptype0, ptype1, vtag0, vtag1;
 	union {
 		uint16_t e[4];
 		uint64_t dword;
 	} vol;
-
-	/* pkt type + vlan olflags mask */
-	const __m128i pkttype_msk = _mm_set_epi16(
-			0x0000, 0x0000, 0x0000, 0x0000,
-			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT,
-			PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT);
 
 	/* mask everything except rss type */
 	const __m128i rsstype_msk = _mm_set_epi16(
@@ -168,6 +161,19 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 			PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH, 0,
 			PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, 0);
 
+	/* mask everything except vlan present bit */
+	const __m128i vlan_msk = _mm_set_epi16(
+			0x0000, 0x0000,
+			0x0000, 0x0000,
+			IXGBE_RXD_STAT_VP, IXGBE_RXD_STAT_VP,
+			IXGBE_RXD_STAT_VP, IXGBE_RXD_STAT_VP);
+	/* map vlan present (0x8) to ol_flags */
+	const __m128i vlan_map = _mm_set_epi8(
+		0, 0, 0, 0,
+		0, 0, 0, vlan_flags,
+		0, 0, 0, 0,
+		0, 0, 0, 0);
+
 	ptype0 = _mm_unpacklo_epi16(descs[0], descs[1]);
 	ptype1 = _mm_unpacklo_epi16(descs[2], descs[3]);
 	vtag0 = _mm_unpackhi_epi16(descs[0], descs[1]);
@@ -178,8 +184,8 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	ptype0 = _mm_shuffle_epi8(rss_flags, ptype0);
 
 	vtag1 = _mm_unpacklo_epi32(vtag0, vtag1);
-	vtag1 = _mm_srli_epi16(vtag1, VTAG_SHIFT);
-	vtag1 = _mm_and_si128(vtag1, pkttype_msk);
+	vtag1 = _mm_and_si128(vtag1, vlan_msk);
+	vtag1 = _mm_shuffle_epi8(vlan_map, vtag1);
 
 	vtag1 = _mm_or_si128(ptype0, vtag1);
 	vol.dword = _mm_cvtsi128_si64(vtag1);
@@ -221,6 +227,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				0, 0            /* ignore pkt_type field */
 			);
 	__m128i dd_check, eop_check;
+	uint8_t vlan_flags;
 
 	/* nb_pkts shall be less equal than RTE_IXGBE_MAX_RX_BURST */
 	nb_pkts = RTE_MIN(nb_pkts, RTE_IXGBE_MAX_RX_BURST);
@@ -269,6 +276,10 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 * the next 'n' mbufs into the cache
 	 */
 	sw_ring = &rxq->sw_ring[rxq->rx_tail];
+
+	/* ensure these 2 flags are in the lower 8 bits */
+	RTE_BUILD_BUG_ON((PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED) > UINT8_MAX);
+	vlan_flags = rxq->vlan_flags & UINT8_MAX;
 
 	/* A. load 4 packet in one loop
 	 * [A*. mask out 4 unused dirty field in desc]
@@ -330,7 +341,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		sterr_tmp1 = _mm_unpackhi_epi32(descs[1], descs[0]);
 
 		/* set ol_flags with vlan packet type */
-		desc_to_olflags_v(descs, &rx_pkts[pos]);
+		desc_to_olflags_v(descs, vlan_flags, &rx_pkts[pos]);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
