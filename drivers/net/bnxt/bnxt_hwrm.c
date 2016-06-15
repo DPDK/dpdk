@@ -742,6 +742,28 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp,
 	return rc;
 }
 
+int bnxt_hwrm_stat_ctx_free(struct bnxt *bp,
+			    struct bnxt_cp_ring_info *cpr, unsigned int idx)
+{
+	int rc;
+	struct hwrm_stat_ctx_free_input req = {.req_type = 0 };
+	struct hwrm_stat_ctx_free_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, STAT_CTX_FREE, -1, resp);
+
+	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
+	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	cpr->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
+	bp->grp_info[idx].fw_stats_ctx = cpr->hw_stats_ctx_id;
+
+	return rc;
+}
+
 int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0, i, j;
@@ -914,6 +936,28 @@ int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp)
 		rc = bnxt_hwrm_stat_clear(bp, cpr);
 		if (rc)
 			return rc;
+	}
+	return 0;
+}
+
+int bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
+{
+	int rc;
+	unsigned int i;
+	struct bnxt_cp_ring_info *cpr;
+
+	for (i = 0; i < bp->rx_cp_nr_rings + bp->tx_cp_nr_rings; i++) {
+		unsigned int idx = i + 1;
+
+		if (i >= bp->rx_cp_nr_rings)
+			cpr = bp->tx_queues[i - bp->rx_cp_nr_rings]->cp_ring;
+		else
+			cpr = bp->rx_queues[i]->cp_ring;
+		if (cpr->hw_stats_ctx_id != HWRM_NA_SIGNATURE) {
+			rc = bnxt_hwrm_stat_ctx_free(bp, cpr, idx);
+			if (rc)
+				return rc;
+		}
 	}
 	return 0;
 }
