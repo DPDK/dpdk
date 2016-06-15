@@ -51,11 +51,11 @@
 
 #define B_CP_DB_REARM(cpr, raw_cons)					\
 		(*(uint32_t *)((cpr)->cp_doorbell) = (DB_CP_REARM_FLAGS | \
-				RING_CMP(&cpr->cp_ring_struct, raw_cons)))
+				RING_CMP(cpr->cp_ring_struct, raw_cons)))
 
 #define B_CP_DIS_DB(cpr, raw_cons)					\
 		(*(uint32_t *)((cpr)->cp_doorbell) = (DB_CP_FLAGS |	\
-				RING_CMP(&cpr->cp_ring_struct, raw_cons)))
+				RING_CMP(cpr->cp_ring_struct, raw_cons)))
 
 struct bnxt_ring;
 struct bnxt_cp_ring_info {

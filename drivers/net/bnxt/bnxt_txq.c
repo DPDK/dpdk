@@ -39,6 +39,7 @@
 #include "bnxt_cpr.h"
 #include "bnxt_ring.h"
 #include "bnxt_txq.h"
+#include "bnxt_txr.h"
 
 /*
  * TX Queues
@@ -54,9 +55,20 @@ void bnxt_free_txq_stats(struct bnxt_tx_queue *txq)
 		cpr->hw_stats = NULL;
 }
 
-static void bnxt_tx_queue_release_mbufs(struct bnxt_tx_queue *txq __rte_unused)
+static void bnxt_tx_queue_release_mbufs(struct bnxt_tx_queue *txq)
 {
-	/* TODO: Requires interaction with TX ring */
+	struct bnxt_sw_tx_bd *sw_ring;
+	uint16_t i;
+
+	sw_ring = txq->tx_ring->tx_buf_ring;
+	if (sw_ring) {
+		for (i = 0; i < txq->tx_ring->tx_ring_struct->ring_size; i++) {
+			if (sw_ring[i].mbuf) {
+				rte_pktmbuf_free(sw_ring[i].mbuf);
+				sw_ring[i].mbuf = NULL;
+			}
+		}
+	}
 }
 
 void bnxt_free_tx_mbufs(struct bnxt *bp)
@@ -75,7 +87,15 @@ void bnxt_tx_queue_release_op(void *tx_queue)
 	struct bnxt_tx_queue *txq = (struct bnxt_tx_queue *)tx_queue;
 
 	if (txq) {
-		/* TODO: Free ring and stats here */
+		/* Free TX ring hardware descriptors */
+		bnxt_tx_queue_release_mbufs(txq);
+		bnxt_free_ring(txq->tx_ring->tx_ring_struct);
+
+		/* Free TX completion ring hardware descriptors */
+		bnxt_free_ring(txq->cp_ring->cp_ring_struct);
+
+		bnxt_free_txq_stats(txq);
+
 		rte_free(txq);
 	}
 }
@@ -111,14 +131,24 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_free_thresh = tx_conf->tx_free_thresh;
 
-	/* TODO: Initialize ring structure */
+	bnxt_init_tx_ring_struct(txq);
 
 	txq->queue_id = queue_idx;
 	txq->port_id = eth_dev->data->port_id;
 
-	/* TODO: Allocate TX ring hardware descriptors */
+	/* Allocate TX ring hardware descriptors */
+	if (bnxt_alloc_rings(bp, queue_idx, txq->tx_ring, NULL, txq->cp_ring,
+			"txr")) {
+		RTE_LOG(ERR, PMD, "ring_dma_zone_reserve for tx_ring failed!");
+		bnxt_tx_queue_release_op(txq);
+		return -ENOMEM;
+	}
 
-	/* TODO: Initialize the ring */
+	if (bnxt_init_one_tx_ring(txq)) {
+		RTE_LOG(ERR, PMD, "bnxt_init_one_tx_ring failed!");
+		bnxt_tx_queue_release_op(txq);
+		return -ENOMEM;
+	}
 
 	eth_dev->data->tx_queues[queue_idx] = txq;
 	return 0;

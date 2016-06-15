@@ -31,70 +31,41 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _BNXT_RING_H_
-#define _BNXT_RING_H_
+#ifndef _BNXT_TXR_H_
+#define _BNXT_TXR_H_
 
-#include <inttypes.h>
+#define MAX_TX_RINGS	16
+#define BNXT_TX_PUSH_THRESH 92
 
-#include <rte_memory.h>
+#define B_TX_DB(db, prod)						\
+		(*(uint32_t *)db = (DB_KEY_TX | prod))
 
-#define RING_NEXT(ring, idx)		(((idx) + 1) & (ring)->ring_mask)
+struct bnxt_tx_ring_info {
+	uint16_t		tx_prod;
+	uint16_t		tx_cons;
+	void			*tx_doorbell;
 
-#define RTE_MBUF_DATA_DMA_ADDR(mb) \
-	((uint64_t)((mb)->buf_physaddr + (mb)->data_off))
+	struct tx_bd_long	*tx_desc_ring;
+	struct bnxt_sw_tx_bd	*tx_buf_ring;
 
-#define DB_IDX_MASK						0xffffff
-#define DB_IDX_VALID						(0x1 << 26)
-#define DB_IRQ_DIS						(0x1 << 27)
-#define DB_KEY_TX						(0x0 << 28)
-#define DB_KEY_RX						(0x1 << 28)
-#define DB_KEY_CP						(0x2 << 28)
-#define DB_KEY_ST						(0x3 << 28)
-#define DB_KEY_TX_PUSH						(0x4 << 28)
-#define DB_LONG_TX_PUSH						(0x2 << 24)
+	phys_addr_t		tx_desc_mapping;
 
-#define DEFAULT_CP_RING_SIZE	256
-#define DEFAULT_RX_RING_SIZE	256
-#define DEFAULT_TX_RING_SIZE	256
+#define BNXT_DEV_STATE_CLOSING	0x1
+	uint32_t		dev_state;
 
-#define MAX_TPA		128
-
-/* These assume 4k pages */
-#define MAX_RX_DESC_CNT (8 * 1024)
-#define MAX_TX_DESC_CNT (4 * 1024)
-#define MAX_CP_DESC_CNT (16 * 1024)
-
-#define INVALID_HW_RING_ID      ((uint16_t)-1)
-
-struct bnxt_ring {
-	void			*bd;
-	phys_addr_t		bd_dma;
-	uint32_t		ring_size;
-	uint32_t		ring_mask;
-
-	int			vmem_size;
-	void			**vmem;
-
-	uint16_t		fw_ring_id; /* Ring id filled by Chimp FW */
+	struct bnxt_ring	*tx_ring_struct;
 };
 
-struct bnxt_ring_grp_info {
-	uint16_t	fw_stats_ctx;
-	uint16_t	fw_grp_id;
-	uint16_t	rx_fw_ring_id;
-	uint16_t	cp_fw_ring_id;
-	uint16_t	ag_fw_ring_id;
+struct bnxt_sw_tx_bd {
+	struct rte_mbuf		*mbuf; /* mbuf associated with TX descriptor */
+	uint8_t			is_gso;
+	unsigned short		nr_bds;
 };
 
-struct bnxt;
-struct bnxt_tx_ring_info;
-struct bnxt_rx_ring_info;
-struct bnxt_cp_ring_info;
-void bnxt_free_ring(struct bnxt_ring *ring);
-int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
-			    struct bnxt_tx_ring_info *tx_ring_info,
-			    struct bnxt_rx_ring_info *rx_ring_info,
-			    struct bnxt_cp_ring_info *cp_ring_info,
-			    const char *suffix);
+void bnxt_free_tx_rings(struct bnxt *bp);
+int bnxt_init_one_tx_ring(struct bnxt_tx_queue *txq);
+void bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq);
+uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts);
 
 #endif
