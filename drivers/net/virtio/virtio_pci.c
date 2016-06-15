@@ -55,6 +55,22 @@
  */
 #define VIRTIO_PCI_CONFIG(hw) (((hw)->use_msix) ? 24 : 20)
 
+static inline int
+check_vq_phys_addr_ok(struct virtqueue *vq)
+{
+	/* Virtio PCI device VIRTIO_PCI_QUEUE_PF register is 32bit,
+	 * and only accepts 32 bit page frame number.
+	 * Check if the allocated physical memory exceeds 16TB.
+	 */
+	if ((vq->vq_ring_mem + vq->vq_ring_size - 1) >>
+			(VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
+		PMD_INIT_LOG(ERR, "vring address shouldn't be above 16TB!");
+		return 0;
+	}
+
+	return 1;
+}
+
 /*
  * Since we are in legacy mode:
  * http://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
@@ -66,7 +82,6 @@
  * For powerpc which supports both, qemu supposes that cpu is big endian and
  * enforces this for the virtio-net stuff.
  */
-
 static void
 legacy_read_dev_config(struct virtio_hw *hw, size_t offset,
 		       void *dst, int length)
@@ -211,15 +226,20 @@ legacy_get_queue_num(struct virtio_hw *hw, uint16_t queue_id)
 	return dst;
 }
 
-static void
+static int
 legacy_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
 	uint32_t src;
+
+	if (!check_vq_phys_addr_ok(vq))
+		return -1;
 
 	rte_eal_pci_ioport_write(&hw->io, &vq->vq_queue_index, 2,
 			 VIRTIO_PCI_QUEUE_SEL);
 	src = vq->vq_ring_mem >> VIRTIO_PCI_QUEUE_ADDR_SHIFT;
 	rte_eal_pci_ioport_write(&hw->io, &src, 4, VIRTIO_PCI_QUEUE_PFN);
+
+	return 0;
 }
 
 static void
@@ -435,11 +455,14 @@ modern_get_queue_num(struct virtio_hw *hw, uint16_t queue_id)
 	return io_read16(&hw->common_cfg->queue_size);
 }
 
-static void
+static int
 modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
 	uint64_t desc_addr, avail_addr, used_addr;
 	uint16_t notify_off;
+
+	if (!check_vq_phys_addr_ok(vq))
+		return -1;
 
 	desc_addr = vq->vq_ring_mem;
 	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct vring_desc);
@@ -468,6 +491,8 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	PMD_INIT_LOG(DEBUG, "\t used_addr: %" PRIx64, used_addr);
 	PMD_INIT_LOG(DEBUG, "\t notify addr: %p (notify offset: %u)",
 		vq->notify_addr, notify_off);
+
+	return 0;
 }
 
 static void

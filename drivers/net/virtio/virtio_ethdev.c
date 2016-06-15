@@ -391,16 +391,6 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		}
 	}
 
-	/*
-	 * Virtio PCI device VIRTIO_PCI_QUEUE_PF register is 32bit,
-	 * and only accepts 32 bit page frame number.
-	 * Check if the allocated physical memory exceeds 16TB.
-	 */
-	if ((mz->phys_addr + vq->vq_ring_size - 1) >> (VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
-		PMD_INIT_LOG(ERR, "vring address shouldn't be above 16TB!");
-		ret = -ENOMEM;
-		goto fail_q_alloc;
-	}
 	memset(mz->addr, 0, sizeof(mz->len));
 
 	vq->vq_ring_mem = mz->phys_addr;
@@ -485,7 +475,12 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		*pvq = cvq;
 	}
 
-	hw->vtpci_ops->setup_queue(hw, vq);
+	if (hw->vtpci_ops->setup_queue(hw, vq) < 0) {
+		PMD_INIT_LOG(ERR, "setup_queue failed");
+		virtio_dev_queue_release(vq);
+		return -EINVAL;
+	}
+
 	vq->configured = 1;
 	return 0;
 
