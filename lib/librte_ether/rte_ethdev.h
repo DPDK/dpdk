@@ -916,7 +916,19 @@ struct rte_eth_txq_info {
  */
 struct rte_eth_xstats {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint64_t id;
 	uint64_t value;
+};
+
+/**
+ * A name-key lookup element for extended statistics.
+ *
+ * This structure is used to map between names and ID numbers
+ * for extended ethernet statistics.
+ */
+struct rte_eth_xstat_name {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint64_t id;
 };
 
 #define ETH_DCB_NUM_TCS    8
@@ -1053,6 +1065,10 @@ typedef int (*eth_xstats_get_t)(struct rte_eth_dev *dev,
 
 typedef void (*eth_xstats_reset_t)(struct rte_eth_dev *dev);
 /**< @internal Reset extended stats of an Ethernet device. */
+
+typedef int (*eth_xstats_get_names_t)(struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned size);
+/**< @internal Get names of extended stats of an Ethernet device. */
 
 typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
 					     uint16_t queue_id,
@@ -1401,6 +1417,8 @@ struct eth_dev_ops {
 	eth_stats_reset_t          stats_reset;   /**< Reset generic device statistics. */
 	eth_xstats_get_t           xstats_get;    /**< Get extended device statistics. */
 	eth_xstats_reset_t         xstats_reset;  /**< Reset extended device statistics. */
+	eth_xstats_get_names_t     xstats_get_names;
+	/**< Get names of extended statistics. */
 	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
 	/**< Configure per queue stat counter mapping. */
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
@@ -2251,6 +2269,29 @@ int rte_eth_stats_get(uint8_t port_id, struct rte_eth_stats *stats);
  *   The port identifier of the Ethernet device.
  */
 void rte_eth_stats_reset(uint8_t port_id);
+
+/**
+ * Retrieve names of extended statistics of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param xstats_names
+ *  Block of memory to insert names into. Must be at least size in capacity.
+ *  If set to NULL, function returns required capacity.
+ * @param size
+ *  Capacity of xstats_names (number of names).
+ * @return
+ *   - positive value lower or equal to size: success. The return value
+ *     is the number of entries filled in the stats table.
+ *   - positive value higher than size: error, the given statistics table
+ *     is too small. The return value corresponds to the size that should
+ *     be given to succeed. The entries in the table are not valid and
+ *     shall not be used by the caller.
+ *   - negative value on error (invalid port id)
+ */
+int rte_eth_xstats_get_names(uint8_t port_id,
+		struct rte_eth_xstat_name *xstats_names,
+		unsigned size);
 
 /**
  * Retrieve extended statistics of an Ethernet device.

@@ -299,10 +299,27 @@ Extended Statistics API
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The extended statistics API allows each individual PMD to expose a unique set
-of statistics. The client of the API provides an array of
-``struct rte_eth_xstats`` type. Each ``struct rte_eth_xstats`` contains a
-string and value pair. The amount of xstats exposed, and position of the
-statistic in the array must remain constant during runtime.
+of statistics. Accessing these from application programs is done via two
+functions:
+
+* ``rte_eth_xstats_get``: Fills in an array of ``struct rte_eth_xstat``
+  with extended statistics.
+* ``rte_eth_xstats_get_names``: Fills in an array of
+  ``struct rte_eth_xstat_name`` with extended statistic name lookup
+  information.
+
+Each ``struct rte_eth_xstat`` contains an identifier and value pair, and
+each ``struct rte_eth_xstat_name`` contains an identifier and string pair.
+Each identifier within ``struct rte_eth_xstat`` must have a corresponding
+entry in ``struct rte_eth_xstat_name`` with a matching identifier. These
+identifiers, as well as the number of extended statistic exposed, must
+remain constant during runtime.
+
+Note that extended statistic identifiers are driver-specific, and hence
+might not be the same for different ports. Although it is expected that
+drivers will make the identifiers used within ``struct rte_eth_xstat`` and
+``struct rte_eth_xstat_name`` entries match the entries' array index, this
+property should not be relied on by applications for lookups.
 
 A naming scheme exists for the strings exposed to clients of the API. This is
 to allow scraping of the API for statistics of interest. The naming scheme uses
