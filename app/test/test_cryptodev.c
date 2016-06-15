@@ -112,21 +112,9 @@ setup_test_string(struct rte_mempool *mpool,
 	return m;
 }
 
-#if HEX_DUMP
-static void
-hexdump_mbuf_data(FILE *f, const char *title, struct rte_mbuf *m)
-{
-	rte_hexdump(f, title, rte_pktmbuf_mtod(m, const void *), m->data_len);
-}
-#endif
-
 static struct rte_crypto_op *
 process_crypto_request(uint8_t dev_id, struct rte_crypto_op *op)
 {
-#if HEX_DUMP
-	hexdump_mbuf_data(stdout, "Enqueued Packet", ibuf);
-#endif
-
 	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
 		printf("Error sending packet for encryption");
 		return NULL;
@@ -136,11 +124,6 @@ process_crypto_request(uint8_t dev_id, struct rte_crypto_op *op)
 
 	while (rte_cryptodev_dequeue_burst(dev_id, 0, &op, 1) == 0)
 		rte_pause();
-
-#if HEX_DUMP
-	if (obuf)
-		hexdump_mbuf_data(stdout, "Dequeued Packet", obuf);
-#endif
 
 	return op;
 }
