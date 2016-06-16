@@ -1399,7 +1399,7 @@ int
 rte_eal_hugepage_attach(void)
 {
 	const struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	const struct hugepage_file *hp = NULL;
+	struct hugepage_file *hp = NULL;
 	unsigned num_hp = 0;
 	unsigned i, s = 0; /* s used to track the segment number */
 	off_t size;
@@ -1481,7 +1481,7 @@ rte_eal_hugepage_attach(void)
 
 	size = getFileSize(fd_hugepage);
 	hp = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd_hugepage, 0);
-	if (hp == NULL) {
+	if (hp == MAP_FAILED) {
 		RTE_LOG(ERR, EAL, "Could not mmap %s\n", eal_hugepage_info_path());
 		goto error;
 	}
@@ -1545,12 +1545,19 @@ rte_eal_hugepage_attach(void)
 		s++;
 	}
 	/* unmap the hugepage config file, since we are done using it */
-	munmap((void *)(uintptr_t)hp, size);
+	munmap(hp, size);
 	close(fd_zero);
 	close(fd_hugepage);
 	return 0;
 
 error:
+	s = 0;
+	while (s < RTE_MAX_MEMSEG && mcfg->memseg[s].len > 0) {
+		munmap(mcfg->memseg[s].addr, mcfg->memseg[s].len);
+		s++;
+	}
+	if (hp != NULL && hp != MAP_FAILED)
+		munmap(hp, size);
 	if (fd_zero >= 0)
 		close(fd_zero);
 	if (fd_hugepage >= 0)
