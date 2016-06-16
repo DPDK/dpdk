@@ -55,7 +55,7 @@ Supported Features
 - TSS
 - Multiple MAC address
 - Default pause flow control
-- SR-IOV VF
+- SR-IOV VF for 25G/40G modes
 
 Non-supported Features
 ----------------------
@@ -70,13 +70,13 @@ Non-supported Features
 Supported QLogic Adapters
 -------------------------
 
-- QLogic FastLinQ QL4xxxx 25G/40G CNAs
+- QLogic FastLinQ QL4xxxx 25G/40G/100G CNAs.
 
 Prerequisites
 -------------
 
-- Requires firmware version **8.7.x.** and management
-  firmware version **8.7.x or higher**. Firmware may be available
+- Requires firmware version **8.7.x.** and management firmware
+  version **8.7.x or higher**. Firmware may be available
   inbox in certain newer Linux distros under the standard directory
   ``E.g. /lib/firmware/qed/qed_init_values_zipped-8.7.7.0.bin``
 

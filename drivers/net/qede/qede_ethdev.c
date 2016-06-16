@@ -7,10 +7,12 @@
  */
 
 #include "qede_ethdev.h"
+#include <rte_alarm.h>
 
 /* Globals */
 static const struct qed_eth_ops *qed_ops;
 static const char *drivername = "qede pmd";
+static int64_t timer_period = 1;
 
 static void qede_interrupt_action(struct ecore_hwfn *p_hwfn)
 {
@@ -358,6 +360,21 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
+	/* Check requirements for 100G mode */
+	if (edev->num_hwfns > 1) {
+		if (eth_dev->data->nb_rx_queues < 2) {
+			DP_NOTICE(edev, false,
+				  "100G mode requires minimum two queues\n");
+			return -EINVAL;
+		}
+
+		if ((eth_dev->data->nb_rx_queues % 2) != 0) {
+			DP_NOTICE(edev, false,
+				  "100G mode requires even number of queues\n");
+			return -EINVAL;
+		}
+	}
+
 	qdev->num_rss = eth_dev->data->nb_rx_queues;
 
 	/* Initial state */
@@ -540,6 +557,26 @@ static void qede_promiscuous_disable(struct rte_eth_dev *eth_dev)
 		qede_rx_mode_setting(eth_dev, QED_FILTER_RX_MODE_TYPE_REGULAR);
 }
 
+static void qede_poll_sp_sb_cb(void *param)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	int rc;
+
+	qede_interrupt_action(ECORE_LEADING_HWFN(edev));
+	qede_interrupt_action(&edev->hwfns[1]);
+
+	rc = rte_eal_alarm_set(timer_period * US_PER_S,
+			       qede_poll_sp_sb_cb,
+			       (void *)eth_dev);
+	if (rc != 0) {
+		DP_ERR(edev, "Unable to start periodic"
+			     " timer rc %d\n", rc);
+		assert(false && "Unable to start periodic timer");
+	}
+}
+
 static void qede_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
@@ -571,6 +608,9 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 
 	rte_intr_callback_unregister(&eth_dev->pci_dev->intr_handle,
 				     qede_interrupt_handler, (void *)eth_dev);
+
+	if (edev->num_hwfns > 1)
+		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
 
 	qdev->state = QEDE_CLOSE;
 }
@@ -1070,9 +1110,26 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	params.drv_eng = QEDE_ENGINEERING_VERSION;
 	strncpy((char *)params.name, "qede LAN", QED_DRV_VER_STR_SIZE);
 
+	/* For CMT mode device do periodic polling for slowpath events.
+	 * This is required since uio device uses only one MSI-x
+	 * interrupt vector but we need one for each engine.
+	 */
+	if (edev->num_hwfns > 1) {
+		rc = rte_eal_alarm_set(timer_period * US_PER_S,
+				       qede_poll_sp_sb_cb,
+				       (void *)eth_dev);
+		if (rc != 0) {
+			DP_ERR(edev, "Unable to start periodic"
+				     " timer rc %d\n", rc);
+			return -EINVAL;
+		}
+	}
+
 	rc = qed_ops->common->slowpath_start(edev, &params);
 	if (rc) {
 		DP_ERR(edev, "Cannot start slowpath rc = %d\n", rc);
+		rte_eal_alarm_cancel(qede_poll_sp_sb_cb,
+				     (void *)eth_dev);
 		return -ENODEV;
 	}
 
@@ -1081,6 +1138,8 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		DP_ERR(edev, "Cannot get device_info rc %d\n", rc);
 		qed_ops->common->slowpath_stop(edev);
 		qed_ops->common->remove(edev);
+		rte_eal_alarm_cancel(qede_poll_sp_sb_cb,
+				     (void *)eth_dev);
 		return -ENODEV;
 	}
 
@@ -1106,6 +1165,8 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		DP_ERR(edev, "Failed to allocate MAC address\n");
 		qed_ops->common->slowpath_stop(edev);
 		qed_ops->common->remove(edev);
+		rte_eal_alarm_cancel(qede_poll_sp_sb_cb,
+				     (void *)eth_dev);
 		return -ENOMEM;
 	}
 
@@ -1220,6 +1281,9 @@ static struct rte_pci_id pci_id_qede_map[] = {
 	},
 	{
 		QEDE_RTE_PCI_DEVICE(PCI_DEVICE_ID_57980S_25)
+	},
+	{
+		QEDE_RTE_PCI_DEVICE(PCI_DEVICE_ID_57980S_100)
 	},
 	{.vendor_id = 0,}
 };

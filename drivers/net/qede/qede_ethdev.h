@@ -81,7 +81,7 @@
 	struct ecore_dev *edev = &qdev->edev;			\
 }
 
-/************* QLogic 25G/40G vendor/devices ids *************/
+/************* QLogic 25G/40G/100G vendor/devices ids *************/
 #define PCI_VENDOR_ID_QLOGIC            0x1077
 
 #define CHIP_NUM_57980E                 0x1634
@@ -90,6 +90,7 @@
 #define CHIP_NUM_57980S_40              0x1634
 #define CHIP_NUM_57980S_25              0x1656
 #define CHIP_NUM_57980S_IOV             0x1664
+#define CHIP_NUM_57980S_100             0x1644
 
 #define PCI_DEVICE_ID_NX2_57980E        CHIP_NUM_57980E
 #define PCI_DEVICE_ID_NX2_57980S        CHIP_NUM_57980S
@@ -97,6 +98,7 @@
 #define PCI_DEVICE_ID_57980S_40         CHIP_NUM_57980S_40
 #define PCI_DEVICE_ID_57980S_25         CHIP_NUM_57980S_25
 #define PCI_DEVICE_ID_57980S_IOV        CHIP_NUM_57980S_IOV
+#define PCI_DEVICE_ID_57980S_100        CHIP_NUM_57980S_100
 
 extern char fw_file[];
 
