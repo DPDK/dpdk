@@ -92,6 +92,13 @@
 #define E1000_VTIVAR_MISC_MAILBOX        0
 #define E1000_VTIVAR_MISC_INTR_MASK      0x3
 
+/* External VLAN Enable bit mask */
+#define E1000_CTRL_EXT_EXT_VLAN      (1 << 26)
+
+/* External VLAN Ether Type bit mask and shift */
+#define E1000_VET_VET_EXT            0xFFFF0000
+#define E1000_VET_VET_EXT_SHIFT      16
+
 static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
@@ -2334,21 +2341,25 @@ eth_igb_vlan_tpid_set(struct rte_eth_dev *dev,
 {
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t reg = ETHER_TYPE_VLAN;
-	int ret = 0;
+	uint32_t reg, qinq;
 
-	switch (vlan_type) {
-	case ETH_VLAN_TYPE_INNER:
-		reg |= (tpid << 16);
+	qinq = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	qinq &= E1000_CTRL_EXT_EXT_VLAN;
+
+	/* only outer TPID of double VLAN can be configured*/
+	if (qinq && vlan_type == ETH_VLAN_TYPE_OUTER) {
+		reg = E1000_READ_REG(hw, E1000_VET);
+		reg = (reg & (~E1000_VET_VET_EXT)) |
+			((uint32_t)tpid << E1000_VET_VET_EXT_SHIFT);
 		E1000_WRITE_REG(hw, E1000_VET, reg);
-		break;
-	default:
-		ret = -EINVAL;
-		PMD_DRV_LOG(ERR, "Unsupported vlan type %d\n", vlan_type);
-		break;
+
+		return 0;
 	}
 
-	return ret;
+	/* all other TPID values are read-only*/
+	PMD_DRV_LOG(ERR, "Not supported");
+
+	return -ENOTSUP;
 }
 
 static void
