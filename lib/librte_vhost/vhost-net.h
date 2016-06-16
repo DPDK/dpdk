@@ -134,6 +134,7 @@ struct virtio_net {
 	char			ifname[IF_NAME_SZ];
 	uint64_t		log_size;
 	uint64_t		log_base;
+	uint64_t		log_addr;
 	struct ether_addr	mac;
 
 } __rte_cache_aligned;

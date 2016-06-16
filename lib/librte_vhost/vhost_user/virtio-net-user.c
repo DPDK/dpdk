@@ -95,6 +95,10 @@ vhost_backend_cleanup(struct virtio_net *dev)
 		free(dev->mem);
 		dev->mem = NULL;
 	}
+	if (dev->log_addr) {
+		munmap((void *)(uintptr_t)dev->log_addr, dev->log_size);
+		dev->log_addr = 0;
+	}
 }
 
 int
@@ -407,8 +411,15 @@ user_set_log_base(int vid, struct VhostUserMsg *msg)
 		return -1;
 	}
 
-	/* TODO: unmap on stop */
-	dev->log_base = (uint64_t)(uintptr_t)addr + off;
+	/*
+	 * Free previously mapped log memory on occasionally
+	 * multiple VHOST_USER_SET_LOG_BASE.
+	 */
+	if (dev->log_addr) {
+		munmap((void *)(uintptr_t)dev->log_addr, dev->log_size);
+	}
+	dev->log_addr = (uint64_t)(uintptr_t)addr;
+	dev->log_base = dev->log_addr + off;
 	dev->log_size = size;
 
 	return 0;
