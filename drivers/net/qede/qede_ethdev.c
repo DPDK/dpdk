@@ -885,6 +885,38 @@ int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	uint32_t frame_size;
+	struct qede_dev *qdev = dev->data->dev_private;
+	struct rte_eth_dev_info dev_info = {0};
+
+	qede_dev_info_get(dev, &dev_info);
+
+	/* VLAN_TAG = 4 */
+	frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + 4;
+
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+		return -EINVAL;
+
+	if (!dev->data->scattered_rx &&
+	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)
+		return -EINVAL;
+
+	if (frame_size > ETHER_MAX_LEN)
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+	else
+		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+	qdev->mtu = mtu;
+	qede_dev_stop(dev);
+	qede_dev_start(dev);
+
+	return 0;
+}
+
 static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_configure = qede_dev_configure,
 	.dev_infos_get = qede_dev_info_get,
@@ -916,6 +948,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.rss_hash_conf_get = qede_rss_hash_conf_get,
 	.reta_update  = qede_rss_reta_update,
 	.reta_query  = qede_rss_reta_query,
+	.mtu_set = qede_set_mtu,
 };
 
 static const struct eth_dev_ops qede_eth_vf_dev_ops = {
@@ -944,6 +977,7 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.rss_hash_conf_get = qede_rss_hash_conf_get,
 	.reta_update  = qede_rss_reta_update,
 	.reta_query  = qede_rss_reta_query,
+	.mtu_set = qede_set_mtu,
 };
 
 static void qede_update_pf_params(struct ecore_dev *edev)
