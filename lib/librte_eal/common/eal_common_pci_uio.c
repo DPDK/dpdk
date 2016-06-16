@@ -53,7 +53,7 @@ EAL_REGISTER_TAILQ(rte_uio_tailq)
 static int
 pci_uio_map_secondary(struct rte_pci_device *dev)
 {
-	int fd, i;
+	int fd, i, j;
 	struct mapped_pci_resource *uio_res;
 	struct mapped_pci_res_list *uio_res_list =
 			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
@@ -85,6 +85,16 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 					"Cannot mmap device resource file %s to address: %p\n",
 					uio_res->maps[i].path,
 					uio_res->maps[i].addr);
+				if (mapaddr != MAP_FAILED) {
+					/* unmap addrs correctly mapped */
+					for (j = 0; j < i; j++)
+						pci_unmap_resource(
+							uio_res->maps[j].addr,
+							(size_t)uio_res->maps[j].size);
+					/* unmap addr wrongly mapped */
+					pci_unmap_resource(mapaddr,
+						(size_t)uio_res->maps[i].size);
+				}
 				return -1;
 			}
 		}
