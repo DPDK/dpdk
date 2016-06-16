@@ -169,7 +169,8 @@ pci_uio_unmap(struct mapped_pci_resource *uio_res)
 	for (i = 0; i != uio_res->nb_maps; i++) {
 		pci_unmap_resource(uio_res->maps[i].addr,
 				(size_t)uio_res->maps[i].size);
-		rte_free(uio_res->maps[i].path);
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+			rte_free(uio_res->maps[i].path);
 	}
 }
 
