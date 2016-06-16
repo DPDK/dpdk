@@ -103,7 +103,7 @@ Most of these differences are summarized below.
    Multicast MAC filter   Y Y Y         Y Y Y Y Y             Y Y     Y Y         Y Y         Y Y
    RSS hash                       Y   Y Y Y Y Y Y Y   Y Y Y Y Y Y Y Y Y Y         Y Y     Y
    RSS key update                     Y   Y Y Y Y Y   Y Y Y Y Y Y Y Y   Y         Y Y     Y
-   RSS reta update            Y       Y   Y Y Y Y Y   Y Y Y Y Y Y Y Y   Y                 Y
+   RSS reta update            Y       Y   Y Y Y Y Y   Y Y Y Y Y Y Y Y   Y         Y Y     Y
    VMDq                                   Y Y     Y   Y Y     Y Y
    SR-IOV                   Y         Y   Y Y     Y   Y Y             Y Y           Y     Y
    DCB                                    Y Y     Y   Y Y
