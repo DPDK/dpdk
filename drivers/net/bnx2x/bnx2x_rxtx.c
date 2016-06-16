@@ -418,7 +418,6 @@ bnx2x_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rx_mb->next = NULL;
 		rx_mb->pkt_len = rx_mb->data_len = len;
 		rx_mb->port = rxq->port_id;
-		rx_mb->buf_len = len + pad;
 		rte_prefetch1(rte_pktmbuf_mtod(rx_mb, void *));
 
 		/*
