@@ -532,13 +532,18 @@ static int
 qede_config_rss(struct rte_eth_dev *eth_dev,
 		struct qed_update_vport_rss_params *rss_params)
 {
+	struct rte_eth_rss_conf rss_conf;
 	enum rte_eth_rx_mq_mode mode = eth_dev->data->dev_conf.rxmode.mq_mode;
-	struct rte_eth_rss_conf rss_conf =
-	    eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
+	uint8_t rss_caps;
 	unsigned int i;
+	uint64_t hf;
+	uint32_t *key;
 
+	rss_conf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
+	key = (uint32_t *)rss_conf.rss_key;
+	hf = rss_conf.rss_hf;
 	PMD_INIT_FUNC_TRACE(edev);
 
 	/* Check if RSS conditions are met.
@@ -553,16 +558,12 @@ qede_config_rss(struct rte_eth_dev *eth_dev,
 
 	DP_INFO(edev, "RSS flag is set\n");
 
-	if (rss_conf.rss_hf == 0) {
-		DP_NOTICE(edev, false, "No RSS hash function to apply\n");
-		return -EINVAL;
-	}
+	if (rss_conf.rss_hf == 0)
+		DP_NOTICE(edev, false, "RSS hash function = 0, disables RSS\n");
 
-	if (rss_conf.rss_key != NULL) {
-		DP_NOTICE(edev, false,
-			  "User provided RSS key is not supported\n");
-		return -EINVAL;
-	}
+	if (rss_conf.rss_key != NULL)
+		memcpy(qdev->rss_params.rss_key, rss_conf.rss_key,
+		       rss_conf.rss_key_len);
 
 	memset(rss_params, 0, sizeof(*rss_params));
 
@@ -570,8 +571,23 @@ qede_config_rss(struct rte_eth_dev *eth_dev,
 		rss_params->rss_ind_table[i] = qede_rxfh_indir_default(i,
 							QEDE_RSS_CNT(qdev));
 
-	qede_prandom_bytes(rss_params->rss_key,
-			   sizeof(rss_params->rss_key));
+	/* key and protocols */
+	if (rss_conf.rss_key == NULL)
+		qede_prandom_bytes(rss_params->rss_key,
+				   sizeof(rss_params->rss_key));
+	else
+		memcpy(rss_params->rss_key, rss_conf.rss_key,
+		       rss_conf.rss_key_len);
+
+	rss_caps = 0;
+	rss_caps |= (hf & ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
+	rss_caps |= (hf & ETH_RSS_IPV6)              ? ECORE_RSS_IPV6 : 0;
+	rss_caps |= (hf & ETH_RSS_IPV6_EX)           ? ECORE_RSS_IPV6 : 0;
+	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? ECORE_RSS_IPV4_TCP : 0;
+	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? ECORE_RSS_IPV6_TCP : 0;
+	rss_caps |= (hf & ETH_RSS_IPV6_TCP_EX)       ? ECORE_RSS_IPV6_TCP : 0;
+
+	rss_params->rss_caps = rss_caps;
 
 	DP_INFO(edev, "RSS check passes\n");
 

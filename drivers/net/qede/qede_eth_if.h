@@ -53,6 +53,7 @@ struct qed_dev_eth_info {
 struct qed_update_vport_rss_params {
 	uint16_t rss_ind_table[128];
 	uint32_t rss_key[10];
+	u8 rss_caps;
 };
 
 struct qed_stop_rxq_params {

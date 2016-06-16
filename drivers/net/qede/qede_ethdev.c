@@ -753,6 +753,47 @@ qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 	return NULL;
 }
 
+int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_rss_conf *rss_conf)
+{
+	struct qed_update_vport_params vport_update_params;
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+	uint8_t rss_caps;
+	uint32_t *key = (uint32_t *)rss_conf->rss_key;
+	uint64_t hf = rss_conf->rss_hf;
+	int i;
+
+	if (hf == 0)
+		DP_ERR(edev, "hash function 0 will disable RSS\n");
+
+	rss_caps = 0;
+	rss_caps |= (hf & ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
+	rss_caps |= (hf & ETH_RSS_IPV6)              ? ECORE_RSS_IPV6 : 0;
+	rss_caps |= (hf & ETH_RSS_IPV6_EX)           ? ECORE_RSS_IPV6 : 0;
+	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? ECORE_RSS_IPV4_TCP : 0;
+	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? ECORE_RSS_IPV6_TCP : 0;
+	rss_caps |= (hf & ETH_RSS_IPV6_TCP_EX)       ? ECORE_RSS_IPV6_TCP : 0;
+
+	/* If the mapping doesn't fit any supported, return */
+	if (rss_caps == 0 && hf != 0)
+		return -EINVAL;
+
+	memset(&vport_update_params, 0, sizeof(vport_update_params));
+
+	if (key != NULL)
+		memcpy(qdev->rss_params.rss_key, rss_conf->rss_key,
+		       rss_conf->rss_key_len);
+
+	qdev->rss_params.rss_caps = rss_caps;
+	memcpy(&vport_update_params.rss_params, &qdev->rss_params,
+	       sizeof(vport_update_params.rss_params));
+	vport_update_params.update_rss_flg = 1;
+	vport_update_params.vport_id = 0;
+
+	return qdev->ops->vport_update(edev, &vport_update_params);
+}
+
 static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_configure = qede_dev_configure,
 	.dev_infos_get = qede_dev_info_get,
@@ -780,6 +821,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.flow_ctrl_set = qede_flow_ctrl_set,
 	.flow_ctrl_get = qede_flow_ctrl_get,
 	.dev_supported_ptypes_get = qede_dev_supported_ptypes_get,
+	.rss_hash_update = qede_rss_hash_update,
 };
 
 static const struct eth_dev_ops qede_eth_vf_dev_ops = {
@@ -804,6 +846,7 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.vlan_offload_set = qede_vlan_offload_set,
 	.vlan_filter_set = qede_vlan_filter_set,
 	.dev_supported_ptypes_get = qede_dev_supported_ptypes_get,
+	.rss_hash_update = qede_rss_hash_update,
 };
 
 static void qede_update_pf_params(struct ecore_dev *edev)
