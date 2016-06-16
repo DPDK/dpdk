@@ -58,7 +58,7 @@ rte_eal_parse_devargs_str(const char *devargs_str,
 		return -1;
 
 	*drvname = strdup(devargs_str);
-	if (drvname == NULL)
+	if (*drvname == NULL)
 		return -1;
 
 	/* set the first ',' to '\0' to split name and arguments */
