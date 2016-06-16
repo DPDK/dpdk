@@ -860,6 +860,31 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 	return qdev->ops->vport_update(edev, &vport_update_params);
 }
 
+int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	uint16_t i, idx, shift;
+
+	if (reta_size > ETH_RSS_RETA_SIZE_128) {
+		struct ecore_dev *edev = &qdev->edev;
+		DP_ERR(edev, "reta_size %d is not supported\n",
+		       reta_size);
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift)) {
+			uint8_t entry = qdev->rss_params.rss_ind_table[i];
+			reta_conf[idx].reta[shift] = entry;
+		}
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_configure = qede_dev_configure,
 	.dev_infos_get = qede_dev_info_get,
@@ -890,6 +915,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.rss_hash_update = qede_rss_hash_update,
 	.rss_hash_conf_get = qede_rss_hash_conf_get,
 	.reta_update  = qede_rss_reta_update,
+	.reta_query  = qede_rss_reta_query,
 };
 
 static const struct eth_dev_ops qede_eth_vf_dev_ops = {
@@ -917,6 +943,7 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.rss_hash_update = qede_rss_hash_update,
 	.rss_hash_conf_get = qede_rss_hash_conf_get,
 	.reta_update  = qede_rss_reta_update,
+	.reta_query  = qede_rss_reta_query,
 };
 
 static void qede_update_pf_params(struct ecore_dev *edev)
