@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -59,12 +59,10 @@
 #include <rte_compat.h>
 
 #include "rte_hash.h"
-#if defined(RTE_ARCH_X86)
-#include "rte_cmp_x86.h"
-#endif
+#include "rte_cuckoo_hash.h"
 
-#if defined(RTE_ARCH_ARM64)
-#include "rte_cmp_arm64.h"
+#if defined(RTE_ARCH_X86)
+#include "rte_cuckoo_hash_x86.h"
 #endif
 
 TAILQ_HEAD(rte_hash_list, rte_tailq_entry);
@@ -73,153 +71,6 @@ static struct rte_tailq_elem rte_hash_tailq = {
 	.name = "RTE_HASH",
 };
 EAL_REGISTER_TAILQ(rte_hash_tailq)
-
-/* Macro to enable/disable run-time checking of function parameters */
-#if defined(RTE_LIBRTE_HASH_DEBUG)
-#define RETURN_IF_TRUE(cond, retval) do { \
-	if (cond) \
-		return retval; \
-} while (0)
-#else
-#define RETURN_IF_TRUE(cond, retval)
-#endif
-
-/* Hash function used if none is specified */
-#if defined(RTE_MACHINE_CPUFLAG_SSE4_2) || defined(RTE_MACHINE_CPUFLAG_CRC32)
-#include <rte_hash_crc.h>
-#define DEFAULT_HASH_FUNC       rte_hash_crc
-#else
-#include <rte_jhash.h>
-#define DEFAULT_HASH_FUNC       rte_jhash
-#endif
-
-/** Number of items per bucket. */
-#define RTE_HASH_BUCKET_ENTRIES		4
-
-#define NULL_SIGNATURE			0
-
-#define KEY_ALIGNMENT			16
-
-#define LCORE_CACHE_SIZE		8
-
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-/*
- * All different options to select a key compare function,
- * based on the key size and custom function.
- */
-enum cmp_jump_table_case {
-	KEY_CUSTOM = 0,
-	KEY_16_BYTES,
-	KEY_32_BYTES,
-	KEY_48_BYTES,
-	KEY_64_BYTES,
-	KEY_80_BYTES,
-	KEY_96_BYTES,
-	KEY_112_BYTES,
-	KEY_128_BYTES,
-	KEY_OTHER_BYTES,
-	NUM_KEY_CMP_CASES,
-};
-
-/*
- * Table storing all different key compare functions
- * (multi-process supported)
- */
-const rte_hash_cmp_eq_t cmp_jump_table[NUM_KEY_CMP_CASES] = {
-	NULL,
-	rte_hash_k16_cmp_eq,
-	rte_hash_k32_cmp_eq,
-	rte_hash_k48_cmp_eq,
-	rte_hash_k64_cmp_eq,
-	rte_hash_k80_cmp_eq,
-	rte_hash_k96_cmp_eq,
-	rte_hash_k112_cmp_eq,
-	rte_hash_k128_cmp_eq,
-	memcmp
-};
-#else
-/*
- * All different options to select a key compare function,
- * based on the key size and custom function.
- */
-enum cmp_jump_table_case {
-	KEY_CUSTOM = 0,
-	KEY_OTHER_BYTES,
-	NUM_KEY_CMP_CASES,
-};
-
-/*
- * Table storing all different key compare functions
- * (multi-process supported)
- */
-const rte_hash_cmp_eq_t cmp_jump_table[NUM_KEY_CMP_CASES] = {
-	NULL,
-	memcmp
-};
-
-#endif
-
-struct lcore_cache {
-	unsigned len; /**< Cache len */
-	void *objs[LCORE_CACHE_SIZE]; /**< Cache objects */
-} __rte_cache_aligned;
-
-/** A hash table structure. */
-struct rte_hash {
-	char name[RTE_HASH_NAMESIZE];   /**< Name of the hash. */
-	uint32_t entries;               /**< Total table entries. */
-	uint32_t num_buckets;           /**< Number of buckets in table. */
-	uint32_t key_len;               /**< Length of hash key. */
-	rte_hash_function hash_func;    /**< Function used to calculate hash. */
-	uint32_t hash_func_init_val;    /**< Init value used by hash_func. */
-	rte_hash_cmp_eq_t rte_hash_custom_cmp_eq;
-	/**< Custom function used to compare keys. */
-	enum cmp_jump_table_case cmp_jump_table_idx;
-	/**< Indicates which compare function to use. */
-	uint32_t bucket_bitmask;        /**< Bitmask for getting bucket index
-						from hash signature. */
-	uint32_t key_entry_size;         /**< Size of each key entry. */
-
-	struct rte_ring *free_slots;    /**< Ring that stores all indexes
-						of the free slots in the key table */
-	void *key_store;                /**< Table storing all keys and data */
-	struct rte_hash_bucket *buckets;	/**< Table with buckets storing all the
-							hash values and key indexes
-							to the key table*/
-	uint8_t hw_trans_mem_support;	/**< Hardware transactional
-							memory support */
-	struct lcore_cache *local_free_slots;
-	/**< Local cache per lcore, storing some indexes of the free slots */
-} __rte_cache_aligned;
-
-/* Structure storing both primary and secondary hashes */
-struct rte_hash_signatures {
-	union {
-		struct {
-			hash_sig_t current;
-			hash_sig_t alt;
-		};
-		uint64_t sig;
-	};
-};
-
-/* Structure that stores key-value pair */
-struct rte_hash_key {
-	union {
-		uintptr_t idata;
-		void *pdata;
-	};
-	/* Variable key size */
-	char key[0];
-} __attribute__((aligned(KEY_ALIGNMENT)));
-
-/** Bucket structure */
-struct rte_hash_bucket {
-	struct rte_hash_signatures signatures[RTE_HASH_BUCKET_ENTRIES];
-	/* Includes dummy key index that always contains index 0 */
-	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES + 1];
-	uint8_t flag[RTE_HASH_BUCKET_ENTRIES];
-} __rte_cache_aligned;
 
 struct rte_hash *
 rte_hash_find_existing(const char *name)
@@ -372,7 +223,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 /*
  * If x86 architecture is used, select appropriate compare function,
- * which may use x86 instrinsics, otherwise use memcmp
+ * which may use x86 intrinsics, otherwise use memcmp
  */
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/* Select function to compare keys */
@@ -431,7 +282,23 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	h->free_slots = r;
 	h->hw_trans_mem_support = hw_trans_mem_support;
 
-	/* populate the free slots ring. Entry zero is reserved for key misses */
+	/* Turn on multi-writer only with explicit flat from user and TM
+	 * support.
+	 */
+	if (params->extra_flag & RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD) {
+		if (h->hw_trans_mem_support) {
+			h->add_key = ADD_KEY_MULTIWRITER_TM;
+		} else {
+			h->add_key = ADD_KEY_MULTIWRITER;
+			h->multiwriter_lock = rte_malloc(NULL,
+							sizeof(rte_spinlock_t),
+							LCORE_CACHE_SIZE);
+			rte_spinlock_init(h->multiwriter_lock);
+		}
+	} else
+		h->add_key = ADD_KEY_SINGLEWRITER;
+
+	/* Populate free slots ring. Entry zero is reserved for key misses. */
 	for (i = 1; i < params->entries + 1; i++)
 		rte_ring_sp_enqueue(r, (void *)((uintptr_t) i));
 
@@ -482,6 +349,8 @@ rte_hash_free(struct rte_hash *h)
 	if (h->hw_trans_mem_support)
 		rte_free(h->local_free_slots);
 
+	if (h->add_key == ADD_KEY_MULTIWRITER)
+		rte_free(h->multiwriter_lock);
 	rte_ring_free(h->free_slots);
 	rte_free(h->key_store);
 	rte_free(h->buckets);
@@ -632,6 +501,9 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	unsigned lcore_id;
 	struct lcore_cache *cached_free_slots = NULL;
 
+	if (h->add_key == ADD_KEY_MULTIWRITER)
+		rte_spinlock_lock(h->multiwriter_lock);
+
 	prim_bucket_idx = sig & h->bucket_bitmask;
 	prim_bkt = &h->buckets[prim_bucket_idx];
 	rte_prefetch0(prim_bkt);
@@ -712,35 +584,67 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	rte_memcpy(new_k->key, key, h->key_len);
 	new_k->pdata = data;
 
-	/* Insert new entry is there is room in the primary bucket */
-	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		/* Check if slot is available */
-		if (likely(prim_bkt->signatures[i].sig == NULL_SIGNATURE)) {
-			prim_bkt->signatures[i].current = sig;
-			prim_bkt->signatures[i].alt = alt_hash;
-			prim_bkt->key_idx[i] = new_idx;
+#if defined(RTE_ARCH_X86) /* currently only x86 support HTM */
+	if (h->add_key == ADD_KEY_MULTIWRITER_TM) {
+		ret = rte_hash_cuckoo_insert_mw_tm(prim_bkt,
+				sig, alt_hash, new_idx);
+		if (ret >= 0)
+			return new_idx - 1;
+
+		/* Primary bucket full, need to make space for new entry */
+		ret = rte_hash_cuckoo_make_space_mw_tm(h, prim_bkt, sig,
+							alt_hash, new_idx);
+
+		if (ret >= 0)
+			return new_idx - 1;
+
+		/* Also search secondary bucket to get better occupancy */
+		ret = rte_hash_cuckoo_make_space_mw_tm(h, sec_bkt, sig,
+							alt_hash, new_idx);
+
+		if (ret >= 0)
+			return new_idx - 1;
+	} else {
+#endif
+		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+			/* Check if slot is available */
+			if (likely(prim_bkt->signatures[i].sig == NULL_SIGNATURE)) {
+				prim_bkt->signatures[i].current = sig;
+				prim_bkt->signatures[i].alt = alt_hash;
+				prim_bkt->key_idx[i] = new_idx;
+				break;
+			}
+		}
+
+		if (i != RTE_HASH_BUCKET_ENTRIES) {
+			if (h->add_key == ADD_KEY_MULTIWRITER)
+				rte_spinlock_unlock(h->multiwriter_lock);
 			return new_idx - 1;
 		}
-	}
 
-	/* Primary bucket is full, so we need to make space for new entry */
-	ret = make_space_bucket(h, prim_bkt);
-	/*
-	 * After recursive function.
-	 * Insert the new entry in the position of the pushed entry
-	 * if successful or return error and
-	 * store the new slot back in the ring
-	 */
-	if (ret >= 0) {
-		prim_bkt->signatures[ret].current = sig;
-		prim_bkt->signatures[ret].alt = alt_hash;
-		prim_bkt->key_idx[ret] = new_idx;
-		return new_idx - 1;
+		/* Primary bucket full, need to make space for new entry
+		 * After recursive function.
+		 * Insert the new entry in the position of the pushed entry
+		 * if successful or return error and
+		 * store the new slot back in the ring
+		 */
+		ret = make_space_bucket(h, prim_bkt);
+		if (ret >= 0) {
+			prim_bkt->signatures[ret].current = sig;
+			prim_bkt->signatures[ret].alt = alt_hash;
+			prim_bkt->key_idx[ret] = new_idx;
+			if (h->add_key == ADD_KEY_MULTIWRITER)
+				rte_spinlock_unlock(h->multiwriter_lock);
+			return new_idx - 1;
+		}
+#if defined(RTE_ARCH_X86)
 	}
-
+#endif
 	/* Error in addition, store new slot back in the ring and return error */
 	enqueue_slot_back(h, cached_free_slots, (void *)((uintptr_t) new_idx));
 
+	if (h->add_key == ADD_KEY_MULTIWRITER)
+		rte_spinlock_unlock(h->multiwriter_lock);
 	return ret;
 }
 

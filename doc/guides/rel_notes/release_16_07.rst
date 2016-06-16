@@ -100,6 +100,18 @@ New Features
   A new Crypto PMD has been added, which provides KASUMI F8 (UEA1) ciphering
   and KASUMI F9 (UIA1) hashing.
 
+* **Added multi-writer support for RTE Hash with Intel TSX.**
+
+  The following features/modifications have been added to rte_hash library:
+
+  * Enabled application developers to use an extra flag for rte_hash creation
+    to specify default behavior (multi-thread safe/unsafe) with rte_hash_add_key
+    function.
+  * Changed Cuckoo search algorithm to breadth first search for multi-writer
+    routine and split Cuckoo Search and Move operations in order to reduce
+    transactional code region and improve TSX performance.
+  * Added a hash multi-writer test case for test app.
+
 * **Improved IP Pipeline Application.**
 
   The following features have been added to ip_pipeline application:
