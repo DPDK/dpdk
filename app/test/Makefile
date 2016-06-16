@@ -42,7 +42,8 @@ ifeq ($(CONFIG_RTE_APP_TEST),y)
 define linked_resource
 SRCS-y += $(1).res.o
 $(1).res.o: $(2)
-	$(OBJCOPY) -I binary -B $(RTE_OBJCOPY_ARCH) -O $(RTE_OBJCOPY_TARGET) \
+	@  echo '  MKRES $$@'
+	$Q $(OBJCOPY) -I binary -B $(RTE_OBJCOPY_ARCH) -O $(RTE_OBJCOPY_TARGET) \
 		--rename-section                                         \
 			.data=.rodata,alloc,load,data,contents,readonly  \
 		--redefine-sym _binary__dev_stdin_start=beg_$(1)         \
@@ -54,7 +55,8 @@ endef
 ifeq ($(CONFIG_RTE_APP_TEST_RESOURCE_TAR),y)
 define linked_tar_resource
 $(1).tar: $(2)
-	tar -C $$(dir $$<) -cf $$@ $$(notdir $$<)
+	@  echo '  TAR $$@'
+	$Q tar -C $$(dir $$<) -cf $$@ $$(notdir $$<)
 $(call linked_resource,$(1),$(1).tar)
 endef
 else # ! CONFIG_RTE_APP_TEST_RESOURCE_TAR
