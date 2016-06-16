@@ -377,33 +377,38 @@ qed_configure_filter_mcast(struct ecore_dev *edev,
 	return ecore_filter_mcast_cmd(edev, &mcast, ECORE_SPQ_MODE_CB, NULL);
 }
 
-int
-qed_configure_filter_rx_mode(struct ecore_dev *edev,
-			     enum qed_filter_rx_mode_type type)
+int qed_configure_filter_rx_mode(struct ecore_dev *edev,
+				 enum qed_filter_rx_mode_type type)
 {
-	struct ecore_filter_accept_flags accept_flags;
+	struct ecore_filter_accept_flags flags;
 
-	memset(&accept_flags, 0, sizeof(accept_flags));
+	memset(&flags, 0, sizeof(flags));
 
-	accept_flags.update_rx_mode_config = 1;
-	accept_flags.update_tx_mode_config = 1;
-	accept_flags.rx_accept_filter = ECORE_ACCEPT_UCAST_MATCHED |
-					ECORE_ACCEPT_MCAST_MATCHED |
-					ECORE_ACCEPT_BCAST;
-	accept_flags.tx_accept_filter = ECORE_ACCEPT_UCAST_MATCHED |
+	flags.update_rx_mode_config = 1;
+	flags.update_tx_mode_config = 1;
+	flags.rx_accept_filter = ECORE_ACCEPT_UCAST_MATCHED |
 					ECORE_ACCEPT_MCAST_MATCHED |
 					ECORE_ACCEPT_BCAST;
 
-	if (type == QED_FILTER_RX_MODE_TYPE_PROMISC)
-		accept_flags.rx_accept_filter |= ECORE_ACCEPT_UCAST_UNMATCHED;
-	else if (type == QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC)
-		accept_flags.rx_accept_filter |= ECORE_ACCEPT_MCAST_UNMATCHED;
-	else if (type == (QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC |
-			  QED_FILTER_RX_MODE_TYPE_PROMISC))
-		accept_flags.rx_accept_filter |= ECORE_ACCEPT_UCAST_UNMATCHED |
-		    ECORE_ACCEPT_MCAST_UNMATCHED;
+	flags.tx_accept_filter = ECORE_ACCEPT_UCAST_MATCHED |
+				 ECORE_ACCEPT_MCAST_MATCHED |
+				 ECORE_ACCEPT_BCAST;
 
-	return ecore_filter_accept_cmd(edev, 0, accept_flags, false, false,
+	if (type == QED_FILTER_RX_MODE_TYPE_PROMISC) {
+		flags.rx_accept_filter |= ECORE_ACCEPT_UCAST_UNMATCHED;
+		if (IS_VF(edev)) {
+			flags.tx_accept_filter |= ECORE_ACCEPT_UCAST_UNMATCHED;
+			DP_INFO(edev, "Enabling Tx unmatched flag for VF\n");
+		}
+	} else if (type == QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC) {
+		flags.rx_accept_filter |= ECORE_ACCEPT_MCAST_UNMATCHED;
+	} else if (type == (QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC |
+			    QED_FILTER_RX_MODE_TYPE_PROMISC)) {
+		flags.rx_accept_filter |= ECORE_ACCEPT_UCAST_UNMATCHED |
+					  ECORE_ACCEPT_MCAST_UNMATCHED;
+	}
+
+	return ecore_filter_accept_cmd(edev, 0, flags, false, false,
 				       ECORE_SPQ_MODE_CB, NULL);
 }
 

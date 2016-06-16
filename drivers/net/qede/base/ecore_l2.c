@@ -227,11 +227,11 @@ ecore_sp_update_accept_mode(struct ecore_hwfn *p_hwfn,
  *		SET_FIELD(*state, ETH_VPORT_RX_MODE_UCAST_DROP_ALL,
  *			  !!(accept_filter & ECORE_ACCEPT_NONE));
  */
-/*
- *		SET_FIELD(*state, ETH_VPORT_RX_MODE_UCAST_ACCEPT_ALL,
- *			  (!!(accept_filter & ECORE_ACCEPT_UCAST_MATCHED) &&
- *			   !!(accept_filter & ECORE_ACCEPT_UCAST_UNMATCHED)));
- */
+
+		SET_FIELD(*state, ETH_VPORT_RX_MODE_UCAST_ACCEPT_ALL,
+			  (!!(accept_filter & ECORE_ACCEPT_UCAST_MATCHED) &&
+			   !!(accept_filter & ECORE_ACCEPT_UCAST_UNMATCHED)));
+
 		SET_FIELD(*state, ETH_VPORT_RX_MODE_UCAST_DROP_ALL,
 			  !(!!(accept_filter & ECORE_ACCEPT_UCAST_MATCHED) ||
 			    !!(accept_filter & ECORE_ACCEPT_UCAST_UNMATCHED)));
@@ -275,6 +275,15 @@ ecore_sp_update_accept_mode(struct ecore_hwfn *p_hwfn,
 
 		SET_FIELD(*state, ETH_VPORT_TX_MODE_BCAST_ACCEPT_ALL,
 			  !!(accept_filter & ECORE_ACCEPT_BCAST));
+		/* @DPDK */
+		/* ETH_VPORT_RX_MODE_UCAST_ACCEPT_ALL and
+		 * ETH_VPORT_TX_MODE_UCAST_ACCEPT_ALL
+		 * needs to be set for VF-VF communication to work
+		 * when dest macaddr is unknown.
+		 */
+		SET_FIELD(*state, ETH_VPORT_TX_MODE_UCAST_ACCEPT_ALL,
+			  (!!(accept_filter & ECORE_ACCEPT_UCAST_MATCHED) &&
+			   !!(accept_filter & ECORE_ACCEPT_UCAST_UNMATCHED)));
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "p_ramrod->tx_mode.state = 0x%x\n",
