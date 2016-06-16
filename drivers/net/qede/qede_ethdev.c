@@ -794,6 +794,38 @@ int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 	return qdev->ops->vport_update(edev, &vport_update_params);
 }
 
+int qede_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_rss_conf *rss_conf)
+{
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	uint64_t hf;
+
+	if (rss_conf->rss_key_len < sizeof(qdev->rss_params.rss_key))
+		return -EINVAL;
+
+	if (rss_conf->rss_key)
+		memcpy(rss_conf->rss_key, qdev->rss_params.rss_key,
+		       sizeof(qdev->rss_params.rss_key));
+
+	hf = 0;
+	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV4)     ?
+			ETH_RSS_IPV4 : 0;
+	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6)     ?
+			ETH_RSS_IPV6 : 0;
+	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6)     ?
+			ETH_RSS_IPV6_EX : 0;
+	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV4_TCP) ?
+			ETH_RSS_NONFRAG_IPV4_TCP : 0;
+	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6_TCP) ?
+			ETH_RSS_NONFRAG_IPV6_TCP : 0;
+	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6_TCP) ?
+			ETH_RSS_IPV6_TCP_EX : 0;
+
+	rss_conf->rss_hf = hf;
+
+	return 0;
+}
+
 static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_configure = qede_dev_configure,
 	.dev_infos_get = qede_dev_info_get,
@@ -822,6 +854,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.flow_ctrl_get = qede_flow_ctrl_get,
 	.dev_supported_ptypes_get = qede_dev_supported_ptypes_get,
 	.rss_hash_update = qede_rss_hash_update,
+	.rss_hash_conf_get = qede_rss_hash_conf_get,
 };
 
 static const struct eth_dev_ops qede_eth_vf_dev_ops = {
@@ -847,6 +880,7 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.vlan_filter_set = qede_vlan_filter_set,
 	.dev_supported_ptypes_get = qede_dev_supported_ptypes_get,
 	.rss_hash_update = qede_rss_hash_update,
+	.rss_hash_conf_get = qede_rss_hash_conf_get,
 };
 
 static void qede_update_pf_params(struct ecore_dev *edev)
