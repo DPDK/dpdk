@@ -228,27 +228,34 @@ uint16_t
 enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	       uint16_t nb_pkts)
 {
-	struct vnic_rq *rq = rx_queue;
-	struct enic *enic = vnic_dev_priv(rq->vdev);
-	unsigned int rx_id;
+	struct vnic_rq *sop_rq = rx_queue;
+	struct vnic_rq *data_rq;
+	struct vnic_rq *rq;
+	struct enic *enic = vnic_dev_priv(sop_rq->vdev);
+	uint16_t cq_idx;
+	uint16_t rq_idx;
+	uint16_t rq_num;
 	struct rte_mbuf *nmb, *rxmb;
-	uint16_t nb_rx = 0, nb_err = 0;
-	uint16_t nb_hold;
+	uint16_t nb_rx = 0;
 	struct vnic_cq *cq;
 	volatile struct cq_desc *cqd_ptr;
 	uint8_t color;
+	uint16_t seg_length;
+	struct rte_mbuf *first_seg = sop_rq->pkt_first_seg;
+	struct rte_mbuf *last_seg = sop_rq->pkt_last_seg;
 
-	cq = &enic->cq[enic_cq_rq(enic, rq->index)];
-	rx_id = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
-	cqd_ptr = (struct cq_desc *)(cq->ring.descs) + rx_id;
+	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
+	cq_idx = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
+	cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
 
-	nb_hold = rq->rx_nb_hold;	/* mbufs held by software */
+	data_rq = &enic->rq[sop_rq->data_queue_idx];
 
 	while (nb_rx < nb_pkts) {
 		volatile struct rq_enet_desc *rqd_ptr;
 		dma_addr_t dma_addr;
 		struct cq_desc cqd;
 		uint8_t packet_error;
+		uint16_t ciflags;
 
 		/* Check for pkts available */
 		color = (cqd_ptr->type_color >> CQ_DESC_COLOR_SHIFT)
@@ -256,9 +263,13 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		if (color == cq->last_color)
 			break;
 
-		/* Get the cq descriptor and rq pointer */
+		/* Get the cq descriptor and extract rq info from it */
 		cqd = *cqd_ptr;
-		rqd_ptr = (struct rq_enet_desc *)(rq->ring.descs) + rx_id;
+		rq_num = cqd.q_number & CQ_DESC_Q_NUM_MASK;
+		rq_idx = cqd.completed_index & CQ_DESC_COMP_NDX_MASK;
+
+		rq = &enic->rq[rq_num];
+		rqd_ptr = ((struct rq_enet_desc *)rq->ring.descs) + rq_idx;
 
 		/* allocate a new mbuf */
 		nmb = rte_mbuf_raw_alloc(rq->mp);
@@ -271,67 +282,102 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		packet_error = enic_cq_rx_check_err(&cqd);
 
 		/* Get the mbuf to return and replace with one just allocated */
-		rxmb = rq->mbuf_ring[rx_id];
-		rq->mbuf_ring[rx_id] = nmb;
+		rxmb = rq->mbuf_ring[rq_idx];
+		rq->mbuf_ring[rq_idx] = nmb;
 
 		/* Increment cqd, rqd, mbuf_table index */
-		rx_id++;
-		if (unlikely(rx_id == rq->ring.desc_count)) {
-			rx_id = 0;
+		cq_idx++;
+		if (unlikely(cq_idx == cq->ring.desc_count)) {
+			cq_idx = 0;
 			cq->last_color = cq->last_color ? 0 : 1;
 		}
 
 		/* Prefetch next mbuf & desc while processing current one */
-		cqd_ptr = (struct cq_desc *)(cq->ring.descs) + rx_id;
+		cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
 		rte_enic_prefetch(cqd_ptr);
-		rte_enic_prefetch(rq->mbuf_ring[rx_id]);
-		rte_enic_prefetch((struct rq_enet_desc *)(rq->ring.descs)
-				 + rx_id);
+
+		ciflags = enic_cq_rx_desc_ciflags(
+			(struct cq_enet_rq_desc *)&cqd);
 
 		/* Push descriptor for newly allocated mbuf */
-		dma_addr = (dma_addr_t)(nmb->buf_physaddr
-			   + RTE_PKTMBUF_HEADROOM);
-		rqd_ptr->address = rte_cpu_to_le_64(dma_addr);
-		rqd_ptr->length_type = cpu_to_le16(nmb->buf_len
-				       - RTE_PKTMBUF_HEADROOM);
+		dma_addr = (dma_addr_t)(nmb->buf_physaddr +
+					RTE_PKTMBUF_HEADROOM);
+		rq_enet_desc_enc(rqd_ptr, dma_addr,
+				(rq->is_sop ? RQ_ENET_TYPE_ONLY_SOP
+				: RQ_ENET_TYPE_NOT_SOP),
+				nmb->buf_len - RTE_PKTMBUF_HEADROOM);
 
-		/* Drop incoming bad packet */
-		if (unlikely(packet_error)) {
-			rte_pktmbuf_free(rxmb);
-			nb_err++;
+		/* Fill in the rest of the mbuf */
+		seg_length = enic_cq_rx_desc_n_bytes(&cqd);
+
+		if (rq->is_sop) {
+			first_seg = rxmb;
+			first_seg->nb_segs = 1;
+			first_seg->pkt_len = seg_length;
+		} else {
+			first_seg->pkt_len = (uint16_t)(first_seg->pkt_len
+							+ seg_length);
+			first_seg->nb_segs++;
+			last_seg->next = rxmb;
+		}
+
+		rxmb->next = NULL;
+		rxmb->port = enic->port_id;
+		rxmb->data_len = seg_length;
+
+		rq->rx_nb_hold++;
+
+		if (!(enic_cq_rx_desc_eop(ciflags))) {
+			last_seg = rxmb;
 			continue;
 		}
 
-		/* Fill in the rest of the mbuf */
-		rxmb->data_off = RTE_PKTMBUF_HEADROOM;
-		rxmb->nb_segs = 1;
-		rxmb->next = NULL;
-		rxmb->port = enic->port_id;
-		rxmb->pkt_len = enic_cq_rx_desc_n_bytes(&cqd);
-		rxmb->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
-		enic_cq_rx_to_pkt_flags(&cqd, rxmb);
-		rxmb->data_len = rxmb->pkt_len;
+		/* cq rx flags are only valid if eop bit is set */
+		first_seg->packet_type = enic_cq_rx_flags_to_pkt_type(&cqd);
+		enic_cq_rx_to_pkt_flags(&cqd, first_seg);
+
+		if (unlikely(packet_error)) {
+			rte_pktmbuf_free(first_seg);
+			rte_atomic64_inc(&enic->soft_stats.rx_packet_errors);
+			continue;
+		}
+
 
 		/* prefetch mbuf data for caller */
-		rte_packet_prefetch(RTE_PTR_ADD(rxmb->buf_addr,
+		rte_packet_prefetch(RTE_PTR_ADD(first_seg->buf_addr,
 				    RTE_PKTMBUF_HEADROOM));
 
 		/* store the mbuf address into the next entry of the array */
-		rx_pkts[nb_rx++] = rxmb;
+		rx_pkts[nb_rx++] = first_seg;
 	}
 
-	nb_hold += nb_rx + nb_err;
-	cq->to_clean = rx_id;
+	sop_rq->pkt_first_seg = first_seg;
+	sop_rq->pkt_last_seg = last_seg;
 
-	if (nb_hold > rq->rx_free_thresh) {
-		rq->posted_index = enic_ring_add(rq->ring.desc_count,
-				rq->posted_index, nb_hold);
-		nb_hold = 0;
+	cq->to_clean = cq_idx;
+
+	if ((sop_rq->rx_nb_hold + data_rq->rx_nb_hold) >
+	    sop_rq->rx_free_thresh) {
+		if (data_rq->in_use) {
+			data_rq->posted_index =
+				enic_ring_add(data_rq->ring.desc_count,
+					      data_rq->posted_index,
+					      data_rq->rx_nb_hold);
+			data_rq->rx_nb_hold = 0;
+		}
+		sop_rq->posted_index = enic_ring_add(sop_rq->ring.desc_count,
+						     sop_rq->posted_index,
+						     sop_rq->rx_nb_hold);
+		sop_rq->rx_nb_hold = 0;
+
 		rte_mb();
-		iowrite32(rq->posted_index, &rq->ctrl->posted_index);
+		if (data_rq->in_use)
+			iowrite32(data_rq->posted_index,
+				  &data_rq->ctrl->posted_index);
+		rte_compiler_barrier();
+		iowrite32(sop_rq->posted_index, &sop_rq->ctrl->posted_index);
 	}
 
-	rq->rx_nb_hold = nb_hold;
 
 	return nb_rx;
 }

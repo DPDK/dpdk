@@ -84,11 +84,12 @@ void vnic_rq_init_start(struct vnic_rq *rq, unsigned int cq_index,
 	iowrite32(cq_index, &rq->ctrl->cq_index);
 	iowrite32(error_interrupt_enable, &rq->ctrl->error_interrupt_enable);
 	iowrite32(error_interrupt_offset, &rq->ctrl->error_interrupt_offset);
-	iowrite32(0, &rq->ctrl->dropped_packet_count);
 	iowrite32(0, &rq->ctrl->error_status);
 	iowrite32(fetch_index, &rq->ctrl->fetch_index);
 	iowrite32(posted_index, &rq->ctrl->posted_index);
-
+	if (rq->is_sop)
+		iowrite32(((rq->is_sop << 10) | rq->data_queue_idx),
+			  &rq->ctrl->data_ring);
 }
 
 void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
@@ -96,6 +97,7 @@ void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
 	unsigned int error_interrupt_offset)
 {
 	u32 fetch_index = 0;
+
 	/* Use current fetch_index as the ring starting point */
 	fetch_index = ioread32(&rq->ctrl->fetch_index);
 
@@ -110,6 +112,8 @@ void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
 		error_interrupt_offset);
 	rq->rxst_idx = 0;
 	rq->tot_pkts = 0;
+	rq->pkt_first_seg = NULL;
+	rq->pkt_last_seg = NULL;
 }
 
 void vnic_rq_error_out(struct vnic_rq *rq, unsigned int error)

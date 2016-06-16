@@ -269,14 +269,18 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	if (queue_idx >= ENIC_RQ_MAX) {
+	/* With Rx scatter support, two RQs are now used on VIC per RQ used
+	 * by the application.
+	 */
+	if (queue_idx * 2 >= ENIC_RQ_MAX) {
 		dev_err(enic,
-			"Max number of RX queues exceeded.  Max is %d\n",
+			"Max number of RX queues exceeded.  Max is %d. This PMD uses 2 RQs on VIC per RQ used by DPDK.\n",
 			ENIC_RQ_MAX);
 		return -EINVAL;
 	}
 
-	eth_dev->data->rx_queues[queue_idx] = (void *)&enic->rq[queue_idx];
+	eth_dev->data->rx_queues[queue_idx] =
+		(void *)&enic->rq[enic_sop_rq(queue_idx)];
 
 	ret = enic_alloc_rq(enic, queue_idx, socket_id, mp, nb_desc);
 	if (ret) {

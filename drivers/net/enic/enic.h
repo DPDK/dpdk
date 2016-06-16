@@ -53,8 +53,11 @@
 #define DRV_COPYRIGHT		"Copyright 2008-2015 Cisco Systems, Inc"
 
 #define ENIC_WQ_MAX		8
-#define ENIC_RQ_MAX		8
-#define ENIC_CQ_MAX		(ENIC_WQ_MAX + ENIC_RQ_MAX)
+/* With Rx scatter support, we use two RQs on VIC per RQ used by app. Both
+ * RQs use the same CQ.
+ */
+#define ENIC_RQ_MAX		16
+#define ENIC_CQ_MAX		(ENIC_WQ_MAX + (ENIC_RQ_MAX / 2))
 #define ENIC_INTR_MAX		(ENIC_CQ_MAX + 2)
 
 #define VLAN_ETH_HLEN           18
@@ -141,6 +144,21 @@ struct enic {
 	/* software counters */
 	struct enic_soft_stats soft_stats;
 };
+
+static inline unsigned int enic_sop_rq(unsigned int rq)
+{
+	return rq * 2;
+}
+
+static inline unsigned int enic_data_rq(unsigned int rq)
+{
+	return rq * 2 + 1;
+}
+
+static inline unsigned int enic_vnic_rq_count(struct enic *enic)
+{
+	return enic->rq_count * 2;
+}
 
 static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned int rq)
 {

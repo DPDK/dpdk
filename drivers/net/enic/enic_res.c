@@ -196,8 +196,9 @@ void enic_free_vnic_resources(struct enic *enic)
 
 	for (i = 0; i < enic->wq_count; i++)
 		vnic_wq_free(&enic->wq[i]);
-	for (i = 0; i < enic->rq_count; i++)
-		vnic_rq_free(&enic->rq[i]);
+	for (i = 0; i < enic_vnic_rq_count(enic); i++)
+		if (enic->rq[i].in_use)
+			vnic_rq_free(&enic->rq[i]);
 	for (i = 0; i < enic->cq_count; i++)
 		vnic_cq_free(&enic->cq[i]);
 	vnic_intr_free(&enic->intr);

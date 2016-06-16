@@ -94,7 +94,7 @@ Most of these differences are summarized below.
    Queue start/stop           Y   Y   Y Y Y Y Y Y     Y Y     Y Y Y Y Y Y               Y Y   Y Y
    MTU update                     Y Y Y           Y   Y Y Y Y         Y Y         Y Y     Y
    Jumbo frame                    Y Y Y Y Y Y Y Y Y   Y Y Y Y Y Y Y Y Y Y       Y Y Y     Y
-   Scattered Rx                   Y Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y               Y Y   Y
+   Scattered Rx                   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y               Y Y   Y
    LRO                                                Y Y Y Y
    TSO                            Y   Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y
    Promiscuous mode       Y Y Y   Y Y   Y Y Y Y Y Y Y Y Y     Y Y     Y Y         Y Y   Y Y   Y Y

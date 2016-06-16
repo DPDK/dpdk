@@ -60,10 +60,18 @@ struct vnic_rq_ctrl {
 	u32 pad7;
 	u32 error_status;		/* 0x48 */
 	u32 pad8;
-	u32 dropped_packet_count;	/* 0x50 */
+	u32 tcp_sn;			/* 0x50 */
 	u32 pad9;
-	u32 dropped_packet_count_rc;	/* 0x58 */
+	u32 unused;			/* 0x58 */
 	u32 pad10;
+	u32 dca_select;			/* 0x60 */
+	u32 pad11;
+	u32 dca_value;			/* 0x68 */
+	u32 pad12;
+	u32 data_ring;			/* 0x70 */
+	u32 pad13;
+	u32 header_split;		/* 0x78 */
+	u32 pad14;
 };
 
 struct vnic_rq {
@@ -82,6 +90,12 @@ struct vnic_rq {
 	struct rte_mempool *mp;
 	uint16_t rxst_idx;
 	uint32_t tot_pkts;
+	uint16_t data_queue_idx;
+	uint8_t is_sop;
+	uint8_t in_use;
+	struct rte_mbuf *pkt_first_seg;
+	struct rte_mbuf *pkt_last_seg;
+	unsigned int max_mbufs_per_pkt;
 };
 
 static inline unsigned int vnic_rq_desc_avail(struct vnic_rq *rq)
