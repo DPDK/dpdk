@@ -1046,4 +1046,5 @@ static struct rte_driver bnxt_pmd_drv = {
 	.init = bnxt_rte_pmd_init,
 };
 
-PMD_REGISTER_DRIVER(bnxt_pmd_drv);
+PMD_REGISTER_DRIVER(bnxt_pmd_drv, bnxt);
+DRIVER_REGISTER_PCI_TABLE(bnxt, bnxt_pci_id_map);

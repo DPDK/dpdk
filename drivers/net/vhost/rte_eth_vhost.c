@@ -921,4 +921,5 @@ static struct rte_driver pmd_vhost_drv = {
 	.uninit = rte_pmd_vhost_devuninit,
 };
 
-PMD_REGISTER_DRIVER(pmd_vhost_drv);
+PMD_REGISTER_DRIVER(pmd_vhost_drv, eth_vhost);
+DRIVER_REGISTER_PARAM_STRING(eth_vhost, "iface=<ifc> queues=<int>");

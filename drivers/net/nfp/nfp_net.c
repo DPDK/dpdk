@@ -2486,7 +2486,8 @@ static struct rte_driver rte_nfp_net_driver = {
 	.init = nfp_net_pmd_init,
 };
 
-PMD_REGISTER_DRIVER(rte_nfp_net_driver);
+PMD_REGISTER_DRIVER(rte_nfp_net_driver, nfp);
+DRIVER_REGISTER_PCI_TABLE(nfp, pci_id_nfp_net_map);
 
 /*
  * Local variables:

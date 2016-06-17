@@ -954,4 +954,5 @@ static struct rte_driver rte_vmxnet3_driver = {
 	.init = rte_vmxnet3_pmd_init,
 };
 
-PMD_REGISTER_DRIVER(rte_vmxnet3_driver);
+PMD_REGISTER_DRIVER(rte_vmxnet3_driver, vmxnet3);
+DRIVER_REGISTER_PCI_TABLE(vmxnet3, pci_id_vmxnet3_map);

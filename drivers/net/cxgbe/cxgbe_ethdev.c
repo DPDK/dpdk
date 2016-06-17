@@ -1061,4 +1061,6 @@ static struct rte_driver rte_cxgbe_driver = {
 	.init = rte_cxgbe_pmd_init,
 };
 
-PMD_REGISTER_DRIVER(rte_cxgbe_driver);
+PMD_REGISTER_DRIVER(rte_cxgbe_driver, cxgb4);
+DRIVER_REGISTER_PCI_TABLE(cxgb4, cxgb4_pci_tbl);
+

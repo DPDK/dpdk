@@ -1788,4 +1788,5 @@ static struct rte_driver rte_nicvf_driver = {
 	.init = rte_nicvf_pmd_init,
 };
 
-PMD_REGISTER_DRIVER(rte_nicvf_driver);
+PMD_REGISTER_DRIVER(rte_nicvf_driver, thunderx_nicvf);
+DRIVER_REGISTER_PCI_TABLE(thunderx_nicvf, pci_id_nicvf_map);

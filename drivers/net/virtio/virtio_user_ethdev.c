@@ -437,4 +437,4 @@ static struct rte_driver virtio_user_driver = {
 	.uninit = virtio_user_pmd_devuninit,
 };
 
-PMD_REGISTER_DRIVER(virtio_user_driver);
+PMD_REGISTER_DRIVER(virtio_user_driver, virtio_user);
