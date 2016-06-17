@@ -168,6 +168,140 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 	return -ENOTSUP;
 }
 
+static int
+nicvf_qset_cq_alloc(struct nicvf *nic, struct nicvf_rxq *rxq, uint16_t qidx,
+		    uint32_t desc_cnt)
+{
+	const struct rte_memzone *rz;
+	uint32_t ring_size = desc_cnt * sizeof(union cq_entry_t);
+
+	rz = rte_eth_dma_zone_reserve(nic->eth_dev, "cq_ring", qidx, ring_size,
+					NICVF_CQ_BASE_ALIGN_BYTES, nic->node);
+	if (rz == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate mem for cq hw ring");
+		return -ENOMEM;
+	}
+
+	memset(rz->addr, 0, ring_size);
+
+	rxq->phys = rz->phys_addr;
+	rxq->desc = rz->addr;
+	rxq->qlen_mask = desc_cnt - 1;
+
+	return 0;
+}
+
+static void
+nicvf_rx_queue_reset(struct nicvf_rxq *rxq)
+{
+	rxq->head = 0;
+	rxq->available_space = 0;
+	rxq->recv_buffers = 0;
+}
+
+static void
+nicvf_dev_rx_queue_release(void *rx_queue)
+{
+	struct nicvf_rxq *rxq = rx_queue;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rxq)
+		rte_free(rxq);
+}
+
+static int
+nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
+			 uint16_t nb_desc, unsigned int socket_id,
+			 const struct rte_eth_rxconf *rx_conf,
+			 struct rte_mempool *mp)
+{
+	uint16_t rx_free_thresh;
+	struct nicvf_rxq *rxq;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Socket id check */
+	if (socket_id != (unsigned int)SOCKET_ID_ANY && socket_id != nic->node)
+		PMD_DRV_LOG(WARNING, "socket_id expected %d, configured %d",
+		socket_id, nic->node);
+
+	/* Mempool memory should be contiguous */
+	if (mp->nb_mem_chunks != 1) {
+		PMD_INIT_LOG(ERR, "Non contiguous mempool, check huge page sz");
+		return -EINVAL;
+	}
+
+	/* Rx deferred start is not supported */
+	if (rx_conf->rx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Rx deferred start not supported");
+		return -EINVAL;
+	}
+
+	/* Roundup nb_desc to available qsize and validate max number of desc */
+	nb_desc = nicvf_qsize_cq_roundup(nb_desc);
+	if (nb_desc == 0) {
+		PMD_INIT_LOG(ERR, "Value nb_desc beyond available hw cq qsize");
+		return -EINVAL;
+	}
+
+	/* Check rx_free_thresh upper bound */
+	rx_free_thresh = (uint16_t)((rx_conf->rx_free_thresh) ?
+				rx_conf->rx_free_thresh :
+				NICVF_DEFAULT_RX_FREE_THRESH);
+	if (rx_free_thresh > NICVF_MAX_RX_FREE_THRESH ||
+		rx_free_thresh >= nb_desc * .75) {
+		PMD_INIT_LOG(ERR, "rx_free_thresh greater than expected %d",
+				rx_free_thresh);
+		return -EINVAL;
+	}
+
+	/* Free memory prior to re-allocation if needed */
+	if (dev->data->rx_queues[qidx] != NULL) {
+		PMD_RX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
+				qidx);
+		nicvf_dev_rx_queue_release(dev->data->rx_queues[qidx]);
+		dev->data->rx_queues[qidx] = NULL;
+	}
+
+	/* Allocate rxq memory */
+	rxq = rte_zmalloc_socket("ethdev rx queue", sizeof(struct nicvf_rxq),
+					RTE_CACHE_LINE_SIZE, nic->node);
+	if (rxq == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate rxq=%d", qidx);
+		return -ENOMEM;
+	}
+
+	rxq->nic = nic;
+	rxq->pool = mp;
+	rxq->queue_id = qidx;
+	rxq->port_id = dev->data->port_id;
+	rxq->rx_free_thresh = rx_free_thresh;
+	rxq->rx_drop_en = rx_conf->rx_drop_en;
+	rxq->cq_status = nicvf_qset_base(nic, qidx) + NIC_QSET_CQ_0_7_STATUS;
+	rxq->cq_door = nicvf_qset_base(nic, qidx) + NIC_QSET_CQ_0_7_DOOR;
+	rxq->precharge_cnt = 0;
+	rxq->rbptr_offset = NICVF_CQE_RBPTR_WORD;
+
+	/* Alloc completion queue */
+	if (nicvf_qset_cq_alloc(nic, rxq, rxq->queue_id, nb_desc)) {
+		PMD_INIT_LOG(ERR, "failed to allocate cq %u", rxq->queue_id);
+		nicvf_dev_rx_queue_release(rxq);
+		return -ENOMEM;
+	}
+
+	nicvf_rx_queue_reset(rxq);
+
+	PMD_RX_LOG(DEBUG, "[%d] rxq=%p pool=%s nb_desc=(%d/%d) phy=%" PRIx64,
+			qidx, rxq, mp->name, nb_desc,
+			rte_mempool_count(mp), rxq->phys);
+
+	dev->data->rx_queues[qidx] = rxq;
+	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
 static void
 nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
@@ -294,6 +428,8 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
 	.link_update              = nicvf_dev_link_update,
 	.dev_infos_get            = nicvf_dev_info_get,
+	.rx_queue_setup           = nicvf_dev_rx_queue_setup,
+	.rx_queue_release         = nicvf_dev_rx_queue_release,
 	.get_reg_length           = nicvf_dev_get_reg_length,
 	.get_reg                  = nicvf_dev_get_regs,
 };

@@ -59,6 +59,8 @@
 #define NICVF_DEFAULT_RX_FREE_THRESH    224
 #define NICVF_DEFAULT_TX_FREE_THRESH    224
 #define NICVF_TX_FREE_MPOOL_THRESH      16
+#define NICVF_MAX_RX_FREE_THRESH        1024
+#define NICVF_MAX_TX_FREE_THRESH        1024
 
 static inline struct nicvf *
 nicvf_pmd_priv(struct rte_eth_dev *eth_dev)
