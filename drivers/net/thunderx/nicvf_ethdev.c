@@ -562,6 +562,51 @@ nicvf_tx_queue_reset(struct nicvf_txq *txq)
 	txq->xmit_bufs = 0;
 }
 
+static inline int
+nicvf_start_tx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct nicvf_txq *txq;
+	int ret;
+
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	txq = dev->data->tx_queues[qidx];
+	txq->pool = NULL;
+	ret = nicvf_qset_sq_config(nicvf_pmd_priv(dev), qidx, txq);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to configure sq %d %d", qidx, ret);
+		goto config_sq_error;
+	}
+
+	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	return ret;
+
+config_sq_error:
+	nicvf_qset_sq_reclaim(nicvf_pmd_priv(dev), qidx);
+	return ret;
+}
+
+static inline int
+nicvf_stop_tx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct nicvf_txq *txq;
+	int ret;
+
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+
+	ret = nicvf_qset_sq_reclaim(nicvf_pmd_priv(dev), qidx);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to reclaim sq %d %d", qidx, ret);
+
+	txq = dev->data->tx_queues[qidx];
+	nicvf_tx_queue_release_mbufs(txq);
+	nicvf_tx_queue_reset(txq);
+
+	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return ret;
+}
 
 static inline int
 nicvf_configure_cpi(struct rte_eth_dev *dev)
@@ -872,6 +917,18 @@ nicvf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 }
 
 static int
+nicvf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	return nicvf_start_tx_queue(dev, qidx);
+}
+
+static int
+nicvf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	return nicvf_stop_tx_queue(dev, qidx);
+}
+
+static int
 nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 			 uint16_t nb_desc, unsigned int socket_id,
 			 const struct rte_eth_rxconf *rx_conf,
@@ -1100,6 +1157,8 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.rss_hash_conf_get        = nicvf_dev_rss_hash_conf_get,
 	.rx_queue_start           = nicvf_dev_rx_queue_start,
 	.rx_queue_stop            = nicvf_dev_rx_queue_stop,
+	.tx_queue_start           = nicvf_dev_tx_queue_start,
+	.tx_queue_stop            = nicvf_dev_tx_queue_stop,
 	.rx_queue_setup           = nicvf_dev_rx_queue_setup,
 	.rx_queue_release         = nicvf_dev_rx_queue_release,
 	.rx_queue_count           = nicvf_dev_rx_queue_count,
