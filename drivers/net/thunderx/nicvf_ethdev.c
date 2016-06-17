@@ -66,7 +66,7 @@
 #include "base/nicvf_plat.h"
 
 #include "nicvf_ethdev.h"
-
+#include "nicvf_rxtx.h"
 #include "nicvf_logs.h"
 
 static inline int
@@ -617,6 +617,9 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 		(tx_conf->tx_free_thresh == NICVF_DEFAULT_TX_FREE_THRESH ?
 				NICVF_TX_FREE_MPOOL_THRESH :
 				tx_conf->tx_free_thresh);
+		txq->pool_free = nicvf_multi_pool_free_xmited_buffers;
+	} else {
+		txq->pool_free = nicvf_single_pool_free_xmited_buffers;
 	}
 
 	/* Allocate software ring */

@@ -51,10 +51,12 @@ VPATH += $(SRCDIR)/base
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += nicvf_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += nicvf_hw.c
 SRCS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += nicvf_mbox.c
 SRCS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += nicvf_ethdev.c
 
+CFLAGS_nicvf_rxtx.o += -fno-prefetch-loop-arrays -Ofast
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += lib/librte_eal lib/librte_ether
