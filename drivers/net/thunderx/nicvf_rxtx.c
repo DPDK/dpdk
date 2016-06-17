@@ -579,3 +579,21 @@ nicvf_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 	rxq = dev->data->rx_queues[queue_idx];
 	return nicvf_addr_read(rxq->cq_status) & NICVF_CQ_CQE_COUNT_MASK;
 }
+
+uint32_t
+nicvf_dev_rbdr_refill(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct nicvf_rxq *rxq;
+	uint32_t to_process;
+	uint32_t rx_free;
+
+	rxq = dev->data->rx_queues[queue_idx];
+	to_process = rxq->recv_buffers;
+	while (rxq->recv_buffers > 0) {
+		rx_free = RTE_MIN(rxq->recv_buffers, NICVF_MAX_RX_FREE_THRESH);
+		rxq->recv_buffers -= nicvf_fill_rbdr(rxq, rx_free);
+	}
+
+	assert(rxq->recv_buffers == 0);
+	return to_process;
+}

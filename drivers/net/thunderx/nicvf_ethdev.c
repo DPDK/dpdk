@@ -562,6 +562,54 @@ nicvf_tx_queue_reset(struct nicvf_txq *txq)
 	txq->xmit_bufs = 0;
 }
 
+
+static inline int
+nicvf_configure_cpi(struct rte_eth_dev *dev)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint16_t qidx, qcnt;
+	int ret;
+
+	/* Count started rx queues */
+	for (qidx = qcnt = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++)
+		if (dev->data->rx_queue_state[qidx] ==
+		    RTE_ETH_QUEUE_STATE_STARTED)
+			qcnt++;
+
+	nic->cpi_alg = CPI_ALG_NONE;
+	ret = nicvf_mbox_config_cpi(nic, qcnt);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to configure CPI %d", ret);
+
+	return ret;
+}
+
+static int
+nicvf_configure_rss_reta(struct rte_eth_dev *dev)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	unsigned int idx, qmap_size;
+	uint8_t qmap[RTE_MAX_QUEUES_PER_PORT];
+	uint8_t default_reta[NIC_MAX_RSS_IDR_TBL_SIZE];
+
+	if (nic->cpi_alg != CPI_ALG_NONE)
+		return -EINVAL;
+
+	/* Prepare queue map */
+	for (idx = 0, qmap_size = 0; idx < dev->data->nb_rx_queues; idx++) {
+		if (dev->data->rx_queue_state[idx] ==
+				RTE_ETH_QUEUE_STATE_STARTED)
+			qmap[qmap_size++] = idx;
+	}
+
+	/* Update default RSS RETA */
+	for (idx = 0; idx < NIC_MAX_RSS_IDR_TBL_SIZE; idx++)
+		default_reta[idx] = qmap[idx % qmap_size];
+
+	return nicvf_rss_reta_update(nic, default_reta,
+				     NIC_MAX_RSS_IDR_TBL_SIZE);
+}
+
 static void
 nicvf_dev_tx_queue_release(void *sq)
 {
@@ -687,12 +735,102 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	return 0;
 }
 
+static inline void
+nicvf_rx_queue_release_mbufs(struct nicvf_rxq *rxq)
+{
+	uint32_t rxq_cnt;
+	uint32_t nb_pkts, released_pkts = 0;
+	uint32_t refill_cnt = 0;
+	struct rte_eth_dev *dev = rxq->nic->eth_dev;
+	struct rte_mbuf *rx_pkts[NICVF_MAX_RX_FREE_THRESH];
+
+	if (dev->rx_pkt_burst == NULL)
+		return;
+
+	while ((rxq_cnt = nicvf_dev_rx_queue_count(dev, rxq->queue_id))) {
+		nb_pkts = dev->rx_pkt_burst(rxq, rx_pkts,
+					NICVF_MAX_RX_FREE_THRESH);
+		PMD_DRV_LOG(INFO, "nb_pkts=%d  rxq_cnt=%d", nb_pkts, rxq_cnt);
+		while (nb_pkts) {
+			rte_pktmbuf_free_seg(rx_pkts[--nb_pkts]);
+			released_pkts++;
+		}
+	}
+
+	refill_cnt += nicvf_dev_rbdr_refill(dev, rxq->queue_id);
+	PMD_DRV_LOG(INFO, "free_cnt=%d  refill_cnt=%d",
+		    released_pkts, refill_cnt);
+}
+
 static void
 nicvf_rx_queue_reset(struct nicvf_rxq *rxq)
 {
 	rxq->head = 0;
 	rxq->available_space = 0;
 	rxq->recv_buffers = 0;
+}
+
+static inline int
+nicvf_start_rx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	struct nicvf_rxq *rxq;
+	int ret;
+
+	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	/* Update rbdr pointer to all rxq */
+	rxq = dev->data->rx_queues[qidx];
+	rxq->shared_rbdr = nic->rbdr;
+
+	ret = nicvf_qset_rq_config(nic, qidx, rxq);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to configure rq %d %d", qidx, ret);
+		goto config_rq_error;
+	}
+	ret = nicvf_qset_cq_config(nic, qidx, rxq);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to configure cq %d %d", qidx, ret);
+		goto config_cq_error;
+	}
+
+	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	return 0;
+
+config_cq_error:
+	nicvf_qset_cq_reclaim(nic, qidx);
+config_rq_error:
+	nicvf_qset_rq_reclaim(nic, qidx);
+	return ret;
+}
+
+static inline int
+nicvf_stop_rx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	struct nicvf_rxq *rxq;
+	int ret, other_error;
+
+	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+
+	ret = nicvf_qset_rq_reclaim(nic, qidx);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to reclaim rq %d %d", qidx, ret);
+
+	other_error = ret;
+	rxq = dev->data->rx_queues[qidx];
+	nicvf_rx_queue_release_mbufs(rxq);
+	nicvf_rx_queue_reset(rxq);
+
+	ret = nicvf_qset_cq_reclaim(nic, qidx);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to reclaim cq %d %d", qidx, ret);
+
+	other_error |= ret;
+	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return other_error;
 }
 
 static void
@@ -704,6 +842,33 @@ nicvf_dev_rx_queue_release(void *rx_queue)
 
 	if (rxq)
 		rte_free(rxq);
+}
+
+static int
+nicvf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	int ret;
+
+	ret = nicvf_start_rx_queue(dev, qidx);
+	if (ret)
+		return ret;
+
+	ret = nicvf_configure_cpi(dev);
+	if (ret)
+		return ret;
+
+	return nicvf_configure_rss_reta(dev);
+}
+
+static int
+nicvf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	int ret;
+
+	ret = nicvf_stop_rx_queue(dev, qidx);
+	ret |= nicvf_configure_cpi(dev);
+	ret |= nicvf_configure_rss_reta(dev);
+	return ret;
 }
 
 static int
@@ -933,6 +1098,8 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.reta_query               = nicvf_dev_reta_query,
 	.rss_hash_update          = nicvf_dev_rss_hash_update,
 	.rss_hash_conf_get        = nicvf_dev_rss_hash_conf_get,
+	.rx_queue_start           = nicvf_dev_rx_queue_start,
+	.rx_queue_stop            = nicvf_dev_rx_queue_stop,
 	.rx_queue_setup           = nicvf_dev_rx_queue_setup,
 	.rx_queue_release         = nicvf_dev_rx_queue_release,
 	.rx_queue_count           = nicvf_dev_rx_queue_count,
