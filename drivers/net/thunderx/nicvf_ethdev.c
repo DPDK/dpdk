@@ -211,6 +211,70 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 	return -ENOTSUP;
 }
 
+static void
+nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	uint16_t qidx;
+	struct nicvf_hw_rx_qstats rx_qstats;
+	struct nicvf_hw_tx_qstats tx_qstats;
+	struct nicvf_hw_stats port_stats;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	/* Reading per RX ring stats */
+	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++) {
+		if (qidx == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		nicvf_hw_get_rx_qstats(nic, &rx_qstats, qidx);
+		stats->q_ibytes[qidx] = rx_qstats.q_rx_bytes;
+		stats->q_ipackets[qidx] = rx_qstats.q_rx_packets;
+	}
+
+	/* Reading per TX ring stats */
+	for (qidx = 0; qidx < dev->data->nb_tx_queues; qidx++) {
+		if (qidx == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		nicvf_hw_get_tx_qstats(nic, &tx_qstats, qidx);
+		stats->q_obytes[qidx] = tx_qstats.q_tx_bytes;
+		stats->q_opackets[qidx] = tx_qstats.q_tx_packets;
+	}
+
+	nicvf_hw_get_stats(nic, &port_stats);
+	stats->ibytes = port_stats.rx_bytes;
+	stats->ipackets = port_stats.rx_ucast_frames;
+	stats->ipackets += port_stats.rx_bcast_frames;
+	stats->ipackets += port_stats.rx_mcast_frames;
+	stats->ierrors = port_stats.rx_l2_errors;
+	stats->imissed = port_stats.rx_drop_red;
+	stats->imissed += port_stats.rx_drop_overrun;
+	stats->imissed += port_stats.rx_drop_bcast;
+	stats->imissed += port_stats.rx_drop_mcast;
+	stats->imissed += port_stats.rx_drop_l3_bcast;
+	stats->imissed += port_stats.rx_drop_l3_mcast;
+
+	stats->obytes = port_stats.tx_bytes_ok;
+	stats->opackets = port_stats.tx_ucast_frames_ok;
+	stats->opackets += port_stats.tx_bcast_frames_ok;
+	stats->opackets += port_stats.tx_mcast_frames_ok;
+	stats->oerrors = port_stats.tx_drops;
+}
+
+static void
+nicvf_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	int i;
+	uint16_t rxqs = 0, txqs = 0;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		rxqs |= (0x3 << (i * 2));
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		txqs |= (0x3 << (i * 2));
+
+	nicvf_mbox_reset_stat_counters(nic, 0x3FFF, 0x1F, rxqs, txqs);
+}
+
 /* Promiscuous mode enabled by default in LMAC to VF 1:1 map configuration */
 static void
 nicvf_dev_promisc_enable(struct rte_eth_dev *dev __rte_unused)
@@ -817,6 +881,8 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
 	.link_update              = nicvf_dev_link_update,
+	.stats_get                = nicvf_dev_stats_get,
+	.stats_reset              = nicvf_dev_stats_reset,
 	.promiscuous_enable       = nicvf_dev_promisc_enable,
 	.dev_infos_get            = nicvf_dev_info_get,
 	.mtu_set                  = nicvf_dev_set_mtu,
