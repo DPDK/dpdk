@@ -168,8 +168,86 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 	return -ENOTSUP;
 }
 
+static int
+nicvf_dev_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	struct rte_eth_rxmode *rxmode = &conf->rxmode;
+	struct rte_eth_txmode *txmode = &conf->txmode;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (!rte_eal_has_hugepages()) {
+		PMD_INIT_LOG(INFO, "Huge page is not configured");
+		return -EINVAL;
+	}
+
+	if (txmode->mq_mode) {
+		PMD_INIT_LOG(INFO, "Tx mq_mode DCB or VMDq not supported");
+		return -EINVAL;
+	}
+
+	if (rxmode->mq_mode != ETH_MQ_RX_NONE &&
+		rxmode->mq_mode != ETH_MQ_RX_RSS) {
+		PMD_INIT_LOG(INFO, "Unsupported rx qmode %d", rxmode->mq_mode);
+		return -EINVAL;
+	}
+
+	if (!rxmode->hw_strip_crc) {
+		PMD_INIT_LOG(NOTICE, "Can't disable hw crc strip");
+		rxmode->hw_strip_crc = 1;
+	}
+
+	if (rxmode->hw_ip_checksum) {
+		PMD_INIT_LOG(NOTICE, "Rxcksum not supported");
+		rxmode->hw_ip_checksum = 0;
+	}
+
+	if (rxmode->split_hdr_size) {
+		PMD_INIT_LOG(INFO, "Rxmode does not support split header");
+		return -EINVAL;
+	}
+
+	if (rxmode->hw_vlan_filter) {
+		PMD_INIT_LOG(INFO, "VLAN filter not supported");
+		return -EINVAL;
+	}
+
+	if (rxmode->hw_vlan_extend) {
+		PMD_INIT_LOG(INFO, "VLAN extended not supported");
+		return -EINVAL;
+	}
+
+	if (rxmode->enable_lro) {
+		PMD_INIT_LOG(INFO, "LRO not supported");
+		return -EINVAL;
+	}
+
+	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
+		PMD_INIT_LOG(INFO, "Setting link speed/duplex not supported");
+		return -EINVAL;
+	}
+
+	if (conf->dcb_capability_en) {
+		PMD_INIT_LOG(INFO, "DCB enable not supported");
+		return -EINVAL;
+	}
+
+	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
+		PMD_INIT_LOG(INFO, "Flow director not supported");
+		return -EINVAL;
+	}
+
+	PMD_INIT_LOG(DEBUG, "Configured ethdev port%d hwcap=0x%" PRIx64,
+		dev->data->port_id, nicvf_hw_cap(nic));
+
+	return 0;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
+	.dev_configure            = nicvf_dev_configure,
 	.link_update              = nicvf_dev_link_update,
 	.get_reg_length           = nicvf_dev_get_reg_length,
 	.get_reg                  = nicvf_dev_get_regs,
