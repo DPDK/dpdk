@@ -69,6 +69,8 @@
 #include "nicvf_rxtx.h"
 #include "nicvf_logs.h"
 
+static void nicvf_dev_stop(struct rte_eth_dev *dev);
+
 static inline int
 nicvf_atomic_write_link_status(struct rte_eth_dev *dev,
 			       struct rte_eth_link *link)
@@ -534,6 +536,82 @@ nicvf_qset_sq_alloc(struct nicvf *nic,  struct nicvf_txq *sq, uint16_t qidx,
 	return 0;
 }
 
+static int
+nicvf_qset_rbdr_alloc(struct nicvf *nic, uint32_t desc_cnt, uint32_t buffsz)
+{
+	struct nicvf_rbdr *rbdr;
+	const struct rte_memzone *rz;
+	uint32_t ring_size;
+
+	assert(nic->rbdr == NULL);
+	rbdr = rte_zmalloc_socket("rbdr", sizeof(struct nicvf_rbdr),
+				  RTE_CACHE_LINE_SIZE, nic->node);
+	if (rbdr == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate mem for rbdr");
+		return -ENOMEM;
+	}
+
+	ring_size = sizeof(struct rbdr_entry_t) * desc_cnt;
+	rz = rte_eth_dma_zone_reserve(nic->eth_dev, "rbdr", 0, ring_size,
+				   NICVF_RBDR_BASE_ALIGN_BYTES, nic->node);
+	if (rz == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate mem for rbdr desc ring");
+		return -ENOMEM;
+	}
+
+	memset(rz->addr, 0, ring_size);
+
+	rbdr->phys = rz->phys_addr;
+	rbdr->tail = 0;
+	rbdr->next_tail = 0;
+	rbdr->desc = rz->addr;
+	rbdr->buffsz = buffsz;
+	rbdr->qlen_mask = desc_cnt - 1;
+	rbdr->rbdr_status =
+		nicvf_qset_base(nic, 0) + NIC_QSET_RBDR_0_1_STATUS0;
+	rbdr->rbdr_door =
+		nicvf_qset_base(nic, 0) + NIC_QSET_RBDR_0_1_DOOR;
+
+	nic->rbdr = rbdr;
+	return 0;
+}
+
+static void
+nicvf_rbdr_release_mbuf(struct nicvf *nic, nicvf_phys_addr_t phy)
+{
+	uint16_t qidx;
+	void *obj;
+	struct nicvf_rxq *rxq;
+
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++) {
+		rxq = nic->eth_dev->data->rx_queues[qidx];
+		if (rxq->precharge_cnt) {
+			obj = (void *)nicvf_mbuff_phy2virt(phy,
+							   rxq->mbuf_phys_off);
+			rte_mempool_put(rxq->pool, obj);
+			rxq->precharge_cnt--;
+			break;
+		}
+	}
+}
+
+static inline void
+nicvf_rbdr_release_mbufs(struct nicvf *nic)
+{
+	uint32_t qlen_mask, head;
+	struct rbdr_entry_t *entry;
+	struct nicvf_rbdr *rbdr = nic->rbdr;
+
+	qlen_mask = rbdr->qlen_mask;
+	head = rbdr->head;
+	while (head != rbdr->tail) {
+		entry = rbdr->desc + head;
+		nicvf_rbdr_release_mbuf(nic, entry->full_addr);
+		head++;
+		head = head & qlen_mask;
+	}
+}
+
 static inline void
 nicvf_tx_queue_release_mbufs(struct nicvf_txq *txq)
 {
@@ -629,6 +707,31 @@ nicvf_configure_cpi(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static inline int
+nicvf_configure_rss(struct rte_eth_dev *dev)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint64_t rsshf;
+	int ret = -EINVAL;
+
+	rsshf = nicvf_rss_ethdev_to_nic(nic,
+			dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
+	PMD_DRV_LOG(INFO, "mode=%d rx_queues=%d loopback=%d rsshf=0x%" PRIx64,
+		    dev->data->dev_conf.rxmode.mq_mode,
+		    nic->eth_dev->data->nb_rx_queues,
+		    nic->eth_dev->data->dev_conf.lpbk_mode, rsshf);
+
+	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_NONE)
+		ret = nicvf_rss_term(nic);
+	else if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+		ret = nicvf_rss_config(nic,
+				       nic->eth_dev->data->nb_rx_queues, rsshf);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to configure RSS %d", ret);
+
+	return ret;
+}
+
 static int
 nicvf_configure_rss_reta(struct rte_eth_dev *dev)
 {
@@ -670,6 +773,48 @@ nicvf_dev_tx_queue_release(void *sq)
 			txq->txbuffs = NULL;
 		}
 		rte_free(txq);
+	}
+}
+
+static void
+nicvf_set_tx_function(struct rte_eth_dev *dev)
+{
+	struct nicvf_txq *txq;
+	size_t i;
+	bool multiseg = false;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if ((txq->txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS) == 0) {
+			multiseg = true;
+			break;
+		}
+	}
+
+	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
+	if (multiseg) {
+		PMD_DRV_LOG(DEBUG, "Using multi-segment tx callback");
+		dev->tx_pkt_burst = nicvf_xmit_pkts_multiseg;
+	} else {
+		PMD_DRV_LOG(DEBUG, "Using single-segment tx callback");
+		dev->tx_pkt_burst = nicvf_xmit_pkts;
+	}
+
+	if (txq->pool_free == nicvf_single_pool_free_xmited_buffers)
+		PMD_DRV_LOG(DEBUG, "Using single-mempool tx free method");
+	else
+		PMD_DRV_LOG(DEBUG, "Using multi-mempool tx free method");
+}
+
+static void
+nicvf_set_rx_function(struct rte_eth_dev *dev)
+{
+	if (dev->data->scattered_rx) {
+		PMD_DRV_LOG(DEBUG, "Using multi-segment rx callback");
+		dev->rx_pkt_burst = nicvf_recv_pkts_multiseg;
+	} else {
+		PMD_DRV_LOG(DEBUG, "Using single-segment rx callback");
+		dev->rx_pkt_burst = nicvf_recv_pkts;
 	}
 }
 
@@ -1064,6 +1209,317 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 }
 
+static nicvf_phys_addr_t
+rbdr_rte_mempool_get(void *opaque)
+{
+	uint16_t qidx;
+	uintptr_t mbuf;
+	struct nicvf_rxq *rxq;
+	struct nicvf *nic = nicvf_pmd_priv((struct rte_eth_dev *)opaque);
+
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++) {
+		rxq = nic->eth_dev->data->rx_queues[qidx];
+		/* Maintain equal buffer count across all pools */
+		if (rxq->precharge_cnt >= rxq->qlen_mask)
+			continue;
+		rxq->precharge_cnt++;
+		mbuf = (uintptr_t)rte_pktmbuf_alloc(rxq->pool);
+		if (mbuf)
+			return nicvf_mbuff_virt2phy(mbuf, rxq->mbuf_phys_off);
+	}
+	return 0;
+}
+
+static int
+nicvf_dev_start(struct rte_eth_dev *dev)
+{
+	int ret;
+	uint16_t qidx;
+	uint32_t buffsz = 0, rbdrsz = 0;
+	uint32_t total_rxq_desc, nb_rbdr_desc, exp_buffs;
+	uint64_t mbuf_phys_off = 0;
+	struct nicvf_rxq *rxq;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct rte_mbuf *mbuf;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
+	uint16_t mtu;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Userspace process exited without proper shutdown in last run */
+	if (nicvf_qset_rbdr_active(nic, 0))
+		nicvf_dev_stop(dev);
+
+	/*
+	 * Thunderx nicvf PMD can support more than one pool per port only when
+	 * 1) Data payload size is same across all the pools in given port
+	 * AND
+	 * 2) All mbuffs in the pools are from the same hugepage
+	 * AND
+	 * 3) Mbuff metadata size is same across all the pools in given port
+	 *
+	 * This is to support existing application that uses multiple pool/port.
+	 * But, the purpose of using multipool for QoS will not be addressed.
+	 *
+	 */
+
+	/* Validate RBDR buff size */
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++) {
+		rxq = dev->data->rx_queues[qidx];
+		mbp_priv = rte_mempool_get_priv(rxq->pool);
+		buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+		if (buffsz % 128) {
+			PMD_INIT_LOG(ERR, "rxbuf size must be multiply of 128");
+			return -EINVAL;
+		}
+		if (rbdrsz == 0)
+			rbdrsz = buffsz;
+		if (rbdrsz != buffsz) {
+			PMD_INIT_LOG(ERR, "buffsz not same, qid=%d (%d/%d)",
+				     qidx, rbdrsz, buffsz);
+			return -EINVAL;
+		}
+	}
+
+	/* Validate mempool attributes */
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++) {
+		rxq = dev->data->rx_queues[qidx];
+		rxq->mbuf_phys_off = nicvf_mempool_phy_offset(rxq->pool);
+		mbuf = rte_pktmbuf_alloc(rxq->pool);
+		if (mbuf == NULL) {
+			PMD_INIT_LOG(ERR, "Failed allocate mbuf qid=%d pool=%s",
+				     qidx, rxq->pool->name);
+			return -ENOMEM;
+		}
+		rxq->mbuf_phys_off -= nicvf_mbuff_meta_length(mbuf);
+		rxq->mbuf_phys_off -= RTE_PKTMBUF_HEADROOM;
+		rte_pktmbuf_free(mbuf);
+
+		if (mbuf_phys_off == 0)
+			mbuf_phys_off = rxq->mbuf_phys_off;
+		if (mbuf_phys_off != rxq->mbuf_phys_off) {
+			PMD_INIT_LOG(ERR, "pool params not same,%s %" PRIx64,
+				     rxq->pool->name, mbuf_phys_off);
+			return -EINVAL;
+		}
+	}
+
+	/* Check the level of buffers in the pool */
+	total_rxq_desc = 0;
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++) {
+		rxq = dev->data->rx_queues[qidx];
+		/* Count total numbers of rxq descs */
+		total_rxq_desc += rxq->qlen_mask + 1;
+		exp_buffs = RTE_MEMPOOL_CACHE_MAX_SIZE + rxq->rx_free_thresh;
+		exp_buffs *= nic->eth_dev->data->nb_rx_queues;
+		if (rte_mempool_count(rxq->pool) < exp_buffs) {
+			PMD_INIT_LOG(ERR, "Buff shortage in pool=%s (%d/%d)",
+				     rxq->pool->name,
+				     rte_mempool_count(rxq->pool),
+				     exp_buffs);
+			return -ENOENT;
+		}
+	}
+
+	/* Check RBDR desc overflow */
+	ret = nicvf_qsize_rbdr_roundup(total_rxq_desc);
+	if (ret == 0) {
+		PMD_INIT_LOG(ERR, "Reached RBDR desc limit, reduce nr desc");
+		return -ENOMEM;
+	}
+
+	/* Enable qset */
+	ret = nicvf_qset_config(nic);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to enable qset %d", ret);
+		return ret;
+	}
+
+	/* Allocate RBDR and RBDR ring desc */
+	nb_rbdr_desc = nicvf_qsize_rbdr_roundup(total_rxq_desc);
+	ret = nicvf_qset_rbdr_alloc(nic, nb_rbdr_desc, rbdrsz);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for rbdr alloc");
+		goto qset_reclaim;
+	}
+
+	/* Enable and configure RBDR registers */
+	ret = nicvf_qset_rbdr_config(nic, 0);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to configure rbdr %d", ret);
+		goto qset_rbdr_free;
+	}
+
+	/* Fill rte_mempool buffers in RBDR pool and precharge it */
+	ret = nicvf_qset_rbdr_precharge(nic, 0, rbdr_rte_mempool_get,
+					dev, total_rxq_desc);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to fill rbdr %d", ret);
+		goto qset_rbdr_reclaim;
+	}
+
+	PMD_DRV_LOG(INFO, "Filled %d out of %d entries in RBDR",
+		     nic->rbdr->tail, nb_rbdr_desc);
+
+	/* Configure RX queues */
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++) {
+		ret = nicvf_start_rx_queue(dev, qidx);
+		if (ret)
+			goto start_rxq_error;
+	}
+
+	/* Configure VLAN Strip */
+	nicvf_vlan_hw_strip(nic, dev->data->dev_conf.rxmode.hw_vlan_strip);
+
+	/* Configure TX queues */
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_tx_queues; qidx++) {
+		ret = nicvf_start_tx_queue(dev, qidx);
+		if (ret)
+			goto start_txq_error;
+	}
+
+	/* Configure CPI algorithm */
+	ret = nicvf_configure_cpi(dev);
+	if (ret)
+		goto start_txq_error;
+
+	/* Configure RSS */
+	ret = nicvf_configure_rss(dev);
+	if (ret)
+		goto qset_rss_error;
+
+	/* Configure loopback */
+	ret = nicvf_loopback_config(nic, dev->data->dev_conf.lpbk_mode);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to configure loopback %d", ret);
+		goto qset_rss_error;
+	}
+
+	/* Reset all statistics counters attached to this port */
+	ret = nicvf_mbox_reset_stat_counters(nic, 0x3FFF, 0x1F, 0xFFFF, 0xFFFF);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to reset stat counters %d", ret);
+		goto qset_rss_error;
+	}
+
+	/* Setup scatter mode if needed by jumbo */
+	if (dev->data->dev_conf.rxmode.max_rx_pkt_len +
+					    2 * VLAN_TAG_SIZE > buffsz)
+		dev->data->scattered_rx = 1;
+	if (rx_conf->enable_scatter)
+		dev->data->scattered_rx = 1;
+
+	/* Setup MTU based on max_rx_pkt_len or default */
+	mtu = dev->data->dev_conf.rxmode.jumbo_frame ?
+		dev->data->dev_conf.rxmode.max_rx_pkt_len
+			-  ETHER_HDR_LEN - ETHER_CRC_LEN
+		: ETHER_MTU;
+
+	if (nicvf_dev_set_mtu(dev, mtu)) {
+		PMD_INIT_LOG(ERR, "Failed to set default mtu size");
+		return -EBUSY;
+	}
+
+	/* Configure callbacks based on scatter mode */
+	nicvf_set_tx_function(dev);
+	nicvf_set_rx_function(dev);
+
+	/* Done; Let PF make the BGX's RX and TX switches to ON position */
+	nicvf_mbox_cfg_done(nic);
+	return 0;
+
+qset_rss_error:
+	nicvf_rss_term(nic);
+start_txq_error:
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_tx_queues; qidx++)
+		nicvf_stop_tx_queue(dev, qidx);
+start_rxq_error:
+	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++)
+		nicvf_stop_rx_queue(dev, qidx);
+qset_rbdr_reclaim:
+	nicvf_qset_rbdr_reclaim(nic, 0);
+	nicvf_rbdr_release_mbufs(nic);
+qset_rbdr_free:
+	if (nic->rbdr) {
+		rte_free(nic->rbdr);
+		nic->rbdr = NULL;
+	}
+qset_reclaim:
+	nicvf_qset_reclaim(nic);
+	return ret;
+}
+
+static void
+nicvf_dev_stop(struct rte_eth_dev *dev)
+{
+	int ret;
+	uint16_t qidx;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Let PF make the BGX's RX and TX switches to OFF position */
+	nicvf_mbox_shutdown(nic);
+
+	/* Disable loopback */
+	ret = nicvf_loopback_config(nic, 0);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to disable loopback %d", ret);
+
+	/* Disable VLAN Strip */
+	nicvf_vlan_hw_strip(nic, 0);
+
+	/* Reclaim sq */
+	for (qidx = 0; qidx < dev->data->nb_tx_queues; qidx++)
+		nicvf_stop_tx_queue(dev, qidx);
+
+	/* Reclaim rq */
+	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++)
+		nicvf_stop_rx_queue(dev, qidx);
+
+	/* Reclaim RBDR */
+	ret = nicvf_qset_rbdr_reclaim(nic, 0);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to reclaim RBDR %d", ret);
+
+	/* Move all charged buffers in RBDR back to pool */
+	if (nic->rbdr != NULL)
+		nicvf_rbdr_release_mbufs(nic);
+
+	/* Reclaim CPI configuration */
+	if (!nic->sqs_mode) {
+		ret = nicvf_mbox_config_cpi(nic, 0);
+		if (ret)
+			PMD_INIT_LOG(ERR, "Failed to reclaim CPI config");
+	}
+
+	/* Disable qset */
+	ret = nicvf_qset_config(nic);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to disable qset %d", ret);
+
+	/* Disable all interrupts */
+	nicvf_disable_all_interrupts(nic);
+
+	/* Free RBDR SW structure */
+	if (nic->rbdr) {
+		rte_free(nic->rbdr);
+		nic->rbdr = NULL;
+	}
+}
+
+static void
+nicvf_dev_close(struct rte_eth_dev *dev)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	nicvf_dev_stop(dev);
+	nicvf_periodic_alarm_stop(nic);
+}
+
 static int
 nicvf_dev_configure(struct rte_eth_dev *dev)
 {
@@ -1144,7 +1600,10 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
+	.dev_start                = nicvf_dev_start,
+	.dev_stop                 = nicvf_dev_stop,
 	.link_update              = nicvf_dev_link_update,
+	.dev_close                = nicvf_dev_close,
 	.stats_get                = nicvf_dev_stats_get,
 	.stats_reset              = nicvf_dev_stats_reset,
 	.promiscuous_enable       = nicvf_dev_promisc_enable,
@@ -1178,6 +1637,14 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &nicvf_eth_dev_ops;
+
+	/* For secondary processes, the primary has done all the work */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		/* Setup callbacks for secondary process */
+		nicvf_set_tx_function(eth_dev);
+		nicvf_set_rx_function(eth_dev);
+		return 0;
+	}
 
 	pci_dev = eth_dev->pci_dev;
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
