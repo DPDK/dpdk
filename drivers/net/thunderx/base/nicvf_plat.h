@@ -126,4 +126,6 @@ do {							\
 
 #endif
 
+#include "nicvf_mbox.h"
+
 #endif /* _THUNDERX_NICVF_H */
