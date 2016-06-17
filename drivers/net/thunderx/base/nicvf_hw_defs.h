@@ -548,4 +548,672 @@ enum nic_stat_vnic_tx_e {
 	TX_DROP,
 };
 
+/* vNIC HW Register structures */
+
+typedef union {
+	uint64_t u64;
+	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint64_t cqe_type:4;
+		uint64_t stdn_fault:1;
+		uint64_t rsvd0:1;
+		uint64_t rq_qs:7;
+		uint64_t rq_idx:3;
+		uint64_t rsvd1:12;
+		uint64_t rss_alg:4;
+		uint64_t rsvd2:4;
+		uint64_t rb_cnt:4;
+		uint64_t vlan_found:1;
+		uint64_t vlan_stripped:1;
+		uint64_t vlan2_found:1;
+		uint64_t vlan2_stripped:1;
+		uint64_t l4_type:4;
+		uint64_t l3_type:4;
+		uint64_t l2_present:1;
+		uint64_t err_level:3;
+		uint64_t err_opcode:8;
+#else
+		uint64_t err_opcode:8;
+		uint64_t err_level:3;
+		uint64_t l2_present:1;
+		uint64_t l3_type:4;
+		uint64_t l4_type:4;
+		uint64_t vlan2_stripped:1;
+		uint64_t vlan2_found:1;
+		uint64_t vlan_stripped:1;
+		uint64_t vlan_found:1;
+		uint64_t rb_cnt:4;
+		uint64_t rsvd2:4;
+		uint64_t rss_alg:4;
+		uint64_t rsvd1:12;
+		uint64_t rq_idx:3;
+		uint64_t rq_qs:7;
+		uint64_t rsvd0:1;
+		uint64_t stdn_fault:1;
+		uint64_t cqe_type:4;
+#endif
+	};
+} cqe_rx_word0_t;
+
+typedef union {
+	uint64_t u64;
+	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint64_t pkt_len:16;
+		uint64_t l2_ptr:8;
+		uint64_t l3_ptr:8;
+		uint64_t l4_ptr:8;
+		uint64_t cq_pkt_len:8;
+		uint64_t align_pad:3;
+		uint64_t rsvd3:1;
+		uint64_t chan:12;
+#else
+		uint64_t chan:12;
+		uint64_t rsvd3:1;
+		uint64_t align_pad:3;
+		uint64_t cq_pkt_len:8;
+		uint64_t l4_ptr:8;
+		uint64_t l3_ptr:8;
+		uint64_t l2_ptr:8;
+		uint64_t pkt_len:16;
+#endif
+	};
+} cqe_rx_word1_t;
+
+typedef union {
+	uint64_t u64;
+	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint64_t rss_tag:32;
+		uint64_t vlan_tci:16;
+		uint64_t vlan_ptr:8;
+		uint64_t vlan2_ptr:8;
+#else
+		uint64_t vlan2_ptr:8;
+		uint64_t vlan_ptr:8;
+		uint64_t vlan_tci:16;
+		uint64_t rss_tag:32;
+#endif
+	};
+} cqe_rx_word2_t;
+
+typedef union {
+	uint64_t u64;
+	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint16_t rb3_sz;
+		uint16_t rb2_sz;
+		uint16_t rb1_sz;
+		uint16_t rb0_sz;
+#else
+		uint16_t rb0_sz;
+		uint16_t rb1_sz;
+		uint16_t rb2_sz;
+		uint16_t rb3_sz;
+#endif
+	};
+} cqe_rx_word3_t;
+
+typedef union {
+	uint64_t u64;
+	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint16_t rb7_sz;
+		uint16_t rb6_sz;
+		uint16_t rb5_sz;
+		uint16_t rb4_sz;
+#else
+		uint16_t rb4_sz;
+		uint16_t rb5_sz;
+		uint16_t rb6_sz;
+		uint16_t rb7_sz;
+#endif
+	};
+} cqe_rx_word4_t;
+
+typedef union {
+	uint64_t u64;
+	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint16_t rb11_sz;
+		uint16_t rb10_sz;
+		uint16_t rb9_sz;
+		uint16_t rb8_sz;
+#else
+		uint16_t rb8_sz;
+		uint16_t rb9_sz;
+		uint16_t rb10_sz;
+		uint16_t rb11_sz;
+#endif
+	};
+} cqe_rx_word5_t;
+
+typedef union {
+	uint64_t u64;
+	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint64_t vlan_found:1;
+		uint64_t vlan_stripped:1;
+		uint64_t vlan2_found:1;
+		uint64_t vlan2_stripped:1;
+		uint64_t rsvd2:3;
+		uint64_t inner_l2:1;
+		uint64_t inner_l4type:4;
+		uint64_t inner_l3type:4;
+		uint64_t vlan_ptr:8;
+		uint64_t vlan2_ptr:8;
+		uint64_t rsvd1:8;
+		uint64_t rsvd0:8;
+		uint64_t inner_l3ptr:8;
+		uint64_t inner_l4ptr:8;
+#else
+		uint64_t inner_l4ptr:8;
+		uint64_t inner_l3ptr:8;
+		uint64_t rsvd0:8;
+		uint64_t rsvd1:8;
+		uint64_t vlan2_ptr:8;
+		uint64_t vlan_ptr:8;
+		uint64_t inner_l3type:4;
+		uint64_t inner_l4type:4;
+		uint64_t inner_l2:1;
+		uint64_t rsvd2:3;
+		uint64_t vlan2_stripped:1;
+		uint64_t vlan2_found:1;
+		uint64_t vlan_stripped:1;
+		uint64_t vlan_found:1;
+#endif
+	};
+} cqe_rx2_word6_t;
+
+struct cqe_rx_t {
+	cqe_rx_word0_t word0;
+	cqe_rx_word1_t word1;
+	cqe_rx_word2_t word2;
+	cqe_rx_word3_t word3;
+	cqe_rx_word4_t word4;
+	cqe_rx_word5_t word5;
+	cqe_rx2_word6_t word6; /* if NIC_PF_RX_CFG[CQE_RX2_ENA] set */
+};
+
+struct cqe_rx_tcp_err_t {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t   cqe_type:4; /* W0 */
+	uint64_t   rsvd0:60;
+
+	uint64_t   rsvd1:4; /* W1 */
+	uint64_t   partial_first:1;
+	uint64_t   rsvd2:27;
+	uint64_t   rbdr_bytes:8;
+	uint64_t   rsvd3:24;
+#else
+	uint64_t   rsvd0:60;
+	uint64_t   cqe_type:4;
+
+	uint64_t   rsvd3:24;
+	uint64_t   rbdr_bytes:8;
+	uint64_t   rsvd2:27;
+	uint64_t   partial_first:1;
+	uint64_t   rsvd1:4;
+#endif
+};
+
+struct cqe_rx_tcp_t {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t   cqe_type:4; /* W0 */
+	uint64_t   rsvd0:52;
+	uint64_t   cq_tcp_status:8;
+
+	uint64_t   rsvd1:32; /* W1 */
+	uint64_t   tcp_cntx_bytes:8;
+	uint64_t   rsvd2:8;
+	uint64_t   tcp_err_bytes:16;
+#else
+	uint64_t   cq_tcp_status:8;
+	uint64_t   rsvd0:52;
+	uint64_t   cqe_type:4; /* W0 */
+
+	uint64_t   tcp_err_bytes:16;
+	uint64_t   rsvd2:8;
+	uint64_t   tcp_cntx_bytes:8;
+	uint64_t   rsvd1:32; /* W1 */
+#endif
+};
+
+struct cqe_send_t {
+#if defined(__BIG_ENDIAN_BITFIELD)
+	uint64_t   cqe_type:4; /* W0 */
+	uint64_t   rsvd0:4;
+	uint64_t   sqe_ptr:16;
+	uint64_t   rsvd1:4;
+	uint64_t   rsvd2:10;
+	uint64_t   sq_qs:7;
+	uint64_t   sq_idx:3;
+	uint64_t   rsvd3:8;
+	uint64_t   send_status:8;
+
+	uint64_t   ptp_timestamp:64; /* W1 */
+#elif defined(__LITTLE_ENDIAN_BITFIELD)
+	uint64_t   send_status:8;
+	uint64_t   rsvd3:8;
+	uint64_t   sq_idx:3;
+	uint64_t   sq_qs:7;
+	uint64_t   rsvd2:10;
+	uint64_t   rsvd1:4;
+	uint64_t   sqe_ptr:16;
+	uint64_t   rsvd0:4;
+	uint64_t   cqe_type:4; /* W0 */
+
+	uint64_t   ptp_timestamp:64;
+#endif
+};
+
+struct cq_entry_type_t {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t cqe_type:4;
+	uint64_t __pad:60;
+#else
+	uint64_t __pad:60;
+	uint64_t cqe_type:4;
+#endif
+};
+
+union cq_entry_t {
+	uint64_t u[64];
+	struct cq_entry_type_t type;
+	struct cqe_rx_t rx_hdr;
+	struct cqe_rx_tcp_t rx_tcp_hdr;
+	struct cqe_rx_tcp_err_t rx_tcp_err_hdr;
+	struct cqe_send_t cqe_send;
+};
+
+NICVF_STATIC_ASSERT(sizeof(union cq_entry_t) == 512);
+
+struct rbdr_entry_t {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	union {
+		struct {
+			uint64_t   rsvd0:15;
+			uint64_t   buf_addr:42;
+			uint64_t   cache_align:7;
+		};
+		nicvf_phys_addr_t full_addr;
+	};
+#else
+	union {
+		struct {
+			uint64_t   cache_align:7;
+			uint64_t   buf_addr:42;
+			uint64_t   rsvd0:15;
+		};
+		nicvf_phys_addr_t full_addr;
+	};
+#endif
+};
+
+NICVF_STATIC_ASSERT(sizeof(struct rbdr_entry_t) == sizeof(uint64_t));
+
+/* TCP reassembly context */
+struct rbe_tcp_cnxt_t {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t   tcp_pkt_cnt:12;
+	uint64_t   rsvd1:4;
+	uint64_t   align_hdr_bytes:4;
+	uint64_t   align_ptr_bytes:4;
+	uint64_t   ptr_bytes:16;
+	uint64_t   rsvd2:24;
+	uint64_t   cqe_type:4;
+	uint64_t   rsvd0:54;
+	uint64_t   tcp_end_reason:2;
+	uint64_t   tcp_status:4;
+#else
+	uint64_t   tcp_status:4;
+	uint64_t   tcp_end_reason:2;
+	uint64_t   rsvd0:54;
+	uint64_t   cqe_type:4;
+	uint64_t   rsvd2:24;
+	uint64_t   ptr_bytes:16;
+	uint64_t   align_ptr_bytes:4;
+	uint64_t   align_hdr_bytes:4;
+	uint64_t   rsvd1:4;
+	uint64_t   tcp_pkt_cnt:12;
+#endif
+};
+
+/* Always Big endian */
+struct rx_hdr_t {
+	uint64_t   opaque:32;
+	uint64_t   rss_flow:8;
+	uint64_t   skip_length:6;
+	uint64_t   disable_rss:1;
+	uint64_t   disable_tcp_reassembly:1;
+	uint64_t   nodrop:1;
+	uint64_t   dest_alg:2;
+	uint64_t   rsvd0:2;
+	uint64_t   dest_rq:11;
+};
+
+struct sq_crc_subdesc {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t    rsvd1:32;
+	uint64_t    crc_ival:32;
+	uint64_t    subdesc_type:4;
+	uint64_t    crc_alg:2;
+	uint64_t    rsvd0:10;
+	uint64_t    crc_insert_pos:16;
+	uint64_t    hdr_start:16;
+	uint64_t    crc_len:16;
+#else
+	uint64_t    crc_len:16;
+	uint64_t    hdr_start:16;
+	uint64_t    crc_insert_pos:16;
+	uint64_t    rsvd0:10;
+	uint64_t    crc_alg:2;
+	uint64_t    subdesc_type:4;
+	uint64_t    crc_ival:32;
+	uint64_t    rsvd1:32;
+#endif
+};
+
+struct sq_gather_subdesc {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t    subdesc_type:4; /* W0 */
+	uint64_t    ld_type:2;
+	uint64_t    rsvd0:42;
+	uint64_t    size:16;
+
+	uint64_t    rsvd1:15; /* W1 */
+	uint64_t    addr:49;
+#else
+	uint64_t    size:16;
+	uint64_t    rsvd0:42;
+	uint64_t    ld_type:2;
+	uint64_t    subdesc_type:4; /* W0 */
+
+	uint64_t    addr:49;
+	uint64_t    rsvd1:15; /* W1 */
+#endif
+};
+
+/* SQ immediate subdescriptor */
+struct sq_imm_subdesc {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t    subdesc_type:4; /* W0 */
+	uint64_t    rsvd0:46;
+	uint64_t    len:14;
+
+	uint64_t    data:64; /* W1 */
+#else
+	uint64_t    len:14;
+	uint64_t    rsvd0:46;
+	uint64_t    subdesc_type:4; /* W0 */
+
+	uint64_t    data:64; /* W1 */
+#endif
+};
+
+struct sq_mem_subdesc {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t    subdesc_type:4; /* W0 */
+	uint64_t    mem_alg:4;
+	uint64_t    mem_dsz:2;
+	uint64_t    wmem:1;
+	uint64_t    rsvd0:21;
+	uint64_t    offset:32;
+
+	uint64_t    rsvd1:15; /* W1 */
+	uint64_t    addr:49;
+#else
+	uint64_t    offset:32;
+	uint64_t    rsvd0:21;
+	uint64_t    wmem:1;
+	uint64_t    mem_dsz:2;
+	uint64_t    mem_alg:4;
+	uint64_t    subdesc_type:4; /* W0 */
+
+	uint64_t    addr:49;
+	uint64_t    rsvd1:15; /* W1 */
+#endif
+};
+
+struct sq_hdr_subdesc {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t    subdesc_type:4;
+	uint64_t    tso:1;
+	uint64_t    post_cqe:1; /* Post CQE on no error also */
+	uint64_t    dont_send:1;
+	uint64_t    tstmp:1;
+	uint64_t    subdesc_cnt:8;
+	uint64_t    csum_l4:2;
+	uint64_t    csum_l3:1;
+	uint64_t    csum_inner_l4:2;
+	uint64_t    csum_inner_l3:1;
+	uint64_t    rsvd0:2;
+	uint64_t    l4_offset:8;
+	uint64_t    l3_offset:8;
+	uint64_t    rsvd1:4;
+	uint64_t    tot_len:20; /* W0 */
+
+	uint64_t    rsvd2:24;
+	uint64_t    inner_l4_offset:8;
+	uint64_t    inner_l3_offset:8;
+	uint64_t    tso_start:8;
+	uint64_t    rsvd3:2;
+	uint64_t    tso_max_paysize:14; /* W1 */
+#else
+	uint64_t    tot_len:20;
+	uint64_t    rsvd1:4;
+	uint64_t    l3_offset:8;
+	uint64_t    l4_offset:8;
+	uint64_t    rsvd0:2;
+	uint64_t    csum_inner_l3:1;
+	uint64_t    csum_inner_l4:2;
+	uint64_t    csum_l3:1;
+	uint64_t    csum_l4:2;
+	uint64_t    subdesc_cnt:8;
+	uint64_t    tstmp:1;
+	uint64_t    dont_send:1;
+	uint64_t    post_cqe:1; /* Post CQE on no error also */
+	uint64_t    tso:1;
+	uint64_t    subdesc_type:4; /* W0 */
+
+	uint64_t    tso_max_paysize:14;
+	uint64_t    rsvd3:2;
+	uint64_t    tso_start:8;
+	uint64_t    inner_l3_offset:8;
+	uint64_t    inner_l4_offset:8;
+	uint64_t    rsvd2:24; /* W1 */
+#endif
+};
+
+/* Each sq entry is 128 bits wide */
+union sq_entry_t {
+	uint64_t buff[2];
+	struct sq_hdr_subdesc hdr;
+	struct sq_imm_subdesc imm;
+	struct sq_gather_subdesc gather;
+	struct sq_crc_subdesc crc;
+	struct sq_mem_subdesc mem;
+};
+
+NICVF_STATIC_ASSERT(sizeof(union sq_entry_t) == 16);
+
+/* Queue config register formats */
+struct rq_cfg { union { struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t reserved_2_63:62;
+	uint64_t ena:1;
+	uint64_t reserved_0:1;
+#else
+	uint64_t reserved_0:1;
+	uint64_t ena:1;
+	uint64_t reserved_2_63:62;
+#endif
+	};
+	uint64_t value;
+}; };
+
+struct cq_cfg { union { struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t reserved_43_63:21;
+	uint64_t ena:1;
+	uint64_t reset:1;
+	uint64_t caching:1;
+	uint64_t reserved_35_39:5;
+	uint64_t qsize:3;
+	uint64_t reserved_25_31:7;
+	uint64_t avg_con:9;
+	uint64_t reserved_0_15:16;
+#else
+	uint64_t reserved_0_15:16;
+	uint64_t avg_con:9;
+	uint64_t reserved_25_31:7;
+	uint64_t qsize:3;
+	uint64_t reserved_35_39:5;
+	uint64_t caching:1;
+	uint64_t reset:1;
+	uint64_t ena:1;
+	uint64_t reserved_43_63:21;
+#endif
+	};
+	uint64_t value;
+}; };
+
+struct sq_cfg { union { struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t reserved_20_63:44;
+	uint64_t ena:1;
+	uint64_t reserved_18_18:1;
+	uint64_t reset:1;
+	uint64_t ldwb:1;
+	uint64_t reserved_11_15:5;
+	uint64_t qsize:3;
+	uint64_t reserved_3_7:5;
+	uint64_t tstmp_bgx_intf:3;
+#else
+	uint64_t tstmp_bgx_intf:3;
+	uint64_t reserved_3_7:5;
+	uint64_t qsize:3;
+	uint64_t reserved_11_15:5;
+	uint64_t ldwb:1;
+	uint64_t reset:1;
+	uint64_t reserved_18_18:1;
+	uint64_t ena:1;
+	uint64_t reserved_20_63:44;
+#endif
+	};
+	uint64_t value;
+}; };
+
+struct rbdr_cfg { union { struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t reserved_45_63:19;
+	uint64_t ena:1;
+	uint64_t reset:1;
+	uint64_t ldwb:1;
+	uint64_t reserved_36_41:6;
+	uint64_t qsize:4;
+	uint64_t reserved_25_31:7;
+	uint64_t avg_con:9;
+	uint64_t reserved_12_15:4;
+	uint64_t lines:12;
+#else
+	uint64_t lines:12;
+	uint64_t reserved_12_15:4;
+	uint64_t avg_con:9;
+	uint64_t reserved_25_31:7;
+	uint64_t qsize:4;
+	uint64_t reserved_36_41:6;
+	uint64_t ldwb:1;
+	uint64_t reset:1;
+	uint64_t ena: 1;
+	uint64_t reserved_45_63:19;
+#endif
+	};
+	uint64_t value;
+}; };
+
+struct pf_qs_cfg { union { struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t reserved_32_63:32;
+	uint64_t ena:1;
+	uint64_t reserved_27_30:4;
+	uint64_t sq_ins_ena:1;
+	uint64_t sq_ins_pos:6;
+	uint64_t lock_ena:1;
+	uint64_t lock_viol_cqe_ena:1;
+	uint64_t send_tstmp_ena:1;
+	uint64_t be:1;
+	uint64_t reserved_7_15:9;
+	uint64_t vnic:7;
+#else
+	uint64_t vnic:7;
+	uint64_t reserved_7_15:9;
+	uint64_t be:1;
+	uint64_t send_tstmp_ena:1;
+	uint64_t lock_viol_cqe_ena:1;
+	uint64_t lock_ena:1;
+	uint64_t sq_ins_pos:6;
+	uint64_t sq_ins_ena:1;
+	uint64_t reserved_27_30:4;
+	uint64_t ena:1;
+	uint64_t reserved_32_63:32;
+#endif
+	};
+	uint64_t value;
+}; };
+
+struct pf_rq_cfg { union { struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t reserved1:1;
+	uint64_t reserved0:34;
+	uint64_t strip_pre_l2:1;
+	uint64_t caching:2;
+	uint64_t cq_qs:7;
+	uint64_t cq_idx:3;
+	uint64_t rbdr_cont_qs:7;
+	uint64_t rbdr_cont_idx:1;
+	uint64_t rbdr_strt_qs:7;
+	uint64_t rbdr_strt_idx:1;
+#else
+	uint64_t rbdr_strt_idx:1;
+	uint64_t rbdr_strt_qs:7;
+	uint64_t rbdr_cont_idx:1;
+	uint64_t rbdr_cont_qs:7;
+	uint64_t cq_idx:3;
+	uint64_t cq_qs:7;
+	uint64_t caching:2;
+	uint64_t strip_pre_l2:1;
+	uint64_t reserved0:34;
+	uint64_t reserved1:1;
+#endif
+	};
+	uint64_t value;
+}; };
+
+struct pf_rq_drop_cfg { union { struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	uint64_t rbdr_red:1;
+	uint64_t cq_red:1;
+	uint64_t reserved3:14;
+	uint64_t rbdr_pass:8;
+	uint64_t rbdr_drop:8;
+	uint64_t reserved2:8;
+	uint64_t cq_pass:8;
+	uint64_t cq_drop:8;
+	uint64_t reserved1:8;
+#else
+	uint64_t reserved1:8;
+	uint64_t cq_drop:8;
+	uint64_t cq_pass:8;
+	uint64_t reserved2:8;
+	uint64_t rbdr_drop:8;
+	uint64_t rbdr_pass:8;
+	uint64_t reserved3:14;
+	uint64_t cq_red:1;
+	uint64_t rbdr_red:1;
+#endif
+	};
+	uint64_t value;
+}; };
+
 #endif /* _THUNDERX_NICVF_HW_DEFS_H */
