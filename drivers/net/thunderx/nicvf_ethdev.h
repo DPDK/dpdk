@@ -38,6 +38,10 @@
 #define THUNDERX_NICVF_PMD_VERSION      "1.0"
 
 #define NICVF_INTR_POLL_INTERVAL_MS	50
+#define NICVF_HALF_DUPLEX		0x00
+#define NICVF_FULL_DUPLEX		0x01
+#define NICVF_UNKNOWN_DUPLEX		0xff
+
 
 static inline struct nicvf *
 nicvf_pmd_priv(struct rte_eth_dev *eth_dev)

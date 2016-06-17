@@ -69,12 +69,45 @@
 
 #include "nicvf_logs.h"
 
+static inline int
+nicvf_atomic_write_link_status(struct rte_eth_dev *dev,
+			       struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = &dev->data->dev_link;
+	struct rte_eth_link *src = link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+		*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+static inline void
+nicvf_set_eth_link_status(struct nicvf *nic, struct rte_eth_link *link)
+{
+	link->link_status = nic->link_up;
+	link->link_duplex = ETH_LINK_AUTONEG;
+	if (nic->duplex == NICVF_HALF_DUPLEX)
+		link->link_duplex = ETH_LINK_HALF_DUPLEX;
+	else if (nic->duplex == NICVF_FULL_DUPLEX)
+		link->link_duplex = ETH_LINK_FULL_DUPLEX;
+	link->link_speed = nic->speed;
+	link->link_autoneg = ETH_LINK_SPEED_AUTONEG;
+}
+
 static void
 nicvf_interrupt(void *arg)
 {
 	struct nicvf *nic = arg;
 
-	nicvf_reg_poll_interrupts(nic);
+	if (nicvf_reg_poll_interrupts(nic) == NIC_MBOX_MSG_BGX_LINK_CHANGE) {
+		if (nic->eth_dev->data->dev_conf.intr_conf.lsc)
+			nicvf_set_eth_link_status(nic,
+					&nic->eth_dev->data->dev_link);
+		_rte_eth_dev_callback_process(nic->eth_dev,
+				RTE_ETH_EVENT_INTR_LSC);
+	}
 
 	rte_eal_alarm_set(NICVF_INTR_POLL_INTERVAL_MS * 1000,
 				nicvf_interrupt, nic);
@@ -93,8 +126,26 @@ nicvf_periodic_alarm_stop(struct nicvf *nic)
 	return rte_eal_alarm_cancel(nicvf_interrupt, nic);
 }
 
+/*
+ * Return 0 means link status changed, -1 means not changed
+ */
+static int
+nicvf_dev_link_update(struct rte_eth_dev *dev,
+		      int wait_to_complete __rte_unused)
+{
+	struct rte_eth_link link;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	memset(&link, 0, sizeof(link));
+	nicvf_set_eth_link_status(nic, &link);
+	return nicvf_atomic_write_link_status(dev, &link);
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
+	.link_update              = nicvf_dev_link_update,
 };
 
 static int
