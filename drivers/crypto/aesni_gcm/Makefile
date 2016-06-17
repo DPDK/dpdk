@@ -30,8 +30,10 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+ifneq ($(MAKECMDGOALS),clean)
 ifeq ($(AESNI_MULTI_BUFFER_LIB_PATH),)
 $(error "Please define AESNI_MULTI_BUFFER_LIB_PATH environment variable")
+endif
 endif
 
 # library name
