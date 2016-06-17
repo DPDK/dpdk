@@ -144,6 +144,49 @@ nicvf_dev_link_update(struct rte_eth_dev *dev,
 }
 
 static int
+nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint32_t buffsz, frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (frame_size > NIC_HW_MAX_FRS)
+		return -EINVAL;
+
+	if (frame_size < NIC_HW_MIN_FRS)
+		return -EINVAL;
+
+	buffsz = dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
+
+	/*
+	 * Refuse mtu that requires the support of scattered packets
+	 * when this feature has not been enabled before.
+	 */
+	if (!dev->data->scattered_rx &&
+		(frame_size + 2 * VLAN_TAG_SIZE > buffsz))
+		return -EINVAL;
+
+	/* check <seg size> * <max_seg>  >= max_frame */
+	if (dev->data->scattered_rx &&
+		(frame_size + 2 * VLAN_TAG_SIZE > buffsz * NIC_HW_MAX_SEGS))
+		return -EINVAL;
+
+	if (frame_size > ETHER_MAX_LEN)
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+	else
+		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+
+	if (nicvf_mbox_update_hw_max_frs(nic, frame_size))
+		return -EINVAL;
+
+	/* Update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = (uint32_t)frame_size;
+	nic->mtu = mtu;
+	return 0;
+}
+
+static int
 nicvf_dev_get_reg_length(struct rte_eth_dev *dev  __rte_unused)
 {
 	return nicvf_reg_get_count();
@@ -769,6 +812,7 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
 	.link_update              = nicvf_dev_link_update,
 	.dev_infos_get            = nicvf_dev_info_get,
+	.mtu_set                  = nicvf_dev_set_mtu,
 	.reta_update              = nicvf_dev_reta_update,
 	.reta_query               = nicvf_dev_reta_query,
 	.rss_hash_update          = nicvf_dev_rss_hash_update,
