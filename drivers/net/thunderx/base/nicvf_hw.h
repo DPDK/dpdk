@@ -76,9 +76,17 @@ enum nicvf_err_e {
 	NICVF_ERR_SQ_PF_CFG,	 /* -8175 */
 	NICVF_ERR_LOOPBACK_CFG,  /* -8174 */
 	NICVF_ERR_BASE_INIT,     /* -8173 */
+	NICVF_ERR_RSS_TBL_UPDATE,/* -8172 */
+	NICVF_ERR_RSS_GET_SZ,    /* -8171 */
 };
 
 typedef nicvf_phys_addr_t (*rbdr_pool_get_handler)(void *opaque);
+
+struct nicvf_rss_reta_info {
+	uint8_t hash_bits;
+	uint16_t rss_size;
+	uint8_t ind_tbl[NIC_MAX_RSS_IDR_TBL_SIZE];
+};
 
 /* Common structs used in DPDK and base layer are defined in DPDK layer */
 #include "../nicvf_struct.h"
@@ -170,6 +178,18 @@ uint32_t nicvf_qsize_cq_roundup(uint32_t val);
 uint32_t nicvf_qsize_sq_roundup(uint32_t val);
 
 void nicvf_vlan_hw_strip(struct nicvf *nic, bool enable);
+
+int nicvf_rss_config(struct nicvf *nic, uint32_t  qcnt, uint64_t cfg);
+int nicvf_rss_term(struct nicvf *nic);
+
+int nicvf_rss_reta_update(struct nicvf *nic, uint8_t *tbl, uint32_t max_count);
+int nicvf_rss_reta_query(struct nicvf *nic, uint8_t *tbl, uint32_t max_count);
+
+void nicvf_rss_set_key(struct nicvf *nic, uint8_t *key);
+void nicvf_rss_get_key(struct nicvf *nic, uint8_t *key);
+
+void nicvf_rss_set_cfg(struct nicvf *nic, uint64_t val);
+uint64_t nicvf_rss_get_cfg(struct nicvf *nic);
 
 int nicvf_loopback_config(struct nicvf *nic, bool enable);
 

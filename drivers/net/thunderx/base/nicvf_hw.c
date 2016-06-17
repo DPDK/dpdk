@@ -721,6 +721,135 @@ nicvf_vlan_hw_strip(struct nicvf *nic, bool enable)
 	nicvf_reg_write(nic, NIC_VNIC_RQ_GEN_CFG, val);
 }
 
+void
+nicvf_rss_set_key(struct nicvf *nic, uint8_t *key)
+{
+	int idx;
+	uint64_t addr, val;
+	uint64_t *keyptr = (uint64_t *)key;
+
+	addr = NIC_VNIC_RSS_KEY_0_4;
+	for (idx = 0; idx < RSS_HASH_KEY_SIZE; idx++) {
+		val = nicvf_cpu_to_be_64(*keyptr);
+		nicvf_reg_write(nic, addr, val);
+		addr += sizeof(uint64_t);
+		keyptr++;
+	}
+}
+
+void
+nicvf_rss_get_key(struct nicvf *nic, uint8_t *key)
+{
+	int idx;
+	uint64_t addr, val;
+	uint64_t *keyptr = (uint64_t *)key;
+
+	addr = NIC_VNIC_RSS_KEY_0_4;
+	for (idx = 0; idx < RSS_HASH_KEY_SIZE; idx++) {
+		val = nicvf_reg_read(nic, addr);
+		*keyptr = nicvf_be_to_cpu_64(val);
+		addr += sizeof(uint64_t);
+		keyptr++;
+	}
+}
+
+void
+nicvf_rss_set_cfg(struct nicvf *nic, uint64_t val)
+{
+	nicvf_reg_write(nic, NIC_VNIC_RSS_CFG, val);
+}
+
+uint64_t
+nicvf_rss_get_cfg(struct nicvf *nic)
+{
+	return nicvf_reg_read(nic, NIC_VNIC_RSS_CFG);
+}
+
+int
+nicvf_rss_reta_update(struct nicvf *nic, uint8_t *tbl, uint32_t max_count)
+{
+	uint32_t idx;
+	struct nicvf_rss_reta_info *rss = &nic->rss_info;
+
+	/* result will be stored in nic->rss_info.rss_size */
+	if (nicvf_mbox_get_rss_size(nic))
+		return NICVF_ERR_RSS_GET_SZ;
+
+	assert(rss->rss_size > 0);
+	rss->hash_bits = (uint8_t)log2(rss->rss_size);
+	for (idx = 0; idx < rss->rss_size && idx < max_count; idx++)
+		rss->ind_tbl[idx] = tbl[idx];
+
+	if (nicvf_mbox_config_rss(nic))
+		return NICVF_ERR_RSS_TBL_UPDATE;
+
+	return NICVF_OK;
+}
+
+int
+nicvf_rss_reta_query(struct nicvf *nic, uint8_t *tbl, uint32_t max_count)
+{
+	uint32_t idx;
+	struct nicvf_rss_reta_info *rss = &nic->rss_info;
+
+	/* result will be stored in nic->rss_info.rss_size */
+	if (nicvf_mbox_get_rss_size(nic))
+		return NICVF_ERR_RSS_GET_SZ;
+
+	assert(rss->rss_size > 0);
+	rss->hash_bits = (uint8_t)log2(rss->rss_size);
+	for (idx = 0; idx < rss->rss_size && idx < max_count; idx++)
+		tbl[idx] = rss->ind_tbl[idx];
+
+	return NICVF_OK;
+}
+
+int
+nicvf_rss_config(struct nicvf *nic, uint32_t  qcnt, uint64_t cfg)
+{
+	uint32_t idx;
+	uint8_t default_reta[NIC_MAX_RSS_IDR_TBL_SIZE];
+	uint8_t default_key[RSS_HASH_KEY_BYTE_SIZE] = {
+		0xFE, 0xED, 0x0B, 0xAD, 0xFE, 0xED, 0x0B, 0xAD,
+		0xFE, 0xED, 0x0B, 0xAD, 0xFE, 0xED, 0x0B, 0xAD,
+		0xFE, 0xED, 0x0B, 0xAD, 0xFE, 0xED, 0x0B, 0xAD,
+		0xFE, 0xED, 0x0B, 0xAD, 0xFE, 0xED, 0x0B, 0xAD,
+		0xFE, 0xED, 0x0B, 0xAD, 0xFE, 0xED, 0x0B, 0xAD
+	};
+
+	if (nic->cpi_alg != CPI_ALG_NONE)
+		return -EINVAL;
+
+	if (cfg == 0)
+		return -EINVAL;
+
+	/* Update default RSS key and cfg */
+	nicvf_rss_set_key(nic, default_key);
+	nicvf_rss_set_cfg(nic, cfg);
+
+	/* Update default RSS RETA */
+	for (idx = 0; idx < NIC_MAX_RSS_IDR_TBL_SIZE; idx++)
+		default_reta[idx] = idx % qcnt;
+
+	return nicvf_rss_reta_update(nic, default_reta,
+			NIC_MAX_RSS_IDR_TBL_SIZE);
+}
+
+int
+nicvf_rss_term(struct nicvf *nic)
+{
+	uint32_t idx;
+	uint8_t disable_rss[NIC_MAX_RSS_IDR_TBL_SIZE];
+
+	nicvf_rss_set_cfg(nic, 0);
+	/* Redirect the output to 0th queue  */
+	for (idx = 0; idx < NIC_MAX_RSS_IDR_TBL_SIZE; idx++)
+		disable_rss[idx] = 0;
+
+	return nicvf_rss_reta_update(nic, disable_rss,
+			NIC_MAX_RSS_IDR_TBL_SIZE);
+}
+
 int
 nicvf_loopback_config(struct nicvf *nic, bool enable)
 {
