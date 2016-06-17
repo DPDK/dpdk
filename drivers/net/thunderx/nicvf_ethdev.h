@@ -42,6 +42,23 @@
 #define NICVF_FULL_DUPLEX		0x01
 #define NICVF_UNKNOWN_DUPLEX		0xff
 
+#define NICVF_RSS_OFFLOAD_PASS1 ( \
+	ETH_RSS_PORT | \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP)
+
+#define NICVF_RSS_OFFLOAD_TUNNEL ( \
+	ETH_RSS_VXLAN | \
+	ETH_RSS_GENEVE | \
+	ETH_RSS_NVGRE)
+
+#define NICVF_DEFAULT_RX_FREE_THRESH    224
+#define NICVF_DEFAULT_TX_FREE_THRESH    224
+#define NICVF_TX_FREE_MPOOL_THRESH      16
 
 static inline struct nicvf *
 nicvf_pmd_priv(struct rte_eth_dev *eth_dev)

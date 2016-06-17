@@ -168,6 +168,50 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 	return -ENOTSUP;
 }
 
+static void
+nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
+	dev_info->max_rx_pktlen = NIC_HW_MAX_FRS;
+	dev_info->max_rx_queues = (uint16_t)MAX_RCV_QUEUES_PER_QS;
+	dev_info->max_tx_queues = (uint16_t)MAX_SND_QUEUES_PER_QS;
+	dev_info->max_mac_addrs = 1;
+	dev_info->max_vfs = dev->pci_dev->max_vfs;
+
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_IPV4_CKSUM  |
+		DEV_TX_OFFLOAD_UDP_CKSUM   |
+		DEV_TX_OFFLOAD_TCP_CKSUM   |
+		DEV_TX_OFFLOAD_TCP_TSO     |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	dev_info->reta_size = nic->rss_info.rss_size;
+	dev_info->hash_key_size = RSS_HASH_KEY_BYTE_SIZE;
+	dev_info->flow_type_rss_offloads = NICVF_RSS_OFFLOAD_PASS1;
+	if (nicvf_hw_cap(nic) & NICVF_CAP_TUNNEL_PARSING)
+		dev_info->flow_type_rss_offloads |= NICVF_RSS_OFFLOAD_TUNNEL;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = NICVF_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_free_thresh = NICVF_DEFAULT_TX_FREE_THRESH,
+		.txq_flags =
+			ETH_TXQ_FLAGS_NOMULTSEGS  |
+			ETH_TXQ_FLAGS_NOREFCOUNT  |
+			ETH_TXQ_FLAGS_NOMULTMEMP  |
+			ETH_TXQ_FLAGS_NOVLANOFFL  |
+			ETH_TXQ_FLAGS_NOXSUMSCTP,
+	};
+}
+
 static int
 nicvf_dev_configure(struct rte_eth_dev *dev)
 {
@@ -249,6 +293,7 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
 	.link_update              = nicvf_dev_link_update,
+	.dev_infos_get            = nicvf_dev_info_get,
 	.get_reg_length           = nicvf_dev_get_reg_length,
 	.get_reg                  = nicvf_dev_get_regs,
 };
