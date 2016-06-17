@@ -191,6 +191,179 @@ nicvf_qset_cq_alloc(struct nicvf *nic, struct nicvf_rxq *rxq, uint16_t qidx,
 	return 0;
 }
 
+static int
+nicvf_qset_sq_alloc(struct nicvf *nic,  struct nicvf_txq *sq, uint16_t qidx,
+		    uint32_t desc_cnt)
+{
+	const struct rte_memzone *rz;
+	uint32_t ring_size = desc_cnt * sizeof(union sq_entry_t);
+
+	rz = rte_eth_dma_zone_reserve(nic->eth_dev, "sq", qidx, ring_size,
+				NICVF_SQ_BASE_ALIGN_BYTES, nic->node);
+	if (rz == NULL) {
+		PMD_INIT_LOG(ERR, "Failed allocate mem for sq hw ring");
+		return -ENOMEM;
+	}
+
+	memset(rz->addr, 0, ring_size);
+
+	sq->phys = rz->phys_addr;
+	sq->desc = rz->addr;
+	sq->qlen_mask = desc_cnt - 1;
+
+	return 0;
+}
+
+static inline void
+nicvf_tx_queue_release_mbufs(struct nicvf_txq *txq)
+{
+	uint32_t head;
+
+	head = txq->head;
+	while (head != txq->tail) {
+		if (txq->txbuffs[head]) {
+			rte_pktmbuf_free_seg(txq->txbuffs[head]);
+			txq->txbuffs[head] = NULL;
+		}
+		head++;
+		head = head & txq->qlen_mask;
+	}
+}
+
+static void
+nicvf_tx_queue_reset(struct nicvf_txq *txq)
+{
+	uint32_t txq_desc_cnt = txq->qlen_mask + 1;
+
+	memset(txq->desc, 0, sizeof(union sq_entry_t) * txq_desc_cnt);
+	memset(txq->txbuffs, 0, sizeof(struct rte_mbuf *) * txq_desc_cnt);
+	txq->tail = 0;
+	txq->head = 0;
+	txq->xmit_bufs = 0;
+}
+
+static void
+nicvf_dev_tx_queue_release(void *sq)
+{
+	struct nicvf_txq *txq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = (struct nicvf_txq *)sq;
+	if (txq) {
+		if (txq->txbuffs != NULL) {
+			nicvf_tx_queue_release_mbufs(txq);
+			rte_free(txq->txbuffs);
+			txq->txbuffs = NULL;
+		}
+		rte_free(txq);
+	}
+}
+
+static int
+nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
+			 uint16_t nb_desc, unsigned int socket_id,
+			 const struct rte_eth_txconf *tx_conf)
+{
+	uint16_t tx_free_thresh;
+	uint8_t is_single_pool;
+	struct nicvf_txq *txq;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Socket id check */
+	if (socket_id != (unsigned int)SOCKET_ID_ANY && socket_id != nic->node)
+		PMD_DRV_LOG(WARNING, "socket_id expected %d, configured %d",
+		socket_id, nic->node);
+
+	/* Tx deferred start is not supported */
+	if (tx_conf->tx_deferred_start) {
+		PMD_INIT_LOG(ERR, "Tx deferred start not supported");
+		return -EINVAL;
+	}
+
+	/* Roundup nb_desc to available qsize and validate max number of desc */
+	nb_desc = nicvf_qsize_sq_roundup(nb_desc);
+	if (nb_desc == 0) {
+		PMD_INIT_LOG(ERR, "Value of nb_desc beyond available sq qsize");
+		return -EINVAL;
+	}
+
+	/* Validate tx_free_thresh */
+	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
+				tx_conf->tx_free_thresh :
+				NICVF_DEFAULT_TX_FREE_THRESH);
+
+	if (tx_free_thresh > (nb_desc) ||
+		tx_free_thresh > NICVF_MAX_TX_FREE_THRESH) {
+		PMD_INIT_LOG(ERR,
+			"tx_free_thresh must be less than the number of TX "
+			"descriptors. (tx_free_thresh=%u port=%d "
+			"queue=%d)", (unsigned int)tx_free_thresh,
+			(int)dev->data->port_id, (int)qidx);
+		return -EINVAL;
+	}
+
+	/* Free memory prior to re-allocation if needed. */
+	if (dev->data->tx_queues[qidx] != NULL) {
+		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
+				qidx);
+		nicvf_dev_tx_queue_release(dev->data->tx_queues[qidx]);
+		dev->data->tx_queues[qidx] = NULL;
+	}
+
+	/* Allocating tx queue data structure */
+	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct nicvf_txq),
+					RTE_CACHE_LINE_SIZE, nic->node);
+	if (txq == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate txq=%d", qidx);
+		return -ENOMEM;
+	}
+
+	txq->nic = nic;
+	txq->queue_id = qidx;
+	txq->tx_free_thresh = tx_free_thresh;
+	txq->txq_flags = tx_conf->txq_flags;
+	txq->sq_head = nicvf_qset_base(nic, qidx) + NIC_QSET_SQ_0_7_HEAD;
+	txq->sq_door = nicvf_qset_base(nic, qidx) + NIC_QSET_SQ_0_7_DOOR;
+	is_single_pool = (txq->txq_flags & ETH_TXQ_FLAGS_NOREFCOUNT &&
+				txq->txq_flags & ETH_TXQ_FLAGS_NOMULTMEMP);
+
+	/* Choose optimum free threshold value for multipool case */
+	if (!is_single_pool) {
+		txq->tx_free_thresh = (uint16_t)
+		(tx_conf->tx_free_thresh == NICVF_DEFAULT_TX_FREE_THRESH ?
+				NICVF_TX_FREE_MPOOL_THRESH :
+				tx_conf->tx_free_thresh);
+	}
+
+	/* Allocate software ring */
+	txq->txbuffs = rte_zmalloc_socket("txq->txbuffs",
+				nb_desc * sizeof(struct rte_mbuf *),
+				RTE_CACHE_LINE_SIZE, nic->node);
+
+	if (txq->txbuffs == NULL) {
+		nicvf_dev_tx_queue_release(txq);
+		return -ENOMEM;
+	}
+
+	if (nicvf_qset_sq_alloc(nic, txq, qidx, nb_desc)) {
+		PMD_INIT_LOG(ERR, "Failed to allocate mem for sq %d", qidx);
+		nicvf_dev_tx_queue_release(txq);
+		return -ENOMEM;
+	}
+
+	nicvf_tx_queue_reset(txq);
+
+	PMD_TX_LOG(DEBUG, "[%d] txq=%p nb_desc=%d desc=%p phys=0x%" PRIx64,
+			qidx, txq, nb_desc, txq->desc, txq->phys);
+
+	dev->data->tx_queues[qidx] = txq;
+	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
 static void
 nicvf_rx_queue_reset(struct nicvf_rxq *rxq)
 {
@@ -430,6 +603,8 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_infos_get            = nicvf_dev_info_get,
 	.rx_queue_setup           = nicvf_dev_rx_queue_setup,
 	.rx_queue_release         = nicvf_dev_rx_queue_release,
+	.tx_queue_setup           = nicvf_dev_tx_queue_setup,
+	.tx_queue_release         = nicvf_dev_tx_queue_release,
 	.get_reg_length           = nicvf_dev_get_reg_length,
 	.get_reg                  = nicvf_dev_get_regs,
 };
