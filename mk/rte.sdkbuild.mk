@@ -64,7 +64,8 @@ build: $(ROOTDIRS-y)
 clean: $(CLEANDIRS)
 	@rm -rf $(RTE_OUTPUT)/include $(RTE_OUTPUT)/app \
 		$(RTE_OUTPUT)/hostapp $(RTE_OUTPUT)/lib \
-		$(RTE_OUTPUT)/hostlib $(RTE_OUTPUT)/kmod
+		$(RTE_OUTPUT)/hostlib $(RTE_OUTPUT)/kmod \
+		$(RTE_OUTPUT)/buildtools
 	@[ -d $(RTE_OUTPUT)/include ] || mkdir -p $(RTE_OUTPUT)/include
 	@$(RTE_SDK)/scripts/gen-config-h.sh $(RTE_OUTPUT)/.config \
 		> $(RTE_OUTPUT)/include/rte_config.h

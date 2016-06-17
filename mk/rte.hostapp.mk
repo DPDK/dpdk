@@ -41,7 +41,7 @@ include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 VPATH += $(SRCDIR)
 
 _BUILD = $(HOSTAPP)
-_INSTALL = $(INSTALL-FILES-y) $(SYMLINK-FILES-y) $(RTE_OUTPUT)/hostapp/$(HOSTAPP)
+_INSTALL = $(INSTALL-FILES-y) $(SYMLINK-FILES-y) $(RTE_OUTPUT)/app/$(HOSTAPP)
 _CLEAN = doclean
 
 .PHONY: all
@@ -95,10 +95,10 @@ $(HOSTAPP): $(OBJS-y) $(LDLIBS_FILES) FORCE
 #
 # install app in $(RTE_OUTPUT)/hostapp
 #
-$(RTE_OUTPUT)/hostapp/$(HOSTAPP): $(HOSTAPP)
+$(RTE_OUTPUT)/app/$(HOSTAPP): $(HOSTAPP)
 	@echo "  INSTALL-HOSTAPP $(HOSTAPP)"
-	@[ -d $(RTE_OUTPUT)/hostapp ] || mkdir -p $(RTE_OUTPUT)/hostapp
-	$(Q)cp -f $(HOSTAPP) $(RTE_OUTPUT)/hostapp
+	@[ -d $(RTE_OUTPUT)/app ] || mkdir -p $(RTE_OUTPUT)/app
+	$(Q)cp -f $(HOSTAPP) $(RTE_OUTPUT)/app
 
 #
 # Clean all generated files

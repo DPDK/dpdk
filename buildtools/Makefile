@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2016 Neil Horman. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -29,17 +29,8 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#
-# Head Makefile for compiling rte SDK
-#
+include $(RTE_SDK)/mk/rte.vars.mk
 
-RTE_SDK := $(CURDIR)
-export RTE_SDK
+DIRS-y += pmdinfogen
 
-#
-# directory list
-#
-
-ROOTDIRS-y := buildtools lib drivers app
-
-include $(RTE_SDK)/mk/rte.sdkroot.mk
+include $(RTE_SDK)/mk/rte.subdir.mk
