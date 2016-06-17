@@ -45,6 +45,11 @@
 
 #define NICVF_ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
+#define NICVF_GET_RX_STATS(reg) \
+	nicvf_reg_read(nic, NIC_VNIC_RX_STAT_0_13 | (reg << 3))
+#define NICVF_GET_TX_STATS(reg) \
+	nicvf_reg_read(nic, NIC_VNIC_TX_STAT_0_4 | (reg << 3))
+
 #define NICVF_PASS1	(PCI_SUB_DEVICE_ID_THUNDERX_PASS1_NICVF)
 #define NICVF_PASS2	(PCI_SUB_DEVICE_ID_THUNDERX_PASS2_NICVF)
 
@@ -81,6 +86,39 @@ enum nicvf_err_e {
 };
 
 typedef nicvf_phys_addr_t (*rbdr_pool_get_handler)(void *opaque);
+
+struct nicvf_hw_rx_qstats {
+	uint64_t q_rx_bytes;
+	uint64_t q_rx_packets;
+};
+
+struct nicvf_hw_tx_qstats {
+	uint64_t q_tx_bytes;
+	uint64_t q_tx_packets;
+};
+
+struct nicvf_hw_stats {
+	uint64_t rx_bytes;
+	uint64_t rx_ucast_frames;
+	uint64_t rx_bcast_frames;
+	uint64_t rx_mcast_frames;
+	uint64_t rx_fcs_errors;
+	uint64_t rx_l2_errors;
+	uint64_t rx_drop_red;
+	uint64_t rx_drop_red_bytes;
+	uint64_t rx_drop_overrun;
+	uint64_t rx_drop_overrun_bytes;
+	uint64_t rx_drop_bcast;
+	uint64_t rx_drop_mcast;
+	uint64_t rx_drop_l3_bcast;
+	uint64_t rx_drop_l3_mcast;
+
+	uint64_t tx_bytes_ok;
+	uint64_t tx_ucast_frames_ok;
+	uint64_t tx_bcast_frames_ok;
+	uint64_t tx_mcast_frames_ok;
+	uint64_t tx_drops;
+};
 
 struct nicvf_rss_reta_info {
 	uint8_t hash_bits;
@@ -192,5 +230,11 @@ void nicvf_rss_set_cfg(struct nicvf *nic, uint64_t val);
 uint64_t nicvf_rss_get_cfg(struct nicvf *nic);
 
 int nicvf_loopback_config(struct nicvf *nic, bool enable);
+
+void nicvf_hw_get_stats(struct nicvf *nic, struct nicvf_hw_stats *stats);
+void nicvf_hw_get_rx_qstats(struct nicvf *nic,
+			    struct nicvf_hw_rx_qstats *qstats, uint16_t qidx);
+void nicvf_hw_get_tx_qstats(struct nicvf *nic,
+			    struct nicvf_hw_tx_qstats *qstats, uint16_t qidx);
 
 #endif /* _THUNDERX_NICVF_HW_H */

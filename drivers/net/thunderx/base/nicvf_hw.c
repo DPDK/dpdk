@@ -858,3 +858,48 @@ nicvf_loopback_config(struct nicvf *nic, bool enable)
 
 	return nicvf_mbox_loopback_config(nic, enable);
 }
+
+void
+nicvf_hw_get_stats(struct nicvf *nic, struct nicvf_hw_stats *stats)
+{
+	stats->rx_bytes = NICVF_GET_RX_STATS(RX_OCTS);
+	stats->rx_ucast_frames = NICVF_GET_RX_STATS(RX_UCAST);
+	stats->rx_bcast_frames = NICVF_GET_RX_STATS(RX_BCAST);
+	stats->rx_mcast_frames = NICVF_GET_RX_STATS(RX_MCAST);
+	stats->rx_fcs_errors = NICVF_GET_RX_STATS(RX_FCS);
+	stats->rx_l2_errors = NICVF_GET_RX_STATS(RX_L2ERR);
+	stats->rx_drop_red = NICVF_GET_RX_STATS(RX_RED);
+	stats->rx_drop_red_bytes = NICVF_GET_RX_STATS(RX_RED_OCTS);
+	stats->rx_drop_overrun = NICVF_GET_RX_STATS(RX_ORUN);
+	stats->rx_drop_overrun_bytes = NICVF_GET_RX_STATS(RX_ORUN_OCTS);
+	stats->rx_drop_bcast = NICVF_GET_RX_STATS(RX_DRP_BCAST);
+	stats->rx_drop_mcast = NICVF_GET_RX_STATS(RX_DRP_MCAST);
+	stats->rx_drop_l3_bcast = NICVF_GET_RX_STATS(RX_DRP_L3BCAST);
+	stats->rx_drop_l3_mcast = NICVF_GET_RX_STATS(RX_DRP_L3MCAST);
+
+	stats->tx_bytes_ok = NICVF_GET_TX_STATS(TX_OCTS);
+	stats->tx_ucast_frames_ok = NICVF_GET_TX_STATS(TX_UCAST);
+	stats->tx_bcast_frames_ok = NICVF_GET_TX_STATS(TX_BCAST);
+	stats->tx_mcast_frames_ok = NICVF_GET_TX_STATS(TX_MCAST);
+	stats->tx_drops = NICVF_GET_TX_STATS(TX_DROP);
+}
+
+void
+nicvf_hw_get_rx_qstats(struct nicvf *nic, struct nicvf_hw_rx_qstats *qstats,
+		       uint16_t qidx)
+{
+	qstats->q_rx_bytes =
+		nicvf_queue_reg_read(nic, NIC_QSET_RQ_0_7_STATUS0, qidx);
+	qstats->q_rx_packets =
+		nicvf_queue_reg_read(nic, NIC_QSET_RQ_0_7_STATUS1, qidx);
+}
+
+void
+nicvf_hw_get_tx_qstats(struct nicvf *nic, struct nicvf_hw_tx_qstats *qstats,
+		       uint16_t qidx)
+{
+	qstats->q_tx_bytes =
+		nicvf_queue_reg_read(nic, NIC_QSET_SQ_0_7_STATUS0, qidx);
+	qstats->q_tx_packets =
+		nicvf_queue_reg_read(nic, NIC_QSET_SQ_0_7_STATUS1, qidx);
+}
