@@ -84,6 +84,8 @@ fill_sq_desc_gather(union sq_entry_t *entry, struct rte_mbuf *pkt)
 }
 #endif
 
+uint32_t nicvf_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx);
+
 uint16_t nicvf_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts, uint16_t pkts);
 uint16_t nicvf_recv_pkts_multiseg(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts);

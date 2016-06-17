@@ -570,3 +570,12 @@ nicvf_recv_pkts_multiseg(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	return to_process;
 }
+
+uint32_t
+nicvf_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct nicvf_rxq *rxq;
+
+	rxq = dev->data->rx_queues[queue_idx];
+	return nicvf_addr_read(rxq->cq_status) & NICVF_CQ_CQE_COUNT_MASK;
+}

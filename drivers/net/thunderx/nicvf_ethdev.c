@@ -935,6 +935,7 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.rss_hash_conf_get        = nicvf_dev_rss_hash_conf_get,
 	.rx_queue_setup           = nicvf_dev_rx_queue_setup,
 	.rx_queue_release         = nicvf_dev_rx_queue_release,
+	.rx_queue_count           = nicvf_dev_rx_queue_count,
 	.tx_queue_setup           = nicvf_dev_tx_queue_setup,
 	.tx_queue_release         = nicvf_dev_tx_queue_release,
 	.get_reg_length           = nicvf_dev_get_reg_length,
