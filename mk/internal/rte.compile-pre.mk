@@ -88,9 +88,23 @@ C_TO_O_CMD = 'cmd_$@ = $(C_TO_O_STR)'
 C_TO_O_DO = @set -e; \
 	echo $(C_TO_O_DISP); \
 	$(C_TO_O) && \
+	sh -c "grep -q \"PMD_REGISTER_DRIVER(.*)\" $<; \
+	if [ \$$? -eq 0 ]; then \
+		echo \"  PMDINFOGEN\" $@; \
+		OBJF=`readlink -f $@`; \
+		${RTE_OUTPUT}/app/pmdinfogen \$$OBJF \$$OBJF.pmd.c; \
+		if [ \$$? -eq 0 ]; \
+		then \
+			echo \"  PMDINFOBUILD\" $@; \
+			$(CC) $(CFLAGS) -c -o \$$OBJF.pmd.o \$$OBJF.pmd.c; \
+			$(CROSS)ld $(LDFLAGS) -r -o \$$OBJF.o \$$OBJF.pmd.o \$$OBJF; \
+			mv -f \$$OBJF.o \$$OBJF; \
+		fi; \
+	fi;" && \
 	echo $(C_TO_O_CMD) > $(call obj2cmd,$(@)) && \
 	sed 's,'$@':,dep_'$@' =,' $(call obj2dep,$(@)).tmp > $(call obj2dep,$(@)) && \
 	rm -f $(call obj2dep,$(@)).tmp
+
 
 # return an empty string if string are equal
 compare = $(strip $(subst $(1),,$(2)) $(subst $(2),,$(1)))
