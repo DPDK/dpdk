@@ -211,6 +211,12 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 	return -ENOTSUP;
 }
 
+/* Promiscuous mode enabled by default in LMAC to VF 1:1 map configuration */
+static void
+nicvf_dev_promisc_enable(struct rte_eth_dev *dev __rte_unused)
+{
+}
+
 static inline uint64_t
 nicvf_rss_ethdev_to_nic(struct nicvf *nic, uint64_t ethdev_rss)
 {
@@ -811,6 +817,7 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
 	.link_update              = nicvf_dev_link_update,
+	.promiscuous_enable       = nicvf_dev_promisc_enable,
 	.dev_infos_get            = nicvf_dev_info_get,
 	.mtu_set                  = nicvf_dev_set_mtu,
 	.reta_update              = nicvf_dev_reta_update,
