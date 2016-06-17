@@ -143,9 +143,36 @@ nicvf_dev_link_update(struct rte_eth_dev *dev,
 	return nicvf_atomic_write_link_status(dev, &link);
 }
 
+static int
+nicvf_dev_get_reg_length(struct rte_eth_dev *dev  __rte_unused)
+{
+	return nicvf_reg_get_count();
+}
+
+static int
+nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
+{
+	uint64_t *data = regs->data;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	if (data == NULL)
+		return -EINVAL;
+
+	/* Support only full register dump */
+	if ((regs->length == 0) ||
+		(regs->length == (uint32_t)nicvf_reg_get_count())) {
+		regs->version = nic->vendor_id << 16 | nic->device_id;
+		nicvf_reg_dump(nic, data);
+		return 0;
+	}
+	return -ENOTSUP;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.link_update              = nicvf_dev_link_update,
+	.get_reg_length           = nicvf_dev_get_reg_length,
+	.get_reg                  = nicvf_dev_get_regs,
 };
 
 static int
