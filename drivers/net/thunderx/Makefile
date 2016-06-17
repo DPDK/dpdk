@@ -1,6 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright (C) Cavium networks 2015. All rights reserved.
+#   Copyright(c) 2016 Cavium Networks. All rights reserved.
+#   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -12,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Cavium networks nor the names of its
+#     * Neither the name of Cavium Networks nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -29,20 +30,34 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-#include "defconfig_arm64-armv8a-linuxapp-gcc"
-
-CONFIG_RTE_MACHINE="thunderx"
-
-CONFIG_RTE_CACHE_LINE_SIZE=128
-CONFIG_RTE_MAX_NUMA_NODES=2
-CONFIG_RTE_MAX_LCORE=96
+include $(RTE_SDK)/mk/rte.vars.mk
 
 #
-# Compile Cavium Thunderx NICVF PMD driver
+# library name
 #
-CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD=y
-CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_INIT=n
-CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_RX=n
-CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_TX=n
-CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_DRIVER=n
-CONFIG_RTE_LIBRTE_THUNDERX_NICVF_DEBUG_MBOX=n
+LIB = librte_pmd_thunderx_nicvf.a
+
+CFLAGS += $(WERROR_FLAGS)
+
+EXPORT_MAP := rte_pmd_thunderx_nicvf_version.map
+
+LIBABIVER := 1
+
+OBJS_BASE_DRIVER=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c)))
+$(foreach obj, $(OBJS_BASE_DRIVER), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
+
+VPATH += $(SRCDIR)/base
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += nicvf_hw.c
+SRCS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += nicvf_mbox.c
+SRCS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += nicvf_ethdev.c
+
+
+# this lib depends upon:
+DEPDIRS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += lib/librte_eal lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += lib/librte_mempool lib/librte_mbuf
+
+include $(RTE_SDK)/mk/rte.lib.mk
