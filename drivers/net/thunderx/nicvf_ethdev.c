@@ -168,6 +168,174 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 	return -ENOTSUP;
 }
 
+static inline uint64_t
+nicvf_rss_ethdev_to_nic(struct nicvf *nic, uint64_t ethdev_rss)
+{
+	uint64_t nic_rss = 0;
+
+	if (ethdev_rss & ETH_RSS_IPV4)
+		nic_rss |= RSS_IP_ENA;
+
+	if (ethdev_rss & ETH_RSS_IPV6)
+		nic_rss |= RSS_IP_ENA;
+
+	if (ethdev_rss & ETH_RSS_NONFRAG_IPV4_UDP)
+		nic_rss |= (RSS_IP_ENA | RSS_UDP_ENA);
+
+	if (ethdev_rss & ETH_RSS_NONFRAG_IPV4_TCP)
+		nic_rss |= (RSS_IP_ENA | RSS_TCP_ENA);
+
+	if (ethdev_rss & ETH_RSS_NONFRAG_IPV6_UDP)
+		nic_rss |= (RSS_IP_ENA | RSS_UDP_ENA);
+
+	if (ethdev_rss & ETH_RSS_NONFRAG_IPV6_TCP)
+		nic_rss |= (RSS_IP_ENA | RSS_TCP_ENA);
+
+	if (ethdev_rss & ETH_RSS_PORT)
+		nic_rss |= RSS_L2_EXTENDED_HASH_ENA;
+
+	if (nicvf_hw_cap(nic) & NICVF_CAP_TUNNEL_PARSING) {
+		if (ethdev_rss & ETH_RSS_VXLAN)
+			nic_rss |= RSS_TUN_VXLAN_ENA;
+
+		if (ethdev_rss & ETH_RSS_GENEVE)
+			nic_rss |= RSS_TUN_GENEVE_ENA;
+
+		if (ethdev_rss & ETH_RSS_NVGRE)
+			nic_rss |= RSS_TUN_NVGRE_ENA;
+	}
+
+	return nic_rss;
+}
+
+static inline uint64_t
+nicvf_rss_nic_to_ethdev(struct nicvf *nic,  uint64_t nic_rss)
+{
+	uint64_t ethdev_rss = 0;
+
+	if (nic_rss & RSS_IP_ENA)
+		ethdev_rss |= (ETH_RSS_IPV4 | ETH_RSS_IPV6);
+
+	if ((nic_rss & RSS_IP_ENA) && (nic_rss & RSS_TCP_ENA))
+		ethdev_rss |= (ETH_RSS_NONFRAG_IPV4_TCP |
+				ETH_RSS_NONFRAG_IPV6_TCP);
+
+	if ((nic_rss & RSS_IP_ENA) && (nic_rss & RSS_UDP_ENA))
+		ethdev_rss |= (ETH_RSS_NONFRAG_IPV4_UDP |
+				ETH_RSS_NONFRAG_IPV6_UDP);
+
+	if (nic_rss & RSS_L2_EXTENDED_HASH_ENA)
+		ethdev_rss |= ETH_RSS_PORT;
+
+	if (nicvf_hw_cap(nic) & NICVF_CAP_TUNNEL_PARSING) {
+		if (nic_rss & RSS_TUN_VXLAN_ENA)
+			ethdev_rss |= ETH_RSS_VXLAN;
+
+		if (nic_rss & RSS_TUN_GENEVE_ENA)
+			ethdev_rss |= ETH_RSS_GENEVE;
+
+		if (nic_rss & RSS_TUN_NVGRE_ENA)
+			ethdev_rss |= ETH_RSS_NVGRE;
+	}
+	return ethdev_rss;
+}
+
+static int
+nicvf_dev_reta_query(struct rte_eth_dev *dev,
+		     struct rte_eth_rss_reta_entry64 *reta_conf,
+		     uint16_t reta_size)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint8_t tbl[NIC_MAX_RSS_IDR_TBL_SIZE];
+	int ret, i, j;
+
+	if (reta_size != NIC_MAX_RSS_IDR_TBL_SIZE) {
+		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, NIC_MAX_RSS_IDR_TBL_SIZE);
+		return -EINVAL;
+	}
+
+	ret = nicvf_rss_reta_query(nic, tbl, NIC_MAX_RSS_IDR_TBL_SIZE);
+	if (ret)
+		return ret;
+
+	/* Copy RETA table */
+	for (i = 0; i < (NIC_MAX_RSS_IDR_TBL_SIZE / RTE_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+			if ((reta_conf[i].mask >> j) & 0x01)
+				reta_conf[i].reta[j] = tbl[j];
+	}
+
+	return 0;
+}
+
+static int
+nicvf_dev_reta_update(struct rte_eth_dev *dev,
+		      struct rte_eth_rss_reta_entry64 *reta_conf,
+		      uint16_t reta_size)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint8_t tbl[NIC_MAX_RSS_IDR_TBL_SIZE];
+	int ret, i, j;
+
+	if (reta_size != NIC_MAX_RSS_IDR_TBL_SIZE) {
+		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, NIC_MAX_RSS_IDR_TBL_SIZE);
+		return -EINVAL;
+	}
+
+	ret = nicvf_rss_reta_query(nic, tbl, NIC_MAX_RSS_IDR_TBL_SIZE);
+	if (ret)
+		return ret;
+
+	/* Copy RETA table */
+	for (i = 0; i < (NIC_MAX_RSS_IDR_TBL_SIZE / RTE_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+			if ((reta_conf[i].mask >> j) & 0x01)
+				tbl[j] = reta_conf[i].reta[j];
+	}
+
+	return nicvf_rss_reta_update(nic, tbl, NIC_MAX_RSS_IDR_TBL_SIZE);
+}
+
+static int
+nicvf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_conf *rss_conf)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	if (rss_conf->rss_key)
+		nicvf_rss_get_key(nic, rss_conf->rss_key);
+
+	rss_conf->rss_key_len =  RSS_HASH_KEY_BYTE_SIZE;
+	rss_conf->rss_hf = nicvf_rss_nic_to_ethdev(nic, nicvf_rss_get_cfg(nic));
+	return 0;
+}
+
+static int
+nicvf_dev_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint64_t nic_rss;
+
+	if (rss_conf->rss_key &&
+		rss_conf->rss_key_len != RSS_HASH_KEY_BYTE_SIZE) {
+		RTE_LOG(ERR, PMD, "Hash key size mismatch %d",
+				rss_conf->rss_key_len);
+		return -EINVAL;
+	}
+
+	if (rss_conf->rss_key)
+		nicvf_rss_set_key(nic, rss_conf->rss_key);
+
+	nic_rss = nicvf_rss_ethdev_to_nic(nic, rss_conf->rss_hf);
+	nicvf_rss_set_cfg(nic, nic_rss);
+	return 0;
+}
+
 static int
 nicvf_qset_cq_alloc(struct nicvf *nic, struct nicvf_rxq *rxq, uint16_t qidx,
 		    uint32_t desc_cnt)
@@ -601,6 +769,10 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.dev_configure            = nicvf_dev_configure,
 	.link_update              = nicvf_dev_link_update,
 	.dev_infos_get            = nicvf_dev_info_get,
+	.reta_update              = nicvf_dev_reta_update,
+	.reta_query               = nicvf_dev_reta_query,
+	.rss_hash_update          = nicvf_dev_rss_hash_update,
+	.rss_hash_conf_get        = nicvf_dev_rss_hash_conf_get,
 	.rx_queue_setup           = nicvf_dev_rx_queue_setup,
 	.rx_queue_release         = nicvf_dev_rx_queue_release,
 	.tx_queue_setup           = nicvf_dev_tx_queue_setup,
