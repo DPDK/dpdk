@@ -280,10 +280,10 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
 
 		if (split_packet) {
-			rte_prefetch_non_temporal(&rx_pkts[pos]->cacheline1);
-			rte_prefetch_non_temporal(&rx_pkts[pos + 1]->cacheline1);
-			rte_prefetch_non_temporal(&rx_pkts[pos + 2]->cacheline1);
-			rte_prefetch_non_temporal(&rx_pkts[pos + 3]->cacheline1);
+			rte_mbuf_prefetch_part2(rx_pkts[pos]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 1]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 2]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 3]);
 		}
 
 		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
