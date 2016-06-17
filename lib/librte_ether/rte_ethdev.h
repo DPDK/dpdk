@@ -2024,7 +2024,7 @@ int rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
-/*
+/**
  * Return the NUMA socket to which an Ethernet device is connected
  *
  * @param port_id
@@ -2036,7 +2036,7 @@ int rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
  */
 int rte_eth_dev_socket_id(uint8_t port_id);
 
-/*
+/**
  * Check if port_id of device is attached
  *
  * @param port_id
@@ -2047,7 +2047,7 @@ int rte_eth_dev_socket_id(uint8_t port_id);
  */
 int rte_eth_dev_is_valid_port(uint8_t port_id);
 
-/*
+/**
  * Allocate mbuf from mempool, setup the DMA physical address
  * and then start RX for specified queue of a port. It is used
  * when rx_deferred_start flag of the specified queue is true.
@@ -2065,7 +2065,7 @@ int rte_eth_dev_is_valid_port(uint8_t port_id);
  */
 int rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id);
 
-/*
+/**
  * Stop specified RX queue of a port
  *
  * @param port_id
@@ -2081,7 +2081,7 @@ int rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id);
  */
 int rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
 
-/*
+/**
  * Start TX for specified queue of a port. It is used when tx_deferred_start
  * flag of the specified queue is true.
  *
@@ -2098,7 +2098,7 @@ int rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
  */
 int rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t tx_queue_id);
 
-/*
+/**
  * Stop specified TX queue of a port
  *
  * @param port_id
@@ -4045,7 +4045,7 @@ int rte_eth_rx_queue_info_get(uint8_t port_id, uint16_t queue_id,
 int rte_eth_tx_queue_info_get(uint8_t port_id, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 
-/*
+/**
  * Retrieve number of available registers for access
  *
  * @param port_id
