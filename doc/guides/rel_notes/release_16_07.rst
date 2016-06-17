@@ -53,6 +53,8 @@ New Features
   "Network Interface Controller Drivers" document for more details on this
   new driver.
 
+* **Added new driver for ThunderX nicvf device.**
+
 * **Added mailbox interrupt support for ixgbe and igb VFs.**
 
   When the physical NIC link comes down or up, the PF driver will send a

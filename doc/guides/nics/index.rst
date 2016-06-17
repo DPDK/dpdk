@@ -51,6 +51,7 @@ Network Interface Controller Drivers
     nfp
     qede
     szedata2
+    thunderx
     virtio
     vhost
     vmxnet3

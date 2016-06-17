@@ -274,6 +274,12 @@ M: Stephen Hurd <stephen.hurd@broadcom.com>
 F: drivers/net/bnxt/
 F: doc/guides/nics/bnxt.rst
 
+Cavium ThunderX nicvf
+M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Maciej Czekaj <maciej.czekaj@caviumnetworks.com>
+F: drivers/net/thunderx/
+F: doc/guides/nics/thunderx.rst
+
 Chelsio cxgbe
 M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
 F: drivers/net/cxgbe/
