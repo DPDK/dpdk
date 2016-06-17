@@ -70,7 +70,7 @@ Each build directory contains include files, libraries, and applications:
     ...
     ~/DEV/DPDK$ ls i686-native-linuxapp-gcc
 
-    app build hostapp include kmod lib Makefile
+    app build buildtools include kmod lib Makefile
 
 
     ~/DEV/DPDK$ ls i686-native-linuxapp-gcc/app/
@@ -264,7 +264,7 @@ These Makefiles generate a binary application.
 
 *   rte.extapp.mk: External application
 
-*   rte.hostapp.mk: Host application in the development kit framework
+*   rte.hostapp.mk: prerequisite tool to build dpdk
 
 Library
 ^^^^^^^
@@ -303,6 +303,45 @@ Misc
 *   rte.gnuconfigure.mk: Build an application that is configure-based.
 
 *   rte.subdir.mk: Build several directories in the development kit framework.
+
+.. _Internally_Generated_Build_Tools:
+
+Internally Generated Build Tools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``app/pmdinfogen``
+
+
+``pmdinfogen`` scans an object (.o) file for various well known symbol names.  These
+well known symbol names are defined by various macros and used to export
+important information about hardware support and usage for pmd files.  For
+instance the macro:
+
+.. code-block:: c
+
+    PMD_REGISTER_DRIVER(drv, name)
+
+
+Creates the following symbol:
+
+.. code-block:: c
+
+   static char this_pmd_name0[] __attribute__((used)) = "<name>";
+
+
+Which pmdinfogen scans for.  Using this information other relevant bits of data
+can be exported from the object file and used to produce a hardware support
+description, that pmdinfogen then encodes into a json formatted string in the
+following format:
+
+.. code-block:: C
+
+   static char <name_pmd_string>="PMD_INFO_STRING=\"{'name' : '<name>', ...}\"";
+
+
+These strings can then be searched for by external tools to determine the
+hardware support of a given library or application.
+
 
 .. _Useful_Variables_Provided_by_the_Build_System:
 
