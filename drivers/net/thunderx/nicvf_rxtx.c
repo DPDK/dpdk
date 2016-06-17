@@ -253,3 +253,320 @@ nicvf_xmit_pkts_multiseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nicvf_addr_write(sq->sq_door, used_desc);
 	return nb_pkts;
 }
+
+static const uint32_t ptype_table[16][16] __rte_cache_aligned = {
+	[L3_NONE][L4_NONE] = RTE_PTYPE_UNKNOWN,
+	[L3_NONE][L4_IPSEC_ESP] = RTE_PTYPE_UNKNOWN,
+	[L3_NONE][L4_IPFRAG] = RTE_PTYPE_L4_FRAG,
+	[L3_NONE][L4_IPCOMP] = RTE_PTYPE_UNKNOWN,
+	[L3_NONE][L4_TCP] = RTE_PTYPE_L4_TCP,
+	[L3_NONE][L4_UDP_PASS1] = RTE_PTYPE_L4_UDP,
+	[L3_NONE][L4_GRE] = RTE_PTYPE_TUNNEL_GRE,
+	[L3_NONE][L4_UDP_PASS2] = RTE_PTYPE_L4_UDP,
+	[L3_NONE][L4_UDP_GENEVE] = RTE_PTYPE_TUNNEL_GENEVE,
+	[L3_NONE][L4_UDP_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
+	[L3_NONE][L4_NVGRE] = RTE_PTYPE_TUNNEL_NVGRE,
+
+	[L3_IPV4][L4_NONE] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_UNKNOWN,
+	[L3_IPV4][L4_IPSEC_ESP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L3_IPV4,
+	[L3_IPV4][L4_IPFRAG] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_FRAG,
+	[L3_IPV4][L4_IPCOMP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_UNKNOWN,
+	[L3_IPV4][L4_TCP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
+	[L3_IPV4][L4_UDP_PASS1] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+	[L3_IPV4][L4_GRE] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_GRE,
+	[L3_IPV4][L4_UDP_PASS2] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+	[L3_IPV4][L4_UDP_GENEVE] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_GENEVE,
+	[L3_IPV4][L4_UDP_VXLAN] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_VXLAN,
+	[L3_IPV4][L4_NVGRE] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_NVGRE,
+
+	[L3_IPV4_OPT][L4_NONE] = RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_UNKNOWN,
+	[L3_IPV4_OPT][L4_IPSEC_ESP] =  RTE_PTYPE_L3_IPV4_EXT |
+				RTE_PTYPE_L3_IPV4,
+	[L3_IPV4_OPT][L4_IPFRAG] = RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_FRAG,
+	[L3_IPV4_OPT][L4_IPCOMP] = RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_UNKNOWN,
+	[L3_IPV4_OPT][L4_TCP] = RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_TCP,
+	[L3_IPV4_OPT][L4_UDP_PASS1] = RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_UDP,
+	[L3_IPV4_OPT][L4_GRE] = RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_TUNNEL_GRE,
+	[L3_IPV4_OPT][L4_UDP_PASS2] = RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_UDP,
+	[L3_IPV4_OPT][L4_UDP_GENEVE] = RTE_PTYPE_L3_IPV4_EXT |
+				RTE_PTYPE_TUNNEL_GENEVE,
+	[L3_IPV4_OPT][L4_UDP_VXLAN] = RTE_PTYPE_L3_IPV4_EXT |
+				RTE_PTYPE_TUNNEL_VXLAN,
+	[L3_IPV4_OPT][L4_NVGRE] = RTE_PTYPE_L3_IPV4_EXT |
+				RTE_PTYPE_TUNNEL_NVGRE,
+
+	[L3_IPV6][L4_NONE] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_UNKNOWN,
+	[L3_IPV6][L4_IPSEC_ESP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L3_IPV4,
+	[L3_IPV6][L4_IPFRAG] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_FRAG,
+	[L3_IPV6][L4_IPCOMP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_UNKNOWN,
+	[L3_IPV6][L4_TCP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
+	[L3_IPV6][L4_UDP_PASS1] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+	[L3_IPV6][L4_GRE] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_TUNNEL_GRE,
+	[L3_IPV6][L4_UDP_PASS2] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+	[L3_IPV6][L4_UDP_GENEVE] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_TUNNEL_GENEVE,
+	[L3_IPV6][L4_UDP_VXLAN] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_TUNNEL_VXLAN,
+	[L3_IPV6][L4_NVGRE] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_TUNNEL_NVGRE,
+
+	[L3_IPV6_OPT][L4_NONE] = RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_UNKNOWN,
+	[L3_IPV6_OPT][L4_IPSEC_ESP] =  RTE_PTYPE_L3_IPV6_EXT |
+					RTE_PTYPE_L3_IPV4,
+	[L3_IPV6_OPT][L4_IPFRAG] = RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_FRAG,
+	[L3_IPV6_OPT][L4_IPCOMP] = RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_UNKNOWN,
+	[L3_IPV6_OPT][L4_TCP] = RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_TCP,
+	[L3_IPV6_OPT][L4_UDP_PASS1] = RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_UDP,
+	[L3_IPV6_OPT][L4_GRE] = RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_TUNNEL_GRE,
+	[L3_IPV6_OPT][L4_UDP_PASS2] = RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_UDP,
+	[L3_IPV6_OPT][L4_UDP_GENEVE] = RTE_PTYPE_L3_IPV6_EXT |
+					RTE_PTYPE_TUNNEL_GENEVE,
+	[L3_IPV6_OPT][L4_UDP_VXLAN] = RTE_PTYPE_L3_IPV6_EXT |
+					RTE_PTYPE_TUNNEL_VXLAN,
+	[L3_IPV6_OPT][L4_NVGRE] = RTE_PTYPE_L3_IPV6_EXT |
+					RTE_PTYPE_TUNNEL_NVGRE,
+
+	[L3_ET_STOP][L4_NONE] = RTE_PTYPE_UNKNOWN,
+	[L3_ET_STOP][L4_IPSEC_ESP] = RTE_PTYPE_UNKNOWN,
+	[L3_ET_STOP][L4_IPFRAG] = RTE_PTYPE_L4_FRAG,
+	[L3_ET_STOP][L4_IPCOMP] = RTE_PTYPE_UNKNOWN,
+	[L3_ET_STOP][L4_TCP] = RTE_PTYPE_L4_TCP,
+	[L3_ET_STOP][L4_UDP_PASS1] = RTE_PTYPE_L4_UDP,
+	[L3_ET_STOP][L4_GRE] = RTE_PTYPE_TUNNEL_GRE,
+	[L3_ET_STOP][L4_UDP_PASS2] = RTE_PTYPE_L4_UDP,
+	[L3_ET_STOP][L4_UDP_GENEVE] = RTE_PTYPE_TUNNEL_GENEVE,
+	[L3_ET_STOP][L4_UDP_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
+	[L3_ET_STOP][L4_NVGRE] = RTE_PTYPE_TUNNEL_NVGRE,
+
+	[L3_OTHER][L4_NONE] = RTE_PTYPE_UNKNOWN,
+	[L3_OTHER][L4_IPSEC_ESP] = RTE_PTYPE_UNKNOWN,
+	[L3_OTHER][L4_IPFRAG] = RTE_PTYPE_L4_FRAG,
+	[L3_OTHER][L4_IPCOMP] = RTE_PTYPE_UNKNOWN,
+	[L3_OTHER][L4_TCP] = RTE_PTYPE_L4_TCP,
+	[L3_OTHER][L4_UDP_PASS1] = RTE_PTYPE_L4_UDP,
+	[L3_OTHER][L4_GRE] = RTE_PTYPE_TUNNEL_GRE,
+	[L3_OTHER][L4_UDP_PASS2] = RTE_PTYPE_L4_UDP,
+	[L3_OTHER][L4_UDP_GENEVE] = RTE_PTYPE_TUNNEL_GENEVE,
+	[L3_OTHER][L4_UDP_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
+	[L3_OTHER][L4_NVGRE] = RTE_PTYPE_TUNNEL_NVGRE,
+};
+
+static inline uint32_t __hot
+nicvf_rx_classify_pkt(cqe_rx_word0_t cqe_rx_w0)
+{
+	return ptype_table[cqe_rx_w0.l3_type][cqe_rx_w0.l4_type];
+}
+
+static inline int __hot
+nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
+{
+	int i;
+	uint32_t ltail, next_tail;
+	struct nicvf_rbdr *rbdr = rxq->shared_rbdr;
+	uint64_t mbuf_phys_off = rxq->mbuf_phys_off;
+	struct rbdr_entry_t *desc = rbdr->desc;
+	uint32_t qlen_mask = rbdr->qlen_mask;
+	uintptr_t door = rbdr->rbdr_door;
+	void *obj_p[NICVF_MAX_RX_FREE_THRESH] __rte_cache_aligned;
+
+	if (unlikely(rte_mempool_get_bulk(rxq->pool, obj_p, to_fill) < 0)) {
+		rxq->nic->eth_dev->data->rx_mbuf_alloc_failed += to_fill;
+		return 0;
+	}
+
+	NICVF_RX_ASSERT((unsigned int)to_fill <= (qlen_mask -
+		(nicvf_addr_read(rbdr->rbdr_status) & NICVF_RBDR_COUNT_MASK)));
+
+	next_tail = __atomic_fetch_add(&rbdr->next_tail, to_fill,
+					__ATOMIC_ACQUIRE);
+	ltail = next_tail;
+	for (i = 0; i < to_fill; i++) {
+		struct rbdr_entry_t *entry = desc + (ltail & qlen_mask);
+
+		entry->full_addr = nicvf_mbuff_virt2phy((uintptr_t)obj_p[i],
+							mbuf_phys_off);
+		ltail++;
+	}
+
+	while (__atomic_load_n(&rbdr->tail, __ATOMIC_RELAXED) != next_tail)
+		rte_pause();
+
+	__atomic_store_n(&rbdr->tail, ltail, __ATOMIC_RELEASE);
+	nicvf_addr_write(door, to_fill);
+	return to_fill;
+}
+
+static inline int32_t __hot
+nicvf_rx_pkts_to_process(struct nicvf_rxq *rxq, uint16_t nb_pkts,
+			 int32_t available_space)
+{
+	if (unlikely(available_space < nb_pkts))
+		rxq->available_space = nicvf_addr_read(rxq->cq_status)
+						& NICVF_CQ_CQE_COUNT_MASK;
+
+	return RTE_MIN(nb_pkts, available_space);
+}
+
+static inline void __hot
+nicvf_rx_offload(cqe_rx_word0_t cqe_rx_w0, cqe_rx_word2_t cqe_rx_w2,
+		 struct rte_mbuf *pkt)
+{
+	if (likely(cqe_rx_w0.rss_alg)) {
+		pkt->hash.rss = cqe_rx_w2.rss_tag;
+		pkt->ol_flags |= PKT_RX_RSS_HASH;
+	}
+}
+
+uint16_t __hot
+nicvf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	uint32_t i, to_process;
+	struct cqe_rx_t *cqe_rx;
+	struct rte_mbuf *pkt;
+	cqe_rx_word0_t cqe_rx_w0;
+	cqe_rx_word1_t cqe_rx_w1;
+	cqe_rx_word2_t cqe_rx_w2;
+	cqe_rx_word3_t cqe_rx_w3;
+	struct nicvf_rxq *rxq = rx_queue;
+	union cq_entry_t *desc = rxq->desc;
+	const uint64_t cqe_mask = rxq->qlen_mask;
+	uint64_t rb0_ptr, mbuf_phys_off = rxq->mbuf_phys_off;
+	uint32_t cqe_head = rxq->head & cqe_mask;
+	int32_t available_space = rxq->available_space;
+	uint8_t port_id = rxq->port_id;
+	const uint8_t rbptr_offset = rxq->rbptr_offset;
+
+	to_process = nicvf_rx_pkts_to_process(rxq, nb_pkts, available_space);
+
+	for (i = 0; i < to_process; i++) {
+		rte_prefetch_non_temporal(&desc[cqe_head + 2]);
+		cqe_rx = (struct cqe_rx_t *)&desc[cqe_head];
+		NICVF_RX_ASSERT(((struct cq_entry_type_t *)cqe_rx)->cqe_type
+						 == CQE_TYPE_RX);
+
+		NICVF_LOAD_PAIR(cqe_rx_w0.u64, cqe_rx_w1.u64, cqe_rx);
+		NICVF_LOAD_PAIR(cqe_rx_w2.u64, cqe_rx_w3.u64, &cqe_rx->word2);
+		rb0_ptr = *((uint64_t *)cqe_rx + rbptr_offset);
+		pkt = (struct rte_mbuf *)nicvf_mbuff_phy2virt
+				(rb0_ptr - cqe_rx_w1.align_pad, mbuf_phys_off);
+
+		pkt->ol_flags = 0;
+		pkt->port = port_id;
+		pkt->data_len = cqe_rx_w3.rb0_sz;
+		pkt->data_off = RTE_PKTMBUF_HEADROOM + cqe_rx_w1.align_pad;
+		pkt->nb_segs = 1;
+		pkt->pkt_len = cqe_rx_w3.rb0_sz;
+		pkt->packet_type = nicvf_rx_classify_pkt(cqe_rx_w0);
+
+		nicvf_rx_offload(cqe_rx_w0, cqe_rx_w2, pkt);
+		rte_mbuf_refcnt_set(pkt, 1);
+		rx_pkts[i] = pkt;
+		cqe_head = (cqe_head + 1) & cqe_mask;
+		nicvf_prefetch_store_keep(pkt);
+	}
+
+	if (likely(to_process)) {
+		rxq->available_space -= to_process;
+		rxq->head = cqe_head;
+		nicvf_addr_write(rxq->cq_door, to_process);
+		rxq->recv_buffers += to_process;
+		if (rxq->recv_buffers > rxq->rx_free_thresh) {
+			rxq->recv_buffers -= nicvf_fill_rbdr(rxq,
+						rxq->rx_free_thresh);
+			NICVF_RX_ASSERT(rxq->recv_buffers >= 0);
+		}
+	}
+
+	return to_process;
+}
+
+static inline uint16_t __hot
+nicvf_process_cq_mseg_entry(struct cqe_rx_t *cqe_rx,
+			uint64_t mbuf_phys_off, uint8_t port_id,
+			struct rte_mbuf **rx_pkt, uint8_t rbptr_offset)
+{
+	struct rte_mbuf *pkt, *seg, *prev;
+	cqe_rx_word0_t cqe_rx_w0;
+	cqe_rx_word1_t cqe_rx_w1;
+	cqe_rx_word2_t cqe_rx_w2;
+	uint16_t *rb_sz, nb_segs, seg_idx;
+	uint64_t *rb_ptr;
+
+	NICVF_LOAD_PAIR(cqe_rx_w0.u64, cqe_rx_w1.u64, cqe_rx);
+	NICVF_RX_ASSERT(cqe_rx_w0.cqe_type == CQE_TYPE_RX);
+	cqe_rx_w2 = cqe_rx->word2;
+	rb_sz = &cqe_rx->word3.rb0_sz;
+	rb_ptr = (uint64_t *)cqe_rx + rbptr_offset;
+	nb_segs = cqe_rx_w0.rb_cnt;
+	pkt = (struct rte_mbuf *)nicvf_mbuff_phy2virt
+			(rb_ptr[0] - cqe_rx_w1.align_pad, mbuf_phys_off);
+
+	pkt->ol_flags = 0;
+	pkt->port = port_id;
+	pkt->data_off = RTE_PKTMBUF_HEADROOM + cqe_rx_w1.align_pad;
+	pkt->nb_segs = nb_segs;
+	pkt->pkt_len = cqe_rx_w1.pkt_len;
+	pkt->data_len = rb_sz[nicvf_frag_num(0)];
+	rte_mbuf_refcnt_set(pkt, 1);
+	pkt->packet_type = nicvf_rx_classify_pkt(cqe_rx_w0);
+	nicvf_rx_offload(cqe_rx_w0, cqe_rx_w2, pkt);
+
+	*rx_pkt = pkt;
+	prev = pkt;
+	for (seg_idx = 1; seg_idx < nb_segs; seg_idx++) {
+		seg = (struct rte_mbuf *)nicvf_mbuff_phy2virt
+			(rb_ptr[seg_idx], mbuf_phys_off);
+
+		prev->next = seg;
+		seg->data_len = rb_sz[nicvf_frag_num(seg_idx)];
+		seg->port = port_id;
+		seg->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_mbuf_refcnt_set(seg, 1);
+
+		prev = seg;
+	}
+	prev->next = NULL;
+	return nb_segs;
+}
+
+uint16_t __hot
+nicvf_recv_pkts_multiseg(void *rx_queue, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
+{
+	union cq_entry_t *cq_entry;
+	struct cqe_rx_t *cqe_rx;
+	struct nicvf_rxq *rxq = rx_queue;
+	union cq_entry_t *desc = rxq->desc;
+	const uint64_t cqe_mask = rxq->qlen_mask;
+	uint64_t mbuf_phys_off = rxq->mbuf_phys_off;
+	uint32_t i, to_process, cqe_head, buffers_consumed = 0;
+	int32_t available_space = rxq->available_space;
+	uint16_t nb_segs;
+	const uint8_t port_id = rxq->port_id;
+	const uint8_t rbptr_offset = rxq->rbptr_offset;
+
+	cqe_head = rxq->head & cqe_mask;
+	to_process = nicvf_rx_pkts_to_process(rxq, nb_pkts, available_space);
+
+	for (i = 0; i < to_process; i++) {
+		rte_prefetch_non_temporal(&desc[cqe_head + 2]);
+		cq_entry = &desc[cqe_head];
+		cqe_rx = (struct cqe_rx_t *)cq_entry;
+		nb_segs = nicvf_process_cq_mseg_entry(cqe_rx, mbuf_phys_off,
+				port_id, rx_pkts + i, rbptr_offset);
+		buffers_consumed += nb_segs;
+		cqe_head = (cqe_head + 1) & cqe_mask;
+		nicvf_prefetch_store_keep(rx_pkts[i]);
+	}
+
+	if (likely(to_process)) {
+		rxq->available_space -= to_process;
+		rxq->head = cqe_head;
+		nicvf_addr_write(rxq->cq_door, to_process);
+		rxq->recv_buffers += buffers_consumed;
+		if (rxq->recv_buffers > rxq->rx_free_thresh) {
+			rxq->recv_buffers -=
+				nicvf_fill_rbdr(rxq, rxq->rx_free_thresh);
+			NICVF_RX_ASSERT(rxq->recv_buffers >= 0);
+		}
+	}
+
+	return to_process;
+}
