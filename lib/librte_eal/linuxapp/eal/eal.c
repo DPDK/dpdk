@@ -859,7 +859,7 @@ rte_eal_init(int argc, char **argv)
 		ret = rte_thread_setname(lcore_config[i].thread_id,
 						thread_name);
 		if (ret != 0)
-			RTE_LOG(ERR, EAL,
+			RTE_LOG(DEBUG, EAL,
 				"Cannot set name for lcore thread\n");
 	}
 

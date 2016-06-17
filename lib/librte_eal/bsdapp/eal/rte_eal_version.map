@@ -157,5 +157,6 @@ DPDK_16.07 {
 
 	pci_get_sysfs_path;
 	rte_keepalive_register_relay_callback;
+	rte_thread_setname;
 
 } DPDK_16.04;

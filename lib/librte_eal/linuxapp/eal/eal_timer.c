@@ -222,8 +222,8 @@ rte_eal_hpet_init(int make_default)
 	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "hpet-msb-inc");
 	ret = rte_thread_setname(msb_inc_thread_id, thread_name);
 	if (ret != 0)
-		RTE_LOG(ERR, EAL,
-			"ERROR: Cannot set HPET timer thread name!\n");
+		RTE_LOG(DEBUG, EAL,
+			"Cannot set HPET timer thread name!\n");
 
 	if (make_default)
 		eal_timer_source = EAL_TIMER_HPET;

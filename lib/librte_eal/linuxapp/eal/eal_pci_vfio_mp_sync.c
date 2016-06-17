@@ -399,7 +399,7 @@ pci_vfio_mp_sync_setup(void)
 	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "pci-vfio-sync");
 	ret = rte_thread_setname(socket_thread, thread_name);
 	if (ret)
-		RTE_LOG(ERR, EAL,
+		RTE_LOG(DEBUG, EAL,
 			"Failed to set thread name for secondary processes!\n");
 
 	return 0;

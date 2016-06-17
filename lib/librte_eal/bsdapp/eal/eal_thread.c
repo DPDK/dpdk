@@ -199,3 +199,10 @@ int rte_sys_gettid(void)
 	thr_self(&lwpid);
 	return (int)lwpid;
 }
+
+int rte_thread_setname(pthread_t id, const char *name)
+{
+	/* this BSD function returns no error */
+	pthread_set_name_np(id, name);
+	return 0;
+}

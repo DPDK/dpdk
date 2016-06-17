@@ -1246,7 +1246,7 @@ main(int argc, char *argv[])
 		snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "print-stats");
 		ret = rte_thread_setname(tid, thread_name);
 		if (ret != 0)
-			RTE_LOG(ERR, VHOST_CONFIG, "Cannot set print-stats name\n");
+			RTE_LOG(DEBUG, VHOST_CONFIG, "Cannot set print-stats name\n");
 	}
 
 	/* Launch all data cores. */

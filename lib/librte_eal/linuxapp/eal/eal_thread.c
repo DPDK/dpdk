@@ -197,3 +197,14 @@ int rte_sys_gettid(void)
 {
 	return (int)syscall(SYS_gettid);
 }
+
+int rte_thread_setname(pthread_t id, const char *name)
+{
+	int ret = -1;
+#if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 12)
+	ret = pthread_setname_np(id, name);
+#endif
+#endif
+	return ret;
+}
