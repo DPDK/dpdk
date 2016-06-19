@@ -222,12 +222,12 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	virtqueue_notify(vq);
 
 	rte_rmb();
-	while (vq->vq_used_cons_idx == vq->vq_ring.used->idx) {
+	while (VIRTQUEUE_NUSED(vq) == 0) {
 		rte_rmb();
 		usleep(100);
 	}
 
-	while (vq->vq_used_cons_idx != vq->vq_ring.used->idx) {
+	while (VIRTQUEUE_NUSED(vq)) {
 		uint32_t idx, desc_idx, used_idx;
 		struct vring_used_elem *uep;
 
