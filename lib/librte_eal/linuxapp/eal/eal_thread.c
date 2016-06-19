@@ -206,5 +206,7 @@ int rte_thread_setname(pthread_t id, const char *name)
 	ret = pthread_setname_np(id, name);
 #endif
 #endif
+	RTE_SET_USED(id);
+	RTE_SET_USED(name);
 	return ret;
 }
