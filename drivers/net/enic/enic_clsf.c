@@ -148,9 +148,13 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 		enic->fdir.nodes[pos] = NULL;
 		if (unlikely(key->rq_index == queue)) {
 			/* Nothing to be done */
-			pos = rte_hash_add_key(enic->fdir.hash, params);
-			enic->fdir.nodes[pos] = key;
 			enic->fdir.stats.f_add++;
+			pos = rte_hash_add_key(enic->fdir.hash, params);
+			if (pos < 0) {
+				dev_err(enic, "Add hash key failed\n");
+				return pos;
+			}
+			enic->fdir.nodes[pos] = key;
 			dev_warning(enic,
 				"FDIR rule is already present\n");
 			return 0;
@@ -213,6 +217,11 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 	}
 
 	pos = rte_hash_add_key(enic->fdir.hash, params);
+	if (pos < 0) {
+		dev_err(enic, "Add hash key failed\n");
+		return pos;
+	}
+
 	enic->fdir.nodes[pos] = key;
 	return 0;
 }
