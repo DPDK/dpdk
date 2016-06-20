@@ -1091,10 +1091,11 @@ test_AES_qat_all(void)
 
 /* ***** Snow3G Tests ***** */
 static int
-create_snow3g_hash_session(uint8_t dev_id,
+create_snow3g_kasumi_hash_session(uint8_t dev_id,
 	const uint8_t *key, const uint8_t key_len,
 	const uint8_t aad_len, const uint8_t auth_len,
-	enum rte_crypto_auth_operation op)
+	enum rte_crypto_auth_operation op,
+	enum rte_crypto_auth_algorithm algo)
 {
 	uint8_t hash_key[key_len];
 
@@ -1109,7 +1110,7 @@ create_snow3g_hash_session(uint8_t dev_id,
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = op;
-	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
+	ut_params->auth_xform.auth.algo = algo;
 	ut_params->auth_xform.auth.key.length = key_len;
 	ut_params->auth_xform.auth.key.data = hash_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
@@ -1121,36 +1122,9 @@ create_snow3g_hash_session(uint8_t dev_id,
 }
 
 static int
-create_kasumi_hash_session(uint8_t dev_id,
-	const uint8_t *key, const uint8_t key_len,
-	const uint8_t aad_len, const uint8_t auth_len,
-	enum rte_crypto_auth_operation op)
-{
-	uint8_t hash_key[key_len];
-
-	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	memcpy(hash_key, key, key_len);
-	TEST_HEXDUMP(stdout, "key:", key, key_len);
-	/* Setup Authentication Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	ut_params->auth_xform.next = NULL;
-
-	ut_params->auth_xform.auth.op = op;
-	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_KASUMI_F9;
-	ut_params->auth_xform.auth.key.length = key_len;
-	ut_params->auth_xform.auth.key.data = hash_key;
-	ut_params->auth_xform.auth.digest_length = auth_len;
-	ut_params->auth_xform.auth.add_auth_data_length = aad_len;
-	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
-				&ut_params->auth_xform);
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
-	return 0;
-}
-
-static int
-create_kasumi_cipher_session(uint8_t dev_id,
+create_snow3g_kasumi_cipher_session(uint8_t dev_id,
 			enum rte_crypto_cipher_operation op,
+			enum rte_crypto_cipher_algorithm algo,
 			const uint8_t *key, const uint8_t key_len)
 {
 	uint8_t cipher_key[key_len];
@@ -1163,7 +1137,7 @@ create_kasumi_cipher_session(uint8_t dev_id,
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = NULL;
 
-	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_KASUMI_F8;
+	ut_params->cipher_xform.cipher.algo = algo;
 	ut_params->cipher_xform.cipher.op = op;
 	ut_params->cipher_xform.cipher.key.data = cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
@@ -1179,9 +1153,10 @@ create_kasumi_cipher_session(uint8_t dev_id,
 }
 
 static int
-create_kasumi_cipher_operation(const uint8_t *iv, const unsigned iv_len,
+create_snow3g_kasumi_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 			const unsigned cipher_len,
-			const unsigned cipher_offset)
+			const unsigned cipher_offset,
+			enum rte_crypto_cipher_algorithm algo)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -1202,7 +1177,11 @@ create_kasumi_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 	sym_op->m_src = ut_params->ibuf;
 
 	/* iv */
-	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	if (algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	else
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+
 	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf
 			, iv_pad_len);
 
@@ -1219,9 +1198,10 @@ create_kasumi_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 }
 
 static int
-create_kasumi_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
+create_snow3g_kasumi_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
 			const unsigned cipher_len,
-			const unsigned cipher_offset)
+			const unsigned cipher_offset,
+			enum rte_crypto_cipher_algorithm algo)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -1243,7 +1223,10 @@ create_kasumi_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
 	sym_op->m_dst = ut_params->obuf;
 
 	/* iv */
-	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	if (algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	else
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
 	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
 					iv_pad_len);
 
@@ -1260,122 +1243,14 @@ create_kasumi_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
 }
 
 static int
-create_snow3g_cipher_session(uint8_t dev_id,
-			enum rte_crypto_cipher_operation op,
-			const uint8_t *key, const uint8_t key_len)
-{
-	uint8_t cipher_key[key_len];
-
-	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	memcpy(cipher_key, key, key_len);
-
-	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	ut_params->cipher_xform.next = NULL;
-
-	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
-	ut_params->cipher_xform.cipher.op = op;
-	ut_params->cipher_xform.cipher.key.data = cipher_key;
-	ut_params->cipher_xform.cipher.key.length = key_len;
-
-	TEST_HEXDUMP(stdout, "key:", key, key_len);
-
-	/* Create Crypto session */
-	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
-						&ut_params->
-						cipher_xform);
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
-	return 0;
-}
-
-static int
-create_snow3g_cipher_operation(const uint8_t *iv, const unsigned iv_len,
-			const unsigned cipher_len,
-			const unsigned cipher_offset)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct crypto_unittest_params *ut_params = &unittest_params;
-	unsigned iv_pad_len = 0;
-
-	/* Generate Crypto op data structure */
-	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
-				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
-	TEST_ASSERT_NOT_NULL(ut_params->op,
-				"Failed to allocate pktmbuf offload");
-
-	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
-
-	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
-
-	/* set crypto operation source mbuf */
-	sym_op->m_src = ut_params->ibuf;
-
-	/* iv */
-	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf
-			, iv_pad_len);
-
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
-
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
-	sym_op->cipher.data.length = cipher_len;
-	sym_op->cipher.data.offset = cipher_offset;
-	return 0;
-}
-
-static int
-create_snow3g_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
-			const unsigned cipher_len,
-			const unsigned cipher_offset)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct crypto_unittest_params *ut_params = &unittest_params;
-	unsigned iv_pad_len = 0;
-
-	/* Generate Crypto op data structure */
-	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
-				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
-	TEST_ASSERT_NOT_NULL(ut_params->op,
-				"Failed to allocate pktmbuf offload");
-
-	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
-
-	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
-
-	/* set crypto operation source mbuf */
-	sym_op->m_src = ut_params->ibuf;
-	sym_op->m_dst = ut_params->obuf;
-
-	/* iv */
-	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf
-			, iv_pad_len);
-
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
-
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
-	sym_op->cipher.data.length = cipher_len;
-	sym_op->cipher.data.offset = cipher_offset;
-	return 0;
-}
-
-static int
-create_snow3g_cipher_auth_session(uint8_t dev_id,
+create_snow3g_kasumi_cipher_auth_session(uint8_t dev_id,
 		enum rte_crypto_cipher_operation cipher_op,
 		enum rte_crypto_auth_operation auth_op,
+		enum rte_crypto_auth_algorithm auth_algo,
+		enum rte_crypto_cipher_algorithm cipher_algo,
 		const uint8_t *key, const uint8_t key_len,
 		const uint8_t aad_len, const uint8_t auth_len)
+
 {
 	uint8_t cipher_auth_key[key_len];
 
@@ -1388,7 +1263,7 @@ create_snow3g_cipher_auth_session(uint8_t dev_id,
 	ut_params->auth_xform.next = NULL;
 
 	ut_params->auth_xform.auth.op = auth_op;
-	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
+	ut_params->auth_xform.auth.algo = auth_algo;
 	ut_params->auth_xform.auth.key.length = key_len;
 	/* Hash key = cipher key */
 	ut_params->auth_xform.auth.key.data = cipher_auth_key;
@@ -1399,7 +1274,7 @@ create_snow3g_cipher_auth_session(uint8_t dev_id,
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
-	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
+	ut_params->cipher_xform.cipher.algo = cipher_algo;
 	ut_params->cipher_xform.cipher.op = cipher_op;
 	ut_params->cipher_xform.cipher.key.data = cipher_auth_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
@@ -1415,12 +1290,14 @@ create_snow3g_cipher_auth_session(uint8_t dev_id,
 }
 
 static int
-create_snow3g_auth_cipher_session(uint8_t dev_id,
+create_snow3g_kasumi_auth_cipher_session(uint8_t dev_id,
 		enum rte_crypto_cipher_operation cipher_op,
 		enum rte_crypto_auth_operation auth_op,
+		enum rte_crypto_auth_algorithm auth_algo,
+		enum rte_crypto_cipher_algorithm cipher_algo,
 		const uint8_t *key, const uint8_t key_len,
 		const uint8_t aad_len, const uint8_t auth_len)
-	{
+{
 	uint8_t auth_cipher_key[key_len];
 
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -1431,7 +1308,7 @@ create_snow3g_auth_cipher_session(uint8_t dev_id,
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.auth.op = auth_op;
 	ut_params->auth_xform.next = &ut_params->cipher_xform;
-	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SNOW3G_UIA2;
+	ut_params->auth_xform.auth.algo = auth_algo;
 	ut_params->auth_xform.auth.key.length = key_len;
 	ut_params->auth_xform.auth.key.data = auth_cipher_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
@@ -1440,7 +1317,7 @@ create_snow3g_auth_cipher_session(uint8_t dev_id,
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.next = NULL;
-	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
+	ut_params->cipher_xform.cipher.algo = cipher_algo;
 	ut_params->cipher_xform.cipher.op = cipher_op;
 	ut_params->cipher_xform.cipher.key.data = auth_cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
@@ -1457,11 +1334,12 @@ create_snow3g_auth_cipher_session(uint8_t dev_id,
 }
 
 static int
-create_snow3g_hash_operation(const uint8_t *auth_tag,
+create_snow3g_kasumi_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
 		const uint8_t *aad, const unsigned aad_len,
 		unsigned data_pad_len,
 		enum rte_crypto_auth_operation op,
+		enum rte_crypto_auth_algorithm algo,
 		const unsigned auth_len, const unsigned auth_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -1490,9 +1368,12 @@ create_snow3g_hash_operation(const uint8_t *auth_tag,
 	* The cryptodev API calls out -
 	*  - the array must be big enough to hold the AAD, plus any
 	*   space to round this up to the nearest multiple of the
-	*   block size (16 bytes).
+	*   block size (8 bytes for KASUMI and 16 bytes for SNOW3G).
 	*/
-	aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
+	if (algo == RTE_CRYPTO_AUTH_KASUMI_F9)
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
+	else
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
 	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
 			ut_params->ibuf, aad_buffer_len);
 	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
@@ -1533,86 +1414,13 @@ create_snow3g_hash_operation(const uint8_t *auth_tag,
 }
 
 static int
-create_kasumi_hash_operation(const uint8_t *auth_tag,
-		const unsigned auth_tag_len,
-		const uint8_t *aad, const unsigned aad_len,
-		unsigned data_pad_len,
-		enum rte_crypto_auth_operation op,
-		const unsigned auth_len, const unsigned auth_offset)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-
-	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	unsigned aad_buffer_len;
-
-	/* Generate Crypto op data structure */
-	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
-			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
-	TEST_ASSERT_NOT_NULL(ut_params->op,
-		"Failed to allocate pktmbuf offload");
-
-	/* Set crypto operation data parameters */
-	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
-
-	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
-
-	/* set crypto operation source mbuf */
-	sym_op->m_src = ut_params->ibuf;
-
-	/* aad */
-	/*
-	* Always allocate the aad up to the block size.
-	* The cryptodev API calls out -
-	*  - the array must be big enough to hold the AAD, plus any
-	*   space to round this up to the nearest multiple of the
-	*   block size (16 bytes).
-	*/
-	aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
-	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, aad_buffer_len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
-					"no room to prepend aad");
-	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
-			ut_params->ibuf);
-	sym_op->auth.aad.length = aad_len;
-
-	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
-	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
-
-	TEST_HEXDUMP(stdout, "aad:",
-			sym_op->auth.aad.data, aad_len);
-
-	/* digest */
-	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
-					ut_params->ibuf, auth_tag_len);
-
-	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
-				"no room to append auth tag");
-	ut_params->digest = sym_op->auth.digest.data;
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
-			ut_params->ibuf, data_pad_len + aad_len);
-	sym_op->auth.digest.length = auth_tag_len;
-	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
-		memset(sym_op->auth.digest.data, 0, auth_tag_len);
-	else
-		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
-
-	TEST_HEXDUMP(stdout, "digest:",
-		sym_op->auth.digest.data,
-		sym_op->auth.digest.length);
-
-	sym_op->auth.data.length = auth_len;
-	sym_op->auth.data.offset = auth_offset;
-
-	return 0;
-}
-static int
-create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
+create_snow3g_kasumi_cipher_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
 		const uint8_t *aad, const uint8_t aad_len,
 		unsigned data_pad_len,
 		enum rte_crypto_auth_operation op,
+		enum rte_crypto_auth_algorithm auth_algo,
+		enum rte_crypto_cipher_algorithm cipher_algo,
 		const uint8_t *iv, const uint8_t iv_len,
 		const unsigned cipher_len, const unsigned cipher_offset,
 		const unsigned auth_len, const unsigned auth_offset)
@@ -1638,7 +1446,10 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 
 
 	/* iv */
-	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	else
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
 
 	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
 		ut_params->ibuf, iv_pad_len);
@@ -1659,9 +1470,12 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 	* The cryptodev API calls out -
 	*  - the array must be big enough to hold the AAD, plus any
 	*   space to round this up to the nearest multiple of the
-	*   block size (16 bytes).
+	*   block size (8 bytes for KASUMI and 16 bytes for SNOW3G).
 	*/
-	aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
+	if (auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9)
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
+	else
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
 
 	sym_op->auth.aad.data =
 			(uint8_t *)rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *);
@@ -1703,12 +1517,14 @@ create_snow3g_cipher_hash_operation(const uint8_t *auth_tag,
 }
 
 static int
-create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
+create_snow3g_kasumi_auth_cipher_operation(const unsigned auth_tag_len,
 		const uint8_t *iv, const uint8_t iv_len,
 		const uint8_t *aad, const uint8_t aad_len,
 		unsigned data_pad_len,
 		const unsigned cipher_len, const unsigned cipher_offset,
-		const unsigned auth_len, const unsigned auth_offset)
+		const unsigned auth_len, const unsigned auth_offset,
+		enum rte_crypto_auth_algorithm auth_algo,
+		enum rte_crypto_cipher_algorithm cipher_algo)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -1748,7 +1564,10 @@ create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
 			sym_op->auth.digest.length);
 
 	/* iv */
-	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	else
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
 
 	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
 		ut_params->ibuf, iv_pad_len);
@@ -1766,9 +1585,12 @@ create_snow3g_auth_cipher_operation(const unsigned auth_tag_len,
 	* The cryptodev API calls out -
 	*  - the array must be big enough to hold the AAD, plus any
 	*   space to round this up to the nearest multiple of the
-	*   block size (16 bytes).
+	*   block size (8 bytes for KASUMI 16 bytes).
 	*/
-	aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
+	if (auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9)
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
+	else
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
 
 	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
 	ut_params->ibuf, aad_buffer_len);
@@ -1805,10 +1627,11 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_hash_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->digest.len,
-			RTE_CRYPTO_AUTH_OP_GENERATE);
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_SNOW3G_UIA2);
 	if (retval < 0)
 		return retval;
 
@@ -1826,10 +1649,11 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 				plaintext_pad_len);
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
-	/* Create SNOW3G opertaion */
-	retval = create_snow3g_hash_operation(NULL, tdata->digest.len,
+	/* Create SNOW3G operation */
+	retval = create_snow3g_kasumi_hash_operation(NULL, tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			tdata->validAuthLenInBits.len,
 			tdata->validAuthOffsetLenInBits.len);
 	if (retval < 0)
@@ -1864,10 +1688,11 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_hash_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
 				tdata->aad.len, tdata->digest.len,
-				RTE_CRYPTO_AUTH_OP_VERIFY);
+				RTE_CRYPTO_AUTH_OP_VERIFY,
+				RTE_CRYPTO_AUTH_SNOW3G_UIA2);
 	if (retval < 0)
 		return retval;
 	/* alloc mbuf and set payload */
@@ -1885,11 +1710,12 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
 	/* Create SNOW3G operation */
-	retval = create_snow3g_hash_operation(tdata->digest.data,
+	retval = create_snow3g_kasumi_hash_operation(tdata->digest.data,
 			tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
+			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			tdata->validAuthLenInBits.len,
 			tdata->validAuthOffsetLenInBits.len);
 	if (retval < 0)
@@ -1923,10 +1749,11 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create KASUMI session */
-	retval = create_kasumi_hash_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->digest.len,
-			RTE_CRYPTO_AUTH_OP_GENERATE);
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_KASUMI_F9);
 	if (retval < 0)
 		return retval;
 
@@ -1945,9 +1772,10 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_kasumi_hash_operation(NULL, tdata->digest.len,
+	retval = create_snow3g_kasumi_hash_operation(NULL, tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_KASUMI_F9,
 			tdata->validAuthLenInBits.len,
 			tdata->validAuthOffsetLenInBits.len);
 	if (retval < 0)
@@ -1982,10 +1810,11 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create KASUMI session */
-	retval = create_kasumi_hash_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
 				tdata->aad.len, tdata->digest.len,
-				RTE_CRYPTO_AUTH_OP_VERIFY);
+				RTE_CRYPTO_AUTH_OP_VERIFY,
+				RTE_CRYPTO_AUTH_KASUMI_F9);
 	if (retval < 0)
 		return retval;
 	/* alloc mbuf and set payload */
@@ -2003,11 +1832,12 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_kasumi_hash_operation(tdata->digest.data,
+	retval = create_snow3g_kasumi_hash_operation(tdata->digest.data,
 			tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
+			RTE_CRYPTO_AUTH_KASUMI_F9,
 			tdata->validAuthLenInBits.len,
 			tdata->validAuthOffsetLenInBits.len);
 	if (retval < 0)
@@ -2174,8 +2004,9 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create KASUMI session */
-	retval = create_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2197,9 +2028,10 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->plaintext.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
 
@@ -2237,8 +2069,9 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create KASUMI session */
-	retval = create_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2262,9 +2095,11 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_kasumi_cipher_operation_oop(tdata->iv.data, tdata->iv.len,
+	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
+					tdata->iv.len,
 					tdata->plaintext.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
 
@@ -2302,8 +2137,9 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create KASUMI session */
-	retval = create_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
+					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2327,9 +2163,11 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create KASUMI operation */
-	retval = create_kasumi_cipher_operation_oop(tdata->iv.data, tdata->iv.len,
+	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
+					tdata->iv.len,
 					tdata->ciphertext.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
 
@@ -2367,8 +2205,9 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create KASUMI session */
-	retval = create_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
+					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2390,9 +2229,11 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create KASUMI operation */
-	retval = create_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data,
+					tdata->iv.len,
 					tdata->ciphertext.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
 
@@ -2430,8 +2271,9 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2453,9 +2295,10 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Create SNOW3G operation */
-	retval = create_snow3g_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
 
@@ -2494,8 +2337,9 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2524,10 +2368,11 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Create SNOW3G operation */
-	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
+	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
 
@@ -2586,8 +2431,9 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	uint8_t *expected_ciphertext_shifted;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2623,11 +2469,12 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 #endif
 	/* Create SNOW3G operation */
-	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
+	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len +
-					extra_offset);
+					extra_offset,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
 
@@ -2678,8 +2525,9 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2701,9 +2549,10 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 
 	/* Create SNOW3G operation */
-	retval = create_snow3g_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
 
@@ -2739,8 +2588,9 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
 	if (retval < 0)
 		return retval;
@@ -2772,10 +2622,11 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 
 	/* Create SNOW3G operation */
-	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
+	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len);
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
 
@@ -2812,9 +2663,11 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_cipher_auth_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_cipher_auth_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
+			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->digest.len);
 	if (retval < 0)
@@ -2836,15 +2689,18 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Create SNOW3G operation */
-	retval = create_snow3g_cipher_hash_operation(tdata->digest.data,
+	retval = create_snow3g_kasumi_cipher_hash_operation(tdata->digest.data,
 			tdata->digest.len, tdata->aad.data,
 			tdata->aad.len, /*tdata->plaintext.len,*/
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
+			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->iv.data, tdata->iv.len,
 			tdata->validCipherLenInBits.len,
 			tdata->validCipherOffsetLenInBits.len,
 			tdata->validAuthLenInBits.len,
-			tdata->validAuthOffsetLenInBits.len);
+			tdata->validAuthOffsetLenInBits.len
+			);
 	if (retval < 0)
 		return retval;
 
@@ -2891,9 +2747,11 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW3G session */
-	retval = create_snow3g_auth_cipher_session(ts_params->valid_devs[0],
+	retval = create_snow3g_kasumi_auth_cipher_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
+			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->digest.len);
 	if (retval < 0)
@@ -2916,7 +2774,7 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Create SNOW3G operation */
-	retval = create_snow3g_auth_cipher_operation(
+	retval = create_snow3g_kasumi_auth_cipher_operation(
 		tdata->digest.len,
 		tdata->iv.data, tdata->iv.len,
 		tdata->aad.data, tdata->aad.len,
@@ -2924,7 +2782,9 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 		tdata->validCipherLenInBits.len,
 		tdata->validCipherOffsetLenInBits.len,
 		tdata->validAuthLenInBits.len,
-		tdata->validAuthOffsetLenInBits.len
+		tdata->validAuthOffsetLenInBits.len,
+		RTE_CRYPTO_AUTH_SNOW3G_UIA2,
+		RTE_CRYPTO_CIPHER_SNOW3G_UEA2
 	);
 
 	if (retval < 0)
