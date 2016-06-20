@@ -349,6 +349,7 @@ fill_supported_algorithm_tables(void)
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA384_HMAC], "SHA384_HMAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA512_HMAC], "SHA512_HMAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SNOW3G_UIA2], "SNOW3G_UIA2");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_KASUMI_F9], "KASUMI_F9");
 
 	for (i = 0; i < RTE_CRYPTO_CIPHER_LIST_END; i++)
 		strcpy(supported_cipher_algo[i], "NOT_SUPPORTED");
@@ -358,6 +359,7 @@ fill_supported_algorithm_tables(void)
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_AES_GCM], "AES_GCM");
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_NULL], "NULL");
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_SNOW3G_UEA2], "SNOW3G_UEA2");
+	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_KASUMI_F8], "KASUMI_F8");
 }
 
 
@@ -466,8 +468,9 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 				rte_pktmbuf_pkt_len(m) - cparams->digest_length);
 		op->sym->auth.digest.length = cparams->digest_length;
 
-		/* For SNOW3G algorithms, offset/length must be in bits */
-		if (cparams->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
+		/* For SNOW3G/KASUMI algorithms, offset/length must be in bits */
+		if (cparams->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
+				cparams->auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9) {
 			op->sym->auth.data.offset = ipdata_offset << 3;
 			op->sym->auth.data.length = data_len << 3;
 		} else {
@@ -488,7 +491,8 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		op->sym->cipher.iv.length = cparams->iv.length;
 
 		/* For SNOW3G algorithms, offset/length must be in bits */
-		if (cparams->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2) {
+		if (cparams->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
+				cparams->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8) {
 			op->sym->cipher.data.offset = ipdata_offset << 3;
 			if (cparams->do_hash && cparams->hash_verify)
 				/* Do not cipher the hash tag */

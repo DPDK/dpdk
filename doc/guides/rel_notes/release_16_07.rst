@@ -61,6 +61,11 @@ New Features
   Enabled support for the AES CTR algorithm for Intel QuickAssist devices.
   Provided support for algorithm-chaining operations.
 
+* **Added KASUMI SW PMD.**
+
+  A new Crypto PMD has been added, which provides KASUMI F8 (UEA1) ciphering
+  and KASUMI F9 (UIA1) hashing.
+
 * **Improved IP Pipeline Application.**
 
   The following features have been added to ip_pipeline application:

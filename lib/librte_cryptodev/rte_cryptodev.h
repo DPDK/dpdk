@@ -59,12 +59,15 @@ extern "C" {
 /**< Intel QAT Symmetric Crypto PMD device name */
 #define CRYPTODEV_NAME_SNOW3G_PMD	("cryptodev_snow3g_pmd")
 /**< SNOW 3G PMD device name */
+#define CRYPTODEV_NAME_KASUMI_PMD	("cryptodev_kasumi_pmd")
+/**< KASUMI PMD device name */
 
 /** Crypto device type */
 enum rte_cryptodev_type {
 	RTE_CRYPTODEV_NULL_PMD = 1,	/**< Null crypto PMD */
 	RTE_CRYPTODEV_AESNI_GCM_PMD,	/**< AES-NI GCM PMD */
 	RTE_CRYPTODEV_AESNI_MB_PMD,	/**< AES-NI multi buffer PMD */
+	RTE_CRYPTODEV_KASUMI_PMD,	/**< KASUMI PMD */
 	RTE_CRYPTODEV_QAT_SYM_PMD,	/**< QAT PMD Symmetric Crypto */
 	RTE_CRYPTODEV_SNOW3G_PMD,	/**< SNOW 3G PMD */
 };

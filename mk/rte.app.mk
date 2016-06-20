@@ -135,6 +135,8 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += -lrte_pmd_null_crypto
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)        += -lrte_pmd_qat -lcrypto
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G)     += -lrte_pmd_snow3g
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G)     += -L$(LIBSSO_PATH)/build -lsso
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI)     += -lrte_pmd_kasumi
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI)     += -L$(LIBSSO_KASUMI_PATH)/build -lsso_kasumi
 endif # CONFIG_RTE_LIBRTE_CRYPTODEV
 
 endif # !CONFIG_RTE_BUILD_SHARED_LIBS

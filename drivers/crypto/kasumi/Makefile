@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2016 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -28,40 +27,40 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-#include "common_linuxapp"
+include $(RTE_SDK)/mk/rte.vars.mk
 
-CONFIG_RTE_MACHINE="native"
+ifneq ($(MAKECMDGOALS),clean)
+ifeq ($(LIBSSO_KASUMI_PATH),)
+$(error "Please define LIBSSO_KASUMI_PATH environment variable")
+endif
+endif
 
-CONFIG_RTE_ARCH="i686"
-CONFIG_RTE_ARCH_I686=y
-CONFIG_RTE_ARCH_X86=y
+# library name
+LIB = librte_pmd_kasumi.a
 
-CONFIG_RTE_TOOLCHAIN="icc"
-CONFIG_RTE_TOOLCHAIN_ICC=y
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
 
-#
-# KNI is not supported on 32-bit
-#
-CONFIG_RTE_LIBRTE_KNI=n
+# library version
+LIBABIVER := 1
 
-#
-# Vectorized PMD is not supported on 32-bit
-#
-CONFIG_RTE_IXGBE_INC_VECTOR=n
+# versioning export map
+EXPORT_MAP := rte_pmd_kasumi_version.map
 
-#
-# AES-NI multi-buffer PMD is not supported on 32-bit
-#
-CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n
+# external library include paths
+CFLAGS += -I$(LIBSSO_KASUMI_PATH)
+CFLAGS += -I$(LIBSSO_KASUMI_PATH)/include
+CFLAGS += -I$(LIBSSO_KASUMI_PATH)/build
 
-#
-# AES-NI GCM PMD is not supported on 32-bit
-#
-CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=n
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += rte_kasumi_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += rte_kasumi_pmd_ops.c
 
-#
-# KASUMI PMD is not supported on 32-bit
-#
-CONFIG_RTE_LIBRTE_PMD_KASUMI=n
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_cryptodev
+
+include $(RTE_SDK)/mk/rte.lib.mk

@@ -388,7 +388,8 @@ struct rte_crypto_sym_op {
 			  * this location.
 			  *
 			  * @note
-			  * For Snow3G @ RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
+			  * For Snow3G @ RTE_CRYPTO_CIPHER_SNOW3G_UEA2
+			  * and KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8,
 			  * this field should be in bits.
 			  */
 
@@ -413,6 +414,7 @@ struct rte_crypto_sym_op {
 			  *
 			  * @note
 			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UEA2
+			  * and KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8,
 			  * this field should be in bits.
 			  */
 		} data; /**< Data offsets and length for ciphering */
@@ -485,6 +487,7 @@ struct rte_crypto_sym_op {
 			  *
 			  * @note
 			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
+			  * and KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
 			  * this field should be in bits.
 			  */
 
@@ -504,6 +507,7 @@ struct rte_crypto_sym_op {
 			  *
 			  * @note
 			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
+			  * and KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
 			  * this field should be in bits.
 			  */
 		} data; /**< Data offsets and length for authentication */

@@ -60,3 +60,8 @@ CONFIG_RTE_LIBRTE_PMD_AESNI_MB=n
 # AES-NI GCM PMD is not supported on 32-bit
 #
 CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=n
+
+#
+# KASUMI PMD is not supported on 32-bit
+#
+CONFIG_RTE_LIBRTE_PMD_KASUMI=n

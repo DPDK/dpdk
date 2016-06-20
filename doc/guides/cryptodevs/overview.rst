@@ -33,62 +33,63 @@ Crypto Device Supported Functionality Matrices
 Supported Feature Flags
 
 .. csv-table::
-   :header: "Feature Flags", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g"
+   :header: "Feature Flags", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi"
    :stub-columns: 1
 
-   "RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO",x,x,x,x,x
-   "RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO",,,,,
-   "RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING",x,x,x,x,x
-   "RTE_CRYPTODEV_FF_CPU_SSE",,,x,x,x
-   "RTE_CRYPTODEV_FF_CPU_AVX",,,x,x,x
-   "RTE_CRYPTODEV_FF_CPU_AVX2",,,x,x,
-   "RTE_CRYPTODEV_FF_CPU_AESNI",,,x,x,
-   "RTE_CRYPTODEV_FF_HW_ACCELERATED",x,,,,
+   "RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO",x,x,x,x,x,x
+   "RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO",,,,,,
+   "RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING",x,x,x,x,x,x
+   "RTE_CRYPTODEV_FF_CPU_SSE",,,x,x,x,x
+   "RTE_CRYPTODEV_FF_CPU_AVX",,,x,x,x,x
+   "RTE_CRYPTODEV_FF_CPU_AVX2",,,x,x,,
+   "RTE_CRYPTODEV_FF_CPU_AESNI",,,x,x,,
+   "RTE_CRYPTODEV_FF_HW_ACCELERATED",x,,,,,
 
 Supported Cipher Algorithms
 
 .. csv-table::
-   :header: "Cipher Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g"
+   :header: "Cipher Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi"
    :stub-columns: 1
 
-   "NULL",,x,,,
-   "AES_CBC_128",x,,x,,
-   "AES_CBC_192",x,,x,,
-   "AES_CBC_256",x,,x,,
-   "AES_CTR_128",x,,x,,
-   "AES_CTR_192",x,,x,,
-   "AES_CTR_256",x,,x,,
-   "SNOW3G_UEA2",x,,,,x
+   "NULL",,x,,,,
+   "AES_CBC_128",x,,x,,,
+   "AES_CBC_192",x,,x,,,
+   "AES_CBC_256",x,,x,,,
+   "AES_CTR_128",x,,x,,,
+   "AES_CTR_192",x,,x,,,
+   "AES_CTR_256",x,,x,,,
+   "SNOW3G_UEA2",x,,,,x,
+   "KASUMI_F8",,,,,,x
 
 Supported Authentication Algorithms
 
 .. csv-table::
-   :header: "Cipher Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g"
+   :header: "Cipher Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi"
    :stub-columns: 1
 
-   "NONE",,x,,,
-   "MD5",,,,,
-   "MD5_HMAC",,,x,,
-   "SHA1",,,,,
-   "SHA1_HMAC",x,,x,,
-   "SHA224",,,,,
-   "SHA224_HMAC",,,x,,
-   "SHA256",,,,,
-   "SHA256_HMAC",x,,x,,
-   "SHA384",,,,,
-   "SHA384_HMAC",,,x,,
-   "SHA512",,,,,
-   "SHA512_HMAC",x,,x,,
-   "AES_XCBC",x,,x,,
-   "SNOW3G_UIA2",x,,,,x
-
+   "NONE",,x,,,,
+   "MD5",,,,,,
+   "MD5_HMAC",,,x,,,
+   "SHA1",,,,,,
+   "SHA1_HMAC",x,,x,,,
+   "SHA224",,,,,,
+   "SHA224_HMAC",,,x,,,
+   "SHA256",,,,,,
+   "SHA256_HMAC",x,,x,,,
+   "SHA384",,,,,,
+   "SHA384_HMAC",,,x,,,
+   "SHA512",,,,,,
+   "SHA512_HMAC",x,,x,,,
+   "AES_XCBC",x,,x,,,
+   "SNOW3G_UIA2",x,,,,x,
+   "KASUMI_F9",,,,,,x
 
 Supported AEAD Algorithms
 
 .. csv-table::
-   :header: "AEAD Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g"
+   :header: "AEAD Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi"
    :stub-columns: 1
 
-   "AES_GCM_128",x,,x,,
-   "AES_GCM_192",x,,,,
-   "AES_GCM_256",x,,,,
+   "AES_GCM_128",x,,x,,,
+   "AES_GCM_192",x,,,,,
+   "AES_GCM_256",x,,,,,

@@ -396,6 +396,11 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/snow3g/
 F: doc/guides/cryptodevs/snow3g.rst
 
+KASUMI PMD
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+F: drivers/crypto/kasumi/
+F: doc/guides/cryptodevs/kasumi.rst
+
 Null Crypto PMD
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/null/
