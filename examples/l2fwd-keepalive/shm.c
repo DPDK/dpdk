@@ -80,6 +80,8 @@ struct rte_keepalive_shm *rte_keepalive_shm_create(void)
 				RTE_LOG(INFO, EAL,
 					"Failed to setup SHM semaphore (%s)\n",
 					strerror(errno));
+				munmap(ka_shm,
+					sizeof(struct rte_keepalive_shm));
 				return NULL;
 			}
 
