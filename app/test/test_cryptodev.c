@@ -2048,6 +2048,24 @@ test_snow3g_hash_generate_test_case_3(void)
 }
 
 static int
+test_snow3g_hash_generate_test_case_4(void)
+{
+	return test_snow3g_authentication(&snow3g_hash_test_case_4);
+}
+
+static int
+test_snow3g_hash_generate_test_case_5(void)
+{
+	return test_snow3g_authentication(&snow3g_hash_test_case_5);
+}
+
+static int
+test_snow3g_hash_generate_test_case_6(void)
+{
+	return test_snow3g_authentication(&snow3g_hash_test_case_6);
+}
+
+static int
 test_snow3g_hash_verify_test_case_1(void)
 {
 	return test_snow3g_authentication_verify(&snow3g_hash_test_case_1);
@@ -2064,6 +2082,24 @@ static int
 test_snow3g_hash_verify_test_case_3(void)
 {
 	return test_snow3g_authentication_verify(&snow3g_hash_test_case_3);
+}
+
+static int
+test_snow3g_hash_verify_test_case_4(void)
+{
+	return test_snow3g_authentication_verify(&snow3g_hash_test_case_4);
+}
+
+static int
+test_snow3g_hash_verify_test_case_5(void)
+{
+	return test_snow3g_authentication_verify(&snow3g_hash_test_case_5);
+}
+
+static int
+test_snow3g_hash_verify_test_case_6(void)
+{
+	return test_snow3g_authentication_verify(&snow3g_hash_test_case_6);
 }
 
 static int
@@ -4079,12 +4115,26 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 			test_snow3g_hash_generate_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_generate_test_case_3),
+		/* Tests with buffers which length is not byte-aligned */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_generate_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_generate_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_generate_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_verify_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_verify_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_verify_test_case_3),
+		/* Tests with buffers which length is not byte-aligned */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_verify_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_verify_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_hash_verify_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
