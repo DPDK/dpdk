@@ -57,39 +57,16 @@ Limitations
 Installation
 ------------
 
-To build DPDK with the SNOW3G_PMD the user is required to download
+To build DPDK with the KASUMI_PMD the user is required to download
 the export controlled ``libsso_snow3g`` library, by requesting it from
-`<https://networkbuilders.intel.com/network-technologies/dpdk>`_,
-and compiling it on their system before building DPDK::
+`<https://networkbuilders.intel.com/network-technologies/dpdk>`_.
+Once approval has been granted, the user needs to log in
+`<https://networkbuilders.intel.com/dpdklogin>`_
+and click on "Snow3G Bit Stream crypto library" link, to download the library.
+After downloading the library, the user needs to unpack and compile it
+on their system before building DPDK::
 
-   make -f Makefile_snow3g
-
-**Note**: If using a gcc version higher than 5.0, and compilation fails, apply the following patch:
-
-.. code-block:: diff
-
-   /libsso/src/snow3g/sso_snow3g.c
-
-   static inline void ClockFSM_4(sso_snow3gKeyState4_t *pCtx, __m128i *data)
-   {
-       __m128i F, R;
-   -    uint32_t K, L;
-   +    uint32_t K;
-   +    /* Declare unused if SNOW3G_WSM/SNB are defined */
-   +    uint32_t L __attribute__ ((unused)) = 0;
-
-        F = _mm_add_epi32(pCtx->LFSR_X[15], pCtx->FSM_X[0]);
-        R = _mm_xor_si128(pCtx->LFSR_X[5], pCtx->FSM_X[2]);
-
-   /libsso/include/sso_snow3g_internal.h
-
-   -inline void ClockFSM_1(sso_snow3gKeyState1_t *pCtx, uint32_t *data);
-   -inline void ClockLFSR_1(sso_snow3gKeyState1_t *pCtx);
-   -inline void sso_snow3gStateInitialize_1(sso_snow3gKeyState1_t * pCtx, sso_snow3g_key_schedule_t *pKeySched, uint8_t *pIV);
-   +void ClockFSM_1(sso_snow3gKeyState1_t *pCtx, uint32_t *data);
-   +void ClockLFSR_1(sso_snow3gKeyState1_t *pCtx);
-   +void sso_snow3gStateInitialize_1(sso_snow3gKeyState1_t * pCtx, sso_snow3g_key_schedule_t *pKeySched, uint8_t *pIV);
-
+   make snow3G
 
 Initialization
 --------------
@@ -97,7 +74,7 @@ Initialization
 In order to enable this virtual crypto PMD, user must:
 
 * Export the environmental variable LIBSSO_SNOW3G_PATH with the path where
-  the library was extracted.
+  the library was extracted (snow3g folder).
 
 * Build the LIBSSO_SNOW3G library (explained in Installation section).
 
