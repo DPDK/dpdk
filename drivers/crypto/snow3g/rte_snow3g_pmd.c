@@ -42,6 +42,8 @@
 
 #include "rte_snow3g_pmd_private.h"
 
+#define SNOW3G_IV_LENGTH 16
+#define SNOW3G_DIGEST_LENGTH 4
 #define SNOW3G_MAX_BURST 8
 #define BYTE_LEN 8
 
@@ -198,7 +200,7 @@ process_snow3g_cipher_op(struct rte_crypto_op **ops,
 
 	for (i = 0; i < num_ops; i++) {
 		/* Sanity checks. */
-		if (ops[i]->sym->cipher.iv.length != 16) {
+		if (unlikely(ops[i]->sym->cipher.iv.length != SNOW3G_IV_LENGTH)) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			SNOW3G_LOG_ERR("iv");
 			break;
@@ -243,13 +245,13 @@ process_snow3g_hash_op(struct rte_crypto_op **ops,
 	uint32_t length_in_bits;
 
 	for (i = 0; i < num_ops; i++) {
-		if (ops[i]->sym->auth.aad.length != 16) {
+		if (unlikely(ops[i]->sym->auth.aad.length != SNOW3G_IV_LENGTH)) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			SNOW3G_LOG_ERR("aad");
 			break;
 		}
 
-		if (ops[i]->sym->auth.digest.length != 4) {
+		if (unlikely(ops[i]->sym->auth.digest.length != SNOW3G_DIGEST_LENGTH)) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			SNOW3G_LOG_ERR("digest");
 			break;
