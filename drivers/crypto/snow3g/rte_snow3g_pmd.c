@@ -555,6 +555,16 @@ cryptodev_snow3g_create(const char *name,
 	struct rte_cryptodev *dev;
 	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct snow3g_private *internals;
+	uint64_t cpu_flags = 0;
+
+	/* Check CPU for supported vector instruction set */
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+		cpu_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
+	else {
+		SNOW3G_LOG_ERR("Vector instructions are not supported by CPU");
+		return -EFAULT;
+	}
+
 
 	/* Create a unique device name. */
 	if (create_unique_device_name(crypto_dev_name,
@@ -578,7 +588,8 @@ cryptodev_snow3g_create(const char *name,
 	dev->enqueue_burst = snow3g_pmd_enqueue_burst;
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			cpu_flags;
 
 	internals = dev->data->dev_private;
 
