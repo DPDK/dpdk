@@ -58,7 +58,7 @@ Installation
 ------------
 
 To build DPDK with the SNOW3G_PMD the user is required to download
-the export controlled ``libsso`` library, by requesting it from
+the export controlled ``libsso_snow3g`` library, by requesting it from
 `<https://networkbuilders.intel.com/network-technologies/dpdk>`_,
 and compiling it on their system before building DPDK::
 
@@ -96,10 +96,10 @@ Initialization
 
 In order to enable this virtual crypto PMD, user must:
 
-* Export the environmental variable LIBSSO_PATH with the path where
+* Export the environmental variable LIBSSO_SNOW3G_PATH with the path where
   the library was extracted.
 
-* Build the LIBSSO library (explained in Installation section).
+* Build the LIBSSO_SNOW3G library (explained in Installation section).
 
 * Set CONFIG_RTE_LIBRTE_PMD_SNOW3G=y in config/common_base.
 

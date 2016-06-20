@@ -31,8 +31,8 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(LIBSSO_PATH),)
-$(error "Please define LIBSSO_PATH environment variable")
+ifeq ($(LIBSSO_SNOW3G_PATH),)
+$(error "Please define LIBSSO_SNOW3G_PATH environment variable")
 endif
 endif
 
@@ -50,9 +50,9 @@ LIBABIVER := 1
 EXPORT_MAP := rte_pmd_snow3g_version.map
 
 # external library include paths
-CFLAGS += -I$(LIBSSO_PATH)
-CFLAGS += -I$(LIBSSO_PATH)/include
-CFLAGS += -I$(LIBSSO_PATH)/build
+CFLAGS += -I$(LIBSSO_SNOW3G_PATH)
+CFLAGS += -I$(LIBSSO_SNOW3G_PATH)/include
+CFLAGS += -I$(LIBSSO_SNOW3G_PATH)/build
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += rte_snow3g_pmd.c

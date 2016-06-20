@@ -45,7 +45,7 @@ default_path=$PATH
 # - DPDK_DEP_ZLIB (y/[n])
 # - DPDK_MAKE_JOBS (int)
 # - DPDK_NOTIFY (notify-send)
-# - LIBSSO_PATH
+# - LIBSSO_SNOW3G_PATH
 # - LIBSSO_KASUMI_PATH
 . $(dirname $(readlink -e $0))/load-devel-config.sh
 
@@ -122,7 +122,7 @@ reset_env ()
 	unset DPDK_DEP_SZE
 	unset DPDK_DEP_ZLIB
 	unset AESNI_MULTI_BUFFER_LIB_PATH
-	unset LIBSSO_PATH
+	unset LIBSSO_SNOW3G_PATH
 	unset LIBSSO_KASUMI_PATH
 	unset PQOS_INSTALL_PATH
 }
@@ -168,7 +168,7 @@ config () # <directory> <target> <options>
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
 		sed -ri      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
-		test -z "$LIBSSO_PATH" || \
+		test -z "$LIBSSO_SNOW3G_PATH" || \
 		sed -ri         's,(PMD_SNOW3G=)n,\1y,' $1/.config
 		test -z "$LIBSSO_KASUMI_PATH" || \
 		sed -ri         's,(PMD_KASUMI=)n,\1y,' $1/.config
