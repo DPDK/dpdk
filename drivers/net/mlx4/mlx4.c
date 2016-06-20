@@ -54,7 +54,6 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <linux/if.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 #include <fcntl.h>
@@ -4771,7 +4770,7 @@ mlx4_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 	memset(&dev_link, 0, sizeof(dev_link));
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
 				(ifr.ifr_flags & IFF_RUNNING));
-	ifr.ifr_data = &edata;
+	ifr.ifr_data = (void *)&edata;
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
 		     strerror(errno));
@@ -4930,7 +4929,7 @@ mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	if (mlx4_is_secondary())
 		return -E_RTE_SECONDARY;
-	ifr.ifr_data = &ethpause;
+	ifr.ifr_data = (void *)&ethpause;
 	priv_lock(priv);
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		ret = errno;
@@ -4980,7 +4979,7 @@ mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	if (mlx4_is_secondary())
 		return -E_RTE_SECONDARY;
-	ifr.ifr_data = &ethpause;
+	ifr.ifr_data = (void *)&ethpause;
 	ethpause.autoneg = fc_conf->autoneg;
 	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
 	    (fc_conf->mode & RTE_FC_RX_PAUSE))

@@ -39,7 +39,6 @@
 #include <limits.h>
 #include <net/if.h>
 #include <netinet/in.h>
-#include <linux/if.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
