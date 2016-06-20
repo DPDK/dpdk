@@ -2387,8 +2387,6 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	int retval;
 	uint8_t *plaintext, *ciphertext;
 	uint8_t plaintext_pad_len;
-	uint8_t lastByteValidBits = 8;
-	uint8_t lastByteMask = 0xFF;
 
 	/* Create SNOW3G session */
 	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
@@ -2434,19 +2432,13 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	else
 		ciphertext = plaintext;
 
-	lastByteValidBits = (tdata->validDataLenInBits.len % 8);
-	if (lastByteValidBits == 0)
-		lastByteValidBits = 8;
-	lastByteMask = lastByteMask << (8 - lastByteValidBits);
-	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
-
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 
 	/* Validate obuf */
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		ciphertext,
 		tdata->ciphertext.data,
-		tdata->ciphertext.len >> 3,
+		tdata->validDataLenInBits.len,
 		"Snow3G Ciphertext data not as expected");
 	return 0;
 }
@@ -2461,8 +2453,6 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 
 	int retval;
 	uint8_t plaintext_pad_len;
-	uint8_t lastByteValidBits = 8;
-	uint8_t lastByteMask = 0xFF;
 
 	/* Create SNOW3G session */
 	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
@@ -2519,19 +2509,13 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	else
 		ciphertext = plaintext;
 
-	lastByteValidBits = (tdata->validDataLenInBits.len % 8);
-	if (lastByteValidBits == 0)
-		lastByteValidBits = 8;
-	lastByteMask = lastByteMask << (8 - lastByteValidBits);
-	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
-
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 
 	/* Validate obuf */
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		ciphertext,
 		tdata->ciphertext.data,
-		tdata->ciphertext.len >> 3,
+		tdata->validDataLenInBits.len,
 		"Snow3G Ciphertext data not as expected");
 	return 0;
 }
@@ -2546,8 +2530,6 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 
 	uint8_t *plaintext, *ciphertext;
 	uint8_t ciphertext_pad_len;
-	uint8_t lastByteValidBits = 8;
-	uint8_t lastByteMask = 0xFF;
 
 	/* Create SNOW3G session */
 	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
@@ -2590,18 +2572,13 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 				+ tdata->iv.len;
 	else
 		plaintext = ciphertext;
-	lastByteValidBits = (tdata->validDataLenInBits.len  % 8);
-	if (lastByteValidBits == 0)
-		lastByteValidBits = 8;
-	lastByteMask = lastByteMask << (8 - lastByteValidBits);
-	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Validate obuf */
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(plaintext,
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(plaintext,
 				tdata->plaintext.data,
-				tdata->plaintext.len >> 3,
+				tdata->validDataLenInBits.len,
 				"Snow3G Plaintext data not as expected");
 	return 0;
 }
@@ -2615,8 +2592,6 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 
 	uint8_t *plaintext, *ciphertext;
 	uint8_t ciphertext_pad_len;
-	uint8_t lastByteValidBits = 8;
-	uint8_t lastByteMask = 0xFF;
 
 	/* Create SNOW3G session */
 	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
@@ -2673,18 +2648,13 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 				+ tdata->iv.len;
 	else
 		plaintext = ciphertext;
-	lastByteValidBits = (tdata->validDataLenInBits.len  % 8);
-	if (lastByteValidBits == 0)
-		lastByteValidBits = 8;
-	lastByteMask = lastByteMask << (8 - lastByteValidBits);
-	(*(plaintext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 
 	/* Validate obuf */
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(plaintext,
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(plaintext,
 				tdata->plaintext.data,
-				tdata->plaintext.len >> 3,
+				tdata->validDataLenInBits.len,
 				"Snow3G Plaintext data not as expected");
 	return 0;
 }
@@ -2699,8 +2669,6 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 
 	uint8_t *plaintext, *ciphertext;
 	uint8_t plaintext_pad_len;
-	uint8_t lastByteValidBits = 8;
-	uint8_t lastByteMask = 0xFF;
 
 	/* Create SNOW3G session */
 	retval = create_snow3g_cipher_auth_session(ts_params->valid_devs[0],
@@ -2748,19 +2716,14 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 				+ tdata->iv.len;
 	else
 		ciphertext = plaintext;
-	lastByteValidBits = (tdata->validDataLenInBits.len % 8);
-	if (lastByteValidBits == 0)
-		lastByteValidBits = 8;
-	lastByteMask = lastByteMask << (8-lastByteValidBits);
-	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 
 	/* Validate obuf */
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 			ciphertext,
 			tdata->ciphertext.data,
-			tdata->ciphertext.len >> 3,
+			tdata->validDataLenInBits.len,
 			"Snow3G Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
@@ -2784,8 +2747,6 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 
 	uint8_t *plaintext, *ciphertext;
 	uint8_t plaintext_pad_len;
-	uint8_t lastByteValidBits = 8;
-	uint8_t lastByteMask = 0xFF;
 
 	/* Create SNOW3G session */
 	retval = create_snow3g_auth_cipher_session(ts_params->valid_devs[0],
@@ -2837,20 +2798,15 @@ test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
 	else
 		ciphertext = plaintext;
 
-	lastByteValidBits = (tdata->validDataLenInBits.len % 8);
-	if (lastByteValidBits == 0)
-		lastByteValidBits = 8;
-	lastByteMask = lastByteMask << (8-lastByteValidBits);
-	(*(ciphertext + (tdata->ciphertext.len >> 3) - 1)) &= lastByteMask;
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
 			+ plaintext_pad_len + tdata->aad.len + tdata->iv.len;
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 
 	/* Validate obuf */
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		ciphertext,
 		tdata->ciphertext.data,
-		tdata->ciphertext.len >> 3,
+		tdata->validDataLenInBits.len,
 		"Snow3G Ciphertext data not as expected");
 
 	/* Validate obuf */
