@@ -281,6 +281,7 @@ nic_xstats_display(portid_t port_id)
 	if (cnt_xstats != rte_eth_xstats_get_names(
 			port_id, xstats_names, cnt_xstats)) {
 		printf("Error: Cannot get xstats lookup\n");
+		free(xstats_names);
 		return;
 	}
 
@@ -293,6 +294,8 @@ nic_xstats_display(portid_t port_id)
 	}
 	if (cnt_xstats != rte_eth_xstats_get(port_id, xstats, cnt_xstats)) {
 		printf("Error: Unable to get xstats\n");
+		free(xstats_names);
+		free(xstats);
 		return;
 	}
 
