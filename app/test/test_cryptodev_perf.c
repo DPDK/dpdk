@@ -208,7 +208,7 @@ setup_test_string(struct rte_mempool *mpool,
 
 static struct crypto_testsuite_params testsuite_params = { NULL };
 static struct crypto_unittest_params unittest_params;
-static enum rte_cryptodev_type gbl_cryptodev_preftest_devtype;
+static enum rte_cryptodev_type gbl_cryptodev_perftest_devtype;
 
 static int
 testsuite_setup(void)
@@ -245,7 +245,7 @@ testsuite_setup(void)
 		}
 
 	/* Create 2 AESNI MB devices if required */
-	if (gbl_cryptodev_preftest_devtype == RTE_CRYPTODEV_AESNI_MB_PMD) {
+	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_AESNI_MB_PMD) {
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_MB_PMD);
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
@@ -260,7 +260,7 @@ testsuite_setup(void)
 	}
 
 	/* Create 2 SNOW3G devices if required */
-	if (gbl_cryptodev_preftest_devtype == RTE_CRYPTODEV_SNOW3G_PMD) {
+	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_SNOW3G_PMD) {
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
@@ -283,7 +283,7 @@ testsuite_setup(void)
 	/* Search for the first valid */
 	for (i = 0; i < nb_devs; i++) {
 		rte_cryptodev_info_get(i, &info);
-		if (info.dev_type == gbl_cryptodev_preftest_devtype) {
+		if (info.dev_type == gbl_cryptodev_perftest_devtype) {
 			ts_params->dev_id = i;
 			valid_dev_id = 1;
 			break;
@@ -1956,7 +1956,7 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 		}
 
 		while (num_received != num_to_submit) {
-			if (gbl_cryptodev_preftest_devtype ==
+			if (gbl_cryptodev_perftest_devtype ==
 					RTE_CRYPTODEV_AESNI_MB_PMD)
 				rte_cryptodev_enqueue_burst(dev_num, 0,
 						NULL, 0);
@@ -2028,7 +2028,7 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 
 	printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, auth_algo:%s, "
 			"Packet Size %u bytes",
-			pmd_name(gbl_cryptodev_preftest_devtype),
+			pmd_name(gbl_cryptodev_perftest_devtype),
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			cipher_algo_name(pparams->cipher_algo),
@@ -2072,7 +2072,7 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 		}
 
 		while (num_ops_received != num_to_submit) {
-			if (gbl_cryptodev_preftest_devtype ==
+			if (gbl_cryptodev_perftest_devtype ==
 					RTE_CRYPTODEV_AESNI_MB_PMD)
 				rte_cryptodev_enqueue_burst(ts_params->dev_id, 0,
 						NULL, 0);
@@ -2680,7 +2680,7 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 	double cycles_B = cycles_buff / pparams->buf_size;
 	double throughput = (ops_s * pparams->buf_size * 8) / 1000000;
 
-	if (gbl_cryptodev_preftest_devtype == RTE_CRYPTODEV_QAT_SYM_PMD) {
+	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_QAT_SYM_PMD) {
 		/* Cycle count misleading on HW devices for this test, so don't print */
 		printf("%4u\t%6.2f\t%10.2f\t n/a \t\t n/a "
 			"\t\t n/a \t\t%8"PRIu64"\t%8"PRIu64,
@@ -2824,7 +2824,7 @@ test_perf_snow3G_vary_pkt_size(void)
 		for (k = 0; k < RTE_DIM(burst_sizes); k++) {
 			printf("\nOn %s dev%u qp%u, %s, "
 				"cipher algo:%s, auth algo:%s, burst_size: %d ops",
-				pmd_name(gbl_cryptodev_preftest_devtype),
+				pmd_name(gbl_cryptodev_perftest_devtype),
 				testsuite_params.dev_id, 0,
 				chain_mode_name(params_set[i].chain),
 				cipher_algo_name(params_set[i].cipher_algo),
@@ -2893,7 +2893,7 @@ static struct unit_test_suite cryptodev_snow3g_testsuite  = {
 static int
 perftest_aesni_mb_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_preftest_devtype = RTE_CRYPTODEV_AESNI_MB_PMD;
+	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_AESNI_MB_PMD;
 
 	return unit_test_suite_runner(&cryptodev_aes_testsuite);
 }
@@ -2901,7 +2901,7 @@ perftest_aesni_mb_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_qat_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_preftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
+	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
 
 	return unit_test_suite_runner(&cryptodev_testsuite);
 }
@@ -2909,7 +2909,7 @@ perftest_qat_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_sw_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_preftest_devtype = RTE_CRYPTODEV_SNOW3G_PMD;
+	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_SNOW3G_PMD;
 
 	return unit_test_suite_runner(&cryptodev_snow3g_testsuite);
 }
@@ -2917,7 +2917,7 @@ perftest_sw_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_qat_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_preftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
+	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
 
 	return unit_test_suite_runner(&cryptodev_snow3g_testsuite);
 }
