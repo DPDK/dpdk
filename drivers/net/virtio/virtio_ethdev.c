@@ -776,7 +776,7 @@ static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 	unsigned nstats = dev->data->nb_tx_queues * VIRTIO_NB_TXQ_XSTATS +
 		dev->data->nb_rx_queues * VIRTIO_NB_RXQ_XSTATS;
 
-	if (xstats_names == NULL) {
+	if (xstats_names != NULL) {
 		/* Note: limit checked in rte_eth_xstats_names() */
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
