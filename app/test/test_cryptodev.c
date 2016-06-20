@@ -2553,6 +2553,118 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	return 0;
 }
 
+/* Shift right a buffer by "offset" bits, "offset" < 8 */
+static void
+buffer_shift_right(uint8_t *buffer, uint32_t length, uint8_t offset)
+{
+	uint8_t curr_byte, prev_byte;
+	uint32_t length_in_bytes = ceil_byte_length(length + offset);
+	uint8_t lower_byte_mask = (1 << offset) - 1;
+	unsigned i;
+
+	prev_byte = buffer[0];
+	buffer[0] >>= offset;
+
+	for (i = 1; i < length_in_bytes; i++) {
+		curr_byte = buffer[i];
+		buffer[i] = ((prev_byte & lower_byte_mask) << (8 - offset)) |
+				(curr_byte >> offset);
+		prev_byte = curr_byte;
+	}
+}
+
+static int
+test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	uint8_t *plaintext, *ciphertext;
+	int retval;
+	uint32_t plaintext_len;
+	uint32_t plaintext_pad_len;
+	uint8_t extra_offset = 4;
+	uint8_t *expected_ciphertext_shifted;
+
+	/* Create SNOW3G session */
+	retval = create_snow3g_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
+			"Failed to allocate input buffer in mempool");
+	TEST_ASSERT_NOT_NULL(ut_params->obuf,
+			"Failed to allocate output buffer in mempool");
+
+	/* Clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+	       rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len + extra_offset);
+	/*
+	 * Append data which is padded to a
+	 * multiple of the algorithms block size
+	 */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
+
+	plaintext = (uint8_t *) rte_pktmbuf_append(ut_params->ibuf,
+						plaintext_pad_len);
+
+	rte_pktmbuf_append(ut_params->obuf, plaintext_pad_len);
+
+	memcpy(plaintext, tdata->plaintext.data, (tdata->plaintext.len >> 3));
+	buffer_shift_right(plaintext, tdata->plaintext.len, extra_offset);
+
+#ifdef RTE_APP_TEST_DEBUG
+	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
+#endif
+	/* Create SNOW3G operation */
+	retval = create_snow3g_cipher_operation_oop(tdata->iv.data,
+					tdata->iv.len,
+					tdata->validCipherLenInBits.len,
+					tdata->validCipherOffsetLenInBits.len +
+					extra_offset);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+				+ tdata->iv.len;
+	else
+		ciphertext = plaintext;
+
+#ifdef RTE_APP_TEST_DEBUG
+	rte_hexdump(stdout, "ciphertext:", ciphertext, plaintext_len);
+#endif
+
+	expected_ciphertext_shifted = rte_malloc(NULL,
+			ceil_byte_length(plaintext_len + extra_offset), 0);
+
+	TEST_ASSERT_NOT_NULL(expected_ciphertext_shifted,
+			"failed to reserve memory for ciphertext shifted\n");
+
+	memcpy(expected_ciphertext_shifted, tdata->ciphertext.data,
+			ceil_byte_length(tdata->ciphertext.len));
+	buffer_shift_right(expected_ciphertext_shifted, tdata->ciphertext.len,
+			extra_offset);
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT_OFFSET(
+		ciphertext,
+		expected_ciphertext_shifted,
+		tdata->validDataLenInBits.len,
+		extra_offset,
+		"Snow3G Ciphertext data not as expected");
+	return 0;
+}
 
 static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 {
@@ -2929,6 +3041,12 @@ static int
 test_snow3g_encryption_test_case_1_oop(void)
 {
 	return test_snow3g_encryption_oop(&snow3g_test_case_1);
+}
+
+static int
+test_snow3g_encryption_test_case_1_offset_oop(void)
+{
+	return test_snow3g_encryption_offset_oop(&snow3g_test_case_1);
 }
 
 static int
@@ -4097,6 +4215,9 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 			test_snow3g_encryption_test_case_1_oop),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_decryption_test_case_1_oop),
+
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_encryption_test_case_1_offset_oop),
 
 		/** Snow3G decrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
