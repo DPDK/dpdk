@@ -53,7 +53,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_PIPELINE)-include += rte_pipeline.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) := lib/librte_table
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += lib/librte_table
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += lib/librte_port
 
 include $(RTE_SDK)/mk/rte.lib.mk
