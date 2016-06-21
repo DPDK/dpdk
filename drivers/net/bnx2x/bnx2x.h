@@ -1906,14 +1906,6 @@ pci_find_cap(struct bnx2x_softc *sc, uint8_t id, uint8_t type)
 	return NULL;
 }
 
-static inline int is_valid_ether_addr(uint8_t *addr)
-{
-	if (!(addr[0] | addr[1] | addr[2] | addr[3] | addr[4] | addr[5]))
-		return 0;
-	else
-		return 1;
-}
-
 static inline void
 bnx2x_set_rx_mode(struct bnx2x_softc *sc)
 {

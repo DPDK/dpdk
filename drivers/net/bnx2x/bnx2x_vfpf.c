@@ -293,10 +293,11 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 		sc->igu_sb_cnt, sc->igu_base_sb);
 	strncpy(sc->fw_ver, sc_resp.fw_ver, sizeof(sc->fw_ver));
 
-	if (is_valid_ether_addr(sc_resp.resc.current_mac_addr))
-		(void)rte_memcpy(sc->link_params.mac_addr,
-		       sc_resp.resc.current_mac_addr,
-		       ETH_ALEN);
+	if (is_valid_assigned_ether_addr(&sc_resp.resc.current_mac_addr))
+		ether_addr_copy(&sc_resp.resc.current_mac_addr,
+				(struct ether_addr *)sc->link_params.mac_addr);
+	else
+		eth_random_addr(sc->link_params.mac_addr);
 
 	return 0;
 }

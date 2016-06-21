@@ -114,7 +114,7 @@ struct vf_resc {
 	uint8_t num_vlan_filters;
 	uint8_t num_mc_filters;
 	uint8_t permanent_mac_addr[ETH_ALEN];
-	uint8_t current_mac_addr[ETH_ALEN];
+	struct ether_addr current_mac_addr;
 	uint16_t pf_link_speed;
 	uint32_t pf_link_supported;
 };
