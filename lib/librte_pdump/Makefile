@@ -36,6 +36,7 @@ LIB = librte_pdump.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 CFLAGS += -D_GNU_SOURCE
+LDLIBS += -lpthread
 
 EXPORT_MAP := rte_pdump_version.map
 
