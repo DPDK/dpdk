@@ -118,6 +118,7 @@ There are many libraries, so their headers may be grouped by topics:
     [frag]             (@ref rte_port_frag.h),
     [reass]            (@ref rte_port_ras.h),
     [sched]            (@ref rte_port_sched.h),
+    [kni]              (@ref rte_port_kni.h),
     [src/sink]         (@ref rte_port_source_sink.h)
   * [table]            (@ref rte_table.h):
     [lpm IPv4]         (@ref rte_table_lpm.h),
