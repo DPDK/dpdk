@@ -69,10 +69,7 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
 
 static struct rte_pci_id pci_id_qat_map[] = {
 		{
-			.vendor_id = 0x8086,
-			.device_id = 0x0443,
-			.subsystem_vendor_id = PCI_ANY_ID,
-			.subsystem_device_id = PCI_ANY_ID
+			RTE_PCI_DEVICE(0x8086, 0x0443),
 		},
 		{.device_id = 0},
 };
