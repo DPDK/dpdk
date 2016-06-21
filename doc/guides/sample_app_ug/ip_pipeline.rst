@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -351,33 +351,35 @@ Application resources present in the configuration file
 
 .. table:: Application resource names in the configuration file
 
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Resource type            | Format                      | Examples                                        |
-   +==========================+=============================+=================================================+
-   | Pipeline                 | ``PIPELINE<ID>``            | ``PIPELINE0``, ``PIPELINE1``                    |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Mempool                  | ``MEMPOOL<ID>``             | ``MEMPOOL0``, ``MEMPOOL1``                      |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Link (network interface) | ``LINK<ID>``                | ``LINK0``, ``LINK1``                            |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Link RX queue            | ``RXQ<LINK_ID>.<QUEUE_ID>`` | ``RXQ0.0``, ``RXQ1.5``                          |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Link TX queue            | ``TXQ<LINK_ID>.<QUEUE_ID>`` | ``TXQ0.0``, ``TXQ1.5``                          |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Software queue           | ``SWQ<ID>``                 | ``SWQ0``, ``SWQ1``                              |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Traffic Manager          | ``TM<LINK_ID>``             | ``TM0``, ``TM1``                                |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Source                   | ``SOURCE<ID>``              | ``SOURCE0``, ``SOURCE1``                        |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Sink                     | ``SINK<ID>``                | ``SINK0``, ``SINK1``                            |
-   +--------------------------+-----------------------------+-------------------------------------------------+
-   | Message queue            | ``MSGQ<ID>``                | ``MSGQ0``, ``MSGQ1``,                           |
-   |                          | ``MSGQ-REQ-PIPELINE<ID>``   | ``MSGQ-REQ-PIPELINE2``, ``MSGQ-RSP-PIPELINE2,`` |
-   |                          | ``MSGQ-RSP-PIPELINE<ID>``   | ``MSGQ-REQ-CORE-s0c1``, ``MSGQ-RSP-CORE-s0c1``  |
-   |                          | ``MSGQ-REQ-CORE-<CORE_ID>`` |                                                 |
-   |                          | ``MSGQ-RSP-CORE-<CORE_ID>`` |                                                 |
-   +--------------------------+-----------------------------+-------------------------------------------------+
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Resource type              | Format                      | Examples                                        |
+   +============================+=============================+=================================================+
+   | Pipeline                   | ``PIPELINE<ID>``            | ``PIPELINE0``, ``PIPELINE1``                    |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Mempool                    | ``MEMPOOL<ID>``             | ``MEMPOOL0``, ``MEMPOOL1``                      |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Link (network interface)   | ``LINK<ID>``                | ``LINK0``, ``LINK1``                            |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Link RX queue              | ``RXQ<LINK_ID>.<QUEUE_ID>`` | ``RXQ0.0``, ``RXQ1.5``                          |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Link TX queue              | ``TXQ<LINK_ID>.<QUEUE_ID>`` | ``TXQ0.0``, ``TXQ1.5``                          |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Software queue             | ``SWQ<ID>``                 | ``SWQ0``, ``SWQ1``                              |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Traffic Manager            | ``TM<LINK_ID>``             | ``TM0``, ``TM1``                                |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | KNI (kernel NIC interface) | ``KNI<LINK_ID>``            | ``KNI0``, ``KNI1``                              |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Source                     | ``SOURCE<ID>``              | ``SOURCE0``, ``SOURCE1``                        |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Sink                       | ``SINK<ID>``                | ``SINK0``, ``SINK1``                            |
+   +----------------------------+-----------------------------+-------------------------------------------------+
+   | Message queue              | ``MSGQ<ID>``                | ``MSGQ0``, ``MSGQ1``,                           |
+   |                            | ``MSGQ-REQ-PIPELINE<ID>``   | ``MSGQ-REQ-PIPELINE2``, ``MSGQ-RSP-PIPELINE2,`` |
+   |                            | ``MSGQ-RSP-PIPELINE<ID>``   | ``MSGQ-REQ-CORE-s0c1``, ``MSGQ-RSP-CORE-s0c1``  |
+   |                            | ``MSGQ-REQ-CORE-<CORE_ID>`` |                                                 |
+   |                            | ``MSGQ-RSP-CORE-<CORE_ID>`` |                                                 |
+   +----------------------------+-----------------------------+-------------------------------------------------+
 
 ``LINK`` instances are created implicitly based on the ``PORT_MASK`` application startup argument.
 ``LINK0`` is the first port enabled in the ``PORT_MASK``, port 1 is the next one, etc.
@@ -386,7 +388,7 @@ For example, if bit 5 is the first bit set in the bitmask, then ``LINK0`` is hav
 This mechanism creates a contiguous LINK ID space and isolates the configuration file against changes in the board
 PCIe slots where NICs are plugged in.
 
-``RXQ``, ``TXQ`` and ``TM`` instances have the LINK ID as part of their name.
+``RXQ``, ``TXQ``, ``TM`` and ``KNI`` instances have the LINK ID as part of their name.
 For example, ``RXQ2.1``, ``TXQ2.1`` and ``TM2`` are all associated with ``LINK2``.
 
 
@@ -705,6 +707,58 @@ TM section
    +---------------+---------------------------------------------+----------+----------+---------------+
    | burst_write   | Write burst size (number of packets)        | YES      | uint32_t | 32            |
    +---------------+---------------------------------------------+----------+----------+---------------+
+
+
+KNI section
+~~~~~~~~~~~
+
+.. _table_ip_pipelines_kni_section:
+
+.. tabularcolumns:: |p{2.5cm}|p{7cm}|p{1.5cm}|p{1.5cm}|p{1.5cm}|
+
+.. table:: Configuration file KNI section
+
+   +---------------+----------------------------------------------+----------+------------------+---------------+
+   | Section       | Description                                  | Optional | Type             | Default value |
+   +===============+==============================================+==========+==================+===============+
+   | core          | CPU core to run the KNI kernel thread.       | YES      | See "CPU Core    | Not set       |
+   |               | When core config is set, the KNI kernel      |          | notation"        |               |
+   |               | thread will be bound to the particular core. |          |                  |               |
+   |               | When core config is not set, the KNI kernel  |          |                  |               |
+   |               | thread will be scheduled by the OS.          |          |                  |               |
+   +---------------+----------------------------------------------+----------+------------------+---------------+
+   | mempool       | Mempool to use for buffer allocation for     | YES      | uint32_t         | MEMPOOL0      |
+   |               | current KNI port. The mempool ID has         |          |                  |               |
+   |               | to be associated with a valid instance       |          |                  |               |
+   |               | defined in the mempool entry of the global   |          |                  |               |
+   |               | section.                                     |          |                  |               |
+   +---------------+----------------------------------------------+----------+------------------+---------------+
+   | burst_read    | Read burst size (number of packets)          | YES      | uint32_t         | 32            |
+   |               |                                              |          | power of 2       |               |
+   |               |                                              |          | 0 < burst < size |               |
+   +---------------+----------------------------------------------+----------+------------------+---------------+
+   | burst_write   | Write burst size (number of packets)         | YES      | uint32_t         | 32            |
+   |               |                                              |          | power of 2       |               |
+   |               |                                              |          | 0 < burst < size |               |
+   +---------------+----------------------------------------------+----------+------------------+---------------+
+   | dropless      | When dropless is set to NO, packets can be   | YES      | YES/NO           | NO            |
+   |               | dropped if not enough free slots are         |          |                  |               |
+   |               | currently available in the queue, so the     |          |                  |               |
+   |               | write operation to the queue is non-         |          |                  |               |
+   |               | blocking.                                    |          |                  |               |
+   |               | When dropless is set to YES, packets cannot  |          |                  |               |
+   |               | be dropped if not enough free slots are      |          |                  |               |
+   |               | currently available in the queue, so the     |          |                  |               |
+   |               | write operation to the queue is blocking, as |          |                  |               |
+   |               | the write operation is retried until enough  |          |                  |               |
+   |               | free slots become available and all the      |          |                  |               |
+   |               | packets are successfully written to the      |          |                  |               |
+   |               | queue.                                       |          |                  |               |
+   +---------------+----------------------------------------------+----------+------------------+---------------+
+   | n_retries     | Number of retries. Valid only when dropless  | YES      | uint64_t         | 0             |
+   |               | is set to YES. When set to 0, it indicates   |          |                  |               |
+   |               | unlimited number of retries.                 |          |                  |               |
+   +---------------+----------------------------------------------+----------+------------------+---------------+
 
 
 SOURCE section

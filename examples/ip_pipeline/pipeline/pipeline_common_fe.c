@@ -130,6 +130,33 @@ app_pipeline_track_pktq_out_to_link(struct app_params *app,
 			break;
 		}
 
+		case APP_PKTQ_OUT_KNI:
+		{
+			struct pipeline_params pp;
+			struct pipeline_type *ptype;
+			struct app_pktq_kni_params *kni;
+			uint32_t pktq_in_id;
+			int status;
+
+			kni = &app->kni_params[pktq_out->id];
+			p = app_kni_get_reader(app, kni, &pktq_in_id);
+			if (p == NULL)
+				return NULL;
+
+			ptype = app_pipeline_type_find(app, p->type);
+			if ((ptype == NULL) || (ptype->fe_ops->f_track == NULL))
+				return NULL;
+
+			app_pipeline_params_get(app, p, &pp);
+			status = ptype->fe_ops->f_track(&pp,
+				pktq_in_id,
+				&pktq_out_id);
+			if (status)
+				return NULL;
+
+			break;
+		}
+
 		case APP_PKTQ_OUT_SINK:
 		default:
 			return NULL;

@@ -44,6 +44,9 @@
 #include <cmdline_parse.h>
 
 #include <rte_ethdev.h>
+#ifdef RTE_LIBRTE_KNI
+#include <rte_kni.h>
+#endif
 
 #include "cpu_core_map.h"
 #include "pipeline.h"
@@ -132,6 +135,22 @@ struct app_pktq_swq_params {
 	uint32_t mempool_indirect_id;
 };
 
+struct app_pktq_kni_params {
+	char *name;
+	uint32_t parsed;
+
+	uint32_t socket_id;
+	uint32_t core_id;
+	uint32_t hyper_th_id;
+	uint32_t force_bind;
+
+	uint32_t mempool_id; /* Position in the app->mempool_params */
+	uint32_t burst_read;
+	uint32_t burst_write;
+	uint32_t dropless;
+	uint64_t n_retries;
+};
+
 #ifndef APP_FILE_NAME_SIZE
 #define APP_FILE_NAME_SIZE                       256
 #endif
@@ -185,6 +204,7 @@ enum app_pktq_in_type {
 	APP_PKTQ_IN_HWQ,
 	APP_PKTQ_IN_SWQ,
 	APP_PKTQ_IN_TM,
+	APP_PKTQ_IN_KNI,
 	APP_PKTQ_IN_SOURCE,
 };
 
@@ -197,6 +217,7 @@ enum app_pktq_out_type {
 	APP_PKTQ_OUT_HWQ,
 	APP_PKTQ_OUT_SWQ,
 	APP_PKTQ_OUT_TM,
+	APP_PKTQ_OUT_KNI,
 	APP_PKTQ_OUT_SINK,
 };
 
@@ -420,6 +441,8 @@ struct app_eal_params {
 
 #define APP_MAX_PKTQ_TM                          APP_MAX_LINKS
 
+#define APP_MAX_PKTQ_KNI                         APP_MAX_LINKS
+
 #ifndef APP_MAX_PKTQ_SOURCE
 #define APP_MAX_PKTQ_SOURCE                      64
 #endif
@@ -471,6 +494,7 @@ struct app_params {
 	struct app_pktq_hwq_out_params hwq_out_params[APP_MAX_HWQ_OUT];
 	struct app_pktq_swq_params swq_params[APP_MAX_PKTQ_SWQ];
 	struct app_pktq_tm_params tm_params[APP_MAX_PKTQ_TM];
+	struct app_pktq_kni_params kni_params[APP_MAX_PKTQ_KNI];
 	struct app_pktq_source_params source_params[APP_MAX_PKTQ_SOURCE];
 	struct app_pktq_sink_params sink_params[APP_MAX_PKTQ_SINK];
 	struct app_msgq_params msgq_params[APP_MAX_MSGQ];
@@ -482,6 +506,7 @@ struct app_params {
 	uint32_t n_pktq_hwq_out;
 	uint32_t n_pktq_swq;
 	uint32_t n_pktq_tm;
+	uint32_t n_pktq_kni;
 	uint32_t n_pktq_source;
 	uint32_t n_pktq_sink;
 	uint32_t n_msgq;
@@ -495,6 +520,9 @@ struct app_params {
 	struct app_link_data link_data[APP_MAX_LINKS];
 	struct rte_ring *swq[APP_MAX_PKTQ_SWQ];
 	struct rte_sched_port *tm[APP_MAX_PKTQ_TM];
+#ifdef RTE_LIBRTE_KNI
+	struct rte_kni *kni[APP_MAX_PKTQ_KNI];
+#endif /* RTE_LIBRTE_KNI */
 	struct rte_ring *msgq[APP_MAX_MSGQ];
 	struct pipeline_type pipeline_type[APP_MAX_PIPELINE_TYPES];
 	struct app_pipeline_data pipeline_data[APP_MAX_PIPELINES];
@@ -667,11 +695,11 @@ app_swq_get_reader(struct app_params *app,
 	struct app_pktq_swq_params *swq,
 	uint32_t *pktq_in_id)
 {
-	struct app_pipeline_params *reader;
+	struct app_pipeline_params *reader = NULL;
 	uint32_t pos = swq - app->swq_params;
 	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
 		RTE_DIM(app->pipeline_params));
-	uint32_t n_readers = 0, id, i;
+	uint32_t n_readers = 0, id = 0, i;
 
 	for (i = 0; i < n_pipelines; i++) {
 		struct app_pipeline_params *p = &app->pipeline_params[i];
@@ -727,11 +755,11 @@ app_tm_get_reader(struct app_params *app,
 	struct app_pktq_tm_params *tm,
 	uint32_t *pktq_in_id)
 {
-	struct app_pipeline_params *reader;
+	struct app_pipeline_params *reader = NULL;
 	uint32_t pos = tm - app->tm_params;
 	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
 		RTE_DIM(app->pipeline_params));
-	uint32_t n_readers = 0, id, i;
+	uint32_t n_readers = 0, id = 0, i;
 
 	for (i = 0; i < n_pipelines; i++) {
 		struct app_pipeline_params *p = &app->pipeline_params[i];
@@ -742,6 +770,66 @@ app_tm_get_reader(struct app_params *app,
 			struct app_pktq_in_params *pktq = &p->pktq_in[j];
 
 			if ((pktq->type == APP_PKTQ_IN_TM) &&
+				(pktq->id == pos)) {
+				n_readers++;
+				reader = p;
+				id = j;
+			}
+		}
+	}
+
+	if (n_readers != 1)
+		return NULL;
+
+	*pktq_in_id = id;
+	return reader;
+}
+
+static inline uint32_t
+app_kni_get_readers(struct app_params *app, struct app_pktq_kni_params *kni)
+{
+	uint32_t pos = kni - app->kni_params;
+	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
+		RTE_DIM(app->pipeline_params));
+	uint32_t n_readers = 0, i;
+
+	for (i = 0; i < n_pipelines; i++) {
+		struct app_pipeline_params *p = &app->pipeline_params[i];
+		uint32_t n_pktq_in = RTE_MIN(p->n_pktq_in, RTE_DIM(p->pktq_in));
+		uint32_t j;
+
+		for (j = 0; j < n_pktq_in; j++) {
+			struct app_pktq_in_params *pktq = &p->pktq_in[j];
+
+			if ((pktq->type == APP_PKTQ_IN_KNI) &&
+				(pktq->id == pos))
+				n_readers++;
+		}
+	}
+
+	return n_readers;
+}
+
+static inline struct app_pipeline_params *
+app_kni_get_reader(struct app_params *app,
+				  struct app_pktq_kni_params *kni,
+				  uint32_t *pktq_in_id)
+{
+	struct app_pipeline_params *reader = NULL;
+	uint32_t pos = kni - app->kni_params;
+	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
+		RTE_DIM(app->pipeline_params));
+	uint32_t n_readers = 0, id = 0, i;
+
+	for (i = 0; i < n_pipelines; i++) {
+		struct app_pipeline_params *p = &app->pipeline_params[i];
+		uint32_t n_pktq_in = RTE_MIN(p->n_pktq_in, RTE_DIM(p->pktq_in));
+		uint32_t j;
+
+		for (j = 0; j < n_pktq_in; j++) {
+			struct app_pktq_in_params *pktq = &p->pktq_in[j];
+
+			if ((pktq->type == APP_PKTQ_IN_KNI) &&
 				(pktq->id == pos)) {
 				n_readers++;
 				reader = p;
@@ -861,11 +949,11 @@ app_swq_get_writer(struct app_params *app,
 	struct app_pktq_swq_params *swq,
 	uint32_t *pktq_out_id)
 {
-	struct app_pipeline_params *writer;
+	struct app_pipeline_params *writer = NULL;
 	uint32_t pos = swq - app->swq_params;
 	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
 		RTE_DIM(app->pipeline_params));
-	uint32_t n_writers = 0, id, i;
+	uint32_t n_writers = 0, id = 0, i;
 
 	for (i = 0; i < n_pipelines; i++) {
 		struct app_pipeline_params *p = &app->pipeline_params[i];
@@ -923,11 +1011,11 @@ app_tm_get_writer(struct app_params *app,
 	struct app_pktq_tm_params *tm,
 	uint32_t *pktq_out_id)
 {
-	struct app_pipeline_params *writer;
+	struct app_pipeline_params *writer = NULL;
 	uint32_t pos = tm - app->tm_params;
 	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
 		RTE_DIM(app->pipeline_params));
-	uint32_t n_writers = 0, id, i;
+	uint32_t n_writers = 0, id = 0, i;
 
 	for (i = 0; i < n_pipelines; i++) {
 		struct app_pipeline_params *p = &app->pipeline_params[i];
@@ -939,10 +1027,73 @@ app_tm_get_writer(struct app_params *app,
 			struct app_pktq_out_params *pktq = &p->pktq_out[j];
 
 			if ((pktq->type == APP_PKTQ_OUT_TM) &&
-				(pktq->id == pos))
+				(pktq->id == pos)) {
 				n_writers++;
 				writer = p;
 				id = j;
+			}
+		}
+	}
+
+	if (n_writers != 1)
+		return NULL;
+
+	*pktq_out_id = id;
+	return writer;
+}
+
+static inline uint32_t
+app_kni_get_writers(struct app_params *app, struct app_pktq_kni_params *kni)
+{
+	uint32_t pos = kni - app->kni_params;
+	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
+		RTE_DIM(app->pipeline_params));
+	uint32_t n_writers = 0, i;
+
+	for (i = 0; i < n_pipelines; i++) {
+		struct app_pipeline_params *p = &app->pipeline_params[i];
+		uint32_t n_pktq_out = RTE_MIN(p->n_pktq_out,
+			RTE_DIM(p->pktq_out));
+		uint32_t j;
+
+		for (j = 0; j < n_pktq_out; j++) {
+			struct app_pktq_out_params *pktq = &p->pktq_out[j];
+
+			if ((pktq->type == APP_PKTQ_OUT_KNI) &&
+				(pktq->id == pos))
+				n_writers++;
+		}
+	}
+
+	return n_writers;
+}
+
+static inline struct app_pipeline_params *
+app_kni_get_writer(struct app_params *app,
+				  struct app_pktq_kni_params *kni,
+				  uint32_t *pktq_out_id)
+{
+	struct app_pipeline_params *writer = NULL;
+	uint32_t pos = kni - app->kni_params;
+	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
+		RTE_DIM(app->pipeline_params));
+	uint32_t n_writers = 0, id = 0, i;
+
+	for (i = 0; i < n_pipelines; i++) {
+		struct app_pipeline_params *p = &app->pipeline_params[i];
+		uint32_t n_pktq_out = RTE_MIN(p->n_pktq_out,
+			RTE_DIM(p->pktq_out));
+		uint32_t j;
+
+		for (j = 0; j < n_pktq_out; j++) {
+			struct app_pktq_out_params *pktq = &p->pktq_out[j];
+
+			if ((pktq->type == APP_PKTQ_OUT_KNI) &&
+				(pktq->id == pos)) {
+				n_writers++;
+				writer = p;
+				id = j;
+			}
 		}
 	}
 
@@ -1047,6 +1198,22 @@ app_get_link_for_tm(struct app_params *app, struct app_pktq_tm_params *p_tm)
 	link_param_idx = APP_PARAM_FIND(app->link_params, link_name);
 	APP_CHECK((link_param_idx >= 0),
 		"Cannot find %s for %s", link_name, p_tm->name);
+
+	return &app->link_params[link_param_idx];
+}
+
+static inline struct app_link_params *
+app_get_link_for_kni(struct app_params *app, struct app_pktq_kni_params *p_kni)
+{
+	char link_name[APP_PARAM_NAME_SIZE];
+	uint32_t link_id;
+	ssize_t link_param_idx;
+
+	sscanf(p_kni->name, "KNI%" PRIu32, &link_id);
+	sprintf(link_name, "LINK%" PRIu32, link_id);
+	link_param_idx = APP_PARAM_FIND(app->link_params, link_name);
+	APP_CHECK((link_param_idx >= 0),
+			  "Cannot find %s for %s", link_name, p_kni->name);
 
 	return &app->link_params[link_param_idx];
 }

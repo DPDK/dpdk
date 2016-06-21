@@ -189,6 +189,20 @@ struct app_pktq_tm_params default_tm_params = {
 	.burst_write = 32,
 };
 
+struct app_pktq_kni_params default_kni_params = {
+	.parsed = 0,
+	.socket_id = 0,
+	.core_id = 0,
+	.hyper_th_id = 0,
+	.force_bind = 0,
+
+	.mempool_id = 0,
+	.burst_read = 32,
+	.burst_write = 32,
+	.dropless = 0,
+	.n_retries = 0,
+};
+
 struct app_pktq_source_params default_source_params = {
 	.parsed = 0,
 	.mempool_id = 0,
@@ -295,6 +309,18 @@ app_print_usage(char *prgname)
 	uint32_t link_id;						\
 									\
 	sscanf((tm_name), "TM%" SCNu32, &link_id);			\
+	sprintf(link_name, "LINK%" PRIu32, link_id);			\
+	link_param_pos = APP_PARAM_ADD((app)->link_params, link_name);	\
+	link_param_pos;							\
+})
+
+#define APP_PARAM_ADD_LINK_FOR_KNI(app, kni_name)			\
+({									\
+	char link_name[APP_PARAM_NAME_SIZE];				\
+	ssize_t link_param_pos;						\
+	uint32_t link_id;						\
+									\
+	sscanf((kni_name), "KNI%" SCNu32, &link_id);		\
 	sprintf(link_name, "LINK%" PRIu32, link_id);			\
 	link_param_pos = APP_PARAM_ADD((app)->link_params, link_name);	\
 	link_param_pos;							\
@@ -826,6 +852,10 @@ parse_pipeline_pktq_in(struct app_params *app,
 			type = APP_PKTQ_IN_TM;
 			id = APP_PARAM_ADD(app->tm_params, name);
 			APP_PARAM_ADD_LINK_FOR_TM(app, name);
+		} else if (validate_name(name, "KNI", 1) == 0) {
+			type = APP_PKTQ_IN_KNI;
+			id = APP_PARAM_ADD(app->kni_params, name);
+			APP_PARAM_ADD_LINK_FOR_KNI(app, name);
 		} else if (validate_name(name, "SOURCE", 1) == 0) {
 			type = APP_PKTQ_IN_SOURCE;
 			id = APP_PARAM_ADD(app->source_params, name);
@@ -871,6 +901,10 @@ parse_pipeline_pktq_out(struct app_params *app,
 			type = APP_PKTQ_OUT_TM;
 			id = APP_PARAM_ADD(app->tm_params, name);
 			APP_PARAM_ADD_LINK_FOR_TM(app, name);
+		} else if (validate_name(name, "KNI", 1) == 0) {
+			type = APP_PKTQ_OUT_KNI;
+			id = APP_PARAM_ADD(app->kni_params, name);
+			APP_PARAM_ADD_LINK_FOR_KNI(app, name);
 		} else if (validate_name(name, "SINK", 1) == 0) {
 			type = APP_PKTQ_OUT_SINK;
 			id = APP_PARAM_ADD(app->sink_params, name);
@@ -1581,6 +1615,15 @@ parse_txq(struct app_params *app,
 			continue;
 		}
 
+		if (strcmp(ent->name, "n_retries") == 0) {
+			int status = parser_read_uint64(&param->n_retries,
+				ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+				ent->name);
+			continue;
+		}
+
 		/* unrecognized */
 		PARSE_ERROR_INVALID(0, section_name, ent->name);
 	}
@@ -1816,7 +1859,7 @@ parse_tm(struct app_params *app,
 	param = &app->tm_params[param_idx];
 	PARSE_CHECK_DUPLICATE_SECTION(param);
 
-	APP_PARAM_ADD_LINK_FOR_TXQ(app, section_name);
+	APP_PARAM_ADD_LINK_FOR_TM(app, section_name);
 
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
@@ -1842,6 +1885,102 @@ parse_tm(struct app_params *app,
 
 			PARSE_ERROR((status == 0), section_name,
 				ent->name);
+			continue;
+		}
+
+		/* unrecognized */
+		PARSE_ERROR_INVALID(0, section_name, ent->name);
+	}
+
+	free(entries);
+}
+
+static void
+parse_kni(struct app_params *app,
+		  const char *section_name,
+		  struct rte_cfgfile *cfg)
+{
+	struct app_pktq_kni_params *param;
+	struct rte_cfgfile_entry *entries;
+	int n_entries, i;
+	ssize_t param_idx;
+
+	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
+	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);
+
+	entries = malloc(n_entries * sizeof(struct rte_cfgfile_entry));
+	PARSE_ERROR_MALLOC(entries != NULL);
+
+	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
+
+	param_idx = APP_PARAM_ADD(app->kni_params, section_name);
+	param = &app->kni_params[param_idx];
+	PARSE_CHECK_DUPLICATE_SECTION(param);
+
+	APP_PARAM_ADD_LINK_FOR_KNI(app, section_name);
+
+	for (i = 0; i < n_entries; i++) {
+		struct rte_cfgfile_entry *ent = &entries[i];
+
+		if (strcmp(ent->name, "core") == 0) {
+			int status = parse_pipeline_core(
+					&param->socket_id,
+					&param->core_id,
+					&param->hyper_th_id,
+					ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+						ent->name);
+			param->force_bind = 1;
+			continue;
+		}
+
+		if (strcmp(ent->name, "mempool") == 0) {
+			int status = validate_name(ent->value,
+				"MEMPOOL", 1);
+			ssize_t idx;
+
+			PARSE_ERROR((status == 0), section_name,
+						ent->name);
+
+			idx = APP_PARAM_ADD(app->mempool_params, ent->value);
+			param->mempool_id = idx;
+			continue;
+		}
+
+		if (strcmp(ent->name, "burst_read") == 0) {
+			int status = parser_read_uint32(&param->burst_read,
+						ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+						ent->name);
+			continue;
+		}
+
+		if (strcmp(ent->name, "burst_write") == 0) {
+			int status = parser_read_uint32(&param->burst_write,
+						ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+						ent->name);
+			continue;
+		}
+
+		if (strcmp(ent->name, "dropless") == 0) {
+			int status = parser_read_arg_bool(ent->value);
+
+			PARSE_ERROR((status != -EINVAL), section_name,
+						ent->name);
+			param->dropless = status;
+			continue;
+		}
+
+		if (strcmp(ent->name, "n_retries") == 0) {
+			int status = parser_read_uint64(&param->n_retries,
+						ent->value);
+
+			PARSE_ERROR((status == 0), section_name,
+						ent->name);
 			continue;
 		}
 
@@ -2147,6 +2286,7 @@ static const struct config_section cfg_file_scheme[] = {
 	{"TXQ", 2, parse_txq},
 	{"SWQ", 1, parse_swq},
 	{"TM", 1, parse_tm},
+	{"KNI", 1, parse_kni},
 	{"SOURCE", 1, parse_source},
 	{"SINK", 1, parse_sink},
 	{"MSGQ-REQ-PIPELINE", 1, parse_msgq_req_pipeline},
@@ -2285,6 +2425,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 	APP_PARAM_COUNT(app->hwq_out_params, app->n_pktq_hwq_out);
 	APP_PARAM_COUNT(app->swq_params, app->n_pktq_swq);
 	APP_PARAM_COUNT(app->tm_params, app->n_pktq_tm);
+	APP_PARAM_COUNT(app->kni_params, app->n_pktq_kni);
 	APP_PARAM_COUNT(app->source_params, app->n_pktq_source);
 	APP_PARAM_COUNT(app->sink_params, app->n_pktq_sink);
 	APP_PARAM_COUNT(app->msgq_params, app->n_msgq);
@@ -2582,6 +2723,7 @@ save_txq_params(struct app_params *app, FILE *f)
 		fprintf(f, "%s = %s\n",
 			"dropless",
 			p->dropless ? "yes" : "no");
+		fprintf(f, "%s = %" PRIu64 "\n", "n_retries", p->n_retries);
 
 		fputc('\n', f);
 	}
@@ -2641,6 +2783,53 @@ save_tm_params(struct app_params *app, FILE *f)
 		fprintf(f, "%s = %s\n", "cfg", p->file_name);
 		fprintf(f, "%s = %" PRIu32 "\n", "burst_read", p->burst_read);
 		fprintf(f, "%s = %" PRIu32 "\n", "burst_write", p->burst_write);
+
+		fputc('\n', f);
+	}
+}
+
+static void
+save_kni_params(struct app_params *app, FILE *f)
+{
+	struct app_pktq_kni_params *p;
+	size_t i, count;
+
+	count = RTE_DIM(app->kni_params);
+	for (i = 0; i < count; i++) {
+		p = &app->kni_params[i];
+		if (!APP_PARAM_VALID(p))
+			continue;
+
+		/* section name */
+		fprintf(f, "[%s]\n", p->name);
+
+		/* core */
+		if (p->force_bind) {
+			fprintf(f, "; force_bind = 1\n");
+			fprintf(f, "core = s%" PRIu32 "c%" PRIu32 "%s\n",
+					p->socket_id,
+					p->core_id,
+					(p->hyper_th_id) ? "h" : "");
+		} else
+			fprintf(f, "; force_bind = 0\n");
+
+		/* mempool */
+		fprintf(f, "%s = %s\n", "mempool",
+				app->mempool_params[p->mempool_id].name);
+
+		/* burst_read */
+		fprintf(f, "%s = %" PRIu32 "\n", "burst_read", p->burst_read);
+
+		/* burst_write */
+		fprintf(f, "%s = %" PRIu32 "\n", "burst_write", p->burst_write);
+
+		/* dropless */
+		fprintf(f, "%s = %s\n",
+				"dropless",
+				p->dropless ? "yes" : "no");
+
+		/* n_retries */
+		fprintf(f, "%s = %" PRIu64 "\n", "n_retries", p->n_retries);
 
 		fputc('\n', f);
 	}
@@ -2753,6 +2942,9 @@ save_pipeline_params(struct app_params *app, FILE *f)
 				case APP_PKTQ_IN_TM:
 					name = app->tm_params[pp->id].name;
 					break;
+				case APP_PKTQ_IN_KNI:
+					name = app->kni_params[pp->id].name;
+					break;
 				case APP_PKTQ_IN_SOURCE:
 					name = app->source_params[pp->id].name;
 					break;
@@ -2786,6 +2978,9 @@ save_pipeline_params(struct app_params *app, FILE *f)
 					break;
 				case APP_PKTQ_OUT_TM:
 					name = app->tm_params[pp->id].name;
+					break;
+				case APP_PKTQ_OUT_KNI:
+					name = app->kni_params[pp->id].name;
 					break;
 				case APP_PKTQ_OUT_SINK:
 					name = app->sink_params[pp->id].name;
@@ -2872,6 +3067,7 @@ app_config_save(struct app_params *app, const char *file_name)
 	save_txq_params(app, file);
 	save_swq_params(app, file);
 	save_tm_params(app, file);
+	save_kni_params(app, file);
 	save_source_params(app, file);
 	save_sink_params(app, file);
 	save_msgq_params(app, file);
@@ -2920,6 +3116,11 @@ app_config_init(struct app_params *app)
 		memcpy(&app->tm_params[i],
 			&default_tm_params,
 			sizeof(default_tm_params));
+
+	for (i = 0; i < RTE_DIM(app->kni_params); i++)
+		memcpy(&app->kni_params[i],
+			   &default_kni_params,
+			   sizeof(default_kni_params));
 
 	for (i = 0; i < RTE_DIM(app->source_params); i++)
 		memcpy(&app->source_params[i],

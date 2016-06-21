@@ -106,6 +106,9 @@ pipeline_run(void *pipeline)
 	struct pipeline_master *p = (struct pipeline_master *) pipeline;
 	struct app_params *app = p->app;
 	int status;
+#ifdef RTE_LIBRTE_KNI
+	uint32_t i;
+#endif /* RTE_LIBRTE_KNI */
 
 	/* Application post-init phase */
 	if (p->post_init_done == 0) {
@@ -143,6 +146,12 @@ pipeline_run(void *pipeline)
 		cmdline_stdin_exit(p->cl);
 		rte_exit(0, "Bye!\n");
 	}
+
+#ifdef RTE_LIBRTE_KNI
+	/* Handle KNI requests from Linux kernel */
+	for (i = 0; i < app->n_pktq_kni; i++)
+		rte_kni_handle_request(app->kni[i]);
+#endif /* RTE_LIBRTE_KNI */
 
 	return 0;
 }

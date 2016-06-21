@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -316,6 +316,29 @@ check_tms(struct app_params *app)
 }
 
 static void
+check_knis(struct app_params *app) {
+	uint32_t i;
+
+	for (i = 0; i < app->n_pktq_kni; i++) {
+		struct app_pktq_kni_params *p = &app->kni_params[i];
+		uint32_t n_readers = app_kni_get_readers(app, p);
+		uint32_t n_writers = app_kni_get_writers(app, p);
+
+		APP_CHECK((n_readers != 0),
+			"%s has no reader\n", p->name);
+
+		APP_CHECK((n_readers == 1),
+			"%s has more than one reader\n", p->name);
+
+		APP_CHECK((n_writers != 0),
+			"%s has no writer\n", p->name);
+
+		APP_CHECK((n_writers == 1),
+			"%s has more than one writer\n", p->name);
+	}
+}
+
+static void
 check_sources(struct app_params *app)
 {
 	uint32_t i;
@@ -453,6 +476,7 @@ app_config_check(struct app_params *app)
 	check_txqs(app);
 	check_swqs(app);
 	check_tms(app);
+	check_knis(app);
 	check_sources(app);
 	check_sinks(app);
 	check_msgqs(app);
