@@ -44,7 +44,9 @@
 
 #include "rte_table_lpm.h"
 
-#define RTE_TABLE_LPM_MAX_NEXT_HOPS                        256
+#ifndef RTE_TABLE_LPM_MAX_NEXT_HOPS
+#define RTE_TABLE_LPM_MAX_NEXT_HOPS                        65536
+#endif
 
 #ifdef RTE_TABLE_STATS_COLLECT
 
@@ -74,7 +76,7 @@ struct rte_table_lpm {
 
 	/* Next Hop Table (NHT) */
 	uint32_t nht_users[RTE_TABLE_LPM_MAX_NEXT_HOPS];
-	uint32_t nht[0] __rte_cache_aligned;
+	uint8_t nht[0] __rte_cache_aligned;
 };
 
 static void *
@@ -188,7 +190,7 @@ nht_find_existing(struct rte_table_lpm *lpm, void *entry, uint32_t *pos)
 	uint32_t i;
 
 	for (i = 0; i < RTE_TABLE_LPM_MAX_NEXT_HOPS; i++) {
-		uint32_t *nht_entry = &lpm->nht[i * lpm->entry_size];
+		uint8_t *nht_entry = &lpm->nht[i * lpm->entry_size];
 
 		if ((lpm->nht_users[i] > 0) && (memcmp(nht_entry, entry,
 			lpm->entry_unique_size) == 0)) {
@@ -242,7 +244,7 @@ rte_table_lpm_entry_add(
 
 	/* Find existing or free NHT entry */
 	if (nht_find_existing(lpm, entry, &nht_pos) == 0) {
-		uint32_t *nht_entry;
+		uint8_t *nht_entry;
 
 		if (nht_find_free(lpm, &nht_pos) == 0) {
 			RTE_LOG(ERR, TABLE, "%s: NHT full\n", __func__);
