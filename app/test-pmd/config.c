@@ -138,6 +138,11 @@ static const struct rss_type_info rss_type_table[] = {
 	{ "ipv6-ex", ETH_RSS_IPV6_EX },
 	{ "ipv6-tcp-ex", ETH_RSS_IPV6_TCP_EX },
 	{ "ipv6-udp-ex", ETH_RSS_IPV6_UDP_EX },
+	{ "port", ETH_RSS_PORT },
+	{ "vxlan", ETH_RSS_VXLAN },
+	{ "geneve", ETH_RSS_GENEVE },
+	{ "nvgre", ETH_RSS_NVGRE },
+
 };
 
 static void
@@ -2119,6 +2124,10 @@ flowtype_to_str(uint16_t flow_type)
 		{"ipv6-sctp", RTE_ETH_FLOW_NONFRAG_IPV6_SCTP},
 		{"ipv6-other", RTE_ETH_FLOW_NONFRAG_IPV6_OTHER},
 		{"l2_payload", RTE_ETH_FLOW_L2_PAYLOAD},
+		{"port", RTE_ETH_FLOW_PORT},
+		{"vxlan", RTE_ETH_FLOW_VXLAN},
+		{"geneve", RTE_ETH_FLOW_GENEVE},
+		{"nvgre", RTE_ETH_FLOW_NVGRE},
 	};
 
 	for (i = 0; i < RTE_DIM(flowtype_str_table); i++) {

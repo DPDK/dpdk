@@ -74,7 +74,12 @@ extern "C" {
 #define RTE_ETH_FLOW_IPV6_EX            15
 #define RTE_ETH_FLOW_IPV6_TCP_EX        16
 #define RTE_ETH_FLOW_IPV6_UDP_EX        17
-#define RTE_ETH_FLOW_MAX                18
+#define RTE_ETH_FLOW_PORT               18
+	/**< Consider device port number as a flow differentiator */
+#define RTE_ETH_FLOW_VXLAN              19 /**< VXLAN protocol based flow */
+#define RTE_ETH_FLOW_GENEVE             20 /**< GENEVE protocol based flow */
+#define RTE_ETH_FLOW_NVGRE              21 /**< NVGRE protocol based flow */
+#define RTE_ETH_FLOW_MAX                22
 
 /**
  * Feature filter types

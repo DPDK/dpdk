@@ -179,6 +179,10 @@ For example:
      ipv6-sctp
      ipv6-other
      l2_payload
+     port
+     vxlan
+     geneve
+     nvgre
 
 show port rss reta
 ~~~~~~~~~~~~~~~~~~
@@ -1286,7 +1290,7 @@ port config - RSS
 
 Set the RSS (Receive Side Scaling) mode on or off::
 
-   testpmd> port config all rss (all|ip|tcp|udp|sctp|ether|none)
+   testpmd> port config all rss (all|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none)
 
 RSS is on by default.
 

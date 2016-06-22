@@ -413,6 +413,10 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_IPV6_EX            (1ULL << RTE_ETH_FLOW_IPV6_EX)
 #define ETH_RSS_IPV6_TCP_EX        (1ULL << RTE_ETH_FLOW_IPV6_TCP_EX)
 #define ETH_RSS_IPV6_UDP_EX        (1ULL << RTE_ETH_FLOW_IPV6_UDP_EX)
+#define ETH_RSS_PORT               (1ULL << RTE_ETH_FLOW_PORT)
+#define ETH_RSS_VXLAN              (1ULL << RTE_ETH_FLOW_VXLAN)
+#define ETH_RSS_GENEVE             (1ULL << RTE_ETH_FLOW_GENEVE)
+#define ETH_RSS_NVGRE              (1ULL << RTE_ETH_FLOW_NVGRE)
 
 #define ETH_RSS_IP ( \
 	ETH_RSS_IPV4 | \
@@ -437,6 +441,12 @@ struct rte_eth_rss_conf {
 	ETH_RSS_NONFRAG_IPV4_SCTP | \
 	ETH_RSS_NONFRAG_IPV6_SCTP)
 
+#define ETH_RSS_TUNNEL ( \
+	ETH_RSS_VXLAN  | \
+	ETH_RSS_GENEVE | \
+	ETH_RSS_NVGRE)
+
+
 /**< Mask of valid RSS hash protocols */
 #define ETH_RSS_PROTO_MASK ( \
 	ETH_RSS_IPV4 | \
@@ -454,7 +464,11 @@ struct rte_eth_rss_conf {
 	ETH_RSS_L2_PAYLOAD | \
 	ETH_RSS_IPV6_EX | \
 	ETH_RSS_IPV6_TCP_EX | \
-	ETH_RSS_IPV6_UDP_EX)
+	ETH_RSS_IPV6_UDP_EX | \
+	ETH_RSS_PORT  | \
+	ETH_RSS_VXLAN | \
+	ETH_RSS_GENEVE | \
+	ETH_RSS_NVGRE)
 
 /*
  * Definitions used for redirection table entry size.
