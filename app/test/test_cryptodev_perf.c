@@ -2458,18 +2458,17 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 
 	/* Generate a burst of crypto operations */
 	for (i = 0; i < (pparams->burst_size * NUM_MBUF_SETS); i++) {
-		struct rte_mbuf *m = test_perf_create_pktmbuf(
+		mbufs[i] = test_perf_create_pktmbuf(
 				ts_params->mbuf_mp,
 				pparams->buf_size);
 
-		if (m == NULL) {
+		if (mbufs[i] == NULL) {
 			printf("\nFailed to get mbuf - freeing the rest.\n");
 			for (k = 0; k < i; k++)
 				rte_pktmbuf_free(mbufs[k]);
 			return -1;
 		}
 
-		mbufs[i] = m;
 	}
 
 
@@ -2587,18 +2586,17 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 
 	/* Generate a burst of crypto operations */
 	for (i = 0; i < (pparams->burst_size * NUM_MBUF_SETS); i++) {
-		struct rte_mbuf *m = test_perf_create_pktmbuf(
+		mbufs[i] = test_perf_create_pktmbuf(
 				ts_params->mbuf_mp,
 				pparams->buf_size);
 
-		if (m == NULL) {
+		if (mbufs[i] == NULL) {
 			printf("\nFailed to get mbuf - freeing the rest.\n");
 			for (k = 0; k < i; k++)
 				rte_pktmbuf_free(mbufs[k]);
 			return -1;
 		}
 
-		mbufs[i] = m;
 	}
 
 	tsc_start = rte_rdtsc_precise();
