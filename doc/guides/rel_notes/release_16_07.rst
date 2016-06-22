@@ -178,6 +178,13 @@ Drivers
   info to descriptor.
   Now this issue is fixed by disabling vlan stripping from inner header.
 
+* **i40e: Fixed the type issue of a single VLAN type.**
+
+  Currently, if a single VLAN header is added in a packet, it's treated
+  as inner VLAN. But generally, a single VLAN header is treated as the
+  outer VLAN header.
+  This issue is fixed by changing corresponding register for single VLAN.
+
 
 Libraries
 ~~~~~~~~~

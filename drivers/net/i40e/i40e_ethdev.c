@@ -927,12 +927,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 			     "VLAN ether type");
 		goto err_setup_pf_switch;
 	}
-	ret = i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_INNER, ETHER_TYPE_VLAN);
-	if (ret != I40E_SUCCESS) {
-		PMD_INIT_LOG(ERR, "Failed to set the default outer "
-			     "VLAN ether type");
-		goto err_setup_pf_switch;
-	}
 
 	/* PF setup, which includes VSI setup */
 	ret = i40e_pf_setup(pf);
@@ -2493,13 +2487,24 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 	uint64_t reg_r = 0, reg_w = 0;
 	uint16_t reg_id = 0;
 	int ret = 0;
+	int qinq = dev->data->dev_conf.rxmode.hw_vlan_extend;
 
 	switch (vlan_type) {
 	case ETH_VLAN_TYPE_OUTER:
-		reg_id = 2;
+		if (qinq)
+			reg_id = 2;
+		else
+			reg_id = 3;
 		break;
 	case ETH_VLAN_TYPE_INNER:
-		reg_id = 3;
+		if (qinq)
+			reg_id = 3;
+		else {
+			ret = -EINVAL;
+			PMD_DRV_LOG(ERR,
+				"Unsupported vlan type in single vlan.\n");
+			return ret;
+		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -2561,8 +2566,14 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+		if (dev->data->dev_conf.rxmode.hw_vlan_extend) {
 			i40e_vsi_config_double_vlan(vsi, TRUE);
+			/* Set global registers with default ether type value */
+			i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER,
+					   ETHER_TYPE_VLAN);
+			i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_INNER,
+					   ETHER_TYPE_VLAN);
+		}
 		else
 			i40e_vsi_config_double_vlan(vsi, FALSE);
 	}

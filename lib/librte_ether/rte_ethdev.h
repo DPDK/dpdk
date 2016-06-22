@@ -363,8 +363,8 @@ struct rte_eth_rxmode {
  */
 enum rte_vlan_type {
 	ETH_VLAN_TYPE_UNKNOWN = 0,
-	ETH_VLAN_TYPE_INNER, /**< Single VLAN, or inner VLAN. */
-	ETH_VLAN_TYPE_OUTER, /**< Outer VLAN. */
+	ETH_VLAN_TYPE_INNER, /**< Inner VLAN. */
+	ETH_VLAN_TYPE_OUTER, /**< Single VLAN, or outer VLAN. */
 	ETH_VLAN_TYPE_MAX,
 };
 
