@@ -82,6 +82,8 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_ip_frag
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_sched
+ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PORT) += lib/librte_kni
+endif
 
 include $(RTE_SDK)/mk/rte.lib.mk
