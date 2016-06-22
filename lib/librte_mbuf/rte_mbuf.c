@@ -153,6 +153,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	unsigned cache_size, uint16_t priv_size, uint16_t data_room_size,
 	int socket_id)
 {
+	struct rte_mempool *mp;
 	struct rte_pktmbuf_pool_private mbp_priv;
 	unsigned elt_size;
 
@@ -167,10 +168,27 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	mbp_priv.mbuf_data_room_size = data_room_size;
 	mbp_priv.mbuf_priv_size = priv_size;
 
-	return rte_mempool_create(name, n, elt_size,
-		cache_size, sizeof(struct rte_pktmbuf_pool_private),
-		rte_pktmbuf_pool_init, &mbp_priv, rte_pktmbuf_init, NULL,
-		socket_id, 0);
+	mp = rte_mempool_create_empty(name, n, elt_size, cache_size,
+		 sizeof(struct rte_pktmbuf_pool_private), socket_id, 0);
+	if (mp == NULL)
+		return NULL;
+
+	rte_errno = rte_mempool_set_ops_byname(mp,
+			RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
+	if (rte_errno != 0) {
+		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
+		return NULL;
+	}
+	rte_pktmbuf_pool_init(mp, &mbp_priv);
+
+	if (rte_mempool_populate_default(mp) < 0) {
+		rte_mempool_free(mp);
+		return NULL;
+	}
+
+	rte_mempool_obj_iter(mp, rte_pktmbuf_init, NULL);
+
+	return mp;
 }
 
 /* do some sanity checks on a mbuf: panic if it fails */
