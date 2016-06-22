@@ -477,6 +477,7 @@ struct rte_eth_rss_conf {
  */
 #define ETH_RSS_RETA_SIZE_64  64
 #define ETH_RSS_RETA_SIZE_128 128
+#define ETH_RSS_RETA_SIZE_256 256
 #define ETH_RSS_RETA_SIZE_512 512
 #define RTE_RETA_GROUP_SIZE   64
 
