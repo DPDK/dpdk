@@ -34,15 +34,6 @@ Deprecation Notices
   compact API. The ones that remain are backwards compatible and use the
   per-lcore default cache if available. This change targets release 16.07.
 
-* The rte_mempool struct will be changed in 16.07 to facilitate the new
-  external mempool manager functionality.
-  The ring element will be replaced with a more generic 'pool' opaque pointer
-  to allow new mempool handlers to use their own user-defined mempool
-  layout. Also newly added to rte_mempool is a handler index.
-  The existing API will be backward compatible, but there will be new API
-  functions added to facilitate the creation of mempools using an external
-  handler. The 16.07 release will contain these changes.
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and

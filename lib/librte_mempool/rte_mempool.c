@@ -148,7 +148,7 @@ mempool_add_elem(struct rte_mempool *mp, void *obj, phys_addr_t physaddr)
 #endif
 
 	/* enqueue in ring */
-	rte_ring_sp_enqueue(mp->ring, obj);
+	rte_mempool_ops_enqueue_bulk(mp, &obj, 1);
 }
 
 /* call obj_cb() for each mempool element */
@@ -303,40 +303,6 @@ rte_mempool_xmem_usage(__rte_unused void *vaddr, uint32_t elt_num,
 	return (size_t)paddr_idx << pg_shift;
 }
 
-/* create the internal ring */
-static int
-rte_mempool_ring_create(struct rte_mempool *mp)
-{
-	int rg_flags = 0, ret;
-	char rg_name[RTE_RING_NAMESIZE];
-	struct rte_ring *r;
-
-	ret = snprintf(rg_name, sizeof(rg_name),
-		RTE_MEMPOOL_MZ_FORMAT, mp->name);
-	if (ret < 0 || ret >= (int)sizeof(rg_name))
-		return -ENAMETOOLONG;
-
-	/* ring flags */
-	if (mp->flags & MEMPOOL_F_SP_PUT)
-		rg_flags |= RING_F_SP_ENQ;
-	if (mp->flags & MEMPOOL_F_SC_GET)
-		rg_flags |= RING_F_SC_DEQ;
-
-	/* Allocate the ring that will be used to store objects.
-	 * Ring functions will return appropriate errors if we are
-	 * running as a secondary process etc., so no checks made
-	 * in this function for that condition.
-	 */
-	r = rte_ring_create(rg_name, rte_align32pow2(mp->size + 1),
-		mp->socket_id, rg_flags);
-	if (r == NULL)
-		return -rte_errno;
-
-	mp->ring = r;
-	mp->flags |= MEMPOOL_F_RING_CREATED;
-	return 0;
-}
-
 /* free a memchunk allocated with rte_memzone_reserve() */
 static void
 rte_mempool_memchunk_mz_free(__rte_unused struct rte_mempool_memhdr *memhdr,
@@ -354,7 +320,7 @@ rte_mempool_free_memchunks(struct rte_mempool *mp)
 	void *elt;
 
 	while (!STAILQ_EMPTY(&mp->elt_list)) {
-		rte_ring_sc_dequeue(mp->ring, &elt);
+		rte_mempool_ops_dequeue_bulk(mp, &elt, 1);
 		(void)elt;
 		STAILQ_REMOVE_HEAD(&mp->elt_list, next);
 		mp->populated_size--;
@@ -386,10 +352,11 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	int ret;
 
 	/* create the internal ring if not already done */
-	if ((mp->flags & MEMPOOL_F_RING_CREATED) == 0) {
-		ret = rte_mempool_ring_create(mp);
-		if (ret < 0)
+	if ((mp->flags & MEMPOOL_F_POOL_CREATED) == 0) {
+		ret = rte_mempool_ops_alloc(mp);
+		if (ret != 0)
 			return ret;
+		mp->flags |= MEMPOOL_F_POOL_CREATED;
 	}
 
 	/* mempool is already populated */
@@ -703,7 +670,7 @@ rte_mempool_free(struct rte_mempool *mp)
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	rte_mempool_free_memchunks(mp);
-	rte_ring_free(mp->ring);
+	rte_mempool_ops_free(mp);
 	rte_memzone_free(mp->mz);
 }
 
@@ -815,6 +782,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 		RTE_PTR_ADD(mp, MEMPOOL_HEADER_SIZE(mp, 0));
 
 	te->data = mp;
+
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 	TAILQ_INSERT_TAIL(mempool_list, te, next);
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
@@ -843,6 +811,19 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		private_data_size, socket_id, flags);
 	if (mp == NULL)
 		return NULL;
+
+	/*
+	 * Since we have 4 combinations of the SP/SC/MP/MC examine the flags to
+	 * set the correct index into the table of ops structs.
+	 */
+	if (flags & (MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET))
+		rte_mempool_set_ops_byname(mp, "ring_sp_sc", NULL);
+	else if (flags & MEMPOOL_F_SP_PUT)
+		rte_mempool_set_ops_byname(mp, "ring_sp_mc", NULL);
+	else if (flags & MEMPOOL_F_SC_GET)
+		rte_mempool_set_ops_byname(mp, "ring_mp_sc", NULL);
+	else
+		rte_mempool_set_ops_byname(mp, "ring_mp_mc", NULL);
 
 	/* call the mempool priv initializer */
 	if (mp_init)
@@ -930,7 +911,7 @@ rte_mempool_count(const struct rte_mempool *mp)
 	unsigned count;
 	unsigned lcore_id;
 
-	count = rte_ring_count(mp->ring);
+	count = rte_mempool_ops_get_count(mp);
 
 	if (mp->cache_size == 0)
 		return count;
@@ -1119,7 +1100,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 
 	fprintf(f, "mempool <%s>@%p\n", mp->name, mp);
 	fprintf(f, "  flags=%x\n", mp->flags);
-	fprintf(f, "  ring=<%s>@%p\n", mp->ring->name, mp->ring);
+	fprintf(f, "  pool=%p\n", mp->pool_data);
 	fprintf(f, "  phys_addr=0x%" PRIx64 "\n", mp->mz->phys_addr);
 	fprintf(f, "  nb_mem_chunks=%u\n", mp->nb_mem_chunks);
 	fprintf(f, "  size=%"PRIu32"\n", mp->size);
@@ -1140,7 +1121,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	}
 
 	cache_count = rte_mempool_dump_cache(f, mp);
-	common_count = rte_ring_count(mp->ring);
+	common_count = rte_mempool_ops_get_count(mp);
 	if ((cache_count + common_count) > mp->size)
 		common_count = mp->size - cache_count;
 	fprintf(f, "  common_pool_count=%u\n", common_count);

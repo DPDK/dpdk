@@ -161,7 +161,6 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 							   n_get_bulk);
 				if (unlikely(ret < 0)) {
 					rte_mempool_dump(stdout, mp);
-					rte_ring_dump(stdout, mp->ring);
 					/* in this case, objects are lost... */
 					return -1;
 				}

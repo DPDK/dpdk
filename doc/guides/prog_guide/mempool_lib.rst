@@ -34,7 +34,8 @@ Mempool Library
 ===============
 
 A memory pool is an allocator of a fixed-sized object.
-In the DPDK, it is identified by name and uses a ring to store free objects.
+In the DPDK, it is identified by name and uses a mempool handler to store free objects.
+The default mempool handler is ring based.
 It provides some other optional services such as a per-core object cache and
 an alignment helper to ensure that objects are padded to spread them equally on all DRAM or DDR3 channels.
 
@@ -125,6 +126,35 @@ The maximum size of the cache is static and is defined at compilation time (CONF
 .. figure:: img/mempool.*
 
    A mempool in Memory with its Associated Ring
+
+
+Mempool Handlers
+------------------------
+
+This allows external memory subsystems, such as external hardware memory
+management systems and software based memory allocators, to be used with DPDK.
+
+There are two aspects to a mempool handler.
+
+* Adding the code for your new mempool operations (ops). This is achieved by
+  adding a new mempool ops code, and using the ``REGISTER_MEMPOOL_OPS`` macro.
+
+* Using the new API to call ``rte_mempool_create_empty()`` and
+  ``rte_mempool_set_ops_byname()`` to create a new mempool and specifying which
+  ops to use.
+
+Several different mempool handlers may be used in the same application. A new
+mempool can be created by using the ``rte_mempool_create_empty()`` function,
+then using ``rte_mempool_set_ops_byname()`` to point the mempool to the
+relevant mempool handler callback (ops) structure.
+
+Legacy applications may continue to use the old ``rte_mempool_create()`` API
+call, which uses a ring based mempool handler by default. These applications
+will need to be modified to use a new mempool handler.
+
+For applications that use ``rte_pktmbuf_create()``, there is a config setting
+(``RTE_MBUF_DEFAULT_MEMPOOL_OPS``) that allows the application to make use of
+an alternative mempool handler.
 
 
 Use Cases

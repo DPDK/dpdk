@@ -42,6 +42,8 @@ LIBABIVER := 2
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool.c
+SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool_ring.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_MEMPOOL)-include := rte_mempool.h
 
