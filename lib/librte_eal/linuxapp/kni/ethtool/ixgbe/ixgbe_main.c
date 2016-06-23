@@ -59,8 +59,6 @@
 #undef CONFIG_DCA_MODULE
 
 char ixgbe_driver_name[] = "ixgbe";
-static const char ixgbe_driver_string[] =
-			      "Intel(R) 10 Gigabit PCI Express Network Driver";
 #define DRV_HW_PERF
 
 #ifndef CONFIG_IXGBE_NAPI
@@ -79,8 +77,6 @@ static const char ixgbe_driver_string[] =
 #define DRV_VERSION	__stringify(MAJ) "." __stringify(MIN) "." \
 			__stringify(BUILD) DRIVERNAPI DRV_HW_PERF FPGA VMDQ_TAG
 const char ixgbe_driver_version[] = DRV_VERSION;
-static const char ixgbe_copyright[] =
-				"Copyright (c) 1999-2012 Intel Corporation.";
 
 /* ixgbe_pci_tbl - PCI Device ID Table
  *
