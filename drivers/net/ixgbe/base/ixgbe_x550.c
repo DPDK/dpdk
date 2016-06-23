@@ -1487,10 +1487,15 @@ enum ixgbe_media_type ixgbe_get_media_type_X550em(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		media_type = ixgbe_media_type_copper;
 		break;
+	case IXGBE_DEV_ID_X550EM_A_SGMII:
+	case IXGBE_DEV_ID_X550EM_A_SGMII_L:
+		media_type = ixgbe_media_type_backplane;
+		hw->phy.type = ixgbe_phy_sgmii;
+		break;
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
-		media_type = ixgbe_media_type_sgmii;
-		hw->phy.type = ixgbe_phy_sgmii;
+		media_type = ixgbe_media_type_copper;
+		hw->phy.type = ixgbe_phy_m88;
 		break;
 	default:
 		media_type = ixgbe_media_type_unknown;
@@ -1667,9 +1672,9 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 		mac->ops.check_link = ixgbe_check_link_t_X550em;
 		break;
 	case ixgbe_media_type_backplane:
-		break;
-	case ixgbe_media_type_sgmii:
-		mac->ops.setup_link = ixgbe_setup_sgmii;
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII ||
+		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII_L)
+			mac->ops.setup_link = ixgbe_setup_sgmii;
 		break;
 	default:
 		break;
@@ -2229,6 +2234,8 @@ static void ixgbe_set_mdio_speed(struct ixgbe_hw *hw)
 
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
+	case IXGBE_DEV_ID_X550EM_A_SGMII:
+	case IXGBE_DEV_ID_X550EM_A_SGMII_L:
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 	case IXGBE_DEV_ID_X550EM_A_10G_T:

@@ -133,12 +133,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #define IXGBE_DEV_ID_X550EM_A_KR		0x15C2
 #define IXGBE_DEV_ID_X550EM_A_KR_L		0x15C3
 #define IXGBE_DEV_ID_X550EM_A_SFP_N		0x15C4
-#define IXGBE_DEV_ID_X550EM_A_1G_T		0x15C6
-#define IXGBE_DEV_ID_X550EM_A_1G_T_L		0x15C7
+#define IXGBE_DEV_ID_X550EM_A_SGMII		0x15C6
+#define IXGBE_DEV_ID_X550EM_A_SGMII_L		0x15C7
 #define IXGBE_DEV_ID_X550EM_A_10G_T		0x15C8
 #define IXGBE_DEV_ID_X550EM_A_QSFP		0x15CA
 #define IXGBE_DEV_ID_X550EM_A_QSFP_N		0x15CC
 #define IXGBE_DEV_ID_X550EM_A_SFP		0x15CE
+#define IXGBE_DEV_ID_X550EM_A_1G_T		0x15E4
+#define IXGBE_DEV_ID_X550EM_A_1G_T_L		0x15E5
 #define IXGBE_DEV_ID_X550EM_X_KX4		0x15AA
 #define IXGBE_DEV_ID_X550EM_X_KR		0x15AB
 #define IXGBE_DEV_ID_X550EM_X_SFP		0x15AC
@@ -3562,7 +3564,6 @@ enum ixgbe_media_type {
 	ixgbe_media_type_fiber_lco,
 	ixgbe_media_type_copper,
 	ixgbe_media_type_backplane,
-	ixgbe_media_type_sgmii,
 	ixgbe_media_type_cx4,
 	ixgbe_media_type_virtual
 };
