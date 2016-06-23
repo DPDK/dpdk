@@ -2824,7 +2824,7 @@ enum {
 #define IXGBE_PVFPSRTYPE(P)	(0x0EA00 + (4 * (P)))
 #define IXGBE_PVFTDBAL(P)	(0x06000 + (0x40 * (P)))
 #define IXGBE_PVFTDBAH(P)	(0x06004 + (0x40 * (P)))
-#define IXGBE_PVFTTDLEN(P)	(0x06008 + (0x40 * (P)))
+#define IXGBE_PVFTDLEN(P)	(0x06008 + (0x40 * (P)))
 #define IXGBE_PVFTDH(P)		(0x06010 + (0x40 * (P)))
 #define IXGBE_PVFTDT(P)		(0x06018 + (0x40 * (P)))
 #define IXGBE_PVFTXDCTL(P)	(0x06028 + (0x40 * (P)))
