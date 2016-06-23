@@ -751,6 +751,99 @@ s32 ixgbe_init_eeprom_params_X550(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_enable_eee_x550 - Enable EEE support
+ * @hw: pointer to hardware structure
+ */
+static s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
+{
+	u16 autoneg_eee_reg;
+	u32 link_reg;
+	s32 status;
+
+	if (hw->mac.type == ixgbe_mac_X550) {
+		/* Advertise EEE capability */
+		hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
+				     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				     &autoneg_eee_reg);
+
+		autoneg_eee_reg |= (IXGBE_AUTO_NEG_10GBASE_EEE_ADVT |
+				    IXGBE_AUTO_NEG_1000BASE_EEE_ADVT |
+				    IXGBE_AUTO_NEG_100BASE_EEE_ADVT);
+
+		hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      autoneg_eee_reg);
+	} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
+
+		status = ixgbe_read_iosf_sb_reg_x550(hw,
+				     IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+				     IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
+			IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
+
+		/* Don't advertise FEC capability when EEE enabled. */
+		link_reg &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
+
+		status = ixgbe_write_iosf_sb_reg_x550(hw,
+				      IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+				      IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
+		if (status != IXGBE_SUCCESS)
+			return status;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_disable_eee_x550 - Disable EEE support
+ * @hw: pointer to hardware structure
+ */
+static s32 ixgbe_disable_eee_x550(struct ixgbe_hw *hw)
+{
+	u16 autoneg_eee_reg;
+	u32 link_reg;
+	s32 status;
+
+	if (hw->mac.type == ixgbe_mac_X550) {
+		/* Disable advertised EEE capability */
+		hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
+				     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				     &autoneg_eee_reg);
+
+		autoneg_eee_reg &= ~(IXGBE_AUTO_NEG_10GBASE_EEE_ADVT |
+				     IXGBE_AUTO_NEG_1000BASE_EEE_ADVT |
+				     IXGBE_AUTO_NEG_100BASE_EEE_ADVT);
+
+		hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
+				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+				      autoneg_eee_reg);
+	} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
+		status = ixgbe_read_iosf_sb_reg_x550(hw,
+				     IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+				     IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
+		if (status != IXGBE_SUCCESS)
+			return status;
+
+		link_reg &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
+			      IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX);
+
+		/* Advertise FEC capability when EEE is disabled. */
+		link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
+
+		status = ixgbe_write_iosf_sb_reg_x550(hw,
+				      IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+				      IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
+		if (status != IXGBE_SUCCESS)
+			return status;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  *  ixgbe_setup_eee_X550 - Enable/disable EEE support
  *  @hw: pointer to the HW structure
  *  @enable_eee: boolean flag to enable EEE
@@ -762,10 +855,8 @@ s32 ixgbe_init_eeprom_params_X550(struct ixgbe_hw *hw)
  **/
 s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 {
-	u32 eeer;
-	u16 autoneg_eee_reg;
-	u32 link_reg;
 	s32 status;
+	u32 eeer;
 
 	DEBUGFUNC("ixgbe_setup_eee_X550");
 
@@ -774,75 +865,20 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 	if (enable_eee) {
 		eeer |= (IXGBE_EEER_TX_LPI_EN | IXGBE_EEER_RX_LPI_EN);
 
-		if (hw->mac.type == ixgbe_mac_X550) {
-			/* Advertise EEE capability */
-			hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_eee_reg);
-
-			autoneg_eee_reg |= (IXGBE_AUTO_NEG_10GBASE_EEE_ADVT |
-				IXGBE_AUTO_NEG_1000BASE_EEE_ADVT |
-				IXGBE_AUTO_NEG_100BASE_EEE_ADVT);
-
-			hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_eee_reg);
-		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
-			/* Not supported on first revision of X550EM_x. */
-			if ((hw->mac.type == ixgbe_mac_X550EM_x) &&
-			    !(IXGBE_FUSES0_REV_MASK &
-			      IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0))))
-				return IXGBE_SUCCESS;
-
-			status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
-			if (status != IXGBE_SUCCESS)
-				return status;
-
-			link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
-				    IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
-
-			/* Don't advertise FEC capability when EEE enabled. */
-			link_reg &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
-
-			status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
-			if (status != IXGBE_SUCCESS)
-				return status;
-		}
+		/* Not supported on first revision of X550EM_x. */
+		if ((hw->mac.type == ixgbe_mac_X550EM_x) &&
+		    !(IXGBE_FUSES0_REV_MASK &
+		      IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0))))
+			return IXGBE_SUCCESS;
+		status = ixgbe_enable_eee_x550(hw);
+		if (status)
+			return status;
 	} else {
 		eeer &= ~(IXGBE_EEER_TX_LPI_EN | IXGBE_EEER_RX_LPI_EN);
 
-		if (hw->mac.type == ixgbe_mac_X550) {
-			/* Disable advertised EEE capability */
-			hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_eee_reg);
-
-			autoneg_eee_reg &= ~(IXGBE_AUTO_NEG_10GBASE_EEE_ADVT |
-				IXGBE_AUTO_NEG_1000BASE_EEE_ADVT |
-				IXGBE_AUTO_NEG_100BASE_EEE_ADVT);
-
-			hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_eee_reg);
-		} else if (hw->device_id == IXGBE_DEV_ID_X550EM_X_KR) {
-			status = ixgbe_read_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
-			if (status != IXGBE_SUCCESS)
-				return status;
-
-			link_reg &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
-				IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX);
-
-			/* Advertise FEC capability when EEE is disabled. */
-			link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
-
-			status = ixgbe_write_iosf_sb_reg_x550(hw,
-				IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
-			if (status != IXGBE_SUCCESS)
-				return status;
-		}
+		status = ixgbe_disable_eee_x550(hw);
+		if (status)
+			return status;
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_EEER, eeer);
 
