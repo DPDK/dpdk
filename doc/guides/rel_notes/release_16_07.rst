@@ -62,6 +62,18 @@ New Features
   add mailbox interrupts support to receive the message and allow the app to
   register a callback for it.
 
+* **Updated the ixgbe base driver.**
+
+  The ixgbe base driver was updated with changes including the
+  following:
+
+  * Added sgmii link for X550.
+  * Added mac link setup for X550a SFP and SFP+.
+  * Added KR support for X550em_a.
+  * Added new phy definitions for M88E1500.
+  * Added support for the VLVF to be bypassed when adding/removing a VFTA entry.
+  * Added X550a flow control auto negotiation support.
+
 * **Updated the i40e base driver.**
 
   Updated the i40e base driver, which includes support for new devices IDs.
