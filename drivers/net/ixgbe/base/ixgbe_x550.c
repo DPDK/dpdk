@@ -329,6 +329,39 @@ STATIC void ixgbe_setup_mux_ctl(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_identify_phy_1g - Get 1g PHY type based on device id
+ * @hw: pointer to hardware structure
+ *
+ * Returns error code
+ */
+static s32 ixgbe_identify_phy_1g(struct ixgbe_hw *hw)
+{
+	u16 phy_id_high;
+	u16 phy_id_low;
+	u32 val = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
+
+	hw->phy.addr = (val >> 3) & 0x1F;
+	val = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_ID_HIGH,
+				   hw->phy.addr, &phy_id_high);
+	if (val || phy_id_high == 0xFFFF) {
+		hw->phy.type = ixgbe_phy_sgmii;
+		return 0;
+	}
+
+	val = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_ID_LOW,
+				   hw->phy.addr, &phy_id_low);
+	if (val)
+		return val;
+
+	hw->phy.id = (u32)phy_id_high << 16;
+	hw->phy.id |= phy_id_low & IXGBE_PHY_REVISION_MASK;
+	hw->phy.revision = (u32)phy_id_low & ~IXGBE_PHY_REVISION_MASK;
+	hw->phy.type = ixgbe_phy_m88;
+
+	return 0;
+}
+
+/**
  * ixgbe_identify_phy_x550em - Get PHY type based on device id
  * @hw: pointer to hardware structure
  *
@@ -364,10 +397,11 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		break;
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
-	case IXGBE_DEV_ID_X550EM_A_1G_T:
-	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		return ixgbe_identify_phy_generic(hw);
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+		return ixgbe_identify_phy_1g(hw);
 	default:
 		break;
 	}
@@ -1286,10 +1320,13 @@ enum ixgbe_media_type ixgbe_get_media_type_X550em(struct ixgbe_hw *hw)
 		break;
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
-	case IXGBE_DEV_ID_X550EM_A_1G_T:
-	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		media_type = ixgbe_media_type_copper;
+		break;
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+		media_type = ixgbe_media_type_sgmii;
+		hw->phy.type = ixgbe_phy_sgmii;
 		break;
 	default:
 		media_type = ixgbe_media_type_unknown;
@@ -1382,6 +1419,57 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_setup_sgmii - Set up link for sgmii
+ * @hw: pointer to hardware structure
+ */
+static s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
+			     bool autoneg_wait_to_complete)
+{
+	struct ixgbe_mac_info *mac = &hw->mac;
+	u32 lval, sval;
+	s32 rc;
+	UNREFERENCED_2PARAMETER(speed, autoneg_wait_to_complete);
+
+	rc = mac->ops.read_iosf_sb_reg(hw,
+				       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+				       IXGBE_SB_IOSF_TARGET_KR_PHY, &lval);
+	if (rc)
+		return rc;
+
+	lval &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
+	lval &= ~IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_MASK;
+	lval |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_SGMII_EN;
+	lval |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CLAUSE_37_EN;
+	lval |= IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_1G;
+	rc = mac->ops.write_iosf_sb_reg(hw,
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, lval);
+	if (rc)
+		return rc;
+
+	rc = mac->ops.read_iosf_sb_reg(hw,
+				       IXGBE_KRM_SGMII_CTRL(hw->bus.lan_id),
+				       IXGBE_SB_IOSF_TARGET_KR_PHY, &sval);
+	if (rc)
+		return rc;
+
+	sval |= IXGBE_KRM_SGMII_CTRL_MAC_TAR_FORCE_10_D;
+	sval |= IXGBE_KRM_SGMII_CTRL_MAC_TAR_FORCE_100_D;
+	rc = mac->ops.write_iosf_sb_reg(hw,
+					IXGBE_KRM_SGMII_CTRL(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, sval);
+	if (rc)
+		return rc;
+
+	lval |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
+	rc = mac->ops.write_iosf_sb_reg(hw,
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, lval);
+
+	return rc;
+}
+
+/**
  *  ixgbe_init_mac_link_ops_X550em - init mac link function pointers
  *  @hw: pointer to hardware structure
  */
@@ -1391,8 +1479,8 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_init_mac_link_ops_X550em");
 
-	 switch (hw->mac.ops.get_media_type(hw)) {
-	 case ixgbe_media_type_fiber:
+	switch (hw->mac.ops.get_media_type(hw)) {
+	case ixgbe_media_type_fiber:
 		/* CS4227 does not support autoneg, so disable the laser control
 		 * functions for SFP+ fiber
 		 */
@@ -1408,9 +1496,14 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 		mac->ops.setup_link = ixgbe_setup_mac_link_t_X550em;
 		mac->ops.check_link = ixgbe_check_link_t_X550em;
 		break;
+	case ixgbe_media_type_backplane:
+		break;
+	case ixgbe_media_type_sgmii:
+		mac->ops.setup_link = ixgbe_setup_sgmii;
+		break;
 	default:
 		break;
-	 }
+	}
 }
 
 /**
@@ -1447,8 +1540,19 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 		else
 			*speed = IXGBE_LINK_SPEED_10GB_FULL;
 	} else {
-		*speed = IXGBE_LINK_SPEED_10GB_FULL |
-			 IXGBE_LINK_SPEED_1GB_FULL;
+		switch (hw->phy.type) {
+		case ixgbe_phy_m88:
+			*speed = IXGBE_LINK_SPEED_100_FULL |
+				 IXGBE_LINK_SPEED_1GB_FULL;
+			break;
+		case ixgbe_phy_sgmii:
+			*speed = IXGBE_LINK_SPEED_1GB_FULL;
+			break;
+		default:
+			*speed = IXGBE_LINK_SPEED_10GB_FULL |
+				 IXGBE_LINK_SPEED_1GB_FULL;
+			break;
+		}
 		*autoneg = true;
 	}
 
@@ -1741,6 +1845,11 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 
 		phy->ops.handle_lasi = ixgbe_handle_lasi_ext_t_x550em;
 		phy->ops.reset = ixgbe_reset_phy_t_X550em;
+		break;
+	case ixgbe_phy_sgmii:
+		phy->ops.setup_link = NULL;
+		break;
+	case ixgbe_phy_m88:
 		break;
 	default:
 		break;
