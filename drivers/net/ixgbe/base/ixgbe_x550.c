@@ -338,9 +338,8 @@ static s32 ixgbe_identify_phy_1g(struct ixgbe_hw *hw)
 {
 	u16 phy_id_high;
 	u16 phy_id_low;
-	u32 val = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
+	u32 val;
 
-	hw->phy.addr = (val >> 3) & 0x1F;
 	val = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_ID_HIGH,
 				   hw->phy.addr, &phy_id_high);
 	if (val || phy_id_high == 0xFFFF) {
@@ -1843,6 +1842,33 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 }
 
 /**
+ *  ixgbe_read_mng_if_sel_x550em - Read NW_MNG_IF_SEL register
+ *  @hw: pointer to hardware structure
+ *
+ *  Read NW_MNG_IF_SEL register and save field values, and check for valid field
+ *  values.
+ **/
+STATIC s32 ixgbe_read_mng_if_sel_x550em(struct ixgbe_hw *hw)
+{
+	/* Save NW management interface connected on board. This is used
+	 * to determine internal PHY mode.
+	 */
+	hw->phy.nw_mng_if_sel = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
+
+	/* If X552 (X550EM_a) and MDIO is connected to external PHY, then set
+	 * PHY address. This register field was has only been used for X552.
+	 */
+	if (hw->mac.type == ixgbe_mac_X550EM_a &&
+	    hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_MDIO_ACT) {
+		hw->phy.addr = (hw->phy.nw_mng_if_sel &
+				IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD) >>
+				IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  *  ixgbe_init_phy_ops_X550em - PHY/SFP specific init
  *  @hw: pointer to hardware structure
  *
@@ -1859,14 +1885,11 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 
 	hw->mac.ops.set_lan_id(hw);
 
+	ixgbe_read_mng_if_sel_x550em(hw);
+
 	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
 		phy->phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		ixgbe_setup_mux_ctl(hw);
-
-		/* Save NW management interface connected on board. This is used
-		 * to determine internal PHY mode.
-		 */
-		phy->nw_mng_if_sel = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
 		phy->ops.identify_sfp = ixgbe_identify_sfp_module_X550em;
 	}
 
@@ -1893,11 +1916,6 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
 		break;
 	case ixgbe_phy_x550em_ext_t:
-		/* Save NW management interface connected on board. This is used
-		 * to determine internal PHY mode
-		 */
-		phy->nw_mng_if_sel = IXGBE_READ_REG(hw, IXGBE_NW_MNG_IF_SEL);
-
 		/* If internal link mode is XFI, then setup iXFI internal link,
 		 * else setup KR now.
 		 */
@@ -2255,12 +2273,6 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
 	} else {
 		/* Configure internal PHY for KR/KX. */
 		ixgbe_setup_kr_speed_x550em(hw, speed);
-
-		/* Get CS4227 MDIO address */
-		hw->phy.addr =
-			(hw->phy.nw_mng_if_sel &
-			 IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD)
-			>> IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT;
 
 		if (hw->phy.addr == 0x0 || hw->phy.addr == 0xFFFF) {
 			/* Find Address */
