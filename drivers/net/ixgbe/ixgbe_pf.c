@@ -544,7 +544,7 @@ ixgbe_vf_set_vlan(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		vfinfo[vf].vlan_count++;
 	else if (vfinfo[vf].vlan_count)
 		vfinfo[vf].vlan_count--;
-	return hw->mac.ops.set_vfta(hw, vid, vf, (bool)add);
+	return hw->mac.ops.set_vfta(hw, vid, vf, (bool)add, false);
 }
 
 static int

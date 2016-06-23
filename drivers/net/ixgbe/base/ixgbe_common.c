@@ -3809,44 +3809,44 @@ s32 ixgbe_init_uta_tables_generic(struct ixgbe_hw *hw)
  *  return the VLVF index where this VLAN id should be placed
  *
  **/
-s32 ixgbe_find_vlvf_slot(struct ixgbe_hw *hw, u32 vlan)
+s32 ixgbe_find_vlvf_slot(struct ixgbe_hw *hw, u32 vlan, bool vlvf_bypass)
 {
-	u32 bits = 0;
-	u32 first_empty_slot = 0;
-	s32 regindex;
+	s32 regindex, first_empty_slot;
+	u32 bits;
 
 	/* short cut the special case */
 	if (vlan == 0)
 		return 0;
 
-	/*
-	  * Search for the vlan id in the VLVF entries. Save off the first empty
-	  * slot found along the way
-	  */
-	for (regindex = 1; regindex < IXGBE_VLVF_ENTRIES; regindex++) {
+	/* if vlvf_bypass is set we don't want to use an empty slot, we
+	 * will simply bypass the VLVF if there are no entries present in the
+	 * VLVF that contain our VLAN
+	 */
+	first_empty_slot = vlvf_bypass ? IXGBE_ERR_NO_SPACE : 0;
+
+	/* add VLAN enable bit for comparison */
+	vlan |= IXGBE_VLVF_VIEN;
+
+	/* Search for the vlan id in the VLVF entries. Save off the first empty
+	 * slot found along the way.
+	 *
+	 * pre-decrement loop covering (IXGBE_VLVF_ENTRIES - 1) .. 1
+	 */
+	for (regindex = IXGBE_VLVF_ENTRIES; --regindex;) {
 		bits = IXGBE_READ_REG(hw, IXGBE_VLVF(regindex));
-		if (!bits && !(first_empty_slot))
+		if (bits == vlan)
+			return regindex;
+		if (!first_empty_slot && !bits)
 			first_empty_slot = regindex;
-		else if ((bits & 0x0FFF) == vlan)
-			break;
 	}
 
-	/*
-	  * If regindex is less than IXGBE_VLVF_ENTRIES, then we found the vlan
-	  * in the VLVF. Else use the first empty VLVF register for this
-	  * vlan id.
-	  */
-	if (regindex >= IXGBE_VLVF_ENTRIES) {
-		if (first_empty_slot)
-			regindex = first_empty_slot;
-		else {
-			ERROR_REPORT1(IXGBE_ERROR_SOFTWARE,
-				     "No space in VLVF.\n");
-			regindex = IXGBE_ERR_NO_SPACE;
-		}
-	}
+	/* If we are here then we didn't find the VLAN.  Return first empty
+	 * slot we found during our search, else error.
+	 */
+	if (!first_empty_slot)
+		ERROR_REPORT1(IXGBE_ERROR_SOFTWARE, "No space in VLVF.\n");
 
-	return regindex;
+	return first_empty_slot ? first_empty_slot : IXGBE_ERR_NO_SPACE;
 }
 
 /**
@@ -3855,11 +3855,12 @@ s32 ixgbe_find_vlvf_slot(struct ixgbe_hw *hw, u32 vlan)
  *  @vlan: VLAN id to write to VLAN filter
  *  @vind: VMDq output index that maps queue to VLAN id in VLVFB
  *  @vlan_on: boolean flag to turn on/off VLAN
+ *  @vlvf_bypass: boolean flag indicating updating default pool is okay
  *
  *  Turn on/off specified VLAN in the VLAN filter table.
  **/
 s32 ixgbe_set_vfta_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
-			   bool vlan_on)
+			   bool vlan_on, bool vlvf_bypass)
 {
 	u32 regidx, vfta_delta, vfta;
 	s32 ret_val;
@@ -3896,10 +3897,14 @@ s32 ixgbe_set_vfta_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 	 * Call ixgbe_set_vlvf_generic to set VLVFB and VLVF
 	 */
 	ret_val = ixgbe_set_vlvf_generic(hw, vlan, vind, vlan_on, &vfta_delta,
-					 vfta);
-	if (ret_val != IXGBE_SUCCESS)
+					 vfta, vlvf_bypass);
+	if (ret_val != IXGBE_SUCCESS) {
+		if (vlvf_bypass)
+			goto vfta_update;
 		return ret_val;
+	}
 
+vfta_update:
 	/* Update VFTA now that we are ready for traffic */
 	if (vfta_delta)
 		IXGBE_WRITE_REG(hw, IXGBE_VFTA(regidx), vfta);
@@ -3916,11 +3921,13 @@ s32 ixgbe_set_vfta_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
  *  @vfta_delta: pointer to the difference between the current value of VFTA
  * and the desired value
  *  @vfta: the desired value of the VFTA
+ *  @vlvf_bypass: boolean flag indicating updating default pool is okay
  *
  *  Turn on/off specified bit in VLVF table.
  **/
 s32 ixgbe_set_vlvf_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
-			   bool vlan_on, u32 *vfta_delta, u32 vfta)
+			   bool vlan_on, u32 *vfta_delta, u32 vfta,
+			   bool vlvf_bypass)
 {
 	u32 bits;
 	s32 vlvf_index;
@@ -3939,7 +3946,7 @@ s32 ixgbe_set_vlvf_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 	 */
 	if (!(IXGBE_READ_REG(hw, IXGBE_VT_CTL) & IXGBE_VT_CTL_VT_ENABLE))
 		return IXGBE_SUCCESS;
-	vlvf_index = ixgbe_find_vlvf_slot(hw, vlan);
+	vlvf_index = ixgbe_find_vlvf_slot(hw, vlan, vlvf_bypass);
 	if (vlvf_index < 0)
 		return vlvf_index;
 

@@ -4261,7 +4261,8 @@ static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
 			mask = 1;
 			for (j = 0; j < 32; j++) {
 				if (vfta & mask)
-					ixgbe_set_vfta(hw, (i<<5)+j, 0, on);
+					ixgbe_set_vfta(hw, (i<<5)+j, 0,
+						       on, false);
 				mask <<= 1;
 			}
 		}
@@ -4283,7 +4284,7 @@ ixgbevf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	PMD_INIT_FUNC_TRACE();
 
 	/* vind is not used in VF driver, set to 0, check ixgbe_set_vfta_vf */
-	ret = ixgbe_set_vfta(hw, vlan_id, 0, !!on);
+	ret = ixgbe_set_vfta(hw, vlan_id, 0, !!on, false);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Unable to set VF vlan");
 		return ret;
@@ -4602,7 +4603,8 @@ ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 		return -ENOTSUP;
 	for (pool_idx = 0; pool_idx < ETH_64_POOLS; pool_idx++) {
 		if (pool_mask & ((uint64_t)(1ULL << pool_idx))) {
-			ret = hw->mac.ops.set_vfta(hw, vlan, pool_idx, vlan_on);
+			ret = hw->mac.ops.set_vfta(hw, vlan, pool_idx,
+						   vlan_on, false);
 			if (ret < 0)
 				return ret;
 		}
@@ -4664,7 +4666,8 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 			if (mirror_conf->vlan.vlan_mask & (1ULL << i)) {
 				/* search vlan id related pool vlan filter index */
 				reg_index = ixgbe_find_vlvf_slot(hw,
-						mirror_conf->vlan.vlan_id[i]);
+						 mirror_conf->vlan.vlan_id[i],
+						 false);
 				if (reg_index < 0)
 					return -EINVAL;
 				vlvf = IXGBE_READ_REG(hw, IXGBE_VLVF(reg_index));

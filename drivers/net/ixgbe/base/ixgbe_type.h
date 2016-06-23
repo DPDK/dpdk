@@ -3865,8 +3865,9 @@ struct ixgbe_mac_operations {
 	s32 (*enable_mc)(struct ixgbe_hw *);
 	s32 (*disable_mc)(struct ixgbe_hw *);
 	s32 (*clear_vfta)(struct ixgbe_hw *);
-	s32 (*set_vfta)(struct ixgbe_hw *, u32, u32, bool);
-	s32 (*set_vlvf)(struct ixgbe_hw *, u32, u32, bool, u32 *, u32);
+	s32 (*set_vfta)(struct ixgbe_hw *, u32, u32, bool, bool);
+	s32 (*set_vlvf)(struct ixgbe_hw *, u32, u32, bool, u32 *, u32,
+			bool);
 	s32 (*init_uta_tables)(struct ixgbe_hw *);
 	void (*set_mac_anti_spoofing)(struct ixgbe_hw *, bool, int);
 	void (*set_vlan_anti_spoofing)(struct ixgbe_hw *, bool, int);

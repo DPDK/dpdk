@@ -124,9 +124,10 @@ s32 ixgbe_enable_mc(struct ixgbe_hw *hw);
 s32 ixgbe_disable_mc(struct ixgbe_hw *hw);
 s32 ixgbe_clear_vfta(struct ixgbe_hw *hw);
 s32 ixgbe_set_vfta(struct ixgbe_hw *hw, u32 vlan,
-		   u32 vind, bool vlan_on);
+		   u32 vind, bool vlan_on, bool vlvf_bypass);
 s32 ixgbe_set_vlvf(struct ixgbe_hw *hw, u32 vlan, u32 vind,
-		   bool vlan_on, u32 *vfta_delta, u32 vfta);
+		   bool vlan_on, u32 *vfta_delta, u32 vfta,
+		   bool vlvf_bypass);
 s32 ixgbe_fc_enable(struct ixgbe_hw *hw);
 s32 ixgbe_setup_fc(struct ixgbe_hw *hw);
 s32 ixgbe_set_fw_drv_ver(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
