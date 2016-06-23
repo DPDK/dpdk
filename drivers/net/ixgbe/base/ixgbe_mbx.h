@@ -109,7 +109,9 @@ enum ixgbe_pfvf_api_rev {
 #define IXGBE_VF_GET_QUEUES	0x09 /* get queue configuration */
 
 /* mailbox API, version 1.2 VF requests */
-#define IXGBE_VF_UPDATE_XCAST_MODE     0x0C
+#define IXGBE_VF_GET_RETA		0x0a /* VF request for RETA */
+#define IXGBE_VF_GET_RSS_KEY		0x0b /* get RSS key */
+#define IXGBE_VF_UPDATE_XCAST_MODE	0x0C
 
 /* GET_QUEUES return data indices within the mailbox */
 #define IXGBE_VF_TX_QUEUES	1	/* number of Tx queues supported */
