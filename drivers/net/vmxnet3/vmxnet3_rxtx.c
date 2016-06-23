@@ -96,7 +96,7 @@ vmxnet3_rxq_dump(struct vmxnet3_rx_queue *rxq)
 		return;
 
 	PMD_RX_LOG(DEBUG,
-		   "RXQ: cmd0 base : 0x%p cmd1 base : 0x%p comp ring base : 0x%p.",
+		   "RXQ: cmd0 base : %p cmd1 base : %p comp ring base : %p.",
 		   rxq->cmd_ring[0].base, rxq->cmd_ring[1].base, rxq->comp_ring.base);
 	PMD_RX_LOG(DEBUG,
 		   "RXQ: cmd0 basePA : 0x%lx cmd1 basePA : 0x%lx comp ring basePA : 0x%lx.",
@@ -126,7 +126,7 @@ vmxnet3_txq_dump(struct vmxnet3_tx_queue *txq)
 	if (txq == NULL)
 		return;
 
-	PMD_TX_LOG(DEBUG, "TXQ: cmd base : 0x%p comp ring base : 0x%p data ring base : 0x%p.",
+	PMD_TX_LOG(DEBUG, "TXQ: cmd base : %p comp ring base : %p data ring base : %p.",
 		   txq->cmd_ring.base, txq->comp_ring.base, txq->data_ring.base);
 	PMD_TX_LOG(DEBUG, "TXQ: cmd basePA : 0x%lx comp ring basePA : 0x%lx data ring basePA : 0x%lx.",
 		   (unsigned long)txq->cmd_ring.basePA,
