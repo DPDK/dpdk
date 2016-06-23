@@ -3531,17 +3531,22 @@ static s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
 	DEBUGFUNC("ixgbe_acquire_swfw_sync_X550a");
 
 	while (--retries) {
+		status = IXGBE_SUCCESS;
 		if (hmask)
 			status = ixgbe_acquire_swfw_sync_X540(hw, hmask);
 		if (status)
-			break;
+			return status;
 		if (!(mask & IXGBE_GSSR_TOKEN_SM))
-			break;
+			return IXGBE_SUCCESS;
+
 		status = ixgbe_get_phy_token(hw);
-		if (status != IXGBE_ERR_TOKEN_RETRY)
-			break;
+		if (status == IXGBE_SUCCESS)
+			return IXGBE_SUCCESS;
+
 		if (hmask)
 			ixgbe_release_swfw_sync_X540(hw, hmask);
+		if (status != IXGBE_ERR_TOKEN_RETRY)
+			return status;
 		msec_delay(FW_PHY_TOKEN_DELAY);
 	}
 
