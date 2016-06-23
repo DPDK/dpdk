@@ -248,15 +248,16 @@ void enic_clsf_destroy(struct enic *enic)
 
 int enic_clsf_init(struct enic *enic)
 {
+	char clsf_name[RTE_HASH_NAMESIZE];
 	struct rte_hash_parameters hash_params = {
-		.name = "enicpmd_clsf_hash",
+		.name = clsf_name,
 		.entries = ENICPMD_CLSF_HASH_ENTRIES,
 		.key_len = sizeof(struct rte_eth_fdir_filter),
 		.hash_func = DEFAULT_HASH_FUNC,
 		.hash_func_init_val = 0,
 		.socket_id = SOCKET_ID_ANY,
 	};
-
+	snprintf(clsf_name, RTE_HASH_NAMESIZE, "enic_clsf_%s", enic->bdf_name);
 	enic->fdir.hash = rte_hash_create(&hash_params);
 	memset(&enic->fdir.stats, 0, sizeof(enic->fdir.stats));
 	enic->fdir.stats.free = ENICPMD_FDIR_MAX;
