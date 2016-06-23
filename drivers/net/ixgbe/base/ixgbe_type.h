@@ -3684,7 +3684,7 @@ struct ixgbe_bus_info {
 	enum ixgbe_bus_type type;
 
 	u16 func;
-	u16 lan_id;
+	u8 lan_id;
 	u16 instance_id;
 };
 

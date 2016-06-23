@@ -1034,7 +1034,7 @@ void ixgbe_set_lan_id_multi_port_pcie(struct ixgbe_hw *hw)
 
 	reg = IXGBE_READ_REG(hw, IXGBE_STATUS);
 	bus->func = (reg & IXGBE_STATUS_LAN_ID) >> IXGBE_STATUS_LAN_ID_SHIFT;
-	bus->lan_id = bus->func;
+	bus->lan_id = (u8)bus->func;
 
 	/* check for a port swap */
 	reg = IXGBE_READ_REG(hw, IXGBE_FACTPS_BY_MAC(hw));
