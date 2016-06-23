@@ -217,5 +217,7 @@ s32 ixgbe_handle_lasi(struct ixgbe_hw *hw);
 void ixgbe_set_rate_select_speed(struct ixgbe_hw *hw, ixgbe_link_speed speed);
 void ixgbe_disable_rx(struct ixgbe_hw *hw);
 void ixgbe_enable_rx(struct ixgbe_hw *hw);
+s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
+			u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm);
 
 #endif /* _IXGBE_API_H_ */

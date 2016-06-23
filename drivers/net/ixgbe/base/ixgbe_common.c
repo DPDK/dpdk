@@ -135,6 +135,7 @@ s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw)
 	/* Flow Control */
 	mac->ops.fc_enable = ixgbe_fc_enable_generic;
 	mac->ops.setup_fc = ixgbe_setup_fc_generic;
+	mac->ops.fc_autoneg = ixgbe_fc_autoneg;
 
 	/* Link */
 	mac->ops.get_link_capabilities = NULL;
@@ -2739,7 +2740,7 @@ s32 ixgbe_fc_enable_generic(struct ixgbe_hw *hw)
 	}
 
 	/* Negotiate the fc mode to use */
-	ixgbe_fc_autoneg(hw);
+	hw->mac.ops.fc_autoneg(hw);
 
 	/* Disable any previous flow control settings */
 	mflcn_reg = IXGBE_READ_REG(hw, IXGBE_MFLCN);
@@ -2849,7 +2850,7 @@ out:
  *  Find the intersection between advertised settings and link partner's
  *  advertised settings
  **/
-STATIC s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
+s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
 			      u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
 {
 	if ((!(adv_reg)) ||  (!(lp_reg))) {
