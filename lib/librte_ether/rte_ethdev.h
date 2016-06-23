@@ -1157,7 +1157,7 @@ typedef int (*vlan_filter_set_t)(struct rte_eth_dev *dev,
 
 typedef int (*vlan_tpid_set_t)(struct rte_eth_dev *dev,
 			       enum rte_vlan_type type, uint16_t tpid);
-/**< @internal set the outer VLAN-TPID by an Ethernet device. */
+/**< @internal set the outer/inner VLAN-TPID by an Ethernet device. */
 
 typedef void (*vlan_offload_set_t)(struct rte_eth_dev *dev, int mask);
 /**< @internal set VLAN offload function by an Ethernet device. */
@@ -1443,7 +1443,7 @@ struct eth_dev_ops {
 	/**< Get packet types supported and identified by device*/
 	mtu_set_t                  mtu_set; /**< Set MTU. */
 	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
-	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer VLAN TPID Setup. */
+	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer/Inner VLAN TPID Setup. */
 	vlan_strip_queue_set_t     vlan_strip_queue_set; /**< VLAN Stripping on queue. */
 	vlan_offload_set_t         vlan_offload_set; /**< Set VLAN Offload. */
 	vlan_pvid_set_t            vlan_pvid_set; /**< Set port based TX VLAN insertion */

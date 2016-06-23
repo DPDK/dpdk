@@ -158,6 +158,9 @@ enum ixgbevf_xcast_modes {
 	IXGBEVF_XCAST_MODE_ALLMULTI,
 };
 
+#define IXGBE_EXVET_VET_EXT_SHIFT              16
+#define IXGBE_DMATXCTL_VT_MASK                 0xFFFF0000
+
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
@@ -1599,15 +1602,47 @@ ixgbe_vlan_tpid_set(struct rte_eth_dev *dev,
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret = 0;
+	uint32_t reg;
+	uint32_t qinq;
+
+	qinq = IXGBE_READ_REG(hw, IXGBE_DMATXCTL);
+	qinq &= IXGBE_DMATXCTL_GDV;
 
 	switch (vlan_type) {
 	case ETH_VLAN_TYPE_INNER:
-		/* Only the high 16-bits is valid */
-		IXGBE_WRITE_REG(hw, IXGBE_EXVET, tpid << 16);
+		if (qinq) {
+			reg = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+			reg = (reg & (~IXGBE_VLNCTRL_VET)) | (uint32_t)tpid;
+			IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, reg);
+			reg = IXGBE_READ_REG(hw, IXGBE_DMATXCTL);
+			reg = (reg & (~IXGBE_DMATXCTL_VT_MASK))
+				| ((uint32_t)tpid << IXGBE_DMATXCTL_VT_SHIFT);
+			IXGBE_WRITE_REG(hw, IXGBE_DMATXCTL, reg);
+		} else {
+			ret = -ENOTSUP;
+			PMD_DRV_LOG(ERR, "Inner type is not supported"
+				    " by single VLAN");
+		}
+		break;
+	case ETH_VLAN_TYPE_OUTER:
+		if (qinq) {
+			/* Only the high 16-bits is valid */
+			IXGBE_WRITE_REG(hw, IXGBE_EXVET, (uint32_t)tpid <<
+					IXGBE_EXVET_VET_EXT_SHIFT);
+		} else {
+			reg = IXGBE_READ_REG(hw, IXGBE_VLNCTRL);
+			reg = (reg & (~IXGBE_VLNCTRL_VET)) | (uint32_t)tpid;
+			IXGBE_WRITE_REG(hw, IXGBE_VLNCTRL, reg);
+			reg = IXGBE_READ_REG(hw, IXGBE_DMATXCTL);
+			reg = (reg & (~IXGBE_DMATXCTL_VT_MASK))
+				| ((uint32_t)tpid << IXGBE_DMATXCTL_VT_SHIFT);
+			IXGBE_WRITE_REG(hw, IXGBE_DMATXCTL, reg);
+		}
+
 		break;
 	default:
 		ret = -EINVAL;
-		PMD_DRV_LOG(ERR, "Unsupported vlan type %d\n", vlan_type);
+		PMD_DRV_LOG(ERR, "Unsupported VLAN type %d", vlan_type);
 		break;
 	}
 
