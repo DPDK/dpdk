@@ -1488,9 +1488,14 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 		mac->ops.enable_tx_laser = NULL;
 		mac->ops.flap_tx_laser = NULL;
 		mac->ops.setup_link = ixgbe_setup_mac_link_multispeed_fiber;
-		mac->ops.setup_mac_link = ixgbe_setup_mac_link_sfp_x550em;
 		mac->ops.set_rate_select_speed =
 					ixgbe_set_soft_rate_select_speed;
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP_N)
+			mac->ops.setup_mac_link =
+				ixgbe_setup_mac_link_sfp_x550a;
+		else
+			mac->ops.setup_mac_link =
+				ixgbe_setup_mac_link_sfp_x550em;
 		break;
 	case ixgbe_media_type_copper:
 		mac->ops.setup_link = ixgbe_setup_mac_link_t_X550em;
@@ -2124,6 +2129,63 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
 						  reg_val);
 	}
+	return ret_val;
+}
+
+/**
+ *  ixgbe_setup_mac_link_sfp_x550a - Setup internal PHY for SFP
+ *  @hw: pointer to hardware structure
+ *
+ *  Configure the the integrated PHY for SFP support.
+ **/
+s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
+				   ixgbe_link_speed speed,
+				   bool autoneg_wait_to_complete)
+{
+	s32 ret_val;
+	u32 reg_val;
+	bool setup_linear = false;
+
+	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
+
+	/* Check if SFP module is supported and linear */
+	ret_val = ixgbe_supported_sfp_modules_X550em(hw, &setup_linear);
+
+	/* If no SFP module present, then return success. Return success since
+	 * SFP not present error is not excepted in the setup MAC link flow.
+	 */
+	if (ret_val == IXGBE_ERR_SFP_NOT_PRESENT)
+		return IXGBE_SUCCESS;
+
+	if (ret_val != IXGBE_SUCCESS)
+		return ret_val;
+
+	/* Configure internal PHY for native SFI */
+	ret_val = hw->mac.ops.read_iosf_sb_reg(hw,
+		       IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
+		       IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+
+	if (ret_val != IXGBE_SUCCESS)
+		return ret_val;
+
+	if (setup_linear) {
+		reg_val &= ~IXGBE_KRM_AN_CNTL_8_LIMITING;
+		reg_val |= IXGBE_KRM_AN_CNTL_8_LINEAR;
+	} else {
+		reg_val |= IXGBE_KRM_AN_CNTL_8_LIMITING;
+		reg_val &= ~IXGBE_KRM_AN_CNTL_8_LINEAR;
+	}
+
+	ret_val = hw->mac.ops.write_iosf_sb_reg(hw,
+			IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
+			IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+
+	if (ret_val != IXGBE_SUCCESS)
+		return ret_val;
+
+	/* Setup XFI/SFI internal link. */
+	ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
+
 	return ret_val;
 }
 
