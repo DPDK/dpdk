@@ -39,8 +39,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "ixgbe_phy.h"
 
 STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed);
-static s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
-static void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
+STATIC s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
+STATIC void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
 
 /**
  *  ixgbe_init_ops_X550 - Inits func ptrs and MAC type
@@ -335,7 +335,7 @@ STATIC void ixgbe_setup_mux_ctl(struct ixgbe_hw *hw)
  * @dev_type: always unused
  * @phy_data: Pointer to read data from PHY register
  */
-static s32 ixgbe_read_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
+STATIC s32 ixgbe_read_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
 				     u32 dev_type, u16 *phy_data)
 {
 	u32 i, data, command;
@@ -383,7 +383,7 @@ static s32 ixgbe_read_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
  * @dev_type: always unused
  * @phy_data: Data to write to the PHY register
  */
-static s32 ixgbe_write_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
+STATIC s32 ixgbe_write_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
 				      u32 dev_type, u16 phy_data)
 {
 	u32 i, command;
@@ -428,7 +428,7 @@ static s32 ixgbe_write_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
  *
  * Returns error code
  */
-static s32 ixgbe_identify_phy_1g(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_identify_phy_1g(struct ixgbe_hw *hw)
 {
 	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 	u16 phy_id_high;
@@ -536,7 +536,7 @@ STATIC s32 ixgbe_write_phy_reg_x550em(struct ixgbe_hw *hw, u32 reg_addr,
  *
  * Returns an error code on error.
  **/
-static s32 ixgbe_read_i2c_combined_generic(struct ixgbe_hw *hw, u8 addr,
+STATIC s32 ixgbe_read_i2c_combined_generic(struct ixgbe_hw *hw, u8 addr,
 					   u16 reg, u16 *val)
 {
 	return ixgbe_read_i2c_combined_generic_int(hw, addr, reg, val, true);
@@ -551,7 +551,7 @@ static s32 ixgbe_read_i2c_combined_generic(struct ixgbe_hw *hw, u8 addr,
  *
  * Returns an error code on error.
  **/
-static s32
+STATIC s32
 ixgbe_read_i2c_combined_generic_unlocked(struct ixgbe_hw *hw, u8 addr,
 					 u16 reg, u16 *val)
 {
@@ -567,7 +567,7 @@ ixgbe_read_i2c_combined_generic_unlocked(struct ixgbe_hw *hw, u8 addr,
  *
  * Returns an error code on error.
  **/
-static s32 ixgbe_write_i2c_combined_generic(struct ixgbe_hw *hw,
+STATIC s32 ixgbe_write_i2c_combined_generic(struct ixgbe_hw *hw,
 					    u8 addr, u16 reg, u16 val)
 {
 	return ixgbe_write_i2c_combined_generic_int(hw, addr, reg, val, true);
@@ -582,7 +582,7 @@ static s32 ixgbe_write_i2c_combined_generic(struct ixgbe_hw *hw,
  *
  * Returns an error code on error.
  **/
-static s32
+STATIC s32
 ixgbe_write_i2c_combined_generic_unlocked(struct ixgbe_hw *hw,
 					  u8 addr, u16 reg, u16 val)
 {
@@ -864,7 +864,7 @@ s32 ixgbe_init_eeprom_params_X550(struct ixgbe_hw *hw)
  * ixgbe_enable_eee_x550 - Enable EEE support
  * @hw: pointer to hardware structure
  */
-static s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
 {
 	u16 autoneg_eee_reg;
 	u32 link_reg;
@@ -919,7 +919,7 @@ static s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
  * ixgbe_disable_eee_x550 - Disable EEE support
  * @hw: pointer to hardware structure
  */
-static s32 ixgbe_disable_eee_x550(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_disable_eee_x550(struct ixgbe_hw *hw)
 {
 	u16 autoneg_eee_reg;
 	u32 link_reg;
@@ -1595,7 +1595,7 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
  * ixgbe_setup_sgmii - Set up link for sgmii
  * @hw: pointer to hardware structure
  */
-static s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
+STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 			     bool autoneg_wait_to_complete)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;
@@ -1960,7 +1960,7 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
  *
  * Must be called while holding the PHY semaphore and token
  */
-static s32 ixgbe_set_master_slave_mode(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_set_master_slave_mode(struct ixgbe_hw *hw)
 {
 	u16 phy_data;
 	s32 rc;
@@ -2007,7 +2007,7 @@ static s32 ixgbe_set_master_slave_mode(struct ixgbe_hw *hw)
  *
  * Must be called while holding the PHY semaphore and token
  */
-static s32 ixgbe_reset_phy_m88_nolock(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_reset_phy_m88_nolock(struct ixgbe_hw *hw)
 {
 	s32 rc;
 
@@ -2052,7 +2052,7 @@ res_out:
  * ixgbe_reset_phy_m88 - Reset m88 PHY
  * @hw: pointer to hardware structure
  */
-static s32 ixgbe_reset_phy_m88(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_reset_phy_m88(struct ixgbe_hw *hw)
 {
 	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 	s32 rc;
@@ -2074,7 +2074,7 @@ static s32 ixgbe_reset_phy_m88(struct ixgbe_hw *hw)
  * ixgbe_setup_m88 - setup m88 PHY
  * @hw: pointer to hardware structure
  */
-static s32 ixgbe_setup_m88(struct ixgbe_hw *hw)
+STATIC s32 ixgbe_setup_m88(struct ixgbe_hw *hw)
 {
 	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 	struct ixgbe_phy_info *phy = &hw->phy;
@@ -2232,7 +2232,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
  * ixgbe_set_mdio_speed - Set MDIO clock speed
  *  @hw: pointer to hardware structure
  */
-static void ixgbe_set_mdio_speed(struct ixgbe_hw *hw)
+STATIC void ixgbe_set_mdio_speed(struct ixgbe_hw *hw)
 {
 	u32 hlreg0;
 
@@ -3822,7 +3822,7 @@ void ixgbe_release_swfw_sync_X550em(struct ixgbe_hw *hw, u32 mask)
  *
  *  Acquires the SWFW semaphore and get the shared phy token as needed
  */
-static s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
+STATIC s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
 {
 	u32 hmask = mask & ~IXGBE_GSSR_TOKEN_SM;
 	int retries = FW_PHY_TOKEN_RETRIES;
@@ -3860,7 +3860,7 @@ static s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
  *
  *  Releases the SWFW semaphore and puts the shared phy token as needed
  */
-static void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
+STATIC void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
 {
 	u32 hmask = mask & ~IXGBE_GSSR_TOKEN_SM;
 
