@@ -191,6 +191,7 @@ s32 ixgbe_set_san_mac_addr(struct ixgbe_hw *hw, u8 *san_mac_addr);
 s32 ixgbe_get_device_caps(struct ixgbe_hw *hw, u16 *device_caps);
 s32 ixgbe_acquire_swfw_semaphore(struct ixgbe_hw *hw, u32 mask);
 void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u32 mask);
+void ixgbe_init_swfw_semaphore(struct ixgbe_hw *hw);
 s32 ixgbe_get_wwn_prefix(struct ixgbe_hw *hw, u16 *wwnn_prefix,
 			 u16 *wwpn_prefix);
 s32 ixgbe_get_fcoe_boot_status(struct ixgbe_hw *hw, u16 *bs);

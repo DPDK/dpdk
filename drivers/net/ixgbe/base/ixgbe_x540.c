@@ -99,6 +99,7 @@ s32 ixgbe_init_ops_X540(struct ixgbe_hw *hw)
 	mac->ops.get_fcoe_boot_status = ixgbe_get_fcoe_boot_status_generic;
 	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X540;
 	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X540;
+	mac->ops.init_swfw_sync = ixgbe_init_swfw_sync_X540;
 	mac->ops.disable_sec_rx_path = ixgbe_disable_sec_rx_path_generic;
 	mac->ops.enable_sec_rx_path = ixgbe_enable_sec_rx_path_generic;
 
@@ -943,6 +944,25 @@ STATIC void ixgbe_release_swfw_sync_semaphore(struct ixgbe_hw *hw)
 	IXGBE_WRITE_REG(hw, IXGBE_SWSM_BY_MAC(hw), swsm);
 
 	IXGBE_WRITE_FLUSH(hw);
+}
+
+/**
+ *  ixgbe_init_swfw_sync_X540 - Release hardware semaphore
+ *  @hw: pointer to hardware structure
+ *
+ *  This function reset hardware semaphore bits for a semaphore that may
+ *  have be left locked due to a catastrophic failure.
+ **/
+void ixgbe_init_swfw_sync_X540(struct ixgbe_hw *hw)
+{
+	/* First try to grab the semaphore but we don't need to bother
+	 * looking to see whether we got the lock or  not since we do
+	 * the same thing regardless of whether we got the lock or not.
+	 * We got the lock - we release it.
+	 * We timeout trying to get the lock - we force its release.
+	 */
+	ixgbe_get_swfw_sync_semaphore(hw);
+	ixgbe_release_swfw_sync_semaphore(hw);
 }
 
 /**

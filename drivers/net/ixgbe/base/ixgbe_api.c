@@ -1639,6 +1639,20 @@ void ixgbe_release_swfw_semaphore(struct ixgbe_hw *hw, u32 mask)
 		hw->mac.ops.release_swfw_sync(hw, mask);
 }
 
+/**
+ *  ixgbe_init_swfw_semaphore - Clean up SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *
+ *  Attempts to acquire the SWFW semaphore through SW_FW_SYNC register.
+ *  Regardless of whether is succeeds or not it then release the semaphore.
+ *  This is function is called to recover from catastrophic failures that
+ *  may have left the semaphore locked.
+ **/
+void ixgbe_init_swfw_semaphore(struct ixgbe_hw *hw)
+{
+	if (hw->mac.ops.init_swfw_sync)
+		hw->mac.ops.init_swfw_sync(hw);
+}
 
 void ixgbe_disable_rx(struct ixgbe_hw *hw)
 {
