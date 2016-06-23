@@ -1041,6 +1041,7 @@ s32 ixgbe_get_phy_token(struct ixgbe_hw *hw)
 	token_cmd.hdr.cmd = FW_PHY_TOKEN_REQ_CMD;
 	token_cmd.hdr.buf_len = FW_PHY_TOKEN_REQ_LEN;
 	token_cmd.hdr.cmd_or_resp.cmd_resv = 0;
+	token_cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
 	token_cmd.port_number = hw->bus.lan_id;
 	token_cmd.command_type = FW_PHY_TOKEN_REQ;
 	token_cmd.pad = 0;
@@ -1071,6 +1072,7 @@ s32 ixgbe_put_phy_token(struct ixgbe_hw *hw)
 	token_cmd.hdr.cmd = FW_PHY_TOKEN_REQ_CMD;
 	token_cmd.hdr.buf_len = FW_PHY_TOKEN_REQ_LEN;
 	token_cmd.hdr.cmd_or_resp.cmd_resv = 0;
+	token_cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
 	token_cmd.port_number = hw->bus.lan_id;
 	token_cmd.command_type = FW_PHY_TOKEN_REL;
 	token_cmd.pad = 0;
@@ -1094,23 +1096,24 @@ s32 ixgbe_put_phy_token(struct ixgbe_hw *hw)
  *  @data: Data to write to the register
  **/
 s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
-	u32 device_type, u32 data)
+				  u32 device_type, u32 data)
 {
 	struct ixgbe_hic_internal_phy_req write_cmd;
 	s32 status;
 	UNREFERENCED_1PARAMETER(device_type);
 
+	memset(&write_cmd, 0, sizeof(write_cmd));
 	write_cmd.hdr.cmd = FW_INT_PHY_REQ_CMD;
 	write_cmd.hdr.buf_len = FW_INT_PHY_REQ_LEN;
+	write_cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
 	write_cmd.port_number = hw->bus.lan_id;
 	write_cmd.command_type = FW_INT_PHY_REQ_WRITE;
 	write_cmd.address = (u16)reg_addr;
-	write_cmd.rsv1 = 0;
 	write_cmd.write_data = data;
-	write_cmd.pad = 0;
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&write_cmd,
-		sizeof(write_cmd), IXGBE_HI_COMMAND_TIMEOUT, false);
+					      sizeof(write_cmd),
+					      IXGBE_HI_COMMAND_TIMEOUT, false);
 
 	return status;
 }
@@ -1124,23 +1127,23 @@ s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
  *  @data: Pointer to read data from the register
  **/
 s32 ixgbe_read_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
-	u32 device_type, u32 *data)
+				 u32 device_type, u32 *data)
 {
 	struct ixgbe_hic_internal_phy_req read_cmd;
 	s32 status;
 	UNREFERENCED_1PARAMETER(device_type);
 
+	memset(&read_cmd, 0, sizeof(read_cmd));
 	read_cmd.hdr.cmd = FW_INT_PHY_REQ_CMD;
 	read_cmd.hdr.buf_len = FW_INT_PHY_REQ_LEN;
+	read_cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
 	read_cmd.port_number = hw->bus.lan_id;
 	read_cmd.command_type = FW_INT_PHY_REQ_READ;
 	read_cmd.address = (u16)reg_addr;
-	read_cmd.rsv1 = 0;
-	read_cmd.write_data = 0;
-	read_cmd.pad = 0;
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&read_cmd,
-		sizeof(read_cmd), IXGBE_HI_COMMAND_TIMEOUT, true);
+					      sizeof(read_cmd),
+					      IXGBE_HI_COMMAND_TIMEOUT, true);
 
 	/* Extract the register value from the response. */
 	*data = ((struct ixgbe_hic_internal_phy_resp *)&read_cmd)->read_data;
