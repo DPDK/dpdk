@@ -111,7 +111,7 @@ bad=$(echo "$headlines" | awk 'length>60 {print}' | sed 's,^,\t,')
 [ -z "$bad" ] || printf "Headline too long:\n$bad\n"
 
 # check body lines length (75 max)
-bad=$(echo "$bodylines" | awk 'length>75 {print}' | sed 's,^,\t,')
+bad=$(echo "$bodylines" | grep -v '^Fixes:' | awk 'length>75 {print}' | sed 's,^,\t,')
 [ -z "$bad" ] || printf "Line too long:\n$bad\n"
 
 # check tags spelling
