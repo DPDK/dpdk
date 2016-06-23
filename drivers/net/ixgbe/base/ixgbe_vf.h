@@ -31,8 +31,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-#ifndef __IXGBE_VF_H__
-#define __IXGBE_VF_H__
+#ifndef _IXGBE_VF_H_
+#define _IXGBE_VF_H_
 
 #define IXGBE_VF_IRQ_CLEAR_MASK	7
 #define IXGBE_VF_MAX_TX_QUEUES	8
