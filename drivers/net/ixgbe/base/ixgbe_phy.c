@@ -454,6 +454,9 @@ enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id)
 	case X557_PHY_ID:
 		phy_type = ixgbe_phy_x550em_ext_t;
 		break;
+	case IXGBE_M88E1500_E_PHY_ID:
+		phy_type = ixgbe_phy_m88;
+		break;
 	default:
 		phy_type = ixgbe_phy_unknown;
 		break;
@@ -615,13 +618,12 @@ s32 ixgbe_read_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
 
 	DEBUGFUNC("ixgbe_read_phy_reg_generic");
 
-	if (hw->mac.ops.acquire_swfw_sync(hw, gssr) == IXGBE_SUCCESS) {
-		status = ixgbe_read_phy_reg_mdi(hw, reg_addr, device_type,
-						phy_data);
-		hw->mac.ops.release_swfw_sync(hw, gssr);
-	} else {
-		status = IXGBE_ERR_SWFW_SYNC;
-	}
+	if (hw->mac.ops.acquire_swfw_sync(hw, gssr))
+		return IXGBE_ERR_SWFW_SYNC;
+
+	status = hw->phy.ops.read_reg_mdi(hw, reg_addr, device_type, phy_data);
+
+	hw->mac.ops.release_swfw_sync(hw, gssr);
 
 	return status;
 }

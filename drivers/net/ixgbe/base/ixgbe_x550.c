@@ -329,6 +329,100 @@ STATIC void ixgbe_setup_mux_ctl(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_read_phy_reg_mdi_22 - Read from a clause 22 PHY register without lock
+ * @hw: pointer to hardware structure
+ * @reg_addr: 32 bit address of PHY register to read
+ * @dev_type: always unused
+ * @phy_data: Pointer to read data from PHY register
+ */
+static s32 ixgbe_read_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
+				     u32 dev_type, u16 *phy_data)
+{
+	u32 i, data, command;
+	UNREFERENCED_1PARAMETER(dev_type);
+
+	/* Setup and write the read command */
+	command = (reg_addr << IXGBE_MSCA_NP_ADDR_SHIFT)  |
+		(reg_addr << IXGBE_MSCA_DEV_TYPE_SHIFT) |
+		(hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
+		IXGBE_MSCA_OLD_PROTOCOL | IXGBE_MSCA_READ |
+		IXGBE_MSCA_MDI_COMMAND;
+
+	IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
+
+	/* Check every 10 usec to see if the access completed.
+	 * The MDI Command bit will clear when the operation is
+	 * complete
+	 */
+	for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
+		usec_delay(10);
+
+		command = IXGBE_READ_REG(hw, IXGBE_MSCA);
+		if (!(command & IXGBE_MSCA_MDI_COMMAND))
+			break;
+	}
+
+	if (command & IXGBE_MSCA_MDI_COMMAND) {
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			      "PHY read command did not complete.\n");
+		return IXGBE_ERR_PHY;
+	}
+
+	/* Read operation is complete.  Get the data from MSRWD */
+	data = IXGBE_READ_REG(hw, IXGBE_MSRWD);
+	data >>= IXGBE_MSRWD_READ_DATA_SHIFT;
+	*phy_data = (u16)data;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_write_phy_reg_mdi_22 - Write to a clause 22 PHY register without lock
+ * @hw: pointer to hardware structure
+ * @reg_addr: 32 bit PHY register to write
+ * @dev_type: always unused
+ * @phy_data: Data to write to the PHY register
+ */
+static s32 ixgbe_write_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
+				      u32 dev_type, u16 phy_data)
+{
+	u32 i, command;
+	UNREFERENCED_1PARAMETER(dev_type);
+
+	/* Put the data in the MDI single read and write data register*/
+	IXGBE_WRITE_REG(hw, IXGBE_MSRWD, (u32)phy_data);
+
+	/* Setup and write the write command */
+	command = (reg_addr << IXGBE_MSCA_NP_ADDR_SHIFT)  |
+		(reg_addr << IXGBE_MSCA_DEV_TYPE_SHIFT) |
+		(hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
+		IXGBE_MSCA_OLD_PROTOCOL | IXGBE_MSCA_WRITE |
+		IXGBE_MSCA_MDI_COMMAND;
+
+	IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
+
+	/* Check every 10 usec to see if the access completed.
+	 * The MDI Command bit will clear when the operation is
+	 * complete
+	 */
+	for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
+		usec_delay(10);
+
+		command = IXGBE_READ_REG(hw, IXGBE_MSCA);
+		if (!(command & IXGBE_MSCA_MDI_COMMAND))
+			break;
+	}
+
+	if (command & IXGBE_MSCA_MDI_COMMAND) {
+		ERROR_REPORT1(IXGBE_ERROR_POLLING,
+			      "PHY write cmd didn't complete\n");
+		return IXGBE_ERR_PHY;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  * ixgbe_identify_phy_1g - Get 1g PHY type based on device id
  * @hw: pointer to hardware structure
  *
@@ -336,28 +430,33 @@ STATIC void ixgbe_setup_mux_ctl(struct ixgbe_hw *hw)
  */
 static s32 ixgbe_identify_phy_1g(struct ixgbe_hw *hw)
 {
+	u32 swfw_mask = hw->phy.phy_semaphore_mask;
 	u16 phy_id_high;
 	u16 phy_id_low;
-	u32 val;
+	s32 rc;
 
-	val = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_ID_HIGH,
-				   hw->phy.addr, &phy_id_high);
-	if (val || phy_id_high == 0xFFFF) {
-		hw->phy.type = ixgbe_phy_sgmii;
-		return 0;
-	}
+	rc = hw->mac.ops.acquire_swfw_sync(hw, swfw_mask);
+	if (rc)
+		return rc;
 
-	val = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_ID_LOW,
-				   hw->phy.addr, &phy_id_low);
-	if (val)
-		return val;
+	rc = ixgbe_read_phy_reg_mdi_22(hw, IXGBE_MDIO_PHY_ID_HIGH, 0,
+				       &phy_id_high);
+	if (rc)
+		goto rel_out;
+
+	rc = ixgbe_read_phy_reg_mdi_22(hw, IXGBE_MDIO_PHY_ID_LOW, 0,
+				       &phy_id_low);
+	if (rc)
+		goto rel_out;
 
 	hw->phy.id = (u32)phy_id_high << 16;
 	hw->phy.id |= phy_id_low & IXGBE_PHY_REVISION_MASK;
 	hw->phy.revision = (u32)phy_id_low & ~IXGBE_PHY_REVISION_MASK;
-	hw->phy.type = ixgbe_phy_m88;
 
-	return 0;
+rel_out:
+	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+
+	return rc;
 }
 
 /**
@@ -400,6 +499,11 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		return ixgbe_identify_phy_generic(hw);
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+		hw->phy.phy_semaphore_mask = IXGBE_GSSR_TOKEN_SM;
+		if (hw->bus.lan_id)
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
+		else
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY0_SM;
 		return ixgbe_identify_phy_1g(hw);
 	default:
 		break;
@@ -1842,6 +1946,175 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 }
 
 /**
+ * ixgbe_set_master_slave_mode - Set up PHY for master/slave mode
+ * @hw: pointer to hardware structure
+ *
+ * Must be called while holding the PHY semaphore and token
+ */
+static s32 ixgbe_set_master_slave_mode(struct ixgbe_hw *hw)
+{
+	u16 phy_data;
+	s32 rc;
+
+	/* Resolve master/slave mode */
+	rc = ixgbe_read_phy_reg_mdi_22(hw, IXGBE_M88E1500_1000T_CTRL, 0,
+				       &phy_data);
+	if (rc)
+		return rc;
+
+	/* load defaults for future use */
+	if (phy_data & IXGBE_M88E1500_1000T_CTRL_MS_ENABLE) {
+		if (phy_data & IXGBE_M88E1500_1000T_CTRL_MS_VALUE)
+			hw->phy.original_ms_type = ixgbe_ms_force_master;
+		else
+			hw->phy.original_ms_type = ixgbe_ms_force_slave;
+	} else {
+		hw->phy.original_ms_type = ixgbe_ms_auto;
+	}
+
+	switch (hw->phy.ms_type) {
+	case ixgbe_ms_force_master:
+		phy_data |= IXGBE_M88E1500_1000T_CTRL_MS_ENABLE;
+		phy_data |= IXGBE_M88E1500_1000T_CTRL_MS_VALUE;
+		break;
+	case ixgbe_ms_force_slave:
+		phy_data |= IXGBE_M88E1500_1000T_CTRL_MS_ENABLE;
+		phy_data &= ~IXGBE_M88E1500_1000T_CTRL_MS_VALUE;
+		break;
+	case ixgbe_ms_auto:
+		phy_data &= ~IXGBE_M88E1500_1000T_CTRL_MS_ENABLE;
+		break;
+	default:
+		break;
+	}
+
+	return ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_1000T_CTRL, 0,
+					  phy_data);
+}
+
+/**
+ * ixgbe_reset_phy_m88_nolock - Reset m88 PHY without locking
+ * @hw: pointer to hardware structure
+ *
+ * Must be called while holding the PHY semaphore and token
+ */
+static s32 ixgbe_reset_phy_m88_nolock(struct ixgbe_hw *hw)
+{
+	s32 rc;
+
+	rc = ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 1);
+	if (rc)
+		return rc;
+
+	rc = ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_FIBER_CTRL, 0,
+					IXGBE_M88E1500_FIBER_CTRL_RESET |
+					IXGBE_M88E1500_FIBER_CTRL_DUPLEX_FULL |
+					IXGBE_M88E1500_FIBER_CTRL_SPEED_MSB);
+	if (rc)
+		goto res_out;
+
+	rc = ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 18);
+	if (rc)
+		goto res_out;
+
+	rc = ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_GEN_CTRL, 0,
+					IXGBE_M88E1500_GEN_CTRL_RESET |
+					IXGBE_M88E1500_GEN_CTRL_SGMII_COPPER);
+	if (rc)
+		goto res_out;
+
+	rc = ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
+	if (rc)
+		goto res_out;
+
+	rc = ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_COPPER_CTRL, 0,
+					IXGBE_M88E1500_COPPER_CTRL_RESET |
+					IXGBE_M88E1500_COPPER_CTRL_AN_EN |
+					IXGBE_M88E1500_COPPER_CTRL_RESTART_AN |
+					IXGBE_M88E1500_COPPER_CTRL_FULL_DUPLEX |
+					IXGBE_M88E1500_COPPER_CTRL_SPEED_MSB);
+
+res_out:
+	ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
+	return rc;
+}
+
+/**
+ * ixgbe_reset_phy_m88 - Reset m88 PHY
+ * @hw: pointer to hardware structure
+ */
+static s32 ixgbe_reset_phy_m88(struct ixgbe_hw *hw)
+{
+	u32 swfw_mask = hw->phy.phy_semaphore_mask;
+	s32 rc;
+
+	if (hw->phy.reset_disable || ixgbe_check_reset_blocked(hw))
+		return IXGBE_SUCCESS;
+
+	rc = hw->mac.ops.acquire_swfw_sync(hw, swfw_mask);
+	if (rc)
+		return rc;
+
+	rc = ixgbe_reset_phy_m88_nolock(hw);
+
+	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+	return rc;
+}
+
+/**
+ * ixgbe_setup_m88 - setup m88 PHY
+ * @hw: pointer to hardware structure
+ */
+static s32 ixgbe_setup_m88(struct ixgbe_hw *hw)
+{
+	u32 swfw_mask = hw->phy.phy_semaphore_mask;
+	struct ixgbe_phy_info *phy = &hw->phy;
+	u16 phy_data;
+	s32 rc;
+
+	if (phy->reset_disable || ixgbe_check_reset_blocked(hw))
+		return IXGBE_SUCCESS;
+
+	rc = hw->mac.ops.acquire_swfw_sync(hw, swfw_mask);
+	if (rc)
+		return rc;
+
+	rc = ixgbe_read_phy_reg_mdi_22(hw, IXGBE_M88E1500_PHY_SPEC_CTRL, 0,
+				       &phy_data);
+	if (rc)
+		goto rel_out;
+
+	/* Enable downshift and setting it to X6 */
+	phy_data &= ~IXGBE_M88E1500_PSCR_DOWNSHIFT_ENABLE;
+	phy_data |= IXGBE_M88E1500_PSCR_DOWNSHIFT_6X;
+	phy_data |= IXGBE_M88E1500_PSCR_DOWNSHIFT_ENABLE;
+	rc = ixgbe_write_phy_reg_mdi_22(hw,
+					IXGBE_M88E1500_PHY_SPEC_CTRL, 0,
+					phy_data);
+	if (rc)
+		goto rel_out;
+
+	ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
+
+	/* Commit the changes */
+	rc = ixgbe_reset_phy_m88_nolock(hw);
+	if (rc) {
+		DEBUGOUT("Error committing the PHY changes\n");
+		goto rel_out;
+	}
+
+	rc = ixgbe_set_master_slave_mode(hw);
+
+	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+	return rc;
+
+rel_out:
+	ixgbe_write_phy_reg_mdi_22(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
+	hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+	return rc;
+}
+
+/**
  *  ixgbe_read_mng_if_sel_x550em - Read NW_MNG_IF_SEL register
  *  @hw: pointer to hardware structure
  *
@@ -1935,6 +2208,10 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.setup_link = NULL;
 		break;
 	case ixgbe_phy_m88:
+		phy->ops.setup_link = ixgbe_setup_m88;
+		phy->ops.read_reg_mdi = ixgbe_read_phy_reg_mdi_22;
+		phy->ops.write_reg_mdi = ixgbe_write_phy_reg_mdi_22;
+		phy->ops.reset = ixgbe_reset_phy_m88;
 		break;
 	default:
 		break;

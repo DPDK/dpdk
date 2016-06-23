@@ -1607,7 +1607,8 @@ struct ixgbe_dmac_config {
 #define ATH_PHY_ID	0x03429050
 
 /* PHY Types */
-#define IXGBE_M88E1145_E_PHY_ID	0x01410CD0
+#define IXGBE_M88E1500_E_PHY_ID		0x01410DD0
+#define IXGBE_M88E1543_E_PHY_ID		0x01410EA0
 
 /* Special PHY Init Routine */
 #define IXGBE_PHY_INIT_OFFSET_NL	0x002B
@@ -3250,6 +3251,7 @@ typedef u32 ixgbe_autoneg_advertised;
 /* Link speed */
 typedef u32 ixgbe_link_speed;
 #define IXGBE_LINK_SPEED_UNKNOWN	0
+#define IXGBE_LINK_SPEED_10_FULL	0x0004
 #define IXGBE_LINK_SPEED_100_FULL	0x0008
 #define IXGBE_LINK_SPEED_1GB_FULL	0x0020
 #define IXGBE_LINK_SPEED_2_5GB_FULL	0x0400
@@ -3572,6 +3574,14 @@ enum ixgbe_fc_mode {
 	ixgbe_fc_tx_pause,
 	ixgbe_fc_full,
 	ixgbe_fc_default
+};
+
+/* Master/slave control */
+enum ixgbe_ms_type {
+	ixgbe_ms_hw_default = 0,
+	ixgbe_ms_force_master,
+	ixgbe_ms_force_slave,
+	ixgbe_ms_auto
 };
 
 /* Smart Speed Settings */
@@ -3949,6 +3959,8 @@ struct ixgbe_phy_info {
 	bool reset_disable;
 	ixgbe_autoneg_advertised autoneg_advertised;
 	ixgbe_link_speed speeds_supported;
+	enum ixgbe_ms_type ms_type;
+	enum ixgbe_ms_type original_ms_type;
 	enum ixgbe_smart_speed smart_speed;
 	bool smart_speed_active;
 	bool multispeed_fiber;
