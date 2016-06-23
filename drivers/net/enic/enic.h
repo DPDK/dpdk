@@ -46,6 +46,8 @@
 #include "vnic_rss.h"
 #include "enic_res.h"
 #include "cq_enet_desc.h"
+#include <sys/queue.h>
+#include <rte_spinlock.h>
 
 #define DRV_NAME		"enic_pmd"
 #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Poll-mode Driver"
@@ -98,6 +100,11 @@ struct enic_soft_stats {
 	rte_atomic64_t rx_packet_errors;
 };
 
+struct enic_memzone_entry {
+	const struct rte_memzone *rz;
+	LIST_ENTRY(enic_memzone_entry) entries;
+};
+
 /* Per-instance private data structure */
 struct enic {
 	struct enic *next;
@@ -143,6 +150,11 @@ struct enic {
 
 	/* software counters */
 	struct enic_soft_stats soft_stats;
+
+	/* linked list storing memory allocations */
+	LIST_HEAD(enic_memzone_list, enic_memzone_entry) memzone_list;
+	rte_spinlock_t memzone_list_lock;
+
 };
 
 static inline unsigned int enic_sop_rq(unsigned int rq)

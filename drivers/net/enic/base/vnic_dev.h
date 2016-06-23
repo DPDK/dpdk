@@ -102,7 +102,7 @@ unsigned int vnic_dev_get_res_count(struct vnic_dev *vdev,
 void vnic_register_cbacks(struct vnic_dev *vdev,
 	void *(*alloc_consistent)(void *priv, size_t size,
 		dma_addr_t *dma_handle, u8 *name),
-	void (*free_consistent)(struct rte_pci_device *hwdev,
+	void (*free_consistent)(void *priv,
 		size_t size, void *vaddr,
 		dma_addr_t dma_handle));
 void __iomem *vnic_dev_get_res(struct vnic_dev *vdev, enum vnic_res_type type,

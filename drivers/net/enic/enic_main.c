@@ -340,12 +340,14 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 }
 
 static void *
-enic_alloc_consistent(__rte_unused void *priv, size_t size,
+enic_alloc_consistent(void *priv, size_t size,
 	dma_addr_t *dma_handle, u8 *name)
 {
 	void *vaddr;
 	const struct rte_memzone *rz;
 	*dma_handle = 0;
+	struct enic *enic = (struct enic *)priv;
+	struct enic_memzone_entry *mze;
 
 	rz = rte_memzone_reserve_aligned((const char *)name,
 					 size, SOCKET_ID_ANY, 0, ENIC_ALIGN);
@@ -358,16 +360,49 @@ enic_alloc_consistent(__rte_unused void *priv, size_t size,
 	vaddr = rz->addr;
 	*dma_handle = (dma_addr_t)rz->phys_addr;
 
+	mze = rte_malloc("enic memzone entry",
+			 sizeof(struct enic_memzone_entry), 0);
+
+	if (!mze) {
+		pr_err("%s : Failed to allocate memory for memzone list\n",
+		       __func__);
+		rte_memzone_free(rz);
+	}
+
+	mze->rz = rz;
+
+	rte_spinlock_lock(&enic->memzone_list_lock);
+	LIST_INSERT_HEAD(&enic->memzone_list, mze, entries);
+	rte_spinlock_unlock(&enic->memzone_list_lock);
+
 	return vaddr;
 }
 
 static void
-enic_free_consistent(__rte_unused struct rte_pci_device *hwdev,
-	__rte_unused size_t size,
-	__rte_unused void *vaddr,
-	__rte_unused dma_addr_t dma_handle)
+enic_free_consistent(void *priv,
+		     __rte_unused size_t size,
+		     void *vaddr,
+		     dma_addr_t dma_handle)
 {
-	/* Nothing to be done */
+	struct enic_memzone_entry *mze;
+	struct enic *enic = (struct enic *)priv;
+
+	rte_spinlock_lock(&enic->memzone_list_lock);
+	LIST_FOREACH(mze, &enic->memzone_list, entries) {
+		if (mze->rz->addr == vaddr &&
+		    mze->rz->phys_addr == dma_handle)
+			break;
+	}
+	if (mze == NULL) {
+		rte_spinlock_unlock(&enic->memzone_list_lock);
+		dev_warning(enic,
+			    "Tried to free memory, but couldn't find it in the memzone list\n");
+		return;
+	}
+	LIST_REMOVE(mze, entries);
+	rte_spinlock_unlock(&enic->memzone_list_lock);
+	rte_memzone_free(mze->rz);
+	rte_free(mze);
 }
 
 static void
@@ -843,7 +878,7 @@ static int enic_set_rsskey(struct enic *enic)
 		rss_key_buf_pa,
 		sizeof(union vnic_rss_key));
 
-	enic_free_consistent(enic->pdev, sizeof(union vnic_rss_key),
+	enic_free_consistent(enic, sizeof(union vnic_rss_key),
 		rss_key_buf_va, rss_key_buf_pa);
 
 	return err;
@@ -870,7 +905,7 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
 		rss_cpu_buf_pa,
 		sizeof(union vnic_rss_cpu));
 
-	enic_free_consistent(enic->pdev, sizeof(union vnic_rss_cpu),
+	enic_free_consistent(enic, sizeof(union vnic_rss_cpu),
 		rss_cpu_buf_va, rss_cpu_buf_pa);
 
 	return err;
@@ -1055,6 +1090,9 @@ int enic_probe(struct enic *enic)
 		dev_err(enic, "vNIC registration failed, aborting\n");
 		goto err_out;
 	}
+
+	LIST_INIT(&enic->memzone_list);
+	rte_spinlock_init(&enic->memzone_list_lock);
 
 	vnic_register_cbacks(enic->vdev,
 		enic_alloc_consistent,

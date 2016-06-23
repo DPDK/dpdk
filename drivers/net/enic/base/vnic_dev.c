@@ -83,7 +83,7 @@ struct vnic_dev {
 	struct vnic_intr_coal_timer_info intr_coal_timer_info;
 	void *(*alloc_consistent)(void *priv, size_t size,
 		dma_addr_t *dma_handle, u8 *name);
-	void (*free_consistent)(struct rte_pci_device *hwdev,
+	void (*free_consistent)(void *priv,
 		size_t size, void *vaddr,
 		dma_addr_t dma_handle);
 };
@@ -101,7 +101,7 @@ void *vnic_dev_priv(struct vnic_dev *vdev)
 void vnic_register_cbacks(struct vnic_dev *vdev,
 	void *(*alloc_consistent)(void *priv, size_t size,
 	    dma_addr_t *dma_handle, u8 *name),
-	void (*free_consistent)(struct rte_pci_device *hwdev,
+	void (*free_consistent)(void *priv,
 	    size_t size, void *vaddr,
 	    dma_addr_t dma_handle))
 {
@@ -807,7 +807,7 @@ int vnic_dev_notify_unsetcmd(struct vnic_dev *vdev)
 int vnic_dev_notify_unset(struct vnic_dev *vdev)
 {
 	if (vdev->notify && !vnic_dev_in_reset(vdev)) {
-		vdev->free_consistent(vdev->pdev,
+		vdev->free_consistent(vdev->priv,
 			sizeof(struct vnic_devcmd_notify),
 			vdev->notify,
 			vdev->notify_pa);
@@ -924,16 +924,16 @@ void vnic_dev_unregister(struct vnic_dev *vdev)
 {
 	if (vdev) {
 		if (vdev->notify)
-			vdev->free_consistent(vdev->pdev,
+			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_devcmd_notify),
 				vdev->notify,
 				vdev->notify_pa);
 		if (vdev->stats)
-			vdev->free_consistent(vdev->pdev,
+			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_stats),
 				vdev->stats, vdev->stats_pa);
 		if (vdev->fw_info)
-			vdev->free_consistent(vdev->pdev,
+			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_devcmd_fw_info),
 				vdev->fw_info, vdev->fw_info_pa);
 		kfree(vdev);
@@ -1041,7 +1041,7 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 
 		ret = vnic_dev_cmd(vdev, CMD_ADD_FILTER, &a0, &a1, wait);
 		*entry = (u16)a0;
-		vdev->free_consistent(vdev->pdev, tlv_size, tlv_va, tlv_pa);
+		vdev->free_consistent(vdev->priv, tlv_size, tlv_va, tlv_pa);
 	} else if (cmd == CLSF_DEL) {
 		a0 = *entry;
 		ret = vnic_dev_cmd(vdev, CMD_DEL_FILTER, &a0, &a1, wait);
