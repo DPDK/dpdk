@@ -1551,7 +1551,8 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 		mac->ops.setup_link = ixgbe_setup_mac_link_multispeed_fiber;
 		mac->ops.set_rate_select_speed =
 					ixgbe_set_soft_rate_select_speed;
-		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP_N)
+		if ((hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP_N) ||
+		    (hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP))
 			mac->ops.setup_mac_link =
 				ixgbe_setup_mac_link_sfp_x550a;
 		else
@@ -2207,8 +2208,9 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
 				   bool autoneg_wait_to_complete)
 {
 	s32 ret_val;
-	u32 reg_val;
+	u16 reg_phy_ext;
 	bool setup_linear = false;
+	u32 reg_slice, reg_phy_int, slice_offset;
 
 	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
 
@@ -2224,32 +2226,73 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
 	if (ret_val != IXGBE_SUCCESS)
 		return ret_val;
 
-	/* Configure internal PHY for native SFI */
-	ret_val = hw->mac.ops.read_iosf_sb_reg(hw,
-		       IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
-		       IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP_N) {
+		/* Configure internal PHY for native SFI */
+		ret_val = hw->mac.ops.read_iosf_sb_reg(hw,
+			       IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
+			       IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_phy_int);
 
-	if (ret_val != IXGBE_SUCCESS)
-		return ret_val;
+		if (ret_val != IXGBE_SUCCESS)
+			return ret_val;
 
-	if (setup_linear) {
-		reg_val &= ~IXGBE_KRM_AN_CNTL_8_LIMITING;
-		reg_val |= IXGBE_KRM_AN_CNTL_8_LINEAR;
+		if (setup_linear) {
+			reg_phy_int &= ~IXGBE_KRM_AN_CNTL_8_LIMITING;
+			reg_phy_int |= IXGBE_KRM_AN_CNTL_8_LINEAR;
+		} else {
+			reg_phy_int |= IXGBE_KRM_AN_CNTL_8_LIMITING;
+			reg_phy_int &= ~IXGBE_KRM_AN_CNTL_8_LINEAR;
+		}
+
+		ret_val = hw->mac.ops.write_iosf_sb_reg(hw,
+				IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_phy_int);
+
+		if (ret_val != IXGBE_SUCCESS)
+			return ret_val;
+
+		/* Setup XFI/SFI internal link. */
+		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
 	} else {
-		reg_val |= IXGBE_KRM_AN_CNTL_8_LIMITING;
-		reg_val &= ~IXGBE_KRM_AN_CNTL_8_LINEAR;
+		/* Configure internal PHY for KR/KX. */
+		ixgbe_setup_kr_speed_x550em(hw, speed);
+
+		/* Get CS4227 MDIO address */
+		hw->phy.addr =
+			(hw->phy.nw_mng_if_sel &
+			 IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD)
+			>> IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT;
+
+		if (hw->phy.addr == 0x0 || hw->phy.addr == 0xFFFF) {
+			/* Find Address */
+			DEBUGOUT("Invalid NW_MNG_IF_SEL.MDIO_PHY_ADD value\n");
+			return IXGBE_ERR_PHY_ADDR_INVALID;
+		}
+
+		/* Get external PHY device id */
+		ret_val = hw->phy.ops.read_reg(hw, IXGBE_CS4227_GLOBAL_ID_MSB,
+				       IXGBE_MDIO_ZERO_DEV_TYPE, &reg_phy_ext);
+
+		if (ret_val != IXGBE_SUCCESS)
+			return ret_val;
+
+		/* When configuring quad port CS4223, the MAC instance is part
+		 * of the slice offset.
+		 */
+		if (reg_phy_ext == IXGBE_CS4223_PHY_ID)
+			slice_offset = (hw->bus.lan_id +
+					(hw->bus.instance_id << 1)) << 12;
+		else
+			slice_offset = hw->bus.lan_id << 12;
+
+		/* Configure CS4227/CS4223 LINE side to proper mode. */
+		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB + slice_offset;
+		if (setup_linear)
+			reg_phy_ext = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+		else
+			reg_phy_ext = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
+		ret_val = hw->phy.ops.write_reg(hw, reg_slice,
+					IXGBE_MDIO_ZERO_DEV_TYPE, reg_phy_ext);
 	}
-
-	ret_val = hw->mac.ops.write_iosf_sb_reg(hw,
-			IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
-			IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
-
-	if (ret_val != IXGBE_SUCCESS)
-		return ret_val;
-
-	/* Setup XFI/SFI internal link. */
-	ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
-
 	return ret_val;
 }
 

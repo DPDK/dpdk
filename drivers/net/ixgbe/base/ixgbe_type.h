@@ -1472,6 +1472,7 @@ struct ixgbe_dmac_config {
 #define IXGBE_CORECTL_WRITE_CMD		0x00010000
 
 /* Device Type definitions for new protocol MDIO commands */
+#define IXGBE_MDIO_ZERO_DEV_TYPE		0x0
 #define IXGBE_MDIO_PMA_PMD_DEV_TYPE		0x1
 #define IXGBE_MDIO_PCS_DEV_TYPE			0x3
 #define IXGBE_MDIO_PHY_XS_DEV_TYPE		0x4
@@ -2247,6 +2248,9 @@ enum {
 #define IXGBE_PBANUM_PTR_GUARD		0xFAFA
 #define IXGBE_EEPROM_CHECKSUM		0x3F
 #define IXGBE_EEPROM_SUM		0xBABA
+#define IXGBE_EEPROM_CTRL_4		0x45
+#define IXGBE_EE_CTRL_4_INST_ID		0x10
+#define IXGBE_EE_CTRL_4_INST_ID_SHIFT	4
 #define IXGBE_PCIE_ANALOG_PTR		0x03
 #define IXGBE_ATLAS0_CONFIG_PTR		0x04
 #define IXGBE_PHY_PTR			0x04
@@ -3630,6 +3634,7 @@ struct ixgbe_bus_info {
 
 	u16 func;
 	u16 lan_id;
+	u16 instance_id;
 };
 
 /* Flow control parameters */
@@ -4130,5 +4135,8 @@ struct ixgbe_hw {
 
 #define IXGBE_NW_MNG_IF_SEL		0x00011178
 #define IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE (1 << 24)
+#define IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT 3
+#define IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD	\
+		(0x1F << IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT)
 
 #endif /* _IXGBE_TYPE_H_ */
