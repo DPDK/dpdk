@@ -4373,8 +4373,9 @@ u8 ixgbe_calculate_checksum(u8 *buffer, u32 length)
  *   So we will leave this up to the caller to read back the data
  *   in these cases.
  *
- *  Communicates with the manageability block.  On success return IXGBE_SUCCESS
- *  else return IXGBE_ERR_HOST_INTERFACE_COMMAND.
+ *  Communicates with the manageability block. On success return IXGBE_SUCCESS
+ *  else returns semaphore error when encountering an error acquiring
+ *  semaphore or IXGBE_ERR_HOST_INTERFACE_COMMAND when command fails.
  **/
 s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 				 u32 length, u32 timeout, bool return_data)
@@ -4383,6 +4384,7 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	u32 hdr_size = sizeof(struct ixgbe_hic_hdr);
 	u16 buf_len;
 	u16 dword_len;
+	s32 status;
 
 	DEBUGFUNC("ixgbe_host_interface_command");
 
@@ -4390,6 +4392,11 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 		DEBUGOUT1("Buffer length failure buffersize=%d.\n", length);
 		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
+	/* Take management host interface semaphore */
+	status = hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_SW_MNG_SM);
+
+	if (status)
+		return status;
 
 	/* Set bit 9 of FWSTS clearing FW reset indication */
 	fwsts = IXGBE_READ_REG(hw, IXGBE_FWSTS);
@@ -4399,13 +4406,15 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	hicr = IXGBE_READ_REG(hw, IXGBE_HICR);
 	if ((hicr & IXGBE_HICR_EN) == 0) {
 		DEBUGOUT("IXGBE_HOST_EN bit disabled.\n");
-		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
+		status = IXGBE_ERR_HOST_INTERFACE_COMMAND;
+		goto rel_out;
 	}
 
 	/* Calculate length in DWORDs. We must be DWORD aligned */
 	if ((length % (sizeof(u32))) != 0) {
 		DEBUGOUT("Buffer length failure, not aligned to dword");
-		return IXGBE_ERR_INVALID_ARGUMENT;
+		status = IXGBE_ERR_INVALID_ARGUMENT;
+		goto rel_out;
 	}
 
 	dword_len = length >> 2;
@@ -4432,11 +4441,12 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	    !(IXGBE_READ_REG(hw, IXGBE_HICR) & IXGBE_HICR_SV)) {
 		ERROR_REPORT1(IXGBE_ERROR_CAUTION,
 			     "Command has failed with no status valid.\n");
-		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
+		status = IXGBE_ERR_HOST_INTERFACE_COMMAND;
+		goto rel_out;
 	}
 
 	if (!return_data)
-		return 0;
+		goto rel_out;
 
 	/* Calculate length in DWORDs */
 	dword_len = hdr_size >> 2;
@@ -4450,11 +4460,12 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 	/* If there is any thing in data position pull it in */
 	buf_len = ((struct ixgbe_hic_hdr *)buffer)->buf_len;
 	if (buf_len == 0)
-		return 0;
+		goto rel_out;
 
 	if (length < buf_len + hdr_size) {
 		DEBUGOUT("Buffer not large enough for reply message.\n");
-		return IXGBE_ERR_HOST_INTERFACE_COMMAND;
+		status = IXGBE_ERR_HOST_INTERFACE_COMMAND;
+		goto rel_out;
 	}
 
 	/* Calculate length in DWORDs, add 3 for odd lengths */
@@ -4466,7 +4477,10 @@ s32 ixgbe_host_interface_command(struct ixgbe_hw *hw, u32 *buffer,
 		IXGBE_LE32_TO_CPUS(&buffer[bi]);
 	}
 
-	return 0;
+rel_out:
+	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_SW_MNG_SM);
+
+	return status;
 }
 
 /**
@@ -4490,12 +4504,6 @@ s32 ixgbe_set_fw_drv_ver_generic(struct ixgbe_hw *hw, u8 maj, u8 min,
 	s32 ret_val = IXGBE_SUCCESS;
 
 	DEBUGFUNC("ixgbe_set_fw_drv_ver_generic");
-
-	if (hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_SW_MNG_SM)
-	    != IXGBE_SUCCESS) {
-		ret_val = IXGBE_ERR_SWFW_SYNC;
-		goto out;
-	}
 
 	fw_cmd.hdr.cmd = FW_CEM_CMD_DRIVER_INFO;
 	fw_cmd.hdr.buf_len = FW_CEM_CMD_DRIVER_INFO_LEN;
@@ -4528,8 +4536,6 @@ s32 ixgbe_set_fw_drv_ver_generic(struct ixgbe_hw *hw, u8 maj, u8 min,
 		break;
 	}
 
-	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_SW_MNG_SM);
-out:
 	return ret_val;
 }
 
