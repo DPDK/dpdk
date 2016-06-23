@@ -469,7 +469,8 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 {
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_A_SFP:
-		hw->phy.phy_semaphore_mask = IXGBE_GSSR_TOKEN_SM;
+		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
+		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
 		if (hw->bus.lan_id)
 			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
 		else
@@ -499,7 +500,8 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		return ixgbe_identify_phy_generic(hw);
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
-		hw->phy.phy_semaphore_mask = IXGBE_GSSR_TOKEN_SM;
+		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
+		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
 		if (hw->bus.lan_id)
 			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
 		else
@@ -1245,6 +1247,8 @@ s32 ixgbe_put_phy_token(struct ixgbe_hw *hw)
 		return status;
 	if (token_cmd.hdr.cmd_or_resp.ret_status == FW_PHY_TOKEN_OK)
 		return IXGBE_SUCCESS;
+
+	DEBUGOUT("Put PHY Token host interface command failed");
 	return IXGBE_ERR_FW_RESP_INVALID;
 }
 
@@ -3867,6 +3871,63 @@ static void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
 
 	if (hmask)
 		ixgbe_release_swfw_sync_X540(hw, hmask);
+}
+
+/**
+ *  ixgbe_read_phy_reg_x550a  - Reads specified PHY register
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit address of PHY register to read
+ *  @phy_data: Pointer to read data from PHY register
+ *
+ *  Reads a value from a specified PHY register using the SWFW lock and PHY
+ *  Token. The PHY Token is needed since the MDIO is shared between to MAC
+ *  instances.
+ **/
+s32 ixgbe_read_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
+			     u32 device_type, u16 *phy_data)
+{
+	s32 status;
+	u32 mask = hw->phy.phy_semaphore_mask | IXGBE_GSSR_TOKEN_SM;
+
+	DEBUGFUNC("ixgbe_read_phy_reg_x550a");
+
+	if (hw->mac.ops.acquire_swfw_sync(hw, mask))
+		return IXGBE_ERR_SWFW_SYNC;
+
+	status = hw->phy.ops.read_reg_mdi(hw, reg_addr, device_type, phy_data);
+
+	hw->mac.ops.release_swfw_sync(hw, mask);
+
+	return status;
+}
+
+/**
+ *  ixgbe_write_phy_reg_x550a - Writes specified PHY register
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit PHY register to write
+ *  @device_type: 5 bit device type
+ *  @phy_data: Data to write to the PHY register
+ *
+ *  Writes a value to specified PHY register using the SWFW lock and PHY Token.
+ *  The PHY Token is needed since the MDIO is shared between to MAC instances.
+ **/
+s32 ixgbe_write_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
+			      u32 device_type, u16 phy_data)
+{
+	s32 status;
+	u32 mask = hw->phy.phy_semaphore_mask | IXGBE_GSSR_TOKEN_SM;
+
+	DEBUGFUNC("ixgbe_write_phy_reg_x550a");
+
+	if (hw->mac.ops.acquire_swfw_sync(hw, mask) == IXGBE_SUCCESS) {
+		status = ixgbe_write_phy_reg_mdi(hw, reg_addr, device_type,
+						 phy_data);
+		hw->mac.ops.release_swfw_sync(hw, mask);
+	} else {
+		status = IXGBE_ERR_SWFW_SYNC;
+	}
+
+	return status;
 }
 
 /**
