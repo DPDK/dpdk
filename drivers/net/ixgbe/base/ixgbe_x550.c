@@ -1273,8 +1273,8 @@ s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 	write_cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
 	write_cmd.port_number = hw->bus.lan_id;
 	write_cmd.command_type = FW_INT_PHY_REQ_WRITE;
-	write_cmd.address = (u16)reg_addr;
-	write_cmd.write_data = data;
+	write_cmd.address = IXGBE_CPU_TO_BE16(reg_addr);
+	write_cmd.write_data = IXGBE_CPU_TO_LE32(data);
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&write_cmd,
 					      sizeof(write_cmd),
@@ -1294,24 +1294,27 @@ s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 s32 ixgbe_read_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 				 u32 device_type, u32 *data)
 {
-	struct ixgbe_hic_internal_phy_req read_cmd;
+	union {
+		struct ixgbe_hic_internal_phy_req cmd;
+		struct ixgbe_hic_internal_phy_resp rsp;
+	} hic;
 	s32 status;
 	UNREFERENCED_1PARAMETER(device_type);
 
-	memset(&read_cmd, 0, sizeof(read_cmd));
-	read_cmd.hdr.cmd = FW_INT_PHY_REQ_CMD;
-	read_cmd.hdr.buf_len = FW_INT_PHY_REQ_LEN;
-	read_cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
-	read_cmd.port_number = hw->bus.lan_id;
-	read_cmd.command_type = FW_INT_PHY_REQ_READ;
-	read_cmd.address = (u16)reg_addr;
+	memset(&hic, 0, sizeof(hic));
+	hic.cmd.hdr.cmd = FW_INT_PHY_REQ_CMD;
+	hic.cmd.hdr.buf_len = FW_INT_PHY_REQ_LEN;
+	hic.cmd.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	hic.cmd.port_number = hw->bus.lan_id;
+	hic.cmd.command_type = FW_INT_PHY_REQ_READ;
+	hic.cmd.address = IXGBE_CPU_TO_BE16(reg_addr);
 
-	status = ixgbe_host_interface_command(hw, (u32 *)&read_cmd,
-					      sizeof(read_cmd),
+	status = ixgbe_host_interface_command(hw, (u32 *)&hic.cmd,
+					      sizeof(hic.cmd),
 					      IXGBE_HI_COMMAND_TIMEOUT, true);
 
 	/* Extract the register value from the response. */
-	*data = ((struct ixgbe_hic_internal_phy_resp *)&read_cmd)->read_data;
+	*data = IXGBE_LE32_TO_CPU(hic.rsp.read_data);
 
 	return status;
 }

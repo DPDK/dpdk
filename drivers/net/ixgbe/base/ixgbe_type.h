@@ -3050,6 +3050,12 @@ enum ixgbe_fdir_pballoc_type {
 
 /* Host Interface Command Structures */
 
+#ifdef C99
+#pragma pack(push, 1)
+#else
+#pragma pack(1)
+#endif /* C99 */
+
 struct ixgbe_hic_hdr {
 	u8 cmd;
 	u8 buf_len;
@@ -3127,17 +3133,22 @@ struct ixgbe_hic_internal_phy_req {
 	struct ixgbe_hic_hdr hdr;
 	u8 port_number;
 	u8 command_type;
-	u16 address;
+	__be16 address;
 	u16 rsv1;
-	u32 write_data;
+	__le32 write_data;
 	u16 pad;
 };
 
 struct ixgbe_hic_internal_phy_resp {
 	struct ixgbe_hic_hdr hdr;
-	u32 read_data;
+	__le32 read_data;
 };
 
+#ifdef C99
+#pragma pack(pop)
+#else
+#pragma pack()
+#endif /* C99 */
 
 /* Transmit Descriptor - Legacy */
 struct ixgbe_legacy_tx_desc {
