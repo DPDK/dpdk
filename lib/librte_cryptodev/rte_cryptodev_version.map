@@ -32,3 +32,10 @@ DPDK_16.04 {
 
 	local: *;
 };
+
+DPDK_16.07 {
+	global:
+
+	rte_cryptodev_parse_vdev_init_params;
+
+} DPDK_16.04;

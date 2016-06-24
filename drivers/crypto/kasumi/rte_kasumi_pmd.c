@@ -38,7 +38,6 @@
 #include <rte_dev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
-#include <rte_kvargs.h>
 
 #include "rte_kasumi_pmd_private.h"
 
