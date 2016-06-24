@@ -217,12 +217,12 @@ parse_rxtxdev(const char *key, const char *value, void *extra_args)
 	struct pdump_tuples *pt = extra_args;
 
 	if (!strcmp(key, PDUMP_RX_DEV_ARG)) {
-		strncpy(pt->rx_dev, value, strlen(value));
+		snprintf(pt->rx_dev, sizeof(pt->rx_dev), "%s", value);
 		/* identify the tx stream type for pcap vdev */
 		if (if_nametoindex(pt->rx_dev))
 			pt->rx_vdev_stream_type = IFACE;
 	} else if (!strcmp(key, PDUMP_TX_DEV_ARG)) {
-		strncpy(pt->tx_dev, value, strlen(value));
+		snprintf(pt->tx_dev, sizeof(pt->tx_dev), "%s", value);
 		/* identify the tx stream type for pcap vdev */
 		if (if_nametoindex(pt->tx_dev))
 			pt->tx_vdev_stream_type = IFACE;
