@@ -242,14 +242,6 @@ struct txq_elt {
 	struct rte_mbuf *buf;
 };
 
-/* Linear buffer type. It is used when transmitting buffers with too many
- * segments that do not fit the hardware queue (see max_send_sge).
- * Extra segments are copied (linearized) in such buffers, replacing the
- * last SGE during TX.
- * The size is arbitrary but large enough to hold a jumbo frame with
- * 8 segments considering mbuf.buf_len is about 2048 bytes. */
-typedef uint8_t linear_t[16384];
-
 /* TX queue descriptor. */
 struct txq {
 	struct priv *priv; /* Back pointer to private data. */
@@ -262,12 +254,6 @@ struct txq {
 	int (*send_pending_inline)();
 #ifdef HAVE_VERBS_VLAN_INSERTION
 	int (*send_pending_inline_vlan)();
-#endif
-#endif
-#if MLX5_PMD_SGE_WR_N > 1
-	int (*send_pending_sg_list)();
-#ifdef HAVE_VERBS_VLAN_INSERTION
-	int (*send_pending_sg_list_vlan)();
 #endif
 #endif
 	int (*send_flush)(struct ibv_qp *qp);
@@ -289,9 +275,6 @@ struct txq {
 		uint32_t lkey; /* mr->lkey */
 	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
-	/* Elements used only for init part are here. */
-	linear_t (*elts_linear)[]; /* Linearized buffers. */
-	struct ibv_mr *mr_linear; /* Memory Region for linearized buffers. */
 #ifdef HAVE_VERBS_VLAN_INSERTION
 	struct ibv_exp_qp_burst_family_v1 *if_qp; /* QP burst interface. */
 #else

@@ -82,24 +82,11 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 	unsigned int i;
 	struct txq_elt (*elts)[elts_n] =
 		rte_calloc_socket("TXQ", 1, sizeof(*elts), 0, txq->socket);
-	linear_t (*elts_linear)[elts_n] =
-		rte_calloc_socket("TXQ", 1, sizeof(*elts_linear), 0,
-				  txq->socket);
-	struct ibv_mr *mr_linear = NULL;
 	int ret = 0;
 
-	if ((elts == NULL) || (elts_linear == NULL)) {
+	if (elts == NULL) {
 		ERROR("%p: can't allocate packets array", (void *)txq);
 		ret = ENOMEM;
-		goto error;
-	}
-	mr_linear =
-		ibv_reg_mr(txq->priv->pd, elts_linear, sizeof(*elts_linear),
-			   IBV_ACCESS_LOCAL_WRITE);
-	if (mr_linear == NULL) {
-		ERROR("%p: unable to configure MR, ibv_reg_mr() failed",
-		      (void *)txq);
-		ret = EINVAL;
 		goto error;
 	}
 	for (i = 0; (i != elts_n); ++i) {
@@ -119,15 +106,9 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 		((MLX5_PMD_TX_PER_COMP_REQ < (elts_n / 4)) ?
 		 MLX5_PMD_TX_PER_COMP_REQ : (elts_n / 4));
 	txq->elts_comp_cd = txq->elts_comp_cd_init;
-	txq->elts_linear = elts_linear;
-	txq->mr_linear = mr_linear;
 	assert(ret == 0);
 	return 0;
 error:
-	if (mr_linear != NULL)
-		claim_zero(ibv_dereg_mr(mr_linear));
-
-	rte_free(elts_linear);
 	rte_free(elts);
 
 	DEBUG("%p: failed, freed everything", (void *)txq);
@@ -148,8 +129,6 @@ txq_free_elts(struct txq *txq)
 	unsigned int elts_head = txq->elts_head;
 	unsigned int elts_tail = txq->elts_tail;
 	struct txq_elt (*elts)[elts_n] = txq->elts;
-	linear_t (*elts_linear)[elts_n] = txq->elts_linear;
-	struct ibv_mr *mr_linear = txq->mr_linear;
 
 	DEBUG("%p: freeing WRs", (void *)txq);
 	txq->elts_n = 0;
@@ -159,12 +138,7 @@ txq_free_elts(struct txq *txq)
 	txq->elts_comp_cd = 0;
 	txq->elts_comp_cd_init = 0;
 	txq->elts = NULL;
-	txq->elts_linear = NULL;
-	txq->mr_linear = NULL;
-	if (mr_linear != NULL)
-		claim_zero(ibv_dereg_mr(mr_linear));
 
-	rte_free(elts_linear);
 	if (elts == NULL)
 		return;
 	while (elts_tail != elts_head) {
@@ -286,12 +260,14 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	int ret = 0;
 
 	(void)conf; /* Thresholds configuration (ignored). */
-	if ((desc == 0) || (desc % MLX5_PMD_SGE_WR_N)) {
-		ERROR("%p: invalid number of TX descriptors (must be a"
-		      " multiple of %d)", (void *)dev, MLX5_PMD_SGE_WR_N);
+	if (desc == 0) {
+		ERROR("%p: invalid number of TX descriptors", (void *)dev);
 		return EINVAL;
 	}
-	desc /= MLX5_PMD_SGE_WR_N;
+	if (MLX5_PMD_SGE_WR_N > 1) {
+		ERROR("%p: TX gather is not supported", (void *)dev);
+		return EINVAL;
+	}
 	/* MRs will be registered in mp2mr[] later. */
 	attr.rd = (struct ibv_exp_res_domain_init_attr){
 		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
@@ -332,10 +308,7 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 					priv->device_attr.max_qp_wr :
 					desc),
 			/* Max number of scatter/gather elements in a WR. */
-			.max_send_sge = ((priv->device_attr.max_sge <
-					  MLX5_PMD_SGE_WR_N) ?
-					 priv->device_attr.max_sge :
-					 MLX5_PMD_SGE_WR_N),
+			.max_send_sge = 1,
 #if MLX5_PMD_MAX_INLINE > 0
 			.max_inline_data = MLX5_PMD_MAX_INLINE,
 #endif
@@ -438,12 +411,6 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	txq->send_pending_inline = txq->if_qp->send_pending_inline;
 #ifdef HAVE_VERBS_VLAN_INSERTION
 	txq->send_pending_inline_vlan = txq->if_qp->send_pending_inline_vlan;
-#endif
-#endif
-#if MLX5_PMD_SGE_WR_N > 1
-	txq->send_pending_sg_list = txq->if_qp->send_pending_sg_list;
-#ifdef HAVE_VERBS_VLAN_INSERTION
-	txq->send_pending_sg_list_vlan = txq->if_qp->send_pending_sg_list_vlan;
 #endif
 #endif
 	txq->send_pending = txq->if_qp->send_pending;

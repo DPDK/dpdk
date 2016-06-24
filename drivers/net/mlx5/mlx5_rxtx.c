@@ -228,156 +228,6 @@ insert_vlan_sw(struct rte_mbuf *buf)
 	return 0;
 }
 
-#if MLX5_PMD_SGE_WR_N > 1
-
-/**
- * Copy scattered mbuf contents to a single linear buffer.
- *
- * @param[out] linear
- *   Linear output buffer.
- * @param[in] buf
- *   Scattered input buffer.
- *
- * @return
- *   Number of bytes copied to the output buffer or 0 if not large enough.
- */
-static unsigned int
-linearize_mbuf(linear_t *linear, struct rte_mbuf *buf)
-{
-	unsigned int size = 0;
-	unsigned int offset;
-
-	do {
-		unsigned int len = DATA_LEN(buf);
-
-		offset = size;
-		size += len;
-		if (unlikely(size > sizeof(*linear)))
-			return 0;
-		memcpy(&(*linear)[offset],
-		       rte_pktmbuf_mtod(buf, uint8_t *),
-		       len);
-		buf = NEXT(buf);
-	} while (buf != NULL);
-	return size;
-}
-
-/**
- * Handle scattered buffers for mlx5_tx_burst().
- *
- * @param txq
- *   TX queue structure.
- * @param segs
- *   Number of segments in buf.
- * @param elt
- *   TX queue element to fill.
- * @param[in] buf
- *   Buffer to process.
- * @param elts_head
- *   Index of the linear buffer to use if necessary (normally txq->elts_head).
- * @param[out] sges
- *   Array filled with SGEs on success.
- *
- * @return
- *   A structure containing the processed packet size in bytes and the
- *   number of SGEs. Both fields are set to (unsigned int)-1 in case of
- *   failure.
- */
-static struct tx_burst_sg_ret {
-	unsigned int length;
-	unsigned int num;
-}
-tx_burst_sg(struct txq *txq, unsigned int segs, struct txq_elt *elt,
-	    struct rte_mbuf *buf, unsigned int elts_head,
-	    struct ibv_sge (*sges)[MLX5_PMD_SGE_WR_N])
-{
-	unsigned int sent_size = 0;
-	unsigned int j;
-	int linearize = 0;
-
-	/* When there are too many segments, extra segments are
-	 * linearized in the last SGE. */
-	if (unlikely(segs > RTE_DIM(*sges))) {
-		segs = (RTE_DIM(*sges) - 1);
-		linearize = 1;
-	}
-	/* Update element. */
-	elt->buf = buf;
-	/* Register segments as SGEs. */
-	for (j = 0; (j != segs); ++j) {
-		struct ibv_sge *sge = &(*sges)[j];
-		uint32_t lkey;
-
-		/* Retrieve Memory Region key for this memory pool. */
-		lkey = txq_mp2mr(txq, txq_mb2mp(buf));
-		if (unlikely(lkey == (uint32_t)-1)) {
-			/* MR does not exist. */
-			DEBUG("%p: unable to get MP <-> MR association",
-			      (void *)txq);
-			/* Clean up TX element. */
-			elt->buf = NULL;
-			goto stop;
-		}
-		/* Update SGE. */
-		sge->addr = rte_pktmbuf_mtod(buf, uintptr_t);
-		if (txq->priv->sriov)
-			rte_prefetch0((volatile void *)
-				      (uintptr_t)sge->addr);
-		sge->length = DATA_LEN(buf);
-		sge->lkey = lkey;
-		sent_size += sge->length;
-		buf = NEXT(buf);
-	}
-	/* If buf is not NULL here and is not going to be linearized,
-	 * nb_segs is not valid. */
-	assert(j == segs);
-	assert((buf == NULL) || (linearize));
-	/* Linearize extra segments. */
-	if (linearize) {
-		struct ibv_sge *sge = &(*sges)[segs];
-		linear_t *linear = &(*txq->elts_linear)[elts_head];
-		unsigned int size = linearize_mbuf(linear, buf);
-
-		assert(segs == (RTE_DIM(*sges) - 1));
-		if (size == 0) {
-			/* Invalid packet. */
-			DEBUG("%p: packet too large to be linearized.",
-			      (void *)txq);
-			/* Clean up TX element. */
-			elt->buf = NULL;
-			goto stop;
-		}
-		/* If MLX5_PMD_SGE_WR_N is 1, free mbuf immediately. */
-		if (RTE_DIM(*sges) == 1) {
-			do {
-				struct rte_mbuf *next = NEXT(buf);
-
-				rte_pktmbuf_free_seg(buf);
-				buf = next;
-			} while (buf != NULL);
-			elt->buf = NULL;
-		}
-		/* Update SGE. */
-		sge->addr = (uintptr_t)&(*linear)[0];
-		sge->length = size;
-		sge->lkey = txq->mr_linear->lkey;
-		sent_size += size;
-		/* Include last segment. */
-		segs++;
-	}
-	return (struct tx_burst_sg_ret){
-		.length = sent_size,
-		.num = segs,
-	};
-stop:
-	return (struct tx_burst_sg_ret){
-		.length = -1,
-		.num = -1,
-	};
-}
-
-#endif /* MLX5_PMD_SGE_WR_N > 1 */
-
 /**
  * DPDK callback for TX.
  *
@@ -424,14 +274,14 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		unsigned int elts_head_next =
 			(((elts_head + 1) == elts_n) ? 0 : elts_head + 1);
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
-		unsigned int segs = NB_SEGS(buf);
-#ifdef MLX5_PMD_SOFT_COUNTERS
-		unsigned int sent_size = 0;
-#endif
 		uint32_t send_flags = 0;
 #ifdef HAVE_VERBS_VLAN_INSERTION
 		int insert_vlan = 0;
 #endif /* HAVE_VERBS_VLAN_INSERTION */
+		uintptr_t addr;
+		uint32_t length;
+		uint32_t lkey;
+		uintptr_t buf_next_addr;
 
 		if (i + 1 < max)
 			rte_prefetch0(buf_next);
@@ -464,126 +314,83 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					goto stop;
 			}
 		}
-		if (likely(segs == 1)) {
-			uintptr_t addr;
-			uint32_t length;
-			uint32_t lkey;
-			uintptr_t buf_next_addr;
-
-			/* Retrieve buffer information. */
-			addr = rte_pktmbuf_mtod(buf, uintptr_t);
-			length = DATA_LEN(buf);
-			/* Update element. */
-			elt->buf = buf;
-			if (txq->priv->sriov)
-				rte_prefetch0((volatile void *)
-					      (uintptr_t)addr);
-			/* Prefetch next buffer data. */
-			if (i + 1 < max) {
-				buf_next_addr =
-					rte_pktmbuf_mtod(buf_next, uintptr_t);
-				rte_prefetch0((volatile void *)
-					      (uintptr_t)buf_next_addr);
-			}
-			/* Put packet into send queue. */
+		/* Retrieve buffer information. */
+		addr = rte_pktmbuf_mtod(buf, uintptr_t);
+		length = DATA_LEN(buf);
+		/* Update element. */
+		elt->buf = buf;
+		if (txq->priv->sriov)
+			rte_prefetch0((volatile void *)
+				      (uintptr_t)addr);
+		/* Prefetch next buffer data. */
+		if (i + 1 < max) {
+			buf_next_addr =
+				rte_pktmbuf_mtod(buf_next, uintptr_t);
+			rte_prefetch0((volatile void *)
+				      (uintptr_t)buf_next_addr);
+		}
+		/* Put packet into send queue. */
 #if MLX5_PMD_MAX_INLINE > 0
-			if (length <= txq->max_inline) {
-#ifdef HAVE_VERBS_VLAN_INSERTION
-				if (insert_vlan)
-					err = txq->send_pending_inline_vlan
-						(txq->qp,
-						 (void *)addr,
-						 length,
-						 send_flags,
-						 &buf->vlan_tci);
-				else
-#endif /* HAVE_VERBS_VLAN_INSERTION */
-					err = txq->send_pending_inline
-						(txq->qp,
-						 (void *)addr,
-						 length,
-						 send_flags);
-			} else
-#endif
-			{
-				/* Retrieve Memory Region key for this
-				 * memory pool. */
-				lkey = txq_mp2mr(txq, txq_mb2mp(buf));
-				if (unlikely(lkey == (uint32_t)-1)) {
-					/* MR does not exist. */
-					DEBUG("%p: unable to get MP <-> MR"
-					      " association", (void *)txq);
-					/* Clean up TX element. */
-					elt->buf = NULL;
-					goto stop;
-				}
-#ifdef HAVE_VERBS_VLAN_INSERTION
-				if (insert_vlan)
-					err = txq->send_pending_vlan
-						(txq->qp,
-						 addr,
-						 length,
-						 lkey,
-						 send_flags,
-						 &buf->vlan_tci);
-				else
-#endif /* HAVE_VERBS_VLAN_INSERTION */
-					err = txq->send_pending
-						(txq->qp,
-						 addr,
-						 length,
-						 lkey,
-						 send_flags);
-			}
-			if (unlikely(err))
-				goto stop;
-#ifdef MLX5_PMD_SOFT_COUNTERS
-			sent_size += length;
-#endif
-		} else {
-#if MLX5_PMD_SGE_WR_N > 1
-			struct ibv_sge sges[MLX5_PMD_SGE_WR_N];
-			struct tx_burst_sg_ret ret;
-
-			ret = tx_burst_sg(txq, segs, elt, buf, elts_head,
-					  &sges);
-			if (ret.length == (unsigned int)-1)
-				goto stop;
-			/* Put SG list into send queue. */
+		if (length <= txq->max_inline) {
 #ifdef HAVE_VERBS_VLAN_INSERTION
 			if (insert_vlan)
-				err = txq->send_pending_sg_list_vlan
+				err = txq->send_pending_inline_vlan
 					(txq->qp,
-					 sges,
-					 ret.num,
+					 (void *)addr,
+					 length,
 					 send_flags,
 					 &buf->vlan_tci);
 			else
 #endif /* HAVE_VERBS_VLAN_INSERTION */
-				err = txq->send_pending_sg_list
+				err = txq->send_pending_inline
 					(txq->qp,
-					 sges,
-					 ret.num,
+					 (void *)addr,
+					 length,
 					 send_flags);
-			if (unlikely(err))
-				goto stop;
-#ifdef MLX5_PMD_SOFT_COUNTERS
-			sent_size += ret.length;
+		} else
 #endif
-#else /* MLX5_PMD_SGE_WR_N > 1 */
-			DEBUG("%p: TX scattered buffers support not"
-			      " compiled in", (void *)txq);
-			goto stop;
-#endif /* MLX5_PMD_SGE_WR_N > 1 */
+		{
+			/*
+			 * Retrieve Memory Region key for this
+			 * memory pool.
+			 */
+			lkey = txq_mp2mr(txq, txq_mb2mp(buf));
+			if (unlikely(lkey == (uint32_t)-1)) {
+				/* MR does not exist. */
+				DEBUG("%p: unable to get MP <-> MR"
+				      " association", (void *)txq);
+				/* Clean up TX element. */
+				elt->buf = NULL;
+				goto stop;
+			}
+#ifdef HAVE_VERBS_VLAN_INSERTION
+			if (insert_vlan)
+				err = txq->send_pending_vlan
+					(txq->qp,
+					 addr,
+					 length,
+					 lkey,
+					 send_flags,
+					 &buf->vlan_tci);
+			else
+#endif /* HAVE_VERBS_VLAN_INSERTION */
+				err = txq->send_pending
+					(txq->qp,
+					 addr,
+					 length,
+					 lkey,
+					 send_flags);
 		}
-		elts_head = elts_head_next;
-		buf = buf_next;
+		if (unlikely(err))
+			goto stop;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
-		txq->stats.obytes += sent_size;
+		txq->stats.obytes += length;
 #endif
-	}
 stop:
+		elts_head = elts_head_next;
+		buf = buf_next;
+	}
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
 		return 0;
