@@ -2446,16 +2446,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 static struct rte_pci_id pci_id_nfp_net_map[] = {
 	{
-		.vendor_id = PCI_VENDOR_ID_NETRONOME,
-		.device_id = PCI_DEVICE_ID_NFP6000_PF_NIC,
-		.subsystem_vendor_id = PCI_ANY_ID,
-		.subsystem_device_id = PCI_ANY_ID,
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
+			       PCI_DEVICE_ID_NFP6000_PF_NIC)
 	},
 	{
-		.vendor_id = PCI_VENDOR_ID_NETRONOME,
-		.device_id = PCI_DEVICE_ID_NFP6000_VF_NIC,
-		.subsystem_vendor_id = PCI_ANY_ID,
-		.subsystem_device_id = PCI_ANY_ID,
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
+			       PCI_DEVICE_ID_NFP6000_VF_NIC)
 	},
 	{
 		.vendor_id = 0,

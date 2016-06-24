@@ -610,28 +610,20 @@ error:
 
 static const struct rte_pci_id mlx5_pci_id_map[] = {
 	{
-		.vendor_id = PCI_VENDOR_ID_MELLANOX,
-		.device_id = PCI_DEVICE_ID_MELLANOX_CONNECTX4,
-		.subsystem_vendor_id = PCI_ANY_ID,
-		.subsystem_device_id = PCI_ANY_ID
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX4)
 	},
 	{
-		.vendor_id = PCI_VENDOR_ID_MELLANOX,
-		.device_id = PCI_DEVICE_ID_MELLANOX_CONNECTX4VF,
-		.subsystem_vendor_id = PCI_ANY_ID,
-		.subsystem_device_id = PCI_ANY_ID
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX4VF)
 	},
 	{
-		.vendor_id = PCI_VENDOR_ID_MELLANOX,
-		.device_id = PCI_DEVICE_ID_MELLANOX_CONNECTX4LX,
-		.subsystem_vendor_id = PCI_ANY_ID,
-		.subsystem_device_id = PCI_ANY_ID
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX4LX)
 	},
 	{
-		.vendor_id = PCI_VENDOR_ID_MELLANOX,
-		.device_id = PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF,
-		.subsystem_vendor_id = PCI_ANY_ID,
-		.subsystem_device_id = PCI_ANY_ID
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF)
 	},
 	{
 		.vendor_id = 0
