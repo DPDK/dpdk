@@ -122,7 +122,6 @@ fdir_filter_to_flow_desc(const struct rte_eth_fdir_filter *fdir_filter,
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
 		desc->type = HASH_RXQ_IPV4;
 		break;
-#ifdef HAVE_FLOW_SPEC_IPV6
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 		desc->type = HASH_RXQ_UDPV6;
 		break;
@@ -132,7 +131,6 @@ fdir_filter_to_flow_desc(const struct rte_eth_fdir_filter *fdir_filter,
 	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 		desc->type = HASH_RXQ_IPV6;
 		break;
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	default:
 		break;
 	}
@@ -147,7 +145,6 @@ fdir_filter_to_flow_desc(const struct rte_eth_fdir_filter *fdir_filter,
 		desc->src_ip[0] = fdir_filter->input.flow.ip4_flow.src_ip;
 		desc->dst_ip[0] = fdir_filter->input.flow.ip4_flow.dst_ip;
 		break;
-#ifdef HAVE_FLOW_SPEC_IPV6
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 		desc->src_port = fdir_filter->input.flow.udp6_flow.src_port;
@@ -161,7 +158,6 @@ fdir_filter_to_flow_desc(const struct rte_eth_fdir_filter *fdir_filter,
 			   fdir_filter->input.flow.ipv6_flow.dst_ip,
 			   sizeof(desc->dst_ip));
 		break;
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	default:
 		break;
 	}
@@ -211,7 +207,6 @@ priv_fdir_overlap(const struct priv *priv,
 		     (desc2->dst_ip[0] & mask->ipv4_mask.dst_ip)))
 			return 0;
 		break;
-#ifdef HAVE_FLOW_SPEC_IPV6
 	case HASH_RXQ_IPV6:
 	case HASH_RXQ_UDPV6:
 	case HASH_RXQ_TCPV6:
@@ -222,7 +217,6 @@ priv_fdir_overlap(const struct priv *priv,
 			     (desc2->dst_ip[i] & mask->ipv6_mask.dst_ip[i])))
 				return 0;
 		break;
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	default:
 		break;
 	}
@@ -258,9 +252,7 @@ priv_fdir_flow_add(struct priv *priv,
 	uintptr_t spec_offset = (uintptr_t)&data->spec;
 	struct ibv_exp_flow_spec_eth *spec_eth;
 	struct ibv_exp_flow_spec_ipv4 *spec_ipv4;
-#ifdef HAVE_FLOW_SPEC_IPV6
 	struct ibv_exp_flow_spec_ipv6 *spec_ipv6;
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	struct ibv_exp_flow_spec_tcp_udp *spec_tcp_udp;
 	struct mlx5_fdir_filter *iter_fdir_filter;
 	unsigned int i;
@@ -334,7 +326,6 @@ priv_fdir_flow_add(struct priv *priv,
 
 		spec_offset += spec_ipv4->size;
 		break;
-#ifdef HAVE_FLOW_SPEC_IPV6
 	case HASH_RXQ_IPV6:
 	case HASH_RXQ_UDPV6:
 	case HASH_RXQ_TCPV6:
@@ -368,7 +359,6 @@ priv_fdir_flow_add(struct priv *priv,
 
 		spec_offset += spec_ipv6->size;
 		break;
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	default:
 		ERROR("invalid flow attribute type");
 		return EINVAL;

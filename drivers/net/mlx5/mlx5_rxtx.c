@@ -452,11 +452,9 @@ rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
 				TRANSPOSE(~flags,
 					IBV_EXP_CQ_RX_IP_CSUM_OK,
 					PKT_RX_IP_CKSUM_BAD);
-#ifdef HAVE_EXP_CQ_RX_TCP_PACKET
 		/* Set L4 checksum flag only for TCP/UDP packets. */
 		if (flags &
 		    (IBV_EXP_CQ_RX_TCP_PACKET | IBV_EXP_CQ_RX_UDP_PACKET))
-#endif /* HAVE_EXP_CQ_RX_TCP_PACKET */
 			ol_flags |=
 				TRANSPOSE(~flags,
 					IBV_EXP_CQ_RX_TCP_UDP_CSUM_OK,
@@ -589,13 +587,11 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip) {
 			seg->packet_type = rxq_cq_to_pkt_type(flags);
 			seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 			if (flags & IBV_EXP_CQ_RX_CVLAN_STRIPPED_V1) {
 				seg->ol_flags |= PKT_RX_VLAN_PKT |
 					PKT_RX_VLAN_STRIPPED;
 				seg->vlan_tci = vlan_tci;
 			}
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		}
 		/* Return packet. */
 		*(pkts++) = seg;

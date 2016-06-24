@@ -144,7 +144,6 @@ static void
 priv_vlan_strip_queue_set(struct priv *priv, uint16_t idx, int on)
 {
 	struct rxq *rxq = (*priv->rxqs)[idx];
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 	struct ibv_exp_wq_attr mod;
 	uint16_t vlan_offloads =
 		(on ? IBV_EXP_RECEIVE_WQ_CVLAN_STRIP : 0) |
@@ -164,8 +163,6 @@ priv_vlan_strip_queue_set(struct priv *priv, uint16_t idx, int on)
 		      (void *)priv, strerror(err));
 		return;
 	}
-
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 
 	/* Update related bits in RX queue. */
 	rxq->vlan_strip = !!on;

@@ -125,16 +125,6 @@ These options can be modified in the ``.config`` file.
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
 
-- ``MLX5_ENABLE_CQE_COMPRESSION``
-
-  A nonzero value lets ConnectX-4 return smaller completion entries to
-  improve performance when PCI backpressure is detected. It is most useful
-  for scenarios involving heavy traffic on many queues.
-
-  Since the additional software logic necessary to handle this mode can
-  lower performance when there is no backpressure, it is not enabled by
-  default.
-
 - ``MLX5_PMD_ENABLE_PADDING``
 
   Enables HW packet padding in PCI bus transactions.
@@ -211,40 +201,12 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **3.1-1.0.3**, **3.1-1.5.7.1** or **3.2-2.0.0.0** depending
-  on usage.
-
-    The following features are supported with version **3.1-1.5.7.1** and
-    above only:
-
-    - IPv6, UPDv6, TCPv6 RSS.
-    - RX checksum offloads.
-    - IBM POWER8.
-
-    The following features are supported with version **3.2-2.0.0.0** and
-    above only:
-
-    - Flow director.
-    - RX VLAN stripping.
-    - TX VLAN insertion.
-    - RX CRC stripping configuration.
+- Mellanox OFED **3.3-1.0.0.0**.
 
 - Minimum firmware version:
 
-  With MLNX_OFED **3.1-1.0.3**:
-
-  - ConnectX-4: **12.12.1240**
-  - ConnectX-4 Lx: **14.12.1100**
-
-  With MLNX_OFED **3.1-1.5.7.1**:
-
-  - ConnectX-4: **12.13.0144**
-  - ConnectX-4 Lx: **14.13.0144**
-
-  With MLNX_OFED **3.2-2.0.0.0**:
-
-  - ConnectX-4: **12.14.2036**
-  - ConnectX-4 Lx: **14.14.2036**
+  - ConnectX-4: **12.16.1006**
+  - ConnectX-4 Lx: **14.16.1006**
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~

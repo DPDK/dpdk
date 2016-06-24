@@ -68,6 +68,11 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 
+#if !defined(HAVE_VERBS_IBV_EXP_CQ_COMPRESSED_CQE) || \
+	!defined(HAVE_VERBS_MLX5_ETH_VLAN_INLINE_HEADER_SIZE)
+#error Mellanox OFED >= 3.3 is required, please refer to the documentation.
+#endif
+
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
 };

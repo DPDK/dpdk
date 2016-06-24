@@ -195,17 +195,13 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.mac_addr_add = mlx5_mac_addr_add,
 	.mac_addr_set = mlx5_mac_addr_set,
 	.mtu_set = mlx5_dev_set_mtu,
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 	.vlan_strip_queue_set = mlx5_vlan_strip_queue_set,
 	.vlan_offload_set = mlx5_vlan_offload_set,
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	.reta_update = mlx5_dev_rss_reta_update,
 	.reta_query = mlx5_dev_rss_reta_query,
 	.rss_hash_update = mlx5_rss_hash_update,
 	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
-#ifdef MLX5_FDIR_SUPPORT
 	.filter_ctrl = mlx5_dev_filter_ctrl,
-#endif /* MLX5_FDIR_SUPPORT */
 };
 
 static struct {
@@ -352,24 +348,16 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
 		struct rte_eth_dev *eth_dev;
-#ifdef HAVE_EXP_QUERY_DEVICE
 		struct ibv_exp_device_attr exp_device_attr;
-#endif /* HAVE_EXP_QUERY_DEVICE */
 		struct ether_addr mac;
 		uint16_t num_vfs = 0;
 
-#ifdef HAVE_EXP_QUERY_DEVICE
 		exp_device_attr.comp_mask =
 			IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS |
 			IBV_EXP_DEVICE_ATTR_RX_HASH |
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 			IBV_EXP_DEVICE_ATTR_VLAN_OFFLOADS |
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
-#ifdef HAVE_VERBS_RX_END_PADDING
 			IBV_EXP_DEVICE_ATTR_RX_PAD_END_ALIGN |
-#endif /* HAVE_VERBS_RX_END_PADDING */
 			0;
-#endif /* HAVE_EXP_QUERY_DEVICE */
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
 
@@ -420,7 +408,6 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
-#ifdef HAVE_EXP_QUERY_DEVICE
 		if (ibv_exp_query_device(ctx, &exp_device_attr)) {
 			ERROR("ibv_exp_query_device() failed");
 			goto port_error;
@@ -446,29 +433,19 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
 		DEBUG("maximum RX indirection table size is %u",
 		      priv->ind_table_max_size);
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 		priv->hw_vlan_strip = !!(exp_device_attr.wq_vlan_offloads_cap &
 					 IBV_EXP_RECEIVE_WQ_CVLAN_STRIP);
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		DEBUG("VLAN stripping is %ssupported",
 		      (priv->hw_vlan_strip ? "" : "not "));
 
-#ifdef HAVE_VERBS_FCS
 		priv->hw_fcs_strip = !!(exp_device_attr.exp_device_cap_flags &
 					IBV_EXP_DEVICE_SCATTER_FCS);
-#endif /* HAVE_VERBS_FCS */
 		DEBUG("FCS stripping configuration is %ssupported",
 		      (priv->hw_fcs_strip ? "" : "not "));
 
-#ifdef HAVE_VERBS_RX_END_PADDING
 		priv->hw_padding = !!exp_device_attr.rx_pad_end_addr_align;
-#endif /* HAVE_VERBS_RX_END_PADDING */
 		DEBUG("hardware RX end alignment padding is %ssupported",
 		      (priv->hw_padding ? "" : "not "));
-
-#else /* HAVE_EXP_QUERY_DEVICE */
-		priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
-#endif /* HAVE_EXP_QUERY_DEVICE */
 
 		priv_get_num_vfs(priv, &num_vfs);
 		priv->sriov = (num_vfs || sriov);

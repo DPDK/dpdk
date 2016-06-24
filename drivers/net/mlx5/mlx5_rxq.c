@@ -105,7 +105,6 @@ const struct hash_rxq_init hash_rxq_init[] = {
 		},
 		.underlayer = &hash_rxq_init[HASH_RXQ_ETH],
 	},
-#ifdef HAVE_FLOW_SPEC_IPV6
 	[HASH_RXQ_TCPV6] = {
 		.hash_fields = (IBV_EXP_RX_HASH_SRC_IPV6 |
 				IBV_EXP_RX_HASH_DST_IPV6 |
@@ -144,7 +143,6 @@ const struct hash_rxq_init hash_rxq_init[] = {
 		},
 		.underlayer = &hash_rxq_init[HASH_RXQ_ETH],
 	},
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	[HASH_RXQ_ETH] = {
 		.hash_fields = 0,
 		.dpdk_rss_hf = 0,
@@ -168,17 +166,11 @@ static const struct ind_table_init ind_table_init[] = {
 			1 << HASH_RXQ_TCPV4 |
 			1 << HASH_RXQ_UDPV4 |
 			1 << HASH_RXQ_IPV4 |
-#ifdef HAVE_FLOW_SPEC_IPV6
 			1 << HASH_RXQ_TCPV6 |
 			1 << HASH_RXQ_UDPV6 |
 			1 << HASH_RXQ_IPV6 |
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 			0,
-#ifdef HAVE_FLOW_SPEC_IPV6
 		.hash_types_n = 6,
-#else /* HAVE_FLOW_SPEC_IPV6 */
-		.hash_types_n = 3,
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	},
 	{
 		.max_size = 1,
@@ -243,12 +235,8 @@ priv_flow_attr(struct priv *priv, struct ibv_exp_flow_attr *flow_attr,
 	init = &hash_rxq_init[type];
 	*flow_attr = (struct ibv_exp_flow_attr){
 		.type = IBV_EXP_FLOW_ATTR_NORMAL,
-#ifdef MLX5_FDIR_SUPPORT
 		/* Priorities < 3 are reserved for flow director. */
 		.priority = init->flow_priority + 3,
-#else /* MLX5_FDIR_SUPPORT */
-		.priority = init->flow_priority,
-#endif /* MLX5_FDIR_SUPPORT */
 		.num_of_specs = 0,
 		.port = priv->port,
 		.flags = 0,
@@ -589,9 +577,7 @@ priv_allow_flow_type(struct priv *priv, enum hash_rxq_flow_type type)
 	case HASH_RXQ_FLOW_TYPE_ALLMULTI:
 		return !!priv->allmulti_req;
 	case HASH_RXQ_FLOW_TYPE_BROADCAST:
-#ifdef HAVE_FLOW_SPEC_IPV6
 	case HASH_RXQ_FLOW_TYPE_IPV6MULTI:
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 		/* If allmulti is enabled, broadcast and ipv6multi
 		 * are unnecessary. */
 		return !priv->allmulti_req;
@@ -1040,19 +1026,13 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl, uint16_t desc,
 		.cq = tmpl.rxq.cq,
 		.comp_mask =
 			IBV_EXP_CREATE_WQ_RES_DOMAIN |
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 			IBV_EXP_CREATE_WQ_VLAN_OFFLOADS |
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 			0,
 		.res_domain = tmpl.rd,
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 		.vlan_offloads = (tmpl.rxq.vlan_strip ?
 				  IBV_EXP_RECEIVE_WQ_CVLAN_STRIP :
 				  0),
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	};
-
-#ifdef HAVE_VERBS_FCS
 	/* By default, FCS (CRC) is stripped by hardware. */
 	if (dev->data->dev_conf.rxmode.hw_strip_crc) {
 		tmpl.rxq.crc_present = 0;
@@ -1073,9 +1053,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl, uint16_t desc,
 	      (void *)dev,
 	      tmpl.rxq.crc_present ? "disabled" : "enabled",
 	      tmpl.rxq.crc_present << 2);
-#endif /* HAVE_VERBS_FCS */
-
-#ifdef HAVE_VERBS_RX_END_PADDING
 	if (!mlx5_getenv_int("MLX5_PMD_ENABLE_PADDING"))
 		; /* Nothing else to do. */
 	else if (priv->hw_padding) {
@@ -1088,7 +1065,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl, uint16_t desc,
 		     " supported, make sure MLNX_OFED and firmware are"
 		     " up to date",
 		     (void *)dev);
-#endif /* HAVE_VERBS_RX_END_PADDING */
 
 	tmpl.rxq.wq = ibv_exp_create_wq(priv->ctx, &attr.wq);
 	if (tmpl.rxq.wq == NULL) {
@@ -1108,9 +1084,7 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl, uint16_t desc,
 	DEBUG("%p: RTE port ID: %u", (void *)rxq_ctrl, tmpl.rxq.port_id);
 	attr.params = (struct ibv_exp_query_intf_params){
 		.intf_scope = IBV_EXP_INTF_GLOBAL,
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 		.intf_version = 1,
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 		.intf = IBV_EXP_INTF_CQ,
 		.obj = tmpl.rxq.cq,
 	};
@@ -1166,11 +1140,7 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl, uint16_t desc,
 	DEBUG("%p: rxq updated with %p", (void *)rxq_ctrl, (void *)&tmpl);
 	assert(ret == 0);
 	/* Assign function in queue. */
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 	rxq_ctrl->rxq.poll = rxq_ctrl->if_cq->poll_length_flags_cvlan;
-#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
-	rxq_ctrl->rxq.poll = rxq_ctrl->if_cq->poll_length_flags;
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	rxq_ctrl->rxq.recv = rxq_ctrl->if_wq->recv_burst;
 	return 0;
 error:

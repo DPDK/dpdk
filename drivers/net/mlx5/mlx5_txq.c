@@ -376,13 +376,11 @@ txq_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl, uint16_t desc,
 #ifdef HAVE_VERBS_VLAN_INSERTION
 		.intf_version = 1,
 #endif
-#ifdef HAVE_EXP_QP_BURST_CREATE_ENABLE_MULTI_PACKET_SEND_WR
 		/* Enable multi-packet send if supported. */
 		.family_flags =
 			(priv->mps ?
 			 IBV_EXP_QP_BURST_CREATE_ENABLE_MULTI_PACKET_SEND_WR :
 			 0),
-#endif
 	};
 	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
 	if (tmpl.if_qp == NULL) {

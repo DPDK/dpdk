@@ -120,11 +120,7 @@ struct rxq_ctrl {
 	struct fdir_queue fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
-#ifdef HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS
 	struct ibv_exp_cq_family_v1 *if_cq; /* CQ interface. */
-#else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
-	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
-#endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct rxq rxq; /* Data path structure. */
 };
@@ -134,11 +130,9 @@ enum hash_rxq_type {
 	HASH_RXQ_TCPV4,
 	HASH_RXQ_UDPV4,
 	HASH_RXQ_IPV4,
-#ifdef HAVE_FLOW_SPEC_IPV6
 	HASH_RXQ_TCPV6,
 	HASH_RXQ_UDPV6,
 	HASH_RXQ_IPV6,
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 	HASH_RXQ_ETH,
 };
 
@@ -169,9 +163,7 @@ struct hash_rxq_init {
 		} hdr;
 		struct ibv_exp_flow_spec_tcp_udp tcp_udp;
 		struct ibv_exp_flow_spec_ipv4 ipv4;
-#ifdef HAVE_FLOW_SPEC_IPV6
 		struct ibv_exp_flow_spec_ipv6 ipv6;
-#endif /* HAVE_FLOW_SPEC_IPV6 */
 		struct ibv_exp_flow_spec_eth eth;
 	} flow_spec; /* Flow specification template. */
 	const struct hash_rxq_init *underlayer; /* Pointer to underlayer. */

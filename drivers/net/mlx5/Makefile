@@ -106,42 +106,19 @@ mlx5_autoconf.h.new: FORCE
 mlx5_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
-		HAVE_EXP_QUERY_DEVICE \
-		infiniband/verbs.h \
-		type 'struct ibv_exp_device_attr' $(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_FLOW_SPEC_IPV6 \
-		infiniband/verbs.h \
-		type 'struct ibv_exp_flow_spec_ipv6' $(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_EXP_QP_BURST_CREATE_ENABLE_MULTI_PACKET_SEND_WR \
-		infiniband/verbs.h \
-		enum IBV_EXP_QP_BURST_CREATE_ENABLE_MULTI_PACKET_SEND_WR \
-		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS \
-		infiniband/verbs.h \
-		enum IBV_EXP_DEVICE_ATTR_VLAN_OFFLOADS \
-		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_EXP_CQ_RX_TCP_PACKET \
-		infiniband/verbs.h \
-		enum IBV_EXP_CQ_RX_TCP_PACKET \
-		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_VERBS_FCS \
-		infiniband/verbs.h \
-		enum IBV_EXP_CREATE_WQ_FLAG_SCATTER_FCS \
-		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_VERBS_RX_END_PADDING \
-		infiniband/verbs.h \
-		enum IBV_EXP_CREATE_WQ_FLAG_RX_END_PADDING \
-		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
 		HAVE_VERBS_VLAN_INSERTION \
 		infiniband/verbs.h \
 		enum IBV_EXP_RECEIVE_WQ_CVLAN_INSERTION \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_VERBS_IBV_EXP_CQ_COMPRESSED_CQE \
+		infiniband/verbs_exp.h \
+		enum IBV_EXP_CQ_COMPRESSED_CQE \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_VERBS_MLX5_ETH_VLAN_INLINE_HEADER_SIZE \
+		infiniband/mlx5_hw.h \
+		enum MLX5_ETH_VLAN_INLINE_HEADER_SIZE \
 		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
