@@ -810,13 +810,15 @@ pdump_prepare_client_request(char *device, uint16_t queue,
 	req.flags = flags;
 	req.op =  operation;
 	if ((operation & ENABLE) != 0) {
-		strncpy(req.data.en_v1.device, device, strlen(device));
+		snprintf(req.data.en_v1.device, sizeof(req.data.en_v1.device),
+				"%s", device);
 		req.data.en_v1.queue = queue;
 		req.data.en_v1.ring = ring;
 		req.data.en_v1.mp = mp;
 		req.data.en_v1.filter = filter;
 	} else {
-		strncpy(req.data.dis_v1.device, device, strlen(device));
+		snprintf(req.data.dis_v1.device, sizeof(req.data.dis_v1.device),
+				"%s", device);
 		req.data.dis_v1.queue = queue;
 		req.data.dis_v1.ring = NULL;
 		req.data.dis_v1.mp = NULL;
