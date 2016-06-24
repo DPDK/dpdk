@@ -37,6 +37,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <net/if.h>
 
 /* Verbs header. */
@@ -57,6 +58,7 @@
 #include <rte_ethdev.h>
 #include <rte_pci.h>
 #include <rte_common.h>
+#include <rte_kvargs.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
@@ -237,6 +239,71 @@ mlx5_dev_idx(struct rte_pci_addr *pci_addr)
 	return ret;
 }
 
+/**
+ * Verify and store value for device argument.
+ *
+ * @param[in] key
+ *   Key argument to verify.
+ * @param[in] val
+ *   Value associated with key.
+ * @param opaque
+ *   User data.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int
+mlx5_args_check(const char *key, const char *val, void *opaque)
+{
+	struct priv *priv = opaque;
+
+	/* No parameters are expected at the moment. */
+	(void)priv;
+	(void)val;
+	WARN("%s: unknown parameter", key);
+	return -EINVAL;
+}
+
+/**
+ * Parse device parameters.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param devargs
+ *   Device arguments structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+mlx5_args(struct priv *priv, struct rte_devargs *devargs)
+{
+	const char **params = (const char *[]){
+		NULL,
+	};
+	struct rte_kvargs *kvlist;
+	int ret = 0;
+	int i;
+
+	if (devargs == NULL)
+		return 0;
+	/* Following UGLY cast is done to pass checkpatch. */
+	kvlist = rte_kvargs_parse(devargs->args, params);
+	if (kvlist == NULL)
+		return 0;
+	/* Process parameters. */
+	for (i = 0; (params[i] != NULL); ++i) {
+		if (rte_kvargs_count(kvlist, params[i])) {
+			ret = rte_kvargs_process(kvlist, params[i],
+						 mlx5_args_check, priv);
+			if (ret != 0)
+				return ret;
+		}
+	}
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
 static struct eth_driver mlx5_driver;
 
 /**
@@ -408,6 +475,12 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
+		err = mlx5_args(priv, pci_dev->devargs);
+		if (err) {
+			ERROR("failed to process device arguments: %s",
+			      strerror(err));
+			goto port_error;
+		}
 		if (ibv_exp_query_device(ctx, &exp_device_attr)) {
 			ERROR("ibv_exp_query_device() failed");
 			goto port_error;
