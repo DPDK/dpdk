@@ -16,7 +16,7 @@ DPDK_2.0 {
 	local: *;
 };
 
-DPDK_16.7 {
+DPDK_16.07 {
 	global:
 
 	rte_mempool_check_cookies;
@@ -33,5 +33,4 @@ DPDK_16.7 {
 	rte_mempool_register_ops;
 	rte_mempool_set_ops_byname;
 
-	local: *;
 } DPDK_2.0;
