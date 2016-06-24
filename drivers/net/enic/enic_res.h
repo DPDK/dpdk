@@ -46,7 +46,9 @@
 #define ENIC_MAX_RQ_DESCS		4096
 
 #define ENIC_MIN_MTU			68
-#define ENIC_MAX_MTU			9000
+
+/* Does not include (possible) inserted VLAN tag and FCS */
+#define ENIC_DEFAULT_MAX_PKT_SIZE	9022
 
 #define ENIC_MULTICAST_PERFECT_FILTERS	32
 #define ENIC_UNICAST_PERFECT_FILTERS	32

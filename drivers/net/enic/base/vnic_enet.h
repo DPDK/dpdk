@@ -35,6 +35,10 @@
 #ifndef _VNIC_ENIC_H_
 #define _VNIC_ENIC_H_
 
+/* Hardware intr coalesce timer is in units of 1.5us */
+#define INTR_COALESCE_USEC_TO_HW(usec) ((usec) * 2 / 3)
+#define INTR_COALESCE_HW_TO_USEC(usec) ((usec) * 3 / 2)
+
 /* Device-specific region: enet configuration */
 struct vnic_enet_config {
 	u32 flags;
@@ -50,6 +54,12 @@ struct vnic_enet_config {
 	u16 vf_rq_count;
 	u16 num_arfs;
 	u64 mem_paddr;
+	u16 rdma_qp_id;
+	u16 rdma_qp_count;
+	u16 rdma_resgrp;
+	u32 rdma_mr_id;
+	u32 rdma_mr_count;
+	u32 max_pkt_size;
 };
 
 #define VENETF_TSO		0x1	/* TSO enabled */
@@ -64,9 +74,14 @@ struct vnic_enet_config {
 #define VENETF_RSSHASH_IPV6_EX	0x200	/* Hash on IPv6 extended fields */
 #define VENETF_RSSHASH_TCPIPV6_EX 0x400	/* Hash on TCP + IPv6 ext. fields */
 #define VENETF_LOOP		0x800	/* Loopback enabled */
-#define VENETF_VMQ		0x4000  /* using VMQ flag for VMware NETQ */
+#define VENETF_FAILOVER		0x1000	/* Fabric failover enabled */
+#define VENETF_USPACE_NIC       0x2000	/* vHPC enabled */
+#define VENETF_VMQ      0x4000 /* VMQ enabled */
+#define VENETF_ARFS		0x8000  /* ARFS enabled */
 #define VENETF_VXLAN    0x10000 /* VxLAN offload */
 #define VENETF_NVGRE    0x20000 /* NVGRE offload */
+#define VENETF_GRPINTR  0x40000 /* group interrupt */
+
 #define VENET_INTR_TYPE_MIN	0	/* Timer specs min interrupt spacing */
 #define VENET_INTR_TYPE_IDLE	1	/* Timer specs idle time before irq */
 

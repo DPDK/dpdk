@@ -128,6 +128,7 @@ struct enic {
 	u8 ig_vlan_strip_en;
 	int link_status;
 	u8 hw_ip_checksum;
+	u16 max_mtu;
 
 	unsigned int flags;
 	unsigned int priv_flags;

@@ -83,6 +83,20 @@ int enic_get_vnic_config(struct enic *enic)
 	GET_CONFIG(intr_timer_usec);
 	GET_CONFIG(loop_tag);
 	GET_CONFIG(num_arfs);
+	GET_CONFIG(max_pkt_size);
+
+	/* max packet size is only defined in newer VIC firmware
+	 * and will be 0 for legacy firmware and VICs
+	 */
+	if (c->max_pkt_size > ENIC_DEFAULT_MAX_PKT_SIZE)
+		enic->max_mtu = c->max_pkt_size - (ETHER_HDR_LEN + 4);
+	else
+		enic->max_mtu = ENIC_DEFAULT_MAX_PKT_SIZE - (ETHER_HDR_LEN + 4);
+	if (c->mtu == 0)
+		c->mtu = 1500;
+
+	enic->rte_dev->data->mtu = min_t(u16, enic->max_mtu,
+					 max_t(u16, ENIC_MIN_MTU, c->mtu));
 
 	c->wq_desc_count =
 		min_t(u32, ENIC_MAX_WQ_DESCS,
@@ -96,21 +110,16 @@ int enic_get_vnic_config(struct enic *enic)
 		c->rq_desc_count));
 	c->rq_desc_count &= 0xffffffe0; /* must be aligned to groups of 32 */
 
-	if (c->mtu == 0)
-		c->mtu = 1500;
-	c->mtu = min_t(u16, ENIC_MAX_MTU,
-		max_t(u16, ENIC_MIN_MTU,
-		c->mtu));
-
 	c->intr_timer_usec = min_t(u32, c->intr_timer_usec,
 		vnic_dev_get_intr_coal_timer_max(enic->vdev));
 
 	dev_info(enic_get_dev(enic),
 		"vNIC MAC addr %02x:%02x:%02x:%02x:%02x:%02x "
-		"wq/rq %d/%d mtu %d\n",
+		"wq/rq %d/%d mtu %d, max mtu:%d\n",
 		enic->mac_addr[0], enic->mac_addr[1], enic->mac_addr[2],
 		enic->mac_addr[3], enic->mac_addr[4], enic->mac_addr[5],
-		c->wq_desc_count, c->rq_desc_count, c->mtu);
+		c->wq_desc_count, c->rq_desc_count,
+		enic->rte_dev->data->mtu, enic->max_mtu);
 	dev_info(enic_get_dev(enic), "vNIC csum tx/rx %s/%s "
 		"rss %s intr mode %s type %s timer %d usec "
 		"loopback tag 0x%04x\n",
