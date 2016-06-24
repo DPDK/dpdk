@@ -594,7 +594,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	stats->ipackets = rx_total;
 	stats->opackets = tx_total;
-	stats->imissed = tx_missed_total;
+	stats->oerrors = tx_missed_total;
 	stats->ibytes = rx_total_bytes;
 	stats->obytes = tx_total_bytes;
 }
