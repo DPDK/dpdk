@@ -585,50 +585,51 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const unsigned int elts_n = txq->elts_n;
-	unsigned int i;
+	unsigned int i = 0;
 	unsigned int max;
 	unsigned int comp;
 	volatile union mlx5_wqe *wqe;
-	struct rte_mbuf *buf;
 
 	if (unlikely(!pkts_n))
 		return 0;
-	buf = pkts[0];
 	/* Prefetch first packet cacheline. */
 	tx_prefetch_cqe(txq, txq->cq_ci);
 	tx_prefetch_cqe(txq, txq->cq_ci + 1);
-	rte_prefetch0(buf);
+	rte_prefetch0(*pkts);
 	/* Start processing. */
 	txq_complete(txq);
 	max = (elts_n - (elts_head - txq->elts_tail));
 	if (max > elts_n)
 		max -= elts_n;
-	assert(max >= 1);
-	assert(max <= elts_n);
-	/* Always leave one free entry in the ring. */
-	--max;
-	if (max == 0)
-		return 0;
-	if (max > pkts_n)
-		max = pkts_n;
-	for (i = 0; (i != max); ++i) {
-		unsigned int elts_head_next = (elts_head + 1) & (elts_n - 1);
+	do {
+		struct rte_mbuf *buf;
+		unsigned int elts_head_next;
 		uintptr_t addr;
 		uint32_t length;
 		uint32_t lkey;
 
+		/*
+		 * Make sure there is enough room to store this packet and
+		 * that one ring entry remains unused.
+		 */
+		if (max < 1 + 1)
+			break;
+		--max;
+		--pkts_n;
+		buf = *(pkts++);
+		elts_head_next = (elts_head + 1) & (elts_n - 1);
 		wqe = &(*txq->wqes)[txq->wqe_ci & (txq->wqe_n - 1)];
 		rte_prefetch0(wqe);
-		if (i + 1 < max)
-			rte_prefetch0(pkts[i + 1]);
+		if (pkts_n)
+			rte_prefetch0(*pkts);
 		/* Retrieve buffer information. */
 		addr = rte_pktmbuf_mtod(buf, uintptr_t);
 		length = DATA_LEN(buf);
 		/* Update element. */
 		(*txq->elts)[elts_head] = buf;
 		/* Prefetch next buffer data. */
-		if (i + 1 < max)
-			rte_prefetch0(rte_pktmbuf_mtod(pkts[i + 1],
+		if (pkts_n)
+			rte_prefetch0(rte_pktmbuf_mtod(*pkts,
 						       volatile void *));
 		/* Retrieve Memory Region key for this memory pool. */
 		lkey = txq_mp2mr(txq, txq_mb2mp(buf));
@@ -652,8 +653,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		txq->stats.obytes += length;
 #endif
 		elts_head = elts_head_next;
-		buf = pkts[i + 1];
-	}
+		++i;
+	} while (pkts_n);
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
 		return 0;
@@ -697,44 +698,45 @@ mlx5_tx_burst_inline(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const unsigned int elts_n = txq->elts_n;
-	unsigned int i;
+	unsigned int i = 0;
 	unsigned int max;
 	unsigned int comp;
 	volatile union mlx5_wqe *wqe;
-	struct rte_mbuf *buf;
 	unsigned int max_inline = txq->max_inline;
 
 	if (unlikely(!pkts_n))
 		return 0;
-	buf = pkts[0];
 	/* Prefetch first packet cacheline. */
 	tx_prefetch_cqe(txq, txq->cq_ci);
 	tx_prefetch_cqe(txq, txq->cq_ci + 1);
-	rte_prefetch0(buf);
+	rte_prefetch0(*pkts);
 	/* Start processing. */
 	txq_complete(txq);
 	max = (elts_n - (elts_head - txq->elts_tail));
 	if (max > elts_n)
 		max -= elts_n;
-	assert(max >= 1);
-	assert(max <= elts_n);
-	/* Always leave one free entry in the ring. */
-	--max;
-	if (max == 0)
-		return 0;
-	if (max > pkts_n)
-		max = pkts_n;
-	for (i = 0; (i != max); ++i) {
-		unsigned int elts_head_next = (elts_head + 1) & (elts_n - 1);
+	do {
+		struct rte_mbuf *buf;
+		unsigned int elts_head_next;
 		uintptr_t addr;
 		uint32_t length;
 		uint32_t lkey;
 
+		/*
+		 * Make sure there is enough room to store this packet and
+		 * that one ring entry remains unused.
+		 */
+		if (max < 1 + 1)
+			break;
+		--max;
+		--pkts_n;
+		buf = *(pkts++);
+		elts_head_next = (elts_head + 1) & (elts_n - 1);
 		wqe = &(*txq->wqes)[txq->wqe_ci & (txq->wqe_n - 1)];
 		tx_prefetch_wqe(txq, txq->wqe_ci);
 		tx_prefetch_wqe(txq, txq->wqe_ci + 1);
-		if (i + 1 < max)
-			rte_prefetch0(pkts[i + 1]);
+		if (pkts_n)
+			rte_prefetch0(*pkts);
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
 		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
@@ -750,8 +752,8 @@ mlx5_tx_burst_inline(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Update element. */
 		(*txq->elts)[elts_head] = buf;
 		/* Prefetch next buffer data. */
-		if (i + 1 < max)
-			rte_prefetch0(rte_pktmbuf_mtod(pkts[i + 1],
+		if (pkts_n)
+			rte_prefetch0(rte_pktmbuf_mtod(*pkts,
 						       volatile void *));
 		if (length <= max_inline) {
 			if (buf->ol_flags & PKT_TX_VLAN_PKT)
@@ -771,12 +773,12 @@ mlx5_tx_burst_inline(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		wqe->inl.ctrl.data[2] = 0;
 		elts_head = elts_head_next;
-		buf = pkts[i + 1];
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += length;
 #endif
-	}
+		++i;
+	} while (pkts_n);
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
 		return 0;
@@ -887,13 +889,15 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const unsigned int elts_n = txq->elts_n;
-	unsigned int i;
+	unsigned int i = 0;
 	unsigned int max;
 	unsigned int comp;
 	struct mlx5_mpw mpw = {
 		.state = MLX5_MPW_STATE_CLOSED,
 	};
 
+	if (unlikely(!pkts_n))
+		return 0;
 	/* Prefetch first packet cacheline. */
 	tx_prefetch_cqe(txq, txq->cq_ci);
 	tx_prefetch_wqe(txq, txq->wqe_ci);
@@ -903,22 +907,24 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	max = (elts_n - (elts_head - txq->elts_tail));
 	if (max > elts_n)
 		max -= elts_n;
-	assert(max >= 1);
-	assert(max <= elts_n);
-	/* Always leave one free entry in the ring. */
-	--max;
-	if (max == 0)
-		return 0;
-	if (max > pkts_n)
-		max = pkts_n;
-	for (i = 0; (i != max); ++i) {
-		struct rte_mbuf *buf = pkts[i];
+	do {
+		struct rte_mbuf *buf;
 		volatile struct mlx5_wqe_data_seg *dseg;
-		unsigned int elts_head_next = (elts_head + 1) & (elts_n - 1);
+		unsigned int elts_head_next;
 		uintptr_t addr;
 		uint32_t length;
 		uint32_t cs_flags = 0;
 
+		/*
+		 * Make sure there is enough room to store this packet and
+		 * that one ring entry remains unused.
+		 */
+		if (max < 1 + 1)
+			break;
+		--max;
+		--pkts_n;
+		buf = *(pkts++);
+		elts_head_next = (elts_head + 1) & (elts_n - 1);
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
 		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
@@ -951,7 +957,8 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += length;
 #endif
-	}
+		++i;
+	} while (pkts_n);
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
 		return 0;
@@ -1059,7 +1066,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
 	const unsigned int elts_n = txq->elts_n;
-	unsigned int i;
+	unsigned int i = 0;
 	unsigned int max;
 	unsigned int comp;
 	unsigned int inline_room = txq->max_inline;
@@ -1067,6 +1074,8 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		.state = MLX5_MPW_STATE_CLOSED,
 	};
 
+	if (unlikely(!pkts_n))
+		return 0;
 	/* Prefetch first packet cacheline. */
 	tx_prefetch_cqe(txq, txq->cq_ci);
 	tx_prefetch_wqe(txq, txq->wqe_ci);
@@ -1076,21 +1085,23 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 	max = (elts_n - (elts_head - txq->elts_tail));
 	if (max > elts_n)
 		max -= elts_n;
-	assert(max >= 1);
-	assert(max <= elts_n);
-	/* Always leave one free entry in the ring. */
-	--max;
-	if (max == 0)
-		return 0;
-	if (max > pkts_n)
-		max = pkts_n;
-	for (i = 0; (i != max); ++i) {
-		struct rte_mbuf *buf = pkts[i];
-		unsigned int elts_head_next = (elts_head + 1) & (elts_n - 1);
+	do {
+		struct rte_mbuf *buf;
+		unsigned int elts_head_next;
 		uintptr_t addr;
 		uint32_t length;
 		uint32_t cs_flags = 0;
 
+		/*
+		 * Make sure there is enough room to store this packet and
+		 * that one ring entry remains unused.
+		 */
+		if (max < 1 + 1)
+			break;
+		--max;
+		--pkts_n;
+		buf = *(pkts++);
+		elts_head_next = (elts_head + 1) & (elts_n - 1);
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
 		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
@@ -1177,7 +1188,8 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += length;
 #endif
-	}
+		++i;
+	} while (pkts_n);
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
 		return 0;
