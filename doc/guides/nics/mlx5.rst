@@ -171,6 +171,16 @@ Run-time configuration
 
   This option should be used in combination with ``txq_inline`` above.
 
+- ``txq_mpw_en`` parameter [int]
+
+  A nonzero value enables multi-packet send. This feature allows the TX
+  burst function to pack up to five packets in two descriptors in order to
+  save PCI bandwidth and improve performance at the cost of a slightly
+  higher CPU usage.
+
+  It is currently only supported on the ConnectX-4 Lx family of adapters.
+  Enabled by default.
+
 Prerequisites
 -------------
 

@@ -398,7 +398,7 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 		.obj = tmpl.qp,
 		/* Enable multi-packet send if supported. */
 		.family_flags =
-			(priv->mps ?
+			((priv->mps && !priv->sriov) ?
 			 IBV_EXP_QP_BURST_CREATE_ENABLE_MULTI_PACKET_SEND_WR :
 			 0),
 	};

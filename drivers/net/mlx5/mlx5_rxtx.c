@@ -802,6 +802,413 @@ mlx5_tx_burst_inline(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 }
 
 /**
+ * Open a MPW session.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param mpw
+ *   Pointer to MPW session structure.
+ * @param length
+ *   Packet length.
+ */
+static inline void
+mlx5_mpw_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
+{
+	uint16_t idx = txq->wqe_ci & (txq->wqe_n - 1);
+	volatile struct mlx5_wqe_data_seg (*dseg)[MLX5_MPW_DSEG_MAX] =
+		(volatile struct mlx5_wqe_data_seg (*)[])
+		(uintptr_t)&(*txq->wqes)[(idx + 1) & (txq->wqe_n - 1)];
+
+	mpw->state = MLX5_MPW_STATE_OPENED;
+	mpw->pkts_n = 0;
+	mpw->len = length;
+	mpw->total_len = 0;
+	mpw->wqe = &(*txq->wqes)[idx];
+	mpw->wqe->mpw.eseg.mss = htons(length);
+	mpw->wqe->mpw.eseg.inline_hdr_sz = 0;
+	mpw->wqe->mpw.eseg.rsvd0 = 0;
+	mpw->wqe->mpw.eseg.rsvd1 = 0;
+	mpw->wqe->mpw.eseg.rsvd2 = 0;
+	mpw->wqe->mpw.ctrl.data[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
+					   (txq->wqe_ci << 8) |
+					   MLX5_OPCODE_LSO_MPW);
+	mpw->wqe->mpw.ctrl.data[2] = 0;
+	mpw->wqe->mpw.ctrl.data[3] = 0;
+	mpw->data.dseg[0] = &mpw->wqe->mpw.dseg[0];
+	mpw->data.dseg[1] = &mpw->wqe->mpw.dseg[1];
+	mpw->data.dseg[2] = &(*dseg)[0];
+	mpw->data.dseg[3] = &(*dseg)[1];
+	mpw->data.dseg[4] = &(*dseg)[2];
+}
+
+/**
+ * Close a MPW session.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param mpw
+ *   Pointer to MPW session structure.
+ */
+static inline void
+mlx5_mpw_close(struct txq *txq, struct mlx5_mpw *mpw)
+{
+	unsigned int num = mpw->pkts_n;
+
+	/*
+	 * Store size in multiple of 16 bytes. Control and Ethernet segments
+	 * count as 2.
+	 */
+	mpw->wqe->mpw.ctrl.data[1] = htonl(txq->qp_num_8s | (2 + num));
+	mpw->state = MLX5_MPW_STATE_CLOSED;
+	if (num < 3)
+		++txq->wqe_ci;
+	else
+		txq->wqe_ci += 2;
+	tx_prefetch_wqe(txq, txq->wqe_ci);
+	tx_prefetch_wqe(txq, txq->wqe_ci + 1);
+}
+
+/**
+ * DPDK callback for TX with MPW support.
+ *
+ * @param dpdk_txq
+ *   Generic pointer to TX queue structure.
+ * @param[in] pkts
+ *   Packets to transmit.
+ * @param pkts_n
+ *   Number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully transmitted (<= pkts_n).
+ */
+uint16_t
+mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+{
+	struct txq *txq = (struct txq *)dpdk_txq;
+	uint16_t elts_head = txq->elts_head;
+	const unsigned int elts_n = txq->elts_n;
+	unsigned int i;
+	unsigned int max;
+	unsigned int comp;
+	struct mlx5_mpw mpw = {
+		.state = MLX5_MPW_STATE_CLOSED,
+	};
+
+	/* Prefetch first packet cacheline. */
+	tx_prefetch_cqe(txq, txq->cq_ci);
+	tx_prefetch_wqe(txq, txq->wqe_ci);
+	tx_prefetch_wqe(txq, txq->wqe_ci + 1);
+	/* Start processing. */
+	txq_complete(txq);
+	max = (elts_n - (elts_head - txq->elts_tail));
+	if (max > elts_n)
+		max -= elts_n;
+	assert(max >= 1);
+	assert(max <= elts_n);
+	/* Always leave one free entry in the ring. */
+	--max;
+	if (max == 0)
+		return 0;
+	if (max > pkts_n)
+		max = pkts_n;
+	for (i = 0; (i != max); ++i) {
+		struct rte_mbuf *buf = pkts[i];
+		volatile struct mlx5_wqe_data_seg *dseg;
+		unsigned int elts_head_next = (elts_head + 1) & (elts_n - 1);
+		uintptr_t addr;
+		uint32_t length;
+		uint32_t cs_flags = 0;
+
+		/* Should we enable HW CKSUM offload */
+		if (buf->ol_flags &
+		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
+			cs_flags = MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM;
+		/* Retrieve buffer information. */
+		addr = rte_pktmbuf_mtod(buf, uintptr_t);
+		length = DATA_LEN(buf);
+		/* Update element. */
+		(*txq->elts)[elts_head] = buf;
+		/* Start new session if packet differs. */
+		if ((mpw.state == MLX5_MPW_STATE_OPENED) &&
+		    ((mpw.len != length) ||
+		     (mpw.wqe->mpw.eseg.cs_flags != cs_flags)))
+			mlx5_mpw_close(txq, &mpw);
+		if (mpw.state == MLX5_MPW_STATE_CLOSED) {
+			mlx5_mpw_new(txq, &mpw, length);
+			mpw.wqe->mpw.eseg.cs_flags = cs_flags;
+		}
+		dseg = mpw.data.dseg[mpw.pkts_n];
+		*dseg = (struct mlx5_wqe_data_seg){
+			.byte_count = htonl(length),
+			.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
+			.addr = htonll(addr),
+		};
+		++mpw.pkts_n;
+		if (mpw.pkts_n == MLX5_MPW_DSEG_MAX)
+			mlx5_mpw_close(txq, &mpw);
+		elts_head = elts_head_next;
+#ifdef MLX5_PMD_SOFT_COUNTERS
+		/* Increment sent bytes counter. */
+		txq->stats.obytes += length;
+#endif
+	}
+	/* Take a shortcut if nothing must be sent. */
+	if (unlikely(i == 0))
+		return 0;
+	/* Check whether completion threshold has been reached. */
+	comp = txq->elts_comp + i;
+	if (comp >= MLX5_TX_COMP_THRESH) {
+		volatile union mlx5_wqe *wqe = mpw.wqe;
+
+		/* Request completion on last WQE. */
+		wqe->mpw.ctrl.data[2] = htonl(8);
+		/* Save elts_head in unused "immediate" field of WQE. */
+		wqe->mpw.ctrl.data[3] = elts_head;
+		txq->elts_comp = 0;
+	} else {
+		txq->elts_comp = comp;
+	}
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	/* Increment sent packets counter. */
+	txq->stats.opackets += i;
+#endif
+	/* Ring QP doorbell. */
+	if (mpw.state == MLX5_MPW_STATE_OPENED)
+		mlx5_mpw_close(txq, &mpw);
+	mlx5_tx_dbrec(txq);
+	txq->elts_head = elts_head;
+	return i;
+}
+
+/**
+ * Open a MPW inline session.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param mpw
+ *   Pointer to MPW session structure.
+ * @param length
+ *   Packet length.
+ */
+static inline void
+mlx5_mpw_inline_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
+{
+	uint16_t idx = txq->wqe_ci & (txq->wqe_n - 1);
+
+	mpw->state = MLX5_MPW_INL_STATE_OPENED;
+	mpw->pkts_n = 0;
+	mpw->len = length;
+	mpw->total_len = 0;
+	mpw->wqe = &(*txq->wqes)[idx];
+	mpw->wqe->mpw_inl.ctrl.data[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
+					       (txq->wqe_ci << 8) |
+					       MLX5_OPCODE_LSO_MPW);
+	mpw->wqe->mpw_inl.ctrl.data[2] = 0;
+	mpw->wqe->mpw_inl.ctrl.data[3] = 0;
+	mpw->wqe->mpw_inl.eseg.mss = htons(length);
+	mpw->wqe->mpw_inl.eseg.inline_hdr_sz = 0;
+	mpw->wqe->mpw_inl.eseg.cs_flags = 0;
+	mpw->wqe->mpw_inl.eseg.rsvd0 = 0;
+	mpw->wqe->mpw_inl.eseg.rsvd1 = 0;
+	mpw->wqe->mpw_inl.eseg.rsvd2 = 0;
+	mpw->data.raw = &mpw->wqe->mpw_inl.data[0];
+}
+
+/**
+ * Close a MPW inline session.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param mpw
+ *   Pointer to MPW session structure.
+ */
+static inline void
+mlx5_mpw_inline_close(struct txq *txq, struct mlx5_mpw *mpw)
+{
+	unsigned int size;
+
+	size = sizeof(*mpw->wqe) - MLX5_MWQE64_INL_DATA + mpw->total_len;
+	/*
+	 * Store size in multiple of 16 bytes. Control and Ethernet segments
+	 * count as 2.
+	 */
+	mpw->wqe->mpw_inl.ctrl.data[1] =
+		htonl(txq->qp_num_8s | ((size + 15) / 16));
+	mpw->state = MLX5_MPW_STATE_CLOSED;
+	mpw->wqe->mpw_inl.byte_cnt = htonl(mpw->total_len | MLX5_INLINE_SEG);
+	txq->wqe_ci += (size + (sizeof(*mpw->wqe) - 1)) / sizeof(*mpw->wqe);
+}
+
+/**
+ * DPDK callback for TX with MPW inline support.
+ *
+ * @param dpdk_txq
+ *   Generic pointer to TX queue structure.
+ * @param[in] pkts
+ *   Packets to transmit.
+ * @param pkts_n
+ *   Number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully transmitted (<= pkts_n).
+ */
+uint16_t
+mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
+			 uint16_t pkts_n)
+{
+	struct txq *txq = (struct txq *)dpdk_txq;
+	uint16_t elts_head = txq->elts_head;
+	const unsigned int elts_n = txq->elts_n;
+	unsigned int i;
+	unsigned int max;
+	unsigned int comp;
+	unsigned int inline_room = txq->max_inline;
+	struct mlx5_mpw mpw = {
+		.state = MLX5_MPW_STATE_CLOSED,
+	};
+
+	/* Prefetch first packet cacheline. */
+	tx_prefetch_cqe(txq, txq->cq_ci);
+	tx_prefetch_wqe(txq, txq->wqe_ci);
+	tx_prefetch_wqe(txq, txq->wqe_ci + 1);
+	/* Start processing. */
+	txq_complete(txq);
+	max = (elts_n - (elts_head - txq->elts_tail));
+	if (max > elts_n)
+		max -= elts_n;
+	assert(max >= 1);
+	assert(max <= elts_n);
+	/* Always leave one free entry in the ring. */
+	--max;
+	if (max == 0)
+		return 0;
+	if (max > pkts_n)
+		max = pkts_n;
+	for (i = 0; (i != max); ++i) {
+		struct rte_mbuf *buf = pkts[i];
+		unsigned int elts_head_next = (elts_head + 1) & (elts_n - 1);
+		uintptr_t addr;
+		uint32_t length;
+		uint32_t cs_flags = 0;
+
+		/* Should we enable HW CKSUM offload */
+		if (buf->ol_flags &
+		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
+			cs_flags = MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM;
+		/* Retrieve buffer information. */
+		addr = rte_pktmbuf_mtod(buf, uintptr_t);
+		length = DATA_LEN(buf);
+		/* Update element. */
+		(*txq->elts)[elts_head] = buf;
+		/* Start new session if packet differs. */
+		if (mpw.state == MLX5_MPW_STATE_OPENED) {
+			if ((mpw.len != length) ||
+			    (mpw.wqe->mpw.eseg.cs_flags != cs_flags))
+				mlx5_mpw_close(txq, &mpw);
+		} else if (mpw.state == MLX5_MPW_INL_STATE_OPENED) {
+			if ((mpw.len != length) ||
+			    (length > inline_room) ||
+			    (mpw.wqe->mpw_inl.eseg.cs_flags != cs_flags)) {
+				mlx5_mpw_inline_close(txq, &mpw);
+				inline_room = txq->max_inline;
+			}
+		}
+		if (mpw.state == MLX5_MPW_STATE_CLOSED) {
+			if (length > inline_room) {
+				mlx5_mpw_new(txq, &mpw, length);
+				mpw.wqe->mpw.eseg.cs_flags = cs_flags;
+			} else {
+				mlx5_mpw_inline_new(txq, &mpw, length);
+				mpw.wqe->mpw_inl.eseg.cs_flags = cs_flags;
+			}
+		}
+		if (mpw.state == MLX5_MPW_STATE_OPENED) {
+			volatile struct mlx5_wqe_data_seg *dseg;
+
+			assert(inline_room == txq->max_inline);
+			dseg = mpw.data.dseg[mpw.pkts_n];
+			*dseg = (struct mlx5_wqe_data_seg){
+				.byte_count = htonl(length),
+				.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
+				.addr = htonll(addr),
+			};
+			++mpw.pkts_n;
+			if (mpw.pkts_n == MLX5_MPW_DSEG_MAX)
+				mlx5_mpw_close(txq, &mpw);
+		} else {
+			unsigned int max;
+
+			assert(mpw.state == MLX5_MPW_INL_STATE_OPENED);
+			assert(length <= inline_room);
+			/* Maximum number of bytes before wrapping. */
+			max = ((uintptr_t)&(*txq->wqes)[txq->wqe_n] -
+			       (uintptr_t)mpw.data.raw);
+			if (length > max) {
+				rte_memcpy((void *)(uintptr_t)mpw.data.raw,
+					   (void *)addr,
+					   max);
+				mpw.data.raw =
+					(volatile void *)&(*txq->wqes)[0];
+				rte_memcpy((void *)(uintptr_t)mpw.data.raw,
+					   (void *)(addr + max),
+					   length - max);
+				mpw.data.raw += length - max;
+			} else {
+				rte_memcpy((void *)(uintptr_t)mpw.data.raw,
+					   (void *)addr,
+					   length);
+				mpw.data.raw += length;
+			}
+			if ((uintptr_t)mpw.data.raw ==
+			    (uintptr_t)&(*txq->wqes)[txq->wqe_n])
+				mpw.data.raw =
+					(volatile void *)&(*txq->wqes)[0];
+			++mpw.pkts_n;
+			if (mpw.pkts_n == MLX5_MPW_DSEG_MAX) {
+				mlx5_mpw_inline_close(txq, &mpw);
+				inline_room = txq->max_inline;
+			} else {
+				inline_room -= length;
+			}
+		}
+		mpw.total_len += length;
+		elts_head = elts_head_next;
+#ifdef MLX5_PMD_SOFT_COUNTERS
+		/* Increment sent bytes counter. */
+		txq->stats.obytes += length;
+#endif
+	}
+	/* Take a shortcut if nothing must be sent. */
+	if (unlikely(i == 0))
+		return 0;
+	/* Check whether completion threshold has been reached. */
+	comp = txq->elts_comp + i;
+	if (comp >= MLX5_TX_COMP_THRESH) {
+		volatile union mlx5_wqe *wqe = mpw.wqe;
+
+		/* Request completion on last WQE. */
+		wqe->mpw_inl.ctrl.data[2] = htonl(8);
+		/* Save elts_head in unused "immediate" field of WQE. */
+		wqe->mpw_inl.ctrl.data[3] = elts_head;
+		txq->elts_comp = 0;
+	} else {
+		txq->elts_comp = comp;
+	}
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	/* Increment sent packets counter. */
+	txq->stats.opackets += i;
+#endif
+	/* Ring QP doorbell. */
+	if (mpw.state == MLX5_MPW_INL_STATE_OPENED)
+		mlx5_mpw_inline_close(txq, &mpw);
+	else if (mpw.state == MLX5_MPW_STATE_OPENED)
+		mlx5_mpw_close(txq, &mpw);
+	mlx5_tx_dbrec(txq);
+	txq->elts_head = elts_head;
+	return i;
+}
+
+/**
  * Translate RX completion flags to packet type.
  *
  * @param[in] cqe

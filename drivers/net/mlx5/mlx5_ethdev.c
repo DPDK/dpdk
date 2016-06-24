@@ -584,7 +584,8 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		  DEV_RX_OFFLOAD_UDP_CKSUM |
 		  DEV_RX_OFFLOAD_TCP_CKSUM) :
 		 0);
-	info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
+	if (!priv->mps)
+		info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
 	if (priv->hw_csum)
 		info->tx_offload_capa |=
 			(DEV_TX_OFFLOAD_IPV4_CKSUM |
@@ -1318,7 +1319,17 @@ void
 priv_select_tx_function(struct priv *priv)
 {
 	priv->dev->tx_pkt_burst = mlx5_tx_burst;
-	if (priv->txq_inline && (priv->txqs_n >= priv->txqs_inline)) {
+	/* Display warning for unsupported configurations. */
+	if (priv->sriov && priv->mps)
+		WARN("multi-packet send WQE cannot be used on a SR-IOV setup");
+	/* Select appropriate TX function. */
+	if ((priv->sriov == 0) && priv->mps && priv->txq_inline) {
+		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw_inline;
+		DEBUG("selected MPW inline TX function");
+	} else if ((priv->sriov == 0) && priv->mps) {
+		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw;
+		DEBUG("selected MPW TX function");
+	} else if (priv->txq_inline && (priv->txqs_n >= priv->txqs_inline)) {
 		priv->dev->tx_pkt_burst = mlx5_tx_burst_inline;
 		DEBUG("selected inline TX function (%u >= %u queues)",
 		      priv->txqs_n, priv->txqs_inline);
