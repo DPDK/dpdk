@@ -642,7 +642,7 @@ priv_rehash_flows(struct priv *priv)
  */
 static int
 rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n,
-	       struct rte_mbuf **pool)
+	       struct rte_mbuf *(*pool)[])
 {
 	unsigned int i;
 	int ret = 0;
@@ -654,9 +654,10 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n,
 			&(*rxq_ctrl->rxq.wqes)[i];
 
 		if (pool != NULL) {
-			buf = *(pool++);
+			buf = (*pool)[i];
 			assert(buf != NULL);
 			rte_pktmbuf_reset(buf);
+			rte_pktmbuf_refcnt_update(buf, 1);
 		} else
 			buf = rte_pktmbuf_alloc(rxq_ctrl->rxq.mp);
 		if (buf == NULL) {
@@ -781,7 +782,7 @@ rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
 }
 
 /**
- * Reconfigure a RX queue with new parameters.
+ * Reconfigure RX queue buffers.
  *
  * rxq_rehash() does not allocate mbufs, which, if not done from the right
  * thread (such as a control thread), may corrupt the pool.
@@ -798,67 +799,48 @@ rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
 int
 rxq_rehash(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl)
 {
-	struct rxq_ctrl tmpl = *rxq_ctrl;
-	unsigned int mbuf_n;
-	unsigned int desc_n;
-	struct rte_mbuf **pool;
-	unsigned int i, k;
+	unsigned int elts_n = rxq_ctrl->rxq.elts_n;
+	unsigned int i;
 	struct ibv_exp_wq_attr mod;
 	int err;
 
 	DEBUG("%p: rehashing queue %p", (void *)dev, (void *)rxq_ctrl);
-	/* Number of descriptors and mbufs currently allocated. */
-	desc_n = tmpl.rxq.elts_n;
-	mbuf_n = desc_n;
 	/* From now on, any failure will render the queue unusable.
 	 * Reinitialize WQ. */
 	mod = (struct ibv_exp_wq_attr){
 		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
 		.wq_state = IBV_EXP_WQS_RESET,
 	};
-	err = ibv_exp_modify_wq(tmpl.wq, &mod);
+	err = ibv_exp_modify_wq(rxq_ctrl->wq, &mod);
 	if (err) {
 		ERROR("%p: cannot reset WQ: %s", (void *)dev, strerror(err));
 		assert(err > 0);
 		return err;
 	}
-	/* Allocate pool. */
-	pool = rte_malloc(__func__, (mbuf_n * sizeof(*pool)), 0);
-	if (pool == NULL) {
-		ERROR("%p: cannot allocate memory", (void *)dev);
-		return ENOBUFS;
-	}
 	/* Snatch mbufs from original queue. */
-	k = 0;
-	for (i = 0; (i != desc_n); ++i)
-		pool[k++] = (*rxq_ctrl->rxq.elts)[i];
-	assert(k == mbuf_n);
-	rte_free(pool);
+	claim_zero(rxq_alloc_elts(rxq_ctrl, elts_n, rxq_ctrl->rxq.elts));
+	for (i = 0; i != elts_n; ++i) {
+		struct rte_mbuf *buf = (*rxq_ctrl->rxq.elts)[i];
+
+		assert(rte_mbuf_refcnt_read(buf) == 2);
+		rte_pktmbuf_free_seg(buf);
+	}
 	/* Change queue state to ready. */
 	mod = (struct ibv_exp_wq_attr){
 		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
 		.wq_state = IBV_EXP_WQS_RDY,
 	};
-	err = ibv_exp_modify_wq(tmpl.wq, &mod);
+	err = ibv_exp_modify_wq(rxq_ctrl->wq, &mod);
 	if (err) {
 		ERROR("%p: WQ state to IBV_EXP_WQS_RDY failed: %s",
 		      (void *)dev, strerror(err));
 		goto error;
 	}
-	/* Post SGEs. */
-	err = rxq_alloc_elts(&tmpl, desc_n, pool);
-	if (err) {
-		ERROR("%p: cannot reallocate WRs, aborting", (void *)dev);
-		rte_free(pool);
-		assert(err > 0);
-		return err;
-	}
 	/* Update doorbell counter. */
-	rxq_ctrl->rxq.rq_ci = desc_n;
+	rxq_ctrl->rxq.rq_ci = elts_n;
 	rte_wmb();
 	*rxq_ctrl->rxq.rq_db = htonl(rxq_ctrl->rxq.rq_ci);
 error:
-	*rxq_ctrl = tmpl;
 	assert(err >= 0);
 	return err;
 }
@@ -868,24 +850,26 @@ error:
  *
  * @param tmpl
  *   Pointer to RX queue control template.
- * @param rxq_ctrl
- *   Pointer to RX queue control.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static inline int
-rxq_setup(struct rxq_ctrl *tmpl, struct rxq_ctrl *rxq_ctrl)
+rxq_setup(struct rxq_ctrl *tmpl)
 {
 	struct ibv_cq *ibcq = tmpl->cq;
 	struct mlx5_cq *cq = to_mxxx(cq, cq);
 	struct mlx5_rwq *rwq = container_of(tmpl->wq, struct mlx5_rwq, wq);
+	struct rte_mbuf *(*elts)[tmpl->rxq.elts_n] =
+		rte_calloc_socket("RXQ", 1, sizeof(*elts), 0, tmpl->socket);
 
 	if (cq->cqe_sz != RTE_CACHE_LINE_SIZE) {
 		ERROR("Wrong MLX5_CQE_SIZE environment variable value: "
 		      "it should be set to %u", RTE_CACHE_LINE_SIZE);
 		return EINVAL;
 	}
+	if (elts == NULL)
+		return ENOMEM;
 	tmpl->rxq.rq_db = rwq->rq.db;
 	tmpl->rxq.cqe_n = ibcq->cqe + 1;
 	tmpl->rxq.cq_ci = 0;
@@ -897,9 +881,7 @@ rxq_setup(struct rxq_ctrl *tmpl, struct rxq_ctrl *rxq_ctrl)
 	tmpl->rxq.cqes =
 		(volatile struct mlx5_cqe (*)[])
 		(uintptr_t)cq->active_buf->buf;
-	tmpl->rxq.elts =
-		(struct rte_mbuf *(*)[tmpl->rxq.elts_n])
-		((uintptr_t)rxq_ctrl + sizeof(*rxq_ctrl));
+	tmpl->rxq.elts = elts;
 	return 0;
 }
 
@@ -947,6 +929,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	enum ibv_exp_query_intf_status status;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
 	unsigned int cqe_n = desc - 1;
+	struct rte_mbuf *(*elts)[desc] = NULL;
 	int ret = 0;
 
 	(void)conf; /* Thresholds configuration (ignored). */
@@ -1104,13 +1087,19 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-	ret = rxq_setup(&tmpl, rxq_ctrl);
+	ret = rxq_setup(&tmpl);
 	if (ret) {
 		ERROR("%p: cannot initialize RX queue structure: %s",
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-	ret = rxq_alloc_elts(&tmpl, desc, NULL);
+	/* Reuse buffers from original queue if possible. */
+	if (rxq_ctrl->rxq.elts_n) {
+		assert(rxq_ctrl->rxq.elts_n == desc);
+		assert(rxq_ctrl->rxq.elts != tmpl.rxq.elts);
+		ret = rxq_alloc_elts(&tmpl, desc, rxq_ctrl->rxq.elts);
+	} else
+		ret = rxq_alloc_elts(&tmpl, desc, NULL);
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
 		      (void *)dev, strerror(ret));
@@ -1119,6 +1108,14 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	/* Clean up rxq in case we're reinitializing it. */
 	DEBUG("%p: cleaning-up old rxq just in case", (void *)rxq_ctrl);
 	rxq_cleanup(rxq_ctrl);
+	/* Move mbuf pointers to dedicated storage area in RX queue. */
+	elts = (void *)(rxq_ctrl + 1);
+	rte_memcpy(elts, tmpl.rxq.elts, sizeof(*elts));
+#ifndef NDEBUG
+	memset(tmpl.rxq.elts, 0x55, sizeof(*elts));
+#endif
+	rte_free(tmpl.rxq.elts);
+	tmpl.rxq.elts = elts;
 	*rxq_ctrl = tmpl;
 	/* Update doorbell counter. */
 	rxq_ctrl->rxq.rq_ci = desc;
@@ -1128,7 +1125,9 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	assert(ret == 0);
 	return 0;
 error:
+	elts = tmpl.rxq.elts;
 	rxq_cleanup(&tmpl);
+	rte_free(elts);
 	assert(ret > 0);
 	return ret;
 }
