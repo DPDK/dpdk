@@ -623,8 +623,7 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 
 	};
 
-	if (dev->rx_pkt_burst == mlx5_rx_burst ||
-	    dev->rx_pkt_burst == mlx5_rx_burst_sp)
+	if (dev->rx_pkt_burst == mlx5_rx_burst)
 		return ptypes;
 	return NULL;
 }
@@ -762,19 +761,11 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		mb_len = rte_pktmbuf_data_room_size(rxq->mp);
 		assert(mb_len >= RTE_PKTMBUF_HEADROOM);
 		sp = (max_frame_len > (mb_len - RTE_PKTMBUF_HEADROOM));
-		/* Provide new values to rxq_setup(). */
-		dev->data->dev_conf.rxmode.jumbo_frame = sp;
-		dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_len;
-		ret = rxq_rehash(dev, rxq);
-		if (ret) {
-			/* Force SP RX if that queue requires it and abort. */
-			if (rxq->sp)
-				rx_func = mlx5_rx_burst_sp;
-			break;
+		if (sp) {
+			ERROR("%p: RX scatter is not supported", (void *)dev);
+			ret = ENOTSUP;
+			goto out;
 		}
-		/* Scattered burst function takes priority. */
-		if (rxq->sp)
-			rx_func = mlx5_rx_burst_sp;
 	}
 	/* Burst functions can now be called again. */
 	rte_wmb();
@@ -1103,22 +1094,12 @@ priv_set_link(struct priv *priv, int up)
 {
 	struct rte_eth_dev *dev = priv->dev;
 	int err;
-	unsigned int i;
 
 	if (up) {
 		err = priv_set_flags(priv, ~IFF_UP, IFF_UP);
 		if (err)
 			return err;
-		for (i = 0; i < priv->rxqs_n; i++)
-			if ((*priv->rxqs)[i]->sp)
-				break;
-		/* Check if an sp queue exists.
-		 * Note: Some old frames might be received.
-		 */
-		if (i == priv->rxqs_n)
-			dev->rx_pkt_burst = mlx5_rx_burst;
-		else
-			dev->rx_pkt_burst = mlx5_rx_burst_sp;
+		dev->rx_pkt_burst = mlx5_rx_burst;
 		dev->tx_pkt_burst = mlx5_tx_burst;
 	} else {
 		err = priv_set_flags(priv, ~IFF_UP, ~IFF_UP);
