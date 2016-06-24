@@ -140,121 +140,6 @@ txq_complete(struct txq *txq)
 	return 0;
 }
 
-struct mlx5_check_mempool_data {
-	int ret;
-	char *start;
-	char *end;
-};
-
-/* Called by mlx5_check_mempool() when iterating the memory chunks. */
-static void mlx5_check_mempool_cb(struct rte_mempool *mp,
-	void *opaque, struct rte_mempool_memhdr *memhdr,
-	unsigned mem_idx)
-{
-	struct mlx5_check_mempool_data *data = opaque;
-
-	(void)mp;
-	(void)mem_idx;
-
-	/* It already failed, skip the next chunks. */
-	if (data->ret != 0)
-		return;
-	/* It is the first chunk. */
-	if (data->start == NULL && data->end == NULL) {
-		data->start = memhdr->addr;
-		data->end = data->start + memhdr->len;
-		return;
-	}
-	if (data->end == memhdr->addr) {
-		data->end += memhdr->len;
-		return;
-	}
-	if (data->start == (char *)memhdr->addr + memhdr->len) {
-		data->start -= memhdr->len;
-		return;
-	}
-	/* Error, mempool is not virtually contigous. */
-	data->ret = -1;
-}
-
-/**
- * Check if a mempool can be used: it must be virtually contiguous.
- *
- * @param[in] mp
- *   Pointer to memory pool.
- * @param[out] start
- *   Pointer to the start address of the mempool virtual memory area
- * @param[out] end
- *   Pointer to the end address of the mempool virtual memory area
- *
- * @return
- *   0 on success (mempool is virtually contiguous), -1 on error.
- */
-static int mlx5_check_mempool(struct rte_mempool *mp, uintptr_t *start,
-	uintptr_t *end)
-{
-	struct mlx5_check_mempool_data data;
-
-	memset(&data, 0, sizeof(data));
-	rte_mempool_mem_iter(mp, mlx5_check_mempool_cb, &data);
-	*start = (uintptr_t)data.start;
-	*end = (uintptr_t)data.end;
-
-	return data.ret;
-}
-
-/* For best performance, this function should not be inlined. */
-struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, struct rte_mempool *)
-	__attribute__((noinline));
-
-/**
- * Register mempool as a memory region.
- *
- * @param pd
- *   Pointer to protection domain.
- * @param mp
- *   Pointer to memory pool.
- *
- * @return
- *   Memory region pointer, NULL in case of error.
- */
-struct ibv_mr *
-mlx5_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
-{
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	uintptr_t start;
-	uintptr_t end;
-	unsigned int i;
-
-	if (mlx5_check_mempool(mp, &start, &end) != 0) {
-		ERROR("mempool %p: not virtually contiguous",
-			(void *)mp);
-		return NULL;
-	}
-
-	DEBUG("mempool %p area start=%p end=%p size=%zu",
-	      (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
-	/* Round start and end to page boundary if found in memory segments. */
-	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
-		uintptr_t addr = (uintptr_t)ms[i].addr;
-		size_t len = ms[i].len;
-		unsigned int align = ms[i].hugepage_sz;
-
-		if ((start > addr) && (start < addr + len))
-			start = RTE_ALIGN_FLOOR(start, align);
-		if ((end > addr) && (end < addr + len))
-			end = RTE_ALIGN_CEIL(end, align);
-	}
-	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
-	      (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
-	return ibv_reg_mr(pd,
-			  (void *)start,
-			  end - start,
-			  IBV_ACCESS_LOCAL_WRITE);
-}
-
 /**
  * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which
  * the cloned mbuf is allocated is returned instead.
@@ -273,6 +158,10 @@ txq_mb2mp(struct rte_mbuf *buf)
 	return buf->pool;
 }
 
+static inline uint32_t
+txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
+	__attribute__((always_inline));
+
 /**
  * Get Memory Region (MR) <-> Memory Pool (MP) association from txq->mp2mr[].
  * Add MP to txq->mp2mr[] if it's not registered yet. If mp2mr[] is full,
@@ -286,11 +175,11 @@ txq_mb2mp(struct rte_mbuf *buf)
  * @return
  *   mr->lkey on success, (uint32_t)-1 on failure.
  */
-static uint32_t
+static inline uint32_t
 txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 {
 	unsigned int i;
-	struct ibv_mr *mr;
+	uint32_t lkey = (uint32_t)-1;
 
 	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
 		if (unlikely(txq->mp2mr[i].mp == NULL)) {
@@ -300,89 +189,13 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 		if (txq->mp2mr[i].mp == mp) {
 			assert(txq->mp2mr[i].lkey != (uint32_t)-1);
 			assert(txq->mp2mr[i].mr->lkey == txq->mp2mr[i].lkey);
-			return txq->mp2mr[i].lkey;
+			lkey = txq->mp2mr[i].lkey;
+			break;
 		}
 	}
-	/* Add a new entry, register MR first. */
-	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
-	      (void *)txq, mp->name, (void *)mp);
-	mr = mlx5_mp2mr(txq->priv->pd, mp);
-	if (unlikely(mr == NULL)) {
-		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
-		      (void *)txq);
-		return (uint32_t)-1;
-	}
-	if (unlikely(i == RTE_DIM(txq->mp2mr))) {
-		/* Table is full, remove oldest entry. */
-		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
-		      (void *)txq);
-		--i;
-		claim_zero(ibv_dereg_mr(txq->mp2mr[0].mr));
-		memmove(&txq->mp2mr[0], &txq->mp2mr[1],
-			(sizeof(txq->mp2mr) - sizeof(txq->mp2mr[0])));
-	}
-	/* Store the new entry. */
-	txq->mp2mr[i].mp = mp;
-	txq->mp2mr[i].mr = mr;
-	txq->mp2mr[i].lkey = mr->lkey;
-	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
-	      (void *)txq, mp->name, (void *)mp, txq->mp2mr[i].lkey);
-	return txq->mp2mr[i].lkey;
-}
-
-struct txq_mp2mr_mbuf_check_data {
-	int ret;
-};
-
-/**
- * Callback function for rte_mempool_obj_iter() to check whether a given
- * mempool object looks like a mbuf.
- *
- * @param[in] mp
- *   The mempool pointer
- * @param[in] arg
- *   Context data (struct txq_mp2mr_mbuf_check_data). Contains the
- *   return value.
- * @param[in] obj
- *   Object address.
- * @param index
- *   Object index, unused.
- */
-static void
-txq_mp2mr_mbuf_check(struct rte_mempool *mp, void *arg, void *obj,
-	uint32_t index __rte_unused)
-{
-	struct txq_mp2mr_mbuf_check_data *data = arg;
-	struct rte_mbuf *buf = obj;
-
-	/* Check whether mbuf structure fits element size and whether mempool
-	 * pointer is valid. */
-	if (sizeof(*buf) > mp->elt_size || buf->pool != mp)
-		data->ret = -1;
-}
-
-/**
- * Iterator function for rte_mempool_walk() to register existing mempools and
- * fill the MP to MR cache of a TX queue.
- *
- * @param[in] mp
- *   Memory Pool to register.
- * @param *arg
- *   Pointer to TX queue structure.
- */
-void
-txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
-{
-	struct txq *txq = arg;
-	struct txq_mp2mr_mbuf_check_data data = {
-		.ret = 0,
-	};
-
-	/* Register mempool only if the first element looks like a mbuf. */
-	if (rte_mempool_obj_iter(mp, txq_mp2mr_mbuf_check, &data) == 0 ||
-			data.ret == -1)
-		return;
-	txq_mp2mr(txq, mp);
+	if (unlikely(lkey == (uint32_t)-1))
+		lkey = txq_mp2mr_reg(txq, mp, i);
+	return lkey;
 }
 
 /**

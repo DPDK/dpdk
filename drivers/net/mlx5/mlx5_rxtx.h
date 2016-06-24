@@ -337,12 +337,16 @@ uint16_t mlx5_tx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 
 /* mlx5_rxtx.c */
 
-struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, struct rte_mempool *);
-void txq_mp2mr_iter(struct rte_mempool *, void *);
 uint16_t mlx5_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst_sp(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);
+
+/* mlx5_mr.c */
+
+struct ibv_mr *mlx5_mp2mr(struct ibv_pd *, struct rte_mempool *);
+void txq_mp2mr_iter(struct rte_mempool *, void *);
+uint32_t txq_mp2mr_reg(struct txq *, struct rte_mempool *, unsigned int);
 
 #endif /* RTE_PMD_MLX5_RXTX_H_ */
