@@ -798,7 +798,6 @@ rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
 int
 rxq_rehash(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl)
 {
-	struct priv *priv = rxq_ctrl->priv;
 	struct rxq_ctrl tmpl = *rxq_ctrl;
 	unsigned int mbuf_n;
 	unsigned int desc_n;
@@ -811,16 +810,6 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl)
 	/* Number of descriptors and mbufs currently allocated. */
 	desc_n = tmpl.rxq.elts_n;
 	mbuf_n = desc_n;
-	/* Toggle RX checksum offload if hardware supports it. */
-	if (priv->hw_csum) {
-		tmpl.rxq.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
-		rxq_ctrl->rxq.csum = tmpl.rxq.csum;
-	}
-	if (priv->hw_csum_l2tun) {
-		tmpl.rxq.csum_l2tun =
-			!!dev->data->dev_conf.rxmode.hw_ip_checksum;
-		rxq_ctrl->rxq.csum_l2tun = tmpl.rxq.csum_l2tun;
-	}
 	/* From now on, any failure will render the queue unusable.
 	 * Reinitialize WQ. */
 	mod = (struct ibv_exp_wq_attr){
