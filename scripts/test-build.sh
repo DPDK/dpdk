@@ -63,6 +63,7 @@ print_help () {
 	        -h    this help
 	        -jX   use X parallel jobs in "make"
 	        -s    short test with only first config without examples/doc
+	        -v    verbose build
 
 	config: defconfig[[~][+]option1[[~][+]option2...]]
 	        Example: x86_64-native-linuxapp-gcc+debug~RXTX_CALLBACKS
