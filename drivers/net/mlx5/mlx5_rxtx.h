@@ -256,6 +256,10 @@ struct txq {
 		uint32_t lkey; /* mr->lkey */
 	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
+} __rte_cache_aligned;
+
+/* TX queue control descriptor. */
+struct txq_ctrl {
 #ifdef HAVE_VERBS_VLAN_INSERTION
 	struct ibv_exp_qp_burst_family_v1 *if_qp; /* QP burst interface. */
 #else
@@ -264,6 +268,7 @@ struct txq {
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	struct txq txq; /* Data path structure. */
 };
 
 /* mlx5_rxq.c */
@@ -291,8 +296,8 @@ uint16_t mlx5_rx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 
 /* mlx5_txq.c */
 
-void txq_cleanup(struct txq *);
-int txq_setup(struct rte_eth_dev *, struct txq *, uint16_t, unsigned int,
+void txq_cleanup(struct txq_ctrl *);
+int txq_setup(struct rte_eth_dev *, struct txq_ctrl *, uint16_t, unsigned int,
 	      const struct rte_eth_txconf *);
 int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);

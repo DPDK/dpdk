@@ -98,7 +98,6 @@ static void
 mlx5_dev_close(struct rte_eth_dev *dev)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	void *tmp;
 	unsigned int i;
 
 	priv_lock(priv);
@@ -122,12 +121,13 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		usleep(1000);
 		for (i = 0; (i != priv->rxqs_n); ++i) {
-			tmp = (*priv->rxqs)[i];
-			if (tmp == NULL)
+			struct rxq *rxq = (*priv->rxqs)[i];
+
+			if (rxq == NULL)
 				continue;
 			(*priv->rxqs)[i] = NULL;
-			rxq_cleanup(tmp);
-			rte_free(tmp);
+			rxq_cleanup(rxq);
+			rte_free(rxq);
 		}
 		priv->rxqs_n = 0;
 		priv->rxqs = NULL;
@@ -136,12 +136,15 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		/* XXX race condition if mlx5_tx_burst() is still running. */
 		usleep(1000);
 		for (i = 0; (i != priv->txqs_n); ++i) {
-			tmp = (*priv->txqs)[i];
-			if (tmp == NULL)
+			struct txq *txq = (*priv->txqs)[i];
+			struct txq_ctrl *txq_ctrl;
+
+			if (txq == NULL)
 				continue;
+			txq_ctrl = container_of(txq, struct txq_ctrl, txq);
 			(*priv->txqs)[i] = NULL;
-			txq_cleanup(tmp);
-			rte_free(tmp);
+			txq_cleanup(txq_ctrl);
+			rte_free(txq_ctrl);
 		}
 		priv->txqs_n = 0;
 		priv->txqs = NULL;

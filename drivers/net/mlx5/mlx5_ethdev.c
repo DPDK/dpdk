@@ -1232,28 +1232,32 @@ mlx5_secondary_data_setup(struct priv *priv)
 	/* TX queues. */
 	for (i = 0; i != nb_tx_queues; ++i) {
 		struct txq *primary_txq = (*sd->primary_priv->txqs)[i];
-		struct txq *txq;
+		struct txq_ctrl *primary_txq_ctrl;
+		struct txq_ctrl *txq_ctrl;
 
 		if (primary_txq == NULL)
 			continue;
-		txq = rte_calloc_socket("TXQ", 1, sizeof(*txq), 0,
-					primary_txq->socket);
-		if (txq != NULL) {
+		primary_txq_ctrl = container_of(primary_txq,
+						struct txq_ctrl, txq);
+		txq_ctrl = rte_calloc_socket("TXQ", 1, sizeof(*txq_ctrl), 0,
+					     primary_txq_ctrl->socket);
+		if (txq_ctrl != NULL) {
 			if (txq_setup(priv->dev,
-				      txq,
+				      primary_txq_ctrl,
 				      primary_txq->elts_n,
-				      primary_txq->socket,
+				      primary_txq_ctrl->socket,
 				      NULL) == 0) {
-				txq->stats.idx = primary_txq->stats.idx;
-				tx_queues[i] = txq;
+				txq_ctrl->txq.stats.idx =
+					primary_txq->stats.idx;
+				tx_queues[i] = &txq_ctrl->txq;
 				continue;
 			}
-			rte_free(txq);
+			rte_free(txq_ctrl);
 		}
 		while (i) {
-			txq = tx_queues[--i];
-			txq_cleanup(txq);
-			rte_free(txq);
+			txq_ctrl = tx_queues[--i];
+			txq_cleanup(txq_ctrl);
+			rte_free(txq_ctrl);
 		}
 		goto error;
 	}
