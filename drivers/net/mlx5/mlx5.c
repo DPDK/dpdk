@@ -122,12 +122,14 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		usleep(1000);
 		for (i = 0; (i != priv->rxqs_n); ++i) {
 			struct rxq *rxq = (*priv->rxqs)[i];
+			struct rxq_ctrl *rxq_ctrl;
 
 			if (rxq == NULL)
 				continue;
+			rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
 			(*priv->rxqs)[i] = NULL;
-			rxq_cleanup(rxq);
-			rte_free(rxq);
+			rxq_cleanup(rxq_ctrl);
+			rte_free(rxq_ctrl);
 		}
 		priv->rxqs_n = 0;
 		priv->rxqs = NULL;

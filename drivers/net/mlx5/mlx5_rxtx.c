@@ -574,7 +574,6 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 		/* Reconfigure sge to use rep instead of seg. */
 		elt->sge.addr = (uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM;
-		assert(elt->sge.lkey == rxq->mr->lkey);
 		elt->buf = rep;
 
 		/* Add SGE to array for repost. */

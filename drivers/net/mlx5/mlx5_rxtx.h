@@ -111,8 +111,11 @@ struct rxq {
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */
 	struct rxq_elt (*elts)[]; /* RX elements. */
-	unsigned int socket; /* CPU socket ID for allocations. */
 	struct mlx5_rxq_stats stats; /* RX queue counters. */
+} __rte_cache_aligned;
+
+/* RX queue control descriptor. */
+struct rxq_ctrl {
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	struct fdir_queue fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
@@ -122,6 +125,8 @@ struct rxq {
 #else /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 #endif /* HAVE_EXP_DEVICE_ATTR_VLAN_OFFLOADS */
+	unsigned int socket; /* CPU socket ID for allocations. */
+	struct rxq rxq; /* Data path structure. */
 };
 
 /* Hash RX queue types. */
@@ -285,9 +290,9 @@ int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
 int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
 int priv_rehash_flows(struct priv *);
-void rxq_cleanup(struct rxq *);
-int rxq_rehash(struct rte_eth_dev *, struct rxq *);
-int rxq_setup(struct rte_eth_dev *, struct rxq *, uint16_t, unsigned int,
+void rxq_cleanup(struct rxq_ctrl *);
+int rxq_rehash(struct rte_eth_dev *, struct rxq_ctrl *);
+int rxq_setup(struct rte_eth_dev *, struct rxq_ctrl *, uint16_t, unsigned int,
 	      const struct rte_eth_rxconf *, struct rte_mempool *);
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
