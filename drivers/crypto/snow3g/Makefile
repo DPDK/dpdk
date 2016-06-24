@@ -49,10 +49,11 @@ LIBABIVER := 1
 # versioning export map
 EXPORT_MAP := rte_pmd_snow3g_version.map
 
-# external library include paths
+# external library dependencies
 CFLAGS += -I$(LIBSSO_SNOW3G_PATH)
 CFLAGS += -I$(LIBSSO_SNOW3G_PATH)/include
 CFLAGS += -I$(LIBSSO_SNOW3G_PATH)/build
+LDLIBS += -L$(LIBSSO_SNOW3G_PATH)/build -lsso_snow3g
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += rte_snow3g_pmd.c

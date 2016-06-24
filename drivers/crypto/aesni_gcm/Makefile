@@ -49,9 +49,10 @@ LIBABIVER := 1
 # versioning export map
 EXPORT_MAP := rte_pmd_aesni_gcm_version.map
 
-# external library include paths
+# external library dependencies
 CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)
 CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)/include
+LDLIBS += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 LDLIBS += -lcrypto
 
 # library source files

@@ -49,10 +49,11 @@ LIBABIVER := 1
 # versioning export map
 EXPORT_MAP := rte_pmd_kasumi_version.map
 
-# external library include paths
+# external library dependencies
 CFLAGS += -I$(LIBSSO_KASUMI_PATH)
 CFLAGS += -I$(LIBSSO_KASUMI_PATH)/include
 CFLAGS += -I$(LIBSSO_KASUMI_PATH)/build
+LDLIBS += -L$(LIBSSO_KASUMI_PATH)/build -lsso_kasumi
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += rte_kasumi_pmd.c
