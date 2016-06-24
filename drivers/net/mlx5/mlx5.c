@@ -69,6 +69,9 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 
+/* Device parameter to enable RX completion queue compression. */
+#define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
+
 /**
  * Retrieve integer value from environment variable.
  *
@@ -256,12 +259,21 @@ static int
 mlx5_args_check(const char *key, const char *val, void *opaque)
 {
 	struct priv *priv = opaque;
+	unsigned long tmp;
 
-	/* No parameters are expected at the moment. */
-	(void)priv;
-	(void)val;
-	WARN("%s: unknown parameter", key);
-	return -EINVAL;
+	errno = 0;
+	tmp = strtoul(val, NULL, 0);
+	if (errno) {
+		WARN("%s: \"%s\" is not a valid integer", key, val);
+		return errno;
+	}
+	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
+		priv->cqe_comp = !!tmp;
+	} else {
+		WARN("%s: unknown parameter", key);
+		return -EINVAL;
+	}
+	return 0;
 }
 
 /**
@@ -279,6 +291,7 @@ static int
 mlx5_args(struct priv *priv, struct rte_devargs *devargs)
 {
 	const char **params = (const char *[]){
+		MLX5_RXQ_CQE_COMP_EN,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -475,6 +488,7 @@ mlx5_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
+		priv->cqe_comp = 1; /* Enable compression by default. */
 		err = mlx5_args(priv, pci_dev->devargs);
 		if (err) {
 			ERROR("failed to process device arguments: %s",

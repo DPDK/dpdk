@@ -268,6 +268,11 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 	enum ibv_exp_query_intf_status status;
 	int ret = 0;
 
+	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
+		ret = ENOTSUP;
+		ERROR("MLX5_ENABLE_CQE_COMPRESSION must never be set");
+		goto error;
+	}
 	(void)conf; /* Thresholds configuration (ignored). */
 	tmpl.txq.elts_n = desc;
 	/*

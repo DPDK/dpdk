@@ -148,6 +148,12 @@ Run-time configuration
 
 - **ethtool** operations on related kernel interfaces also affect the PMD.
 
+- ``rxq_cqe_comp_en`` parameter [int]
+
+  A nonzero value enables the compression of CQE on RX side. This feature
+  allows to save PCI bandwidth and improve performance at the cost of a
+  slightly higher CPU usage.  Enabled by default.
+
 Prerequisites
 -------------
 

@@ -91,6 +91,15 @@ struct fdir_queue {
 
 struct priv;
 
+/* Compressed CQE context. */
+struct rxq_zip {
+	uint16_t ai; /* Array index. */
+	uint16_t ca; /* Current array index. */
+	uint16_t na; /* Next array index. */
+	uint16_t cq_ci; /* The next CQE. */
+	uint32_t cqe_cnt; /* Number of CQEs. */
+};
+
 /* RX queue descriptor. */
 struct rxq {
 	unsigned int csum:1; /* Enable checksum offloading. */
@@ -100,9 +109,11 @@ struct rxq {
 	uint16_t rq_ci;
 	uint16_t cq_ci;
 	uint16_t elts_n;
+	uint16_t cqe_n; /* Number of CQ elements. */
 	uint16_t port_id;
 	volatile struct mlx5_wqe_data_seg(*wqes)[];
 	volatile struct mlx5_cqe(*cqes)[];
+	struct rxq_zip zip; /* Compressed context. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	struct rte_mbuf *(*elts)[];
