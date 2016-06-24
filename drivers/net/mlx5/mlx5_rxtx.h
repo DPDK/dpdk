@@ -240,19 +240,10 @@ struct txq {
 #ifdef HAVE_VERBS_VLAN_INSERTION
 	int (*send_pending_vlan)();
 #endif
-#if MLX5_PMD_MAX_INLINE > 0
-	int (*send_pending_inline)();
-#ifdef HAVE_VERBS_VLAN_INSERTION
-	int (*send_pending_inline_vlan)();
-#endif
-#endif
 	int (*send_flush)(struct ibv_qp *qp);
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
 	struct txq_elt (*elts)[]; /* TX elements. */
-#if MLX5_PMD_MAX_INLINE > 0
-	uint32_t max_inline; /* Max inline send size <= MLX5_PMD_MAX_INLINE. */
-#endif
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
 	unsigned int elts_tail; /* First element awaiting completion. */

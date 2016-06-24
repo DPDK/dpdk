@@ -329,58 +329,33 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rte_prefetch0((volatile void *)
 				      (uintptr_t)buf_next_addr);
 		}
-		/* Put packet into send queue. */
-#if MLX5_PMD_MAX_INLINE > 0
-		if (length <= txq->max_inline) {
-#ifdef HAVE_VERBS_VLAN_INSERTION
-			if (insert_vlan)
-				err = txq->send_pending_inline_vlan
-					(txq->qp,
-					 (void *)addr,
-					 length,
-					 send_flags,
-					 &buf->vlan_tci);
-			else
-#endif /* HAVE_VERBS_VLAN_INSERTION */
-				err = txq->send_pending_inline
-					(txq->qp,
-					 (void *)addr,
-					 length,
-					 send_flags);
-		} else
-#endif
-		{
-			/*
-			 * Retrieve Memory Region key for this
-			 * memory pool.
-			 */
-			lkey = txq_mp2mr(txq, txq_mb2mp(buf));
-			if (unlikely(lkey == (uint32_t)-1)) {
-				/* MR does not exist. */
-				DEBUG("%p: unable to get MP <-> MR"
-				      " association", (void *)txq);
-				/* Clean up TX element. */
-				elt->buf = NULL;
-				goto stop;
-			}
-#ifdef HAVE_VERBS_VLAN_INSERTION
-			if (insert_vlan)
-				err = txq->send_pending_vlan
-					(txq->qp,
-					 addr,
-					 length,
-					 lkey,
-					 send_flags,
-					 &buf->vlan_tci);
-			else
-#endif /* HAVE_VERBS_VLAN_INSERTION */
-				err = txq->send_pending
-					(txq->qp,
-					 addr,
-					 length,
-					 lkey,
-					 send_flags);
+		/* Retrieve Memory Region key for this memory pool. */
+		lkey = txq_mp2mr(txq, txq_mb2mp(buf));
+		if (unlikely(lkey == (uint32_t)-1)) {
+			/* MR does not exist. */
+			DEBUG("%p: unable to get MP <-> MR"
+			      " association", (void *)txq);
+			/* Clean up TX element. */
+			elt->buf = NULL;
+			goto stop;
 		}
+#ifdef HAVE_VERBS_VLAN_INSERTION
+		if (insert_vlan)
+			err = txq->send_pending_vlan
+				(txq->qp,
+				 addr,
+				 length,
+				 lkey,
+				 send_flags,
+				 &buf->vlan_tci);
+		else
+#endif /* HAVE_VERBS_VLAN_INSERTION */
+			err = txq->send_pending
+				(txq->qp,
+				 addr,
+				 length,
+				 lkey,
+				 send_flags);
 		if (unlikely(err))
 			goto stop;
 #ifdef MLX5_PMD_SOFT_COUNTERS

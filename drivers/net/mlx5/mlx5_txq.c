@@ -173,9 +173,6 @@ txq_cleanup(struct txq *txq)
 	DEBUG("cleaning up %p", (void *)txq);
 	txq_free_elts(txq);
 	txq->poll_cnt = NULL;
-#if MLX5_PMD_MAX_INLINE > 0
-	txq->send_pending_inline = NULL;
-#endif
 	txq->send_flush = NULL;
 	if (txq->if_qp != NULL) {
 		assert(txq->priv != NULL);
@@ -282,7 +279,8 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
 		.res_domain = tmpl.rd,
 	};
-	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, NULL, 0, &attr.cq);
+	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, NULL, 0,
+				    &attr.cq);
 	if (tmpl.cq == NULL) {
 		ret = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
@@ -305,9 +303,6 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 					desc),
 			/* Max number of scatter/gather elements in a WR. */
 			.max_send_sge = 1,
-#if MLX5_PMD_MAX_INLINE > 0
-			.max_inline_data = MLX5_PMD_MAX_INLINE,
-#endif
 		},
 		.qp_type = IBV_QPT_RAW_PACKET,
 		/* Do *NOT* enable this, completions events are managed per
@@ -325,10 +320,6 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-#if MLX5_PMD_MAX_INLINE > 0
-	/* ibv_create_qp() updates this value. */
-	tmpl.max_inline = attr.init.cap.max_inline_data;
-#endif
 	attr.mod = (struct ibv_exp_qp_attr){
 		/* Move the QP to this state. */
 		.qp_state = IBV_QPS_INIT,
@@ -403,12 +394,6 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	txq_cleanup(txq);
 	*txq = tmpl;
 	txq->poll_cnt = txq->if_cq->poll_cnt;
-#if MLX5_PMD_MAX_INLINE > 0
-	txq->send_pending_inline = txq->if_qp->send_pending_inline;
-#ifdef HAVE_VERBS_VLAN_INSERTION
-	txq->send_pending_inline_vlan = txq->if_qp->send_pending_inline_vlan;
-#endif
-#endif
 	txq->send_pending = txq->if_qp->send_pending;
 #ifdef HAVE_VERBS_VLAN_INSERTION
 	txq->send_pending_vlan = txq->if_qp->send_pending_vlan;

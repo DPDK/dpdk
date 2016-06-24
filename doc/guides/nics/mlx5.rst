@@ -114,16 +114,6 @@ These options can be modified in the ``.config`` file.
   adds additional run-time checks and debugging messages at the cost of
   lower performance.
 
-- ``CONFIG_RTE_LIBRTE_MLX5_MAX_INLINE`` (default **0**)
-
-  Amount of data to be inlined during TX operations. Improves latency.
-  Can improve PPS performance when PCI backpressure is detected and may be
-  useful for scenarios involving heavy traffic on many queues.
-
-  Since the additional software logic necessary to handle this mode can
-  lower performance when there is no backpressure, it is not enabled by
-  default.
-
 - ``CONFIG_RTE_LIBRTE_MLX5_TX_MP_CACHE`` (default **8**)
 
   Maximum number of cached memory pools (MPs) per TX queue. Each MP from
