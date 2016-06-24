@@ -1242,11 +1242,11 @@ mlx5_secondary_data_setup(struct priv *priv)
 		txq_ctrl = rte_calloc_socket("TXQ", 1, sizeof(*txq_ctrl), 0,
 					     primary_txq_ctrl->socket);
 		if (txq_ctrl != NULL) {
-			if (txq_setup(priv->dev,
-				      primary_txq_ctrl,
-				      primary_txq->elts_n,
-				      primary_txq_ctrl->socket,
-				      NULL) == 0) {
+			if (txq_ctrl_setup(priv->dev,
+					   primary_txq_ctrl,
+					   primary_txq->elts_n,
+					   primary_txq_ctrl->socket,
+					   NULL) == 0) {
 				txq_ctrl->txq.stats.idx =
 					primary_txq->stats.idx;
 				tx_queues[i] = &txq_ctrl->txq;

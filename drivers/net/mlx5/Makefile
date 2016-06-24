@@ -107,11 +107,6 @@ mlx5_autoconf.h.new: FORCE
 mlx5_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
-		HAVE_VERBS_VLAN_INSERTION \
-		infiniband/verbs.h \
-		enum IBV_EXP_RECEIVE_WQ_CVLAN_INSERTION \
-		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
 		HAVE_VERBS_IBV_EXP_CQ_COMPRESSED_CQE \
 		infiniband/verbs_exp.h \
 		enum IBV_EXP_CQ_COMPRESSED_CQE \

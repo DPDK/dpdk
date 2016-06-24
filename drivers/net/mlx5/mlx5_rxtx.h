@@ -223,44 +223,40 @@ struct hash_rxq {
 		[MLX5_MAX_SPECIAL_FLOWS][MLX5_MAX_VLAN_IDS];
 };
 
-/* TX element. */
-struct txq_elt {
-	struct rte_mbuf *buf;
-};
-
 /* TX queue descriptor. */
 struct txq {
-	struct priv *priv; /* Back pointer to private data. */
-	int32_t (*poll_cnt)(struct ibv_cq *cq, uint32_t max);
-	int (*send_pending)();
-#ifdef HAVE_VERBS_VLAN_INSERTION
-	int (*send_pending_vlan)();
-#endif
-	int (*send_flush)(struct ibv_qp *qp);
-	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_qp *qp; /* Queue Pair. */
-	struct txq_elt (*elts)[]; /* TX elements. */
-	unsigned int elts_n; /* (*elts)[] length. */
-	unsigned int elts_head; /* Current index in (*elts)[]. */
-	unsigned int elts_tail; /* First element awaiting completion. */
-	unsigned int elts_comp; /* Number of completion requests. */
-	unsigned int elts_comp_cd; /* Countdown for next completion request. */
-	unsigned int elts_comp_cd_init; /* Initial value for countdown. */
+	uint16_t elts_head; /* Current index in (*elts)[]. */
+	uint16_t elts_tail; /* First element awaiting completion. */
+	uint16_t elts_comp_cd_init; /* Initial value for countdown. */
+	uint16_t elts_comp; /* Elements before asking a completion. */
+	uint16_t elts_n; /* (*elts)[] length. */
+	uint16_t cq_ci; /* Consumer index for completion queue. */
+	uint16_t cqe_n; /* Number of CQ elements. */
+	uint16_t wqe_ci; /* Consumer index for work queue. */
+	uint16_t wqe_n; /* Number of WQ elements. */
+	uint16_t bf_offset; /* Blueflame offset. */
+	uint16_t bf_buf_size; /* Blueflame size. */
+	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
+	volatile union mlx5_wqe (*wqes)[]; /* Work queue. */
+	volatile uint32_t *qp_db; /* Work queue doorbell. */
+	volatile uint32_t *cq_db; /* Completion queue doorbell. */
+	volatile void *bf_reg; /* Blueflame register. */
 	struct {
 		const struct rte_mempool *mp; /* Cached Memory Pool. */
 		struct ibv_mr *mr; /* Memory Region (for mp). */
-		uint32_t lkey; /* mr->lkey */
+		uint32_t lkey; /* htonl(mr->lkey) */
 	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
+	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
+	uint32_t qp_num_8s; /* QP number shifted by 8. */
 } __rte_cache_aligned;
 
 /* TX queue control descriptor. */
 struct txq_ctrl {
-#ifdef HAVE_VERBS_VLAN_INSERTION
-	struct ibv_exp_qp_burst_family_v1 *if_qp; /* QP burst interface. */
-#else
+	struct priv *priv; /* Back pointer to private data. */
+	struct ibv_cq *cq; /* Completion Queue. */
+	struct ibv_qp *qp; /* Queue Pair. */
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
-#endif
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	unsigned int socket; /* CPU socket ID for allocations. */
@@ -294,8 +290,8 @@ uint16_t mlx5_rx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 /* mlx5_txq.c */
 
 void txq_cleanup(struct txq_ctrl *);
-int txq_setup(struct rte_eth_dev *, struct txq_ctrl *, uint16_t, unsigned int,
-	      const struct rte_eth_txconf *);
+int txq_ctrl_setup(struct rte_eth_dev *, struct txq_ctrl *, uint16_t,
+		   unsigned int, const struct rte_eth_txconf *);
 int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);
 void mlx5_tx_queue_release(void *);

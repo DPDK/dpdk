@@ -190,7 +190,7 @@ txq_mp2mr_reg(struct txq *txq, struct rte_mempool *mp, unsigned int idx)
 	/* Add a new entry, register MR first. */
 	DEBUG("%p: discovered new memory pool \"%s\" (%p)",
 	      (void *)txq_ctrl, mp->name, (void *)mp);
-	mr = mlx5_mp2mr(txq_ctrl->txq.priv->pd, mp);
+	mr = mlx5_mp2mr(txq_ctrl->priv->pd, mp);
 	if (unlikely(mr == NULL)) {
 		DEBUG("%p: unable to configure MR, ibv_reg_mr() failed.",
 		      (void *)txq_ctrl);
@@ -209,7 +209,7 @@ txq_mp2mr_reg(struct txq *txq, struct rte_mempool *mp, unsigned int idx)
 	/* Store the new entry. */
 	txq_ctrl->txq.mp2mr[idx].mp = mp;
 	txq_ctrl->txq.mp2mr[idx].mr = mr;
-	txq_ctrl->txq.mp2mr[idx].lkey = mr->lkey;
+	txq_ctrl->txq.mp2mr[idx].lkey = htonl(mr->lkey);
 	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
 	      (void *)txq_ctrl, mp->name, (void *)mp,
 	      txq_ctrl->txq.mp2mr[idx].lkey);
