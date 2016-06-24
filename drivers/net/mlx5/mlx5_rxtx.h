@@ -43,6 +43,7 @@
 #pragma GCC diagnostic ignored "-pedantic"
 #endif
 #include <infiniband/verbs.h>
+#include <infiniband/mlx5_hw.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-pedantic"
 #endif
@@ -61,6 +62,7 @@
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
+#include "mlx5_prm.h"
 
 struct mlx5_rxq_stats {
 	unsigned int idx; /**< Mapping index. */
@@ -81,12 +83,6 @@ struct mlx5_txq_stats {
 	uint64_t odropped; /**< Total of packets not sent when TX ring full. */
 };
 
-/* RX element. */
-struct rxq_elt {
-	struct ibv_sge sge; /* Scatter/Gather Element. */
-	struct rte_mbuf *buf; /* SGE buffer. */
-};
-
 /* Flow director queue structure. */
 struct fdir_queue {
 	struct ibv_qp *qp; /* Associated RX QP. */
@@ -97,25 +93,28 @@ struct priv;
 
 /* RX queue descriptor. */
 struct rxq {
-	struct priv *priv; /* Back pointer to private data. */
-	struct rte_mempool *mp; /* Memory Pool for allocations. */
-	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_exp_wq *wq; /* Work Queue. */
-	int32_t (*poll)(); /* Verbs poll function. */
-	int32_t (*recv)(); /* Verbs receive function. */
-	unsigned int port_id; /* Port ID for incoming packets. */
-	unsigned int elts_n; /* (*elts)[] length. */
-	unsigned int elts_head; /* Current index in (*elts)[]. */
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */
-	struct rxq_elt (*elts)[]; /* RX elements. */
-	struct mlx5_rxq_stats stats; /* RX queue counters. */
+	uint16_t rq_ci;
+	uint16_t cq_ci;
+	uint16_t elts_n;
+	uint16_t port_id;
+	volatile struct mlx5_wqe_data_seg(*wqes)[];
+	volatile struct mlx5_cqe(*cqes)[];
+	volatile uint32_t *rq_db;
+	volatile uint32_t *cq_db;
+	struct rte_mbuf *(*elts)[];
+	struct rte_mempool *mp;
+	struct mlx5_rxq_stats stats;
 } __rte_cache_aligned;
 
 /* RX queue control descriptor. */
 struct rxq_ctrl {
+	struct priv *priv; /* Back pointer to private data. */
+	struct ibv_cq *cq; /* Completion Queue. */
+	struct ibv_exp_wq *wq; /* Work Queue. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	struct fdir_queue fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
@@ -284,8 +283,9 @@ int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
 int priv_rehash_flows(struct priv *);
 void rxq_cleanup(struct rxq_ctrl *);
 int rxq_rehash(struct rte_eth_dev *, struct rxq_ctrl *);
-int rxq_setup(struct rte_eth_dev *, struct rxq_ctrl *, uint16_t, unsigned int,
-	      const struct rte_eth_rxconf *, struct rte_mempool *);
+int rxq_ctrl_setup(struct rte_eth_dev *, struct rxq_ctrl *, uint16_t,
+		   unsigned int, const struct rte_eth_rxconf *,
+		   struct rte_mempool *);
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
 void mlx5_rx_queue_release(void *);

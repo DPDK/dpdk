@@ -1263,7 +1263,9 @@ mlx5_secondary_data_setup(struct priv *priv)
 	}
 	/* RX queues. */
 	for (i = 0; i != nb_rx_queues; ++i) {
-		struct rxq *primary_rxq = (*sd->primary_priv->rxqs)[i];
+		struct rxq_ctrl *primary_rxq =
+			container_of((*sd->primary_priv->rxqs)[i],
+				     struct rxq_ctrl, rxq);
 
 		if (primary_rxq == NULL)
 			continue;

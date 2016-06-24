@@ -431,7 +431,7 @@ priv_get_fdir_queue(struct priv *priv, uint16_t idx)
 	ind_init_attr = (struct ibv_exp_rwq_ind_table_init_attr){
 		.pd = priv->pd,
 		.log_ind_tbl_size = 0,
-		.ind_tbl = &((*priv->rxqs)[idx]->wq),
+		.ind_tbl = &rxq_ctrl->wq,
 		.comp_mask = 0,
 	};
 
