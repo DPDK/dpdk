@@ -1,0 +1,163 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright 2016 6WIND S.A.
+ *   Copyright 2016 Mellanox.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of 6WIND S.A. nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef RTE_PMD_MLX5_PRM_H_
+#define RTE_PMD_MLX5_PRM_H_
+
+/* Verbs header. */
+/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-pedantic"
+#endif
+#include <infiniband/mlx5_hw.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-pedantic"
+#endif
+
+/* Get CQE owner bit. */
+#define MLX5_CQE_OWNER(op_own) ((op_own) & MLX5_CQE_OWNER_MASK)
+
+/* Get CQE format. */
+#define MLX5_CQE_FORMAT(op_own) (((op_own) & MLX5E_CQE_FORMAT_MASK) >> 2)
+
+/* Get CQE opcode. */
+#define MLX5_CQE_OPCODE(op_own) (((op_own) & 0xf0) >> 4)
+
+/* Get CQE solicited event. */
+#define MLX5_CQE_SE(op_own) (((op_own) >> 1) & 1)
+
+/* Invalidate a CQE. */
+#define MLX5_CQE_INVALIDATE (MLX5_CQE_INVALID << 4)
+
+/* CQE value to inform that VLAN is stripped. */
+#define MLX5_CQE_VLAN_STRIPPED 0x1
+
+/* Maximum number of packets a multi-packet WQE can handle. */
+#define MLX5_MPW_DSEG_MAX 5
+
+/* Room for inline data in regular work queue element. */
+#define MLX5_WQE64_INL_DATA 12
+
+/* Room for inline data in multi-packet WQE. */
+#define MLX5_MWQE64_INL_DATA 28
+
+/* Subset of struct mlx5_wqe_eth_seg. */
+struct mlx5_wqe_eth_seg_small {
+	uint32_t rsvd0;
+	uint8_t	cs_flags;
+	uint8_t	rsvd1;
+	uint16_t mss;
+	uint32_t rsvd2;
+	uint16_t inline_hdr_sz;
+};
+
+/* Regular WQE. */
+struct mlx5_wqe_regular {
+	union {
+		struct mlx5_wqe_ctrl_seg ctrl;
+		uint32_t data[4];
+	} ctrl;
+	struct mlx5_wqe_eth_seg eseg;
+	struct mlx5_wqe_data_seg dseg;
+} __rte_aligned(64);
+
+/* Inline WQE. */
+struct mlx5_wqe_inl {
+	union {
+		struct mlx5_wqe_ctrl_seg ctrl;
+		uint32_t data[4];
+	} ctrl;
+	struct mlx5_wqe_eth_seg eseg;
+	uint32_t byte_cnt;
+	uint8_t data[MLX5_WQE64_INL_DATA];
+} __rte_aligned(64);
+
+/* Multi-packet WQE. */
+struct mlx5_wqe_mpw {
+	union {
+		struct mlx5_wqe_ctrl_seg ctrl;
+		uint32_t data[4];
+	} ctrl;
+	struct mlx5_wqe_eth_seg_small eseg;
+	struct mlx5_wqe_data_seg dseg[2];
+} __rte_aligned(64);
+
+/* Multi-packet WQE with inline. */
+struct mlx5_wqe_mpw_inl {
+	union {
+		struct mlx5_wqe_ctrl_seg ctrl;
+		uint32_t data[4];
+	} ctrl;
+	struct mlx5_wqe_eth_seg_small eseg;
+	uint32_t byte_cnt;
+	uint8_t data[MLX5_MWQE64_INL_DATA];
+} __rte_aligned(64);
+
+/* Union of all WQE types. */
+union mlx5_wqe {
+	struct mlx5_wqe_regular wqe;
+	struct mlx5_wqe_inl inl;
+	struct mlx5_wqe_mpw mpw;
+	struct mlx5_wqe_mpw_inl mpw_inl;
+	uint8_t data[64];
+};
+
+/* MPW session status. */
+enum mlx5_mpw_state {
+	MLX5_MPW_STATE_OPENED,
+	MLX5_MPW_INL_STATE_OPENED,
+	MLX5_MPW_STATE_CLOSED,
+};
+
+/* MPW session descriptor. */
+struct mlx5_mpw {
+	enum mlx5_mpw_state state;
+	unsigned int pkts_n;
+	unsigned int len;
+	unsigned int total_len;
+	volatile union mlx5_wqe *wqe;
+	union {
+		volatile struct mlx5_wqe_data_seg *dseg[MLX5_MPW_DSEG_MAX];
+		volatile uint8_t *raw;
+	} data;
+};
+
+/* CQ element structure - should be equal to the cache line size */
+struct mlx5_cqe {
+#if (RTE_CACHE_LINE_SIZE == 128)
+	uint8_t padding[64];
+#endif
+	struct mlx5_cqe64 cqe64;
+};
+
+#endif /* RTE_PMD_MLX5_PRM_H_ */
