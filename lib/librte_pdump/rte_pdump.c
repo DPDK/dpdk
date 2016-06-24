@@ -50,8 +50,10 @@
 
 #include "rte_pdump.h"
 
-#define SOCKET_PATH_VAR_RUN "/var/run/pdump_sockets"
-#define SOCKET_PATH_HOME "HOME/pdump_sockets"
+#define SOCKET_PATH_VAR_RUN "/var/run"
+#define SOCKET_PATH_HOME "HOME"
+#define DPDK_DIR         "/.dpdk"
+#define SOCKET_DIR       "/pdump_sockets"
 #define SERVER_SOCKET "%s/pdump_server_socket"
 #define CLIENT_SOCKET "%s/pdump_client_socket_%d_%u"
 #define DEVICE_ID_SIZE 64
@@ -444,17 +446,26 @@ set_pdump_rxtx_cbs(struct pdump_request *p)
 static void
 pdump_get_socket_path(char *buffer, int bufsz, enum rte_pdump_socktype type)
 {
-	const char *dir = NULL;
+	char dpdk_dir[PATH_MAX] = {0};
+	char dir[PATH_MAX] = {0};
+	char *dir_home = NULL;
 
 	if (type == RTE_PDUMP_SOCKET_SERVER && server_socket_dir[0] != 0)
-		dir = server_socket_dir;
+		snprintf(dir, sizeof(dir), "%s", server_socket_dir);
 	else if (type == RTE_PDUMP_SOCKET_CLIENT && client_socket_dir[0] != 0)
-		dir = client_socket_dir;
+		snprintf(dir, sizeof(dir), "%s", client_socket_dir);
 	else {
-		if (getuid() != 0)
-			dir = getenv(SOCKET_PATH_HOME);
-		else
-			dir = SOCKET_PATH_VAR_RUN;
+		if (getuid() != 0) {
+			dir_home = getenv(SOCKET_PATH_HOME);
+			snprintf(dpdk_dir, sizeof(dpdk_dir), "%s%s",
+					dir_home, DPDK_DIR);
+		} else
+			snprintf(dpdk_dir, sizeof(dpdk_dir), "%s%s",
+					SOCKET_PATH_VAR_RUN, DPDK_DIR);
+
+		mkdir(dpdk_dir, 700);
+		snprintf(dir, sizeof(dir), "%s%s",
+					dpdk_dir, SOCKET_DIR);
 	}
 
 	mkdir(dir, 700);
