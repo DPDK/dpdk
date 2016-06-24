@@ -72,6 +72,15 @@
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
 
+/* Device parameter to configure inline send. */
+#define MLX5_TXQ_INLINE "txq_inline"
+
+/*
+ * Device parameter to configure the number of TX queues threshold for
+ * enabling inline send.
+ */
+#define MLX5_TXQS_MIN_INLINE "txqs_min_inline"
+
 /**
  * Retrieve integer value from environment variable.
  *
@@ -269,6 +278,10 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	}
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
 		priv->cqe_comp = !!tmp;
+	} else if (strcmp(MLX5_TXQ_INLINE, key) == 0) {
+		priv->txq_inline = tmp;
+	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
+		priv->txqs_inline = tmp;
 	} else {
 		WARN("%s: unknown parameter", key);
 		return -EINVAL;
@@ -292,6 +305,8 @@ mlx5_args(struct priv *priv, struct rte_devargs *devargs)
 {
 	const char **params = (const char *[]){
 		MLX5_RXQ_CQE_COMP_EN,
+		MLX5_TXQ_INLINE,
+		MLX5_TXQS_MIN_INLINE,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;

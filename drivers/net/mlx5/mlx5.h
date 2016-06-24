@@ -113,6 +113,8 @@ struct priv {
 	unsigned int mps:1; /* Whether multi-packet send is supported. */
 	unsigned int cqe_comp:1; /* Whether CQE compression is enabled. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
+	unsigned int txq_inline; /* Maximum packet size for inlining. */
+	unsigned int txqs_inline; /* Queue number threshold for inlining. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */

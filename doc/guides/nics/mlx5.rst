@@ -154,6 +154,23 @@ Run-time configuration
   allows to save PCI bandwidth and improve performance at the cost of a
   slightly higher CPU usage.  Enabled by default.
 
+- ``txq_inline`` parameter [int]
+
+  Amount of data to be inlined during TX operations. Improves latency.
+  Can improve PPS performance when PCI back pressure is detected and may be
+  useful for scenarios involving heavy traffic on many queues.
+
+  It is not enabled by default (set to 0) since the additional software
+  logic necessary to handle this mode can lower performance when back
+  pressure is not expected.
+
+- ``txqs_min_inline`` parameter [int]
+
+  Enable inline send only when the number of TX queues is greater or equal
+  to this value.
+
+  This option should be used in combination with ``txq_inline`` above.
+
 Prerequisites
 -------------
 

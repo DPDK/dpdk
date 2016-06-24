@@ -246,6 +246,7 @@ struct txq {
 	uint16_t wqe_n; /* Number of WQ elements. */
 	uint16_t bf_offset; /* Blueflame offset. */
 	uint16_t bf_buf_size; /* Blueflame size. */
+	uint16_t max_inline; /* Maximum size to inline in a WQE. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
 	volatile union mlx5_wqe (*wqes)[]; /* Work queue. */
@@ -310,6 +311,7 @@ uint16_t mlx5_tx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 /* mlx5_rxtx.c */
 
 uint16_t mlx5_tx_burst(void *, struct rte_mbuf **, uint16_t);
+uint16_t mlx5_tx_burst_inline(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);
