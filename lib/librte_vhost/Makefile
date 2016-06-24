@@ -66,6 +66,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_virtio_net.h
 DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_net
 
 include $(RTE_SDK)/mk/rte.lib.mk

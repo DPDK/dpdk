@@ -52,9 +52,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += ip_frag_internal.c
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_IP_FRAG)-include += rte_ip_frag.h
 
-
-# this library depends on rte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += lib/librte_mempool lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += lib/librte_mempool
 
 include $(RTE_SDK)/mk/rte.lib.mk

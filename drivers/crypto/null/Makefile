@@ -54,7 +54,8 @@ SYMLINK-y-include +=
 # library dependencies
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_cryptodev
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += lib/librte_cryptodev
 
 include $(RTE_SDK)/mk/rte.lib.mk

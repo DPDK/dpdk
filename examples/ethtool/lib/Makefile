@@ -54,4 +54,8 @@ SRCS-y := rte_ethtool.c
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+# internal dependencies
+DEPDIRS-y += lib/librte_eal
+DEPDIRS-y += lib/librte_ether
+
 include $(RTE_SDK)/mk/rte.extlib.mk

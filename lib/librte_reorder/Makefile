@@ -49,6 +49,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_REORDER)-include := rte_reorder.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_REORDER) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_REORDER) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_REORDER) += lib/librte_eal
 
 include $(RTE_SDK)/mk/rte.lib.mk
