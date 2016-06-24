@@ -264,10 +264,6 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		ERROR("%p: invalid number of TX descriptors", (void *)dev);
 		return EINVAL;
 	}
-	if (MLX5_PMD_SGE_WR_N > 1) {
-		ERROR("%p: TX gather is not supported", (void *)dev);
-		return EINVAL;
-	}
 	/* MRs will be registered in mp2mr[] later. */
 	attr.rd = (struct ibv_exp_res_domain_init_attr){
 		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |

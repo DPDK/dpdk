@@ -54,11 +54,6 @@
 /* RSS Indirection table size. */
 #define RSS_INDIRECTION_TABLE_SIZE 256
 
-/* Maximum number of Scatter/Gather Elements per Work Request. */
-#ifndef MLX5_PMD_SGE_WR_N
-#define MLX5_PMD_SGE_WR_N 4
-#endif
-
 /* Maximum size for inline data. */
 #ifndef MLX5_PMD_MAX_INLINE
 #define MLX5_PMD_MAX_INLINE 0

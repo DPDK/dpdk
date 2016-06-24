@@ -976,10 +976,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		ERROR("%p: invalid number of RX descriptors", (void *)dev);
 		return EINVAL;
 	}
-	if (MLX5_PMD_SGE_WR_N > 1) {
-		ERROR("%p: RX scatter is not supported", (void *)dev);
-		return ENOTSUP;
-	}
 	/* Toggle RX checksum offload if hardware supports it. */
 	if (priv->hw_csum)
 		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
