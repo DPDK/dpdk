@@ -478,7 +478,7 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, (void *)txq_ctrl);
 		(*priv->txqs)[idx] = &txq_ctrl->txq;
 		/* Update send callback. */
-		dev->tx_pkt_burst = mlx5_tx_burst;
+		priv_select_tx_function(priv);
 	}
 	priv_unlock(priv);
 	return -ret;

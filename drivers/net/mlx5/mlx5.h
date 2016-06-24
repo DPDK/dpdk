@@ -196,6 +196,8 @@ void priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
 int mlx5_set_link_down(struct rte_eth_dev *dev);
 int mlx5_set_link_up(struct rte_eth_dev *dev);
 struct priv *mlx5_secondary_data_setup(struct priv *priv);
+void priv_select_tx_function(struct priv *);
+void priv_select_rx_function(struct priv *);
 
 /* mlx5_mac.c */
 
