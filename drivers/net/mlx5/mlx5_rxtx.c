@@ -1548,99 +1548,124 @@ uint16_t
 mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct rxq *rxq = dpdk_rxq;
-	unsigned int pkts_ret = 0;
-	unsigned int i;
-	unsigned int rq_ci = rxq->rq_ci;
-	const unsigned int elts_n = rxq->elts_n;
-	const unsigned int wqe_cnt = elts_n - 1;
+	const unsigned int wqe_cnt = rxq->elts_n - 1;
 	const unsigned int cqe_cnt = rxq->cqe_n - 1;
+	const unsigned int sges_n = rxq->sges_n;
+	struct rte_mbuf *pkt = NULL;
+	struct rte_mbuf *seg = NULL;
+	volatile struct mlx5_cqe64 *cqe =
+		&(*rxq->cqes)[rxq->cq_ci & cqe_cnt].cqe64;
+	unsigned int i = 0;
+	unsigned int rq_ci = rxq->rq_ci << sges_n;
+	int len;
 
-	for (i = 0; (i != pkts_n); ++i) {
+	while (pkts_n) {
 		unsigned int idx = rq_ci & wqe_cnt;
-		int len;
-		struct rte_mbuf *rep;
-		struct rte_mbuf *pkt;
 		volatile struct mlx5_wqe_data_seg *wqe = &(*rxq->wqes)[idx];
-		volatile struct mlx5_cqe64 *cqe =
-			&(*rxq->cqes)[rxq->cq_ci & cqe_cnt].cqe64;
+		struct rte_mbuf *rep = (*rxq->elts)[idx];
 
-		pkt = (*rxq->elts)[idx];
+		if (pkt)
+			NEXT(seg) = rep;
+		seg = rep;
+		rte_prefetch0(seg);
 		rte_prefetch0(cqe);
+		rte_prefetch0(wqe);
 		rep = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
+			while (pkt) {
+				seg = NEXT(pkt);
+				rte_mbuf_refcnt_set(pkt, 0);
+				__rte_mbuf_raw_free(pkt);
+				pkt = seg;
+			}
 			++rxq->stats.rx_nombuf;
 			break;
 		}
-		SET_DATA_OFF(rep, RTE_PKTMBUF_HEADROOM);
-		NB_SEGS(rep) = 1;
-		PORT(rep) = rxq->port_id;
+		if (!pkt) {
+			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt].cqe64;
+			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt);
+			if (len == 0) {
+				rte_mbuf_refcnt_set(rep, 0);
+				__rte_mbuf_raw_free(rep);
+				break;
+			}
+			if (unlikely(len == -1)) {
+				/* RX error, packet is likely too large. */
+				rte_mbuf_refcnt_set(rep, 0);
+				__rte_mbuf_raw_free(rep);
+				++rxq->stats.idropped;
+				goto skip;
+			}
+			pkt = seg;
+			assert(len >= (rxq->crc_present << 2));
+			/* Update packet information. */
+			if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip |
+			    rxq->crc_present) {
+				if (rxq->csum) {
+					pkt->packet_type =
+						rxq_cq_to_pkt_type(cqe);
+					pkt->ol_flags =
+						rxq_cq_to_ol_flags(rxq, cqe);
+				}
+				if (cqe->l4_hdr_type_etc &
+				    MLX5_CQE_VLAN_STRIPPED) {
+					pkt->ol_flags |= PKT_RX_VLAN_PKT |
+						PKT_RX_VLAN_STRIPPED;
+					pkt->vlan_tci = ntohs(cqe->vlan_info);
+				}
+				if (rxq->crc_present)
+					len -= ETHER_CRC_LEN;
+			}
+			PKT_LEN(pkt) = len;
+		}
+		DATA_LEN(rep) = DATA_LEN(seg);
+		PKT_LEN(rep) = PKT_LEN(seg);
+		SET_DATA_OFF(rep, DATA_OFF(seg));
+		NB_SEGS(rep) = NB_SEGS(seg);
+		PORT(rep) = PORT(seg);
 		NEXT(rep) = NULL;
-		len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt);
-		if (unlikely(len == 0)) {
-			rte_mbuf_refcnt_set(rep, 0);
-			__rte_mbuf_raw_free(rep);
-			break;
-		}
-		if (unlikely(len == -1)) {
-			/* RX error, packet is likely too large. */
-			rte_mbuf_refcnt_set(rep, 0);
-			__rte_mbuf_raw_free(rep);
-			++rxq->stats.idropped;
-			--i;
-			goto skip;
-		}
+		(*rxq->elts)[idx] = rep;
 		/*
 		 * Fill NIC descriptor with the new buffer.  The lkey and size
 		 * of the buffers are already known, only the buffer address
 		 * changes.
 		 */
-		wqe->addr = htonll((uintptr_t)rep->buf_addr +
-				   RTE_PKTMBUF_HEADROOM);
-		(*rxq->elts)[idx] = rep;
-		/* Update pkt information. */
-		if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip |
-		    rxq->crc_present) {
-			if (rxq->csum) {
-				pkt->packet_type = rxq_cq_to_pkt_type(cqe);
-				pkt->ol_flags = rxq_cq_to_ol_flags(rxq, cqe);
-			}
-			if (cqe->l4_hdr_type_etc & MLX5_CQE_VLAN_STRIPPED) {
-				pkt->ol_flags |= PKT_RX_VLAN_PKT |
-					PKT_RX_VLAN_STRIPPED;
-				pkt->vlan_tci = ntohs(cqe->vlan_info);
-			}
-			if (rxq->crc_present)
-				len -= ETHER_CRC_LEN;
+		wqe->addr = htonll(rte_pktmbuf_mtod(rep, uintptr_t));
+		if (len > DATA_LEN(seg)) {
+			len -= DATA_LEN(seg);
+			++NB_SEGS(pkt);
+			++rq_ci;
+			continue;
 		}
-		PKT_LEN(pkt) = len;
-		DATA_LEN(pkt) = len;
+		DATA_LEN(seg) = len;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment bytes counter. */
-		rxq->stats.ibytes += len;
+		rxq->stats.ibytes += PKT_LEN(pkt);
 #endif
 		/* Return packet. */
 		*(pkts++) = pkt;
-		++pkts_ret;
+		pkt = NULL;
+		--pkts_n;
+		++i;
 skip:
+		/* Align consumer index to the next stride. */
+		rq_ci >>= sges_n;
 		++rq_ci;
+		rq_ci <<= sges_n;
 	}
-	if (unlikely((i == 0) && (rq_ci == rxq->rq_ci)))
+	if (unlikely((i == 0) && ((rq_ci >> sges_n) == rxq->rq_ci)))
 		return 0;
-	/* Repost WRs. */
-#ifdef DEBUG_RECV
-	DEBUG("%p: reposting %u WRs", (void *)rxq, i);
-#endif
 	/* Update the consumer index. */
-	rxq->rq_ci = rq_ci;
+	rxq->rq_ci = rq_ci >> sges_n;
 	rte_wmb();
 	*rxq->cq_db = htonl(rxq->cq_ci);
 	rte_wmb();
 	*rxq->rq_db = htonl(rxq->rq_ci);
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	/* Increment packets counter. */
-	rxq->stats.ipackets += pkts_ret;
+	rxq->stats.ipackets += i;
 #endif
-	return pkts_ret;
+	return i;
 }
 
 /**

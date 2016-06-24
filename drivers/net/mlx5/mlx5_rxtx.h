@@ -106,6 +106,7 @@ struct rxq {
 	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */
+	unsigned int sges_n:2; /* Log 2 of SGEs (max buffers per packet). */
 	uint16_t rq_ci;
 	uint16_t cq_ci;
 	uint16_t elts_n;

@@ -644,10 +644,11 @@ static int
 rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n,
 	       struct rte_mbuf *(*pool)[])
 {
+	const unsigned int sges_n = 1 << rxq_ctrl->rxq.sges_n;
 	unsigned int i;
 	int ret = 0;
 
-	/* For each WR (packet). */
+	/* Iterate on segments. */
 	for (i = 0; (i != elts_n); ++i) {
 		struct rte_mbuf *buf;
 		volatile struct mlx5_wqe_data_seg *scat =
@@ -672,6 +673,9 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n,
 		assert(rte_pktmbuf_data_len(buf) == 0);
 		assert(rte_pktmbuf_pkt_len(buf) == 0);
 		assert(!buf->next);
+		/* Only the first segment keeps headroom. */
+		if (i % sges_n)
+			SET_DATA_OFF(buf, 0);
 		PORT(buf) = rxq_ctrl->rxq.port_id;
 		DATA_LEN(buf) = rte_pktmbuf_tailroom(buf);
 		PKT_LEN(buf) = DATA_LEN(buf);
@@ -685,8 +689,8 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n,
 		};
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
-	DEBUG("%p: allocated and configured %u single-segment WRs",
-	      (void *)rxq_ctrl, elts_n);
+	DEBUG("%p: allocated and configured %u segments (max %u packets)",
+	      (void *)rxq_ctrl, elts_n, elts_n / (1 << rxq_ctrl->rxq.sges_n));
 	assert(ret == 0);
 	return 0;
 error:
@@ -804,7 +808,9 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl)
 	struct ibv_exp_wq_attr mod;
 	int err;
 
-	DEBUG("%p: rehashing queue %p", (void *)dev, (void *)rxq_ctrl);
+	DEBUG("%p: rehashing queue %p with %u SGE(s) per packet",
+	      (void *)dev, (void *)rxq_ctrl, 1 << rxq_ctrl->rxq.sges_n);
+	assert(!(elts_n % (1 << rxq_ctrl->rxq.sges_n)));
 	/* From now on, any failure will render the queue unusable.
 	 * Reinitialize WQ. */
 	mod = (struct ibv_exp_wq_attr){
@@ -837,7 +843,7 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl)
 		goto error;
 	}
 	/* Update doorbell counter. */
-	rxq_ctrl->rxq.rq_ci = elts_n;
+	rxq_ctrl->rxq.rq_ci = elts_n >> rxq_ctrl->rxq.sges_n;
 	rte_wmb();
 	*rxq_ctrl->rxq.rq_db = htonl(rxq_ctrl->rxq.rq_ci);
 error:
@@ -933,9 +939,42 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	int ret = 0;
 
 	(void)conf; /* Thresholds configuration (ignored). */
-	if (desc == 0) {
-		ERROR("%p: invalid number of RX descriptors (must be a"
-		      " multiple of 2)", (void *)dev);
+	/* Enable scattered packets support for this queue if necessary. */
+	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
+	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
+	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
+	     (mb_len - RTE_PKTMBUF_HEADROOM))) {
+		unsigned int size =
+			RTE_PKTMBUF_HEADROOM +
+			dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		unsigned int sges_n;
+
+		/*
+		 * Determine the number of SGEs needed for a full packet
+		 * and round it to the next power of two.
+		 */
+		sges_n = log2above((size / mb_len) + !!(size % mb_len));
+		tmpl.rxq.sges_n = sges_n;
+		/* Make sure rxq.sges_n did not overflow. */
+		size = mb_len * (1 << tmpl.rxq.sges_n);
+		size -= RTE_PKTMBUF_HEADROOM;
+		if (size < dev->data->dev_conf.rxmode.max_rx_pkt_len) {
+			ERROR("%p: too many SGEs (%u) needed to handle"
+			      " requested maximum packet size %u",
+			      (void *)dev,
+			      1 << sges_n,
+			      dev->data->dev_conf.rxmode.max_rx_pkt_len);
+			return EOVERFLOW;
+		}
+	}
+	DEBUG("%p: maximum number of segments per packet: %u",
+	      (void *)dev, 1 << tmpl.rxq.sges_n);
+	if (desc % (1 << tmpl.rxq.sges_n)) {
+		ERROR("%p: number of RX queue descriptors (%u) is not a"
+		      " multiple of SGEs per packet (%u)",
+		      (void *)dev,
+		      desc,
+		      1 << tmpl.rxq.sges_n);
 		return EINVAL;
 	}
 	/* Toggle RX checksum offload if hardware supports it. */
@@ -944,7 +983,6 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	if (priv->hw_csum_l2tun)
 		tmpl.rxq.csum_l2tun =
 			!!dev->data->dev_conf.rxmode.hw_ip_checksum;
-	(void)mb_len; /* I'll be back! */
 	/* Use the entire RX mempool as the memory region. */
 	tmpl.mr = mlx5_mp2mr(priv->pd, mp);
 	if (tmpl.mr == NULL) {
@@ -994,11 +1032,9 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		.wq_context = NULL, /* Could be useful in the future. */
 		.wq_type = IBV_EXP_WQT_RQ,
 		/* Max number of outstanding WRs. */
-		.max_recv_wr = ((priv->device_attr.max_qp_wr < (int)desc) ?
-				priv->device_attr.max_qp_wr :
-				(int)desc),
+		.max_recv_wr = desc >> tmpl.rxq.sges_n,
 		/* Max number of scatter/gather elements in a WR. */
-		.max_recv_sge = 1,
+		.max_recv_sge = 1 << tmpl.rxq.sges_n,
 		.pd = priv->pd,
 		.cq = tmpl.cq,
 		.comp_mask =
@@ -1048,6 +1084,19 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		ret = (errno ? errno : EINVAL);
 		ERROR("%p: WQ creation failure: %s",
 		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	/*
+	 * Make sure number of WRs*SGEs match expectations since a queue
+	 * cannot allocate more than "desc" buffers.
+	 */
+	if (((int)attr.wq.max_recv_wr != (desc >> tmpl.rxq.sges_n)) ||
+	    ((int)attr.wq.max_recv_sge != (1 << tmpl.rxq.sges_n))) {
+		ERROR("%p: requested %u*%u but got %u*%u WRs*SGEs",
+		      (void *)dev,
+		      (desc >> tmpl.rxq.sges_n), (1 << tmpl.rxq.sges_n),
+		      attr.wq.max_recv_wr, attr.wq.max_recv_sge);
+		ret = EINVAL;
 		goto error;
 	}
 	/* Save port ID. */
@@ -1118,7 +1167,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	tmpl.rxq.elts = elts;
 	*rxq_ctrl = tmpl;
 	/* Update doorbell counter. */
-	rxq_ctrl->rxq.rq_ci = desc;
+	rxq_ctrl->rxq.rq_ci = desc >> rxq_ctrl->rxq.sges_n;
 	rte_wmb();
 	*rxq_ctrl->rxq.rq_db = htonl(rxq_ctrl->rxq.rq_ci);
 	DEBUG("%p: rxq updated with %p", (void *)rxq_ctrl, (void *)&tmpl);

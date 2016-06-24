@@ -725,6 +725,9 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	unsigned int i;
 	uint16_t (*rx_func)(void *, struct rte_mbuf **, uint16_t) =
 		mlx5_rx_burst;
+	unsigned int max_frame_len;
+	int rehash;
+	int restart = priv->started;
 
 	if (mlx5_is_secondary())
 		return -E_RTE_SECONDARY;
@@ -738,7 +741,6 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		goto out;
 	} else
 		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
-	priv->mtu = mtu;
 	/* Temporarily replace RX handler with a fake one, assuming it has not
 	 * been copied elsewhere. */
 	dev->rx_pkt_burst = removed_rx_burst;
@@ -746,28 +748,94 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 * removed_rx_burst() instead. */
 	rte_wmb();
 	usleep(1000);
-	/* Reconfigure each RX queue. */
-	for (i = 0; (i != priv->rxqs_n); ++i) {
+	/* MTU does not include header and CRC. */
+	max_frame_len = ETHER_HDR_LEN + mtu + ETHER_CRC_LEN;
+	/* Check if at least one queue is going to need a SGE update. */
+	for (i = 0; i != priv->rxqs_n; ++i) {
 		struct rxq *rxq = (*priv->rxqs)[i];
 		unsigned int mb_len;
-		unsigned int max_frame_len;
-		int sp;
+		unsigned int size = RTE_PKTMBUF_HEADROOM + max_frame_len;
+		unsigned int sges_n;
 
 		if (rxq == NULL)
 			continue;
-		/* Calculate new maximum frame length according to MTU and
-		 * toggle scattered support (sp) if necessary. */
-		max_frame_len = (priv->mtu + ETHER_HDR_LEN +
-				 (ETHER_MAX_VLAN_FRAME_LEN - ETHER_MAX_LEN));
 		mb_len = rte_pktmbuf_data_room_size(rxq->mp);
 		assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-		sp = (max_frame_len > (mb_len - RTE_PKTMBUF_HEADROOM));
-		if (sp) {
-			ERROR("%p: RX scatter is not supported", (void *)dev);
-			ret = ENOTSUP;
-			goto out;
-		}
+		/*
+		 * Determine the number of SGEs needed for a full packet
+		 * and round it to the next power of two.
+		 */
+		sges_n = log2above((size / mb_len) + !!(size % mb_len));
+		if (sges_n != rxq->sges_n)
+			break;
 	}
+	/*
+	 * If all queues have the right number of SGEs, a simple rehash
+	 * of their buffers is enough, otherwise SGE information can only
+	 * be updated in a queue by recreating it. All resources that depend
+	 * on queues (flows, indirection tables) must be recreated as well in
+	 * that case.
+	 */
+	rehash = (i == priv->rxqs_n);
+	if (!rehash) {
+		/* Clean up everything as with mlx5_dev_stop(). */
+		priv_special_flow_disable_all(priv);
+		priv_mac_addrs_disable(priv);
+		priv_destroy_hash_rxqs(priv);
+		priv_fdir_disable(priv);
+		priv_dev_interrupt_handler_uninstall(priv, dev);
+	}
+recover:
+	/* Reconfigure each RX queue. */
+	for (i = 0; (i != priv->rxqs_n); ++i) {
+		struct rxq *rxq = (*priv->rxqs)[i];
+		struct rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct rxq_ctrl, rxq);
+		int sp;
+		unsigned int mb_len;
+		unsigned int tmp;
+
+		if (rxq == NULL)
+			continue;
+		mb_len = rte_pktmbuf_data_room_size(rxq->mp);
+		assert(mb_len >= RTE_PKTMBUF_HEADROOM);
+		/* Toggle scattered support (sp) if necessary. */
+		sp = (max_frame_len > (mb_len - RTE_PKTMBUF_HEADROOM));
+		/* Provide new values to rxq_setup(). */
+		dev->data->dev_conf.rxmode.jumbo_frame = sp;
+		dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_len;
+		if (rehash)
+			ret = rxq_rehash(dev, rxq_ctrl);
+		else
+			ret = rxq_ctrl_setup(dev, rxq_ctrl, rxq->elts_n,
+					     rxq_ctrl->socket, NULL, rxq->mp);
+		if (!ret)
+			continue;
+		/* Attempt to roll back in case of error. */
+		tmp = (mb_len << rxq->sges_n) - RTE_PKTMBUF_HEADROOM;
+		if (max_frame_len != tmp) {
+			max_frame_len = tmp;
+			goto recover;
+		}
+		/* Double fault, disable RX. */
+		break;
+	}
+	/*
+	 * Use a safe RX burst function in case of error, otherwise mimic
+	 * mlx5_dev_start().
+	 */
+	if (ret) {
+		ERROR("unable to reconfigure RX queues, RX disabled");
+		rx_func = removed_rx_burst;
+	} else if (restart &&
+		 !rehash &&
+		 !priv_create_hash_rxqs(priv) &&
+		 !priv_rehash_flows(priv)) {
+		if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_NONE)
+			priv_fdir_enable(priv);
+		priv_dev_interrupt_handler_install(priv, dev);
+	}
+	priv->mtu = mtu;
 	/* Burst functions can now be called again. */
 	rte_wmb();
 	dev->rx_pkt_burst = rx_func;
