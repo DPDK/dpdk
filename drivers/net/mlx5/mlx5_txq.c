@@ -343,6 +343,11 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
+	DEBUG("TX queue capabilities: max_send_wr=%u, max_send_sge=%u,"
+	      " max_inline_data=%u",
+	      attr.init.cap.max_send_wr,
+	      attr.init.cap.max_send_sge,
+	      attr.init.cap.max_inline_data);
 	attr.mod = (struct ibv_exp_qp_attr){
 		/* Move the QP to this state. */
 		.qp_state = IBV_QPS_INIT,
