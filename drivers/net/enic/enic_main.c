@@ -1040,6 +1040,50 @@ int enic_set_vnic_res(struct enic *enic)
 	return rc;
 }
 
+/* The Cisco NIC can send and receive packets up to a max packet size
+ * determined by the NIC type and firmware. There is also an MTU
+ * configured into the NIC via the CIMC/UCSM management interface
+ * which can be overridden by this function (up to the max packet size).
+ * Depending on the network setup, doing so may cause packet drops
+ * and unexpected behavior.
+ */
+int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
+{
+	uint16_t old_mtu;	/* previous setting */
+	uint16_t config_mtu;	/* Value configured into NIC via CIMC/UCSM */
+	struct rte_eth_dev *eth_dev = enic->rte_dev;
+
+	old_mtu = eth_dev->data->mtu;
+	config_mtu = enic->config.mtu;
+
+	/* only works with Rx scatter disabled */
+	if (enic->rte_dev->data->dev_conf.rxmode.enable_scatter)
+		return -ENOTSUP;
+
+	if (new_mtu > enic->max_mtu) {
+		dev_err(enic,
+			"MTU not updated: requested (%u) greater than max (%u)\n",
+			new_mtu, enic->max_mtu);
+		return -EINVAL;
+	}
+	if (new_mtu < ENIC_MIN_MTU) {
+		dev_info(enic,
+			"MTU not updated: requested (%u) less than min (%u)\n",
+			new_mtu, ENIC_MIN_MTU);
+		return -EINVAL;
+	}
+	if (new_mtu > config_mtu)
+		dev_warning(enic,
+			"MTU (%u) is greater than value configured in NIC (%u)\n",
+			new_mtu, config_mtu);
+
+	/* update the mtu */
+	eth_dev->data->mtu = new_mtu;
+
+	dev_info(enic, "MTU changed from %u to %u\n",  old_mtu, new_mtu);
+	return 0;
+}
+
 static int enic_dev_init(struct enic *enic)
 {
 	int err;

@@ -528,6 +528,14 @@ static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, __rte_unused ui
 	enic_del_mac_address(enic);
 }
 
+static int enicpmd_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+
+	ENICPMD_FUNC_TRACE();
+	return enic_set_mtu(enic, mtu);
+}
+
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
@@ -545,7 +553,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.queue_stats_mapping_set = NULL,
 	.dev_infos_get        = enicpmd_dev_info_get,
 	.dev_supported_ptypes_get = enicpmd_dev_supported_ptypes_get,
-	.mtu_set              = NULL,
+	.mtu_set              = enicpmd_mtu_set,
 	.vlan_filter_set      = enicpmd_vlan_filter_set,
 	.vlan_tpid_set        = NULL,
 	.vlan_offload_set     = enicpmd_vlan_offload_set,
