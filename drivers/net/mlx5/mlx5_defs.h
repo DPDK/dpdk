@@ -48,8 +48,11 @@
 /* Maximum number of special flows. */
 #define MLX5_MAX_SPECIAL_FLOWS 4
 
-/* Request send completion once in every 64 sends, might be less. */
-#define MLX5_PMD_TX_PER_COMP_REQ 64
+/*
+ * Request TX completion every time descriptors reach this threshold since
+ * the previous request. Must be a power of two for performance reasons.
+ */
+#define MLX5_TX_COMP_THRESH 32
 
 /* RSS Indirection table size. */
 #define RSS_INDIRECTION_TABLE_SIZE 256

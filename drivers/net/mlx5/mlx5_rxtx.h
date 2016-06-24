@@ -238,8 +238,7 @@ struct hash_rxq {
 struct txq {
 	uint16_t elts_head; /* Current index in (*elts)[]. */
 	uint16_t elts_tail; /* First element awaiting completion. */
-	uint16_t elts_comp_cd_init; /* Initial value for countdown. */
-	uint16_t elts_comp; /* Elements before asking a completion. */
+	uint16_t elts_comp; /* Counter since last completion request. */
 	uint16_t elts_n; /* (*elts)[] length. */
 	uint16_t cq_ci; /* Consumer index for completion queue. */
 	uint16_t cqe_n; /* Number of CQ elements. */
@@ -247,6 +246,7 @@ struct txq {
 	uint16_t wqe_n; /* Number of WQ elements. */
 	uint16_t bf_offset; /* Blueflame offset. */
 	uint16_t bf_buf_size; /* Blueflame size. */
+	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
 	volatile union mlx5_wqe (*wqes)[]; /* Work queue. */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
@@ -259,7 +259,6 @@ struct txq {
 	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
-	uint32_t qp_num_8s; /* QP number shifted by 8. */
 } __rte_cache_aligned;
 
 /* TX queue control descriptor. */
