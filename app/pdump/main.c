@@ -362,7 +362,7 @@ parse_pdump(const char *optarg)
 						&parse_uint_value, &v);
 		if (ret < 0)
 			goto free_kvlist;
-		pt->ring_size = (uint16_t) v.val;
+		pt->ring_size = (uint32_t) v.val;
 	} else
 		pt->ring_size = RING_SIZE;
 
