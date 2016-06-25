@@ -102,7 +102,7 @@
  * rte_eth_dev_configure(), rte_eth_tx_queue_setup(), or
  * rte_eth_rx_queue_setup()), it must call rte_eth_dev_stop() first to stop the
  * device and then do the reconfiguration before calling rte_eth_dev_start()
- * again. The tramsit and receive functions should not be invoked when the
+ * again. The transmit and receive functions should not be invoked when the
  * device is stopped.
  *
  * Please note that some configuration is not stored between calls to
