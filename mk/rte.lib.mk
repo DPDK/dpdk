@@ -102,24 +102,6 @@ O_TO_S_DO = @set -e; \
 	$(O_TO_S) && \
 	echo $(O_TO_S_CMD) > $(call exe2cmd,$(@))
 
-ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
-O_TO_C = $(AR) crus $(LIB_ONE) $(OBJS-y)
-O_TO_C_STR = $(subst ','\'',$(O_TO_C)) #'# fix syntax highlight
-O_TO_C_DISP = $(if $(V),"$(O_TO_C_STR)","  AR_C $(@)")
-O_TO_C_DO = @set -e; \
-	$(lib_dir) \
-	$(copy_obj)
-else
-O_TO_C = $(LD) -shared $(OBJS-y) -o $(LIB_ONE)
-O_TO_C_STR = $(subst ','\'',$(O_TO_C)) #'# fix syntax highlight
-O_TO_C_DISP = $(if $(V),"$(O_TO_C_STR)","  LD_C $(@)")
-O_TO_C_DO = @set -e; \
-	$(lib_dir) \
-	$(copy_obj)
-endif
-
-copy_obj = cp -f $(OBJS-y) $(RTE_OUTPUT)/build/lib;
-lib_dir = [ -d $(RTE_OUTPUT)/lib ] || mkdir -p $(RTE_OUTPUT)/lib;
 -include .$(LIB).cmd
 
 #
