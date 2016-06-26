@@ -997,11 +997,9 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_PVID received");
 		i40e_pf_host_process_cmd_cfg_pvid(vf, msg, msglen);
 		break;
-	 /* Don't add command supported below, which will
-	 *  return an error code.
+	/* Don't add command supported below, which will
+	 * return an error code.
 	 */
-	case I40E_VIRTCHNL_OP_FCOE:
-		PMD_DRV_LOG(ERR, "OP_FCOE received, not supported");
 	default:
 		PMD_DRV_LOG(ERR, "%u received, not supported", opcode);
 		i40e_pf_host_send_msg_to_vf(vf, opcode, I40E_ERR_PARAM,
