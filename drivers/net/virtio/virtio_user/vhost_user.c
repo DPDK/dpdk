@@ -240,7 +240,7 @@ static const char * const vhost_msg_strings[] = {
 };
 
 int
-vhost_user_sock(int vhostfd, uint64_t req, void *arg)
+vhost_user_sock(int vhostfd, enum vhost_user_request req, void *arg)
 {
 	struct vhost_user_msg msg;
 	struct vhost_vring_file *file = 0;
