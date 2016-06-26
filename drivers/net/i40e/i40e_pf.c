@@ -123,7 +123,7 @@ int
 i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 {
 	uint32_t val, i;
-	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
+	struct i40e_hw *hw;
 	uint16_t vf_id, abs_vf_id, vf_msix_num;
 	int ret;
 	struct i40e_virtchnl_queue_select qsel;
@@ -131,6 +131,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 	if (vf == NULL)
 		return -EINVAL;
 
+	hw = I40E_PF_TO_HW(vf->pf);
 	vf_id = vf->vf_idx;
 	abs_vf_id = vf_id + hw->func_caps.vf_base_id;
 
@@ -913,7 +914,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	/* AdminQ will pass absolute VF id, transfer to internal vf id */
 	uint16_t vf_id = abs_vf_id - hw->func_caps.vf_base_id;
 
-	if (!dev || vf_id > pf->vf_num - 1 || !pf->vfs) {
+	if (vf_id > pf->vf_num - 1 || !pf->vfs) {
 		PMD_DRV_LOG(ERR, "invalid argument");
 		return;
 	}

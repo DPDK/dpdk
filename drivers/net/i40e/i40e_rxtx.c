@@ -2599,8 +2599,8 @@ i40e_rx_queue_release_mbufs(struct i40e_rx_queue *rxq)
 		return;
 	}
 
-	if (!rxq || !rxq->sw_ring) {
-		PMD_DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
+	if (!rxq->sw_ring) {
+		PMD_DRV_LOG(DEBUG, "Pointer to sw_ring is NULL");
 		return;
 	}
 
@@ -2987,12 +2987,14 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 	struct i40e_tx_queue *txq;
 	const struct rte_memzone *tz = NULL;
 	uint32_t ring_size;
-	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *dev;
 
 	if (!pf) {
 		PMD_DRV_LOG(ERR, "PF is not available");
 		return I40E_ERR_BAD_PTR;
 	}
+
+	dev = pf->adapter->eth_dev;
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("i40e fdir tx queue",
@@ -3041,12 +3043,14 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 	struct i40e_rx_queue *rxq;
 	const struct rte_memzone *rz = NULL;
 	uint32_t ring_size;
-	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct rte_eth_dev *dev;
 
 	if (!pf) {
 		PMD_DRV_LOG(ERR, "PF is not available");
 		return I40E_ERR_BAD_PTR;
 	}
+
+	dev = pf->adapter->eth_dev;
 
 	/* Allocate the RX queue data structure. */
 	rxq = rte_zmalloc_socket("i40e fdir rx queue",
