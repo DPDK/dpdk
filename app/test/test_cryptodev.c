@@ -3471,11 +3471,18 @@ test_multi_session(void)
 
 		/*
 		 * free mbuf - both obuf and ibuf are usually the same,
-		 * but rte copes even if we call free twice
+		 * so check if they point at the same address is necessary,
+		 * to avoid freeing the mbuf twice.
 		 */
 		if (ut_params->obuf) {
 			rte_pktmbuf_free(ut_params->obuf);
+			if (ut_params->ibuf == ut_params->obuf)
+				ut_params->ibuf = 0;
 			ut_params->obuf = 0;
+		}
+		if (ut_params->ibuf) {
+			rte_pktmbuf_free(ut_params->ibuf);
+			ut_params->ibuf = 0;
 		}
 	}
 
