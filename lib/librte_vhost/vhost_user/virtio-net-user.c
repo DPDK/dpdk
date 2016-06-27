@@ -317,8 +317,10 @@ user_get_vring_base(int vid, struct vhost_vring_state *state)
 	if (dev == NULL)
 		return -1;
 	/* We have to stop the queue (virtio) if it is running. */
-	if (dev->flags & VIRTIO_DEV_RUNNING)
+	if (dev->flags & VIRTIO_DEV_RUNNING) {
+		dev->flags &= ~VIRTIO_DEV_RUNNING;
 		notify_ops->destroy_device(vid);
+	}
 
 	/* Here we are safe to get the last used index */
 	vhost_get_vring_base(vid, state->index, state);
