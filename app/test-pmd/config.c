@@ -1236,6 +1236,10 @@ rss_fwd_config_setup(void)
 	cur_fwd_config.nb_fwd_streams =
 		(streamid_t) (nb_q * cur_fwd_config.nb_fwd_ports);
 
+	if (cur_fwd_config.nb_fwd_streams < cur_fwd_config.nb_fwd_lcores)
+		cur_fwd_config.nb_fwd_lcores =
+			(lcoreid_t)cur_fwd_config.nb_fwd_streams;
+
 	/* reinitialize forwarding streams */
 	init_fwd_streams();
 
