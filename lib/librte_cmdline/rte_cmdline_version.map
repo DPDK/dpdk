@@ -50,7 +50,6 @@ DPDK_2.0 {
 	cmdline_token_num_ops;
 	cmdline_token_portlist_ops;
 	cmdline_token_string_ops;
-	cmdline_token_string_ops;
 	cmdline_write_char;
 	rdline_add_history;
 	rdline_char_in;
