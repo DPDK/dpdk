@@ -66,7 +66,6 @@ DPDK_2.2 {
 	rte_eth_dev_set_vf_rxmode;
 	rte_eth_dev_set_vf_tx;
 	rte_eth_dev_set_vf_vlan_filter;
-	rte_eth_dev_set_vlan_ether_type;
 	rte_eth_dev_set_vlan_offload;
 	rte_eth_dev_set_vlan_pvid;
 	rte_eth_dev_set_vlan_strip_on_queue;
