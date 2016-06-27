@@ -88,32 +88,46 @@ To compile the application:
 Running the Application
 -----------------------
 
-The application has a number of command line options:
+The application has a number of command line options::
 
-.. code-block:: console
+    ./l3fwd [EAL options] -- -p PORTMASK
+                             [-P]
+                             [-E]
+                             [-L]
+                             --config(port,queue,lcore)[,(port,queue,lcore)]
+                             [--eth-dest=X,MM:MM:MM:MM:MM:MM]
+                             [--enable-jumbo [--max-pkt-len PKTLEN]]
+                             [--no-numa]
+                             [--hash-entry-num]
+                             [--ipv6]
+                             [--parse-ptype]
 
-    ./build/l3fwd [EAL options] -- -p PORTMASK [-P]  --config(port,queue,lcore)[,(port,queue,lcore)] [--enable-jumbo [--max-pkt-len PKTLEN]]  [--no-numa][--hash-entry-num][--ipv6] [--parse-ptype]
+Where,
 
-where,
+* ``-p PORTMASK:`` Hexadecimal bitmask of ports to configure
 
-*   -p PORTMASK: Hexadecimal bitmask of ports to configure
+* ``-P:`` Optional, sets all ports to promiscuous mode so that packets are accepted regardless of the packet's Ethernet MAC destination address.
+  Without this option, only packets with the Ethernet MAC destination address set to the Ethernet address of the port are accepted.
 
-*   -P: optional, sets all ports to promiscuous mode so that packets are accepted regardless of the packet's Ethernet MAC destination address.
-    Without this option, only packets with the Ethernet MAC destination address set to the Ethernet address of the port are accepted.
+* ``-E:`` Optional, enable exact match.
 
-*   --config (port,queue,lcore)[,(port,queue,lcore)]: determines which queues from which ports are mapped to which cores
+* ``-L:`` Optional, enable longest prefix match.
 
-*   --enable-jumbo: optional, enables jumbo frames
+* ``--config (port,queue,lcore)[,(port,queue,lcore)]:`` Determines which queues from which ports are mapped to which cores.
 
-*   --max-pkt-len: optional, maximum packet length in decimal (64-9600)
+* ``--eth-dest=X,MM:MM:MM:MM:MM:MM:`` Optional, ethernet destination for port X.
 
-*   --no-numa: optional, disables numa awareness
+* ``--enable-jumbo:`` Optional, enables jumbo frames.
 
-*   --hash-entry-num: optional, specifies the hash entry number in hexadecimal to be setup
+* ``--max-pkt-len:`` Optional, under the premise of enabling jumbo, maximum packet length in decimal (64-9600).
 
-*   --ipv6: optional, set it if running ipv6 packets
+* ``--no-numa:`` Optional, disables numa awareness.
 
-*   --parse-ptype: optional, set it if use software way to analyze packet type
+* ``--hash-entry-num:`` Optional, specifies the hash entry number in hexadecimal to be setup.
+
+* ``--ipv6:`` Optional, set if running ipv6 packets.
+
+* ``--parse-ptype:`` Optional, set to use software to analyze packet type. Without this option, hardware will check the packet type.
 
 For example, consider a dual processor socket platform where cores 0-7 and 16-23 appear on socket 0, while cores 8-15 and 24-31 appear on socket 1.
 Let's say that the programmer wants to use memory from both NUMA nodes, the platform has only two ports, one connected to each NUMA node,

@@ -311,20 +311,32 @@ init_lcore_rx_queues(void)
 static void
 print_usage(const char *prgname)
 {
-	printf ("%s [EAL options] -- -p PORTMASK -P"
-		"  [--config (port,queue,lcore)[,(port,queue,lcore]]"
-		"  [--enable-jumbo [--max-pkt-len PKTLEN]]\n"
-		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
-		"  -P : enable promiscuous mode\n"
-		"  -E : enable exact match\n"
-		"  -L : enable longest prefix match\n"
-		"  --config (port,queue,lcore): rx queues configuration\n"
-		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: optional, ethernet destination for port X\n"
-		"  --no-numa: optional, disable numa awareness\n"
-		"  --ipv6: optional, specify it if running ipv6 packets\n"
-		"  --enable-jumbo: enable jumbo frame"
-		" which max packet len is PKTLEN in decimal (64-9600)\n"
-		"  --hash-entry-num: specify the hash entry number in hexadecimal to be setup\n",
+	printf("%s [EAL options] --"
+		" -p PORTMASK"
+		" [-P]"
+		" [-E]"
+		" [-L]"
+		" --config (port,queue,lcore)[,(port,queue,lcore)]"
+		" [--eth-dest=X,MM:MM:MM:MM:MM:MM]"
+		" [--enable-jumbo [--max-pkt-len PKTLEN]]"
+		" [--no-numa]"
+		" [--hash-entry-num]"
+		" [--ipv6]"
+		" [--parse-ptype]\n\n"
+
+		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
+		"  -P : Enable promiscuous mode\n"
+		"  -E : Enable exact match\n"
+		"  -L : Enable longest prefix match (default)\n"
+		"  --config (port,queue,lcore): Rx queue configuration\n"
+		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: Ethernet destination for port X\n"
+		"  --enable-jumbo: Enable jumbo frames\n"
+		"  --max-pkt-len: Under the premise of enabling jumbo,\n"
+		"                 maximum packet length in decimal (64-9600)\n"
+		"  --no-numa: Disable numa awareness\n"
+		"  --hash-entry-num: Specify the hash entry number in hexadecimal to be setup\n"
+		"  --ipv6: Set if running ipv6 packets\n"
+		"  --parse-ptype: Set to use software to analyze packet type\n\n",
 		prgname);
 }
 
