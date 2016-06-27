@@ -102,6 +102,8 @@
 static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
+static int  eth_igb_dev_set_link_up(struct rte_eth_dev *dev);
+static int  eth_igb_dev_set_link_down(struct rte_eth_dev *dev);
 static void eth_igb_close(struct rte_eth_dev *dev);
 static void eth_igb_promiscuous_enable(struct rte_eth_dev *dev);
 static void eth_igb_promiscuous_disable(struct rte_eth_dev *dev);
@@ -338,6 +340,8 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.dev_configure        = eth_igb_configure,
 	.dev_start            = eth_igb_start,
 	.dev_stop             = eth_igb_stop,
+	.dev_set_link_up      = eth_igb_dev_set_link_up,
+	.dev_set_link_down    = eth_igb_dev_set_link_down,
 	.dev_close            = eth_igb_close,
 	.promiscuous_enable   = eth_igb_promiscuous_enable,
 	.promiscuous_disable  = eth_igb_promiscuous_disable,
@@ -1213,7 +1217,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	rte_intr_disable(intr_handle);
 
 	/* Power up the phy. Needed to make the link go Up */
-	e1000_power_up_phy(hw);
+	eth_igb_dev_set_link_up(dev);
 
 	/*
 	 * Packet Buffer Allocation (PBA)
@@ -1419,10 +1423,7 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	}
 
 	/* Power down the phy. Needed to make the link go Down */
-	if (hw->phy.media_type == e1000_media_type_copper)
-		e1000_power_down_phy(hw);
-	else
-		e1000_shutdown_fiber_serdes_link(hw);
+	eth_igb_dev_set_link_down(dev);
 
 	igb_dev_clear_queues(dev);
 
@@ -1467,6 +1468,32 @@ eth_igb_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+}
+
+static int
+eth_igb_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->phy.media_type == e1000_media_type_copper)
+		e1000_power_up_phy(hw);
+	else
+		e1000_power_up_fiber_serdes_link(hw);
+
+	return 0;
+}
+
+static int
+eth_igb_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->phy.media_type == e1000_media_type_copper)
+		e1000_power_down_phy(hw);
+	else
+		e1000_shutdown_fiber_serdes_link(hw);
+
+	return 0;
 }
 
 static void
