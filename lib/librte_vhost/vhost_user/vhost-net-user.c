@@ -439,6 +439,7 @@ create_unix_socket(const char *path, struct sockaddr_un *un, bool is_server)
 	memset(un, 0, sizeof(*un));
 	un->sun_family = AF_UNIX;
 	strncpy(un->sun_path, path, sizeof(un->sun_path));
+	un->sun_path[sizeof(un->sun_path) - 1] = '\0';
 
 	return fd;
 }
