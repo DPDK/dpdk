@@ -577,6 +577,12 @@ vhost_user_create_client(struct vhost_user_socket *vsocket)
 
 	RTE_LOG(ERR, VHOST_CONFIG, "%s: reconnecting...\n", path);
 	reconn = malloc(sizeof(*reconn));
+	if (reconn == NULL) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to allocate memory for reconnect\n");
+		close(fd);
+		return -1;
+	}
 	reconn->un = un;
 	reconn->fd = fd;
 	reconn->vsocket = vsocket;
