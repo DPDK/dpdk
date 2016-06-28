@@ -238,19 +238,20 @@ void enic_init_vnic_resources(struct enic *enic)
 	struct vnic_rq *data_rq;
 
 	for (index = 0; index < enic->rq_count; index++) {
+		cq_idx = enic_cq_rq(enic, enic_sop_rq(index));
+
 		vnic_rq_init(&enic->rq[enic_sop_rq(index)],
-			enic_cq_rq(enic, index),
+			cq_idx,
 			error_interrupt_enable,
 			error_interrupt_offset);
 
 		data_rq = &enic->rq[enic_data_rq(index)];
 		if (data_rq->in_use)
 			vnic_rq_init(data_rq,
-				     enic_cq_rq(enic, index),
+				     cq_idx,
 				     error_interrupt_enable,
 				     error_interrupt_offset);
 
-		cq_idx = enic_cq_rq(enic, index);
 		vnic_cq_init(&enic->cq[cq_idx],
 			0 /* flow_control_enable */,
 			1 /* color_enable */,
@@ -899,7 +900,8 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
 		return -ENOMEM;
 
 	for (i = 0; i < (1 << rss_hash_bits); i++)
-		(*rss_cpu_buf_va).cpu[i/4].b[i%4] = i % enic->rq_count;
+		(*rss_cpu_buf_va).cpu[i / 4].b[i % 4] =
+			enic_sop_rq(i % enic->rq_count);
 
 	err = enic_set_rss_cpu(enic,
 		rss_cpu_buf_pa,

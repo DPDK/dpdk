@@ -175,7 +175,11 @@ static inline unsigned int enic_vnic_rq_count(struct enic *enic)
 
 static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned int rq)
 {
-	return rq;
+	/* Scatter rx uses two receive queues together with one
+	 * completion queue, so the completion queue number is no
+	 * longer the same as the rq number.
+	 */
+	return rq / 2;
 }
 
 static inline unsigned int enic_cq_wq(struct enic *enic, unsigned int wq)
