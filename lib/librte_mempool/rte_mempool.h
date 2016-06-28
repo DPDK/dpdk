@@ -953,12 +953,13 @@ void rte_mempool_dump(FILE *f, struct rte_mempool *mp);
  * @param n
  *   The number of objects to store back in the mempool, must be strictly
  *   positive.
- * @param is_mp
- *   Mono-producer (0) or multi-producers (1).
+ * @param flags
+ *   The flags used for the mempool creation.
+ *   Single-producer (MEMPOOL_F_SP_PUT flag) or multi-producers.
  */
 static inline void __attribute__((always_inline))
 __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
-		      unsigned n, int is_mp)
+		      unsigned n, int flags)
 {
 	struct rte_mempool_cache *cache;
 	uint32_t index;
@@ -971,7 +972,7 @@ __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 	__MEMPOOL_STAT_ADD(mp, put, n);
 
 	/* cache is not enabled or single producer or non-EAL thread */
-	if (unlikely(cache_size == 0 || is_mp == 0 ||
+	if (unlikely(cache_size == 0 || flags & MEMPOOL_F_SP_PUT ||
 		     lcore_id >= RTE_MAX_LCORE))
 		goto ring_enqueue;
 
@@ -1024,15 +1025,16 @@ ring_enqueue:
  *   A pointer to a table of void * pointers (objects).
  * @param n
  *   The number of objects to add in the mempool from the obj_table.
- * @param is_mp
- *   Mono-producer (0) or multi-producers (1).
+ * @param flags
+ *   The flags used for the mempool creation.
+ *   Single-producer (MEMPOOL_F_SP_PUT flag) or multi-producers.
  */
 static inline void __attribute__((always_inline))
 rte_mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
-			unsigned n, int is_mp)
+			unsigned n, int flags)
 {
 	__mempool_check_cookies(mp, obj_table, n, 0);
-	__mempool_generic_put(mp, obj_table, n, is_mp);
+	__mempool_generic_put(mp, obj_table, n, flags);
 }
 
 /**
@@ -1051,7 +1053,7 @@ static inline void __attribute__((always_inline))
 rte_mempool_mp_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 			unsigned n)
 {
-	rte_mempool_generic_put(mp, obj_table, n, 1);
+	rte_mempool_generic_put(mp, obj_table, n, 0);
 }
 
 /**
@@ -1070,7 +1072,7 @@ static inline void __attribute__((always_inline))
 rte_mempool_sp_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 			unsigned n)
 {
-	rte_mempool_generic_put(mp, obj_table, n, 0);
+	rte_mempool_generic_put(mp, obj_table, n, MEMPOOL_F_SP_PUT);
 }
 
 /**
@@ -1091,8 +1093,7 @@ static inline void __attribute__((always_inline))
 rte_mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 		     unsigned n)
 {
-	rte_mempool_generic_put(mp, obj_table, n,
-				!(mp->flags & MEMPOOL_F_SP_PUT));
+	rte_mempool_generic_put(mp, obj_table, n, mp->flags);
 }
 
 /**
@@ -1108,7 +1109,7 @@ __rte_deprecated
 static inline void __attribute__((always_inline))
 rte_mempool_mp_put(struct rte_mempool *mp, void *obj)
 {
-	rte_mempool_generic_put(mp, &obj, 1, 1);
+	rte_mempool_generic_put(mp, &obj, 1, 0);
 }
 
 /**
@@ -1124,7 +1125,7 @@ __rte_deprecated
 static inline void __attribute__((always_inline))
 rte_mempool_sp_put(struct rte_mempool *mp, void *obj)
 {
-	rte_mempool_generic_put(mp, &obj, 1, 0);
+	rte_mempool_generic_put(mp, &obj, 1, MEMPOOL_F_SP_PUT);
 }
 
 /**
@@ -1153,15 +1154,16 @@ rte_mempool_put(struct rte_mempool *mp, void *obj)
  *   A pointer to a table of void * pointers (objects).
  * @param n
  *   The number of objects to get, must be strictly positive.
- * @param is_mc
- *   Mono-consumer (0) or multi-consumers (1).
+ * @param flags
+ *   The flags used for the mempool creation.
+ *   Single-consumer (MEMPOOL_F_SC_GET flag) or multi-consumers.
  * @return
  *   - >=0: Success; number of objects supplied.
  *   - <0: Error; code of ring dequeue function.
  */
 static inline int __attribute__((always_inline))
 __mempool_generic_get(struct rte_mempool *mp, void **obj_table,
-		      unsigned n, int is_mc)
+		      unsigned n, int flags)
 {
 	int ret;
 	struct rte_mempool_cache *cache;
@@ -1171,7 +1173,7 @@ __mempool_generic_get(struct rte_mempool *mp, void **obj_table,
 	uint32_t cache_size = mp->cache_size;
 
 	/* cache is not enabled or single consumer */
-	if (unlikely(cache_size == 0 || is_mc == 0 ||
+	if (unlikely(cache_size == 0 || flags & MEMPOOL_F_SC_GET ||
 		     n >= cache_size || lcore_id >= RTE_MAX_LCORE))
 		goto ring_dequeue;
 
@@ -1236,18 +1238,19 @@ ring_dequeue:
  *   A pointer to a table of void * pointers (objects) that will be filled.
  * @param n
  *   The number of objects to get from mempool to obj_table.
- * @param is_mc
- *   Mono-consumer (0) or multi-consumers (1).
+ * @param flags
+ *   The flags used for the mempool creation.
+ *   Single-consumer (MEMPOOL_F_SC_GET flag) or multi-consumers.
  * @return
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
 static inline int __attribute__((always_inline))
 rte_mempool_generic_get(struct rte_mempool *mp, void **obj_table, unsigned n,
-			int is_mc)
+			int flags)
 {
 	int ret;
-	ret = __mempool_generic_get(mp, obj_table, n, is_mc);
+	ret = __mempool_generic_get(mp, obj_table, n, flags);
 	if (ret == 0)
 		__mempool_check_cookies(mp, obj_table, n, 1);
 	return ret;
@@ -1276,7 +1279,7 @@ __rte_deprecated
 static inline int __attribute__((always_inline))
 rte_mempool_mc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
-	return rte_mempool_generic_get(mp, obj_table, n, 1);
+	return rte_mempool_generic_get(mp, obj_table, n, 0);
 }
 
 /**
@@ -1303,7 +1306,7 @@ __rte_deprecated
 static inline int __attribute__((always_inline))
 rte_mempool_sc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
-	return rte_mempool_generic_get(mp, obj_table, n, 0);
+	return rte_mempool_generic_get(mp, obj_table, n, MEMPOOL_F_SC_GET);
 }
 
 /**
@@ -1331,8 +1334,7 @@ rte_mempool_sc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 static inline int __attribute__((always_inline))
 rte_mempool_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
-	return rte_mempool_generic_get(mp, obj_table, n,
-				       !(mp->flags & MEMPOOL_F_SC_GET));
+	return rte_mempool_generic_get(mp, obj_table, n, mp->flags);
 }
 
 /**
@@ -1356,7 +1358,7 @@ __rte_deprecated
 static inline int __attribute__((always_inline))
 rte_mempool_mc_get(struct rte_mempool *mp, void **obj_p)
 {
-	return rte_mempool_generic_get(mp, obj_p, 1, 1);
+	return rte_mempool_generic_get(mp, obj_p, 1, 0);
 }
 
 /**
@@ -1380,7 +1382,7 @@ __rte_deprecated
 static inline int __attribute__((always_inline))
 rte_mempool_sc_get(struct rte_mempool *mp, void **obj_p)
 {
-	return rte_mempool_generic_get(mp, obj_p, 1, 0);
+	return rte_mempool_generic_get(mp, obj_p, 1, MEMPOOL_F_SC_GET);
 }
 
 /**
