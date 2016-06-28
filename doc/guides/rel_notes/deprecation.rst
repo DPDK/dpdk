@@ -27,13 +27,6 @@ Deprecation Notices
   RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
   but release 2.3 will. [postponed]
 
-* ABI will change for rte_mempool struct to move the cache-related fields
-  to the more appropriate rte_mempool_cache struct. The mempool API is
-  also changed to enable external cache management that is not tied to EAL
-  threads. Some mempool get and put calls are removed in favor of a more
-  compact API. The ones that remain are backwards compatible and use the
-  per-lcore default cache if available. This change targets release 16.07.
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and

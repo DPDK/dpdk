@@ -38,6 +38,12 @@ New Features
 
   The size of the mempool structure is reduced if the per-lcore cache is disabled.
 
+* **Added mempool external cache for non-EAL thread.**
+
+   Added new functions to create, free or flush a user-owned mempool
+   cache for non-EAL threads. Previously, cache was always disabled
+   on these threads.
+
 * **Changed the memory allocation in mempool library.**
 
   * Added ability to allocate a large mempool in virtually fragmented memory.

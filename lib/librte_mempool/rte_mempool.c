@@ -674,6 +674,53 @@ rte_mempool_free(struct rte_mempool *mp)
 	rte_memzone_free(mp->mz);
 }
 
+static void
+mempool_cache_init(struct rte_mempool_cache *cache, uint32_t size)
+{
+	cache->size = size;
+	cache->flushthresh = CALC_CACHE_FLUSHTHRESH(size);
+	cache->len = 0;
+}
+
+/*
+ * Create and initialize a cache for objects that are retrieved from and
+ * returned to an underlying mempool. This structure is identical to the
+ * local_cache[lcore_id] pointed to by the mempool structure.
+ */
+struct rte_mempool_cache *
+rte_mempool_cache_create(uint32_t size, int socket_id)
+{
+	struct rte_mempool_cache *cache;
+
+	if (size == 0 || size > RTE_MEMPOOL_CACHE_MAX_SIZE) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	cache = rte_zmalloc_socket("MEMPOOL_CACHE", sizeof(*cache),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (cache == NULL) {
+		RTE_LOG(ERR, MEMPOOL, "Cannot allocate mempool cache.\n");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	mempool_cache_init(cache, size);
+
+	return cache;
+}
+
+/*
+ * Free a cache. It's the responsibility of the user to make sure that any
+ * remaining objects in the cache are flushed to the corresponding
+ * mempool.
+ */
+void
+rte_mempool_cache_free(struct rte_mempool_cache *cache)
+{
+	rte_free(cache);
+}
+
 /* create an empty mempool */
 struct rte_mempool *
 rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
@@ -688,6 +735,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	size_t mempool_size;
 	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	struct rte_mempool_objsz objsz;
+	unsigned lcore_id;
 	int ret;
 
 	/* compilation-time checks */
@@ -768,8 +816,8 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	mp->elt_size = objsz.elt_size;
 	mp->header_size = objsz.header_size;
 	mp->trailer_size = objsz.trailer_size;
+	/* Size of default caches, zero means disabled. */
 	mp->cache_size = cache_size;
-	mp->cache_flushthresh = CALC_CACHE_FLUSHTHRESH(cache_size);
 	mp->private_data_size = private_data_size;
 	STAILQ_INIT(&mp->elt_list);
 	STAILQ_INIT(&mp->mem_list);
@@ -780,6 +828,13 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	 */
 	mp->local_cache = (struct rte_mempool_cache *)
 		RTE_PTR_ADD(mp, MEMPOOL_HEADER_SIZE(mp, 0));
+
+	/* Init all default caches. */
+	if (cache_size != 0) {
+		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
+			mempool_cache_init(&mp->local_cache[lcore_id],
+					   cache_size);
+	}
 
 	te->data = mp;
 
@@ -936,7 +991,7 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 	unsigned count = 0;
 	unsigned cache_count;
 
-	fprintf(f, "  cache infos:\n");
+	fprintf(f, "  internal cache infos:\n");
 	fprintf(f, "    cache_size=%"PRIu32"\n", mp->cache_size);
 
 	if (mp->cache_size == 0)
@@ -944,7 +999,8 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		cache_count = mp->local_cache[lcore_id].len;
-		fprintf(f, "    cache_count[%u]=%u\n", lcore_id, cache_count);
+		fprintf(f, "    cache_count[%u]=%"PRIu32"\n",
+			lcore_id, cache_count);
 		count += cache_count;
 	}
 	fprintf(f, "    total_cache_count=%u\n", count);
@@ -1063,7 +1119,9 @@ mempool_audit_cache(const struct rte_mempool *mp)
 		return;
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (mp->local_cache[lcore_id].len > mp->cache_flushthresh) {
+		const struct rte_mempool_cache *cache;
+		cache = &mp->local_cache[lcore_id];
+		if (cache->len > cache->flushthresh) {
 			RTE_LOG(CRIT, MEMPOOL, "badness on cache[%u]\n",
 				lcore_id);
 			rte_panic("MEMPOOL: invalid cache len\n");

@@ -78,6 +78,9 @@
  *      - One core without cache
  *      - Two cores without cache
  *      - Max. cores without cache
+ *      - One core with user-owned cache
+ *      - Two cores with user-owned cache
+ *      - Max. cores with user-owned cache
  *
  *    - Bulk size (*n_get_bulk*, *n_put_bulk*)
  *
@@ -96,8 +99,21 @@
 #define MAX_KEEP 128
 #define MEMPOOL_SIZE ((rte_lcore_count()*(MAX_KEEP+RTE_MEMPOOL_CACHE_MAX_SIZE))-1)
 
+#define LOG_ERR() printf("test failed at %s():%d\n", __func__, __LINE__)
+#define RET_ERR() do {							\
+		LOG_ERR();						\
+		return -1;						\
+	} while (0)
+#define GOTO_ERR(var, label) do {					\
+		LOG_ERR();						\
+		var = -1;						\
+		goto label;						\
+	} while (0)
+
 static struct rte_mempool *mp;
 static struct rte_mempool *mp_cache, *mp_nocache;
+static int use_external_cache;
+static unsigned external_cache_size = RTE_MEMPOOL_CACHE_MAX_SIZE;
 
 static rte_atomic32_t synchro;
 
@@ -134,15 +150,27 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 	void *obj_table[MAX_KEEP];
 	unsigned i, idx;
 	unsigned lcore_id = rte_lcore_id();
-	int ret;
+	int ret = 0;
 	uint64_t start_cycles, end_cycles;
 	uint64_t time_diff = 0, hz = rte_get_timer_hz();
+	struct rte_mempool_cache *cache;
+
+	if (use_external_cache) {
+		/* Create a user-owned mempool cache. */
+		cache = rte_mempool_cache_create(external_cache_size,
+						 SOCKET_ID_ANY);
+		if (cache == NULL)
+			RET_ERR();
+	} else {
+		/* May be NULL if cache is disabled. */
+		cache = rte_mempool_default_cache(mp, lcore_id);
+	}
 
 	/* n_get_bulk and n_put_bulk must be divisors of n_keep */
 	if (((n_keep / n_get_bulk) * n_get_bulk) != n_keep)
-		return -1;
+		GOTO_ERR(ret, out);
 	if (((n_keep / n_put_bulk) * n_put_bulk) != n_keep)
-		return -1;
+		GOTO_ERR(ret, out);
 
 	stats[lcore_id].enq_count = 0;
 
@@ -157,12 +185,14 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 			/* get n_keep objects by bulk of n_bulk */
 			idx = 0;
 			while (idx < n_keep) {
-				ret = rte_mempool_get_bulk(mp, &obj_table[idx],
-							   n_get_bulk);
+				ret = rte_mempool_generic_get(mp,
+							      &obj_table[idx],
+							      n_get_bulk,
+							      cache, 0);
 				if (unlikely(ret < 0)) {
 					rte_mempool_dump(stdout, mp);
 					/* in this case, objects are lost... */
-					return -1;
+					GOTO_ERR(ret, out);
 				}
 				idx += n_get_bulk;
 			}
@@ -170,8 +200,9 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 			/* put the objects back */
 			idx = 0;
 			while (idx < n_keep) {
-				rte_mempool_put_bulk(mp, &obj_table[idx],
-						     n_put_bulk);
+				rte_mempool_generic_put(mp, &obj_table[idx],
+							n_put_bulk,
+							cache, 0);
 				idx += n_put_bulk;
 			}
 		}
@@ -180,7 +211,13 @@ per_lcore_mempool_test(__attribute__((unused)) void *arg)
 		stats[lcore_id].enq_count += N;
 	}
 
-	return 0;
+out:
+	if (use_external_cache) {
+		rte_mempool_cache_flush(cache, mp);
+		rte_mempool_cache_free(cache);
+	}
+
+	return ret;
 }
 
 /* launch all the per-lcore test, and display the result */
@@ -199,7 +236,9 @@ launch_cores(unsigned cores)
 
 	printf("mempool_autotest cache=%u cores=%u n_get_bulk=%u "
 	       "n_put_bulk=%u n_keep=%u ",
-	       (unsigned) mp->cache_size, cores, n_get_bulk, n_put_bulk, n_keep);
+	       use_external_cache ?
+		   external_cache_size : (unsigned) mp->cache_size,
+	       cores, n_get_bulk, n_put_bulk, n_keep);
 
 	if (rte_mempool_count(mp) != MEMPOOL_SIZE) {
 		printf("mempool is not full\n");
@@ -313,6 +352,20 @@ test_mempool_perf(void)
 	/* performance test with 1, 2 and max cores */
 	printf("start performance test (with cache)\n");
 	mp = mp_cache;
+
+	if (do_one_mempool_test(1) < 0)
+		return -1;
+
+	if (do_one_mempool_test(2) < 0)
+		return -1;
+
+	if (do_one_mempool_test(rte_lcore_count()) < 0)
+		return -1;
+
+	/* performance test with 1, 2 and max cores */
+	printf("start performance test (with user-owned cache)\n");
+	mp = mp_nocache;
+	use_external_cache = 1;
 
 	if (do_one_mempool_test(1) < 0)
 		return -1;

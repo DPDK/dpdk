@@ -322,8 +322,8 @@ Known Issues
 
   The rte_mempool uses a per-lcore cache inside the mempool.
   For non-EAL pthreads, ``rte_lcore_id()`` will not return a valid number.
-  So for now, when rte_mempool is used with non-EAL pthreads, the put/get operations will bypass the mempool cache and there is a performance penalty because of this bypass.
-  Support for non-EAL mempool cache is currently being enabled.
+  So for now, when rte_mempool is used with non-EAL pthreads, the put/get operations will bypass the default mempool cache and there is a performance penalty because of this bypass.
+  Only user-owned external caches can be used in a non-EAL context in conjunction with ``rte_mempool_generic_put()`` and ``rte_mempool_generic_get()`` that accept an explicit cache parameter.
 
 + rte_ring
 

@@ -75,9 +75,15 @@
 #define MAX_KEEP 16
 #define MEMPOOL_SIZE ((rte_lcore_count()*(MAX_KEEP+RTE_MEMPOOL_CACHE_MAX_SIZE))-1)
 
+#define LOG_ERR() printf("test failed at %s():%d\n", __func__, __LINE__)
 #define RET_ERR() do {							\
-		printf("test failed at %s():%d\n", __func__, __LINE__); \
+		LOG_ERR();						\
 		return -1;						\
+	} while (0)
+#define GOTO_ERR(var, label) do {					\
+		LOG_ERR();						\
+		var = -1;						\
+		goto label;						\
 	} while (0)
 
 static rte_atomic32_t synchro;
@@ -191,7 +197,7 @@ my_obj_init(struct rte_mempool *mp, __attribute__((unused)) void *arg,
 
 /* basic tests (done on one core) */
 static int
-test_mempool_basic(struct rte_mempool *mp)
+test_mempool_basic(struct rte_mempool *mp, int use_external_cache)
 {
 	uint32_t *objnum;
 	void **objtable;
@@ -199,47 +205,62 @@ test_mempool_basic(struct rte_mempool *mp)
 	char *obj_data;
 	int ret = 0;
 	unsigned i, j;
+	int offset;
+	struct rte_mempool_cache *cache;
+
+	if (use_external_cache) {
+		/* Create a user-owned mempool cache. */
+		cache = rte_mempool_cache_create(RTE_MEMPOOL_CACHE_MAX_SIZE,
+						 SOCKET_ID_ANY);
+		if (cache == NULL)
+			RET_ERR();
+	} else {
+		/* May be NULL if cache is disabled. */
+		cache = rte_mempool_default_cache(mp, rte_lcore_id());
+	}
 
 	/* dump the mempool status */
 	rte_mempool_dump(stdout, mp);
 
 	printf("get an object\n");
-	if (rte_mempool_get(mp, &obj) < 0)
-		RET_ERR();
+	if (rte_mempool_generic_get(mp, &obj, 1, cache, 0) < 0)
+		GOTO_ERR(ret, out);
 	rte_mempool_dump(stdout, mp);
 
 	/* tests that improve coverage */
 	printf("get object count\n");
-	if (rte_mempool_count(mp) != MEMPOOL_SIZE - 1)
-		RET_ERR();
+	/* We have to count the extra caches, one in this case. */
+	offset = use_external_cache ? 1 * cache->len : 0;
+	if (rte_mempool_count(mp) + offset != MEMPOOL_SIZE - 1)
+		GOTO_ERR(ret, out);
 
 	printf("get private data\n");
 	if (rte_mempool_get_priv(mp) != (char *)mp +
 			MEMPOOL_HEADER_SIZE(mp, mp->cache_size))
-		RET_ERR();
+		GOTO_ERR(ret, out);
 
 #ifndef RTE_EXEC_ENV_BSDAPP /* rte_mem_virt2phy() not supported on bsd */
 	printf("get physical address of an object\n");
 	if (rte_mempool_virt2phy(mp, obj) != rte_mem_virt2phy(obj))
-		RET_ERR();
+		GOTO_ERR(ret, out);
 #endif
 
 	printf("put the object back\n");
-	rte_mempool_put(mp, obj);
+	rte_mempool_generic_put(mp, &obj, 1, cache, 0);
 	rte_mempool_dump(stdout, mp);
 
 	printf("get 2 objects\n");
-	if (rte_mempool_get(mp, &obj) < 0)
-		RET_ERR();
-	if (rte_mempool_get(mp, &obj2) < 0) {
-		rte_mempool_put(mp, obj);
-		RET_ERR();
+	if (rte_mempool_generic_get(mp, &obj, 1, cache, 0) < 0)
+		GOTO_ERR(ret, out);
+	if (rte_mempool_generic_get(mp, &obj2, 1, cache, 0) < 0) {
+		rte_mempool_generic_put(mp, &obj, 1, cache, 0);
+		GOTO_ERR(ret, out);
 	}
 	rte_mempool_dump(stdout, mp);
 
 	printf("put the objects back\n");
-	rte_mempool_put(mp, obj);
-	rte_mempool_put(mp, obj2);
+	rte_mempool_generic_put(mp, &obj, 1, cache, 0);
+	rte_mempool_generic_put(mp, &obj2, 1, cache, 0);
 	rte_mempool_dump(stdout, mp);
 
 	/*
@@ -248,10 +269,10 @@ test_mempool_basic(struct rte_mempool *mp)
 	 */
 	objtable = malloc(MEMPOOL_SIZE * sizeof(void *));
 	if (objtable == NULL)
-		RET_ERR();
+		GOTO_ERR(ret, out);
 
 	for (i = 0; i < MEMPOOL_SIZE; i++) {
-		if (rte_mempool_get(mp, &objtable[i]) < 0)
+		if (rte_mempool_generic_get(mp, &objtable[i], 1, cache, 0) < 0)
 			break;
 	}
 
@@ -273,12 +294,18 @@ test_mempool_basic(struct rte_mempool *mp)
 				ret = -1;
 		}
 
-		rte_mempool_put(mp, objtable[i]);
+		rte_mempool_generic_put(mp, &objtable[i], 1, cache, 0);
 	}
 
 	free(objtable);
 	if (ret == -1)
 		printf("objects were modified!\n");
+
+out:
+	if (use_external_cache) {
+		rte_mempool_cache_flush(cache, mp);
+		rte_mempool_cache_free(cache);
+	}
 
 	return ret;
 }
@@ -631,11 +658,15 @@ test_mempool(void)
 	rte_mempool_list_dump(stdout);
 
 	/* basic tests without cache */
-	if (test_mempool_basic(mp_nocache) < 0)
+	if (test_mempool_basic(mp_nocache, 0) < 0)
 		goto err;
 
 	/* basic tests with cache */
-	if (test_mempool_basic(mp_cache) < 0)
+	if (test_mempool_basic(mp_cache, 0) < 0)
+		goto err;
+
+	/* basic tests with user-owned cache */
+	if (test_mempool_basic(mp_nocache, 1) < 0)
 		goto err;
 
 	/* more basic tests without cache */

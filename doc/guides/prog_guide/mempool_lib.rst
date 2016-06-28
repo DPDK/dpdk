@@ -115,7 +115,7 @@ While this may mean a number of buffers may sit idle on some core's cache,
 the speed at which a core can access its own cache for a specific memory pool without locks provides performance gains.
 
 The cache is composed of a small, per-core table of pointers and its length (used as a stack).
-This cache can be enabled or disabled at creation of the pool.
+This internal cache can be enabled or disabled at creation of the pool.
 
 The maximum size of the cache is static and is defined at compilation time (CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE).
 
@@ -127,6 +127,10 @@ The maximum size of the cache is static and is defined at compilation time (CONF
 
    A mempool in Memory with its Associated Ring
 
+Alternatively to the internal default per-lcore local cache, an application can create and manage external caches through the ``rte_mempool_cache_create()``, ``rte_mempool_cache_free()`` and ``rte_mempool_cache_flush()`` calls.
+These user-owned caches can be explicitly passed to ``rte_mempool_generic_put()`` and ``rte_mempool_generic_get()``.
+The ``rte_mempool_default_cache()`` call returns the default internal cache if any.
+In contrast to the default caches, user-owned caches can be used by non-EAL threads too.
 
 Mempool Handlers
 ------------------------
