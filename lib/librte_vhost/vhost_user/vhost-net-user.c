@@ -617,8 +617,11 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
 		vsocket->reconnect = !(flags & RTE_VHOST_USER_NO_RECONNECT);
 		if (vsocket->reconnect && reconn_tid == 0) {
-			if (vhost_user_reconnect_init() < 0)
+			if (vhost_user_reconnect_init() < 0) {
+				free(vsocket->path);
+				free(vsocket);
 				goto out;
+			}
 		}
 		ret = vhost_user_create_client(vsocket);
 	} else {
