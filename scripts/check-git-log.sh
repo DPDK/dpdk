@@ -114,6 +114,12 @@ bad=$(echo "$headlines" | awk 'length>60 {print}' | sed 's,^,\t,')
 bad=$(echo "$bodylines" | grep -v '^Fixes:' | awk 'length>75 {print}' | sed 's,^,\t,')
 [ -z "$bad" ] || printf "Line too long:\n$bad\n"
 
+# check starting commit message with "It"
+bad=$(echo "$bodylines" | head -n1 | grep -E --color=always \
+	-ie '^It ' \
+	| sed 's,^,\t,')
+[ -z "$bad" ] || printf "Wrong beginning of commit message:\n$bad\n"
+
 # check tags spelling
 bad=$(echo "$tags" |
 	grep -v '^\(Reported\|Suggested\|Signed-off\|Acked\|Reviewed\|Tested\)-by: [^,]* <.*@.*>$' |
