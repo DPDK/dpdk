@@ -9682,9 +9682,6 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 
 	sc->state = BNX2X_STATE_CLOSED;
 
-	/* Init RTE stuff */
-	bnx2x_init_rte(sc);
-
 	pci_write_long(sc, PCICFG_GRC_ADDRESS, PCICFG_VENDOR_ID_OFFSET);
 
 	sc->igu_base_addr = IS_VF(sc) ? PXP_VF_ADDR_IGU_START : BAR_IGU_INTMEM;
@@ -9701,6 +9698,9 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 	} else {
 		sc->igu_sb_cnt = 1;
 	}
+
+	/* Init RTE stuff */
+	bnx2x_init_rte(sc);
 
 	if (IS_PF(sc)) {
 /* get device info and set params */
