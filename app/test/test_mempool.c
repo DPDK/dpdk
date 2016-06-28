@@ -338,7 +338,7 @@ static int test_mempool_single_producer(void)
 			printf("obj not owned by this mempool\n");
 			RET_ERR();
 		}
-		rte_mempool_sp_put(mp_spsc, obj);
+		rte_mempool_put(mp_spsc, obj);
 		rte_spinlock_lock(&scsp_spinlock);
 		scsp_obj_table[i] = NULL;
 		rte_spinlock_unlock(&scsp_spinlock);
@@ -371,7 +371,7 @@ static int test_mempool_single_consumer(void)
 		rte_spinlock_unlock(&scsp_spinlock);
 		if (i >= MAX_KEEP)
 			continue;
-		if (rte_mempool_sc_get(mp_spsc, &obj) < 0)
+		if (rte_mempool_get(mp_spsc, &obj) < 0)
 			break;
 		rte_spinlock_lock(&scsp_spinlock);
 		scsp_obj_table[i] = obj;
@@ -477,13 +477,13 @@ test_mempool_basic_ex(struct rte_mempool *mp)
 	}
 
 	for (i = 0; i < MEMPOOL_SIZE; i ++) {
-		if (rte_mempool_mc_get(mp, &obj[i]) < 0) {
+		if (rte_mempool_get(mp, &obj[i]) < 0) {
 			printf("test_mp_basic_ex fail to get object for [%u]\n",
 				i);
 			goto fail_mp_basic_ex;
 		}
 	}
-	if (rte_mempool_mc_get(mp, &err_obj) == 0) {
+	if (rte_mempool_get(mp, &err_obj) == 0) {
 		printf("test_mempool_basic_ex get an impossible obj\n");
 		goto fail_mp_basic_ex;
 	}
@@ -494,7 +494,7 @@ test_mempool_basic_ex(struct rte_mempool *mp)
 	}
 
 	for (i = 0; i < MEMPOOL_SIZE; i++)
-		rte_mempool_mp_put(mp, obj[i]);
+		rte_mempool_put(mp, obj[i]);
 
 	if (rte_mempool_full(mp) != 1) {
 		printf("test_mempool_basic_ex the mempool should be full\n");

@@ -38,3 +38,7 @@ Deprecation Notices
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
   their behavior will be kept in 16.07 and will be removed in 16.11.
+
+* The mempool functions for single/multi producer/consumer are deprecated and
+  will be removed in 16.11.
+  It is replaced by rte_mempool_generic_get/put functions.

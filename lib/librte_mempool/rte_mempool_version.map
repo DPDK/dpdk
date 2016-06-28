@@ -22,6 +22,8 @@ DPDK_16.07 {
 	rte_mempool_check_cookies;
 	rte_mempool_create_empty;
 	rte_mempool_free;
+	rte_mempool_generic_get;
+	rte_mempool_generic_put;
 	rte_mempool_mem_iter;
 	rte_mempool_obj_iter;
 	rte_mempool_ops_table;
