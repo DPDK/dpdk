@@ -320,7 +320,7 @@ virtio_user_eth_dev_alloc(const char *name)
 static int
 virtio_user_pmd_devinit(const char *name, const char *params)
 {
-	struct rte_kvargs *kvlist;
+	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
 	struct virtio_hw *hw;
 	uint64_t queues = VIRTIO_USER_DEF_Q_NUM;
@@ -422,6 +422,8 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	ret = 0;
 
 end:
+	if (kvlist)
+		rte_kvargs_free(kvlist);
 	if (path)
 		free(path);
 	if (mac_addr)
