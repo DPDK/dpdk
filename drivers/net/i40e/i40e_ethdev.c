@@ -63,6 +63,9 @@
 #include "i40e_pf.h"
 #include "i40e_regs.h"
 
+#define ETH_I40E_FLOATING_VEB_ARG	"enable_floating_veb"
+#define ETH_I40E_FLOATING_VEB_LIST_ARG	"floating_veb_list"
+
 #define I40E_CLEAR_PXE_WAIT_MS     200
 
 /* Maximun number of capability elements */
@@ -758,6 +761,161 @@ i40e_add_tx_flow_control_drop_filter(struct i40e_pf *pf)
 }
 
 static int
+floating_veb_list_handler(__rte_unused const char *key,
+			  const char *floating_veb_value,
+			  void *opaque)
+{
+	int idx = 0;
+	unsigned int count = 0;
+	char *end = NULL;
+	int min, max;
+	bool *vf_floating_veb = opaque;
+
+	while (isblank(*floating_veb_value))
+		floating_veb_value++;
+
+	/* Reset floating VEB configuration for VFs */
+	for (idx = 0; idx < I40E_MAX_VF; idx++)
+		vf_floating_veb[idx] = false;
+
+	min = I40E_MAX_VF;
+	do {
+		while (isblank(*floating_veb_value))
+			floating_veb_value++;
+		if (*floating_veb_value == '\0')
+			return -1;
+		errno = 0;
+		idx = strtoul(floating_veb_value, &end, 10);
+		if (errno || end == NULL)
+			return -1;
+		while (isblank(*end))
+			end++;
+		if (*end == '-') {
+			min = idx;
+		} else if ((*end == ';') || (*end == '\0')) {
+			max = idx;
+			if (min == I40E_MAX_VF)
+				min = idx;
+			if (max >= I40E_MAX_VF)
+				max = I40E_MAX_VF - 1;
+			for (idx = min; idx <= max; idx++) {
+				vf_floating_veb[idx] = true;
+				count++;
+			}
+			min = I40E_MAX_VF;
+		} else {
+			return -1;
+		}
+		floating_veb_value = end + 1;
+	} while (*end != '\0');
+
+	if (count == 0)
+		return -1;
+
+	return 0;
+}
+
+static void
+config_vf_floating_veb(struct rte_devargs *devargs,
+		       uint16_t floating_veb,
+		       bool *vf_floating_veb)
+{
+	struct rte_kvargs *kvlist;
+	int i;
+	const char *floating_veb_list = ETH_I40E_FLOATING_VEB_LIST_ARG;
+
+	if (!floating_veb)
+		return;
+	/* All the VFs attach to the floating VEB by default
+	 * when the floating VEB is enabled.
+	 */
+	for (i = 0; i < I40E_MAX_VF; i++)
+		vf_floating_veb[i] = true;
+
+	if (devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return;
+
+	if (!rte_kvargs_count(kvlist, floating_veb_list)) {
+		rte_kvargs_free(kvlist);
+		return;
+	}
+	/* When the floating_veb_list parameter exists, all the VFs
+	 * will attach to the legacy VEB firstly, then configure VFs
+	 * to the floating VEB according to the floating_veb_list.
+	 */
+	if (rte_kvargs_process(kvlist, floating_veb_list,
+			       floating_veb_list_handler,
+			       vf_floating_veb) < 0) {
+		rte_kvargs_free(kvlist);
+		return;
+	}
+	rte_kvargs_free(kvlist);
+}
+
+static int
+i40e_check_floating_handler(__rte_unused const char *key,
+			    const char *value,
+			    __rte_unused void *opaque)
+{
+	if (strcmp(value, "1"))
+		return -1;
+
+	return 0;
+}
+
+static int
+is_floating_veb_supported(struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	const char *floating_veb_key = ETH_I40E_FLOATING_VEB_ARG;
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, floating_veb_key)) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	/* Floating VEB is enabled when there's key-value:
+	 * enable_floating_veb=1
+	 */
+	if (rte_kvargs_process(kvlist, floating_veb_key,
+			       i40e_check_floating_handler, NULL) < 0) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	rte_kvargs_free(kvlist);
+
+	return 1;
+}
+
+static void
+config_floating_veb(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = dev->pci_dev;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	memset(pf->floating_veb_list, 0, sizeof(pf->floating_veb_list));
+
+	if (hw->aq.fw_maj_ver >= FLOATING_VEB_SUPPORTED_FW_MAJ) {
+		pf->floating_veb = is_floating_veb_supported(pci_dev->devargs);
+		config_vf_floating_veb(pci_dev->devargs, pf->floating_veb,
+				       pf->floating_veb_list);
+	} else {
+		pf->floating_veb = false;
+	}
+}
+
+static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
@@ -850,6 +1008,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		     ((hw->nvm.version >> 4) & 0xff),
 		     (hw->nvm.version & 0xf), hw->nvm.eetrack);
 
+	/* Need the special FW version to support floating VEB */
+	config_floating_veb(dev);
 	/* Clear PXE mode */
 	i40e_clear_pxe_mode(hw);
 

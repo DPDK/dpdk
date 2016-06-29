@@ -36,6 +36,7 @@
 
 #include <rte_eth_ctrl.h>
 #include <rte_time.h>
+#include <rte_kvargs.h>
 
 #define I40E_VLAN_TAG_SIZE        4
 
@@ -172,6 +173,10 @@ enum i40e_flxpld_layer_idx {
 #define I40E_ITR_INDEX_DEFAULT          0
 #define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
 #define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
+
+/* Special FW support this floating VEB feature */
+#define FLOATING_VEB_SUPPORTED_FW_MAJ 5
+#define FLOATING_VEB_SUPPORTED_FW_MIN 0
 
 struct i40e_adapter;
 

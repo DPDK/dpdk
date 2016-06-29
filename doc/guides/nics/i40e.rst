@@ -366,3 +366,48 @@ Delete all flow director rules on a port:
 
    testpmd> flush_flow_director 0
 
+Floating VEB
+~~~~~~~~~~~~~
+
+The Intel® Ethernet Controller X710 and XL710 Family support a feature called
+"Floating VEB".
+
+A Virtual Ethernet Bridge (VEB) is an IEEE Edge Virtual Bridging (EVB) term
+for functionality that allows local switching between virtual endpoints within
+a physical endpoint and also with an external bridge/network.
+
+A "Floating" VEB doesn't have an uplink connection to the outside world so all
+switching is done internally and remains within the host. As such, this
+feature provides security benefits.
+
+In addition, a Floating VEB overcomes a limitation of normal VEBs where they
+cannot forward packets when the physical link is down. Floating VEBs don't need
+to connect to the NIC port so they can still forward traffic from VF to VF
+even when the physical link is down.
+
+Therefore, with this feature enabled VFs can be limited to communicating with
+each other but not an outside network, and they can do so even when there is
+no physical uplink on the associated NIC port.
+
+To enable this feature, the user should pass a ``devargs`` parameter to the
+EAL, for example::
+
+    -w 84:00.0,enable_floating_veb=1
+
+In this configuration the PMD will use the floating VEB feature for all the
+VFs created by this PF device.
+
+Alternatively, the user can specify which VFs need to connect to this floating
+VEB using the ``floating_veb_list`` argument::
+
+    -w 84:00.0,enable_floating_veb=1,floating_veb_list=1;3-4
+
+In this example ``VF1``, ``VF3`` and ``VF4`` connect to the floating VEB,
+while other VFs connect to the normal VEB.
+
+The current implementation only supports one floating VEB and one regular
+VEB. VFs can connect to a floating VEB or a regular VEB according to the
+configuration passed on the EAL command line.
+
+The floating VEB functionality requires a NIC firmware version of 5.0
+or greater.
