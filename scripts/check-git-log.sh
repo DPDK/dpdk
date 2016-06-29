@@ -70,6 +70,24 @@ bad=$(echo "$headlines" | grep --color=always \
 	| sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong headline format:\n$bad\n"
 
+# check headline prefix when touching only drivers, e.g. net/<driver name>
+bad=$(for commit in $commits ; do
+	headline=$(git log --format='%s' -1 $commit)
+	files=$(git diff-tree --no-commit-id --name-only -r $commit)
+	[ -z "$(echo "$files" | grep -v '^\(drivers\|doc\|config\)/')" ] ||
+		continue
+	drv=$(echo "$files" | grep '^drivers/' | cut -d "/" -f 2,3 | sort -u)
+	drvgrp=$(echo "$drv" | cut -d "/" -f 1 | uniq)
+	if [ $(echo "$drvgrp" | wc -l) -gt 1 ] ; then
+		echo "$headline" | grep -v '^drivers:'
+	elif [ $(echo "$drv" | wc -l) -gt 1 ] ; then
+		echo "$headline" | grep -v "^$drvgrp"
+	else
+		echo "$headline" | grep -v "^$drv"
+	fi
+done | sed 's,^,\t,')
+[ -z "$bad" ] || printf "Wrong headline prefix:\n$bad\n"
+
 # check headline label for common typos
 bad=$(echo "$headlines" | grep --color=always \
 	-e '^example[:/]' \
