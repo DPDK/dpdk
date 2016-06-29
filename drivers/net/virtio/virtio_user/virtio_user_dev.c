@@ -63,12 +63,12 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	/* May use invalid flag, but some backend leverages kickfd and callfd as
 	 * criteria to judge if dev is alive. so finally we use real event_fd.
 	 */
-	callfd = eventfd(0, O_CLOEXEC | O_NONBLOCK);
+	callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (callfd < 0) {
 		PMD_DRV_LOG(ERR, "callfd error, %s\n", strerror(errno));
 		return -1;
 	}
-	kickfd = eventfd(0, O_CLOEXEC | O_NONBLOCK);
+	kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (kickfd < 0) {
 		close(callfd);
 		PMD_DRV_LOG(ERR, "kickfd error, %s\n", strerror(errno));
