@@ -282,6 +282,11 @@ CONFIG_RTE_LIBRTE_VIRTIO_DEBUG_DRIVER=n
 CONFIG_RTE_LIBRTE_VIRTIO_DEBUG_DUMP=n
 
 #
+# Compile virtio device emulation inside virtio PMD driver
+#
+CONFIG_RTE_VIRTIO_USER=n
+
+#
 # Compile burst-oriented VMXNET3 PMD driver
 #
 CONFIG_RTE_LIBRTE_VMXNET3_PMD=y
