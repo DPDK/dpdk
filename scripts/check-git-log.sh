@@ -140,7 +140,11 @@ IFS='
 fixtags=$(echo "$tags" | grep '^Fixes: ')
 bad=$(for fixtag in $fixtags ; do
 	hash=$(echo "$fixtag" | sed 's,^Fixes: \([0-9a-f]*\).*,\1,')
-	good="Fixes: $hash "$(git log --format='("%s")' -1 $hash 2>&-)
+	if git branch --contains $hash | grep -q '^\*' ; then
+		good="Fixes: $hash "$(git log --format='("%s")' -1 $hash 2>&-)
+	else
+		good="reference not in current branch"
+	fi
 	printf "$fixtag" | grep -v "^$good$"
 done | sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong 'Fixes' reference:\n$bad\n"
