@@ -39,6 +39,8 @@ LIB = librte_pmd_thunderx_nicvf.a
 
 CFLAGS += $(WERROR_FLAGS)
 
+LDLIBS += -lm
+
 EXPORT_MAP := rte_pmd_thunderx_nicvf_version.map
 
 LIBABIVER := 1
