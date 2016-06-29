@@ -181,7 +181,7 @@ int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int cq, int queue_size, const char *mac)
 {
-	strncpy(dev->path, path, PATH_MAX);
+	snprintf(dev->path, PATH_MAX, "%s", path);
 	dev->max_queue_pairs = queues;
 	dev->queue_pairs = 1; /* mq disabled by default */
 	dev->queue_size = queue_size;
