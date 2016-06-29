@@ -197,6 +197,8 @@ void vnic_wq_clean(struct vnic_wq *wq,
 
 	wq->head_idx = 0;
 	wq->tail_idx = 0;
+	wq->last_completed_index = 0;
+	*((uint32_t *)wq->cqmsg_rz->addr) = 0;
 
 	iowrite32(0, &wq->ctrl->fetch_index);
 	iowrite32(0, &wq->ctrl->posted_index);
