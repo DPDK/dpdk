@@ -343,31 +343,60 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_PATH) == 1)
-		rte_kvargs_process(kvlist, VIRTIO_USER_ARG_PATH,
-				   &get_string_arg, &path);
+		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_PATH,
+					 &get_string_arg, &path);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "error to parse %s",
+				     VIRTIO_USER_ARG_PATH);
+			goto end;
+		}
 	else {
 		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio-user\n",
 			  VIRTIO_USER_ARG_QUEUE_SIZE);
 		goto end;
 	}
 
-	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_MAC) == 1)
-		rte_kvargs_process(kvlist, VIRTIO_USER_ARG_MAC,
-				   &get_string_arg, &mac_addr);
+	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_MAC) == 1) {
+		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_MAC,
+					 &get_string_arg, &mac_addr);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "error to parse %s",
+				     VIRTIO_USER_ARG_MAC);
+			goto end;
+		}
+	}
 
-	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_QUEUE_SIZE) == 1)
-		rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUE_SIZE,
-				   &get_integer_arg, &queue_size);
+	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_QUEUE_SIZE) == 1) {
+		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUE_SIZE,
+					 &get_integer_arg, &queue_size);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "error to parse %s",
+				     VIRTIO_USER_ARG_QUEUE_SIZE);
+			goto end;
+		}
+	}
 
-	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_QUEUES_NUM) == 1)
-		rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUES_NUM,
-				   &get_integer_arg, &queues);
+	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_QUEUES_NUM) == 1) {
+		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUES_NUM,
+					 &get_integer_arg, &queues);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "error to parse %s",
+				     VIRTIO_USER_ARG_QUEUES_NUM);
+			goto end;
+		}
+	}
 
-	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_CQ_NUM) == 1)
-		rte_kvargs_process(kvlist, VIRTIO_USER_ARG_CQ_NUM,
-				   &get_integer_arg, &cq);
-	else if (queues > 1)
+	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_CQ_NUM) == 1) {
+		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_CQ_NUM,
+					 &get_integer_arg, &cq);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "error to parse %s",
+				     VIRTIO_USER_ARG_CQ_NUM);
+			goto end;
+		}
+	} else if (queues > 1) {
 		cq = 1;
+	}
 
 	if (queues > 1 && cq == 0) {
 		PMD_INIT_LOG(ERR, "multi-q requires ctrl-q");
