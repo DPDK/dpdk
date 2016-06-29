@@ -181,7 +181,7 @@ get_hugepage_file_info(struct hugepage_file_info huges[], int max)
 		}
 		huges[idx].addr = v_start;
 		huges[idx].size = v_end - v_start;
-		strcpy(huges[idx].path, tmp);
+		snprintf(huges[idx].path, PATH_MAX, "%s", tmp);
 		idx++;
 	}
 
