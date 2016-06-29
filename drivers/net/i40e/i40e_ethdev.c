@@ -3830,21 +3830,27 @@ i40e_veb_release(struct i40e_veb *veb)
 	struct i40e_vsi *vsi;
 	struct i40e_hw *hw;
 
-	if (veb == NULL || veb->associate_vsi == NULL)
+	if (veb == NULL)
 		return -EINVAL;
 
 	if (!TAILQ_EMPTY(&veb->head)) {
 		PMD_DRV_LOG(ERR, "VEB still has VSI attached, can't remove");
 		return -EACCES;
 	}
+	/* associate_vsi field is NULL for floating VEB */
+	if (veb->associate_vsi != NULL) {
+		vsi = veb->associate_vsi;
+		hw = I40E_VSI_TO_HW(vsi);
 
-	vsi = veb->associate_vsi;
-	hw = I40E_VSI_TO_HW(vsi);
+		vsi->uplink_seid = veb->uplink_seid;
+		vsi->veb = NULL;
+	} else {
+		veb->associate_pf->main_vsi->floating_veb = NULL;
+		hw = I40E_VSI_TO_HW(veb->associate_pf->main_vsi);
+	}
 
-	vsi->uplink_seid = veb->uplink_seid;
 	i40e_aq_delete_element(hw, veb->seid, NULL);
 	rte_free(veb);
-	vsi->veb = NULL;
 	return I40E_SUCCESS;
 }
 
@@ -3856,9 +3862,9 @@ i40e_veb_setup(struct i40e_pf *pf, struct i40e_vsi *vsi)
 	int ret;
 	struct i40e_hw *hw;
 
-	if (NULL == pf || vsi == NULL) {
-		PMD_DRV_LOG(ERR, "veb setup failed, "
-			    "associated VSI shouldn't null");
+	if (pf == NULL) {
+		PMD_DRV_LOG(ERR,
+			    "veb setup failed, associated PF shouldn't null");
 		return NULL;
 	}
 	hw = I40E_PF_TO_HW(pf);
@@ -3870,11 +3876,19 @@ i40e_veb_setup(struct i40e_pf *pf, struct i40e_vsi *vsi)
 	}
 
 	veb->associate_vsi = vsi;
+	veb->associate_pf = pf;
 	TAILQ_INIT(&veb->head);
-	veb->uplink_seid = vsi->uplink_seid;
+	veb->uplink_seid = vsi ? vsi->uplink_seid : 0;
 
-	ret = i40e_aq_add_veb(hw, veb->uplink_seid, vsi->seid,
-		I40E_DEFAULT_TCMAP, false, &veb->seid, false, NULL);
+	/* create floating veb if vsi is NULL */
+	if (vsi != NULL) {
+		ret = i40e_aq_add_veb(hw, veb->uplink_seid, vsi->seid,
+				      I40E_DEFAULT_TCMAP, false,
+				      &veb->seid, false, NULL);
+	} else {
+		ret = i40e_aq_add_veb(hw, 0, 0, I40E_DEFAULT_TCMAP,
+				      true, &veb->seid, false, NULL);
+	}
 
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Add veb failed, aq_err: %d",
@@ -3890,10 +3904,10 @@ i40e_veb_setup(struct i40e_pf *pf, struct i40e_vsi *vsi)
 			    hw->aq.asq_last_status);
 		goto fail;
 	}
-
 	/* Get VEB bandwidth, to be implemented */
 	/* Now associated vsi binding to the VEB, set uplink to this VEB */
-	vsi->uplink_seid = veb->seid;
+	if (vsi)
+		vsi->uplink_seid = veb->seid;
 
 	return veb;
 fail:
@@ -3909,6 +3923,7 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 	struct i40e_vsi_list *vsi_list;
 	int ret;
 	struct i40e_mac_filter *f;
+	uint16_t user_param = vsi->user_param;
 
 	if (!vsi)
 		return I40E_SUCCESS;
@@ -3926,12 +3941,22 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 		i40e_veb_release(vsi->veb);
 	}
 
+	if (vsi->floating_veb) {
+		TAILQ_FOREACH(vsi_list, &vsi->floating_veb->head, list) {
+			if (i40e_vsi_release(vsi_list->vsi) != I40E_SUCCESS)
+				return -1;
+			TAILQ_REMOVE(&vsi->floating_veb->head, vsi_list, list);
+		}
+	}
+
 	/* Remove all macvlan filters of the VSI */
 	i40e_vsi_remove_all_macvlan_filter(vsi);
 	TAILQ_FOREACH(f, &vsi->mac_list, next)
 		rte_free(f);
 
-	if (vsi->type != I40E_VSI_MAIN) {
+	if (vsi->type != I40E_VSI_MAIN &&
+	    ((vsi->type != I40E_VSI_SRIOV) ||
+	    !pf->floating_veb_list[user_param])) {
 		/* Remove vsi from parent's sibling list */
 		if (vsi->parent_vsi == NULL || vsi->parent_vsi->veb == NULL) {
 			PMD_DRV_LOG(ERR, "VSI's parent VSI is NULL");
@@ -3945,6 +3970,24 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 		if (ret != I40E_SUCCESS)
 			PMD_DRV_LOG(ERR, "Failed to delete element");
 	}
+
+	if ((vsi->type == I40E_VSI_SRIOV) &&
+	    pf->floating_veb_list[user_param]) {
+		/* Remove vsi from parent's sibling list */
+		if (vsi->parent_vsi == NULL ||
+		    vsi->parent_vsi->floating_veb == NULL) {
+			PMD_DRV_LOG(ERR, "VSI's parent VSI is NULL");
+			return I40E_ERR_PARAM;
+		}
+		TAILQ_REMOVE(&vsi->parent_vsi->floating_veb->head,
+			     &vsi->sib_vsi_list, list);
+
+		/* Remove all switch element of the VSI */
+		ret = i40e_aq_delete_element(hw, vsi->seid, NULL);
+		if (ret != I40E_SUCCESS)
+			PMD_DRV_LOG(ERR, "Failed to delete element");
+	}
+
 	i40e_res_pool_free(&pf->qp_pool, vsi->base_queue);
 
 	if (vsi->type != I40E_VSI_SRIOV)
@@ -4113,7 +4156,8 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	struct ether_addr broadcast =
 		{.addr_bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 
-	if (type != I40E_VSI_MAIN && uplink_vsi == NULL) {
+	if (type != I40E_VSI_MAIN && type != I40E_VSI_SRIOV &&
+	    uplink_vsi == NULL) {
 		PMD_DRV_LOG(ERR, "VSI setup failed, "
 			    "VSI link shouldn't be NULL");
 		return NULL;
@@ -4125,16 +4169,33 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		return NULL;
 	}
 
-	/* If uplink vsi didn't setup VEB, create one first */
-	if (type != I40E_VSI_MAIN && uplink_vsi->veb == NULL) {
+	/* two situations
+	 * 1.type is not MAIN and uplink vsi is not NULL
+	 * If uplink vsi didn't setup VEB, create one first under veb field
+	 * 2.type is SRIOV and the uplink is NULL
+	 * If floating VEB is NULL, create one veb under floating veb field
+	 */
+
+	if (type != I40E_VSI_MAIN && uplink_vsi != NULL &&
+	    uplink_vsi->veb == NULL) {
 		uplink_vsi->veb = i40e_veb_setup(pf, uplink_vsi);
 
-		if (NULL == uplink_vsi->veb) {
+		if (uplink_vsi->veb == NULL) {
 			PMD_DRV_LOG(ERR, "VEB setup failed");
 			return NULL;
 		}
 		/* set ALLOWLOOPBACk on pf, when veb is created */
 		i40e_enable_pf_lb(pf);
+	}
+
+	if (type == I40E_VSI_SRIOV && uplink_vsi == NULL &&
+	    pf->main_vsi->floating_veb == NULL) {
+		pf->main_vsi->floating_veb = i40e_veb_setup(pf, uplink_vsi);
+
+		if (pf->main_vsi->floating_veb == NULL) {
+			PMD_DRV_LOG(ERR, "VEB setup failed");
+			return NULL;
+		}
 	}
 
 	vsi = rte_zmalloc("i40e_vsi", sizeof(struct i40e_vsi), 0);
@@ -4146,7 +4207,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	vsi->type = type;
 	vsi->adapter = I40E_PF_TO_ADAPTER(pf);
 	vsi->max_macaddrs = I40E_NUM_MACADDR_MAX;
-	vsi->parent_vsi = uplink_vsi;
+	vsi->parent_vsi = uplink_vsi ? uplink_vsi : pf->main_vsi;
 	vsi->user_param = user_param;
 	/* Allocate queues */
 	switch (vsi->type) {
@@ -4300,7 +4361,10 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		 * For other VSI, the uplink_seid equals to uplink VSI's
 		 * uplink_seid since they share same VEB
 		 */
-		vsi->uplink_seid = uplink_vsi->uplink_seid;
+		if (uplink_vsi == NULL)
+			vsi->uplink_seid = pf->main_vsi->floating_veb->seid;
+		else
+			vsi->uplink_seid = uplink_vsi->uplink_seid;
 		ctxt.pf_num = hw->pf_id;
 		ctxt.vf_num = hw->func_caps.vf_base_id + user_param;
 		ctxt.uplink_seid = vsi->uplink_seid;
@@ -4408,8 +4472,13 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		vsi->seid = ctxt.seid;
 		vsi->vsi_id = ctxt.vsi_number;
 		vsi->sib_vsi_list.vsi = vsi;
-		TAILQ_INSERT_TAIL(&uplink_vsi->veb->head,
-				&vsi->sib_vsi_list, list);
+		if (vsi->type == I40E_VSI_SRIOV && uplink_vsi == NULL) {
+			TAILQ_INSERT_TAIL(&pf->main_vsi->floating_veb->head,
+					  &vsi->sib_vsi_list, list);
+		} else {
+			TAILQ_INSERT_TAIL(&uplink_vsi->veb->head,
+					  &vsi->sib_vsi_list, list);
+		}
 	}
 
 	/* MAC/VLAN configuration */

@@ -55,6 +55,8 @@
 #define I40E_VFTA_SIZE            (4096 / I40E_UINT32_BIT_SIZE)
 /* Maximun number of MAC addresses */
 #define I40E_NUM_MACADDR_MAX       64
+/* Maximum number of VFs */
+#define I40E_MAX_VF               128
 
 /*
  * vlan_id is a 12 bit number.
@@ -219,6 +221,7 @@ struct i40e_bw_info {
 struct i40e_veb {
 	struct i40e_vsi_list_head head;
 	struct i40e_vsi *associate_vsi; /* Associate VSI who owns the VEB */
+	struct i40e_pf *associate_pf; /* Associate PF who owns the VEB */
 	uint16_t seid; /* The seid of VEB itself */
 	uint16_t uplink_seid; /* The uplink seid of this VEB */
 	uint16_t stats_idx;
@@ -259,6 +262,7 @@ struct i40e_vsi {
 	struct i40e_vsi_list sib_vsi_list; /* sibling vsi list */
 	struct i40e_vsi *parent_vsi;
 	struct i40e_veb *veb;    /* Associated veb, could be null */
+	struct i40e_veb *floating_veb; /* Associated floating veb */
 	bool offset_loaded;
 	enum i40e_vsi_type type; /* VSI types */
 	uint16_t vlan_num;       /* Total VLAN number */
@@ -450,6 +454,9 @@ struct i40e_pf {
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	struct i40e_mirror_rule_list mirror_list;
 	uint16_t nb_mirror_rule;   /* The number of mirror rules */
+	bool floating_veb; /* The flag to use the floating VEB */
+	/* The floating enable flag for the specific VF */
+	bool floating_veb_list[I40E_MAX_VF];
 };
 
 enum pending_msg {

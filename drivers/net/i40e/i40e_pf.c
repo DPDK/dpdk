@@ -124,6 +124,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 {
 	uint32_t val, i;
 	struct i40e_hw *hw;
+	struct i40e_pf *pf;
 	uint16_t vf_id, abs_vf_id, vf_msix_num;
 	int ret;
 	struct i40e_virtchnl_queue_select qsel;
@@ -131,6 +132,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 	if (vf == NULL)
 		return -EINVAL;
 
+	pf = vf->pf;
 	hw = I40E_PF_TO_HW(vf->pf);
 	vf_id = vf->vf_idx;
 	abs_vf_id = vf_id + hw->func_caps.vf_base_id;
@@ -225,8 +227,14 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 	I40E_WRITE_FLUSH(hw);
 
 	/* Allocate resource again */
-	vf->vsi = i40e_vsi_setup(vf->pf, I40E_VSI_SRIOV,
-			vf->pf->main_vsi, vf->vf_idx);
+	if (pf->floating_veb && pf->floating_veb_list[vf_id]) {
+		vf->vsi = i40e_vsi_setup(vf->pf, I40E_VSI_SRIOV,
+					 NULL, vf->vf_idx);
+	} else {
+		vf->vsi = i40e_vsi_setup(vf->pf, I40E_VSI_SRIOV,
+					 vf->pf->main_vsi, vf->vf_idx);
+	}
+
 	if (vf->vsi == NULL) {
 		PMD_DRV_LOG(ERR, "Add vsi failed");
 		return -EFAULT;
