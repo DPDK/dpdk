@@ -590,10 +590,14 @@ static void cmd_stop_parsed(__attribute__((unused)) void *parsed_result,
 		return;
 	}
 	global_flag_stru_p->LcoreMainIsRunning = 0;
-	rte_eal_wait_lcore(global_flag_stru_p->LcoreMainCore);
-	cmdline_printf(cl,
-			"lcore_main stopped on core:%d\n",
-			global_flag_stru_p->LcoreMainCore);
+	if (rte_eal_wait_lcore(global_flag_stru_p->LcoreMainCore) < 0)
+		cmdline_printf(cl,
+				"error: lcore_main can not stop on core:%d\n",
+				global_flag_stru_p->LcoreMainCore);
+	else
+		cmdline_printf(cl,
+				"lcore_main stopped on core:%d\n",
+				global_flag_stru_p->LcoreMainCore);
 	rte_spinlock_unlock(&global_flag_stru_p->lock);
 }
 
@@ -628,10 +632,14 @@ static void cmd_quit_parsed(__attribute__((unused)) void *parsed_result,
 		return;
 	}
 	global_flag_stru_p->LcoreMainIsRunning = 0;
-	rte_eal_wait_lcore(global_flag_stru_p->LcoreMainCore);
-	cmdline_printf(cl,
-			"lcore_main stopped on core:%d\n",
-			global_flag_stru_p->LcoreMainCore);
+	if (rte_eal_wait_lcore(global_flag_stru_p->LcoreMainCore) < 0)
+		cmdline_printf(cl,
+				"error: lcore_main can not stop on core:%d\n",
+				global_flag_stru_p->LcoreMainCore);
+	else
+		cmdline_printf(cl,
+				"lcore_main stopped on core:%d\n",
+				global_flag_stru_p->LcoreMainCore);
 	rte_spinlock_unlock(&global_flag_stru_p->lock);
 	cmdline_quit(cl);
 }
