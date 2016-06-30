@@ -124,6 +124,43 @@ struct ena_driver_stats {
 	rte_atomic64_t rx_nombuf;
 };
 
+struct ena_stats_dev {
+	u64 tx_timeout;
+	u64 io_suspend;
+	u64 io_resume;
+	u64 wd_expired;
+	u64 interface_up;
+	u64 interface_down;
+	u64 admin_q_pause;
+};
+
+struct ena_stats_tx {
+	u64 cnt;
+	u64 bytes;
+	u64 queue_stop;
+	u64 prepare_ctx_err;
+	u64 queue_wakeup;
+	u64 dma_mapping_err;
+	u64 linearize;
+	u64 linearize_failed;
+	u64 tx_poll;
+	u64 doorbells;
+	u64 missing_tx_comp;
+	u64 bad_req_id;
+};
+
+struct ena_stats_rx {
+	u64 cnt;
+	u64 bytes;
+	u64 refil_partial;
+	u64 bad_csum;
+	u64 page_alloc_fail;
+	u64 skb_alloc_fail;
+	u64 dma_mapping_err;
+	u64 bad_desc_num;
+	u64 small_copy_len_pkt;
+};
+
 /* board specific private data structure */
 struct ena_adapter {
 	/* OS defined structs */

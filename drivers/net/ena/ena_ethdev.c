@@ -37,6 +37,7 @@
 #include <rte_atomic.h>
 #include <rte_dev.h>
 #include <rte_errno.h>
+#include <rte_version.h>
 
 #include "ena_ethdev.h"
 #include "ena_logs.h"
@@ -48,6 +49,10 @@
 #include <ena_regs_defs.h>
 #include <ena_admin_defs.h>
 #include <ena_eth_io_defs.h>
+
+#define DRV_MODULE_VER_MAJOR	1
+#define DRV_MODULE_VER_MINOR	0
+#define DRV_MODULE_VER_SUBMINOR	0
 
 #define ENA_IO_TXQ_IDX(q)	(2 * (q))
 #define ENA_IO_RXQ_IDX(q)	(2 * (q) + 1)
@@ -72,6 +77,89 @@
 #define ENA_RX_RSS_TABLE_LOG_SIZE  7
 #define ENA_RX_RSS_TABLE_SIZE	(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
 #define ENA_HASH_KEY_SIZE	40
+#define ENA_ETH_SS_STATS	0xFF
+#define ETH_GSTRING_LEN	32
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+enum ethtool_stringset {
+	ETH_SS_TEST             = 0,
+	ETH_SS_STATS,
+};
+
+struct ena_stats {
+	char name[ETH_GSTRING_LEN];
+	int stat_offset;
+};
+
+#define ENA_STAT_ENA_COM_ENTRY(stat) { \
+	.name = #stat, \
+	.stat_offset = offsetof(struct ena_com_stats_admin, stat) \
+}
+
+#define ENA_STAT_ENTRY(stat, stat_type) { \
+	.name = #stat, \
+	.stat_offset = offsetof(struct ena_stats_##stat_type, stat) \
+}
+
+#define ENA_STAT_RX_ENTRY(stat) \
+	ENA_STAT_ENTRY(stat, rx)
+
+#define ENA_STAT_TX_ENTRY(stat) \
+	ENA_STAT_ENTRY(stat, tx)
+
+#define ENA_STAT_GLOBAL_ENTRY(stat) \
+	ENA_STAT_ENTRY(stat, dev)
+
+static const struct ena_stats ena_stats_global_strings[] = {
+	ENA_STAT_GLOBAL_ENTRY(tx_timeout),
+	ENA_STAT_GLOBAL_ENTRY(io_suspend),
+	ENA_STAT_GLOBAL_ENTRY(io_resume),
+	ENA_STAT_GLOBAL_ENTRY(wd_expired),
+	ENA_STAT_GLOBAL_ENTRY(interface_up),
+	ENA_STAT_GLOBAL_ENTRY(interface_down),
+	ENA_STAT_GLOBAL_ENTRY(admin_q_pause),
+};
+
+static const struct ena_stats ena_stats_tx_strings[] = {
+	ENA_STAT_TX_ENTRY(cnt),
+	ENA_STAT_TX_ENTRY(bytes),
+	ENA_STAT_TX_ENTRY(queue_stop),
+	ENA_STAT_TX_ENTRY(queue_wakeup),
+	ENA_STAT_TX_ENTRY(dma_mapping_err),
+	ENA_STAT_TX_ENTRY(linearize),
+	ENA_STAT_TX_ENTRY(linearize_failed),
+	ENA_STAT_TX_ENTRY(tx_poll),
+	ENA_STAT_TX_ENTRY(doorbells),
+	ENA_STAT_TX_ENTRY(prepare_ctx_err),
+	ENA_STAT_TX_ENTRY(missing_tx_comp),
+	ENA_STAT_TX_ENTRY(bad_req_id),
+};
+
+static const struct ena_stats ena_stats_rx_strings[] = {
+	ENA_STAT_RX_ENTRY(cnt),
+	ENA_STAT_RX_ENTRY(bytes),
+	ENA_STAT_RX_ENTRY(refil_partial),
+	ENA_STAT_RX_ENTRY(bad_csum),
+	ENA_STAT_RX_ENTRY(page_alloc_fail),
+	ENA_STAT_RX_ENTRY(skb_alloc_fail),
+	ENA_STAT_RX_ENTRY(dma_mapping_err),
+	ENA_STAT_RX_ENTRY(bad_desc_num),
+	ENA_STAT_RX_ENTRY(small_copy_len_pkt),
+};
+
+static const struct ena_stats ena_stats_ena_com_strings[] = {
+	ENA_STAT_ENA_COM_ENTRY(aborted_cmd),
+	ENA_STAT_ENA_COM_ENTRY(submitted_cmd),
+	ENA_STAT_ENA_COM_ENTRY(completed_cmd),
+	ENA_STAT_ENA_COM_ENTRY(out_of_space),
+	ENA_STAT_ENA_COM_ENTRY(no_completion),
+};
+
+#define ENA_STATS_ARRAY_GLOBAL	ARRAY_SIZE(ena_stats_global_strings)
+#define ENA_STATS_ARRAY_TX	ARRAY_SIZE(ena_stats_tx_strings)
+#define ENA_STATS_ARRAY_RX	ARRAY_SIZE(ena_stats_rx_strings)
+#define ENA_STATS_ARRAY_ENA_COM	ARRAY_SIZE(ena_stats_ena_com_strings)
 
 /** Vendor ID used by Amazon devices */
 #define PCI_VENDOR_ID_AMAZON 0x1D0F
@@ -81,7 +169,6 @@
 
 static struct rte_pci_id pci_id_ena_map[] = {
 #define RTE_PCI_DEV_ID_DECL_ENA(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-
 	RTE_PCI_DEV_ID_DECL_ENA(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF)
 	RTE_PCI_DEV_ID_DECL_ENA(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF)
 	{.device_id = 0},
@@ -127,6 +214,7 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_reta_entry64 *reta_conf,
 			      uint16_t reta_size);
+static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
 
 static struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -224,6 +312,102 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 	} else {
 		ena_tx_ctx->meta_valid = false;
 	}
+}
+
+static void ena_config_host_info(struct ena_com_dev *ena_dev)
+{
+	struct ena_admin_host_info *host_info;
+	int rc;
+
+	/* Allocate only the host info */
+	rc = ena_com_allocate_host_info(ena_dev);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "Cannot allocate host info\n");
+		return;
+	}
+
+	host_info = ena_dev->host_attr.host_info;
+
+	host_info->os_type = ENA_ADMIN_OS_DPDK;
+	host_info->kernel_ver = RTE_VERSION;
+	strncpy((char *)host_info->kernel_ver_str, rte_version(),
+		strlen(rte_version()));
+	host_info->os_dist = RTE_VERSION;
+	strncpy((char *)host_info->os_dist_str, rte_version(),
+		strlen(rte_version()));
+	host_info->driver_version =
+		(DRV_MODULE_VER_MAJOR) |
+		(DRV_MODULE_VER_MINOR << ENA_ADMIN_HOST_INFO_MINOR_SHIFT) |
+		(DRV_MODULE_VER_SUBMINOR << ENA_ADMIN_HOST_INFO_SUB_MINOR_SHIFT);
+
+	rc = ena_com_set_host_attributes(ena_dev);
+	if (rc) {
+		if (rc == -EPERM)
+			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
+		else
+			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
+
+		goto err;
+	}
+
+	return;
+
+err:
+	ena_com_delete_host_info(ena_dev);
+}
+
+static int
+ena_get_sset_count(struct rte_eth_dev *dev, int sset)
+{
+	if (sset != ETH_SS_STATS)
+		return -EOPNOTSUPP;
+
+	 /* Workaround for clang:
+	 * touch internal structures to prevent
+	 * compiler error
+	 */
+	ENA_TOUCH(ena_stats_global_strings);
+	ENA_TOUCH(ena_stats_tx_strings);
+	ENA_TOUCH(ena_stats_rx_strings);
+	ENA_TOUCH(ena_stats_ena_com_strings);
+
+	return  dev->data->nb_tx_queues *
+		(ENA_STATS_ARRAY_TX + ENA_STATS_ARRAY_RX) +
+		ENA_STATS_ARRAY_GLOBAL + ENA_STATS_ARRAY_ENA_COM;
+}
+
+static void ena_config_debug_area(struct ena_adapter *adapter)
+{
+	u32 debug_area_size;
+	int rc, ss_count;
+
+	ss_count = ena_get_sset_count(adapter->rte_dev, ETH_SS_STATS);
+	if (ss_count <= 0) {
+		RTE_LOG(ERR, PMD, "SS count is negative\n");
+		return;
+	}
+
+	/* allocate 32 bytes for each string and 64bit for the value */
+	debug_area_size = ss_count * ETH_GSTRING_LEN + sizeof(u64) * ss_count;
+
+	rc = ena_com_allocate_debug_area(&adapter->ena_dev, debug_area_size);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "Cannot allocate debug area\n");
+		return;
+	}
+
+	rc = ena_com_set_host_attributes(&adapter->ena_dev);
+	if (rc) {
+		if (rc == -EPERM)
+			RTE_LOG(WARNING, PMD, "Cannot set host attributes\n");
+		else
+			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
+		goto err;
+	}
+
+	return;
+err:
+	ena_com_delete_debug_area(&adapter->ena_dev);
 }
 
 static void ena_close(struct rte_eth_dev *dev)
@@ -999,6 +1183,8 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 		goto err_mmio_read_less;
 	}
 
+	ena_config_host_info(ena_dev);
+
 	/* To enable the msix interrupts the driver needs to know the number
 	 * of queues. So the driver uses polling mode to retrieve this
 	 * information.
@@ -1111,6 +1297,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* prepare ring structures */
 	ena_init_rings(adapter);
+
+	ena_config_debug_area(adapter);
 
 	/* Set max MTU for this device */
 	adapter->max_mtu = get_feat_ctx.dev_attr.max_mtu;
