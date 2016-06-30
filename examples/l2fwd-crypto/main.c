@@ -243,7 +243,7 @@ struct l2fwd_crypto_statistics {
 } __rte_cache_aligned;
 
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
-struct l2fwd_crypto_statistics crypto_statistics[RTE_MAX_ETHPORTS];
+struct l2fwd_crypto_statistics crypto_statistics[RTE_CRYPTO_MAX_DEVS];
 
 /* A tsc-based timer responsible for triggering statistics printout */
 #define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
