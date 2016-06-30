@@ -54,6 +54,8 @@
 
 #define ENA_PKT_MAX_BUFS     17
 
+#define ENA_MMIO_DISABLE_REG_READ	BIT(0)
+
 #define	ENA_CIRC_COUNT(head, tail, size)				\
 	(((uint16_t)((uint16_t)(head) - (uint16_t)(tail))) & ((size) - 1))
 

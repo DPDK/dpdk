@@ -338,7 +338,8 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 	host_info->driver_version =
 		(DRV_MODULE_VER_MAJOR) |
 		(DRV_MODULE_VER_MINOR << ENA_ADMIN_HOST_INFO_MINOR_SHIFT) |
-		(DRV_MODULE_VER_SUBMINOR << ENA_ADMIN_HOST_INFO_SUB_MINOR_SHIFT);
+		(DRV_MODULE_VER_SUBMINOR <<
+			ENA_ADMIN_HOST_INFO_SUB_MINOR_SHIFT);
 
 	rc = ena_com_set_host_attributes(ena_dev);
 	if (rc) {
@@ -1151,6 +1152,7 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 			   struct ena_com_dev_get_features_ctx *get_feat_ctx)
 {
 	int rc;
+	bool readless_supported;
 
 	/* Initialize mmio registers */
 	rc = ena_com_mmio_reg_read_request_init(ena_dev);
@@ -1158,6 +1160,14 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 		RTE_LOG(ERR, PMD, "failed to init mmio read less\n");
 		return rc;
 	}
+
+	/* The PCIe configuration space revision id indicate if mmio reg
+	 * read is disabled.
+	 */
+	readless_supported =
+		!(((struct rte_pci_device *)ena_dev->dmadev)->id.class_id
+			       & ENA_MMIO_DISABLE_REG_READ);
+	ena_com_set_mmio_read_mode(ena_dev, readless_supported);
 
 	/* reset device */
 	rc = ena_com_dev_reset(ena_dev);
