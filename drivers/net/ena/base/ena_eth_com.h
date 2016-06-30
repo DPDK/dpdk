@@ -142,6 +142,20 @@ static inline int ena_com_update_dev_comp_head(struct ena_com_io_cq *io_cq)
 	return 0;
 }
 
+static inline void ena_com_update_numa_node(struct ena_com_io_cq *io_cq,
+					    u8 numa_node)
+{
+	struct ena_eth_io_numa_node_cfg_reg numa_cfg;
+
+	if (!io_cq->numa_node_cfg_reg)
+		return;
+
+	numa_cfg.numa_cfg = (numa_node & ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK)
+		| ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK;
+
+	ENA_REG_WRITE32(numa_cfg.numa_cfg, io_cq->numa_node_cfg_reg);
+}
+
 static inline void ena_com_comp_ack(struct ena_com_io_sq *io_sq, u16 elem)
 {
 	io_sq->next_to_comp += elem;

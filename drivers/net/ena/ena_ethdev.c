@@ -742,6 +742,10 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 			      __rte_unused unsigned int socket_id,
 			      __rte_unused const struct rte_eth_txconf *tx_conf)
 {
+	struct ena_com_create_io_ctx ctx =
+		/* policy set to _HOST just to satisfy icc compiler */
+		{ ENA_ADMIN_PLACEMENT_POLICY_HOST,
+		  ENA_COM_IO_QUEUE_DIRECTION_TX, 0, 0, 0, 0 };
 	struct ena_ring *txq = NULL;
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
@@ -767,11 +771,14 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	ena_qid = ENA_IO_TXQ_IDX(queue_idx);
-	rc = ena_com_create_io_queue(ena_dev, ena_qid,
-				     ENA_COM_IO_QUEUE_DIRECTION_TX,
-				     ena_dev->tx_mem_queue_type,
-				     -1 /* admin interrupts is not used */,
-				     nb_desc);
+
+	ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_TX;
+	ctx.qid = ena_qid;
+	ctx.msix_vector = -1; /* admin interrupts not used */
+	ctx.mem_queue_type = ena_dev->tx_mem_queue_type;
+	ctx.queue_size = adapter->tx_ring_size;
+
+	rc = ena_com_create_io_queue(ena_dev, &ctx);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"failed to create io TX queue #%d (qid:%d) rc: %d\n",
@@ -779,6 +786,17 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 	txq->ena_com_io_cq = &ena_dev->io_cq_queues[ena_qid];
 	txq->ena_com_io_sq = &ena_dev->io_sq_queues[ena_qid];
+
+	rc = ena_com_get_io_handlers(ena_dev, ena_qid,
+				     &txq->ena_com_io_sq,
+				     &txq->ena_com_io_cq);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"Failed to get TX queue handlers. TX queue num %d rc: %d\n",
+			queue_idx, rc);
+		ena_com_destroy_io_queue(ena_dev, ena_qid);
+		goto err;
+	}
 
 	txq->port_id = dev->data->port_id;
 	txq->next_to_clean = 0;
@@ -808,7 +826,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
 	dev->data->tx_queues[queue_idx] = txq;
-
+err:
 	return rc;
 }
 
@@ -819,6 +837,10 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 			      __rte_unused const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp)
 {
+	struct ena_com_create_io_ctx ctx =
+		/* policy set to _HOST just to satisfy icc compiler */
+		{ ENA_ADMIN_PLACEMENT_POLICY_HOST,
+		  ENA_COM_IO_QUEUE_DIRECTION_RX, 0, 0, 0, 0 };
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
 	struct ena_ring *rxq = NULL;
@@ -842,17 +864,30 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	ena_qid = ENA_IO_RXQ_IDX(queue_idx);
-	rc = ena_com_create_io_queue(ena_dev, ena_qid,
-				     ENA_COM_IO_QUEUE_DIRECTION_RX,
-				     ENA_ADMIN_PLACEMENT_POLICY_HOST,
-				     -1 /* admin interrupts not used */,
-				     nb_desc);
+
+	ctx.qid = ena_qid;
+	ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_RX;
+	ctx.mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+	ctx.msix_vector = -1; /* admin interrupts not used */
+	ctx.queue_size = adapter->rx_ring_size;
+
+	rc = ena_com_create_io_queue(ena_dev, &ctx);
 	if (rc)
 		RTE_LOG(ERR, PMD, "failed to create io RX queue #%d rc: %d\n",
 			queue_idx, rc);
 
 	rxq->ena_com_io_cq = &ena_dev->io_cq_queues[ena_qid];
 	rxq->ena_com_io_sq = &ena_dev->io_sq_queues[ena_qid];
+
+	rc = ena_com_get_io_handlers(ena_dev, ena_qid,
+				     &rxq->ena_com_io_sq,
+				     &rxq->ena_com_io_cq);
+	if (rc) {
+		RTE_LOG(ERR, PMD,
+			"Failed to get RX queue handlers. RX queue num %d rc: %d\n",
+			queue_idx, rc);
+		ena_com_destroy_io_queue(ena_dev, ena_qid);
+	}
 
 	rxq->port_id = dev->data->port_id;
 	rxq->next_to_clean = 0;

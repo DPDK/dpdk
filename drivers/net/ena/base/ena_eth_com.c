@@ -62,7 +62,7 @@ static inline void ena_com_cq_inc_head(struct ena_com_io_cq *io_cq)
 
 	/* Switch phase bit in case of wrap around */
 	if (unlikely((io_cq->head & (io_cq->q_depth - 1)) == 0))
-		io_cq->phase = 1 - io_cq->phase;
+		io_cq->phase ^= 1;
 }
 
 static inline void *get_sq_desc(struct ena_com_io_sq *io_sq)
@@ -97,7 +97,7 @@ static inline void ena_com_sq_update_tail(struct ena_com_io_sq *io_sq)
 
 	/* Switch phase bit in case of wrap around */
 	if (unlikely((io_sq->tail & (io_sq->q_depth - 1)) == 0))
-		io_sq->phase = 1 - io_sq->phase;
+		io_sq->phase ^= 1;
 }
 
 static inline int ena_com_write_header(struct ena_com_io_sq *io_sq,
@@ -110,7 +110,10 @@ static inline int ena_com_write_header(struct ena_com_io_sq *io_sq,
 	if (io_sq->mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_HOST)
 		return 0;
 
-	ENA_ASSERT(io_sq->header_addr, "header address is NULL\n");
+	if (unlikely(!io_sq->header_addr)) {
+		ena_trc_err("Push buffer header ptr is NULL\n");
+		return ENA_COM_INVAL;
+	}
 
 	memcpy_toio(dev_head_addr, head_src, header_len);
 
@@ -127,8 +130,7 @@ static inline struct ena_eth_io_rx_cdesc_base *
 }
 
 static inline int ena_com_cdesc_rx_pkt_get(struct ena_com_io_cq *io_cq,
-					   u16 *first_cdesc_idx,
-					   u16 *nb_hw_desc)
+					   u16 *first_cdesc_idx)
 {
 	struct ena_eth_io_rx_cdesc_base *cdesc;
 	u16 count = 0, head_masked;
@@ -161,8 +163,7 @@ static inline int ena_com_cdesc_rx_pkt_get(struct ena_com_io_cq *io_cq,
 		count = 0;
 	}
 
-	*nb_hw_desc = count;
-	return 0;
+	return count;
 }
 
 static inline bool ena_com_meta_desc_changed(struct ena_com_io_sq *io_sq,
@@ -408,21 +409,20 @@ int ena_com_rx_pkt(struct ena_com_io_cq *io_cq,
 	u16 cdesc_idx = 0;
 	u16 nb_hw_desc;
 	u16 i;
-	int rc;
 
 	ENA_ASSERT(io_cq->direction == ENA_COM_IO_QUEUE_DIRECTION_RX,
 		   "wrong Q type");
 
-	rc = ena_com_cdesc_rx_pkt_get(io_cq, &cdesc_idx, &nb_hw_desc);
-	if (rc || (nb_hw_desc == 0)) {
+	nb_hw_desc = ena_com_cdesc_rx_pkt_get(io_cq, &cdesc_idx);
+	if (nb_hw_desc == 0) {
 		ena_rx_ctx->descs = nb_hw_desc;
-		return rc;
+		return 0;
 	}
 
 	ena_trc_dbg("fetch rx packet: queue %d completed desc: %d\n",
 		    io_cq->qid, nb_hw_desc);
 
-	if (unlikely(nb_hw_desc >= ena_rx_ctx->max_bufs)) {
+	if (unlikely(nb_hw_desc > ena_rx_ctx->max_bufs)) {
 		ena_trc_err("Too many RX cdescs (%d) > MAX(%d)\n",
 			    nb_hw_desc, ena_rx_ctx->max_bufs);
 		return ENA_COM_NO_SPACE;
@@ -459,7 +459,7 @@ int ena_com_add_single_rx_desc(struct ena_com_io_sq *io_sq,
 		   "wrong Q type");
 
 	if (unlikely(ena_com_sq_empty_space(io_sq) == 0))
-		return -1;
+		return ENA_COM_NO_SPACE;
 
 	desc = get_sq_desc(io_sq);
 	memset(desc, 0x0, sizeof(struct ena_eth_io_rx_desc));
@@ -496,9 +496,13 @@ int ena_com_tx_comp_req_id_get(struct ena_com_io_cq *io_cq, u16 *req_id)
 		((unsigned char *)io_cq->cdesc_addr.virt_addr
 		+ (masked_head * io_cq->cdesc_entry_size_in_bytes));
 
+	/* When the current completion descriptor phase isn't the same as the
+	 * expected, it mean that the device still didn't update
+	 * this completion.
+	 */
 	cdesc_phase = cdesc->flags & ENA_ETH_IO_TX_CDESC_PHASE_MASK;
 	if (cdesc_phase != expected_phase)
-		return -1;
+		return ENA_COM_TRY_AGAIN;
 
 	ena_com_cq_inc_head(io_cq);
 

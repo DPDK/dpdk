@@ -120,8 +120,8 @@ struct ena_com_rx_buf_info {
 };
 
 struct ena_com_io_desc_addr {
-	void  __iomem *pbuf_dev_addr; /* LLQ address */
-	void  *virt_addr;
+	u8  __iomem *pbuf_dev_addr; /* LLQ address */
+	u8  *virt_addr;
 	dma_addr_t phys_addr;
 	ena_mem_handle_t mem_handle;
 };
@@ -138,13 +138,14 @@ struct ena_com_tx_meta {
 struct ena_com_io_cq {
 	struct ena_com_io_desc_addr cdesc_addr;
 
-	u32 __iomem *db_addr;
-
 	/* Interrupt unmask register */
 	u32 __iomem *unmask_reg;
 
 	/* The completion queue head doorbell register */
-	uint32_t __iomem *cq_head_db_reg;
+	u32 __iomem *cq_head_db_reg;
+
+	/* numa configuration register (for TPH) */
+	u32 __iomem *numa_node_cfg_reg;
 
 	/* The value to write to the above register to unmask
 	 * the interrupt of this queue
@@ -189,7 +190,7 @@ struct ena_com_io_sq {
 	u16 idx;
 	u16 tail;
 	u16 next_to_comp;
-	u16 tx_max_header_size;
+	u32 tx_max_header_size;
 	u8 phase;
 	u8 desc_entry_size;
 	u8 dma_addr_bits;
@@ -312,16 +313,14 @@ struct ena_com_dev {
 	struct ena_com_aenq aenq;
 	struct ena_com_io_cq io_cq_queues[ENA_TOTAL_NUM_QUEUES];
 	struct ena_com_io_sq io_sq_queues[ENA_TOTAL_NUM_QUEUES];
-	void __iomem *reg_bar;
+	u8 __iomem *reg_bar;
 	void __iomem *mem_bar;
 	void *dmadev;
 
 	enum ena_admin_placement_policy_type tx_mem_queue_type;
-
+	u32 tx_max_header_size;
 	u16 stats_func; /* Selected function for extended statistic dump */
 	u16 stats_queue; /* Selected queue for extended statistic dump */
-
-	u16 tx_max_header_size;
 
 	struct ena_com_mmio_read mmio_read;
 
@@ -341,6 +340,15 @@ struct ena_com_dev_get_features_ctx {
 	struct ena_admin_device_attr_feature_desc dev_attr;
 	struct ena_admin_feature_aenq_desc aenq;
 	struct ena_admin_feature_offload_desc offload;
+};
+
+struct ena_com_create_io_ctx {
+	enum ena_admin_placement_policy_type mem_queue_type;
+	enum queue_direction direction;
+	int numa_node;
+	u32 msix_vector;
+	u16 queue_size;
+	u16 qid;
 };
 
 typedef void (*ena_aenq_handler)(void *data,
@@ -420,22 +428,14 @@ int ena_com_dev_reset(struct ena_com_dev *ena_dev);
 
 /* ena_com_create_io_queue - Create io queue.
  * @ena_dev: ENA communication layer struct
- * @qid - the caller virtual queue id.
- * @direction - the queue direction (Rx/Tx)
- * @mem_queue_type - Indicate if this queue is LLQ or regular queue
- * (relevant only for Tx queue)
- * @msix_vector - MSI-X vector
- * @queue_size - queue size
+ * ena_com_create_io_ctx - create context structure
  *
- * Create the submission and the completion queues for queue id - qid.
+ * Create the submission and the completion queues.
  *
  * @return - 0 on success, negative value on failure.
  */
-int ena_com_create_io_queue(struct ena_com_dev *ena_dev, u16 qid,
-			    enum queue_direction direction,
-			    enum ena_admin_placement_policy_type mem_queue_type,
-			    u32 msix_vector,
-			    u16 queue_size);
+int ena_com_create_io_queue(struct ena_com_dev *ena_dev,
+			    struct ena_com_create_io_ctx *ctx);
 
 /* ena_com_admin_destroy - Destroy IO queue with the queue id - qid.
  * @ena_dev: ENA communication layer struct
@@ -519,7 +519,7 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *dev, void *data);
  * @ena_dev: ENA communication layer struct
  *
  * This method aborts all the outstanding admin commands.
- * The called should then call ena_com_wait_for_abort_completion to make sure
+ * The caller should then call ena_com_wait_for_abort_completion to make sure
  * all the commands were completed.
  */
 void ena_com_abort_admin_commands(struct ena_com_dev *ena_dev);
@@ -628,10 +628,8 @@ int ena_com_rss_init(struct ena_com_dev *ena_dev, u16 log_size);
  * @ena_dev: ENA communication layer struct
  *
  * Free all the RSS/RFS resources.
- *
- * @return: 0 on Success and negative value otherwise.
  */
-int ena_com_rss_destroy(struct ena_com_dev *ena_dev);
+void ena_com_rss_destroy(struct ena_com_dev *ena_dev);
 
 /* ena_com_fill_hash_function - Fill RSS hash function
  * @ena_dev: ENA communication layer struct
@@ -774,26 +772,38 @@ int ena_com_indirect_table_set(struct ena_com_dev *ena_dev);
  */
 int ena_com_indirect_table_get(struct ena_com_dev *ena_dev, u32 *ind_tbl);
 
-/* ena_com_allocate_host_attribute - Allocate host attributes resources.
+/* ena_com_allocate_host_info - Allocate host info resources.
  * @ena_dev: ENA communication layer struct
- * @debug_area_size: Debug aread size
- *
- * Allocate host info and debug area.
  *
  * @return: 0 on Success and negative value otherwise.
  */
-int ena_com_allocate_host_attribute(struct ena_com_dev *ena_dev,
-				    u32 debug_area_size);
+int ena_com_allocate_host_info(struct ena_com_dev *ena_dev);
 
-/* ena_com_allocate_host_attribute - Free the host attributes resources.
+/* ena_com_allocate_debug_area - Allocate debug area.
+ * @ena_dev: ENA communication layer struct
+ * @debug_area_size - debug area size.
+ *
+ * @return: 0 on Success and negative value otherwise.
+ */
+int ena_com_allocate_debug_area(struct ena_com_dev *ena_dev,
+				u32 debug_area_size);
+
+/* ena_com_delete_debug_area - Free the debug area resources.
  * @ena_dev: ENA communication layer struct
  *
- * Free the allocate host info and debug area.
+ * Free the allocate debug area.
  */
-void ena_com_delete_host_attribute(struct ena_com_dev *ena_dev);
+void ena_com_delete_debug_area(struct ena_com_dev *ena_dev);
+
+/* ena_com_delete_host_info - Free the host info resources.
+ * @ena_dev: ENA communication layer struct
+ *
+ * Free the allocate host info.
+ */
+void ena_com_delete_host_info(struct ena_com_dev *ena_dev);
 
 /* ena_com_set_host_attributes - Update the device with the host
- * attributes base address.
+ * attributes (debug area and host info) base address.
  * @ena_dev: ENA communication layer struct
  *
  * @return: 0 on Success and negative value otherwise.
@@ -979,7 +989,7 @@ ena_com_calculate_interrupt_delay(struct ena_com_dev *ena_dev,
 		 */
 		return;
 
-	curr_moder_idx = (enum ena_intr_moder_level)*moder_tbl_idx;
+	curr_moder_idx = (enum ena_intr_moder_level)(*moder_tbl_idx);
 	if (unlikely(curr_moder_idx >=  ENA_INTR_MAX_NUM_OF_LEVELS)) {
 		ena_trc_err("Wrong moderation index %u\n", curr_moder_idx);
 		return;

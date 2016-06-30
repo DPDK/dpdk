@@ -42,9 +42,6 @@
 #define ENA_ASYNC_QUEUE_DEPTH 4
 #define ENA_ADMIN_QUEUE_DEPTH 32
 
-#define ENA_EXTENDED_STAT_GET_FUNCT(_funct_queue) (_funct_queue & 0xFFFF)
-#define ENA_EXTENDED_STAT_GET_QUEUE(_funct_queue) (_funct_queue >> 16)
-
 #define MIN_ENA_VER (((ENA_COMMON_SPEC_VERSION_MAJOR) << \
 		ENA_REGS_VERSION_MAJOR_VERSION_SHIFT) \
 		| (ENA_COMMON_SPEC_VERSION_MINOR))
@@ -201,12 +198,16 @@ static inline void comp_ctxt_release(struct ena_com_admin_queue *queue,
 static struct ena_comp_ctx *get_comp_ctxt(struct ena_com_admin_queue *queue,
 					  u16 command_id, bool capture)
 {
-	ENA_ASSERT(command_id < queue->q_depth,
-		   "command id is larger than the queue size. cmd_id: %u queue size %d\n",
-		   command_id, queue->q_depth);
+	if (unlikely(command_id >= queue->q_depth)) {
+		ena_trc_err("command id is larger than the queue size. cmd_id: %u queue size %d\n",
+			    command_id, queue->q_depth);
+		return NULL;
+	}
 
-	ENA_ASSERT(!(queue->comp_ctx[command_id].occupied && capture),
-		   "Completion context is occupied");
+	if (unlikely(queue->comp_ctx[command_id].occupied && capture)) {
+		ena_trc_err("Completion context is occupied\n");
+		return NULL;
+	}
 
 	if (capture) {
 		ATOMIC32_INC(&queue->outstanding_cmds);
@@ -290,7 +291,8 @@ static inline int ena_com_init_comp_ctxt(struct ena_com_admin_queue *queue)
 
 	for (i = 0; i < queue->q_depth; i++) {
 		comp_ctx = get_comp_ctxt(queue, i, false);
-		ENA_WAIT_EVENT_INIT(comp_ctx->wait_event);
+		if (comp_ctx)
+			ENA_WAIT_EVENT_INIT(comp_ctx->wait_event);
 	}
 
 	return 0;
@@ -315,15 +317,20 @@ ena_com_submit_admin_cmd(struct ena_com_admin_queue *admin_queue,
 					      cmd_size_in_bytes,
 					      comp,
 					      comp_size_in_bytes);
+	if (unlikely(IS_ERR(comp_ctx)))
+		admin_queue->running_state = false;
 	ENA_SPINLOCK_UNLOCK(admin_queue->q_lock, flags);
 
 	return comp_ctx;
 }
 
 static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
+			      struct ena_com_create_io_ctx *ctx,
 			      struct ena_com_io_sq *io_sq)
 {
 	size_t size;
+
+	ENA_TOUCH(ctx);
 
 	memset(&io_sq->desc_addr, 0x0, sizeof(struct ena_com_io_desc_addr));
 
@@ -357,10 +364,12 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 }
 
 static int ena_com_init_io_cq(struct ena_com_dev *ena_dev,
+			      struct ena_com_create_io_ctx *ctx,
 			      struct ena_com_io_cq *io_cq)
 {
 	size_t size;
 
+	ENA_TOUCH(ctx);
 	memset(&io_cq->cdesc_addr, 0x0, sizeof(struct ena_com_io_desc_addr));
 
 	/* Use the basic completion descriptor for Rx */
@@ -399,6 +408,11 @@ ena_com_handle_single_admin_completion(struct ena_com_admin_queue *admin_queue,
 		ENA_ADMIN_ACQ_COMMON_DESC_COMMAND_ID_MASK;
 
 	comp_ctx = get_comp_ctxt(admin_queue, cmd_id, false);
+	if (unlikely(!comp_ctx)) {
+		ena_trc_err("comp_ctx is NULL. Changing the admin queue running state\n");
+		admin_queue->running_state = false;
+		return;
+	}
 
 	comp_ctx->status = ENA_CMD_COMPLETED;
 	comp_ctx->comp_status = cqe->acq_common_descriptor.status;
@@ -615,10 +629,12 @@ static u32 ena_com_reg_bar_read32(struct ena_com_dev *ena_dev, u16 offset)
 		goto err;
 	}
 
-	ENA_ASSERT(read_resp->reg_off == offset,
-		   "Invalid MMIO read return value");
-
-	ret = read_resp->reg_val;
+	if (read_resp->reg_off != offset) {
+		ena_trc_err("reading failed for wrong offset value");
+		ret = ENA_MMIO_READ_TIMEOUT;
+	} else {
+		ret = read_resp->reg_val;
+	}
 err:
 	ENA_SPINLOCK_UNLOCK(mmio_read->lock, flags);
 
@@ -838,7 +854,7 @@ static int ena_com_hash_key_allocate(struct ena_com_dev *ena_dev)
 	return 0;
 }
 
-static int ena_com_hash_key_destroy(struct ena_com_dev *ena_dev)
+static void ena_com_hash_key_destroy(struct ena_com_dev *ena_dev)
 {
 	struct ena_rss *rss = &ena_dev->rss;
 
@@ -849,7 +865,6 @@ static int ena_com_hash_key_destroy(struct ena_com_dev *ena_dev)
 				      rss->hash_key_dma_addr,
 				      rss->hash_key_mem_handle);
 	rss->hash_key = NULL;
-	return 0;
 }
 
 static int ena_com_hash_ctrl_init(struct ena_com_dev *ena_dev)
@@ -862,10 +877,13 @@ static int ena_com_hash_ctrl_init(struct ena_com_dev *ena_dev)
 			       rss->hash_ctrl_dma_addr,
 			       rss->hash_ctrl_mem_handle);
 
+	if (unlikely(!rss->hash_ctrl))
+		return ENA_COM_NO_MEM;
+
 	return 0;
 }
 
-static int ena_com_hash_ctrl_destroy(struct ena_com_dev *ena_dev)
+static void ena_com_hash_ctrl_destroy(struct ena_com_dev *ena_dev)
 {
 	struct ena_rss *rss = &ena_dev->rss;
 
@@ -876,8 +894,6 @@ static int ena_com_hash_ctrl_destroy(struct ena_com_dev *ena_dev)
 				      rss->hash_ctrl_dma_addr,
 				      rss->hash_ctrl_mem_handle);
 	rss->hash_ctrl = NULL;
-
-	return 0;
 }
 
 static int ena_com_indirect_table_allocate(struct ena_com_dev *ena_dev,
@@ -902,7 +918,7 @@ static int ena_com_indirect_table_allocate(struct ena_com_dev *ena_dev,
 		return ENA_COM_INVAL;
 	}
 
-	tbl_size = (1 << log_size) *
+	tbl_size = (1ULL << log_size) *
 		sizeof(struct ena_admin_rss_ind_table_entry);
 
 	ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
@@ -913,7 +929,7 @@ static int ena_com_indirect_table_allocate(struct ena_com_dev *ena_dev,
 	if (unlikely(!rss->rss_ind_tbl))
 		goto mem_err1;
 
-	tbl_size = (1 << log_size) * sizeof(u16);
+	tbl_size = (1ULL << log_size) * sizeof(u16);
 	rss->host_rss_ind_tbl =
 		ENA_MEM_ALLOC(ena_dev->dmadev, tbl_size);
 	if (unlikely(!rss->host_rss_ind_tbl))
@@ -924,7 +940,7 @@ static int ena_com_indirect_table_allocate(struct ena_com_dev *ena_dev,
 	return 0;
 
 mem_err2:
-	tbl_size = (1 << log_size) *
+	tbl_size = (1ULL << log_size) *
 		sizeof(struct ena_admin_rss_ind_table_entry);
 
 	ENA_MEM_FREE_COHERENT(ena_dev->dmadev,
@@ -938,10 +954,10 @@ mem_err1:
 	return ENA_COM_NO_MEM;
 }
 
-static int ena_com_indirect_table_destroy(struct ena_com_dev *ena_dev)
+static void ena_com_indirect_table_destroy(struct ena_com_dev *ena_dev)
 {
 	struct ena_rss *rss = &ena_dev->rss;
-	size_t tbl_size = (1 << rss->tbl_log_size) *
+	size_t tbl_size = (1ULL << rss->tbl_log_size) *
 		sizeof(struct ena_admin_rss_ind_table_entry);
 
 	if (rss->rss_ind_tbl)
@@ -955,8 +971,6 @@ static int ena_com_indirect_table_destroy(struct ena_com_dev *ena_dev)
 	if (rss->host_rss_ind_tbl)
 		ENA_MEM_FREE(ena_dev->dmadev, rss->host_rss_ind_tbl);
 	rss->host_rss_ind_tbl = NULL;
-
-	return 0;
 }
 
 static int ena_com_create_io_sq(struct ena_com_dev *ena_dev,
@@ -1059,17 +1073,18 @@ static int ena_com_ind_tbl_convert_to_device(struct ena_com_dev *ena_dev)
 
 static int ena_com_ind_tbl_convert_from_device(struct ena_com_dev *ena_dev)
 {
-	u16 dev_idx_to_host_tbl[ENA_TOTAL_NUM_QUEUES] = { -1 };
+	u16 dev_idx_to_host_tbl[ENA_TOTAL_NUM_QUEUES] = { (u16)-1 };
 	struct ena_rss *rss = &ena_dev->rss;
-	u16 idx, i;
+	u8 idx;
+	u16 i;
 
 	for (i = 0; i < ENA_TOTAL_NUM_QUEUES; i++)
 		dev_idx_to_host_tbl[ena_dev->io_sq_queues[i].idx] = i;
 
 	for (i = 0; i < 1 << rss->tbl_log_size; i++) {
-		idx = rss->rss_ind_tbl[i].cq_idx;
-		if (idx > ENA_TOTAL_NUM_QUEUES)
+		if (rss->rss_ind_tbl[i].cq_idx > ENA_TOTAL_NUM_QUEUES)
 			return ENA_COM_INVAL;
+		idx = (u8)rss->rss_ind_tbl[i].cq_idx;
 
 		if (dev_idx_to_host_tbl[idx] > ENA_TOTAL_NUM_QUEUES)
 			return ENA_COM_INVAL;
@@ -1097,7 +1112,7 @@ static int ena_com_init_interrupt_moderation_table(struct ena_com_dev *ena_dev)
 
 static void
 ena_com_update_intr_delay_resolution(struct ena_com_dev *ena_dev,
-				     unsigned int intr_delay_resolution)
+				     u16 intr_delay_resolution)
 {
 	struct ena_intr_moder_entry *intr_moder_tbl = ena_dev->intr_moder_tbl;
 	unsigned int i;
@@ -1189,23 +1204,19 @@ int ena_com_create_io_cq(struct ena_com_dev *ena_dev,
 	}
 
 	io_cq->idx = cmd_completion.cq_idx;
-	io_cq->db_addr = (u32 __iomem *)((uintptr_t)ena_dev->reg_bar +
-		cmd_completion.cq_doorbell_offset);
-
-	if (io_cq->q_depth != cmd_completion.cq_actual_depth) {
-		ena_trc_err("completion actual queue size (%d) is differ from requested size (%d)\n",
-			    cmd_completion.cq_actual_depth, io_cq->q_depth);
-		ena_com_destroy_io_cq(ena_dev, io_cq);
-		return ENA_COM_NO_SPACE;
-	}
 
 	io_cq->unmask_reg = (u32 __iomem *)((uintptr_t)ena_dev->reg_bar +
-		cmd_completion.cq_interrupt_unmask_register);
+		cmd_completion.cq_interrupt_unmask_register_offset);
 
-	if (cmd_completion.cq_head_db_offset)
+	if (cmd_completion.cq_head_db_register_offset)
 		io_cq->cq_head_db_reg =
 			(u32 __iomem *)((uintptr_t)ena_dev->reg_bar +
-			cmd_completion.cq_head_db_offset);
+			cmd_completion.cq_head_db_register_offset);
+
+	if (cmd_completion.numa_node_register_offset)
+		io_cq->numa_node_cfg_reg =
+			(u32 __iomem *)((uintptr_t)ena_dev->reg_bar +
+			cmd_completion.numa_node_register_offset);
 
 	ena_trc_dbg("created cq[%u], depth[%u]\n", io_cq->idx, io_cq->q_depth);
 
@@ -1239,6 +1250,9 @@ void ena_com_abort_admin_commands(struct ena_com_dev *ena_dev)
 
 	for (i = 0; i < admin_queue->q_depth; i++) {
 		comp_ctx = get_comp_ctxt(admin_queue, i, false);
+		if (unlikely(!comp_ctx))
+			break;
+
 		comp_ctx->status = ENA_CMD_ABORTED;
 
 		ENA_WAIT_EVENT_SIGNAL(comp_ctx->wait_event);
@@ -1304,7 +1318,7 @@ void ena_com_admin_aenq_enable(struct ena_com_dev *ena_dev)
 {
 	u16 depth = ena_dev->aenq.q_depth;
 
-	ENA_ASSERT(ena_dev->aenq.head == depth, "Invliad AENQ state\n");
+	ENA_ASSERT(ena_dev->aenq.head == depth, "Invalid AENQ state\n");
 
 	/* Init head_db to mark that all entries in the queue
 	 * are initially available
@@ -1556,7 +1570,7 @@ int ena_com_admin_init(struct ena_com_dev *ena_dev,
 
 	if (!(dev_sts & ENA_REGS_DEV_STS_READY_MASK)) {
 		ena_trc_err("Device isn't ready, abort com init\n");
-		return -1;
+		return ENA_COM_NO_DEVICE;
 	}
 
 	admin_queue->q_depth = ENA_ADMIN_QUEUE_DEPTH;
@@ -1631,50 +1645,46 @@ error:
 }
 
 int ena_com_create_io_queue(struct ena_com_dev *ena_dev,
-			    u16 qid,
-			    enum queue_direction direction,
-			    enum ena_admin_placement_policy_type mem_queue_type,
-			    u32 msix_vector,
-			    u16 queue_size)
+			    struct ena_com_create_io_ctx *ctx)
 {
 	struct ena_com_io_sq *io_sq;
 	struct ena_com_io_cq *io_cq;
 	int ret = 0;
 
-	if (qid >= ENA_TOTAL_NUM_QUEUES) {
+	if (ctx->qid >= ENA_TOTAL_NUM_QUEUES) {
 		ena_trc_err("Qid (%d) is bigger than max num of queues (%d)\n",
-			    qid, ENA_TOTAL_NUM_QUEUES);
+			    ctx->qid, ENA_TOTAL_NUM_QUEUES);
 		return ENA_COM_INVAL;
 	}
 
-	io_sq = &ena_dev->io_sq_queues[qid];
-	io_cq = &ena_dev->io_cq_queues[qid];
+	io_sq = &ena_dev->io_sq_queues[ctx->qid];
+	io_cq = &ena_dev->io_cq_queues[ctx->qid];
 
 	memset(io_sq, 0x0, sizeof(struct ena_com_io_sq));
 	memset(io_cq, 0x0, sizeof(struct ena_com_io_cq));
 
 	/* Init CQ */
-	io_cq->q_depth = queue_size;
-	io_cq->direction = direction;
-	io_cq->qid = qid;
+	io_cq->q_depth = ctx->queue_size;
+	io_cq->direction = ctx->direction;
+	io_cq->qid = ctx->qid;
 
-	io_cq->msix_vector = msix_vector;
+	io_cq->msix_vector = ctx->msix_vector;
 
-	io_sq->q_depth = queue_size;
-	io_sq->direction = direction;
-	io_sq->qid = qid;
+	io_sq->q_depth = ctx->queue_size;
+	io_sq->direction = ctx->direction;
+	io_sq->qid = ctx->qid;
 
-	io_sq->mem_queue_type = mem_queue_type;
+	io_sq->mem_queue_type = ctx->mem_queue_type;
 
-	if (direction == ENA_COM_IO_QUEUE_DIRECTION_TX)
+	if (ctx->direction == ENA_COM_IO_QUEUE_DIRECTION_TX)
 		/* header length is limited to 8 bits */
 		io_sq->tx_max_header_size =
-			ENA_MIN16(ena_dev->tx_max_header_size, SZ_256);
+			ENA_MIN32(ena_dev->tx_max_header_size, SZ_256);
 
-	ret = ena_com_init_io_sq(ena_dev, io_sq);
+	ret = ena_com_init_io_sq(ena_dev, ctx, io_sq);
 	if (ret)
 		goto error;
-	ret = ena_com_init_io_cq(ena_dev, io_cq);
+	ret = ena_com_init_io_cq(ena_dev, ctx, io_cq);
 	if (ret)
 		goto error;
 
@@ -1838,22 +1848,6 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *dev, void *data)
 	mb();
 	ENA_REG_WRITE32((u32)aenq->head, (unsigned char *)dev->reg_bar
 			+ ENA_REGS_AENQ_HEAD_DB_OFF);
-}
-
-/* Sets the function Idx and Queue Idx to be used for
- * get full statistics feature
- */
-int ena_com_extended_stats_set_func_queue(struct ena_com_dev *ena_dev,
-					  u32 func_queue)
-{
-	/* Function & Queue is acquired from user in the following format :
-	 * Bottom Half word:	funct
-	 * Top Half Word:	queue
-	 */
-	ena_dev->stats_func = ENA_EXTENDED_STAT_GET_FUNCT(func_queue);
-	ena_dev->stats_queue = ENA_EXTENDED_STAT_GET_QUEUE(func_queue);
-
-	return 0;
 }
 
 int ena_com_dev_reset(struct ena_com_dev *ena_dev)
@@ -2195,7 +2189,7 @@ int ena_com_get_hash_function(struct ena_com_dev *ena_dev,
 		*func = rss->hash_func;
 
 	if (key)
-		memcpy(key, hash_key->key, hash_key->keys_num << 2);
+		memcpy(key, hash_key->key, (size_t)(hash_key->keys_num) << 2);
 
 	return 0;
 }
@@ -2337,7 +2331,7 @@ int ena_com_fill_hash_ctrl(struct ena_com_dev *ena_dev,
 	u16 supported_fields;
 	int rc;
 
-	if (proto > ENA_ADMIN_RSS_PROTO_NUM) {
+	if (proto >= ENA_ADMIN_RSS_PROTO_NUM) {
 		ena_trc_err("Invalid proto num (%u)\n", proto);
 		return ENA_COM_INVAL;
 	}
@@ -2420,7 +2414,7 @@ int ena_com_indirect_table_set(struct ena_com_dev *ena_dev)
 		return ret;
 	}
 
-	cmd.control_buffer.length = (1 << rss->tbl_log_size) *
+	cmd.control_buffer.length = (1ULL << rss->tbl_log_size) *
 		sizeof(struct ena_admin_rss_ind_table_entry);
 
 	ret = ena_com_execute_admin_command(admin_queue,
@@ -2444,7 +2438,7 @@ int ena_com_indirect_table_get(struct ena_com_dev *ena_dev, u32 *ind_tbl)
 	u32 tbl_size;
 	int i, rc;
 
-	tbl_size = (1 << rss->tbl_log_size) *
+	tbl_size = (1ULL << rss->tbl_log_size) *
 		sizeof(struct ena_admin_rss_ind_table_entry);
 
 	rc = ena_com_get_feature_ex(ena_dev, &get_resp,
@@ -2496,22 +2490,18 @@ err_indr_tbl:
 	return rc;
 }
 
-int ena_com_rss_destroy(struct ena_com_dev *ena_dev)
+void ena_com_rss_destroy(struct ena_com_dev *ena_dev)
 {
 	ena_com_indirect_table_destroy(ena_dev);
 	ena_com_hash_key_destroy(ena_dev);
 	ena_com_hash_ctrl_destroy(ena_dev);
 
 	memset(&ena_dev->rss, 0x0, sizeof(ena_dev->rss));
-
-	return 0;
 }
 
-int ena_com_allocate_host_attribute(struct ena_com_dev *ena_dev,
-				    u32 debug_area_size)
+int ena_com_allocate_host_info(struct ena_com_dev *ena_dev)
 {
 	struct ena_host_attribute *host_attr = &ena_dev->host_attr;
-	int rc;
 
 	ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
 			       SZ_4K,
@@ -2521,33 +2511,29 @@ int ena_com_allocate_host_attribute(struct ena_com_dev *ena_dev,
 	if (unlikely(!host_attr->host_info))
 		return ENA_COM_NO_MEM;
 
-	if (debug_area_size) {
+	return 0;
+}
+
+int ena_com_allocate_debug_area(struct ena_com_dev *ena_dev,
+				u32 debug_area_size) {
+	struct ena_host_attribute *host_attr = &ena_dev->host_attr;
+
 		ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
 				       debug_area_size,
 				       host_attr->debug_area_virt_addr,
 				       host_attr->debug_area_dma_addr,
 				       host_attr->debug_area_dma_handle);
 		if (unlikely(!host_attr->debug_area_virt_addr)) {
-			rc = ENA_COM_NO_MEM;
-			goto err;
-		}
+			host_attr->debug_area_size = 0;
+			return ENA_COM_NO_MEM;
 	}
 
 	host_attr->debug_area_size = debug_area_size;
 
 	return 0;
-err:
-
-	ENA_MEM_FREE_COHERENT(ena_dev->dmadev,
-			      SZ_4K,
-			      host_attr->host_info,
-			      host_attr->host_info_dma_addr,
-			      host_attr->host_info_dma_handle);
-	host_attr->host_info = NULL;
-	return rc;
 }
 
-void ena_com_delete_host_attribute(struct ena_com_dev *ena_dev)
+void ena_com_delete_host_info(struct ena_com_dev *ena_dev)
 {
 	struct ena_host_attribute *host_attr = &ena_dev->host_attr;
 
@@ -2559,6 +2545,11 @@ void ena_com_delete_host_attribute(struct ena_com_dev *ena_dev)
 				      host_attr->host_info_dma_handle);
 		host_attr->host_info = NULL;
 	}
+}
+
+void ena_com_delete_debug_area(struct ena_com_dev *ena_dev)
+{
+	struct ena_host_attribute *host_attr = &ena_dev->host_attr;
 
 	if (host_attr->debug_area_virt_addr) {
 		ENA_MEM_FREE_COHERENT(ena_dev->dmadev,
@@ -2677,7 +2668,7 @@ void ena_com_destroy_interrupt_moderation(struct ena_com_dev *ena_dev)
 int ena_com_init_interrupt_moderation(struct ena_com_dev *ena_dev)
 {
 	struct ena_admin_get_feat_resp get_resp;
-	u32 delay_resolution;
+	u16 delay_resolution;
 	int rc;
 
 	rc = ena_com_get_feature(ena_dev, &get_resp,

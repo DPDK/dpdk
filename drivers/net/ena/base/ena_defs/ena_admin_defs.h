@@ -58,30 +58,6 @@ enum ena_admin_aq_opcode {
 	ENA_ADMIN_GET_STATS = 11,
 };
 
-/* privileged amdin commands opcodes */
-enum ena_admin_aq_opcode_privileged {
-	/* get device capabilities */
-	ENA_ADMIN_IDENTIFY = 48,
-
-	/* configure device */
-	ENA_ADMIN_CONFIGURE_PF_DEVICE = 49,
-
-	/* setup SRIOV PCIe Virtual Function capabilities */
-	ENA_ADMIN_SETUP_VF = 50,
-
-	/* load firmware to the controller */
-	ENA_ADMIN_LOAD_FIRMWARE = 52,
-
-	/* commit previously loaded firmare */
-	ENA_ADMIN_COMMIT_FIRMWARE = 53,
-
-	/* quiesce virtual function */
-	ENA_ADMIN_QUIESCE_VF = 54,
-
-	/* load virtual function from migrates context */
-	ENA_ADMIN_MIGRATE_VF = 55,
-};
-
 /* admin command completion status codes */
 enum ena_admin_aq_completion_status {
 	/* Request completed successfully */
@@ -116,25 +92,6 @@ enum ena_admin_aq_feature_id {
 	/* max number of supported queues per for every queues type */
 	ENA_ADMIN_MAX_QUEUES_NUM = 2,
 
-	/* low latency queues capabilities (max entry size, depth) */
-	ENA_ADMIN_LLQ_CONFIG = 3,
-
-	/* power management capabilities */
-	ENA_ADMIN_POWER_MANAGEMENT_CONFIG = 4,
-
-	/* MAC address filters support, multicast, broadcast, and
-	 * promiscuous
-	 */
-	ENA_ADMIN_MAC_FILTERS_CONFIG = 5,
-
-	/* VLAN membership, frame format, etc.  */
-	ENA_ADMIN_VLAN_CONFIG = 6,
-
-	/* Available size for various on-chip memory resources, accessible
-	 * by the driver
-	 */
-	ENA_ADMIN_ON_DEVICE_MEMORY_CONFIG = 7,
-
 	/* Receive Side Scaling (RSS) function */
 	ENA_ADMIN_RSS_HASH_FUNCTION = 10,
 
@@ -150,19 +107,8 @@ enum ena_admin_aq_feature_id {
 	/* Receive Side Scaling (RSS) hash input */
 	ENA_ADMIN_RSS_HASH_INPUT = 18,
 
-	/* overlay tunnels configuration */
-	ENA_ADMIN_TUNNEL_CONFIG = 19,
-
 	/* interrupt moderation parameters */
 	ENA_ADMIN_INTERRUPT_MODERATION = 20,
-
-	/* 1588v2 and Timing configuration */
-	ENA_ADMIN_1588_CONFIG = 21,
-
-	/* Packet Header format templates configuration for input and
-	 * output parsers
-	 */
-	ENA_ADMIN_PKT_HEADER_TEMPLATES_CONFIG = 23,
 
 	/* AENQ configuration */
 	ENA_ADMIN_AENQ_CONFIG = 26,
@@ -440,9 +386,7 @@ struct ena_admin_acq_create_sq_resp_desc {
 
 	uint16_t reserved;
 
-	/* word 3 : queue doorbell address as and offset to PCIe MMIO REG
-	 * BAR
-	 */
+	/* word 3 : queue doorbell address as an offset to PCIe MMIO REG BAR */
 	uint32_t sq_doorbell_offset;
 
 	/* word 4 : low latency queue ring base address as an offset to
@@ -520,18 +464,18 @@ struct ena_admin_acq_create_cq_resp_desc {
 	/* actual cq depth in # of entries */
 	uint16_t cq_actual_depth;
 
-	/* word 3 : doorbell address as an offset to PCIe MMIO REG BAR */
-	uint32_t cq_doorbell_offset;
+	/* word 3 : cpu numa node address as an offset to PCIe MMIO REG BAR */
+	uint32_t numa_node_register_offset;
 
 	/* word 4 : completion head doorbell address as an offset to PCIe
 	 * MMIO REG BAR
 	 */
-	uint32_t cq_head_db_offset;
+	uint32_t cq_head_db_register_offset;
 
 	/* word 5 : interrupt unmask register address as an offset into
 	 * PCIe MMIO REG BAR
 	 */
-	uint32_t cq_interrupt_unmask_register;
+	uint32_t cq_interrupt_unmask_register_offset;
 };
 
 /* ENA AQ Destroy Completion Queue command. Placed in control buffer
@@ -724,7 +668,7 @@ struct ena_admin_queue_feature_desc {
 
 /* ENA MTU Set Feature descriptor. */
 struct ena_admin_set_feature_mtu_desc {
-	/* word 0 : mtu size including L2 */
+	/* word 0 : mtu payload size (exclude L2) */
 	uint32_t mtu;
 };
 
@@ -913,10 +857,7 @@ struct ena_admin_proto_input {
 	/* flow hash fields (bitwise according to ena_admin_flow_hash_fields) */
 	uint16_t fields;
 
-	/* 0 : inner - for tunneled packet, select the fields
-	 *    from inner header
-	 */
-	uint16_t flags;
+	uint16_t reserved2;
 };
 
 /* ENA RSS hash control buffer structure */
@@ -927,11 +868,9 @@ struct ena_admin_feature_rss_hash_control {
 	/* selected input fields */
 	struct ena_admin_proto_input selected_fields[ENA_ADMIN_RSS_PROTO_NUM];
 
-	/* supported input fields for inner header */
-	struct ena_admin_proto_input supported_inner_fields[ENA_ADMIN_RSS_PROTO_NUM];
+	struct ena_admin_proto_input reserved2[ENA_ADMIN_RSS_PROTO_NUM];
 
-	/* selected input fields */
-	struct ena_admin_proto_input selected_inner_fields[ENA_ADMIN_RSS_PROTO_NUM];
+	struct ena_admin_proto_input reserved3[ENA_ADMIN_RSS_PROTO_NUM];
 };
 
 /* ENA RSS flow hash input */
@@ -966,10 +905,10 @@ enum ena_admin_os_type {
 	ENA_ADMIN_OS_DPDK = 3,
 
 	/* FreeBSD OS */
-	ENA_ADMIN_OS_FREE_BSD = 4,
+	ENA_ADMIN_OS_FREEBSD = 4,
 
 	/* PXE OS */
-	ENA_ADMIN_OS_PXE = 5,
+	ENA_ADMIN_OS_IPXE = 5,
 };
 
 /* host info */
@@ -1283,9 +1222,6 @@ struct ena_admin_ena_mmio_req_read_less_resp {
 #define ENA_ADMIN_FEATURE_RSS_FLOW_HASH_FUNCTION_FUNCS_MASK GENMASK(7, 0)
 #define ENA_ADMIN_FEATURE_RSS_FLOW_HASH_FUNCTION_SELECTED_FUNC_MASK \
 	GENMASK(7, 0)
-
-/* proto_input */
-#define ENA_ADMIN_PROTO_INPUT_INNER_MASK BIT(0)
 
 /* feature_rss_flow_hash_input */
 #define ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L3_SORT_SHIFT 1
@@ -1816,34 +1752,21 @@ set_ena_admin_feature_rss_flow_hash_function_selected_func(
 }
 
 static inline uint16_t
-get_ena_admin_proto_input_inner(const struct ena_admin_proto_input *p)
-{
-	return p->flags & ENA_ADMIN_PROTO_INPUT_INNER_MASK;
-}
-
-static inline void
-set_ena_admin_proto_input_inner(struct ena_admin_proto_input *p, uint16_t val)
-{
-	p->flags |= val & ENA_ADMIN_PROTO_INPUT_INNER_MASK;
-}
-
-static inline uint16_t
 get_ena_admin_feature_rss_flow_hash_input_L3_sort(
 		const struct ena_admin_feature_rss_flow_hash_input *p)
 {
 	return (p->supported_input_sort &
-		ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L3_SORT_MASK)
+			ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L3_SORT_MASK)
 		>> ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L3_SORT_SHIFT;
 }
 
 static inline void
 set_ena_admin_feature_rss_flow_hash_input_L3_sort(
-		struct ena_admin_feature_rss_flow_hash_input *p,
-		uint16_t val)
+		struct ena_admin_feature_rss_flow_hash_input *p, uint16_t val)
 {
 	p->supported_input_sort |=
 		(val << ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L3_SORT_SHIFT)
-		 & ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L3_SORT_MASK;
+		& ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L3_SORT_MASK;
 }
 
 static inline uint16_t
@@ -1862,7 +1785,7 @@ set_ena_admin_feature_rss_flow_hash_input_L4_sort(
 {
 	p->supported_input_sort |=
 		(val << ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L4_SORT_SHIFT)
-		& ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L4_SORT_MASK;
+		 & ENA_ADMIN_FEATURE_RSS_FLOW_HASH_INPUT_L4_SORT_MASK;
 }
 
 static inline uint16_t
