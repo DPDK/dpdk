@@ -130,7 +130,12 @@ reset_env ()
 
 config () # <directory> <target> <options>
 {
-	if [ ! -e $1/.config ] ; then
+	reconfig=false
+	if git rev-parse 2>&- && [ -n "$(git diff HEAD~ -- config)" ] ; then
+		echo 'Default config may have changed'
+		reconfig=true
+	fi
+	if [ ! -e $1/.config ] || $reconfig ; then
 		echo "================== Configure $1"
 		make T=$2 O=$1 config
 
