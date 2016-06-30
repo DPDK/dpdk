@@ -89,99 +89,6 @@
 static rte_atomic32_t synchro;
 
 /*
- * Simple example of custom mempool structure. Holds pointers to all the
- * elements which are simply malloc'd in this example.
- */
-struct custom_mempool {
-	rte_spinlock_t lock;
-	unsigned count;
-	unsigned size;
-	void *elts[];
-};
-
-/*
- * Loop through all the element pointers and allocate a chunk of memory, then
- * insert that memory into the ring.
- */
-static int
-custom_mempool_alloc(struct rte_mempool *mp)
-{
-	struct custom_mempool *cm;
-
-	cm = rte_zmalloc("custom_mempool",
-		sizeof(struct custom_mempool) + mp->size * sizeof(void *), 0);
-	if (cm == NULL)
-		return -ENOMEM;
-
-	rte_spinlock_init(&cm->lock);
-	cm->count = 0;
-	cm->size = mp->size;
-	mp->pool_data = cm;
-	return 0;
-}
-
-static void
-custom_mempool_free(struct rte_mempool *mp)
-{
-	rte_free((void *)(mp->pool_data));
-}
-
-static int
-custom_mempool_enqueue(struct rte_mempool *mp, void * const *obj_table,
-		unsigned n)
-{
-	struct custom_mempool *cm = (struct custom_mempool *)(mp->pool_data);
-	int ret = 0;
-
-	rte_spinlock_lock(&cm->lock);
-	if (cm->count + n > cm->size) {
-		ret = -ENOBUFS;
-	} else {
-		memcpy(&cm->elts[cm->count], obj_table, sizeof(void *) * n);
-		cm->count += n;
-	}
-	rte_spinlock_unlock(&cm->lock);
-	return ret;
-}
-
-
-static int
-custom_mempool_dequeue(struct rte_mempool *mp, void **obj_table, unsigned n)
-{
-	struct custom_mempool *cm = (struct custom_mempool *)(mp->pool_data);
-	int ret = 0;
-
-	rte_spinlock_lock(&cm->lock);
-	if (n > cm->count) {
-		ret = -ENOENT;
-	} else {
-		cm->count -= n;
-		memcpy(obj_table, &cm->elts[cm->count], sizeof(void *) * n);
-	}
-	rte_spinlock_unlock(&cm->lock);
-	return ret;
-}
-
-static unsigned
-custom_mempool_get_count(const struct rte_mempool *mp)
-{
-	struct custom_mempool *cm = (struct custom_mempool *)(mp->pool_data);
-
-	return cm->count;
-}
-
-static struct rte_mempool_ops mempool_ops_custom = {
-	.name = "custom_handler",
-	.alloc = custom_mempool_alloc,
-	.free = custom_mempool_free,
-	.enqueue = custom_mempool_enqueue,
-	.dequeue = custom_mempool_dequeue,
-	.get_count = custom_mempool_get_count,
-};
-
-MEMPOOL_REGISTER_OPS(mempool_ops_custom);
-
-/*
  * save the object number in the first 4 bytes of object data. All
  * other bytes are set to 0.
  */
@@ -600,6 +507,7 @@ test_mempool(void)
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
 	struct rte_mempool *mp_ext = NULL;
+	struct rte_mempool *mp_stack = NULL;
 
 	rte_atomic32_init(&synchro);
 
@@ -629,25 +537,25 @@ test_mempool(void)
 	}
 
 	/* create a mempool with an external handler */
-	mp_ext = rte_mempool_create_empty("test_ext",
+	mp_stack = rte_mempool_create_empty("test_stack",
 		MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE,
 		RTE_MEMPOOL_CACHE_MAX_SIZE, 0,
 		SOCKET_ID_ANY, 0);
 
-	if (mp_ext == NULL) {
-		printf("cannot allocate mp_ext mempool\n");
+	if (mp_stack == NULL) {
+		printf("cannot allocate mp_stack mempool\n");
 		goto err;
 	}
-	if (rte_mempool_set_ops_byname(mp_ext, "custom_handler", NULL) < 0) {
-		printf("cannot set custom handler\n");
+	if (rte_mempool_set_ops_byname(mp_stack, "stack", NULL) < 0) {
+		printf("cannot set stack handler\n");
 		goto err;
 	}
-	if (rte_mempool_populate_default(mp_ext) < 0) {
-		printf("cannot populate mp_ext mempool\n");
+	if (rte_mempool_populate_default(mp_stack) < 0) {
+		printf("cannot populate mp_stack mempool\n");
 		goto err;
 	}
-	rte_mempool_obj_iter(mp_ext, my_obj_init, NULL);
+	rte_mempool_obj_iter(mp_stack, my_obj_init, NULL);
 
 	/* retrieve the mempool from its name */
 	if (rte_mempool_lookup("test_nocache") != mp_nocache) {
@@ -684,6 +592,10 @@ test_mempool(void)
 		goto err;
 
 	if (test_mempool_xmem_misc() < 0)
+		goto err;
+
+	/* test the stack handler */
+	if (test_mempool_basic(mp_stack, 1) < 0)
 		goto err;
 
 	rte_mempool_list_dump(stdout);
