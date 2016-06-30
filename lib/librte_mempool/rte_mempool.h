@@ -74,6 +74,7 @@
 #include <rte_memory.h>
 #include <rte_branch_prediction.h>
 #include <rte_ring.h>
+#include <rte_memcpy.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -1028,7 +1029,6 @@ static inline void __attribute__((always_inline))
 __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 		      unsigned n, struct rte_mempool_cache *cache, int flags)
 {
-	uint32_t index;
 	void **cache_objs;
 
 	/* increment stat now, adding in mempool always success */
@@ -1052,8 +1052,7 @@ __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 	 */
 
 	/* Add elements back into the cache */
-	for (index = 0; index < n; ++index, obj_table++)
-		cache_objs[index] = *obj_table;
+	rte_memcpy(&cache_objs[0], obj_table, sizeof(void *) * n);
 
 	cache->len += n;
 
