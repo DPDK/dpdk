@@ -231,7 +231,7 @@ test_mempool_basic(struct rte_mempool *mp, int use_external_cache)
 	printf("get object count\n");
 	/* We have to count the extra caches, one in this case. */
 	offset = use_external_cache ? 1 * cache->len : 0;
-	if (rte_mempool_count(mp) + offset != MEMPOOL_SIZE - 1)
+	if (rte_mempool_avail_count(mp) + offset != MEMPOOL_SIZE - 1)
 		GOTO_ERR(ret, out);
 
 	printf("get private data\n");
@@ -497,7 +497,7 @@ test_mempool_basic_ex(struct rte_mempool *mp)
 		return ret;
 	}
 	printf("test_mempool_basic_ex now mempool (%s) has %u free entries\n",
-		mp->name, rte_mempool_free_count(mp));
+		mp->name, rte_mempool_in_use_count(mp));
 	if (rte_mempool_full(mp) != 1) {
 		printf("test_mempool_basic_ex the mempool should be full\n");
 		goto fail_mp_basic_ex;

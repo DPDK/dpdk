@@ -316,12 +316,12 @@ testsuite_teardown(void)
 
 	if (ts_params->mbuf_pool != NULL) {
 		RTE_LOG(DEBUG, USER1, "CRYPTO_MBUFPOOL count %u\n",
-		rte_mempool_count(ts_params->mbuf_pool));
+		rte_mempool_avail_count(ts_params->mbuf_pool));
 	}
 
 	if (ts_params->op_mpool != NULL) {
 		RTE_LOG(DEBUG, USER1, "CRYPTO_OP_POOL count %u\n",
-		rte_mempool_count(ts_params->op_mpool));
+		rte_mempool_avail_count(ts_params->op_mpool));
 	}
 
 }
@@ -412,7 +412,7 @@ ut_teardown(void)
 
 	if (ts_params->mbuf_pool != NULL)
 		RTE_LOG(DEBUG, USER1, "CRYPTO_MBUFPOOL count %u\n",
-				rte_mempool_count(ts_params->mbuf_pool));
+			rte_mempool_avail_count(ts_params->mbuf_pool));
 
 	rte_cryptodev_stats_get(ts_params->valid_devs[0], &stats);
 

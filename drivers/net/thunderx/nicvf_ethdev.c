@@ -1158,7 +1158,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 
 	PMD_RX_LOG(DEBUG, "[%d] rxq=%p pool=%s nb_desc=(%d/%d) phy=%" PRIx64,
 			qidx, rxq, mp->name, nb_desc,
-			rte_mempool_count(mp), rxq->phys);
+			rte_mempool_avail_count(mp), rxq->phys);
 
 	dev->data->rx_queues[qidx] = rxq;
 	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
@@ -1313,10 +1313,10 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 		total_rxq_desc += rxq->qlen_mask + 1;
 		exp_buffs = RTE_MEMPOOL_CACHE_MAX_SIZE + rxq->rx_free_thresh;
 		exp_buffs *= nic->eth_dev->data->nb_rx_queues;
-		if (rte_mempool_count(rxq->pool) < exp_buffs) {
+		if (rte_mempool_avail_count(rxq->pool) < exp_buffs) {
 			PMD_INIT_LOG(ERR, "Buff shortage in pool=%s (%d/%d)",
 				     rxq->pool->name,
-				     rte_mempool_count(rxq->pool),
+				     rte_mempool_avail_count(rxq->pool),
 				     exp_buffs);
 			return -ENOENT;
 		}

@@ -960,8 +960,8 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
 }
 
 /* Return the number of entries in the mempool */
-unsigned
-rte_mempool_count(const struct rte_mempool *mp)
+unsigned int
+rte_mempool_avail_count(const struct rte_mempool *mp)
 {
 	unsigned count;
 	unsigned lcore_id;
@@ -981,6 +981,19 @@ rte_mempool_count(const struct rte_mempool *mp)
 	if (count > mp->size)
 		return mp->size;
 	return count;
+}
+
+/* return the number of entries allocated from the mempool */
+unsigned int
+rte_mempool_in_use_count(const struct rte_mempool *mp)
+{
+	return mp->size - rte_mempool_avail_count(mp);
+}
+
+unsigned int
+rte_mempool_count(const struct rte_mempool *mp)
+{
+	return rte_mempool_avail_count(mp);
 }
 
 /* dump the cache status */

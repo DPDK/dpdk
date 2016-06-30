@@ -717,7 +717,7 @@ test_refcnt_iter(unsigned lcore, unsigned iter)
 	 * - increment it's reference up to N+1,
 	 * - enqueue it N times into the ring for slave cores to free.
 	 */
-	for (i = 0, n = rte_mempool_count(refcnt_pool);
+	for (i = 0, n = rte_mempool_avail_count(refcnt_pool);
 	    i != n && (m = rte_pktmbuf_alloc(refcnt_pool)) != NULL;
 	    i++) {
 		ref = RTE_MAX(rte_rand() % REFCNT_MAX_REF, 1UL);
@@ -745,7 +745,7 @@ test_refcnt_iter(unsigned lcore, unsigned iter)
 
 	/* check that all mbufs are back into mempool by now */
 	for (wn = 0; wn != REFCNT_MAX_TIMEOUT; wn++) {
-		if ((i = rte_mempool_count(refcnt_pool)) == n) {
+		if ((i = rte_mempool_avail_count(refcnt_pool)) == n) {
 			refcnt_lcore[lcore] += tref;
 			printf("%s(lcore=%u, iter=%u) completed, "
 			    "%u references processed\n",

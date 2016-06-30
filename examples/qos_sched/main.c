@@ -201,8 +201,6 @@ app_stat(void)
 				stats.oerrors - tx_stats[i].oerrors);
 		memcpy(&tx_stats[i], &stats, sizeof(stats));
 
-		//printf("MP = %d\n", rte_mempool_count(conf->app_pktmbuf_pool));
-
 #if APP_COLLECT_STAT
 		printf("-------+------------+------------+\n");
 		printf("       |  received  |   dropped  |\n");

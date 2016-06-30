@@ -32,6 +32,12 @@ Deprecation Notices
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
   their behavior will be kept in 16.07 and will be removed in 16.11.
 
+* The APIs rte_mempool_count and rte_mempool_free_count are being deprecated
+  on the basis that they are confusing to use - free_count actually returns
+  the number of allocated entries, not the number of free entries as expected.
+  They are being replaced by rte_mempool_avail_count and
+  rte_mempool_in_use_count respectively.
+
 * The mempool functions for single/multi producer/consumer are deprecated and
   will be removed in 16.11.
   It is replaced by rte_mempool_generic_get/put functions.

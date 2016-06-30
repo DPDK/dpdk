@@ -240,7 +240,7 @@ launch_cores(unsigned cores)
 		   external_cache_size : (unsigned) mp->cache_size,
 	       cores, n_get_bulk, n_put_bulk, n_keep);
 
-	if (rte_mempool_count(mp) != MEMPOOL_SIZE) {
+	if (rte_mempool_avail_count(mp) != MEMPOOL_SIZE) {
 		printf("mempool is not full\n");
 		return -1;
 	}

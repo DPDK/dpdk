@@ -23,8 +23,8 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 			   "Failed to allocate rx buffer "
 			   "sw_rx_prod %u sw_rx_cons %u mp entries %u free %u",
 			   idx, rxq->sw_rx_cons & NUM_RX_BDS(rxq),
-			   rte_mempool_count(rxq->mb_pool),
-			   rte_mempool_free_count(rxq->mb_pool));
+			   rte_mempool_avail_count(rxq->mb_pool),
+			   rte_mempool_in_use_count(rxq->mb_pool));
 		return -ENOMEM;
 	}
 	rxq->sw_rx_ring[idx].mbuf = new_mb;
