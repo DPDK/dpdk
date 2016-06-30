@@ -38,6 +38,7 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_version.h>
+#include <rte_eal_memconfig.h>
 
 #include "ena_ethdev.h"
 #include "ena_logs.h"
@@ -231,6 +232,18 @@ static struct eth_dev_ops ena_dev_ops = {
 	.reta_update          = ena_rss_reta_update,
 	.reta_query           = ena_rss_reta_query,
 };
+
+#define NUMA_NO_NODE	SOCKET_ID_ANY
+
+static inline int ena_cpu_to_node(int cpu)
+{
+	struct rte_config *config = rte_eal_get_configuration();
+
+	if (likely(cpu < RTE_MAX_MEMZONE))
+		return config->mem_config->memzone[cpu].socket_id;
+
+	return NUMA_NO_NODE;
+}
 
 static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 				       struct ena_com_rx_ctx *ena_rx_ctx)
@@ -962,6 +975,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	ctx.msix_vector = -1; /* admin interrupts not used */
 	ctx.mem_queue_type = ena_dev->tx_mem_queue_type;
 	ctx.queue_size = adapter->tx_ring_size;
+	ctx.numa_node = ena_cpu_to_node(queue_idx);
 
 	rc = ena_com_create_io_queue(ena_dev, &ctx);
 	if (rc) {
@@ -1055,6 +1069,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	ctx.mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
 	ctx.msix_vector = -1; /* admin interrupts not used */
 	ctx.queue_size = adapter->rx_ring_size;
+	ctx.numa_node = ena_cpu_to_node(queue_idx);
 
 	rc = ena_com_create_io_queue(ena_dev, &ctx);
 	if (rc)

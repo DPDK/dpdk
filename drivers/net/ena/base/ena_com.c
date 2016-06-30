@@ -329,6 +329,7 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 			      struct ena_com_io_sq *io_sq)
 {
 	size_t size;
+	int dev_node;
 
 	ENA_TOUCH(ctx);
 
@@ -341,15 +342,29 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 
 	size = io_sq->desc_entry_size * io_sq->q_depth;
 
-	if (io_sq->mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_HOST)
-		ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
-				       size,
-				       io_sq->desc_addr.virt_addr,
-				       io_sq->desc_addr.phys_addr,
-				       io_sq->desc_addr.mem_handle);
-	else
-		io_sq->desc_addr.virt_addr =
-			ENA_MEM_ALLOC(ena_dev->dmadev, size);
+	if (io_sq->mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_HOST) {
+		ENA_MEM_ALLOC_COHERENT_NODE(ena_dev->dmadev,
+					    size,
+					    io_sq->desc_addr.virt_addr,
+					    io_sq->desc_addr.phys_addr,
+					    ctx->numa_node,
+					    dev_node);
+		if (!io_sq->desc_addr.virt_addr)
+			ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
+					       size,
+					       io_sq->desc_addr.virt_addr,
+					       io_sq->desc_addr.phys_addr,
+					       io_sq->desc_addr.mem_handle);
+	} else {
+		ENA_MEM_ALLOC_NODE(ena_dev->dmadev,
+				   size,
+				   io_sq->desc_addr.virt_addr,
+				   ctx->numa_node,
+				   dev_node);
+		if (!io_sq->desc_addr.virt_addr)
+			io_sq->desc_addr.virt_addr =
+				ENA_MEM_ALLOC(ena_dev->dmadev, size);
+	}
 
 	if (!io_sq->desc_addr.virt_addr) {
 		ena_trc_err("memory allocation failed");
@@ -368,6 +383,7 @@ static int ena_com_init_io_cq(struct ena_com_dev *ena_dev,
 			      struct ena_com_io_cq *io_cq)
 {
 	size_t size;
+	int prev_node;
 
 	ENA_TOUCH(ctx);
 	memset(&io_cq->cdesc_addr, 0x0, sizeof(struct ena_com_io_desc_addr));
@@ -380,11 +396,18 @@ static int ena_com_init_io_cq(struct ena_com_dev *ena_dev,
 
 	size = io_cq->cdesc_entry_size_in_bytes * io_cq->q_depth;
 
-	ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
-			       size,
-			       io_cq->cdesc_addr.virt_addr,
-			       io_cq->cdesc_addr.phys_addr,
-			       io_cq->cdesc_addr.mem_handle);
+	ENA_MEM_ALLOC_COHERENT_NODE(ena_dev->dmadev,
+				    size,
+				    io_cq->cdesc_addr.virt_addr,
+				    io_cq->cdesc_addr.phys_addr,
+				    ctx->numa_node,
+				    prev_node);
+	if (!io_cq->cdesc_addr.virt_addr)
+		ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
+				       size,
+				       io_cq->cdesc_addr.virt_addr,
+				       io_cq->cdesc_addr.phys_addr,
+				       io_cq->cdesc_addr.mem_handle);
 
 	if (!io_cq->cdesc_addr.virt_addr) {
 		ena_trc_err("memory allocation failed");

@@ -196,6 +196,29 @@ typedef uint64_t dma_addr_t;
 		   ENA_TOUCH(dmadev);					\
 		   rte_free(virt); })
 
+#define ENA_MEM_ALLOC_COHERENT_NODE(dmadev, size, virt, phys, node, dev_node) \
+	do {								\
+		const struct rte_memzone *mz;				\
+		char z_name[RTE_MEMZONE_NAMESIZE];			\
+		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
+		snprintf(z_name, sizeof(z_name),			\
+				"ena_alloc_%d", ena_alloc_cnt++);	\
+		mz = rte_memzone_reserve(z_name, size, node, 0); \
+		virt = mz->addr;					\
+		phys = mz->phys_addr;					\
+	} while (0)
+
+#define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node, dev_node) \
+	do {								\
+		const struct rte_memzone *mz;				\
+		char z_name[RTE_MEMZONE_NAMESIZE];			\
+		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
+		snprintf(z_name, sizeof(z_name),			\
+				"ena_alloc_%d", ena_alloc_cnt++);	\
+		mz = rte_memzone_reserve(z_name, size, node, 0); \
+		virt = mz->addr;					\
+	} while (0)
+
 #define ENA_MEM_ALLOC(dmadev, size) rte_zmalloc(NULL, size, 1)
 #define ENA_MEM_FREE(dmadev, ptr) ({ENA_TOUCH(dmadev); rte_free(ptr); })
 
