@@ -62,7 +62,7 @@ typedef uint64_t dma_addr_t;
 #endif
 
 #define ena_atomic32_t rte_atomic32_t
-#define ena_mem_handle_t void *
+#define ena_mem_handle_t const struct rte_memzone *
 
 #define SZ_256 (256U)
 #define SZ_4K (4096U)
@@ -188,13 +188,15 @@ typedef uint64_t dma_addr_t;
 		snprintf(z_name, sizeof(z_name),			\
 				"ena_alloc_%d", ena_alloc_cnt++);	\
 		mz = rte_memzone_reserve(z_name, size, SOCKET_ID_ANY, 0); \
+		memset(mz->addr, 0, size);				\
 		virt = mz->addr;					\
 		phys = mz->phys_addr;					\
+		handle = mz;						\
 	} while (0)
 #define ENA_MEM_FREE_COHERENT(dmadev, size, virt, phys, handle) 	\
 		({ ENA_TOUCH(size); ENA_TOUCH(phys);			\
 		   ENA_TOUCH(dmadev);					\
-		   rte_free(virt); })
+		   rte_memzone_free(handle); })
 
 #define ENA_MEM_ALLOC_COHERENT_NODE(dmadev, size, virt, phys, node, dev_node) \
 	do {								\
