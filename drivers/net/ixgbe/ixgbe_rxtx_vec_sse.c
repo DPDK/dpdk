@@ -197,7 +197,9 @@ desc_to_olflags_v(__m128i descs[4], uint8_t vlan_flags,
 	rx_pkts[3]->ol_flags = vol.e[3];
 }
 #else
-#define desc_to_olflags_v(desc, rx_pkts) do {} while (0)
+#define desc_to_olflags_v(desc, vlan_flags, rx_pkts) do { \
+		RTE_SET_USED(vlan_flags); \
+	} while (0)
 #endif
 
 /*
