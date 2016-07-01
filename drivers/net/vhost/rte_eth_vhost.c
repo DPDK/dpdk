@@ -303,6 +303,7 @@ destroy_device(int vid)
 	struct internal_list *list;
 	char ifname[PATH_MAX];
 	unsigned i;
+	struct rte_vhost_vring_state *state;
 
 	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	list = find_internal_resource(ifname);
@@ -344,6 +345,15 @@ destroy_device(int vid)
 			continue;
 		vq->vid = -1;
 	}
+
+	state = vring_states[eth_dev->data->port_id];
+	rte_spinlock_lock(&state->lock);
+	for (i = 0; i <= state->max_vring; i++) {
+		state->cur[i] = false;
+		state->seen[i] = false;
+	}
+	state->max_vring = 0;
+	rte_spinlock_unlock(&state->lock);
 
 	RTE_LOG(INFO, PMD, "Connection closed\n");
 
