@@ -166,7 +166,8 @@ LDLIBS += $(_LDLIBS-y) $(CPU_LDLIBS) $(EXTRA_LDLIBS)
 
 # Eliminate duplicates without sorting
 LDLIBS := $(shell echo $(LDLIBS) | \
-	awk '{for (i = 1; i <= NF; i++) { if (!seen[$$i]++) print $$i }}')
+	awk '{for (i = 1; i <= NF; i++) { \
+		if ($$i !~ /^-l.*/ || !seen[$$i]++) print $$i }}')
 
 ifeq ($(RTE_DEVEL_BUILD)$(CONFIG_RTE_BUILD_SHARED_LIB),yy)
 LDFLAGS += -rpath=$(RTE_SDK_BIN)/lib
