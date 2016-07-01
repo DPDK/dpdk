@@ -581,7 +581,7 @@ add_mempool_to_metadata(const struct rte_mempool *mp,
 	}
 
 	/* mempool consists of memzone and ring */
-	return add_ring_to_metadata(mp->ring, config);
+	return add_ring_to_metadata(mp->pool_data, config);
 }
 
 int
