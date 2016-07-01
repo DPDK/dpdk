@@ -332,8 +332,11 @@ port_init(uint8_t port)
 	rx_rings = (uint16_t)dev_info.max_rx_queues;
 	/* Configure ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
-	if (retval != 0)
+	if (retval != 0) {
+		RTE_LOG(ERR, VHOST_PORT, "Failed to configure port %u: %s.\n",
+			port, strerror(-retval));
 		return retval;
+	}
 
 	/* Setup the queues. */
 	for (q = 0; q < rx_rings; q ++) {
@@ -341,21 +344,30 @@ port_init(uint8_t port)
 						rte_eth_dev_socket_id(port),
 						rxconf,
 						mbuf_pool);
-		if (retval < 0)
+		if (retval < 0) {
+			RTE_LOG(ERR, VHOST_PORT,
+				"Failed to setup rx queue %u of port %u: %s.\n",
+				q, port, strerror(-retval));
 			return retval;
+		}
 	}
 	for (q = 0; q < tx_rings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, tx_ring_size,
 						rte_eth_dev_socket_id(port),
 						txconf);
-		if (retval < 0)
+		if (retval < 0) {
+			RTE_LOG(ERR, VHOST_PORT,
+				"Failed to setup tx queue %u of port %u: %s.\n",
+				q, port, strerror(-retval));
 			return retval;
+		}
 	}
 
 	/* Start the device. */
 	retval  = rte_eth_dev_start(port);
 	if (retval < 0) {
-		RTE_LOG(ERR, VHOST_DATA, "Failed to start the device.\n");
+		RTE_LOG(ERR, VHOST_PORT, "Failed to start port %u: %s\n",
+			port, strerror(-retval));
 		return retval;
 	}
 
