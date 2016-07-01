@@ -1557,7 +1557,6 @@ rte_eth_xstats_get_names(uint8_t port_id,
 		cnt_used_entries = 0;
 
 	for (idx = 0; idx < RTE_NB_STATS; idx++) {
-		xstats_names[cnt_used_entries].id = cnt_used_entries;
 		snprintf(xstats_names[cnt_used_entries].name,
 			sizeof(xstats_names[0].name),
 			"%s", rte_stats_strings[idx].name);
@@ -1565,7 +1564,6 @@ rte_eth_xstats_get_names(uint8_t port_id,
 	}
 	for (id_queue = 0; id_queue < dev->data->nb_rx_queues; id_queue++) {
 		for (idx = 0; idx < RTE_NB_RXQ_STATS; idx++) {
-			xstats_names[cnt_used_entries].id = cnt_used_entries;
 			snprintf(xstats_names[cnt_used_entries].name,
 				sizeof(xstats_names[0].name),
 				"rx_q%u%s",
@@ -1576,7 +1574,6 @@ rte_eth_xstats_get_names(uint8_t port_id,
 	}
 	for (id_queue = 0; id_queue < dev->data->nb_tx_queues; id_queue++) {
 		for (idx = 0; idx < RTE_NB_TXQ_STATS; idx++) {
-			xstats_names[cnt_used_entries].id = cnt_used_entries;
 			snprintf(xstats_names[cnt_used_entries].name,
 				sizeof(xstats_names[0].name),
 				"tx_q%u%s",

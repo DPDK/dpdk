@@ -1802,7 +1802,6 @@ static int eth_igb_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	for (i = 0; i < IGB_NB_XSTATS; i++) {
 		snprintf(xstats_names[i].name, sizeof(xstats_names[i].name),
 			 "%s", rte_igb_stats_strings[i].name);
-		xstats_names[i].id = i;
 	}
 
 	return IGB_NB_XSTATS;
@@ -1889,7 +1888,6 @@ static int eth_igbvf_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 			snprintf(xstats_names[i].name,
 				sizeof(xstats_names[i].name), "%s",
 				rte_igbvf_stats_strings[i].name);
-			xstats_names[i].id = i;
 		}
 	return IGBVF_NB_XSTATS;
 }

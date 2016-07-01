@@ -1270,7 +1270,6 @@ static int fm10k_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 			snprintf(xstats_names[count].name,
 				sizeof(xstats_names[count].name),
 				"%s", fm10k_hw_stats_strings[count].name);
-			xstats_names[count].id = count;
 			count++;
 		}
 
@@ -1281,7 +1280,6 @@ static int fm10k_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 					sizeof(xstats_names[count].name),
 					"rx_q%u_%s", q,
 					fm10k_hw_stats_rx_q_strings[i].name);
-				xstats_names[count].id = count;
 				count++;
 			}
 			for (i = 0; i < FM10K_NB_TX_Q_XSTATS; i++) {
@@ -1289,7 +1287,6 @@ static int fm10k_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 					sizeof(xstats_names[count].name),
 					"tx_q%u_%s", q,
 					fm10k_hw_stats_tx_q_strings[i].name);
-				xstats_names[count].id = count;
 				count++;
 			}
 		}

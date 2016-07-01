@@ -788,7 +788,6 @@ static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 					sizeof(xstats_names[count].name),
 					"rx_q%u_%s", i,
 					rte_virtio_rxq_stat_strings[t].name);
-				xstats_names[count].id = count;
 				count++;
 			}
 		}
@@ -802,7 +801,6 @@ static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
 					sizeof(xstats_names[count].name),
 					"tx_q%u_%s", i,
 					rte_virtio_txq_stat_strings[t].name);
-				xstats_names[count].id = count;
 				count++;
 			}
 		}
@@ -833,7 +831,6 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		unsigned t;
 
 		for (t = 0; t < VIRTIO_NB_RXQ_XSTATS; t++) {
-			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)rxvq) +
 				rte_virtio_rxq_stat_strings[t].offset);
 			count++;
@@ -849,7 +846,6 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		unsigned t;
 
 		for (t = 0; t < VIRTIO_NB_TXQ_XSTATS; t++) {
-			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)txvq) +
 				rte_virtio_txq_stat_strings[t].offset);
 			count++;

@@ -999,7 +999,6 @@ static int i40evf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 			snprintf(xstats_names[i].name,
 				sizeof(xstats_names[i].name),
 				"%s", rte_i40evf_stats_strings[i].name);
-			xstats_names[i].id = i;
 		}
 	return I40EVF_NB_XSTATS;
 }

@@ -2784,7 +2784,6 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 		/* Extended stats from ixgbe_hw_stats */
 		for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
-			xstats_names[count].id = count;
 			snprintf(xstats_names[count].name,
 				sizeof(xstats_names[count].name),
 				"%s",
@@ -2795,7 +2794,6 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		/* RX Priority Stats */
 		for (stat = 0; stat < IXGBE_NB_RXQ_PRIO_STATS; stat++) {
 			for (i = 0; i < IXGBE_NB_RXQ_PRIO_VALUES; i++) {
-				xstats_names[count].id = count;
 				snprintf(xstats_names[count].name,
 					sizeof(xstats_names[count].name),
 					"rx_priority%u_%s", i,
@@ -2807,7 +2805,6 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		/* TX Priority Stats */
 		for (stat = 0; stat < IXGBE_NB_TXQ_PRIO_STATS; stat++) {
 			for (i = 0; i < IXGBE_NB_TXQ_PRIO_VALUES; i++) {
-				xstats_names[count].id = count;
 				snprintf(xstats_names[count].name,
 					sizeof(xstats_names[count].name),
 					"tx_priority%u_%s", i,
@@ -2868,7 +2865,6 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	/* Extended stats from ixgbe_hw_stats */
 	count = 0;
 	for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
-		xstats[count].id = count;
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 				rte_ixgbe_stats_strings[i].offset);
 		count++;
@@ -2877,7 +2873,6 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	/* RX Priority Stats */
 	for (stat = 0; stat < IXGBE_NB_RXQ_PRIO_STATS; stat++) {
 		for (i = 0; i < IXGBE_NB_RXQ_PRIO_VALUES; i++) {
-			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 					rte_ixgbe_rxq_strings[stat].offset +
 					(sizeof(uint64_t) * i));
@@ -2888,7 +2883,6 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	/* TX Priority Stats */
 	for (stat = 0; stat < IXGBE_NB_TXQ_PRIO_STATS; stat++) {
 		for (i = 0; i < IXGBE_NB_TXQ_PRIO_VALUES; i++) {
-			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 					rte_ixgbe_txq_strings[stat].offset +
 					(sizeof(uint64_t) * i));
@@ -2959,7 +2953,6 @@ ixgbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 
 	/* Extended stats */
 	for (i = 0; i < IXGBEVF_NB_XSTATS; i++) {
-		xstats[i].id = i;
 		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
 			rte_ixgbevf_stats_strings[i].offset);
 	}

@@ -246,7 +246,6 @@ nic_xstats_display(uint8_t port_id)
 	struct rte_eth_xstat_name *xstats_names;
 	struct rte_eth_xstat *xstats;
 	int len, ret, i;
-	int idx_name;
 	static const char *nic_stats_border = "########################";
 
 	len = rte_eth_xstats_get_names(port_id, NULL, 0);
@@ -284,13 +283,9 @@ nic_xstats_display(uint8_t port_id)
 	}
 
 	for (i = 0; i < len; i++)
-		for (idx_name = 0; idx_name < len; idx_name++)
-			if (xstats_names[idx_name].id == xstats[i].id) {
-				printf("%s: %"PRIu64"\n",
-					xstats_names[idx_name].name,
-					xstats[i].value);
-				break;
-			}
+		printf("%s: %"PRIu64"\n",
+			xstats_names[i].name,
+			xstats[i].value);
 
 	printf("%s############################\n",
 			   nic_stats_border);

@@ -261,7 +261,7 @@ void
 nic_xstats_display(portid_t port_id)
 {
 	struct rte_eth_xstat *xstats;
-	int cnt_xstats, idx_xstat, idx_name;
+	int cnt_xstats, idx_xstat;
 	struct rte_eth_xstat_name *xstats_names;
 
 	printf("###### NIC extended statistics for port %-2d\n", port_id);
@@ -306,13 +306,9 @@ nic_xstats_display(portid_t port_id)
 
 	/* Display xstats */
 	for (idx_xstat = 0; idx_xstat < cnt_xstats; idx_xstat++)
-		for (idx_name = 0; idx_name < cnt_xstats; idx_name++)
-			if (xstats_names[idx_name].id == xstats[idx_xstat].id) {
-				printf("%s: %"PRIu64"\n",
-					xstats_names[idx_name].name,
-					xstats[idx_xstat].value);
-				break;
-			}
+		printf("%s: %"PRIu64"\n",
+			xstats_names[idx_xstat].name,
+			xstats[idx_xstat].value);
 	free(xstats_names);
 	free(xstats);
 }

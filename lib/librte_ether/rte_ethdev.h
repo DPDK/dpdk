@@ -945,7 +945,6 @@ struct rte_eth_xstat {
  */
 struct rte_eth_xstat_name {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
-	uint64_t id;
 };
 
 #define ETH_DCB_NUM_TCS    8

@@ -309,17 +309,13 @@ functions:
   information.
 
 Each ``struct rte_eth_xstat`` contains an identifier and value pair, and
-each ``struct rte_eth_xstat_name`` contains an identifier and string pair.
-Each identifier within ``struct rte_eth_xstat`` must have a corresponding
-entry in ``struct rte_eth_xstat_name`` with a matching identifier. These
-identifiers, as well as the number of extended statistic exposed, must
-remain constant during runtime.
-
-Note that extended statistic identifiers are driver-specific, and hence
-might not be the same for different ports. Although it is expected that
-drivers will make the identifiers used within ``struct rte_eth_xstat`` and
-``struct rte_eth_xstat_name`` entries match the entries' array index, this
-property should not be relied on by applications for lookups.
+each ``struct rte_eth_xstat_name`` contains a string. Each identifier
+within the ``struct rte_eth_xstat`` lookup array must have a corresponding
+entry in the ``struct rte_eth_xstat_name`` lookup array. Within the latter
+the index of the entry is the identifier the string is associated with.
+These identifiers, as well as the number of extended statistic exposed, must
+remain constant during runtime. Note that extended statistic identifiers are
+driver-specific, and hence might not be the same for different ports.
 
 A naming scheme exists for the strings exposed to clients of the API. This is
 to allow scraping of the API for statistics of interest. The naming scheme uses
