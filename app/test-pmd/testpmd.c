@@ -272,6 +272,9 @@ uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF;
 
 #endif
 
+/* default period is 1 second */
+static uint64_t timer_period = 1;
+
 /*
  * Ethernet device configuration.
  */
@@ -877,17 +880,35 @@ flush_fwd_rx_queues(void)
 	uint16_t  nb_rx;
 	uint16_t  i;
 	uint8_t   j;
+	uint64_t prev_tsc = 0, diff_tsc, cur_tsc, timer_tsc = 0;
+
+	/* convert to number of cycles */
+	timer_period *= rte_get_timer_hz();
 
 	for (j = 0; j < 2; j++) {
 		for (rxp = 0; rxp < cur_fwd_config.nb_fwd_ports; rxp++) {
 			for (rxq = 0; rxq < nb_rxq; rxq++) {
 				port_id = fwd_ports_ids[rxp];
+				/**
+				* testpmd can stuck in the below do while loop
+				* if rte_eth_rx_burst() always returns nonzero
+				* packets. So timer is added to exit this loop
+				* after 1sec timer expiry.
+				*/
+				prev_tsc = rte_rdtsc();
 				do {
 					nb_rx = rte_eth_rx_burst(port_id, rxq,
 						pkts_burst, MAX_PKT_BURST);
 					for (i = 0; i < nb_rx; i++)
 						rte_pktmbuf_free(pkts_burst[i]);
-				} while (nb_rx > 0);
+
+					cur_tsc = rte_rdtsc();
+					diff_tsc = cur_tsc - prev_tsc;
+					timer_tsc += diff_tsc;
+				} while ((nb_rx > 0) &&
+					(timer_tsc < timer_period));
+				prev_tsc = cur_tsc;
+				timer_tsc = 0;
 			}
 		}
 		rte_delay_ms(10); /* wait 10 milli-seconds before retrying */
