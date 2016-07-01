@@ -76,7 +76,10 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lrte_meter
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
 _LDLIBS-$(CONFIG_RTE_LIBRTE_LPM)            += -lrte_lpm
+# librte_acl needs --whole-archive because of weak functions
+_LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += --whole-archive
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += -lrte_acl
+_LDLIBS-$(CONFIG_RTE_LIBRTE_ACL)            += --no-whole-archive
 _LDLIBS-$(CONFIG_RTE_LIBRTE_JOBSTATS)       += -lrte_jobstats
 _LDLIBS-$(CONFIG_RTE_LIBRTE_POWER)          += -lrte_power
 
