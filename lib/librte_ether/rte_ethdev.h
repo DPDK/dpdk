@@ -2407,6 +2407,21 @@ void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info);
 /**
  * Retrieve the supported packet types of an Ethernet device.
  *
+ * When a packet type is announced as supported, it *must* be recognized by
+ * the PMD. For instance, if RTE_PTYPE_L2_ETHER, RTE_PTYPE_L2_ETHER_VLAN
+ * and RTE_PTYPE_L3_IPV4 are announced, the PMD must return the following
+ * packet types for these packets:
+ * - Ether/IPv4              -> RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4
+ * - Ether/Vlan/IPv4         -> RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV4
+ * - Ether/[anything else]   -> RTE_PTYPE_L2_ETHER
+ * - Ether/Vlan/[anything else] -> RTE_PTYPE_L2_ETHER_VLAN
+ *
+ * When a packet is received by a PMD, the most precise type must be
+ * returned among the ones supported. However a PMD is allowed to set
+ * packet type that is not in the supported list, at the condition that it
+ * is more precise. Therefore, a PMD announcing no supported packet types
+ * can still set a matching packet type in a received packet.
+ *
  * @note
  *   Better to invoke this API after the device is already started or rx burst
  *   function is decided, to obtain correct supported ptypes.
