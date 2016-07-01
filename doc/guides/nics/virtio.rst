@@ -73,7 +73,7 @@ In this release, the virtio PMD driver provides the basic functionality of packe
 
 *   It supports multicast packets and promiscuous mode.
 
-*   The descriptor number for the RX/TX queue is hard-coded to be 256 by qemu.
+*   The descriptor number for the Rx/Tx queue is hard-coded to be 256 by qemu.
     If given a different descriptor number by the upper application,
     the virtio PMD generates a warning and fall back to the hard-coded value.
 
@@ -163,8 +163,9 @@ Host2VM communication example
     which means received packets come from vEth0, and transmitted packets is sent to vEth0.
 
 #.  In the guest, bind the virtio device to the uio_pci_generic kernel module and start the forwarding application.
-    When the virtio port in guest bursts rx, it is getting packets from the raw socket's receive queue.
-    When the virtio port bursts tx, it is sending packet to the tx_q.
+    When the virtio port in guest bursts Rx, it is getting packets from the
+    raw socket's receive queue.
+    When the virtio port bursts Tx, it is sending packet to the tx_q.
 
     .. code-block:: console
 
@@ -183,7 +184,9 @@ Host2VM communication example
 
     The packet reception and transmission flow path is:
 
-    IXIA packet generator->82599 PF->KNI rx queue->KNI raw socket queue->Guest VM virtio port 0 rx burst->Guest VM virtio port 0 tx burst-> KNI tx queue->82599 PF-> IXIA packet generator
+    IXIA packet generator->82599 PF->KNI Rx queue->KNI raw socket queue->Guest
+    VM virtio port 0 Rx burst->Guest VM virtio port 0 Tx burst-> KNI Tx queue
+    ->82599 PF-> IXIA packet generator
 
 Virtio with qemu virtio Back End
 --------------------------------
@@ -206,8 +209,68 @@ Virtio with qemu virtio Back End
 
 In this example, the packet reception flow path is:
 
-    IXIA packet generator->82599 PF->Linux Bridge->TAP0's socket queue-> Guest VM virtio port 0 rx burst-> Guest VM 82599 VF port1 tx burst-> IXIA packet generator
+    IXIA packet generator->82599 PF->Linux Bridge->TAP0's socket queue-> Guest
+    VM virtio port 0 Rx burst-> Guest VM 82599 VF port1 Tx burst-> IXIA packet
+    generator
 
 The packet transmission flow is:
 
-    IXIA packet generator-> Guest VM 82599 VF port1 rx burst-> Guest VM virtio port 0 tx burst-> tap -> Linux Bridge->82599 PF-> IXIA packet generator
+    IXIA packet generator-> Guest VM 82599 VF port1 Rx burst-> Guest VM virtio
+    port 0 Tx burst-> tap -> Linux Bridge->82599 PF-> IXIA packet generator
+
+
+Virtio PMD Rx/Tx Callbacks
+--------------------------
+
+Virtio driver has 3 Rx callbacks and 2 Tx callbacks.
+
+Rx callbacks:
+
+#. ``virtio_recv_pkts``:
+   Regular version without mergeable Rx buffer support.
+
+#. ``virtio_recv_mergeable_pkts``:
+   Regular version with mergeable Rx buffer support.
+
+#. ``virtio_recv_pkts_vec``:
+   Vector version without mergeable Rx buffer support, also fixes the available
+   ring indexes and uses vector instructions to optimize performance.
+
+Tx callbacks:
+
+#. ``virtio_xmit_pkts``:
+   Regular version.
+
+#. ``virtio_xmit_pkts_simple``:
+   Vector version fixes the available ring indexes to optimize performance.
+
+
+By default, the non-vector callbacks are used:
+
+*   For Rx: If mergeable Rx buffers is disabled then ``virtio_recv_pkts`` is
+    used; otherwise ``virtio_recv_mergeable_pkts``.
+
+*   For Tx: ``virtio_xmit_pkts``.
+
+
+Vector callbacks will be used when:
+
+*   ``txq_flags`` is set to ``VIRTIO_SIMPLE_FLAGS`` (0xF01), which implies:
+
+    *   Single segment is specified.
+
+    *   No offload support is needed.
+
+*   Mergeable Rx buffers is disabled.
+
+The corresponding callbacks are:
+
+*   For Rx: ``virtio_recv_pkts_vec``.
+
+*   For Tx: ``virtio_xmit_pkts_simple``.
+
+
+Example of using the vector version of the virtio poll mode driver in
+``testpmd``::
+
+   testpmd -c 0x7 -n 4 -- -i --txqflags=0xF01 --rxq=1 --txq=1 --nb-cores=1
