@@ -4328,6 +4328,90 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 }
 
 /**
+ * Change the link state (UP / DOWN).
+ *
+ * @param priv
+ *   Pointer to Ethernet device private data.
+ * @param up
+ *   Nonzero for link up, otherwise link down.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+priv_set_link(struct priv *priv, int up)
+{
+	struct rte_eth_dev *dev = priv->dev;
+	int err;
+	unsigned int i;
+
+	if (up) {
+		err = priv_set_flags(priv, ~IFF_UP, IFF_UP);
+		if (err)
+			return err;
+		for (i = 0; i < priv->rxqs_n; i++)
+			if ((*priv->rxqs)[i]->sp)
+				break;
+		/* Check if an sp queue exists.
+		 * Note: Some old frames might be received.
+		 */
+		if (i == priv->rxqs_n)
+			dev->rx_pkt_burst = mlx4_rx_burst;
+		else
+			dev->rx_pkt_burst = mlx4_rx_burst_sp;
+		dev->tx_pkt_burst = mlx4_tx_burst;
+	} else {
+		err = priv_set_flags(priv, ~IFF_UP, ~IFF_UP);
+		if (err)
+			return err;
+		dev->rx_pkt_burst = removed_rx_burst;
+		dev->tx_pkt_burst = removed_tx_burst;
+	}
+	return 0;
+}
+
+/**
+ * DPDK callback to bring the link DOWN.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+mlx4_set_link_down(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	int err;
+
+	priv_lock(priv);
+	err = priv_set_link(priv, 0);
+	priv_unlock(priv);
+	return err;
+}
+
+/**
+ * DPDK callback to bring the link UP.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+mlx4_set_link_up(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	int err;
+
+	priv_lock(priv);
+	err = priv_set_link(priv, 1);
+	priv_unlock(priv);
+	return err;
+}
+/**
  * DPDK callback to get information about the device.
  *
  * @param dev
@@ -5134,6 +5218,8 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.dev_configure = mlx4_dev_configure,
 	.dev_start = mlx4_dev_start,
 	.dev_stop = mlx4_dev_stop,
+	.dev_set_link_down = mlx4_set_link_down,
+	.dev_set_link_up = mlx4_set_link_up,
 	.dev_close = mlx4_dev_close,
 	.promiscuous_enable = mlx4_promiscuous_enable,
 	.promiscuous_disable = mlx4_promiscuous_disable,
