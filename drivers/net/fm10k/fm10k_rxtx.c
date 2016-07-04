@@ -114,10 +114,10 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	nb_pkts = RTE_MIN(nb_pkts, q->alloc_thresh);
 	for (count = 0; count < nb_pkts; ++count) {
+		if (!(q->hw_ring[next_dd].d.staterr & FM10K_RXD_STATUS_DD))
+			break;
 		mbuf = q->sw_ring[next_dd];
 		desc = q->hw_ring[next_dd];
-		if (!(desc.d.staterr & FM10K_RXD_STATUS_DD))
-			break;
 #ifdef RTE_LIBRTE_FM10K_DEBUG_RX
 		dump_rxd(&desc);
 #endif
@@ -228,10 +228,10 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	nb_seg = RTE_MIN(nb_pkts, q->alloc_thresh);
 	for (count = 0; count < nb_seg; count++) {
+		if (!(q->hw_ring[next_dd].d.staterr & FM10K_RXD_STATUS_DD))
+			break;
 		mbuf = q->sw_ring[next_dd];
 		desc = q->hw_ring[next_dd];
-		if (!(desc.d.staterr & FM10K_RXD_STATUS_DD))
-			break;
 #ifdef RTE_LIBRTE_FM10K_DEBUG_RX
 		dump_rxd(&desc);
 #endif
