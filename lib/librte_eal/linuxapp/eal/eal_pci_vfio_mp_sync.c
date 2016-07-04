@@ -310,7 +310,7 @@ pci_vfio_mp_sync_thread(void __rte_unused * arg)
 				continue;
 			}
 
-			fd = pci_vfio_get_group_fd(vfio_group_no);
+			fd = vfio_get_group_fd(vfio_group_no);
 
 			if (fd < 0)
 				vfio_mp_sync_send_request(conn_sock, SOCKET_ERR);

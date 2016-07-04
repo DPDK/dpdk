@@ -42,8 +42,295 @@
 
 #include "eal_filesystem.h"
 #include "eal_vfio.h"
+#include "eal_private.h"
 
 #ifdef VFIO_PRESENT
+
+/* per-process VFIO config */
+static struct vfio_config vfio_cfg;
+
+int
+vfio_get_group_fd(int iommu_group_no)
+{
+	int i;
+	int vfio_group_fd;
+	char filename[PATH_MAX];
+
+	/* check if we already have the group descriptor open */
+	for (i = 0; i < vfio_cfg.vfio_group_idx; i++)
+		if (vfio_cfg.vfio_groups[i].group_no == iommu_group_no)
+			return vfio_cfg.vfio_groups[i].fd;
+
+	/* if primary, try to open the group */
+	if (internal_config.process_type == RTE_PROC_PRIMARY) {
+		/* try regular group format */
+		snprintf(filename, sizeof(filename),
+				 VFIO_GROUP_FMT, iommu_group_no);
+		vfio_group_fd = open(filename, O_RDWR);
+		if (vfio_group_fd < 0) {
+			/* if file not found, it's not an error */
+			if (errno != ENOENT) {
+				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n", filename,
+						strerror(errno));
+				return -1;
+			}
+
+			/* special case: try no-IOMMU path as well */
+			snprintf(filename, sizeof(filename),
+					VFIO_NOIOMMU_GROUP_FMT, iommu_group_no);
+			vfio_group_fd = open(filename, O_RDWR);
+			if (vfio_group_fd < 0) {
+				if (errno != ENOENT) {
+					RTE_LOG(ERR, EAL, "Cannot open %s: %s\n", filename,
+							strerror(errno));
+					return -1;
+				}
+				return 0;
+			}
+			/* noiommu group found */
+		}
+
+		/* if the fd is valid, create a new group for it */
+		if (vfio_cfg.vfio_group_idx == VFIO_MAX_GROUPS) {
+			RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
+			close(vfio_group_fd);
+			return -1;
+		}
+		vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].group_no = iommu_group_no;
+		vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].fd = vfio_group_fd;
+		return vfio_group_fd;
+	}
+	/* if we're in a secondary process, request group fd from the primary
+	 * process via our socket
+	 */
+	else {
+		int socket_fd, ret;
+
+		socket_fd = vfio_mp_sync_connect_to_primary();
+
+		if (socket_fd < 0) {
+			RTE_LOG(ERR, EAL, "  cannot connect to primary process!\n");
+			return -1;
+		}
+		if (vfio_mp_sync_send_request(socket_fd, SOCKET_REQ_GROUP) < 0) {
+			RTE_LOG(ERR, EAL, "  cannot request container fd!\n");
+			close(socket_fd);
+			return -1;
+		}
+		if (vfio_mp_sync_send_request(socket_fd, iommu_group_no) < 0) {
+			RTE_LOG(ERR, EAL, "  cannot send group number!\n");
+			close(socket_fd);
+			return -1;
+		}
+		ret = vfio_mp_sync_receive_request(socket_fd);
+		switch (ret) {
+		case SOCKET_NO_FD:
+			close(socket_fd);
+			return 0;
+		case SOCKET_OK:
+			vfio_group_fd = vfio_mp_sync_receive_fd(socket_fd);
+			/* if we got the fd, return it */
+			if (vfio_group_fd > 0) {
+				close(socket_fd);
+				return vfio_group_fd;
+			}
+			/* fall-through on error */
+		default:
+			RTE_LOG(ERR, EAL, "  cannot get container fd!\n");
+			close(socket_fd);
+			return -1;
+		}
+	}
+	return -1;
+}
+
+static void
+clear_current_group(void)
+{
+	vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].group_no = 0;
+	vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].fd = -1;
+}
+
+int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info)
+{
+	struct vfio_group_status group_status = {
+			.argsz = sizeof(group_status)
+	};
+	int vfio_group_fd;
+	int iommu_group_no;
+	int ret;
+
+	/* get group number */
+	ret = vfio_get_group_no(sysfs_base, dev_addr, &iommu_group_no);
+	if (ret == 0) {
+		RTE_LOG(WARNING, EAL, "  %s not managed by VFIO driver, skipping\n",
+			dev_addr);
+		return 1;
+	}
+
+	/* if negative, something failed */
+	if (ret < 0)
+		return -1;
+
+	/* get the actual group fd */
+	vfio_group_fd = vfio_get_group_fd(iommu_group_no);
+	if (vfio_group_fd < 0)
+		return -1;
+
+	/* store group fd */
+	vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].group_no = iommu_group_no;
+	vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].fd = vfio_group_fd;
+
+	/* if group_fd == 0, that means the device isn't managed by VFIO */
+	if (vfio_group_fd == 0) {
+		RTE_LOG(WARNING, EAL, "  %s not managed by VFIO driver, skipping\n",
+				dev_addr);
+		/* we store 0 as group fd to distinguish between existing but
+		 * unbound VFIO groups, and groups that don't exist at all.
+		 */
+		vfio_cfg.vfio_group_idx++;
+		return 1;
+	}
+
+	/*
+	 * at this point, we know that this group is viable (meaning, all devices
+	 * are either bound to VFIO or not bound to anything)
+	 */
+
+	/* check if the group is viable */
+	ret = ioctl(vfio_group_fd, VFIO_GROUP_GET_STATUS, &group_status);
+	if (ret) {
+		RTE_LOG(ERR, EAL, "  %s cannot get group status, "
+				"error %i (%s)\n", dev_addr, errno, strerror(errno));
+		close(vfio_group_fd);
+		clear_current_group();
+		return -1;
+	} else if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
+		RTE_LOG(ERR, EAL, "  %s VFIO group is not viable!\n", dev_addr);
+		close(vfio_group_fd);
+		clear_current_group();
+		return -1;
+	}
+
+	/* check if group does not have a container yet */
+	if (!(group_status.flags & VFIO_GROUP_FLAGS_CONTAINER_SET)) {
+
+		/* add group to a container */
+		ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
+				&vfio_cfg.vfio_container_fd);
+		if (ret) {
+			RTE_LOG(ERR, EAL, "  %s cannot add VFIO group to container, "
+					"error %i (%s)\n", dev_addr, errno, strerror(errno));
+			close(vfio_group_fd);
+			clear_current_group();
+			return -1;
+		}
+		/*
+		 * at this point we know that this group has been successfully
+		 * initialized, so we increment vfio_group_idx to indicate that we can
+		 * add new groups.
+		 */
+		vfio_cfg.vfio_group_idx++;
+	}
+
+	/*
+	 * pick an IOMMU type and set up DMA mappings for container
+	 *
+	 * needs to be done only once, only when at least one group is assigned to
+	 * a container and only in primary process
+	 */
+	if (internal_config.process_type == RTE_PROC_PRIMARY &&
+			vfio_cfg.vfio_container_has_dma == 0) {
+		/* select an IOMMU type which we will be using */
+		const struct vfio_iommu_type *t =
+				vfio_set_iommu_type(vfio_cfg.vfio_container_fd);
+		if (!t) {
+			RTE_LOG(ERR, EAL, "  %s failed to select IOMMU type\n", dev_addr);
+			return -1;
+		}
+		ret = t->dma_map_func(vfio_cfg.vfio_container_fd);
+		if (ret) {
+			RTE_LOG(ERR, EAL, "  %s DMA remapping failed, "
+					"error %i (%s)\n", dev_addr, errno, strerror(errno));
+			return -1;
+		}
+		vfio_cfg.vfio_container_has_dma = 1;
+	}
+
+	/* get a file descriptor for the device */
+	*vfio_dev_fd = ioctl(vfio_group_fd, VFIO_GROUP_GET_DEVICE_FD, dev_addr);
+	if (*vfio_dev_fd < 0) {
+		/* if we cannot get a device fd, this simply means that this
+		* particular port is not bound to VFIO
+		*/
+		RTE_LOG(WARNING, EAL, "  %s not managed by VFIO driver, skipping\n",
+				dev_addr);
+		return 1;
+	}
+
+	/* test and setup the device */
+	ret = ioctl(*vfio_dev_fd, VFIO_DEVICE_GET_INFO, device_info);
+	if (ret) {
+		RTE_LOG(ERR, EAL, "  %s cannot get device info, "
+				"error %i (%s)\n", dev_addr, errno, strerror(errno));
+		close(*vfio_dev_fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+vfio_enable(const char *modname)
+{
+	/* initialize group list */
+	int i;
+	int vfio_available;
+
+	for (i = 0; i < VFIO_MAX_GROUPS; i++) {
+		vfio_cfg.vfio_groups[i].fd = -1;
+		vfio_cfg.vfio_groups[i].group_no = -1;
+	}
+
+	/* inform the user that we are probing for VFIO */
+	RTE_LOG(INFO, EAL, "Probing VFIO support...\n");
+
+	/* check if vfio-pci module is loaded */
+	vfio_available = rte_eal_check_module(modname);
+
+	/* return error directly */
+	if (vfio_available == -1) {
+		RTE_LOG(INFO, EAL, "Could not get loaded module details!\n");
+		return -1;
+	}
+
+	/* return 0 if VFIO modules not loaded */
+	if (vfio_available == 0) {
+		RTE_LOG(DEBUG, EAL, "VFIO modules not loaded, "
+			"skipping VFIO support...\n");
+		return 0;
+	}
+
+	vfio_cfg.vfio_container_fd = vfio_get_container_fd();
+
+	/* check if we have VFIO driver enabled */
+	if (vfio_cfg.vfio_container_fd != -1) {
+		RTE_LOG(NOTICE, EAL, "VFIO support initialized\n");
+		vfio_cfg.vfio_enabled = 1;
+	} else {
+		RTE_LOG(NOTICE, EAL, "VFIO support could not be initialized\n");
+	}
+
+	return 0;
+}
+
+int
+vfio_is_enabled(const char *modname)
+{
+	const int mod_available = rte_eal_check_module(modname);
+	return vfio_cfg.vfio_enabled && mod_available;
+}
 
 const struct vfio_iommu_type *
 vfio_set_iommu_type(int vfio_container_fd) {

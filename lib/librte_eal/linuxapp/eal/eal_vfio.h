@@ -126,6 +126,23 @@ int
 vfio_get_group_no(const char *sysfs_base,
 		const char *dev_addr, int *iommu_group_no);
 
+/* open group fd or get an existing one */
+int
+vfio_get_group_fd(int iommu_group_no);
+
+/**
+ * Setup vfio_cfg for the device indentified by its address. It discovers
+ * the configured I/O MMU groups or sets a new one for the device. If a new
+ * groups is assigned, the DMA mapping is performed.
+ * Returns 0 on success, a negative value on failure and a positive value in
+ * case the given device cannot be managed this way.
+ */
+int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info);
+
+int vfio_enable(const char *modname);
+int vfio_is_enabled(const char *modname);
+
 int vfio_type1_dma_map(int);
 int vfio_noiommu_dma_map(int);
 
