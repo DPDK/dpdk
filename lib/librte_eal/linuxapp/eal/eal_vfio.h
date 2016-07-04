@@ -95,6 +95,29 @@ struct vfio_config {
 #define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
 #define VFIO_GET_REGION_IDX(x) (x >> 40)
 
+/* DMA mapping function prototype.
+ * Takes VFIO container fd as a parameter.
+ * Returns 0 on success, -1 on error.
+ * */
+typedef int (*vfio_dma_func_t)(int);
+
+struct vfio_iommu_type {
+	int type_id;
+	const char *name;
+	vfio_dma_func_t dma_map_func;
+};
+
+int vfio_type1_dma_map(int);
+int vfio_noiommu_dma_map(int);
+
+/* IOMMU types we support */
+static const struct vfio_iommu_type iommu_types[] = {
+	/* x86 IOMMU, otherwise known as type 1 */
+	{ RTE_VFIO_TYPE1, "Type 1", &vfio_type1_dma_map},
+	/* IOMMU-less mode */
+	{ RTE_VFIO_NOIOMMU, "No-IOMMU", &vfio_noiommu_dma_map},
+};
+
 #define SOCKET_REQ_CONTAINER 0x100
 #define SOCKET_REQ_GROUP 0x200
 #define SOCKET_OK 0x0

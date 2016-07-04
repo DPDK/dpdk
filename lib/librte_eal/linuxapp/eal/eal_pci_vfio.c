@@ -72,68 +72,6 @@ EAL_REGISTER_TAILQ(rte_vfio_tailq)
 /* per-process VFIO config */
 static struct vfio_config vfio_cfg;
 
-/* DMA mapping function prototype.
- * Takes VFIO container fd as a parameter.
- * Returns 0 on success, -1 on error.
- * */
-typedef int (*vfio_dma_func_t)(int);
-
-struct vfio_iommu_type {
-	int type_id;
-	const char *name;
-	vfio_dma_func_t dma_map_func;
-};
-
-static int vfio_type1_dma_map(int);
-static int vfio_noiommu_dma_map(int);
-
-/* IOMMU types we support */
-static const struct vfio_iommu_type iommu_types[] = {
-	/* x86 IOMMU, otherwise known as type 1 */
-	{ RTE_VFIO_TYPE1, "Type 1", &vfio_type1_dma_map},
-	/* IOMMU-less mode */
-	{ RTE_VFIO_NOIOMMU, "No-IOMMU", &vfio_noiommu_dma_map},
-};
-
-int
-vfio_type1_dma_map(int vfio_container_fd)
-{
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	int i, ret;
-
-	/* map all DPDK segments for DMA. use 1:1 PA to IOVA mapping */
-	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		struct vfio_iommu_type1_dma_map dma_map;
-
-		if (ms[i].addr == NULL)
-			break;
-
-		memset(&dma_map, 0, sizeof(dma_map));
-		dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
-		dma_map.vaddr = ms[i].addr_64;
-		dma_map.size = ms[i].len;
-		dma_map.iova = ms[i].phys_addr;
-		dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
-
-		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
-
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, "
-					"error %i (%s)\n", errno, strerror(errno));
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-int
-vfio_noiommu_dma_map(int __rte_unused vfio_container_fd)
-{
-	/* No-IOMMU mode does not need DMA mapping */
-	return 0;
-}
-
 int
 pci_vfio_read_config(const struct rte_intr_handle *intr_handle,
 		    void *buf, size_t len, off_t offs)
