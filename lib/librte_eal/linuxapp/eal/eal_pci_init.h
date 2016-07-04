@@ -74,8 +74,6 @@ int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 
 #ifdef VFIO_PRESENT
 
-#define VFIO_MAX_GROUPS 64
-
 int pci_vfio_enable(void);
 int pci_vfio_is_enabled(void);
 int pci_vfio_mp_sync_setup(void);
@@ -98,39 +96,6 @@ int pci_vfio_ioport_unmap(struct rte_pci_ioport *p);
 int pci_vfio_map_resource(struct rte_pci_device *dev);
 int pci_vfio_get_group_fd(int iommu_group_fd);
 int pci_vfio_get_container_fd(void);
-
-/*
- * Function prototypes for VFIO multiprocess sync functions
- */
-int vfio_mp_sync_send_request(int socket, int req);
-int vfio_mp_sync_receive_request(int socket);
-int vfio_mp_sync_send_fd(int socket, int fd);
-int vfio_mp_sync_receive_fd(int socket);
-int vfio_mp_sync_connect_to_primary(void);
-
-/* socket comm protocol definitions */
-#define SOCKET_REQ_CONTAINER 0x100
-#define SOCKET_REQ_GROUP 0x200
-#define SOCKET_OK 0x0
-#define SOCKET_NO_FD 0x1
-#define SOCKET_ERR 0xFF
-
-/*
- * we don't need to store device fd's anywhere since they can be obtained from
- * the group fd via an ioctl() call.
- */
-struct vfio_group {
-	int group_no;
-	int fd;
-};
-
-struct vfio_config {
-	int vfio_enabled;
-	int vfio_container_fd;
-	int vfio_container_has_dma;
-	int vfio_group_idx;
-	struct vfio_group vfio_groups[VFIO_MAX_GROUPS];
-};
 
 #endif
 

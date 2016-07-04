@@ -69,13 +69,6 @@ static struct rte_tailq_elem rte_vfio_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_vfio_tailq)
 
-#define VFIO_DIR "/dev/vfio"
-#define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
-#define VFIO_GROUP_FMT "/dev/vfio/%u"
-#define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
-#define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
-#define VFIO_GET_REGION_IDX(x) (x >> 40)
-
 /* per-process VFIO config */
 static struct vfio_config vfio_cfg;
 
