@@ -38,3 +38,10 @@ DPDK_2.2 {
 	rte_hash_set_cmp_func;
 
 } DPDK_2.1;
+
+DPDK_16.07 {
+	global:
+
+	rte_hash_get_key_with_position;
+
+} DPDK_2.2;

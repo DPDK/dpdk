@@ -877,6 +877,26 @@ rte_hash_del_key(const struct rte_hash *h, const void *key)
 	return __rte_hash_del_key_with_hash(h, key, rte_hash_hash(h, key));
 }
 
+int
+rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
+			       void **key)
+{
+	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
+
+	struct rte_hash_key *k, *keys = h->key_store;
+	k = (struct rte_hash_key *) ((char *) keys + (position + 1) *
+				     h->key_entry_size);
+	*key = k->key;
+
+	if (position !=
+	    __rte_hash_lookup_with_hash(h, *key, rte_hash_hash(h, *key),
+					NULL)) {
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
 /* Lookup bulk stage 0: Prefetch input key */
 static inline void
 lookup_stage0(unsigned *idx, uint64_t *lookup_mask,

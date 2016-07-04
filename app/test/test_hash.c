@@ -421,6 +421,46 @@ static int test_add_update_delete(void)
 }
 
 /*
+ * Sequence of operations for retrieving a key with its position
+ *
+ *  - create table
+ *  - add key
+ *  - get the key with its position: hit
+ *  - delete key
+ *  - try to get the deleted key: miss
+ *
+ */
+static int test_hash_get_key_with_position(void)
+{
+	struct rte_hash *handle = NULL;
+	int pos, expectedPos, result;
+	void *key;
+
+	ut_params.name = "hash_get_key_w_pos";
+	handle = rte_hash_create(&ut_params);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+
+	pos = rte_hash_add_key(handle, &keys[0]);
+	print_key_info("Add", &keys[0], pos);
+	RETURN_IF_ERROR(pos < 0, "failed to add key (pos0=%d)", pos);
+	expectedPos = pos;
+
+	result = rte_hash_get_key_with_position(handle, pos, &key);
+	RETURN_IF_ERROR(result != 0, "error retrieving a key");
+
+	pos = rte_hash_del_key(handle, &keys[0]);
+	print_key_info("Del", &keys[0], pos);
+	RETURN_IF_ERROR(pos != expectedPos,
+			"failed to delete key (pos0=%d)", pos);
+
+	result = rte_hash_get_key_with_position(handle, pos, &key);
+	RETURN_IF_ERROR(result != -ENOENT, "non valid key retrieved");
+
+	rte_hash_free(handle);
+	return 0;
+}
+
+/*
  * Sequence of operations for find existing hash table
  *
  *  - create table
@@ -1441,6 +1481,8 @@ test_hash(void)
 	if (test_hash_add_delete_jhash_2word() < 0)
 		return -1;
 	if (test_hash_add_delete_jhash_3word() < 0)
+		return -1;
+	if (test_hash_get_key_with_position() < 0)
 		return -1;
 	if (test_hash_find_existing() < 0)
 		return -1;
