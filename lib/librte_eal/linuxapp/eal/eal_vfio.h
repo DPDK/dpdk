@@ -143,16 +143,6 @@ int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 int vfio_enable(const char *modname);
 int vfio_is_enabled(const char *modname);
 
-int vfio_type1_dma_map(int);
-int vfio_noiommu_dma_map(int);
-
-/* IOMMU types we support */
-static const struct vfio_iommu_type iommu_types[] = {
-	/* x86 IOMMU, otherwise known as type 1 */
-	{ RTE_VFIO_TYPE1, "Type 1", &vfio_type1_dma_map},
-	/* IOMMU-less mode */
-	{ RTE_VFIO_NOIOMMU, "No-IOMMU", &vfio_noiommu_dma_map},
-};
 
 #define SOCKET_REQ_CONTAINER 0x100
 #define SOCKET_REQ_GROUP 0x200

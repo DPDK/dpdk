@@ -49,6 +49,17 @@
 /* per-process VFIO config */
 static struct vfio_config vfio_cfg;
 
+static int vfio_type1_dma_map(int);
+static int vfio_noiommu_dma_map(int);
+
+/* IOMMU types we support */
+static const struct vfio_iommu_type iommu_types[] = {
+	/* x86 IOMMU, otherwise known as type 1 */
+	{ RTE_VFIO_TYPE1, "Type 1", &vfio_type1_dma_map},
+	/* IOMMU-less mode */
+	{ RTE_VFIO_NOIOMMU, "No-IOMMU", &vfio_noiommu_dma_map},
+};
+
 int
 vfio_get_group_fd(int iommu_group_no)
 {
@@ -494,7 +505,7 @@ vfio_get_group_no(const char *sysfs_base,
 	return 1;
 }
 
-int
+static int
 vfio_type1_dma_map(int vfio_container_fd)
 {
 	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
@@ -526,7 +537,7 @@ vfio_type1_dma_map(int vfio_container_fd)
 	return 0;
 }
 
-int
+static int
 vfio_noiommu_dma_map(int __rte_unused vfio_container_fd)
 {
 	/* No-IOMMU mode does not need DMA mapping */
