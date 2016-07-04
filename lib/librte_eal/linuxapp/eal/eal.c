@@ -705,12 +705,14 @@ rte_eal_iopl_init(void)
 #ifdef VFIO_PRESENT
 static int rte_eal_vfio_setup(void)
 {
-	if (internal_config.no_pci)
-		return 0;
+	int vfio_enabled = 0;
 
-	pci_vfio_enable();
+	if (!internal_config.no_pci) {
+		pci_vfio_enable();
+		vfio_enabled |= pci_vfio_is_enabled();
+	}
 
-	if (pci_vfio_is_enabled()) {
+	if (vfio_enabled) {
 
 		/* if we are primary process, create a thread to communicate with
 		 * secondary processes. the thread will use a socket to wait for
