@@ -189,19 +189,16 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 }
 
 static int
-nicvf_dev_get_reg_length(struct rte_eth_dev *dev  __rte_unused)
-{
-	return nicvf_reg_get_count();
-}
-
-static int
 nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 {
 	uint64_t *data = regs->data;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 
-	if (data == NULL)
-		return -EINVAL;
+	if (data == NULL) {
+		regs->length = nicvf_reg_get_count();
+		regs->width = THUNDERX_REG_BYTES;
+		return 0;
+	}
 
 	/* Support only full register dump */
 	if ((regs->length == 0) ||
@@ -1623,7 +1620,6 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.rx_queue_count           = nicvf_dev_rx_queue_count,
 	.tx_queue_setup           = nicvf_dev_tx_queue_setup,
 	.tx_queue_release         = nicvf_dev_tx_queue_release,
-	.get_reg_length           = nicvf_dev_get_reg_length,
 	.get_reg                  = nicvf_dev_get_regs,
 };
 

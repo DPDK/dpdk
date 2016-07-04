@@ -46,6 +46,7 @@ int
 rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo)
 {
 	struct rte_eth_dev_info dev_info;
+	struct rte_dev_reg_info reg_info;
 	int n;
 
 	if (drvinfo == NULL)
@@ -65,7 +66,9 @@ rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo)
 		dev_info.pci_dev->addr.domain, dev_info.pci_dev->addr.bus,
 		dev_info.pci_dev->addr.devid, dev_info.pci_dev->addr.function);
 
-	n = rte_eth_dev_get_reg_length(port_id);
+	memset(&reg_info, 0, sizeof(reg_info));
+	rte_eth_dev_get_reg_info(port_id, &reg_info);
+	n = reg_info.length;
 	if (n > 0)
 		drvinfo->regdump_len = n;
 	else
@@ -86,12 +89,16 @@ rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo)
 int
 rte_ethtool_get_regs_len(uint8_t port_id)
 {
-	int count_regs;
+	struct rte_dev_reg_info reg_info;
+	int ret;
 
-	count_regs = rte_eth_dev_get_reg_length(port_id);
-	if (count_regs > 0)
-		return count_regs * sizeof(uint32_t);
-	return count_regs;
+	memset(&reg_info, 0, sizeof(reg_info));
+
+	ret = rte_eth_dev_get_reg_info(port_id, &reg_info);
+	if (ret)
+		return ret;
+
+	return reg_info.length * reg_info.width;
 }
 
 int

@@ -1321,9 +1321,6 @@ typedef int (*eth_timesync_write_time)(struct rte_eth_dev *dev,
 				       const struct timespec *timestamp);
 /**< @internal Function used to get time from the device clock */
 
-typedef int (*eth_get_reg_length_t)(struct rte_eth_dev *dev);
-/**< @internal Retrieve device register count  */
-
 typedef int (*eth_get_reg_t)(struct rte_eth_dev *dev,
 				struct rte_dev_reg_info *info);
 /**< @internal Retrieve registers  */
@@ -1487,8 +1484,6 @@ struct eth_dev_ops {
 	/** Query redirection table. */
 	reta_query_t reta_query;
 
-	eth_get_reg_length_t get_reg_length;
-	/**< Get # of registers */
 	eth_get_reg_t get_reg;
 	/**< Get registers */
 	eth_get_eeprom_length_t get_eeprom_length;
@@ -4061,25 +4056,15 @@ int rte_eth_tx_queue_info_get(uint8_t port_id, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 
 /**
- * Retrieve number of available registers for access
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @return
- *   - (>=0) number of registers if successful.
- *   - (-ENOTSUP) if hardware doesn't support.
- *   - (-ENODEV) if *port_id* invalid.
- *   - others depends on the specific operations implementation.
- */
-int rte_eth_dev_get_reg_length(uint8_t port_id);
-
-/**
- * Retrieve device registers and register attributes
+ * Retrieve device registers and register attributes (number of registers and
+ * register size)
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param info
- *   The template includes buffer for register data and attribute to be filled.
+ *   Pointer to rte_dev_reg_info structure to fill in. If info->data is
+ *   NULL the function fills in the width and length fields. If non-NULL
+ *   the registers are put into the buffer pointed at by the data field.
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.

@@ -440,8 +440,6 @@ static int i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 static int i40e_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					  uint16_t queue_id);
 
-static int i40e_get_reg_length(struct rte_eth_dev *dev);
-
 static int i40e_get_regs(struct rte_eth_dev *dev,
 			 struct rte_dev_reg_info *regs);
 
@@ -524,7 +522,6 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.timesync_adjust_time         = i40e_timesync_adjust_time,
 	.timesync_read_time           = i40e_timesync_read_time,
 	.timesync_write_time          = i40e_timesync_write_time,
-	.get_reg_length	              = i40e_get_reg_length,
 	.get_reg                      = i40e_get_regs,
 	.get_eeprom_length            = i40e_get_eeprom_length,
 	.get_eeprom                   = i40e_get_eeprom,
@@ -9343,12 +9340,6 @@ i40e_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	return 0;
 }
 
-static int i40e_get_reg_length(__rte_unused struct rte_eth_dev *dev)
-{
-	/* Highest base addr + 32-bit word */
-	return I40E_GLGEN_STAT_CLEAR + 4;
-}
-
 static int i40e_get_regs(struct rte_eth_dev *dev,
 			 struct rte_dev_reg_info *regs)
 {
@@ -9356,6 +9347,12 @@ static int i40e_get_regs(struct rte_eth_dev *dev,
 	uint32_t *ptr_data = regs->data;
 	uint32_t reg_idx, arr_idx, arr_idx2, reg_offset;
 	const struct i40e_reg_info *reg_info;
+
+	if (ptr_data == NULL) {
+		regs->length = I40E_GLGEN_STAT_CLEAR + 4;
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
 
 	/* The first few registers have to be read using AQ operations */
 	reg_idx = 0;

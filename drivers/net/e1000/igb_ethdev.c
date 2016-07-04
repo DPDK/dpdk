@@ -386,7 +386,6 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.timesync_disable     = igb_timesync_disable,
 	.timesync_read_rx_timestamp = igb_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp = igb_timesync_read_tx_timestamp,
-	.get_reg_length       = eth_igb_get_reg_length,
 	.get_reg              = eth_igb_get_regs,
 	.get_eeprom_length    = eth_igb_get_eeprom_length,
 	.get_eeprom           = eth_igb_get_eeprom,
@@ -426,7 +425,6 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.rxq_info_get         = igb_rxq_info_get,
 	.txq_info_get         = igb_txq_info_get,
 	.mac_addr_set         = igbvf_default_mac_addr_set,
-	.get_reg_length       = igbvf_get_reg_length,
 	.get_reg              = igbvf_get_regs,
 };
 
@@ -4945,6 +4943,12 @@ eth_igb_get_regs(struct rte_eth_dev *dev,
 	int count = 0;
 	const struct reg_info *reg_group;
 
+	if (data == NULL) {
+		regs->length = eth_igb_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
 	/* Support only full register dump */
 	if ((regs->length == 0) ||
 	    (regs->length == (uint32_t)eth_igb_get_reg_length(dev))) {
@@ -4968,6 +4972,12 @@ igbvf_get_regs(struct rte_eth_dev *dev,
 	int g_ind = 0;
 	int count = 0;
 	const struct reg_info *reg_group;
+
+	if (data == NULL) {
+		regs->length = igbvf_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
 
 	/* Support only full register dump */
 	if ((regs->length == 0) ||

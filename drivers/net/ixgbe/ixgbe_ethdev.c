@@ -538,7 +538,6 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.timesync_disable     = ixgbe_timesync_disable,
 	.timesync_read_rx_timestamp = ixgbe_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp = ixgbe_timesync_read_tx_timestamp,
-	.get_reg_length       = ixgbe_get_reg_length,
 	.get_reg              = ixgbe_get_regs,
 	.get_eeprom_length    = ixgbe_get_eeprom_length,
 	.get_eeprom           = ixgbe_get_eeprom,
@@ -589,7 +588,6 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.rxq_info_get         = ixgbe_rxq_info_get,
 	.txq_info_get         = ixgbe_txq_info_get,
 	.mac_addr_set         = ixgbevf_set_default_mac_addr,
-	.get_reg_length       = ixgbevf_get_reg_length,
 	.get_reg              = ixgbevf_get_regs,
 	.reta_update          = ixgbe_dev_rss_reta_update,
 	.reta_query           = ixgbe_dev_rss_reta_query,
@@ -6316,6 +6314,12 @@ ixgbe_get_regs(struct rte_eth_dev *dev,
 	const struct reg_info **reg_set = (hw->mac.type == ixgbe_mac_82598EB) ?
 				    ixgbe_regs_mac_82598EB : ixgbe_regs_others;
 
+	if (data == NULL) {
+		regs->length = ixgbe_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
 	/* Support only full register dump */
 	if ((regs->length == 0) ||
 	    (regs->length == (uint32_t)ixgbe_get_reg_length(dev))) {
@@ -6339,6 +6343,12 @@ ixgbevf_get_regs(struct rte_eth_dev *dev,
 	int g_ind = 0;
 	int count = 0;
 	const struct reg_info *reg_group;
+
+	if (data == NULL) {
+		regs->length = ixgbevf_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
 
 	/* Support only full register dump */
 	if ((regs->length == 0) ||

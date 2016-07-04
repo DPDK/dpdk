@@ -41,6 +41,7 @@ struct rte_dev_reg_info {
 	void *data; /**< Buffer for return registers */
 	uint32_t offset; /**< Start register table location for access */
 	uint32_t length; /**< Number of registers to fetch */
+	uint32_t width; /**< Size of device register */
 	uint32_t version; /**< Device version */
 };
 
