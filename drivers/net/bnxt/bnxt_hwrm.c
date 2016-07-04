@@ -177,8 +177,7 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
 		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
-	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST |
-				    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
+	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
 				    mask);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
