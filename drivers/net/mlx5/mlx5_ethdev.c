@@ -1150,7 +1150,7 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 /**
  * Change the link state (UP / DOWN).
  *
- * @param dev
+ * @param priv
  *   Pointer to Ethernet device structure.
  * @param up
  *   Nonzero for link up, otherwise link down.
