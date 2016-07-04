@@ -41,7 +41,13 @@ extern "C" {
 #include <linux/limits.h>
 #include <sys/un.h>
 #include <rte_atomic.h>
-#include "channel_commands.h"
+
+/* Maximum number of CPUs */
+#define CHANNEL_CMDS_MAX_CPUS        64
+#if CHANNEL_CMDS_MAX_CPUS > 64
+#error Maximum number of cores is 64, overflow is guaranteed to \
+    cause problems with VM Power Management
+#endif
 
 /* Maximum name length including '\0' terminator */
 #define CHANNEL_MGR_MAX_NAME_LEN    64

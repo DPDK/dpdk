@@ -40,13 +40,6 @@ extern "C" {
 
 #include <stdint.h>
 
-/* Maximum number of CPUs */
-#define CHANNEL_CMDS_MAX_CPUS        64
-#if CHANNEL_CMDS_MAX_CPUS > 64
-#error Maximum number of cores is 64, overflow is guaranteed to \
-	cause problems with VM Power Management
-#endif
-
 /* Maximum number of channels per VM */
 #define CHANNEL_CMDS_MAX_VM_CHANNELS 64
 
