@@ -677,7 +677,7 @@ pdump_create_client_socket(struct pdump_request *p)
 		RTE_LOG(ERR, PDUMP,
 			"Failed to get client socket path: %s:%d\n",
 			__func__, __LINE__);
-		return -1;
+		goto exit;
 	}
 	addr.sun_family = AF_UNIX;
 	addr_len = sizeof(struct sockaddr_un);
@@ -728,6 +728,7 @@ pdump_create_client_socket(struct pdump_request *p)
 		ret = server_resp.err_value;
 	} while (0);
 
+exit:
 	close(socket_fd);
 	unlink(addr.sun_path);
 	return ret;
