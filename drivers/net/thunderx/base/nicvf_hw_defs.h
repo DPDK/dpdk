@@ -164,6 +164,7 @@
 #define RBDR_QUEUE_SZ_128K              (128 * 1024)
 #define RBDR_QUEUE_SZ_256K              (256 * 1024)
 #define RBDR_QUEUE_SZ_512K              (512 * 1024)
+#define RBDR_QUEUE_SZ_MAX               RBDR_QUEUE_SZ_512K
 
 #define RBDR_SIZE_SHIFT                 (13) /* 8k */
 
@@ -174,6 +175,7 @@
 #define SND_QUEUE_SZ_16K                (16 * 1024)
 #define SND_QUEUE_SZ_32K                (32 * 1024)
 #define SND_QUEUE_SZ_64K                (64 * 1024)
+#define SND_QUEUE_SZ_MAX                SND_QUEUE_SZ_64K
 
 #define SND_QSIZE_SHIFT                 (10) /* 1k */
 
@@ -184,6 +186,7 @@
 #define CMP_QUEUE_SZ_16K                (16 * 1024)
 #define CMP_QUEUE_SZ_32K                (32 * 1024)
 #define CMP_QUEUE_SZ_64K                (64 * 1024)
+#define CMP_QUEUE_SZ_MAX                CMP_QUEUE_SZ_64K
 
 #define CMP_QSIZE_SHIFT                 (10) /* 1k */
 
