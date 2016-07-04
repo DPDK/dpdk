@@ -296,7 +296,7 @@ pci_vfio_mp_sync_thread(void __rte_unused * arg)
 
 		switch (ret) {
 		case SOCKET_REQ_CONTAINER:
-			fd = pci_vfio_get_container_fd();
+			fd = vfio_get_container_fd();
 			if (fd < 0)
 				vfio_mp_sync_send_request(conn_sock, SOCKET_ERR);
 			else

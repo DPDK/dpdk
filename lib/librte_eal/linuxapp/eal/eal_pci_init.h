@@ -95,7 +95,6 @@ int pci_vfio_ioport_unmap(struct rte_pci_ioport *p);
 /* map VFIO resource prototype */
 int pci_vfio_map_resource(struct rte_pci_device *dev);
 int pci_vfio_get_group_fd(int iommu_group_fd);
-int pci_vfio_get_container_fd(void);
 
 #endif
 

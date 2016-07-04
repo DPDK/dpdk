@@ -107,6 +107,25 @@ struct vfio_iommu_type {
 	vfio_dma_func_t dma_map_func;
 };
 
+/* pick IOMMU type. returns a pointer to vfio_iommu_type or NULL for error */
+const struct vfio_iommu_type *
+vfio_set_iommu_type(int vfio_container_fd);
+
+/* check if we have any supported extensions */
+int
+vfio_has_supported_extensions(int vfio_container_fd);
+
+/* open container fd or get an existing one */
+int
+vfio_get_container_fd(void);
+
+/* parse IOMMU group number for a device
+ * returns 1 on success, -1 for errors, 0 for non-existent group
+ */
+int
+vfio_get_group_no(const char *sysfs_base,
+		const char *dev_addr, int *iommu_group_no);
+
 int vfio_type1_dma_map(int);
 int vfio_noiommu_dma_map(int);
 

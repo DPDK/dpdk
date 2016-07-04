@@ -203,63 +203,6 @@ pci_vfio_set_bus_master(int dev_fd)
 	return 0;
 }
 
-/* pick IOMMU type. returns a pointer to vfio_iommu_type or NULL for error */
-static const struct vfio_iommu_type *
-pci_vfio_set_iommu_type(int vfio_container_fd) {
-	unsigned idx;
-	for (idx = 0; idx < RTE_DIM(iommu_types); idx++) {
-		const struct vfio_iommu_type *t = &iommu_types[idx];
-
-		int ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU,
-				t->type_id);
-		if (!ret) {
-			RTE_LOG(NOTICE, EAL, "  using IOMMU type %d (%s)\n",
-					t->type_id, t->name);
-			return t;
-		}
-		/* not an error, there may be more supported IOMMU types */
-		RTE_LOG(DEBUG, EAL, "  set IOMMU type %d (%s) failed, "
-				"error %i (%s)\n", t->type_id, t->name, errno,
-				strerror(errno));
-	}
-	/* if we didn't find a suitable IOMMU type, fail */
-	return NULL;
-}
-
-/* check if we have any supported extensions */
-static int
-pci_vfio_has_supported_extensions(int vfio_container_fd) {
-	int ret;
-	unsigned idx, n_extensions = 0;
-	for (idx = 0; idx < RTE_DIM(iommu_types); idx++) {
-		const struct vfio_iommu_type *t = &iommu_types[idx];
-
-		ret = ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION,
-				t->type_id);
-		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "  could not get IOMMU type, "
-				"error %i (%s)\n", errno,
-				strerror(errno));
-			close(vfio_container_fd);
-			return -1;
-		} else if (ret == 1) {
-			/* we found a supported extension */
-			n_extensions++;
-		}
-		RTE_LOG(DEBUG, EAL, "  IOMMU type %d (%s) is %s\n",
-				t->type_id, t->name,
-				ret ? "supported" : "not supported");
-	}
-
-	/* if we didn't find any supported IOMMU types, fail */
-	if (!n_extensions) {
-		close(vfio_container_fd);
-		return -1;
-	}
-
-	return 0;
-}
-
 /* set up interrupt support (but not enable interrupts) */
 static int
 pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
@@ -353,71 +296,6 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 	}
 
 	/* if we're here, we haven't found a suitable interrupt vector */
-	return -1;
-}
-
-/* open container fd or get an existing one */
-int
-pci_vfio_get_container_fd(void)
-{
-	int ret, vfio_container_fd;
-
-	/* if we're in a primary process, try to open the container */
-	if (internal_config.process_type == RTE_PROC_PRIMARY) {
-		vfio_container_fd = open(VFIO_CONTAINER_PATH, O_RDWR);
-		if (vfio_container_fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot open VFIO container, "
-					"error %i (%s)\n", errno, strerror(errno));
-			return -1;
-		}
-
-		/* check VFIO API version */
-		ret = ioctl(vfio_container_fd, VFIO_GET_API_VERSION);
-		if (ret != VFIO_API_VERSION) {
-			if (ret < 0)
-				RTE_LOG(ERR, EAL, "  could not get VFIO API version, "
-						"error %i (%s)\n", errno, strerror(errno));
-			else
-				RTE_LOG(ERR, EAL, "  unsupported VFIO API version!\n");
-			close(vfio_container_fd);
-			return -1;
-		}
-
-		ret = pci_vfio_has_supported_extensions(vfio_container_fd);
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  no supported IOMMU "
-					"extensions found!\n");
-			return -1;
-		}
-
-		return vfio_container_fd;
-	} else {
-		/*
-		 * if we're in a secondary process, request container fd from the
-		 * primary process via our socket
-		 */
-		int socket_fd;
-
-		socket_fd = vfio_mp_sync_connect_to_primary();
-		if (socket_fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot connect to primary process!\n");
-			return -1;
-		}
-		if (vfio_mp_sync_send_request(socket_fd, SOCKET_REQ_CONTAINER) < 0) {
-			RTE_LOG(ERR, EAL, "  cannot request container fd!\n");
-			close(socket_fd);
-			return -1;
-		}
-		vfio_container_fd = vfio_mp_sync_receive_fd(socket_fd);
-		if (vfio_container_fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot get container fd!\n");
-			close(socket_fd);
-			return -1;
-		}
-		close(socket_fd);
-		return vfio_container_fd;
-	}
-
 	return -1;
 }
 
@@ -523,43 +401,7 @@ pci_vfio_get_group_fd(int iommu_group_no)
 static int
 pci_vfio_get_group_no(const char *pci_addr, int *iommu_group_no)
 {
-	char linkname[PATH_MAX];
-	char filename[PATH_MAX];
-	char *tok[16], *group_tok, *end;
-	int ret;
-
-	memset(linkname, 0, sizeof(linkname));
-	memset(filename, 0, sizeof(filename));
-
-	/* try to find out IOMMU group for this device */
-	snprintf(linkname, sizeof(linkname),
-			 "%s/%s/iommu_group", pci_get_sysfs_path(), pci_addr);
-
-	ret = readlink(linkname, filename, sizeof(filename));
-
-	/* if the link doesn't exist, no VFIO for us */
-	if (ret < 0)
-		return 0;
-
-	ret = rte_strsplit(filename, sizeof(filename),
-			tok, RTE_DIM(tok), '/');
-
-	if (ret <= 0) {
-		RTE_LOG(ERR, EAL, "  %s cannot get IOMMU group\n", pci_addr);
-		return -1;
-	}
-
-	/* IOMMU group is always the last token */
-	errno = 0;
-	group_tok = tok[ret - 1];
-	end = group_tok;
-	*iommu_group_no = strtol(group_tok, &end, 10);
-	if ((end != group_tok && *end != '\0') || errno != 0) {
-		RTE_LOG(ERR, EAL, "  %s error parsing IOMMU number!\n", pci_addr);
-		return -1;
-	}
-
-	return 1;
+	return vfio_get_group_no(pci_get_sysfs_path(), pci_addr, iommu_group_no);
 }
 
 static void
@@ -689,7 +531,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 			vfio_cfg.vfio_container_has_dma == 0) {
 		/* select an IOMMU type which we will be using */
 		const struct vfio_iommu_type *t =
-				pci_vfio_set_iommu_type(vfio_cfg.vfio_container_fd);
+				vfio_set_iommu_type(vfio_cfg.vfio_container_fd);
 		if (!t) {
 			RTE_LOG(ERR, EAL, "  %s failed to select IOMMU type\n", pci_addr);
 			return -1;
@@ -1007,7 +849,7 @@ pci_vfio_enable(void)
 		return 0;
 	}
 
-	vfio_cfg.vfio_container_fd = pci_vfio_get_container_fd();
+	vfio_cfg.vfio_container_fd = vfio_get_container_fd();
 
 	/* check if we have VFIO driver enabled */
 	if (vfio_cfg.vfio_container_fd != -1) {
