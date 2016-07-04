@@ -411,37 +411,22 @@ clear_current_group(void)
 	vfio_cfg.vfio_groups[vfio_cfg.vfio_group_idx].fd = -1;
 }
 
-
-/*
- * map the PCI resources of a PCI device in virtual memory (VFIO version).
- * primary and secondary processes follow almost exactly the same path
+/**
+ * Setup vfio_cfg for the device indentified by its address. It discovers
+ * the configured I/O MMU groups or sets a new one for the device. If a new
+ * groups is assigned, the DMA mapping is performed.
+ * Returns 0 on success, a negative value on failure and a positive value in
+ * case the given device cannot be managed this way.
  */
-int
-pci_vfio_map_resource(struct rte_pci_device *dev)
+static int pci_vfio_setup_device(const char *pci_addr, int *vfio_dev_fd,
+		struct vfio_device_info *device_info)
 {
 	struct vfio_group_status group_status = {
 			.argsz = sizeof(group_status)
 	};
-	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
-	int vfio_group_fd, vfio_dev_fd;
+	int vfio_group_fd;
 	int iommu_group_no;
-	char pci_addr[PATH_MAX] = {0};
-	struct rte_pci_addr *loc = &dev->addr;
-	int i, ret, msix_bar;
-	struct mapped_pci_resource *vfio_res = NULL;
-	struct mapped_pci_res_list *vfio_res_list = RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
-
-	struct pci_map *maps;
-	uint32_t msix_table_offset = 0;
-	uint32_t msix_table_size = 0;
-	uint32_t ioport_bar;
-
-	dev->intr_handle.fd = -1;
-	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
-
-	/* store PCI address string */
-	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
-			loc->domain, loc->bus, loc->devid, loc->function);
+	int ret;
 
 	/* get group number */
 	ret = pci_vfio_get_group_no(pci_addr, &iommu_group_no);
@@ -476,8 +461,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	}
 
 	/*
-	 * at this point, we know at least one port on this device is bound to VFIO,
-	 * so we can proceed to try and set this particular port up
+	 * at this point, we know that this group is viable (meaning, all devices
+	 * are either bound to VFIO or not bound to anything)
 	 */
 
 	/* check if the group is viable */
@@ -494,11 +479,6 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		clear_current_group();
 		return -1;
 	}
-
-	/*
-	 * at this point, we know that this group is viable (meaning, all devices
-	 * are either bound to VFIO or not bound to anything)
-	 */
 
 	/* check if group does not have a container yet */
 	if (!(group_status.flags & VFIO_GROUP_FLAGS_CONTAINER_SET)) {
@@ -546,8 +526,8 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	}
 
 	/* get a file descriptor for the device */
-	vfio_dev_fd = ioctl(vfio_group_fd, VFIO_GROUP_GET_DEVICE_FD, pci_addr);
-	if (vfio_dev_fd < 0) {
+	*vfio_dev_fd = ioctl(vfio_group_fd, VFIO_GROUP_GET_DEVICE_FD, pci_addr);
+	if (*vfio_dev_fd < 0) {
 		/* if we cannot get a device fd, this simply means that this
 		 * particular port is not bound to VFIO
 		 */
@@ -557,13 +537,46 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	}
 
 	/* test and setup the device */
-	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_INFO, &device_info);
+	ret = ioctl(*vfio_dev_fd, VFIO_DEVICE_GET_INFO, device_info);
 	if (ret) {
 		RTE_LOG(ERR, EAL, "  %s cannot get device info, "
 				"error %i (%s)\n", pci_addr, errno, strerror(errno));
-		close(vfio_dev_fd);
+		close(*vfio_dev_fd);
 		return -1;
 	}
+
+	return 0;
+}
+
+/*
+ * map the PCI resources of a PCI device in virtual memory (VFIO version).
+ * primary and secondary processes follow almost exactly the same path
+ */
+int
+pci_vfio_map_resource(struct rte_pci_device *dev)
+{
+	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
+	char pci_addr[PATH_MAX] = {0};
+	int vfio_dev_fd;
+	struct rte_pci_addr *loc = &dev->addr;
+	int i, ret, msix_bar;
+	struct mapped_pci_resource *vfio_res = NULL;
+	struct mapped_pci_res_list *vfio_res_list = RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+
+	struct pci_map *maps;
+	uint32_t msix_table_offset = 0;
+	uint32_t msix_table_size = 0;
+	uint32_t ioport_bar;
+
+	dev->intr_handle.fd = -1;
+	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+
+	/* store PCI address string */
+	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
+			loc->domain, loc->bus, loc->devid, loc->function);
+
+	if ((ret = pci_vfio_setup_device(pci_addr, &vfio_dev_fd, &device_info)))
+		return ret;
 
 	/* get MSI-X BAR, if any (we have to know where it is because we can't
 	 * easily mmap it when using VFIO) */
