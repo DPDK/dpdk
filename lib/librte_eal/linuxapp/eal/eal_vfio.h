@@ -131,7 +131,7 @@ int
 vfio_get_group_fd(int iommu_group_no);
 
 /**
- * Setup vfio_cfg for the device indentified by its address. It discovers
+ * Setup vfio_cfg for the device identified by its address. It discovers
  * the configured I/O MMU groups or sets a new one for the device. If a new
  * groups is assigned, the DMA mapping is performed.
  * Returns 0 on success, a negative value on failure and a positive value in
