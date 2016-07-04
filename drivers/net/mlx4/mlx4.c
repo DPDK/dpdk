@@ -689,7 +689,7 @@ priv_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
 	if (priv_get_sysfs_ulong(priv, "flags", &tmp) == -1)
 		return -1;
 	tmp &= keep;
-	tmp |= flags;
+	tmp |= (flags & (~keep));
 	return priv_set_sysfs_ulong(priv, "flags", tmp);
 }
 
