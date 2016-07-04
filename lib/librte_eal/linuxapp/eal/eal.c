@@ -82,6 +82,7 @@
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
 #include "eal_options.h"
+#include "eal_vfio.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
@@ -701,6 +702,31 @@ rte_eal_iopl_init(void)
 	return 0;
 }
 
+#ifdef VFIO_PRESENT
+static int rte_eal_vfio_setup(void)
+{
+	if (internal_config.no_pci)
+		return 0;
+
+	pci_vfio_enable();
+
+	if (pci_vfio_is_enabled()) {
+
+		/* if we are primary process, create a thread to communicate with
+		 * secondary processes. the thread will use a socket to wait for
+		 * requests from secondary process to send open file descriptors,
+		 * because VFIO does not allow multiple open descriptors on a group or
+		 * VFIO container.
+		 */
+		if (internal_config.process_type == RTE_PROC_PRIMARY &&
+				vfio_mp_sync_setup() < 0)
+			return -1;
+	}
+
+	return 0;
+}
+#endif
+
 /* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
@@ -763,6 +789,11 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
+
+#ifdef VFIO_PRESENT
+	if (rte_eal_vfio_setup() < 0)
+		rte_panic("Cannot init VFIO\n");
+#endif
 
 #ifdef RTE_LIBRTE_IVSHMEM
 	if (rte_eal_ivshmem_init() < 0)

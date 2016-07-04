@@ -754,21 +754,6 @@ rte_eal_pci_init(void)
 		RTE_LOG(ERR, EAL, "%s(): Cannot scan PCI bus\n", __func__);
 		return -1;
 	}
-#ifdef VFIO_PRESENT
-	pci_vfio_enable();
 
-	if (pci_vfio_is_enabled()) {
-
-		/* if we are primary process, create a thread to communicate with
-		 * secondary processes. the thread will use a socket to wait for
-		 * requests from secondary process to send open file descriptors,
-		 * because VFIO does not allow multiple open descriptors on a group or
-		 * VFIO container.
-		 */
-		if (internal_config.process_type == RTE_PROC_PRIMARY &&
-				vfio_mp_sync_setup() < 0)
-			return -1;
-	}
-#endif
 	return 0;
 }
