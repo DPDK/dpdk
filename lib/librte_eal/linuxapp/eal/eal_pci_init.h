@@ -76,7 +76,6 @@ int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 
 int pci_vfio_enable(void);
 int pci_vfio_is_enabled(void);
-int pci_vfio_mp_sync_setup(void);
 
 /* access config space */
 int pci_vfio_read_config(const struct rte_intr_handle *intr_handle,

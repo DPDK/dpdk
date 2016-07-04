@@ -265,7 +265,7 @@ vfio_mp_sync_connect_to_primary(void)
  * socket listening thread for primary process
  */
 static __attribute__((noreturn)) void *
-pci_vfio_mp_sync_thread(void __rte_unused * arg)
+vfio_mp_sync_thread(void __rte_unused * arg)
 {
 	int ret, fd, vfio_group_no;
 
@@ -376,7 +376,7 @@ vfio_mp_sync_socket_setup(void)
  * set up a local socket and tell it to listen for incoming connections
  */
 int
-pci_vfio_mp_sync_setup(void)
+vfio_mp_sync_setup(void)
 {
 	int ret;
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
@@ -387,7 +387,7 @@ pci_vfio_mp_sync_setup(void)
 	}
 
 	ret = pthread_create(&socket_thread, NULL,
-			pci_vfio_mp_sync_thread, NULL);
+			vfio_mp_sync_thread, NULL);
 	if (ret) {
 		RTE_LOG(ERR, EAL,
 			"Failed to create thread for communication with secondary processes!\n");
@@ -396,7 +396,7 @@ pci_vfio_mp_sync_setup(void)
 	}
 
 	/* Set thread_name for aid in debugging. */
-	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "pci-vfio-sync");
+	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN, "vfio-sync");
 	ret = rte_thread_setname(socket_thread, thread_name);
 	if (ret)
 		RTE_LOG(DEBUG, EAL,

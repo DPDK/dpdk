@@ -766,7 +766,7 @@ rte_eal_pci_init(void)
 		 * VFIO container.
 		 */
 		if (internal_config.process_type == RTE_PROC_PRIMARY &&
-				pci_vfio_mp_sync_setup() < 0)
+				vfio_mp_sync_setup() < 0)
 			return -1;
 	}
 #endif

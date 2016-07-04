@@ -67,10 +67,10 @@ endif
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_thread.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_log.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_vfio.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_vfio_mp_sync.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci_uio.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci_vfio.c
-SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_pci_vfio_mp_sync.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_debug.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_lcore.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_timer.c
@@ -111,7 +111,7 @@ CFLAGS_eal_common_cpuflags.o := $(CPUFLAGS_LIST)
 
 CFLAGS_eal.o := -D_GNU_SOURCE
 CFLAGS_eal_interrupts.o := -D_GNU_SOURCE
-CFLAGS_eal_pci_vfio_mp_sync.o := -D_GNU_SOURCE
+CFLAGS_eal_vfio_mp_sync.o := -D_GNU_SOURCE
 CFLAGS_eal_timer.o := -D_GNU_SOURCE
 CFLAGS_eal_lcore.o := -D_GNU_SOURCE
 CFLAGS_eal_thread.o := -D_GNU_SOURCE
