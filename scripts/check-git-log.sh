@@ -52,8 +52,9 @@ range=${1:-origin/master..}
 commits=$(git log --format='%h' $range)
 headlines=$(git log --format='%s' $range)
 bodylines=$(git log --format='%b' $range)
-tags=$(git log --format='%b' $range | grep -i -e 'by *:' -e 'fix.*:')
 fixes=$(git log --format='%h %s' $range | grep -i ': *fix' | cut -d' ' -f1)
+tags=$(git log --format='%b' $range | grep -i -e 'by *:' -e 'fix.*:')
+bytag='\(Reported\|Suggested\|Signed-off\|Acked\|Reviewed\|Tested\)-by:'
 
 # check headline format (spacing, no punctuation, no code)
 bad=$(echo "$headlines" | grep --color=always \
@@ -108,11 +109,15 @@ bad=$(echo "$headlines" | grep -E --color=always \
 [ -z "$bad" ] || printf "Wrong headline lowercase:\n$bad\n"
 
 # check headline length (60 max)
-bad=$(echo "$headlines" | awk 'length>60 {print}' | sed 's,^,\t,')
+bad=$(echo "$headlines" |
+	awk 'length>60 {print}' |
+	sed 's,^,\t,')
 [ -z "$bad" ] || printf "Headline too long:\n$bad\n"
 
 # check body lines length (75 max)
-bad=$(echo "$bodylines" | grep -v '^Fixes:' | awk 'length>75 {print}' | sed 's,^,\t,')
+bad=$(echo "$bodylines" | grep -v '^Fixes:' |
+	awk 'length>75 {print}' |
+	sed 's,^,\t,')
 [ -z "$bad" ] || printf "Line too long:\n$bad\n"
 
 # check starting commit message with "It"
@@ -124,7 +129,7 @@ done | sed 's,^,\t,')
 
 # check tags spelling
 bad=$(echo "$tags" |
-	grep -v '^\(Reported\|Suggested\|Signed-off\|Acked\|Reviewed\|Tested\)-by: [^,]* <.*@.*>$' |
+	grep -v "^$bytag [^,]* <.*@.*>$" |
 	grep -v '^Fixes: [0-9a-f]\{7\}[0-9a-f]* (".*")$' |
 	sed 's,^.,\t&,')
 [ -z "$bad" ] || printf "Wrong tag:\n$bad\n"
