@@ -49,6 +49,7 @@ fi
 
 range=${1:-origin/master..}
 
+commits=$(git log --format='%h' $range)
 headlines=$(git log --format='%s' $range)
 bodylines=$(git log --format='%b' $range)
 tags=$(git log --format='%b' $range | grep -i -e 'by *:' -e 'fix.*:')
@@ -115,9 +116,10 @@ bad=$(echo "$bodylines" | grep -v '^Fixes:' | awk 'length>75 {print}' | sed 's,^
 [ -z "$bad" ] || printf "Line too long:\n$bad\n"
 
 # check starting commit message with "It"
-bad=$(echo "$bodylines" | head -n1 | grep -E --color=always \
-	-ie '^It ' \
-	| sed 's,^,\t,')
+bad=$(for commit in $commits ; do
+	firstbodyline=$(git log --format='%b' -1 $commit | head -n1)
+	echo "$firstbodyline" | grep --color=always -ie '^It '
+done | sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong beginning of commit message:\n$bad\n"
 
 # check tags spelling
