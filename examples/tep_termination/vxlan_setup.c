@@ -249,7 +249,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 
 	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
 
-	if (unlikely(portid > VXLAN_N_PORTS)) {
+	if (unlikely(portid >= VXLAN_N_PORTS)) {
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) WARNING: Not configuring device,"
 			"as already have %d ports for VXLAN.",
