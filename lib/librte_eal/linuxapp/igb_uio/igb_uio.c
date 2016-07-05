@@ -342,16 +342,6 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		goto fail_free;
 	}
 
-	/*
-	 * reserve device's PCI memory regions for use by this
-	 * module
-	 */
-	err = pci_request_regions(dev, "igb_uio");
-	if (err != 0) {
-		dev_err(&dev->dev, "Cannot request regions\n");
-		goto fail_disable;
-	}
-
 	/* enable bus mastering on the device */
 	pci_set_master(dev);
 
@@ -441,8 +431,6 @@ fail_release_iomem:
 	igbuio_pci_release_iomem(&udev->info);
 	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(udev->pdev);
-	pci_release_regions(dev);
-fail_disable:
 	pci_disable_device(dev);
 fail_free:
 	kfree(udev);
@@ -460,7 +448,6 @@ igbuio_pci_remove(struct pci_dev *dev)
 	igbuio_pci_release_iomem(&udev->info);
 	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(dev);
-	pci_release_regions(dev);
 	pci_disable_device(dev);
 	pci_set_drvdata(dev, NULL);
 	kfree(udev);

@@ -195,6 +195,21 @@ Resolved Issues
 EAL
 ~~~
 
+* **igb_uio: Fixed possible mmap failure for Linux >= 4.5.**
+
+  mmaping the iomem range of the PCI device fails for kernels that
+  enabled CONFIG_IO_STRICT_DEVMEM option:
+
+  EAL: pci_map_resource():
+           cannot mmap(39, 0x7f1c51800000, 0x100000, 0x0):
+           Invalid argument (0xffffffffffffffff)
+
+  CONFIG_IO_STRICT_DEVMEM is introduced in Linux v4.5
+
+  Updated igb_uio to stop reserving PCI memory resources, from
+  kernel point of view iomem region looks like idle and mmap worked
+  again. This matches uio_pci_generic usage.
+
 
 Drivers
 ~~~~~~~
