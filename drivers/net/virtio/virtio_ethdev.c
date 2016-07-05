@@ -166,7 +166,7 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 
 	ctrl->status = status;
 
-	if (!cvq && !cvq->vq) {
+	if (!cvq || !cvq->vq) {
 		PMD_INIT_LOG(ERR, "Control queue is not supported.");
 		return -1;
 	}
