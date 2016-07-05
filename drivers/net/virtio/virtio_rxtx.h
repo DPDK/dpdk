@@ -86,10 +86,9 @@ struct virtnet_ctl {
 	const struct rte_memzone *mz;   /**< mem zone to populate RX ring. */
 };
 
-#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 int virtio_rxq_vec_setup(struct virtnet_rx *rxvq);
 
 int virtqueue_enqueue_recv_refill_simple(struct virtqueue *vq,
 	struct rte_mbuf *m);
-#endif
+
 #endif /* _VIRTIO_RXTX_H_ */

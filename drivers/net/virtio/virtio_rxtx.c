@@ -67,10 +67,6 @@
 #define VIRTIO_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
 	ETH_TXQ_FLAGS_NOOFFLOADS)
 
-#ifdef RTE_MACHINE_CPUFLAG_SSSE3
-static int use_simple_rxtx;
-#endif
-
 static void
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 {
@@ -334,6 +330,7 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 	 */
 	uint16_t i;
 	uint16_t desc_idx;
+	struct virtio_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -354,8 +351,7 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 		nbufs = 0;
 		error = ENOSPC;
 
-#ifdef RTE_MACHINE_CPUFLAG_SSSE3
-		if (use_simple_rxtx) {
+		if (hw->use_simple_rxtx) {
 			for (desc_idx = 0; desc_idx < vq->vq_nentries;
 			     desc_idx++) {
 				vq->vq_ring.avail->ring[desc_idx] = desc_idx;
@@ -363,7 +359,7 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 					VRING_DESC_F_WRITE;
 			}
 		}
-#endif
+
 		memset(&rxvq->fake_mbuf, 0, sizeof(rxvq->fake_mbuf));
 		for (desc_idx = 0; desc_idx < RTE_PMD_VIRTIO_RX_MAX_BURST;
 		     desc_idx++) {
@@ -379,12 +375,11 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 			/******************************************
 			*         Enqueue allocated buffers        *
 			*******************************************/
-#ifdef RTE_MACHINE_CPUFLAG_SSSE3
-			if (use_simple_rxtx)
+			if (hw->use_simple_rxtx)
 				error = virtqueue_enqueue_recv_refill_simple(vq, m);
 			else
-#endif
 				error = virtqueue_enqueue_recv_refill(vq, m);
+
 			if (error) {
 				rte_pktmbuf_free(m);
 				break;
@@ -405,8 +400,7 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 		struct virtqueue *vq = txvq->vq;
 
 		virtio_dev_vring_start(vq);
-#ifdef RTE_MACHINE_CPUFLAG_SSSE3
-		if (use_simple_rxtx) {
+		if (hw->use_simple_rxtx) {
 			uint16_t mid_idx  = vq->vq_nentries >> 1;
 
 			for (desc_idx = 0; desc_idx < mid_idx; desc_idx++) {
@@ -427,7 +421,7 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 			     desc_idx++)
 				vq->vq_ring.avail->ring[desc_idx] = desc_idx;
 		}
-#endif
+
 		VIRTQUEUE_DUMP(vq);
 	}
 }
@@ -457,9 +451,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->rx_queues[queue_idx] = rxvq;
 
-#ifdef RTE_MACHINE_CPUFLAG_SSSE3
 	virtio_rxq_vec_setup(rxvq);
-#endif
 
 	return 0;
 }
@@ -524,7 +516,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(INFO, "Using simple rx/tx path");
 		dev->tx_pkt_burst = virtio_xmit_pkts_simple;
 		dev->rx_pkt_burst = virtio_recv_pkts_vec;
-		use_simple_rxtx = 1;
+		hw->use_simple_rxtx = 1;
 	}
 #endif
 

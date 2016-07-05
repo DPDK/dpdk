@@ -50,10 +50,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtqueue.c
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_pci.c
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_ethdev.c
-
-ifeq ($(findstring RTE_MACHINE_CPUFLAG_SSSE3,$(CFLAGS)),RTE_MACHINE_CPUFLAG_SSSE3)
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_rxtx_simple.c
-endif
 
 ifeq ($(CONFIG_RTE_VIRTIO_USER),y)
 SRCS-$(CONFIG_RTE_LIBRTE_VIRTIO_PMD) += virtio_user/vhost_user.c

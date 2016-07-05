@@ -304,6 +304,7 @@ virtio_user_eth_dev_alloc(const char *name)
 	hw->vtpci_ops = &virtio_user_ops;
 	hw->use_msix = 0;
 	hw->modern   = 0;
+	hw->use_simple_rxtx = 0;
 	hw->virtio_user_dev = dev;
 	data->dev_private = hw;
 	data->numa_node = SOCKET_ID_ANY;

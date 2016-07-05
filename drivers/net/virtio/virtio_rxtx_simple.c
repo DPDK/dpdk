@@ -37,8 +37,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include <tmmintrin.h>
-
 #include <rte_cycles.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
@@ -131,6 +129,10 @@ virtio_rxq_rearm_vec(struct virtnet_rx *rxvq)
 	vq->vq_free_cnt -= RTE_VIRTIO_VPMD_RX_REARM_THRESH;
 	vq_update_avail_idx(vq);
 }
+
+#ifdef RTE_MACHINE_CPUFLAG_SSSE3
+
+#include <tmmintrin.h>
 
 /* virtio vPMD receive routine, only accept(nb_pkts >= RTE_VIRTIO_DESC_PER_LOOP)
  *
@@ -293,6 +295,8 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rxvq->stats.packets += nb_pkts_received;
 	return nb_pkts_received;
 }
+
+#endif
 
 #define VIRTIO_TX_FREE_THRESH 32
 #define VIRTIO_TX_MAX_FREE_BUF_SZ 32
