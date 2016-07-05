@@ -6921,6 +6921,9 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 		mask &= ~(1UL << i);
 		/* Bit set indicats the coresponding flow type is supported */
 		g_cfg->valid_bit_mask[0] |= (1UL << i);
+		/* if flowtype is invalid, continue */
+		if (!I40E_VALID_FLOW(i))
+			continue;
 		pctype = i40e_flowtype_to_pctype(i);
 		reg = i40e_read_rx_ctl(hw, I40E_GLQF_HSYM(pctype));
 		if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK)
@@ -6992,6 +6995,9 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 		if (!(mask0 & (1UL << i)))
 			continue;
 		mask0 &= ~(1UL << i);
+		/* if flowtype is invalid, continue */
+		if (!I40E_VALID_FLOW(i))
+			continue;
 		pctype = i40e_flowtype_to_pctype(i);
 		reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
 				I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
@@ -7554,13 +7560,11 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 		return -EINVAL;
 	}
 
-	pctype = i40e_flowtype_to_pctype(conf->flow_type);
-	if (pctype == 0 || pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
-		PMD_DRV_LOG(ERR, "Not supported flow type (%u)",
-			    conf->flow_type);
+	if (!I40E_VALID_FLOW(conf->flow_type)) {
+		PMD_DRV_LOG(ERR, "invalid flow_type input.");
 		return -EINVAL;
 	}
-
+	pctype = i40e_flowtype_to_pctype(conf->flow_type);
 	ret = i40e_parse_input_set(&input_set, pctype, conf->field,
 				   conf->inset_size);
 	if (ret) {
@@ -7625,12 +7629,11 @@ i40e_fdir_filter_inset_select(struct i40e_pf *pf,
 		return -EINVAL;
 	}
 
-	pctype = i40e_flowtype_to_pctype(conf->flow_type);
-	if (pctype == 0 || pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
-		PMD_DRV_LOG(ERR, "Not supported flow type (%u)",
-			    conf->flow_type);
+	if (!I40E_VALID_FLOW(conf->flow_type)) {
+		PMD_DRV_LOG(ERR, "invalid flow_type input.");
 		return -EINVAL;
 	}
+	pctype = i40e_flowtype_to_pctype(conf->flow_type);
 	ret = i40e_parse_input_set(&input_set, pctype, conf->field,
 				   conf->inset_size);
 	if (ret) {
