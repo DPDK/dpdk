@@ -109,11 +109,14 @@ bad=$(echo "$headlines" | grep --color=always \
 bad=$(echo "$headlines" | grep -E --color=always \
 	-e '\<(rx|tx|RX|TX)\>' \
 	-e '\<[pv]f\>' \
+	-e '\<[hsf]w\>' \
 	-e '\<l[234]\>' \
+	-e ':.*\<api\>' \
 	-e ':.*\<dma\>' \
 	-e ':.*\<pci\>' \
 	-e ':.*\<mtu\>' \
 	-e ':.*\<mac\>' \
+	-e ':.*\<numa\>' \
 	-e ':.*\<vlan\>' \
 	-e ':.*\<rss\>' \
 	-e ':.*\<freebsd\>' \
@@ -125,6 +128,12 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<armv8\>' \
 	| sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong headline lowercase:\n$bad\n"
+
+# special case check for VMDq to give good error message
+bad=$(echo "$headlines" | grep -E --color=always \
+	-e '\<(vmdq|VMDQ)\>' \
+	| sed 's,^,\t,')
+[ -z "$bad" ] || printf "Wrong headline capitalization, use 'VMDq':\n$bad\n"
 
 # check headline length (60 max)
 bad=$(echo "$headlines" |
