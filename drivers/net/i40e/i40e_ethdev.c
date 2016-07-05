@@ -3170,12 +3170,15 @@ i40e_get_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 static int
 i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 {
-	struct i40e_pf *pf = I40E_VSI_TO_PF(vsi);
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	struct i40e_pf *pf;
+	struct i40e_hw *hw;
 	int ret;
 
 	if (!vsi || !lut)
 		return -EINVAL;
+
+	pf = I40E_VSI_TO_PF(vsi);
+	hw = I40E_VSI_TO_HW(vsi);
 
 	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
 		ret = i40e_aq_set_rss_lut(hw, vsi->vsi_id, TRUE,
