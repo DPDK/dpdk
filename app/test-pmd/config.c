@@ -1201,14 +1201,9 @@ simple_fwd_config_setup(void)
 }
 
 /**
- * For the RSS forwarding test, each core is assigned on every port a transmit
- * queue whose index is the index of the core itself. This approach limits the
- * maximumm number of processing cores of the RSS test to the maximum number of
- * TX queues supported by the devices.
- *
- * Each core is assigned a single stream, each stream being composed of
- * a RX queue to poll on a RX port for input messages, associated with
- * a TX queue of a TX port where to send forwarded packets.
+ * For the RSS forwarding test all streams distributed over lcores. Each stream
+ * being composed of a RX queue to poll on a RX port for input messages,
+ * associated with a TX queue of a TX port where to send forwarded packets.
  * All packets received on the RX queue of index "RxQj" of the RX port "RxPi"
  * are sent on the TX queue "TxQl" of the TX port "TxPk" according to the two
  * following rules:
@@ -1222,7 +1217,7 @@ rss_fwd_config_setup(void)
 	portid_t   txp;
 	queueid_t  rxq;
 	queueid_t  nb_q;
-	lcoreid_t  lc_id;
+	streamid_t  sm_id;
 
 	nb_q = nb_rxq;
 	if (nb_q > nb_txq)
@@ -1241,10 +1236,10 @@ rss_fwd_config_setup(void)
 
 	setup_fwd_config_of_each_lcore(&cur_fwd_config);
 	rxp = 0; rxq = 0;
-	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_streams; lc_id++) {
+	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++) {
 		struct fwd_stream *fs;
 
-		fs = fwd_streams[lc_id];
+		fs = fwd_streams[sm_id];
 
 		if ((rxp & 0x1) == 0)
 			txp = (portid_t) (rxp + 1);
