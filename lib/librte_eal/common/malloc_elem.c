@@ -275,11 +275,14 @@ malloc_elem_free(struct malloc_elem *elem)
 		return -1;
 
 	rte_spinlock_lock(&(elem->heap->lock));
+	size_t sz = elem->size - sizeof(*elem);
+	uint8_t *ptr = (uint8_t *)&elem[1];
 	struct malloc_elem *next = RTE_PTR_ADD(elem, elem->size);
 	if (next->state == ELEM_FREE){
 		/* remove from free list, join to this one */
 		elem_free_list_remove(next);
 		join_elem(elem, next);
+		sz += sizeof(*elem);
 	}
 
 	/* check if previous element is free, if so join with it and return,
@@ -288,15 +291,17 @@ malloc_elem_free(struct malloc_elem *elem)
 	if (elem->prev != NULL && elem->prev->state == ELEM_FREE) {
 		elem_free_list_remove(elem->prev);
 		join_elem(elem->prev, elem);
-		malloc_elem_free_list_insert(elem->prev);
+		sz += sizeof(*elem);
+		ptr -= sizeof(*elem);
+		elem = elem->prev;
 	}
-	/* otherwise add ourselves to the free list */
-	else {
-		malloc_elem_free_list_insert(elem);
-		elem->pad = 0;
-	}
+	malloc_elem_free_list_insert(elem);
+
 	/* decrease heap's count of allocated elements */
 	elem->heap->alloc_count--;
+
+	memset(ptr, 0, sz);
+
 	rte_spinlock_unlock(&(elem->heap->lock));
 
 	return 0;
