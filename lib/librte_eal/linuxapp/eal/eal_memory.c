@@ -1136,7 +1136,7 @@ int
 rte_eal_hugepage_init(void)
 {
 	struct rte_mem_config *mcfg;
-	struct hugepage_file *hugepage, *tmp_hp = NULL;
+	struct hugepage_file *hugepage = NULL, *tmp_hp = NULL;
 	struct hugepage_info used_hp[MAX_HUGEPAGE_SIZES];
 
 	uint64_t memory[RTE_MAX_NUMA_NODES];
@@ -1479,14 +1479,19 @@ rte_eal_hugepage_init(void)
 			"of memory.\n",
 			i, nr_hugefiles, RTE_STR(CONFIG_RTE_MAX_MEMSEG),
 			RTE_MAX_MEMSEG);
-		return -ENOMEM;
+		goto fail;
 	}
+
+	munmap(hugepage, nr_hugefiles * sizeof(struct hugepage_file));
 
 	return 0;
 
 fail:
 	huge_recover_sigbus();
 	free(tmp_hp);
+	if (hugepage != NULL)
+		munmap(hugepage, nr_hugefiles * sizeof(struct hugepage_file));
+
 	return -1;
 }
 
