@@ -67,9 +67,9 @@ enum rte_cryptodev_type {
 	RTE_CRYPTODEV_NULL_PMD = 1,	/**< Null crypto PMD */
 	RTE_CRYPTODEV_AESNI_GCM_PMD,	/**< AES-NI GCM PMD */
 	RTE_CRYPTODEV_AESNI_MB_PMD,	/**< AES-NI multi buffer PMD */
-	RTE_CRYPTODEV_KASUMI_PMD,	/**< KASUMI PMD */
 	RTE_CRYPTODEV_QAT_SYM_PMD,	/**< QAT PMD Symmetric Crypto */
 	RTE_CRYPTODEV_SNOW3G_PMD,	/**< SNOW 3G PMD */
+	RTE_CRYPTODEV_KASUMI_PMD,	/**< KASUMI PMD */
 };
 
 extern const char **rte_cyptodev_names;
