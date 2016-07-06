@@ -79,11 +79,20 @@ $(RTE_OUTPUT):
 ifdef NODOTCONF
 $(RTE_OUTPUT)/.config: ;
 else
+# Generate config from template, if there are duplicates keep only the last.
+# To do so the temp config is checked for duplicate keys with cut/sort/uniq
+# Then for each of those identified duplicates as long as there are more than
+# just one left the last match is removed.
 $(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE | $(RTE_OUTPUT)
 	$(Q)if [ "$(RTE_CONFIG_TEMPLATE)" != "" -a -f "$(RTE_CONFIG_TEMPLATE)" ]; then \
 		$(CPP) -undef -P -x assembler-with-cpp \
 		-ffreestanding \
 		-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
+		for config in $$(grep -v "^#" $(RTE_OUTPUT)/.config_tmp | cut -d"=" -f1 | sort | uniq -d); do \
+			while [ $$(grep "^$${config}=" $(RTE_OUTPUT)/.config_tmp -c ) -gt 1 ]; do \
+				sed -i "0,/^$${config}=/{//d}" $(RTE_OUTPUT)/.config_tmp; \
+			done; \
+		done; \
 		if ! cmp -s $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config; then \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config ; \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config.orig ; \
