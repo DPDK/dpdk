@@ -628,7 +628,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 
 	unsigned lcore_id = rte_lcore_id();
 	uint64_t prev_tsc = 0, diff_tsc, cur_tsc, timer_tsc = 0;
-	unsigned i, j, portid, nb_rx;
+	unsigned i, j, portid, nb_rx, len;
 	struct lcore_queue_conf *qconf = &lcore_queue_conf[lcore_id];
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 			US_PER_S * BURST_TX_DRAIN_US;
@@ -727,10 +727,18 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 		cur_tsc = rte_rdtsc();
 
 		/*
-		 * TX burst queue drain
+		 * Crypto device/TX burst queue drain
 		 */
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > drain_tsc)) {
+			/* Enqueue all crypto ops remaining in buffers */
+			for (i = 0; i < qconf->nb_crypto_devs; i++) {
+				cparams = &port_cparams[i];
+				len = qconf->op_buf[cparams->dev_id].len;
+				l2fwd_crypto_send_burst(qconf, len, cparams);
+				qconf->op_buf[cparams->dev_id].len = 0;
+			}
+			/* Transmit all packets remaining in buffers */
 			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 				if (qconf->pkt_buf[portid].len == 0)
 					continue;
