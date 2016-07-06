@@ -77,7 +77,7 @@ struct ip_frag_key {
 	uint32_t key_len;      /**< src/dst key length */
 };
 
-/*
+/**
  * @internal Fragmented packet to reassemble.
  * First two entries in the frags[] array are for the last and first fragments.
  */
@@ -151,7 +151,7 @@ struct ipv6_extension_fragment {
 
 
 
-/*
+/**
  * Create a new IP fragmentation table.
  *
  * @param bucket_num
@@ -174,14 +174,14 @@ struct rte_ip_frag_tbl * rte_ip_frag_table_create(uint32_t bucket_num,
 		uint32_t bucket_entries,  uint32_t max_entries,
 		uint64_t max_cycles, int socket_id);
 
-/*
+/**
  * Free allocated IP fragmentation table.
  *
- * @param btl
+ * @param tbl
  *   Fragmentation table to free.
  */
 static inline void
-rte_ip_frag_table_destroy( struct rte_ip_frag_tbl *tbl)
+rte_ip_frag_table_destroy(struct rte_ip_frag_tbl *tbl)
 {
 	rte_free(tbl);
 }
@@ -215,7 +215,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 		struct rte_mempool *pool_direct,
 		struct rte_mempool *pool_indirect);
 
-/*
+/**
  * This function implements reassembly of fragmented IPv6 packets.
  * Incoming mbuf should have its l2_len/l3_len fields setup correctly.
  *
@@ -241,7 +241,7 @@ struct rte_mbuf *rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		struct rte_mbuf *mb, uint64_t tms, struct ipv6_hdr *ip_hdr,
 		struct ipv6_extension_fragment *frag_hdr);
 
-/*
+/**
  * Return a pointer to the packet's fragment header, if found.
  * It only looks at the extension header that's right after the fixed IPv6
  * header, and doesn't follow the whole chain of extension headers.
@@ -291,7 +291,7 @@ int32_t rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 			struct rte_mempool *pool_direct,
 			struct rte_mempool *pool_indirect);
 
-/*
+/**
  * This function implements reassembly of fragmented IPv4 packets.
  * Incoming mbufs should have its l2_len/l3_len fields setup correclty.
  *
@@ -314,7 +314,7 @@ struct rte_mbuf * rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		struct rte_ip_frag_death_row *dr,
 		struct rte_mbuf *mb, uint64_t tms, struct ipv4_hdr *ip_hdr);
 
-/*
+/**
  * Check if the IPv4 packet is fragmented
  *
  * @param hdr
@@ -333,7 +333,7 @@ rte_ipv4_frag_pkt_is_fragmented(const struct ipv4_hdr * hdr) {
 	return ip_flag != 0 || ip_ofs  != 0;
 }
 
-/*
+/**
  * Free mbufs on a given death row.
  *
  * @param dr
@@ -345,7 +345,7 @@ void rte_ip_frag_free_death_row(struct rte_ip_frag_death_row *dr,
 		uint32_t prefetch);
 
 
-/*
+/**
  * Dump fragmentation table statistics to file.
  *
  * @param f
