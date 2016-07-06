@@ -80,6 +80,5 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_lpm
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_acl
 endif
-DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_hash
 
 include $(RTE_SDK)/mk/rte.lib.mk
