@@ -274,46 +274,6 @@ static int check_avg(double *diff, double avg, double exp_avg, double tolerance)
 }
 
 /**
- * get the clk frequency in Hz
- */
-static uint64_t get_machclk_freq(void)
-{
-	uint64_t start = 0;
-	uint64_t end = 0;
-	uint64_t diff = 0;
-	static uint64_t clk_freq_hz;
-	struct timespec tv_start = {0, 0}, tv_end = {0, 0};
-	struct timespec req = {0, 0};
-
-	if (clk_freq_hz != 0)
-		return clk_freq_hz;
-
-	req.tv_sec = 0;
-	req.tv_nsec = NSEC_PER_SEC / 4;
-
-	clock_gettime(CLOCK_REALTIME, &tv_start);
-	start = rte_rdtsc();
-
-	if (nanosleep(&req, NULL) != 0) {
-		perror("get_machclk_freq()");
-		exit(EXIT_FAILURE);
-	}
-
-	clock_gettime(CLOCK_REALTIME, &tv_end);
-	end = rte_rdtsc();
-
-	diff = (uint64_t)(tv_end.tv_sec - tv_start.tv_sec) * USEC_PER_SEC
-		+ ((tv_end.tv_nsec - tv_start.tv_nsec + TEST_NSEC_MARGIN) /
-		   USEC_PER_MSEC); /**< diff is in micro secs */
-
-	if (diff == 0)
-		return 0;
-
-	clk_freq_hz = ((end - start) * USEC_PER_SEC / diff);
-	return clk_freq_hz;
-}
-
-/**
  * initialize the test rte_red config
  */
 static enum test_result
@@ -321,7 +281,7 @@ test_rte_red_init(struct test_config *tcfg)
 {
 	unsigned i = 0;
 
-	tcfg->tvar->clk_freq = get_machclk_freq();
+	tcfg->tvar->clk_freq = rte_get_timer_hz();
 	init_port_ts( tcfg->tvar->clk_freq );
 
 	for (i = 0; i < tcfg->tconfig->num_cfg; i++) {
