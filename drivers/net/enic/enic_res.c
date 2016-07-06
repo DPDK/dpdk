@@ -215,14 +215,14 @@ void enic_free_vnic_resources(struct enic *enic)
 
 void enic_get_res_counts(struct enic *enic)
 {
-	enic->wq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_WQ);
-	enic->rq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_RQ);
-	enic->cq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_CQ);
-	enic->intr_count = vnic_dev_get_res_count(enic->vdev,
+	enic->conf_wq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_WQ);
+	enic->conf_rq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_RQ);
+	enic->conf_cq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_CQ);
+	enic->conf_intr_count = vnic_dev_get_res_count(enic->vdev,
 		RES_TYPE_INTR_CTRL);
 
 	dev_info(enic_get_dev(enic),
 		"vNIC resources avail: wq %d rq %d cq %d intr %d\n",
-		enic->wq_count, enic->rq_count,
-		enic->cq_count, enic->intr_count);
+		enic->conf_wq_count, enic->conf_rq_count,
+		enic->conf_cq_count, enic->conf_intr_count);
 }

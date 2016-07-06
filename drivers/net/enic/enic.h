@@ -152,6 +152,12 @@ struct enic {
 	/* software counters */
 	struct enic_soft_stats soft_stats;
 
+	/* configured resources on vic */
+	unsigned int conf_rq_count;
+	unsigned int conf_wq_count;
+	unsigned int conf_cq_count;
+	unsigned int conf_intr_count;
+
 	/* linked list storing memory allocations */
 	LIST_HEAD(enic_memzone_list, enic_memzone_entry) memzone_list;
 	rte_spinlock_t memzone_list_lock;

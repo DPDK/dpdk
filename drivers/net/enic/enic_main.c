@@ -1016,21 +1016,23 @@ int enic_set_vnic_res(struct enic *enic)
 	/* With Rx scatter support, two RQs are now used per RQ used by
 	 * the application.
 	 */
-	if (enic->rq_count < (eth_dev->data->nb_rx_queues * 2)) {
+	if (enic->conf_rq_count < eth_dev->data->nb_rx_queues) {
 		dev_err(dev, "Not enough Receive queues. Requested:%u which uses %d RQs on VIC, Configured:%u\n",
 			eth_dev->data->nb_rx_queues,
-			eth_dev->data->nb_rx_queues * 2, enic->rq_count);
+			eth_dev->data->nb_rx_queues * 2, enic->conf_rq_count);
 		rc = -EINVAL;
 	}
-	if (enic->wq_count < eth_dev->data->nb_tx_queues) {
+	if (enic->conf_wq_count < eth_dev->data->nb_tx_queues) {
 		dev_err(dev, "Not enough Transmit queues. Requested:%u, Configured:%u\n",
-			eth_dev->data->nb_tx_queues, enic->wq_count);
+			eth_dev->data->nb_tx_queues, enic->conf_wq_count);
 		rc = -EINVAL;
 	}
 
-	if (enic->cq_count < (enic->rq_count + enic->wq_count)) {
+	if (enic->conf_cq_count < (eth_dev->data->nb_rx_queues +
+				   eth_dev->data->nb_tx_queues)) {
 		dev_err(dev, "Not enough Completion queues. Required:%u, Configured:%u\n",
-			enic->rq_count + enic->wq_count, enic->cq_count);
+			(eth_dev->data->nb_rx_queues +
+			 eth_dev->data->nb_tx_queues), enic->conf_cq_count);
 		rc = -EINVAL;
 	}
 

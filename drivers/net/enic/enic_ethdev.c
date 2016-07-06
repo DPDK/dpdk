@@ -436,8 +436,9 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	device_info->max_rx_queues = enic->rq_count;
-	device_info->max_tx_queues = enic->wq_count;
+	/* Scattered Rx uses two receive queues per rx queue exposed to dpdk */
+	device_info->max_rx_queues = enic->conf_rq_count / 2;
+	device_info->max_tx_queues = enic->conf_wq_count;
 	device_info->min_rx_bufsize = ENIC_MIN_MTU;
 	device_info->max_rx_pktlen = enic->rte_dev->data->mtu
 				   + ETHER_HDR_LEN + 4;
