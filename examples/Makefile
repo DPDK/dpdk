@@ -54,7 +54,7 @@ endif
 ifeq ($(CONFIG_RTE_LIBRTE_ACL)$(CONFIG_RTE_LIBRTE_HASH)$(CONFIG_RTE_LIBRTE_LPM),yyy)
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += ipsec-secgw
 endif
-DIRS-y += ipv4_multicast
+DIRS-$(CONFIG_RTE_LIBRTE_HASH) += ipv4_multicast
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += kni
 DIRS-y += l2fwd
 ifneq ($(PQOS_INSTALL_PATH),)
@@ -65,9 +65,11 @@ DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += l2fwd-ivshmem
 DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += l2fwd-jobstats
 DIRS-y += l2fwd-keepalive
 DIRS-y += l2fwd-keepalive/ka-agent
+ifeq ($(CONFIG_RTE_LIBRTE_HASH),y)
 DIRS-$(CONFIG_RTE_LIBRTE_LPM) += l3fwd
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_ACL) += l3fwd-acl
-ifeq ($(CONFIG_RTE_LIBRTE_LPM),y)
+ifeq ($(CONFIG_RTE_LIBRTE_LPM)$(CONFIG_RTE_LIBRTE_HASH),yy)
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += l3fwd-power
 DIRS-y += l3fwd-vf
 endif
@@ -82,7 +84,9 @@ DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += qos_sched
 DIRS-y += quota_watermark
 DIRS-$(CONFIG_RTE_ETHDEV_RXTX_CALLBACKS) += rxtx_callbacks
 DIRS-y += skeleton
+ifeq ($(CONFIG_RTE_LIBRTE_HASH),y)
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += tep_termination
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += timer
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost
 DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += vhost_xen
