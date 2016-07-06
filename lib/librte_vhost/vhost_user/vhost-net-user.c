@@ -257,6 +257,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	int vid;
 	size_t size;
 	struct vhost_user_connection *conn;
+	int ret;
 
 	conn = malloc(sizeof(*conn));
 	if (conn == NULL) {
@@ -278,7 +279,15 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	conn->vsocket = vsocket;
 	conn->vid = vid;
-	fdset_add(&vhost_user.fdset, fd, vhost_user_msg_handler, NULL, conn);
+	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_msg_handler,
+			NULL, conn);
+	if (ret < 0) {
+		free(conn);
+		close(fd);
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to add fd %d into vhost server fdset\n",
+			fd);
+	}
 }
 
 /* call back when there is new vhost-user connection from client  */
@@ -470,8 +479,14 @@ vhost_user_create_server(struct vhost_user_socket *vsocket)
 		goto err;
 
 	vsocket->listenfd = fd;
-	fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection,
+	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection,
 		  NULL, vsocket);
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to add listen fd %d to vhost server fdset\n",
+			fd);
+		goto err;
+	}
 
 	return 0;
 

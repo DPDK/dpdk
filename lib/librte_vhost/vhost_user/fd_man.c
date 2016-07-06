@@ -71,20 +71,22 @@ fdset_find_free_slot(struct fdset *pfdset)
 	return fdset_find_fd(pfdset, -1);
 }
 
-static void
+static int
 fdset_add_fd(struct fdset  *pfdset, int idx, int fd,
 	fd_cb rcb, fd_cb wcb, void *dat)
 {
 	struct fdentry *pfdentry;
 
-	if (pfdset == NULL || idx >= MAX_FDS)
-		return;
+	if (pfdset == NULL || idx >= MAX_FDS || fd >= FD_SETSIZE)
+		return -1;
 
 	pfdentry = &pfdset->fd[idx];
 	pfdentry->fd = fd;
 	pfdentry->rcb = rcb;
 	pfdentry->wcb = wcb;
 	pfdentry->dat = dat;
+
+	return 0;
 }
 
 /**
@@ -150,12 +152,11 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 
 	/* Find a free slot in the list. */
 	i = fdset_find_free_slot(pfdset);
-	if (i == -1) {
+	if (i == -1 || fdset_add_fd(pfdset, i, fd, rcb, wcb, dat) < 0) {
 		pthread_mutex_unlock(&pfdset->fd_mutex);
 		return -2;
 	}
 
-	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat);
 	pfdset->num++;
 
 	pthread_mutex_unlock(&pfdset->fd_mutex);
