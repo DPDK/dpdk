@@ -400,7 +400,7 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 		buf = &wq->bufs[tail_idx];
 		m = (struct rte_mbuf *)(buf->mb);
 		if (likely(m->pool == pool)) {
-			ENIC_ASSERT(nb_free < ENIC_MAX_WQ_DESCS);
+			RTE_ASSERT(nb_free < ENIC_MAX_WQ_DESCS);
 			free[nb_free++] = m;
 		} else {
 			rte_mempool_put_bulk(pool, (void *)free, nb_free);
