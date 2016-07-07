@@ -128,7 +128,7 @@ Most of these differences are summarized below.
    Packet type parsing            Y     Y Y   Y   Y Y Y   Y   Y Y Y Y Y Y         Y Y     Y
    Timesync                               Y Y     Y   Y Y
    Basic stats            Y Y Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y Y       Y Y Y   Y Y Y Y Y
-   Extended stats             Y       Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y                   Y   Y
+   Extended stats             Y       Y   Y Y Y Y Y Y Y Y Y Y Y Y Y Y             Y Y   Y   Y
    Stats per queue                Y                   Y Y     Y Y Y Y Y Y         Y Y   Y Y   Y Y
    EEPROM dump                    Y               Y   Y Y
    Registers dump                 Y               Y Y Y Y Y Y                             Y
