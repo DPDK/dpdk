@@ -92,7 +92,7 @@ C_TO_O_DO = @set -e; \
 	if [ \$$? -eq 0 ]; then \
 		echo \"  PMDINFOGEN\" $@; \
 		OBJF=`readlink -f $@`; \
-		${RTE_OUTPUT}/app/pmdinfogen \$$OBJF \$$OBJF.pmd.c; \
+		$(RTE_SDK_BIN)/app/pmdinfogen \$$OBJF \$$OBJF.pmd.c; \
 		if [ \$$? -eq 0 ]; \
 		then \
 			echo \"  PMDINFOBUILD\" $@; \
