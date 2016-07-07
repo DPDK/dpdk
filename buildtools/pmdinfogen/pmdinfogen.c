@@ -15,6 +15,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <rte_common.h>
 #include "pmdinfogen.h"
 
 #ifdef RTE_ARCH_64
@@ -32,7 +33,7 @@ static const char *sym_name(struct elf_info *elf, Elf_Sym *sym)
 		return "(unknown)";
 }
 
-void *grab_file(const char *filename, unsigned long *size)
+static void *grab_file(const char *filename, unsigned long *size)
 {
 	struct stat st;
 	void *map = MAP_FAILED;
@@ -59,7 +60,7 @@ failed:
   * spaces in the beginning of the line is trimmed away.
   * Return a pointer to a static buffer.
   **/
-void release_file(void *file, unsigned long size)
+static void release_file(void *file, unsigned long size)
 {
 	munmap(file, size);
 }
@@ -67,9 +68,8 @@ void release_file(void *file, unsigned long size)
 
 static void *get_sym_value(struct elf_info *info, const Elf_Sym *sym)
 {
-	void *ptr = (void *)info->hdr + info->sechdrs[sym->st_shndx].sh_offset;
-
-	return (void *)(ptr + sym->st_value);
+	return RTE_PTR_ADD(info->hdr,
+		info->sechdrs[sym->st_shndx].sh_offset + sym->st_value);
 }
 
 static Elf_Sym *find_sym_in_symtab(struct elf_info *info,
@@ -95,7 +95,6 @@ static int parse_elf(struct elf_info *info, const char *filename)
 	Elf_Ehdr *hdr;
 	Elf_Shdr *sechdrs;
 	Elf_Sym  *sym;
-	const char *secstrings;
 	int endian;
 	unsigned int symtab_idx = ~0U, symtab_shndx_idx = ~0U;
 
@@ -140,7 +139,7 @@ static int parse_elf(struct elf_info *info, const char *filename)
 	hdr->e_shnum     = TO_NATIVE(endian, 16, hdr->e_shnum);
 	hdr->e_shstrndx  = TO_NATIVE(endian, 16, hdr->e_shstrndx);
 
-	sechdrs = (void *)hdr + hdr->e_shoff;
+	sechdrs = RTE_PTR_ADD(hdr, hdr->e_shoff);
 	info->sechdrs = sechdrs;
 
 	/* Check if file offset is correct */
@@ -191,7 +190,6 @@ static int parse_elf(struct elf_info *info, const char *filename)
 			TO_NATIVE(endian, ADDR_SIZE, sechdrs[i].sh_entsize);
 	}
 	/* Find symbol table. */
-	secstrings = (void *)hdr + sechdrs[info->secindex_strings].sh_offset;
 	for (i = 1; i < info->num_sections; i++) {
 		int nobits = sechdrs[i].sh_type == SHT_NOBITS;
 
@@ -206,22 +204,22 @@ static int parse_elf(struct elf_info *info, const char *filename)
 		if (sechdrs[i].sh_type == SHT_SYMTAB) {
 			unsigned int sh_link_idx;
 			symtab_idx = i;
-			info->symtab_start = (void *)hdr +
-			    sechdrs[i].sh_offset;
-			info->symtab_stop  = (void *)hdr +
-			    sechdrs[i].sh_offset + sechdrs[i].sh_size;
+			info->symtab_start = RTE_PTR_ADD(hdr,
+				sechdrs[i].sh_offset);
+			info->symtab_stop  = RTE_PTR_ADD(hdr,
+				sechdrs[i].sh_offset + sechdrs[i].sh_size);
 			sh_link_idx = sechdrs[i].sh_link;
-			info->strtab       = (void *)hdr +
-			    sechdrs[sh_link_idx].sh_offset;
+			info->strtab       = RTE_PTR_ADD(hdr,
+				sechdrs[sh_link_idx].sh_offset);
 		}
 
 		/* 32bit section no. table? ("more than 64k sections") */
 		if (sechdrs[i].sh_type == SHT_SYMTAB_SHNDX) {
 			symtab_shndx_idx = i;
-			info->symtab_shndx_start = (void *)hdr +
-			    sechdrs[i].sh_offset;
-			info->symtab_shndx_stop  = (void *)hdr +
-			    sechdrs[i].sh_offset + sechdrs[i].sh_size;
+			info->symtab_shndx_start = RTE_PTR_ADD(hdr,
+				sechdrs[i].sh_offset);
+			info->symtab_shndx_stop  = RTE_PTR_ADD(hdr,
+				sechdrs[i].sh_offset + sechdrs[i].sh_size);
 		}
 	}
 	if (!info->symtab_start)
@@ -260,28 +258,6 @@ static void parse_elf_finish(struct elf_info *info)
 		free(idx);
 		idx = tmp;
 	}
-}
-
-static const char *sec_name(struct elf_info *elf, int secindex)
-{
-	Elf_Shdr *sechdrs = elf->sechdrs;
-	return (void *)elf->hdr +
-		elf->sechdrs[elf->secindex_strings].sh_offset +
-		sechdrs[secindex].sh_name;
-}
-
-static int get_symbol_index(struct elf_info *info, Elf_Sym *sym)
-{
-	const char *name =  sym_name(info, sym);
-	const char *idx;
-
-	idx = name;
-	while (idx) {
-		if (isdigit(*idx))
-			return atoi(idx);
-		idx++;
-	}
-	return -1;
 }
 
 struct opt_tag {
@@ -362,6 +338,8 @@ static int locate_pmd_entries(struct elf_info *info)
 			}
 		}
 	} while (last);
+
+	return 0;
 }
 
 static void output_pmd_info_string(struct elf_info *info, char *outfile)
