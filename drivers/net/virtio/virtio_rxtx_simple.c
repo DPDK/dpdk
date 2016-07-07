@@ -301,7 +301,7 @@ static inline void
 virtio_xmit_cleanup(struct virtqueue *vq)
 {
 	uint16_t i, desc_idx;
-	int nb_free = 0;
+	uint32_t nb_free = 0;
 	struct rte_mbuf *m, *free[VIRTIO_TX_MAX_FREE_BUF_SZ];
 
 	desc_idx = (uint16_t)(vq->vq_used_cons_idx &
@@ -319,13 +319,16 @@ virtio_xmit_cleanup(struct virtqueue *vq)
 					free[nb_free++] = m;
 				else {
 					rte_mempool_put_bulk(free[0]->pool,
-						(void **)free, nb_free);
+						(void **)free,
+						RTE_MIN(RTE_DIM(free),
+							nb_free));
 					free[0] = m;
 					nb_free = 1;
 				}
 			}
 		}
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+		rte_mempool_put_bulk(free[0]->pool, (void **)free,
+			RTE_MIN(RTE_DIM(free), nb_free));
 	} else {
 		for (i = 1; i < VIRTIO_TX_FREE_NR; i++) {
 			m = (struct rte_mbuf *)vq->vq_descx[desc_idx++].cookie;
