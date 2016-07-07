@@ -556,5 +556,11 @@ ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
 int __attribute__((cold))
 ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 {
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+
+	/* no csum error report support */
+	if (rxmode->hw_ip_checksum == 1)
+		return -1;
+
 	return ixgbe_rx_vec_dev_conf_condition_check_default(dev);
 }

@@ -321,12 +321,8 @@ ixgbe_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	if (fconf->mode != RTE_FDIR_MODE_NONE)
 		return -1;
 
-	/*
-	 * - no csum error report support
-	 * - no header split support
-	 */
-	if (rxmode->hw_ip_checksum == 1 ||
-	    rxmode->header_split == 1)
+	/* no header split support */
+	if (rxmode->header_split == 1)
 		return -1;
 
 	return 0;
