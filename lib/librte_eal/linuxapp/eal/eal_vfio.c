@@ -344,7 +344,8 @@ vfio_is_enabled(const char *modname)
 }
 
 const struct vfio_iommu_type *
-vfio_set_iommu_type(int vfio_container_fd) {
+vfio_set_iommu_type(int vfio_container_fd)
+{
 	unsigned idx;
 	for (idx = 0; idx < RTE_DIM(iommu_types); idx++) {
 		const struct vfio_iommu_type *t = &iommu_types[idx];
@@ -366,7 +367,8 @@ vfio_set_iommu_type(int vfio_container_fd) {
 }
 
 int
-vfio_has_supported_extensions(int vfio_container_fd) {
+vfio_has_supported_extensions(int vfio_container_fd)
+{
 	int ret;
 	unsigned idx, n_extensions = 0;
 	for (idx = 0; idx < RTE_DIM(iommu_types); idx++) {
