@@ -108,7 +108,7 @@ $(RTE_OUTPUT)/Makefile: | $(RTE_OUTPUT)
 # if NODOTCONF variable is defined, don't try to rebuild .config
 $(RTE_OUTPUT)/include/rte_config.h: $(RTE_OUTPUT)/.config
 	$(Q)rm -rf $(RTE_OUTPUT)/include $(RTE_OUTPUT)/app \
-		$(RTE_OUTPUT)/hostapp $(RTE_OUTPUT)/lib \
+		$(RTE_OUTPUT)/lib \
 		$(RTE_OUTPUT)/hostlib $(RTE_OUTPUT)/kmod $(RTE_OUTPUT)/build
 	$(Q)mkdir -p $(RTE_OUTPUT)/include
 	$(Q)$(RTE_SDK)/scripts/gen-config-h.sh $(RTE_OUTPUT)/.config \

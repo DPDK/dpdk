@@ -183,7 +183,7 @@ contains the kernel modules to install:
 
     ls x86_64-native-bsdapp-gcc
 
-    app build hostapp include kmod lib Makefile
+    app build include kmod lib Makefile
 
 
 .. _loading_contigmem:

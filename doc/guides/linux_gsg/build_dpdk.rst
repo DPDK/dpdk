@@ -152,7 +152,7 @@ A kmod  directory is also present that contains kernel modules which may be load
 
     ls x86_64-native-linuxapp-gcc
 
-    app build hostapp include kmod lib Makefile
+    app build include kmod lib Makefile
 
 Loading Modules to Enable Userspace IO for DPDK
 -----------------------------------------------
