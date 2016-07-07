@@ -319,8 +319,7 @@ instance the macro:
 
 .. code-block:: c
 
-    PMD_REGISTER_DRIVER(drv, name)
-
+   PMD_REGISTER_DRIVER(drv, name)
 
 Creates the following symbol:
 
@@ -334,7 +333,7 @@ can be exported from the object file and used to produce a hardware support
 description, that pmdinfogen then encodes into a json formatted string in the
 following format:
 
-.. code-block:: C
+.. code-block:: c
 
    static char <name_pmd_string>="PMD_INFO_STRING=\"{'name' : '<name>', ...}\"";
 
