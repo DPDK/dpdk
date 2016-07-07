@@ -253,7 +253,7 @@ F: app/test/test_link_bonding*
 F: examples/bond/
 
 Linux KNI
-M: Helin Zhang <helin.zhang@intel.com>
+M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: lib/librte_eal/linuxapp/kni/
 F: lib/librte_kni/
 F: doc/guides/prog_guide/kernel_nic_interface.rst
