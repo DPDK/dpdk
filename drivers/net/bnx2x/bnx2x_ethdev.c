@@ -28,6 +28,42 @@ static struct rte_pci_id pci_id_bnx2xvf_map[] = {
 	{ .vendor_id = 0, }
 };
 
+struct rte_bnx2x_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint32_t offset_hi;
+	uint32_t offset_lo;
+};
+
+static const struct rte_bnx2x_xstats_name_off bnx2x_xstats_strings[] = {
+	{"rx_buffer_drops",
+		offsetof(struct bnx2x_eth_stats, brb_drop_hi),
+		offsetof(struct bnx2x_eth_stats, brb_drop_lo)},
+	{"rx_buffer_truncates",
+		offsetof(struct bnx2x_eth_stats, brb_truncate_hi),
+		offsetof(struct bnx2x_eth_stats, brb_truncate_lo)},
+	{"rx_buffer_truncate_discard",
+		offsetof(struct bnx2x_eth_stats, brb_truncate_discard),
+		offsetof(struct bnx2x_eth_stats, brb_truncate_discard)},
+	{"mac_filter_discard",
+		offsetof(struct bnx2x_eth_stats, mac_filter_discard),
+		offsetof(struct bnx2x_eth_stats, mac_filter_discard)},
+	{"no_match_vlan_tag_discard",
+		offsetof(struct bnx2x_eth_stats, mf_tag_discard),
+		offsetof(struct bnx2x_eth_stats, mf_tag_discard)},
+	{"tx_pause",
+		offsetof(struct bnx2x_eth_stats, pause_frames_sent_hi),
+		offsetof(struct bnx2x_eth_stats, pause_frames_sent_lo)},
+	{"rx_pause",
+		offsetof(struct bnx2x_eth_stats, pause_frames_received_hi),
+		offsetof(struct bnx2x_eth_stats, pause_frames_received_lo)},
+	{"tx_priority_flow_control",
+		offsetof(struct bnx2x_eth_stats, pfc_frames_sent_hi),
+		offsetof(struct bnx2x_eth_stats, pfc_frames_sent_lo)},
+	{"rx_priority_flow_control",
+		offsetof(struct bnx2x_eth_stats, pfc_frames_received_hi),
+		offsetof(struct bnx2x_eth_stats, pfc_frames_received_lo)}
+};
+
 static void
 bnx2x_link_update(struct rte_eth_dev *dev)
 {
@@ -334,6 +370,52 @@ bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			 brb_truncate_discard + stats->rx_nombuf;
 }
 
+static int
+bnx2x_get_xstats_names(__rte_unused struct rte_eth_dev *dev,
+		       struct rte_eth_xstat_name *xstats_names,
+		       __rte_unused unsigned limit)
+{
+	unsigned int i, stat_cnt = RTE_DIM(bnx2x_xstats_strings);
+
+	if (xstats_names != NULL)
+		for (i = 0; i < stat_cnt; i++)
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name),
+				"%s",
+				bnx2x_xstats_strings[i].name);
+
+	return stat_cnt;
+}
+
+static int
+bnx2x_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+		     unsigned int n)
+{
+	struct bnx2x_softc *sc = dev->data->dev_private;
+	unsigned int num = RTE_DIM(bnx2x_xstats_strings);
+
+	if (n < num)
+		return num;
+
+	bnx2x_stats_handle(sc, STATS_EVENT_UPDATE);
+
+	for (num = 0; num < n; num++) {
+		if (bnx2x_xstats_strings[num].offset_hi !=
+		    bnx2x_xstats_strings[num].offset_lo)
+			xstats[num].value = HILO_U64(
+					  *(uint32_t *)((char *)&sc->eth_stats +
+					  bnx2x_xstats_strings[num].offset_hi),
+					  *(uint32_t *)((char *)&sc->eth_stats +
+					  bnx2x_xstats_strings[num].offset_lo));
+		else
+			xstats[num].value =
+					  *(uint64_t *)((char *)&sc->eth_stats +
+					  bnx2x_xstats_strings[num].offset_lo);
+	}
+
+	return num;
+}
+
 static void
 bnx2x_dev_infos_get(struct rte_eth_dev *dev, __rte_unused struct rte_eth_dev_info *dev_info)
 {
@@ -376,6 +458,8 @@ static const struct eth_dev_ops bnx2x_eth_dev_ops = {
 	.allmulticast_disable         = bnx2x_dev_allmulticast_disable,
 	.link_update                  = bnx2x_dev_link_update,
 	.stats_get                    = bnx2x_dev_stats_get,
+	.xstats_get                   = bnx2x_dev_xstats_get,
+	.xstats_get_names             = bnx2x_get_xstats_names,
 	.dev_infos_get                = bnx2x_dev_infos_get,
 	.rx_queue_setup               = bnx2x_dev_rx_queue_setup,
 	.rx_queue_release             = bnx2x_dev_rx_queue_release,
@@ -399,6 +483,8 @@ static const struct eth_dev_ops bnx2xvf_eth_dev_ops = {
 	.allmulticast_disable         = bnx2x_dev_allmulticast_disable,
 	.link_update                  = bnx2xvf_dev_link_update,
 	.stats_get                    = bnx2x_dev_stats_get,
+	.xstats_get                   = bnx2x_dev_xstats_get,
+	.xstats_get_names             = bnx2x_get_xstats_names,
 	.dev_infos_get                = bnx2x_dev_infos_get,
 	.rx_queue_setup               = bnx2x_dev_rx_queue_setup,
 	.rx_queue_release             = bnx2x_dev_rx_queue_release,
