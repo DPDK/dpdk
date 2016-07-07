@@ -398,7 +398,8 @@ int main(int argc, char **argv)
 
 	if (argc < 3) {
 		fprintf(stderr,
-			"usage: pmdinfo <object file> <c output file>\n");
+			"usage: %s <object file> <c output file>\n",
+			basename(argv[0]));
 		exit(127);
 	}
 	parse_elf(&info, argv[1]);
