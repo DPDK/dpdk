@@ -34,6 +34,4 @@ include $(RTE_SDK)/mk/rte.vars.mk
 DIRS-y += net
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
 
-DEPDIRS-y += buildtools/pmdinfo
-
 include $(RTE_SDK)/mk/rte.subdir.mk

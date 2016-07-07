@@ -49,6 +49,7 @@ $(1): $(sort $(LOCAL_DEPDIRS-$(1)))
 endef
 
 $(foreach d,$(ROOTDIRS-y),$(eval $(call depdirs_rule,$(d))))
+drivers: | buildtools
 
 #
 # build and clean targets
