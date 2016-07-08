@@ -186,12 +186,12 @@ testsuite_setup(void)
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
 				ret = rte_eal_vdev_init(
-					CRYPTODEV_NAME_AESNI_MB_PMD, NULL);
+					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
 
 				TEST_ASSERT(ret == 0,
 					"Failed to create instance %u of"
 					" pmd : %s",
-					i, CRYPTODEV_NAME_AESNI_MB_PMD);
+					i, RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 			}
 		}
 	}
@@ -203,10 +203,10 @@ testsuite_setup(void)
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
 				TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
-					CRYPTODEV_NAME_AESNI_GCM_PMD, NULL),
+					RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL),
 					"Failed to create instance %u of"
 					" pmd : %s",
-					i, CRYPTODEV_NAME_AESNI_GCM_PMD);
+					i, RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
 			}
 		}
 	}
@@ -217,10 +217,10 @@ testsuite_setup(void)
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
 				TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
-					CRYPTODEV_NAME_SNOW3G_PMD, NULL),
+					RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL),
 					"Failed to create instance %u of"
 					" pmd : %s",
-					i, CRYPTODEV_NAME_SNOW3G_PMD);
+					i, RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
 			}
 		}
 	}
@@ -231,10 +231,10 @@ testsuite_setup(void)
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
 				TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
-					CRYPTODEV_NAME_KASUMI_PMD, NULL),
+					RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), NULL),
 					"Failed to create instance %u of"
 					" pmd : %s",
-					i, CRYPTODEV_NAME_KASUMI_PMD);
+					i, RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
 			}
 		}
 	}
@@ -246,12 +246,12 @@ testsuite_setup(void)
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
 				int dev_id = rte_eal_vdev_init(
-					CRYPTODEV_NAME_NULL_PMD, NULL);
+					RTE_STR(CRYPTODEV_NAME_NULL_PMD), NULL);
 
 				TEST_ASSERT(dev_id >= 0,
 					"Failed to create instance %u of"
 					" pmd : %s",
-					i, CRYPTODEV_NAME_NULL_PMD);
+					i, RTE_STR(CRYPTODEV_NAME_NULL_PMD));
 			}
 		}
 	}

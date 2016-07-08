@@ -37,18 +37,18 @@
 
 #define KASUMI_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			CRYPTODEV_NAME_KASUMI_PMD, \
+			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), \
 			__func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_KASUMI_DEBUG
 #define KASUMI_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_KASUMI_PMD, \
+			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), \
 			__func__, __LINE__, ## args)
 
 #define KASUMI_LOG_DBG(fmt, args...) \
 	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_KASUMI_PMD, \
+			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), \
 			__func__, __LINE__, ## args)
 #else
 #define KASUMI_LOG_INFO(fmt, args...)

@@ -51,7 +51,7 @@ create_unique_device_name(char *name, size_t size)
 	if (name == NULL)
 		return -EINVAL;
 
-	ret = snprintf(name, size, "%s_%u", CRYPTODEV_NAME_NULL_PMD,
+	ret = snprintf(name, size, "%s_%u", RTE_STR(CRYPTODEV_NAME_NULL_PMD),
 			unique_name_id++);
 	if (ret < 0)
 		return ret;
@@ -269,12 +269,11 @@ cryptodev_null_uninit(const char *name)
 }
 
 static struct rte_driver cryptodev_null_pmd_drv = {
-	.name = CRYPTODEV_NAME_NULL_PMD,
 	.type = PMD_VDEV,
 	.init = cryptodev_null_init,
 	.uninit = cryptodev_null_uninit
 };
 
-PMD_REGISTER_DRIVER(cryptodev_null_pmd_drv, cryptodev_null_pmd);
-DRIVER_REGISTER_PARAM_STRING(aesni_gcm, "max_nb_queue_pairs=<int> "
+PMD_REGISTER_DRIVER(cryptodev_null_pmd_drv, CRYPTODEV_NAME_NULL_PMD);
+DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_NULL_PMD, "max_nb_queue_pairs=<int> "
 "max_nb_sessions=<int> socket_id=<int>");

@@ -37,18 +37,18 @@
 
 #define SNOW3G_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			CRYPTODEV_NAME_SNOW3G_PMD, \
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), \
 			__func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_SNOW3G_DEBUG
 #define SNOW3G_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_SNOW3G_PMD, \
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), \
 			__func__, __LINE__, ## args)
 
 #define SNOW3G_LOG_DBG(fmt, args...) \
 	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_SNOW3G_PMD, \
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), \
 			__func__, __LINE__, ## args)
 #else
 #define SNOW3G_LOG_INFO(fmt, args...)

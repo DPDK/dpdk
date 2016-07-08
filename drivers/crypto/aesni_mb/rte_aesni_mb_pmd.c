@@ -54,7 +54,7 @@ create_unique_device_name(char *name, size_t size)
 	if (name == NULL)
 		return -EINVAL;
 
-	ret = snprintf(name, size, "%s_%u", CRYPTODEV_NAME_AESNI_MB_PMD,
+	ret = snprintf(name, size, "%s_%u", RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD),
 			unique_name_id++);
 	if (ret < 0)
 		return ret;
@@ -715,12 +715,11 @@ cryptodev_aesni_mb_uninit(const char *name)
 }
 
 static struct rte_driver cryptodev_aesni_mb_pmd_drv = {
-	.name = CRYPTODEV_NAME_AESNI_MB_PMD,
 	.type = PMD_VDEV,
 	.init = cryptodev_aesni_mb_init,
 	.uninit = cryptodev_aesni_mb_uninit
 };
 
-PMD_REGISTER_DRIVER(cryptodev_aesni_mb_pmd_drv, aesni_mb);
-DRIVER_REGISTER_PARAM_STRING(aesni_gcm, "max_nb_queue_pairs=<int> "
+PMD_REGISTER_DRIVER(cryptodev_aesni_mb_pmd_drv, CRYPTODEV_NAME_AESNI_MB_PMD);
+DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD, "max_nb_queue_pairs=<int> "
 "max_nb_sessions=<int> socket_id=<int>");

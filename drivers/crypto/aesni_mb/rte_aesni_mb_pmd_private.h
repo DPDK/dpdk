@@ -37,7 +37,7 @@
 
 #define MB_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			CRYPTODEV_NAME_AESNI_MB_PMD, \
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), \
 			__func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_AESNI_MB_DEBUG

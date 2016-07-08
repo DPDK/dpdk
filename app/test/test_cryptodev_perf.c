@@ -120,15 +120,15 @@ static const char *chain_mode_name(enum chain_mode mode)
 static const char *pmd_name(enum rte_cryptodev_type pmd)
 {
 	switch (pmd) {
-	case RTE_CRYPTODEV_NULL_PMD: return CRYPTODEV_NAME_NULL_PMD; break;
+	case RTE_CRYPTODEV_NULL_PMD: return RTE_STR(CRYPTODEV_NAME_NULL_PMD); break;
 	case RTE_CRYPTODEV_AESNI_GCM_PMD:
-		return CRYPTODEV_NAME_AESNI_GCM_PMD;
+		return RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD);
 	case RTE_CRYPTODEV_AESNI_MB_PMD:
-		return CRYPTODEV_NAME_AESNI_MB_PMD;
+		return RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD);
 	case RTE_CRYPTODEV_QAT_SYM_PMD:
-		return CRYPTODEV_NAME_QAT_SYM_PMD;
+		return RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
 	case RTE_CRYPTODEV_SNOW3G_PMD:
-		return CRYPTODEV_NAME_SNOW3G_PMD;
+		return RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD);
 	default:
 		return "";
 	}
@@ -249,11 +249,11 @@ testsuite_setup(void)
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
 				ret = rte_eal_vdev_init(
-					CRYPTODEV_NAME_AESNI_MB_PMD, NULL);
+					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
 
 				TEST_ASSERT(ret == 0,
 					"Failed to create instance %u of pmd : %s",
-					i, CRYPTODEV_NAME_AESNI_MB_PMD);
+					i, RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 			}
 		}
 	}
@@ -264,11 +264,11 @@ testsuite_setup(void)
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
 				ret = rte_eal_vdev_init(
-					CRYPTODEV_NAME_SNOW3G_PMD, NULL);
+					RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL);
 
 				TEST_ASSERT(ret == 0,
 					"Failed to create instance %u of pmd : %s",
-					i, CRYPTODEV_NAME_SNOW3G_PMD);
+					i, RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
 			}
 		}
 	}

@@ -37,18 +37,18 @@
 
 #define NULL_CRYPTO_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			CRYPTODEV_NAME_NULL_PMD, \
+			RTE_STR(CRYPTODEV_NAME_NULL_PMD), \
 			__func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_NULL_CRYPTO_DEBUG
 #define NULL_CRYPTO_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_NULL_PMD, \
+			RTE_STR(CRYPTODEV_NAME_NULL_PMD), \
 			__func__, __LINE__, ## args)
 
 #define NULL_CRYPTO_LOG_DBG(fmt, args...) \
 	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_NULL_PMD, \
+			RTE_STR(CRYPTODEV_NAME_NULL_PMD), \
 			__func__, __LINE__, ## args)
 #else
 #define NULL_CRYPTO_LOG_INFO(fmt, args...)

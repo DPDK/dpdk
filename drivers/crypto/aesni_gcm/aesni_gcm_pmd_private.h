@@ -37,18 +37,18 @@
 
 #define GCM_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			CRYPTODEV_NAME_AESNI_GCM_PMD, \
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), \
 			__func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_AESNI_MB_DEBUG
 #define GCM_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_AESNI_GCM_PMD, \
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), \
 			__func__, __LINE__, ## args)
 
 #define GCM_LOG_DBG(fmt, args...) \
 	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_AESNI_GCM_PMD, \
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), \
 			__func__, __LINE__, ## args)
 #else
 #define GCM_LOG_INFO(fmt, args...)
