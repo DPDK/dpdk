@@ -456,6 +456,8 @@ int enic_enable(struct enic *enic)
 	for (index = 0; index < enic->rq_count; index++)
 		enic_start_rq(enic, index);
 
+	vnic_dev_add_addr(enic->vdev, enic->mac_addr);
+
 	vnic_dev_enable_wait(enic->vdev);
 
 	/* Register and enable error interrupt */
@@ -971,8 +973,6 @@ int enic_setup_finish(struct enic *enic)
 		dev_err(enic, "Failed to config nic, aborting.\n");
 		return -1;
 	}
-
-	vnic_dev_add_addr(enic->vdev, enic->mac_addr);
 
 	/* Default conf */
 	vnic_dev_packet_filter(enic->vdev,
