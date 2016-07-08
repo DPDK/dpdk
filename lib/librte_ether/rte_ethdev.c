@@ -1536,6 +1536,7 @@ rte_eth_xstats_get_names(uint8_t port_id,
 	struct rte_eth_dev *dev;
 	int cnt_used_entries;
 	int cnt_expected_entries;
+	int cnt_driver_entries;
 	uint32_t idx, id_queue;
 
 	cnt_expected_entries = get_xstats_count(port_id);
@@ -1545,16 +1546,7 @@ rte_eth_xstats_get_names(uint8_t port_id,
 
 	/* port_id checked in get_xstats_count() */
 	dev = &rte_eth_devices[port_id];
-	if (dev->dev_ops->xstats_get_names != NULL) {
-		cnt_used_entries = (*dev->dev_ops->xstats_get_names)(
-			dev, xstats_names, size);
-		if (cnt_used_entries < 0)
-			return cnt_used_entries;
-	} else
-		/* Driver itself does not support extended stats, but
-		 * still have basic stats.
-		 */
-		cnt_used_entries = 0;
+	cnt_used_entries = 0;
 
 	for (idx = 0; idx < RTE_NB_STATS; idx++) {
 		snprintf(xstats_names[cnt_used_entries].name,
@@ -1581,6 +1573,20 @@ rte_eth_xstats_get_names(uint8_t port_id,
 			cnt_used_entries++;
 		}
 	}
+
+	if (dev->dev_ops->xstats_get_names != NULL) {
+		/* If there are any driver-specific xstats, append them
+		 * to end of list.
+		 */
+		cnt_driver_entries = (*dev->dev_ops->xstats_get_names)(
+			dev,
+			xstats_names + cnt_used_entries,
+			size - cnt_used_entries);
+		if (cnt_driver_entries < 0)
+			return cnt_driver_entries;
+		cnt_used_entries += cnt_driver_entries;
+	}
+
 	return cnt_used_entries;
 }
 
@@ -1628,7 +1634,6 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 		stats_ptr = RTE_PTR_ADD(&eth_stats,
 					rte_stats_strings[i].offset);
 		val = *stats_ptr;
-		xstats[count].id = count + xcount;
 		xstats[count++].value = val;
 	}
 
@@ -1639,7 +1644,6 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 					rte_rxq_stats_strings[i].offset +
 					q * sizeof(uint64_t));
 			val = *stats_ptr;
-			xstats[count].id = count + xcount;
 			xstats[count++].value = val;
 		}
 	}
@@ -1651,10 +1655,12 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 					rte_txq_stats_strings[i].offset +
 					q * sizeof(uint64_t));
 			val = *stats_ptr;
-			xstats[count].id = count + xcount;
 			xstats[count++].value = val;
 		}
 	}
+
+	for (i = 0; i < count + xcount; i++)
+		xstats[i].id = i;
 
 	return count + xcount;
 }
