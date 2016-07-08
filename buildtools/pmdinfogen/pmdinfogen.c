@@ -15,6 +15,8 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <libgen.h>
+
 #include <rte_common.h>
 #include "pmdinfogen.h"
 
