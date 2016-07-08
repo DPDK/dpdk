@@ -1155,10 +1155,14 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		next_to_use = ENA_RX_RING_IDX_NEXT(next_to_use, ring_size);
 	}
 
-	rte_wmb();
-	rxq->next_to_use = next_to_use;
-	/* let HW know that it can fill buffers with data */
-	ena_com_write_sq_doorbell(rxq->ena_com_io_sq);
+	/* When we submitted free recources to device... */
+	if (i > 0) {
+		/* ...let HW know that it can fill buffers with data */
+		rte_wmb();
+		ena_com_write_sq_doorbell(rxq->ena_com_io_sq);
+
+		rxq->next_to_use = next_to_use;
+	}
 
 	return i;
 }
@@ -1564,7 +1568,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ena_tx_buffer *tx_info;
 	struct ena_com_buf *ebuf;
 	uint16_t rc, req_id, total_tx_descs = 0;
-	int sent_idx = 0;
+	uint16_t sent_idx = 0;
 	int nb_hw_desc;
 
 	/* Check adapter state */
@@ -1643,9 +1647,14 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		next_to_use = ENA_TX_RING_IDX_NEXT(next_to_use, ring_size);
 	}
 
-	/* Let HW do it's best :-) */
-	rte_wmb();
-	ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
+	/* If there are ready packets to be xmitted... */
+	if (sent_idx > 0) {
+		/* ...let HW do its best :-) */
+		rte_wmb();
+		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
+
+		tx_ring->next_to_use = next_to_use;
+	}
 
 	/* Clear complete packets  */
 	while (ena_com_tx_comp_req_id_get(tx_ring->ena_com_io_cq, &req_id) >= 0) {
@@ -1668,9 +1677,11 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			break;
 	}
 
-	/* acknowledge completion of sent packets */
-	ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
-	tx_ring->next_to_use = next_to_use;
+	if (total_tx_descs > 0) {
+		/* acknowledge completion of sent packets */
+		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
+	}
+
 	return sent_idx;
 }
 
