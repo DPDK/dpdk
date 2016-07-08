@@ -203,7 +203,7 @@ void enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
 		return;
 	}
 
-	err = vnic_dev_del_addr(enic->vdev, mac_addr);
+	err = vnic_dev_del_addr(enic->vdev, enic->mac_addr);
 	if (err) {
 		dev_err(enic, "del mac addr failed\n");
 		return;
