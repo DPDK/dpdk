@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -------------------------------------------------------------------------
 # scripts/pmdinfo.py
 #
@@ -10,6 +10,7 @@ import sys
 from optparse import OptionParser
 import string
 import json
+import platform
 
 # For running from development directory. It should take precedence over the
 # installed pyelftools.
@@ -557,6 +558,14 @@ def main(stream=None):
     global raw_output
     global pcidb
 
+    pcifile_default = "./pci.ids" # for unknown OS's assume local file
+    if platform.system() == 'Linux':
+        pcifile_default = "/usr/share/hwdata/pci.ids"
+    elif platform.system() == 'FreeBSD':
+        pcifile_default = "/usr/local/share/pciids/pci.ids"
+        if not os.path.exists(pcifile_default):
+            pcifile_default = "/usr/share/misc/pci_vendors"
+
     optparser = OptionParser(
         usage='usage: %prog [-hrtp] [-d <pci id file] <elf-file>',
         description="Dump pmd hardware support info",
@@ -568,7 +577,7 @@ def main(stream=None):
     optparser.add_option("-d", "--pcidb", dest="pcifile",
                          help="specify a pci database "
                               "to get vendor names from",
-                         default="/usr/share/hwdata/pci.ids", metavar="FILE")
+                         default=pcifile_default, metavar="FILE")
     optparser.add_option("-t", "--table", dest="tblout",
                          help="output information on hw support as a hex table",
                          action='store_true')
