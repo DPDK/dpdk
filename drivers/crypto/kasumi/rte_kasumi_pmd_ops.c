@@ -57,8 +57,8 @@ static const struct rte_cryptodev_capabilities kasumi_pmd_capabilities[] = {
 					.increment = 0
 				},
 				.aad_size = {
-					.min = 9,
-					.max = 9,
+					.min = 8,
+					.max = 8,
 					.increment = 0
 				}
 			}, }
