@@ -63,7 +63,7 @@ bad=$(echo "$headlines" | grep --color=always \
 	-e '\.$' \
 	-e '[,;!?&|]' \
 	-e ':.*_' \
-	-e '^[^:]*$' \
+	-e '^[^:]\+$' \
 	-e ':[^ ]' \
 	-e ' :' \
 	| sed 's,^,\t,')
