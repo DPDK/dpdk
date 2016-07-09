@@ -37,3 +37,8 @@ Deprecation Notices
 * The mempool functions for single/multi producer/consumer are deprecated and
   will be removed in 16.11.
   It is replaced by rte_mempool_generic_get/put functions.
+
+* Driver names are quite inconsistent among each others and they will be
+  renamed to something more consistent (net and crypto prefixes) in 16.11.
+  Some of these driver names are used publicly, to create virtual devices,
+  so a deprecation notice is necessary.
