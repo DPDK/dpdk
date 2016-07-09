@@ -1041,7 +1041,6 @@ static int bnxt_rte_pmd_init(const char *name, const char *params __rte_unused)
 }
 
 static struct rte_driver bnxt_pmd_drv = {
-	.name = "eth_bnxt",
 	.type = PMD_PDEV,
 	.init = bnxt_rte_pmd_init,
 };

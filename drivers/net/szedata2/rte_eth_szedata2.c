@@ -62,7 +62,7 @@
  */
 #define RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED 8
 
-#define RTE_SZEDATA2_DRIVER_NAME "rte_szedata2_pmd"
+#define RTE_SZEDATA2_DRIVER_NAME rte_szedata2_pmd
 #define RTE_SZEDATA2_PCI_DRIVER_NAME "rte_szedata2_pmd"
 
 #define SZEDATA2_DEV_PATH_FMT "/dev/szedataII%u"
@@ -1596,10 +1596,9 @@ rte_szedata2_uninit(const char *name __rte_unused)
 
 static struct rte_driver rte_szedata2_driver = {
 	.type = PMD_PDEV,
-	.name = RTE_SZEDATA2_DRIVER_NAME,
 	.init = rte_szedata2_init,
 	.uninit = rte_szedata2_uninit,
 };
 
-PMD_REGISTER_DRIVER(rte_szedata2_driver, rte_szedata2_pmd);
-DRIVER_REGISTER_PCI_TABLE(rte_szedata2_pmd, rte_szedata2_pci_id_table);
+PMD_REGISTER_DRIVER(rte_szedata2_driver, RTE_SZEDATA2_DRIVER_NAME);
+DRIVER_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);

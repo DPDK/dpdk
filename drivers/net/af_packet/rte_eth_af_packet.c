@@ -890,7 +890,6 @@ rte_pmd_af_packet_devuninit(const char *name)
 }
 
 static struct rte_driver pmd_af_packet_drv = {
-	.name = "eth_af_packet",
 	.type = PMD_VDEV,
 	.init = rte_pmd_af_packet_devinit,
 	.uninit = rte_pmd_af_packet_devuninit,

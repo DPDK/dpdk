@@ -431,7 +431,6 @@ virtio_user_pmd_devuninit(const char *name)
 }
 
 static struct rte_driver virtio_user_driver = {
-	.name   = "virtio-user",
 	.type   = PMD_VDEV,
 	.init   = virtio_user_pmd_devinit,
 	.uninit = virtio_user_pmd_devuninit,

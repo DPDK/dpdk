@@ -1084,7 +1084,6 @@ rte_pmd_pcap_devuninit(const char *name)
 }
 
 static struct rte_driver pmd_pcap_drv = {
-	.name = "eth_pcap",
 	.type = PMD_VDEV,
 	.init = rte_pmd_pcap_devinit,
 	.uninit = rte_pmd_pcap_devuninit,

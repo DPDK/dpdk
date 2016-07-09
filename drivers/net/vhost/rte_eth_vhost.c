@@ -915,7 +915,6 @@ rte_pmd_vhost_devuninit(const char *name)
 }
 
 static struct rte_driver pmd_vhost_drv = {
-	.name = "eth_vhost",
 	.type = PMD_VDEV,
 	.init = rte_pmd_vhost_devinit,
 	.uninit = rte_pmd_vhost_devuninit,

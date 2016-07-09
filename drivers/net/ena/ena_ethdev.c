@@ -1445,7 +1445,6 @@ rte_ena_pmd_init(const char *name __rte_unused,
 };
 
 struct rte_driver ena_pmd_drv = {
-	.name = "ena_driver",
 	.type = PMD_PDEV,
 	.init = rte_ena_pmd_init,
 };

@@ -1783,7 +1783,6 @@ rte_nicvf_pmd_init(const char *name __rte_unused, const char *para __rte_unused)
 }
 
 static struct rte_driver rte_nicvf_driver = {
-	.name = "nicvf_driver",
 	.type = PMD_PDEV,
 	.init = rte_nicvf_pmd_init,
 };

@@ -5857,7 +5857,6 @@ rte_mlx4_pmd_init(const char *name, const char *args)
 
 static struct rte_driver rte_mlx4_driver = {
 	.type = PMD_PDEV,
-	.name = MLX4_DRIVER_NAME,
 	.init = rte_mlx4_pmd_init,
 };
 
