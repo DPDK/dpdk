@@ -275,5 +275,7 @@ static struct rte_driver cryptodev_null_pmd_drv = {
 };
 
 PMD_REGISTER_DRIVER(cryptodev_null_pmd_drv, CRYPTODEV_NAME_NULL_PMD);
-DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_NULL_PMD, "max_nb_queue_pairs=<int> "
-"max_nb_sessions=<int> socket_id=<int>");
+DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_NULL_PMD,
+	"max_nb_queue_pairs=<int> "
+	"max_nb_sessions=<int> "
+	"socket_id=<int>");

@@ -693,4 +693,6 @@ static struct rte_driver pmd_null_drv = {
 };
 
 PMD_REGISTER_DRIVER(pmd_null_drv, eth_null);
-DRIVER_REGISTER_PARAM_STRING(eth_null, "size=<int> copy=<int>");
+DRIVER_REGISTER_PARAM_STRING(eth_null,
+	"size=<int> "
+	"copy=<int>");

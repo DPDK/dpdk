@@ -630,4 +630,5 @@ static struct rte_driver pmd_ring_drv = {
 };
 
 PMD_REGISTER_DRIVER(pmd_ring_drv, eth_ring);
-DRIVER_REGISTER_PARAM_STRING(eth_ring, "nodeaction=[attach|detach]");
+DRIVER_REGISTER_PARAM_STRING(eth_ring,
+	"nodeaction=[attach|detach]");

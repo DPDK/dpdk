@@ -521,5 +521,7 @@ static struct rte_driver aesni_gcm_pmd_drv = {
 };
 
 PMD_REGISTER_DRIVER(aesni_gcm_pmd_drv, CRYPTODEV_NAME_AESNI_GCM_PMD);
-DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_GCM_PMD, "max_nb_queue_pairs=<int> "
-"max_nb_sessions=<int> socket_id=<int>");
+DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_GCM_PMD,
+	"max_nb_queue_pairs=<int> "
+	"max_nb_sessions=<int> "
+	"socket_id=<int>");

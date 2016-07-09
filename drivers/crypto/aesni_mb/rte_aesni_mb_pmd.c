@@ -721,5 +721,7 @@ static struct rte_driver cryptodev_aesni_mb_pmd_drv = {
 };
 
 PMD_REGISTER_DRIVER(cryptodev_aesni_mb_pmd_drv, CRYPTODEV_NAME_AESNI_MB_PMD);
-DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD, "max_nb_queue_pairs=<int> "
-"max_nb_sessions=<int> socket_id=<int>");
+DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD,
+	"max_nb_queue_pairs=<int> "
+	"max_nb_sessions=<int> "
+	"socket_id=<int>");

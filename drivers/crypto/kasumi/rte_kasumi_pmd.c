@@ -654,5 +654,7 @@ static struct rte_driver cryptodev_kasumi_pmd_drv = {
 };
 
 PMD_REGISTER_DRIVER(cryptodev_kasumi_pmd_drv, CRYPTODEV_NAME_KASUMI_PMD);
-DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_KASUMI_PMD, "max_nb_queue_pairs=<int> "
-"max_nb_sessions=<int> socket_id=<int>");
+DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_KASUMI_PMD,
+	"max_nb_queue_pairs=<int> "
+	"max_nb_sessions=<int> "
+	"socket_id=<int>");
