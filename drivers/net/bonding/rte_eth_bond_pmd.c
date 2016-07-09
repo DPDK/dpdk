@@ -2519,7 +2519,7 @@ PMD_REGISTER_DRIVER(bond_drv, eth_bond);
 DRIVER_REGISTER_PARAM_STRING(eth_bond,
 	"slave=<ifc> "
 	"primary=<ifc> "
-	"mode=[0-4] "
+	"mode=[0-6] "
 	"xmit_policy=[l2 | l23 | l34] "
 	"socket_id=<int> "
 	"mac=<mac addr> "
