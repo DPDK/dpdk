@@ -243,9 +243,12 @@ process_kasumi_cipher_op_bit(struct rte_crypto_op *op,
 
 	offset_in_bits = op->sym->cipher.data.offset;
 	src = rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
-	dst = op->sym->m_dst ?
-		rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *) :
-		rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
+	if (op->sym->m_dst == NULL) {
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		KASUMI_LOG_ERR("bit-level in-place not supported\n");
+		return 0;
+	}
+	dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
 	IV = *((uint64_t *)(op->sym->cipher.iv.data));
 	length_in_bits = op->sym->cipher.data.length;
 

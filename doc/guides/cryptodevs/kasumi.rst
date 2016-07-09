@@ -52,6 +52,9 @@ Limitations
 
 * Chained mbufs are not supported.
 * KASUMI(F9) supported only if hash offset field is byte-aligned.
+* In-place bit-level operations for KASUMI(F8) are not supported
+  (if length and/or offset of data to be ciphered is not byte-aligned).
+
 
 Installation
 ------------
