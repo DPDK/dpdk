@@ -2515,9 +2515,9 @@ static struct rte_driver bond_drv = {
 	.uninit = bond_uninit,
 };
 
-PMD_REGISTER_DRIVER(bond_drv, bonding);
+PMD_REGISTER_DRIVER(bond_drv, eth_bond);
 
-DRIVER_REGISTER_PARAM_STRING(bonding, "slave=<ifc> primary=<ifc> mode=[0-4] "
+DRIVER_REGISTER_PARAM_STRING(eth_bond, "slave=<ifc> primary=<ifc> mode=[0-4] "
 "xmit_policy=[l2 | l23 | l34] socket_id=<int> mac=<mac addr> "
 "lsc_poll_period_ms=<int> up_delay=<int> down_delay=<int>");
 
