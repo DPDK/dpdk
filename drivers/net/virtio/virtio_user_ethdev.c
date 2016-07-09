@@ -437,3 +437,9 @@ static struct rte_driver virtio_user_driver = {
 };
 
 PMD_REGISTER_DRIVER(virtio_user_driver, virtio_user);
+DRIVER_REGISTER_PARAM_STRING(virtio_user,
+	"path=<path> "
+	"mac=<mac addr> "
+	"cq=<int> "
+	"queue_size=<int> "
+	"queues=<int>");

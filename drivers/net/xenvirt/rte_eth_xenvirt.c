@@ -766,3 +766,5 @@ static struct rte_driver pmd_xenvirt_drv = {
 };
 
 PMD_REGISTER_DRIVER(pmd_xenvirt_drv, eth_xenvirt);
+DRIVER_REGISTER_PARAM_STRING(eth_xenvirt,
+	"mac=<mac addr>");
