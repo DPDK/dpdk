@@ -560,14 +560,16 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 				cipher_xform->key.data,
 				cipher_xform->key.length,
 				auth_xform->add_auth_data_length,
-				auth_xform->digest_length))
+				auth_xform->digest_length,
+				auth_xform->op))
 			goto error_out;
 	} else {
 		if (qat_alg_aead_session_create_content_desc_auth(session,
 				auth_xform->key.data,
 				auth_xform->key.length,
 				auth_xform->add_auth_data_length,
-				auth_xform->digest_length))
+				auth_xform->digest_length,
+				auth_xform->op))
 			goto error_out;
 	}
 	return session;
