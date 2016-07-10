@@ -3002,6 +3002,7 @@ create_gcm_session(uint8_t dev_id, enum rte_crypto_cipher_operation op,
 	ut_params->cipher_xform.next = NULL;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_GCM;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
 	ut_params->cipher_xform.cipher.op = op;
 	ut_params->cipher_xform.cipher.key.data = cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
