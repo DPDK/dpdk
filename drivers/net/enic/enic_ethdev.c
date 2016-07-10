@@ -142,8 +142,20 @@ static int enicpmd_dev_setup_intr(struct enic *enic)
 		if (!enic->cq[index].ctrl)
 			break;
 	}
-
 	if (enic->cq_count != index)
+		return 0;
+	for (index = 0; index < enic->wq_count; index++) {
+		if (!enic->wq[index].ctrl)
+			break;
+	}
+	if (enic->wq_count != index)
+		return 0;
+	/* check start of packet (SOP) RQs only in case scatter is disabled. */
+	for (index = 0; index < enic->rq_count; index++) {
+		if (!enic->rq[enic_sop_rq(index)].ctrl)
+			break;
+	}
+	if (enic->rq_count != index)
 		return 0;
 
 	ret = enic_alloc_intr_resources(enic);
