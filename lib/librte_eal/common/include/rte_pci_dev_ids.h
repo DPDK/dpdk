@@ -57,46 +57,6 @@
  *
  */
 
-/**
- * @file
- *
- * This file contains a list of the PCI device IDs recognised by DPDK, which
- * can be used to fill out an array of structures describing the devices.
- *
- * Currently five families of devices are recognised: those supported by the
- * IGB driver, by EM driver, those supported by the IXGBE driver, those
- * supported by the BNXT driver, and by virtio driver which is a para
- * virtualization driver running in guest virtual machine. The inclusion of
- * these in an array built using this file depends on the definition of
- * RTE_PCI_DEV_ID_DECL_BNXT
- * RTE_PCI_DEV_ID_DECL_EM
- * RTE_PCI_DEV_ID_DECL_IGB
- * RTE_PCI_DEV_ID_DECL_IGBVF
- * RTE_PCI_DEV_ID_DECL_IXGBE
- * RTE_PCI_DEV_ID_DECL_IXGBEVF
- * RTE_PCI_DEV_ID_DECL_I40E
- * RTE_PCI_DEV_ID_DECL_I40EVF
- * RTE_PCI_DEV_ID_DECL_VIRTIO
- * at the time when this file is included.
- *
- * In order to populate an array, the user of this file must define this macro:
- * RTE_PCI_DEV_ID_DECL_IXGBE(vendorID, deviceID). For example:
- *
- * @code
- * struct device {
- *     int vend;
- *     int dev;
- * };
- *
- * struct device devices[] = {
- * #define RTE_PCI_DEV_ID_DECL_IXGBE(vendorID, deviceID) {vend, dev},
- * #include <rte_pci_dev_ids.h>
- * };
- * @endcode
- *
- * Note that this file can be included multiple times within the same file.
- */
-
 #ifndef RTE_PCI_DEV_ID_DECL_EM
 #define RTE_PCI_DEV_ID_DECL_EM(vend, dev)
 #endif
