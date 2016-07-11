@@ -1068,7 +1068,7 @@ bond_mode_8023ad_conf_assign(struct mode8023ad_private *mode4,
 }
 
 static void
-bond_mode_8023ad_setup_v1604(struct rte_eth_dev *dev,
+bond_mode_8023ad_setup_v20(struct rte_eth_dev *dev,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_bond_8023ad_conf def_conf;
@@ -1214,7 +1214,7 @@ free_out:
 }
 
 int
-rte_eth_bond_8023ad_conf_get_v1604(uint8_t port_id,
+rte_eth_bond_8023ad_conf_get_v20(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1229,7 +1229,7 @@ rte_eth_bond_8023ad_conf_get_v1604(uint8_t port_id,
 	bond_mode_8023ad_conf_get(bond_dev, conf);
 	return 0;
 }
-VERSION_SYMBOL(rte_eth_bond_8023ad_conf_get, _v1604, 16.04);
+VERSION_SYMBOL(rte_eth_bond_8023ad_conf_get, _v20, 2.0);
 
 int
 rte_eth_bond_8023ad_conf_get_v1607(uint8_t port_id,
@@ -1278,7 +1278,7 @@ bond_8023ad_setup_validate(uint8_t port_id,
 }
 
 int
-rte_eth_bond_8023ad_setup_v1604(uint8_t port_id,
+rte_eth_bond_8023ad_setup_v20(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1289,11 +1289,11 @@ rte_eth_bond_8023ad_setup_v1604(uint8_t port_id,
 		return err;
 
 	bond_dev = &rte_eth_devices[port_id];
-	bond_mode_8023ad_setup_v1604(bond_dev, conf);
+	bond_mode_8023ad_setup_v20(bond_dev, conf);
 
 	return 0;
 }
-VERSION_SYMBOL(rte_eth_bond_8023ad_setup, _v1604, 16.04);
+VERSION_SYMBOL(rte_eth_bond_8023ad_setup, _v20, 2.0);
 
 int
 rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,

@@ -188,7 +188,7 @@ int
 rte_eth_bond_8023ad_conf_get(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 int
-rte_eth_bond_8023ad_conf_get_v1604(uint8_t port_id,
+rte_eth_bond_8023ad_conf_get_v20(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 int
 rte_eth_bond_8023ad_conf_get_v1607(uint8_t port_id,
@@ -209,7 +209,7 @@ int
 rte_eth_bond_8023ad_setup(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 int
-rte_eth_bond_8023ad_setup_v1604(uint8_t port_id,
+rte_eth_bond_8023ad_setup_v20(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 int
 rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,
