@@ -167,8 +167,8 @@ rte_xen_mem_phy2mch(int32_t memseg_id, const phys_addr_t phy_addr)
 	if (memseg_id == -1) {
 		for (i = 0; i < RTE_MAX_MEMSEG; i++) {
 			if ((phy_addr >= memseg[i].phys_addr) &&
-					(phys_addr < memseg[i].phys_addr +
-						memseg[i].size)) {
+					(phy_addr < memseg[i].phys_addr +
+						memseg[i].len)) {
 				memseg_id = i;
 				break;
 			}
