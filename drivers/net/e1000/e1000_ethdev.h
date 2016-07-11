@@ -35,6 +35,8 @@
 #define _E1000_ETHDEV_H_
 #include <rte_time.h>
 
+#define E1000_INTEL_VENDOR_ID 0x8086
+
 /* need update link, bit flag */
 #define E1000_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
 #define E1000_FLAG_MAILBOX          (uint32_t)(1 << 1)
