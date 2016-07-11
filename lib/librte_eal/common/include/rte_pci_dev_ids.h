@@ -73,10 +73,6 @@
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev)
 #endif
 
-#ifndef RTE_PCI_DEV_ID_DECL_ENIC
-#define RTE_PCI_DEV_ID_DECL_ENIC(vend, dev)
-#endif
-
 #ifndef RTE_PCI_DEV_ID_DECL_BNX2X
 #define RTE_PCI_DEV_ID_DECL_BNX2X(vend, dev)
 #endif
@@ -92,11 +88,6 @@
 #ifndef PCI_VENDOR_ID_INTEL
 /** Vendor ID used by Intel devices */
 #define PCI_VENDOR_ID_INTEL 0x8086
-#endif
-
-#ifndef PCI_VENDOR_ID_CISCO
-/** Vendor ID used by Cisco VIC devices */
-#define PCI_VENDOR_ID_CISCO 0x1137
 #endif
 
 #ifndef PCI_VENDOR_ID_BROADCOM
@@ -342,14 +333,6 @@ RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_A_VF)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_A_VF_HV)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_X_VF)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_X_VF_HV)
-
-/****************** Cisco VIC devices ******************/
-
-#define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
-#define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
-
-RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET)
-RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_VF)
 
 /****************** QLogic devices ******************/
 

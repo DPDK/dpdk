@@ -57,15 +57,11 @@
 /*
  * The set of PCI devices this driver supports
  */
+#define CISCO_PCI_VENDOR_ID 0x1137
 static const struct rte_pci_id pci_id_enic_map[] = {
-#define RTE_PCI_DEV_ID_DECL_ENIC(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#ifndef PCI_VENDOR_ID_CISCO
-#define PCI_VENDOR_ID_CISCO	0x1137
-#endif
-#include "rte_pci_dev_ids.h"
-RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET)
-RTE_PCI_DEV_ID_DECL_ENIC(PCI_VENDOR_ID_CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_VF)
-{.vendor_id = 0, /* Sentinal */},
+	{ RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET) },
+	{ RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET_VF) },
+	{.vendor_id = 0, /* sentinel */},
 };
 
 static int
