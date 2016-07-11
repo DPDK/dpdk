@@ -156,6 +156,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	struct rte_mempool *mp;
 	struct rte_pktmbuf_pool_private mbp_priv;
 	unsigned elt_size;
+	int ret;
 
 	if (RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) != priv_size) {
 		RTE_LOG(ERR, MBUF, "mbuf priv_size=%u is not aligned\n",
@@ -181,8 +182,10 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
 	}
 	rte_pktmbuf_pool_init(mp, &mbp_priv);
 
-	if (rte_mempool_populate_default(mp) < 0) {
+	ret = rte_mempool_populate_default(mp);
+	if (ret < 0) {
 		rte_mempool_free(mp);
+		rte_errno = -ret;
 		return NULL;
 	}
 
