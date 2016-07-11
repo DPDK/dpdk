@@ -398,7 +398,14 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 	pool = ((struct rte_mbuf *)buf->mb)->pool;
 	for (i = 0; i < nb_to_free; i++) {
 		buf = &wq->bufs[tail_idx];
-		m = (struct rte_mbuf *)(buf->mb);
+		m = __rte_pktmbuf_prefree_seg((struct rte_mbuf *)(buf->mb));
+		buf->mb = NULL;
+
+		if (unlikely(m == NULL)) {
+			tail_idx = enic_ring_incr(desc_count, tail_idx);
+			continue;
+		}
+
 		if (likely(m->pool == pool)) {
 			RTE_ASSERT(nb_free < ENIC_MAX_WQ_DESCS);
 			free[nb_free++] = m;
@@ -409,7 +416,6 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 			pool = m->pool;
 		}
 		tail_idx = enic_ring_incr(desc_count, tail_idx);
-		buf->mb = NULL;
 	}
 
 	rte_mempool_put_bulk(pool, (void **)free, nb_free);

@@ -106,7 +106,7 @@ static void enic_free_wq_buf(struct vnic_wq_buf *buf)
 {
 	struct rte_mbuf *mbuf = (struct rte_mbuf *)buf->mb;
 
-	rte_mempool_put(mbuf->pool, mbuf);
+	rte_pktmbuf_free_seg(mbuf);
 	buf->mb = NULL;
 }
 
