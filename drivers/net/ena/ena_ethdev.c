@@ -169,10 +169,9 @@ static const struct ena_stats ena_stats_ena_com_strings[] = {
 #define PCI_DEVICE_ID_ENA_LLQ_VF	0xEC21
 
 static struct rte_pci_id pci_id_ena_map[] = {
-#define RTE_PCI_DEV_ID_DECL_ENA(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-	RTE_PCI_DEV_ID_DECL_ENA(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF)
-	RTE_PCI_DEV_ID_DECL_ENA(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF)
-	{.device_id = 0},
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF) },
+	{ .device_id = 0 },
 };
 
 static int ena_device_init(struct ena_com_dev *ena_dev,
