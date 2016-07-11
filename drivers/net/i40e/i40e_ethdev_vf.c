@@ -1110,9 +1110,12 @@ i40evf_get_link_status(struct rte_eth_dev *dev, struct rte_eth_link *link)
 }
 
 static const struct rte_pci_id pci_id_i40evf_map[] = {
-#define RTE_PCI_DEV_ID_DECL_I40EVF(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#include "rte_pci_dev_ids.h"
-{ .vendor_id = 0, /* sentinel */ },
+	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_VF) },
+	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_VF_HV) },
+	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_X722_A0_VF) },
+	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_X722_VF) },
+	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_X722_VF_HV) },
+	{ .vendor_id = 0, /* sentinel */ },
 };
 
 static inline int
