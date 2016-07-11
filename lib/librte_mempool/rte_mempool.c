@@ -524,7 +524,11 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	if (mp->nb_mem_chunks != 0)
 		return -EEXIST;
 
-	if (rte_eal_has_hugepages()) {
+	if (rte_xen_dom0_supported()) {
+		pg_sz = RTE_PGSIZE_2M;
+		pg_shift = rte_bsf32(pg_sz);
+		align = pg_sz;
+	} else if (rte_eal_has_hugepages()) {
 		pg_shift = 0; /* not needed, zone is physically contiguous */
 		pg_sz = 0;
 		align = RTE_CACHE_LINE_SIZE;
