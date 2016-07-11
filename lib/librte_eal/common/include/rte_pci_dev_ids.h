@@ -73,10 +73,6 @@
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev)
 #endif
 
-#ifndef RTE_PCI_DEV_ID_DECL_VIRTIO
-#define RTE_PCI_DEV_ID_DECL_VIRTIO(vend, dev)
-#endif
-
 #ifndef RTE_PCI_DEV_ID_DECL_VMXNET3
 #define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev)
 #endif
@@ -100,11 +96,6 @@
 #ifndef PCI_VENDOR_ID_INTEL
 /** Vendor ID used by Intel devices */
 #define PCI_VENDOR_ID_INTEL 0x8086
-#endif
-
-#ifndef PCI_VENDOR_ID_QUMRANET
-/** Vendor ID used by virtio devices */
-#define PCI_VENDOR_ID_QUMRANET 0x1AF4
 #endif
 
 #ifndef PCI_VENDOR_ID_VMWARE
@@ -361,12 +352,6 @@ RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_A_VF_HV)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_X_VF)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_X_VF_HV)
 
-/****************** Virtio devices from virtio.h ******************/
-
-#define QUMRANET_DEV_ID_VIRTIO                  0x1000
-
-RTE_PCI_DEV_ID_DECL_VIRTIO(PCI_VENDOR_ID_QUMRANET, QUMRANET_DEV_ID_VIRTIO)
-
 /****************** VMware VMXNET3 devices ******************/
 
 #define VMWARE_DEV_ID_VMXNET3                   0x07B0
@@ -459,6 +444,5 @@ RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57314)
 #undef RTE_PCI_DEV_ID_DECL_IGBVF
 #undef RTE_PCI_DEV_ID_DECL_IXGBE
 #undef RTE_PCI_DEV_ID_DECL_IXGBEVF
-#undef RTE_PCI_DEV_ID_DECL_VIRTIO
 #undef RTE_PCI_DEV_ID_DECL_VMXNET3
 #undef RTE_PCI_DEV_ID_DECL_BNXT
