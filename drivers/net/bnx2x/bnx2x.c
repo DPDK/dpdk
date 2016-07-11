@@ -22,7 +22,6 @@
 #include "ecore_init_ops.h"
 
 #include "rte_version.h"
-#include "rte_pci_dev_ids.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -9572,7 +9571,7 @@ void bnx2x_load_firmware(struct bnx2x_softc *sc)
 	int f;
 	struct stat st;
 
-	fwname = sc->devinfo.device_id == BNX2X_DEV_ID_57711
+	fwname = sc->devinfo.device_id == CHIP_NUM_57711
 		? FW_NAME_57711 : FW_NAME_57810;
 	f = open(fwname, O_RDONLY);
 	if (f < 0) {
