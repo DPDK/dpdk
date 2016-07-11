@@ -94,10 +94,6 @@ static struct cmdline *testpmd_cl;
 
 static void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 
-#ifdef RTE_NIC_BYPASS
-uint8_t bypass_is_supported(portid_t port_id);
-#endif
-
 /* *** Help command with introduction. *** */
 struct cmd_help_brief_result {
 	cmdline_fixed_string_t help;
@@ -3656,9 +3652,6 @@ cmd_set_bypass_mode_parsed(void *parsed_result,
 	portid_t port_id = res->port_id;
 	uint32_t bypass_mode = RTE_BYPASS_MODE_NORMAL;
 
-	if (!bypass_is_supported(port_id))
-		return;
-
 	if (!strcmp(res->value, "bypass"))
 		bypass_mode = RTE_BYPASS_MODE_BYPASS;
 	else if (!strcmp(res->value, "isolate"))
@@ -3724,9 +3717,6 @@ cmd_set_bypass_event_parsed(void *parsed_result,
 	portid_t port_id = res->port_id;
 	uint32_t bypass_event = RTE_BYPASS_EVENT_NONE;
 	uint32_t bypass_mode = RTE_BYPASS_MODE_NORMAL;
-
-	if (!bypass_is_supported(port_id))
-		return;
 
 	if (!strcmp(res->event_value, "timeout"))
 		bypass_event = RTE_BYPASS_EVENT_TIMEOUT;
@@ -3902,9 +3892,6 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 		"power supply off",
 		"timeout"};
 	int num_events = (sizeof events) / (sizeof events[0]);
-
-	if (!bypass_is_supported(port_id))
-		return;
 
 	/* Display the bypass mode.*/
 	if (0 != rte_eth_dev_bypass_state_show(port_id, &bypass_mode)) {
@@ -10800,29 +10787,3 @@ cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 			ports[id].need_reconfig_queues = queue;
 	}
 }
-
-#ifdef RTE_NIC_BYPASS
-#include <rte_pci_dev_ids.h>
-uint8_t
-bypass_is_supported(portid_t port_id)
-{
-	struct rte_port   *port;
-	struct rte_pci_id *pci_id;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return 0;
-
-	/* Get the device id. */
-	port    = &ports[port_id];
-	pci_id = &port->dev_info.pci_dev->id;
-
-	/* Check if NIC supports bypass. */
-	if (pci_id->device_id == IXGBE_DEV_ID_82599_BYPASS) {
-		return 1;
-	}
-	else {
-		printf("\tBypass not supported for port_id = %d.\n", port_id);
-		return 0;
-	}
-}
-#endif
