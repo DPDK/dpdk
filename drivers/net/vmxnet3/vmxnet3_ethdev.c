@@ -100,12 +100,11 @@ static void vmxnet3_process_events(struct vmxnet3_hw *);
 /*
  * The set of PCI devices this driver supports
  */
+#define VMWARE_PCI_VENDOR_ID 0x15AD
+#define VMWARE_DEV_ID_VMXNET3 0x07B0
 static const struct rte_pci_id pci_id_vmxnet3_map[] = {
-
-#define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev) {RTE_PCI_DEVICE(vend, dev)},
-#include "rte_pci_dev_ids.h"
-
-{ .vendor_id = 0, /* sentinel */ },
+	{ RTE_PCI_DEVICE(VMWARE_PCI_VENDOR_ID, VMWARE_DEV_ID_VMXNET3) },
+	{ .vendor_id = 0, /* sentinel */ },
 };
 
 static const struct eth_dev_ops vmxnet3_eth_dev_ops = {

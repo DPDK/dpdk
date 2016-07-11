@@ -73,10 +73,6 @@
 #define RTE_PCI_DEV_ID_DECL_IXGBEVF(vend, dev)
 #endif
 
-#ifndef RTE_PCI_DEV_ID_DECL_VMXNET3
-#define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev)
-#endif
-
 #ifndef RTE_PCI_DEV_ID_DECL_ENIC
 #define RTE_PCI_DEV_ID_DECL_ENIC(vend, dev)
 #endif
@@ -96,11 +92,6 @@
 #ifndef PCI_VENDOR_ID_INTEL
 /** Vendor ID used by Intel devices */
 #define PCI_VENDOR_ID_INTEL 0x8086
-#endif
-
-#ifndef PCI_VENDOR_ID_VMWARE
-/** Vendor ID used by VMware devices */
-#define PCI_VENDOR_ID_VMWARE 0x15AD
 #endif
 
 #ifndef PCI_VENDOR_ID_CISCO
@@ -352,12 +343,6 @@ RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_A_VF_HV)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_X_VF)
 RTE_PCI_DEV_ID_DECL_IXGBEVF(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_X_VF_HV)
 
-/****************** VMware VMXNET3 devices ******************/
-
-#define VMWARE_DEV_ID_VMXNET3                   0x07B0
-
-RTE_PCI_DEV_ID_DECL_VMXNET3(PCI_VENDOR_ID_VMWARE, VMWARE_DEV_ID_VMXNET3)
-
 /****************** Cisco VIC devices ******************/
 
 #define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
@@ -444,5 +429,4 @@ RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57314)
 #undef RTE_PCI_DEV_ID_DECL_IGBVF
 #undef RTE_PCI_DEV_ID_DECL_IXGBE
 #undef RTE_PCI_DEV_ID_DECL_IXGBEVF
-#undef RTE_PCI_DEV_ID_DECL_VMXNET3
 #undef RTE_PCI_DEV_ID_DECL_BNXT
