@@ -159,7 +159,6 @@ config () # <directory> <target> <options>
 		# Automatic configuration
 		test "$DPDK_DEP_NUMA" != y || \
 		sed -ri               's,(NUMA=)n,\1y,' $1/.config
-		sed -ri         's,(PCI_CONFIG=)n,\1y,' $1/.config
 		sed -ri    's,(LIBRTE_IEEE1588=)n,\1y,' $1/.config
 		sed -ri             's,(BYPASS=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ARCHIVE" != y || \
