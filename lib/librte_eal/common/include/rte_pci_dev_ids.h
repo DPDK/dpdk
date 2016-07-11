@@ -81,14 +81,6 @@
 #define RTE_PCI_DEV_ID_DECL_VMXNET3(vend, dev)
 #endif
 
-#ifndef RTE_PCI_DEV_ID_DECL_FM10K
-#define RTE_PCI_DEV_ID_DECL_FM10K(vend, dev)
-#endif
-
-#ifndef RTE_PCI_DEV_ID_DECL_FM10KVF
-#define RTE_PCI_DEV_ID_DECL_FM10KVF(vend, dev)
-#endif
-
 #ifndef RTE_PCI_DEV_ID_DECL_ENIC
 #define RTE_PCI_DEV_ID_DECL_ENIC(vend, dev)
 #endif
@@ -333,14 +325,6 @@ RTE_PCI_DEV_ID_DECL_IXGBE(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_X550EM_X_KR)
 RTE_PCI_DEV_ID_DECL_IXGBE(PCI_VENDOR_ID_INTEL, IXGBE_DEV_ID_82599_BYPASS)
 #endif
 
-/*************** Physical FM10K devices from fm10k_type.h ***************/
-
-#define FM10K_DEV_ID_PF                   0x15A4
-#define FM10K_DEV_ID_SDI_FM10420_QDA2     0x15D0
-
-RTE_PCI_DEV_ID_DECL_FM10K(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_PF)
-RTE_PCI_DEV_ID_DECL_FM10K(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_SDI_FM10420_QDA2)
-
 /****************** Virtual IGB devices from e1000_hw.h ******************/
 
 #define E1000_DEV_ID_82576_VF                   0x10CA
@@ -388,12 +372,6 @@ RTE_PCI_DEV_ID_DECL_VIRTIO(PCI_VENDOR_ID_QUMRANET, QUMRANET_DEV_ID_VIRTIO)
 #define VMWARE_DEV_ID_VMXNET3                   0x07B0
 
 RTE_PCI_DEV_ID_DECL_VMXNET3(PCI_VENDOR_ID_VMWARE, VMWARE_DEV_ID_VMXNET3)
-
-/*************** Virtual FM10K devices from fm10k_type.h ***************/
-
-#define FM10K_DEV_ID_VF                   0x15A5
-
-RTE_PCI_DEV_ID_DECL_FM10KVF(PCI_VENDOR_ID_INTEL, FM10K_DEV_ID_VF)
 
 /****************** Cisco VIC devices ******************/
 
@@ -483,6 +461,4 @@ RTE_PCI_DEV_ID_DECL_BNXT(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57314)
 #undef RTE_PCI_DEV_ID_DECL_IXGBEVF
 #undef RTE_PCI_DEV_ID_DECL_VIRTIO
 #undef RTE_PCI_DEV_ID_DECL_VMXNET3
-#undef RTE_PCI_DEV_ID_DECL_FM10K
-#undef RTE_PCI_DEV_ID_DECL_FM10KVF
 #undef RTE_PCI_DEV_ID_DECL_BNXT
