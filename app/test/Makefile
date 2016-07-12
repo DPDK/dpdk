@@ -33,6 +33,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 ifeq ($(CONFIG_RTE_APP_TEST),y)
 
+# default rule
+all:
+
 # Define an externally linked resource. A linked resource is an arbitrary
 # file that is linked into the test binary. The application refers to this
 # resource by name. The linked generates identifiers beg_<name> and end_<name>
