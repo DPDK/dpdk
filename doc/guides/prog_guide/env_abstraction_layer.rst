@@ -341,7 +341,7 @@ Known Issues
       be preempted by another pthread doing a multi-consumer dequeue on
       the same ring.
 
-    Bypassing this constraint it may cause the 2nd pthread to spin until the 1st one is scheduled again.
+    Bypassing this constraint may cause the 2nd pthread to spin until the 1st one is scheduled again.
     Moreover, if the 1st pthread is preempted by a context that has an higher priority, it may even cause a dead lock.
 
   This does not mean it cannot be used, simply, there is a need to narrow down the situation when it is used by multi-pthread on the same core.
