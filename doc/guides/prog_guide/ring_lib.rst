@@ -252,8 +252,8 @@ In this example, only the producer head and tail (prod_head and prod_tail) are m
 
 The initial state is to have a prod_head and prod_tail pointing at the same location.
 
-Multiple Consumer Enqueue First Step
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Multiple Producers Enqueue First Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On both cores, *ring->prod_head* and ring->cons_tail are copied in local variables.
 The prod_next local variable points to the next element of the table,
@@ -266,11 +266,11 @@ If there is not enough room in the ring (this is detected by checking cons_tail)
 
 .. figure:: img/ring-mp-enqueue1.*
 
-   Multiple consumer enqueue first step
+   Multiple producer enqueue first step
 
 
-Multiple Consumer Enqueue Second Step
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Multiple Producers Enqueue Second Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The second step is to modify ring->prod_head in the ring structure to point to the same location as prod_next.
 This operation is done using a Compare And Swap (CAS) instruction, which does the following operations atomically:
@@ -288,11 +288,11 @@ In the figure, the operation succeeded on core 1, and step one restarted on core
 
 .. figure:: img/ring-mp-enqueue2.*
 
-   Multiple consumer enqueue second step
+   Multiple producer enqueue second step
 
 
-Multiple Consumer Enqueue Third Step
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Multiple Producers Enqueue Third Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The CAS operation is retried on core 2 with success.
 
@@ -303,11 +303,11 @@ The core 1 updates one element of the ring(obj4), and the core 2 updates another
 
 .. figure:: img/ring-mp-enqueue3.*
 
-   Multiple consumer enqueue third step
+   Multiple producer enqueue third step
 
 
-Multiple Consumer Enqueue Fourth Step
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Multiple Producers Enqueue Fourth Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Each core now wants to update ring->prod_tail.
 A core can only update it if ring->prod_tail is equal to the prod_head local variable.
@@ -318,11 +318,11 @@ This is only true on core 1. The operation is finished on core 1.
 
 .. figure:: img/ring-mp-enqueue4.*
 
-   Multiple consumer enqueue fourth step
+   Multiple producer enqueue fourth step
 
 
-Multiple Consumer Enqueue Last Step
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Multiple Producers Enqueue Last Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once ring->prod_tail is updated by core 1, core 2 is allowed to update it too.
 The operation is also finished on core 2.
@@ -332,7 +332,7 @@ The operation is also finished on core 2.
 
 .. figure:: img/ring-mp-enqueue5.*
 
-   Multiple consumer enqueue last step
+   Multiple producer enqueue last step
 
 
 Modulo 32-bit Indexes
