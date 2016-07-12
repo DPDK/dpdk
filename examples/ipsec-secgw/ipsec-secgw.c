@@ -384,7 +384,8 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 }
 
 static inline void
-inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip)
+inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
+		uint16_t lim)
 {
 	struct rte_mbuf *m;
 	uint32_t i, j, res, sa_idx;
@@ -399,15 +400,15 @@ inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip)
 	for (i = 0; i < ip->num; i++) {
 		m = ip->pkts[i];
 		res = ip->res[i];
-		if (res & DISCARD) {
-			rte_pktmbuf_free(m);
-			continue;
-		}
 		if (res & BYPASS) {
 			ip->pkts[j++] = m;
 			continue;
 		}
-		/* Check return SA SPI matches pkt SPI */
+		if (res & DISCARD || i < lim) {
+			rte_pktmbuf_free(m);
+			continue;
+		}
+		/* Only check SPI match for processed IPSec packets */
 		sa_idx = ip->res[i] & PROTECT_MASK;
 		if (sa_idx == 0 || !inbound_sa_check(sa, m, sa_idx)) {
 			rte_pktmbuf_free(m);
@@ -423,10 +424,13 @@ process_pkts_inbound(struct ipsec_ctx *ipsec_ctx,
 		struct ipsec_traffic *traffic)
 {
 	struct rte_mbuf *m;
-	uint16_t idx, nb_pkts_in, i;
+	uint16_t idx, nb_pkts_in, i, n_ip4, n_ip6;
 
 	nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
 			traffic->ipsec.num, MAX_PKT_BURST);
+
+	n_ip4 = traffic->ip4.num;
+	n_ip6 = traffic->ip6.num;
 
 	/* SP/ACL Inbound check ipsec and ip4 */
 	for (i = 0; i < nb_pkts_in; i++) {
@@ -447,9 +451,11 @@ process_pkts_inbound(struct ipsec_ctx *ipsec_ctx,
 			rte_pktmbuf_free(m);
 	}
 
-	inbound_sp_sa(ipsec_ctx->sp4_ctx, ipsec_ctx->sa_ctx, &traffic->ip4);
+	inbound_sp_sa(ipsec_ctx->sp4_ctx, ipsec_ctx->sa_ctx, &traffic->ip4,
+			n_ip4);
 
-	inbound_sp_sa(ipsec_ctx->sp6_ctx, ipsec_ctx->sa_ctx, &traffic->ip6);
+	inbound_sp_sa(ipsec_ctx->sp6_ctx, ipsec_ctx->sa_ctx, &traffic->ip6,
+			n_ip6);
 }
 
 static inline void
