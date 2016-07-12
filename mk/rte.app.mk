@@ -193,11 +193,11 @@ exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 
 ifeq ($(LINK_USING_CC),1)
 O_TO_EXE = $(CC) -o $@ $(CFLAGS) $(OBJS-y) $(call linkerprefix, \
-	$(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) $(LDLIBS) \
+	$(LDLIBS) $(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
 	$(MAPFLAGS))
 else
 O_TO_EXE = $(LD) -o $@ $(OBJS-y) \
-	$(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) $(LDLIBS) \
+	$(LDLIBS) $(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
 	$(MAPFLAGS)
 endif
 O_TO_EXE_STR = $(subst ','\'',$(O_TO_EXE)) #'# fix syntax highlight
