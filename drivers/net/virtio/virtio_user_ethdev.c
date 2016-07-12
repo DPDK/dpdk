@@ -342,7 +342,7 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 		goto end;
 	}
 
-	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_PATH) == 1)
+	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_PATH) == 1) {
 		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_PATH,
 					 &get_string_arg, &path);
 		if (ret < 0) {
@@ -350,7 +350,7 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 				     VIRTIO_USER_ARG_PATH);
 			goto end;
 		}
-	else {
+	} else {
 		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio-user\n",
 			  VIRTIO_USER_ARG_QUEUE_SIZE);
 		goto end;
