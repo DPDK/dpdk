@@ -518,30 +518,41 @@ void enic_free_rq(void *rxq)
 
 void enic_start_wq(struct enic *enic, uint16_t queue_idx)
 {
+	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	vnic_wq_enable(&enic->wq[queue_idx]);
+	eth_dev->data->tx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STARTED;
 }
 
 int enic_stop_wq(struct enic *enic, uint16_t queue_idx)
 {
-	return vnic_wq_disable(&enic->wq[queue_idx]);
+	struct rte_eth_dev *eth_dev = enic->rte_dev;
+	int ret;
+
+	ret = vnic_wq_disable(&enic->wq[queue_idx]);
+	if (ret)
+		return ret;
+
+	eth_dev->data->tx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
 }
 
 void enic_start_rq(struct enic *enic, uint16_t queue_idx)
 {
 	struct vnic_rq *rq_sop = &enic->rq[enic_sop_rq(queue_idx)];
 	struct vnic_rq *rq_data = &enic->rq[rq_sop->data_queue_idx];
+	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	if (rq_data->in_use)
 		vnic_rq_enable(rq_data);
 	rte_mb();
 	vnic_rq_enable(rq_sop);
-
+	eth_dev->data->rx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STARTED;
 }
 
 int enic_stop_rq(struct enic *enic, uint16_t queue_idx)
 {
 	int ret1 = 0, ret2 = 0;
-
+	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	struct vnic_rq *rq_sop = &enic->rq[enic_sop_rq(queue_idx)];
 	struct vnic_rq *rq_data = &enic->rq[rq_sop->data_queue_idx];
 
@@ -552,8 +563,11 @@ int enic_stop_rq(struct enic *enic, uint16_t queue_idx)
 
 	if (ret2)
 		return ret2;
-	else
+	else if (ret1)
 		return ret1;
+
+	eth_dev->data->rx_queue_state[queue_idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
 }
 
 int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
