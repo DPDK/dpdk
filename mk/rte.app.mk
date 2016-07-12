@@ -176,6 +176,8 @@ ifeq ($(RTE_DEVEL_BUILD)$(CONFIG_RTE_BUILD_SHARED_LIB),yy)
 LDFLAGS += -rpath=$(RTE_SDK_BIN)/lib
 endif
 
+MAPFLAGS = -Map=$@.map --cref
+
 .PHONY: all
 all: install
 
@@ -190,13 +192,13 @@ build: _postbuild
 exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 
 ifeq ($(LINK_USING_CC),1)
-override EXTRA_LDFLAGS := $(call linkerprefix,$(EXTRA_LDFLAGS))
-O_TO_EXE = $(CC) $(CFLAGS) $(LDFLAGS_$(@)) \
-	-Wl,-Map=$(@).map,--cref -o $@ $(OBJS-y) $(call linkerprefix,$(LDFLAGS)) \
-	$(EXTRA_LDFLAGS) $(call linkerprefix,$(LDLIBS))
+O_TO_EXE = $(CC) -o $@ $(CFLAGS) $(OBJS-y) $(call linkerprefix, \
+	$(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) $(LDLIBS) \
+	$(MAPFLAGS))
 else
-O_TO_EXE = $(LD) $(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
-	-Map=$(@).map --cref -o $@ $(OBJS-y) $(LDLIBS)
+O_TO_EXE = $(LD) -o $@ $(OBJS-y) \
+	$(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) $(LDLIBS) \
+	$(MAPFLAGS)
 endif
 O_TO_EXE_STR = $(subst ','\'',$(O_TO_EXE)) #'# fix syntax highlight
 O_TO_EXE_DISP = $(if $(V),"$(O_TO_EXE_STR)","  LD $(@)")
