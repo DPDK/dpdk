@@ -75,13 +75,13 @@ the packet capture.
 
 The packet capture framework, as part of its initialization, creates the pthread and the server socket in
 the pthread. The application that calls the framework initialization will have the server socket created,
-either under the path that the application has passed or under the default path i.e. either ``/var/run`` for
-root user or ``$HOME`` for non root user.
+either under the path that the application has passed or under the default path i.e. either ``/var/run/.dpdk`` for
+root user or ``~/.dpdk`` for non root user.
 
 Applications that request enabling or disabling of the packet capture will have the client socket created either under
-the path that the application has passed or under the default path i.e. either ``/var/run/`` for root user or ``$HOME``
-for not root user to send the requests to the server.
-The server socket will listen for client requests for enabling or disabling the packet capture.
+the path that the application has passed or under the default path i.e. either ``/var/run/.dpdk`` for root user or
+``~/.dpdk`` for not root user to send the requests to the server. The server socket will listen for client requests for
+enabling or disabling the packet capture.
 
 
 Implementation Details
@@ -111,7 +111,7 @@ server socket.
 
 The library API ``rte_pdump_set_socket_dir()``, sets the given path as either server socket path
 or client socket path based on the ``type`` argument of the API.
-If the given path is ``NULL``, default path will be selected, i.e. either ``/var/run/`` for root user or ``$HOME``
+If the given path is ``NULL``, default path will be selected, i.e. either ``/var/run/.dpdk`` for root user or ``~/.dpdk``
 for non root user. Clients also need to call this API to set their server socket path if the server socket
 path is different from default path.
 
