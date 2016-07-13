@@ -33,7 +33,7 @@
 
 # The main logic behind running autotests in parallel
 
-import multiprocessing, sys, pexpect, time, os, StringIO, csv
+import multiprocessing, subprocess, sys, pexpect, re, time, os, StringIO, csv
 
 # wait for prompt
 def wait_prompt(child):
@@ -105,6 +105,11 @@ def run_test_group(cmdline, test_group):
 	results.append((0, "Success", "Start %s" % test_group["Prefix"],
 		time.time() - start_time, startuplog.getvalue(), None))
 
+	# parse the binary for available test commands
+	binary = cmdline.split()[0]
+	symbols = subprocess.check_output(['nm', binary]).decode('utf-8')
+	avail_cmds = re.findall('test_register_(\w+)', symbols)
+
 	# run all tests in test group
 	for test in test_group["Tests"]:
 
@@ -124,7 +129,10 @@ def run_test_group(cmdline, test_group):
 			print >>logfile, "\n%s %s\n" % ("-"*20, test["Name"])
 
 			# run test function associated with the test
-			result = test["Func"](child, test["Command"])
+			if test["Command"] in avail_cmds:
+				result = test["Func"](child, test["Command"])
+			else:
+				result = (0, "Skipped [Not Available]")
 
 			# make a note when the test was finished
 			end_time = time.time()
