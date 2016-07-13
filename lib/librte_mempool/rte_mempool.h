@@ -163,6 +163,8 @@ struct rte_mempool_objhdr {
  */
 STAILQ_HEAD(rte_mempool_objhdr_list, rte_mempool_objhdr);
 
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+
 /**
  * Mempool object trailer structure
  *
@@ -170,10 +172,10 @@ STAILQ_HEAD(rte_mempool_objhdr_list, rte_mempool_objhdr);
  * trailer structure containing a cookie preventing memory corruptions.
  */
 struct rte_mempool_objtlr {
-#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	uint64_t cookie;                 /**< Debug cookie. */
-#endif
 };
+
+#endif
 
 /**
  * A list of memory where objects are stored

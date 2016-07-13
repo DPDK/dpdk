@@ -199,7 +199,11 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 		sz->header_size = RTE_ALIGN_CEIL(sz->header_size,
 			RTE_MEMPOOL_ALIGN);
 
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	sz->trailer_size = sizeof(struct rte_mempool_objtlr);
+#else
+	sz->trailer_size = 0;
+#endif
 
 	/* element size is 8 bytes-aligned at least */
 	sz->elt_size = RTE_ALIGN_CEIL(elt_size, sizeof(uint64_t));
