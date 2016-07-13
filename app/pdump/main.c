@@ -55,6 +55,7 @@
 #include <rte_ring.h>
 #include <rte_pdump.h>
 
+#define CMD_LINE_OPT_PDUMP "pdump"
 #define PDUMP_PORT_ARG "port"
 #define PDUMP_PCI_ARG "device_id"
 #define PDUMP_QUEUE_ARG "queue"
@@ -64,6 +65,8 @@
 #define PDUMP_RING_SIZE_ARG "ring-size"
 #define PDUMP_MSIZE_ARG "mbuf-size"
 #define PDUMP_NUM_MBUFS_ARG "total-num-mbufs"
+#define CMD_LINE_OPT_SER_SOCK_PATH "server-socket-path"
+#define CMD_LINE_OPT_CLI_SOCK_PATH "client-socket-path"
 
 #define VDEV_PCAP "eth_pcap_%s_%d,tx_pcap=%s"
 #define VDEV_IFACE "eth_pcap_%s_%d,tx_iface=%s"
@@ -166,6 +169,8 @@ struct parse_val {
 int num_tuples;
 static struct rte_eth_conf port_conf_default;
 volatile uint8_t quit_signal;
+static char server_socket_path[PATH_MAX];
+static char client_socket_path[PATH_MAX];
 
 /**< display usage */
 static void
@@ -178,8 +183,11 @@ pdump_usage(const char *prgname)
 			" tx-dev=<iface or pcap file>,"
 			"[ring-size=<ring size>default:16384],"
 			"[mbuf-size=<mbuf data size>default:2176],"
-			"[total-num-mbufs=<number of mbufs>default:65535]"
-			"'\n",
+			"[total-num-mbufs=<number of mbufs>default:65535]'\n"
+			"[--server-socket-path=<server socket dir>"
+				"default:/var/run/.dpdk/ (or) ~/.dpdk/]\n"
+			"[--client-socket-path=<client socket dir>"
+				"default:/var/run/.dpdk/ (or) ~/.dpdk/]\n",
 			prgname);
 }
 
@@ -226,9 +234,6 @@ parse_rxtxdev(const char *key, const char *value, void *extra_args)
 		/* identify the tx stream type for pcap vdev */
 		if (if_nametoindex(pt->tx_dev))
 			pt->tx_vdev_stream_type = IFACE;
-	} else {
-		printf("invalid dev type %s, must be rx or tx\n", value);
-		return -1;
 	}
 
 	return 0;
@@ -407,6 +412,8 @@ launch_args_parse(int argc, char **argv, char *prgname)
 	int option_index;
 	static struct option long_option[] = {
 		{"pdump", 1, 0, 0},
+		{"server-socket-path", 1, 0, 0},
+		{"client-socket-path", 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -418,14 +425,32 @@ launch_args_parse(int argc, char **argv, char *prgname)
 			long_option, &option_index)) != EOF) {
 		switch (opt) {
 		case 0:
-			if (!strncmp(long_option[option_index].name, "pdump",
-					MAX_LONG_OPT_SZ)) {
+			if (!strncmp(long_option[option_index].name,
+					CMD_LINE_OPT_PDUMP,
+					sizeof(CMD_LINE_OPT_PDUMP))) {
 				ret = parse_pdump(optarg);
 				if (ret) {
 					pdump_usage(prgname);
 					return -1;
 				}
 			}
+
+			if (!strncmp(long_option[option_index].name,
+					CMD_LINE_OPT_SER_SOCK_PATH,
+					sizeof(CMD_LINE_OPT_SER_SOCK_PATH))) {
+				snprintf(server_socket_path,
+					sizeof(server_socket_path), "%s",
+					optarg);
+			}
+
+			if (!strncmp(long_option[option_index].name,
+					CMD_LINE_OPT_CLI_SOCK_PATH,
+					sizeof(CMD_LINE_OPT_CLI_SOCK_PATH))) {
+				snprintf(client_socket_path,
+					sizeof(client_socket_path), "%s",
+					optarg);
+			}
+
 			break;
 		default:
 			pdump_usage(prgname);
@@ -719,6 +744,22 @@ enable_pdump(void)
 	struct pdump_tuples *pt;
 	int ret = 0, ret1 = 0;
 
+	if (server_socket_path[0] != 0)
+		ret = rte_pdump_set_socket_dir(server_socket_path,
+				RTE_PDUMP_SOCKET_SERVER);
+	if (ret == 0 && client_socket_path[0] != 0) {
+		ret = rte_pdump_set_socket_dir(client_socket_path,
+				RTE_PDUMP_SOCKET_CLIENT);
+	}
+	if (ret < 0) {
+		cleanup_pdump_resources();
+		rte_exit(EXIT_FAILURE,
+				"failed to set socket paths of server:%s, "
+				"client:%s\n",
+				server_socket_path,
+				client_socket_path);
+	}
+
 	for (i = 0; i < num_tuples; i++) {
 		pt = &pdump_t[i];
 		if (pt->dir == RTE_PDUMP_FLAG_RXTX) {
@@ -729,7 +770,7 @@ enable_pdump(void)
 						RTE_PDUMP_FLAG_RX,
 						pt->rx_ring,
 						pt->mp, NULL);
-				ret = rte_pdump_enable_by_deviceid(
+				ret1 = rte_pdump_enable_by_deviceid(
 						pt->device_id,
 						pt->queue,
 						RTE_PDUMP_FLAG_TX,
