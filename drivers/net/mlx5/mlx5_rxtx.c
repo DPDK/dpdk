@@ -472,8 +472,8 @@ mlx5_wqe_write_inline_vlan(struct txq *txq, volatile union mlx5_wqe *wqe,
 		   (uint8_t *)addr, 12);
 	rte_memcpy((uint8_t *)(uintptr_t)wqe->inl.eseg.inline_hdr_start + 12,
 		   &vlan, sizeof(vlan));
-	rte_memcpy((uint8_t *)(uintptr_t)wqe->inl.eseg.inline_hdr_start + 16,
-		   ((uint8_t *)addr + 12), 2);
+	rte_memcpy((uint8_t *)((uintptr_t)wqe->inl.eseg.inline_hdr_start + 16),
+		   (uint8_t *)(addr + 12), 2);
 	addr += MLX5_ETH_VLAN_INLINE_HEADER_SIZE - sizeof(vlan);
 	length -= MLX5_ETH_VLAN_INLINE_HEADER_SIZE - sizeof(vlan);
 	size = (sizeof(wqe->inl.ctrl.ctrl) +
