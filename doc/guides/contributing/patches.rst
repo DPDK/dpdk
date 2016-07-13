@@ -22,7 +22,7 @@ The DPDK development process has the following features:
 * Patches are reviewed publicly on the mailing list.
 * Successfully reviewed patches are merged to the master branch of the repository.
 
-The mailing list for DPDK development is `dev@dpkg.org <http://dpdk.org/ml/archives/dev/>`_.
+The mailing list for DPDK development is `dev@dpdk.org <http://dpdk.org/ml/archives/dev/>`_.
 Contributors will need to `register for the mailing list <http://dpdk.org/ml/listinfo/dev>`_ in order to submit patches.
 It is also worth registering for the DPDK `Patchwork <http://dpdk.org/dev/patchwxispork/project/dpdk/list/>`_
 
