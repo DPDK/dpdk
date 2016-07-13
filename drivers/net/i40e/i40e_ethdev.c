@@ -2718,16 +2718,12 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_vsi *vsi = pf->main_vsi;
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (dev->data->dev_conf.rxmode.hw_vlan_filter) {
-			i40e_aq_set_vsi_vlan_promisc(hw, vsi->seid, false, NULL);
+		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
 			i40e_vsi_config_vlan_filter(vsi, TRUE);
-		} else {
-			i40e_aq_set_vsi_vlan_promisc(hw, vsi->seid, true, NULL);
+		else
 			i40e_vsi_config_vlan_filter(vsi, FALSE);
-		}
 	}
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
@@ -5777,28 +5773,17 @@ i40e_set_vlan_filter(struct i40e_vsi *vsi,
 			 uint16_t vlan_id, bool on)
 {
 	uint32_t vid_idx, vid_bit;
-	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
-	struct i40e_aqc_add_remove_vlan_element_data vlan_data = {0};
-	int ret;
 
 	if (vlan_id > ETH_VLAN_ID_MAX)
 		return;
 
 	vid_idx = I40E_VFTA_IDX(vlan_id);
 	vid_bit = I40E_VFTA_BIT(vlan_id);
-	vlan_data.vlan_tag = rte_cpu_to_le_16(vlan_id);
 
-	if (on) {
-		ret = i40e_aq_add_vlan(hw, vsi->seid, &vlan_data, 1, NULL);
-		if (ret != I40E_SUCCESS)
-			PMD_DRV_LOG(ERR, "Failed to add vlan filter");
+	if (on)
 		vsi->vfta[vid_idx] |= vid_bit;
-	} else {
-		ret = i40e_aq_remove_vlan(hw, vsi->seid, &vlan_data, 1, NULL);
-		if (ret != I40E_SUCCESS)
-			PMD_DRV_LOG(ERR, "Failed to remove vlan filter");
+	else
 		vsi->vfta[vid_idx] &= ~vid_bit;
-	}
 }
 
 /**
