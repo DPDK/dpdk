@@ -300,8 +300,4 @@ fail_all:
 	return -1;
 }
 
-static struct test_command power_kvm_vm_cmd = {
-	.command = "power_kvm_vm_autotest",
-	.callback = test_power_kvm_vm,
-};
-REGISTER_TEST_COMMAND(power_kvm_vm_cmd);
+REGISTER_TEST_COMMAND(power_kvm_vm_autotest, test_power_kvm_vm);

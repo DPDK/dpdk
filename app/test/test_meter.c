@@ -494,8 +494,4 @@ test_meter(void)
 
 }
 
-static struct test_command meter_cmd = {
-	.command = "meter_autotest",
-	.callback = test_meter,
-};
-REGISTER_TEST_COMMAND(meter_cmd);
+REGISTER_TEST_COMMAND(meter_autotest, test_meter);

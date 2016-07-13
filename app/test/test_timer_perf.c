@@ -158,8 +158,4 @@ test_timer_perf(void)
 	return 0;
 }
 
-static struct test_command timer_perf_cmd = {
-	.command = "timer_perf_autotest",
-	.callback = test_timer_perf,
-};
-REGISTER_TEST_COMMAND(timer_perf_cmd);
+REGISTER_TEST_COMMAND(timer_perf_autotest, test_timer_perf);

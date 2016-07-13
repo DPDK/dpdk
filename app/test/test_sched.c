@@ -213,8 +213,4 @@ test_sched(void)
 	return 0;
 }
 
-static struct test_command sched_cmd = {
-	.command = "sched_autotest",
-	.callback = test_sched,
-};
-REGISTER_TEST_COMMAND(sched_cmd);
+REGISTER_TEST_COMMAND(sched_autotest, test_sched);

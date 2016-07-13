@@ -217,9 +217,4 @@ test_hash_scaling_main(void)
 	return r;
 }
 
-
-static struct test_command hash_scaling_cmd = {
-	.command = "hash_scaling_autotest",
-	.callback = test_hash_scaling_main,
-};
-REGISTER_TEST_COMMAND(hash_scaling_cmd);
+REGISTER_TEST_COMMAND(hash_scaling_autotest, test_hash_scaling_main);

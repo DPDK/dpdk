@@ -2919,27 +2919,7 @@ perftest_qat_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 	return unit_test_suite_runner(&cryptodev_snow3g_testsuite);
 }
 
-static struct test_command cryptodev_aesni_mb_perf_cmd = {
-	.command = "cryptodev_aesni_mb_perftest",
-	.callback = perftest_aesni_mb_cryptodev,
-};
-
-static struct test_command cryptodev_qat_perf_cmd = {
-	.command = "cryptodev_qat_perftest",
-	.callback = perftest_qat_cryptodev,
-};
-
-static struct test_command cryptodev_sw_snow3g_perf_cmd = {
-	.command = "cryptodev_sw_snow3g_perftest",
-	.callback = perftest_sw_snow3g_cryptodev,
-};
-
-static struct test_command cryptodev_qat_snow3g_perf_cmd = {
-	.command = "cryptodev_qat_snow3g_perftest",
-	.callback = perftest_qat_snow3g_cryptodev,
-};
-
-REGISTER_TEST_COMMAND(cryptodev_aesni_mb_perf_cmd);
-REGISTER_TEST_COMMAND(cryptodev_qat_perf_cmd);
-REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_perf_cmd);
-REGISTER_TEST_COMMAND(cryptodev_qat_snow3g_perf_cmd);
+REGISTER_TEST_COMMAND(cryptodev_aesni_mb_perftest, perftest_aesni_mb_cryptodev);
+REGISTER_TEST_COMMAND(cryptodev_qat_perftest, perftest_qat_cryptodev);
+REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_perftest, perftest_sw_snow3g_cryptodev);
+REGISTER_TEST_COMMAND(cryptodev_qat_snow3g_perftest, perftest_qat_snow3g_cryptodev);

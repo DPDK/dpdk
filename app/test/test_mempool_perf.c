@@ -381,8 +381,4 @@ test_mempool_perf(void)
 	return 0;
 }
 
-static struct test_command mempool_perf_cmd = {
-	.command = "mempool_perf_autotest",
-	.callback = test_mempool_perf,
-};
-REGISTER_TEST_COMMAND(mempool_perf_cmd);
+REGISTER_TEST_COMMAND(mempool_perf_autotest, test_mempool_perf);

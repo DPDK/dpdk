@@ -242,8 +242,4 @@ test_lpm_perf(void)
 	return 0;
 }
 
-static struct test_command lpm_perf_cmd = {
-	.command = "lpm_perf_autotest",
-	.callback = test_lpm_perf,
-};
-REGISTER_TEST_COMMAND(lpm_perf_cmd);
+REGISTER_TEST_COMMAND(lpm_perf_autotest, test_lpm_perf);

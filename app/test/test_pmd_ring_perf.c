@@ -181,8 +181,4 @@ test_ring_pmd_perf(void)
 	return 0;
 }
 
-static struct test_command ring_pmd_perf_cmd = {
-	.command = "ring_pmd_perf_autotest",
-	.callback = test_ring_pmd_perf,
-};
-REGISTER_TEST_COMMAND(ring_pmd_perf_cmd);
+REGISTER_TEST_COMMAND(ring_pmd_perf_autotest, test_ring_pmd_perf);

@@ -86,8 +86,4 @@ test_memory(void)
 	return 0;
 }
 
-static struct test_command memory_cmd = {
-	.command = "memory_autotest",
-	.callback = test_memory,
-};
-REGISTER_TEST_COMMAND(memory_cmd);
+REGISTER_TEST_COMMAND(memory_autotest, test_memory);

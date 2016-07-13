@@ -374,8 +374,4 @@ test_atomic(void)
 	return 0;
 }
 
-static struct test_command atomic_cmd = {
-	.command = "atomic_autotest",
-	.callback = test_atomic,
-};
-REGISTER_TEST_COMMAND(atomic_cmd);
+REGISTER_TEST_COMMAND(atomic_autotest, test_atomic);

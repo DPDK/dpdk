@@ -232,8 +232,4 @@ test_kvargs(void)
 	return 0;
 }
 
-static struct test_command kvargs_cmd = {
-	.command = "kvargs_autotest",
-	.callback = test_kvargs,
-};
-REGISTER_TEST_COMMAND(kvargs_cmd);
+REGISTER_TEST_COMMAND(kvargs_autotest, test_kvargs);

@@ -104,8 +104,4 @@ fail_all:
 	return -1;
 }
 
-static struct test_command power_cmd = {
-	.command = "power_autotest",
-	.callback = test_power,
-};
-REGISTER_TEST_COMMAND(power_cmd);
+REGISTER_TEST_COMMAND(power_autotest, test_power);

@@ -184,8 +184,4 @@ test_lpm6_perf(void)
 	return 0;
 }
 
-static struct test_command lpm6_perf_cmd = {
-	.command = "lpm6_perf_autotest",
-	.callback = test_lpm6_perf,
-};
-REGISTER_TEST_COMMAND(lpm6_perf_cmd);
+REGISTER_TEST_COMMAND(lpm6_perf_autotest, test_lpm6_perf);

@@ -430,8 +430,4 @@ test_ivshmem(void)
 	return -1;
 }
 
-static struct test_command ivshmem_cmd = {
-	.command = "ivshmem_autotest",
-	.callback = test_ivshmem,
-};
-REGISTER_TEST_COMMAND(ivshmem_cmd);
+REGISTER_TEST_COMMAND(ivshmem_autotest, test_ivshmem);

@@ -1880,20 +1880,6 @@ test_red_all(void)
 	return tell_the_result(num_tests, num_pass);
 }
 
-static struct test_command red_cmd = {
-	.command = "red_autotest",
-	.callback = test_red,
-};
-REGISTER_TEST_COMMAND(red_cmd);
-
-static struct test_command red_cmd_perf = {
-	.command = "red_perf",
-	.callback = test_red_perf,
-};
-REGISTER_TEST_COMMAND(red_cmd_perf);
-
-static struct test_command red_cmd_all = {
-	.command = "red_all",
-	.callback = test_red_all,
-};
-REGISTER_TEST_COMMAND(red_cmd_all);
+REGISTER_TEST_COMMAND(red_autotest, test_red);
+REGISTER_TEST_COMMAND(red_perf, test_red_perf);
+REGISTER_TEST_COMMAND(red_all, test_red_all);

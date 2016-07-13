@@ -609,8 +609,4 @@ err:
 	return -1;
 }
 
-static struct test_command mempool_cmd = {
-	.command = "mempool_autotest",
-	.callback = test_mempool,
-};
-REGISTER_TEST_COMMAND(mempool_cmd);
+REGISTER_TEST_COMMAND(mempool_autotest, test_mempool);

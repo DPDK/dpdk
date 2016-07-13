@@ -333,8 +333,4 @@ test_spinlock(void)
 	return ret;
 }
 
-static struct test_command spinlock_cmd = {
-	.command = "spinlock_autotest",
-	.callback = test_spinlock,
-};
-REGISTER_TEST_COMMAND(spinlock_cmd);
+REGISTER_TEST_COMMAND(spinlock_autotest, test_spinlock);

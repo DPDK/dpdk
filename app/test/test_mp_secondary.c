@@ -282,8 +282,4 @@ test_mp_secondary(void)
 	return run_object_creation_tests();
 }
 
-static struct test_command multiprocess_cmd = {
-	.command = "multiprocess_autotest",
-	.callback = test_mp_secondary,
-};
-REGISTER_TEST_COMMAND(multiprocess_cmd);
+REGISTER_TEST_COMMAND(multiprocess_autotest, test_mp_secondary);

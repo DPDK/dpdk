@@ -1514,8 +1514,4 @@ test_hash(void)
 	return 0;
 }
 
-static struct test_command hash_cmd = {
-	.command = "hash_autotest",
-	.callback = test_hash,
-};
-REGISTER_TEST_COMMAND(hash_cmd);
+REGISTER_TEST_COMMAND(hash_autotest, test_hash);

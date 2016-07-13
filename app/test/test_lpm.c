@@ -1238,8 +1238,4 @@ test_lpm(void)
 	return global_status;
 }
 
-static struct test_command lpm_cmd = {
-	.command = "lpm_autotest",
-	.callback = test_lpm,
-};
-REGISTER_TEST_COMMAND(lpm_cmd);
+REGISTER_TEST_COMMAND(lpm_autotest, test_lpm);

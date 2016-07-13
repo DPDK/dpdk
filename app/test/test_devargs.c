@@ -131,8 +131,4 @@ test_devargs(void)
 	return -1;
 }
 
-static struct test_command devargs_cmd = {
-	.command = "devargs_autotest",
-	.callback = test_devargs,
-};
-REGISTER_TEST_COMMAND(devargs_cmd);
+REGISTER_TEST_COMMAND(devargs_autotest, test_devargs);

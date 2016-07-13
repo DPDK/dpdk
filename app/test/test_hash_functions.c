@@ -319,8 +319,4 @@ test_hash_functions(void)
 	return 0;
 }
 
-static struct test_command hash_functions_cmd = {
-	.command = "hash_functions_autotest",
-	.callback = test_hash_functions,
-};
-REGISTER_TEST_COMMAND(hash_functions_cmd);
+REGISTER_TEST_COMMAND(hash_functions_autotest, test_hash_functions);

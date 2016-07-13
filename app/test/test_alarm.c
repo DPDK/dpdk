@@ -253,8 +253,4 @@ test_alarm(void)
 	return 0;
 }
 
-static struct test_command alarm_cmd = {
-	.command = "alarm_autotest",
-	.callback = test_alarm,
-};
-REGISTER_TEST_COMMAND(alarm_cmd);
+REGISTER_TEST_COMMAND(alarm_autotest, test_alarm);

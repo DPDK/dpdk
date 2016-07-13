@@ -86,8 +86,4 @@ test_logs(void)
 	return 0;
 }
 
-static struct test_command logs_cmd = {
-	.command = "logs_autotest",
-	.callback = test_logs,
-};
-REGISTER_TEST_COMMAND(logs_cmd);
+REGISTER_TEST_COMMAND(logs_autotest, test_logs);

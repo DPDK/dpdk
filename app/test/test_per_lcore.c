@@ -136,8 +136,4 @@ test_per_lcore(void)
 	return 0;
 }
 
-static struct test_command per_lcore_cmd = {
-	.command = "per_lcore_autotest",
-	.callback = test_per_lcore,
-};
-REGISTER_TEST_COMMAND(per_lcore_cmd);
+REGISTER_TEST_COMMAND(per_lcore_autotest, test_per_lcore);

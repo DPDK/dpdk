@@ -1764,8 +1764,4 @@ test_lpm6(void)
 	return global_status;
 }
 
-static struct test_command lpm6_cmd = {
-	.command = "lpm6_autotest",
-	.callback = test_lpm6,
-};
-REGISTER_TEST_COMMAND(lpm6_cmd);
+REGISTER_TEST_COMMAND(lpm6_autotest, test_lpm6);

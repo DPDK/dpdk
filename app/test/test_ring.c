@@ -1378,8 +1378,4 @@ test_ring(void)
 	return 0;
 }
 
-static struct test_command ring_cmd = {
-	.command = "ring_autotest",
-	.callback = test_ring,
-};
-REGISTER_TEST_COMMAND(ring_cmd);
+REGISTER_TEST_COMMAND(ring_autotest, test_ring);

@@ -89,8 +89,4 @@ test_cycles(void)
 	return 0;
 }
 
-static struct test_command cycles_cmd = {
-	.command = "cycles_autotest",
-	.callback = test_cycles,
-};
-REGISTER_TEST_COMMAND(cycles_cmd);
+REGISTER_TEST_COMMAND(cycles_autotest, test_cycles);

@@ -92,8 +92,4 @@ test_byteorder(void)
 	return 0;
 }
 
-static struct test_command byteorder_cmd = {
-	.command = "byteorder_autotest",
-	.callback = test_byteorder,
-};
-REGISTER_TEST_COMMAND(byteorder_cmd);
+REGISTER_TEST_COMMAND(byteorder_autotest, test_byteorder);

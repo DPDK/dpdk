@@ -146,8 +146,4 @@ test_debug(void)
 	return 0;
 }
 
-static struct test_command debug_cmd = {
-	.command = "debug_autotest",
-	.callback = test_debug,
-};
-REGISTER_TEST_COMMAND(debug_cmd);
+REGISTER_TEST_COMMAND(debug_autotest, test_debug);

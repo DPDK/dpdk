@@ -383,8 +383,4 @@ test_reorder(void)
 	return unit_test_suite_runner(&reorder_test_suite);
 }
 
-static struct test_command reorder_cmd = {
-	.command = "reorder_autotest",
-	.callback = test_reorder,
-};
-REGISTER_TEST_COMMAND(reorder_cmd);
+REGISTER_TEST_COMMAND(reorder_autotest, test_reorder);

@@ -576,8 +576,4 @@ err:
 	return -1;
 }
 
-static struct test_command distributor_cmd = {
-	.command = "distributor_autotest",
-	.callback = test_distributor,
-};
-REGISTER_TEST_COMMAND(distributor_cmd);
+REGISTER_TEST_COMMAND(distributor_autotest, test_distributor);

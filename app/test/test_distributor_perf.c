@@ -257,8 +257,4 @@ test_distributor_perf(void)
 	return 0;
 }
 
-static struct test_command distributor_perf_cmd = {
-	.command = "distributor_perf_autotest",
-	.callback = test_distributor_perf,
-};
-REGISTER_TEST_COMMAND(distributor_perf_cmd);
+REGISTER_TEST_COMMAND(distributor_perf_autotest, test_distributor_perf);

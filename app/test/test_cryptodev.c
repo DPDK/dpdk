@@ -4164,10 +4164,6 @@ test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 	gbl_cryptodev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
 	return unit_test_suite_runner(&cryptodev_qat_testsuite);
 }
-static struct test_command cryptodev_qat_cmd = {
-	.command = "cryptodev_qat_autotest",
-	.callback = test_cryptodev_qat,
-};
 
 static int
 test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
@@ -4177,11 +4173,6 @@ test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
 	return unit_test_suite_runner(&cryptodev_aesni_mb_testsuite);
 }
 
-static struct test_command cryptodev_aesni_mb_cmd = {
-	.command = "cryptodev_aesni_mb_autotest",
-	.callback = test_cryptodev_aesni_mb,
-};
-
 static int
 test_cryptodev_aesni_gcm(void)
 {
@@ -4189,11 +4180,6 @@ test_cryptodev_aesni_gcm(void)
 
 	return unit_test_suite_runner(&cryptodev_aesni_gcm_testsuite);
 }
-
-static struct test_command cryptodev_aesni_gcm_cmd = {
-	.command = "cryptodev_aesni_gcm_autotest",
-	.callback = test_cryptodev_aesni_gcm,
-};
 
 static int
 test_cryptodev_null(void)
@@ -4203,11 +4189,6 @@ test_cryptodev_null(void)
 	return unit_test_suite_runner(&cryptodev_null_testsuite);
 }
 
-static struct test_command cryptodev_null_cmd = {
-	.command = "cryptodev_null_autotest",
-	.callback = test_cryptodev_null,
-};
-
 static int
 test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 {
@@ -4215,11 +4196,6 @@ test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 
 	return unit_test_suite_runner(&cryptodev_sw_snow3g_testsuite);
 }
-
-static struct test_command cryptodev_sw_snow3g_cmd = {
-	.command = "cryptodev_sw_snow3g_autotest",
-	.callback = test_cryptodev_sw_snow3g,
-};
 
 static int
 test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
@@ -4229,14 +4205,9 @@ test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
 	return unit_test_suite_runner(&cryptodev_sw_kasumi_testsuite);
 }
 
-static struct test_command cryptodev_sw_kasumi_cmd = {
-	.command = "cryptodev_sw_kasumi_autotest",
-	.callback = test_cryptodev_sw_kasumi,
-};
-
-REGISTER_TEST_COMMAND(cryptodev_qat_cmd);
-REGISTER_TEST_COMMAND(cryptodev_aesni_mb_cmd);
-REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_cmd);
-REGISTER_TEST_COMMAND(cryptodev_null_cmd);
-REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_cmd);
-REGISTER_TEST_COMMAND(cryptodev_sw_kasumi_cmd);
+REGISTER_TEST_COMMAND(cryptodev_qat_autotest, test_cryptodev_qat);
+REGISTER_TEST_COMMAND(cryptodev_aesni_mb_autotest, test_cryptodev_aesni_mb);
+REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_autotest, test_cryptodev_aesni_gcm);
+REGISTER_TEST_COMMAND(cryptodev_null_autotest, test_cryptodev_null);
+REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_autotest, test_cryptodev_sw_snow3g);
+REGISTER_TEST_COMMAND(cryptodev_sw_kasumi_autotest, test_cryptodev_sw_kasumi);

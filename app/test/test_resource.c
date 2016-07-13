@@ -130,8 +130,4 @@ static int test_resource(void)
 	return 0;
 }
 
-static struct test_command resource_cmd = {
-	.command = "resource_autotest",
-	.callback = test_resource,
-};
-REGISTER_TEST_COMMAND(resource_cmd);
+REGISTER_TEST_COMMAND(resource_autotest, test_resource);

@@ -278,10 +278,4 @@ test_hash_multiwriter_main(void)
 	return r;
 }
 
-
-static struct test_command hash_scaling_cmd = {
-	.command = "hash_multiwriter_autotest",
-	.callback = test_hash_multiwriter_main,
-};
-
-REGISTER_TEST_COMMAND(hash_scaling_cmd);
+REGISTER_TEST_COMMAND(hash_multiwriter_autotest, test_hash_multiwriter_main);

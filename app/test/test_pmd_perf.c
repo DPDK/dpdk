@@ -910,8 +910,4 @@ test_set_rxtx_sc(cmdline_fixed_string_t type)
 	return -1;
 }
 
-static struct test_command pmd_perf_cmd = {
-	.command = "pmd_perf_autotest",
-	.callback = test_pmd_perf,
-};
-REGISTER_TEST_COMMAND(pmd_perf_cmd);
+REGISTER_TEST_COMMAND(pmd_perf_autotest, test_pmd_perf);

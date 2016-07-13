@@ -54,8 +54,4 @@ test_version(void)
 	return 0;
 }
 
-static struct test_command version_cmd = {
-	.command = "version_autotest",
-	.callback = test_version,
-};
-REGISTER_TEST_COMMAND(version_cmd);
+REGISTER_TEST_COMMAND(version_autotest, test_version);

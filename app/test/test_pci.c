@@ -315,8 +315,4 @@ test_pci(void)
 	return 0;
 }
 
-static struct test_command pci_cmd = {
-	.command = "pci_autotest",
-	.callback = test_pci,
-};
-REGISTER_TEST_COMMAND(pci_cmd);
+REGISTER_TEST_COMMAND(pci_autotest, test_pci);

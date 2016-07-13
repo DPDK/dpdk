@@ -250,11 +250,16 @@ struct test_command {
 
 void add_test_command(struct test_command *t);
 
-#define REGISTER_TEST_COMMAND(t) \
-static void __attribute__((used)) testfn_##t(void);\
-void __attribute__((constructor, used)) testfn_##t(void)\
-{\
-	add_test_command(&t);\
-}
+/* Register a test function with its command string */
+#define REGISTER_TEST_COMMAND(cmd, func) \
+	static struct test_command test_struct_##cmd = { \
+		.command = RTE_STR(cmd), \
+		.callback = func, \
+	}; \
+	static void __attribute__((constructor, used)) \
+	test_register_##cmd(void) \
+	{ \
+		add_test_command(&test_struct_##cmd); \
+	}
 
 #endif

@@ -89,8 +89,4 @@ test_cmdline(void)
 	return 0;
 }
 
-static struct test_command cmdline_cmd = {
-	.command = "cmdline_autotest",
-	.callback = test_cmdline,
-};
-REGISTER_TEST_COMMAND(cmdline_cmd);
+REGISTER_TEST_COMMAND(cmdline_autotest, test_cmdline);

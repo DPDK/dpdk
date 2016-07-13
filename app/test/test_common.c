@@ -169,8 +169,4 @@ test_common(void)
 	return ret;
 }
 
-static struct test_command common_cmd = {
-	.command = "common_autotest",
-	.callback = test_common,
-};
-REGISTER_TEST_COMMAND(common_cmd);
+REGISTER_TEST_COMMAND(common_autotest, test_common);

@@ -670,9 +670,4 @@ test_link_bonding_rssconf(void)
 	return unit_test_suite_runner(&link_bonding_rssconf_test_suite);
 }
 
-static struct test_command test_link_bonding_rssconf_cmd = {
-	.command = "link_bonding_rssconf_autotest",
-	.callback = test_link_bonding_rssconf,
-};
-
-REGISTER_TEST_COMMAND(test_link_bonding_rssconf_cmd);
+REGISTER_TEST_COMMAND(link_bonding_rssconf_autotest, test_link_bonding_rssconf);

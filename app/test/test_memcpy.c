@@ -159,8 +159,4 @@ test_memcpy(void)
 	return 0;
 }
 
-static struct test_command memcpy_cmd = {
-	.command = "memcpy_autotest",
-	.callback = test_memcpy,
-};
-REGISTER_TEST_COMMAND(memcpy_cmd);
+REGISTER_TEST_COMMAND(memcpy_autotest, test_memcpy);

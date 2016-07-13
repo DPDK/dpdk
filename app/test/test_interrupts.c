@@ -548,8 +548,4 @@ out:
 	return ret;
 }
 
-static struct test_command interrupt_cmd = {
-	.command = "interrupt_autotest",
-	.callback = test_interrupt,
-};
-REGISTER_TEST_COMMAND(interrupt_cmd);
+REGISTER_TEST_COMMAND(interrupt_autotest, test_interrupt);

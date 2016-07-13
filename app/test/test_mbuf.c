@@ -1026,8 +1026,4 @@ test_mbuf(void)
 	return 0;
 }
 
-static struct test_command mbuf_cmd = {
-	.command = "mbuf_autotest",
-	.callback = test_mbuf,
-};
-REGISTER_TEST_COMMAND(mbuf_cmd);
+REGISTER_TEST_COMMAND(mbuf_autotest, test_mbuf);

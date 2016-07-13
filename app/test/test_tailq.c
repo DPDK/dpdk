@@ -154,8 +154,4 @@ test_tailq(void)
 	return ret;
 }
 
-static struct test_command tailq_cmd = {
-	.command = "tailq_autotest",
-	.callback = test_tailq,
-};
-REGISTER_TEST_COMMAND(tailq_cmd);
+REGISTER_TEST_COMMAND(tailq_autotest, test_tailq);

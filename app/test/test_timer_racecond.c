@@ -202,8 +202,4 @@ test_timer_racecond(void)
 	return TEST_SUCCESS;
 }
 
-static struct test_command timer_racecond_cmd = {
-	.command = "timer_racecond_autotest",
-	.callback = test_timer_racecond,
-};
-REGISTER_TEST_COMMAND(timer_racecond_cmd);
+REGISTER_TEST_COMMAND(timer_racecond_autotest, test_timer_racecond);

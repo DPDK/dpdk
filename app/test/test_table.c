@@ -199,8 +199,4 @@ test_table(void)
 	return 0;
 }
 
-static struct test_command table_cmd = {
-	.command = "table_autotest",
-	.callback = test_table,
-};
-REGISTER_TEST_COMMAND(table_cmd);
+REGISTER_TEST_COMMAND(table_autotest, test_table);

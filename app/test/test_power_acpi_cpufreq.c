@@ -537,8 +537,4 @@ fail_all:
 	return -1;
 }
 
-static struct test_command power_acpi_cpufreq_cmd = {
-	.command = "power_acpi_cpufreq_autotest",
-	.callback = test_power_acpi_cpufreq,
-};
-REGISTER_TEST_COMMAND(power_acpi_cpufreq_cmd);
+REGISTER_TEST_COMMAND(power_acpi_cpufreq_autotest, test_power_acpi_cpufreq);

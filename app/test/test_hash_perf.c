@@ -656,8 +656,4 @@ test_hash_perf(void)
 	return 0;
 }
 
-static struct test_command hash_perf_cmd = {
-		.command = "hash_perf_autotest",
-		.callback = test_hash_perf,
-};
-REGISTER_TEST_COMMAND(hash_perf_cmd);
+REGISTER_TEST_COMMAND(hash_perf_autotest, test_hash_perf);

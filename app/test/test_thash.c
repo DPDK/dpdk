@@ -169,8 +169,4 @@ test_thash(void)
 	return 0;
 }
 
-static struct test_command thash_cmd = {
-	.command = "thash_autotest",
-	.callback = test_thash,
-};
-REGISTER_TEST_COMMAND(thash_cmd);
+REGISTER_TEST_COMMAND(thash_autotest, test_thash);

@@ -872,8 +872,4 @@ test_memzone(void)
 	return 0;
 }
 
-static struct test_command memzone_cmd = {
-	.command = "memzone_autotest",
-	.callback = test_memzone,
-};
-REGISTER_TEST_COMMAND(memzone_cmd);
+REGISTER_TEST_COMMAND(memzone_autotest, test_memzone);

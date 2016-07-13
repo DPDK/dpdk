@@ -129,8 +129,4 @@ test_rwlock(void)
 	return 0;
 }
 
-static struct test_command rwlock_cmd = {
-	.command = "rwlock_autotest",
-	.callback = test_rwlock,
-};
-REGISTER_TEST_COMMAND(rwlock_cmd);
+REGISTER_TEST_COMMAND(rwlock_autotest, test_rwlock);

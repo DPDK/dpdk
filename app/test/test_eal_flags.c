@@ -1441,8 +1441,4 @@ test_eal_flags(void)
 	return ret;
 }
 
-static struct test_command eal_flags_cmd = {
-	.command = "eal_flags_autotest",
-	.callback = test_eal_flags,
-};
-REGISTER_TEST_COMMAND(eal_flags_cmd);
+REGISTER_TEST_COMMAND(eal_flags_autotest, test_eal_flags);

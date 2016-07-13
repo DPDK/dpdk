@@ -203,8 +203,4 @@ test_eal_fs(void)
 	return 0;
 }
 
-static struct test_command eal_fs_cmd = {
-	.command = "eal_fs_autotest",
-	.callback = test_eal_fs,
-};
-REGISTER_TEST_COMMAND(eal_fs_cmd);
+REGISTER_TEST_COMMAND(eal_fs_autotest, test_eal_fs);

@@ -626,8 +626,4 @@ test_timer(void)
 	return TEST_SUCCESS;
 }
 
-static struct test_command timer_cmd = {
-	.command = "timer_autotest",
-	.callback = test_timer,
-};
-REGISTER_TEST_COMMAND(timer_cmd);
+REGISTER_TEST_COMMAND(timer_autotest, test_timer);

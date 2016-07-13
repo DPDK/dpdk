@@ -507,8 +507,4 @@ test_func_reentrancy(void)
 	return 0;
 }
 
-static struct test_command func_reentrancy_cmd = {
-	.command = "func_reentrancy_autotest",
-	.callback = test_func_reentrancy,
-};
-REGISTER_TEST_COMMAND(func_reentrancy_cmd);
+REGISTER_TEST_COMMAND(func_reentrancy_autotest, test_func_reentrancy);

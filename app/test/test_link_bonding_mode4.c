@@ -1599,9 +1599,4 @@ test_link_bonding_mode4(void)
 	return unit_test_suite_runner(&link_bonding_mode4_test_suite);
 }
 
-static struct test_command link_bonding_cmd = {
-	.command = "link_bonding_mode4_autotest",
-	.callback = test_link_bonding_mode4,
-};
-
-REGISTER_TEST_COMMAND(link_bonding_cmd);
+REGISTER_TEST_COMMAND(link_bonding_mode4_autotest, test_link_bonding_mode4);

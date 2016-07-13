@@ -199,8 +199,4 @@ test_cpuflags(void)
 	return 0;
 }
 
-static struct test_command cpuflags_cmd = {
-	.command = "cpuflags_autotest",
-	.callback = test_cpuflags,
-};
-REGISTER_TEST_COMMAND(cpuflags_cmd);
+REGISTER_TEST_COMMAND(cpuflags_autotest, test_cpuflags);

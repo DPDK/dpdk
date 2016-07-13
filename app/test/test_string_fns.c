@@ -166,8 +166,4 @@ test_string_fns(void)
 	return 0;
 }
 
-static struct test_command string_cmd = {
-	.command = "string_autotest",
-	.callback = test_string_fns,
-};
-REGISTER_TEST_COMMAND(string_cmd);
+REGISTER_TEST_COMMAND(string_autotest, test_string_fns);

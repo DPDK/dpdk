@@ -1682,8 +1682,4 @@ test_acl(void)
 	return 0;
 }
 
-static struct test_command acl_cmd = {
-	.command = "acl_autotest",
-	.callback = test_acl,
-};
-REGISTER_TEST_COMMAND(acl_cmd);
+REGISTER_TEST_COMMAND(acl_autotest, test_acl);

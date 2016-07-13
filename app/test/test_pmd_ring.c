@@ -526,8 +526,4 @@ test_pmd_ring(void)
 	return 0;
 }
 
-static struct test_command ring_pmd_cmd = {
-	.command = "ring_pmd_autotest",
-	.callback = test_pmd_ring,
-};
-REGISTER_TEST_COMMAND(ring_pmd_cmd);
+REGISTER_TEST_COMMAND(ring_pmd_autotest, test_pmd_ring);
