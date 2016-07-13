@@ -449,6 +449,7 @@ pdump_get_socket_path(char *buffer, int bufsz, enum rte_pdump_socktype type)
 	char dpdk_dir[PATH_MAX] = {0};
 	char dir[PATH_MAX] = {0};
 	char *dir_home = NULL;
+	int ret = 0;
 
 	if (type == RTE_PDUMP_SOCKET_SERVER && server_socket_dir[0] != 0)
 		snprintf(dir, sizeof(dir), "%s", server_socket_dir);
@@ -475,7 +476,16 @@ pdump_get_socket_path(char *buffer, int bufsz, enum rte_pdump_socktype type)
 					dpdk_dir, SOCKET_DIR);
 	}
 
-	mkdir(dir, 700);
+	ret =  mkdir(dir, 700);
+	/* if user passed socket path is invalid, return immediately */
+	if (ret < 0 && errno != EEXIST) {
+		RTE_LOG(ERR, PDUMP,
+			"Failed to create dir:%s:%s\n", dir,
+			strerror(errno));
+		rte_errno = errno;
+		return -1;
+	}
+
 	if (type == RTE_PDUMP_SOCKET_SERVER)
 		snprintf(buffer, bufsz, SERVER_SOCKET, dir);
 	else
@@ -667,8 +677,8 @@ pdump_create_client_socket(struct pdump_request *p)
 			"client socket(): %s:pid(%d):tid(%u), %s:%d\n",
 			strerror(errno), pid, rte_sys_gettid(),
 			__func__, __LINE__);
-		ret = errno;
-		return ret;
+		rte_errno = errno;
+		return -1;
 	}
 
 	ret = pdump_get_socket_path(addr.sun_path, sizeof(addr.sun_path),
@@ -677,6 +687,7 @@ pdump_create_client_socket(struct pdump_request *p)
 		RTE_LOG(ERR, PDUMP,
 			"Failed to get client socket path: %s:%d\n",
 			__func__, __LINE__);
+		rte_errno = errno;
 		goto exit;
 	}
 	addr.sun_family = AF_UNIX;
@@ -688,7 +699,7 @@ pdump_create_client_socket(struct pdump_request *p)
 			RTE_LOG(ERR, PDUMP,
 				"client bind(): %s, %s:%d\n",
 				strerror(errno), __func__, __LINE__);
-			ret = errno;
+			rte_errno = errno;
 			break;
 		}
 
@@ -701,6 +712,7 @@ pdump_create_client_socket(struct pdump_request *p)
 			RTE_LOG(ERR, PDUMP,
 				"Failed to get server socket path: %s:%d\n",
 				__func__, __LINE__);
+			rte_errno = errno;
 			break;
 		}
 		serv_addr.sun_family = AF_UNIX;
@@ -711,7 +723,8 @@ pdump_create_client_socket(struct pdump_request *p)
 			RTE_LOG(ERR, PDUMP,
 				"failed to send to server:%s, %s:%d\n",
 				strerror(errno), __func__, __LINE__);
-			ret =  errno;
+			rte_errno = errno;
+			ret = -1;
 			break;
 		}
 
@@ -722,7 +735,8 @@ pdump_create_client_socket(struct pdump_request *p)
 			RTE_LOG(ERR, PDUMP,
 				"failed to recv from server:%s, %s:%d\n",
 				strerror(errno), __func__, __LINE__);
-			ret = errno;
+			rte_errno = errno;
+			ret = -1;
 			break;
 		}
 		ret = server_resp.err_value;
