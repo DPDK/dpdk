@@ -94,24 +94,17 @@ rte_spinlock_trylock (rte_spinlock_t *sl)
 }
 #endif
 
-static uint8_t rtm_supported; /* cache the flag to avoid the overhead
-				 of the rte_cpu_get_flag_enabled function */
-
-static inline void __attribute__((constructor))
-rte_rtm_init(void)
-{
-	rtm_supported = rte_cpu_get_flag_enabled(RTE_CPUFLAG_RTM);
-}
+extern uint8_t rte_rtm_supported;
 
 static inline int rte_tm_supported(void)
 {
-	return rtm_supported;
+	return rte_rtm_supported;
 }
 
 static inline int
 rte_try_tm(volatile int *lock)
 {
-	if (!rtm_supported)
+	if (!rte_rtm_supported)
 		return 0;
 
 	int retries = RTE_RTM_MAX_RETRIES;

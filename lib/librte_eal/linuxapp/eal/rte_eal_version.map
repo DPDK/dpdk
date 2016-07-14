@@ -162,6 +162,7 @@ DPDK_16.07 {
 	pci_get_sysfs_path;
 	rte_keepalive_mark_sleep;
 	rte_keepalive_register_relay_callback;
+	rte_rtm_supported;
 	rte_thread_setname;
 
 } DPDK_16.04;
