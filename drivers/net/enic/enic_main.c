@@ -123,6 +123,8 @@ static void enic_log_q_error(struct enic *enic)
 	}
 
 	for (i = 0; i < enic_vnic_rq_count(enic); i++) {
+		if (!enic->rq[i].in_use)
+			continue;
 		error_status = vnic_rq_error_status(&enic->rq[i]);
 		if (error_status)
 			dev_err(enic, "RQ[%d] error_status %d\n", i,
