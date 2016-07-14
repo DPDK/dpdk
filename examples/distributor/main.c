@@ -221,14 +221,22 @@ lcore_rx(struct lcore_params *p)
 		struct rte_mbuf *bufs[BURST_SIZE*2];
 		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, bufs,
 				BURST_SIZE);
+		if (unlikely(nb_rx == 0)) {
+			if (++port == nb_ports)
+				port = 0;
+			continue;
+		}
 		app_stats.rx.rx_pkts += nb_rx;
 
 		rte_distributor_process(d, bufs, nb_rx);
 		const uint16_t nb_ret = rte_distributor_returned_pkts(d,
 				bufs, BURST_SIZE*2);
 		app_stats.rx.returned_pkts += nb_ret;
-		if (unlikely(nb_ret == 0))
+		if (unlikely(nb_ret == 0)) {
+			if (++port == nb_ports)
+				port = 0;
 			continue;
+		}
 
 		uint16_t sent = rte_ring_enqueue_burst(r, (void *)bufs, nb_ret);
 		app_stats.rx.enqueued_pkts += sent;
