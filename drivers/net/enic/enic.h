@@ -51,7 +51,6 @@
 
 #define DRV_NAME		"enic_pmd"
 #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Poll-mode Driver"
-#define DRV_VERSION		"1.0.0.6"
 #define DRV_COPYRIGHT		"Copyright 2008-2015 Cisco Systems, Inc"
 
 #define ENIC_WQ_MAX		8
