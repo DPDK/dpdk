@@ -388,7 +388,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		dev->vid, cur_idx, end_idx);
 
 	if (buf_vec[vec_idx].buf_len < dev->vhost_hlen)
-		return -1;
+		return 0;
 
 	desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
@@ -507,7 +507,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		*(volatile uint16_t *)&vq->used->idx += nr_used;
 		vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
-		vq->last_used_idx = end;
+		vq->last_used_idx += nr_used;
 	}
 
 	if (likely(pkt_idx)) {
