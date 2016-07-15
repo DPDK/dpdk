@@ -57,6 +57,10 @@ Deprecation Notices
 * The ``rte_ivshmem`` feature (including library and EAL code) will be removed
   in 16.11 because it has some design issues which are not planned to be fixed.
 
+* The vhost-cuse will be removed in 16.11. Since v2.1, a large majority of
+  development effort has gone to vhost-user, such as multiple-queue, live
+  migration, reconnect etc. Therefore, vhost-user should be used instead.
+
 * Driver names are quite inconsistent among each others and they will be
   renamed to something more consistent (net and crypto prefixes) in 16.11.
   Some of these driver names are used publicly, to create virtual devices,
