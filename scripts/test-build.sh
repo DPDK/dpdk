@@ -95,12 +95,13 @@ configs=${*:-$DPDK_BUILD_TEST_CONFIGS}
 success=false
 on_exit ()
 {
-	if [ "$DPDK_NOTIFY" = notify-send ] ; then
-		if $success ; then
+	if $success ; then
+		[ "$DPDK_NOTIFY" != notify-send ] || \
 			notify-send -u low --icon=dialog-information 'DPDK build' 'finished'
-		elif [ -z "$signal" ] ; then
+	elif [ -z "$signal" ] ; then
+		[ -z "$dir" ] || echo "failed to build $dir" >&2
+		[ "$DPDK_NOTIFY" != notify-send ] || \
 			notify-send -u low --icon=dialog-error 'DPDK build' 'failed'
-		fi
 	fi
 }
 # catch manual interrupt to ignore notification
@@ -231,6 +232,7 @@ for conf in $configs ; do
 		O=$(readlink -m $dir/examples/performance-thread)
 	unset RTE_TARGET
 	echo "################## $dir done."
+	unset dir
 done
 
 if ! $short ; then
