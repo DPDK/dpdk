@@ -907,7 +907,6 @@ flush_fwd_rx_queues(void)
 					timer_tsc += diff_tsc;
 				} while ((nb_rx > 0) &&
 					(timer_tsc < timer_period));
-				prev_tsc = cur_tsc;
 				timer_tsc = 0;
 			}
 		}
