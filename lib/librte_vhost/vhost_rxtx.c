@@ -147,10 +147,15 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 
 	desc = &vq->desc[desc_idx];
-	if (unlikely(desc->len < dev->vhost_hlen))
+	desc_addr = gpa_to_vva(dev, desc->addr);
+	/*
+	 * Checking of 'desc_addr' placed outside of 'unlikely' macro to avoid
+	 * performance issue with some versions of gcc (4.8.4 and 5.3.0) which
+	 * otherwise stores offset on the stack instead of in a register.
+	 */
+	if (unlikely(desc->len < dev->vhost_hlen) || !desc_addr)
 		return -1;
 
-	desc_addr = gpa_to_vva(dev, desc->addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 	virtio_enqueue_offload(m, &virtio_hdr.hdr);
@@ -182,7 +187,10 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				return -1;
 
 			desc = &vq->desc[desc->next];
-			desc_addr   = gpa_to_vva(dev, desc->addr);
+			desc_addr = gpa_to_vva(dev, desc->addr);
+			if (unlikely(!desc_addr))
+				return -1;
+
 			desc_offset = 0;
 			desc_avail  = desc->len;
 		}
@@ -387,10 +395,10 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
 		dev->vid, cur_idx, end_idx);
 
-	if (buf_vec[vec_idx].buf_len < dev->vhost_hlen)
+	desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
+	if (buf_vec[vec_idx].buf_len < dev->vhost_hlen || !desc_addr)
 		return 0;
 
-	desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 	virtio_hdr.num_buffers = end_idx - start_idx;
@@ -425,6 +433,8 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 			vec_idx++;
 			desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
+			if (unlikely(!desc_addr))
+				return 0;
 
 			/* Prefetch buffer address. */
 			rte_prefetch0((void *)(uintptr_t)desc_addr);
@@ -688,6 +698,9 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		return -1;
 
 	desc_addr = gpa_to_vva(dev, desc->addr);
+	if (unlikely(!desc_addr))
+		return -1;
+
 	hdr = (struct virtio_net_hdr *)((uintptr_t)desc_addr);
 	rte_prefetch0(hdr);
 
@@ -701,6 +714,9 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		desc = &vq->desc[desc->next];
 
 		desc_addr = gpa_to_vva(dev, desc->addr);
+		if (unlikely(!desc_addr))
+			return -1;
+
 		rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 		desc_offset = 0;
@@ -737,6 +753,9 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			desc = &vq->desc[desc->next];
 
 			desc_addr = gpa_to_vva(dev, desc->addr);
+			if (unlikely(!desc_addr))
+				return -1;
+
 			rte_prefetch0((void *)(uintptr_t)desc_addr);
 
 			desc_offset = 0;
