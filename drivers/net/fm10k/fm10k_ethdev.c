@@ -2738,10 +2738,8 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 		txq = dev->data->tx_queues[i];
 		txq->tx_ftag_en = tx_ftag_en;
 		/* Check if Vector Tx is satisfied */
-		if (fm10k_tx_vec_condition_check(txq)) {
+		if (fm10k_tx_vec_condition_check(txq))
 			use_sse = 0;
-			break;
-		}
 	}
 
 	if (use_sse) {
