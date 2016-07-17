@@ -472,7 +472,7 @@ If the table is full, the whole packets table is transmitted using the l2fwd_sen
     l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
     {
         unsigned lcore_id, len;
-        struct lcore_queue_conf \*qconf;
+        struct lcore_queue_conf *qconf;
 
         lcore_id = rte_lcore_id();
         qconf = &lcore_queue_conf[lcore_id];

@@ -167,7 +167,7 @@ Virtio-Serial channels are configured via libvirt XML:
   </controller>
   <channel type='unix'>
     <source mode='bind' path='/tmp/powermonitor/{vm_name}.{channel_num}'/>
-    <target type='virtio' name='virtio.serial.port.poweragent.{vm_channel_num}/>
+    <target type='virtio' name='virtio.serial.port.poweragent.{vm_channel_num}'/>
     <address type='virtio-serial' controller='0' bus='0' port='{N}'/>
   </channel>
 

@@ -298,7 +298,7 @@ The get_ipv4_dst_port() function is shown below:
         int ret = 0;
         union ipv4_5tuple_host key;
 
-        ipv4_hdr = (uint8_t \*)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
+        ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
 
         m128i data = _mm_loadu_si128(( m128i*)(ipv4_hdr));
 

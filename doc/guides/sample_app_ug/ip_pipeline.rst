@@ -337,7 +337,7 @@ Generic example of configuration file section:
 
     <variable_name_1> = <value_1>
 
-    ...
+    ; ...
 
     <variable_name_N> = <value_N>
 
