@@ -564,10 +564,9 @@ void rte_timer_manage(void)
 			pprev = &tim->sl_next[0];
 		} else {
 			/* another core is trying to re-config this one,
-			 * remove it from local expired list and put it
-			 * back on the priv_timer[] skip list */
+			 * remove it from local expired list
+			 */
 			*pprev = next_tim;
-			timer_add(tim, lcore_id, 1);
 		}
 	}
 
