@@ -69,6 +69,9 @@ struct priv_timer {
 
 	unsigned prev_lcore;              /**< used for lcore round robin */
 
+	/** running timer on this lcore now */
+	struct rte_timer *running_tim;
+
 #ifdef RTE_LIBRTE_TIMER_DEBUG
 	/** per-lcore statistics */
 	struct rte_timer_debug_stats stats;
@@ -135,9 +138,12 @@ timer_set_config_state(struct rte_timer *tim,
 	while (success == 0) {
 		prev_status.u32 = tim->status.u32;
 
-		/* timer is running on another core, exit */
+		/* timer is running on another core
+		 * or ready to run on local core, exit
+		 */
 		if (prev_status.state == RTE_TIMER_RUNNING &&
-		    prev_status.owner != (uint16_t)lcore_id)
+		    (prev_status.owner != (uint16_t)lcore_id ||
+		     tim != priv_timer[lcore_id].running_tim))
 			return -1;
 
 		/* timer is being configured on another core */
@@ -581,6 +587,7 @@ void rte_timer_manage(void)
 	for (tim = run_first_tim; tim != NULL; tim = next_tim) {
 		next_tim = tim->sl_next[0];
 		priv_timer[lcore_id].updated = 0;
+		priv_timer[lcore_id].running_tim = tim;
 
 		/* execute callback function with list unlocked */
 		tim->f(tim, tim->arg);
@@ -611,6 +618,7 @@ void rte_timer_manage(void)
 			rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
 		}
 	}
+	priv_timer[lcore_id].running_tim = NULL;
 }
 
 /* dump statistics about timers */
