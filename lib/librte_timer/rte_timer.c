@@ -543,6 +543,8 @@ void rte_timer_manage(void)
 	/* break the existing list at current time point */
 	timer_get_prev_entries(cur_time, lcore_id, prev);
 	for (i = priv_timer[lcore_id].curr_skiplist_depth -1; i >= 0; i--) {
+		if (prev[i] == &priv_timer[lcore_id].pending_head)
+			continue;
 		priv_timer[lcore_id].pending_head.sl_next[i] =
 		    prev[i]->sl_next[i];
 		if (prev[i]->sl_next[i] == NULL)
