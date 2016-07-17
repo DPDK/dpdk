@@ -155,7 +155,7 @@ It can be installed as follows:
    sudo apt-get -y install doxygen
 
    # Red Hat/Fedora.
-   sudo yum     -y install doxygen
+   sudo dnf     -y install doxygen
 
 `Sphinx`_ is a Python documentation tool for converting RST files to Html or to PDF (via LaTeX).
 For full support with figure and table captioning the latest version of Sphinx can be installed as follows:
@@ -165,10 +165,12 @@ For full support with figure and table captioning the latest version of Sphinx c
    # Ubuntu/Debian.
    sudo apt-get -y install python-pip
    sudo pip install --upgrade sphinx
+   sudo pip install --upgrade sphinx_rtd_theme
 
    # Red Hat/Fedora.
-   sudo yum     -y install python-pip
+   sudo dnf     -y install python-pip
    sudo pip install --upgrade sphinx
+   sudo pip install --upgrade sphinx_rtd_theme
 
 For further information on getting started with Sphinx see the `Sphinx Tutorial <http://sphinx-doc.org/tutorial.html>`_.
 
@@ -186,7 +188,7 @@ It can be installed as follows:
    sudo apt-get -y install inkscape
 
    # Red Hat/Fedora.
-   sudo yum     -y install inkscape
+   sudo dnf     -y install inkscape
 
 `TexLive <http://www.tug.org/texlive/>`_ is an installation package for Tex/LaTeX.
 It is used to generate the PDF versions of the documentation.
@@ -198,7 +200,7 @@ The main required packages can be installed as follows:
    sudo apt-get -y install texlive-latex-extra
 
    # Red Hat/Fedora, selective install.
-   sudo yum     -y install texlive-collection-latexextra
+   sudo dnf     -y install texlive-collection-latexextra
 
 
 Build commands
