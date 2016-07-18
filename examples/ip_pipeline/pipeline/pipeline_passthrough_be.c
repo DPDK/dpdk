@@ -366,7 +366,7 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 	uint32_t dma_hash_offset_present = 0;
 	uint32_t lb_present = 0;
 	uint32_t i;
-	char dma_mask_str[PIPELINE_PASSTHROUGH_DMA_SIZE_MAX * 2];
+	char dma_mask_str[PIPELINE_PASSTHROUGH_DMA_SIZE_MAX * 2 + 1];
 
 	/* default values */
 	p->dma_enabled = 0;
@@ -454,7 +454,7 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 				params->name, arg_name);
 			dma_src_mask_present = 1;
 
-			PIPELINE_ARG_CHECK((mask_str_len <
+			PIPELINE_ARG_CHECK((mask_str_len <=
 				(PIPELINE_PASSTHROUGH_DMA_SIZE_MAX * 2)),
 				"Parse error in section \"%s\": entry "
 				"\"%s\" too long", params->name,

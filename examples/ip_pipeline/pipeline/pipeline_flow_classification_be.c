@@ -221,7 +221,7 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 	uint32_t flow_id_offset_present = 0;
 
 	uint32_t i;
-	char key_mask_str[PIPELINE_FC_FLOW_KEY_MAX_SIZE * 2];
+	char key_mask_str[PIPELINE_FC_FLOW_KEY_MAX_SIZE * 2 + 1];
 
 	p->hash_offset = 0;
 
@@ -303,13 +303,13 @@ pipeline_fc_parse_args(struct pipeline_flow_classification *p,
 				params->name, arg_name);
 			key_mask_present = 1;
 
-			PIPELINE_ARG_CHECK((mask_str_len <
+			PIPELINE_ARG_CHECK((mask_str_len <=
 				(PIPELINE_FC_FLOW_KEY_MAX_SIZE * 2)),
 				"Parse error in section \"%s\": entry "
 				"\"%s\" is too long", params->name,
 				arg_name);
 
-			snprintf(key_mask_str, sizeof(key_mask_str), "%s",
+			snprintf(key_mask_str, mask_str_len + 1, "%s",
 				arg_value);
 
 			continue;
