@@ -809,7 +809,7 @@ test_refcnt_mbuf(void)
 
 	if (refcnt_mbuf_ring == NULL &&
 			(refcnt_mbuf_ring = rte_ring_create("refcnt_mbuf_ring",
-			REFCNT_RING_SIZE, SOCKET_ID_ANY,
+			rte_align32pow2(REFCNT_RING_SIZE), SOCKET_ID_ANY,
 			RING_F_SP_ENQ)) == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_mbuf_ring)
 		    "\n", __func__);
