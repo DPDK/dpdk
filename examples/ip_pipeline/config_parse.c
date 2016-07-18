@@ -185,7 +185,7 @@ static const struct app_pktq_swq_params default_swq_params = {
 struct app_pktq_tm_params default_tm_params = {
 	.parsed = 0,
 	.file_name = "./config/tm_profile.cfg",
-	.burst_read = 64,
+	.burst_read = 24,
 	.burst_write = 32,
 };
 
