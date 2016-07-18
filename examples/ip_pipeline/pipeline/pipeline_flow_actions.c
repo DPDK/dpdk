@@ -290,6 +290,7 @@ app_pipeline_fa_flow_config_bulk(struct app_params *app,
 	void **req_entry_ptr;
 	uint32_t *req_flow_id;
 	uint32_t i;
+	int status;
 
 	/* Check input arguments */
 	if ((app == NULL) ||
@@ -368,6 +369,7 @@ app_pipeline_fa_flow_config_bulk(struct app_params *app,
 	}
 
 	/* Read response */
+	status = (rsp->n_flows == n_flows) ? 0 : -1;
 
 	/* Commit flows */
 	for (i = 0; i < rsp->n_flows; i++) {
@@ -408,7 +410,7 @@ app_pipeline_fa_flow_config_bulk(struct app_params *app,
 	rte_free(req_flow_id);
 	rte_free(req_entry_ptr);
 
-	return (rsp->n_flows == n_flows) ? 0 : -1;
+	return status;
 }
 
 int
