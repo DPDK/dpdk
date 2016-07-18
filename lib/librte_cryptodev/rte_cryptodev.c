@@ -148,8 +148,8 @@ int
 rte_cryptodev_parse_vdev_init_params(struct rte_crypto_vdev_init_params *params,
 		const char *input_args)
 {
-	struct rte_kvargs *kvlist;
-	int ret;
+	struct rte_kvargs *kvlist = NULL;
+	int ret = 0;
 
 	if (params == NULL)
 		return -EINVAL;
@@ -186,8 +186,6 @@ rte_cryptodev_parse_vdev_init_params(struct rte_crypto_vdev_init_params *params,
 			goto free_kvlist;
 		}
 	}
-
-	return 0;
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
