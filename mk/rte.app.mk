@@ -151,6 +151,7 @@ _LDLIBS-y += --no-whole-archive
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 # The static libraries do not know their dependencies.
 # So linking with static library requires explicit dependencies.
+_LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lrt
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lm
