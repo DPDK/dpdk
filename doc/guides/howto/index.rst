@@ -36,3 +36,4 @@ How To User Guides
     :numbered:
 
     lm_bond_virtio_sriov
+    lm_virtio_vhost_user
