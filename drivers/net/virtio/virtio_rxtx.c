@@ -468,13 +468,19 @@ void
 virtio_dev_rx_queue_release(void *rxq)
 {
 	struct virtnet_rx *rxvq = rxq;
-	struct virtqueue *vq = rxvq->vq;
-	/* rxvq is freed when vq is freed, and as mz should be freed after the
+	struct virtqueue *vq;
+	const struct rte_memzone *mz;
+
+	if (rxvq == NULL)
+		return;
+
+	/*
+	 * rxvq is freed when vq is freed, and as mz should be freed after the
 	 * del_queue, so we reserve the mz pointer first.
 	 */
-	const struct rte_memzone *mz = rxvq->mz;
+	vq = rxvq->vq;
+	mz = rxvq->mz;
 
-	/* no need to free rxq as vq and rxq are allocated together */
 	virtio_dev_queue_release(vq);
 	rte_memzone_free(mz);
 }
@@ -554,12 +560,20 @@ void
 virtio_dev_tx_queue_release(void *txq)
 {
 	struct virtnet_tx *txvq = txq;
-	struct virtqueue *vq = txvq->vq;
-	/* txvq is freed when vq is freed, and as mz should be freed after the
+	struct virtqueue *vq;
+	const struct rte_memzone *mz;
+	const struct rte_memzone *hdr_mz;
+
+	if (txvq == NULL)
+		return;
+
+	/*
+	 * txvq is freed when vq is freed, and as mz should be freed after the
 	 * del_queue, so we reserve the mz pointer first.
 	 */
-	const struct rte_memzone *hdr_mz = txvq->virtio_net_hdr_mz;
-	const struct rte_memzone *mz = txvq->mz;
+	vq = txvq->vq;
+	mz = txvq->mz;
+	hdr_mz = txvq->virtio_net_hdr_mz;
 
 	virtio_dev_queue_release(vq);
 	rte_memzone_free(mz);
