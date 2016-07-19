@@ -189,6 +189,10 @@ New Features
   For information on this feature,  please see the "I40E Poll Mode Driver"
   section of the "Network Interface Controller Drivers" document.
 
+* **Added support for live migration of a VM with SRIOV VF.**
+
+  Live migration of a VM with Virtio and VF PMD's using the bonding PMD.
+
 
 Resolved Issues
 ---------------

@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2016 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -28,21 +28,11 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
+How To User Guides
 ==================
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 2
+    :numbered:
 
-   linux_gsg/index
-   freebsd_gsg/index
-   xen/index
-   prog_guide/index
-   nics/index
-   cryptodevs/index
-   sample_app_ug/index
-   testpmd_app_ug/index
-   faq/index
-   howto/index
-   rel_notes/index
-   contributing/index
+    lm_bond_virtio_sriov
