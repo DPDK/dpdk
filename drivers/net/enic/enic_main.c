@@ -317,6 +317,7 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 			return -ENOMEM;
 		}
 
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
 		dma_addr = (dma_addr_t)(mb->buf_physaddr
 			   + RTE_PKTMBUF_HEADROOM);
 		rq_enet_desc_enc(rqd, dma_addr,

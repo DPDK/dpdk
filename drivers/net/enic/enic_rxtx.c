@@ -300,6 +300,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			(struct cq_enet_rq_desc *)&cqd);
 
 		/* Push descriptor for newly allocated mbuf */
+		nmb->data_off = RTE_PKTMBUF_HEADROOM;
 		dma_addr = (dma_addr_t)(nmb->buf_physaddr +
 					RTE_PKTMBUF_HEADROOM);
 		rq_enet_desc_enc(rqd_ptr, dma_addr,
