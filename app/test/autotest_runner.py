@@ -107,8 +107,10 @@ def run_test_group(cmdline, test_group):
 
 	# parse the binary for available test commands
 	binary = cmdline.split()[0]
-	symbols = subprocess.check_output(['nm', binary]).decode('utf-8')
-	avail_cmds = re.findall('test_register_(\w+)', symbols)
+	stripped = 'not stripped' not in subprocess.check_output(['file', binary])
+	if not stripped:
+		symbols = subprocess.check_output(['nm', binary]).decode('utf-8')
+		avail_cmds = re.findall('test_register_(\w+)', symbols)
 
 	# run all tests in test group
 	for test in test_group["Tests"]:
@@ -129,7 +131,7 @@ def run_test_group(cmdline, test_group):
 			print >>logfile, "\n%s %s\n" % ("-"*20, test["Name"])
 
 			# run test function associated with the test
-			if test["Command"] in avail_cmds:
+			if stripped or test["Command"] in avail_cmds:
 				result = test["Func"](child, test["Command"])
 			else:
 				result = (0, "Skipped [Not Available]")
