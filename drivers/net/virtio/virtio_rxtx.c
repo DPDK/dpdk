@@ -193,7 +193,8 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 
 	start_dp = vq->vq_ring.desc;
 	start_dp[idx].addr =
-		MBUF_DATA_DMA_ADDR(cookie, vq->offset) - hw->vtnet_hdr_size;
+		VIRTIO_MBUF_ADDR(cookie, vq) +
+		RTE_PKTMBUF_HEADROOM - hw->vtnet_hdr_size;
 	start_dp[idx].len =
 		cookie->buf_len - RTE_PKTMBUF_HEADROOM + hw->vtnet_hdr_size;
 	start_dp[idx].flags =  VRING_DESC_F_WRITE;
@@ -265,7 +266,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	}
 
 	do {
-		start_dp[idx].addr  = MBUF_DATA_DMA_ADDR(cookie, vq->offset);
+		start_dp[idx].addr  = VIRTIO_MBUF_DATA_DMA_ADDR(cookie, vq);
 		start_dp[idx].len   = cookie->data_len;
 		start_dp[idx].flags = cookie->next ? VRING_DESC_F_NEXT : 0;
 		idx = start_dp[idx].next;

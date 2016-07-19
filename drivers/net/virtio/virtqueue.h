@@ -67,12 +67,21 @@ struct rte_mbuf;
 #define VIRTQUEUE_MAX_NAME_SZ 32
 
 #ifdef RTE_VIRTIO_USER
-#define MBUF_DATA_DMA_ADDR(mb, offset) \
-	((uint64_t)((uintptr_t)(*(void **)((uintptr_t)mb + offset)) \
-			+ (mb)->data_off))
-#else /* RTE_VIRTIO_USER */
-#define MBUF_DATA_DMA_ADDR(mb, offset) rte_mbuf_data_dma_addr(mb)
-#endif /* RTE_VIRTIO_USER */
+/**
+ * Return the physical address (or virtual address in case of
+ * virtio-user) of mbuf data buffer.
+ */
+#define VIRTIO_MBUF_ADDR(mb, vq) (*(uint64_t *)((uintptr_t)(mb) + (vq)->offset))
+#else
+#define VIRTIO_MBUF_ADDR(mb, vq) ((mb)->buf_physaddr)
+#endif
+
+/**
+ * Return the physical address (or virtual address in case of
+ * virtio-user) of mbuf data buffer, taking care of mbuf data offset
+ */
+#define VIRTIO_MBUF_DATA_DMA_ADDR(mb, vq) \
+	(VIRTIO_MBUF_ADDR(mb, vq) + (mb)->data_off)
 
 #define VTNET_SQ_RQ_QUEUE_IDX 0
 #define VTNET_SQ_TQ_QUEUE_IDX 1
@@ -182,8 +191,8 @@ struct virtqueue {
 	void *vq_ring_virt_mem;  /**< linear address of vring*/
 	unsigned int vq_ring_size;
 
-	phys_addr_t vq_ring_mem; /**< physical address of vring */
-				/**< use virtual address for virtio-user. */
+	phys_addr_t vq_ring_mem; /**< physical address of vring,
+				  * or virtual address for virtio-user. */
 
 	/**
 	 * Head of the free chain in the descriptor table. If

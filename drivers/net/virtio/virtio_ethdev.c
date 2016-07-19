@@ -454,7 +454,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 
 	/* For virtio-user case (that is when dev->pci_dev is NULL), we use
 	 * virtual address. And we need properly set _offset_, please see
-	 * MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
+	 * VIRTIO_MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
 	 */
 	if (dev->pci_dev)
 		vq->offset = offsetof(struct rte_mbuf, buf_physaddr);
