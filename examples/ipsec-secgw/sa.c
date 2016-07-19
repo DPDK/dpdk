@@ -53,8 +53,8 @@
 const struct ipsec_sa sa_out[] = {
 	{
 	.spi = 5,
-	.src.ip4 = IPv4(172, 16, 1, 5),
-	.dst.ip4 = IPv4(172, 16, 2, 5),
+	.src.ip.ip4 = IPv4(172, 16, 1, 5),
+	.dst.ip.ip4 = IPv4(172, 16, 2, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
@@ -64,8 +64,8 @@ const struct ipsec_sa sa_out[] = {
 	},
 	{
 	.spi = 6,
-	.src.ip4 = IPv4(172, 16, 1, 6),
-	.dst.ip4 = IPv4(172, 16, 2, 6),
+	.src.ip.ip4 = IPv4(172, 16, 1, 6),
+	.dst.ip.ip4 = IPv4(172, 16, 2, 6),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
@@ -93,8 +93,8 @@ const struct ipsec_sa sa_out[] = {
 	},
 	{
 	.spi = 15,
-	.src.ip4 = IPv4(172, 16, 1, 5),
-	.dst.ip4 = IPv4(172, 16, 2, 5),
+	.src.ip.ip4 = IPv4(172, 16, 1, 5),
+	.dst.ip.ip4 = IPv4(172, 16, 2, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.digest_len = 0,
@@ -104,8 +104,8 @@ const struct ipsec_sa sa_out[] = {
 	},
 	{
 	.spi = 16,
-	.src.ip4 = IPv4(172, 16, 1, 6),
-	.dst.ip4 = IPv4(172, 16, 2, 6),
+	.src.ip.ip4 = IPv4(172, 16, 1, 6),
+	.dst.ip.ip4 = IPv4(172, 16, 2, 6),
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.digest_len = 0,
@@ -115,9 +115,9 @@ const struct ipsec_sa sa_out[] = {
 	},
 	{
 	.spi = 25,
-	.src.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+	.src.ip.ip6.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x55, 0x55 },
-	.dst.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+	.dst.ip.ip6.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
 		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x55, 0x55 },
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
@@ -128,9 +128,9 @@ const struct ipsec_sa sa_out[] = {
 	},
 	{
 	.spi = 26,
-	.src.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+	.src.ip.ip6.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x66, 0x66 },
-	.dst.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+	.dst.ip.ip6.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
 		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x66, 0x66 },
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
@@ -145,8 +145,8 @@ const struct ipsec_sa sa_out[] = {
 const struct ipsec_sa sa_in[] = {
 	{
 	.spi = 105,
-	.src.ip4 = IPv4(172, 16, 2, 5),
-	.dst.ip4 = IPv4(172, 16, 1, 5),
+	.src.ip.ip4 = IPv4(172, 16, 2, 5),
+	.dst.ip.ip4 = IPv4(172, 16, 1, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
@@ -156,8 +156,8 @@ const struct ipsec_sa sa_in[] = {
 	},
 	{
 	.spi = 106,
-	.src.ip4 = IPv4(172, 16, 2, 6),
-	.dst.ip4 = IPv4(172, 16, 1, 6),
+	.src.ip.ip4 = IPv4(172, 16, 2, 6),
+	.dst.ip.ip4 = IPv4(172, 16, 1, 6),
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 	.digest_len = 12,
@@ -185,8 +185,8 @@ const struct ipsec_sa sa_in[] = {
 	},
 	{
 	.spi = 115,
-	.src.ip4 = IPv4(172, 16, 2, 5),
-	.dst.ip4 = IPv4(172, 16, 1, 5),
+	.src.ip.ip4 = IPv4(172, 16, 2, 5),
+	.dst.ip.ip4 = IPv4(172, 16, 1, 5),
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.digest_len = 0,
@@ -196,8 +196,8 @@ const struct ipsec_sa sa_in[] = {
 	},
 	{
 	.spi = 116,
-	.src.ip4 = IPv4(172, 16, 2, 6),
-	.dst.ip4 = IPv4(172, 16, 1, 6),
+	.src.ip.ip4 = IPv4(172, 16, 2, 6),
+	.dst.ip.ip4 = IPv4(172, 16, 1, 6),
 	.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 	.auth_algo = RTE_CRYPTO_AUTH_NULL,
 	.digest_len = 0,
@@ -207,9 +207,9 @@ const struct ipsec_sa sa_in[] = {
 	},
 	{
 	.spi = 125,
-	.src.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+	.src.ip.ip6.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
 		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x55, 0x55 },
-	.dst.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+	.dst.ip.ip6.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x55, 0x55 },
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
@@ -220,9 +220,9 @@ const struct ipsec_sa sa_in[] = {
 	},
 	{
 	.spi = 126,
-	.src.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+	.src.ip.ip6.ip6_b = { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
 		0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x66, 0x66 },
-	.dst.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+	.dst.ip.ip6.ip6_b = { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
 		0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x66, 0x66 },
 	.cipher_algo = RTE_CRYPTO_CIPHER_AES_CBC,
 	.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
@@ -342,8 +342,8 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 		switch (sa->flags) {
 		case IP4_TUNNEL:
-			sa->src.ip4 = rte_cpu_to_be_32(sa->src.ip4);
-			sa->dst.ip4 = rte_cpu_to_be_32(sa->dst.ip4);
+			sa->src.ip.ip4 = rte_cpu_to_be_32(sa->src.ip.ip4);
+			sa->dst.ip.ip4 = rte_cpu_to_be_32(sa->dst.ip.ip4);
 		}
 
 		if (inbound) {
@@ -473,15 +473,15 @@ single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
 	case IP4_TUNNEL:
 		src4_addr = RTE_PTR_ADD(ip, offsetof(struct ip, ip_src));
 		if ((ip->ip_v == IPVERSION) &&
-				(sa->src.ip4 == *src4_addr) &&
-				(sa->dst.ip4 == *(src4_addr + 1)))
+				(sa->src.ip.ip4 == *src4_addr) &&
+				(sa->dst.ip.ip4 == *(src4_addr + 1)))
 			*sa_ret = sa;
 		break;
 	case IP6_TUNNEL:
 		src6_addr = RTE_PTR_ADD(ip, offsetof(struct ip6_hdr, ip6_src));
 		if ((ip->ip_v == IP6_VERSION) &&
-				!memcmp(&sa->src.ip6, src6_addr, 16) &&
-				!memcmp(&sa->dst.ip6, src6_addr + 16, 16))
+				!memcmp(&sa->src.ip.ip6.ip6, src6_addr, 16) &&
+				!memcmp(&sa->dst.ip.ip6.ip6, src6_addr + 16, 16))
 			*sa_ret = sa;
 		break;
 	case TRANSPORT:

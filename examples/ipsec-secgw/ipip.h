@@ -100,8 +100,8 @@ ipip_outbound(struct rte_mbuf *m, uint32_t offset, uint32_t is_ipv6,
 	outip4->ip_ttl = IPDEFTTL;
 	outip4->ip_p = IPPROTO_ESP;
 
-	outip4->ip_src.s_addr = src->ip4;
-	outip4->ip_dst.s_addr = dst->ip4;
+	outip4->ip_src.s_addr = src->ip.ip4;
+	outip4->ip_dst.s_addr = dst->ip.ip4;
 
 	return outip4;
 }

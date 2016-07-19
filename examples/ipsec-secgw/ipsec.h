@@ -86,8 +86,8 @@ struct ip_addr {
 		union {
 			uint64_t ip6[2];
 			uint8_t ip6_b[16];
-		};
-	};
+		} ip6;
+	} ip;
 };
 
 struct ipsec_sa {
