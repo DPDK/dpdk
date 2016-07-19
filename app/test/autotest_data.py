@@ -158,7 +158,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_3",
-	"Memory" :	per_sockets(390),
+	"Memory" :	per_sockets(512),
 	"Tests" :
 	[
 		{
@@ -287,7 +287,7 @@ parallel_test_group_list = [
 },
 {
 	"Prefix":	"group_6",
-	"Memory" :	per_sockets(128),
+	"Memory" :	per_sockets(512),
 	"Tests" :
 	[
 		{
