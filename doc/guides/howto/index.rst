@@ -37,3 +37,4 @@ How To User Guides
 
     lm_bond_virtio_sriov
     lm_virtio_vhost_user
+    flow_bifurcation
