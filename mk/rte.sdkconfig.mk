@@ -88,11 +88,13 @@ $(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE | $(RTE_OUTPUT)
 		$(CPP) -undef -P -x assembler-with-cpp \
 		-ffreestanding \
 		-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
-		for config in $$(grep -v "^#" $(RTE_OUTPUT)/.config_tmp | cut -d"=" -f1 | sort | uniq -d); do \
-			while [ $$(grep "^$${config}=" $(RTE_OUTPUT)/.config_tmp -c ) -gt 1 ]; do \
-				sed -i "0,/^$${config}=/{//d}" $(RTE_OUTPUT)/.config_tmp; \
-			done; \
-		done; \
+		config=$$(cat $(RTE_OUTPUT)/.config_tmp) ; \
+		echo "$$config" | awk -F '=' 'BEGIN {i=1} \
+			/^#/ {pos[i++]=$$0} \
+			!/^#/ {if (!s[$$1]) {pos[i]=$$0; s[$$1]=i++} \
+				else {pos[s[$$1]]=$$0}} END \
+			{for (j=1; j<i; j++) print pos[j]}' \
+			> $(RTE_OUTPUT)/.config_tmp ; \
 		if ! cmp -s $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config; then \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config ; \
 			cp $(RTE_OUTPUT)/.config_tmp $(RTE_OUTPUT)/.config.orig ; \
