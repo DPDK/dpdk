@@ -189,7 +189,12 @@ vhost-user implementation has two options:
   When the DPDK vhost-user application restarts, DPDK vhost-user will try to
   connect to the server again. This is how the "reconnect" feature works.
 
-  Note: the "reconnect" feature requires **QEMU v2.7** (or above).
+  .. Note::
+     * The "reconnect" feature requires **QEMU v2.7** (or above).
+
+     * The vhost supported features must be exactly the same before and
+       after the restart. For example, if TSO is disabled and then enabled,
+       nothing will work and issues undefined might happen.
 
 No matter which mode is used, once a connection is established, DPDK
 vhost-user will start receiving and processing vhost messages from QEMU.
