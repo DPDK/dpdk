@@ -54,6 +54,9 @@ Deprecation Notices
   will be removed in 16.11.
   It is replaced by rte_mempool_generic_get/put functions.
 
+* The ``rte_ivshmem`` feature (including library and EAL code) will be removed
+  in 16.11 because it has some design issues which are not planned to be fixed.
+
 * Driver names are quite inconsistent among each others and they will be
   renamed to something more consistent (net and crypto prefixes) in 16.11.
   Some of these driver names are used publicly, to create virtual devices,
