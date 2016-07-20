@@ -33,6 +33,12 @@ Deprecation Notices
   do not need to care about the kind of devices that are being used, making it
   easier to add new buses later.
 
+* ABI changes are planned for 16.11 in the ``rte_mbuf`` structure: some fields
+  may be reordered to facilitate the writing of ``data_off``, ``refcnt``, and
+  ``nb_segs`` in one operation, because some platforms have an overhead if the
+  store address is not naturally aligned. Other mbuf fields, such as the
+  ``port`` field, may be moved or removed as part of this mbuf work.
+
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
