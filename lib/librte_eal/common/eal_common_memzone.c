@@ -144,16 +144,16 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		return NULL;
 	}
 
-	/* zone already exist */
-	if ((memzone_lookup_thread_unsafe(name)) != NULL) {
-		RTE_LOG(DEBUG, EAL, "%s(): memzone <%s> already exists\n",
+	if (strlen(name) > sizeof(mz->name) - 1) {
+		RTE_LOG(DEBUG, EAL, "%s(): memzone <%s>: name too long\n",
 			__func__, name);
-		rte_errno = EEXIST;
+		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
 
-	if (strlen(name) >= sizeof(mz->name) - 1) {
-		RTE_LOG(DEBUG, EAL, "%s(): memzone <%s>: name too long\n",
+	/* zone already exist */
+	if ((memzone_lookup_thread_unsafe(name)) != NULL) {
+		RTE_LOG(DEBUG, EAL, "%s(): memzone <%s> already exists\n",
 			__func__, name);
 		rte_errno = EEXIST;
 		return NULL;
