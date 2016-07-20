@@ -349,6 +349,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_acl.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
+     librte_cryptodev.so.1
      librte_distributor.so.1
      librte_eal.so.2
      librte_hash.so.2
