@@ -81,6 +81,7 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	ops = &rte_mempool_ops_table.ops[ops_index];
 	snprintf(ops->name, sizeof(ops->name), "%s", h->name);
 	ops->alloc = h->alloc;
+	ops->free = h->free;
 	ops->enqueue = h->enqueue;
 	ops->dequeue = h->dequeue;
 	ops->get_count = h->get_count;
