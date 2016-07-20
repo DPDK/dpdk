@@ -107,8 +107,8 @@ bnx2x_interrupt_action(struct rte_eth_dev *dev)
 
 	PMD_DEBUG_PERIODIC_LOG(INFO, "Interrupt handled");
 
-	if (bnx2x_intr_legacy(sc, 0))
-		DELAY_MS(250);
+	bnx2x_intr_legacy(sc, 0);
+
 	if (sc->periodic_flags & PERIODIC_GO)
 		bnx2x_periodic_callout(sc);
 	link_status = REG_RD(sc, sc->link_params.shmem_base +

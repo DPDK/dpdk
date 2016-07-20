@@ -4507,7 +4507,7 @@ static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp, int scan_fp)
 	}
 
 	bnx2x_ack_sb(sc, fp->igu_sb_id, USTORM_ID,
-		   le16toh(fp->fp_hc_idx), IGU_INT_ENABLE, 1);
+		   le16toh(fp->fp_hc_idx), IGU_INT_DISABLE, 1);
 }
 
 /*
