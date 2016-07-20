@@ -123,7 +123,9 @@ struct rte_mempool_objsz {
 	/**< Total size of an object (header + elt + trailer). */
 };
 
-#define RTE_MEMPOOL_NAMESIZE 32 /**< Maximum length of a memory pool. */
+/**< Maximum length of a memory pool's name. */
+#define RTE_MEMPOOL_NAMESIZE (RTE_RING_NAMESIZE - \
+			      sizeof(RTE_MEMPOOL_MZ_PREFIX) + 1)
 #define RTE_MEMPOOL_MZ_PREFIX "MP_"
 
 /* "MP_<name>" */
@@ -208,7 +210,12 @@ struct rte_mempool_memhdr {
  * The RTE mempool structure.
  */
 struct rte_mempool {
-	char name[RTE_MEMPOOL_NAMESIZE]; /**< Name of mempool. */
+	/*
+	 * Note: this field kept the RTE_MEMZONE_NAMESIZE size due to ABI
+	 * compatibility requirements, it could be changed to
+	 * RTE_MEMPOOL_NAMESIZE next time the ABI changes
+	 */
+	char name[RTE_MEMZONE_NAMESIZE]; /**< Name of mempool. */
 	union {
 		void *pool_data;         /**< Ring or pool to store objects. */
 		uint64_t pool_id;        /**< External mempool identifier. */
