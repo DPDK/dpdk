@@ -198,7 +198,7 @@ however please consult your distributions documentation to make sure that is the
 Also, to use VFIO, both kernel and BIOS must support and be configured to use IO virtualization (such as Intel® VT-d).
 
 For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
-This can be done by using the DPDK setup script (called setup.sh and located in the tools directory).
+This can be done by using the DPDK setup script (called dpdk-setup.sh and located in the tools directory).
 
 .. _linux_gsg_binding_kernel:
 
@@ -224,7 +224,7 @@ and to bind and unbind those ports from the different kernel modules, including 
 The following are some examples of how the script can be used.
 A full description of the script and its parameters can be obtained by calling the script with the ``--help`` or ``--usage`` options.
 Note that the uio or vfio kernel modules to be used, should be loaded into the kernel before
-running the ``dpdk_nic_bind.py`` script.
+running the ``dpdk-devbind.py`` script.
 
 .. warning::
 
@@ -238,14 +238,14 @@ running the ``dpdk_nic_bind.py`` script.
 
 .. warning::
 
-    While any user can run the dpdk_nic_bind.py script to view the status of the network ports,
+    While any user can run the dpdk-devbind.py script to view the status of the network ports,
     binding or unbinding network ports requires root privileges.
 
 To see the status of all network ports on the system:
 
 .. code-block:: console
 
-    ./tools/dpdk_nic_bind.py --status
+    ./tools/dpdk-devbind.py --status
 
     Network devices using DPDK-compatible driver
     ============================================
@@ -267,16 +267,16 @@ To bind device ``eth1``,``04:00.1``, to the ``uio_pci_generic`` driver:
 
 .. code-block:: console
 
-    ./tools/dpdk_nic_bind.py --bind=uio_pci_generic 04:00.1
+    ./tools/dpdk-devbind.py --bind=uio_pci_generic 04:00.1
 
 or, alternatively,
 
 .. code-block:: console
 
-    ./tools/dpdk_nic_bind.py --bind=uio_pci_generic eth1
+    ./tools/dpdk-devbind.py --bind=uio_pci_generic eth1
 
 To restore device ``82:00.0`` to its original kernel binding:
 
 .. code-block:: console
 
-    ./tools/dpdk_nic_bind.py --bind=ixgbe 82:00.0
+    ./tools/dpdk-devbind.py --bind=ixgbe 82:00.0

@@ -30,15 +30,15 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-dpdk_pdump Application
+dpdk-pdump Application
 ======================
 
-The ``dpdk_pdump`` tool is a Data Plane Development Kit (DPDK) tool that runs as
+The ``dpdk-pdump`` tool is a Data Plane Development Kit (DPDK) tool that runs as
 a DPDK secondary process and is capable of enabling packet capture on dpdk ports.
 
    .. Note::
 
-      * The ``dpdk_pdump`` tool depends on libpcap based PMD which is disabled
+      * The ``dpdk-pdump`` tool depends on libpcap based PMD which is disabled
         by default in the build configuration files,
         owing to an external dependency on the libpcap development files
         which must be installed on the board.
@@ -53,7 +53,7 @@ The tool has a number of command line options:
 
 .. code-block:: console
 
-   ./build/app/dpdk_pdump --
+   ./build/app/dpdk-pdump --
                           --pdump '(port=<port id> | device_id=<pci id or vdev name>),
                                    (queue=<queue_id>),
                                    (rx-dev=<iface or pcap file> |
@@ -95,10 +95,10 @@ PCI address (or) name of the eth device on which packets should be captured.
 
    .. Note::
 
-      * As of now the ``dpdk_pdump`` tool cannot capture the packets of virtual devices
+      * As of now the ``dpdk-pdump`` tool cannot capture the packets of virtual devices
         in the primary process due to a bug in the ethdev library. Due to this bug, in a multi process context,
         when the primary and secondary have different ports set, then the secondary process
-        (here the ``dpdk_pdump`` tool) overwrites the ``rte_eth_devices[]`` entries of the primary process.
+        (here the ``dpdk-pdump`` tool) overwrites the ``rte_eth_devices[]`` entries of the primary process.
 
 ``queue``:
 Queue id of the eth device on which packets should be captured. The user can pass a queue value of ``*`` to enable
@@ -141,4 +141,4 @@ Example
 
 .. code-block:: console
 
-   $ sudo ./build/app/dpdk_pdump -- --pdump 'port=0,queue=*,rx-dev=/tmp/rx.pcap'
+   $ sudo ./build/app/dpdk-pdump -- --pdump 'port=0,queue=*,rx-dev=/tmp/rx.pcap'

@@ -323,7 +323,7 @@ Building and Running the Switching Backend
     .. code-block:: console
 
         modprobe uio_pci_generic
-        python tools/dpdk_nic_bind.py -b uio_pci_generic 0000:09:00:00.0
+        python tools/dpdk-devbind.py -b uio_pci_generic 0000:09:00:00.0
 
     In this case, 0000:09:00.0 is the PCI address for the NIC controller.
 

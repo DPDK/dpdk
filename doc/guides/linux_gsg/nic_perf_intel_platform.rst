@@ -192,12 +192,12 @@ Configurations before running DPDK
 
 
       # Bind ports 82:00.0 and 85:00.0 to dpdk driver
-      ./dpdk_folder/tools/dpdk_nic_bind.py -b igb_uio 82:00.0 85:00.0
+      ./dpdk_folder/tools/dpdk-devbind.py -b igb_uio 82:00.0 85:00.0
 
       # Check the port driver status
-      ./dpdk_folder/tools/dpdk_nic_bind.py --status
+      ./dpdk_folder/tools/dpdk-devbind.py --status
 
-   See ``dpdk_nic_bind.py --help`` for more details.
+   See ``dpdk-devbind.py --help`` for more details.
 
 
 More details about DPDK setup and Linux kernel requirements see :ref:`linux_gsg_compiling_dpdk`.

@@ -32,7 +32,7 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #
-# Run with "source /path/to/setup.sh"
+# Run with "source /path/to/dpdk-setup.sh"
 #
 
 #
@@ -422,13 +422,13 @@ grep_meminfo()
 }
 
 #
-# Calls dpdk_nic_bind.py --status to show the NIC and what they
+# Calls dpdk-devbind.py --status to show the NIC and what they
 # are all bound to, in terms of drivers.
 #
 show_nics()
 {
 	if [ -d /sys/module/vfio_pci -o -d /sys/module/igb_uio ]; then
-		${RTE_SDK}/tools/dpdk_nic_bind.py --status
+		${RTE_SDK}/tools/dpdk-devbind.py --status
 	else
 		echo "# Please load the 'igb_uio' or 'vfio-pci' kernel module before "
 		echo "# querying or adjusting NIC device bindings"
@@ -436,16 +436,16 @@ show_nics()
 }
 
 #
-# Uses dpdk_nic_bind.py to move devices to work with vfio-pci
+# Uses dpdk-devbind.py to move devices to work with vfio-pci
 #
 bind_nics_to_vfio()
 {
 	if [ -d /sys/module/vfio_pci ]; then
-		${RTE_SDK}/tools/dpdk_nic_bind.py --status
+		${RTE_SDK}/tools/dpdk-devbind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to VFIO driver: "
 		read PCI_PATH
-		sudo ${RTE_SDK}/tools/dpdk_nic_bind.py -b vfio-pci $PCI_PATH &&
+		sudo ${RTE_SDK}/tools/dpdk-devbind.py -b vfio-pci $PCI_PATH &&
 			echo "OK"
 	else
 		echo "# Please load the 'vfio-pci' kernel module before querying or "
@@ -454,16 +454,16 @@ bind_nics_to_vfio()
 }
 
 #
-# Uses dpdk_nic_bind.py to move devices to work with igb_uio
+# Uses dpdk-devbind.py to move devices to work with igb_uio
 #
 bind_nics_to_igb_uio()
 {
 	if [ -d /sys/module/igb_uio ]; then
-		${RTE_SDK}/tools/dpdk_nic_bind.py --status
+		${RTE_SDK}/tools/dpdk-devbind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to IGB UIO driver: "
 		read PCI_PATH
-		sudo ${RTE_SDK}/tools/dpdk_nic_bind.py -b igb_uio $PCI_PATH && echo "OK"
+		sudo ${RTE_SDK}/tools/dpdk-devbind.py -b igb_uio $PCI_PATH && echo "OK"
 	else
 		echo "# Please load the 'igb_uio' kernel module before querying or "
 		echo "# adjusting NIC device bindings"
@@ -471,18 +471,18 @@ bind_nics_to_igb_uio()
 }
 
 #
-# Uses dpdk_nic_bind.py to move devices to work with kernel drivers again
+# Uses dpdk-devbind.py to move devices to work with kernel drivers again
 #
 unbind_nics()
 {
-	${RTE_SDK}/tools/dpdk_nic_bind.py --status
+	${RTE_SDK}/tools/dpdk-devbind.py --status
 	echo ""
 	echo -n "Enter PCI address of device to unbind: "
 	read PCI_PATH
 	echo ""
 	echo -n "Enter name of kernel driver to bind the device to: "
 	read DRV
-	sudo ${RTE_SDK}/tools/dpdk_nic_bind.py -b $DRV $PCI_PATH && echo "OK"
+	sudo ${RTE_SDK}/tools/dpdk-devbind.py -b $DRV $PCI_PATH && echo "OK"
 }
 
 #

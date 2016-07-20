@@ -146,7 +146,7 @@ managed by ``librte_pmd_thunderx_nicvf`` in the Linux operating system.
 
    .. code-block:: console
 
-      ./tools/dpdk_nic_bind.py --bind vfio-pci 0002:01:00.2
+      ./tools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
 
 #. Start ``testpmd`` with basic parameters:
 
@@ -246,11 +246,11 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
       Unless ``thunder-nicvf`` driver is in use make sure your kernel config includes ``CONFIG_THUNDER_NIC_VF`` setting.
 
-#. Verify PF/VF bind using ``dpdk_nic_bind.py``:
+#. Verify PF/VF bind using ``dpdk-devbind.py``:
 
    .. code-block:: console
 
-      ./tools/dpdk_nic_bind.py --status
+      ./tools/dpdk-devbind.py --status
 
    Example output:
 
@@ -268,18 +268,18 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
       modprobe vfio-pci
 
-#. Bind VF devices to ``vfio-pci`` using ``dpdk_nic_bind.py``:
+#. Bind VF devices to ``vfio-pci`` using ``dpdk-devbind.py``:
 
    .. code-block:: console
 
-      ./tools/dpdk_nic_bind.py --bind vfio-pci 0002:01:00.1
-      ./tools/dpdk_nic_bind.py --bind vfio-pci 0002:01:00.2
+      ./tools/dpdk-devbind.py --bind vfio-pci 0002:01:00.1
+      ./tools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
 
-#. Verify VF bind using ``dpdk_nic_bind.py``:
+#. Verify VF bind using ``dpdk-devbind.py``:
 
    .. code-block:: console
 
-      ./tools/dpdk_nic_bind.py --status
+      ./tools/dpdk-devbind.py --status
 
    Example output:
 

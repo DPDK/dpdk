@@ -33,7 +33,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 ifeq ($(CONFIG_RTE_LIBRTE_PDUMP),y)
 
-APP = dpdk_pdump
+APP = dpdk-pdump
 
 CFLAGS += $(WERROR_FLAGS)
 

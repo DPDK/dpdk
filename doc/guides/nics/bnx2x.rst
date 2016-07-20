@@ -207,7 +207,7 @@ devices managed by ``librte_pmd_bnx2x`` in Linux operating system.
 #. Bind the QLogic adapters to ``igb_uio`` or ``vfio-pci`` loaded in the
    previous step::
 
-      ./tools/dpdk_nic_bind.py --bind igb_uio 0000:84:00.0 0000:84:00.1
+      ./tools/dpdk-devbind.py --bind igb_uio 0000:84:00.0 0000:84:00.1
 
    or
 
@@ -219,7 +219,7 @@ devices managed by ``librte_pmd_bnx2x`` in Linux operating system.
 
       sudo chmod 0666 /dev/vfio/*
 
-      ./tools/dpdk_nic_bind.py --bind vfio-pci 0000:84:00.0 0000:84:00.1
+      ./tools/dpdk-devbind.py --bind vfio-pci 0000:84:00.0 0000:84:00.1
 
 #. Start ``testpmd`` with basic parameters:
 

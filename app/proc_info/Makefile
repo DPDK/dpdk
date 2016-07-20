@@ -31,7 +31,7 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-APP = dpdk_proc_info
+APP = dpdk-procinfo
 
 CFLAGS += $(WERROR_FLAGS)
 

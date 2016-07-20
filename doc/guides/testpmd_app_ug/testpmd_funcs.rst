@@ -999,7 +999,7 @@ For example, to move a pci device using ixgbe under DPDK management:
 .. code-block:: console
 
    # Check the status of the available devices.
-   ./tools/dpdk_nic_bind.py --status
+   ./tools/dpdk-devbind.py --status
 
    Network devices using DPDK-compatible driver
    ============================================
@@ -1011,11 +1011,11 @@ For example, to move a pci device using ixgbe under DPDK management:
 
 
    # Bind the device to igb_uio.
-   sudo ./tools/dpdk_nic_bind.py -b igb_uio 0000:0a:00.0
+   sudo ./tools/dpdk-devbind.py -b igb_uio 0000:0a:00.0
 
 
    # Recheck the status of the devices.
-   ./tools/dpdk_nic_bind.py --status
+   ./tools/dpdk-devbind.py --status
    Network devices using DPDK-compatible driver
    ============================================
    0000:0a:00.0 '82599ES 10-Gigabit' drv=igb_uio unused=
@@ -1118,9 +1118,9 @@ For example, to move a pci device under kernel management:
 
 .. code-block:: console
 
-   sudo ./tools/dpdk_nic_bind.py -b ixgbe 0000:0a:00.0
+   sudo ./tools/dpdk-devbind.py -b ixgbe 0000:0a:00.0
 
-   ./tools/dpdk_nic_bind.py --status
+   ./tools/dpdk-devbind.py --status
 
    Network devices using DPDK-compatible driver
    ============================================

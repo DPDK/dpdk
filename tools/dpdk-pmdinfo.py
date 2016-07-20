@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -------------------------------------------------------------------------
-# scripts/pmdinfo.py
 #
 # Utility to dump PMD_INFO_STRING support from an object file
 #
@@ -569,8 +568,7 @@ def main(stream=None):
     optparser = OptionParser(
         usage='usage: %prog [-hrtp] [-d <pci id file] <elf-file>',
         description="Dump pmd hardware support info",
-        add_help_option=True,
-        prog='pmdinfo.py')
+        add_help_option=True)
     optparser.add_option('-r', '--raw',
                          action='store_true', dest='raw_output',
                          help='Dump raw json strings')

@@ -325,6 +325,9 @@ API Changes
 * The function ``rte_eth_dev_set_mtu`` adds a new return value ``-EBUSY``, which
   indicates the operation is forbidden because the port is running.
 
+* The script ``dpdk_nic_bind.py`` is renamed to ``dpdk-devbind.py``.
+  And the script ``setup.sh`` is renamed to ``dpdk-setup.sh``.
+
 
 ABI Changes
 -----------

@@ -242,9 +242,9 @@ Using the NFP PMD is not different to using other PMDs. Usual steps are:
    useful for installing the UIO modules and for binding the right device to those
    modules avoiding doing so manually:
 
-   * **setup.sh**
-   * **dpdk_nic_bind.py**
+   * **dpdk-setup.sh**
+   * **dpdk-devbind.py**
 
-   Configuration may be performed by running setup.sh which invokes
-   dpdk_nic_bind.py as needed. Executing setup.sh will display a menu of
+   Configuration may be performed by running dpdk-setup.sh which invokes
+   dpdk-devbind.py as needed. Executing dpdk-setup.sh will display a menu of
    configuration options.

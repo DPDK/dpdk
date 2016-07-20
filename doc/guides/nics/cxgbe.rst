@@ -285,7 +285,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
 
    .. code-block:: console
 
-      ./tools/dpdk_nic_bind.py --bind igb_uio 0000:02:00.4
+      ./tools/dpdk-devbind.py --bind igb_uio 0000:02:00.4
 
    or
 
@@ -297,7 +297,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
 
       sudo chmod 0666 /dev/vfio/*
 
-      ./tools/dpdk_nic_bind.py --bind vfio-pci 0000:02:00.4
+      ./tools/dpdk-devbind.py --bind vfio-pci 0000:02:00.4
 
    .. note::
 

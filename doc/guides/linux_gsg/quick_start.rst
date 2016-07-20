@@ -33,7 +33,7 @@
 Quick Start Setup Script
 ========================
 
-The setup.sh script, found in the tools subdirectory, allows the user to perform the following tasks:
+The dpdk-setup.sh script, found in the tools subdirectory, allows the user to perform the following tasks:
 
 *   Build the DPDK libraries
 
@@ -63,7 +63,7 @@ the user may compile their own application that links in the EAL libraries to cr
 Script Organization
 -------------------
 
-The setup.sh script is logically organized into a series of steps that a user performs in sequence.
+The dpdk-setup.sh script is logically organized into a series of steps that a user performs in sequence.
 Each step provides a number of options that guide the user to completing the desired task.
 The following is a brief synopsis of each step.
 
@@ -98,17 +98,17 @@ The final step has options for restoring the system to its original state.
 Use Cases
 ---------
 
-The following are some example of how to use the setup.sh script.
+The following are some example of how to use the dpdk-setup.sh script.
 The script should be run using the source command.
 Some options in the script prompt the user for further data before proceeding.
 
 .. warning::
 
-    The setup.sh script should be run with root privileges.
+    The dpdk-setup.sh script should be run with root privileges.
 
 .. code-block:: console
 
-    source tools/setup.sh
+    source tools/dpdk-setup.sh
 
     ------------------------------------------------------------------------
 
@@ -269,7 +269,7 @@ The following selection demonstrates the launch of the test application to run o
 Applications
 ------------
 
-Once the user has run the setup.sh script, built one of the EAL targets and set up hugepages (if using one of the Linux EAL targets),
+Once the user has run the dpdk-setup.sh script, built one of the EAL targets and set up hugepages (if using one of the Linux EAL targets),
 the user can then move on to building and running their application or one of the examples provided.
 
 The examples in the /examples directory provide a good starting point to gain an understanding of the operation of the DPDK.

@@ -70,7 +70,7 @@ F: scripts/validate-abi.sh
 
 Driver information
 F: buildtools/pmdinfogen/
-F: tools/pmdinfo.py
+F: tools/dpdk-pmdinfo.py
 
 
 Environment Abstraction Layer

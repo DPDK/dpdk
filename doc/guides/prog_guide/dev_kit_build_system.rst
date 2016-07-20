@@ -309,11 +309,11 @@ Misc
 Internally Generated Build Tools
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``app/pmdinfogen``
+``app/dpdk-pmdinfogen``
 
 
-``pmdinfogen`` scans an object (.o) file for various well known symbol names.  These
-well known symbol names are defined by various macros and used to export
+``dpdk-pmdinfogen`` scans an object (.o) file for various well known symbol names.
+These well known symbol names are defined by various macros and used to export
 important information about hardware support and usage for pmd files.  For
 instance the macro:
 
@@ -328,10 +328,10 @@ Creates the following symbol:
    static char this_pmd_name0[] __attribute__((used)) = "<name>";
 
 
-Which pmdinfogen scans for.  Using this information other relevant bits of data
-can be exported from the object file and used to produce a hardware support
-description, that pmdinfogen then encodes into a json formatted string in the
-following format:
+Which ``dpdk-pmdinfogen`` scans for.  Using this information other relevant
+bits of data can be exported from the object file and used to produce a
+hardware support description, that ``dpdk-pmdinfogen`` then encodes into a
+json formatted string in the following format:
 
 .. code-block:: c
 

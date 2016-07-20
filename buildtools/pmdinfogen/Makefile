@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-HOSTAPP = pmdinfogen
+HOSTAPP = dpdk-pmdinfogen
 
 #
 # all sources are stored in SRCS-y

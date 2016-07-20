@@ -174,13 +174,13 @@ Prerequisites
 - DPDK suite should be configured based on the user's decision to use VFIO or
   UIO framework
 - If the vNIC device(s) to be used is bound to the kernel mode Ethernet driver
-  (enic), use 'ifconfig' to bring the interface down. The dpdk_nic_bind.py tool
+  (enic), use 'ifconfig' to bring the interface down. The dpdk-devbind.py tool
   can then be used to unbind the device's bus id from the enic kernel mode
   driver.
 - Bind the intended vNIC to vfio-pci in case the user wants ENIC PMD to use
-  VFIO framework using dpdk_nic_bind.py.
+  VFIO framework using dpdk-devbind.py.
 - Bind the intended vNIC to igb_uio in case the user wants ENIC PMD to use
-  UIO framework using dpdk_nic_bind.py.
+  UIO framework using dpdk-devbind.py.
 
 At this point the system should be ready to run DPDK applications. Once the
 application runs to completion, the vNIC can be detached from vfio-pci or

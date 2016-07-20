@@ -84,7 +84,7 @@ C_TO_O = $(CC) -Wp,-MD,$(call obj2dep,$(@)).tmp $(CFLAGS) \
 C_TO_O_STR = $(subst ','\'',$(C_TO_O)) #'# fix syntax highlight
 C_TO_O_DISP = $(if $(V),"$(C_TO_O_STR)","  CC $(@)")
 endif
-PMDINFO_GEN = $(RTE_SDK_BIN)/app/pmdinfogen $@ $@.pmd.c
+PMDINFO_GEN = $(RTE_SDK_BIN)/app/dpdk-pmdinfogen $@ $@.pmd.c
 PMDINFO_CC = $(CC) $(CFLAGS) -c -o $@.pmd.o $@.pmd.c
 PMDINFO_LD = $(CROSS)ld $(LDFLAGS) -r -o $@.o $@.pmd.o $@
 PMDINFO_TO_O = if grep -q 'PMD_REGISTER_DRIVER(.*)' $<; then \
