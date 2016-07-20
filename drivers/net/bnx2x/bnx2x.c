@@ -8886,7 +8886,7 @@ int bnx2x_alloc_hsi_mem(struct bnx2x_softc *sc)
 /***************************/
 
 		if (bnx2x_dma_alloc(sc, FW_BUF_SIZE, &sc->gz_buf_dma,
-				  "fw_dec_buf", RTE_CACHE_LINE_SIZE) != 0) {
+				  "fw_buf", RTE_CACHE_LINE_SIZE) != 0) {
 			sc->spq = NULL;
 			sc->sp = NULL;
 			sc->eq = NULL;
