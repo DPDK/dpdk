@@ -97,6 +97,17 @@ fixup_config() {
 #trap on ctrl-c to clean up
 trap cleanup_and_exit SIGINT
 
+if [ -z "$DPDK_MAKE_JOBS" ]
+then
+	# This counts the number of cpus on the system
+	if [ -e /usr/bin/lscpu ]
+	then
+		DPDK_MAKE_JOBS=`lscpu -p=cpu | grep -v "#" | wc -l`
+	else
+		DPDK_MAKE_JOBS=1
+	fi
+fi
+
 #Save the current branch
 CURRENT_BRANCH=`git branch | grep \* | cut -d' ' -f2`
 
@@ -183,7 +194,7 @@ log "INFO" "Configuring DPDK $TAG1"
 make config T=$TARGET O=$TARGET > $VERBOSE 2>&1
 
 log "INFO" "Building DPDK $TAG1. This might take a moment"
-make O=$TARGET > $VERBOSE 2>&1
+make -j$DPDK_MAKE_JOBS O=$TARGET > $VERBOSE 2>&1
 
 if [ $? -ne 0 ]
 then
@@ -214,7 +225,7 @@ log "INFO" "Configuring DPDK $TAG2"
 make config T=$TARGET O=$TARGET > $VERBOSE 2>&1
 
 log "INFO" "Building DPDK $TAG2. This might take a moment"
-make O=$TARGET > $VERBOSE 2>&1
+make -j$DPDK_MAKE_JOBS O=$TARGET > $VERBOSE 2>&1
 
 if [ $? -ne 0 ]
 then
