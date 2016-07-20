@@ -242,8 +242,8 @@ F: app/test/test_cryptodev*
 F: examples/l2fwd-crypto/
 
 
-Drivers
--------
+Networking Drivers
+------------------
 
 Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
@@ -386,9 +386,13 @@ F: doc/guides/nics/pcap_ring.rst
 F: app/test/test_pmd_ring.c
 F: app/test/test_pmd_ring_perf.c
 
-Null PMD
+Null Networking PMD
 M: Tetsuya Mukawa <mukawa@igel.co.jp>
 F: drivers/net/null/
+
+
+Crypto Drivers
+--------------
 
 Intel AES-NI GCM PMD
 M: Declan Doherty <declan.doherty@intel.com>
