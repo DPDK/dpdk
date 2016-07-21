@@ -2159,8 +2159,8 @@ fm10k_rss_hash_update(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rss_conf->rss_key_len < FM10K_RSSRK_SIZE *
-		FM10K_RSSRK_ENTRIES_PER_REG)
+	if (key && (rss_conf->rss_key_len < FM10K_RSSRK_SIZE *
+				FM10K_RSSRK_ENTRIES_PER_REG))
 		return -EINVAL;
 
 	if (hf == 0)
@@ -2202,8 +2202,8 @@ fm10k_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rss_conf->rss_key_len < FM10K_RSSRK_SIZE *
-				FM10K_RSSRK_ENTRIES_PER_REG)
+	if (key && (rss_conf->rss_key_len < FM10K_RSSRK_SIZE *
+				FM10K_RSSRK_ENTRIES_PER_REG))
 		return -EINVAL;
 
 	if (key != NULL)
