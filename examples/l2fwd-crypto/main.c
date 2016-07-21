@@ -1796,6 +1796,13 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			return -1;
 		}
 
+		retval = rte_cryptodev_start(cdev_id);
+		if (retval < 0) {
+			printf("Failed to start device %u: error %d\n",
+					cdev_id, retval);
+			return -1;
+		}
+
 		l2fwd_enabled_crypto_mask |= (1 << cdev_id);
 
 		enabled_cdevs[cdev_id] = 1;
