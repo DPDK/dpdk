@@ -14,6 +14,13 @@ Deprecation Notices
 * The ethdev library file will be renamed from libethdev.* to librte_ethdev.*
   in release 16.11 in order to have a more consistent namespace.
 
+* In 16.11 ABI changes are planned: the ``rte_eth_dev`` structure will be
+  extended with new function pointer ``tx_pkt_prep`` allowing verification
+  and processing of packet burst to meet HW specific requirements before
+  transmit. Also new fields will be added to the ``rte_eth_desc_lim`` structure:
+  ``nb_seg_max`` and ``nb_mtu_seg_max`` providing information about number of
+  segments limit to be transmitted by device for TSO/non-TSO packets.
+
 * The ethdev hotplug API is going to be moved to EAL with a notification
   mechanism added to crypto and ethdev libraries so that hotplug is now
   available to both of them. This API will be stripped of the device arguments
