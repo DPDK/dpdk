@@ -265,7 +265,7 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	size_t copied;
 	static uint32_t ptypes[32];
 	struct nicvf *nic = nicvf_pmd_priv(dev);
-	static const uint32_t ptypes_pass1[] = {
+	static const uint32_t ptypes_common[] = {
 		RTE_PTYPE_L3_IPV4,
 		RTE_PTYPE_L3_IPV4_EXT,
 		RTE_PTYPE_L3_IPV6,
@@ -274,7 +274,7 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_FRAG,
 	};
-	static const uint32_t ptypes_pass2[] = {
+	static const uint32_t ptypes_tunnel[] = {
 		RTE_PTYPE_TUNNEL_GRE,
 		RTE_PTYPE_TUNNEL_GENEVE,
 		RTE_PTYPE_TUNNEL_VXLAN,
@@ -282,12 +282,12 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	};
 	static const uint32_t ptypes_end = RTE_PTYPE_UNKNOWN;
 
-	copied = sizeof(ptypes_pass1);
-	memcpy(ptypes, ptypes_pass1, copied);
-	if (nicvf_hw_version(nic) == NICVF_PASS2) {
-		memcpy((char *)ptypes + copied, ptypes_pass2,
-			sizeof(ptypes_pass2));
-		copied += sizeof(ptypes_pass2);
+	copied = sizeof(ptypes_common);
+	memcpy(ptypes, ptypes_common, copied);
+	if (nicvf_hw_cap(nic) & NICVF_CAP_TUNNEL_PARSING) {
+		memcpy((char *)ptypes + copied, ptypes_tunnel,
+			sizeof(ptypes_tunnel));
+		copied += sizeof(ptypes_tunnel);
 	}
 
 	memcpy((char *)ptypes + copied, &ptypes_end, sizeof(ptypes_end));
@@ -1741,16 +1741,16 @@ static const struct rte_pci_id pci_id_nicvf_map[] = {
 	{
 		.class_id = RTE_CLASS_ANY_ID,
 		.vendor_id = PCI_VENDOR_ID_CAVIUM,
-		.device_id = PCI_DEVICE_ID_THUNDERX_PASS1_NICVF,
+		.device_id = PCI_DEVICE_ID_THUNDERX_CN88XX_PASS1_NICVF,
 		.subsystem_vendor_id = PCI_VENDOR_ID_CAVIUM,
-		.subsystem_device_id = PCI_SUB_DEVICE_ID_THUNDERX_PASS1_NICVF,
+		.subsystem_device_id = PCI_SUB_DEVICE_ID_CN88XX_PASS1_NICVF,
 	},
 	{
 		.class_id = RTE_CLASS_ANY_ID,
 		.vendor_id = PCI_VENDOR_ID_CAVIUM,
-		.device_id = PCI_DEVICE_ID_THUNDERX_PASS2_NICVF,
+		.device_id = PCI_DEVICE_ID_THUNDERX_NICVF,
 		.subsystem_vendor_id = PCI_VENDOR_ID_CAVIUM,
-		.subsystem_device_id = PCI_SUB_DEVICE_ID_THUNDERX_PASS2_NICVF,
+		.subsystem_device_id = PCI_SUB_DEVICE_ID_CN88XX_PASS2_NICVF,
 	},
 	{
 		.vendor_id = 0,
