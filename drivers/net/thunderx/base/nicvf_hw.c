@@ -143,6 +143,9 @@ nicvf_base_init(struct nicvf *nic)
 	if (nicvf_hw_version(nic) == PCI_SUB_DEVICE_ID_CN88XX_PASS2_NICVF)
 		nic->hwcap |= NICVF_CAP_TUNNEL_PARSING;
 
+	if (nicvf_hw_version(nic) == PCI_SUB_DEVICE_ID_CN81XX_NICVF)
+		nic->hwcap |= NICVF_CAP_TUNNEL_PARSING | NICVF_CAP_CQE_RX2;
+
 	return NICVF_OK;
 }
 

@@ -60,6 +60,7 @@ Features of the ThunderX PMD are:
 Supported ThunderX SoCs
 -----------------------
 - CN88xx
+- CN81xx
 
 Prerequisites
 -------------
