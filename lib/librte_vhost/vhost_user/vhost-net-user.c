@@ -43,6 +43,7 @@
 #include <sys/un.h>
 #include <sys/queue.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <pthread.h>
 
 #include <rte_log.h>
@@ -445,6 +446,14 @@ create_unix_socket(const char *path, struct sockaddr_un *un, bool is_server)
 	RTE_LOG(INFO, VHOST_CONFIG, "vhost-user %s: socket created, fd: %d\n",
 		is_server ? "server" : "client", fd);
 
+	if (!is_server && fcntl(fd, F_SETFL, O_NONBLOCK)) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"vhost-user: can't set nonblocking mode for socket, fd: "
+			"%d (%s)\n", fd, strerror(errno));
+		close(fd);
+		return -1;
+	}
+
 	memset(un, 0, sizeof(*un));
 	un->sun_family = AF_UNIX;
 	strncpy(un->sun_path, path, sizeof(un->sun_path));
@@ -512,9 +521,33 @@ struct vhost_user_reconnect_list {
 static struct vhost_user_reconnect_list reconn_list;
 static pthread_t reconn_tid;
 
+static int
+vhost_user_connect_nonblock(int fd, struct sockaddr *un, size_t sz)
+{
+	int ret, flags;
+
+	ret = connect(fd, un, sz);
+	if (ret < 0 && errno != EISCONN)
+		return -1;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"can't get flags for connfd %d\n", fd);
+		return -2;
+	}
+	if ((flags & O_NONBLOCK) && fcntl(fd, F_SETFL, flags & ~O_NONBLOCK)) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+				"can't disable nonblocking on fd %d\n", fd);
+		return -2;
+	}
+	return 0;
+}
+
 static void *
 vhost_user_client_reconnect(void *arg __rte_unused)
 {
+	int ret;
 	struct vhost_user_reconnect *reconn, *next;
 
 	while (1) {
@@ -528,13 +561,23 @@ vhost_user_client_reconnect(void *arg __rte_unused)
 		     reconn != NULL; reconn = next) {
 			next = TAILQ_NEXT(reconn, next);
 
-			if (connect(reconn->fd, (struct sockaddr *)&reconn->un,
-				    sizeof(reconn->un)) < 0)
+			ret = vhost_user_connect_nonblock(reconn->fd,
+						(struct sockaddr *)&reconn->un,
+						sizeof(reconn->un));
+			if (ret == -2) {
+				close(reconn->fd);
+				RTE_LOG(ERR, VHOST_CONFIG,
+					"reconnection for fd %d failed\n",
+					reconn->fd);
+				goto remove_fd;
+			}
+			if (ret == -1)
 				continue;
 
 			RTE_LOG(INFO, VHOST_CONFIG,
 				"%s: connected\n", reconn->vsocket->path);
 			vhost_user_add_connection(reconn->fd, reconn->vsocket);
+remove_fd:
 			TAILQ_REMOVE(&reconn_list.head, reconn, next);
 			free(reconn);
 		}
@@ -575,7 +618,8 @@ vhost_user_create_client(struct vhost_user_socket *vsocket)
 	if (fd < 0)
 		return -1;
 
-	ret = connect(fd, (struct sockaddr *)&un, sizeof(un));
+	ret = vhost_user_connect_nonblock(fd, (struct sockaddr *)&un,
+					  sizeof(un));
 	if (ret == 0) {
 		vhost_user_add_connection(fd, vsocket);
 		return 0;
@@ -585,7 +629,7 @@ vhost_user_create_client(struct vhost_user_socket *vsocket)
 		"failed to connect to %s: %s\n",
 		path, strerror(errno));
 
-	if (!vsocket->reconnect) {
+	if (ret == -2 || !vsocket->reconnect) {
 		close(fd);
 		return -1;
 	}
