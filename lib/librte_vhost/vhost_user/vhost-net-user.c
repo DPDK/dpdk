@@ -61,6 +61,7 @@
 struct vhost_user_socket {
 	char *path;
 	int listenfd;
+	int connfd;
 	bool is_server;
 	bool reconnect;
 };
@@ -278,11 +279,13 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
+	vsocket->connfd = fd;
 	conn->vsocket = vsocket;
 	conn->vid = vid;
 	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_msg_handler,
 			NULL, conn);
 	if (ret < 0) {
+		vsocket->connfd = -1;
 		free(conn);
 		close(fd);
 		RTE_LOG(ERR, VHOST_CONFIG,
@@ -330,6 +333,7 @@ vhost_user_msg_handler(int connfd, void *dat, int *remove)
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"vhost read incorrect message\n");
 
+		vsocket->connfd = -1;
 		close(connfd);
 		*remove = 1;
 		free(conn);
@@ -679,6 +683,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out;
 	memset(vsocket, 0, sizeof(struct vhost_user_socket));
 	vsocket->path = strdup(path);
+	vsocket->connfd = -1;
 
 	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
 		vsocket->reconnect = !(flags & RTE_VHOST_USER_NO_RECONNECT);
@@ -708,6 +713,30 @@ out:
 	return ret;
 }
 
+static bool
+vhost_user_remove_reconnect(struct vhost_user_socket *vsocket)
+{
+	int found = false;
+	struct vhost_user_reconnect *reconn, *next;
+
+	pthread_mutex_lock(&reconn_list.mutex);
+
+	for (reconn = TAILQ_FIRST(&reconn_list.head);
+	     reconn != NULL; reconn = next) {
+		next = TAILQ_NEXT(reconn, next);
+
+		if (reconn->vsocket == vsocket) {
+			TAILQ_REMOVE(&reconn_list.head, reconn, next);
+			close(reconn->fd);
+			free(reconn);
+			found = true;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&reconn_list.mutex);
+	return found;
+}
+
 /**
  * Unregister the specified vhost socket
  */
@@ -716,20 +745,34 @@ rte_vhost_driver_unregister(const char *path)
 {
 	int i;
 	int count;
+	struct vhost_user_connection *conn;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 
 	for (i = 0; i < vhost_user.vsocket_cnt; i++) {
-		if (!strcmp(vhost_user.vsockets[i]->path, path)) {
-			if (vhost_user.vsockets[i]->is_server) {
-				fdset_del(&vhost_user.fdset,
-					vhost_user.vsockets[i]->listenfd);
-				close(vhost_user.vsockets[i]->listenfd);
+		struct vhost_user_socket *vsocket = vhost_user.vsockets[i];
+
+		if (!strcmp(vsocket->path, path)) {
+			if (vsocket->is_server) {
+				fdset_del(&vhost_user.fdset, vsocket->listenfd);
+				close(vsocket->listenfd);
 				unlink(path);
+			} else if (vsocket->reconnect) {
+				vhost_user_remove_reconnect(vsocket);
 			}
 
-			free(vhost_user.vsockets[i]->path);
-			free(vhost_user.vsockets[i]);
+			conn = fdset_del(&vhost_user.fdset, vsocket->connfd);
+			if (conn) {
+				RTE_LOG(INFO, VHOST_CONFIG,
+					"free connfd = %d for device '%s'\n",
+					vsocket->connfd, path);
+				close(vsocket->connfd);
+				vhost_destroy_device(conn->vid);
+				free(conn);
+			}
+
+			free(vsocket->path);
+			free(vsocket);
 
 			count = --vhost_user.vsocket_cnt;
 			vhost_user.vsockets[i] = vhost_user.vsockets[count];

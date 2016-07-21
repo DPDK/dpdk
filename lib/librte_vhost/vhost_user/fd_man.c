@@ -132,8 +132,10 @@ fdset_init(struct fdset *pfdset)
 	if (pfdset == NULL)
 		return;
 
-	for (i = 0; i < MAX_FDS; i++)
+	for (i = 0; i < MAX_FDS; i++) {
 		pfdset->fd[i].fd = -1;
+		pfdset->fd[i].dat = NULL;
+	}
 	pfdset->num = 0;
 }
 
@@ -166,14 +168,16 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 
 /**
  *  Unregister the fd from the fdset.
+ *  Returns context of a given fd or NULL.
  */
-void
+void *
 fdset_del(struct fdset *pfdset, int fd)
 {
 	int i;
+	void *dat = NULL;
 
 	if (pfdset == NULL || fd == -1)
-		return;
+		return NULL;
 
 	do {
 		pthread_mutex_lock(&pfdset->fd_mutex);
@@ -181,13 +185,17 @@ fdset_del(struct fdset *pfdset, int fd)
 		i = fdset_find_fd(pfdset, fd);
 		if (i != -1 && pfdset->fd[i].busy == 0) {
 			/* busy indicates r/wcb is executing! */
+			dat = pfdset->fd[i].dat;
 			pfdset->fd[i].fd = -1;
 			pfdset->fd[i].rcb = pfdset->fd[i].wcb = NULL;
+			pfdset->fd[i].dat = NULL;
 			pfdset->num--;
 			i = -1;
 		}
 		pthread_mutex_unlock(&pfdset->fd_mutex);
 	} while (i != -1);
+
+	return dat;
 }
 
 /**
@@ -203,6 +211,7 @@ fdset_del_slot(struct fdset *pfdset, int index)
 
 	pfdset->fd[index].fd = -1;
 	pfdset->fd[index].rcb = pfdset->fd[index].wcb = NULL;
+	pfdset->fd[index].dat = NULL;
 	pfdset->num--;
 
 	pthread_mutex_unlock(&pfdset->fd_mutex);
