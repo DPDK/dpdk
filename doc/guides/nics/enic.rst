@@ -35,12 +35,6 @@ NICs. These adapters are also referred to as vNICs below. If you are running
 or would like to run DPDK software applications on Cisco UCS servers using
 Cisco VIC adapters the following documentation is relevant.
 
-Version Information
--------------------
-
-The version of the ENIC PMD driver is 1.0.0.6 and will be printed by ENIC PMD
-during the initialization.
-
 How to obtain ENIC PMD integrated DPDK
 --------------------------------------
 
@@ -156,6 +150,8 @@ Supported features
 - VLAN filtering (supported via UCSM/CIMC only)
 - Execution of application by unprivileged system users
 - IPV4, IPV6 and TCP RSS hashing
+- Scattered Rx
+- MTU update
 
 Known bugs and Unsupported features in this release
 ---------------------------------------------------
@@ -165,6 +161,7 @@ Known bugs and Unsupported features in this release
 - non-IPV4 flow direction
 - Setting of extended VLAN
 - UDP RSS hashing
+- MTU update only works if Scattered Rx mode is disabled
 
 Prerequisites
 -------------

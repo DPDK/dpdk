@@ -84,6 +84,16 @@ New Features
 
   Updated the i40e base driver, which includes support for new devices IDs.
 
+* **Updated the enic driver.**
+
+  The enic driver was updated with changes including the following:
+
+  * Optimized the Tx function.
+  * Added Scattered Rx capability.
+  * Improved packet type identification.
+  * Added MTU update in non Scattered Rx mode and enabled MTU of up to 9208
+    with UCS Software release 2.2 on 1300 series VICs.
+
 * **Supported virtio on IBM POWER8.**
 
   The ioports are mapped in memory when using Linux UIO.
@@ -227,6 +237,20 @@ Drivers
   as inner VLAN. But generally, a single VLAN header is treated as the
   outer VLAN header.
   This issue is fixed by changing corresponding register for single VLAN.
+
+* **enic: Fixed several issues when stopping then restarting ports and queues.**
+
+  Fixed several crashes related to stopping then restarting ports and queues.
+  Fixed possible crash when re-configuring the number of Rx queue descriptors.
+
+* **enic: Fixed Rx data mis-alignment if mbuf data offset modified.**
+
+  Fixed possible Rx corruption when mbufs were returned to a pool with data
+  offset other than RTE_PKTMBUF_HEADROOM.
+
+* **enic: Fixed Tx IP/UDP/TCP checksum offload and VLAN insertion.**
+
+* **enic: Fixed Rx error and missed counters.**
 
 
 Libraries
