@@ -1142,7 +1142,12 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	rxq->cq_status = nicvf_qset_base(nic, qidx) + NIC_QSET_CQ_0_7_STATUS;
 	rxq->cq_door = nicvf_qset_base(nic, qidx) + NIC_QSET_CQ_0_7_DOOR;
 	rxq->precharge_cnt = 0;
-	rxq->rbptr_offset = NICVF_CQE_RBPTR_WORD;
+
+	if (nicvf_hw_cap(nic) & NICVF_CAP_CQE_RX2)
+		rxq->rbptr_offset = NICVF_CQE_RX2_RBPTR_WORD;
+	else
+		rxq->rbptr_offset = NICVF_CQE_RBPTR_WORD;
+
 
 	/* Alloc completion queue */
 	if (nicvf_qset_cq_alloc(nic, rxq, rxq->queue_id, nb_desc)) {

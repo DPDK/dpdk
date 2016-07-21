@@ -50,8 +50,9 @@
 #define NICVF_GET_TX_STATS(reg) \
 	nicvf_reg_read(nic, NIC_VNIC_TX_STAT_0_4 | (reg << 3))
 
-
-#define NICVF_CAP_TUNNEL_PARSING          (1ULL << 0)
+#define NICVF_CAP_TUNNEL_PARSING	(1ULL << 0)
+/* Additional word in Rx descriptor to hold optional tunneling extension info */
+#define NICVF_CAP_CQE_RX2		(1ULL << 1)
 
 enum nicvf_tns_mode {
 	NIC_TNS_BYPASS_MODE,
