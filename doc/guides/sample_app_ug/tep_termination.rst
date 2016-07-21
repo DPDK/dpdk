@@ -59,8 +59,8 @@ This allows network isolation, QOS, etc to be provided on a per client basis.
 In a typical setup, the network overlay tunnel is terminated at the Virtual/Tunnel End Point (VEP/TEP).
 The TEP is normally located at the physical host level ideally in the software switch.
 Due to processing constraints and the inevitable bottleneck that the switch
-becomes the ability to offload overlay support features becomes an important requirement.
-Intel® XL710 10/40 G Ethernet network card provides hardware filtering
+becomes, the ability to offload overlay support features becomes an important requirement.
+Intel® XL710 10/40 Gigabit Ethernet network card provides hardware filtering
 and offload capabilities to support overlay networks implementations such as MAC in UDP and MAC in GRE.
 
 Sample Code Overview
@@ -131,14 +131,14 @@ Compiling the Sample Code
 
     .. code-block:: console
 
-        CONFIG_RTE_LIBRTE_VHOST=n
+        CONFIG_RTE_LIBRTE_VHOST=y
 
     vhost user is turned on by default in the configure file config/common_linuxapp.
     To enable vhost cuse, disable vhost user.
 
     .. code-block:: console
 
-        CONFIG_RTE_LIBRTE_VHOST_USER=y
+        CONFIG_RTE_LIBRTE_VHOST_USER=n
 
      After vhost is enabled and the implementation is selected, build the vhost library.
 
