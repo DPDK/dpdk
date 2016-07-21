@@ -506,7 +506,6 @@ test_mempool(void)
 {
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
-	struct rte_mempool *mp_ext = NULL;
 	struct rte_mempool *mp_stack = NULL;
 
 	rte_atomic32_init(&synchro);
@@ -605,7 +604,7 @@ test_mempool(void)
 err:
 	rte_mempool_free(mp_nocache);
 	rte_mempool_free(mp_cache);
-	rte_mempool_free(mp_ext);
+	rte_mempool_free(mp_stack);
 	return -1;
 }
 
