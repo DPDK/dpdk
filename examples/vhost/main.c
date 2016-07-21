@@ -327,6 +327,8 @@ port_init(uint8_t port)
 	if (enable_tso == 0) {
 		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_HOST_TSO4);
 		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_HOST_TSO6);
+		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_GUEST_TSO4);
+		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_GUEST_TSO6);
 	}
 
 	rx_rings = (uint16_t)dev_info.max_rx_queues;
