@@ -269,7 +269,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 * D. fill info. from desc to mbuf
 	 */
 
-	for (pos = 0, nb_pkts_recd = 0; pos < RTE_I40E_VPMD_RX_BURST;
+	for (pos = 0, nb_pkts_recd = 0; pos < nb_pkts;
 			pos += RTE_I40E_DESCS_PER_LOOP,
 			rxdp += RTE_I40E_DESCS_PER_LOOP) {
 		__m128i descs[RTE_I40E_DESCS_PER_LOOP];
