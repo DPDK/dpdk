@@ -31,7 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/queue.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
@@ -51,6 +50,7 @@
 #include <rte_alarm.h>
 #include <rte_dev.h>
 #include <rte_eth_ctrl.h>
+#include <rte_tailq.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_prototype.h"
@@ -4094,6 +4094,7 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 	struct i40e_pf *pf;
 	struct i40e_hw *hw;
 	struct i40e_vsi_list *vsi_list;
+	void *temp;
 	int ret;
 	struct i40e_mac_filter *f;
 	uint16_t user_param = vsi->user_param;
@@ -4106,7 +4107,7 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 
 	/* VSI has child to attach, release child first */
 	if (vsi->veb) {
-		TAILQ_FOREACH(vsi_list, &vsi->veb->head, list) {
+		TAILQ_FOREACH_SAFE(vsi_list, &vsi->veb->head, list, temp) {
 			if (i40e_vsi_release(vsi_list->vsi) != I40E_SUCCESS)
 				return -1;
 			TAILQ_REMOVE(&vsi->veb->head, vsi_list, list);
@@ -4115,7 +4116,7 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 	}
 
 	if (vsi->floating_veb) {
-		TAILQ_FOREACH(vsi_list, &vsi->floating_veb->head, list) {
+		TAILQ_FOREACH_SAFE(vsi_list, &vsi->floating_veb->head, list, temp) {
 			if (i40e_vsi_release(vsi_list->vsi) != I40E_SUCCESS)
 				return -1;
 			TAILQ_REMOVE(&vsi->floating_veb->head, vsi_list, list);
@@ -4124,7 +4125,7 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 
 	/* Remove all macvlan filters of the VSI */
 	i40e_vsi_remove_all_macvlan_filter(vsi);
-	TAILQ_FOREACH(f, &vsi->mac_list, next)
+	TAILQ_FOREACH_SAFE(f, &vsi->mac_list, next, temp)
 		rte_free(f);
 
 	if (vsi->type != I40E_VSI_MAIN &&
@@ -4682,6 +4683,7 @@ i40e_vsi_config_vlan_filter(struct i40e_vsi *vsi, bool on)
 {
 	int i, num;
 	struct i40e_mac_filter *f;
+	void *temp;
 	struct i40e_mac_filter_info *mac_filter;
 	enum rte_mac_filter_type desired_filter;
 	int ret = I40E_SUCCESS;
@@ -4706,7 +4708,7 @@ i40e_vsi_config_vlan_filter(struct i40e_vsi *vsi, bool on)
 	i = 0;
 
 	/* Remove all existing mac */
-	TAILQ_FOREACH(f, &vsi->mac_list, next) {
+	TAILQ_FOREACH_SAFE(f, &vsi->mac_list, next, temp) {
 		mac_filter[i] = f->mac_info;
 		ret = i40e_vsi_delete_mac(vsi, &f->mac_info.mac_addr);
 		if (ret) {
