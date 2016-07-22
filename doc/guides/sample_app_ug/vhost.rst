@@ -834,19 +834,19 @@ The above message indicates that device 0 has been registered with MAC address c
 Any packets received on the NIC with these values is placed on the devices receive queue.
 When a virtio-net device transmits packets, the VLAN tag is added to the packet by the DPDK vhost sample code.
 
-Running virtio-user with vhost-switch
+Running virtio_user with vhost-switch
 -------------------------------------
 
-We can also use virtio-user with vhost-switch now.
-Virtio-user is a virtual device that can be run in a application (container) parallelly with vhost in the same OS,
+We can also use virtio_user with vhost-switch now.
+Virtio_user is a virtual device that can be run in a application (container) parallelly with vhost in the same OS,
 aka, there is no need to start a VM. We just run it with a different --file-prefix to avoid startup failure.
 
 .. code-block:: console
 
     cd ${RTE_SDK}/x86_64-native-linuxapp-gcc/app
-    ./testpmd -c 0x3 -n 4 --socket-mem 1024 --no-pci --file-prefix=virtio-user-testpmd \
-    --vdev=virtio-user0,mac=00:01:02:03:04:05,path=$path_vhost \
+    ./testpmd -c 0x3 -n 4 --socket-mem 1024 --no-pci --file-prefix=virtio_user-testpmd \
+    --vdev=virtio_user0,mac=00:01:02:03:04:05,path=$path_vhost \
     -- -i --txqflags=0xf01 --disable-hw-vlan
 
 There is no difference on the vhost side.
-Pleae note that there are some limitations (see release note for more information) in the usage of virtio-user.
+Pleae note that there are some limitations (see release note for more information) in the usage of virtio_user.

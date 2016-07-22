@@ -90,7 +90,7 @@ New Features
 
 * **Virtio support for containers.**
 
-  Add a new virtual device, named virtio-user, to support virtio for containers.
+  Add a new virtual device, named virtio_user, to support virtio for containers.
 
   Known limitations:
 

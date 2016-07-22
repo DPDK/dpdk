@@ -452,7 +452,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		*pvq = cvq;
 	}
 
-	/* For virtio-user case (that is when dev->pci_dev is NULL), we use
+	/* For virtio_user case (that is when dev->pci_dev is NULL), we use
 	 * virtual address. And we need properly set _offset_, please see
 	 * VIRTIO_MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
 	 */
@@ -1541,7 +1541,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (dev->pci_dev)
 		dev_info->driver_name = dev->driver->pci_drv.name;
 	else
-		dev_info->driver_name = "virtio-user PMD";
+		dev_info->driver_name = "virtio_user PMD";
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
 	dev_info->min_rx_bufsize = VIRTIO_MIN_RX_BUFSIZE;

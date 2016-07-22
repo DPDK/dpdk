@@ -331,7 +331,7 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	int ret = -1;
 
 	if (!params || params[0] == '\0') {
-		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio-user",
+		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio_user",
 			  VIRTIO_USER_ARG_QUEUE_SIZE);
 		goto end;
 	}
@@ -351,7 +351,7 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 			goto end;
 		}
 	} else {
-		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio-user\n",
+		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio_user\n",
 			  VIRTIO_USER_ARG_QUEUE_SIZE);
 		goto end;
 	}
@@ -405,7 +405,7 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 
 	eth_dev = virtio_user_eth_dev_alloc(name);
 	if (!eth_dev) {
-		PMD_INIT_LOG(ERR, "virtio-user fails to alloc device");
+		PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
 		goto end;
 	}
 

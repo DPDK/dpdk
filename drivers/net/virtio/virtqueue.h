@@ -192,7 +192,7 @@ struct virtqueue {
 	unsigned int vq_ring_size;
 
 	phys_addr_t vq_ring_mem; /**< physical address of vring,
-				  * or virtual address for virtio-user. */
+				  * or virtual address for virtio_user. */
 
 	/**
 	 * Head of the free chain in the descriptor table. If
