@@ -99,6 +99,8 @@
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
 
+#define PFN_MASK_SIZE	8
+
 #ifdef RTE_LIBRTE_XEN_DOM0
 int rte_xen_dom0_supported(void)
 {
@@ -158,7 +160,7 @@ rte_mem_lock_page(const void *virt)
 phys_addr_t
 rte_mem_virt2phy(const void *virtaddr)
 {
-	int fd;
+	int fd, retval;
 	uint64_t page, physaddr;
 	unsigned long virt_pfn;
 	int page_size;
@@ -209,10 +211,17 @@ rte_mem_virt2phy(const void *virtaddr)
 		close(fd);
 		return RTE_BAD_PHYS_ADDR;
 	}
-	if (read(fd, &page, sizeof(uint64_t)) < 0) {
+
+	retval = read(fd, &page, PFN_MASK_SIZE);
+	close(fd);
+	if (retval < 0) {
 		RTE_LOG(ERR, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
 				__func__, strerror(errno));
-		close(fd);
+		return RTE_BAD_PHYS_ADDR;
+	} else if (retval != PFN_MASK_SIZE) {
+		RTE_LOG(ERR, EAL, "%s(): read %d bytes from /proc/self/pagemap "
+				"but expected %d:\n",
+				__func__, retval, PFN_MASK_SIZE);
 		return RTE_BAD_PHYS_ADDR;
 	}
 
@@ -222,7 +231,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	 */
 	physaddr = ((page & 0x7fffffffffffffULL) * page_size)
 		+ ((unsigned long)virtaddr % page_size);
-	close(fd);
+
 	return physaddr;
 }
 
