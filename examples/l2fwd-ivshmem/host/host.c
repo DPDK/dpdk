@@ -110,7 +110,8 @@ static void
 print_stats(void)
 {
 	uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
-	uint64_t total_vm_packets_dropped, total_vm_packets_tx, total_vm_packets_rx;
+	uint64_t total_vm_packets_dropped = 0;
+	uint64_t total_vm_packets_tx, total_vm_packets_rx;
 	unsigned portid;
 
 	total_packets_dropped = 0;
