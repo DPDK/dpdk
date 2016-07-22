@@ -525,6 +525,26 @@ free_ring_data(struct rte_ring *ring, uint8_t vdev_id,
 }
 
 static void
+cleanup_rings(void)
+{
+	int i;
+	struct pdump_tuples *pt;
+
+	for (i = 0; i < num_tuples; i++) {
+		pt = &pdump_t[i];
+
+		if (pt->device_id)
+			free(pt->device_id);
+
+		/* free the rings */
+		if (pt->rx_ring)
+			rte_ring_free(pt->rx_ring);
+		if (pt->tx_ring)
+			rte_ring_free(pt->tx_ring);
+	}
+}
+
+static void
 cleanup_pdump_resources(void)
 {
 	int i;
@@ -545,16 +565,8 @@ cleanup_pdump_resources(void)
 			free_ring_data(pt->rx_ring, pt->rx_vdev_id, &pt->stats);
 		if (pt->dir & RTE_PDUMP_FLAG_TX)
 			free_ring_data(pt->tx_ring, pt->tx_vdev_id, &pt->stats);
-
-		if (pt->device_id)
-			free(pt->device_id);
-
-		/* free the rings */
-		if (pt->rx_ring)
-			rte_ring_free(pt->rx_ring);
-		if (pt->tx_ring)
-			rte_ring_free(pt->tx_ring);
 	}
+	cleanup_rings();
 }
 
 static void
@@ -630,10 +642,12 @@ create_mp_ring_vdev(void)
 					MBUF_POOL_CACHE_SIZE, 0,
 					pt->mbuf_data_size,
 					rte_socket_id());
-			if (mbuf_pool == NULL)
+			if (mbuf_pool == NULL) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
 					"Mempool creation failed: %s\n",
 					rte_strerror(rte_errno));
+			}
 		}
 		pt->mp = mbuf_pool;
 
@@ -643,19 +657,23 @@ create_mp_ring_vdev(void)
 			snprintf(ring_name, SIZE, RX_RING, i);
 			pt->rx_ring = rte_ring_create(ring_name, pt->ring_size,
 					rte_socket_id(), 0);
-			if (pt->rx_ring == NULL)
+			if (pt->rx_ring == NULL) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE, "%s:%s:%d\n",
 						rte_strerror(rte_errno),
 						__func__, __LINE__);
+			}
 
 			/* create tx_ring */
 			snprintf(ring_name, SIZE, TX_RING, i);
 			pt->tx_ring = rte_ring_create(ring_name, pt->ring_size,
 					rte_socket_id(), 0);
-			if (pt->tx_ring == NULL)
+			if (pt->tx_ring == NULL) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE, "%s:%s:%d\n",
 						rte_strerror(rte_errno),
 						__func__, __LINE__);
+			}
 
 			/* create vdevs */
 			(pt->rx_vdev_stream_type == IFACE) ?
@@ -663,10 +681,12 @@ create_mp_ring_vdev(void)
 			pt->rx_dev) :
 			snprintf(vdev_args, SIZE, VDEV_PCAP, RX_STR, i,
 			pt->rx_dev);
-			if (rte_eth_dev_attach(vdev_args, &portid) < 0)
+			if (rte_eth_dev_attach(vdev_args, &portid) < 0) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
 					"vdev creation failed:%s:%d\n",
 					__func__, __LINE__);
+			}
 			pt->rx_vdev_id = portid;
 
 			/* configure vdev */
@@ -680,10 +700,13 @@ create_mp_ring_vdev(void)
 				pt->tx_dev) :
 				snprintf(vdev_args, SIZE, VDEV_PCAP, TX_STR, i,
 				pt->tx_dev);
-				if (rte_eth_dev_attach(vdev_args, &portid) < 0)
+				if (rte_eth_dev_attach(vdev_args,
+							&portid) < 0) {
+					cleanup_rings();
 					rte_exit(EXIT_FAILURE,
 						"vdev creation failed:"
 						"%s:%d\n", __func__, __LINE__);
+				}
 				pt->tx_vdev_id = portid;
 
 				/* configure vdev */
@@ -695,19 +718,23 @@ create_mp_ring_vdev(void)
 			snprintf(ring_name, SIZE, RX_RING, i);
 			pt->rx_ring = rte_ring_create(ring_name, pt->ring_size,
 					rte_socket_id(), 0);
-			if (pt->rx_ring == NULL)
+			if (pt->rx_ring == NULL) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE, "%s\n",
 					rte_strerror(rte_errno));
+			}
 
 			(pt->rx_vdev_stream_type == IFACE) ?
 			snprintf(vdev_args, SIZE, VDEV_IFACE, RX_STR, i,
 				pt->rx_dev) :
 			snprintf(vdev_args, SIZE, VDEV_PCAP, RX_STR, i,
 				pt->rx_dev);
-			if (rte_eth_dev_attach(vdev_args, &portid) < 0)
+			if (rte_eth_dev_attach(vdev_args, &portid) < 0) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
 					"vdev creation failed:%s:%d\n",
 					__func__, __LINE__);
+			}
 			pt->rx_vdev_id = portid;
 			/* configure vdev */
 			configure_vdev(pt->rx_vdev_id);
@@ -717,18 +744,22 @@ create_mp_ring_vdev(void)
 			snprintf(ring_name, SIZE, TX_RING, i);
 			pt->tx_ring = rte_ring_create(ring_name, pt->ring_size,
 					rte_socket_id(), 0);
-			if (pt->tx_ring == NULL)
+			if (pt->tx_ring == NULL) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE, "%s\n",
 					rte_strerror(rte_errno));
+			}
 
 			(pt->tx_vdev_stream_type == IFACE) ?
 			snprintf(vdev_args, SIZE, VDEV_IFACE, TX_STR, i,
 				pt->tx_dev) :
 			snprintf(vdev_args, SIZE, VDEV_PCAP, TX_STR, i,
 				pt->tx_dev);
-			if (rte_eth_dev_attach(vdev_args, &portid) < 0)
+			if (rte_eth_dev_attach(vdev_args, &portid) < 0) {
+				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
 					"vdev creation failed\n");
+			}
 			pt->tx_vdev_id = portid;
 
 			/* configure vdev */
