@@ -155,6 +155,14 @@ void __attribute__((constructor, used)) tailqinitfn_ ##t(void) \
 		rte_panic("Cannot initialize tailq: %s\n", t.name); \
 }
 
+/* This macro permits both remove and free var within the loop safely.*/
+#ifndef TAILQ_FOREACH_SAFE
+#define TAILQ_FOREACH_SAFE(var, head, field, tvar)		\
+	for ((var) = TAILQ_FIRST((head));			\
+	    (var) && ((tvar) = TAILQ_NEXT((var), field), 1);	\
+	    (var) = (tvar))
+#endif
+
 #ifdef __cplusplus
 }
 #endif
