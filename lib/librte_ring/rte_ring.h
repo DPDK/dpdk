@@ -756,7 +756,7 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 	/* copy in table */
 	DEQUEUE_PTRS();
-	rte_smp_wmb();
+	rte_smp_rmb();
 
 	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
