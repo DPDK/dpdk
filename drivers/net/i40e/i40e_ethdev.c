@@ -4110,7 +4110,6 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 		TAILQ_FOREACH_SAFE(vsi_list, &vsi->veb->head, list, temp) {
 			if (i40e_vsi_release(vsi_list->vsi) != I40E_SUCCESS)
 				return -1;
-			TAILQ_REMOVE(&vsi->veb->head, vsi_list, list);
 		}
 		i40e_veb_release(vsi->veb);
 	}
@@ -4119,7 +4118,6 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 		TAILQ_FOREACH_SAFE(vsi_list, &vsi->floating_veb->head, list, temp) {
 			if (i40e_vsi_release(vsi_list->vsi) != I40E_SUCCESS)
 				return -1;
-			TAILQ_REMOVE(&vsi->floating_veb->head, vsi_list, list);
 		}
 	}
 
