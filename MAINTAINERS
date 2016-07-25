@@ -30,6 +30,9 @@ F: scripts/checkpatches.sh
 F: scripts/load-devel-config.sh
 F: scripts/test-build.sh
 
+Stable Branches
+---------------
+T: git://dpdk.org/dpdk-stable
 
 Security Issues
 ---------------
