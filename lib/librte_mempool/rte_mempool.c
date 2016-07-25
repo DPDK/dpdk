@@ -1283,12 +1283,13 @@ void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 {
 	struct rte_tailq_entry *te = NULL;
 	struct rte_mempool_list *mempool_list;
+	void *tmp_te;
 
 	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
 	rte_rwlock_read_lock(RTE_EAL_MEMPOOL_RWLOCK);
 
-	TAILQ_FOREACH(te, mempool_list, next) {
+	TAILQ_FOREACH_SAFE(te, mempool_list, next, tmp_te) {
 		(*func)((struct rte_mempool *) te->data, arg);
 	}
 
