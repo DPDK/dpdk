@@ -748,7 +748,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				break;
 
 			if (unlikely(desc->next >= vq->size ||
-				     ++nr_desc >= vq->size))
+				     ++nr_desc > vq->size))
 				return -1;
 			desc = &vq->desc[desc->next];
 
