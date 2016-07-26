@@ -58,4 +58,4 @@ The basic compilation steps are:
 
     .. code-block:: console
 
-        $RTE_SDK/$RTE_TARGET/build/app/testpmd
+        $RTE_SDK/$RTE_TARGET/app/testpmd
