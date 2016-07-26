@@ -11,6 +11,9 @@ Deprecation Notices
 * The log history is deprecated.
   It is voided in 16.07 and will be removed in release 16.11.
 
+* The ethdev library file will be renamed from libethdev.* to librte_ethdev.*
+  in release 16.11 in order to have a more consistent namespace.
+
 * The ethdev hotplug API is going to be moved to EAL with a notification
   mechanism added to crypto and ethdev libraries so that hotplug is now
   available to both of them. This API will be stripped of the device arguments
