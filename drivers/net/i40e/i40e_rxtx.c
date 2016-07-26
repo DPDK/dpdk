@@ -1436,10 +1436,10 @@ i40e_recv_scattered_pkts(void *rx_queue,
 			i40e_rxd_pkt_type_mapping((uint8_t)((qword1 &
 			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT));
 		if (pkt_flags & PKT_RX_RSS_HASH)
-			rxm->hash.rss =
+			first_seg->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 		if (pkt_flags & PKT_RX_FDIR)
-			pkt_flags |= i40e_rxd_build_fdir(&rxd, rxm);
+			pkt_flags |= i40e_rxd_build_fdir(&rxd, first_seg);
 
 #ifdef RTE_LIBRTE_IEEE1588
 		pkt_flags |= i40e_get_iee15888_flags(first_seg, qword1);
