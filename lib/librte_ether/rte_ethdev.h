@@ -2042,9 +2042,8 @@ int rte_eth_dev_socket_id(uint8_t port_id);
 int rte_eth_dev_is_valid_port(uint8_t port_id);
 
 /**
- * Allocate mbuf from mempool, setup the DMA physical address
- * and then start RX for specified queue of a port. It is used
- * when rx_deferred_start flag of the specified queue is true.
+ * Start specified RX queue of a port. It is used when rx_deferred_start
+ * flag of the specified queue is true.
  *
  * @param port_id
  *   The port identifier of the Ethernet device
@@ -2053,7 +2052,7 @@ int rte_eth_dev_is_valid_port(uint8_t port_id);
  *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
  *   to rte_eth_dev_configure().
  * @return
- *   - 0: Success, the transmit queue is correctly set up.
+ *   - 0: Success, the receive queue is started.
  *   - -EINVAL: The port_id or the queue_id out of range.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -2069,7 +2068,7 @@ int rte_eth_dev_rx_queue_start(uint8_t port_id, uint16_t rx_queue_id);
  *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
  *   to rte_eth_dev_configure().
  * @return
- *   - 0: Success, the transmit queue is correctly set up.
+ *   - 0: Success, the receive queue is stopped.
  *   - -EINVAL: The port_id or the queue_id out of range.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -2086,7 +2085,7 @@ int rte_eth_dev_rx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
  *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
  *   to rte_eth_dev_configure().
  * @return
- *   - 0: Success, the transmit queue is correctly set up.
+ *   - 0: Success, the transmit queue is started.
  *   - -EINVAL: The port_id or the queue_id out of range.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -2102,7 +2101,7 @@ int rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t tx_queue_id);
  *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
  *   to rte_eth_dev_configure().
  * @return
- *   - 0: Success, the transmit queue is correctly set up.
+ *   - 0: Success, the transmit queue is stopped.
  *   - -EINVAL: The port_id or the queue_id out of range.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
