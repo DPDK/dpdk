@@ -530,6 +530,13 @@ eal_parse_set(const char *input, uint16_t set[], unsigned num)
 		str = end + 1;
 	} while (*end != '\0' && *end != ')');
 
+	/*
+	 * to avoid failure that tail blank makes end character check fail
+	 * in eal_parse_lcores( )
+	 */
+	while (isblank(*str))
+		str++;
+
 	return str - input;
 }
 
