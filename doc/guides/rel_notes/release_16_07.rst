@@ -34,32 +34,36 @@ New Features
 
      Refer to the previous release notes for examples.
 
-* **Removed mempool cache if not needed.**
+* **Removed the mempool cache memory if caching is not being used.**
 
   The size of the mempool structure is reduced if the per-lcore cache is disabled.
 
 * **Added mempool external cache for non-EAL thread.**
 
   Added new functions to create, free or flush a user-owned mempool
-  cache for non-EAL threads. Previously the cache was always disabled
+  cache for non-EAL threads. Previously the caching was always disabled
   on these threads.
 
-* **Changed the memory allocation in mempool library.**
+* **Changed the memory allocation scheme in the mempool library.**
 
-  * Added ability to allocate a large mempool in virtually fragmented memory.
+  * Added the ability to allocate a large mempool in fragmented virtual memory.
   * Added new APIs to populate a mempool with memory.
   * Added an API to free a mempool.
   * Modified the API of the ``rte_mempool_obj_iter()`` function.
-  * Dropped specific Xen Dom0 code.
-  * Dropped specific anonymous mempool code in testpmd.
+  * Dropped the specific Xen Dom0 code.
+  * Dropped the specific anonymous mempool code in testpmd.
 
-* **Added new driver for Broadcom NetXtreme-C devices.**
+* **Added a new driver for Broadcom NetXtreme-C devices.**
 
   Added the new bnxt driver for Broadcom NetXtreme-C devices. See the
   "Network Interface Controller Drivers" document for more details on this
   new driver.
 
-* **Added new driver for ThunderX nicvf device.**
+* **Added a new driver for ThunderX nicvf devices.**
+
+  Added the new thunderx net driver for ThunderX nicvf devices. See the
+  "Network Interface Controller Drivers" document for more details on this new
+  driver.
 
 * **Added mailbox interrupt support for ixgbe and igb VFs.**
 
@@ -138,8 +142,8 @@ New Features
 
   DPDK vhost-user will also try to reconnect by default when:
 
-  * The first connect fails (when QEMU is not started yet).
-  * The connection is broken (when QEMU restarts).
+  * The first connect fails (for example when QEMU is not started yet).
+  * The connection is broken (for example when QEMU restarts).
 
   It can be turned off by setting the ``RTE_VHOST_USER_NO_RECONNECT`` flag.
 
@@ -150,7 +154,7 @@ New Features
   Now AESNI MB PMD supports 128/192/256-bit counter mode AES encryption and
   decryption.
 
-* **Added support for AES counter mode with Intel QuickAssist devices.**
+* **Added AES counter mode support for Intel QuickAssist devices.**
 
   Enabled support for the AES CTR algorithm for Intel QuickAssist devices.
   Provided support for algorithm-chaining operations.
@@ -183,7 +187,7 @@ New Features
 
 * **Added keepalive enhancements.**
 
-  Added support for reporting of core states other than dead to
+  Added support for reporting of core states other than "dead" to
   monitoring applications, enabling the support of broader liveness
   reporting to external processes.
 
