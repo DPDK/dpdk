@@ -1527,7 +1527,7 @@ eth_igb_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 				desc - rxq->nb_rx_desc]);
 	}
 
-	return 0;
+	return desc;
 }
 
 int
