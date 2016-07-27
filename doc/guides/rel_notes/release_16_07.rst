@@ -94,6 +94,21 @@ New Features
   * Added MTU update in non Scattered Rx mode and enabled MTU of up to 9208
     with UCS Software release 2.2 on 1300 series VICs.
 
+* **Updated the mlx5 driver.**
+
+  The mlx5 driver was updated with changes including the following:
+
+  * Data path was refactored to bypass Verbs to improve RX and TX performance.
+  * Removed compilation parameters for inline send, ``MLX5_MAX_INLINE``, and
+    added command line parameter instead, ``txq_inline``.
+  * Improved TX scatter gather support:
+    Removed compilation parameter ``MLX5_PMD_SGE_WR_N``.
+    Scatter-gather elements is set to the maximum value the NIC supports.
+    Removed linearization logic, this decreases the memory consumption of the PMD.
+  * Improved jumbo frames support, by dynamically setting RX scatter gather elements
+    according to the MTU and mbuf size,
+    no need for compilation parameter ``MLX5_PMD_SGE_WR_N``
+
 * **Added support for virtio on IBM POWER8.**
 
   The ioports are mapped in memory when using Linux UIO.

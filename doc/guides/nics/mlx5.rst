@@ -154,6 +154,11 @@ Run-time configuration
   allows to save PCI bandwidth and improve performance at the cost of a
   slightly higher CPU usage.  Enabled by default.
 
+  Supported on:
+
+  - x86_64 with ConnectX4 and ConnectX4 LX
+  - Power8 with ConnectX4 LX
+
 - ``txq_inline`` parameter [int]
 
   Amount of data to be inlined during TX operations. Improves latency.
@@ -234,7 +239,7 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **3.3-1.0.0.0**.
+- Mellanox OFED **3.3-1.0.0.0** and **3.3-2.0.0.0**.
 
 - Minimum firmware version:
 
