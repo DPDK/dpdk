@@ -620,3 +620,23 @@ The last EAL argument is replaced by the program name in argv[]
 
 **Driver/Module**:
    Environment Abstraction Layer (EAL).
+
+
+I40e VF may not receive packets in the promiscuous mode
+-------------------------------------------------------
+
+**Description**:
+   Promiscuous mode is not supported by the DPDK i40e VF driver when using the
+   i40e Linux kernel driver as host driver.
+
+**Implication**:
+   The i40e VF does not receive packets when the destination MAC address is unknown.
+
+**Resolution/Workaround**:
+   Use a explicit destination MAC address that matches the VF.
+
+**Affected Environment/Platform**:
+   All.
+
+**Driver/Module**:
+   Poll Mode Driver (PMD).
