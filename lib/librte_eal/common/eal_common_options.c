@@ -583,7 +583,7 @@ eal_parse_lcores(const char *lcores)
 	const char *end = NULL;
 	int offset;
 	rte_cpuset_t cpuset;
-	int lflags = 0;
+	int lflags;
 	int ret = -1;
 
 	if (lcores == NULL)
@@ -608,6 +608,8 @@ eal_parse_lcores(const char *lcores)
 			lcores++;
 		if (*lcores == '\0')
 			goto err;
+
+		lflags = 0;
 
 		/* record lcore_set start point */
 		lcore_start = lcores;
