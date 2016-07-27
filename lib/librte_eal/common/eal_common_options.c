@@ -578,7 +578,6 @@ eal_parse_lcores(const char *lcores)
 	struct rte_config *cfg = rte_eal_get_configuration();
 	static uint16_t set[RTE_MAX_LCORE];
 	unsigned idx = 0;
-	int i;
 	unsigned count = 0;
 	const char *lcore_start = NULL;
 	const char *end = NULL;
@@ -593,9 +592,6 @@ eal_parse_lcores(const char *lcores)
 	/* Remove all blank characters ahead and after */
 	while (isblank(*lcores))
 		lcores++;
-	i = strlen(lcores);
-	while ((i > 0) && isblank(lcores[i - 1]))
-		i--;
 
 	CPU_ZERO(&cpuset);
 
