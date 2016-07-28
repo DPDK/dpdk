@@ -30,7 +30,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Name: dpdk
-Version: 16.04
+Version: 16.07
 Release: 1
 Packager: packaging@6wind.com
 URL: http://dpdk.org
@@ -82,7 +82,6 @@ sed -ri 's,(RTE_NEXT_ABI=).*,\1n,'         %{target}/.config
 sed -ri 's,(LIBRTE_VHOST=).*,\1y,'         %{target}/.config
 sed -ri 's,(LIBRTE_PMD_PCAP=).*,\1y,'      %{target}/.config
 sed -ri 's,(LIBRTE_PMD_XENVIRT=).*,\1y,'   %{target}/.config
-sed -ri 's,(LIBRTE_XEN_DOM0=).*,\1y,'      %{target}/.config
 make O=%{target} %{?_smp_mflags}
 make O=%{target} doc
 
