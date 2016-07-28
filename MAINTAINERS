@@ -373,7 +373,7 @@ F: drivers/net/vmxnet3/
 F: doc/guides/nics/vmxnet3.rst
 
 Vhost PMD
-M: Tetsuya Mukawa <mukawa@igel.co.jp>
+M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
@@ -392,7 +392,7 @@ F: app/test/test_pmd_ring.c
 F: app/test/test_pmd_ring_perf.c
 
 Null Networking PMD
-M: Tetsuya Mukawa <mukawa@igel.co.jp>
+M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 F: drivers/net/null/
 
 
