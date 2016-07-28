@@ -419,6 +419,52 @@ Tested Platforms
       - Platform details.
       - Platform details.
 
+#. SuperMicro 1U
+
+   - BIOS: 1.0c
+   - Processor: Intel(R) Atom(TM) CPU C2758 @ 2.40GHz
+
+#. SuperMicro 1U
+
+   - BIOS: 1.0a
+   - Processor: Intel(R) Xeon(R) CPU D-1540 @ 2.00GHz
+   - Onboard NIC: Intel(R) X552/X557-AT (2x10G)
+
+     - Firmware-version: 0x800001cf
+     - Device ID (PF/VF): 8086:15ad /8086:15a8
+
+   - kernel driver version: 4.2.5 (ixgbe)
+
+#. SuperMicro 2U
+
+   - BIOS: 1.0a
+   - Processor: Intel(R) Xeon(R) CPU E5-4667 v3 @ 2.00GHz
+
+#. Intel(R) Server board S2600GZ
+
+   - BIOS: SE5C600.86B.02.02.0002.122320131210
+   - Processor: Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
+
+#. Intel(R) Server board W2600CR
+
+   - BIOS: SE5C600.86B.02.01.0002.082220131453
+   - Processor: Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
+
+#. Intel(R) Server board S2600CWT
+
+   - BIOS: SE5C610.86B.01.01.0009.060120151350
+   - Processor: Intel(R) Xeon(R) CPU E5-2699 v3 @ 2.30GHz
+
+#. Intel(R) Server board S2600WTT
+
+   - BIOS: SE5C610.86B.01.01.0005.101720141054
+   - Processor: Intel(R) Xeon(R) CPU E5-2699 v3 @ 2.30GHz
+
+#. Intel(R) Server board S2600WTT
+
+   - BIOS: SE5C610.86B.11.01.0044.090120151156
+   - Processor: Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz
+
 
 Tested NICs
 -----------
@@ -431,3 +477,74 @@ Tested NICs
 
       - NIC details.
       - NIC details.
+
+#. Intel(R) Ethernet Controller X540-AT2
+
+   - Firmware version: 0x80000389
+   - Device id (pf): 8086:1528
+   - Driver version: 3.23.2 (ixgbe)
+
+#. Intel(R) 82599ES 10 Gigabit Ethernet Controller
+
+   - Firmware version: 0x61bf0001
+   - Device id (pf/vf): 8086:10fb / 8086:10ed
+   - Driver version: 4.0.1-k (ixgbe)
+
+#. Intel(R) Corporation Ethernet Connection X552/X557-AT 10GBASE-T
+
+   - Firmware version: 0x800001cf
+   - Device id (pf/vf): 8086:15ad / 8086:15a8
+   - Driver version: 4.2.5 (ixgbe)
+
+#. Intel(R) Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+   - Firmware version: 5.04
+   - Device id (pf/vf): 8086:1572 / 8086:154c
+   - Driver version: 1.4.26 (i40e)
+
+#. Intel(R) Ethernet Converged Network Adapter X710-DA2 (2x10G)
+
+   - Firmware version: 5.04
+   - Device id (pf/vf): 8086:1572 / 8086:154c
+   - Driver version: 1.4.25 (i40e)
+
+#. Intel(R) Ethernet Converged Network Adapter XL710-QDA1 (1x40G)
+
+   - Firmware version: 5.04
+   - Device id (pf/vf): 8086:1584 / 8086:154c
+   - Driver version: 1.4.25 (i40e)
+
+#. Intel(R) Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+   - Firmware version: 5.04
+   - Device id (pf/vf): 8086:1583 / 8086:154c
+   - Driver version: 1.4.25 (i40e)
+
+#. Intel(R) Corporation I350 Gigabit Network Connection
+
+   - Firmware version: 1.48, 0x800006e7
+   - Device id (pf/vf): 8086:1521 / 8086:1520
+   - Driver version: 5.2.13-k (igb)
+
+#. Intel(R) Ethernet Multi-host Controller FM10000
+
+   - Firmware version: N/A
+   - Device id (pf/vf): 8086:15d0
+   - Driver version: 0.17.0.9 (fm10k)
+
+
+Tested OSes
+-----------
+
+.. This section should contain a list of OSes that were tested with this release.
+
+- CentOS 7.0
+- Fedora 23
+- Fedora 24
+- FreeBSD 10.3
+- Red Hat Enterprise Linux 7.2
+- SUSE Enterprise Linux 12
+- Ubuntu 15.10
+- Ubuntu 16.04 LTS
+- Wind River Linux 8
+
