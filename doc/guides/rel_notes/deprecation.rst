@@ -23,10 +23,6 @@ Deprecation Notices
   do not need to care about the kind of devices that are being used, making it
   easier to add new buses later.
 
-* ABI changes are planned for adding four new flow types. This impacts
-  RTE_ETH_FLOW_MAX. The release 2.2 does not contain these ABI changes,
-  but release 2.3 will. [postponed]
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
