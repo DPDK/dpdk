@@ -37,7 +37,7 @@ ARCH_DIR ?= $(RTE_ARCH)
 EXPORT_MAP := rte_eal_version.map
 VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
 
-LIBABIVER := 2
+LIBABIVER := 3
 
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 

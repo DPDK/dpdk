@@ -94,6 +94,8 @@ API Changes
 
    This section is a comment. Make sure to start the actual text at the margin.
 
+* The log history is removed.
+
 
 ABI Changes
 -----------
@@ -131,7 +133,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cmdline.so.2
      librte_cryptodev.so.1
      librte_distributor.so.1
-     librte_eal.so.2
+   + librte_eal.so.3
      librte_hash.so.2
      librte_ip_frag.so.1
      librte_ivshmem.so.1

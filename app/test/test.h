@@ -33,9 +33,12 @@
 
 #ifndef _TEST_H_
 #define _TEST_H_
+
 #include <stddef.h>
 #include <sys/queue.h>
-#include "rte_log.h"
+
+#include <rte_common.h>
+#include <rte_log.h>
 
 #define TEST_SUCCESS  (0)
 #define TEST_FAILED  (-1)

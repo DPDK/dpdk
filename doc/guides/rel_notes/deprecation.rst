@@ -8,9 +8,6 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
-* The log history is deprecated.
-  It is voided in 16.07 and will be removed in release 16.11.
-
 * The ethdev library file will be renamed from libethdev.* to librte_ethdev.*
   in release 16.11 in order to have a more consistent namespace.
 

@@ -64,19 +64,6 @@ static RTE_DEFINE_PER_LCORE(struct log_cur_msg, log_cur_msg);
 
 /* default logs */
 
-int
-rte_log_add_in_history(const char *buf __rte_unused, size_t size __rte_unused)
-{
-	return 0;
-}
-
-void
-rte_log_set_history(int enable)
-{
-	if (enable)
-		RTE_LOG(WARNING, EAL, "The log history is deprecated.\n");
-}
-
 /* Change the stream that will be used by logging system */
 int
 rte_openlog_stream(FILE *f)
@@ -129,12 +116,6 @@ int rte_log_cur_msg_loglevel(void)
 int rte_log_cur_msg_logtype(void)
 {
 	return RTE_PER_LCORE(log_cur_msg).logtype;
-}
-
-/* Dump log history to file */
-void
-rte_log_dump_history(FILE *out __rte_unused)
-{
 }
 
 /*
