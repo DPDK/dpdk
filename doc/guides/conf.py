@@ -28,12 +28,25 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import subprocess
 from docutils import nodes
 from distutils.version import LooseVersion
 from sphinx import __version__ as sphinx_version
 from sphinx.highlighting import PygmentsBridge
 from pygments.formatters.latex import LatexFormatter
+from os import listdir
+from os.path import basename
+from os.path import dirname
+from os.path import join as path_join
+
+try:
+    # Python 2.
+    import ConfigParser as configparser
+except:
+    # Python 3.
+    import configparser
+
 
 project = 'Data Plane Development Kit'
 
@@ -146,7 +159,149 @@ def process_numref(app, doctree, from_docname):
                                       internal=True)
             node.replace_self(newnode)
 
+
+def generate_nic_overview_table(output_filename):
+    """
+    Function to generate the NIC Overview Table from the ini files that define
+    the features for each NIC.
+
+    The default features for the table and their order is defined by the
+    'default.ini' file.
+
+    """
+    # Default worning string.
+    warning = 'Warning generate_nic_overview_table()'
+
+    # Get the default features and order from the 'default.ini' file.
+    ini_path = path_join(dirname(output_filename), 'features')
+    config = configparser.ConfigParser()
+    config.optionxform = str
+    config.read(path_join(ini_path, 'default.ini'))
+    default_section = 'Features'
+    default_features = config.items(default_section)
+
+    # Create a dict of the valid features to validate the other ini files.
+    valid_features = {}
+    max_feature_length = 0
+    for feature in default_features:
+        key = feature[0]
+        valid_features[key] = ' '
+        max_feature_length = max(max_feature_length, len(key))
+
+    # Get a list of NIC ini files, excluding 'default.ini'.
+    ini_files = [basename(file) for file in listdir(ini_path)
+                 if file.endswith('.ini') and file != 'default.ini']
+    ini_files.sort()
+
+    # Build up a list of the table header names from the ini filenames.
+    header_names = []
+    for ini_filename in ini_files:
+        name = ini_filename[:-4]
+        name = name.replace('_vf', 'vf')
+
+        # Pad the table header names to match the existing format.
+        if '_vec' in name:
+            pmd, vec = name.split('_')
+            name = '{0:{fill}{align}7}vec'.format(pmd, fill='.', align='<')
+        else:
+            name = '{0:{fill}{align}10}'.format(name, fill=' ', align='<')
+
+        header_names.append(name)
+
+    # Create a dict of the defined features for each NIC from the ini files.
+    ini_data = {}
+    for ini_filename in ini_files:
+        config = configparser.ConfigParser()
+        config.optionxform = str
+        config.read(path_join(ini_path, ini_filename))
+
+        # Initialize the dict with the default.ini value.
+        ini_data[ini_filename] = valid_features.copy()
+
+        # Check for a valid ini section.
+        if not config.has_section(default_section):
+            print("{}: File '{}' has no [{}] secton".format(warning,
+                                                            ini_filename,
+                                                            default_section))
+            continue
+
+        # Check for valid features names.
+        for name, value in config.items(default_section):
+            if name not in valid_features:
+                print("{}: Unknown feature '{}' in '{}'".format(warning,
+                                                                name,
+                                                                ini_filename))
+                continue
+
+            if value is not '':
+                # Get the first letter only.
+                ini_data[ini_filename][name] = value[0]
+
+    # Print out the RST NIC Overview table from the ini file data.
+    outfile = open(output_filename, 'w')
+    num_cols = len(header_names)
+
+    print('.. table:: Features availability in networking drivers\n',
+          file=outfile)
+
+    print_table_header(outfile, num_cols, header_names)
+    print_table_body(outfile, num_cols, ini_files, ini_data, default_features)
+
+
+def print_table_header(outfile, num_cols, header_names):
+    """ Print the RST table header. The header names are vertical. """
+    print_table_divider(outfile, num_cols)
+
+    line = ''
+    for name in header_names:
+        line += ' ' + name[0]
+
+    print_table_row(outfile, 'Feature', line)
+
+    for i in range(1, 10):
+        line = ''
+        for name in header_names:
+            line += ' ' + name[i]
+
+        print_table_row(outfile, '', line)
+
+    print_table_divider(outfile, num_cols)
+
+
+def print_table_body(outfile, num_cols, ini_files, ini_data, default_features):
+    """ Print out the body of the table. Each row is a NIC feature. """
+
+    for feature, _ in default_features:
+        line = ''
+
+        for ini_filename in ini_files:
+            line += ' ' + ini_data[ini_filename][feature]
+
+        print_table_row(outfile, feature, line)
+
+    print_table_divider(outfile, num_cols)
+
+
+def print_table_row(outfile, feature, line):
+    """ Print a single row of the table with fixed formatting. """
+    line = line.rstrip()
+    print('   {:<20}{}'.format(feature, line), file=outfile)
+
+
+def print_table_divider(outfile, num_cols):
+    """ Print the table divider line. """
+    line = ' '
+    column_dividers = ['='] * num_cols
+    line += ' '.join(column_dividers)
+
+    feature = '=' * 20
+
+    print_table_row(outfile, feature, line)
+
+
 def setup(app):
+    generate_nic_overview_table('doc/guides/nics/overview_table.txt')
+
     if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
         print('Upgrade sphinx to version >= 1.3.1 for '
               'improved Figure/Table number handling.')
