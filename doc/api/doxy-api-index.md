@@ -108,7 +108,6 @@ There are many libraries, so their headers may be grouped by topics:
   [reorder]            (@ref rte_reorder.h),
   [tailq]              (@ref rte_tailq.h),
   [bitmap]             (@ref rte_bitmap.h),
-  [ivshmem]            (@ref rte_ivshmem.h)
 
 - **packet framework**:
   * [port]             (@ref rte_port.h):

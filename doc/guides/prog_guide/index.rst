@@ -43,7 +43,6 @@ Programmer's Guide
     mbuf_lib
     poll_mode_drv
     cryptodev_lib
-    ivshmem_lib
     link_bonding_poll_mode_drv_lib
     timer_lib
     hash_lib

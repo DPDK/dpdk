@@ -1436,15 +1436,8 @@ rte_eal_hugepage_init(void)
 	free(tmp_hp);
 	tmp_hp = NULL;
 
-	/* find earliest free memseg - this is needed because in case of IVSHMEM,
-	 * segments might have already been initialized */
-	for (j = 0; j < RTE_MAX_MEMSEG; j++)
-		if (mcfg->memseg[j].addr == NULL) {
-			/* move to previous segment and exit loop */
-			j--;
-			break;
-		}
-
+	/* first memseg index shall be 0 after incrementing it below */
+	j = -1;
 	for (i = 0; i < nr_hugefiles; i++) {
 		new_memseg = 0;
 
@@ -1597,15 +1590,6 @@ rte_eal_hugepage_attach(void)
 		if (mcfg->memseg[s].len == 0)
 			break;
 
-#ifdef RTE_LIBRTE_IVSHMEM
-		/*
-		 * if segment has ioremap address set, it's an IVSHMEM segment and
-		 * doesn't need mapping as it was already mapped earlier
-		 */
-		if (mcfg->memseg[s].ioremap_addr != 0)
-			continue;
-#endif
-
 		/*
 		 * fdzero is mmapped to get a contiguous block of virtual
 		 * addresses of the appropriate memseg size.
@@ -1644,16 +1628,6 @@ rte_eal_hugepage_attach(void)
 		void *addr, *base_addr;
 		uintptr_t offset = 0;
 		size_t mapping_size;
-#ifdef RTE_LIBRTE_IVSHMEM
-		/*
-		 * if segment has ioremap address set, it's an IVSHMEM segment and
-		 * doesn't need mapping as it was already mapped earlier
-		 */
-		if (mcfg->memseg[s].ioremap_addr != 0) {
-			s++;
-			continue;
-		}
-#endif
 		/*
 		 * free previously mapped memory so we can map the
 		 * hugepages into the space

@@ -238,7 +238,6 @@ int test_pci_run;
 
 int test_mp_secondary(void);
 
-int test_ivshmem(void);
 int test_set_rxtx_conf(cmdline_fixed_string_t mode);
 int test_set_rxtx_anchor(cmdline_fixed_string_t type);
 int test_set_rxtx_sc(cmdline_fixed_string_t type);

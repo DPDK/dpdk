@@ -62,7 +62,6 @@ _LDLIBS-y += -L$(RTE_SDK_BIN)/lib
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KNI)            += -lrte_kni
-_LDLIBS-$(CONFIG_RTE_LIBRTE_IVSHMEM)        += -lrte_ivshmem
 endif
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += -lrte_pipeline

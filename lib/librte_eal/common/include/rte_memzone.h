@@ -82,9 +82,6 @@ struct rte_memzone {
 		void *addr;                   /**< Start virtual address. */
 		uint64_t addr_64;             /**< Makes sure addr is always 64-bits */
 	};
-#ifdef RTE_LIBRTE_IVSHMEM
-	phys_addr_t ioremap_addr;         /**< Real physical address inside the VM */
-#endif
 	size_t len;                       /**< Length of the memzone. */
 
 	uint64_t hugepage_sz;             /**< The page size of underlying memory */
@@ -256,12 +253,10 @@ const struct rte_memzone *rte_memzone_reserve_bounded(const char *name,
 /**
  * Free a memzone.
  *
- * Note: an IVSHMEM zone cannot be freed.
- *
  * @param mz
  *   A pointer to the memzone
  * @return
- *  -EINVAL - invalid parameter, IVSHMEM memzone.
+ *  -EINVAL - invalid parameter.
  *  0 - success
  */
 int rte_memzone_free(const struct rte_memzone *mz);

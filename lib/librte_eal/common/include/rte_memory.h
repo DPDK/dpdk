@@ -107,9 +107,6 @@ struct rte_memseg {
 		void *addr;         /**< Start virtual address. */
 		uint64_t addr_64;   /**< Makes sure addr is always 64 bits */
 	};
-#ifdef RTE_LIBRTE_IVSHMEM
-	phys_addr_t ioremap_addr; /**< Real physical address inside the VM */
-#endif
 	size_t len;               /**< Length of the segment. */
 	uint64_t hugepage_sz;       /**< The pagesize of underlying memory */
 	int32_t socket_id;          /**< NUMA socket ID. */

@@ -96,6 +96,9 @@ API Changes
 
 * The log history is removed.
 
+* The ``rte_ivshmem`` feature (including library and EAL code) has been removed
+  in 16.11 because it had some design issues which were not planned to be fixed.
+
 
 ABI Changes
 -----------
@@ -136,7 +139,6 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_eal.so.3
      librte_hash.so.2
      librte_ip_frag.so.1
-     librte_ivshmem.so.1
      librte_jobstats.so.1
      librte_kni.so.2
      librte_kvargs.so.1

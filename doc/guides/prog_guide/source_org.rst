@@ -70,7 +70,6 @@ The lib directory contains::
     +-- librte_ether        # Generic interface to poll mode driver
     +-- librte_hash         # Hash library
     +-- librte_ip_frag      # IP fragmentation library
-    +-- librte_ivshmem      # QEMU IVSHMEM library
     +-- librte_kni          # Kernel NIC interface
     +-- librte_kvargs       # Argument parsing library
     +-- librte_lpm          # Longest prefix match library

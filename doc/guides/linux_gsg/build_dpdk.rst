@@ -75,7 +75,7 @@ where:
 
 * ``ARCH`` can be:  ``i686``, ``x86_64``, ``ppc_64``
 
-* ``MACHINE`` can be:  ``native``, ``ivshmem``, ``power8``
+* ``MACHINE`` can be:  ``native``, ``power8``
 
 * ``EXECENV`` can be:  ``linuxapp``,  ``bsdapp``
 

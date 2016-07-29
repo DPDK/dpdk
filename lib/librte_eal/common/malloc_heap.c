@@ -221,14 +221,6 @@ rte_eal_malloc_heap_init(void)
 	for (ms = &mcfg->memseg[0], ms_cnt = 0;
 			(ms_cnt < RTE_MAX_MEMSEG) && (ms->len > 0);
 			ms_cnt++, ms++) {
-#ifdef RTE_LIBRTE_IVSHMEM
-		/*
-		 * if segment has ioremap address set, it's an IVSHMEM segment and
-		 * it is not memory to allocate from.
-		 */
-		if (ms->ioremap_addr != 0)
-			continue;
-#endif
 		malloc_heap_add_memseg(&mcfg->malloc_heaps[ms->socket_id], ms);
 	}
 

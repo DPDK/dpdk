@@ -61,7 +61,6 @@ DIRS-$(CONFIG_RTE_LIBRTE_PDUMP) += librte_pdump
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
-DIRS-$(CONFIG_RTE_LIBRTE_IVSHMEM) += librte_ivshmem
 endif
 
 include $(RTE_SDK)/mk/rte.subdir.mk

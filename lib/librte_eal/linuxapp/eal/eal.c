@@ -797,11 +797,6 @@ rte_eal_init(int argc, char **argv)
 		rte_panic("Cannot init VFIO\n");
 #endif
 
-#ifdef RTE_LIBRTE_IVSHMEM
-	if (rte_eal_ivshmem_init() < 0)
-		rte_panic("Cannot init IVSHMEM\n");
-#endif
-
 	if (rte_eal_memory_init() < 0)
 		rte_panic("Cannot init memory\n");
 
@@ -813,11 +808,6 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_tailqs_init() < 0)
 		rte_panic("Cannot init tail queues for objects\n");
-
-#ifdef RTE_LIBRTE_IVSHMEM
-	if (rte_eal_ivshmem_obj_init() < 0)
-		rte_panic("Cannot init IVSHMEM objects\n");
-#endif
 
 	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0)
 		rte_panic("Cannot init logs\n");

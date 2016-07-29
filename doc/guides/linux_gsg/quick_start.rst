@@ -126,19 +126,15 @@ Some options in the script prompt the user for further data before proceeding.
 
     [3] ppc_64-power8-linuxapp-gcc
 
-    [4] x86_64-ivshmem-linuxapp-gcc
+    [4] x86_64-native-bsdapp-clang
 
-    [5] x86_64-ivshmem-linuxapp-icc
+    [5] x86_64-native-bsdapp-gcc
 
-    [6] x86_64-native-bsdapp-clang
+    [6] x86_64-native-linuxapp-clang
 
-    [7] x86_64-native-bsdapp-gcc
+    [7] x86_64-native-linuxapp-gcc
 
-    [8] x86_64-native-linuxapp-clang
-
-    [9] x86_64-native-linuxapp-gcc
-
-    [10] x86_64-native-linuxapp-icc
+    [8] x86_64-native-linuxapp-icc
 
     ------------------------------------------------------------------------
 

@@ -546,14 +546,6 @@ F: app/test/test_cmdline*
 F: examples/cmdline/
 F: doc/guides/sample_app_ug/cmd_line.rst
 
-Qemu IVSHMEM
-M: Anatoly Burakov <anatoly.burakov@intel.com>
-F: lib/librte_ivshmem/
-F: lib/librte_eal/linuxapp/eal/eal_ivshmem.c
-F: doc/guides/prog_guide/ivshmem_lib.rst
-F: app/test/test_ivshmem.c
-F: examples/l2fwd-ivshmem/
-
 Key/Value parsing
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_kvargs/

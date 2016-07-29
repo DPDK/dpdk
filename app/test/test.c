@@ -95,9 +95,6 @@ do_recursive_call(void)
 			{ "test_memory_flags", no_action },
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
-#ifdef RTE_LIBRTE_IVSHMEM
-			{ "test_ivshmem", test_ivshmem },
-#endif
 	};
 
 	if (recursive_call == NULL)

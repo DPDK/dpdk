@@ -40,8 +40,6 @@
 @example ipv4_multicast/main.c
 @example kni/main.c
 @example l2fwd-crypto/main.c
-@example l2fwd-ivshmem/guest/guest.c
-@example l2fwd-ivshmem/host/host.c
 @example l2fwd-jobstats/main.c
 @example l2fwd-keepalive/main.c
 @example l2fwd/main.c
