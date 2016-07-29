@@ -119,8 +119,8 @@ The typical procedure to achieve this is as follows:
    .. code-block:: console
 
        modprobe vfio-pci
-       dpdk_nic_bind.py -b vfio-pci 01:10.0
-       dpdk_nic_bind.py -b vfio-pci 01:10.1
+       dpdk-devbind.py -b vfio-pci 01:10.0
+       dpdk-devbind.py -b vfio-pci 01:10.1
 
 #. Run a DPDK application on the VFs:
 
@@ -279,8 +279,8 @@ The typical procedure to achieve this is as follows:
    .. code-block:: console
 
        modprobe vfio-pci
-       dpdk_nic_bind.py -b vfio-pci 01:10.0
-       dpdk_nic_bind.py -b vfio-pci 01:10.1
+       dpdk-devbind.py -b vfio-pci 01:10.0
+       dpdk-devbind.py -b vfio-pci 01:10.1
 
 #. run DPDK application on VFs:
 
