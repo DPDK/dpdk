@@ -118,7 +118,7 @@
  *     - NIC queue statistics mappings
  *
  * Any other configuration will not be stored and will need to be re-entered
- * after a call to rte_eth_dev_start().
+ * before a call to rte_eth_dev_start().
  *
  * Finally, a network application can close an Ethernet device by invoking the
  * rte_eth_dev_close() function.
