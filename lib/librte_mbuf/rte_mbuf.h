@@ -129,6 +129,18 @@ extern "C" {
 /* add new TX flags here */
 
 /**
+ * Bits 45:48 used for the tunnel type.
+ * When doing Tx offload like TSO or checksum, the HW needs to configure the
+ * tunnel type into the HW descriptors.
+ */
+#define PKT_TX_TUNNEL_VXLAN   (0x1ULL << 45)
+#define PKT_TX_TUNNEL_GRE     (0x2ULL << 45)
+#define PKT_TX_TUNNEL_IPIP    (0x3ULL << 45)
+#define PKT_TX_TUNNEL_GENEVE  (0x4ULL << 45)
+/* add new TX TUNNEL type here */
+#define PKT_TX_TUNNEL_MASK    (0xFULL << 45)
+
+/**
  * Second VLAN insertion (QinQ) flag.
  */
 #define PKT_TX_QINQ_PKT    (1ULL << 49)   /**< TX packet with double VLAN inserted. */
@@ -872,7 +884,10 @@ struct rte_mbuf {
 		uint64_t tx_offload;       /**< combined for easy fetch */
 		__extension__
 		struct {
-			uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+			uint64_t l2_len:7;
+			/**< L2 (MAC) Header Length for non-tunneling pkt.
+			 * Outer_L4_len + ... + Inner_L2_len for tunneling pkt.
+			 */
 			uint64_t l3_len:9; /**< L3 (IP) Header Length. */
 			uint64_t l4_len:8; /**< L4 (TCP/UDP) Header Length. */
 			uint64_t tso_segsz:16; /**< TCP TSO segment size */

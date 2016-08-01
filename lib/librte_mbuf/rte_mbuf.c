@@ -303,6 +303,10 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_OUTER_IP_CKSUM: return "PKT_TX_OUTER_IP_CKSUM";
 	case PKT_TX_OUTER_IPV4: return "PKT_TX_OUTER_IPV4";
 	case PKT_TX_OUTER_IPV6: return "PKT_TX_OUTER_IPV6";
+	case PKT_TX_TUNNEL_VXLAN: return "PKT_TX_TUNNEL_VXLAN";
+	case PKT_TX_TUNNEL_GRE: return "PKT_TX_TUNNEL_GRE";
+	case PKT_TX_TUNNEL_IPIP: return "PKT_TX_TUNNEL_IPIP";
+	case PKT_TX_TUNNEL_GENEVE: return "PKT_TX_TUNNEL_GENEVE";
 	default: return NULL;
 	}
 }
