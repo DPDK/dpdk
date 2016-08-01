@@ -779,33 +779,65 @@ i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
 #endif
 	return flags;
 }
+
+static inline void
+i40e_parse_tunneling_params(uint64_t ol_flags,
+			    union i40e_tx_offload tx_offload,
+			    uint32_t *cd_tunneling)
+{
+	/* EIPT: External (outer) IP header type */
+	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+		*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV4;
+	else if (ol_flags & PKT_TX_OUTER_IPV4)
+		*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV4_NO_CSUM;
+	else if (ol_flags & PKT_TX_OUTER_IPV6)
+		*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV6;
+
+	/* EIPLEN: External (outer) IP header length, in DWords */
+	*cd_tunneling |= (tx_offload.outer_l3_len >> 2) <<
+		I40E_TXD_CTX_QW0_EXT_IPLEN_SHIFT;
+
+	/* L4TUNT: L4 Tunneling Type */
+	switch (ol_flags & PKT_TX_TUNNEL_MASK) {
+	case PKT_TX_TUNNEL_IPIP:
+		/* for non UDP / GRE tunneling, set to 00b */
+		break;
+	case PKT_TX_TUNNEL_VXLAN:
+	case PKT_TX_TUNNEL_GENEVE:
+		*cd_tunneling |= I40E_TXD_CTX_UDP_TUNNELING;
+		break;
+	case PKT_TX_TUNNEL_GRE:
+		*cd_tunneling |= I40E_TXD_CTX_GRE_TUNNELING;
+		break;
+	default:
+		PMD_TX_LOG(ERR, "Tunnel type not supported\n");
+		return;
+	}
+
+	/* L4TUNLEN: L4 Tunneling Length, in Words
+	 *
+	 * We depend on app to set rte_mbuf.l2_len correctly.
+	 * For IP in GRE it should be set to the length of the GRE
+	 * header;
+	 * for MAC in GRE or MAC in UDP it should be set to the length
+	 * of the GRE or UDP headers plus the inner MAC up to including
+	 * its last Ethertype.
+	 */
+	*cd_tunneling |= (tx_offload.l2_len >> 1) <<
+		I40E_TXD_CTX_QW0_NATLEN_SHIFT;
+}
+
 static inline void
 i40e_txd_enable_checksum(uint64_t ol_flags,
 			uint32_t *td_cmd,
 			uint32_t *td_offset,
-			union i40e_tx_offload tx_offload,
-			uint32_t *cd_tunneling)
+			union i40e_tx_offload tx_offload)
 {
-	/* UDP tunneling packet TX checksum offload */
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM) {
-
+	/* Set MACLEN */
+	if (ol_flags & PKT_TX_TUNNEL_MASK)
 		*td_offset |= (tx_offload.outer_l2_len >> 1)
 				<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
-
-		if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
-			*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV4;
-		else if (ol_flags & PKT_TX_OUTER_IPV4)
-			*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV4_NO_CSUM;
-		else if (ol_flags & PKT_TX_OUTER_IPV6)
-			*cd_tunneling |= I40E_TX_CTX_EXT_IP_IPV6;
-
-		/* Now set the ctx descriptor fields */
-		*cd_tunneling |= (tx_offload.outer_l3_len >> 2) <<
-				I40E_TXD_CTX_QW0_EXT_IPLEN_SHIFT |
-				(tx_offload.l2_len >> 1) <<
-				I40E_TXD_CTX_QW0_NATLEN_SHIFT;
-
-	} else
+	else
 		*td_offset |= (tx_offload.l2_len >> 1)
 			<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
 
@@ -1486,7 +1518,8 @@ i40e_calc_context_desc(uint64_t flags)
 {
 	static uint64_t mask = PKT_TX_OUTER_IP_CKSUM |
 		PKT_TX_TCP_SEG |
-		PKT_TX_QINQ_PKT;
+		PKT_TX_QINQ_PKT |
+		PKT_TX_TUNNEL_MASK;
 
 #ifdef RTE_LIBRTE_IEEE1588
 	mask |= PKT_TX_IEEE1588_TMST;
@@ -1508,7 +1541,7 @@ i40e_set_tso_ctx(struct rte_mbuf *mbuf, union i40e_tx_offload tx_offload)
 	}
 
 	/**
-	 * in case of tunneling packet, the outer_l2_len and
+	 * in case of non tunneling packet, the outer_l2_len and
 	 * outer_l3_len must be 0.
 	 */
 	hdr_len = tx_offload.outer_l2_len +
@@ -1625,12 +1658,15 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/* Always enable CRC offload insertion */
 		td_cmd |= I40E_TX_DESC_CMD_ICRC;
 
-		/* Enable checksum offloading */
+		/* Fill in tunneling parameters if necessary */
 		cd_tunneling_params = 0;
-		if (ol_flags & I40E_TX_CKSUM_OFFLOAD_MASK) {
-			i40e_txd_enable_checksum(ol_flags, &td_cmd, &td_offset,
-				tx_offload, &cd_tunneling_params);
-		}
+		if (ol_flags & PKT_TX_TUNNEL_MASK)
+			i40e_parse_tunneling_params(ol_flags, tx_offload,
+						    &cd_tunneling_params);
+		/* Enable checksum offloading */
+		if (ol_flags & I40E_TX_CKSUM_OFFLOAD_MASK)
+			i40e_txd_enable_checksum(ol_flags, &td_cmd,
+						 &td_offset, tx_offload);
 
 		if (nb_ctx) {
 			/* Setup TX context descriptor if required */

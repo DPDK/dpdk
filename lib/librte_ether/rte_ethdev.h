@@ -867,6 +867,10 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_UDP_TSO     0x00000040
 #define DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000080 /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_QINQ_INSERT 0x00000100
+#define DEV_TX_OFFLOAD_VXLAN_TNL_TSO    0x00000200    /**< Used for tunneling packet. */
+#define DEV_TX_OFFLOAD_GRE_TNL_TSO      0x00000400    /**< Used for tunneling packet. */
+#define DEV_TX_OFFLOAD_IPIP_TNL_TSO     0x00000800    /**< Used for tunneling packet. */
+#define DEV_TX_OFFLOAD_GENEVE_TNL_TSO   0x00001000    /**< Used for tunneling packet. */
 
 /**
  * Ethernet device information
