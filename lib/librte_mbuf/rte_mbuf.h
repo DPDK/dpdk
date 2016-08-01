@@ -1157,13 +1157,6 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	return m;
 }
 
-/* compat with older versions */
-__rte_deprecated static inline struct rte_mbuf *
-__rte_mbuf_raw_alloc(struct rte_mempool *mp)
-{
-	return rte_mbuf_raw_alloc(mp);
-}
-
 /**
  * @internal Put mbuf back into its original mempool.
  * The use of that function is reserved for RTE internal needs.
