@@ -17,7 +17,7 @@
   51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
 
   The full GNU General Public License is included in this distribution in
-  the file called "COPYING".
+  the file called "LICENSE.GPL".
 
   Contact Information:
   e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
