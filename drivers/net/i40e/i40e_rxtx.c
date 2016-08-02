@@ -2948,11 +2948,15 @@ i40e_dev_clear_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (!dev->data->tx_queues[i])
+			continue;
 		i40e_tx_queue_release_mbufs(dev->data->tx_queues[i]);
 		i40e_reset_tx_queue(dev->data->tx_queues[i]);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (!dev->data->rx_queues[i])
+			continue;
 		i40e_rx_queue_release_mbufs(dev->data->rx_queues[i]);
 		i40e_reset_rx_queue(dev->data->rx_queues[i]);
 	}
@@ -2966,12 +2970,16 @@ i40e_dev_free_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (!dev->data->rx_queues[i])
+			continue;
 		i40e_dev_rx_queue_release(dev->data->rx_queues[i]);
 		dev->data->rx_queues[i] = NULL;
 	}
 	dev->data->nb_rx_queues = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (!dev->data->tx_queues[i])
+			continue;
 		i40e_dev_tx_queue_release(dev->data->tx_queues[i]);
 		dev->data->tx_queues[i] = NULL;
 	}
@@ -3154,7 +3162,7 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 				struct i40e_rx_queue *rxq =
 					dev->data->rx_queues[i];
 
-				if (i40e_rxq_vec_setup(rxq)) {
+				if (rxq && i40e_rxq_vec_setup(rxq)) {
 					ad->rx_vec_allowed = false;
 					break;
 				}
@@ -3216,7 +3224,8 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			struct i40e_rx_queue *rxq = dev->data->rx_queues[i];
 
-			rxq->rx_using_sse = rx_using_sse;
+			if (rxq)
+				rxq->rx_using_sse = rx_using_sse;
 		}
 	}
 }
@@ -3255,7 +3264,7 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 				struct i40e_tx_queue *txq =
 					dev->data->tx_queues[i];
 
-				if (i40e_txq_vec_setup(txq)) {
+				if (txq && i40e_txq_vec_setup(txq)) {
 					ad->tx_vec_allowed = false;
 					break;
 				}
