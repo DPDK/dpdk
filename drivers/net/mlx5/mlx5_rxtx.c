@@ -1572,6 +1572,14 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rte_prefetch0(wqe);
 		rep = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
+			++rxq->stats.rx_nombuf;
+			if (!pkt) {
+				/*
+				 * no buffers before we even started,
+				 * bail out silently.
+				 */
+				break;
+			}
 			while (pkt != seg) {
 				assert(pkt != (*rxq->elts)[idx]);
 				seg = NEXT(pkt);
@@ -1579,7 +1587,6 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				__rte_mbuf_raw_free(pkt);
 				pkt = seg;
 			}
-			++rxq->stats.rx_nombuf;
 			break;
 		}
 		if (!pkt) {
