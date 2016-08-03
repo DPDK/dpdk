@@ -33,7 +33,7 @@
 # Load config options:
 # - DPDK_CHECKPATCH_PATH
 # - DPDK_CHECKPATCH_LINE_LENGTH
-. $(dirname $(readlink -e $0))/load-devel-config.sh
+. $(dirname $(readlink -e $0))/load-devel-config
 
 length=${DPDK_CHECKPATCH_LINE_LENGTH:-80}
 

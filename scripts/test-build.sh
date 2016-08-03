@@ -48,7 +48,7 @@ default_path=$PATH
 # - DPDK_NOTIFY (notify-send)
 # - LIBSSO_SNOW3G_PATH
 # - LIBSSO_KASUMI_PATH
-. $(dirname $(readlink -e $0))/load-devel-config.sh
+. $(dirname $(readlink -e $0))/load-devel-config
 
 print_usage () {
 	echo "usage: $(basename $0) [-h] [-jX] [-s] [config1 [config2] ...]]"
@@ -211,7 +211,7 @@ for conf in $configs ; do
 	# reload config with DPDK_TARGET set
 	DPDK_TARGET=$target
 	reset_env
-	. $(dirname $(readlink -e $0))/load-devel-config.sh
+	. $(dirname $(readlink -e $0))/load-devel-config
 
 	options=$(echo $conf | sed 's,[^~+]*,,')
 	dir=$conf

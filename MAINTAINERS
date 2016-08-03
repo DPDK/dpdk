@@ -27,7 +27,7 @@ F: MAINTAINERS
 F: scripts/check-maintainers.sh
 F: scripts/check-git-log.sh
 F: scripts/checkpatches.sh
-F: scripts/load-devel-config.sh
+F: scripts/load-devel-config
 F: scripts/test-build.sh
 
 Stable Branches
