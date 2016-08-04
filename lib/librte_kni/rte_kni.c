@@ -321,9 +321,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 	struct rte_kni_device_info dev_info;
 	struct rte_kni *ctx;
 	char intf_name[RTE_KNI_NAMESIZE];
-	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
-	const struct rte_mempool *mp;
 	struct rte_kni_memzone_slot *slot = NULL;
 
 	if (!pktmbuf_pool || !conf || !conf->name[0])
@@ -416,17 +414,12 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 
 
 	/* MBUF mempool */
-	snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT,
-		pktmbuf_pool->name);
-	mz = rte_memzone_lookup(mz_name);
-	KNI_MEM_CHECK(mz == NULL);
-	mp = (struct rte_mempool *)mz->addr;
 	/* KNI currently requires to have only one memory chunk */
-	if (mp->nb_mem_chunks != 1)
+	if (pktmbuf_pool->nb_mem_chunks != 1)
 		goto kni_fail;
 
-	dev_info.mbuf_va = STAILQ_FIRST(&mp->mem_list)->addr;
-	dev_info.mbuf_phys = STAILQ_FIRST(&mp->mem_list)->phys_addr;
+	dev_info.mbuf_va = STAILQ_FIRST(&pktmbuf_pool->mem_list)->addr;
+	dev_info.mbuf_phys = STAILQ_FIRST(&pktmbuf_pool->mem_list)->phys_addr;
 	ctx->pktmbuf_pool = pktmbuf_pool;
 	ctx->group_id = conf->group_id;
 	ctx->slot_id = slot->id;
