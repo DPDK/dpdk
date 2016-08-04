@@ -237,6 +237,8 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	m->outer_l2_len = sizeof(struct ether_hdr);
 	m->outer_l3_len = sizeof(struct ipv4_hdr);
 
+	ol_flags |= PKT_TX_TUNNEL_VXLAN;
+
 	m->ol_flags |= ol_flags;
 	m->tso_segsz = tx_offload.tso_segsz;
 
