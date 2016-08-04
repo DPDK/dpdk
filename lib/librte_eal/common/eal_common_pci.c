@@ -361,7 +361,7 @@ rte_eal_pci_probe_one(const struct rte_pci_addr *addr)
 			continue;
 
 		ret = pci_probe_all_drivers(dev);
-		if (ret < 0)
+		if (ret)
 			goto err_return;
 		return 0;
 	}
