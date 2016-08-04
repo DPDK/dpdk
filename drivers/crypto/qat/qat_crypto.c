@@ -718,7 +718,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 
 	ctx = (struct qat_session *)op->sym->session->_private;
 	qat_req = (struct icp_qat_fw_la_bulk_req *)out_msg;
-	*qat_req = ctx->fw_req;
+	rte_mov128((uint8_t *)qat_req, (const uint8_t *)&(ctx->fw_req));
 	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
 
 	qat_req->comn_mid.dst_length =
