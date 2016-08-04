@@ -1985,6 +1985,16 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 			/* Inherit eth dev link properties from first active slave */
 			link_properties_set(bonded_eth_dev,
 					&(slave_eth_dev->data->dev_link));
+		} else {
+			if (link_properties_valid(
+				&bonded_eth_dev->data->dev_link, &link) != 0) {
+				slave_eth_dev->data->dev_flags &=
+					(~RTE_ETH_DEV_BONDED_SLAVE);
+				RTE_LOG(ERR, PMD,
+					"port %u invalid speed/duplex\n",
+					port_id);
+				return;
+			}
 		}
 
 		activate_slave(bonded_eth_dev, port_id);

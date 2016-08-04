@@ -373,21 +373,6 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 		internals->candidate_max_rx_pktlen = dev_info.max_rx_pktlen;
 
 	} else {
-		/* Check slave link properties are supported if props are set,
-		 * all slaves must be the same */
-		if (internals->link_props_set) {
-			if (link_properties_valid(&(bonded_eth_dev->data->dev_link),
-									  &(slave_eth_dev->data->dev_link))) {
-				slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDED_SLAVE);
-				RTE_BOND_LOG(ERR,
-						"Slave port %d link speed/duplex not supported",
-						slave_port_id);
-				return -1;
-			}
-		} else {
-			link_properties_set(bonded_eth_dev,
-					&(slave_eth_dev->data->dev_link));
-		}
 		internals->rx_offload_capa &= dev_info.rx_offload_capa;
 		internals->tx_offload_capa &= dev_info.tx_offload_capa;
 		internals->flow_type_rss_offloads &= dev_info.flow_type_rss_offloads;
