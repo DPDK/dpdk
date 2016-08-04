@@ -1335,6 +1335,9 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
 	}
 
+	slave_eth_dev->data->dev_conf.rxmode.hw_vlan_filter =
+			bonded_eth_dev->data->dev_conf.rxmode.hw_vlan_filter;
+
 	/* Configure device */
 	errval = rte_eth_dev_configure(slave_eth_dev->data->port_id,
 			bonded_eth_dev->data->nb_rx_queues,
@@ -1637,7 +1640,10 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 void
 bond_ethdev_close(struct rte_eth_dev *dev)
 {
+	struct bond_dev_private *internals = dev->data->dev_private;
+
 	bond_ethdev_free_queues(dev);
+	rte_bitmap_reset(internals->vlan_filter_bmp);
 }
 
 /* forward declaration */
@@ -1664,6 +1670,35 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
 
 	dev_info->reta_size = internals->reta_size;
+}
+
+static int
+bond_ethdev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	int res;
+	uint8_t i;
+	struct bond_dev_private *internals = dev->data->dev_private;
+
+	/* don't do this while a slave is being added */
+	rte_spinlock_lock(&internals->lock);
+
+	if (on)
+		rte_bitmap_set(internals->vlan_filter_bmp, vlan_id);
+	else
+		rte_bitmap_clear(internals->vlan_filter_bmp, vlan_id);
+
+	for (i = 0; i < internals->slave_count; i++) {
+		uint8_t port_id = internals->slaves[i].port_id;
+
+		res = rte_eth_dev_vlan_filter(port_id, vlan_id, on);
+		if (res == ENOTSUP)
+			RTE_LOG(WARNING, PMD,
+				"Setting VLAN filter on slave port %u not supported.\n",
+				port_id);
+	}
+
+	rte_spinlock_unlock(&internals->lock);
+	return 0;
 }
 
 static int
@@ -2171,6 +2206,7 @@ const struct eth_dev_ops default_dev_ops = {
 	.dev_close            = bond_ethdev_close,
 	.dev_configure        = bond_ethdev_configure,
 	.dev_infos_get        = bond_ethdev_info,
+	.vlan_filter_set      = bond_ethdev_vlan_filter_set,
 	.rx_queue_setup       = bond_ethdev_rx_queue_setup,
 	.tx_queue_setup       = bond_ethdev_tx_queue_setup,
 	.rx_queue_release     = bond_ethdev_rx_queue_release,

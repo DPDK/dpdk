@@ -166,6 +166,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 {
 	struct bond_dev_private *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
+	uint32_t vlan_filter_bmp_size;
 
 	/* now do all data allocation - for eth_dev structure, dummy pci driver
 	 * and internal (private) data
@@ -260,6 +261,27 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 		goto err;
 	}
 
+	vlan_filter_bmp_size =
+		rte_bitmap_get_memory_footprint(ETHER_MAX_VLAN_ID + 1);
+	internals->vlan_filter_bmpmem = rte_malloc(name, vlan_filter_bmp_size,
+						   RTE_CACHE_LINE_SIZE);
+	if (internals->vlan_filter_bmpmem == NULL) {
+		RTE_BOND_LOG(ERR,
+			     "Failed to allocate vlan bitmap for bonded device %u\n",
+			     eth_dev->data->port_id);
+		goto err;
+	}
+
+	internals->vlan_filter_bmp = rte_bitmap_init(ETHER_MAX_VLAN_ID + 1,
+			internals->vlan_filter_bmpmem, vlan_filter_bmp_size);
+	if (internals->vlan_filter_bmp == NULL) {
+		RTE_BOND_LOG(ERR,
+			     "Failed to init vlan bitmap for bonded device %u\n",
+			     eth_dev->data->port_id);
+		rte_free(internals->vlan_filter_bmpmem);
+		goto err;
+	}
+
 	return eth_dev->data->port_id;
 
 err:
@@ -299,12 +321,55 @@ rte_eth_bond_free(const char *name)
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 
+	internals = eth_dev->data->dev_private;
+	rte_bitmap_free(internals->vlan_filter_bmp);
+	rte_free(internals->vlan_filter_bmpmem);
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->data->mac_addrs);
 
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
+}
+
+static int
+slave_vlan_filter_set(uint8_t bonded_port_id, uint8_t slave_port_id)
+{
+	struct rte_eth_dev *bonded_eth_dev;
+	struct bond_dev_private *internals;
+	int found;
+	int res = 0;
+	uint64_t slab = 0;
+	uint32_t pos = 0;
+	uint16_t first;
+
+	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
+	if (bonded_eth_dev->data->dev_conf.rxmode.hw_vlan_filter == 0)
+		return 0;
+
+	internals = bonded_eth_dev->data->dev_private;
+	found = rte_bitmap_scan(internals->vlan_filter_bmp, &pos, &slab);
+	first = pos;
+
+	if (!found)
+		return 0;
+
+	do {
+		uint32_t i;
+		uint64_t mask;
+
+		for (i = 0, mask = 1;
+		     i < RTE_BITMAP_SLAB_BIT_SIZE;
+		     i ++, mask <<= 1) {
+			if (unlikely(slab & mask))
+				res = rte_eth_dev_vlan_filter(slave_port_id,
+							      (uint16_t)pos, 1);
+		}
+		found = rte_bitmap_scan(internals->vlan_filter_bmp,
+					&pos, &slab);
+	} while (found && first != pos && res == 0);
+
+	return res;
 }
 
 static int
@@ -427,6 +492,9 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 				activate_slave(bonded_eth_dev, slave_port_id);
 		}
 	}
+
+	slave_vlan_filter_set(bonded_port_id, slave_port_id);
+
 	return 0;
 
 }
