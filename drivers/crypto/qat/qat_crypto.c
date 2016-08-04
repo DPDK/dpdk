@@ -785,20 +785,9 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		auth_param->auth_len >>= 3;
 	}
 	auth_param->u1.aad_adr = op->sym->auth.aad.phys_addr;
-	/* (GCM) aad length(240 max) will be at this location after precompute */
+
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
-		struct icp_qat_hw_auth_algo_blk *hash;
-
-		if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER)
-			hash = (struct icp_qat_hw_auth_algo_blk *)((char *)&ctx->cd);
-		else
-			hash = (struct icp_qat_hw_auth_algo_blk *)((char *)&ctx->cd +
-				sizeof(struct icp_qat_hw_cipher_algo_blk));
-
-		auth_param->u2.aad_sz = ALIGN_POW2_ROUNDUP(hash->sha.state1[
-					ICP_QAT_HW_GALOIS_128_STATE1_SZ +
-					ICP_QAT_HW_GALOIS_H_SZ + 3], 16);
 		if (op->sym->cipher.iv.length == 12) {
 			/*
 			 * For GCM a 12 bit IV is allowed,
@@ -809,8 +798,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 				ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
 		}
 	}
-	auth_param->hash_state_sz = (auth_param->u2.aad_sz) >> 3;
-
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 	rte_hexdump(stdout, "qat_req:", qat_req,

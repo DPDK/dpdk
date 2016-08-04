@@ -87,8 +87,10 @@ struct qat_session {
 	enum icp_qat_hw_cipher_mode qat_mode;
 	enum icp_qat_hw_auth_algo qat_hash_alg;
 	struct qat_alg_cd cd;
+	uint8_t *cd_cur_ptr;
 	phys_addr_t cd_paddr;
 	struct icp_qat_fw_la_bulk_req fw_req;
+	uint8_t aad_len;
 	struct qat_crypto_instance *inst;
 	uint8_t salt[ICP_QAT_HW_AES_BLK_SZ];
 	rte_spinlock_t lock;	/* protects this struct */
@@ -115,7 +117,8 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 						uint32_t digestsize,
 						unsigned int operation);
 
-void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header);
+void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
+						uint16_t proto);
 
 void qat_alg_ablkcipher_init_enc(struct qat_alg_ablkcipher_cd *cd,
 					int alg, const uint8_t *key,
