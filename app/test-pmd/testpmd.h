@@ -45,6 +45,12 @@
 #define RTE_PORT_HANDLING       (uint16_t)3
 
 /*
+ * It is used to allocate the memory for hash key.
+ * The hash key size is NIC dependent.
+ */
+#define RSS_HASH_KEY_LENGTH 64
+
+/*
  * Default size of the mbuf data buffer to receive standard 1518-byte
  * Ethernet frames in a mono-segment memory buffer.
  */

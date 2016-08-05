@@ -1608,7 +1608,6 @@ struct cmd_config_rss_hash_key {
 	cmdline_fixed_string_t key;
 };
 
-#define RSS_HASH_KEY_LENGTH 40
 static uint8_t
 hexa_digit_to_value(char hexa_digit)
 {
@@ -1644,16 +1643,29 @@ cmd_config_rss_hash_key_parsed(void *parsed_result,
 	uint8_t xdgt0;
 	uint8_t xdgt1;
 	int i;
+	struct rte_eth_dev_info dev_info;
+	uint8_t hash_key_size;
+	uint32_t key_len;
 
+	memset(&dev_info, 0, sizeof(dev_info));
+	rte_eth_dev_info_get(res->port_id, &dev_info);
+	if (dev_info.hash_key_size > 0 &&
+			dev_info.hash_key_size <= sizeof(hash_key))
+		hash_key_size = dev_info.hash_key_size;
+	else {
+		printf("dev_info did not provide a valid hash key size\n");
+		return;
+	}
 	/* Check the length of the RSS hash key */
-	if (strlen(res->key) != (RSS_HASH_KEY_LENGTH * 2)) {
+	key_len = strlen(res->key);
+	if (key_len != (hash_key_size * 2)) {
 		printf("key length: %d invalid - key must be a string of %d"
-		       "hexa-decimal numbers\n", (int) strlen(res->key),
-		       RSS_HASH_KEY_LENGTH * 2);
+			   " hexa-decimal numbers\n",
+			   (int) key_len, hash_key_size * 2);
 		return;
 	}
 	/* Translate RSS hash key into binary representation */
-	for (i = 0; i < RSS_HASH_KEY_LENGTH; i++) {
+	for (i = 0; i < hash_key_size; i++) {
 		xdgt0 = parse_and_check_key_hexa_digit(res->key, (i * 2));
 		if (xdgt0 == 0xFF)
 			return;
@@ -1663,7 +1675,7 @@ cmd_config_rss_hash_key_parsed(void *parsed_result,
 		hash_key[i] = (uint8_t) ((xdgt0 * 16) + xdgt1);
 	}
 	port_rss_hash_key_update(res->port_id, res->rss_type, hash_key,
-				 RSS_HASH_KEY_LENGTH);
+			hash_key_size);
 }
 
 cmdline_parse_token_string_t cmd_config_rss_hash_key_port =
@@ -1692,7 +1704,8 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 		"port config X rss-hash-key ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|"
 		"ipv4-sctp|ipv4-other|ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|"
 		"ipv6-sctp|ipv6-other|l2-payload|"
-		"ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex 80 hexa digits\n",
+		"ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex "
+		"<string of hexa digits (variable length, NIC dependent)>\n",
 	.tokens = {
 		(void *)&cmd_config_rss_hash_key_port,
 		(void *)&cmd_config_rss_hash_key_config,
