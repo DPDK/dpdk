@@ -994,6 +994,8 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 					I40E_RXD_QW1_STATUS_SHIFT;
 		}
 
+		rte_smp_rmb();
+
 		/* Compute how many status bits were set */
 		for (j = 0, nb_dd = 0; j < I40E_LOOK_AHEAD; j++)
 			nb_dd += s[j] & (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
