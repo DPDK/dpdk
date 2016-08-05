@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 INC := rte_branch_prediction.h rte_common.h
 INC += rte_debug.h rte_eal.h rte_errno.h rte_launch.h rte_lcore.h
 INC += rte_log.h rte_memory.h rte_memzone.h rte_pci.h
-INC += rte_pci_dev_ids.h rte_per_lcore.h rte_random.h
+INC += rte_per_lcore.h rte_random.h
 INC += rte_tailq.h rte_interrupts.h rte_alarm.h
 INC += rte_string_fns.h rte_version.h
 INC += rte_eal_memconfig.h rte_malloc_heap.h
