@@ -55,6 +55,7 @@ extern void kni_set_ethtool_ops(struct net_device *netdev);
 
 extern int ixgbe_kni_probe(struct pci_dev *pdev, struct net_device **lad_dev);
 extern void ixgbe_kni_remove(struct pci_dev *pdev);
+extern struct pci_device_id ixgbe_pci_tbl[];
 extern int igb_kni_probe(struct pci_dev *pdev, struct net_device **lad_dev);
 extern void igb_kni_remove(struct pci_dev *pdev);
 
@@ -353,14 +354,13 @@ kni_dev_remove(struct kni_dev *dev)
 	if (!dev)
 		return -ENODEV;
 
+	if (pci_match_id(ixgbe_pci_tbl, dev->pci_dev))
+		ixgbe_kni_remove(dev->pci_dev);
+
 	switch (dev->device_id) {
 	#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
 	#include <rte_pci_dev_ids.h>
 		igb_kni_remove(dev->pci_dev);
-		break;
-	#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) case (dev):
-	#include <rte_pci_dev_ids.h>
-		ixgbe_kni_remove(dev->pci_dev);
 		break;
 	default:
 		break;
@@ -510,15 +510,14 @@ kni_ioctl_create(struct net *net,
 			(PCI_SLOT(pci->devfn) == dev_info.devid) &&
 			(PCI_FUNC(pci->devfn) == dev_info.function)) {
 			found_pci = pci;
+
+			if (pci_match_id(ixgbe_pci_tbl, found_pci))
+				ret = ixgbe_kni_probe(found_pci, &lad_dev);
+
 			switch (dev_info.device_id) {
 			#define RTE_PCI_DEV_ID_DECL_IGB(vend, dev) case (dev):
 			#include <rte_pci_dev_ids.h>
 				ret = igb_kni_probe(found_pci, &lad_dev);
-				break;
-			#define RTE_PCI_DEV_ID_DECL_IXGBE(vend, dev) \
-							case (dev):
-			#include <rte_pci_dev_ids.h>
-				ret = ixgbe_kni_probe(found_pci, &lad_dev);
 				break;
 			default:
 				ret = -1;
