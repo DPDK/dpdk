@@ -486,7 +486,7 @@ The setup procedure is as follows:
 
     .. note::
 
-        — The pci-assign,host=08:10.0 alue indicates that you want to attach a PCI device
+        — The pci-assign,host=08:10.0 value indicates that you want to attach a PCI device
         to a Virtual Machine and the respective (Bus:Device.Function)
         numbers should be passed for the Virtual Function to be attached.
 
