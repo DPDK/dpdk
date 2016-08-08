@@ -1533,7 +1533,7 @@ tbl8_recycle_check_v20(struct rte_lpm_tbl_entry_v20 *tbl8,
 		 * and if so check the rest of the entries to verify that they
 		 * are all of this depth.
 		 */
-		if (tbl8[tbl8_group_start].depth < MAX_DEPTH_TBL24) {
+		if (tbl8[tbl8_group_start].depth <= MAX_DEPTH_TBL24) {
 			for (i = (tbl8_group_start + 1); i < tbl8_group_end;
 					i++) {
 
@@ -1580,7 +1580,7 @@ tbl8_recycle_check_v1604(struct rte_lpm_tbl_entry *tbl8,
 		 * and if so check the rest of the entries to verify that they
 		 * are all of this depth.
 		 */
-		if (tbl8[tbl8_group_start].depth < MAX_DEPTH_TBL24) {
+		if (tbl8[tbl8_group_start].depth <= MAX_DEPTH_TBL24) {
 			for (i = (tbl8_group_start + 1); i < tbl8_group_end;
 					i++) {
 
