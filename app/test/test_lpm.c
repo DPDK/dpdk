@@ -68,6 +68,7 @@ static int32_t test14(void);
 static int32_t test15(void);
 static int32_t test16(void);
 static int32_t test17(void);
+static int32_t test18(void);
 
 rte_lpm_test tests[] = {
 /* Test Cases */
@@ -89,6 +90,7 @@ rte_lpm_test tests[] = {
 	test15,
 	test16,
 	test17,
+	test18
 };
 
 #define NUM_LPM_TESTS (sizeof(tests)/sizeof(tests[0]))
@@ -1218,6 +1220,82 @@ test17(void)
 }
 
 /*
+ * Test for recycle of tbl8
+ *  - step 1: add a rule with depth=28 (> 24)
+ *  - step 2: add a rule with same 24-bit prefix and depth=23 (< 24)
+ *  - step 3: delete the first rule
+ *  - step 4: check tbl8 is freed
+ *  - step 5: add a rule same as the first one (depth=28)
+ *  - step 6: check same tbl8 is allocated
+ *  - step 7: add a rule with same 24-bit prefix and depth=24
+ *  - step 8: delete the rule (depth=28) added in step 5
+ *  - step 9: check tbl8 is freed
+ *  - step 10: add a rule with same 24-bit prefix and depth = 28
+ *  - setp 11: check same tbl8 is allocated again
+ */
+int32_t
+test18(void)
+{
+#define group_idx next_hop
+	struct rte_lpm *lpm = NULL;
+	struct rte_lpm_config config;
+	uint32_t ip, next_hop;
+	uint8_t depth;
+	uint32_t tbl8_group_index;
+
+	config.max_rules = MAX_RULES;
+	config.number_tbl8s = NUMBER_TBL8S;
+	config.flags = 0;
+
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
+	TEST_LPM_ASSERT(lpm != NULL);
+
+	ip = IPv4(192, 168, 100, 100);
+	depth = 28;
+	next_hop = 1;
+	rte_lpm_add(lpm, ip, depth, next_hop);
+
+	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
+	tbl8_group_index = lpm->tbl8[ip>>8].group_idx;
+
+	depth = 23;
+	next_hop = 2;
+	rte_lpm_add(lpm, ip, depth, next_hop);
+	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
+
+	depth = 28;
+	rte_lpm_delete(lpm, ip, depth);
+
+	TEST_LPM_ASSERT(!lpm->tbl24[ip>>8].valid_group);
+
+	next_hop = 3;
+	rte_lpm_add(lpm, ip, depth, next_hop);
+
+	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
+	TEST_LPM_ASSERT(tbl8_group_index == lpm->tbl8[ip>>8].group_idx);
+
+	depth = 24;
+	next_hop = 4;
+	rte_lpm_add(lpm, ip, depth, next_hop);
+	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
+
+	depth = 28;
+	rte_lpm_delete(lpm, ip, depth);
+
+	TEST_LPM_ASSERT(!lpm->tbl24[ip>>8].valid_group);
+
+	next_hop = 5;
+	rte_lpm_add(lpm, ip, depth, next_hop);
+
+	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
+	TEST_LPM_ASSERT(tbl8_group_index == lpm->tbl8[ip>>8].group_idx);
+
+	rte_lpm_free(lpm);
+#undef group_idx
+	return PASS;
+}
+
+/*
  * Do all unit tests.
  */
 
@@ -1230,7 +1308,7 @@ test_lpm(void)
 	for (i = 0; i < NUM_LPM_TESTS; i++) {
 		status = tests[i]();
 		if (status < 0) {
-			printf("ERROR: LPM Test %s: FAIL\n", RTE_STR(tests[i]));
+			printf("ERROR: LPM Test %u: FAIL\n", i);
 			global_status = status;
 		}
 	}
