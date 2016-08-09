@@ -430,7 +430,6 @@ int enic_enable(struct enic *enic)
 
 	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
 	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	vnic_dev_notify_set(enic->vdev, -1); /* No Intr for notify */
 
 	if (enic_clsf_init(enic))
 		dev_warning(enic, "Init of hash table for clsf failed."\
@@ -820,7 +819,6 @@ int enic_disable(struct enic *enic)
 	}
 
 	vnic_dev_set_reset_flag(enic->vdev, 1);
-	vnic_dev_notify_unset(enic->vdev);
 
 	for (i = 0; i < enic->wq_count; i++)
 		vnic_wq_clean(&enic->wq[i], enic_free_wq_buf);
@@ -1022,6 +1020,9 @@ static void enic_dev_deinit(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
+	/* stop link status checking */
+	vnic_dev_notify_unset(enic->vdev);
+
 	rte_free(eth_dev->data->mac_addrs);
 }
 
@@ -1136,6 +1137,9 @@ static int enic_dev_init(struct enic *enic)
 	enic_get_res_counts(enic);
 
 	vnic_dev_set_reset_flag(enic->vdev, 0);
+
+	/* set up link status checking */
+	vnic_dev_notify_set(enic->vdev, -1); /* No Intr for notify */
 
 	return 0;
 
