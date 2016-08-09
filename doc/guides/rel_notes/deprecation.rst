@@ -49,7 +49,3 @@ Deprecation Notices
 * mempool: The functions for single/multi producer/consumer are deprecated
   and will be removed in 17.02.
   It is replaced by ``rte_mempool_generic_get/put`` functions.
-
-* API will change for ``rte_port_source_params`` and ``rte_port_sink_params``
-  structures. The member ``file_name`` data type will be changed from
-  ``char *`` to ``const char *``. This change targets release 16.11.

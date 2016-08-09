@@ -55,7 +55,7 @@ struct rte_port_source_params {
 	struct rte_mempool *mempool;
 
 	/** The full path of the pcap file to read packets from */
-	char *file_name;
+	const char *file_name;
 	/** The number of bytes to be read from each packet in the
 	 *  pcap file. If this value is 0, the whole packet is read;
 	 *  if it is bigger than packet size, the generated packets
@@ -69,7 +69,7 @@ extern struct rte_port_in_ops rte_port_source_ops;
 /** sink port parameters */
 struct rte_port_sink_params {
 	/** The full path of the pcap file to write the packets to */
-	char *file_name;
+	const char *file_name;
 	/** The maximum number of packets write to the pcap file.
 	 *  If this value is 0, the "infinite" write will be carried
 	 *  out.

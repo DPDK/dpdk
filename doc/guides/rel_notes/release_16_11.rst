@@ -170,6 +170,9 @@ API Changes
 * The ``rte_ivshmem`` feature (including library and EAL code) has been removed
   in 16.11 because it had some design issues which were not planned to be fixed.
 
+* The ``file_name`` data type of ``struct rte_port_source_params`` and
+  ``struct rte_port_sink_params`` is changed from `char *`` to ``const char *``.
+
 
 ABI Changes
 -----------
