@@ -207,7 +207,7 @@ struct app_pktq_source_params default_source_params = {
 	.parsed = 0,
 	.mempool_id = 0,
 	.burst = 32,
-	.file_name = NULL,
+	.file_name = "./config/packets.pcap",
 	.n_bytes_per_pkt = 0,
 };
 
@@ -3082,10 +3082,6 @@ app_config_init(struct app_params *app)
 	size_t i;
 
 	memcpy(app, &app_params_default, sizeof(struct app_params));
-
-	/* configure default_source_params */
-	default_source_params.file_name = strdup("./config/packets.pcap");
-	PARSE_ERROR_MALLOC(default_source_params.file_name != NULL);
 
 	for (i = 0; i < RTE_DIM(app->mempool_params); i++)
 		memcpy(&app->mempool_params[i],

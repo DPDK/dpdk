@@ -182,14 +182,14 @@ struct app_pktq_source_params {
 	uint32_t parsed;
 	uint32_t mempool_id; /* Position in the app->mempool_params array */
 	uint32_t burst;
-	char *file_name; /* Full path of PCAP file to be copied to mbufs */
+	const char *file_name; /* Full path of PCAP file to be copied to mbufs */
 	uint32_t n_bytes_per_pkt;
 };
 
 struct app_pktq_sink_params {
 	char *name;
 	uint8_t parsed;
-	char *file_name; /* Full path of PCAP file to be copied to mbufs */
+	const char *file_name; /* Full path of PCAP file to be copied to mbufs */
 	uint32_t n_pkts_to_dump;
 };
 
