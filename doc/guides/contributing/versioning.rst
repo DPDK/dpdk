@@ -331,11 +331,12 @@ defined, we add this
 
 .. code-block:: c
 
-   struct rte_acl_create_v21(const struct rte_acl_param *param, int debug)
+   struct rte_acl_ctx *
+   rte_acl_create_v21(const struct rte_acl_param *param, int debug)
    {
         ...
    }
-   MAP_STATIC_SYMBOL(struct rte_acl_create(const struct rte_acl_param *param, int debug), rte_acl_create_v21);
+   MAP_STATIC_SYMBOL(struct rte_acl_ctx *rte_acl_create(const struct rte_acl_param *param, int debug), rte_acl_create_v21);
 
 That tells the compiler that, when building a static library, any calls to the
 symbol ``rte_acl_create`` should be linked to ``rte_acl_create_v21``
