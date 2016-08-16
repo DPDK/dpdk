@@ -216,15 +216,19 @@ static int
 contigmem_mmap_single(struct cdev *cdev, vm_ooffset_t *offset, vm_size_t size,
 		struct vm_object **obj, int nprot)
 {
+	uint64_t buffer_index;
+
 	/*
 	 * The buffer index is encoded in the offset.  Divide the offset by
 	 *  PAGE_SIZE to get the index of the buffer requested by the user
 	 *  app.
 	 */
-	if ((*offset/PAGE_SIZE) >= contigmem_num_buffers)
+	buffer_index = *offset / PAGE_SIZE;
+	if (buffer_index >= contigmem_num_buffers)
 		return EINVAL;
 
-	*offset = (vm_ooffset_t)vtophys(contigmem_buffers[*offset/PAGE_SIZE]);
+	memset(contigmem_buffers[buffer_index], 0, contigmem_buffer_size);
+	*offset = (vm_ooffset_t)vtophys(contigmem_buffers[buffer_index]);
 	*obj = vm_pager_allocate(OBJT_DEVICE, cdev, size, nprot, *offset,
 			curthread->td_ucred);
 
