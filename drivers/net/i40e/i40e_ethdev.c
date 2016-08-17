@@ -915,6 +915,9 @@ config_floating_veb(struct rte_eth_dev *dev)
 	}
 }
 
+#define I40E_L2_TAGS_S_TAG_SHIFT 1
+#define I40E_L2_TAGS_S_TAG_MASK I40E_MASK(0x1, I40E_L2_TAGS_S_TAG_SHIFT)
+
 static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
@@ -1102,6 +1105,13 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 
 	/* Disable double vlan by default */
 	i40e_vsi_config_double_vlan(vsi, FALSE);
+
+	/* Disable S-TAG identification by default */
+	ret = I40E_READ_REG(hw, I40E_PRT_L2TAGSEN);
+	if (ret & I40E_L2_TAGS_S_TAG_MASK) {
+		ret &= ~I40E_L2_TAGS_S_TAG_MASK;
+		I40E_WRITE_REG(hw, I40E_PRT_L2TAGSEN, ret);
+	}
 
 	if (!vsi->max_macaddrs)
 		len = ETHER_ADDR_LEN;
