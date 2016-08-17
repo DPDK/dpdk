@@ -212,9 +212,12 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 	/* checksum flags */
 	if (!enic_cq_rx_desc_csum_not_calc(cqrd) &&
 		(mbuf->packet_type & RTE_PTYPE_L3_IPV4)) {
+		uint32_t l4_flags = mbuf->packet_type & RTE_PTYPE_L4_MASK;
+
 		if (unlikely(!enic_cq_rx_desc_ipv4_csum_ok(cqrd)))
 			pkt_flags |= PKT_RX_IP_CKSUM_BAD;
-		if (mbuf->packet_type & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP)) {
+		if (l4_flags == RTE_PTYPE_L4_UDP ||
+		    l4_flags == RTE_PTYPE_L4_TCP) {
 			if (unlikely(!enic_cq_rx_desc_tcp_udp_csum_ok(cqrd)))
 				pkt_flags |= PKT_RX_L4_CKSUM_BAD;
 		}
