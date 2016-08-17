@@ -117,7 +117,7 @@ int rte_eal_log_early_init(void);
 int rte_eal_log_init(const char *id, int facility);
 
 /**
- * Init the default log stream
+ * Init the PCI infrastructure
  *
  * This function is private to EAL.
  *
