@@ -157,9 +157,6 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lm
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
 endif
-ifeq ($(CONFIG_RTE_LIBRTE_VHOST_USER),n)
-_LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lfuse
-endif
 _LDLIBS-$(CONFIG_RTE_PORT_PCAP)             += -lpcap
 endif # !CONFIG_RTE_BUILD_SHARED_LIBS
 

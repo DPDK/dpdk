@@ -50,10 +50,6 @@ Deprecation Notices
   and will be removed in 17.02.
   It is replaced by ``rte_mempool_generic_get/put`` functions.
 
-* The vhost-cuse will be removed in 16.11. Since v2.1, a large majority of
-  development effort has gone to vhost-user, such as multiple-queue, live
-  migration, reconnect etc. Therefore, vhost-user should be used instead.
-
 * API will change for ``rte_port_source_params`` and ``rte_port_sink_params``
   structures. The member ``file_name`` data type will be changed from
   ``char *`` to ``const char *``. This change targets release 16.11.
