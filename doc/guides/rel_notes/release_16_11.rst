@@ -48,6 +48,8 @@ New Features
   in case of system perturbations. On the downside, small performance degradation
   is measured when running micro-benchmarks.
 
+* **Added virtio NEON support for ARM.**
+
 
 Resolved Issues
 ---------------

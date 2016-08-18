@@ -151,6 +151,7 @@ F: lib/librte_acl/acl_run_neon.*
 F: lib/librte_lpm/rte_lpm_neon.h
 F: lib/librte_hash/rte*_arm64.h
 F: drivers/net/ixgbe/ixgbe_rxtx_vec_neon.c
+F: drivers/net/virtio/virtio_rxtx_simple_neon.c
 
 EZchip TILE-Gx
 M: Zhigang Lu <zlu@ezchip.com>
