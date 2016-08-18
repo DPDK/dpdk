@@ -496,13 +496,10 @@ due to the large and complex code, it's better to redesign it than fixing
 it to make it work again. Hence, zero copy may be added back later.
 
 **VLAN strip.**
-The VLAN strip option enable/disable the VLAN strip on host, if disabled, the guest will receive the packets with VLAN tag.
-It is enabled by default.
-
-.. code-block:: console
-
-    ./vhost-switch -c f -n 4 --socket-mem 1024 --huge-dir /mnt/huge \
-     -- --vlan-strip [0, 1]
+VLAN strip option is removed, because different NICs have different behaviors
+when disabling VLAN strip. Such feature, which heavily depends on hardware,
+should be removed from this example to reduce confusion. Now, VLAN strip is
+enabled and cannot be disabled.
 
 .. _vhost_app_running:
 
