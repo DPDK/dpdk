@@ -155,23 +155,22 @@ vhost_user_reset_owner(struct virtio_net *dev)
 /*
  * The features that we support are requested.
  */
-static int
-vhost_user_get_features(uint64_t *pu)
+static uint64_t
+vhost_user_get_features(void)
 {
-	*pu = VHOST_FEATURES;
-	return 0;
+	return VHOST_FEATURES;
 }
 
 /*
  * We receive the negotiated features supported by us and the virtio device.
  */
 static int
-vhost_user_set_features(struct virtio_net *dev, uint64_t *pu)
+vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 {
-	if (*pu & ~VHOST_FEATURES)
+	if (features & ~VHOST_FEATURES)
 		return -1;
 
-	dev->features = *pu;
+	dev->features = features;
 	if (dev->features &
 		((1 << VIRTIO_NET_F_MRG_RXBUF) | (1ULL << VIRTIO_F_VERSION_1))) {
 		dev->vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
@@ -802,7 +801,6 @@ vhost_user_msg_handler(int vid, int fd)
 {
 	struct virtio_net *dev;
 	struct VhostUserMsg msg;
-	uint64_t features = 0;
 	int ret;
 
 	dev = get_device(vid);
@@ -828,14 +826,12 @@ vhost_user_msg_handler(int vid, int fd)
 		vhost_message_str[msg.request]);
 	switch (msg.request) {
 	case VHOST_USER_GET_FEATURES:
-		ret = vhost_user_get_features(&features);
-		msg.payload.u64 = features;
+		msg.payload.u64 = vhost_user_get_features();
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(fd, &msg);
 		break;
 	case VHOST_USER_SET_FEATURES:
-		features = msg.payload.u64;
-		vhost_user_set_features(dev, &features);
+		vhost_user_set_features(dev, msg.payload.u64);
 		break;
 
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
