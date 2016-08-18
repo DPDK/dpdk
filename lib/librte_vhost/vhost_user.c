@@ -426,87 +426,6 @@ vhost_set_vring_base(int vid, struct vhost_vring_state *state)
 	return 0;
 }
 
-/*
- * We send the virtio device our available ring last used index.
- */
-static int
-vhost_get_vring_base(int vid, uint32_t index,
-	struct vhost_vring_state *state)
-{
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
-	state->index = index;
-	/* State->index refers to the queue index. The txq is 1, rxq is 0. */
-	state->num = dev->virtqueue[state->index]->last_used_idx;
-
-	return 0;
-}
-
-/*
- * The virtio device sends an eventfd to interrupt the guest. This fd gets
- * copied into our process space.
- */
-static int
-vhost_set_vring_call(int vid, struct vhost_vring_file *file)
-{
-	struct virtio_net *dev;
-	struct vhost_virtqueue *vq;
-	uint32_t cur_qp_idx = file->index / VIRTIO_QNUM;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
-	/*
-	 * FIXME: VHOST_SET_VRING_CALL is the first per-vring message
-	 * we get, so we do vring queue pair allocation here.
-	 */
-	if (cur_qp_idx + 1 > dev->virt_qp_nb) {
-		if (alloc_vring_queue_pair(dev, cur_qp_idx) < 0)
-			return -1;
-	}
-
-	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
-	vq = dev->virtqueue[file->index];
-	assert(vq != NULL);
-
-	if (vq->callfd >= 0)
-		close(vq->callfd);
-
-	vq->callfd = file->fd;
-
-	return 0;
-}
-
-/*
- * The virtio device sends an eventfd that it can use to notify us.
- * This fd gets copied into our process space.
- */
-static int
-vhost_set_vring_kick(int vid, struct vhost_vring_file *file)
-{
-	struct virtio_net *dev;
-	struct vhost_virtqueue *vq;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
-	/* file->index refers to the queue index. The txq is 1, rxq is 0. */
-	vq = dev->virtqueue[file->index];
-
-	if (vq->kickfd >= 0)
-		close(vq->kickfd);
-
-	vq->kickfd = file->fd;
-
-	return 0;
-}
-
 static int
 user_set_mem_table(int vid, struct VhostUserMsg *pmsg)
 {
@@ -671,6 +590,12 @@ static void
 user_set_vring_call(int vid, struct VhostUserMsg *pmsg)
 {
 	struct vhost_vring_file file;
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+	uint32_t cur_qp_idx;
+
+	if (!dev)
+		return;
 
 	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
 	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
@@ -679,7 +604,24 @@ user_set_vring_call(int vid, struct VhostUserMsg *pmsg)
 		file.fd = pmsg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring call idx:%d file:%d\n", file.index, file.fd);
-	vhost_set_vring_call(vid, &file);
+
+	/*
+	 * FIXME: VHOST_SET_VRING_CALL is the first per-vring message
+	 * we get, so we do vring queue pair allocation here.
+	 */
+	cur_qp_idx = file.index / VIRTIO_QNUM;
+	if (cur_qp_idx + 1 > dev->virt_qp_nb) {
+		if (alloc_vring_queue_pair(dev, cur_qp_idx) < 0)
+			return;
+	}
+
+	vq = dev->virtqueue[file.index];
+	assert(vq != NULL);
+
+	if (vq->callfd >= 0)
+		close(vq->callfd);
+
+	vq->callfd = file.fd;
 }
 
 /*
@@ -691,6 +633,7 @@ user_set_vring_kick(int vid, struct VhostUserMsg *pmsg)
 {
 	struct vhost_vring_file file;
 	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
 
 	if (!dev)
 		return;
@@ -702,7 +645,11 @@ user_set_vring_kick(int vid, struct VhostUserMsg *pmsg)
 		file.fd = pmsg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring kick idx:%d file:%d\n", file.index, file.fd);
-	vhost_set_vring_kick(vid, &file);
+
+	vq = dev->virtqueue[file.index];
+	if (vq->kickfd >= 0)
+		close(vq->kickfd);
+	vq->kickfd = file.fd;
 
 	if (virtio_is_ready(dev) && !(dev->flags & VIRTIO_DEV_RUNNING)) {
 		if (notify_ops->new_device(vid) == 0)
@@ -727,7 +674,7 @@ user_get_vring_base(int vid, struct vhost_vring_state *state)
 	}
 
 	/* Here we are safe to get the last used index */
-	vhost_get_vring_base(vid, state->index, state);
+	state->num = dev->virtqueue[state->index]->last_used_idx;
 
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring base idx:%d file:%d\n", state->index, state->num);
