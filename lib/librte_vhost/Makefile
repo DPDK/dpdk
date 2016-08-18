@@ -47,10 +47,8 @@ LDLIBS += -lnuma
 endif
 
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := virtio-net.c vhost_rxtx.c
-SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost-net-user.c
-SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += virtio-net-user.c
-SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += fd_man.c
+SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := fd_man.c socket.c vhost.c vhost_user.c \
+				   virtio_net.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_virtio_net.h

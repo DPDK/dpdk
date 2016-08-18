@@ -196,6 +196,10 @@ struct virtio_memory {
 #define PRINT_PACKET(device, addr, size, header) do {} while (0)
 #endif
 
+extern uint64_t VHOST_FEATURES;
+#define MAX_VHOST_DEVICE	1024
+extern struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
+
 /**
  * Function to convert guest physical addresses to vhost virtual addresses.
  * This is used to convert guest virtio buffer addresses.
@@ -222,25 +226,13 @@ struct virtio_net_device_ops const *notify_ops;
 struct virtio_net *get_device(int vid);
 
 int vhost_new_device(void);
+void cleanup_device(struct virtio_net *dev, int destroy);
+void reset_device(struct virtio_net *dev);
 void vhost_destroy_device(int);
 
+int alloc_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx);
+
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
-
-int vhost_get_features(int, uint64_t *);
-int vhost_set_features(int, uint64_t *);
-
-int vhost_set_vring_num(int, struct vhost_vring_state *);
-int vhost_set_vring_addr(int, struct vhost_vring_addr *);
-int vhost_set_vring_base(int, struct vhost_vring_state *);
-int vhost_get_vring_base(int, uint32_t, struct vhost_vring_state *);
-
-int vhost_set_vring_kick(int, struct vhost_vring_file *);
-int vhost_set_vring_call(int, struct vhost_vring_file *);
-
-int vhost_set_backend(int, struct vhost_vring_file *);
-
-int vhost_set_owner(int);
-int vhost_reset_owner(int);
 
 /*
  * Backend-specific cleanup. Defined by vhost-cuse and vhost-user.

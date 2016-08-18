@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -47,12 +47,10 @@
 #include <pthread.h>
 
 #include <rte_log.h>
-#include <rte_virtio_net.h>
 
 #include "fd_man.h"
-#include "vhost-net-user.h"
-#include "vhost-net.h"
-#include "virtio-net-user.h"
+#include "vhost.h"
+#include "vhost_user.h"
 
 /*
  * Every time rte_vhost_driver_register() is invoked, an associated
@@ -82,7 +80,7 @@ struct vhost_user {
 #define MAX_VIRTIO_BACKLOG 128
 
 static void vhost_user_server_new_connection(int fd, void *data, int *remove);
-static void vhost_user_msg_handler(int fd, void *dat, int *remove);
+static void vhost_user_read_cb(int fd, void *dat, int *remove);
 static int vhost_user_create_client(struct vhost_user_socket *vsocket);
 
 static struct vhost_user vhost_user = {
@@ -95,31 +93,8 @@ static struct vhost_user vhost_user = {
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 };
 
-static const char *vhost_message_str[VHOST_USER_MAX] = {
-	[VHOST_USER_NONE] = "VHOST_USER_NONE",
-	[VHOST_USER_GET_FEATURES] = "VHOST_USER_GET_FEATURES",
-	[VHOST_USER_SET_FEATURES] = "VHOST_USER_SET_FEATURES",
-	[VHOST_USER_SET_OWNER] = "VHOST_USER_SET_OWNER",
-	[VHOST_USER_RESET_OWNER] = "VHOST_USER_RESET_OWNER",
-	[VHOST_USER_SET_MEM_TABLE] = "VHOST_USER_SET_MEM_TABLE",
-	[VHOST_USER_SET_LOG_BASE] = "VHOST_USER_SET_LOG_BASE",
-	[VHOST_USER_SET_LOG_FD] = "VHOST_USER_SET_LOG_FD",
-	[VHOST_USER_SET_VRING_NUM] = "VHOST_USER_SET_VRING_NUM",
-	[VHOST_USER_SET_VRING_ADDR] = "VHOST_USER_SET_VRING_ADDR",
-	[VHOST_USER_SET_VRING_BASE] = "VHOST_USER_SET_VRING_BASE",
-	[VHOST_USER_GET_VRING_BASE] = "VHOST_USER_GET_VRING_BASE",
-	[VHOST_USER_SET_VRING_KICK] = "VHOST_USER_SET_VRING_KICK",
-	[VHOST_USER_SET_VRING_CALL] = "VHOST_USER_SET_VRING_CALL",
-	[VHOST_USER_SET_VRING_ERR]  = "VHOST_USER_SET_VRING_ERR",
-	[VHOST_USER_GET_PROTOCOL_FEATURES]  = "VHOST_USER_GET_PROTOCOL_FEATURES",
-	[VHOST_USER_SET_PROTOCOL_FEATURES]  = "VHOST_USER_SET_PROTOCOL_FEATURES",
-	[VHOST_USER_GET_QUEUE_NUM]  = "VHOST_USER_GET_QUEUE_NUM",
-	[VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
-	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
-};
-
 /* return bytes# of read on success or negative val on failure. */
-static int
+int
 read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 {
 	struct iovec iov;
@@ -161,37 +136,7 @@ read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 	return ret;
 }
 
-/* return bytes# of read on success or negative val on failure. */
-static int
-read_vhost_message(int sockfd, struct VhostUserMsg *msg)
-{
-	int ret;
-
-	ret = read_fd_message(sockfd, (char *)msg, VHOST_USER_HDR_SIZE,
-		msg->fds, VHOST_MEMORY_MAX_NREGIONS);
-	if (ret <= 0)
-		return ret;
-
-	if (msg && msg->size) {
-		if (msg->size > sizeof(msg->payload)) {
-			RTE_LOG(ERR, VHOST_CONFIG,
-				"invalid msg size: %d\n", msg->size);
-			return -1;
-		}
-		ret = read(sockfd, &msg->payload, msg->size);
-		if (ret <= 0)
-			return ret;
-		if (ret != (int)msg->size) {
-			RTE_LOG(ERR, VHOST_CONFIG,
-				"read control message failed\n");
-			return -1;
-		}
-	}
-
-	return ret;
-}
-
-static int
+int
 send_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 {
 
@@ -234,25 +179,6 @@ send_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 	return ret;
 }
 
-static int
-send_vhost_message(int sockfd, struct VhostUserMsg *msg)
-{
-	int ret;
-
-	if (!msg)
-		return 0;
-
-	msg->flags &= ~VHOST_USER_VERSION_MASK;
-	msg->flags |= VHOST_USER_VERSION;
-	msg->flags |= VHOST_USER_REPLY_MASK;
-
-	ret = send_fd_message(sockfd, (char *)msg,
-		VHOST_USER_HDR_SIZE + msg->size, NULL, 0);
-
-	return ret;
-}
-
-
 static void
 vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 {
@@ -282,7 +208,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	vsocket->connfd = fd;
 	conn->vsocket = vsocket;
 	conn->vid = vid;
-	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_msg_handler,
+	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb,
 			NULL, conn);
 	if (ret < 0) {
 		vsocket->connfd = -1;
@@ -308,134 +234,23 @@ vhost_user_server_new_connection(int fd, void *dat, int *remove __rte_unused)
 	vhost_user_add_connection(fd, vsocket);
 }
 
-/* callback when there is message on the connfd */
 static void
-vhost_user_msg_handler(int connfd, void *dat, int *remove)
+vhost_user_read_cb(int connfd, void *dat, int *remove)
 {
-	int vid;
 	struct vhost_user_connection *conn = dat;
-	struct VhostUserMsg msg;
-	uint64_t features;
+	struct vhost_user_socket *vsocket = conn->vsocket;
 	int ret;
 
-	vid = conn->vid;
-	ret = read_vhost_message(connfd, &msg);
-	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
-		struct vhost_user_socket *vsocket = conn->vsocket;
-
-		if (ret < 0)
-			RTE_LOG(ERR, VHOST_CONFIG,
-				"vhost read message failed\n");
-		else if (ret == 0)
-			RTE_LOG(INFO, VHOST_CONFIG,
-				"vhost peer closed\n");
-		else
-			RTE_LOG(ERR, VHOST_CONFIG,
-				"vhost read incorrect message\n");
-
+	ret = vhost_user_msg_handler(conn->vid, connfd);
+	if (ret < 0) {
 		vsocket->connfd = -1;
 		close(connfd);
 		*remove = 1;
 		free(conn);
-		vhost_destroy_device(vid);
+		vhost_destroy_device(conn->vid);
 
 		if (vsocket->reconnect)
 			vhost_user_create_client(vsocket);
-
-		return;
-	}
-
-	RTE_LOG(INFO, VHOST_CONFIG, "read message %s\n",
-		vhost_message_str[msg.request]);
-	switch (msg.request) {
-	case VHOST_USER_GET_FEATURES:
-		ret = vhost_get_features(vid, &features);
-		msg.payload.u64 = features;
-		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(connfd, &msg);
-		break;
-	case VHOST_USER_SET_FEATURES:
-		features = msg.payload.u64;
-		vhost_set_features(vid, &features);
-		break;
-
-	case VHOST_USER_GET_PROTOCOL_FEATURES:
-		msg.payload.u64 = VHOST_USER_PROTOCOL_FEATURES;
-		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(connfd, &msg);
-		break;
-	case VHOST_USER_SET_PROTOCOL_FEATURES:
-		user_set_protocol_features(vid, msg.payload.u64);
-		break;
-
-	case VHOST_USER_SET_OWNER:
-		vhost_set_owner(vid);
-		break;
-	case VHOST_USER_RESET_OWNER:
-		vhost_reset_owner(vid);
-		break;
-
-	case VHOST_USER_SET_MEM_TABLE:
-		user_set_mem_table(vid, &msg);
-		break;
-
-	case VHOST_USER_SET_LOG_BASE:
-		user_set_log_base(vid, &msg);
-
-		/* it needs a reply */
-		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(connfd, &msg);
-		break;
-	case VHOST_USER_SET_LOG_FD:
-		close(msg.fds[0]);
-		RTE_LOG(INFO, VHOST_CONFIG, "not implemented.\n");
-		break;
-
-	case VHOST_USER_SET_VRING_NUM:
-		vhost_set_vring_num(vid, &msg.payload.state);
-		break;
-	case VHOST_USER_SET_VRING_ADDR:
-		vhost_set_vring_addr(vid, &msg.payload.addr);
-		break;
-	case VHOST_USER_SET_VRING_BASE:
-		vhost_set_vring_base(vid, &msg.payload.state);
-		break;
-
-	case VHOST_USER_GET_VRING_BASE:
-		ret = user_get_vring_base(vid, &msg.payload.state);
-		msg.size = sizeof(msg.payload.state);
-		send_vhost_message(connfd, &msg);
-		break;
-
-	case VHOST_USER_SET_VRING_KICK:
-		user_set_vring_kick(vid, &msg);
-		break;
-	case VHOST_USER_SET_VRING_CALL:
-		user_set_vring_call(vid, &msg);
-		break;
-
-	case VHOST_USER_SET_VRING_ERR:
-		if (!(msg.payload.u64 & VHOST_USER_VRING_NOFD_MASK))
-			close(msg.fds[0]);
-		RTE_LOG(INFO, VHOST_CONFIG, "not implemented\n");
-		break;
-
-	case VHOST_USER_GET_QUEUE_NUM:
-		msg.payload.u64 = VHOST_MAX_QUEUE_PAIRS;
-		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(connfd, &msg);
-		break;
-
-	case VHOST_USER_SET_VRING_ENABLE:
-		user_set_vring_enable(vid, &msg.payload.state);
-		break;
-	case VHOST_USER_SEND_RARP:
-		user_send_rarp(vid, &msg);
-		break;
-
-	default:
-		break;
-
 	}
 }
 

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -45,7 +45,7 @@
 #include <rte_sctp.h>
 #include <rte_arp.h>
 
-#include "vhost-net.h"
+#include "vhost.h"
 
 #define MAX_PKT_BURST 32
 #define VHOST_LOG_PAGE	4096

@@ -43,6 +43,14 @@
 
 #define VHOST_MEMORY_MAX_NREGIONS 8
 
+#define VHOST_USER_PROTOCOL_F_MQ	0
+#define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
+#define VHOST_USER_PROTOCOL_F_RARP	2
+
+#define VHOST_USER_PROTOCOL_FEATURES	((1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |\
+					 (1ULL << VHOST_USER_PROTOCOL_F_RARP))
+
 typedef enum VhostUserRequest {
 	VHOST_USER_NONE = 0,
 	VHOST_USER_GET_FEATURES = 1,
@@ -109,5 +117,12 @@ typedef struct VhostUserMsg {
 /* The version of the protocol we support */
 #define VHOST_USER_VERSION    0x1
 
-/*****************************************************************************/
+
+/* vhost_user.c */
+int vhost_user_msg_handler(int vid, int fd);
+
+/* socket.c */
+int read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num);
+int send_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num);
+
 #endif
