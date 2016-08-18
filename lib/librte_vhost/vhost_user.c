@@ -134,29 +134,17 @@ vhost_backend_cleanup(struct virtio_net *dev)
  * the device hasn't been initialised.
  */
 static int
-vhost_user_set_owner(int vid)
+vhost_user_set_owner(void)
 {
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
 	return 0;
 }
 
 static int
-vhost_user_reset_owner(int vid)
+vhost_user_reset_owner(struct virtio_net *dev)
 {
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(vid);
+		notify_ops->destroy_device(dev->vid);
 	}
 
 	cleanup_device(dev, 0);
@@ -168,15 +156,8 @@ vhost_user_reset_owner(int vid)
  * The features that we support are requested.
  */
 static int
-vhost_user_get_features(int vid, uint64_t *pu)
+vhost_user_get_features(uint64_t *pu)
 {
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
-	/* Send our supported features. */
 	*pu = VHOST_FEATURES;
 	return 0;
 }
@@ -185,13 +166,8 @@ vhost_user_get_features(int vid, uint64_t *pu)
  * We receive the negotiated features supported by us and the virtio device.
  */
 static int
-vhost_user_set_features(int vid, uint64_t *pu)
+vhost_user_set_features(struct virtio_net *dev, uint64_t *pu)
 {
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
 	if (*pu & ~VHOST_FEATURES)
 		return -1;
 
@@ -215,15 +191,9 @@ vhost_user_set_features(int vid, uint64_t *pu)
  * The virtio device sends us the size of the descriptor ring.
  */
 static int
-vhost_user_set_vring_num(int vid, struct vhost_vring_state *state)
+vhost_user_set_vring_num(struct virtio_net *dev,
+			 struct vhost_vring_state *state)
 {
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
-	/* State->index refers to the queue index. The txq is 1, rxq is 0. */
 	dev->virtqueue[state->index]->size = state->num;
 
 	return 0;
@@ -343,13 +313,11 @@ qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
  * This function then converts these to our address space.
  */
 static int
-vhost_user_set_vring_addr(int vid, struct vhost_vring_addr *addr)
+vhost_user_set_vring_addr(struct virtio_net *dev, struct vhost_vring_addr *addr)
 {
-	struct virtio_net *dev;
 	struct vhost_virtqueue *vq;
 
-	dev = get_device(vid);
-	if ((dev == NULL) || (dev->mem == NULL))
+	if (dev->mem == NULL)
 		return -1;
 
 	/* addr->index refers to the queue index. The txq 1, rxq is 0. */
@@ -412,40 +380,28 @@ vhost_user_set_vring_addr(int vid, struct vhost_vring_addr *addr)
  * The virtio device sends us the available ring last used index.
  */
 static int
-vhost_user_set_vring_base(int vid, struct vhost_vring_state *state)
+vhost_user_set_vring_base(struct virtio_net *dev,
+			  struct vhost_vring_state *state)
 {
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
-	/* State->index refers to the queue index. The txq is 1, rxq is 0. */
 	dev->virtqueue[state->index]->last_used_idx = state->num;
 
 	return 0;
 }
 
 static int
-vhost_user_set_mem_table(int vid, struct VhostUserMsg *pmsg)
+vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
 	struct VhostUserMemory memory = pmsg->payload.memory;
 	struct virtio_memory_regions *pregion;
 	uint64_t mapped_address, mapped_size;
-	struct virtio_net *dev;
 	unsigned int idx = 0;
 	struct orig_region_map *pregion_orig;
 	uint64_t alignment;
 
-	/* unmap old memory regions one by one*/
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
-
 	/* Remove from the data plane. */
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(vid);
+		notify_ops->destroy_device(dev->vid);
 	}
 
 	if (dev->mem) {
@@ -587,15 +543,11 @@ virtio_is_ready(struct virtio_net *dev)
 }
 
 static void
-vhost_user_set_vring_call(int vid, struct VhostUserMsg *pmsg)
+vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
 	struct vhost_vring_file file;
-	struct virtio_net *dev = get_device(vid);
 	struct vhost_virtqueue *vq;
 	uint32_t cur_qp_idx;
-
-	if (!dev)
-		return;
 
 	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
 	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
@@ -629,14 +581,10 @@ vhost_user_set_vring_call(int vid, struct VhostUserMsg *pmsg)
  *  device is ready for packet processing.
  */
 static void
-vhost_user_set_vring_kick(int vid, struct VhostUserMsg *pmsg)
+vhost_user_set_vring_kick(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
 	struct vhost_vring_file file;
-	struct virtio_net *dev = get_device(vid);
 	struct vhost_virtqueue *vq;
-
-	if (!dev)
-		return;
 
 	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
 	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
@@ -652,7 +600,7 @@ vhost_user_set_vring_kick(int vid, struct VhostUserMsg *pmsg)
 	vq->kickfd = file.fd;
 
 	if (virtio_is_ready(dev) && !(dev->flags & VIRTIO_DEV_RUNNING)) {
-		if (notify_ops->new_device(vid) == 0)
+		if (notify_ops->new_device(dev->vid) == 0)
 			dev->flags |= VIRTIO_DEV_RUNNING;
 	}
 }
@@ -661,16 +609,13 @@ vhost_user_set_vring_kick(int vid, struct VhostUserMsg *pmsg)
  * when virtio is stopped, qemu will send us the GET_VRING_BASE message.
  */
 static int
-vhost_user_get_vring_base(int vid, struct vhost_vring_state *state)
+vhost_user_get_vring_base(struct virtio_net *dev,
+			  struct vhost_vring_state *state)
 {
-	struct virtio_net *dev = get_device(vid);
-
-	if (dev == NULL)
-		return -1;
 	/* We have to stop the queue (virtio) if it is running. */
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(vid);
+		notify_ops->destroy_device(dev->vid);
 	}
 
 	/* Here we are safe to get the last used index */
@@ -696,21 +641,17 @@ vhost_user_get_vring_base(int vid, struct vhost_vring_state *state)
  * enable the virtio queue pair.
  */
 static int
-vhost_user_set_vring_enable(int vid, struct vhost_vring_state *state)
+vhost_user_set_vring_enable(struct virtio_net *dev,
+			    struct vhost_vring_state *state)
 {
-	struct virtio_net *dev;
 	int enable = (int)state->num;
-
-	dev = get_device(vid);
-	if (dev == NULL)
-		return -1;
 
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"set queue enable: %d to qp idx: %d\n",
 		enable, state->index);
 
 	if (notify_ops->vring_state_changed)
-		notify_ops->vring_state_changed(vid, state->index, enable);
+		notify_ops->vring_state_changed(dev->vid, state->index, enable);
 
 	dev->virtqueue[state->index]->enabled = enable;
 
@@ -718,28 +659,21 @@ vhost_user_set_vring_enable(int vid, struct vhost_vring_state *state)
 }
 
 static void
-vhost_user_set_protocol_features(int vid, uint64_t protocol_features)
+vhost_user_set_protocol_features(struct virtio_net *dev,
+				 uint64_t protocol_features)
 {
-	struct virtio_net *dev;
-
-	dev = get_device(vid);
-	if (dev == NULL || protocol_features & ~VHOST_USER_PROTOCOL_FEATURES)
+	if (protocol_features & ~VHOST_USER_PROTOCOL_FEATURES)
 		return;
 
 	dev->protocol_features = protocol_features;
 }
 
 static int
-vhost_user_set_log_base(int vid, struct VhostUserMsg *msg)
+vhost_user_set_log_base(struct virtio_net *dev, struct VhostUserMsg *msg)
 {
-	struct virtio_net *dev;
 	int fd = msg->fds[0];
 	uint64_t size, off;
 	void *addr;
-
-	dev = get_device(vid);
-	if (!dev)
-		return -1;
 
 	if (fd < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG, "invalid log fd: %d\n", fd);
@@ -793,14 +727,9 @@ vhost_user_set_log_base(int vid, struct VhostUserMsg *msg)
  * a flag 'broadcast_rarp' to let rte_vhost_dequeue_burst() inject it.
  */
 static int
-vhost_user_send_rarp(int vid, struct VhostUserMsg *msg)
+vhost_user_send_rarp(struct virtio_net *dev, struct VhostUserMsg *msg)
 {
-	struct virtio_net *dev;
 	uint8_t *mac = (uint8_t *)&msg->payload.u64;
-
-	dev = get_device(vid);
-	if (!dev)
-		return -1;
 
 	RTE_LOG(DEBUG, VHOST_CONFIG,
 		":: mac: %02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -871,9 +800,14 @@ send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 int
 vhost_user_msg_handler(int vid, int fd)
 {
+	struct virtio_net *dev;
 	struct VhostUserMsg msg;
 	uint64_t features = 0;
 	int ret;
+
+	dev = get_device(vid);
+	if (dev == NULL)
+		return -1;
 
 	ret = read_vhost_message(fd, &msg);
 	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {
@@ -894,14 +828,14 @@ vhost_user_msg_handler(int vid, int fd)
 		vhost_message_str[msg.request]);
 	switch (msg.request) {
 	case VHOST_USER_GET_FEATURES:
-		ret = vhost_user_get_features(vid, &features);
+		ret = vhost_user_get_features(&features);
 		msg.payload.u64 = features;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(fd, &msg);
 		break;
 	case VHOST_USER_SET_FEATURES:
 		features = msg.payload.u64;
-		vhost_user_set_features(vid, &features);
+		vhost_user_set_features(dev, &features);
 		break;
 
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
@@ -910,22 +844,22 @@ vhost_user_msg_handler(int vid, int fd)
 		send_vhost_message(fd, &msg);
 		break;
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
-		vhost_user_set_protocol_features(vid, msg.payload.u64);
+		vhost_user_set_protocol_features(dev, msg.payload.u64);
 		break;
 
 	case VHOST_USER_SET_OWNER:
-		vhost_user_set_owner(vid);
+		vhost_user_set_owner();
 		break;
 	case VHOST_USER_RESET_OWNER:
-		vhost_user_reset_owner(vid);
+		vhost_user_reset_owner(dev);
 		break;
 
 	case VHOST_USER_SET_MEM_TABLE:
-		vhost_user_set_mem_table(vid, &msg);
+		vhost_user_set_mem_table(dev, &msg);
 		break;
 
 	case VHOST_USER_SET_LOG_BASE:
-		vhost_user_set_log_base(vid, &msg);
+		vhost_user_set_log_base(dev, &msg);
 
 		/* it needs a reply */
 		msg.size = sizeof(msg.payload.u64);
@@ -937,26 +871,26 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_VRING_NUM:
-		vhost_user_set_vring_num(vid, &msg.payload.state);
+		vhost_user_set_vring_num(dev, &msg.payload.state);
 		break;
 	case VHOST_USER_SET_VRING_ADDR:
-		vhost_user_set_vring_addr(vid, &msg.payload.addr);
+		vhost_user_set_vring_addr(dev, &msg.payload.addr);
 		break;
 	case VHOST_USER_SET_VRING_BASE:
-		vhost_user_set_vring_base(vid, &msg.payload.state);
+		vhost_user_set_vring_base(dev, &msg.payload.state);
 		break;
 
 	case VHOST_USER_GET_VRING_BASE:
-		ret = vhost_user_get_vring_base(vid, &msg.payload.state);
+		ret = vhost_user_get_vring_base(dev, &msg.payload.state);
 		msg.size = sizeof(msg.payload.state);
 		send_vhost_message(fd, &msg);
 		break;
 
 	case VHOST_USER_SET_VRING_KICK:
-		vhost_user_set_vring_kick(vid, &msg);
+		vhost_user_set_vring_kick(dev, &msg);
 		break;
 	case VHOST_USER_SET_VRING_CALL:
-		vhost_user_set_vring_call(vid, &msg);
+		vhost_user_set_vring_call(dev, &msg);
 		break;
 
 	case VHOST_USER_SET_VRING_ERR:
@@ -972,10 +906,10 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_VRING_ENABLE:
-		vhost_user_set_vring_enable(vid, &msg.payload.state);
+		vhost_user_set_vring_enable(dev, &msg.payload.state);
 		break;
 	case VHOST_USER_SEND_RARP:
-		vhost_user_send_rarp(vid, &msg);
+		vhost_user_send_rarp(dev, &msg);
 		break;
 
 	default:
