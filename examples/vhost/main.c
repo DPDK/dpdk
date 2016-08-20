@@ -136,8 +136,9 @@ static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
 /* Specify the number of retries on RX. */
 static uint32_t burst_rx_retry_num = BURST_RX_RETRIES;
 
-/* Socket file path. Can be set by user */
-static char socket_file[PATH_MAX] = "vhost-net";
+/* Socket file paths. Can be set by user */
+static char *socket_files;
+static int nb_sockets;
 
 /* empty vmdq configuration structure. Filled in programatically */
 static struct rte_eth_conf vmdq_conf_default = {
@@ -395,11 +396,12 @@ static int
 us_vhost_parse_socket_path(const char *q_arg)
 {
 	/* parse number string */
-
 	if (strnlen(q_arg, PATH_MAX) > PATH_MAX)
 		return -1;
-	else
-		snprintf((char *)&socket_file, PATH_MAX, "%s", q_arg);
+
+	socket_files = realloc(socket_files, PATH_MAX * (nb_sockets + 1));
+	snprintf(socket_files + nb_sockets * PATH_MAX, PATH_MAX, "%s", q_arg);
+	nb_sockets++;
 
 	return 0;
 }
@@ -1341,14 +1343,27 @@ print_stats(void)
 	}
 }
 
+static void
+unregister_drivers(int socket_num)
+{
+	int i, ret;
+
+	for (i = 0; i < socket_num; i++) {
+		ret = rte_vhost_driver_unregister(socket_files + i * PATH_MAX);
+		if (ret != 0)
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"Fail to unregister vhost driver for %s.\n",
+				socket_files + i * PATH_MAX);
+	}
+}
+
 /* When we receive a INT signal, unregister vhost driver */
 static void
 sigint_handler(__rte_unused int signum)
 {
 	/* Unregister vhost driver. */
-	int ret = rte_vhost_driver_unregister((char *)&socket_file);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE, "vhost driver unregister failure.\n");
+	unregister_drivers(nb_sockets);
+
 	exit(0);
 }
 
@@ -1412,7 +1427,7 @@ main(int argc, char *argv[])
 {
 	unsigned lcore_id, core_id = 0;
 	unsigned nb_ports, valid_num_ports;
-	int ret;
+	int ret, i;
 	uint8_t portid;
 	static pthread_t tid;
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
@@ -1511,9 +1526,15 @@ main(int argc, char *argv[])
 		flags |= RTE_VHOST_USER_CLIENT;
 
 	/* Register vhost user driver to handle vhost messages. */
-	ret = rte_vhost_driver_register(socket_file, flags);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE, "vhost driver register failure.\n");
+	for (i = 0; i < nb_sockets; i++) {
+		ret = rte_vhost_driver_register
+				(socket_files + i * PATH_MAX, flags);
+		if (ret != 0) {
+			unregister_drivers(i);
+			rte_exit(EXIT_FAILURE,
+				"vhost driver register failure.\n");
+		}
+	}
 
 	rte_vhost_driver_callback_register(&virtio_net_device_ops);
 
