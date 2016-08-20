@@ -90,9 +90,6 @@
 /* Size of buffers used for snprintfs. */
 #define MAX_PRINT_BUFF 6072
 
-/* Maximum character device basename size. */
-#define MAX_BASENAME_SZ 10
-
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
 
@@ -139,8 +136,8 @@ static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
 /* Specify the number of retries on RX. */
 static uint32_t burst_rx_retry_num = BURST_RX_RETRIES;
 
-/* Character device basename. Can be set by user. */
-static char dev_basename[MAX_BASENAME_SZ] = "vhost-net";
+/* Socket file path. Can be set by user */
+static char socket_file[PATH_MAX] = "vhost-net";
 
 /* empty vmdq configuration structure. Filled in programatically */
 static struct rte_eth_conf vmdq_conf_default = {
@@ -392,17 +389,17 @@ port_init(uint8_t port)
 }
 
 /*
- * Set character device basename.
+ * Set socket file path.
  */
 static int
-us_vhost_parse_basename(const char *q_arg)
+us_vhost_parse_socket_path(const char *q_arg)
 {
 	/* parse number string */
 
-	if (strnlen(q_arg, MAX_BASENAME_SZ) > MAX_BASENAME_SZ)
+	if (strnlen(q_arg, PATH_MAX) > PATH_MAX)
 		return -1;
 	else
-		snprintf((char*)&dev_basename, MAX_BASENAME_SZ, "%s", q_arg);
+		snprintf((char *)&socket_file, PATH_MAX, "%s", q_arg);
 
 	return 0;
 }
@@ -462,7 +459,7 @@ us_vhost_usage(const char *prgname)
 	RTE_LOG(INFO, VHOST_CONFIG, "%s [EAL options] -- -p PORTMASK\n"
 	"		--vm2vm [0|1|2]\n"
 	"		--rx_retry [0|1] --mergeable [0|1] --stats [0-N]\n"
-	"		--dev-basename <name>\n"
+	"		--socket-file <path>\n"
 	"		--nb-devices ND\n"
 	"		-p PORTMASK: Set mask for ports to be used by application\n"
 	"		--vm2vm [0|1|2]: disable/software(default)/hardware vm2vm comms\n"
@@ -472,7 +469,7 @@ us_vhost_usage(const char *prgname)
 	"		--mergeable [0|1]: disable(default)/enable RX mergeable buffers\n"
 	"		--vlan-strip [0|1]: disable/enable(default) RX VLAN strip on host\n"
 	"		--stats [0-N]: 0: Disable stats, N: Time in seconds to print stats\n"
-	"		--dev-basename: The basename to be used for the character device.\n"
+	"		--socket-file: The path of the socket file.\n"
 	"		--tx-csum [0|1] disable/enable TX checksum offload.\n"
 	"		--tso [0|1] disable/enable TCP segment offload.\n"
 	"		--client register a vhost-user socket as client mode.\n",
@@ -497,7 +494,7 @@ us_vhost_parse_args(int argc, char **argv)
 		{"mergeable", required_argument, NULL, 0},
 		{"vlan-strip", required_argument, NULL, 0},
 		{"stats", required_argument, NULL, 0},
-		{"dev-basename", required_argument, NULL, 0},
+		{"socket-file", required_argument, NULL, 0},
 		{"tx-csum", required_argument, NULL, 0},
 		{"tso", required_argument, NULL, 0},
 		{"client", no_argument, &client_mode, 1},
@@ -638,7 +635,8 @@ us_vhost_parse_args(int argc, char **argv)
 			if (!strncmp(long_option[option_index].name, "stats", MAX_LONG_OPT_SZ)) {
 				ret = parse_num_opt(optarg, INT32_MAX);
 				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for stats [0..N]\n");
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Invalid argument for stats [0..N]\n");
 					us_vhost_usage(prgname);
 					return -1;
 				} else {
@@ -646,10 +644,13 @@ us_vhost_parse_args(int argc, char **argv)
 				}
 			}
 
-			/* Set character device basename. */
-			if (!strncmp(long_option[option_index].name, "dev-basename", MAX_LONG_OPT_SZ)) {
-				if (us_vhost_parse_basename(optarg) == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for character device basename (Max %d characters)\n", MAX_BASENAME_SZ);
+			/* Set socket file path. */
+			if (!strncmp(long_option[option_index].name,
+						"socket-file", MAX_LONG_OPT_SZ)) {
+				if (us_vhost_parse_socket_path(optarg) == -1) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+					"Invalid argument for socket name (Max %d characters)\n",
+					PATH_MAX);
 					us_vhost_usage(prgname);
 					return -1;
 				}
@@ -1345,7 +1346,7 @@ static void
 sigint_handler(__rte_unused int signum)
 {
 	/* Unregister vhost driver. */
-	int ret = rte_vhost_driver_unregister((char *)&dev_basename);
+	int ret = rte_vhost_driver_unregister((char *)&socket_file);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "vhost driver unregister failure.\n");
 	exit(0);
@@ -1509,8 +1510,8 @@ main(int argc, char *argv[])
 	if (client_mode)
 		flags |= RTE_VHOST_USER_CLIENT;
 
-	/* Register vhost(cuse or user) driver to handle vhost messages. */
-	ret = rte_vhost_driver_register(dev_basename, flags);
+	/* Register vhost user driver to handle vhost messages. */
+	ret = rte_vhost_driver_register(socket_file, flags);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "vhost driver register failure.\n");
 
