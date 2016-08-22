@@ -24,7 +24,7 @@ The DPDK development process has the following features:
 
 The mailing list for DPDK development is `dev@dpdk.org <http://dpdk.org/ml/archives/dev/>`_.
 Contributors will need to `register for the mailing list <http://dpdk.org/ml/listinfo/dev>`_ in order to submit patches.
-It is also worth registering for the DPDK `Patchwork <http://dpdk.org/dev/patchwxispork/project/dpdk/list/>`_
+It is also worth registering for the DPDK `Patchwork <http://dpdk.org/dev/patchwork/project/dpdk/list/>`_
 
 The development process requires some familiarity with the ``git`` version control system.
 Refer to the `Pro Git Book <http://www.git-scm.com/book/>`_ for further information.
