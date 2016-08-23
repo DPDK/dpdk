@@ -111,10 +111,6 @@ First, uncompress the archive and move to the DPDK source directory:
     unzip DPDK-<version>.zip
     cd DPDK-<version>
 
-    ls
-    app/ config/ examples/ lib/ LICENSE.GPL LICENSE.LGPL Makefile
-    mk/ scripts/ tools/
-
 The DPDK is composed of several directories:
 
 *   lib: Source code of DPDK libraries
@@ -177,14 +173,7 @@ Once a target is created, it contains all the libraries and header files for the
 DPDK environment that are required to build customer applications.
 In addition, the test and testpmd applications are built under the build/app
 directory, which may be used for testing.  A kmod directory is also present that
-contains the kernel modules to install:
-
-.. code-block:: console
-
-    ls x86_64-native-bsdapp-gcc
-
-    app build include kmod lib Makefile
-
+contains the kernel modules to install.
 
 .. _loading_contigmem:
 

@@ -48,10 +48,6 @@ First, uncompress the archive and move to the uncompressed DPDK source directory
     unzip DPDK-<version>.zip
     cd DPDK-<version>
 
-    ls
-    app/ config/ examples/ lib/ LICENSE.GPL LICENSE.LGPL Makefile
-    mk/ scripts/ tools/
-
 The DPDK is composed of several directories:
 
 *   lib: Source code of DPDK libraries
@@ -147,12 +143,6 @@ Browsing the Installed DPDK Environment Target
 Once a target is created it contains all libraries, including poll-mode drivers, and header files for the DPDK environment that are required to build customer applications.
 In addition, the test and testpmd applications are built under the build/app directory, which may be used for testing.
 A kmod  directory is also present that contains kernel modules which may be loaded if needed.
-
-.. code-block:: console
-
-    ls x86_64-native-linuxapp-gcc
-
-    app build include kmod lib Makefile
 
 Loading Modules to Enable Userspace IO for DPDK
 -----------------------------------------------

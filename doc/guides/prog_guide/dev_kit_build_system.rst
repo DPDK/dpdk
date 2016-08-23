@@ -53,62 +53,7 @@ Build Directory Concept
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 After installation, a build directory structure is created.
-Each build directory contains include files, libraries, and applications:
-
-.. code-block:: console
-
-    ~/DPDK$ ls
-    app                               MAINTAINERS
-    config                            Makefile
-    COPYRIGHT                         mk
-    doc                               scripts
-    examples                          lib
-    tools                             x86_64-native-linuxapp-gcc
-    x86_64-native-linuxapp-icc        i686-native-linuxapp-gcc
-    i686-native-linuxapp-icc
-
-    ...
-    ~/DEV/DPDK$ ls i686-native-linuxapp-gcc
-
-    app build buildtools include kmod lib Makefile
-
-
-    ~/DEV/DPDK$ ls i686-native-linuxapp-gcc/app/
-    cmdline_test   dump_cfg     test     testpmd
-    cmdline_test.map      dump_cfg.map   test.map
-	    testpmd.map
-
-
-    ~/DEV/DPDK$ ls i686-native-linuxapp-gcc/lib/
-
-    libethdev.a  librte_hash.a  librte_mbuf.a librte_pmd_ixgbe.a
-
-    librte_cmdline.a librte_lpm.a librte_mempool.a librte_ring.a
-
-    librte_eal.a librte_pmd_e1000.a librte_timer.a
-
-
-    ~/DEV/DPDK$ ls i686-native-linuxapp-gcc/include/
-    arch                       rte_cpuflags.h       rte_memcpy.h
-    cmdline_cirbuf.h           rte_cycles.h         rte_memory.h
-    cmdline.h                  rte_debug.h          rte_mempool.h
-    cmdline_parse_etheraddr.h  rte_eal.h            rte_memzone.h
-    cmdline_parse.h            rte_errno.h          rte_pci_dev_ids.h
-    cmdline_parse_ipaddr.h     rte_ethdev.h         rte_pci.h
-    cmdline_parse_num.h        rte_ether.h          rte_per_lcore.h
-    cmdline_parse_portlist.h   rte_fbk_hash.h       rte_prefetch.h
-    cmdline_parse_string.h     rte_hash_crc.h       rte_random.h
-    cmdline_rdline.h           rte_hash.h           rte_ring.h
-    cmdline_socket.h           rte_interrupts.h     rte_rwlock.h
-    cmdline_vt100.h            rte_ip.h             rte_sctp.h
-    exec-env                   rte_jhash.h          rte_spinlock.h
-    rte_alarm.h                rte_launch.h         rte_string_fns.h
-    rte_atomic.h               rte_lcore.h          rte_tailq.h
-    rte_branch_prediction.h    rte_log.h            rte_tcp.h
-    rte_byteorder.h            rte_lpm.h            rte_timer.h
-    rte_common.h               rte_malloc.h         rte_udp.h
-    rte_config.h               rte_mbuf.h
-
+Each build directory contains include files, libraries, and applications.
 
 A build directory is specific to a configuration that includes architecture + execution environment + toolchain.
 It is possible to have several build directories sharing the same sources with different configurations.
