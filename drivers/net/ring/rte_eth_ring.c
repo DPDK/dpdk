@@ -629,6 +629,6 @@ static struct rte_driver pmd_ring_drv = {
 	.uninit = rte_pmd_ring_devuninit,
 };
 
-PMD_REGISTER_DRIVER(pmd_ring_drv, eth_ring);
-DRIVER_REGISTER_PARAM_STRING(eth_ring,
+PMD_REGISTER_DRIVER(pmd_ring_drv, net_ring);
+DRIVER_REGISTER_PARAM_STRING(net_ring,
 	"nodeaction=[attach|detach]");

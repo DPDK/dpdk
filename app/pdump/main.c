@@ -68,8 +68,8 @@
 #define CMD_LINE_OPT_SER_SOCK_PATH "server-socket-path"
 #define CMD_LINE_OPT_CLI_SOCK_PATH "client-socket-path"
 
-#define VDEV_PCAP "eth_pcap_%s_%d,tx_pcap=%s"
-#define VDEV_IFACE "eth_pcap_%s_%d,tx_iface=%s"
+#define VDEV_PCAP "net_pcap_%s_%d,tx_pcap=%s"
+#define VDEV_IFACE "net_pcap_%s_%d,tx_iface=%s"
 #define TX_STREAM_SIZE 64
 
 #define MP_NAME "pdump_pool_%d"

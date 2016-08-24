@@ -62,7 +62,7 @@
  */
 #define RTE_SZE2_PACKET_HEADER_SIZE_ALIGNED 8
 
-#define RTE_SZEDATA2_DRIVER_NAME rte_szedata2_pmd
+#define RTE_SZEDATA2_DRIVER_NAME net_szedata2
 #define RTE_SZEDATA2_PCI_DRIVER_NAME "rte_szedata2_pmd"
 
 #define SZEDATA2_DEV_PATH_FMT "/dev/szedataII%u"

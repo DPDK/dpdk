@@ -2514,9 +2514,9 @@ static struct rte_driver bond_drv = {
 	.uninit = bond_uninit,
 };
 
-PMD_REGISTER_DRIVER(bond_drv, eth_bond);
+PMD_REGISTER_DRIVER(bond_drv, net_bonding);
 
-DRIVER_REGISTER_PARAM_STRING(eth_bond,
+DRIVER_REGISTER_PARAM_STRING(net_bonding,
 	"slave=<ifc> "
 	"primary=<ifc> "
 	"mode=[0-6] "

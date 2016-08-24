@@ -765,6 +765,6 @@ static struct rte_driver pmd_xenvirt_drv = {
 	.uninit = rte_pmd_xenvirt_devuninit,
 };
 
-PMD_REGISTER_DRIVER(pmd_xenvirt_drv, eth_xenvirt);
-DRIVER_REGISTER_PARAM_STRING(eth_xenvirt,
+PMD_REGISTER_DRIVER(pmd_xenvirt_drv, net_xenvirt);
+DRIVER_REGISTER_PARAM_STRING(net_xenvirt,
 	"mac=<mac addr>");

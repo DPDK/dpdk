@@ -64,9 +64,9 @@ In order to enable this virtual crypto PMD, user must:
 
 To use the PMD in an application, user must:
 
-* Call rte_eal_vdev_init("cryptodev_aesni_gcm_pmd") within the application.
+* Call rte_eal_vdev_init("crypto_aesni_gcm") within the application.
 
-* Use --vdev="cryptodev_aesni_gcm_pmd" in the EAL options, which will call rte_eal_vdev_init() internally.
+* Use --vdev="crypto_aesni_gcm" in the EAL options, which will call rte_eal_vdev_init() internally.
 
 The following parameters (all optional) can be provided in the previous two calls:
 
@@ -81,7 +81,7 @@ Example:
 
 .. code-block:: console
 
-    ./l2fwd-crypto -c 40 -n 4 --vdev="cryptodev_aesni_gcm_pmd,socket_id=1,max_nb_sessions=128"
+    ./l2fwd-crypto -c 40 -n 4 --vdev="crypto_aesni_gcm,socket_id=1,max_nb_sessions=128"
 
 Limitations
 -----------

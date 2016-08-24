@@ -895,8 +895,8 @@ static struct rte_driver pmd_af_packet_drv = {
 	.uninit = rte_pmd_af_packet_devuninit,
 };
 
-PMD_REGISTER_DRIVER(pmd_af_packet_drv, eth_af_packet);
-DRIVER_REGISTER_PARAM_STRING(eth_af_packet,
+PMD_REGISTER_DRIVER(pmd_af_packet_drv, net_af_packet);
+DRIVER_REGISTER_PARAM_STRING(net_af_packet,
 	"iface=<string> "
 	"qpairs=<int> "
 	"blocksz=<int> "

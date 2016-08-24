@@ -94,6 +94,10 @@ API Changes
 
    This section is a comment. Make sure to start the actual text at the margin.
 
+* The driver names have been changed. It especially impacts ``--vdev`` arguments.
+  Examples: ``eth_pcap`` becomes ``net_pcap``
+  and ``cryptodev_aesni_mb_pmd`` becomes ``crypto_aesni_mb``.
+
 * The log history is removed.
 
 * The ``rte_ivshmem`` feature (including library and EAL code) has been removed

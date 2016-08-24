@@ -692,7 +692,7 @@ static struct rte_driver pmd_null_drv = {
 	.uninit = rte_pmd_null_devuninit,
 };
 
-PMD_REGISTER_DRIVER(pmd_null_drv, eth_null);
-DRIVER_REGISTER_PARAM_STRING(eth_null,
+PMD_REGISTER_DRIVER(pmd_null_drv, net_null);
+DRIVER_REGISTER_PARAM_STRING(net_null,
 	"size=<int> "
 	"copy=<int>");

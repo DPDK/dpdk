@@ -467,8 +467,8 @@ static struct rte_driver virtio_user_driver = {
 	.uninit = virtio_user_pmd_devuninit,
 };
 
-PMD_REGISTER_DRIVER(virtio_user_driver, virtio_user);
-DRIVER_REGISTER_PARAM_STRING(virtio_user,
+PMD_REGISTER_DRIVER(virtio_user_driver, net_virtio_user);
+DRIVER_REGISTER_PARAM_STRING(net_virtio_user,
 	"path=<path> "
 	"mac=<mac addr> "
 	"cq=<int> "

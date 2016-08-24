@@ -62,14 +62,16 @@ Libpcap-based PMD
 ~~~~~~~~~~~~~~~~~
 
 Pcap-based devices can be created using the virtual device --vdev option.
-The device name must start with the eth_pcap prefix followed by numbers or letters.
+The device name must start with the net_pcap prefix followed by numbers or letters.
 The name is unique for each device. Each device can have multiple stream options and multiple devices can be used.
 Multiple device definitions can be arranged using multiple --vdev.
 Device name and stream options must be separated by commas as shown below:
 
 .. code-block:: console
 
-   $RTE_TARGET/app/testpmd -c f -n 4 --vdev  'eth_pcap0,stream_opt0=..,stream_opt1=..' --vdev='eth_pcap1,stream_opt0=..'
+   $RTE_TARGET/app/testpmd -c f -n 4 \
+       --vdev 'net_pcap0,stream_opt0=..,stream_opt1=..' \
+       --vdev='net_pcap1,stream_opt0=..'
 
 Device Streams
 ^^^^^^^^^^^^^^
@@ -120,25 +122,32 @@ Read packets from one pcap file and write them to another:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_pcap0,rx_pcap=/path/to/ file_rx.pcap,tx_pcap=/path/to/file_tx.pcap' -- --port-topology=chained
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+        --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_pcap=file_tx.pcap' \
+        -- --port-topology=chained
 
 Read packets from a network interface and write them to a pcap file:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_pcap0,rx_iface=eth0,tx_pcap=/path/to/file_tx.pcap' -- --port-topology=chained
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+        --vdev 'net_pcap0,rx_iface=eth0,tx_pcap=file_tx.pcap' \
+        -- --port-topology=chained
 
 Read packets from a pcap file and write them to a network interface:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_pcap0,rx_pcap=/path/to/ file_rx.pcap,tx_iface=eth1' -- --port-topology=chained
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+        --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_iface=eth1' \
+        -- --port-topology=chained
 
 Forward packets through two network interfaces:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_pcap0,iface=eth0' --vdev='eth_pcap1;iface=eth1'
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+        --vdev 'net_pcap0,iface=eth0' --vdev='net_pcap1;iface=eth1'
 
 Using libpcap-based PMD with the testpmd Application
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -162,19 +171,21 @@ Otherwise, the first 512 packets from the input pcap file will be discarded by t
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_pcap0,rx_pcap=/path/to/ file_rx.pcap,tx_pcap=/path/to/file_tx.pcap' -- --port-topology=chained --no-flush-rx
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+        --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_pcap=file_tx.pcap' \
+        -- --port-topology=chained --no-flush-rx
 
 
 Rings-based PMD
 ~~~~~~~~~~~~~~~
 
 To run a DPDK application on a machine without any Ethernet devices, a pair of ring-based rte_ethdevs can be used as below.
-The device names passed to the --vdev option must start with eth_ring and take no additional parameters.
+The device names passed to the --vdev option must start with net_ring and take no additional parameters.
 Multiple devices may be specified, separated by commas.
 
 .. code-block:: console
 
-    ./testpmd -c E -n 4 --vdev=eth_ring0 --vdev=eth_ring1 -- -i
+    ./testpmd -c E -n 4 --vdev=net_ring0 --vdev=net_ring1 -- -i
     EAL: Detected lcore 1 as core 1 on socket 0
     ...
 
@@ -243,8 +254,8 @@ for reception on the same port (error handling omitted for clarity):
 
     /* create two ethdev's */
 
-    port0 = rte_eth_from_rings("eth_ring0", ring, NUM_RINGS, ring, NUM_RINGS, SOCKET0);
-    port1 = rte_eth_from_rings("eth_ring1", ring, NUM_RINGS, ring, NUM_RINGS, SOCKET0);
+    port0 = rte_eth_from_rings("net_ring0", ring, NUM_RINGS, ring, NUM_RINGS, SOCKET0);
+    port1 = rte_eth_from_rings("net_ring1", ring, NUM_RINGS, ring, NUM_RINGS, SOCKET0);
 
 
 To create two pseudo-Ethernet ports where the traffic is switched between them,
@@ -253,8 +264,8 @@ the final two lines could be changed as below:
 
 .. code-block:: c
 
-    port0 = rte_eth_from_rings("eth_ring0", &ring[0], 1, &ring[1], 1, SOCKET0);
-    port1 = rte_eth_from_rings("eth_ring1", &ring[1], 1, &ring[0], 1, SOCKET0);
+    port0 = rte_eth_from_rings("net_ring0", &ring[0], 1, &ring[1], 1, SOCKET0);
+    port1 = rte_eth_from_rings("net_ring1", &ring[1], 1, &ring[0], 1, SOCKET0);
 
 This type of configuration could be useful in a pipeline model, for example,
 where one may want to have inter-core communication using pseudo Ethernet devices rather than raw rings,

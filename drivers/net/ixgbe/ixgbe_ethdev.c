@@ -7419,7 +7419,7 @@ static struct rte_driver rte_ixgbevf_driver = {
 	.init = rte_ixgbevf_pmd_init,
 };
 
-PMD_REGISTER_DRIVER(rte_ixgbe_driver, ixgbe);
-DRIVER_REGISTER_PCI_TABLE(ixgbe, pci_id_ixgbe_map);
-PMD_REGISTER_DRIVER(rte_ixgbevf_driver, ixgbevf);
-DRIVER_REGISTER_PCI_TABLE(ixgbevf, pci_id_ixgbevf_map);
+PMD_REGISTER_DRIVER(rte_ixgbe_driver, net_ixgbe);
+DRIVER_REGISTER_PCI_TABLE(net_ixgbe, pci_id_ixgbe_map);
+PMD_REGISTER_DRIVER(rte_ixgbevf_driver, net_ixgbe_vf);
+DRIVER_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);

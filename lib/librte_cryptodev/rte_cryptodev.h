@@ -50,17 +50,17 @@ extern "C" {
 #include "rte_dev.h"
 #include <rte_common.h>
 
-#define CRYPTODEV_NAME_NULL_PMD		cryptodev_null_pmd
+#define CRYPTODEV_NAME_NULL_PMD		crypto_null
 /**< Null crypto PMD device name */
-#define CRYPTODEV_NAME_AESNI_MB_PMD	cryptodev_aesni_mb_pmd
+#define CRYPTODEV_NAME_AESNI_MB_PMD	crypto_aesni_mb
 /**< AES-NI Multi buffer PMD device name */
-#define CRYPTODEV_NAME_AESNI_GCM_PMD	cryptodev_aesni_gcm_pmd
+#define CRYPTODEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
 /**< AES-NI GCM PMD device name */
-#define CRYPTODEV_NAME_QAT_SYM_PMD	cryptodev_qat_sym_pmd
+#define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
 /**< Intel QAT Symmetric Crypto PMD device name */
-#define CRYPTODEV_NAME_SNOW3G_PMD	cryptodev_snow3g_pmd
+#define CRYPTODEV_NAME_SNOW3G_PMD	crypto_snow3g
 /**< SNOW 3G PMD device name */
-#define CRYPTODEV_NAME_KASUMI_PMD	cryptodev_kasumi_pmd
+#define CRYPTODEV_NAME_KASUMI_PMD	crypto_kasumi
 /**< KASUMI PMD device name */
 
 /** Crypto device type */
