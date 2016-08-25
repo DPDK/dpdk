@@ -556,6 +556,7 @@ I40E_CHECK_STRUCT_LEN(24, i40e_aqc_mac_address_read_data);
 /* Manage MAC Address Write Command (0x0108) */
 struct i40e_aqc_mac_address_write {
 	__le16	command_flags;
+#define I40E_AQC_MC_MAG_EN		0x0100
 #define I40E_AQC_WRITE_TYPE_LAA_ONLY	0x0000
 #define I40E_AQC_WRITE_TYPE_LAA_WOL	0x4000
 #define I40E_AQC_WRITE_TYPE_PORT	0x8000
