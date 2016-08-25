@@ -81,7 +81,6 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_1G_BASE_T_X722:
 		case I40E_DEV_ID_10G_BASE_T_X722:
 		case I40E_DEV_ID_SFP_I_X722:
-		case I40E_DEV_ID_QSFP_I_X722:
 			hw->mac.type = I40E_MAC_X722;
 			break;
 #endif
@@ -383,8 +382,7 @@ void i40e_debug_aq(struct i40e_hw *hw, enum i40e_debug_mask mask, void *desc,
 				d_buf[j] = buf[i];
 			i40e_debug(hw, mask,
 				   "\t0x%04X  %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
-				   i_sav, d_buf[0], d_buf[1],
-				   d_buf[2], d_buf[3],
+				   i_sav, d_buf[0], d_buf[1], d_buf[2], d_buf[3],
 				   d_buf[4], d_buf[5], d_buf[6], d_buf[7],
 				   d_buf[8], d_buf[9], d_buf[10], d_buf[11],
 				   d_buf[12], d_buf[13], d_buf[14], d_buf[15]);
@@ -3822,16 +3820,8 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 	if (p->fcoe)
 		i40e_debug(hw, I40E_DEBUG_ALL, "device is FCoE capable\n");
 
-#ifdef I40E_FCOE_ENA
-	/* Software override ensuring FCoE is disabled if npar or mfp
-	 * mode because it is not supported in these modes.
-	 */
-	if (p->npar_enable || p->flex10_enable)
-		p->fcoe = false;
-#else
 	/* Always disable FCoE if compiled without the I40E_FCOE_ENA flag */
 	p->fcoe = false;
-#endif
 
 	/* count the enabled ports (aka the "not disabled" ports) */
 	hw->num_ports = 0;
@@ -5482,12 +5472,12 @@ STATIC void i40e_fix_up_geneve_vni(
 		u16 tnl_type;
 		u32 ti;
 
-		tnl_type = (le16_to_cpu(f[i].flags) &
+		tnl_type = (LE16_TO_CPU(f[i].flags) &
 			   I40E_AQC_ADD_CLOUD_TNL_TYPE_MASK) >>
 			   I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT;
 		if (tnl_type == I40E_AQC_ADD_CLOUD_TNL_TYPE_GENEVE) {
-			ti = le32_to_cpu(f[i].tenant_id);
-			f[i].tenant_id = cpu_to_le32(ti << 8);
+			ti = LE32_TO_CPU(f[i].tenant_id);
+			f[i].tenant_id = CPU_TO_LE32(ti << 8);
 		}
 	}
 }
