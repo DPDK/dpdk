@@ -1733,7 +1733,13 @@ struct i40e_aq_get_phy_abilities_resp {
 	__le32	eeer_val;
 	u8	d3_lpan;
 #define I40E_AQ_SET_PHY_D3_LPAN_ENA	0x01
-	u8	reserved[3];
+	u8	phy_type_ext;
+#define I40E_AQ_PHY_TYPE_EXT_25G_KR	0X01
+#define I40E_AQ_PHY_TYPE_EXT_25G_CR	0X02
+#define I40E_AQ_PHY_TYPE_EXT_25G_SR	0x04
+#define I40E_AQ_PHY_TYPE_EXT_25G_LR	0x08
+	u8	mod_type_ext;
+	u8	ext_comp_code;
 	u8	phy_id[4];
 	u8	module_type[3];
 	u8	qualified_module_count;
@@ -1755,7 +1761,12 @@ struct i40e_aq_set_phy_config { /* same bits as above in all */
 	__le16	eee_capability;
 	__le32	eeer;
 	u8	low_power_ctrl;
-	u8	reserved[3];
+	u8	phy_type_ext;
+#define I40E_AQ_PHY_TYPE_EXT_25G_KR	0X01
+#define I40E_AQ_PHY_TYPE_EXT_25G_CR	0X02
+#define I40E_AQ_PHY_TYPE_EXT_25G_SR	0x04
+#define I40E_AQ_PHY_TYPE_EXT_25G_LR	0x08
+	u8	reserved[2];
 };
 
 I40E_CHECK_CMD_LENGTH(i40e_aq_set_phy_config);
