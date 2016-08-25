@@ -61,6 +61,44 @@ static int kni_net_process_request(struct kni_dev *kni,
 /* kni rx function pointer, with default to normal rx */
 static kni_net_rx_t kni_net_rx_func = kni_net_rx_normal;
 
+/* physical address to kernel virtual address */
+static void *
+pa2kva(void *pa)
+{
+	return phys_to_virt((unsigned long)pa);
+}
+
+/* physical address to virtual address */
+static void *
+pa2va(void *pa, struct rte_kni_mbuf *m)
+{
+	void *va;
+
+	va = (void *)((unsigned long)pa +
+			(unsigned long)m->buf_addr -
+			(unsigned long)m->buf_physaddr);
+	return va;
+}
+
+/* mbuf data kernel virtual address from mbuf kernel virtual address */
+static void *
+kva2data_kva(struct rte_kni_mbuf *m)
+{
+	return phys_to_virt(m->buf_physaddr + m->data_off);
+}
+
+/* virtual address to physical address */
+static void *
+va2pa(void *va, struct rte_kni_mbuf *m)
+{
+	void *pa;
+
+	pa = (void *)((unsigned long)va -
+			((unsigned long)m->buf_addr -
+			 (unsigned long)m->buf_physaddr));
+	return pa;
+}
+
 /*
  * Open and close
  */
@@ -125,8 +163,9 @@ kni_net_rx_normal(struct kni_dev *kni)
 	uint32_t len;
 	unsigned i, num_rx, num_fq;
 	struct rte_kni_mbuf *kva;
-	struct rte_kni_mbuf *va[MBUF_BURST_SZ];
-	void * data_kva;
+	void *pa[MBUF_BURST_SZ];
+	void *va[MBUF_BURST_SZ];
+	void *data_kva;
 
 	struct sk_buff *skb;
 	struct net_device *dev = kni->net_dev;
@@ -142,17 +181,16 @@ kni_net_rx_normal(struct kni_dev *kni)
 	num_rx = min(num_fq, (unsigned)MBUF_BURST_SZ);
 
 	/* Burst dequeue from rx_q */
-	num_rx = kni_fifo_get(kni->rx_q, (void **)va, num_rx);
+	num_rx = kni_fifo_get(kni->rx_q, pa, num_rx);
 	if (num_rx == 0)
 		return;
 
 	/* Transfer received packets to netif */
 	for (i = 0; i < num_rx; i++) {
-		kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
+		kva = pa2kva(pa[i]);
 		len = kva->pkt_len;
-
-		data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va
-				+ kni->mbuf_kva;
+		data_kva = kva2data_kva(kva);
+		va[i] = pa2va(pa[i], kva);
 
 		skb = dev_alloc_skb(len + 2);
 		if (!skb) {
@@ -178,9 +216,8 @@ kni_net_rx_normal(struct kni_dev *kni)
 				if (!kva->next)
 					break;
 
-				kva = kva->next - kni->mbuf_va + kni->mbuf_kva;
-				data_kva = kva->buf_addr + kva->data_off
-					- kni->mbuf_va + kni->mbuf_kva;
+				kva = pa2kva(va2pa(kva->next, kva));
+				data_kva = kva2data_kva(kva);
 			}
 		}
 
@@ -197,7 +234,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 	}
 
 	/* Burst enqueue mbufs into free_q */
-	ret = kni_fifo_put(kni->free_q, (void **)va, num_rx);
+	ret = kni_fifo_put(kni->free_q, va, num_rx);
 	if (ret != num_rx)
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue entries into free_q\n");
@@ -213,11 +250,13 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	uint32_t len;
 	unsigned i, num, num_rq, num_tq, num_aq, num_fq;
 	struct rte_kni_mbuf *kva;
-	struct rte_kni_mbuf *va[MBUF_BURST_SZ];
+	void *pa[MBUF_BURST_SZ];
+	void *va[MBUF_BURST_SZ];
 	void * data_kva;
 
 	struct rte_kni_mbuf *alloc_kva;
-	struct rte_kni_mbuf *alloc_va[MBUF_BURST_SZ];
+	void *alloc_pa[MBUF_BURST_SZ];
+	void *alloc_va[MBUF_BURST_SZ];
 	void *alloc_data_kva;
 
 	/* Get the number of entries in rx_q */
@@ -243,26 +282,25 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 		return;
 
 	/* Burst dequeue from rx_q */
-	ret = kni_fifo_get(kni->rx_q, (void **)va, num);
+	ret = kni_fifo_get(kni->rx_q, pa, num);
 	if (ret == 0)
 		return; /* Failing should not happen */
 
 	/* Dequeue entries from alloc_q */
-	ret = kni_fifo_get(kni->alloc_q, (void **)alloc_va, num);
+	ret = kni_fifo_get(kni->alloc_q, alloc_pa, num);
 	if (ret) {
 		num = ret;
 		/* Copy mbufs */
 		for (i = 0; i < num; i++) {
-			kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
+			kva = pa2kva(pa[i]);
 			len = kva->pkt_len;
-			data_kva = kva->buf_addr + kva->data_off -
-					kni->mbuf_va + kni->mbuf_kva;
+			data_kva = kva2data_kva(kva);
+			va[i] = pa2va(pa[i], kva);
 
-			alloc_kva = (void *)alloc_va[i] - kni->mbuf_va +
-							kni->mbuf_kva;
-			alloc_data_kva = alloc_kva->buf_addr +
-					alloc_kva->data_off - kni->mbuf_va +
-							kni->mbuf_kva;
+			alloc_kva = pa2kva(alloc_pa[i]);
+			alloc_data_kva = kva2data_kva(alloc_kva);
+			alloc_va[i] = pa2va(alloc_pa[i], alloc_kva);
+
 			memcpy(alloc_data_kva, data_kva, len);
 			alloc_kva->pkt_len = len;
 			alloc_kva->data_len = len;
@@ -272,14 +310,14 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 		}
 
 		/* Burst enqueue mbufs into tx_q */
-		ret = kni_fifo_put(kni->tx_q, (void **)alloc_va, num);
+		ret = kni_fifo_put(kni->tx_q, alloc_va, num);
 		if (ret != num)
 			/* Failing should not happen */
 			KNI_ERR("Fail to enqueue mbufs into tx_q\n");
 	}
 
 	/* Burst enqueue mbufs into free_q */
-	ret = kni_fifo_put(kni->free_q, (void **)va, num);
+	ret = kni_fifo_put(kni->free_q, va, num);
 	if (ret != num)
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue mbufs into free_q\n");
@@ -302,8 +340,9 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	uint32_t len;
 	unsigned i, num_rq, num_fq, num;
 	struct rte_kni_mbuf *kva;
-	struct rte_kni_mbuf *va[MBUF_BURST_SZ];
-	void * data_kva;
+	void *pa[MBUF_BURST_SZ];
+	void *va[MBUF_BURST_SZ];
+	void *data_kva;
 
 	struct sk_buff *skb;
 	struct net_device *dev = kni->net_dev;
@@ -323,16 +362,16 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		return;
 
 	/* Burst dequeue mbufs from rx_q */
-	ret = kni_fifo_get(kni->rx_q, (void **)va, num);
+	ret = kni_fifo_get(kni->rx_q, pa, num);
 	if (ret == 0)
 		return;
 
 	/* Copy mbufs to sk buffer and then call tx interface */
 	for (i = 0; i < num; i++) {
-		kva = (void *)va[i] - kni->mbuf_va + kni->mbuf_kva;
+		kva = pa2kva(pa[i]);
 		len = kva->pkt_len;
-		data_kva = kva->buf_addr + kva->data_off - kni->mbuf_va +
-				kni->mbuf_kva;
+		data_kva = kva2data_kva(kva);
+		va[i] = pa2va(pa[i], kva);
 
 		skb = dev_alloc_skb(len + 2);
 		if (skb == NULL)
@@ -370,9 +409,8 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 				if (!kva->next)
 					break;
 
-				kva = kva->next - kni->mbuf_va + kni->mbuf_kva;
-				data_kva = kva->buf_addr + kva->data_off
-					- kni->mbuf_va + kni->mbuf_kva;
+				kva = pa2kva(va2pa(kva->next, kva));
+				data_kva = kva2data_kva(kva);
 			}
 		}
 
@@ -387,7 +425,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	}
 
 	/* enqueue all the mbufs from rx_q into free_q */
-	ret = kni_fifo_put(kni->free_q, (void **)&va, num);
+	ret = kni_fifo_put(kni->free_q, va, num);
 	if (ret != num)
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue mbufs into free_q\n");
@@ -426,7 +464,8 @@ kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 	unsigned ret;
 	struct kni_dev *kni = netdev_priv(dev);
 	struct rte_kni_mbuf *pkt_kva = NULL;
-	struct rte_kni_mbuf *pkt_va = NULL;
+	void *pkt_pa = NULL;
+	void *pkt_va = NULL;
 
 	/* save the timestamp */
 #ifdef HAVE_TRANS_START_HELPER
@@ -453,13 +492,13 @@ kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	/* dequeue a mbuf from alloc_q */
-	ret = kni_fifo_get(kni->alloc_q, (void **)&pkt_va, 1);
+	ret = kni_fifo_get(kni->alloc_q, &pkt_pa, 1);
 	if (likely(ret == 1)) {
 		void *data_kva;
 
-		pkt_kva = (void *)pkt_va - kni->mbuf_va + kni->mbuf_kva;
-		data_kva = pkt_kva->buf_addr + pkt_kva->data_off - kni->mbuf_va
-				+ kni->mbuf_kva;
+		pkt_kva = pa2kva(pkt_pa);
+		data_kva = kva2data_kva(pkt_kva);
+		pkt_va = pa2va(pkt_pa, pkt_kva);
 
 		len = skb->len;
 		memcpy(data_kva, skb->data, len);
@@ -471,7 +510,7 @@ kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 		pkt_kva->data_len = len;
 
 		/* enqueue mbuf into tx_q */
-		ret = kni_fifo_put(kni->tx_q, (void **)&pkt_va, 1);
+		ret = kni_fifo_put(kni->tx_q, &pkt_va, 1);
 		if (unlikely(ret != 1)) {
 			/* Failing should not happen */
 			KNI_ERR("Fail to enqueue mbuf into tx_q\n");

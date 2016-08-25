@@ -460,9 +460,6 @@ kni_ioctl_create(struct net *net,
 	kni->sync_va = dev_info.sync_va;
 	kni->sync_kva = phys_to_virt(dev_info.sync_phys);
 
-	kni->mbuf_kva = phys_to_virt(dev_info.mbuf_phys);
-	kni->mbuf_va = dev_info.mbuf_va;
-
 #ifdef RTE_KNI_VHOST
 	kni->vhost_queue = NULL;
 	kni->vq_status = BE_STOP;
@@ -481,9 +478,6 @@ kni_ioctl_create(struct net *net,
 		(unsigned long long) dev_info.req_phys, kni->req_q);
 	KNI_PRINT("resp_phys:    0x%016llx, resp_q addr:    0x%p\n",
 		(unsigned long long) dev_info.resp_phys, kni->resp_q);
-	KNI_PRINT("mbuf_phys:    0x%016llx, mbuf_kva:       0x%p\n",
-		(unsigned long long) dev_info.mbuf_phys, kni->mbuf_kva);
-	KNI_PRINT("mbuf_va:      0x%p\n", dev_info.mbuf_va);
 	KNI_PRINT("mbuf_size:    %u\n", kni->mbuf_size);
 
 	KNI_DBG("PCI: %02x:%02x.%02x %04x:%04x\n",
