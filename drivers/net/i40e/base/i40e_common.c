@@ -1189,6 +1189,32 @@ void i40e_pre_tx_queue_cfg(struct i40e_hw *hw, u32 queue, bool enable)
 }
 
 /**
+ * i40e_get_san_mac_addr - get SAN MAC address
+ * @hw: pointer to the HW structure
+ * @mac_addr: pointer to SAN MAC address
+ *
+ * Reads the adapter's SAN MAC address from NVM
+ **/
+enum i40e_status_code i40e_get_san_mac_addr(struct i40e_hw *hw,
+					    u8 *mac_addr)
+{
+	struct i40e_aqc_mac_address_read_data addrs;
+	enum i40e_status_code status;
+	u16 flags = 0;
+
+	status = i40e_aq_mac_address_read(hw, &flags, &addrs, NULL);
+	if (status)
+		return status;
+
+	if (flags & I40E_AQC_SAN_ADDR_VALID)
+		memcpy(mac_addr, &addrs.pf_san_mac, sizeof(addrs.pf_san_mac));
+	else
+		status = I40E_ERR_INVALID_MAC_ADDR;
+
+	return status;
+}
+
+/**
  *  i40e_read_pba_string - Reads part number string from EEPROM
  *  @hw: pointer to hardware structure
  *  @pba_num: stores the part number string from the EEPROM
