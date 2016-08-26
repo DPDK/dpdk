@@ -969,16 +969,14 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 
 		if (ret < 0)
 			goto free_kvlist;
-		dumpers.queue[0].pcap = pcaps.queue[0].pcap;
-		dumpers.queue[0].name = pcaps.queue[0].name;
-		dumpers.queue[0].type = pcaps.queue[0].type;
+
+		dumpers.queue[0] = pcaps.queue[0];
 
 		single_iface = 1;
+		pcaps.num_of_queue = 1;
+		dumpers.num_of_queue = 1;
 
-		ret = rte_eth_from_pcaps(name, &pcaps, 1, &dumpers, 1,
-			kvlist, single_iface, is_tx_pcap);
-
-		goto free_kvlist;
+		goto create_eth;
 	}
 
 	/*
@@ -1029,6 +1027,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	if (ret < 0)
 		goto free_kvlist;
 
+create_eth:
 	ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
 		dumpers.num_of_queue, kvlist, single_iface, is_tx_pcap);
 
