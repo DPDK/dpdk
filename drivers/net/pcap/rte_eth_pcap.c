@@ -66,13 +66,17 @@ static struct timeval start_time;
 static uint64_t start_cycles;
 static uint64_t hz;
 
+struct queue_stat {
+	volatile unsigned long pkts;
+	volatile unsigned long bytes;
+	volatile unsigned long err_pkts;
+};
+
 struct pcap_rx_queue {
 	pcap_t *pcap;
 	uint8_t in_port;
 	struct rte_mempool *mb_pool;
-	volatile unsigned long rx_pkts;
-	volatile unsigned long rx_bytes;
-	volatile unsigned long err_pkts;
+	struct queue_stat rx_stat;
 	char name[PATH_MAX];
 	char type[ETH_PCAP_ARG_MAXLEN];
 };
@@ -80,9 +84,7 @@ struct pcap_rx_queue {
 struct pcap_tx_queue {
 	pcap_dumper_t *dumper;
 	pcap_t *pcap;
-	volatile unsigned long tx_pkts;
-	volatile unsigned long tx_bytes;
-	volatile unsigned long err_pkts;
+	struct queue_stat tx_stat;
 	char name[PATH_MAX];
 	char type[ETH_PCAP_ARG_MAXLEN];
 };
@@ -236,8 +238,8 @@ eth_pcap_rx(void *queue,
 		num_rx++;
 		rx_bytes += header.caplen;
 	}
-	pcap_q->rx_pkts += num_rx;
-	pcap_q->rx_bytes += rx_bytes;
+	pcap_q->rx_stat.pkts += num_rx;
+	pcap_q->rx_stat.bytes += rx_bytes;
 	return num_rx;
 }
 
@@ -308,9 +310,9 @@ eth_pcap_tx_dumper(void *queue,
 	 * we flush the pcap dumper within each burst.
 	 */
 	pcap_dump_flush(dumper_q->dumper);
-	dumper_q->tx_pkts += num_tx;
-	dumper_q->tx_bytes += tx_bytes;
-	dumper_q->err_pkts += nb_pkts - num_tx;
+	dumper_q->tx_stat.pkts += num_tx;
+	dumper_q->tx_stat.bytes += tx_bytes;
+	dumper_q->tx_stat.err_pkts += nb_pkts - num_tx;
 	return num_tx;
 }
 
@@ -364,9 +366,9 @@ eth_pcap_tx(void *queue,
 		rte_pktmbuf_free(mbuf);
 	}
 
-	tx_queue->tx_pkts += num_tx;
-	tx_queue->tx_bytes += tx_bytes;
-	tx_queue->err_pkts += nb_pkts - num_tx;
+	tx_queue->tx_stat.pkts += num_tx;
+	tx_queue->tx_stat.bytes += tx_bytes;
+	tx_queue->tx_stat.err_pkts += nb_pkts - num_tx;
 	return num_tx;
 }
 
@@ -503,7 +505,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 
 static void
 eth_stats_get(struct rte_eth_dev *dev,
-		struct rte_eth_stats *igb_stats)
+		struct rte_eth_stats *stats)
 {
 	unsigned i;
 	unsigned long rx_packets_total = 0, rx_bytes_total = 0;
@@ -513,27 +515,27 @@ eth_stats_get(struct rte_eth_dev *dev,
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_rx_queues; i++) {
-		igb_stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
-		igb_stats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
-		rx_packets_total += igb_stats->q_ipackets[i];
-		rx_bytes_total += igb_stats->q_ibytes[i];
+		stats->q_ipackets[i] = internal->rx_queue[i].rx_stat.pkts;
+		stats->q_ibytes[i] = internal->rx_queue[i].rx_stat.bytes;
+		rx_packets_total += stats->q_ipackets[i];
+		rx_bytes_total += stats->q_ibytes[i];
 	}
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_tx_queues; i++) {
-		igb_stats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
-		igb_stats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
-		igb_stats->q_errors[i] = internal->tx_queue[i].err_pkts;
-		tx_packets_total += igb_stats->q_opackets[i];
-		tx_bytes_total += igb_stats->q_obytes[i];
-		tx_packets_err_total += igb_stats->q_errors[i];
+		stats->q_opackets[i] = internal->tx_queue[i].tx_stat.pkts;
+		stats->q_obytes[i] = internal->tx_queue[i].tx_stat.bytes;
+		stats->q_errors[i] = internal->tx_queue[i].tx_stat.err_pkts;
+		tx_packets_total += stats->q_opackets[i];
+		tx_bytes_total += stats->q_obytes[i];
+		tx_packets_err_total += stats->q_errors[i];
 	}
 
-	igb_stats->ipackets = rx_packets_total;
-	igb_stats->ibytes = rx_bytes_total;
-	igb_stats->opackets = tx_packets_total;
-	igb_stats->obytes = tx_bytes_total;
-	igb_stats->oerrors = tx_packets_err_total;
+	stats->ipackets = rx_packets_total;
+	stats->ibytes = rx_bytes_total;
+	stats->opackets = tx_packets_total;
+	stats->obytes = tx_bytes_total;
+	stats->oerrors = tx_packets_err_total;
 }
 
 static void
@@ -542,13 +544,13 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	unsigned i;
 	struct pmd_internals *internal = dev->data->dev_private;
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		internal->rx_queue[i].rx_pkts = 0;
-		internal->rx_queue[i].rx_bytes = 0;
+		internal->rx_queue[i].rx_stat.pkts = 0;
+		internal->rx_queue[i].rx_stat.bytes = 0;
 	}
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		internal->tx_queue[i].tx_pkts = 0;
-		internal->tx_queue[i].tx_bytes = 0;
-		internal->tx_queue[i].err_pkts = 0;
+		internal->tx_queue[i].tx_stat.pkts = 0;
+		internal->tx_queue[i].tx_stat.bytes = 0;
+		internal->tx_queue[i].tx_stat.err_pkts = 0;
 	}
 }
 
