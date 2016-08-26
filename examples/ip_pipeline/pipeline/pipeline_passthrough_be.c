@@ -31,6 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <string.h>
 
 #include <rte_common.h>
@@ -45,10 +46,17 @@
 #include "parser.h"
 #include "hash_func.h"
 
+#define SWAP_DIM (PIPELINE_PASSTHROUGH_SWAP_N_FIELDS_MAX * \
+	(PIPELINE_PASSTHROUGH_SWAP_FIELD_SIZE_MAX / sizeof(uint64_t)))
+
 struct pipeline_passthrough {
 	struct pipeline p;
 	struct pipeline_passthrough_params params;
 	rte_table_hash_op_hash f_hash;
+	uint32_t swap_field0_offset[SWAP_DIM];
+	uint32_t swap_field1_offset[SWAP_DIM];
+	uint64_t swap_field_mask[SWAP_DIM];
+	uint32_t swap_n_fields;
 } __rte_cache_aligned;
 
 static pipeline_msg_req_handler handlers[] = {
@@ -69,7 +77,7 @@ static pipeline_msg_req_handler handlers[] = {
 };
 
 static inline __attribute__((always_inline)) void
-pkt_work(
+pkt_work_dma(
 	struct rte_mbuf *pkt,
 	void *arg,
 	uint32_t dma_size,
@@ -114,7 +122,7 @@ pkt_work(
 }
 
 static inline __attribute__((always_inline)) void
-pkt4_work(
+pkt4_work_dma(
 	struct rte_mbuf **pkts,
 	void *arg,
 	uint32_t dma_size,
@@ -209,148 +217,231 @@ pkt4_work(
 	}
 }
 
-#define PKT_WORK(dma_size, hash_enabled, lb_hash, port_pow2)	\
+static inline __attribute__((always_inline)) void
+pkt_work_swap(
+	struct rte_mbuf *pkt,
+	void *arg)
+{
+	struct pipeline_passthrough *p = arg;
+	uint32_t i;
+
+	/* Read(field0, field1), compute(field0, field1), write(field0, field1) */
+	for (i = 0; i < p->swap_n_fields; i++) {
+		uint64_t *field0_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkt,
+			p->swap_field0_offset[i]);
+		uint64_t *field1_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkt,
+			p->swap_field1_offset[i]);
+		uint64_t mask = p->swap_field_mask[i];
+
+		uint64_t field0 = *field0_ptr;
+		uint64_t field1 = *field1_ptr;
+
+		*field0_ptr = (field0 & (~mask)) + (field1 & mask);
+		*field1_ptr = (field0 & mask) + (field1 & (~mask));
+	}
+}
+
+static inline __attribute__((always_inline)) void
+pkt4_work_swap(
+	struct rte_mbuf **pkts,
+	void *arg)
+{
+	struct pipeline_passthrough *p = arg;
+	uint32_t i;
+
+	/* Read(field0, field1), compute(field0, field1), write(field0, field1) */
+	for (i = 0; i < p->swap_n_fields; i++) {
+		uint64_t *pkt0_field0_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[0],
+			p->swap_field0_offset[i]);
+		uint64_t *pkt1_field0_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[1],
+			p->swap_field0_offset[i]);
+		uint64_t *pkt2_field0_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[2],
+			p->swap_field0_offset[i]);
+		uint64_t *pkt3_field0_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[3],
+			p->swap_field0_offset[i]);
+
+		uint64_t *pkt0_field1_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[0],
+			p->swap_field1_offset[i]);
+		uint64_t *pkt1_field1_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[1],
+			p->swap_field1_offset[i]);
+		uint64_t *pkt2_field1_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[2],
+			p->swap_field1_offset[i]);
+		uint64_t *pkt3_field1_ptr = RTE_MBUF_METADATA_UINT64_PTR(pkts[3],
+			p->swap_field1_offset[i]);
+
+		uint64_t mask = p->swap_field_mask[i];
+
+		uint64_t pkt0_field0 = *pkt0_field0_ptr;
+		uint64_t pkt1_field0 = *pkt1_field0_ptr;
+		uint64_t pkt2_field0 = *pkt2_field0_ptr;
+		uint64_t pkt3_field0 = *pkt3_field0_ptr;
+
+		uint64_t pkt0_field1 = *pkt0_field1_ptr;
+		uint64_t pkt1_field1 = *pkt1_field1_ptr;
+		uint64_t pkt2_field1 = *pkt2_field1_ptr;
+		uint64_t pkt3_field1 = *pkt3_field1_ptr;
+
+		*pkt0_field0_ptr = (pkt0_field0 & (~mask)) + (pkt0_field1 & mask);
+		*pkt1_field0_ptr = (pkt1_field0 & (~mask)) + (pkt1_field1 & mask);
+		*pkt2_field0_ptr = (pkt2_field0 & (~mask)) + (pkt2_field1 & mask);
+		*pkt3_field0_ptr = (pkt3_field0 & (~mask)) + (pkt3_field1 & mask);
+
+		*pkt0_field1_ptr = (pkt0_field0 & mask) + (pkt0_field1 & (~mask));
+		*pkt1_field1_ptr = (pkt1_field0 & mask) + (pkt1_field1 & (~mask));
+		*pkt2_field1_ptr = (pkt2_field0 & mask) + (pkt2_field1 & (~mask));
+		*pkt3_field1_ptr = (pkt3_field0 & mask) + (pkt3_field1 & (~mask));
+	}
+}
+
+#define PKT_WORK_DMA(dma_size, hash_enabled, lb_hash, port_pow2)	\
 static inline void						\
-pkt_work_size##dma_size##_hash##hash_enabled		\
+pkt_work_dma_size##dma_size##_hash##hash_enabled		\
 	##_lb##lb_hash##_pw##port_pow2(			\
 	struct rte_mbuf *pkt,					\
 	void *arg)						\
 {								\
-	pkt_work(pkt, arg, dma_size, hash_enabled, lb_hash, port_pow2);	\
+	pkt_work_dma(pkt, arg, dma_size, hash_enabled, lb_hash, port_pow2);	\
 }
 
-#define PKT4_WORK(dma_size, hash_enabled, lb_hash, port_pow2)	\
+#define PKT4_WORK_DMA(dma_size, hash_enabled, lb_hash, port_pow2)	\
 static inline void						\
-pkt4_work_size##dma_size##_hash##hash_enabled			\
+pkt4_work_dma_size##dma_size##_hash##hash_enabled			\
 	##_lb##lb_hash##_pw##port_pow2(			\
 	struct rte_mbuf **pkts,					\
 	void *arg)						\
 {								\
-	pkt4_work(pkts, arg, dma_size, hash_enabled, lb_hash, port_pow2); \
+	pkt4_work_dma(pkts, arg, dma_size, hash_enabled, lb_hash, port_pow2); \
 }
 
-#define port_in_ah(dma_size, hash_enabled, lb_hash, port_pow2)	\
-PKT_WORK(dma_size, hash_enabled, lb_hash, port_pow2)			\
-PKT4_WORK(dma_size, hash_enabled, lb_hash, port_pow2)			\
-PIPELINE_PORT_IN_AH(port_in_ah_size##dma_size##_hash	\
+#define port_in_ah_dma(dma_size, hash_enabled, lb_hash, port_pow2)	\
+PKT_WORK_DMA(dma_size, hash_enabled, lb_hash, port_pow2)			\
+PKT4_WORK_DMA(dma_size, hash_enabled, lb_hash, port_pow2)			\
+PIPELINE_PORT_IN_AH(port_in_ah_dma_size##dma_size##_hash	\
 	##hash_enabled##_lb##lb_hash##_pw##port_pow2,		\
-	pkt_work_size##dma_size##_hash##hash_enabled		\
+	pkt_work_dma_size##dma_size##_hash##hash_enabled		\
 	##_lb##lb_hash##_pw##port_pow2,			\
-	pkt4_work_size##dma_size##_hash##hash_enabled		\
+	pkt4_work_dma_size##dma_size##_hash##hash_enabled		\
 	##_lb##lb_hash##_pw##port_pow2)
 
 
 #define port_in_ah_lb(dma_size, hash_enabled, lb_hash, port_pow2) \
-PKT_WORK(dma_size, hash_enabled, lb_hash, port_pow2)		\
-PKT4_WORK(dma_size, hash_enabled, lb_hash, port_pow2)	\
+PKT_WORK_DMA(dma_size, hash_enabled, lb_hash, port_pow2)		\
+PKT4_WORK_DMA(dma_size, hash_enabled, lb_hash, port_pow2)	\
 PIPELINE_PORT_IN_AH_HIJACK_ALL(						\
-	port_in_ah_size##dma_size##_hash##hash_enabled		\
+	port_in_ah_lb_size##dma_size##_hash##hash_enabled		\
 	##_lb##lb_hash##_pw##port_pow2,			\
-	pkt_work_size##dma_size##_hash##hash_enabled		\
+	pkt_work_dma_size##dma_size##_hash##hash_enabled		\
 	##_lb##lb_hash##_pw##port_pow2,	\
-	pkt4_work_size##dma_size##_hash##hash_enabled		\
+	pkt4_work_dma_size##dma_size##_hash##hash_enabled		\
 	##_lb##lb_hash##_pw##port_pow2)
 
-/* Port in AH (dma_size, hash_enabled, lb_hash, port_pow2) */
+PIPELINE_PORT_IN_AH(port_in_ah_swap, pkt_work_swap,	pkt4_work_swap)
 
-port_in_ah(8, 0, 0, 0)
-port_in_ah(8, 1, 0, 0)
+
+/* Port in AH DMA(dma_size, hash_enabled, lb_hash, port_pow2) */
+
+port_in_ah_dma(8, 0, 0, 0)
+port_in_ah_dma(8, 1, 0, 0)
 port_in_ah_lb(8, 1, 1, 0)
 port_in_ah_lb(8, 1, 1, 1)
 
-port_in_ah(16, 0, 0, 0)
-port_in_ah(16, 1, 0, 0)
+port_in_ah_dma(16, 0, 0, 0)
+port_in_ah_dma(16, 1, 0, 0)
 port_in_ah_lb(16, 1, 1, 0)
 port_in_ah_lb(16, 1, 1, 1)
 
-port_in_ah(24, 0, 0, 0)
-port_in_ah(24, 1, 0, 0)
+port_in_ah_dma(24, 0, 0, 0)
+port_in_ah_dma(24, 1, 0, 0)
 port_in_ah_lb(24, 1, 1, 0)
 port_in_ah_lb(24, 1, 1, 1)
 
-port_in_ah(32, 0, 0, 0)
-port_in_ah(32, 1, 0, 0)
+port_in_ah_dma(32, 0, 0, 0)
+port_in_ah_dma(32, 1, 0, 0)
 port_in_ah_lb(32, 1, 1, 0)
 port_in_ah_lb(32, 1, 1, 1)
 
-port_in_ah(40, 0, 0, 0)
-port_in_ah(40, 1, 0, 0)
+port_in_ah_dma(40, 0, 0, 0)
+port_in_ah_dma(40, 1, 0, 0)
 port_in_ah_lb(40, 1, 1, 0)
 port_in_ah_lb(40, 1, 1, 1)
 
-port_in_ah(48, 0, 0, 0)
-port_in_ah(48, 1, 0, 0)
+port_in_ah_dma(48, 0, 0, 0)
+port_in_ah_dma(48, 1, 0, 0)
 port_in_ah_lb(48, 1, 1, 0)
 port_in_ah_lb(48, 1, 1, 1)
 
-port_in_ah(56, 0, 0, 0)
-port_in_ah(56, 1, 0, 0)
+port_in_ah_dma(56, 0, 0, 0)
+port_in_ah_dma(56, 1, 0, 0)
 port_in_ah_lb(56, 1, 1, 0)
 port_in_ah_lb(56, 1, 1, 1)
 
-port_in_ah(64, 0, 0, 0)
-port_in_ah(64, 1, 0, 0)
+port_in_ah_dma(64, 0, 0, 0)
+port_in_ah_dma(64, 1, 0, 0)
 port_in_ah_lb(64, 1, 1, 0)
 port_in_ah_lb(64, 1, 1, 1)
 
 static rte_pipeline_port_in_action_handler
 get_port_in_ah(struct pipeline_passthrough *p)
 {
-	if (p->params.dma_enabled == 0)
+	if ((p->params.dma_enabled == 0) &&
+		(p->params.swap_enabled == 0))
 		return NULL;
 
+	if (p->params.swap_enabled)
+		return port_in_ah_swap;
+
 	if (p->params.dma_hash_enabled) {
-		if (p->params.lb_hash_enabled) {
+		if (p->params.dma_hash_lb_enabled) {
 			if (rte_is_power_of_2(p->p.n_ports_out))
 				switch (p->params.dma_size) {
 
-				case 8: return port_in_ah_size8_hash1_lb1_pw1;
-				case 16: return port_in_ah_size16_hash1_lb1_pw1;
-				case 24: return port_in_ah_size24_hash1_lb1_pw1;
-				case 32: return port_in_ah_size32_hash1_lb1_pw1;
-				case 40: return port_in_ah_size40_hash1_lb1_pw1;
-				case 48: return port_in_ah_size48_hash1_lb1_pw1;
-				case 56: return port_in_ah_size56_hash1_lb1_pw1;
-				case 64: return port_in_ah_size64_hash1_lb1_pw1;
+				case 8: return port_in_ah_lb_size8_hash1_lb1_pw1;
+				case 16: return port_in_ah_lb_size16_hash1_lb1_pw1;
+				case 24: return port_in_ah_lb_size24_hash1_lb1_pw1;
+				case 32: return port_in_ah_lb_size32_hash1_lb1_pw1;
+				case 40: return port_in_ah_lb_size40_hash1_lb1_pw1;
+				case 48: return port_in_ah_lb_size48_hash1_lb1_pw1;
+				case 56: return port_in_ah_lb_size56_hash1_lb1_pw1;
+				case 64: return port_in_ah_lb_size64_hash1_lb1_pw1;
 				default: return NULL;
 				}
 			else
 				switch (p->params.dma_size) {
 
-				case 8: return port_in_ah_size8_hash1_lb1_pw0;
-				case 16: return port_in_ah_size16_hash1_lb1_pw0;
-				case 24: return port_in_ah_size24_hash1_lb1_pw0;
-				case 32: return port_in_ah_size32_hash1_lb1_pw0;
-				case 40: return port_in_ah_size40_hash1_lb1_pw0;
-				case 48: return port_in_ah_size48_hash1_lb1_pw0;
-				case 56: return port_in_ah_size56_hash1_lb1_pw0;
-				case 64: return port_in_ah_size64_hash1_lb1_pw0;
+				case 8: return port_in_ah_lb_size8_hash1_lb1_pw0;
+				case 16: return port_in_ah_lb_size16_hash1_lb1_pw0;
+				case 24: return port_in_ah_lb_size24_hash1_lb1_pw0;
+				case 32: return port_in_ah_lb_size32_hash1_lb1_pw0;
+				case 40: return port_in_ah_lb_size40_hash1_lb1_pw0;
+				case 48: return port_in_ah_lb_size48_hash1_lb1_pw0;
+				case 56: return port_in_ah_lb_size56_hash1_lb1_pw0;
+				case 64: return port_in_ah_lb_size64_hash1_lb1_pw0;
 				default: return NULL;
 			}
 		} else
 			switch (p->params.dma_size) {
 
-			case 8: return port_in_ah_size8_hash1_lb0_pw0;
-			case 16: return port_in_ah_size16_hash1_lb0_pw0;
-			case 24: return port_in_ah_size24_hash1_lb0_pw0;
-			case 32: return port_in_ah_size32_hash1_lb0_pw0;
-			case 40: return port_in_ah_size40_hash1_lb0_pw0;
-			case 48: return port_in_ah_size48_hash1_lb0_pw0;
-			case 56: return port_in_ah_size56_hash1_lb0_pw0;
-			case 64: return port_in_ah_size64_hash1_lb0_pw0;
+			case 8: return port_in_ah_dma_size8_hash1_lb0_pw0;
+			case 16: return port_in_ah_dma_size16_hash1_lb0_pw0;
+			case 24: return port_in_ah_dma_size24_hash1_lb0_pw0;
+			case 32: return port_in_ah_dma_size32_hash1_lb0_pw0;
+			case 40: return port_in_ah_dma_size40_hash1_lb0_pw0;
+			case 48: return port_in_ah_dma_size48_hash1_lb0_pw0;
+			case 56: return port_in_ah_dma_size56_hash1_lb0_pw0;
+			case 64: return port_in_ah_dma_size64_hash1_lb0_pw0;
 			default: return NULL;
 		}
 	} else
 		switch (p->params.dma_size) {
 
-		case 8: return port_in_ah_size8_hash0_lb0_pw0;
-		case 16: return port_in_ah_size16_hash0_lb0_pw0;
-		case 24: return port_in_ah_size24_hash0_lb0_pw0;
-		case 32: return port_in_ah_size32_hash0_lb0_pw0;
-		case 40: return port_in_ah_size40_hash0_lb0_pw0;
-		case 48: return port_in_ah_size48_hash0_lb0_pw0;
-		case 56: return port_in_ah_size56_hash0_lb0_pw0;
-		case 64: return port_in_ah_size64_hash0_lb0_pw0;
+		case 8: return port_in_ah_dma_size8_hash0_lb0_pw0;
+		case 16: return port_in_ah_dma_size16_hash0_lb0_pw0;
+		case 24: return port_in_ah_dma_size24_hash0_lb0_pw0;
+		case 32: return port_in_ah_dma_size32_hash0_lb0_pw0;
+		case 40: return port_in_ah_dma_size40_hash0_lb0_pw0;
+		case 48: return port_in_ah_dma_size48_hash0_lb0_pw0;
+		case 56: return port_in_ah_dma_size56_hash0_lb0_pw0;
+		case 64: return port_in_ah_dma_size64_hash0_lb0_pw0;
 		default: return NULL;
 		}
 }
@@ -362,17 +453,19 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 	uint32_t dma_dst_offset_present = 0;
 	uint32_t dma_src_offset_present = 0;
 	uint32_t dma_src_mask_present = 0;
+	char dma_mask_str[PIPELINE_PASSTHROUGH_DMA_SIZE_MAX * 2 + 1];
 	uint32_t dma_size_present = 0;
 	uint32_t dma_hash_offset_present = 0;
-	uint32_t lb_present = 0;
+	uint32_t dma_hash_lb_present = 0;
 	uint32_t i;
-	char dma_mask_str[PIPELINE_PASSTHROUGH_DMA_SIZE_MAX * 2 + 1];
 
 	/* default values */
 	p->dma_enabled = 0;
 	p->dma_hash_enabled = 0;
-	p->lb_hash_enabled = 0;
+	p->dma_hash_lb_enabled = 0;
 	memset(p->dma_src_mask, 0xFF, sizeof(p->dma_src_mask));
+	p->swap_enabled = 0;
+	p->swap_n_fields = 0;
 
 	for (i = 0; i < params->n_args; i++) {
 		char *arg_name = params->args_name[i];
@@ -485,7 +578,6 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 				params->name, arg_name, arg_value);
 
 			p->dma_hash_enabled = 1;
-			p->dma_enabled = 1;
 
 			continue;
 		}
@@ -493,18 +585,38 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 		/* load_balance mode */
 		if (strcmp(arg_name, "lb") == 0) {
 			PIPELINE_PARSE_ERR_DUPLICATE(
-				lb_present == 0,
+				dma_hash_lb_present == 0,
 				params->name, arg_name);
-			lb_present = 1;
+			dma_hash_lb_present = 1;
 
-			if ((strcmp(arg_value, "hash") == 0) ||
-				(strcmp(arg_value, "HASH") == 0))
-				p->lb_hash_enabled = 1;
-			else
+			if (strcmp(arg_value, "hash") ||
+				strcmp(arg_value, "HASH"))
+
 				PIPELINE_PARSE_ERR_INV_VAL(0,
 					params->name,
 					arg_name,
 					arg_value);
+
+			p->dma_hash_lb_enabled = 1;
+
+			continue;
+		}
+
+		/* swap */
+		if (strcmp(arg_name, "swap") == 0) {
+			uint32_t a, b, n_args;
+			int len;
+
+			n_args = sscanf(arg_value, "%" SCNu32 " %" SCNu32 "%n",
+				&a, &b, &len);
+			PIPELINE_PARSE_ERR_INV_VAL(((n_args == 2) &&
+				((size_t) len == strlen(arg_value))),
+				params->name, arg_name, arg_value);
+
+			p->swap_field0_offset[p->swap_n_fields] = a;
+			p->swap_field1_offset[p->swap_n_fields] = b;
+			p->swap_n_fields++;
+			p->swap_enabled = 1;
 
 			continue;
 		}
@@ -514,6 +626,9 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 	}
 
 	/* Check correlations between arguments */
+	PIPELINE_ARG_CHECK((p->dma_enabled + p->swap_enabled < 2),
+		"Parse error in section \"%s\": DMA and SWAP actions are both enabled",
+		params->name);
 	PIPELINE_ARG_CHECK((dma_dst_offset_present == p->dma_enabled),
 		"Parse error in section \"%s\": missing entry "
 		"\"dma_dst_offset\"", params->name);
@@ -523,12 +638,12 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 	PIPELINE_ARG_CHECK((dma_size_present == p->dma_enabled),
 		"Parse error in section \"%s\": missing entry "
 		"\"dma_size\"", params->name);
-	PIPELINE_ARG_CHECK((dma_hash_offset_present == p->dma_enabled),
-		"Parse error in section \"%s\": missing entry "
-		"\"dma_hash_offset\"", params->name);
-	PIPELINE_ARG_CHECK((p->lb_hash_enabled <= p->dma_hash_enabled),
-		"Parse error in section \"%s\": missing entry "
-		"\"dma_hash_offset\"", params->name);
+	PIPELINE_ARG_CHECK((p->dma_hash_enabled <= p->dma_enabled),
+		"Parse error in section \"%s\": missing all DMA entries",
+		params->name);
+	PIPELINE_ARG_CHECK((p->dma_hash_lb_enabled <= p->dma_hash_enabled),
+		"Parse error in section \"%s\": missing all DMA hash entries ",
+		params->name);
 
 	if (dma_src_mask_present) {
 		uint32_t dma_size = p->dma_size;
@@ -547,7 +662,7 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 			"dma_src_mask", dma_mask_str);
 	}
 
-	if (p->lb_hash_enabled)
+	if (p->dma_hash_lb_enabled)
 		PIPELINE_ARG_CHECK((params->n_ports_out > 1),
 			"Parse error in section \"%s\": entry \"lb\" not "
 			"allowed for single output port pipeline",
@@ -561,7 +676,6 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 
 	return 0;
 }
-
 
 static rte_table_hash_op_hash
 get_hash_function(struct pipeline_passthrough *p)
@@ -578,6 +692,47 @@ get_hash_function(struct pipeline_passthrough *p)
 	case 64: return hash_default_key64;
 	default: return NULL;
 	}
+}
+
+static int
+pipeline_passthrough_swap_convert(struct pipeline_passthrough *p)
+{
+	uint32_t i;
+
+	p->swap_n_fields = 0;
+
+	for (i = 0; i < p->params.swap_n_fields; i++) {
+		uint32_t offset0 = p->params.swap_field0_offset[i];
+		uint32_t offset1 = p->params.swap_field1_offset[i];
+		uint32_t size = offset1 - offset0;
+		uint32_t j;
+
+		/* Check */
+		if ((offset0 >= offset1) ||
+			(size > PIPELINE_PASSTHROUGH_SWAP_FIELD_SIZE_MAX) ||
+			(p->swap_n_fields >= SWAP_DIM))
+			return -1;
+
+		for (j = 0; j < (size / sizeof(uint64_t)); j++) {
+			p->swap_field0_offset[p->swap_n_fields] = offset0;
+			p->swap_field1_offset[p->swap_n_fields] = offset1;
+			p->swap_field_mask[p->swap_n_fields] = UINT64_MAX;
+			p->swap_n_fields++;
+			offset0 += sizeof(uint64_t);
+			offset1 += sizeof(uint64_t);
+		}
+		if (size % sizeof(uint64_t)) {
+			uint32_t n_bits = (size % sizeof(uint64_t)) * 8;
+
+			p->swap_field0_offset[p->swap_n_fields] = offset0;
+			p->swap_field1_offset[p->swap_n_fields] = offset1;
+			p->swap_field_mask[p->swap_n_fields] =
+				RTE_LEN2MASK(n_bits, uint64_t);
+			p->swap_n_fields++;
+		}
+	}
+
+	return 0;
 }
 
 static void*
@@ -608,6 +763,8 @@ pipeline_passthrough_init(struct pipeline_params *params,
 
 	/* Parse arguments */
 	if (pipeline_passthrough_parse_args(&p_pt->params, params))
+		return NULL;
+	if (pipeline_passthrough_swap_convert(p_pt))
 		return NULL;
 	p_pt->f_hash = get_hash_function(p_pt);
 
@@ -712,7 +869,7 @@ pipeline_passthrough_init(struct pipeline_params *params,
 
 	/* Add entries to tables */
 	for (i = 0; i < p->n_ports_in; i++) {
-		uint32_t port_out_id = (p_pt->params.lb_hash_enabled == 0) ?
+		uint32_t port_out_id = (p_pt->params.dma_hash_lb_enabled == 0) ?
 			(i / (p->n_ports_in / p->n_ports_out)) :
 			0;
 

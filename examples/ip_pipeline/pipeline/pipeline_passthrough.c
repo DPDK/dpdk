@@ -52,7 +52,7 @@ app_pipeline_passthrough_track(struct pipeline_params *p,
 	if (status)
 		return -1;
 
-	if (pp.lb_hash_enabled)
+	if (pp.dma_hash_lb_enabled)
 		return -1;
 
 	*port_out = port_in / (p->n_ports_in / p->n_ports_out);

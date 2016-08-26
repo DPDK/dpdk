@@ -38,6 +38,14 @@
 
 #define PIPELINE_PASSTHROUGH_DMA_SIZE_MAX                             64
 
+#ifndef PIPELINE_PASSTHROUGH_SWAP_N_FIELDS_MAX
+#define PIPELINE_PASSTHROUGH_SWAP_N_FIELDS_MAX                        8
+#endif
+
+#ifndef PIPELINE_PASSTHROUGH_SWAP_FIELD_SIZE_MAX
+#define PIPELINE_PASSTHROUGH_SWAP_FIELD_SIZE_MAX                      16
+#endif
+
 struct pipeline_passthrough_params {
 	uint32_t dma_enabled;
 	uint32_t dma_dst_offset;
@@ -47,7 +55,13 @@ struct pipeline_passthrough_params {
 
 	uint32_t dma_hash_enabled;
 	uint32_t dma_hash_offset;
-	uint32_t lb_hash_enabled;
+
+	uint32_t dma_hash_lb_enabled;
+
+	uint32_t swap_enabled;
+	uint32_t swap_field0_offset[PIPELINE_PASSTHROUGH_SWAP_N_FIELDS_MAX];
+	uint32_t swap_field1_offset[PIPELINE_PASSTHROUGH_SWAP_N_FIELDS_MAX];
+	uint32_t swap_n_fields;
 };
 
 int
