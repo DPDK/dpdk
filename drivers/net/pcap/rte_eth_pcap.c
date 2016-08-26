@@ -789,18 +789,10 @@ open_single_iface(const char *iface, pcap_t **pcap)
 static int
 rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 		const unsigned nb_tx_queues, struct pmd_internals **internals,
-		struct rte_eth_dev **eth_dev, struct rte_kvargs *kvlist)
+		struct rte_eth_dev **eth_dev)
 {
 	struct rte_eth_dev_data *data = NULL;
 	unsigned int numa_node = rte_socket_id();
-	unsigned k_idx;
-	struct rte_kvargs_pair *pair = NULL;
-
-	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
-		pair = &kvlist->pairs[k_idx];
-		if (strstr(pair->key, ETH_PCAP_IFACE_ARG) != NULL)
-			break;
-	}
 
 	RTE_LOG(INFO, PMD, "Creating pcap-backed ethdev on numa socket %u\n",
 		numa_node);
@@ -835,11 +827,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	/* NOTE: we'll replace the data element, of originally allocated eth_dev
 	 * so the rings are local per-process */
 
-	if (pair == NULL)
-		(*internals)->if_index = 0;
-	else
-		(*internals)->if_index = if_nametoindex(pair->value);
-
 	data->dev_private = *internals;
 	data->port_id = (*eth_dev)->data->port_id;
 	snprintf(data->name, sizeof(data->name), "%s", (*eth_dev)->data->name);
@@ -873,6 +860,8 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 		const unsigned nb_tx_queues, struct rte_kvargs *kvlist,
 		struct pmd_internals **internals, struct rte_eth_dev **eth_dev)
 {
+	struct rte_kvargs_pair *pair = NULL;
+	unsigned k_idx;
 	unsigned i;
 
 	/* do some parameter checking */
@@ -882,7 +871,7 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 		return -1;
 
 	if (rte_pmd_init_internals(name, nb_rx_queues, nb_tx_queues, internals,
-			eth_dev, kvlist) < 0)
+			eth_dev) < 0)
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
@@ -903,6 +892,17 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 			sizeof((*internals)->tx_queue[i].type), "%s",
 			tx_queues->queue[i].type);
 	}
+
+	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
+		pair = &kvlist->pairs[k_idx];
+		if (strstr(pair->key, ETH_PCAP_IFACE_ARG) != NULL)
+			break;
+	}
+
+	if (pair == NULL)
+		(*internals)->if_index = 0;
+	else
+		(*internals)->if_index = if_nametoindex(pair->value);
 
 	return 0;
 }
