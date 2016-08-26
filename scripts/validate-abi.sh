@@ -186,7 +186,7 @@ fixup_config
 # Checking abi compliance relies on using the dwarf information in
 # The shared objects.  Thats only included in the DSO's if we build
 # with -g
-export EXTRA_CFLAGS="$EXTRA_CFLAGS -g"
+export EXTRA_CFLAGS="$EXTRA_CFLAGS -g -O0"
 export EXTRA_LDFLAGS="$EXTRA_LDFLAGS -g"
 
 # Now configure the build
