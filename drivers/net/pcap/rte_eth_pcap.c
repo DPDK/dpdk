@@ -49,6 +49,7 @@
 #define RTE_ETH_PCAP_SNAPLEN ETHER_MAX_JUMBO_FRAME_LEN
 #define RTE_ETH_PCAP_PROMISC 1
 #define RTE_ETH_PCAP_TIMEOUT -1
+
 #define ETH_PCAP_RX_PCAP_ARG  "rx_pcap"
 #define ETH_PCAP_TX_PCAP_ARG  "tx_pcap"
 #define ETH_PCAP_RX_IFACE_ARG "rx_iface"
@@ -114,7 +115,9 @@ static const char *valid_arguments[] = {
 	NULL
 };
 
-static struct ether_addr eth_addr = { .addr_bytes = { 0, 0, 0, 0x1, 0x2, 0x3 } };
+static struct ether_addr eth_addr = {
+	.addr_bytes = { 0, 0, 0, 0x1, 0x2, 0x3 }
+};
 static const char *drivername = "Pcap PMD";
 static struct rte_eth_link pmd_link = {
 		.link_speed = ETH_SPEED_NUM_10G,
@@ -124,15 +127,12 @@ static struct rte_eth_link pmd_link = {
 };
 
 static int
-eth_pcap_rx_jumbo(struct rte_mempool *mb_pool,
-		  struct rte_mbuf *mbuf,
-		  const u_char *data,
-		  uint16_t data_len)
+eth_pcap_rx_jumbo(struct rte_mempool *mb_pool, struct rte_mbuf *mbuf,
+		const u_char *data, uint16_t data_len)
 {
-	struct rte_mbuf *m = mbuf;
-
 	/* Copy the first segment. */
 	uint16_t len = rte_pktmbuf_tailroom(mbuf);
+	struct rte_mbuf *m = mbuf;
 
 	rte_memcpy(rte_pktmbuf_append(mbuf, len), data, len);
 	data_len -= len;
@@ -172,7 +172,7 @@ eth_pcap_gather_data(unsigned char *data, struct rte_mbuf *mbuf)
 
 	while (mbuf) {
 		rte_memcpy(data + data_len, rte_pktmbuf_mtod(mbuf, void *),
-			   mbuf->data_len);
+			mbuf->data_len);
 
 		data_len += mbuf->data_len;
 		mbuf = mbuf->next;
@@ -180,9 +180,7 @@ eth_pcap_gather_data(unsigned char *data, struct rte_mbuf *mbuf)
 }
 
 static uint16_t
-eth_pcap_rx(void *queue,
-		struct rte_mbuf **bufs,
-		uint16_t nb_pkts)
+eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	unsigned i;
 	struct pcap_pkthdr header;
@@ -235,6 +233,7 @@ eth_pcap_rx(void *queue,
 	}
 	pcap_q->rx_stat.pkts += num_rx;
 	pcap_q->rx_stat.bytes += rx_bytes;
+
 	return num_rx;
 }
 
@@ -253,9 +252,7 @@ calculate_timestamp(struct timeval *ts) {
  * Callback to handle writing packets to a pcap file.
  */
 static uint16_t
-eth_pcap_tx_dumper(void *queue,
-		struct rte_mbuf **bufs,
-		uint16_t nb_pkts)
+eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	unsigned i;
 	struct rte_mbuf *mbuf;
@@ -308,6 +305,7 @@ eth_pcap_tx_dumper(void *queue,
 	dumper_q->tx_stat.pkts += num_tx;
 	dumper_q->tx_stat.bytes += tx_bytes;
 	dumper_q->tx_stat.err_pkts += nb_pkts - num_tx;
+
 	return num_tx;
 }
 
@@ -315,9 +313,7 @@ eth_pcap_tx_dumper(void *queue,
  * Callback to handle sending packets through a real NIC.
  */
 static uint16_t
-eth_pcap_tx(void *queue,
-		struct rte_mbuf **bufs,
-		uint16_t nb_pkts)
+eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	unsigned i;
 	int ret;
@@ -334,14 +330,13 @@ eth_pcap_tx(void *queue,
 
 		if (likely(mbuf->nb_segs == 1)) {
 			ret = pcap_sendpacket(tx_queue->pcap,
-					      rte_pktmbuf_mtod(mbuf, u_char *),
-					      mbuf->pkt_len);
+					rte_pktmbuf_mtod(mbuf, u_char *),
+					mbuf->pkt_len);
 		} else {
 			if (mbuf->pkt_len <= ETHER_MAX_JUMBO_FRAME_LEN) {
 				eth_pcap_gather_data(tx_pcap_data, mbuf);
 				ret = pcap_sendpacket(tx_queue->pcap,
-						      tx_pcap_data,
-						      mbuf->pkt_len);
+						tx_pcap_data, mbuf->pkt_len);
 			} else {
 				RTE_LOG(ERR, PMD,
 					"Dropping PCAP packet. "
@@ -364,6 +359,7 @@ eth_pcap_tx(void *queue,
 	tx_queue->tx_stat.pkts += num_tx;
 	tx_queue->tx_stat.bytes += tx_bytes;
 	tx_queue->tx_stat.err_pkts += nb_pkts - num_tx;
+
 	return num_tx;
 }
 
@@ -459,9 +455,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 		if (!tx->dumper && strcmp(tx->type, ETH_PCAP_TX_PCAP_ARG) == 0) {
 			if (open_single_tx_pcap(tx->name, &tx->dumper) < 0)
 				return -1;
-		}
-
-		else if (!tx->pcap && strcmp(tx->type, ETH_PCAP_TX_IFACE_ARG) == 0) {
+		} else if (!tx->pcap && strcmp(tx->type, ETH_PCAP_TX_IFACE_ARG) == 0) {
 			if (open_single_iface(tx->name, &tx->pcap) < 0)
 				return -1;
 		}
@@ -477,17 +471,15 @@ eth_dev_start(struct rte_eth_dev *dev)
 		if (strcmp(rx->type, ETH_PCAP_RX_PCAP_ARG) == 0) {
 			if (open_single_rx_pcap(rx->name, &rx->pcap) < 0)
 				return -1;
-		}
-
-		else if (strcmp(rx->type, ETH_PCAP_RX_IFACE_ARG) == 0) {
+		} else if (strcmp(rx->type, ETH_PCAP_RX_IFACE_ARG) == 0) {
 			if (open_single_iface(rx->name, &rx->pcap) < 0)
 				return -1;
 		}
 	}
 
 status_up:
-
 	dev->data->dev_link.link_status = ETH_LINK_UP;
+
 	return 0;
 }
 
@@ -552,6 +544,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+
 	dev_info->driver_name = drivername;
 	dev_info->if_index = internals->if_index;
 	dev_info->max_mac_addrs = 1;
@@ -563,8 +556,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 }
 
 static void
-eth_stats_get(struct rte_eth_dev *dev,
-		struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	unsigned i;
 	unsigned long rx_packets_total = 0, rx_bytes_total = 0;
@@ -602,10 +594,12 @@ eth_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned i;
 	struct pmd_internals *internal = dev->data->dev_private;
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		internal->rx_queue[i].rx_stat.pkts = 0;
 		internal->rx_queue[i].rx_stat.bytes = 0;
 	}
+
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		internal->tx_queue[i].tx_stat.pkts = 0;
 		internal->tx_queue[i].tx_stat.bytes = 0;
@@ -640,9 +634,11 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pcap_rx_queue *pcap_q = &internals->rx_queue[rx_queue_id];
+
 	pcap_q->mb_pool = mb_pool;
 	dev->data->rx_queues[rx_queue_id] = pcap_q;
 	pcap_q->in_port = dev->data->port_id;
+
 	return 0;
 }
 
@@ -655,13 +651,15 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 {
 
 	struct pmd_internals *internals = dev->data->dev_private;
+
 	dev->data->tx_queues[tx_queue_id] = &internals->tx_queue[tx_queue_id];
+
 	return 0;
 }
 
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
-	.dev_stop =	eth_dev_stop,
+	.dev_stop = eth_dev_stop,
 	.dev_close = eth_dev_close,
 	.dev_configure = eth_dev_configure,
 	.dev_infos_get = eth_dev_info,
@@ -918,7 +916,7 @@ rte_eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 	if (ret < 0)
 		return ret;
 
-	/* store wether we are using a single interface for rx/tx or not */
+	/* store weather we are using a single interface for rx/tx or not */
 	internals->single_iface = single_iface;
 
 	eth_dev->rx_pkt_burst = eth_pcap_rx;
@@ -930,7 +928,6 @@ rte_eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 
 	return 0;
 }
-
 
 static int
 rte_pmd_pcap_devinit(const char *name, const char *params)
@@ -1027,6 +1024,7 @@ create_eth:
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
+
 	return ret;
 }
 
