@@ -33,18 +33,17 @@
  */
 
 #include <time.h>
-#include <rte_mbuf.h>
-#include <rte_ethdev.h>
-#include <rte_malloc.h>
-#include <rte_memcpy.h>
-#include <rte_string_fns.h>
-#include <rte_cycles.h>
-#include <rte_kvargs.h>
-#include <rte_vdev.h>
 
 #include <net/if.h>
 
 #include <pcap.h>
+
+#include <rte_cycles.h>
+#include <rte_ethdev.h>
+#include <rte_kvargs.h>
+#include <rte_malloc.h>
+#include <rte_mbuf.h>
+#include <rte_vdev.h>
 
 #define RTE_ETH_PCAP_SNAPSHOT_LEN 65535
 #define RTE_ETH_PCAP_SNAPLEN ETHER_MAX_JUMBO_FRAME_LEN
