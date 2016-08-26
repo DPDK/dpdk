@@ -941,11 +941,11 @@ rte_eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 static int
 rte_pmd_pcap_devinit(const char *name, const char *params)
 {
-	unsigned using_dumpers = 0;
-	int ret;
+	unsigned int is_rx_pcap = 0, is_tx_pcap = 0;
 	struct rte_kvargs *kvlist;
 	struct pmd_devargs pcaps = {0};
 	struct pmd_devargs dumpers = {0};
+	int ret;
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_pcap for %s\n", name);
 
@@ -971,7 +971,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		dumpers.queue[0].name = pcaps.queue[0].name;
 		dumpers.queue[0].type = pcaps.queue[0].type;
 		ret = rte_eth_from_pcaps(name, &pcaps, 1, &dumpers, 1,
-				kvlist, 1, using_dumpers);
+				kvlist, 1, is_tx_pcap);
 		goto free_kvlist;
 	}
 
@@ -980,23 +980,21 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	 * pcap file
 	 */
 	pcaps.num_of_queue = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG);
-
-	if (pcaps.num_of_queue) {
-		if (pcaps.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
-			pcaps.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
-
-		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_PCAP_ARG,
-				&open_rx_pcap, &pcaps);
-	} else {
+	if (pcaps.num_of_queue)
+		is_rx_pcap = 1;
+	else
 		pcaps.num_of_queue = rte_kvargs_count(kvlist,
 				ETH_PCAP_RX_IFACE_ARG);
 
-		if (pcaps.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
-			pcaps.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
+	if (pcaps.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
+		pcaps.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
 
+	if (is_rx_pcap)
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_PCAP_ARG,
+				&open_rx_pcap, &pcaps);
+	else
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_IFACE_ARG,
 				&open_rx_iface, &pcaps);
-	}
 
 	if (ret < 0)
 		goto free_kvlist;
@@ -1006,30 +1004,27 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	 * pcap file
 	 */
 	dumpers.num_of_queue = rte_kvargs_count(kvlist, ETH_PCAP_TX_PCAP_ARG);
-
-	if (dumpers.num_of_queue) {
-		if (dumpers.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
-			dumpers.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
-
-		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_PCAP_ARG,
-				&open_tx_pcap, &dumpers);
-		using_dumpers = 1;
-	} else {
+	if (dumpers.num_of_queue)
+		is_tx_pcap = 1;
+	else
 		dumpers.num_of_queue = rte_kvargs_count(kvlist,
 				ETH_PCAP_TX_IFACE_ARG);
 
-		if (dumpers.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
-			dumpers.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
+	if (dumpers.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
+		dumpers.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
 
+	if (is_tx_pcap)
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_PCAP_ARG,
+				&open_tx_pcap, &dumpers);
+	else
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_IFACE_ARG,
 				&open_tx_iface, &dumpers);
-	}
 
 	if (ret < 0)
 		goto free_kvlist;
 
 	ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
-		dumpers.num_of_queue, kvlist, 0, using_dumpers);
+		dumpers.num_of_queue, kvlist, 0, is_tx_pcap);
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
