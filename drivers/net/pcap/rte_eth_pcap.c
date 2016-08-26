@@ -910,43 +910,11 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 }
 
 static int
-rte_eth_from_pcaps_n_dumpers(const char *name,
-		struct pmd_devargs *rx_queues,
-		const unsigned nb_rx_queues,
-		struct pmd_devargs *tx_queues,
-		const unsigned nb_tx_queues,
-		const unsigned numa_node,
-		struct rte_kvargs *kvlist)
-{
-	struct pmd_internals *internals = NULL;
-	struct rte_eth_dev *eth_dev = NULL;
-	int ret;
-
-	ret = rte_eth_from_pcaps_common(name, rx_queues, nb_rx_queues,
-			tx_queues, nb_tx_queues, numa_node, kvlist,
-			&internals, &eth_dev);
-
-	if (ret < 0)
-		return ret;
-
-	/* using multiple pcaps/interfaces */
-	internals->single_iface = 0;
-
-	eth_dev->rx_pkt_burst = eth_pcap_rx;
-	eth_dev->tx_pkt_burst = eth_pcap_tx_dumper;
-
-	return 0;
-}
-
-static int
-rte_eth_from_pcaps(const char *name,
-		struct pmd_devargs *rx_queues,
-		const unsigned nb_rx_queues,
-		struct pmd_devargs *tx_queues,
-		const unsigned nb_tx_queues,
-		const unsigned numa_node,
-		struct rte_kvargs *kvlist,
-		int single_iface)
+rte_eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
+		const unsigned nb_rx_queues, struct pmd_devargs *tx_queues,
+		const unsigned nb_tx_queues, const unsigned numa_node,
+		struct rte_kvargs *kvlist, int single_iface,
+		unsigned int using_dumpers)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -963,7 +931,11 @@ rte_eth_from_pcaps(const char *name,
 	internals->single_iface = single_iface;
 
 	eth_dev->rx_pkt_burst = eth_pcap_rx;
-	eth_dev->tx_pkt_burst = eth_pcap_tx;
+
+	if (using_dumpers)
+		eth_dev->tx_pkt_burst = eth_pcap_tx_dumper;
+	else
+		eth_dev->tx_pkt_burst = eth_pcap_tx;
 
 	return 0;
 }
@@ -1004,7 +976,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		dumpers.queue[0].name = pcaps.queue[0].name;
 		dumpers.queue[0].type = pcaps.queue[0].type;
 		ret = rte_eth_from_pcaps(name, &pcaps, 1, &dumpers, 1,
-				numa_node, kvlist, 1);
+				numa_node, kvlist, 1, using_dumpers);
 		goto free_kvlist;
 	}
 
@@ -1061,12 +1033,8 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	if (ret < 0)
 		goto free_kvlist;
 
-	if (using_dumpers)
-		ret = rte_eth_from_pcaps_n_dumpers(name, &pcaps, pcaps.num_of_queue,
-				&dumpers, dumpers.num_of_queue, numa_node, kvlist);
-	else
-		ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
-			dumpers.num_of_queue, numa_node, kvlist, 0);
+	ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
+		dumpers.num_of_queue, numa_node, kvlist, 0, using_dumpers);
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
