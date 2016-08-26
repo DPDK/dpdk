@@ -160,7 +160,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		num_key_slots = params->entries + 1;
 
 	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
-	r = rte_ring_create(ring_name, rte_align32pow2(num_key_slots),
+	/* Create ring (Dummy slot index is not enqueued) */
+	r = rte_ring_create(ring_name, rte_align32pow2(num_key_slots - 1),
 			params->socket_id, 0);
 	if (r == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
