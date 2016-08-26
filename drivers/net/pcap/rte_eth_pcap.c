@@ -1012,12 +1012,21 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	 * We check whether we want to open a RX stream from a real NIC or a
 	 * pcap file
 	 */
-	if ((pcaps.num_of_queue = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG))) {
+	pcaps.num_of_queue = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG);
+
+	if (pcaps.num_of_queue) {
+		if (pcaps.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
+			pcaps.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
+
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_PCAP_ARG,
 				&open_rx_pcap, &pcaps);
 	} else {
 		pcaps.num_of_queue = rte_kvargs_count(kvlist,
 				ETH_PCAP_RX_IFACE_ARG);
+
+		if (pcaps.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
+			pcaps.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
+
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_IFACE_ARG,
 				&open_rx_iface, &pcaps);
 	}
@@ -1029,14 +1038,22 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	 * We check whether we want to open a TX stream to a real NIC or a
 	 * pcap file
 	 */
-	if ((dumpers.num_of_queue = rte_kvargs_count(kvlist,
-			ETH_PCAP_TX_PCAP_ARG))) {
+	dumpers.num_of_queue = rte_kvargs_count(kvlist, ETH_PCAP_TX_PCAP_ARG);
+
+	if (dumpers.num_of_queue) {
+		if (dumpers.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
+			dumpers.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
+
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_PCAP_ARG,
 				&open_tx_pcap, &dumpers);
 		using_dumpers = 1;
 	} else {
 		dumpers.num_of_queue = rte_kvargs_count(kvlist,
 				ETH_PCAP_TX_IFACE_ARG);
+
+		if (dumpers.num_of_queue > RTE_PMD_PCAP_MAX_QUEUES)
+			dumpers.num_of_queue = RTE_PMD_PCAP_MAX_QUEUES;
+
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_IFACE_ARG,
 				&open_tx_iface, &dumpers);
 	}
