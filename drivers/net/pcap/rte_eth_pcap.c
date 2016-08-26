@@ -114,10 +114,6 @@ static const char *valid_arguments[] = {
 	NULL
 };
 
-static int open_single_tx_pcap(const char *pcap_filename, pcap_dumper_t **dumper);
-static int open_single_rx_pcap(const char *pcap_filename, pcap_t **pcap);
-static int open_single_iface(const char *iface, pcap_t **pcap);
-
 static struct ether_addr eth_addr = { .addr_bytes = { 0, 0, 0, 0x1, 0x2, 0x3 } };
 static const char *drivername = "Pcap PMD";
 static struct rte_eth_link pmd_link = {
@@ -369,6 +365,70 @@ eth_pcap_tx(void *queue,
 	tx_queue->tx_stat.bytes += tx_bytes;
 	tx_queue->tx_stat.err_pkts += nb_pkts - num_tx;
 	return num_tx;
+}
+
+/*
+ * pcap_open_live wrapper function
+ */
+static inline int
+open_iface_live(const char *iface, pcap_t **pcap) {
+	*pcap = pcap_open_live(iface, RTE_ETH_PCAP_SNAPLEN,
+			RTE_ETH_PCAP_PROMISC, RTE_ETH_PCAP_TIMEOUT, errbuf);
+
+	if (*pcap == NULL) {
+		RTE_LOG(ERR, PMD, "Couldn't open %s: %s\n", iface, errbuf);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+open_single_iface(const char *iface, pcap_t **pcap)
+{
+	if (open_iface_live(iface, pcap) < 0) {
+		RTE_LOG(ERR, PMD, "Couldn't open interface %s\n", iface);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+open_single_tx_pcap(const char *pcap_filename, pcap_dumper_t **dumper)
+{
+	pcap_t *tx_pcap;
+
+	/*
+	 * We need to create a dummy empty pcap_t to use it
+	 * with pcap_dump_open(). We create big enough an Ethernet
+	 * pcap holder.
+	 */
+	if ((tx_pcap = pcap_open_dead(DLT_EN10MB, RTE_ETH_PCAP_SNAPSHOT_LEN))
+			== NULL) {
+		RTE_LOG(ERR, PMD, "Couldn't create dead pcap\n");
+		return -1;
+	}
+
+	/* The dumper is created using the previous pcap_t reference */
+	if ((*dumper = pcap_dump_open(tx_pcap, pcap_filename)) == NULL) {
+		RTE_LOG(ERR, PMD, "Couldn't open %s for writing.\n",
+			pcap_filename);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+open_single_rx_pcap(const char *pcap_filename, pcap_t **pcap)
+{
+	if ((*pcap = pcap_open_offline(pcap_filename, errbuf)) == NULL) {
+		RTE_LOG(ERR, PMD, "Couldn't open %s: %s\n", pcap_filename, errbuf);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int
@@ -638,16 +698,6 @@ open_rx_pcap(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
-static int
-open_single_rx_pcap(const char *pcap_filename, pcap_t **pcap)
-{
-	if ((*pcap = pcap_open_offline(pcap_filename, errbuf)) == NULL) {
-		RTE_LOG(ERR, PMD, "Couldn't open %s: %s\n", pcap_filename, errbuf);
-		return -1;
-	}
-	return 0;
-}
-
 /*
  * Opens a pcap file for writing and stores a reference to it
  * for use it later on.
@@ -669,46 +719,6 @@ open_tx_pcap(const char *key, const char *value, void *extra_args)
 		dumpers->queue[i].type = key;
 	}
 
-	return 0;
-}
-
-static int
-open_single_tx_pcap(const char *pcap_filename, pcap_dumper_t **dumper)
-{
-	pcap_t *tx_pcap;
-	/*
-	 * We need to create a dummy empty pcap_t to use it
-	 * with pcap_dump_open(). We create big enough an Ethernet
-	 * pcap holder.
-	 */
-
-	if ((tx_pcap = pcap_open_dead(DLT_EN10MB, RTE_ETH_PCAP_SNAPSHOT_LEN))
-			== NULL) {
-		RTE_LOG(ERR, PMD, "Couldn't create dead pcap\n");
-		return -1;
-	}
-
-	/* The dumper is created using the previous pcap_t reference */
-	if ((*dumper = pcap_dump_open(tx_pcap, pcap_filename)) == NULL) {
-		RTE_LOG(ERR, PMD, "Couldn't open %s for writing.\n", pcap_filename);
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
- * pcap_open_live wrapper function
- */
-static inline int
-open_iface_live(const char *iface, pcap_t **pcap) {
-	*pcap = pcap_open_live(iface, RTE_ETH_PCAP_SNAPLEN,
-			RTE_ETH_PCAP_PROMISC, RTE_ETH_PCAP_TIMEOUT, errbuf);
-
-	if (*pcap == NULL) {
-		RTE_LOG(ERR, PMD, "Couldn't open %s: %s\n", iface, errbuf);
-		return -1;
-	}
 	return 0;
 }
 
@@ -771,17 +781,6 @@ open_tx_iface(const char *key, const char *value, void *extra_args)
 		tx->queue[i].pcap = pcap;
 		tx->queue[i].name = iface;
 		tx->queue[i].type = key;
-	}
-
-	return 0;
-}
-
-static int
-open_single_iface(const char *iface, pcap_t **pcap)
-{
-	if (open_iface_live(iface, pcap) < 0) {
-		RTE_LOG(ERR, PMD, "Couldn't open interface %s\n", iface);
-		return -1;
 	}
 
 	return 0;
