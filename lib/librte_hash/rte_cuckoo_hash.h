@@ -134,6 +134,8 @@ enum add_key_case {
 
 #define NULL_SIGNATURE			0
 
+#define EMPTY_SLOT			0
+
 #define KEY_ALIGNMENT			16
 
 #define LCORE_CACHE_SIZE		64

@@ -53,8 +53,7 @@ rte_hash_cuckoo_insert_mw_tm(struct rte_hash_bucket *prim_bkt,
 			*/
 			for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 				/* Check if slot is available */
-				if (likely(prim_bkt->signatures[i].sig ==
-						NULL_SIGNATURE)) {
+				if (likely(prim_bkt->key_idx == EMPTY_SLOT)) {
 					prim_bkt->signatures[i].current = sig;
 					prim_bkt->signatures[i].alt = alt_hash;
 					prim_bkt->key_idx[i] = new_idx;
@@ -171,7 +170,7 @@ rte_hash_cuckoo_make_space_mw_tm(const struct rte_hash *h,
 					queue + RTE_HASH_BFS_QUEUE_MAX_LEN - 4)) {
 		curr_bkt = tail->bkt;
 		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-			if (curr_bkt->signatures[i].sig == NULL_SIGNATURE) {
+			if (curr_bkt->key_idx[i] == EMPTY_SLOT) {
 				if (likely(rte_hash_cuckoo_move_insert_mw_tm(h,
 						tail, i, sig,
 						alt_hash, new_idx) == 0))

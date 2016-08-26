@@ -424,7 +424,7 @@ make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 		next_bucket_idx = bkt->signatures[i].alt & h->bucket_bitmask;
 		next_bkt[i] = &h->buckets[next_bucket_idx];
 		for (j = 0; j < RTE_HASH_BUCKET_ENTRIES; j++) {
-			if (next_bkt[i]->signatures[j].sig == NULL_SIGNATURE)
+			if (next_bkt[i]->key_idx[j] == EMPTY_SLOT)
 				break;
 		}
 
@@ -610,7 +610,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 #endif
 		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 			/* Check if slot is available */
-			if (likely(prim_bkt->signatures[i].sig == NULL_SIGNATURE)) {
+			if (likely(prim_bkt->key_idx[i] == EMPTY_SLOT)) {
 				prim_bkt->signatures[i].current = sig;
 				prim_bkt->signatures[i].alt = alt_hash;
 				prim_bkt->key_idx[i] = new_idx;
@@ -708,7 +708,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 	/* Check if key is in primary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 		if (bkt->signatures[i].current == sig &&
-				bkt->signatures[i].sig != NULL_SIGNATURE) {
+				bkt->key_idx[i] != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
@@ -824,7 +824,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 	/* Check if key is in primary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 		if (bkt->signatures[i].current == sig &&
-				bkt->signatures[i].sig != NULL_SIGNATURE) {
+				bkt->key_idx[i] != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
@@ -835,7 +835,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				 * substracting the first dummy index
 				 */
 				ret = bkt->key_idx[i] - 1;
-				bkt->key_idx[i] = 0;
+				bkt->key_idx[i] = EMPTY_SLOT;
 				return ret;
 			}
 		}
@@ -849,7 +849,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 	/* Check if key is in secondary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 		if (bkt->signatures[i].current == alt_hash &&
-				bkt->signatures[i].sig != NULL_SIGNATURE) {
+				bkt->key_idx[i] != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
@@ -860,7 +860,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				 * substracting the first dummy index
 				 */
 				ret = bkt->key_idx[i] - 1;
-				bkt->key_idx[i] = 0;
+				bkt->key_idx[i] = EMPTY_SLOT;
 				return ret;
 			}
 		}
@@ -1230,7 +1230,7 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 	idx = *next % RTE_HASH_BUCKET_ENTRIES;
 
 	/* If current position is empty, go to the next one */
-	while (h->buckets[bucket_idx].signatures[idx].sig == NULL_SIGNATURE) {
+	while (h->buckets[bucket_idx].key_idx[idx] == EMPTY_SLOT) {
 		(*next)++;
 		/* End of table */
 		if (*next == total_entries)
