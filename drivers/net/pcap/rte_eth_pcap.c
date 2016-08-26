@@ -945,6 +945,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	struct rte_kvargs *kvlist;
 	struct pmd_devargs pcaps = {0};
 	struct pmd_devargs dumpers = {0};
+	int single_iface = 0;
 	int ret;
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_pcap for %s\n", name);
@@ -965,13 +966,18 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_IFACE_ARG,
 				&open_rx_tx_iface, &pcaps);
+
 		if (ret < 0)
 			goto free_kvlist;
 		dumpers.queue[0].pcap = pcaps.queue[0].pcap;
 		dumpers.queue[0].name = pcaps.queue[0].name;
 		dumpers.queue[0].type = pcaps.queue[0].type;
+
+		single_iface = 1;
+
 		ret = rte_eth_from_pcaps(name, &pcaps, 1, &dumpers, 1,
-				kvlist, 1, is_tx_pcap);
+			kvlist, single_iface, is_tx_pcap);
+
 		goto free_kvlist;
 	}
 
@@ -1024,7 +1030,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		goto free_kvlist;
 
 	ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
-		dumpers.num_of_queue, kvlist, 0, is_tx_pcap);
+		dumpers.num_of_queue, kvlist, single_iface, is_tx_pcap);
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
