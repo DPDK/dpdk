@@ -87,26 +87,21 @@ struct pcap_tx_queue {
 	char type[ETH_PCAP_ARG_MAXLEN];
 };
 
-struct rx_pcaps {
-	unsigned num_of_rx;
-	pcap_t *pcaps[RTE_PMD_PCAP_MAX_QUEUES];
-	const char *names[RTE_PMD_PCAP_MAX_QUEUES];
-	const char *types[RTE_PMD_PCAP_MAX_QUEUES];
-};
-
-struct tx_pcaps {
-	unsigned num_of_tx;
-	pcap_dumper_t *dumpers[RTE_PMD_PCAP_MAX_QUEUES];
-	pcap_t *pcaps[RTE_PMD_PCAP_MAX_QUEUES];
-	const char *names[RTE_PMD_PCAP_MAX_QUEUES];
-	const char *types[RTE_PMD_PCAP_MAX_QUEUES];
-};
-
 struct pmd_internals {
 	struct pcap_rx_queue rx_queue[RTE_PMD_PCAP_MAX_QUEUES];
 	struct pcap_tx_queue tx_queue[RTE_PMD_PCAP_MAX_QUEUES];
 	int if_index;
 	int single_iface;
+};
+
+struct pmd_devargs {
+	unsigned num_of_queue;
+	struct devargs_queue {
+		pcap_dumper_t *dumper;
+		pcap_t *pcap;
+		const char *name;
+		const char *type;
+	} queue[RTE_PMD_PCAP_MAX_QUEUES];
 };
 
 const char *valid_arguments[] = {
@@ -627,16 +622,16 @@ open_rx_pcap(const char *key, const char *value, void *extra_args)
 {
 	unsigned i;
 	const char *pcap_filename = value;
-	struct rx_pcaps *pcaps = extra_args;
+	struct pmd_devargs *rx = extra_args;
 	pcap_t *pcap = NULL;
 
-	for (i = 0; i < pcaps->num_of_rx; i++) {
+	for (i = 0; i < rx->num_of_queue; i++) {
 		if (open_single_rx_pcap(pcap_filename, &pcap) < 0)
 			return -1;
 
-		pcaps->pcaps[i] = pcap;
-		pcaps->names[i] = pcap_filename;
-		pcaps->types[i] = key;
+		rx->queue[i].pcap = pcap;
+		rx->queue[i].name = pcap_filename;
+		rx->queue[i].type = key;
 	}
 
 	return 0;
@@ -661,16 +656,16 @@ open_tx_pcap(const char *key, const char *value, void *extra_args)
 {
 	unsigned i;
 	const char *pcap_filename = value;
-	struct tx_pcaps *dumpers = extra_args;
+	struct pmd_devargs *dumpers = extra_args;
 	pcap_dumper_t *dumper;
 
-	for (i = 0; i < dumpers->num_of_tx; i++) {
+	for (i = 0; i < dumpers->num_of_queue; i++) {
 		if (open_single_tx_pcap(pcap_filename, &dumper) < 0)
 			return -1;
 
-		dumpers->dumpers[i] = dumper;
-		dumpers->names[i] = pcap_filename;
-		dumpers->types[i] = key;
+		dumpers->queue[i].dumper = dumper;
+		dumpers->queue[i].name = pcap_filename;
+		dumpers->queue[i].type = key;
 	}
 
 	return 0;
@@ -723,15 +718,15 @@ static inline int
 open_rx_tx_iface(const char *key, const char *value, void *extra_args)
 {
 	const char *iface = value;
-	struct rx_pcaps *pcaps = extra_args;
+	struct pmd_devargs *tx = extra_args;
 	pcap_t *pcap = NULL;
 
 	if (open_single_iface(iface, &pcap) < 0)
 		return -1;
 
-	pcaps->pcaps[0] = pcap;
-	pcaps->names[0] = iface;
-	pcaps->types[0] = key;
+	tx->queue[0].pcap = pcap;
+	tx->queue[0].name = iface;
+	tx->queue[0].type = key;
 
 	return 0;
 }
@@ -744,15 +739,15 @@ open_rx_iface(const char *key, const char *value, void *extra_args)
 {
 	unsigned i;
 	const char *iface = value;
-	struct rx_pcaps *pcaps = extra_args;
+	struct pmd_devargs *rx = extra_args;
 	pcap_t *pcap = NULL;
 
-	for (i = 0; i < pcaps->num_of_rx; i++) {
+	for (i = 0; i < rx->num_of_queue; i++) {
 		if (open_single_iface(iface, &pcap) < 0)
 			return -1;
-		pcaps->pcaps[i] = pcap;
-		pcaps->names[i] = iface;
-		pcaps->types[i] = key;
+		rx->queue[i].pcap = pcap;
+		rx->queue[i].name = iface;
+		rx->queue[i].type = key;
 	}
 
 	return 0;
@@ -766,15 +761,15 @@ open_tx_iface(const char *key, const char *value, void *extra_args)
 {
 	unsigned i;
 	const char *iface = value;
-	struct tx_pcaps *pcaps = extra_args;
+	struct pmd_devargs *tx = extra_args;
 	pcap_t *pcap;
 
-	for (i = 0; i < pcaps->num_of_tx; i++) {
+	for (i = 0; i < tx->num_of_queue; i++) {
 		if (open_single_iface(iface, &pcap) < 0)
 			return -1;
-		pcaps->pcaps[i] = pcap;
-		pcaps->names[i] = iface;
-		pcaps->types[i] = key;
+		tx->queue[i].pcap = pcap;
+		tx->queue[i].name = iface;
+		tx->queue[i].type = key;
 	}
 
 	return 0;
@@ -874,8 +869,8 @@ error:
 }
 
 static int
-rte_eth_from_pcaps_common(const char *name, struct rx_pcaps *rx_queues,
-		const unsigned nb_rx_queues, struct tx_pcaps *tx_queues,
+rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
+		const unsigned nb_rx_queues, struct pmd_devargs *tx_queues,
 		const unsigned nb_tx_queues, const unsigned numa_node,
 		struct rte_kvargs *kvlist, struct pmd_internals **internals,
 		struct rte_eth_dev **eth_dev)
@@ -893,22 +888,22 @@ rte_eth_from_pcaps_common(const char *name, struct rx_pcaps *rx_queues,
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
-		(*internals)->rx_queue[i].pcap = rx_queues->pcaps[i];
+		(*internals)->rx_queue[i].pcap = rx_queues->queue[i].pcap;
 		snprintf((*internals)->rx_queue[i].name,
 			sizeof((*internals)->rx_queue[i].name), "%s",
-			rx_queues->names[i]);
+			rx_queues->queue[i].name);
 		snprintf((*internals)->rx_queue[i].type,
 			sizeof((*internals)->rx_queue[i].type), "%s",
-			rx_queues->types[i]);
+			rx_queues->queue[i].type);
 	}
 	for (i = 0; i < nb_tx_queues; i++) {
-		(*internals)->tx_queue[i].dumper = tx_queues->dumpers[i];
+		(*internals)->tx_queue[i].dumper = tx_queues->queue[i].dumper;
 		snprintf((*internals)->tx_queue[i].name,
 			sizeof((*internals)->tx_queue[i].name), "%s",
-			tx_queues->names[i]);
+			tx_queues->queue[i].name);
 		snprintf((*internals)->tx_queue[i].type,
 			sizeof((*internals)->tx_queue[i].type), "%s",
-			tx_queues->types[i]);
+			tx_queues->queue[i].type);
 	}
 
 	return 0;
@@ -916,9 +911,9 @@ rte_eth_from_pcaps_common(const char *name, struct rx_pcaps *rx_queues,
 
 static int
 rte_eth_from_pcaps_n_dumpers(const char *name,
-		struct rx_pcaps *rx_queues,
+		struct pmd_devargs *rx_queues,
 		const unsigned nb_rx_queues,
-		struct tx_pcaps *tx_queues,
+		struct pmd_devargs *tx_queues,
 		const unsigned nb_tx_queues,
 		const unsigned numa_node,
 		struct rte_kvargs *kvlist)
@@ -945,9 +940,9 @@ rte_eth_from_pcaps_n_dumpers(const char *name,
 
 static int
 rte_eth_from_pcaps(const char *name,
-		struct rx_pcaps *rx_queues,
+		struct pmd_devargs *rx_queues,
 		const unsigned nb_rx_queues,
-		struct tx_pcaps *tx_queues,
+		struct pmd_devargs *tx_queues,
 		const unsigned nb_tx_queues,
 		const unsigned numa_node,
 		struct rte_kvargs *kvlist,
@@ -980,8 +975,8 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	unsigned numa_node, using_dumpers = 0;
 	int ret;
 	struct rte_kvargs *kvlist;
-	struct rx_pcaps pcaps = {0};
-	struct tx_pcaps dumpers = {0};
+	struct pmd_devargs pcaps = {0};
+	struct pmd_devargs dumpers = {0};
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_pcap for %s\n", name);
 
@@ -1005,9 +1000,9 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 				&open_rx_tx_iface, &pcaps);
 		if (ret < 0)
 			goto free_kvlist;
-		dumpers.pcaps[0] = pcaps.pcaps[0];
-		dumpers.names[0] = pcaps.names[0];
-		dumpers.types[0] = pcaps.types[0];
+		dumpers.queue[0].pcap = pcaps.queue[0].pcap;
+		dumpers.queue[0].name = pcaps.queue[0].name;
+		dumpers.queue[0].type = pcaps.queue[0].type;
 		ret = rte_eth_from_pcaps(name, &pcaps, 1, &dumpers, 1,
 				numa_node, kvlist, 1);
 		goto free_kvlist;
@@ -1017,11 +1012,11 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	 * We check whether we want to open a RX stream from a real NIC or a
 	 * pcap file
 	 */
-	if ((pcaps.num_of_rx = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG))) {
+	if ((pcaps.num_of_queue = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG))) {
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_PCAP_ARG,
 				&open_rx_pcap, &pcaps);
 	} else {
-		pcaps.num_of_rx = rte_kvargs_count(kvlist,
+		pcaps.num_of_queue = rte_kvargs_count(kvlist,
 				ETH_PCAP_RX_IFACE_ARG);
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_IFACE_ARG,
 				&open_rx_iface, &pcaps);
@@ -1034,13 +1029,13 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 	 * We check whether we want to open a TX stream to a real NIC or a
 	 * pcap file
 	 */
-	if ((dumpers.num_of_tx = rte_kvargs_count(kvlist,
+	if ((dumpers.num_of_queue = rte_kvargs_count(kvlist,
 			ETH_PCAP_TX_PCAP_ARG))) {
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_PCAP_ARG,
 				&open_tx_pcap, &dumpers);
 		using_dumpers = 1;
 	} else {
-		dumpers.num_of_tx = rte_kvargs_count(kvlist,
+		dumpers.num_of_queue = rte_kvargs_count(kvlist,
 				ETH_PCAP_TX_IFACE_ARG);
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_TX_IFACE_ARG,
 				&open_tx_iface, &dumpers);
@@ -1050,11 +1045,11 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		goto free_kvlist;
 
 	if (using_dumpers)
-		ret = rte_eth_from_pcaps_n_dumpers(name, &pcaps, pcaps.num_of_rx,
-				&dumpers, dumpers.num_of_tx, numa_node, kvlist);
+		ret = rte_eth_from_pcaps_n_dumpers(name, &pcaps, pcaps.num_of_queue,
+				&dumpers, dumpers.num_of_queue, numa_node, kvlist);
 	else
-		ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_rx, &dumpers,
-			dumpers.num_of_tx, numa_node, kvlist, 0);
+		ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
+			dumpers.num_of_queue, numa_node, kvlist, 0);
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
