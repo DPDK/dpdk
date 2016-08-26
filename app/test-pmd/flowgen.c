@@ -73,7 +73,6 @@
 
 /* hardcoded configuration (for now) */
 static unsigned cfg_n_flows	= 1024;
-static unsigned cfg_pkt_size	= 300;
 static uint32_t cfg_ip_src	= IPv4(10, 254, 0, 0);
 static uint32_t cfg_ip_dst	= IPv4(10, 253, 0, 0);
 static uint16_t cfg_udp_src	= 1000;
@@ -117,7 +116,7 @@ ip_sum(const unaligned_uint16_t *hdr, int hdr_len)
 static void
 pkt_burst_flow_gen(struct fwd_stream *fs)
 {
-	unsigned pkt_size = cfg_pkt_size - 4;	/* Adjust FCS */
+	unsigned pkt_size = tx_pkt_length - 4;	/* Adjust FCS */
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
 	struct rte_mempool *mbp;
 	struct rte_mbuf  *pkt;

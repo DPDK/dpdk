@@ -191,7 +191,8 @@ usage(char* progname)
 	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
 	printf("  --no-flush-rx: Don't flush RX streams before forwarding."
 	       " Used mainly with PCAP drivers.\n");
-	printf("  --txpkts=X[,Y]*: set TX segment sizes.\n");
+	printf("  --txpkts=X[,Y]*: set TX segment sizes"
+		" or total packet length.\n");
 	printf("  --disable-link-check: disable check on link status when "
 	       "starting/stopping ports.\n");
 }

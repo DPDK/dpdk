@@ -454,7 +454,8 @@ The commandline options are:
 
 *   ``--txpkts=X[,Y]``
 
-    Set TX segment sizes.
+    Set TX segment sizes or total packet length. Valid for ``tx-only``
+    and ``flowgen`` forwarding modes.
 
 *   ``--disable-link-check``
 

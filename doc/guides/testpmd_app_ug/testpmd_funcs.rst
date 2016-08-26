@@ -405,7 +405,7 @@ When retry is enabled, the transmit delay time and number of retries can also be
 set txpkts
 ~~~~~~~~~~
 
-Set the length of each segment of the TX-ONLY packets::
+Set the length of each segment of the TX-ONLY packets or length of packet for FLOWGEN mode::
 
    testpmd> set txpkts (x[,y]*)
 
