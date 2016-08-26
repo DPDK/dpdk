@@ -816,6 +816,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 	unsigned i;
 	struct rte_hash_bucket *bkt;
 	struct rte_hash_key *k, *keys = h->key_store;
+	int32_t ret;
 
 	bucket_idx = sig & h->bucket_bitmask;
 	bkt = &h->buckets[bucket_idx];
@@ -833,7 +834,9 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return bkt->key_idx[i] - 1;
+				ret = bkt->key_idx[i] - 1;
+				bkt->key_idx[i] = 0;
+				return ret;
 			}
 		}
 	}
@@ -856,7 +859,9 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 				 * Return index where key is stored,
 				 * substracting the first dummy index
 				 */
-				return bkt->key_idx[i] - 1;
+				ret = bkt->key_idx[i] - 1;
+				bkt->key_idx[i] = 0;
+				return ret;
 			}
 		}
 	}
