@@ -824,9 +824,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
-	/* NOTE: we'll replace the data element, of originally allocated eth_dev
-	 * so the rings are local per-process */
-
 	data->dev_private = *internals;
 	data->port_id = (*eth_dev)->data->port_id;
 	snprintf(data->name, sizeof(data->name), "%s", (*eth_dev)->data->name);
@@ -837,6 +834,10 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	strncpy(data->name,
 		(*eth_dev)->data->name, strlen((*eth_dev)->data->name));
 
+	/*
+	 * NOTE: we'll replace the data element, of originally allocated
+	 * eth_dev so the rings are local per-process
+	 */
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
 	(*eth_dev)->driver = NULL;
