@@ -814,10 +814,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	if (*eth_dev == NULL)
 		goto error;
 
-	/* check length of device name */
-	if ((strlen((*eth_dev)->data->name) + 1) > sizeof(data->name))
-		goto error;
-
 	/* now put it all together
 	 * - store queue data in internals,
 	 * - store numa_node info in eth_dev
