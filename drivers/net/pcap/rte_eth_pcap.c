@@ -870,22 +870,21 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 		return -1;
 
 	for (i = 0; i < nb_rx_queues; i++) {
-		(*internals)->rx_queue[i].pcap = rx_queues->queue[i].pcap;
-		snprintf((*internals)->rx_queue[i].name,
-			sizeof((*internals)->rx_queue[i].name), "%s",
-			rx_queues->queue[i].name);
-		snprintf((*internals)->rx_queue[i].type,
-			sizeof((*internals)->rx_queue[i].type), "%s",
-			rx_queues->queue[i].type);
+		struct pcap_rx_queue *rx = &(*internals)->rx_queue[i];
+		struct devargs_queue *queue = &rx_queues->queue[i];
+
+		rx->pcap = queue->pcap;
+		snprintf(rx->name, sizeof(rx->name), "%s", queue->name);
+		snprintf(rx->type, sizeof(rx->type), "%s", queue->type);
 	}
+
 	for (i = 0; i < nb_tx_queues; i++) {
-		(*internals)->tx_queue[i].dumper = tx_queues->queue[i].dumper;
-		snprintf((*internals)->tx_queue[i].name,
-			sizeof((*internals)->tx_queue[i].name), "%s",
-			tx_queues->queue[i].name);
-		snprintf((*internals)->tx_queue[i].type,
-			sizeof((*internals)->tx_queue[i].type), "%s",
-			tx_queues->queue[i].type);
+		struct pcap_tx_queue *tx = &(*internals)->tx_queue[i];
+		struct devargs_queue *queue = &tx_queues->queue[i];
+
+		tx->dumper = queue->dumper;
+		snprintf(tx->name, sizeof(tx->name), "%s", queue->name);
+		snprintf(tx->type, sizeof(tx->type), "%s", queue->type);
 	}
 
 	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
