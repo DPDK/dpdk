@@ -56,7 +56,7 @@ p 1 route add 100.3.0.0 16 port 3 ether 10.3.0.2
 # Prio = 1 (High): [SA = ANY, DA = 10.1.0.1, SP = ANY, DP = 1001, PROTO = UDP] => Allow
 # Prio = 1 (High): [SA = ANY, DA = 10.2.0.1, SP = ANY, DP = 1002, PROTO = UDP] => Allow
 # Prio = 1 (High): [SA = ANY, DA = 10.3.0.1, SP = ANY, DP = 1003, PROTO = UDP] => Allow
-p 1 firewall add default 1 #SINK0
+p 2 firewall add default 1 #SINK0
 p 2 firewall add priority 1 ipv4 0.0.0.0 0 10.0.0.1 32 0 65535 1000 1000 17 0xF port 0
 p 2 firewall add priority 1 ipv4 0.0.0.0 0 10.1.0.1 32 0 65535 1001 1001 17 0xF port 0
 p 2 firewall add priority 1 ipv4 0.0.0.0 0 10.2.0.1 32 0 65535 1002 1002 17 0xF port 0
@@ -72,8 +72,8 @@ p 2 firewall add priority 1 ipv4 0.0.0.0 0 10.3.0.1 32 0 65535 1003 1003 17 0xF 
 # TCP [SA = 100.2.0.10, DA = 10.2.0.1, SP = 1002, DP = 80] => socket ID = 2
 # TCP [SA = 100.3.0.10, DA = 10.3.0.1, SP = 1003, DP = 80] => socket ID = 3
 p 3 flow add default 1 #SINK1
-p 3 flow add ipv4 100.0.0.10 10.0.0.1 1000 80 6 port 1 id 0
-p 3 flow add ipv4 100.1.0.10 10.1.0.1 1001 80 6 port 1 id 1
-p 3 flow add ipv4 100.2.0.10 10.2.0.1 1002 80 6 port 1 id 2
-p 3 flow add ipv4 100.3.0.10 10.3.0.1 1003 80 6 port 1 id 3
+p 3 flow add ipv4 100.0.0.10 10.0.0.1 1000 80 6 port 0 id 0
+p 3 flow add ipv4 100.1.0.10 10.1.0.1 1001 80 6 port 0 id 1
+p 3 flow add ipv4 100.2.0.10 10.2.0.1 1002 80 6 port 0 id 2
+p 3 flow add ipv4 100.3.0.10 10.3.0.1 1003 80 6 port 0 id 3
 #p 3 flow ls
