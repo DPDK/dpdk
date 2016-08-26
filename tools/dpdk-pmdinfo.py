@@ -319,7 +319,7 @@ class ReadElf(object):
         pmdinfo = json.loads(mystring)
 
         if raw_output:
-            print(pmdinfo)
+            print(json.dumps(pmdinfo))
             return
 
         print("PMD NAME: " + pmdinfo["name"])
