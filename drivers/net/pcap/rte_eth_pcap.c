@@ -785,7 +785,7 @@ open_tx_iface(const char *key, const char *value, void *extra_args)
 }
 
 static int
-rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
+pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 		const unsigned nb_tx_queues, struct pmd_internals **internals,
 		struct rte_eth_dev **eth_dev)
 {
@@ -848,7 +848,7 @@ error:
 }
 
 static int
-rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
+eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 		const unsigned nb_rx_queues, struct pmd_devargs *tx_queues,
 		const unsigned nb_tx_queues, struct rte_kvargs *kvlist,
 		struct pmd_internals **internals, struct rte_eth_dev **eth_dev)
@@ -863,7 +863,7 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 	if (tx_queues == NULL && nb_tx_queues > 0)
 		return -1;
 
-	if (rte_pmd_init_internals(name, nb_rx_queues, nb_tx_queues, internals,
+	if (pmd_init_internals(name, nb_rx_queues, nb_tx_queues, internals,
 			eth_dev) < 0)
 		return -1;
 
@@ -901,7 +901,7 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 }
 
 static int
-rte_eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
+eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 		const unsigned nb_rx_queues, struct pmd_devargs *tx_queues,
 		const unsigned nb_tx_queues, struct rte_kvargs *kvlist,
 		int single_iface, unsigned int using_dumpers)
@@ -910,7 +910,7 @@ rte_eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 	struct rte_eth_dev *eth_dev = NULL;
 	int ret;
 
-	ret = rte_eth_from_pcaps_common(name, rx_queues, nb_rx_queues,
+	ret = eth_from_pcaps_common(name, rx_queues, nb_rx_queues,
 		tx_queues, nb_tx_queues, kvlist, &internals, &eth_dev);
 
 	if (ret < 0)
@@ -930,7 +930,7 @@ rte_eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 }
 
 static int
-rte_pmd_pcap_devinit(const char *name, const char *params)
+pmd_pcap_devinit(const char *name, const char *params)
 {
 	unsigned int is_rx_pcap = 0, is_tx_pcap = 0;
 	struct rte_kvargs *kvlist;
@@ -1019,7 +1019,7 @@ rte_pmd_pcap_devinit(const char *name, const char *params)
 		goto free_kvlist;
 
 create_eth:
-	ret = rte_eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
+	ret = eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
 		dumpers.num_of_queue, kvlist, single_iface, is_tx_pcap);
 
 free_kvlist:
@@ -1029,7 +1029,7 @@ free_kvlist:
 }
 
 static int
-rte_pmd_pcap_devuninit(const char *name)
+pmd_pcap_devuninit(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 
@@ -1053,8 +1053,8 @@ rte_pmd_pcap_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver pmd_pcap_drv = {
-	.init = rte_pmd_pcap_devinit,
-	.uninit = rte_pmd_pcap_devuninit,
+	.init = pmd_pcap_devinit,
+	.uninit = pmd_pcap_devuninit,
 };
 
 DRIVER_REGISTER_VDEV(net_pcap, pmd_pcap_drv);
