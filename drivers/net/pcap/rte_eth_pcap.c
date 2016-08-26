@@ -883,6 +883,7 @@ rte_eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 		struct devargs_queue *queue = &tx_queues->queue[i];
 
 		tx->dumper = queue->dumper;
+		tx->pcap = queue->pcap;
 		snprintf(tx->name, sizeof(tx->name), "%s", queue->name);
 		snprintf(tx->type, sizeof(tx->type), "%s", queue->type);
 	}
