@@ -827,8 +827,6 @@ rte_pmd_init_internals(const char *name, const unsigned nb_rx_queues,
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &eth_addr;
-	strncpy(data->name,
-		(*eth_dev)->data->name, strlen((*eth_dev)->data->name));
 
 	/*
 	 * NOTE: we'll replace the data element, of originally allocated
