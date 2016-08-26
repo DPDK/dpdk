@@ -106,7 +106,7 @@ struct pmd_devargs {
 	} queue[RTE_PMD_PCAP_MAX_QUEUES];
 };
 
-const char *valid_arguments[] = {
+static const char *valid_arguments[] = {
 	ETH_PCAP_RX_PCAP_ARG,
 	ETH_PCAP_TX_PCAP_ARG,
 	ETH_PCAP_RX_IFACE_ARG,
