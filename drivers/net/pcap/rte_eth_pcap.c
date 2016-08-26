@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   Copyright(c) 2014 6WIND S.A.
  *   All rights reserved.
  *
@@ -58,6 +58,8 @@
 
 #define ETH_PCAP_ARG_MAXLEN	64
 
+#define RTE_PMD_PCAP_MAX_QUEUES 16
+
 static char errbuf[PCAP_ERRBUF_SIZE];
 static unsigned char tx_pcap_data[RTE_ETH_PCAP_SNAPLEN];
 static struct timeval start_time;
@@ -87,22 +89,22 @@ struct pcap_tx_queue {
 
 struct rx_pcaps {
 	unsigned num_of_rx;
-	pcap_t *pcaps[RTE_PMD_RING_MAX_RX_RINGS];
-	const char *names[RTE_PMD_RING_MAX_RX_RINGS];
-	const char *types[RTE_PMD_RING_MAX_RX_RINGS];
+	pcap_t *pcaps[RTE_PMD_PCAP_MAX_QUEUES];
+	const char *names[RTE_PMD_PCAP_MAX_QUEUES];
+	const char *types[RTE_PMD_PCAP_MAX_QUEUES];
 };
 
 struct tx_pcaps {
 	unsigned num_of_tx;
-	pcap_dumper_t *dumpers[RTE_PMD_RING_MAX_TX_RINGS];
-	pcap_t *pcaps[RTE_PMD_RING_MAX_RX_RINGS];
-	const char *names[RTE_PMD_RING_MAX_RX_RINGS];
-	const char *types[RTE_PMD_RING_MAX_RX_RINGS];
+	pcap_dumper_t *dumpers[RTE_PMD_PCAP_MAX_QUEUES];
+	pcap_t *pcaps[RTE_PMD_PCAP_MAX_QUEUES];
+	const char *names[RTE_PMD_PCAP_MAX_QUEUES];
+	const char *types[RTE_PMD_PCAP_MAX_QUEUES];
 };
 
 struct pmd_internals {
-	struct pcap_rx_queue rx_queue[RTE_PMD_RING_MAX_RX_RINGS];
-	struct pcap_tx_queue tx_queue[RTE_PMD_RING_MAX_TX_RINGS];
+	struct pcap_rx_queue rx_queue[RTE_PMD_PCAP_MAX_QUEUES];
+	struct pcap_tx_queue tx_queue[RTE_PMD_PCAP_MAX_QUEUES];
 	int if_index;
 	int single_iface;
 };
