@@ -190,6 +190,9 @@ struct rte_mbuf;
 
 /**
  * A structure used to retrieve statistics for an Ethernet port.
+ * Not all statistics fields in struct rte_eth_stats are supported
+ * by any type of network interface card (NIC). If any statistics
+ * field is not supported, its value is 0.
  */
 struct rte_eth_stats {
 	uint64_t ipackets;  /**< Total number of successfully received packets. */
