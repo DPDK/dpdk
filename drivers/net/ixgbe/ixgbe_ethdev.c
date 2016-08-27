@@ -3445,7 +3445,7 @@ ixgbe_dev_link_status_print(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(INFO, " Port %d: Link Down",
 				(int)(dev->data->port_id));
 	}
-	PMD_INIT_LOG(DEBUG, "PCI Address: %04d:%02d:%02d:%d",
+	PMD_INIT_LOG(DEBUG, "PCI Address: " PCI_PRI_FMT,
 				dev->pci_dev->addr.domain,
 				dev->pci_dev->addr.bus,
 				dev->pci_dev->addr.devid,
