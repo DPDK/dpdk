@@ -90,7 +90,7 @@ check () { # <patch> <commit> <title>
 	fi
 	[ $? -ne 0 ] || continue
 	$verbose || printf '\n### %s\n\n' "$3"
-	printf '%s\n' "$report" | head -n -6
+	printf '%s\n' "$report" | sed -n '1,/^total:.*lines checked$/p'
 	status=$(($status + 1))
 }
 
@@ -111,7 +111,7 @@ else
 	done
 fi
 pass=$(($total - $status))
-$quiet || printf '%d/%d valid patch' $pass $total
+$quiet || printf '\n%d/%d valid patch' $pass $total
 $quiet || [ $pass -le 1 ] || printf 'es'
 $quiet || printf '\n'
 exit $status
