@@ -121,7 +121,7 @@ install-runtime:
 		--exclude 'app/cmdline*' --exclude app/test \
 		--exclude app/testacl --exclude app/testpipeline app | \
 	    tar -xf -      -C $(DESTDIR)$(bindir) --strip-components=1 \
-		--keep-newer-files --warning=no-ignore-newer
+		--keep-newer-files
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(datadir))
 	$(Q)cp -a $(RTE_SDK)/tools $(DESTDIR)$(datadir)
 	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/tools/dpdk-setup.sh, \
@@ -144,7 +144,7 @@ install-sdk:
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(includedir))
 	$(Q)tar -chf -     -C $O include | \
 	    tar -xf -      -C $(DESTDIR)$(includedir) --strip-components=1 \
-		--keep-newer-files --warning=no-ignore-newer
+		--keep-newer-files
 	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(sdkdir))
 	$(Q)cp -a               $(RTE_SDK)/mk            $(DESTDIR)$(sdkdir)
 	$(Q)cp -a               $(RTE_SDK)/scripts       $(DESTDIR)$(sdkdir)
@@ -159,7 +159,7 @@ ifneq ($(wildcard $O/doc),)
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(docdir))
 	$(Q)tar -cf -      -C $O/doc html --exclude 'html/guides/.*' | \
 	    tar -xf -      -C $(DESTDIR)$(docdir) --strip-components=1 \
-		--keep-newer-files --warning=no-ignore-newer
+		--keep-newer-files
 endif
 ifneq ($(wildcard $O/doc/*/*/*pdf),)
 	$(Q)$(call rte_mkdir,     $(DESTDIR)$(docdir)/guides)
