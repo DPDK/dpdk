@@ -32,16 +32,10 @@ Poll Mode Driver for Paravirtual VMXNET3 NIC
 ============================================
 
 The VMXNET3 adapter is the next generation of a paravirtualized NIC, introduced by VMware* ESXi.
-It is designed for performance and is not related to VMXNET or VMXENET2.
-It offers all the features available in VMXNET2, and adds several new features such as,
+It is designed for performance, offers all the features available in VMXNET2, and adds several new features such as,
 multi-queue support (also known as Receive Side Scaling, RSS),
 IPv6 offloads, and MSI/MSI-X interrupt delivery.
-Because operating system vendors do not provide built-in drivers for this card,
-VMware Tools must be installed to have a driver for the VMXNET3 network adapter available.
 One can use the same device in a DPDK application with VMXNET3 PMD introduced in DPDK API.
-
-Currently, the driver provides basic support for using the device in a DPDK application running on a guest OS.
-Optimization is needed on the backend, that is, the VMware* ESXi vmkernel switch, to achieve optimal performance end-to-end.
 
 In this chapter, two setups with the use of the VMXNET3 PMD are demonstrated:
 
@@ -59,8 +53,6 @@ For performance details, refer to the following link from VMware:
 `http://www.vmware.com/pdf/vsp_4_vmxnet3_perf.pdf <http://www.vmware.com/pdf/vsp_4_vmxnet3_perf.pdf>`_
 
 As a PMD, the VMXNET3 driver provides the packet reception and transmission callbacks, vmxnet3_recv_pkts and vmxnet3_xmit_pkts.
-It does not support scattered packet reception as part of vmxnet3_recv_pkts and vmxnet3_xmit_pkts.
-Also, it does not support scattered packet reception as part of the device operations supported.
 
 The VMXNET3 PMD handles all the packet buffer memory allocation and resides in guest address space
 and it is solely responsible to free that memory when not needed.
@@ -79,7 +71,7 @@ This keeps performance up on the RX side, even though the device provides a noti
 
 In the transmit routine, the DPDK application fills packet buffer pointers in the descriptors of the command ring
 and notifies the hypervisor.
-In response the hypervisor takes packets and passes them to the vSwitch. It writes into the completion descriptors ring.
+In response the hypervisor takes packets and passes them to the vSwitch, It writes into the completion descriptors ring.
 The rings are read by the PMD in the next transmit routine call and the buffers and descriptors are freed from memory.
 
 Features and Limitations of VMXNET3 PMD
