@@ -692,8 +692,20 @@ i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq)
 		return;
 
 	/* free all mbufs that are valid in the ring */
-	for (i = rxq->rx_tail; i != rxq->rxrearm_start; i = (i + 1) & mask)
-		rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+	if (rxq->rxrearm_nb == 0) {
+		for (i = 0; i < rxq->nb_rx_desc; i++) {
+			if (rxq->sw_ring[i].mbuf != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+		}
+	} else {
+		for (i = rxq->rx_tail;
+		     i != rxq->rxrearm_start;
+		     i = (i + 1) & mask) {
+			if (rxq->sw_ring[i].mbuf != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+		}
+	}
+
 	rxq->rxrearm_nb = rxq->nb_rx_desc;
 
 	/* set all entries to NULL */
