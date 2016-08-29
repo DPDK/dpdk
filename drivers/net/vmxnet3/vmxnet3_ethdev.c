@@ -348,9 +348,16 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (dev->data->nb_rx_queues > UINT8_MAX ||
-	    dev->data->nb_tx_queues > UINT8_MAX)
+	if (dev->data->nb_tx_queues > VMXNET3_MAX_TX_QUEUES ||
+	    dev->data->nb_rx_queues > VMXNET3_MAX_RX_QUEUES) {
+		PMD_INIT_LOG(ERR, "ERROR: Number of queues not supported");
 		return -EINVAL;
+	}
+
+	if (!rte_is_power_of_2(dev->data->nb_rx_queues)) {
+		PMD_INIT_LOG(ERR, "ERROR: Number of rx queues not power of 2");
+		return -EINVAL;
+	}
 
 	size = dev->data->nb_rx_queues * sizeof(struct Vmxnet3_TxQueueDesc) +
 		dev->data->nb_tx_queues * sizeof(struct Vmxnet3_RxQueueDesc);
@@ -538,7 +545,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 static int
 vmxnet3_dev_start(struct rte_eth_dev *dev)
 {
-	int status, ret;
+	int ret;
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
@@ -555,11 +562,11 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 
 	/* Activate device by register write */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_ACTIVATE_DEV);
-	status = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
+	ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 
-	if (status != 0) {
+	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Device activation: UNSUCCESSFUL");
-		return -1;
+		return -EINVAL;
 	}
 
 	/* Disable interrupts */
@@ -571,7 +578,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	 */
 	ret = vmxnet3_dev_rxtx_init(dev);
 	if (ret != VMXNET3_SUCCESS) {
-		PMD_INIT_LOG(ERR, "Device receive init: UNSUCCESSFUL");
+		PMD_INIT_LOG(ERR, "Device queue init: UNSUCCESSFUL");
 		return ret;
 	}
 
@@ -586,7 +593,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "Reading events: 0x%X", events);
 	vmxnet3_process_events(hw);
 #endif
-	return status;
+	return VMXNET3_SUCCESS;
 }
 
 /*
