@@ -527,6 +527,11 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.hw_ip_checksum)
 		devRead->misc.uptFeatures |= VMXNET3_F_RXCSUM;
 
+	if (dev->data->dev_conf.rxmode.enable_lro) {
+		devRead->misc.uptFeatures |= VMXNET3_F_LRO;
+		devRead->misc.maxNumRxSG = 0;
+	}
+
 	if (port_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
 		ret = vmxnet3_rss_configure(dev);
 		if (ret != VMXNET3_SUCCESS)
@@ -728,7 +733,8 @@ vmxnet3_dev_info_get(__rte_unused struct rte_eth_dev *dev,
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM;
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_LRO;
 
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
