@@ -131,7 +131,8 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 
 static const struct rte_memzone *
 gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
-		 const char *post_string, int socket_id, uint16_t align)
+		 const char *post_string, int socket_id,
+		 uint16_t align, bool reuse)
 {
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
@@ -140,6 +141,13 @@ gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
 		 dev->driver->pci_drv.driver.name, dev->data->port_id, post_string);
 
 	mz = rte_memzone_lookup(z_name);
+	if (!reuse) {
+		if (mz)
+			rte_memzone_free(mz);
+		return rte_memzone_reserve_aligned(z_name, size, socket_id,
+						   0, align);
+	}
+
 	if (mz)
 		return mz;
 
@@ -371,7 +379,7 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	 * on current socket
 	 */
 	mz = gpa_zone_reserve(dev, sizeof(struct Vmxnet3_DriverShared),
-			      "shared", rte_socket_id(), 8);
+			      "shared", rte_socket_id(), 8, 1);
 
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating shared zone");
@@ -384,10 +392,14 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 
 	/*
 	 * Allocate a memzone for Vmxnet3_RxQueueDesc - Vmxnet3_TxQueueDesc
-	 * on current socket
+	 * on current socket.
+	 *
+	 * We cannot reuse this memzone from previous allocation as its size
+	 * depends on the number of tx and rx queues, which could be different
+	 * from one config to another.
 	 */
-	mz = gpa_zone_reserve(dev, size, "queuedesc",
-			      rte_socket_id(), VMXNET3_QUEUE_DESC_ALIGN);
+	mz = gpa_zone_reserve(dev, size, "queuedesc", rte_socket_id(),
+			      VMXNET3_QUEUE_DESC_ALIGN, 0);
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone");
 		return -ENOMEM;
@@ -402,8 +414,9 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
 		/* Allocate memory structure for UPT1_RSSConf and configure */
-		mz = gpa_zone_reserve(dev, sizeof(struct VMXNET3_RSSConf), "rss_conf",
-				      rte_socket_id(), RTE_CACHE_LINE_SIZE);
+		mz = gpa_zone_reserve(dev, sizeof(struct VMXNET3_RSSConf),
+				      "rss_conf", rte_socket_id(),
+				      RTE_CACHE_LINE_SIZE, 1);
 		if (mz == NULL) {
 			PMD_INIT_LOG(ERR,
 				     "ERROR: Creating rss_conf structure zone");
