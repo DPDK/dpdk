@@ -180,7 +180,7 @@ IFS='
 fixtags=$(echo "$tags" | grep '^Fixes: ')
 bad=$(for fixtag in $fixtags ; do
 	hash=$(echo "$fixtag" | sed 's,^Fixes: \([0-9a-f]*\).*,\1,')
-	if git branch --contains $hash | grep -q '^\*' ; then
+	if git branch --contains $hash 2>&- | grep -q '^\*' ; then
 		good="Fixes: $hash "$(git log --format='("%s")' -1 $hash 2>&-)
 	else
 		good="reference not in current branch"
