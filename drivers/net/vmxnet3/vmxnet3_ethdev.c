@@ -81,11 +81,11 @@ static void vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int vmxnet3_dev_link_update(struct rte_eth_dev *dev,
-				int wait_to_complete);
+				   int wait_to_complete);
 static void vmxnet3_dev_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *stats);
+				  struct rte_eth_stats *stats);
 static void vmxnet3_dev_info_get(struct rte_eth_dev *dev,
-				struct rte_eth_dev_info *dev_info);
+				 struct rte_eth_dev_info *dev_info);
 static const uint32_t *
 vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
@@ -118,7 +118,7 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.allmulticast_disable = vmxnet3_dev_allmulticast_disable,
 	.link_update          = vmxnet3_dev_link_update,
 	.stats_get            = vmxnet3_dev_stats_get,
-	.mac_addr_set	      = vmxnet3_mac_addr_set,
+	.mac_addr_set         = vmxnet3_mac_addr_set,
 	.dev_infos_get        = vmxnet3_dev_info_get,
 	.dev_supported_ptypes_get = vmxnet3_dev_supported_ptypes_get,
 	.vlan_filter_set      = vmxnet3_dev_vlan_filter_set,
@@ -131,21 +131,19 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 
 static const struct rte_memzone *
 gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
-		const char *post_string, int socket_id, uint16_t align)
+		 const char *post_string, int socket_id, uint16_t align)
 {
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
 	snprintf(z_name, sizeof(z_name), "%s_%d_%s",
-					dev->driver->pci_drv.driver.name,
-					dev->data->port_id, post_string);
+		 dev->driver->pci_drv.driver.name, dev->data->port_id, post_string);
 
 	mz = rte_memzone_lookup(z_name);
 	if (mz)
 		return mz;
 
-	return rte_memzone_reserve_aligned(z_name, size,
-			socket_id, 0, align);
+	return rte_memzone_reserve_aligned(z_name, size, socket_id, 0, align);
 }
 
 /**
@@ -195,7 +193,7 @@ vmxnet3_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 	struct rte_eth_link *src = link;
 
 	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
-					*(uint64_t *)src) == 0)
+				*(uint64_t *)src) == 0)
 		return -1;
 
 	return 0;
@@ -213,7 +211,7 @@ vmxnet3_disable_intr(struct vmxnet3_hw *hw)
 
 	hw->shared->devRead.intrConf.intrCtrl |= VMXNET3_IC_DISABLE_ALL;
 	for (i = 0; i < VMXNET3_MAX_INTRS; i++)
-			VMXNET3_WRITE_BAR0_REG(hw, VMXNET3_REG_IMR + i * 8, 1);
+		VMXNET3_WRITE_BAR0_REG(hw, VMXNET3_REG_IMR + i * 8, 1);
 }
 
 /*
@@ -275,8 +273,8 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	/* Getting MAC Address */
 	mac_lo = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_MACL);
 	mac_hi = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_MACH);
-	memcpy(hw->perm_addr  , &mac_lo, 4);
-	memcpy(hw->perm_addr+4, &mac_hi, 2);
+	memcpy(hw->perm_addr, &mac_lo, 4);
+	memcpy(hw->perm_addr + 4, &mac_hi, 2);
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("vmxnet3", ETHER_ADDR_LEN *
@@ -403,7 +401,6 @@ vmxnet3_dev_configure(struct rte_eth_dev *dev)
 	hw->queue_desc_len = (uint16_t)size;
 
 	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
-
 		/* Allocate memory structure for UPT1_RSSConf and configure */
 		mz = gpa_zone_reserve(dev, sizeof(struct VMXNET3_RSSConf), "rss_conf",
 				      rte_socket_id(), RTE_CACHE_LINE_SIZE);
@@ -454,8 +451,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 
 	/* Setting up Guest OS information */
 	devRead->misc.driverInfo.gos.gosBits   = sizeof(void *) == 4 ?
-		VMXNET3_GOS_BITS_32 :
-		VMXNET3_GOS_BITS_64;
+		VMXNET3_GOS_BITS_32 : VMXNET3_GOS_BITS_64;
 	devRead->misc.driverInfo.gos.gosType   = VMXNET3_GOS_TYPE_LINUX;
 	devRead->misc.driverInfo.vmxnet3RevSpt = 1;
 	devRead->misc.driverInfo.uptVerSpt     = 1;
@@ -530,7 +526,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	}
 
 	vmxnet3_dev_vlan_offload_set(dev,
-			     ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK);
+				     ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK);
 
 	vmxnet3_write_mac(hw, hw->perm_addr);
 
@@ -659,16 +655,15 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		struct UPT1_TxStats *txStats = &hw->tqd_start[i].stats;
 
 		stats->q_opackets[i] = txStats->ucastPktsTxOK +
-			txStats->mcastPktsTxOK +
-			txStats->bcastPktsTxOK;
+					txStats->mcastPktsTxOK +
+					txStats->bcastPktsTxOK;
 		stats->q_obytes[i] = txStats->ucastBytesTxOK +
-			txStats->mcastBytesTxOK +
-			txStats->bcastBytesTxOK;
+					txStats->mcastBytesTxOK +
+					txStats->bcastBytesTxOK;
 
 		stats->opackets += stats->q_opackets[i];
 		stats->obytes += stats->q_obytes[i];
-		stats->oerrors += txStats->pktsTxError +
-			txStats->pktsTxDiscard;
+		stats->oerrors += txStats->pktsTxError + txStats->pktsTxDiscard;
 	}
 
 	RTE_BUILD_BUG_ON(RTE_ETHDEV_QUEUE_STAT_CNTRS < VMXNET3_MAX_RX_QUEUES);
@@ -676,12 +671,12 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		struct UPT1_RxStats *rxStats = &hw->rqd_start[i].stats;
 
 		stats->q_ipackets[i] = rxStats->ucastPktsRxOK +
-			rxStats->mcastPktsRxOK +
-			rxStats->bcastPktsRxOK;
+					rxStats->mcastPktsRxOK +
+					rxStats->bcastPktsRxOK;
 
 		stats->q_ibytes[i] = rxStats->ucastBytesRxOK +
-			rxStats->mcastBytesRxOK +
-			rxStats->bcastBytesRxOK;
+					rxStats->mcastBytesRxOK +
+					rxStats->bcastBytesRxOK;
 
 		stats->ipackets += stats->q_ipackets[i];
 		stats->ibytes += stats->q_ibytes[i];
@@ -693,7 +688,7 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 }
 
 static void
-vmxnet3_dev_info_get(__attribute__((unused))struct rte_eth_dev *dev,
+vmxnet3_dev_info_get(__rte_unused struct rte_eth_dev *dev,
 		     struct rte_eth_dev_info *dev_info)
 {
 	dev_info->max_rx_queues = VMXNET3_MAX_RX_QUEUES;
@@ -753,14 +748,16 @@ vmxnet3_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 
 /* return 0 means link status changed, -1 means not changed */
 static int
-vmxnet3_dev_link_update(struct rte_eth_dev *dev, __attribute__((unused)) int wait_to_complete)
+vmxnet3_dev_link_update(struct rte_eth_dev *dev,
+			__rte_unused int wait_to_complete)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	struct rte_eth_link old, link;
 	uint32_t ret;
 
+	/* Link status doesn't change for stopped dev */
 	if (dev->data->dev_started == 0)
-		return -1; /* Link status doesn't change for stopped dev */
+		return -1;
 
 	memset(&link, 0, sizeof(link));
 	vmxnet3_dev_atomic_read_link_status(dev, &old);
@@ -782,8 +779,8 @@ vmxnet3_dev_link_update(struct rte_eth_dev *dev, __attribute__((unused)) int wai
 
 /* Updating rxmode through Vmxnet3_DriverShared structure in adapter */
 static void
-vmxnet3_dev_set_rxmode(struct vmxnet3_hw *hw, uint32_t feature, int set) {
-
+vmxnet3_dev_set_rxmode(struct vmxnet3_hw *hw, uint32_t feature, int set)
+{
 	struct Vmxnet3_RxFilterConf *rxConf = &hw->shared->devRead.rxFilterConf;
 
 	if (set)
@@ -916,11 +913,13 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 	/* Check if link state has changed */
 	if (events & VMXNET3_ECR_LINK)
 		PMD_INIT_LOG(ERR,
-			     "Process events in %s(): VMXNET3_ECR_LINK event", __func__);
+			     "Process events in %s(): VMXNET3_ECR_LINK event",
+			     __func__);
 
 	/* Check if there is an error on xmit/recv queues */
 	if (events & (VMXNET3_ECR_TQERR | VMXNET3_ECR_RQERR)) {
-		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_QUEUE_STATUS);
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+				       VMXNET3_CMD_GET_QUEUE_STATUS);
 
 		if (hw->tqd_start->status.stopped)
 			PMD_INIT_LOG(ERR, "tq error 0x%x",
@@ -939,7 +938,6 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 
 	if (events & VMXNET3_ECR_DEBUG)
 		PMD_INIT_LOG(ERR, "Debug event generated by device.");
-
 }
 #endif
 
