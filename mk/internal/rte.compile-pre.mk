@@ -74,18 +74,18 @@ CMDS-all := $(CMDS-y) $(CMDS-n) $(CMDS-)
 
 # command to compile a .c file to generate an object
 ifeq ($(USE_HOST),1)
-C_TO_O = $(HOSTCC) -Wp,-MD,$(call obj2dep,$(@)).tmp $(HOST_CFLAGS) \
-	$(CFLAGS_$(@)) $(HOST_EXTRA_CFLAGS) -o $@ -c $<
+C_TO_O = $(HOSTCC) -Wp,-MD,$(call obj2dep,$(@)).tmp $(HOST_CPPFLAGS) $(HOST_CFLAGS) \
+	$(CFLAGS_$(@)) $(HOST_EXTRA_CPPFLAGS) $(HOST_EXTRA_CFLAGS) -o $@ -c $<
 C_TO_O_STR = $(subst ','\'',$(C_TO_O)) #'# fix syntax highlight
 C_TO_O_DISP = $(if $(V),"$(C_TO_O_STR)","  HOSTCC $(@)")
 else
-C_TO_O = $(CC) -Wp,-MD,$(call obj2dep,$(@)).tmp $(CFLAGS) \
-	$(CFLAGS_$(@)) $(EXTRA_CFLAGS) -o $@ -c $<
+C_TO_O = $(CC) -Wp,-MD,$(call obj2dep,$(@)).tmp $(CPPFLAGS) $(CFLAGS) \
+	$(CFLAGS_$(@)) $(EXTRA_CPPFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
 C_TO_O_STR = $(subst ','\'',$(C_TO_O)) #'# fix syntax highlight
 C_TO_O_DISP = $(if $(V),"$(C_TO_O_STR)","  CC $(@)")
 endif
 PMDINFO_GEN = $(RTE_SDK_BIN)/app/dpdk-pmdinfogen $@ $@.pmd.c
-PMDINFO_CC = $(CC) $(CFLAGS) -c -o $@.pmd.o $@.pmd.c
+PMDINFO_CC = $(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@.pmd.o $@.pmd.c
 PMDINFO_LD = $(CROSS)ld $(LDFLAGS) -r -o $@.o $@.pmd.o $@
 PMDINFO_TO_O = if grep -q 'PMD_REGISTER_DRIVER(.*)' $<; then \
 	echo "$(if $V,$(PMDINFO_GEN),  PMDINFO $@.pmd.c)" && \
