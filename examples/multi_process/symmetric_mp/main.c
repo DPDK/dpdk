@@ -64,7 +64,6 @@
 #include <rte_debug.h>
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
-#include <rte_ring.h>
 #include <rte_debug.h>
 #include <rte_interrupts.h>
 #include <rte_pci.h>

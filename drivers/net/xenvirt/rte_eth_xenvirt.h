@@ -39,7 +39,6 @@ extern "C" {
 #endif
 
 #include <rte_mempool.h>
-#include <rte_ring.h>
 
 /**
  * Creates mempool for xen virtio PMD.

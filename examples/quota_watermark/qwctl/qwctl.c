@@ -41,7 +41,6 @@
 
 #include <rte_log.h>
 #include <rte_memzone.h>
-#include <rte_ring.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>

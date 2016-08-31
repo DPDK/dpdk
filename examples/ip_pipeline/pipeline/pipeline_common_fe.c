@@ -36,7 +36,6 @@
 #include <unistd.h>
 
 #include <rte_common.h>
-#include <rte_ring.h>
 #include <rte_malloc.h>
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>

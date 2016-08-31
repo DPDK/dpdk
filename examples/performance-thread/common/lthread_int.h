@@ -69,10 +69,10 @@
 #include <pthread.h>
 #include <time.h>
 
+#include <rte_memory.h>
 #include <rte_cycles.h>
 #include <rte_per_lcore.h>
 #include <rte_timer.h>
-#include <rte_ring.h>
 #include <rte_atomic_64.h>
 #include <rte_spinlock.h>
 #include <ctx.h>

@@ -72,7 +72,6 @@
 #include <rte_per_lcore.h>
 #include <rte_prefetch.h>
 #include <rte_random.h>
-#include <rte_ring.h>
 #include <rte_hexdump.h>
 
 enum cdev_type {
