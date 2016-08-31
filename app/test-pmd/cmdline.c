@@ -1367,7 +1367,7 @@ cmdline_parse_token_num_t cmd_config_mtu_value =
 cmdline_parse_inst_t cmd_config_mtu = {
 	.f = cmd_config_mtu_parsed,
 	.data = NULL,
-	.help_str = "port config mtu value",
+	.help_str = "port config mtu port_id value",
 	.tokens = {
 		(void *)&cmd_config_mtu_port,
 		(void *)&cmd_config_mtu_keyword,
