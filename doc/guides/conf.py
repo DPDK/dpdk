@@ -111,7 +111,9 @@ man_pages = [("testpmd_app_ug/run_app", "testpmd",
              ("tools/pdump", "dpdk-pdump",
               "enable packet capture on dpdk ports", "", 1),
              ("tools/proc_info", "dpdk-procinfo",
-              "access dpdk port stats and memory info", "", 1)]
+              "access dpdk port stats and memory info", "", 1),
+             ("tools/pmdinfo", "dpdk-pmdinfo",
+              "dump a PMDs hardware support info", "", 1)]
 
 ######## :numref: fallback ########
 # The following hook functions add some simple handling for the :numref:

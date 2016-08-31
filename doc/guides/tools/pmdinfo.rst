@@ -1,6 +1,5 @@
 ..  BSD LICENSE
     Copyright(c) 2016 Canonical Limited. All rights reserved.
-    All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -28,14 +27,29 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Tool User Guides
-================
 
-.. toctree::
-    :maxdepth: 2
-    :numbered:
+dpdk-pmdinfo Application
+========================
 
-    proc_info
-    pdump
-    pmdinfo
+The ``dpdk-pmdinfo`` tool is a Data Plane Development Kit (DPDK) utility that
+can dump a PMDs hardware support info.
 
+
+Running the Application
+-----------------------
+
+The tool has a number of command line options:
+
+.. code-block:: console
+
+   dpdk-pmdinfo [-hrtp] [-d <pci id file] <elf-file>
+
+   -h, --help            Show a short help message and exit
+   -r, --raw             Dump as raw json strings
+   -d FILE, --pcidb=FILE Specify a pci database to get vendor names from
+   -t, --table           Output information on hw support as a hex table
+   -p, --plugindir       Scan dpdk for autoload plugins
+
+.. Note::
+
+   * Parameters inside the square brackets represents optional parameters.
