@@ -38,4 +38,5 @@ Tool User Guides
     proc_info
     pdump
     pmdinfo
+    devbind
 

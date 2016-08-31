@@ -138,6 +138,10 @@ ifneq ($(wildcard $O/doc/man/*/*.1),)
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(mandir)/man1)
 	$(Q)cp -a $O/doc/man/*/*.1 $(DESTDIR)$(mandir)/man1
 endif
+ifneq ($(wildcard $O/doc/man/*/*.8),)
+	$(Q)$(call rte_mkdir,      $(DESTDIR)$(mandir)/man8)
+	$(Q)cp -a $O/doc/man/*/*.8 $(DESTDIR)$(mandir)/man8
+endif
 
 install-kmod:
 ifneq ($(wildcard $O/kmod/*),)
