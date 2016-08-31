@@ -3140,4 +3140,16 @@ static inline int __kc_pci_vfs_assigned(struct pci_dev *dev)
 #define SET_ETHTOOL_OPS(netdev, ops) ((netdev)->ethtool_ops = (ops))
 #endif /* >= 3.16.0 */
 
+/*
+ * vlan_tx_tag_* macros renamed to skb_vlan_tag_* (Linux commit: df8a39defad4)
+ * For older kernels backported this commit, need to use renamed functions.
+ * This fix is specific to RedHat/CentOS kernels.
+ */
+#if (defined(RHEL_RELEASE_CODE) && \
+	RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6, 8) && \
+	LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34))
+#define vlan_tx_tag_get skb_vlan_tag_get
+#define vlan_tx_tag_present skb_vlan_tag_present
+#endif
+
 #endif /* _KCOMPAT_H_ */
