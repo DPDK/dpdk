@@ -557,7 +557,7 @@ rte_pmd_ring_probe(const char *name, const char *params)
 				goto out_free;
 
 			for (info->count = 0; info->count < info->total; info->count++) {
-				ret = eth_dev_ring_create(name,
+				ret = eth_dev_ring_create(info->list[info->count].name,
 							  info->list[info->count].node,
 							  info->list[info->count].action);
 				if ((ret == -1) &&
