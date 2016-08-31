@@ -355,10 +355,12 @@ kni_dev_remove(struct kni_dev *dev)
 	if (!dev)
 		return -ENODEV;
 
-	if (pci_match_id(ixgbe_pci_tbl, dev->pci_dev))
-		ixgbe_kni_remove(dev->pci_dev);
-	else if (pci_match_id(igb_pci_tbl, dev->pci_dev))
-		igb_kni_remove(dev->pci_dev);
+	if (dev->pci_dev) {
+		if (pci_match_id(ixgbe_pci_tbl, dev->pci_dev))
+			ixgbe_kni_remove(dev->pci_dev);
+		else if (pci_match_id(igb_pci_tbl, dev->pci_dev))
+			igb_kni_remove(dev->pci_dev);
+	}
 
 	if (dev->net_dev) {
 		unregister_netdev(dev->net_dev);
