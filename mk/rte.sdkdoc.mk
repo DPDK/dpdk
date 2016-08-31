@@ -63,7 +63,7 @@ help:
 all: api-html guides-html guides-pdf
 
 .PHONY: clean
-clean: api-html-clean guides-html-clean guides-pdf-clean
+clean: api-html-clean guides-html-clean guides-pdf-clean guides-man-clean
 
 .PHONY: api-html
 api-html: api-html-clean

@@ -66,6 +66,7 @@ includedir  ?=      $(prefix)/include/dpdk
 datarootdir ?=      $(prefix)/share
 docdir      ?=       $(datarootdir)/doc/dpdk
 datadir     ?=       $(datarootdir)/dpdk
+mandir      ?=       $(datarootdir)/man
 sdkdir      ?=                $(datadir)
 targetdir   ?=                $(datadir)/$(RTE_TARGET)
 
@@ -133,6 +134,10 @@ install-runtime:
 	                           $(DESTDIR)$(sbindir)/dpdk-devbind)
 	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/tools/dpdk-pmdinfo.py, \
 	                           $(DESTDIR)$(bindir)/dpdk-pmdinfo)
+ifneq ($(wildcard $O/doc/man/*/*.1),)
+	$(Q)$(call rte_mkdir,      $(DESTDIR)$(mandir)/man1)
+	$(Q)cp -a $O/doc/man/*/*.1 $(DESTDIR)$(mandir)/man1
+endif
 
 install-kmod:
 ifneq ($(wildcard $O/kmod/*),)
