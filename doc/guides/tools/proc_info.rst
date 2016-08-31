@@ -1,4 +1,3 @@
-
 ..  BSD LICENSE
     Copyright(c) 2015 Intel Corporation. All rights reserved.
     All rights reserved.

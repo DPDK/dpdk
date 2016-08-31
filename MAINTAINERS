@@ -494,7 +494,7 @@ M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/librte_pdump/
 F: doc/guides/prog_guide/pdump_lib.rst
 F: app/pdump/
-F: doc/guides/sample_app_ug/pdump.rst
+F: doc/guides/tools/pdump.rst
 
 
 Packet Framework
@@ -618,6 +618,7 @@ Dump tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>
 M: John McNamara <john.mcnamara@intel.com>
 F: app/proc_info/
+F: doc/guides/tools/proc_info.rst
 
 
 Other Example Applications

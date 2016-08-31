@@ -72,11 +72,9 @@ Sample Applications User Guide
     dist_app
     vm_power_management
     tep_termination
-    proc_info
     ptpclient
     performance_thread
     ipsec_secgw
-    pdump
 
 **Figures**
 
