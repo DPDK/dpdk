@@ -215,17 +215,16 @@ app_worker_thread(struct thread_conf **confs)
 
 	while ((conf = confs[conf_idx])) {
 		uint32_t nb_pkt;
-		int retval;
 
 		/* Read packet from the ring */
-		retval = rte_ring_sc_dequeue_bulk(conf->rx_ring, (void **)mbufs,
+		nb_pkt = rte_ring_sc_dequeue_burst(conf->rx_ring, (void **)mbufs,
 					burst_conf.ring_burst);
-		if (likely(retval == 0)) {
+		if (likely(nb_pkt)) {
 			int nb_sent = rte_sched_port_enqueue(conf->sched_port, mbufs,
-					burst_conf.ring_burst);
+					nb_pkt);
 
-			APP_STATS_ADD(conf->stat.nb_drop, burst_conf.ring_burst - nb_sent);
-			APP_STATS_ADD(conf->stat.nb_rx, burst_conf.ring_burst);
+			APP_STATS_ADD(conf->stat.nb_drop, nb_pkt - nb_sent);
+			APP_STATS_ADD(conf->stat.nb_rx, nb_pkt);
 		}
 
 		nb_pkt = rte_sched_port_dequeue(conf->sched_port, mbufs,
@@ -250,17 +249,16 @@ app_mixed_thread(struct thread_conf **confs)
 
 	while ((conf = confs[conf_idx])) {
 		uint32_t nb_pkt;
-		int retval;
 
 		/* Read packet from the ring */
-		retval = rte_ring_sc_dequeue_bulk(conf->rx_ring, (void **)mbufs,
+		nb_pkt = rte_ring_sc_dequeue_burst(conf->rx_ring, (void **)mbufs,
 					burst_conf.ring_burst);
-		if (likely(retval == 0)) {
+		if (likely(nb_pkt)) {
 			int nb_sent = rte_sched_port_enqueue(conf->sched_port, mbufs,
-					burst_conf.ring_burst);
+					nb_pkt);
 
-			APP_STATS_ADD(conf->stat.nb_drop, burst_conf.ring_burst - nb_sent);
-			APP_STATS_ADD(conf->stat.nb_rx, burst_conf.ring_burst);
+			APP_STATS_ADD(conf->stat.nb_drop, nb_pkt - nb_sent);
+			APP_STATS_ADD(conf->stat.nb_rx, nb_pkt);
 		}
 
 
