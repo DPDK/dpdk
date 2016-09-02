@@ -277,7 +277,7 @@ int rte_memzone_free(const struct rte_memzone *mz);
 const struct rte_memzone *rte_memzone_lookup(const char *name);
 
 /**
- * Dump all reserved memzones to the console.
+ * Dump all reserved memzones to a file.
  *
  * @param f
  *   A pointer to a file for output

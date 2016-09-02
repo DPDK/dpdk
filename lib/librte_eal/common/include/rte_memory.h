@@ -162,7 +162,7 @@ phys_addr_t rte_mem_virt2phy(const void *virt);
 const struct rte_memseg *rte_eal_get_physmem_layout(void);
 
 /**
- * Dump the physical memory layout to the console.
+ * Dump the physical memory layout to a file.
  *
  * @param f
  *   A pointer to a file for output

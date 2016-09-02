@@ -341,7 +341,7 @@ void rte_ring_free(struct rte_ring *r);
 int rte_ring_set_water_mark(struct rte_ring *r, unsigned count);
 
 /**
- * Dump the status of the ring to the console.
+ * Dump the status of the ring to a file.
  *
  * @param f
  *   A pointer to a file for output

@@ -1647,7 +1647,7 @@ static inline int rte_pktmbuf_chain(struct rte_mbuf *head, struct rte_mbuf *tail
 }
 
 /**
- * Dump an mbuf structure to the console.
+ * Dump an mbuf structure to a file.
  *
  * Dump all fields for the given packet mbuf and all its associated
  * segments (in the case of a chained buffer).

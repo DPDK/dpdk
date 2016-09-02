@@ -294,7 +294,7 @@ rte_malloc_get_socket_stats(int socket,
 /**
  * Dump statistics.
  *
- * Dump for the specified type to the console. If the type argument is
+ * Dump for the specified type to a file. If the type argument is
  * NULL, all memory types will be dumped.
  *
  * @param f

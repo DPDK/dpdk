@@ -107,7 +107,7 @@ struct rte_tailq_elem {
 	RTE_TAILQ_CAST(rte_eal_tailq_lookup(name), struct_name)
 
 /**
- * Dump tail queues to the console.
+ * Dump tail queues to a file.
  *
  * @param f
  *   A pointer to a file for output

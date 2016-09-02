@@ -950,7 +950,7 @@ uint32_t rte_mempool_mem_iter(struct rte_mempool *mp,
 	rte_mempool_mem_cb_t *mem_cb, void *mem_cb_arg);
 
 /**
- * Dump the status of the mempool to the console.
+ * Dump the status of the mempool to a file.
  *
  * @param f
  *   A pointer to a file for output
