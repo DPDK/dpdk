@@ -210,14 +210,18 @@ rte_kni_init(unsigned int max_kni_ifaces)
 	if (max_kni_ifaces == 0) {
 		RTE_LOG(ERR, KNI, "Invalid number of max_kni_ifaces %d\n",
 							max_kni_ifaces);
-		rte_panic("Unable to initialize KNI\n");
+		RTE_LOG(ERR, KNI, "Unable to initialize KNI\n");
+		return;
 	}
 
 	/* Check FD and open */
 	if (kni_fd < 0) {
 		kni_fd = open("/dev/" KNI_DEVICE, O_RDWR);
-		if (kni_fd < 0)
-			rte_panic("Can not open /dev/%s\n", KNI_DEVICE);
+		if (kni_fd < 0) {
+			RTE_LOG(ERR, KNI,
+				"Can not open /dev/%s\n", KNI_DEVICE);
+			return;
+		}
 	}
 
 	/* Allocate slot objects */
@@ -307,8 +311,8 @@ rte_kni_init(unsigned int max_kni_ifaces)
 	return;
 
 kni_fail:
-	rte_panic("Unable to allocate memory for max_kni_ifaces:%d. Increase the amount of hugepages memory\n",
-			 max_kni_ifaces);
+	RTE_LOG(ERR, KNI, "Unable to allocate memory for max_kni_ifaces:%d."
+		"Increase the amount of hugepages memory\n", max_kni_ifaces);
 }
 
 
@@ -483,8 +487,9 @@ rte_kni_release(struct rte_kni *kni)
 
 	/* Release memzone */
 	if (slot_id > kni_memzone_pool.max_ifaces) {
-		rte_panic("KNI pool: corrupted slot ID: %d, max: %d\n",
+		RTE_LOG(ERR, KNI, "KNI pool: corrupted slot ID: %d, max: %d\n",
 			slot_id, kni_memzone_pool.max_ifaces);
+		return -1;
 	}
 	kni_memzone_pool_release(&kni_memzone_pool.slots[slot_id]);
 
@@ -506,7 +511,8 @@ rte_kni_handle_request(struct rte_kni *kni)
 		return 0; /* It is OK of can not getting the request mbuf */
 
 	if (req != kni->sync_addr) {
-		rte_panic("Wrong req pointer %p\n", req);
+		RTE_LOG(ERR, KNI, "Wrong req pointer %p\n", req);
+		return -1;
 	}
 
 	/* Analyze the request and call the relevant actions for it */
