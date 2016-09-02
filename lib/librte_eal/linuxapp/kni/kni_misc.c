@@ -194,7 +194,7 @@ out:
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	unregister_pernet_subsys(&kni_net_ops);
 #else
-	register_pernet_gen_subsys(&kni_net_id, &kni_net_ops);
+	unregister_pernet_gen_subsys(kni_net_id, &kni_net_ops);
 #endif
 	return rc;
 }
@@ -206,7 +206,7 @@ kni_exit(void)
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	unregister_pernet_subsys(&kni_net_ops);
 #else
-	register_pernet_gen_subsys(&kni_net_id, &kni_net_ops);
+	unregister_pernet_gen_subsys(kni_net_id, &kni_net_ops);
 #endif
 	KNI_PRINT("####### DPDK kni module unloaded  #######\n");
 }
