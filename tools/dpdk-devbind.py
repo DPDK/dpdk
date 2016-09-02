@@ -221,11 +221,12 @@ def get_pci_device_details(dev_id):
         name = name.strip(":") + "_str"
         device[name] = value
     # check for a unix interface name
-    sys_path = "/sys/bus/pci/devices/%s/net/" % dev_id
-    if exists(sys_path):
-        device["Interface"] = ",".join(os.listdir(sys_path))
-    else:
-        device["Interface"] = ""
+    device["Interface"] = ""
+    for base, dirs, _ in os.walk("/sys/bus/pci/devices/%s/" % dev_id):
+        if "net" in dirs:
+            device["Interface"] = \
+                ",".join(os.listdir(os.path.join(base, "net")))
+            break
     # check if a port is used for ssh connection
     device["Ssh_if"] = False
     device["Active"] = ""
