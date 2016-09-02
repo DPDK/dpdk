@@ -59,10 +59,6 @@ enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 
 /**
  * Device and vring operations.
- *
- * Make sure to set VIRTIO_DEV_RUNNING to the device flags in new_device and
- * remove it in destroy_device.
- *
  */
 struct virtio_net_device_ops {
 	int (*new_device)(int vid);		/**< Add device. */
