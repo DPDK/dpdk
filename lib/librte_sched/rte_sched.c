@@ -734,19 +734,23 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 void
 rte_sched_port_free(struct rte_sched_port *port)
 {
-	unsigned int queue;
+	uint32_t qindex;
+	uint32_t n_queues_per_port = rte_sched_port_queues_per_port(port);
 
 	/* Check user parameters */
 	if (port == NULL)
 		return;
 
 	/* Free enqueued mbufs */
-	for (queue = 0; queue < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; queue++) {
-		struct rte_mbuf **mbufs = rte_sched_port_qbase(port, queue);
-		unsigned int i;
+	for (qindex = 0; qindex < n_queues_per_port; qindex++) {
+		struct rte_mbuf **mbufs = rte_sched_port_qbase(port, qindex);
+		uint16_t qsize = rte_sched_port_qsize(port, qindex);
+		struct rte_sched_queue *queue = port->queue + qindex;
+		uint16_t qr = queue->qr & (qsize - 1);
+		uint16_t qw = queue->qw & (qsize - 1);
 
-		for (i = 0; i < rte_sched_port_qsize(port, queue); i++)
-			rte_pktmbuf_free(mbufs[i]);
+		for (; qr != qw; qr = (qr + 1) & (qsize - 1))
+			rte_pktmbuf_free(mbufs[qr]);
 	}
 
 	rte_bitmap_free(port->bmp);
