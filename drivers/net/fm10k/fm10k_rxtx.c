@@ -101,11 +101,15 @@ rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 		(FM10K_RXD_STATUS_IPCS | FM10K_RXD_STATUS_IPE)) ==
 		(FM10K_RXD_STATUS_IPCS | FM10K_RXD_STATUS_IPE)))
 		m->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+	else
+		m->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
 
 	if (unlikely((d->d.staterr &
 		(FM10K_RXD_STATUS_L4CS | FM10K_RXD_STATUS_L4E)) ==
 		(FM10K_RXD_STATUS_L4CS | FM10K_RXD_STATUS_L4E)))
 		m->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+	else
+		m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
 }
 
 uint16_t
