@@ -2265,6 +2265,36 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+    mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
+		ETH_VLAN_EXTEND_MASK;
+	ixgbe_vlan_offload_set(dev, mask);
+
+	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
+		/* Enable vlan filtering for VMDq */
+		ixgbe_vmdq_vlan_hw_filter_enable(dev);
+	}
+
+	/* Configure DCB hw */
+	ixgbe_configure_dcb(dev);
+
+	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE) {
+		err = ixgbe_fdir_configure(dev);
+		if (err)
+			goto error;
+	}
+
+	/* Restore vf rate limit */
+	if (vfinfo != NULL) {
+		for (vf = 0; vf < dev->pci_dev->max_vfs; vf++)
+			for (idx = 0; idx < IXGBE_MAX_QUEUE_NUM_PER_VF; idx++)
+				if (vfinfo[vf].tx_rate[idx] != 0)
+					ixgbe_set_vf_rate_limit(dev, vf,
+						vfinfo[vf].tx_rate[idx],
+						1 << idx);
+	}
+
+	ixgbe_restore_statistics_mapping(dev);
+
 	err = ixgbe_dev_rxtx_start(dev);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, "Unable to start rxtx queues");
@@ -2349,36 +2379,6 @@ skip_link_setup:
 
 	/* resume enabled intr since hw reset */
 	ixgbe_enable_intr(dev);
-
-	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
-		ETH_VLAN_EXTEND_MASK;
-	ixgbe_vlan_offload_set(dev, mask);
-
-	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
-		/* Enable vlan filtering for VMDq */
-		ixgbe_vmdq_vlan_hw_filter_enable(dev);
-	}
-
-	/* Configure DCB hw */
-	ixgbe_configure_dcb(dev);
-
-	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		err = ixgbe_fdir_configure(dev);
-		if (err)
-			goto error;
-	}
-
-	/* Restore vf rate limit */
-	if (vfinfo != NULL) {
-		for (vf = 0; vf < dev->pci_dev->max_vfs; vf++)
-			for (idx = 0; idx < IXGBE_MAX_QUEUE_NUM_PER_VF; idx++)
-				if (vfinfo[vf].tx_rate[idx] != 0)
-					ixgbe_set_vf_rate_limit(dev, vf,
-						vfinfo[vf].tx_rate[idx],
-						1 << idx);
-	}
-
-	ixgbe_restore_statistics_mapping(dev);
 
 	return 0;
 
