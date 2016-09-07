@@ -329,6 +329,9 @@ main(int argc, char **argv)
 	argc -= ret;
 	argv += (ret - 3);
 
+	if (!rte_eal_primary_proc_alive(NULL))
+		rte_exit(EXIT_FAILURE, "No primary DPDK process is running.\n");
+
 	/* parse app arguments */
 	ret = proc_info_parse_args(argc, argv);
 	if (ret < 0)
