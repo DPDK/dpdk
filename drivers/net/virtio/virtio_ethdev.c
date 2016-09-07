@@ -125,8 +125,8 @@ static const struct rte_virtio_xstats_name_off rte_virtio_rxq_stat_strings[] = {
 	{"size_128_255_packets",   offsetof(struct virtnet_rx, stats.size_bins[3])},
 	{"size_256_511_packets",   offsetof(struct virtnet_rx, stats.size_bins[4])},
 	{"size_512_1023_packets",  offsetof(struct virtnet_rx, stats.size_bins[5])},
-	{"size_1024_1517_packets", offsetof(struct virtnet_rx, stats.size_bins[6])},
-	{"size_1518_max_packets",  offsetof(struct virtnet_rx, stats.size_bins[7])},
+	{"size_1024_1518_packets", offsetof(struct virtnet_rx, stats.size_bins[6])},
+	{"size_1519_max_packets",  offsetof(struct virtnet_rx, stats.size_bins[7])},
 };
 
 /* [rt]x_qX_ is prepended to the name string here */
@@ -142,8 +142,8 @@ static const struct rte_virtio_xstats_name_off rte_virtio_txq_stat_strings[] = {
 	{"size_128_255_packets",   offsetof(struct virtnet_tx, stats.size_bins[3])},
 	{"size_256_511_packets",   offsetof(struct virtnet_tx, stats.size_bins[4])},
 	{"size_512_1023_packets",  offsetof(struct virtnet_tx, stats.size_bins[5])},
-	{"size_1024_1517_packets", offsetof(struct virtnet_tx, stats.size_bins[6])},
-	{"size_1518_max_packets",  offsetof(struct virtnet_tx, stats.size_bins[7])},
+	{"size_1024_1518_packets", offsetof(struct virtnet_tx, stats.size_bins[6])},
+	{"size_1519_max_packets",  offsetof(struct virtnet_tx, stats.size_bins[7])},
 };
 
 #define VIRTIO_NB_RXQ_XSTATS (sizeof(rte_virtio_rxq_stat_strings) / \
