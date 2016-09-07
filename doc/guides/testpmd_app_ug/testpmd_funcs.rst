@@ -35,7 +35,8 @@ Testpmd Runtime Functions
 
 Where the testpmd application is started in interactive mode, (``-i|--interactive``),
 it displays a prompt that can be used to start and stop forwarding,
-configure the application, display statistics, set the Flow Director and other tasks::
+configure the application, display statistics (including the extended NIC
+statistics aka xstats) , set the Flow Director and other tasks::
 
    testpmd>
 
@@ -50,10 +51,10 @@ If you type a partial command and hit ``<TAB>`` you get a list of the available 
 
    testpmd> show port <TAB>
 
-       info [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc X
-       info [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc all
-       stats [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc X
-       stats [Mul-choice STRING]: show|clear port info|stats|fdir|stat_qmap|dcb_tc all
+       info [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc X
+       info [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc all
+       stats [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc X
+       stats [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc all
        ...
 
 
@@ -130,13 +131,15 @@ show port
 
 Display information for a given port or all ports::
 
-   testpmd> show port (info|stats|fdir|stat_qmap|dcb_tc) (port_id|all)
+   testpmd> show port (info|stats|xstats|fdir|stat_qmap|dcb_tc) (port_id|all)
 
 The available information categories are:
 
 * ``info``: General port information such as MAC address.
 
 * ``stats``: RX/TX statistics.
+
+* ``xstats``: RX/TX extended NIC statistics.
 
 * ``fdir``: Flow Director information and statistics.
 
@@ -205,7 +208,7 @@ clear port
 
 Clear the port statistics for a given port or for all ports::
 
-   testpmd> clear port (info|stats|fdir|stat_qmap) (port_id|all)
+   testpmd> clear port (info|stats|xstats|fdir|stat_qmap) (port_id|all)
 
 For example::
 
