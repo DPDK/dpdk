@@ -125,7 +125,7 @@ rte_table_hash_create_key8_lru(void *params, int socket_id, uint32_t entry_size)
 	/* Check input parameters */
 	if ((check_params_create_lru(p) != 0) ||
 		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
-		((sizeof(struct rte_bucket_4_8) % RTE_CACHE_LINE_SIZE) != 0)) {
+		((sizeof(struct rte_bucket_4_8) % 64) != 0)) {
 		return NULL;
 	}
 	n_entries_per_bucket = 4;
@@ -332,7 +332,7 @@ rte_table_hash_create_key8_ext(void *params, int socket_id, uint32_t entry_size)
 	/* Check input parameters */
 	if ((check_params_create_ext(p) != 0) ||
 		((sizeof(struct rte_table_hash) % RTE_CACHE_LINE_SIZE) != 0) ||
-		((sizeof(struct rte_bucket_4_8) % RTE_CACHE_LINE_SIZE) != 0))
+		((sizeof(struct rte_bucket_4_8) % 64) != 0))
 		return NULL;
 
 	n_entries_per_bucket = 4;
