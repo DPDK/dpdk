@@ -75,6 +75,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_ring.h>
 #include <rte_memcpy.h>
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -216,6 +217,7 @@ struct rte_mempool {
 	 * RTE_MEMPOOL_NAMESIZE next time the ABI changes
 	 */
 	char name[RTE_MEMZONE_NAMESIZE]; /**< Name of mempool. */
+	RTE_STD_C11
 	union {
 		void *pool_data;         /**< Ring or pool to store objects. */
 		uint64_t pool_id;        /**< External mempool identifier. */

@@ -53,6 +53,7 @@
 
 #include <stdio.h>
 #include <rte_memory.h>
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,6 +79,7 @@ struct rte_memzone {
 	char name[RTE_MEMZONE_NAMESIZE];  /**< Name of the memory zone. */
 
 	phys_addr_t phys_addr;            /**< Start physical address. */
+	RTE_STD_C11
 	union {
 		void *addr;                   /**< Start virtual address. */
 		uint64_t addr_64;             /**< Makes sure addr is always 64-bits */

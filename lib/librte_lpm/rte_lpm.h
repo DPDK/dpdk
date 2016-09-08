@@ -100,6 +100,7 @@ struct rte_lpm_tbl_entry_v20 {
 	 * a group index pointing to a tbl8 structure (tbl24 only, when
 	 * valid_group is set)
 	 */
+	RTE_STD_C11
 	union {
 		uint8_t next_hop;
 		uint8_t group_idx;

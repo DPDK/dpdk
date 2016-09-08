@@ -104,6 +104,7 @@ typedef uint64_t phys_addr_t; /**< Physical address definition. */
  */
 struct rte_memseg {
 	phys_addr_t phys_addr;      /**< Start physical address. */
+	RTE_STD_C11
 	union {
 		void *addr;         /**< Start virtual address. */
 		uint64_t addr_64;   /**< Makes sure addr is always 64 bits */

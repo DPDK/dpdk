@@ -48,6 +48,7 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
+#include <rte_common.h>
 
 #include "rte_crypto_sym.h"
 
@@ -111,6 +112,7 @@ struct rte_crypto_op {
 	void *opaque_data;
 	/**< Opaque pointer for user data */
 
+	RTE_STD_C11
 	union {
 		struct rte_crypto_sym_op *sym;
 		/**< Symmetric operation parameters */

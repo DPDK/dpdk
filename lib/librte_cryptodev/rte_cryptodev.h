@@ -48,6 +48,7 @@ extern "C" {
 #include "rte_kvargs.h"
 #include "rte_crypto.h"
 #include "rte_dev.h"
+#include <rte_common.h>
 
 #define CRYPTODEV_NAME_NULL_PMD		cryptodev_null_pmd
 /**< Null crypto PMD device name */
@@ -104,6 +105,7 @@ extern const char **rte_cyptodev_names;
 struct rte_cryptodev_symmetric_capability {
 	enum rte_crypto_sym_xform_type xform_type;
 	/**< Transform type : Authentication / Cipher */
+	RTE_STD_C11
 	union {
 		struct {
 			enum rte_crypto_auth_algorithm algo;
@@ -177,6 +179,7 @@ struct rte_cryptodev_capabilities {
 	enum rte_crypto_op_type op;
 	/**< Operation type */
 
+	RTE_STD_C11
 	union {
 		struct rte_cryptodev_symmetric_capability sym;
 		/**< Symmetric operation capability parameters */
@@ -751,6 +754,7 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 
 /** Cryptodev symmetric crypto session */
 struct rte_cryptodev_sym_session {
+	RTE_STD_C11
 	struct {
 		uint8_t dev_id;
 		/**< Device Id */

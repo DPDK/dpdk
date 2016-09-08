@@ -66,6 +66,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,6 +92,7 @@ enum rte_timer_type {
  * config) and an owner (the id of the lcore that owns the timer).
  */
 union rte_timer_status {
+	RTE_STD_C11
 	struct {
 		uint16_t state;  /**< Stop, pending, running, config. */
 		int16_t owner;   /**< The lcore that owns the timer. */

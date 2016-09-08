@@ -34,6 +34,8 @@
 #ifndef _RTE_INTERRUPTS_H_
 #define _RTE_INTERRUPTS_H_
 
+#include <rte_common.h>
+
 /**
  * @file
  *

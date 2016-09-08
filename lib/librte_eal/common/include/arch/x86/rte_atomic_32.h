@@ -40,6 +40,8 @@
 #ifndef _RTE_ATOMIC_I686_H_
 #define _RTE_ATOMIC_I686_H_
 
+#include <rte_common.h>
+
 /*------------------------- 64 bit atomic operations -------------------------*/
 
 #ifndef RTE_FORCE_INTRINSICS
@@ -47,6 +49,7 @@ static inline int
 rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 {
 	uint8_t res;
+	RTE_STD_C11
 	union {
 		struct {
 			uint32_t l32;

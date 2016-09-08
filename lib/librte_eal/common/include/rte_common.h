@@ -59,6 +59,13 @@ extern "C" {
 #define asm __asm__
 #endif
 
+/** C extension macro for environments lacking C11 features. */
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
+#define RTE_STD_C11 __extension__
+#else
+#define RTE_STD_C11
+#endif
+
 #ifdef RTE_ARCH_STRICT_ALIGN
 typedef uint64_t unaligned_uint64_t __attribute__ ((aligned(1)));
 typedef uint32_t unaligned_uint32_t __attribute__ ((aligned(1)));

@@ -61,6 +61,9 @@
 
 #ifdef __KERNEL__
 #include <linux/if.h>
+#define RTE_STD_C11
+#else
+#include <rte_common.h>
 #endif
 
 /**
@@ -85,6 +88,7 @@ enum rte_kni_req_id {
  */
 struct rte_kni_request {
 	uint32_t req_id;             /**< Request id */
+	RTE_STD_C11
 	union {
 		uint32_t new_mtu;    /**< New MTU */
 		uint8_t if_up;       /**< 1: interface up, 0: interface down */

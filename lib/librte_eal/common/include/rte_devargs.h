@@ -76,6 +76,7 @@ struct rte_devargs {
 	TAILQ_ENTRY(rte_devargs) next;
 	/** Type of device. */
 	enum rte_devtype type;
+	RTE_STD_C11
 	union {
 		/** Used if type is RTE_DEVTYPE_*_PCI. */
 		struct {

@@ -52,6 +52,7 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_log.h>
+#include <rte_common.h>
 
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
@@ -65,6 +66,7 @@ extern "C" {
 #endif
 
 struct rte_cryptodev_session {
+	RTE_STD_C11
 	struct {
 		uint8_t dev_id;
 		enum rte_cryptodev_type type;
