@@ -77,26 +77,30 @@ extern const char **rte_cyptodev_names;
 
 /* Logging Macros */
 
-#define CDEV_LOG_ERR(fmt, args...)					\
-		RTE_LOG(ERR, CRYPTODEV, "%s() line %u: " fmt "\n",	\
-				__func__, __LINE__, ## args)
+#define CDEV_LOG_ERR(...) \
+	RTE_LOG(ERR, CRYPTODEV, \
+		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
 
-#define CDEV_PMD_LOG_ERR(dev, fmt, args...)				\
-		RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-				dev, __func__, __LINE__, ## args)
+#define CDEV_PMD_LOG_ERR(dev, ...) \
+	RTE_LOG(ERR, CRYPTODEV, \
+		RTE_FMT("[%s] %s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
+			dev, __func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
 
 #ifdef RTE_LIBRTE_CRYPTODEV_DEBUG
-#define CDEV_LOG_DEBUG(fmt, args...)					\
-		RTE_LOG(DEBUG, CRYPTODEV, "%s() line %u: " fmt "\n",	\
-				__func__, __LINE__, ## args)		\
+#define CDEV_LOG_DEBUG(...) \
+	RTE_LOG(DEBUG, CRYPTODEV, \
+		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
 
-#define CDEV_PMD_TRACE(fmt, args...)					\
-		RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s: " fmt "\n",		\
-				dev, __func__, ## args)
+#define CDEV_PMD_TRACE(...) \
+	RTE_LOG(DEBUG, CRYPTODEV, \
+		RTE_FMT("[%s] %s: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
+			dev, __func__, RTE_FMT_TAIL(__VA_ARGS__,)))
 
 #else
-#define CDEV_LOG_DEBUG(fmt, args...)
-#define CDEV_PMD_TRACE(fmt, args...)
+#define CDEV_LOG_DEBUG(...) (void)0
+#define CDEV_PMD_TRACE(...) (void)0
 #endif
 
 /**

@@ -335,6 +335,15 @@ rte_bsf32(uint32_t v)
 /** Take a macro value and get a string version of it */
 #define RTE_STR(x) _RTE_STR(x)
 
+/**
+ * ISO C helpers to modify format strings using variadic macros.
+ * This is a replacement for the ", ## __VA_ARGS__" GNU extension.
+ * An empty %s argument is appended to avoid a dangling comma.
+ */
+#define RTE_FMT(fmt, ...) fmt "%.0s", __VA_ARGS__ ""
+#define RTE_FMT_HEAD(fmt, ...) fmt
+#define RTE_FMT_TAIL(fmt, ...) __VA_ARGS__
+
 /** Mask value of type "tp" for the first "ln" bit set. */
 #define	RTE_LEN2MASK(ln, tp)	\
 	((tp)((uint64_t)-1 >> (sizeof(uint64_t) * CHAR_BIT - (ln))))
