@@ -102,7 +102,7 @@ struct rte_kni_fifo {
 	volatile unsigned read;      /**< Next position to be read */
 	unsigned len;                /**< Circular buffer length */
 	unsigned elem_size;          /**< Pointer size - for 32/64 bit OS */
-	void * volatile buffer[0];   /**< The buffer contains mbuf pointers */
+	void *volatile buffer[];     /**< The buffer contains mbuf pointers */
 };
 
 /*

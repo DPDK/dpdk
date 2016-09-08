@@ -756,8 +756,11 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask);
 
 /* define a set of marker types that can be used to refer to set points in the
  * mbuf */
+__extension__
 typedef void    *MARKER[0];   /**< generic marker for a point in a structure */
+__extension__
 typedef uint8_t  MARKER8[0];  /**< generic marker with 1B alignment */
+__extension__
 typedef uint64_t MARKER64[0]; /**< marker that allows us to overwrite 8 bytes
                                * with a single assignment */
 

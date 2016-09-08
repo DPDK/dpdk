@@ -124,7 +124,7 @@ struct rte_ip_frag_tbl {
 	struct ip_frag_pkt *last;         /**< last used entry. */
 	struct ip_pkt_list lru;           /**< LRU list for table entries. */
 	struct ip_frag_tbl_stat stat;     /**< statistics counters. */
-	struct ip_frag_pkt pkt[0];        /**< hash table. */
+	struct ip_frag_pkt pkt[];         /**< hash table. */
 };
 
 /** IPv6 fragment extension header */

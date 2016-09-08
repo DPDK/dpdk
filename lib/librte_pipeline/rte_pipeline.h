@@ -252,7 +252,7 @@ struct rte_pipeline_table_entry {
 		uint32_t table_id;
 	};
 	/** Start of table entry area for user defined actions and meta-data */
-	uint8_t action_data[0];
+	__extension__ uint8_t action_data[0];
 };
 
 /**

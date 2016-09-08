@@ -187,7 +187,7 @@ struct rte_ring {
 	struct rte_ring_debug_stats stats[RTE_MAX_LCORE];
 #endif
 
-	void * ring[0] __rte_cache_aligned; /**< Memory space of ring starts here.
+	void *ring[] __rte_cache_aligned;   /**< Memory space of ring starts here.
 	                                     * not volatile so need to be careful
 	                                     * about compiler re-ordering */
 };

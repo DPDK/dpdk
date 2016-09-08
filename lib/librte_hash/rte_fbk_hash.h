@@ -115,7 +115,7 @@ struct rte_fbk_hash_table {
 	uint32_t init_val;		/**< For initialising hash function. */
 
 	/** A flat table of all buckets. */
-	union rte_fbk_hash_entry t[0];
+	union rte_fbk_hash_entry t[];
 };
 
 /**

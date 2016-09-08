@@ -759,7 +759,7 @@ struct rte_cryptodev_sym_session {
 	} __rte_aligned(8);
 	/**< Public symmetric session details */
 
-	char _private[0];
+	char _private[];
 	/**< Private session material */
 };
 

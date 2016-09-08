@@ -71,7 +71,7 @@ struct rte_cryptodev_session {
 		struct rte_mempool *mp;
 	} __rte_aligned(8);
 
-	char _private[0];
+	__extension__ char _private[0];
 };
 
 struct rte_cryptodev_driver;

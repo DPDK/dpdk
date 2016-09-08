@@ -144,7 +144,7 @@ struct rte_acl_rule_data {
 	struct rte_acl_field field[fld_num];         \
 }
 
-RTE_ACL_RULE_DEF(rte_acl_rule, 0);
+RTE_ACL_RULE_DEF(rte_acl_rule,);
 
 #define	RTE_ACL_RULE_SZ(fld_num)	\
 	(sizeof(struct rte_acl_rule) + sizeof(struct rte_acl_field) * (fld_num))

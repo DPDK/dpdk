@@ -193,7 +193,7 @@ struct rte_lpm_v20 {
 			__rte_cache_aligned; /**< LPM tbl24 table. */
 	struct rte_lpm_tbl_entry_v20 tbl8[RTE_LPM_TBL8_NUM_ENTRIES]
 			__rte_cache_aligned; /**< LPM tbl8 table. */
-	struct rte_lpm_rule_v20 rules_tbl[0] \
+	struct rte_lpm_rule_v20 rules_tbl[]
 			__rte_cache_aligned; /**< LPM rules. */
 };
 
