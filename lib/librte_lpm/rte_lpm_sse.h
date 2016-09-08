@@ -38,6 +38,7 @@
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_vect.h>
+#include <rte_lpm.h>
 
 #ifdef __cplusplus
 extern "C" {

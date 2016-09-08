@@ -31,8 +31,15 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _RTE_BYTEORDER_X86_H_
+#error do not include this file directly, use <rte_byteorder.h> instead
+#endif
+
 #ifndef _RTE_BYTEORDER_X86_64_H_
 #define _RTE_BYTEORDER_X86_64_H_
+
+#include <stdint.h>
+#include <rte_common.h>
 
 /*
  * An architecture-optimized byte swap for a 64-bit value.

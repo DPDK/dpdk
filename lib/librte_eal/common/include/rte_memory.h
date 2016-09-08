@@ -44,6 +44,8 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include <rte_config.h>
+
 #ifdef RTE_EXEC_ENV_LINUXAPP
 #include <exec-env/rte_dom0_common.h>
 #endif

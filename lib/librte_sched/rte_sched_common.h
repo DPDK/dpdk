@@ -38,6 +38,7 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
 #include <sys/types.h>
 
 #define __rte_aligned_16 __attribute__((__aligned__(16)))

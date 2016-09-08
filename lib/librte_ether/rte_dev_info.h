@@ -34,6 +34,8 @@
 #ifndef _RTE_DEV_INFO_H_
 #define _RTE_DEV_INFO_H_
 
+#include <stdint.h>
+
 /*
  * Placeholder for accessing device registers
  */

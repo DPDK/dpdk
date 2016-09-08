@@ -42,6 +42,7 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
 #include "generic/rte_byteorder.h"
 
 /*

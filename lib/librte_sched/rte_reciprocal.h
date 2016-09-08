@@ -22,6 +22,8 @@
 #ifndef _RTE_RECIPROCAL_H_
 #define _RTE_RECIPROCAL_H_
 
+#include <stdint.h>
+
 struct rte_reciprocal {
 	uint32_t m;
 	uint8_t sh1, sh2;

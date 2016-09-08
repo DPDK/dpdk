@@ -37,8 +37,16 @@
  * All rights reserved.
  */
 
+#ifndef _RTE_ATOMIC_X86_H_
+#error do not include this file directly, use <rte_atomic.h> instead
+#endif
+
 #ifndef _RTE_ATOMIC_X86_64_H_
 #define _RTE_ATOMIC_X86_64_H_
+
+#include <stdint.h>
+#include <rte_common.h>
+#include <rte_atomic.h>
 
 /*------------------------- 64 bit atomic operations -------------------------*/
 

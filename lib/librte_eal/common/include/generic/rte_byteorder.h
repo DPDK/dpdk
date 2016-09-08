@@ -50,6 +50,8 @@
 #include <endian.h>
 #endif
 
+#include <rte_common.h>
+
 /*
  * Compile-time endianness detection
  */

@@ -34,6 +34,8 @@
 #ifndef __INCLUDE_RTE_CFGFILE_H__
 #define __INCLUDE_RTE_CFGFILE_H__
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

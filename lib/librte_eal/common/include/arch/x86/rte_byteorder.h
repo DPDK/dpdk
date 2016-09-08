@@ -38,6 +38,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <rte_common.h>
 #include "generic/rte_byteorder.h"
 
 #ifndef RTE_BYTE_ORDER

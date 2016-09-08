@@ -44,6 +44,8 @@
  *
  */
 
+#include <rte_mbuf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

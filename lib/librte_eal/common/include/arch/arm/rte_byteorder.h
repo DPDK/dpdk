@@ -41,6 +41,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <rte_common.h>
 #include "generic/rte_byteorder.h"
 
 /* fix missing __builtin_bswap16 for gcc older then 4.8 */

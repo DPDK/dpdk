@@ -20,6 +20,7 @@
 /* Official RTM intrinsics interface matching gcc/icc, but works
    on older gcc compatible compilers and binutils. */
 
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {

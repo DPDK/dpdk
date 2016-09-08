@@ -44,6 +44,7 @@
 #include <sched.h>
 
 #include <rte_per_lcore.h>
+#include <rte_config.h>
 
 #ifdef __cplusplus
 extern "C" {

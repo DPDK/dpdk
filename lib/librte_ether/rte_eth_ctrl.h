@@ -34,6 +34,10 @@
 #ifndef _RTE_ETH_CTRL_H_
 #define _RTE_ETH_CTRL_H_
 
+#include <stdint.h>
+#include <rte_common.h>
+#include "rte_ether.h"
+
 /**
  * @file
  *

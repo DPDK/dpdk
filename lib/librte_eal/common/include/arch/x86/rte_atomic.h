@@ -38,6 +38,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <rte_common.h>
 #include <emmintrin.h>
 #include "generic/rte_atomic.h"
 

@@ -38,6 +38,7 @@
 extern "C" {
 #endif
 
+#include <rte_common.h>
 #include "generic/rte_prefetch.h"
 
 static inline void rte_prefetch0(const volatile void *p)

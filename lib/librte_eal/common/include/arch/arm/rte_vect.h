@@ -33,6 +33,7 @@
 #ifndef _RTE_VECT_ARM_H_
 #define _RTE_VECT_ARM_H_
 
+#include <stdint.h>
 #include "arm_neon.h"
 
 #ifdef __cplusplus

@@ -41,6 +41,10 @@
  * packet dump library to provide packet capturing support on dpdk.
  */
 
+#include <stdint.h>
+#include <rte_mempool.h>
+#include <rte_ring.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

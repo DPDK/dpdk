@@ -40,6 +40,8 @@
  * RTE SSE/AVX related header.
  */
 
+#include <stdint.h>
+
 #if (defined(__ICC) || (__GNUC__ == 4 &&  __GNUC_MINOR__ < 4))
 
 #ifdef __SSE__

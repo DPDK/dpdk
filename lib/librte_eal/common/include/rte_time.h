@@ -31,6 +31,12 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _RTE_TIME_H_
+#define _RTE_TIME_H_
+
+#include <stdint.h>
+#include <time.h>
+
 #define NSEC_PER_SEC             1000000000L
 
 /**
@@ -120,3 +126,5 @@ rte_ns_to_timespec(uint64_t nsec)
 
 	return ts;
 }
+
+#endif /* _RTE_TIME_H_ */

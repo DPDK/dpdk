@@ -63,6 +63,7 @@
 
 #include <termios.h>
 #include <cmdline_rdline.h>
+#include <cmdline_parse.h>
 
 /**
  * @file

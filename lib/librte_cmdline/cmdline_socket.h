@@ -61,6 +61,9 @@
 #ifndef _CMDLINE_SOCKET_H_
 #define _CMDLINE_SOCKET_H_
 
+#include <cmdline_parse.h>
+#include <cmdline.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
