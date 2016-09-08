@@ -76,7 +76,7 @@ static const char igb_driver_string[] =
 static const char igb_copyright[] =
 				"Copyright (c) 2007-2013 Intel Corporation.";
 
-DEFINE_PCI_DEVICE_TABLE(igb_pci_tbl) = {
+const struct pci_device_id igb_pci_tbl[] = {
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_BACKPLANE_1GBPS) },
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_SGMII) },
 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_BACKPLANE_2_5GBPS) },
