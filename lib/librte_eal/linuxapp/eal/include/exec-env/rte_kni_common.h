@@ -159,6 +159,7 @@ struct rte_kni_device_info {
 	uint16_t group_id;            /**< Group ID */
 	uint32_t core_id;             /**< core ID to bind for kernel thread */
 
+	__extension__
 	uint8_t force_bind : 1;       /**< Flag for kernel thread binding */
 
 	/* mbuf size */

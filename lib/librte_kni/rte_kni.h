@@ -88,6 +88,7 @@ struct rte_kni_conf {
 	struct rte_pci_addr addr;
 	struct rte_pci_id id;
 
+	__extension__
 	uint8_t force_bind : 1; /* Flag to bind kernel thread */
 };
 

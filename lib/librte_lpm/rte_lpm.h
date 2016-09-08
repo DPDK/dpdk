@@ -93,6 +93,7 @@ extern "C" {
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 /** @internal Tbl24 entry structure. */
+__extension__
 struct rte_lpm_tbl_entry_v20 {
 	/**
 	 * Stores Next hop (tbl8 or tbl24 when valid_group is not set) or
@@ -116,6 +117,7 @@ struct rte_lpm_tbl_entry_v20 {
 	uint8_t depth       :6; /**< Rule depth. */
 };
 
+__extension__
 struct rte_lpm_tbl_entry {
 	/**
 	 * Stores Next hop (tbl8 or tbl24 when valid_group is not set) or
@@ -137,6 +139,7 @@ struct rte_lpm_tbl_entry {
 };
 
 #else
+__extension__
 struct rte_lpm_tbl_entry_v20 {
 	uint8_t depth       :6;
 	uint8_t valid_group :1;
@@ -147,6 +150,7 @@ struct rte_lpm_tbl_entry_v20 {
 	};
 };
 
+__extension__
 struct rte_lpm_tbl_entry {
 	uint32_t depth       :6;
 	uint32_t valid_group :1;

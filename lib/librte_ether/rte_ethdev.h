@@ -255,6 +255,7 @@ struct rte_eth_stats {
 /**
  * A structure used to retrieve link-level information of an Ethernet port.
  */
+__extension__
 struct rte_eth_link {
 	uint32_t link_speed;        /**< ETH_SPEED_NUM_ */
 	uint16_t link_duplex  : 1;  /**< ETH_LINK_[HALF/FULL]_DUPLEX */
@@ -346,6 +347,7 @@ struct rte_eth_rxmode {
 	enum rte_eth_rx_mq_mode mq_mode;
 	uint32_t max_rx_pkt_len;  /**< Only used if jumbo_frame enabled. */
 	uint16_t split_hdr_size;  /**< hdr buf size (header_split enabled).*/
+	__extension__
 	uint16_t header_split : 1, /**< Header Split enable. */
 		hw_ip_checksum   : 1, /**< IP/UDP/TCP checksum offload enable. */
 		hw_vlan_filter   : 1, /**< VLAN filter enable. */
@@ -645,6 +647,7 @@ struct rte_eth_txmode {
 
 	/* For i40e specifically */
 	uint16_t pvid;
+	__extension__
 	uint8_t hw_vlan_reject_tagged : 1,
 		/**< If set, reject sending out tagged pkts */
 		hw_vlan_reject_untagged : 1,
@@ -1691,6 +1694,7 @@ struct rte_eth_dev_data {
 	struct ether_addr* hash_mac_addrs;
 	/** Device Ethernet MAC addresses of hash filtering. */
 	uint8_t port_id;           /**< Device [external] port identifier. */
+	__extension__
 	uint8_t promiscuous   : 1, /**< RX promiscuous mode ON(1) / OFF(0). */
 		scattered_rx : 1,  /**< RX of scattered packets is ON(1) / OFF(0) */
 		all_multicast : 1, /**< RX all multicast mode ON(1) / OFF(0). */

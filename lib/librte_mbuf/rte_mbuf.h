@@ -865,6 +865,7 @@ struct rte_mbuf {
 	/* fields to support TX offloads */
 	union {
 		uint64_t tx_offload;       /**< combined for easy fetch */
+		__extension__
 		struct {
 			uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
 			uint64_t l3_len:9; /**< L3 (IP) Header Length. */

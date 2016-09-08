@@ -619,6 +619,7 @@ struct rte_cryptodev {
 	struct rte_cryptodev_cb_list link_intr_cbs;
 	/**< User application callback for interrupts if present */
 
+	__extension__
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 } __rte_cache_aligned;
@@ -642,6 +643,7 @@ struct rte_cryptodev_data {
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	/**< Unique identifier name */
 
+	__extension__
 	uint8_t dev_started : 1;
 	/**< Device state: STARTED(1)/STOPPED(0) */
 
