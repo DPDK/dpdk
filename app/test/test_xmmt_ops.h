@@ -62,6 +62,22 @@ vect_set_epi32(int i3, int i2, int i1, int i0)
 /* sets the 4 signed 32-bit integer values and returns the xmm_t variable */
 #define vect_set_epi32(i3, i2, i1, i0) _mm_set_epi32(i3, i2, i1, i0)
 
+#elif defined(RTE_ARCH_PPC_64)
+
+/* vect_* abstraction implementation using ALTIVEC */
+
+/* loads the xmm_t value from address p(does not need to be 16-byte aligned)*/
+#define vect_loadu_sil128(p) vec_ld(0, p)
+
+/* sets the 4 signed 32-bit integer values and returns the xmm_t variable */
+static inline xmm_t  __attribute__((always_inline))
+vect_set_epi32(int i3, int i2, int i1, int i0)
+{
+	xmm_t data = (xmm_t){i0, i1, i2, i3};
+
+	return data;
+}
+
 #endif
 
 #endif /* _TEST_XMMT_OPS_H_ */
