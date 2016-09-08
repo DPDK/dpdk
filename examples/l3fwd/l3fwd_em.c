@@ -259,8 +259,16 @@ em_mask_key(void *key, xmm_t mask)
 
 	return vandq_s32(data, mask);
 }
+#elif defined(RTE_MACHINE_CPUFLAG_ALTIVEC)
+static inline xmm_t
+em_mask_key(void *key, xmm_t mask)
+{
+	xmm_t data = vec_ld(0, (xmm_t *)(key));
+
+	return vec_and(data, mask);
+}
 #else
-#error No vector engine (SSE, NEON) available, check your toolchain
+#error No vector engine (SSE, NEON, ALTIVEC) available, check your toolchain
 #endif
 
 static inline uint8_t
