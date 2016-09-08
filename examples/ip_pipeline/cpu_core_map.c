@@ -351,8 +351,10 @@ cpu_core_map_compute_linux(struct cpu_core_map *map)
 			int lcore_socket_id =
 				cpu_core_map_get_socket_id_linux(lcore_id);
 
+#if !defined(RTE_ARCH_PPC_64)
 			if (lcore_socket_id < 0)
 				return -1;
+#endif
 
 			if (((uint32_t) lcore_socket_id) == socket_id)
 				n_detected++;
@@ -368,6 +370,7 @@ cpu_core_map_compute_linux(struct cpu_core_map *map)
 					cpu_core_map_get_socket_id_linux(
 					lcore_id);
 
+#if !defined(RTE_ARCH_PPC_64)
 				if (lcore_socket_id < 0)
 					return -1;
 
@@ -377,9 +380,14 @@ cpu_core_map_compute_linux(struct cpu_core_map *map)
 
 				if (lcore_core_id < 0)
 					return -1;
+#endif
 
+#if !defined(RTE_ARCH_PPC_64)
 				if (((uint32_t) lcore_socket_id == socket_id) &&
 					((uint32_t) lcore_core_id == core_id)) {
+#else
+				if (((uint32_t) lcore_socket_id == socket_id)) {
+#endif
 					uint32_t pos = cpu_core_map_pos(map,
 						socket_id,
 						core_id_contig,
