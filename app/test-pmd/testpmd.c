@@ -271,9 +271,6 @@ uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF;
 
 #endif
 
-/* default period is 1 second */
-static uint64_t timer_period = 1;
-
 /*
  * Ethernet device configuration.
  */
@@ -884,9 +881,10 @@ flush_fwd_rx_queues(void)
 	uint16_t  i;
 	uint8_t   j;
 	uint64_t prev_tsc = 0, diff_tsc, cur_tsc, timer_tsc = 0;
+	uint64_t timer_period;
 
 	/* convert to number of cycles */
-	timer_period *= rte_get_timer_hz();
+	timer_period = rte_get_timer_hz(); /* 1 second timeout */
 
 	for (j = 0; j < 2; j++) {
 		for (rxp = 0; rxp < cur_fwd_config.nb_fwd_ports; rxp++) {
