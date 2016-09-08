@@ -54,6 +54,7 @@ extern "C" {
 
 #include <rte_common.h>
 
+__extension__
 enum rte_page_sizes {
 	RTE_PGSIZE_4K    = 1ULL << 12,
 	RTE_PGSIZE_64K   = 1ULL << 16,
