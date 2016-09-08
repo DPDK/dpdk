@@ -44,6 +44,7 @@
 /**
  * Enumeration of all CPU features supported
  */
+__extension__
 enum rte_cpu_flag_t;
 
 /**
@@ -55,6 +56,7 @@ enum rte_cpu_flag_t;
  *     flag name
  *     NULL if flag ID is invalid
  */
+__extension__
 const char *
 rte_cpu_get_flag_name(enum rte_cpu_flag_t feature);
 
@@ -68,6 +70,7 @@ rte_cpu_get_flag_name(enum rte_cpu_flag_t feature);
  *     0 if flag is not available
  *     -ENOENT if flag is invalid
  */
+__extension__
 int
 rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature);
 
