@@ -878,7 +878,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	 * Since we have 4 combinations of the SP/SC/MP/MC examine the flags to
 	 * set the correct index into the table of ops structs.
 	 */
-	if (flags & (MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET))
+	if ((flags & MEMPOOL_F_SP_PUT) && (flags & MEMPOOL_F_SC_GET))
 		rte_mempool_set_ops_byname(mp, "ring_sp_sc", NULL);
 	else if (flags & MEMPOOL_F_SP_PUT)
 		rte_mempool_set_ops_byname(mp, "ring_sp_mc", NULL);
