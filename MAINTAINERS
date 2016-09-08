@@ -26,6 +26,7 @@ T: git://dpdk.org/dpdk
 F: MAINTAINERS
 F: scripts/check-maintainers.sh
 F: scripts/check-git-log.sh
+F: scripts/check-includes.sh
 F: scripts/checkpatches.sh
 F: scripts/load-devel-config
 F: scripts/test-build.sh
