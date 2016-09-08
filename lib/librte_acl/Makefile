@@ -52,6 +52,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_scalar.c
 ifneq ($(filter y,$(CONFIG_RTE_ARCH_ARM) $(CONFIG_RTE_ARCH_ARM64)),)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_neon.c
 CFLAGS_acl_run_neon.o += -flax-vector-conversions -Wno-maybe-uninitialized
+else ifeq ($(CONFIG_RTE_ARCH_PPC_64),y)
+SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_altivec.c
 else
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_sse.c
 #check if flag for SSE4.1 is already on, if not set it up manually
