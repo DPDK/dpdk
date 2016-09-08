@@ -594,7 +594,7 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
  * - __m128i <xmm0> ~ <xmm8> must be pre-defined
  */
 #define MOVEUNALIGNED_LEFT47_IMM(dst, src, len, offset)                                                     \
-({                                                                                                          \
+__extension__ ({                                                                                            \
     int tmp;                                                                                                \
     while (len >= 128 + 16 - offset) {                                                                      \
         xmm0 = _mm_loadu_si128((const __m128i *)((const uint8_t *)src - offset + 0 * 16));                  \
@@ -655,7 +655,7 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
  * - __m128i <xmm0> ~ <xmm8> used in MOVEUNALIGNED_LEFT47_IMM must be pre-defined
  */
 #define MOVEUNALIGNED_LEFT47(dst, src, len, offset)                   \
-({                                                                    \
+__extension__ ({                                                      \
     switch (offset) {                                                 \
     case 0x01: MOVEUNALIGNED_LEFT47_IMM(dst, src, n, 0x01); break;    \
     case 0x02: MOVEUNALIGNED_LEFT47_IMM(dst, src, n, 0x02); break;    \

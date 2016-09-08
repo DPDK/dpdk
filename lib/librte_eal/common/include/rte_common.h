@@ -268,7 +268,8 @@ rte_align64pow2(uint64_t v)
 /**
  * Macro to return the minimum of two numbers
  */
-#define RTE_MIN(a, b) ({ \
+#define RTE_MIN(a, b) \
+	__extension__ ({ \
 		typeof (a) _a = (a); \
 		typeof (b) _b = (b); \
 		_a < _b ? _a : _b; \
@@ -277,7 +278,8 @@ rte_align64pow2(uint64_t v)
 /**
  * Macro to return the maximum of two numbers
  */
-#define RTE_MAX(a, b) ({ \
+#define RTE_MAX(a, b) \
+	__extension__ ({ \
 		typeof (a) _a = (a); \
 		typeof (b) _b = (b); \
 		_a > _b ? _a : _b; \

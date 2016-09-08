@@ -95,7 +95,8 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
 }
 
 #define rte_memcpy(dst, src, n)              \
-	({ (__builtin_constant_p(n)) ?       \
+	__extension__ ({                     \
+	(__builtin_constant_p(n)) ?          \
 	memcpy((dst), (src), (n)) :          \
 	rte_memcpy_func((dst), (src), (n)); })
 
