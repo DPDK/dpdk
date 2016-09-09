@@ -49,6 +49,7 @@
 #include "test_cryptodev_snow3g_test_vectors.h"
 #include "test_cryptodev_snow3g_hash_test_vectors.h"
 #include "test_cryptodev_gcm_test_vectors.h"
+#include "test_cryptodev_hmac_test_vectors.h"
 
 static enum rte_cryptodev_type gbl_cryptodev_type;
 
@@ -3431,6 +3432,179 @@ test_stats(void)
 	return TEST_SUCCESS;
 }
 
+static int MD5_HMAC_create_session(struct crypto_testsuite_params *ts_params,
+				   struct crypto_unittest_params *ut_params,
+				   enum rte_crypto_auth_operation op,
+				   const struct HMAC_MD5_vector *test_case)
+{
+	uint8_t key[64];
+
+	memcpy(key, test_case->key.data, test_case->key.len);
+
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+	ut_params->auth_xform.auth.op = op;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_MD5_HMAC;
+
+	ut_params->auth_xform.auth.digest_length = MD5_DIGEST_LEN;
+	ut_params->auth_xform.auth.add_auth_data_length = 0;
+	ut_params->auth_xform.auth.key.length = test_case->key.len;
+	ut_params->auth_xform.auth.key.data = key;
+
+	ut_params->sess = rte_cryptodev_sym_session_create(
+		ts_params->valid_devs[0], &ut_params->auth_xform);
+
+	if (ut_params->sess == NULL)
+		return TEST_FAILED;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	return 0;
+}
+
+static int MD5_HMAC_create_op(struct crypto_unittest_params *ut_params,
+			      const struct HMAC_MD5_vector *test_case,
+			      uint8_t **plaintext)
+{
+	uint16_t plaintext_pad_len;
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	plaintext_pad_len = RTE_ALIGN_CEIL(test_case->plaintext.len,
+				16);
+
+	*plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			plaintext_pad_len);
+	memcpy(*plaintext, test_case->plaintext.data,
+			test_case->plaintext.len);
+
+	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+			ut_params->ibuf, MD5_DIGEST_LEN);
+	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+			"no room to append digest");
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			ut_params->ibuf, plaintext_pad_len);
+	sym_op->auth.digest.length = MD5_DIGEST_LEN;
+
+	if (ut_params->auth_xform.auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		rte_memcpy(sym_op->auth.digest.data, test_case->auth_tag.data,
+			   test_case->auth_tag.len);
+	}
+
+	sym_op->auth.data.offset = 0;
+	sym_op->auth.data.length = test_case->plaintext.len;
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+	ut_params->op->sym->m_src = ut_params->ibuf;
+
+	return 0;
+}
+
+static int
+test_MD5_HMAC_generate(const struct HMAC_MD5_vector *test_case)
+{
+	uint16_t plaintext_pad_len;
+	uint8_t *plaintext, *auth_tag;
+
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	if (MD5_HMAC_create_session(ts_params, ut_params,
+			RTE_CRYPTO_AUTH_OP_GENERATE, test_case))
+		return TEST_FAILED;
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	plaintext_pad_len = RTE_ALIGN_CEIL(test_case->plaintext.len,
+				16);
+
+	if (MD5_HMAC_create_op(ut_params, test_case, &plaintext))
+		return TEST_FAILED;
+
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	if (ut_params->op->sym->m_dst) {
+		auth_tag = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_dst,
+				uint8_t *, plaintext_pad_len);
+	} else {
+		auth_tag = plaintext + plaintext_pad_len;
+	}
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			auth_tag,
+			test_case->auth_tag.data,
+			test_case->auth_tag.len,
+			"HMAC_MD5 generated tag not as expected");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_MD5_HMAC_verify(const struct HMAC_MD5_vector *test_case)
+{
+	uint8_t *plaintext;
+
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	if (MD5_HMAC_create_session(ts_params, ut_params,
+			RTE_CRYPTO_AUTH_OP_VERIFY, test_case)) {
+		return TEST_FAILED;
+	}
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	if (MD5_HMAC_create_op(ut_params, test_case, &plaintext))
+		return TEST_FAILED;
+
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"HMAC_MD5 crypto op processing failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_MD5_HMAC_generate_case_1(void)
+{
+	return test_MD5_HMAC_generate(&HMAC_MD5_test_case_1);
+}
+
+static int
+test_MD5_HMAC_verify_case_1(void)
+{
+	return test_MD5_HMAC_verify(&HMAC_MD5_test_case_1);
+}
+
+static int
+test_MD5_HMAC_generate_case_2(void)
+{
+	return test_MD5_HMAC_generate(&HMAC_MD5_test_case_2);
+}
+
+static int
+test_MD5_HMAC_verify_case_2(void)
+{
+	return test_MD5_HMAC_verify(&HMAC_MD5_test_case_2);
+}
 
 static int
 test_multi_session(void)
@@ -3951,6 +4125,17 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_snow3g_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encrypted_authentication_test_case_1),
+
+		/** HMAC_MD5 Authentication */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_MD5_HMAC_generate_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_MD5_HMAC_verify_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_MD5_HMAC_generate_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_MD5_HMAC_verify_case_2),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
