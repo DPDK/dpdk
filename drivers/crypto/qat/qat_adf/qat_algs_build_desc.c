@@ -58,6 +58,7 @@
 
 #include <openssl/sha.h>	/* Needed to calculate pre-compute values */
 #include <openssl/aes.h>	/* Needed to calculate pre-compute values */
+#include <openssl/md5.h>	/* Needed to calculate pre-compute values */
 
 
 /*
@@ -86,6 +87,9 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SNOW_3G_UIA2_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_MD5:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_MD5_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum state1 size in this case */
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA512_STATE1_SZ,
@@ -107,6 +111,8 @@ static int qat_hash_get_digest_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 		return ICP_QAT_HW_SHA256_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
 		return ICP_QAT_HW_SHA512_STATE1_SZ;
+	case ICP_QAT_HW_AUTH_ALGO_MD5:
+		return ICP_QAT_HW_MD5_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum digest size in this case */
 		return ICP_QAT_HW_SHA512_STATE1_SZ;
@@ -129,6 +135,8 @@ static int qat_hash_get_block_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 		return SHA512_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
 		return 16;
+	case ICP_QAT_HW_AUTH_ALGO_MD5:
+		return MD5_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum block size in this case */
 		return SHA512_CBLOCK;
@@ -172,6 +180,18 @@ static int partial_hash_sha512(uint8_t *data_in, uint8_t *data_out)
 	return 0;
 }
 
+static int partial_hash_md5(uint8_t *data_in, uint8_t *data_out)
+{
+	MD5_CTX ctx;
+
+	if (!MD5_Init(&ctx))
+		return -EFAULT;
+	MD5_Transform(&ctx, data_in);
+	rte_memcpy(data_out, &ctx, MD5_DIGEST_LENGTH);
+
+	return 0;
+}
+
 static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
 			uint8_t *data_in,
 			uint8_t *data_out)
@@ -212,6 +232,10 @@ static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
 		for (i = 0; i < digest_size >> 3; i++, hash_state_out_be64++)
 			*hash_state_out_be64 =
 				rte_bswap64(*(((uint64_t *)digest)+i));
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_MD5:
+		if (partial_hash_md5(data_in, data_out))
+			return -EFAULT;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "invalid hash alg %u", hash_alg);
@@ -619,6 +643,15 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 				authkeylen + ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ;
 		auth_param->hash_state_sz =
 				RTE_ALIGN_CEIL(add_auth_data_length, 16) >> 3;
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_MD5:
+		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_MD5,
+			authkey, authkeylen, cdesc->cd_cur_ptr,
+			&state1_size)) {
+			PMD_DRV_LOG(ERR, "(MD5)precompute failed");
+			return -EFAULT;
+		}
+		state2_size = ICP_QAT_HW_MD5_STATE2_SZ;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid HASH alg %u", cdesc->qat_hash_alg);

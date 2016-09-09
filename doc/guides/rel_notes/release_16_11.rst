@@ -64,6 +64,12 @@ New Features
   * increase mailbox version to ixgbe_mbox_api_13
   * add two MAC ops for Hyper-V support
 
+* **Updated the QAT PMD.**
+
+  The QAT PMD was updated with following support:
+
+  * MD5_HMAC algorithm
+
 
 Resolved Issues
 ---------------
