@@ -198,7 +198,7 @@ struct rte_eth_stats {
 	uint64_t obytes;    /**< Total number of successfully transmitted bytes. */
 	uint64_t imissed;
 	/**< Total of RX packets dropped by the HW,
-	 * because there are no available mbufs (i.e. RX queues are full).
+	 * because there are no available buffer (i.e. RX queues are full).
 	 */
 	uint64_t ierrors;   /**< Total number of erroneous received packets. */
 	uint64_t oerrors;   /**< Total number of failed transmitted packets. */
