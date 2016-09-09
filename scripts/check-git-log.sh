@@ -49,11 +49,11 @@ fi
 
 range=${1:-origin/master..}
 
-commits=$(git log --format='%h' $range)
-headlines=$(git log --format='%s' $range)
-bodylines=$(git log --format='%b' $range)
-fixes=$(git log --format='%h %s' $range | grep -i ': *fix' | cut -d' ' -f1)
-tags=$(git log --format='%b' $range | grep -i -e 'by *:' -e 'fix.*:')
+commits=$(git log --format='%h' --reverse $range)
+headlines=$(git log --format='%s' --reverse $range)
+bodylines=$(git log --format='%b' --reverse $range)
+fixes=$(git log --format='%h %s' --reverse $range | grep -i ': *fix' | cut -d' ' -f1)
+tags=$(git log --format='%b' --reverse $range | grep -i -e 'by *:' -e 'fix.*:')
 bytag='\(Reported\|Suggested\|Signed-off\|Acked\|Reviewed\|Tested\)-by:'
 
 # check headline format (spacing, no punctuation, no code)

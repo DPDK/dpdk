@@ -52,6 +52,9 @@ print_usage () {
 
 	Run Linux kernel checkpatch.pl with DPDK options.
 	The environment variable DPDK_CHECKPATCH_PATH must be set.
+
+	The patches to check can be from files specified on the command line,
+	or latest git commits limited with -n option (default limit: origin/master).
 	END_OF_HELP
 }
 
@@ -96,9 +99,9 @@ check () { # <patch> <commit> <title>
 
 if [ -z "$1" ] ; then
 	if [ $number -eq 0 ] ; then
-		commits=$(git rev-list origin/master..)
+		commits=$(git rev-list --reverse origin/master..)
 	else
-		commits=$(git rev-list --max-count=$number HEAD)
+		commits=$(git rev-list --reverse --max-count=$number HEAD)
 	fi
 	for commit in $commits ; do
 		subject=$(git log --format='%s' -1 $commit)
