@@ -443,10 +443,13 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 				mb_size, (unsigned) mb_mempool_cache,
 				sizeof(struct rte_pktmbuf_pool_private),
 				socket_id, 0);
+			if (rte_mp == NULL)
+				goto err;
 
 			if (rte_mempool_populate_anon(rte_mp) == 0) {
 				rte_mempool_free(rte_mp);
 				rte_mp = NULL;
+				goto err;
 			}
 			rte_pktmbuf_pool_init(rte_mp, NULL);
 			rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
@@ -457,6 +460,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		}
 	}
 
+err:
 	if (rte_mp == NULL) {
 		rte_exit(EXIT_FAILURE,
 			"Creation of mbuf pool for socket %u failed: %s\n",
