@@ -547,7 +547,9 @@ kni_ioctl_create(struct net *net,
 	if (ret) {
 		KNI_ERR("error %i registering device \"%s\"\n",
 					ret, dev_info.name);
+		kni->net_dev = NULL;
 		kni_dev_remove(kni);
+		free_netdev(net_dev);
 		return -ENODEV;
 	}
 
