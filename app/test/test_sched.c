@@ -79,8 +79,8 @@ static struct rte_sched_port_params port_param = {
 	.mtu = 1522,
 	.frame_overhead = RTE_SCHED_FRAME_OVERHEAD_DEFAULT,
 	.n_subports_per_port = 1,
-	.n_pipes_per_subport = 4096,
-	.qsize = {64, 64, 64, 64},
+	.n_pipes_per_subport = 1024,
+	.qsize = {32, 32, 32, 32},
 	.pipe_profiles = pipe_profile,
 	.n_pipe_profiles = 1,
 };
