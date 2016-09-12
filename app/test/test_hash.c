@@ -783,7 +783,7 @@ fbk_hash_unit_test(void)
 	 */
 	struct rte_fbk_hash_params different_name = {
 		.name = "different_name",			/* different name */
-		.entries = RTE_FBK_HASH_ENTRIES_MAX,
+		.entries = LOCAL_FBK_HASH_ENTRIES_MAX,
 		.entries_per_bucket = 4,
 		.socket_id = 0,
 	};
