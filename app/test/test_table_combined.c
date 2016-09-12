@@ -110,8 +110,10 @@ test_table_type(struct rte_table_ops *table_ops, void *table_args,
 	};
 
 	if (rte_pipeline_port_in_create(pipeline, &ring_in_params,
-		&ring_in_id) != 0)
+		&ring_in_id) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_PORT_CONFIG;
+	}
 
 	/* Create table */
 	struct rte_pipeline_table_params table_params = {
@@ -123,8 +125,11 @@ test_table_type(struct rte_table_ops *table_ops, void *table_args,
 		.action_data_size = 0,
 	};
 
-	if (rte_pipeline_table_create(pipeline, &table_params, &table_id) != 0)
+	if (rte_pipeline_table_create(pipeline, &table_params,
+		&table_id) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_TABLE_CONFIG;
+	}
 
 	/* Create output ports */
 	ring_params_tx.ring = RING_TX;
@@ -136,14 +141,18 @@ test_table_type(struct rte_table_ops *table_ops, void *table_args,
 	};
 
 	if (rte_pipeline_port_out_create(pipeline, &ring_out_params,
-		&ring_out_id) != 0)
+		&ring_out_id) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_PORT_CONFIG;
+	}
 
 	ring_params_tx.ring = RING_TX_2;
 
 	if (rte_pipeline_port_out_create(pipeline, &ring_out_params,
-		&ring_out_2_id) != 0)
+		&ring_out_2_id) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_PORT_CONFIG;
+	}
 
 	/* Add entry to the table */
 	struct rte_pipeline_table_entry default_entry = {
@@ -161,24 +170,34 @@ test_table_type(struct rte_table_ops *table_ops, void *table_args,
 	int key_found;
 
 	if (rte_pipeline_table_default_entry_add(pipeline, table_id,
-		&default_entry, &default_entry_ptr) != 0)
+		&default_entry, &default_entry_ptr) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_DEFAULT_ENTRY_ADD;
+	}
 
 	if (rte_pipeline_table_entry_add(pipeline, table_id,
 		key ? key : &table_entry, &table_entry, &key_found,
-			&entry_ptr) != 0)
+			&entry_ptr) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_ENTRY_ADD;
+	}
 
 	/* Create connections and check consistency */
 	if (rte_pipeline_port_in_connect_to_table(pipeline, ring_in_id,
-		table_id) != 0)
+		table_id) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_CONNECT;
+	}
 
-	if (rte_pipeline_port_in_enable(pipeline, ring_in_id) != 0)
+	if (rte_pipeline_port_in_enable(pipeline, ring_in_id) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_PORT_ENABLE;
+	}
 
-	if (rte_pipeline_check(pipeline) != 0)
+	if (rte_pipeline_check(pipeline) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_CONSISTENCY;
+	}
 
 
 
@@ -234,13 +253,17 @@ test_table_type(struct rte_table_ops *table_ops, void *table_args,
 	table_entry.table_id = ring_out_2_id;
 
 	if (rte_pipeline_table_default_entry_add(pipeline, table_id,
-		&default_entry, &default_entry_ptr) != 0)
+		&default_entry, &default_entry_ptr) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_ENTRY_ADD;
+	}
 
 	if (rte_pipeline_table_entry_add(pipeline, table_id,
 		key ? key : &table_entry, &table_entry, &key_found,
-			&entry_ptr) != 0)
+			&entry_ptr) != 0) {
+		rte_pipeline_free(pipeline);
 		return -CHECK_TABLE_ENTRY_ADD;
+	}
 
 	/* Check that traffic destination has changed */
 	if (table_packets->n_hit_packets) {
