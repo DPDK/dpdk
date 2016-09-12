@@ -131,6 +131,27 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* SHA384 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 128,
+					.max = 128,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 48,
+					.max = 48,
+					.increment = 0
+					},
+				.aad_size = { 0 }
+			}, }
+		}, }
+	},
 	{	/* SHA512 HMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -553,14 +574,17 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA1;
 		break;
+	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA224;
+		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA256;
 		break;
+	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA384;
+		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA512;
-		break;
-	case RTE_CRYPTO_AUTH_SHA224_HMAC:
-		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA224;
 		break;
 	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
@@ -580,7 +604,6 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_SHA512:
 	case RTE_CRYPTO_AUTH_SHA224:
 	case RTE_CRYPTO_AUTH_SHA384:
-	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 	case RTE_CRYPTO_AUTH_MD5:
 	case RTE_CRYPTO_AUTH_AES_CCM:
 	case RTE_CRYPTO_AUTH_AES_GMAC:
