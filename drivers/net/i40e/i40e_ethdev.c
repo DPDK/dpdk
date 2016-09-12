@@ -202,7 +202,7 @@
 /* Source MAC address */
 #define I40E_REG_INSET_L2_SMAC                   0x1C00000000000000ULL
 /* Outer (S-Tag) VLAN tag in the outer L2 header */
-#define I40E_REG_INSET_L2_OUTER_VLAN             0x0200000000000000ULL
+#define I40E_REG_INSET_L2_OUTER_VLAN             0x0000000004000000ULL
 /* Inner (C-Tag) or single VLAN tag in the outer L2 header */
 #define I40E_REG_INSET_L2_INNER_VLAN             0x0080000000000000ULL
 /* Single VLAN tag in the inner L2 header */
@@ -705,10 +705,6 @@ rte_i40e_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 DRIVER_REGISTER_PCI(net_i40e, rte_i40e_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_i40e, pci_id_i40e_map);
 
-/*
- * Initialize registers for flexible payload, which should be set by NVM.
- * This should be removed from code once it is fixed in NVM.
- */
 #ifndef I40E_GLQF_ORT
 #define I40E_GLQF_ORT(_i)    (0x00268900 + ((_i) * 4))
 #endif
@@ -716,8 +712,12 @@ DRIVER_REGISTER_PCI_TABLE(net_i40e, pci_id_i40e_map);
 #define I40E_GLQF_PIT(_i)    (0x00268C80 + ((_i) * 4))
 #endif
 
-static inline void i40e_flex_payload_reg_init(struct i40e_hw *hw)
+static inline void i40e_GLQF_reg_init(struct i40e_hw *hw)
 {
+	/*
+	 * Initialize registers for flexible payload, which should be set by NVM.
+	 * This should be removed from code once it is fixed in NVM.
+	 */
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(18), 0x00000030);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(19), 0x00000030);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(26), 0x0000002B);
@@ -728,10 +728,12 @@ static inline void i40e_flex_payload_reg_init(struct i40e_hw *hw)
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(20), 0x00000031);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(23), 0x00000031);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(63), 0x0000002D);
-
-	/* GLQF_PIT Registers */
 	I40E_WRITE_REG(hw, I40E_GLQF_PIT(16), 0x00007480);
 	I40E_WRITE_REG(hw, I40E_GLQF_PIT(17), 0x00007440);
+
+	/* Initialize registers for parsing packet type of QinQ */
+	I40E_WRITE_REG(hw, I40E_GLQF_ORT(40), 0x00000029);
+	I40E_WRITE_REG(hw, I40E_GLQF_PIT(9), 0x00009420);
 }
 
 #define I40E_FLOW_CONTROL_ETHERTYPE  0x8808
@@ -988,11 +990,12 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	}
 
 	/*
-	 * To work around the NVM issue,initialize registers
-	 * for flexible payload by software.
-	 * It should be removed once issues are fixed in NVM.
+	 * To work around the NVM issue, initialize registers
+	 * for flexible payload and packet type of QinQ by
+	 * software. It should be removed once issues are fixed
+	 * in NVM.
 	 */
-	i40e_flex_payload_reg_init(hw);
+	i40e_GLQF_reg_init(hw);
 
 	/* Initialize the input set for filters (hash and fd) to default value */
 	i40e_filter_input_set_init(pf);
