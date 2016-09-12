@@ -226,14 +226,16 @@ static const struct aes_test_case aes_test_cases[] = {
 		.test_descr = "AES-128-CBC HMAC-SHA384 Encryption Digest",
 		.test_data = &aes_test_data_9,
 		.op_mask = AES_TEST_OP_ENC_AUTH_GEN,
-		.pmd_mask = AES_TEST_TARGET_PMD_MB
+		.pmd_mask = AES_TEST_TARGET_PMD_MB |
+			AES_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA384 Decryption Digest "
 			"Verify",
 		.test_data = &aes_test_data_9,
 		.op_mask = AES_TEST_OP_AUTH_VERIFY_DEC,
-		.pmd_mask = AES_TEST_TARGET_PMD_MB
+		.pmd_mask = AES_TEST_TARGET_PMD_MB |
+			AES_TEST_TARGET_PMD_QAT
 	},
 };
 
