@@ -102,6 +102,15 @@ struct rte_eth_vhost_queue_event {
 int rte_eth_vhost_get_queue_event(uint8_t port_id,
 		struct rte_eth_vhost_queue_event *event);
 
+/**
+ * Get the 'vid' value associated with the specified port.
+ *
+ * @return
+ *  - On success, the 'vid' associated with 'port_id'.
+ *  - On failure, a negative value.
+ */
+int rte_eth_vhost_get_vid_from_port_id(uint8_t port_id);
+
 #ifdef __cplusplus
 }
 #endif

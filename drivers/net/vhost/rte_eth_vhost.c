@@ -428,6 +428,35 @@ rte_eth_vhost_get_queue_event(uint8_t port_id,
 	return -1;
 }
 
+int
+rte_eth_vhost_get_vid_from_port_id(uint8_t port_id)
+{
+	struct internal_list *list;
+	struct rte_eth_dev *eth_dev;
+	struct vhost_queue *vq;
+	int vid = -1;
+
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -1;
+
+	pthread_mutex_lock(&internal_list_lock);
+
+	TAILQ_FOREACH(list, &internal_list, next) {
+		eth_dev = list->eth_dev;
+		if (eth_dev->data->port_id == port_id) {
+			vq = eth_dev->data->rx_queues[0];
+			if (vq) {
+				vid = vq->vid;
+			}
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&internal_list_lock);
+
+	return vid;
+}
+
 static void *
 vhost_driver_session(void *param __rte_unused)
 {
