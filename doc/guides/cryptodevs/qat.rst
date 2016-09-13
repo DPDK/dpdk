@@ -83,6 +83,17 @@ Installation
 To use the DPDK QAT PMD an SRIOV-enabled QAT kernel driver is required. The
 VF devices exposed by this driver will be used by QAT PMD.
 
+To enable QAT in DPDK, follow the instructions mentioned in
+http://dpdk.org/doc/guides/linux_gsg/build_dpdk.html
+
+Quick instructions as follows:
+
+.. code-block:: console
+
+	make config T=x86_64-native-linuxapp-gcc
+	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_QAT\)=n,\1=y,' build/.config
+	make
+
 If you are running on kernel 4.4 or greater, see instructions for
 `Installation using kernel.org driver`_ below. If you are on a kernel earlier
 than 4.4, see `Installation using 01.org QAT driver`_.
