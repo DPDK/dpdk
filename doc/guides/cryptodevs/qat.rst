@@ -27,11 +27,12 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Quick Assist Crypto Poll Mode Driver
-====================================
+Intel(R) QuickAssist (QAT) Crypto Poll Mode Driver
+==================================================
 
 The QAT PMD provides poll mode crypto driver support for **Intel QuickAssist
-Technology DH895xxC** hardware accelerator.
+Technology DH895xxC** and **Intel QuickAssist Technology C62x**
+hardware accelerator.
 
 
 Features
@@ -100,9 +101,14 @@ If you are running on kernel 4.4 or greater, see instructions for
 `Installation using kernel.org driver`_ below. If you are on a kernel earlier
 than 4.4, see `Installation using 01.org QAT driver`_.
 
+For **Intel QuickAssist Technology C62x** device, kernel 4.5 or greater is
+needed. See instructions for `Installation using kernel.org driver`_ below.
+
 
 Installation using 01.org QAT driver
 ------------------------------------
+
+NOTE: There is no driver available for **Intel QuickAssist Technology C62x** on 01.org.
 
 Download the latest QuickAssist Technology Driver from `01.org
 <https://01.org/packet-processing/intel%C2%AE-quickassist-technology-drivers-and-patches>`_
@@ -180,6 +186,7 @@ If the build or install fails due to mismatching kernel sources you may need to 
 Installation using kernel.org driver
 ------------------------------------
 
+For **Intel QuickAssist Technology DH895xxC**:
 Assuming you are running on at least a 4.4 kernel, you can use the stock kernel.org QAT
 driver to start the QAT hardware.
 
@@ -199,9 +206,9 @@ You should see the following output::
     qat_dh895xcc            5626  0
     intel_qat              82336  1 qat_dh895xcc
 
-Next, you need to expose the VFs using the sysfs file system.
+Next, you need to expose the Virtual Functions (VFs) using the sysfs file system.
 
-First find the bdf of the DH895xCC device::
+First find the bdf of the physical function (PF) of the DH895xCC device::
 
     lspci -d : 435
 
@@ -239,10 +246,54 @@ cd to your linux source root directory and start the qat kernel modules:
     ``IOMMU should be enabled for SR-IOV to work correctly``
 
 
+For **Intel QuickAssist Technology C62x**:
+Assuming you are running on at least a 4.5 kernel, you can use the stock kernel.org QAT
+driver to start the QAT hardware.
+
+The steps below assume you are:
+
+* Running DPDK on a platform with one ``C62x`` device.
+* On a kernel at least version 4.5.
+
+In BIOS ensure that SRIOV is enabled and VT-d is disabled.
+
+Ensure the QAT driver is loaded on your system, by executing::
+
+    lsmod | grep qat
+
+You should see the following output::
+
+    qat_c62x               16384  0
+    intel_qat             122880  1 qat_c62x
+
+Next, you need to expose the VFs using the sysfs file system.
+
+First find the bdf of the C62x device::
+
+    lspci -d:37c8
+
+You should see output similar to::
+
+    1a:00.0 Co-processor: Intel Corporation Device 37c8
+    3d:00.0 Co-processor: Intel Corporation Device 37c8
+    3f:00.0 Co-processor: Intel Corporation Device 37c8
+
+For each c62x device there are 3 PFs.
+Using the sysfs, for each PF, enable the 16 VFs::
+
+    echo 16 > /sys/bus/pci/drivers/c6xx/0000\:1a\:00.0/sriov_numvfs
+
+If you get an error, it's likely you're using a QAT kernel driver earlier than kernel 4.5.
+
+To verify that the VFs are available for use - use ``lspci -d:37c9`` to confirm
+the bdf of the 48 VF devices are available per ``C62x`` device.
+
+To complete the installation - follow instructions in `Binding the available VFs to the DPDK UIO driver`_.
 
 Binding the available VFs to the DPDK UIO driver
 ------------------------------------------------
 
+For **Intel(R) QuickAssist Technology DH895xcc** device:
 The unbind command below assumes ``bdfs`` of ``03:01.00-03:04.07``, if yours are different adjust the unbind command below::
 
    cd $RTE_SDK
@@ -259,3 +310,28 @@ The unbind command below assumes ``bdfs`` of ``03:01.00-03:04.07``, if yours are
    echo "8086 0443" > /sys/bus/pci/drivers/igb_uio/new_id
 
 You can use ``lspci -vvd:443`` to confirm that all devices are now in use by igb_uio kernel driver.
+
+For **Intel(R) QuickAssist Technology C62x** device:
+The unbind command below assumes ``bdfs`` of ``1a:01.00-1a:02.07``, ``3d:01.00-3d:02.07`` and ``3f:01.00-3f:02.07``,
+if yours are different adjust the unbind command below::
+
+   cd $RTE_SDK
+   modprobe uio
+   insmod ./build/kmod/igb_uio.ko
+
+   for device in $(seq 1 2); do \
+       for fn in $(seq 0 7); do \
+           echo -n 0000:1a:0${device}.${fn} > \
+           /sys/bus/pci/devices/0000\:1a\:0${device}.${fn}/driver/unbind; \
+
+           echo -n 0000:3d:0${device}.${fn} > \
+           /sys/bus/pci/devices/0000\:3d\:0${device}.${fn}/driver/unbind; \
+
+           echo -n 0000:3f:0${device}.${fn} > \
+           /sys/bus/pci/devices/0000\:3f\:0${device}.${fn}/driver/unbind; \
+       done; \
+   done
+
+   echo "8086 37c9" > /sys/bus/pci/drivers/igb_uio/new_id
+
+You can use ``lspci -vvd:37c9`` to confirm that all devices are now in use by igb_uio kernel driver.
