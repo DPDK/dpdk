@@ -293,8 +293,8 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
  *   Pointer to TX queue structure.
  * @param wqe
  *   Pointer to the WQE to fill.
- * @param addr
- *   Buffer data address.
+ * @param buf
+ *   Buffer.
  * @param length
  *   Packet length.
  * @param lkey
@@ -302,8 +302,24 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
  */
 static inline void
 mlx5_wqe_write(struct txq *txq, volatile union mlx5_wqe *wqe,
-	       uintptr_t addr, uint32_t length, uint32_t lkey)
+	       struct rte_mbuf *buf, uint32_t length, uint32_t lkey)
 {
+	uintptr_t addr = rte_pktmbuf_mtod(buf, uintptr_t);
+
+	rte_mov16((uint8_t *)&wqe->wqe.eseg.inline_hdr_start,
+		  (uint8_t *)addr);
+	addr += 16;
+	length -= 16;
+	/* Need to insert VLAN ? */
+	if (buf->ol_flags & PKT_TX_VLAN_PKT) {
+		uint32_t vlan = htonl(0x81000000 | buf->vlan_tci);
+
+		memcpy((uint8_t *)&wqe->wqe.eseg.inline_hdr_start + 12,
+		       &vlan, sizeof(vlan));
+		addr -= sizeof(vlan);
+		length += sizeof(vlan);
+	}
+	/* Write the WQE. */
 	wqe->wqe.ctrl.data[0] = htonl((txq->wqe_ci << 8) | MLX5_OPCODE_SEND);
 	wqe->wqe.ctrl.data[1] = htonl((txq->qp_num_8s) | 4);
 	wqe->wqe.ctrl.data[2] = 0;
@@ -312,66 +328,7 @@ mlx5_wqe_write(struct txq *txq, volatile union mlx5_wqe *wqe,
 	wqe->inl.eseg.rsvd1 = 0;
 	wqe->inl.eseg.mss = 0;
 	wqe->inl.eseg.rsvd2 = 0;
-	wqe->wqe.eseg.inline_hdr_sz = htons(MLX5_ETH_INLINE_HEADER_SIZE);
-	/* Copy the first 16 bytes into inline header. */
-	rte_memcpy((uint8_t *)(uintptr_t)wqe->wqe.eseg.inline_hdr_start,
-		   (uint8_t *)(uintptr_t)addr,
-		   MLX5_ETH_INLINE_HEADER_SIZE);
-	addr += MLX5_ETH_INLINE_HEADER_SIZE;
-	length -= MLX5_ETH_INLINE_HEADER_SIZE;
-	/* Store remaining data in data segment. */
-	wqe->wqe.dseg.byte_count = htonl(length);
-	wqe->wqe.dseg.lkey = lkey;
-	wqe->wqe.dseg.addr = htonll(addr);
-	/* Increment consumer index. */
-	++txq->wqe_ci;
-}
-
-/**
- * Write a regular WQE with VLAN.
- *
- * @param txq
- *   Pointer to TX queue structure.
- * @param wqe
- *   Pointer to the WQE to fill.
- * @param addr
- *   Buffer data address.
- * @param length
- *   Packet length.
- * @param lkey
- *   Memory region lkey.
- * @param vlan_tci
- *   VLAN field to insert in packet.
- */
-static inline void
-mlx5_wqe_write_vlan(struct txq *txq, volatile union mlx5_wqe *wqe,
-		    uintptr_t addr, uint32_t length, uint32_t lkey,
-		    uint16_t vlan_tci)
-{
-	uint32_t vlan = htonl(0x81000000 | vlan_tci);
-
-	wqe->wqe.ctrl.data[0] = htonl((txq->wqe_ci << 8) | MLX5_OPCODE_SEND);
-	wqe->wqe.ctrl.data[1] = htonl((txq->qp_num_8s) | 4);
-	wqe->wqe.ctrl.data[2] = 0;
-	wqe->wqe.ctrl.data[3] = 0;
-	wqe->inl.eseg.rsvd0 = 0;
-	wqe->inl.eseg.rsvd1 = 0;
-	wqe->inl.eseg.mss = 0;
-	wqe->inl.eseg.rsvd2 = 0;
-	wqe->wqe.eseg.inline_hdr_sz = htons(MLX5_ETH_VLAN_INLINE_HEADER_SIZE);
-	/*
-	 * Copy 12 bytes of source & destination MAC address.
-	 * Copy 4 bytes of VLAN.
-	 * Copy 2 bytes of Ether type.
-	 */
-	rte_memcpy((uint8_t *)(uintptr_t)wqe->wqe.eseg.inline_hdr_start,
-		   (uint8_t *)(uintptr_t)addr, 12);
-	rte_memcpy((uint8_t *)((uintptr_t)wqe->wqe.eseg.inline_hdr_start + 12),
-		   &vlan, sizeof(vlan));
-	rte_memcpy((uint8_t *)((uintptr_t)wqe->wqe.eseg.inline_hdr_start + 16),
-		   (uint8_t *)((uintptr_t)addr + 12), 2);
-	addr += MLX5_ETH_VLAN_INLINE_HEADER_SIZE - sizeof(vlan);
-	length -= MLX5_ETH_VLAN_INLINE_HEADER_SIZE - sizeof(vlan);
+	wqe->wqe.eseg.inline_hdr_sz = htons(16);
 	/* Store remaining data in data segment. */
 	wqe->wqe.dseg.byte_count = htonl(length);
 	wqe->wqe.dseg.lkey = lkey;
@@ -612,7 +569,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	do {
 		struct rte_mbuf *buf = *(pkts++);
 		unsigned int elts_head_next;
-		uintptr_t addr;
 		uint32_t length;
 		uint32_t lkey;
 		unsigned int segs_n = buf->nb_segs;
@@ -634,8 +590,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		rte_prefetch0(wqe);
 		if (pkts_n)
 			rte_prefetch0(*pkts);
-		/* Retrieve buffer information. */
-		addr = rte_pktmbuf_mtod(buf, uintptr_t);
 		length = DATA_LEN(buf);
 		/* Update element. */
 		(*txq->elts)[elts_head] = buf;
@@ -645,11 +599,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 						       volatile void *));
 		/* Retrieve Memory Region key for this memory pool. */
 		lkey = txq_mp2mr(txq, txq_mb2mp(buf));
-		if (buf->ol_flags & PKT_TX_VLAN_PKT)
-			mlx5_wqe_write_vlan(txq, wqe, addr, length, lkey,
-					    buf->vlan_tci);
-		else
-			mlx5_wqe_write(txq, wqe, addr, length, lkey);
+		mlx5_wqe_write(txq, wqe, buf, length, lkey);
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
 		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
@@ -813,11 +763,7 @@ mlx5_tx_burst_inline(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		} else {
 			/* Retrieve Memory Region key for this memory pool. */
 			lkey = txq_mp2mr(txq, txq_mb2mp(buf));
-			if (buf->ol_flags & PKT_TX_VLAN_PKT)
-				mlx5_wqe_write_vlan(txq, wqe, addr, length,
-						    lkey, buf->vlan_tci);
-			else
-				mlx5_wqe_write(txq, wqe, addr, length, lkey);
+			mlx5_wqe_write(txq, wqe, buf, length, lkey);
 		}
 		while (--segs_n) {
 			/*
