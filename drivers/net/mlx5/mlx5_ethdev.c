@@ -1398,10 +1398,6 @@ priv_select_tx_function(struct priv *priv)
 	} else if ((priv->sriov == 0) && priv->mps) {
 		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw;
 		DEBUG("selected MPW TX function");
-	} else if (priv->txq_inline && (priv->txqs_n >= priv->txqs_inline)) {
-		priv->dev->tx_pkt_burst = mlx5_tx_burst_inline;
-		DEBUG("selected inline TX function (%u >= %u queues)",
-		      priv->txqs_n, priv->txqs_inline);
 	}
 }
 
