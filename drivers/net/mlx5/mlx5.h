@@ -257,6 +257,7 @@ void mlx5_dev_stop(struct rte_eth_dev *);
 
 /* mlx5_fdir.c */
 
+void priv_fdir_queue_destroy(struct priv *, struct fdir_queue *);
 int fdir_init_filters_list(struct priv *);
 void priv_fdir_delete_filters_list(struct priv *);
 void priv_fdir_disable(struct priv *);

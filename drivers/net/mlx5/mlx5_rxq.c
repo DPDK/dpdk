@@ -745,6 +745,8 @@ rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
 
 	DEBUG("cleaning up %p", (void *)rxq_ctrl);
 	rxq_free_elts(rxq_ctrl);
+	if (rxq_ctrl->fdir_queue != NULL)
+		priv_fdir_queue_destroy(rxq_ctrl->priv, rxq_ctrl->fdir_queue);
 	if (rxq_ctrl->if_wq != NULL) {
 		assert(rxq_ctrl->priv != NULL);
 		assert(rxq_ctrl->priv->ctx != NULL);

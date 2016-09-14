@@ -400,6 +400,145 @@ create_flow:
 }
 
 /**
+ * Destroy a flow director queue.
+ *
+ * @param fdir_queue
+ *   Flow director queue to be destroyed.
+ */
+void
+priv_fdir_queue_destroy(struct priv *priv, struct fdir_queue *fdir_queue)
+{
+	struct mlx5_fdir_filter *fdir_filter;
+
+	/* Disable filter flows still applying to this queue. */
+	LIST_FOREACH(fdir_filter, priv->fdir_filter_list, next) {
+		unsigned int idx = fdir_filter->queue;
+		struct rxq_ctrl *rxq_ctrl =
+			container_of((*priv->rxqs)[idx], struct rxq_ctrl, rxq);
+
+		assert(idx < priv->rxqs_n);
+		if (fdir_queue == rxq_ctrl->fdir_queue &&
+		    fdir_filter->flow != NULL) {
+			claim_zero(ibv_exp_destroy_flow(fdir_filter->flow));
+			fdir_filter->flow = NULL;
+		}
+	}
+	assert(fdir_queue->qp);
+	claim_zero(ibv_destroy_qp(fdir_queue->qp));
+	assert(fdir_queue->ind_table);
+	claim_zero(ibv_exp_destroy_rwq_ind_table(fdir_queue->ind_table));
+	if (fdir_queue->wq)
+		claim_zero(ibv_exp_destroy_wq(fdir_queue->wq));
+	if (fdir_queue->cq)
+		claim_zero(ibv_destroy_cq(fdir_queue->cq));
+#ifndef NDEBUG
+	memset(fdir_queue, 0x2a, sizeof(*fdir_queue));
+#endif
+	rte_free(fdir_queue);
+}
+
+/**
+ * Create a flow director queue.
+ *
+ * @param priv
+ *   Private structure.
+ * @param wq
+ *   Work queue to route matched packets to, NULL if one needs to
+ *   be created.
+ *
+ * @return
+ *   Related flow director queue on success, NULL otherwise.
+ */
+static struct fdir_queue *
+priv_fdir_queue_create(struct priv *priv, struct ibv_exp_wq *wq,
+		       unsigned int socket)
+{
+	struct fdir_queue *fdir_queue;
+
+	fdir_queue = rte_calloc_socket(__func__, 1, sizeof(*fdir_queue),
+				       0, socket);
+	if (!fdir_queue) {
+		ERROR("cannot allocate flow director queue");
+		return NULL;
+	}
+	assert(priv->pd);
+	assert(priv->ctx);
+	if (!wq) {
+		fdir_queue->cq = ibv_exp_create_cq(
+			priv->ctx, 1, NULL, NULL, 0,
+			&(struct ibv_exp_cq_init_attr){
+				.comp_mask = 0,
+			});
+		if (!fdir_queue->cq) {
+			ERROR("cannot create flow director CQ");
+			goto error;
+		}
+		fdir_queue->wq = ibv_exp_create_wq(
+			priv->ctx,
+			&(struct ibv_exp_wq_init_attr){
+				.wq_type = IBV_EXP_WQT_RQ,
+				.max_recv_wr = 1,
+				.max_recv_sge = 1,
+				.pd = priv->pd,
+				.cq = fdir_queue->cq,
+			});
+		if (!fdir_queue->wq) {
+			ERROR("cannot create flow director WQ");
+			goto error;
+		}
+		wq = fdir_queue->wq;
+	}
+	fdir_queue->ind_table = ibv_exp_create_rwq_ind_table(
+		priv->ctx,
+		&(struct ibv_exp_rwq_ind_table_init_attr){
+			.pd = priv->pd,
+			.log_ind_tbl_size = 0,
+			.ind_tbl = &wq,
+			.comp_mask = 0,
+		});
+	if (!fdir_queue->ind_table) {
+		ERROR("cannot create flow director indirection table");
+		goto error;
+	}
+	fdir_queue->qp = ibv_exp_create_qp(
+		priv->ctx,
+		&(struct ibv_exp_qp_init_attr){
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.comp_mask =
+				IBV_EXP_QP_INIT_ATTR_PD |
+				IBV_EXP_QP_INIT_ATTR_PORT |
+				IBV_EXP_QP_INIT_ATTR_RX_HASH,
+			.pd = priv->pd,
+			.rx_hash_conf = &(struct ibv_exp_rx_hash_conf){
+				.rx_hash_function =
+					IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = rss_hash_default_key_len,
+				.rx_hash_key = rss_hash_default_key,
+				.rx_hash_fields_mask = 0,
+				.rwq_ind_tbl = fdir_queue->ind_table,
+			},
+			.port_num = priv->port,
+		});
+	if (!fdir_queue->qp) {
+		ERROR("cannot create flow director hash RX QP");
+		goto error;
+	}
+	return fdir_queue;
+error:
+	assert(fdir_queue);
+	assert(!fdir_queue->qp);
+	if (fdir_queue->ind_table)
+		claim_zero(ibv_exp_destroy_rwq_ind_table
+			   (fdir_queue->ind_table));
+	if (fdir_queue->wq)
+		claim_zero(ibv_exp_destroy_wq(fdir_queue->wq));
+	if (fdir_queue->cq)
+		claim_zero(ibv_destroy_cq(fdir_queue->cq));
+	rte_free(fdir_queue);
+	return NULL;
+}
+
+/**
  * Get flow director queue for a specific RX queue, create it in case
  * it does not exist.
  *
@@ -416,74 +555,15 @@ priv_get_fdir_queue(struct priv *priv, uint16_t idx)
 {
 	struct rxq_ctrl *rxq_ctrl =
 		container_of((*priv->rxqs)[idx], struct rxq_ctrl, rxq);
-	struct fdir_queue *fdir_queue = &rxq_ctrl->fdir_queue;
-	struct ibv_exp_rwq_ind_table *ind_table = NULL;
-	struct ibv_qp *qp = NULL;
-	struct ibv_exp_rwq_ind_table_init_attr ind_init_attr;
-	struct ibv_exp_rx_hash_conf hash_conf;
-	struct ibv_exp_qp_init_attr qp_init_attr;
-	int err = 0;
+	struct fdir_queue *fdir_queue = rxq_ctrl->fdir_queue;
 
-	/* Return immediately if it has already been created. */
-	if (fdir_queue->qp != NULL)
-		return fdir_queue;
-
-	ind_init_attr = (struct ibv_exp_rwq_ind_table_init_attr){
-		.pd = priv->pd,
-		.log_ind_tbl_size = 0,
-		.ind_tbl = &rxq_ctrl->wq,
-		.comp_mask = 0,
-	};
-
-	errno = 0;
-	ind_table = ibv_exp_create_rwq_ind_table(priv->ctx,
-						 &ind_init_attr);
-	if (ind_table == NULL) {
-		/* Not clear whether errno is set. */
-		err = (errno ? errno : EINVAL);
-		ERROR("RX indirection table creation failed with error %d: %s",
-		      err, strerror(err));
-		goto error;
+	assert(rxq_ctrl->wq);
+	if (fdir_queue == NULL) {
+		fdir_queue = priv_fdir_queue_create(priv, rxq_ctrl->wq,
+						    rxq_ctrl->socket);
+		rxq_ctrl->fdir_queue = fdir_queue;
 	}
-
-	/* Create fdir_queue qp. */
-	hash_conf = (struct ibv_exp_rx_hash_conf){
-		.rx_hash_function = IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
-		.rx_hash_key_len = rss_hash_default_key_len,
-		.rx_hash_key = rss_hash_default_key,
-		.rx_hash_fields_mask = 0,
-		.rwq_ind_tbl = ind_table,
-	};
-	qp_init_attr = (struct ibv_exp_qp_init_attr){
-		.max_inl_recv = 0, /* Currently not supported. */
-		.qp_type = IBV_QPT_RAW_PACKET,
-		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
-			      IBV_EXP_QP_INIT_ATTR_RX_HASH),
-		.pd = priv->pd,
-		.rx_hash_conf = &hash_conf,
-		.port_num = priv->port,
-	};
-
-	qp = ibv_exp_create_qp(priv->ctx, &qp_init_attr);
-	if (qp == NULL) {
-		err = (errno ? errno : EINVAL);
-		ERROR("hash RX QP creation failure: %s", strerror(err));
-		goto error;
-	}
-
-	fdir_queue->ind_table = ind_table;
-	fdir_queue->qp = qp;
-
 	return fdir_queue;
-
-error:
-	if (qp != NULL)
-		claim_zero(ibv_destroy_qp(qp));
-
-	if (ind_table != NULL)
-		claim_zero(ibv_exp_destroy_rwq_ind_table(ind_table));
-
-	return NULL;
 }
 
 /**
@@ -601,7 +681,6 @@ priv_fdir_disable(struct priv *priv)
 {
 	unsigned int i;
 	struct mlx5_fdir_filter *mlx5_fdir_filter;
-	struct fdir_queue *fdir_queue;
 
 	/* Run on every flow director filter and destroy flow handle. */
 	LIST_FOREACH(mlx5_fdir_filter, priv->fdir_filter_list, next) {
@@ -618,23 +697,15 @@ priv_fdir_disable(struct priv *priv)
 		}
 	}
 
-	/* Run on every RX queue to destroy related flow director QP and
-	 * indirection table. */
+	/* Destroy flow director context in each RX queue. */
 	for (i = 0; (i != priv->rxqs_n); i++) {
 		struct rxq_ctrl *rxq_ctrl =
 			container_of((*priv->rxqs)[i], struct rxq_ctrl, rxq);
 
-		fdir_queue = &rxq_ctrl->fdir_queue;
-		if (fdir_queue->qp != NULL) {
-			claim_zero(ibv_destroy_qp(fdir_queue->qp));
-			fdir_queue->qp = NULL;
-		}
-
-		if (fdir_queue->ind_table != NULL) {
-			claim_zero(ibv_exp_destroy_rwq_ind_table
-				   (fdir_queue->ind_table));
-			fdir_queue->ind_table = NULL;
-		}
+		if (!rxq_ctrl->fdir_queue)
+			continue;
+		priv_fdir_queue_destroy(priv, rxq_ctrl->fdir_queue);
+		rxq_ctrl->fdir_queue = NULL;
 	}
 }
 

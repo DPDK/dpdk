@@ -87,6 +87,8 @@ struct mlx5_txq_stats {
 struct fdir_queue {
 	struct ibv_qp *qp; /* Associated RX QP. */
 	struct ibv_exp_rwq_ind_table *ind_table; /* Indirection table. */
+	struct ibv_exp_wq *wq; /* Work queue. */
+	struct ibv_cq *cq; /* Completion queue. */
 };
 
 struct priv;
@@ -128,7 +130,7 @@ struct rxq_ctrl {
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_exp_wq *wq; /* Work Queue. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
-	struct fdir_queue fdir_queue; /* Flow director queue. */
+	struct fdir_queue *fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
 	struct ibv_exp_cq_family_v1 *if_cq; /* CQ interface. */
