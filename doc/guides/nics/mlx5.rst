@@ -84,7 +84,8 @@ Features
 - Promiscuous mode.
 - Multicast promiscuous mode.
 - Hardware checksum offloads.
-- Flow director (RTE_FDIR_MODE_PERFECT and RTE_FDIR_MODE_PERFECT_MAC_VLAN).
+- Flow director (RTE_FDIR_MODE_PERFECT, RTE_FDIR_MODE_PERFECT_MAC_VLAN and
+  RTE_ETH_FDIR_REJECT).
 - Secondary process TX is supported.
 - KVM and VMware ESX SR-IOV modes are supported.
 

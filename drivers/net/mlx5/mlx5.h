@@ -134,6 +134,7 @@ struct priv {
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct fdir_filter_list *fdir_filter_list; /* Flow director rules. */
+	struct fdir_queue *fdir_drop_queue; /* Flow director drop queue. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 

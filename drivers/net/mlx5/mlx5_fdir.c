@@ -75,6 +75,7 @@ struct fdir_flow_desc {
 struct mlx5_fdir_filter {
 	LIST_ENTRY(mlx5_fdir_filter) next;
 	uint16_t queue; /* Queue assigned to if FDIR match. */
+	enum rte_eth_fdir_behavior behavior;
 	struct fdir_flow_desc desc;
 	struct ibv_exp_flow *flow;
 };
@@ -567,6 +568,33 @@ priv_get_fdir_queue(struct priv *priv, uint16_t idx)
 }
 
 /**
+ * Get or flow director drop queue. Create it if it does not exist.
+ *
+ * @param priv
+ *   Private structure.
+ *
+ * @return
+ *   Flow director drop queue on success, NULL otherwise.
+ */
+static struct fdir_queue *
+priv_get_fdir_drop_queue(struct priv *priv)
+{
+	struct fdir_queue *fdir_queue = priv->fdir_drop_queue;
+
+	if (fdir_queue == NULL) {
+		unsigned int socket = SOCKET_ID_ANY;
+
+		/* Select a known NUMA socket if possible. */
+		if (priv->rxqs_n && (*priv->rxqs)[0])
+			socket = container_of((*priv->rxqs)[0],
+					      struct rxq_ctrl, rxq)->socket;
+		fdir_queue = priv_fdir_queue_create(priv, NULL, socket);
+		priv->fdir_drop_queue = fdir_queue;
+	}
+	return fdir_queue;
+}
+
+/**
  * Enable flow director filter and create steering rules.
  *
  * @param priv
@@ -588,7 +616,11 @@ priv_fdir_filter_enable(struct priv *priv,
 		return 0;
 
 	/* Get fdir_queue for specific queue. */
-	fdir_queue = priv_get_fdir_queue(priv, mlx5_fdir_filter->queue);
+	if (mlx5_fdir_filter->behavior == RTE_ETH_FDIR_REJECT)
+		fdir_queue = priv_get_fdir_drop_queue(priv);
+	else
+		fdir_queue = priv_get_fdir_queue(priv,
+						 mlx5_fdir_filter->queue);
 
 	if (fdir_queue == NULL) {
 		ERROR("failed to create flow director rxq for queue %d",
@@ -707,6 +739,10 @@ priv_fdir_disable(struct priv *priv)
 		priv_fdir_queue_destroy(priv, rxq_ctrl->fdir_queue);
 		rxq_ctrl->fdir_queue = NULL;
 	}
+	if (priv->fdir_drop_queue) {
+		priv_fdir_queue_destroy(priv, priv->fdir_drop_queue);
+		priv->fdir_drop_queue = NULL;
+	}
 }
 
 /**
@@ -807,8 +843,9 @@ priv_fdir_filter_add(struct priv *priv,
 		return err;
 	}
 
-	/* Set queue. */
+	/* Set action parameters. */
 	mlx5_fdir_filter->queue = fdir_filter->action.rx_queue;
+	mlx5_fdir_filter->behavior = fdir_filter->action.behavior;
 
 	/* Convert to mlx5 filter descriptor. */
 	fdir_filter_to_flow_desc(fdir_filter,
