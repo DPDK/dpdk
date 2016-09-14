@@ -107,7 +107,7 @@ export RTE_TOOLCHAIN
 
 # developer build automatically enabled in a git tree
 ifneq ($(wildcard $(RTE_SDK)/.git),)
-RTE_DEVEL_BUILD := y
+RTE_DEVEL_BUILD ?= y
 endif
 
 # SRCDIR is the current source directory
