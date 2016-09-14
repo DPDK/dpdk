@@ -87,7 +87,8 @@ vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		--priv->vlan_filter_n;
 		memmove(&priv->vlan_filter[i],
 			&priv->vlan_filter[i + 1],
-			priv->vlan_filter_n - i);
+			sizeof(priv->vlan_filter[i]) *
+			(priv->vlan_filter_n - i));
 		priv->vlan_filter[priv->vlan_filter_n] = 0;
 	} else {
 		assert(i == priv->vlan_filter_n);
