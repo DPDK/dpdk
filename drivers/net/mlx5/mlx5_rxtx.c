@@ -152,6 +152,9 @@ check_cqe64(volatile struct mlx5_cqe64 *cqe,
 	return 0;
 }
 
+static inline void
+txq_complete(struct txq *txq) __attribute__((always_inline));
+
 /**
  * Manage TX completions.
  *
@@ -160,7 +163,7 @@ check_cqe64(volatile struct mlx5_cqe64 *cqe,
  * @param txq
  *   Pointer to TX queue structure.
  */
-static void
+static inline void
 txq_complete(struct txq *txq)
 {
 	const unsigned int elts_n = txq->elts_n;
