@@ -955,7 +955,7 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg)
 {
-	int ret = -EINVAL;
+	int ret = EINVAL;
 	struct priv *priv = dev->data->dev_private;
 
 	switch (filter_type) {
@@ -970,5 +970,5 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 		break;
 	}
 
-	return ret;
+	return -ret;
 }
