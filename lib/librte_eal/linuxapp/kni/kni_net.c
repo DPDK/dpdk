@@ -508,7 +508,7 @@ kni_net_tx_timeout (struct net_device *dev)
 	struct kni_dev *kni = netdev_priv(dev);
 
 	KNI_DBG("Transmit timeout at %ld, latency %ld\n", jiffies,
-			jiffies - dev->trans_start);
+			jiffies - dev_trans_start(dev));
 
 	kni->stats.tx_errors++;
 	netif_wake_queue(dev);
