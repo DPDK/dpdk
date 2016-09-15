@@ -71,6 +71,9 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA1_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_SHA224:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA224_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA256_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
@@ -107,6 +110,8 @@ static int qat_hash_get_digest_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	switch (qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
 		return ICP_QAT_HW_SHA1_STATE1_SZ;
+	case ICP_QAT_HW_AUTH_ALGO_SHA224:
+		return ICP_QAT_HW_SHA224_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
 		return ICP_QAT_HW_SHA256_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
@@ -129,6 +134,8 @@ static int qat_hash_get_block_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	switch (qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
 		return SHA_CBLOCK;
+	case ICP_QAT_HW_AUTH_ALGO_SHA224:
+		return SHA256_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
 		return SHA256_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
@@ -155,6 +162,17 @@ static int partial_hash_sha1(uint8_t *data_in, uint8_t *data_out)
 		return -EFAULT;
 	SHA1_Transform(&ctx, data_in);
 	rte_memcpy(data_out, &ctx, SHA_DIGEST_LENGTH);
+	return 0;
+}
+
+static int partial_hash_sha224(uint8_t *data_in, uint8_t *data_out)
+{
+	SHA256_CTX ctx;
+
+	if (!SHA224_Init(&ctx))
+		return -EFAULT;
+	SHA256_Transform(&ctx, data_in);
+	rte_memcpy(data_out, &ctx, SHA256_DIGEST_LENGTH);
 	return 0;
 }
 
@@ -214,6 +232,13 @@ static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
 	switch (hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
 		if (partial_hash_sha1(data_in, digest))
+			return -EFAULT;
+		for (i = 0; i < digest_size >> 2; i++, hash_state_out_be32++)
+			*hash_state_out_be32 =
+				rte_bswap32(*(((uint32_t *)digest)+i));
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_SHA224:
+		if (partial_hash_sha224(data_in, digest))
 			return -EFAULT;
 		for (i = 0; i < digest_size >> 2; i++, hash_state_out_be32++)
 			*hash_state_out_be32 =
@@ -573,6 +598,14 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 			return -EFAULT;
 		}
 		state2_size = RTE_ALIGN_CEIL(ICP_QAT_HW_SHA1_STATE2_SZ, 8);
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_SHA224:
+		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA224,
+			authkey, authkeylen, cdesc->cd_cur_ptr, &state1_size)) {
+			PMD_DRV_LOG(ERR, "(SHA)precompute failed");
+			return -EFAULT;
+		}
+		state2_size = ICP_QAT_HW_SHA224_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
 		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA256,

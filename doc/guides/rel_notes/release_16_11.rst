@@ -69,6 +69,7 @@ New Features
   The QAT PMD was updated with following support:
 
   * MD5_HMAC algorithm
+  * SHA224-HMAC algorithm
 
 
 Resolved Issues
