@@ -399,6 +399,8 @@ F: drivers/net/null/
 
 Crypto Drivers
 --------------
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
 
 Intel AES-NI GCM PMD
 M: Declan Doherty <declan.doherty@intel.com>
