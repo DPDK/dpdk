@@ -59,6 +59,10 @@
 
 #define KASUMI_F8_KEY_MODIFIER_4_BYTES   0x55555555
 
+/* 3DES key sizes */
+#define QAT_3DES_KEY_SZ_OPT1 24 /* Keys are independent */
+#define QAT_3DES_KEY_SZ_OPT2 16 /* K3=K1 */
+
 #define QAT_AES_HW_CONFIG_CBC_ENC(alg) \
 	ICP_QAT_HW_CIPHER_CONFIG_BUILD(ICP_QAT_HW_CIPHER_CBC_MODE, alg, \
 					ICP_QAT_HW_CIPHER_NO_CONVERT, \
@@ -138,4 +142,5 @@ void qat_alg_ablkcipher_init_dec(struct qat_alg_ablkcipher_cd *cd,
 int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 #endif

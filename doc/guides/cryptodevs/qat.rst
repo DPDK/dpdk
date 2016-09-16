@@ -42,6 +42,8 @@ The QAT PMD has support for:
 
 Cipher algorithms:
 
+* ``RTE_CRYPTO_CIPHER_3DES_CBC``
+* ``RTE_CRYPTO_CIPHER_3DES_CTR``
 * ``RTE_CRYPTO_CIPHER_AES128_CBC``
 * ``RTE_CRYPTO_CIPHER_AES192_CBC``
 * ``RTE_CRYPTO_CIPHER_AES256_CBC``
@@ -73,7 +75,7 @@ Limitations
 
 * Chained mbufs are not supported.
 * Hash only is not supported except SNOW 3G UIA2 and KASUMI F9.
-* Cipher only is not supported except SNOW 3G UEA2 and KASUMI F8.
+* Cipher only is not supported except SNOW 3G UEA2, KASUMI F8 and 3DES.
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * Not performance tuned.
 * SNOW 3G (UEA2) and KASUMI (F8) supported only if cipher length, cipher offset fields are byte-aligned.

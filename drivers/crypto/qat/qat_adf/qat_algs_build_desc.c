@@ -512,6 +512,10 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_KASUMI_BLK_SZ >> 3;
 		cipher_cd_ctrl->cipher_padding_sz =
 					(2 * ICP_QAT_HW_KASUMI_BLK_SZ) >> 3;
+	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_3DES) {
+		total_key_size = ICP_QAT_HW_3DES_KEY_SZ;
+		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_3DES_BLK_SZ >> 3;
+		proto = ICP_QAT_FW_LA_PROTO_GET(header->serv_specif_flags);
 	} else {
 		total_key_size = cipherkeylen;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_AES_BLK_SZ >> 3;
@@ -553,8 +557,12 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 
 	if (total_key_size > cipherkeylen) {
 		uint32_t padding_size =  total_key_size-cipherkeylen;
-
-		memset(cdesc->cd_cur_ptr, 0, padding_size);
+		if ((cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_3DES)
+			&& (cipherkeylen == QAT_3DES_KEY_SZ_OPT2))
+			/* K3 not provided so use K1 = K3*/
+			memcpy(cdesc->cd_cur_ptr, cipherkey, padding_size);
+		else
+			memset(cdesc->cd_cur_ptr, 0, padding_size);
 		cdesc->cd_cur_ptr += padding_size;
 	}
 	cd_size = cdesc->cd_cur_ptr-(uint8_t *)&cdesc->cd;
@@ -839,6 +847,19 @@ int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	switch (key_len) {
 	case ICP_QAT_HW_KASUMI_KEY_SZ:
 		*alg = ICP_QAT_HW_CIPHER_ALGO_KASUMI;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+{
+	switch (key_len) {
+	case QAT_3DES_KEY_SZ_OPT1:
+	case QAT_3DES_KEY_SZ_OPT2:
+		*alg = ICP_QAT_HW_CIPHER_ALGO_3DES;
 		break;
 	default:
 		return -EINVAL;
