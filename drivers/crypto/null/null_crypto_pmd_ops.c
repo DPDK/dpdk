@@ -70,7 +70,7 @@ static const struct rte_cryptodev_capabilities null_crypto_pmd_capabilities[] = 
 				.key_size = {
 					.min = 0,
 					.max = 0,
-					.increment = 8
+					.increment = 0
 				},
 				.iv_size = {
 					.min = 0,
