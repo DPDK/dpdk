@@ -733,6 +733,11 @@ nfp_net_close(struct rte_eth_dev *dev)
 	rte_intr_disable(&dev->pci_dev->intr_handle);
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
 
+	/* unregister callback func from eal lib */
+	rte_intr_callback_unregister(&dev->pci_dev->intr_handle,
+				     nfp_net_dev_interrupt_handler,
+				     (void *)dev);
+
 	/*
 	 * The ixgbe PMD driver disables the pcie master on the
 	 * device. The i40e does not...
