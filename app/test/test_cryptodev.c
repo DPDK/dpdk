@@ -4136,6 +4136,16 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_MD5_HMAC_verify_case_2),
 
+		/** NULL tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_auth_only_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_cipher_only_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_cipher_auth_operation),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_null_auth_cipher_operation),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
