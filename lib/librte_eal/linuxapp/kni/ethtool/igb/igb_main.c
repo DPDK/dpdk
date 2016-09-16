@@ -1558,6 +1558,7 @@ static void igb_check_swap_media(struct igb_adapter *adapter)
 	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 	connsw = E1000_READ_REG(hw, E1000_CONNSW);
 	link = igb_has_link(adapter);
+	(void) link;
 
 	/* need to live swap if current media is copper and we have fiber/serdes
 	 * to go to.
