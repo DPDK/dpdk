@@ -607,24 +607,25 @@ nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 static void
 nfp_net_params_setup(struct nfp_net_hw *hw)
 {
-	uint32_t *mac_address;
-
 	nn_cfg_writel(hw, NFP_NET_CFG_MTU, hw->mtu);
 	nn_cfg_writel(hw, NFP_NET_CFG_FLBUFSZ, hw->flbufsz);
-
-	/* A MAC address is 8 bytes long */
-	mac_address = (uint32_t *)(hw->mac_addr);
-
-	nn_cfg_writel(hw, NFP_NET_CFG_MACADDR,
-		      rte_cpu_to_be_32(*mac_address));
-	nn_cfg_writel(hw, NFP_NET_CFG_MACADDR + 4,
-		      rte_cpu_to_be_32(*(mac_address + 4)));
 }
 
 static void
 nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 {
 	hw->qcp_cfg = hw->tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
+}
+
+static void nfp_net_read_mac(struct nfp_net_hw *hw)
+{
+	uint32_t tmp;
+
+	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR));
+	memcpy(&hw->mac_addr[0], &tmp, sizeof(struct ether_addr));
+
+	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR + 4));
+	memcpy(&hw->mac_addr[4], &tmp, 2);
 }
 
 static int
@@ -2413,8 +2414,11 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	/* Using random mac addresses for VFs */
-	eth_random_addr(&hw->mac_addr[0]);
+	nfp_net_read_mac(hw);
+
+	if (!is_valid_assigned_ether_addr((struct ether_addr *)&hw->mac_addr))
+		/* Using random mac addresses for VFs */
+		eth_random_addr(&hw->mac_addr[0]);
 
 	/* Copying mac address to DPDK eth_dev struct */
 	ether_addr_copy(&eth_dev->data->mac_addrs[0],
