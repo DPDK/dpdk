@@ -71,6 +71,7 @@ New Features
   * MD5_HMAC algorithm
   * SHA224-HMAC algorithm
   * SHA384-HMAC algorithm
+  * NULL algorithm
 
 
 Resolved Issues

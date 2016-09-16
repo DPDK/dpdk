@@ -719,6 +719,8 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		}
 		state2_size = ICP_QAT_HW_MD5_STATE2_SZ;
 		break;
+	case ICP_QAT_HW_AUTH_ALGO_NULL:
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid HASH alg %u", cdesc->qat_hash_alg);
 		return -EFAULT;
