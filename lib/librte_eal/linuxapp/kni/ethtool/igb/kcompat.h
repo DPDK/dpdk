@@ -3891,7 +3891,7 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #if (( LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0) ) \
     || ( RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,2) ))
 #define HAVE_NDO_DFLT_BRIDGE_ADD_MASK
-#if (!( RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,2) ))
+#if ( RHEL_RELEASE_CODE != RHEL_RELEASE_VERSION(7,2) )
 #define HAVE_NDO_FDB_ADD_VID
 #endif /* !RHEL 7.2 */
 #endif /* >= 3.19.0 */
@@ -3901,12 +3901,13 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 /* vlan_tx_xx functions got renamed to skb_vlan */
 #define vlan_tx_tag_get skb_vlan_tag_get
 #define vlan_tx_tag_present skb_vlan_tag_present
-#if (!( RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,2) ))
+#if ( RHEL_RELEASE_CODE != RHEL_RELEASE_VERSION(7,2) )
 #define HAVE_NDO_BRIDGE_SET_DEL_LINK_FLAGS
 #endif /* !RHEL 7.2 */
 #endif /* 4.0.0 */
 
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0) )
+#if (( LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0) ) \
+    || ( RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3) ))
 /* ndo_bridge_getlink adds new nlflags parameter */
 #define HAVE_NDO_BRIDGE_GETLINK_NLFLAGS
 #endif /* >= 4.1.0 */
