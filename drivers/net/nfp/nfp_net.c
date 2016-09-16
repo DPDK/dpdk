@@ -2421,8 +2421,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		eth_random_addr(&hw->mac_addr[0]);
 
 	/* Copying mac address to DPDK eth_dev struct */
-	ether_addr_copy(&eth_dev->data->mac_addrs[0],
-			(struct ether_addr *)hw->mac_addr);
+	ether_addr_copy((struct ether_addr *)hw->mac_addr,
+			&eth_dev->data->mac_addrs[0]);
 
 	PMD_INIT_LOG(INFO, "port %d VendorID=0x%x DeviceID=0x%x "
 		     "mac=%02x:%02x:%02x:%02x:%02x:%02x",
