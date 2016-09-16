@@ -293,14 +293,12 @@ enum icp_qat_hw_cipher_convert {
 #define ICP_QAT_HW_ZUC_3G_EEA3_KEY_SZ 16
 #define ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ 16
 #define ICP_QAT_HW_MODE_F8_NUM_REG_TO_CLEAR 2
-#define INIT_SHRAM_CONSTANTS_TABLE_SZ 1024
 
-struct icp_qat_hw_cipher_aes256_f8 {
-	struct icp_qat_hw_cipher_config cipher_config;
-	uint8_t key[ICP_QAT_HW_AES_256_F8_KEY_SZ];
-};
+#define ICP_QAT_HW_CIPHER_MAX_KEY_SZ ICP_QAT_HW_AES_256_F8_KEY_SZ
 
 struct icp_qat_hw_cipher_algo_blk {
-	struct icp_qat_hw_cipher_aes256_f8 aes;
+	struct icp_qat_hw_cipher_config cipher_config;
+	uint8_t key[ICP_QAT_HW_CIPHER_MAX_KEY_SZ];
 } __rte_cache_aligned;
+
 #endif

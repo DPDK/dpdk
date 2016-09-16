@@ -100,7 +100,6 @@ struct qat_session {
 	struct icp_qat_fw_la_bulk_req fw_req;
 	uint8_t aad_len;
 	struct qat_crypto_instance *inst;
-	uint8_t salt[ICP_QAT_HW_AES_BLK_SZ];
 	rte_spinlock_t lock;	/* protects this struct */
 };
 

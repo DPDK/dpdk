@@ -525,7 +525,8 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	qat_alg_init_common_hdr(header, proto);
 
 	cipher = (struct icp_qat_hw_cipher_algo_blk *)cdesc->cd_cur_ptr;
-	cipher->aes.cipher_config.val =
+
+	cipher->cipher_config.val =
 	    ICP_QAT_HW_CIPHER_CONFIG_BUILD(cdesc->qat_mode,
 					cdesc->qat_cipher_alg, key_convert,
 					cdesc->qat_dir);
@@ -534,7 +535,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 		temp_key = (uint32_t *)(cdesc->cd_cur_ptr +
 					sizeof(struct icp_qat_hw_cipher_config)
 					+ cipherkeylen);
-		memcpy(cipher->aes.key, cipherkey, cipherkeylen);
+		memcpy(cipher->key, cipherkey, cipherkeylen);
 		memcpy(temp_key, cipherkey, cipherkeylen);
 
 		/* XOR Key with KASUMI F8 key modifier at 4 bytes level */
@@ -545,7 +546,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
 					cipherkeylen + cipherkeylen;
 	} else {
-		memcpy(cipher->aes.key, cipherkey, cipherkeylen);
+		memcpy(cipher->key, cipherkey, cipherkeylen);
 		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
 					cipherkeylen;
 	}
@@ -727,13 +728,13 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 
 		cipherconfig = (struct icp_qat_hw_cipher_algo_blk *)
 				(cdesc->cd_cur_ptr + state1_size + state2_size);
-		cipherconfig->aes.cipher_config.val =
+		cipherconfig->cipher_config.val =
 		ICP_QAT_HW_CIPHER_CONFIG_BUILD(ICP_QAT_HW_CIPHER_ECB_MODE,
 			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2,
 			ICP_QAT_HW_CIPHER_KEY_CONVERT,
 			ICP_QAT_HW_CIPHER_ENCRYPT);
-		memcpy(cipherconfig->aes.key, authkey, authkeylen);
-		memset(cipherconfig->aes.key + authkeylen,
+		memcpy(cipherconfig->key, authkey, authkeylen);
+		memset(cipherconfig->key + authkeylen,
 				0, ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ);
 		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
 				authkeylen + ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ;
@@ -801,56 +802,6 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 	cd_pars->u.s.content_desc_params_sz = RTE_ALIGN_CEIL(cd_size, 8) >> 3;
 
 	return 0;
-}
-
-static void qat_alg_ablkcipher_init_com(struct icp_qat_fw_la_bulk_req *req,
-					struct icp_qat_hw_cipher_algo_blk *cd,
-					const uint8_t *key, unsigned int keylen)
-{
-	struct icp_qat_fw_comn_req_hdr_cd_pars *cd_pars = &req->cd_pars;
-	struct icp_qat_fw_comn_req_hdr *header = &req->comn_hdr;
-	struct icp_qat_fw_cipher_cd_ctrl_hdr *cd_ctrl = (void *)&req->cd_ctrl;
-
-	PMD_INIT_FUNC_TRACE();
-	rte_memcpy(cd->aes.key, key, keylen);
-	qat_alg_init_common_hdr(header, ICP_QAT_FW_LA_NO_PROTO);
-	header->service_cmd_id = ICP_QAT_FW_LA_CMD_CIPHER;
-	cd_pars->u.s.content_desc_params_sz =
-				sizeof(struct icp_qat_hw_cipher_algo_blk) >> 3;
-	/* Cipher CD config setup */
-	cd_ctrl->cipher_key_sz = keylen >> 3;
-	cd_ctrl->cipher_state_sz = ICP_QAT_HW_AES_BLK_SZ >> 3;
-	cd_ctrl->cipher_cfg_offset = 0;
-	ICP_QAT_FW_COMN_CURR_ID_SET(cd_ctrl, ICP_QAT_FW_SLICE_CIPHER);
-	ICP_QAT_FW_COMN_NEXT_ID_SET(cd_ctrl, ICP_QAT_FW_SLICE_DRAM_WR);
-}
-
-void qat_alg_ablkcipher_init_enc(struct qat_alg_ablkcipher_cd *cdesc,
-					int alg, const uint8_t *key,
-					unsigned int keylen)
-{
-	struct icp_qat_hw_cipher_algo_blk *enc_cd = cdesc->cd;
-	struct icp_qat_fw_la_bulk_req *req = &cdesc->fw_req;
-	struct icp_qat_fw_comn_req_hdr_cd_pars *cd_pars = &req->cd_pars;
-
-	PMD_INIT_FUNC_TRACE();
-	qat_alg_ablkcipher_init_com(req, enc_cd, key, keylen);
-	cd_pars->u.s.content_desc_addr = cdesc->cd_paddr;
-	enc_cd->aes.cipher_config.val = QAT_AES_HW_CONFIG_CBC_ENC(alg);
-}
-
-void qat_alg_ablkcipher_init_dec(struct qat_alg_ablkcipher_cd *cdesc,
-					int alg, const uint8_t *key,
-					unsigned int keylen)
-{
-	struct icp_qat_hw_cipher_algo_blk *dec_cd = cdesc->cd;
-	struct icp_qat_fw_la_bulk_req *req = &cdesc->fw_req;
-	struct icp_qat_fw_comn_req_hdr_cd_pars *cd_pars = &req->cd_pars;
-
-	PMD_INIT_FUNC_TRACE();
-	qat_alg_ablkcipher_init_com(req, dec_cd, key, keylen);
-	cd_pars->u.s.content_desc_addr = cdesc->cd_paddr;
-	dec_cd->aes.cipher_config.val = QAT_AES_HW_CONFIG_CBC_DEC(alg);
 }
 
 int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg)

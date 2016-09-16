@@ -593,7 +593,11 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_CCM:
-		PMD_DRV_LOG(ERR, "Crypto: Unsupported Cipher alg %u",
+	case RTE_CRYPTO_CIPHER_AES_F8:
+	case RTE_CRYPTO_CIPHER_AES_XTS:
+	case RTE_CRYPTO_CIPHER_ARC4:
+	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
+		PMD_DRV_LOG(ERR, "Crypto QAT PMD: Unsupported Cipher alg %u",
 				cipher_xform->algo);
 		goto error_out;
 	default:
