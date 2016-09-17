@@ -98,6 +98,7 @@ rte_hash_find_existing(const char *name)
 
 void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func)
 {
+	h->cmp_jump_table_idx = KEY_CUSTOM;
 	h->rte_hash_custom_cmp_eq = func;
 }
 
