@@ -273,4 +273,5 @@ uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);
+int enic_link_update(struct enic *enic);
 #endif /* _ENIC_H_ */

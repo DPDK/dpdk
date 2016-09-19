@@ -432,17 +432,9 @@ static int enicpmd_dev_link_update(struct rte_eth_dev *eth_dev,
 	__rte_unused int wait_to_complete)
 {
 	struct enic *enic = pmd_priv(eth_dev);
-	int ret;
-	int link_status = 0;
 
 	ENICPMD_FUNC_TRACE();
-	link_status = enic_get_link_status(enic);
-	ret = (link_status == enic->link_status);
-	enic->link_status = link_status;
-	eth_dev->data->dev_link.link_status = link_status;
-	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
-	return ret;
+	return enic_link_update(enic);
 }
 
 static void enicpmd_dev_stats_get(struct rte_eth_dev *eth_dev,
