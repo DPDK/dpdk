@@ -96,6 +96,9 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_MD5_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_KASUMI_F9_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum state1 size in this case */
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA512_STATE1_SZ,
@@ -453,7 +456,8 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	uint32_t total_key_size;
 	uint16_t proto = ICP_QAT_FW_LA_NO_PROTO;	/* no CCM/GCM/Snow3G */
 	uint16_t cipher_offset, cd_size;
-
+	uint32_t wordIndex  = 0;
+	uint32_t *temp_key = NULL;
 	PMD_INIT_FUNC_TRACE();
 
 	if (cdesc->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
@@ -503,6 +507,11 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 		cipher_cd_ctrl->cipher_state_sz =
 			ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ >> 3;
 		proto = ICP_QAT_FW_LA_SNOW_3G_PROTO;
+	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_KASUMI) {
+		total_key_size = ICP_QAT_HW_KASUMI_F8_KEY_SZ;
+		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_KASUMI_BLK_SZ >> 3;
+		cipher_cd_ctrl->cipher_padding_sz =
+					(2 * ICP_QAT_HW_KASUMI_BLK_SZ) >> 3;
 	} else {
 		total_key_size = cipherkeylen;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_AES_BLK_SZ >> 3;
@@ -520,9 +529,27 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	    ICP_QAT_HW_CIPHER_CONFIG_BUILD(cdesc->qat_mode,
 					cdesc->qat_cipher_alg, key_convert,
 					cdesc->qat_dir);
-	memcpy(cipher->aes.key, cipherkey, cipherkeylen);
-	cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
-			cipherkeylen;
+
+	if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_KASUMI) {
+		temp_key = (uint32_t *)(cdesc->cd_cur_ptr +
+					sizeof(struct icp_qat_hw_cipher_config)
+					+ cipherkeylen);
+		memcpy(cipher->aes.key, cipherkey, cipherkeylen);
+		memcpy(temp_key, cipherkey, cipherkeylen);
+
+		/* XOR Key with KASUMI F8 key modifier at 4 bytes level */
+		for (wordIndex = 0; wordIndex < (cipherkeylen >> 2);
+								wordIndex++)
+			temp_key[wordIndex] ^= KASUMI_F8_KEY_MODIFIER_4_BYTES;
+
+		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
+					cipherkeylen + cipherkeylen;
+	} else {
+		memcpy(cipher->aes.key, cipherkey, cipherkeylen);
+		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
+					cipherkeylen;
+	}
+
 	if (total_key_size > cipherkeylen) {
 		uint32_t padding_size =  total_key_size-cipherkeylen;
 
@@ -558,6 +585,8 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 	uint16_t state1_size = 0, state2_size = 0;
 	uint16_t hash_offset, cd_size;
 	uint32_t *aad_len = NULL;
+	uint32_t wordIndex  = 0;
+	uint32_t *pTempKey;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -604,7 +633,8 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 			ICP_QAT_HW_AUTH_CONFIG_BUILD(ICP_QAT_HW_AUTH_MODE1,
 				cdesc->qat_hash_alg, digestsize);
 
-	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2)
+	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9)
 		hash->auth_counter.counter = 0;
 	else
 		hash->auth_counter.counter = rte_bswap32(
@@ -721,6 +751,26 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_NULL:
 		break;
+	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
+		state1_size = qat_hash_get_state1_size(
+				ICP_QAT_HW_AUTH_ALGO_KASUMI_F9);
+		state2_size = ICP_QAT_HW_KASUMI_F9_STATE2_SZ;
+		memset(cdesc->cd_cur_ptr, 0, state1_size + state2_size);
+		pTempKey = (uint32_t *)(cdesc->cd_cur_ptr + state1_size
+							+ authkeylen);
+		/*
+		* The Inner Hash Initial State2 block must contain IK
+		* (Initialisation Key), followed by IK XOR-ed with KM
+		* (Key Modifier): IK||(IK^KM).
+		*/
+		/* write the auth key */
+		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
+		/* initialise temp key with auth key */
+		memcpy(pTempKey, authkey, authkeylen);
+		/* XOR Key with KASUMI F9 key modifier at 4 bytes level */
+		for (wordIndex = 0; wordIndex < (authkeylen >> 2); wordIndex++)
+			pTempKey[wordIndex] ^= KASUMI_F9_KEY_MODIFIER_4_BYTES;
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid HASH alg %u", cdesc->qat_hash_alg);
 		return -EFAULT;
@@ -826,6 +876,18 @@ int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	switch (key_len) {
 	case ICP_QAT_HW_SNOW_3G_UEA2_KEY_SZ:
 		*alg = ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+{
+	switch (key_len) {
+	case ICP_QAT_HW_KASUMI_KEY_SZ:
+		*alg = ICP_QAT_HW_CIPHER_ALGO_KASUMI;
 		break;
 	default:
 		return -EINVAL;

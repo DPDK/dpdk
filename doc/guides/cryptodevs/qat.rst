@@ -50,6 +50,7 @@ Cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_SNOW3G_UEA2``
 * ``RTE_CRYPTO_CIPHER_AES_GCM``
 * ``RTE_CRYPTO_CIPHER_NULL``
+* ``RTE_CRYPTO_CIPHER_KASUMI_F8``
 
 Hash algorithms:
 
@@ -62,18 +63,19 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_SNOW3G_UIA2``
 * ``RTE_CRYPTO_AUTH_MD5_HMAC``
 * ``RTE_CRYPTO_AUTH_NULL``
+* ``RTE_CRYPTO_AUTH_KASUMI_F9``
 
 
 Limitations
 -----------
 
 * Chained mbufs are not supported.
-* Hash only is not supported except Snow3G UIA2.
-* Cipher only is not supported except Snow3G UEA2.
+* Hash only is not supported except Snow3G UIA2 and KASUMI F9.
+* Cipher only is not supported except Snow3G UEA2 and KASUMI F8.
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * Not performance tuned.
-* Snow3g(UEA2) supported only if cipher length, cipher offset fields are byte-aligned.
-* Snow3g(UIA2) supported only if hash length, hash offset fields are byte-aligned.
+* Snow3g(UEA2) and KASUMI(F8) supported only if cipher length, cipher offset fields are byte-aligned.
+* Snow3g(UIA2) and KASUMI(F9) supported only if hash length, hash offset fields are byte-aligned.
 * No BSD support as BSD QAT kernel driver not available.
 
 

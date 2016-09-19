@@ -386,6 +386,51 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, },
 		}, }
 	},
+	{       /* KASUMI (F8) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_KASUMI_F8,
+				.block_size = 8,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{       /* KASUMI (F9) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_KASUMI_F9,
+				.block_size = 8,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 4,
+					.max = 4,
+					.increment = 0
+				},
+				.aad_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
@@ -511,11 +556,18 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_NULL:
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
 		break;
+	case RTE_CRYPTO_CIPHER_KASUMI_F8:
+		if (qat_alg_validate_kasumi_key(cipher_xform->key.length,
+					&session->qat_cipher_alg) != 0) {
+			PMD_DRV_LOG(ERR, "Invalid KASUMI cipher key size");
+			goto error_out;
+		}
+		session->qat_mode = ICP_QAT_HW_CIPHER_F8_MODE;
+		break;
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_CCM:
-	case RTE_CRYPTO_CIPHER_KASUMI_F8:
 		PMD_DRV_LOG(ERR, "Crypto: Unsupported Cipher alg %u",
 				cipher_xform->algo);
 		goto error_out;
@@ -644,6 +696,9 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_NULL:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_NULL;
 		break;
+	case RTE_CRYPTO_AUTH_KASUMI_F9:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_KASUMI_F9;
+		break;
 	case RTE_CRYPTO_AUTH_SHA1:
 	case RTE_CRYPTO_AUTH_SHA256:
 	case RTE_CRYPTO_AUTH_SHA512:
@@ -652,7 +707,6 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_MD5:
 	case RTE_CRYPTO_AUTH_AES_CCM:
 	case RTE_CRYPTO_AUTH_AES_GMAC:
-	case RTE_CRYPTO_AUTH_KASUMI_F9:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:
@@ -856,11 +910,12 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 
 	cipher_param->cipher_length = op->sym->cipher.data.length;
 	cipher_param->cipher_offset = op->sym->cipher.data.offset;
-	if (ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2) {
+	if (ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2 ||
+			ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_KASUMI) {
 		if (unlikely((cipher_param->cipher_length % BYTE_LENGTH != 0) ||
 				(cipher_param->cipher_offset
 					% BYTE_LENGTH != 0))) {
-			PMD_DRV_LOG(ERR, " For Snow3g, QAT PMD only "
+			PMD_DRV_LOG(ERR, " For Snow3g/Kasumi, QAT PMD only "
 				"supports byte aligned values");
 			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			return -EINVAL;
@@ -898,6 +953,22 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		}
 		auth_param->auth_off >>= 3;
 		auth_param->auth_len >>= 3;
+	}
+	if ((ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
+			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) &&
+			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9) {
+		auth_param->auth_len = (auth_param->auth_len >> 3)
+				+ (auth_param->auth_off >> 3)
+				+ (BYTE_LENGTH >> 3)
+				- 8;
+		auth_param->auth_off = 8;
+	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH
+			&& ctx->qat_hash_alg ==
+					ICP_QAT_HW_AUTH_ALGO_KASUMI_F9) {
+		auth_param->auth_len = (auth_param->auth_len >> 3)
+				+ (auth_param->auth_off >> 3)
+				+ (BYTE_LENGTH >> 3);
+		auth_param->auth_off = 0;
 	}
 	auth_param->u1.aad_adr = op->sym->auth.aad.phys_addr;
 

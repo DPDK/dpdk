@@ -51,6 +51,14 @@
 #include "icp_qat_fw.h"
 #include "icp_qat_fw_la.h"
 
+/*
+ * Key Modifier (KM) value used in Kasumi algorithm in F9 mode to XOR
+ * Integrity Key (IK)
+ */
+#define KASUMI_F9_KEY_MODIFIER_4_BYTES   0xAAAAAAAA
+
+#define KASUMI_F8_KEY_MODIFIER_4_BYTES   0x55555555
+
 #define QAT_AES_HW_CONFIG_CBC_ENC(alg) \
 	ICP_QAT_HW_CIPHER_CONFIG_BUILD(ICP_QAT_HW_CIPHER_CBC_MODE, alg, \
 					ICP_QAT_HW_CIPHER_NO_CONVERT, \
@@ -130,5 +138,5 @@ void qat_alg_ablkcipher_init_dec(struct qat_alg_ablkcipher_cd *cd,
 
 int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
-
+int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 #endif
