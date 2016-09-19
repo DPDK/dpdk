@@ -1448,25 +1448,24 @@ create_snow3g_kasumi_cipher_hash_operation(const uint8_t *auth_tag,
 	/* set crypto operation source mbuf */
 	sym_op->m_src = ut_params->ibuf;
 
+	/* digest */
+	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+			ut_params->ibuf, auth_tag_len);
 
-	/* iv */
-	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+			"no room to append auth tag");
+	ut_params->digest = sym_op->auth.digest.data;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			ut_params->ibuf, data_pad_len);
+	sym_op->auth.digest.length = auth_tag_len;
+	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
+		memset(sym_op->auth.digest.data, 0, auth_tag_len);
 	else
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
 
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-		ut_params->ibuf, iv_pad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
-
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
-
-	sym_op->cipher.data.length = cipher_len;
-	sym_op->cipher.data.offset = cipher_offset;
+	TEST_HEXDUMP(stdout, "digest:",
+		sym_op->auth.digest.data,
+		sym_op->auth.digest.length);
 
 	/* aad */
 	/*
@@ -1480,42 +1479,35 @@ create_snow3g_kasumi_cipher_hash_operation(const uint8_t *auth_tag,
 		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
 	else
 		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
-
 	sym_op->auth.aad.data =
-			(uint8_t *)rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *);
+		(uint8_t *)rte_pktmbuf_prepend(
+			ut_params->ibuf, aad_buffer_len);
 	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
 			"no room to prepend aad");
 	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
 			ut_params->ibuf);
 	sym_op->auth.aad.length = aad_len;
-
 	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
 	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
+	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
 
-	TEST_HEXDUMP(stdout, "aad:",
-			sym_op->auth.aad.data, aad_len);
-
-	/* digest */
-	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
-			ut_params->ibuf, auth_tag_len);
-
-	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
-			"no room to append auth tag");
-	ut_params->digest = sym_op->auth.digest.data;
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
-			ut_params->ibuf, data_pad_len + aad_len);
-	sym_op->auth.digest.length = auth_tag_len;
-	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
-		memset(sym_op->auth.digest.data, 0, auth_tag_len);
+	/* iv */
+	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
 	else
-		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+		ut_params->ibuf, iv_pad_len);
 
-	TEST_HEXDUMP(stdout, "digest:",
-		sym_op->auth.digest.data,
-		sym_op->auth.digest.length);
-
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
+	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = iv_pad_len;
+	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
+	sym_op->cipher.data.length = cipher_len;
+	sym_op->cipher.data.offset = cipher_offset + auth_offset;
 	sym_op->auth.data.length = auth_len;
-	sym_op->auth.data.offset = auth_offset;
+	sym_op->auth.data.offset = auth_offset + cipher_offset;
 
 	return 0;
 }
@@ -1567,22 +1559,6 @@ create_snow3g_kasumi_auth_cipher_operation(const unsigned auth_tag_len,
 			sym_op->auth.digest.data,
 			sym_op->auth.digest.length);
 
-	/* iv */
-	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
-	else
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-		ut_params->ibuf, iv_pad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
-
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
-
 	/* aad */
 	/*
 	* Always allocate the aad up to the block size.
@@ -1609,6 +1585,22 @@ create_snow3g_kasumi_auth_cipher_operation(const unsigned auth_tag_len,
 
 	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
+
+	/* iv */
+	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	else
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+		ut_params->ibuf, iv_pad_len);
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
+
+	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = iv_pad_len;
+
+	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
 
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = auth_offset + cipher_offset;
@@ -2714,12 +2706,11 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+				+ tdata->iv.len + tdata->aad.len;
 	else
 		ciphertext = plaintext;
 
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
-
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 			ciphertext,
@@ -2728,7 +2719,7 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 			"Snow3G Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-	    + plaintext_pad_len + tdata->aad.len;
+	    + plaintext_pad_len + tdata->aad.len + tdata->iv.len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
