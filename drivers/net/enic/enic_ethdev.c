@@ -260,6 +260,35 @@ static void enicpmd_dev_rx_queue_release(void *rxq)
 	enic_free_rq(rxq);
 }
 
+static uint32_t enicpmd_dev_rx_queue_count(struct rte_eth_dev *dev,
+					   uint16_t rx_queue_id)
+{
+	struct enic *enic = pmd_priv(dev);
+	uint32_t queue_count = 0;
+	struct vnic_cq *cq;
+	uint32_t cq_tail;
+	uint16_t cq_idx;
+	int rq_num;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues) {
+		dev_err(enic, "Invalid RX queue id=%d", rx_queue_id);
+		return 0;
+	}
+
+	rq_num = enic_sop_rq(rx_queue_id);
+	cq = &enic->cq[enic_cq_rq(enic, rq_num)];
+	cq_idx = cq->to_clean;
+
+	cq_tail = ioread32(&cq->ctrl->cq_tail);
+
+	if (cq_tail < cq_idx)
+		cq_tail += cq->ring.desc_count;
+
+	queue_count = cq_tail - cq_idx;
+
+	return queue_count;
+}
+
 static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	uint16_t queue_idx,
 	uint16_t nb_desc,
@@ -568,7 +597,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.tx_queue_stop        = enicpmd_dev_tx_queue_stop,
 	.rx_queue_setup       = enicpmd_dev_rx_queue_setup,
 	.rx_queue_release     = enicpmd_dev_rx_queue_release,
-	.rx_queue_count       = NULL,
+	.rx_queue_count       = enicpmd_dev_rx_queue_count,
 	.rx_descriptor_done   = NULL,
 	.tx_queue_setup       = enicpmd_dev_tx_queue_setup,
 	.tx_queue_release     = enicpmd_dev_tx_queue_release,
