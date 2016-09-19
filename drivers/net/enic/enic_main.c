@@ -430,10 +430,13 @@ static void
 enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
 	void *arg)
 {
-	struct enic *enic = pmd_priv((struct rte_eth_dev *)arg);
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
+	struct enic *enic = pmd_priv(dev);
 
 	vnic_intr_return_all_credits(&enic->intr);
 
+	enic_link_update(enic);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 	enic_log_q_error(enic);
 }
 
@@ -445,6 +448,13 @@ int enic_enable(struct enic *enic)
 
 	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
 	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+
+	/* vnic notification of link status has already been turned on in
+	 * enic_dev_init() which is called during probe time.  Here we are
+	 * just turning on interrupt vector 0 if needed.
+	 */
+	if (eth_dev->data->dev_conf.intr_conf.lsc)
+		vnic_dev_notify_set(enic->vdev, 0);
 
 	if (enic_clsf_init(enic))
 		dev_warning(enic, "Init of hash table for clsf failed."\
@@ -836,6 +846,13 @@ int enic_disable(struct enic *enic)
 				return err;
 		}
 	}
+
+	/* If we were using interrupts, set the interrupt vector to -1
+	 * to disable interrupts.  We are not disabling link notifcations,
+	 * though, as we want the polling of link status to continue working.
+	 */
+	if (enic->rte_dev->data->dev_conf.intr_conf.lsc)
+		vnic_dev_notify_set(enic->vdev, -1);
 
 	vnic_dev_set_reset_flag(enic->vdev, 1);
 

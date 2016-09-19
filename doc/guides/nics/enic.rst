@@ -76,7 +76,8 @@ Configuration information
 
     Only one interrupt per vNIC interface should be configured in the UCS
     manager regardless of the number receive/transmit queues. The ENIC PMD
-    uses this interrupt to   get information about errors in the fast path.
+    uses this interrupt to get information about link status and errors
+    in the fast path.
 
 Limitations
 -----------
