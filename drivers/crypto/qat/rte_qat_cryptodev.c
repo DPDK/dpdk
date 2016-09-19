@@ -74,6 +74,9 @@ static struct rte_pci_id pci_id_qat_map[] = {
 		{
 			RTE_PCI_DEVICE(0x8086, 0x37c9),
 		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x19e3),
+		},
 		{.device_id = 0},
 };
 

@@ -73,6 +73,7 @@ New Features
   * SHA384-HMAC algorithm
   * KASUMI (F8 and F9) algorithm
   * NULL algorithm
+  * C3XXX device
   * C62XX device
 
 

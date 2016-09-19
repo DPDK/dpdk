@@ -31,8 +31,8 @@ Intel(R) QuickAssist (QAT) Crypto Poll Mode Driver
 ==================================================
 
 The QAT PMD provides poll mode crypto driver support for **Intel QuickAssist
-Technology DH895xxC** and **Intel QuickAssist Technology C62x**
-hardware accelerator.
+Technology DH895xxC**, **Intel QuickAssist Technology C62x** and
+**Intel QuickAssist Technology C3xxx** hardware accelerator.
 
 
 Features
@@ -101,14 +101,16 @@ If you are running on kernel 4.4 or greater, see instructions for
 `Installation using kernel.org driver`_ below. If you are on a kernel earlier
 than 4.4, see `Installation using 01.org QAT driver`_.
 
-For **Intel QuickAssist Technology C62x** device, kernel 4.5 or greater is
-needed. See instructions for `Installation using kernel.org driver`_ below.
+For **Intel QuickAssist Technology C62x** and **Intel QuickAssist Technology C3xxx**
+device, kernel 4.5 or greater is needed.
+See instructions for `Installation using kernel.org driver`_ below.
 
 
 Installation using 01.org QAT driver
 ------------------------------------
 
-NOTE: There is no driver available for **Intel QuickAssist Technology C62x** on 01.org.
+NOTE: There is no driver available for **Intel QuickAssist Technology C62x** and
+**Intel QuickAssist Technology C3xxx** devices on 01.org.
 
 Download the latest QuickAssist Technology Driver from `01.org
 <https://01.org/packet-processing/intel%C2%AE-quickassist-technology-drivers-and-patches>`_
@@ -187,6 +189,7 @@ Installation using kernel.org driver
 ------------------------------------
 
 For **Intel QuickAssist Technology DH895xxC**:
+
 Assuming you are running on at least a 4.4 kernel, you can use the stock kernel.org QAT
 driver to start the QAT hardware.
 
@@ -245,7 +248,6 @@ cd to your linux source root directory and start the qat kernel modules:
 **Note**:The following warning in /var/log/messages can be ignored:
     ``IOMMU should be enabled for SR-IOV to work correctly``
 
-
 For **Intel QuickAssist Technology C62x**:
 Assuming you are running on at least a 4.5 kernel, you can use the stock kernel.org QAT
 driver to start the QAT hardware.
@@ -288,6 +290,47 @@ If you get an error, it's likely you're using a QAT kernel driver earlier than k
 To verify that the VFs are available for use - use ``lspci -d:37c9`` to confirm
 the bdf of the 48 VF devices are available per ``C62x`` device.
 
+To complete the installation - follow instructions in `Binding the available VFs to the DPDK UIO driver`_.
+
+For **Intel QuickAssist Technology C3xxx**:
+Assuming you are running on at least a 4.5 kernel, you can use the stock kernel.org QAT
+driver to start the QAT hardware.
+
+The steps below assume you are:
+
+* Running DPDK on a platform with one ``C3xxx`` device.
+* On a kernel at least version 4.5.
+
+In BIOS ensure that SRIOV is enabled and VT-d is disabled.
+
+Ensure the QAT driver is loaded on your system, by executing::
+
+    lsmod | grep qat
+
+You should see the following output::
+
+    qat_c3xxx               16384  0
+    intel_qat             122880  1 qat_c3xxx
+
+Next, you need to expose the Virtual Functions (VFs) using the sysfs file system.
+
+First find the bdf of the physical function (PF) of the C3xxx device
+
+    lspci -d:19e2
+
+You should see output similar to::
+
+    01:00.0 Co-processor: Intel Corporation Device 19e2
+
+For c3xxx device there is 1 PFs.
+Using the sysfs, enable the 16 VFs::
+
+    echo 16 > /sys/bus/pci/drivers/c3xxx/0000\:01\:00.0/sriov_numvfs
+
+If you get an error, it's likely you're using a QAT kernel driver earlier than kernel 4.5.
+
+To verify that the VFs are available for use - use ``lspci -d:19e3`` to confirm
+the bdf of the 16 VF devices are available per ``C3xxx`` device.
 To complete the installation - follow instructions in `Binding the available VFs to the DPDK UIO driver`_.
 
 Binding the available VFs to the DPDK UIO driver
@@ -335,3 +378,23 @@ if yours are different adjust the unbind command below::
    echo "8086 37c9" > /sys/bus/pci/drivers/igb_uio/new_id
 
 You can use ``lspci -vvd:37c9`` to confirm that all devices are now in use by igb_uio kernel driver.
+
+For **Intel(R) QuickAssist Technology C3xxx** device:
+The unbind command below assumes ``bdfs`` of ``01:01.00-01:02.07``,
+if yours are different adjust the unbind command below::
+
+   cd $RTE_SDK
+   modprobe uio
+   insmod ./build/kmod/igb_uio.ko
+
+   for device in $(seq 1 2); do \
+       for fn in $(seq 0 7); do \
+           echo -n 0000:01:0${device}.${fn} > \
+           /sys/bus/pci/devices/0000\:01\:0${device}.${fn}/driver/unbind; \
+
+       done; \
+   done
+
+   echo "8086 19e3" > /sys/bus/pci/drivers/igb_uio/new_id
+
+You can use ``lspci -vvd:19e3`` to confirm that all devices are now in use by igb_uio kernel driver.
