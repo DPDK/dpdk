@@ -1279,7 +1279,7 @@ rte_eal_hugepage_attach(void)
 	unsigned num_hp = 0;
 	unsigned i, s = 0; /* s used to track the segment number */
 	unsigned max_seg = RTE_MAX_MEMSEG;
-	off_t size;
+	off_t size = 0;
 	int fd, fd_zero = -1, fd_hugepage = -1;
 
 	if (aslr_enabled() > 0) {
