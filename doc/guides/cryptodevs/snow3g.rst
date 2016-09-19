@@ -41,11 +41,11 @@ SNOW 3G PMD has support for:
 
 Cipher algorithm:
 
-* RTE_CRYPTO_SYM_CIPHER_SNOW3G_UEA2
+* RTE_CRYPTO_CIPHER_SNOW3G_UEA2
 
 Authentication algorithm:
 
-* RTE_CRYPTO_SYM_AUTH_SNOW3G_UIA2
+* RTE_CRYPTO_AUTH_SNOW3G_UIA2
 
 Limitations
 -----------

@@ -41,11 +41,11 @@ KASUMI PMD has support for:
 
 Cipher algorithm:
 
-* RTE_CRYPTO_SYM_CIPHER_KASUMI_F8
+* RTE_CRYPTO_CIPHER_KASUMI_F8
 
 Authentication algorithm:
 
-* RTE_CRYPTO_SYM_AUTH_KASUMI_F9
+* RTE_CRYPTO_AUTH_KASUMI_F9
 
 Limitations
 -----------
