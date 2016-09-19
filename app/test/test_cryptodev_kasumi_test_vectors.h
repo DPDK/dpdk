@@ -44,10 +44,20 @@ struct kasumi_test_data {
 		unsigned len;
 	} iv;
 
+	/* Includes: COUNT (4 bytes) and FRESH (4 bytes) */
 	struct {
-		uint8_t data[1024];
+		uint8_t data[8];
+		unsigned len;
+	} aad;
+
+	struct {
+		uint8_t data[1024]; /* Data may include direction bit */
 		unsigned len; /* length must be in Bits */
 	} plaintext;
+
+	struct {
+		unsigned len;
+	} validDataLenInBits;
 
 	struct {
 		uint8_t data[1024];
@@ -61,6 +71,21 @@ struct kasumi_test_data {
 	struct {
 		unsigned len;
 	} validCipherOffsetLenInBits;
+
+	/* Actual length of data to be hashed */
+	struct {
+		unsigned len;
+	} validAuthLenInBits;
+
+	struct {
+		unsigned len;
+	} validAuthOffsetLenInBits;
+
+	struct {
+		uint8_t data[64];
+		unsigned len;
+	} digest;
+
 };
 
 struct kasumi_test_data kasumi_test_case_1 = {
@@ -183,12 +208,18 @@ struct kasumi_test_data kasumi_test_case_3 = {
 		},
 		.len = 8
 	},
+	.aad = {
+		.data = {
+			0x38, 0xA6, 0xF0, 0x56, 0x05, 0xD2, 0xEC, 0x49
+		},
+		.len = 8
+	},
 	.plaintext = {
 		.data = {
 			0xAD, 0x9C, 0x44, 0x1F, 0x89, 0x0B, 0x38, 0xC4,
-			0x57, 0xA4, 0x9D, 0x42, 0x14, 0x07, 0xE8
+			0x57, 0xA4, 0x9D, 0x42, 0x14, 0x07, 0xE8, 0xC0
 		},
-		.len = 120
+		.len = 128
 	},
 	.ciphertext = {
 		.data = {
@@ -197,11 +228,24 @@ struct kasumi_test_data kasumi_test_case_3 = {
 		},
 		.len = 120
 	},
+	.validDataLenInBits = {
+			.len = 128
+	},
 	.validCipherLenInBits = {
 		.len = 120
 	},
 	.validCipherOffsetLenInBits = {
 		.len = 64
+	},
+	.validAuthLenInBits = {
+		.len = 120
+	},
+	.validAuthOffsetLenInBits = {
+		.len = 64
+	},
+	.digest = {
+		.data = {0x87, 0x5F, 0xE4, 0x89},
+		.len  = 4
 	}
 };
 
@@ -303,6 +347,61 @@ struct kasumi_test_data kasumi_test_case_5 = {
 	.validCipherOffsetLenInBits = {
 		.len = 64
 	},
+};
+
+struct kasumi_test_data kasumi_test_case_6 = {
+	.key = {
+		.data = {
+			 0x5A, 0xCB, 0x1D, 0x64, 0x4C, 0x0D, 0x51, 0x20,
+			 0x4E, 0xA5, 0xF1, 0x45, 0x10, 0x10, 0xD8, 0x52
+		},
+		.len = 16
+	},
+	.iv = {
+		.data = {
+			0xFA, 0x55, 0x6B, 0x26, 0x1C, 0x00, 0x00, 0x00
+		},
+		.len = 8
+	},
+	.aad = {
+		.data = {
+			0x38, 0xA6, 0xF0, 0x56, 0x05, 0xD2, 0xEC, 0x49
+		},
+		.len = 8
+	},
+	.plaintext = {
+		.data = {
+			0xAD, 0x9C, 0x44, 0x1F, 0x89, 0x0B, 0x38, 0xC4,
+			0x57, 0xA4, 0x9D, 0x42, 0x14, 0x07, 0xE8, 0xC0
+		},
+		.len = 128
+	},
+	.ciphertext = {
+		.data = {
+			0x9B, 0xC9, 0x2C, 0xA8, 0x03, 0xC6, 0x7B, 0x28,
+			0xA1, 0x1A, 0x4B, 0xEE, 0x5A, 0x0C, 0x25
+		},
+		.len = 120
+	},
+	.validDataLenInBits = {
+			.len = 128
+	},
+	.validCipherLenInBits = {
+		.len = 120
+	},
+	.validCipherOffsetLenInBits = {
+		.len = 64
+	},
+	.validAuthLenInBits = {
+		.len = 120
+	},
+	.validAuthOffsetLenInBits = {
+		.len = 64
+	},
+	.digest = {
+		.data = {0x0F, 0xD2, 0xAA, 0xB5},
+		.len  = 4
+	}
 };
 
 #endif /* TEST_CRYPTODEV_KASUMI_TEST_VECTORS_H_ */

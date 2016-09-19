@@ -1571,7 +1571,6 @@ create_snow3g_kasumi_auth_cipher_operation(const unsigned auth_tag_len,
 		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
 	else
 		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
-
 	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
 	ut_params->ibuf, aad_buffer_len);
 	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
@@ -1579,10 +1578,8 @@ create_snow3g_kasumi_auth_cipher_operation(const unsigned auth_tag_len,
 	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
 				ut_params->ibuf);
 	sym_op->auth.aad.length = aad_len;
-
 	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
 	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
-
 	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
 
@@ -1956,6 +1953,12 @@ static int
 test_kasumi_hash_generate_test_case_5(void)
 {
 	return test_kasumi_authentication(&kasumi_hash_test_case_5);
+}
+
+static int
+test_kasumi_hash_generate_test_case_6(void)
+{
+	return test_kasumi_authentication(&kasumi_hash_test_case_6);
 }
 
 static int
@@ -2816,6 +2819,174 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 }
 
 static int
+test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	uint8_t *plaintext, *ciphertext;
+	unsigned plaintext_pad_len;
+	unsigned plaintext_len;
+
+	/* Create KASUMI session */
+	retval = create_snow3g_kasumi_auth_cipher_session(
+			ts_params->valid_devs[0],
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_KASUMI_F9,
+			RTE_CRYPTO_CIPHER_KASUMI_F8,
+			tdata->key.data, tdata->key.len,
+			tdata->aad.len, tdata->digest.len);
+	if (retval < 0)
+		return retval;
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple of */
+	/* the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
+
+	/* Create KASUMI operation */
+	retval = create_snow3g_kasumi_auth_cipher_operation(tdata->digest.len,
+				tdata->iv.data, tdata->iv.len,
+				tdata->aad.data, tdata->aad.len,
+				plaintext_pad_len,
+				tdata->validCipherLenInBits.len,
+				tdata->validCipherOffsetLenInBits.len,
+				tdata->validAuthLenInBits.len,
+				tdata->validAuthOffsetLenInBits.len,
+				RTE_CRYPTO_AUTH_KASUMI_F9,
+				RTE_CRYPTO_CIPHER_KASUMI_F8
+				);
+
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+	ut_params->obuf = ut_params->op->sym->m_src;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+				+ tdata->iv.len + tdata->aad.len;
+	else
+		ciphertext = plaintext;
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+			ciphertext,
+			tdata->ciphertext.data,
+			tdata->validCipherLenInBits.len,
+			"KASUMI Ciphertext data not as expected");
+	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+	    + plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			ut_params->digest,
+			tdata->digest.data,
+			DIGEST_BYTE_LENGTH_KASUMI_F9,
+			"KASUMI Generated auth tag not as expected");
+	return 0;
+}
+
+static int
+test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	uint8_t *plaintext, *ciphertext;
+	unsigned plaintext_pad_len;
+	unsigned plaintext_len;
+
+	/* Create KASUMI session */
+	retval = create_snow3g_kasumi_cipher_auth_session(
+			ts_params->valid_devs[0],
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_KASUMI_F9,
+			RTE_CRYPTO_CIPHER_KASUMI_F8,
+			tdata->key.data, tdata->key.len,
+			tdata->aad.len, tdata->digest.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple of */
+	/* the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
+
+	/* Create KASUMI operation */
+	retval = create_snow3g_kasumi_cipher_hash_operation(tdata->digest.data,
+				tdata->digest.len, tdata->aad.data,
+				tdata->aad.len,
+				plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
+				RTE_CRYPTO_AUTH_KASUMI_F9,
+				RTE_CRYPTO_CIPHER_KASUMI_F8,
+				tdata->iv.data, tdata->iv.len,
+				tdata->validCipherLenInBits.len,
+				tdata->validCipherOffsetLenInBits.len,
+				tdata->validAuthLenInBits.len,
+				tdata->validAuthOffsetLenInBits.len
+				);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+	ut_params->obuf = ut_params->op->sym->m_src;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+				+ tdata->aad.len + tdata->iv.len;
+	else
+		ciphertext = plaintext;
+
+	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+			+ plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		ciphertext,
+		tdata->ciphertext.data,
+		tdata->validCipherLenInBits.len,
+		"KASUMI Ciphertext data not as expected");
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+		ut_params->digest,
+		tdata->digest.data,
+		DIGEST_BYTE_LENGTH_SNOW3G_UIA2,
+		"KASUMI Generated auth tag not as expected");
+	return 0;
+}
+
+static int
 test_kasumi_encryption_test_case_1(void)
 {
 	return test_kasumi_encryption(&kasumi_test_case_1);
@@ -2974,6 +3145,19 @@ test_snow3g_auth_cipher_test_case_1(void)
 {
 	return test_snow3g_auth_cipher(&snow3g_test_case_6);
 }
+
+static int
+test_kasumi_auth_cipher_test_case_1(void)
+{
+	return test_kasumi_auth_cipher(&kasumi_test_case_3);
+}
+
+static int
+test_kasumi_cipher_auth_test_case_1(void)
+{
+	return test_kasumi_cipher_auth(&kasumi_test_case_6);
+}
+
 
 /* ***** AES-GCM Tests ***** */
 
@@ -4137,6 +4321,19 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_null_auth_cipher_operation),
 
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_generate_test_case_6),
+
+		/** KASUMI tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_encryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_encryption_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_auth_cipher_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_cipher_auth_test_case_1),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -4238,6 +4435,8 @@ static struct unit_test_suite cryptodev_sw_kasumi_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_hash_generate_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_generate_test_case_6),
+		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_hash_verify_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_hash_verify_test_case_2),
@@ -4247,7 +4446,10 @@ static struct unit_test_suite cryptodev_sw_kasumi_testsuite  = {
 			test_kasumi_hash_verify_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_hash_verify_test_case_5),
-
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_auth_cipher_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_cipher_auth_test_case_1),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
