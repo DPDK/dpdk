@@ -797,6 +797,10 @@ int enic_disable(struct enic *enic)
 
 	vnic_intr_mask(&enic->intr);
 	(void)vnic_intr_masked(&enic->intr); /* flush write */
+	rte_intr_disable(&enic->pdev->intr_handle);
+	rte_intr_callback_unregister(&enic->pdev->intr_handle,
+				     enic_intr_handler,
+				     (void *)enic->rte_dev);
 
 	vnic_dev_disable(enic->vdev);
 
