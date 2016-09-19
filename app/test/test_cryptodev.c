@@ -2647,7 +2647,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 }
 
 static int
-test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
+test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -2730,7 +2730,7 @@ test_snow3g_authenticated_encryption(const struct snow3g_test_data *tdata)
 	return 0;
 }
 static int
-test_snow3g_encrypted_authentication(const struct snow3g_test_data *tdata)
+test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -2964,15 +2964,15 @@ test_snow3g_decryption_test_case_5(void)
 	return test_snow3g_decryption(&snow3g_test_case_5);
 }
 static int
-test_snow3g_authenticated_encryption_test_case_1(void)
+test_snow3g_cipher_auth_test_case_1(void)
 {
-	return test_snow3g_authenticated_encryption(&snow3g_test_case_3);
+	return test_snow3g_cipher_auth(&snow3g_test_case_3);
 }
 
 static int
-test_snow3g_encrypted_authentication_test_case_1(void)
+test_snow3g_auth_cipher_test_case_1(void)
 {
-	return test_snow3g_encrypted_authentication(&snow3g_test_case_6);
+	return test_snow3g_auth_cipher(&snow3g_test_case_6);
 }
 
 /* ***** AES-GCM Tests ***** */
@@ -4113,9 +4113,9 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_verify_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_snow3g_authenticated_encryption_test_case_1),
+			test_snow3g_cipher_auth_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_snow3g_encrypted_authentication_test_case_1),
+			test_snow3g_auth_cipher_test_case_1),
 
 		/** HMAC_MD5 Authentication */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -4314,9 +4314,9 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_verify_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_snow3g_authenticated_encryption_test_case_1),
+			test_snow3g_cipher_auth_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_snow3g_encrypted_authentication_test_case_1),
+			test_snow3g_auth_cipher_test_case_1),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
