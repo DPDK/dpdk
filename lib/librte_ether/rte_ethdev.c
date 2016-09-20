@@ -190,7 +190,7 @@ rte_eth_dev_find_free_port(void)
 }
 
 struct rte_eth_dev *
-rte_eth_dev_allocate(const char *name, enum rte_eth_dev_type type)
+rte_eth_dev_allocate(const char *name)
 {
 	uint8_t port_id;
 	struct rte_eth_dev *eth_dev;
@@ -215,7 +215,6 @@ rte_eth_dev_allocate(const char *name, enum rte_eth_dev_type type)
 	snprintf(eth_dev->data->name, sizeof(eth_dev->data->name), "%s", name);
 	eth_dev->data->port_id = port_id;
 	eth_dev->attached = DEV_ATTACHED;
-	eth_dev->dev_type = type;
 	eth_dev_last_created_port = port_id;
 	nb_ports++;
 	return eth_dev;
@@ -247,7 +246,7 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 	rte_eal_pci_device_name(&pci_dev->addr, ethdev_name,
 			sizeof(ethdev_name));
 
-	eth_dev = rte_eth_dev_allocate(ethdev_name, RTE_ETH_DEV_PCI);
+	eth_dev = rte_eth_dev_allocate(ethdev_name);
 	if (eth_dev == NULL)
 		return -ENOMEM;
 

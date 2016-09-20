@@ -617,7 +617,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 			snprintf(name, sizeof(name), "%s port %u",
 				 ibv_get_device_name(ibv_dev), port);
-			eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_PCI);
+			eth_dev = rte_eth_dev_allocate(name);
 		}
 		if (eth_dev == NULL) {
 			ERROR("can not allocate rte ethdev");

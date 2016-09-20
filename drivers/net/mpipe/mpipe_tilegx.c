@@ -1587,7 +1587,7 @@ rte_pmd_mpipe_devinit(const char *ifname,
 		return -ENODEV;
 	}
 
-	eth_dev = rte_eth_dev_allocate(ifname, RTE_ETH_DEV_VIRTUAL);
+	eth_dev = rte_eth_dev_allocate(ifname);
 	if (!eth_dev) {
 		RTE_LOG(ERR, PMD, "%s: Failed to allocate device.\n", ifname);
 		rte_free(priv);

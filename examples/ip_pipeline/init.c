@@ -606,28 +606,11 @@ app_link_set_tcp_syn_filter(struct app_params *app, struct app_link_params *cp)
 	}
 }
 
-static int
-app_link_is_virtual(struct app_link_params *p)
-{
-	uint32_t pmd_id = p->pmd_id;
-	struct rte_eth_dev *dev = &rte_eth_devices[pmd_id];
-
-	if (dev->dev_type == RTE_ETH_DEV_VIRTUAL)
-		return 1;
-
-	return 0;
-}
-
 void
 app_link_up_internal(struct app_params *app, struct app_link_params *cp)
 {
 	uint32_t i;
 	int status;
-
-	if (app_link_is_virtual(cp)) {
-		cp->state = 1;
-		return;
-	}
 
 	/* For each link, add filters for IP of current link */
 	if (cp->ip != 0) {
@@ -735,11 +718,6 @@ app_link_down_internal(struct app_params *app, struct app_link_params *cp)
 {
 	uint32_t i;
 	int status;
-
-	if (app_link_is_virtual(cp)) {
-		cp->state = 0;
-		return;
-	}
 
 	/* PMD link down */
 	status = rte_eth_dev_set_link_down(cp->pmd_id);

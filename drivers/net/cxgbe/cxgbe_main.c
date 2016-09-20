@@ -1150,7 +1150,7 @@ int cxgbe_probe(struct adapter *adapter)
 		 */
 
 		/* reserve an ethdev entry */
-		pi->eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_PCI);
+		pi->eth_dev = rte_eth_dev_allocate(name);
 		if (!pi->eth_dev)
 			goto out_free;
 

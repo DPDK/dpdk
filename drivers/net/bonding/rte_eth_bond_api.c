@@ -189,7 +189,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	}
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
+	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL) {
 		RTE_BOND_LOG(ERR, "Unable to allocate rte_eth_dev");
 		goto err;

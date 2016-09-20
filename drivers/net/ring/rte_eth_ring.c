@@ -303,7 +303,7 @@ do_eth_dev_ring_create(const char *name,
 	}
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name, RTE_ETH_DEV_VIRTUAL);
+	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL) {
 		rte_errno = ENOSPC;
 		goto error;
