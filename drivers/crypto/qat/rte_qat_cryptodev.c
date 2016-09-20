@@ -113,7 +113,7 @@ crypto_qat_dev_init(__attribute__((unused)) struct rte_cryptodev_driver *crypto_
 }
 
 static struct rte_cryptodev_driver rte_qat_pmd = {
-	{
+	.pci_drv = {
 		.id_table = pci_id_qat_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	},
