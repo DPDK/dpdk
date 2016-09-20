@@ -84,6 +84,7 @@ extern "C" {
 
 #include <rte_debug.h>
 #include <rte_interrupts.h>
+#include <rte_dev.h>
 
 TAILQ_HEAD(pci_device_list, rte_pci_device); /**< PCI devices in D-linked Q. */
 TAILQ_HEAD(pci_driver_list, rte_pci_driver); /**< PCI drivers in D-linked Q. */
