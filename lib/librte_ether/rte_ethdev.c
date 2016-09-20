@@ -468,9 +468,6 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 static int
 rte_eth_dev_attach_pdev(struct rte_pci_addr *addr, uint8_t *port_id)
 {
-	/* re-construct pci_device_list */
-	if (rte_eal_pci_scan())
-		goto err;
 	/* Invoke probe func of the driver can handle the new device. */
 	if (rte_eal_pci_probe_one(addr))
 		goto err;

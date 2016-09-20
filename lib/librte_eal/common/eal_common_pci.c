@@ -341,6 +341,12 @@ rte_eal_pci_probe_one(const struct rte_pci_addr *addr)
 	if (addr == NULL)
 		return -1;
 
+	/* update current pci device in global list, kernel bindings might have
+	 * changed since last time we looked at it.
+	 */
+	if (pci_update_device(addr) < 0)
+		goto err_return;
+
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
 		if (rte_eal_compare_pci_addr(&dev->addr, addr))
 			continue;
@@ -353,9 +359,9 @@ rte_eal_pci_probe_one(const struct rte_pci_addr *addr)
 	return -1;
 
 err_return:
-	RTE_LOG(WARNING, EAL, "Requested device " PCI_PRI_FMT
-			" cannot be used\n", dev->addr.domain, dev->addr.bus,
-			dev->addr.devid, dev->addr.function);
+	RTE_LOG(WARNING, EAL,
+		"Requested device " PCI_PRI_FMT " cannot be used\n",
+		addr->domain, addr->bus, addr->devid, addr->function);
 	return -1;
 }
 
