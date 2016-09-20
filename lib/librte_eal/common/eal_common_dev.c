@@ -67,7 +67,6 @@ int
 rte_eal_dev_init(void)
 {
 	struct rte_devargs *devargs;
-	struct rte_driver *driver;
 
 	/*
 	 * Note that the dev_driver_list is populated here
@@ -89,13 +88,6 @@ rte_eal_dev_init(void)
 		}
 	}
 
-	/* Once the vdevs are initalized, start calling all the pdev drivers */
-	TAILQ_FOREACH(driver, &dev_driver_list, next) {
-		if (driver->type != PMD_PDEV)
-			continue;
-		/* PDEV drivers don't get passed any parameters */
-		driver->init(NULL, NULL);
-	}
 	return 0;
 }
 
