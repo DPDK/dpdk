@@ -675,7 +675,7 @@ fm10k_dev_tx_init(struct rte_eth_dev *dev)
 		/* Enable use of FTAG bit in TX descriptor, PFVTCTL
 		 * register is read-only for VF.
 		 */
-		if (fm10k_check_ftag(dev->pci_dev->devargs)) {
+		if (fm10k_check_ftag(dev->pci_dev->device.devargs)) {
 			if (hw->mac.type == fm10k_mac_pf) {
 				FM10K_WRITE_REG(hw, FM10K_PFVTCTL(i),
 						FM10K_PFVTCTL_FTAG_DESC_ENABLE);
@@ -2731,7 +2731,7 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 	int use_sse = 1;
 	uint16_t tx_ftag_en = 0;
 
-	if (fm10k_check_ftag(dev->pci_dev->devargs))
+	if (fm10k_check_ftag(dev->pci_dev->device.devargs))
 		tx_ftag_en = 1;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -2762,7 +2762,7 @@ fm10k_set_rx_function(struct rte_eth_dev *dev)
 	uint16_t i, rx_using_sse;
 	uint16_t rx_ftag_en = 0;
 
-	if (fm10k_check_ftag(dev->pci_dev->devargs))
+	if (fm10k_check_ftag(dev->pci_dev->device.devargs))
 		rx_ftag_en = 1;
 
 	/* In order to allow Vector Rx there are a few configuration

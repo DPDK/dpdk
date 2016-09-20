@@ -585,7 +585,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	if (eth_dev == NULL)
 		goto err;
 
-	pci_dev->numa_node = socket_id;
+	pci_dev->device.numa_node = socket_id;
 	pci_drv->driver.name = virtual_ethdev_driver_name;
 	pci_drv->id_table = id_table;
 
@@ -626,7 +626,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	eth_dev->dev_ops = &dev_private->dev_ops;
 
 	eth_dev->pci_dev = pci_dev;
-	eth_dev->pci_dev->driver = &eth_drv->pci_drv;
+	eth_dev->pci_dev->device.driver = &eth_drv->pci_drv.driver;
 
 	eth_dev->rx_pkt_burst = virtual_ethdev_rx_burst_success;
 	eth_dev->tx_pkt_burst = virtual_ethdev_tx_burst_success;

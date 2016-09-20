@@ -745,8 +745,9 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw,
 	PMD_INIT_LOG(INFO, "trying with legacy virtio pci.");
 	if (legacy_virtio_resource_init(dev, hw, dev_flags) < 0) {
 		if (dev->kdrv == RTE_KDRV_UNKNOWN &&
-		    (!dev->devargs ||
-		     dev->devargs->type != RTE_DEVTYPE_WHITELISTED_PCI)) {
+		    (!dev->device.devargs ||
+		     dev->device.devargs->type !=
+			RTE_DEVTYPE_WHITELISTED_PCI)) {
 			PMD_INIT_LOG(INFO,
 				"skip kernel managed virtio device.");
 			return 1;

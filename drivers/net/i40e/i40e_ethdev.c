@@ -905,8 +905,10 @@ config_floating_veb(struct rte_eth_dev *dev)
 	memset(pf->floating_veb_list, 0, sizeof(pf->floating_veb_list));
 
 	if (hw->aq.fw_maj_ver >= FLOATING_VEB_SUPPORTED_FW_MAJ) {
-		pf->floating_veb = is_floating_veb_supported(pci_dev->devargs);
-		config_vf_floating_veb(pci_dev->devargs, pf->floating_veb,
+		pf->floating_veb =
+			is_floating_veb_supported(pci_dev->device.devargs);
+		config_vf_floating_veb(pci_dev->device.devargs,
+				       pf->floating_veb,
 				       pf->floating_veb_list);
 	} else {
 		pf->floating_veb = false;

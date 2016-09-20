@@ -350,13 +350,13 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 		 dirname);
 	if (access(filename, R_OK) != 0) {
 		/* if no NUMA support, set default to 0 */
-		dev->numa_node = 0;
+		dev->device.numa_node = 0;
 	} else {
 		if (eal_parse_sysfs_value(filename, &tmp) < 0) {
 			free(dev);
 			return -1;
 		}
-		dev->numa_node = tmp;
+		dev->device.numa_node = tmp;
 	}
 
 	/* parse resources */
@@ -390,6 +390,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 
 	/* device is valid, add in list (sorted) */
 	if (TAILQ_EMPTY(&pci_device_list)) {
+		rte_eal_device_insert(&dev->device);
 		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
 	} else {
 		struct rte_pci_device *dev2;
@@ -402,6 +403,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 
 			if (ret < 0) {
 				TAILQ_INSERT_BEFORE(dev2, dev, next);
+				rte_eal_device_insert(&dev->device);
 			} else { /* already registered */
 				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
@@ -411,6 +413,7 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 			}
 			return 0;
 		}
+		rte_eal_device_insert(&dev->device);
 		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
 	}
 

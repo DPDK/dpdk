@@ -185,11 +185,12 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 
 		RTE_LOG(INFO, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
 				loc->domain, loc->bus, loc->devid, loc->function,
-				dev->numa_node);
+				dev->device.numa_node);
 
 		/* no initialization when blacklisted, return without error */
-		if (dev->devargs != NULL &&
-			dev->devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
+		if (dev->device.devargs != NULL &&
+			dev->device.devargs->type ==
+				RTE_DEVTYPE_BLACKLISTED_PCI) {
 			RTE_LOG(INFO, EAL, "  Device is blacklisted, not initializing\n");
 			return 1;
 		}
@@ -252,7 +253,7 @@ rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
 
 		RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
 				loc->domain, loc->bus, loc->devid,
-				loc->function, dev->numa_node);
+				loc->function, dev->device.numa_node);
 
 		RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
 				dev->id.device_id, dr->driver.name);
@@ -418,7 +419,7 @@ rte_eal_pci_probe(void)
 		/* set devargs in PCI structure */
 		devargs = pci_devargs_lookup(dev);
 		if (devargs != NULL)
-			dev->devargs = devargs;
+			dev->device.devargs = devargs;
 
 		/* probe all or only whitelisted devices */
 		if (probe_all)

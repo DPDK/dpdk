@@ -149,6 +149,7 @@ enum rte_kernel_driver {
  */
 struct rte_pci_device {
 	TAILQ_ENTRY(rte_pci_device) next;       /**< Next probed PCI device. */
+	struct rte_device device;               /**< Inherit core device */
 	struct rte_pci_addr addr;               /**< PCI location. */
 	struct rte_pci_id id;                   /**< PCI ID. */
 	struct rte_mem_resource mem_resource[PCI_MAX_RESOURCE];
@@ -156,8 +157,6 @@ struct rte_pci_device {
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
 	struct rte_pci_driver *driver;          /**< Associated driver */
 	uint16_t max_vfs;                       /**< sriov enable if not zero */
-	int numa_node;                          /**< NUMA node connection */
-	struct rte_devargs *devargs;            /**< Device user arguments */
 	enum rte_kernel_driver kdrv;            /**< Kernel driver passthrough */
 };
 

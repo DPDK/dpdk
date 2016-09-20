@@ -3209,7 +3209,7 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_de
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	eth_dev->data->kdrv = pci_dev->kdrv;
-	eth_dev->data->numa_node = pci_dev->numa_node;
+	eth_dev->data->numa_node = pci_dev->device.numa_node;
 	eth_dev->data->drv_name = pci_dev->driver->driver.name;
 }
 
