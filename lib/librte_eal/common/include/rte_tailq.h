@@ -148,8 +148,8 @@ struct rte_tailq_head *rte_eal_tailq_lookup(const char *name);
 int rte_eal_tailq_register(struct rte_tailq_elem *t);
 
 #define EAL_REGISTER_TAILQ(t) \
-void tailqinitfn_ ##t(void); \
-void __attribute__((constructor, used)) tailqinitfn_ ##t(void) \
+RTE_INIT(tailqinitfn_ ##t); \
+static void tailqinitfn_ ##t(void) \
 { \
 	if (rte_eal_tailq_register(&t) < 0) \
 		rte_panic("Cannot initialize tailq: %s\n", t.name); \
