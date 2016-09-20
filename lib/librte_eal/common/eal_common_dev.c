@@ -64,32 +64,6 @@ rte_eal_driver_unregister(struct rte_driver *driver)
 }
 
 int
-rte_eal_vdev_init(const char *name, const char *args)
-{
-	struct rte_driver *driver;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	TAILQ_FOREACH(driver, &dev_driver_list, next) {
-		if (driver->type != PMD_VDEV)
-			continue;
-
-		/*
-		 * search a driver prefix in virtual device name.
-		 * For example, if the driver is pcap PMD, driver->name
-		 * will be "eth_pcap", but "name" will be "eth_pcapN".
-		 * So use strncmp to compare.
-		 */
-		if (!strncmp(driver->name, name, strlen(driver->name)))
-			return driver->init(name, args);
-	}
-
-	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
-	return -EINVAL;
-}
-
-int
 rte_eal_dev_init(void)
 {
 	struct rte_devargs *devargs;
@@ -98,7 +72,7 @@ rte_eal_dev_init(void)
 	/*
 	 * Note that the dev_driver_list is populated here
 	 * from calls made to rte_eal_driver_register from constructor functions
-	 * embedded into PMD modules via the PMD_REGISTER_DRIVER macro
+	 * embedded into PMD modules via the DRIVER_REGISTER_VDEV macro
 	 */
 
 	/* call the init function for each virtual device */
@@ -123,32 +97,6 @@ rte_eal_dev_init(void)
 		driver->init(NULL, NULL);
 	}
 	return 0;
-}
-
-int
-rte_eal_vdev_uninit(const char *name)
-{
-	struct rte_driver *driver;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	TAILQ_FOREACH(driver, &dev_driver_list, next) {
-		if (driver->type != PMD_VDEV)
-			continue;
-
-		/*
-		 * search a driver prefix in virtual device name.
-		 * For example, if the driver is pcap PMD, driver->name
-		 * will be "eth_pcap", but "name" will be "eth_pcapN".
-		 * So use strncmp to compare.
-		 */
-		if (!strncmp(driver->name, name, strlen(driver->name)))
-			return driver->uninit(name);
-	}
-
-	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
-	return -EINVAL;
 }
 
 int rte_eal_dev_attach(const char *name, const char *devargs)
