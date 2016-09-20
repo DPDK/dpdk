@@ -413,7 +413,7 @@ mlx5_tx_dbrec(struct txq *txq)
 	/* Ensure ordering between DB record and BF copy. */
 	rte_wmb();
 	rte_mov16(dst, (uint8_t *)data);
-	txq->bf_offset ^= txq->bf_buf_size;
+	txq->bf_offset ^= (1 << txq->bf_buf_size);
 }
 
 /**

@@ -249,8 +249,8 @@ struct txq {
 	uint16_t wqe_n; /* Number of WQ elements. */
 	uint16_t elts_n:4; /* (*elts)[] length (in log2). */
 	uint16_t cqe_n:4; /* Number of CQ elements (in log2). */
+	uint16_t bf_buf_size:4; /* Log2 Blueflame size. */
 	uint16_t bf_offset; /* Blueflame offset. */
-	uint16_t bf_buf_size; /* Blueflame size. */
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
