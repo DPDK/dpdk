@@ -199,9 +199,10 @@ txq_complete(struct txq *txq)
 	} while (1);
 	if (unlikely(cqe == NULL))
 		return;
-	wqe = &(*txq->wqes)[htons(cqe->wqe_counter) & (txq->wqe_n - 1)].hdr;
+	wqe = &(*txq->wqes)[htons(cqe->wqe_counter) &
+			    ((1 << txq->wqe_n) - 1)].hdr;
 	elts_tail = wqe->ctrl[3];
-	assert(elts_tail < txq->wqe_n);
+	assert(elts_tail < (1 << txq->wqe_n));
 	/* Free buffers. */
 	while (elts_free != elts_tail) {
 		struct rte_mbuf *elt = (*txq->elts)[elts_free];
@@ -335,7 +336,7 @@ mlx5_wqe_write(struct txq *txq, volatile struct mlx5_wqe *wqe,
 	}
 	/* Inline if enough room. */
 	if (txq->max_inline != 0) {
-		uintptr_t end = (uintptr_t)&(*txq->wqes)[txq->wqe_n];
+		uintptr_t end = (uintptr_t)&(*txq->wqes)[1 << txq->wqe_n];
 		uint16_t max_inline = txq->max_inline * RTE_CACHE_LINE_SIZE;
 		uint16_t room;
 
@@ -446,7 +447,7 @@ tx_prefetch_wqe(struct txq *txq, uint16_t ci)
 {
 	volatile struct mlx5_wqe64 *wqe;
 
-	wqe = &(*txq->wqes)[ci & (txq->wqe_n - 1)];
+	wqe = &(*txq->wqes)[ci & ((1 << txq->wqe_n) - 1)];
 	rte_prefetch0(wqe);
 }
 
@@ -504,7 +505,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		max -= segs_n;
 		--pkts_n;
 		elts_head_next = (elts_head + 1) & (elts_n - 1);
-		wqe = &(*txq->wqes)[txq->wqe_ci & (txq->wqe_n - 1)].hdr;
+		wqe = &(*txq->wqes)[txq->wqe_ci & ((1 << txq->wqe_n) - 1)].hdr;
 		tx_prefetch_wqe(txq, txq->wqe_ci);
 		tx_prefetch_wqe(txq, txq->wqe_ci + 1);
 		if (pkts_n)
@@ -540,7 +541,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (!(ds % (MLX5_WQE_SIZE / MLX5_WQE_DWORD_SIZE)))
 				dseg = (volatile void *)
 					&(*txq->wqes)[txq->wqe_ci++ &
-						      (txq->wqe_n - 1)];
+						      ((1 << txq->wqe_n) - 1)];
 			else
 				++dseg;
 			++ds;
@@ -607,10 +608,10 @@ skip_segs:
 static inline void
 mlx5_mpw_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
 {
-	uint16_t idx = txq->wqe_ci & (txq->wqe_n - 1);
+	uint16_t idx = txq->wqe_ci & ((1 << txq->wqe_n) - 1);
 	volatile struct mlx5_wqe_data_seg (*dseg)[MLX5_MPW_DSEG_MAX] =
 		(volatile struct mlx5_wqe_data_seg (*)[])
-		(uintptr_t)&(*txq->wqes)[(idx + 1) & (txq->wqe_n - 1)];
+		(uintptr_t)&(*txq->wqes)[(idx + 1) & ((1 << txq->wqe_n) - 1)];
 
 	mpw->state = MLX5_MPW_STATE_OPENED;
 	mpw->pkts_n = 0;
@@ -815,7 +816,7 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 static inline void
 mlx5_mpw_inline_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
 {
-	uint16_t idx = txq->wqe_ci & (txq->wqe_n - 1);
+	uint16_t idx = txq->wqe_ci & ((1 << txq->wqe_n) - 1);
 	struct mlx5_wqe_inl_small *inl;
 
 	mpw->state = MLX5_MPW_INL_STATE_OPENED;
@@ -1000,7 +1001,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			(*txq->elts)[elts_head] = buf;
 			/* Maximum number of bytes before wrapping. */
-			max = ((uintptr_t)&(*txq->wqes)[txq->wqe_n] -
+			max = ((uintptr_t)&(*txq->wqes)[1 << txq->wqe_n] -
 			       (uintptr_t)mpw.data.raw);
 			if (length > max) {
 				rte_memcpy((void *)(uintptr_t)mpw.data.raw,
@@ -1019,7 +1020,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 				mpw.data.raw += length;
 			}
 			if ((uintptr_t)mpw.data.raw ==
-			    (uintptr_t)&(*txq->wqes)[txq->wqe_n])
+			    (uintptr_t)&(*txq->wqes)[1 << txq->wqe_n])
 				mpw.data.raw =
 					(volatile void *)&(*txq->wqes)[0];
 			++mpw.pkts_n;

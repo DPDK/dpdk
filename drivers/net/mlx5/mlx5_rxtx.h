@@ -246,9 +246,9 @@ struct txq {
 	uint16_t elts_comp; /* Counter since last completion request. */
 	uint16_t cq_ci; /* Consumer index for completion queue. */
 	uint16_t wqe_ci; /* Consumer index for work queue. */
-	uint16_t wqe_n; /* Number of WQ elements. */
 	uint16_t elts_n:4; /* (*elts)[] length (in log2). */
 	uint16_t cqe_n:4; /* Number of CQ elements (in log2). */
+	uint16_t wqe_n:4; /* Number of of WQ elements (in log2). */
 	uint16_t bf_buf_size:4; /* Log2 Blueflame size. */
 	uint16_t bf_offset; /* Blueflame offset. */
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
