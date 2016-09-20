@@ -78,7 +78,6 @@ DPDK_2.2 {
 	rte_eth_dev_vlan_filter;
 	rte_eth_dev_wd_timeout_store;
 	rte_eth_dma_zone_reserve;
-	rte_eth_driver_register;
 	rte_eth_led_off;
 	rte_eth_led_on;
 	rte_eth_link;

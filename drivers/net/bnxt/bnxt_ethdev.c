@@ -1048,23 +1048,13 @@ static struct eth_driver bnxt_rte_pmd = {
 		    .name = "rte_" DRV_MODULE_NAME "_pmd",
 		    .id_table = bnxt_pci_id_map,
 		    .drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		    .probe = rte_eth_dev_pci_probe,
+		    .remove = rte_eth_dev_pci_remove
 		    },
 	.eth_dev_init = bnxt_dev_init,
 	.eth_dev_uninit = bnxt_dev_uninit,
 	.dev_private_size = sizeof(struct bnxt),
 };
 
-static int bnxt_rte_pmd_init(const char *name, const char *params __rte_unused)
-{
-	RTE_LOG(INFO, PMD, "bnxt_rte_pmd_init() called for %s\n", name);
-	rte_eth_driver_register(&bnxt_rte_pmd);
-	return 0;
-}
-
-static struct rte_driver bnxt_pmd_drv = {
-	.type = PMD_PDEV,
-	.init = bnxt_rte_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(bnxt_pmd_drv, net_bnxt);
+DRIVER_REGISTER_PCI(net_bnxt, bnxt_rte_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_bnxt, bnxt_pci_id_map);

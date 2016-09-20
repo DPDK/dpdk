@@ -1689,23 +1689,12 @@ static struct eth_driver rte_ena_pmd = {
 		.name = "rte_ena_pmd",
 		.id_table = pci_id_ena_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_ena_dev_init,
 	.dev_private_size = sizeof(struct ena_adapter),
 };
 
-static int
-rte_ena_pmd_init(const char *name __rte_unused,
-		 const char *params __rte_unused)
-{
-	rte_eth_driver_register(&rte_ena_pmd);
-	return 0;
-};
-
-struct rte_driver ena_pmd_drv = {
-	.type = PMD_PDEV,
-	.init = rte_ena_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(ena_pmd_drv, net_ena);
+DRIVER_REGISTER_PCI(net_ena, rte_ena_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);

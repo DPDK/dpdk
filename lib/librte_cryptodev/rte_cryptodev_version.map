@@ -14,7 +14,6 @@ DPDK_16.04 {
 	rte_cryptodev_info_get;
 	rte_cryptodev_pmd_allocate;
 	rte_cryptodev_pmd_callback_process;
-	rte_cryptodev_pmd_driver_register;
 	rte_cryptodev_pmd_release_device;
 	rte_cryptodev_pmd_virtual_dev_init;
 	rte_cryptodev_sym_session_create;

@@ -1566,6 +1566,8 @@ static struct eth_driver rte_ixgbe_pmd = {
 		.id_table = pci_id_ixgbe_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_ixgbe_dev_init,
 	.eth_dev_uninit = eth_ixgbe_dev_uninit,
@@ -1580,39 +1582,13 @@ static struct eth_driver rte_ixgbevf_pmd = {
 		.name = "rte_ixgbevf_pmd",
 		.id_table = pci_id_ixgbevf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_ixgbevf_dev_init,
 	.eth_dev_uninit = eth_ixgbevf_dev_uninit,
 	.dev_private_size = sizeof(struct ixgbe_adapter),
 };
-
-/*
- * Driver initialization routine.
- * Invoked once at EAL init time.
- * Register itself as the [Poll Mode] Driver of PCI IXGBE devices.
- */
-static int
-rte_ixgbe_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	rte_eth_driver_register(&rte_ixgbe_pmd);
-	return 0;
-}
-
-/*
- * VF Driver initialization routine.
- * Invoked one at EAL init time.
- * Register itself as the [Virtual Poll Mode] Driver of PCI niantic devices.
- */
-static int
-rte_ixgbevf_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	rte_eth_driver_register(&rte_ixgbevf_pmd);
-	return 0;
-}
 
 static int
 ixgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
@@ -7409,17 +7385,7 @@ ixgbevf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 	ixgbevf_dev_interrupt_action(dev);
 }
 
-static struct rte_driver rte_ixgbe_driver = {
-	.type = PMD_PDEV,
-	.init = rte_ixgbe_pmd_init,
-};
-
-static struct rte_driver rte_ixgbevf_driver = {
-	.type = PMD_PDEV,
-	.init = rte_ixgbevf_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_ixgbe_driver, net_ixgbe);
+DRIVER_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_ixgbe, pci_id_ixgbe_map);
-PMD_REGISTER_DRIVER(rte_ixgbevf_driver, net_ixgbe_vf);
+DRIVER_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);

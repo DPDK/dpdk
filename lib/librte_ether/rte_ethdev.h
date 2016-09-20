@@ -1875,18 +1875,6 @@ struct eth_driver {
 };
 
 /**
- * @internal
- * A function invoked by the initialization function of an Ethernet driver
- * to simultaneously register itself as a PCI driver and as an Ethernet
- * Poll Mode Driver (PMD).
- *
- * @param eth_drv
- *   The pointer to the *eth_driver* structure associated with
- *   the Ethernet driver.
- */
-void rte_eth_driver_register(struct eth_driver *eth_drv);
-
-/**
  * Convert a numerical speed in Mbps to a bitmap flag that can be used in
  * the bitmap link_speeds of the struct rte_eth_conf
  *

@@ -5922,12 +5922,10 @@ static struct eth_driver mlx4_driver = {
 /**
  * Driver initialization routine.
  */
-static int
-rte_mlx4_pmd_init(const char *name, const char *args)
+RTE_INIT(rte_mlx4_pmd_init);
+static void
+rte_mlx4_pmd_init(void)
 {
-	(void)name;
-	(void)args;
-
 	RTE_BUILD_BUG_ON(sizeof(wr_id_t) != sizeof(uint64_t));
 	/*
 	 * RDMAV_HUGEPAGES_SAFE tells ibv_fork_init() we intend to use
@@ -5938,13 +5936,7 @@ rte_mlx4_pmd_init(const char *name, const char *args)
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
 	ibv_fork_init();
 	rte_eal_pci_register(&mlx4_driver.pci_drv);
-	return 0;
 }
 
-static struct rte_driver rte_mlx4_driver = {
-	.type = PMD_PDEV,
-	.init = rte_mlx4_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_mlx4_driver, net_mlx4);
+DRIVER_EXPORT_NAME(net_mlx4, __COUNTER__);
 DRIVER_REGISTER_PCI_TABLE(net_mlx4, mlx4_pci_id_map);

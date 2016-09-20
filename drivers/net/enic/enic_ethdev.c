@@ -616,29 +616,12 @@ static struct eth_driver rte_enic_pmd = {
 		.name = "rte_enic_pmd",
 		.id_table = pci_id_enic_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_enicpmd_dev_init,
 	.dev_private_size = sizeof(struct enic),
 };
 
-/* Driver initialization routine.
- * Invoked once at EAL init time.
- * Register as the [Poll Mode] Driver of Cisco ENIC device.
- */
-static int
-rte_enic_pmd_init(__rte_unused const char *name,
-	 __rte_unused const char *params)
-{
-	ENICPMD_FUNC_TRACE();
-
-	rte_eth_driver_register(&rte_enic_pmd);
-	return 0;
-}
-
-static struct rte_driver rte_enic_driver = {
-	.type = PMD_PDEV,
-	.init = rte_enic_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_enic_driver, net_enic);
+DRIVER_REGISTER_PCI(net_enic, rte_enic_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);

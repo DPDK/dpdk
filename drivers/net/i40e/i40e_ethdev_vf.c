@@ -1557,34 +1557,15 @@ static struct eth_driver rte_i40evf_pmd = {
 		.name = "rte_i40evf_pmd",
 		.id_table = pci_id_i40evf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = i40evf_dev_init,
 	.eth_dev_uninit = i40evf_dev_uninit,
 	.dev_private_size = sizeof(struct i40e_adapter),
 };
 
-/*
- * VF Driver initialization routine.
- * Invoked one at EAL init time.
- * Register itself as the [Virtual Poll Mode] Driver of PCI Fortville devices.
- */
-static int
-rte_i40evf_pmd_init(const char *name __rte_unused,
-		    const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	rte_eth_driver_register(&rte_i40evf_pmd);
-
-	return 0;
-}
-
-static struct rte_driver rte_i40evf_driver = {
-	.type = PMD_PDEV,
-	.init = rte_i40evf_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_i40evf_driver, net_i40e_vf);
+DRIVER_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_i40e_vf, pci_id_i40evf_map);
 
 static int

@@ -1574,31 +1574,13 @@ static struct eth_driver szedata2_eth_driver = {
 	.pci_drv = {
 		.name     = RTE_SZEDATA2_PCI_DRIVER_NAME,
 		.id_table = rte_szedata2_pci_id_table,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init     = rte_szedata2_eth_dev_init,
 	.eth_dev_uninit   = rte_szedata2_eth_dev_uninit,
 	.dev_private_size = sizeof(struct pmd_internals),
 };
 
-static int
-rte_szedata2_init(const char *name __rte_unused,
-		const char *args __rte_unused)
-{
-	rte_eth_driver_register(&szedata2_eth_driver);
-	return 0;
-}
-
-static int
-rte_szedata2_uninit(const char *name __rte_unused)
-{
-	return 0;
-}
-
-static struct rte_driver rte_szedata2_driver = {
-	.type = PMD_PDEV,
-	.init = rte_szedata2_init,
-	.uninit = rte_szedata2_uninit,
-};
-
-PMD_REGISTER_DRIVER(rte_szedata2_driver, RTE_SZEDATA2_DRIVER_NAME);
+DRIVER_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);

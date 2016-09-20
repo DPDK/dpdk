@@ -1042,30 +1042,12 @@ static struct eth_driver rte_cxgbe_pmd = {
 		.name = "rte_cxgbe_pmd",
 		.id_table = cxgb4_pci_tbl,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_cxgbe_dev_init,
 	.dev_private_size = sizeof(struct port_info),
 };
 
-/*
- * Driver initialization routine.
- * Invoked once at EAL init time.
- * Register itself as the [Poll Mode] Driver of PCI CXGBE devices.
- */
-static int rte_cxgbe_pmd_init(const char *name __rte_unused,
-			      const char *params __rte_unused)
-{
-	CXGBE_FUNC_TRACE();
-
-	rte_eth_driver_register(&rte_cxgbe_pmd);
-	return 0;
-}
-
-static struct rte_driver rte_cxgbe_driver = {
-	.type = PMD_PDEV,
-	.init = rte_cxgbe_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_cxgbe_driver, net_cxgbe);
+DRIVER_REGISTER_PCI(net_cxgbe, rte_cxgbe_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_cxgbe, cxgb4_pci_tbl);
-

@@ -331,25 +331,13 @@ static struct eth_driver rte_vmxnet3_pmd = {
 		.name = "rte_vmxnet3_pmd",
 		.id_table = pci_id_vmxnet3_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_vmxnet3_dev_init,
 	.eth_dev_uninit = eth_vmxnet3_dev_uninit,
 	.dev_private_size = sizeof(struct vmxnet3_hw),
 };
-
-/*
- * Driver initialization routine.
- * Invoked once at EAL init time.
- * Register itself as the [Poll Mode] Driver of Virtual PCI VMXNET3 devices.
- */
-static int
-rte_vmxnet3_pmd_init(const char *name __rte_unused, const char *param __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	rte_eth_driver_register(&rte_vmxnet3_pmd);
-	return 0;
-}
 
 static int
 vmxnet3_dev_configure(struct rte_eth_dev *dev)
@@ -948,10 +936,5 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 }
 #endif
 
-static struct rte_driver rte_vmxnet3_driver = {
-	.type = PMD_PDEV,
-	.init = rte_vmxnet3_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_vmxnet3_driver, net_vmxnet3);
+DRIVER_REGISTER_PCI(net_vmxnet3, rte_vmxnet3_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_vmxnet3, pci_id_vmxnet3_map);

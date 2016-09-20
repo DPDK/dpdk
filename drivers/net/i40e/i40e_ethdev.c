@@ -667,6 +667,8 @@ static struct eth_driver rte_i40e_pmd = {
 		.id_table = pci_id_i40e_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_i40e_dev_init,
 	.eth_dev_uninit = eth_i40e_dev_uninit,
@@ -701,27 +703,7 @@ rte_i40e_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/*
- * Driver initialization routine.
- * Invoked once at EAL init time.
- * Register itself as the [Poll Mode] Driver of PCI IXGBE devices.
- */
-static int
-rte_i40e_pmd_init(const char *name __rte_unused,
-		  const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	rte_eth_driver_register(&rte_i40e_pmd);
-
-	return 0;
-}
-
-static struct rte_driver rte_i40e_driver = {
-	.type = PMD_PDEV,
-	.init = rte_i40e_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_i40e_driver, net_i40e);
+DRIVER_REGISTER_PCI(net_i40e, rte_i40e_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_i40e, pci_id_i40e_map);
 
 /*

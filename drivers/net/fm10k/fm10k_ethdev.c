@@ -3059,30 +3059,13 @@ static struct eth_driver rte_pmd_fm10k = {
 		.id_table = pci_id_fm10k_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_fm10k_dev_init,
 	.eth_dev_uninit = eth_fm10k_dev_uninit,
 	.dev_private_size = sizeof(struct fm10k_adapter),
 };
 
-/*
- * Driver initialization routine.
- * Invoked once at EAL init time.
- * Register itself as the [Poll Mode] Driver of PCI FM10K devices.
- */
-static int
-rte_pmd_fm10k_init(__rte_unused const char *name,
-	__rte_unused const char *params)
-{
-	PMD_INIT_FUNC_TRACE();
-	rte_eth_driver_register(&rte_pmd_fm10k);
-	return 0;
-}
-
-static struct rte_driver rte_fm10k_driver = {
-	.type = PMD_PDEV,
-	.init = rte_pmd_fm10k_init,
-};
-
-PMD_REGISTER_DRIVER(rte_fm10k_driver, net_fm10k);
+DRIVER_REGISTER_PCI(net_fm10k, rte_pmd_fm10k.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_fm10k, pci_id_fm10k_map);

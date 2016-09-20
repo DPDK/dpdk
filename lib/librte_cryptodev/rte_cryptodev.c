@@ -532,29 +532,6 @@ rte_cryptodev_pci_remove(struct rte_pci_device *pci_dev)
 	return 0;
 }
 
-int
-rte_cryptodev_pmd_driver_register(struct rte_cryptodev_driver *cryptodrv,
-		enum pmd_type type)
-{
-	/* Call crypto device initialization directly if device is virtual */
-	if (type == PMD_VDEV)
-		return rte_cryptodev_pci_probe(
-				(struct rte_pci_driver *)cryptodrv,
-				NULL);
-
-	/*
-	 * Register PCI driver for physical device intialisation during
-	 * PCI probing
-	 */
-	cryptodrv->pci_drv.probe = rte_cryptodev_pci_probe;
-	cryptodrv->pci_drv.remove = rte_cryptodev_pci_remove;
-
-	rte_eal_pci_register(&cryptodrv->pci_drv);
-
-	return 0;
-}
-
-
 uint16_t
 rte_cryptodev_queue_pair_count(uint8_t dev_id)
 {

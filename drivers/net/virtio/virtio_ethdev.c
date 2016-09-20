@@ -1307,29 +1307,24 @@ static struct eth_driver rte_virtio_pmd = {
 		.name = "rte_virtio_pmd",
 		.id_table = pci_id_virtio_map,
 		.drv_flags = RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_virtio_dev_init,
 	.eth_dev_uninit = eth_virtio_dev_uninit,
 	.dev_private_size = sizeof(struct virtio_hw),
 };
 
-/*
- * Driver initialization routine.
- * Invoked once at EAL init time.
- * Register itself as the [Poll Mode] Driver of PCI virtio devices.
- * Returns 0 on success.
- */
-static int
-rte_virtio_pmd_init(const char *name __rte_unused,
-		    const char *param __rte_unused)
+RTE_INIT(rte_virtio_pmd_init);
+static void
+rte_virtio_pmd_init(void)
 {
 	if (rte_eal_iopl_init() != 0) {
 		PMD_INIT_LOG(ERR, "IOPL call failed - cannot use virtio PMD");
-		return -1;
+		return;
 	}
 
-	rte_eth_driver_register(&rte_virtio_pmd);
-	return 0;
+	rte_eal_pci_register(&rte_virtio_pmd.pci_drv);
 }
 
 /*
@@ -1563,10 +1558,5 @@ __rte_unused uint8_t is_rx)
 	return 0;
 }
 
-static struct rte_driver rte_virtio_driver = {
-	.type = PMD_PDEV,
-	.init = rte_virtio_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_virtio_driver, net_virtio);
+DRIVER_EXPORT_NAME(net_virtio, __COUNTER__);
 DRIVER_REGISTER_PCI_TABLE(net_virtio, pci_id_virtio_map);

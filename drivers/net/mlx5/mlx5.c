@@ -739,11 +739,10 @@ static struct eth_driver mlx5_driver = {
 /**
  * Driver initialization routine.
  */
-static int
-rte_mlx5_pmd_init(const char *name, const char *args)
+RTE_INIT(rte_mlx5_pmd_init);
+static void
+rte_mlx5_pmd_init(void)
 {
-	(void)name;
-	(void)args;
 	/*
 	 * RDMAV_HUGEPAGES_SAFE tells ibv_fork_init() we intend to use
 	 * huge pages. Calling ibv_fork_init() during init allows
@@ -753,13 +752,7 @@ rte_mlx5_pmd_init(const char *name, const char *args)
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
 	ibv_fork_init();
 	rte_eal_pci_register(&mlx5_driver.pci_drv);
-	return 0;
 }
 
-static struct rte_driver rte_mlx5_driver = {
-	.type = PMD_PDEV,
-	.init = rte_mlx5_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_mlx5_driver, net_mlx5);
+DRIVER_EXPORT_NAME(net_mlx5, __COUNTER__);
 DRIVER_REGISTER_PCI_TABLE(net_mlx5, mlx5_pci_id_map);

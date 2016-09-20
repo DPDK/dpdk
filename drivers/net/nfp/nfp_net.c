@@ -2464,29 +2464,14 @@ static struct eth_driver rte_nfp_net_pmd = {
 		.id_table = pci_id_nfp_net_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			     RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = nfp_net_init,
 	.dev_private_size = sizeof(struct nfp_net_adapter),
 };
 
-static int
-nfp_net_pmd_init(const char *name __rte_unused,
-		 const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	PMD_INIT_LOG(INFO, "librte_pmd_nfp_net version %s\n",
-		     NFP_NET_PMD_VERSION);
-
-	rte_eth_driver_register(&rte_nfp_net_pmd);
-	return 0;
-}
-
-static struct rte_driver rte_nfp_net_driver = {
-	.type = PMD_PDEV,
-	.init = nfp_net_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_nfp_net_driver, net_nfp);
+DRIVER_REGISTER_PCI(net_nfp, rte_nfp_net_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_nfp, pci_id_nfp_net_map);
 
 /*

@@ -621,6 +621,8 @@ static struct eth_driver rte_bnx2x_pmd = {
 		.name = "rte_bnx2x_pmd",
 		.id_table = pci_id_bnx2x_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_bnx2x_dev_init,
 	.dev_private_size = sizeof(struct bnx2x_softc),
@@ -634,38 +636,14 @@ static struct eth_driver rte_bnx2xvf_pmd = {
 		.name = "rte_bnx2xvf_pmd",
 		.id_table = pci_id_bnx2xvf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_bnx2xvf_dev_init,
 	.dev_private_size = sizeof(struct bnx2x_softc),
 };
 
-static int rte_bnx2x_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	rte_eth_driver_register(&rte_bnx2x_pmd);
-
-	return 0;
-}
-
-static int rte_bnx2xvf_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	rte_eth_driver_register(&rte_bnx2xvf_pmd);
-
-	return 0;
-}
-
-static struct rte_driver rte_bnx2x_driver = {
-	.type = PMD_PDEV,
-	.init = rte_bnx2x_pmd_init,
-};
-
-static struct rte_driver rte_bnx2xvf_driver = {
-	.type = PMD_PDEV,
-	.init = rte_bnx2xvf_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(rte_bnx2x_driver, net_bnx2x);
+DRIVER_REGISTER_PCI(net_bnx2x, rte_bnx2x_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_bnx2x, pci_id_bnx2x_map);
-PMD_REGISTER_DRIVER(rte_bnx2xvf_driver, net_bnx2xvf);
+DRIVER_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);

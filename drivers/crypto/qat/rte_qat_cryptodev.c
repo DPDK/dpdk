@@ -116,23 +116,13 @@ static struct rte_cryptodev_driver rte_qat_pmd = {
 	.pci_drv = {
 		.id_table = pci_id_qat_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		.probe = rte_cryptodev_pci_probe,
+		.remove = rte_cryptodev_pci_remove,
 	},
 	.cryptodev_init = crypto_qat_dev_init,
 	.dev_private_size = sizeof(struct qat_pmd_private),
 };
 
-static int
-rte_qat_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	return rte_cryptodev_pmd_driver_register(&rte_qat_pmd, PMD_PDEV);
-}
-
-static struct rte_driver pmd_qat_drv = {
-	.type = PMD_PDEV,
-	.init = rte_qat_pmd_init,
-};
-
-PMD_REGISTER_DRIVER(pmd_qat_drv, CRYPTODEV_NAME_QAT_SYM_PMD);
+DRIVER_REGISTER_PCI(CRYPTODEV_NAME_QAT_SYM_PMD, rte_qat_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(CRYPTODEV_NAME_QAT_SYM_PMD, pci_id_qat_map);
 

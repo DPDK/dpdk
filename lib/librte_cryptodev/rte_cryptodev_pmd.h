@@ -493,36 +493,6 @@ rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
 extern int
 rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev);
 
-
-/**
- * Register a Crypto [Poll Mode] driver.
- *
- * Function invoked by the initialization function of a Crypto driver
- * to simultaneously register itself as Crypto Poll Mode Driver and to either:
- *
- *	a - register itself as PCI driver if the crypto device is a physical
- *		device, by invoking the rte_eal_pci_register() function to
- *		register the *pci_drv* structure embedded in the *crypto_drv*
- *		structure, after having stored the address of the
- *		rte_cryptodev_init() function in the *probe* field of the
- *		*pci_drv* structure.
- *
- *		During the PCI probing phase, the rte_cryptodev_init()
- *		function is invoked for each PCI [device] matching the
- *		embedded PCI identifiers provided by the driver.
- *
- *	b, complete the initialization sequence if the device is a virtual
- *		device by calling the rte_cryptodev_init() directly passing a
- *		NULL parameter for the rte_pci_device structure.
- *
- *   @param crypto_drv	crypto_driver structure associated with the crypto
- *					driver.
- *   @param type		pmd type
- */
-extern int
-rte_cryptodev_pmd_driver_register(struct rte_cryptodev_driver *crypto_drv,
-		enum pmd_type type);
-
 /**
  * Executes all the user application registered callbacks for the specific
  * device.

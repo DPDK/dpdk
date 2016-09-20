@@ -1082,6 +1082,8 @@ static struct eth_driver rte_igb_pmd = {
 		.id_table = pci_id_igb_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_igb_dev_init,
 	.eth_dev_uninit = eth_igb_dev_uninit,
@@ -1096,18 +1098,13 @@ static struct eth_driver rte_igbvf_pmd = {
 		.name = "rte_igbvf_pmd",
 		.id_table = pci_id_igbvf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
+		.probe = rte_eth_dev_pci_probe,
+		.remove = rte_eth_dev_pci_remove,
 	},
 	.eth_dev_init = eth_igbvf_dev_init,
 	.eth_dev_uninit = eth_igbvf_dev_uninit,
 	.dev_private_size = sizeof(struct e1000_adapter),
 };
-
-static int
-rte_igb_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-	rte_eth_driver_register(&rte_igb_pmd);
-	return 0;
-}
 
 static void
 igb_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
@@ -1118,20 +1115,6 @@ igb_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 	uint32_t rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl |= E1000_RCTL_VFE;
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
-}
-
-/*
- * VF Driver initialization routine.
- * Invoked one at EAL init time.
- * Register itself as the [Virtual Poll Mode] Driver of PCI IGB devices.
- */
-static int
-rte_igbvf_pmd_init(const char *name __rte_unused, const char *params __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	rte_eth_driver_register(&rte_igbvf_pmd);
-	return 0;
 }
 
 static int
@@ -5084,16 +5067,6 @@ eth_igb_set_eeprom(struct rte_eth_dev *dev,
 	return nvm->ops.write(hw,  first, length, data);
 }
 
-static struct rte_driver pmd_igb_drv = {
-	.type = PMD_PDEV,
-	.init = rte_igb_pmd_init,
-};
-
-static struct rte_driver pmd_igbvf_drv = {
-	.type = PMD_PDEV,
-	.init = rte_igbvf_pmd_init,
-};
-
 static int
 eth_igb_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
@@ -5255,7 +5228,7 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	E1000_WRITE_FLUSH(hw);
 }
 
-PMD_REGISTER_DRIVER(pmd_igb_drv, net_e1000_igb);
+DRIVER_REGISTER_PCI(net_e1000_igb, rte_igb_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_e1000_igb, pci_id_igb_map);
-PMD_REGISTER_DRIVER(pmd_igbvf_drv, net_e1000_igb_vf);
+DRIVER_REGISTER_PCI(net_e1000_igb_vf, rte_igbvf_pmd.pci_drv);
 DRIVER_REGISTER_PCI_TABLE(net_e1000_igb_vf, pci_id_igbvf_map);

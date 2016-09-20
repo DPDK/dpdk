@@ -339,28 +339,6 @@ rte_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
 	return 0;
 }
 
-/**
- * Register an Ethernet [Poll Mode] driver.
- *
- * Function invoked by the initialization function of an Ethernet driver
- * to simultaneously register itself as a PCI driver and as an Ethernet
- * Poll Mode Driver.
- * Invokes the rte_eal_pci_register() function to register the *pci_drv*
- * structure embedded in the *eth_drv* structure, after having stored the
- * address of the rte_eth_dev_init() function in the *probe* field of
- * the *pci_drv* structure.
- * During the PCI probing phase, the rte_eth_dev_init() function is
- * invoked for each PCI [Ethernet device] matching the embedded PCI
- * identifiers provided by the driver.
- */
-void
-rte_eth_driver_register(struct eth_driver *eth_drv)
-{
-	eth_drv->pci_drv.probe = rte_eth_dev_pci_probe;
-	eth_drv->pci_drv.remove = rte_eth_dev_pci_remove;
-	rte_eal_pci_register(&eth_drv->pci_drv);
-}
-
 int
 rte_eth_dev_is_valid_port(uint8_t port_id)
 {
