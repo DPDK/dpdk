@@ -37,6 +37,7 @@
 
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
+#include <rte_vdev.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_logs.h"
@@ -461,13 +462,15 @@ virtio_user_pmd_devuninit(const char *name)
 	return 0;
 }
 
-static struct rte_driver virtio_user_driver = {
-	.type   = PMD_VDEV,
+static struct rte_vdev_driver virtio_user_driver = {
+	.driver = {
+		.type   = PMD_VDEV,
+	},
 	.init   = virtio_user_pmd_devinit,
 	.uninit = virtio_user_pmd_devuninit,
 };
 
-PMD_REGISTER_DRIVER(virtio_user_driver, net_virtio_user);
+DRIVER_REGISTER_VDEV(net_virtio_user, virtio_user_driver);
 DRIVER_REGISTER_PARAM_STRING(net_virtio_user,
 	"path=<path> "
 	"mac=<mac addr> "

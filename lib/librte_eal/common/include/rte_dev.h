@@ -105,16 +105,6 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
 TAILQ_HEAD(rte_driver_list, rte_driver);
 
 /**
- * Initialization function called for each device driver once.
- */
-typedef int (rte_dev_init_t)(const char *name, const char *args);
-
-/**
- * Uninitilization function called for each device driver once.
- */
-typedef int (rte_dev_uninit_t)(const char *name);
-
-/**
  * Driver type enumeration
  */
 enum pmd_type {
@@ -129,8 +119,6 @@ struct rte_driver {
 	TAILQ_ENTRY(rte_driver) next;  /**< Next in list. */
 	enum pmd_type type;		   /**< PMD Driver type */
 	const char *name;                   /**< Driver name. */
-	rte_dev_init_t *init;              /**< Device init. function. */
-	rte_dev_uninit_t *uninit;          /**< Device uninit. function. */
 };
 
 /**

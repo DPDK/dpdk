@@ -34,7 +34,7 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_dev.h>
+#include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 
@@ -714,13 +714,15 @@ cryptodev_aesni_mb_uninit(const char *name)
 	return 0;
 }
 
-static struct rte_driver cryptodev_aesni_mb_pmd_drv = {
-	.type = PMD_VDEV,
+static struct rte_vdev_driver cryptodev_aesni_mb_pmd_drv = {
+	.driver = {
+		.type = PMD_VDEV,
+	},
 	.init = cryptodev_aesni_mb_init,
 	.uninit = cryptodev_aesni_mb_uninit
 };
 
-PMD_REGISTER_DRIVER(cryptodev_aesni_mb_pmd_drv, CRYPTODEV_NAME_AESNI_MB_PMD);
+DRIVER_REGISTER_VDEV(CRYPTODEV_NAME_AESNI_MB_PMD, cryptodev_aesni_mb_pmd_drv);
 DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "

@@ -56,7 +56,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
-#include <rte_dev.h>
+#include <rte_vdev.h>
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>
 
@@ -759,12 +759,14 @@ rte_pmd_xenvirt_devuninit(const char *name)
 	return 0;
 }
 
-static struct rte_driver pmd_xenvirt_drv = {
-	.type = PMD_VDEV,
+static struct rte_vdev_driver pmd_xenvirt_drv = {
+	.driver = {
+		.type = PMD_VDEV,
+	},
 	.init = rte_pmd_xenvirt_devinit,
 	.uninit = rte_pmd_xenvirt_devuninit,
 };
 
-PMD_REGISTER_DRIVER(pmd_xenvirt_drv, net_xenvirt);
+DRIVER_REGISTER_VDEV(net_xenvirt, pmd_xenvirt_drv);
 DRIVER_REGISTER_PARAM_STRING(net_xenvirt,
 	"mac=<mac addr>");

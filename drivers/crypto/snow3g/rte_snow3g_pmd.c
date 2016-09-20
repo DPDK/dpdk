@@ -35,7 +35,7 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_dev.h>
+#include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 
@@ -638,13 +638,15 @@ cryptodev_snow3g_uninit(const char *name)
 	return 0;
 }
 
-static struct rte_driver cryptodev_snow3g_pmd_drv = {
-	.type = PMD_VDEV,
+static struct rte_vdev_driver cryptodev_snow3g_pmd_drv = {
+	.driver = {
+		.type = PMD_VDEV,
+	},
 	.init = cryptodev_snow3g_init,
 	.uninit = cryptodev_snow3g_uninit
 };
 
-PMD_REGISTER_DRIVER(cryptodev_snow3g_pmd_drv, CRYPTODEV_NAME_SNOW3G_PMD);
+DRIVER_REGISTER_VDEV(CRYPTODEV_NAME_SNOW3G_PMD, cryptodev_snow3g_pmd_drv);
 DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SNOW3G_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "

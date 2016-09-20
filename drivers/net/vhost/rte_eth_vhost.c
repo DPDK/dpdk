@@ -41,7 +41,7 @@
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
-#include <rte_dev.h>
+#include <rte_vdev.h>
 #include <rte_kvargs.h>
 #include <rte_virtio_net.h>
 #include <rte_spinlock.h>
@@ -924,13 +924,15 @@ rte_pmd_vhost_devuninit(const char *name)
 	return 0;
 }
 
-static struct rte_driver pmd_vhost_drv = {
-	.type = PMD_VDEV,
+static struct rte_vdev_driver pmd_vhost_drv = {
+	.driver = {
+		.type = PMD_VDEV,
+	},
 	.init = rte_pmd_vhost_devinit,
 	.uninit = rte_pmd_vhost_devuninit,
 };
 
-PMD_REGISTER_DRIVER(pmd_vhost_drv, net_vhost);
+DRIVER_REGISTER_VDEV(net_vhost, pmd_vhost_drv);
 DRIVER_REGISTER_PARAM_STRING(net_vhost,
 	"iface=<ifc> "
 	"queues=<int>");

@@ -33,7 +33,7 @@
 #include <unistd.h>
 
 #include <rte_eal.h>
-#include <rte_dev.h>
+#include <rte_vdev.h>
 #include <rte_eal_memconfig.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
@@ -1623,18 +1623,22 @@ rte_pmd_mpipe_devinit(const char *ifname,
 	return 0;
 }
 
-static struct rte_driver pmd_mpipe_xgbe_drv = {
-	.type = PMD_VDEV,
+static struct rte_vdev_driver pmd_mpipe_xgbe_drv = {
+	.driver = {
+		.type = PMD_VDEV,
+	},
 	.init = rte_pmd_mpipe_devinit,
 };
 
-static struct rte_driver pmd_mpipe_gbe_drv = {
-	.type = PMD_VDEV,
+static struct rte_vdev_driver pmd_mpipe_gbe_drv = {
+	.driver = {
+		.type = PMD_VDEV,
+	},
 	.init = rte_pmd_mpipe_devinit,
 };
 
-PMD_REGISTER_DRIVER(pmd_mpipe_xgbe_drv, net_mpipe_xgbe);
-PMD_REGISTER_DRIVER(pmd_mpipe_gbe_drv, net_mpipe_gbe);
+DRIVER_REGISTER_VDEV(net_mpipe_xgbe, pmd_mpipe_xgbe_drv);
+DRIVER_REGISTER_VDEV(net_mpipe_gbe, pmd_mpipe_gbe_drv);
 
 static void __attribute__((constructor, used))
 mpipe_init_contexts(void)

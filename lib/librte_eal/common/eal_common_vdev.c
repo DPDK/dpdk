@@ -74,7 +74,7 @@ rte_eal_vdev_init(const char *name, const char *args)
 		 */
 		if (!strncmp(driver->driver.name, name,
 			    strlen(driver->driver.name)))
-			return driver->driver.init(name, args);
+			return driver->init(name, args);
 	}
 
 	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
@@ -98,7 +98,7 @@ rte_eal_vdev_uninit(const char *name)
 		 */
 		if (!strncmp(driver->driver.name, name,
 			     strlen(driver->driver.name)))
-			return driver->driver.uninit(name);
+			return driver->uninit(name);
 	}
 
 	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
