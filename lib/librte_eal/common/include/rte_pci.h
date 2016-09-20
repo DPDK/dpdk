@@ -108,15 +108,6 @@ const char *pci_get_sysfs_path(void);
 /** Nb. of values in PCI resource format. */
 #define PCI_RESOURCE_FMT_NVAL 3
 
-/**
- * A structure describing a PCI resource.
- */
-struct rte_pci_resource {
-	uint64_t phys_addr;   /**< Physical address, 0 if no resource. */
-	uint64_t len;         /**< Length of the resource. */
-	void *addr;           /**< Virtual address, NULL when not mapped. */
-};
-
 /** Maximum number of PCI resources. */
 #define PCI_MAX_RESOURCE 6
 
@@ -160,7 +151,8 @@ struct rte_pci_device {
 	TAILQ_ENTRY(rte_pci_device) next;       /**< Next probed PCI device. */
 	struct rte_pci_addr addr;               /**< PCI location. */
 	struct rte_pci_id id;                   /**< PCI ID. */
-	struct rte_pci_resource mem_resource[PCI_MAX_RESOURCE];   /**< PCI Memory Resource */
+	struct rte_mem_resource mem_resource[PCI_MAX_RESOURCE];
+						/**< PCI Memory Resource */
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
 	struct rte_pci_driver *driver;          /**< Associated driver */
 	uint16_t max_vfs;                       /**< sriov enable if not zero */

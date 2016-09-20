@@ -1416,7 +1416,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	int ret;
 	uint32_t szedata2_index;
 	struct rte_pci_addr *pci_addr = &dev->pci_dev->addr;
-	struct rte_pci_resource *pci_rsc =
+	struct rte_mem_resource *pci_rsc =
 		&dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER];
 	char rsc_filename[PATH_MAX];
 	void *pci_resource_ptr = NULL;
@@ -1473,7 +1473,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 
 	rte_eth_copy_pci_info(dev, dev->pci_dev);
 
-	/* mmap pci resource0 file to rte_pci_resource structure */
+	/* mmap pci resource0 file to rte_mem_resource structure */
 	if (dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].phys_addr ==
 			0) {
 		RTE_LOG(ERR, PMD, "Missing resource%u file\n",

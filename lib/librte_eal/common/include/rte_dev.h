@@ -100,6 +100,14 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
 	} \
 } while (0)
 
+/**
+ * A generic memory resource representation.
+ */
+struct rte_mem_resource {
+	uint64_t phys_addr; /**< Physical address, 0 if not resource. */
+	uint64_t len;       /**< Length of the resource. */
+	void *addr;         /**< Virtual address, NULL when not mapped. */
+};
 
 /** Double linked list of device drivers. */
 TAILQ_HEAD(rte_driver_list, rte_driver);
