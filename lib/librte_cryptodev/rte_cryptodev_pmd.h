@@ -456,13 +456,12 @@ struct rte_cryptodev_ops {
  * to that slot for the driver to use.
  *
  * @param	name		Unique identifier name for each device
- * @param	type		Device type of this Crypto device
  * @param	socket_id	Socket to allocate resources on.
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
 struct rte_cryptodev *
-rte_cryptodev_pmd_allocate(const char *name, enum pmd_type type, int socket_id);
+rte_cryptodev_pmd_allocate(const char *name, int socket_id);
 
 /**
  * Creates a new virtual crypto device and returns the pointer

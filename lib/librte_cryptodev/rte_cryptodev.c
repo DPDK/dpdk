@@ -318,7 +318,7 @@ rte_cryptodev_find_free_device_index(void)
 }
 
 struct rte_cryptodev *
-rte_cryptodev_pmd_allocate(const char *name, enum pmd_type type, int socket_id)
+rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 {
 	struct rte_cryptodev *cryptodev;
 	uint8_t dev_id;
@@ -357,7 +357,6 @@ rte_cryptodev_pmd_allocate(const char *name, enum pmd_type type, int socket_id)
 		cryptodev->data->dev_started = 0;
 
 		cryptodev->attached = RTE_CRYPTODEV_ATTACHED;
-		cryptodev->pmd_type = type;
 
 		cryptodev_globals.nb_devs++;
 	}
@@ -406,7 +405,7 @@ rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
 	struct rte_cryptodev *cryptodev;
 
 	/* allocate device structure */
-	cryptodev = rte_cryptodev_pmd_allocate(name, PMD_VDEV, socket_id);
+	cryptodev = rte_cryptodev_pmd_allocate(name, socket_id);
 	if (cryptodev == NULL)
 		return NULL;
 
@@ -448,8 +447,7 @@ rte_cryptodev_init(struct rte_pci_driver *pci_drv,
 	rte_cryptodev_create_unique_device_name(cryptodev_name,
 			sizeof(cryptodev_name), pci_dev);
 
-	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, PMD_PDEV,
-			rte_socket_id());
+	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
 	if (cryptodev == NULL)
 		return -ENOMEM;
 

@@ -620,8 +620,6 @@ struct rte_cryptodev {
 
 	enum rte_cryptodev_type dev_type;
 	/**< Crypto device type */
-	enum pmd_type pmd_type;
-	/**< PMD type - PDEV / VDEV */
 
 	struct rte_cryptodev_cb_list link_intr_cbs;
 	/**< User application callback for interrupts if present */
