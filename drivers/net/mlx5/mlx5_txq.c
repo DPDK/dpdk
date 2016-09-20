@@ -212,7 +212,7 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
 		      "it should be set to %u", RTE_CACHE_LINE_SIZE);
 		return EINVAL;
 	}
-	tmpl->txq.cqe_n = ibcq->cqe + 1;
+	tmpl->txq.cqe_n = log2above(ibcq->cqe);
 	tmpl->txq.qp_num_8s = qp->ctrl_seg.qp_num << 8;
 	tmpl->txq.wqes =
 		(volatile struct mlx5_wqe64 (*)[])

@@ -110,13 +110,13 @@ struct rxq {
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */
 	unsigned int sges_n:2; /* Log 2 of SGEs (max buffers per packet). */
+	unsigned int cqe_n:4; /* Log 2 of CQ elements. */
 	unsigned int elts_n:4; /* Log 2 of Mbufs. */
 	unsigned int port_id:8;
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t rq_ci;
 	uint16_t cq_ci;
-	uint16_t cqe_n; /* Number of CQ elements. */
 	volatile struct mlx5_wqe_data_seg(*wqes)[];
 	volatile struct mlx5_cqe(*cqes)[];
 	struct rxq_zip zip; /* Compressed context. */
@@ -245,10 +245,10 @@ struct txq {
 	uint16_t elts_tail; /* First element awaiting completion. */
 	uint16_t elts_comp; /* Counter since last completion request. */
 	uint16_t cq_ci; /* Consumer index for completion queue. */
-	uint16_t cqe_n; /* Number of CQ elements. */
 	uint16_t wqe_ci; /* Consumer index for work queue. */
 	uint16_t wqe_n; /* Number of WQ elements. */
 	uint16_t elts_n:4; /* (*elts)[] length (in log2). */
+	uint16_t cqe_n:4; /* Number of CQ elements (in log2). */
 	uint16_t bf_offset; /* Blueflame offset. */
 	uint16_t bf_buf_size; /* Blueflame size. */
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */

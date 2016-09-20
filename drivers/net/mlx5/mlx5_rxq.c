@@ -881,7 +881,7 @@ rxq_setup(struct rxq_ctrl *tmpl)
 	if (elts == NULL)
 		return ENOMEM;
 	tmpl->rxq.rq_db = rwq->rq.db;
-	tmpl->rxq.cqe_n = ibcq->cqe + 1;
+	tmpl->rxq.cqe_n = log2above(ibcq->cqe);
 	tmpl->rxq.cq_ci = 0;
 	tmpl->rxq.rq_ci = 0;
 	tmpl->rxq.cq_db = cq->dbrec;
