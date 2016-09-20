@@ -82,8 +82,10 @@
 
 #include "eal_private.h"
 
-struct pci_driver_list pci_driver_list;
-struct pci_device_list pci_device_list;
+struct pci_driver_list pci_driver_list =
+	TAILQ_HEAD_INITIALIZER(pci_driver_list);
+struct pci_device_list pci_device_list =
+	TAILQ_HEAD_INITIALIZER(pci_device_list);
 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
 

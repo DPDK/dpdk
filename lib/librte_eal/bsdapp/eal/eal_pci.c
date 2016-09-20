@@ -623,9 +623,6 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 int
 rte_eal_pci_init(void)
 {
-	TAILQ_INIT(&pci_driver_list);
-	TAILQ_INIT(&pci_device_list);
-
 	/* for debug purposes, PCI can be disabled */
 	if (internal_config.no_pci)
 		return 0;
