@@ -237,13 +237,6 @@ int rte_eal_intr_init(void);
 int rte_eal_alarm_init(void);
 
 /**
- * This function initialises any virtual devices
- *
- * This function is private to the EAL.
- */
-int rte_eal_dev_init(void);
-
-/**
  * Function is to check if the kernel module(like, vfio, vfio_iommu_type1,
  * etc.) loaded.
  *

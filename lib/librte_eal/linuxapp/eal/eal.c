@@ -70,6 +70,7 @@
 #include <rte_cpuflags.h>
 #include <rte_interrupts.h>
 #include <rte_pci.h>
+#include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_common.h>
 #include <rte_version.h>
