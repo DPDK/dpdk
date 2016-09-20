@@ -4204,8 +4204,255 @@ test_null_burst_operation(void)
 	return TEST_SUCCESS;
 }
 
+static int
+create_gmac_operation(enum rte_crypto_auth_operation op,
+		const struct gmac_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_crypto_sym_op *sym_op;
 
+	unsigned iv_pad_len;
+	unsigned aad_pad_len;
 
+	iv_pad_len = RTE_ALIGN_CEIL(tdata->iv.len, 16);
+	aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	sym_op = ut_params->op->sym;
+	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			aad_pad_len);
+	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
+			"no room to append aad");
+
+	sym_op->auth.aad.length = tdata->aad.len;
+	sym_op->auth.aad.phys_addr =
+			rte_pktmbuf_mtophys(ut_params->ibuf);
+	memcpy(sym_op->auth.aad.data, tdata->aad.data, tdata->aad.len);
+
+	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+			ut_params->ibuf, tdata->gmac_tag.len);
+	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+			"no room to append digest");
+
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			ut_params->ibuf, aad_pad_len);
+	sym_op->auth.digest.length = tdata->gmac_tag.len;
+
+	if (op == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		rte_memcpy(sym_op->auth.digest.data, tdata->gmac_tag.data,
+				tdata->gmac_tag.len);
+		TEST_HEXDUMP(stdout, "digest:",
+				sym_op->auth.digest.data,
+				sym_op->auth.digest.length);
+	}
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+			ut_params->ibuf, iv_pad_len);
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
+
+	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = tdata->iv.len;
+
+	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, tdata->iv.len);
+
+	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
+
+	sym_op->cipher.data.length = 0;
+	sym_op->cipher.data.offset = 0;
+
+	sym_op->auth.data.offset = 0;
+	sym_op->auth.data.length = 0;
+
+	return 0;
+}
+
+static int create_gmac_session(uint8_t dev_id,
+		enum rte_crypto_cipher_operation op,
+		const struct gmac_test_data *tdata,
+		enum rte_crypto_auth_operation auth_op)
+{
+	uint8_t cipher_key[tdata->key.len];
+
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	memcpy(cipher_key, tdata->key.data, tdata->key.len);
+
+	/* For GMAC we setup cipher parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = NULL;
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_GCM;
+	ut_params->cipher_xform.cipher.op = op;
+	ut_params->cipher_xform.cipher.key.data = cipher_key;
+	ut_params->cipher_xform.cipher.key.length = tdata->key.len;
+
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_AES_GMAC;
+	ut_params->auth_xform.auth.op = auth_op;
+	ut_params->auth_xform.auth.digest_length = tdata->gmac_tag.len;
+	ut_params->auth_xform.auth.add_auth_data_length = 0;
+	ut_params->auth_xform.auth.key.length = 0;
+	ut_params->auth_xform.auth.key.data = NULL;
+
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+
+	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
+			&ut_params->cipher_xform);
+
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	return 0;
+}
+
+static int
+test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	uint8_t *auth_tag, *p;
+	uint16_t aad_pad_len;
+
+	TEST_ASSERT_NOT_EQUAL(tdata->gmac_tag.len, 0,
+			      "No GMAC length in the source data");
+
+	retval = create_gmac_session(ts_params->valid_devs[0],
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
+
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
+
+	p = rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *);
+
+	retval = create_gmac_operation(RTE_CRYPTO_AUTH_OP_GENERATE,
+			tdata);
+
+	if (retval < 0)
+		return retval;
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	ut_params->op->sym->m_src = ut_params->ibuf;
+
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	if (ut_params->op->sym->m_dst) {
+		auth_tag = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_dst,
+				uint8_t *, aad_pad_len);
+	} else {
+		auth_tag = p + aad_pad_len;
+	}
+
+	TEST_HEXDUMP(stdout, "auth tag:", auth_tag, tdata->gmac_tag.len);
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			auth_tag,
+			tdata->gmac_tag.data,
+			tdata->gmac_tag.len,
+			"GMAC Generated auth tag not as expected");
+
+	return 0;
+}
+
+static int
+test_AES_GMAC_authentication_test_case_1(void)
+{
+	return test_AES_GMAC_authentication(&gmac_test_case_1);
+}
+
+static int
+test_AES_GMAC_authentication_test_case_2(void)
+{
+	return test_AES_GMAC_authentication(&gmac_test_case_2);
+}
+
+static int
+test_AES_GMAC_authentication_test_case_3(void)
+{
+	return test_AES_GMAC_authentication(&gmac_test_case_3);
+}
+
+static int
+test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	int retval;
+
+	TEST_ASSERT_NOT_EQUAL(tdata->gmac_tag.len, 0,
+			      "No GMAC length in the source data");
+
+	retval = create_gmac_session(ts_params->valid_devs[0],
+			RTE_CRYPTO_CIPHER_OP_DECRYPT,
+			tdata, RTE_CRYPTO_AUTH_OP_VERIFY);
+
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	retval = create_gmac_operation(RTE_CRYPTO_AUTH_OP_VERIFY,
+			tdata);
+
+	if (retval < 0)
+		return retval;
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	ut_params->op->sym->m_src = ut_params->ibuf;
+
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	return 0;
+
+}
+
+static int
+test_AES_GMAC_authentication_verify_test_case_1(void)
+{
+	return test_AES_GMAC_authentication_verify(&gmac_test_case_1);
+}
+
+static int
+test_AES_GMAC_authentication_verify_test_case_2(void)
+{
+	return test_AES_GMAC_authentication_verify(&gmac_test_case_2);
+}
+
+static int
+test_AES_GMAC_authentication_verify_test_case_3(void)
+{
+	return test_AES_GMAC_authentication_verify(&gmac_test_case_3);
+}
 
 static struct unit_test_suite cryptodev_qat_testsuite  = {
 	.suite_name = "Crypto QAT Unit Test Suite",
@@ -4255,6 +4502,20 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_mb_AES_GCM_authenticated_decryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_mb_AES_GCM_authenticated_decryption_test_case_7),
+
+		/** AES GMAC Authentication */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_verify_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_verify_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_verify_test_case_3),
 
 		/** Snow3G encrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
