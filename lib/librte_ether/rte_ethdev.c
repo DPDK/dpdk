@@ -71,6 +71,7 @@
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
 static struct rte_eth_dev_data *rte_eth_dev_data;
+static uint8_t eth_dev_last_created_port;
 static uint8_t nb_ports;
 
 /* spinlock for eth device callbacks */
@@ -215,6 +216,7 @@ rte_eth_dev_allocate(const char *name, enum rte_eth_dev_type type)
 	eth_dev->data->port_id = port_id;
 	eth_dev->attached = DEV_ATTACHED;
 	eth_dev->dev_type = type;
+	eth_dev_last_created_port = port_id;
 	nb_ports++;
 	return eth_dev;
 }
@@ -346,27 +348,6 @@ rte_eth_dev_count(void)
 	return nb_ports;
 }
 
-static enum rte_eth_dev_type
-rte_eth_dev_get_device_type(uint8_t port_id)
-{
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, RTE_ETH_DEV_UNKNOWN);
-	return rte_eth_devices[port_id].dev_type;
-}
-
-static int
-rte_eth_dev_get_addr_by_port(uint8_t port_id, struct rte_pci_addr *addr)
-{
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
-
-	if (addr == NULL) {
-		RTE_PMD_DEBUG_TRACE("Null pointer is specified\n");
-		return -EINVAL;
-	}
-
-	*addr = rte_eth_devices[port_id].pci_dev->addr;
-	return 0;
-}
-
 int
 rte_eth_dev_get_name_by_port(uint8_t port_id, char *name)
 {
@@ -412,34 +393,6 @@ rte_eth_dev_get_port_by_name(const char *name, uint8_t *port_id)
 }
 
 static int
-rte_eth_dev_get_port_by_addr(const struct rte_pci_addr *addr, uint8_t *port_id)
-{
-	int i;
-	struct rte_pci_device *pci_dev = NULL;
-
-	if (addr == NULL) {
-		RTE_PMD_DEBUG_TRACE("Null pointer is specified\n");
-		return -EINVAL;
-	}
-
-	*port_id = RTE_MAX_ETHPORTS;
-
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-
-		pci_dev = rte_eth_devices[i].pci_dev;
-
-		if (pci_dev &&
-			!rte_eal_compare_pci_addr(&pci_dev->addr, addr)) {
-
-			*port_id = i;
-
-			return 0;
-		}
-	}
-	return -ENODEV;
-}
-
-static int
 rte_eth_dev_is_detachable(uint8_t port_id)
 {
 	uint32_t dev_flags;
@@ -464,124 +417,49 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 		return 1;
 }
 
-/* attach the new physical device, then store port_id of the device */
-static int
-rte_eth_dev_attach_pdev(struct rte_pci_addr *addr, uint8_t *port_id)
-{
-	/* Invoke probe func of the driver can handle the new device. */
-	if (rte_eal_pci_probe_one(addr))
-		goto err;
-
-	if (rte_eth_dev_get_port_by_addr(addr, port_id))
-		goto err;
-
-	return 0;
-err:
-	return -1;
-}
-
-/* detach the new physical device, then store pci_addr of the device */
-static int
-rte_eth_dev_detach_pdev(uint8_t port_id, struct rte_pci_addr *addr)
-{
-	struct rte_pci_addr freed_addr;
-	struct rte_pci_addr vp;
-
-	/* get pci address by port id */
-	if (rte_eth_dev_get_addr_by_port(port_id, &freed_addr))
-		goto err;
-
-	/* Zeroed pci addr means the port comes from virtual device */
-	vp.domain = vp.bus = vp.devid = vp.function = 0;
-	if (rte_eal_compare_pci_addr(&vp, &freed_addr) == 0)
-		goto err;
-
-	/* invoke remove func of the pci driver,
-	 * also remove the device from pci_device_list */
-	if (rte_eal_pci_detach(&freed_addr))
-		goto err;
-
-	*addr = freed_addr;
-	return 0;
-err:
-	return -1;
-}
-
-/* attach the new virtual device, then store port_id of the device */
-static int
-rte_eth_dev_attach_vdev(const char *vdevargs, uint8_t *port_id)
-{
-	char *name = NULL, *args = NULL;
-	int ret = -1;
-
-	/* parse vdevargs, then retrieve device name and args */
-	if (rte_eal_parse_devargs_str(vdevargs, &name, &args))
-		goto end;
-
-	/* walk around dev_driver_list to find the driver of the device,
-	 * then invoke probe function of the driver.
-	 * rte_eal_vdev_init() updates port_id allocated after
-	 * initialization.
-	 */
-	if (rte_eal_vdev_init(name, args))
-		goto end;
-
-	if (rte_eth_dev_get_port_by_name(name, port_id))
-		goto end;
-
-	ret = 0;
-end:
-	free(name);
-	free(args);
-
-	return ret;
-}
-
-/* detach the new virtual device, then store the name of the device */
-static int
-rte_eth_dev_detach_vdev(uint8_t port_id, char *vdevname)
-{
-	char name[RTE_ETH_NAME_MAX_LEN];
-
-	/* get device name by port id */
-	if (rte_eth_dev_get_name_by_port(port_id, name))
-		goto err;
-	/* walk around dev_driver_list to find the driver of the device,
-	 * then invoke uninit function of the driver */
-	if (rte_eal_vdev_uninit(name))
-		goto err;
-
-	strncpy(vdevname, name, sizeof(name));
-	return 0;
-err:
-	return -1;
-}
-
 /* attach the new device, then store port_id of the device */
 int
 rte_eth_dev_attach(const char *devargs, uint8_t *port_id)
 {
-	struct rte_pci_addr addr;
 	int ret = -1;
+	int current = eth_dev_last_created_port;
+	char *name = NULL;
+	char *args = NULL;
 
 	if ((devargs == NULL) || (port_id == NULL)) {
 		ret = -EINVAL;
 		goto err;
 	}
 
-	if (eal_parse_pci_DomBDF(devargs, &addr) == 0) {
-		ret = rte_eth_dev_attach_pdev(&addr, port_id);
-		if (ret < 0)
-			goto err;
-	} else {
-		ret = rte_eth_dev_attach_vdev(devargs, port_id);
-		if (ret < 0)
-			goto err;
+	/* parse devargs, then retrieve device name and args */
+	if (rte_eal_parse_devargs_str(devargs, &name, &args))
+		goto err;
+
+	ret = rte_eal_dev_attach(name, args);
+	if (ret < 0)
+		goto err;
+
+	/* no point looking at eth_dev_last_created_port if no port exists */
+	if (!nb_ports) {
+		RTE_LOG(ERR, EAL, "No ports found for device (%s)\n", name);
+		ret = -1;
+		goto err;
 	}
 
-	return 0;
+	/* if nothing happened, there is a bug here, since some driver told us
+	 * it did attach a device, but did not create a port.
+	 */
+	if (current == eth_dev_last_created_port) {
+		ret = -1;
+		goto err;
+	}
+
+	*port_id = eth_dev_last_created_port;
+	ret = 0;
+
 err:
-	RTE_LOG(ERR, EAL, "Driver, cannot attach the device\n");
+	free(name);
+	free(args);
 	return ret;
 }
 
@@ -589,7 +467,6 @@ err:
 int
 rte_eth_dev_detach(uint8_t port_id, char *name)
 {
-	struct rte_pci_addr addr;
 	int ret = -1;
 
 	if (name == NULL) {
@@ -597,33 +474,19 @@ rte_eth_dev_detach(uint8_t port_id, char *name)
 		goto err;
 	}
 
-	/* check whether the driver supports detach feature, or not */
+	/* FIXME: move this to eal, once device flags are relocated there */
 	if (rte_eth_dev_is_detachable(port_id))
 		goto err;
 
-	if (rte_eth_dev_get_device_type(port_id) == RTE_ETH_DEV_PCI) {
-		ret = rte_eth_dev_get_addr_by_port(port_id, &addr);
-		if (ret < 0)
-			goto err;
-
-		ret = rte_eth_dev_detach_pdev(port_id, &addr);
-		if (ret < 0)
-			goto err;
-
-		snprintf(name, RTE_ETH_NAME_MAX_LEN,
-			"%04x:%02x:%02x.%d",
-			addr.domain, addr.bus,
-			addr.devid, addr.function);
-	} else {
-		ret = rte_eth_dev_detach_vdev(port_id, name);
-		if (ret < 0)
-			goto err;
-	}
+	snprintf(name, sizeof(rte_eth_devices[port_id].data->name),
+		 "%s", rte_eth_devices[port_id].data->name);
+	ret = rte_eal_dev_detach(name);
+	if (ret < 0)
+		goto err;
 
 	return 0;
 
 err:
-	RTE_LOG(ERR, EAL, "Driver, cannot detach the device\n");
 	return ret;
 }
 
