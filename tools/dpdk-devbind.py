@@ -40,6 +40,7 @@ from os.path import exists, abspath, dirname, basename
 
 # The PCI base class for NETWORK devices
 NETWORK_BASE_CLASS = "02"
+CRYPTO_BASE_CLASS = "0b"
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
@@ -72,7 +73,7 @@ Options:
         Display usage information and quit
 
     -s, --status:
-        Print the current status of all known network interfaces.
+        Print the current status of all known network and crypto devices.
         For each device, it displays the PCI domain, bus, slot and function,
         along with a text description of the device. Depending upon whether the
         device is being used by a kernel driver, the igb_uio driver, or no
@@ -92,7 +93,7 @@ Options:
         Unbind a device (Equivalent to \"-b none\")
 
     --force:
-        By default, devices which are used by Linux - as indicated by having
+        By default, network devices which are used by Linux - as indicated by having
         routes in the routing table - cannot be modified. Using the --force
         flag overrides this behavior, allowing active links to be forcibly
         unbound.
@@ -300,6 +301,54 @@ def get_nic_details():
                 devices[d]["Module_str"] = ",".join(modules)
 
 
+def get_crypto_details():
+    '''This function populates the "devices" dictionary. The keys used are
+    the pci addresses (domain:bus:slot.func). The values are themselves
+    dictionaries - one for each NIC.'''
+    global devices
+    global dpdk_drivers
+
+    # clear any old data
+    # devices = {}
+    # first loop through and read details for all devices
+    # request machine readable format, with numeric IDs
+    dev = {}
+    dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
+    for dev_line in dev_lines:
+        if (len(dev_line) == 0):
+            if (dev["Class"][0:2] == CRYPTO_BASE_CLASS):
+                # convert device and vendor ids to numbers, then add to global
+                dev["Vendor"] = int(dev["Vendor"], 16)
+                dev["Device"] = int(dev["Device"], 16)
+                # use dict to make copy of dev
+                devices[dev["Slot"]] = dict(dev)
+        else:
+            name, value = dev_line.decode().split("\t", 1)
+            dev[name.rstrip(":")] = value
+
+    # based on the basic info, get extended text details
+    for d in devices.keys():
+        # get additional info and add it to existing data
+        devices[d] = devices[d].copy()
+        devices[d].update(get_pci_device_details(d).items())
+
+        # add igb_uio to list of supporting modules if needed
+        if "Module_str" in devices[d]:
+            for driver in dpdk_drivers:
+                if driver not in devices[d]["Module_str"]:
+                    devices[d]["Module_str"] = \
+                        devices[d]["Module_str"] + ",%s" % driver
+        else:
+            devices[d]["Module_str"] = ",".join(dpdk_drivers)
+
+        # make sure the driver and module strings do not have any duplicates
+        if has_driver(d):
+            modules = devices[d]["Module_str"].split(",")
+            if devices[d]["Driver_str"] in modules:
+                modules.remove(devices[d]["Driver_str"])
+                devices[d]["Module_str"] = ",".join(modules)
+
+
 def dev_id_from_dev_name(dev_name):
     '''Take a device "name" - a string passed in by user to identify a NIC
     device, and determine the device id - i.e. the domain:bus:slot.func - for
@@ -481,15 +530,16 @@ def show_status():
     dpdk_drv = []
     no_drv = []
 
-    # split our list of devices into the three categories above
+    # split our list of network devices into the three categories above
     for d in devices.keys():
-        if not has_driver(d):
-            no_drv.append(devices[d])
-            continue
-        if devices[d]["Driver_str"] in dpdk_drivers:
-            dpdk_drv.append(devices[d])
-        else:
-            kernel_drv.append(devices[d])
+        if (NETWORK_BASE_CLASS in devices[d]["Class"]):
+            if not has_driver(d):
+                no_drv.append(devices[d])
+                continue
+            if devices[d]["Driver_str"] in dpdk_drivers:
+                dpdk_drv.append(devices[d])
+            else:
+                kernel_drv.append(devices[d])
 
     # print each category separately, so we can clearly see what's used by DPDK
     display_devices("Network devices using DPDK-compatible driver", dpdk_drv,
@@ -498,6 +548,28 @@ def show_status():
                     "if=%(Interface)s drv=%(Driver_str)s "
                     "unused=%(Module_str)s %(Active)s")
     display_devices("Other network devices", no_drv, "unused=%(Module_str)s")
+
+    # split our list of crypto devices into the three categories above
+    kernel_drv = []
+    dpdk_drv = []
+    no_drv = []
+
+    for d in devices.keys():
+        if (CRYPTO_BASE_CLASS in devices[d]["Class"]):
+            if not has_driver(d):
+                no_drv.append(devices[d])
+                continue
+            if devices[d]["Driver_str"] in dpdk_drivers:
+                dpdk_drv.append(devices[d])
+            else:
+                kernel_drv.append(devices[d])
+
+    display_devices("Crypto devices using DPDK-compatible driver", dpdk_drv,
+                    "drv=%(Driver_str)s unused=%(Module_str)s")
+    display_devices("Crypto devices using kernel driver", kernel_drv,
+                    "drv=%(Driver_str)s "
+                    "unused=%(Module_str)s")
+    display_devices("Other crypto devices", no_drv, "unused=%(Module_str)s")
 
 
 def parse_args():
@@ -563,6 +635,7 @@ def do_arg_actions():
     if status_flag:
         if b_flag is not None:
             get_nic_details()  # refresh if we have changed anything
+            get_crypto_details()  # refresh if we have changed anything
         show_status()
 
 
@@ -571,6 +644,7 @@ def main():
     parse_args()
     check_modules()
     get_nic_details()
+    get_crypto_details()
     do_arg_actions()
 
 if __name__ == "__main__":

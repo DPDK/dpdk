@@ -422,23 +422,23 @@ grep_meminfo()
 }
 
 #
-# Calls dpdk-devbind.py --status to show the NIC and what they
+# Calls dpdk-devbind.py --status to show the devices and what they
 # are all bound to, in terms of drivers.
 #
-show_nics()
+show_devices()
 {
 	if [ -d /sys/module/vfio_pci -o -d /sys/module/igb_uio ]; then
 		${RTE_SDK}/tools/dpdk-devbind.py --status
 	else
 		echo "# Please load the 'igb_uio' or 'vfio-pci' kernel module before "
-		echo "# querying or adjusting NIC device bindings"
+		echo "# querying or adjusting device bindings"
 	fi
 }
 
 #
 # Uses dpdk-devbind.py to move devices to work with vfio-pci
 #
-bind_nics_to_vfio()
+bind_devices_to_vfio()
 {
 	if [ -d /sys/module/vfio_pci ]; then
 		${RTE_SDK}/tools/dpdk-devbind.py --status
@@ -449,14 +449,14 @@ bind_nics_to_vfio()
 			echo "OK"
 	else
 		echo "# Please load the 'vfio-pci' kernel module before querying or "
-		echo "# adjusting NIC device bindings"
+		echo "# adjusting device bindings"
 	fi
 }
 
 #
 # Uses dpdk-devbind.py to move devices to work with igb_uio
 #
-bind_nics_to_igb_uio()
+bind_devices_to_igb_uio()
 {
 	if [ -d /sys/module/igb_uio ]; then
 		${RTE_SDK}/tools/dpdk-devbind.py --status
@@ -466,14 +466,14 @@ bind_nics_to_igb_uio()
 		sudo ${RTE_SDK}/tools/dpdk-devbind.py -b igb_uio $PCI_PATH && echo "OK"
 	else
 		echo "# Please load the 'igb_uio' kernel module before querying or "
-		echo "# adjusting NIC device bindings"
+		echo "# adjusting device bindings"
 	fi
 }
 
 #
 # Uses dpdk-devbind.py to move devices to work with kernel drivers again
 #
-unbind_nics()
+unbind_devices()
 {
 	${RTE_SDK}/tools/dpdk-devbind.py --status
 	echo ""
@@ -525,14 +525,14 @@ step2_func()
 	TEXT[5]="Setup hugepage mappings for NUMA systems"
 	FUNC[5]="set_numa_pages"
 
-	TEXT[6]="Display current Ethernet device settings"
-	FUNC[6]="show_nics"
+	TEXT[6]="Display current Ethernet/Crypto device settings"
+	FUNC[6]="show_devices"
 
-	TEXT[7]="Bind Ethernet device to IGB UIO module"
-	FUNC[7]="bind_nics_to_igb_uio"
+	TEXT[7]="Bind Ethernet/Crypto device to IGB UIO module"
+	FUNC[7]="bind_devices_to_igb_uio"
 
-	TEXT[8]="Bind Ethernet device to VFIO module"
-	FUNC[8]="bind_nics_to_vfio"
+	TEXT[8]="Bind Ethernet/Crypto device to VFIO module"
+	FUNC[8]="bind_devices_to_vfio"
 
 	TEXT[9]="Setup VFIO permissions"
 	FUNC[9]="set_vfio_permissions"
@@ -571,8 +571,8 @@ step5_func()
 {
 	TITLE="Uninstall and system cleanup"
 
-	TEXT[1]="Unbind NICs from IGB UIO or VFIO driver"
-	FUNC[1]="unbind_nics"
+	TEXT[1]="Unbind devices from IGB UIO or VFIO driver"
+	FUNC[1]="unbind_devices"
 
 	TEXT[2]="Remove IGB UIO module"
 	FUNC[2]="remove_igb_uio_module"

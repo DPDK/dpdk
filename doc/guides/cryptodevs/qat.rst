@@ -399,3 +399,11 @@ if yours are different adjust the unbind command below::
    echo "8086 19e3" > /sys/bus/pci/drivers/igb_uio/new_id
 
 You can use ``lspci -vvd:19e3`` to confirm that all devices are now in use by igb_uio kernel driver.
+
+
+The other way to bind the VFs to the DPDK UIO driver is by using the ``dpdk-devbind.py`` script:
+
+.. code-block:: console
+
+    cd $RTE_SDK
+    ./tools/dpdk-devbind.py -b igb_uio 0000:03:01.1
