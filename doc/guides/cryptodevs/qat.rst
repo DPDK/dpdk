@@ -65,6 +65,7 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_MD5_HMAC``
 * ``RTE_CRYPTO_AUTH_NULL``
 * ``RTE_CRYPTO_AUTH_KASUMI_F9``
+* ``RTE_CRYPTO_AUTH_AES_GMAC``
 
 
 Limitations

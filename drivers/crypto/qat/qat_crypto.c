@@ -240,6 +240,31 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* AES GMAC (AUTH) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_AES_GMAC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 8,
+					.max = 16,
+					.increment = 4
+				},
+				.aad_size = {
+					.min = 1,
+					.max = 65535,
+					.increment = 1
+				}
+			}, }
+		}, }
+	},
 	{	/* SNOW3G (UIA2) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -687,6 +712,9 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_AES_GCM:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
 		break;
+	case RTE_CRYPTO_AUTH_AES_GMAC:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
+		break;
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2;
 		break;
@@ -706,7 +734,6 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_MD5:
 	case RTE_CRYPTO_AUTH_AES_CCM:
-	case RTE_CRYPTO_AUTH_AES_GMAC:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:
@@ -983,6 +1010,19 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 				qat_req->comn_hdr.serv_specif_flags,
 				ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
 		}
+		if (op->sym->cipher.data.length == 0) {
+			/*
+			 * GMAC
+			 */
+			qat_req->comn_mid.dest_data_addr =
+				qat_req->comn_mid.src_data_addr =
+					op->sym->auth.aad.phys_addr;
+			auth_param->u1.aad_adr = 0;
+			auth_param->auth_len = op->sym->auth.aad.length;
+			auth_param->u2.aad_sz = 0;
+
+		}
+
 	}
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
