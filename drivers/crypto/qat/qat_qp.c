@@ -300,7 +300,7 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 	 * Allocate a memzone for the queue - create a unique name.
 	 */
 	snprintf(queue->memz_name, sizeof(queue->memz_name), "%s_%s_%d_%d_%d",
-		dev->driver->pci_drv.name, "qp_mem", dev->data->dev_id,
+		dev->driver->pci_drv.driver.name, "qp_mem", dev->data->dev_id,
 		queue->hw_bundle_number, queue->hw_queue_number);
 	qp_mz = queue_dma_zone_reserve(queue->memz_name, queue_size_bytes,
 			socket_id);

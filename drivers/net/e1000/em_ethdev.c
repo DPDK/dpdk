@@ -391,7 +391,6 @@ eth_em_dev_uninit(struct rte_eth_dev *eth_dev)
 
 static struct eth_driver rte_em_pmd = {
 	.pci_drv = {
-		.name = "rte_em_pmd",
 		.id_table = pci_id_em_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_DETACHABLE,

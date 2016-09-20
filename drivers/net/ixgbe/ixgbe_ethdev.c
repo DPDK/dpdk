@@ -1562,7 +1562,6 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 
 static struct eth_driver rte_ixgbe_pmd = {
 	.pci_drv = {
-		.name = "rte_ixgbe_pmd",
 		.id_table = pci_id_ixgbe_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_DETACHABLE,
@@ -1579,7 +1578,6 @@ static struct eth_driver rte_ixgbe_pmd = {
  */
 static struct eth_driver rte_ixgbevf_pmd = {
 	.pci_drv = {
-		.name = "rte_ixgbevf_pmd",
 		.id_table = pci_id_ixgbevf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
 		.probe = rte_eth_dev_pci_probe,

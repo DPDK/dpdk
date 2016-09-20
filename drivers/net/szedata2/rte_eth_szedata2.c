@@ -1572,7 +1572,6 @@ static const struct rte_pci_id rte_szedata2_pci_id_table[] = {
 
 static struct eth_driver szedata2_eth_driver = {
 	.pci_drv = {
-		.name     = RTE_SZEDATA2_PCI_DRIVER_NAME,
 		.id_table = rte_szedata2_pci_id_table,
 		.probe = rte_eth_dev_pci_probe,
 		.remove = rte_eth_dev_pci_remove,

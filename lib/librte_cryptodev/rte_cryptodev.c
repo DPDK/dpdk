@@ -458,7 +458,7 @@ rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
 		return 0;
 
 	CDEV_LOG_ERR("driver %s: crypto_dev_init(vendor_id=0x%x device_id=0x%x)"
-			" failed", pci_drv->name,
+			" failed", pci_drv->driver.name,
 			(unsigned) pci_dev->id.vendor_id,
 			(unsigned) pci_dev->id.device_id);
 
@@ -869,7 +869,7 @@ rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info)
 
 	dev_info->pci_dev = dev->pci_dev;
 	if (dev->driver)
-		dev_info->driver_name = dev->driver->pci_drv.name;
+		dev_info->driver_name = dev->driver->pci_drv.driver.name;
 }
 
 

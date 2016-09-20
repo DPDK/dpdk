@@ -275,7 +275,7 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 		return 0;
 
 	RTE_PMD_DEBUG_TRACE("driver %s: eth_dev_init(vendor_id=0x%u device_id=0x%x) failed\n",
-			pci_drv->name,
+			pci_drv->driver.name,
 			(unsigned) pci_dev->id.vendor_id,
 			(unsigned) pci_dev->id.device_id);
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
@@ -2568,7 +2568,7 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	const struct rte_memzone *mz;
 
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 dev->driver->pci_drv.name, ring_name,
+		 dev->driver->pci_drv.driver.name, ring_name,
 		 dev->data->port_id, queue_id);
 
 	mz = rte_memzone_lookup(z_name);
@@ -3210,7 +3210,7 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_de
 
 	eth_dev->data->kdrv = pci_dev->kdrv;
 	eth_dev->data->numa_node = pci_dev->numa_node;
-	eth_dev->data->drv_name = pci_dev->driver->name;
+	eth_dev->data->drv_name = pci_dev->driver->driver.name;
 }
 
 int

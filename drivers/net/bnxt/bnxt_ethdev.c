@@ -1045,7 +1045,6 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 
 static struct eth_driver bnxt_rte_pmd = {
 	.pci_drv = {
-		    .name = "rte_" DRV_MODULE_NAME "_pmd",
 		    .id_table = bnxt_pci_id_map,
 		    .drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 		    .probe = rte_eth_dev_pci_probe,

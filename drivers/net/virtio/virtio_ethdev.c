@@ -1304,7 +1304,6 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 
 static struct eth_driver rte_virtio_pmd = {
 	.pci_drv = {
-		.name = "rte_virtio_pmd",
 		.id_table = pci_id_virtio_map,
 		.drv_flags = RTE_PCI_DRV_DETACHABLE,
 		.probe = rte_eth_dev_pci_probe,
@@ -1534,7 +1533,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct virtio_hw *hw = dev->data->dev_private;
 
 	if (dev->pci_dev)
-		dev_info->driver_name = dev->driver->pci_drv.name;
+		dev_info->driver_name = dev->driver->pci_drv.driver.name;
 	else
 		dev_info->driver_name = "virtio_user PMD";
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;

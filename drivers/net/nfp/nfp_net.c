@@ -214,7 +214,7 @@ ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 	const struct rte_memzone *mz;
 
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 dev->driver->pci_drv.name,
+		 dev->driver->pci_drv.driver.name,
 		 ring_name, dev->data->port_id, queue_id);
 
 	mz = rte_memzone_lookup(z_name);
@@ -1000,7 +1000,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	dev_info->driver_name = dev->driver->pci_drv.name;
+	dev_info->driver_name = dev->driver->pci_drv.driver.name;
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
 	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
@@ -2460,7 +2460,6 @@ static struct rte_pci_id pci_id_nfp_net_map[] = {
 
 static struct eth_driver rte_nfp_net_pmd = {
 	.pci_drv = {
-		.name = "rte_nfp_net_pmd",
 		.id_table = pci_id_nfp_net_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			     RTE_PCI_DRV_DETACHABLE,

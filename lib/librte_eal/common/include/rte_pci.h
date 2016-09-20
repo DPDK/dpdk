@@ -200,7 +200,7 @@ typedef int (pci_remove_t)(struct rte_pci_device *);
  */
 struct rte_pci_driver {
 	TAILQ_ENTRY(rte_pci_driver) next;       /**< Next in list. */
-	const char *name;                       /**< Driver name. */
+	struct rte_driver driver;               /**< Inherit core driver. */
 	pci_probe_t *probe;                     /**< Device Probe function. */
 	pci_remove_t *remove;                   /**< Device Remove function. */
 	const struct rte_pci_id *id_table;	/**< ID table, NULL terminated. */
@@ -492,7 +492,7 @@ void rte_eal_pci_register(struct rte_pci_driver *driver);
 RTE_INIT(pciinitfn_ ##nm); \
 static void pciinitfn_ ##nm(void) \
 {\
-	(pci_drv).name = RTE_STR(nm);\
+	(pci_drv).driver.name = RTE_STR(nm);\
 	rte_eal_pci_register(&pci_drv); \
 } \
 DRIVER_EXPORT_NAME(nm, __COUNTER__)

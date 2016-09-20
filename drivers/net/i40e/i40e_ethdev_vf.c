@@ -1554,7 +1554,6 @@ i40evf_dev_uninit(struct rte_eth_dev *eth_dev)
  */
 static struct eth_driver rte_i40evf_pmd = {
 	.pci_drv = {
-		.name = "rte_i40evf_pmd",
 		.id_table = pci_id_i40evf_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
 		.probe = rte_eth_dev_pci_probe,

@@ -663,7 +663,6 @@ static const struct rte_i40e_xstats_name_off rte_i40e_txq_prio_strings[] = {
 
 static struct eth_driver rte_i40e_pmd = {
 	.pci_drv = {
-		.name = "rte_i40e_pmd",
 		.id_table = pci_id_i40e_map,
 		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_DETACHABLE,
