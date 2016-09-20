@@ -384,6 +384,8 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint16_t start_idx = vq->last_used_idx;
 	uint16_t cur_idx = start_idx;
 	uint64_t desc_addr;
+	uint32_t desc_chain_head;
+	uint32_t desc_chain_len;
 	uint32_t mbuf_offset, mbuf_avail;
 	uint32_t desc_offset, desc_avail;
 	uint32_t cpy_len;
@@ -412,6 +414,8 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	desc_avail  = buf_vec[vec_idx].buf_len - dev->vhost_hlen;
 	desc_offset = dev->vhost_hlen;
+	desc_chain_head = buf_vec[vec_idx].desc_idx;
+	desc_chain_len = desc_offset;
 
 	mbuf_avail  = rte_pktmbuf_data_len(m);
 	mbuf_offset = 0;
@@ -419,19 +423,21 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		/* done with current desc buf, get the next one */
 		if (desc_avail == 0) {
 			desc_idx = buf_vec[vec_idx].desc_idx;
+			vec_idx++;
 
 			if (!(vq->desc[desc_idx].flags & VRING_DESC_F_NEXT)) {
 				/* Update used ring with desc information */
 				used_idx = cur_idx++ & (vq->size - 1);
-				vq->used->ring[used_idx].id  = desc_idx;
-				vq->used->ring[used_idx].len = desc_offset;
+				vq->used->ring[used_idx].id = desc_chain_head;
+				vq->used->ring[used_idx].len = desc_chain_len;
 				vhost_log_used_vring(dev, vq,
 					offsetof(struct vring_used,
 						 ring[used_idx]),
 					sizeof(vq->used->ring[used_idx]));
+				desc_chain_head = buf_vec[vec_idx].desc_idx;
+				desc_chain_len = 0;
 			}
 
-			vec_idx++;
 			desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
 			if (unlikely(!desc_addr))
 				return 0;
@@ -463,11 +469,12 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		mbuf_offset += cpy_len;
 		desc_avail  -= cpy_len;
 		desc_offset += cpy_len;
+		desc_chain_len += cpy_len;
 	}
 
 	used_idx = cur_idx & (vq->size - 1);
-	vq->used->ring[used_idx].id = buf_vec[vec_idx].desc_idx;
-	vq->used->ring[used_idx].len = desc_offset;
+	vq->used->ring[used_idx].id = desc_chain_head;
+	vq->used->ring[used_idx].len = desc_chain_len;
 	vhost_log_used_vring(dev, vq,
 		offsetof(struct vring_used, ring[used_idx]),
 		sizeof(vq->used->ring[used_idx]));
