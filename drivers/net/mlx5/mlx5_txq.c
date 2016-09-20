@@ -101,7 +101,7 @@ txq_alloc_elts(struct txq_ctrl *txq_ctrl, unsigned int elts_n)
 static void
 txq_free_elts(struct txq_ctrl *txq_ctrl)
 {
-	unsigned int elts_n = txq_ctrl->txq.elts_n;
+	unsigned int elts_n = 1 << txq_ctrl->txq.elts_n;
 	unsigned int elts_head = txq_ctrl->txq.elts_head;
 	unsigned int elts_tail = txq_ctrl->txq.elts_tail;
 	struct rte_mbuf *(*elts)[elts_n] = txq_ctrl->txq.elts;
@@ -227,7 +227,7 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
 		(volatile struct mlx5_cqe (*)[])
 		(uintptr_t)cq->active_buf->buf;
 	tmpl->txq.elts =
-		(struct rte_mbuf *(*)[tmpl->txq.elts_n])
+		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])
 		((uintptr_t)txq_ctrl + sizeof(*txq_ctrl));
 	return 0;
 }
@@ -277,7 +277,7 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 	}
 	(void)conf; /* Thresholds configuration (ignored). */
 	assert(desc > MLX5_TX_COMP_THRESH);
-	tmpl.txq.elts_n = desc;
+	tmpl.txq.elts_n = log2above(desc);
 	/* MRs will be registered in mp2mr[] later. */
 	attr.rd = (struct ibv_exp_res_domain_init_attr){
 		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |

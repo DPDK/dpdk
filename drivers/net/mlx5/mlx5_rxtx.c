@@ -166,8 +166,8 @@ txq_complete(struct txq *txq) __attribute__((always_inline));
 static inline void
 txq_complete(struct txq *txq)
 {
-	const unsigned int elts_n = txq->elts_n;
 	const unsigned int cqe_n = txq->cqe_n;
+	const unsigned int elts_n = 1 << txq->elts_n;
 	const unsigned int cqe_cnt = cqe_n - 1;
 	uint16_t elts_free = txq->elts_tail;
 	uint16_t elts_tail;
@@ -468,7 +468,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
-	const unsigned int elts_n = txq->elts_n;
+	const unsigned int elts_n = 1 << txq->elts_n;
 	unsigned int i = 0;
 	unsigned int j = 0;
 	unsigned int max;
@@ -680,7 +680,7 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
-	const unsigned int elts_n = txq->elts_n;
+	const unsigned int elts_n = 1 << txq->elts_n;
 	unsigned int i = 0;
 	unsigned int j = 0;
 	unsigned int max;
@@ -884,7 +884,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
-	const unsigned int elts_n = txq->elts_n;
+	const unsigned int elts_n = 1 << txq->elts_n;
 	unsigned int i = 0;
 	unsigned int j = 0;
 	unsigned int max;
@@ -1272,8 +1272,8 @@ uint16_t
 mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct rxq *rxq = dpdk_rxq;
-	const unsigned int wqe_cnt = rxq->elts_n - 1;
 	const unsigned int cqe_cnt = rxq->cqe_n - 1;
+	const unsigned int wqe_cnt = (1 << rxq->elts_n) - 1;
 	const unsigned int sges_n = rxq->sges_n;
 	struct rte_mbuf *pkt = NULL;
 	struct rte_mbuf *seg = NULL;

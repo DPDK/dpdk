@@ -808,7 +808,7 @@ recover:
 		if (rehash)
 			ret = rxq_rehash(dev, rxq_ctrl);
 		else
-			ret = rxq_ctrl_setup(dev, rxq_ctrl, rxq->elts_n,
+			ret = rxq_ctrl_setup(dev, rxq_ctrl, 1 << rxq->elts_n,
 					     rxq_ctrl->socket, NULL, rxq->mp);
 		if (!ret)
 			continue;
@@ -1314,7 +1314,7 @@ mlx5_secondary_data_setup(struct priv *priv)
 		if (txq_ctrl != NULL) {
 			if (txq_ctrl_setup(priv->dev,
 					   primary_txq_ctrl,
-					   primary_txq->elts_n,
+					   1 << primary_txq->elts_n,
 					   primary_txq_ctrl->socket,
 					   NULL) == 0) {
 				txq_ctrl->txq.stats.idx =
