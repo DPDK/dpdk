@@ -1624,16 +1624,10 @@ rte_pmd_mpipe_devinit(const char *ifname,
 }
 
 static struct rte_vdev_driver pmd_mpipe_xgbe_drv = {
-	.driver = {
-		.type = PMD_VDEV,
-	},
 	.init = rte_pmd_mpipe_devinit,
 };
 
 static struct rte_vdev_driver pmd_mpipe_gbe_drv = {
-	.driver = {
-		.type = PMD_VDEV,
-	},
 	.init = rte_pmd_mpipe_devinit,
 };
 

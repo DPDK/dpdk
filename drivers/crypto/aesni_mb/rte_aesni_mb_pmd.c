@@ -715,9 +715,6 @@ cryptodev_aesni_mb_uninit(const char *name)
 }
 
 static struct rte_vdev_driver cryptodev_aesni_mb_pmd_drv = {
-	.driver = {
-		.type = PMD_VDEV,
-	},
 	.init = cryptodev_aesni_mb_init,
 	.uninit = cryptodev_aesni_mb_uninit
 };

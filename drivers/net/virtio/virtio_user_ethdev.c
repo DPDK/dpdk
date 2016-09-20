@@ -463,9 +463,6 @@ virtio_user_pmd_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver virtio_user_driver = {
-	.driver = {
-		.type   = PMD_VDEV,
-	},
 	.init   = virtio_user_pmd_devinit,
 	.uninit = virtio_user_pmd_devuninit,
 };

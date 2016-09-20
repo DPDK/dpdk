@@ -651,9 +651,6 @@ cryptodev_kasumi_uninit(const char *name)
 }
 
 static struct rte_vdev_driver cryptodev_kasumi_pmd_drv = {
-	.driver = {
-		.type = PMD_VDEV,
-	},
 	.init = cryptodev_kasumi_init,
 	.uninit = cryptodev_kasumi_uninit
 };

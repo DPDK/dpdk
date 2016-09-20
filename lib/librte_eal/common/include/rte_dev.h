@@ -105,19 +105,10 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
 TAILQ_HEAD(rte_driver_list, rte_driver);
 
 /**
- * Driver type enumeration
- */
-enum pmd_type {
-	PMD_VDEV = 0,
-	PMD_PDEV = 1,
-};
-
-/**
  * A structure describing a device driver.
  */
 struct rte_driver {
 	TAILQ_ENTRY(rte_driver) next;  /**< Next in list. */
-	enum pmd_type type;		   /**< PMD Driver type */
 	const char *name;                   /**< Driver name. */
 };
 
@@ -197,15 +188,6 @@ int rte_eal_dev_detach(const char *name);
 #define DRIVER_EXPORT_NAME(name, idx) \
 static const char DRIVER_EXPORT_NAME_ARRAY(this_pmd_name, idx) \
 __attribute__((used)) = RTE_STR(name)
-
-#define PMD_REGISTER_DRIVER(drv, nm)\
-RTE_INIT(probefn_ ##drv);\
-static void probefn_ ##drv(void)\
-{\
-	(drv).name = RTE_STR(nm);\
-	rte_eal_driver_register(&drv);\
-} \
-DRIVER_EXPORT_NAME(nm, __COUNTER__)
 
 #define DRV_EXP_TAG(name, tag) __##name##_##tag
 

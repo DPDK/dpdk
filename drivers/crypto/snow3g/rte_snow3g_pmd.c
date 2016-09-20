@@ -639,9 +639,6 @@ cryptodev_snow3g_uninit(const char *name)
 }
 
 static struct rte_vdev_driver cryptodev_snow3g_pmd_drv = {
-	.driver = {
-		.type = PMD_VDEV,
-	},
 	.init = cryptodev_snow3g_init,
 	.uninit = cryptodev_snow3g_uninit
 };
