@@ -111,6 +111,37 @@ struct rte_mem_resource {
 
 /** Double linked list of device drivers. */
 TAILQ_HEAD(rte_driver_list, rte_driver);
+/** Double linked list of devices. */
+TAILQ_HEAD(rte_device_list, rte_device);
+
+/* Forward declaration */
+struct rte_driver;
+
+/**
+ * A structure describing a generic device.
+ */
+struct rte_device {
+	TAILQ_ENTRY(rte_device) next; /**< Next device */
+	struct rte_driver *driver;    /**< Associated driver */
+	int numa_node;                /**< NUMA node connection */
+	struct rte_devargs *devargs;  /**< Device user arguments */
+};
+
+/**
+ * Insert a device detected by a bus scanning.
+ *
+ * @param dev
+ *   A pointer to a rte_device structure describing the detected device.
+ */
+void rte_eal_device_insert(struct rte_device *dev);
+
+/**
+ * Remove a device (e.g. when being unplugged).
+ *
+ * @param dev
+ *   A pointer to a rte_device structure describing the device to be removed.
+ */
+void rte_eal_device_remove(struct rte_device *dev);
 
 /**
  * A structure describing a device driver.

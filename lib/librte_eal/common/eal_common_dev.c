@@ -48,6 +48,9 @@
 /** Global list of device drivers. */
 static struct rte_driver_list dev_driver_list =
 	TAILQ_HEAD_INITIALIZER(dev_driver_list);
+/** Global list of device drivers. */
+static struct rte_device_list dev_device_list =
+	TAILQ_HEAD_INITIALIZER(dev_device_list);
 
 /* register a driver */
 void
@@ -61,6 +64,16 @@ void
 rte_eal_driver_unregister(struct rte_driver *driver)
 {
 	TAILQ_REMOVE(&dev_driver_list, driver, next);
+}
+
+void rte_eal_device_insert(struct rte_device *dev)
+{
+	TAILQ_INSERT_TAIL(&dev_device_list, dev, next);
+}
+
+void rte_eal_device_remove(struct rte_device *dev)
+{
+	TAILQ_REMOVE(&dev_device_list, dev, next);
 }
 
 int
