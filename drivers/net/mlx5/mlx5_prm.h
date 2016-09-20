@@ -65,8 +65,15 @@
 /* Maximum number of packets a multi-packet WQE can handle. */
 #define MLX5_MPW_DSEG_MAX 5
 
-/* Room for inline data in regular work queue element. */
-#define MLX5_WQE64_INL_DATA 12
+/* WQE DWORD size */
+#define MLX5_WQE_DWORD_SIZE 16
+
+/* WQE size */
+#define MLX5_WQE_SIZE (4 * MLX5_WQE_DWORD_SIZE)
+
+/* Compute the number of DS. */
+#define MLX5_WQE_DS(n) \
+	(((n) + MLX5_WQE_DWORD_SIZE - 1) / MLX5_WQE_DWORD_SIZE)
 
 /* Room for inline data in multi-packet WQE. */
 #define MLX5_MWQE64_INL_DATA 28
@@ -79,58 +86,25 @@ struct mlx5_wqe_eth_seg_small {
 	uint16_t mss;
 	uint32_t rsvd2;
 	uint16_t inline_hdr_sz;
+	uint8_t inline_hdr[2];
 };
 
-/* Regular WQE. */
-struct mlx5_wqe_regular {
-	union {
-		struct mlx5_wqe_ctrl_seg ctrl;
-		uint32_t data[4];
-	} ctrl;
-	struct mlx5_wqe_eth_seg eseg;
-	struct mlx5_wqe_data_seg dseg;
-} __rte_aligned(64);
-
-/* Inline WQE. */
-struct mlx5_wqe_inl {
-	union {
-		struct mlx5_wqe_ctrl_seg ctrl;
-		uint32_t data[4];
-	} ctrl;
-	struct mlx5_wqe_eth_seg eseg;
+struct mlx5_wqe_inl_small {
 	uint32_t byte_cnt;
-	uint8_t data[MLX5_WQE64_INL_DATA];
-} __rte_aligned(64);
-
-/* Multi-packet WQE. */
-struct mlx5_wqe_mpw {
-	union {
-		struct mlx5_wqe_ctrl_seg ctrl;
-		uint32_t data[4];
-	} ctrl;
-	struct mlx5_wqe_eth_seg_small eseg;
-	struct mlx5_wqe_data_seg dseg[2];
-} __rte_aligned(64);
-
-/* Multi-packet WQE with inline. */
-struct mlx5_wqe_mpw_inl {
-	union {
-		struct mlx5_wqe_ctrl_seg ctrl;
-		uint32_t data[4];
-	} ctrl;
-	struct mlx5_wqe_eth_seg_small eseg;
-	uint32_t byte_cnt;
-	uint8_t data[MLX5_MWQE64_INL_DATA];
-} __rte_aligned(64);
-
-/* Union of all WQE types. */
-union mlx5_wqe {
-	struct mlx5_wqe_regular wqe;
-	struct mlx5_wqe_inl inl;
-	struct mlx5_wqe_mpw mpw;
-	struct mlx5_wqe_mpw_inl mpw_inl;
-	uint8_t data[64];
+	uint8_t raw;
 };
+
+/* Small common part of the WQE. */
+struct mlx5_wqe {
+	uint32_t ctrl[4];
+	struct mlx5_wqe_eth_seg_small eseg;
+};
+
+/* WQE. */
+struct mlx5_wqe64 {
+	struct mlx5_wqe hdr;
+	uint8_t raw[32];
+} __rte_aligned(64);
 
 /* MPW session status. */
 enum mlx5_mpw_state {
@@ -145,7 +119,7 @@ struct mlx5_mpw {
 	unsigned int pkts_n;
 	unsigned int len;
 	unsigned int total_len;
-	volatile union mlx5_wqe *wqe;
+	volatile struct mlx5_wqe *wqe;
 	union {
 		volatile struct mlx5_wqe_data_seg *dseg[MLX5_MPW_DSEG_MAX];
 		volatile uint8_t *raw;

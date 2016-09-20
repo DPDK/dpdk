@@ -252,7 +252,7 @@ struct txq {
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
-	volatile union mlx5_wqe (*wqes)[]; /* Work queue. */
+	volatile struct mlx5_wqe64 (*wqes)[]; /* Work queue. */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
 	volatile void *bf_reg; /* Blueflame register. */

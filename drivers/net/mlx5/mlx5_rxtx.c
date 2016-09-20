@@ -173,7 +173,7 @@ txq_complete(struct txq *txq)
 	uint16_t elts_tail;
 	uint16_t cq_ci = txq->cq_ci;
 	volatile struct mlx5_cqe64 *cqe = NULL;
-	volatile union mlx5_wqe *wqe;
+	volatile struct mlx5_wqe *wqe;
 
 	do {
 		volatile struct mlx5_cqe64 *tmp;
@@ -199,8 +199,8 @@ txq_complete(struct txq *txq)
 	} while (1);
 	if (unlikely(cqe == NULL))
 		return;
-	wqe = &(*txq->wqes)[htons(cqe->wqe_counter) & (txq->wqe_n - 1)];
-	elts_tail = wqe->wqe.ctrl.data[3];
+	wqe = &(*txq->wqes)[htons(cqe->wqe_counter) & (txq->wqe_n - 1)].hdr;
+	elts_tail = wqe->ctrl[3];
 	assert(elts_tail < txq->wqe_n);
 	/* Free buffers. */
 	while (elts_free != elts_tail) {
@@ -302,33 +302,33 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
  *   Number of DS elements consumed.
  */
 static inline unsigned int
-mlx5_wqe_write(struct txq *txq, volatile union mlx5_wqe *wqe,
+mlx5_wqe_write(struct txq *txq, volatile struct mlx5_wqe *wqe,
 	       struct rte_mbuf *buf, uint32_t length)
 {
-	uintptr_t raw = (uintptr_t)&wqe->wqe.eseg.inline_hdr_start;
+	uint8_t *raw = (uint8_t *)(uintptr_t)&wqe->eseg.inline_hdr[0];
 	uint16_t ds;
-	uint16_t pkt_inline_sz = 16;
+	uint16_t pkt_inline_sz = MLX5_WQE_DWORD_SIZE;
 	uintptr_t addr = rte_pktmbuf_mtod(buf, uintptr_t);
 	struct mlx5_wqe_data_seg *dseg = NULL;
 
-	assert(length >= 16);
+	assert(length >= MLX5_WQE_DWORD_SIZE);
 	/* Start the know and common part of the WQE structure. */
-	wqe->wqe.ctrl.data[0] = htonl((txq->wqe_ci << 8) | MLX5_OPCODE_SEND);
-	wqe->wqe.ctrl.data[2] = 0;
-	wqe->wqe.ctrl.data[3] = 0;
-	wqe->wqe.eseg.rsvd0 = 0;
-	wqe->wqe.eseg.rsvd1 = 0;
-	wqe->wqe.eseg.mss = 0;
-	wqe->wqe.eseg.rsvd2 = 0;
+	wqe->ctrl[0] = htonl((txq->wqe_ci << 8) | MLX5_OPCODE_SEND);
+	wqe->ctrl[2] = 0;
+	wqe->ctrl[3] = 0;
+	wqe->eseg.rsvd0 = 0;
+	wqe->eseg.rsvd1 = 0;
+	wqe->eseg.mss = 0;
+	wqe->eseg.rsvd2 = 0;
 	/* Start by copying the Ethernet Header. */
 	rte_mov16((uint8_t *)raw, (uint8_t *)addr);
-	length -= 16;
-	addr += 16;
+	length -= MLX5_WQE_DWORD_SIZE;
+	addr += MLX5_WQE_DWORD_SIZE;
 	/* Replace the Ethernet type by the VLAN if necessary. */
 	if (buf->ol_flags & PKT_TX_VLAN_PKT) {
 		uint32_t vlan = htonl(0x81000000 | buf->vlan_tci);
 
-		memcpy((uint8_t *)(raw + 16 - sizeof(vlan)),
+		memcpy((uint8_t *)(raw + MLX5_WQE_DWORD_SIZE - sizeof(vlan)),
 		       &vlan, sizeof(vlan));
 		addr -= sizeof(vlan);
 		length += sizeof(vlan);
@@ -339,7 +339,7 @@ mlx5_wqe_write(struct txq *txq, volatile union mlx5_wqe *wqe,
 		uint16_t max_inline = txq->max_inline * RTE_CACHE_LINE_SIZE;
 		uint16_t room;
 
-		raw += 16;
+		raw += MLX5_WQE_DWORD_SIZE;
 		room = end - (uintptr_t)raw;
 		if (room > max_inline) {
 			uintptr_t addr_end = (addr + max_inline) &
@@ -356,15 +356,15 @@ mlx5_wqe_write(struct txq *txq, volatile union mlx5_wqe *wqe,
 			assert(addr <= addr_end);
 		}
 		/* Store the inlined packet size in the WQE. */
-		wqe->wqe.eseg.inline_hdr_sz = htons(pkt_inline_sz);
+		wqe->eseg.inline_hdr_sz = htons(pkt_inline_sz);
 		/*
 		 * 2 DWORDs consumed by the WQE header + 1 DSEG +
 		 * the size of the inline part of the packet.
 		 */
-		ds = 2 + ((pkt_inline_sz - 2 + 15) / 16);
+		ds = 2 + MLX5_WQE_DS(pkt_inline_sz - 2);
 		if (length > 0) {
 			dseg = (struct mlx5_wqe_data_seg *)
-				((uintptr_t)wqe + (ds * 16));
+				((uintptr_t)wqe + (ds * MLX5_WQE_DWORD_SIZE));
 			if ((uintptr_t)dseg >= end)
 				dseg = (struct mlx5_wqe_data_seg *)
 					((uintptr_t)&(*txq->wqes)[0]);
@@ -377,9 +377,9 @@ mlx5_wqe_write(struct txq *txq, volatile union mlx5_wqe *wqe,
 		 * No inline has been done in the packet, only the Ethernet
 		 * Header as been stored.
 		 */
-		wqe->wqe.eseg.inline_hdr_sz = htons(16);
+		wqe->eseg.inline_hdr_sz = htons(MLX5_WQE_DWORD_SIZE);
 		dseg = (struct mlx5_wqe_data_seg *)
-			((uintptr_t)wqe + (ds * 16));
+			((uintptr_t)wqe + (ds * MLX5_WQE_DWORD_SIZE));
 use_dseg:
 		*dseg = (struct mlx5_wqe_data_seg) {
 			.addr = htonll(addr),
@@ -388,7 +388,7 @@ use_dseg:
 		};
 		++ds;
 	}
-	wqe->wqe.ctrl.data[1] = htonl(txq->qp_num_8s | ds);
+	wqe->ctrl[1] = htonl(txq->qp_num_8s | ds);
 	return ds;
 }
 
@@ -444,7 +444,7 @@ tx_prefetch_cqe(struct txq *txq, uint16_t ci)
 static inline void
 tx_prefetch_wqe(struct txq *txq, uint16_t ci)
 {
-	volatile union mlx5_wqe *wqe;
+	volatile struct mlx5_wqe64 *wqe;
 
 	wqe = &(*txq->wqes)[ci & (txq->wqe_n - 1)];
 	rte_prefetch0(wqe);
@@ -473,7 +473,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int j = 0;
 	unsigned int max;
 	unsigned int comp;
-	volatile union mlx5_wqe *wqe = NULL;
+	volatile struct mlx5_wqe *wqe = NULL;
 
 	if (unlikely(!pkts_n))
 		return 0;
@@ -492,7 +492,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint32_t length;
 		unsigned int segs_n = buf->nb_segs;
 		volatile struct mlx5_wqe_data_seg *dseg;
-		unsigned int ds = sizeof(*wqe) / 16;
+		unsigned int ds = 0;
 
 		/*
 		 * Make sure there is enough room to store this packet and
@@ -504,7 +504,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		max -= segs_n;
 		--pkts_n;
 		elts_head_next = (elts_head + 1) & (elts_n - 1);
-		wqe = &(*txq->wqes)[txq->wqe_ci & (txq->wqe_n - 1)];
+		wqe = &(*txq->wqes)[txq->wqe_ci & (txq->wqe_n - 1)].hdr;
 		tx_prefetch_wqe(txq, txq->wqe_ci);
 		tx_prefetch_wqe(txq, txq->wqe_ci + 1);
 		if (pkts_n)
@@ -519,25 +519,25 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
 		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
-			wqe->wqe.eseg.cs_flags =
+			wqe->eseg.cs_flags =
 				MLX5_ETH_WQE_L3_CSUM |
 				MLX5_ETH_WQE_L4_CSUM;
 		} else {
-			wqe->wqe.eseg.cs_flags = 0;
+			wqe->eseg.cs_flags = 0;
 		}
 		ds = mlx5_wqe_write(txq, wqe, buf, length);
 		if (segs_n == 1)
 			goto skip_segs;
 		dseg = (volatile struct mlx5_wqe_data_seg *)
-			(((uintptr_t)wqe) + ds * 16);
+			(((uintptr_t)wqe) + ds * MLX5_WQE_DWORD_SIZE);
 		while (--segs_n) {
 			/*
 			 * Spill on next WQE when the current one does not have
 			 * enough room left. Size of WQE must a be a multiple
 			 * of data segment size.
 			 */
-			assert(!(sizeof(*wqe) % sizeof(*dseg)));
-			if (!(ds % (sizeof(*wqe) / 16)))
+			assert(!(MLX5_WQE_SIZE % MLX5_WQE_DWORD_SIZE));
+			if (!(ds % (MLX5_WQE_SIZE / MLX5_WQE_DWORD_SIZE)))
 				dseg = (volatile void *)
 					&(*txq->wqes)[txq->wqe_ci++ &
 						      (txq->wqe_n - 1)];
@@ -558,8 +558,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			++j;
 		}
 		/* Update DS field in WQE. */
-		wqe->wqe.ctrl.data[1] &= htonl(0xffffffc0);
-		wqe->wqe.ctrl.data[1] |= htonl(ds & 0x3f);
+		wqe->ctrl[1] &= htonl(0xffffffc0);
+		wqe->ctrl[1] |= htonl(ds & 0x3f);
 skip_segs:
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
@@ -577,9 +577,9 @@ skip_segs:
 	comp = txq->elts_comp + i + j;
 	if (comp >= MLX5_TX_COMP_THRESH) {
 		/* Request completion on last WQE. */
-		wqe->wqe.ctrl.data[2] = htonl(8);
+		wqe->ctrl[2] = htonl(8);
 		/* Save elts_head in unused "immediate" field of WQE. */
-		wqe->wqe.ctrl.data[3] = elts_head;
+		wqe->ctrl[3] = elts_head;
 		txq->elts_comp = 0;
 	} else {
 		txq->elts_comp = comp;
@@ -616,19 +616,20 @@ mlx5_mpw_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
 	mpw->pkts_n = 0;
 	mpw->len = length;
 	mpw->total_len = 0;
-	mpw->wqe = &(*txq->wqes)[idx];
-	mpw->wqe->mpw.eseg.mss = htons(length);
-	mpw->wqe->mpw.eseg.inline_hdr_sz = 0;
-	mpw->wqe->mpw.eseg.rsvd0 = 0;
-	mpw->wqe->mpw.eseg.rsvd1 = 0;
-	mpw->wqe->mpw.eseg.rsvd2 = 0;
-	mpw->wqe->mpw.ctrl.data[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
-					   (txq->wqe_ci << 8) |
-					   MLX5_OPCODE_LSO_MPW);
-	mpw->wqe->mpw.ctrl.data[2] = 0;
-	mpw->wqe->mpw.ctrl.data[3] = 0;
-	mpw->data.dseg[0] = &mpw->wqe->mpw.dseg[0];
-	mpw->data.dseg[1] = &mpw->wqe->mpw.dseg[1];
+	mpw->wqe = (volatile struct mlx5_wqe *)&(*txq->wqes)[idx].hdr;
+	mpw->wqe->eseg.mss = htons(length);
+	mpw->wqe->eseg.inline_hdr_sz = 0;
+	mpw->wqe->eseg.rsvd0 = 0;
+	mpw->wqe->eseg.rsvd1 = 0;
+	mpw->wqe->eseg.rsvd2 = 0;
+	mpw->wqe->ctrl[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
+				  (txq->wqe_ci << 8) | MLX5_OPCODE_LSO_MPW);
+	mpw->wqe->ctrl[2] = 0;
+	mpw->wqe->ctrl[3] = 0;
+	mpw->data.dseg[0] = (volatile struct mlx5_wqe_data_seg *)
+		(((uintptr_t)mpw->wqe) + (2 * MLX5_WQE_DWORD_SIZE));
+	mpw->data.dseg[1] = (volatile struct mlx5_wqe_data_seg *)
+		(((uintptr_t)mpw->wqe) + (3 * MLX5_WQE_DWORD_SIZE));
 	mpw->data.dseg[2] = &(*dseg)[0];
 	mpw->data.dseg[3] = &(*dseg)[1];
 	mpw->data.dseg[4] = &(*dseg)[2];
@@ -651,7 +652,7 @@ mlx5_mpw_close(struct txq *txq, struct mlx5_mpw *mpw)
 	 * Store size in multiple of 16 bytes. Control and Ethernet segments
 	 * count as 2.
 	 */
-	mpw->wqe->mpw.ctrl.data[1] = htonl(txq->qp_num_8s | (2 + num));
+	mpw->wqe->ctrl[1] = htonl(txq->qp_num_8s | (2 + num));
 	mpw->state = MLX5_MPW_STATE_CLOSED;
 	if (num < 3)
 		++txq->wqe_ci;
@@ -729,11 +730,11 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if ((mpw.state == MLX5_MPW_STATE_OPENED) &&
 		    ((mpw.len != length) ||
 		     (segs_n != 1) ||
-		     (mpw.wqe->mpw.eseg.cs_flags != cs_flags)))
+		     (mpw.wqe->eseg.cs_flags != cs_flags)))
 			mlx5_mpw_close(txq, &mpw);
 		if (mpw.state == MLX5_MPW_STATE_CLOSED) {
 			mlx5_mpw_new(txq, &mpw, length);
-			mpw.wqe->mpw.eseg.cs_flags = cs_flags;
+			mpw.wqe->eseg.cs_flags = cs_flags;
 		}
 		/* Multi-segment packets must be alone in their MPW. */
 		assert((segs_n == 1) || (mpw.pkts_n == 0));
@@ -779,12 +780,12 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	/* "j" includes both packets and segments. */
 	comp = txq->elts_comp + j;
 	if (comp >= MLX5_TX_COMP_THRESH) {
-		volatile union mlx5_wqe *wqe = mpw.wqe;
+		volatile struct mlx5_wqe *wqe = mpw.wqe;
 
 		/* Request completion on last WQE. */
-		wqe->mpw.ctrl.data[2] = htonl(8);
+		wqe->ctrl[2] = htonl(8);
 		/* Save elts_head in unused "immediate" field of WQE. */
-		wqe->mpw.ctrl.data[3] = elts_head;
+		wqe->ctrl[3] = elts_head;
 		txq->elts_comp = 0;
 	} else {
 		txq->elts_comp = comp;
@@ -815,24 +816,27 @@ static inline void
 mlx5_mpw_inline_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
 {
 	uint16_t idx = txq->wqe_ci & (txq->wqe_n - 1);
+	struct mlx5_wqe_inl_small *inl;
 
 	mpw->state = MLX5_MPW_INL_STATE_OPENED;
 	mpw->pkts_n = 0;
 	mpw->len = length;
 	mpw->total_len = 0;
-	mpw->wqe = &(*txq->wqes)[idx];
-	mpw->wqe->mpw_inl.ctrl.data[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
-					       (txq->wqe_ci << 8) |
-					       MLX5_OPCODE_LSO_MPW);
-	mpw->wqe->mpw_inl.ctrl.data[2] = 0;
-	mpw->wqe->mpw_inl.ctrl.data[3] = 0;
-	mpw->wqe->mpw_inl.eseg.mss = htons(length);
-	mpw->wqe->mpw_inl.eseg.inline_hdr_sz = 0;
-	mpw->wqe->mpw_inl.eseg.cs_flags = 0;
-	mpw->wqe->mpw_inl.eseg.rsvd0 = 0;
-	mpw->wqe->mpw_inl.eseg.rsvd1 = 0;
-	mpw->wqe->mpw_inl.eseg.rsvd2 = 0;
-	mpw->data.raw = &mpw->wqe->mpw_inl.data[0];
+	mpw->wqe = (volatile struct mlx5_wqe *)&(*txq->wqes)[idx].hdr;
+	mpw->wqe->ctrl[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
+				  (txq->wqe_ci << 8) |
+				  MLX5_OPCODE_LSO_MPW);
+	mpw->wqe->ctrl[2] = 0;
+	mpw->wqe->ctrl[3] = 0;
+	mpw->wqe->eseg.mss = htons(length);
+	mpw->wqe->eseg.inline_hdr_sz = 0;
+	mpw->wqe->eseg.cs_flags = 0;
+	mpw->wqe->eseg.rsvd0 = 0;
+	mpw->wqe->eseg.rsvd1 = 0;
+	mpw->wqe->eseg.rsvd2 = 0;
+	inl = (struct mlx5_wqe_inl_small *)
+		(((uintptr_t)mpw->wqe) + 2 * MLX5_WQE_DWORD_SIZE);
+	mpw->data.raw = (uint8_t *)&inl->raw;
 }
 
 /**
@@ -847,17 +851,18 @@ static inline void
 mlx5_mpw_inline_close(struct txq *txq, struct mlx5_mpw *mpw)
 {
 	unsigned int size;
+	struct mlx5_wqe_inl_small *inl = (struct mlx5_wqe_inl_small *)
+		(((uintptr_t)mpw->wqe) + (2 * MLX5_WQE_DWORD_SIZE));
 
-	size = sizeof(*mpw->wqe) - MLX5_MWQE64_INL_DATA + mpw->total_len;
+	size = MLX5_WQE_SIZE - MLX5_MWQE64_INL_DATA + mpw->total_len;
 	/*
 	 * Store size in multiple of 16 bytes. Control and Ethernet segments
 	 * count as 2.
 	 */
-	mpw->wqe->mpw_inl.ctrl.data[1] =
-		htonl(txq->qp_num_8s | ((size + 15) / 16));
+	mpw->wqe->ctrl[1] = htonl(txq->qp_num_8s | MLX5_WQE_DS(size));
 	mpw->state = MLX5_MPW_STATE_CLOSED;
-	mpw->wqe->mpw_inl.byte_cnt = htonl(mpw->total_len | MLX5_INLINE_SEG);
-	txq->wqe_ci += (size + (sizeof(*mpw->wqe) - 1)) / sizeof(*mpw->wqe);
+	inl->byte_cnt = htonl(mpw->total_len | MLX5_INLINE_SEG);
+	txq->wqe_ci += (size + (MLX5_WQE_SIZE - 1)) / MLX5_WQE_SIZE;
 }
 
 /**
@@ -930,13 +935,13 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		if (mpw.state == MLX5_MPW_STATE_OPENED) {
 			if ((mpw.len != length) ||
 			    (segs_n != 1) ||
-			    (mpw.wqe->mpw.eseg.cs_flags != cs_flags))
+			    (mpw.wqe->eseg.cs_flags != cs_flags))
 				mlx5_mpw_close(txq, &mpw);
 		} else if (mpw.state == MLX5_MPW_INL_STATE_OPENED) {
 			if ((mpw.len != length) ||
 			    (segs_n != 1) ||
 			    (length > inline_room) ||
-			    (mpw.wqe->mpw_inl.eseg.cs_flags != cs_flags)) {
+			    (mpw.wqe->eseg.cs_flags != cs_flags)) {
 				mlx5_mpw_inline_close(txq, &mpw);
 				inline_room =
 					txq->max_inline * RTE_CACHE_LINE_SIZE;
@@ -946,10 +951,10 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 			if ((segs_n != 1) ||
 			    (length > inline_room)) {
 				mlx5_mpw_new(txq, &mpw, length);
-				mpw.wqe->mpw.eseg.cs_flags = cs_flags;
+				mpw.wqe->eseg.cs_flags = cs_flags;
 			} else {
 				mlx5_mpw_inline_new(txq, &mpw, length);
-				mpw.wqe->mpw_inl.eseg.cs_flags = cs_flags;
+				mpw.wqe->eseg.cs_flags = cs_flags;
 			}
 		}
 		/* Multi-segment packets must be alone in their MPW. */
@@ -1042,12 +1047,12 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 	/* "j" includes both packets and segments. */
 	comp = txq->elts_comp + j;
 	if (comp >= MLX5_TX_COMP_THRESH) {
-		volatile union mlx5_wqe *wqe = mpw.wqe;
+		volatile struct mlx5_wqe *wqe = mpw.wqe;
 
 		/* Request completion on last WQE. */
-		wqe->mpw_inl.ctrl.data[2] = htonl(8);
+		wqe->ctrl[2] = htonl(8);
 		/* Save elts_head in unused "immediate" field of WQE. */
-		wqe->mpw_inl.ctrl.data[3] = elts_head;
+		wqe->ctrl[3] = elts_head;
 		txq->elts_comp = 0;
 	} else {
 		txq->elts_comp = comp;
