@@ -39,3 +39,11 @@ DPDK_16.07 {
 	rte_cryptodev_parse_vdev_init_params;
 
 } DPDK_16.04;
+
+DPDK_16.11 {
+	global:
+
+	rte_cryptodev_pci_probe;
+	rte_cryptodev_pci_remove;
+
+} DPDK_16.07;

@@ -138,4 +138,13 @@ DPDK_16.07 {
 	rte_eth_dev_get_name_by_port;
 	rte_eth_dev_get_port_by_name;
 	rte_eth_xstats_get_names;
+
 } DPDK_16.04;
+
+DPDK_16.11 {
+	global:
+
+	rte_eth_dev_pci_probe;
+	rte_eth_dev_pci_remove;
+
+} DPDK_16.07;

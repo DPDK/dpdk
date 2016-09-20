@@ -428,9 +428,9 @@ rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
 	return cryptodev;
 }
 
-static int
-rte_cryptodev_init(struct rte_pci_driver *pci_drv,
-		struct rte_pci_device *pci_dev)
+int
+rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
+			struct rte_pci_device *pci_dev)
 {
 	struct rte_cryptodev_driver *cryptodrv;
 	struct rte_cryptodev *cryptodev;
@@ -489,8 +489,8 @@ rte_cryptodev_init(struct rte_pci_driver *pci_drv,
 	return -ENXIO;
 }
 
-static int
-rte_cryptodev_uninit(struct rte_pci_device *pci_dev)
+int
+rte_cryptodev_pci_remove(struct rte_pci_device *pci_dev)
 {
 	const struct rte_cryptodev_driver *cryptodrv;
 	struct rte_cryptodev *cryptodev;
@@ -538,15 +538,16 @@ rte_cryptodev_pmd_driver_register(struct rte_cryptodev_driver *cryptodrv,
 {
 	/* Call crypto device initialization directly if device is virtual */
 	if (type == PMD_VDEV)
-		return rte_cryptodev_init((struct rte_pci_driver *)cryptodrv,
+		return rte_cryptodev_pci_probe(
+				(struct rte_pci_driver *)cryptodrv,
 				NULL);
 
 	/*
 	 * Register PCI driver for physical device intialisation during
 	 * PCI probing
 	 */
-	cryptodrv->pci_drv.probe = rte_cryptodev_init;
-	cryptodrv->pci_drv.remove = rte_cryptodev_uninit;
+	cryptodrv->pci_drv.probe = rte_cryptodev_pci_probe;
+	cryptodrv->pci_drv.remove = rte_cryptodev_pci_remove;
 
 	rte_eal_pci_register(&cryptodrv->pci_drv);
 
