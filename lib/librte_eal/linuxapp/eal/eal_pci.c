@@ -417,6 +417,19 @@ pci_scan_one(const char *dirname, uint16_t domain, uint8_t bus,
 	return 0;
 }
 
+int
+pci_update_device(const struct rte_pci_addr *addr)
+{
+	char filename[PATH_MAX];
+
+	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT,
+		 pci_get_sysfs_path(), addr->domain, addr->bus, addr->devid,
+		 addr->function);
+
+	return pci_scan_one(filename, addr->domain, addr->bus, addr->devid,
+				addr->function);
+}
+
 /*
  * split up a pci address into its constituent parts.
  */

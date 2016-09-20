@@ -219,20 +219,6 @@ rte_eth_dev_allocate(const char *name, enum rte_eth_dev_type type)
 	return eth_dev;
 }
 
-static int
-rte_eth_dev_create_unique_device_name(char *name, size_t size,
-		struct rte_pci_device *pci_dev)
-{
-	int ret;
-
-	ret = snprintf(name, size, "%d:%d.%d",
-			pci_dev->addr.bus, pci_dev->addr.devid,
-			pci_dev->addr.function);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
 int
 rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 {
@@ -256,9 +242,8 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 
 	eth_drv = (struct eth_driver *)pci_drv;
 
-	/* Create unique Ethernet device name using PCI address */
-	rte_eth_dev_create_unique_device_name(ethdev_name,
-			sizeof(ethdev_name), pci_dev);
+	rte_eal_pci_device_name(&pci_dev->addr, ethdev_name,
+			sizeof(ethdev_name));
 
 	eth_dev = rte_eth_dev_allocate(ethdev_name, RTE_ETH_DEV_PCI);
 	if (eth_dev == NULL)
@@ -309,9 +294,8 @@ rte_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
 	if (pci_dev == NULL)
 		return -EINVAL;
 
-	/* Create unique Ethernet device name using PCI address */
-	rte_eth_dev_create_unique_device_name(ethdev_name,
-			sizeof(ethdev_name), pci_dev);
+	rte_eal_pci_device_name(&pci_dev->addr, ethdev_name,
+			sizeof(ethdev_name));
 
 	eth_dev = rte_eth_dev_allocated(ethdev_name);
 	if (eth_dev == NULL)

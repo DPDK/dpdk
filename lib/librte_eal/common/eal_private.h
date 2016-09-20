@@ -130,6 +130,19 @@ struct rte_pci_driver;
 struct rte_pci_device;
 
 /**
+ * Update a pci device object by asking the kernel for the latest information.
+ *
+ * This function is private to EAL.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address to look for
+ * @return
+ *   - 0 on success.
+ *   - negative on error.
+ */
+int pci_update_device(const struct rte_pci_addr *addr);
+
+/**
  * Unbind kernel driver for this device
  *
  * This function is private to EAL.

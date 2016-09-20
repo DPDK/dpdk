@@ -82,6 +82,7 @@ extern "C" {
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <rte_debug.h>
 #include <rte_interrupts.h>
 
 TAILQ_HEAD(pci_device_list, rte_pci_device); /**< PCI devices in D-linked Q. */
@@ -95,6 +96,7 @@ const char *pci_get_sysfs_path(void);
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
+#define PCI_PRI_STR_SIZE sizeof("XXXX:XX:XX.X")
 
 /** Short formatting string, without domain, for PCI device: Ex: 00:01.0 */
 #define PCI_SHORT_PRI_FMT "%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
@@ -307,6 +309,28 @@ eal_parse_pci_DomBDF(const char *input, struct rte_pci_addr *dev_addr)
 	return 0;
 }
 #undef GET_PCIADDR_FIELD
+
+/**
+ * Utility function to write a pci device name, this device name can later be
+ * used to retrieve the corresponding rte_pci_addr using eal_parse_pci_*
+ * BDF helpers.
+ *
+ * @param addr
+ *	The PCI Bus-Device-Function address
+ * @param output
+ *	The output buffer string
+ * @param size
+ *	The output buffer size
+ */
+static inline void
+rte_eal_pci_device_name(const struct rte_pci_addr *addr,
+		    char *output, size_t size)
+{
+	RTE_VERIFY(size >= PCI_PRI_STR_SIZE);
+	RTE_VERIFY(snprintf(output, size, PCI_PRI_FMT,
+			    addr->domain, addr->bus,
+			    addr->devid, addr->function) >= 0);
+}
 
 /* Compare two PCI device addresses. */
 /**

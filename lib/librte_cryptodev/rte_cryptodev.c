@@ -364,23 +364,6 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 	return cryptodev;
 }
 
-static inline int
-rte_cryptodev_create_unique_device_name(char *name, size_t size,
-		struct rte_pci_device *pci_dev)
-{
-	int ret;
-
-	if ((name == NULL) || (pci_dev == NULL))
-		return -EINVAL;
-
-	ret = snprintf(name, size, "%d:%d.%d",
-			pci_dev->addr.bus, pci_dev->addr.devid,
-			pci_dev->addr.function);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
 int
 rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 {
@@ -443,9 +426,8 @@ rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
 	if (cryptodrv == NULL)
 		return -ENODEV;
 
-	/* Create unique Crypto device name using PCI address */
-	rte_cryptodev_create_unique_device_name(cryptodev_name,
-			sizeof(cryptodev_name), pci_dev);
+	rte_eal_pci_device_name(&pci_dev->addr, cryptodev_name,
+			sizeof(cryptodev_name));
 
 	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
 	if (cryptodev == NULL)
@@ -500,9 +482,8 @@ rte_cryptodev_pci_remove(struct rte_pci_device *pci_dev)
 	if (pci_dev == NULL)
 		return -EINVAL;
 
-	/* Create unique device name using PCI address */
-	rte_cryptodev_create_unique_device_name(cryptodev_name,
-			sizeof(cryptodev_name), pci_dev);
+	rte_eal_pci_device_name(&pci_dev->addr, cryptodev_name,
+			sizeof(cryptodev_name));
 
 	cryptodev = rte_cryptodev_pmd_get_named_dev(cryptodev_name);
 	if (cryptodev == NULL)
