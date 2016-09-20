@@ -48,12 +48,14 @@ void
 rte_eal_vdrv_register(struct rte_vdev_driver *driver)
 {
 	TAILQ_INSERT_TAIL(&vdev_driver_list, driver, next);
+	rte_eal_driver_register(&driver->driver);
 }
 
 /* unregister a driver */
 void
 rte_eal_vdrv_unregister(struct rte_vdev_driver *driver)
 {
+	rte_eal_driver_unregister(&driver->driver);
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
 }
 

@@ -471,11 +471,13 @@ void
 rte_eal_pci_register(struct rte_pci_driver *driver)
 {
 	TAILQ_INSERT_TAIL(&pci_driver_list, driver, next);
+	rte_eal_driver_register(&driver->driver);
 }
 
 /* unregister a driver */
 void
 rte_eal_pci_unregister(struct rte_pci_driver *driver)
 {
+	rte_eal_driver_unregister(&driver->driver);
 	TAILQ_REMOVE(&pci_driver_list, driver, next);
 }
