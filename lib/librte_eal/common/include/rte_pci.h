@@ -193,12 +193,12 @@ struct rte_pci_driver;
 /**
  * Initialisation function for the driver called during PCI probing.
  */
-typedef int (pci_devinit_t)(struct rte_pci_driver *, struct rte_pci_device *);
+typedef int (pci_probe_t)(struct rte_pci_driver *, struct rte_pci_device *);
 
 /**
  * Uninitialisation function for the driver called during hotplugging.
  */
-typedef int (pci_devuninit_t)(struct rte_pci_device *);
+typedef int (pci_remove_t)(struct rte_pci_device *);
 
 /**
  * A structure describing a PCI driver.
@@ -206,8 +206,8 @@ typedef int (pci_devuninit_t)(struct rte_pci_device *);
 struct rte_pci_driver {
 	TAILQ_ENTRY(rte_pci_driver) next;       /**< Next in list. */
 	const char *name;                       /**< Driver name. */
-	pci_devinit_t *devinit;                 /**< Device init. function. */
-	pci_devuninit_t *devuninit;             /**< Device uninit function. */
+	pci_probe_t *probe;                     /**< Device Probe function. */
+	pci_remove_t *remove;                   /**< Device Remove function. */
 	const struct rte_pci_id *id_table;	/**< ID table, NULL terminated. */
 	uint32_t drv_flags;                     /**< Flags contolling handling of device. */
 };
@@ -442,7 +442,7 @@ int rte_eal_pci_probe_one(const struct rte_pci_addr *addr);
  * Close the single PCI device.
  *
  * Scan the content of the PCI bus, and find the pci device specified by pci
- * address, then call the devuninit() function for registered driver that has a
+ * address, then call the remove() function for registered driver that has a
  * matching entry in its id_table for discovered device.
  *
  * @param addr

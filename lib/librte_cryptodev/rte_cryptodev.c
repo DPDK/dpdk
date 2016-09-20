@@ -547,8 +547,8 @@ rte_cryptodev_pmd_driver_register(struct rte_cryptodev_driver *cryptodrv,
 	 * Register PCI driver for physical device intialisation during
 	 * PCI probing
 	 */
-	cryptodrv->pci_drv.devinit = rte_cryptodev_init;
-	cryptodrv->pci_drv.devuninit = rte_cryptodev_uninit;
+	cryptodrv->pci_drv.probe = rte_cryptodev_init;
+	cryptodrv->pci_drv.remove = rte_cryptodev_uninit;
 
 	rte_eal_pci_register(&cryptodrv->pci_drv);
 

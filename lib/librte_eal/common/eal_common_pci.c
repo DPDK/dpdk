@@ -153,7 +153,7 @@ pci_unmap_resource(void *requested_addr, size_t size)
 }
 
 /*
- * If vendor/device ID match, call the devinit() function of the
+ * If vendor/device ID match, call the probe() function of the
  * driver.
  */
 static int
@@ -212,15 +212,15 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		/* reference driver structure */
 		dev->driver = dr;
 
-		/* call the driver devinit() function */
-		return dr->devinit(dr, dev);
+		/* call the driver probe() function */
+		return dr->probe(dr, dev);
 	}
 	/* return positive value if driver doesn't support this device */
 	return 1;
 }
 
 /*
- * If vendor/device ID match, call the devuninit() function of the
+ * If vendor/device ID match, call the remove() function of the
  * driver.
  */
 static int
@@ -257,7 +257,7 @@ rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
 		RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
 				dev->id.device_id, dr->name);
 
-		if (dr->devuninit && (dr->devuninit(dev) < 0))
+		if (dr->remove && (dr->remove(dev) < 0))
 			return -1;	/* negative value is an error */
 
 		/* clear driver structure */
@@ -275,7 +275,7 @@ rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
 }
 
 /*
- * If vendor/device ID match, call the devinit() function of all
+ * If vendor/device ID match, call the probe() function of all
  * registered driver for the given device. Return -1 if initialization
  * failed, return 1 if no driver is found for this device.
  */
@@ -302,7 +302,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 }
 
 /*
- * If vendor/device ID match, call the devuninit() function of all
+ * If vendor/device ID match, call the remove() function of all
  * registered driver for the given device. Return -1 if initialization
  * failed, return 1 if no driver is found for this device.
  */
@@ -392,7 +392,7 @@ err_return:
 }
 
 /*
- * Scan the content of the PCI bus, and call the devinit() function for
+ * Scan the content of the PCI bus, and call the probe() function for
  * all registered drivers that have a matching entry in its id_table
  * for discovered devices.
  */

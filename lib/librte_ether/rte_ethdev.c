@@ -347,7 +347,7 @@ rte_eth_dev_uninit(struct rte_pci_device *pci_dev)
  * Poll Mode Driver.
  * Invokes the rte_eal_pci_register() function to register the *pci_drv*
  * structure embedded in the *eth_drv* structure, after having stored the
- * address of the rte_eth_dev_init() function in the *devinit* field of
+ * address of the rte_eth_dev_init() function in the *probe* field of
  * the *pci_drv* structure.
  * During the PCI probing phase, the rte_eth_dev_init() function is
  * invoked for each PCI [Ethernet device] matching the embedded PCI
@@ -356,8 +356,8 @@ rte_eth_dev_uninit(struct rte_pci_device *pci_dev)
 void
 rte_eth_driver_register(struct eth_driver *eth_drv)
 {
-	eth_drv->pci_drv.devinit = rte_eth_dev_init;
-	eth_drv->pci_drv.devuninit = rte_eth_dev_uninit;
+	eth_drv->pci_drv.probe = rte_eth_dev_init;
+	eth_drv->pci_drv.remove = rte_eth_dev_uninit;
 	rte_eal_pci_register(&eth_drv->pci_drv);
 }
 
@@ -537,7 +537,7 @@ rte_eth_dev_detach_pdev(uint8_t port_id, struct rte_pci_addr *addr)
 	if (rte_eal_compare_pci_addr(&vp, &freed_addr) == 0)
 		goto err;
 
-	/* invoke devuninit func of the pci driver,
+	/* invoke remove func of the pci driver,
 	 * also remove the device from pci_device_list */
 	if (rte_eal_pci_detach(&freed_addr))
 		goto err;

@@ -5544,7 +5544,7 @@ static struct eth_driver mlx4_driver;
  *   0 on success, negative errno value on failure.
  */
 static int
-mlx4_pci_devinit(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
+mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	struct ibv_device **list;
 	struct ibv_device *ibv_dev;
@@ -5913,7 +5913,7 @@ static struct eth_driver mlx4_driver = {
 	.pci_drv = {
 		.name = MLX4_DRIVER_NAME,
 		.id_table = mlx4_pci_id_map,
-		.devinit = mlx4_pci_devinit,
+		.probe = mlx4_pci_probe,
 		.drv_flags = RTE_PCI_DRV_INTR_LSC,
 	},
 	.dev_private_size = sizeof(struct priv)

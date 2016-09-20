@@ -52,11 +52,11 @@
  * PCI test
  * ========
  *
- * - Register a driver with a ``devinit()`` function.
+ * - Register a driver with a ``probe()`` function.
  *
  * - Dump all PCI devices.
  *
- * - Check that the ``devinit()`` function is called at least once.
+ * - Check that the ``probe()`` function is called at least once.
  */
 
 int test_pci_run = 0; /* value checked by the multiprocess test */
@@ -79,14 +79,14 @@ struct rte_pci_id my_driver_id2[] = {
 
 struct rte_pci_driver my_driver = {
 	.name = "test_driver",
-	.devinit = my_driver_init,
+	.probe = my_driver_init,
 	.id_table = my_driver_id,
 	.drv_flags = 0,
 };
 
 struct rte_pci_driver my_driver2 = {
 	.name = "test_driver2",
-	.devinit = my_driver_init,
+	.probe = my_driver_init,
 	.id_table = my_driver_id2,
 	.drv_flags = 0,
 };
