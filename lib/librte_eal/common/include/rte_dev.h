@@ -178,6 +178,32 @@ int rte_eal_vdev_init(const char *name, const char *args);
  */
 int rte_eal_vdev_uninit(const char *name);
 
+/**
+ * Attach a device to a registered driver.
+ *
+ * @param name
+ *   The device name, that refers to a pci device (or some private
+ *   way of designating a vdev device). Based on this device name, eal
+ *   will identify a driver capable of handling it and pass it to the
+ *   driver probing function.
+ * @param devargs
+ *   Device arguments to be passed to the driver.
+ * @return
+ *   0 on success, negative on error.
+ */
+int rte_eal_dev_attach(const char *name, const char *devargs);
+
+/**
+ * Detach a device from its driver.
+ *
+ * @param name
+ *   Same description as for rte_eal_dev_attach().
+ *   Here, eal will call the driver detaching function.
+ * @return
+ *   0 on success, negative on error.
+ */
+int rte_eal_dev_detach(const char *name);
+
 #define DRIVER_EXPORT_NAME_ARRAY(n, idx) n##idx[]
 
 #define DRIVER_EXPORT_NAME(name, idx) \

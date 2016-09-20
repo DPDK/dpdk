@@ -168,5 +168,7 @@ DPDK_16.11 {
 
 	rte_delay_us_block;
 	rte_delay_us_callback_register;
+	rte_eal_dev_attach;
+	rte_eal_dev_detach;
 
 } DPDK_16.07;
