@@ -84,11 +84,11 @@ enum rte_crypto_cipher_algorithm {
 	/**< AES algorithm in F8 mode */
 	RTE_CRYPTO_CIPHER_AES_GCM,
 	/**< AES algorithm in GCM mode. When this cipher algorithm is used the
-	 * *RTE_CRYPTO_AUTH_AES_GCM* element of the
-	 * *rte_crypto_auth_algorithm* enum MUST be used to set up the related
-	 * *rte_crypto_auth_setup_data* structure in the session context or in
-	 * the op_params of the crypto operation structure in the case of a
-	 * session-less crypto operation.
+	 * *RTE_CRYPTO_AUTH_AES_GCM* or *RTE_CRYPTO_AUTH_AES_GMAC* element
+	 * of the *rte_crypto_auth_algorithm* enum MUST be used to set up
+	 * the related *rte_crypto_auth_setup_data* structure in the session
+	 * context or in the op_params of the crypto operation structure
+	 * in the case of a session-less crypto operation.
 	 */
 	RTE_CRYPTO_CIPHER_AES_XTS,
 	/**< AES algorithm in XTS mode */
@@ -308,8 +308,8 @@ struct rte_crypto_auth_xform {
 	 * @note
 	 *  For AES-GMAC (@ref RTE_CRYPTO_AUTH_AES_GMAC) mode of operation
 	 *  this field is not used and should be set to 0. Instead the length
-	 *  of the AAD data is specified in the message length to hash field of
-	 *  the rte_crypto_sym_op_data structure.
+	 *  of the AAD data is specified in additional authentication data
+	 *  length field of the rte_crypto_sym_op_data structure
 	 */
 };
 
@@ -485,8 +485,9 @@ struct rte_crypto_sym_op {
 			  * should be set instead.
 			  *
 			  * @note For AES-GMAC (@ref RTE_CRYPTO_AUTH_AES_GMAC)
-			  * mode of operation, this field specifies the start
-			  * of the AAD data in the source buffer.
+			  * mode of operation, this field is set to 0. aad data
+			  * pointer of rte_crypto_sym_op_data structure is
+			  * used instead
 			  *
 			  * @note
 			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
@@ -505,8 +506,8 @@ struct rte_crypto_sym_op {
 			  *
 			  * @note
 			  * For AES-GMAC @ref RTE_CRYPTO_AUTH_AES_GMAC mode
-			  * of operation, this field specifies the length of
-			  * the AAD data in the source buffer.
+			  * of operation, this field is set to 0.
+			  * Auth.aad.length is used instead.
 			  *
 			  * @note
 			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
@@ -592,9 +593,7 @@ struct rte_crypto_sym_op {
 			 *
 			 * @note
 			 * For AES-GMAC (@ref RTE_CRYPTO_AUTH_AES_GMAC) mode of
-			 * operation, this field is not used and should be set
-			 * to 0. Instead the AAD data should be placed in the
-			 * source buffer.
+			 * operation, this field is used to pass plaintext.
 			 */
 			phys_addr_t phys_addr;	/**< physical address */
 			uint16_t length;	/**< Length of digest */
