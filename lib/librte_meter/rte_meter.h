@@ -232,13 +232,15 @@ rte_meter_srtcm_color_blind_check(struct rte_meter_srtcm *m,
 	n_periods = time_diff / m->cir_period;
 	m->time += n_periods * m->cir_period;
 
+	/* Put the tokens overflowing from tc into te bucket */
 	tc = m->tc + n_periods * m->cir_bytes_per_period;
-	if (tc > m->cbs)
+	te = m->te;
+	if (tc > m->cbs) {
+		te += (tc - m->cbs);
+		if (te > m->ebs)
+			te = m->ebs;
 		tc = m->cbs;
-
-	te = m->te + n_periods * m->cir_bytes_per_period;
-	if (te > m->ebs)
-		te = m->ebs;
+	}
 
 	/* Color logic */
 	if (tc >= pkt_len) {
@@ -271,13 +273,15 @@ rte_meter_srtcm_color_aware_check(struct rte_meter_srtcm *m,
 	n_periods = time_diff / m->cir_period;
 	m->time += n_periods * m->cir_period;
 
+	/* Put the tokens overflowing from tc into te bucket */
 	tc = m->tc + n_periods * m->cir_bytes_per_period;
-	if (tc > m->cbs)
+	te = m->te;
+	if (tc > m->cbs) {
+		te += (tc - m->cbs);
+		if (te > m->ebs)
+			te = m->ebs;
 		tc = m->cbs;
-
-	te = m->te + n_periods * m->cir_bytes_per_period;
-	if (te > m->ebs)
-		te = m->ebs;
+	}
 
 	/* Color logic */
 	if ((pkt_color == e_RTE_METER_GREEN) && (tc >= pkt_len)) {
