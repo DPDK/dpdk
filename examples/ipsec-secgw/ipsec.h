@@ -90,6 +90,8 @@ struct ip_addr {
 	} ip;
 };
 
+#define MAX_KEY_SIZE		20
+
 struct ipsec_sa {
 	uint32_t spi;
 	uint32_t cdev_id_qp;
@@ -106,6 +108,10 @@ struct ipsec_sa {
 #define TRANSPORT  (1 << 2)
 	struct ip_addr src;
 	struct ip_addr dst;
+	uint8_t cipher_key[MAX_KEY_SIZE];
+	uint16_t cipher_key_len;
+	uint8_t auth_key[MAX_KEY_SIZE];
+	uint16_t auth_key_len;
 	struct rte_crypto_sym_xform *xforms;
 } __rte_cache_aligned;
 
@@ -183,15 +189,15 @@ outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
 		struct ipsec_sa *sa[], uint16_t nb_pkts);
 
 void
-sp4_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
+sp4_init(struct socket_ctx *ctx, int32_t socket_id);
 
 void
-sp6_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
+sp6_init(struct socket_ctx *ctx, int32_t socket_id);
 
 void
-sa_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
+sa_init(struct socket_ctx *ctx, int32_t socket_id);
 
 void
-rt_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep);
+rt_init(struct socket_ctx *ctx, int32_t socket_id);
 
 #endif /* __IPSEC_H__ */

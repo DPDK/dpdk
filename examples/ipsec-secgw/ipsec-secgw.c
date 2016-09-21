@@ -72,6 +72,7 @@
 #include <rte_cryptodev.h>
 
 #include "ipsec.h"
+#include "parser.h"
 
 #define RTE_LOGTYPE_IPSEC RTE_LOGTYPE_USER1
 
@@ -88,8 +89,6 @@
 
 #define OPTION_CONFIG		"config"
 #define OPTION_SINGLE_SA	"single-sa"
-#define OPTION_EP0		"ep0"
-#define OPTION_EP1		"ep1"
 
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
@@ -158,7 +157,6 @@ static uint32_t enabled_port_mask;
 static uint32_t unprotected_port_mask;
 static int32_t promiscuous_on = 1;
 static int32_t numa_on = 1; /**< NUMA is enabled by default. */
-static int32_t ep = -1; /**< Endpoint configuration (0 or 1) */
 static uint32_t nb_lcores;
 static uint32_t single_sa;
 static uint32_t single_sa_idx;
@@ -838,7 +836,7 @@ print_usage(const char *prgname)
 {
 	printf("%s [EAL options] -- -p PORTMASK -P -u PORTMASK"
 		"  --"OPTION_CONFIG" (port,queue,lcore)[,(port,queue,lcore]"
-		" --single-sa SAIDX --ep0|--ep1\n"
+		" --single-sa SAIDX -f CONFIG_FILE\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -P : enable promiscuous mode\n"
 		"  -u PORTMASK: hexadecimal bitmask of unprotected ports\n"
@@ -846,8 +844,8 @@ print_usage(const char *prgname)
 		"rx queues configuration\n"
 		"  --single-sa SAIDX: use single SA index for outbound, "
 		"bypassing the SP\n"
-		"  --ep0: Configure as Endpoint 0\n"
-		"  --ep1: Configure as Endpoint 1\n", prgname);
+		"  -f CONFIG_FILE: Configuration file path\n",
+		prgname);
 }
 
 static int32_t
@@ -960,18 +958,6 @@ parse_args_long_options(struct option *lgopts, int32_t option_index)
 		}
 	}
 
-	if (__STRNCMP(optname, OPTION_EP0)) {
-		printf("endpoint 0\n");
-		ep = 0;
-		ret = 0;
-	}
-
-	if (__STRNCMP(optname, OPTION_EP1)) {
-		printf("endpoint 1\n");
-		ep = 1;
-		ret = 0;
-	}
-
 	return ret;
 }
 #undef __STRNCMP
@@ -986,14 +972,13 @@ parse_args(int32_t argc, char **argv)
 	static struct option lgopts[] = {
 		{OPTION_CONFIG, 1, 0, 0},
 		{OPTION_SINGLE_SA, 1, 0, 0},
-		{OPTION_EP0, 0, 0, 0},
-		{OPTION_EP1, 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
+	int32_t f_present = 0;
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "p:Pu:",
+	while ((opt = getopt_long(argc, argvopt, "p:Pu:f:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1017,6 +1002,21 @@ parse_args(int32_t argc, char **argv)
 				return -1;
 			}
 			break;
+		case 'f':
+			if (f_present == 1) {
+				printf("\"-f\" option present more than "
+					"once!\n");
+				print_usage(prgname);
+				return -1;
+			}
+			if (parse_cfg_file(optarg) < 0) {
+				printf("parsing file \"%s\" failed\n",
+					optarg);
+				print_usage(prgname);
+				return -1;
+			}
+			f_present = 1;
+			break;
 		case 0:
 			if (parse_args_long_options(lgopts, option_index)) {
 				print_usage(prgname);
@@ -1027,6 +1027,11 @@ parse_args(int32_t argc, char **argv)
 			print_usage(prgname);
 			return -1;
 		}
+	}
+
+	if (f_present == 0) {
+		printf("Mandatory option \"-f\" not present\n");
+		return -1;
 	}
 
 	if (optind >= 0)
@@ -1411,9 +1416,6 @@ main(int32_t argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid parameters\n");
 
-	if (ep < 0)
-		rte_exit(EXIT_FAILURE, "need to choose either EP0 or EP1\n");
-
 	if ((unprotected_port_mask & enabled_port_mask) !=
 			unprotected_port_mask)
 		rte_exit(EXIT_FAILURE, "Invalid unprotected portmask 0x%x\n",
@@ -1443,13 +1445,13 @@ main(int32_t argc, char **argv)
 		if (socket_ctx[socket_id].mbuf_pool)
 			continue;
 
-		sa_init(&socket_ctx[socket_id], socket_id, ep);
+		sa_init(&socket_ctx[socket_id], socket_id);
 
-		sp4_init(&socket_ctx[socket_id], socket_id, ep);
+		sp4_init(&socket_ctx[socket_id], socket_id);
 
-		sp6_init(&socket_ctx[socket_id], socket_id, ep);
+		sp6_init(&socket_ctx[socket_id], socket_id);
 
-		rt_init(&socket_ctx[socket_id], socket_id, ep);
+		rt_init(&socket_ctx[socket_id], socket_id);
 
 		pool_init(&socket_ctx[socket_id], socket_id, NB_MBUF);
 	}

@@ -41,6 +41,7 @@
 #include <rte_ip.h>
 
 #include "ipsec.h"
+#include "parser.h"
 
 #define RT_IPV4_MAX_RULES	1024
 #define RT_IPV6_MAX_RULES	1024
@@ -57,135 +58,106 @@ struct ip6_route {
 	uint8_t if_out;
 };
 
-static struct ip4_route rt_ip4_ep0[] = {
-	/* Outbound */
-	/* Tunnels */
-	{ IPv4(172, 16, 2, 5), 32, 0 },
-	{ IPv4(172, 16, 2, 6), 32, 1 },
-	/* Transport */
-	{ IPv4(192, 168, 175, 0), 24, 0 },
-	{ IPv4(192, 168, 176, 0), 24, 1 },
-	/* Bypass */
-	{ IPv4(192, 168, 240, 0), 24, 0 },
-	{ IPv4(192, 168, 241, 0), 24, 1 },
+struct ip4_route rt_ip4[RT_IPV4_MAX_RULES];
+uint32_t nb_rt_ip4;
 
-	/* Inbound */
-	/* Tunnels */
-	{ IPv4(192, 168, 115, 0), 24, 2 },
-	{ IPv4(192, 168, 116, 0), 24, 3 },
-	{ IPv4(192, 168, 65, 0), 24, 2 },
-	{ IPv4(192, 168, 66, 0), 24, 3 },
-	/* Transport */
-	{ IPv4(192, 168, 185, 0), 24, 2 },
-	{ IPv4(192, 168, 186, 0), 24, 3 },
-	/* NULL */
-	{ IPv4(192, 168, 210, 0), 24, 2 },
-	{ IPv4(192, 168, 211, 0), 24, 3 },
-	/* Bypass */
-	{ IPv4(192, 168, 245, 0), 24, 2 },
-	{ IPv4(192, 168, 246, 0), 24, 3 },
-};
-
-static struct ip6_route rt_ip6_ep0[] = {
-	/* Outbound */
-	/* Tunnels */
-	{ { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
-		  0x22, 0x22, 0x22, 0x22, 0x22, 0x55, 0x55 }, 116, 0 },
-	{ { 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
-		  0x22, 0x22, 0x22, 0x22, 0x22, 0x66, 0x66 }, 116, 1 },
-	/* Transport */
-	{ { 0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x00,
-		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 116, 0 },
-	{ { 0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x11,
-		  0x11, 0x11, 0x11, 0x00, 0x00, 0x00, 0x00 }, 116, 1 },
-	/* Inbound */
-	/* Tunnels */
-	{ { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa,
-		  0xaa, 0xaa, 0xaa, 0x00, 0x00, 0x00, 0x00 }, 116, 2 },
-	{ { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xbb,
-		  0xbb, 0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00 }, 116, 3 },
-	{ { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55,
-		  0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00 }, 116, 2 },
-	{ { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x66,
-		  0x66, 0x66, 0x66, 0x00, 0x00, 0x00, 0x00 }, 116, 3 },
-	/* Transport */
-	{ { 0xff, 0xff, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x00,
-		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 116, 2 },
-	{ { 0xff, 0xff, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x11,
-		  0x11, 0x11, 0x11, 0x00, 0x00, 0x00, 0x00 }, 116, 3 },
-};
-
-static struct ip4_route rt_ip4_ep1[] = {
-	/* Outbound */
-	/* Tunnels */
-	{ IPv4(172, 16, 1, 5), 32, 0 },
-	{ IPv4(172, 16, 1, 6), 32, 1 },
-	/* Transport */
-	{ IPv4(192, 168, 185, 0), 24, 0 },
-	{ IPv4(192, 168, 186, 0), 24, 1 },
-	/* Bypass */
-	{ IPv4(192, 168, 245, 0), 24, 0 },
-	{ IPv4(192, 168, 246, 0), 24, 1 },
-
-	/* Inbound */
-	/* Tunnels */
-	{ IPv4(192, 168, 105, 0), 24, 2 },
-	{ IPv4(192, 168, 106, 0), 24, 3 },
-	{ IPv4(192, 168, 55, 0), 24, 2 },
-	{ IPv4(192, 168, 56, 0), 24, 3 },
-	/* Transport */
-	{ IPv4(192, 168, 175, 0), 24, 2 },
-	{ IPv4(192, 168, 176, 0), 24, 3 },
-	/* NULL */
-	{ IPv4(192, 168, 200, 0), 24, 2 },
-	{ IPv4(192, 168, 201, 0), 24, 3 },
-	/* Bypass */
-	{ IPv4(192, 168, 240, 0), 24, 2 },
-	{ IPv4(192, 168, 241, 0), 24, 3 },
-};
-
-static struct ip6_route rt_ip6_ep1[] = {
-	/* Outbound */
-	/* Tunnels */
-	{ { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
-		  0x11, 0x11, 0x11, 0x11, 0x11, 0x55, 0x55 }, 116, 0 },
-	{ { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
-		  0x11, 0x11, 0x11, 0x11, 0x11, 0x66, 0x66 }, 116, 1 },
-	/* Transport */
-	{ { 0xff, 0xff, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x00,
-		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 116, 0 },
-	{ { 0xff, 0xff, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x11,
-		  0x11, 0x11, 0x11, 0x00, 0x00, 0x00, 0x00 }, 116, 1 },
-
-	/* Inbound */
-	/* Tunnels */
-	{ { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa,
-		  0xaa, 0xaa, 0xaa, 0x00, 0x00, 0x00, 0x00 }, 116, 2 },
-	{ { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xbb,
-		  0xbb, 0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00 }, 116, 3 },
-	{ { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55,
-		  0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00 }, 116, 2 },
-	{ { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x66,
-		  0x66, 0x66, 0x66, 0x00, 0x00, 0x00, 0x00 }, 116, 3 },
-	/* Transport */
-	{ { 0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x00,
-		  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 116, 2 },
-	{ { 0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x11,
-		  0x11, 0x11, 0x11, 0x00, 0x00, 0x00, 0x00 }, 116, 3 },
-};
+struct ip6_route rt_ip6[RT_IPV4_MAX_RULES];
+uint32_t nb_rt_ip6;
 
 void
-rt_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep)
+parse_rt_tokens(char **tokens, uint32_t n_tokens,
+	struct parse_status *status)
+{
+	uint32_t ti;
+	uint32_t *n_rts = NULL;
+	struct ip4_route *route_ipv4 = NULL;
+	struct ip6_route *route_ipv6 = NULL;
+
+	if (strcmp(tokens[0], "ipv4") == 0) {
+		n_rts = &nb_rt_ip4;
+		route_ipv4 = &rt_ip4[*n_rts];
+
+		APP_CHECK(*n_rts <= RT_IPV4_MAX_RULES - 1, status,
+			"too many rt rules, abort insertion\n");
+		if (status->status < 0)
+			return;
+
+	} else if (strcmp(tokens[0], "ipv6") == 0) {
+		n_rts = &nb_rt_ip6;
+		route_ipv6 = &rt_ip6[*n_rts];
+
+		APP_CHECK(*n_rts <= RT_IPV6_MAX_RULES - 1, status,
+			"too many rt rules, abort insertion\n");
+		if (status->status < 0)
+			return;
+	} else {
+		APP_CHECK(0, status, "unrecognized input \"%s\"",
+			tokens[0]);
+		return;
+	}
+
+	for (ti = 1; ti < n_tokens; ti++) {
+		if (strcmp(tokens[ti], "dst") == 0) {
+			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
+			if (status->status < 0)
+				return;
+
+			if (route_ipv4 != NULL) {
+				struct in_addr ip;
+				uint32_t depth = 0;
+
+				APP_CHECK(parse_ipv4_addr(tokens[ti],
+					&ip, &depth) == 0, status,
+					"unrecognized input \"%s\", "
+					"expect valid ipv4 addr",
+					tokens[ti]);
+				if (status->status < 0)
+					return;
+				route_ipv4->ip = rte_bswap32(
+					(uint32_t)ip.s_addr);
+				route_ipv4->depth = (uint8_t)depth;
+			} else {
+				struct in6_addr ip;
+				uint32_t depth;
+
+				APP_CHECK(parse_ipv6_addr(tokens[ti],
+					&ip, &depth) == 0, status,
+					"unrecognized input \"%s\", "
+					"expect valid ipv6 address",
+					tokens[ti]);
+				if (status->status < 0)
+					return;
+				memcpy(route_ipv6->ip, ip.s6_addr, 16);
+				route_ipv6->depth = (uint8_t)depth;
+			}
+		}
+
+		if (strcmp(tokens[ti], "port") == 0) {
+			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
+			if (status->status < 0)
+				return;
+			APP_CHECK_TOKEN_IS_NUM(tokens, ti, status);
+			if (status->status < 0)
+				return;
+			if (route_ipv4 != NULL)
+				route_ipv4->if_out = atoi(tokens[ti]);
+			else
+				route_ipv6->if_out = atoi(tokens[ti]);
+		}
+	}
+
+	*n_rts = *n_rts + 1;
+}
+
+void
+rt_init(struct socket_ctx *ctx, int32_t socket_id)
 {
 	char name[PATH_MAX];
 	uint32_t i;
 	int32_t ret;
 	struct rte_lpm *lpm;
 	struct rte_lpm6 *lpm6;
-	struct ip4_route *rt;
-	struct ip6_route *rt6;
 	char a, b, c, d;
-	uint32_t nb_routes, nb_routes6;
 	struct rte_lpm_config conf = { 0 };
 	struct rte_lpm6_config conf6 = { 0 };
 
@@ -200,22 +172,11 @@ rt_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep)
 		rte_exit(EXIT_FAILURE, "IPv6 Routing Table for socket %u "
 			"already initialized\n", socket_id);
 
+	if (nb_rt_ip4 == 0 && nb_rt_ip6 == 0)
+		RTE_LOG(WARNING, IPSEC, "No Routing rule specified\n");
+
 	printf("Creating IPv4 Routing Table (RT) context with %u max routes\n",
 			RT_IPV4_MAX_RULES);
-
-	if (ep == 0) {
-		rt = rt_ip4_ep0;
-		nb_routes = RTE_DIM(rt_ip4_ep0);
-		rt6 = rt_ip6_ep0;
-		nb_routes6 = RTE_DIM(rt_ip6_ep0);
-	} else if (ep == 1) {
-		rt = rt_ip4_ep1;
-		nb_routes = RTE_DIM(rt_ip4_ep1);
-		rt6 = rt_ip6_ep1;
-		nb_routes6 = RTE_DIM(rt_ip6_ep1);
-	} else
-		rte_exit(EXIT_FAILURE, "Invalid EP value %u. Only 0 or 1 "
-			"supported.\n", ep);
 
 	/* create the LPM table */
 	snprintf(name, sizeof(name), "%s_%u", "rt_ip4", socket_id);
@@ -227,15 +188,17 @@ rt_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep)
 			"on socket %d\n", name, socket_id);
 
 	/* populate the LPM table */
-	for (i = 0; i < nb_routes; i++) {
-		ret = rte_lpm_add(lpm, rt[i].ip, rt[i].depth, rt[i].if_out);
+	for (i = 0; i < nb_rt_ip4; i++) {
+		ret = rte_lpm_add(lpm, rt_ip4[i].ip, rt_ip4[i].depth,
+			rt_ip4[i].if_out);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Fail to add entry num %u to %s "
 				"LPM table on socket %d\n", i, name, socket_id);
 
-		uint32_t_to_char(rt[i].ip, &a, &b, &c, &d);
+		uint32_t_to_char(rt_ip4[i].ip, &a, &b, &c, &d);
 		printf("LPM: Adding route %hhu.%hhu.%hhu.%hhu/%hhu (%hhu)\n",
-				a, b, c, d, rt[i].depth, rt[i].if_out);
+				a, b, c, d, rt_ip4[i].depth,
+				rt_ip4[i].if_out);
 	}
 
 	snprintf(name, sizeof(name), "%s_%u", "rt_ip6", socket_id);
@@ -247,24 +210,24 @@ rt_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t ep)
 			"on socket %d\n", name, socket_id);
 
 	/* populate the LPM table */
-	for (i = 0; i < nb_routes6; i++) {
-		ret = rte_lpm6_add(lpm6, rt6[i].ip, rt6[i].depth,
-				rt6[i].if_out);
+	for (i = 0; i < nb_rt_ip6; i++) {
+		ret = rte_lpm6_add(lpm6, rt_ip6[i].ip, rt_ip6[i].depth,
+				rt_ip6[i].if_out);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Fail to add entry num %u to %s "
 				"LPM table on socket %d\n", i, name, socket_id);
 
 		printf("LPM6: Adding route "
 			" %hx:%hx:%hx:%hx:%hx:%hx:%hx:%hx/%hhx (%hhx)\n",
-			(uint16_t)((rt6[i].ip[0] << 8) | rt6[i].ip[1]),
-			(uint16_t)((rt6[i].ip[2] << 8) | rt6[i].ip[3]),
-			(uint16_t)((rt6[i].ip[4] << 8) | rt6[i].ip[5]),
-			(uint16_t)((rt6[i].ip[6] << 8) | rt6[i].ip[7]),
-			(uint16_t)((rt6[i].ip[8] << 8) | rt6[i].ip[9]),
-			(uint16_t)((rt6[i].ip[10] << 8) | rt6[i].ip[11]),
-			(uint16_t)((rt6[i].ip[12] << 8) | rt6[i].ip[13]),
-			(uint16_t)((rt6[i].ip[14] << 8) | rt6[i].ip[15]),
-			rt6[i].depth, rt6[i].if_out);
+			(uint16_t)((rt_ip6[i].ip[0] << 8) | rt_ip6[i].ip[1]),
+			(uint16_t)((rt_ip6[i].ip[2] << 8) | rt_ip6[i].ip[3]),
+			(uint16_t)((rt_ip6[i].ip[4] << 8) | rt_ip6[i].ip[5]),
+			(uint16_t)((rt_ip6[i].ip[6] << 8) | rt_ip6[i].ip[7]),
+			(uint16_t)((rt_ip6[i].ip[8] << 8) | rt_ip6[i].ip[9]),
+			(uint16_t)((rt_ip6[i].ip[10] << 8) | rt_ip6[i].ip[11]),
+			(uint16_t)((rt_ip6[i].ip[12] << 8) | rt_ip6[i].ip[13]),
+			(uint16_t)((rt_ip6[i].ip[14] << 8) | rt_ip6[i].ip[15]),
+			rt_ip6[i].depth, rt_ip6[i].if_out);
 	}
 
 	ctx->rt_ip4 = (struct rt_ctx *)lpm;

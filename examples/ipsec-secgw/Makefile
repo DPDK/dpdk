@@ -53,6 +53,7 @@ endif
 #
 # all source are stored in SRCS-y
 #
+SRCS-y += parser.c
 SRCS-y += ipsec.c
 SRCS-y += esp.c
 SRCS-y += sp4.c

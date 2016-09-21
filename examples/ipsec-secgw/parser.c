@@ -1,0 +1,599 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+#include <rte_common.h>
+#include <rte_crypto.h>
+
+#include <cmdline_parse_string.h>
+#include <cmdline_parse_num.h>
+#include <cmdline_parse_ipaddr.h>
+#include <cmdline_socket.h>
+#include <cmdline.h>
+
+#include "ipsec.h"
+#include "parser.h"
+
+#define PARSE_DELIMITER		" \f\n\r\t\v"
+static int
+parse_tokenize_string(char *string, char *tokens[], uint32_t *n_tokens)
+{
+	uint32_t i;
+
+	if ((string == NULL) ||
+		(tokens == NULL) ||
+		(*n_tokens < 1))
+		return -EINVAL;
+
+	for (i = 0; i < *n_tokens; i++) {
+		tokens[i] = strtok_r(string, PARSE_DELIMITER, &string);
+		if (tokens[i] == NULL)
+			break;
+	}
+
+	if ((i == *n_tokens) &&
+		(NULL != strtok_r(string, PARSE_DELIMITER, &string)))
+		return -E2BIG;
+
+	*n_tokens = i;
+	return 0;
+}
+
+#define INADDRSZ 4
+#define IN6ADDRSZ 16
+
+/* int
+ * inet_pton4(src, dst)
+ *      like inet_aton() but without all the hexadecimal and shorthand.
+ * return:
+ *      1 if `src' is a valid dotted quad, else 0.
+ * notice:
+ *      does not touch `dst' unless it's returning 1.
+ * author:
+ *      Paul Vixie, 1996.
+ */
+static int
+inet_pton4(const char *src, unsigned char *dst)
+{
+	static const char digits[] = "0123456789";
+	int saw_digit, octets, ch;
+	unsigned char tmp[INADDRSZ], *tp;
+
+	saw_digit = 0;
+	octets = 0;
+	*(tp = tmp) = 0;
+	while ((ch = *src++) != '\0') {
+		const char *pch;
+
+		pch = strchr(digits, ch);
+		if (pch != NULL) {
+			unsigned int new = *tp * 10 + (pch - digits);
+
+			if (new > 255)
+				return 0;
+			if (!saw_digit) {
+				if (++octets > 4)
+					return 0;
+				saw_digit = 1;
+			}
+			*tp = (unsigned char)new;
+		} else if (ch == '.' && saw_digit) {
+			if (octets == 4)
+				return 0;
+			*++tp = 0;
+			saw_digit = 0;
+		} else
+			return 0;
+	}
+	if (octets < 4)
+		return 0;
+
+	memcpy(dst, tmp, INADDRSZ);
+	return 1;
+}
+
+/* int
+ * inet_pton6(src, dst)
+ *      convert presentation level address to network order binary form.
+ * return:
+ *      1 if `src' is a valid [RFC1884 2.2] address, else 0.
+ * notice:
+ *      (1) does not touch `dst' unless it's returning 1.
+ *      (2) :: in a full address is silently ignored.
+ * credit:
+ *      inspired by Mark Andrews.
+ * author:
+ *      Paul Vixie, 1996.
+ */
+static int
+inet_pton6(const char *src, unsigned char *dst)
+{
+	static const char xdigits_l[] = "0123456789abcdef",
+		xdigits_u[] = "0123456789ABCDEF";
+	unsigned char tmp[IN6ADDRSZ], *tp = 0, *endp = 0, *colonp = 0;
+	const char *xdigits = 0, *curtok = 0;
+	int ch = 0, saw_xdigit = 0, count_xdigit = 0;
+	unsigned int val = 0;
+	unsigned dbloct_count = 0;
+
+	memset((tp = tmp), '\0', IN6ADDRSZ);
+	endp = tp + IN6ADDRSZ;
+	colonp = NULL;
+	/* Leading :: requires some special handling. */
+	if (*src == ':')
+		if (*++src != ':')
+			return 0;
+	curtok = src;
+	saw_xdigit = count_xdigit = 0;
+	val = 0;
+
+	while ((ch = *src++) != '\0') {
+		const char *pch;
+
+		pch = strchr((xdigits = xdigits_l), ch);
+		if (pch == NULL)
+			pch = strchr((xdigits = xdigits_u), ch);
+		if (pch != NULL) {
+			if (count_xdigit >= 4)
+				return 0;
+			val <<= 4;
+			val |= (pch - xdigits);
+			if (val > 0xffff)
+				return 0;
+			saw_xdigit = 1;
+			count_xdigit++;
+			continue;
+		}
+		if (ch == ':') {
+			curtok = src;
+			if (!saw_xdigit) {
+				if (colonp)
+					return 0;
+				colonp = tp;
+				continue;
+			} else if (*src == '\0') {
+				return 0;
+			}
+			if (tp + sizeof(int16_t) > endp)
+				return 0;
+			*tp++ = (unsigned char) ((val >> 8) & 0xff);
+			*tp++ = (unsigned char) (val & 0xff);
+			saw_xdigit = 0;
+			count_xdigit = 0;
+			val = 0;
+			dbloct_count++;
+			continue;
+		}
+		if (ch == '.' && ((tp + INADDRSZ) <= endp) &&
+		    inet_pton4(curtok, tp) > 0) {
+			tp += INADDRSZ;
+			saw_xdigit = 0;
+			dbloct_count += 2;
+			break;  /* '\0' was seen by inet_pton4(). */
+		}
+		return 0;
+	}
+	if (saw_xdigit) {
+		if (tp + sizeof(int16_t) > endp)
+			return 0;
+		*tp++ = (unsigned char) ((val >> 8) & 0xff);
+		*tp++ = (unsigned char) (val & 0xff);
+		dbloct_count++;
+	}
+	if (colonp != NULL) {
+		/* if we already have 8 double octets, having a colon
+		 * means error */
+		if (dbloct_count == 8)
+			return 0;
+
+		/*
+		 * Since some memmove()'s erroneously fail to handle
+		 * overlapping regions, we'll do the shift by hand.
+		 */
+		const int n = tp - colonp;
+		int i;
+
+		for (i = 1; i <= n; i++) {
+			endp[-i] = colonp[n - i];
+			colonp[n - i] = 0;
+		}
+		tp = endp;
+	}
+	if (tp != endp)
+		return 0;
+	memcpy(dst, tmp, IN6ADDRSZ);
+	return 1;
+}
+
+int
+parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
+{
+	char ip_str[256] = {0};
+	char *pch;
+
+	pch = strchr(token, '/');
+	if (pch != NULL) {
+		strncpy(ip_str, token, pch - token);
+		pch += 1;
+		if (is_str_num(pch) != 0)
+			return -EINVAL;
+		if (mask)
+			*mask = atoi(pch);
+	} else {
+		strncpy(ip_str, token, sizeof(ip_str));
+		if (mask)
+			*mask = 0;
+	}
+
+	if (strlen(ip_str) >= INET_ADDRSTRLEN)
+		return -EINVAL;
+
+	if (inet_pton4(ip_str, (unsigned char *)ipv4) != 1)
+		return -EINVAL;
+
+	return 0;
+}
+
+int
+parse_ipv6_addr(const char *token, struct in6_addr *ipv6, uint32_t *mask)
+{
+	char ip_str[256] = {0};
+	char *pch;
+
+	pch = strchr(token, '/');
+	if (pch != NULL) {
+		strncpy(ip_str, token, pch - token);
+		pch += 1;
+		if (is_str_num(pch) != 0)
+			return -EINVAL;
+		if (mask)
+			*mask = atoi(pch);
+	} else {
+		strncpy(ip_str, token, sizeof(ip_str));
+		if (mask)
+			*mask = 0;
+	}
+
+	if (strlen(ip_str) >= INET6_ADDRSTRLEN)
+		return -EINVAL;
+
+	if (inet_pton6(ip_str, (unsigned char *)ipv6) != 1)
+		return -EINVAL;
+
+	return 0;
+}
+
+int
+parse_range(const char *token, uint16_t *low, uint16_t *high)
+{
+	char ch;
+	char num_str[20];
+	uint32_t pos;
+	int range_low = -1;
+	int range_high = -1;
+
+	if (!low || !high)
+		return -1;
+
+	memset(num_str, 0, 20);
+	pos = 0;
+
+	while ((ch = *token++) != '\0') {
+		if (isdigit(ch)) {
+			if (pos >= 19)
+				return -1;
+			num_str[pos++] = ch;
+		} else if (ch == ':') {
+			if (range_low != -1)
+				return -1;
+			range_low = atoi(num_str);
+			memset(num_str, 0, 20);
+			pos = 0;
+		}
+	}
+
+	if (strlen(num_str) == 0)
+		return -1;
+
+	range_high = atoi(num_str);
+
+	*low = (uint16_t)range_low;
+	*high = (uint16_t)range_high;
+
+	return 0;
+}
+
+/** sp add parse */
+struct cfg_sp_add_cfg_item {
+	cmdline_fixed_string_t sp_keyword;
+	cmdline_multi_string_t multi_string;
+};
+
+static void
+cfg_sp_add_cfg_item_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl, void *data)
+{
+	struct cfg_sp_add_cfg_item *params = parsed_result;
+	char *tokens[32];
+	uint32_t n_tokens = RTE_DIM(tokens);
+	struct parse_status *status = (struct parse_status *)data;
+
+	APP_CHECK((parse_tokenize_string(params->multi_string, tokens,
+		&n_tokens) == 0), status, "too many arguments");
+
+	if (status->status < 0)
+		return;
+
+	if (strcmp(tokens[0], "ipv4") == 0) {
+		parse_sp4_tokens(tokens, n_tokens, status);
+		if (status->status < 0)
+			return;
+	} else if (strcmp(tokens[0], "ipv6") == 0) {
+		parse_sp6_tokens(tokens, n_tokens, status);
+		if (status->status < 0)
+			return;
+	} else {
+		APP_CHECK(0, status, "unrecognizable input %s\n",
+			tokens[0]);
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cfg_sp_add_sp_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_sp_add_cfg_item,
+		sp_keyword, "sp");
+
+static cmdline_parse_token_string_t cfg_sp_add_multi_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_sp_add_cfg_item, multi_string,
+		TOKEN_STRING_MULTI);
+
+cmdline_parse_inst_t cfg_sp_add_rule = {
+	.f = cfg_sp_add_cfg_item_parsed,
+	.data = NULL,
+	.help_str = "",
+	.tokens = {
+		(void *) &cfg_sp_add_sp_str,
+		(void *) &cfg_sp_add_multi_str,
+		NULL,
+	},
+};
+
+/* sa add parse */
+struct cfg_sa_add_cfg_item {
+	cmdline_fixed_string_t sa_keyword;
+	cmdline_multi_string_t multi_string;
+};
+
+static void
+cfg_sa_add_cfg_item_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl, void *data)
+{
+	struct cfg_sa_add_cfg_item *params = parsed_result;
+	char *tokens[32];
+	uint32_t n_tokens = RTE_DIM(tokens);
+	struct parse_status *status = (struct parse_status *)data;
+
+	APP_CHECK(parse_tokenize_string(params->multi_string, tokens,
+		&n_tokens) == 0, status, "too many arguments\n");
+
+	parse_sa_tokens(tokens, n_tokens, status);
+}
+
+static cmdline_parse_token_string_t cfg_sa_add_sa_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_sa_add_cfg_item,
+		sa_keyword, "sa");
+
+static cmdline_parse_token_string_t cfg_sa_add_multi_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_sa_add_cfg_item, multi_string,
+		TOKEN_STRING_MULTI);
+
+cmdline_parse_inst_t cfg_sa_add_rule = {
+	.f = cfg_sa_add_cfg_item_parsed,
+	.data = NULL,
+	.help_str = "",
+	.tokens = {
+		(void *) &cfg_sa_add_sa_str,
+		(void *) &cfg_sa_add_multi_str,
+		NULL,
+	},
+};
+
+/* rt add parse */
+struct cfg_rt_add_cfg_item {
+	cmdline_fixed_string_t rt_keyword;
+	cmdline_multi_string_t multi_string;
+};
+
+static void
+cfg_rt_add_cfg_item_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl, void *data)
+{
+	struct cfg_rt_add_cfg_item *params = parsed_result;
+	char *tokens[32];
+	uint32_t n_tokens = RTE_DIM(tokens);
+	struct parse_status *status = (struct parse_status *)data;
+
+	APP_CHECK(parse_tokenize_string(
+		params->multi_string, tokens, &n_tokens) == 0,
+		status, "too many arguments\n");
+	if (status->status < 0)
+		return;
+
+	parse_rt_tokens(tokens, n_tokens, status);
+}
+
+static cmdline_parse_token_string_t cfg_rt_add_rt_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_rt_add_cfg_item,
+		rt_keyword, "rt");
+
+static cmdline_parse_token_string_t cfg_rt_add_multi_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_rt_add_cfg_item, multi_string,
+		TOKEN_STRING_MULTI);
+
+cmdline_parse_inst_t cfg_rt_add_rule = {
+	.f = cfg_rt_add_cfg_item_parsed,
+	.data = NULL,
+	.help_str = "",
+	.tokens = {
+		(void *) &cfg_rt_add_rt_str,
+		(void *) &cfg_rt_add_multi_str,
+		NULL,
+	},
+};
+
+/** set of cfg items */
+cmdline_parse_ctx_t ipsec_ctx[] = {
+	(cmdline_parse_inst_t *)&cfg_sp_add_rule,
+	(cmdline_parse_inst_t *)&cfg_sa_add_rule,
+	(cmdline_parse_inst_t *)&cfg_rt_add_rule,
+	NULL,
+};
+
+int
+parse_cfg_file(const char *cfg_filename)
+{
+	struct cmdline *cl = cmdline_stdin_new(ipsec_ctx, "");
+	FILE *f = fopen(cfg_filename, "r");
+	char str[1024] = {0}, *get_s = NULL;
+	uint32_t line_num = 0;
+	struct parse_status status = {0};
+
+	if (f == NULL) {
+		rte_panic("Error: invalid file descriptor %s\n",
+			cfg_filename);
+		goto error_exit;
+	}
+
+	if (cl == NULL) {
+		rte_panic("Error: cannot create cmdline instance\n");
+		goto error_exit;
+	}
+
+	cfg_sp_add_rule.data = &status;
+	cfg_sa_add_rule.data = &status;
+	cfg_rt_add_rule.data = &status;
+
+	do {
+		char oneline[1024];
+
+		get_s = fgets(oneline, 1024, f);
+		if (get_s) {
+			char *pos;
+
+			line_num++;
+
+			if (strlen(oneline) > 1022) {
+				rte_panic("%s:%u: error: the line "
+					"contains more characters the "
+					"parser can handle\n",
+					cfg_filename, line_num);
+				goto error_exit;
+			}
+
+			/* process comment char '#' */
+			if (oneline[0] == '#')
+				continue;
+
+			pos = strchr(oneline, '#');
+			if (pos != NULL)
+				*pos = '\0';
+
+			/* process line concatenator '\' */
+			pos = strchr(oneline, 92);
+			if (pos != NULL) {
+				if (pos != oneline+strlen(oneline) - 2) {
+					rte_panic("%s:%u: error: no "
+						"character should exist "
+						"after '\\' symbol\n",
+						cfg_filename, line_num);
+					goto error_exit;
+				}
+
+				*pos = '\0';
+
+				if (strlen(oneline) + strlen(str) > 1022) {
+					rte_panic("%s:%u: error: the "
+						"concatenated line "
+						"contains more characters "
+						"the parser can handle\n",
+						cfg_filename, line_num);
+					goto error_exit;
+				}
+
+				strncpy(str + strlen(str), oneline,
+					strlen(oneline));
+
+				continue;
+			}
+
+			/* copy the line to str and process */
+			if (strlen(oneline) + strlen(str) > 1022) {
+				rte_panic("%s:%u: error: the line "
+					"contains more characters the "
+					"parser can handle\n",
+					cfg_filename, line_num);
+				goto error_exit;
+			}
+			strncpy(str + strlen(str), oneline,
+				strlen(oneline));
+
+			str[strlen(str)] = '\n';
+			if (cmdline_parse(cl, str) < 0) {
+				rte_panic("%s:%u: error: parsing \"%s\" "
+					"failed\n", cfg_filename,
+					line_num, str);
+				goto error_exit;
+			}
+
+			if (status.status < 0) {
+				rte_panic("%s:%u: error: %s",
+					cfg_filename, line_num,
+					status.parse_msg);
+				goto error_exit;
+			}
+
+			memset(str, 0, 1024);
+		}
+	} while (get_s != NULL);
+
+	cmdline_stdin_exit(cl);
+	fclose(f);
+
+	return 0;
+
+error_exit:
+	if (cl)
+		cmdline_stdin_exit(cl);
+	if (f)
+		fclose(f);
+
+	return -1;
+}

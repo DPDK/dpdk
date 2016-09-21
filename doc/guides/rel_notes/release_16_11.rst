@@ -78,6 +78,10 @@ New Features
   * C3XXX device
   * C62XX device
 
+* **Updated the IPsec example with following support:**
+
+  * configuration file
+
 
 Resolved Issues
 ---------------
