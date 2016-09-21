@@ -2875,7 +2875,7 @@ static struct unit_test_suite cryptodev_aes_testsuite  = {
 };
 
 static struct unit_test_suite cryptodev_snow3g_testsuite  = {
-	.suite_name = "Crypto Device Snow3G Unit Test Suite",
+	.suite_name = "Crypto Device SNOW3G Unit Test Suite",
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {

@@ -100,7 +100,7 @@ enum rte_crypto_cipher_algorithm {
 	/**< Kasumi algorithm in F8 mode */
 
 	RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
-	/**< SNOW3G algorithm in UEA2 mode */
+	/**< SNOW 3G algorithm in UEA2 mode */
 
 	RTE_CRYPTO_CIPHER_ZUC_EEA3,
 	/**< ZUC algorithm in EEA3 mode */
@@ -233,7 +233,7 @@ enum rte_crypto_auth_algorithm {
 	/**< HMAC using 512 bit SHA algorithm. */
 
 	RTE_CRYPTO_AUTH_SNOW3G_UIA2,
-	/**< SNOW3G algorithm in UIA2 mode. */
+	/**< SNOW 3G algorithm in UIA2 mode. */
 
 	RTE_CRYPTO_AUTH_ZUC_EIA3,
 	/**< ZUC algorithm in EIA3 mode */
@@ -291,7 +291,7 @@ struct rte_crypto_auth_xform {
 	 * This field must be specified when the hash algorithm is one of the
 	 * following:
 	 *
-	 * - For SNOW3G (@ref RTE_CRYPTO_AUTH_SNOW3G_UIA2), this is the
+	 * - For SNOW 3G (@ref RTE_CRYPTO_AUTH_SNOW3G_UIA2), this is the
 	 *   length of the IV (which should be 16).
 	 *
 	 * - For GCM (@ref RTE_CRYPTO_AUTH_AES_GCM).  In this case, this is
@@ -391,7 +391,7 @@ struct rte_crypto_sym_op {
 			  * this location.
 			  *
 			  * @note
-			  * For Snow3G @ RTE_CRYPTO_CIPHER_SNOW3G_UEA2
+			  * For SNOW 3G @ RTE_CRYPTO_CIPHER_SNOW3G_UEA2
 			  * and KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8,
 			  * this field should be in bits.
 			  */
@@ -416,7 +416,7 @@ struct rte_crypto_sym_op {
 			  * field should be set to 0.
 			  *
 			  * @note
-			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UEA2
+			  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UEA2
 			  * and KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8,
 			  * this field should be in bits.
 			  */
@@ -427,7 +427,7 @@ struct rte_crypto_sym_op {
 			/**< Initialisation Vector or Counter.
 			 *
 			 * - For block ciphers in CBC or F8 mode, or for Kasumi
-			 * in F8 mode, or for SNOW3G in UEA2 mode, this is the
+			 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
 			 * Initialisation Vector (IV) value.
 			 *
 			 * - For block ciphers in CTR mode, this is the counter.
@@ -455,7 +455,7 @@ struct rte_crypto_sym_op {
 			/**< Length of valid IV data.
 			 *
 			 * - For block ciphers in CBC or F8 mode, or for Kasumi
-			 * in F8 mode, or for SNOW3G in UEA2 mode, this is the
+			 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
 			 * length of the IV (which must be the same as the
 			 * block length of the cipher).
 			 *
@@ -490,7 +490,7 @@ struct rte_crypto_sym_op {
 			  * used instead
 			  *
 			  * @note
-			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
+			  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
 			  * and KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
 			  * this field should be in bits.
 			  */
@@ -510,7 +510,7 @@ struct rte_crypto_sym_op {
 			  * Auth.aad.length is used instead.
 			  *
 			  * @note
-			  * For Snow3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
+			  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2
 			  * and KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
 			  * this field should be in bits.
 			  */
@@ -555,7 +555,7 @@ struct rte_crypto_sym_op {
 			uint8_t *data;
 			/**< Pointer to Additional Authenticated Data (AAD)
 			 * needed for authenticated cipher mechanisms (CCM and
-			 * GCM), and to the IV for SNOW3G authentication
+			 * GCM), and to the IV for SNOW 3G authentication
 			 * (@ref RTE_CRYPTO_AUTH_SNOW3G_UIA2). For other
 			 * authentication mechanisms this pointer is ignored.
 			 *

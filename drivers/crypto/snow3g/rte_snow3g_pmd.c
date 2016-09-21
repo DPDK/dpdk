@@ -631,7 +631,7 @@ cryptodev_snow3g_remove(const char *name)
 	if (name == NULL)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD, "Closing SNOW3G crypto device %s"
+	RTE_LOG(INFO, PMD, "Closing SNOW 3G crypto device %s"
 			" on numa socket %u\n",
 			name, rte_socket_id());
 

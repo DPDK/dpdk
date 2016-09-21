@@ -212,7 +212,7 @@ testsuite_setup(void)
 		}
 	}
 
-	/* Create 2 Snow3G devices if required */
+	/* Create 2 SNOW 3G devices if required */
 	if (gbl_cryptodev_type == RTE_CRYPTODEV_SNOW3G_PMD) {
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
 		if (nb_devs < 2) {
@@ -1093,7 +1093,7 @@ test_AES_qat_all(void)
 	return TEST_SUCCESS;
 }
 
-/* ***** Snow3G Tests ***** */
+/* ***** SNOW 3G Tests ***** */
 static int
 create_snow3g_kasumi_hash_session(uint8_t dev_id,
 	const uint8_t *key, const uint8_t key_len,
@@ -1372,7 +1372,7 @@ create_snow3g_kasumi_hash_operation(const uint8_t *auth_tag,
 	* The cryptodev API calls out -
 	*  - the array must be big enough to hold the AAD, plus any
 	*   space to round this up to the nearest multiple of the
-	*   block size (8 bytes for KASUMI and 16 bytes for SNOW3G).
+	*   block size (8 bytes for KASUMI and 16 bytes for SNOW 3G).
 	*/
 	if (algo == RTE_CRYPTO_AUTH_KASUMI_F9)
 		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
@@ -1473,7 +1473,7 @@ create_snow3g_kasumi_cipher_hash_operation(const uint8_t *auth_tag,
 	* The cryptodev API calls out -
 	*  - the array must be big enough to hold the AAD, plus any
 	*   space to round this up to the nearest multiple of the
-	*   block size (8 bytes for KASUMI and 16 bytes for SNOW3G).
+	*   block size (8 bytes for KASUMI and 16 bytes for SNOW 3G).
 	*/
 	if (auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9)
 		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
@@ -1619,7 +1619,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	unsigned plaintext_len;
 	uint8_t *plaintext;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->digest.len,
@@ -1642,7 +1642,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 				plaintext_pad_len);
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_hash_operation(NULL, tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -1664,7 +1664,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	ut_params->digest,
 	tdata->digest.data,
 	DIGEST_BYTE_LENGTH_SNOW3G_UIA2,
-	"Snow3G Generated auth tag not as expected");
+	"SNOW 3G Generated auth tag not as expected");
 
 	return 0;
 }
@@ -1680,7 +1680,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	unsigned plaintext_len;
 	uint8_t *plaintext;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
 				tdata->aad.len, tdata->digest.len,
@@ -1702,7 +1702,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 				plaintext_pad_len);
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_hash_operation(tdata->digest.data,
 			tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
@@ -2269,7 +2269,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
@@ -2293,7 +2293,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len,
@@ -2319,7 +2319,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 		ciphertext,
 		tdata->ciphertext.data,
 		tdata->validDataLenInBits.len,
-		"Snow3G Ciphertext data not as expected");
+		"SNOW 3G Ciphertext data not as expected");
 	return 0;
 }
 
@@ -2335,7 +2335,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
@@ -2366,7 +2366,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
@@ -2393,7 +2393,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 		ciphertext,
 		tdata->ciphertext.data,
 		tdata->validDataLenInBits.len,
-		"Snow3G Ciphertext data not as expected");
+		"SNOW 3G Ciphertext data not as expected");
 	return 0;
 }
 
@@ -2429,7 +2429,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	uint8_t extra_offset = 4;
 	uint8_t *expected_ciphertext_shifted;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
@@ -2467,7 +2467,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 #ifdef RTE_APP_TEST_DEBUG
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 #endif
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
@@ -2508,7 +2508,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 		expected_ciphertext_shifted,
 		tdata->validDataLenInBits.len,
 		extra_offset,
-		"Snow3G Ciphertext data not as expected");
+		"SNOW 3G Ciphertext data not as expected");
 	return 0;
 }
 
@@ -2523,7 +2523,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	unsigned ciphertext_pad_len;
 	unsigned ciphertext_len;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
@@ -2547,7 +2547,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len,
@@ -2571,7 +2571,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(plaintext,
 				tdata->plaintext.data,
 				tdata->validDataLenInBits.len,
-				"Snow3G Plaintext data not as expected");
+				"SNOW 3G Plaintext data not as expected");
 	return 0;
 }
 
@@ -2586,7 +2586,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	unsigned ciphertext_pad_len;
 	unsigned ciphertext_len;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
@@ -2620,7 +2620,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
@@ -2645,7 +2645,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(plaintext,
 				tdata->plaintext.data,
 				tdata->validDataLenInBits.len,
-				"Snow3G Plaintext data not as expected");
+				"SNOW 3G Plaintext data not as expected");
 	return 0;
 }
 
@@ -2661,7 +2661,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_cipher_auth_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -2687,7 +2687,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_cipher_hash_operation(tdata->digest.data,
 			tdata->digest.len, tdata->aad.data,
 			tdata->aad.len, /*tdata->plaintext.len,*/
@@ -2719,7 +2719,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			ciphertext,
 			tdata->ciphertext.data,
 			tdata->validDataLenInBits.len,
-			"Snow3G Ciphertext data not as expected");
+			"SNOW 3G Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
 	    + plaintext_pad_len + tdata->aad.len + tdata->iv.len;
@@ -2729,7 +2729,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			ut_params->digest,
 			tdata->digest.data,
 			DIGEST_BYTE_LENGTH_SNOW3G_UIA2,
-			"Snow3G Generated auth tag not as expected");
+			"SNOW 3G Generated auth tag not as expected");
 	return 0;
 }
 static int
@@ -2744,7 +2744,7 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
 
-	/* Create SNOW3G session */
+	/* Create SNOW 3G session */
 	retval = create_snow3g_kasumi_auth_cipher_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -2771,7 +2771,7 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
-	/* Create SNOW3G operation */
+	/* Create SNOW 3G operation */
 	retval = create_snow3g_kasumi_auth_cipher_operation(
 		tdata->digest.len,
 		tdata->iv.data, tdata->iv.len,
@@ -2807,14 +2807,14 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 		ciphertext,
 		tdata->ciphertext.data,
 		tdata->validDataLenInBits.len,
-		"Snow3G Ciphertext data not as expected");
+		"SNOW 3G Ciphertext data not as expected");
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 		ut_params->digest,
 		tdata->digest.data,
 		DIGEST_BYTE_LENGTH_SNOW3G_UIA2,
-		"Snow3G Generated auth tag not as expected");
+		"SNOW 3G Generated auth tag not as expected");
 	return 0;
 }
 
@@ -4517,7 +4517,7 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GMAC_authentication_verify_test_case_3),
 
-		/** Snow3G encrypt only (UEA2) */
+		/** SNOW 3G encrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -4534,7 +4534,7 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_decryption_test_case_1_oop),
 
-		/** Snow3G decrypt only (UEA2) */
+		/** SNOW 3G decrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_decryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -4715,11 +4715,11 @@ static struct unit_test_suite cryptodev_sw_kasumi_testsuite  = {
 	}
 };
 static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
-	.suite_name = "Crypto Device SW Snow3G Unit Test Suite",
+	.suite_name = "Crypto Device SW SNOW 3G Unit Test Suite",
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		/** Snow3G encrypt only (UEA2) */
+		/** SNOW 3G encrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -4739,7 +4739,7 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1_offset_oop),
 
-		/** Snow3G decrypt only (UEA2) */
+		/** SNOW 3G decrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_decryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,

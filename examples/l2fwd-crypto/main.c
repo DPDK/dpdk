@@ -469,7 +469,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 				rte_pktmbuf_pkt_len(m) - cparams->digest_length);
 		op->sym->auth.digest.length = cparams->digest_length;
 
-		/* For SNOW3G/KASUMI algorithms, offset/length must be in bits */
+		/* For SNOW 3G/KASUMI algorithms, offset/length must be in bits */
 		if (cparams->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
 				cparams->auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9) {
 			op->sym->auth.data.offset = ipdata_offset << 3;
@@ -491,7 +491,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		op->sym->cipher.iv.phys_addr = cparams->iv.phys_addr;
 		op->sym->cipher.iv.length = cparams->iv.length;
 
-		/* For SNOW3G algorithms, offset/length must be in bits */
+		/* For SNOW 3G algorithms, offset/length must be in bits */
 		if (cparams->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 				cparams->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8) {
 			op->sym->cipher.data.offset = ipdata_offset << 3;

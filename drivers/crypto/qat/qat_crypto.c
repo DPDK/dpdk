@@ -265,7 +265,7 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-	{	/* SNOW3G (UIA2) */
+	{	/* SNOW 3G (UIA2) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
 			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
@@ -330,7 +330,7 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-	{	/* SNOW3G (UEA2) */
+	{	/* SNOW 3G (UEA2) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
 			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
@@ -573,7 +573,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 		if (qat_alg_validate_snow3g_key(cipher_xform->key.length,
 					&session->qat_cipher_alg) != 0) {
-			PMD_DRV_LOG(ERR, "Invalid SNOW3G cipher key size");
+			PMD_DRV_LOG(ERR, "Invalid SNOW 3G cipher key size");
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
@@ -942,7 +942,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		if (unlikely((cipher_param->cipher_length % BYTE_LENGTH != 0) ||
 				(cipher_param->cipher_offset
 					% BYTE_LENGTH != 0))) {
-			PMD_DRV_LOG(ERR, " For Snow3g/Kasumi, QAT PMD only "
+			PMD_DRV_LOG(ERR, " For SNOW 3G/Kasumi, QAT PMD only "
 				"supports byte aligned values");
 			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			return -EINVAL;
@@ -973,7 +973,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2) {
 		if (unlikely((auth_param->auth_off % BYTE_LENGTH != 0) ||
 				(auth_param->auth_len % BYTE_LENGTH != 0))) {
-			PMD_DRV_LOG(ERR, " For Snow3g, QAT PMD only "
+			PMD_DRV_LOG(ERR, " For SNOW 3G, QAT PMD only "
 				"supports byte aligned values");
 			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			return -EINVAL;

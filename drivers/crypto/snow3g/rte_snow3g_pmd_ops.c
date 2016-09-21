@@ -39,7 +39,7 @@
 #include "rte_snow3g_pmd_private.h"
 
 static const struct rte_cryptodev_capabilities snow3g_pmd_capabilities[] = {
-	{	/* SNOW3G (UIA2) */
+	{	/* SNOW 3G (UIA2) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
 			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
@@ -64,7 +64,7 @@ static const struct rte_cryptodev_capabilities snow3g_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-	{	/* SNOW3G (UEA2) */
+	{	/* SNOW 3G (UEA2) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
 			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
@@ -228,7 +228,7 @@ snow3g_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		snow3g_pmd_qp_release(dev, qp_id);
 
 	/* Allocate the queue pair data structure. */
-	qp = rte_zmalloc_socket("SNOW3G PMD Queue Pair", sizeof(*qp),
+	qp = rte_zmalloc_socket("SNOW 3G PMD Queue Pair", sizeof(*qp),
 					RTE_CACHE_LINE_SIZE, socket_id);
 	if (qp == NULL)
 		return (-ENOMEM);

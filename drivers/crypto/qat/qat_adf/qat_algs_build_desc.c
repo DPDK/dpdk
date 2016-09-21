@@ -454,7 +454,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	struct icp_qat_fw_auth_cd_ctrl_hdr *hash_cd_ctrl = ptr;
 	enum icp_qat_hw_cipher_convert key_convert;
 	uint32_t total_key_size;
-	uint16_t proto = ICP_QAT_FW_LA_NO_PROTO;	/* no CCM/GCM/Snow3G */
+	uint16_t proto = ICP_QAT_FW_LA_NO_PROTO;	/* no CCM/GCM/SNOW 3G */
 	uint16_t cipher_offset, cd_size;
 	uint32_t wordIndex  = 0;
 	uint32_t *temp_key = NULL;
@@ -581,7 +581,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		(struct icp_qat_fw_la_auth_req_params *)
 		((char *)&req_tmpl->serv_specif_rqpars +
 		sizeof(struct icp_qat_fw_la_cipher_req_params));
-	uint16_t proto = ICP_QAT_FW_LA_NO_PROTO;	/* no CCM/GCM/Snow3G */
+	uint16_t proto = ICP_QAT_FW_LA_NO_PROTO;	/* no CCM/GCM/SNOW 3G */
 	uint16_t state1_size = 0, state2_size = 0;
 	uint16_t hash_offset, cd_size;
 	uint32_t *aad_len = NULL;
