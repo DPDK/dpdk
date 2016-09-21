@@ -116,6 +116,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
 		infiniband/mlx5_hw.h \
 		enum MLX5_ETH_VLAN_INLINE_HEADER_SIZE \
 		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_VERBS_MLX5_OPCODE_TSO \
+		infiniband/mlx5_hw.h \
+		enum MLX5_OPCODE_TSO \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
 

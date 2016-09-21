@@ -628,7 +628,7 @@ mlx5_mpw_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
 	mpw->wqe->eseg.rsvd1 = 0;
 	mpw->wqe->eseg.rsvd2 = 0;
 	mpw->wqe->ctrl[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
-				  (txq->wqe_ci << 8) | MLX5_OPCODE_LSO_MPW);
+				  (txq->wqe_ci << 8) | MLX5_OPCODE_TSO);
 	mpw->wqe->ctrl[2] = 0;
 	mpw->wqe->ctrl[3] = 0;
 	mpw->data.dseg[0] = (volatile struct mlx5_wqe_data_seg *)
@@ -830,7 +830,7 @@ mlx5_mpw_inline_new(struct txq *txq, struct mlx5_mpw *mpw, uint32_t length)
 	mpw->wqe = (volatile struct mlx5_wqe *)&(*txq->wqes)[idx].hdr;
 	mpw->wqe->ctrl[0] = htonl((MLX5_OPC_MOD_MPW << 24) |
 				  (txq->wqe_ci << 8) |
-				  MLX5_OPCODE_LSO_MPW);
+				  MLX5_OPCODE_TSO);
 	mpw->wqe->ctrl[2] = 0;
 	mpw->wqe->ctrl[3] = 0;
 	mpw->wqe->eseg.mss = htons(length);

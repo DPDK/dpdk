@@ -44,6 +44,8 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include "mlx5_autoconf.h"
+
 /* Get CQE owner bit. */
 #define MLX5_CQE_OWNER(op_own) ((op_own) & MLX5_CQE_OWNER_MASK)
 
@@ -77,6 +79,10 @@
 
 /* Room for inline data in multi-packet WQE. */
 #define MLX5_MWQE64_INL_DATA 28
+
+#ifndef HAVE_VERBS_MLX5_OPCODE_TSO
+#define MLX5_OPCODE_TSO MLX5_OPCODE_LSO_MPW /* Compat with OFED 3.3. */
+#endif
 
 /* Subset of struct mlx5_wqe_eth_seg. */
 struct mlx5_wqe_eth_seg_small {
