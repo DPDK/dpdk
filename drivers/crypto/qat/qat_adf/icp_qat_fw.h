@@ -46,7 +46,7 @@
  */
 #ifndef _ICP_QAT_FW_H_
 #define _ICP_QAT_FW_H_
-#include <linux/types.h>
+#include <sys/types.h>
 #include "icp_qat_hw.h"
 
 #define QAT_FIELD_SET(flags, val, bitpos, mask) \
