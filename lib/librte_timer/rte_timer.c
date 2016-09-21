@@ -613,7 +613,7 @@ void rte_timer_manage(void)
 			status.owner = (int16_t)lcore_id;
 			rte_wmb();
 			tim->status.u32 = status.u32;
-			__rte_timer_reset(tim, cur_time + tim->period,
+			__rte_timer_reset(tim, tim->expire + tim->period,
 				tim->period, lcore_id, tim->f, tim->arg, 1);
 			rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
 		}
