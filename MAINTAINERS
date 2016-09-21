@@ -280,6 +280,7 @@ F: doc/guides/nics/ena.rst
 
 Broadcom bnxt
 M: Stephen Hurd <stephen.hurd@broadcom.com>
+M: Ajit Khaparde <ajit.khaparde@broadcom.com>
 F: drivers/net/bnxt/
 F: doc/guides/nics/bnxt.rst
 
