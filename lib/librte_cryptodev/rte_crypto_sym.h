@@ -97,7 +97,7 @@ enum rte_crypto_cipher_algorithm {
 	/**< (A)RC4 cipher algorithm */
 
 	RTE_CRYPTO_CIPHER_KASUMI_F8,
-	/**< Kasumi algorithm in F8 mode */
+	/**< KASUMI algorithm in F8 mode */
 
 	RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 	/**< SNOW 3G algorithm in UEA2 mode */
@@ -204,7 +204,7 @@ enum rte_crypto_auth_algorithm {
 	/**< AES XCBC algorithm. */
 
 	RTE_CRYPTO_AUTH_KASUMI_F9,
-	/**< Kasumi algorithm in F9 mode. */
+	/**< KASUMI algorithm in F9 mode. */
 
 	RTE_CRYPTO_AUTH_MD5,
 	/**< MD5 algorithm */
@@ -426,7 +426,7 @@ struct rte_crypto_sym_op {
 			uint8_t *data;
 			/**< Initialisation Vector or Counter.
 			 *
-			 * - For block ciphers in CBC or F8 mode, or for Kasumi
+			 * - For block ciphers in CBC or F8 mode, or for KASUMI
 			 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
 			 * Initialisation Vector (IV) value.
 			 *
@@ -454,7 +454,7 @@ struct rte_crypto_sym_op {
 			uint16_t length;
 			/**< Length of valid IV data.
 			 *
-			 * - For block ciphers in CBC or F8 mode, or for Kasumi
+			 * - For block ciphers in CBC or F8 mode, or for KASUMI
 			 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
 			 * length of the IV (which must be the same as the
 			 * block length of the cipher).

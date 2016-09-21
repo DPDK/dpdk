@@ -942,7 +942,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		if (unlikely((cipher_param->cipher_length % BYTE_LENGTH != 0) ||
 				(cipher_param->cipher_offset
 					% BYTE_LENGTH != 0))) {
-			PMD_DRV_LOG(ERR, " For SNOW 3G/Kasumi, QAT PMD only "
+			PMD_DRV_LOG(ERR, " For SNOW 3G/KASUMI, QAT PMD only "
 				"supports byte aligned values");
 			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			return -EINVAL;

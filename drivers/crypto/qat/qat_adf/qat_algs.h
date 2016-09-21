@@ -52,7 +52,7 @@
 #include "icp_qat_fw_la.h"
 
 /*
- * Key Modifier (KM) value used in Kasumi algorithm in F9 mode to XOR
+ * Key Modifier (KM) value used in KASUMI algorithm in F9 mode to XOR
  * Integrity Key (IK)
  */
 #define KASUMI_F9_KEY_MODIFIER_4_BYTES   0xAAAAAAAA
