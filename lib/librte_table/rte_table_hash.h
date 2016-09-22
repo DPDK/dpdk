@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -362,6 +362,35 @@ struct rte_table_hash_key32_ext_params {
 
 /** Extendible bucket hash table operations */
 extern struct rte_table_ops rte_table_hash_key32_ext_ops;
+
+/** Cuckoo hash table parameters */
+struct rte_table_hash_cuckoo_params {
+    /** Key size (number of bytes */
+		uint32_t key_size;
+
+	/** Maximum number of hash table entries */
+	uint32_t n_keys;
+
+	/** Hash function used to calculate hash */
+	rte_table_hash_op_hash f_hash;
+
+	/** Seed value or Init value used by f_hash */
+	uint32_t seed;
+
+	/** Byte offset within packet meta-data where the 4-byte key signature
+	is located. Valid for pre-computed key signature tables, ignored for
+	do-sig tables. */
+	uint32_t signature_offset;
+
+	/** Byte offset within packet meta-data where the key is located */
+	uint32_t key_offset;
+
+	/** Hash table name */
+	const char *name;
+};
+
+/** Cuckoo hash table operations */
+extern struct rte_table_ops rte_table_hash_cuckoo_dosig_ops;
 
 #ifdef __cplusplus
 }

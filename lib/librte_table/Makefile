@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_lpm_ipv6.c
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_acl.c
 endif
+SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_cuckoo.c
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_key8.c
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_key16.c
 SRCS-$(CONFIG_RTE_LIBRTE_TABLE) += rte_table_hash_key32.c
@@ -80,5 +81,6 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_lpm
 ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
 DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_acl
 endif
+DEPDIRS-$(CONFIG_RTE_LIBRTE_TABLE) += lib/librte_hash
 
 include $(RTE_SDK)/mk/rte.lib.mk

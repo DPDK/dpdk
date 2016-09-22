@@ -28,4 +28,11 @@ DPDK_2.2 {
 	rte_table_hash_key16_ext_dosig_ops;
 	rte_table_hash_key16_lru_dosig_ops;
 
+};
+
+DPDK_16.07 {
+       global:
+
+       rte_table_hash_cuckoo_dosig_ops;
+
 } DPDK_2.0;
