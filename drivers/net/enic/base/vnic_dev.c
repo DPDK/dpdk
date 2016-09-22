@@ -266,32 +266,35 @@ void vnic_dev_clear_desc_ring(struct vnic_dev_ring *ring)
 	memset(ring->descs, 0, ring->size);
 }
 
-int vnic_dev_alloc_desc_ring(__attribute__((unused)) struct vnic_dev *vdev,
+int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev,
 	struct vnic_dev_ring *ring,
-	unsigned int desc_count, unsigned int desc_size, unsigned int socket_id,
+	unsigned int desc_count, unsigned int desc_size,
+	__attribute__((unused)) unsigned int socket_id,
 	char *z_name)
 {
-	const struct rte_memzone *rz;
+	void *alloc_addr = NULL;
+	dma_addr_t alloc_pa = 0;
 
 	vnic_dev_desc_ring_size(ring, desc_count, desc_size);
-
-	rz = rte_memzone_reserve_aligned(z_name,
-		ring->size_unaligned, socket_id,
-		0, ENIC_ALIGN);
-	if (!rz) {
+	alloc_addr = vdev->alloc_consistent(vdev->priv,
+					    ring->size_unaligned,
+					    &alloc_pa, (u8 *)z_name);
+	if (!alloc_addr) {
 		pr_err("Failed to allocate ring (size=%d), aborting\n",
 			(int)ring->size);
 		return -ENOMEM;
 	}
-
-	ring->descs_unaligned = rz->addr;
-	if (!ring->descs_unaligned) {
+	ring->descs_unaligned = alloc_addr;
+	if (!alloc_pa) {
 		pr_err("Failed to map allocated ring (size=%d), aborting\n",
 			(int)ring->size);
+		vdev->free_consistent(vdev->priv,
+				      ring->size_unaligned,
+				      alloc_addr,
+				      alloc_pa);
 		return -ENOMEM;
 	}
-
-	ring->base_addr_unaligned = (dma_addr_t)rz->phys_addr;
+	ring->base_addr_unaligned = alloc_pa;
 
 	ring->base_addr = VNIC_ALIGN(ring->base_addr_unaligned,
 		ring->base_align);
@@ -308,8 +311,13 @@ int vnic_dev_alloc_desc_ring(__attribute__((unused)) struct vnic_dev *vdev,
 void vnic_dev_free_desc_ring(__attribute__((unused))  struct vnic_dev *vdev,
 	struct vnic_dev_ring *ring)
 {
-	if (ring->descs)
+	if (ring->descs) {
+		vdev->free_consistent(vdev->priv,
+				      ring->size_unaligned,
+				      ring->descs_unaligned,
+				      ring->base_addr_unaligned);
 		ring->descs = NULL;
+	}
 }
 
 static int _vnic_dev_cmd(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
