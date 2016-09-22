@@ -227,6 +227,17 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 	mbuf->ol_flags = pkt_flags;
 }
 
+/* dummy receive function to replace actual function in
+ * order to do safe reconfiguration operations.
+ */
+uint16_t
+enic_dummy_recv_pkts(__rte_unused void *rx_queue,
+		     __rte_unused struct rte_mbuf **rx_pkts,
+		     __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
 uint16_t
 enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	       uint16_t nb_pkts)

@@ -160,8 +160,14 @@ struct enic {
 	/* linked list storing memory allocations */
 	LIST_HEAD(enic_memzone_list, enic_memzone_entry) memzone_list;
 	rte_spinlock_t memzone_list_lock;
+	rte_spinlock_t mtu_lock;
 
 };
+
+static inline unsigned int enic_rq_sop(unsigned int sop_rq)
+{
+	return sop_rq / 2;
+}
 
 static inline unsigned int enic_sop_rq(unsigned int rq)
 {
@@ -270,6 +276,9 @@ extern int enic_clsf_init(struct enic *enic);
 extern void enic_clsf_destroy(struct enic *enic);
 uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
+uint16_t enic_dummy_recv_pkts(__rte_unused void *rx_queue,
+			      __rte_unused struct rte_mbuf **rx_pkts,
+			      __rte_unused uint16_t nb_pkts);
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);

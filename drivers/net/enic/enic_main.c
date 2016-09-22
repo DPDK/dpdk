@@ -542,6 +542,9 @@ void enic_free_rq(void *rxq)
 		vnic_rq_free(rq_data);
 
 	vnic_cq_free(&enic->cq[rq_sop->index]);
+
+	rq_sop->in_use = 0;
+	rq_data->in_use = 0;
 }
 
 void enic_start_wq(struct enic *enic, uint16_t queue_idx)
@@ -610,6 +613,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	unsigned int mbuf_size, mbufs_per_pkt;
 	unsigned int nb_sop_desc, nb_data_desc;
 	uint16_t min_sop, max_sop, min_data, max_data;
+	uint16_t mtu = enic->rte_dev->data->mtu;
 
 	rq_sop->is_sop = 1;
 	rq_sop->data_queue_idx = data_queue_idx;
@@ -625,9 +629,9 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 			       RTE_PKTMBUF_HEADROOM);
 
 	if (enic->rte_dev->data->dev_conf.rxmode.enable_scatter) {
-		dev_info(enic, "Scatter rx mode enabled\n");
+		dev_info(enic, "Rq %u Scatter rx mode enabled\n", queue_idx);
 		/* ceil((mtu + ETHER_HDR_LEN + 4)/mbuf_size) */
-		mbufs_per_pkt = ((enic->config.mtu + ETHER_HDR_LEN + 4) +
+		mbufs_per_pkt = ((mtu + ETHER_HDR_LEN + 4) +
 				 (mbuf_size - 1)) / mbuf_size;
 	} else {
 		dev_info(enic, "Scatter rx mode disabled\n");
@@ -635,10 +639,11 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	}
 
 	if (mbufs_per_pkt > 1) {
-		dev_info(enic, "Scatter rx mode in use\n");
+		dev_info(enic, "Rq %u Scatter rx mode in use\n", queue_idx);
 		rq_data->in_use = 1;
 	} else {
-		dev_info(enic, "Scatter rx mode not being used\n");
+		dev_info(enic, "Rq %u Scatter rx mode not being used\n",
+			 queue_idx);
 		rq_data->in_use = 0;
 	}
 
@@ -675,7 +680,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	}
 	if (mbufs_per_pkt > 1) {
 		dev_info(enic, "For mtu %d and mbuf size %d valid rx descriptor range is %d to %d\n",
-			 enic->config.mtu, mbuf_size, min_sop + min_data,
+			 mtu, mbuf_size, min_sop + min_data,
 			 max_sop + max_data);
 	}
 	dev_info(enic, "Using %d rx descriptors (sop %d, data %d)\n",
@@ -725,6 +730,8 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 		if (rq_data->mbuf_ring == NULL)
 			goto err_free_sop_mbuf;
 	}
+
+	rq_sop->tot_nb_desc = nb_desc; /* squirl away for MTU update function */
 
 	return 0;
 
@@ -1100,6 +1107,54 @@ int enic_set_vnic_res(struct enic *enic)
 	return rc;
 }
 
+/* Initialize the completion queue for an RQ */
+static int
+enic_reinit_rq(struct enic *enic, unsigned int rq_idx)
+{
+	struct vnic_rq *sop_rq, *data_rq;
+	unsigned int cq_idx = enic_cq_rq(enic, rq_idx);
+	int rc = 0;
+
+	sop_rq = &enic->rq[enic_sop_rq(rq_idx)];
+	data_rq = &enic->rq[enic_data_rq(rq_idx)];
+
+	vnic_cq_clean(&enic->cq[cq_idx]);
+	vnic_cq_init(&enic->cq[cq_idx],
+		     0 /* flow_control_enable */,
+		     1 /* color_enable */,
+		     0 /* cq_head */,
+		     0 /* cq_tail */,
+		     1 /* cq_tail_color */,
+		     0 /* interrupt_enable */,
+		     1 /* cq_entry_enable */,
+		     0 /* cq_message_enable */,
+		     0 /* interrupt offset */,
+		     0 /* cq_message_addr */);
+
+
+	vnic_rq_init_start(sop_rq, enic_cq_rq(enic, enic_sop_rq(rq_idx)),
+			   0, sop_rq->ring.desc_count - 1, 1, 0);
+	if (data_rq->in_use) {
+		vnic_rq_init_start(data_rq,
+				   enic_cq_rq(enic, enic_data_rq(rq_idx)),
+				   0, data_rq->ring.desc_count - 1, 1, 0);
+	}
+
+	rc = enic_alloc_rx_queue_mbufs(enic, sop_rq);
+	if (rc)
+		return rc;
+
+	if (data_rq->in_use) {
+		rc = enic_alloc_rx_queue_mbufs(enic, data_rq);
+		if (rc) {
+			enic_rxmbuf_queue_release(enic, sop_rq);
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
 /* The Cisco NIC can send and receive packets up to a max packet size
  * determined by the NIC type and firmware. There is also an MTU
  * configured into the NIC via the CIMC/UCSM management interface
@@ -1109,16 +1164,15 @@ int enic_set_vnic_res(struct enic *enic)
  */
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 {
+	unsigned int rq_idx;
+	struct vnic_rq *rq;
+	int rc = 0;
 	uint16_t old_mtu;	/* previous setting */
 	uint16_t config_mtu;	/* Value configured into NIC via CIMC/UCSM */
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	old_mtu = eth_dev->data->mtu;
 	config_mtu = enic->config.mtu;
-
-	/* only works with Rx scatter disabled */
-	if (enic->rte_dev->data->dev_conf.rxmode.enable_scatter)
-		return -ENOTSUP;
 
 	if (new_mtu > enic->max_mtu) {
 		dev_err(enic,
@@ -1137,11 +1191,82 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 			"MTU (%u) is greater than value configured in NIC (%u)\n",
 			new_mtu, config_mtu);
 
+	/* The easy case is when scatter is disabled. However if the MTU
+	 * becomes greater than the mbuf data size, packet drops will ensue.
+	 */
+	if (!enic->rte_dev->data->dev_conf.rxmode.enable_scatter) {
+		eth_dev->data->mtu = new_mtu;
+		goto set_mtu_done;
+	}
+
+	/* Rx scatter is enabled so reconfigure RQ's on the fly. The point is to
+	 * change Rx scatter mode if necessary for better performance. I.e. if
+	 * MTU was greater than the mbuf size and now it's less, scatter Rx
+	 * doesn't have to be used and vice versa.
+	  */
+	rte_spinlock_lock(&enic->mtu_lock);
+
+	/* Stop traffic on all RQs */
+	for (rq_idx = 0; rq_idx < enic->rq_count * 2; rq_idx++) {
+		rq = &enic->rq[rq_idx];
+		if (rq->is_sop && rq->in_use) {
+			rc = enic_stop_rq(enic, enic_rq_sop(rq_idx));
+			if (rc) {
+				dev_err(enic, "Failed to stop Rq %u\n", rq_idx);
+				goto set_mtu_done;
+			}
+		}
+	}
+
+	/* replace Rx funciton with a no-op to avoid getting stale pkts */
+	eth_dev->rx_pkt_burst = enic_dummy_recv_pkts;
+	rte_mb();
+
+	/* Allow time for threads to exit the real Rx function. */
+	usleep(100000);
+
+	/* now it is safe to reconfigure the RQs */
+
 	/* update the mtu */
 	eth_dev->data->mtu = new_mtu;
 
+	/* free and reallocate RQs with the new MTU */
+	for (rq_idx = 0; rq_idx < enic->rq_count; rq_idx++) {
+		rq = &enic->rq[enic_sop_rq(rq_idx)];
+
+		enic_free_rq(rq);
+		rc = enic_alloc_rq(enic, rq_idx, rq->socket_id, rq->mp,
+				   rq->tot_nb_desc);
+		if (rc) {
+			dev_err(enic,
+				"Fatal MTU alloc error- No traffic will pass\n");
+			goto set_mtu_done;
+		}
+
+		rc = enic_reinit_rq(enic, rq_idx);
+		if (rc) {
+			dev_err(enic,
+				"Fatal MTU RQ reinit- No traffic will pass\n");
+			goto set_mtu_done;
+		}
+	}
+
+	/* put back the real receive function */
+	rte_mb();
+	eth_dev->rx_pkt_burst = enic_recv_pkts;
+	rte_mb();
+
+	/* restart Rx traffic */
+	for (rq_idx = 0; rq_idx < enic->rq_count; rq_idx++) {
+		rq = &enic->rq[enic_sop_rq(rq_idx)];
+		if (rq->is_sop && rq->in_use)
+			enic_start_rq(enic, rq_idx);
+	}
+
+set_mtu_done:
 	dev_info(enic, "MTU changed from %u to %u\n",  old_mtu, new_mtu);
-	return 0;
+	rte_spinlock_unlock(&enic->mtu_lock);
+	return rc;
 }
 
 static int enic_dev_init(struct enic *enic)

@@ -96,6 +96,7 @@ struct vnic_rq {
 	struct rte_mbuf *pkt_first_seg;
 	struct rte_mbuf *pkt_last_seg;
 	unsigned int max_mbufs_per_pkt;
+	uint16_t tot_nb_desc;
 };
 
 static inline unsigned int vnic_rq_desc_avail(struct vnic_rq *rq)
