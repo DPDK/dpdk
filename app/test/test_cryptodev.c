@@ -3164,12 +3164,12 @@ test_kasumi_cipher_auth_test_case_1(void)
 static int
 create_gcm_session(uint8_t dev_id, enum rte_crypto_cipher_operation op,
 		const uint8_t *key, const uint8_t key_len,
-		const uint8_t aad_len, const uint8_t auth_len)
+		const uint8_t aad_len, const uint8_t auth_len,
+		enum rte_crypto_auth_operation auth_op)
 {
 	uint8_t cipher_key[key_len];
 
 	struct crypto_unittest_params *ut_params = &unittest_params;
-
 
 	memcpy(cipher_key, key, key_len);
 
@@ -3178,7 +3178,7 @@ create_gcm_session(uint8_t dev_id, enum rte_crypto_cipher_operation op,
 	ut_params->cipher_xform.next = NULL;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_GCM;
-	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	ut_params->auth_xform.auth.op = auth_op;
 	ut_params->cipher_xform.cipher.op = op;
 	ut_params->cipher_xform.cipher.key.data = cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
@@ -3232,8 +3232,6 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 			"Failed to allocate symmetric crypto operation struct");
 
 	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
-
-
 
 	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
 			ut_params->ibuf, auth_tag_len);
@@ -3311,7 +3309,8 @@ test_mb_AES_GCM_authenticated_encryption(const struct gcm_test_data *tdata)
 	retval = create_gcm_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->auth_tag.len);
+			tdata->aad.len, tdata->auth_tag.len,
+			RTE_CRYPTO_AUTH_OP_GENERATE);
 	if (retval < 0)
 		return retval;
 
@@ -3441,7 +3440,8 @@ test_mb_AES_GCM_authenticated_decryption(const struct gcm_test_data *tdata)
 	retval = create_gcm_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_DECRYPT,
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->auth_tag.len);
+			tdata->aad.len, tdata->auth_tag.len,
+			RTE_CRYPTO_AUTH_OP_VERIFY);
 	if (retval < 0)
 		return retval;
 
