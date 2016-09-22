@@ -46,6 +46,9 @@ endif
 # define Q to '@' or not. $(Q) is used to prefix all shell commands to
 # be executed silently.
 Q=@
+ifeq '$V' '0'
+override V=
+endif
 ifdef V
 ifeq ("$(origin V)", "command line")
 Q=
