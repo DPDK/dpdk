@@ -44,8 +44,6 @@
 
 #define WD_TIMEOUT 5 /*jiffies */
 
-#define MBUF_BURST_SZ 32
-
 #define KNI_WAIT_RESPONSE_TIMEOUT 300 /* 3 seconds */
 
 /* typedef for rx function */
@@ -163,10 +161,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 	uint32_t len;
 	unsigned i, num_rx, num_fq;
 	struct rte_kni_mbuf *kva;
-	void *pa[MBUF_BURST_SZ];
-	void *va[MBUF_BURST_SZ];
 	void *data_kva;
-
 	struct sk_buff *skb;
 	struct net_device *dev = kni->net_dev;
 
@@ -181,16 +176,16 @@ kni_net_rx_normal(struct kni_dev *kni)
 	num_rx = min(num_fq, (unsigned)MBUF_BURST_SZ);
 
 	/* Burst dequeue from rx_q */
-	num_rx = kni_fifo_get(kni->rx_q, pa, num_rx);
+	num_rx = kni_fifo_get(kni->rx_q, kni->pa, num_rx);
 	if (num_rx == 0)
 		return;
 
 	/* Transfer received packets to netif */
 	for (i = 0; i < num_rx; i++) {
-		kva = pa2kva(pa[i]);
+		kva = pa2kva(kni->pa[i]);
 		len = kva->pkt_len;
 		data_kva = kva2data_kva(kva);
-		va[i] = pa2va(pa[i], kva);
+		kni->va[i] = pa2va(kni->pa[i], kva);
 
 		skb = dev_alloc_skb(len + 2);
 		if (!skb) {
@@ -234,7 +229,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 	}
 
 	/* Burst enqueue mbufs into free_q */
-	ret = kni_fifo_put(kni->free_q, va, num_rx);
+	ret = kni_fifo_put(kni->free_q, kni->va, num_rx);
 	if (ret != num_rx)
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue entries into free_q\n");
@@ -250,13 +245,8 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	uint32_t len;
 	unsigned i, num, num_rq, num_tq, num_aq, num_fq;
 	struct rte_kni_mbuf *kva;
-	void *pa[MBUF_BURST_SZ];
-	void *va[MBUF_BURST_SZ];
 	void * data_kva;
-
 	struct rte_kni_mbuf *alloc_kva;
-	void *alloc_pa[MBUF_BURST_SZ];
-	void *alloc_va[MBUF_BURST_SZ];
 	void *alloc_data_kva;
 
 	/* Get the number of entries in rx_q */
@@ -282,24 +272,24 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 		return;
 
 	/* Burst dequeue from rx_q */
-	ret = kni_fifo_get(kni->rx_q, pa, num);
+	ret = kni_fifo_get(kni->rx_q, kni->pa, num);
 	if (ret == 0)
 		return; /* Failing should not happen */
 
 	/* Dequeue entries from alloc_q */
-	ret = kni_fifo_get(kni->alloc_q, alloc_pa, num);
+	ret = kni_fifo_get(kni->alloc_q, kni->alloc_pa, num);
 	if (ret) {
 		num = ret;
 		/* Copy mbufs */
 		for (i = 0; i < num; i++) {
-			kva = pa2kva(pa[i]);
+			kva = pa2kva(kni->pa[i]);
 			len = kva->pkt_len;
 			data_kva = kva2data_kva(kva);
-			va[i] = pa2va(pa[i], kva);
+			kni->va[i] = pa2va(kni->pa[i], kva);
 
-			alloc_kva = pa2kva(alloc_pa[i]);
+			alloc_kva = pa2kva(kni->alloc_pa[i]);
 			alloc_data_kva = kva2data_kva(alloc_kva);
-			alloc_va[i] = pa2va(alloc_pa[i], alloc_kva);
+			kni->alloc_va[i] = pa2va(kni->alloc_pa[i], alloc_kva);
 
 			memcpy(alloc_data_kva, data_kva, len);
 			alloc_kva->pkt_len = len;
@@ -310,14 +300,14 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 		}
 
 		/* Burst enqueue mbufs into tx_q */
-		ret = kni_fifo_put(kni->tx_q, alloc_va, num);
+		ret = kni_fifo_put(kni->tx_q, kni->alloc_va, num);
 		if (ret != num)
 			/* Failing should not happen */
 			KNI_ERR("Fail to enqueue mbufs into tx_q\n");
 	}
 
 	/* Burst enqueue mbufs into free_q */
-	ret = kni_fifo_put(kni->free_q, va, num);
+	ret = kni_fifo_put(kni->free_q, kni->va, num);
 	if (ret != num)
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue mbufs into free_q\n");
@@ -340,10 +330,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	uint32_t len;
 	unsigned i, num_rq, num_fq, num;
 	struct rte_kni_mbuf *kva;
-	void *pa[MBUF_BURST_SZ];
-	void *va[MBUF_BURST_SZ];
 	void *data_kva;
-
 	struct sk_buff *skb;
 	struct net_device *dev = kni->net_dev;
 
@@ -362,16 +349,16 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		return;
 
 	/* Burst dequeue mbufs from rx_q */
-	ret = kni_fifo_get(kni->rx_q, pa, num);
+	ret = kni_fifo_get(kni->rx_q, kni->pa, num);
 	if (ret == 0)
 		return;
 
 	/* Copy mbufs to sk buffer and then call tx interface */
 	for (i = 0; i < num; i++) {
-		kva = pa2kva(pa[i]);
+		kva = pa2kva(kni->pa[i]);
 		len = kva->pkt_len;
 		data_kva = kva2data_kva(kva);
-		va[i] = pa2va(pa[i], kva);
+		kni->va[i] = pa2va(kni->pa[i], kva);
 
 		skb = dev_alloc_skb(len + 2);
 		if (skb == NULL)
@@ -425,7 +412,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	}
 
 	/* enqueue all the mbufs from rx_q into free_q */
-	ret = kni_fifo_put(kni->free_q, va, num);
+	ret = kni_fifo_put(kni->free_q, kni->va, num);
 	if (ret != num)
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue mbufs into free_q\n");

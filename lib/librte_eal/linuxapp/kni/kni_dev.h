@@ -39,10 +39,11 @@
 #include <exec-env/rte_kni_common.h>
 #define KNI_KTHREAD_RESCHEDULE_INTERVAL 5 /* us */
 
+#define MBUF_BURST_SZ 32
+
 /**
  * A structure describing the private information for a kni device.
  */
-
 struct kni_dev {
 	/* kni list */
 	struct list_head list;
@@ -104,6 +105,11 @@ struct kni_dev {
 		BE_FINISH = 0x4,
 	}vq_status;
 #endif
+	/* buffers */
+	void *pa[MBUF_BURST_SZ];
+	void *va[MBUF_BURST_SZ];
+	void *alloc_pa[MBUF_BURST_SZ];
+	void *alloc_va[MBUF_BURST_SZ];
 };
 
 #define KNI_ERR(args...) printk(KERN_DEBUG "KNI: Error: " args)
