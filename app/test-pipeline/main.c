@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -143,6 +143,16 @@ app_lcore_main_loop(__attribute__((unused)) void *arg)
 		case e_APP_PIPELINE_HASH_SPEC_KEY16_LRU:
 		case e_APP_PIPELINE_HASH_SPEC_KEY32_EXT:
 		case e_APP_PIPELINE_HASH_SPEC_KEY32_LRU:
+		/* cases for cuckoo hash table types */
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY8:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY16:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY32:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY48:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY64:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY80:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY96:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY112:
+		case e_APP_PIPELINE_HASH_CUCKOO_KEY128:
 			app_main_loop_worker_pipeline_hash();
 			return 0;
 

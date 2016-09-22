@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -116,6 +116,16 @@ enum {
 	e_APP_PIPELINE_ACL,
 	e_APP_PIPELINE_LPM,
 	e_APP_PIPELINE_LPM_IPV6,
+
+	e_APP_PIPELINE_HASH_CUCKOO_KEY8,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY16,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY32,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY48,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY64,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY80,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY96,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY112,
+	e_APP_PIPELINE_HASH_CUCKOO_KEY128,
 	e_APP_PIPELINES
 };
 

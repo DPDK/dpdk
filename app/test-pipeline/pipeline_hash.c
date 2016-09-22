@@ -43,6 +43,7 @@
 
 #include <rte_port_ring.h>
 #include <rte_table_hash.h>
+#include <rte_hash.h>
 #include <rte_pipeline.h>
 
 #include "main.h"
@@ -76,6 +77,25 @@ translate_options(uint32_t *special, uint32_t *ext, uint32_t *key_size)
 		*special = 1; *ext = 1; *key_size = 32; return;
 	case e_APP_PIPELINE_HASH_SPEC_KEY32_LRU:
 		*special = 1; *ext = 0; *key_size = 32; return;
+
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY8:
+		*special = 0; *ext = 0; *key_size = 8; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY16:
+		*special = 0; *ext = 0; *key_size = 16; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY32:
+		*special = 0; *ext = 0; *key_size = 32; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY48:
+		*special = 0; *ext = 0; *key_size = 48; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY64:
+		*special = 0; *ext = 0; *key_size = 64; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY80:
+		*special = 0; *ext = 0; *key_size = 80; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY96:
+		*special = 0; *ext = 0; *key_size = 96; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY112:
+		*special = 0; *ext = 0; *key_size = 112; return;
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY128:
+		*special = 0; *ext = 0; *key_size = 128; return;
 
 	default:
 		rte_panic("Invalid hash table type or key size\n");
@@ -348,6 +368,45 @@ app_main_loop_worker_pipeline_hash(void) {
 
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_hash_key32_lru_ops,
+			.arg_create = &table_hash_params,
+			.f_action_hit = NULL,
+			.f_action_miss = NULL,
+			.arg_ah = NULL,
+			.action_data_size = 0,
+		};
+
+		if (rte_pipeline_table_create(p, &table_params, &table_id))
+			rte_panic("Unable to configure the hash table\n");
+	}
+	break;
+
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY8:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY16:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY32:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY48:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY64:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY80:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY96:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY112:
+	case e_APP_PIPELINE_HASH_CUCKOO_KEY128:
+	{
+		char hash_name[RTE_HASH_NAMESIZE];
+
+		snprintf(hash_name, sizeof(hash_name), "RTE_TH_CUCKOO_%d",
+			app.pipeline_type);
+
+		struct rte_table_hash_cuckoo_params table_hash_params = {
+			.key_size = key_size,
+			.n_keys = (1 << 24) + 1,
+			.f_hash = test_hash,
+			.seed = 0,
+			.signature_offset = APP_METADATA_OFFSET(0),
+			.key_offset = APP_METADATA_OFFSET(32),
+			.name = hash_name,
+		};
+
+		struct rte_pipeline_table_params table_params = {
+			.ops = &rte_table_hash_cuckoo_dosig_ops,
 			.arg_create = &table_hash_params,
 			.f_action_hit = NULL,
 			.f_action_miss = NULL,
