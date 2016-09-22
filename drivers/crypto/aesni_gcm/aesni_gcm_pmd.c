@@ -230,9 +230,18 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_sym_op *op,
 					op->cipher.data.offset);
 
 	/* sanity checks */
-	if (op->cipher.iv.length != 16 && op->cipher.iv.length != 0) {
+	if (op->cipher.iv.length != 16 && op->cipher.iv.length != 12 &&
+			op->cipher.iv.length != 0) {
 		GCM_LOG_ERR("iv");
 		return -1;
+	}
+
+	/*
+	 * GCM working in 12B IV mode => 16B pre-counter block we need
+	 * to set BE LSB to 1, driver expects that 16B is allocated
+	 */
+	if (op->cipher.iv.length == 12) {
+		op->cipher.iv.data[15] = 1;
 	}
 
 	if (op->auth.aad.length != 12 && op->auth.aad.length != 8 &&

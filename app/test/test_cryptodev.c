@@ -3259,13 +3259,9 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 
 	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
 	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
+	sym_op->cipher.iv.length = iv_len;
 
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
-
-	/* CalcY0 */
-	if (iv_len != 16)
-		sym_op->cipher.iv.data[15] = 1;
 
 	/*
 	 * Always allocate the aad up to the block size.
