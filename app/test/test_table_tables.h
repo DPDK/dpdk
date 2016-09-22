@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@
  */
 
 /* Test prototypes */
+int test_table_hash_cuckoo(void);
 int test_table_lpm(void);
 int test_table_lpm_ipv6(void);
 int test_table_array(void);

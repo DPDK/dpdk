@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,7 @@ int test_table_hash16ext(void);
 int test_table_hash32unoptimized(void);
 int test_table_hash32lru(void);
 int test_table_hash32ext(void);
+int test_table_hash_cuckoo_combined(void);
 
 /* Extern variables */
 typedef int (*combined_table_test)(void);

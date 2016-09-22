@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -46,6 +46,7 @@ table_test table_tests[] = {
 	test_table_lpm_ipv6,
 	test_table_hash_lru,
 	test_table_hash_ext,
+	test_table_hash_cuckoo,
 };
 
 #define PREPARE_PACKET(mbuf, value) do {				\
@@ -942,3 +943,167 @@ test_table_hash_ext(void)
 
 	return 0;
 }
+
+
+int
+test_table_hash_cuckoo(void)
+{
+	int status, i;
+	uint64_t expected_mask = 0, result_mask;
+	struct rte_mbuf *mbufs[RTE_PORT_IN_BURST_SIZE_MAX];
+	void *table;
+	char *entries[RTE_PORT_IN_BURST_SIZE_MAX];
+	char entry;
+	void *entry_ptr;
+	int key_found;
+	uint32_t entry_size = 1;
+
+	/* Initialize params and create tables */
+	struct rte_table_hash_cuckoo_params cuckoo_params = {
+		.key_size = 32,
+		.n_keys = 1 << 24,
+		.f_hash = pipeline_test_hash,
+		.seed = 0,
+		.signature_offset = APP_METADATA_OFFSET(0),
+		.key_offset = APP_METADATA_OFFSET(32),
+		.name = "CUCKOO",
+	};
+
+	table = rte_table_hash_cuckoo_dosig_ops.f_create(NULL, 0, entry_size);
+	if (table != NULL)
+		return -1;
+
+	cuckoo_params.key_size = 0;
+
+	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+		0, entry_size);
+	if (table != NULL)
+		return -2;
+
+	cuckoo_params.key_size = 32;
+	cuckoo_params.n_keys = 0;
+
+	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+		0, entry_size);
+	if (table != NULL)
+		return -3;
+
+	cuckoo_params.n_keys = 1 << 24;
+	cuckoo_params.f_hash = NULL;
+
+	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+		0, entry_size);
+	if (table != NULL)
+		return -4;
+
+	cuckoo_params.f_hash = pipeline_test_hash;
+	cuckoo_params.name = NULL;
+
+	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+		0, entry_size);
+	if (table != NULL)
+		return -5;
+
+	cuckoo_params.name = "CUCKOO";
+
+	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params,
+		0, entry_size);
+	if (table == NULL)
+		return -6;
+
+	/* Free */
+	status = rte_table_hash_cuckoo_dosig_ops.f_free(table);
+	if (status < 0)
+		return -7;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_free(NULL);
+	if (status == 0)
+		return -8;
+
+	/* Add */
+	uint8_t key_cuckoo[32];
+	uint32_t *kcuckoo = (uint32_t *) &key_cuckoo;
+
+	memset(key_cuckoo, 0, 32);
+	kcuckoo[0] = rte_be_to_cpu_32(0xadadadad);
+
+	table = rte_table_hash_cuckoo_dosig_ops.f_create(&cuckoo_params, 0, 1);
+	if (table == NULL)
+		return -9;
+
+	entry = 'A';
+	status = rte_table_hash_cuckoo_dosig_ops.f_add(NULL, &key_cuckoo,
+		&entry, &key_found, &entry_ptr);
+	if (status == 0)
+		return -10;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, NULL, &entry,
+		&key_found, &entry_ptr);
+	if (status == 0)
+		return -11;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+		NULL, &key_found, &entry_ptr);
+	if (status == 0)
+		return -12;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+		&entry, &key_found, &entry_ptr);
+	if (status != 0)
+		return -13;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+		&entry, &key_found, &entry_ptr);
+	if (status != 0)
+		return -14;
+
+	/* Delete */
+	status = rte_table_hash_cuckoo_dosig_ops.f_delete(NULL, &key_cuckoo,
+		&key_found, NULL);
+	if (status == 0)
+		return -15;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_delete(table, NULL,
+		&key_found, NULL);
+	if (status == 0)
+		return -16;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_delete(table, &key_cuckoo,
+		&key_found, NULL);
+	if (status != 0)
+		return -17;
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_delete(table, &key_cuckoo,
+		&key_found, NULL);
+	if (status != -ENOENT)
+		return -18;
+
+	/* Traffic flow */
+	entry = 'A';
+	status = rte_table_hash_cuckoo_dosig_ops.f_add(table, &key_cuckoo,
+		&entry, &key_found,
+		&entry_ptr);
+	if (status < 0)
+		return -19;
+
+	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)
+		if (i % 2 == 0) {
+			expected_mask |= (uint64_t)1 << i;
+			PREPARE_PACKET(mbufs[i], 0xadadadad);
+		} else
+			PREPARE_PACKET(mbufs[i], 0xadadadab);
+
+	rte_table_hash_cuckoo_dosig_ops.f_lookup(table, mbufs, -1,
+		&result_mask, (void **)entries);
+	if (result_mask != expected_mask)
+		return -20;
+
+	/* Free resources */
+	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)
+		rte_pktmbuf_free(mbufs[i]);
+
+	status = rte_table_hash_cuckoo_dosig_ops.f_free(table);
+
+	return 0;
+}
+
