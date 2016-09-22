@@ -8,6 +8,11 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* igb_uio: iomem mapping and sysfs files created for iomem and ioport in
+  igb_uio will be removed, because we are able to detect these from what Linux
+  has exposed, like the way we have done with uio-pci-generic. This change
+  targets release 17.02.
+
 * In 17.02 ABI changes are planned: the ``rte_eth_dev`` structure will be
   extended with new function pointer ``tx_pkt_prepare`` allowing verification
   and processing of packet burst to meet HW specific requirements before
