@@ -112,20 +112,23 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e '\<[hsf]w\>' \
 	-e '\<l[234]\>' \
 	-e ':.*\<api\>' \
-	-e ':.*\<dma\>' \
-	-e ':.*\<pci\>' \
-	-e ':.*\<mtu\>' \
-	-e ':.*\<mac\>' \
-	-e ':.*\<numa\>' \
-	-e ':.*\<vlan\>' \
-	-e ':.*\<rss\>' \
-	-e ':.*\<freebsd\>' \
-	-e ':.*\<linux\>' \
-	-e ':.*\<tilegx\>' \
-	-e ':.*\<tile-gx\>' \
 	-e ':.*\<arm\>' \
 	-e ':.*\<armv7\>' \
 	-e ':.*\<armv8\>' \
+	-e ':.*\<dma\>' \
+	-e ':.*\<freebsd\>' \
+	-e ':.*\<linux\>' \
+	-e ':.*\<lro\>' \
+	-e ':.*\<mac\>' \
+	-e ':.*\<mtu\>' \
+	-e ':.*\<nic\>' \
+	-e ':.*\<numa\>' \
+	-e ':.*\<pci\>' \
+	-e ':.*\<pmd\>' \
+	-e ':.*\<rss\>' \
+	-e ':.*\<tile-gx\>' \
+	-e ':.*\<tilegx\>' \
+	-e ':.*\<vlan\>' \
 	| sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong headline lowercase:\n$bad\n"
 
