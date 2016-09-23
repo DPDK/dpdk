@@ -50,17 +50,14 @@ performs L2 forwarding for each packet that is received on an RX_PORT.
 The destination port is the adjacent port from the enabled portmask, that is,
 if the first four ports are enabled (portmask 0xf),
 ports 1 and 2 forward into each other, and ports 3 and 4 forward into each other.
-Also, the MAC addresses are affected as follows:
+Also, if MAC addresses updating is enabled, the MAC addresses are affected as follows:
 
 *   The source MAC address is replaced by the TX_PORT MAC address
 
 *   The destination MAC address is replaced by  02:00:00:00:00:TX_PORT_ID
 
-This application can be used to benchmark performance using a traffic-generator, as shown in the :numref:`figure_l2_fwd_benchmark_setup`.
-
-The application can also be used in a virtualized environment as shown in :numref:`figure_l2_fwd_virtenv_benchmark_setup`.
-
-The L2 Forwarding application can also be used as a starting point for developing a new application based on the DPDK.
+This application can be used to benchmark performance using a traffic-generator, as shown in the :numref:`figure_l2_fwd_benchmark_setup`,
+or in a virtualized environment as shown in :numref:`figure_l2_fwd_virtenv_benchmark_setup`.
 
 .. _figure_l2_fwd_benchmark_setup:
 
@@ -68,12 +65,22 @@ The L2 Forwarding application can also be used as a starting point for developin
 
    Performance Benchmark Setup (Basic Environment)
 
-
 .. _figure_l2_fwd_virtenv_benchmark_setup:
 
 .. figure:: img/l2_fwd_virtenv_benchmark_setup.*
 
    Performance Benchmark Setup (Virtualized Environment)
+
+This application may be used for basic VM to VM communication as shown in :numref:`figure_l2_fwd_vm2vm`,
+when MAC addresses updating is disabled.
+
+.. _figure_l2_fwd_vm2vm:
+
+.. figure:: img/l2_fwd_vm2vm.*
+
+   Virtual Machine to Virtual Machine communication.
+
+The L2 Forwarding application can also be used as a starting point for developing a new application based on the DPDK.
 
 .. _l2_fwd_vf_setup:
 
@@ -128,7 +135,7 @@ The application requires a number of command line options:
 
 .. code-block:: console
 
-    ./build/l2fwd [EAL options] -- -p PORTMASK [-q NQ]
+    ./build/l2fwd [EAL options] -- -p PORTMASK [-q NQ] --[no-]mac-updating
 
 where,
 
@@ -136,7 +143,10 @@ where,
 
 *   q NQ: A number of queues (=ports) per lcore (default is 1)
 
-To run the application in linuxapp environment with 4 lcores, 16 ports and 8 RX queues per lcore, issue the command:
+*   --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default).
+
+To run the application in linuxapp environment with 4 lcores, 16 ports and 8 RX queues per lcore and MAC address
+updating enabled, issue the command:
 
 .. code-block:: console
 
@@ -415,7 +425,8 @@ Packets are read in a burst of size MAX_PKT_BURST.
 The rte_eth_rx_burst() function writes the mbuf pointers in a local table and returns the number of available mbufs in the table.
 
 Then, each mbuf in the table is processed by the l2fwd_simple_forward() function.
-The processing is very simple: process the TX port from the RX port, then replace the source and destination MAC addresses.
+The processing is very simple: process the TX port from the RX port, then replace the source and destination MAC addresses if MAC
+addresses updating is enabled.
 
 .. note::
 
