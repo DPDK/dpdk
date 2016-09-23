@@ -190,8 +190,8 @@ app_main_loop_worker_pipeline_hash(void) {
 			.n_buckets = 1 << 22,
 			.f_hash = test_hash,
 			.seed = 0,
-			.signature_offset = 0,
-			.key_offset = 32,
+			.signature_offset = APP_METADATA_OFFSET(0),
+			.key_offset = APP_METADATA_OFFSET(32),
 		};
 
 		struct rte_pipeline_table_params table_params = {
