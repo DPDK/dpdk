@@ -30,6 +30,7 @@
 #include <linux/pci.h>
 #include <linux/kthread.h>
 #include <linux/rwsem.h>
+#include <linux/mutex.h>
 #include <linux/nsproxy.h>
 #include <net/net_namespace.h>
 #include <net/netns/generic.h>
@@ -102,6 +103,7 @@ static int kni_net_id;
 
 struct kni_net {
 	unsigned long device_in_use; /* device in use flag */
+	struct mutex kni_kthread_lock;
 	struct task_struct *kni_kthread;
 	struct rw_semaphore kni_list_lock;
 	struct list_head kni_list_head;
@@ -111,11 +113,12 @@ static int __net_init kni_init_net(struct net *net)
 {
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	struct kni_net *knet = net_generic(net, kni_net_id);
+	memset(knet, 0, sizeof(*knet));
 #else
 	struct kni_net *knet;
 	int ret;
 
-	knet = kmalloc(sizeof(struct kni_net), GFP_KERNEL);
+	knet = kzalloc(sizeof(struct kni_net), GFP_KERNEL);
 	if (!knet) {
 		ret = -ENOMEM;
 		return ret;
@@ -124,6 +127,8 @@ static int __net_init kni_init_net(struct net *net)
 
 	/* Clear the bit of device in use */
 	clear_bit(KNI_DEV_IN_USE_BIT_NUM, &knet->device_in_use);
+
+	mutex_init(&knet->kni_kthread_lock);
 
 	init_rwsem(&knet->kni_list_lock);
 	INIT_LIST_HEAD(&knet->kni_list_head);
@@ -141,9 +146,9 @@ static int __net_init kni_init_net(struct net *net)
 
 static void __net_exit kni_exit_net(struct net *net)
 {
-#ifndef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	struct kni_net *knet = net_generic(net, kni_net_id);
-
+	mutex_destroy(&knet->kni_kthread_lock);
+#ifndef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	kfree(knet);
 #endif
 }
@@ -168,6 +173,11 @@ kni_init(void)
 		KNI_ERR("Invalid parameter for kthread_mode\n");
 		return -EINVAL;
 	}
+
+	if (multiple_kthread_on == 0)
+		KNI_PRINT("Single kernel thread for all KNI devices\n");
+	else
+		KNI_PRINT("Multiple kernel thread mode enabled\n");
 
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	rc = register_pernet_subsys(&kni_net_ops);
@@ -237,19 +247,6 @@ kni_open(struct inode *inode, struct file *file)
 	if (test_and_set_bit(KNI_DEV_IN_USE_BIT_NUM, &knet->device_in_use))
 		return -EBUSY;
 
-	/* Create kernel thread for single mode */
-	if (multiple_kthread_on == 0) {
-		KNI_PRINT("Single kernel thread for all KNI devices\n");
-		/* Create kernel thread for RX */
-		knet->kni_kthread = kthread_run(kni_thread_single, (void *)knet,
-						"kni_single");
-		if (IS_ERR(knet->kni_kthread)) {
-			KNI_ERR("Unable to create kernel threaed\n");
-			return PTR_ERR(knet->kni_kthread);
-		}
-	} else
-		KNI_PRINT("Multiple kernel thread mode enabled\n");
-
 	file->private_data = get_net(net);
 	KNI_PRINT("/dev/kni opened\n");
 
@@ -265,9 +262,13 @@ kni_release(struct inode *inode, struct file *file)
 
 	/* Stop kernel thread for single mode */
 	if (multiple_kthread_on == 0) {
+		mutex_lock(&knet->kni_kthread_lock);
 		/* Stop kernel thread */
-		kthread_stop(knet->kni_kthread);
-		knet->kni_kthread = NULL;
+		if (knet->kni_kthread != NULL) {
+			kthread_stop(knet->kni_kthread);
+			knet->kni_kthread = NULL;
+		}
+		mutex_unlock(&knet->kni_kthread_lock);
 	}
 
 	down_write(&knet->kni_list_lock);
@@ -386,6 +387,47 @@ kni_check_param(struct kni_dev *kni, struct rte_kni_device_info *dev)
 }
 
 static int
+kni_run_thread(struct kni_net *knet, struct kni_dev *kni, uint8_t force_bind)
+{
+	/**
+	 * Create a new kernel thread for multiple mode, set its core affinity,
+	 * and finally wake it up.
+	 */
+	if (multiple_kthread_on) {
+		kni->pthread = kthread_create(kni_thread_multiple,
+			(void *)kni, "kni_%s", kni->name);
+		if (IS_ERR(kni->pthread)) {
+			kni_dev_remove(kni);
+			return -ECANCELED;
+		}
+
+		if (force_bind)
+			kthread_bind(kni->pthread, kni->core_id);
+		wake_up_process(kni->pthread);
+	} else {
+		mutex_lock(&knet->kni_kthread_lock);
+
+		if (knet->kni_kthread == NULL) {
+			knet->kni_kthread = kthread_create(kni_thread_single,
+				(void *)knet, "kni_single");
+			if (IS_ERR(knet->kni_kthread)) {
+				mutex_unlock(&knet->kni_kthread_lock);
+				kni_dev_remove(kni);
+				return -ECANCELED;
+			}
+
+			if (force_bind)
+				kthread_bind(knet->kni_kthread, kni->core_id);
+			wake_up_process(knet->kni_kthread);
+		}
+
+		mutex_unlock(&knet->kni_kthread_lock);
+	}
+
+	return 0;
+}
+
+static int
 kni_ioctl_create(struct net *net,
 		unsigned int ioctl_num, unsigned long ioctl_param)
 {
@@ -411,11 +453,9 @@ kni_ioctl_create(struct net *net,
 	}
 
 	/**
-	 * Check if the cpu core id is valid for binding,
-	 * for multiple kernel thread mode.
+	 * Check if the cpu core id is valid for binding.
 	 */
-	if (multiple_kthread_on && dev_info.force_bind &&
-				!cpu_online(dev_info.core_id)) {
+	if (dev_info.force_bind && !cpu_online(dev_info.core_id)) {
 		KNI_ERR("cpu %u is not online\n", dev_info.core_id);
 		return -EINVAL;
 	}
@@ -551,22 +591,9 @@ kni_ioctl_create(struct net *net,
 	kni_vhost_init(kni);
 #endif
 
-	/**
-	 * Create a new kernel thread for multiple mode, set its core affinity,
-	 * and finally wake it up.
-	 */
-	if (multiple_kthread_on) {
-		kni->pthread = kthread_create(kni_thread_multiple,
-					      (void *)kni,
-					      "kni_%s", kni->name);
-		if (IS_ERR(kni->pthread)) {
-			kni_dev_remove(kni);
-			return -ECANCELED;
-		}
-		if (dev_info.force_bind)
-			kthread_bind(kni->pthread, kni->core_id);
-		wake_up_process(kni->pthread);
-	}
+	ret = kni_run_thread(knet, kni, dev_info.force_bind);
+	if (ret != 0)
+		return ret;
 
 	down_write(&knet->kni_list_lock);
 	list_add(&kni->list, &knet->kni_list_head);

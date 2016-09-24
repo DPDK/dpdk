@@ -102,6 +102,9 @@ Refer to rte_kni_common.h in the DPDK source code for more details.
 
 The physical addresses will be re-mapped into the kernel address space and stored in separate KNI contexts.
 
+The affinity of kernel RX thread (both single and multi-threaded modes) is controlled by force_bind and
+core_id config parameters.
+
 The KNI interfaces can be deleted by a DPDK application dynamically after being created.
 Furthermore, all those KNI interfaces not deleted will be deleted on the release operation
 of the miscellaneous device (when the DPDK application is closed).
