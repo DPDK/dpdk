@@ -494,9 +494,12 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		hw->phy.type = ixgbe_phy_x550em_kr;
 		break;
+	case IXGBE_DEV_ID_X550EM_A_10G_T:
+		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
+		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
+       /* Fallthrough to ixgbe_identify_phy_generic */
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
-	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		return ixgbe_identify_phy_generic(hw);
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
