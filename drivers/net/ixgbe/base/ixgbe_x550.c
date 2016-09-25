@@ -4523,7 +4523,6 @@ STATIC s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
 			ixgbe_release_swfw_sync_X540(hw, hmask);
 		if (status != IXGBE_ERR_TOKEN_RETRY)
 			return status;
-		msec_delay(FW_PHY_TOKEN_DELAY);
 	}
 
 	return status;
