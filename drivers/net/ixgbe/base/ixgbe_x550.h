@@ -55,8 +55,6 @@ s32 ixgbe_read_ee_hostif_buffer_X550(struct ixgbe_hw *hw,
 				     u16 offset, u16 words, u16 *data);
 s32 ixgbe_read_ee_hostif_X550(struct ixgbe_hw *hw, u16 offset,
 u16				*data);
-s32 ixgbe_read_ee_hostif_data_X550(struct ixgbe_hw *hw, u16 offset,
-				   u16 *data);
 s32 ixgbe_write_ee_hostif_data_X550(struct ixgbe_hw *hw, u16 offset,
 				    u16 data);
 s32 ixgbe_set_eee_X550(struct ixgbe_hw *hw, bool enable_eee);
