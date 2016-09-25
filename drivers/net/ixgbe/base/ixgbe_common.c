@@ -189,6 +189,8 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 		case IXGBE_DEV_ID_X550T1:
 		case IXGBE_DEV_ID_X550EM_X_10G_T:
 		case IXGBE_DEV_ID_X550EM_A_10G_T:
+		case IXGBE_DEV_ID_X550EM_A_1G_T:
+		case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 			supported = true;
 			break;
 		default:
