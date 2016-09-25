@@ -768,6 +768,7 @@ s32 ixgbe_dmac_config_tcs_X550(struct ixgbe_hw *hw)
 
 	/* Configure DMA coalescing enabled */
 	switch (hw->mac.dmac_config.link_speed) {
+	case IXGBE_LINK_SPEED_10_FULL:
 	case IXGBE_LINK_SPEED_100_FULL:
 		pb_headroom = IXGBE_DMACRXT_100M;
 		break;
