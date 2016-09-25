@@ -652,8 +652,14 @@ s32 ixgbe_init_ops_X550EM_a(struct ixgbe_hw *hw)
 	/* Start with generic X550EM init */
 	ret_val = ixgbe_init_ops_X550EM(hw);
 
-	mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
-	mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII ||
+	    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII_L) {
+		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
+		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
+	} else {
+		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550a;
+		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550a;
+	}
 	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550a;
 	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550a;
 
@@ -2807,24 +2813,25 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
  **/
 STATIC s32 ixgbe_setup_ixfi_x550em_x(struct ixgbe_hw *hw)
 {
+	struct ixgbe_mac_info *mac = &hw->mac;
 	s32 status;
 	u32 reg_val;
 
 	/* Disable training protocol FSM. */
-	status = ixgbe_read_iosf_sb_reg_x550(hw,
+	status = mac->ops.read_iosf_sb_reg(hw,
 				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_RX_TRN_LINKUP_CTRL_CONV_WO_PROTOCOL;
-	status = ixgbe_write_iosf_sb_reg_x550(hw,
+	status = mac->ops.write_iosf_sb_reg(hw,
 				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Disable Flex from training TXFFE. */
-	status = ixgbe_read_iosf_sb_reg_x550(hw,
+	status = mac->ops.read_iosf_sb_reg(hw,
 				IXGBE_KRM_DSP_TXFFE_STATE_4(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
@@ -2832,12 +2839,12 @@ STATIC s32 ixgbe_setup_ixfi_x550em_x(struct ixgbe_hw *hw)
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_C0_EN;
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CP1_CN1_EN;
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CO_ADAPT_EN;
-	status = ixgbe_write_iosf_sb_reg_x550(hw,
+	status = mac->ops.write_iosf_sb_reg(hw,
 				IXGBE_KRM_DSP_TXFFE_STATE_4(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
-	status = ixgbe_read_iosf_sb_reg_x550(hw,
+	status = mac->ops.read_iosf_sb_reg(hw,
 				IXGBE_KRM_DSP_TXFFE_STATE_5(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
@@ -2845,14 +2852,14 @@ STATIC s32 ixgbe_setup_ixfi_x550em_x(struct ixgbe_hw *hw)
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_C0_EN;
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CP1_CN1_EN;
 	reg_val &= ~IXGBE_KRM_DSP_TXFFE_STATE_CO_ADAPT_EN;
-	status = ixgbe_write_iosf_sb_reg_x550(hw,
+	status = mac->ops.write_iosf_sb_reg(hw,
 				IXGBE_KRM_DSP_TXFFE_STATE_5(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Enable override for coefficients. */
-	status = ixgbe_read_iosf_sb_reg_x550(hw,
+	status = mac->ops.read_iosf_sb_reg(hw,
 				IXGBE_KRM_TX_COEFF_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
@@ -2861,7 +2868,7 @@ STATIC s32 ixgbe_setup_ixfi_x550em_x(struct ixgbe_hw *hw)
 	reg_val |= IXGBE_KRM_TX_COEFF_CTRL_1_CZERO_EN;
 	reg_val |= IXGBE_KRM_TX_COEFF_CTRL_1_CPLUS1_OVRRD_EN;
 	reg_val |= IXGBE_KRM_TX_COEFF_CTRL_1_CMINUS1_OVRRD_EN;
-	status = ixgbe_write_iosf_sb_reg_x550(hw,
+	status = mac->ops.write_iosf_sb_reg(hw,
 				IXGBE_KRM_TX_COEFF_CTRL_1(hw->bus.lan_id),
 				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	return status;
@@ -2877,11 +2884,12 @@ STATIC s32 ixgbe_setup_ixfi_x550em_x(struct ixgbe_hw *hw)
  **/
 STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 {
+	struct ixgbe_mac_info *mac = &hw->mac;
 	s32 status;
 	u32 reg_val;
 
 	/* Disable AN and force speed to 10G Serial. */
-	status = ixgbe_read_iosf_sb_reg_x550(hw,
+	status = mac->ops.read_iosf_sb_reg(hw,
 					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
@@ -2903,7 +2911,7 @@ STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 		return IXGBE_ERR_LINK_SETUP;
 	}
 
-	status = ixgbe_write_iosf_sb_reg_x550(hw,
+	status = mac->ops.write_iosf_sb_reg(hw,
 					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
@@ -2917,13 +2925,13 @@ STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 	}
 
 	/* Toggle port SW reset by AN reset. */
-	status = ixgbe_read_iosf_sb_reg_x550(hw,
+	status = mac->ops.read_iosf_sb_reg(hw,
 					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
-	status = ixgbe_write_iosf_sb_reg_x550(hw,
+	status = mac->ops.write_iosf_sb_reg(hw,
 					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
@@ -4504,7 +4512,7 @@ s32 ixgbe_write_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 	DEBUGFUNC("ixgbe_write_phy_reg_x550a");
 
 	if (hw->mac.ops.acquire_swfw_sync(hw, mask) == IXGBE_SUCCESS) {
-		status = ixgbe_write_phy_reg_mdi(hw, reg_addr, device_type,
+		status = hw->phy.ops.write_reg_mdi(hw, reg_addr, device_type,
 						 phy_data);
 		hw->mac.ops.release_swfw_sync(hw, mask);
 	} else {
