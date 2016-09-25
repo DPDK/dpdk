@@ -565,6 +565,13 @@ struct ixgbe_thermal_sensor_data {
 #define IXGBE_PROXYFC	0x05F64 /* Proxying Filter Control Register */
 #define IXGBE_VXLANCTRL	0x0000507C /* Rx filter VXLAN UDPPORT Register */
 
+/* masks for accessing VXLAN and GENEVE UDP ports */
+#define IXGBE_VXLANCTRL_VXLAN_UDPPORT_MASK	0x0000ffff /* VXLAN port */
+#define IXGBE_VXLANCTRL_GENEVE_UDPPORT_MASK	0xffff0000 /* GENEVE port */
+#define IXGBE_VXLANCTRL_ALL_UDPPORT_MASK	0xffffffff /* GENEVE/VXLAN */
+
+#define IXGBE_VXLANCTRL_GENEVE_UDPPORT_SHIFT	16
+
 #define IXGBE_FHFT(_n)	(0x09000 + ((_n) * 0x100)) /* Flex host filter table */
 /* Ext Flexible Host Filter Table */
 #define IXGBE_FHFT_EXT(_n)	(0x09800 + ((_n) * 0x100))
@@ -2785,6 +2792,7 @@ enum {
 #define IXGBE_RXDADV_PKTTYPE_UDP	0x00000200 /* UDP hdr present */
 #define IXGBE_RXDADV_PKTTYPE_SCTP	0x00000400 /* SCTP hdr present */
 #define IXGBE_RXDADV_PKTTYPE_NFS	0x00000800 /* NFS hdr present */
+#define IXGBE_RXDADV_PKTTYPE_GENEVE	0x00000800 /* GENEVE hdr present */
 #define IXGBE_RXDADV_PKTTYPE_VXLAN	0x00000800 /* VXLAN hdr present */
 #define IXGBE_RXDADV_PKTTYPE_TUNNEL	0x00010000 /* Tunnel type */
 #define IXGBE_RXDADV_PKTTYPE_IPSEC_ESP	0x00001000 /* IPSec ESP */
