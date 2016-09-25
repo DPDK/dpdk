@@ -54,6 +54,16 @@ New Features
 
 * **Added virtio NEON support for ARM.**
 
+* **Updated the ixgbe base driver.**
+
+  Updated the ixgbe base driver, including the following changes:
+
+  * add X550em_a 10G PHY support
+  * support flow control auto negotiation for X550em_a 1G PHY
+  * add X550em_a FW ALEF support
+  * increase mailbox version to ixgbe_mbox_api_13
+  * add two MAC ops for Hyper-V support
+
 
 Resolved Issues
 ---------------
