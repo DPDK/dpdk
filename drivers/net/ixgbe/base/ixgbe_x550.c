@@ -2283,6 +2283,12 @@ STATIC s32 ixgbe_reset_phy_m88(struct ixgbe_hw *hw)
 
 	hw->mac.ops.release_swfw_sync(hw, mask);
 
+	/* In case of first reset set advertised speeds to default value */
+	if (!hw->phy.autoneg_advertised)
+		hw->phy.autoneg_advertised = IXGBE_LINK_SPEED_1GB_FULL |
+					     IXGBE_LINK_SPEED_100_FULL |
+					     IXGBE_LINK_SPEED_10_FULL;
+
 	return ixgbe_setup_m88(hw);
 
 out:
