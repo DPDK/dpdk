@@ -346,7 +346,6 @@ STATIC s32 ixgbevf_write_msg_read_ack(struct ixgbe_hw *hw, u32 *msg,
 s32 ixgbe_set_rar_vf(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 		     u32 enable_addr)
 {
-	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[3];
 	u8 *msg_addr = (u8 *)(&msgbuf[1]);
 	s32 ret_val;
@@ -355,10 +354,7 @@ s32 ixgbe_set_rar_vf(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 	memset(msgbuf, 0, 12);
 	msgbuf[0] = IXGBE_VF_SET_MAC_ADDR;
 	memcpy(msg_addr, addr, 6);
-	ret_val = mbx->ops.write_posted(hw, msgbuf, 3, 0);
-
-	if (!ret_val)
-		ret_val = mbx->ops.read_posted(hw, msgbuf, 3, 0);
+	ret_val = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 3);
 
 	msgbuf[0] &= ~IXGBE_VT_MSGTYPE_CTS;
 
@@ -429,7 +425,6 @@ s32 ixgbe_update_mc_addr_list_vf(struct ixgbe_hw *hw, u8 *mc_addr_list,
  **/
 s32 ixgbevf_update_xcast_mode(struct ixgbe_hw *hw, int xcast_mode)
 {
-	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[2];
 	s32 err;
 
@@ -444,11 +439,7 @@ s32 ixgbevf_update_xcast_mode(struct ixgbe_hw *hw, int xcast_mode)
 	msgbuf[0] = IXGBE_VF_UPDATE_XCAST_MODE;
 	msgbuf[1] = xcast_mode;
 
-	err = mbx->ops.write_posted(hw, msgbuf, 2, 0);
-	if (err)
-		return err;
-
-	err = mbx->ops.read_posted(hw, msgbuf, 2, 0);
+	err = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
 	if (err)
 		return err;
 
@@ -465,11 +456,12 @@ s32 ixgbevf_update_xcast_mode(struct ixgbe_hw *hw, int xcast_mode)
  *  @vind: unused by VF drivers
  *  @vlan_on: if true then set bit, else clear bit
  *  @vlvf_bypass: boolean flag indicating updating default pool is okay
+ *
+ *  Turn on/off specified VLAN in the VLAN filter table.
  **/
 s32 ixgbe_set_vfta_vf(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 		      bool vlan_on, bool vlvf_bypass)
 {
-	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[2];
 	s32 ret_val;
 	UNREFERENCED_2PARAMETER(vind, vlvf_bypass);
@@ -479,10 +471,7 @@ s32 ixgbe_set_vfta_vf(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 	/* Setting the 8 bit field MSG INFO to TRUE indicates "add" */
 	msgbuf[0] |= vlan_on << IXGBE_VT_MSGINFO_SHIFT;
 
-	ret_val = mbx->ops.write_posted(hw, msgbuf, 2, 0);
-	if (!ret_val)
-		ret_val = mbx->ops.read_posted(hw, msgbuf, 1, 0);
-
+	ret_val = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
 	if (!ret_val && (msgbuf[0] & IXGBE_VT_MSGTYPE_ACK))
 		return IXGBE_SUCCESS;
 
@@ -529,7 +518,6 @@ s32 ixgbe_get_mac_addr_vf(struct ixgbe_hw *hw, u8 *mac_addr)
 
 s32 ixgbevf_set_uc_addr_vf(struct ixgbe_hw *hw, u32 index, u8 *addr)
 {
-	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	u32 msgbuf[3], msgbuf_chk;
 	u8 *msg_addr = (u8 *)(&msgbuf[1]);
 	s32 ret_val;
@@ -546,10 +534,8 @@ s32 ixgbevf_set_uc_addr_vf(struct ixgbe_hw *hw, u32 index, u8 *addr)
 	msgbuf_chk = msgbuf[0];
 	if (addr)
 		memcpy(msg_addr, addr, 6);
-	ret_val = mbx->ops.write_posted(hw, msgbuf, 3, 0);
 
-	if (!ret_val)
-		ret_val = mbx->ops.read_posted(hw, msgbuf, 3, 0);
+	ret_val = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 3);
 	if (!ret_val) {
 		msgbuf[0] &= ~IXGBE_VT_MSGTYPE_CTS;
 
@@ -700,11 +686,8 @@ int ixgbevf_negotiate_api_version(struct ixgbe_hw *hw, int api)
 	msg[0] = IXGBE_VF_API_NEGOTIATE;
 	msg[1] = api;
 	msg[2] = 0;
-	err = hw->mbx.ops.write_posted(hw, msg, 3, 0);
 
-	if (!err)
-		err = hw->mbx.ops.read_posted(hw, msg, 3, 0);
-
+	err = ixgbevf_write_msg_read_ack(hw, msg, msg, 3);
 	if (!err) {
 		msg[0] &= ~IXGBE_VT_MSGTYPE_CTS;
 
@@ -739,11 +722,8 @@ int ixgbevf_get_queues(struct ixgbe_hw *hw, unsigned int *num_tcs,
 	/* Fetch queue configuration from the PF */
 	msg[0] = IXGBE_VF_GET_QUEUES;
 	msg[1] = msg[2] = msg[3] = msg[4] = 0;
-	err = hw->mbx.ops.write_posted(hw, msg, 5, 0);
 
-	if (!err)
-		err = hw->mbx.ops.read_posted(hw, msg, 5, 0);
-
+	err = ixgbevf_write_msg_read_ack(hw, msg, msg, 5);
 	if (!err) {
 		msg[0] &= ~IXGBE_VT_MSGTYPE_CTS;
 
