@@ -1106,8 +1106,8 @@ STATIC s32 ixgbe_iosf_wait(struct ixgbe_hw *hw, u32 *ctrl)
 }
 
 /**
- *  ixgbe_write_iosf_sb_reg_x550 - Writes a value to specified register of the IOSF
- *  device
+ *  ixgbe_write_iosf_sb_reg_x550 - Writes a value to specified register
+ *  of the IOSF device
  *  @hw: pointer to hardware structure
  *  @reg_addr: 32 bit PHY register to write
  *  @device_type: 3 bit device type
@@ -1153,12 +1153,11 @@ out:
 }
 
 /**
- *  ixgbe_read_iosf_sb_reg_x550 - Writes a value to specified register of the IOSF
- *  device
+ *  ixgbe_read_iosf_sb_reg_x550 - Reads specified register of the IOSF device
  *  @hw: pointer to hardware structure
  *  @reg_addr: 32 bit PHY register to write
  *  @device_type: 3 bit device type
- *  @phy_data: Pointer to read data from the register
+ *  @data: Pointer to read data from the register
  **/
 s32 ixgbe_read_iosf_sb_reg_x550(struct ixgbe_hw *hw, u32 reg_addr,
 			   u32 device_type, u32 *data)
@@ -1292,8 +1291,7 @@ s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 }
 
 /**
- *  ixgbe_read_iosf_sb_reg_x550a - Writes a value to specified register
- *  of the IOSF device.
+ *  ixgbe_read_iosf_sb_reg_x550a - Reads specified register of the IOSF device
  *  @hw: pointer to hardware structure
  *  @reg_addr: 32 bit PHY register to write
  *  @device_type: 3 bit device type
