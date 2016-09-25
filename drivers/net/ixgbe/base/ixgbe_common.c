@@ -3967,7 +3967,7 @@ s32 ixgbe_set_vlvf_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 		 * we run the risk of stray packets leaking into
 		 * the PF via the default pool
 		 */
-		if (vfta_delta)
+		if (*vfta_delta)
 			IXGBE_WRITE_REG(hw, IXGBE_VFTA(vlan / 32), vfta);
 
 		/* disable VLVF and clear remaining bit from pool */
