@@ -1887,6 +1887,20 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 		case ixgbe_phy_sgmii:
 			*speed = IXGBE_LINK_SPEED_1GB_FULL;
 			break;
+		case ixgbe_phy_x550em_kr:
+			if (hw->mac.type == ixgbe_mac_X550EM_a) {
+				/* check different backplane modes */
+				if (hw->phy.nw_mng_if_sel &
+					   IXGBE_NW_MNG_IF_SEL_PHY_SPEED_2_5G) {
+					*speed = IXGBE_LINK_SPEED_2_5GB_FULL;
+					break;
+				} else if (hw->device_id ==
+						   IXGBE_DEV_ID_X550EM_A_KR_L) {
+					*speed = IXGBE_LINK_SPEED_1GB_FULL;
+					break;
+				}
+			}
+			/* fall through */
 		default:
 			*speed = IXGBE_LINK_SPEED_10GB_FULL |
 				 IXGBE_LINK_SPEED_1GB_FULL;
@@ -2109,18 +2123,25 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 		       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 		       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
-	if (status)
-		return status;
+	if (hw->mac.type == ixgbe_mac_X550EM_a) {
+		/* Set lane mode  to KR auto negotiation */
+		status = hw->mac.ops.read_iosf_sb_reg(hw,
+				    IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				    IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 
-	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_MASK;
-	reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_AN;
-	reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_AN_EN;
-	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN37_EN;
-	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SGMII_EN;
+		if (status)
+			return status;
 
-	status = hw->mac.ops.write_iosf_sb_reg(hw,
+		reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_MASK;
+		reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_AN;
+		reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_AN_EN;
+		reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN37_EN;
+		reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SGMII_EN;
+
+		status = hw->mac.ops.write_iosf_sb_reg(hw,
 				    IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
 				    IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+	}
 
 	return ixgbe_restart_an_internal_phy_x550em(hw);
 }
