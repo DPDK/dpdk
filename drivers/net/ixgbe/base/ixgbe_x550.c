@@ -676,6 +676,12 @@ s32 ixgbe_init_ops_X550EM_a(struct ixgbe_hw *hw)
 		break;
 	}
 
+	if ((hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T) ||
+		(hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)) {
+		mac->ops.fc_autoneg = ixgbe_fc_autoneg_sgmii_x550em_a;
+		mac->ops.setup_fc = ixgbe_setup_fc_sgmii_x550em_a;
+	}
+
 	return ret_val;
 }
 
@@ -2182,27 +2188,15 @@ STATIC s32 ixgbe_setup_m88(struct ixgbe_hw *hw)
 	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_COPPER_AN, 0, &reg);
 	if (rc)
 		goto out;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_PAUSE;
 	reg &= ~IXGBE_M88E1500_COPPER_AN_T4;
 	reg &= ~IXGBE_M88E1500_COPPER_AN_100TX_FD;
 	reg &= ~IXGBE_M88E1500_COPPER_AN_100TX_HD;
 	reg &= ~IXGBE_M88E1500_COPPER_AN_10TX_FD;
 	reg &= ~IXGBE_M88E1500_COPPER_AN_10TX_HD;
-	switch (hw->fc.current_mode) {
-	case ixgbe_fc_full:
-		reg |= IXGBE_M88E1500_COPPER_AN_PAUSE;
-		break;
-	case ixgbe_fc_rx_pause:
-		reg |= IXGBE_M88E1500_COPPER_AN_PAUSE;
-		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
-		break;
-	case ixgbe_fc_tx_pause:
-		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
-		break;
-	default:
-		break;
-	}
+
+	/* Flow control auto negotiation configuration was moved from here to
+	 * the function ixgbe_setup_fc_sgmii_x550em_a()
+	 */
 
 	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_100_FULL)
 		reg |= IXGBE_M88E1500_COPPER_AN_100TX_FD;
@@ -4119,6 +4113,152 @@ out:
 		hw->fc.fc_was_autonegged = false;
 		hw->fc.current_mode = hw->fc.requested_mode;
 	}
+}
+
+/**
+ *  ixgbe_fc_autoneg_sgmii_x550em_a - Enable flow control IEEE clause 37
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according to IEEE clause 37.
+ **/
+void ixgbe_fc_autoneg_sgmii_x550em_a(struct ixgbe_hw *hw)
+{
+	s32 status = IXGBE_ERR_FC_NOT_NEGOTIATED;
+	u16 reg, pcs_an_lp, pcs_an;
+	ixgbe_link_speed speed;
+	bool link_up;
+
+	/* AN should have completed when the cable was plugged in.
+	 * Look for reasons to bail out.  Bail out if:
+	 * - FC autoneg is disabled, or if
+	 * - link is not up.
+	 */
+	if (hw->fc.disable_fc_autoneg) {
+		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
+			     "Flow control autoneg is disabled");
+		goto out;
+	}
+
+	hw->mac.ops.check_link(hw, &speed, &link_up, false);
+	if (!link_up) {
+		ERROR_REPORT1(IXGBE_ERROR_SOFTWARE, "The link is down");
+		goto out;
+	}
+
+	/* Check if auto-negotiation has completed */
+	status = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_STATUS,
+					IXGBE_MDIO_ZERO_DEV_TYPE, &reg);
+	if (status != IXGBE_SUCCESS ||
+	    (reg & IXGBE_M88E1500_COPPER_STATUS_AN_DONE) == 0) {
+		DEBUGOUT("Auto-Negotiation did not complete\n");
+		status = IXGBE_ERR_FC_NOT_NEGOTIATED;
+		goto out;
+	}
+
+	/* Get the advertized flow control */
+	status = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_AN,
+					IXGBE_MDIO_ZERO_DEV_TYPE, &pcs_an);
+	if (status != IXGBE_SUCCESS)
+		goto out;
+
+	/* Get link partner's flow control */
+	status = hw->phy.ops.read_reg(hw,
+			IXGBE_M88E1500_COPPER_AN_LP_ABILITY,
+					IXGBE_MDIO_ZERO_DEV_TYPE, &pcs_an_lp);
+	if (status != IXGBE_SUCCESS)
+		goto out;
+
+	/* Negotiate the flow control */
+	status = ixgbe_negotiate_fc(hw, (u32)pcs_an, (u32)pcs_an_lp,
+				    IXGBE_M88E1500_COPPER_AN_PAUSE,
+				    IXGBE_M88E1500_COPPER_AN_AS_PAUSE,
+				    IXGBE_M88E1500_COPPER_AN_LP_PAUSE,
+				    IXGBE_M88E1500_COPPER_AN_LP_AS_PAUSE);
+
+out:
+	if (status == IXGBE_SUCCESS) {
+		hw->fc.fc_was_autonegged = true;
+	} else {
+		hw->fc.fc_was_autonegged = false;
+		hw->fc.current_mode = hw->fc.requested_mode;
+	}
+}
+
+/**
+ *  ixgbe_setup_fc_sgmii_x550em_a - Set up flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Called at init time to set up flow control.
+ **/
+s32 ixgbe_setup_fc_sgmii_x550em_a(struct ixgbe_hw *hw)
+{
+	u16 reg;
+	s32 rc;
+
+	/* Validate the requested mode */
+	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {
+		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
+			      "ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
+		return IXGBE_ERR_INVALID_LINK_SETTINGS;
+	}
+
+	if (hw->fc.requested_mode == ixgbe_fc_default)
+		hw->fc.requested_mode = ixgbe_fc_full;
+
+	/* Read contents of the Auto-Negotiation register, page 0 reg 4 */
+	rc = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_AN,
+					IXGBE_MDIO_ZERO_DEV_TYPE, &reg);
+	if (rc)
+		goto out;
+
+	/* Disable all the settings related to Flow control Auto-negotiation */
+	reg &= ~IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
+	reg &= ~IXGBE_M88E1500_COPPER_AN_PAUSE;
+
+	/* Configure the Asymmetric and symmetric pause according to the user
+	 * requested mode.
+	 */
+	switch (hw->fc.requested_mode) {
+	case ixgbe_fc_full:
+		reg |= IXGBE_M88E1500_COPPER_AN_PAUSE;
+		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
+		break;
+	case ixgbe_fc_rx_pause:
+		reg |= IXGBE_M88E1500_COPPER_AN_PAUSE;
+		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
+		break;
+	case ixgbe_fc_tx_pause:
+		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
+		break;
+	default:
+		break;
+	}
+
+	/* Write back to the Auto-Negotiation register with newly configured
+	 * fields
+	 */
+	hw->phy.ops.write_reg(hw, IXGBE_M88E1500_COPPER_AN,
+					IXGBE_MDIO_ZERO_DEV_TYPE, reg);
+
+	/* In this section of the code we restart Auto-negotiation */
+
+	/* Read the CONTROL register, Page 0 reg 0 */
+	rc = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_CTRL,
+					IXGBE_MDIO_ZERO_DEV_TYPE, &reg);
+	if (rc)
+		goto out;
+
+	/* Set the bit to restart Auto-Neg. The bit to enable Auto-neg is ON
+	 * by default
+	 */
+	reg |= IXGBE_M88E1500_COPPER_CTRL_RESTART_AN;
+
+	/* write the new values to the register to restart Auto-Negotiation */
+	hw->phy.ops.write_reg(hw, IXGBE_M88E1500_COPPER_CTRL,
+					IXGBE_MDIO_ZERO_DEV_TYPE, reg);
+
+out:
+	return rc;
 }
 
 /**
