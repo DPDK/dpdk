@@ -323,15 +323,16 @@ STATIC s32 ixgbe_mta_vector(struct ixgbe_hw *hw, u8 *mc_addr)
 	return vector;
 }
 
-STATIC void ixgbevf_write_msg_read_ack(struct ixgbe_hw *hw,
-					u32 *msg, u16 size)
+STATIC s32 ixgbevf_write_msg_read_ack(struct ixgbe_hw *hw, u32 *msg,
+				      u32 *retmsg, u16 size)
 {
 	struct ixgbe_mbx_info *mbx = &hw->mbx;
-	u32 retmsg[IXGBE_VFMAILBOX_SIZE];
 	s32 retval = mbx->ops.write_posted(hw, msg, size, 0);
 
-	if (!retval)
-		mbx->ops.read_posted(hw, retmsg, size, 0);
+	if (retval)
+		return retval;
+
+	return mbx->ops.read_posted(hw, retmsg, size, 0);
 }
 
 /**
@@ -665,13 +666,22 @@ out:
  *  @hw: pointer to the HW structure
  *  @max_size: value to assign to max frame size
  **/
-void ixgbevf_rlpml_set_vf(struct ixgbe_hw *hw, u16 max_size)
+s32 ixgbevf_rlpml_set_vf(struct ixgbe_hw *hw, u16 max_size)
 {
 	u32 msgbuf[2];
+	s32 retval;
 
 	msgbuf[0] = IXGBE_VF_SET_LPE;
 	msgbuf[1] = max_size;
-	ixgbevf_write_msg_read_ack(hw, msgbuf, 2);
+
+	retval = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
+	if (retval)
+		return retval;
+	if ((msgbuf[0] & IXGBE_VF_SET_LPE) &&
+	    (msgbuf[0] & IXGBE_VT_MSGTYPE_NACK))
+		return IXGBE_ERR_MBX;
+
+	return 0;
 }
 
 /**

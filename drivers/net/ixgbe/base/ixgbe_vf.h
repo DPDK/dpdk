@@ -134,7 +134,7 @@ s32 ixgbe_update_mc_addr_list_vf(struct ixgbe_hw *hw, u8 *mc_addr_list,
 s32 ixgbevf_update_xcast_mode(struct ixgbe_hw *hw, int xcast_mode);
 s32 ixgbe_set_vfta_vf(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 		      bool vlan_on, bool vlvf_bypass);
-void ixgbevf_rlpml_set_vf(struct ixgbe_hw *hw, u16 max_size);
+s32 ixgbevf_rlpml_set_vf(struct ixgbe_hw *hw, u16 max_size);
 int ixgbevf_negotiate_api_version(struct ixgbe_hw *hw, int api);
 int ixgbevf_get_queues(struct ixgbe_hw *hw, unsigned int *num_tcs,
 		       unsigned int *default_tc);
