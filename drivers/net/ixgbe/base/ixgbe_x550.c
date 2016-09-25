@@ -1607,6 +1607,53 @@ s32 ixgbe_setup_sfp_modules_X550em(struct ixgbe_hw *hw)
 }
 
 /**
+*  ixgbe_restart_an_internal_phy_x550em - restart autonegotiation for the
+*  internal PHY
+*  @hw: pointer to hardware structure
+**/
+STATIC s32 ixgbe_restart_an_internal_phy_x550em(struct ixgbe_hw *hw)
+{
+	s32 status;
+	u32 link_ctrl;
+
+	/* Restart auto-negotiation. */
+	status = hw->mac.ops.read_iosf_sb_reg(hw,
+				       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+				       IXGBE_SB_IOSF_TARGET_KR_PHY, &link_ctrl);
+
+	if (status) {
+		DEBUGOUT("Auto-negotiation did not complete\n");
+		return status;
+	}
+
+	link_ctrl |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
+	status = hw->mac.ops.write_iosf_sb_reg(hw,
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, link_ctrl);
+
+	if (hw->mac.type == ixgbe_mac_X550EM_a) {
+		u32 flx_mask_st20;
+
+		/* Indicate to FW that AN restart has been asserted */
+		status = hw->mac.ops.read_iosf_sb_reg(hw,
+				IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, &flx_mask_st20);
+
+		if (status) {
+			DEBUGOUT("Auto-negotiation did not complete\n");
+			return status;
+		}
+
+		flx_mask_st20 |= IXGBE_KRM_PMD_FLX_MASK_ST20_FW_AN_RESTART;
+		status = hw->mac.ops.write_iosf_sb_reg(hw,
+				IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, flx_mask_st20);
+	}
+
+	return status;
+}
+
+/**
  * ixgbe_setup_sgmii - Set up link for sgmii
  * @hw: pointer to hardware structure
  */
@@ -1614,7 +1661,7 @@ STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 			     bool autoneg_wait)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;
-	u32 lval, sval;
+	u32 lval, sval, flx_val;
 	s32 rc;
 
 	rc = mac->ops.read_iosf_sb_reg(hw,
@@ -1648,10 +1695,25 @@ STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 	if (rc)
 		return rc;
 
-	lval |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
+	rc = mac->ops.read_iosf_sb_reg(hw,
+				    IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				    IXGBE_SB_IOSF_TARGET_KR_PHY, &flx_val);
+	if (rc)
+		return rc;
+
+	flx_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_MASK;
+	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_1G;
+	flx_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN_EN;
+	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SGMII_EN;
+	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_AN37_EN;
+
 	rc = mac->ops.write_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, lval);
+				    IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				    IXGBE_SB_IOSF_TARGET_KR_PHY, flx_val);
+	if (rc)
+		return rc;
+
+	rc = ixgbe_restart_an_internal_phy_x550em(hw);
 	if (rc)
 		return rc;
 
@@ -1666,7 +1728,7 @@ STATIC s32 ixgbe_setup_sgmii_m88(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 				 bool autoneg_wait)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;
-	u32 lval, sval;
+	u32 lval, sval, flx_val;
 	s32 rc;
 
 	rc = mac->ops.read_iosf_sb_reg(hw,
@@ -1700,12 +1762,31 @@ STATIC s32 ixgbe_setup_sgmii_m88(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 	if (rc)
 		return rc;
 
-	lval |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
 	rc = mac->ops.write_iosf_sb_reg(hw,
 					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 					IXGBE_SB_IOSF_TARGET_KR_PHY, lval);
 	if (rc)
 		return rc;
+
+	rc = mac->ops.read_iosf_sb_reg(hw,
+				    IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				    IXGBE_SB_IOSF_TARGET_KR_PHY, &flx_val);
+	if (rc)
+		return rc;
+
+	flx_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_MASK;
+	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_1G;
+	flx_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN_EN;
+	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SGMII_EN;
+	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_AN37_EN;
+
+	rc = mac->ops.write_iosf_sb_reg(hw,
+				    IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				    IXGBE_SB_IOSF_TARGET_KR_PHY, flx_val);
+	if (rc)
+		return rc;
+
+	rc = ixgbe_restart_an_internal_phy_x550em(hw);
 
 	return hw->phy.ops.setup_link_speed(hw, speed, autoneg_wait);
 }
@@ -2024,13 +2105,24 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 	if (speed & IXGBE_LINK_SPEED_1GB_FULL)
 		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX;
 
-	/* Restart auto-negotiation. */
-	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
 	status = hw->mac.ops.write_iosf_sb_reg(hw,
 		       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
 		       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
-	return status;
+	if (status)
+		return status;
+
+	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_MASK;
+	reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_AN;
+	reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_AN_EN;
+	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN37_EN;
+	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SGMII_EN;
+
+	status = hw->mac.ops.write_iosf_sb_reg(hw,
+				    IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				    IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+
+	return ixgbe_restart_an_internal_phy_x550em(hw);
 }
 
 /**
@@ -2662,6 +2754,55 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 }
 
 /**
+ *  ixgbe_setup_sfi_x550a - Configure the internal PHY for native SFI mode
+ *  @hw: pointer to hardware structure
+ *  @speed: the link speed to force
+ *
+ *  Configures the integrated PHY for native SFI mode. Used to connect the
+ *  internal PHY directly to an SFP cage, without autonegotiation.
+ **/
+STATIC s32 ixgbe_setup_sfi_x550a(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
+{
+	struct ixgbe_mac_info *mac = &hw->mac;
+	s32 status;
+	u32 reg_val;
+
+	/* Disable all AN and force speed to 10G Serial. */
+	status = mac->ops.read_iosf_sb_reg(hw,
+				IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN_EN;
+	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN37_EN;
+	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SGMII_EN;
+	reg_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_MASK;
+
+	/* Select forced link speed for internal PHY. */
+	switch (*speed) {
+	case IXGBE_LINK_SPEED_10GB_FULL:
+		reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_10G;
+		break;
+	case IXGBE_LINK_SPEED_1GB_FULL:
+		reg_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_1G;
+		break;
+	default:
+		/* Other link speeds are not supported by internal PHY. */
+		return IXGBE_ERR_LINK_SETUP;
+	}
+
+	status = mac->ops.write_iosf_sb_reg(hw,
+				IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+
+	/* Toggle port SW reset by AN reset. */
+	status = ixgbe_restart_an_internal_phy_x550em(hw);
+
+	return status;
+}
+
+/**
  *  ixgbe_setup_mac_link_sfp_x550a - Setup internal PHY for SFP
  *  @hw: pointer to hardware structure
  *
@@ -2691,31 +2832,27 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
 		return ret_val;
 
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP_N) {
-		/* Configure internal PHY for native SFI */
+		/* Configure internal PHY for native SFI based on module type */
 		ret_val = hw->mac.ops.read_iosf_sb_reg(hw,
-			       IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
-			       IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_phy_int);
+				   IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				   IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_phy_int);
 
 		if (ret_val != IXGBE_SUCCESS)
 			return ret_val;
 
-		if (setup_linear) {
-			reg_phy_int &= ~IXGBE_KRM_AN_CNTL_8_LIMITING;
-			reg_phy_int |= IXGBE_KRM_AN_CNTL_8_LINEAR;
-		} else {
-			reg_phy_int |= IXGBE_KRM_AN_CNTL_8_LIMITING;
-			reg_phy_int &= ~IXGBE_KRM_AN_CNTL_8_LINEAR;
-		}
+		reg_phy_int &= IXGBE_KRM_PMD_FLX_MASK_ST20_SFI_10G_DA;
+		if (!setup_linear)
+			reg_phy_int |= IXGBE_KRM_PMD_FLX_MASK_ST20_SFI_10G_SR;
 
 		ret_val = hw->mac.ops.write_iosf_sb_reg(hw,
-				IXGBE_KRM_AN_CNTL_8(hw->bus.lan_id),
-				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_phy_int);
+				   IXGBE_KRM_PMD_FLX_MASK_ST20(hw->bus.lan_id),
+				   IXGBE_SB_IOSF_TARGET_KR_PHY, reg_phy_int);
 
 		if (ret_val != IXGBE_SUCCESS)
 			return ret_val;
 
-		/* Setup XFI/SFI internal link. */
-		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
+		/* Setup SFI internal link. */
+		ret_val = ixgbe_setup_sfi_x550a(hw, &speed);
 	} else {
 		/* Configure internal PHY for KR/KX. */
 		ixgbe_setup_kr_speed_x550em(hw, speed);
@@ -2874,15 +3011,7 @@ STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
 	}
 
 	/* Toggle port SW reset by AN reset. */
-	status = mac->ops.read_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
-	if (status != IXGBE_SUCCESS)
-		return status;
-	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
-	status = mac->ops.write_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+	status = ixgbe_restart_an_internal_phy_x550em(hw);
 
 	return status;
 }
@@ -4225,7 +4354,7 @@ out:
 s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_SUCCESS;
-	u32 an_cntl, link_ctrl = 0;
+	u32 an_cntl = 0;
 
 	DEBUGFUNC("ixgbe_setup_fc_backplane_x550em_a");
 
@@ -4299,19 +4428,7 @@ s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw)
 				       IXGBE_SB_IOSF_TARGET_KR_PHY, an_cntl);
 
 	/* Restart auto-negotiation. */
-	status = hw->mac.ops.read_iosf_sb_reg(hw,
-				      IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				      IXGBE_SB_IOSF_TARGET_KR_PHY, &link_ctrl);
-
-	if (status != IXGBE_SUCCESS) {
-		DEBUGOUT("Auto-Negotiation did not complete\n");
-		return status;
-	}
-
-	link_ctrl |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
-	status = hw->mac.ops.write_iosf_sb_reg(hw,
-				       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				       IXGBE_SB_IOSF_TARGET_KR_PHY, link_ctrl);
+	status = ixgbe_restart_an_internal_phy_x550em(hw);
 
 	return status;
 }
@@ -4425,19 +4542,7 @@ s32 ixgbe_setup_fc_fiber_x550em_a(struct ixgbe_hw *hw)
 					   IXGBE_SB_IOSF_TARGET_KR_PHY, pcs_an);
 
 	/* Restart auto-negotiation. */
-	rc = hw->mac.ops.read_iosf_sb_reg(hw,
-					  IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					  IXGBE_SB_IOSF_TARGET_KR_PHY, &lctrl);
-
-	if (rc) {
-		DEBUGOUT("Auto-Negotiation did not complete\n");
-		return rc;
-	}
-
-	lctrl |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_RESTART;
-	rc = hw->mac.ops.write_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, lctrl);
+	rc = ixgbe_restart_an_internal_phy_x550em(hw);
 
 	return rc;
 }
