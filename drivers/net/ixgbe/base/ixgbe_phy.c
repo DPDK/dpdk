@@ -283,6 +283,39 @@ s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_probe_phy - Probe a single address for a PHY
+ * @hw: pointer to hardware structure
+ * @phy_addr: PHY address to probe
+ *
+ * Returns true if PHY found
+ */
+static bool ixgbe_probe_phy(struct ixgbe_hw *hw, u16 phy_addr)
+{
+	u16 ext_ability = 0;
+
+	if (!ixgbe_validate_phy_addr(hw, phy_addr))
+		return false;
+
+	if (ixgbe_get_phy_id(hw))
+		return false;
+
+	hw->phy.type = ixgbe_get_phy_type_from_id(hw->phy.id);
+
+	if (hw->phy.type == ixgbe_phy_unknown) {
+		hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_EXT_ABILITY,
+				     IXGBE_MDIO_PMA_PMD_DEV_TYPE, &ext_ability);
+		if (ext_ability &
+		    (IXGBE_MDIO_PHY_10GBASET_ABILITY |
+		     IXGBE_MDIO_PHY_1000BASET_ABILITY))
+			hw->phy.type = ixgbe_phy_cu_unknown;
+		else
+			hw->phy.type = ixgbe_phy_generic;
+	}
+
+	return true;
+}
+
+/**
  *  ixgbe_identify_phy_generic - Get physical layer module
  *  @hw: pointer to hardware structure
  *
@@ -291,8 +324,7 @@ s32 ixgbe_init_phy_ops_generic(struct ixgbe_hw *hw)
 s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_ERR_PHY_ADDR_INVALID;
-	u32 phy_addr;
-	u16 ext_ability = 0;
+	u16 phy_addr;
 
 	DEBUGFUNC("ixgbe_identify_phy_generic");
 
@@ -305,27 +337,7 @@ s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
 
 	if (hw->phy.type == ixgbe_phy_unknown) {
 		for (phy_addr = 0; phy_addr < IXGBE_MAX_PHY_ADDR; phy_addr++) {
-			if (ixgbe_validate_phy_addr(hw, phy_addr)) {
-				hw->phy.addr = phy_addr;
-				ixgbe_get_phy_id(hw);
-				hw->phy.type =
-					ixgbe_get_phy_type_from_id(hw->phy.id);
-
-				if (hw->phy.type == ixgbe_phy_unknown) {
-					hw->phy.ops.read_reg(hw,
-						  IXGBE_MDIO_PHY_EXT_ABILITY,
-						  IXGBE_MDIO_PMA_PMD_DEV_TYPE,
-						  &ext_ability);
-					if (ext_ability &
-					    (IXGBE_MDIO_PHY_10GBASET_ABILITY |
-					     IXGBE_MDIO_PHY_1000BASET_ABILITY))
-						hw->phy.type =
-							 ixgbe_phy_cu_unknown;
-					else
-						hw->phy.type =
-							 ixgbe_phy_generic;
-				}
-
+		if (ixgbe_probe_phy(hw, phy_addr)) {
 				status = IXGBE_SUCCESS;
 				break;
 			}
