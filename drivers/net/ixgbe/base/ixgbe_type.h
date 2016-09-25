@@ -3854,6 +3854,7 @@ struct ixgbe_mac_operations {
 	void (*init_swfw_sync)(struct ixgbe_hw *);
 	s32 (*prot_autoc_read)(struct ixgbe_hw *, bool *, u32 *);
 	s32 (*prot_autoc_write)(struct ixgbe_hw *, u32, bool);
+	s32 (*negotiate_api_version)(struct ixgbe_hw *hw, int api);
 
 	/* Link */
 	void (*disable_tx_laser)(struct ixgbe_hw *);
@@ -3898,6 +3899,7 @@ struct ixgbe_mac_operations {
 	void (*set_mac_anti_spoofing)(struct ixgbe_hw *, bool, int);
 	void (*set_vlan_anti_spoofing)(struct ixgbe_hw *, bool, int);
 	s32 (*update_xcast_mode)(struct ixgbe_hw *, int);
+	s32 (*set_rlpml)(struct ixgbe_hw *, u16);
 
 	/* Flow Control */
 	s32 (*fc_enable)(struct ixgbe_hw *);

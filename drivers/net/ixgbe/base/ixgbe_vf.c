@@ -64,6 +64,7 @@ s32 ixgbe_init_ops_vf(struct ixgbe_hw *hw)
 	hw->mac.ops.get_mac_addr = ixgbe_get_mac_addr_vf;
 	hw->mac.ops.stop_adapter = ixgbe_stop_adapter_vf;
 	hw->mac.ops.get_bus_info = NULL;
+	hw->mac.ops.negotiate_api_version = ixgbevf_negotiate_api_version;
 
 	/* Link */
 	hw->mac.ops.setup_link = ixgbe_setup_mac_link_vf;
@@ -80,6 +81,7 @@ s32 ixgbe_init_ops_vf(struct ixgbe_hw *hw)
 	hw->mac.ops.disable_mc = NULL;
 	hw->mac.ops.clear_vfta = NULL;
 	hw->mac.ops.set_vfta = ixgbe_set_vfta_vf;
+	hw->mac.ops.set_rlpml = ixgbevf_rlpml_set_vf;
 
 	hw->mac.max_tx_queues = 1;
 	hw->mac.max_rx_queues = 1;
