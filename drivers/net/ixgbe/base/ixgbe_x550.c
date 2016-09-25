@@ -1716,72 +1716,6 @@ STATIC s32 ixgbe_setup_sgmii_m88(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 }
 
 /**
- * ixgbe_check_link_m88 - Poll PHY for link
- * @hw: pointer to hardware structure
- * @speed: pointer to link speed
- * @link_up: true when link is up
- * @link_up_wait: bool indicating whether to wait for link
- *
- * Check that both the MAC and PHY have link.
- */
-static s32
-ixgbe_check_link_m88(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
-		     bool *link_up, bool link_up_wait)
-{
-	u16 reg;
-	s32 rc;
-	u32 i;
-
-	rc = ixgbe_check_mac_link_generic(hw, speed, link_up, link_up_wait);
-	if (rc || !*link_up)
-		return rc;
-
-	rc = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_PHY_SPEC_STATUS, 0, &reg);
-
-	/* MAC link is up, so check external PHY link */
-	*link_up = !!(reg & IXGBE_M88E1500_PHY_SPEC_STATUS_LINK);
-
-	if (link_up_wait) {
-		for (i = 0; i < IXGBE_AUTO_NEG_TIME; i++) {
-			if (!rc &&
-			    (reg & IXGBE_M88E1500_PHY_SPEC_STATUS_LINK)) {
-				*link_up = true;
-				break;
-			}
-			*link_up = false;
-			msec_delay(100);
-			rc = hw->phy.ops.read_reg(hw,
-						 IXGBE_M88E1500_PHY_SPEC_STATUS,
-						 0, &reg);
-		}
-	}
-
-#define M88_SPEED(x) (IXGBE_M88E1500_PHY_SPEC_STATUS_RESOLVED  | \
-		      IXGBE_M88E1500_PHY_SPEC_STATUS_DUPLEX     | \
-		      ((IXGBE_M88E1500_PHY_SPEC_STATUS_SPEED_##x) <<\
-			IXGBE_M88E1500_PHY_SPEC_STATUS_SPEED_SHIFT))
-
-	reg &= M88_SPEED(MASK);
-	switch (reg) {
-	case M88_SPEED(10):
-		*speed = IXGBE_LINK_SPEED_10_FULL;
-		break;
-	case M88_SPEED(100):
-		*speed = IXGBE_LINK_SPEED_100_FULL;
-		break;
-	case M88_SPEED(1000):
-		*speed = IXGBE_LINK_SPEED_1GB_FULL;
-		break;
-	default:
-		*speed = IXGBE_LINK_SPEED_UNKNOWN;
-		break;
-	}
-#undef M88_SPEED
-
-	return rc;
-}
-
-/**
  *  ixgbe_init_mac_link_ops_X550em - init mac link function pointers
  *  @hw: pointer to hardware structure
  */
@@ -1811,10 +1745,14 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 				ixgbe_setup_mac_link_sfp_x550em;
 		break;
 	case ixgbe_media_type_copper:
-		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
-		    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L) {
-			mac->ops.setup_link = ixgbe_setup_sgmii_m88;
-			mac->ops.check_link = ixgbe_check_link_m88;
+		if (hw->mac.type == ixgbe_mac_X550EM_a) {
+			if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
+			    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L) {
+				mac->ops.setup_link = ixgbe_setup_sgmii_m88;
+			} else {
+				mac->ops.setup_link =
+						  ixgbe_setup_mac_link_t_X550em;
+			}
 		} else {
 			mac->ops.setup_link = ixgbe_setup_mac_link_t_X550em;
 			mac->ops.check_link = ixgbe_check_link_t_X550em;
