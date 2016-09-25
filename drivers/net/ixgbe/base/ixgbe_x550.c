@@ -2460,53 +2460,18 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 	if (ret_val != IXGBE_SUCCESS)
 		return ret_val;
 
-	if (!(hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE)) {
-		/* Configure CS4227 LINE side to 10G SR. */
-		reg_slice = IXGBE_CS4227_LINE_SPARE22_MSB +
-			    (hw->bus.lan_id << 12);
-		reg_val = IXGBE_CS4227_SPEED_10G;
-		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
-						  reg_val);
+	/* Configure internal PHY for KR/KX. */
+	ixgbe_setup_kr_speed_x550em(hw, speed);
 
-		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB +
-			    (hw->bus.lan_id << 12);
+	/* Configure CS4227 LINE side to proper mode. */
+	reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB +
+		    (hw->bus.lan_id << 12);
+	if (setup_linear)
+		reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
+	else
 		reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
-						  reg_val);
-
-		/* Configure CS4227 for HOST connection rate then type. */
-		reg_slice = IXGBE_CS4227_HOST_SPARE22_MSB +
-			    (hw->bus.lan_id << 12);
-		reg_val = (speed & IXGBE_LINK_SPEED_10GB_FULL) ?
-		IXGBE_CS4227_SPEED_10G : IXGBE_CS4227_SPEED_1G;
-		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
-						  reg_val);
-
-		reg_slice = IXGBE_CS4227_HOST_SPARE24_LSB +
-			    (hw->bus.lan_id << 12);
-		if (setup_linear)
-			reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
-		else
-			reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
-						  reg_val);
-
-		/* Setup XFI internal link. */
-		ret_val = ixgbe_setup_ixfi_x550em(hw, &speed);
-	} else {
-		/* Configure internal PHY for KR/KX. */
-		ixgbe_setup_kr_speed_x550em(hw, speed);
-
-		/* Configure CS4227 LINE side to proper mode. */
-		reg_slice = IXGBE_CS4227_LINE_SPARE24_LSB +
-			    (hw->bus.lan_id << 12);
-		if (setup_linear)
-			reg_val = (IXGBE_CS4227_EDC_MODE_CX1 << 1) | 0x1;
-		else
-			reg_val = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
-		ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
-						  reg_val);
-	}
+	ret_val = hw->link.ops.write_link(hw, hw->link.addr, reg_slice,
+					  reg_val);
 	return ret_val;
 }
 
