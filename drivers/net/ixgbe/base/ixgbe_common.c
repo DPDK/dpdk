@@ -1077,7 +1077,7 @@ void ixgbe_set_lan_id_multi_port_pcie(struct ixgbe_hw *hw)
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP) {
 		hw->eeprom.ops.read(hw, IXGBE_EEPROM_CTRL_4, &ee_ctrl_4);
 		bus->instance_id = (ee_ctrl_4 & IXGBE_EE_CTRL_4_INST_ID) >>
-			IXGBE_EE_CTRL_4_INST_ID_SHIFT;
+				   IXGBE_EE_CTRL_4_INST_ID_SHIFT;
 	}
 }
 
@@ -2888,7 +2888,7 @@ out:
  *  advertised settings
  **/
 s32 ixgbe_negotiate_fc(struct ixgbe_hw *hw, u32 adv_reg, u32 lp_reg,
-			      u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
+		       u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
 {
 	if ((!(adv_reg)) ||  (!(lp_reg))) {
 		ERROR_REPORT3(IXGBE_ERROR_UNSUPPORTED,
@@ -3360,7 +3360,7 @@ s32 prot_autoc_write_generic(struct ixgbe_hw *hw, u32 reg_val, bool locked)
  **/
 s32 ixgbe_enable_sec_rx_path_generic(struct ixgbe_hw *hw)
 {
-	int secrxreg;
+	u32 secrxreg;
 
 	DEBUGFUNC("ixgbe_enable_sec_rx_path_generic");
 
@@ -3931,7 +3931,8 @@ s32 ixgbe_set_vfta_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 	vfta_delta = 1 << (vlan % 32);
 	vfta = IXGBE_READ_REG(hw, IXGBE_VFTA(regidx));
 
-	/* vfta_delta represents the difference between the current value
+	/*
+	 * vfta_delta represents the difference between the current value
 	 * of vfta and the value we want in the register.  Since the diff
 	 * is an XOR mask we can just update the vfta using an XOR
 	 */
@@ -3964,7 +3965,7 @@ vfta_update:
  *  @vind: VMDq output index that maps queue to VLAN id in VLVFB
  *  @vlan_on: boolean flag to turn on/off VLAN in VLVF
  *  @vfta_delta: pointer to the difference between the current value of VFTA
- * and the desired value
+ *		 and the desired value
  *  @vfta: the desired value of the VFTA
  *  @vlvf_bypass: boolean flag indicating updating default pool is okay
  *
@@ -3991,6 +3992,7 @@ s32 ixgbe_set_vlvf_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 	 */
 	if (!(IXGBE_READ_REG(hw, IXGBE_VT_CTL) & IXGBE_VT_CTL_VT_ENABLE))
 		return IXGBE_SUCCESS;
+
 	vlvf_index = ixgbe_find_vlvf_slot(hw, vlan, vlvf_bypass);
 	if (vlvf_index < 0)
 		return vlvf_index;
@@ -4020,6 +4022,7 @@ s32 ixgbe_set_vlvf_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 
 		return IXGBE_SUCCESS;
 	}
+
 	/* If there are still bits set in the VLVFB registers
 	 * for the VLAN ID indicated we need to see if the
 	 * caller is requesting that we clear the VFTA entry bit.

@@ -133,7 +133,7 @@ s32 ixgbe_clear_vmdq_generic(struct ixgbe_hw *hw, u32 rar, u32 vmdq);
 s32 ixgbe_insert_mac_addr_generic(struct ixgbe_hw *hw, u8 *addr, u32 vmdq);
 s32 ixgbe_init_uta_tables_generic(struct ixgbe_hw *hw);
 s32 ixgbe_set_vfta_generic(struct ixgbe_hw *hw, u32 vlan,
-			   u32 vind, bool vlan_on, bool vlvf_bypass);
+			 u32 vind, bool vlan_on, bool vlvf_bypass);
 s32 ixgbe_set_vlvf_generic(struct ixgbe_hw *hw, u32 vlan, u32 vind,
 			   bool vlan_on, u32 *vfta_delta, u32 vfta,
 			   bool vlvf_bypass);

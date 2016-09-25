@@ -271,6 +271,7 @@ mac_reset_top:
 	if (ixgbe_validate_mac_addr(hw->mac.san_addr) == 0) {
 		/* Save the SAN MAC RAR index */
 		hw->mac.san_mac_rar_index = hw->mac.num_rar_entries - 1;
+
 		hw->mac.ops.set_rar(hw, hw->mac.san_mac_rar_index,
 				    hw->mac.san_addr, 0, IXGBE_RAH_AV);
 

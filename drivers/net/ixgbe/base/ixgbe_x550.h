@@ -99,12 +99,12 @@ s32 ixgbe_setup_mac_link_sfp_x550em(struct ixgbe_hw *hw,
 				    ixgbe_link_speed speed,
 				    bool autoneg_wait_to_complete);
 s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
-				   ixgbe_link_speed speed,
-				   bool autoneg_wait_to_complete);
+				    ixgbe_link_speed speed,
+				    bool autoneg_wait_to_complete);
 s32 ixgbe_read_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
-			     u32 device_type, u16 *phy_data);
+			       u32 device_type, u16 *phy_data);
 s32 ixgbe_write_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
-			      u32 device_type, u16 phy_data);
+				u32 device_type, u16 phy_data);
 s32 ixgbe_setup_fc_fiber_x550em_a(struct ixgbe_hw *hw);
 s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw);
 s32 ixgbe_setup_fc_sgmii_x550em_a(struct ixgbe_hw *hw);

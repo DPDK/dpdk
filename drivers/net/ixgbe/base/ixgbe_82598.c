@@ -995,19 +995,19 @@ STATIC s32 ixgbe_clear_vmdq_82598(struct ixgbe_hw *hw, u32 rar, u32 vmdq)
  *  @vlan: VLAN id to write to VLAN filter
  *  @vind: VMDq output index that maps queue to VLAN id in VFTA
  *  @vlan_on: boolean flag to turn on/off VLAN in VFTA
- *  @bypass_vlvf: boolean flag - unused
+ *  @vlvf_bypass: boolean flag - unused
  *
  *  Turn on/off specified VLAN in the VLAN filter table.
  **/
 s32 ixgbe_set_vfta_82598(struct ixgbe_hw *hw, u32 vlan, u32 vind,
-			 bool vlan_on, bool bypass_vlvf)
+			 bool vlan_on, bool vlvf_bypass)
 {
 	u32 regindex;
 	u32 bitindex;
 	u32 bits;
 	u32 vftabyte;
 
-	UNREFERENCED_1PARAMETER(bypass_vlvf);
+	UNREFERENCED_1PARAMETER(vlvf_bypass);
 
 	DEBUGFUNC("ixgbe_set_vfta_82598");
 

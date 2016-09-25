@@ -906,20 +906,20 @@ STATIC s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_A_KR:
 	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		status = hw->mac.ops.read_iosf_sb_reg(hw,
-				     IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				     IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
 		if (status != IXGBE_SUCCESS)
 			return status;
 
 		link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
-			IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
+			    IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
 
 		/* Don't advertise FEC capability when EEE enabled. */
 		link_reg &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
 
 		status = hw->mac.ops.write_iosf_sb_reg(hw,
-				      IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				      IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
 		if (status != IXGBE_SUCCESS)
 			return status;
 		break;
@@ -961,8 +961,8 @@ STATIC s32 ixgbe_disable_eee_x550(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_A_KR:
 	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		status = hw->mac.ops.read_iosf_sb_reg(hw,
-				     IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				     IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
 		if (status != IXGBE_SUCCESS)
 			return status;
 
@@ -973,8 +973,8 @@ STATIC s32 ixgbe_disable_eee_x550(struct ixgbe_hw *hw)
 		link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
 
 		status = hw->mac.ops.write_iosf_sb_reg(hw,
-				      IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				      IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
 		if (status != IXGBE_SUCCESS)
 			return status;
 		break;
@@ -1012,6 +1012,7 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 		    !(IXGBE_FUSES0_REV_MASK &
 		      IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0))))
 			return IXGBE_SUCCESS;
+
 		status = ixgbe_enable_eee_x550(hw);
 		if (status)
 			return status;
@@ -1720,7 +1721,7 @@ STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 	return hw->phy.ops.setup_link_speed(hw, speed, autoneg_wait);
 }
 
- /**
+/**
  * ixgbe_setup_sgmii_m88 - Set up link for sgmii with Marvell PHYs
  * @hw: pointer to hardware structure
  */
@@ -1812,13 +1813,14 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 		mac->ops.setup_link = ixgbe_setup_mac_link_multispeed_fiber;
 		mac->ops.set_rate_select_speed =
 					ixgbe_set_soft_rate_select_speed;
+
 		if ((hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP_N) ||
 		    (hw->device_id == IXGBE_DEV_ID_X550EM_A_SFP))
 			mac->ops.setup_mac_link =
-				ixgbe_setup_mac_link_sfp_x550a;
+						ixgbe_setup_mac_link_sfp_x550a;
 		else
 			mac->ops.setup_mac_link =
-				ixgbe_setup_mac_link_sfp_x550em;
+						ixgbe_setup_mac_link_sfp_x550em;
 		break;
 	case ixgbe_media_type_copper:
 		if (hw->mac.type == ixgbe_mac_X550EM_a) {
@@ -1855,6 +1857,7 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 				       bool *autoneg)
 {
 	DEBUGFUNC("ixgbe_get_link_capabilities_X550em");
+
 
 	/* SFP */
 	if (hw->phy.media_type == ixgbe_media_type_fiber) {
@@ -2102,8 +2105,8 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 	u32 reg_val;
 
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-		      IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-		      IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status)
 		return status;
 
@@ -2120,8 +2123,8 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 		reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_KX;
 
 	status = hw->mac.ops.write_iosf_sb_reg(hw,
-		       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-		       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 	if (hw->mac.type == ixgbe_mac_X550EM_a) {
 		/* Set lane mode  to KR auto negotiation */
@@ -2426,7 +2429,7 @@ STATIC s32 ixgbe_read_mng_if_sel_x550em(struct ixgbe_hw *hw)
 	    hw->phy.nw_mng_if_sel & IXGBE_NW_MNG_IF_SEL_MDIO_ACT) {
 		hw->phy.addr = (hw->phy.nw_mng_if_sel &
 				IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD) >>
-				IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT;
+			       IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT;
 	}
 
 	return IXGBE_SUCCESS;
@@ -2830,8 +2833,8 @@ STATIC s32 ixgbe_setup_sfi_x550a(struct ixgbe_hw *hw, ixgbe_link_speed *speed)
  *  Configure the the integrated PHY for SFP support.
  **/
 s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
-				   ixgbe_link_speed speed,
-				   bool autoneg_wait_to_complete)
+				    ixgbe_link_speed speed,
+				    bool autoneg_wait_to_complete)
 {
 	s32 ret_val;
 	u16 reg_phy_ext;
@@ -2886,7 +2889,7 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
 
 		/* Get external PHY device id */
 		ret_val = hw->phy.ops.read_reg(hw, IXGBE_CS4227_GLOBAL_ID_MSB,
-				       IXGBE_MDIO_ZERO_DEV_TYPE, &reg_phy_ext);
+					IXGBE_MDIO_ZERO_DEV_TYPE, &reg_phy_ext);
 
 		if (ret_val != IXGBE_SUCCESS)
 			return ret_val;
@@ -2907,7 +2910,7 @@ s32 ixgbe_setup_mac_link_sfp_x550a(struct ixgbe_hw *hw,
 		else
 			reg_phy_ext = (IXGBE_CS4227_EDC_MODE_SR << 1) | 0x1;
 		ret_val = hw->phy.ops.write_reg(hw, reg_slice,
-					IXGBE_MDIO_ZERO_DEV_TYPE, reg_phy_ext);
+					 IXGBE_MDIO_ZERO_DEV_TYPE, reg_phy_ext);
 	}
 	return ret_val;
 }
@@ -3150,56 +3153,56 @@ s32 ixgbe_setup_phy_loopback_x550em(struct ixgbe_hw *hw)
 
 	/* Disable AN and force speed to 10G Serial. */
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-		      IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-		      IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
 	reg_val &= ~IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_MASK;
 	reg_val |= IXGBE_KRM_LINK_CTRL_1_TETH_FORCE_SPEED_10G;
 	status = hw->mac.ops.write_iosf_sb_reg(hw,
-		       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-		       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Set near-end loopback clocks. */
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-		      IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->bus.lan_id),
-		      IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+				IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_PORT_CAR_GEN_CTRL_NELB_32B;
 	reg_val |= IXGBE_KRM_PORT_CAR_GEN_CTRL_NELB_KRPCS;
 	status = hw->mac.ops.write_iosf_sb_reg(hw,
-		       IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->bus.lan_id),
-		       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+				IXGBE_KRM_PORT_CAR_GEN_CTRL(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Set loopback enable. */
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-		      IXGBE_KRM_PMD_DFX_BURNIN(hw->bus.lan_id),
-		      IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+				IXGBE_KRM_PMD_DFX_BURNIN(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_PMD_DFX_BURNIN_TX_RX_KR_LB_MASK;
 	status = hw->mac.ops.write_iosf_sb_reg(hw,
-		       IXGBE_KRM_PMD_DFX_BURNIN(hw->bus.lan_id),
-		       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+				IXGBE_KRM_PMD_DFX_BURNIN(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 
 	/* Training bypass. */
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-		      IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
-		      IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 	if (status != IXGBE_SUCCESS)
 		return status;
 	reg_val |= IXGBE_KRM_RX_TRN_LINKUP_CTRL_PROTOCOL_BYPASS;
 	status = hw->mac.ops.write_iosf_sb_reg(hw,
-		       IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
-		       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+				IXGBE_KRM_RX_TRN_LINKUP_CTRL(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 	return status;
 }
@@ -3272,6 +3275,7 @@ s32 ixgbe_read_ee_hostif_buffer_X550(struct ixgbe_hw *hw,
 		DEBUGOUT("EEPROM read buffer - semaphore failed\n");
 		return status;
 	}
+
 	while (words) {
 		if (words > FW_MAX_READ_BUFFER_SIZE / 2)
 			words_to_read = FW_MAX_READ_BUFFER_SIZE / 2;
@@ -4015,19 +4019,19 @@ s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_A_KR:
 	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		ret_val = hw->mac.ops.read_iosf_sb_reg(hw,
-				      IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
-				      IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
+					IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, &reg_val);
 		if (ret_val != IXGBE_SUCCESS)
 			goto out;
 		reg_val &= ~(IXGBE_KRM_AN_CNTL_1_SYM_PAUSE |
-			     IXGBE_KRM_AN_CNTL_1_ASM_PAUSE);
+			IXGBE_KRM_AN_CNTL_1_ASM_PAUSE);
 		if (pause)
 			reg_val |= IXGBE_KRM_AN_CNTL_1_SYM_PAUSE;
 		if (asm_dir)
 			reg_val |= IXGBE_KRM_AN_CNTL_1_ASM_PAUSE;
 		ret_val = hw->mac.ops.write_iosf_sb_reg(hw,
-				       IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
-				       IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
+					IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, reg_val);
 
 		/* This device does not fully support AN. */
 		hw->fc.disable_fc_autoneg = true;
@@ -4060,7 +4064,7 @@ void ixgbe_fc_autoneg_backplane_x550em_a(struct ixgbe_hw *hw)
 	 */
 	if (hw->fc.disable_fc_autoneg) {
 		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
-			      "Flow control autoneg is disabled");
+			     "Flow control autoneg is disabled");
 		goto out;
 	}
 
@@ -4072,8 +4076,8 @@ void ixgbe_fc_autoneg_backplane_x550em_a(struct ixgbe_hw *hw)
 
 	/* Check at auto-negotiation has completed */
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-				      IXGBE_KRM_LINK_S1(hw->bus.lan_id),
-				      IXGBE_SB_IOSF_TARGET_KR_PHY, &link_s1);
+					IXGBE_KRM_LINK_S1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, &link_s1);
 
 	if (status != IXGBE_SUCCESS ||
 	    (link_s1 & IXGBE_KRM_LINK_S1_MAC_AN_COMPLETE) == 0) {
@@ -4086,8 +4090,8 @@ void ixgbe_fc_autoneg_backplane_x550em_a(struct ixgbe_hw *hw)
 	 * local flow control settings accordingly
 	 */
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-				      IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
-				      IXGBE_SB_IOSF_TARGET_KR_PHY, &an_cntl_1);
+				IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, &an_cntl_1);
 
 	if (status != IXGBE_SUCCESS) {
 		DEBUGOUT("Auto-Negotiation did not complete\n");
@@ -4095,8 +4099,8 @@ void ixgbe_fc_autoneg_backplane_x550em_a(struct ixgbe_hw *hw)
 	}
 
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-			      IXGBE_KRM_LP_BASE_PAGE_HIGH(hw->bus.lan_id),
-			      IXGBE_SB_IOSF_TARGET_KR_PHY, &lp_an_page_low);
+				IXGBE_KRM_LP_BASE_PAGE_HIGH(hw->bus.lan_id),
+				IXGBE_SB_IOSF_TARGET_KR_PHY, &lp_an_page_low);
 
 	if (status != IXGBE_SUCCESS) {
 		DEBUGOUT("Auto-Negotiation did not complete\n");
@@ -4291,7 +4295,7 @@ s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw)
 	/* Validate the requested mode */
 	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {
 		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
-		      "ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
+			      "ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
 		return IXGBE_ERR_INVALID_LINK_SETTINGS;
 	}
 
@@ -4303,8 +4307,8 @@ s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw)
 	 * we link at 10G, the 1G advertisement is harmless and vice versa.
 	 */
 	status = hw->mac.ops.read_iosf_sb_reg(hw,
-				      IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
-				      IXGBE_SB_IOSF_TARGET_KR_PHY, &an_cntl);
+					IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, &an_cntl);
 
 	if (status != IXGBE_SUCCESS) {
 		DEBUGOUT("Auto-Negotiation did not complete\n");
@@ -4345,7 +4349,7 @@ s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw)
 	case ixgbe_fc_full:
 		/* Flow control (both Rx and Tx) is enabled by SW override. */
 		an_cntl |= IXGBE_KRM_AN_CNTL_1_SYM_PAUSE |
-			IXGBE_KRM_AN_CNTL_1_ASM_PAUSE;
+			   IXGBE_KRM_AN_CNTL_1_ASM_PAUSE;
 		break;
 	default:
 		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT,
@@ -4354,8 +4358,8 @@ s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw)
 	}
 
 	status = hw->mac.ops.write_iosf_sb_reg(hw,
-				       IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
-				       IXGBE_SB_IOSF_TARGET_KR_PHY, an_cntl);
+					IXGBE_KRM_AN_CNTL_1(hw->bus.lan_id),
+					IXGBE_SB_IOSF_TARGET_KR_PHY, an_cntl);
 
 	/* Restart auto-negotiation. */
 	status = ixgbe_restart_an_internal_phy_x550em(hw);
@@ -4491,7 +4495,7 @@ STATIC void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
  *  instances.
  **/
 s32 ixgbe_read_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
-			     u32 device_type, u16 *phy_data)
+			       u32 device_type, u16 *phy_data)
 {
 	s32 status;
 	u32 mask = hw->phy.phy_semaphore_mask | IXGBE_GSSR_TOKEN_SM;
@@ -4519,7 +4523,7 @@ s32 ixgbe_read_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
  *  The PHY Token is needed since the MDIO is shared between to MAC instances.
  **/
 s32 ixgbe_write_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
-			      u32 device_type, u16 phy_data)
+				u32 device_type, u16 phy_data)
 {
 	s32 status;
 	u32 mask = hw->phy.phy_semaphore_mask | IXGBE_GSSR_TOKEN_SM;
@@ -4716,4 +4720,3 @@ s32 ixgbe_led_off_t_X550em(struct ixgbe_hw *hw, u32 led_idx)
 
 	return IXGBE_SUCCESS;
 }
-

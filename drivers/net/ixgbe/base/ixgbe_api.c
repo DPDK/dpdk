@@ -1092,7 +1092,7 @@ s32 ixgbe_set_vfta(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on,
 		   bool vlvf_bypass)
 {
 	return ixgbe_call_func(hw, hw->mac.ops.set_vfta, (hw, vlan, vind,
-				  vlan_on, vlvf_bypass), IXGBE_NOT_IMPLEMENTED);
+			       vlan_on, vlvf_bypass), IXGBE_NOT_IMPLEMENTED);
 }
 
 /**
@@ -1102,7 +1102,7 @@ s32 ixgbe_set_vfta(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on,
  *  @vind: VMDq output index that maps queue to VLAN id in VLVFB
  *  @vlan_on: boolean flag to turn on/off VLAN in VLVF
  *  @vfta_delta: pointer to the difference between the current value of VFTA
- *               and the desired value
+ *		 and the desired value
  *  @vfta: the desired value of the VFTA
  *  @vlvf_bypass: boolean flag indicating updating the default pool is okay
  *
@@ -1112,7 +1112,7 @@ s32 ixgbe_set_vlvf(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on,
 		   u32 *vfta_delta, u32 vfta, bool vlvf_bypass)
 {
 	return ixgbe_call_func(hw, hw->mac.ops.set_vlvf, (hw, vlan, vind,
-				vlan_on, vfta_delta, vfta, vlvf_bypass),
+			       vlan_on, vfta_delta, vfta, vlvf_bypass),
 			       IXGBE_NOT_IMPLEMENTED);
 }
 
@@ -1660,6 +1660,7 @@ void ixgbe_init_swfw_semaphore(struct ixgbe_hw *hw)
 	if (hw->mac.ops.init_swfw_sync)
 		hw->mac.ops.init_swfw_sync(hw);
 }
+
 
 void ixgbe_disable_rx(struct ixgbe_hw *hw)
 {
