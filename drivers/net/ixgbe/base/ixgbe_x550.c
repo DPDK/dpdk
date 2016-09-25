@@ -1278,7 +1278,7 @@ s32 ixgbe_write_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 	write_cmd.port_number = hw->bus.lan_id;
 	write_cmd.command_type = FW_INT_PHY_REQ_WRITE;
 	write_cmd.address = IXGBE_CPU_TO_BE16(reg_addr);
-	write_cmd.write_data = IXGBE_CPU_TO_LE32(data);
+	write_cmd.write_data = IXGBE_CPU_TO_BE32(data);
 
 	status = ixgbe_host_interface_command(hw, (u32 *)&write_cmd,
 					      sizeof(write_cmd),
@@ -1318,7 +1318,7 @@ s32 ixgbe_read_iosf_sb_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 					      IXGBE_HI_COMMAND_TIMEOUT, true);
 
 	/* Extract the register value from the response. */
-	*data = IXGBE_LE32_TO_CPU(hic.rsp.read_data);
+	*data = IXGBE_BE32_TO_CPU(hic.rsp.read_data);
 
 	return status;
 }

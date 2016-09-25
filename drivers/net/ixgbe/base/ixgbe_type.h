@@ -3136,13 +3136,13 @@ struct ixgbe_hic_internal_phy_req {
 	u8 command_type;
 	__be16 address;
 	u16 rsv1;
-	__le32 write_data;
+	__be32 write_data;
 	u16 pad;
 };
 
 struct ixgbe_hic_internal_phy_resp {
 	struct ixgbe_hic_hdr hdr;
-	__le32 read_data;
+	__be32 read_data;
 };
 
 #ifdef C99
