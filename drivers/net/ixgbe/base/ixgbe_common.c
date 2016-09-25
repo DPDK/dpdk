@@ -1133,6 +1133,9 @@ s32 ixgbe_led_on_generic(struct ixgbe_hw *hw, u32 index)
 
 	DEBUGFUNC("ixgbe_led_on_generic");
 
+	if (index > 3)
+		return IXGBE_ERR_PARAM;
+
 	/* To turn on the LED, set mode to ON. */
 	led_reg &= ~IXGBE_LED_MODE_MASK(index);
 	led_reg |= IXGBE_LED_ON << IXGBE_LED_MODE_SHIFT(index);
@@ -1152,6 +1155,9 @@ s32 ixgbe_led_off_generic(struct ixgbe_hw *hw, u32 index)
 	u32 led_reg = IXGBE_READ_REG(hw, IXGBE_LEDCTL);
 
 	DEBUGFUNC("ixgbe_led_off_generic");
+
+	if (index > 3)
+		return IXGBE_ERR_PARAM;
 
 	/* To turn off the LED, set mode to OFF. */
 	led_reg &= ~IXGBE_LED_MODE_MASK(index);
@@ -3388,6 +3394,9 @@ s32 ixgbe_blink_led_start_generic(struct ixgbe_hw *hw, u32 index)
 
 	DEBUGFUNC("ixgbe_blink_led_start_generic");
 
+	if (index > 3)
+		return IXGBE_ERR_PARAM;
+
 	/*
 	 * Link must be up to auto-blink the LEDs;
 	 * Force it if link is down.
@@ -3432,6 +3441,10 @@ s32 ixgbe_blink_led_stop_generic(struct ixgbe_hw *hw, u32 index)
 	bool locked = false;
 
 	DEBUGFUNC("ixgbe_blink_led_stop_generic");
+
+	if (index > 3)
+		return IXGBE_ERR_PARAM;
+
 
 	ret_val = hw->mac.ops.prot_autoc_read(hw, &locked, &autoc_reg);
 	if (ret_val != IXGBE_SUCCESS)
