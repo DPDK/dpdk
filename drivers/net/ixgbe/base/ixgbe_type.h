@@ -3883,6 +3883,7 @@ struct ixgbe_mac_operations {
 	s32 (*init_uta_tables)(struct ixgbe_hw *);
 	void (*set_mac_anti_spoofing)(struct ixgbe_hw *, bool, int);
 	void (*set_vlan_anti_spoofing)(struct ixgbe_hw *, bool, int);
+	s32 (*update_xcast_mode)(struct ixgbe_hw *, int);
 
 	/* Flow Control */
 	s32 (*fc_enable)(struct ixgbe_hw *);

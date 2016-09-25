@@ -7271,51 +7271,12 @@ ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	return ret;
 }
 
-/* ixgbevf_update_xcast_mode - Update Multicast mode
- * @hw: pointer to the HW structure
- * @netdev: pointer to net device structure
- * @xcast_mode: new multicast mode
- *
- * Updates the Multicast Mode of VF.
- */
-static int ixgbevf_update_xcast_mode(struct ixgbe_hw *hw,
-				     int xcast_mode)
-{
-	struct ixgbe_mbx_info *mbx = &hw->mbx;
-	u32 msgbuf[2];
-	s32 err;
-
-	switch (hw->api_version) {
-	case ixgbe_mbox_api_12:
-		break;
-	default:
-		return -EOPNOTSUPP;
-	}
-
-	msgbuf[0] = IXGBE_VF_UPDATE_XCAST_MODE;
-	msgbuf[1] = xcast_mode;
-
-	err = mbx->ops.write_posted(hw, msgbuf, 2, 0);
-	if (err)
-		return err;
-
-	err = mbx->ops.read_posted(hw, msgbuf, 2, 0);
-	if (err)
-		return err;
-
-	msgbuf[0] &= ~IXGBE_VT_MSGTYPE_CTS;
-	if (msgbuf[0] == (IXGBE_VF_UPDATE_XCAST_MODE | IXGBE_VT_MSGTYPE_NACK))
-		return -EPERM;
-
-	return 0;
-}
-
 static void
 ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	ixgbevf_update_xcast_mode(hw, IXGBEVF_XCAST_MODE_ALLMULTI);
+	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_ALLMULTI);
 }
 
 static void
@@ -7323,7 +7284,7 @@ ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	ixgbevf_update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE);
+	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE);
 }
 
 static void ixgbevf_mbx_process(struct rte_eth_dev *dev)
