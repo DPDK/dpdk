@@ -41,6 +41,7 @@ POSSIBILITY OF SUCH DAMAGE.
 STATIC s32 ixgbe_setup_ixfi_x550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed);
 STATIC s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
 STATIC void ixgbe_release_swfw_sync_X550a(struct ixgbe_hw *, u32 mask);
+STATIC s32 ixgbe_read_mng_if_sel_x550em(struct ixgbe_hw *hw);
 
 /**
  *  ixgbe_init_ops_X550 - Inits func ptrs and MAC type
@@ -428,18 +429,15 @@ STATIC s32 ixgbe_write_phy_reg_mdi_22(struct ixgbe_hw *hw, u32 reg_addr,
  */
 STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 {
+	hw->mac.ops.set_lan_id(hw);
+
+	ixgbe_read_mng_if_sel_x550em(hw);
+
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_A_SFP:
-		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
-		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
-		if (hw->bus.lan_id)
-			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
-		else
-			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY0_SM;
 		return ixgbe_identify_module_generic(hw);
 	case IXGBE_DEV_ID_X550EM_X_SFP:
 		/* set up for CS4227 usage */
-		hw->phy.phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		ixgbe_setup_mux_ctl(hw);
 		ixgbe_check_cs4227(hw);
 		/* Fallthrough */
@@ -456,9 +454,6 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		hw->phy.type = ixgbe_phy_x550em_kr;
 		break;
 	case IXGBE_DEV_ID_X550EM_A_10G_T:
-		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
-		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
-       /* Fallthrough to ixgbe_identify_phy_generic */
 	case IXGBE_DEV_ID_X550EM_A_1G_T:
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
@@ -2339,10 +2334,6 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_init_phy_ops_X550em");
 
-	hw->mac.ops.set_lan_id(hw);
-
-	ixgbe_read_mng_if_sel_x550em(hw);
-
 	if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
 		phy->phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		ixgbe_setup_mux_ctl(hw);
@@ -2354,6 +2345,26 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 		phy->ops.read_reg_mdi = ixgbe_read_phy_reg_mdi_22;
 		phy->ops.write_reg_mdi = ixgbe_write_phy_reg_mdi_22;
+		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
+		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
+		if (hw->bus.lan_id)
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
+		else
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY0_SM;
+
+		break;
+	case IXGBE_DEV_ID_X550EM_A_10G_T:
+	case IXGBE_DEV_ID_X550EM_A_SFP:
+		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
+		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
+		if (hw->bus.lan_id)
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
+		else
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY0_SM;
+		break;
+	case IXGBE_DEV_ID_X550EM_X_SFP:
+		/* set up for CS4227 usage */
+		hw->phy.phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		break;
 	default:
 		break;
