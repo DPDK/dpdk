@@ -2349,6 +2349,7 @@ STATIC s32 ixgbe_reset_phy_m88(struct ixgbe_hw *hw)
 	return ixgbe_setup_m88(hw);
 
 out:
+	hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
 	hw->mac.ops.release_swfw_sync(hw, mask);
 	return rc;
 }
