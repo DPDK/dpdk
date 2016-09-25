@@ -5060,14 +5060,6 @@ s32 ixgbe_setup_mac_link_multispeed_fiber(struct ixgbe_hw *hw,
 		speedcnt++;
 		highest_link_speed = IXGBE_LINK_SPEED_10GB_FULL;
 
-		/* If we already have link at this speed, just jump out */
-		status = ixgbe_check_link(hw, &link_speed, &link_up, false);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		if ((link_speed == IXGBE_LINK_SPEED_10GB_FULL) && link_up)
-			goto out;
-
 		/* Set the module link speed */
 		switch (hw->phy.media_type) {
 		case ixgbe_media_type_fiber:
@@ -5117,14 +5109,6 @@ s32 ixgbe_setup_mac_link_multispeed_fiber(struct ixgbe_hw *hw,
 		speedcnt++;
 		if (highest_link_speed == IXGBE_LINK_SPEED_UNKNOWN)
 			highest_link_speed = IXGBE_LINK_SPEED_1GB_FULL;
-
-		/* If we already have link at this speed, just jump out */
-		status = ixgbe_check_link(hw, &link_speed, &link_up, false);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		if ((link_speed == IXGBE_LINK_SPEED_1GB_FULL) && link_up)
-			goto out;
 
 		/* Set the module link speed */
 		switch (hw->phy.media_type) {
