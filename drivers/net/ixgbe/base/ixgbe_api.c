@@ -106,8 +106,10 @@ s32 ixgbe_init_shared_code(struct ixgbe_hw *hw)
 		status = ixgbe_init_ops_X550(hw);
 		break;
 	case ixgbe_mac_X550EM_x:
+		status = ixgbe_init_ops_X550EM_x(hw);
+		break;
 	case ixgbe_mac_X550EM_a:
-		status = ixgbe_init_ops_X550EM(hw);
+		status = ixgbe_init_ops_X550EM_a(hw);
 		break;
 	case ixgbe_mac_82599_vf:
 	case ixgbe_mac_X540_vf:

@@ -604,7 +604,6 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	struct ixgbe_mac_info *mac = &hw->mac;
 	struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
 	struct ixgbe_phy_info *phy = &hw->phy;
-	struct ixgbe_link_info *link = &hw->link;
 	s32 ret_val;
 
 	DEBUGFUNC("ixgbe_init_ops_X550EM");
@@ -640,25 +639,6 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	hw->bus.type = ixgbe_bus_type_internal;
 	mac->ops.get_bus_info = ixgbe_get_bus_info_X550em;
 
-	if (hw->mac.type == ixgbe_mac_X550EM_x) {
-		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
-		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
-		mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
-		mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
-		link->ops.read_link = ixgbe_read_i2c_combined_generic;
-		link->ops.read_link_unlocked =
-				ixgbe_read_i2c_combined_generic_unlocked;
-		link->ops.write_link = ixgbe_write_i2c_combined_generic;
-		link->ops.write_link_unlocked =
-				ixgbe_write_i2c_combined_generic_unlocked;
-		link->addr = IXGBE_CS4227;
-	}
-	if (hw->mac.type == ixgbe_mac_X550EM_a) {
-		mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
-		mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
-		mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550a;
-		mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550a;
-	}
 
 	mac->ops.get_media_type = ixgbe_get_media_type_X550em;
 	mac->ops.setup_sfp = ixgbe_setup_sfp_modules_X550em;
@@ -669,10 +649,6 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 
 	if (mac->ops.get_media_type(hw) == ixgbe_media_type_copper)
 		mac->ops.setup_fc = ixgbe_setup_fc_generic;
-	else if (hw->mac.type == ixgbe_mac_X550EM_a) {
-		mac->ops.setup_fc = ixgbe_setup_fc_x550a;
-		mac->ops.fc_autoneg = ixgbe_fc_autoneg_x550a;
-	}
 	else
 		mac->ops.setup_fc = ixgbe_setup_fc_X550em;
 
@@ -701,6 +677,65 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	eeprom->ops.update_checksum = ixgbe_update_eeprom_checksum_X550;
 	eeprom->ops.validate_checksum = ixgbe_validate_eeprom_checksum_X550;
 	eeprom->ops.calc_checksum = ixgbe_calc_eeprom_checksum_X550;
+
+	return ret_val;
+}
+
+/**
+*  ixgbe_init_ops_X550EM_a - Inits func ptrs and MAC type
+*  @hw: pointer to hardware structure
+*
+*  Initialize the function pointers and for MAC type X550EM_a.
+*  Does not touch the hardware.
+**/
+s32 ixgbe_init_ops_X550EM_a(struct ixgbe_hw *hw)
+{
+	struct ixgbe_mac_info *mac = &hw->mac;
+	s32 ret_val;
+
+	DEBUGFUNC("ixgbe_init_ops_X550EM_a");
+
+	/* Start with generic X550EM init */
+	ret_val = ixgbe_init_ops_X550EM(hw);
+
+	mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
+	mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
+	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550a;
+	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550a;
+	mac->ops.setup_fc = ixgbe_setup_fc_x550a;
+	mac->ops.fc_autoneg = ixgbe_fc_autoneg_x550a;
+
+	return ret_val;
+}
+
+/**
+*  ixgbe_init_ops_X550EM_x - Inits func ptrs and MAC type
+*  @hw: pointer to hardware structure
+*
+*  Initialize the function pointers and for MAC type X550EM_x.
+*  Does not touch the hardware.
+**/
+s32 ixgbe_init_ops_X550EM_x(struct ixgbe_hw *hw)
+{
+	struct ixgbe_mac_info *mac = &hw->mac;
+	struct ixgbe_link_info *link = &hw->link;
+	s32 ret_val;
+
+	DEBUGFUNC("ixgbe_init_ops_X550EM_x");
+
+	/* Start with generic X550EM init */
+	ret_val = ixgbe_init_ops_X550EM(hw);
+
+	mac->ops.read_iosf_sb_reg = ixgbe_read_iosf_sb_reg_x550;
+	mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
+	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550em;
+	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550em;
+	link->ops.read_link = ixgbe_read_i2c_combined_generic;
+	link->ops.read_link_unlocked = ixgbe_read_i2c_combined_generic_unlocked;
+	link->ops.write_link = ixgbe_write_i2c_combined_generic;
+	link->ops.write_link_unlocked =
+				      ixgbe_write_i2c_combined_generic_unlocked;
+	link->addr = IXGBE_CS4227;
 
 	return ret_val;
 }
