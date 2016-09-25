@@ -1644,13 +1644,14 @@ struct ixgbe_dmac_config {
 #define X550_PHY_ID2	0x01540223
 #define X550_PHY_ID3	0x01540221
 #define X557_PHY_ID	0x01540240
+#define X557_PHY_ID2	0x01540250
 #define AQ_FW_REV	0x20
 #define QT2022_PHY_ID	0x0043A400
 #define ATH_PHY_ID	0x03429050
 
 /* PHY Types */
-#define IXGBE_M88E1500_E_PHY_ID		0x01410DD0
-#define IXGBE_M88E1543_E_PHY_ID		0x01410EA0
+#define IXGBE_M88E1500_E_PHY_ID	0x01410DD0
+#define IXGBE_M88E1543_E_PHY_ID	0x01410EA0
 
 /* Special PHY Init Routine */
 #define IXGBE_PHY_INIT_OFFSET_NL	0x002B
@@ -3054,7 +3055,7 @@ enum ixgbe_fdir_pballoc_type {
 #ifdef C99
 #pragma pack(push, 1)
 #else
-#pragma pack(1)
+#pragma pack (1)
 #endif /* C99 */
 
 struct ixgbe_hic_hdr {
@@ -4170,6 +4171,7 @@ struct ixgbe_hw {
 
 #define IXGBE_KRM_AN_CNTL_8_LINEAR			(1 << 0)
 #define IXGBE_KRM_AN_CNTL_8_LIMITING			(1 << 1)
+
 #define IXGBE_KRM_LP_BASE_PAGE_HIGH_SYM_PAUSE		(1 << 10)
 #define IXGBE_KRM_LP_BASE_PAGE_HIGH_ASM_PAUSE		(1 << 11)
 
@@ -4208,11 +4210,13 @@ struct ixgbe_hw {
 #define IXGBE_SB_IOSF_TARGET_KR_PHY	0
 
 #define IXGBE_NW_MNG_IF_SEL		0x00011178
-#define IXGBE_NW_MNG_IF_SEL_MDIO_ACT	(1 << 1)
+#define IXGBE_NW_MNG_IF_SEL_MDIO_ACT	(1u << 1)
+#define IXGBE_NW_MNG_IF_SEL_MDIO_IF_MODE	(1u << 2)
+#define IXGBE_NW_MNG_IF_SEL_EN_SHARED_MDIO	(1u << 13)
 #define IXGBE_NW_MNG_IF_SEL_ENABLE_10_100M (1 << 23)
 #define IXGBE_NW_MNG_IF_SEL_INT_PHY_MODE (1 << 24)
 #define IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT 3
 #define IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD	\
-		(0x1F << IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT)
+				(0x1F << IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT)
 
 #endif /* _IXGBE_TYPE_H_ */

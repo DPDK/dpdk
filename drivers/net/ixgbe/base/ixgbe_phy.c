@@ -335,24 +335,32 @@ s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
 			hw->phy.phy_semaphore_mask = IXGBE_GSSR_PHY0_SM;
 	}
 
-	if (hw->phy.type == ixgbe_phy_unknown) {
-		for (phy_addr = 0; phy_addr < IXGBE_MAX_PHY_ADDR; phy_addr++) {
-		if (ixgbe_probe_phy(hw, phy_addr)) {
-				status = IXGBE_SUCCESS;
-				break;
-			}
-		}
+	if (hw->phy.type != ixgbe_phy_unknown)
+		return IXGBE_SUCCESS;
 
-		/* Certain media types do not have a phy so an address will not
-		 * be found and the code will take this path.  Caller has to
-		 * decide if it is an error or not.
-		 */
-		if (status != IXGBE_SUCCESS) {
-			hw->phy.addr = 0;
-		}
-	} else {
-		status = IXGBE_SUCCESS;
+	if (hw->phy.nw_mng_if_sel) {
+		phy_addr = (hw->phy.nw_mng_if_sel &
+			    IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD) >>
+			   IXGBE_NW_MNG_IF_SEL_MDIO_PHY_ADD_SHIFT;
+		if (ixgbe_probe_phy(hw, phy_addr))
+			return IXGBE_SUCCESS;
+		else
+			return IXGBE_ERR_PHY_ADDR_INVALID;
 	}
+
+	for (phy_addr = 0; phy_addr < IXGBE_MAX_PHY_ADDR; phy_addr++) {
+		if (ixgbe_probe_phy(hw, phy_addr)) {
+			status = IXGBE_SUCCESS;
+			break;
+		}
+	}
+
+	/* Certain media types do not have a phy so an address will not
+	 * be found and the code will take this path.  Caller has to
+	 * decide if it is an error or not.
+	 */
+	if (status != IXGBE_SUCCESS)
+		hw->phy.addr = 0;
 
 	return status;
 }
@@ -464,9 +472,11 @@ enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id)
 		phy_type = ixgbe_phy_nl;
 		break;
 	case X557_PHY_ID:
+	case X557_PHY_ID2:
 		phy_type = ixgbe_phy_x550em_ext_t;
 		break;
 	case IXGBE_M88E1500_E_PHY_ID:
+	case IXGBE_M88E1543_E_PHY_ID:
 		phy_type = ixgbe_phy_m88;
 		break;
 	default:
@@ -893,6 +903,9 @@ s32 ixgbe_setup_phy_link_speed_generic(struct ixgbe_hw *hw,
 
 	if (speed & IXGBE_LINK_SPEED_100_FULL)
 		hw->phy.autoneg_advertised |= IXGBE_LINK_SPEED_100_FULL;
+
+	if (speed & IXGBE_LINK_SPEED_10_FULL)
+		hw->phy.autoneg_advertised |= IXGBE_LINK_SPEED_10_FULL;
 
 	/* Setup link based on the new speed settings */
 	ixgbe_setup_phy_link(hw);
