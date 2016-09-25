@@ -656,13 +656,14 @@ s32 ixgbe_init_ops_X550EM_a(struct ixgbe_hw *hw)
 	mac->ops.write_iosf_sb_reg = ixgbe_write_iosf_sb_reg_x550;
 	mac->ops.acquire_swfw_sync = ixgbe_acquire_swfw_sync_X550a;
 	mac->ops.release_swfw_sync = ixgbe_release_swfw_sync_X550a;
-	mac->ops.fc_autoneg = ixgbe_fc_autoneg_x550a;
 
 	switch (mac->ops.get_media_type(hw)) {
 	case ixgbe_media_type_fiber:
 		mac->ops.setup_fc = ixgbe_setup_fc_fiber_x550em_a;
+		mac->ops.fc_autoneg = ixgbe_fc_autoneg_fiber_x550em_a;
 		break;
 	case ixgbe_media_type_backplane:
+		mac->ops.fc_autoneg = ixgbe_fc_autoneg_backplane_x550em_a;
 		mac->ops.setup_fc = ixgbe_setup_fc_backplane_x550em_a;
 		break;
 	default:
@@ -3958,12 +3959,12 @@ out:
 }
 
 /**
- *  ixgbe_fc_autoneg_x550a - Enable flow control IEEE clause 37
+ *  ixgbe_fc_autoneg_backplane_x550em_a - Enable flow control IEEE clause 37
  *  @hw: pointer to hardware structure
  *
  *  Enable flow control according to IEEE clause 37.
  **/
-void ixgbe_fc_autoneg_x550a(struct ixgbe_hw *hw)
+void ixgbe_fc_autoneg_backplane_x550em_a(struct ixgbe_hw *hw)
 {
 	u32 link_s1, lp_an_page_low, an_cntl_1;
 	s32 status = IXGBE_ERR_FC_NOT_NEGOTIATED;
@@ -3995,6 +3996,7 @@ void ixgbe_fc_autoneg_x550a(struct ixgbe_hw *hw)
 	if (status != IXGBE_SUCCESS ||
 	    (link_s1 & IXGBE_KRM_LINK_S1_MAC_AN_COMPLETE) == 0) {
 		DEBUGOUT("Auto-Negotiation did not complete\n");
+		status = IXGBE_ERR_FC_NOT_NEGOTIATED;
 		goto out;
 	}
 
@@ -4024,6 +4026,83 @@ void ixgbe_fc_autoneg_x550a(struct ixgbe_hw *hw)
 				    IXGBE_KRM_AN_CNTL_1_ASM_PAUSE,
 				    IXGBE_KRM_LP_BASE_PAGE_HIGH_SYM_PAUSE,
 				    IXGBE_KRM_LP_BASE_PAGE_HIGH_ASM_PAUSE);
+
+out:
+	if (status == IXGBE_SUCCESS) {
+		hw->fc.fc_was_autonegged = true;
+	} else {
+		hw->fc.fc_was_autonegged = false;
+		hw->fc.current_mode = hw->fc.requested_mode;
+	}
+}
+
+/**
+ *  ixgbe_fc_autoneg_fiber_x550em_a - Enable flow control IEEE clause 37
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according to IEEE clause 37.
+ **/
+void ixgbe_fc_autoneg_fiber_x550em_a(struct ixgbe_hw *hw)
+{
+	u32 link_s1, pcs_an_lp, pcs_an;
+	s32 status = IXGBE_ERR_FC_NOT_NEGOTIATED;
+	ixgbe_link_speed speed;
+	bool link_up;
+
+	/* AN should have completed when the cable was plugged in.
+	 * Look for reasons to bail out.  Bail out if:
+	 * - FC autoneg is disabled, or if
+	 * - link is not up.
+	 */
+	if (hw->fc.disable_fc_autoneg) {
+		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
+			     "Flow control autoneg is disabled");
+		goto out;
+	}
+
+	hw->mac.ops.check_link(hw, &speed, &link_up, false);
+	if (!link_up) {
+		ERROR_REPORT1(IXGBE_ERROR_SOFTWARE, "The link is down");
+		goto out;
+	}
+
+	/* Check if auto-negotiation has completed */
+	status = hw->mac.ops.read_iosf_sb_reg(hw,
+					 IXGBE_KRM_LINK_S1(hw->bus.lan_id),
+					 IXGBE_SB_IOSF_TARGET_KR_PHY, &link_s1);
+
+	if (status != IXGBE_SUCCESS ||
+	    (link_s1 & IXGBE_KRM_LINK_S1_MAC_AN_COMPLETE) == 0) {
+		DEBUGOUT("Auto-Negotiation did not complete\n");
+		status = IXGBE_ERR_FC_NOT_NEGOTIATED;
+		goto out;
+	}
+
+	/* Determine advertised flow control */
+	status = hw->mac.ops.read_iosf_sb_reg(hw,
+					  IXGBE_KRM_PCS_KX_AN(hw->bus.lan_id),
+					  IXGBE_SB_IOSF_TARGET_KR_PHY, &pcs_an);
+
+	if (status != IXGBE_SUCCESS) {
+		DEBUGOUT("Auto-Negotiation did not complete\n");
+		goto out;
+	}
+
+	/* Determine link parter flow control */
+	status = hw->mac.ops.read_iosf_sb_reg(hw,
+				  IXGBE_KRM_PCS_KX_AN_LP(hw->bus.lan_id),
+				  IXGBE_SB_IOSF_TARGET_KR_PHY, &pcs_an_lp);
+
+	if (status != IXGBE_SUCCESS) {
+		DEBUGOUT("Auto-Negotiation did not complete\n");
+		goto out;
+	}
+
+	status = ixgbe_negotiate_fc(hw, pcs_an, pcs_an_lp,
+				    IXGBE_KRM_PCS_KX_AN_SYM_PAUSE,
+				    IXGBE_KRM_PCS_KX_AN_ASM_PAUSE,
+				    IXGBE_KRM_PCS_KX_AN_LP_SYM_PAUSE,
+				    IXGBE_KRM_PCS_KX_AN_LP_ASM_PAUSE);
 
 out:
 	if (status == IXGBE_SUCCESS) {

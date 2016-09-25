@@ -109,7 +109,8 @@ s32 ixgbe_write_phy_reg_x550a(struct ixgbe_hw *hw, u32 reg_addr,
 			      u32 device_type, u16 phy_data);
 s32 ixgbe_setup_fc_fiber_x550em_a(struct ixgbe_hw *hw);
 s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw);
-void ixgbe_fc_autoneg_x550a(struct ixgbe_hw *hw);
+void ixgbe_fc_autoneg_fiber_x550em_a(struct ixgbe_hw *hw);
+void ixgbe_fc_autoneg_backplane_x550em_a(struct ixgbe_hw *hw);
 s32 ixgbe_handle_lasi_ext_t_x550em(struct ixgbe_hw *hw);
 s32 ixgbe_setup_mac_link_t_X550em(struct ixgbe_hw *hw,
 				  ixgbe_link_speed speed,
