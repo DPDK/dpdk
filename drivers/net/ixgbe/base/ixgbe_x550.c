@@ -660,7 +660,7 @@ s32 ixgbe_init_ops_X550EM_a(struct ixgbe_hw *hw)
 
 	switch (mac->ops.get_media_type(hw)) {
 	case ixgbe_media_type_fiber:
-		mac->ops.setup_fc = ixgbe_setup_fc_fiber_x550em_a;
+		mac->ops.setup_fc = NULL;
 		mac->ops.fc_autoneg = ixgbe_fc_autoneg_fiber_x550em_a;
 		break;
 	case ixgbe_media_type_backplane:
@@ -4119,80 +4119,14 @@ out:
 }
 
 /**
- *  ixgbe_fc_autoneg_fiber_x550em_a - Enable flow control IEEE clause 37
+ *  ixgbe_fc_autoneg_fiber_x550em_a - passthrough FC settings
  *  @hw: pointer to hardware structure
  *
- *  Enable flow control according to IEEE clause 37.
  **/
 void ixgbe_fc_autoneg_fiber_x550em_a(struct ixgbe_hw *hw)
 {
-	u32 link_s1, pcs_an_lp, pcs_an;
-	s32 status = IXGBE_ERR_FC_NOT_NEGOTIATED;
-	ixgbe_link_speed speed;
-	bool link_up;
-
-	/* AN should have completed when the cable was plugged in.
-	 * Look for reasons to bail out.  Bail out if:
-	 * - FC autoneg is disabled, or if
-	 * - link is not up.
-	 */
-	if (hw->fc.disable_fc_autoneg) {
-		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
-			     "Flow control autoneg is disabled");
-		goto out;
-	}
-
-	hw->mac.ops.check_link(hw, &speed, &link_up, false);
-	if (!link_up) {
-		ERROR_REPORT1(IXGBE_ERROR_SOFTWARE, "The link is down");
-		goto out;
-	}
-
-	/* Check if auto-negotiation has completed */
-	status = hw->mac.ops.read_iosf_sb_reg(hw,
-					 IXGBE_KRM_LINK_S1(hw->bus.lan_id),
-					 IXGBE_SB_IOSF_TARGET_KR_PHY, &link_s1);
-
-	if (status != IXGBE_SUCCESS ||
-	    (link_s1 & IXGBE_KRM_LINK_S1_MAC_AN_COMPLETE) == 0) {
-		DEBUGOUT("Auto-Negotiation did not complete\n");
-		status = IXGBE_ERR_FC_NOT_NEGOTIATED;
-		goto out;
-	}
-
-	/* Determine advertised flow control */
-	status = hw->mac.ops.read_iosf_sb_reg(hw,
-					  IXGBE_KRM_PCS_KX_AN(hw->bus.lan_id),
-					  IXGBE_SB_IOSF_TARGET_KR_PHY, &pcs_an);
-
-	if (status != IXGBE_SUCCESS) {
-		DEBUGOUT("Auto-Negotiation did not complete\n");
-		goto out;
-	}
-
-	/* Determine link parter flow control */
-	status = hw->mac.ops.read_iosf_sb_reg(hw,
-				  IXGBE_KRM_PCS_KX_AN_LP(hw->bus.lan_id),
-				  IXGBE_SB_IOSF_TARGET_KR_PHY, &pcs_an_lp);
-
-	if (status != IXGBE_SUCCESS) {
-		DEBUGOUT("Auto-Negotiation did not complete\n");
-		goto out;
-	}
-
-	status = ixgbe_negotiate_fc(hw, pcs_an, pcs_an_lp,
-				    IXGBE_KRM_PCS_KX_AN_SYM_PAUSE,
-				    IXGBE_KRM_PCS_KX_AN_ASM_PAUSE,
-				    IXGBE_KRM_PCS_KX_AN_LP_SYM_PAUSE,
-				    IXGBE_KRM_PCS_KX_AN_LP_ASM_PAUSE);
-
-out:
-	if (status == IXGBE_SUCCESS) {
-		hw->fc.fc_was_autonegged = true;
-	} else {
-		hw->fc.fc_was_autonegged = false;
-		hw->fc.current_mode = hw->fc.requested_mode;
-	}
+	hw->fc.fc_was_autonegged = false;
+	hw->fc.current_mode = hw->fc.requested_mode;
 }
 
 /**
@@ -4427,120 +4361,6 @@ s32 ixgbe_setup_fc_backplane_x550em_a(struct ixgbe_hw *hw)
 	status = ixgbe_restart_an_internal_phy_x550em(hw);
 
 	return status;
-}
-
-/**
- *  ixgbe_setup_fc_fiber_x550em_a - Set up flow control
- *  @hw: pointer to hardware structure
- *
- *  Called at init time to set up flow control.
- **/
-s32 ixgbe_setup_fc_fiber_x550em_a(struct ixgbe_hw *hw)
-{
-	struct ixgbe_mac_info *mac = &hw->mac;
-	s32 rc = IXGBE_SUCCESS;
-	u32 an_cntl4, lctrl, pcs_an;
-
-	DEBUGFUNC("ixgbe_setup_fc_fiber_x550em_a");
-
-	/* Validate the requested mode */
-	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {
-		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
-			      "ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
-		return IXGBE_ERR_INVALID_LINK_SETTINGS;
-	}
-
-	/* Enable clause 37 auto-negotiation in KRM_LINK_CTRL_1 */
-	if (hw->fc.requested_mode == ixgbe_fc_default)
-		hw->fc.requested_mode = ixgbe_fc_full;
-
-	rc = mac->ops.read_iosf_sb_reg(hw,
-				       IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-				       IXGBE_SB_IOSF_TARGET_KR_PHY, &lctrl);
-	if (rc)
-		return rc;
-
-	lctrl |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_ENABLE;
-	lctrl |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CLAUSE_37_EN;
-
-	rc = mac->ops.write_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, lctrl);
-	if (rc)
-		return rc;
-
-	/* Enable clause 37 over 73 in KRM_AN_CNTL_4 */
-	rc = mac->ops.read_iosf_sb_reg(hw,
-				       IXGBE_KRM_AN_CNTL_4(hw->bus.lan_id),
-				       IXGBE_SB_IOSF_TARGET_KR_PHY, &an_cntl4);
-	if (rc)
-		return rc;
-
-	an_cntl4 |= IXGBE_KRM_AN_CNTL_4_ECSR_AN37_OVER_73;
-
-	rc = mac->ops.write_iosf_sb_reg(hw,
-					IXGBE_KRM_AN_CNTL_4(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, an_cntl4);
-	if (rc)
-		return rc;
-
-	rc = hw->mac.ops.read_iosf_sb_reg(hw,
-					  IXGBE_KRM_PCS_KX_AN(hw->bus.lan_id),
-					  IXGBE_SB_IOSF_TARGET_KR_PHY, &pcs_an);
-
-	if (rc)
-		return rc;
-
-	/* The possible values of fc.requested_mode are:
-	 * 0: Flow control is completely disabled
-	 * 1: Rx flow control is enabled (we can receive pause frames,
-	 *    but not send pause frames).
-	 * 2: Tx flow control is enabled (we can send pause frames but
-	 *    we do not support receiving pause frames).
-	 * 3: Both Rx and Tx flow control (symmetric) are enabled.
-	 * other: Invalid.
-	 */
-	switch (hw->fc.requested_mode) {
-	case ixgbe_fc_none:
-		/* Flow control completely disabled by software override. */
-		pcs_an &= ~(IXGBE_KRM_AN_CNTL_1_SYM_PAUSE |
-			    IXGBE_KRM_AN_CNTL_1_ASM_PAUSE);
-		break;
-	case ixgbe_fc_tx_pause:
-		/* Tx Flow control is enabled, and Rx Flow control is
-		 * disabled by software override.
-		 */
-		pcs_an |= IXGBE_KRM_PCS_KX_AN_ASM_PAUSE;
-		pcs_an &= ~IXGBE_KRM_PCS_KX_AN_SYM_PAUSE;
-		break;
-	case ixgbe_fc_rx_pause:
-		/* Rx Flow control is enabled and Tx Flow control is
-		 * disabled by software override. Since there really
-		 * isn't a way to advertise that we are capable of RX
-		 * Pause ONLY, we will advertise that we support both
-		 * symmetric and asymmetric Rx PAUSE, as such we fall
-		 * through to the fc_full statement.  Later, we will
-		 * disable the adapter's ability to send PAUSE frames.
-		 */
-	case ixgbe_fc_full:
-		/* Flow control (both Rx and Tx) is enabled by SW override. */
-		pcs_an |= IXGBE_KRM_PCS_KX_AN_SYM_PAUSE |
-			   IXGBE_KRM_PCS_KX_AN_ASM_PAUSE;
-		break;
-	default:
-		ERROR_REPORT1(IXGBE_ERROR_ARGUMENT,
-			      "Flow control param set incorrectly\n");
-		return IXGBE_ERR_CONFIG;
-	}
-
-	rc = hw->mac.ops.write_iosf_sb_reg(hw,
-					   IXGBE_KRM_PCS_KX_AN(hw->bus.lan_id),
-					   IXGBE_SB_IOSF_TARGET_KR_PHY, pcs_an);
-
-	/* Restart auto-negotiation. */
-	rc = ixgbe_restart_an_internal_phy_x550em(hw);
-
-	return rc;
 }
 
 /**

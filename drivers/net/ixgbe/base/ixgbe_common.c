@@ -168,13 +168,24 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 	switch (hw->phy.media_type) {
 	case ixgbe_media_type_fiber_qsfp:
 	case ixgbe_media_type_fiber:
-		hw->mac.ops.check_link(hw, &speed, &link_up, false);
-		/* if link is down, assume supported */
-		if (link_up)
-			supported = speed == IXGBE_LINK_SPEED_1GB_FULL ?
+		/* flow control autoneg black list */
+		switch (hw->device_id) {
+		case IXGBE_DEV_ID_X550EM_A_SFP:
+		case IXGBE_DEV_ID_X550EM_A_SFP_N:
+		case IXGBE_DEV_ID_X550EM_A_QSFP:
+		case IXGBE_DEV_ID_X550EM_A_QSFP_N:
+			supported = false;
+			break;
+		default:
+			hw->mac.ops.check_link(hw, &speed, &link_up, false);
+			/* if link is down, assume supported */
+			if (link_up)
+				supported = speed == IXGBE_LINK_SPEED_1GB_FULL ?
 				true : false;
-		else
-			supported = true;
+			else
+				supported = true;
+		}
+
 		break;
 	case ixgbe_media_type_backplane:
 		supported = true;
@@ -200,9 +211,10 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 		break;
 	}
 
-	ERROR_REPORT2(IXGBE_ERROR_UNSUPPORTED,
-		      "Device %x does not support flow control autoneg",
-		      hw->device_id);
+	if (!supported)
+		ERROR_REPORT2(IXGBE_ERROR_UNSUPPORTED,
+			      "Device %x does not support flow control autoneg",
+			      hw->device_id);
 	return supported;
 }
 
@@ -397,8 +409,8 @@ s32 ixgbe_start_hw_generic(struct ixgbe_hw *hw)
 
 	/* Setup flow control */
 	ret_val = ixgbe_setup_fc(hw);
-	if (ret_val != IXGBE_SUCCESS)
-		goto out;
+	if (ret_val != IXGBE_SUCCESS && ret_val != IXGBE_NOT_IMPLEMENTED)
+		return ret_val;
 
 	/* Cache bit indicating need for crosstalk fix */
 	switch (hw->mac.type) {
@@ -419,8 +431,7 @@ s32 ixgbe_start_hw_generic(struct ixgbe_hw *hw)
 	/* Clear adapter stopped flag */
 	hw->adapter_stopped = false;
 
-out:
-	return ret_val;
+	return IXGBE_SUCCESS;
 }
 
 /**
