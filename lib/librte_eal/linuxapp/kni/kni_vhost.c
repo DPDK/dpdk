@@ -244,11 +244,12 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table *wait)
 
 	if (sock_writeable(&q->sk) ||
 #ifdef SOCKWQ_ASYNC_NOSPACE
-	    (!test_and_set_bit(SOCKWQ_ASYNC_NOSPACE, &q->sock->flags) &&
+		(!test_and_set_bit(SOCKWQ_ASYNC_NOSPACE, &q->sock->flags) &&
+			sock_writeable(&q->sk)))
 #else
-	    (!test_and_set_bit(SOCK_ASYNC_NOSPACE, &q->sock->flags) &&
+		(!test_and_set_bit(SOCK_ASYNC_NOSPACE, &q->sock->flags) &&
+			sock_writeable(&q->sk)))
 #endif
-	     sock_writeable(&q->sk)))
 		mask |= POLLOUT | POLLWRNORM;
 
 	return mask;
