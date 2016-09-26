@@ -5740,6 +5740,220 @@ struct hwrm_cfa_l2_set_rx_mask_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_stat_ctx_alloc */
+/*
+ * Description: This command allocates and does basic preparation for a stat
+ * context.
+ */
+/* Input (32 bytes) */
+struct hwrm_stat_ctx_alloc_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint64_t stats_dma_addr;
+	/* This is the address for statistic block. */
+	uint32_t update_period_ms;
+	/*
+	 * The statistic block update period in ms. e.g. 250ms, 500ms,
+	 * 750ms, 1000ms. If update_period_ms is 0, then the stats
+	 * update shall be never done and the DMA address shall not be
+	 * used. In this case, the stat block can only be read by
+	 * hwrm_stat_ctx_query command.
+	 */
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_stat_ctx_alloc_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t stat_ctx_id;
+	/* This is the statistics context ID value. */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_stat_ctx_free */
+/* Description: This command is used to free a stat context. */
+/* Input (24 bytes) */
+struct hwrm_stat_ctx_free_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t stat_ctx_id;
+	/* ID of the statistics context that is being queried. */
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_stat_ctx_free_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t stat_ctx_id;
+	/* This is the statistics context ID value. */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_stat_ctx_clr_stats */
+/* Description: This command clears statistics of a context. */
+/* Input (24 bytes) */
+struct hwrm_stat_ctx_clr_stats_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t stat_ctx_id;
+	/* ID of the statistics context that is being queried. */
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_stat_ctx_clr_stats_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
 /* hwrm_exec_fwd_resp */
 /*
  * Description: This command is used to send an encapsulated request to the
@@ -5750,335 +5964,80 @@ struct hwrm_cfa_l2_set_rx_mask_output {
  * acknowledge the receipt of the encapsulated request and forwarding of the
  * response.
  */
-
 /* Input (128 bytes) */
 struct hwrm_exec_fwd_resp_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
 	uint16_t req_type;
-
 	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
 	 */
 	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
 	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
 	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
 	uint16_t target_id;
-
 	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
 	 */
 	uint64_t resp_addr;
-
 	/*
-	 * This is an encapsulated request. This request should be executed by
-	 * the HWRM and the response should be provided in the response buffer
-	 * inside the encapsulated request.
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
 	 */
 	uint32_t encap_request[26];
-
 	/*
-	 * This value indicates the target id of the response to the
-	 * encapsulated request. 0x0 - 0xFFF8 - Used for function ids 0xFFF8 -
-	 * 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 * This is an encapsulated request. This request should be
+	 * executed by the HWRM and the response should be provided in
+	 * the response buffer inside the encapsulated request.
 	 */
 	uint16_t encap_resp_target_id;
-
+	/*
+	 * This value indicates the target id of the response to the
+	 * encapsulated request. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF -
+	 * HWRM
+	 */
 	uint16_t unused_0[3];
 } __attribute__((packed));
 
 /* Output (16 bytes) */
 struct hwrm_exec_fwd_resp_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
 	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
 	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
 	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
 	uint16_t resp_len;
-
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
 	uint32_t unused_0;
 	uint8_t unused_1;
 	uint8_t unused_2;
 	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
 	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_stat_ctx_alloc */
-/*
- * Description: This command allocates and does basic preparation for a stat
- * context.
- */
-
-/* Input (32 bytes) */
-struct hwrm_stat_ctx_alloc_input {
 	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
 	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* This is the address for statistic block. */
-	uint64_t stats_dma_addr;
-
-	/*
-	 * The statistic block update period in ms. e.g. 250ms, 500ms, 750ms,
-	 * 1000ms.
-	 */
-	uint32_t update_period_ms;
-
-	uint32_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_stat_ctx_alloc_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	/* This is the statistics context ID value. */
-	uint32_t stat_ctx_id;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_stat_ctx_clr_stats */
-/* Description: This command clears statistics of a context. */
-
-/* Input (24 bytes) */
-struct hwrm_stat_ctx_clr_stats_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* ID of the statistics context that is being queried. */
-	uint32_t stat_ctx_id;
-
-	uint32_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_stat_ctx_clr_stats_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_stat_ctx_free */
-/* Description: This command is used to free a stat context. */
-/* Input (24 bytes) */
-
-struct hwrm_stat_ctx_free_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* ID of the statistics context that is being queried. */
-	uint32_t stat_ctx_id;
-
-	uint32_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-
-struct hwrm_stat_ctx_free_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	/* This is the statistics context ID value. */
-	uint32_t stat_ctx_id;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
 } __attribute__((packed));
 
 #endif
