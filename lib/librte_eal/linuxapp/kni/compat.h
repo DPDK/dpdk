@@ -20,6 +20,14 @@
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
 #define sk_sleep(s) ((s)->sk_sleep)
+#else
+#define HAVE_SOCKET_WQ
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#define HAVE_STATIC_SOCK_MAP_FD
+#else
+#define kni_sock_map_fd(s) sock_map_fd(s, 0)
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0)
@@ -37,6 +45,10 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 #define HAVE_KIOCB_MSG_PARAM
 #define HAVE_REBUILD_HEADER
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+#define HAVE_SK_ALLOC_KERN_PARAM
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)

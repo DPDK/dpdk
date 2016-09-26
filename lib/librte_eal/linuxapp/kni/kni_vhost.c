@@ -40,7 +40,7 @@
 
 #define RX_BURST_SZ 4
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#ifdef HAVE_STATIC_SOCK_MAP_FD
 static int kni_sock_map_fd(struct socket *sock)
 {
 	struct file *file;
@@ -57,8 +57,6 @@ static int kni_sock_map_fd(struct socket *sock)
 	fd_install(fd, file);
 	return fd;
 }
-#else
-#define kni_sock_map_fd(s)             sock_map_fd(s, 0)
 #endif
 
 static struct proto kni_raw_proto = {
@@ -225,17 +223,13 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table *wait)
 		return POLLERR;
 
 	kni = q->kni;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+#ifdef HAVE_SOCKET_WQ
 	pr_debug("start kni_poll on group %d, wq 0x%16llx\n",
 		  kni->group_id, (uint64_t)sock->wq);
+	poll_wait(file, &sock->wq->wait, wait);
 #else
 	pr_debug("start kni_poll on group %d, wait at 0x%16llx\n",
 		  kni->group_id, (uint64_t)&sock->wait);
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
-	poll_wait(file, &sock->wq->wait, wait);
-#else
 	poll_wait(file, &sock->wait, wait);
 #endif
 
@@ -663,7 +657,7 @@ kni_vhost_backend_init(struct kni_dev *kni)
 	if (kni->vhost_queue != NULL)
 		return -1;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+#ifdef HAVE_SK_ALLOC_KERN_PARAM
 	q = (struct kni_vhost_queue *)sk_alloc(net, AF_UNSPEC, GFP_KERNEL,
 			&kni_raw_proto, 0);
 #else
@@ -729,7 +723,7 @@ kni_vhost_backend_init(struct kni_dev *kni)
 
 	kni->vq_status = BE_START;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+#ifdef HAVE_SOCKET_WQ
 	pr_debug("backend init sockfd=%d, sock->wq=0x%16llx,sk->sk_wq=0x%16llx",
 		  q->sockfd, (uint64_t)q->sock->wq,
 		  (uint64_t)q->sk.sk_wq);
