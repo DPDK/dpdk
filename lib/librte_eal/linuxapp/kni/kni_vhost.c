@@ -75,7 +75,7 @@ kni_vhost_net_tx(struct kni_dev *kni, struct msghdr *m,
 	struct rte_kni_mbuf *pkt_va = NULL;
 	int ret;
 
-	KNI_DBG_TX("tx offset=%d, len=%d, iovlen=%d\n",
+	pr_debug("tx offset=%d, len=%d, iovlen=%d\n",
 #ifdef HAVE_IOV_ITER_MSGHDR
 		   offset, len, (int)m->msg_iter.iov->iov_len);
 #else
@@ -177,7 +177,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
 	if (unlikely(pkt_len > len))
 		goto drop;
 
-	KNI_DBG_RX("rx offset=%d, len=%d, pkt_len=%d, iovlen=%d\n",
+	pr_debug("rx offset=%d, len=%d, pkt_len=%d, iovlen=%d\n",
 #ifdef HAVE_IOV_ITER_MSGHDR
 		   offset, len, pkt_len, (int)m->msg_iter.iov->iov_len);
 #else
@@ -202,7 +202,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
 		/* Failing should not happen */
 		pr_err("Fail to enqueue entries into free_q\n");
 
-	KNI_DBG_RX("receive done %d\n", pkt_len);
+	pr_debug("receive done %d\n", pkt_len);
 
 	return pkt_len;
 
@@ -226,10 +226,10 @@ kni_sock_poll(struct file *file, struct socket *sock, poll_table *wait)
 
 	kni = q->kni;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
-	KNI_DBG("start kni_poll on group %d, wq 0x%16llx\n",
+	pr_debug("start kni_poll on group %d, wq 0x%16llx\n",
 		  kni->group_id, (uint64_t)sock->wq);
 #else
-	KNI_DBG("start kni_poll on group %d, wait at 0x%16llx\n",
+	pr_debug("start kni_poll on group %d, wait at 0x%16llx\n",
 		  kni->group_id, (uint64_t)&sock->wait);
 #endif
 
@@ -332,7 +332,7 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 	    ((nb_mbuf < RX_BURST_SZ) && (nb_mbuf != 0))) {
 		wake_up_interruptible_poll(sk_sleep(&q->sk),
 				   POLLIN | POLLRDNORM | POLLRDBAND);
-		KNI_DBG_RX("RX CHK KICK nb_mbuf %d, nb_skb %d, nb_in %d\n",
+		pr_debug("RX CHK KICK nb_mbuf %d, nb_skb %d, nb_in %d\n",
 			   nb_mbuf, nb_skb, nb_in);
 	}
 
@@ -363,7 +363,7 @@ kni_sock_sndmsg(struct socket *sock,
 	if (unlikely(q == NULL || q->kni == NULL))
 		return 0;
 
-	KNI_DBG_TX("kni_sndmsg len %ld, flags 0x%08x, nb_iov %d\n",
+	pr_debug("kni_sndmsg len %ld, flags 0x%08x, nb_iov %d\n",
 #ifdef HAVE_IOV_ITER_MSGHDR
 		   len, q->flags, (int)m->msg_iter.iov->iov_len);
 #else
@@ -431,7 +431,7 @@ kni_sock_rcvmsg(struct socket *sock,
 #endif /* HAVE_IOV_ITER_MSGHDR */
 		return -EFAULT;
 #endif /* RTE_KNI_VHOST_VNET_HDR_EN */
-	KNI_DBG_RX("kni_rcvmsg expect_len %ld, flags 0x%08x, pkt_len %d\n",
+	pr_debug("kni_rcvmsg expect_len %ld, flags 0x%08x, pkt_len %d\n",
 		   (unsigned long)len, q->flags, pkt_len);
 
 	return pkt_len + vnet_hdr_len;
@@ -453,11 +453,11 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 	int s;
 	int ret;
 
-	KNI_DBG("tap ioctl cmd 0x%08x\n", cmd);
+	pr_debug("tap ioctl cmd 0x%08x\n", cmd);
 
 	switch (cmd) {
 	case TUNSETIFF:
-		KNI_DBG("TUNSETIFF\n");
+		pr_debug("TUNSETIFF\n");
 		/* ignore the name, just look at flags */
 		if (get_user(u, &ifr->ifr_flags))
 			return -EFAULT;
@@ -471,7 +471,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 		return ret;
 
 	case TUNGETIFF:
-		KNI_DBG("TUNGETIFF\n");
+		pr_debug("TUNGETIFF\n");
 		rcu_read_lock_bh();
 		kni = rcu_dereference_bh(q->kni);
 		if (kni)
@@ -489,7 +489,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 		return ret;
 
 	case TUNGETFEATURES:
-		KNI_DBG("TUNGETFEATURES\n");
+		pr_debug("TUNGETFEATURES\n");
 		u = IFF_TAP | IFF_NO_PI;
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 		u |= IFF_VNET_HDR;
@@ -499,7 +499,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 		return 0;
 
 	case TUNSETSNDBUF:
-		KNI_DBG("TUNSETSNDBUF\n");
+		pr_debug("TUNSETSNDBUF\n");
 		if (get_user(u, up))
 			return -EFAULT;
 
@@ -510,7 +510,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 		s = q->vnet_hdr_sz;
 		if (put_user(s, sp))
 			return -EFAULT;
-		KNI_DBG("TUNGETVNETHDRSZ %d\n", s);
+		pr_debug("TUNGETVNETHDRSZ %d\n", s);
 		return 0;
 
 	case TUNSETVNETHDRSZ:
@@ -519,12 +519,12 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 		if (s < (int)sizeof(struct virtio_net_hdr))
 			return -EINVAL;
 
-		KNI_DBG("TUNSETVNETHDRSZ %d\n", s);
+		pr_debug("TUNSETVNETHDRSZ %d\n", s);
 		q->vnet_hdr_sz = s;
 		return 0;
 
 	case TUNSETOFFLOAD:
-		KNI_DBG("TUNSETOFFLOAD %lx\n", arg);
+		pr_debug("TUNSETOFFLOAD %lx\n", arg);
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 		/* not support any offload yet */
 		if (!(q->flags & IFF_VNET_HDR))
@@ -536,7 +536,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 #endif
 
 	default:
-		KNI_DBG("NOT SUPPORT\n");
+		pr_debug("NOT SUPPORT\n");
 		return -EINVAL;
 	}
 }
@@ -584,7 +584,7 @@ kni_sock_release(struct socket *sock)
 
 	sock_put(&q->sk);
 
-	KNI_DBG("dummy sock release done\n");
+	pr_debug("dummy sock release done\n");
 
 	return 0;
 }
@@ -593,7 +593,7 @@ int
 kni_sock_getname(struct socket *sock, struct sockaddr *addr,
 		int *sockaddr_len, int peer)
 {
-	KNI_DBG("dummy sock getname\n");
+	pr_debug("dummy sock getname\n");
 	((struct sockaddr_ll *)addr)->sll_family = AF_PACKET;
 	return 0;
 }
@@ -731,11 +731,11 @@ kni_vhost_backend_init(struct kni_dev *kni)
 	kni->vq_status = BE_START;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
-	KNI_DBG("backend init sockfd=%d, sock->wq=0x%16llx,sk->sk_wq=0x%16llx",
+	pr_debug("backend init sockfd=%d, sock->wq=0x%16llx,sk->sk_wq=0x%16llx",
 		  q->sockfd, (uint64_t)q->sock->wq,
 		  (uint64_t)q->sk.sk_wq);
 #else
-	KNI_DBG("backend init sockfd=%d, sock->wait at 0x%16llx,sk->sk_sleep=0x%16llx",
+	pr_debug("backend init sockfd=%d, sock->wait at 0x%16llx,sk->sk_sleep=0x%16llx",
 		  q->sockfd, (uint64_t)&q->sock->wait,
 		  (uint64_t)q->sk.sk_sleep);
 #endif
@@ -828,7 +828,7 @@ kni_vhost_backend_release(struct kni_dev *kni)
 	/* dettach from kni */
 	q->kni = NULL;
 
-	KNI_DBG("release backend done\n");
+	pr_debug("release backend done\n");
 
 	return 0;
 }
@@ -843,7 +843,7 @@ kni_vhost_init(struct kni_dev *kni)
 
 	kni->vq_status = BE_STOP;
 
-	KNI_DBG("kni_vhost_init done\n");
+	pr_debug("kni_vhost_init done\n");
 
 	return 0;
 }
