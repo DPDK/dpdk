@@ -189,7 +189,6 @@ kni_net_rx_normal(struct kni_dev *kni)
 
 		skb = dev_alloc_skb(len + 2);
 		if (!skb) {
-			pr_err("Out of mem, dropping pkts\n");
 			/* Update statistics */
 			kni->stats.rx_dropped++;
 			continue;
@@ -361,9 +360,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		kni->va[i] = pa2va(kni->pa[i], kva);
 
 		skb = dev_alloc_skb(len + 2);
-		if (skb == NULL)
-			pr_err("Out of mem, dropping pkts\n");
-		else {
+		if (skb) {
 			/* Align IP on 16B boundary */
 			skb_reserve(skb, 2);
 			memcpy(skb_put(skb, len), data_kva, len);
@@ -375,7 +372,6 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		/* Simulate real usage, allocate/copy skb twice */
 		skb = dev_alloc_skb(len + 2);
 		if (skb == NULL) {
-			pr_err("Out of mem, dropping pkts\n");
 			kni->stats.rx_dropped++;
 			continue;
 		}
