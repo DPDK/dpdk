@@ -410,13 +410,14 @@ kni_sock_rcvmsg(struct socket *sock,
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
 	if (likely(q->flags & IFF_VNET_HDR)) {
 		vnet_hdr_len = q->vnet_hdr_sz;
-		if ((len -= vnet_hdr_len) < 0)
+		len -= vnet_hdr_len;
+		if (len < 0)
 			return -EINVAL;
 	}
 #endif
 
-	if (unlikely(0 == (pkt_len = kni_vhost_net_rx(q->kni,
-		m, vnet_hdr_len, len))))
+	pkt_len = kni_vhost_net_rx(q->kni, m, vnet_hdr_len, len);
+	if (unlikely(pkt_len == 0))
 		return 0;
 
 #ifdef RTE_KNI_VHOST_VNET_HDR_EN
@@ -567,7 +568,8 @@ kni_sock_release(struct socket *sock)
 	if (q == NULL)
 		return 0;
 
-	if (NULL != (kni = q->kni)) {
+	kni = q->kni;
+	if (kni != NULL) {
 		kni->vq_status = BE_STOP;
 		KNI_VHOST_WAIT_WQ_SAFE();
 		kni->vhost_queue = NULL;
