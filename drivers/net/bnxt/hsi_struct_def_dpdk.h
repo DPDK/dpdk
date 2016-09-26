@@ -118,422 +118,442 @@ struct ctx_hw_stats64 {
 
 /* Short TX BD (16 bytes) */
 struct tx_bd_short {
+	uint16_t flags_type;
 	/*
-	 * All bits in this field must be valid on the first BD of a packet.
-	 * Only the packet_end bit must be valid for the remaining BDs of a
-	 * packet.
+	 * All bits in this field must be valid on the first BD of a
+	 * packet. Only the packet_end bit must be valid for the
+	 * remaining BDs of a packet.
 	 */
 	/* This value identifies the type of buffer descriptor. */
-	#define TX_BD_SHORT_TYPE_MASK			UINT32_C(0x3f)
-	#define TX_BD_SHORT_TYPE_SFT			0
-		/*
-		 * Indicates that this BD is 16B long and is used for normal L2
-		 * packet transmission.
-		 */
-	#define TX_BD_SHORT_TYPE_TX_BD_SHORT		(UINT32_C(0x0) << 0)
+	#define TX_BD_SHORT_TYPE_MASK	UINT32_C(0x3f)
+	#define TX_BD_SHORT_TYPE_SFT	0
 	/*
-	 * If set to 1, the packet ends with the data in the buffer pointed to
-	 * by this descriptor. This flag must be valid on every BD.
+	 * Indicates that this BD is 16B long and is
+	 * used for normal L2 packet transmission.
 	 */
-	#define TX_BD_SHORT_FLAGS_PACKET_END		UINT32_C(0x40)
+	#define TX_BD_SHORT_TYPE_TX_BD_SHORT	UINT32_C(0x0)
 	/*
-	 * If set to 1, the device will not generate a completion for this
-	 * transmit packet unless there is an error in it's processing. If this
-	 * bit is set to 0, then the packet will be completed normally. This bit
-	 * must be valid only on the first BD of a packet.
+	 * If set to 1, the packet ends with the data in the buffer
+	 * pointed to by this descriptor. This flag must be valid on
+	 * every BD.
 	 */
-	#define TX_BD_SHORT_FLAGS_NO_CMPL		UINT32_C(0x80)
+	#define TX_BD_SHORT_FLAGS_PACKET_END	UINT32_C(0x40)
 	/*
-	 * This value indicates how many 16B BD locations are consumed in the
-	 * ring by this packet. A value of 1 indicates that this BD is the only
-	 * BD (and that the it is a short BD). A value of 3 indicates either 3
-	 * short BDs or 1 long BD and one short BD in the packet. A value of 0
-	 * indicates that there are 32 BD locations in the packet (the maximum).
-	 * This field is valid only on the first BD of a packet.
+	 * If set to 1, the device will not generate a completion for
+	 * this transmit packet unless there is an error in it's
+	 * processing. If this bit is set to 0, then the packet will be
+	 * completed normally. This bit must be valid only on the first
+	 * BD of a packet.
 	 */
-	#define TX_BD_SHORT_FLAGS_BD_CNT_MASK		UINT32_C(0x1f00)
-	#define TX_BD_SHORT_FLAGS_BD_CNT_SFT		8
+	#define TX_BD_SHORT_FLAGS_NO_CMPL	UINT32_C(0x80)
 	/*
-	 * This value is a hint for the length of the entire packet. It is used
-	 * by the chip to optimize internal processing. The packet will be
-	 * dropped if the hint is too short. This field is valid only on the
-	 * first BD of a packet.
+	 * This value indicates how many 16B BD locations are consumed
+	 * in the ring by this packet. A value of 1 indicates that this
+	 * BD is the only BD (and that the it is a short BD). A value of
+	 * 3 indicates either 3 short BDs or 1 long BD and one short BD
+	 * in the packet. A value of 0 indicates that there are 32 BD
+	 * locations in the packet (the maximum). This field is valid
+	 * only on the first BD of a packet.
 	 */
-	#define TX_BD_SHORT_FLAGS_LHINT_MASK		UINT32_C(0x6000)
-	#define TX_BD_SHORT_FLAGS_LHINT_SFT		13
-		/* indicates packet length < 512B */
-	#define TX_BD_SHORT_FLAGS_LHINT_LT512		(UINT32_C(0x0) << 13)
-		/* indicates 512 <= packet length < 1KB */
-	#define TX_BD_SHORT_FLAGS_LHINT_LT1K		(UINT32_C(0x1) << 13)
-		/* indicates 1KB <= packet length < 2KB */
-	#define TX_BD_SHORT_FLAGS_LHINT_LT2K		(UINT32_C(0x2) << 13)
-		/* indicates packet length >= 2KB */
-	#define TX_BD_SHORT_FLAGS_LHINT_GTE2K		(UINT32_C(0x3) << 13)
+	#define TX_BD_SHORT_FLAGS_BD_CNT_MASK	UINT32_C(0x1f00)
+	#define TX_BD_SHORT_FLAGS_BD_CNT_SFT	8
+	/*
+	 * This value is a hint for the length of the entire packet. It
+	 * is used by the chip to optimize internal processing. The
+	 * packet will be dropped if the hint is too short. This field
+	 * is valid only on the first BD of a packet.
+	 */
+	#define TX_BD_SHORT_FLAGS_LHINT_MASK	UINT32_C(0x6000)
+	#define TX_BD_SHORT_FLAGS_LHINT_SFT	13
+	/* indicates packet length < 512B */
+	#define TX_BD_SHORT_FLAGS_LHINT_LT512	(UINT32_C(0x0) << 13)
+	/* indicates 512 <= packet length < 1KB */
+	#define TX_BD_SHORT_FLAGS_LHINT_LT1K	(UINT32_C(0x1) << 13)
+	/* indicates 1KB <= packet length < 2KB */
+	#define TX_BD_SHORT_FLAGS_LHINT_LT2K	(UINT32_C(0x2) << 13)
+	/* indicates packet length >= 2KB */
+	#define TX_BD_SHORT_FLAGS_LHINT_GTE2K	(UINT32_C(0x3) << 13)
 	#define TX_BD_SHORT_FLAGS_LHINT_LAST	TX_BD_SHORT_FLAGS_LHINT_GTE2K
 	/*
-	 * If set to 1, the device immediately updates the Send Consumer Index
-	 * after the buffer associated with this descriptor has been transferred
-	 * via DMA to NIC memory from host memory. An interrupt may or may not
-	 * be generated according to the state of the interrupt avoidance
-	 * mechanisms. If this bit is set to 0, then the Consumer Index is only
-	 * updated as soon as one of the host interrupt coalescing conditions
-	 * has been met. This bit must be valid on the first BD of a packet.
+	 * If set to 1, the device immediately updates the Send Consumer
+	 * Index after the buffer associated with this descriptor has
+	 * been transferred via DMA to NIC memory from host memory. An
+	 * interrupt may or may not be generated according to the state
+	 * of the interrupt avoidance mechanisms. If this bit is set to
+	 * 0, then the Consumer Index is only updated as soon as one of
+	 * the host interrupt coalescing conditions has been met. This
+	 * bit must be valid on the first BD of a packet.
 	 */
-	#define TX_BD_SHORT_FLAGS_COAL_NOW		UINT32_C(0x8000)
+	#define TX_BD_SHORT_FLAGS_COAL_NOW	UINT32_C(0x8000)
 	/*
-	 * All bits in this field must be valid on the first BD of a packet.
-	 * Only the packet_end bit must be valid for the remaining BDs of a
-	 * packet.
+	 * All bits in this field must be valid on the first BD of a
+	 * packet. Only the packet_end bit must be valid for the
+	 * remaining BDs of a packet.
 	 */
-	#define TX_BD_SHORT_FLAGS_MASK			UINT32_C(0xffc0)
-	#define TX_BD_SHORT_FLAGS_SFT			6
-	uint16_t flags_type;
-
-	/*
-	 * This is the length of the host physical buffer this BD describes in
-	 * bytes. This field must be valid on all BDs of a packet.
-	 */
+	#define TX_BD_SHORT_FLAGS_MASK	UINT32_C(0xffc0)
+	#define TX_BD_SHORT_FLAGS_SFT	6
 	uint16_t len;
 	/*
-	 * The opaque data field is pass through to the completion and can be
-	 * used for any data that the driver wants to associate with the
-	 * transmit BD. This field must be valid on the first BD of a packet.
-	 */
-	uint32_t opaque;
-
-	/*
-	 * This is the host physical address for the portion of the packet
-	 * described by this TX BD. This value must be valid on all BDs of a
+	 * This is the length of the host physical buffer this BD
+	 * describes in bytes. This field must be valid on all BDs of a
 	 * packet.
 	 */
+	uint32_t opaque;
+	/*
+	 * The opaque data field is pass through to the completion and
+	 * can be used for any data that the driver wants to associate
+	 * with the transmit BD. This field must be valid on the first
+	 * BD of a packet.
+	 */
 	uint64_t addr;
+	/*
+	 * This is the host physical address for the portion of the
+	 * packet described by this TX BD. This value must be valid on
+	 * all BDs of a packet.
+	 */
 } __attribute__((packed));
 
 /* Long TX BD (32 bytes split to 2 16-byte struct) */
 struct tx_bd_long {
+	uint16_t flags_type;
 	/*
-	 * All bits in this field must be valid on the first BD of a packet.
-	 * Only the packet_end bit must be valid for the remaining BDs of a
-	 * packet.
+	 * All bits in this field must be valid on the first BD of a
+	 * packet. Only the packet_end bit must be valid for the
+	 * remaining BDs of a packet.
 	 */
 	/* This value identifies the type of buffer descriptor. */
-	#define TX_BD_LONG_TYPE_MASK			UINT32_C(0x3f)
-	#define TX_BD_LONG_TYPE_SFT			0
-		/*
-		 * Indicates that this BD is 32B long and is used for normal L2
-		 * packet transmission.
-		 */
-	#define TX_BD_LONG_TYPE_TX_BD_LONG		(UINT32_C(0x10) << 0)
+	#define TX_BD_LONG_TYPE_MASK	UINT32_C(0x3f)
+	#define TX_BD_LONG_TYPE_SFT	0
 	/*
-	 * If set to 1, the packet ends with the data in the buffer pointed to
-	 * by this descriptor. This flag must be valid on every BD.
+	 * Indicates that this BD is 32B long and is
+	 * used for normal L2 packet transmission.
 	 */
-	#define TX_BD_LONG_FLAGS_PACKET_END		UINT32_C(0x40)
+	#define TX_BD_LONG_TYPE_TX_BD_LONG	UINT32_C(0x10)
 	/*
-	 * If set to 1, the device will not generate a completion for this
-	 * transmit packet unless there is an error in it's processing. If this
-	 * bit is set to 0, then the packet will be completed normally. This bit
-	 * must be valid only on the first BD of a packet.
+	 * If set to 1, the packet ends with the data in the buffer
+	 * pointed to by this descriptor. This flag must be valid on
+	 * every BD.
 	 */
-	#define TX_BD_LONG_FLAGS_NO_CMPL		UINT32_C(0x80)
+	#define TX_BD_LONG_FLAGS_PACKET_END	UINT32_C(0x40)
 	/*
-	 * This value indicates how many 16B BD locations are consumed in the
-	 * ring by this packet. A value of 1 indicates that this BD is the only
-	 * BD (and that the it is a short BD). A value of 3 indicates either 3
-	 * short BDs or 1 long BD and one short BD in the packet. A value of 0
-	 * indicates that there are 32 BD locations in the packet (the maximum).
-	 * This field is valid only on the first BD of a packet.
+	 * If set to 1, the device will not generate a completion for
+	 * this transmit packet unless there is an error in it's
+	 * processing. If this bit is set to 0, then the packet will be
+	 * completed normally. This bit must be valid only on the first
+	 * BD of a packet.
 	 */
-	#define TX_BD_LONG_FLAGS_BD_CNT_MASK		UINT32_C(0x1f00)
-	#define TX_BD_LONG_FLAGS_BD_CNT_SFT		8
+	#define TX_BD_LONG_FLAGS_NO_CMPL	UINT32_C(0x80)
 	/*
-	 * This value is a hint for the length of the entire packet. It is used
-	 * by the chip to optimize internal processing. The packet will be
-	 * dropped if the hint is too short. This field is valid only on the
-	 * first BD of a packet.
+	 * This value indicates how many 16B BD locations are consumed
+	 * in the ring by this packet. A value of 1 indicates that this
+	 * BD is the only BD (and that the it is a short BD). A value of
+	 * 3 indicates either 3 short BDs or 1 long BD and one short BD
+	 * in the packet. A value of 0 indicates that there are 32 BD
+	 * locations in the packet (the maximum). This field is valid
+	 * only on the first BD of a packet.
 	 */
-	#define TX_BD_LONG_FLAGS_LHINT_MASK		UINT32_C(0x6000)
-	#define TX_BD_LONG_FLAGS_LHINT_SFT		13
-		/* indicates packet length < 512B */
-	#define TX_BD_LONG_FLAGS_LHINT_LT512		(UINT32_C(0x0) << 13)
-		/* indicates 512 <= packet length < 1KB */
-	#define TX_BD_LONG_FLAGS_LHINT_LT1K		(UINT32_C(0x1) << 13)
-		/* indicates 1KB <= packet length < 2KB */
-	#define TX_BD_LONG_FLAGS_LHINT_LT2K		(UINT32_C(0x2) << 13)
-		/* indicates packet length >= 2KB */
-	#define TX_BD_LONG_FLAGS_LHINT_GTE2K		(UINT32_C(0x3) << 13)
+	#define TX_BD_LONG_FLAGS_BD_CNT_MASK	UINT32_C(0x1f00)
+	#define TX_BD_LONG_FLAGS_BD_CNT_SFT	8
+	/*
+	 * This value is a hint for the length of the entire packet. It
+	 * is used by the chip to optimize internal processing. The
+	 * packet will be dropped if the hint is too short. This field
+	 * is valid only on the first BD of a packet.
+	 */
+	#define TX_BD_LONG_FLAGS_LHINT_MASK	UINT32_C(0x6000)
+	#define TX_BD_LONG_FLAGS_LHINT_SFT	13
+	/* indicates packet length < 512B */
+	#define TX_BD_LONG_FLAGS_LHINT_LT512	(UINT32_C(0x0) << 13)
+	/* indicates 512 <= packet length < 1KB */
+	#define TX_BD_LONG_FLAGS_LHINT_LT1K	(UINT32_C(0x1) << 13)
+	/* indicates 1KB <= packet length < 2KB */
+	#define TX_BD_LONG_FLAGS_LHINT_LT2K	(UINT32_C(0x2) << 13)
+	/* indicates packet length >= 2KB */
+	#define TX_BD_LONG_FLAGS_LHINT_GTE2K	(UINT32_C(0x3) << 13)
 	#define TX_BD_LONG_FLAGS_LHINT_LAST	TX_BD_LONG_FLAGS_LHINT_GTE2K
 	/*
-	 * If set to 1, the device immediately updates the Send Consumer Index
-	 * after the buffer associated with this descriptor has been transferred
-	 * via DMA to NIC memory from host memory. An interrupt may or may not
-	 * be generated according to the state of the interrupt avoidance
-	 * mechanisms. If this bit is set to 0, then the Consumer Index is only
-	 * updated as soon as one of the host interrupt coalescing conditions
-	 * has been met. This bit must be valid on the first BD of a packet.
+	 * If set to 1, the device immediately updates the Send Consumer
+	 * Index after the buffer associated with this descriptor has
+	 * been transferred via DMA to NIC memory from host memory. An
+	 * interrupt may or may not be generated according to the state
+	 * of the interrupt avoidance mechanisms. If this bit is set to
+	 * 0, then the Consumer Index is only updated as soon as one of
+	 * the host interrupt coalescing conditions has been met. This
+	 * bit must be valid on the first BD of a packet.
 	 */
-	#define TX_BD_LONG_FLAGS_COAL_NOW		UINT32_C(0x8000)
+	#define TX_BD_LONG_FLAGS_COAL_NOW	UINT32_C(0x8000)
 	/*
-	 * All bits in this field must be valid on the first BD of a packet.
-	 * Only the packet_end bit must be valid for the remaining BDs of a
-	 * packet.
+	 * All bits in this field must be valid on the first BD of a
+	 * packet. Only the packet_end bit must be valid for the
+	 * remaining BDs of a packet.
 	 */
-	#define TX_BD_LONG_FLAGS_MASK			UINT32_C(0xffc0)
-	#define TX_BD_LONG_FLAGS_SFT			6
-	uint16_t flags_type;
-
-	/*
-	 * This is the length of the host physical buffer this BD describes in
-	 * bytes. This field must be valid on all BDs of a packet.
-	 */
+	#define TX_BD_LONG_FLAGS_MASK	UINT32_C(0xffc0)
+	#define TX_BD_LONG_FLAGS_SFT	6
 	uint16_t len;
-
 	/*
-	 * The opaque data field is pass through to the completion and can be
-	 * used for any data that the driver wants to associate with the
-	 * transmit BD. This field must be valid on the first BD of a packet.
+	 * This is the length of the host physical buffer this BD
+	 * describes in bytes. This field must be valid on all BDs of a
+	 * packet.
 	 */
 	uint32_t opaque;
-
 	/*
-	 * This is the host physical address for the portion of the packet
-	 * described by this TX BD. This value must be valid on all BDs of a
-	 * packet.
+	 * The opaque data field is pass through to the completion and
+	 * can be used for any data that the driver wants to associate
+	 * with the transmit BD. This field must be valid on the first
+	 * BD of a packet.
 	 */
 	uint64_t addr;
+	/*
+	 * This is the host physical address for the portion of the
+	 * packet described by this TX BD. This value must be valid on
+	 * all BDs of a packet.
+	 */
 } __attribute__((packed));
 
 /* last 16 bytes of Long TX BD */
-
 struct tx_bd_long_hi {
+	uint16_t lflags;
 	/*
-	 * All bits in this field must be valid on the first BD of a packet.
-	 * Their value on other BDs of the packet will be ignored.
+	 * All bits in this field must be valid on the first BD of a
+	 * packet. Their value on other BDs of the packet will be
+	 * ignored.
 	 */
 	/*
-	 * If set to 1, the controller replaces the TCP/UPD checksum fields of
-	 * normal TCP/UPD checksum, or the inner TCP/UDP checksum field of the
-	 * encapsulated TCP/UDP packets with the hardware calculated TCP/UDP
-	 * checksum for the packet associated with this descriptor. This bit
-	 * must be valid on the first BD of a packet.
+	 * If set to 1, the controller replaces the TCP/UPD checksum
+	 * fields of normal TCP/UPD checksum, or the inner TCP/UDP
+	 * checksum field of the encapsulated TCP/UDP packets with the
+	 * hardware calculated TCP/UDP checksum for the packet
+	 * associated with this descriptor. The flag is ignored if the
+	 * LSO flag is set. This bit must be valid on the first BD of a
+	 * packet.
 	 */
 	#define TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM	UINT32_C(0x1)
 	/*
-	 * If set to 1, the controller replaces the IP checksum of the normal
-	 * packets, or the inner IP checksum of the encapsulated packets with
-	 * the hardware calculated IP checksum for the packet associated with
-	 * this descriptor. This bit must be valid on the first BD of a packet.
+	 * If set to 1, the controller replaces the IP checksum of the
+	 * normal packets, or the inner IP checksum of the encapsulated
+	 * packets with the hardware calculated IP checksum for the
+	 * packet associated with this descriptor. This bit must be
+	 * valid on the first BD of a packet.
 	 */
-	#define TX_BD_LONG_LFLAGS_IP_CHKSUM		UINT32_C(0x2)
+	#define TX_BD_LONG_LFLAGS_IP_CHKSUM	UINT32_C(0x2)
 	/*
-	 * If set to 1, the controller will not append an Ethernet CRC to the
-	 * end of the frame. This bit must be valid on the first BD of a packet.
-	 * Packet must be 64B or longer when this flag is set. It is not useful
-	 * to use this bit with any form of TX offload such as CSO or LSO. The
-	 * intent is that the packet from the host already has a valid Ethernet
-	 * CRC on the packet.
+	 * If set to 1, the controller will not append an Ethernet CRC
+	 * to the end of the frame. This bit must be valid on the first
+	 * BD of a packet. Packet must be 64B or longer when this flag
+	 * is set. It is not useful to use this bit with any form of TX
+	 * offload such as CSO or LSO. The intent is that the packet
+	 * from the host already has a valid Ethernet CRC on the packet.
 	 */
-	#define TX_BD_LONG_LFLAGS_NOCRC			UINT32_C(0x4)
+	#define TX_BD_LONG_LFLAGS_NOCRC	UINT32_C(0x4)
 	/*
-	 * If set to 1, the device will record the time at which the packet was
-	 * actually transmitted at the TX MAC. This bit must be valid on the
-	 * first BD of a packet.
+	 * If set to 1, the device will record the time at which the
+	 * packet was actually transmitted at the TX MAC. This bit must
+	 * be valid on the first BD of a packet.
 	 */
-	#define TX_BD_LONG_LFLAGS_STAMP			UINT32_C(0x8)
+	#define TX_BD_LONG_LFLAGS_STAMP	UINT32_C(0x8)
 	/*
-	 * If set to 1, The controller replaces the tunnel IP checksum field
-	 * with hardware calculated IP checksum for the IP header of the packet
-	 * associated with this descriptor. In case of VXLAN, the controller
-	 * also replaces the outer header UDP checksum with hardware calculated
-	 * UDP checksum for the packet associated with this descriptor.
+	 * If set to 1, The controller replaces the tunnel IP checksum
+	 * field with hardware calculated IP checksum for the IP header
+	 * of the packet associated with this descriptor. For outer UDP
+	 * checksum, global outer UDP checksum TE_NIC register needs to
+	 * be enabled. If the global outer UDP checksum TE_NIC register
+	 * bit is set, outer UDP checksum will be calculated for the
+	 * following cases: 1. Packets with tcp_udp_chksum flag set to
+	 * offload checksum for inner packet AND the inner packet is
+	 * TCP/UDP. If the inner packet is ICMP for example (non-
+	 * TCP/UDP), even if the tcp_udp_chksum is set, the outer UDP
+	 * checksum will not be calculated. 2. Packets with lso flag set
+	 * which implies inner TCP checksum calculation as part of LSO
+	 * operation.
 	 */
-	#define TX_BD_LONG_LFLAGS_T_IP_CHKSUM		UINT32_C(0x10)
+	#define TX_BD_LONG_LFLAGS_T_IP_CHKSUM	UINT32_C(0x10)
 	/*
-	 * If set to 1, the device will treat this packet with LSO(Large Send
-	 * Offload) processing for both normal or encapsulated packets, which is
-	 * a form of TCP segmentation. When this bit is 1, the hdr_size and mss
-	 * fields must be valid. The driver doesn't need to set t_ip_chksum,
-	 * ip_chksum, and tcp_udp_chksum flags since the controller will replace
-	 * the appropriate checksum fields for segmented packets. When this bit
-	 * is 1, the hdr_size and mss fields must be valid.
+	 * If set to 1, the device will treat this packet with LSO(Large
+	 * Send Offload) processing for both normal or encapsulated
+	 * packets, which is a form of TCP segmentation. When this bit
+	 * is 1, the hdr_size and mss fields must be valid. The driver
+	 * doesn't need to set t_ip_chksum, ip_chksum, and
+	 * tcp_udp_chksum flags since the controller will replace the
+	 * appropriate checksum fields for segmented packets. When this
+	 * bit is 1, the hdr_size and mss fields must be valid.
 	 */
-	#define TX_BD_LONG_LFLAGS_LSO			UINT32_C(0x20)
+	#define TX_BD_LONG_LFLAGS_LSO	UINT32_C(0x20)
 	/*
-	 * If set to zero when LSO is '1', then the IPID will be treated as a
-	 * 16b number and will be wrapped if it exceeds a value of 0xffff. If
-	 * set to one when LSO is '1', then the IPID will be treated as a 15b
-	 * number and will be wrapped if it exceeds a value 0f 0x7fff.
+	 * If set to zero when LSO is '1', then the IPID will be treated
+	 * as a 16b number and will be wrapped if it exceeds a value of
+	 * 0xffff. If set to one when LSO is '1', then the IPID will be
+	 * treated as a 15b number and will be wrapped if it exceeds a
+	 * value 0f 0x7fff.
 	 */
-	#define TX_BD_LONG_LFLAGS_IPID_FMT		UINT32_C(0x40)
+	#define TX_BD_LONG_LFLAGS_IPID_FMT	UINT32_C(0x40)
 	/*
-	 * If set to zero when LSO is '1', then the IPID of the tunnel IP header
-	 * will not be modified during LSO operations. If set to one when LSO is
-	 * '1', then the IPID of the tunnel IP header will be incremented for
-	 * each subsequent segment of an LSO operation.
+	 * If set to zero when LSO is '1', then the IPID of the tunnel
+	 * IP header will not be modified during LSO operations. If set
+	 * to one when LSO is '1', then the IPID of the tunnel IP header
+	 * will be incremented for each subsequent segment of an LSO
+	 * operation. The flag is ignored if the LSO packet is a normal
+	 * (non-tunneled) TCP packet.
 	 */
-	#define TX_BD_LONG_LFLAGS_T_IPID		UINT32_C(0x80)
+	#define TX_BD_LONG_LFLAGS_T_IPID	UINT32_C(0x80)
 	/*
-	 * If set to '1', then the RoCE ICRC will be appended to the packet.
-	 * Packet must be a valid RoCE format packet.
+	 * If set to '1', then the RoCE ICRC will be appended to the
+	 * packet. Packet must be a valid RoCE format packet.
 	 */
-	#define TX_BD_LONG_LFLAGS_ROCE_CRC		UINT32_C(0x100)
+	#define TX_BD_LONG_LFLAGS_ROCE_CRC	UINT32_C(0x100)
 	/*
-	 * If set to '1', then the FCoE CRC will be appended to the packet.
-	 * Packet must be a valid FCoE format packet.
+	 * If set to '1', then the FCoE CRC will be appended to the
+	 * packet. Packet must be a valid FCoE format packet.
 	 */
-	#define TX_BD_LONG_LFLAGS_FCOE_CRC		UINT32_C(0x200)
-	uint16_t lflags;
-
-	/*
-	 * When LSO is '1', this field must contain the offset of the TCP
-	 * payload from the beginning of the packet in as 16b words. In case of
-	 * encapsulated/tunneling packet, this field contains the offset of the
-	 * inner TCP payload from beginning of the packet as 16-bit words. This
-	 * value must be valid on the first BD of a packet.
-	 */
-	#define TX_BD_LONG_HDR_SIZE_MASK		UINT32_C(0x1ff)
-	#define TX_BD_LONG_HDR_SIZE_SFT			0
+	#define TX_BD_LONG_LFLAGS_FCOE_CRC	UINT32_C(0x200)
 	uint16_t hdr_size;
-
 	/*
-	 * This is the MSS value that will be used to do the LSO processing. The
-	 * value is the length in bytes of the TCP payload for each segment
-	 * generated by the LSO operation. This value must be valid on the first
+	 * When LSO is '1', this field must contain the offset of the
+	 * TCP payload from the beginning of the packet in as 16b words.
+	 * In case of encapsulated/tunneling packet, this field contains
+	 * the offset of the inner TCP payload from beginning of the
+	 * packet as 16-bit words. This value must be valid on the first
 	 * BD of a packet.
 	 */
-	#define TX_BD_LONG_MSS_MASK			UINT32_C(0x7fff)
-	#define TX_BD_LONG_MSS_SFT			0
+	#define TX_BD_LONG_HDR_SIZE_MASK	UINT32_C(0x1ff)
+	#define TX_BD_LONG_HDR_SIZE_SFT	0
 	uint32_t mss;
-
-	uint16_t unused_2;
-
 	/*
-	 * This value selects a CFA action to perform on the packet. Set this
-	 * value to zero if no CFA action is desired. This value must be valid
-	 * on the first BD of a packet.
+	 * This is the MSS value that will be used to do the LSO
+	 * processing. The value is the length in bytes of the TCP
+	 * payload for each segment generated by the LSO operation. This
+	 * value must be valid on the first BD of a packet.
 	 */
+	#define TX_BD_LONG_MSS_MASK	UINT32_C(0x7fff)
+	#define TX_BD_LONG_MSS_SFT	0
+	uint16_t unused_2;
 	uint16_t cfa_action;
-
 	/*
-	 * This value is action meta-data that defines CFA edit operations that
-	 * are done in addition to any action editing.
+	 * This value selects a CFA action to perform on the packet. Set
+	 * this value to zero if no CFA action is desired. This value
+	 * must be valid on the first BD of a packet.
+	 */
+	uint32_t cfa_meta;
+	/*
+	 * This value is action meta-data that defines CFA edit
+	 * operations that are done in addition to any action editing.
 	 */
 	/* When key=1, This is the VLAN tag VID value. */
 	#define TX_BD_LONG_CFA_META_VLAN_VID_MASK	UINT32_C(0xfff)
 	#define TX_BD_LONG_CFA_META_VLAN_VID_SFT	0
 	/* When key=1, This is the VLAN tag DE value. */
-	#define TX_BD_LONG_CFA_META_VLAN_DE		UINT32_C(0x1000)
+	#define TX_BD_LONG_CFA_META_VLAN_DE	UINT32_C(0x1000)
 	/* When key=1, This is the VLAN tag PRI value. */
 	#define TX_BD_LONG_CFA_META_VLAN_PRI_MASK	UINT32_C(0xe000)
 	#define TX_BD_LONG_CFA_META_VLAN_PRI_SFT	13
 	/* When key=1, This is the VLAN tag TPID select value. */
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_MASK	UINT32_C(0x70000)
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_SFT	16
-		/* 0x88a8 */
+	/* 0x88a8 */
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_TPID88A8	(UINT32_C(0x0) << 16)
-		/* 0x8100 */
+	/* 0x8100 */
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_TPID8100	(UINT32_C(0x1) << 16)
-		/* 0x9100 */
+	/* 0x9100 */
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_TPID9100	(UINT32_C(0x2) << 16)
-		/* 0x9200 */
+	/* 0x9200 */
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_TPID9200	(UINT32_C(0x3) << 16)
-		/* 0x9300 */
+	/* 0x9300 */
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_TPID9300	(UINT32_C(0x4) << 16)
-		/* Value programmed in CFA VLANTPID register. */
+	/* Value programmed in CFA VLANTPID register. */
 	#define TX_BD_LONG_CFA_META_VLAN_TPID_TPIDCFG	(UINT32_C(0x5) << 16)
-	#define TX_BD_LONG_CFA_META_VLAN_TPID_LAST \
-					TX_BD_LONG_CFA_META_VLAN_TPID_TPIDCFG
+	#define TX_BD_LONG_CFA_META_VLAN_TPID_LAST	\
+		TX_BD_LONG_CFA_META_VLAN_TPID_TPIDCFG
 	/* When key=1, This is the VLAN tag TPID select value. */
 	#define TX_BD_LONG_CFA_META_VLAN_RESERVED_MASK	UINT32_C(0xff80000)
 	#define TX_BD_LONG_CFA_META_VLAN_RESERVED_SFT	19
 	/*
-	 * This field identifies the type of edit to be performed on the packet.
-	 * This value must be valid on the first BD of a packet.
+	 * This field identifies the type of edit to be performed on the
+	 * packet. This value must be valid on the first BD of a packet.
 	 */
-	#define TX_BD_LONG_CFA_META_KEY_MASK		UINT32_C(0xf0000000)
-	#define TX_BD_LONG_CFA_META_KEY_SFT		28
-		/* No editing */
-	#define TX_BD_LONG_CFA_META_KEY_NONE		(UINT32_C(0x0) << 28)
-		/*
-		 * - meta[17:16] - TPID select value (0 = 0x8100). - meta[15:12]
-		 * - PRI/DE value. - meta[11:0] - VID value.
-		 */
+	#define TX_BD_LONG_CFA_META_KEY_MASK	UINT32_C(0xf0000000)
+	#define TX_BD_LONG_CFA_META_KEY_SFT	28
+	/* No editing */
+	#define TX_BD_LONG_CFA_META_KEY_NONE	(UINT32_C(0x0) << 28)
+	/*
+	 * - meta[17:16] - TPID select value (0 =
+	 * 0x8100). - meta[15:12] - PRI/DE value. -
+	 * meta[11:0] - VID value.
+	 */
 	#define TX_BD_LONG_CFA_META_KEY_VLAN_TAG	(UINT32_C(0x1) << 28)
 	#define TX_BD_LONG_CFA_META_KEY_LAST	TX_BD_LONG_CFA_META_KEY_VLAN_TAG
-	uint32_t cfa_meta;
 } __attribute__((packed));
 
 /* RX Producer Packet BD (16 bytes) */
 struct rx_prod_pkt_bd {
+	uint16_t flags_type;
 	/* This value identifies the type of buffer descriptor. */
-	#define RX_PROD_PKT_BD_TYPE_MASK		UINT32_C(0x3f)
-	#define RX_PROD_PKT_BD_TYPE_SFT			0
-		/*
-		 * Indicates that this BD is 16B long and is an RX Producer (ie.
-		 * empty) buffer descriptor.
-		 */
-	#define RX_PROD_PKT_BD_TYPE_RX_PROD_PKT		(UINT32_C(0x4) << 0)
+	#define RX_PROD_PKT_BD_TYPE_MASK	UINT32_C(0x3f)
+	#define RX_PROD_PKT_BD_TYPE_SFT	0
 	/*
-	 * If set to 1, the packet will be placed at the address plus 2B. The 2
-	 * Bytes of padding will be written as zero.
+	 * Indicates that this BD is 16B long and is an
+	 * RX Producer (ie. empty) buffer descriptor.
+	 */
+	#define RX_PROD_PKT_BD_TYPE_RX_PROD_PKT	UINT32_C(0x4)
+	/*
+	 * If set to 1, the packet will be placed at the address plus
+	 * 2B. The 2 Bytes of padding will be written as zero.
 	 */
 	/*
-	 * This is intended to be used when the host buffer is cache-line
-	 * aligned to produce packets that are easy to parse in host memory
-	 * while still allowing writes to be cache line aligned.
+	 * This is intended to be used when the host buffer is cache-
+	 * line aligned to produce packets that are easy to parse in
+	 * host memory while still allowing writes to be cache line
+	 * aligned.
 	 */
-	#define RX_PROD_PKT_BD_FLAGS_SOP_PAD		UINT32_C(0x40)
+	#define RX_PROD_PKT_BD_FLAGS_SOP_PAD	UINT32_C(0x40)
 	/*
-	 * If set to 1, the packet write will be padded out to the nearest
-	 * cache-line with zero value padding.
+	 * If set to 1, the packet write will be padded out to the
+	 * nearest cache-line with zero value padding.
 	 */
 	/*
-	 * If receive buffers start/end on cache-line boundaries, this feature
-	 * will ensure that all data writes on the PCI bus start/end on cache
-	 * line boundaries.
+	 * If receive buffers start/end on cache-line boundaries, this
+	 * feature will ensure that all data writes on the PCI bus
+	 * start/end on cache line boundaries.
 	 */
-	#define RX_PROD_PKT_BD_FLAGS_EOP_PAD		UINT32_C(0x80)
+	#define RX_PROD_PKT_BD_FLAGS_EOP_PAD	UINT32_C(0x80)
 	/*
-	 * This value is the number of additional buffers in the ring that
-	 * describe the buffer space to be consumed for the this packet. If the
-	 * value is zero, then the packet must fit within the space described by
-	 * this BD. If this value is 1 or more, it indicates how many additional
-	 * "buffer" BDs are in the ring immediately following this BD to be used
-	 * for the same network packet. Even if the packet to be placed does not
-	 * need all the additional buffers, they will be consumed anyway.
+	 * This value is the number of additional buffers in the ring
+	 * that describe the buffer space to be consumed for the this
+	 * packet. If the value is zero, then the packet must fit within
+	 * the space described by this BD. If this value is 1 or more,
+	 * it indicates how many additional "buffer" BDs are in the ring
+	 * immediately following this BD to be used for the same network
+	 * packet. Even if the packet to be placed does not need all the
+	 * additional buffers, they will be consumed anyway.
 	 */
 	#define RX_PROD_PKT_BD_FLAGS_BUFFERS_MASK	UINT32_C(0x300)
 	#define RX_PROD_PKT_BD_FLAGS_BUFFERS_SFT	8
-	#define RX_PROD_PKT_BD_FLAGS_MASK		UINT32_C(0xffc0)
-	#define RX_PROD_PKT_BD_FLAGS_SFT		6
-	uint16_t flags_type;
-
-	/*
-	 * This is the length in Bytes of the host physical buffer where data
-	 * for the packet may be placed in host memory.
-	 */
-	/*
-	 * While this is a Byte resolution value, it is often advantageous to
-	 * ensure that the buffers provided end on a host cache line.
-	 */
+	#define RX_PROD_PKT_BD_FLAGS_MASK	UINT32_C(0xffc0)
+	#define RX_PROD_PKT_BD_FLAGS_SFT	6
 	uint16_t len;
-
 	/*
-	 * The opaque data field is pass through to the completion and can be
-	 * used for any data that the driver wants to associate with this
-	 * receive buffer set.
+	 * This is the length in Bytes of the host physical buffer where
+	 * data for the packet may be placed in host memory.
+	 */
+	/*
+	 * While this is a Byte resolution value, it is often
+	 * advantageous to ensure that the buffers provided end on a
+	 * host cache line.
 	 */
 	uint32_t opaque;
-
 	/*
-	 * This is the host physical address where data for the packet may by
-	 * placed in host memory.
-	 */
-	/*
-	 * While this is a Byte resolution value, it is often advantageous to
-	 * ensure that the buffers provide start on a host cache line.
+	 * The opaque data field is pass through to the completion and
+	 * can be used for any data that the driver wants to associate
+	 * with this receive buffer set.
 	 */
 	uint64_t addr;
+	/*
+	 * This is the host physical address where data for the packet
+	 * may by placed in host memory.
+	 */
+	/*
+	 * While this is a Byte resolution value, it is often
+	 * advantageous to ensure that the buffers provide start on a
+	 * host cache line.
+	 */
 } __attribute__((packed));
 
 /* Completion Ring Structures */
