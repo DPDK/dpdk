@@ -69,7 +69,7 @@ static struct proto kni_raw_proto = {
 
 static inline int
 kni_vhost_net_tx(struct kni_dev *kni, struct msghdr *m,
-		 unsigned int offset, unsigned int len)
+		 uint32_t offset, uint32_t len)
 {
 	struct rte_kni_mbuf *pkt_kva = NULL;
 	struct rte_kni_mbuf *pkt_va = NULL;
@@ -145,7 +145,7 @@ drop:
 
 static inline int
 kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
-		 unsigned int offset, unsigned int len)
+		 uint32_t offset, uint32_t len)
 {
 	uint32_t pkt_len;
 	struct rte_kni_mbuf *kva;
@@ -213,13 +213,13 @@ drop:
 	return 0;
 }
 
-static unsigned int
+static uint32_t
 kni_sock_poll(struct file *file, struct socket *sock, poll_table *wait)
 {
 	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
 	struct kni_dev *kni;
-	unsigned int mask = 0;
+	uint32_t mask = 0;
 
 	if (unlikely(q == NULL || q->kni == NULL))
 		return POLLERR;
@@ -281,9 +281,9 @@ int
 kni_chk_vhost_rx(struct kni_dev *kni)
 {
 	struct kni_vhost_queue *q = kni->vhost_queue;
-	unsigned int nb_in, nb_mbuf, nb_skb;
-	const unsigned int BURST_MASK = RX_BURST_SZ - 1;
-	unsigned int nb_burst, nb_backlog, i;
+	uint32_t nb_in, nb_mbuf, nb_skb;
+	const uint32_t BURST_MASK = RX_BURST_SZ - 1;
+	uint32_t nb_burst, nb_backlog, i;
 	struct sk_buff *skb[RX_BURST_SZ];
 	struct rte_kni_mbuf *va[RX_BURST_SZ];
 
@@ -299,7 +299,7 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 	nb_mbuf = kni_fifo_count(kni->rx_q);
 
 	nb_in = min(nb_mbuf, nb_skb);
-	nb_in = min_t(unsigned int, nb_in, RX_BURST_SZ);
+	nb_in = min_t(uint32_t, nb_in, RX_BURST_SZ);
 	nb_burst   = (nb_in & ~BURST_MASK);
 	nb_backlog = (nb_in & BURST_MASK);
 
@@ -439,16 +439,15 @@ kni_sock_rcvmsg(struct socket *sock,
 
 /* dummy tap like ioctl */
 static int
-kni_sock_ioctl(struct socket *sock, unsigned int cmd,
-	      unsigned long arg)
+kni_sock_ioctl(struct socket *sock, uint32_t cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	struct ifreq __user *ifr = argp;
-	unsigned int __user *up = argp;
+	uint32_t __user *up = argp;
 	struct kni_vhost_queue *q =
 		container_of(sock->sk, struct kni_vhost_queue, sk);
 	struct kni_dev *kni;
-	unsigned int u;
+	uint32_t u;
 	int __user *sp = argp;
 	int s;
 	int ret;
@@ -542,7 +541,7 @@ kni_sock_ioctl(struct socket *sock, unsigned int cmd,
 }
 
 static int
-kni_sock_compat_ioctl(struct socket *sock, unsigned int cmd,
+kni_sock_compat_ioctl(struct socket *sock, uint32_t cmd,
 		     unsigned long arg)
 {
 	/* 32 bits app on 64 bits OS to be supported later */

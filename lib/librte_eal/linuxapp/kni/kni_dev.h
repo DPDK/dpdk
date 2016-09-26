@@ -56,7 +56,7 @@ struct kni_dev {
 	struct net_device_stats stats;
 	int status;
 	uint16_t group_id;           /* Group ID of a group of KNI devices */
-	unsigned int core_id;        /* Core ID to bind */
+	uint32_t core_id;            /* Core ID to bind */
 	char name[RTE_KNI_NAMESIZE]; /* Network device name */
 	struct task_struct *pthread;
 
@@ -97,7 +97,7 @@ struct kni_dev {
 	void *mbuf_va;
 
 	/* mbuf size */
-	unsigned int mbuf_size;
+	uint32_t mbuf_size;
 
 	/* synchro for request processing */
 	unsigned long synchro;
@@ -119,7 +119,7 @@ struct kni_dev {
 };
 
 #ifdef RTE_KNI_VHOST
-unsigned int
+uint32_t
 kni_poll(struct file *file, struct socket *sock, poll_table * wait);
 int kni_chk_vhost_rx(struct kni_dev *kni);
 int kni_vhost_init(struct kni_dev *kni);
@@ -131,7 +131,7 @@ struct kni_vhost_queue {
 	int vnet_hdr_sz;
 	struct kni_dev *kni;
 	int sockfd;
-	unsigned int flags;
+	uint32_t flags;
 	struct sk_buff *cache;
 	struct rte_kni_fifo *fifo;
 };

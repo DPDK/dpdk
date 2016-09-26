@@ -100,7 +100,7 @@ kni_net_process_request(struct kni_dev *kni, struct rte_kni_request *req)
 {
 	int ret = -1;
 	void *resp_va;
-	unsigned int num;
+	uint32_t num;
 	int ret_val;
 
 	if (!kni || !req) {
@@ -214,7 +214,7 @@ static int
 kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 {
 	int len = 0;
-	unsigned int ret;
+	uint32_t ret;
 	struct kni_dev *kni = netdev_priv(dev);
 	struct rte_kni_mbuf *pkt_kva = NULL;
 	void *pkt_pa = NULL;
@@ -297,9 +297,9 @@ drop:
 static void
 kni_net_rx_normal(struct kni_dev *kni)
 {
-	unsigned int ret;
+	uint32_t ret;
 	uint32_t len;
-	unsigned int i, num_rx, num_fq;
+	uint32_t i, num_rx, num_fq;
 	struct rte_kni_mbuf *kva;
 	void *data_kva;
 	struct sk_buff *skb;
@@ -313,7 +313,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 	}
 
 	/* Calculate the number of entries to dequeue from rx_q */
-	num_rx = min_t(unsigned int, num_fq, MBUF_BURST_SZ);
+	num_rx = min_t(uint32_t, num_fq, MBUF_BURST_SZ);
 
 	/* Burst dequeue from rx_q */
 	num_rx = kni_fifo_get(kni->rx_q, kni->pa, num_rx);
@@ -380,9 +380,9 @@ kni_net_rx_normal(struct kni_dev *kni)
 static void
 kni_net_rx_lo_fifo(struct kni_dev *kni)
 {
-	unsigned int ret;
+	uint32_t ret;
 	uint32_t len;
-	unsigned int i, num, num_rq, num_tq, num_aq, num_fq;
+	uint32_t i, num, num_rq, num_tq, num_aq, num_fq;
 	struct rte_kni_mbuf *kva;
 	void *data_kva;
 	struct rte_kni_mbuf *alloc_kva;
@@ -404,7 +404,7 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	num = min(num_rq, num_tq);
 	num = min(num, num_aq);
 	num = min(num, num_fq);
-	num = min_t(unsigned int, num, MBUF_BURST_SZ);
+	num = min_t(uint32_t, num, MBUF_BURST_SZ);
 
 	/* Return if no entry to dequeue from rx_q */
 	if (num == 0)
@@ -465,9 +465,9 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 static void
 kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 {
-	unsigned int ret;
+	uint32_t ret;
 	uint32_t len;
-	unsigned int i, num_rq, num_fq, num;
+	uint32_t i, num_rq, num_fq, num;
 	struct rte_kni_mbuf *kva;
 	void *data_kva;
 	struct sk_buff *skb;
@@ -481,7 +481,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 
 	/* Calculate the number of entries to dequeue from rx_q */
 	num = min(num_rq, num_fq);
-	num = min_t(unsigned int, num, MBUF_BURST_SZ);
+	num = min_t(uint32_t, num, MBUF_BURST_SZ);
 
 	/* Return if no entry to dequeue from rx_q */
 	if (num == 0)
@@ -643,7 +643,7 @@ kni_net_stats(struct net_device *dev)
 static int
 kni_net_header(struct sk_buff *skb, struct net_device *dev,
 		unsigned short type, const void *daddr,
-		const void *saddr, unsigned int len)
+		const void *saddr, uint32_t len)
 {
 	struct ethhdr *eth = (struct ethhdr *) skb_push(skb, ETH_HLEN);
 
