@@ -299,7 +299,7 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 	nb_mbuf = kni_fifo_count(kni->rx_q);
 
 	nb_in = min(nb_mbuf, nb_skb);
-	nb_in = min(nb_in, (unsigned int)RX_BURST_SZ);
+	nb_in = min_t(unsigned int, nb_in, RX_BURST_SZ);
 	nb_burst   = (nb_in & ~BURST_MASK);
 	nb_backlog = (nb_in & BURST_MASK);
 

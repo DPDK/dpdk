@@ -173,7 +173,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 	}
 
 	/* Calculate the number of entries to dequeue from rx_q */
-	num_rx = min(num_fq, (unsigned int)MBUF_BURST_SZ);
+	num_rx = min_t(unsigned int, num_fq, MBUF_BURST_SZ);
 
 	/* Burst dequeue from rx_q */
 	num_rx = kni_fifo_get(kni->rx_q, kni->pa, num_rx);
@@ -265,7 +265,7 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	num = min(num_rq, num_tq);
 	num = min(num, num_aq);
 	num = min(num, num_fq);
-	num = min(num, (unsigned int)MBUF_BURST_SZ);
+	num = min_t(unsigned int, num, MBUF_BURST_SZ);
 
 	/* Return if no entry to dequeue from rx_q */
 	if (num == 0)
@@ -342,7 +342,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 
 	/* Calculate the number of entries to dequeue from rx_q */
 	num = min(num_rq, num_fq);
-	num = min(num, (unsigned int)MBUF_BURST_SZ);
+	num = min_t(unsigned int, num, MBUF_BURST_SZ);
 
 	/* Return if no entry to dequeue from rx_q */
 	if (num == 0)
