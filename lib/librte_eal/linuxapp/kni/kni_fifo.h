@@ -79,7 +79,7 @@ kni_fifo_get(struct rte_kni_fifo *fifo, void **data, unsigned num)
 static inline unsigned
 kni_fifo_count(struct rte_kni_fifo *fifo)
 {
-	return (fifo->len + fifo->write - fifo->read) & ( fifo->len - 1);
+	return (fifo->len + fifo->write - fifo->read) & (fifo->len - 1);
 }
 
 /**

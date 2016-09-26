@@ -99,10 +99,12 @@ struct kni_net {
 	struct list_head kni_list_head;
 };
 
-static int __net_init kni_init_net(struct net *net)
+static int __net_init
+kni_init_net(struct net *net)
 {
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	struct kni_net *knet = net_generic(net, kni_net_id);
+
 	memset(knet, 0, sizeof(*knet));
 #else
 	struct kni_net *knet;
@@ -134,9 +136,11 @@ static int __net_init kni_init_net(struct net *net)
 #endif
 }
 
-static void __net_exit kni_exit_net(struct net *net)
+static void __net_exit
+kni_exit_net(struct net *net)
 {
 	struct kni_net *knet = net_generic(net, kni_net_id);
+
 	mutex_destroy(&knet->kni_kthread_lock);
 #ifndef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	kfree(knet);
@@ -308,8 +312,8 @@ kni_thread_single(void *data)
 		up_read(&knet->kni_list_lock);
 #ifdef RTE_KNI_PREEMPT_DEFAULT
 		/* reschedule out for a while */
-		schedule_timeout_interruptible(usecs_to_jiffies( \
-				KNI_KTHREAD_RESCHEDULE_INTERVAL));
+		schedule_timeout_interruptible(
+			usecs_to_jiffies(KNI_KTHREAD_RESCHEDULE_INTERVAL));
 #endif
 	}
 
@@ -332,8 +336,8 @@ kni_thread_multiple(void *param)
 			kni_net_poll_resp(dev);
 		}
 #ifdef RTE_KNI_PREEMPT_DEFAULT
-		schedule_timeout_interruptible(usecs_to_jiffies( \
-				KNI_KTHREAD_RESCHEDULE_INTERVAL));
+		schedule_timeout_interruptible(
+			usecs_to_jiffies(KNI_KTHREAD_RESCHEDULE_INTERVAL));
 #endif
 	}
 
@@ -521,7 +525,7 @@ kni_ioctl_create(struct net *net,
 
 	/* Support Ethtool */
 	while (pci) {
-		KNI_PRINT("pci_bus: %02x:%02x:%02x \n",
+		KNI_PRINT("pci_bus: %02x:%02x:%02x\n",
 					pci->bus->number,
 					PCI_SLOT(pci->devfn),
 					PCI_FUNC(pci->devfn));
@@ -602,7 +606,7 @@ kni_ioctl_release(struct net *net,
 	struct rte_kni_device_info dev_info;
 
 	if (_IOC_SIZE(ioctl_num) > sizeof(dev_info))
-			return -EINVAL;
+		return -EINVAL;
 
 	ret = copy_from_user(&dev_info, (void *)ioctl_param, sizeof(dev_info));
 	if (ret) {

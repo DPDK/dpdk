@@ -245,7 +245,7 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 	uint32_t len;
 	unsigned i, num, num_rq, num_tq, num_aq, num_fq;
 	struct rte_kni_mbuf *kva;
-	void * data_kva;
+	void *data_kva;
 	struct rte_kni_mbuf *alloc_kva;
 	void *alloc_data_kva;
 
@@ -529,7 +529,7 @@ drop:
  * Deal with a transmit timeout.
  */
 static void
-kni_net_tx_timeout (struct net_device *dev)
+kni_net_tx_timeout(struct net_device *dev)
 {
 	struct kni_dev *kni = netdev_priv(dev);
 
@@ -643,6 +643,7 @@ static struct net_device_stats *
 kni_net_stats(struct net_device *dev)
 {
 	struct kni_dev *kni = netdev_priv(dev);
+
 	return &kni->stats;
 }
 
@@ -662,7 +663,6 @@ kni_net_header(struct sk_buff *skb, struct net_device *dev,
 
 	return dev->hard_header_len;
 }
-
 
 /*
  * Re-fill the eth header
@@ -688,9 +688,11 @@ kni_net_rebuild_header(struct sk_buff *skb)
  *
  * Returns 0 on success, negative on failure
  **/
-static int kni_net_set_mac(struct net_device *netdev, void *p)
+static int
+kni_net_set_mac(struct net_device *netdev, void *p)
 {
 	struct sockaddr *addr = p;
+
 	if (!is_valid_ether_addr((unsigned char *)(addr->sa_data)))
 		return -EADDRNOTAVAIL;
 	memcpy(netdev->dev_addr, addr->sa_data, netdev->addr_len);
@@ -698,7 +700,8 @@ static int kni_net_set_mac(struct net_device *netdev, void *p)
 }
 
 #ifdef HAVE_CHANGE_CARRIER_CB
-static int kni_net_change_carrier(struct net_device *dev, bool new_carrier)
+static int
+kni_net_change_carrier(struct net_device *dev, bool new_carrier)
 {
 	if (new_carrier)
 		netif_carrier_on(dev);
