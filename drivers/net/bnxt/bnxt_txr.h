@@ -38,6 +38,7 @@
 #define BNXT_TX_PUSH_THRESH 92
 
 #define B_TX_DB(db, prod)						\
+		rte_smp_wmb();						\
 		(*(uint32_t *)db = (DB_KEY_TX | prod))
 
 struct bnxt_tx_ring_info {
