@@ -51,7 +51,7 @@ struct kni_dev {
 	struct net_device_stats stats;
 	int status;
 	uint16_t group_id;           /* Group ID of a group of KNI devices */
-	unsigned core_id;            /* Core ID to bind */
+	unsigned int core_id;        /* Core ID to bind */
 	char name[RTE_KNI_NAMESIZE]; /* Network device name */
 	struct task_struct *pthread;
 
@@ -92,7 +92,7 @@ struct kni_dev {
 	void *mbuf_va;
 
 	/* mbuf size */
-	unsigned mbuf_size;
+	unsigned int mbuf_size;
 
 	/* synchro for request processing */
 	unsigned long synchro;

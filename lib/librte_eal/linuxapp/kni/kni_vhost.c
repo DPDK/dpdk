@@ -69,7 +69,7 @@ static struct proto kni_raw_proto = {
 
 static inline int
 kni_vhost_net_tx(struct kni_dev *kni, struct msghdr *m,
-		 unsigned offset, unsigned len)
+		 unsigned int offset, unsigned int len)
 {
 	struct rte_kni_mbuf *pkt_kva = NULL;
 	struct rte_kni_mbuf *pkt_va = NULL;
@@ -145,7 +145,7 @@ drop:
 
 static inline int
 kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
-		 unsigned offset, unsigned len)
+		 unsigned int offset, unsigned int len)
 {
 	uint32_t pkt_len;
 	struct rte_kni_mbuf *kva;
@@ -280,9 +280,9 @@ int
 kni_chk_vhost_rx(struct kni_dev *kni)
 {
 	struct kni_vhost_queue *q = kni->vhost_queue;
-	unsigned nb_in, nb_mbuf, nb_skb;
-	const unsigned BURST_MASK = RX_BURST_SZ - 1;
-	unsigned nb_burst, nb_backlog, i;
+	unsigned int nb_in, nb_mbuf, nb_skb;
+	const unsigned int BURST_MASK = RX_BURST_SZ - 1;
+	unsigned int nb_burst, nb_backlog, i;
 	struct sk_buff *skb[RX_BURST_SZ];
 	struct rte_kni_mbuf *va[RX_BURST_SZ];
 
@@ -298,7 +298,7 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 	nb_mbuf = kni_fifo_count(kni->rx_q);
 
 	nb_in = min(nb_mbuf, nb_skb);
-	nb_in = min(nb_in, (unsigned)RX_BURST_SZ);
+	nb_in = min(nb_in, (unsigned int)RX_BURST_SZ);
 	nb_burst   = (nb_in & ~BURST_MASK);
 	nb_backlog = (nb_in & BURST_MASK);
 
