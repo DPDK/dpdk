@@ -66,7 +66,7 @@ static int kni_thread_single(void *unused);
 /* KNI processing for multiple kernel thread mode */
 static int kni_thread_multiple(void *param);
 
-static struct file_operations kni_fops = {
+static const struct file_operations kni_fops = {
 	.owner = THIS_MODULE,
 	.open = kni_open,
 	.release = kni_release,
