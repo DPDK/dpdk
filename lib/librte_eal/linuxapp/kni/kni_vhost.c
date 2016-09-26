@@ -32,6 +32,7 @@
 #include <linux/sched.h>
 #include <linux/if_tun.h>
 #include <linux/version.h>
+#include <linux/file.h>
 
 #include "compat.h"
 #include "kni_dev.h"
@@ -39,17 +40,7 @@
 
 #define RX_BURST_SZ 4
 
-extern void put_unused_fd(unsigned int fd);
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
-extern struct file*
-sock_alloc_file(struct socket *sock,
-		int flags, const char *dname);
-
-extern int get_unused_fd_flags(unsigned flags);
-
-extern void fd_install(unsigned int fd, struct file *file);
-
 static int kni_sock_map_fd(struct socket *sock)
 {
 	struct file *file;

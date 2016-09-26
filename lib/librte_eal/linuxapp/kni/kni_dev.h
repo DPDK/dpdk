@@ -140,6 +140,17 @@ struct kni_vhost_queue {
 
 #endif
 
+void kni_net_rx(struct kni_dev *kni);
+void kni_net_init(struct net_device *dev);
+void kni_net_config_lo_mode(char *lo_str);
+void kni_net_poll_resp(struct kni_dev *kni);
+void kni_set_ethtool_ops(struct net_device *netdev);
+
+int ixgbe_kni_probe(struct pci_dev *pdev, struct net_device **lad_dev);
+void ixgbe_kni_remove(struct pci_dev *pdev);
+int igb_kni_probe(struct pci_dev *pdev, struct net_device **lad_dev);
+void igb_kni_remove(struct pci_dev *pdev);
+
 #ifdef RTE_KNI_VHOST_DEBUG_RX
 	#define KNI_DBG_RX(args...) printk(KERN_DEBUG "KNI RX: " args)
 #else

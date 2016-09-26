@@ -48,18 +48,8 @@ MODULE_DESCRIPTION("Kernel Module for managing kni devices");
 
 #define KNI_MAX_DEVICES 32
 
-extern void kni_net_rx(struct kni_dev *kni);
-extern void kni_net_init(struct net_device *dev);
-extern void kni_net_config_lo_mode(char *lo_str);
-extern void kni_net_poll_resp(struct kni_dev *kni);
-extern void kni_set_ethtool_ops(struct net_device *netdev);
-
-extern int ixgbe_kni_probe(struct pci_dev *pdev, struct net_device **lad_dev);
-extern void ixgbe_kni_remove(struct pci_dev *pdev);
-extern struct pci_device_id ixgbe_pci_tbl[];
-extern int igb_kni_probe(struct pci_dev *pdev, struct net_device **lad_dev);
-extern void igb_kni_remove(struct pci_dev *pdev);
-extern struct pci_device_id igb_pci_tbl[];
+extern const struct pci_device_id ixgbe_pci_tbl[];
+extern const struct pci_device_id igb_pci_tbl[];
 
 static int kni_open(struct inode *inode, struct file *file);
 static int kni_release(struct inode *inode, struct file *file);
