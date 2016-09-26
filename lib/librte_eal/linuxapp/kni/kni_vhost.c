@@ -169,7 +169,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
 
 	/* free skb to cache */
 	skb->data = NULL;
-	if (unlikely(1 != kni_fifo_put(q->fifo, (void **)&skb, 1)))
+	if (unlikely(kni_fifo_put(q->fifo, (void **)&skb, 1) != 1))
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue entries into rx cache fifo\n");
 
@@ -197,8 +197,8 @@ kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
 	kni->stats.rx_packets++;
 
 	/* enqueue mbufs into free_q */
-	va = (void*)kva - kni->mbuf_kva + kni->mbuf_va;
-	if (unlikely(1 != kni_fifo_put(kni->free_q, (void **)&va, 1)))
+	va = (void *)kva - kni->mbuf_kva + kni->mbuf_va;
+	if (unlikely(kni_fifo_put(kni->free_q, (void **)&va, 1) != 1))
 		/* Failing should not happen */
 		KNI_ERR("Fail to enqueue entries into free_q\n");
 
@@ -303,15 +303,13 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 	nb_backlog = (nb_in & BURST_MASK);
 
 	/* enqueue skb_queue per BURST_SIZE bulk */
-	if (0 != nb_burst) {
-		if (unlikely(RX_BURST_SZ != kni_fifo_get(
-				     kni->rx_q, (void **)&va,
-				     RX_BURST_SZ)))
+	if (nb_burst != 0) {
+		if (unlikely(kni_fifo_get(kni->rx_q, (void **)&va, RX_BURST_SZ)
+				!= RX_BURST_SZ))
 			goto except;
 
-		if (unlikely(RX_BURST_SZ != kni_fifo_get(
-				     q->fifo, (void **)&skb,
-				     RX_BURST_SZ)))
+		if (unlikely(kni_fifo_get(q->fifo, (void **)&skb, RX_BURST_SZ)
+				!= RX_BURST_SZ))
 			goto except;
 
 		kni_vhost_enqueue_burst(kni, q, skb, va);
@@ -319,12 +317,10 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 
 	/* all leftover, do one by one */
 	for (i = 0; i < nb_backlog; ++i) {
-		if (unlikely(1 != kni_fifo_get(
-				     kni->rx_q,(void **)&va, 1)))
+		if (unlikely(kni_fifo_get(kni->rx_q, (void **)&va, 1) != 1))
 			goto except;
 
-		if (unlikely(1 != kni_fifo_get(
-				     q->fifo, (void **)&skb, 1)))
+		if (unlikely(kni_fifo_get(q->fifo, (void **)&skb, 1) != 1))
 			goto except;
 
 		kni_vhost_enqueue(kni, q, *skb, *va);
@@ -797,7 +793,7 @@ set_sock_en(struct device *dev, struct device_attribute *attr,
 	unsigned long en;
 	int err = 0;
 
-	if (0 != kstrtoul(buf, 0, &en))
+	if (kstrtoul(buf, 0, &en) != 0)
 		return -EINVAL;
 
 	if (en)
