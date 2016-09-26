@@ -1265,63 +1265,721 @@ struct hwrm_async_event_cmpl {
 /*
  * Note: The Hardware Resource Manager (HWRM) manages various hardware resources
  * inside the chip. The HWRM is implemented in firmware, and runs on embedded
- * processors inside the chip. This firmware is vital part of the chip's
- * hardware. The chip can not be used by driver without it.
+ * processors inside the chip. This firmware service is vital part of the chip.
+ * The chip can not be used by a driver or HWRM client without the HWRM.
  */
 
 /* Input (16 bytes) */
 struct input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
 	uint16_t req_type;
-
 	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
 	 */
 	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
 	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
 	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
 	uint16_t target_id;
-
 	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
 	 */
 	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
 } __attribute__((packed));
 
 /* Output (8 bytes) */
 struct output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
 	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
 	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
 	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
 	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+} __attribute__((packed));
+
+/* hwrm_ver_get */
+/*
+ * Description: This function is called by a driver to determine the HWRM
+ * interface version supported by the HWRM firmware, the version of HWRM
+ * firmware implementation, the name of HWRM firmware, the versions of other
+ * embedded firmwares, and the names of other embedded firmwares, etc. Any
+ * interface or firmware version with major = 0, minor = 0, and update = 0 shall
+ * be considered an invalid version.
+ */
+/* Input (24 bytes) */
+struct hwrm_ver_get_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint8_t hwrm_intf_maj;
+	/*
+	 * This field represents the major version of HWRM interface
+	 * specification supported by the driver HWRM implementation.
+	 * The interface major version is intended to change only when
+	 * non backward compatible changes are made to the HWRM
+	 * interface specification.
+	 */
+	uint8_t hwrm_intf_min;
+	/*
+	 * This field represents the minor version of HWRM interface
+	 * specification supported by the driver HWRM implementation. A
+	 * change in interface minor version is used to reflect
+	 * significant backward compatible modification to HWRM
+	 * interface specification. This can be due to addition or
+	 * removal of functionality. HWRM interface specifications with
+	 * the same major version but different minor versions are
+	 * compatible.
+	 */
+	uint8_t hwrm_intf_upd;
+	/*
+	 * This field represents the update version of HWRM interface
+	 * specification supported by the driver HWRM implementation.
+	 * The interface update version is used to reflect minor changes
+	 * or bug fixes to a released HWRM interface specification.
+	 */
+	uint8_t unused_0[5];
+} __attribute__((packed));
+
+/* Output (128 bytes) */
+struct hwrm_ver_get_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint8_t hwrm_intf_maj;
+	/*
+	 * This field represents the major version of HWRM interface
+	 * specification supported by the HWRM implementation. The
+	 * interface major version is intended to change only when non
+	 * backward compatible changes are made to the HWRM interface
+	 * specification. A HWRM implementation that is compliant with
+	 * this specification shall provide value of 1 in this field.
+	 */
+	uint8_t hwrm_intf_min;
+	/*
+	 * This field represents the minor version of HWRM interface
+	 * specification supported by the HWRM implementation. A change
+	 * in interface minor version is used to reflect significant
+	 * backward compatible modification to HWRM interface
+	 * specification. This can be due to addition or removal of
+	 * functionality. HWRM interface specifications with the same
+	 * major version but different minor versions are compatible. A
+	 * HWRM implementation that is compliant with this specification
+	 * shall provide value of 2 in this field.
+	 */
+	uint8_t hwrm_intf_upd;
+	/*
+	 * This field represents the update version of HWRM interface
+	 * specification supported by the HWRM implementation. The
+	 * interface update version is used to reflect minor changes or
+	 * bug fixes to a released HWRM interface specification. A HWRM
+	 * implementation that is compliant with this specification
+	 * shall provide value of 2 in this field.
+	 */
+	uint8_t hwrm_intf_rsvd;
+	uint8_t hwrm_fw_maj;
+	/*
+	 * This field represents the major version of HWRM firmware. A
+	 * change in firmware major version represents a major firmware
+	 * release.
+	 */
+	uint8_t hwrm_fw_min;
+	/*
+	 * This field represents the minor version of HWRM firmware. A
+	 * change in firmware minor version represents significant
+	 * firmware functionality changes.
+	 */
+	uint8_t hwrm_fw_bld;
+	/*
+	 * This field represents the build version of HWRM firmware. A
+	 * change in firmware build version represents bug fixes to a
+	 * released firmware.
+	 */
+	uint8_t hwrm_fw_rsvd;
+	/*
+	 * This field is a reserved field. This field can be used to
+	 * represent firmware branches or customer specific releases
+	 * tied to a specific (major,minor,update) version of the HWRM
+	 * firmware.
+	 */
+	uint8_t mgmt_fw_maj;
+	/*
+	 * This field represents the major version of mgmt firmware. A
+	 * change in major version represents a major release.
+	 */
+	uint8_t mgmt_fw_min;
+	/*
+	 * This field represents the minor version of mgmt firmware. A
+	 * change in minor version represents significant functionality
+	 * changes.
+	 */
+	uint8_t mgmt_fw_bld;
+	/*
+	 * This field represents the build version of mgmt firmware. A
+	 * change in update version represents bug fixes.
+	 */
+	uint8_t mgmt_fw_rsvd;
+	/*
+	 * This field is a reserved field. This field can be used to
+	 * represent firmware branches or customer specific releases
+	 * tied to a specific (major,minor,update) version
+	 */
+	uint8_t netctrl_fw_maj;
+	/*
+	 * This field represents the major version of network control
+	 * firmware. A change in major version represents a major
+	 * release.
+	 */
+	uint8_t netctrl_fw_min;
+	/*
+	 * This field represents the minor version of network control
+	 * firmware. A change in minor version represents significant
+	 * functionality changes.
+	 */
+	uint8_t netctrl_fw_bld;
+	/*
+	 * This field represents the build version of network control
+	 * firmware. A change in update version represents bug fixes.
+	 */
+	uint8_t netctrl_fw_rsvd;
+	/*
+	 * This field is a reserved field. This field can be used to
+	 * represent firmware branches or customer specific releases
+	 * tied to a specific (major,minor,update) version
+	 */
+	uint32_t dev_caps_cfg;
+	/*
+	 * This field is used to indicate device's capabilities and
+	 * configurations.
+	 */
+	/*
+	 * If set to 1, then secure firmware update behavior is
+	 * supported. If set to 0, then secure firmware update behavior
+	 * is not supported.
+	 */
+	#define HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SECURE_FW_UPD_SUPPORTED  UINT32_C(0x1)
+	/*
+	 * If set to 1, then firmware based DCBX agent is supported. If
+	 * set to 0, then firmware based DCBX agent capability is not
+	 * supported on this device.
+	 */
+	#define HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_FW_DCBX_AGENT_SUPPORTED  UINT32_C(0x2)
+	uint8_t roce_fw_maj;
+	/*
+	 * This field represents the major version of RoCE firmware. A
+	 * change in major version represents a major release.
+	 */
+	uint8_t roce_fw_min;
+	/*
+	 * This field represents the minor version of RoCE firmware. A
+	 * change in minor version represents significant functionality
+	 * changes.
+	 */
+	uint8_t roce_fw_bld;
+	/*
+	 * This field represents the build version of RoCE firmware. A
+	 * change in update version represents bug fixes.
+	 */
+	uint8_t roce_fw_rsvd;
+	/*
+	 * This field is a reserved field. This field can be used to
+	 * represent firmware branches or customer specific releases
+	 * tied to a specific (major,minor,update) version
+	 */
+	char hwrm_fw_name[16];
+	/*
+	 * This field represents the name of HWRM FW (ASCII chars with
+	 * NULL at the end).
+	 */
+	char mgmt_fw_name[16];
+	/*
+	 * This field represents the name of mgmt FW (ASCII chars with
+	 * NULL at the end).
+	 */
+	char netctrl_fw_name[16];
+	/*
+	 * This field represents the name of network control firmware
+	 * (ASCII chars with NULL at the end).
+	 */
+	uint32_t reserved2[4];
+	/*
+	 * This field is reserved for future use. The responder should
+	 * set it to 0. The requester should ignore this field.
+	 */
+	char roce_fw_name[16];
+	/*
+	 * This field represents the name of RoCE FW (ASCII chars with
+	 * NULL at the end).
+	 */
+	uint16_t chip_num;
+	/* This field returns the chip number. */
+	uint8_t chip_rev;
+	/* This field returns the revision of chip. */
+	uint8_t chip_metal;
+	/* This field returns the chip metal number. */
+	uint8_t chip_bond_id;
+	/* This field returns the bond id of the chip. */
+	uint8_t chip_platform_type;
+	/*
+	 * This value indicates the type of platform used for chip
+	 * implementation.
+	 */
+	/* ASIC */
+	#define HWRM_VER_GET_OUTPUT_CHIP_PLATFORM_TYPE_ASIC	UINT32_C(0x0)
+	/* FPGA platform of the chip. */
+	#define HWRM_VER_GET_OUTPUT_CHIP_PLATFORM_TYPE_FPGA	UINT32_C(0x1)
+	/* Palladium platform of the chip. */
+	#define HWRM_VER_GET_OUTPUT_CHIP_PLATFORM_TYPE_PALLADIUM	UINT32_C(0x2)
+	uint16_t max_req_win_len;
+	/*
+	 * This field returns the maximum value of request window that
+	 * is supported by the HWRM. The request window is mapped into
+	 * device address space using MMIO.
+	 */
+	uint16_t max_resp_len;
+	/* This field returns the maximum value of response buffer in bytes. */
+	uint16_t def_req_timeout;
+	/*
+	 * This field returns the default request timeout value in
+	 * milliseconds.
+	 */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_func_reset */
+/*
+ * Description: This command resets a hardware function (PCIe function) and
+ * frees any resources used by the function. This command shall be initiated by
+ * the driver after an FLR has occurred to prepare the function for re-use. This
+ * command may also be initiated by a driver prior to doing it's own
+ * configuration. This command puts the function into the reset state. In the
+ * reset state, global and port related features of the chip are not available.
+ */
+/*
+ * Note: This command will reset a function that has already been disabled or
+ * idled. The command returns all the resources owned by the function so a new
+ * driver may allocate and configure resources normally.
+ */
+/* Input (24 bytes) */
+struct hwrm_func_reset_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t enables;
+	/* This bit must be '1' for the vf_id_valid field to be configured. */
+	#define HWRM_FUNC_RESET_INPUT_ENABLES_VF_ID_VALID	UINT32_C(0x1)
+	uint16_t vf_id;
+	/*
+	 * The ID of the VF that this PF is trying to reset. Only the
+	 * parent PF shall be allowed to reset a child VF. A parent PF
+	 * driver shall use this field only when a specific child VF is
+	 * requested to be reset.
+	 */
+	uint8_t func_reset_level;
+	/* This value indicates the level of a function reset. */
+	/*
+	 * Reset the caller function and its children
+	 * VFs (if any). If no children functions exist,
+	 * then reset the caller function only.
+	 */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETALL	UINT32_C(0x0)
+	/* Reset the caller function only */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETME	UINT32_C(0x1)
+	/*
+	 * Reset all children VFs of the caller function
+	 * driver if the caller is a PF driver. It is an
+	 * error to specify this level by a VF driver.
+	 * It is an error to specify this level by a PF
+	 * driver with no children VFs.
+	 */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETCHILDREN	UINT32_C(0x2)
+	/*
+	 * Reset a specific VF of the caller function
+	 * driver if the caller is the parent PF driver.
+	 * It is an error to specify this level by a VF
+	 * driver. It is an error to specify this level
+	 * by a PF driver that is not the parent of the
+	 * VF that is being requested to reset.
+	 */
+	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETVF	UINT32_C(0x3)
+	uint8_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_func_reset_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_func_qcaps */
+/*
+ * Description: This command returns capabilities of a function. The input FID
+ * value is used to indicate what function is being queried. This allows a
+ * physical function driver to query virtual functions that are children of the
+ * physical function. The output FID value is needed to configure Rings and
+ * MSI-X vectors so their DMA operations appear correctly on the PCI bus.
+ */
+/* Input (24 bytes) */
+struct hwrm_func_qcaps_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint16_t fid;
+	/*
+	 * Function ID of the function that is being queried. 0xFF...
+	 * (All Fs) if the query is for the requesting function.
+	 */
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (80 bytes) */
+struct hwrm_func_qcaps_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint16_t fid;
+	/*
+	 * FID value. This value is used to identify operations on the
+	 * PCI bus as belonging to a particular PCI function.
+	 */
+	uint16_t port_id;
+	/*
+	 * Port ID of port that this function is associated with. Valid
+	 * only for the PF. 0xFF... (All Fs) if this function is not
+	 * associated with any port. 0xFF... (All Fs) if this function
+	 * is called from a VF.
+	 */
+	uint32_t flags;
+	/* If 1, then Push mode is supported on this function. */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PUSH_MODE_SUPPORTED	UINT32_C(0x1)
+	/*
+	 * If 1, then the global MSI-X auto-masking is enabled for the
+	 * device.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_GLOBAL_MSIX_AUTOMASKING	UINT32_C(0x2)
+	/*
+	 * If 1, then the Precision Time Protocol (PTP) processing is
+	 * supported on this function. The HWRM should enable PTP on
+	 * only a single Physical Function (PF) per port.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED	UINT32_C(0x4)
+	/*
+	 * If 1, then RDMA over Converged Ethernet (RoCE) v1 is
+	 * supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ROCE_V1_SUPPORTED	UINT32_C(0x8)
+	/*
+	 * If 1, then RDMA over Converged Ethernet (RoCE) v2 is
+	 * supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ROCE_V2_SUPPORTED	UINT32_C(0x10)
+	/*
+	 * If 1, then control and configuration of WoL magic packet are
+	 * supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_WOL_MAGICPKT_SUPPORTED	UINT32_C(0x20)
+	/*
+	 * If 1, then control and configuration of bitmap pattern packet
+	 * are supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_WOL_BMP_SUPPORTED	UINT32_C(0x40)
+	/*
+	 * If set to 1, then the control and configuration of rate limit
+	 * of an allocated TX ring on the queried function is supported.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_TX_RING_RL_SUPPORTED	UINT32_C(0x80)
+	/*
+	 * If 1, then control and configuration of minimum and maximum
+	 * bandwidths are supported on the queried function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_TX_BW_CFG_SUPPORTED	UINT32_C(0x100)
+	/*
+	 * If the query is for a VF, then this flag shall be ignored. If
+	 * this query is for a PF and this flag is set to 1, then the PF
+	 * has the capability to set the rate limits on the TX rings of
+	 * its children VFs. If this query is for a PF and this flag is
+	 * set to 0, then the PF does not have the capability to set the
+	 * rate limits on the TX rings of its children VFs.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_VF_TX_RING_RL_SUPPORTED	UINT32_C(0x200)
+	/*
+	 * If the query is for a VF, then this flag shall be ignored. If
+	 * this query is for a PF and this flag is set to 1, then the PF
+	 * has the capability to set the minimum and/or maximum
+	 * bandwidths for its children VFs. If this query is for a PF
+	 * and this flag is set to 0, then the PF does not have the
+	 * capability to set the minimum or maximum bandwidths for its
+	 * children VFs.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_VF_BW_CFG_SUPPORTED	UINT32_C(0x400)
+	uint8_t mac_address[6];
+	/*
+	 * This value is current MAC address configured for this
+	 * function. A value of 00-00-00-00-00-00 indicates no MAC
+	 * address is currently configured.
+	 */
+	uint16_t max_rsscos_ctx;
+	/*
+	 * The maximum number of RSS/COS contexts that can be allocated
+	 * to the function.
+	 */
+	uint16_t max_cmpl_rings;
+	/*
+	 * The maximum number of completion rings that can be allocated
+	 * to the function.
+	 */
+	uint16_t max_tx_rings;
+	/*
+	 * The maximum number of transmit rings that can be allocated to
+	 * the function.
+	 */
+	uint16_t max_rx_rings;
+	/*
+	 * The maximum number of receive rings that can be allocated to
+	 * the function.
+	 */
+	uint16_t max_l2_ctxs;
+	/*
+	 * The maximum number of L2 contexts that can be allocated to
+	 * the function.
+	 */
+	uint16_t max_vnics;
+	/*
+	 * The maximum number of VNICs that can be allocated to the
+	 * function.
+	 */
+	uint16_t first_vf_id;
+	/*
+	 * The identifier for the first VF enabled on a PF. This is
+	 * valid only on the PF with SR-IOV enabled. 0xFF... (All Fs) if
+	 * this command is called on a PF with SR-IOV disabled or on a
+	 * VF.
+	 */
+	uint16_t max_vfs;
+	/*
+	 * The maximum number of VFs that can be allocated to the
+	 * function. This is valid only on the PF with SR-IOV enabled.
+	 * 0xFF... (All Fs) if this command is called on a PF with SR-
+	 * IOV disabled or on a VF.
+	 */
+	uint16_t max_stat_ctx;
+	/*
+	 * The maximum number of statistic contexts that can be
+	 * allocated to the function.
+	 */
+	uint32_t max_encap_records;
+	/*
+	 * The maximum number of Encapsulation records that can be
+	 * offloaded by this function.
+	 */
+	uint32_t max_decap_records;
+	/*
+	 * The maximum number of decapsulation records that can be
+	 * offloaded by this function.
+	 */
+	uint32_t max_tx_em_flows;
+	/*
+	 * The maximum number of Exact Match (EM) flows that can be
+	 * offloaded by this function on the TX side.
+	 */
+	uint32_t max_tx_wm_flows;
+	/*
+	 * The maximum number of Wildcard Match (WM) flows that can be
+	 * offloaded by this function on the TX side.
+	 */
+	uint32_t max_rx_em_flows;
+	/*
+	 * The maximum number of Exact Match (EM) flows that can be
+	 * offloaded by this function on the RX side.
+	 */
+	uint32_t max_rx_wm_flows;
+	/*
+	 * The maximum number of Wildcard Match (WM) flows that can be
+	 * offloaded by this function on the RX side.
+	 */
+	uint32_t max_mcast_filters;
+	/*
+	 * The maximum number of multicast filters that can be supported
+	 * by this function on the RX side.
+	 */
+	uint32_t max_flow_id;
+	/*
+	 * The maximum value of flow_id that can be supported in
+	 * completion records.
+	 */
+	uint32_t max_hw_ring_grps;
+	/*
+	 * The maximum number of HW ring groups that can be supported on
+	 * this function.
+	 */
+	uint16_t max_sp_tx_rings;
+	/*
+	 * The maximum number of strict priority transmit rings that can
+	 * be allocated to the function. This number indicates the
+	 * maximum number of TX rings that can be assigned strict
+	 * priorities out of the maximum number of TX rings that can be
+	 * allocated (max_tx_rings) to the function.
+	 */
+	uint8_t unused_0;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
 } __attribute__((packed));
 
 /* hwrm_cfa_l2_filter_alloc */
@@ -1977,396 +2635,6 @@ struct hwrm_exec_fwd_resp_input {
 
 /* Output (16 bytes) */
 struct hwrm_exec_fwd_resp_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_func_qcaps */
-/*
- * Description: This command returns capabilities of a function. The input FID
- * value is used to indicate what function is being queried. This allows a
- * physical function driver to query virtual functions that are children of the
- * physical function. The output FID value is needed to configure Rings and
- * MSI-X vectors so their DMA operations appear correctly on the PCI bus.
- */
-
-/* Input (24 bytes) */
-struct hwrm_func_qcaps_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/*
-	 * Function ID of the function that is being queried. 0xFF... (All Fs)
-	 * if the query is for the requesting function.
-	 */
-	uint16_t fid;
-
-	uint16_t unused_0[3];
-} __attribute__((packed));
-
-/* Output (80 bytes) */
-struct hwrm_func_qcaps_output {
-	uint16_t error_code;
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in
-	 * parameters, and fail the call with an error when appropriate
-	 */
-	uint16_t req_type;
-	/* This field returns the type of original request. */
-	uint16_t seq_id;
-	/* This field provides original sequence number of the command. */
-	uint16_t resp_len;
-	/*
-	 * This field is the length of the response in bytes. The last
-	 * byte of the response is a valid flag that will read as '1'
-	 * when the command has been completely written to memory.
-	 */
-	uint16_t fid;
-	/*
-	 * FID value. This value is used to identify operations on the
-	 * PCI bus as belonging to a particular PCI function.
-	 */
-	uint16_t port_id;
-	/*
-	 * Port ID of port that this function is associated with. Valid
-	 * only for the PF. 0xFF... (All Fs) if this function is not
-	 * associated with any port. 0xFF... (All Fs) if this function
-	 * is called from a VF.
-	 */
-	uint32_t flags;
-	/* If 1, then Push mode is supported on this function. */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PUSH_MODE_SUPPORTED	UINT32_C(0x1)
-	/*
-	 * If 1, then the global MSI-X auto-masking is enabled for the
-	 * device.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_GLOBAL_MSIX_AUTOMASKING	UINT32_C(0x2)
-	/*
-	 * If 1, then the Precision Time Protocol (PTP) processing is
-	 * supported on this function. The HWRM should enable PTP on
-	 * only a single Physical Function (PF) per port.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED	UINT32_C(0x4)
-	/*
-	 * If 1, then RDMA over Converged Ethernet (RoCE) v1 is
-	 * supported on this function.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ROCE_V1_SUPPORTED	UINT32_C(0x8)
-	/*
-	 * If 1, then RDMA over Converged Ethernet (RoCE) v2 is
-	 * supported on this function.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ROCE_V2_SUPPORTED	UINT32_C(0x10)
-	/*
-	 * If 1, then control and configuration of WoL magic packet are
-	 * supported on this function.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_WOL_MAGICPKT_SUPPORTED	UINT32_C(0x20)
-	/*
-	 * If 1, then control and configuration of bitmap pattern packet
-	 * are supported on this function.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_WOL_BMP_SUPPORTED	UINT32_C(0x40)
-	/*
-	 * If set to 1, then the control and configuration of rate limit
-	 * of an allocated TX ring on the queried function is supported.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_TX_RING_RL_SUPPORTED	UINT32_C(0x80)
-	/*
-	 * If 1, then control and configuration of minimum and maximum
-	 * bandwidths are supported on the queried function.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_TX_BW_CFG_SUPPORTED	UINT32_C(0x100)
-	/*
-	 * If the query is for a VF, then this flag shall be ignored. If
-	 * this query is for a PF and this flag is set to 1, then the PF
-	 * has the capability to set the rate limits on the TX rings of
-	 * its children VFs. If this query is for a PF and this flag is
-	 * set to 0, then the PF does not have the capability to set the
-	 * rate limits on the TX rings of its children VFs.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_VF_TX_RING_RL_SUPPORTED	UINT32_C(0x200)
-	/*
-	 * If the query is for a VF, then this flag shall be ignored. If
-	 * this query is for a PF and this flag is set to 1, then the PF
-	 * has the capability to set the minimum and/or maximum
-	 * bandwidths for its children VFs. If this query is for a PF
-	 * and this flag is set to 0, then the PF does not have the
-	 * capability to set the minimum or maximum bandwidths for its
-	 * children VFs.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_VF_BW_CFG_SUPPORTED	UINT32_C(0x400)
-	uint8_t mac_address[6];
-	/*
-	 * This value is current MAC address configured for this
-	 * function. A value of 00-00-00-00-00-00 indicates no MAC
-	 * address is currently configured.
-	 */
-	uint16_t max_rsscos_ctx;
-	/*
-	 * The maximum number of RSS/COS contexts that can be allocated
-	 * to the function.
-	 */
-	uint16_t max_cmpl_rings;
-	/*
-	 * The maximum number of completion rings that can be allocated
-	 * to the function.
-	 */
-	uint16_t max_tx_rings;
-	/*
-	 * The maximum number of transmit rings that can be allocated to
-	 * the function.
-	 */
-	uint16_t max_rx_rings;
-	/*
-	 * The maximum number of receive rings that can be allocated to
-	 * the function.
-	 */
-	uint16_t max_l2_ctxs;
-	/*
-	 * The maximum number of L2 contexts that can be allocated to
-	 * the function.
-	 */
-	uint16_t max_vnics;
-	/*
-	 * The maximum number of VNICs that can be allocated to the
-	 * function.
-	 */
-	uint16_t first_vf_id;
-	/*
-	 * The identifier for the first VF enabled on a PF. This is
-	 * valid only on the PF with SR-IOV enabled. 0xFF... (All Fs) if
-	 * this command is called on a PF with SR-IOV disabled or on a
-	 * VF.
-	 */
-	uint16_t max_vfs;
-	/*
-	 * The maximum number of VFs that can be allocated to the
-	 * function. This is valid only on the PF with SR-IOV enabled.
-	 * 0xFF... (All Fs) if this command is called on a PF with SR-
-	 * IOV disabled or on a VF.
-	 */
-	uint16_t max_stat_ctx;
-	/*
-	 * The maximum number of statistic contexts that can be
-	 * allocated to the function.
-	 */
-	uint32_t max_encap_records;
-	/*
-	 * The maximum number of Encapsulation records that can be
-	 * offloaded by this function.
-	 */
-	uint32_t max_decap_records;
-	/*
-	 * The maximum number of decapsulation records that can be
-	 * offloaded by this function.
-	 */
-	uint32_t max_tx_em_flows;
-	/*
-	 * The maximum number of Exact Match (EM) flows that can be
-	 * offloaded by this function on the TX side.
-	 */
-	uint32_t max_tx_wm_flows;
-	/*
-	 * The maximum number of Wildcard Match (WM) flows that can be
-	 * offloaded by this function on the TX side.
-	 */
-	uint32_t max_rx_em_flows;
-	/*
-	 * The maximum number of Exact Match (EM) flows that can be
-	 * offloaded by this function on the RX side.
-	 */
-	uint32_t max_rx_wm_flows;
-	/*
-	 * The maximum number of Wildcard Match (WM) flows that can be
-	 * offloaded by this function on the RX side.
-	 */
-	uint32_t max_mcast_filters;
-	/*
-	 * The maximum number of multicast filters that can be supported
-	 * by this function on the RX side.
-	 */
-	uint32_t max_flow_id;
-	/*
-	 * The maximum value of flow_id that can be supported in
-	 * completion records.
-	 */
-	uint32_t max_hw_ring_grps;
-	/*
-	 * The maximum number of HW ring groups that can be supported on
-	 * this function.
-	 */
-	uint16_t max_sp_tx_rings;
-	/*
-	 * The maximum number of strict priority transmit rings that can
-	 * be allocated to the function. This number indicates the
-	 * maximum number of TX rings that can be assigned strict
-	 * priorities out of the maximum number of TX rings that can be
-	 * allocated (max_tx_rings) to the function.
-	 */
-	uint8_t unused_0;
-	uint8_t valid;
-	/*
-	 * This field is used in Output records to indicate that the
-	 * output is completely written to RAM. This field should be
-	 * read as '1' to indicate that the output has been completely
-	 * written. When writing a command completion or response to an
-	 * internal processor, the order of writes has to be such that
-	 * this field is written last.
-	 */
-} __attribute__((packed));
-
-/* hwrm_func_reset */
-/*
- * Description: This command resets a hardware function (PCIe function) and
- * frees any resources used by the function. This command shall be initiated by
- * the driver after an FLR has occurred to prepare the function for re-use. This
- * command may also be initiated by a driver prior to doing it's own
- * configuration. This command puts the function into the reset state. In the
- * reset state, global and port related features of the chip are not available.
- */
-/*
- * Note: This command will reset a function that has already been disabled or
- * idled. The command returns all the resources owned by the function so a new
- * driver may allocate and configure resources normally.
- */
-
-/* Input (24 bytes) */
-struct hwrm_func_reset_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* This bit must be '1' for the vf_id_valid field to be configured. */
-	#define HWRM_FUNC_RESET_INPUT_ENABLES_VF_ID_VALID \
-							UINT32_C(0x1)
-	uint32_t enables;
-
-	/*
-	 * The ID of the VF that this PF is trying to reset. Only the parent PF
-	 * shall be allowed to reset a child VF. A parent PF driver shall use
-	 * this field only when a specific child VF is requested to be reset.
-	 */
-	uint16_t vf_id;
-
-	/* This value indicates the level of a function reset. */
-		/*
-		 * Reset the caller function and its children VFs (if any). If
-		 * no children functions exist, then reset the caller function
-		 * only.
-		 */
-	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETALL \
-							(UINT32_C(0x0) << 0)
-		/* Reset the caller function only */
-	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETME \
-							(UINT32_C(0x1) << 0)
-		/*
-		 * Reset all children VFs of the caller function driver if the
-		 * caller is a PF driver. It is an error to specify this level
-		 * by a VF driver. It is an error to specify this level by a PF
-		 * driver with no children VFs.
-		 */
-	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETCHILDREN \
-							(UINT32_C(0x2) << 0)
-		/*
-		 * Reset a specific VF of the caller function driver if the
-		 * caller is the parent PF driver. It is an error to specify
-		 * this level by a VF driver. It is an error to specify this
-		 * level by a PF driver that is not the parent of the VF that is
-		 * being requested to reset.
-		 */
-	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETVF \
-							(UINT32_C(0x3) << 0)
-	uint8_t func_reset_level;
-
-	uint8_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_func_reset_output {
 	/*
 	 * Pass/Fail or error type Note: receiver to verify the in parameters,
 	 * and fail the call with an error when appropriate
@@ -3648,332 +3916,6 @@ struct hwrm_port_phy_qcfg_output {
 	uint8_t unused_3;
 	uint8_t unused_4;
 	uint8_t unused_5;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_ver_get */
-/*
- * Description: This function is called by a driver to determine the HWRM
- * interface version supported by the HWRM firmware, the version of HWRM
- * firmware implementation, the name of HWRM firmware, the versions of other
- * embedded firmwares, and the names of other embedded firmwares, etc. Any
- * interface or firmware version with major = 0, minor = 0, and update = 0 shall
- * be considered an invalid version.
- */
-
-/* Input (24 bytes) */
-struct hwrm_ver_get_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/*
-	 * This field represents the major version of HWRM interface
-	 * specification supported by the driver HWRM implementation. The
-	 * interface major version is intended to change only when non backward
-	 * compatible changes are made to the HWRM interface specification.
-	 */
-	uint8_t hwrm_intf_maj;
-
-	/*
-	 * This field represents the minor version of HWRM interface
-	 * specification supported by the driver HWRM implementation. A change
-	 * in interface minor version is used to reflect significant backward
-	 * compatible modification to HWRM interface specification. This can be
-	 * due to addition or removal of functionality. HWRM interface
-	 * specifications with the same major version but different minor
-	 * versions are compatible.
-	 */
-	uint8_t hwrm_intf_min;
-
-	/*
-	 * This field represents the update version of HWRM interface
-	 * specification supported by the driver HWRM implementation. The
-	 * interface update version is used to reflect minor changes or bug
-	 * fixes to a released HWRM interface specification.
-	 */
-	uint8_t hwrm_intf_upd;
-
-	uint8_t unused_0[5];
-} __attribute__((packed));
-
-/* Output (128 bytes) */
-struct hwrm_ver_get_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	/*
-	 * This field represents the major version of HWRM interface
-	 * specification supported by the HWRM implementation. The interface
-	 * major version is intended to change only when non backward compatible
-	 * changes are made to the HWRM interface specification. A HWRM
-	 * implementation that is compliant with this specification shall
-	 * provide value of 1 in this field.
-	 */
-	uint8_t hwrm_intf_maj;
-
-	/*
-	 * This field represents the minor version of HWRM interface
-	 * specification supported by the HWRM implementation. A change in
-	 * interface minor version is used to reflect significant backward
-	 * compatible modification to HWRM interface specification. This can be
-	 * due to addition or removal of functionality. HWRM interface
-	 * specifications with the same major version but different minor
-	 * versions are compatible. A HWRM implementation that is compliant with
-	 * this specification shall provide value of 0 in this field.
-	 */
-	uint8_t hwrm_intf_min;
-
-	/*
-	 * This field represents the update version of HWRM interface
-	 * specification supported by the HWRM implementation. The interface
-	 * update version is used to reflect minor changes or bug fixes to a
-	 * released HWRM interface specification. A HWRM implementation that is
-	 * compliant with this specification shall provide value of 1 in this
-	 * field.
-	 */
-	uint8_t hwrm_intf_upd;
-
-	uint8_t hwrm_intf_rsvd;
-
-	/*
-	 * This field represents the major version of HWRM firmware. A change in
-	 * firmware major version represents a major firmware release.
-	 */
-	uint8_t hwrm_fw_maj;
-
-	/*
-	 * This field represents the minor version of HWRM firmware. A change in
-	 * firmware minor version represents significant firmware functionality
-	 * changes.
-	 */
-	uint8_t hwrm_fw_min;
-
-	/*
-	 * This field represents the build version of HWRM firmware. A change in
-	 * firmware build version represents bug fixes to a released firmware.
-	 */
-	uint8_t hwrm_fw_bld;
-
-	/*
-	 * This field is a reserved field. This field can be used to represent
-	 * firmware branches or customer specific releases tied to a specific
-	 * (major,minor,update) version of the HWRM firmware.
-	 */
-	uint8_t hwrm_fw_rsvd;
-
-	/*
-	 * This field represents the major version of mgmt firmware. A change in
-	 * major version represents a major release.
-	 */
-	uint8_t mgmt_fw_maj;
-
-	/*
-	 * This field represents the minor version of mgmt firmware. A change in
-	 * minor version represents significant functionality changes.
-	 */
-	uint8_t mgmt_fw_min;
-
-	/*
-	 * This field represents the build version of mgmt firmware. A change in
-	 * update version represents bug fixes.
-	 */
-	uint8_t mgmt_fw_bld;
-
-	/*
-	 * This field is a reserved field. This field can be used to represent
-	 * firmware branches or customer specific releases tied to a specific
-	 * (major,minor,update) version
-	 */
-	uint8_t mgmt_fw_rsvd;
-
-	/*
-	 * This field represents the major version of network control firmware.
-	 * A change in major version represents a major release.
-	 */
-	uint8_t netctrl_fw_maj;
-
-	/*
-	 * This field represents the minor version of network control firmware.
-	 * A change in minor version represents significant functionality
-	 * changes.
-	 */
-	uint8_t netctrl_fw_min;
-
-	/*
-	 * This field represents the build version of network control firmware.
-	 * A change in update version represents bug fixes.
-	 */
-	uint8_t netctrl_fw_bld;
-
-	/*
-	 * This field is a reserved field. This field can be used to represent
-	 * firmware branches or customer specific releases tied to a specific
-	 * (major,minor,update) version
-	 */
-	uint8_t netctrl_fw_rsvd;
-
-	/*
-	 * This field is reserved for future use. The responder should set it to
-	 * 0. The requester should ignore this field.
-	 */
-	uint32_t reserved1;
-
-	/*
-	 * This field represents the major version of RoCE firmware. A change in
-	 * major version represents a major release.
-	 */
-	uint8_t roce_fw_maj;
-
-	/*
-	 * This field represents the minor version of RoCE firmware. A change in
-	 * minor version represents significant functionality changes.
-	 */
-	uint8_t roce_fw_min;
-
-	/*
-	 * This field represents the build version of RoCE firmware. A change in
-	 * update version represents bug fixes.
-	 */
-	uint8_t roce_fw_bld;
-
-	/*
-	 * This field is a reserved field. This field can be used to represent
-	 * firmware branches or customer specific releases tied to a specific
-	 * (major,minor,update) version
-	 */
-	uint8_t roce_fw_rsvd;
-
-	/*
-	 * This field represents the name of HWRM FW (ASCII chars without NULL
-	 * at the end).
-	 */
-	char hwrm_fw_name[16];
-
-	/*
-	 * This field represents the name of mgmt FW (ASCII chars without NULL
-	 * at the end).
-	 */
-	char mgmt_fw_name[16];
-
-	/*
-	 * This field represents the name of network control firmware (ASCII
-	 * chars without NULL at the end).
-	 */
-	char netctrl_fw_name[16];
-
-	/*
-	 * This field is reserved for future use. The responder should set it to
-	 * 0. The requester should ignore this field.
-	 */
-	uint32_t reserved2[4];
-
-	/*
-	 * This field represents the name of RoCE FW (ASCII chars without NULL
-	 * at the end).
-	 */
-	char roce_fw_name[16];
-
-	/* This field returns the chip number. */
-	uint16_t chip_num;
-
-	/* This field returns the revision of chip. */
-	uint8_t chip_rev;
-
-	/* This field returns the chip metal number. */
-	uint8_t chip_metal;
-
-	/* This field returns the bond id of the chip. */
-	uint8_t chip_bond_id;
-
-	/*
-	 * This value indicates the type of platform used for chip
-	 * implementation.
-	 */
-	/* ASIC */
-	#define HWRM_VER_GET_OUTPUT_CHIP_PLATFORM_TYPE_ASIC \
-							(UINT32_C(0x0) << 0)
-	/* FPGA platform of the chip. */
-	#define HWRM_VER_GET_OUTPUT_CHIP_PLATFORM_TYPE_FPGA \
-							(UINT32_C(0x1) << 0)
-	/* Palladium platform of the chip. */
-	#define HWRM_VER_GET_OUTPUT_CHIP_PLATFORM_TYPE_PALLADIUM \
-							(UINT32_C(0x2) << 0)
-	uint8_t chip_platform_type;
-
-	/*
-	 * This field returns the maximum value of request window that is
-	 * supported by the HWRM. The request window is mapped into device
-	 * address space using MMIO.
-	 */
-	uint16_t max_req_win_len;
-
-	/*
-	 * This field returns the maximum value of response buffer in bytes. If
-	 * a request specifies the response buffer length that is greater than
-	 * this value, then the HWRM should fail it. The value of this field
-	 * shall be 4KB or more.
-	 */
-	uint16_t max_resp_len;
-
-	/*
-	 * This field returns the default request timeout value in milliseconds.
-	 */
-	uint16_t def_req_timeout;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
 
 	/*
 	 * This field is used in Output records to indicate that the output is
