@@ -299,6 +299,11 @@ testsuite_setup(void)
 
 	/* Create 2 AESNI MB devices if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_AESNI_MB_PMD) {
+#ifndef RTE_LIBRTE_PMD_AESNI_MB
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+#endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_MB_PMD);
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
@@ -314,6 +319,11 @@ testsuite_setup(void)
 
 	/* Create 2 AESNI GCM devices if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_AESNI_GCM_PMD) {
+#ifndef RTE_LIBRTE_PMD_AESNI_GCM
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_GCM must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+#endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_GCM_PMD);
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
@@ -329,6 +339,11 @@ testsuite_setup(void)
 
 	/* Create 2 SNOW3G devices if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_SNOW3G_PMD) {
+#ifndef RTE_LIBRTE_PMD_SNOW3G
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_SNOW3G must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+#endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
 		if (nb_devs < 2) {
 			for (i = nb_devs; i < 2; i++) {
@@ -341,6 +356,14 @@ testsuite_setup(void)
 			}
 		}
 	}
+
+#ifndef RTE_LIBRTE_PMD_QAT
+	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_QAT_SYM_PMD) {
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_QAT must be enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
+#endif
 
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
