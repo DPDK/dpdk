@@ -4051,6 +4051,562 @@ struct hwrm_queue_qportcfg_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_vnic_alloc */
+/*
+ * Description: This VNIC is a resource in the RX side of the chip that is used
+ * to represent a virtual host "interface". # At the time of VNIC allocation or
+ * configuration, the function can specify whether it wants the requested VNIC
+ * to be the default VNIC for the function or not. # If a function requests
+ * allocation of a VNIC for the first time and a VNIC is successfully allocated
+ * by the HWRM, then the HWRM shall make the allocated VNIC as the default VNIC
+ * for that function. # The default VNIC shall be used for the default action
+ * for a partition or function. # For each VNIC allocated on a function, a
+ * mapping on the RX side to map the allocated VNIC to source virtual interface
+ * shall be performed by the HWRM. This should be hidden to the function driver
+ * requesting the VNIC allocation. This enables broadcast/multicast replication
+ * with source knockout. # If multicast replication with source knockout is
+ * enabled, then the internal VNIC to SVIF mapping data structures shall be
+ * programmed at the time of VNIC allocation.
+ */
+/* Input (24 bytes) */
+struct hwrm_vnic_alloc_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t flags;
+	/*
+	 * When this bit is '1', this VNIC is requested to be the
+	 * default VNIC for this function.
+	 */
+	#define HWRM_VNIC_ALLOC_INPUT_FLAGS_DEFAULT	UINT32_C(0x1)
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_alloc_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t vnic_id;
+	/* Logical vnic ID */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_vnic_free */
+/*
+ * Description: Free a VNIC resource. Idle any resources associated with the
+ * VNIC as well as the VNIC. Reset and release all resources associated with the
+ * VNIC.
+ */
+/* Input (24 bytes) */
+struct hwrm_vnic_free_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t vnic_id;
+	/* Logical vnic ID */
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_free_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_vnic_cfg */
+/* Description: Configure the RX VNIC structure. */
+/* Input (40 bytes) */
+struct hwrm_vnic_cfg_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t flags;
+	/*
+	 * When this bit is '1', the VNIC is requested to be the default
+	 * VNIC for the function.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_FLAGS_DEFAULT	UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the VNIC is being configured to strip
+	 * VLAN in the RX path. If set to '0', then VLAN stripping is
+	 * disabled on this VNIC.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_FLAGS_VLAN_STRIP_MODE	UINT32_C(0x2)
+	/*
+	 * When this bit is '1', the VNIC is being configured to buffer
+	 * receive packets in the hardware until the host posts new
+	 * receive buffers. If set to '0', then bd_stall is being
+	 * configured to be disabled on this VNIC.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_FLAGS_BD_STALL_MODE	UINT32_C(0x4)
+	/*
+	 * When this bit is '1', the VNIC is being configured to receive
+	 * both RoCE and non-RoCE traffic. If set to '0', then this VNIC
+	 * is not configured to be operating in dual VNIC mode.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_FLAGS_ROCE_DUAL_VNIC_MODE	UINT32_C(0x8)
+	/*
+	 * When this flag is set to '1', the VNIC is requested to be
+	 * configured to receive only RoCE traffic. If this flag is set
+	 * to '0', then this flag shall be ignored by the HWRM. If
+	 * roce_dual_vnic_mode flag is set to '1', then the HWRM client
+	 * shall not set this flag to '1'.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_FLAGS_ROCE_ONLY_VNIC_MODE	UINT32_C(0x10)
+	/*
+	 * When a VNIC uses one destination ring group for certain
+	 * application (e.g. Receive Flow Steering) where exact match is
+	 * used to direct packets to a VNIC with one destination ring
+	 * group only, there is no need to configure RSS indirection
+	 * table for that VNIC as only one destination ring group is
+	 * used. This flag is used to enable a mode where RSS is enabled
+	 * in the VNIC using a RSS context for computing RSS hash but
+	 * the RSS indirection table is not configured using
+	 * hwrm_vnic_rss_cfg. If this mode is enabled, then the driver
+	 * should not program RSS indirection table for the RSS context
+	 * that is used for computing RSS hash only.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_FLAGS_RSS_DFLT_CR_MODE	UINT32_C(0x20)
+	uint32_t enables;
+	/*
+	 * This bit must be '1' for the dflt_ring_grp field to be
+	 * configured.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP	UINT32_C(0x1)
+	/* This bit must be '1' for the rss_rule field to be configured. */
+	#define HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE	UINT32_C(0x2)
+	/* This bit must be '1' for the cos_rule field to be configured. */
+	#define HWRM_VNIC_CFG_INPUT_ENABLES_COS_RULE	UINT32_C(0x4)
+	/* This bit must be '1' for the lb_rule field to be configured. */
+	#define HWRM_VNIC_CFG_INPUT_ENABLES_LB_RULE	UINT32_C(0x8)
+	/* This bit must be '1' for the mru field to be configured. */
+	#define HWRM_VNIC_CFG_INPUT_ENABLES_MRU	UINT32_C(0x10)
+	uint16_t vnic_id;
+	/* Logical vnic ID */
+	uint16_t dflt_ring_grp;
+	/*
+	 * Default Completion ring for the VNIC. This ring will be
+	 * chosen if packet does not match any RSS rules and if there is
+	 * no COS rule.
+	 */
+	uint16_t rss_rule;
+	/*
+	 * RSS ID for RSS rule/table structure. 0xFF... (All Fs) if
+	 * there is no RSS rule.
+	 */
+	uint16_t cos_rule;
+	/*
+	 * RSS ID for COS rule/table structure. 0xFF... (All Fs) if
+	 * there is no COS rule.
+	 */
+	uint16_t lb_rule;
+	/*
+	 * RSS ID for load balancing rule/table structure. 0xFF... (All
+	 * Fs) if there is no LB rule.
+	 */
+	uint16_t mru;
+	/*
+	 * The maximum receive unit of the vnic. Each vnic is associated
+	 * with a function. The vnic mru value overwrites the mru
+	 * setting of the associated function. The HWRM shall make sure
+	 * that vnic mru does not exceed the mru of the port the
+	 * function is associated with.
+	 */
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_cfg_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_vnic_rss_cfg */
+/* Description: This function is used to enable RSS configuration. */
+/* Input (48 bytes) */
+struct hwrm_vnic_rss_cfg_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t hash_type;
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source and destination IPv4 addresses of IPv4 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4	UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv4 addresses and source/destination
+	 * ports of TCP/IPv4 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4	UINT32_C(0x2)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv4 addresses and source/destination
+	 * ports of UDP/IPv4 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4	UINT32_C(0x4)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source and destination IPv4 addresses of IPv6 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6	UINT32_C(0x8)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv6 addresses and source/destination
+	 * ports of TCP/IPv6 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6	UINT32_C(0x10)
+	/*
+	 * When this bit is '1', the RSS hash shall be computed over
+	 * source/destination IPv6 addresses and source/destination
+	 * ports of UDP/IPv6 packets.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6	UINT32_C(0x20)
+	uint32_t unused_0;
+	uint64_t ring_grp_tbl_addr;
+	/* This is the address for rss ring group table */
+	uint64_t hash_key_tbl_addr;
+	/* This is the address for rss hash key table */
+	uint16_t rss_ctx_idx;
+	/* Index to the rss indirection table. */
+	uint16_t unused_1[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_rss_cfg_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_vnic_rss_cos_lb_ctx_alloc */
+/* Description: This function is used to allocate COS/Load Balance context. */
+/* Input (16 bytes) */
+struct hwrm_vnic_rss_cos_lb_ctx_alloc_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint16_t rss_cos_lb_ctx_id;
+	/* rss_cos_lb_ctx_id is 16 b */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t unused_4;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_vnic_rss_cos_lb_ctx_free */
+/* Description: This function can be used to free COS/Load Balance context. */
+/* Input (24 bytes) */
+struct hwrm_vnic_rss_cos_lb_ctx_free_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint16_t rss_cos_lb_ctx_id;
+	/* rss_cos_lb_ctx_id is 16 b */
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_vnic_rss_cos_lb_ctx_free_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
 /* hwrm_cfa_l2_filter_alloc */
 /*
  * A filter is used to identify traffic that contains a matching set of
@@ -5469,611 +6025,5 @@ struct hwrm_stat_ctx_free_output {
 	 */
 	uint8_t valid;
 } __attribute__((packed));
-
-/* hwrm_vnic_alloc */
-/*
- * Description: This VNIC is a resource in the RX side of the chip that is used
- * to represent a virtual host "interface". # At the time of VNIC allocation or
- * configuration, the function can specify whether it wants the requested VNIC
- * to be the default VNIC for the function or not. # If a function requests
- * allocation of a VNIC for the first time and a VNIC is successfully allocated
- * by the HWRM, then the HWRM shall make the allocated VNIC as the default VNIC
- * for that function. # The default VNIC shall be used for the default action
- * for a partition or function. # For each VNIC allocated on a function, a
- * mapping on the RX side to map the allocated VNIC to source virtual interface
- * shall be performed by the HWRM. This should be hidden to the function driver
- * requesting the VNIC allocation. This enables broadcast/multicast replication
- * with source knockout. # If multicast replication with source knockout is
- * enabled, then the internal VNIC to SVIF mapping data structures shall be
- * programmed at the time of VNIC allocation.
- */
-
-/* Input (24 bytes) */
-struct hwrm_vnic_alloc_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/*
-	 * When this bit is '1', this VNIC is requested to be the default VNIC
-	 * for this function.
-	 */
-	#define HWRM_VNIC_ALLOC_INPUT_FLAGS_DEFAULT                UINT32_C(0x1)
-	uint32_t flags;
-
-	uint32_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_vnic_alloc_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	/* Logical vnic ID */
-	uint32_t vnic_id;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_vnic_cfg */
-/* Description: Configure the RX VNIC structure. */
-
-/* Input (40 bytes) */
-struct hwrm_vnic_cfg_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/*
-	 * When this bit is '1', the VNIC is requested to be the default VNIC
-	 * for the function.
-	 */
-	#define HWRM_VNIC_CFG_INPUT_FLAGS_DEFAULT		UINT32_C(0x1)
-	/*
-	 * When this bit is '1', the VNIC is being configured to strip VLAN in
-	 * the RX path. If set to '0', then VLAN stripping is disabled on this
-	 * VNIC.
-	 */
-	#define HWRM_VNIC_CFG_INPUT_FLAGS_VLAN_STRIP_MODE	UINT32_C(0x2)
-	/*
-	 * When this bit is '1', the VNIC is being configured to buffer receive
-	 * packets in the hardware until the host posts new receive buffers. If
-	 * set to '0', then bd_stall is being configured to be disabled on this
-	 * VNIC.
-	 */
-	#define HWRM_VNIC_CFG_INPUT_FLAGS_BD_STALL_MODE		UINT32_C(0x4)
-	/*
-	 * When this bit is '1', the VNIC is being configured to receive both
-	 * RoCE and non-RoCE traffic. If set to '0', then this VNIC is not
-	 * configured to be operating in dual VNIC mode.
-	 */
-	#define HWRM_VNIC_CFG_INPUT_FLAGS_ROCE_DUAL_VNIC_MODE	UINT32_C(0x8)
-	/*
-	 * When this flag is set to '1', the VNIC is requested to be configured
-	 * to receive only RoCE traffic. If this flag is set to '0', then this
-	 * flag shall be ignored by the HWRM. If roce_dual_vnic_mode flag is set
-	 * to '1', then the HWRM client shall not set this flag to '1'.
-	 */
-	#define HWRM_VNIC_CFG_INPUT_FLAGS_ROCE_ONLY_VNIC_MODE	UINT32_C(0x10)
-	uint32_t flags;
-
-	/* This bit must be '1' for the dflt_ring_grp field to be configured. */
-	#define HWRM_VNIC_CFG_INPUT_ENABLES_DFLT_RING_GRP	UINT32_C(0x1)
-	/* This bit must be '1' for the rss_rule field to be configured. */
-	#define HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE		UINT32_C(0x2)
-	/* This bit must be '1' for the cos_rule field to be configured. */
-	#define HWRM_VNIC_CFG_INPUT_ENABLES_COS_RULE		UINT32_C(0x4)
-	/* This bit must be '1' for the lb_rule field to be configured. */
-	#define HWRM_VNIC_CFG_INPUT_ENABLES_LB_RULE		UINT32_C(0x8)
-	/* This bit must be '1' for the mru field to be configured. */
-	#define HWRM_VNIC_CFG_INPUT_ENABLES_MRU			UINT32_C(0x10)
-	uint32_t enables;
-
-	/* Logical vnic ID */
-	uint16_t vnic_id;
-
-	/*
-	 * Default Completion ring for the VNIC. This ring will be chosen if
-	 * packet does not match any RSS rules and if there is no COS rule.
-	 */
-	uint16_t dflt_ring_grp;
-
-	/*
-	 * RSS ID for RSS rule/table structure. 0xFF... (All Fs) if there is no
-	 * RSS rule.
-	 */
-	uint16_t rss_rule;
-
-	/*
-	 * RSS ID for COS rule/table structure. 0xFF... (All Fs) if there is no
-	 * COS rule.
-	 */
-	uint16_t cos_rule;
-
-	/*
-	 * RSS ID for load balancing rule/table structure. 0xFF... (All Fs) if
-	 * there is no LB rule.
-	 */
-	uint16_t lb_rule;
-
-	/*
-	 * The maximum receive unit of the vnic. Each vnic is associated with a
-	 * function. The vnic mru value overwrites the mru setting of the
-	 * associated function. The HWRM shall make sure that vnic mru does not
-	 * exceed the mru of the port the function is associated with.
-	 */
-	uint16_t mru;
-
-	uint32_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_vnic_cfg_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_vnic_free */
-/*
- * Description: Free a VNIC resource. Idle any resources associated with the
- * VNIC as well as the VNIC. Reset and release all resources associated with the
- * VNIC.
- */
-
-/* Input (24 bytes) */
-struct hwrm_vnic_free_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* Logical vnic ID */
-	uint32_t vnic_id;
-
-	uint32_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_vnic_free_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_vnic_rss_cfg */
-/* Description: This function is used to enable RSS configuration. */
-
-/* Input (48 bytes) */
-struct hwrm_vnic_rss_cfg_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/*
-	 * When this bit is '1', the RSS hash shall be computed over source and
-	 * destination IPv4 addresses of IPv4 packets.
-	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4		UINT32_C(0x1)
-	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv4 addresses and source/destination ports of
-	 * TCP/IPv4 packets.
-	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4	UINT32_C(0x2)
-	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv4 addresses and source/destination ports of
-	 * UDP/IPv4 packets.
-	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4	UINT32_C(0x4)
-	/*
-	 * When this bit is '1', the RSS hash shall be computed over source and
-	 * destination IPv4 addresses of IPv6 packets.
-	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6		UINT32_C(0x8)
-	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv6 addresses and source/destination ports of
-	 * TCP/IPv6 packets.
-	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6	UINT32_C(0x10)
-	/*
-	 * When this bit is '1', the RSS hash shall be computed over
-	 * source/destination IPv6 addresses and source/destination ports of
-	 * UDP/IPv6 packets.
-	 */
-	#define HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6	UINT32_C(0x20)
-	uint32_t hash_type;
-
-	uint32_t unused_0;
-
-	/* This is the address for rss ring group table */
-	uint64_t ring_grp_tbl_addr;
-
-	/* This is the address for rss hash key table */
-	uint64_t hash_key_tbl_addr;
-
-	/* Index to the rss indirection table. */
-	uint16_t rss_ctx_idx;
-
-	uint16_t unused_1[3];
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_vnic_rss_cfg_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* Input (16 bytes) */
-struct hwrm_vnic_rss_cos_lb_ctx_alloc_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-
-struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	/* rss_cos_lb_ctx_id is 16 b */
-	uint16_t rss_cos_lb_ctx_id;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-	uint8_t unused_4;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_vnic_rss_cos_lb_ctx_free */
-/* Description: This function can be used to free COS/Load Balance context. */
-/* Input (24 bytes) */
-
-struct hwrm_vnic_rss_cos_lb_ctx_free_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* rss_cos_lb_ctx_id is 16 b */
-	uint16_t rss_cos_lb_ctx_id;
-
-	uint16_t unused_0[3];
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_vnic_rss_cos_lb_ctx_free_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
 
 #endif
