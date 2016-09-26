@@ -26,6 +26,10 @@
 #define HAVE_CHANGE_CARRIER_CB
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0)
+#define ether_addr_copy(dst, src) memcpy(dst, src, ETH_ALEN)
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 #define HAVE_IOV_ITER_MSGHDR
 #endif

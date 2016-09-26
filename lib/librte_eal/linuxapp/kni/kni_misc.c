@@ -563,7 +563,7 @@ kni_ioctl_create(struct net *net,
 		pci_dev_put(pci);
 
 	if (kni->lad_dev)
-		memcpy(net_dev->dev_addr, kni->lad_dev->dev_addr, ETH_ALEN);
+		ether_addr_copy(net_dev->dev_addr, kni->lad_dev->dev_addr);
 	else
 		/*
 		 * Generate random mac address. eth_random_addr() is the newer
