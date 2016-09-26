@@ -1452,6 +1452,9 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	struct bnxt_link_info link_req;
 	uint16_t speed;
 
+	if (BNXT_NPAR_PF(bp))
+		return 0;
+
 	rc = bnxt_valid_link_speed(dev_conf->link_speeds,
 			bp->eth_dev->data->port_id);
 	if (rc)
@@ -1486,5 +1489,40 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	}
 
 error:
+	return rc;
+}
+
+/* JIRA 22088 */
+int bnxt_hwrm_func_qcfg(struct bnxt *bp)
+{
+	struct hwrm_func_qcfg_input req = {0};
+	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, FUNC_QCFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(0xffff);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	if (BNXT_VF(bp)) {
+		struct bnxt_vf_info *vf = &bp->vf;
+
+		/* Hard Coded.. 0xfff VLAN ID mask */
+		vf->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
+	}
+
+	switch (resp->port_partition_type) {
+	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:
+	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_5:
+	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR2_0:
+		bp->port_partition_type = resp->port_partition_type;
+		break;
+	default:
+		bp->port_partition_type = 0;
+		break;
+	}
+
 	return rc;
 }

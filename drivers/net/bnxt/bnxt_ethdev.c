@@ -815,6 +815,9 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 
+	if (BNXT_NPAR_PF(bp))
+		return 0;
+
 	switch (fc_conf->mode) {
 	case RTE_FC_NONE:
 		bp->link_info.auto_pause = 0;
@@ -943,14 +946,6 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (version_printed++ == 0)
 		RTE_LOG(INFO, PMD, "%s", bnxt_version);
 
-	if (eth_dev->pci_dev->addr.function >= 2 &&
-			eth_dev->pci_dev->addr.function < 4) {
-		RTE_LOG(ERR, PMD, "Function not enabled %x:\n",
-			eth_dev->pci_dev->addr.function);
-		rc = -ENOMEM;
-		goto error;
-	}
-
 	rte_eth_copy_pci_info(eth_dev, eth_dev->pci_dev);
 	bp = eth_dev->data->dev_private;
 
@@ -977,6 +972,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error_free;
 	bnxt_hwrm_queue_qportcfg(bp);
+
+	bnxt_hwrm_func_qcfg(bp);
 
 	/* Get the MAX capabilities for this function */
 	rc = bnxt_hwrm_func_qcaps(bp);

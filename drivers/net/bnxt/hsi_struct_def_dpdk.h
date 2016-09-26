@@ -85,6 +85,7 @@ struct ctx_hw_stats64 {
 #define HWRM_VER_GET			(UINT32_C(0x0))
 #define HWRM_FUNC_RESET			(UINT32_C(0x11))
 #define HWRM_FUNC_QCAPS			(UINT32_C(0x15))
+#define HWRM_FUNC_QCFG			(UINT32_C(0x16))
 #define HWRM_FUNC_DRV_UNRGTR		(UINT32_C(0x1a))
 #define HWRM_FUNC_DRV_RGTR		(UINT32_C(0x1d))
 #define HWRM_PORT_PHY_CFG		(UINT32_C(0x20))
@@ -5796,4 +5797,214 @@ struct hwrm_func_drv_unrgtr_output {
 	uint8_t valid;
 } __attribute__((packed));
 
+/* hwrm_func_qcfg */
+/*
+ * Description: This command returns the current configuration of a function.
+ * The input FID value is used to indicate what function is being queried. This
+ * allows a physical function driver to query virtual functions that are
+ * children of the physical function. The output FID value is needed to
+ * configure Rings and MSI-X vectors so their DMA operations appear correctly on
+ * the PCI bus.
+ */
+/* Input (24 bytes) */
+struct hwrm_func_qcfg_input {
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t req_type;
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t cmpl_ring;
+	/* This value indicates the command sequence number. */
+	uint16_t seq_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint16_t target_id;
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint64_t resp_addr;
+	/*
+	 * Function ID of the function that is being queried. 0xFF... (All Fs)
+	 * if the query is for the requesting function.
+	 */
+	uint16_t fid;
+
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output (72 bytes) */
+struct hwrm_func_qcfg_output {
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t error_code;
+	/* This field returns the type of original request. */
+	uint16_t req_type;
+	/* This field provides original sequence number of the command. */
+	uint16_t seq_id;
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint16_t resp_len;
+	/*
+	 * FID value. This value is used to identify operations on the PCI bus
+	 * as belonging to a particular PCI function.
+	 */
+	uint16_t fid;
+	/*
+	 * Port ID of port that this function is associated with. 0xFF... (All
+	 * Fs) if this function is not associated with any port.
+	 */
+	uint16_t port_id;
+	/*
+	 * This value is the current VLAN setting for this function. The value
+	 * of 0 for this field indicates no priority tagging or VLAN is used.
+	 * This VLAN is in 802.1Q tag format.
+	*/
+	uint16_t vlan;
+
+	uint8_t unused_0;
+	uint8_t unused_1;
+
+	/*
+	 * This value is current MAC address configured for this function. A
+	 * value of 00-00-00-00-00-00 indicates no MAC address is currently
+	 * configured.
+	 */
+	uint8_t mac_address[6];
+
+	/*
+	 * This value is current PCI ID of this function. If ARI is enabled,
+	 * then it is Bus Number (8b):Function Number(8b). Otherwise, it is Bus
+	 * Number (8b):Device Number (4b):Function Number(4b).
+	 */
+	uint16_t pci_id;
+	/* The number of RSS/COS contexts currently allocated to the function. */
+	uint16_t alloc_rsscos_ctx;
+	/*
+	 * The number of completion rings currently allocated to the function.
+	 * This does not include the rings allocated to any children functions
+	 * if any.
+	 */
+	uint16_t alloc_cmpl_rings;
+	/*
+	 * The number of transmit rings currently allocated to the function.
+	 * This does not include the rings allocated to any children functions
+	 * if any.
+	 */
+	uint16_t alloc_tx_rings;
+	/*
+	 * The number of receive rings currently allocated to the function. This
+	 * does not include the rings allocated to any children functions if
+	 * any.
+	 */
+	uint16_t alloc_rx_rings;
+	/* The allocated number of L2 contexts to the function. */
+	uint16_t alloc_l2_ctx;
+	/* The allocated number of vnics to the function. */
+	uint16_t alloc_vnics;
+	/*
+	 * The maximum transmission unit of the function. For rings allocated on
+	 * this function, this default value is used if ring MTU is not
+	 * specified.
+	 */
+	uint16_t mtu;
+	/*
+	 * The maximum receive unit of the function. For vnics allocated on this
+	 * function, this default value is used if vnic MRU is not specified.
+	 */
+	uint16_t mru;
+	/* The statistics context assigned to a function. */
+	uint16_t stat_ctx_id;
+	/*
+	 * The HWRM shall return Unknown value for this field when this command
+	 * is used to query VF's configuration.
+	 */
+	/* Single physical function */
+	#define HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_SPF \
+							(UINT32_C(0x0) << 0)
+	/* Multiple physical functions */
+	#define HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_MPFS \
+							(UINT32_C(0x1) << 0)
+	/* Network Partitioning 1.0 */
+	#define HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0 \
+							(UINT32_C(0x2) << 0)
+	/* Network Partitioning 1.5 */
+	#define HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_5 \
+							(UINT32_C(0x3) << 0)
+	/* Network Partitioning 2.0 */
+	#define HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR2_0 \
+							(UINT32_C(0x4) << 0)
+	/* Unknown */
+	#define HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_UNKNOWN \
+							(UINT32_C(0xff) << 0)
+	uint8_t port_partition_type;
+
+	uint8_t unused_2;
+	/* The default VNIC ID assigned to a function that is being queried. */
+	uint16_t dflt_vnic_id;
+
+	uint8_t unused_3;
+	uint8_t unused_4;
+	/*
+	 * Minimum BW allocated for this function in Mbps. The HWRM will
+	 * translate this value into byte counter and time interval used for the
+	 * scheduler inside the device. A value of 0 indicates the minimum
+	 * bandwidth is not configured.
+	 */
+	uint32_t min_bw;
+	/*
+	 * Maximum BW allocated for this function in Mbps. The HWRM will
+	 * translate this value into byte counter and time interval used for the
+	 * scheduler inside the device. A value of 0 indicates that the maximum
+	 * bandwidth is not configured.
+	 */
+	uint32_t max_bw;
+	/*
+	 * This value indicates the Edge virtual bridge mode for the domain that
+	 * this function belongs to.
+	 */
+	/* No Edge Virtual Bridging (EVB) */
+	#define HWRM_FUNC_QCFG_OUTPUT_EVB_MODE_NO_EVB	(UINT32_C(0x0) << 0)
+	/* Virtual Ethernet Bridge (VEB) */
+	#define HWRM_FUNC_QCFG_OUTPUT_EVB_MODE_VEB	(UINT32_C(0x1) << 0)
+	/* Virtual Ethernet Port Aggregator (VEPA) */
+	#define HWRM_FUNC_QCFG_OUTPUT_EVB_MODE_VEPA	(UINT32_C(0x2) << 0)
+	uint8_t evb_mode;
+
+	uint8_t unused_5;
+	uint16_t unused_6;
+	/*
+	 * The number of allocated multicast filters for this function on the RX
+	 * side.
+	 */
+	uint32_t alloc_mcast_filters;
+	/* The number of allocated HW ring groups for this function. */
+	uint32_t alloc_hw_ring_grps;
+
+	uint8_t unused_7;
+	uint8_t unused_8;
+	uint8_t unused_9;
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+	uint8_t valid;
+} __attribute__((packed));
 #endif

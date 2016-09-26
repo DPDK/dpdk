@@ -63,6 +63,7 @@ struct bnxt_vf_info {
 	uint16_t		max_rx_rings;
 	uint16_t		max_l2_ctx;
 	uint16_t		max_vnics;
+	uint16_t		vlan;
 	struct bnxt_pf_info	*pf;
 };
 
@@ -130,6 +131,8 @@ struct bnxt {
 #define BNXT_FLAG_VF		(1 << 1)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
+#define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
+#define BNXT_NPAR_PF(bp)	(BNXT_PF(bp) && BNXT_NPAR_ENABLED(bp))
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
@@ -171,6 +174,7 @@ struct bnxt {
 
 	struct bnxt_pf_info		pf;
 	struct bnxt_vf_info		vf;
+	uint8_t			port_partition_type;
 };
 
 #endif
