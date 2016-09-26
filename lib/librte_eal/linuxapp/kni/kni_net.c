@@ -586,8 +586,8 @@ kni_net_tx_timeout(struct net_device *dev)
 static int
 kni_net_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
-	pr_debug("kni_net_ioctl %d\n",
-		((struct kni_dev *)netdev_priv(dev))->group_id);
+	pr_debug("kni_net_ioctl group:%d cmd:%d\n",
+		((struct kni_dev *)netdev_priv(dev))->group_id, cmd);
 
 	return 0;
 }
@@ -729,8 +729,6 @@ void
 kni_net_init(struct net_device *dev)
 {
 	struct kni_dev *kni = netdev_priv(dev);
-
-	pr_debug("kni_net_init\n");
 
 	init_waitqueue_head(&kni->wq);
 	mutex_init(&kni->sync_lock);
