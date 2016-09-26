@@ -43,7 +43,7 @@ struct ctx_hw_stats64 {
 	uint64_t rx_mcast_pkts;
 	uint64_t rx_bcast_pkts;
 	uint64_t rx_drop_pkts;
-	uint64_t rx_err_pkts;
+	uint64_t rx_discard_pkts;
 	uint64_t rx_ucast_bytes;
 	uint64_t rx_mcast_bytes;
 	uint64_t rx_bcast_bytes;
@@ -52,7 +52,7 @@ struct ctx_hw_stats64 {
 	uint64_t tx_mcast_pkts;
 	uint64_t tx_bcast_pkts;
 	uint64_t tx_drop_pkts;
-	uint64_t tx_err_pkts;
+	uint64_t tx_discard_pkts;
 	uint64_t tx_ucast_bytes;
 	uint64_t tx_mcast_bytes;
 	uint64_t tx_bcast_bytes;
@@ -61,12 +61,14 @@ struct ctx_hw_stats64 {
 	uint64_t tpa_bytes;
 	uint64_t tpa_events;
 	uint64_t tpa_aborts;
-} ctx_hw_stats64_t;
+} __attribute__((packed));
 
-/* HW Resource Manager Specification 1.2.0 */
+/* HW Resource Manager Specification 1.5.1 */
 #define HWRM_VERSION_MAJOR	1
-#define HWRM_VERSION_MINOR	2
-#define HWRM_VERSION_UPDATE	0
+#define HWRM_VERSION_MINOR	5
+#define HWRM_VERSION_UPDATE	1
+
+#define HWRM_VERSION_STR	"1.5.1"
 
 /*
  * Following is the signature for HWRM message field that indicates not
@@ -2023,179 +2025,214 @@ struct hwrm_func_qcaps_input {
 
 /* Output (80 bytes) */
 struct hwrm_func_qcaps_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
 	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
 	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
 	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
 	uint16_t resp_len;
-
 	/*
-	 * FID value. This value is used to identify operations on the PCI bus
-	 * as belonging to a particular PCI function.
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
 	 */
 	uint16_t fid;
-
 	/*
-	 * Port ID of port that this function is associated with. Valid only for
-	 * the PF. 0xFF... (All Fs) if this function is not associated with any
-	 * port. 0xFF... (All Fs) if this function is called from a VF.
+	 * FID value. This value is used to identify operations on the
+	 * PCI bus as belonging to a particular PCI function.
 	 */
 	uint16_t port_id;
-
-	/* If 1, then Push mode is supported on this function. */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PUSH_MODE_SUPPORTED   UINT32_C(0x1)
 	/*
-	 * If 1, then the global MSI-X auto-masking is enabled for the device.
+	 * Port ID of port that this function is associated with. Valid
+	 * only for the PF. 0xFF... (All Fs) if this function is not
+	 * associated with any port. 0xFF... (All Fs) if this function
+	 * is called from a VF.
 	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_GLOBAL_MSIX_AUTOMASKING \
-								UINT32_C(0x2)
-	/*
-	 * If 1, then the Precision Time Protocol (PTP) processing is supported
-	 * on this function. The HWRM should enable PTP on only a single
-	 * Physical Function (PF) per port.
-	 */
-	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED         UINT32_C(0x4)
 	uint32_t flags;
-
+	/* If 1, then Push mode is supported on this function. */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PUSH_MODE_SUPPORTED	UINT32_C(0x1)
 	/*
-	 * This value is current MAC address configured for this function. A
-	 * value of 00-00-00-00-00-00 indicates no MAC address is currently
-	 * configured.
+	 * If 1, then the global MSI-X auto-masking is enabled for the
+	 * device.
 	 */
-	uint8_t perm_mac_address[6];
-
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_GLOBAL_MSIX_AUTOMASKING	UINT32_C(0x2)
 	/*
-	 * The maximum number of RSS/COS contexts that can be allocated to the
-	 * function.
+	 * If 1, then the Precision Time Protocol (PTP) processing is
+	 * supported on this function. The HWRM should enable PTP on
+	 * only a single Physical Function (PF) per port.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED	UINT32_C(0x4)
+	/*
+	 * If 1, then RDMA over Converged Ethernet (RoCE) v1 is
+	 * supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ROCE_V1_SUPPORTED	UINT32_C(0x8)
+	/*
+	 * If 1, then RDMA over Converged Ethernet (RoCE) v2 is
+	 * supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_ROCE_V2_SUPPORTED	UINT32_C(0x10)
+	/*
+	 * If 1, then control and configuration of WoL magic packet are
+	 * supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_WOL_MAGICPKT_SUPPORTED	UINT32_C(0x20)
+	/*
+	 * If 1, then control and configuration of bitmap pattern packet
+	 * are supported on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_WOL_BMP_SUPPORTED	UINT32_C(0x40)
+	/*
+	 * If set to 1, then the control and configuration of rate limit
+	 * of an allocated TX ring on the queried function is supported.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_TX_RING_RL_SUPPORTED	UINT32_C(0x80)
+	/*
+	 * If 1, then control and configuration of minimum and maximum
+	 * bandwidths are supported on the queried function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_TX_BW_CFG_SUPPORTED	UINT32_C(0x100)
+	/*
+	 * If the query is for a VF, then this flag shall be ignored. If
+	 * this query is for a PF and this flag is set to 1, then the PF
+	 * has the capability to set the rate limits on the TX rings of
+	 * its children VFs. If this query is for a PF and this flag is
+	 * set to 0, then the PF does not have the capability to set the
+	 * rate limits on the TX rings of its children VFs.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_VF_TX_RING_RL_SUPPORTED	UINT32_C(0x200)
+	/*
+	 * If the query is for a VF, then this flag shall be ignored. If
+	 * this query is for a PF and this flag is set to 1, then the PF
+	 * has the capability to set the minimum and/or maximum
+	 * bandwidths for its children VFs. If this query is for a PF
+	 * and this flag is set to 0, then the PF does not have the
+	 * capability to set the minimum or maximum bandwidths for its
+	 * children VFs.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_VF_BW_CFG_SUPPORTED	UINT32_C(0x400)
+	uint8_t mac_address[6];
+	/*
+	 * This value is current MAC address configured for this
+	 * function. A value of 00-00-00-00-00-00 indicates no MAC
+	 * address is currently configured.
 	 */
 	uint16_t max_rsscos_ctx;
-
 	/*
-	 * The maximum number of completion rings that can be allocated to the
-	 * function.
+	 * The maximum number of RSS/COS contexts that can be allocated
+	 * to the function.
 	 */
 	uint16_t max_cmpl_rings;
-
 	/*
-	 * The maximum number of transmit rings that can be allocated to the
-	 * function.
+	 * The maximum number of completion rings that can be allocated
+	 * to the function.
 	 */
 	uint16_t max_tx_rings;
-
 	/*
-	 * The maximum number of receive rings that can be allocated to the
-	 * function.
+	 * The maximum number of transmit rings that can be allocated to
+	 * the function.
 	 */
 	uint16_t max_rx_rings;
-
 	/*
-	 * The maximum number of L2 contexts that can be allocated to the
-	 * function.
+	 * The maximum number of receive rings that can be allocated to
+	 * the function.
 	 */
 	uint16_t max_l2_ctxs;
-
-	/* The maximum number of VNICs that can be allocated to the function. */
-	uint16_t max_vnics;
-
 	/*
-	 * The identifier for the first VF enabled on a PF. This is valid only
-	 * on the PF with SR-IOV enabled. 0xFF... (All Fs) if this command is
-	 * called on a PF with SR-IOV disabled or on a VF.
+	 * The maximum number of L2 contexts that can be allocated to
+	 * the function.
+	 */
+	uint16_t max_vnics;
+	/*
+	 * The maximum number of VNICs that can be allocated to the
+	 * function.
 	 */
 	uint16_t first_vf_id;
-
 	/*
-	 * The maximum number of VFs that can be allocated to the function. This
-	 * is valid only on the PF with SR-IOV enabled. 0xFF... (All Fs) if this
-	 * command is called on a PF with SR-IOV disabled or on a VF.
+	 * The identifier for the first VF enabled on a PF. This is
+	 * valid only on the PF with SR-IOV enabled. 0xFF... (All Fs) if
+	 * this command is called on a PF with SR-IOV disabled or on a
+	 * VF.
 	 */
 	uint16_t max_vfs;
-
 	/*
-	 * The maximum number of statistic contexts that can be allocated to the
-	 * function.
+	 * The maximum number of VFs that can be allocated to the
+	 * function. This is valid only on the PF with SR-IOV enabled.
+	 * 0xFF... (All Fs) if this command is called on a PF with SR-
+	 * IOV disabled or on a VF.
 	 */
 	uint16_t max_stat_ctx;
-
 	/*
-	 * The maximum number of Encapsulation records that can be offloaded by
-	 * this function.
+	 * The maximum number of statistic contexts that can be
+	 * allocated to the function.
 	 */
 	uint32_t max_encap_records;
-
 	/*
-	 * The maximum number of decapsulation records that can be offloaded by
-	 * this function.
+	 * The maximum number of Encapsulation records that can be
+	 * offloaded by this function.
 	 */
 	uint32_t max_decap_records;
-
 	/*
-	 * The maximum number of Exact Match (EM) flows that can be offloaded by
-	 * this function on the TX side.
+	 * The maximum number of decapsulation records that can be
+	 * offloaded by this function.
 	 */
 	uint32_t max_tx_em_flows;
-
 	/*
-	 * The maximum number of Wildcard Match (WM) flows that can be offloaded
-	 * by this function on the TX side.
+	 * The maximum number of Exact Match (EM) flows that can be
+	 * offloaded by this function on the TX side.
 	 */
 	uint32_t max_tx_wm_flows;
-
 	/*
-	 * The maximum number of Exact Match (EM) flows that can be offloaded by
-	 * this function on the RX side.
+	 * The maximum number of Wildcard Match (WM) flows that can be
+	 * offloaded by this function on the TX side.
 	 */
 	uint32_t max_rx_em_flows;
-
 	/*
-	 * The maximum number of Wildcard Match (WM) flows that can be offloaded
-	 * by this function on the RX side.
+	 * The maximum number of Exact Match (EM) flows that can be
+	 * offloaded by this function on the RX side.
 	 */
 	uint32_t max_rx_wm_flows;
-
 	/*
-	 * The maximum number of multicast filters that can be supported by this
-	 * function on the RX side.
+	 * The maximum number of Wildcard Match (WM) flows that can be
+	 * offloaded by this function on the RX side.
 	 */
 	uint32_t max_mcast_filters;
-
 	/*
-	 * The maximum value of flow_id that can be supported in completion
-	 * records.
+	 * The maximum number of multicast filters that can be supported
+	 * by this function on the RX side.
 	 */
 	uint32_t max_flow_id;
-
 	/*
-	 * The maximum number of HW ring groups that can be supported on this
-	 * function.
+	 * The maximum value of flow_id that can be supported in
+	 * completion records.
 	 */
 	uint32_t max_hw_ring_grps;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-
 	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
+	 * The maximum number of HW ring groups that can be supported on
+	 * this function.
 	 */
+	uint16_t max_sp_tx_rings;
+	/*
+	 * The maximum number of strict priority transmit rings that can
+	 * be allocated to the function. This number indicates the
+	 * maximum number of TX rings that can be assigned strict
+	 * priorities out of the maximum number of TX rings that can be
+	 * allocated (max_tx_rings) to the function.
+	 */
+	uint8_t unused_0;
 	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
 } __attribute__((packed));
 
 /* hwrm_func_reset */

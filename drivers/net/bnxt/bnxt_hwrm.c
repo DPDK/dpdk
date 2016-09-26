@@ -288,7 +288,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 
 		pf->fw_fid = rte_le_to_cpu_32(resp->fid);
 		pf->port_id = resp->port_id;
-		memcpy(pf->mac_addr, resp->perm_mac_address, ETHER_ADDR_LEN);
+		memcpy(pf->mac_addr, resp->mac_address, ETHER_ADDR_LEN);
 		pf->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
 		pf->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 		pf->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
@@ -301,7 +301,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		struct bnxt_vf_info *vf = &bp->vf;
 
 		vf->fw_fid = rte_le_to_cpu_32(resp->fid);
-		memcpy(vf->mac_addr, &resp->perm_mac_address, ETHER_ADDR_LEN);
+		memcpy(vf->mac_addr, &resp->mac_address, ETHER_ADDR_LEN);
 		vf->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
 		vf->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 		vf->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
@@ -386,6 +386,8 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		resp->hwrm_intf_maj, resp->hwrm_intf_min,
 		resp->hwrm_intf_upd,
 		resp->hwrm_fw_maj, resp->hwrm_fw_min, resp->hwrm_fw_bld);
+	RTE_LOG(INFO, PMD, "Driver HWRM version: %d.%d.%d\n",
+		HWRM_VERSION_MAJOR, HWRM_VERSION_MINOR, HWRM_VERSION_UPDATE);
 
 	my_version = HWRM_VERSION_MAJOR << 16;
 	my_version |= HWRM_VERSION_MINOR << 8;

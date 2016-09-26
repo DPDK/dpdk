@@ -103,7 +103,7 @@ void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		bnxt_stats->ibytes += bnxt_stats->q_ibytes[i];
 		bnxt_stats->imissed += bnxt_stats->q_errors[i];
 		bnxt_stats->ierrors +=
-				rte_le_to_cpu_64(hw_stats->rx_err_pkts);
+				rte_le_to_cpu_64(hw_stats->rx_discard_pkts);
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
@@ -130,7 +130,7 @@ void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		bnxt_stats->opackets += bnxt_stats->q_opackets[i];
 		bnxt_stats->obytes +=  bnxt_stats->q_obytes[i];
 		bnxt_stats->oerrors += rte_le_to_cpu_64(hw_stats->tx_drop_pkts);
-		bnxt_stats->oerrors += rte_le_to_cpu_64(hw_stats->tx_err_pkts);
+		bnxt_stats->oerrors += rte_le_to_cpu_64(hw_stats->tx_discard_pkts);
 	}
 }
 
