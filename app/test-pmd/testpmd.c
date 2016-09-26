@@ -1963,40 +1963,11 @@ init_port_dcb_config(portid_t pid,
 		     uint8_t pfc_en)
 {
 	struct rte_eth_conf port_conf;
-	struct rte_eth_dev_info dev_info;
 	struct rte_port *rte_port;
 	int retval;
 	uint16_t i;
 
-	rte_eth_dev_info_get(pid, &dev_info);
-
-	/* If dev_info.vmdq_pool_base is greater than 0,
-	 * the queue id of vmdq pools is started after pf queues.
-	 */
-	if (dcb_mode == DCB_VT_ENABLED && dev_info.vmdq_pool_base > 0) {
-		printf("VMDQ_DCB multi-queue mode is nonsensical"
-			" for port %d.", pid);
-		return -1;
-	}
-
-	/* Assume the ports in testpmd have the same dcb capability
-	 * and has the same number of rxq and txq in dcb mode
-	 */
-	if (dcb_mode == DCB_VT_ENABLED) {
-		nb_rxq = dev_info.max_rx_queues;
-		nb_txq = dev_info.max_tx_queues;
-	} else {
-		/*if vt is disabled, use all pf queues */
-		if (dev_info.vmdq_pool_base == 0) {
-			nb_rxq = dev_info.max_rx_queues;
-			nb_txq = dev_info.max_tx_queues;
-		} else {
-			nb_rxq = (queueid_t)num_tcs;
-			nb_txq = (queueid_t)num_tcs;
-
-		}
-	}
-	rx_free_thresh = 64;
+	rte_port = &ports[pid];
 
 	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 	/* Enter DCB configuration status */
@@ -2006,8 +1977,46 @@ init_port_dcb_config(portid_t pid,
 	retval = get_eth_dcb_conf(&port_conf, dcb_mode, num_tcs, pfc_en);
 	if (retval < 0)
 		return retval;
+	port_conf.rxmode.hw_vlan_filter = 1;
 
-	rte_port = &ports[pid];
+	/**
+	 * Write the configuration into the device.
+	 * Set the numbers of RX & TX queues to 0, so
+	 * the RX & TX queues will not be setup.
+	 */
+	(void)rte_eth_dev_configure(pid, 0, 0, &port_conf);
+
+	rte_eth_dev_info_get(pid, &rte_port->dev_info);
+
+	/* If dev_info.vmdq_pool_base is greater than 0,
+	 * the queue id of vmdq pools is started after pf queues.
+	 */
+	if (dcb_mode == DCB_VT_ENABLED &&
+	    rte_port->dev_info.vmdq_pool_base > 0) {
+		printf("VMDQ_DCB multi-queue mode is nonsensical"
+			" for port %d.", pid);
+		return -1;
+	}
+
+	/* Assume the ports in testpmd have the same dcb capability
+	 * and has the same number of rxq and txq in dcb mode
+	 */
+	if (dcb_mode == DCB_VT_ENABLED) {
+		nb_rxq = rte_port->dev_info.max_rx_queues;
+		nb_txq = rte_port->dev_info.max_tx_queues;
+	} else {
+		/*if vt is disabled, use all pf queues */
+		if (rte_port->dev_info.vmdq_pool_base == 0) {
+			nb_rxq = rte_port->dev_info.max_rx_queues;
+			nb_txq = rte_port->dev_info.max_tx_queues;
+		} else {
+			nb_rxq = (queueid_t)num_tcs;
+			nb_txq = (queueid_t)num_tcs;
+
+		}
+	}
+	rx_free_thresh = 64;
+
 	memcpy(&rte_port->dev_conf, &port_conf, sizeof(struct rte_eth_conf));
 
 	rxtx_port_config(rte_port);
