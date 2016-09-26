@@ -539,6 +539,11 @@ static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_vnic_info *vnic = STAILQ_FIRST(&bp->ff_pool[pool]);
 	struct bnxt_filter_info *filter;
 
+	if (BNXT_VF(bp)) {
+		RTE_LOG(ERR, PMD, "Cannot add MAC address to a VF interface\n");
+		return;
+	}
+
 	if (!vnic) {
 		RTE_LOG(ERR, PMD, "VNIC not found for pool %d!\n", pool);
 		return;
@@ -857,8 +862,10 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 
-	if (BNXT_NPAR_PF(bp))
-		return 0;
+	if (BNXT_NPAR_PF(bp) || BNXT_VF(bp)) {
+		RTE_LOG(ERR, PMD, "Flow Control Settings cannot be modified\n");
+		return -ENOTSUP;
+	}
 
 	switch (fc_conf->mode) {
 	case RTE_FC_NONE:
@@ -940,7 +947,9 @@ static struct eth_dev_ops bnxt_dev_ops = {
 static bool bnxt_vf_pciid(uint16_t id)
 {
 	if (id == BROADCOM_DEV_ID_57304_VF ||
-	    id == BROADCOM_DEV_ID_57406_VF)
+	    id == BROADCOM_DEV_ID_57406_VF ||
+	    id == BROADCOM_DEV_ID_5731X_VF ||
+	    id == BROADCOM_DEV_ID_5741X_VF)
 		return true;
 	return false;
 }

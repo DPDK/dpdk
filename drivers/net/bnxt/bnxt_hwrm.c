@@ -1452,7 +1452,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	struct bnxt_link_info link_req;
 	uint16_t speed;
 
-	if (BNXT_NPAR_PF(bp))
+	if (BNXT_NPAR_PF(bp) || BNXT_VF(bp))
 		return 0;
 
 	rc = bnxt_valid_link_speed(dev_conf->link_speeds,
