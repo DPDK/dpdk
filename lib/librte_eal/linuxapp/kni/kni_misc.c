@@ -51,35 +51,6 @@ MODULE_DESCRIPTION("Kernel Module for managing kni devices");
 extern const struct pci_device_id ixgbe_pci_tbl[];
 extern const struct pci_device_id igb_pci_tbl[];
 
-static int kni_open(struct inode *inode, struct file *file);
-static int kni_release(struct inode *inode, struct file *file);
-static int kni_ioctl(struct inode *inode, unsigned int ioctl_num,
-					unsigned long ioctl_param);
-static int kni_compat_ioctl(struct inode *inode, unsigned int ioctl_num,
-						unsigned long ioctl_param);
-static int kni_dev_remove(struct kni_dev *dev);
-
-static int __init kni_parse_kthread_mode(void);
-
-/* KNI processing for single kernel thread mode */
-static int kni_thread_single(void *unused);
-/* KNI processing for multiple kernel thread mode */
-static int kni_thread_multiple(void *param);
-
-static const struct file_operations kni_fops = {
-	.owner = THIS_MODULE,
-	.open = kni_open,
-	.release = kni_release,
-	.unlocked_ioctl = (void *)kni_ioctl,
-	.compat_ioctl = (void *)kni_compat_ioctl,
-};
-
-static struct miscdevice kni_misc = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = KNI_DEVICE,
-	.fops = &kni_fops,
-};
-
 /* loopback mode */
 static char *lo_mode;
 
@@ -156,140 +127,6 @@ static struct pernet_operations kni_net_ops = {
 #endif
 };
 
-static int __init
-kni_init(void)
-{
-	int rc;
-
-	pr_debug("######## DPDK kni module loading ########\n");
-
-	if (kni_parse_kthread_mode() < 0) {
-		pr_err("Invalid parameter for kthread_mode\n");
-		return -EINVAL;
-	}
-
-	if (multiple_kthread_on == 0)
-		pr_debug("Single kernel thread for all KNI devices\n");
-	else
-		pr_debug("Multiple kernel thread mode enabled\n");
-
-#ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
-	rc = register_pernet_subsys(&kni_net_ops);
-#else
-	rc = register_pernet_gen_subsys(&kni_net_id, &kni_net_ops);
-#endif
-	if (rc)
-		return -EPERM;
-
-	rc = misc_register(&kni_misc);
-	if (rc != 0) {
-		pr_err("Misc registration failed\n");
-		goto out;
-	}
-
-	/* Configure the lo mode according to the input parameter */
-	kni_net_config_lo_mode(lo_mode);
-
-	pr_debug("######## DPDK kni module loaded  ########\n");
-
-	return 0;
-
-out:
-#ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
-	unregister_pernet_subsys(&kni_net_ops);
-#else
-	unregister_pernet_gen_subsys(kni_net_id, &kni_net_ops);
-#endif
-	return rc;
-}
-
-static void __exit
-kni_exit(void)
-{
-	misc_deregister(&kni_misc);
-#ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
-	unregister_pernet_subsys(&kni_net_ops);
-#else
-	unregister_pernet_gen_subsys(kni_net_id, &kni_net_ops);
-#endif
-	pr_debug("####### DPDK kni module unloaded  #######\n");
-}
-
-static int __init
-kni_parse_kthread_mode(void)
-{
-	if (!kthread_mode)
-		return 0;
-
-	if (strcmp(kthread_mode, "single") == 0)
-		return 0;
-	else if (strcmp(kthread_mode, "multiple") == 0)
-		multiple_kthread_on = 1;
-	else
-		return -1;
-
-	return 0;
-}
-
-static int
-kni_open(struct inode *inode, struct file *file)
-{
-	struct net *net = current->nsproxy->net_ns;
-	struct kni_net *knet = net_generic(net, kni_net_id);
-
-	/* kni device can be opened by one user only per netns */
-	if (test_and_set_bit(KNI_DEV_IN_USE_BIT_NUM, &knet->device_in_use))
-		return -EBUSY;
-
-	file->private_data = get_net(net);
-	pr_debug("/dev/kni opened\n");
-
-	return 0;
-}
-
-static int
-kni_release(struct inode *inode, struct file *file)
-{
-	struct net *net = file->private_data;
-	struct kni_net *knet = net_generic(net, kni_net_id);
-	struct kni_dev *dev, *n;
-
-	/* Stop kernel thread for single mode */
-	if (multiple_kthread_on == 0) {
-		mutex_lock(&knet->kni_kthread_lock);
-		/* Stop kernel thread */
-		if (knet->kni_kthread != NULL) {
-			kthread_stop(knet->kni_kthread);
-			knet->kni_kthread = NULL;
-		}
-		mutex_unlock(&knet->kni_kthread_lock);
-	}
-
-	down_write(&knet->kni_list_lock);
-	list_for_each_entry_safe(dev, n, &knet->kni_list_head, list) {
-		/* Stop kernel thread for multiple mode */
-		if (multiple_kthread_on && dev->pthread != NULL) {
-			kthread_stop(dev->pthread);
-			dev->pthread = NULL;
-		}
-
-#ifdef RTE_KNI_VHOST
-		kni_vhost_backend_release(dev);
-#endif
-		kni_dev_remove(dev);
-		list_del(&dev->list);
-	}
-	up_write(&knet->kni_list_lock);
-
-	/* Clear the bit of device in use */
-	clear_bit(KNI_DEV_IN_USE_BIT_NUM, &knet->device_in_use);
-
-	put_net(net);
-	pr_debug("/dev/kni closed\n");
-
-	return 0;
-}
-
 static int
 kni_thread_single(void *data)
 {
@@ -345,6 +182,22 @@ kni_thread_multiple(void *param)
 }
 
 static int
+kni_open(struct inode *inode, struct file *file)
+{
+	struct net *net = current->nsproxy->net_ns;
+	struct kni_net *knet = net_generic(net, kni_net_id);
+
+	/* kni device can be opened by one user only per netns */
+	if (test_and_set_bit(KNI_DEV_IN_USE_BIT_NUM, &knet->device_in_use))
+		return -EBUSY;
+
+	file->private_data = get_net(net);
+	pr_debug("/dev/kni opened\n");
+
+	return 0;
+}
+
+static int
 kni_dev_remove(struct kni_dev *dev)
 {
 	if (!dev)
@@ -361,6 +214,49 @@ kni_dev_remove(struct kni_dev *dev)
 		unregister_netdev(dev->net_dev);
 		free_netdev(dev->net_dev);
 	}
+
+	return 0;
+}
+
+static int
+kni_release(struct inode *inode, struct file *file)
+{
+	struct net *net = file->private_data;
+	struct kni_net *knet = net_generic(net, kni_net_id);
+	struct kni_dev *dev, *n;
+
+	/* Stop kernel thread for single mode */
+	if (multiple_kthread_on == 0) {
+		mutex_lock(&knet->kni_kthread_lock);
+		/* Stop kernel thread */
+		if (knet->kni_kthread != NULL) {
+			kthread_stop(knet->kni_kthread);
+			knet->kni_kthread = NULL;
+		}
+		mutex_unlock(&knet->kni_kthread_lock);
+	}
+
+	down_write(&knet->kni_list_lock);
+	list_for_each_entry_safe(dev, n, &knet->kni_list_head, list) {
+		/* Stop kernel thread for multiple mode */
+		if (multiple_kthread_on && dev->pthread != NULL) {
+			kthread_stop(dev->pthread);
+			dev->pthread = NULL;
+		}
+
+#ifdef RTE_KNI_VHOST
+		kni_vhost_backend_release(dev);
+#endif
+		kni_dev_remove(dev);
+		list_del(&dev->list);
+	}
+	up_write(&knet->kni_list_lock);
+
+	/* Clear the bit of device in use */
+	clear_bit(KNI_DEV_IN_USE_BIT_NUM, &knet->device_in_use);
+
+	put_net(net);
+	pr_debug("/dev/kni closed\n");
 
 	return 0;
 }
@@ -683,6 +579,95 @@ kni_compat_ioctl(struct inode *inode,
 	pr_debug("Not implemented.\n");
 
 	return -EINVAL;
+}
+
+static const struct file_operations kni_fops = {
+	.owner = THIS_MODULE,
+	.open = kni_open,
+	.release = kni_release,
+	.unlocked_ioctl = (void *)kni_ioctl,
+	.compat_ioctl = (void *)kni_compat_ioctl,
+};
+
+static struct miscdevice kni_misc = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = KNI_DEVICE,
+	.fops = &kni_fops,
+};
+
+static int __init
+kni_parse_kthread_mode(void)
+{
+	if (!kthread_mode)
+		return 0;
+
+	if (strcmp(kthread_mode, "single") == 0)
+		return 0;
+	else if (strcmp(kthread_mode, "multiple") == 0)
+		multiple_kthread_on = 1;
+	else
+		return -1;
+
+	return 0;
+}
+
+static int __init
+kni_init(void)
+{
+	int rc;
+
+	pr_debug("######## DPDK kni module loading ########\n");
+
+	if (kni_parse_kthread_mode() < 0) {
+		pr_err("Invalid parameter for kthread_mode\n");
+		return -EINVAL;
+	}
+
+	if (multiple_kthread_on == 0)
+		pr_debug("Single kernel thread for all KNI devices\n");
+	else
+		pr_debug("Multiple kernel thread mode enabled\n");
+
+#ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
+	rc = register_pernet_subsys(&kni_net_ops);
+#else
+	rc = register_pernet_gen_subsys(&kni_net_id, &kni_net_ops);
+#endif
+	if (rc)
+		return -EPERM;
+
+	rc = misc_register(&kni_misc);
+	if (rc != 0) {
+		pr_err("Misc registration failed\n");
+		goto out;
+	}
+
+	/* Configure the lo mode according to the input parameter */
+	kni_net_config_lo_mode(lo_mode);
+
+	pr_debug("######## DPDK kni module loaded  ########\n");
+
+	return 0;
+
+out:
+#ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
+	unregister_pernet_subsys(&kni_net_ops);
+#else
+	unregister_pernet_gen_subsys(kni_net_id, &kni_net_ops);
+#endif
+	return rc;
+}
+
+static void __exit
+kni_exit(void)
+{
+	misc_deregister(&kni_misc);
+#ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
+	unregister_pernet_subsys(&kni_net_ops);
+#else
+	unregister_pernet_gen_subsys(kni_net_id, &kni_net_ops);
+#endif
+	pr_debug("####### DPDK kni module unloaded  #######\n");
 }
 
 module_init(kni_init);
