@@ -121,12 +121,12 @@ kni_vhost_net_tx(struct kni_dev *kni, struct msghdr *m,
 		ret = kni_fifo_put(kni->tx_q, (void **)&pkt_va, 1);
 		if (unlikely(ret != 1)) {
 			/* Failing should not happen */
-			KNI_ERR("Fail to enqueue mbuf into tx_q\n");
+			pr_err("Fail to enqueue mbuf into tx_q\n");
 			goto drop;
 		}
 	} else {
 		/* Failing should not happen */
-		KNI_ERR("Fail to dequeue mbuf from alloc_q\n");
+		pr_err("Fail to dequeue mbuf from alloc_q\n");
 		goto drop;
 	}
 
@@ -171,7 +171,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
 	skb->data = NULL;
 	if (unlikely(kni_fifo_put(q->fifo, (void **)&skb, 1) != 1))
 		/* Failing should not happen */
-		KNI_ERR("Fail to enqueue entries into rx cache fifo\n");
+		pr_err("Fail to enqueue entries into rx cache fifo\n");
 
 	pkt_len = kva->data_len;
 	if (unlikely(pkt_len > len))
@@ -200,7 +200,7 @@ kni_vhost_net_rx(struct kni_dev *kni, struct msghdr *m,
 	va = (void *)kva - kni->mbuf_kva + kni->mbuf_va;
 	if (unlikely(kni_fifo_put(kni->free_q, (void **)&va, 1) != 1))
 		/* Failing should not happen */
-		KNI_ERR("Fail to enqueue entries into free_q\n");
+		pr_err("Fail to enqueue entries into free_q\n");
 
 	KNI_DBG_RX("receive done %d\n", pkt_len);
 
@@ -340,7 +340,7 @@ kni_chk_vhost_rx(struct kni_dev *kni)
 
 except:
 	/* Failing should not happen */
-	KNI_ERR("Fail to enqueue fifo, it shouldn't happen\n");
+	pr_err("Fail to enqueue fifo, it shouldn't happen\n");
 	BUG_ON(1);
 
 	return 0;
@@ -546,7 +546,7 @@ kni_sock_compat_ioctl(struct socket *sock, unsigned int cmd,
 		     unsigned long arg)
 {
 	/* 32 bits app on 64 bits OS to be supported later */
-	KNI_PRINT("Not implemented.\n");
+	pr_debug("Not implemented.\n");
 
 	return -EINVAL;
 }

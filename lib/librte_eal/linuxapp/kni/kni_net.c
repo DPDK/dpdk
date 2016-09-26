@@ -189,7 +189,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 
 		skb = dev_alloc_skb(len + 2);
 		if (!skb) {
-			KNI_ERR("Out of mem, dropping pkts\n");
+			pr_err("Out of mem, dropping pkts\n");
 			/* Update statistics */
 			kni->stats.rx_dropped++;
 			continue;
@@ -232,7 +232,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 	ret = kni_fifo_put(kni->free_q, kni->va, num_rx);
 	if (ret != num_rx)
 		/* Failing should not happen */
-		KNI_ERR("Fail to enqueue entries into free_q\n");
+		pr_err("Fail to enqueue entries into free_q\n");
 }
 
 /*
@@ -303,14 +303,14 @@ kni_net_rx_lo_fifo(struct kni_dev *kni)
 		ret = kni_fifo_put(kni->tx_q, kni->alloc_va, num);
 		if (ret != num)
 			/* Failing should not happen */
-			KNI_ERR("Fail to enqueue mbufs into tx_q\n");
+			pr_err("Fail to enqueue mbufs into tx_q\n");
 	}
 
 	/* Burst enqueue mbufs into free_q */
 	ret = kni_fifo_put(kni->free_q, kni->va, num);
 	if (ret != num)
 		/* Failing should not happen */
-		KNI_ERR("Fail to enqueue mbufs into free_q\n");
+		pr_err("Fail to enqueue mbufs into free_q\n");
 
 	/**
 	 * Update statistic, and enqueue/dequeue failure is impossible,
@@ -362,7 +362,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 
 		skb = dev_alloc_skb(len + 2);
 		if (skb == NULL)
-			KNI_ERR("Out of mem, dropping pkts\n");
+			pr_err("Out of mem, dropping pkts\n");
 		else {
 			/* Align IP on 16B boundary */
 			skb_reserve(skb, 2);
@@ -375,7 +375,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 		/* Simulate real usage, allocate/copy skb twice */
 		skb = dev_alloc_skb(len + 2);
 		if (skb == NULL) {
-			KNI_ERR("Out of mem, dropping pkts\n");
+			pr_err("Out of mem, dropping pkts\n");
 			kni->stats.rx_dropped++;
 			continue;
 		}
@@ -415,7 +415,7 @@ kni_net_rx_lo_fifo_skb(struct kni_dev *kni)
 	ret = kni_fifo_put(kni->free_q, kni->va, num);
 	if (ret != num)
 		/* Failing should not happen */
-		KNI_ERR("Fail to enqueue mbufs into free_q\n");
+		pr_err("Fail to enqueue mbufs into free_q\n");
 }
 
 /* rx interface */
@@ -500,12 +500,12 @@ kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 		ret = kni_fifo_put(kni->tx_q, &pkt_va, 1);
 		if (unlikely(ret != 1)) {
 			/* Failing should not happen */
-			KNI_ERR("Fail to enqueue mbuf into tx_q\n");
+			pr_err("Fail to enqueue mbuf into tx_q\n");
 			goto drop;
 		}
 	} else {
 		/* Failing should not happen */
-		KNI_ERR("Fail to dequeue mbuf from alloc_q\n");
+		pr_err("Fail to dequeue mbuf from alloc_q\n");
 		goto drop;
 	}
 
@@ -598,7 +598,7 @@ kni_net_process_request(struct kni_dev *kni, struct rte_kni_request *req)
 	int ret_val;
 
 	if (!kni || !req) {
-		KNI_ERR("No kni instance or request\n");
+		pr_err("No kni instance or request\n");
 		return -EINVAL;
 	}
 
@@ -608,7 +608,7 @@ kni_net_process_request(struct kni_dev *kni, struct rte_kni_request *req)
 	memcpy(kni->sync_kva, req, sizeof(struct rte_kni_request));
 	num = kni_fifo_put(kni->req_q, &kni->sync_va, 1);
 	if (num < 1) {
-		KNI_ERR("Cannot send to req_q\n");
+		pr_err("Cannot send to req_q\n");
 		ret = -EBUSY;
 		goto fail;
 	}
@@ -622,7 +622,7 @@ kni_net_process_request(struct kni_dev *kni, struct rte_kni_request *req)
 	num = kni_fifo_get(kni->resp_q, (void **)&resp_va, 1);
 	if (num != 1 || resp_va != kni->sync_va) {
 		/* This should never happen */
-		KNI_ERR("No data in resp_q\n");
+		pr_err("No data in resp_q\n");
 		ret = -ENODATA;
 		goto fail;
 	}
@@ -754,18 +754,18 @@ void
 kni_net_config_lo_mode(char *lo_str)
 {
 	if (!lo_str) {
-		KNI_PRINT("loopback disabled");
+		pr_debug("loopback disabled");
 		return;
 	}
 
 	if (!strcmp(lo_str, "lo_mode_none"))
-		KNI_PRINT("loopback disabled");
+		pr_debug("loopback disabled");
 	else if (!strcmp(lo_str, "lo_mode_fifo")) {
-		KNI_PRINT("loopback mode=lo_mode_fifo enabled");
+		pr_debug("loopback mode=lo_mode_fifo enabled");
 		kni_net_rx_func = kni_net_rx_lo_fifo;
 	} else if (!strcmp(lo_str, "lo_mode_fifo_skb")) {
-		KNI_PRINT("loopback mode=lo_mode_fifo_skb enabled");
+		pr_debug("loopback mode=lo_mode_fifo_skb enabled");
 		kni_net_rx_func = kni_net_rx_lo_fifo_skb;
 	} else
-		KNI_PRINT("Incognizant parameter, loopback disabled");
+		pr_debug("Incognizant parameter, loopback disabled");
 }
