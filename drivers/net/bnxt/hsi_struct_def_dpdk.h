@@ -4607,6 +4607,492 @@ struct hwrm_vnic_rss_cos_lb_ctx_free_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_ring_alloc */
+/*
+ * Description: This command allocates and does basic preparation for a ring.
+ */
+/* Input (80 bytes) */
+struct hwrm_ring_alloc_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t enables;
+	/* This bit must be '1' for the Reserved1 field to be configured. */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_RESERVED1	UINT32_C(0x1)
+	/* This bit must be '1' for the ring_arb_cfg field to be configured. */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_RING_ARB_CFG	UINT32_C(0x2)
+	/* This bit must be '1' for the Reserved3 field to be configured. */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_RESERVED3	UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the stat_ctx_id_valid field to be
+	 * configured.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID	UINT32_C(0x8)
+	/* This bit must be '1' for the Reserved4 field to be configured. */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_RESERVED4	UINT32_C(0x10)
+	/* This bit must be '1' for the max_bw_valid field to be configured. */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_MAX_BW_VALID	UINT32_C(0x20)
+	uint8_t ring_type;
+	/* Ring Type. */
+	/* Completion Ring (CR) */
+	#define HWRM_RING_ALLOC_INPUT_RING_TYPE_CMPL	UINT32_C(0x0)
+	/* TX Ring (TR) */
+	#define HWRM_RING_ALLOC_INPUT_RING_TYPE_TX	UINT32_C(0x1)
+	/* RX Ring (RR) */
+	#define HWRM_RING_ALLOC_INPUT_RING_TYPE_RX	UINT32_C(0x2)
+	uint8_t unused_0;
+	uint16_t unused_1;
+	uint64_t page_tbl_addr;
+	/* This value is a pointer to the page table for the Ring. */
+	uint32_t fbo;
+	/* First Byte Offset of the first entry in the first page. */
+	uint8_t page_size;
+	/*
+	 * Actual page size in 2^page_size. The supported range is
+	 * increments in powers of 2 from 16 bytes to 1GB. - 4 = 16 B
+	 * Page size is 16 B. - 12 = 4 KB Page size is 4 KB. - 13 = 8 KB
+	 * Page size is 8 KB. - 16 = 64 KB Page size is 64 KB. - 21 = 2
+	 * MB Page size is 2 MB. - 22 = 4 MB Page size is 4 MB. - 30 = 1
+	 * GB Page size is 1 GB.
+	 */
+	uint8_t page_tbl_depth;
+	/*
+	 * This value indicates the depth of page table. For this
+	 * version of the specification, value other than 0 or 1 shall
+	 * be considered as an invalid value. When the page_tbl_depth =
+	 * 0, then it is treated as a special case with the following.
+	 * 1. FBO and page size fields are not valid. 2. page_tbl_addr
+	 * is the physical address of the first element of the ring.
+	 */
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint32_t length;
+	/*
+	 * Number of 16B units in the ring. Minimum size for a ring is
+	 * 16 16B entries.
+	 */
+	uint16_t logical_id;
+	/*
+	 * Logical ring number for the ring to be allocated. This value
+	 * determines the position in the doorbell area where the update
+	 * to the ring will be made. For completion rings, this value is
+	 * also the MSI-X vector number for the function the completion
+	 * ring is associated with.
+	 */
+	uint16_t cmpl_ring_id;
+	/*
+	 * This field is used only when ring_type is a TX ring. This
+	 * value indicates what completion ring the TX ring is
+	 * associated with.
+	 */
+	uint16_t queue_id;
+	/*
+	 * This field is used only when ring_type is a TX ring. This
+	 * value indicates what CoS queue the TX ring is associated
+	 * with.
+	 */
+	uint8_t unused_4;
+	uint8_t unused_5;
+	uint32_t reserved1;
+	/* This field is reserved for the future use. It shall be set to 0. */
+	uint16_t ring_arb_cfg;
+	/*
+	 * This field is used only when ring_type is a TX ring. This
+	 * field is used to configure arbitration related parameters for
+	 * a TX ring.
+	 */
+	/* Arbitration policy used for the ring. */
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_MASK	\
+		UINT32_C(0xf)
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_SFT	0
+	/*
+	 * Use strict priority for the TX ring. Priority
+	 * value is specified in arb_policy_param
+	 */
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_SP	\
+		(UINT32_C(0x1) << 0)
+	/*
+	 * Use weighted fair queue arbitration for the
+	 * TX ring. Weight is specified in
+	 * arb_policy_param
+	 */
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_WFQ	\
+		(UINT32_C(0x2) << 0)
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_LAST	\
+		RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_WFQ
+	/* Reserved field. */
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_RSVD_MASK	UINT32_C(0xf0)
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_RSVD_SFT	4
+	/*
+	 * Arbitration policy specific parameter. # For strict priority
+	 * arbitration policy, this field represents a priority value.
+	 * If set to 0, then the priority is not specified and the HWRM
+	 * is allowed to select any priority for this TX ring. # For
+	 * weighted fair queue arbitration policy, this field represents
+	 * a weight value. If set to 0, then the weight is not specified
+	 * and the HWRM is allowed to select any weight for this TX
+	 * ring.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_PARAM_MASK  \
+		UINT32_C(0xff00)
+	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_PARAM_SFT   8
+	uint8_t unused_6;
+	uint8_t unused_7;
+	uint32_t reserved3;
+	/* This field is reserved for the future use. It shall be set to 0. */
+	uint32_t stat_ctx_id;
+	/*
+	 * This field is used only when ring_type is a TX ring. This
+	 * input indicates what statistics context this ring should be
+	 * associated with.
+	 */
+	uint32_t reserved4;
+	/* This field is reserved for the future use. It shall be set to 0. */
+	uint32_t max_bw;
+	/*
+	 * This field is used only when ring_type is a TX ring to
+	 * specify maximum BW allocated to the TX ring. The HWRM will
+	 * translate this value into byte counter and time interval used
+	 * for this ring inside the device.
+	 */
+	/* Bandwidth value */
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_MASK	\
+		UINT32_C(0xfffffff)
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_SFT	0
+	/* Reserved */
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_RSVD	UINT32_C(0x10000000)
+	/* bw_value_unit is 3 b */
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_UNIT_MASK	\
+		UINT32_C(0xe0000000)
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_UNIT_SFT	29
+	/* Value is in Mbps */
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_UNIT_MBPS	\
+		(UINT32_C(0x0) << 29)
+	/* Value is in 1/100th of a percentage of total bandwidth. */
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_UNIT_PERCENT1_100  \
+		(UINT32_C(0x1) << 29)
+	/* Invalid unit */
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_UNIT_INVALID	\
+		(UINT32_C(0x7) << 29)
+	#define HWRM_RING_ALLOC_INPUT_MAX_BW_BW_VALUE_UNIT_LAST	\
+		RING_ALLOC_INPUT_MAX_BW_BW_VALUE_UNIT_INVALID
+	uint8_t int_mode;
+	/*
+	 * This field is used only when ring_type is a Completion ring.
+	 * This value indicates what interrupt mode should be used on
+	 * this completion ring. Note: In the legacy interrupt mode, no
+	 * more than 16 completion rings are allowed.
+	 */
+	/* Legacy INTA */
+	#define HWRM_RING_ALLOC_INPUT_INT_MODE_LEGACY	UINT32_C(0x0)
+	/* Reserved */
+	#define HWRM_RING_ALLOC_INPUT_INT_MODE_RSVD	UINT32_C(0x1)
+	/* MSI-X */
+	#define HWRM_RING_ALLOC_INPUT_INT_MODE_MSIX	UINT32_C(0x2)
+	/* No Interrupt - Polled mode */
+	#define HWRM_RING_ALLOC_INPUT_INT_MODE_POLL	UINT32_C(0x3)
+	uint8_t unused_8[3];
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_ring_alloc_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint16_t ring_id;
+	/*
+	 * Physical number of ring allocated. This value shall be unique
+	 * for a ring type.
+	 */
+	uint16_t logical_ring_id;
+	/* Logical number of ring allocated. */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_ring_free */
+/*
+ * Description: This command is used to free a ring and associated resources.
+ */
+/* Input (24 bytes) */
+struct hwrm_ring_free_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint8_t ring_type;
+	/* Ring Type. */
+	/* Completion Ring (CR) */
+	#define HWRM_RING_FREE_INPUT_RING_TYPE_CMPL	UINT32_C(0x0)
+	/* TX Ring (TR) */
+	#define HWRM_RING_FREE_INPUT_RING_TYPE_TX	UINT32_C(0x1)
+	/* RX Ring (RR) */
+	#define HWRM_RING_FREE_INPUT_RING_TYPE_RX	UINT32_C(0x2)
+	uint8_t unused_0;
+	uint16_t ring_id;
+	/* Physical number of ring allocated. */
+	uint32_t unused_1;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_ring_free_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_ring_grp_alloc */
+/*
+ * Description: This API allocates and does basic preparation for a ring group.
+ */
+/* Input (24 bytes) */
+struct hwrm_ring_grp_alloc_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint16_t cr;
+	/* This value identifies the CR associated with the ring group. */
+	uint16_t rr;
+	/* This value identifies the main RR associated with the ring group. */
+	uint16_t ar;
+	/*
+	 * This value identifies the aggregation RR associated with the
+	 * ring group. If this value is 0xFF... (All Fs), then no
+	 * Aggregation ring will be set.
+	 */
+	uint16_t sc;
+	/*
+	 * This value identifies the statistics context associated with
+	 * the ring group.
+	 */
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_ring_grp_alloc_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t ring_group_id;
+	/*
+	 * This is the ring group ID value. Use this value to program
+	 * the default ring group for the VNIC or as table entries in an
+	 * RSS/COS context.
+	 */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_ring_grp_free */
+/*
+ * Description: This API frees a ring group and associated resources. # If a
+ * ring in the ring group is reset or free, then the associated rings in the
+ * ring group shall also be reset/free using hwrm_ring_free. # A function driver
+ * shall always use hwrm_ring_grp_free after freeing all rings in a group. # As
+ * a part of executing this command, the HWRM shall reset all associated ring
+ * group resources.
+ */
+/* Input (24 bytes) */
+struct hwrm_ring_grp_free_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t ring_group_id;
+	/* This is the ring group ID value. */
+	uint32_t unused_0;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_ring_grp_free_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
 /* hwrm_cfa_l2_filter_alloc */
 /*
  * A filter is used to identify traffic that contains a matching set of
@@ -5260,493 +5746,6 @@ struct hwrm_exec_fwd_resp_input {
 
 /* Output (16 bytes) */
 struct hwrm_exec_fwd_resp_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-
-/* hwrm_ring_alloc */
-/*
- * Description: This command allocates and does basic preparation for a ring.
- */
-
-/* Input (80 bytes) */
-struct hwrm_ring_alloc_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* This bit must be '1' for the Reserved1 field to be configured. */
-	#define HWRM_RING_ALLOC_INPUT_ENABLES_RESERVED1		UINT32_C(0x1)
-	/* This bit must be '1' for the Reserved2 field to be configured. */
-	#define HWRM_RING_ALLOC_INPUT_ENABLES_RESERVED2		UINT32_C(0x2)
-	/* This bit must be '1' for the Reserved3 field to be configured. */
-	#define HWRM_RING_ALLOC_INPUT_ENABLES_RESERVED3		UINT32_C(0x4)
-	/*
-	 * This bit must be '1' for the stat_ctx_id_valid field to be
-	 * configured.
-	 */
-	#define HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID	UINT32_C(0x8)
-	/* This bit must be '1' for the Reserved4 field to be configured. */
-	#define HWRM_RING_ALLOC_INPUT_ENABLES_RESERVED4		UINT32_C(0x10)
-	/* This bit must be '1' for the max_bw_valid field to be configured. */
-	#define HWRM_RING_ALLOC_INPUT_ENABLES_MAX_BW_VALID	UINT32_C(0x20)
-	uint32_t enables;
-
-	/* Ring Type. */
-		/* Completion Ring (CR) */
-	#define HWRM_RING_ALLOC_INPUT_RING_TYPE_CMPL	(UINT32_C(0x0) << 0)
-		/* TX Ring (TR) */
-	#define HWRM_RING_ALLOC_INPUT_RING_TYPE_TX	(UINT32_C(0x1) << 0)
-		/* RX Ring (RR) */
-	#define HWRM_RING_ALLOC_INPUT_RING_TYPE_RX	(UINT32_C(0x2) << 0)
-	uint8_t ring_type;
-
-	uint8_t unused_0;
-	uint16_t unused_1;
-
-	/* This value is a pointer to the page table for the Ring. */
-	uint64_t page_tbl_addr;
-
-	/* First Byte Offset of the first entry in the first page. */
-	uint32_t fbo;
-
-	/*
-	 * Actual page size in 2^page_size. The supported range is increments in
-	 * powers of 2 from 16 bytes to 1GB. - 4 = 16 B Page size is 16 B. - 12
-	 * = 4 KB Page size is 4 KB. - 13 = 8 KB Page size is 8 KB. - 16 = 64 KB
-	 * Page size is 64 KB. - 22 = 2 MB Page size is 2 MB. - 23 = 4 MB Page
-	 * size is 4 MB. - 31 = 1 GB Page size is 1 GB.
-	 */
-	uint8_t page_size;
-
-	/*
-	 * This value indicates the depth of page table. For this version of the
-	 * specification, value other than 0 or 1 shall be considered as an
-	 * invalid value. When the page_tbl_depth = 0, then it is treated as a
-	 * special case with the following. 1. FBO and page size fields are not
-	 * valid. 2. page_tbl_addr is the physical address of the first element
-	 * of the ring.
-	 */
-	uint8_t page_tbl_depth;
-
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * Number of 16B units in the ring. Minimum size for a ring is 16 16B
-	 * entries.
-	 */
-	uint32_t length;
-
-	/*
-	 * Logical ring number for the ring to be allocated. This value
-	 * determines the position in the doorbell area where the update to the
-	 * ring will be made. For completion rings, this value is also the MSI-X
-	 * vector number for the function the completion ring is associated
-	 * with.
-	 */
-	uint16_t logical_id;
-
-	/*
-	 * This field is used only when ring_type is a TX ring. This value
-	 * indicates what completion ring the TX ring is associated with.
-	 */
-	uint16_t cmpl_ring_id;
-
-	/*
-	 * This field is used only when ring_type is a TX ring. This value
-	 * indicates what CoS queue the TX ring is associated with.
-	 */
-	uint16_t queue_id;
-
-	uint8_t unused_4;
-	uint8_t unused_5;
-
-	/* This field is reserved for the future use. It shall be set to 0. */
-	uint32_t reserved1;
-	/* This field is reserved for the future use. It shall be set to 0. */
-	uint16_t reserved2;
-
-	uint8_t unused_6;
-	uint8_t unused_7;
-	/* This field is reserved for the future use. It shall be set to 0. */
-	uint32_t reserved3;
-
-	/*
-	 * This field is used only when ring_type is a TX ring. This input
-	 * indicates what statistics context this ring should be associated
-	 * with.
-	 */
-	uint32_t stat_ctx_id;
-
-	/* This field is reserved for the future use. It shall be set to 0. */
-	uint32_t reserved4;
-
-	/*
-	 * This field is used only when ring_type is a TX ring. Maximum BW
-	 * allocated to this TX ring in Mbps. The HWRM will translate this value
-	 * into byte counter and time interval used for this ring inside the
-	 * device.
-	 */
-	uint32_t max_bw;
-
-	/*
-	 * This field is used only when ring_type is a Completion ring. This
-	 * value indicates what interrupt mode should be used on this completion
-	 * ring. Note: In the legacy interrupt mode, no more than 16 completion
-	 * rings are allowed.
-	 */
-		/* Legacy INTA */
-	#define HWRM_RING_ALLOC_INPUT_INT_MODE_LEGACY	(UINT32_C(0x0) << 0)
-		/* Reserved */
-	#define HWRM_RING_ALLOC_INPUT_INT_MODE_RSVD	(UINT32_C(0x1) << 0)
-		/* MSI-X */
-	#define HWRM_RING_ALLOC_INPUT_INT_MODE_MSIX	(UINT32_C(0x2) << 0)
-		/* No Interrupt - Polled mode */
-	#define HWRM_RING_ALLOC_INPUT_INT_MODE_POLL	(UINT32_C(0x3) << 0)
-	uint8_t int_mode;
-
-	uint8_t unused_8[3];
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-
-struct hwrm_ring_alloc_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	/* Physical number of ring allocated. */
-	uint16_t ring_id;
-
-	/* Logical number of ring allocated. */
-	uint16_t logical_ring_id;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_ring_free */
-/*
- * Description: This command is used to free a ring and associated resources.
- */
-/* Input (24 bytes) */
-
-struct hwrm_ring_free_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* Ring Type. */
-		/* Completion Ring (CR) */
-	#define HWRM_RING_FREE_INPUT_RING_TYPE_CMPL	(UINT32_C(0x0) << 0)
-		/* TX Ring (TR) */
-	#define HWRM_RING_FREE_INPUT_RING_TYPE_TX	(UINT32_C(0x1) << 0)
-		/* RX Ring (RR) */
-	#define HWRM_RING_FREE_INPUT_RING_TYPE_RX	(UINT32_C(0x2) << 0)
-	uint8_t ring_type;
-
-	uint8_t unused_0;
-
-	/* Physical number of ring allocated. */
-	uint16_t ring_id;
-
-	uint32_t unused_1;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_ring_free_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	uint32_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-	uint8_t unused_3;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_ring_grp_alloc */
-/*
- * Description: This API allocates and does basic preparation for a ring group.
- */
-
-/* Input (24 bytes) */
-struct hwrm_ring_grp_alloc_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* This value identifies the CR associated with the ring group. */
-	uint16_t cr;
-
-	/* This value identifies the main RR associated with the ring group. */
-	uint16_t rr;
-
-	/*
-	 * This value identifies the aggregation RR associated with the ring
-	 * group. If this value is 0xFF... (All Fs), then no Aggregation ring
-	 * will be set.
-	 */
-	uint16_t ar;
-
-	/*
-	 * This value identifies the statistics context associated with the ring
-	 * group.
-	 */
-	uint16_t sc;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_ring_grp_alloc_output {
-	/*
-	 * Pass/Fail or error type Note: receiver to verify the in parameters,
-	 * and fail the call with an error when appropriate
-	 */
-	uint16_t error_code;
-
-	/* This field returns the type of original request. */
-	uint16_t req_type;
-
-	/* This field provides original sequence number of the command. */
-	uint16_t seq_id;
-
-	/*
-	 * This field is the length of the response in bytes. The last byte of
-	 * the response is a valid flag that will read as '1' when the command
-	 * has been completely written to memory.
-	 */
-	uint16_t resp_len;
-
-	/*
-	 * This is the ring group ID value. Use this value to program the
-	 * default ring group for the VNIC or as table entries in an RSS/COS
-	 * context.
-	 */
-	uint32_t ring_group_id;
-
-	uint8_t unused_0;
-	uint8_t unused_1;
-	uint8_t unused_2;
-
-	/*
-	 * This field is used in Output records to indicate that the output is
-	 * completely written to RAM. This field should be read as '1' to
-	 * indicate that the output has been completely written. When writing a
-	 * command completion or response to an internal processor, the order of
-	 * writes has to be such that this field is written last.
-	 */
-	uint8_t valid;
-} __attribute__((packed));
-
-/* hwrm_ring_grp_free */
-/*
- * Description: This API frees a ring group and associated resources. # If a
- * ring in the ring group is reset or free, then the associated rings in the
- * ring group shall also be reset/free using hwrm_ring_free. # A function driver
- * shall always use hwrm_ring_grp_free after freeing all rings in a group. # As
- * a part of executing this command, the HWRM shall reset all associated ring
- * group resources.
- */
-
-/* Input (24 bytes) */
-struct hwrm_ring_grp_free_input {
-	/*
-	 * This value indicates what type of request this is. The format for the
-	 * rest of the command is determined by this field.
-	 */
-	uint16_t req_type;
-
-	/*
-	 * This value indicates the what completion ring the request will be
-	 * optionally completed on. If the value is -1, then no CR completion
-	 * will be generated. Any other value must be a valid CR ring_id value
-	 * for this function.
-	 */
-	uint16_t cmpl_ring;
-
-	/* This value indicates the command sequence number. */
-	uint16_t seq_id;
-
-	/*
-	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
-	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
-	 */
-	uint16_t target_id;
-
-	/*
-	 * This is the host address where the response will be written when the
-	 * request is complete. This area must be 16B aligned and must be
-	 * cleared to zero before the request is made.
-	 */
-	uint64_t resp_addr;
-
-	/* This is the ring group ID value. */
-	uint32_t ring_group_id;
-
-	uint32_t unused_0;
-} __attribute__((packed));
-
-/* Output (16 bytes) */
-struct hwrm_ring_grp_free_output {
 	/*
 	 * Pass/Fail or error type Note: receiver to verify the in parameters,
 	 * and fail the call with an error when appropriate
