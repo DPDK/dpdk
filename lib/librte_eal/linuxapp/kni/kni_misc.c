@@ -81,11 +81,11 @@ static struct miscdevice kni_misc = {
 };
 
 /* loopback mode */
-static char *lo_mode = NULL;
+static char *lo_mode;
 
 /* Kernel thread mode */
-static char *kthread_mode = NULL;
-static unsigned multiple_kthread_on = 0;
+static char *kthread_mode;
+static unsigned int multiple_kthread_on;
 
 #define KNI_DEV_IN_USE_BIT_NUM 0 /* Bit number for device in use */
 
