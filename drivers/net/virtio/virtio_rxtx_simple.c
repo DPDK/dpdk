@@ -200,7 +200,7 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	sw_ring  = &vq->sw_ring[desc_idx];
 	sw_ring_end = &vq->sw_ring[vq->vq_nentries];
 
-	_mm_prefetch((const void *)rused, _MM_HINT_T0);
+	rte_prefetch0(rused);
 
 	if (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
 		virtio_rxq_rearm_vec(rxvq);

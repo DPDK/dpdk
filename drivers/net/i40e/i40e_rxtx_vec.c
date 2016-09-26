@@ -224,7 +224,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 */
 	rxdp = rxq->rx_ring + rxq->rx_tail;
 
-	_mm_prefetch((const void *)rxdp, _MM_HINT_T0);
+	rte_prefetch0(rxdp);
 
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
 	 * of time to act

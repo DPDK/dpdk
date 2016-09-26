@@ -406,7 +406,7 @@ fm10k_recv_raw_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 */
 	rxdp = rxq->hw_ring + next_dd;
 
-	_mm_prefetch((const void *)rxdp, _MM_HINT_T0);
+	rte_prefetch0(rxdp);
 
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
 	 * of time to act
