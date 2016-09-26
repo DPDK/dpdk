@@ -180,15 +180,16 @@ rte_get_timer_hz(void)
 	default: rte_panic("Invalid timer source specified\n");
 	}
 }
-
 /**
  * Wait at least us microseconds.
+ * This function can be replaced with user-defined function.
+ * @see rte_delay_us_callback_register
  *
  * @param us
  *   The number of microseconds to wait.
  */
 void
-rte_delay_us(unsigned us);
+(*rte_delay_us)(unsigned int us);
 
 /**
  * Wait at least ms milliseconds.
@@ -201,5 +202,22 @@ rte_delay_ms(unsigned ms)
 {
 	rte_delay_us(ms * 1000);
 }
+
+/**
+ * Blocking delay function.
+ *
+ * @param us
+ *   Number of microseconds to wait.
+ */
+void rte_delay_us_block(unsigned int us);
+
+/**
+ * Replace rte_delay_us with user defined function.
+ *
+ * @param userfunc
+ *   User function which replaces rte_delay_us. rte_delay_us_block restores
+ *   buildin block delay function.
+ */
+void rte_delay_us_callback_register(void(*userfunc)(unsigned int));
 
 #endif /* _RTE_CYCLES_H_ */

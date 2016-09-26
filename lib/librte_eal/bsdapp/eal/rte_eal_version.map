@@ -162,3 +162,11 @@ DPDK_16.07 {
 	rte_thread_setname;
 
 } DPDK_16.04;
+
+DPDK_16.11 {
+	global:
+
+	rte_delay_us_block;
+	rte_delay_us_callback_register;
+
+} DPDK_16.07;
