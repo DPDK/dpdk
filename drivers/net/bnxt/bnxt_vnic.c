@@ -229,6 +229,9 @@ void bnxt_free_vnic_mem(struct bnxt *bp)
 	struct bnxt_vnic_info *vnic;
 	uint16_t max_vnics, i;
 
+	if (bp->vnic_info == NULL)
+		return;
+
 	if (BNXT_PF(bp)) {
 		struct bnxt_pf_info *pf = &bp->pf;
 

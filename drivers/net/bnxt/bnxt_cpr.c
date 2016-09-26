@@ -124,6 +124,9 @@ void bnxt_free_def_cp_ring(struct bnxt *bp)
 {
 	struct bnxt_cp_ring_info *cpr = bp->def_cp_ring;
 
+	if (cpr == NULL)
+		return;
+
 	bnxt_free_ring(cpr->cp_ring_struct);
 	rte_free(cpr->cp_ring_struct);
 	rte_free(cpr);

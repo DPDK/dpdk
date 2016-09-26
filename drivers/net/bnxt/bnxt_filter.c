@@ -118,6 +118,9 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 	uint16_t max_filters, i;
 	int rc = 0;
 
+	if (bp->filter_info == NULL)
+		return;
+
 	/* Ensure that all filters are freed */
 	if (BNXT_PF(bp)) {
 		struct bnxt_pf_info *pf = &bp->pf;

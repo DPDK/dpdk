@@ -478,7 +478,14 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
 	bnxt_free_mem(bp);
-	rte_free(eth_dev->data->mac_addrs);
+	if (eth_dev->data->mac_addrs != NULL) {
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
+	}
+	if (bp->grp_info != NULL) {
+		rte_free(bp->grp_info);
+		bp->grp_info = NULL;
+	}
 }
 
 /* Unload the driver, release resources */
@@ -1084,19 +1091,28 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc;
 
-	if (eth_dev->data->mac_addrs)
+	if (eth_dev->data->mac_addrs != NULL) {
 		rte_free(eth_dev->data->mac_addrs);
-	if (bp->grp_info)
+		eth_dev->data->mac_addrs = NULL;
+	}
+	if (bp->grp_info != NULL) {
 		rte_free(bp->grp_info);
+		bp->grp_info = NULL;
+	}
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bnxt_free_hwrm_resources(bp);
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+
 	return rc;
 }
 
 static struct eth_driver bnxt_rte_pmd = {
 	.pci_drv = {
 		    .id_table = bnxt_pci_id_map,
-		    .drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+		    .drv_flags = RTE_PCI_DRV_NEED_MAPPING |
+			    RTE_PCI_DRV_DETACHABLE,
 		    .probe = rte_eth_dev_pci_probe,
 		    .remove = rte_eth_dev_pci_remove
 		    },
