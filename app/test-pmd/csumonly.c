@@ -101,6 +101,7 @@ struct testpmd_offload_info {
 	uint16_t outer_l3_len;
 	uint8_t outer_l4_proto;
 	uint16_t tso_segsz;
+	uint16_t tunnel_tso_segsz;
 };
 
 /* simplified GRE header */
@@ -349,7 +350,9 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		ipv4_hdr->hdr_checksum = 0;
 
 		ol_flags |= PKT_TX_IPV4;
-		if (info->tso_segsz != 0 && info->l4_proto == IPPROTO_TCP) {
+		if (info->l4_proto == IPPROTO_TCP &&
+		    ((info->is_tunnel && info->tunnel_tso_segsz != 0) ||
+		     (!info->is_tunnel && info->tso_segsz != 0))) {
 			ol_flags |= PKT_TX_IP_CKSUM;
 		} else {
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
@@ -381,7 +384,8 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	} else if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		tcp_hdr->cksum = 0;
-		if (info->tso_segsz != 0) {
+		if ((info->is_tunnel && info->tunnel_tso_segsz != 0) ||
+		    (!info->is_tunnel && info->tso_segsz != 0)) {
 			ol_flags |= PKT_TX_TCP_SEG;
 			tcp_hdr->cksum = get_psd_sum(l3_hdr, info->ethertype,
 				ol_flags);
@@ -411,12 +415,10 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	return ol_flags;
 }
 
-/* Calculate the checksum of outer header (only vxlan is supported,
- * meaning IP + UDP). The caller already checked that it's a vxlan
- * packet */
+/* Calculate the checksum of outer header */
 static uint64_t
 process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
-	uint16_t testpmd_ol_flags)
+	uint16_t testpmd_ol_flags, int tso_enabled)
 {
 	struct ipv4_hdr *ipv4_hdr = outer_l3_hdr;
 	struct ipv6_hdr *ipv6_hdr = outer_l3_hdr;
@@ -437,10 +439,20 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	if (info->outer_l4_proto != IPPROTO_UDP)
 		return ol_flags;
 
-	/* outer UDP checksum is always done in software as we have no
-	 * hardware supporting it today, and no API for it. */
-
 	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + info->outer_l3_len);
+
+	/* outer UDP checksum is done in software as we have no hardware
+	 * supporting it today, and no API for it. In the other side, for
+	 * UDP tunneling, like VXLAN or Geneve, outer UDP checksum can be
+	 * set to zero.
+	 *
+	 * If a packet will be TSOed into small packets by NIC, we cannot
+	 * set/calculate a non-zero checksum, because it will be a wrong
+	 * value after the packet be split into several small packets.
+	 */
+	if (tso_enabled)
+		udp_hdr->dgram_cksum = 0;
+
 	/* do not recalculate udp cksum if it was 0 */
 	if (udp_hdr->dgram_cksum != 0) {
 		udp_hdr->dgram_cksum = 0;
@@ -674,6 +686,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	testpmd_ol_flags = txp->tx_ol_flags;
 	memset(&info, 0, sizeof(info));
 	info.tso_segsz = txp->tso_segsz;
+	info.tunnel_tso_segsz = txp->tunnel_tso_segsz;
 
 	for (i = 0; i < nb_rx; i++) {
 		if (likely(i < nb_rx - 1))
@@ -703,18 +716,27 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_PARSE_TUNNEL) {
 			if (info.l4_proto == IPPROTO_UDP) {
 				struct udp_hdr *udp_hdr;
+
 				udp_hdr = (struct udp_hdr *)((char *)l3_hdr +
 					info.l3_len);
 				parse_vxlan(udp_hdr, &info, m->packet_type);
+				if (info.is_tunnel)
+					ol_flags |= PKT_TX_TUNNEL_VXLAN;
 			} else if (info.l4_proto == IPPROTO_GRE) {
 				struct simple_gre_hdr *gre_hdr;
+
 				gre_hdr = (struct simple_gre_hdr *)
 					((char *)l3_hdr + info.l3_len);
 				parse_gre(gre_hdr, &info);
+				if (info.is_tunnel)
+					ol_flags |= PKT_TX_TUNNEL_GRE;
 			} else if (info.l4_proto == IPPROTO_IPIP) {
 				void *encap_ip_hdr;
+
 				encap_ip_hdr = (char *)l3_hdr + info.l3_len;
 				parse_encap_ip(encap_ip_hdr, &info);
+				if (info.is_tunnel)
+					ol_flags |= PKT_TX_TUNNEL_IPIP;
 			}
 		}
 
@@ -744,18 +766,21 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		 * processed in hardware. */
 		if (info.is_tunnel == 1) {
 			ol_flags |= process_outer_cksums(outer_l3_hdr, &info,
-				testpmd_ol_flags);
+					testpmd_ol_flags,
+					!!(ol_flags & PKT_TX_TCP_SEG));
 		}
 
 		/* step 4: fill the mbuf meta data (flags and header lengths) */
 
 		if (info.is_tunnel == 1) {
-			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) {
+			if (info.tunnel_tso_segsz ||
+			    testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM) {
 				m->outer_l2_len = info.outer_l2_len;
 				m->outer_l3_len = info.outer_l3_len;
 				m->l2_len = info.l2_len;
 				m->l3_len = info.l3_len;
 				m->l4_len = info.l4_len;
+				m->tso_segsz = info.tunnel_tso_segsz;
 			}
 			else {
 				/* if there is a outer UDP cksum
@@ -775,8 +800,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			m->l2_len = info.l2_len;
 			m->l3_len = info.l3_len;
 			m->l4_len = info.l4_len;
+			m->tso_segsz = info.tso_segsz;
 		}
-		m->tso_segsz = info.tso_segsz;
 		m->ol_flags = ol_flags;
 
 		/* Do split & copy for the packet. */
@@ -805,6 +830,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				{ PKT_TX_OUTER_IPV4, PKT_TX_OUTER_IPV4 },
 				{ PKT_TX_OUTER_IPV6, PKT_TX_OUTER_IPV6 },
 				{ PKT_TX_TCP_SEG, PKT_TX_TCP_SEG },
+				{ PKT_TX_TUNNEL_VXLAN, PKT_TX_TUNNEL_MASK },
+				{ PKT_TX_TUNNEL_GRE, PKT_TX_TUNNEL_MASK },
+				{ PKT_TX_TUNNEL_IPIP, PKT_TX_TUNNEL_MASK },
+				{ PKT_TX_TUNNEL_GENEVE, PKT_TX_TUNNEL_MASK },
 			};
 			unsigned j;
 			const char *name;
@@ -831,11 +860,17 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				printf("tx: m->l2_len=%d m->l3_len=%d "
 					"m->l4_len=%d\n",
 					m->l2_len, m->l3_len, m->l4_len);
-			if ((info.is_tunnel == 1) &&
-				(testpmd_ol_flags & TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM))
-				printf("tx: m->outer_l2_len=%d m->outer_l3_len=%d\n",
-					m->outer_l2_len, m->outer_l3_len);
-			if (info.tso_segsz != 0)
+			if (info.is_tunnel == 1) {
+				if (testpmd_ol_flags &
+				    TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM)
+					printf("tx: m->outer_l2_len=%d "
+						"m->outer_l3_len=%d\n",
+						m->outer_l2_len,
+						m->outer_l3_len);
+				if (info.tunnel_tso_segsz != 0)
+					printf("tx: m->tso_segsz=%d\n",
+						m->tso_segsz);
+			} else if (info.tso_segsz != 0)
 				printf("tx: m->tso_segsz=%d\n", m->tso_segsz);
 			printf("tx: flags=");
 			for (j = 0; j < sizeof(tx_flags)/sizeof(*tx_flags); j++) {

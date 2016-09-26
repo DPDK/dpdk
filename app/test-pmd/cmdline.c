@@ -3472,7 +3472,7 @@ cmdline_parse_inst_t cmd_csum_tunnel = {
 	},
 };
 
-/* *** ENABLE HARDWARE SEGMENTATION IN TX PACKETS *** */
+/* *** ENABLE HARDWARE SEGMENTATION IN TX NON-TUNNELED PACKETS *** */
 struct cmd_tso_set_result {
 	cmdline_fixed_string_t tso;
 	cmdline_fixed_string_t mode;
@@ -3495,9 +3495,9 @@ cmd_tso_set_parsed(void *parsed_result,
 		ports[res->port_id].tso_segsz = res->tso_segsz;
 
 	if (ports[res->port_id].tso_segsz == 0)
-		printf("TSO is disabled\n");
+		printf("TSO for non-tunneled packets is disabled\n");
 	else
-		printf("TSO segment size is %d\n",
+		printf("TSO segment size for non-tunneled packets is %d\n",
 			ports[res->port_id].tso_segsz);
 
 	/* display warnings if configuration is not supported by the NIC */
@@ -3525,8 +3525,8 @@ cmdline_parse_token_num_t cmd_tso_set_portid =
 cmdline_parse_inst_t cmd_tso_set = {
 	.f = cmd_tso_set_parsed,
 	.data = NULL,
-	.help_str = "Set TSO segment size for csum engine (0 to disable): "
-	"tso set <tso_segsz> <port>",
+	.help_str = "Set TSO segment size of non-tunneled packets "
+	"for csum engine (0 to disable): tso set <tso_segsz> <port>",
 	.tokens = {
 		(void *)&cmd_tso_set_tso,
 		(void *)&cmd_tso_set_mode,
@@ -3544,12 +3544,128 @@ cmdline_parse_token_string_t cmd_tso_show_mode =
 cmdline_parse_inst_t cmd_tso_show = {
 	.f = cmd_tso_set_parsed,
 	.data = NULL,
-	.help_str = "Show TSO segment size for csum engine: "
-	"tso show <port>",
+	.help_str = "Show TSO segment size of non-tunneled packets "
+	"for csum engine: tso show <port>",
 	.tokens = {
 		(void *)&cmd_tso_set_tso,
 		(void *)&cmd_tso_show_mode,
 		(void *)&cmd_tso_set_portid,
+		NULL,
+	},
+};
+
+/* *** ENABLE HARDWARE SEGMENTATION IN TX TUNNELED PACKETS *** */
+struct cmd_tunnel_tso_set_result {
+	cmdline_fixed_string_t tso;
+	cmdline_fixed_string_t mode;
+	uint16_t tso_segsz;
+	uint8_t port_id;
+};
+
+static void
+check_tunnel_tso_nic_support(uint8_t port_id)
+{
+	struct rte_eth_dev_info dev_info;
+
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
+		printf("Warning: TSO enabled but VXLAN TUNNEL TSO not "
+		       "supported by port %d\n", port_id);
+	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GRE_TNL_TSO))
+		printf("Warning: TSO enabled but GRE TUNNEL TSO not "
+			"supported by port %d\n", port_id);
+	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPIP_TNL_TSO))
+		printf("Warning: TSO enabled but IPIP TUNNEL TSO not "
+		       "supported by port %d\n", port_id);
+	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
+		printf("Warning: TSO enabled but GENEVE TUNNEL TSO not "
+		       "supported by port %d\n", port_id);
+}
+
+static void
+cmd_tunnel_tso_set_parsed(void *parsed_result,
+			  __attribute__((unused)) struct cmdline *cl,
+			  __attribute__((unused)) void *data)
+{
+	struct cmd_tunnel_tso_set_result *res = parsed_result;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	if (!strcmp(res->mode, "set"))
+		ports[res->port_id].tunnel_tso_segsz = res->tso_segsz;
+
+	if (ports[res->port_id].tunnel_tso_segsz == 0)
+		printf("TSO for tunneled packets is disabled\n");
+	else {
+		printf("TSO segment size for tunneled packets is %d\n",
+			ports[res->port_id].tunnel_tso_segsz);
+
+		/* Below conditions are needed to make it work:
+		 * (1) tunnel TSO is supported by the NIC;
+		 * (2) "csum parse_tunnel" must be set so that tunneled pkts
+		 * are recognized;
+		 * (3) for tunneled pkts with outer L3 of IPv4,
+		 * "csum set outer-ip" must be set to hw, because after tso,
+		 * total_len of outer IP header is changed, and the checksum
+		 * of outer IP header calculated by sw should be wrong; that
+		 * is not necessary for IPv6 tunneled pkts because there's no
+		 * checksum in IP header anymore.
+		 */
+		check_tunnel_tso_nic_support(res->port_id);
+
+		if (!(ports[res->port_id].tx_ol_flags &
+		      TESTPMD_TX_OFFLOAD_PARSE_TUNNEL))
+			printf("Warning: csum parse_tunnel must be set "
+				"so that tunneled packets are recognized\n");
+		if (!(ports[res->port_id].tx_ol_flags &
+		      TESTPMD_TX_OFFLOAD_OUTER_IP_CKSUM))
+			printf("Warning: csum set outer-ip must be set to hw "
+				"if outer L3 is IPv4; not necessary for IPv6\n");
+	}
+}
+
+cmdline_parse_token_string_t cmd_tunnel_tso_set_tso =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_tso_set_result,
+				tso, "tunnel_tso");
+cmdline_parse_token_string_t cmd_tunnel_tso_set_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_tso_set_result,
+				mode, "set");
+cmdline_parse_token_num_t cmd_tunnel_tso_set_tso_segsz =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_tso_set_result,
+				tso_segsz, UINT16);
+cmdline_parse_token_num_t cmd_tunnel_tso_set_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_tunnel_tso_set_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_tunnel_tso_set = {
+	.f = cmd_tunnel_tso_set_parsed,
+	.data = NULL,
+	.help_str = "Set TSO segment size of tunneled packets for csum engine "
+	"(0 to disable): tunnel_tso set <tso_segsz> <port>",
+	.tokens = {
+		(void *)&cmd_tunnel_tso_set_tso,
+		(void *)&cmd_tunnel_tso_set_mode,
+		(void *)&cmd_tunnel_tso_set_tso_segsz,
+		(void *)&cmd_tunnel_tso_set_portid,
+		NULL,
+	},
+};
+
+cmdline_parse_token_string_t cmd_tunnel_tso_show_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_tso_set_result,
+				mode, "show");
+
+
+cmdline_parse_inst_t cmd_tunnel_tso_show = {
+	.f = cmd_tunnel_tso_set_parsed,
+	.data = NULL,
+	.help_str = "Show TSO segment size of tunneled packets "
+	"for csum engine: tunnel_tso show <port>",
+	.tokens = {
+		(void *)&cmd_tunnel_tso_set_tso,
+		(void *)&cmd_tunnel_tso_show_mode,
+		(void *)&cmd_tunnel_tso_set_portid,
 		NULL,
 	},
 };
@@ -10646,6 +10762,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_csum_tunnel,
 	(cmdline_parse_inst_t *)&cmd_tso_set,
 	(cmdline_parse_inst_t *)&cmd_tso_show,
+	(cmdline_parse_inst_t *)&cmd_tunnel_tso_set,
+	(cmdline_parse_inst_t *)&cmd_tunnel_tso_show,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,
