@@ -35,10 +35,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <rte_ip.h>
 #include <rte_lpm.h>
 
 #include "test.h"
-#include "test_lpm_routes.h"
 #include "test_xmmt_ops.h"
 
 #define TEST_LPM_ASSERT(cond) do {                                            \
