@@ -314,6 +314,17 @@ virtio_user_eth_dev_alloc(const char *name)
 	return eth_dev;
 }
 
+static void
+virtio_user_eth_dev_free(struct rte_eth_dev *eth_dev)
+{
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct virtio_hw *hw = data->dev_private;
+
+	rte_free(hw->virtio_user_dev);
+	rte_free(hw);
+	rte_eth_dev_release_port(eth_dev);
+}
+
 /* Dev initialization routine. Invoked once for each virtio vdev at
  * EAL init time, see rte_eal_dev_init().
  * Returns 0 on success.
@@ -344,9 +355,8 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_PATH) == 1) {
-		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_PATH,
-					 &get_string_arg, &path);
-		if (ret < 0) {
+		if (rte_kvargs_process(kvlist, VIRTIO_USER_ARG_PATH,
+				       &get_string_arg, &path) < 0) {
 			PMD_INIT_LOG(ERR, "error to parse %s",
 				     VIRTIO_USER_ARG_PATH);
 			goto end;
@@ -358,9 +368,8 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_MAC) == 1) {
-		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_MAC,
-					 &get_string_arg, &mac_addr);
-		if (ret < 0) {
+		if (rte_kvargs_process(kvlist, VIRTIO_USER_ARG_MAC,
+				       &get_string_arg, &mac_addr) < 0) {
 			PMD_INIT_LOG(ERR, "error to parse %s",
 				     VIRTIO_USER_ARG_MAC);
 			goto end;
@@ -368,9 +377,8 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_QUEUE_SIZE) == 1) {
-		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUE_SIZE,
-					 &get_integer_arg, &queue_size);
-		if (ret < 0) {
+		if (rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUE_SIZE,
+				       &get_integer_arg, &queue_size) < 0) {
 			PMD_INIT_LOG(ERR, "error to parse %s",
 				     VIRTIO_USER_ARG_QUEUE_SIZE);
 			goto end;
@@ -378,9 +386,8 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_QUEUES_NUM) == 1) {
-		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUES_NUM,
-					 &get_integer_arg, &queues);
-		if (ret < 0) {
+		if (rte_kvargs_process(kvlist, VIRTIO_USER_ARG_QUEUES_NUM,
+				       &get_integer_arg, &queues) < 0) {
 			PMD_INIT_LOG(ERR, "error to parse %s",
 				     VIRTIO_USER_ARG_QUEUES_NUM);
 			goto end;
@@ -388,9 +395,8 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_CQ_NUM) == 1) {
-		ret = rte_kvargs_process(kvlist, VIRTIO_USER_ARG_CQ_NUM,
-					 &get_integer_arg, &cq);
-		if (ret < 0) {
+		if (rte_kvargs_process(kvlist, VIRTIO_USER_ARG_CQ_NUM,
+				       &get_integer_arg, &cq) < 0) {
 			PMD_INIT_LOG(ERR, "error to parse %s",
 				     VIRTIO_USER_ARG_CQ_NUM);
 			goto end;
@@ -412,12 +418,16 @@ virtio_user_pmd_devinit(const char *name, const char *params)
 
 	hw = eth_dev->data->dev_private;
 	if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
-				 queue_size, mac_addr) < 0)
+				 queue_size, mac_addr) < 0) {
+		PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
+		virtio_user_eth_dev_free(eth_dev);
 		goto end;
+	}
 
 	/* previously called by rte_eal_pci_probe() for physical dev */
 	if (eth_virtio_dev_init(eth_dev) < 0) {
 		PMD_INIT_LOG(ERR, "eth_virtio_dev_init fails");
+		virtio_user_eth_dev_free(eth_dev);
 		goto end;
 	}
 	ret = 0;
