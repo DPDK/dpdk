@@ -36,6 +36,18 @@ New Features
 
      This section is a comment. Make sure to start the actual text at the margin.
 
+* **Added vhost-user indirect descriptors support.**
+
+  If indirect descriptor feature is negotiated, each packet sent by the guest
+  will take exactly one slot in the enqueue virtqueue. Without the feature, in
+  current version, even 64 bytes packets take two slots with Virtio PMD on guest
+  side.
+
+  The main impact is better performance for 0% packet loss use-cases, as it
+  behaves as if the virtqueue size was enlarged, so more packets can be buffered
+  in case of system perturbations. On the downside, small performance degradation
+  is measured when running micro-benchmarks.
+
 
 Resolved Issues
 ---------------
