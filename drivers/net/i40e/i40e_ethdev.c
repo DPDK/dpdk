@@ -1569,6 +1569,8 @@ i40e_parse_link_speeds(uint16_t link_speeds)
 
 	if (link_speeds & ETH_LINK_SPEED_40G)
 		link_speed |= I40E_LINK_SPEED_40GB;
+	if (link_speeds & ETH_LINK_SPEED_25G)
+		link_speed |= I40E_LINK_SPEED_25GB;
 	if (link_speeds & ETH_LINK_SPEED_20G)
 		link_speed |= I40E_LINK_SPEED_20GB;
 	if (link_speeds & ETH_LINK_SPEED_10G)
@@ -1594,6 +1596,7 @@ i40e_phy_conf_link(struct i40e_hw *hw,
 			I40E_AQ_PHY_FLAG_PAUSE_RX |
 			I40E_AQ_PHY_FLAG_LOW_POWER;
 	const uint8_t advt = I40E_LINK_SPEED_40GB |
+			I40E_LINK_SPEED_25GB |
 			I40E_LINK_SPEED_10GB |
 			I40E_LINK_SPEED_1GB |
 			I40E_LINK_SPEED_100MB;
@@ -1646,7 +1649,8 @@ i40e_apply_link_speed(struct rte_eth_dev *dev)
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 
 	speed = i40e_parse_link_speeds(conf->link_speeds);
-	abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
+	if (!I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types))
+		abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
 	if (!(conf->link_speeds & ETH_LINK_SPEED_FIXED))
 		abilities |= I40E_AQ_PHY_AN_ENABLED;
 	abilities |= I40E_AQ_PHY_LINK_ENABLED;
@@ -1748,7 +1752,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	/* Apply link configure */
 	if (dev->data->dev_conf.link_speeds & ~(ETH_LINK_SPEED_100M |
 				ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
-				ETH_LINK_SPEED_20G | ETH_LINK_SPEED_40G)) {
+				ETH_LINK_SPEED_20G | ETH_LINK_SPEED_25G |
+				ETH_LINK_SPEED_40G)) {
 		PMD_DRV_LOG(ERR, "Invalid link setting");
 		goto err_up;
 	}
@@ -1968,9 +1973,11 @@ static int
 i40e_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	uint8_t speed = I40E_LINK_SPEED_UNKNOWN;
-	uint8_t abilities = I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
+	uint8_t abilities = 0;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	if (!I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types))
+		abilities = I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
 	return i40e_phy_conf_link(hw, abilities, speed);
 }
 
@@ -2027,6 +2034,9 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 		break;
 	case I40E_LINK_SPEED_20GB:
 		link.link_speed = ETH_SPEED_NUM_20G;
+		break;
+	case I40E_LINK_SPEED_25GB:
+		link.link_speed = ETH_SPEED_NUM_25G;
 		break;
 	case I40E_LINK_SPEED_40GB:
 		link.link_speed = ETH_SPEED_NUM_40G;
@@ -2630,6 +2640,9 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types))
 		/* For XL710 */
 		dev_info->speed_capa = ETH_LINK_SPEED_40G;
+	else if (I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types))
+		/* For XXV710 */
+		dev_info->speed_capa = ETH_LINK_SPEED_25G;
 	else
 		/* For X710 */
 		dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G;
@@ -8290,7 +8303,8 @@ i40e_configure_registers(struct i40e_hw *hw)
 
 	for (i = 0; i < RTE_DIM(reg_table); i++) {
 		if (reg_table[i].addr == I40E_GL_SWR_PM_UP_THR) {
-			if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types)) /* For XL710 */
+			if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types) || /* For XL710 */
+			    I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types)) /* For XXV710 */
 				reg_table[i].val =
 					I40E_GL_SWR_PM_UP_THR_SF_VALUE;
 			else /* For X710 */

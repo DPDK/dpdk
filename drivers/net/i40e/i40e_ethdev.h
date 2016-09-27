@@ -765,4 +765,10 @@ i40e_calc_itr_interval(int16_t interval)
 	((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_SR4) || \
 	((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_LR4))
 
+#define I40E_PHY_TYPE_SUPPORT_25G(phy_type) \
+	(((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_KR) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_CR) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_SR) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_LR))
+
 #endif /* _I40E_ETHDEV_H_ */
