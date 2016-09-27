@@ -45,9 +45,35 @@
 #include "../virtio_ethdev.h"
 
 static int
+virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
+{
+	/* Of all per virtqueue MSGs, make sure VHOST_SET_VRING_CALL come
+	 * firstly because vhost depends on this msg to allocate virtqueue
+	 * pair.
+	 */
+	int callfd;
+	struct vhost_vring_file file;
+
+	/* May use invalid flag, but some backend leverages kickfd and callfd as
+	 * criteria to judge if dev is alive. so finally we use real event_fd.
+	 */
+	callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+	if (callfd < 0) {
+		PMD_DRV_LOG(ERR, "callfd error, %s\n", strerror(errno));
+		return -1;
+	}
+	file.index = queue_sel;
+	file.fd = callfd;
+	vhost_user_sock(dev->vhostfd, VHOST_USER_SET_VRING_CALL, &file);
+	dev->callfds[queue_sel] = callfd;
+
+	return 0;
+}
+
+static int
 virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 {
-	int callfd, kickfd;
+	int kickfd;
 	struct vhost_vring_file file;
 	struct vhost_vring_state state;
 	struct vring *vring = &dev->vrings[queue_sel];
@@ -59,30 +85,6 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 		.log_guest_addr = 0,
 		.flags = 0, /* disable log */
 	};
-
-	/* May use invalid flag, but some backend leverages kickfd and callfd as
-	 * criteria to judge if dev is alive. so finally we use real event_fd.
-	 */
-	callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-	if (callfd < 0) {
-		PMD_DRV_LOG(ERR, "callfd error, %s\n", strerror(errno));
-		return -1;
-	}
-	kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-	if (kickfd < 0) {
-		close(callfd);
-		PMD_DRV_LOG(ERR, "kickfd error, %s\n", strerror(errno));
-		return -1;
-	}
-
-	/* Of all per virtqueue MSGs, make sure VHOST_SET_VRING_CALL come
-	 * firstly because vhost depends on this msg to allocate virtqueue
-	 * pair.
-	 */
-	file.index = queue_sel;
-	file.fd = callfd;
-	vhost_user_sock(dev->vhostfd, VHOST_USER_SET_VRING_CALL, &file);
-	dev->callfds[queue_sel] = callfd;
 
 	state.index = queue_sel;
 	state.num = vring->num;
@@ -97,9 +99,39 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 * lastly because vhost depends on this msg to judge if
 	 * virtio is ready.
 	 */
+	kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+	if (kickfd < 0) {
+		PMD_DRV_LOG(ERR, "kickfd error, %s\n", strerror(errno));
+		return -1;
+	}
+	file.index = queue_sel;
 	file.fd = kickfd;
 	vhost_user_sock(dev->vhostfd, VHOST_USER_SET_VRING_KICK, &file);
 	dev->kickfds[queue_sel] = kickfd;
+
+	return 0;
+}
+
+static int
+virtio_user_queue_setup(struct virtio_user_dev *dev,
+			int (*fn)(struct virtio_user_dev *, uint32_t))
+{
+	uint32_t i, queue_sel;
+
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		queue_sel = 2 * i + VTNET_SQ_RQ_QUEUE_IDX;
+		if (fn(dev, queue_sel) < 0) {
+			PMD_DRV_LOG(INFO, "setup rx vq fails: %u", i);
+			return -1;
+		}
+	}
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		queue_sel = 2 * i + VTNET_SQ_TQ_QUEUE_IDX;
+		if (fn(dev, queue_sel) < 0) {
+			PMD_DRV_LOG(INFO, "setup tx vq fails: %u", i);
+			return -1;
+		}
+	}
 
 	return 0;
 }
@@ -108,36 +140,15 @@ int
 virtio_user_start_device(struct virtio_user_dev *dev)
 {
 	uint64_t features;
-	uint32_t i, queue_sel;
 	int ret;
 
-	/* construct memory region inside each implementation */
-	ret = vhost_user_sock(dev->vhostfd, VHOST_USER_SET_MEM_TABLE, NULL);
-	if (ret < 0)
+	/* Step 0: tell vhost to create queues */
+	if (virtio_user_queue_setup(dev, virtio_user_create_queue) < 0)
 		goto error;
 
-	for (i = 0; i < dev->max_queue_pairs; ++i) {
-		queue_sel = 2 * i + VTNET_SQ_RQ_QUEUE_IDX;
-		if (virtio_user_kick_queue(dev, queue_sel) < 0) {
-			PMD_DRV_LOG(INFO, "kick rx vq fails: %u", i);
-			goto error;
-		}
-	}
-	for (i = 0; i < dev->max_queue_pairs; ++i) {
-		queue_sel = 2 * i + VTNET_SQ_TQ_QUEUE_IDX;
-		if (virtio_user_kick_queue(dev, queue_sel) < 0) {
-			PMD_DRV_LOG(INFO, "kick tx vq fails: %u", i);
-			goto error;
-		}
-	}
-
-	/* we enable the 1st queue pair by default. */
-	vhost_user_enable_queue_pair(dev->vhostfd, 0, 1);
-
-	/* After setup all virtqueues, we need to set_features so that these
-	 * features can be set into each virtqueue in vhost side. And before
-	 * that, make sure VHOST_USER_F_PROTOCOL_FEATURES is added if mq is
-	 * enabled, and VIRTIO_NET_F_MAC is stripped.
+	/* Step 1: set features
+	 * Make sure VHOST_USER_F_PROTOCOL_FEATURES is added if mq is enabled,
+	 * and VIRTIO_NET_F_MAC is stripped.
 	 */
 	features = dev->features;
 	if (dev->max_queue_pairs > 1)
@@ -147,6 +158,20 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	if (ret < 0)
 		goto error;
 	PMD_DRV_LOG(INFO, "set features: %" PRIx64, features);
+
+	/* Step 2: share memory regions */
+	ret = vhost_user_sock(dev->vhostfd, VHOST_USER_SET_MEM_TABLE, NULL);
+	if (ret < 0)
+		goto error;
+
+	/* Step 3: kick queues */
+	if (virtio_user_queue_setup(dev, virtio_user_kick_queue) < 0)
+		goto error;
+
+	/* Step 4: enable queues
+	 * we enable the 1st queue pair by default.
+	 */
+	vhost_user_enable_queue_pair(dev->vhostfd, 0, 1);
 
 	return 0;
 error:
