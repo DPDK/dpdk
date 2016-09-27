@@ -411,6 +411,7 @@ static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				void *arg);
 static int i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 				  struct rte_eth_dcb_info *dcb_info);
+static int i40e_dev_sync_phy_type(struct i40e_hw *hw);
 static void i40e_configure_registers(struct i40e_hw *hw);
 static void i40e_hw_init(struct rte_eth_dev *dev);
 static int i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi);
@@ -1017,7 +1018,11 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	config_floating_veb(dev);
 	/* Clear PXE mode */
 	i40e_clear_pxe_mode(hw);
-
+	ret = i40e_dev_sync_phy_type(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to sync phy type: %d", ret);
+		goto err_sync_phy_type;
+	}
 	/*
 	 * On X710, performance number is far from the expectation on recent
 	 * firmware versions. The fix for this issue may not be integrated in
@@ -1180,6 +1185,7 @@ err_msix_pool_init:
 err_qp_pool_init:
 err_parameter_init:
 err_get_capabilities:
+err_sync_phy_type:
 	(void)i40e_shutdown_adminq(hw);
 
 	return ret;
@@ -1646,7 +1652,7 @@ i40e_apply_link_speed(struct rte_eth_dev *dev)
 	abilities |= I40E_AQ_PHY_LINK_ENABLED;
 
 	/* Skip changing speed on 40G interfaces, FW does not support */
-	if (i40e_is_40G_device(hw->device_id)) {
+	if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types)) {
 		speed =  I40E_LINK_SPEED_UNKNOWN;
 		abilities |= I40E_AQ_PHY_AN_ENABLED;
 	}
@@ -2621,7 +2627,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->max_tx_queues += dev_info->vmdq_queue_num;
 	}
 
-	if (i40e_is_40G_device(hw->device_id))
+	if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types))
 		/* For XL710 */
 		dev_info->speed_capa = ETH_LINK_SPEED_40G;
 	else
@@ -2869,7 +2875,7 @@ i40e_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (err < 0)
 		return -ENOSYS;
 
-	if (i40e_is_40G_device(hw->device_id)) {
+	if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types)) {
 		/* Configure flow control refresh threshold,
 		 * the value for stat_tx_pause_refresh_timer[8]
 		 * is used for global pause operation.
@@ -8250,6 +8256,23 @@ i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
 #define I40E_GL_SWR_PM_UP_THR_SF_VALUE   0x06060606
 #define I40E_GL_SWR_PM_UP_THR            0x269FBC
 
+static int
+i40e_dev_sync_phy_type(struct i40e_hw *hw)
+{
+	enum i40e_status_code status;
+	struct i40e_aq_get_phy_abilities_resp phy_ab;
+	int ret = -ENOTSUP;
+
+	status = i40e_aq_get_phy_capabilities(hw, false, true, &phy_ab,
+					      NULL);
+
+	if (status)
+		return ret;
+
+	return 0;
+}
+
+
 static void
 i40e_configure_registers(struct i40e_hw *hw)
 {
@@ -8267,7 +8290,7 @@ i40e_configure_registers(struct i40e_hw *hw)
 
 	for (i = 0; i < RTE_DIM(reg_table); i++) {
 		if (reg_table[i].addr == I40E_GL_SWR_PM_UP_THR) {
-			if (i40e_is_40G_device(hw->device_id)) /* For XL710 */
+			if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types)) /* For XL710 */
 				reg_table[i].val =
 					I40E_GL_SWR_PM_UP_THR_SF_VALUE;
 			else /* For X710 */

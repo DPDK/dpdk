@@ -757,4 +757,12 @@ i40e_calc_itr_interval(int16_t interval)
 	(pctype) == I40E_FILTER_PCTYPE_L2_PAYLOAD)
 #endif
 
+#define I40E_PHY_TYPE_SUPPORT_40G(phy_type) \
+	(((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_KR4) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_CR4_CU) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_AOC) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_CR4) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_SR4) || \
+	((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_LR4))
+
 #endif /* _I40E_ETHDEV_H_ */
