@@ -88,6 +88,7 @@ Features
   RTE_ETH_FDIR_REJECT).
 - Secondary process TX is supported.
 - KVM and VMware ESX SR-IOV modes are supported.
+- RSS hash result is supported.
 
 Limitations
 -----------

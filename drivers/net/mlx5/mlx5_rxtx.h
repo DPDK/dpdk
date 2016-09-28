@@ -113,6 +113,8 @@ struct rxq {
 	unsigned int cqe_n:4; /* Log 2 of CQ elements. */
 	unsigned int elts_n:4; /* Log 2 of Mbufs. */
 	unsigned int port_id:8;
+	unsigned int rss_hash:1; /* RSS hash result is enabled. */
+	unsigned int :9; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t rq_ci;

@@ -1128,6 +1128,8 @@ rxq_cq_to_pkt_type(volatile struct mlx5_cqe64 *cqe)
  *   Pointer to RX queue.
  * @param cqe
  *   CQE to process.
+ * @param[out] rss_hash
+ *   Packet RSS Hash result.
  *
  * @return
  *   Packet size in bytes (0 if there is none), -1 in case of completion
@@ -1135,7 +1137,7 @@ rxq_cq_to_pkt_type(volatile struct mlx5_cqe64 *cqe)
  */
 static inline int
 mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe64 *cqe,
-		 uint16_t cqe_cnt)
+		 uint16_t cqe_cnt, uint32_t *rss_hash)
 {
 	struct rxq_zip *zip = &rxq->zip;
 	uint16_t cqe_n = cqe_cnt + 1;
@@ -1148,6 +1150,7 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe64 *cqe,
 			(uintptr_t)(&(*rxq->cqes)[zip->ca & cqe_cnt].cqe64);
 
 		len = ntohl((*mc)[zip->ai & 7].byte_cnt);
+		*rss_hash = ntohl((*mc)[zip->ai & 7].rx_hash_result);
 		if ((++zip->ai & 7) == 0) {
 			/*
 			 * Increment consumer index to skip the number of
@@ -1202,9 +1205,11 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe64 *cqe,
 			zip->cq_ci = rxq->cq_ci + zip->cqe_cnt;
 			/* Get packet size to return. */
 			len = ntohl((*mc)[0].byte_cnt);
+			*rss_hash = ntohl((*mc)[0].rx_hash_result);
 			zip->ai = 1;
 		} else {
 			len = ntohl(cqe->byte_cnt);
+			*rss_hash = ntohl(cqe->rx_hash_res);
 		}
 		/* Error while receiving packet. */
 		if (unlikely(MLX5_CQE_OPCODE(op_own) == MLX5_CQE_RESP_ERR))
@@ -1286,12 +1291,13 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		&(*rxq->cqes)[rxq->cq_ci & cqe_cnt].cqe64;
 	unsigned int i = 0;
 	unsigned int rq_ci = rxq->rq_ci << sges_n;
-	int len;
+	int len; /* keep its value across iterations. */
 
 	while (pkts_n) {
 		unsigned int idx = rq_ci & wqe_cnt;
 		volatile struct mlx5_wqe_data_seg *wqe = &(*rxq->wqes)[idx];
 		struct rte_mbuf *rep = (*rxq->elts)[idx];
+		uint32_t rss_hash_res = 0;
 
 		if (pkt)
 			NEXT(seg) = rep;
@@ -1320,8 +1326,9 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		if (!pkt) {
 			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt].cqe64;
-			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt);
-			if (len == 0) {
+			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt,
+					       &rss_hash_res);
+			if (!len) {
 				rte_mbuf_refcnt_set(rep, 0);
 				__rte_mbuf_raw_free(rep);
 				break;
@@ -1338,12 +1345,16 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Update packet information. */
 			pkt->packet_type = 0;
 			pkt->ol_flags = 0;
+			if (rxq->rss_hash) {
+				pkt->hash.rss = rss_hash_res;
+				pkt->ol_flags = PKT_RX_RSS_HASH;
+			}
 			if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip |
 			    rxq->crc_present) {
 				if (rxq->csum) {
 					pkt->packet_type =
 						rxq_cq_to_pkt_type(cqe);
-					pkt->ol_flags =
+					pkt->ol_flags |=
 						rxq_cq_to_ol_flags(rxq, cqe);
 				}
 				if (cqe->l4_hdr_type_etc &

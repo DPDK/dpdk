@@ -926,6 +926,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		.rxq = {
 			.elts_n = log2above(desc),
 			.mp = mp,
+			.rss_hash = priv->rxqs_n > 1,
 		},
 	};
 	struct ibv_exp_wq_attr mod;
