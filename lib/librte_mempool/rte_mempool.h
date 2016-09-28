@@ -589,10 +589,8 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
 /**
  * Create a new mempool named *name* in memory.
  *
- * This function uses ``memzone_reserve()`` to allocate memory. The
+ * This function uses ``rte_memzone_reserve()`` to allocate memory. The
  * pool contains n elements of elt_size. Its size is set to n.
- * All elements of the mempool are allocated together with the mempool header,
- * in one physically continuous chunk of memory.
  *
  * @param name
  *   The name of the mempool.
@@ -748,7 +746,7 @@ rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
  *
  * The mempool is allocated and initialized, but it is not populated: no
  * memory is allocated for the mempool elements. The user has to call
- * rte_mempool_populate_*() or to add memory chunks to the pool. Once
+ * rte_mempool_populate_*() to add memory chunks to the pool. Once
  * populated, the user may also want to initialize each object with
  * rte_mempool_obj_iter().
  *
