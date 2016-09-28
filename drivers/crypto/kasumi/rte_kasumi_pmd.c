@@ -108,7 +108,7 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 {
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
-	int mode;
+	enum kasumi_operation mode;
 
 	/* Select Crypto operation - hash then cipher / cipher then hash */
 	mode = kasumi_get_mode(xform);
@@ -125,9 +125,9 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 		/* Fall-through */
 	case KASUMI_OP_ONLY_AUTH:
 		auth_xform = xform;
-	}
-
-	if (mode == KASUMI_OP_NOT_SUPPORTED) {
+		break;
+	case KASUMI_OP_NOT_SUPPORTED:
+	default:
 		KASUMI_LOG_ERR("Unsupported operation chain order parameter");
 		return -EINVAL;
 	}

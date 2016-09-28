@@ -107,7 +107,7 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 {
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
-	int mode;
+	enum snow3g_operation mode;
 
 	/* Select Crypto operation - hash then cipher / cipher then hash */
 	mode = snow3g_get_mode(xform);
@@ -125,9 +125,9 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 		/* Fall-through */
 	case SNOW3G_OP_ONLY_AUTH:
 		auth_xform = xform;
-	}
-
-	if (mode == SNOW3G_OP_NOT_SUPPORTED) {
+		break;
+	case SNOW3G_OP_NOT_SUPPORTED:
+	default:
 		SNOW3G_LOG_ERR("Unsupported operation chain order parameter");
 		return -EINVAL;
 	}
