@@ -798,6 +798,10 @@ rte_mempool_free(struct rte_mempool *mp);
  * Add a virtually and physically contiguous memory chunk in the pool
  * where objects can be instanciated.
  *
+ * If the given physical address is unknown (paddr = RTE_BAD_PHYS_ADDR),
+ * the chunk doesn't need to be physically contiguous (only virtually),
+ * and allocated objects may span two pages.
+ *
  * @param mp
  *   A pointer to the mempool structure.
  * @param vaddr
