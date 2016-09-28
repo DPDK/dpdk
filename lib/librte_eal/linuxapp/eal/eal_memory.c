@@ -1278,6 +1278,7 @@ rte_eal_hugepage_attach(void)
 	struct hugepage_file *hp = NULL;
 	unsigned num_hp = 0;
 	unsigned i, s = 0; /* s used to track the segment number */
+	unsigned max_seg = RTE_MAX_MEMSEG;
 	off_t size;
 	int fd, fd_zero = -1, fd_hugepage = -1;
 
@@ -1336,6 +1337,9 @@ rte_eal_hugepage_attach(void)
 				"in /dev/zero to requested address [%p]: '%s'\n",
 				(unsigned long long)mcfg->memseg[s].len,
 				mcfg->memseg[s].addr, strerror(errno));
+			max_seg = s;
+			if (base_addr != MAP_FAILED)
+				munmap(base_addr, mcfg->memseg[s].len);
 			if (aslr_enabled() > 0) {
 				RTE_LOG(ERR, EAL, "It is recommended to "
 					"disable ASLR in the kernel "
@@ -1404,11 +1408,8 @@ rte_eal_hugepage_attach(void)
 	return 0;
 
 error:
-	s = 0;
-	while (s < RTE_MAX_MEMSEG && mcfg->memseg[s].len > 0) {
-		munmap(mcfg->memseg[s].addr, mcfg->memseg[s].len);
-		s++;
-	}
+	for (i = 0; i < max_seg && mcfg->memseg[i].len > 0; i++)
+		munmap(mcfg->memseg[i].addr, mcfg->memseg[i].len);
 	if (hp != NULL && hp != MAP_FAILED)
 		munmap(hp, size);
 	if (fd_zero >= 0)
