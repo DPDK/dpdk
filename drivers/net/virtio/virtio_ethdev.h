@@ -64,7 +64,8 @@
 	 1u << VIRTIO_NET_F_CTRL_VLAN	  |	\
 	 1u << VIRTIO_NET_F_MRG_RXBUF	  |	\
 	 1u << VIRTIO_RING_F_INDIRECT_DESC |    \
-	 1ULL << VIRTIO_F_VERSION_1)
+	 1ULL << VIRTIO_F_VERSION_1       |	\
+	 1ULL << VIRTIO_F_IOMMU_PLATFORM)
 
 /*
  * CQ function prototype
