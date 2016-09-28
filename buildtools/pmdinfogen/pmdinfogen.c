@@ -386,7 +386,7 @@ static void output_pmd_info_string(struct elf_info *info, char *outfile)
 			else
 				fprintf(ofd, " ");
 		}
-		fprintf(ofd, "]}\";");
+		fprintf(ofd, "]}\";\n");
 		drv = drv->next;
 	}
 
