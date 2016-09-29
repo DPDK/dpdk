@@ -514,7 +514,7 @@ static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
 	 * remove the corresponding MAC addr filter
 	 */
 	for (i = 0; i < MAX_FF_POOLS; i++) {
-		if (!(pool_mask & (1 << i)))
+		if (!(pool_mask & (1ULL << i)))
 			continue;
 
 		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
