@@ -113,6 +113,7 @@ struct ipsec_sa {
 	uint16_t cipher_key_len;
 	uint8_t auth_key[MAX_KEY_SIZE];
 	uint16_t auth_key_len;
+	uint16_t aad_len;
 	struct rte_crypto_sym_xform *xforms;
 } __rte_cache_aligned;
 
@@ -191,6 +192,14 @@ get_cnt_blk(struct rte_mbuf *m)
 	struct ipsec_mbuf_metadata *priv = get_priv(m);
 
 	return &priv->buf[0];
+}
+
+static inline void *
+get_aad(struct rte_mbuf *m)
+{
+	struct ipsec_mbuf_metadata *priv = get_priv(m);
+
+	return &priv->buf[16];
 }
 
 static inline void *

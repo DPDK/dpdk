@@ -79,7 +79,7 @@ Constraints
 
 *  No IPv6 options headers.
 *  No AH mode.
-*  Currently only EAS-CBC, HMAC-SHA1 and NULL.
+*  Supported algorithms: AES-CBC, AES-GCM, HMAC-SHA1 and NULL.
 *  Each SA must be handle by a unique lcore (*1 RX queue per port*).
 *  No chained mbufs.
 
@@ -380,9 +380,6 @@ SA rule syntax
 
 The successfully parsed SA rules will be stored in an array table.
 
-All SAs configured with AES-CBC and HMAC-SHA1 share the same values for
-cipher block size and key, and authentication digest size and key.
-
 The SA rule syntax is shown as follows:
 
 .. code-block:: console
@@ -421,6 +418,7 @@ where each options means:
 
    * *null*: NULL algorithm
    * *aes-128-cbc*: AES-CBC 128-bit algorithm
+   * *aes-128-gcm*: AES-GCM 128-bit algorithm
 
  * Syntax: *cipher_algo <your algorithm>*
 
@@ -447,10 +445,12 @@ where each options means:
 
     * *null*: NULL algorithm
     * *sha1-hmac*: HMAC SHA1 algorithm
+    * *aes-128-gcm*: AES-GCM 128-bit algorithm
 
 ``<auth_key>``
 
- * Authentication key, NOT available when 'null' algorithm is used
+ * Authentication key, NOT available when 'null' or 'aes-128-gcm' algorithm
+   is used.
 
  * Optional: No, must followed by <auth_algo> option
 
@@ -514,6 +514,10 @@ Example SA rules:
     src 1111:1111:1111:1111:1111:1111:1111:5555 \
     dst 2222:2222:2222:2222:2222:2222:2222:5555
 
+    sa in 105 cipher_algo aes-128-gcm \
+    cipher_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
+    auth_algo aes-128-gcm \
+    mode ipv4-tunnel src 172.16.2.5 dst 172.16.1.5
 
 Routing rule syntax
 ^^^^^^^^^^^^^^^^^^^

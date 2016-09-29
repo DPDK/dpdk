@@ -63,6 +63,8 @@ struct supported_auth_algo {
 	enum rte_crypto_auth_algorithm algo;
 	uint16_t digest_len;
 	uint16_t key_len;
+	uint8_t aad_len;
+	uint8_t key_not_req;
 };
 
 const struct supported_cipher_algo cipher_algos[] = {
@@ -79,6 +81,13 @@ const struct supported_cipher_algo cipher_algos[] = {
 		.iv_len = 16,
 		.block_size = 16,
 		.key_len = 16
+	},
+	{
+		.keyword = "aes-128-gcm",
+		.algo = RTE_CRYPTO_CIPHER_AES_GCM,
+		.iv_len = 8,
+		.block_size = 4,
+		.key_len = 16
 	}
 };
 
@@ -87,13 +96,22 @@ const struct supported_auth_algo auth_algos[] = {
 		.keyword = "null",
 		.algo = RTE_CRYPTO_AUTH_NULL,
 		.digest_len = 0,
-		.key_len = 0
+		.key_len = 0,
+		.key_not_req = 1
 	},
 	{
 		.keyword = "sha1-hmac",
 		.algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 		.digest_len = 12,
 		.key_len = 20
+	},
+	{
+		.keyword = "aes-128-gcm",
+		.algo = RTE_CRYPTO_AUTH_AES_GCM,
+		.digest_len = 16,
+		.key_len = 16,
+		.aad_len = 8,
+		.key_not_req = 1
 	}
 };
 
@@ -255,8 +273,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			rule->iv_len = algo->iv_len;
 			rule->cipher_key_len = algo->key_len;
 
-			/* for NULL algorithm, no cipher key should
-			 * exist */
+			/* for NULL algorithm, no cipher key required */
 			if (rule->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 				cipher_algo_p = 1;
 				continue;
@@ -307,9 +324,12 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			rule->auth_algo = algo->algo;
 			rule->auth_key_len = algo->key_len;
 			rule->digest_len = algo->digest_len;
+			rule->aad_len = algo->key_len;
 
-			/* for NULL algorithm, no auth key should exist */
-			if (rule->auth_algo == RTE_CRYPTO_AUTH_NULL) {
+			/* NULL algorithm and combined algos do not
+			 * require auth key
+			 */
+			if (algo->key_not_req) {
 				auth_algo_p = 1;
 				continue;
 			}
@@ -572,7 +592,8 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 			sa_ctx->xf[idx].a.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 			sa_ctx->xf[idx].a.auth.algo = sa->auth_algo;
-			sa_ctx->xf[idx].a.auth.add_auth_data_length = 0;
+			sa_ctx->xf[idx].a.auth.add_auth_data_length =
+				sa->aad_len;
 			sa_ctx->xf[idx].a.auth.key.data = sa->auth_key;
 			sa_ctx->xf[idx].a.auth.key.length =
 				sa->auth_key_len;
@@ -593,7 +614,8 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 			sa_ctx->xf[idx].b.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 			sa_ctx->xf[idx].b.auth.algo = sa->auth_algo;
-			sa_ctx->xf[idx].b.auth.add_auth_data_length = 0;
+			sa_ctx->xf[idx].b.auth.add_auth_data_length =
+				sa->aad_len;
 			sa_ctx->xf[idx].b.auth.key.data = sa->auth_key;
 			sa_ctx->xf[idx].b.auth.key.length =
 				sa->auth_key_len;
