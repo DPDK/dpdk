@@ -82,6 +82,7 @@
 
 #define NB_MBUF	(32000)
 
+#define CDEV_QUEUE_DESC 2048
 #define CDEV_MAP_ENTRIES 1024
 #define CDEV_MP_NB_OBJS 2048
 #define CDEV_MP_CACHE_SZ 64
@@ -1272,7 +1273,7 @@ cryptodevs_init(void)
 			rte_panic("Failed to initialize crypodev %u\n",
 					cdev_id);
 
-		qp_conf.nb_descriptors = CDEV_MP_NB_OBJS;
+		qp_conf.nb_descriptors = CDEV_QUEUE_DESC;
 		for (qp = 0; qp < dev_conf.nb_queue_pairs; qp++)
 			if (rte_cryptodev_queue_pair_setup(cdev_id, qp,
 						&qp_conf, dev_conf.socket_id))
