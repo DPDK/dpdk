@@ -1293,6 +1293,9 @@ static int enic_dev_init(struct enic *enic)
 		return -EINVAL;
 	}
 
+	/* Get the supported filters */
+	enic_fdir_info(enic);
+
 	eth_dev->data->mac_addrs = rte_zmalloc("enic_mac_addr", ETH_ALEN, 0);
 	if (!eth_dev->data->mac_addrs) {
 		dev_err(enic, "mac addr storage alloc failed, aborting.\n");

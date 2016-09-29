@@ -122,6 +122,24 @@ Configuration information
     uses this interrupt to get information about link status and errors
     in the fast path.
 
+.. _enic-flow-director:
+
+Flow director support
+---------------------
+
+Advanced filtering support was added to 1300 series VIC firmware starting
+with version 2.0.13 for C-series UCS servers and version 3.1.2 for UCSM
+managed blade servers. In order to enable advanced filtering the 'Advanced
+filter' radio button should be enabled via CIMC or UCSM followed by a reboot
+of the server.
+
+With advanced filters, perfect matching of all fields of IPv4, IPv6 headers
+as well as TCP, UDP and SCTP L4 headers is available through flow director.
+Masking of these feilds for partial match is also supported.
+
+Without advanced filter support, the flow director is limited to IPv4
+perfect filtering of the 5-tuple with no masking of fields supported.
+
 Limitations
 -----------
 
@@ -144,6 +162,12 @@ Limitations
      vlan_offload = rte_eth_dev_get_vlan_offload(port);
      vlan_offload |= ETH_VLAN_STRIP_OFFLOAD;
      rte_eth_dev_set_vlan_offload(port, vlan_offload);
+
+- Limited flow director support on 1200 series and 1300 series Cisco VIC
+  adapters with old firmware. Please see :ref:`enic-flow-director`.
+
+- Flow director features are not supported on generation 1 Cisco VIC adapters
+  (M81KR and P81E)
 
 How to build the suite?
 -----------------------
@@ -170,9 +194,6 @@ ENIC PMD supports all recent generations of Cisco VIC adapters including:
 - VIC 1385
 - VIC 1387
 
-- Flow director features are not supported on generation 1 Cisco VIC adapters
-   (M81KR and P81E)
-
 Supported Operating Systems
 ---------------------------
 Any Linux distribution fulfilling the conditions described in Dependencies
@@ -187,8 +208,7 @@ Supported features
 - IP checksum offload
 - Receive side VLAN stripping
 - Multiple receive and transmit queues
-- Flow Director ADD, UPDATE, DELETE, STATS operation support for IPV4 5-TUPLE
-  flows
+- Flow Director ADD, UPDATE, DELETE, STATS operation support IPv4 and IPv6
 - Promiscuous mode
 - Setting RX VLAN (supported via UCSM/CIMC only)
 - VLAN filtering (supported via UCSM/CIMC only)

@@ -95,9 +95,11 @@ enicpmd_fdir_ctrl_func(struct rte_eth_dev *eth_dev,
 		break;
 
 	case RTE_ETH_FILTER_FLUSH:
-	case RTE_ETH_FILTER_INFO:
 		dev_warning(enic, "unsupported operation %u", filter_op);
 		ret = -ENOTSUP;
+		break;
+	case RTE_ETH_FILTER_INFO:
+		enic_fdir_info_get(enic, (struct rte_eth_fdir_info *)arg);
 		break;
 	default:
 		dev_err(enic, "unknown operation %u", filter_op);

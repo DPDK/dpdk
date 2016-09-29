@@ -62,6 +62,7 @@ int enic_get_vnic_config(struct enic *enic)
 		return err;
 	}
 
+
 #define GET_CONFIG(m) \
 	do { \
 		err = vnic_dev_spec(enic->vdev, \
@@ -97,6 +98,10 @@ int enic_get_vnic_config(struct enic *enic)
 
 	enic->rte_dev->data->mtu = min_t(u16, enic->max_mtu,
 					 max_t(u16, ENIC_MIN_MTU, c->mtu));
+
+	enic->adv_filters = vnic_dev_capable_adv_filters(enic->vdev);
+	dev_info(enic, "Advanced Filters %savailable\n", ((enic->adv_filters)
+		 ? "" : "not "));
 
 	c->wq_desc_count =
 		min_t(u32, ENIC_MAX_WQ_DESCS,

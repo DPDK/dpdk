@@ -470,6 +470,18 @@ int vnic_dev_cmd(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
 	}
 }
 
+int vnic_dev_capable_adv_filters(struct vnic_dev *vdev)
+{
+	u64 a0 = (u32)CMD_ADD_ADV_FILTER, a1 = 0;
+	int wait = 1000;
+	int err;
+
+	err = vnic_dev_cmd(vdev, CMD_CAPABILITY, &a0, &a1, wait);
+	if (err)
+		return 0;
+	return (a1 >= (u32)FILTER_DPDK_1);
+}
+
 static int vnic_dev_capable(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd)
 {
 	u64 a0 = (u32)cmd, a1 = 0;
@@ -1007,7 +1019,7 @@ int vnic_dev_set_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)
  * @data: filter data
  */
 int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
-	struct filter *data)
+	struct filter_v2 *data)
 {
 	u64 a0, a1;
 	int wait = 1000;
@@ -1016,11 +1028,20 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 	struct filter_tlv *tlv, *tlv_va;
 	struct filter_action *action;
 	u64 tlv_size;
+	u32 filter_size;
 	static unsigned int unique_id;
 	char z_name[RTE_MEMZONE_NAMESIZE];
+	enum vnic_devcmd_cmd dev_cmd;
+
 
 	if (cmd == CLSF_ADD) {
-		tlv_size = sizeof(struct filter) +
+		if (data->type == FILTER_DPDK_1)
+			dev_cmd = CMD_ADD_ADV_FILTER;
+		else
+			dev_cmd = CMD_ADD_FILTER;
+
+		filter_size = vnic_filter_size(data);
+		tlv_size = filter_size +
 		    sizeof(struct filter_action) +
 		    2*sizeof(struct filter_tlv);
 		snprintf((char *)z_name, sizeof(z_name),
@@ -1034,12 +1055,12 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 		a1 = tlv_size;
 		memset(tlv, 0, tlv_size);
 		tlv->type = CLSF_TLV_FILTER;
-		tlv->length = sizeof(struct filter);
-		*(struct filter *)&tlv->val = *data;
+		tlv->length = filter_size;
+		memcpy(&tlv->val, (void *)data, filter_size);
 
 		tlv = (struct filter_tlv *)((char *)tlv +
 					 sizeof(struct filter_tlv) +
-					 sizeof(struct filter));
+					 filter_size);
 
 		tlv->type = CLSF_TLV_ACTION;
 		tlv->length = sizeof(struct filter_action);
@@ -1047,7 +1068,7 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 		action->type = FILTER_ACTION_RQ_STEERING;
 		action->u.rq_idx = *entry;
 
-		ret = vnic_dev_cmd(vdev, CMD_ADD_FILTER, &a0, &a1, wait);
+		ret = vnic_dev_cmd(vdev, dev_cmd, &a0, &a1, wait);
 		*entry = (u16)a0;
 		vdev->free_consistent(vdev->priv, tlv_size, tlv_va, tlv_pa);
 	} else if (cmd == CLSF_DEL) {
