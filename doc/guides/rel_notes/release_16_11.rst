@@ -86,6 +86,7 @@ New Features
 * **Updated the IPsec example with following support:**
 
   * configuration file
+  * AES CBC IV generation with cipher forward function
 
 
 Resolved Issues

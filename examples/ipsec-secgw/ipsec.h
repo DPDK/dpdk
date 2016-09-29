@@ -95,8 +95,9 @@ struct ip_addr {
 struct ipsec_sa {
 	uint32_t spi;
 	uint32_t cdev_id_qp;
+	uint64_t seq;
+	uint32_t salt;
 	struct rte_cryptodev_sym_session *crypto_session;
-	uint32_t seq;
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
 	uint16_t digest_len;
@@ -116,10 +117,11 @@ struct ipsec_sa {
 } __rte_cache_aligned;
 
 struct ipsec_mbuf_metadata {
+	uint8_t buf[32];
 	struct ipsec_sa *sa;
 	struct rte_crypto_op cop;
 	struct rte_crypto_sym_op sym_cop;
-};
+} __rte_cache_aligned;
 
 struct cdev_qp {
 	uint16_t id;
@@ -157,6 +159,12 @@ struct socket_ctx {
 	struct rte_mempool *mbuf_pool;
 };
 
+struct cnt_blk {
+	uint32_t salt;
+	uint64_t iv;
+	uint32_t cnt;
+} __attribute__((packed));
+
 uint16_t
 ipsec_inbound(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
 		uint16_t nb_pkts, uint16_t len);
@@ -175,6 +183,20 @@ static inline struct ipsec_mbuf_metadata *
 get_priv(struct rte_mbuf *m)
 {
 	return RTE_PTR_ADD(m, sizeof(struct rte_mbuf));
+}
+
+static inline void *
+get_cnt_blk(struct rte_mbuf *m)
+{
+	struct ipsec_mbuf_metadata *priv = get_priv(m);
+
+	return &priv->buf[0];
+}
+
+static inline void *
+get_sym_cop(struct rte_crypto_op *cop)
+{
+	return (cop + 1);
 }
 
 int
