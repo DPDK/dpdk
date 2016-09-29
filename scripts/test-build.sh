@@ -48,6 +48,7 @@ default_path=$PATH
 # - DPDK_NOTIFY (notify-send)
 # - LIBSSO_SNOW3G_PATH
 # - LIBSSO_KASUMI_PATH
+# - LIBSSO_ZUC_PATH
 . $(dirname $(readlink -e $0))/load-devel-config
 
 print_usage () {
@@ -128,6 +129,7 @@ reset_env ()
 	unset AESNI_MULTI_BUFFER_LIB_PATH
 	unset LIBSSO_SNOW3G_PATH
 	unset LIBSSO_KASUMI_PATH
+	unset LIBSSO_ZUC_PATH
 	unset PQOS_INSTALL_PATH
 }
 
@@ -182,6 +184,8 @@ config () # <directory> <target> <options>
 		sed -ri         's,(PMD_SNOW3G=)n,\1y,' $1/.config
 		test -z "$LIBSSO_KASUMI_PATH" || \
 		sed -ri         's,(PMD_KASUMI=)n,\1y,' $1/.config
+		test -z "$LIBSSO_ZUC_PATH" || \
+		sed -ri            's,(PMD_ZUC=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config

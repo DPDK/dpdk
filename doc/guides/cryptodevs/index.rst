@@ -42,3 +42,4 @@ Crypto Device Drivers
     null
     snow3g
     qat
+    zuc

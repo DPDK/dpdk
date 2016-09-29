@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2016 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,12 +30,40 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += snow3g
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += kasumi
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += zuc
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null
+ifneq ($(MAKECMDGOALS),clean)
+ifeq ($(LIBSSO_ZUC_PATH),)
+$(error "Please define LIBSSO_ZUC_PATH environment variable")
+endif
+endif
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# library name
+LIB = librte_pmd_zuc.a
+
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_pmd_zuc_version.map
+
+# external library dependencies
+CFLAGS += -I$(LIBSSO_ZUC_PATH)
+CFLAGS += -I$(LIBSSO_ZUC_PATH)/include
+CFLAGS += -I$(LIBSSO_ZUC_PATH)/build
+LDLIBS += -L$(LIBSSO_ZUC_PATH)/build -lsso_zuc
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += rte_zuc_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += rte_zuc_pmd_ops.c
+
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_mempool
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_cryptodev
+
+include $(RTE_SDK)/mk/rte.lib.mk

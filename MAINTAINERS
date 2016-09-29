@@ -431,6 +431,11 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/kasumi/
 F: doc/guides/cryptodevs/kasumi.rst
 
+ZUC PMD
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
+F: drivers/crypto/zuc/
+F: doc/guides/cryptodevs/zuc.rst
+
 Null Crypto PMD
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/null/
