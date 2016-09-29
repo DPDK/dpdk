@@ -175,6 +175,7 @@ struct bnxt {
 	struct bnxt_pf_info		pf;
 	struct bnxt_vf_info		vf;
 	uint8_t			port_partition_type;
+	uint8_t			dev_stopped;
 };
 
 #endif
