@@ -45,6 +45,7 @@
 #include <rte_byteorder.h>
 #include <rte_errno.h>
 #include <rte_ip.h>
+#include <rte_random.h>
 
 #include "ipsec.h"
 #include "esp.h"
@@ -87,14 +88,14 @@ const struct supported_cipher_algo cipher_algos[] = {
 		.algo = RTE_CRYPTO_CIPHER_AES_GCM,
 		.iv_len = 8,
 		.block_size = 4,
-		.key_len = 16
+		.key_len = 20
 	},
 	{
 		.keyword = "aes-128-ctr",
 		.algo = RTE_CRYPTO_CIPHER_AES_CTR,
 		.iv_len = 8,
 		.block_size = 16, /* XXX AESNI MB limition, should be 4 */
-		.key_len = 16
+		.key_len = 20
 	}
 };
 
@@ -116,7 +117,6 @@ const struct supported_auth_algo auth_algos[] = {
 		.keyword = "aes-128-gcm",
 		.algo = RTE_CRYPTO_AUTH_AES_GCM,
 		.digest_len = 16,
-		.key_len = 16,
 		.aad_len = 8,
 		.key_not_req = 1
 	}
@@ -306,6 +306,17 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				"unrecognized input \"%s\"", tokens[ti]);
 			if (status->status < 0)
 				return;
+
+			if (algo->algo == RTE_CRYPTO_CIPHER_AES_CBC)
+				rule->salt = (uint32_t)rte_rand();
+
+			if ((algo->algo == RTE_CRYPTO_CIPHER_AES_CTR) ||
+				(algo->algo == RTE_CRYPTO_CIPHER_AES_GCM)) {
+				key_len -= 4;
+				rule->cipher_key_len = key_len;
+				memcpy(&rule->salt,
+					&rule->cipher_key[key_len], 4);
+			}
 
 			cipher_algo_p = 1;
 			continue;
