@@ -342,11 +342,13 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 
 	host_info->os_type = ENA_ADMIN_OS_DPDK;
 	host_info->kernel_ver = RTE_VERSION;
-	strncpy((char *)host_info->kernel_ver_str, rte_version(),
-		strlen(rte_version()));
+	snprintf((char *)host_info->kernel_ver_str,
+		 sizeof(host_info->kernel_ver_str),
+		 "%s", rte_version());
 	host_info->os_dist = RTE_VERSION;
-	strncpy((char *)host_info->os_dist_str, rte_version(),
-		strlen(rte_version()));
+	snprintf((char *)host_info->os_dist_str,
+		 sizeof(host_info->os_dist_str),
+		 "%s", rte_version());
 	host_info->driver_version =
 		(DRV_MODULE_VER_MAJOR) |
 		(DRV_MODULE_VER_MINOR << ENA_ADMIN_HOST_INFO_MINOR_SHIFT) |
