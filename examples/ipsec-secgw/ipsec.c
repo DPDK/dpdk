@@ -124,6 +124,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 		priv->sa = sa;
 
 		priv->cop.type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+		priv->cop.status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 
 		rte_prefetch0(&priv->sym_cop);
 		priv->cop.sym = &priv->sym_cop;
