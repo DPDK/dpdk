@@ -72,6 +72,12 @@ static struct ether_addr base_eth_addr = {
 	}
 };
 
+struct vhost_stats {
+	uint64_t pkts;
+	uint64_t bytes;
+	uint64_t missed_pkts;
+};
+
 struct vhost_queue {
 	int vid;
 	rte_atomic32_t allow_queuing;
@@ -80,11 +86,7 @@ struct vhost_queue {
 	struct rte_mempool *mb_pool;
 	uint8_t port;
 	uint16_t virtqueue_id;
-	uint64_t rx_pkts;
-	uint64_t tx_pkts;
-	uint64_t missed_pkts;
-	uint64_t rx_bytes;
-	uint64_t tx_bytes;
+	struct vhost_stats stats;
 };
 
 struct pmd_internal {
@@ -145,11 +147,11 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	nb_rx = rte_vhost_dequeue_burst(r->vid,
 			r->virtqueue_id, r->mb_pool, bufs, nb_bufs);
 
-	r->rx_pkts += nb_rx;
+	r->stats.pkts += nb_rx;
 
 	for (i = 0; likely(i < nb_rx); i++) {
 		bufs[i]->port = r->port;
-		r->rx_bytes += bufs[i]->pkt_len;
+		r->stats.bytes += bufs[i]->pkt_len;
 	}
 
 out:
@@ -176,11 +178,11 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	nb_tx = rte_vhost_enqueue_burst(r->vid,
 			r->virtqueue_id, bufs, nb_bufs);
 
-	r->tx_pkts += nb_tx;
-	r->missed_pkts += nb_bufs - nb_tx;
+	r->stats.pkts += nb_tx;
+	r->stats.missed_pkts += nb_bufs - nb_tx;
 
 	for (i = 0; likely(i < nb_tx); i++)
-		r->tx_bytes += bufs[i]->pkt_len;
+		r->stats.bytes += bufs[i]->pkt_len;
 
 	for (i = 0; likely(i < nb_tx); i++)
 		rte_pktmbuf_free(bufs[i]);
@@ -611,10 +613,10 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (dev->data->rx_queues[i] == NULL)
 			continue;
 		vq = dev->data->rx_queues[i];
-		stats->q_ipackets[i] = vq->rx_pkts;
+		stats->q_ipackets[i] = vq->stats.pkts;
 		rx_total += stats->q_ipackets[i];
 
-		stats->q_ibytes[i] = vq->rx_bytes;
+		stats->q_ibytes[i] = vq->stats.bytes;
 		rx_total_bytes += stats->q_ibytes[i];
 	}
 
@@ -623,11 +625,11 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (dev->data->tx_queues[i] == NULL)
 			continue;
 		vq = dev->data->tx_queues[i];
-		stats->q_opackets[i] = vq->tx_pkts;
-		tx_missed_total += vq->missed_pkts;
+		stats->q_opackets[i] = vq->stats.pkts;
+		tx_missed_total += vq->stats.missed_pkts;
 		tx_total += stats->q_opackets[i];
 
-		stats->q_obytes[i] = vq->tx_bytes;
+		stats->q_obytes[i] = vq->stats.bytes;
 		tx_total_bytes += stats->q_obytes[i];
 	}
 
@@ -648,16 +650,16 @@ eth_stats_reset(struct rte_eth_dev *dev)
 		if (dev->data->rx_queues[i] == NULL)
 			continue;
 		vq = dev->data->rx_queues[i];
-		vq->rx_pkts = 0;
-		vq->rx_bytes = 0;
+		vq->stats.pkts = 0;
+		vq->stats.bytes = 0;
 	}
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (dev->data->tx_queues[i] == NULL)
 			continue;
 		vq = dev->data->tx_queues[i];
-		vq->tx_pkts = 0;
-		vq->tx_bytes = 0;
-		vq->missed_pkts = 0;
+		vq->stats.pkts = 0;
+		vq->stats.bytes = 0;
+		vq->stats.missed_pkts = 0;
 	}
 }
 
