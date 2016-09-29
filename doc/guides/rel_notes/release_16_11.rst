@@ -48,6 +48,10 @@ New Features
   in case of system perturbations. On the downside, small performance degradation
   is measured when running micro-benchmarks.
 
+* **Added vhost PMD xstats.**
+
+  Added extended statistics to vhost PMD from per port perspective.
+
 * **Added virtio NEON support for ARM.**
 
 
