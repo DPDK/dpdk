@@ -42,7 +42,7 @@
 #include <rte_lpm6.h>
 
 #include "test.h"
-#include "test_lpm6_routes.h"
+#include "test_lpm6_data.h"
 
 #define TEST_LPM_ASSERT(cond) do {                                            \
 	if (!(cond)) {                                                        \
@@ -99,6 +99,11 @@ test_lpm6_perf(void)
 	printf("No. routes = %u\n", (unsigned) NUM_ROUTE_ENTRIES);
 
 	print_route_distribution(large_route_table, (uint32_t) NUM_ROUTE_ENTRIES);
+
+	/* Only generate IPv6 address of each item in large IPS table,
+	 * here next_hop is not needed.
+	 */
+	generate_large_ips_table(0);
 
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);

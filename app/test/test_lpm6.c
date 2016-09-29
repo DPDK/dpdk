@@ -40,7 +40,7 @@
 #include <rte_lpm6.h>
 
 #include "test.h"
-#include "test_lpm6_routes.h"
+#include "test_lpm6_data.h"
 
 #define TEST_LPM_ASSERT(cond) do {                                            \
 	if (!(cond)) {                                                        \
@@ -1596,6 +1596,9 @@ test25(void)
 		status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
 		TEST_LPM_ASSERT(status == 0);
 	}
+
+	/* generate large IPS table and expected next_hops */
+	generate_large_ips_table(1);
 
 	for (i = 0; i < 100000; i++) {
 		memcpy(ip, large_ips_table[i].ip, 16);
