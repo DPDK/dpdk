@@ -88,6 +88,13 @@ const struct supported_cipher_algo cipher_algos[] = {
 		.iv_len = 8,
 		.block_size = 4,
 		.key_len = 16
+	},
+	{
+		.keyword = "aes-128-ctr",
+		.algo = RTE_CRYPTO_CIPHER_AES_CTR,
+		.iv_len = 8,
+		.block_size = 16, /* XXX AESNI MB limition, should be 4 */
+		.key_len = 16
 	}
 };
 

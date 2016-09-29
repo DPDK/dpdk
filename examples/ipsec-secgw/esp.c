@@ -102,6 +102,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 				 ip_hdr_len + sizeof(struct esp_hdr));
 		sym_cop->cipher.iv.length = sa->iv_len;
 		break;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_GCM:
 		icb = get_cnt_blk(m);
 		icb->salt = sa->salt;
@@ -320,6 +321,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 			sizeof(struct esp_hdr);
 		sym_cop->cipher.data.length = pad_payload_len + sa->iv_len;
 		break;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_GCM:
 		*iv = sa->seq;
 		sym_cop->cipher.data.offset = ip_hdr_len +

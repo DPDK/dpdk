@@ -87,7 +87,7 @@ New Features
 
   * configuration file
   * AES CBC IV generation with cipher forward function
-  * AES GCM mode
+  * AES GCM/CTR mode
 
 
 Resolved Issues
