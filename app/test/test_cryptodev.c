@@ -48,6 +48,8 @@
 #include "test_cryptodev_kasumi_hash_test_vectors.h"
 #include "test_cryptodev_snow3g_test_vectors.h"
 #include "test_cryptodev_snow3g_hash_test_vectors.h"
+#include "test_cryptodev_zuc_test_vectors.h"
+#include "test_cryptodev_zuc_hash_test_vectors.h"
 #include "test_cryptodev_gcm_test_vectors.h"
 #include "test_cryptodev_hmac_test_vectors.h"
 
@@ -256,6 +258,25 @@ testsuite_setup(void)
 					"Failed to create instance %u of"
 					" pmd : %s",
 					i, RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
+			}
+		}
+	}
+
+	/* Create 2 ZUC devices if required */
+	if (gbl_cryptodev_type == RTE_CRYPTODEV_ZUC_PMD) {
+#ifndef RTE_LIBRTE_PMD_ZUC
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_ZUC must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+#endif
+		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_ZUC_PMD);
+		if (nb_devs < 2) {
+			for (i = nb_devs; i < 2; i++) {
+				TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
+					RTE_STR(CRYPTODEV_NAME_ZUC_PMD), NULL),
+					"Failed to create instance %u of"
+					" pmd : %s",
+					i, RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
 			}
 		}
 	}
@@ -3017,6 +3038,132 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 }
 
 static int
+test_zuc_encryption(const struct zuc_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+	uint8_t *plaintext, *ciphertext;
+	unsigned plaintext_pad_len;
+	unsigned plaintext_len;
+
+	/* Create ZUC session */
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_ZUC_EEA3,
+					tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* Clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+	       rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple */
+	/* of the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 8);
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
+
+	/* Create ZUC operation */
+	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
+					tdata->plaintext.len,
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_ZUC_EEA3);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+				+ tdata->iv.len;
+	else
+		ciphertext = plaintext;
+
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		ciphertext,
+		tdata->ciphertext.data,
+		tdata->validCipherLenInBits.len,
+		"ZUC Ciphertext data not as expected");
+	return 0;
+}
+
+static int
+test_zuc_authentication(const struct zuc_hash_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+	unsigned plaintext_pad_len;
+	unsigned plaintext_len;
+	uint8_t *plaintext;
+
+	/* Create ZUC session */
+	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
+			tdata->key.data, tdata->key.len,
+			tdata->aad.len, tdata->digest.len,
+			RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_ZUC_EIA3);
+	if (retval < 0)
+		return retval;
+
+	/* alloc mbuf and set payload */
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+	rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple of */
+	/* the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 8);
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+
+	/* Create ZUC operation */
+	retval = create_wireless_algo_hash_operation(NULL, tdata->digest.len,
+			tdata->aad.data, tdata->aad.len,
+			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
+			RTE_CRYPTO_AUTH_ZUC_EIA3,
+			tdata->validAuthLenInBits.len,
+			tdata->validAuthOffsetLenInBits.len);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+				ut_params->op);
+	ut_params->obuf = ut_params->op->sym->m_src;
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+			+ plaintext_pad_len + ALIGN_POW2_ROUNDUP(tdata->aad.len, 8);
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+	ut_params->digest,
+	tdata->digest.data,
+	DIGEST_BYTE_LENGTH_KASUMI_F9,
+	"ZUC Generated auth tag not as expected");
+
+	return 0;
+}
+
+static int
 test_kasumi_encryption_test_case_1(void)
 {
 	return test_kasumi_encryption(&kasumi_test_case_1);
@@ -3188,6 +3335,65 @@ test_kasumi_cipher_auth_test_case_1(void)
 	return test_kasumi_cipher_auth(&kasumi_test_case_6);
 }
 
+static int
+test_zuc_encryption_test_case_1(void)
+{
+	return test_zuc_encryption(&zuc_test_case_1);
+}
+
+static int
+test_zuc_encryption_test_case_2(void)
+{
+	return test_zuc_encryption(&zuc_test_case_2);
+}
+
+static int
+test_zuc_encryption_test_case_3(void)
+{
+	return test_zuc_encryption(&zuc_test_case_3);
+}
+
+static int
+test_zuc_encryption_test_case_4(void)
+{
+	return test_zuc_encryption(&zuc_test_case_4);
+}
+
+static int
+test_zuc_encryption_test_case_5(void)
+{
+	return test_zuc_encryption(&zuc_test_case_5);
+}
+
+static int
+test_zuc_hash_generate_test_case_1(void)
+{
+	return test_zuc_authentication(&zuc_hash_test_case_1);
+}
+
+static int
+test_zuc_hash_generate_test_case_2(void)
+{
+	return test_zuc_authentication(&zuc_hash_test_case_2);
+}
+
+static int
+test_zuc_hash_generate_test_case_3(void)
+{
+	return test_zuc_authentication(&zuc_hash_test_case_3);
+}
+
+static int
+test_zuc_hash_generate_test_case_4(void)
+{
+	return test_zuc_authentication(&zuc_hash_test_case_4);
+}
+
+static int
+test_zuc_hash_generate_test_case_5(void)
+{
+	return test_zuc_authentication(&zuc_hash_test_case_5);
+}
 
 /* ***** AES-GCM Tests ***** */
 
@@ -4811,6 +5017,36 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 	}
 };
 
+static struct unit_test_suite cryptodev_sw_zuc_testsuite  = {
+	.suite_name = "Crypto Device SW ZUC Unit Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		/** ZUC encrypt only (EEA3) */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_5),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static struct unit_test_suite cryptodev_null_testsuite  = {
 	.suite_name = "Crypto Device NULL Unit Test Suite",
 	.setup = testsuite_setup,
@@ -4880,9 +5116,18 @@ test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
 	return unit_test_suite_runner(&cryptodev_sw_kasumi_testsuite);
 }
 
+static int
+test_cryptodev_sw_zuc(void /*argv __rte_unused, int argc __rte_unused*/)
+{
+	gbl_cryptodev_type = RTE_CRYPTODEV_ZUC_PMD;
+
+	return unit_test_suite_runner(&cryptodev_sw_zuc_testsuite);
+}
+
 REGISTER_TEST_COMMAND(cryptodev_qat_autotest, test_cryptodev_qat);
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_autotest, test_cryptodev_aesni_mb);
 REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_autotest, test_cryptodev_aesni_gcm);
 REGISTER_TEST_COMMAND(cryptodev_null_autotest, test_cryptodev_null);
 REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_autotest, test_cryptodev_sw_snow3g);
 REGISTER_TEST_COMMAND(cryptodev_sw_kasumi_autotest, test_cryptodev_sw_kasumi);
+REGISTER_TEST_COMMAND(cryptodev_sw_zuc_autotest, test_cryptodev_sw_zuc);
