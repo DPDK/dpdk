@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2010 Cisco Systems, Inc.  All rights reserved.
+ * Copyright 2008-2016 Cisco Systems, Inc.  All rights reserved.
  * Copyright 2007 Nuova Systems, Inc.  All rights reserved.
  *
  * Copyright (c) 2014, Cisco Systems, Inc.
@@ -126,7 +126,8 @@ enum vnic_devcmd_cmd {
 
 	/* dev-specific block member:
 	 *    in: (u16)a0=offset,(u8)a1=size
-	 *    out: a0=value */
+	 *    out: a0=value
+	 */
 	CMD_DEV_SPEC            = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ALL, 2),
 
 	/* stats clear */
@@ -146,8 +147,9 @@ enum vnic_devcmd_cmd {
 	CMD_HANG_NOTIFY         = _CMDC(_CMD_DIR_NONE, _CMD_VTYPE_ALL, 8),
 
 	/* MAC address in (u48)a0 */
-	CMD_GET_MAC_ADDR	= _CMDC(_CMD_DIR_READ,
+	CMD_MAC_ADDR            = _CMDC(_CMD_DIR_READ,
 					_CMD_VTYPE_ENET | _CMD_VTYPE_FC, 9),
+#define CMD_GET_MAC_ADDR CMD_MAC_ADDR   /* some uses are aliased */
 
 	/* add addr from (u48)a0 */
 	CMD_ADDR_ADD            = _CMDCNW(_CMD_DIR_WRITE,
@@ -387,16 +389,14 @@ enum vnic_devcmd_cmd {
 	 * Subvnic migration from MQ <--> VF.
 	 * Enable the LIF migration from MQ to VF and vice versa. MQ and VF
 	 * indexes are statically bound at the time of initialization.
-	 * Based on the
-	 * direction of migration, the resources of either MQ or the VF shall
-	 * be attached to the LIF.
+	 * Based on the direction of migration, the resources of either MQ or
+	 * the VF shall be attached to the LIF.
 	 * in:        (u32)a0=Direction of Migration
 	 *					0=> Migrate to VF
 	 *					1=> Migrate to MQ
 	 *            (u32)a1=VF index (MQ index)
 	 */
 	CMD_MIGRATE_SUBVNIC = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 53),
-
 
 	/*
 	 * Register / Deregister the notification block for MQ subvnics
@@ -433,6 +433,10 @@ enum vnic_devcmd_cmd {
 	 * in: (u64) a0= filter address
 	 *     (u32) a1= size of filter
 	 * out: (u32) a0=filter identifier
+	 *
+	 * Capability query:
+	 * out: (u64) a0= 1 if capability query supported
+	 *      (u64) a1= MAX filter type supported
 	 */
 	CMD_ADD_FILTER = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 58),
 
@@ -471,23 +475,133 @@ enum vnic_devcmd_cmd {
 	CMD_QP_STATS_CLEAR = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 63),
 
 	/*
-	 * Enable/Disable overlay offloads on the given vnic
+	 * UEFI BOOT API: (u64)a0= UEFI FLS_CMD_xxx
+	 * (ui64)a1= paddr for the info buffer
+	 */
+	CMD_FC_REQ = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_FC, 64),
+
+	/*
+	 * Return the iSCSI config details required by the EFI Option ROM
+	 * in:  (u32) a0=0 Get Boot Info for PXE eNIC as per pxe_boot_config_t
+	 *            a0=1 Get Boot info for iSCSI enic as per
+	 *            iscsi_boot_efi_cfg_t
+	 * in:  (u64) a1=Host address where iSCSI config info is returned
+	 */
+	CMD_VNIC_BOOT_CONFIG_INFO = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ALL, 65),
+
+	/*
+	 * Create a Queue Pair (RoCE)
+	 * in: (u32) a0 = Queue Pair number
+	 *     (u32) a1 = Remote QP
+	 *     (u32) a2 = RDMA-RQ
+	 *     (u16) a3 = RQ Res Group
+	 *     (u16) a4 = SQ Res Group
+	 *     (u32) a5 = Protection Domain
+	 *     (u64) a6 = Remote MAC
+	 *     (u32) a7 = start PSN
+	 *     (u16) a8 = MSS
+	 *     (u32) a9 = protocol version
+	 */
+	CMD_RDMA_QP_CREATE = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 66),
+
+	/*
+	 * Delete a Queue Pair (RoCE)
+	 * in: (u32) a0 = Queue Pair number
+	 */
+	CMD_RDMA_QP_DELETE = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 67),
+
+	/*
+	 * Retrieve a Queue Pair's status information (RoCE)
+	 * in: (u32) a0 = Queue Pair number
+	 *     (u64) a1 = host buffer addr for QP status struct
+	 *     (u32) a2 = length of the buffer
+	 */
+	CMD_RDMA_QP_STATUS = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 68),
+
+	/*
+	 * Use this devcmd for agreeing on the highest common version supported
+	 * by both driver and fw for by features who need such a facility.
+	 *  in:  (u64) a0 = feature (driver requests for the supported versions
+	 *                  on this feature)
+	 *  out: (u64) a0 = bitmap of all supported versions for that feature
+	 */
+	CMD_GET_SUPP_FEATURE_VER = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 69),
+
+	/*
+	 * Initialize the RDMA notification work queue
+	 * in: (u64) a0 = host buffer address
+	 * in: (u16) a1 = number of entries in buffer
+	 * in: (u16) a2 = resource group number
+	 * in: (u16) a3 = CQ number to post completion
+	 */
+	CMD_RDMA_INIT_INFO_BUF = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 70),
+
+	/*
+	 * De-init the RDMA notification work queue
+	 * in: (u64) a0=resource group number
+	 */
+	CMD_RDMA_DEINIT_INFO_BUF = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 71),
+
+	/*
+	 * Control (Enable/Disable) overlay offloads on the given vnic
 	 * in: (u8) a0 = OVERLAY_FEATURE_NVGRE : NVGRE
 	 *          a0 = OVERLAY_FEATURE_VXLAN : VxLAN
-	 * in: (u8) a1 = OVERLAY_OFFLOAD_ENABLE : Enable
-	 *          a1 = OVERLAY_OFFLOAD_DISABLE : Disable
+	 * in: (u8) a1 = OVERLAY_OFFLOAD_ENABLE : Enable or
+	 *          a1 = OVERLAY_OFFLOAD_DISABLE : Disable or
+	 *          a1 = OVERLAY_OFFLOAD_ENABLE_V2 : Enable with version 2
 	 */
-	CMD_OVERLAY_OFFLOAD_ENABLE_DISABLE =
-		_CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 72),
+	CMD_OVERLAY_OFFLOAD_CTRL =
+				_CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 72),
 
 	/*
 	 * Configuration of overlay offloads feature on a given vNIC
-	 * in: (u8) a0 = DEVCMD_OVERLAY_NVGRE : NVGRE
-	 *          a0 = DEVCMD_OVERLAY_VXLAN : VxLAN
-	 * in: (u8) a1 = VXLAN_PORT_UPDATE : VxLAN
-	 * in: (u16) a2 = unsigned short int port information
+	 * in: (u8) a0 = OVERLAY_CFG_VXLAN_PORT_UPDATE : VxLAN
+	 * in: (u16) a1 = unsigned short int port information
 	 */
 	CMD_OVERLAY_OFFLOAD_CFG = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 73),
+
+	/*
+	 * Return the configured name for the device
+	 * in: (u64) a0=Host address where the name is copied
+	 *     (u32) a1=Size of the buffer
+	 */
+	CMD_GET_CONFIG_NAME = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ALL, 74),
+
+	/*
+	 * Enable group interrupt for the VF
+	 * in: (u32) a0 = GRPINTR_ENABLE : enable
+	 *           a0 = GRPINTR_DISABLE : disable
+	 *           a0 = GRPINTR_UPD_VECT: update group vector addr
+	 * in: (u32) a1 = interrupt group count
+	 * in: (u64) a2 = Start of host buffer address for DMAing group
+	 *           vector bitmap
+	 * in: (u64) a3 = Stride between group vectors
+	 */
+	CMD_CONFIG_GRPINTR = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 75),
+
+	/*
+	 * Set cq arrary base and size in a list of consective wqs and
+	 * rqs for a device
+	 * in: (u16) a0 = the wq relative index in the device.
+	 *		-1 indicates skipping wq configuration
+	 * in: (u16) a1 = the wcq relative index in the device
+	 * in: (u16) a2 = the rq relative index in the device
+	 *		-1 indicates skipping rq configuration
+	 * in: (u16) a3 = the rcq relative index in the device
+	 */
+	CMD_CONFIG_CQ_ARRAY = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 76),
+
+	/*
+	 * Add an advanced filter.
+	 * in: (u64) a0= filter address
+	 *     (u32) a1= size of filter
+	 * out: (u32) a0=filter identifier
+	 *
+	 * Capability query:
+	 * out: (u64) a0= 1 if capabliity query supported
+	 *      (u64) a1= MAX filter type supported
+	 */
+	CMD_ADD_ADV_FILTER = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 77),
 };
 
 /* CMD_ENABLE2 flags */
@@ -520,6 +634,9 @@ enum vnic_devcmd_status {
 	STAT_NONE = 0,
 	STAT_BUSY = 1 << 0,	/* cmd in progress */
 	STAT_ERROR = 1 << 1,	/* last cmd caused error (code in a0) */
+	STAT_FAILOVER = 1 << 2, /* always set on vnics in pci standby state
+				 * if seen a failover to the standby happened
+				 */
 };
 
 enum vnic_devcmd_error {
@@ -558,8 +675,8 @@ enum fwinfo_asic_type {
 	FWINFO_ASIC_TYPE_UNKNOWN,
 	FWINFO_ASIC_TYPE_PALO,
 	FWINFO_ASIC_TYPE_SERENO,
+	FWINFO_ASIC_TYPE_CRUZ,
 };
-
 
 struct vnic_devcmd_notify {
 	u32 csum;		/* checksum over following words */
@@ -595,24 +712,15 @@ struct vnic_devcmd_provinfo {
  */
 #define FILTER_FIELD_VALID(fld) (1 << (fld - 1))
 
-#define FILTER_FIELDS_USNIC (FILTER_FIELD_VALID(1) | \
-			     FILTER_FIELD_VALID(2) | \
-			     FILTER_FIELD_VALID(3) | \
-			     FILTER_FIELD_VALID(4))
-
-#define FILTER_FIELDS_IPV4_5TUPLE (FILTER_FIELD_VALID(1) | \
-				   FILTER_FIELD_VALID(2) | \
-				   FILTER_FIELD_VALID(3) | \
-				   FILTER_FIELD_VALID(4) | \
-				   FILTER_FIELD_VALID(5))
-
-#define FILTER_FIELDS_MAC_VLAN (FILTER_FIELD_VALID(1) | \
-				FILTER_FIELD_VALID(2))
-
 #define FILTER_FIELD_USNIC_VLAN    FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_USNIC_ETHTYPE FILTER_FIELD_VALID(2)
 #define FILTER_FIELD_USNIC_PROTO   FILTER_FIELD_VALID(3)
 #define FILTER_FIELD_USNIC_ID      FILTER_FIELD_VALID(4)
+
+#define FILTER_FIELDS_USNIC (FILTER_FIELD_USNIC_VLAN | \
+			     FILTER_FIELD_USNIC_ETHTYPE | \
+			     FILTER_FIELD_USNIC_PROTO | \
+			     FILTER_FIELD_USNIC_ID)
 
 struct filter_usnic_id {
 	u32 flags;
@@ -628,10 +736,18 @@ struct filter_usnic_id {
 #define FILTER_FIELD_5TUP_SRC_PT FILTER_FIELD_VALID(4)
 #define FILTER_FIELD_5TUP_DST_PT FILTER_FIELD_VALID(5)
 
+#define FILTER_FIELDS_IPV4_5TUPLE (FILTER_FIELD_5TUP_PROTO | \
+				   FILTER_FIELD_5TUP_SRC_AD | \
+				   FILTER_FIELD_5TUP_DST_AD | \
+				   FILTER_FIELD_5TUP_SRC_PT | \
+				   FILTER_FIELD_5TUP_DST_PT)
+
 /* Enums for the protocol field. */
 enum protocol_e {
 	PROTO_UDP = 0,
 	PROTO_TCP = 1,
+	PROTO_IPV4 = 2,
+	PROTO_IPV6 = 3
 };
 
 struct filter_ipv4_5tuple {
@@ -646,10 +762,76 @@ struct filter_ipv4_5tuple {
 #define FILTER_FIELD_VMQ_VLAN   FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_VMQ_MAC    FILTER_FIELD_VALID(2)
 
+#define FILTER_FIELDS_MAC_VLAN (FILTER_FIELD_VMQ_VLAN | \
+				FILTER_FIELD_VMQ_MAC)
+
+#define FILTER_FIELDS_NVGRE    FILTER_FIELD_VMQ_MAC
+
 struct filter_mac_vlan {
 	u32 flags;
 	u16 vlan;
 	u8 mac_addr[6];
+} __attribute__((packed));
+
+#define FILTER_FIELD_VLAN_IP_3TUP_VLAN      FILTER_FIELD_VALID(1)
+#define FILTER_FIELD_VLAN_IP_3TUP_L3_PROTO  FILTER_FIELD_VALID(2)
+#define FILTER_FIELD_VLAN_IP_3TUP_DST_AD    FILTER_FIELD_VALID(3)
+#define FILTER_FIELD_VLAN_IP_3TUP_L4_PROTO  FILTER_FIELD_VALID(4)
+#define FILTER_FIELD_VLAN_IP_3TUP_DST_PT    FILTER_FIELD_VALID(5)
+
+#define FILTER_FIELDS_VLAN_IP_3TUP (FILTER_FIELD_VLAN_IP_3TUP_VLAN | \
+				    FILTER_FIELD_VLAN_IP_3TUP_L3_PROTO | \
+				    FILTER_FIELD_VLAN_IP_3TUP_DST_AD | \
+				    FILTER_FIELD_VLAN_IP_3TUP_L4_PROTO | \
+				    FILTER_FIELD_VLAN_IP_3TUP_DST_PT)
+
+struct filter_vlan_ip_3tuple {
+	u32 flags;
+	u16 vlan;
+	u16 l3_protocol;
+	union {
+		u32 dst_addr_v4;
+		u8 dst_addr_v6[16];
+	} u;
+	u32 l4_protocol;
+	u16 dst_port;
+} __attribute__((packed));
+
+#define FILTER_GENERIC_1_BYTES 64
+
+enum filter_generic_1_layer {
+	FILTER_GENERIC_1_L2,
+	FILTER_GENERIC_1_L3,
+	FILTER_GENERIC_1_L4,
+	FILTER_GENERIC_1_L5,
+	FILTER_GENERIC_1_NUM_LAYERS
+};
+
+#define FILTER_GENERIC_1_IPV4       (1 << 0)
+#define FILTER_GENERIC_1_IPV6       (1 << 1)
+#define FILTER_GENERIC_1_UDP        (1 << 2)
+#define FILTER_GENERIC_1_TCP        (1 << 3)
+#define FILTER_GENERIC_1_TCP_OR_UDP (1 << 4)
+#define FILTER_GENERIC_1_IP4SUM_OK  (1 << 5)
+#define FILTER_GENERIC_1_L4SUM_OK   (1 << 6)
+#define FILTER_GENERIC_1_IPFRAG     (1 << 7)
+
+#define FILTER_GENERIC_1_KEY_LEN 64
+
+/*
+ * Version 1 of generic filter specification
+ * position is only 16 bits, reserving positions > 64k to be used by firmware
+ */
+struct filter_generic_1 {
+	u16 position;       /* lower position comes first */
+	u32 mask_flags;
+	u32 val_flags;
+	u16 mask_vlan;
+	u16 val_vlan;
+	struct {
+		u8 mask[FILTER_GENERIC_1_KEY_LEN]; /* 0 bit means "don't care"*/
+		u8 val[FILTER_GENERIC_1_KEY_LEN];
+	} __attribute__((packed)) layer[FILTER_GENERIC_1_NUM_LAYERS];
 } __attribute__((packed));
 
 /* Specifies the filter_action type. */
@@ -670,6 +852,10 @@ enum filter_type {
 	FILTER_USNIC_ID = 0,
 	FILTER_IPV4_5TUPLE = 1,
 	FILTER_MAC_VLAN = 2,
+	FILTER_VLAN_IP_3TUPLE = 3,
+	FILTER_NVGRE_VMQ = 4,
+	FILTER_USNIC_IP = 5,
+	FILTER_DPDK_1 = 6,
 	FILTER_MAX
 };
 
@@ -679,6 +865,27 @@ struct filter {
 		struct filter_usnic_id usnic;
 		struct filter_ipv4_5tuple ipv4;
 		struct filter_mac_vlan mac_vlan;
+		struct filter_vlan_ip_3tuple vlan_3tuple;
+	} u;
+} __attribute__((packed));
+
+/*
+ * This is a strict superset of "struct filter" and exists only
+ * because many drivers use "sizeof (struct filter)" in deciding TLV size.
+ * This new, larger struct filter would cause any code that uses that method
+ * to not work with older firmware, so we add filter_v2 to hold the
+ * new filter types.  Drivers should use vnic_filter_size() to determine
+ * the TLV size instead of sizeof (struct fiter_v2) to guard against future
+ * growth.
+ */
+struct filter_v2 {
+	u32 type;
+	union {
+		struct filter_usnic_id usnic;
+		struct filter_ipv4_5tuple ipv4;
+		struct filter_mac_vlan mac_vlan;
+		struct filter_vlan_ip_3tuple vlan_3tuple;
+		struct filter_generic_1 generic_1;
 	} u;
 } __attribute__((packed));
 
@@ -687,13 +894,54 @@ enum {
 	CLSF_TLV_ACTION = 1,
 };
 
-#define FILTER_MAX_BUF_SIZE 100  /* Maximum size of buffer to CMD_ADD_FILTER */
-
 struct filter_tlv {
-	uint32_t type;
-	uint32_t length;
-	uint32_t val[0];
+	u_int32_t type;
+	u_int32_t length;
+	u_int32_t val[0];
 };
+
+/* Data for CMD_ADD_FILTER is 2 TLV and filter + action structs */
+#define FILTER_MAX_BUF_SIZE 100
+#define FILTER_V2_MAX_BUF_SIZE (sizeof(struct filter_v2) + \
+	sizeof(struct filter_action) + \
+	(2 * sizeof(struct filter_tlv)))
+
+/*
+ * Compute actual structure size given filter type.  To be "future-proof,"
+ * drivers should use this instead of "sizeof (struct filter_v2)" when
+ * computing length for TLV.
+ */
+static inline u_int32_t
+vnic_filter_size(struct filter_v2 *fp)
+{
+	u_int32_t size;
+
+	switch (fp->type) {
+	case FILTER_USNIC_ID:
+		size = sizeof(fp->u.usnic);
+		break;
+	case FILTER_IPV4_5TUPLE:
+		size = sizeof(fp->u.ipv4);
+		break;
+	case FILTER_MAC_VLAN:
+	case FILTER_NVGRE_VMQ:
+		size = sizeof(fp->u.mac_vlan);
+		break;
+	case FILTER_VLAN_IP_3TUPLE:
+		size = sizeof(fp->u.vlan_3tuple);
+		break;
+	case FILTER_USNIC_IP:
+	case FILTER_DPDK_1:
+		size = sizeof(fp->u.generic_1);
+		break;
+	default:
+		size = sizeof(fp->u);
+		break;
+	}
+	size += sizeof(fp->type);
+	return size;
+}
+
 
 enum {
 	CLSF_ADD = 0,
@@ -766,8 +1014,30 @@ typedef enum {
 	OVERLAY_FEATURE_MAX,
 } overlay_feature_t;
 
-#define OVERLAY_OFFLOAD_ENABLE 0
-#define OVERLAY_OFFLOAD_DISABLE 1
+#define OVERLAY_OFFLOAD_ENABLE          0
+#define OVERLAY_OFFLOAD_DISABLE         1
+#define OVERLAY_OFFLOAD_ENABLE_V2       2
 
 #define OVERLAY_CFG_VXLAN_PORT_UPDATE 0
+
+/*
+ * Use this enum to get the supported versions for each of these features
+ * If you need to use the devcmd_get_supported_feature_version(), add
+ * the new feature into this enum and install function handler in devcmd.c
+ */
+typedef enum {
+	VIC_FEATURE_VXLAN,
+	VIC_FEATURE_RDMA,
+	VIC_FEATURE_MAX,
+} vic_feature_t;
+
+/*
+ * CMD_CONFIG_GRPINTR subcommands
+ */
+typedef enum {
+	GRPINTR_ENABLE = 1,
+	GRPINTR_DISABLE,
+	GRPINTR_UPD_VECT,
+} grpintr_subcmd_t;
+
 #endif /* _VNIC_DEVCMD_H_ */
