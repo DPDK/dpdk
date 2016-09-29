@@ -4115,10 +4115,12 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 	void *temp;
 	int ret;
 	struct i40e_mac_filter *f;
-	uint16_t user_param = vsi->user_param;
+	uint16_t user_param;
 
 	if (!vsi)
 		return I40E_SUCCESS;
+
+	user_param = vsi->user_param;
 
 	pf = I40E_VSI_TO_PF(vsi);
 	hw = I40E_VSI_TO_HW(vsi);
