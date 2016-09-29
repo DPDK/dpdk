@@ -81,7 +81,7 @@ rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 			: "memory" );           /* no-clobber list */
 #else
 	asm volatile (
-            "mov %%ebx, %%edi\n"
+            "xchgl %%ebx, %%edi;\n"
 			MPLOCKED
 			"cmpxchg8b (%[dst]);"
 			"setz %[res];"
