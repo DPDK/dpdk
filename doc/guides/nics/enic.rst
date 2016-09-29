@@ -59,11 +59,31 @@ Configuration information
 
   - **Number of Queues**
 
-    The maximum number of receive and transmit queues are configurable on a per
-    vNIC basis through the Cisco UCS Manager (CIMC or UCSM). These values
-    should be configured to be greater than or equal to the nb_rx_q and nb_tx_q
-    parameters expected to  used in the call to the rte_eth_dev_configure()
-    function.
+    The maximum number of receive queues (RQs), work queues (WQs) and
+    completion queues (CQs) are configurable on a per vNIC basis
+    through the Cisco UCS Manager (CIMC or UCSM).
+
+    These values should be configured as follows:
+
+    - The number of WQs should be greater or equal to the value of the
+      expected nb_tx_q parameter in the call to the
+      rte_eth_dev_configure()
+
+    - The number of RQs configured in the vNIC should be greater or
+      equal to *twice* the value of the expected nb_rx_q parameter in
+      the call to rte_eth_dev_configure().  With the addition of rx
+      scatter, a pair of RQs on the vnic is needed for each receive
+      queue used by DPDK, even if rx scatter is not being used.
+      Having a vNIC with only 1 RQ is not a valid configuration, and
+      will fail with an error message.
+
+    - The number of CQs should set so that there is one CQ for each
+      WQ, and one CQ for each pair of RQs.
+
+    For example: If the application requires 3 Rx queues, and 3 Tx
+    queues, the vNIC should be configured to have at least 3 WQs, 6
+    RQs (3 pairs), and 6 CQs (3 for use by WQs + 3 for use by the 3
+    pairs of RQs).
 
   - **Size of Queues**
 
@@ -71,6 +91,29 @@ Configuration information
     a per vNIC bases via the UCS Manager and should be greater than or equal to
     the nb_rx_desc and   nb_tx_desc parameters expected to be used in the calls
     to rte_eth_rx_queue_setup() and rte_eth_tx_queue_setup() respectively.
+    An application requesting more than the set size will be limited to that
+    size.
+
+    Unless there is a lack of resources due to creating many vNICs, it
+    is recommended that the WQ and RQ sizes be set to the maximum.  This
+    gives the application the greatest amount of flexibility in its
+    queue configuration.
+
+    - *Note*: Since the introduction of rx scatter, for performance
+      reasons, this PMD uses two RQs on the vNIC per receive queue in
+      DPDK.  One RQ holds descriptors for the start of a packet the
+      second RQ holds the descriptors for the rest of the fragments of
+      a packet.  This means that the nb_rx_desc parameter to
+      rte_eth_rx_queue_setup() can be a greater than 4096.  The exact
+      amount will depend on the size of the mbufs being used for
+      receives, and the MTU size.
+
+      For example: If the mbuf size is 2048, and the MTU is 9000, then
+      receiving a full size packet will take 5 descriptors, 1 from the
+      start of packet queue, and 4 from the second queue.  Assuming
+      that the RQ size was set to the maximum of 4096, then the
+      application can specify up to 1024 + 4096 as the nb_rx_desc
+      parameter to rte_eth_rx_queue_setup().
 
   - **Interrupts**
 

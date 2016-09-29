@@ -1284,6 +1284,15 @@ static int enic_dev_init(struct enic *enic)
 		return err;
 	}
 
+	/* Get available resource counts */
+	enic_get_res_counts(enic);
+	if (enic->conf_rq_count == 1) {
+		dev_err(enic, "Running with only 1 RQ configured in the vNIC is not supported.\n");
+		dev_err(enic, "Please configure 2 RQs in the vNIC for each Rx queue used by DPDK.\n");
+		dev_err(enic, "See the ENIC PMD guide for more information.\n");
+		return -EINVAL;
+	}
+
 	eth_dev->data->mac_addrs = rte_zmalloc("enic_mac_addr", ETH_ALEN, 0);
 	if (!eth_dev->data->mac_addrs) {
 		dev_err(enic, "mac addr storage alloc failed, aborting.\n");
@@ -1291,11 +1300,6 @@ static int enic_dev_init(struct enic *enic)
 	}
 	ether_addr_copy((struct ether_addr *) enic->mac_addr,
 		&eth_dev->data->mac_addrs[0]);
-
-
-	/* Get available resource counts
-	*/
-	enic_get_res_counts(enic);
 
 	vnic_dev_set_reset_flag(enic->vdev, 0);
 
