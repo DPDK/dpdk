@@ -240,6 +240,7 @@ void enic_clsf_destroy(struct enic *enic)
 			vnic_dev_classifier(enic->vdev, CLSF_DEL,
 				&key->fltr_id, NULL);
 			rte_free(key);
+			enic->fdir.nodes[index] = NULL;
 		}
 	}
 
