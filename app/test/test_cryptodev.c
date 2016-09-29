@@ -1125,7 +1125,7 @@ test_AES_qat_all(void)
 
 /* ***** SNOW 3G Tests ***** */
 static int
-create_snow3g_kasumi_hash_session(uint8_t dev_id,
+create_wireless_algo_hash_session(uint8_t dev_id,
 	const uint8_t *key, const uint8_t key_len,
 	const uint8_t aad_len, const uint8_t auth_len,
 	enum rte_crypto_auth_operation op,
@@ -1156,7 +1156,7 @@ create_snow3g_kasumi_hash_session(uint8_t dev_id,
 }
 
 static int
-create_snow3g_kasumi_cipher_session(uint8_t dev_id,
+create_wireless_algo_cipher_session(uint8_t dev_id,
 			enum rte_crypto_cipher_operation op,
 			enum rte_crypto_cipher_algorithm algo,
 			const uint8_t *key, const uint8_t key_len)
@@ -1187,7 +1187,7 @@ create_snow3g_kasumi_cipher_session(uint8_t dev_id,
 }
 
 static int
-create_snow3g_kasumi_cipher_operation(const uint8_t *iv, const unsigned iv_len,
+create_wireless_algo_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 			const unsigned cipher_len,
 			const unsigned cipher_offset,
 			enum rte_crypto_cipher_algorithm algo)
@@ -1232,7 +1232,7 @@ create_snow3g_kasumi_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 }
 
 static int
-create_snow3g_kasumi_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
+create_wireless_algo_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
 			const unsigned cipher_len,
 			const unsigned cipher_offset,
 			enum rte_crypto_cipher_algorithm algo)
@@ -1277,7 +1277,7 @@ create_snow3g_kasumi_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_le
 }
 
 static int
-create_snow3g_kasumi_cipher_auth_session(uint8_t dev_id,
+create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 		enum rte_crypto_cipher_operation cipher_op,
 		enum rte_crypto_auth_operation auth_op,
 		enum rte_crypto_auth_algorithm auth_algo,
@@ -1324,7 +1324,7 @@ create_snow3g_kasumi_cipher_auth_session(uint8_t dev_id,
 }
 
 static int
-create_snow3g_kasumi_auth_cipher_session(uint8_t dev_id,
+create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 		enum rte_crypto_cipher_operation cipher_op,
 		enum rte_crypto_auth_operation auth_op,
 		enum rte_crypto_auth_algorithm auth_algo,
@@ -1368,7 +1368,7 @@ create_snow3g_kasumi_auth_cipher_session(uint8_t dev_id,
 }
 
 static int
-create_snow3g_kasumi_hash_operation(const uint8_t *auth_tag,
+create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
 		const uint8_t *aad, const unsigned aad_len,
 		unsigned data_pad_len,
@@ -1448,7 +1448,7 @@ create_snow3g_kasumi_hash_operation(const uint8_t *auth_tag,
 }
 
 static int
-create_snow3g_kasumi_cipher_hash_operation(const uint8_t *auth_tag,
+create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
 		const uint8_t *aad, const uint8_t aad_len,
 		unsigned data_pad_len,
@@ -1543,7 +1543,7 @@ create_snow3g_kasumi_cipher_hash_operation(const uint8_t *auth_tag,
 }
 
 static int
-create_snow3g_kasumi_auth_cipher_operation(const unsigned auth_tag_len,
+create_wireless_algo_auth_cipher_operation(const unsigned auth_tag_len,
 		const uint8_t *iv, const uint8_t iv_len,
 		const uint8_t *aad, const uint8_t aad_len,
 		unsigned data_pad_len,
@@ -1650,7 +1650,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->digest.len,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -1673,7 +1673,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_hash_operation(NULL, tdata->digest.len,
+	retval = create_wireless_algo_hash_operation(NULL, tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
@@ -1711,7 +1711,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
 				tdata->aad.len, tdata->digest.len,
 				RTE_CRYPTO_AUTH_OP_VERIFY,
@@ -1733,7 +1733,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_hash_operation(tdata->digest.data,
+	retval = create_wireless_algo_hash_operation(tdata->digest.data,
 			tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len,
@@ -1772,7 +1772,7 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
 			tdata->aad.len, tdata->digest.len,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -1795,7 +1795,7 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_hash_operation(NULL, tdata->digest.len,
+	retval = create_wireless_algo_hash_operation(NULL, tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_KASUMI_F9,
@@ -1833,7 +1833,7 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	uint8_t *plaintext;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_hash_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
 				tdata->aad.len, tdata->digest.len,
 				RTE_CRYPTO_AUTH_OP_VERIFY,
@@ -1855,7 +1855,7 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_hash_operation(tdata->digest.data,
+	retval = create_wireless_algo_hash_operation(tdata->digest.data,
 			tdata->digest.len,
 			tdata->aad.data, tdata->aad.len,
 			plaintext_pad_len,
@@ -2033,7 +2033,7 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
@@ -2057,7 +2057,7 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->plaintext.len,
 					tdata->validCipherOffsetLenInBits.len,
 					RTE_CRYPTO_CIPHER_KASUMI_F8);
@@ -2098,7 +2098,7 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
@@ -2124,7 +2124,7 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->plaintext.len,
 					tdata->validCipherOffsetLenInBits.len,
@@ -2166,7 +2166,7 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
@@ -2192,7 +2192,7 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->ciphertext.len,
 					tdata->validCipherOffsetLenInBits.len,
@@ -2234,7 +2234,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len);
@@ -2258,7 +2258,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data,
+	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
 					tdata->iv.len,
 					tdata->ciphertext.len,
 					tdata->validCipherOffsetLenInBits.len,
@@ -2300,7 +2300,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
@@ -2324,7 +2324,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
@@ -2366,7 +2366,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
@@ -2397,7 +2397,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len,
@@ -2460,7 +2460,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	uint8_t *expected_ciphertext_shifted;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
@@ -2498,7 +2498,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 #endif
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len +
@@ -2554,7 +2554,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
@@ -2578,7 +2578,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
@@ -2617,7 +2617,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	unsigned ciphertext_len;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len);
@@ -2651,7 +2651,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_cipher_operation_oop(tdata->iv.data,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
 					tdata->validCipherOffsetLenInBits.len,
@@ -2692,7 +2692,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_cipher_auth_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_cipher_auth_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
@@ -2718,7 +2718,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_cipher_hash_operation(tdata->digest.data,
+	retval = create_wireless_algo_cipher_hash_operation(tdata->digest.data,
 			tdata->digest.len, tdata->aad.data,
 			tdata->aad.len, /*tdata->plaintext.len,*/
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -2775,7 +2775,7 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create SNOW 3G session */
-	retval = create_snow3g_kasumi_auth_cipher_session(ts_params->valid_devs[0],
+	retval = create_wireless_algo_auth_cipher_session(ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
@@ -2802,7 +2802,7 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_snow3g_kasumi_auth_cipher_operation(
+	retval = create_wireless_algo_auth_cipher_operation(
 		tdata->digest.len,
 		tdata->iv.data, tdata->iv.len,
 		tdata->aad.data, tdata->aad.len,
@@ -2861,7 +2861,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_auth_cipher_session(
+	retval = create_wireless_algo_auth_cipher_session(
 			ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -2888,7 +2888,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_auth_cipher_operation(tdata->digest.len,
+	retval = create_wireless_algo_auth_cipher_operation(tdata->digest.len,
 				tdata->iv.data, tdata->iv.len,
 				tdata->aad.data, tdata->aad.len,
 				plaintext_pad_len,
@@ -2944,7 +2944,7 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 	unsigned plaintext_len;
 
 	/* Create KASUMI session */
-	retval = create_snow3g_kasumi_cipher_auth_session(
+	retval = create_wireless_algo_cipher_auth_session(
 			ts_params->valid_devs[0],
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
@@ -2972,7 +2972,7 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_snow3g_kasumi_cipher_hash_operation(tdata->digest.data,
+	retval = create_wireless_algo_cipher_hash_operation(tdata->digest.data,
 				tdata->digest.len, tdata->aad.data,
 				tdata->aad.len,
 				plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
