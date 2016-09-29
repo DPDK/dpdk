@@ -387,6 +387,7 @@ rte_eal_pci_detach(const struct rte_pci_addr *addr)
 			goto err_return;
 
 		TAILQ_REMOVE(&pci_device_list, dev, next);
+		free(dev);
 		return 0;
 	}
 	return -1;
