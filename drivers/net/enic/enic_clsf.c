@@ -120,7 +120,9 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 		return -ENOTSUP;
 	}
 
-	queue = params->action.rx_queue;
+	/* Get the enicpmd RQ from the DPDK Rx queue */
+	queue = enic_sop_rq(params->action.rx_queue);
+
 	/* See if the key is already there in the table */
 	pos = rte_hash_del_key(enic->fdir.hash, params);
 	switch (pos) {
