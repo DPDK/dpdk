@@ -653,27 +653,33 @@ nicvf_tx_queue_reset(struct nicvf_txq *txq)
 }
 
 static inline int
-nicvf_start_tx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+nicvf_vf_start_tx_queue(struct rte_eth_dev *dev, struct nicvf *nic,
+			uint16_t qidx)
 {
 	struct nicvf_txq *txq;
 	int ret;
 
-	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
+	assert(qidx < MAX_SND_QUEUES_PER_QS);
+
+	if (dev->data->tx_queue_state[nicvf_netdev_qidx(nic, qidx)] ==
+		RTE_ETH_QUEUE_STATE_STARTED)
 		return 0;
 
-	txq = dev->data->tx_queues[qidx];
+	txq = dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)];
 	txq->pool = NULL;
-	ret = nicvf_qset_sq_config(nicvf_pmd_priv(dev), qidx, txq);
+	ret = nicvf_qset_sq_config(nic, qidx, txq);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to configure sq %d %d", qidx, ret);
+		PMD_INIT_LOG(ERR, "Failed to configure sq VF%d %d %d",
+			     nic->vf_id, qidx, ret);
 		goto config_sq_error;
 	}
 
-	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	dev->data->tx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
+		RTE_ETH_QUEUE_STATE_STARTED;
 	return ret;
 
 config_sq_error:
-	nicvf_qset_sq_reclaim(nicvf_pmd_priv(dev), qidx);
+	nicvf_qset_sq_reclaim(nic, qidx);
 	return ret;
 }
 
@@ -977,31 +983,37 @@ nicvf_rx_queue_reset(struct nicvf_rxq *rxq)
 }
 
 static inline int
-nicvf_start_rx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+nicvf_vf_start_rx_queue(struct rte_eth_dev *dev, struct nicvf *nic,
+			uint16_t qidx)
 {
-	struct nicvf *nic = nicvf_pmd_priv(dev);
 	struct nicvf_rxq *rxq;
 	int ret;
 
-	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
+	assert(qidx < MAX_RCV_QUEUES_PER_QS);
+
+	if (dev->data->rx_queue_state[nicvf_netdev_qidx(nic, qidx)] ==
+		RTE_ETH_QUEUE_STATE_STARTED)
 		return 0;
 
 	/* Update rbdr pointer to all rxq */
-	rxq = dev->data->rx_queues[qidx];
+	rxq = dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)];
 	rxq->shared_rbdr = nic->rbdr;
 
 	ret = nicvf_qset_rq_config(nic, qidx, rxq);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to configure rq %d %d", qidx, ret);
+		PMD_INIT_LOG(ERR, "Failed to configure rq VF%d %d %d",
+			     nic->vf_id, qidx, ret);
 		goto config_rq_error;
 	}
 	ret = nicvf_qset_cq_config(nic, qidx, rxq);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to configure cq %d %d", qidx, ret);
+		PMD_INIT_LOG(ERR, "Failed to configure cq VF%d %d %d",
+			     nic->vf_id, qidx, ret);
 		goto config_cq_error;
 	}
 
-	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	dev->data->rx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
+		RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 
 config_cq_error:
@@ -1054,9 +1066,15 @@ nicvf_dev_rx_queue_release(void *rx_queue)
 static int
 nicvf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
 {
+	struct nicvf *nic = nicvf_pmd_priv(dev);
 	int ret;
 
-	ret = nicvf_start_rx_queue(dev, qidx);
+	if (qidx >= MAX_RCV_QUEUES_PER_QS)
+		nic = nic->snicvf[(qidx / MAX_RCV_QUEUES_PER_QS - 1)];
+
+	qidx = qidx % MAX_RCV_QUEUES_PER_QS;
+
+	ret = nicvf_vf_start_rx_queue(dev, nic, qidx);
 	if (ret)
 		return ret;
 
@@ -1087,7 +1105,14 @@ nicvf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 static int
 nicvf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
 {
-	return nicvf_start_tx_queue(dev, qidx);
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	if (qidx >= MAX_SND_QUEUES_PER_QS)
+		nic = nic->snicvf[(qidx / MAX_SND_QUEUES_PER_QS - 1)];
+
+	qidx = qidx % MAX_SND_QUEUES_PER_QS;
+
+	return nicvf_vf_start_tx_queue(dev, nic, qidx);
 }
 
 static int
@@ -1274,25 +1299,25 @@ rbdr_rte_mempool_get(void *dev, void *opaque)
 }
 
 static int
-nicvf_dev_start(struct rte_eth_dev *dev)
+nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 {
 	int ret;
 	uint16_t qidx;
-	uint32_t buffsz = 0, rbdrsz = 0;
 	uint32_t total_rxq_desc, nb_rbdr_desc, exp_buffs;
 	uint64_t mbuf_phys_off = 0;
 	struct nicvf_rxq *rxq;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	struct rte_mbuf *mbuf;
-	struct nicvf *nic = nicvf_pmd_priv(dev);
-	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
-	uint16_t mtu;
+	uint16_t rx_start, rx_end;
+	uint16_t tx_start, tx_end;
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* Userspace process exited without proper shutdown in last run */
 	if (nicvf_qset_rbdr_active(nic, 0))
-		nicvf_dev_stop(dev);
+		nicvf_vf_stop(dev, nic, false);
+
+	/* Get queue ranges for this VF */
+	nicvf_rx_range(dev, nic, &rx_start, &rx_end);
 
 	/*
 	 * Thunderx nicvf PMD can support more than one pool per port only when
@@ -1307,32 +1332,15 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	 *
 	 */
 
-	/* Validate RBDR buff size */
-	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++) {
-		rxq = dev->data->rx_queues[qidx];
-		mbp_priv = rte_mempool_get_priv(rxq->pool);
-		buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
-		if (buffsz % 128) {
-			PMD_INIT_LOG(ERR, "rxbuf size must be multiply of 128");
-			return -EINVAL;
-		}
-		if (rbdrsz == 0)
-			rbdrsz = buffsz;
-		if (rbdrsz != buffsz) {
-			PMD_INIT_LOG(ERR, "buffsz not same, qid=%d (%d/%d)",
-				     qidx, rbdrsz, buffsz);
-			return -EINVAL;
-		}
-	}
-
 	/* Validate mempool attributes */
-	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++) {
+	for (qidx = rx_start; qidx <= rx_end; qidx++) {
 		rxq = dev->data->rx_queues[qidx];
 		rxq->mbuf_phys_off = nicvf_mempool_phy_offset(rxq->pool);
 		mbuf = rte_pktmbuf_alloc(rxq->pool);
 		if (mbuf == NULL) {
-			PMD_INIT_LOG(ERR, "Failed allocate mbuf qid=%d pool=%s",
-				     qidx, rxq->pool->name);
+			PMD_INIT_LOG(ERR, "Failed allocate mbuf VF%d qid=%d "
+				     "pool=%s",
+				     nic->vf_id, qidx, rxq->pool->name);
 			return -ENOMEM;
 		}
 		rxq->mbuf_phys_off -= nicvf_mbuff_meta_length(mbuf);
@@ -1342,15 +1350,16 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 		if (mbuf_phys_off == 0)
 			mbuf_phys_off = rxq->mbuf_phys_off;
 		if (mbuf_phys_off != rxq->mbuf_phys_off) {
-			PMD_INIT_LOG(ERR, "pool params not same,%s %" PRIx64,
-				     rxq->pool->name, mbuf_phys_off);
+			PMD_INIT_LOG(ERR, "pool params not same,%s VF%d %"
+				     PRIx64, rxq->pool->name, nic->vf_id,
+				     mbuf_phys_off);
 			return -EINVAL;
 		}
 	}
 
 	/* Check the level of buffers in the pool */
 	total_rxq_desc = 0;
-	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++) {
+	for (qidx = rx_start; qidx <= rx_end; qidx++) {
 		rxq = dev->data->rx_queues[qidx];
 		/* Count total numbers of rxq descs */
 		total_rxq_desc += rxq->qlen_mask + 1;
@@ -1368,14 +1377,16 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	/* Check RBDR desc overflow */
 	ret = nicvf_qsize_rbdr_roundup(total_rxq_desc);
 	if (ret == 0) {
-		PMD_INIT_LOG(ERR, "Reached RBDR desc limit, reduce nr desc");
+		PMD_INIT_LOG(ERR, "Reached RBDR desc limit, reduce nr desc "
+			     "VF%d", nic->vf_id);
 		return -ENOMEM;
 	}
 
 	/* Enable qset */
 	ret = nicvf_qset_config(nic);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to enable qset %d", ret);
+		PMD_INIT_LOG(ERR, "Failed to enable qset %d VF%d", ret,
+			     nic->vf_id);
 		return ret;
 	}
 
@@ -1383,14 +1394,16 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	nb_rbdr_desc = nicvf_qsize_rbdr_roundup(total_rxq_desc);
 	ret = nicvf_qset_rbdr_alloc(dev, nic, nb_rbdr_desc, rbdrsz);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to allocate memory for rbdr alloc");
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for rbdr alloc "
+			     "VF%d", nic->vf_id);
 		goto qset_reclaim;
 	}
 
 	/* Enable and configure RBDR registers */
 	ret = nicvf_qset_rbdr_config(nic, 0);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to configure rbdr %d", ret);
+		PMD_INIT_LOG(ERR, "Failed to configure rbdr %d VF%d", ret,
+			     nic->vf_id);
 		goto qset_rbdr_free;
 	}
 
@@ -1398,52 +1411,127 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	ret = nicvf_qset_rbdr_precharge(dev, nic, 0, rbdr_rte_mempool_get,
 					total_rxq_desc);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to fill rbdr %d", ret);
+		PMD_INIT_LOG(ERR, "Failed to fill rbdr %d VF%d", ret,
+			     nic->vf_id);
 		goto qset_rbdr_reclaim;
 	}
 
-	PMD_DRV_LOG(INFO, "Filled %d out of %d entries in RBDR",
-		     nic->rbdr->tail, nb_rbdr_desc);
-
-	/* Configure RX queues */
-	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++) {
-		ret = nicvf_start_rx_queue(dev, qidx);
-		if (ret)
-			goto start_rxq_error;
-	}
+	PMD_DRV_LOG(INFO, "Filled %d out of %d entries in RBDR VF%d",
+		     nic->rbdr->tail, nb_rbdr_desc, nic->vf_id);
 
 	/* Configure VLAN Strip */
 	nicvf_vlan_hw_strip(nic, dev->data->dev_conf.rxmode.hw_vlan_strip);
 
+	/* Get queue ranges for this VF */
+	nicvf_tx_range(dev, nic, &tx_start, &tx_end);
+
 	/* Configure TX queues */
-	for (qidx = 0; qidx < dev->data->nb_tx_queues; qidx++) {
-		ret = nicvf_start_tx_queue(dev, qidx);
+	for (qidx = tx_start; qidx <= tx_end; qidx++) {
+		ret = nicvf_vf_start_tx_queue(dev, nic,
+			qidx % MAX_SND_QUEUES_PER_QS);
 		if (ret)
 			goto start_txq_error;
 	}
 
-	/* Configure CPI algorithm */
-	ret = nicvf_configure_cpi(dev);
-	if (ret)
-		goto start_txq_error;
+	/* Configure RX queues */
+	for (qidx = rx_start; qidx <= rx_end; qidx++) {
+		ret = nicvf_vf_start_rx_queue(dev, nic,
+			qidx % MAX_RCV_QUEUES_PER_QS);
+		if (ret)
+			goto start_rxq_error;
+	}
 
-	/* Configure RSS */
-	ret = nicvf_configure_rss(dev);
-	if (ret)
-		goto qset_rss_error;
+	if (!nic->sqs_mode) {
+		/* Configure CPI algorithm */
+		ret = nicvf_configure_cpi(dev);
+		if (ret)
+			goto start_txq_error;
+
+		ret = nicvf_mbox_get_rss_size(nic);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to get rss table size");
+			goto qset_rss_error;
+		}
+
+		/* Configure RSS */
+		ret = nicvf_configure_rss(dev);
+		if (ret)
+			goto qset_rss_error;
+	}
+
+	/* Done; Let PF make the BGX's RX and TX switches to ON position */
+	nicvf_mbox_cfg_done(nic);
+	return 0;
+
+qset_rss_error:
+	nicvf_rss_term(nic);
+start_rxq_error:
+	for (qidx = rx_start; qidx <= rx_end; qidx++)
+		nicvf_vf_stop_rx_queue(dev, nic, qidx % MAX_RCV_QUEUES_PER_QS);
+start_txq_error:
+	for (qidx = tx_start; qidx <= tx_end; qidx++)
+		nicvf_vf_stop_tx_queue(dev, nic, qidx % MAX_SND_QUEUES_PER_QS);
+qset_rbdr_reclaim:
+	nicvf_qset_rbdr_reclaim(nic, 0);
+	nicvf_rbdr_release_mbufs(dev, nic);
+qset_rbdr_free:
+	if (nic->rbdr) {
+		rte_free(nic->rbdr);
+		nic->rbdr = NULL;
+	}
+qset_reclaim:
+	nicvf_qset_reclaim(nic);
+	return ret;
+}
+
+static int
+nicvf_dev_start(struct rte_eth_dev *dev)
+{
+	uint16_t qidx;
+	int ret;
+	size_t i;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
+	uint16_t mtu;
+	uint32_t buffsz = 0, rbdrsz = 0;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct nicvf_rxq *rxq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* This function must be called for a primary device */
+	assert_primary(nic);
+
+	/* Validate RBDR buff size */
+	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++) {
+		rxq = dev->data->rx_queues[qidx];
+		mbp_priv = rte_mempool_get_priv(rxq->pool);
+		buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+		if (buffsz % 128) {
+			PMD_INIT_LOG(ERR, "rxbuf size must be multiply of 128");
+			return -EINVAL;
+		}
+		if (rbdrsz == 0)
+			rbdrsz = buffsz;
+		if (rbdrsz != buffsz) {
+			PMD_INIT_LOG(ERR, "buffsz not same, qidx=%d (%d/%d)",
+				     qidx, rbdrsz, buffsz);
+			return -EINVAL;
+		}
+	}
 
 	/* Configure loopback */
 	ret = nicvf_loopback_config(nic, dev->data->dev_conf.lpbk_mode);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to configure loopback %d", ret);
-		goto qset_rss_error;
+		return ret;
 	}
 
 	/* Reset all statistics counters attached to this port */
 	ret = nicvf_mbox_reset_stat_counters(nic, 0x3FFF, 0x1F, 0xFFFF, 0xFFFF);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to reset stat counters %d", ret);
-		goto qset_rss_error;
+		return ret;
 	}
 
 	/* Setup scatter mode if needed by jumbo */
@@ -1464,33 +1552,23 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 		return -EBUSY;
 	}
 
+	ret = nicvf_vf_start(dev, nic, rbdrsz);
+	if (ret != 0)
+		return ret;
+
+	for (i = 0; i < nic->sqs_count; i++) {
+		assert(nic->snicvf[i]);
+
+		ret = nicvf_vf_start(dev, nic->snicvf[i], rbdrsz);
+		if (ret != 0)
+			return ret;
+	}
+
 	/* Configure callbacks based on scatter mode */
 	nicvf_set_tx_function(dev);
 	nicvf_set_rx_function(dev);
 
-	/* Done; Let PF make the BGX's RX and TX switches to ON position */
-	nicvf_mbox_cfg_done(nic);
 	return 0;
-
-qset_rss_error:
-	nicvf_rss_term(nic);
-start_txq_error:
-	for (qidx = 0; qidx < dev->data->nb_tx_queues; qidx++)
-		nicvf_vf_stop_tx_queue(dev, nic, qidx);
-start_rxq_error:
-	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++)
-		nicvf_vf_stop_rx_queue(dev, nic, qidx);
-qset_rbdr_reclaim:
-	nicvf_qset_rbdr_reclaim(nic, 0);
-	nicvf_rbdr_release_mbufs(dev, nic);
-qset_rbdr_free:
-	if (nic->rbdr) {
-		rte_free(nic->rbdr);
-		nic->rbdr = NULL;
-	}
-qset_reclaim:
-	nicvf_qset_reclaim(nic);
-	return ret;
 }
 
 static void
