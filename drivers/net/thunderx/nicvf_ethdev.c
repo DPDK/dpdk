@@ -163,6 +163,7 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint32_t buffsz, frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	size_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -198,6 +199,10 @@ nicvf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* Update max frame size */
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = (uint32_t)frame_size;
 	nic->mtu = mtu;
+
+	for (i = 0; i < nic->sqs_count; i++)
+		nic->snicvf[i]->mtu = mtu;
+
 	return 0;
 }
 
@@ -507,7 +512,8 @@ nicvf_qset_cq_alloc(struct rte_eth_dev *dev, struct nicvf *nic,
 	const struct rte_memzone *rz;
 	uint32_t ring_size = CMP_QUEUE_SZ_MAX * sizeof(union cq_entry_t);
 
-	rz = rte_eth_dma_zone_reserve(dev, "cq_ring", qidx, ring_size,
+	rz = rte_eth_dma_zone_reserve(dev, "cq_ring",
+				      nicvf_netdev_qidx(nic, qidx), ring_size,
 				      NICVF_CQ_BASE_ALIGN_BYTES, nic->node);
 	if (rz == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate mem for cq hw ring");
@@ -530,8 +536,9 @@ nicvf_qset_sq_alloc(struct rte_eth_dev *dev, struct nicvf *nic,
 	const struct rte_memzone *rz;
 	uint32_t ring_size = SND_QUEUE_SZ_MAX * sizeof(union sq_entry_t);
 
-	rz = rte_eth_dma_zone_reserve(dev, "sq", qidx, ring_size,
-				NICVF_SQ_BASE_ALIGN_BYTES, nic->node);
+	rz = rte_eth_dma_zone_reserve(dev, "sq",
+				      nicvf_netdev_qidx(nic, qidx), ring_size,
+				      NICVF_SQ_BASE_ALIGN_BYTES, nic->node);
 	if (rz == NULL) {
 		PMD_INIT_LOG(ERR, "Failed allocate mem for sq hw ring");
 		return -ENOMEM;
@@ -563,8 +570,9 @@ nicvf_qset_rbdr_alloc(struct rte_eth_dev *dev, struct nicvf *nic,
 	}
 
 	ring_size = sizeof(struct rbdr_entry_t) * RBDR_QUEUE_SZ_MAX;
-	rz = rte_eth_dma_zone_reserve(dev, "rbdr", 0, ring_size,
-				   NICVF_RBDR_BASE_ALIGN_BYTES, nic->node);
+	rz = rte_eth_dma_zone_reserve(dev, "rbdr",
+				      nicvf_netdev_qidx(nic, 0), ring_size,
+				      NICVF_RBDR_BASE_ALIGN_BYTES, nic->node);
 	if (rz == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate mem for rbdr desc ring");
 		return -ENOMEM;
@@ -1685,12 +1693,37 @@ nicvf_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
+nicvf_request_sqs(struct nicvf *nic)
+{
+	size_t i;
+
+	assert_primary(nic);
+	assert(nic->sqs_count > 0);
+	assert(nic->sqs_count <= MAX_SQS_PER_VF);
+
+	/* Set no of Rx/Tx queues in each of the SQsets */
+	for (i = 0; i < nic->sqs_count; i++) {
+		if (nicvf_svf_empty())
+			rte_panic("Cannot assign sufficient number of "
+				  "secondary queues to primary VF%" PRIu8 "\n",
+				  nic->vf_id);
+
+		nic->snicvf[i] = nicvf_svf_pop();
+		nic->snicvf[i]->sqs_id = i;
+	}
+
+	return nicvf_mbox_request_sqs(nic);
+}
+
+static int
 nicvf_dev_configure(struct rte_eth_dev *dev)
 {
-	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	struct rte_eth_dev_data *data = dev->data;
+	struct rte_eth_conf *conf = &data->dev_conf;
 	struct rte_eth_rxmode *rxmode = &conf->rxmode;
 	struct rte_eth_txmode *txmode = &conf->txmode;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
+	uint8_t cqcount;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1753,6 +1786,26 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
 		PMD_INIT_LOG(INFO, "Flow director not supported");
 		return -EINVAL;
+	}
+
+	assert_primary(nic);
+	NICVF_STATIC_ASSERT(MAX_RCV_QUEUES_PER_QS == MAX_SND_QUEUES_PER_QS);
+	cqcount = RTE_MAX(data->nb_tx_queues, data->nb_rx_queues);
+	if (cqcount > MAX_RCV_QUEUES_PER_QS) {
+		nic->sqs_count = RTE_ALIGN_CEIL(cqcount, MAX_RCV_QUEUES_PER_QS);
+		nic->sqs_count = (nic->sqs_count / MAX_RCV_QUEUES_PER_QS) - 1;
+	} else {
+		nic->sqs_count = 0;
+	}
+
+	assert(nic->sqs_count <= MAX_SQS_PER_VF);
+
+	if (nic->sqs_count > 0) {
+		if (nicvf_request_sqs(nic)) {
+			rte_panic("Cannot assign sufficient number of "
+				  "secondary queues to PORT%d VF%" PRIu8 "\n",
+				  dev->data->port_id, nic->vf_id);
+		}
 	}
 
 	PMD_INIT_LOG(DEBUG, "Configured ethdev port%d hwcap=0x%" PRIx64,
