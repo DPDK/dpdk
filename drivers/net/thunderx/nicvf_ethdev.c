@@ -67,9 +67,13 @@
 
 #include "nicvf_ethdev.h"
 #include "nicvf_rxtx.h"
+#include "nicvf_svf.h"
 #include "nicvf_logs.h"
 
 static void nicvf_dev_stop(struct rte_eth_dev *dev);
+static void nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup);
+static void nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic,
+			  bool cleanup);
 
 static inline int
 nicvf_atomic_write_link_status(struct rte_eth_dev *dev,
@@ -674,23 +678,29 @@ config_sq_error:
 }
 
 static inline int
-nicvf_stop_tx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+nicvf_vf_stop_tx_queue(struct rte_eth_dev *dev, struct nicvf *nic,
+		       uint16_t qidx)
 {
 	struct nicvf_txq *txq;
 	int ret;
 
-	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
+	assert(qidx < MAX_SND_QUEUES_PER_QS);
+
+	if (dev->data->tx_queue_state[nicvf_netdev_qidx(nic, qidx)] ==
+		RTE_ETH_QUEUE_STATE_STOPPED)
 		return 0;
 
-	ret = nicvf_qset_sq_reclaim(nicvf_pmd_priv(dev), qidx);
+	ret = nicvf_qset_sq_reclaim(nic, qidx);
 	if (ret)
-		PMD_INIT_LOG(ERR, "Failed to reclaim sq %d %d", qidx, ret);
+		PMD_INIT_LOG(ERR, "Failed to reclaim sq VF%d %d %d",
+			     nic->vf_id, qidx, ret);
 
-	txq = dev->data->tx_queues[qidx];
+	txq = dev->data->tx_queues[nicvf_netdev_qidx(nic, qidx)];
 	nicvf_tx_queue_release_mbufs(txq);
 	nicvf_tx_queue_reset(txq);
 
-	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	dev->data->tx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
+		RTE_ETH_QUEUE_STATE_STOPPED;
 	return ret;
 }
 
@@ -1002,30 +1012,34 @@ config_rq_error:
 }
 
 static inline int
-nicvf_stop_rx_queue(struct rte_eth_dev *dev, uint16_t qidx)
+nicvf_vf_stop_rx_queue(struct rte_eth_dev *dev, struct nicvf *nic,
+		       uint16_t qidx)
 {
-	struct nicvf *nic = nicvf_pmd_priv(dev);
 	struct nicvf_rxq *rxq;
 	int ret, other_error;
 
-	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
+	if (dev->data->rx_queue_state[nicvf_netdev_qidx(nic, qidx)] ==
+		RTE_ETH_QUEUE_STATE_STOPPED)
 		return 0;
 
 	ret = nicvf_qset_rq_reclaim(nic, qidx);
 	if (ret)
-		PMD_INIT_LOG(ERR, "Failed to reclaim rq %d %d", qidx, ret);
+		PMD_INIT_LOG(ERR, "Failed to reclaim rq VF%d %d %d",
+			     nic->vf_id, qidx, ret);
 
 	other_error = ret;
-	rxq = dev->data->rx_queues[qidx];
+	rxq = dev->data->rx_queues[nicvf_netdev_qidx(nic, qidx)];
 	nicvf_rx_queue_release_mbufs(dev, rxq);
 	nicvf_rx_queue_reset(rxq);
 
 	ret = nicvf_qset_cq_reclaim(nic, qidx);
 	if (ret)
-		PMD_INIT_LOG(ERR, "Failed to reclaim cq %d %d", qidx, ret);
+		PMD_INIT_LOG(ERR, "Failed to reclaim cq VF%d %d %d",
+			     nic->vf_id, qidx, ret);
 
 	other_error |= ret;
-	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	dev->data->rx_queue_state[nicvf_netdev_qidx(nic, qidx)] =
+		RTE_ETH_QUEUE_STATE_STOPPED;
 	return other_error;
 }
 
@@ -1057,8 +1071,14 @@ static int
 nicvf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 {
 	int ret;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
 
-	ret = nicvf_stop_rx_queue(dev, qidx);
+	if (qidx >= MAX_SND_QUEUES_PER_QS)
+		nic = nic->snicvf[(qidx / MAX_SND_QUEUES_PER_QS - 1)];
+
+	qidx = qidx % MAX_RCV_QUEUES_PER_QS;
+
+	ret = nicvf_vf_stop_rx_queue(dev, nic, qidx);
 	ret |= nicvf_configure_cpi(dev);
 	ret |= nicvf_configure_rss_reta(dev);
 	return ret;
@@ -1073,7 +1093,14 @@ nicvf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
 static int
 nicvf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 {
-	return nicvf_stop_tx_queue(dev, qidx);
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	if (qidx >= MAX_SND_QUEUES_PER_QS)
+		nic = nic->snicvf[(qidx / MAX_SND_QUEUES_PER_QS - 1)];
+
+	qidx = qidx % MAX_SND_QUEUES_PER_QS;
+
+	return nicvf_vf_stop_tx_queue(dev, nic, qidx);
 }
 
 
@@ -1449,10 +1476,10 @@ qset_rss_error:
 	nicvf_rss_term(nic);
 start_txq_error:
 	for (qidx = 0; qidx < dev->data->nb_tx_queues; qidx++)
-		nicvf_stop_tx_queue(dev, qidx);
+		nicvf_vf_stop_tx_queue(dev, nic, qidx);
 start_rxq_error:
 	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++)
-		nicvf_stop_rx_queue(dev, qidx);
+		nicvf_vf_stop_rx_queue(dev, nic, qidx);
 qset_rbdr_reclaim:
 	nicvf_qset_rbdr_reclaim(nic, 0);
 	nicvf_rbdr_release_mbufs(dev, nic);
@@ -1467,32 +1494,74 @@ qset_reclaim:
 }
 
 static void
-nicvf_dev_stop(struct rte_eth_dev *dev)
+nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup)
 {
+	size_t i;
 	int ret;
-	uint16_t qidx;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 
 	PMD_INIT_FUNC_TRACE();
 
-	/* Let PF make the BGX's RX and TX switches to OFF position */
-	nicvf_mbox_shutdown(nic);
+	/* Teardown secondary vf first */
+	for (i = 0; i < nic->sqs_count; i++) {
+		if (!nic->snicvf[i])
+			continue;
+
+		nicvf_vf_stop(dev, nic->snicvf[i], cleanup);
+	}
+
+	/* Stop the primary VF now */
+	nicvf_vf_stop(dev, nic, cleanup);
 
 	/* Disable loopback */
 	ret = nicvf_loopback_config(nic, 0);
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to disable loopback %d", ret);
 
+	/* Reclaim CPI configuration */
+	ret = nicvf_mbox_config_cpi(nic, 0);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to reclaim CPI config %d", ret);
+}
+
+static void
+nicvf_dev_stop(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	nicvf_dev_stop_cleanup(dev, false);
+}
+
+static void
+nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic, bool cleanup)
+{
+	int ret;
+	uint16_t qidx;
+	uint16_t tx_start, tx_end;
+	uint16_t rx_start, rx_end;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (cleanup) {
+		/* Let PF make the BGX's RX and TX switches to OFF position */
+		nicvf_mbox_shutdown(nic);
+	}
+
 	/* Disable VLAN Strip */
 	nicvf_vlan_hw_strip(nic, 0);
 
-	/* Reclaim sq */
-	for (qidx = 0; qidx < dev->data->nb_tx_queues; qidx++)
-		nicvf_stop_tx_queue(dev, qidx);
+	/* Get queue ranges for this VF */
+	nicvf_tx_range(dev, nic, &tx_start, &tx_end);
+
+	for (qidx = tx_start; qidx <= tx_end; qidx++)
+		nicvf_vf_stop_tx_queue(dev, nic, qidx % MAX_SND_QUEUES_PER_QS);
+
+	/* Get queue ranges for this VF */
+	nicvf_rx_range(dev, nic, &rx_start, &rx_end);
 
 	/* Reclaim rq */
-	for (qidx = 0; qidx < dev->data->nb_rx_queues; qidx++)
-		nicvf_stop_rx_queue(dev, qidx);
+	for (qidx = rx_start; qidx <= rx_end; qidx++)
+		nicvf_vf_stop_rx_queue(dev, nic, qidx % MAX_RCV_QUEUES_PER_QS);
 
 	/* Reclaim RBDR */
 	ret = nicvf_qset_rbdr_reclaim(nic, 0);
@@ -1503,15 +1572,8 @@ nicvf_dev_stop(struct rte_eth_dev *dev)
 	if (nic->rbdr != NULL)
 		nicvf_rbdr_release_mbufs(dev, nic);
 
-	/* Reclaim CPI configuration */
-	if (!nic->sqs_mode) {
-		ret = nicvf_mbox_config_cpi(nic, 0);
-		if (ret)
-			PMD_INIT_LOG(ERR, "Failed to reclaim CPI config");
-	}
-
 	/* Disable qset */
-	ret = nicvf_qset_config(nic);
+	ret = nicvf_qset_reclaim(nic);
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to disable qset %d", ret);
 
@@ -1528,10 +1590,20 @@ nicvf_dev_stop(struct rte_eth_dev *dev)
 static void
 nicvf_dev_close(struct rte_eth_dev *dev)
 {
+	size_t i;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
 	PMD_INIT_FUNC_TRACE();
 
-	nicvf_dev_stop(dev);
+	nicvf_dev_stop_cleanup(dev, true);
 	nicvf_periodic_alarm_stop(nicvf_interrupt, dev);
+
+	for (i = 0; i < nic->sqs_count; i++) {
+		if (!nic->snicvf[i])
+			continue;
+
+		nicvf_periodic_alarm_stop(nicvf_vf_interrupt, nic->snicvf[i]);
+	}
 }
 
 static int
