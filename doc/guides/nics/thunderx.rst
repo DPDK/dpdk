@@ -56,6 +56,7 @@ Features of the ThunderX PMD are:
 - VLAN stripping
 - SR-IOV VF
 - NUMA support
+- Multi queue set support (up to 96 queues (12 queue sets)) per port
 
 Supported ThunderX SoCs
 -----------------------
@@ -207,13 +208,13 @@ This section provides instructions to configure SR-IOV with Linux OS.
    .. code-block:: console
 
       0002:01:00.0 Ethernet controller: Cavium Networks Device a01e (rev 01)
-              ...
-              Capabilities: [100 v1] Alternative Routing-ID Interpretation (ARI)
-              ...
-              Capabilities: [180 v1] Single Root I/O Virtualization (SR-IOV)
-              ...
-              Kernel driver in use: thunder-nic
-              ...
+      ...
+      Capabilities: [100 v1] Alternative Routing-ID Interpretation (ARI)
+      ...
+      Capabilities: [180 v1] Single Root I/O Virtualization (SR-IOV)
+      ...
+      Kernel driver in use: thunder-nic
+      ...
 
    .. note::
 
@@ -230,18 +231,18 @@ This section provides instructions to configure SR-IOV with Linux OS.
    .. code-block:: console
 
       0002:01:00.1 Ethernet controller: Cavium Networks Device 0011 (rev 01)
-              ...
-              Capabilities: [100 v1] Alternative Routing-ID Interpretation (ARI)
-              ...
-              Kernel driver in use: thunder-nicvf
-              ...
+      ...
+      Capabilities: [100 v1] Alternative Routing-ID Interpretation (ARI)
+      ...
+      Kernel driver in use: thunder-nicvf
+      ...
 
       0002:01:00.2 Ethernet controller: Cavium Networks Device 0011 (rev 01)
-              ...
-              Capabilities: [100 v1] Alternative Routing-ID Interpretation (ARI)
-              ...
-              Kernel driver in use: thunder-nicvf
-              ...
+      ...
+      Capabilities: [100 v1] Alternative Routing-ID Interpretation (ARI)
+      ...
+      Kernel driver in use: thunder-nicvf
+      ...
 
    .. note::
 
@@ -322,6 +323,112 @@ This section provides instructions to configure SR-IOV with Linux OS.
 #. Refer to section :ref:`Running testpmd <thunderx_testpmd_example>` for instruction
    how to launch ``testpmd`` application.
 
+Multiple Queue Set per DPDK port configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are two types of VFs:
+
+- Primary VF
+- Secondary VF
+
+Each port consists of a primary VF and n secondary VF(s). Each VF provides 8 Tx/Rx queues to a port.
+When a given port is configured to use more than 8 queues, it requires one (or more) secondary VF.
+Each secondary VF adds 8 additional queues to the queue set.
+
+During PMD driver initialization, the primary VF's are enumerated by checking the
+specific flag (see sqs message in DPDK boot log - sqs indicates secondary queue set).
+They are at the beginning of VF list (the remain ones are secondary VF's).
+
+The primary VFs are used as master queue sets. Secondary VFs provide
+additional queue sets for primary ones. If a port is configured for more then
+8 queues than it will request for additional queues from secondary VFs.
+
+Secondary VFs cannot be shared between primary VFs.
+
+Primary VFs are present on the beginning of the 'Network devices using kernel
+driver' list, secondary VFs are on the remaining on the remaining part of the list.
+
+   .. note::
+
+      The VNIC driver in the multiqueue setup works differently than other drivers like `ixgbe`.
+      We need to bind separately each specific queue set device with the ``tools/dpdk-devbind.py`` utility.
+
+   .. note::
+
+      Depending on the hardware used, the kernel driver sets a threshold ``vf_id``. VFs that try to attached with an id below or equal to
+      this boundary are considered primary VFs. VFs that try to attach with an id above this boundary are considered secondary VFs.
+
+
+Example device binding
+~~~~~~~~~~~~~~~~~~~~~~
+
+If a system has three interfaces, a total of 18 VF devices will be created
+on a non-NUMA machine.
+
+   .. note::
+
+      NUMA systems have 12 VFs per port and non-NUMA 6 VFs per port.
+
+   .. code-block:: console
+
+      # tools/dpdk-devbind.py --status
+
+      Network devices using DPDK-compatible driver
+      ============================================
+      <none>
+
+      Network devices using kernel driver
+      ===================================
+      0000:01:10.0 'Device a026' if= drv=thunder-BGX unused=vfio-pci,uio_pci_generic
+      0000:01:10.1 'Device a026' if= drv=thunder-BGX unused=vfio-pci,uio_pci_generic
+      0002:01:00.0 'Device a01e' if= drv=thunder-nic unused=vfio-pci,uio_pci_generic
+      0002:01:00.1 'Device 0011' if=eth0 drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:00.2 'Device 0011' if=eth1 drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:00.3 'Device 0011' if=eth2 drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:00.4 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:00.5 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:00.6 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:00.7 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.0 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.1 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.2 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.3 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.4 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.5 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.6 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:01.7 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:02.0 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:02.1 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+      0002:01:02.2 'Device 0011' if= drv=thunder-nicvf unused=vfio-pci,uio_pci_generic
+
+      Other network devices
+      =====================
+      0002:00:03.0 'Device a01f' unused=vfio-pci,uio_pci_generic
+
+
+We want to bind two physical interfaces with 24 queues each device, we attach two primary VFs
+and four secondary queues. In our example we choose two 10G interfaces eth1 (0002:01:00.2) and eth2 (0002:01:00.3).
+We will choose four secondary queue sets from the ending of the list (0002:01:01.7-0002:01:02.2).
+
+
+#. Bind two primary VFs to the ``vfio-pci`` driver:
+
+   .. code-block:: console
+
+      tools/dpdk-devbind.py -b vfio-pci 0002:01:00.2
+      tools/dpdk-devbind.py -b vfio-pci 0002:01:00.3
+
+#. Bind four primary VFs to the ``vfio-pci`` driver:
+
+   .. code-block:: console
+
+      tools/dpdk-devbind.py -b vfio-pci 0002:01:01.7
+      tools/dpdk-devbind.py -b vfio-pci 0002:01:02.0
+      tools/dpdk-devbind.py -b vfio-pci 0002:01:02.1
+      tools/dpdk-devbind.py -b vfio-pci 0002:01:02.2
+
+The nicvf thunderx driver will make use of attached secondary VFs automatically during the interface configuration stage.
+
 Limitations
 -----------
 
@@ -346,10 +453,3 @@ Maximum packet segments
 The ThunderX SoC family NICs support up to 12 segments per packet when working
 in scatter/gather mode. So, setting MTU will result with ``EINVAL`` when the
 frame size does not fit in the maximum number of segments.
-
-Limited VFs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The ThunderX SoC family NICs has 128VFs and each VF has 8/8 queues
-for RX/TX respectively. Current driver implementation has one to one mapping
-between physical port and VF hence only limited VFs can be used.
