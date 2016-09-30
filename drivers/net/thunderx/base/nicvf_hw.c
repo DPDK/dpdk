@@ -141,7 +141,7 @@ nicvf_base_init(struct nicvf *nic)
 		return NICVF_ERR_BASE_INIT;
 
 	if (nicvf_hw_version(nic) == PCI_SUB_DEVICE_ID_CN88XX_PASS2_NICVF)
-		nic->hwcap |= NICVF_CAP_TUNNEL_PARSING;
+		nic->hwcap |= NICVF_CAP_TUNNEL_PARSING | NICVF_CAP_CQE_RX2;
 
 	if (nicvf_hw_version(nic) == PCI_SUB_DEVICE_ID_CN81XX_NICVF)
 		nic->hwcap |= NICVF_CAP_TUNNEL_PARSING | NICVF_CAP_CQE_RX2;
@@ -497,9 +497,9 @@ nicvf_qsize_rbdr_roundup(uint32_t val)
 }
 
 int
-nicvf_qset_rbdr_precharge(struct nicvf *nic, uint16_t ridx,
-			  rbdr_pool_get_handler handler,
-			  void *opaque, uint32_t max_buffs)
+nicvf_qset_rbdr_precharge(void *dev, struct nicvf *nic,
+			  uint16_t ridx, rbdr_pool_get_handler handler,
+			  uint32_t max_buffs)
 {
 	struct rbdr_entry_t *desc, *desc0;
 	struct nicvf_rbdr *rbdr = nic->rbdr;
@@ -514,7 +514,7 @@ nicvf_qset_rbdr_precharge(struct nicvf *nic, uint16_t ridx,
 		if (count >= max_buffs)
 			break;
 		desc0 = desc + count;
-		phy = handler(opaque);
+		phy = handler(dev, nic);
 		if (phy) {
 			desc0->full_addr = phy;
 			count++;

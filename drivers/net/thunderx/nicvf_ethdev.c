@@ -691,7 +691,7 @@ nicvf_configure_cpi(struct rte_eth_dev *dev)
 	int ret;
 
 	/* Count started rx queues */
-	for (qidx = qcnt = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++)
+	for (qidx = qcnt = 0; qidx < dev->data->nb_rx_queues; qidx++)
 		if (dev->data->rx_queue_state[qidx] ==
 		    RTE_ETH_QUEUE_STATE_STARTED)
 			qcnt++;
@@ -1023,12 +1023,9 @@ nicvf_stop_rx_queue(struct rte_eth_dev *dev, uint16_t qidx)
 static void
 nicvf_dev_rx_queue_release(void *rx_queue)
 {
-	struct nicvf_rxq *rxq = rx_queue;
-
 	PMD_INIT_FUNC_TRACE();
 
-	if (rxq)
-		rte_free(rxq);
+	rte_free(rx_queue);
 }
 
 static int
@@ -1070,6 +1067,7 @@ nicvf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 	return nicvf_stop_tx_queue(dev, qidx);
 }
 
+
 static int
 nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 			 uint16_t nb_desc, unsigned int socket_id,
@@ -1087,9 +1085,15 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 		PMD_DRV_LOG(WARNING, "socket_id expected %d, configured %d",
 		socket_id, nic->node);
 
-	/* Mempool memory should be contiguous */
+	/* Mempool memory must be contiguous, so must be one memory segment*/
 	if (mp->nb_mem_chunks != 1) {
-		PMD_INIT_LOG(ERR, "Non contiguous mempool, check huge page sz");
+		PMD_INIT_LOG(ERR, "Non-contiguous mempool, add more huge pages");
+		return -EINVAL;
+	}
+
+	/* Mempool memory must be physically contiguous */
+	if (mp->flags & MEMPOOL_F_NO_PHYS_CONTIG) {
+		PMD_INIT_LOG(ERR, "Mempool memory must be physically contiguous");
 		return -EINVAL;
 	}
 
@@ -1212,15 +1216,16 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static nicvf_phys_addr_t
-rbdr_rte_mempool_get(void *opaque)
+rbdr_rte_mempool_get(void *dev, void *opaque)
 {
 	uint16_t qidx;
 	uintptr_t mbuf;
 	struct nicvf_rxq *rxq;
-	struct nicvf *nic = nicvf_pmd_priv((struct rte_eth_dev *)opaque);
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)dev;
+	struct nicvf *nic __rte_unused = (struct nicvf *)opaque;
 
-	for (qidx = 0; qidx < nic->eth_dev->data->nb_rx_queues; qidx++) {
-		rxq = nic->eth_dev->data->rx_queues[qidx];
+	for (qidx = 0; qidx < eth_dev->data->nb_rx_queues; qidx++) {
+		rxq = eth_dev->data->rx_queues[qidx];
 		/* Maintain equal buffer count across all pools */
 		if (rxq->precharge_cnt >= rxq->qlen_mask)
 			continue;
@@ -1354,8 +1359,8 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Fill rte_mempool buffers in RBDR pool and precharge it */
-	ret = nicvf_qset_rbdr_precharge(nic, 0, rbdr_rte_mempool_get,
-					dev, total_rxq_desc);
+	ret = nicvf_qset_rbdr_precharge(dev, nic, 0, rbdr_rte_mempool_get,
+					total_rxq_desc);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to fill rbdr %d", ret);
 		goto qset_rbdr_reclaim;
@@ -1718,12 +1723,6 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 	ret = nicvf_base_init(nic);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to execute nicvf_base_init");
-		goto malloc_fail;
-	}
-
-	ret = nicvf_mbox_get_rss_size(nic);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to get rss table size");
 		goto malloc_fail;
 	}
 

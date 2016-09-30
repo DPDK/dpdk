@@ -85,7 +85,7 @@ enum nicvf_err_e {
 	NICVF_ERR_RSS_GET_SZ,    /* -8171 */
 };
 
-typedef nicvf_phys_addr_t (*rbdr_pool_get_handler)(void *opaque);
+typedef nicvf_phys_addr_t (*rbdr_pool_get_handler)(void *dev, void *opaque);
 
 struct nicvf_hw_rx_qstats {
 	uint64_t q_rx_bytes;
@@ -194,8 +194,8 @@ int nicvf_qset_reclaim(struct nicvf *nic);
 
 int nicvf_qset_rbdr_config(struct nicvf *nic, uint16_t qidx);
 int nicvf_qset_rbdr_reclaim(struct nicvf *nic, uint16_t qidx);
-int nicvf_qset_rbdr_precharge(struct nicvf *nic, uint16_t ridx,
-			      rbdr_pool_get_handler handler, void *opaque,
+int nicvf_qset_rbdr_precharge(void *dev, struct nicvf *nic,
+			      uint16_t ridx, rbdr_pool_get_handler handler,
 			      uint32_t max_buffs);
 int nicvf_qset_rbdr_active(struct nicvf *nic, uint16_t qidx);
 
