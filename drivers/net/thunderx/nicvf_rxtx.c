@@ -368,7 +368,8 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 	void *obj_p[NICVF_MAX_RX_FREE_THRESH] __rte_cache_aligned;
 
 	if (unlikely(rte_mempool_get_bulk(rxq->pool, obj_p, to_fill) < 0)) {
-		rxq->nic->eth_dev->data->rx_mbuf_alloc_failed += to_fill;
+		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
+			to_fill;
 		return 0;
 	}
 
