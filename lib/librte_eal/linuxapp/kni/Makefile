@@ -82,8 +82,6 @@ SRCS-y += ethtool/igb/igb_debugfs.c
 SRCS-y += ethtool/igb/igb_param.c
 SRCS-y += ethtool/igb/igb_procfs.c
 SRCS-y += ethtool/igb/igb_vmdq.c
-#SRCS-y += ethtool/igb/igb_ptp.c
-#SRCS-y += ethtool/igb/kcompat.c
 
 SRCS-y += kni_misc.c
 SRCS-y += kni_net.c
