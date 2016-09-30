@@ -70,19 +70,20 @@ fill_sq_desc_header(union sq_entry_t *entry, struct rte_mbuf *pkt)
 	ol_flags = pkt->ol_flags & NICVF_TX_OFFLOAD_MASK;
 	if (unlikely(ol_flags)) {
 		/* L4 cksum */
-		if (ol_flags & PKT_TX_TCP_CKSUM)
+		uint64_t l4_flags = ol_flags & PKT_TX_L4_MASK;
+		if (l4_flags == PKT_TX_TCP_CKSUM)
 			sqe.hdr.csum_l4 = SEND_L4_CSUM_TCP;
-		else if (ol_flags & PKT_TX_UDP_CKSUM)
+		else if (l4_flags == PKT_TX_UDP_CKSUM)
 			sqe.hdr.csum_l4 = SEND_L4_CSUM_UDP;
 		else
 			sqe.hdr.csum_l4 = SEND_L4_CSUM_DISABLE;
+
+		sqe.hdr.l3_offset = pkt->l2_len;
 		sqe.hdr.l4_offset = pkt->l3_len + pkt->l2_len;
 
 		/* L3 cksum */
-		if (ol_flags & PKT_TX_IP_CKSUM) {
+		if (ol_flags & PKT_TX_IP_CKSUM)
 			sqe.hdr.csum_l3 = 1;
-			sqe.hdr.l3_offset = pkt->l2_len;
-		}
 	}
 
 	entry->buff[0] = sqe.buff[0];
