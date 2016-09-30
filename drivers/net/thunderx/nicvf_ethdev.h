@@ -35,7 +35,7 @@
 
 #include <rte_ethdev.h>
 
-#define THUNDERX_NICVF_PMD_VERSION      "1.0"
+#define THUNDERX_NICVF_PMD_VERSION      "2.0"
 #define THUNDERX_REG_BYTES		8
 
 #define NICVF_INTR_POLL_INTERVAL_MS	50
