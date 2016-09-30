@@ -207,6 +207,7 @@
 #define NICVF_CQE_RX2_RBPTR_WORD        (7)
 
 #define NICVF_STATIC_ASSERT(s) _Static_assert(s, #s)
+#define assert_primary(nic) assert((nic)->sqs_mode == 0)
 
 typedef uint64_t nicvf_phys_addr_t;
 

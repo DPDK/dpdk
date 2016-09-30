@@ -62,6 +62,9 @@ static const char *mbox_message[NIC_MBOX_MSG_MAX] =  {
 	[NIC_MBOX_MSG_RESET_STAT_COUNTER] = "NIC_MBOX_MSG_RESET_STAT_COUNTER",
 	[NIC_MBOX_MSG_CFG_DONE]           = "NIC_MBOX_MSG_CFG_DONE",
 	[NIC_MBOX_MSG_SHUTDOWN]           = "NIC_MBOX_MSG_SHUTDOWN",
+	[NIC_MBOX_MSG_RES_BIT]            = "NIC_MBOX_MSG_RES_BIT",
+	[NIC_MBOX_MSG_RSS_SIZE_RES_BIT]   = "NIC_MBOX_MSG_RSS_SIZE",
+	[NIC_MBOX_MSG_ALLOC_SQS_RES_BIT]  = "NIC_MBOX_MSG_ALLOC_SQS",
 };
 
 static inline const char * __attribute__((unused))
@@ -173,7 +176,7 @@ nicvf_handle_mbx_intr(struct nicvf *nic)
 	case NIC_MBOX_MSG_NACK:
 		nic->pf_nacked = true;
 		break;
-	case NIC_MBOX_MSG_RSS_SIZE:
+	case NIC_MBOX_MSG_RSS_SIZE_RES_BIT:
 		nic->rss_info.rss_size = mbx.rss_size.ind_tbl_size;
 		nic->pf_acked = true;
 		break;
@@ -181,6 +184,26 @@ nicvf_handle_mbx_intr(struct nicvf *nic)
 		nic->link_up = mbx.link_status.link_up;
 		nic->duplex = mbx.link_status.duplex;
 		nic->speed = mbx.link_status.speed;
+		nic->pf_acked = true;
+		break;
+	case NIC_MBOX_MSG_ALLOC_SQS_RES_BIT:
+		assert_primary(nic);
+		if (mbx.sqs_alloc.qs_count != nic->sqs_count) {
+			nicvf_log_error("Received %" PRIu8 "/%" PRIu8
+			                " secondary qsets",
+			                mbx.sqs_alloc.qs_count,
+			                nic->sqs_count);
+			abort();
+		}
+		for (i = 0; i < mbx.sqs_alloc.qs_count; i++) {
+			if (mbx.sqs_alloc.svf[i] != nic->snicvf[i]->vf_id) {
+				nicvf_log_error("Received secondary qset[%zu] "
+				                "ID %" PRIu8 " expected %"
+				                PRIu8, i, mbx.sqs_alloc.svf[i],
+				                nic->snicvf[i]->vf_id);
+				abort();
+			}
+		}
 		nic->pf_acked = true;
 		break;
 	default:
@@ -314,7 +337,29 @@ nicvf_mbox_qset_config(struct nicvf *nic, struct pf_qs_cfg *qs_cfg)
 	/* Send a mailbox msg to PF to config Qset */
 	mbx.msg.msg = NIC_MBOX_MSG_QS_CFG;
 	mbx.qs.num = nic->vf_id;
+	mbx.qs.sqs_count = nic->sqs_count;
 	mbx.qs.cfg = qs_cfg->value;
+	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
+}
+
+int
+nicvf_mbox_request_sqs(struct nicvf *nic)
+{
+	struct nic_mbx mbx = { .msg = { 0 } };
+	size_t i;
+
+	assert_primary(nic);
+	assert(nic->sqs_count > 0);
+	assert(nic->sqs_count <= MAX_SQS_PER_VF);
+
+	mbx.sqs_alloc.msg = NIC_MBOX_MSG_ALLOC_SQS;
+	mbx.sqs_alloc.spec = 1;
+	mbx.sqs_alloc.qs_count = nic->sqs_count;
+
+	/* Set no of Rx/Tx queues in each of the SQsets */
+	for (i = 0; i < nic->sqs_count; i++)
+		mbx.sqs_alloc.svf[i] = nic->snicvf[i]->vf_id;
+
 	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
 }
 
