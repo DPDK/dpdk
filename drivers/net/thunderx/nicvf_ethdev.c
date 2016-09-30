@@ -101,31 +101,40 @@ nicvf_set_eth_link_status(struct nicvf *nic, struct rte_eth_link *link)
 static void
 nicvf_interrupt(void *arg)
 {
-	struct nicvf *nic = arg;
+	struct rte_eth_dev *dev = arg;
+	struct nicvf *nic = nicvf_pmd_priv(dev);
 
 	if (nicvf_reg_poll_interrupts(nic) == NIC_MBOX_MSG_BGX_LINK_CHANGE) {
-		if (nic->eth_dev->data->dev_conf.intr_conf.lsc)
-			nicvf_set_eth_link_status(nic,
-					&nic->eth_dev->data->dev_link);
-		_rte_eth_dev_callback_process(nic->eth_dev,
-				RTE_ETH_EVENT_INTR_LSC);
+		if (dev->data->dev_conf.intr_conf.lsc)
+			nicvf_set_eth_link_status(nic, &dev->data->dev_link);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
 	}
 
 	rte_eal_alarm_set(NICVF_INTR_POLL_INTERVAL_MS * 1000,
-				nicvf_interrupt, nic);
+				nicvf_interrupt, dev);
+}
+
+static void __rte_unused
+nicvf_vf_interrupt(void *arg)
+{
+	struct nicvf *nic = arg;
+
+	nicvf_reg_poll_interrupts(nic);
+
+	rte_eal_alarm_set(NICVF_INTR_POLL_INTERVAL_MS * 1000,
+				nicvf_vf_interrupt, nic);
 }
 
 static int
-nicvf_periodic_alarm_start(struct nicvf *nic)
+nicvf_periodic_alarm_start(void (fn)(void *), void *arg)
 {
-	return rte_eal_alarm_set(NICVF_INTR_POLL_INTERVAL_MS * 1000,
-					nicvf_interrupt, nic);
+	return rte_eal_alarm_set(NICVF_INTR_POLL_INTERVAL_MS * 1000, fn, arg);
 }
 
 static int
-nicvf_periodic_alarm_stop(struct nicvf *nic)
+nicvf_periodic_alarm_stop(void (fn)(void *), void *arg)
 {
-	return rte_eal_alarm_cancel(nicvf_interrupt, nic);
+	return rte_eal_alarm_cancel(fn, arg);
 }
 
 /*
@@ -1519,12 +1528,10 @@ nicvf_dev_stop(struct rte_eth_dev *dev)
 static void
 nicvf_dev_close(struct rte_eth_dev *dev)
 {
-	struct nicvf *nic = nicvf_pmd_priv(dev);
-
 	PMD_INIT_FUNC_TRACE();
 
 	nicvf_dev_stop(dev);
-	nicvf_periodic_alarm_stop(nic);
+	nicvf_periodic_alarm_stop(nicvf_interrupt, dev);
 }
 
 static int
@@ -1675,7 +1682,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	nicvf_disable_all_interrupts(nic);
 
-	ret = nicvf_periodic_alarm_start(nic);
+	ret = nicvf_periodic_alarm_start(nicvf_interrupt, eth_dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to start period alarm");
 		goto fail;
@@ -1736,7 +1743,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 malloc_fail:
 	rte_free(eth_dev->data->mac_addrs);
 alarm_fail:
-	nicvf_periodic_alarm_stop(nic);
+	nicvf_periodic_alarm_stop(nicvf_interrupt, eth_dev);
 fail:
 	return ret;
 }
