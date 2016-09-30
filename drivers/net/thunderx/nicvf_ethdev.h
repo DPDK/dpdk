@@ -87,6 +87,17 @@ nicvf_mbuff_meta_length(struct rte_mbuf *mbuf)
 	return (uint16_t)((uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf);
 }
 
+static inline uint16_t
+nicvf_netdev_qidx(struct nicvf *nic, uint8_t local_qidx)
+{
+	uint16_t global_qidx = local_qidx;
+
+	if (nic->sqs_mode)
+		global_qidx += ((nic->sqs_id + 1) * MAX_CMP_QUEUES_PER_QS);
+
+	return global_qidx;
+}
+
 /*
  * Simple phy2virt functions assuming mbufs are in a single huge page
  * V = P + offset
@@ -102,6 +113,34 @@ static inline uintptr_t
 nicvf_mbuff_virt2phy(uintptr_t virt, uint64_t mbuf_phys_off)
 {
 	return (phys_addr_t)(virt - mbuf_phys_off);
+}
+
+static inline void
+nicvf_tx_range(struct rte_eth_dev *dev, struct nicvf *nic, uint16_t *tx_start,
+	       uint16_t *tx_end)
+{
+	uint16_t tmp;
+
+	*tx_start = RTE_ALIGN_FLOOR(nicvf_netdev_qidx(nic, 0),
+				    MAX_SND_QUEUES_PER_QS);
+	tmp = RTE_ALIGN_CEIL(nicvf_netdev_qidx(nic, 0) + 1,
+			     MAX_SND_QUEUES_PER_QS) - 1;
+	*tx_end = dev->data->nb_tx_queues ?
+		RTE_MIN(tmp, dev->data->nb_tx_queues - 1) : 0;
+}
+
+static inline void
+nicvf_rx_range(struct rte_eth_dev *dev, struct nicvf *nic, uint16_t *rx_start,
+	       uint16_t *rx_end)
+{
+	uint16_t tmp;
+
+	*rx_start = RTE_ALIGN_FLOOR(nicvf_netdev_qidx(nic, 0),
+				    MAX_RCV_QUEUES_PER_QS);
+	tmp = RTE_ALIGN_CEIL(nicvf_netdev_qidx(nic, 0) + 1,
+			     MAX_RCV_QUEUES_PER_QS) - 1;
+	*rx_end = dev->data->nb_rx_queues ?
+		RTE_MIN(tmp, dev->data->nb_rx_queues - 1) : 0;
 }
 
 #endif /* __THUNDERX_NICVF_ETHDEV_H__  */
