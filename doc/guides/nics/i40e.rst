@@ -411,3 +411,45 @@ configuration passed on the EAL command line.
 
 The floating VEB functionality requires a NIC firmware version of 5.0
 or greater.
+
+
+Limitations or Known issues
+---------------------------
+
+MPLS packet classification on X710/XL710
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For firmware versions prior to 5.0, MPLS packets are not recognized by the NIC.
+The L2 Payload flow type in flow director can be used to classify MPLS packet
+by using a command in testpmd like:
+
+   testpmd> flow_director_filter 0 mode IP add flow l2_payload ether \
+            0x8847 flexbytes () fwd pf queue <N> fd_id <M>
+
+With the NIC firmware version 5.0 or greater, some limited MPLS support
+is added: Native MPLS (MPLS in Ethernet) skip is implemented, while no
+new packet type, no classification or offload are possible. With this change,
+L2 Payload flow type in flow director cannot be used to classify MPLS packet
+as with previous firmware versions. Meanwhile, the Ethertype filter can be
+used to classify MPLS packet by using a command in testpmd like:
+
+   testpmd> ethertype_filter 0 add mac_ignr 00:00:00:00:00:00 ethertype \
+            0x8847 fwd queue <M>
+
+16 Byte Descriptor cannot be used on DPDK VF
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If the Linux i40e kernel driver is used as host driver, while DPDK i40e PMD
+is used as the VF driver, DPDK cannot choose 16 byte receive descriptor. That
+is to say, user should keep ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n`` in
+config file.
+
+Link down with i40e kernel driver after DPDK application exist
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After DPDK application quit, and the device is bound back to Linux i40e
+kernel driver, the link cannot be up after ``ifconfig <dev> up``.
+To work around this issue, ``ethtool -s <dev> autoneg on`` should be
+set first and then the link can be brought up through ``ifconfig <dev> up``.
+
+NOTE: requires Linux kernel i40e driver version >= 1.4.X
