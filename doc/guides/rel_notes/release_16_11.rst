@@ -36,6 +36,12 @@ New Features
 
      This section is a comment. Make sure to start the actual text at the margin.
 
+
+* **Added software parser for packet type.**
+
+  * Added a new function ``rte_pktmbuf_read()`` to read the packet data from an
+    mbuf chain, linearizing if required.
+
 * **Added vhost-user indirect descriptors support.**
 
   If indirect descriptor feature is negotiated, each packet sent by the guest

@@ -58,6 +58,7 @@
 #include <rte_string_fns.h>
 #include <rte_hexdump.h>
 #include <rte_errno.h>
+#include <rte_memcpy.h>
 
 /*
  * ctrlmbuf constructor, given as a callback function to
@@ -261,6 +262,40 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 		m = m->next;
 		nb_segs --;
 	}
+}
+
+/* read len data bytes in a mbuf at specified offset (internal) */
+const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
+	uint32_t len, void *buf)
+{
+	const struct rte_mbuf *seg = m;
+	uint32_t buf_off = 0, copy_len;
+
+	if (off + len > rte_pktmbuf_pkt_len(m))
+		return NULL;
+
+	while (off >= rte_pktmbuf_data_len(seg)) {
+		off -= rte_pktmbuf_data_len(seg);
+		seg = seg->next;
+	}
+
+	if (off + len <= rte_pktmbuf_data_len(seg))
+		return rte_pktmbuf_mtod_offset(seg, char *, off);
+
+	/* rare case: header is split among several segments */
+	while (len > 0) {
+		copy_len = rte_pktmbuf_data_len(seg) - off;
+		if (copy_len > len)
+			copy_len = len;
+		rte_memcpy((char *)buf + buf_off,
+			rte_pktmbuf_mtod_offset(seg, char *, off), copy_len);
+		off = 0;
+		buf_off += copy_len;
+		len -= copy_len;
+		seg = seg->next;
+	}
+
+	return buf;
 }
 
 /*

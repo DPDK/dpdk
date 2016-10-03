@@ -1987,6 +1987,41 @@ static inline int rte_pktmbuf_is_contiguous(const struct rte_mbuf *m)
 }
 
 /**
+ * @internal used by rte_pktmbuf_read().
+ */
+const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
+	uint32_t len, void *buf);
+
+/**
+ * Read len data bytes in a mbuf at specified offset.
+ *
+ * If the data is contiguous, return the pointer in the mbuf data, else
+ * copy the data in the buffer provided by the user and return its
+ * pointer.
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ * @param off
+ *   The offset of the data in the mbuf.
+ * @param len
+ *   The amount of bytes to read.
+ * @param buf
+ *   The buffer where data is copied if it is not contigous in mbuf
+ *   data. Its length should be at least equal to the len parameter.
+ * @return
+ *   The pointer to the data, either in the mbuf if it is contiguous,
+ *   or in the user buffer. If mbuf is too small, NULL is returned.
+ */
+static inline const void *rte_pktmbuf_read(const struct rte_mbuf *m,
+	uint32_t off, uint32_t len, void *buf)
+{
+	if (likely(off + len <= rte_pktmbuf_data_len(m)))
+		return rte_pktmbuf_mtod_offset(m, char *, off);
+	else
+		return __rte_pktmbuf_read(m, off, len, buf);
+}
+
+/**
  * Chain an mbuf to another, thereby creating a segmented packet.
  *
  * Note: The implementation will do a linear walk over the segments to find

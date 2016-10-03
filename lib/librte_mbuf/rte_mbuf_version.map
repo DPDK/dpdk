@@ -18,3 +18,10 @@ DPDK_2.1 {
 	rte_pktmbuf_pool_create;
 
 } DPDK_2.0;
+
+DPDK_16.11 {
+	global:
+
+	__rte_pktmbuf_read;
+
+} DPDK_2.1;
