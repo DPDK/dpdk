@@ -136,6 +136,13 @@ extern "C" {
  */
 #define RTE_PTYPE_L2_ETHER_NSH              0x00000005
 /**
+ * VLAN packet type.
+ *
+ * Packet format:
+ * <'ether type'=[0x8100]>
+ */
+#define RTE_PTYPE_L2_ETHER_VLAN             0x00000006
+/**
  * Mask of layer 2 packet types.
  * It is used for outer packet for tunneling cases.
  */

@@ -167,6 +167,19 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	off = sizeof(*eh);
 	hdr_lens->l2_len = off;
 
+	if (proto == rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
+		const struct vlan_hdr *vh;
+		struct vlan_hdr vh_copy;
+
+		pkt_type = RTE_PTYPE_L2_ETHER_VLAN;
+		vh = rte_pktmbuf_read(m, off, sizeof(*vh), &vh_copy);
+		if (unlikely(vh == NULL))
+			return pkt_type;
+		off += sizeof(*vh);
+		hdr_lens->l2_len += sizeof(*vh);
+		proto = vh->eth_proto;
+	}
+
 	if (proto == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
 		const struct ipv4_hdr *ip4h;
 		struct ipv4_hdr ip4h_copy;
