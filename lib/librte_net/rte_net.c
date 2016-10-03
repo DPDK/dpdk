@@ -41,6 +41,7 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_sctp.h>
+#include <rte_gre.h>
 #include <rte_net.h>
 
 /* get l3 packet type from ip6 next protocol */
@@ -150,11 +151,40 @@ ptype_inner_l4(uint8_t proto)
 	return ptype_inner_l4_proto[proto];
 }
 
-/* get the tunnel packet type if any, update proto. */
+/* get the tunnel packet type if any, update proto and off. */
 static uint32_t
-ptype_tunnel(uint16_t *proto)
+ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
+	uint32_t *off)
 {
 	switch (*proto) {
+	case IPPROTO_GRE: {
+		static const uint8_t opt_len[16] = {
+			[0x0] = 4,
+			[0x1] = 8,
+			[0x2] = 8,
+			[0x8] = 8,
+			[0x3] = 12,
+			[0x9] = 12,
+			[0xa] = 12,
+			[0xb] = 16,
+		};
+		const struct gre_hdr *gh;
+		struct gre_hdr gh_copy;
+		uint16_t flags;
+
+		gh = rte_pktmbuf_read(m, *off, sizeof(*gh), &gh_copy);
+		if (unlikely(gh == NULL))
+			return 0;
+
+		flags = rte_be_to_cpu_16(*(const uint16_t *)gh);
+		flags >>= 12;
+		if (opt_len[flags] == 0)
+			return 0;
+
+		*off += opt_len[flags];
+		*proto = gh->proto;
+		return RTE_PTYPE_TUNNEL_GRE;
+	}
 	case IPPROTO_IPIP:
 		*proto = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 		return RTE_PTYPE_TUNNEL_IP;
@@ -332,9 +362,11 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 		hdr_lens->l4_len = sizeof(struct sctp_hdr);
 		return pkt_type;
 	} else {
+		uint32_t prev_off = off;
+
 		hdr_lens->l4_len = 0;
-		pkt_type |= ptype_tunnel(&proto);
-		hdr_lens->tunnel_len = 0;
+		pkt_type |= ptype_tunnel(&proto, m, &off);
+		hdr_lens->tunnel_len = off - prev_off;
 	}
 
 	/* same job for inner header: we need to duplicate the code
