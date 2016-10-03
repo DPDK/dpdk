@@ -66,6 +66,7 @@
 #include <rte_string_fns.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
+#include <rte_net.h>
 
 #include "testpmd.h"
 
@@ -92,6 +93,8 @@ pkt_burst_receive(struct fwd_stream *fs)
 	uint16_t i, packet_type;
 	uint16_t is_encapsulation;
 	char buf[256];
+	struct rte_net_hdr_lens hdr_lens;
+	uint32_t sw_packet_type;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
@@ -163,8 +166,26 @@ pkt_burst_receive(struct fwd_stream *fs)
 					mb->vlan_tci, mb->vlan_tci_outer);
 		if (mb->packet_type) {
 			rte_get_ptype_name(mb->packet_type, buf, sizeof(buf));
-			printf(" - %s", buf);
+			printf(" - hw ptype: %s", buf);
 		}
+		sw_packet_type = rte_net_get_ptype(mb, &hdr_lens,
+			RTE_PTYPE_ALL_MASK);
+		rte_get_ptype_name(sw_packet_type, buf, sizeof(buf));
+		printf(" - sw ptype: %s", buf);
+		if (sw_packet_type & RTE_PTYPE_L2_MASK)
+			printf(" - l2_len=%d", hdr_lens.l2_len);
+		if (sw_packet_type & RTE_PTYPE_L3_MASK)
+			printf(" - l3_len=%d", hdr_lens.l3_len);
+		if (sw_packet_type & RTE_PTYPE_L4_MASK)
+			printf(" - l4_len=%d", hdr_lens.l4_len);
+		if (sw_packet_type & RTE_PTYPE_TUNNEL_MASK)
+			printf(" - tunnel_len=%d", hdr_lens.tunnel_len);
+		if (sw_packet_type & RTE_PTYPE_INNER_L2_MASK)
+			printf(" - inner_l2_len=%d", hdr_lens.inner_l2_len);
+		if (sw_packet_type & RTE_PTYPE_INNER_L3_MASK)
+			printf(" - inner_l3_len=%d", hdr_lens.inner_l3_len);
+		if (sw_packet_type & RTE_PTYPE_INNER_L4_MASK)
+			printf(" - inner_l4_len=%d", hdr_lens.inner_l4_len);
 		if (is_encapsulation) {
 			struct ipv4_hdr *ipv4_hdr;
 			struct ipv6_hdr *ipv6_hdr;
