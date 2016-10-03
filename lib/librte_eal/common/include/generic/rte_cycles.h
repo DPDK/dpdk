@@ -188,7 +188,7 @@ rte_get_timer_hz(void)
  * @param us
  *   The number of microseconds to wait.
  */
-void
+extern void
 (*rte_delay_us)(unsigned int us);
 
 /**
