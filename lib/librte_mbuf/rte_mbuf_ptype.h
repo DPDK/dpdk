@@ -544,6 +544,10 @@ extern "C" {
  * Mask of inner layer 4 packet types.
  */
 #define RTE_PTYPE_INNER_L4_MASK             0x0f000000
+/**
+ * All valid layer masks.
+ */
+#define RTE_PTYPE_ALL_MASK                  0x0fffffff
 
 /**
  * Check if the (outer) L3 header is IPv4. To avoid comparing IPv4 types one by
@@ -565,6 +569,91 @@ extern "C" {
 		RTE_PTYPE_INNER_L2_MASK |				\
 		RTE_PTYPE_INNER_L3_MASK |				\
 		RTE_PTYPE_INNER_L4_MASK))
+
+/**
+ * Get the name of the l2 packet type
+ *
+ * @param ptype
+ *   The packet type value.
+ * @return
+ *   A non-null string describing the packet type.
+ */
+const char *rte_get_ptype_l2_name(uint32_t ptype);
+
+/**
+ * Get the name of the l3 packet type
+ *
+ * @param ptype
+ *   The packet type value.
+ * @return
+ *   A non-null string describing the packet type.
+ */
+const char *rte_get_ptype_l3_name(uint32_t ptype);
+
+/**
+ * Get the name of the l4 packet type
+ *
+ * @param ptype
+ *   The packet type value.
+ * @return
+ *   A non-null string describing the packet type.
+ */
+const char *rte_get_ptype_l4_name(uint32_t ptype);
+
+/**
+ * Get the name of the tunnel packet type
+ *
+ * @param ptype
+ *   The packet type value.
+ * @return
+ *   A non-null string describing the packet type.
+ */
+const char *rte_get_ptype_tunnel_name(uint32_t ptype);
+
+/**
+ * Get the name of the inner_l2 packet type
+ *
+ * @param ptype
+ *   The packet type value.
+ * @return
+ *   A non-null string describing the packet type.
+ */
+const char *rte_get_ptype_inner_l2_name(uint32_t ptype);
+
+/**
+ * Get the name of the inner_l3 packet type
+ *
+ * @param ptype
+ *   The packet type value.
+ * @return
+ *   A non-null string describing the packet type.
+ */
+const char *rte_get_ptype_inner_l3_name(uint32_t ptype);
+
+/**
+ * Get the name of the inner_l4 packet type
+ *
+ * @param ptype
+ *   The packet type value.
+ * @return
+ *   A non-null string describing the packet type.
+ */
+const char *rte_get_ptype_inner_l4_name(uint32_t ptype);
+
+/**
+ * Write the packet type name into the buffer
+ *
+ * @param ptype
+ *   The packet type value.
+ * @param buf
+ *   The buffer where the string is written.
+ * @param buflen
+ *   The length of the buffer.
+ * @return
+ *   - 0 on success
+ *   - (-1) if the buffer is too small
+ */
+int rte_get_ptype_name(uint32_t ptype, char *buf, size_t buflen);
 
 #ifdef __cplusplus
 }

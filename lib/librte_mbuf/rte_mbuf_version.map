@@ -23,5 +23,13 @@ DPDK_16.11 {
 	global:
 
 	__rte_pktmbuf_read;
+	rte_get_ptype_inner_l2_name;
+	rte_get_ptype_inner_l3_name;
+	rte_get_ptype_inner_l4_name;
+	rte_get_ptype_l2_name;
+	rte_get_ptype_l3_name;
+	rte_get_ptype_l4_name;
+	rte_get_ptype_name;
+	rte_get_ptype_tunnel_name;
 
 } DPDK_2.1;

@@ -43,6 +43,7 @@ New Features
     mbuf chain, linearizing if required.
   * Added a new function ``rte_net_get_ptype()`` to parse an Ethernet packet
     in an mbuf chain and retrieve its packet type by software.
+  * Added new functions ``rte_get_ptype_*()`` to dump a packet type as a string.
 
 * **Added vhost-user indirect descriptors support.**
 
