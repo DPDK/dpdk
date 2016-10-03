@@ -41,7 +41,9 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_NET) := rte_net.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include := rte_ip.h rte_tcp.h rte_udp.h rte_sctp.h rte_icmp.h rte_arp.h rte_ether.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include := rte_ip.h rte_tcp.h rte_udp.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include += rte_sctp.h rte_icmp.h rte_arp.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include += rte_ether.h rte_net.h
 
 DEPDIRS-$(CONFIG_RTE_LIBRTE_NET) += lib/librte_eal lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_NET) += lib/librte_mbuf
