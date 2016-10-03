@@ -396,6 +396,13 @@ extern "C" {
  */
 #define RTE_PTYPE_INNER_L2_ETHER_VLAN       0x00020000
 /**
+ * QinQ packet type.
+ *
+ * Packet format:
+ * <'ether type'=[0x88A8]>
+ */
+#define RTE_PTYPE_INNER_L2_ETHER_QINQ       0x00030000
+/**
  * Mask of inner layer 2 packet types.
  */
 #define RTE_PTYPE_INNER_L2_MASK             0x000f0000

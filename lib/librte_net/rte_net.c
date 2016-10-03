@@ -183,7 +183,10 @@ ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
 
 		*off += opt_len[flags];
 		*proto = gh->proto;
-		return RTE_PTYPE_TUNNEL_GRE;
+		if (*proto == rte_cpu_to_be_16(ETHER_TYPE_TEB))
+			return RTE_PTYPE_TUNNEL_NVGRE;
+		else
+			return RTE_PTYPE_TUNNEL_GRE;
 	}
 	case IPPROTO_IPIP:
 		*proto = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
@@ -372,7 +375,42 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	/* same job for inner header: we need to duplicate the code
 	 * because the packet types do not have the same value.
 	 */
-	hdr_lens->inner_l2_len = 0;
+	if (proto == rte_cpu_to_be_16(ETHER_TYPE_TEB)) {
+		eh = rte_pktmbuf_read(m, off, sizeof(*eh), &eh_copy);
+		if (unlikely(eh == NULL))
+			return pkt_type;
+		pkt_type |= RTE_PTYPE_INNER_L2_ETHER;
+		proto = eh->ether_type;
+		off += sizeof(*eh);
+		hdr_lens->inner_l2_len = sizeof(*eh);
+	}
+
+	if (proto == rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
+		const struct vlan_hdr *vh;
+		struct vlan_hdr vh_copy;
+
+		pkt_type &= ~RTE_PTYPE_INNER_L2_MASK;
+		pkt_type |= RTE_PTYPE_INNER_L2_ETHER_VLAN;
+		vh = rte_pktmbuf_read(m, off, sizeof(*vh), &vh_copy);
+		if (unlikely(vh == NULL))
+			return pkt_type;
+		off += sizeof(*vh);
+		hdr_lens->inner_l2_len += sizeof(*vh);
+		proto = vh->eth_proto;
+	} else if (proto == rte_cpu_to_be_16(ETHER_TYPE_QINQ)) {
+		const struct vlan_hdr *vh;
+		struct vlan_hdr vh_copy;
+
+		pkt_type &= ~RTE_PTYPE_INNER_L2_MASK;
+		pkt_type |= RTE_PTYPE_INNER_L2_ETHER_QINQ;
+		vh = rte_pktmbuf_read(m, off + sizeof(*vh), sizeof(*vh),
+			&vh_copy);
+		if (unlikely(vh == NULL))
+			return pkt_type;
+		off += 2 * sizeof(*vh);
+		hdr_lens->inner_l2_len += 2 * sizeof(*vh);
+		proto = vh->eth_proto;
+	}
 
 	if (proto == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
 		const struct ipv4_hdr *ip4h;
