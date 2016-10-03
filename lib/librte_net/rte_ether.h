@@ -329,6 +329,7 @@ struct vxlan_hdr {
 #define ETHER_TYPE_ARP  0x0806 /**< Arp Protocol. */
 #define ETHER_TYPE_RARP 0x8035 /**< Reverse Arp Protocol. */
 #define ETHER_TYPE_VLAN 0x8100 /**< IEEE 802.1Q VLAN tagging. */
+#define ETHER_TYPE_QINQ 0x88A8 /**< IEEE 802.1ad QinQ tagging. */
 #define ETHER_TYPE_1588 0x88F7 /**< IEEE 802.1AS 1588 Precise Time Protocol. */
 #define ETHER_TYPE_SLOW 0x8809 /**< Slow protocols (LACP and Marker). */
 #define ETHER_TYPE_TEB  0x6558 /**< Transparent Ethernet Bridging. */

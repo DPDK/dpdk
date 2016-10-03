@@ -65,7 +65,7 @@ struct rte_net_hdr_lens {
  * (retval & RTE_PTYPE_L2_MASK) != RTE_PTYPE_UNKNOWN.
  *
  * Supported packet types are:
- *   L2: Ether
+ *   L2: Ether, Vlan, QinQ
  *   L3: IPv4, IPv6
  *   L4: TCP, UDP, SCTP
  *
