@@ -500,6 +500,12 @@ test_mempool_xmem_misc(void)
 	return 0;
 }
 
+static void
+walk_cb(struct rte_mempool *mp, void *userdata __rte_unused)
+{
+	printf("\t%s\n", mp->name);
+}
+
 static int
 test_mempool(void)
 {
@@ -560,6 +566,9 @@ test_mempool(void)
 		printf("Cannot lookup mempool from its name\n");
 		goto err;
 	}
+
+	printf("Walk into mempools:\n");
+	rte_mempool_walk(walk_cb, NULL);
 
 	rte_mempool_list_dump(stdout);
 
