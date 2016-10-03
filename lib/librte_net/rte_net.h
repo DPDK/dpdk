@@ -75,11 +75,16 @@ struct rte_net_hdr_lens {
  * @param hdr_lens
  *   A pointer to a structure where the header lengths will be returned,
  *   or NULL.
+ * @param layers
+ *   List of layers to parse. The function will stop at the first
+ *   empty layer. Examples:
+ *   - To parse all known layers, use RTE_PTYPE_ALL_MASK.
+ *   - To parse only L2 and L3, use RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK
  * @return
  *   The packet type of the packet.
  */
 uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
-	struct rte_net_hdr_lens *hdr_lens);
+	struct rte_net_hdr_lens *hdr_lens, uint32_t layers);
 
 #ifdef __cplusplus
 }
