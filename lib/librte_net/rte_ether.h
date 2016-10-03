@@ -84,7 +84,7 @@ extern "C" {
  * See http://standards.ieee.org/regauth/groupmac/tutorial.html
  */
 struct ether_addr {
-	uint8_t addr_bytes[ETHER_ADDR_LEN]; /**< Address bytes in transmission order */
+	uint8_t addr_bytes[ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
 } __attribute__((__packed__));
 
 #define ETHER_LOCAL_ADMIN_ADDR 0x02 /**< Locally assigned Eth. address. */
@@ -224,7 +224,7 @@ static inline int is_local_admin_ether_addr(const struct ether_addr *ea)
  */
 static inline int is_valid_assigned_ether_addr(const struct ether_addr *ea)
 {
-	return is_unicast_ether_addr(ea) && (! is_zero_ether_addr(ea));
+	return is_unicast_ether_addr(ea) && (!is_zero_ether_addr(ea));
 }
 
 /**
@@ -236,7 +236,7 @@ static inline int is_valid_assigned_ether_addr(const struct ether_addr *ea)
 static inline void eth_random_addr(uint8_t *addr)
 {
 	uint64_t rand = rte_rand();
-	uint8_t *p = (uint8_t*)&rand;
+	uint8_t *p = (uint8_t *)&rand;
 
 	rte_memcpy(addr, p, ETHER_ADDR_LEN);
 	addr[0] &= ~ETHER_GROUP_ADDR;       /* clear multicast bit */
