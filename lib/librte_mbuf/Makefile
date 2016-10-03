@@ -44,7 +44,7 @@ LIBABIVER := 2
 SRCS-$(CONFIG_RTE_LIBRTE_MBUF) := rte_mbuf.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_MBUF)-include := rte_mbuf.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_MBUF)-include := rte_mbuf.h rte_mbuf_ptype.h
 
 # this lib needs eal
 DEPDIRS-$(CONFIG_RTE_LIBRTE_MBUF) += lib/librte_eal lib/librte_mempool
