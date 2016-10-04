@@ -54,8 +54,8 @@ rte_hash_cuckoo_insert_mw_tm(struct rte_hash_bucket *prim_bkt,
 			for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 				/* Check if slot is available */
 				if (likely(prim_bkt->key_idx[i] == EMPTY_SLOT)) {
-					prim_bkt->signatures[i].current = sig;
-					prim_bkt->signatures[i].alt = alt_hash;
+					prim_bkt->sig_current[i] = sig;
+					prim_bkt->sig_alt[i] = alt_hash;
 					prim_bkt->key_idx[i] = new_idx;
 					break;
 				}
@@ -101,7 +101,7 @@ rte_hash_cuckoo_move_insert_mw_tm(const struct rte_hash *h,
 				prev_slot = curr_node->prev_slot;
 
 				prev_alt_bkt_idx
-					= prev_bkt->signatures[prev_slot].alt
+					= prev_bkt->sig_alt[prev_slot]
 					    & h->bucket_bitmask;
 
 				if (unlikely(&h->buckets[prev_alt_bkt_idx]
@@ -113,10 +113,10 @@ rte_hash_cuckoo_move_insert_mw_tm(const struct rte_hash *h,
 				 * Cuckoo insert to move elements back to its
 				 * primary bucket if available
 				 */
-				curr_bkt->signatures[curr_slot].alt =
-				    prev_bkt->signatures[prev_slot].current;
-				curr_bkt->signatures[curr_slot].current =
-				    prev_bkt->signatures[prev_slot].alt;
+				curr_bkt->sig_alt[curr_slot] =
+				    prev_bkt->sig_current[prev_slot];
+				curr_bkt->sig_current[curr_slot] =
+				    prev_bkt->sig_alt[prev_slot];
 				curr_bkt->key_idx[curr_slot]
 				    = prev_bkt->key_idx[prev_slot];
 
@@ -125,8 +125,8 @@ rte_hash_cuckoo_move_insert_mw_tm(const struct rte_hash *h,
 				curr_bkt = curr_node->bkt;
 			}
 
-			curr_bkt->signatures[curr_slot].current = sig;
-			curr_bkt->signatures[curr_slot].alt = alt_hash;
+			curr_bkt->sig_current[curr_slot] = sig;
+			curr_bkt->sig_alt[curr_slot] = alt_hash;
 			curr_bkt->key_idx[curr_slot] = new_idx;
 
 			rte_xend();
@@ -178,7 +178,7 @@ rte_hash_cuckoo_make_space_mw_tm(const struct rte_hash *h,
 			}
 
 			/* Enqueue new node and keep prev node info */
-			alt_bkt = &(h->buckets[curr_bkt->signatures[i].alt
+			alt_bkt = &(h->buckets[curr_bkt->sig_alt[i]
 						    & h->bucket_bitmask]);
 			head->bkt = alt_bkt;
 			head->prev = tail;

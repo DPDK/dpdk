@@ -151,17 +151,6 @@ struct lcore_cache {
 	void *objs[LCORE_CACHE_SIZE]; /**< Cache objects */
 } __rte_cache_aligned;
 
-/* Structure storing both primary and secondary hashes */
-struct rte_hash_signatures {
-	union {
-		struct {
-			hash_sig_t current;
-			hash_sig_t alt;
-		};
-		uint64_t sig;
-	};
-};
-
 /* Structure that stores key-value pair */
 struct rte_hash_key {
 	union {
@@ -174,9 +163,13 @@ struct rte_hash_key {
 
 /** Bucket structure */
 struct rte_hash_bucket {
-	struct rte_hash_signatures signatures[RTE_HASH_BUCKET_ENTRIES];
+	hash_sig_t sig_current[RTE_HASH_BUCKET_ENTRIES];
+
 	/* Includes dummy key index that always contains index 0 */
 	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES + 1];
+
+	hash_sig_t sig_alt[RTE_HASH_BUCKET_ENTRIES];
+
 	uint8_t flag[RTE_HASH_BUCKET_ENTRIES];
 } __rte_cache_aligned;
 

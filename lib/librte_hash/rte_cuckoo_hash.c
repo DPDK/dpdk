@@ -421,7 +421,7 @@ make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 	 */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 		/* Search for space in alternative locations */
-		next_bucket_idx = bkt->signatures[i].alt & h->bucket_bitmask;
+		next_bucket_idx = bkt->sig_alt[i] & h->bucket_bitmask;
 		next_bkt[i] = &h->buckets[next_bucket_idx];
 		for (j = 0; j < RTE_HASH_BUCKET_ENTRIES; j++) {
 			if (next_bkt[i]->key_idx[j] == EMPTY_SLOT)
@@ -434,8 +434,8 @@ make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 
 	/* Alternative location has spare room (end of recursive function) */
 	if (i != RTE_HASH_BUCKET_ENTRIES) {
-		next_bkt[i]->signatures[j].alt = bkt->signatures[i].current;
-		next_bkt[i]->signatures[j].current = bkt->signatures[i].alt;
+		next_bkt[i]->sig_alt[j] = bkt->sig_current[i];
+		next_bkt[i]->sig_current[j] = bkt->sig_alt[i];
 		next_bkt[i]->key_idx[j] = bkt->key_idx[i];
 		return i;
 	}
@@ -461,8 +461,8 @@ make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 	 */
 	bkt->flag[i] = 0;
 	if (ret >= 0) {
-		next_bkt[i]->signatures[ret].alt = bkt->signatures[i].current;
-		next_bkt[i]->signatures[ret].current = bkt->signatures[i].alt;
+		next_bkt[i]->sig_alt[ret] = bkt->sig_current[i];
+		next_bkt[i]->sig_current[ret] = bkt->sig_alt[i];
 		next_bkt[i]->key_idx[ret] = bkt->key_idx[i];
 		return i;
 	} else
@@ -544,8 +544,8 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 
 	/* Check if key is already inserted in primary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (prim_bkt->signatures[i].current == sig &&
-				prim_bkt->signatures[i].alt == alt_hash) {
+		if (prim_bkt->sig_current[i] == sig &&
+				prim_bkt->sig_alt[i] == alt_hash) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					prim_bkt->key_idx[i] * h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
@@ -564,8 +564,8 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 
 	/* Check if key is already inserted in secondary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (sec_bkt->signatures[i].alt == sig &&
-				sec_bkt->signatures[i].current == alt_hash) {
+		if (sec_bkt->sig_alt[i] == sig &&
+				sec_bkt->sig_current[i] == alt_hash) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					sec_bkt->key_idx[i] * h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
@@ -611,8 +611,8 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 			/* Check if slot is available */
 			if (likely(prim_bkt->key_idx[i] == EMPTY_SLOT)) {
-				prim_bkt->signatures[i].current = sig;
-				prim_bkt->signatures[i].alt = alt_hash;
+				prim_bkt->sig_current[i] = sig;
+				prim_bkt->sig_alt[i] = alt_hash;
 				prim_bkt->key_idx[i] = new_idx;
 				break;
 			}
@@ -632,8 +632,8 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 		 */
 		ret = make_space_bucket(h, prim_bkt);
 		if (ret >= 0) {
-			prim_bkt->signatures[ret].current = sig;
-			prim_bkt->signatures[ret].alt = alt_hash;
+			prim_bkt->sig_current[ret] = sig;
+			prim_bkt->sig_alt[ret] = alt_hash;
 			prim_bkt->key_idx[ret] = new_idx;
 			if (h->add_key == ADD_KEY_MULTIWRITER)
 				rte_spinlock_unlock(h->multiwriter_lock);
@@ -707,7 +707,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 
 	/* Check if key is in primary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (bkt->signatures[i].current == sig &&
+		if (bkt->sig_current[i] == sig &&
 				bkt->key_idx[i] != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
@@ -730,8 +730,8 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 
 	/* Check if key is in secondary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (bkt->signatures[i].current == alt_hash &&
-				bkt->signatures[i].alt == sig) {
+		if (bkt->sig_current[i] == alt_hash &&
+				bkt->sig_alt[i] == sig) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
@@ -785,7 +785,8 @@ remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt, unsigned i)
 	unsigned lcore_id, n_slots;
 	struct lcore_cache *cached_free_slots;
 
-	bkt->signatures[i].sig = NULL_SIGNATURE;
+	bkt->sig_current[i] = NULL_SIGNATURE;
+	bkt->sig_alt[i] = NULL_SIGNATURE;
 	if (h->hw_trans_mem_support) {
 		lcore_id = rte_lcore_id();
 		cached_free_slots = &h->local_free_slots[lcore_id];
@@ -823,7 +824,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 
 	/* Check if key is in primary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (bkt->signatures[i].current == sig &&
+		if (bkt->sig_current[i] == sig &&
 				bkt->key_idx[i] != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
@@ -848,7 +849,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 
 	/* Check if key is in secondary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (bkt->signatures[i].current == alt_hash &&
+		if (bkt->sig_current[i] == alt_hash &&
 				bkt->key_idx[i] != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
@@ -957,8 +958,8 @@ lookup_stage2(unsigned idx, hash_sig_t prim_hash, hash_sig_t sec_hash,
 	prim_hash_matches = 1 << RTE_HASH_BUCKET_ENTRIES;
 	sec_hash_matches = 1 << RTE_HASH_BUCKET_ENTRIES;
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		prim_hash_matches |= ((prim_hash == prim_bkt->signatures[i].current) << i);
-		sec_hash_matches |= ((sec_hash == sec_bkt->signatures[i].current) << i);
+		prim_hash_matches |= ((prim_hash == prim_bkt->sig_current[i]) << i);
+		sec_hash_matches |= ((sec_hash == sec_bkt->sig_current[i]) << i);
 	}
 
 	key_idx = prim_bkt->key_idx[__builtin_ctzl(prim_hash_matches)];
