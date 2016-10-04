@@ -173,8 +173,7 @@ enum rte_hash_sig_compare_function {
 struct rte_hash_bucket {
 	hash_sig_t sig_current[RTE_HASH_BUCKET_ENTRIES];
 
-	/* Includes dummy key index that always contains index 0 */
-	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES + 1];
+	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES];
 
 	hash_sig_t sig_alt[RTE_HASH_BUCKET_ENTRIES];
 
