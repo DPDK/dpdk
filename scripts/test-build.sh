@@ -187,6 +187,8 @@ config () # <directory> <target> <options>
 		test -z "$LIBSSO_ZUC_PATH" || \
 		sed -ri            's,(PMD_ZUC=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
+		sed -ri      's,(PMD_LIBCRYPTO=)n,\1y,' $1/.config
+		test "$DPDK_DEP_SSL" != y || \
 		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
 		sed -ri        's,(KNI_VHOST.*=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config

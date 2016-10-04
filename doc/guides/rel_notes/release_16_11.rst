@@ -78,6 +78,11 @@ New Features
   * C3XXX device
   * C62XX device
 
+* **Added libcrypto PMD.**
+
+  A new crypto PMD has been added, which provides several ciphering and hashing.
+  All cryptography operations are using Openssl library crypto API.
+
 * **Updated the IPsec example with following support:**
 
   * configuration file

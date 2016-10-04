@@ -436,6 +436,11 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/zuc/
 F: doc/guides/cryptodevs/zuc.rst
 
+LibCrypto PMD
+M: Declan Doherty <declan.doherty@intel.com>
+F: drivers/crypto/libcrypto/
+F: doc/guides/cryptodevs/libcrypto.rst
+
 Null Crypto PMD
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/null/

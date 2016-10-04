@@ -56,6 +56,8 @@ extern "C" {
 /**< AES-NI Multi buffer PMD device name */
 #define CRYPTODEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
 /**< AES-NI GCM PMD device name */
+#define CRYPTODEV_NAME_LIBCRYPTO_PMD	crypto_libcrypto
+/**< Open SSL Crypto PMD device name */
 #define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
 /**< Intel QAT Symmetric Crypto PMD device name */
 #define CRYPTODEV_NAME_SNOW3G_PMD	crypto_snow3g
@@ -73,7 +75,8 @@ enum rte_cryptodev_type {
 	RTE_CRYPTODEV_QAT_SYM_PMD,	/**< QAT PMD Symmetric Crypto */
 	RTE_CRYPTODEV_SNOW3G_PMD,	/**< SNOW 3G PMD */
 	RTE_CRYPTODEV_KASUMI_PMD,	/**< KASUMI PMD */
-	RTE_CRYPTODEV_ZUC_PMD		/**< ZUC PMD */
+	RTE_CRYPTODEV_ZUC_PMD,		/**< ZUC PMD */
+	RTE_CRYPTODEV_LIBCRYPTO_PMD,    /**<  LibCrypto PMD */
 };
 
 extern const char **rte_cyptodev_names;
