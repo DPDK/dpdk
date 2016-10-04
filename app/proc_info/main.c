@@ -268,7 +268,7 @@ nic_xstats_display(uint8_t port_id)
 	if (len != rte_eth_xstats_get_names(
 			port_id, xstats_names, len)) {
 		printf("Cannot get xstat names\n");
-		return;
+		goto err;
 	}
 
 	printf("###### NIC extended statistics for port %-2d #########\n",
@@ -278,8 +278,7 @@ nic_xstats_display(uint8_t port_id)
 	ret = rte_eth_xstats_get(port_id, xstats, len);
 	if (ret < 0 || ret > len) {
 		printf("Cannot get xstats\n");
-		free(xstats);
-		return;
+		goto err;
 	}
 
 	for (i = 0; i < len; i++)
@@ -289,6 +288,7 @@ nic_xstats_display(uint8_t port_id)
 
 	printf("%s############################\n",
 			   nic_stats_border);
+err:
 	free(xstats);
 	free(xstats_names);
 }
