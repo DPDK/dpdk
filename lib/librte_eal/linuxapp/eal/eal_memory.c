@@ -1333,13 +1333,21 @@ rte_eal_hugepage_attach(void)
 				 PROT_READ, MAP_PRIVATE, fd_zero, 0);
 		if (base_addr == MAP_FAILED ||
 		    base_addr != mcfg->memseg[s].addr) {
-			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes "
-				"in /dev/zero to requested address [%p]: '%s'\n",
-				(unsigned long long)mcfg->memseg[s].len,
-				mcfg->memseg[s].addr, strerror(errno));
 			max_seg = s;
-			if (base_addr != MAP_FAILED)
+			if (base_addr != MAP_FAILED) {
+				/* errno is stale, don't use */
+				RTE_LOG(ERR, EAL, "Could not mmap %llu bytes "
+					"in /dev/zero at [%p], got [%p] - "
+					"please use '--base-virtaddr' option\n",
+					(unsigned long long)mcfg->memseg[s].len,
+					mcfg->memseg[s].addr, base_addr);
 				munmap(base_addr, mcfg->memseg[s].len);
+			} else {
+				RTE_LOG(ERR, EAL, "Could not mmap %llu bytes "
+					"in /dev/zero at [%p]: '%s'\n",
+					(unsigned long long)mcfg->memseg[s].len,
+					mcfg->memseg[s].addr, strerror(errno));
+			}
 			if (aslr_enabled() > 0) {
 				RTE_LOG(ERR, EAL, "It is recommended to "
 					"disable ASLR in the kernel "

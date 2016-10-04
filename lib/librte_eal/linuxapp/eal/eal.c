@@ -239,7 +239,8 @@ rte_eal_config_attach(void)
 	mem_config = (struct rte_mem_config *) mmap(NULL, sizeof(*mem_config),
 			PROT_READ, MAP_SHARED, mem_cfg_fd, 0);
 	if (mem_config == MAP_FAILED)
-		rte_panic("Cannot mmap memory for rte_config\n");
+		rte_panic("Cannot mmap memory for rte_config! error %i (%s)\n",
+			  errno, strerror(errno));
 
 	rte_config.mem_config = mem_config;
 }
@@ -264,9 +265,17 @@ rte_eal_config_reattach(void)
 	mem_config = (struct rte_mem_config *) mmap(rte_mem_cfg_addr,
 			sizeof(*mem_config), PROT_READ | PROT_WRITE, MAP_SHARED,
 			mem_cfg_fd, 0);
+	if (mem_config == MAP_FAILED || mem_config != rte_mem_cfg_addr) {
+		if (mem_config != MAP_FAILED)
+			/* errno is stale, don't use */
+			rte_panic("Cannot mmap memory for rte_config at [%p], got [%p]"
+				  " - please use '--base-virtaddr' option\n",
+				  rte_mem_cfg_addr, mem_config);
+		else
+			rte_panic("Cannot mmap memory for rte_config! error %i (%s)\n",
+				  errno, strerror(errno));
+	}
 	close(mem_cfg_fd);
-	if (mem_config == MAP_FAILED || mem_config != rte_mem_cfg_addr)
-		rte_panic("Cannot mmap memory for rte_config\n");
 
 	rte_config.mem_config = mem_config;
 }
