@@ -1387,6 +1387,19 @@ rte_pktmbuf_priv_size(struct rte_mempool *mp)
 }
 
 /**
+ * Reset the data_off field of a packet mbuf to its default value.
+ *
+ * The given mbuf must have only one segment, which should be empty.
+ *
+ * @param m
+ *   The packet mbuf's data_off field has to be reset.
+ */
+static inline void rte_pktmbuf_reset_headroom(struct rte_mbuf *m)
+{
+	m->data_off = RTE_MIN(RTE_PKTMBUF_HEADROOM, (uint16_t)m->buf_len);
+}
+
+/**
  * Reset the fields of a packet mbuf to their default values.
  *
  * The given mbuf must have only one segment.
@@ -1406,8 +1419,7 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 
 	m->ol_flags = 0;
 	m->packet_type = 0;
-	m->data_off = (RTE_PKTMBUF_HEADROOM <= m->buf_len) ?
-			RTE_PKTMBUF_HEADROOM : m->buf_len;
+	rte_pktmbuf_reset_headroom(m);
 
 	m->data_len = 0;
 	__rte_mbuf_sanity_check(m, 1);
@@ -1571,7 +1583,7 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 	m->buf_addr = (char *)m + mbuf_size;
 	m->buf_physaddr = rte_mempool_virt2phy(mp, m) + mbuf_size;
 	m->buf_len = (uint16_t)buf_len;
-	m->data_off = RTE_MIN(RTE_PKTMBUF_HEADROOM, (uint16_t)m->buf_len);
+	rte_pktmbuf_reset_headroom(m);
 	m->data_len = 0;
 	m->ol_flags = 0;
 
