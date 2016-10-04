@@ -185,30 +185,36 @@ struct rte_hash {
 	char name[RTE_HASH_NAMESIZE];   /**< Name of the hash. */
 	uint32_t entries;               /**< Total table entries. */
 	uint32_t num_buckets;           /**< Number of buckets in table. */
-	uint32_t key_len;               /**< Length of hash key. */
+
+	struct rte_ring *free_slots;
+	/**< Ring that stores all indexes of the free slots in the key table */
+	uint8_t hw_trans_mem_support;
+	/**< Hardware transactional memory support */
+	struct lcore_cache *local_free_slots;
+	/**< Local cache per lcore, storing some indexes of the free slots */
+	enum add_key_case add_key; /**< Multi-writer hash add behavior */
+
+	rte_spinlock_t *multiwriter_lock; /**< Multi-writer spinlock for w/o TM */
+
+	/* Fields used in lookup */
+
+	uint32_t key_len __rte_cache_aligned;
+	/**< Length of hash key. */
 	rte_hash_function hash_func;    /**< Function used to calculate hash. */
 	uint32_t hash_func_init_val;    /**< Init value used by hash_func. */
 	rte_hash_cmp_eq_t rte_hash_custom_cmp_eq;
 	/**< Custom function used to compare keys. */
 	enum cmp_jump_table_case cmp_jump_table_idx;
 	/**< Indicates which compare function to use. */
-	uint32_t bucket_bitmask;        /**< Bitmask for getting bucket index
-						from hash signature. */
+	uint32_t bucket_bitmask;
+	/**< Bitmask for getting bucket index from hash signature. */
 	uint32_t key_entry_size;         /**< Size of each key entry. */
 
-	struct rte_ring *free_slots;    /**< Ring that stores all indexes
-						of the free slots in the key table */
 	void *key_store;                /**< Table storing all keys and data */
-	struct rte_hash_bucket *buckets;	/**< Table with buckets storing all the
-							hash values and key indexes
-							to the key table*/
-	uint8_t hw_trans_mem_support;	/**< Hardware transactional
-							memory support */
-	struct lcore_cache *local_free_slots;
-	/**< Local cache per lcore, storing some indexes of the free slots */
-	enum add_key_case add_key; /**< Multi-writer hash add behavior */
-
-	rte_spinlock_t *multiwriter_lock; /**< Multi-writer spinlock for w/o TM */
+	struct rte_hash_bucket *buckets;
+	/**< Table with buckets storing all the	hash values and key indexes
+	 * to the key table.
+	 */
 } __rte_cache_aligned;
 
 struct queue_node {
