@@ -340,15 +340,22 @@ fill_supported_algorithm_tables(void)
 		strcpy(supported_auth_algo[i], "NOT_SUPPORTED");
 
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_GCM], "AES_GCM");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_GMAC], "AES_GMAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_MD5_HMAC], "MD5_HMAC");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_MD5], "MD5");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_NULL], "NULL");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_XCBC_MAC],
 		"AES_XCBC_MAC");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA1_HMAC], "SHA1_HMAC");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA1], "SHA1");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA224_HMAC], "SHA224_HMAC");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA224], "SHA224");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA256_HMAC], "SHA256_HMAC");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA256], "SHA256");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA384_HMAC], "SHA384_HMAC");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA384], "SHA384");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA512_HMAC], "SHA512_HMAC");
+	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA512], "SHA512");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SNOW3G_UIA2], "SNOW3G_UIA2");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_ZUC_EIA3], "ZUC_EIA3");
 	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_KASUMI_F9], "KASUMI_F9");
@@ -363,6 +370,8 @@ fill_supported_algorithm_tables(void)
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_SNOW3G_UEA2], "SNOW3G_UEA2");
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_ZUC_EEA3], "ZUC_EEA3");
 	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_KASUMI_F8], "KASUMI_F8");
+	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_3DES_CTR], "3DES_CTR");
+	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_3DES_CBC], "3DES_CBC");
 }
 
 
