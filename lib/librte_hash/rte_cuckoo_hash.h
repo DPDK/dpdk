@@ -130,7 +130,7 @@ enum add_key_case {
 };
 
 /** Number of items per bucket. */
-#define RTE_HASH_BUCKET_ENTRIES		4
+#define RTE_HASH_BUCKET_ENTRIES		8
 
 #define NULL_SIGNATURE			0
 
@@ -160,6 +160,14 @@ struct rte_hash_key {
 	/* Variable key size */
 	char key[0];
 } __attribute__((aligned(KEY_ALIGNMENT)));
+
+/* All different signature compare functions */
+enum rte_hash_sig_compare_function {
+	RTE_HASH_COMPARE_SCALAR = 0,
+	RTE_HASH_COMPARE_SSE,
+	RTE_HASH_COMPARE_AVX2,
+	RTE_HASH_COMPARE_NUM
+};
 
 /** Bucket structure */
 struct rte_hash_bucket {
@@ -199,6 +207,8 @@ struct rte_hash {
 	/**< Custom function used to compare keys. */
 	enum cmp_jump_table_case cmp_jump_table_idx;
 	/**< Indicates which compare function to use. */
+	enum rte_hash_sig_compare_function sig_cmp_fn;
+	/**< Indicates which signature compare function to use. */
 	uint32_t bucket_bitmask;
 	/**< Bitmask for getting bucket index from hash signature. */
 	uint32_t key_entry_size;         /**< Size of each key entry. */

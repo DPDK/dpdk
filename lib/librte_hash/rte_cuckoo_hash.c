@@ -284,6 +284,15 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	h->free_slots = r;
 	h->hw_trans_mem_support = hw_trans_mem_support;
 
+#if defined(RTE_ARCH_X86)
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+		h->sig_cmp_fn = RTE_HASH_COMPARE_AVX2;
+	else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE2))
+		h->sig_cmp_fn = RTE_HASH_COMPARE_SSE;
+	else
+#endif
+		h->sig_cmp_fn = RTE_HASH_COMPARE_SCALAR;
+
 	/* Turn on multi-writer only with explicit flat from user and TM
 	 * support.
 	 */
@@ -940,6 +949,62 @@ lookup_stage1(unsigned idx, hash_sig_t *prim_hash, hash_sig_t *sec_hash,
 	rte_prefetch0(*secondary_bkt);
 }
 
+static inline void
+compare_signatures(unsigned int *prim_hash_matches,
+			unsigned int *sec_hash_matches,
+			const struct rte_hash_bucket *prim_bkt,
+			const struct rte_hash_bucket *sec_bkt,
+			hash_sig_t prim_hash, hash_sig_t sec_hash,
+			enum rte_hash_sig_compare_function sig_cmp_fn)
+{
+	unsigned int i;
+
+	switch (sig_cmp_fn) {
+#ifdef RTE_MACHINE_CPUFLAG_AVX2
+	case RTE_HASH_COMPARE_AVX2:
+		*prim_hash_matches |= _mm256_movemask_ps((__m256)_mm256_cmpeq_epi32(
+				_mm256_load_si256(
+					(__m256i const *)prim_bkt->sig_current),
+				_mm256_set1_epi32(prim_hash)));
+		*sec_hash_matches |= _mm256_movemask_ps((__m256)_mm256_cmpeq_epi32(
+				_mm256_load_si256(
+					(__m256i const *)sec_bkt->sig_current),
+				_mm256_set1_epi32(sec_hash)));
+		break;
+#endif
+#ifdef RTE_MACHINE_CPUFLAG_SSE2
+	case RTE_HASH_COMPARE_SSE:
+		/* Compare the first 4 signatures in the bucket */
+		*prim_hash_matches |= _mm_movemask_ps((__m128)_mm_cmpeq_epi16(
+				_mm_load_si128(
+					(__m128i const *)prim_bkt->sig_current),
+				_mm_set1_epi32(prim_hash)));
+		*prim_hash_matches |= (_mm_movemask_ps((__m128)_mm_cmpeq_epi16(
+				_mm_load_si128(
+					(__m128i const *)&prim_bkt->sig_current[4]),
+				_mm_set1_epi32(prim_hash)))) << 4;
+		/* Compare the first 4 signatures in the bucket */
+		*sec_hash_matches |= _mm_movemask_ps((__m128)_mm_cmpeq_epi16(
+				_mm_load_si128(
+					(__m128i const *)sec_bkt->sig_current),
+				_mm_set1_epi32(sec_hash)));
+		*sec_hash_matches |= (_mm_movemask_ps((__m128)_mm_cmpeq_epi16(
+				_mm_load_si128(
+					(__m128i const *)&sec_bkt->sig_current[4]),
+				_mm_set1_epi32(sec_hash)))) << 4;
+		break;
+#endif
+	default:
+		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+			*prim_hash_matches |=
+				((prim_hash == prim_bkt->sig_current[i]) << i);
+			*sec_hash_matches |=
+				((sec_hash == sec_bkt->sig_current[i]) << i);
+		}
+	}
+
+}
+
 /*
  * Lookup bulk stage 2:  Search for match hashes in primary/secondary locations
  * and prefetch first key slot
@@ -952,15 +1017,14 @@ lookup_stage2(unsigned idx, hash_sig_t prim_hash, hash_sig_t sec_hash,
 		uint64_t *extra_hits_mask, const void *keys,
 		const struct rte_hash *h)
 {
-	unsigned prim_hash_matches, sec_hash_matches, key_idx, i;
-	unsigned total_hash_matches;
+	unsigned int prim_hash_matches, sec_hash_matches, key_idx;
+	unsigned int total_hash_matches;
 
 	prim_hash_matches = 1 << RTE_HASH_BUCKET_ENTRIES;
 	sec_hash_matches = 1 << RTE_HASH_BUCKET_ENTRIES;
-	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		prim_hash_matches |= ((prim_hash == prim_bkt->sig_current[i]) << i);
-		sec_hash_matches |= ((sec_hash == sec_bkt->sig_current[i]) << i);
-	}
+
+	compare_signatures(&prim_hash_matches, &sec_hash_matches, prim_bkt,
+				sec_bkt, prim_hash, sec_hash, h->sig_cmp_fn);
 
 	key_idx = prim_bkt->key_idx[__builtin_ctzl(prim_hash_matches)];
 	if (key_idx == 0)
