@@ -43,7 +43,8 @@
 #include "test.h"
 #include "test_cryptodev.h"
 
-#include "test_cryptodev_aes.h"
+#include "test_cryptodev_blockcipher.h"
+#include "test_cryptodev_aes_test_vectors.h"
 #include "test_cryptodev_kasumi_test_vectors.h"
 #include "test_cryptodev_kasumi_hash_test_vectors.h"
 #include "test_cryptodev_snow3g_test_vectors.h"
@@ -86,12 +87,16 @@ struct crypto_unittest_params {
  */
 static int
 test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
-		struct crypto_unittest_params *ut_params);
+		struct crypto_unittest_params *ut_params, uint8_t *cipher_key,
+		uint8_t *hmac_key);
 
 static int
 test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 		struct crypto_unittest_params *ut_params,
-		struct crypto_testsuite_params *ts_param);
+		struct crypto_testsuite_params *ts_param,
+		const uint8_t *cipher,
+		const uint8_t *digest,
+		const uint8_t *iv);
 
 static struct rte_mbuf *
 setup_test_string(struct rte_mempool *mpool,
@@ -313,7 +318,7 @@ testsuite_setup(void)
 
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
-		RTE_LOG(ERR, USER1, "No crypto devices found?");
+		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
 		return TEST_FAILED;
 	}
 
@@ -872,7 +877,6 @@ static const uint8_t catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA1_digest[] = {
 	0x18, 0x8c, 0x1d, 0x32
 };
 
-
 static int
 test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 {
@@ -1003,17 +1007,24 @@ static const uint8_t catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA512_digest[] = {
 
 static int
 test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
-		struct crypto_unittest_params *ut_params);
+		struct crypto_unittest_params *ut_params,
+		uint8_t *cipher_key,
+		uint8_t *hmac_key);
 
 static int
 test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 		struct crypto_unittest_params *ut_params,
-		struct crypto_testsuite_params *ts_params);
+		struct crypto_testsuite_params *ts_params,
+		const uint8_t *cipher,
+		const uint8_t *digest,
+		const uint8_t *iv);
 
 
 static int
 test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
-		struct crypto_unittest_params *ut_params)
+		struct crypto_unittest_params *ut_params,
+		uint8_t *cipher_key,
+		uint8_t *hmac_key)
 {
 
 	/* Setup Cipher Parameters */
@@ -1022,7 +1033,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
 	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
-	ut_params->cipher_xform.cipher.key.data = aes_cbc_key;
+	ut_params->cipher_xform.cipher.key.data = cipher_key;
 	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
@@ -1031,7 +1042,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 
 	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
 	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA512_HMAC;
-	ut_params->auth_xform.auth.key.data = hmac_sha512_key;
+	ut_params->auth_xform.auth.key.data = hmac_key;
 	ut_params->auth_xform.auth.key.length = HMAC_KEY_LENGTH_SHA512;
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA512;
 
@@ -1042,12 +1053,15 @@ test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(
 static int
 test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 		struct crypto_unittest_params *ut_params,
-		struct crypto_testsuite_params *ts_params)
+		struct crypto_testsuite_params *ts_params,
+		const uint8_t *cipher,
+		const uint8_t *digest,
+		const uint8_t *iv)
 {
 	/* Generate test mbuf data and digest */
 	ut_params->ibuf = setup_test_string(ts_params->mbuf_pool,
 			(const char *)
-			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
+			cipher,
 			QUOTE_512_BYTES, 0);
 
 	ut_params->digest = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
@@ -1055,7 +1069,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 	TEST_ASSERT_NOT_NULL(ut_params->digest, "no room to append digest");
 
 	rte_memcpy(ut_params->digest,
-			catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA512_digest,
+			digest,
 			DIGEST_BYTE_LENGTH_SHA512);
 
 	/* Generate Crypto op data structure */
@@ -1085,7 +1099,7 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 			ut_params->ibuf, 0);
 	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
+	rte_memcpy(sym_op->cipher.iv.data, iv,
 			CIPHER_IV_LENGTH_AES_CBC);
 
 	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
@@ -1115,14 +1129,15 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 }
 
 static int
-test_AES_mb_all(void)
+test_AES_chain_mb_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	int status;
 
-	status = test_AES_all_tests(ts_params->mbuf_pool,
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_AESNI_MB_PMD);
+		RTE_CRYPTODEV_AESNI_MB_PMD,
+		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -1130,14 +1145,15 @@ test_AES_mb_all(void)
 }
 
 static int
-test_AES_qat_all(void)
+test_AES_chain_qat_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	int status;
 
-	status = test_AES_all_tests(ts_params->mbuf_pool,
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD);
+		RTE_CRYPTODEV_QAT_SYM_PMD,
+		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -4024,7 +4040,8 @@ test_multi_session(void)
 
 	uint16_t i;
 
-	test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(ut_params);
+	test_AES_CBC_HMAC_SHA512_decrypt_create_session_params(ut_params,
+			aes_cbc_key, hmac_sha512_key);
 
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -4043,10 +4060,14 @@ test_multi_session(void)
 				i);
 
 		/* Attempt to send a request on each session */
-		TEST_ASSERT_SUCCESS(test_AES_CBC_HMAC_SHA512_decrypt_perform(
-				sessions[i], ut_params, ts_params),
-				"Failed to perform decrypt on request "
-				"number %u.", i);
+		TEST_ASSERT_SUCCESS( test_AES_CBC_HMAC_SHA512_decrypt_perform(
+			sessions[i],
+			ut_params,
+			ts_params,
+			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
+			catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA512_digest,
+			aes_cbc_iv),
+			"Failed to perform decrypt on request number %u.", i);
 		/* free crypto operation structure */
 		if (ut_params->op)
 			rte_crypto_op_free(ut_params->op);
@@ -4700,7 +4721,7 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session),
 
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_qat_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_qat_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_stats),
 
 		/** AES GCM Authenticated Encryption */
@@ -4836,7 +4857,7 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_mb_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_mb_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
