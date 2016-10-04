@@ -236,7 +236,7 @@ app_init_eal(struct app_params *app)
 	}
 
 	if (p->add_driver) {
-		snprintf(buffer, sizeof(buffer), "-d=%s", p->add_driver);
+		snprintf(buffer, sizeof(buffer), "-d%s", p->add_driver);
 		app->eal_argv[n_args++] = strdup(buffer);
 	}
 
