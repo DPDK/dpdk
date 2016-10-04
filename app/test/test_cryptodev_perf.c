@@ -149,7 +149,13 @@ struct crypto_unittest_params {
 
 static struct rte_cryptodev_sym_session *
 test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
-		enum rte_crypto_cipher_algorithm cipher_algo, unsigned cipher_key_len,
+		enum rte_crypto_cipher_algorithm cipher_algo,
+		unsigned int cipher_key_len,
+		enum rte_crypto_auth_algorithm auth_algo);
+static struct rte_cryptodev_sym_session *
+test_perf_create_libcrypto_session(uint8_t dev_id, enum chain_mode chain,
+		enum rte_crypto_cipher_algorithm cipher_algo,
+		unsigned int cipher_key_len,
 		enum rte_crypto_auth_algorithm auth_algo);
 static struct rte_mbuf *
 test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz);
@@ -157,6 +163,18 @@ static inline struct rte_crypto_op *
 test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned data_len,
 		unsigned digest_len);
+static inline struct rte_crypto_op *
+test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
+		unsigned int digest_len);
+static inline struct rte_crypto_op *
+test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
+		unsigned int digest_len);
+static inline struct rte_crypto_op *
+test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
+		unsigned int digest_len);
 static uint32_t get_auth_digest_length(enum rte_crypto_auth_algorithm algo);
 
 
@@ -357,6 +375,28 @@ testsuite_setup(void)
 		}
 	}
 
+	/* Create 2 LIBCRYPTO devices if required */
+	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_LIBCRYPTO_PMD) {
+#ifndef RTE_LIBRTE_PMD_LIBCRYPTO
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+#endif
+		nb_devs = rte_cryptodev_count_devtype(
+				RTE_CRYPTODEV_LIBCRYPTO_PMD);
+		if (nb_devs < 2) {
+			for (i = nb_devs; i < 2; i++) {
+				ret = rte_eal_vdev_init(
+					RTE_STR(CRYPTODEV_NAME_LIBCRYPTO_PMD),
+					NULL);
+
+				TEST_ASSERT(ret == 0, "Failed to create "
+					"instance %u of pmd : %s", i,
+					RTE_STR(CRYPTODEV_NAME_LIBCRYPTO_PMD));
+			}
+		}
+	}
+
 #ifndef RTE_LIBRTE_PMD_QAT
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_QAT_SYM_PMD) {
 		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_QAT must be enabled "
@@ -367,7 +407,7 @@ testsuite_setup(void)
 
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
-		RTE_LOG(ERR, USER1, "No crypto devices found?");
+		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
 		return TEST_FAILED;
 	}
 
@@ -2242,6 +2282,161 @@ test_perf_snow3G_vary_burst_size(void)
 	return 0;
 }
 
+static int
+test_perf_libcrypto_optimise_cyclecount(struct perf_test_params *pparams)
+{
+	uint32_t num_to_submit = pparams->total_operations;
+	struct rte_crypto_op *c_ops[num_to_submit];
+	struct rte_crypto_op *proc_ops[num_to_submit];
+	uint64_t failed_polls, retries, start_cycles,
+		end_cycles, total_cycles = 0;
+	uint32_t burst_sent = 0, burst_received = 0;
+	uint32_t i, burst_size, num_sent, num_ops_received;
+
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+
+	static struct rte_cryptodev_sym_session *sess;
+
+	static struct rte_crypto_op *(*test_perf_set_crypto_op)
+			(struct rte_crypto_op *, struct rte_mbuf *,
+					struct rte_cryptodev_sym_session *,
+					unsigned int, unsigned int);
+
+	unsigned int digest_length = get_auth_digest_length(pparams->auth_algo);
+
+	if (rte_cryptodev_count() == 0) {
+		printf("\nNo crypto devices found. Is PMD build configured?\n");
+		return TEST_FAILED;
+	}
+
+	/* Create Crypto session*/
+	sess = test_perf_create_libcrypto_session(ts_params->dev_id,
+			pparams->chain, pparams->cipher_algo,
+			pparams->cipher_key_length, pparams->auth_algo);
+	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
+
+	/* Generate Crypto op data structure(s)*/
+	for (i = 0; i < num_to_submit ; i++) {
+		struct rte_mbuf *m = test_perf_create_pktmbuf(
+						ts_params->mbuf_mp,
+						pparams->buf_size);
+		TEST_ASSERT_NOT_NULL(m, "Failed to allocate tx_buf");
+
+		struct rte_crypto_op *op =
+				rte_crypto_op_alloc(ts_params->op_mpool,
+						RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+		TEST_ASSERT_NOT_NULL(op, "Failed to allocate op");
+
+		switch (pparams->cipher_algo) {
+		case RTE_CRYPTO_CIPHER_3DES_CBC:
+		case RTE_CRYPTO_CIPHER_3DES_CTR:
+			test_perf_set_crypto_op = test_perf_set_crypto_op_3des;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			test_perf_set_crypto_op = test_perf_set_crypto_op_aes;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_GCM:
+			test_perf_set_crypto_op =
+					test_perf_set_crypto_op_aes_gcm;
+			break;
+		default:
+			return TEST_FAILED;
+		}
+
+		op = test_perf_set_crypto_op(op, m, sess, pparams->buf_size,
+				digest_length);
+		TEST_ASSERT_NOT_NULL(op, "Failed to attach op to session");
+
+		c_ops[i] = op;
+	}
+
+	printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, cipher key length:%u, "
+			"auth_algo:%s, Packet Size %u bytes",
+			pmd_name(gbl_cryptodev_perftest_devtype),
+			ts_params->dev_id, 0,
+			chain_mode_name(pparams->chain),
+			cipher_algo_name(pparams->cipher_algo),
+			pparams->cipher_key_length,
+			auth_algo_name(pparams->auth_algo),
+			pparams->buf_size);
+	printf("\nOps Tx\tOps Rx\tOps/burst  ");
+	printf("Retries  EmptyPolls\tIACycles/CyOp\tIACycles/Burst\t"
+			"IACycles/Byte");
+
+	for (i = 2; i <= 128 ; i *= 2) {
+		num_sent = 0;
+		num_ops_received = 0;
+		retries = 0;
+		failed_polls = 0;
+		burst_size = i;
+		total_cycles = 0;
+		while (num_sent < num_to_submit) {
+			start_cycles = rte_rdtsc_precise();
+			burst_sent = rte_cryptodev_enqueue_burst(
+					ts_params->dev_id,
+					0, &c_ops[num_sent],
+					((num_to_submit - num_sent) <
+						burst_size) ?
+					num_to_submit - num_sent : burst_size);
+			end_cycles = rte_rdtsc_precise();
+			if (burst_sent == 0)
+				retries++;
+			num_sent += burst_sent;
+			total_cycles += (end_cycles - start_cycles);
+
+			/* Wait until requests have been sent. */
+			rte_delay_ms(1);
+
+			start_cycles = rte_rdtsc_precise();
+			burst_received = rte_cryptodev_dequeue_burst(
+					ts_params->dev_id, 0, proc_ops,
+					burst_size);
+			end_cycles = rte_rdtsc_precise();
+			if (burst_received < burst_sent)
+				failed_polls++;
+			num_ops_received += burst_received;
+
+			total_cycles += end_cycles - start_cycles;
+		}
+
+		while (num_ops_received != num_to_submit) {
+			/* Sending 0 length burst to flush sw crypto device */
+			rte_cryptodev_enqueue_burst(ts_params->dev_id, 0,
+					NULL, 0);
+
+			start_cycles = rte_rdtsc_precise();
+			burst_received = rte_cryptodev_dequeue_burst(
+					ts_params->dev_id, 0, proc_ops,
+					burst_size);
+			end_cycles = rte_rdtsc_precise();
+
+			total_cycles += end_cycles - start_cycles;
+			if (burst_received == 0)
+				failed_polls++;
+			num_ops_received += burst_received;
+		}
+
+		printf("\n%u\t%u\t%u", num_sent, num_ops_received, burst_size);
+		printf("\t\t%"PRIu64, retries);
+		printf("\t%"PRIu64, failed_polls);
+		printf("\t\t%"PRIu64, total_cycles/num_ops_received);
+		printf("\t\t%"PRIu64, (total_cycles/num_ops_received) *
+				burst_size);
+		printf("\t\t%"PRIu64,
+				total_cycles /
+				(num_ops_received * pparams->buf_size));
+	}
+	printf("\n");
+
+	for (i = 0; i < num_to_submit ; i++) {
+		rte_pktmbuf_free(c_ops[i]->sym->m_src);
+		rte_crypto_op_free(c_ops[i]);
+	}
+
+	return TEST_SUCCESS;
+}
+
 static uint32_t get_auth_key_max_length(enum rte_crypto_auth_algorithm algo)
 {
 	switch (algo) {
@@ -2257,6 +2452,8 @@ static uint32_t get_auth_key_max_length(enum rte_crypto_auth_algorithm algo)
 		return 128;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		return 128;
+	case RTE_CRYPTO_AUTH_AES_GCM:
+		return 0;
 	default:
 		return 0;
 	}
@@ -2277,21 +2474,33 @@ static uint32_t get_auth_digest_length(enum rte_crypto_auth_algorithm algo)
 		return TRUNCATED_DIGEST_BYTE_LENGTH_SHA384;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		return TRUNCATED_DIGEST_BYTE_LENGTH_SHA512;
+	case RTE_CRYPTO_AUTH_AES_GCM:
+		return DIGEST_BYTE_LENGTH_AES_GCM;
 	default:
 		return 0;
 	}
 }
 
-static uint8_t aes_cbc_key[] = {
+static uint8_t aes_key[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-static uint8_t aes_cbc_iv[] = {
+static uint8_t aes_iv[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static uint8_t triple_des_key[] = {
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+static uint8_t triple_des_iv[] = {
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 static uint8_t hmac_sha_key[] = {
@@ -2343,7 +2552,7 @@ test_perf_create_aes_sha_session(uint8_t dev_id, enum chain_mode chain,
 	cipher_xform.cipher.algo = cipher_algo;
 	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 
-	cipher_xform.cipher.key.data = aes_cbc_key;
+	cipher_xform.cipher.key.data = aes_key;
 	cipher_xform.cipher.key.length = cipher_key_len;
 
 	/* Setup HMAC Parameters */
@@ -2421,8 +2630,77 @@ test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 	}
 }
 
-#define AES_CBC_BLOCK_SIZE 16
-#define AES_CBC_CIPHER_IV_LENGTH 16
+static struct rte_cryptodev_sym_session *
+test_perf_create_libcrypto_session(uint8_t dev_id, enum chain_mode chain,
+		enum rte_crypto_cipher_algorithm cipher_algo,
+		unsigned int cipher_key_len,
+		enum rte_crypto_auth_algorithm auth_algo)
+{
+	struct rte_crypto_sym_xform cipher_xform = { 0 };
+	struct rte_crypto_sym_xform auth_xform = { 0 };
+
+	/* Setup Cipher Parameters */
+	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cipher_xform.cipher.algo = cipher_algo;
+	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	switch (cipher_algo) {
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+	case RTE_CRYPTO_CIPHER_3DES_CTR:
+		cipher_xform.cipher.key.data = triple_des_key;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+	case RTE_CRYPTO_CIPHER_AES_GCM:
+		cipher_xform.cipher.key.data = aes_key;
+		break;
+	default:
+		return NULL;
+	}
+
+	cipher_xform.cipher.key.length = cipher_key_len;
+
+	/* Setup Auth Parameters */
+	auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	auth_xform.auth.algo = auth_algo;
+
+	switch (auth_algo) {
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+		auth_xform.auth.key.data = hmac_sha_key;
+		break;
+	case RTE_CRYPTO_AUTH_AES_GCM:
+		auth_xform.auth.key.data = NULL;
+		break;
+	default:
+		return NULL;
+	}
+
+	auth_xform.auth.key.length =  get_auth_key_max_length(auth_algo);
+	auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
+
+	switch (chain) {
+	case CIPHER_HASH:
+		cipher_xform.next = &auth_xform;
+		auth_xform.next = NULL;
+		/* Create Crypto session*/
+		return rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
+	case HASH_CIPHER:
+		auth_xform.next = &cipher_xform;
+		cipher_xform.next = NULL;
+		/* Create Crypto session*/
+		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+	default:
+		return NULL;
+	}
+}
+
+#define AES_BLOCK_SIZE 16
+#define AES_CIPHER_IV_LENGTH 16
+
+#define TRIPLE_DES_BLOCK_SIZE 8
+#define TRIPLE_DES_CIPHER_IV_LENGTH 8
+
 #define SNOW3G_CIPHER_IV_LENGTH 16
 
 static struct rte_mbuf *
@@ -2441,7 +2719,7 @@ test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz)
 }
 
 static inline struct rte_crypto_op *
-test_perf_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
+test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned data_len,
 		unsigned digest_len)
 {
@@ -2455,19 +2733,54 @@ test_perf_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 					(m->data_off + data_len);
 	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m, data_len);
 	op->sym->auth.digest.length = digest_len;
-	op->sym->auth.aad.data = aes_cbc_iv;
-	op->sym->auth.aad.length = AES_CBC_CIPHER_IV_LENGTH;
+	op->sym->auth.aad.data = aes_iv;
+	op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = aes_cbc_iv;
-	op->sym->cipher.iv.length = AES_CBC_CIPHER_IV_LENGTH;
+	op->sym->cipher.iv.data = aes_iv;
+	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
 	op->sym->auth.data.length = data_len;
 
-	op->sym->cipher.data.offset = AES_CBC_BLOCK_SIZE;
-	op->sym->cipher.data.length = data_len - AES_CBC_BLOCK_SIZE;
+	op->sym->cipher.data.offset = AES_BLOCK_SIZE;
+	op->sym->cipher.data.length = data_len - AES_BLOCK_SIZE;
+
+	op->sym->m_src = m;
+
+	return op;
+}
+
+static inline struct rte_crypto_op *
+test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
+		unsigned int digest_len)
+{
+	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
+		rte_crypto_op_free(op);
+		return NULL;
+	}
+
+	/* Authentication Parameters */
+	op->sym->auth.digest.data = (uint8_t *)m->buf_addr +
+					(m->data_off + data_len);
+	op->sym->auth.digest.phys_addr =
+				rte_pktmbuf_mtophys_offset(m, data_len);
+	op->sym->auth.digest.length = digest_len;
+	op->sym->auth.aad.data = aes_iv;
+	op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
+
+	/* Cipher Parameters */
+	op->sym->cipher.iv.data = aes_iv;
+	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
+
+	/* Data lengths/offsets Parameters */
+	op->sym->auth.data.offset = AES_BLOCK_SIZE;
+	op->sym->auth.data.length = data_len - AES_BLOCK_SIZE;
+
+	op->sym->cipher.data.offset = AES_BLOCK_SIZE;
+	op->sym->cipher.data.length = data_len - AES_BLOCK_SIZE;
 
 	op->sym->m_src = m;
 
@@ -2487,7 +2800,8 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 	/* Authentication Parameters */
 	op->sym->auth.digest.data = (uint8_t *)m->buf_addr +
 						(m->data_off + data_len);
-	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m, data_len);
+	op->sym->auth.digest.phys_addr =
+				rte_pktmbuf_mtophys_offset(m, data_len);
 	op->sym->auth.digest.length = digest_len;
 	op->sym->auth.aad.data = snow3g_iv;
 	op->sym->auth.aad.length = SNOW3G_CIPHER_IV_LENGTH;
@@ -2508,7 +2822,40 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 	return op;
 }
 
+static inline struct rte_crypto_op *
+test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
+		unsigned int digest_len)
+{
+	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
+		rte_crypto_op_free(op);
+		return NULL;
+	}
 
+	/* Authentication Parameters */
+	op->sym->auth.digest.data = (uint8_t *)m->buf_addr +
+					(m->data_off + data_len);
+	op->sym->auth.digest.phys_addr =
+				rte_pktmbuf_mtophys_offset(m, data_len);
+	op->sym->auth.digest.length = digest_len;
+	op->sym->auth.aad.data = triple_des_iv;
+	op->sym->auth.aad.length = TRIPLE_DES_CIPHER_IV_LENGTH;
+
+	/* Cipher Parameters */
+	op->sym->cipher.iv.data = triple_des_iv;
+	op->sym->cipher.iv.length = TRIPLE_DES_CIPHER_IV_LENGTH;
+
+	/* Data lengths/offsets Parameters */
+	op->sym->auth.data.offset = 0;
+	op->sym->auth.data.length = data_len;
+
+	op->sym->cipher.data.offset = TRIPLE_DES_BLOCK_SIZE;
+	op->sym->cipher.data.length = data_len - TRIPLE_DES_BLOCK_SIZE;
+
+	op->sym->m_src = m;
+
+	return op;
+}
 
 /* An mbuf set is used in each burst. An mbuf can be used by multiple bursts at
  * same time, i.e. as they're not dereferenced there's no need to wait until
@@ -2579,7 +2926,7 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 				"and free ops below.");
 		} else {
 			for (i = 0; i < ops_needed; i++)
-				ops[i] = test_perf_set_crypto_op(ops[i],
+				ops[i] = test_perf_set_crypto_op_aes(ops[i],
 					mbufs[i + (pparams->burst_size *
 						(j % NUM_MBUF_SETS))],
 					sess, pparams->buf_size, digest_length);
@@ -2790,6 +3137,155 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 	return TEST_SUCCESS;
 }
 
+static int
+test_perf_libcrypto(uint8_t dev_id, uint16_t queue_id,
+		struct perf_test_params *pparams)
+{
+	uint16_t i, k, l, m;
+	uint16_t j = 0;
+	uint16_t ops_unused = 0;
+
+	uint64_t burst_enqueued = 0, total_enqueued = 0, burst_dequeued = 0;
+	uint64_t processed = 0, failed_polls = 0, retries = 0;
+	uint64_t tsc_start = 0, tsc_end = 0;
+
+	unsigned int digest_length = get_auth_digest_length(pparams->auth_algo);
+
+	struct rte_crypto_op *ops[pparams->burst_size];
+	struct rte_crypto_op *proc_ops[pparams->burst_size];
+
+	struct rte_mbuf *mbufs[pparams->burst_size * NUM_MBUF_SETS];
+
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+
+	static struct rte_cryptodev_sym_session *sess;
+
+	static struct rte_crypto_op *(*test_perf_set_crypto_op)
+			(struct rte_crypto_op *, struct rte_mbuf *,
+					struct rte_cryptodev_sym_session *,
+					unsigned int, unsigned int);
+
+	switch (pparams->cipher_algo) {
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+	case RTE_CRYPTO_CIPHER_3DES_CTR:
+		test_perf_set_crypto_op = test_perf_set_crypto_op_3des;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		test_perf_set_crypto_op = test_perf_set_crypto_op_aes;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_GCM:
+		test_perf_set_crypto_op = test_perf_set_crypto_op_aes_gcm;
+		break;
+	default:
+		return TEST_FAILED;
+	}
+
+	if (rte_cryptodev_count() == 0) {
+		printf("\nNo crypto devices found. Is PMD build configured?\n");
+		return TEST_FAILED;
+	}
+
+	/* Create Crypto session*/
+	sess = test_perf_create_libcrypto_session(ts_params->dev_id,
+			pparams->chain, pparams->cipher_algo,
+			pparams->cipher_key_length, pparams->auth_algo);
+	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
+
+	/* Generate a burst of crypto operations */
+	for (i = 0; i < (pparams->burst_size * NUM_MBUF_SETS); i++) {
+		mbufs[i] = test_perf_create_pktmbuf(
+				ts_params->mbuf_mp,
+				pparams->buf_size);
+
+		if (mbufs[i] == NULL) {
+			printf("\nFailed to get mbuf - freeing the rest.\n");
+			for (k = 0; k < i; k++)
+				rte_pktmbuf_free(mbufs[k]);
+			return -1;
+		}
+	}
+
+	tsc_start = rte_rdtsc_precise();
+
+	while (total_enqueued < pparams->total_operations) {
+		uint16_t burst_size =
+		total_enqueued + pparams->burst_size <=
+		pparams->total_operations ? pparams->burst_size :
+				pparams->total_operations - total_enqueued;
+		uint16_t ops_needed = burst_size - ops_unused;
+
+		if (ops_needed != rte_crypto_op_bulk_alloc(ts_params->op_mpool,
+				RTE_CRYPTO_OP_TYPE_SYMMETRIC, ops, ops_needed)){
+			printf("\nFailed to alloc enough ops, finish dequeuing "
+				"and free ops below.");
+		} else {
+			for (i = 0; i < ops_needed; i++)
+				ops[i] = test_perf_set_crypto_op(ops[i],
+					mbufs[i + (pparams->burst_size *
+						(j % NUM_MBUF_SETS))],
+					sess, pparams->buf_size, digest_length);
+
+			/* enqueue burst */
+			burst_enqueued = rte_cryptodev_enqueue_burst(dev_id,
+					queue_id, ops, burst_size);
+
+			if (burst_enqueued < burst_size)
+				retries++;
+
+			ops_unused = burst_size - burst_enqueued;
+			total_enqueued += burst_enqueued;
+		}
+
+		/* dequeue burst */
+		burst_dequeued = rte_cryptodev_dequeue_burst(dev_id, queue_id,
+				proc_ops, pparams->burst_size);
+		if (burst_dequeued == 0)
+			failed_polls++;
+		else {
+			processed += burst_dequeued;
+
+			for (l = 0; l < burst_dequeued; l++)
+				rte_crypto_op_free(proc_ops[l]);
+		}
+		j++;
+	}
+
+	/* Dequeue any operations still in the crypto device */
+	while (processed < pparams->total_operations) {
+		/* Sending 0 length burst to flush sw crypto device */
+		rte_cryptodev_enqueue_burst(dev_id, queue_id, NULL, 0);
+
+		/* dequeue burst */
+		burst_dequeued = rte_cryptodev_dequeue_burst(dev_id, queue_id,
+				proc_ops, pparams->burst_size);
+		if (burst_dequeued == 0)
+			failed_polls++;
+		else {
+			processed += burst_dequeued;
+
+			for (m = 0; m < burst_dequeued; m++)
+				rte_crypto_op_free(proc_ops[m]);
+		}
+	}
+
+	tsc_end = rte_rdtsc_precise();
+
+	double ops_s = ((double)processed / (tsc_end - tsc_start))
+					* rte_get_tsc_hz();
+	double throughput = (ops_s * pparams->buf_size * NUM_MBUF_SETS)
+					/ 1000000000;
+
+	printf("\t%u\t%6.2f\t%10.2f\t%8"PRIu64"\t%8"PRIu64, pparams->buf_size,
+			ops_s / 1000000, throughput, retries, failed_polls);
+
+	for (i = 0; i < pparams->burst_size * NUM_MBUF_SETS; i++)
+		rte_pktmbuf_free(mbufs[i]);
+
+	printf("\n");
+	return TEST_SUCCESS;
+}
+
 /*
 
     perf_test_aes_sha("avx2", HASH_CIPHER, 16, CBC, SHA1);
@@ -2930,6 +3426,167 @@ test_perf_snow3G_vary_pkt_size(void)
 
 				test_perf_snow3g(testsuite_params.dev_id, 0, &params_set[i]);
 			}
+		}
+	}
+
+	return 0;
+}
+
+static int
+test_perf_libcrypto_vary_pkt_size(void)
+{
+	unsigned int total_operations = 1000000;
+	unsigned int burst_size = { 64 };
+	unsigned int buf_lengths[] = { 64, 128, 256, 512, 768, 1024, 1280, 1536,
+			1792, 2048 };
+	uint8_t i, j;
+
+	struct perf_test_params params_set[] = {
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
+			.cipher_key_length = 24,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
+			.cipher_key_length = 32,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
+			.cipher_key_length = 24,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_GCM,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_AES_GCM
+		},
+	};
+
+	for (i = 0; i < RTE_DIM(params_set); i++) {
+		params_set[i].total_operations = total_operations;
+		params_set[i].burst_size = burst_size;
+		printf("\n%s. cipher algo: %s auth algo: %s cipher key size=%u."
+				" burst_size: %d ops\n",
+				chain_mode_name(params_set[i].chain),
+				cipher_algo_name(params_set[i].cipher_algo),
+				auth_algo_name(params_set[i].auth_algo),
+				params_set[i].cipher_key_length,
+				burst_size);
+		printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\tRetries\t"
+				"EmptyPolls\n");
+		for (j = 0; j < RTE_DIM(buf_lengths); j++) {
+			params_set[i].buf_size = buf_lengths[j];
+			test_perf_libcrypto(testsuite_params.dev_id, 0,
+					&params_set[i]);
+		}
+	}
+
+	return 0;
+}
+
+static int
+test_perf_libcrypto_vary_burst_size(void)
+{
+	unsigned int total_operations = 4096;
+	uint16_t buf_lengths[] = { 40 };
+	uint8_t i, j;
+
+	struct perf_test_params params_set[] = {
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
+			.cipher_key_length = 24,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
+			.cipher_key_length = 32,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
+			.cipher_key_length = 24,
+			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+		},
+		{
+			.chain = CIPHER_HASH,
+
+			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_GCM,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_AES_GCM
+		},
+	};
+
+	printf("\n\nStart %s.", __func__);
+	printf("\nThis Test measures the average IA cycle cost using a "
+			"constant request(packet) size. ");
+	printf("Cycle cost is only valid when indicators show device is not"
+			" busy, i.e. Retries and EmptyPolls = 0");
+
+	for (i = 0; i < RTE_DIM(params_set); i++) {
+		printf("\n");
+		params_set[i].total_operations = total_operations;
+
+	for (j = 0; j < RTE_DIM(buf_lengths); j++) {
+		params_set[i].buf_size = buf_lengths[j];
+		test_perf_libcrypto_optimise_cyclecount(&params_set[i]);
 		}
 	}
 
@@ -3377,6 +4034,19 @@ static struct unit_test_suite cryptodev_snow3g_testsuite  = {
 	}
 };
 
+static struct unit_test_suite cryptodev_libcrypto_testsuite  = {
+	.suite_name = "Crypto Device LIBCRYPTO Unit Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_perf_libcrypto_vary_pkt_size),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_perf_libcrypto_vary_burst_size),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static int
 perftest_aesni_gcm_cryptodev(void)
 {
@@ -3417,8 +4087,18 @@ perftest_qat_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 	return unit_test_suite_runner(&cryptodev_snow3g_testsuite);
 }
 
+static int
+perftest_libcrypto_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
+{
+	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_LIBCRYPTO_PMD;
+
+	return unit_test_suite_runner(&cryptodev_libcrypto_testsuite);
+}
+
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_perftest, perftest_aesni_mb_cryptodev);
 REGISTER_TEST_COMMAND(cryptodev_qat_perftest, perftest_qat_cryptodev);
 REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_perftest, perftest_sw_snow3g_cryptodev);
 REGISTER_TEST_COMMAND(cryptodev_qat_snow3g_perftest, perftest_qat_snow3g_cryptodev);
 REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_perftest, perftest_aesni_gcm_cryptodev);
+REGISTER_TEST_COMMAND(cryptodev_libcrypto_perftest,
+		perftest_libcrypto_cryptodev);

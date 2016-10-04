@@ -33,6 +33,8 @@
 #ifndef TEST_CRYPTODEV_GCM_TEST_VECTORS_H_
 #define TEST_CRYPTODEV_GCM_TEST_VECTORS_H_
 
+#define GMAC_LARGE_PLAINTEXT_LENGTH		65376
+
 struct gcm_test_data {
 	struct {
 		uint8_t data[64];
@@ -449,7 +451,7 @@ static const struct gcm_test_data gcm_test_case_7 = {
 };
 
 /** GMAC Test Vectors */
-static uint8_t gmac_plaintext[] = {
+static uint8_t gmac_plaintext[GMAC_LARGE_PLAINTEXT_LENGTH] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 			0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -1199,6 +1201,38 @@ static const struct cryptodev_perf_test_data AES_GCM_128_12IV_0AAD = {
 		},
 		.len = 16
 	},
+};
+
+static const struct gmac_test_data gmac_test_case_4 = {
+	.key = {
+		.data = {
+			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
+			0x6d, 0x6a, 0x8f, 0x94, 0x67, 0x30, 0x83, 0x08
+		},
+		.len = 16
+	},
+	.iv = {
+		.data = {
+			0xca, 0xfe, 0xba, 0xbe, 0xfa, 0xce, 0xdb, 0xad,
+			0xde, 0xca, 0xf8, 0x88
+		},
+		.len = 12
+	},
+	.aad = {
+		.data = gmac_plaintext,
+		.len = GMAC_LARGE_PLAINTEXT_LENGTH
+	},
+	.plaintext = {
+		.data = NULL,
+		.len = 0
+	},
+	.gmac_tag = {
+		.data = {
+			0x88, 0x82, 0xb4, 0x93, 0x8f, 0x04, 0xcd, 0x06,
+			0xfd, 0xac, 0x6d, 0x8b, 0x9c, 0x9e, 0x8f, 0xec
+		},
+		.len = 16
+	}
 };
 
 #endif /* TEST_CRYPTODEV_GCM_TEST_VECTORS_H_ */

@@ -43,6 +43,8 @@
 #include "test.h"
 #include "test_cryptodev_blockcipher.h"
 #include "test_cryptodev_aes_test_vectors.h"
+#include "test_cryptodev_des_test_vectors.h"
+#include "test_cryptodev_hash_test_vectors.h"
 
 static int
 test_blockcipher_one_case(const struct blockcipher_test_case *t,
@@ -79,6 +81,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	switch (cryptodev_type) {
 	case RTE_CRYPTODEV_QAT_SYM_PMD:
+	case RTE_CRYPTODEV_LIBCRYPTO_PMD:
 		digest_len = tdata->digest.len;
 		break;
 	case RTE_CRYPTODEV_AESNI_MB_PMD:
@@ -472,9 +475,25 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		tcs = aes_chain_test_cases;
 		break;
 	case BLKCIPHER_AES_CIPHERONLY_TYPE:
+		n_test_cases = sizeof(aes_cipheronly_test_cases) /
+		sizeof(aes_cipheronly_test_cases[0]);
+		tcs = aes_cipheronly_test_cases;
+		break;
 	case BLKCIPHER_3DES_CHAIN_TYPE:
+		n_test_cases = sizeof(triple_des_chain_test_cases) /
+		sizeof(triple_des_chain_test_cases[0]);
+		tcs = triple_des_chain_test_cases;
+		break;
 	case BLKCIPHER_3DES_CIPHERONLY_TYPE:
+		n_test_cases = sizeof(triple_des_cipheronly_test_cases) /
+		sizeof(triple_des_cipheronly_test_cases[0]);
+		tcs = triple_des_cipheronly_test_cases;
+		break;
 	case BLKCIPHER_AUTHONLY_TYPE:
+		n_test_cases = sizeof(hash_test_cases) /
+		sizeof(hash_test_cases[0]);
+		tcs = hash_test_cases;
+		break;
 	default:
 		break;
 	}
@@ -485,6 +504,9 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		break;
 	case RTE_CRYPTODEV_QAT_SYM_PMD:
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT;
+		break;
+	case RTE_CRYPTODEV_LIBCRYPTO_PMD:
+		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO;
 		break;
 	default:
 		TEST_ASSERT(0, "Unrecognized cryptodev type");
