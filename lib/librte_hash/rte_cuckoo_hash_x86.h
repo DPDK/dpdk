@@ -53,7 +53,7 @@ rte_hash_cuckoo_insert_mw_tm(struct rte_hash_bucket *prim_bkt,
 			*/
 			for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 				/* Check if slot is available */
-				if (likely(prim_bkt->key_idx == EMPTY_SLOT)) {
+				if (likely(prim_bkt->key_idx[i] == EMPTY_SLOT)) {
 					prim_bkt->signatures[i].current = sig;
 					prim_bkt->signatures[i].alt = alt_hash;
 					prim_bkt->key_idx[i] = new_idx;
