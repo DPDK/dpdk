@@ -4507,7 +4507,7 @@ static void cmd_create_bonded_device_parsed(void *parsed_result,
 		return;
 	}
 
-	snprintf(ethdev_name, RTE_ETH_NAME_MAX_LEN, "eth_bond_testpmd_%d",
+	snprintf(ethdev_name, RTE_ETH_NAME_MAX_LEN, "net_bond_testpmd_%d",
 			bond_dev_num++);
 
 	/* Create a new bonded device. */

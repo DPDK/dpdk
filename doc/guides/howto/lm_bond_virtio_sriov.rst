@@ -142,7 +142,7 @@ Bonding is port 2 (P2).
 .. code-block:: console
 
    testpmd> create bonded device 1 0
-   Created new bonded device eth_bond_testpmd_0 on (port 2).
+   Created new bonded device net_bond_testpmd_0 on (port 2).
    testpmd> add bonding slave 0 2
    testpmd> add bonding slave 1 2
    testpmd> show bonding config 2

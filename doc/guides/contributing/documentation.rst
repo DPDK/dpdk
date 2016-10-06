@@ -458,8 +458,8 @@ Code and Literal block sections
   For long literal lines that exceed that limit try to wrap the text at sensible locations.
   For example a long command line could be documented like this and still work if copied directly from the docs::
 
-     build/app/testpmd -c7 -n3 --vdev=eth_pcap0,iface=eth0     \
-                               --vdev=eth_pcap1,iface=eth1     \
+     build/app/testpmd -c7 -n3 --vdev=net_pcap0,iface=eth0     \
+                               --vdev=net_pcap1,iface=eth1     \
                                -- -i --nb-cores=2 --nb-ports=2 \
                                   --total-num-mbufs=2048
 

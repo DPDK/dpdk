@@ -41,5 +41,5 @@ fi
 
 (sleep 1 && echo stop) |
 $build/app/testpmd -c $coremask -n 1 --no-huge \
-	$pmd --vdev eth_null1 --vdev eth_null2 -- \
+	$pmd --vdev net_null1 --vdev net_null2 -- \
 	--total-num-mbufs=2048 -ia

@@ -1041,14 +1041,14 @@ For example, to attach a port created by pcap PMD.
 
 .. code-block:: console
 
-   testpmd> port attach eth_pcap0
+   testpmd> port attach net_pcap0
    Attaching a new port...
-   PMD: Initializing pmd_pcap for eth_pcap0
+   PMD: Initializing pmd_pcap for net_pcap0
    PMD: Creating pcap-backed ethdev on numa socket 0
    Port 0 is attached. Now total ports is 1
    Done
 
-In this case, identifier is ``eth_pcap0``.
+In this case, identifier is ``net_pcap0``.
 This identifier format is the same as ``--vdev`` format of DPDK applications.
 
 For example, to re-attach a bonded port which has been previously detached,
@@ -1056,10 +1056,10 @@ the mode and slave parameters must be given.
 
 .. code-block:: console
 
-   testpmd> port attach eth_bond_0,mode=0,slave=1
+   testpmd> port attach net_bond_0,mode=0,slave=1
    Attaching a new port...
-   EAL: Initializing pmd_bond for eth_bond_0
-   EAL: Create bonded device eth_bond_0 on port 0 in mode 0 on socket 0.
+   EAL: Initializing pmd_bond for net_bond_0
+   EAL: Create bonded device net_bond_0 on port 0 in mode 0 on socket 0.
    Port 0 is attached. Now total ports is 1
    Done
 
@@ -1107,7 +1107,7 @@ For example, to detach a virtual device port 0.
    testpmd> port detach 0
    Detaching a port...
    PMD: Closing pcap ethdev on numa socket 0
-   Port 'eth_pcap0' is detached. Now total ports is 0
+   Port 'net_pcap0' is detached. Now total ports is 0
    Done
 
 To remove a pci device completely from the system, first detach the port from testpmd.

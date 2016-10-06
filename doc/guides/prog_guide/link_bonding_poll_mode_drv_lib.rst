@@ -356,7 +356,7 @@ Using Link Bonding Devices from the EAL Command Line
 
 Link bonding devices can be created at application startup time using the
 ``--vdev`` EAL command line option. The device name must start with the
-eth_bond prefix followed by numbers or letters. The name must be unique for
+net_bond prefix followed by numbers or letters. The name must be unique for
 each device. Each device can have multiple options arranged in a comma
 separated list. Multiple devices definitions can be arranged by calling the
 ``--vdev`` option multiple times.
@@ -365,7 +365,7 @@ Device names and bonding options must be separated by commas as shown below:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c f -n 4 --vdev 'eth_bond0,bond_opt0=..,bond opt1=..'--vdev 'eth_bond1,bond _opt0=..,bond_opt1=..'
+    $RTE_TARGET/app/testpmd -c f -n 4 --vdev 'net_bond0,bond_opt0=..,bond opt1=..'--vdev 'net_bond1,bond _opt0=..,bond_opt1=..'
 
 Link Bonding EAL Options
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -373,7 +373,7 @@ Link Bonding EAL Options
 There are multiple ways of definitions that can be assessed and combined as
 long as the following two rules are respected:
 
-*   A unique device name, in the format of eth_bondX is provided,
+*   A unique device name, in the format of net_bondX is provided,
     where X can be any combination of numbers and/or letters,
     and the name is no greater than 32 characters long.
 
@@ -465,22 +465,22 @@ Create a bonded device in round robin mode with two slaves specified by their PC
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_bond0,mode=0, slave=0000:00a:00.01,slave=0000:004:00.00' -- --port-topology=chained
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'net_bond0,mode=0, slave=0000:00a:00.01,slave=0000:004:00.00' -- --port-topology=chained
 
 Create a bonded device in round robin mode with two slaves specified by their PCI address and an overriding MAC address:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_bond0,mode=0, slave=0000:00a:00.01,slave=0000:004:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'net_bond0,mode=0, slave=0000:00a:00.01,slave=0000:004:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
 
 Create a bonded device in active backup mode with two slaves specified, and a primary slave specified by their PCI addresses:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_bond0,mode=1, slave=0000:00a:00.01,slave=0000:004:00.00,primary=0000:00a:00.01' -- --port-topology=chained
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'net_bond0,mode=1, slave=0000:00a:00.01,slave=0000:004:00.00,primary=0000:00a:00.01' -- --port-topology=chained
 
 Create a bonded device in balance mode with two slaves specified by their PCI addresses, and a transmission policy of layer 3 + 4 forwarding:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'eth_bond0,mode=2, slave=0000:00a:00.01,slave=0000:004:00.00,xmit_policy=l34' -- --port-topology=chained
+    $RTE_TARGET/app/testpmd -c '0xf' -n 4 --vdev 'net_bond0,mode=2, slave=0000:00a:00.01,slave=0000:004:00.00,xmit_policy=l34' -- --port-topology=chained

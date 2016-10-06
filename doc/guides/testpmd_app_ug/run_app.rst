@@ -130,7 +130,7 @@ See the DPDK Getting Started Guides for more information on these options.
 
     For example::
 
-       --vdev 'eth_pcap0,rx_pcap=input.pcap,tx_pcap=output.pcap'
+       --vdev 'net_pcap0,rx_pcap=input.pcap,tx_pcap=output.pcap'
 
 *   ``--base-virtaddr``
 
