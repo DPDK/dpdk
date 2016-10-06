@@ -357,37 +357,35 @@ testsuite_setup(void)
 		return TEST_FAILED;
 
 	/* Set up all the qps on the first of the valid devices found */
-	for (i = 0; i < 1; i++) {
-		dev_id = ts_params->valid_devs[i];
 
-		rte_cryptodev_info_get(dev_id, &info);
+	dev_id = ts_params->valid_devs[0];
 
-		/*
-		 * Since we can't free and re-allocate queue memory always set
-		 * the queues on this device up to max size first so enough
-		 * memory is allocated for any later re-configures needed by
-		 * other tests
-		 */
+	rte_cryptodev_info_get(dev_id, &info);
 
-		ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
-		ts_params->conf.socket_id = SOCKET_ID_ANY;
-		ts_params->conf.session_mp.nb_objs = info.sym.max_nb_sessions;
+	/*
+	 * Since we can't free and re-allocate queue memory always set
+	 * the queues on this device up to max size first so enough
+	 * memory is allocated for any later re-configures needed by
+	 * other tests
+	 */
 
-		TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
-				&ts_params->conf),
-				"Failed to configure cryptodev %u with %u qps",
-				dev_id, ts_params->conf.nb_queue_pairs);
+	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
+	ts_params->conf.socket_id = SOCKET_ID_ANY;
+	ts_params->conf.session_mp.nb_objs = info.sym.max_nb_sessions;
 
-		ts_params->qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
+			&ts_params->conf),
+			"Failed to configure cryptodev %u with %u qps",
+			dev_id, ts_params->conf.nb_queue_pairs);
 
-		for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
-			TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
-					dev_id, qp_id, &ts_params->qp_conf,
-					rte_cryptodev_socket_id(dev_id)),
-					"Failed to setup queue pair %u on "
-					"cryptodev %u",
-					qp_id, dev_id);
-		}
+	ts_params->qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
+
+	for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
+		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
+			dev_id, qp_id, &ts_params->qp_conf,
+			rte_cryptodev_socket_id(dev_id)),
+			"Failed to setup queue pair %u on cryptodev %u",
+			qp_id, dev_id);
 	}
 
 	return TEST_SUCCESS;
