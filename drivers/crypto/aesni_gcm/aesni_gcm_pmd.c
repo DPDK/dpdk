@@ -395,7 +395,7 @@ aesni_gcm_pmd_dequeue_burst(void *queue_pair,
 	return nb_dequeued;
 }
 
-static int aesni_gcm_uninit(const char *name);
+static int aesni_gcm_remove(const char *name);
 
 static int
 aesni_gcm_create(const char *name,
@@ -477,12 +477,12 @@ aesni_gcm_create(const char *name,
 init_error:
 	GCM_LOG_ERR("driver %s: create failed", name);
 
-	aesni_gcm_uninit(crypto_dev_name);
+	aesni_gcm_remove(crypto_dev_name);
 	return -EFAULT;
 }
 
 static int
-aesni_gcm_init(const char *name, const char *input_args)
+aesni_gcm_probe(const char *name, const char *input_args)
 {
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
@@ -503,7 +503,7 @@ aesni_gcm_init(const char *name, const char *input_args)
 }
 
 static int
-aesni_gcm_uninit(const char *name)
+aesni_gcm_remove(const char *name)
 {
 	if (name == NULL)
 		return -EINVAL;
@@ -515,8 +515,8 @@ aesni_gcm_uninit(const char *name)
 }
 
 static struct rte_vdev_driver aesni_gcm_pmd_drv = {
-	.init = aesni_gcm_init,
-	.uninit = aesni_gcm_uninit
+	.probe = aesni_gcm_probe,
+	.remove = aesni_gcm_remove
 };
 
 DRIVER_REGISTER_VDEV(CRYPTODEV_NAME_AESNI_GCM_PMD, aesni_gcm_pmd_drv);

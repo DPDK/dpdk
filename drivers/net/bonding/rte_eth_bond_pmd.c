@@ -2177,7 +2177,7 @@ const struct eth_dev_ops default_dev_ops = {
 };
 
 static int
-bond_init(const char *name, const char *params)
+bond_probe(const char *name, const char *params)
 {
 	struct bond_dev_private *internals;
 	struct rte_kvargs *kvlist;
@@ -2244,7 +2244,7 @@ parse_error:
 }
 
 static int
-bond_uninit(const char *name)
+bond_remove(const char *name)
 {
 	int  ret;
 
@@ -2509,8 +2509,8 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 }
 
 static struct rte_vdev_driver bond_drv = {
-	.init = bond_init,
-	.uninit = bond_uninit,
+	.probe = bond_probe,
+	.remove = bond_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_bonding, bond_drv);

@@ -820,7 +820,7 @@ rte_eth_from_packet(const char *name,
 }
 
 static int
-rte_pmd_af_packet_devinit(const char *name, const char *params)
+rte_pmd_af_packet_probe(const char *name, const char *params)
 {
 	unsigned numa_node;
 	int ret = 0;
@@ -858,7 +858,7 @@ exit:
 }
 
 static int
-rte_pmd_af_packet_devuninit(const char *name)
+rte_pmd_af_packet_remove(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internals *internals;
@@ -890,8 +890,8 @@ rte_pmd_af_packet_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver pmd_af_packet_drv = {
-	.init = rte_pmd_af_packet_devinit,
-	.uninit = rte_pmd_af_packet_devuninit,
+	.probe = rte_pmd_af_packet_probe,
+	.remove = rte_pmd_af_packet_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_af_packet, pmd_af_packet_drv);

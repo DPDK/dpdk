@@ -595,7 +595,7 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 }
 
 
-static int cryptodev_aesni_mb_uninit(const char *name);
+static int cryptodev_aesni_mb_remove(const char *name);
 
 static int
 cryptodev_aesni_mb_create(const char *name,
@@ -675,13 +675,13 @@ cryptodev_aesni_mb_create(const char *name,
 init_error:
 	MB_LOG_ERR("driver %s: cryptodev_aesni_create failed", name);
 
-	cryptodev_aesni_mb_uninit(crypto_dev_name);
+	cryptodev_aesni_mb_remove(crypto_dev_name);
 	return -EFAULT;
 }
 
 
 static int
-cryptodev_aesni_mb_init(const char *name,
+cryptodev_aesni_mb_probe(const char *name,
 		const char *input_args)
 {
 	struct rte_crypto_vdev_init_params init_params = {
@@ -703,7 +703,7 @@ cryptodev_aesni_mb_init(const char *name,
 }
 
 static int
-cryptodev_aesni_mb_uninit(const char *name)
+cryptodev_aesni_mb_remove(const char *name)
 {
 	if (name == NULL)
 		return -EINVAL;
@@ -715,8 +715,8 @@ cryptodev_aesni_mb_uninit(const char *name)
 }
 
 static struct rte_vdev_driver cryptodev_aesni_mb_pmd_drv = {
-	.init = cryptodev_aesni_mb_init,
-	.uninit = cryptodev_aesni_mb_uninit
+	.probe = cryptodev_aesni_mb_probe,
+	.remove = cryptodev_aesni_mb_remove
 };
 
 DRIVER_REGISTER_VDEV(CRYPTODEV_NAME_AESNI_MB_PMD, cryptodev_aesni_mb_pmd_drv);

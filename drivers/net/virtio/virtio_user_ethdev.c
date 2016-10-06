@@ -331,7 +331,7 @@ virtio_user_eth_dev_free(struct rte_eth_dev *eth_dev)
  * Returns 0 on success.
  */
 static int
-virtio_user_pmd_devinit(const char *name, const char *params)
+virtio_user_pmd_probe(const char *name, const char *params)
 {
 	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
@@ -445,7 +445,7 @@ end:
 
 /** Called by rte_eth_dev_detach() */
 static int
-virtio_user_pmd_devuninit(const char *name)
+virtio_user_pmd_remove(const char *name)
 {
 	struct rte_eth_dev *eth_dev;
 	struct virtio_hw *hw;
@@ -474,8 +474,8 @@ virtio_user_pmd_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver virtio_user_driver = {
-	.init   = virtio_user_pmd_devinit,
-	.uninit = virtio_user_pmd_devuninit,
+	.probe = virtio_user_pmd_probe,
+	.remove = virtio_user_pmd_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_virtio_user, virtio_user_driver);

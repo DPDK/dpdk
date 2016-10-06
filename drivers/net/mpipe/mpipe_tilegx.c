@@ -1549,7 +1549,7 @@ mpipe_link_mac(const char *ifname, uint8_t *mac)
 }
 
 static int
-rte_pmd_mpipe_devinit(const char *ifname,
+rte_pmd_mpipe_probe(const char *ifname,
 		      const char *params __rte_unused)
 {
 	gxio_mpipe_context_t *context;
@@ -1624,11 +1624,11 @@ rte_pmd_mpipe_devinit(const char *ifname,
 }
 
 static struct rte_vdev_driver pmd_mpipe_xgbe_drv = {
-	.init = rte_pmd_mpipe_devinit,
+	.probe = rte_pmd_mpipe_probe,
 };
 
 static struct rte_vdev_driver pmd_mpipe_gbe_drv = {
-	.init = rte_pmd_mpipe_devinit,
+	.probe = rte_pmd_mpipe_probe,
 };
 
 DRIVER_REGISTER_VDEV(net_mpipe_xgbe, pmd_mpipe_xgbe_drv);

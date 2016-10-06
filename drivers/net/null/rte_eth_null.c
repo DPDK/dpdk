@@ -611,7 +611,7 @@ get_packet_copy_arg(const char *key __rte_unused,
 }
 
 static int
-rte_pmd_null_devinit(const char *name, const char *params)
+rte_pmd_null_probe(const char *name, const char *params)
 {
 	unsigned numa_node;
 	unsigned packet_size = default_packet_size;
@@ -663,7 +663,7 @@ free_kvlist:
 }
 
 static int
-rte_pmd_null_devuninit(const char *name)
+rte_pmd_null_remove(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 
@@ -687,8 +687,8 @@ rte_pmd_null_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver pmd_null_drv = {
-	.init = rte_pmd_null_devinit,
-	.uninit = rte_pmd_null_devuninit,
+	.probe = rte_pmd_null_probe,
+	.remove = rte_pmd_null_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_null, pmd_null_drv);

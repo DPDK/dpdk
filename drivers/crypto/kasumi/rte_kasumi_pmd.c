@@ -556,7 +556,7 @@ kasumi_pmd_dequeue_burst(void *queue_pair,
 	return nb_dequeued;
 }
 
-static int cryptodev_kasumi_uninit(const char *name);
+static int cryptodev_kasumi_remove(const char *name);
 
 static int
 cryptodev_kasumi_create(const char *name,
@@ -611,12 +611,12 @@ cryptodev_kasumi_create(const char *name,
 init_error:
 	KASUMI_LOG_ERR("driver %s: cryptodev_kasumi_create failed", name);
 
-	cryptodev_kasumi_uninit(crypto_dev_name);
+	cryptodev_kasumi_remove(crypto_dev_name);
 	return -EFAULT;
 }
 
 static int
-cryptodev_kasumi_init(const char *name,
+cryptodev_kasumi_probe(const char *name,
 		const char *input_args)
 {
 	struct rte_crypto_vdev_init_params init_params = {
@@ -638,7 +638,7 @@ cryptodev_kasumi_init(const char *name,
 }
 
 static int
-cryptodev_kasumi_uninit(const char *name)
+cryptodev_kasumi_remove(const char *name)
 {
 	if (name == NULL)
 		return -EINVAL;
@@ -651,8 +651,8 @@ cryptodev_kasumi_uninit(const char *name)
 }
 
 static struct rte_vdev_driver cryptodev_kasumi_pmd_drv = {
-	.init = cryptodev_kasumi_init,
-	.uninit = cryptodev_kasumi_uninit
+	.probe = cryptodev_kasumi_probe,
+	.remove = cryptodev_kasumi_remove
 };
 
 DRIVER_REGISTER_VDEV(CRYPTODEV_NAME_KASUMI_PMD, cryptodev_kasumi_pmd_drv);

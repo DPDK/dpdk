@@ -545,7 +545,7 @@ snow3g_pmd_dequeue_burst(void *queue_pair,
 	return nb_dequeued;
 }
 
-static int cryptodev_snow3g_uninit(const char *name);
+static int cryptodev_snow3g_remove(const char *name);
 
 static int
 cryptodev_snow3g_create(const char *name,
@@ -599,12 +599,12 @@ cryptodev_snow3g_create(const char *name,
 init_error:
 	SNOW3G_LOG_ERR("driver %s: cryptodev_snow3g_create failed", name);
 
-	cryptodev_snow3g_uninit(crypto_dev_name);
+	cryptodev_snow3g_remove(crypto_dev_name);
 	return -EFAULT;
 }
 
 static int
-cryptodev_snow3g_init(const char *name,
+cryptodev_snow3g_probe(const char *name,
 		const char *input_args)
 {
 	struct rte_crypto_vdev_init_params init_params = {
@@ -626,7 +626,7 @@ cryptodev_snow3g_init(const char *name,
 }
 
 static int
-cryptodev_snow3g_uninit(const char *name)
+cryptodev_snow3g_remove(const char *name)
 {
 	if (name == NULL)
 		return -EINVAL;
@@ -639,8 +639,8 @@ cryptodev_snow3g_uninit(const char *name)
 }
 
 static struct rte_vdev_driver cryptodev_snow3g_pmd_drv = {
-	.init = cryptodev_snow3g_init,
-	.uninit = cryptodev_snow3g_uninit
+	.probe = cryptodev_snow3g_probe,
+	.remove = cryptodev_snow3g_remove
 };
 
 DRIVER_REGISTER_VDEV(CRYPTODEV_NAME_SNOW3G_PMD, cryptodev_snow3g_pmd_drv);

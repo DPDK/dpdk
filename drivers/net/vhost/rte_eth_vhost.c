@@ -1124,7 +1124,7 @@ open_int(const char *key __rte_unused, const char *value, void *extra_args)
 }
 
 static int
-rte_pmd_vhost_devinit(const char *name, const char *params)
+rte_pmd_vhost_probe(const char *name, const char *params)
 {
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
@@ -1176,7 +1176,7 @@ out_free:
 }
 
 static int
-rte_pmd_vhost_devuninit(const char *name)
+rte_pmd_vhost_remove(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internal *internal;
@@ -1226,8 +1226,8 @@ rte_pmd_vhost_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver pmd_vhost_drv = {
-	.init = rte_pmd_vhost_devinit,
-	.uninit = rte_pmd_vhost_devuninit,
+	.probe = rte_pmd_vhost_probe,
+	.remove = rte_pmd_vhost_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_vhost, pmd_vhost_drv);

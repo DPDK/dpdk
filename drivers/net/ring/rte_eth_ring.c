@@ -505,7 +505,7 @@ out:
 }
 
 static int
-rte_pmd_ring_devinit(const char *name, const char *params)
+rte_pmd_ring_probe(const char *name, const char *params)
 {
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
@@ -580,7 +580,7 @@ out_free:
 }
 
 static int
-rte_pmd_ring_devuninit(const char *name)
+rte_pmd_ring_remove(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internals *internals = NULL;
@@ -624,8 +624,8 @@ rte_pmd_ring_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver pmd_ring_drv = {
-	.init = rte_pmd_ring_devinit,
-	.uninit = rte_pmd_ring_devuninit,
+	.probe = rte_pmd_ring_probe,
+	.remove = rte_pmd_ring_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_ring, pmd_ring_drv);

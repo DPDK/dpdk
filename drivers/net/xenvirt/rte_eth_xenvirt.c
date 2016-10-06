@@ -729,7 +729,7 @@ eth_dev_xenvirt_free(const char *name, const unsigned numa_node)
 
 /*TODO: Support multiple process model */
 static int
-rte_pmd_xenvirt_devinit(const char *name, const char *params)
+rte_pmd_xenvirt_probe(const char *name, const char *params)
 {
 	if (virtio_idx == 0) {
 		if (xenstore_init() != 0) {
@@ -746,7 +746,7 @@ rte_pmd_xenvirt_devinit(const char *name, const char *params)
 }
 
 static int
-rte_pmd_xenvirt_devuninit(const char *name)
+rte_pmd_xenvirt_remove(const char *name)
 {
 	eth_dev_xenvirt_free(name, rte_socket_id());
 
@@ -760,8 +760,8 @@ rte_pmd_xenvirt_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver pmd_xenvirt_drv = {
-	.init = rte_pmd_xenvirt_devinit,
-	.uninit = rte_pmd_xenvirt_devuninit,
+	.probe = rte_pmd_xenvirt_probe,
+	.remove = rte_pmd_xenvirt_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_xenvirt, pmd_xenvirt_drv);

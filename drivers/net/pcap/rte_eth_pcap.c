@@ -937,7 +937,7 @@ eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 }
 
 static int
-pmd_pcap_devinit(const char *name, const char *params)
+pmd_pcap_probe(const char *name, const char *params)
 {
 	unsigned int is_rx_pcap = 0, is_tx_pcap = 0;
 	struct rte_kvargs *kvlist;
@@ -1036,7 +1036,7 @@ free_kvlist:
 }
 
 static int
-pmd_pcap_devuninit(const char *name)
+pmd_pcap_remove(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 
@@ -1060,8 +1060,8 @@ pmd_pcap_devuninit(const char *name)
 }
 
 static struct rte_vdev_driver pmd_pcap_drv = {
-	.init = pmd_pcap_devinit,
-	.uninit = pmd_pcap_devuninit,
+	.probe = pmd_pcap_probe,
+	.remove = pmd_pcap_remove,
 };
 
 DRIVER_REGISTER_VDEV(net_pcap, pmd_pcap_drv);

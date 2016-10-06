@@ -44,23 +44,23 @@ extern "C" {
 TAILQ_HEAD(vdev_driver_list, rte_vdev_driver);
 
 /**
- * Initialization function called for each virtual device driver once.
+ * Probe function called for each virtual device driver once.
  */
-typedef int (rte_vdev_init_t)(const char *name, const char *args);
+typedef int (rte_vdev_probe_t)(const char *name, const char *args);
 
 /**
- * Uninitilization function called for each virtual device driver once.
+ * Remove function called for each virtual device driver once.
  */
-typedef int (rte_vdev_uninit_t)(const char *name);
+typedef int (rte_vdev_remove_t)(const char *name);
 
 /**
  * A virtual device driver abstraction.
  */
 struct rte_vdev_driver {
 	TAILQ_ENTRY(rte_vdev_driver) next; /**< Next in list. */
-	struct rte_driver driver;          /**< Inherited general driver. */
-	rte_vdev_init_t *init;         /**< Virtual device init. function. */
-	rte_vdev_uninit_t *uninit;     /**< Virtual device uninit. function. */
+	struct rte_driver driver;      /**< Inherited general driver. */
+	rte_vdev_probe_t *probe;       /**< Virtual device probe function. */
+	rte_vdev_remove_t *remove;     /**< Virtual device remove function. */
 };
 
 /**
