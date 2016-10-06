@@ -1771,7 +1771,7 @@ int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
  * @param devargs
  *  A pointer to a strings array describing the new device
  *  to be attached. The strings should be a pci address like
- *  '0000:01:00.0' or virtual device name like 'eth_pcap0'.
+ *  '0000:01:00.0' or virtual device name like 'net_pcap0'.
  * @param port_id
  *  A pointer to a port identifier actually attached.
  * @return
@@ -4324,7 +4324,7 @@ rte_eth_dev_l2_tunnel_offload_set(uint8_t port_id,
 
 /**
 * Get the port id from pci adrress or device name
-* Ex: 0000:2:00.0 or vdev name eth_pcap0
+* Ex: 0000:2:00.0 or vdev name net_pcap0
 *
 * @param name
 *  pci address or name of the device

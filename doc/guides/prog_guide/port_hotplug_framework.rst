@@ -80,7 +80,7 @@ Port Hotplug API overview
         returns the attached port number. Before calling the API, the device
         should be recognized by an userspace driver I/O framework. The API
         receives a pci address like "0000:01:00.0" or a virtual device name
-        like "eth_pcap0,iface=eth0". In the case of virtual device name, the
+        like "net_pcap0,iface=eth0". In the case of virtual device name, the
         format is the same as the general "--vdev" option of DPDK.
 
 *       Detaching a port

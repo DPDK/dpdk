@@ -107,8 +107,8 @@ extern struct rte_devargs_list devargs_list;
  * "04:00.0,arg=val".
  *
  * For virtual devices, the format of arguments string is "DRIVER_NAME*"
- * or "DRIVER_NAME*,key=val,key2=val2,...". Examples: "eth_ring",
- * "eth_ring0", "eth_pmdAnything,arg=0:arg2=1".
+ * or "DRIVER_NAME*,key=val,key2=val2,...". Examples: "net_ring",
+ * "net_ring0", "net_pmdAnything,arg=0:arg2=1".
  *
  * The function parses the arguments string to get driver name and driver
  * arguments.
@@ -135,8 +135,8 @@ int rte_eal_parse_devargs_str(const char *devargs_str,
  * "04:00.0,arg=val".
  *
  * For virtual devices, the format of arguments string is "DRIVER_NAME*"
- * or "DRIVER_NAME*,key=val,key2=val2,...". Examples: "eth_ring",
- * "eth_ring0", "eth_pmdAnything,arg=0:arg2=1". The validity of the
+ * or "DRIVER_NAME*,key=val,key2=val2,...". Examples: "net_ring",
+ * "net_ring0", "net_pmdAnything,arg=0:arg2=1". The validity of the
  * driver name is not checked by this function, it is done when probing
  * the drivers.
  *

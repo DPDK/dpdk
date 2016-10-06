@@ -434,7 +434,7 @@ test_pmd_ring(void)
 	/*  create the rings and eth_rings in the test code.
 	 *  This does not test the rte_pmd_ring_devinit function.
 	 *
-	 *  Test with the command line option --vdev=eth_ring0 to test rte_pmd_ring_devinit.
+	 *  Test with the command line option --vdev=net_ring0 to test rte_pmd_ring_devinit.
 	 */
 	rxtx[0] = rte_ring_create("R0", RING_SIZE, SOCKET0, RING_F_SP_ENQ|RING_F_SC_DEQ);
 	if (rxtx[0] == NULL) {
@@ -448,11 +448,11 @@ test_pmd_ring(void)
 		return -1;
 	}
 
-	tx_porta = rte_eth_from_rings("eth_ringa", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
-	rx_portb = rte_eth_from_rings("eth_ringb", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
-	rxtx_portc = rte_eth_from_rings("eth_ringc", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
-	rxtx_portd = rte_eth_from_rings("eth_ringd", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
-	rxtx_porte = rte_eth_from_rings("eth_ringe", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
+	tx_porta = rte_eth_from_rings("net_ringa", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
+	rx_portb = rte_eth_from_rings("net_ringb", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
+	rxtx_portc = rte_eth_from_rings("net_ringc", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
+	rxtx_portd = rte_eth_from_rings("net_ringd", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
+	rxtx_porte = rte_eth_from_rings("net_ringe", rxtx, NUM_RINGS, rxtx, NUM_RINGS, SOCKET0);
 
 	printf("tx_porta=%d rx_portb=%d rxtx_portc=%d rxtx_portd=%d rxtx_porte=%d\n",
 			tx_porta, rx_portb, rxtx_portc, rxtx_portd, rxtx_porte);
@@ -501,7 +501,7 @@ test_pmd_ring(void)
 	if (test_pmd_ring_pair_create_attach(rxtx_portd, rxtx_porte) < 0)
 		return -1;
 
-	/* find a port created with the --vdev=eth_ring0 command line option */
+	/* find a port created with the --vdev=net_ring0 command line option */
 	for (port = 0; port < nb_ports; port++) {
 		struct rte_eth_dev_info dev_info;
 

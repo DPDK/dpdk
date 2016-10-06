@@ -71,7 +71,7 @@ rte_eal_vdev_init(const char *name, const char *args)
 		/*
 		 * search a driver prefix in virtual device name.
 		 * For example, if the driver is pcap PMD, driver->name
-		 * will be "eth_pcap", but "name" will be "eth_pcapN".
+		 * will be "net_pcap", but "name" will be "net_pcapN".
 		 * So use strncmp to compare.
 		 */
 		if (!strncmp(driver->driver.name, name,
@@ -95,7 +95,7 @@ rte_eal_vdev_uninit(const char *name)
 		/*
 		 * search a driver prefix in virtual device name.
 		 * For example, if the driver is pcap PMD, driver->name
-		 * will be "eth_pcap", but "name" will be "eth_pcapN".
+		 * will be "net_pcap", but "name" will be "net_pcapN".
 		 * So use strncmp to compare.
 		 */
 		if (!strncmp(driver->driver.name, name,

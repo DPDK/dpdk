@@ -1021,7 +1021,7 @@ eal_common_usage(void)
 	       "                      [NOTE: PCI whitelist cannot be used with -b option]\n"
 	       "  --"OPT_VDEV"              Add a virtual device.\n"
 	       "                      The argument format is <driver><id>[,key=val,...]\n"
-	       "                      (ex: --vdev=eth_pcap0,iface=eth2).\n"
+	       "                      (ex: --vdev=net_pcap0,iface=eth2).\n"
 	       "  -d LIB.so|DIR       Add a driver or driver directory\n"
 	       "                      (can be used multiple times)\n"
 	       "  --"OPT_VMWARE_TSC_MAP"    Use VMware TSC map instead of native RDTSC\n"

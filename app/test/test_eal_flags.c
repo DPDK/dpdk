@@ -414,13 +414,13 @@ test_invalid_vdev_flag(void)
 
 	/* Test with valid vdev option */
 	const char *vdevval1[] = {prgname, prefix, "-n", "1",
-	"-c", "1", vdev, "eth_ring0"};
+	"-c", "1", vdev, "net_ring0"};
 
 	const char *vdevval2[] = {prgname, prefix, "-n", "1",
-	"-c", "1", vdev, "eth_ring0,args=test"};
+	"-c", "1", vdev, "net_ring0,args=test"};
 
 	const char *vdevval3[] = {prgname, prefix, "-n", "1",
-	"-c", "1", vdev, "eth_ring0,nodeaction=r1:0:CREATE"};
+	"-c", "1", vdev, "net_ring0,nodeaction=r1:0:CREATE"};
 
 	if (launch_proc(vdevinval) == 0) {
 		printf("Error - process did run ok with invalid "
