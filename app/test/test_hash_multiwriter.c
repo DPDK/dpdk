@@ -247,8 +247,6 @@ err1:
 static int
 test_hash_multiwriter_main(void)
 {
-	int r = -1;
-
 	if (rte_lcore_count() == 1) {
 		printf("More than one lcore is required to do multiwriter test\n");
 		return 0;
@@ -268,14 +266,16 @@ test_hash_multiwriter_main(void)
 		printf("Test multi-writer with Hardware transactional memory\n");
 
 		use_htm = 1;
-		r = test_hash_multiwriter();
+		if (test_hash_multiwriter() < 0)
+			return -1;
 	}
 
 	printf("Test multi-writer without Hardware transactional memory\n");
 	use_htm = 0;
-	r = test_hash_multiwriter();
+	if (test_hash_multiwriter() < 0)
+		return -1;
 
-	return r;
+	return 0;
 }
 
 REGISTER_TEST_COMMAND(hash_multiwriter_autotest, test_hash_multiwriter_main);
