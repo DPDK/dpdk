@@ -58,7 +58,7 @@ Limitations
 Installation
 ------------
 
-To build DPDK with the KASUMI_PMD the user is required to download
+To build DPDK with the SNOW3G_PMD the user is required to download
 the export controlled ``libsso_snow3g`` library, by requesting it from
 `<https://networkbuilders.intel.com/network-technologies/dpdk>`_.
 Once approval has been granted, the user needs to log in
