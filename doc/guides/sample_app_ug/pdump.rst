@@ -119,8 +119,8 @@ Can be either a pcap file name or any Linux iface.
       * To receive ingress and egress packets separately ``rx-dev`` and ``tx-dev``
         should both be passed with the different file names or the Linux iface names.
 
-      * To receive ingress and egress packets separately ``rx-dev`` and ``tx-dev``
-        should both be passed with the same file names or the the Linux iface names.
+      * To receive ingress and egress packets together, ``rx-dev`` and ``tx-dev``
+        should both be passed with the same file name or the same Linux iface name.
 
 ``ring-size``:
 Size of the ring. This value is used internally for ring creation. The ring will be used to enqueue the packets from
