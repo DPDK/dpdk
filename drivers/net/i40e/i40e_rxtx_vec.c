@@ -187,6 +187,21 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 
 #define PKTLEN_SHIFT     10
 
+static inline void
+desc_to_ptype_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
+{
+	__m128i ptype0 = _mm_unpackhi_epi64(descs[0], descs[1]);
+	__m128i ptype1 = _mm_unpackhi_epi64(descs[2], descs[3]);
+
+	ptype0 = _mm_srli_epi64(ptype0, 30);
+	ptype1 = _mm_srli_epi64(ptype1, 30);
+
+	rx_pkts[0]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype0, 0));
+	rx_pkts[1]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype0, 8));
+	rx_pkts[2]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype1, 0));
+	rx_pkts[3]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype1, 8));
+}
+
  /*
  * Notice:
  * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
@@ -393,6 +408,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				 pkt_mb2);
 		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
 				 pkt_mb1);
+		desc_to_ptype_v(descs, &rx_pkts[pos]);
 		/* C.4 calc avaialbe number of desc */
 		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
