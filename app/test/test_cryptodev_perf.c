@@ -426,9 +426,7 @@ testsuite_setup(void)
 
 	/*
 	 * Using Crypto Device Id 0 by default.
-	 * Since we can't free and re-allocate queue memory always set the queues
-	 * on this device up to max size first so enough memory is allocated for
-	 * any later re-configures needed by other tests
+	 * Set up all the qps on this device
 	 */
 
 	rte_cryptodev_info_get(ts_params->dev_id, &info);
@@ -442,19 +440,6 @@ testsuite_setup(void)
 			"Failed to configure cryptodev %u",
 			ts_params->dev_id);
 
-
-	ts_params->qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
-
-	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs ; qp_id++) {
-		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
-			ts_params->dev_id, qp_id,
-			&ts_params->qp_conf,
-			rte_cryptodev_socket_id(ts_params->dev_id)),
-			"Failed to setup queue pair %u on cryptodev %u",
-			qp_id, ts_params->dev_id);
-	}
-
-	/*Now reconfigure queues to size we actually want to use in this testsuite.*/
 	ts_params->qp_conf.nb_descriptors = PERF_NUM_OPS_INFLIGHT;
 	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs ; qp_id++) {
 
