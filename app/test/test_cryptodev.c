@@ -413,7 +413,6 @@ ut_setup(void)
 	memset(ut_params, 0, sizeof(*ut_params));
 
 	/* Reconfigure device to default parameters */
-	ts_params->conf.nb_queue_pairs = DEFAULT_NUM_QPS_PER_QAT_DEVICE;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
 	ts_params->conf.session_mp.nb_objs = DEFAULT_NUM_OPS_INFLIGHT;
 
@@ -525,6 +524,7 @@ static int
 test_device_configure_invalid_queue_pair_ids(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint16_t orig_nb_qps = ts_params->conf.nb_queue_pairs;
 
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
@@ -578,6 +578,9 @@ test_device_configure_invalid_queue_pair_ids(void)
 			" invalid qps: %u",
 			ts_params->valid_devs[0],
 			ts_params->conf.nb_queue_pairs);
+
+	/* revert to original testsuite value */
+	ts_params->conf.nb_queue_pairs = orig_nb_qps;
 
 	return TEST_SUCCESS;
 }

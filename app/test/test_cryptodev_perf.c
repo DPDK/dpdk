@@ -431,7 +431,7 @@ testsuite_setup(void)
 
 	rte_cryptodev_info_get(ts_params->dev_id, &info);
 
-	ts_params->conf.nb_queue_pairs = DEFAULT_NUM_QPS_PER_QAT_DEVICE;
+	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
 	ts_params->conf.session_mp.nb_objs = info.sym.max_nb_sessions;
 
