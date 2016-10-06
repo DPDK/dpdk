@@ -311,8 +311,14 @@ aesni_mb_pmd_info_get(struct rte_cryptodev *dev,
 static int
 aesni_mb_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 {
-	if (dev->data->queue_pairs[qp_id] != NULL) {
-		rte_free(dev->data->queue_pairs[qp_id]);
+	struct aesni_mb_qp *qp = dev->data->queue_pairs[qp_id];
+	struct rte_ring *r = NULL;
+
+	if (qp != NULL) {
+		r = rte_ring_lookup(qp->name);
+		if (r)
+			rte_ring_free(r);
+		rte_free(qp);
 		dev->data->queue_pairs[qp_id] = NULL;
 	}
 	return 0;
