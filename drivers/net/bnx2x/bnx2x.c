@@ -9556,8 +9556,8 @@ static void bnx2x_init_rte(struct bnx2x_softc *sc)
 		sc->max_rx_queues = min(BNX2X_VF_MAX_QUEUES_PER_VF,
 					sc->igu_sb_cnt);
 	} else {
-		sc->max_tx_queues = 128;
-		sc->max_rx_queues = 128;
+		sc->max_rx_queues = BNX2X_MAX_RSS_COUNT(sc);
+		sc->max_tx_queues = sc->max_rx_queues;
 	}
 }
 
