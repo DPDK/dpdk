@@ -274,7 +274,7 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 	if (diag == 0)
 		return 0;
 
-	RTE_PMD_DEBUG_TRACE("driver %s: eth_dev_init(vendor_id=0x%u device_id=0x%x) failed\n",
+	RTE_PMD_DEBUG_TRACE("driver %s: eth_dev_init(vendor_id=0x%x device_id=0x%x) failed\n",
 			pci_drv->driver.name,
 			(unsigned) pci_dev->id.vendor_id,
 			(unsigned) pci_dev->id.device_id);
