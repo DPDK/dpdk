@@ -96,7 +96,7 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX3PRO = 0x1007,
 };
 
-#define MLX4_DRIVER_NAME "librte_pmd_mlx4"
+#define MLX4_DRIVER_NAME "net_mlx4"
 
 /* Bit-field manipulation. */
 #define BITFIELD_DECLARE(bf, type, size)				\

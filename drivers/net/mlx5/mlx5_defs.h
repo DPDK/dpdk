@@ -37,7 +37,7 @@
 #include "mlx5_autoconf.h"
 
 /* Reported driver name. */
-#define MLX5_DRIVER_NAME "librte_pmd_mlx5"
+#define MLX5_DRIVER_NAME "net_mlx5"
 
 /* Maximum number of simultaneous MAC addresses. */
 #define MLX5_MAX_MAC_ADDRESSES 128
