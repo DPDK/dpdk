@@ -421,7 +421,7 @@ int
 rte_eth_dev_attach(const char *devargs, uint8_t *port_id)
 {
 	int ret = -1;
-	int current = eth_dev_last_created_port;
+	int current = rte_eth_dev_count();
 	char *name = NULL;
 	char *args = NULL;
 
@@ -438,9 +438,9 @@ rte_eth_dev_attach(const char *devargs, uint8_t *port_id)
 	if (ret < 0)
 		goto err;
 
-	/* no point looking at eth_dev_last_created_port if no port exists */
-	if (!nb_ports) {
-		RTE_LOG(ERR, EAL, "No ports found for device (%s)\n", name);
+	/* no point looking at the port count if no port exists */
+	if (!rte_eth_dev_count()) {
+		RTE_LOG(ERR, EAL, "No port found for device (%s)\n", name);
 		ret = -1;
 		goto err;
 	}
@@ -448,7 +448,7 @@ rte_eth_dev_attach(const char *devargs, uint8_t *port_id)
 	/* if nothing happened, there is a bug here, since some driver told us
 	 * it did attach a device, but did not create a port.
 	 */
-	if (current == eth_dev_last_created_port) {
+	if (current == rte_eth_dev_count()) {
 		ret = -1;
 		goto err;
 	}
