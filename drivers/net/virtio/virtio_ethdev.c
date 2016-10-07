@@ -1321,6 +1321,9 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 
 static struct eth_driver rte_virtio_pmd = {
 	.pci_drv = {
+		.driver = {
+			.name = "net_virtio",
+		},
 		.id_table = pci_id_virtio_map,
 		.drv_flags = RTE_PCI_DRV_DETACHABLE,
 		.probe = rte_eth_dev_pci_probe,
