@@ -142,6 +142,8 @@ init_vring_queue(struct vhost_virtqueue *vq, int qp_idx)
 	/* always set the default vq pair to enabled */
 	if (qp_idx == 0)
 		vq->enabled = 1;
+
+	TAILQ_INIT(&vq->zmbuf_list);
 }
 
 static void

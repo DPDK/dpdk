@@ -180,7 +180,23 @@ static int
 vhost_user_set_vring_num(struct virtio_net *dev,
 			 struct vhost_vring_state *state)
 {
-	dev->virtqueue[state->index]->size = state->num;
+	struct vhost_virtqueue *vq = dev->virtqueue[state->index];
+
+	vq->size = state->num;
+
+	if (dev->dequeue_zero_copy) {
+		vq->nr_zmbuf = 0;
+		vq->last_zmbuf_idx = 0;
+		vq->zmbuf_size = vq->size;
+		vq->zmbufs = rte_zmalloc(NULL, vq->zmbuf_size *
+					 sizeof(struct zcopy_mbuf), 0);
+		if (vq->zmbufs == NULL) {
+			RTE_LOG(WARNING, VHOST_CONFIG,
+				"failed to allocate mem for zero copy; "
+				"zero copy is force disabled\n");
+			dev->dequeue_zero_copy = 0;
+		}
+	}
 
 	return 0;
 }
@@ -662,9 +678,30 @@ vhost_user_set_vring_kick(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	vq->kickfd = file.fd;
 
 	if (virtio_is_ready(dev) && !(dev->flags & VIRTIO_DEV_RUNNING)) {
+		if (dev->dequeue_zero_copy) {
+			RTE_LOG(INFO, VHOST_CONFIG,
+				"dequeue zero copy is enabled\n");
+		}
+
 		if (notify_ops->new_device(dev->vid) == 0)
 			dev->flags |= VIRTIO_DEV_RUNNING;
 	}
+}
+
+static void
+free_zmbufs(struct vhost_virtqueue *vq)
+{
+	struct zcopy_mbuf *zmbuf, *next;
+
+	for (zmbuf = TAILQ_FIRST(&vq->zmbuf_list);
+	     zmbuf != NULL; zmbuf = next) {
+		next = TAILQ_NEXT(zmbuf, next);
+
+		rte_pktmbuf_free(zmbuf->mbuf);
+		TAILQ_REMOVE(&vq->zmbuf_list, zmbuf, next);
+	}
+
+	rte_free(vq->zmbufs);
 }
 
 /*
@@ -694,6 +731,9 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 		close(dev->virtqueue[state->index]->kickfd);
 
 	dev->virtqueue[state->index]->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
+
+	if (dev->dequeue_zero_copy)
+		free_zmbufs(dev->virtqueue[state->index]);
 
 	return 0;
 }

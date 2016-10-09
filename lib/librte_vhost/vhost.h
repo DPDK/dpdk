@@ -36,6 +36,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/queue.h>
 #include <unistd.h>
 #include <linux/vhost.h>
 
@@ -61,6 +62,19 @@ struct buf_vector {
 	uint32_t desc_idx;
 };
 
+/*
+ * A structure to hold some fields needed in zero copy code path,
+ * mainly for associating an mbuf with the right desc_idx.
+ */
+struct zcopy_mbuf {
+	struct rte_mbuf *mbuf;
+	uint32_t desc_idx;
+	uint16_t in_use;
+
+	TAILQ_ENTRY(zcopy_mbuf) next;
+};
+TAILQ_HEAD(zcopy_mbuf_list, zcopy_mbuf);
+
 /**
  * Structure contains variables relevant to RX/TX virtqueues.
  */
@@ -85,6 +99,12 @@ struct vhost_virtqueue {
 
 	/* Physical address of used ring, for logging */
 	uint64_t		log_guest_addr;
+
+	uint16_t		nr_zmbuf;
+	uint16_t		zmbuf_size;
+	uint16_t		last_zmbuf_idx;
+	struct zcopy_mbuf	*zmbufs;
+	struct zcopy_mbuf_list	zmbuf_list;
 } __rte_cache_aligned;
 
 /* Old kernels have no such macro defined */
@@ -135,6 +155,7 @@ struct virtio_net {
 	/* to tell if we need broadcast rarp packet */
 	rte_atomic16_t		broadcast_rarp;
 	uint32_t		virt_qp_nb;
+	int			dequeue_zero_copy;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
 	char			ifname[IF_NAME_SZ];
@@ -146,7 +167,6 @@ struct virtio_net {
 	uint32_t		nr_guest_pages;
 	uint32_t		max_guest_pages;
 	struct guest_page       *guest_pages;
-
 } __rte_cache_aligned;
 
 /**
