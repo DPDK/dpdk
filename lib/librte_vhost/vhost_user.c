@@ -74,18 +74,6 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
 };
 
-struct orig_region_map {
-	int fd;
-	uint64_t mapped_address;
-	uint64_t mapped_size;
-	uint64_t blksz;
-};
-
-#define orig_region(ptr, nregions) \
-	((struct orig_region_map *)RTE_PTR_ADD((ptr), \
-		sizeof(struct virtio_memory) + \
-		sizeof(struct virtio_memory_regions) * (nregions)))
-
 static uint64_t
 get_blk_size(int fd)
 {
@@ -99,18 +87,17 @@ get_blk_size(int fd)
 static void
 free_mem_region(struct virtio_net *dev)
 {
-	struct orig_region_map *region;
-	unsigned int idx;
+	uint32_t i;
+	struct virtio_memory_region *reg;
 
 	if (!dev || !dev->mem)
 		return;
 
-	region = orig_region(dev->mem, dev->mem->nregions);
-	for (idx = 0; idx < dev->mem->nregions; idx++) {
-		if (region[idx].mapped_address) {
-			munmap((void *)(uintptr_t)region[idx].mapped_address,
-					region[idx].mapped_size);
-			close(region[idx].fd);
+	for (i = 0; i < dev->mem->nregions; i++) {
+		reg = &dev->mem->regions[i];
+		if (reg->host_user_addr) {
+			munmap(reg->mmap_addr, reg->mmap_size);
+			close(reg->fd);
 		}
 	}
 }
@@ -120,7 +107,7 @@ vhost_backend_cleanup(struct virtio_net *dev)
 {
 	if (dev->mem) {
 		free_mem_region(dev);
-		free(dev->mem);
+		rte_free(dev->mem);
 		dev->mem = NULL;
 	}
 	if (dev->log_addr) {
@@ -286,25 +273,23 @@ numa_realloc(struct virtio_net *dev, int index __rte_unused)
  * used to convert the ring addresses to our address space.
  */
 static uint64_t
-qva_to_vva(struct virtio_net *dev, uint64_t qemu_va)
+qva_to_vva(struct virtio_net *dev, uint64_t qva)
 {
-	struct virtio_memory_regions *region;
-	uint64_t vhost_va = 0;
-	uint32_t regionidx = 0;
+	struct virtio_memory_region *reg;
+	uint32_t i;
 
 	/* Find the region where the address lives. */
-	for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++) {
-		region = &dev->mem->regions[regionidx];
-		if ((qemu_va >= region->userspace_address) &&
-			(qemu_va <= region->userspace_address +
-			region->memory_size)) {
-			vhost_va = qemu_va + region->guest_phys_address +
-				region->address_offset -
-				region->userspace_address;
-			break;
+	for (i = 0; i < dev->mem->nregions; i++) {
+		reg = &dev->mem->regions[i];
+
+		if (qva >= reg->guest_user_addr &&
+		    qva <  reg->guest_user_addr + reg->size) {
+			return qva - reg->guest_user_addr +
+			       reg->host_user_addr;
 		}
 	}
-	return vhost_va;
+
+	return 0;
 }
 
 /*
@@ -391,11 +376,13 @@ static int
 vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
 	struct VhostUserMemory memory = pmsg->payload.memory;
-	struct virtio_memory_regions *pregion;
-	uint64_t mapped_address, mapped_size;
-	unsigned int idx = 0;
-	struct orig_region_map *pregion_orig;
+	struct virtio_memory_region *reg;
+	void *mmap_addr;
+	uint64_t mmap_size;
+	uint64_t mmap_offset;
 	uint64_t alignment;
+	uint32_t i;
+	int fd;
 
 	/* Remove from the data plane. */
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
@@ -405,14 +392,12 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 
 	if (dev->mem) {
 		free_mem_region(dev);
-		free(dev->mem);
+		rte_free(dev->mem);
 		dev->mem = NULL;
 	}
 
-	dev->mem = calloc(1,
-		sizeof(struct virtio_memory) +
-		sizeof(struct virtio_memory_regions) * memory.nregions +
-		sizeof(struct orig_region_map) * memory.nregions);
+	dev->mem = rte_zmalloc("vhost-mem-table", sizeof(struct virtio_memory) +
+		sizeof(struct virtio_memory_region) * memory.nregions, 0);
 	if (dev->mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to allocate memory for dev->mem\n",
@@ -421,22 +406,17 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	}
 	dev->mem->nregions = memory.nregions;
 
-	pregion_orig = orig_region(dev->mem, memory.nregions);
-	for (idx = 0; idx < memory.nregions; idx++) {
-		pregion = &dev->mem->regions[idx];
-		pregion->guest_phys_address =
-			memory.regions[idx].guest_phys_addr;
-		pregion->guest_phys_address_end =
-			memory.regions[idx].guest_phys_addr +
-			memory.regions[idx].memory_size;
-		pregion->memory_size =
-			memory.regions[idx].memory_size;
-		pregion->userspace_address =
-			memory.regions[idx].userspace_addr;
+	for (i = 0; i < memory.nregions; i++) {
+		fd  = pmsg->fds[i];
+		reg = &dev->mem->regions[i];
 
-		/* This is ugly */
-		mapped_size = memory.regions[idx].memory_size +
-			memory.regions[idx].mmap_offset;
+		reg->guest_phys_addr = memory.regions[i].guest_phys_addr;
+		reg->guest_user_addr = memory.regions[i].userspace_addr;
+		reg->size            = memory.regions[i].memory_size;
+		reg->fd              = fd;
+
+		mmap_offset = memory.regions[i].mmap_offset;
+		mmap_size   = reg->size + mmap_offset;
 
 		/* mmap() without flag of MAP_ANONYMOUS, should be called
 		 * with length argument aligned with hugepagesz at older
@@ -446,67 +426,52 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		 * to avoid failure, make sure in caller to keep length
 		 * aligned.
 		 */
-		alignment = get_blk_size(pmsg->fds[idx]);
+		alignment = get_blk_size(fd);
 		if (alignment == (uint64_t)-1) {
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"couldn't get hugepage size through fstat\n");
 			goto err_mmap;
 		}
-		mapped_size = RTE_ALIGN_CEIL(mapped_size, alignment);
+		mmap_size = RTE_ALIGN_CEIL(mmap_size, alignment);
 
-		mapped_address = (uint64_t)(uintptr_t)mmap(NULL,
-			mapped_size,
-			PROT_READ | PROT_WRITE, MAP_SHARED,
-			pmsg->fds[idx],
-			0);
+		mmap_addr = mmap(NULL, mmap_size,
+				 PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-		RTE_LOG(INFO, VHOST_CONFIG,
-			"mapped region %d fd:%d to:%p sz:0x%"PRIx64" "
-			"off:0x%"PRIx64" align:0x%"PRIx64"\n",
-			idx, pmsg->fds[idx], (void *)(uintptr_t)mapped_address,
-			mapped_size, memory.regions[idx].mmap_offset,
-			alignment);
-
-		if (mapped_address == (uint64_t)(uintptr_t)MAP_FAILED) {
+		if (mmap_addr == MAP_FAILED) {
 			RTE_LOG(ERR, VHOST_CONFIG,
-				"mmap qemu guest failed.\n");
+				"mmap region %u failed.\n", i);
 			goto err_mmap;
 		}
 
-		pregion_orig[idx].mapped_address = mapped_address;
-		pregion_orig[idx].mapped_size = mapped_size;
-		pregion_orig[idx].blksz = alignment;
-		pregion_orig[idx].fd = pmsg->fds[idx];
+		reg->mmap_addr = mmap_addr;
+		reg->mmap_size = mmap_size;
+		reg->host_user_addr = (uint64_t)(uintptr_t)mmap_addr +
+				      mmap_offset;
 
-		mapped_address +=  memory.regions[idx].mmap_offset;
-
-		pregion->address_offset = mapped_address -
-			pregion->guest_phys_address;
-
-		if (memory.regions[idx].guest_phys_addr == 0) {
-			dev->mem->base_address =
-				memory.regions[idx].userspace_addr;
-			dev->mem->mapped_address =
-				pregion->address_offset;
-		}
-
-		LOG_DEBUG(VHOST_CONFIG,
-			"REGION: %u GPA: %p QEMU VA: %p SIZE (%"PRIu64")\n",
-			idx,
-			(void *)(uintptr_t)pregion->guest_phys_address,
-			(void *)(uintptr_t)pregion->userspace_address,
-			 pregion->memory_size);
+		RTE_LOG(INFO, VHOST_CONFIG,
+			"guest memory region %u, size: 0x%" PRIx64 "\n"
+			"\t guest physical addr: 0x%" PRIx64 "\n"
+			"\t guest virtual  addr: 0x%" PRIx64 "\n"
+			"\t host  virtual  addr: 0x%" PRIx64 "\n"
+			"\t mmap addr : 0x%" PRIx64 "\n"
+			"\t mmap size : 0x%" PRIx64 "\n"
+			"\t mmap align: 0x%" PRIx64 "\n"
+			"\t mmap off  : 0x%" PRIx64 "\n",
+			i, reg->size,
+			reg->guest_phys_addr,
+			reg->guest_user_addr,
+			reg->host_user_addr,
+			(uint64_t)(uintptr_t)mmap_addr,
+			mmap_size,
+			alignment,
+			mmap_offset);
 	}
 
 	return 0;
 
 err_mmap:
-	while (idx--) {
-		munmap((void *)(uintptr_t)pregion_orig[idx].mapped_address,
-				pregion_orig[idx].mapped_size);
-		close(pregion_orig[idx].fd);
-	}
-	free(dev->mem);
+	free_mem_region(dev);
+	rte_free(dev->mem);
 	dev->mem = NULL;
 	return -1;
 }

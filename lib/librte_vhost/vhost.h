@@ -143,12 +143,14 @@ struct virtio_net {
  * Information relating to memory regions including offsets to
  * addresses in QEMUs memory file.
  */
-struct virtio_memory_regions {
-	uint64_t guest_phys_address;
-	uint64_t guest_phys_address_end;
-	uint64_t memory_size;
-	uint64_t userspace_address;
-	uint64_t address_offset;
+struct virtio_memory_region {
+	uint64_t guest_phys_addr;
+	uint64_t guest_user_addr;
+	uint64_t host_user_addr;
+	uint64_t size;
+	void	 *mmap_addr;
+	uint64_t mmap_size;
+	int fd;
 };
 
 
@@ -156,12 +158,8 @@ struct virtio_memory_regions {
  * Memory structure includes region and mapping information.
  */
 struct virtio_memory {
-	/* Base QEMU userspace address of the memory file. */
-	uint64_t base_address;
-	uint64_t mapped_address;
-	uint64_t mapped_size;
 	uint32_t nregions;
-	struct virtio_memory_regions regions[0];
+	struct virtio_memory_region regions[0];
 };
 
 
@@ -200,26 +198,23 @@ extern uint64_t VHOST_FEATURES;
 #define MAX_VHOST_DEVICE	1024
 extern struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
-/**
- * Function to convert guest physical addresses to vhost virtual addresses.
- * This is used to convert guest virtio buffer addresses.
- */
+/* Convert guest physical Address to host virtual address */
 static inline uint64_t __attribute__((always_inline))
-gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
+gpa_to_vva(struct virtio_net *dev, uint64_t gpa)
 {
-	struct virtio_memory_regions *region;
-	uint32_t regionidx;
-	uint64_t vhost_va = 0;
+	struct virtio_memory_region *reg;
+	uint32_t i;
 
-	for (regionidx = 0; regionidx < dev->mem->nregions; regionidx++) {
-		region = &dev->mem->regions[regionidx];
-		if ((guest_pa >= region->guest_phys_address) &&
-			(guest_pa <= region->guest_phys_address_end)) {
-			vhost_va = region->address_offset + guest_pa;
-			break;
+	for (i = 0; i < dev->mem->nregions; i++) {
+		reg = &dev->mem->regions[i];
+		if (gpa >= reg->guest_phys_addr &&
+		    gpa <  reg->guest_phys_addr + reg->size) {
+			return gpa - reg->guest_phys_addr +
+			       reg->host_user_addr;
 		}
 	}
-	return vhost_va;
+
+	return 0;
 }
 
 struct virtio_net_device_ops const *notify_ops;
