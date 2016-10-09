@@ -343,7 +343,8 @@ vhost_user_set_vring_addr(struct virtio_net *dev, struct vhost_vring_addr *addr)
 			"last_used_idx (%u) and vq->used->idx (%u) mismatches; "
 			"some packets maybe resent for Tx and dropped for Rx\n",
 			vq->last_used_idx, vq->used->idx);
-		vq->last_used_idx     = vq->used->idx;
+		vq->last_used_idx  = vq->used->idx;
+		vq->last_avail_idx = vq->used->idx;
 	}
 
 	vq->log_guest_addr = addr->log_guest_addr;
@@ -367,7 +368,8 @@ static int
 vhost_user_set_vring_base(struct virtio_net *dev,
 			  struct vhost_vring_state *state)
 {
-	dev->virtqueue[state->index]->last_used_idx = state->num;
+	dev->virtqueue[state->index]->last_used_idx  = state->num;
+	dev->virtqueue[state->index]->last_avail_idx = state->num;
 
 	return 0;
 }

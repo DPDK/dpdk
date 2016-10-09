@@ -851,16 +851,17 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		}
 	}
 
-	avail_idx =  *((volatile uint16_t *)&vq->avail->idx);
-	free_entries = avail_idx - vq->last_used_idx;
+	free_entries = *((volatile uint16_t *)&vq->avail->idx) -
+			vq->last_avail_idx;
 	if (free_entries == 0)
 		goto out;
 
 	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 
-	/* Prefetch available ring to retrieve head indexes. */
-	used_idx = vq->last_used_idx & (vq->size - 1);
-	rte_prefetch0(&vq->avail->ring[used_idx]);
+	/* Prefetch available and used ring */
+	avail_idx = vq->last_avail_idx & (vq->size - 1);
+	used_idx  = vq->last_used_idx  & (vq->size - 1);
+	rte_prefetch0(&vq->avail->ring[avail_idx]);
 	rte_prefetch0(&vq->used->ring[used_idx]);
 
 	count = RTE_MIN(count, MAX_PKT_BURST);
@@ -870,8 +871,9 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	/* Retrieve all of the head indexes first to avoid caching issues. */
 	for (i = 0; i < count; i++) {
-		used_idx = (vq->last_used_idx + i) & (vq->size - 1);
-		desc_indexes[i] = vq->avail->ring[used_idx];
+		avail_idx = (vq->last_avail_idx + i) & (vq->size - 1);
+		used_idx  = (vq->last_used_idx  + i) & (vq->size - 1);
+		desc_indexes[i] = vq->avail->ring[avail_idx];
 
 		vq->used->ring[used_idx].id  = desc_indexes[i];
 		vq->used->ring[used_idx].len = 0;
@@ -921,7 +923,8 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	rte_smp_wmb();
 	rte_smp_rmb();
 	vq->used->idx += i;
-	vq->last_used_idx += i;
+	vq->last_avail_idx += i;
+	vq->last_used_idx  += i;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
 
