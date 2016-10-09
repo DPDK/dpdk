@@ -652,6 +652,23 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Failed to disable allmulticast");
 }
 
+#define VLAN_TAG_LEN           4    /* 802.3ac tag (not DMA'd) */
+static int
+virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	uint32_t ether_hdr_len = ETHER_HDR_LEN + VLAN_TAG_LEN +
+				 hw->vtnet_hdr_size;
+	uint32_t frame_size = mtu + ether_hdr_len;
+
+	if (mtu < ETHER_MIN_MTU || frame_size > VIRTIO_MAX_RX_PKTLEN) {
+		PMD_INIT_LOG(ERR, "MTU should be between %d and %d\n",
+			ETHER_MIN_MTU, VIRTIO_MAX_RX_PKTLEN - ether_hdr_len);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 /*
  * dev_ops for virtio, bare necessities for basic operation
  */
@@ -664,7 +681,7 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.promiscuous_disable     = virtio_dev_promiscuous_disable,
 	.allmulticast_enable     = virtio_dev_allmulticast_enable,
 	.allmulticast_disable    = virtio_dev_allmulticast_disable,
-
+	.mtu_set                 = virtio_mtu_set,
 	.dev_infos_get           = virtio_dev_info_get,
 	.stats_get               = virtio_dev_stats_get,
 	.xstats_get              = virtio_dev_xstats_get,
