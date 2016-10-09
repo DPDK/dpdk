@@ -114,6 +114,12 @@ struct vhost_virtqueue {
  #define VIRTIO_F_VERSION_1 32
 #endif
 
+struct guest_page {
+	uint64_t guest_phys_addr;
+	uint64_t host_phys_addr;
+	uint64_t size;
+};
+
 /**
  * Device structure contains all configuration information relating
  * to the device.
@@ -136,6 +142,10 @@ struct virtio_net {
 	uint64_t		log_base;
 	uint64_t		log_addr;
 	struct ether_addr	mac;
+
+	uint32_t		nr_guest_pages;
+	uint32_t		max_guest_pages;
+	struct guest_page       *guest_pages;
 
 } __rte_cache_aligned;
 
@@ -211,6 +221,26 @@ gpa_to_vva(struct virtio_net *dev, uint64_t gpa)
 		    gpa <  reg->guest_phys_addr + reg->size) {
 			return gpa - reg->guest_phys_addr +
 			       reg->host_user_addr;
+		}
+	}
+
+	return 0;
+}
+
+/* Convert guest physical address to host physical address */
+static inline phys_addr_t __attribute__((always_inline))
+gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
+{
+	uint32_t i;
+	struct guest_page *page;
+
+	for (i = 0; i < dev->nr_guest_pages; i++) {
+		page = &dev->guest_pages[i];
+
+		if (gpa >= page->guest_phys_addr &&
+		    gpa + size < page->guest_phys_addr + page->size) {
+			return gpa - page->guest_phys_addr +
+			       page->host_phys_addr;
 		}
 	}
 

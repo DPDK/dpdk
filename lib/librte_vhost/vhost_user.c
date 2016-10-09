@@ -372,6 +372,91 @@ vhost_user_set_vring_base(struct virtio_net *dev,
 	return 0;
 }
 
+static void
+add_one_guest_page(struct virtio_net *dev, uint64_t guest_phys_addr,
+		   uint64_t host_phys_addr, uint64_t size)
+{
+	struct guest_page *page, *last_page;
+
+	if (dev->nr_guest_pages == dev->max_guest_pages) {
+		dev->max_guest_pages *= 2;
+		dev->guest_pages = realloc(dev->guest_pages,
+					dev->max_guest_pages * sizeof(*page));
+	}
+
+	if (dev->nr_guest_pages > 0) {
+		last_page = &dev->guest_pages[dev->nr_guest_pages - 1];
+		/* merge if the two pages are continuous */
+		if (host_phys_addr == last_page->host_phys_addr +
+				      last_page->size) {
+			last_page->size += size;
+			return;
+		}
+	}
+
+	page = &dev->guest_pages[dev->nr_guest_pages++];
+	page->guest_phys_addr = guest_phys_addr;
+	page->host_phys_addr  = host_phys_addr;
+	page->size = size;
+}
+
+static void
+add_guest_pages(struct virtio_net *dev, struct virtio_memory_region *reg,
+		uint64_t page_size)
+{
+	uint64_t reg_size = reg->size;
+	uint64_t host_user_addr  = reg->host_user_addr;
+	uint64_t guest_phys_addr = reg->guest_phys_addr;
+	uint64_t host_phys_addr;
+	uint64_t size;
+
+	host_phys_addr = rte_mem_virt2phy((void *)(uintptr_t)host_user_addr);
+	size = page_size - (guest_phys_addr & (page_size - 1));
+	size = RTE_MIN(size, reg_size);
+
+	add_one_guest_page(dev, guest_phys_addr, host_phys_addr, size);
+	host_user_addr  += size;
+	guest_phys_addr += size;
+	reg_size -= size;
+
+	while (reg_size > 0) {
+		host_phys_addr = rte_mem_virt2phy((void *)(uintptr_t)
+						  host_user_addr);
+		add_one_guest_page(dev, guest_phys_addr, host_phys_addr,
+				   page_size);
+
+		host_user_addr  += page_size;
+		guest_phys_addr += page_size;
+		reg_size -= page_size;
+	}
+}
+
+#ifdef RTE_LIBRTE_VHOST_DEBUG
+/* TODO: enable it only in debug mode? */
+static void
+dump_guest_pages(struct virtio_net *dev)
+{
+	uint32_t i;
+	struct guest_page *page;
+
+	for (i = 0; i < dev->nr_guest_pages; i++) {
+		page = &dev->guest_pages[i];
+
+		RTE_LOG(INFO, VHOST_CONFIG,
+			"guest physical page region %u\n"
+			"\t guest_phys_addr: %" PRIx64 "\n"
+			"\t host_phys_addr : %" PRIx64 "\n"
+			"\t size           : %" PRIx64 "\n",
+			i,
+			page->guest_phys_addr,
+			page->host_phys_addr,
+			page->size);
+	}
+}
+#else
+#define dump_guest_pages(dev)
+#endif
+
 static int
 vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
@@ -394,6 +479,13 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
+	}
+
+	dev->nr_guest_pages = 0;
+	if (!dev->guest_pages) {
+		dev->max_guest_pages = 8;
+		dev->guest_pages = malloc(dev->max_guest_pages *
+						sizeof(struct guest_page));
 	}
 
 	dev->mem = rte_zmalloc("vhost-mem-table", sizeof(struct virtio_memory) +
@@ -434,8 +526,8 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		}
 		mmap_size = RTE_ALIGN_CEIL(mmap_size, alignment);
 
-		mmap_addr = mmap(NULL, mmap_size,
-				 PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
+				 MAP_SHARED | MAP_POPULATE, fd, 0);
 
 		if (mmap_addr == MAP_FAILED) {
 			RTE_LOG(ERR, VHOST_CONFIG,
@@ -447,6 +539,8 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		reg->mmap_size = mmap_size;
 		reg->host_user_addr = (uint64_t)(uintptr_t)mmap_addr +
 				      mmap_offset;
+
+		add_guest_pages(dev, reg, alignment);
 
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"guest memory region %u, size: 0x%" PRIx64 "\n"
@@ -466,6 +560,8 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 			alignment,
 			mmap_offset);
 	}
+
+	dump_guest_pages(dev);
 
 	return 0;
 
