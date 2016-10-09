@@ -30,6 +30,10 @@ Deprecation Notices
   ``nb_seg_max`` and ``nb_mtu_seg_max`` providing information about number of
   segments limit to be transmitted by device for TSO/non-TSO packets.
 
+* In 17.02 ABI change is planned: the ``rte_eth_dev_info`` structure
+  will be extended with a new member ``fw_version`` in order to store
+  the NIC firmware version.
+
 * ethdev: an API change is planned for 17.02 for the function
   ``_rte_eth_dev_callback_process``. In 17.02 the function will return an ``int``
   instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
