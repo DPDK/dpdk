@@ -79,7 +79,7 @@ The following is an overview of the Vhost API functions:
   ``/dev/path`` character device file will be created. For vhost-user server
   mode, a Unix domain socket file ``path`` will be created.
 
-  Currently two flags are supported (these are valid for vhost-user only):
+  Currently supported flags are (these are valid for vhost-user only):
 
   - ``RTE_VHOST_USER_CLIENT``
 
@@ -96,6 +96,38 @@ The following is an overview of the Vhost API functions:
 
     This reconnect option is enabled by default. However, it can be turned off
     by setting this flag.
+
+  - ``RTE_VHOST_USER_DEQUEUE_ZERO_COPY``
+
+    Dequeue zero copy will be enabled when this flag is set. It is disabled by
+    default.
+
+    There are some truths (including limitations) you might want to know while
+    setting this flag:
+
+    * zero copy is not good for small packets (typically for packet size below
+      512).
+
+    * zero copy is really good for VM2VM case. For iperf between two VMs, the
+      boost could be above 70% (when TSO is enableld).
+
+    * for VM2NIC case, the ``nb_tx_desc`` has to be small enough: <= 64 if virtio
+      indirect feature is not enabled and <= 128 if it is enabled.
+
+      The is because when dequeue zero copy is enabled, guest Tx used vring will
+      be updated only when corresponding mbuf is freed. Thus, the nb_tx_desc
+      has to be small enough so that the PMD driver will run out of available
+      Tx descriptors and free mbufs timely. Otherwise, guest Tx vring would be
+      starved.
+
+    * Guest memory should be backended with huge pages to achieve better
+      performance. Using 1G page size is the best.
+
+      When dequeue zero copy is enabled, the guest phys address and host phys
+      address mapping has to be established. Using non-huge pages means far
+      more page segments. To make it simple, DPDK vhost does a linear search
+      of those segments, thus the fewer the segments, the quicker we will get
+      the mapping. NOTE: we may speed it by using tree searching in future.
 
 * ``rte_vhost_driver_session_start()``
 

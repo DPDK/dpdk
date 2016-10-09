@@ -62,6 +62,7 @@ struct vhost_user_socket {
 	int connfd;
 	bool is_server;
 	bool reconnect;
+	bool dequeue_zero_copy;
 };
 
 struct vhost_user_connection {
@@ -202,6 +203,9 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	size = strnlen(vsocket->path, PATH_MAX);
 	vhost_set_ifname(vid, vsocket->path, size);
+
+	if (vsocket->dequeue_zero_copy)
+		vhost_enable_dequeue_zero_copy(vid);
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
@@ -499,6 +503,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	memset(vsocket, 0, sizeof(struct vhost_user_socket));
 	vsocket->path = strdup(path);
 	vsocket->connfd = -1;
+	vsocket->dequeue_zero_copy = flags & RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 
 	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
 		vsocket->reconnect = !(flags & RTE_VHOST_USER_NO_RECONNECT);

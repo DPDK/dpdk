@@ -278,6 +278,7 @@ void vhost_destroy_device(int);
 int alloc_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
+void vhost_enable_dequeue_zero_copy(int vid);
 
 /*
  * Backend-specific cleanup. Defined by vhost-cuse and vhost-user.

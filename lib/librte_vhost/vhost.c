@@ -291,6 +291,16 @@ vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
 	dev->ifname[sizeof(dev->ifname) - 1] = '\0';
 }
 
+void
+vhost_enable_dequeue_zero_copy(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return;
+
+	dev->dequeue_zero_copy = 1;
+}
 
 int
 rte_vhost_get_numa_node(int vid)
