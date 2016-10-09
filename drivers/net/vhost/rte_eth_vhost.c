@@ -51,6 +51,7 @@
 #define ETH_VHOST_IFACE_ARG		"iface"
 #define ETH_VHOST_QUEUES_ARG		"queues"
 #define ETH_VHOST_CLIENT_ARG		"client"
+#define ETH_VHOST_DEQUEUE_ZERO_COPY	"dequeue-zero-copy"
 
 static const char *drivername = "VHOST PMD";
 
@@ -58,6 +59,7 @@ static const char *valid_arguments[] = {
 	ETH_VHOST_IFACE_ARG,
 	ETH_VHOST_QUEUES_ARG,
 	ETH_VHOST_CLIENT_ARG,
+	ETH_VHOST_DEQUEUE_ZERO_COPY,
 	NULL
 };
 
@@ -1132,6 +1134,7 @@ rte_pmd_vhost_probe(const char *name, const char *params)
 	uint16_t queues;
 	uint64_t flags = 0;
 	int client_mode = 0;
+	int dequeue_zero_copy = 0;
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_vhost for %s\n", name);
 
@@ -1166,6 +1169,16 @@ rte_pmd_vhost_probe(const char *name, const char *params)
 
 		if (client_mode)
 			flags |= RTE_VHOST_USER_CLIENT;
+	}
+
+	if (rte_kvargs_count(kvlist, ETH_VHOST_DEQUEUE_ZERO_COPY) == 1) {
+		ret = rte_kvargs_process(kvlist, ETH_VHOST_DEQUEUE_ZERO_COPY,
+					 &open_int, &dequeue_zero_copy);
+		if (ret < 0)
+			goto out_free;
+
+		if (dequeue_zero_copy)
+			flags |= RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 	}
 
 	eth_dev_vhost_create(name, iface_name, queues, rte_socket_id(), flags);
