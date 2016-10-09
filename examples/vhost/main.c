@@ -127,6 +127,7 @@ static uint32_t enable_tx_csum;
 static uint32_t enable_tso;
 
 static int client_mode;
+static int dequeue_zero_copy;
 
 /* Specify timeout (in useconds) between retries on RX. */
 static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
@@ -294,6 +295,17 @@ port_init(uint8_t port)
 
 	rx_ring_size = RTE_TEST_RX_DESC_DEFAULT;
 	tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
+
+	/*
+	 * When dequeue zero copy is enabled, guest Tx used vring will be
+	 * updated only when corresponding mbuf is freed. Thus, the nb_tx_desc
+	 * (tx_ring_size here) must be small enough so that the driver will
+	 * hit the free threshold easily and free mbufs timely. Otherwise,
+	 * guest Tx vring would be starved.
+	 */
+	if (dequeue_zero_copy)
+		tx_ring_size = 64;
+
 	tx_rings = (uint16_t)rte_lcore_count();
 
 	retval = validate_num_devices(MAX_DEVICES);
@@ -470,7 +482,8 @@ us_vhost_usage(const char *prgname)
 	"		--socket-file: The path of the socket file.\n"
 	"		--tx-csum [0|1] disable/enable TX checksum offload.\n"
 	"		--tso [0|1] disable/enable TCP segment offload.\n"
-	"		--client register a vhost-user socket as client mode.\n",
+	"		--client register a vhost-user socket as client mode.\n"
+	"		--dequeue-zero-copy enables dequeue zero copy\n",
 	       prgname);
 }
 
@@ -495,6 +508,7 @@ us_vhost_parse_args(int argc, char **argv)
 		{"tx-csum", required_argument, NULL, 0},
 		{"tso", required_argument, NULL, 0},
 		{"client", no_argument, &client_mode, 1},
+		{"dequeue-zero-copy", no_argument, &dequeue_zero_copy, 1},
 		{NULL, 0, 0, 0},
 	};
 
@@ -1500,6 +1514,9 @@ main(int argc, char *argv[])
 
 	if (client_mode)
 		flags |= RTE_VHOST_USER_CLIENT;
+
+	if (dequeue_zero_copy)
+		flags |= RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 
 	/* Register vhost user driver to handle vhost messages. */
 	for (i = 0; i < nb_sockets; i++) {
