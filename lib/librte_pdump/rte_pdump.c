@@ -471,12 +471,12 @@ pdump_get_socket_path(char *buffer, int bufsz, enum rte_pdump_socktype type)
 			snprintf(dpdk_dir, sizeof(dpdk_dir), "%s%s",
 					SOCKET_PATH_VAR_RUN, DPDK_DIR);
 
-		mkdir(dpdk_dir, 700);
+		mkdir(dpdk_dir, 0700);
 		snprintf(dir, sizeof(dir), "%s%s",
 					dpdk_dir, SOCKET_DIR);
 	}
 
-	ret =  mkdir(dir, 700);
+	ret =  mkdir(dir, 0700);
 	/* if user passed socket path is invalid, return immediately */
 	if (ret < 0 && errno != EEXIST) {
 		RTE_LOG(ERR, PDUMP,
