@@ -487,14 +487,14 @@ void rte_eal_pci_dump(FILE *f);
 void rte_eal_pci_register(struct rte_pci_driver *driver);
 
 /** Helper for PCI device registration from driver (eth, crypto) instance */
-#define DRIVER_REGISTER_PCI(nm, pci_drv) \
+#define RTE_PMD_REGISTER_PCI(nm, pci_drv) \
 RTE_INIT(pciinitfn_ ##nm); \
 static void pciinitfn_ ##nm(void) \
 {\
 	(pci_drv).driver.name = RTE_STR(nm);\
 	rte_eal_pci_register(&pci_drv); \
 } \
-DRIVER_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
 /**
  * Unregister a PCI driver.

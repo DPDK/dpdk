@@ -1564,8 +1564,8 @@ static struct eth_driver rte_i40evf_pmd = {
 	.dev_private_size = sizeof(struct i40e_adapter),
 };
 
-DRIVER_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_i40e_vf, pci_id_i40evf_map);
+RTE_PMD_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_i40e_vf, pci_id_i40evf_map);
 
 static int
 i40evf_dev_configure(struct rte_eth_dev *dev)

@@ -1793,5 +1793,5 @@ eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
 	return 0;
 }
 
-DRIVER_REGISTER_PCI(net_e1000_em, rte_em_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_e1000_em, pci_id_em_map);
+RTE_PMD_REGISTER_PCI(net_e1000_em, rte_em_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_e1000_em, pci_id_em_map);

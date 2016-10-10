@@ -2559,9 +2559,9 @@ static struct rte_vdev_driver bond_drv = {
 	.remove = bond_remove,
 };
 
-DRIVER_REGISTER_VDEV(net_bonding, bond_drv);
+RTE_PMD_REGISTER_VDEV(net_bonding, bond_drv);
 
-DRIVER_REGISTER_PARAM_STRING(net_bonding,
+RTE_PMD_REGISTER_PARAM_STRING(net_bonding,
 	"slave=<ifc> "
 	"primary=<ifc> "
 	"mode=[0-6] "

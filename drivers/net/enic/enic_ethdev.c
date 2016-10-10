@@ -647,5 +647,5 @@ static struct eth_driver rte_enic_pmd = {
 	.dev_private_size = sizeof(struct enic),
 };
 
-DRIVER_REGISTER_PCI(net_enic, rte_enic_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);
+RTE_PMD_REGISTER_PCI(net_enic, rte_enic_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);

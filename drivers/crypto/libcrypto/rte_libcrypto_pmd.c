@@ -1054,8 +1054,9 @@ static struct rte_vdev_driver cryptodev_libcrypto_pmd_drv = {
 	.remove = cryptodev_libcrypto_uninit
 };
 
-DRIVER_REGISTER_VDEV(CRYPTODEV_NAME_LIBCRYPTO_PMD, cryptodev_libcrypto_pmd_drv);
-DRIVER_REGISTER_PARAM_STRING(CRYPTODEV_NAME_LIBCRYPTO_PMD,
+RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_LIBCRYPTO_PMD,
+	cryptodev_libcrypto_pmd_drv);
+RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_LIBCRYPTO_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");

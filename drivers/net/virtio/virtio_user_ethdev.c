@@ -478,8 +478,8 @@ static struct rte_vdev_driver virtio_user_driver = {
 	.remove = virtio_user_pmd_remove,
 };
 
-DRIVER_REGISTER_VDEV(net_virtio_user, virtio_user_driver);
-DRIVER_REGISTER_PARAM_STRING(net_virtio_user,
+RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver);
+RTE_PMD_REGISTER_PARAM_STRING(net_virtio_user,
 	"path=<path> "
 	"mac=<mac addr> "
 	"cq=<int> "

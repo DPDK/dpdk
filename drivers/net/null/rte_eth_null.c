@@ -691,7 +691,7 @@ static struct rte_vdev_driver pmd_null_drv = {
 	.remove = rte_pmd_null_remove,
 };
 
-DRIVER_REGISTER_VDEV(net_null, pmd_null_drv);
-DRIVER_REGISTER_PARAM_STRING(net_null,
+RTE_PMD_REGISTER_VDEV(net_null, pmd_null_drv);
+RTE_PMD_REGISTER_PARAM_STRING(net_null,
 	"size=<int> "
 	"copy=<int>");

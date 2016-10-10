@@ -2479,8 +2479,8 @@ static struct eth_driver rte_nfp_net_pmd = {
 	.dev_private_size = sizeof(struct nfp_net_adapter),
 };
 
-DRIVER_REGISTER_PCI(net_nfp, rte_nfp_net_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_nfp, pci_id_nfp_net_map);
+RTE_PMD_REGISTER_PCI(net_nfp, rte_nfp_net_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_nfp, pci_id_nfp_net_map);
 
 /*
  * Local variables:

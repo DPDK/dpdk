@@ -1581,5 +1581,5 @@ static struct eth_driver szedata2_eth_driver = {
 	.dev_private_size = sizeof(struct pmd_internals),
 };
 
-DRIVER_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);
+RTE_PMD_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);

@@ -756,5 +756,5 @@ rte_mlx5_pmd_init(void)
 	rte_eal_pci_register(&mlx5_driver.pci_drv);
 }
 
-DRIVER_EXPORT_NAME(net_mlx5, __COUNTER__);
-DRIVER_REGISTER_PCI_TABLE(net_mlx5, mlx5_pci_id_map);
+RTE_PMD_EXPORT_NAME(net_mlx5, __COUNTER__);
+RTE_PMD_REGISTER_PCI_TABLE(net_mlx5, mlx5_pci_id_map);

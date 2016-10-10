@@ -222,19 +222,19 @@ int rte_eal_dev_attach(const char *name, const char *devargs);
  */
 int rte_eal_dev_detach(const char *name);
 
-#define DRIVER_EXPORT_NAME_ARRAY(n, idx) n##idx[]
+#define RTE_PMD_EXPORT_NAME_ARRAY(n, idx) n##idx[]
 
-#define DRIVER_EXPORT_NAME(name, idx) \
-static const char DRIVER_EXPORT_NAME_ARRAY(this_pmd_name, idx) \
+#define RTE_PMD_EXPORT_NAME(name, idx) \
+static const char RTE_PMD_EXPORT_NAME_ARRAY(this_pmd_name, idx) \
 __attribute__((used)) = RTE_STR(name)
 
 #define DRV_EXP_TAG(name, tag) __##name##_##tag
 
-#define DRIVER_REGISTER_PCI_TABLE(name, table) \
+#define RTE_PMD_REGISTER_PCI_TABLE(name, table) \
 static const char DRV_EXP_TAG(name, pci_tbl_export)[] __attribute__((used)) = \
 RTE_STR(table)
 
-#define DRIVER_REGISTER_PARAM_STRING(name, str) \
+#define RTE_PMD_REGISTER_PARAM_STRING(name, str) \
 static const char DRV_EXP_TAG(name, param_string_export)[] \
 __attribute__((used)) = str
 

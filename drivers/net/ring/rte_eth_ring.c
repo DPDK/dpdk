@@ -628,6 +628,6 @@ static struct rte_vdev_driver pmd_ring_drv = {
 	.remove = rte_pmd_ring_remove,
 };
 
-DRIVER_REGISTER_VDEV(net_ring, pmd_ring_drv);
-DRIVER_REGISTER_PARAM_STRING(net_ring,
+RTE_PMD_REGISTER_VDEV(net_ring, pmd_ring_drv);
+RTE_PMD_REGISTER_PARAM_STRING(net_ring,
 	ETH_RING_NUMA_NODE_ACTION_ARG "=name:node:action(ATTACH|CREATE)");

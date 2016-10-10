@@ -764,6 +764,6 @@ static struct rte_vdev_driver pmd_xenvirt_drv = {
 	.remove = rte_pmd_xenvirt_remove,
 };
 
-DRIVER_REGISTER_VDEV(net_xenvirt, pmd_xenvirt_drv);
-DRIVER_REGISTER_PARAM_STRING(net_xenvirt,
+RTE_PMD_REGISTER_VDEV(net_xenvirt, pmd_xenvirt_drv);
+RTE_PMD_REGISTER_PARAM_STRING(net_xenvirt,
 	"mac=<mac addr>");

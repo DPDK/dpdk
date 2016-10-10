@@ -1697,5 +1697,5 @@ static struct eth_driver rte_ena_pmd = {
 	.dev_private_size = sizeof(struct ena_adapter),
 };
 
-DRIVER_REGISTER_PCI(net_ena, rte_ena_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
+RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);

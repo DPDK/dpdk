@@ -129,6 +129,6 @@ static struct rte_cryptodev_driver rte_qat_pmd = {
 	.dev_private_size = sizeof(struct qat_pmd_private),
 };
 
-DRIVER_REGISTER_PCI(CRYPTODEV_NAME_QAT_SYM_PMD, rte_qat_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(CRYPTODEV_NAME_QAT_SYM_PMD, pci_id_qat_map);
+RTE_PMD_REGISTER_PCI(CRYPTODEV_NAME_QAT_SYM_PMD, rte_qat_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_QAT_SYM_PMD, pci_id_qat_map);
 

@@ -2102,5 +2102,5 @@ static struct eth_driver rte_nicvf_pmd = {
 	.dev_private_size = sizeof(struct nicvf),
 };
 
-DRIVER_REGISTER_PCI(net_thunderx, rte_nicvf_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_thunderx, pci_id_nicvf_map);
+RTE_PMD_REGISTER_PCI(net_thunderx, rte_nicvf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_thunderx, pci_id_nicvf_map);

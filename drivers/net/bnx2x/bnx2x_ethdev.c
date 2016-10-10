@@ -641,7 +641,7 @@ static struct eth_driver rte_bnx2xvf_pmd = {
 	.dev_private_size = sizeof(struct bnx2x_softc),
 };
 
-DRIVER_REGISTER_PCI(net_bnx2x, rte_bnx2x_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_bnx2x, pci_id_bnx2x_map);
-DRIVER_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);
+RTE_PMD_REGISTER_PCI(net_bnx2x, rte_bnx2x_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_bnx2x, pci_id_bnx2x_map);
+RTE_PMD_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);

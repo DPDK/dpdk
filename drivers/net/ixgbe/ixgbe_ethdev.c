@@ -7592,7 +7592,7 @@ ixgbevf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 	ixgbevf_dev_interrupt_action(dev);
 }
 
-DRIVER_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_ixgbe, pci_id_ixgbe_map);
-DRIVER_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd.pci_drv);
-DRIVER_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
+RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe, pci_id_ixgbe_map);
+RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
