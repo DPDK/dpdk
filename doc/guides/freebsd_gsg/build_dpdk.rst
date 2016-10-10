@@ -88,7 +88,7 @@ The ports required and their locations are as follows:
 For compiling and using the DPDK with gcc, the compiler must be installed
 from the ports collection:
 
-* gcc: version 4.8 is recommended ``/usr/ports/lang/gcc48``.
+* gcc: version 4.9 is recommended ``/usr/ports/lang/gcc49``.
   Ensure that ``CPU_OPTS`` is selected (default is OFF).
 
 When running the make config-recursive command, a dialog may be presented to the
@@ -164,7 +164,7 @@ For example to compile for FreeBSD use:
    If the compiler binary to be used does not correspond to that given in the
    TOOLCHAIN part of the target, the compiler command may need to be explicitly
    specified. For example, if compiling for gcc, where the gcc binary is called
-   gcc4.8, the command would need to be ``gmake install T=<target> CC=gcc4.8``.
+   gcc4.9, the command would need to be ``gmake install T=<target> CC=gcc4.9``.
 
 Browsing the Installed DPDK Environment Target
 ----------------------------------------------

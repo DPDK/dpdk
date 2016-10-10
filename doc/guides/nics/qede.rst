@@ -150,7 +150,7 @@ command::
 
    cd <DPDK-source-directory>
    gmake config T=x86_64-native-bsdapp-gcc install -Wl,-rpath=\
-                                        /usr/local/lib/gcc48 CC=gcc48
+                                        /usr/local/lib/gcc49 CC=gcc49
 
 
 Sample Application Notes

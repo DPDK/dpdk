@@ -61,8 +61,8 @@ Compilation of the DPDK
 
 *   coreutils: ``cmp``, ``sed``, ``grep``, ``arch``, etc.
 
-*   gcc: versions 4.5.x or later is recommended for ``i686/x86_64``. Versions 4.8.x or later is recommended
-    for ``ppc_64`` and ``x86_x32`` ABI. On some distributions, some specific compiler flags and linker flags are enabled by
+*   gcc: versions 4.9 or later is recommended for all platforms.
+    On some distributions, some specific compiler flags and linker flags are enabled by
     default and affect performance (``-fstack-protector``, for example). Please refer to the documentation
     of your distribution and to ``gcc -dumpspecs``.
 
@@ -82,7 +82,7 @@ Compilation of the DPDK
 .. note::
 
     x86_x32 ABI is currently supported with distribution packages only on Ubuntu
-    higher than 13.10 or recent Debian distribution. The only supported  compiler is gcc 4.8+.
+    higher than 13.10 or recent Debian distribution. The only supported  compiler is gcc 4.9+.
 
 .. note::
 

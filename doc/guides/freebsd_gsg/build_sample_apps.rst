@@ -54,7 +54,7 @@ the following variables must be exported:
 
 The following is an example of creating the ``helloworld`` application, which runs
 in the DPDK FreeBSD environment. While the example demonstrates compiling
-using gcc version 4.8, compiling with clang will be similar, except that the ``CC=``
+using gcc version 4.9, compiling with clang will be similar, except that the ``CC=``
 parameter can probably be omitted. The ``helloworld`` example may be found in the
 ``${RTE_SDK}/examples`` directory.
 
@@ -72,7 +72,7 @@ in the build directory.
     setenv RTE_SDK $HOME/DPDK
     setenv RTE_TARGET x86_64-native-bsdapp-gcc
 
-    gmake CC=gcc48
+    gmake CC=gcc49
       CC main.o
       LD helloworld
       INSTALL-APP helloworld
@@ -96,7 +96,7 @@ in the build directory.
     cd my_rte_app/
     setenv RTE_TARGET x86_64-native-bsdapp-gcc
 
-    gmake CC=gcc48
+    gmake CC=gcc49
       CC main.o
       LD helloworld
       INSTALL-APP helloworld

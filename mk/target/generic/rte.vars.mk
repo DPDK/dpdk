@@ -50,7 +50,11 @@
 #   - can define CPU_ASFLAGS variable (overriden by cmdline value) that
 #     overrides the one defined in arch.
 #
+ifneq ($(wildcard $(RTE_SDK)/mk/machine/$(RTE_MACHINE)/rte.vars.mk),)
 include $(RTE_SDK)/mk/machine/$(RTE_MACHINE)/rte.vars.mk
+else
+MACHINE_CFLAGS := -march=$(RTE_MACHINE)
+endif
 
 #
 # arch:
