@@ -5516,7 +5516,7 @@ i40e_dev_interrupt_delayed_handler(void *param)
 
 	/* handle the link up interrupt in an alarm callback */
 	i40e_dev_link_update(dev, 0);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 
 	i40e_pf_enable_irq0(hw);
 	rte_intr_enable(&(dev->pci_dev->intr_handle));
@@ -5600,7 +5600,7 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 			return;
 		else
 			_rte_eth_dev_callback_process(dev,
-				RTE_ETH_EVENT_INTR_LSC);
+				RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 done:

@@ -1599,7 +1599,7 @@ eth_em_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 	eth_em_interrupt_get_status(dev);
 	eth_em_interrupt_action(dev);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 static int

@@ -3030,6 +3030,7 @@ enum rte_eth_event_type {
 				/**< queue state event (enabled/disabled) */
 	RTE_ETH_EVENT_INTR_RESET,
 			/**< reset interrupt event, sent to VF on PF reset */
+	RTE_ETH_EVENT_VF_MBOX,  /**< message from the VF received by PF */
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 
@@ -3050,6 +3051,11 @@ typedef void (*rte_eth_dev_cb_fn)(uint8_t port_id, \
  *  User supplied callback function to be called.
  * @param cb_arg
  *  Pointer to the parameters for the registered callback.
+ *
+ *  The user data is overwritten in the case of RTE_ETH_EVENT_VF_MBOX.
+ *	This even occurs when a message from the VF is received by the PF.
+ *	The user data is overwritten with struct rte_pmd_ixgbe_mb_event_param.
+ *	This struct is defined in rte_pmd_ixgbe.h.
  *
  * @return
  *  - On success, zero.
@@ -3089,12 +3095,16 @@ int rte_eth_dev_callback_unregister(uint8_t port_id,
  *  Pointer to struct rte_eth_dev.
  * @param event
  *  Eth device interrupt event type.
+ * @param cb_arg
+ *  Update callback parameter to pass data back to user application.
+ *  This allows the user application to decide if a particular function
+ *  is permitted or not.
  *
  * @return
  *  void
  */
 void _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
-				enum rte_eth_event_type event);
+				enum rte_eth_event_type event, void *cb_arg);
 
 /**
  * When there is no rx packet coming in Rx Queue for a long time, we can

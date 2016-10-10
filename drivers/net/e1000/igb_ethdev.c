@@ -2683,7 +2683,7 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_TCTL, tctl);
 		E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 		E1000_WRITE_FLUSH(hw);
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 	return 0;
@@ -2743,7 +2743,7 @@ void igbvf_mbx_process(struct rte_eth_dev *dev)
 
 	/* PF reset VF event */
 	if (in_msg == E1000_PF_CONTROL_MSG)
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET, NULL);
 }
 
 static int

@@ -436,7 +436,7 @@ enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
 	vnic_intr_return_all_credits(&enic->intr);
 
 	enic_link_update(enic);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	enic_log_q_error(enic);
 }
 
