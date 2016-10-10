@@ -3420,7 +3420,7 @@ test_perf_snow3G_vary_pkt_size(void)
 static int
 test_perf_libcrypto_vary_pkt_size(void)
 {
-	unsigned int total_operations = 1000000;
+	unsigned int total_operations = 10000;
 	unsigned int burst_size = { 64 };
 	unsigned int buf_lengths[] = { 64, 128, 256, 512, 768, 1024, 1280, 1536,
 			1792, 2048 };
