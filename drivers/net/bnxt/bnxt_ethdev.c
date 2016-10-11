@@ -43,6 +43,7 @@
 #include "bnxt_cpr.h"
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
+#include "bnxt_irq.h"
 #include "bnxt_ring.h"
 #include "bnxt_rxq.h"
 #include "bnxt_rxr.h"
@@ -189,6 +190,7 @@ alloc_mem_err:
 static int bnxt_init_chip(struct bnxt *bp)
 {
 	unsigned int i, rss_idx, fw_idx;
+	struct rte_eth_link new;
 	int rc;
 
 	rc = bnxt_alloc_all_hwrm_stat_ctxs(bp);
@@ -273,6 +275,21 @@ static int bnxt_init_chip(struct bnxt *bp)
 		RTE_LOG(ERR, PMD,
 			"HWRM cfa l2 rx mask failure rc: %x\n", rc);
 		goto err_out;
+	}
+
+	rc = bnxt_get_hwrm_link_config(bp, &new);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "HWRM Get link config failure rc: %x\n", rc);
+		goto err_out;
+	}
+
+	if (!bp->link_info.link_up) {
+		rc = bnxt_set_hwrm_link_config(bp, true);
+		if (rc) {
+			RTE_LOG(ERR, PMD,
+				"HWRM link config failure rc: %x\n", rc);
+			goto err_out;
+		}
 	}
 
 	return 0;
@@ -366,6 +383,8 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS |
 			     ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
+	eth_dev->data->dev_conf.intr_conf.lsc = 1;
+
 	/* *INDENT-ON* */
 
 	/*
@@ -404,7 +423,6 @@ found:
 static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
-	int rc;
 
 	bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	bp->tx_queues = (void *)eth_dev->data->tx_queues;
@@ -419,8 +437,42 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->mtu =
 				eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
 				ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE;
-	rc = bnxt_set_hwrm_link_config(bp, true);
-	return rc;
+	return 0;
+}
+
+static inline int
+rte_bnxt_atomic_write_link_status(struct rte_eth_dev *eth_dev,
+				struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = &eth_dev->data->dev_link;
+	struct rte_eth_link *src = link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+					*(uint64_t *)src) == 0)
+		return 1;
+
+	return 0;
+}
+
+static void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
+{
+	struct rte_eth_link *link = &eth_dev->data->dev_link;
+
+	if (link->link_status)
+		RTE_LOG(INFO, PMD, "Port %d Link Up - speed %u Mbps - %s\n",
+			(uint8_t)(eth_dev->data->port_id),
+			(uint32_t)link->link_speed,
+			(link->link_duplex == ETH_LINK_FULL_DUPLEX) ?
+			("full-duplex") : ("half-duplex\n"));
+	else
+		RTE_LOG(INFO, PMD, "Port %d Link Down\n",
+			(uint8_t)(eth_dev->data->port_id));
+}
+
+static int bnxt_dev_lsc_intr_setup(struct rte_eth_dev *eth_dev)
+{
+	bnxt_print_link_info(eth_dev);
+	return 0;
 }
 
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
@@ -436,7 +488,15 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		goto error;
 	}
 
+	rc = bnxt_setup_int(bp);
+	if (rc)
+		goto error;
+
 	rc = bnxt_alloc_mem(bp);
+	if (rc)
+		goto error;
+
+	rc = bnxt_request_int(bp);
 	if (rc)
 		goto error;
 
@@ -444,10 +504,15 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error;
 
+	bnxt_enable_int(bp);
+
+	bnxt_link_update_op(eth_dev, 0);
 	return 0;
 
 error:
 	bnxt_shutdown_nic(bp);
+	bnxt_disable_int(bp);
+	bnxt_free_int(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
 	bnxt_free_mem(bp);
@@ -482,6 +547,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_link.link_status = 0;
 	}
 	bnxt_set_hwrm_link_config(bp, false);
+	bnxt_disable_int(bp);
+	bnxt_free_int(bp);
 	bnxt_shutdown_nic(bp);
 	bp->dev_stopped = 1;
 }
@@ -580,8 +647,7 @@ static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	bnxt_hwrm_set_filter(bp, vnic, filter);
 }
 
-static int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
-			       int wait_to_complete)
+int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 {
 	int rc = 0;
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
@@ -599,21 +665,20 @@ static int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
 				"Failed to retrieve link rc = 0x%x!", rc);
 			goto out;
 		}
-		if (!wait_to_complete)
-			break;
-
 		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
 
+		if (!wait_to_complete)
+			break;
 	} while (!new.link_status && cnt--);
 
-	/* Timed out or success */
-	if (new.link_status) {
-		/* Update only if success */
-		eth_dev->data->dev_link.link_duplex = new.link_duplex;
-		eth_dev->data->dev_link.link_speed = new.link_speed;
-	}
-	eth_dev->data->dev_link.link_status = new.link_status;
 out:
+	/* Timed out or success */
+	if (new.link_status != eth_dev->data->dev_link.link_status ||
+	new.link_speed != eth_dev->data->dev_link.link_speed) {
+		rte_bnxt_atomic_write_link_status(eth_dev, &new);
+		bnxt_print_link_info(eth_dev);
+	}
+
 	return rc;
 }
 
@@ -723,6 +788,11 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 	}
 	/* EW - need to revisit here copying from u64 to u16 */
 	memcpy(reta_conf, vnic->rss_table, reta_size);
+
+	if (rte_intr_allow_others(&eth_dev->pci_dev->intr_handle)) {
+		if (eth_dev->data->dev_conf.intr_conf.lsc != 0)
+			bnxt_dev_lsc_intr_setup(eth_dev);
+	}
 
 	return 0;
 }
@@ -1122,7 +1192,7 @@ static struct eth_driver bnxt_rte_pmd = {
 	.pci_drv = {
 		    .id_table = bnxt_pci_id_map,
 		    .drv_flags = RTE_PCI_DRV_NEED_MAPPING |
-			    RTE_PCI_DRV_DETACHABLE,
+			    RTE_PCI_DRV_DETACHABLE | RTE_PCI_DRV_INTR_LSC,
 		    .probe = rte_eth_dev_pci_probe,
 		    .remove = rte_eth_dev_pci_remove
 		    },

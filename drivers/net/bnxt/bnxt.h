@@ -95,7 +95,7 @@ struct bnxt_pf_info {
 #define BNXT_LINK_WAIT_CNT	10
 #define BNXT_LINK_WAIT_INTERVAL	100
 struct bnxt_link_info {
-	uint8_t			phy_flags;
+	uint32_t		phy_flags;
 	uint8_t			mac_type;
 	uint8_t			phy_link_status;
 	uint8_t			loop_back;
@@ -159,6 +159,8 @@ struct bnxt {
 #define MAX_FF_POOLS	ETH_64_POOLS
 	STAILQ_HEAD(, bnxt_vnic_info)	ff_pool[MAX_FF_POOLS];
 
+	struct bnxt_irq         *irq_tbl;
+
 #define MAX_NUM_MAC_ADDR	32
 	uint8_t			mac_addr[ETHER_ADDR_LEN];
 
@@ -177,5 +179,7 @@ struct bnxt {
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;
 };
+
+int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 
 #endif

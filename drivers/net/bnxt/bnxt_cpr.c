@@ -42,28 +42,23 @@
 /*
  * Async event handling
  */
-void bnxt_handle_async_event(struct bnxt *bp __rte_unused,
+void bnxt_handle_async_event(struct bnxt *bp,
 			     struct cmpl_base *cmp)
 {
 	struct hwrm_async_event_cmpl *async_cmp =
 				(struct hwrm_async_event_cmpl *)cmp;
+	uint16_t event_id = rte_le_to_cpu_16(async_cmp->event_id);
 
 	/* TODO: HWRM async events are not defined yet */
 	/* Needs to handle: link events, error events, etc. */
-	switch (async_cmp->event_id) {
-	case 0:
-		/* Assume LINK_CHANGE == 0 */
-		RTE_LOG(INFO, PMD, "Link change event\n");
-
-		/* Can just prompt the update_op routine to do a qcfg
-		 * instead of doing the actual qcfg
-		 */
-		break;
-	case 1:
+	switch (event_id) {
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_STATUS_CHANGE:
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CHANGE:
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_SPEED_CFG_CHANGE:
+		bnxt_link_update_op(bp->eth_dev, 0);
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "handle_async_event id = 0x%x\n",
-			async_cmp->event_id);
+		RTE_LOG(ERR, PMD, "handle_async_event id = 0x%x\n", event_id);
 		break;
 	}
 }
