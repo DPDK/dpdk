@@ -60,7 +60,7 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		       uint16_t queue_idx,
 		       uint16_t nb_desc,
 		       unsigned int socket_id,
-		       const struct rte_eth_rxconf *rx_conf,
+		       __rte_unused const struct rte_eth_rxconf *rx_conf,
 		       struct rte_mempool *mp)
 {
 	uint16_t j, idx;
@@ -85,7 +85,6 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->mb_pool = mp;
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
-	rxq->crc_len = (uint8_t)((dev->data->dev_conf.rxmode.hw_strip_crc) ? 0 : ETHER_CRC_LEN);
 
 	rxq->nb_rx_pages = 1;
 	while (USABLE_RX_BD(rxq) < nb_desc)
@@ -95,13 +94,9 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	sc->rx_ring_size = USABLE_RX_BD(rxq);
 	rxq->nb_cq_pages = RCQ_BD_PAGES(rxq);
 
-	rxq->rx_free_thresh = rx_conf->rx_free_thresh ?
-		rx_conf->rx_free_thresh : DEFAULT_RX_FREE_THRESH;
-
-	PMD_INIT_LOG(DEBUG, "fp[%02d] req_bd=%u, thresh=%u, usable_bd=%lu, "
+	PMD_INIT_LOG(DEBUG, "fp[%02d] req_bd=%u, usable_bd=%lu, "
 		       "total_bd=%lu, rx_pages=%u, cq_pages=%u",
-		       queue_idx, nb_desc, rxq->rx_free_thresh,
-		       (unsigned long)USABLE_RX_BD(rxq),
+		       queue_idx, nb_desc, (unsigned long)USABLE_RX_BD(rxq),
 		       (unsigned long)TOTAL_RX_BD(rxq), rxq->nb_rx_pages,
 		       rxq->nb_cq_pages);
 
@@ -136,7 +131,6 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* Initialize software ring entries */
-	rxq->rx_mbuf_alloc = 0;
 	for (idx = 0; idx < rxq->nb_rx_desc; idx = NEXT_RX_BD(idx)) {
 		mbuf = rte_mbuf_raw_alloc(mp);
 		if (NULL == mbuf) {
@@ -147,7 +141,6 @@ bnx2x_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		}
 		rxq->sw_ring[idx] = mbuf;
 		rxq->rx_ring[idx] = mbuf->buf_physaddr;
-		rxq->rx_mbuf_alloc++;
 	}
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;

@@ -11,8 +11,6 @@
 #ifndef _BNX2X_RXTX_H_
 #define _BNX2X_RXTX_H_
 
-
-#define DEFAULT_RX_FREE_THRESH   0
 #define DEFAULT_TX_FREE_THRESH   512
 #define RTE_PMD_BNX2X_TX_MAX_BURST 1
 
@@ -42,13 +40,9 @@ struct bnx2x_rx_queue {
 	uint16_t                   rx_bd_tail;           /**< Index of last rx bd. */
 	uint16_t                   rx_cq_head;           /**< Index of current rcq bd. */
 	uint16_t                   rx_cq_tail;           /**< Index of last rcq bd. */
-	uint16_t                   nb_rx_hold;           /**< number of held free RX desc. */
-	uint16_t                   rx_free_thresh;       /**< max free RX desc to hold. */
 	uint16_t                   queue_id;             /**< RX queue index. */
 	uint8_t                    port_id;              /**< Device port identifier. */
-	uint8_t                    crc_len;              /**< 0 if CRC stripped, 4 otherwise. */
 	struct bnx2x_softc           *sc;                  /**< Ptr to dev_private data. */
-	uint64_t                   rx_mbuf_alloc;        /**< Number of allocated mbufs. */
 };
 
 /**
