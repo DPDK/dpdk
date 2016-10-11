@@ -203,8 +203,6 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 	/* Print important adapter info for the user. */
 	bnx2x_print_adapter_info(sc);
 
-	DELAY_MS(2500);
-
 	return ret;
 }
 
