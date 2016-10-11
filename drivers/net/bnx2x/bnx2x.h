@@ -1414,33 +1414,94 @@ struct bnx2x_func_init_params {
 #define BAR1 2
 #define BAR2 4
 
+static inline void
+bnx2x_reg_write8(struct bnx2x_softc *sc, size_t offset, uint8_t val)
+{
+	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%02x",
+			       (unsigned long)offset, val);
+	*((volatile uint8_t*)
+	  ((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val;
+}
+
+static inline void
+bnx2x_reg_write16(struct bnx2x_softc *sc, size_t offset, uint16_t val)
+{
 #ifdef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
-uint8_t bnx2x_reg_read8(struct bnx2x_softc *sc, size_t offset);
-uint16_t bnx2x_reg_read16(struct bnx2x_softc *sc, size_t offset);
-uint32_t bnx2x_reg_read32(struct bnx2x_softc *sc, size_t offset);
-
-void bnx2x_reg_write8(struct bnx2x_softc *sc, size_t offset, uint8_t val);
-void bnx2x_reg_write16(struct bnx2x_softc *sc, size_t offset, uint16_t val);
-void bnx2x_reg_write32(struct bnx2x_softc *sc, size_t offset, uint32_t val);
-#else
-#define bnx2x_reg_write8(sc, offset, val)\
-	*((volatile uint8_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val
-
-#define bnx2x_reg_write16(sc, offset, val)\
-	*((volatile uint16_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val
-
-#define bnx2x_reg_write32(sc, offset, val)\
-	*((volatile uint32_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val
-
-#define bnx2x_reg_read8(sc, offset)\
-	(*((volatile uint8_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)))
-
-#define bnx2x_reg_read16(sc, offset)\
-	(*((volatile uint16_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)))
-
-#define bnx2x_reg_read32(sc, offset)\
-	(*((volatile uint32_t*)((uintptr_t)sc->bar[BAR0].base_addr + offset)))
+	if ((offset % 2) != 0)
+		PMD_DRV_LOG(NOTICE, "Unaligned 16-bit write to 0x%08lx",
+			    (unsigned long)offset);
 #endif
+	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%04x",
+			       (unsigned long)offset, val);
+	*((volatile uint16_t*)
+	  ((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val;
+}
+
+static inline void
+bnx2x_reg_write32(struct bnx2x_softc *sc, size_t offset, uint32_t val)
+{
+#ifdef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
+	if ((offset % 4) != 0)
+		PMD_DRV_LOG(NOTICE, "Unaligned 32-bit write to 0x%08lx",
+			    (unsigned long)offset);
+#endif
+
+	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x",
+			       (unsigned long)offset, val);
+	*((volatile uint32_t*)
+	  ((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val;
+}
+
+static inline uint8_t
+bnx2x_reg_read8(struct bnx2x_softc *sc, size_t offset)
+{
+	uint8_t val;
+
+	val = (uint8_t)(*((volatile uint8_t*)
+			  ((uintptr_t)sc->bar[BAR0].base_addr + offset)));
+	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%02x",
+			       (unsigned long)offset, val);
+
+	return val;
+}
+
+static inline uint16_t
+bnx2x_reg_read16(struct bnx2x_softc *sc, size_t offset)
+{
+	uint16_t val;
+
+#ifdef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
+	if ((offset % 2) != 0)
+		PMD_DRV_LOG(NOTICE, "Unaligned 16-bit read from 0x%08lx",
+			    (unsigned long)offset);
+#endif
+
+	val = (uint16_t)(*((volatile uint16_t*)
+			   ((uintptr_t)sc->bar[BAR0].base_addr + offset)));
+	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x",
+			       (unsigned long)offset, val);
+
+	return val;
+}
+
+static inline uint32_t
+bnx2x_reg_read32(struct bnx2x_softc *sc, size_t offset)
+{
+	uint32_t val;
+
+#ifdef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
+	if ((offset % 4) != 0)
+		PMD_DRV_LOG(NOTICE, "Unaligned 32-bit read from 0x%08lx",
+			    (unsigned long)offset);
+#endif
+
+	val = (uint32_t)(*((volatile uint32_t*)
+			   ((uintptr_t)sc->bar[BAR0].base_addr + offset)));
+	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x",
+			       (unsigned long)offset, val);
+
+	return val;
+}
 
 #define REG_ADDR(sc, offset) (((uint64_t)sc->bar[BAR0].base_addr) + (offset))
 
