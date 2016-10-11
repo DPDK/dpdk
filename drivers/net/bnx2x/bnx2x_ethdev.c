@@ -575,6 +575,8 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 			eth_dev->data->port_id, pci_dev->id.vendor_id, pci_dev->id.device_id);
 
 	if (IS_VF(sc)) {
+		rte_spinlock_init(&sc->vf2pf_lock);
+
 		if (bnx2x_dma_alloc(sc, sizeof(struct bnx2x_vf_mbx_msg),
 				    &sc->vf2pf_mbox_mapping, "vf2pf_mbox",
 				    RTE_CACHE_LINE_SIZE) != 0)

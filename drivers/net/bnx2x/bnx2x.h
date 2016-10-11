@@ -17,6 +17,7 @@
 #define __BNX2X_H__
 
 #include <rte_byteorder.h>
+#include <rte_spinlock.h>
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #ifndef __LITTLE_ENDIAN
@@ -1028,12 +1029,13 @@ struct bnx2x_softc {
 	struct bnx2x_mac_ops mac_ops;
 
 	/* structures for VF mbox/response/bulletin */
-	struct bnx2x_vf_mbx_msg	*vf2pf_mbox;
-	struct bnx2x_dma		vf2pf_mbox_mapping;
-	struct vf_acquire_resp_tlv acquire_resp;
+	struct bnx2x_vf_mbx_msg		*vf2pf_mbox;
+	struct bnx2x_dma		 vf2pf_mbox_mapping;
+	struct vf_acquire_resp_tlv	 acquire_resp;
 	struct bnx2x_vf_bulletin	*pf2vf_bulletin;
-	struct bnx2x_dma		pf2vf_bulletin_mapping;
-	struct bnx2x_vf_bulletin	old_bulletin;
+	struct bnx2x_dma		 pf2vf_bulletin_mapping;
+	struct bnx2x_vf_bulletin	 old_bulletin;
+	rte_spinlock_t			 vf2pf_lock;
 
 	int             media;
 

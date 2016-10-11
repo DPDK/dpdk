@@ -78,10 +78,13 @@ bnx2x_add_tlv(__rte_unused struct bnx2x_softc *sc, void *tlvs_list,
 
 /* Initiliaze header of the first tlv and clear mailbox*/
 static void
-bnx2x_init_first_tlv(struct bnx2x_softc *sc, struct vf_first_tlv *first_tlv,
-	uint16_t type, uint16_t length)
+bnx2x_vf_prep(struct bnx2x_softc *sc, struct vf_first_tlv *first_tlv,
+	      uint16_t type, uint16_t length)
 {
 	struct bnx2x_vf_mbx_msg *mbox = sc->vf2pf_mbox;
+
+	rte_spinlock_lock(&sc->vf2pf_lock);
+
 	PMD_DRV_LOG(DEBUG, "Preparing %d tlv for sending", type);
 
 	memset(mbox, 0, sizeof(struct bnx2x_vf_mbx_msg));
@@ -90,6 +93,17 @@ bnx2x_init_first_tlv(struct bnx2x_softc *sc, struct vf_first_tlv *first_tlv,
 
 	/* Initialize header of the first tlv */
 	first_tlv->reply_offset = sizeof(mbox->query);
+}
+
+/* releases the mailbox */
+static void
+bnx2x_vf_finalize(struct bnx2x_softc *sc,
+		  __rte_unused struct vf_first_tlv *first_tlv)
+{
+	PMD_DRV_LOG(DEBUG, "done sending [%d] tlv over vf pf channel",
+		    first_tlv->tl.type);
+
+	rte_spinlock_unlock(&sc->vf2pf_lock);
 }
 
 #define BNX2X_VF_CMD_ADDR_LO PXP_VF_ADDR_CSDM_GLOBAL_START
@@ -244,13 +258,16 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 	struct vf_acquire_tlv *acq = &sc->vf2pf_mbox->query[0].acquire;
 	int vf_id;
 	struct bnx2x_obtain_status obtain_status;
+	int rc = 0;
 
 	bnx2x_vf_close(sc);
-	bnx2x_init_first_tlv(sc, &acq->first_tlv, BNX2X_VF_TLV_ACQUIRE, sizeof(*acq));
+	bnx2x_vf_prep(sc, &acq->first_tlv, BNX2X_VF_TLV_ACQUIRE, sizeof(*acq));
 
 	vf_id = bnx2x_read_vf_id(sc);
-	if (vf_id < 0)
-		return -EAGAIN;
+	if (vf_id < 0) {
+		rc = -EAGAIN;
+		goto out;
+	}
 
 	acq->vf_id = vf_id;
 
@@ -274,8 +291,10 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 
 	/* requesting the resources in loop */
 	obtain_status = bnx2x_loop_obtain_resources(sc);
-	if (!obtain_status.success)
-		return obtain_status.err_code;
+	if (!obtain_status.success) {
+		rc = obtain_status.err_code;
+		goto out;
+	}
 
 	struct vf_acquire_resp_tlv sc_resp = sc->acquire_resp;
 
@@ -306,7 +325,10 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 	else
 		eth_random_addr(sc->link_params.mac_addr);
 
-	return 0;
+out:
+	bnx2x_vf_finalize(sc, &acq->first_tlv);
+
+	return rc;
 }
 
 /* Ask PF to release VF's resources */
@@ -319,8 +341,8 @@ bnx2x_vf_close(struct bnx2x_softc *sc)
 
 	if (vf_id >= 0) {
 		query = &sc->vf2pf_mbox->query[0].release;
-		bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_RELEASE,
-				sizeof(*query));
+		bnx2x_vf_prep(sc, &query->first_tlv, BNX2X_VF_TLV_RELEASE,
+			      sizeof(*query));
 
 		query->vf_id = vf_id;
 		bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
@@ -330,6 +352,8 @@ bnx2x_vf_close(struct bnx2x_softc *sc)
 		bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 		if (reply->status != BNX2X_VF_STATUS_SUCCESS)
 			PMD_DRV_LOG(ERR, "Failed to release VF");
+
+		bnx2x_vf_finalize(sc, &query->first_tlv);
 	}
 }
 
@@ -339,11 +363,11 @@ bnx2x_vf_init(struct bnx2x_softc *sc)
 {
 	struct vf_init_tlv *query;
 	struct vf_common_reply_tlv *reply = &sc->vf2pf_mbox->resp.common_reply;
-	int i;
+	int i, rc = 0;
 
 	query = &sc->vf2pf_mbox->query[0].init;
-	bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_INIT,
-			sizeof(*query));
+	bnx2x_vf_prep(sc, &query->first_tlv, BNX2X_VF_TLV_INIT,
+		      sizeof(*query));
 
 	FOR_EACH_QUEUE(sc, i) {
 		query->sb_addr[i] = (unsigned long)(sc->fp[i].sb_dma.paddr);
@@ -360,11 +384,14 @@ bnx2x_vf_init(struct bnx2x_softc *sc)
 	bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to init VF");
-		return -EINVAL;
+		rc = -EINVAL;
+		goto out;
 	}
 
 	PMD_DRV_LOG(DEBUG, "VF was initialized");
-	return 0;
+out:
+	bnx2x_vf_finalize(sc, &query->first_tlv);
+	return rc;
 }
 
 void
@@ -379,9 +406,9 @@ bnx2x_vf_unload(struct bnx2x_softc *sc)
 	if (vf_id > 0) {
 		FOR_EACH_QUEUE(sc, i) {
 			query_op = &sc->vf2pf_mbox->query[0].q_op;
-			bnx2x_init_first_tlv(sc, &query_op->first_tlv,
-					BNX2X_VF_TLV_TEARDOWN_Q,
-					sizeof(*query_op));
+			bnx2x_vf_prep(sc, &query_op->first_tlv,
+				      BNX2X_VF_TLV_TEARDOWN_Q,
+				      sizeof(*query_op));
 
 			query_op->vf_qid = i;
 
@@ -394,13 +421,15 @@ bnx2x_vf_unload(struct bnx2x_softc *sc)
 			if (reply->status != BNX2X_VF_STATUS_SUCCESS)
 				PMD_DRV_LOG(ERR,
 					    "Bad reply for vf_q %d teardown", i);
+
+			bnx2x_vf_finalize(sc, &query_op->first_tlv);
 		}
 
 		bnx2x_vf_set_mac(sc, false);
 
 		query = &sc->vf2pf_mbox->query[0].close;
-		bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_CLOSE,
-				sizeof(*query));
+		bnx2x_vf_prep(sc, &query->first_tlv, BNX2X_VF_TLV_CLOSE,
+			      sizeof(*query));
 
 		query->vf_id = vf_id;
 
@@ -412,6 +441,8 @@ bnx2x_vf_unload(struct bnx2x_softc *sc)
 		if (reply->status != BNX2X_VF_STATUS_SUCCESS)
 			PMD_DRV_LOG(ERR,
 				    "Bad reply from PF for close message");
+
+		bnx2x_vf_finalize(sc, &query->first_tlv);
 	}
 }
 
@@ -476,10 +507,11 @@ bnx2x_vf_setup_queue(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp, int lead
 	struct vf_setup_q_tlv *query;
 	struct vf_common_reply_tlv *reply = &sc->vf2pf_mbox->resp.common_reply;
 	uint16_t flags = bnx2x_vf_q_flags(leading);
+	int rc = 0;
 
 	query = &sc->vf2pf_mbox->query[0].setup_q;
-	bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_SETUP_Q,
-			sizeof(*query));
+	bnx2x_vf_prep(sc, &query->first_tlv, BNX2X_VF_TLV_SETUP_Q,
+		      sizeof(*query));
 
 	query->vf_qid = fp->index;
 	query->param_valid = VF_RXQ_VALID | VF_TXQ_VALID;
@@ -495,10 +527,12 @@ bnx2x_vf_setup_queue(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp, int lead
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to setup VF queue[%d]",
 				 fp->index);
-		return -EINVAL;
+		rc = -EINVAL;
 	}
 
-	return 0;
+	bnx2x_vf_finalize(sc, &query->first_tlv);
+
+	return rc;
 }
 
 int
@@ -506,9 +540,10 @@ bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set)
 {
 	struct vf_set_q_filters_tlv *query;
 	struct vf_common_reply_tlv *reply;
+	int rc = 0;
 
 	query = &sc->vf2pf_mbox->query[0].set_q_filters;
-	bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_SET_Q_FILTERS,
+	bnx2x_vf_prep(sc, &query->first_tlv, BNX2X_VF_TLV_SET_Q_FILTERS,
 			sizeof(*query));
 
 	query->vf_qid = sc->fp->index;
@@ -543,10 +578,12 @@ bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set)
 	if (BNX2X_VF_STATUS_SUCCESS != reply->status) {
 		PMD_DRV_LOG(ERR, "Bad reply from PF for SET MAC message: %d",
 				reply->status);
-		return -EINVAL;
+		rc = -EINVAL;
 	}
 
-	return 0;
+	bnx2x_vf_finalize(sc, &query->first_tlv);
+
+	return rc;
 }
 
 int
@@ -555,10 +592,11 @@ bnx2x_vf_config_rss(struct bnx2x_softc *sc,
 {
 	struct vf_rss_tlv *query;
 	struct vf_common_reply_tlv *reply = &sc->vf2pf_mbox->resp.common_reply;
+	int rc = 0;
 
 	query = &sc->vf2pf_mbox->query[0].update_rss;
 
-	bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_UPDATE_RSS,
+	bnx2x_vf_prep(sc, &query->first_tlv, BNX2X_VF_TLV_UPDATE_RSS,
 			sizeof(*query));
 
 	/* add list termination tlv */
@@ -578,10 +616,12 @@ bnx2x_vf_config_rss(struct bnx2x_softc *sc,
 	bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to configure RSS");
-		return -EINVAL;
+		rc = -EINVAL;
 	}
 
-	return 0;
+	bnx2x_vf_finalize(sc, &query->first_tlv);
+
+	return rc;
 }
 
 int
@@ -589,9 +629,10 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 {
 	struct vf_set_q_filters_tlv *query;
 	struct vf_common_reply_tlv *reply = &sc->vf2pf_mbox->resp.common_reply;
+	int rc = 0;
 
 	query = &sc->vf2pf_mbox->query[0].set_q_filters;
-	bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_SET_Q_FILTERS,
+	bnx2x_vf_prep(sc, &query->first_tlv, BNX2X_VF_TLV_SET_Q_FILTERS,
 			sizeof(*query));
 
 	query->vf_qid = 0;
@@ -618,7 +659,8 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "BAD rx mode (%d)", sc->rx_mode);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto out;
 	}
 
 	bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
@@ -628,8 +670,11 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 	bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to set RX mode");
-		return -EINVAL;
+		rc = -EINVAL;
 	}
 
-	return 0;
+out:
+	bnx2x_vf_finalize(sc, &query->first_tlv);
+
+	return rc;
 }
