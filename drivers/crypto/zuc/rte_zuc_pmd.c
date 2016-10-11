@@ -445,7 +445,7 @@ zuc_pmd_dequeue_burst(void *queue_pair,
 	return nb_dequeued;
 }
 
-static int cryptodev_zuc_uninit(const char *name);
+static int cryptodev_zuc_remove(const char *name);
 
 static int
 cryptodev_zuc_create(const char *name,
@@ -499,12 +499,12 @@ cryptodev_zuc_create(const char *name,
 init_error:
 	ZUC_LOG_ERR("driver %s: cryptodev_zuc_create failed", name);
 
-	cryptodev_zuc_uninit(crypto_dev_name);
+	cryptodev_zuc_remove(crypto_dev_name);
 	return -EFAULT;
 }
 
 static int
-cryptodev_zuc_init(const char *name,
+cryptodev_zuc_probe(const char *name,
 		const char *input_args)
 {
 	struct rte_crypto_vdev_init_params init_params = {
@@ -526,7 +526,7 @@ cryptodev_zuc_init(const char *name,
 }
 
 static int
-cryptodev_zuc_uninit(const char *name)
+cryptodev_zuc_remove(const char *name)
 {
 	if (name == NULL)
 		return -EINVAL;
@@ -539,8 +539,8 @@ cryptodev_zuc_uninit(const char *name)
 }
 
 static struct rte_vdev_driver cryptodev_zuc_pmd_drv = {
-	.probe = cryptodev_zuc_init,
-	.remove = cryptodev_zuc_uninit
+	.probe = cryptodev_zuc_probe,
+	.remove = cryptodev_zuc_remove
 };
 
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_ZUC_PMD, cryptodev_zuc_pmd_drv);
