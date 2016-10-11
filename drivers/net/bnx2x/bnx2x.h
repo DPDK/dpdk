@@ -304,10 +304,7 @@ struct bnx2x_device_type {
 /* TCP with Timestamp Option (32) + IPv6 (40) */
 
 /* max supported alignment is 256 (8 shift) */
-#define BNX2X_RX_ALIGN_SHIFT 8
-/* FW uses 2 cache lines alignment for start packet and size  */
-#define BNX2X_FW_RX_ALIGN_START (1 << BNX2X_RX_ALIGN_SHIFT)
-#define BNX2X_FW_RX_ALIGN_END   (1 << BNX2X_RX_ALIGN_SHIFT)
+#define BNX2X_RX_ALIGN_SHIFT	RTE_MAX(6, min(8, RTE_CACHE_LINE_SIZE_LOG2))
 
 #define BNX2X_PXP_DRAM_ALIGN (BNX2X_RX_ALIGN_SHIFT - 5)
 
