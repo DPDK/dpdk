@@ -60,6 +60,7 @@ static enum rte_cryptodev_type gbl_cryptodev_type;
 
 struct crypto_testsuite_params {
 	struct rte_mempool *mbuf_pool;
+	struct rte_mempool *large_mbuf_pool;
 	struct rte_mempool *op_mpool;
 	struct rte_cryptodev_config conf;
 	struct rte_cryptodev_qp_conf qp_conf;
@@ -169,10 +170,25 @@ testsuite_setup(void)
 		/* Not already created so create */
 		ts_params->mbuf_pool = rte_pktmbuf_pool_create(
 				"CRYPTO_MBUFPOOL",
-				NUM_MBUFS, MBUF_CACHE_SIZE, 0, UINT16_MAX,
+				NUM_MBUFS, MBUF_CACHE_SIZE, 0, MBUF_SIZE,
 				rte_socket_id());
 		if (ts_params->mbuf_pool == NULL) {
 			RTE_LOG(ERR, USER1, "Can't create CRYPTO_MBUFPOOL\n");
+			return TEST_FAILED;
+		}
+	}
+
+	ts_params->large_mbuf_pool = rte_mempool_lookup(
+			"CRYPTO_LARGE_MBUFPOOL");
+	if (ts_params->large_mbuf_pool == NULL) {
+		/* Not already created so create */
+		ts_params->large_mbuf_pool = rte_pktmbuf_pool_create(
+				"CRYPTO_LARGE_MBUFPOOL",
+				1, 0, 0, UINT16_MAX,
+				rte_socket_id());
+		if (ts_params->large_mbuf_pool == NULL) {
+			RTE_LOG(ERR, USER1,
+				"Can't create CRYPTO_LARGE_MBUFPOOL\n");
 			return TEST_FAILED;
 		}
 	}
@@ -5149,7 +5165,12 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 	if (retval < 0)
 		return retval;
 
-	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	if (tdata->aad.len > MBUF_SIZE)
+		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->large_mbuf_pool);
+	else
+		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
+			"Failed to allocate input buffer in mempool");
 
 	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
 			rte_pktmbuf_tailroom(ut_params->ibuf));
@@ -5233,7 +5254,12 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 	if (retval < 0)
 		return retval;
 
-	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	if (tdata->aad.len > MBUF_SIZE)
+		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->large_mbuf_pool);
+	else
+		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
+			"Failed to allocate input buffer in mempool");
 
 	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
 			rte_pktmbuf_tailroom(ut_params->ibuf));
