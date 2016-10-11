@@ -186,31 +186,23 @@ static inline int bnx2x_read_vf_id(struct bnx2x_softc *sc)
 #define BNX2X_VF_OBTAIN_MAC_FILTERS 1
 #define BNX2X_VF_OBTAIN_MC_FILTERS 10
 
-struct bnx2x_obtain_status {
-	int success;
-	int err_code;
-};
-
 static
-struct bnx2x_obtain_status bnx2x_loop_obtain_resources(struct bnx2x_softc *sc)
+int bnx2x_loop_obtain_resources(struct bnx2x_softc *sc)
 {
-	int tries = 0;
 	struct vf_acquire_resp_tlv *resp = &sc->vf2pf_mbox->resp.acquire_resp,
-								 *sc_resp = &sc->acquire_resp;
-	struct vf_resource_query    *res_query;
-	struct vf_resc            *resc;
-	struct bnx2x_obtain_status     status;
+				   *sc_resp = &sc->acquire_resp;
+	struct vf_resource_query   *res_query;
+	struct vf_resc		   *resc;
 	int res_obtained = false;
+	int tries = 0;
+	int rc;
 
 	do {
 		PMD_DRV_LOG(DEBUG, "trying to get resources");
 
-		if (bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr)) {
-			/* timeout */
-			status.success = 0;
-			status.err_code = -EAGAIN;
-			return status;
-		}
+		rc = bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
+		if (rc)
+			return rc;
 
 		memcpy(sc_resp, resp, sizeof(sc->acquire_resp));
 
@@ -221,12 +213,12 @@ struct bnx2x_obtain_status bnx2x_loop_obtain_resources(struct bnx2x_softc *sc)
 			PMD_DRV_LOG(DEBUG, "resources obtained successfully");
 			res_obtained = true;
 		} else if (sc_resp->status == BNX2X_VF_STATUS_NO_RESOURCES &&
-			tries < BNX2X_VF_OBTAIN_MAX_TRIES) {
+			   tries < BNX2X_VF_OBTAIN_MAX_TRIES) {
 			PMD_DRV_LOG(DEBUG,
 			   "PF cannot allocate requested amount of resources");
 
 			res_query = &sc->vf2pf_mbox->query[0].acquire.res_query;
-			resc     = &sc_resp->resc;
+			resc      = &sc_resp->resc;
 
 			/* PF refused our request. Try to decrease request params */
 			res_query->num_txqs         = min(res_query->num_txqs, resc->num_txqs);
@@ -238,24 +230,21 @@ struct bnx2x_obtain_status bnx2x_loop_obtain_resources(struct bnx2x_softc *sc)
 
 			memset(&sc->vf2pf_mbox->resp, 0, sizeof(union resp_tlvs));
 		} else {
-			PMD_DRV_LOG(ERR, "Resources cannot be obtained. Status of handling: %d. Aborting",
-					sc_resp->status);
-			status.success = 0;
-			status.err_code = -EAGAIN;
-			return status;
+			PMD_DRV_LOG(ERR, "Failed to get the requested "
+					 "amount of resources: %d.",
+					 sc_resp->status);
+			return -EINVAL;
 		}
 	} while (!res_obtained);
 
-	status.success = 1;
-	return status;
+	return 0;
 }
 
 int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_count)
 {
 	struct vf_acquire_tlv *acq = &sc->vf2pf_mbox->query[0].acquire;
 	int vf_id;
-	struct bnx2x_obtain_status obtain_status;
-	int rc = 0;
+	int rc;
 
 	bnx2x_vf_close(sc);
 	bnx2x_vf_prep(sc, &acq->first_tlv, BNX2X_VF_TLV_ACQUIRE, sizeof(*acq));
@@ -287,11 +276,9 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 		      sizeof(struct channel_list_end_tlv));
 
 	/* requesting the resources in loop */
-	obtain_status = bnx2x_loop_obtain_resources(sc);
-	if (!obtain_status.success) {
-		rc = obtain_status.err_code;
+	rc = bnx2x_loop_obtain_resources(sc);
+	if (rc)
 		goto out;
-	}
 
 	struct vf_acquire_resp_tlv sc_resp = sc->acquire_resp;
 
