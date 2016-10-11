@@ -1586,26 +1586,6 @@ static elink_status_t elink_emac_enable(struct elink_params *params,
 	/* enable emac and not bmac */
 	REG_WR(sc, NIG_REG_EGRESS_EMAC0_PORT + port * 4, 1);
 
-#ifdef ELINK_INCLUDE_EMUL
-	/* for paladium */
-	if (CHIP_REV_IS_EMUL(sc)) {
-		/* Use lane 1 (of lanes 0-3) */
-		REG_WR(sc, NIG_REG_XGXS_LANE_SEL_P0 + port * 4, 1);
-		REG_WR(sc, NIG_REG_XGXS_SERDES0_MODE_SEL + port * 4, 1);
-	}
-	/* for fpga */
-	else
-#endif
-#ifdef ELINK_INCLUDE_FPGA
-	if (CHIP_REV_IS_FPGA(sc)) {
-		/* Use lane 1 (of lanes 0-3) */
-		PMD_DRV_LOG(DEBUG, "elink_emac_enable: Setting FPGA");
-
-		REG_WR(sc, NIG_REG_XGXS_LANE_SEL_P0 + port * 4, 1);
-		REG_WR(sc, NIG_REG_XGXS_SERDES0_MODE_SEL + port * 4, 0);
-	} else
-#endif
-		/* ASIC */
 	if (vars->phy_flags & PHY_XGXS_FLAG) {
 		uint32_t ser_lane = ((params->lane_config &
 				      PORT_HW_CFG_LANE_SWAP_CFG_MASTER_MASK) >>
@@ -1628,39 +1608,28 @@ static elink_status_t elink_emac_enable(struct elink_params *params,
 	elink_bits_en(sc, emac_base + EMAC_REG_EMAC_TX_MODE,
 		      EMAC_TX_MODE_RESET);
 
-#if defined(ELINK_INCLUDE_EMUL) || defined(ELINK_INCLUDE_FPGA)
-	if (CHIP_REV_IS_SLOW(sc)) {
-		/* config GMII mode */
-		val = REG_RD(sc, emac_base + EMAC_REG_EMAC_MODE);
-		elink_cb_reg_write(sc, emac_base + EMAC_REG_EMAC_MODE,
-				   (val | EMAC_MODE_PORT_GMII));
-	} else {		/* ASIC */
-#endif
-		/* pause enable/disable */
-		elink_bits_dis(sc, emac_base + EMAC_REG_EMAC_RX_MODE,
-			       EMAC_RX_MODE_FLOW_EN);
+	/* pause enable/disable */
+	elink_bits_dis(sc, emac_base + EMAC_REG_EMAC_RX_MODE,
+		       EMAC_RX_MODE_FLOW_EN);
 
-		elink_bits_dis(sc, emac_base + EMAC_REG_EMAC_TX_MODE,
-			       (EMAC_TX_MODE_EXT_PAUSE_EN |
-				EMAC_TX_MODE_FLOW_EN));
-		if (!(params->feature_config_flags &
-		      ELINK_FEATURE_CONFIG_PFC_ENABLED)) {
-			if (vars->flow_ctrl & ELINK_FLOW_CTRL_RX)
-				elink_bits_en(sc, emac_base +
-					      EMAC_REG_EMAC_RX_MODE,
-					      EMAC_RX_MODE_FLOW_EN);
+	elink_bits_dis(sc, emac_base + EMAC_REG_EMAC_TX_MODE,
+		       (EMAC_TX_MODE_EXT_PAUSE_EN |
+			EMAC_TX_MODE_FLOW_EN));
+	if (!(params->feature_config_flags &
+	      ELINK_FEATURE_CONFIG_PFC_ENABLED)) {
+		if (vars->flow_ctrl & ELINK_FLOW_CTRL_RX)
+			elink_bits_en(sc, emac_base +
+				      EMAC_REG_EMAC_RX_MODE,
+				      EMAC_RX_MODE_FLOW_EN);
 
-			if (vars->flow_ctrl & ELINK_FLOW_CTRL_TX)
-				elink_bits_en(sc, emac_base +
-					      EMAC_REG_EMAC_TX_MODE,
-					      (EMAC_TX_MODE_EXT_PAUSE_EN |
-					       EMAC_TX_MODE_FLOW_EN));
-		} else
-			elink_bits_en(sc, emac_base + EMAC_REG_EMAC_TX_MODE,
-				      EMAC_TX_MODE_FLOW_EN);
-#if defined(ELINK_INCLUDE_EMUL) || defined(ELINK_INCLUDE_FPGA)
-	}
-#endif
+		if (vars->flow_ctrl & ELINK_FLOW_CTRL_TX)
+			elink_bits_en(sc, emac_base +
+				      EMAC_REG_EMAC_TX_MODE,
+				      (EMAC_TX_MODE_EXT_PAUSE_EN |
+				       EMAC_TX_MODE_FLOW_EN));
+	} else
+		elink_bits_en(sc, emac_base + EMAC_REG_EMAC_TX_MODE,
+			      EMAC_TX_MODE_FLOW_EN);
 
 	/* KEEP_VLAN_TAG, promiscuous */
 	val = REG_RD(sc, emac_base + EMAC_REG_EMAC_RX_MODE);
@@ -1727,17 +1696,7 @@ static elink_status_t elink_emac_enable(struct elink_params *params,
 	REG_WR(sc, NIG_REG_EMAC0_PAUSE_OUT_EN + port * 4, val);
 	REG_WR(sc, NIG_REG_EGRESS_EMAC0_OUT_EN + port * 4, 0x1);
 
-#ifdef ELINK_INCLUDE_EMUL
-	if (CHIP_REV_IS_EMUL(sc)) {
-		/* Take the BigMac out of reset */
-		REG_WR(sc, GRCBASE_MISC + MISC_REGISTERS_RESET_REG_2_SET,
-		       (MISC_REGISTERS_RESET_REG_2_RST_BMAC0 << port));
-
-		/* Enable access for bmac registers */
-		REG_WR(sc, NIG_REG_BMAC0_REGS_OUT_EN + port * 4, 0x1);
-	} else
-#endif
-		REG_WR(sc, NIG_REG_BMAC0_REGS_OUT_EN + port * 4, 0x0);
+	REG_WR(sc, NIG_REG_BMAC0_REGS_OUT_EN + port * 4, 0x0);
 
 	vars->mac_type = ELINK_MAC_TYPE_EMAC;
 	return ELINK_STATUS_OK;
@@ -2137,15 +2096,6 @@ static elink_status_t elink_bmac1_enable(struct elink_params *params,
 	wb_data[1] = 0;
 	REG_WR_DMAE(sc, bmac_addr + BIGMAC_REGISTER_RX_LLFC_MSG_FLDS,
 		    wb_data, 2);
-#ifdef ELINK_INCLUDE_EMUL
-	/* Fix for emulation */
-	if (CHIP_REV_IS_EMUL(sc)) {
-		wb_data[0] = 0xf000;
-		wb_data[1] = 0;
-		REG_WR_DMAE(sc, bmac_addr + BIGMAC_REGISTER_TX_PAUSE_THRESHOLD,
-			    wb_data, 2);
-	}
-#endif
 
 	return ELINK_STATUS_OK;
 }
@@ -5922,11 +5872,6 @@ elink_status_t elink_set_led(struct elink_params *params,
 							  params, mode);
 		}
 	}
-#ifdef ELINK_INCLUDE_EMUL
-	if (params->feature_config_flags &
-	    ELINK_FEATURE_CONFIG_EMUL_DISABLE_EMAC)
-		return rc;
-#endif
 
 	switch (mode) {
 	case ELINK_LED_MODE_FRONT_PANEL_OFF:
@@ -11671,10 +11616,7 @@ elink_status_t elink_phy_probe(struct elink_params * params)
 	struct elink_phy *phy;
 	params->num_phys = 0;
 	PMD_DRV_LOG(DEBUG, "Begin phy probe");
-#ifdef ELINK_INCLUDE_EMUL
-	if (CHIP_REV_IS_EMUL(sc))
-		return ELINK_STATUS_OK;
-#endif
+
 	phy_config_swapped = params->multi_phy_config &
 	    PORT_HW_CFG_PHY_SWAPPED_ENABLED;
 
@@ -11739,182 +11681,6 @@ elink_status_t elink_phy_probe(struct elink_params * params)
 	return ELINK_STATUS_OK;
 }
 
-#ifdef ELINK_INCLUDE_EMUL
-static elink_status_t elink_init_e3_emul_mac(struct elink_params *params,
-					     struct elink_vars *vars)
-{
-	struct bnx2x_softc *sc = params->sc;
-	vars->line_speed = params->req_line_speed[0];
-	/* In case link speed is auto, set speed the highest as possible */
-	if (params->req_line_speed[0] == ELINK_SPEED_AUTO_NEG) {
-		if (params->feature_config_flags &
-		    ELINK_FEATURE_CONFIG_EMUL_DISABLE_XMAC)
-			vars->line_speed = ELINK_SPEED_2500;
-		else if (elink_is_4_port_mode(sc))
-			vars->line_speed = ELINK_SPEED_10000;
-		else
-			vars->line_speed = ELINK_SPEED_20000;
-	}
-	if (vars->line_speed < ELINK_SPEED_10000) {
-		if ((params->feature_config_flags &
-		     ELINK_FEATURE_CONFIG_EMUL_DISABLE_UMAC)) {
-			PMD_DRV_LOG(DEBUG, "Invalid line speed %d while UMAC is"
-				    " disabled!", params->req_line_speed[0]);
-			return ELINK_STATUS_ERROR;
-		}
-		switch (vars->line_speed) {
-		case ELINK_SPEED_10:
-			vars->link_status = ELINK_LINK_10TFD;
-			break;
-		case ELINK_SPEED_100:
-			vars->link_status = ELINK_LINK_100TXFD;
-			break;
-		case ELINK_SPEED_1000:
-			vars->link_status = ELINK_LINK_1000TFD;
-			break;
-		case ELINK_SPEED_2500:
-			vars->link_status = ELINK_LINK_2500TFD;
-			break;
-		default:
-			PMD_DRV_LOG(DEBUG, "Invalid line speed %d for UMAC",
-				    vars->line_speed);
-			return ELINK_STATUS_ERROR;
-		}
-		vars->link_status |= LINK_STATUS_LINK_UP;
-
-		if (params->loopback_mode == ELINK_LOOPBACK_UMAC)
-			elink_umac_enable(params, vars, 1);
-		else
-			elink_umac_enable(params, vars, 0);
-	} else {
-		/* Link speed >= 10000 requires XMAC enabled */
-		if (params->feature_config_flags &
-		    ELINK_FEATURE_CONFIG_EMUL_DISABLE_XMAC) {
-			PMD_DRV_LOG(DEBUG, "Invalid line speed %d while XMAC is"
-				    " disabled!", params->req_line_speed[0]);
-			return ELINK_STATUS_ERROR;
-		}
-		/* Check link speed */
-		switch (vars->line_speed) {
-		case ELINK_SPEED_10000:
-			vars->link_status = ELINK_LINK_10GTFD;
-			break;
-		case ELINK_SPEED_20000:
-			vars->link_status = ELINK_LINK_20GTFD;
-			break;
-		default:
-			PMD_DRV_LOG(DEBUG, "Invalid line speed %d for XMAC",
-				    vars->line_speed);
-			return ELINK_STATUS_ERROR;
-		}
-		vars->link_status |= LINK_STATUS_LINK_UP;
-		if (params->loopback_mode == ELINK_LOOPBACK_XMAC)
-			elink_xmac_enable(params, vars, 1);
-		else
-			elink_xmac_enable(params, vars, 0);
-	}
-	return ELINK_STATUS_OK;
-}
-
-static elink_status_t elink_init_emul(struct elink_params *params,
-				      struct elink_vars *vars)
-{
-	struct bnx2x_softc *sc = params->sc;
-	if (CHIP_IS_E3(sc)) {
-		if (elink_init_e3_emul_mac(params, vars) != ELINK_STATUS_OK)
-			return ELINK_STATUS_ERROR;
-	} else {
-		if (params->feature_config_flags &
-		    ELINK_FEATURE_CONFIG_EMUL_DISABLE_BMAC) {
-			vars->line_speed = ELINK_SPEED_1000;
-			vars->link_status = (LINK_STATUS_LINK_UP |
-					     ELINK_LINK_1000XFD);
-			if (params->loopback_mode == ELINK_LOOPBACK_EMAC)
-				elink_emac_enable(params, vars, 1);
-			else
-				elink_emac_enable(params, vars, 0);
-		} else {
-			vars->line_speed = ELINK_SPEED_10000;
-			vars->link_status = (LINK_STATUS_LINK_UP |
-					     ELINK_LINK_10GTFD);
-			if (params->loopback_mode == ELINK_LOOPBACK_BMAC)
-				elink_bmac_enable(params, vars, 1, 1);
-			else
-				elink_bmac_enable(params, vars, 0, 1);
-		}
-	}
-	vars->link_up = 1;
-	vars->duplex = DUPLEX_FULL;
-	vars->flow_ctrl = ELINK_FLOW_CTRL_NONE;
-
-	if (CHIP_IS_E1x(sc))
-		elink_pbf_update(params, vars->flow_ctrl, vars->line_speed);
-	/* Disable drain */
-	REG_WR(sc, NIG_REG_EGRESS_DRAIN0_MODE + params->port * 4, 0);
-
-	/* update shared memory */
-	elink_update_mng(params, vars->link_status);
-	return ELINK_STATUS_OK;
-}
-#endif
-#ifdef ELINK_INCLUDE_FPGA
-static elink_status_t elink_init_fpga(struct elink_params *params,
-				      struct elink_vars *vars)
-{
-	/* Enable on E1.5 FPGA */
-	struct bnx2x_softc *sc = params->sc;
-	vars->duplex = DUPLEX_FULL;
-	vars->flow_ctrl = ELINK_FLOW_CTRL_NONE;
-	vars->flow_ctrl = (ELINK_FLOW_CTRL_TX | ELINK_FLOW_CTRL_RX);
-	vars->link_status |= (LINK_STATUS_TX_FLOW_CONTROL_ENABLED |
-			      LINK_STATUS_RX_FLOW_CONTROL_ENABLED);
-	if (CHIP_IS_E3(sc)) {
-		vars->line_speed = params->req_line_speed[0];
-		switch (vars->line_speed) {
-		case ELINK_SPEED_AUTO_NEG:
-			vars->line_speed = ELINK_SPEED_2500;
-		case ELINK_SPEED_2500:
-			vars->link_status = ELINK_LINK_2500TFD;
-			break;
-		case ELINK_SPEED_1000:
-			vars->link_status = ELINK_LINK_1000XFD;
-			break;
-		case ELINK_SPEED_100:
-			vars->link_status = ELINK_LINK_100TXFD;
-			break;
-		case ELINK_SPEED_10:
-			vars->link_status = ELINK_LINK_10TFD;
-			break;
-		default:
-			PMD_DRV_LOG(DEBUG, "Invalid link speed %d",
-				    params->req_line_speed[0]);
-			return ELINK_STATUS_ERROR;
-		}
-		vars->link_status |= LINK_STATUS_LINK_UP;
-		if (params->loopback_mode == ELINK_LOOPBACK_UMAC)
-			elink_umac_enable(params, vars, 1);
-		else
-			elink_umac_enable(params, vars, 0);
-	} else {
-		vars->line_speed = ELINK_SPEED_10000;
-		vars->link_status = (LINK_STATUS_LINK_UP | ELINK_LINK_10GTFD);
-		if (params->loopback_mode == ELINK_LOOPBACK_EMAC)
-			elink_emac_enable(params, vars, 1);
-		else
-			elink_emac_enable(params, vars, 0);
-	}
-	vars->link_up = 1;
-
-	if (CHIP_IS_E1x(sc))
-		elink_pbf_update(params, vars->flow_ctrl, vars->line_speed);
-	/* Disable drain */
-	REG_WR(sc, NIG_REG_EGRESS_DRAIN0_MODE + params->port * 4, 0);
-
-	/* Update shared memory */
-	elink_update_mng(params, vars->link_status);
-	return ELINK_STATUS_OK;
-}
-#endif
 static void elink_init_bmac_loopback(struct elink_params *params,
 				     struct elink_vars *vars)
 {
@@ -12236,12 +12002,8 @@ elink_status_t elink_phy_init(struct elink_params *params,
 			ELINK_NIG_MASK_XGXS0_LINK10G |
 			ELINK_NIG_MASK_SERDES0_LINK_STATUS |
 			ELINK_NIG_MASK_MI_INT));
-#ifdef ELINK_INCLUDE_EMUL
-	if (!(params->feature_config_flags &
-	      ELINK_FEATURE_CONFIG_EMUL_DISABLE_EMAC))
-#endif
 
-		elink_emac_init(params);
+	elink_emac_init(params);
 
 	if (params->feature_config_flags & ELINK_FEATURE_CONFIG_PFC_ENABLED)
 		vars->link_status |= LINK_STATUS_PFC_ENABLED;
@@ -12253,45 +12015,36 @@ elink_status_t elink_phy_init(struct elink_params *params,
 	set_phy_vars(params, vars);
 
 	PMD_DRV_LOG(DEBUG, "Num of phys on board: %d", params->num_phys);
-#ifdef ELINK_INCLUDE_FPGA
-	if (CHIP_REV_IS_FPGA(sc)) {
-		return elink_init_fpga(params, vars);
-	} else
-#endif
-#ifdef ELINK_INCLUDE_EMUL
-	if (CHIP_REV_IS_EMUL(sc)) {
-		return elink_init_emul(params, vars);
-	} else
-#endif
-		switch (params->loopback_mode) {
-		case ELINK_LOOPBACK_BMAC:
-			elink_init_bmac_loopback(params, vars);
-			break;
-		case ELINK_LOOPBACK_EMAC:
-			elink_init_emac_loopback(params, vars);
-			break;
-		case ELINK_LOOPBACK_XMAC:
-			elink_init_xmac_loopback(params, vars);
-			break;
-		case ELINK_LOOPBACK_UMAC:
-			elink_init_umac_loopback(params, vars);
-			break;
-		case ELINK_LOOPBACK_XGXS:
-		case ELINK_LOOPBACK_EXT_PHY:
-			elink_init_xgxs_loopback(params, vars);
-			break;
-		default:
-			if (!CHIP_IS_E3(sc)) {
-				if (params->switch_cfg == ELINK_SWITCH_CFG_10G)
-					elink_xgxs_deassert(params);
-				else
-					elink_serdes_deassert(sc, params->port);
-			}
-			elink_link_initialize(params, vars);
-			DELAY(1000 * 30);
-			elink_link_int_enable(params);
-			break;
+
+	switch (params->loopback_mode) {
+	case ELINK_LOOPBACK_BMAC:
+		elink_init_bmac_loopback(params, vars);
+		break;
+	case ELINK_LOOPBACK_EMAC:
+		elink_init_emac_loopback(params, vars);
+		break;
+	case ELINK_LOOPBACK_XMAC:
+		elink_init_xmac_loopback(params, vars);
+		break;
+	case ELINK_LOOPBACK_UMAC:
+		elink_init_umac_loopback(params, vars);
+		break;
+	case ELINK_LOOPBACK_XGXS:
+	case ELINK_LOOPBACK_EXT_PHY:
+		elink_init_xgxs_loopback(params, vars);
+		break;
+	default:
+		if (!CHIP_IS_E3(sc)) {
+			if (params->switch_cfg == ELINK_SWITCH_CFG_10G)
+				elink_xgxs_deassert(params);
+			else
+				elink_serdes_deassert(sc, params->port);
 		}
+		elink_link_initialize(params, vars);
+		DELAY(1000 * 30);
+		elink_link_int_enable(params);
+		break;
+	}
 	elink_update_mng(params, vars->link_status);
 
 	elink_update_mng_eee(params, vars->eee_status);
@@ -12325,22 +12078,12 @@ static elink_status_t elink_link_reset(struct elink_params *params,
 		REG_WR(sc, NIG_REG_BMAC0_OUT_EN + port * 4, 0);
 		REG_WR(sc, NIG_REG_EGRESS_EMAC0_OUT_EN + port * 4, 0);
 	}
-#ifdef ELINK_INCLUDE_EMUL
-	/* Stop BigMac rx */
-	if (!(params->feature_config_flags &
-	      ELINK_FEATURE_CONFIG_EMUL_DISABLE_BMAC))
-#endif
-		if (!CHIP_IS_E3(sc))
-			elink_set_bmac_rx(sc, port, 0);
-#ifdef ELINK_INCLUDE_EMUL
-	/* Stop XMAC/UMAC rx */
-	if (!(params->feature_config_flags &
-	      ELINK_FEATURE_CONFIG_EMUL_DISABLE_XMAC))
-#endif
-		if (CHIP_IS_E3(sc) && !CHIP_REV_IS_FPGA(sc)) {
-			elink_set_xmac_rxtx(params, 0);
-			elink_set_umac_rxtx(params, 0);
-		}
+	if (!CHIP_IS_E3(sc))
+		elink_set_bmac_rx(sc, port, 0);
+	if (CHIP_IS_E3(sc) && !CHIP_REV_IS_FPGA(sc)) {
+		elink_set_xmac_rxtx(params, 0);
+		elink_set_umac_rxtx(params, 0);
+	}
 	/* Disable emac */
 	if (!CHIP_IS_E3(sc))
 		REG_WR(sc, NIG_REG_NIG_EMAC0_EN + port * 4, 0);
@@ -12376,14 +12119,11 @@ static elink_status_t elink_link_reset(struct elink_params *params,
 		elink_bits_dis(sc, NIG_REG_LATCH_BC_0 + port * 4,
 			       1 << ELINK_NIG_LATCH_BC_ENABLE_MI_INT);
 	}
-#if defined(ELINK_INCLUDE_EMUL) || defined(ELINK_INCLUDE_FPGA)
-	if (!CHIP_REV_IS_SLOW(sc))
-#endif
-		if (params->phy[ELINK_INT_PHY].link_reset)
-			params->phy[ELINK_INT_PHY].link_reset(&params->
-							      phy
-							      [ELINK_INT_PHY],
-							      params);
+	if (params->phy[ELINK_INT_PHY].link_reset)
+		params->phy[ELINK_INT_PHY].link_reset(&params->
+						      phy
+						      [ELINK_INT_PHY],
+						      params);
 
 	/* Disable nig ingress interface */
 	if (!CHIP_IS_E3(sc)) {
@@ -12868,10 +12608,6 @@ elink_status_t elink_common_init_phy(struct bnx2x_softc * sc,
 	uint32_t phy_ver, val;
 	uint8_t phy_index = 0;
 	uint32_t ext_phy_type, ext_phy_config;
-#if defined(ELINK_INCLUDE_EMUL) || defined(ELINK_INCLUDE_FPGA)
-	if (CHIP_REV_IS_EMUL(sc) || CHIP_REV_IS_FPGA(sc))
-		return ELINK_STATUS_OK;
-#endif
 
 	elink_set_mdio_clk(sc, GRCBASE_EMAC0);
 	elink_set_mdio_clk(sc, GRCBASE_EMAC1);

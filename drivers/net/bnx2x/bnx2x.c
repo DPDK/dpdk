@@ -7016,34 +7016,6 @@ static int bnx2x_initial_phy_init(struct bnx2x_softc *sc, int load_mode)
 
 	bnx2x_set_requested_fc(sc);
 
-	if (CHIP_REV_IS_SLOW(sc)) {
-		uint32_t bond = CHIP_BOND_ID(sc);
-		uint32_t feat = 0;
-
-		if (CHIP_IS_E2(sc) && CHIP_IS_MODE_4_PORT(sc)) {
-			feat |= ELINK_FEATURE_CONFIG_EMUL_DISABLE_BMAC;
-		} else if (bond & 0x4) {
-			if (CHIP_IS_E3(sc)) {
-				feat |= ELINK_FEATURE_CONFIG_EMUL_DISABLE_XMAC;
-			} else {
-				feat |= ELINK_FEATURE_CONFIG_EMUL_DISABLE_BMAC;
-			}
-		} else if (bond & 0x8) {
-			if (CHIP_IS_E3(sc)) {
-				feat |= ELINK_FEATURE_CONFIG_EMUL_DISABLE_UMAC;
-			} else {
-				feat |= ELINK_FEATURE_CONFIG_EMUL_DISABLE_EMAC;
-			}
-		}
-
-/* disable EMAC for E3 and above */
-		if (bond & 0x2) {
-			feat |= ELINK_FEATURE_CONFIG_EMUL_DISABLE_EMAC;
-		}
-
-		sc->link_params.feature_config_flags |= feat;
-	}
-
 	if (load_mode == LOAD_DIAG) {
 		lp->loopback_mode = ELINK_LOOPBACK_XGXS;
 /* Prefer doing PHY loopback at 10G speed, if possible */
