@@ -64,25 +64,32 @@ bnx2x_check_bull(struct bnx2x_softc *sc)
 	return TRUE;
 }
 
-/* add tlv to a buffer */
-#define BNX2X_TLV_APPEND(_tlvs, _offset, _type, _length) \
-	((struct vf_first_tlv *)((unsigned long)_tlvs + _offset))->type   = _type; \
-	((struct vf_first_tlv *)((unsigned long)_tlvs + _offset))->length = _length
+/* place a given tlv on the tlv buffer at a given offset */
+static void
+bnx2x_add_tlv(__rte_unused struct bnx2x_softc *sc, void *tlvs_list,
+	      uint16_t offset, uint16_t type, uint16_t length)
+{
+	struct channel_tlv *tl = (struct channel_tlv *)
+					((unsigned long)tlvs_list + offset);
+
+	tl->type = type;
+	tl->length = length;
+}
 
 /* Initiliaze header of the first tlv and clear mailbox*/
 static void
-bnx2x_init_first_tlv(struct bnx2x_softc *sc, struct vf_first_tlv *tlv,
-	uint16_t type, uint16_t len)
+bnx2x_init_first_tlv(struct bnx2x_softc *sc, struct vf_first_tlv *first_tlv,
+	uint16_t type, uint16_t length)
 {
 	struct bnx2x_vf_mbx_msg *mbox = sc->vf2pf_mbox;
 	PMD_DRV_LOG(DEBUG, "Preparing %d tlv for sending", type);
 
 	memset(mbox, 0, sizeof(struct bnx2x_vf_mbx_msg));
 
-	BNX2X_TLV_APPEND(tlv, 0, type, len);
+	bnx2x_add_tlv(sc, &first_tlv->tl, 0, type, length);
 
 	/* Initialize header of the first tlv */
-	tlv->reply_offset = sizeof(mbox->query);
+	first_tlv->reply_offset = sizeof(mbox->query);
 }
 
 #define BNX2X_VF_CMD_ADDR_LO PXP_VF_ADDR_CSDM_GLOBAL_START
@@ -256,14 +263,14 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 	acq->bulletin_addr = sc->pf2vf_bulletin_mapping.paddr;
 
 	/* Request physical port identifier */
-	BNX2X_TLV_APPEND(acq, acq->first_tlv.length,
-			 BNX2X_VF_TLV_PHYS_PORT_ID,
-			 sizeof(struct channel_tlv));
+	bnx2x_add_tlv(sc, acq, acq->first_tlv.tl.length,
+		      BNX2X_VF_TLV_PHYS_PORT_ID,
+		      sizeof(struct channel_tlv));
 
-	BNX2X_TLV_APPEND(acq,
-			 (acq->first_tlv.length + sizeof(struct channel_tlv)),
-			 BNX2X_VF_TLV_LIST_END,
-			 sizeof(struct channel_list_end_tlv));
+	bnx2x_add_tlv(sc, acq,
+		      (acq->first_tlv.tl.length + sizeof(struct channel_tlv)),
+		      BNX2X_VF_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
 
 	/* requesting the resources in loop */
 	obtain_status = bnx2x_loop_obtain_resources(sc);
@@ -316,8 +323,9 @@ bnx2x_vf_close(struct bnx2x_softc *sc)
 				sizeof(*query));
 
 		query->vf_id = vf_id;
-		BNX2X_TLV_APPEND(query, query->first_tlv.length, BNX2X_VF_TLV_LIST_END,
-				sizeof(struct channel_list_end_tlv));
+		bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
+			      BNX2X_VF_TLV_LIST_END,
+			      sizeof(struct channel_list_end_tlv));
 
 		bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 		if (reply->status != BNX2X_VF_STATUS_SUCCESS)
@@ -345,8 +353,9 @@ bnx2x_vf_init(struct bnx2x_softc *sc)
 	query->stats_addr = sc->fw_stats_data_mapping +
 		offsetof(struct bnx2x_fw_stats_data, queue_stats);
 
-	BNX2X_TLV_APPEND(query, query->first_tlv.length, BNX2X_VF_TLV_LIST_END,
-			sizeof(struct channel_list_end_tlv));
+	bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
+		      BNX2X_VF_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
 
 	bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
@@ -376,9 +385,10 @@ bnx2x_vf_unload(struct bnx2x_softc *sc)
 
 			query_op->vf_qid = i;
 
-			BNX2X_TLV_APPEND(query_op, query_op->first_tlv.length,
-					BNX2X_VF_TLV_LIST_END,
-					sizeof(struct channel_list_end_tlv));
+			bnx2x_add_tlv(sc, query_op,
+				      query_op->first_tlv.tl.length,
+				      BNX2X_VF_TLV_LIST_END,
+				      sizeof(struct channel_list_end_tlv));
 
 			bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 			if (reply->status != BNX2X_VF_STATUS_SUCCESS)
@@ -394,9 +404,9 @@ bnx2x_vf_unload(struct bnx2x_softc *sc)
 
 		query->vf_id = vf_id;
 
-		BNX2X_TLV_APPEND(query, query->first_tlv.length,
-				BNX2X_VF_TLV_LIST_END,
-				sizeof(struct channel_list_end_tlv));
+		bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
+			      BNX2X_VF_TLV_LIST_END,
+			      sizeof(struct channel_list_end_tlv));
 
 		bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 		if (reply->status != BNX2X_VF_STATUS_SUCCESS)
@@ -477,8 +487,9 @@ bnx2x_vf_setup_queue(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp, int lead
 	bnx2x_vf_rx_q_prep(sc, fp, &query->rxq, flags);
 	bnx2x_vf_tx_q_prep(sc, fp, &query->txq, flags);
 
-	BNX2X_TLV_APPEND(query, query->first_tlv.length, BNX2X_VF_TLV_LIST_END,
-			sizeof(struct channel_list_end_tlv));
+	bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
+		      BNX2X_VF_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
 
 	bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
@@ -511,8 +522,9 @@ bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set)
 
 	rte_memcpy(query->filters[0].mac, sc->link_params.mac_addr, ETH_ALEN);
 
-	BNX2X_TLV_APPEND(query, query->first_tlv.length, BNX2X_VF_TLV_LIST_END,
-			sizeof(struct channel_list_end_tlv));
+	bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
+		      BNX2X_VF_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
 
 	bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 	reply = &sc->vf2pf_mbox->resp.common_reply;
@@ -550,8 +562,9 @@ bnx2x_vf_config_rss(struct bnx2x_softc *sc,
 			sizeof(*query));
 
 	/* add list termination tlv */
-	BNX2X_TLV_APPEND(query, query->first_tlv.length, BNX2X_VF_TLV_LIST_END,
-			sizeof(struct channel_list_end_tlv));
+	bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
+		      BNX2X_VF_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
 
 	rte_memcpy(query->rss_key, params->rss_key, sizeof(params->rss_key));
 	query->rss_key_size = T_ETH_RSS_KEY;
@@ -608,8 +621,9 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 		return -EINVAL;
 	}
 
-	BNX2X_TLV_APPEND(query, query->first_tlv.length, BNX2X_VF_TLV_LIST_END,
-			sizeof(struct channel_list_end_tlv));
+	bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
+		      BNX2X_VF_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
 
 	bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {

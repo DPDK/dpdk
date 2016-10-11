@@ -54,8 +54,7 @@ struct channel_tlv {
 };
 
 struct vf_first_tlv {
-	uint16_t type;
-	uint16_t length;
+	struct channel_tlv tl;
 	uint32_t reply_offset;
 };
 
@@ -65,16 +64,14 @@ struct tlv_buffer_size {
 
 /* tlv struct for all PF replies except acquire */
 struct vf_common_reply_tlv {
-	uint16_t type;
-	uint16_t length;
+	struct channel_tlv tl;
 	uint8_t status;
 	uint8_t pad[3];
 };
 
 /* used to terminate and pad a tlv list */
 struct channel_list_end_tlv {
-	uint16_t type;
-	uint16_t length;
+	struct channel_tlv tl;
 	uint32_t pad;
 };
 
@@ -334,7 +331,6 @@ struct bnx2x_vf_mbx_msg {
 	union resp_tlvs resp;
 };
 
-void bnx2x_add_tlv(void *tlvs_list, uint16_t offset, uint16_t type, uint16_t length);
 int bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set);
 int bnx2x_vf_config_rss(struct bnx2x_softc *sc, struct ecore_config_rss_params *params);
 
