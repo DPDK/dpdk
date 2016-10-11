@@ -1397,10 +1397,10 @@ bnx2x_del_all_macs(struct bnx2x_softc *sc, struct ecore_vlan_mac_obj *mac_obj,
 	return rc;
 }
 
-int
+static int
 bnx2x_fill_accept_flags(struct bnx2x_softc *sc, uint32_t rx_mode,
-		      unsigned long *rx_accept_flags,
-		      unsigned long *tx_accept_flags)
+			unsigned long *rx_accept_flags,
+			unsigned long *tx_accept_flags)
 {
 	/* Clear the flags first */
 	*rx_accept_flags = 0;

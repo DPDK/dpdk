@@ -576,7 +576,6 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 {
 	struct vf_set_q_filters_tlv *query;
 	struct vf_common_reply_tlv *reply = &sc->vf2pf_mbox->resp.common_reply;
-	unsigned long tx_mask;
 
 	query = &sc->vf2pf_mbox->query[0].set_q_filters;
 	bnx2x_init_first_tlv(sc, &query->first_tlv, BNX2X_VF_TLV_SET_Q_FILTERS,
@@ -585,7 +584,27 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 	query->vf_qid = 0;
 	query->flags = BNX2X_VF_RX_MASK_CHANGED;
 
-	if (bnx2x_fill_accept_flags(sc, sc->rx_mode, &query->rx_mask, &tx_mask)) {
+	switch (sc->rx_mode) {
+	case BNX2X_RX_MODE_NONE: /* no Rx */
+		query->rx_mask = VFPF_RX_MASK_ACCEPT_NONE;
+		break;
+	case BNX2X_RX_MODE_NORMAL:
+		query->rx_mask = VFPF_RX_MASK_ACCEPT_MATCHED_MULTICAST;
+		query->rx_mask |= VFPF_RX_MASK_ACCEPT_MATCHED_UNICAST;
+		query->rx_mask |= VFPF_RX_MASK_ACCEPT_BROADCAST;
+		break;
+	case BNX2X_RX_MODE_ALLMULTI:
+		query->rx_mask = VFPF_RX_MASK_ACCEPT_ALL_MULTICAST;
+		query->rx_mask |= VFPF_RX_MASK_ACCEPT_MATCHED_UNICAST;
+		query->rx_mask |= VFPF_RX_MASK_ACCEPT_BROADCAST;
+		break;
+	case BNX2X_RX_MODE_PROMISC:
+		query->rx_mask = VFPF_RX_MASK_ACCEPT_ALL_UNICAST;
+		query->rx_mask |= VFPF_RX_MASK_ACCEPT_ALL_MULTICAST;
+		query->rx_mask |= VFPF_RX_MASK_ACCEPT_BROADCAST;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "BAD rx mode (%d)", sc->rx_mode);
 		return -EINVAL;
 	}
 

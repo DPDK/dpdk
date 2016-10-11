@@ -1880,8 +1880,6 @@ int bnx2x_vf_setup_queue(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 	int leading);
 void bnx2x_free_hsi_mem(struct bnx2x_softc *sc);
 int bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc);
-int bnx2x_fill_accept_flags(struct bnx2x_softc *sc, uint32_t rx_mode,
-	unsigned long *rx_accept_flags, unsigned long *tx_accept_flags);
 int bnx2x_check_bull(struct bnx2x_softc *sc);
 
 //#define BNX2X_PULSE

@@ -40,6 +40,13 @@ struct vf_resource_query {
 
 #define TLV_BUFFER_SIZE			1024
 
+#define VFPF_RX_MASK_ACCEPT_NONE		0x00000000
+#define VFPF_RX_MASK_ACCEPT_MATCHED_UNICAST	0x00000001
+#define VFPF_RX_MASK_ACCEPT_MATCHED_MULTICAST	0x00000002
+#define VFPF_RX_MASK_ACCEPT_ALL_UNICAST		0x00000004
+#define VFPF_RX_MASK_ACCEPT_ALL_MULTICAST	0x00000008
+#define VFPF_RX_MASK_ACCEPT_BROADCAST		0x00000010
+
 /* general tlv header (used for both vf->pf request and pf->vf response) */
 struct channel_tlv {
 	uint16_t type;
