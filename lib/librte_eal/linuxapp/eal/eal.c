@@ -761,9 +761,6 @@ rte_eal_init(int argc, char **argv)
 
 	thread_id = pthread_self();
 
-	if (rte_eal_log_early_init() < 0)
-		rte_panic("Cannot init early logs\n");
-
 	eal_log_level_parse(argc, argv);
 
 	/* set log level as early as possible */
@@ -802,6 +799,9 @@ rte_eal_init(int argc, char **argv)
 
 	rte_config_init();
 
+	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0)
+		rte_panic("Cannot init logs\n");
+
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
@@ -821,9 +821,6 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_tailqs_init() < 0)
 		rte_panic("Cannot init tail queues for objects\n");
-
-	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0)
-		rte_panic("Cannot init logs\n");
 
 	if (rte_eal_alarm_init() < 0)
 		rte_panic("Cannot init interrupt-handling thread\n");

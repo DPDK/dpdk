@@ -54,7 +54,7 @@ extern "C" {
 struct rte_logs {
 	uint32_t type;  /**< Bitfield with enabled logs. */
 	uint32_t level; /**< Log level. */
-	FILE *file;     /**< Pointer to current FILE* for logs. */
+	FILE *file;     /**< Output file set by rte_openlog_stream, or NULL. */
 };
 
 /** Global log informations */
@@ -99,9 +99,6 @@ extern struct rte_logs rte_logs;
 #define RTE_LOG_NOTICE   6U  /**< Normal but significant condition. */
 #define RTE_LOG_INFO     7U  /**< Informational.                    */
 #define RTE_LOG_DEBUG    8U  /**< Debug-level messages.             */
-
-/** The default log stream. */
-extern FILE *eal_default_log_stream;
 
 /**
  * Change the stream that will be used by the logging system.

@@ -47,7 +47,9 @@
 int rte_eal_memzone_init(void);
 
 /**
- * Common log initialization function (private to eal).
+ * Common log initialization function (private to eal).  Determines
+ * where log data is written when no call to rte_openlog_stream is
+ * in effect.
  *
  * @param default_log
  *   The default log stream to be used.
@@ -55,7 +57,7 @@ int rte_eal_memzone_init(void);
  *   - 0 on success
  *   - Negative on error
  */
-int rte_eal_common_log_init(FILE *default_log);
+void eal_log_set_default(FILE *default_log);
 
 /**
  * Fill configuration with number of physical and logical processors
@@ -95,16 +97,6 @@ int rte_eal_memory_init(void);
  *   0 on success, negative on error
  */
 int rte_eal_timer_init(void);
-
-/**
- * Init early logs
- *
- * This function is private to EAL.
- *
- * @return
- *   0 on success, negative on error
- */
-int rte_eal_log_early_init(void);
 
 /**
  * Init the default log stream

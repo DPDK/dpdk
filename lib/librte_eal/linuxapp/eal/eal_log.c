@@ -97,45 +97,7 @@ rte_eal_log_init(const char *id, int facility)
 
 	openlog(id, LOG_NDELAY | LOG_PID, facility);
 
-	if (rte_eal_common_log_init(log_stream) < 0)
-		return -1;
+	eal_log_set_default(log_stream);
 
-	return 0;
-}
-
-/* early logs */
-
-/*
- * early log function, used before rte_eal_log_init
- */
-static ssize_t
-early_log_write(__attribute__((unused)) void *c, const char *buf, size_t size)
-{
-	ssize_t ret;
-	ret = fwrite(buf, size, 1, stdout);
-	fflush(stdout);
-	if (ret == 0)
-		return -1;
-	return ret;
-}
-
-static cookie_io_functions_t early_log_func = {
-	.write = early_log_write,
-};
-static FILE *early_log_stream;
-
-/*
- * init the log library, called by rte_eal_init() to enable early
- * logs
- */
-int
-rte_eal_log_early_init(void)
-{
-	early_log_stream = fopencookie(NULL, "w+", early_log_func);
-	if (early_log_stream == NULL) {
-		printf("Cannot configure early_log_stream\n");
-		return -1;
-	}
-	rte_openlog_stream(early_log_stream);
 	return 0;
 }
