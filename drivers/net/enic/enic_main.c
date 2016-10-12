@@ -540,7 +540,7 @@ void enic_free_rq(void *rxq)
 	if (rq_data->in_use)
 		vnic_rq_free(rq_data);
 
-	vnic_cq_free(&enic->cq[rq_sop->index]);
+	vnic_cq_free(&enic->cq[enic_sop_rq_idx_to_cq_idx(rq_sop->index)]);
 
 	rq_sop->in_use = 0;
 	rq_data->in_use = 0;
