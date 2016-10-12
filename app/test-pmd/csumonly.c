@@ -798,8 +798,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			char buf[256];
 
 			printf("-----------------\n");
-			printf("mbuf=%p, pkt_len=%u, nb_segs=%hhu:\n",
-				m, m->pkt_len, m->nb_segs);
+			printf("port=%u, mbuf=%p, pkt_len=%u, nb_segs=%hhu:\n",
+				fs->rx_port, m, m->pkt_len, m->nb_segs);
 			/* dump rx parsed packet info */
 			rte_get_rx_ol_flag_list(rx_ol_flags, buf, sizeof(buf));
 			printf("rx: l2_len=%d ethertype=%x l3_len=%d "
