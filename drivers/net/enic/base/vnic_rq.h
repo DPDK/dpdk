@@ -91,6 +91,7 @@ struct vnic_rq {
 	uint16_t rxst_idx;
 	uint32_t tot_pkts;
 	uint16_t data_queue_idx;
+	uint8_t data_queue_enable;
 	uint8_t is_sop;
 	uint8_t in_use;
 	struct rte_mbuf *pkt_first_seg;

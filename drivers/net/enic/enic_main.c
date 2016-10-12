@@ -640,10 +640,12 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 
 	if (mbufs_per_pkt > 1) {
 		dev_info(enic, "Rq %u Scatter rx mode in use\n", queue_idx);
+		rq_sop->data_queue_enable = 1;
 		rq_data->in_use = 1;
 	} else {
 		dev_info(enic, "Rq %u Scatter rx mode not being used\n",
 			 queue_idx);
+		rq_sop->data_queue_enable = 0;
 		rq_data->in_use = 0;
 	}
 

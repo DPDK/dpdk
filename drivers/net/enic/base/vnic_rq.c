@@ -87,9 +87,11 @@ void vnic_rq_init_start(struct vnic_rq *rq, unsigned int cq_index,
 	iowrite32(0, &rq->ctrl->error_status);
 	iowrite32(fetch_index, &rq->ctrl->fetch_index);
 	iowrite32(posted_index, &rq->ctrl->posted_index);
-	if (rq->is_sop)
-		iowrite32(((rq->is_sop << 10) | rq->data_queue_idx),
+	if (rq->data_queue_enable)
+		iowrite32(((1 << 10) | rq->data_queue_idx),
 			  &rq->ctrl->data_ring);
+	else
+		iowrite32(0, &rq->ctrl->data_ring);
 }
 
 void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
