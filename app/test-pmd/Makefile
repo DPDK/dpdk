@@ -58,6 +58,8 @@ SRCS-y += csumonly.c
 SRCS-y += icmpecho.c
 SRCS-$(CONFIG_RTE_LIBRTE_IEEE1588) += ieee1588fwd.c
 
+_LDLIBS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += -lrte_pmd_ixgbe
+
 CFLAGS_cmdline.o := -D_GNU_SOURCE
 
 # this application needs libraries first

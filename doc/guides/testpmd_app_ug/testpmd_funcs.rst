@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -479,6 +479,34 @@ For example, to change the port forwarding:
    RX P=1/Q=0 (socket 0) -> TX P=3/Q=0 (socket 0) peer=02:00:00:00:00:03
    RX P=3/Q=0 (socket 0) -> TX P=1/Q=0 (socket 0) peer=02:00:00:00:00:02
 
+set tx loopback
+~~~~~~~~~~~~~~~
+
+Enable/disable tx loopback::
+
+   testpmd> set tx loopback (port_id) (on|off)
+
+set drop enable
+~~~~~~~~~~~~~~~
+
+set drop enable bit for all queues::
+
+   testpmd> set all queues drop (port_id) (on|off)
+
+set split drop enable (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+set split drop enable bit for VF from PF::
+
+   testpmd> set vf split drop (port_id) (vf_id) (on|off)
+
+set mac antispoof (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set mac antispoof for a VF from the PF::
+
+   testpmd> set vf mac antispoof  (port_id) (vf_id) (on|off)
+
 vlan set strip
 ~~~~~~~~~~~~~~
 
@@ -492,6 +520,27 @@ vlan set stripq
 Set the VLAN strip for a queue on a port::
 
    testpmd> vlan set stripq (on|off) (port_id,queue_id)
+
+vlan set stripq (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set VLAN strip for all queues in a pool for a VF from the PF::
+
+   testpmd> set vf vlan stripq (port_id) (vf_id) (on|off)
+
+vlan set insert (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set VLAN insert for a VF from the PF::
+
+   testpmd> set vf vlan insert (port_id) (vf_id) (on|off)
+
+vlan set antispoof (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set VLAN antispoof for a VF from the PF::
+
+   testpmd> set vf vlan antispoof (port_id) (vf_id) (on|off)
 
 vlan set filter
 ~~~~~~~~~~~~~~~
@@ -733,12 +782,19 @@ Remove a MAC address from a port::
 
    testpmd> mac_addr remove (port_id) (XX:XX:XX:XX:XX:XX)
 
-mac_addr add(for VF)
-~~~~~~~~~~~~~~~~~~~~
+mac_addr add (for VF)
+~~~~~~~~~~~~~~~~~~~~~
 
 Add an alternative MAC address for a VF to a port::
 
    testpmd> mac_add add port (port_id) vf (vf_id) (XX:XX:XX:XX:XX:XX)
+
+mac_addr set (for VF)
+~~~~~~~~~~~~~~~~~~~~~
+
+Set the MAC address for a VF from the PF::
+
+   testpmd> set vf mac addr (port_id) (vf_id) (XX:XX:XX:XX:XX:XX)
 
 set port-uta
 ~~~~~~~~~~~~
