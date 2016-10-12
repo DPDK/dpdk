@@ -31,5 +31,7 @@ DPDK_16.11 {
 	rte_get_ptype_l4_name;
 	rte_get_ptype_name;
 	rte_get_ptype_tunnel_name;
+	rte_get_rx_ol_flag_list;
+	rte_get_tx_ol_flag_list;
 
 } DPDK_2.1;

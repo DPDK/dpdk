@@ -252,6 +252,20 @@ extern "C" {
 const char *rte_get_rx_ol_flag_name(uint64_t mask);
 
 /**
+ * Dump the list of RX offload flags in a buffer
+ *
+ * @param mask
+ *   The mask describing the RX flags.
+ * @param buf
+ *   The output buffer.
+ * @param buflen
+ *   The length of the buffer.
+ * @return
+ *   0 on success, (-1) on error.
+ */
+int rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen);
+
+/**
  * Get the name of a TX offload flag
  *
  * @param mask
@@ -262,6 +276,20 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask);
  *   The name of this flag, or NULL if it's not a valid TX flag.
  */
 const char *rte_get_tx_ol_flag_name(uint64_t mask);
+
+/**
+ * Dump the list of TX offload flags in a buffer
+ *
+ * @param mask
+ *   The mask describing the TX flags.
+ * @param buf
+ *   The output buffer.
+ * @param buflen
+ *   The length of the buffer.
+ * @return
+ *   0 on success, (-1) on error.
+ */
+int rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen);
 
 /**
  * Some NICs need at least 2KB buffer to RX standard Ethernet frame without

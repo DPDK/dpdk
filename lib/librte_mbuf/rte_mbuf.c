@@ -319,6 +319,54 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask)
 	}
 }
 
+struct flag_mask {
+	uint64_t flag;
+	uint64_t mask;
+	const char *default_name;
+};
+
+/* write the list of rx ol flags in buffer buf */
+int
+rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
+{
+	const struct flag_mask rx_flags[] = {
+		{ PKT_RX_VLAN_PKT, PKT_RX_VLAN_PKT, NULL },
+		{ PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, NULL },
+		{ PKT_RX_FDIR, PKT_RX_FDIR, NULL },
+		{ PKT_RX_L4_CKSUM_BAD, PKT_RX_L4_CKSUM_BAD, NULL },
+		{ PKT_RX_IP_CKSUM_BAD, PKT_RX_IP_CKSUM_BAD, NULL },
+		{ PKT_RX_EIP_CKSUM_BAD, PKT_RX_EIP_CKSUM_BAD, NULL },
+		{ PKT_RX_VLAN_STRIPPED, PKT_RX_VLAN_STRIPPED, NULL },
+		{ PKT_RX_IEEE1588_PTP, PKT_RX_IEEE1588_PTP, NULL },
+		{ PKT_RX_IEEE1588_TMST, PKT_RX_IEEE1588_TMST, NULL },
+		{ PKT_RX_QINQ_STRIPPED, PKT_RX_QINQ_STRIPPED, NULL },
+	};
+	const char *name;
+	unsigned int i;
+	int ret;
+
+	if (buflen == 0)
+		return -1;
+
+	buf[0] = '\0';
+	for (i = 0; i < RTE_DIM(rx_flags); i++) {
+		if ((mask & rx_flags[i].mask) != rx_flags[i].flag)
+			continue;
+		name = rte_get_rx_ol_flag_name(rx_flags[i].flag);
+		if (name == NULL)
+			name = rx_flags[i].default_name;
+		ret = snprintf(buf, buflen, "%s ", name);
+		if (ret < 0)
+			return -1;
+		if ((size_t)ret >= buflen)
+			return -1;
+		buf += ret;
+		buflen -= ret;
+	}
+
+	return 0;
+}
+
 /*
  * Get the name of a TX offload flag. Must be kept synchronized with flag
  * definitions in rte_mbuf.h.
@@ -344,4 +392,57 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_TUNNEL_GENEVE: return "PKT_TX_TUNNEL_GENEVE";
 	default: return NULL;
 	}
+}
+
+/* write the list of tx ol flags in buffer buf */
+int
+rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
+{
+	const struct flag_mask tx_flags[] = {
+		{ PKT_TX_VLAN_PKT, PKT_TX_VLAN_PKT, NULL },
+		{ PKT_TX_IP_CKSUM, PKT_TX_IP_CKSUM, NULL },
+		{ PKT_TX_TCP_CKSUM, PKT_TX_L4_MASK, NULL },
+		{ PKT_TX_SCTP_CKSUM, PKT_TX_L4_MASK, NULL },
+		{ PKT_TX_UDP_CKSUM, PKT_TX_L4_MASK, NULL },
+		{ PKT_TX_L4_NO_CKSUM, PKT_TX_L4_MASK, "PKT_TX_L4_NO_CKSUM" },
+		{ PKT_TX_IEEE1588_TMST, PKT_TX_IEEE1588_TMST, NULL },
+		{ PKT_TX_TCP_SEG, PKT_TX_TCP_SEG, NULL },
+		{ PKT_TX_IPV4, PKT_TX_IPV4, NULL },
+		{ PKT_TX_IPV6, PKT_TX_IPV6, NULL },
+		{ PKT_TX_OUTER_IP_CKSUM, PKT_TX_OUTER_IP_CKSUM, NULL },
+		{ PKT_TX_OUTER_IPV4, PKT_TX_OUTER_IPV4, NULL },
+		{ PKT_TX_OUTER_IPV6, PKT_TX_OUTER_IPV6, NULL },
+		{ PKT_TX_TUNNEL_VXLAN, PKT_TX_TUNNEL_MASK,
+		  "PKT_TX_TUNNEL_NONE" },
+		{ PKT_TX_TUNNEL_GRE, PKT_TX_TUNNEL_MASK,
+		  "PKT_TX_TUNNEL_NONE" },
+		{ PKT_TX_TUNNEL_IPIP, PKT_TX_TUNNEL_MASK,
+		  "PKT_TX_TUNNEL_NONE" },
+		{ PKT_TX_TUNNEL_GENEVE, PKT_TX_TUNNEL_MASK,
+		  "PKT_TX_TUNNEL_NONE" },
+	};
+	const char *name;
+	unsigned int i;
+	int ret;
+
+	if (buflen == 0)
+		return -1;
+
+	buf[0] = '\0';
+	for (i = 0; i < RTE_DIM(tx_flags); i++) {
+		if ((mask & tx_flags[i].mask) != tx_flags[i].flag)
+			continue;
+		name = rte_get_tx_ol_flag_name(tx_flags[i].flag);
+		if (name == NULL)
+			name = tx_flags[i].default_name;
+		ret = snprintf(buf, buflen, "%s ", name);
+		if (ret < 0)
+			return -1;
+		if ((size_t)ret >= buflen)
+			return -1;
+		buf += ret;
+		buflen -= ret;
+	}
+
+	return 0;
 }
