@@ -102,6 +102,7 @@ struct testpmd_offload_info {
 	uint8_t outer_l4_proto;
 	uint16_t tso_segsz;
 	uint16_t tunnel_tso_segsz;
+	uint32_t pkt_len;
 };
 
 /* simplified GRE header */
@@ -329,6 +330,21 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	struct tcp_hdr *tcp_hdr;
 	struct sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
+	uint32_t max_pkt_len, tso_segsz = 0;
+
+	/* ensure packet is large enough to require tso */
+	if (!info->is_tunnel) {
+		max_pkt_len = info->l2_len + info->l3_len + info->l4_len +
+			info->tso_segsz;
+		if (info->tunnel_tso_segsz != 0 && info->pkt_len > max_pkt_len)
+			tso_segsz = info->tso_segsz;
+	} else {
+		max_pkt_len = info->outer_l2_len + info->outer_l3_len +
+			info->l2_len + info->l3_len + info->l4_len +
+			info->tunnel_tso_segsz;
+		if (info->tunnel_tso_segsz != 0 && info->pkt_len > max_pkt_len)
+			tso_segsz = info->tunnel_tso_segsz;
+	}
 
 	if (info->ethertype == _htons(ETHER_TYPE_IPv4)) {
 		ipv4_hdr = l3_hdr;
@@ -369,8 +385,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	} else if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		tcp_hdr->cksum = 0;
-		if ((info->is_tunnel && info->tunnel_tso_segsz != 0) ||
-		    (!info->is_tunnel && info->tso_segsz != 0)) {
+		if (tso_segsz) {
 			ol_flags |= PKT_TX_TCP_SEG;
 			tcp_hdr->cksum = get_psd_sum(l3_hdr, info->ethertype,
 				ol_flags);
@@ -679,6 +694,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 		m = pkts_burst[i];
 		info.is_tunnel = 0;
+		info.pkt_len = rte_pktmbuf_pkt_len(m);
 		tx_ol_flags = 0;
 		rx_ol_flags = m->ol_flags;
 
