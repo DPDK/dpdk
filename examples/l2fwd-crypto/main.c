@@ -451,6 +451,10 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 
 	/* Zero pad data to be crypto'd so it is block aligned */
 	data_len  = rte_pktmbuf_data_len(m) - ipdata_offset;
+
+	if (cparams->do_hash && cparams->hash_verify)
+		data_len -= cparams->digest_length;
+
 	pad_len = data_len % cparams->block_size ? cparams->block_size -
 			(data_len % cparams->block_size) : 0;
 
@@ -472,8 +476,8 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 			op->sym->auth.digest.data = (uint8_t *)rte_pktmbuf_append(m,
 				cparams->digest_length);
 		} else {
-			op->sym->auth.digest.data = (uint8_t *)rte_pktmbuf_append(m,
-				cparams->digest_length);
+			op->sym->auth.digest.data = rte_pktmbuf_mtod(m,
+				uint8_t *) + ipdata_offset + data_len;
 		}
 
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
@@ -508,21 +512,10 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 				cparams->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
 				cparams->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3) {
 			op->sym->cipher.data.offset = ipdata_offset << 3;
-			if (cparams->do_hash && cparams->hash_verify)
-				/* Do not cipher the hash tag */
-				op->sym->cipher.data.length = (data_len -
-					cparams->digest_length) << 3;
-			else
-				op->sym->cipher.data.length = data_len << 3;
-
+			op->sym->cipher.data.length = data_len << 3;
 		} else {
 			op->sym->cipher.data.offset = ipdata_offset;
-			if (cparams->do_hash && cparams->hash_verify)
-				/* Do not cipher the hash tag */
-				op->sym->cipher.data.length = data_len -
-					cparams->digest_length;
-			else
-				op->sym->cipher.data.length = data_len;
+			op->sym->cipher.data.length = data_len;
 		}
 	}
 
