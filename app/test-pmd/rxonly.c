@@ -229,19 +229,8 @@ pkt_burst_receive(struct fwd_stream *fs)
 		}
 		printf(" - Receive queue=0x%x", (unsigned) fs->rx_queue);
 		printf("\n");
-		if (ol_flags != 0) {
-			unsigned rxf;
-			const char *name;
-
-			for (rxf = 0; rxf < sizeof(mb->ol_flags) * 8; rxf++) {
-				if ((ol_flags & (1ULL << rxf)) == 0)
-					continue;
-				name = rte_get_rx_ol_flag_name(1ULL << rxf);
-				if (name == NULL)
-					continue;
-				printf("  %s\n", name);
-			}
-		}
+		rte_get_rx_ol_flag_list(mb->ol_flags, buf, sizeof(buf));
+		printf("  ol_flags: %s\n", buf);
 		rte_pktmbuf_free(mb);
 	}
 

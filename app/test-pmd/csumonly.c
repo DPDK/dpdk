@@ -816,27 +816,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 		/* if verbose mode is enabled, dump debug info */
 		if (verbose_level > 0) {
-			struct {
-				uint64_t flag;
-				uint64_t mask;
-			} tx_flags[] = {
-				{ PKT_TX_IP_CKSUM, PKT_TX_IP_CKSUM },
-				{ PKT_TX_UDP_CKSUM, PKT_TX_L4_MASK },
-				{ PKT_TX_TCP_CKSUM, PKT_TX_L4_MASK },
-				{ PKT_TX_SCTP_CKSUM, PKT_TX_L4_MASK },
-				{ PKT_TX_IPV4, PKT_TX_IPV4 },
-				{ PKT_TX_IPV6, PKT_TX_IPV6 },
-				{ PKT_TX_OUTER_IP_CKSUM, PKT_TX_OUTER_IP_CKSUM },
-				{ PKT_TX_OUTER_IPV4, PKT_TX_OUTER_IPV4 },
-				{ PKT_TX_OUTER_IPV6, PKT_TX_OUTER_IPV6 },
-				{ PKT_TX_TCP_SEG, PKT_TX_TCP_SEG },
-				{ PKT_TX_TUNNEL_VXLAN, PKT_TX_TUNNEL_MASK },
-				{ PKT_TX_TUNNEL_GRE, PKT_TX_TUNNEL_MASK },
-				{ PKT_TX_TUNNEL_IPIP, PKT_TX_TUNNEL_MASK },
-				{ PKT_TX_TUNNEL_GENEVE, PKT_TX_TUNNEL_MASK },
-			};
-			unsigned j;
-			const char *name;
+			char buf[256];
 
 			printf("-----------------\n");
 			printf("mbuf=%p, pkt_len=%u, nb_segs=%hhu:\n",
@@ -872,13 +852,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						m->tso_segsz);
 			} else if (info.tso_segsz != 0)
 				printf("tx: m->tso_segsz=%d\n", m->tso_segsz);
-			printf("tx: flags=");
-			for (j = 0; j < sizeof(tx_flags)/sizeof(*tx_flags); j++) {
-				name = rte_get_tx_ol_flag_name(tx_flags[j].flag);
-				if ((m->ol_flags & tx_flags[j].mask) ==
-					tx_flags[j].flag)
-					printf("%s ", name);
-			}
+			rte_get_tx_ol_flag_list(m->ol_flags, buf, sizeof(buf));
+			printf("tx: flags=%s", buf);
 			printf("\n");
 		}
 	}
