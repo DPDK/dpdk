@@ -2722,8 +2722,11 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = aes_iv;
+	op->sym->cipher.iv.data = (uint8_t *)m->buf_addr + m->data_off;
+	op->sym->cipher.iv.phys_addr = rte_pktmbuf_mtophys(m);
 	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
+
+	rte_memcpy(op->sym->cipher.iv.data, aes_iv, AES_CIPHER_IV_LENGTH);
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
@@ -2893,7 +2896,9 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 				rte_pktmbuf_free(mbufs[k]);
 			return -1;
 		}
-
+		/* Make room for Digest and IV in mbuf */
+		rte_pktmbuf_append(mbufs[i], digest_length);
+		rte_pktmbuf_prepend(mbufs[i], AES_CIPHER_IV_LENGTH);
 	}
 
 
