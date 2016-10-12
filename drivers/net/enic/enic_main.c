@@ -174,8 +174,7 @@ void enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
 	 * which can make ibytes be slightly higher than it should be.
 	 */
 	rx_packet_errors = rte_atomic64_read(&soft_stats->rx_packet_errors);
-	rx_truncated = rx_packet_errors - stats->rx.rx_errors -
-		stats->rx.rx_no_bufs;
+	rx_truncated = rx_packet_errors - stats->rx.rx_errors;
 
 	r_stats->ipackets = stats->rx.rx_frames_ok - rx_truncated;
 	r_stats->opackets = stats->tx.tx_frames_ok;
