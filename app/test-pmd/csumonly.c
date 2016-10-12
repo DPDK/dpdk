@@ -843,10 +843,12 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						"m->outer_l3_len=%d\n",
 						m->outer_l2_len,
 						m->outer_l3_len);
-				if (info.tunnel_tso_segsz != 0)
+				if (info.tunnel_tso_segsz != 0 &&
+						(m->ol_flags & PKT_TX_TCP_SEG))
 					printf("tx: m->tso_segsz=%d\n",
 						m->tso_segsz);
-			} else if (info.tso_segsz != 0)
+			} else if (info.tso_segsz != 0 &&
+					(m->ol_flags & PKT_TX_TCP_SEG))
 				printf("tx: m->tso_segsz=%d\n", m->tso_segsz);
 			rte_get_tx_ol_flag_list(m->ol_flags, buf, sizeof(buf));
 			printf("tx: flags=%s", buf);
