@@ -72,6 +72,8 @@
 #include "base/ixgbe_phy.h"
 #include "ixgbe_regs.h"
 
+#include "rte_pmd_ixgbe.h"
+
 /*
  * High threshold controlling when to start sending XOFF frames. Must be at
  * least 8 bytes less than receive packet buffer size. This value is in units
@@ -4046,6 +4048,38 @@ ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	ixgbe_add_rar(dev, addr, 0, 0);
 }
 
+int
+rte_pmd_ixgbe_set_vf_mac_addr(uint8_t port, uint16_t vf,
+		struct ether_addr *mac_addr)
+{
+	struct ixgbe_hw *hw;
+	struct ixgbe_vf_info *vfinfo;
+	int rar_entry;
+	uint8_t *new_mac = (uint8_t *)(mac_addr);
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	vfinfo = *(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
+	rar_entry = hw->mac.num_rar_entries - (vf + 1);
+
+	if (is_valid_assigned_ether_addr((struct ether_addr *)new_mac)) {
+		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
+				ETHER_ADDR_LEN);
+		return hw->mac.ops.set_rar(hw, rar_entry, new_mac, vf,
+				IXGBE_RAH_AV);
+	}
+	return -EINVAL;
+}
+
 static int
 ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
@@ -4637,6 +4671,216 @@ ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
 	}
 
 	return ret;
+}
+
+int
+rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct ixgbe_hw *hw;
+	struct ixgbe_mac_info *mac;
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	mac = &hw->mac;
+
+	mac->ops.set_vlan_anti_spoofing(hw, on, vf);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct ixgbe_hw *hw;
+	struct ixgbe_mac_info *mac;
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	mac = &hw->mac;
+	mac->ops.set_mac_anti_spoofing(hw, on, vf);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct ixgbe_hw *hw;
+	uint32_t ctrl;
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	ctrl = IXGBE_READ_REG(hw, IXGBE_VMVIR(vf));
+	if (on) {
+		ctrl = on;
+		ctrl |= IXGBE_VMVIR_VLANA_DEFAULT;
+	} else {
+		ctrl = 0;
+	}
+
+	IXGBE_WRITE_REG(hw, IXGBE_VMVIR(vf), ctrl);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_tx_loopback(uint8_t port, uint8_t on)
+{
+	struct ixgbe_hw *hw;
+	uint32_t ctrl;
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	ctrl = IXGBE_READ_REG(hw, IXGBE_PFDTXGSWC);
+	/* enable or disable VMDQ loopback */
+	if (on)
+		ctrl |= IXGBE_PFDTXGSWC_VT_LBEN;
+	else
+		ctrl &= ~IXGBE_PFDTXGSWC_VT_LBEN;
+
+	IXGBE_WRITE_REG(hw, IXGBE_PFDTXGSWC, ctrl);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_all_queues_drop_en(uint8_t port, uint8_t on)
+{
+	struct ixgbe_hw *hw;
+	uint32_t reg_value;
+	int i;
+	int num_queues = (int)(IXGBE_QDE_IDX_MASK >> IXGBE_QDE_IDX_SHIFT);
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	for (i = 0; i <= num_queues; i++) {
+		reg_value = IXGBE_QDE_WRITE |
+				(i << IXGBE_QDE_IDX_SHIFT) |
+				(on & IXGBE_QDE_ENABLE);
+		IXGBE_WRITE_REG(hw, IXGBE_QDE, reg_value);
+	}
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_split_drop_en(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct ixgbe_hw *hw;
+	uint32_t reg_value;
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	/* only support VF's 0 to 63 */
+	if ((vf >= dev_info.max_vfs) || (vf > 63))
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	reg_value = IXGBE_READ_REG(hw, IXGBE_SRRCTL(vf));
+	if (on)
+		reg_value |= IXGBE_SRRCTL_DROP_EN;
+	else
+		reg_value &= ~IXGBE_SRRCTL_DROP_EN;
+
+	IXGBE_WRITE_REG(hw, IXGBE_SRRCTL(vf), reg_value);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	uint16_t queues_per_pool;
+	uint32_t q;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_strip_queue_set, -ENOTSUP);
+
+	/* The PF has 128 queue pairs and in SRIOV configuration
+	 * those queues will be assigned to VF's, so RXDCTL
+	 * registers will be dealing with queues which will be
+	 * assigned to VF's.
+	 * Let's say we have SRIOV configured with 31 VF's then the
+	 * first 124 queues 0-123 will be allocated to VF's and only
+	 * the last 4 queues 123-127 will be assigned to the PF.
+	 */
+
+	queues_per_pool = dev_info.vmdq_queue_num / dev_info.max_vmdq_pools;
+
+	for (q = 0; q < queues_per_pool; q++)
+		(*dev->dev_ops->vlan_strip_queue_set)(dev,
+				q + vf * queues_per_pool, on);
+	return 0;
 }
 
 #define IXGBE_MRCTL_VPME  0x01 /* Virtual Pool Mirroring. */

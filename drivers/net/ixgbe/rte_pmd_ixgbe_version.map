@@ -2,3 +2,16 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_16.11 {
+	global:
+
+	rte_pmd_ixgbe_set_all_queues_drop_en;
+	rte_pmd_ixgbe_set_tx_loopback;
+	rte_pmd_ixgbe_set_vf_mac_addr;
+	rte_pmd_ixgbe_set_vf_mac_anti_spoof;
+	rte_pmd_ixgbe_set_vf_split_drop_en;
+	rte_pmd_ixgbe_set_vf_vlan_anti_spoof;
+	rte_pmd_ixgbe_set_vf_vlan_insert;
+	rte_pmd_ixgbe_set_vf_vlan_stripq;
+} DPDK_2.0;
