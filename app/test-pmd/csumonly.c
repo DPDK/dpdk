@@ -318,21 +318,6 @@ parse_encap_ip(void *encap_ip, struct testpmd_offload_info *info)
 	info->l2_len = 0;
 }
 
-/* modify the IPv4 or IPv4 source address of a packet */
-static void
-change_ip_addresses(void *l3_hdr, uint16_t ethertype)
-{
-	struct ipv4_hdr *ipv4_hdr = l3_hdr;
-	struct ipv6_hdr *ipv6_hdr = l3_hdr;
-
-	if (ethertype == _htons(ETHER_TYPE_IPv4)) {
-		ipv4_hdr->src_addr =
-			rte_cpu_to_be_32(rte_be_to_cpu_32(ipv4_hdr->src_addr) + 1);
-	} else if (ethertype == _htons(ETHER_TYPE_IPv6)) {
-		ipv6_hdr->src_addr[15] = ipv6_hdr->src_addr[15] + 1;
-	}
-}
-
 /* if possible, calculate the checksum of a packet in hw or sw,
  * depending on the testpmd command line configuration */
 static uint64_t
@@ -620,7 +605,6 @@ pkt_copy_split(const struct rte_mbuf *pkt)
  * Receive a burst of packets, and for each packet:
  *  - parse packet, and try to recognize a supported packet type (1)
  *  - if it's not a supported packet type, don't touch the packet, else:
- *  - modify the IPs in inner headers and in outer headers if any
  *  - reprocess the checksum of all supported layers. This is done in SW
  *    or HW, depending on testpmd command line configuration
  *  - if TSO is enabled in testpmd command line, also flag the mbuf for TCP
@@ -747,14 +731,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			l3_hdr = (char *)l3_hdr + info.outer_l3_len + info.l2_len;
 		}
 
-		/* step 2: change all source IPs (v4 or v6) so we need
-		 * to recompute the chksums even if they were correct */
-
-		change_ip_addresses(l3_hdr, info.ethertype);
-		if (info.is_tunnel == 1)
-			change_ip_addresses(outer_l3_hdr, info.outer_ethertype);
-
-		/* step 3: depending on user command line configuration,
+		/* step 2: depending on user command line configuration,
 		 * recompute checksum either in software or flag the
 		 * mbuf to offload the calculation to the NIC. If TSO
 		 * is configured, prepare the mbuf for TCP segmentation. */
@@ -772,7 +749,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					!!(tx_ol_flags & PKT_TX_TCP_SEG));
 		}
 
-		/* step 4: fill the mbuf meta data (flags and header lengths) */
+		/* step 3: fill the mbuf meta data (flags and header lengths) */
 
 		if (info.is_tunnel == 1) {
 			if (info.tunnel_tso_segsz ||
