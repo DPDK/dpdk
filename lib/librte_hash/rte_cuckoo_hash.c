@@ -419,6 +419,7 @@ rte_hash_reset(struct rte_hash *h)
 static inline int
 make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 {
+	static unsigned int nr_pushes;
 	unsigned i, j;
 	int ret;
 	uint32_t next_bucket_idx;
@@ -455,11 +456,13 @@ make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 			break;
 
 	/* All entries have been pushed, so entry cannot be added */
-	if (i == RTE_HASH_BUCKET_ENTRIES)
+	if (i == RTE_HASH_BUCKET_ENTRIES || nr_pushes > RTE_HASH_MAX_PUSHES)
 		return -ENOSPC;
 
 	/* Set flag to indicate that this entry is going to be pushed */
 	bkt->flag[i] = 1;
+
+	nr_pushes++;
 	/* Need room in alternative bucket to insert the pushed entry */
 	ret = make_space_bucket(h, next_bkt[i]);
 	/*
@@ -469,6 +472,7 @@ make_space_bucket(const struct rte_hash *h, struct rte_hash_bucket *bkt)
 	 * or return error
 	 */
 	bkt->flag[i] = 0;
+	nr_pushes = 0;
 	if (ret >= 0) {
 		next_bkt[i]->sig_alt[ret] = bkt->sig_current[i];
 		next_bkt[i]->sig_current[ret] = bkt->sig_alt[i];

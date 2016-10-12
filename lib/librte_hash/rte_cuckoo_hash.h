@@ -140,6 +140,8 @@ enum add_key_case {
 
 #define LCORE_CACHE_SIZE		64
 
+#define RTE_HASH_MAX_PUSHES             100
+
 #define RTE_HASH_BFS_QUEUE_MAX_LEN       1000
 
 #define RTE_XABORT_CUCKOO_PATH_INVALIDED 0x4
