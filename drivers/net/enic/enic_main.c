@@ -240,14 +240,14 @@ void enic_init_vnic_resources(struct enic *enic)
 	struct vnic_rq *data_rq;
 
 	for (index = 0; index < enic->rq_count; index++) {
-		cq_idx = enic_cq_rq(enic, enic_sop_rq(index));
+		cq_idx = enic_cq_rq(enic, enic_rte_rq_idx_to_sop_idx(index));
 
-		vnic_rq_init(&enic->rq[enic_sop_rq(index)],
+		vnic_rq_init(&enic->rq[enic_rte_rq_idx_to_sop_idx(index)],
 			cq_idx,
 			error_interrupt_enable,
 			error_interrupt_offset);
 
-		data_rq = &enic->rq[enic_data_rq(index)];
+		data_rq = &enic->rq[enic_rte_rq_idx_to_data_idx(index)];
 		if (data_rq->in_use)
 			vnic_rq_init(data_rq,
 				     cq_idx,
@@ -461,17 +461,17 @@ int enic_enable(struct enic *enic)
 
 	for (index = 0; index < enic->rq_count; index++) {
 		err = enic_alloc_rx_queue_mbufs(enic,
-			&enic->rq[enic_sop_rq(index)]);
+			&enic->rq[enic_rte_rq_idx_to_sop_idx(index)]);
 		if (err) {
 			dev_err(enic, "Failed to alloc sop RX queue mbufs\n");
 			return err;
 		}
 		err = enic_alloc_rx_queue_mbufs(enic,
-			&enic->rq[enic_data_rq(index)]);
+			&enic->rq[enic_rte_rq_idx_to_data_idx(index)]);
 		if (err) {
 			/* release the allocated mbufs for the sop rq*/
 			enic_rxmbuf_queue_release(enic,
-				&enic->rq[enic_sop_rq(index)]);
+				&enic->rq[enic_rte_rq_idx_to_sop_idx(index)]);
 
 			dev_err(enic, "Failed to alloc data RX queue mbufs\n");
 			return err;
@@ -568,8 +568,10 @@ int enic_stop_wq(struct enic *enic, uint16_t queue_idx)
 
 void enic_start_rq(struct enic *enic, uint16_t queue_idx)
 {
-	struct vnic_rq *rq_sop = &enic->rq[enic_sop_rq(queue_idx)];
-	struct vnic_rq *rq_data = &enic->rq[rq_sop->data_queue_idx];
+	struct vnic_rq *rq_sop;
+	struct vnic_rq *rq_data;
+	rq_sop = &enic->rq[enic_rte_rq_idx_to_sop_idx(queue_idx)];
+	rq_data = &enic->rq[rq_sop->data_queue_idx];
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 
 	if (rq_data->in_use)
@@ -583,8 +585,10 @@ int enic_stop_rq(struct enic *enic, uint16_t queue_idx)
 {
 	int ret1 = 0, ret2 = 0;
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
-	struct vnic_rq *rq_sop = &enic->rq[enic_sop_rq(queue_idx)];
-	struct vnic_rq *rq_data = &enic->rq[rq_sop->data_queue_idx];
+	struct vnic_rq *rq_sop;
+	struct vnic_rq *rq_data;
+	rq_sop = &enic->rq[enic_rte_rq_idx_to_sop_idx(queue_idx)];
+	rq_data = &enic->rq[rq_sop->data_queue_idx];
 
 	ret2 = vnic_rq_disable(rq_sop);
 	rte_mb();
@@ -605,8 +609,8 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	uint16_t nb_desc)
 {
 	int rc;
-	uint16_t sop_queue_idx = enic_sop_rq(queue_idx);
-	uint16_t data_queue_idx = enic_data_rq(queue_idx);
+	uint16_t sop_queue_idx = enic_rte_rq_idx_to_sop_idx(queue_idx);
+	uint16_t data_queue_idx = enic_rte_rq_idx_to_data_idx(queue_idx);
 	struct vnic_rq *rq_sop = &enic->rq[sop_queue_idx];
 	struct vnic_rq *rq_data = &enic->rq[data_queue_idx];
 	unsigned int mbuf_size, mbufs_per_pkt;
@@ -964,7 +968,7 @@ static int enic_set_rsscpu(struct enic *enic, u8 rss_hash_bits)
 
 	for (i = 0; i < (1 << rss_hash_bits); i++)
 		(*rss_cpu_buf_va).cpu[i / 4].b[i % 4] =
-			enic_sop_rq(i % enic->rq_count);
+			enic_rte_rq_idx_to_sop_idx(i % enic->rq_count);
 
 	err = enic_set_rss_cpu(enic,
 		rss_cpu_buf_pa,
@@ -1116,8 +1120,8 @@ enic_reinit_rq(struct enic *enic, unsigned int rq_idx)
 	unsigned int cq_idx = enic_cq_rq(enic, rq_idx);
 	int rc = 0;
 
-	sop_rq = &enic->rq[enic_sop_rq(rq_idx)];
-	data_rq = &enic->rq[enic_data_rq(rq_idx)];
+	sop_rq = &enic->rq[enic_rte_rq_idx_to_sop_idx(rq_idx)];
+	data_rq = &enic->rq[enic_rte_rq_idx_to_data_idx(rq_idx)];
 
 	vnic_cq_clean(&enic->cq[cq_idx]);
 	vnic_cq_init(&enic->cq[cq_idx],
@@ -1133,12 +1137,14 @@ enic_reinit_rq(struct enic *enic, unsigned int rq_idx)
 		     0 /* cq_message_addr */);
 
 
-	vnic_rq_init_start(sop_rq, enic_cq_rq(enic, enic_sop_rq(rq_idx)),
-			   0, sop_rq->ring.desc_count - 1, 1, 0);
+	vnic_rq_init_start(sop_rq, enic_cq_rq(enic,
+			   enic_rte_rq_idx_to_sop_idx(rq_idx)), 0,
+			   sop_rq->ring.desc_count - 1, 1, 0);
 	if (data_rq->in_use) {
 		vnic_rq_init_start(data_rq,
-				   enic_cq_rq(enic, enic_data_rq(rq_idx)),
-				   0, data_rq->ring.desc_count - 1, 1, 0);
+				   enic_cq_rq(enic,
+				   enic_rte_rq_idx_to_data_idx(rq_idx)), 0,
+				   data_rq->ring.desc_count - 1, 1, 0);
 	}
 
 	rc = enic_alloc_rx_queue_mbufs(enic, sop_rq);
@@ -1211,7 +1217,8 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 	for (rq_idx = 0; rq_idx < enic->rq_count * 2; rq_idx++) {
 		rq = &enic->rq[rq_idx];
 		if (rq->is_sop && rq->in_use) {
-			rc = enic_stop_rq(enic, enic_rq_sop(rq_idx));
+			rc = enic_stop_rq(enic,
+					  enic_sop_rq_idx_to_rte_idx(rq_idx));
 			if (rc) {
 				dev_err(enic, "Failed to stop Rq %u\n", rq_idx);
 				goto set_mtu_done;
@@ -1233,7 +1240,7 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 
 	/* free and reallocate RQs with the new MTU */
 	for (rq_idx = 0; rq_idx < enic->rq_count; rq_idx++) {
-		rq = &enic->rq[enic_sop_rq(rq_idx)];
+		rq = &enic->rq[enic_rte_rq_idx_to_sop_idx(rq_idx)];
 
 		enic_free_rq(rq);
 		rc = enic_alloc_rq(enic, rq_idx, rq->socket_id, rq->mp,
@@ -1259,7 +1266,7 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 
 	/* restart Rx traffic */
 	for (rq_idx = 0; rq_idx < enic->rq_count; rq_idx++) {
-		rq = &enic->rq[enic_sop_rq(rq_idx)];
+		rq = &enic->rq[enic_rte_rq_idx_to_sop_idx(rq_idx)];
 		if (rq->is_sop && rq->in_use)
 			enic_start_rq(enic, rq_idx);
 	}

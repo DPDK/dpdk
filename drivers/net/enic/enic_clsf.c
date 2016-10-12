@@ -382,7 +382,7 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 	}
 
 	/* Get the enicpmd RQ from the DPDK Rx queue */
-	queue = enic_sop_rq(params->action.rx_queue);
+	queue = enic_rte_rq_idx_to_sop_idx(params->action.rx_queue);
 
 	if (!enic->rq[queue].in_use)
 		return -EINVAL;

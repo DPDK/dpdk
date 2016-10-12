@@ -175,19 +175,23 @@ static inline unsigned int enic_sop_rq_idx_to_cq_idx(unsigned int sop_idx)
 {
 	return sop_idx / 2;
 }
-static inline unsigned int enic_rq_sop(unsigned int sop_rq)
+
+/* Get the RTE RQ index from a Start of Packet(SOP) RQ index */
+static inline unsigned int enic_sop_rq_idx_to_rte_idx(unsigned int sop_idx)
 {
-	return sop_rq / 2;
+	return sop_idx / 2;
 }
 
-static inline unsigned int enic_sop_rq(unsigned int rq)
+/* Get the Start of Packet(SOP) RQ index from a RTE RQ index */
+static inline unsigned int enic_rte_rq_idx_to_sop_idx(unsigned int rte_idx)
 {
-	return rq * 2;
+	return rte_idx * 2;
 }
 
-static inline unsigned int enic_data_rq(unsigned int rq)
+/* Get the Data RQ index from a RTE RQ index */
+static inline unsigned int enic_rte_rq_idx_to_data_idx(unsigned int rte_idx)
 {
-	return rq * 2 + 1;
+	return rte_idx * 2 + 1;
 }
 
 static inline unsigned int enic_vnic_rq_count(struct enic *enic)

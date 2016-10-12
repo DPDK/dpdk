@@ -154,7 +154,7 @@ static int enicpmd_dev_setup_intr(struct enic *enic)
 		return 0;
 	/* check start of packet (SOP) RQs only in case scatter is disabled. */
 	for (index = 0; index < enic->rq_count; index++) {
-		if (!enic->rq[enic_sop_rq(index)].ctrl)
+		if (!enic->rq[enic_rte_rq_idx_to_sop_idx(index)].ctrl)
 			break;
 	}
 	if (enic->rq_count != index)
@@ -277,7 +277,7 @@ static uint32_t enicpmd_dev_rx_queue_count(struct rte_eth_dev *dev,
 		return 0;
 	}
 
-	rq_num = enic_sop_rq(rx_queue_id);
+	rq_num = enic_rte_rq_idx_to_sop_idx(rx_queue_id);
 	cq = &enic->cq[enic_cq_rq(enic, rq_num)];
 	cq_idx = cq->to_clean;
 
@@ -313,7 +313,7 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	}
 
 	eth_dev->data->rx_queues[queue_idx] =
-		(void *)&enic->rq[enic_sop_rq(queue_idx)];
+		(void *)&enic->rq[enic_rte_rq_idx_to_sop_idx(queue_idx)];
 
 	ret = enic_alloc_rq(enic, queue_idx, socket_id, mp, nb_desc);
 	if (ret) {
