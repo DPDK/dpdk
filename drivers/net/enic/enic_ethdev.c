@@ -315,15 +315,12 @@ static int enicpmd_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	eth_dev->data->rx_queues[queue_idx] =
 		(void *)&enic->rq[enic_rte_rq_idx_to_sop_idx(queue_idx)];
 
-	ret = enic_alloc_rq(enic, queue_idx, socket_id, mp, nb_desc);
+	ret = enic_alloc_rq(enic, queue_idx, socket_id, mp, nb_desc,
+			    rx_conf->rx_free_thresh);
 	if (ret) {
 		dev_err(enic, "error in allocating rq\n");
 		return ret;
 	}
-
-	enic->rq[queue_idx].rx_free_thresh = rx_conf->rx_free_thresh;
-	dev_debug(enic, "Set queue_id:%u free thresh:%u\n", queue_idx,
-			enic->rq[queue_idx].rx_free_thresh);
 
 	return enicpmd_dev_setup_intr(enic);
 }

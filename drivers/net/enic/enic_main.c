@@ -606,7 +606,7 @@ int enic_stop_rq(struct enic *enic, uint16_t queue_idx)
 
 int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	unsigned int socket_id, struct rte_mempool *mp,
-	uint16_t nb_desc)
+	uint16_t nb_desc, uint16_t free_thresh)
 {
 	int rc;
 	uint16_t sop_queue_idx = enic_rte_rq_idx_to_sop_idx(queue_idx);
@@ -627,6 +627,10 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	rq_data->socket_id = socket_id;
 	rq_data->mp = mp;
 	rq_sop->in_use = 1;
+	rq_sop->rx_free_thresh = free_thresh;
+	rq_data->rx_free_thresh = free_thresh;
+	dev_debug(enic, "Set queue_id:%u free thresh:%u\n", queue_idx,
+		  free_thresh);
 
 	mbuf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
 			       RTE_PKTMBUF_HEADROOM);
@@ -1244,7 +1248,7 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 
 		enic_free_rq(rq);
 		rc = enic_alloc_rq(enic, rq_idx, rq->socket_id, rq->mp,
-				   rq->tot_nb_desc);
+				   rq->tot_nb_desc, rq->rx_free_thresh);
 		if (rc) {
 			dev_err(enic,
 				"Fatal MTU alloc error- No traffic will pass\n");
