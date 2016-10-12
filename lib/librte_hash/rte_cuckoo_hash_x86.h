@@ -167,7 +167,8 @@ rte_hash_cuckoo_make_space_mw_tm(const struct rte_hash *h,
 
 	/* Cuckoo bfs Search */
 	while (likely(tail != head && head <
-					queue + RTE_HASH_BFS_QUEUE_MAX_LEN - 4)) {
+					queue + RTE_HASH_BFS_QUEUE_MAX_LEN -
+					RTE_HASH_BUCKET_ENTRIES)) {
 		curr_bkt = tail->bkt;
 		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 			if (curr_bkt->key_idx[i] == EMPTY_SLOT) {
