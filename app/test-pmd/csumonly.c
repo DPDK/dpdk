@@ -652,7 +652,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t i;
-	uint64_t ol_flags;
+	uint64_t rx_ol_flags, tx_ol_flags;
 	uint16_t testpmd_ol_flags;
 	uint32_t retry;
 	uint32_t rx_bad_ip_csum;
@@ -693,13 +693,14 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
 						       void *));
 
-		ol_flags = 0;
-		info.is_tunnel = 0;
 		m = pkts_burst[i];
+		info.is_tunnel = 0;
+		tx_ol_flags = 0;
+		rx_ol_flags = m->ol_flags;
 
 		/* Update the L3/L4 checksum error packet statistics */
-		rx_bad_ip_csum += ((m->ol_flags & PKT_RX_IP_CKSUM_BAD) != 0);
-		rx_bad_l4_csum += ((m->ol_flags & PKT_RX_L4_CKSUM_BAD) != 0);
+		rx_bad_ip_csum += ((rx_ol_flags & PKT_RX_IP_CKSUM_BAD) != 0);
+		rx_bad_l4_csum += ((rx_ol_flags & PKT_RX_L4_CKSUM_BAD) != 0);
 
 		/* step 1: dissect packet, parsing optional vlan, ip4/ip6, vxlan
 		 * and inner headers */
@@ -721,7 +722,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					info.l3_len);
 				parse_vxlan(udp_hdr, &info, m->packet_type);
 				if (info.is_tunnel)
-					ol_flags |= PKT_TX_TUNNEL_VXLAN;
+					tx_ol_flags |= PKT_TX_TUNNEL_VXLAN;
 			} else if (info.l4_proto == IPPROTO_GRE) {
 				struct simple_gre_hdr *gre_hdr;
 
@@ -729,14 +730,14 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					((char *)l3_hdr + info.l3_len);
 				parse_gre(gre_hdr, &info);
 				if (info.is_tunnel)
-					ol_flags |= PKT_TX_TUNNEL_GRE;
+					tx_ol_flags |= PKT_TX_TUNNEL_GRE;
 			} else if (info.l4_proto == IPPROTO_IPIP) {
 				void *encap_ip_hdr;
 
 				encap_ip_hdr = (char *)l3_hdr + info.l3_len;
 				parse_encap_ip(encap_ip_hdr, &info);
 				if (info.is_tunnel)
-					ol_flags |= PKT_TX_TUNNEL_IPIP;
+					tx_ol_flags |= PKT_TX_TUNNEL_IPIP;
 			}
 		}
 
@@ -759,15 +760,16 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		 * is configured, prepare the mbuf for TCP segmentation. */
 
 		/* process checksums of inner headers first */
-		ol_flags |= process_inner_cksums(l3_hdr, &info, testpmd_ol_flags);
+		tx_ol_flags |= process_inner_cksums(l3_hdr, &info,
+			testpmd_ol_flags);
 
 		/* Then process outer headers if any. Note that the software
 		 * checksum will be wrong if one of the inner checksums is
 		 * processed in hardware. */
 		if (info.is_tunnel == 1) {
-			ol_flags |= process_outer_cksums(outer_l3_hdr, &info,
+			tx_ol_flags |= process_outer_cksums(outer_l3_hdr, &info,
 					testpmd_ol_flags,
-					!!(ol_flags & PKT_TX_TCP_SEG));
+					!!(tx_ol_flags & PKT_TX_TCP_SEG));
 		}
 
 		/* step 4: fill the mbuf meta data (flags and header lengths) */
@@ -802,7 +804,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			m->l4_len = info.l4_len;
 			m->tso_segsz = info.tso_segsz;
 		}
-		m->ol_flags = ol_flags;
+		m->ol_flags = tx_ol_flags;
 
 		/* Do split & copy for the packet. */
 		if (tx_pkt_split != TX_PKT_SPLIT_OFF) {
@@ -822,10 +824,11 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			printf("mbuf=%p, pkt_len=%u, nb_segs=%hhu:\n",
 				m, m->pkt_len, m->nb_segs);
 			/* dump rx parsed packet info */
+			rte_get_rx_ol_flag_list(rx_ol_flags, buf, sizeof(buf));
 			printf("rx: l2_len=%d ethertype=%x l3_len=%d "
-				"l4_proto=%d l4_len=%d\n",
+				"l4_proto=%d l4_len=%d flags=%s\n",
 				info.l2_len, rte_be_to_cpu_16(info.ethertype),
-				info.l3_len, info.l4_proto, info.l4_len);
+				info.l3_len, info.l4_proto, info.l4_len, buf);
 			if (info.is_tunnel == 1)
 				printf("rx: outer_l2_len=%d outer_ethertype=%x "
 					"outer_l3_len=%d\n", info.outer_l2_len,
