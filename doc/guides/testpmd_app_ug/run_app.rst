@@ -285,6 +285,10 @@ The commandline options are:
 
     Enable hardware CRC stripping.
 
+*   ``--enable-lro``
+
+    Enable large receive offload.
+
 *   ``--enable-rx-cksum``
 
     Enable hardware RX checksum offload.

@@ -149,6 +149,7 @@ usage(char* progname)
 	       "If the drop-queue doesn't exist, the packet is dropped. "
 	       "By default drop-queue=127.\n");
 	printf("  --crc-strip: enable CRC stripping by hardware.\n");
+	printf("  --enable-lro: enable large receive offload.\n");
 	printf("  --enable-rx-cksum: enable rx hardware checksum offload.\n");
 	printf("  --disable-hw-vlan: disable hardware vlan.\n");
 	printf("  --disable-hw-vlan-filter: disable hardware vlan filter.\n");
@@ -524,6 +525,7 @@ launch_args_parse(int argc, char** argv)
 		{ "pkt-filter-size",            1, 0, 0 },
 		{ "pkt-filter-drop-queue",      1, 0, 0 },
 		{ "crc-strip",                  0, 0, 0 },
+		{ "enable-lro",                 0, 0, 0 },
 		{ "enable-rx-cksum",            0, 0, 0 },
 		{ "enable-scatter",             0, 0, 0 },
 		{ "disable-hw-vlan",            0, 0, 0 },
@@ -764,6 +766,8 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "crc-strip"))
 				rx_mode.hw_strip_crc = 1;
+			if (!strcmp(lgopts[opt_idx].name, "enable-lro"))
+				rx_mode.enable_lro = 1;
 			if (!strcmp(lgopts[opt_idx].name, "enable-scatter"))
 				rx_mode.enable_scatter = 1;
 			if (!strcmp(lgopts[opt_idx].name, "enable-rx-cksum"))
