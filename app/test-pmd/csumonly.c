@@ -336,7 +336,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	if (!info->is_tunnel) {
 		max_pkt_len = info->l2_len + info->l3_len + info->l4_len +
 			info->tso_segsz;
-		if (info->tunnel_tso_segsz != 0 && info->pkt_len > max_pkt_len)
+		if (info->tso_segsz != 0 && info->pkt_len > max_pkt_len)
 			tso_segsz = info->tso_segsz;
 	} else {
 		max_pkt_len = info->outer_l2_len + info->outer_l3_len +
@@ -351,9 +351,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		ipv4_hdr->hdr_checksum = 0;
 
 		ol_flags |= PKT_TX_IPV4;
-		if (info->l4_proto == IPPROTO_TCP &&
-		    ((info->is_tunnel && info->tunnel_tso_segsz != 0) ||
-		     (!info->is_tunnel && info->tso_segsz != 0))) {
+		if (info->l4_proto == IPPROTO_TCP && tso_segsz) {
 			ol_flags |= PKT_TX_IP_CKSUM;
 		} else {
 			if (testpmd_ol_flags & TESTPMD_TX_OFFLOAD_IP_CKSUM)
