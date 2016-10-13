@@ -822,6 +822,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				"l4_proto=%d l4_len=%d flags=%s\n",
 				info.l2_len, rte_be_to_cpu_16(info.ethertype),
 				info.l3_len, info.l4_proto, info.l4_len, buf);
+			if (rx_ol_flags & PKT_RX_LRO)
+				printf("rx: m->lro_segsz=%u\n", m->tso_segsz);
 			if (info.is_tunnel == 1)
 				printf("rx: outer_l2_len=%d outer_ethertype=%x "
 					"outer_l3_len=%d\n", info.outer_l2_len,
