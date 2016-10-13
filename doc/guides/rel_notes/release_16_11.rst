@@ -49,6 +49,9 @@ New Features
 
   * Added a new function ``rte_raw_cksum_mbuf()`` to process the checksum of
     data embedded in an mbuf chain.
+  * Added new Rx checksum flags in mbufs to describe more states: unknown,
+    good, bad, or not present (useful for virtual drivers). This modification
+    was done for IP and L4.
 
 * **Added vhost-user dequeue zero copy support**
 

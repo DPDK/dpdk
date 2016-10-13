@@ -697,8 +697,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		rx_ol_flags = m->ol_flags;
 
 		/* Update the L3/L4 checksum error packet statistics */
-		rx_bad_ip_csum += ((rx_ol_flags & PKT_RX_IP_CKSUM_BAD) != 0);
-		rx_bad_l4_csum += ((rx_ol_flags & PKT_RX_L4_CKSUM_BAD) != 0);
+		if ((rx_ol_flags & PKT_RX_IP_CKSUM_MASK) == PKT_RX_IP_CKSUM_BAD)
+			rx_bad_ip_csum += 1;
+		if ((rx_ol_flags & PKT_RX_L4_CKSUM_MASK) == PKT_RX_L4_CKSUM_BAD)
+			rx_bad_l4_csum += 1;
 
 		/* step 1: dissect packet, parsing optional vlan, ip4/ip6, vxlan
 		 * and inner headers */
