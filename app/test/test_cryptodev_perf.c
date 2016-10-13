@@ -3881,15 +3881,18 @@ perf_AES_GCM(uint8_t dev_id, uint16_t queue_id,
 }
 
 static int
-test_perf_AES_GCM(void)
+test_perf_AES_GCM(int continual_buf_len, int continual_size)
 {
-	uint16_t i, j;
+	uint16_t i, j, k, loops = 1;
 
 	uint16_t buf_lengths[] = { 64, 128, 256, 512, 1024, 1536, 2048 };
 
 	static const struct cryptodev_perf_test_data *gcm_tests[] = {
 			&AES_GCM_128_12IV_0AAD
 	};
+
+	if (continual_buf_len)
+		loops = continual_size;
 
 	int TEST_CASES_GCM = RTE_DIM(gcm_tests);
 
@@ -3935,21 +3938,42 @@ test_perf_AES_GCM(void)
 		params_set[i].chain = CIPHER_HASH;
 		params_set[i].session_attrs = &session_attrs[i];
 		params_set[i].symmetric_op = &ops_set[i];
-		params_set[i].total_operations = 1000000;
+		if (continual_buf_len)
+			params_set[i].total_operations = 0xFFFFFF;
+		else
+			params_set[i].total_operations = 1000000;
+
 		params_set[i].burst_size = burst_size;
 
 	}
 
+	if (continual_buf_len)
+		printf("\nCipher algo: %s Cipher hash: %s cipher key size: %ub"
+			" burst size: %u", "AES_GCM", "AES_GCM",
+			gcm_test->key.len << 3,	burst_size);
+
 	for (i = 0; i < RTE_DIM(gcm_tests); i++) {
 
-		printf("\nCipher algo: %s Cipher hash: %s cipher key size: %ub"
+		if (!continual_buf_len) {
+			printf("\nCipher algo: %s Cipher hash: %s cipher key size: %ub"
 				" burst size: %u", "AES_GCM", "AES_GCM",
-				gcm_test->key.len << 3,	burst_size
-				);
-		printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\t"
-			" Retries\tEmptyPolls");
+				gcm_test->key.len << 3,	burst_size);
+			printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\t"
+				" Retries\tEmptyPolls");
+		}
 
-		for (j = 0; j < RTE_DIM(buf_lengths); ++j) {
+		uint16_t len = RTE_DIM(buf_lengths);
+		uint16_t p = 0;
+
+		if (continual_buf_len) {
+			for (k = 0; k < RTE_DIM(buf_lengths); k++)
+				if (buf_lengths[k] == continual_buf_len) {
+					len = k + 1;
+					p = k;
+					break;
+				}
+		}
+		for (j = p; j < len; ++j) {
 
 			params_set[i].symmetric_op->c_len = buf_lengths[j];
 			params_set[i].symmetric_op->p_len = buf_lengths[j];
@@ -3964,15 +3988,88 @@ test_perf_AES_GCM(void)
 					&params_set[i], 1))
 				return TEST_FAILED;
 
-			if (perf_AES_GCM(testsuite_params.dev_id, 0,
-					&params_set[i], 0))
-				return TEST_FAILED;
+			for (k = 0; k < loops; k++) {
+				if (continual_buf_len)
+					printf("\n\nBuffer Size(B)\tOPS(M)\t"
+						"Throughput(Gbps)\t"
+						"Retries\tEmptyPolls");
+				if (perf_AES_GCM(testsuite_params.dev_id, 0,
+						&params_set[i], 0))
+					return TEST_FAILED;
+				if (continual_buf_len)
+					printf("\n\nCompleted loop %i of %i ...",
+						k+1, loops);
+			}
 		}
 
 	}
 	printf("\n");
 	return 0;
 }
+
+static int test_cryptodev_perf_AES_GCM(void)
+{
+	return test_perf_AES_GCM(0, 0);
+}
+/*
+ * This function calls AES GCM performance tests providing
+ * size of packet as an argument. If size of packet is not
+ * in the buf_lengths array, all sizes will be used
+ */
+static int test_continual_perf_AES_GCM(void)
+{
+	return test_perf_AES_GCM(1024, 10);
+}
+
+static int
+test_perf_continual_performance_test(void)
+{
+	unsigned int total_operations = 0xFFFFFF;
+	unsigned int total_loops = 10;
+	unsigned int burst_size = 32;
+	uint8_t i;
+
+	struct perf_test_params params_set = {
+		.total_operations = total_operations,
+		.burst_size = burst_size,
+		.buf_size = 1024,
+
+		.chain = CIPHER_HASH,
+
+		.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
+		.cipher_key_length = 16,
+		.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
+	};
+
+	for (i = 1; i <= total_loops; ++i) {
+		printf("\n%s. cipher algo: %s auth algo: %s cipher key size=%u."
+				" burst_size: %d ops\n",
+				chain_mode_name(params_set.chain),
+				cipher_algo_name(params_set.cipher_algo),
+				auth_algo_name(params_set.auth_algo),
+				params_set.cipher_key_length,
+				burst_size);
+		printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\t"
+				"Retries\tEmptyPolls\n");
+				test_perf_aes_sha(testsuite_params.dev_id, 0,
+					&params_set);
+		printf("\nCompleted loop %i of %i ...", i, total_loops);
+	}
+	return 0;
+}
+
+static struct unit_test_suite cryptodev_qat_continual_testsuite  = {
+	.suite_name = "Crypto Device Continual Performance Test",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_perf_continual_performance_test),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_continual_perf_AES_GCM),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
 
 static struct unit_test_suite cryptodev_testsuite  = {
 	.suite_name = "Crypto Device Unit Test Suite",
@@ -3982,7 +4079,7 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_perf_aes_cbc_encrypt_digest_vary_pkt_size),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_perf_AES_GCM),
+				test_cryptodev_perf_AES_GCM),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_perf_aes_cbc_vary_burst_size),
 		TEST_CASES_END() /**< NULL terminate unit test array */
@@ -3995,7 +4092,7 @@ static struct unit_test_suite cryptodev_gcm_testsuite  = {
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_perf_AES_GCM),
+				test_cryptodev_perf_AES_GCM),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -4085,6 +4182,14 @@ perftest_libcrypto_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 	return unit_test_suite_runner(&cryptodev_libcrypto_testsuite);
 }
 
+static int
+perftest_qat_continual_cryptodev(void)
+{
+	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
+
+	return unit_test_suite_runner(&cryptodev_qat_continual_testsuite);
+}
+
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_perftest, perftest_aesni_mb_cryptodev);
 REGISTER_TEST_COMMAND(cryptodev_qat_perftest, perftest_qat_cryptodev);
 REGISTER_TEST_COMMAND(cryptodev_sw_snow3g_perftest, perftest_sw_snow3g_cryptodev);
@@ -4092,3 +4197,5 @@ REGISTER_TEST_COMMAND(cryptodev_qat_snow3g_perftest, perftest_qat_snow3g_cryptod
 REGISTER_TEST_COMMAND(cryptodev_aesni_gcm_perftest, perftest_aesni_gcm_cryptodev);
 REGISTER_TEST_COMMAND(cryptodev_libcrypto_perftest,
 		perftest_libcrypto_cryptodev);
+REGISTER_TEST_COMMAND(cryptodev_qat_continual_perftest,
+		perftest_qat_continual_cryptodev);
