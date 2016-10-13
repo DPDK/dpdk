@@ -1369,6 +1369,10 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	req_features = VIRTIO_PMD_DEFAULT_GUEST_FEATURES;
 	if (rxmode->hw_ip_checksum)
 		req_features |= (1ULL << VIRTIO_NET_F_GUEST_CSUM);
+	if (rxmode->enable_lro)
+		req_features |=
+			(1ULL << VIRTIO_NET_F_GUEST_TSO4) |
+			(1ULL << VIRTIO_NET_F_GUEST_TSO6);
 
 	/* if request features changed, reinit the device */
 	if (req_features != hw->req_guest_features) {
@@ -1381,6 +1385,14 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM)) {
 		PMD_DRV_LOG(NOTICE,
 			"rx ip checksum not available on this host");
+		return -ENOTSUP;
+	}
+
+	if (rxmode->enable_lro &&
+		(!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
+			!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4))) {
+		PMD_DRV_LOG(NOTICE,
+			"lro not available on this host");
 		return -ENOTSUP;
 	}
 
@@ -1599,7 +1611,8 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM;
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_LRO;
 	dev_info->tx_offload_capa = 0;
 
 	if (hw->guest_features & (1ULL << VIRTIO_NET_F_CSUM)) {

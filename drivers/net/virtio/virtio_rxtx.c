@@ -715,13 +715,36 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 		m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
 	}
 
+	/* GSO request, save required information in mbuf */
+	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
+		/* Check unsupported modes */
+		if ((hdr->gso_type & VIRTIO_NET_HDR_GSO_ECN) ||
+		    (hdr->gso_size == 0)) {
+			return -EINVAL;
+		}
+
+		/* Update mss lengthes in mbuf */
+		m->tso_segsz = hdr->gso_size;
+		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
+			case VIRTIO_NET_HDR_GSO_TCPV4:
+			case VIRTIO_NET_HDR_GSO_TCPV6:
+				m->ol_flags |= PKT_RX_LRO | \
+					PKT_RX_L4_CKSUM_NONE;
+				break;
+			default:
+				return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 
 static inline int
 rx_offload_enabled(struct virtio_hw *hw)
 {
-	return vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM);
+	return vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM) ||
+		vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
+		vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO6);
 }
 
 #define VIRTIO_MBUF_BURST_SZ 64
