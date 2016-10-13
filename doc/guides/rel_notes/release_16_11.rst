@@ -85,7 +85,7 @@ New Features
 
 * **Supported offloads with virtio.**
 
-  * Rx checksums
+  * Rx/Tx checksums
 
 * **Added virtio NEON support for ARM.**
 

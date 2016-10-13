@@ -53,6 +53,8 @@
 #include <rte_cpuflags.h>
 #include <rte_net.h>
 #include <rte_ip.h>
+#include <rte_udp.h>
+#include <rte_tcp.h>
 
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
@@ -207,18 +209,27 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf *cookie)
 	return 0;
 }
 
+static inline int
+tx_offload_enabled(struct virtio_hw *hw)
+{
+	return vtpci_with_feature(hw, VIRTIO_NET_F_CSUM);
+}
+
 static inline void
 virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		       uint16_t needed, int use_indirect, int can_push)
 {
+	struct virtio_tx_region *txr = txvq->virtio_net_hdr_mz->addr;
 	struct vq_desc_extra *dxp;
 	struct virtqueue *vq = txvq->vq;
 	struct vring_desc *start_dp;
 	uint16_t seg_num = cookie->nb_segs;
 	uint16_t head_idx, idx;
 	uint16_t head_size = vq->hw->vtnet_hdr_size;
-	unsigned long offs;
+	struct virtio_net_hdr *hdr;
+	int offload;
 
+	offload = tx_offload_enabled(vq->hw);
 	head_idx = vq->vq_desc_head_idx;
 	idx = head_idx;
 	dxp = &vq->vq_descx[idx];
@@ -228,10 +239,12 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	start_dp = vq->vq_ring.desc;
 
 	if (can_push) {
-		/* put on zero'd transmit header (no offloads) */
-		void *hdr = rte_pktmbuf_prepend(cookie, head_size);
-
-		memset(hdr, 0, head_size);
+		/* prepend cannot fail, checked by caller */
+		hdr = (struct virtio_net_hdr *)
+			rte_pktmbuf_prepend(cookie, head_size);
+		/* if offload disabled, it is not zeroed below, do it now */
+		if (offload == 0)
+			memset(hdr, 0, head_size);
 	} else if (use_indirect) {
 		/* setup tx ring slot to point to indirect
 		 * descriptor list stored in reserved region.
@@ -239,14 +252,11 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		 * the first slot in indirect ring is already preset
 		 * to point to the header in reserved region
 		 */
-		struct virtio_tx_region *txr = txvq->virtio_net_hdr_mz->addr;
-
-		offs = idx * sizeof(struct virtio_tx_region)
-			+ offsetof(struct virtio_tx_region, tx_indir);
-
-		start_dp[idx].addr  = txvq->virtio_net_hdr_mem + offs;
+		start_dp[idx].addr  = txvq->virtio_net_hdr_mem +
+			RTE_PTR_DIFF(&txr[idx].tx_indir, txr);
 		start_dp[idx].len   = (seg_num + 1) * sizeof(struct vring_desc);
 		start_dp[idx].flags = VRING_DESC_F_INDIRECT;
+		hdr = (struct virtio_net_hdr *)&txr[idx].tx_hdr;
 
 		/* loop below will fill in rest of the indirect elements */
 		start_dp = txr[idx].tx_indir;
@@ -255,13 +265,41 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		/* setup first tx ring slot to point to header
 		 * stored in reserved region.
 		 */
-		offs = idx * sizeof(struct virtio_tx_region)
-			+ offsetof(struct virtio_tx_region, tx_hdr);
-
-		start_dp[idx].addr  = txvq->virtio_net_hdr_mem + offs;
+		start_dp[idx].addr  = txvq->virtio_net_hdr_mem +
+			RTE_PTR_DIFF(&txr[idx].tx_hdr, txr);
 		start_dp[idx].len   = vq->hw->vtnet_hdr_size;
 		start_dp[idx].flags = VRING_DESC_F_NEXT;
+		hdr = (struct virtio_net_hdr *)&txr[idx].tx_hdr;
+
 		idx = start_dp[idx].next;
+	}
+
+	if (offload) {
+		/* Checksum Offload */
+		switch (cookie->ol_flags & PKT_TX_L4_MASK) {
+		case PKT_TX_UDP_CKSUM:
+			hdr->csum_start = cookie->l2_len + cookie->l3_len;
+			hdr->csum_offset = offsetof(struct udp_hdr,
+				dgram_cksum);
+			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+			break;
+
+		case PKT_TX_TCP_CKSUM:
+			hdr->csum_start = cookie->l2_len + cookie->l3_len;
+			hdr->csum_offset = offsetof(struct tcp_hdr, cksum);
+			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+			break;
+
+		default:
+			hdr->csum_start = 0;
+			hdr->csum_offset = 0;
+			hdr->flags = 0;
+			break;
+		}
+
+		hdr->gso_type = 0;
+		hdr->gso_size = 0;
+		hdr->hdr_len = 0;
 	}
 
 	do {
@@ -527,11 +565,6 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if ((tx_conf->txq_flags & ETH_TXQ_FLAGS_NOXSUMS)
-	    != ETH_TXQ_FLAGS_NOXSUMS) {
-		PMD_INIT_LOG(ERR, "TX checksum offload not supported\n");
-		return -EINVAL;
-	}
 
 	virtio_update_rxtx_handler(dev, tx_conf);
 
