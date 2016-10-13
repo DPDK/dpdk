@@ -1136,46 +1136,13 @@ rx_func_get(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 }
 
-/*
- * This function is based on probe() function in virtio_pci.c
- * It returns 0 on success.
- */
-int
-eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
+static int
+virtio_init_device(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	struct virtio_net_config *config;
 	struct virtio_net_config local_config;
-	struct rte_pci_device *pci_dev;
-	uint32_t dev_flags = RTE_ETH_DEV_DETACHABLE;
-	int ret;
-
-	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr_mrg_rxbuf));
-
-	eth_dev->dev_ops = &virtio_eth_dev_ops;
-	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
-
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		rx_func_get(eth_dev);
-		return 0;
-	}
-
-	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("virtio", VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN, 0);
-	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR,
-			"Failed to allocate %d bytes needed to store MAC addresses",
-			VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN);
-		return -ENOMEM;
-	}
-
-	pci_dev = eth_dev->pci_dev;
-
-	if (pci_dev) {
-		ret = vtpci_init(pci_dev, hw, &dev_flags);
-		if (ret)
-			return ret;
-	}
+	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
 
 	/* Reset the device although not necessary at startup */
 	vtpci_reset(hw);
@@ -1190,10 +1157,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* If host does not support status then disable LSC */
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_STATUS))
-		dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
+		eth_dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
+	else
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-	eth_dev->data->dev_flags = dev_flags;
 
 	rx_func_get(eth_dev);
 
@@ -1272,12 +1240,61 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
 
+	virtio_dev_cq_start(eth_dev);
+
+	return 0;
+}
+
+/*
+ * This function is based on probe() function in virtio_pci.c
+ * It returns 0 on success.
+ */
+int
+eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
+{
+	struct virtio_hw *hw = eth_dev->data->dev_private;
+	struct rte_pci_device *pci_dev;
+	uint32_t dev_flags = RTE_ETH_DEV_DETACHABLE;
+	int ret;
+
+	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr_mrg_rxbuf));
+
+	eth_dev->dev_ops = &virtio_eth_dev_ops;
+	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		rx_func_get(eth_dev);
+		return 0;
+	}
+
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("virtio", VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Failed to allocate %d bytes needed to store MAC addresses",
+			VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN);
+		return -ENOMEM;
+	}
+
+	pci_dev = eth_dev->pci_dev;
+
+	if (pci_dev) {
+		ret = vtpci_init(pci_dev, hw, &dev_flags);
+		if (ret)
+			return ret;
+	}
+
+	eth_dev->data->dev_flags = dev_flags;
+
+	/* reset device and negotiate features */
+	ret = virtio_init_device(eth_dev);
+	if (ret < 0)
+		return ret;
+
 	/* Setup interrupt callback  */
 	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		rte_intr_callback_register(&pci_dev->intr_handle,
-				   virtio_interrupt_handler, eth_dev);
-
-	virtio_dev_cq_start(eth_dev);
+			virtio_interrupt_handler, eth_dev);
 
 	return 0;
 }
