@@ -553,6 +553,9 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	if (hw->started == 1)
 		virtio_dev_stop(dev);
 
+	if (hw->cvq)
+		virtio_dev_queue_release(hw->cvq->vq);
+
 	/* reset the NIC */
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
@@ -1209,16 +1212,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev)
 			config->max_virtqueue_pairs = 1;
 		}
 
-		hw->max_rx_queues =
-			(VIRTIO_MAX_RX_QUEUES < config->max_virtqueue_pairs) ?
-			VIRTIO_MAX_RX_QUEUES : config->max_virtqueue_pairs;
-		hw->max_tx_queues =
-			(VIRTIO_MAX_TX_QUEUES < config->max_virtqueue_pairs) ?
-			VIRTIO_MAX_TX_QUEUES : config->max_virtqueue_pairs;
-
-		virtio_dev_cq_queue_setup(eth_dev,
-					config->max_virtqueue_pairs * 2,
-					SOCKET_ID_ANY);
+		hw->max_queue_pairs = config->max_virtqueue_pairs;
 
 		PMD_INIT_LOG(DEBUG, "config->max_virtqueue_pairs=%d",
 				config->max_virtqueue_pairs);
@@ -1229,18 +1223,14 @@ virtio_init_device(struct rte_eth_dev *eth_dev)
 				config->mac[2], config->mac[3],
 				config->mac[4], config->mac[5]);
 	} else {
-		hw->max_rx_queues = 1;
-		hw->max_tx_queues = 1;
+		PMD_INIT_LOG(DEBUG, "config->max_virtqueue_pairs=1");
+		hw->max_queue_pairs = 1;
 	}
 
-	PMD_INIT_LOG(DEBUG, "hw->max_rx_queues=%d   hw->max_tx_queues=%d",
-			hw->max_rx_queues, hw->max_tx_queues);
 	if (pci_dev)
 		PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
-
-	virtio_dev_cq_start(eth_dev);
 
 	return 0;
 }
@@ -1303,7 +1293,6 @@ static int
 eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
-	struct virtio_hw *hw = eth_dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1318,9 +1307,6 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->rx_pkt_burst = NULL;
-
-	if (hw->cvq)
-		virtio_dev_queue_release(hw->cvq->vq);
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
@@ -1373,12 +1359,23 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
+	int ret;
 
 	PMD_INIT_LOG(DEBUG, "configure");
 
 	if (rxmode->hw_ip_checksum) {
 		PMD_DRV_LOG(ERR, "HW IP checksum not supported");
 		return -EINVAL;
+	}
+
+	/* Setup and start control queue */
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VQ)) {
+		ret = virtio_dev_cq_queue_setup(dev,
+			hw->max_queue_pairs * 2,
+			SOCKET_ID_ANY);
+		if (ret < 0)
+			return ret;
+		virtio_dev_cq_start(dev);
 	}
 
 	hw->vlan_strip = rxmode->hw_vlan_strip;
@@ -1574,8 +1571,10 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->driver_name = dev->driver->pci_drv.driver.name;
 	else
 		dev_info->driver_name = "virtio_user PMD";
-	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
-	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
+	dev_info->max_rx_queues =
+		RTE_MIN(hw->max_queue_pairs, VIRTIO_MAX_RX_QUEUES);
+	dev_info->max_tx_queues =
+		RTE_MIN(hw->max_queue_pairs, VIRTIO_MAX_TX_QUEUES);
 	dev_info->min_rx_bufsize = VIRTIO_MIN_RX_BUFSIZE;
 	dev_info->max_rx_pktlen = VIRTIO_MAX_RX_PKTLEN;
 	dev_info->max_mac_addrs = VIRTIO_MAX_MAC_ADDRS;
