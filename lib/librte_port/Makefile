@@ -56,6 +56,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_frag.c
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_ras.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_sched.c
+SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_fd.c
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PORT) += rte_port_kni.c
 endif
@@ -70,6 +71,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_frag.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_ras.h
 endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_sched.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_fd.h
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_PORT)-include += rte_port_kni.h
 endif
