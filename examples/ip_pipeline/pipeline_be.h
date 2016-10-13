@@ -39,6 +39,7 @@
 #include <rte_port_frag.h>
 #include <rte_port_ras.h>
 #include <rte_port_sched.h>
+#include <rte_port_fd.h>
 #include <rte_port_source_sink.h>
 #ifdef RTE_LIBRTE_KNI
 #include <rte_port_kni.h>
@@ -52,6 +53,7 @@ enum pipeline_port_in_type {
 	PIPELINE_PORT_IN_RING_READER_IPV4_FRAG,
 	PIPELINE_PORT_IN_RING_READER_IPV6_FRAG,
 	PIPELINE_PORT_IN_SCHED_READER,
+	PIPELINE_PORT_IN_FD_READER,
 	PIPELINE_PORT_IN_KNI_READER,
 	PIPELINE_PORT_IN_SOURCE,
 };
@@ -65,6 +67,7 @@ struct pipeline_port_in_params {
 		struct rte_port_ring_reader_ipv4_frag_params ring_ipv4_frag;
 		struct rte_port_ring_reader_ipv6_frag_params ring_ipv6_frag;
 		struct rte_port_sched_reader_params sched;
+		struct rte_port_fd_reader_params fd;
 #ifdef RTE_LIBRTE_KNI
 		struct rte_port_kni_reader_params kni;
 #endif
@@ -89,6 +92,8 @@ pipeline_port_in_params_convert(struct pipeline_port_in_params  *p)
 		return (void *) &p->params.ring_ipv6_frag;
 	case PIPELINE_PORT_IN_SCHED_READER:
 		return (void *) &p->params.sched;
+	case PIPELINE_PORT_IN_FD_READER:
+		return (void *) &p->params.fd;
 #ifdef RTE_LIBRTE_KNI
 	case PIPELINE_PORT_IN_KNI_READER:
 		return (void *) &p->params.kni;
@@ -116,6 +121,8 @@ pipeline_port_in_params_get_ops(struct pipeline_port_in_params  *p)
 		return &rte_port_ring_reader_ipv6_frag_ops;
 	case PIPELINE_PORT_IN_SCHED_READER:
 		return &rte_port_sched_reader_ops;
+	case PIPELINE_PORT_IN_FD_READER:
+		return &rte_port_fd_reader_ops;
 #ifdef RTE_LIBRTE_KNI
 	case PIPELINE_PORT_IN_KNI_READER:
 		return &rte_port_kni_reader_ops;
@@ -137,6 +144,7 @@ enum pipeline_port_out_type {
 	PIPELINE_PORT_OUT_RING_WRITER_IPV4_RAS,
 	PIPELINE_PORT_OUT_RING_WRITER_IPV6_RAS,
 	PIPELINE_PORT_OUT_SCHED_WRITER,
+	PIPELINE_PORT_OUT_FD_WRITER,
 	PIPELINE_PORT_OUT_KNI_WRITER,
 	PIPELINE_PORT_OUT_KNI_WRITER_NODROP,
 	PIPELINE_PORT_OUT_SINK,
@@ -154,6 +162,7 @@ struct pipeline_port_out_params {
 		struct rte_port_ring_writer_ipv4_ras_params ring_ipv4_ras;
 		struct rte_port_ring_writer_ipv6_ras_params ring_ipv6_ras;
 		struct rte_port_sched_writer_params sched;
+		struct rte_port_fd_writer_params fd;
 #ifdef RTE_LIBRTE_KNI
 		struct rte_port_kni_writer_params kni;
 		struct rte_port_kni_writer_nodrop_params kni_nodrop;
@@ -184,6 +193,8 @@ pipeline_port_out_params_convert(struct pipeline_port_out_params  *p)
 		return (void *) &p->params.ring_ipv6_ras;
 	case PIPELINE_PORT_OUT_SCHED_WRITER:
 		return (void *) &p->params.sched;
+	case PIPELINE_PORT_OUT_FD_WRITER:
+		return (void *) &p->params.fd;
 #ifdef RTE_LIBRTE_KNI
 	case PIPELINE_PORT_OUT_KNI_WRITER:
 		return (void *) &p->params.kni;
@@ -219,6 +230,8 @@ pipeline_port_out_params_get_ops(struct pipeline_port_out_params  *p)
 		return &rte_port_ring_writer_ipv6_ras_ops;
 	case PIPELINE_PORT_OUT_SCHED_WRITER:
 		return &rte_port_sched_writer_ops;
+	case PIPELINE_PORT_OUT_FD_WRITER:
+		return &rte_port_fd_writer_ops;
 #ifdef RTE_LIBRTE_KNI
 	case PIPELINE_PORT_OUT_KNI_WRITER:
 		return &rte_port_kni_writer_ops;

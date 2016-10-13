@@ -316,6 +316,36 @@ check_tms(struct app_params *app)
 }
 
 static void
+check_taps(struct app_params *app)
+{
+	uint32_t i;
+
+	for (i = 0; i < app->n_pktq_tap; i++) {
+		struct app_pktq_tap_params *p = &app->tap_params[i];
+		uint32_t n_readers = app_tap_get_readers(app, p);
+		uint32_t n_writers = app_tap_get_writers(app, p);
+
+		APP_CHECK((n_readers != 0),
+			"%s has no reader\n", p->name);
+
+		APP_CHECK((n_readers == 1),
+			"%s has more than one reader\n", p->name);
+
+		APP_CHECK((n_writers != 0),
+			"%s has no writer\n", p->name);
+
+		APP_CHECK((n_writers == 1),
+			"%s has more than one writer\n", p->name);
+
+		APP_CHECK((p->burst_read > 0),
+			"%s read burst size is 0\n", p->name);
+
+		APP_CHECK((p->burst_write > 0),
+			"%s write burst size is 0\n", p->name);
+	}
+}
+
+static void
 check_knis(struct app_params *app) {
 	uint32_t i;
 
@@ -476,6 +506,7 @@ app_config_check(struct app_params *app)
 	check_txqs(app);
 	check_swqs(app);
 	check_tms(app);
+	check_taps(app);
 	check_knis(app);
 	check_sources(app);
 	check_sinks(app);

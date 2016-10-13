@@ -34,6 +34,12 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
+#include <netinet/in.h>
+#include <linux/if.h>
+#include <linux/if_tun.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
@@ -1154,6 +1160,34 @@ app_init_tm(struct app_params *app)
 	}
 }
 
+static void
+app_init_tap(struct app_params *app)
+{
+	uint32_t i;
+
+	for (i = 0; i < app->n_pktq_tap; i++) {
+		struct app_pktq_tap_params *p_tap = &app->tap_params[i];
+		struct ifreq ifr;
+		int fd, status;
+
+		APP_LOG(app, HIGH, "Initializing %s ...", p_tap->name);
+
+		fd = open("/dev/net/tun", O_RDWR | O_NONBLOCK);
+		if (fd < 0)
+			rte_panic("Cannot open file /dev/net/tun\n");
+
+		memset(&ifr, 0, sizeof(ifr));
+		ifr.ifr_flags = IFF_TAP | IFF_NO_PI; /* No packet information */
+		snprintf(ifr.ifr_name, IFNAMSIZ, "%s", p_tap->name);
+
+		status = ioctl(fd, TUNSETIFF, (void *) &ifr);
+		if (status < 0)
+			rte_panic("TAP setup error\n");
+
+		app->tap[i] = fd;
+	}
+}
+
 #ifdef RTE_LIBRTE_KNI
 static int
 kni_config_network_interface(uint8_t port_id, uint8_t if_up) {
@@ -1370,6 +1404,22 @@ void app_pipeline_params_get(struct app_params *app,
 			out->burst_size = app->tm_params[in->id].burst_read;
 			break;
 		}
+		case APP_PKTQ_IN_TAP:
+		{
+			struct app_pktq_tap_params *tap_params =
+				&app->tap_params[in->id];
+			struct app_mempool_params *mempool_params =
+				&app->mempool_params[tap_params->mempool_id];
+			struct rte_mempool *mempool =
+				app->mempool[tap_params->mempool_id];
+
+			out->type = PIPELINE_PORT_IN_FD_READER;
+			out->params.fd.fd = app->tap[in->id];
+			out->params.fd.mtu = mempool_params->buffer_size;
+			out->params.fd.mempool = mempool;
+			out->burst_size = app->tap_params[in->id].burst_read;
+			break;
+		}
 #ifdef RTE_LIBRTE_KNI
 		case APP_PKTQ_IN_KNI:
 		{
@@ -1512,6 +1562,17 @@ void app_pipeline_params_get(struct app_params *app,
 			params->sched = app->tm[in->id];
 			params->tx_burst_sz =
 				app->tm_params[in->id].burst_write;
+			break;
+		}
+		case APP_PKTQ_OUT_TAP:
+		{
+			struct rte_port_fd_writer_params *params =
+				&out->params.fd;
+
+			out->type = PIPELINE_PORT_OUT_FD_WRITER;
+			params->fd = app->tap[in->id];
+			params->tx_burst_sz =
+				app->tap_params[in->id].burst_write;
 			break;
 		}
 #ifdef RTE_LIBRTE_KNI
@@ -1730,6 +1791,7 @@ int app_init(struct app_params *app)
 	app_init_link(app);
 	app_init_swq(app);
 	app_init_tm(app);
+	app_init_tap(app);
 	app_init_kni(app);
 	app_init_msgq(app);
 

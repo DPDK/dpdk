@@ -156,6 +156,7 @@ app_pipeline_track_pktq_out_to_link(struct app_params *app,
 			break;
 		}
 
+		case APP_PKTQ_OUT_TAP:
 		case APP_PKTQ_OUT_SINK:
 		default:
 			return NULL;
