@@ -1593,6 +1593,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 static void
 virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
+	uint64_t tso_mask;
 	struct virtio_hw *hw = dev->data->dev_private;
 
 	if (dev->pci_dev)
@@ -1620,6 +1621,11 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			DEV_TX_OFFLOAD_UDP_CKSUM |
 			DEV_TX_OFFLOAD_TCP_CKSUM;
 	}
+
+	tso_mask = (1ULL << VIRTIO_NET_F_HOST_TSO4) |
+		(1ULL << VIRTIO_NET_F_HOST_TSO6);
+	if ((hw->guest_features & tso_mask) == tso_mask)
+		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 }
 
 /*

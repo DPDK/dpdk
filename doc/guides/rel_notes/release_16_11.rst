@@ -87,6 +87,7 @@ New Features
 
   * Rx/Tx checksums
   * LRO
+  * TSO
 
 * **Added virtio NEON support for ARM.**
 
