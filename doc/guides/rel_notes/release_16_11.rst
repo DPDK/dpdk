@@ -52,6 +52,8 @@ New Features
   * Added new Rx checksum flags in mbufs to describe more states: unknown,
     good, bad, or not present (useful for virtual drivers). This modification
     was done for IP and L4.
+  * Added a new RX LRO mbuf flag, used when packets are coalesced. This
+    flag indicates that the segment size of original packets is known.
 
 * **Added vhost-user dequeue zero copy support**
 

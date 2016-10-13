@@ -170,6 +170,13 @@ extern "C" {
  */
 #define PKT_RX_QINQ_PKT      PKT_RX_QINQ_STRIPPED
 
+/**
+ * When packets are coalesced by a hardware or virtual driver, this flag
+ * can be set in the RX mbuf, meaning that the m->tso_segsz field is
+ * valid and is set to the segment size of original packets.
+ */
+#define PKT_RX_LRO           (1ULL << 16)
+
 /* add new RX flags here */
 
 /* add new TX flags here */
