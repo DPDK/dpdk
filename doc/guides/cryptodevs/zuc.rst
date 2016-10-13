@@ -53,6 +53,9 @@ Limitations
 * Chained mbufs are not supported.
 * ZUC (EIA3) supported only if hash offset field is byte-aligned.
 * ZUC (EEA3) supported only if cipher length, cipher offset fields are byte-aligned.
+* ZUC PMD cannot be built as a shared library, due to limitations in
+  in the underlying library.
+
 
 Installation
 ------------
