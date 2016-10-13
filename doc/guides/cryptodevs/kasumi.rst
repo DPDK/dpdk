@@ -68,7 +68,13 @@ and click on "Kasumi Bit Stream crypto library" link, to download the library.
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK::
 
-   make kasumi
+   make
+
+**Note**: To build the PMD as a shared library, the libsso_kasumi
+library must be built as follows::
+
+  make KASUMI_CFLAGS=-DKASUMI_C
+
 
 Initialization
 --------------
