@@ -51,6 +51,8 @@
 #include <rte_errno.h>
 #include <rte_byteorder.h>
 #include <rte_cpuflags.h>
+#include <rte_net.h>
+#include <rte_ip.h>
 
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
@@ -632,6 +634,63 @@ virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 	}
 }
 
+/* Optionally fill offload information in structure */
+static int
+virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
+{
+	struct rte_net_hdr_lens hdr_lens;
+	uint32_t hdrlen, ptype;
+	int l4_supported = 0;
+
+	/* nothing to do */
+	if (hdr->flags == 0 && hdr->gso_type == VIRTIO_NET_HDR_GSO_NONE)
+		return 0;
+
+	m->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
+
+	ptype = rte_net_get_ptype(m, &hdr_lens, RTE_PTYPE_ALL_MASK);
+	m->packet_type = ptype;
+	if ((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP ||
+	    (ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP ||
+	    (ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_SCTP)
+		l4_supported = 1;
+
+	if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM) {
+		hdrlen = hdr_lens.l2_len + hdr_lens.l3_len + hdr_lens.l4_len;
+		if (hdr->csum_start <= hdrlen && l4_supported) {
+			m->ol_flags |= PKT_RX_L4_CKSUM_NONE;
+		} else {
+			/* Unknown proto or tunnel, do sw cksum. We can assume
+			 * the cksum field is in the first segment since the
+			 * buffers we provided to the host are large enough.
+			 * In case of SCTP, this will be wrong since it's a CRC
+			 * but there's nothing we can do.
+			 */
+			uint16_t csum, off;
+
+			rte_raw_cksum_mbuf(m, hdr->csum_start,
+				rte_pktmbuf_pkt_len(m) - hdr->csum_start,
+				&csum);
+			if (likely(csum != 0xffff))
+				csum = ~csum;
+			off = hdr->csum_offset + hdr->csum_start;
+			if (rte_pktmbuf_data_len(m) >= off + 1)
+				*rte_pktmbuf_mtod_offset(m, uint16_t *,
+					off) = csum;
+		}
+	} else if (hdr->flags & VIRTIO_NET_HDR_F_DATA_VALID && l4_supported) {
+		m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+	}
+
+	return 0;
+}
+
+static inline int
+rx_offload_enabled(struct virtio_hw *hw)
+{
+	return vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM);
+}
+
 #define VIRTIO_MBUF_BURST_SZ 64
 #define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
 uint16_t
@@ -647,6 +706,8 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	int error;
 	uint32_t i, nb_enqueued;
 	uint32_t hdr_size;
+	int offload;
+	struct virtio_net_hdr *hdr;
 
 	nb_used = VIRTQUEUE_NUSED(vq);
 
@@ -664,6 +725,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	nb_rx = 0;
 	nb_enqueued = 0;
 	hdr_size = hw->vtnet_hdr_size;
+	offload = rx_offload_enabled(hw);
 
 	for (i = 0; i < num ; i++) {
 		rxm = rcv_pkts[i];
@@ -688,8 +750,17 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->pkt_len = (uint32_t)(len[i] - hdr_size);
 		rxm->data_len = (uint16_t)(len[i] - hdr_size);
 
+		hdr = (struct virtio_net_hdr *)((char *)rxm->buf_addr +
+			RTE_PKTMBUF_HEADROOM - hdr_size);
+
 		if (hw->vlan_strip)
 			rte_vlan_strip(rxm);
+
+		if (offload && virtio_rx_offload(rxm, hdr) < 0) {
+			virtio_discard_rxbuf(vq, rxm);
+			rxvq->stats.errors++;
+			continue;
+		}
 
 		VIRTIO_DUMP_PACKET(rxm, rxm->data_len);
 
@@ -750,6 +821,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 	uint16_t extra_idx;
 	uint32_t seg_res;
 	uint32_t hdr_size;
+	int offload;
 
 	nb_used = VIRTQUEUE_NUSED(vq);
 
@@ -765,6 +837,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 	extra_idx = 0;
 	seg_res = 0;
 	hdr_size = hw->vtnet_hdr_size;
+	offload = rx_offload_enabled(hw);
 
 	while (i < nb_used) {
 		struct virtio_net_hdr_mrg_rxbuf *header;
@@ -809,6 +882,12 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		rxm->port = rxvq->port_id;
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
+
+		if (offload && virtio_rx_offload(rxm, &header->hdr) < 0) {
+			virtio_discard_rxbuf(vq, rxm);
+			rxvq->stats.errors++;
+			continue;
+		}
 
 		seg_res = seg_num - 1;
 

@@ -54,7 +54,7 @@
 #define VIRTIO_MAX_RX_PKTLEN  9728
 
 /* Features desired/implemented by this driver. */
-#define VIRTIO_PMD_GUEST_FEATURES		\
+#define VIRTIO_PMD_DEFAULT_GUEST_FEATURES	\
 	(1u << VIRTIO_NET_F_MAC		  |	\
 	 1u << VIRTIO_NET_F_STATUS	  |	\
 	 1u << VIRTIO_NET_F_MQ		  |	\

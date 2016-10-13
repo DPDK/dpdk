@@ -83,6 +83,10 @@ New Features
 
   Added extended statistics to vhost PMD from per port perspective.
 
+* **Supported offloads with virtio.**
+
+  * Rx checksums
+
 * **Added virtio NEON support for ARM.**
 
 * **Updated the ixgbe base driver.**

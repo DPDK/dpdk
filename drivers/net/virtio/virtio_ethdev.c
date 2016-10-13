@@ -1280,7 +1280,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_flags = dev_flags;
 
 	/* reset device and negotiate default features */
-	ret = virtio_init_device(eth_dev, VIRTIO_PMD_GUEST_FEATURES);
+	ret = virtio_init_device(eth_dev, VIRTIO_PMD_DEFAULT_GUEST_FEATURES);
 	if (ret < 0)
 		return ret;
 
@@ -1366,18 +1366,22 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_LOG(DEBUG, "configure");
+	req_features = VIRTIO_PMD_DEFAULT_GUEST_FEATURES;
+	if (rxmode->hw_ip_checksum)
+		req_features |= (1ULL << VIRTIO_NET_F_GUEST_CSUM);
 
-	if (rxmode->hw_ip_checksum) {
-		PMD_DRV_LOG(ERR, "HW IP checksum not supported");
-		return -EINVAL;
-	}
-
-	req_features = VIRTIO_PMD_GUEST_FEATURES;
 	/* if request features changed, reinit the device */
 	if (req_features != hw->req_guest_features) {
 		ret = virtio_init_device(dev, req_features);
 		if (ret < 0)
 			return ret;
+	}
+
+	if (rxmode->hw_ip_checksum &&
+		!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM)) {
+		PMD_DRV_LOG(NOTICE,
+			"rx ip checksum not available on this host");
+		return -ENOTSUP;
 	}
 
 	/* Setup and start control queue */
@@ -1593,6 +1597,9 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.txq_flags = ETH_TXQ_FLAGS_NOOFFLOADS
 	};
+	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM;
 }
 
 /*
