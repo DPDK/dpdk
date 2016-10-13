@@ -230,6 +230,77 @@ rte_raw_cksum(const void *buf, size_t len)
 }
 
 /**
+ * Compute the raw (non complemented) checksum of a packet.
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ * @param off
+ *   The offset in bytes to start the checksum.
+ * @param len
+ *   The length in bytes of the data to ckecksum.
+ * @param cksum
+ *   A pointer to the checksum, filled on success.
+ * @return
+ *   0 on success, -1 on error (bad length or offset).
+ */
+static inline int
+rte_raw_cksum_mbuf(const struct rte_mbuf *m, uint32_t off, uint32_t len,
+	uint16_t *cksum)
+{
+	const struct rte_mbuf *seg;
+	const char *buf;
+	uint32_t sum, tmp;
+	uint32_t seglen, done;
+
+	/* easy case: all data in the first segment */
+	if (off + len <= rte_pktmbuf_data_len(m)) {
+		*cksum = rte_raw_cksum(rte_pktmbuf_mtod_offset(m,
+				const char *, off), len);
+		return 0;
+	}
+
+	if (unlikely(off + len > rte_pktmbuf_pkt_len(m)))
+		return -1; /* invalid params, return a dummy value */
+
+	/* else browse the segment to find offset */
+	seglen = 0;
+	for (seg = m; seg != NULL; seg = seg->next) {
+		seglen = rte_pktmbuf_data_len(seg);
+		if (off < seglen)
+			break;
+		off -= seglen;
+	}
+	seglen -= off;
+	buf = rte_pktmbuf_mtod_offset(seg, const char *, off);
+	if (seglen >= len) {
+		/* all in one segment */
+		*cksum = rte_raw_cksum(buf, len);
+		return 0;
+	}
+
+	/* hard case: process checksum of several segments */
+	sum = 0;
+	done = 0;
+	for (;;) {
+		tmp = __rte_raw_cksum(buf, seglen, 0);
+		if (done & 1)
+			tmp = rte_bswap16(tmp);
+		sum += tmp;
+		done += seglen;
+		if (done == len)
+			break;
+		seg = seg->next;
+		buf = rte_pktmbuf_mtod(seg, const char *);
+		seglen = rte_pktmbuf_data_len(seg);
+		if (seglen > len - done)
+			seglen = len - done;
+	}
+
+	*cksum = __rte_raw_cksum_reduce(sum);
+	return 0;
+}
+
+/**
  * Process the IPv4 checksum of an IPv4 header.
  *
  * The checksum field must be set to 0 by the caller.

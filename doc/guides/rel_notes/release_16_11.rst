@@ -45,6 +45,11 @@ New Features
     in an mbuf chain and retrieve its packet type by software.
   * Added new functions ``rte_get_ptype_*()`` to dump a packet type as a string.
 
+* **Improved offloads support in mbuf.**
+
+  * Added a new function ``rte_raw_cksum_mbuf()`` to process the checksum of
+    data embedded in an mbuf chain.
+
 * **Added vhost-user dequeue zero copy support**
 
   The copy in dequeue path is saved, which is meant to improve the performance.
