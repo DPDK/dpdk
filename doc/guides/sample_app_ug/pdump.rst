@@ -37,6 +37,8 @@ The ``dpdk-pdump`` tool is a Data Plane Development Kit (DPDK) tool that runs as
 a DPDK secondary process and is capable of enabling packet capture on dpdk ports.
 
    .. Note::
+      * The ``dpdk-pdump`` tool can only be used in conjunction with a primary
+        application which has the packet capture framework initialized already.
 
       * The ``dpdk-pdump`` tool depends on libpcap based PMD which is disabled
         by default in the build configuration files,
