@@ -246,6 +246,7 @@ struct virtio_net_config;
 struct virtio_hw {
 	struct virtnet_ctl *cvq;
 	struct rte_pci_ioport io;
+	uint64_t    req_guest_features;
 	uint64_t    guest_features;
 	uint32_t    max_queue_pairs;
 	uint16_t    vtnet_hdr_size;
