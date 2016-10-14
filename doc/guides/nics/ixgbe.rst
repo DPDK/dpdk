@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -147,6 +147,11 @@ The following MACROs are used for these three features:
 
 *   ETH_TXQ_FLAGS_NOXSUMTCP
 
+Application Programming Interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In DPDK release v16.11 an API for ixgbe specific functions has been added to the ixgbe PMD.
+The declarations for the API functions are in the header ``rte_pmd_ixgbe.h``.
 
 Sample Application Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~

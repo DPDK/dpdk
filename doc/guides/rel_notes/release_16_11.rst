@@ -101,6 +101,11 @@ New Features
   * increase mailbox version to ixgbe_mbox_api_13
   * add two MAC ops for Hyper-V support
 
+* **Added API's for VF management to the ixgbe PMD.**
+
+  Eight new API's have been added to the ixgbe PMD for VF management from the PF.
+  The declarations for the API's can be found in ``rte_pmd_ixgbe.h``.
+
 * **Updated the QAT PMD.**
 
   The QAT PMD was updated with following support:
