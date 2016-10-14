@@ -85,7 +85,7 @@ struct vhost_virtqueue {
 	uint32_t		size;
 
 	uint16_t		last_avail_idx;
-	volatile uint16_t	last_used_idx;
+	uint16_t		last_used_idx;
 #define VIRTIO_INVALID_EVENTFD		(-1)
 #define VIRTIO_UNINITIALIZED_EVENTFD	(-2)
 
