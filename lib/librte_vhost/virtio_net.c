@@ -536,6 +536,8 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	if (count == 0)
 		return 0;
 
+	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
+
 	vq->shadow_used_idx = 0;
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
