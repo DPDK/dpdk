@@ -100,7 +100,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_rxtx.c
 ifeq ($(CONFIG_RTE_ARCH_ARM64),y)
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_INC_VECTOR) += i40e_rxtx_vec_neon.c
 else
-SRCS-$(CONFIG_RTE_LIBRTE_I40E_INC_VECTOR) += i40e_rxtx_vec.c
+SRCS-$(CONFIG_RTE_LIBRTE_I40E_INC_VECTOR) += i40e_rxtx_vec_sse.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_ethdev_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_pf.c
@@ -108,7 +108,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_fdir.c
 
 # vector PMD driver needs SSE4.1 support
 ifeq ($(findstring RTE_MACHINE_CPUFLAG_SSE4_1,$(CFLAGS)),)
-CFLAGS_i40e_rxtx_vec.o += -msse4.1
+CFLAGS_i40e_rxtx_vec_sse.o += -msse4.1
 endif
 
 
