@@ -110,9 +110,11 @@ kni_init_net(struct net *net)
 static void __net_exit
 kni_exit_net(struct net *net)
 {
-	struct kni_net *knet = net_generic(net, kni_net_id);
+	struct kni_net *knet __maybe_unused;
 
+	knet = net_generic(net, kni_net_id);
 	mutex_destroy(&knet->kni_kthread_lock);
+
 #ifndef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	kfree(knet);
 #endif
