@@ -344,7 +344,7 @@ reserve_avail_buf_mergeable(struct vhost_virtqueue *vq, uint32_t size,
 	uint32_t vec_idx = 0;
 	uint16_t tries = 0;
 
-	cur_idx  = vq->last_used_idx;
+	cur_idx = vq->last_avail_idx;
 
 	while (1) {
 		avail_idx = *((volatile uint16_t *)&vq->avail->idx);
@@ -370,7 +370,7 @@ reserve_avail_buf_mergeable(struct vhost_virtqueue *vq, uint32_t size,
 			return -1;
 	}
 
-	*num_buffers = cur_idx - vq->last_used_idx;
+	*num_buffers = cur_idx - vq->last_avail_idx;
 	return 0;
 }
 
@@ -536,6 +536,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 		vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 			sizeof(vq->used->idx));
 		vq->last_used_idx += num_buffers;
+		vq->last_avail_idx += num_buffers;
 	}
 
 	if (likely(pkt_idx)) {
