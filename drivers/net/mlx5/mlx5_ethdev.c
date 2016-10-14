@@ -600,6 +600,9 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	 * size if it is not fixed.
 	 * The API should be updated to solve this problem. */
 	info->reta_size = priv->ind_table_max_size;
+	info->hash_key_size = ((*priv->rss_conf) ?
+			       (*priv->rss_conf)[0]->rss_key_len :
+			       0);
 	info->speed_capa =
 			ETH_LINK_SPEED_1G |
 			ETH_LINK_SPEED_10G |
