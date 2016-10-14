@@ -121,9 +121,18 @@ static void
 free_device(struct virtio_net *dev)
 {
 	uint32_t i;
+	struct vhost_virtqueue *rxq, *txq;
 
-	for (i = 0; i < dev->virt_qp_nb; i++)
-		rte_free(dev->virtqueue[i * VIRTIO_QNUM]);
+	for (i = 0; i < dev->virt_qp_nb; i++) {
+		rxq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ];
+		txq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_TXQ];
+
+		rte_free(rxq->shadow_used_ring);
+		rte_free(txq->shadow_used_ring);
+
+		/* rxq and txq are allocated together as queue-pair */
+		rte_free(rxq);
+	}
 
 	rte_free(dev);
 }

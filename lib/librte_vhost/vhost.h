@@ -105,6 +105,9 @@ struct vhost_virtqueue {
 	uint16_t		last_zmbuf_idx;
 	struct zcopy_mbuf	*zmbufs;
 	struct zcopy_mbuf_list	zmbuf_list;
+
+	struct vring_used_elem  *shadow_used_ring;
+	uint16_t                shadow_used_idx;
 } __rte_cache_aligned;
 
 /* Old kernels have no such macro defined */

@@ -198,6 +198,15 @@ vhost_user_set_vring_num(struct virtio_net *dev,
 		}
 	}
 
+	vq->shadow_used_ring = rte_malloc(NULL,
+				vq->size * sizeof(struct vring_used_elem),
+				RTE_CACHE_LINE_SIZE);
+	if (!vq->shadow_used_ring) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to allocate memory for shadow used ring.\n");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -711,6 +720,8 @@ static int
 vhost_user_get_vring_base(struct virtio_net *dev,
 			  struct vhost_vring_state *state)
 {
+	struct vhost_virtqueue *vq = dev->virtqueue[state->index];
+
 	/* We have to stop the queue (virtio) if it is running. */
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
@@ -718,7 +729,7 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 	}
 
 	/* Here we are safe to get the last used index */
-	state->num = dev->virtqueue[state->index]->last_used_idx;
+	state->num = vq->last_used_idx;
 
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring base idx:%d file:%d\n", state->index, state->num);
@@ -727,13 +738,15 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 	 * sent and only sent in vhost_vring_stop.
 	 * TODO: cleanup the vring, it isn't usable since here.
 	 */
-	if (dev->virtqueue[state->index]->kickfd >= 0)
-		close(dev->virtqueue[state->index]->kickfd);
+	if (vq->kickfd >= 0)
+		close(vq->kickfd);
 
-	dev->virtqueue[state->index]->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
+	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 
 	if (dev->dequeue_zero_copy)
-		free_zmbufs(dev->virtqueue[state->index]);
+		free_zmbufs(vq);
+	rte_free(vq->shadow_used_ring);
+	vq->shadow_used_ring = NULL;
 
 	return 0;
 }
