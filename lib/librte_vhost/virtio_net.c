@@ -555,6 +555,18 @@ rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
 		return virtio_dev_rx(dev, queue_id, pkts, count);
 }
 
+static inline bool
+virtio_net_with_host_offload(struct virtio_net *dev)
+{
+	if (dev->features &
+			(VIRTIO_NET_F_CSUM | VIRTIO_NET_F_HOST_ECN |
+			 VIRTIO_NET_F_HOST_TSO4 | VIRTIO_NET_F_HOST_TSO6 |
+			 VIRTIO_NET_F_HOST_UFO))
+		return true;
+
+	return false;
+}
+
 static void
 parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 {
@@ -606,6 +618,9 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 	uint16_t l4_proto = 0;
 	void *l4_hdr = NULL;
 	struct tcp_hdr *tcp_hdr = NULL;
+
+	if (hdr->flags == 0 && hdr->gso_type == VIRTIO_NET_HDR_GSO_NONE)
+		return;
 
 	parse_ethernet(m, &l4_proto, &l4_hdr);
 	if (hdr->flags == VIRTIO_NET_HDR_F_NEEDS_CSUM) {
@@ -702,7 +717,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 	uint32_t mbuf_avail, mbuf_offset;
 	uint32_t cpy_len;
 	struct rte_mbuf *cur = m, *prev = m;
-	struct virtio_net_hdr *hdr;
+	struct virtio_net_hdr *hdr = NULL;
 	/* A counter to avoid desc dead loop chain */
 	uint32_t nr_desc = 1;
 
@@ -715,8 +730,10 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 	if (unlikely(!desc_addr))
 		return -1;
 
-	hdr = (struct virtio_net_hdr *)((uintptr_t)desc_addr);
-	rte_prefetch0(hdr);
+	if (virtio_net_with_host_offload(dev)) {
+		hdr = (struct virtio_net_hdr *)((uintptr_t)desc_addr);
+		rte_prefetch0(hdr);
+	}
 
 	/*
 	 * A virtio driver normally uses at least 2 desc buffers
@@ -733,17 +750,17 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 		if (unlikely(!desc_addr))
 			return -1;
 
-		rte_prefetch0((void *)(uintptr_t)desc_addr);
-
 		desc_offset = 0;
 		desc_avail  = desc->len;
 		nr_desc    += 1;
-
-		PRINT_PACKET(dev, (uintptr_t)desc_addr, desc->len, 0);
 	} else {
 		desc_avail  = desc->len - dev->vhost_hlen;
 		desc_offset = dev->vhost_hlen;
 	}
+
+	rte_prefetch0((void *)(uintptr_t)(desc_addr + desc_offset));
+
+	PRINT_PACKET(dev, (uintptr_t)(desc_addr + desc_offset), desc_avail, 0);
 
 	mbuf_offset = 0;
 	mbuf_avail  = m->buf_len - RTE_PKTMBUF_HEADROOM;
@@ -831,7 +848,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 	prev->data_len = mbuf_offset;
 	m->pkt_len    += mbuf_offset;
 
-	if (hdr->flags != 0 || hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE)
+	if (hdr)
 		vhost_dequeue_offload(hdr, m);
 
 	return 0;
