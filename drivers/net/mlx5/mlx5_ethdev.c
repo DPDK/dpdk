@@ -641,7 +641,7 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
  * @param wait_to_complete
  *   Wait for request completion (ignored).
  */
-static int
+int
 mlx5_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct priv *priv = mlx5_get_priv(dev);
