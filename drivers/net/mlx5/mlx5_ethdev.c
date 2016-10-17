@@ -1312,11 +1312,13 @@ mlx5_secondary_data_setup(struct priv *priv)
 			continue;
 		primary_txq_ctrl = container_of(primary_txq,
 						struct txq_ctrl, txq);
-		txq_ctrl = rte_calloc_socket("TXQ", 1, sizeof(*txq_ctrl), 0,
+		txq_ctrl = rte_calloc_socket("TXQ", 1, sizeof(*txq_ctrl) +
+					     (1 << primary_txq->elts_n) *
+					     sizeof(struct rte_mbuf *), 0,
 					     primary_txq_ctrl->socket);
 		if (txq_ctrl != NULL) {
 			if (txq_ctrl_setup(priv->dev,
-					   primary_txq_ctrl,
+					   txq_ctrl,
 					   1 << primary_txq->elts_n,
 					   primary_txq_ctrl->socket,
 					   NULL) == 0) {
