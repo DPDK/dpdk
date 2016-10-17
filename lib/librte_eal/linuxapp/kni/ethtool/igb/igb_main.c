@@ -195,7 +195,11 @@ static void igb_process_mdd_event(struct igb_adapter *);
 #ifdef IFLA_VF_MAX
 static int igb_ndo_set_vf_mac( struct net_device *netdev, int vf, u8 *mac);
 static int igb_ndo_set_vf_vlan(struct net_device *netdev,
+#ifdef HAVE_VF_VLAN_PROTO
+				int vf, u16 vlan, u8 qos, __be16 vlan_proto);
+#else
 				int vf, u16 vlan, u8 qos);
+#endif
 #ifdef HAVE_VF_SPOOFCHK_CONFIGURE
 static int igb_ndo_set_vf_spoofchk(struct net_device *netdev, int vf,
 				bool setting);
@@ -6412,7 +6416,11 @@ static void igb_set_vmvir(struct igb_adapter *adapter, u32 vid, u32 vf)
 }
 
 static int igb_ndo_set_vf_vlan(struct net_device *netdev,
+#ifdef HAVE_VF_VLAN_PROTO
+			       int vf, u16 vlan, u8 qos, __be16 vlan_proto)
+#else
 			       int vf, u16 vlan, u8 qos)
+#endif
 {
 	int err = 0;
 	struct igb_adapter *adapter = netdev_priv(netdev);
@@ -6420,6 +6428,12 @@ static int igb_ndo_set_vf_vlan(struct net_device *netdev,
 	/* VLAN IDs accepted range 0-4094 */
 	if ((vf >= adapter->vfs_allocated_count) || (vlan > VLAN_VID_MASK-1) || (qos > 7))
 		return -EINVAL;
+
+#ifdef HAVE_VF_VLAN_PROTO
+	if (vlan_proto != htons(ETH_P_8021Q))
+		return -EPROTONOSUPPORT;
+#endif
+
 	if (vlan || qos) {
 		err = igb_vlvf_set(adapter, vlan, !!vlan, vf);
 		if (err)
@@ -6580,7 +6594,12 @@ static inline void igb_vf_reset(struct igb_adapter *adapter, u32 vf)
 	if (adapter->vf_data[vf].pf_vlan)
 		igb_ndo_set_vf_vlan(adapter->netdev, vf,
 				    adapter->vf_data[vf].pf_vlan,
+#ifdef HAVE_VF_VLAN_PROTO
+				    adapter->vf_data[vf].pf_qos,
+				    htons(ETH_P_8021Q));
+#else
 				    adapter->vf_data[vf].pf_qos);
+#endif
 	else
 		igb_clear_vf_vfta(adapter, vf);
 #endif
