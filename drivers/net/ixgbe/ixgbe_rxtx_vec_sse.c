@@ -343,6 +343,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* Read desc statuses backwards to avoid race condition */
 		/* A.1 load 4 pkts desc */
 		descs[3] = _mm_loadu_si128((__m128i *)(rxdp + 3));
+		rte_compiler_barrier();
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		_mm_storeu_si128((__m128i *)&rx_pkts[pos], mbp1);
@@ -351,8 +352,10 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		mbp2 = _mm_loadu_si128((__m128i *)&sw_ring[pos+2]);
 
 		descs[2] = _mm_loadu_si128((__m128i *)(rxdp + 2));
+		rte_compiler_barrier();
 		/* B.1 load 2 mbuf point */
 		descs[1] = _mm_loadu_si128((__m128i *)(rxdp + 1));
+		rte_compiler_barrier();
 		descs[0] = _mm_loadu_si128((__m128i *)(rxdp));
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
