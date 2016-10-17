@@ -35,8 +35,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <netinet/in.h>
+#ifdef RTE_EXEC_ENV_LINUXAPP
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#endif
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -1160,6 +1162,15 @@ app_init_tm(struct app_params *app)
 	}
 }
 
+#ifndef RTE_EXEC_ENV_LINUXAPP
+static void
+app_init_tap(struct app_params *app) {
+	if (app->n_pktq_tap == 0)
+		return;
+
+	rte_panic("TAP device not supported.\n");
+}
+#else
 static void
 app_init_tap(struct app_params *app)
 {
@@ -1187,6 +1198,7 @@ app_init_tap(struct app_params *app)
 		app->tap[i] = fd;
 	}
 }
+#endif
 
 #ifdef RTE_LIBRTE_KNI
 static int
@@ -1404,6 +1416,7 @@ void app_pipeline_params_get(struct app_params *app,
 			out->burst_size = app->tm_params[in->id].burst_read;
 			break;
 		}
+#ifdef RTE_EXEC_ENV_LINUXAPP
 		case APP_PKTQ_IN_TAP:
 		{
 			struct app_pktq_tap_params *tap_params =
@@ -1420,6 +1433,7 @@ void app_pipeline_params_get(struct app_params *app,
 			out->burst_size = app->tap_params[in->id].burst_read;
 			break;
 		}
+#endif
 #ifdef RTE_LIBRTE_KNI
 		case APP_PKTQ_IN_KNI:
 		{
@@ -1564,6 +1578,7 @@ void app_pipeline_params_get(struct app_params *app,
 				app->tm_params[in->id].burst_write;
 			break;
 		}
+#ifdef RTE_EXEC_ENV_LINUXAPP
 		case APP_PKTQ_OUT_TAP:
 		{
 			struct rte_port_fd_writer_params *params =
@@ -1575,6 +1590,7 @@ void app_pipeline_params_get(struct app_params *app,
 				app->tap_params[in->id].burst_write;
 			break;
 		}
+#endif
 #ifdef RTE_LIBRTE_KNI
 		case APP_PKTQ_OUT_KNI:
 		{
