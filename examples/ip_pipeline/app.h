@@ -1152,7 +1152,7 @@ app_tap_get_writer(struct app_params *app,
 	struct app_pktq_tap_params *tap,
 	uint32_t *pktq_out_id)
 {
-	struct app_pipeline_params *writer;
+	struct app_pipeline_params *writer = NULL;
 	uint32_t pos = tap - app->tap_params;
 	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
 		RTE_DIM(app->pipeline_params));
@@ -1168,10 +1168,11 @@ app_tap_get_writer(struct app_params *app,
 			struct app_pktq_out_params *pktq = &p->pktq_out[j];
 
 			if ((pktq->type == APP_PKTQ_OUT_TAP) &&
-				(pktq->id == pos))
+				(pktq->id == pos)) {
 				n_writers++;
 				writer = p;
 				id = j;
+			}
 		}
 	}
 
