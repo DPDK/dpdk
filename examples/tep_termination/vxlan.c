@@ -221,7 +221,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	/* copy in IP header */
 	ip = rte_memcpy(ip, &app_ip_hdr[vport_id],
 		sizeof(struct ipv4_hdr));
-	ip->total_length = rte_cpu_to_be_16(m->data_len
+	ip->total_length = rte_cpu_to_be_16(m->pkt_len
 				- sizeof(struct ether_hdr));
 
 	/* outer IP checksum */
