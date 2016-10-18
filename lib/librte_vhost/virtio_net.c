@@ -351,29 +351,41 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 }
 
 static inline int __attribute__((always_inline))
-fill_vec_buf(struct vhost_virtqueue *vq, uint32_t avail_idx,
-	     uint32_t *vec_idx, struct buf_vector *buf_vec,
-	     uint16_t *desc_chain_head, uint16_t *desc_chain_len)
+fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			 uint32_t avail_idx, uint32_t *vec_idx,
+			 struct buf_vector *buf_vec, uint16_t *desc_chain_head,
+			 uint16_t *desc_chain_len)
 {
 	uint16_t idx = vq->avail->ring[avail_idx & (vq->size - 1)];
 	uint32_t vec_id = *vec_idx;
 	uint32_t len    = 0;
+	struct vring_desc *descs = vq->desc;
 
 	*desc_chain_head = idx;
+
+	if (vq->desc[idx].flags & VRING_DESC_F_INDIRECT) {
+		descs = (struct vring_desc *)(uintptr_t)
+					gpa_to_vva(dev, vq->desc[idx].addr);
+		if (unlikely(!descs))
+			return -1;
+
+		idx = 0;
+	}
+
 	while (1) {
 		if (unlikely(vec_id >= BUF_VECTOR_MAX || idx >= vq->size))
 			return -1;
 
-		len += vq->desc[idx].len;
-		buf_vec[vec_id].buf_addr = vq->desc[idx].addr;
-		buf_vec[vec_id].buf_len  = vq->desc[idx].len;
+		len += descs[idx].len;
+		buf_vec[vec_id].buf_addr = descs[idx].addr;
+		buf_vec[vec_id].buf_len  = descs[idx].len;
 		buf_vec[vec_id].desc_idx = idx;
 		vec_id++;
 
-		if ((vq->desc[idx].flags & VRING_DESC_F_NEXT) == 0)
+		if ((descs[idx].flags & VRING_DESC_F_NEXT) == 0)
 			break;
 
-		idx = vq->desc[idx].next;
+		idx = descs[idx].next;
 	}
 
 	*desc_chain_len = len;
@@ -386,9 +398,9 @@ fill_vec_buf(struct vhost_virtqueue *vq, uint32_t avail_idx,
  * Returns -1 on fail, 0 on success
  */
 static inline int
-reserve_avail_buf_mergeable(struct vhost_virtqueue *vq, uint32_t size,
-			    struct buf_vector *buf_vec, uint16_t *num_buffers,
-			    uint16_t avail_head)
+reserve_avail_buf_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
+				uint32_t size, struct buf_vector *buf_vec,
+				uint16_t *num_buffers, uint16_t avail_head)
 {
 	uint16_t cur_idx;
 	uint32_t vec_idx = 0;
@@ -404,8 +416,8 @@ reserve_avail_buf_mergeable(struct vhost_virtqueue *vq, uint32_t size,
 		if (unlikely(cur_idx == avail_head))
 			return -1;
 
-		if (unlikely(fill_vec_buf(vq, cur_idx, &vec_idx, buf_vec,
-					  &head_idx, &len) < 0))
+		if (unlikely(fill_vec_buf(dev, vq, cur_idx, &vec_idx, buf_vec,
+						&head_idx, &len) < 0))
 			return -1;
 		len = RTE_MIN(len, size);
 		update_shadow_used_ring(vq, head_idx, len);
@@ -543,8 +555,9 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
 
-		if (unlikely(reserve_avail_buf_mergeable(vq, pkt_len, buf_vec,
-					&num_buffers, avail_head) < 0)) {
+		if (unlikely(reserve_avail_buf_mergeable(dev, vq,
+						pkt_len, buf_vec, &num_buffers,
+						avail_head) < 0)) {
 			LOG_DEBUG(VHOST_DATA,
 				"(%d) failed to get enough desc from vring\n",
 				dev->vid);
