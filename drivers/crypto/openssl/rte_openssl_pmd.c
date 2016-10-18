@@ -40,15 +40,15 @@
 
 #include <openssl/evp.h>
 
-#include "rte_libcrypto_pmd_private.h"
+#include "rte_openssl_pmd_private.h"
 
-static int cryptodev_libcrypto_remove(const char *name);
+static int cryptodev_openssl_remove(const char *name);
 
 /*----------------------------------------------------------------------------*/
 
 /**
  * Global static parameter used to create a unique name for each
- * LIBCRYPTO crypto device.
+ * OPENSSL crypto device.
  */
 static unsigned int unique_name_id;
 
@@ -61,7 +61,7 @@ create_unique_device_name(char *name, size_t size)
 		return -EINVAL;
 
 	ret = snprintf(name, size, "%s_%u",
-			RTE_STR(CRYPTODEV_NAME_LIBCRYPTO_PMD),
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
 			unique_name_id++);
 	if (ret < 0)
 		return ret;
@@ -89,24 +89,24 @@ ctr_inc(uint8_t *ctr)
  */
 
 /** Get xform chain order */
-static enum libcrypto_chain_order
-libcrypto_get_chain_order(const struct rte_crypto_sym_xform *xform)
+static enum openssl_chain_order
+openssl_get_chain_order(const struct rte_crypto_sym_xform *xform)
 {
-	enum libcrypto_chain_order res = LIBCRYPTO_CHAIN_NOT_SUPPORTED;
+	enum openssl_chain_order res = OPENSSL_CHAIN_NOT_SUPPORTED;
 
 	if (xform != NULL) {
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 			if (xform->next == NULL)
-				res =  LIBCRYPTO_CHAIN_ONLY_AUTH;
+				res =  OPENSSL_CHAIN_ONLY_AUTH;
 			else if (xform->next->type ==
 					RTE_CRYPTO_SYM_XFORM_CIPHER)
-				res =  LIBCRYPTO_CHAIN_AUTH_CIPHER;
+				res =  OPENSSL_CHAIN_AUTH_CIPHER;
 		}
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 			if (xform->next == NULL)
-				res =  LIBCRYPTO_CHAIN_ONLY_CIPHER;
+				res =  OPENSSL_CHAIN_ONLY_CIPHER;
 			else if (xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
-				res =  LIBCRYPTO_CHAIN_CIPHER_AUTH;
+				res =  OPENSSL_CHAIN_CIPHER_AUTH;
 		}
 	}
 
@@ -143,14 +143,14 @@ get_cipher_key_ede(uint8_t *key, int keylen, uint8_t *key_ede)
 		memcpy(key_ede + 16, key, 8);
 		break;
 	default:
-		LIBCRYPTO_LOG_ERR("Unsupported key size");
+		OPENSSL_LOG_ERR("Unsupported key size");
 		res = -EINVAL;
 	}
 
 	return res;
 }
 
-/** Get adequate libcrypto function for input cipher algorithm */
+/** Get adequate openssl function for input cipher algorithm */
 static uint8_t
 get_cipher_algo(enum rte_crypto_cipher_algorithm sess_algo, size_t keylen,
 		const EVP_CIPHER **algo)
@@ -229,7 +229,7 @@ get_cipher_algo(enum rte_crypto_cipher_algorithm sess_algo, size_t keylen,
 	return res;
 }
 
-/** Get adequate libcrypto function for input auth algorithm */
+/** Get adequate openssl function for input auth algorithm */
 static uint8_t
 get_auth_algo(enum rte_crypto_auth_algorithm sessalgo,
 		const EVP_MD **algo)
@@ -275,7 +275,7 @@ get_auth_algo(enum rte_crypto_auth_algorithm sessalgo,
 
 /** Set session cipher parameters */
 static int
-libcrypto_set_session_cipher_parameters(struct libcrypto_session *sess,
+openssl_set_session_cipher_parameters(struct openssl_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
 	/* Select cipher direction */
@@ -289,7 +289,7 @@ libcrypto_set_session_cipher_parameters(struct libcrypto_session *sess,
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_GCM:
-		sess->cipher.mode = LIBCRYPTO_CIPHER_LIB;
+		sess->cipher.mode = OPENSSL_CIPHER_LIB;
 		sess->cipher.algo = xform->cipher.algo;
 		sess->cipher.ctx = EVP_CIPHER_CTX_new();
 
@@ -303,7 +303,7 @@ libcrypto_set_session_cipher_parameters(struct libcrypto_session *sess,
 		break;
 
 	case RTE_CRYPTO_CIPHER_3DES_CTR:
-		sess->cipher.mode = LIBCRYPTO_CIPHER_DES3CTR;
+		sess->cipher.mode = OPENSSL_CIPHER_DES3CTR;
 		sess->cipher.ctx = EVP_CIPHER_CTX_new();
 
 		if (get_cipher_key_ede(xform->cipher.key.data,
@@ -322,7 +322,7 @@ libcrypto_set_session_cipher_parameters(struct libcrypto_session *sess,
 
 /* Set session auth parameters */
 static int
-libcrypto_set_session_auth_parameters(struct libcrypto_session *sess,
+openssl_set_session_auth_parameters(struct openssl_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
 	/* Select auth generate/verify */
@@ -336,7 +336,7 @@ libcrypto_set_session_auth_parameters(struct libcrypto_session *sess,
 		/* Check additional condition for AES_GMAC/GCM */
 		if (sess->cipher.algo != RTE_CRYPTO_CIPHER_AES_GCM)
 			return -EINVAL;
-		sess->chain_order = LIBCRYPTO_CHAIN_COMBINED;
+		sess->chain_order = OPENSSL_CHAIN_COMBINED;
 		break;
 
 	case RTE_CRYPTO_AUTH_MD5:
@@ -345,7 +345,7 @@ libcrypto_set_session_auth_parameters(struct libcrypto_session *sess,
 	case RTE_CRYPTO_AUTH_SHA256:
 	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_SHA512:
-		sess->auth.mode = LIBCRYPTO_AUTH_AS_AUTH;
+		sess->auth.mode = OPENSSL_AUTH_AS_AUTH;
 		if (get_auth_algo(xform->auth.algo,
 				&sess->auth.auth.evp_algo) != 0)
 			return -EINVAL;
@@ -358,7 +358,7 @@ libcrypto_set_session_auth_parameters(struct libcrypto_session *sess,
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
-		sess->auth.mode = LIBCRYPTO_AUTH_AS_HMAC;
+		sess->auth.mode = OPENSSL_AUTH_AS_HMAC;
 		sess->auth.hmac.ctx = EVP_MD_CTX_create();
 		if (get_auth_algo(xform->auth.algo,
 				&sess->auth.hmac.evp_algo) != 0)
@@ -376,25 +376,25 @@ libcrypto_set_session_auth_parameters(struct libcrypto_session *sess,
 
 /** Parse crypto xform chain and set private session parameters */
 int
-libcrypto_set_session_parameters(struct libcrypto_session *sess,
+openssl_set_session_parameters(struct openssl_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
 
-	sess->chain_order = libcrypto_get_chain_order(xform);
+	sess->chain_order = openssl_get_chain_order(xform);
 	switch (sess->chain_order) {
-	case LIBCRYPTO_CHAIN_ONLY_CIPHER:
+	case OPENSSL_CHAIN_ONLY_CIPHER:
 		cipher_xform = xform;
 		break;
-	case LIBCRYPTO_CHAIN_ONLY_AUTH:
+	case OPENSSL_CHAIN_ONLY_AUTH:
 		auth_xform = xform;
 		break;
-	case LIBCRYPTO_CHAIN_CIPHER_AUTH:
+	case OPENSSL_CHAIN_CIPHER_AUTH:
 		cipher_xform = xform;
 		auth_xform = xform->next;
 		break;
-	case LIBCRYPTO_CHAIN_AUTH_CIPHER:
+	case OPENSSL_CHAIN_AUTH_CIPHER:
 		auth_xform = xform;
 		cipher_xform = xform->next;
 		break;
@@ -404,17 +404,17 @@ libcrypto_set_session_parameters(struct libcrypto_session *sess,
 
 	/* cipher_xform must be check before auth_xform */
 	if (cipher_xform) {
-		if (libcrypto_set_session_cipher_parameters(
+		if (openssl_set_session_cipher_parameters(
 				sess, cipher_xform)) {
-			LIBCRYPTO_LOG_ERR(
+			OPENSSL_LOG_ERR(
 				"Invalid/unsupported cipher parameters");
 			return -EINVAL;
 		}
 	}
 
 	if (auth_xform) {
-		if (libcrypto_set_session_auth_parameters(sess, auth_xform)) {
-			LIBCRYPTO_LOG_ERR(
+		if (openssl_set_session_auth_parameters(sess, auth_xform)) {
+			OPENSSL_LOG_ERR(
 				"Invalid/unsupported auth parameters");
 			return -EINVAL;
 		}
@@ -425,15 +425,15 @@ libcrypto_set_session_parameters(struct libcrypto_session *sess,
 
 /** Reset private session parameters */
 void
-libcrypto_reset_session(struct libcrypto_session *sess)
+openssl_reset_session(struct openssl_session *sess)
 {
 	EVP_CIPHER_CTX_free(sess->cipher.ctx);
 
 	switch (sess->auth.mode) {
-	case LIBCRYPTO_AUTH_AS_AUTH:
+	case OPENSSL_AUTH_AS_AUTH:
 		EVP_MD_CTX_destroy(sess->auth.auth.ctx);
 		break;
-	case LIBCRYPTO_AUTH_AS_HMAC:
+	case OPENSSL_AUTH_AS_HMAC:
 		EVP_PKEY_free(sess->auth.hmac.pkey);
 		EVP_MD_CTX_destroy(sess->auth.hmac.ctx);
 		break;
@@ -443,28 +443,28 @@ libcrypto_reset_session(struct libcrypto_session *sess)
 }
 
 /** Provide session for operation */
-static struct libcrypto_session *
-get_session(struct libcrypto_qp *qp, struct rte_crypto_op *op)
+static struct openssl_session *
+get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 {
-	struct libcrypto_session *sess = NULL;
+	struct openssl_session *sess = NULL;
 
 	if (op->sym->sess_type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
 		/* get existing session */
 		if (likely(op->sym->session != NULL &&
 				op->sym->session->dev_type ==
-				RTE_CRYPTODEV_LIBCRYPTO_PMD))
-			sess = (struct libcrypto_session *)
+				RTE_CRYPTODEV_OPENSSL_PMD))
+			sess = (struct openssl_session *)
 				op->sym->session->_private;
 	} else  {
 		/* provide internal session */
 		void *_sess = NULL;
 
 		if (!rte_mempool_get(qp->sess_mp, (void **)&_sess)) {
-			sess = (struct libcrypto_session *)
+			sess = (struct openssl_session *)
 				((struct rte_cryptodev_sym_session *)_sess)
 				->_private;
 
-			if (unlikely(libcrypto_set_session_parameters(
+			if (unlikely(openssl_set_session_parameters(
 					sess, op->sym->xform) != 0)) {
 				rte_mempool_put(qp->sess_mp, _sess);
 				sess = NULL;
@@ -485,9 +485,9 @@ get_session(struct libcrypto_qp *qp, struct rte_crypto_op *op)
  *------------------------------------------------------------------------------
  */
 
-/** Process standard libcrypto cipher encryption */
+/** Process standard openssl cipher encryption */
 static int
-process_libcrypto_cipher_encrypt(uint8_t *src, uint8_t *dst,
+process_openssl_cipher_encrypt(uint8_t *src, uint8_t *dst,
 		uint8_t *iv, uint8_t *key, int srclen,
 		EVP_CIPHER_CTX *ctx, const EVP_CIPHER *algo)
 {
@@ -505,13 +505,13 @@ process_libcrypto_cipher_encrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 process_cipher_encrypt_err:
-	LIBCRYPTO_LOG_ERR("Process libcrypto cipher encrypt failed");
+	OPENSSL_LOG_ERR("Process openssl cipher encrypt failed");
 	return -EINVAL;
 }
 
-/** Process standard libcrypto cipher decryption */
+/** Process standard openssl cipher decryption */
 static int
-process_libcrypto_cipher_decrypt(uint8_t *src, uint8_t *dst,
+process_openssl_cipher_decrypt(uint8_t *src, uint8_t *dst,
 		uint8_t *iv, uint8_t *key, int srclen,
 		EVP_CIPHER_CTX *ctx, const EVP_CIPHER *algo)
 {
@@ -532,13 +532,13 @@ process_libcrypto_cipher_decrypt(uint8_t *src, uint8_t *dst,
 	return 0;
 
 process_cipher_decrypt_err:
-	LIBCRYPTO_LOG_ERR("Process libcrypto cipher decrypt failed");
+	OPENSSL_LOG_ERR("Process openssl cipher decrypt failed");
 	return -EINVAL;
 }
 
 /** Process cipher des 3 ctr encryption, decryption algorithm */
 static int
-process_libcrypto_cipher_des3ctr(uint8_t *src, uint8_t *dst,
+process_openssl_cipher_des3ctr(uint8_t *src, uint8_t *dst,
 		uint8_t *iv, uint8_t *key, int srclen, EVP_CIPHER_CTX *ctx)
 {
 	uint8_t ebuf[8], ctr[8];
@@ -568,13 +568,13 @@ process_libcrypto_cipher_des3ctr(uint8_t *src, uint8_t *dst,
 	return 0;
 
 process_cipher_des3ctr_err:
-	LIBCRYPTO_LOG_ERR("Process libcrypto cipher des 3 ede ctr failed");
+	OPENSSL_LOG_ERR("Process openssl cipher des 3 ede ctr failed");
 	return -EINVAL;
 }
 
 /** Process auth/encription aes-gcm algorithm */
 static int
-process_libcrypto_auth_encryption_gcm(uint8_t *src, int srclen,
+process_openssl_auth_encryption_gcm(uint8_t *src, int srclen,
 		uint8_t *aad, int aadlen, uint8_t *iv, int ivlen,
 		uint8_t *key, uint8_t *dst,	uint8_t *tag,
 		EVP_CIPHER_CTX *ctx, const EVP_CIPHER *algo)
@@ -613,12 +613,12 @@ process_libcrypto_auth_encryption_gcm(uint8_t *src, int srclen,
 	return 0;
 
 process_auth_encryption_gcm_err:
-	LIBCRYPTO_LOG_ERR("Process libcrypto auth encryption gcm failed");
+	OPENSSL_LOG_ERR("Process openssl auth encryption gcm failed");
 	return -EINVAL;
 }
 
 static int
-process_libcrypto_auth_decryption_gcm(uint8_t *src, int srclen,
+process_openssl_auth_decryption_gcm(uint8_t *src, int srclen,
 		uint8_t *aad, int aadlen, uint8_t *iv, int ivlen,
 		uint8_t *key, uint8_t *dst, uint8_t *tag,
 		EVP_CIPHER_CTX *ctx, const EVP_CIPHER *algo)
@@ -657,16 +657,16 @@ process_libcrypto_auth_decryption_gcm(uint8_t *src, int srclen,
 	return 0;
 
 process_auth_decryption_gcm_err:
-	LIBCRYPTO_LOG_ERR("Process libcrypto auth description gcm failed");
+	OPENSSL_LOG_ERR("Process openssl auth description gcm failed");
 	return -EINVAL;
 
 process_auth_decryption_gcm_final_err:
 	return -EFAULT;
 }
 
-/** Process standard libcrypto auth algorithms */
+/** Process standard openssl auth algorithms */
 static int
-process_libcrypto_auth(uint8_t *src, uint8_t *dst,
+process_openssl_auth(uint8_t *src, uint8_t *dst,
 		__rte_unused uint8_t *iv, __rte_unused EVP_PKEY * pkey,
 		int srclen, EVP_MD_CTX *ctx, const EVP_MD *algo)
 {
@@ -684,13 +684,13 @@ process_libcrypto_auth(uint8_t *src, uint8_t *dst,
 	return 0;
 
 process_auth_err:
-	LIBCRYPTO_LOG_ERR("Process libcrypto auth failed");
+	OPENSSL_LOG_ERR("Process openssl auth failed");
 	return -EINVAL;
 }
 
-/** Process standard libcrypto auth algorithms with hmac */
+/** Process standard openssl auth algorithms with hmac */
 static int
-process_libcrypto_auth_hmac(uint8_t *src, uint8_t *dst,
+process_openssl_auth_hmac(uint8_t *src, uint8_t *dst,
 		__rte_unused uint8_t *iv, EVP_PKEY *pkey,
 		int srclen,	EVP_MD_CTX *ctx, const EVP_MD *algo)
 {
@@ -708,7 +708,7 @@ process_libcrypto_auth_hmac(uint8_t *src, uint8_t *dst,
 	return 0;
 
 process_auth_err:
-	LIBCRYPTO_LOG_ERR("Process libcrypto auth failed");
+	OPENSSL_LOG_ERR("Process openssl auth failed");
 	return -EINVAL;
 }
 
@@ -716,8 +716,8 @@ process_auth_err:
 
 /** Process auth/cipher combined operation */
 static void
-process_libcrypto_combined_op
-		(struct rte_crypto_op *op, struct libcrypto_session *sess,
+process_openssl_combined_op
+		(struct rte_crypto_op *op, struct openssl_session *sess,
 		struct rte_mbuf *mbuf_src, struct rte_mbuf *mbuf_dst)
 {
 	/* cipher */
@@ -746,12 +746,12 @@ process_libcrypto_combined_op
 	}
 
 	if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
-		status = process_libcrypto_auth_encryption_gcm(
+		status = process_openssl_auth_encryption_gcm(
 				src, srclen, aad, aadlen, iv, ivlen,
 				sess->cipher.key.data, dst, tag,
 				sess->cipher.ctx, sess->cipher.evp_algo);
 	else
-		status = process_libcrypto_auth_decryption_gcm(
+		status = process_openssl_auth_decryption_gcm(
 				src, srclen, aad, aadlen, iv, ivlen,
 				sess->cipher.key.data, dst, tag,
 				sess->cipher.ctx, sess->cipher.evp_algo);
@@ -768,8 +768,8 @@ process_libcrypto_combined_op
 
 /** Process cipher operation */
 static void
-process_libcrypto_cipher_op
-		(struct rte_crypto_op *op, struct libcrypto_session *sess,
+process_openssl_cipher_op
+		(struct rte_crypto_op *op, struct openssl_session *sess,
 		struct rte_mbuf *mbuf_src, struct rte_mbuf *mbuf_dst)
 {
 	uint8_t *src, *dst, *iv;
@@ -783,19 +783,19 @@ process_libcrypto_cipher_op
 
 	iv = op->sym->cipher.iv.data;
 
-	if (sess->cipher.mode == LIBCRYPTO_CIPHER_LIB)
+	if (sess->cipher.mode == OPENSSL_CIPHER_LIB)
 		if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
-			status = process_libcrypto_cipher_encrypt(src, dst, iv,
+			status = process_openssl_cipher_encrypt(src, dst, iv,
 					sess->cipher.key.data, srclen,
 					sess->cipher.ctx,
 					sess->cipher.evp_algo);
 		else
-			status = process_libcrypto_cipher_decrypt(src, dst, iv,
+			status = process_openssl_cipher_decrypt(src, dst, iv,
 					sess->cipher.key.data, srclen,
 					sess->cipher.ctx,
 					sess->cipher.evp_algo);
 	else
-		status = process_libcrypto_cipher_des3ctr(src, dst, iv,
+		status = process_openssl_cipher_des3ctr(src, dst, iv,
 				sess->cipher.key.data, srclen,
 				sess->cipher.ctx);
 
@@ -805,8 +805,8 @@ process_libcrypto_cipher_op
 
 /** Process auth operation */
 static void
-process_libcrypto_auth_op
-		(struct rte_crypto_op *op, struct libcrypto_session *sess,
+process_openssl_auth_op
+		(struct rte_crypto_op *op, struct openssl_session *sess,
 		struct rte_mbuf *mbuf_src, struct rte_mbuf *mbuf_dst)
 {
 	uint8_t *src, *dst;
@@ -828,13 +828,13 @@ process_libcrypto_auth_op
 	}
 
 	switch (sess->auth.mode) {
-	case LIBCRYPTO_AUTH_AS_AUTH:
-		status = process_libcrypto_auth(src, dst,
+	case OPENSSL_AUTH_AS_AUTH:
+		status = process_openssl_auth(src, dst,
 				NULL, NULL,	srclen,
 				sess->auth.auth.ctx, sess->auth.auth.evp_algo);
 		break;
-	case LIBCRYPTO_AUTH_AS_HMAC:
-		status = process_libcrypto_auth_hmac(src, dst,
+	case OPENSSL_AUTH_AS_HMAC:
+		status = process_openssl_auth_hmac(src, dst,
 				NULL, sess->auth.hmac.pkey, srclen,
 				sess->auth.hmac.ctx, sess->auth.hmac.evp_algo);
 		break;
@@ -859,8 +859,8 @@ process_libcrypto_auth_op
 
 /** Process crypto operation for mbuf */
 static int
-process_op(const struct libcrypto_qp *qp, struct rte_crypto_op *op,
-		struct libcrypto_session *sess)
+process_op(const struct openssl_qp *qp, struct rte_crypto_op *op,
+		struct openssl_session *sess)
 {
 	struct rte_mbuf *msrc, *mdst;
 	int retval;
@@ -871,22 +871,22 @@ process_op(const struct libcrypto_qp *qp, struct rte_crypto_op *op,
 	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 
 	switch (sess->chain_order) {
-	case LIBCRYPTO_CHAIN_ONLY_CIPHER:
-		process_libcrypto_cipher_op(op, sess, msrc, mdst);
+	case OPENSSL_CHAIN_ONLY_CIPHER:
+		process_openssl_cipher_op(op, sess, msrc, mdst);
 		break;
-	case LIBCRYPTO_CHAIN_ONLY_AUTH:
-		process_libcrypto_auth_op(op, sess, msrc, mdst);
+	case OPENSSL_CHAIN_ONLY_AUTH:
+		process_openssl_auth_op(op, sess, msrc, mdst);
 		break;
-	case LIBCRYPTO_CHAIN_CIPHER_AUTH:
-		process_libcrypto_cipher_op(op, sess, msrc, mdst);
-		process_libcrypto_auth_op(op, sess, mdst, mdst);
+	case OPENSSL_CHAIN_CIPHER_AUTH:
+		process_openssl_cipher_op(op, sess, msrc, mdst);
+		process_openssl_auth_op(op, sess, mdst, mdst);
 		break;
-	case LIBCRYPTO_CHAIN_AUTH_CIPHER:
-		process_libcrypto_auth_op(op, sess, msrc, mdst);
-		process_libcrypto_cipher_op(op, sess, msrc, mdst);
+	case OPENSSL_CHAIN_AUTH_CIPHER:
+		process_openssl_auth_op(op, sess, msrc, mdst);
+		process_openssl_cipher_op(op, sess, msrc, mdst);
 		break;
-	case LIBCRYPTO_CHAIN_COMBINED:
-		process_libcrypto_combined_op(op, sess, msrc, mdst);
+	case OPENSSL_CHAIN_COMBINED:
+		process_openssl_combined_op(op, sess, msrc, mdst);
 		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -895,8 +895,8 @@ process_op(const struct libcrypto_qp *qp, struct rte_crypto_op *op,
 
 	/* Free session if a session-less crypto op */
 	if (op->sym->sess_type == RTE_CRYPTO_SYM_OP_SESSIONLESS) {
-		libcrypto_reset_session(sess);
-		memset(sess, 0, sizeof(struct libcrypto_session));
+		openssl_reset_session(sess);
+		memset(sess, 0, sizeof(struct openssl_session));
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}
@@ -921,11 +921,11 @@ process_op(const struct libcrypto_qp *qp, struct rte_crypto_op *op,
 
 /** Enqueue burst */
 static uint16_t
-libcrypto_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
+openssl_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct libcrypto_session *sess;
-	struct libcrypto_qp *qp = queue_pair;
+	struct openssl_session *sess;
+	struct openssl_qp *qp = queue_pair;
 	int i, retval;
 
 	for (i = 0; i < nb_ops; i++) {
@@ -948,10 +948,10 @@ enqueue_err:
 
 /** Dequeue burst */
 static uint16_t
-libcrypto_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
+openssl_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct libcrypto_qp *qp = queue_pair;
+	struct openssl_qp *qp = queue_pair;
 
 	unsigned int nb_dequeued = 0;
 
@@ -962,36 +962,36 @@ libcrypto_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	return nb_dequeued;
 }
 
-/** Create LIBCRYPTO crypto device */
+/** Create OPENSSL crypto device */
 static int
-cryptodev_libcrypto_create(const char *name,
+cryptodev_openssl_create(const char *name,
 		struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-	struct libcrypto_private *internals;
+	struct openssl_private *internals;
 
 	/* create a unique device name */
 	if (create_unique_device_name(crypto_dev_name,
 			RTE_CRYPTODEV_NAME_MAX_LEN) != 0) {
-		LIBCRYPTO_LOG_ERR("failed to create unique cryptodev name");
+		OPENSSL_LOG_ERR("failed to create unique cryptodev name");
 		return -EINVAL;
 	}
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
-			sizeof(struct libcrypto_private),
+			sizeof(struct openssl_private),
 			init_params->socket_id);
 	if (dev == NULL) {
-		LIBCRYPTO_LOG_ERR("failed to create cryptodev vdev");
+		OPENSSL_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_LIBCRYPTO_PMD;
-	dev->dev_ops = rte_libcrypto_pmd_ops;
+	dev->dev_type = RTE_CRYPTODEV_OPENSSL_PMD;
+	dev->dev_ops = rte_openssl_pmd_ops;
 
 	/* register rx/tx burst functions for data path */
-	dev->dequeue_burst = libcrypto_pmd_dequeue_burst;
-	dev->enqueue_burst = libcrypto_pmd_enqueue_burst;
+	dev->dequeue_burst = openssl_pmd_dequeue_burst;
+	dev->enqueue_burst = openssl_pmd_enqueue_burst;
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
@@ -1006,15 +1006,15 @@ cryptodev_libcrypto_create(const char *name,
 	return 0;
 
 init_error:
-	LIBCRYPTO_LOG_ERR("driver %s: cryptodev_libcrypto_create failed", name);
+	OPENSSL_LOG_ERR("driver %s: cryptodev_openssl_create failed", name);
 
-	cryptodev_libcrypto_remove(crypto_dev_name);
+	cryptodev_openssl_remove(crypto_dev_name);
 	return -EFAULT;
 }
 
-/** Initialise LIBCRYPTO crypto device */
+/** Initialise OPENSSL crypto device */
 static int
-cryptodev_libcrypto_probe(const char *name,
+cryptodev_openssl_probe(const char *name,
 		const char *input_args)
 {
 	struct rte_crypto_vdev_init_params init_params = {
@@ -1032,31 +1032,31 @@ cryptodev_libcrypto_probe(const char *name,
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_libcrypto_create(name, &init_params);
+	return cryptodev_openssl_create(name, &init_params);
 }
 
-/** Uninitialise LIBCRYPTO crypto device */
+/** Uninitialise OPENSSL crypto device */
 static int
-cryptodev_libcrypto_remove(const char *name)
+cryptodev_openssl_remove(const char *name)
 {
 	if (name == NULL)
 		return -EINVAL;
 
 	RTE_LOG(INFO, PMD,
-		"Closing LIBCRYPTO crypto device %s on numa socket %u\n",
+		"Closing OPENSSL crypto device %s on numa socket %u\n",
 		name, rte_socket_id());
 
 	return 0;
 }
 
-static struct rte_vdev_driver cryptodev_libcrypto_pmd_drv = {
-	.probe = cryptodev_libcrypto_probe,
-	.remove = cryptodev_libcrypto_remove
+static struct rte_vdev_driver cryptodev_openssl_pmd_drv = {
+	.probe = cryptodev_openssl_probe,
+	.remove = cryptodev_openssl_remove
 };
 
-RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_LIBCRYPTO_PMD,
-	cryptodev_libcrypto_pmd_drv);
-RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_LIBCRYPTO_PMD,
+RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_OPENSSL_PMD,
+	cryptodev_openssl_pmd_drv);
+RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_OPENSSL_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");

@@ -115,7 +115,7 @@ New Features
   * C3XXX device
   * C62XX device
 
-* **Added libcrypto PMD.**
+* **Added openssl PMD.**
 
   A new crypto PMD has been added, which provides several ciphering and hashing.
   All cryptography operations are using Openssl library crypto API.

@@ -30,66 +30,66 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _LIBCRYPTO_PMD_PRIVATE_H_
-#define _LIBCRYPTO_PMD_PRIVATE_H_
+#ifndef _OPENSSL_PMD_PRIVATE_H_
+#define _OPENSSL_PMD_PRIVATE_H_
 
 #include <openssl/evp.h>
 #include <openssl/des.h>
 
 
-#define LIBCRYPTO_LOG_ERR(fmt, args...) \
+#define OPENSSL_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_LIBCRYPTO_PMD), \
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD), \
 			__func__, __LINE__, ## args)
 
-#ifdef RTE_LIBRTE_LIBCRYPTO_DEBUG
-#define LIBCRYPTO_LOG_INFO(fmt, args...) \
+#ifdef RTE_LIBRTE_OPENSSL_DEBUG
+#define OPENSSL_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_LIBCRYPTO_PMD), \
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD), \
 			__func__, __LINE__, ## args)
 
-#define LIBCRYPTO_LOG_DBG(fmt, args...) \
+#define OPENSSL_LOG_DBG(fmt, args...) \
 	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_LIBCRYPTO_PMD), \
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD), \
 			__func__, __LINE__, ## args)
 #else
-#define LIBCRYPTO_LOG_INFO(fmt, args...)
-#define LIBCRYPTO_LOG_DBG(fmt, args...)
+#define OPENSSL_LOG_INFO(fmt, args...)
+#define OPENSSL_LOG_DBG(fmt, args...)
 #endif
 
 
-/** LIBCRYPTO operation order mode enumerator */
-enum libcrypto_chain_order {
-	LIBCRYPTO_CHAIN_ONLY_CIPHER,
-	LIBCRYPTO_CHAIN_ONLY_AUTH,
-	LIBCRYPTO_CHAIN_CIPHER_AUTH,
-	LIBCRYPTO_CHAIN_AUTH_CIPHER,
-	LIBCRYPTO_CHAIN_COMBINED,
-	LIBCRYPTO_CHAIN_NOT_SUPPORTED
+/** OPENSSL operation order mode enumerator */
+enum openssl_chain_order {
+	OPENSSL_CHAIN_ONLY_CIPHER,
+	OPENSSL_CHAIN_ONLY_AUTH,
+	OPENSSL_CHAIN_CIPHER_AUTH,
+	OPENSSL_CHAIN_AUTH_CIPHER,
+	OPENSSL_CHAIN_COMBINED,
+	OPENSSL_CHAIN_NOT_SUPPORTED
 };
 
-/** LIBCRYPTO cipher mode enumerator */
-enum libcrypto_cipher_mode {
-	LIBCRYPTO_CIPHER_LIB,
-	LIBCRYPTO_CIPHER_DES3CTR,
+/** OPENSSL cipher mode enumerator */
+enum openssl_cipher_mode {
+	OPENSSL_CIPHER_LIB,
+	OPENSSL_CIPHER_DES3CTR,
 };
 
-/** LIBCRYPTO auth mode enumerator */
-enum libcrypto_auth_mode {
-	LIBCRYPTO_AUTH_AS_AUTH,
-	LIBCRYPTO_AUTH_AS_HMAC,
+/** OPENSSL auth mode enumerator */
+enum openssl_auth_mode {
+	OPENSSL_AUTH_AS_AUTH,
+	OPENSSL_AUTH_AS_HMAC,
 };
 
-/** private data structure for each LIBCRYPTO crypto device */
-struct libcrypto_private {
+/** private data structure for each OPENSSL crypto device */
+struct openssl_private {
 	unsigned int max_nb_qpairs;
 	/**< Max number of queue pairs */
 	unsigned int max_nb_sessions;
 	/**< Max number of sessions */
 };
 
-/** LIBCRYPTO crypto queue pair */
-struct libcrypto_qp {
+/** OPENSSL crypto queue pair */
+struct openssl_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_LEN];
@@ -102,16 +102,16 @@ struct libcrypto_qp {
 	/**< Queue pair statistics */
 } __rte_cache_aligned;
 
-/** LIBCRYPTO crypto private session structure */
-struct libcrypto_session {
-	enum libcrypto_chain_order chain_order;
+/** OPENSSL crypto private session structure */
+struct openssl_session {
+	enum openssl_chain_order chain_order;
 	/**< chain order mode */
 
 	/** Cipher Parameters */
 	struct {
 		enum rte_crypto_cipher_operation direction;
 		/**< cipher operation direction */
-		enum libcrypto_cipher_mode mode;
+		enum openssl_cipher_mode mode;
 		/**< cipher operation mode */
 		enum rte_crypto_cipher_algorithm algo;
 		/**< cipher algorithm */
@@ -133,7 +133,7 @@ struct libcrypto_session {
 	struct {
 		enum rte_crypto_auth_operation operation;
 		/**< auth operation generate or verify */
-		enum libcrypto_auth_mode mode;
+		enum openssl_auth_mode mode;
 		/**< auth operation mode */
 		enum rte_crypto_auth_algorithm algo;
 		/**< cipher algorithm */
@@ -159,16 +159,16 @@ struct libcrypto_session {
 
 } __rte_cache_aligned;
 
-/** Set and validate LIBCRYPTO crypto session parameters */
+/** Set and validate OPENSSL crypto session parameters */
 extern int
-libcrypto_set_session_parameters(struct libcrypto_session *sess,
+openssl_set_session_parameters(struct openssl_session *sess,
 		const struct rte_crypto_sym_xform *xform);
 
-/** Reset LIBCRYPTO crypto session parameters */
+/** Reset OPENSSL crypto session parameters */
 extern void
-libcrypto_reset_session(struct libcrypto_session *sess);
+openssl_reset_session(struct openssl_session *sess);
 
 /** device specific operations function pointer structure */
-extern struct rte_cryptodev_ops *rte_libcrypto_pmd_ops;
+extern struct rte_cryptodev_ops *rte_openssl_pmd_ops;
 
-#endif /* _LIBCRYPTO_PMD_PRIVATE_H_ */
+#endif /* _OPENSSL_PMD_PRIVATE_H_ */

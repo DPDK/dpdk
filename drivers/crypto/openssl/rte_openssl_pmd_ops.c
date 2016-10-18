@@ -36,10 +36,10 @@
 #include <rte_malloc.h>
 #include <rte_cryptodev_pmd.h>
 
-#include "rte_libcrypto_pmd_private.h"
+#include "rte_openssl_pmd_private.h"
 
 
-static const struct rte_cryptodev_capabilities libcrypto_pmd_capabilities[] = {
+static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 	{	/* MD5 HMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -449,27 +449,27 @@ static const struct rte_cryptodev_capabilities libcrypto_pmd_capabilities[] = {
 
 /** Configure device */
 static int
-libcrypto_pmd_config(__rte_unused struct rte_cryptodev *dev)
+openssl_pmd_config(__rte_unused struct rte_cryptodev *dev)
 {
 	return 0;
 }
 
 /** Start device */
 static int
-libcrypto_pmd_start(__rte_unused struct rte_cryptodev *dev)
+openssl_pmd_start(__rte_unused struct rte_cryptodev *dev)
 {
 	return 0;
 }
 
 /** Stop device */
 static void
-libcrypto_pmd_stop(__rte_unused struct rte_cryptodev *dev)
+openssl_pmd_stop(__rte_unused struct rte_cryptodev *dev)
 {
 }
 
 /** Close device */
 static int
-libcrypto_pmd_close(__rte_unused struct rte_cryptodev *dev)
+openssl_pmd_close(__rte_unused struct rte_cryptodev *dev)
 {
 	return 0;
 }
@@ -477,13 +477,13 @@ libcrypto_pmd_close(__rte_unused struct rte_cryptodev *dev)
 
 /** Get device statistics */
 static void
-libcrypto_pmd_stats_get(struct rte_cryptodev *dev,
+openssl_pmd_stats_get(struct rte_cryptodev *dev,
 		struct rte_cryptodev_stats *stats)
 {
 	int qp_id;
 
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
-		struct libcrypto_qp *qp = dev->data->queue_pairs[qp_id];
+		struct openssl_qp *qp = dev->data->queue_pairs[qp_id];
 
 		stats->enqueued_count += qp->stats.enqueued_count;
 		stats->dequeued_count += qp->stats.dequeued_count;
@@ -495,12 +495,12 @@ libcrypto_pmd_stats_get(struct rte_cryptodev *dev,
 
 /** Reset device statistics */
 static void
-libcrypto_pmd_stats_reset(struct rte_cryptodev *dev)
+openssl_pmd_stats_reset(struct rte_cryptodev *dev)
 {
 	int qp_id;
 
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
-		struct libcrypto_qp *qp = dev->data->queue_pairs[qp_id];
+		struct openssl_qp *qp = dev->data->queue_pairs[qp_id];
 
 		memset(&qp->stats, 0, sizeof(qp->stats));
 	}
@@ -509,15 +509,15 @@ libcrypto_pmd_stats_reset(struct rte_cryptodev *dev)
 
 /** Get device info */
 static void
-libcrypto_pmd_info_get(struct rte_cryptodev *dev,
+openssl_pmd_info_get(struct rte_cryptodev *dev,
 		struct rte_cryptodev_info *dev_info)
 {
-	struct libcrypto_private *internals = dev->data->dev_private;
+	struct openssl_private *internals = dev->data->dev_private;
 
 	if (dev_info != NULL) {
 		dev_info->dev_type = dev->dev_type;
 		dev_info->feature_flags = dev->feature_flags;
-		dev_info->capabilities = libcrypto_pmd_capabilities;
+		dev_info->capabilities = openssl_pmd_capabilities;
 		dev_info->max_nb_queue_pairs = internals->max_nb_qpairs;
 		dev_info->sym.max_nb_sessions = internals->max_nb_sessions;
 	}
@@ -525,7 +525,7 @@ libcrypto_pmd_info_get(struct rte_cryptodev *dev,
 
 /** Release queue pair */
 static int
-libcrypto_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
+openssl_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 {
 	if (dev->data->queue_pairs[qp_id] != NULL) {
 		rte_free(dev->data->queue_pairs[qp_id]);
@@ -536,11 +536,11 @@ libcrypto_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 
 /** set a unique name for the queue pair based on it's name, dev_id and qp_id */
 static int
-libcrypto_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
-		struct libcrypto_qp *qp)
+openssl_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
+		struct openssl_qp *qp)
 {
 	unsigned int n = snprintf(qp->name, sizeof(qp->name),
-			"libcrypto_pmd_%u_qp_%u",
+			"openssl_pmd_%u_qp_%u",
 			dev->data->dev_id, qp->id);
 
 	if (n > sizeof(qp->name))
@@ -552,7 +552,7 @@ libcrypto_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
 
 /** Create a ring to place processed operations on */
 static struct rte_ring *
-libcrypto_pmd_qp_create_processed_ops_ring(struct libcrypto_qp *qp,
+openssl_pmd_qp_create_processed_ops_ring(struct openssl_qp *qp,
 		unsigned int ring_size, int socket_id)
 {
 	struct rte_ring *r;
@@ -560,13 +560,13 @@ libcrypto_pmd_qp_create_processed_ops_ring(struct libcrypto_qp *qp,
 	r = rte_ring_lookup(qp->name);
 	if (r) {
 		if (r->prod.size >= ring_size) {
-			LIBCRYPTO_LOG_INFO(
+			OPENSSL_LOG_INFO(
 				"Reusing existing ring %s for processed ops",
 				 qp->name);
 			return r;
 		}
 
-		LIBCRYPTO_LOG_ERR(
+		OPENSSL_LOG_ERR(
 			"Unable to reuse existing ring %s for processed ops",
 			 qp->name);
 		return NULL;
@@ -579,18 +579,18 @@ libcrypto_pmd_qp_create_processed_ops_ring(struct libcrypto_qp *qp,
 
 /** Setup a queue pair */
 static int
-libcrypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
+openssl_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		const struct rte_cryptodev_qp_conf *qp_conf,
 		 int socket_id)
 {
-	struct libcrypto_qp *qp = NULL;
+	struct openssl_qp *qp = NULL;
 
 	/* Free memory prior to re-allocation if needed. */
 	if (dev->data->queue_pairs[qp_id] != NULL)
-		libcrypto_pmd_qp_release(dev, qp_id);
+		openssl_pmd_qp_release(dev, qp_id);
 
 	/* Allocate the queue pair data structure. */
-	qp = rte_zmalloc_socket("LIBCRYPTO PMD Queue Pair", sizeof(*qp),
+	qp = rte_zmalloc_socket("OPENSSL PMD Queue Pair", sizeof(*qp),
 					RTE_CACHE_LINE_SIZE, socket_id);
 	if (qp == NULL)
 		return -ENOMEM;
@@ -598,10 +598,10 @@ libcrypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qp->id = qp_id;
 	dev->data->queue_pairs[qp_id] = qp;
 
-	if (libcrypto_pmd_qp_set_unique_name(dev, qp))
+	if (openssl_pmd_qp_set_unique_name(dev, qp))
 		goto qp_setup_cleanup;
 
-	qp->processed_ops = libcrypto_pmd_qp_create_processed_ops_ring(qp,
+	qp->processed_ops = openssl_pmd_qp_create_processed_ops_ring(qp,
 			qp_conf->nb_descriptors, socket_id);
 	if (qp->processed_ops == NULL)
 		goto qp_setup_cleanup;
@@ -621,7 +621,7 @@ qp_setup_cleanup:
 
 /** Start queue pair */
 static int
-libcrypto_pmd_qp_start(__rte_unused struct rte_cryptodev *dev,
+openssl_pmd_qp_start(__rte_unused struct rte_cryptodev *dev,
 		__rte_unused uint16_t queue_pair_id)
 {
 	return -ENOTSUP;
@@ -629,7 +629,7 @@ libcrypto_pmd_qp_start(__rte_unused struct rte_cryptodev *dev,
 
 /** Stop queue pair */
 static int
-libcrypto_pmd_qp_stop(__rte_unused struct rte_cryptodev *dev,
+openssl_pmd_qp_stop(__rte_unused struct rte_cryptodev *dev,
 		__rte_unused uint16_t queue_pair_id)
 {
 	return -ENOTSUP;
@@ -637,31 +637,31 @@ libcrypto_pmd_qp_stop(__rte_unused struct rte_cryptodev *dev,
 
 /** Return the number of allocated queue pairs */
 static uint32_t
-libcrypto_pmd_qp_count(struct rte_cryptodev *dev)
+openssl_pmd_qp_count(struct rte_cryptodev *dev)
 {
 	return dev->data->nb_queue_pairs;
 }
 
 /** Returns the size of the session structure */
 static unsigned
-libcrypto_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
+openssl_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
-	return sizeof(struct libcrypto_session);
+	return sizeof(struct openssl_session);
 }
 
 /** Configure the session from a crypto xform chain */
 static void *
-libcrypto_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
+openssl_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_sym_xform *xform,	void *sess)
 {
 	if (unlikely(sess == NULL)) {
-		LIBCRYPTO_LOG_ERR("invalid session struct");
+		OPENSSL_LOG_ERR("invalid session struct");
 		return NULL;
 	}
 
-	if (libcrypto_set_session_parameters(
+	if (openssl_set_session_parameters(
 			sess, xform) != 0) {
-		LIBCRYPTO_LOG_ERR("failed configure session parameters");
+		OPENSSL_LOG_ERR("failed configure session parameters");
 		return NULL;
 	}
 
@@ -671,38 +671,38 @@ libcrypto_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-libcrypto_pmd_session_clear(struct rte_cryptodev *dev __rte_unused, void *sess)
+openssl_pmd_session_clear(struct rte_cryptodev *dev __rte_unused, void *sess)
 {
 	/*
 	 * Current just resetting the whole data structure, need to investigate
 	 * whether a more selective reset of key would be more performant
 	 */
 	if (sess) {
-		libcrypto_reset_session(sess);
-		memset(sess, 0, sizeof(struct libcrypto_session));
+		openssl_reset_session(sess);
+		memset(sess, 0, sizeof(struct openssl_session));
 	}
 }
 
-struct rte_cryptodev_ops libcrypto_pmd_ops = {
-		.dev_configure		= libcrypto_pmd_config,
-		.dev_start		= libcrypto_pmd_start,
-		.dev_stop		= libcrypto_pmd_stop,
-		.dev_close		= libcrypto_pmd_close,
+struct rte_cryptodev_ops openssl_pmd_ops = {
+		.dev_configure		= openssl_pmd_config,
+		.dev_start		= openssl_pmd_start,
+		.dev_stop		= openssl_pmd_stop,
+		.dev_close		= openssl_pmd_close,
 
-		.stats_get		= libcrypto_pmd_stats_get,
-		.stats_reset		= libcrypto_pmd_stats_reset,
+		.stats_get		= openssl_pmd_stats_get,
+		.stats_reset		= openssl_pmd_stats_reset,
 
-		.dev_infos_get		= libcrypto_pmd_info_get,
+		.dev_infos_get		= openssl_pmd_info_get,
 
-		.queue_pair_setup	= libcrypto_pmd_qp_setup,
-		.queue_pair_release	= libcrypto_pmd_qp_release,
-		.queue_pair_start	= libcrypto_pmd_qp_start,
-		.queue_pair_stop	= libcrypto_pmd_qp_stop,
-		.queue_pair_count	= libcrypto_pmd_qp_count,
+		.queue_pair_setup	= openssl_pmd_qp_setup,
+		.queue_pair_release	= openssl_pmd_qp_release,
+		.queue_pair_start	= openssl_pmd_qp_start,
+		.queue_pair_stop	= openssl_pmd_qp_stop,
+		.queue_pair_count	= openssl_pmd_qp_count,
 
-		.session_get_size	= libcrypto_pmd_session_get_size,
-		.session_configure	= libcrypto_pmd_session_configure,
-		.session_clear		= libcrypto_pmd_session_clear
+		.session_get_size	= openssl_pmd_session_get_size,
+		.session_configure	= openssl_pmd_session_configure,
+		.session_clear		= openssl_pmd_session_clear
 };
 
-struct rte_cryptodev_ops *rte_libcrypto_pmd_ops = &libcrypto_pmd_ops;
+struct rte_cryptodev_ops *rte_openssl_pmd_ops = &openssl_pmd_ops;

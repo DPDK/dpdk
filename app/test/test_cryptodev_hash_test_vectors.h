@@ -346,145 +346,145 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_descr = "MD5 Digest",
 		.test_data = &md5_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "MD5 Digest Verify",
 		.test_data = &md5_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-MD5 Digest",
 		.test_data = &hmac_md5_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-MD5 Digest Verify",
 		.test_data = &hmac_md5_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA1 Digest",
 		.test_data = &sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA1 Digest Verify",
 		.test_data = &sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA1 Digest",
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA1 Digest Verify",
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA224 Digest",
 		.test_data = &sha224_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA224 Digest Verify",
 		.test_data = &sha224_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA224 Digest",
 		.test_data = &hmac_sha224_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA224 Digest Verify",
 		.test_data = &hmac_sha224_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA256 Digest",
 		.test_data = &sha256_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA256 Digest Verify",
 		.test_data = &sha256_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA256 Digest",
 		.test_data = &hmac_sha256_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA256 Digest Verify",
 		.test_data = &hmac_sha256_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA384 Digest",
 		.test_data = &sha384_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA384 Digest Verify",
 		.test_data = &sha384_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA384 Digest",
 		.test_data = &hmac_sha384_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA384 Digest Verify",
 		.test_data = &hmac_sha384_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA512 Digest",
 		.test_data = &sha512_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "SHA512 Digest Verify",
 		.test_data = &sha512_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA512 Digest",
 		.test_data = &hmac_sha512_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "HMAC-SHA512 Digest Verify",
 		.test_data = &hmac_sha512_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_LIBCRYPTO
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 };
 

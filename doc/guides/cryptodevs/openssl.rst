@@ -27,10 +27,10 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-LibCrypto Crypto Poll Mode Driver
-=================================
+OpenSSL Crypto Poll Mode Driver
+===============================
 
-This code provides the initial implementation of the libcrypto poll mode
+This code provides the initial implementation of the openssl poll mode
 driver. All cryptography operations are using Openssl library crypto API.
 Each algorithm uses EVP interface from openssl API - which is recommended
 by Openssl maintainers.
@@ -41,7 +41,7 @@ https://www.openssl.org/
 Features
 --------
 
-LibCrypto PMD has support for:
+OpenSSL PMD has support for:
 
 Supported cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_3DES_CBC``
@@ -69,7 +69,7 @@ Supported authentication algorithms:
 Installation
 ------------
 
-To compile libcrypto PMD, it has to be enabled in the config/common_base file
+To compile openssl PMD, it has to be enabled in the config/common_base file
 and appropriate openssl packages have to be installed in the build environment.
 
 The newest openssl library version is supported:
@@ -91,15 +91,15 @@ Initialization
 User can use app/test application to check how to use this pmd and to verify
 crypto processing.
 
-Test name is cryptodev_libcrypto_autotest.
-For performance test cryptodev_libcrypto_perftest can be used.
+Test name is cryptodev_openssl_autotest.
+For performance test cryptodev_openssl_perftest can be used.
 
 To verify real traffic l2fwd-crypto example can be used with this command:
 
 .. code-block:: console
 
-sudo ./build/l2fwd-crypto -c 0x3 -n 4 --vdev "cryptodev_libcrypto_pmd"
---vdev "cryptodev_libcrypto_pmd"-- -p 0x3 --chain CIPHER_HASH
+sudo ./build/l2fwd-crypto -c 0x3 -n 4 --vdev "crypto_openssl"
+--vdev "crypto_openssl"-- -p 0x3 --chain CIPHER_HASH
 --cipher_op ENCRYPT --cipher_algo AES_CBC
 --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
 --iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff

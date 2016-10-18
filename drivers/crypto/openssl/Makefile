@@ -31,7 +31,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # library name
-LIB = librte_pmd_libcrypto.a
+LIB = librte_pmd_openssl.a
 
 # build flags
 CFLAGS += -O3
@@ -41,20 +41,20 @@ CFLAGS += $(WERROR_FLAGS)
 LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_pmd_libcrypto_version.map
+EXPORT_MAP := rte_pmd_openssl_version.map
 
 # external library dependencies
 LDLIBS += -lcrypto
 
 # library source files
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO) += rte_libcrypto_pmd.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO) += rte_libcrypto_pmd_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += rte_openssl_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += rte_openssl_pmd_ops.c
 
 # library dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO) += lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_LIBCRYPTO) += lib/librte_cryptodev
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += lib/librte_mempool
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += lib/librte_ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += lib/librte_cryptodev
 
 include $(RTE_SDK)/mk/rte.lib.mk

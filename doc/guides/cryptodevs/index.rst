@@ -39,7 +39,7 @@ Crypto Device Drivers
     aesni_mb
     aesni_gcm
     kasumi
-    libcrypto
+    openssl
     null
     snow3g
     qat
