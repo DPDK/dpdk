@@ -155,7 +155,7 @@ copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 			udp_val.src_port = input->flow.udp4_flow.src_port;
 		}
 		if (input->flow.udp4_flow.dst_port) {
-			udp_mask.src_port = masks->dst_port_mask;
+			udp_mask.dst_port = masks->dst_port_mask;
 			udp_val.dst_port = input->flow.udp4_flow.dst_port;
 		}
 
