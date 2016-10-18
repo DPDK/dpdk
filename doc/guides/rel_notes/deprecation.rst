@@ -30,6 +30,10 @@ Deprecation Notices
   ``nb_seg_max`` and ``nb_mtu_seg_max`` providing information about number of
   segments limit to be transmitted by device for TSO/non-TSO packets.
 
+* ethdev: an API change is planned for 17.02 for the function
+  ``_rte_eth_dev_callback_process``. In 17.02 the function will return an ``int``
+  instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
+
 * ABI changes are planned for 17.02 in the ``rte_mbuf`` structure: some fields
   may be reordered to facilitate the writing of ``data_off``, ``refcnt``, and
   ``nb_segs`` in one operation, because some platforms have an overhead if the
