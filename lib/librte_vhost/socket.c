@@ -250,8 +250,8 @@ vhost_user_read_cb(int connfd, void *dat, int *remove)
 		vsocket->connfd = -1;
 		close(connfd);
 		*remove = 1;
-		free(conn);
 		vhost_destroy_device(conn->vid);
+		free(conn);
 
 		if (vsocket->reconnect)
 			vhost_user_create_client(vsocket);
