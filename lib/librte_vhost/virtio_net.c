@@ -186,8 +186,8 @@ copy_virtio_net_hdr(struct virtio_net *dev, uint64_t desc_addr,
 }
 
 static inline int __attribute__((always_inline))
-copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		  struct rte_mbuf *m, uint16_t desc_idx)
+copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
+		  struct rte_mbuf *m, uint16_t desc_idx, uint32_t size)
 {
 	uint32_t desc_avail, desc_offset;
 	uint32_t mbuf_avail, mbuf_offset;
@@ -196,7 +196,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint64_t desc_addr;
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 
-	desc = &vq->desc[desc_idx];
+	desc = &descs[desc_idx];
 	desc_addr = gpa_to_vva(dev, desc->addr);
 	/*
 	 * Checking of 'desc_addr' placed outside of 'unlikely' macro to avoid
@@ -233,10 +233,10 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				/* Room in vring buffer is not enough */
 				return -1;
 			}
-			if (unlikely(desc->next >= vq->size))
+			if (unlikely(desc->next >= size))
 				return -1;
 
-			desc = &vq->desc[desc->next];
+			desc = &descs[desc->next];
 			desc_addr = gpa_to_vva(dev, desc->addr);
 			if (unlikely(!desc_addr))
 				return -1;
@@ -276,8 +276,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct vhost_virtqueue *vq;
 	uint16_t avail_idx, free_entries, start_idx;
 	uint16_t desc_indexes[MAX_PKT_BURST];
+	struct vring_desc *descs;
 	uint16_t used_idx;
-	uint32_t i;
+	uint32_t i, sz;
 
 	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
@@ -319,7 +320,22 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		uint16_t desc_idx = desc_indexes[i];
 		int err;
 
-		err = copy_mbuf_to_desc(dev, vq, pkts[i], desc_idx);
+		if (vq->desc[desc_idx].flags & VRING_DESC_F_INDIRECT) {
+			descs = (struct vring_desc *)(uintptr_t)gpa_to_vva(dev,
+					vq->desc[desc_idx].addr);
+			if (unlikely(!descs)) {
+				count = i;
+				break;
+			}
+
+			desc_idx = 0;
+			sz = vq->desc[desc_idx].len / sizeof(*descs);
+		} else {
+			descs = vq->desc;
+			sz = vq->size;
+		}
+
+		err = copy_mbuf_to_desc(dev, descs, pkts[i], desc_idx, sz);
 		if (unlikely(err)) {
 			used_idx = (start_idx + i) & (vq->size - 1);
 			vq->used->ring[used_idx].len = dev->vhost_hlen;
