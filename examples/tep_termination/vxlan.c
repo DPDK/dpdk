@@ -148,7 +148,7 @@ process_inner_cksums(struct ether_hdr *eth_hdr, union tunnel_offload_info *info)
 		if (tso_segsz != 0) {
 			ol_flags |= PKT_TX_TCP_SEG;
 			info->tso_segsz = tso_segsz;
-			info->l4_len = sizeof(struct tcp_hdr);
+			info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
 		}
 		ol_flags |= PKT_TX_TCP_CKSUM;
 		tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype, ol_flags);
