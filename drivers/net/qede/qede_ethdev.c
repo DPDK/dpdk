@@ -406,10 +406,11 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct qed_dev_eth_info *dev_info = &qdev->dev_info;
+	struct qede_vlan_entry *tmp = NULL;
+	struct qede_vlan_entry *vlan;
 	int rc;
 
-	if (vlan_id != 0 &&
-	    qdev->configured_vlans == dev_info->num_vlan_filters) {
+	if (qdev->configured_vlans == dev_info->num_vlan_filters) {
 		DP_NOTICE(edev, false, "Reached max VLAN filter limit"
 				     " enabling accept_any_vlan\n");
 		qede_config_accept_any_vlan(qdev, true);
@@ -417,27 +418,65 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	}
 
 	if (on) {
+		SLIST_FOREACH(tmp, &qdev->vlan_list_head, list) {
+			if (tmp->vid == vlan_id) {
+				DP_ERR(edev, "VLAN %u already configured\n",
+				       vlan_id);
+				return -EEXIST;
+			}
+		}
+
+		vlan = rte_malloc(NULL, sizeof(struct qede_vlan_entry),
+				  RTE_CACHE_LINE_SIZE);
+
+		if (!vlan) {
+			DP_ERR(edev, "Did not allocate memory for VLAN\n");
+			return -ENOMEM;
+		}
+
 		rc = qede_set_ucast_rx_vlan(qdev, QED_FILTER_XCAST_TYPE_ADD,
 					    vlan_id);
-		if (rc)
+		if (rc) {
 			DP_ERR(edev, "Failed to add VLAN %u rc %d\n", vlan_id,
 			       rc);
-		else
-			if (vlan_id != 0)
-				qdev->configured_vlans++;
+			rte_free(vlan);
+		} else {
+			vlan->vid = vlan_id;
+			SLIST_INSERT_HEAD(&qdev->vlan_list_head, vlan, list);
+			qdev->configured_vlans++;
+			DP_INFO(edev, "VLAN %u added, configured_vlans %u\n",
+				vlan_id, qdev->configured_vlans);
+		}
 	} else {
+		SLIST_FOREACH(tmp, &qdev->vlan_list_head, list) {
+			if (tmp->vid == vlan_id)
+				break;
+		}
+
+		if (!tmp) {
+			if (qdev->configured_vlans == 0) {
+				DP_INFO(edev,
+					"No VLAN filters configured yet\n");
+				return 0;
+			}
+
+			DP_ERR(edev, "VLAN %u not configured\n", vlan_id);
+			return -EINVAL;
+		}
+
+		SLIST_REMOVE(&qdev->vlan_list_head, tmp, qede_vlan_entry, list);
+
 		rc = qede_set_ucast_rx_vlan(qdev, QED_FILTER_XCAST_TYPE_DEL,
 					    vlan_id);
-		if (rc)
+		if (rc) {
 			DP_ERR(edev, "Failed to delete VLAN %u rc %d\n",
 			       vlan_id, rc);
-		else
-			if (vlan_id != 0)
-				qdev->configured_vlans--;
+		} else {
+			qdev->configured_vlans--;
+			DP_INFO(edev, "VLAN %u removed configured_vlans %u\n",
+				vlan_id, qdev->configured_vlans);
+		}
 	}
-
-	DP_INFO(edev, "vlan_id %u on %u rc %d configured_vlans %u\n",
-			vlan_id, on, rc, qdev->configured_vlans);
 
 	return rc;
 }
@@ -516,6 +555,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (!rxmode->hw_ip_checksum)
 		DP_INFO(edev, "IP/UDP/TCP checksum offload is always enabled "
 			      "in hw\n");
+
+	SLIST_INIT(&qdev->vlan_list_head);
 
 	/* Check for the port restart case */
 	if (qdev->state != QEDE_DEV_INIT) {

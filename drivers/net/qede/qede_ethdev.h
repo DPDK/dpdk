@@ -10,6 +10,8 @@
 #ifndef _QEDE_ETHDEV_H_
 #define _QEDE_ETHDEV_H_
 
+#include <sys/queue.h>
+
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_dev.h>
@@ -116,6 +118,11 @@ enum qede_dev_state {
 	QEDE_DEV_STOP, /* Deactivate vport and stop traffic */
 };
 
+struct qede_vlan_entry {
+	SLIST_ENTRY(qede_vlan_entry) list;
+	uint16_t vid;
+};
+
 /*
  *  Structure to store private data for each port.
  */
@@ -136,16 +143,10 @@ struct qede_dev {
 	uint16_t num_queues;
 	uint8_t fp_num_tx;
 	uint8_t fp_num_rx;
-
 	enum qede_dev_state state;
-
-	/* Vlans */
-	osal_list_t vlan_list;
+	SLIST_HEAD(vlan_list_head, qede_vlan_entry)vlan_list_head;
 	uint16_t configured_vlans;
-	uint16_t non_configured_vlans;
 	bool accept_any_vlan;
-	uint16_t vxlan_dst_port;
-
 	struct ether_addr primary_mac;
 	bool handle_hw_err;
 	char drv_ver[QED_DRV_VER_STR_SIZE];

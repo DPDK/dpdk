@@ -391,12 +391,18 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 	info->num_tc = 1 /* @@@TBD aelior MULTI_COS */;
 
 	if (IS_PF(edev)) {
+		int max_vf_vlan_filters = 0;
+
 		info->num_queues = 0;
 		for_each_hwfn(edev, i)
 			info->num_queues +=
 			FEAT_NUM(&edev->hwfns[i], ECORE_PF_L2_QUE);
 
-		info->num_vlan_filters = RESC_NUM(&edev->hwfns[0], ECORE_VLAN);
+		if (edev->p_iov_info)
+			max_vf_vlan_filters = edev->p_iov_info->total_vfs *
+					      ECORE_ETH_VF_NUM_VLAN_FILTERS;
+		info->num_vlan_filters = RESC_NUM(&edev->hwfns[0], ECORE_VLAN) -
+					 max_vf_vlan_filters;
 
 		rte_memcpy(&info->port_mac, &edev->hwfns[0].hw_info.hw_mac_addr,
 			   ETHER_ADDR_LEN);
@@ -404,7 +410,7 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 		ecore_vf_get_num_rxqs(&edev->hwfns[0], &info->num_queues);
 
 		ecore_vf_get_num_vlan_filters(&edev->hwfns[0],
-					      &info->num_vlan_filters);
+					      (u8 *)&info->num_vlan_filters);
 
 		ecore_vf_get_port_mac(&edev->hwfns[0],
 				      (uint8_t *)&info->port_mac);

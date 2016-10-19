@@ -46,7 +46,7 @@ struct qed_dev_eth_info {
 	uint8_t num_tc;
 
 	struct ether_addr port_mac;
-	uint8_t num_vlan_filters;
+	uint16_t num_vlan_filters;
 	uint32_t num_mac_addrs;
 };
 
