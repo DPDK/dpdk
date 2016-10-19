@@ -2442,3 +2442,12 @@ enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
 
 	return ECORE_SUCCESS;
 }
+
+enum _ecore_status_t ecore_mcp_initiate_pf_flr(struct ecore_hwfn *p_hwfn,
+					       struct ecore_ptt *p_ptt)
+{
+	u32 mcp_resp, mcp_param;
+
+	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_INITIATE_PF_FLR,
+			     0, &mcp_resp, &mcp_param);
+}

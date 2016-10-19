@@ -65,7 +65,6 @@ Non-supported Features
 
 - SR-IOV PF
 - Tunneling offloads
-- Reload of the PMD after a non-graceful termination
 
 Supported QLogic Adapters
 -------------------------

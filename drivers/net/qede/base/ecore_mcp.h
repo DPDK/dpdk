@@ -353,4 +353,15 @@ enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
 					     struct resource_info *p_resc_info,
 					     u32 *p_mcp_resp, u32 *p_mcp_param);
 
+/**
+ * @brief - Initiates PF FLR
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ *
+ * @param return ECORE_SUCCESS upon success.
+ */
+enum _ecore_status_t ecore_mcp_initiate_pf_flr(struct ecore_hwfn *p_hwfn,
+					       struct ecore_ptt *p_ptt);
+
 #endif /* __ECORE_MCP_H__ */
