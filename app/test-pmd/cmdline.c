@@ -8669,24 +8669,28 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	else
 		entry.action.behavior = RTE_ETH_FDIR_ACCEPT;
 
-	if (!strcmp(res->pf_vf, "pf"))
-		entry.input.flow_ext.is_vf = 0;
-	else if (!strncmp(res->pf_vf, "vf", 2)) {
-		struct rte_eth_dev_info dev_info;
+	if (fdir_conf.mode !=  RTE_FDIR_MODE_PERFECT_MAC_VLAN &&
+	    fdir_conf.mode !=  RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		if (!strcmp(res->pf_vf, "pf"))
+			entry.input.flow_ext.is_vf = 0;
+		else if (!strncmp(res->pf_vf, "vf", 2)) {
+			struct rte_eth_dev_info dev_info;
 
-		memset(&dev_info, 0, sizeof(dev_info));
-		rte_eth_dev_info_get(res->port_id, &dev_info);
-		errno = 0;
-		vf_id = strtoul(res->pf_vf + 2, &end, 10);
-		if (errno != 0 || *end != '\0' || vf_id >= dev_info.max_vfs) {
+			memset(&dev_info, 0, sizeof(dev_info));
+			rte_eth_dev_info_get(res->port_id, &dev_info);
+			errno = 0;
+			vf_id = strtoul(res->pf_vf + 2, &end, 10);
+			if (errno != 0 || *end != '\0' ||
+			    vf_id >= dev_info.max_vfs) {
+				printf("invalid parameter %s.\n", res->pf_vf);
+				return;
+			}
+			entry.input.flow_ext.is_vf = 1;
+			entry.input.flow_ext.dst_id = (uint16_t)vf_id;
+		} else {
 			printf("invalid parameter %s.\n", res->pf_vf);
 			return;
 		}
-		entry.input.flow_ext.is_vf = 1;
-		entry.input.flow_ext.dst_id = (uint16_t)vf_id;
-	} else {
-		printf("invalid parameter %s.\n", res->pf_vf);
-		return;
 	}
 
 	/* set to report FD ID by default */
