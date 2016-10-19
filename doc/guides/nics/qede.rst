@@ -47,7 +47,7 @@ Supported Features
 - Promiscuous mode
 - Allmulti mode
 - Port hardware statistics
-- Jumbo frames (using single buffer)
+- Jumbo frames
 - VLAN offload - Filtering and stripping
 - Stateless checksum offloads (IPv4/TCP/UDP)
 - Multiple Rx/Tx queues
@@ -58,11 +58,11 @@ Supported Features
 - SR-IOV VF
 - MTU change
 - Multiprocess aware
+- Scatter-Gather
 
 Non-supported Features
 ----------------------
 
-- Scatter-Gather Rx/Tx frames
 - SR-IOV PF
 - Tunneling offloads
 - Reload of the PMD after a non-graceful termination

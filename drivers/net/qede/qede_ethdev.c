@@ -434,14 +434,14 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	struct qede_vlan_entry *vlan;
 	int rc;
 
-	if (qdev->configured_vlans == dev_info->num_vlan_filters) {
-		DP_NOTICE(edev, false, "Reached max VLAN filter limit"
-				     " enabling accept_any_vlan\n");
-		qede_config_accept_any_vlan(qdev, true);
-		return 0;
-	}
-
 	if (on) {
+		if (qdev->configured_vlans == dev_info->num_vlan_filters) {
+			DP_INFO(edev, "Reached max VLAN filter limit"
+				      " enabling accept_any_vlan\n");
+			qede_config_accept_any_vlan(qdev, true);
+			return 0;
+		}
+
 		SLIST_FOREACH(tmp, &qdev->vlan_list_head, list) {
 			if (tmp->vid == vlan_id) {
 				DP_ERR(edev, "VLAN %u already configured\n",
@@ -559,10 +559,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Sanity checks and throw warnings */
-	if (rxmode->enable_scatter == 1) {
-		DP_ERR(edev, "RX scatter packets is not supported\n");
-		return -EINVAL;
-	}
+	if (rxmode->enable_scatter == 1)
+		eth_dev->data->scattered_rx = 1;
 
 	if (rxmode->enable_lro == 1) {
 		DP_INFO(edev, "LRO is not supported\n");

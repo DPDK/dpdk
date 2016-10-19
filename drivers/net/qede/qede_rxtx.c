@@ -135,8 +135,19 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	data_size = (uint16_t)rte_pktmbuf_data_room_size(mp) -
 				RTE_PKTMBUF_HEADROOM;
 
+	if (pkt_len > data_size && !dev->data->scattered_rx) {
+		DP_ERR(edev, "MTU %u should not exceed dataroom %u\n",
+		       pkt_len, data_size);
+		rte_free(rxq);
+		return -EINVAL;
+	}
+
+	if (dev->data->scattered_rx)
+		rxq->rx_buf_size = data_size;
+	else
+		rxq->rx_buf_size = pkt_len + QEDE_ETH_OVERHEAD;
+
 	qdev->mtu = pkt_len;
-	rxq->rx_buf_size = data_size;
 
 	DP_INFO(edev, "MTU = %u ; RX buffer = %u\n",
 		qdev->mtu, rxq->rx_buf_size);
@@ -804,6 +815,58 @@ static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 	return RTE_PTYPE_L2_ETHER | p_type;
 }
 
+int qede_process_sg_pkts(void *p_rxq,  struct rte_mbuf *rx_mb,
+			 int num_frags, uint16_t pkt_len)
+{
+	struct qede_rx_queue *rxq = p_rxq;
+	struct qede_dev *qdev = rxq->qdev;
+	struct ecore_dev *edev = &qdev->edev;
+	uint16_t sw_rx_index, cur_size;
+
+	register struct rte_mbuf *seg1 = NULL;
+	register struct rte_mbuf *seg2 = NULL;
+
+	seg1 = rx_mb;
+	while (num_frags) {
+		cur_size = pkt_len > rxq->rx_buf_size ?
+				rxq->rx_buf_size : pkt_len;
+		if (!cur_size) {
+			PMD_RX_LOG(DEBUG, rxq,
+				   "SG packet, len and num BD mismatch\n");
+			qede_recycle_rx_bd_ring(rxq, qdev, num_frags);
+			return -EINVAL;
+		}
+
+		if (qede_alloc_rx_buffer(rxq)) {
+			uint8_t index;
+
+			PMD_RX_LOG(DEBUG, rxq, "Buffer allocation failed\n");
+			index = rxq->port_id;
+			rte_eth_devices[index].data->rx_mbuf_alloc_failed++;
+			rxq->rx_alloc_errors++;
+			return -ENOMEM;
+		}
+
+		sw_rx_index = rxq->sw_rx_cons & NUM_RX_BDS(rxq);
+		seg2 = rxq->sw_rx_ring[sw_rx_index].mbuf;
+		qede_rx_bd_ring_consume(rxq);
+		pkt_len -= cur_size;
+		seg2->data_len = cur_size;
+		seg1->next = seg2;
+		seg1 = seg1->next;
+		num_frags--;
+		continue;
+	}
+	seg1 = NULL;
+
+	if (pkt_len)
+		PMD_RX_LOG(DEBUG, rxq,
+			   "Mapped all BDs of jumbo, but still have %d bytes\n",
+			   pkt_len);
+
+	return ECORE_SUCCESS;
+}
+
 uint16_t
 qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -816,12 +879,12 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	union eth_rx_cqe *cqe;
 	struct eth_fast_path_rx_reg_cqe *fp_cqe;
 	register struct rte_mbuf *rx_mb = NULL;
+	register struct rte_mbuf *seg1 = NULL;
 	enum eth_rx_cqe_type cqe_type;
-	uint16_t len, pad;
-	uint16_t preload_idx;
-	uint8_t csum_flag;
-	uint16_t parse_flag;
+	uint16_t len, pad, preload_idx, pkt_len, parse_flag;
+	uint8_t csum_flag, num_frags;
 	enum rss_hash_type htype;
+	int ret;
 
 	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
 	sw_comp_cons = ecore_chain_get_cons_idx(&rxq->rx_comp_ring);
@@ -891,20 +954,31 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		qede_rx_bd_ring_consume(rxq);
 
+		if (fp_cqe->bd_num > 1) {
+			pkt_len = rte_le_to_cpu_16(fp_cqe->pkt_len);
+			num_frags = fp_cqe->bd_num - 1;
+
+			pkt_len -= len;
+			seg1 = rx_mb;
+			ret = qede_process_sg_pkts(p_rxq, seg1, num_frags,
+						   pkt_len);
+			if (ret != ECORE_SUCCESS) {
+				qede_recycle_rx_bd_ring(rxq, qdev,
+							fp_cqe->bd_num);
+				goto next_cqe;
+			}
+		}
+
 		/* Prefetch next mbuf while processing current one. */
 		preload_idx = rxq->sw_rx_cons & NUM_RX_BDS(rxq);
 		rte_prefetch0(rxq->sw_rx_ring[preload_idx].mbuf);
 
-		if (fp_cqe->bd_num != 1)
-			PMD_RX_LOG(DEBUG, rxq,
-				   "Jumbo-over-BD packet not supported\n");
-
 		/* Update MBUF fields */
 		rx_mb->ol_flags = 0;
 		rx_mb->data_off = pad + RTE_PKTMBUF_HEADROOM;
-		rx_mb->nb_segs = 1;
+		rx_mb->nb_segs = fp_cqe->bd_num;
 		rx_mb->data_len = len;
-		rx_mb->pkt_len = len;
+		rx_mb->pkt_len = fp_cqe->pkt_len;
 		rx_mb->port = rxq->port_id;
 		rx_mb->packet_type = qede_rx_cqe_to_pkt_type(parse_flag);
 
@@ -957,24 +1031,28 @@ next_cqe:
 static inline int
 qede_free_tx_pkt(struct ecore_dev *edev, struct qede_tx_queue *txq)
 {
-	uint16_t idx = TX_CONS(txq);
+	uint16_t nb_segs, idx = TX_CONS(txq);
 	struct eth_tx_bd *tx_data_bd;
 	struct rte_mbuf *mbuf = txq->sw_tx_ring[idx].mbuf;
 
 	if (unlikely(!mbuf)) {
+		PMD_TX_LOG(ERR, txq, "null mbuf\n");
 		PMD_TX_LOG(ERR, txq,
-			   "null mbuf nb_tx_desc %u nb_tx_avail %u "
-			   "sw_tx_cons %u sw_tx_prod %u\n",
+			   "tx_desc %u tx_avail %u tx_cons %u tx_prod %u\n",
 			   txq->nb_tx_desc, txq->nb_tx_avail, idx,
 			   TX_PROD(txq));
 		return -1;
 	}
 
-	/* Free now */
-	rte_pktmbuf_free_seg(mbuf);
+	nb_segs = mbuf->nb_segs;
+	while (nb_segs) {
+		/* It's like consuming rxbuf in recv() */
+		ecore_chain_consume(&txq->tx_pbl);
+		txq->nb_tx_avail++;
+		nb_segs--;
+	}
+	rte_pktmbuf_free(mbuf);
 	txq->sw_tx_ring[idx].mbuf = NULL;
-	ecore_chain_consume(&txq->tx_pbl);
-	txq->nb_tx_avail++;
 
 	return 0;
 }
@@ -984,18 +1062,16 @@ qede_process_tx_compl(struct ecore_dev *edev, struct qede_tx_queue *txq)
 {
 	uint16_t tx_compl = 0;
 	uint16_t hw_bd_cons;
-	int rc;
 
 	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
 	rte_compiler_barrier();
 
 	while (hw_bd_cons != ecore_chain_get_cons_idx(&txq->tx_pbl)) {
-		rc = qede_free_tx_pkt(edev, txq);
-		if (rc) {
-			DP_NOTICE(edev, false,
-				  "hw_bd_cons = %d, chain_cons=%d\n",
-				  hw_bd_cons,
-				  ecore_chain_get_cons_idx(&txq->tx_pbl));
+		if (qede_free_tx_pkt(edev, txq)) {
+			PMD_TX_LOG(ERR, txq,
+				   "hw_bd_cons = %u, chain_cons = %u\n",
+				   hw_bd_cons,
+				   ecore_chain_get_cons_idx(&txq->tx_pbl));
 			break;
 		}
 		txq->sw_tx_cons++;	/* Making TXD available */
@@ -1007,6 +1083,55 @@ qede_process_tx_compl(struct ecore_dev *edev, struct qede_tx_queue *txq)
 	return tx_compl;
 }
 
+/* Populate scatter gather buffer descriptor fields */
+static inline uint16_t qede_encode_sg_bd(struct qede_tx_queue *p_txq,
+					 struct rte_mbuf *m_seg,
+					 uint16_t count,
+					 struct eth_tx_1st_bd *bd1)
+{
+	struct qede_tx_queue *txq = p_txq;
+	struct eth_tx_2nd_bd *bd2 = NULL;
+	struct eth_tx_3rd_bd *bd3 = NULL;
+	struct eth_tx_bd *tx_bd = NULL;
+	uint16_t nb_segs = count;
+	dma_addr_t mapping;
+
+	/* Check for scattered buffers */
+	while (m_seg) {
+		if (nb_segs == 1) {
+			bd2 = (struct eth_tx_2nd_bd *)
+				ecore_chain_produce(&txq->tx_pbl);
+			memset(bd2, 0, sizeof(*bd2));
+			mapping = rte_mbuf_data_dma_addr(m_seg);
+			bd2->addr.hi = rte_cpu_to_le_32(U64_HI(mapping));
+			bd2->addr.lo = rte_cpu_to_le_32(U64_LO(mapping));
+			bd2->nbytes = rte_cpu_to_le_16(m_seg->data_len);
+		} else if (nb_segs == 2) {
+			bd3 = (struct eth_tx_3rd_bd *)
+				ecore_chain_produce(&txq->tx_pbl);
+			memset(bd3, 0, sizeof(*bd3));
+			mapping = rte_mbuf_data_dma_addr(m_seg);
+			bd3->addr.hi = rte_cpu_to_le_32(U64_HI(mapping));
+			bd3->addr.lo = rte_cpu_to_le_32(U64_LO(mapping));
+			bd3->nbytes = rte_cpu_to_le_16(m_seg->data_len);
+		} else {
+			tx_bd = (struct eth_tx_bd *)
+				ecore_chain_produce(&txq->tx_pbl);
+			memset(tx_bd, 0, sizeof(*tx_bd));
+			mapping = rte_mbuf_data_dma_addr(m_seg);
+			tx_bd->addr.hi = rte_cpu_to_le_32(U64_HI(mapping));
+			tx_bd->addr.lo = rte_cpu_to_le_32(U64_LO(mapping));
+			tx_bd->nbytes = rte_cpu_to_le_16(m_seg->data_len);
+		}
+		nb_segs++;
+		bd1->data.nbds = nb_segs;
+		m_seg = m_seg->next;
+	}
+
+	/* Return total scattered buffers */
+	return nb_segs;
+}
+
 uint16_t
 qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -1014,12 +1139,14 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct qede_dev *qdev = txq->qdev;
 	struct ecore_dev *edev = &qdev->edev;
 	struct qede_fastpath *fp;
-	struct eth_tx_1st_bd *first_bd;
+	struct eth_tx_1st_bd *bd1;
+	struct rte_mbuf *m_seg = NULL;
 	uint16_t nb_tx_pkts;
 	uint16_t nb_pkt_sent = 0;
 	uint16_t bd_prod;
 	uint16_t idx;
 	uint16_t tx_count;
+	uint16_t nb_segs = 0;
 
 	fp = &qdev->fp_array[QEDE_RSS_COUNT(qdev) + txq->queue_id];
 
@@ -1029,7 +1156,8 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		(void)qede_process_tx_compl(edev, txq);
 	}
 
-	nb_tx_pkts = RTE_MIN(nb_pkts, (txq->nb_tx_avail / MAX_NUM_TX_BDS));
+	nb_tx_pkts = RTE_MIN(nb_pkts, (txq->nb_tx_avail /
+			ETH_TX_MAX_BDS_PER_NON_LSO_PACKET));
 	if (unlikely(nb_tx_pkts == 0)) {
 		PMD_TX_LOG(DEBUG, txq, "Out of BDs nb_pkts=%u avail=%u\n",
 			   nb_pkts, txq->nb_tx_avail);
@@ -1041,38 +1169,49 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/* Fill the entry in the SW ring and the BDs in the FW ring */
 		idx = TX_PROD(txq);
 		struct rte_mbuf *mbuf = *tx_pkts++;
+
 		txq->sw_tx_ring[idx].mbuf = mbuf;
-		first_bd = (struct eth_tx_1st_bd *)
-		    ecore_chain_produce(&txq->tx_pbl);
-		first_bd->data.bd_flags.bitfields =
-		    1 << ETH_TX_1ST_BD_FLAGS_START_BD_SHIFT;
+		bd1 = (struct eth_tx_1st_bd *)ecore_chain_produce(&txq->tx_pbl);
+		/* Zero init struct fields */
+		bd1->data.bd_flags.bitfields = 0;
+		bd1->data.bitfields = 0;
+
+		bd1->data.bd_flags.bitfields =
+			1 << ETH_TX_1ST_BD_FLAGS_START_BD_SHIFT;
 		/* Map MBUF linear data for DMA and set in the first BD */
-		QEDE_BD_SET_ADDR_LEN(first_bd, rte_mbuf_data_dma_addr(mbuf),
-				     mbuf->data_len);
+		QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
+				     mbuf->pkt_len);
 
 		/* Descriptor based VLAN insertion */
 		if (mbuf->ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
-			first_bd->data.vlan = rte_cpu_to_le_16(mbuf->vlan_tci);
-			first_bd->data.bd_flags.bitfields |=
+			bd1->data.vlan = rte_cpu_to_le_16(mbuf->vlan_tci);
+			bd1->data.bd_flags.bitfields |=
 			    1 << ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_SHIFT;
 		}
 
 		/* Offload the IP checksum in the hardware */
 		if (mbuf->ol_flags & PKT_TX_IP_CKSUM) {
-			first_bd->data.bd_flags.bitfields |=
+			bd1->data.bd_flags.bitfields |=
 			    1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
 		}
 
 		/* L4 checksum offload (tcp or udp) */
 		if (mbuf->ol_flags & (PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
-			first_bd->data.bd_flags.bitfields |=
+			bd1->data.bd_flags.bitfields |=
 			    1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
 			/* IPv6 + extn. -> later */
 		}
-		first_bd->data.nbds = MAX_NUM_TX_BDS;
+
+		/* Handle fragmented MBUF */
+		m_seg = mbuf->next;
+		nb_segs++;
+		bd1->data.nbds = nb_segs;
+		/* Encode scatter gather buffer descriptors if required */
+		nb_segs = qede_encode_sg_bd(txq, m_seg, nb_segs, bd1);
+		txq->nb_tx_avail = txq->nb_tx_avail - nb_segs;
+		nb_segs = 0;
 		txq->sw_tx_prod++;
 		rte_prefetch0(txq->sw_tx_ring[TX_PROD(txq)].mbuf);
-		txq->nb_tx_avail--;
 		bd_prod =
 		    rte_cpu_to_le_16(ecore_chain_get_prod_idx(&txq->tx_pbl));
 		nb_pkt_sent++;

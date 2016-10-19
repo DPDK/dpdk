@@ -30,9 +30,6 @@
 #define TX_CONS(txq)            (txq->sw_tx_cons & NUM_TX_BDS(txq))
 #define TX_PROD(txq)            (txq->sw_tx_prod & NUM_TX_BDS(txq))
 
-/* Number of TX BDs per packet used currently */
-#define MAX_NUM_TX_BDS			1
-
 #define QEDE_DEFAULT_TX_FREE_THRESH	32
 
 #define QEDE_CSUM_ERROR			(1 << 0)
