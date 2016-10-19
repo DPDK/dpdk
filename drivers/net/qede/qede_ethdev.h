@@ -152,6 +152,10 @@ struct qede_dev {
 	char drv_ver[QED_DRV_VER_STR_SIZE];
 };
 
+/* Static functions */
+static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
+				uint16_t vlan_id, int on);
+
 int qed_fill_eth_dev_info(struct ecore_dev *edev,
 				 struct qed_dev_eth_info *info);
 int qede_dev_set_link_state(struct rte_eth_dev *eth_dev, bool link_up);

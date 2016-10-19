@@ -372,16 +372,40 @@ static void qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
 
 	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (eth_dev->data->dev_conf.rxmode.hw_vlan_strip)
+		if (rxmode->hw_vlan_strip)
 			(void)qede_vlan_stripping(eth_dev, 1);
 		else
 			(void)qede_vlan_stripping(eth_dev, 0);
 	}
 
-	DP_INFO(edev, "vlan offload mask %d vlan-strip %d\n",
-		mask, eth_dev->data->dev_conf.rxmode.hw_vlan_strip);
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		/* VLAN filtering kicks in when a VLAN is added */
+		if (rxmode->hw_vlan_filter) {
+			qede_vlan_filter_set(eth_dev, 0, 1);
+		} else {
+			if (qdev->configured_vlans > 1) { /* Excluding VLAN0 */
+				DP_NOTICE(edev, false,
+				  " Please remove existing VLAN filters"
+				  " before disabling VLAN filtering\n");
+				/* Signal app that VLAN filtering is still
+				 * enabled
+				 */
+				rxmode->hw_vlan_filter = true;
+			} else {
+				qede_vlan_filter_set(eth_dev, 0, 0);
+			}
+		}
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK)
+		DP_INFO(edev, "No offloads are supported with VLAN Q-in-Q"
+			" and classification is based on outer tag only\n");
+
+	DP_INFO(edev, "vlan offload mask %d vlan-strip %d vlan-filter %d\n",
+		mask, rxmode->hw_vlan_strip, rxmode->hw_vlan_filter);
 }
 
 static int qede_set_ucast_rx_vlan(struct qede_dev *qdev,
@@ -583,6 +607,11 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	/* Add primary mac for PF */
 	if (IS_PF(edev))
 		qede_mac_addr_set(eth_dev, &qdev->primary_mac);
+
+	/* Enable VLAN offloads by default */
+	qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
+				       ETH_VLAN_FILTER_MASK |
+				       ETH_VLAN_EXTEND_MASK);
 
 	qdev->state = QEDE_DEV_CONFIG;
 

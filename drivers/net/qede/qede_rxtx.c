@@ -945,6 +945,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			 */
 			rx_mb->vlan_tci = rte_le_to_cpu_16(fp_cqe->vlan_tag);
 			rx_mb->ol_flags |= PKT_RX_QINQ_PKT;
+			rx_mb->vlan_tci_outer = 0;
 		}
 
 		rx_pkts[rx_pkt] = rx_mb;
