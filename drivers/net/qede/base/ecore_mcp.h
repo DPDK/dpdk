@@ -49,6 +49,15 @@ struct ecore_mcp_info {
 	u16 mcp_hist;
 };
 
+struct ecore_mcp_mb_params {
+	u32 cmd;
+	u32 param;
+	union drv_union_data *p_data_src;
+	union drv_union_data *p_data_dst;
+	u32 mcp_resp;
+	u32 mcp_param;
+};
+
 /**
  * @brief Initialize the interface with the MCP
  *
@@ -175,28 +184,6 @@ enum _ecore_status_t ecore_mcp_fill_shmem_func_info(struct ecore_hwfn *p_hwfn,
  */
 enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt);
-
-/**
- * @brief - Sets the union data in the MCP mailbox and sends a mailbox command.
- *
- * @param p_hwfn       - hw function
- * @param p_ptt        - PTT required for register access
- * @param cmd          - command to be sent to the MCP
- * @param param        - optional param
- * @param p_union_data - pointer to a drv_union_data
- * @param o_mcp_resp   - the MCP response code (exclude sequence)
- * @param o_mcp_param  - optional parameter provided by the MCP response
- *
- * @return enum _ecore_status_t -
- *      ECORE_SUCCESS - operation was successful
- *      ECORE_BUSY    - operation failed
- */
-enum _ecore_status_t ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt,
-					     u32 cmd, u32 param,
-					     union drv_union_data *p_union_data,
-					     u32 *o_mcp_resp,
-					     u32 *o_mcp_param);
 
 /**
  * @brief - Sends an NVM write command request to the MFW with

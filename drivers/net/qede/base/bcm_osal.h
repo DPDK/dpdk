@@ -9,6 +9,8 @@
 #ifndef __BCM_OSAL_H
 #define __BCM_OSAL_H
 
+#include <string.h>
+
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
