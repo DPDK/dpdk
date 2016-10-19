@@ -2057,16 +2057,15 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 static inline void
 print_fdir_mask(struct rte_eth_fdir_masks *mask)
 {
-	printf("\n    vlan_tci: 0x%04x, ", mask->vlan_tci_mask);
+	printf("\n    vlan_tci: 0x%04x", mask->vlan_tci_mask);
 
-	if (fdir_conf.mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN)
-		printf("mac_addr: 0x%02x", mask->mac_addr_byte_mask);
-	else if (fdir_conf.mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
-		printf("mac_addr: 0x%02x, tunnel_type: 0x%01x, tunnel_id: 0x%08x",
+	if (fdir_conf.mode == RTE_FDIR_MODE_PERFECT_TUNNEL)
+		printf(", mac_addr: 0x%02x, tunnel_type: 0x%01x,"
+			" tunnel_id: 0x%08x",
 			mask->mac_addr_byte_mask, mask->tunnel_type_mask,
 			mask->tunnel_id_mask);
-	else {
-		printf("src_ipv4: 0x%08x, dst_ipv4: 0x%08x,"
+	else if (fdir_conf.mode != RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
+		printf(", src_ipv4: 0x%08x, dst_ipv4: 0x%08x,"
 			" src_port: 0x%04x, dst_port: 0x%04x",
 			mask->ipv4_mask.src_ip, mask->ipv4_mask.dst_ip,
 			mask->src_port_mask, mask->dst_port_mask);

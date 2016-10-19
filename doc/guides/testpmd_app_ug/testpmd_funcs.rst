@@ -1906,8 +1906,7 @@ Set flow director's input masks::
                       src_mask (ipv4_src) (ipv6_src) (src_port) \
                       dst_mask (ipv4_dst) (ipv6_dst) (dst_port)
 
-   flow_director_mask (port_id) mode MAC-VLAN vlan (vlan_value) \
-                      mac (mac_value)
+   flow_director_mask (port_id) mode MAC-VLAN vlan (vlan_value)
 
    flow_director_mask (port_id) mode Tunnel vlan (vlan_value) \
                       mac (mac_value) tunnel-type (tunnel_type_value) \

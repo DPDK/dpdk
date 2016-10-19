@@ -752,7 +752,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set flow director IP mask.\n\n"
 
 			"flow_director_mask (port_id) mode MAC-VLAN"
-			" vlan (vlan_value) mac (mac_value)\n"
+			" vlan (vlan_value)\n"
 			"    Set flow director MAC-VLAN mask.\n\n"
 
 			"flow_director_mask (port_id) mode Tunnel"
@@ -9126,7 +9126,6 @@ cmd_flow_director_mask_parsed(void *parsed_result,
 		}
 
 		mask->vlan_tci_mask = res->vlan_mask;
-		mask->mac_addr_byte_mask = res->mac_addr_byte_mask;
 	} else if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_TUNNEL) {
 		if (strcmp(res->mode_value, "Tunnel")) {
 			printf("Please set mode to Tunnel.\n");
@@ -9257,8 +9256,6 @@ cmdline_parse_inst_t cmd_set_flow_director_mac_vlan_mask = {
 		(void *)&cmd_flow_director_mask_mode_mac_vlan,
 		(void *)&cmd_flow_director_mask_vlan,
 		(void *)&cmd_flow_director_mask_vlan_value,
-		(void *)&cmd_flow_director_mask_mac,
-		(void *)&cmd_flow_director_mask_mac_value,
 		NULL,
 	},
 };
