@@ -783,7 +783,9 @@ static void ecore_int_deassertion_print_bit(struct ecore_hwfn *p_hwfn,
 static enum _ecore_status_t
 ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 			      struct aeu_invert_reg_bit *p_aeu,
-			      u32 aeu_en_reg, u32 bitmask)
+			      u32 aeu_en_reg,
+			      const char *p_bit_name,
+			      u32 bitmask)
 {
 	enum _ecore_status_t rc = ECORE_INVAL;
 	u32 val, mask;
@@ -795,12 +797,12 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 #endif
 
 	DP_INFO(p_hwfn, "Deasserted attention `%s'[%08x]\n",
-		p_aeu->bit_name, bitmask);
+		p_bit_name, bitmask);
 
 	/* Call callback before clearing the interrupt status */
 	if (p_aeu->cb) {
 		DP_INFO(p_hwfn, "`%s (attention)': Calling Callback function\n",
-			p_aeu->bit_name);
+			p_bit_name);
 		rc = p_aeu->cb(p_hwfn);
 	}
 
@@ -812,7 +814,7 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 	/* Reach assertion if attention is fatal */
 	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, true, "`%s': Fatal attention\n",
-			  p_aeu->bit_name);
+			  p_bit_name);
 
 		ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_HW_ATTN);
 	}
@@ -824,7 +826,7 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 		val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg);
 		ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg, (val & mask));
 		DP_INFO(p_hwfn, "`%s' - Disabled future attentions\n",
-			p_aeu->bit_name);
+			p_bit_name);
 	}
 
 	if (p_aeu->flags & (ATTENTION_FW_DUMP | ATTENTION_PANIC_DUMP)) {
@@ -942,8 +944,8 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 			 * previous assertion.
 			 */
 			for (j = 0, bit_idx = 0; bit_idx < 32; j++) {
+				unsigned long bitmask;
 				u8 bit, bit_len;
-				u32 bitmask;
 
 				p_aeu = &sb_attn_sw->p_aeu_desc[i].bits[j];
 
@@ -961,10 +963,31 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 
 				bitmask = bits & (((1 << bit_len) - 1) << bit);
 				if (bitmask) {
+					u32 flags = p_aeu->flags;
+					char bit_name[30];
+
+					bit = (u8)OSAL_FIND_FIRST_BIT(&bitmask,
+								bit_len);
+
+					/* Some bits represent more than a
+					 * a single interrupt. Correctly print
+					 * their name.
+					 */
+					if (ATTENTION_LENGTH(flags) > 2 ||
+					    ((flags & ATTENTION_PAR_INT) &&
+					    ATTENTION_LENGTH(flags) > 1))
+						OSAL_SNPRINTF(bit_name, 30,
+							      p_aeu->bit_name,
+							      bit);
+					else
+						OSAL_STRNCPY(bit_name,
+							     p_aeu->bit_name,
+							     30);
 					/* Handle source of the attention */
 					ecore_int_deassertion_aeu_bit(p_hwfn,
 								      p_aeu,
 								      aeu_en,
+								      bit_name,
 								      bitmask);
 				}
 

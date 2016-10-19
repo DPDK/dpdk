@@ -65,6 +65,27 @@ inline bool qede_test_bit(u32 nr, unsigned long *addr)
 	return res;
 }
 
+static inline u32 qede_ffb(unsigned long word)
+{
+	unsigned long first_bit;
+
+	first_bit = __builtin_ffsl(word);
+	return first_bit ? (first_bit - 1) : OSAL_BITS_PER_UL;
+}
+
+inline u32 qede_find_first_bit(unsigned long *addr, u32 limit)
+{
+	u32 i;
+	u32 nwords = 0;
+	OSAL_BUILD_BUG_ON(!limit);
+	nwords = (limit - 1) / OSAL_BITS_PER_UL + 1;
+	for (i = 0; i < nwords; i++)
+		if (addr[i] != 0)
+			break;
+
+	return (i == nwords) ? limit : i * OSAL_BITS_PER_UL + qede_ffb(addr[i]);
+}
+
 static inline u32 qede_ffz(unsigned long word)
 {
 	unsigned long first_zero;

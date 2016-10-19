@@ -301,6 +301,10 @@ bool qede_test_bit(u32, unsigned long *);
 #define OSAL_TEST_BIT(bit, bitmap) \
 	qede_test_bit(bit, bitmap)
 
+u32 qede_find_first_bit(unsigned long *, u32);
+#define OSAL_FIND_FIRST_BIT(bitmap, length) \
+	qede_find_first_bit(bitmap, length)
+
 u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_FIND_FIRST_ZERO_BIT(bitmap, length) \
 	qede_find_first_zero_bit(bitmap, length)
@@ -377,6 +381,8 @@ u32 qede_osal_log2(u32);
 #define OSAL_ARRAY_SIZE(arr) RTE_DIM(arr)
 #define OSAL_SPRINTF(name, pattern, ...) \
 	sprintf(name, pattern, ##__VA_ARGS__)
+#define OSAL_SNPRINTF(buf, size, format, ...) \
+	snprintf(buf, size, format, ##__VA_ARGS__)
 #define OSAL_STRLEN(string) strlen(string)
 #define OSAL_STRCPY(dst, string) strcpy(dst, string)
 #define OSAL_STRNCPY(dst, string, len) strncpy(dst, string, len)
