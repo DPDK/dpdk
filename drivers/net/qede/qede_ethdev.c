@@ -1372,7 +1372,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	 * This is required since uio device uses only one MSI-x
 	 * interrupt vector but we need one for each engine.
 	 */
-	if (edev->num_hwfns > 1) {
+	if (edev->num_hwfns > 1 && IS_PF(edev)) {
 		rc = rte_eal_alarm_set(timer_period * US_PER_S,
 				       qede_poll_sp_sb_cb,
 				       (void *)eth_dev);
