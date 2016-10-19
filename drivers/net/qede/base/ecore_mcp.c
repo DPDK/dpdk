@@ -2021,3 +2021,317 @@ enum _ecore_status_t ecore_mcp_gpio_write(struct ecore_hwfn *p_hwfn,
 
 	return ECORE_SUCCESS;
 }
+
+enum _ecore_status_t ecore_mcp_gpio_info(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 u16 gpio, u32 *gpio_direction,
+					 u32 *gpio_ctrl)
+{
+	u32 drv_mb_param = 0, rsp, val = 0;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	drv_mb_param = gpio << DRV_MB_PARAM_GPIO_NUMBER_SHIFT;
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_GPIO_INFO,
+			   drv_mb_param, &rsp, &val);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	*gpio_direction = (val & DRV_MB_PARAM_GPIO_DIRECTION_MASK) >>
+			   DRV_MB_PARAM_GPIO_DIRECTION_SHIFT;
+	*gpio_ctrl = (val & DRV_MB_PARAM_GPIO_CTRL_MASK) >>
+		      DRV_MB_PARAM_GPIO_CTRL_SHIFT;
+
+	if ((rsp & FW_MSG_CODE_MASK) != FW_MSG_CODE_GPIO_OK)
+		return ECORE_UNKNOWN_ERROR;
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_mcp_bist_register_test(struct ecore_hwfn *p_hwfn,
+						  struct ecore_ptt *p_ptt)
+{
+	u32 drv_mb_param = 0, rsp, param;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	drv_mb_param = (DRV_MB_PARAM_BIST_REGISTER_TEST <<
+			DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
+			   drv_mb_param, &rsp, &param);
+
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if (((rsp & FW_MSG_CODE_MASK) != FW_MSG_CODE_OK) ||
+	    (param != DRV_MB_PARAM_BIST_RC_PASSED))
+		rc = ECORE_UNKNOWN_ERROR;
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_bist_clock_test(struct ecore_hwfn *p_hwfn,
+					       struct ecore_ptt *p_ptt)
+{
+	u32 drv_mb_param = 0, rsp, param;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	drv_mb_param = (DRV_MB_PARAM_BIST_CLOCK_TEST <<
+			DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
+			   drv_mb_param, &rsp, &param);
+
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if (((rsp & FW_MSG_CODE_MASK) != FW_MSG_CODE_OK) ||
+	    (param != DRV_MB_PARAM_BIST_RC_PASSED))
+		rc = ECORE_UNKNOWN_ERROR;
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_bist_nvm_test_get_num_images(
+	struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt, u32 *num_images)
+{
+	u32 drv_mb_param = 0, rsp;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	drv_mb_param = (DRV_MB_PARAM_BIST_NVM_TEST_NUM_IMAGES <<
+			DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
+			   drv_mb_param, &rsp, num_images);
+
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if (((rsp & FW_MSG_CODE_MASK) != FW_MSG_CODE_OK))
+		rc = ECORE_UNKNOWN_ERROR;
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_bist_nvm_test_get_image_att(
+	struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+	struct bist_nvm_image_att *p_image_att, u32 image_index)
+{
+	struct ecore_mcp_nvm_params params;
+	enum _ecore_status_t rc;
+	u32 buf_size;
+
+	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
+	params.nvm_common.offset = (DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX <<
+				    DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
+	params.nvm_common.offset |= (image_index <<
+				    DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT);
+
+	params.type = ECORE_MCP_NVM_RD;
+	params.nvm_rd.buf_size = &buf_size;
+	params.nvm_common.cmd = DRV_MSG_CODE_BIST_TEST;
+	params.nvm_rd.buf = (u32 *)p_image_att;
+
+	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if (((params.nvm_common.resp & FW_MSG_CODE_MASK) != FW_MSG_CODE_OK) ||
+	    (p_image_att->return_code != 1))
+		rc = ECORE_UNKNOWN_ERROR;
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_get_nvm_image(struct ecore_hwfn *p_hwfn,
+					     struct ecore_ptt *p_ptt,
+					     enum ecore_nvm_images image_id,
+					     char *p_buffer, u16 buffer_len)
+{
+	struct bist_nvm_image_att image_att;
+	/* enum nvm_image_type type; */ /* @DPDK */
+	u32 type;
+	u32 num_images, i;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(p_buffer, buffer_len);
+
+	/* Translate image_id into MFW definitions */
+	switch (image_id) {
+	case ECORE_NVM_IMAGE_ISCSI_CFG:
+		/* @DPDK */
+		type = 0x1d; /* NVM_TYPE_ISCSI_CFG; */
+		break;
+	case ECORE_NVM_IMAGE_FCOE_CFG:
+		type = 0x1f; /* NVM_TYPE_FCOE_CFG; */
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false, "Unknown request of image_id %08x\n",
+			  image_id);
+		return ECORE_INVAL;
+	}
+
+	/* Learn number of images, then traverse and see if one fits */
+	rc = ecore_mcp_bist_nvm_test_get_num_images(p_hwfn, p_ptt,
+						    &num_images);
+	if ((rc != ECORE_SUCCESS) || (!num_images))
+		return ECORE_INVAL;
+
+	for (i = 0; i < num_images; i++) {
+		rc = ecore_mcp_bist_nvm_test_get_image_att(p_hwfn, p_ptt,
+							   &image_att, i);
+		if (rc != ECORE_SUCCESS)
+			return ECORE_INVAL;
+
+		if (type == image_att.image_type)
+			break;
+	}
+	if (i == num_images) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+			   "Failed to find nvram image of type %08x\n",
+			   image_id);
+		return ECORE_INVAL;
+	}
+
+	/* Validate sizes - both the image's and the supplied buffer's */
+	if (image_att.len <= 4) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+			   "Image [%d] is too small - only %d bytes\n",
+			   image_id, image_att.len);
+		return ECORE_INVAL;
+	}
+
+	/* Each NVM image is suffixed by CRC; Upper-layer has no need for it */
+	image_att.len -= 4;
+
+	if (image_att.len > buffer_len) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+			   "Image [%d] is too big - %08x bytes where only %08x are available\n",
+			   image_id, image_att.len, buffer_len);
+		return ECORE_NOMEM;
+	}
+
+	return ecore_mcp_nvm_read(p_hwfn->p_dev, image_att.nvm_start_addr,
+				  (u8 *)p_buffer, image_att.len);
+}
+
+enum _ecore_status_t
+ecore_mcp_get_temperature_info(struct ecore_hwfn *p_hwfn,
+			       struct ecore_ptt *p_ptt,
+			       struct ecore_temperature_info *p_temp_info)
+{
+	struct ecore_temperature_sensor *p_temp_sensor;
+	struct temperature_status_stc *p_mfw_temp_info;
+	struct ecore_mcp_mb_params mb_params;
+	union drv_union_data union_data;
+	u32 val;
+	enum _ecore_status_t rc;
+	u8 i;
+
+	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
+	mb_params.cmd = DRV_MSG_CODE_GET_TEMPERATURE;
+	mb_params.p_data_dst = &union_data;
+	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	p_mfw_temp_info = &union_data.temp_info;
+
+	OSAL_BUILD_BUG_ON(ECORE_MAX_NUM_OF_SENSORS != MAX_NUM_OF_SENSORS);
+	p_temp_info->num_sensors = OSAL_MIN_T(u32,
+					      p_mfw_temp_info->num_of_sensors,
+					      ECORE_MAX_NUM_OF_SENSORS);
+	for (i = 0; i < p_temp_info->num_sensors; i++) {
+		val = p_mfw_temp_info->sensor[i];
+		p_temp_sensor = &p_temp_info->sensors[i];
+		p_temp_sensor->sensor_location = (val & SENSOR_LOCATION_MASK) >>
+						  SENSOR_LOCATION_SHIFT;
+		p_temp_sensor->threshold_high = (val & THRESHOLD_HIGH_MASK) >>
+						 THRESHOLD_HIGH_SHIFT;
+		p_temp_sensor->critical = (val & CRITICAL_TEMPERATURE_MASK) >>
+					  CRITICAL_TEMPERATURE_SHIFT;
+		p_temp_sensor->current_temp = (val & CURRENT_TEMP_MASK) >>
+					      CURRENT_TEMP_SHIFT;
+	}
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_mcp_get_mba_versions(
+	struct ecore_hwfn *p_hwfn,
+	struct ecore_ptt *p_ptt,
+	struct ecore_mba_vers *p_mba_vers)
+{
+	struct ecore_mcp_nvm_params params;
+	enum _ecore_status_t rc;
+	u32 buf_size;
+
+	OSAL_MEM_ZERO(&params, sizeof(params));
+	params.type = ECORE_MCP_NVM_RD;
+	params.nvm_common.cmd = DRV_MSG_CODE_GET_MBA_VERSION;
+	params.nvm_common.offset = 0;
+	params.nvm_rd.buf = &p_mba_vers->mba_vers[0];
+	params.nvm_rd.buf_size = &buf_size;
+	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
+
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if ((params.nvm_common.resp & FW_MSG_CODE_MASK) !=
+	    FW_MSG_CODE_NVM_OK)
+		rc = ECORE_UNKNOWN_ERROR;
+
+	if (buf_size != MCP_DRV_NVM_BUF_LEN)
+		rc = ECORE_UNKNOWN_ERROR;
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_mem_ecc_events(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt,
+					      u64 *num_events)
+{
+	u32 rsp;
+
+	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MEM_ECC_EVENTS,
+			     0, &rsp, (u32 *)num_events);
+}
+
+#define ECORE_RESC_ALLOC_VERSION_MAJOR  1
+#define ECORE_RESC_ALLOC_VERSION_MINOR  0
+#define ECORE_RESC_ALLOC_VERSION                                \
+	((ECORE_RESC_ALLOC_VERSION_MAJOR <<                     \
+	  DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT) |    \
+	 (ECORE_RESC_ALLOC_VERSION_MINOR <<                     \
+	  DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT))
+
+enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
+					     struct ecore_ptt *p_ptt,
+					     struct resource_info *p_resc_info,
+					     u32 *p_mcp_resp, u32 *p_mcp_param)
+{
+	struct ecore_mcp_mb_params mb_params;
+	union drv_union_data *p_union_data;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
+	mb_params.cmd = DRV_MSG_GET_RESOURCE_ALLOC_MSG;
+	mb_params.param = ECORE_RESC_ALLOC_VERSION;
+	p_union_data = (union drv_union_data *)p_resc_info;
+	mb_params.p_data_src = p_union_data;
+	mb_params.p_data_dst = p_union_data;
+	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	*p_mcp_resp = mb_params.mcp_resp;
+	*p_mcp_param = mb_params.mcp_param;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "MFW resource_info: version 0x%x, res_id 0x%x, size 0x%x, offset 0x%x, vf_size 0x%x, vf_offset 0x%x, flags 0x%x\n",
+		   *p_mcp_param, p_resc_info->res_id, p_resc_info->size,
+		   p_resc_info->offset, p_resc_info->vf_size,
+		   p_resc_info->vf_offset, p_resc_info->flags);
+
+	return ECORE_SUCCESS;
+}

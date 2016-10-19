@@ -761,6 +761,13 @@ struct mcp_file_att {
 	u32 len;
 };
 
+struct bist_nvm_image_att {
+	u32 return_code;
+	u32 image_type;         /* Image type */
+	u32 nvm_start_addr;     /* NVM address of the image */
+	u32 len;                /* Include CRC */
+};
+
 #define MCP_DRV_VER_STR_SIZE 16
 #define MCP_DRV_VER_STR_SIZE_DWORD (MCP_DRV_VER_STR_SIZE / sizeof(u32))
 #define MCP_DRV_NVM_BUF_LEN 32
@@ -783,6 +790,59 @@ struct ocbb_data_stc {
 	u32 ocsd_req_update_interval;
 };
 
+#define MAX_NUM_OF_SENSORS                      7
+#define MFW_SENSOR_LOCATION_INTERNAL            1
+#define MFW_SENSOR_LOCATION_EXTERNAL            2
+#define MFW_SENSOR_LOCATION_SFP                 3
+
+#define SENSOR_LOCATION_SHIFT                   0
+#define SENSOR_LOCATION_MASK                    0x000000ff
+#define THRESHOLD_HIGH_SHIFT                    8
+#define THRESHOLD_HIGH_MASK                     0x0000ff00
+#define CRITICAL_TEMPERATURE_SHIFT              16
+#define CRITICAL_TEMPERATURE_MASK               0x00ff0000
+#define CURRENT_TEMP_SHIFT                      24
+#define CURRENT_TEMP_MASK                       0xff000000
+struct temperature_status_stc {
+	u32 num_of_sensors;
+	u32 sensor[MAX_NUM_OF_SENSORS];
+};
+
+enum resource_id_enum {
+	RESOURCE_NUM_SB_E               =       0,
+	RESOURCE_NUM_L2_QUEUE_E         =       1,
+	RESOURCE_NUM_VPORT_E            =       2,
+	RESOURCE_NUM_VMQ_E              =       3,
+	RESOURCE_FACTOR_NUM_RSS_PF_E    =       4,
+	RESOURCE_FACTOR_RSS_PER_VF_E    =       5,
+	RESOURCE_NUM_RL_E               =       6,
+	RESOURCE_NUM_PQ_E               =       7,
+	RESOURCE_NUM_VF_E               =       8,
+	RESOURCE_VFC_FILTER_E           =       9,
+	RESOURCE_ILT_E                  =       10,
+	RESOURCE_CQS_E                  =       11,
+	RESOURCE_GFT_PROFILES_E         =       12,
+	RESOURCE_NUM_TC_E               =       13,
+	RESOURCE_NUM_RSS_ENGINES_E      =       14,
+	RESOURCE_LL2_QUEUE_E            =       15,
+	RESOURCE_RDMA_STATS_QUEUE_E     =       16,
+	RESOURCE_MAX_NUM,
+	RESOURCE_NUM_INVALID            =       0xFFFFFFFF
+};
+
+/* Resource ID is to be filled by the driver in the MB request
+ * Size, offset & flags to be filled by the MFW in the MB response
+ */
+struct resource_info {
+	enum resource_id_enum res_id;
+	u32 size; /* number of allocated resources */
+	u32 offset; /* Offset of the 1st resource */
+	u32 vf_size;
+	u32 vf_offset;
+	u32 flags;
+#define RESOURCE_ELEMENT_STRICT (1 << 0)
+};
+
 union drv_union_data {
 	u32 ver_str[MCP_DRV_VER_STR_SIZE_DWORD];    /* LOAD_REQ */
 	struct mcp_mac wol_mac; /* UNLOAD_DONE */
@@ -802,6 +862,9 @@ union drv_union_data {
 	struct lan_stats_stc lan_stats;
 	u32 dpdk_rsvd[3];
 	struct ocbb_data_stc ocbb_info;
+	struct temperature_status_stc temp_info;
+	struct resource_info resource;
+	struct bist_nvm_image_att nvm_image_att;
 
 	/* ... */
 };
@@ -832,6 +895,8 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_OV_UPDATE_MTU		0x33000000
 
 #define DRV_MSG_CODE_NIG_DRAIN			0x30000000
+
+#define DRV_MSG_GET_RESOURCE_ALLOC_MSG		0x34000000
 
 #define DRV_MSG_CODE_INITIATE_FLR               0x02000000
 #define DRV_MSG_CODE_VF_DISABLED_DONE           0xc0000000
@@ -873,9 +938,17 @@ struct public_drv_mb {
 
 #define DRV_MSG_CODE_GPIO_READ			0x001c0000
 #define DRV_MSG_CODE_GPIO_WRITE			0x001d0000
+#define DRV_MSG_CODE_GPIO_INFO			0x00270000
+
+#define DRV_MSG_CODE_BIST_TEST			0x001e0000
+#define DRV_MSG_CODE_GET_TEMPERATURE		0x001f0000
 
 #define DRV_MSG_CODE_SET_LED_MODE		0x00200000
+#define DRV_MSG_CODE_TIMESTAMP			0x00210000
 #define DRV_MSG_CODE_EMPTY_MB			0x00220000
+
+#define DRV_MSG_CODE_GET_MBA_VERSION		0x00240000
+#define DRV_MSG_CODE_MEM_ECC_EVENTS		0x00260000
 
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
 
@@ -990,6 +1063,33 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_GPIO_NUMBER_MASK		0x0000FFFF
 #define DRV_MB_PARAM_GPIO_VALUE_SHIFT		16
 #define DRV_MB_PARAM_GPIO_VALUE_MASK		0xFFFF0000
+
+#define DRV_MB_PARAM_GPIO_DIRECTION_SHIFT       16
+#define DRV_MB_PARAM_GPIO_DIRECTION_MASK        0x00FF0000
+#define DRV_MB_PARAM_GPIO_CTRL_SHIFT            24
+#define DRV_MB_PARAM_GPIO_CTRL_MASK             0xFF000000
+
+	/* Resource Allocation params - Driver version support*/
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK  0xFFFF0000
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT         16
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK  0x0000FFFF
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT         0
+
+#define DRV_MB_PARAM_BIST_UNKNOWN_TEST          0
+#define DRV_MB_PARAM_BIST_REGISTER_TEST         1
+#define DRV_MB_PARAM_BIST_CLOCK_TEST            2
+#define DRV_MB_PARAM_BIST_NVM_TEST_NUM_IMAGES           3
+#define DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX       4
+
+#define DRV_MB_PARAM_BIST_RC_UNKNOWN            0
+#define DRV_MB_PARAM_BIST_RC_PASSED             1
+#define DRV_MB_PARAM_BIST_RC_FAILED             2
+#define DRV_MB_PARAM_BIST_RC_INVALID_PARAMETER          3
+
+#define DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT      0
+#define DRV_MB_PARAM_BIST_TEST_INDEX_MASK       0x000000FF
+#define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT      8
+#define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_MASK       0x0000FF00
 
 	u32 fw_mb_header;
 #define FW_MSG_CODE_MASK                        0xffff0000

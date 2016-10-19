@@ -115,6 +115,11 @@ struct ecore_mcp_nvm_params {
 	};
 };
 
+enum ecore_nvm_images {
+	ECORE_NVM_IMAGE_ISCSI_CFG,
+	ECORE_NVM_IMAGE_FCOE_CFG,
+};
+
 struct ecore_mcp_drv_version {
 	u32 version;
 	u8 name[MCP_DRV_VER_STR_SIZE - 4];
@@ -170,6 +175,35 @@ enum ecore_led_mode {
 	ECORE_LED_MODE_RESTORE
 };
 #endif
+
+struct ecore_temperature_sensor {
+	u8 sensor_location;
+	u8 threshold_high;
+	u8 critical;
+	u8 current_temp;
+};
+
+#define ECORE_MAX_NUM_OF_SENSORS        7
+struct ecore_temperature_info {
+	u32 num_sensors;
+	struct ecore_temperature_sensor sensors[ECORE_MAX_NUM_OF_SENSORS];
+};
+
+enum ecore_mba_img_idx {
+	ECORE_MBA_LEGACY_IDX,
+	ECORE_MBA_PCI3CLP_IDX,
+	ECORE_MBA_PCI3_IDX,
+	ECORE_MBA_FCODE_IDX,
+	ECORE_EFI_X86_IDX,
+	ECORE_EFI_IPF_IDX,
+	ECORE_EFI_EBC_IDX,
+	ECORE_EFI_X64_IDX,
+	ECORE_MAX_NUM_OF_ROMIMG
+};
+
+struct ecore_mba_vers {
+	u32 mba_vers[ECORE_MAX_NUM_OF_ROMIMG];
+};
 
 /**
  * @brief - returns the link params of the hw function
@@ -607,5 +641,126 @@ enum _ecore_status_t ecore_mcp_gpio_read(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_gpio_write(struct ecore_hwfn *p_hwfn,
 					  struct ecore_ptt *p_ptt,
 					  u16 gpio, u16 gpio_val);
+/**
+ * @brief Gpio get information
+ *
+ *  @param p_hwfn          - hw function
+ *  @param p_ptt           - PTT required for register access
+ *  @param gpio            - gpio number
+ *  @param gpio_direction  - gpio is output (0) or input (1)
+ *  @param gpio_ctrl       - gpio control is uninitialized (0),
+ *                         path 0 (1), path 1 (2) or shared(3)
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_gpio_info(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 u16 gpio, u32 *gpio_direction,
+					 u32 *gpio_ctrl);
+
+/**
+ * @brief Bist register test
+ *
+ *  @param p_hwfn    - hw function
+ *  @param p_ptt     - PTT required for register access
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_bist_register_test(struct ecore_hwfn *p_hwfn,
+						   struct ecore_ptt *p_ptt);
+
+/**
+ * @brief Bist clock test
+ *
+ *  @param p_hwfn    - hw function
+ *  @param p_ptt     - PTT required for register access
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_bist_clock_test(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt);
+
+/**
+ * @brief Bist nvm test - get number of images
+ *
+ *  @param p_hwfn       - hw function
+ *  @param p_ptt        - PTT required for register access
+ *  @param num_images   - number of images if operation was
+ *                        successful. 0 if not.
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t
+ecore_mcp_bist_nvm_test_get_num_images(struct ecore_hwfn *p_hwfn,
+				       struct ecore_ptt *p_ptt,
+				       u32 *num_images);
+
+/**
+ * @brief Bist nvm test - get image attributes by index
+ *
+ *  @param p_hwfn      - hw function
+ *  @param p_ptt       - PTT required for register access
+ *  @param p_image_att - Attributes of image
+ *  @param image_index - Index of image to get information for
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t
+ecore_mcp_bist_nvm_test_get_image_att(struct ecore_hwfn *p_hwfn,
+				      struct ecore_ptt *p_ptt,
+				      struct bist_nvm_image_att *p_image_att,
+				      u32 image_index);
+
+/**
+ * @brief ecore_mcp_get_temperature_info - get the status of the temperature
+ *                                         sensors
+ *
+ *  @param p_hwfn        - hw function
+ *  @param p_ptt         - PTT required for register access
+ *  @param p_temp_status - A pointer to an ecore_temperature_info structure to
+ *                         be filled with the temperature data
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t
+ecore_mcp_get_temperature_info(struct ecore_hwfn *p_hwfn,
+			       struct ecore_ptt *p_ptt,
+			       struct ecore_temperature_info *p_temp_info);
+/**
+ * @brief Get MBA versions - get MBA sub images versions
+ *
+ *  @param p_hwfn      - hw function
+ *  @param p_ptt       - PTT required for register access
+ *  @param p_mba_vers  - MBA versions array to fill
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_get_mba_versions(
+	struct ecore_hwfn *p_hwfn,
+	struct ecore_ptt *p_ptt,
+	struct ecore_mba_vers *p_mba_vers);
+
+/**
+ * @brief Count memory ecc events
+ *
+ *  @param p_hwfn      - hw function
+ *  @param p_ptt       - PTT required for register access
+ *  @param num_events  - number of memory ecc events
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_mem_ecc_events(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt,
+					      u64 *num_events);
+
+/**
+ * @brief Sets whether a critical error notification from the MFW is acked, or
+ *        is it being ignored and thus allowing the MFW crash dump.
+ *
+ * @param p_dev
+ * @param mdump_enable
+ *
+ */
+void ecore_mcp_mdump_enable(struct ecore_dev *p_dev, bool mdump_enable);
 
 #endif
