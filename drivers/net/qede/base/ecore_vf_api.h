@@ -87,6 +87,9 @@ void ecore_vf_get_num_vlan_filters(struct ecore_hwfn *p_hwfn,
 void ecore_vf_get_num_mac_filters(struct ecore_hwfn *p_hwfn,
 				  u32 *num_mac_filters);
 
+void ecore_vf_get_num_sbs(struct ecore_hwfn *p_hwfn,
+			  u32 *num_sbs);
+
 /**
  * @brief Check if VF can set a MAC address
  *

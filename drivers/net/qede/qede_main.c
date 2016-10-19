@@ -384,6 +384,7 @@ int
 qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 {
 	struct qede_dev *qdev = (struct qede_dev *)edev;
+	uint8_t queues = 0;
 	int i;
 
 	memset(info, 0, sizeof(*info));
@@ -407,7 +408,17 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 		rte_memcpy(&info->port_mac, &edev->hwfns[0].hw_info.hw_mac_addr,
 			   ETHER_ADDR_LEN);
 	} else {
-		ecore_vf_get_num_rxqs(&edev->hwfns[0], &info->num_queues);
+		ecore_vf_get_num_rxqs(ECORE_LEADING_HWFN(edev),
+				      &info->num_queues);
+		if (edev->num_hwfns > 1) {
+			ecore_vf_get_num_rxqs(&edev->hwfns[1], &queues);
+			info->num_queues += queues;
+			/* Restrict 100G VF to advertise 16 queues till the
+			 * required support is available to go beyond 16.
+			 */
+			info->num_queues = RTE_MIN(info->num_queues,
+						   ECORE_MAX_VF_CHAINS_PER_PF);
+		}
 
 		ecore_vf_get_num_vlan_filters(&edev->hwfns[0],
 					      (u8 *)&info->num_vlan_filters);

@@ -336,7 +336,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	/* Learn of the possibility of CMT */
 	if (IS_LEAD_HWFN(p_hwfn)) {
 		if (resp->pfdev_info.capabilities & PFVF_ACQUIRE_CAP_100G) {
-			DP_NOTICE(p_hwfn, false, "100g VF\n");
+			DP_INFO(p_hwfn, "100g VF\n");
 			p_hwfn->p_dev->num_hwfns = 2;
 		}
 	}
@@ -1380,6 +1380,15 @@ void ecore_vf_get_num_mac_filters(struct ecore_hwfn *p_hwfn,
 
 	p_vf = p_hwfn->vf_iov_info;
 	*num_mac = p_vf->acquire_resp.resc.num_mac_filters;
+}
+
+void ecore_vf_get_num_sbs(struct ecore_hwfn *p_hwfn,
+			  u32 *num_sbs)
+{
+	struct ecore_vf_iov *p_vf;
+
+	p_vf = p_hwfn->vf_iov_info;
+	*num_sbs = (u32)p_vf->acquire_resp.resc.num_sbs;
 }
 
 bool ecore_vf_check_mac(struct ecore_hwfn *p_hwfn, u8 *mac)

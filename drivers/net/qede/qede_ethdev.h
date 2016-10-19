@@ -29,6 +29,7 @@
 #include "base/ecore_hsi_eth.h"
 #include "base/ecore_dev_api.h"
 #include "base/ecore_iov_api.h"
+#include "base/ecore_cxt.h"
 
 #include "qede_logs.h"
 #include "qede_if.h"
