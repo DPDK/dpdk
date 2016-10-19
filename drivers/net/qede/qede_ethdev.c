@@ -599,7 +599,8 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 				     DEV_TX_OFFLOAD_UDP_CKSUM |
 				     DEV_TX_OFFLOAD_TCP_CKSUM);
 
-	dev_info->speed_capa = ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G;
+	dev_info->speed_capa = ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G |
+			       ETH_LINK_SPEED_100G;
 }
 
 /* return 0 means link status changed, -1 means not changed */
