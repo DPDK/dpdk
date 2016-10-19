@@ -1043,6 +1043,154 @@ static void ecore_mcp_handle_fan_failure(struct ecore_hwfn *p_hwfn,
 	ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_FAN_FAIL);
 }
 
+static enum _ecore_status_t
+ecore_mcp_mdump_cmd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		    u32 mdump_cmd, union drv_union_data *p_data_src,
+		    union drv_union_data *p_data_dst, u32 *p_mcp_resp)
+{
+	struct ecore_mcp_mb_params mb_params;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
+	mb_params.cmd = DRV_MSG_CODE_MDUMP_CMD;
+	mb_params.param = mdump_cmd;
+	mb_params.p_data_src = p_data_src;
+	mb_params.p_data_dst = p_data_dst;
+	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	*p_mcp_resp = mb_params.mcp_resp;
+	if (*p_mcp_resp == FW_MSG_CODE_MDUMP_INVALID_CMD) {
+		DP_NOTICE(p_hwfn, false,
+			  "MFW claims that the mdump command is illegal [mdump_cmd 0x%x]\n",
+			  mdump_cmd);
+		rc = ECORE_INVAL;
+	}
+
+	return rc;
+}
+
+static enum _ecore_status_t ecore_mcp_mdump_ack(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt)
+{
+	u32 mcp_resp;
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_ACK,
+				   OSAL_NULL, OSAL_NULL, &mcp_resp);
+}
+
+enum _ecore_status_t ecore_mcp_mdump_set_values(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt,
+						u32 epoch)
+{
+	union drv_union_data union_data;
+	u32 mcp_resp;
+
+	OSAL_MEMCPY(&union_data.raw_data, &epoch, sizeof(epoch));
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_SET_VALUES,
+				   &union_data, OSAL_NULL, &mcp_resp);
+}
+
+enum _ecore_status_t ecore_mcp_mdump_trigger(struct ecore_hwfn *p_hwfn,
+					     struct ecore_ptt *p_ptt)
+{
+	u32 mcp_resp;
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_TRIGGER,
+				   OSAL_NULL, OSAL_NULL, &mcp_resp);
+}
+
+enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt)
+{
+	u32 mcp_resp;
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_CLEAR_LOGS,
+				   OSAL_NULL, OSAL_NULL, &mcp_resp);
+}
+
+static enum _ecore_status_t
+ecore_mcp_mdump_get_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			   struct mdump_config_stc *p_mdump_config)
+{
+	union drv_union_data union_data;
+	u32 mcp_resp;
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_GET_CONFIG,
+				 OSAL_NULL, &union_data, &mcp_resp);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	/* A zero response implies that the mdump command is not supported */
+	if (!mcp_resp)
+		return ECORE_NOTIMPL;
+
+	if (mcp_resp != FW_MSG_CODE_OK) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to get the mdump configuration and logs info [mcp_resp 0x%x]\n",
+			  mcp_resp);
+		rc = ECORE_UNKNOWN_ERROR;
+	}
+
+	OSAL_MEMCPY(p_mdump_config, &union_data.mdump_config,
+		    sizeof(*p_mdump_config));
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt)
+{
+	struct mdump_config_stc mdump_config;
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_mdump_get_config(p_hwfn, p_ptt, &mdump_config);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "MFW mdump_config: version 0x%x, config 0x%x, epoch 0x%x, num_of_logs 0x%x, valid_logs 0x%x\n",
+		   mdump_config.version, mdump_config.config, mdump_config.epoc,
+		   mdump_config.num_of_logs, mdump_config.valid_logs);
+
+	if (mdump_config.valid_logs > 0) {
+		DP_NOTICE(p_hwfn, false,
+			  "* * * IMPORTANT - HW ERROR register dump captured by device * * *\n");
+	}
+
+	return rc;
+}
+
+void ecore_mcp_mdump_enable(struct ecore_dev *p_dev, bool mdump_enable)
+{
+	p_dev->mdump_en = mdump_enable;
+}
+
+static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
+					    struct ecore_ptt *p_ptt)
+{
+	/* In CMT mode - no need for more than a single acknowledgment to the
+	 * MFW, and no more than a single notification to the upper driver.
+	 */
+	if (p_hwfn != ECORE_LEADING_HWFN(p_hwfn->p_dev))
+		return;
+
+	DP_NOTICE(p_hwfn, false,
+		  "Received a critical error notification from the MFW!\n");
+
+	if (p_hwfn->p_dev->mdump_en) {
+		DP_NOTICE(p_hwfn, false,
+			  "Not acknowledging the notification to allow the MFW crash dump\n");
+		return;
+	}
+
+	ecore_mcp_mdump_ack(p_hwfn, p_ptt);
+	ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_HW_ATTN);
+}
+
 enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt)
 {
@@ -1103,6 +1251,9 @@ enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 			break;
 		case MFW_DRV_MSG_FAILURE_DETECTED:
 			ecore_mcp_handle_fan_failure(p_hwfn, p_ptt);
+			break;
+		case MFW_DRV_MSG_CRITICAL_ERROR_OCCURRED:
+			ecore_mcp_handle_critical_error(p_hwfn, p_ptt);
 			break;
 		default:
 			/* @DPDK */

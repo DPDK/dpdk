@@ -1619,24 +1619,20 @@ static void ecore_reset_mb_shadow(struct ecore_hwfn *p_hwfn,
 }
 
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
-				   struct ecore_tunn_start_params *p_tunn,
-				   bool b_hw_start,
-				   enum ecore_int_mode int_mode,
-				   bool allow_npar_tx_switch,
-				   const u8 *bin_fw_data)
+				   struct ecore_hw_init_params *p_params)
 {
 	enum _ecore_status_t rc, mfw_rc;
 	u32 load_code, param;
 	int i, j;
 
-	if ((int_mode == ECORE_INT_MODE_MSI) && (p_dev->num_hwfns > 1)) {
+	if (p_params->int_mode == ECORE_INT_MODE_MSI && p_dev->num_hwfns > 1) {
 		DP_NOTICE(p_dev, false,
 			  "MSI mode is not supported for CMT devices\n");
 		return ECORE_INVAL;
 	}
 
 	if (IS_PF(p_dev)) {
-		rc = ecore_init_fw_data(p_dev, bin_fw_data);
+		rc = ecore_init_fw_data(p_dev, p_params->bin_fw_data);
 		if (rc != ECORE_SUCCESS)
 			return rc;
 	}
@@ -1733,9 +1729,11 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			/* Fall into */
 		case FW_MSG_CODE_DRV_LOAD_FUNCTION:
 			rc = ecore_hw_init_pf(p_hwfn, p_hwfn->p_main_ptt,
-					      p_tunn, p_hwfn->hw_info.hw_mode,
-					      b_hw_start, int_mode,
-					      allow_npar_tx_switch);
+					      p_params->p_tunn,
+					      p_hwfn->hw_info.hw_mode,
+					      p_params->b_hw_start,
+					      p_params->int_mode,
+					      p_params->allow_npar_tx_switch);
 			break;
 		default:
 			rc = ECORE_NOTIMPL;
@@ -1758,6 +1756,10 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				  "Failed sending LOAD_DONE command\n");
 			return mfw_rc;
 		}
+
+		ecore_mcp_mdump_get_info(p_hwfn, p_hwfn->p_main_ptt);
+		ecore_mcp_mdump_set_values(p_hwfn, p_hwfn->p_main_ptt,
+					   p_params->epoch);
 
 		/* send DCBX attention request command */
 		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,

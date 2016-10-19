@@ -57,26 +57,31 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev);
  */
 void ecore_resc_setup(struct ecore_dev *p_dev);
 
+struct ecore_hw_init_params {
+	/* tunnelling parameters */
+	struct ecore_tunn_start_params *p_tunn;
+	bool b_hw_start;
+	/* interrupt mode [msix, inta, etc.] to use */
+	enum ecore_int_mode int_mode;
+/* npar tx switching to be used for vports configured for tx-switching */
+
+	bool allow_npar_tx_switch;
+	/* binary fw data pointer in binary fw file */
+	const u8 *bin_fw_data;
+	/* the OS Epoch time in seconds */
+	u32 epoch;
+};
+
 /**
  * @brief ecore_hw_init -
  *
  * @param p_dev
- * @param p_tunn - tunneling parameters
- * @param b_hw_start
- * @param int_mode - interrupt mode [msix, inta, etc.] to use.
- * @param allow_npar_tx_switch - npar tx switching to be used
- *	  for vports configured for tx-switching.
- * @param bin_fw_data - binary fw data pointer in binary fw file.
- *			Pass NULL if not using binary fw file.
+ * @param p_params
  *
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
-				   struct ecore_tunn_start_params *p_tunn,
-				   bool b_hw_start,
-				   enum ecore_int_mode int_mode,
-				   bool allow_npar_tx_switch,
-				   const u8 *bin_fw_data);
+				   struct ecore_hw_init_params *p_params);
 
 /**
  * @brief ecore_hw_timers_stop_all -

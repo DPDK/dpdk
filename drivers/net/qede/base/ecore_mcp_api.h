@@ -792,4 +792,14 @@ enum _ecore_status_t ecore_mcp_mem_ecc_events(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
 					      u64 *num_events);
 
+/**
+ * @brief Sets whether a critical error notification from the MFW is acked, or
+ *        is it being ignored and thus allowing the MFW crash dump.
+ *
+ * @param p_dev
+ * @param mdump_enable
+ *
+ */
+void ecore_mcp_mdump_enable(struct ecore_dev *p_dev, bool mdump_enable);
+
 #endif

@@ -7,6 +7,7 @@
  */
 
 #include <limits.h>
+#include <time.h>
 #include <rte_alarm.h>
 
 #include "qede_ethdev.h"
@@ -221,6 +222,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	const uint8_t *data = NULL;
 	struct ecore_hwfn *hwfn;
 	struct ecore_mcp_drv_version drv_version;
+	struct ecore_hw_init_params hw_init_params;
 	struct qede_dev *qdev = (struct qede_dev *)edev;
 	int rc;
 #ifdef QED_ENC_SUPPORTED
@@ -259,7 +261,6 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	qed_start_iov_task(edev);
 #endif
 
-	/* Start the slowpath */
 #ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev))
 		data = (const uint8_t *)edev->firmware + sizeof(u32);
@@ -267,6 +268,8 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 
 	allow_npar_tx_switching = npar_tx_switching ? true : false;
 
+	/* Start the slowpath */
+	memset(&hw_init_params, 0, sizeof(hw_init_params));
 #ifdef QED_ENC_SUPPORTED
 	memset(&tunn_info, 0, sizeof(tunn_info));
 	tunn_info.tunn_mode |= 1 << QED_MODE_VXLAN_TUNN |
@@ -276,12 +279,14 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	tunn_info.tunn_clss_vxlan = QED_TUNN_CLSS_MAC_VLAN;
 	tunn_info.tunn_clss_l2gre = QED_TUNN_CLSS_MAC_VLAN;
 	tunn_info.tunn_clss_ipgre = QED_TUNN_CLSS_MAC_VLAN;
-	rc = ecore_hw_init(edev, &tunn_info, true, ECORE_INT_MODE_MSIX,
-			   allow_npar_tx_switching, data);
-#else
-	rc = ecore_hw_init(edev, NULL, true, ECORE_INT_MODE_MSIX,
-			   allow_npar_tx_switching, data);
+	hw_init_params.p_tunn = &tunn_info;
 #endif
+	hw_init_params.b_hw_start = true;
+	hw_init_params.int_mode = ECORE_INT_MODE_MSIX;
+	hw_init_params.allow_npar_tx_switch = allow_npar_tx_switching;
+	hw_init_params.bin_fw_data = data;
+	hw_init_params.epoch = (u32)time(NULL);
+	rc = ecore_hw_init(edev, &hw_init_params);
 	if (rc) {
 		DP_ERR(edev, "ecore_hw_init failed\n");
 		goto err2;
