@@ -77,13 +77,10 @@ Prerequisites
 - Requires firmware version **8.10.x.** and management firmware
   version **8.10.x or higher**. Firmware may be available
   inbox in certain newer Linux distros under the standard directory
-  ``E.g. /lib/firmware/qed/qed_init_values_zipped-8.10.9.0.bin``
+  ``E.g. /lib/firmware/qed/qed_init_values-8.10.9.0.bin``
 
 - If the required firmware files are not available then visit
   `QLogic Driver Download Center <http://driverdownloads.qlogic.com>`_.
-
-- This driver relies on external zlib library (-lz) for uncompressing
-  the firmware file.
 
 Performance note
 ~~~~~~~~~~~~~~~~

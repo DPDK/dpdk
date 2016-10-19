@@ -15,7 +15,7 @@
 #include <unistd.h>
 
 #define CONFIG_ECORE_BINARY_FW
-#define CONFIG_ECORE_ZIPPED_FW
+#undef CONFIG_ECORE_ZIPPED_FW
 
 #ifdef CONFIG_ECORE_ZIPPED_FW
 #include <zlib.h>

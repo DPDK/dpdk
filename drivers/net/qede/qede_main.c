@@ -21,7 +21,7 @@ static uint8_t npar_tx_switching = 1;
 char fw_file[PATH_MAX];
 
 const char *QEDE_DEFAULT_FIRMWARE =
-	"/lib/firmware/qed/qed_init_values_zipped-8.10.9.0.bin";
+	"/lib/firmware/qed/qed_init_values-8.10.9.0.bin";
 
 static void
 qed_update_pf_params(struct ecore_dev *edev, struct ecore_pf_params *params)

@@ -6,8 +6,6 @@
  * See LICENSE.qede_pmd for copyright and licensing details.
  */
 
-#include <zlib.h>
-
 #include <rte_memzone.h>
 #include <rte_errno.h>
 
