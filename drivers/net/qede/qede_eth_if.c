@@ -459,16 +459,6 @@ static const struct qed_eth_ops qed_eth_ops_pass = {
 	INIT_STRUCT_FIELD(filter_config, &qed_configure_filter),
 };
 
-uint32_t qed_get_protocol_version(enum qed_protocol protocol)
-{
-	switch (protocol) {
-	case QED_PROTOCOL_ETH:
-		return QED_ETH_INTERFACE_VERSION;
-	default:
-		return 0;
-	}
-}
-
 const struct qed_eth_ops *qed_get_eth_ops(void)
 {
 	return &qed_eth_ops_pass;

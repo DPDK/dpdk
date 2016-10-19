@@ -1217,7 +1217,6 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	struct ecore_dev *edev;
 	struct qed_dev_eth_info dev_info;
 	struct qed_slowpath_params params;
-	uint32_t qed_ver;
 	static bool do_once = true;
 	uint8_t bulletin_change;
 	uint8_t vf_mac[ETHER_ADDR_LEN];
@@ -1252,8 +1251,6 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	pci_dev = eth_dev->pci_dev;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
-	qed_ver = qed_get_protocol_version(QED_PROTOCOL_ETH);
 
 	qed_ops = qed_get_eth_ops();
 	if (!qed_ops) {

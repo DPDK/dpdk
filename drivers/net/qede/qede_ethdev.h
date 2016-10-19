@@ -116,18 +116,6 @@ enum qede_dev_state {
 	QEDE_DEV_STOP, /* Deactivate vport and stop traffic */
 };
 
-struct qed_int_param {
-	uint32_t int_mode;
-	uint8_t num_vectors;
-	uint8_t min_msix_cnt;
-};
-
-struct qed_int_params {
-	struct qed_int_param in;
-	struct qed_int_param out;
-	bool fp_initialized;
-};
-
 /*
  *  Structure to store private data for each port.
  */

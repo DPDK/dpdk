@@ -152,13 +152,4 @@ struct qed_common_ops {
 			      uint32_t dp_module, uint8_t dp_level);
 };
 
-/**
- * @brief qed_get_protocol_version
- *
- * @param protocol
- *
- * @return version supported by qed for given protocol driver
- */
-uint32_t qed_get_protocol_version(enum qed_protocol protocol);
-
 #endif /* _QEDE_IF_H */
