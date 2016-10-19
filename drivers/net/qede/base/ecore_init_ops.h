@@ -32,7 +32,9 @@ void ecore_init_iro_array(struct ecore_dev *p_dev);
  */
 enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 				    struct ecore_ptt *p_ptt,
-				    int phase, int phase_id, int modes);
+				    int               phase,
+				    int               phase_id,
+				    int               modes);
 
 /**
  * @brief ecore_init_hwfn_allocate - Allocate RT array, Store 'values' ptrs.
@@ -51,6 +53,7 @@ enum _ecore_status_t ecore_init_alloc(struct ecore_hwfn *p_hwfn);
  * @param p_hwfn
  */
 void ecore_init_free(struct ecore_hwfn *p_hwfn);
+
 
 /**
  * @brief ecore_init_clear_rt_data - Clears the runtime init array.
@@ -95,6 +98,7 @@ void ecore_init_store_rt_agg(struct ecore_hwfn *p_hwfn,
 
 #define STORE_RT_REG_AGG(hwfn, offset, val)			\
 	ecore_init_store_rt_agg(hwfn, offset, (u32 *)&val, sizeof(val))
+
 
 /**
  * @brief

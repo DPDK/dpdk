@@ -252,11 +252,9 @@ struct lldp_config_params_s {
 struct lldp_status_params_s {
 	u32 prefix_seq_num;
 	u32 status; /* TBD */
-	/* Holds remote Chassis ID TLV header, subtype and 9B of payload.
-	 */
+	/* Holds remote Chassis ID TLV header, subtype and 9B of payload. */
 	u32 peer_chassis_id[LLDP_CHASSIS_ID_STAT_LEN];
-	/* Holds remote Port ID TLV header, subtype and 9B of payload.
-	 */
+	/* Holds remote Port ID TLV header, subtype and 9B of payload. */
 	u32 peer_port_id[LLDP_PORT_ID_STAT_LEN];
 	u32 suffix_seq_num;
 };
@@ -327,6 +325,7 @@ struct dcbx_app_priority_entry {
 #define DCBX_APP_PROTOCOL_ID_SHIFT  16
 };
 
+
 /* FW structure in BE */
 struct dcbx_app_priority_feature {
 	u32 flags;
@@ -337,9 +336,9 @@ struct dcbx_app_priority_feature {
 #define DCBX_APP_ERROR_MASK             0x00000004
 #define DCBX_APP_ERROR_SHIFT            2
 	/* Not in use
-	 * #define DCBX_APP_DEFAULT_PRI_MASK       0x00000f00
-	 * #define DCBX_APP_DEFAULT_PRI_SHIFT      8
-	 */
+	#define DCBX_APP_DEFAULT_PRI_MASK       0x00000f00
+	#define DCBX_APP_DEFAULT_PRI_SHIFT      8
+	*/
 #define DCBX_APP_MAX_TCS_MASK           0x0000f000
 #define DCBX_APP_MAX_TCS_SHIFT          12
 #define DCBX_APP_NUM_ENTRIES_MASK       0x00ff0000
@@ -398,13 +397,13 @@ struct dcbx_mib {
 	u32 prefix_seq_num;
 	u32 flags;
 	/*
-	 * #define DCBX_CONFIG_VERSION_MASK            0x00000007
-	 * #define DCBX_CONFIG_VERSION_SHIFT           0
-	 * #define DCBX_CONFIG_VERSION_DISABLED        0
-	 * #define DCBX_CONFIG_VERSION_IEEE            1
-	 * #define DCBX_CONFIG_VERSION_CEE             2
-	 * #define DCBX_CONFIG_VERSION_STATIC          4
-	 */
+	#define DCBX_CONFIG_VERSION_MASK            0x00000007
+	#define DCBX_CONFIG_VERSION_SHIFT           0
+	#define DCBX_CONFIG_VERSION_DISABLED        0
+	#define DCBX_CONFIG_VERSION_IEEE            1
+	#define DCBX_CONFIG_VERSION_CEE             2
+	#define DCBX_CONFIG_VERSION_STATIC          4
+	*/
 	struct dcbx_features features;
 	u32 suffix_seq_num;
 };
@@ -439,6 +438,7 @@ struct public_global {
 	u32 debug_mb_offset;
 	u32 phymod_dbg_mb_offset;
 	struct couple_mode_teaming cmt;
+/* Temperature in Celcius (-255C / +255C), measured every second. */
 	s32 internal_temperature;
 	u32 mfw_ver;
 	u32 running_bundle_id;
@@ -732,7 +732,8 @@ struct public_func {
 
 	/* MTU size per funciton is needed for the OV feature */
 	u32 mtu_size;
-	/* 9 entires for the C2S PCP map for each inner VLAN PCP + 1 default */
+/* 9 entires for the C2S PCP map for each inner VLAN PCP + 1 default */
+
 	/* For PCP values 0-3 use the map lower */
 	/* 0xFF000000 - PCP 0, 0x00FF0000 - PCP 1,
 	 * 0x0000FF00 - PCP 2, 0x000000FF PCP 3
@@ -756,6 +757,7 @@ struct public_func {
 #define FUNC_MF_CFG_FUNC_HIDE                   0x00000001
 #define FUNC_MF_CFG_PAUSE_ON_HOST_RING          0x00000002
 #define FUNC_MF_CFG_PAUSE_ON_HOST_RING_SHIFT    0x00000001
+
 
 #define FUNC_MF_CFG_PROTOCOL_MASK               0x000000f0
 #define FUNC_MF_CFG_PROTOCOL_SHIFT              4
@@ -1040,49 +1042,105 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_INITIATE_PF_FLR            0x02010000
 #define DRV_MSG_CODE_VF_DISABLED_DONE           0xc0000000
 #define DRV_MSG_CODE_CFG_VF_MSIX                0xc0010000
+/* Param is either DRV_MB_PARAM_NVM_PUT_FILE_BEGIN_MFW/IMAGE */
 #define DRV_MSG_CODE_NVM_PUT_FILE_BEGIN		0x00010000
+/* Param should be set to the transaction size (up to 64 bytes) */
 #define DRV_MSG_CODE_NVM_PUT_FILE_DATA		0x00020000
+/* MFW will place the file offset and len in file_att struct */
 #define DRV_MSG_CODE_NVM_GET_FILE_ATT		0x00030000
+/* Read 32bytes of nvram data. Param is [0:23] – Offset [24:31] –
+ * Len in Bytes
+ */
 #define DRV_MSG_CODE_NVM_READ_NVRAM		0x00050000
+/* Writes up to 32Bytes to nvram. Param is [0:23] – Offset [24:31] –
+ * Len in Bytes. In case this address is in the range of secured file in
+ * secured mode, the operation will fail
+ */
 #define DRV_MSG_CODE_NVM_WRITE_NVRAM		0x00060000
+/* Delete a file from nvram. Param is image_type. */
 #define DRV_MSG_CODE_NVM_DEL_FILE		0x00080000
+/* Reset MCP when no NVM operation is going on, and no drivers are loaded.
+ * In case operation succeed, MCP will not ack back.
+ */
 #define DRV_MSG_CODE_MCP_RESET			0x00090000
+/* Temporary command to set secure mode, where the param is 0 (None secure) /
+ * 1 (Secure) / 2 (Full-Secure)
+ */
 #define DRV_MSG_CODE_SET_SECURE_MODE		0x000a0000
+/* Param: [0:15] - Address, [16:18] - lane# (0/1/2/3 - for single lane,
+ * 4/5 - for dual lanes, 6 - for all lanes, [28] - PMD reg, [29] - select port,
+ * [30:31] - port
+ */
 #define DRV_MSG_CODE_PHY_RAW_READ		0x000b0000
+/* Param: [0:15] - Address, [16:18] - lane# (0/1/2/3 - for single lane,
+ * 4/5 - for dual lanes, 6 - for all lanes, [28] - PMD reg, [29] - select port,
+ * [30:31] - port
+ */
 #define DRV_MSG_CODE_PHY_RAW_WRITE		0x000c0000
+/* Param: [0:15] - Address, [30:31] - port */
 #define DRV_MSG_CODE_PHY_CORE_READ		0x000d0000
+/* Param: [0:15] - Address, [30:31] - port */
 #define DRV_MSG_CODE_PHY_CORE_WRITE		0x000e0000
+/* Param: [0:3] - version, [4:15] - name (null terminated) */
 #define DRV_MSG_CODE_SET_VERSION		0x000f0000
+/* Halts the MCP. To resume MCP, user will need to use
+ * MCP_REG_CPU_STATE/MCP_REG_CPU_MODE registers.
+ */
 #define DRV_MSG_CODE_MCP_HALT			0x00100000
+/* Host shall provide buffer and size for MFW  */
 #define DRV_MSG_CODE_PMD_DIAG_DUMP		0x00140000
+/* Host shall provide buffer and size for MFW  */
 #define DRV_MSG_CODE_PMD_DIAG_EYE		0x00150000
+/* Param: [0:1] - Port, [2:7] - read size, [8:15] - I2C address,
+ * [16:31] - offset
+ */
 #define DRV_MSG_CODE_TRANSCEIVER_READ		0x00160000
+/* Param: [0:1] - Port, [2:7] - write size, [8:15] - I2C address,
+ * [16:31] - offset
+ */
 #define DRV_MSG_CODE_TRANSCEIVER_WRITE		0x00170000
 
+/* Set virtual mac address, params [31:6] - reserved, [5:4] - type,
+ * [3:0] - func, drv_data[7:0] - MAC/WWNN/WWPN
+ */
 #define DRV_MSG_CODE_SET_VMAC                   0x00110000
+/* Set virtual mac address, params [31:6] - reserved, [5:4] - type,
+ * [3:0] - func, drv_data[7:0] - MAC/WWNN/WWPN
+ */
 #define DRV_MSG_CODE_GET_VMAC                   0x00120000
 #define DRV_MSG_CODE_VMAC_TYPE_MAC              1
 #define DRV_MSG_CODE_VMAC_TYPE_WWNN             2
 #define DRV_MSG_CODE_VMAC_TYPE_WWPN             3
 
+/* Get statistics from pf, params [31:4] - reserved, [3:0] - stats type */
 #define DRV_MSG_CODE_GET_STATS                  0x00130000
 #define DRV_MSG_CODE_STATS_TYPE_LAN             1
 #define DRV_MSG_CODE_STATS_TYPE_FCOE            2
 #define DRV_MSG_CODE_STATS_TYPE_ISCSI           3
 #define DRV_MSG_CODE_STATS_TYPE_RDMA		4
 
+/* indicate OCBB related information */
 #define DRV_MSG_CODE_OCBB_DATA			0x00180000
+
+/* Set function BW, params[15:8] - min, params[7:0] - max */
 #define DRV_MSG_CODE_SET_BW			0x00190000
 #define BW_MAX_MASK				0x000000ff
 #define BW_MAX_SHIFT				0
 #define BW_MIN_MASK				0x0000ff00
 #define BW_MIN_SHIFT				8
+
+/* When param is set to 1, all parities will be masked(disabled). When params
+ * are set to 0, parities will be unmasked again.
+ */
 #define DRV_MSG_CODE_MASK_PARITIES		0x001a0000
+/* param[0] - Simulate fan failure,  param[1] - simulate over temp. */
 #define DRV_MSG_CODE_INDUCE_FAILURE		0x001b0000
 #define DRV_MSG_FAN_FAILURE_TYPE		(1 << 0)
 #define DRV_MSG_TEMPERATURE_FAILURE_TYPE	(1 << 1)
 
+/* Param: [0:15] - gpio number */
 #define DRV_MSG_CODE_GPIO_READ			0x001c0000
+/* Param: [0:15] - gpio number, [16:31] - gpio value */
 #define DRV_MSG_CODE_GPIO_WRITE			0x001d0000
 /* Param: [0:15] - gpio number */
 #define DRV_MSG_CODE_GPIO_INFO		    0x00270000
@@ -1091,6 +1149,7 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_BIST_TEST			0x001e0000
 #define DRV_MSG_CODE_GET_TEMPERATURE            0x001f0000
 
+/* Set LED mode  params :0 operational, 1 LED turn ON, 2 LED turn OFF */
 #define DRV_MSG_CODE_SET_LED_MODE		0x00200000
 /* drv_data[7:0] - EPOC in seconds, drv_data[15:8] -
  * driver version (MAJ MIN BUILD SUB)
@@ -1244,9 +1303,12 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_SHIFT		0
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_MASK		0xF
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_UNKNOWN		0x1
+/* Not Installed*/
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_NOT_LOADED	0x2
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_LOADING		0x3
+/* installed but disabled by user/admin/OS */
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_DISABLED	0x4
+/* installed and active */
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_ACTIVE		0x5
 
 #define DRV_MB_PARAM_OV_MTU_SIZE_SHIFT		0
@@ -1354,6 +1416,7 @@ struct public_drv_mb {
 #define FW_MSG_CODE_NVM_FILE_READ_ONLY		0x00200000
 #define FW_MSG_CODE_NVM_UNKNOWN_FILE		0x00300000
 #define FW_MSG_CODE_NVM_PUT_FILE_FINISH_OK	0x00400000
+/* MFW reject "mcp reset" command if one of the drivers is up */
 #define FW_MSG_CODE_MCP_RESET_REJECT		0x00600000
 #define FW_MSG_CODE_PHY_OK			0x00110000
 #define FW_MSG_CODE_PHY_ERROR			0x00120000
@@ -1389,6 +1452,7 @@ struct public_drv_mb {
 
 #define FW_MSG_SEQ_NUMBER_MASK                  0x0000ffff
 
+
 	u32 fw_mb_param;
 	/* Resource Allocation params - MFW  version support*/
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK	0xFFFF0000
@@ -1420,7 +1484,10 @@ struct public_drv_mb {
 #define MCP_EVENT_MASK                          0xffff0000
 #define MCP_EVENT_OTHER_DRIVER_RESET_REQ        0x00010000
 
+/* The union data is used by the driver to pass parameters to the scratchpad. */
+
 	union drv_union_data union_data;
+
 };
 
 /* MFW - DRV MB */
@@ -1477,7 +1544,9 @@ enum MFW_DRV_MSG_TYPE {
 
 struct public_mfw_mb {
 	u32 sup_msgs;       /* Assigend with MFW_DRV_MSG_MAX */
+/* Incremented by the MFW */
 	u32 msg[MFW_DRV_MSG_MAX_DWORDS(MFW_DRV_MSG_MAX)];
+/* Incremented by the driver */
 	u32 ack[MFW_DRV_MSG_MAX_DWORDS(MFW_DRV_MSG_MAX)];
 };
 

@@ -23,9 +23,12 @@ struct eth_slow_path_rx_cqe;
 
 struct ecore_spq_comp_cb {
 	void	(*function)(struct ecore_hwfn *,
-			 void *, union event_ring_data *, u8 fw_return_code);
+			 void *,
+			 union event_ring_data *,
+			 u8 fw_return_code);
 	void	*cookie;
 };
+
 
 /**
  * @brief ecore_eth_cqe_completion - handles the completion of a

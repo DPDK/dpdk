@@ -90,12 +90,17 @@
 #define ETH_RSS_KEY_SIZE_REGS               10
 /* number of available RSS engines in K2 */
 #define ETH_RSS_ENGINE_NUM_K2               207
+/* number of available RSS engines in BB */
 #define ETH_RSS_ENGINE_NUM_BB               127
 
 /* TPA constants */
+/* Maximum number of open TPA aggregations */
 #define ETH_TPA_MAX_AGGS_NUM              64
+/* Maximum number of additional buffers, reported by TPA-start CQE */
 #define ETH_TPA_CQE_START_LEN_LIST_SIZE   ETH_RX_MAX_BUFF_PER_PKT
+/* Maximum number of buffers, reported by TPA-continue CQE */
 #define ETH_TPA_CQE_CONT_LEN_LIST_SIZE    6
+/* Maximum number of buffers, reported by TPA-end CQE */
 #define ETH_TPA_CQE_END_LEN_LIST_SIZE     4
 
 /* Control frame check constants */
@@ -115,6 +120,7 @@ enum dest_port_mode {
 	MAX_DEST_PORT_MODE
 };
 
+
 /*
  * Ethernet address type
  */
@@ -126,22 +132,31 @@ enum eth_addr_type {
 	MAX_ETH_ADDR_TYPE
 };
 
+
 struct eth_tx_1st_bd_flags {
 	u8 bitfields;
+/* Set to 1 in the first BD. (for debug) */
 #define ETH_TX_1ST_BD_FLAGS_START_BD_MASK         0x1
 #define ETH_TX_1ST_BD_FLAGS_START_BD_SHIFT        0
+/* Do not allow additional VLAN manipulations on this packet. */
 #define ETH_TX_1ST_BD_FLAGS_FORCE_VLAN_MODE_MASK  0x1
 #define ETH_TX_1ST_BD_FLAGS_FORCE_VLAN_MODE_SHIFT 1
+/* IP checksum recalculation in needed */
 #define ETH_TX_1ST_BD_FLAGS_IP_CSUM_MASK          0x1
 #define ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT         2
+/* TCP/UDP checksum recalculation in needed */
 #define ETH_TX_1ST_BD_FLAGS_L4_CSUM_MASK          0x1
 #define ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT         3
+/* If set, need to add the VLAN in vlan field to the packet. */
 #define ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_MASK   0x1
 #define ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_SHIFT  4
+/* If set, this is an LSO packet. */
 #define ETH_TX_1ST_BD_FLAGS_LSO_MASK              0x1
 #define ETH_TX_1ST_BD_FLAGS_LSO_SHIFT             5
+/* Recalculate Tunnel IP Checksum (if Tunnel IP Header is IPv4) */
 #define ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_MASK     0x1
 #define ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_SHIFT    6
+/* Recalculate Tunnel UDP/GRE Checksum (Depending on Tunnel Type) */
 #define ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK     0x1
 #define ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT    7
 };
@@ -171,29 +186,50 @@ struct eth_tx_data_1st_bd {
  * The parsing information data for the second tx bd of a given packet.
  */
 struct eth_tx_data_2nd_bd {
+/* For tunnel with IPv6+ext - Tunnel header IP datagram length (in BYTEs) */
 	__le16 tunn_ip_size;
 	__le16 bitfields1;
+/* For Tunnel header with IPv6 ext. - Inner L2 Header Size (in 2-byte WORDs) */
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_L2_HDR_SIZE_W_MASK  0xF
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_L2_HDR_SIZE_W_SHIFT 0
+/* For Tunnel header with IPv6 ext. - Inner L2 Header MAC DA Type
+ * (use enum eth_addr_type)
+ */
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_ETH_TYPE_MASK       0x3
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_ETH_TYPE_SHIFT      4
+/* Destination port mode. (use enum dest_port_mode) */
 #define ETH_TX_DATA_2ND_BD_DEST_PORT_MODE_MASK            0x3
 #define ETH_TX_DATA_2ND_BD_DEST_PORT_MODE_SHIFT           6
+/* Should be 0 in all the BDs, except the first one. (for debug) */
 #define ETH_TX_DATA_2ND_BD_START_BD_MASK                  0x1
 #define ETH_TX_DATA_2ND_BD_START_BD_SHIFT                 8
+/* For Tunnel header with IPv6 ext. - Tunnel Type (use enum eth_tx_tunn_type) */
 #define ETH_TX_DATA_2ND_BD_TUNN_TYPE_MASK                 0x3
 #define ETH_TX_DATA_2ND_BD_TUNN_TYPE_SHIFT                9
+/* For LSO / Tunnel header with IPv6+ext - Set if inner header is IPv6 */
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_IPV6_MASK           0x1
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_IPV6_SHIFT          11
+/* For LSO / Tunnel header with IPv6+ext - Set if outer header has IPv6+ext */
 #define ETH_TX_DATA_2ND_BD_IPV6_EXT_MASK                  0x1
 #define ETH_TX_DATA_2ND_BD_IPV6_EXT_SHIFT                 12
+/* Set if Tunnel header has IPv6 ext. (3rd BD is required) */
 #define ETH_TX_DATA_2ND_BD_TUNN_IPV6_EXT_MASK             0x1
 #define ETH_TX_DATA_2ND_BD_TUNN_IPV6_EXT_SHIFT            13
+/* Set if (inner) L4 protocol is UDP. (Required when IPv6+ext (or tunnel with
+ * inner or outer Ipv6+ext) and l4_csum is set)
+ */
 #define ETH_TX_DATA_2ND_BD_L4_UDP_MASK                    0x1
 #define ETH_TX_DATA_2ND_BD_L4_UDP_SHIFT                   14
+/* The pseudo header checksum type in the L4 checksum field. Required when
+ * IPv6+ext and l4_csum is set. (use enum eth_l4_pseudo_checksum_mode)
+ */
 #define ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE_MASK       0x1
 #define ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE_SHIFT      15
 	__le16 bitfields2;
+/* For inner/outer header IPv6+ext - (inner) L4 header offset (in 2-byte WORDs).
+ * For regular packet - offset from the beginning of the packet. For tunneled
+ * packet - offset from the beginning of the inner header
+ */
 #define ETH_TX_DATA_2ND_BD_L4_HDR_START_OFFSET_W_MASK     0x1FFF
 #define ETH_TX_DATA_2ND_BD_L4_HDR_START_OFFSET_W_SHIFT    0
 #define ETH_TX_DATA_2ND_BD_RESERVED0_MASK                 0x7
@@ -210,6 +246,7 @@ struct eth_edpm_fw_data {
 	struct eth_tx_data_2nd_bd data_2nd_bd;
 	__le32 reserved;
 };
+
 
 /*
  * FW debug.
@@ -268,8 +305,10 @@ struct eth_pmd_flow_flags {
 struct eth_fast_path_rx_reg_cqe {
 	u8 type /* CQE type */;
 	u8 bitfields;
+/* Type of calculated RSS hash (use enum rss_hash_type) */
 #define ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE_MASK  0x7
 #define ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE_SHIFT 0
+/* Traffic Class */
 #define ETH_FAST_PATH_RX_REG_CQE_TC_MASK             0xF
 #define ETH_FAST_PATH_RX_REG_CQE_TC_SHIFT            3
 #define ETH_FAST_PATH_RX_REG_CQE_RESERVED0_MASK      0x1
@@ -290,20 +329,22 @@ struct eth_fast_path_rx_reg_cqe {
 	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
+
 /*
  * TPA-continue ETH Rx FP CQE.
  */
 struct eth_fast_path_rx_tpa_cont_cqe {
 	u8 type /* CQE type */;
 	u8 tpa_agg_index /* TPA aggregation index */;
-	__le16 len_list[ETH_TPA_CQE_CONT_LEN_LIST_SIZE]
-	    /* List of the segment sizes */;
+/* List of the segment sizes */
+	__le16 len_list[ETH_TPA_CQE_CONT_LEN_LIST_SIZE];
 	u8 reserved;
 	u8 reserved1 /* FW reserved. */;
 	__le16 reserved2[ETH_TPA_CQE_CONT_LEN_LIST_SIZE] /* FW reserved. */;
 	u8 reserved3[3];
 	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
+
 
 /*
  * TPA-end ETH Rx FP CQE .
@@ -313,17 +354,18 @@ struct eth_fast_path_rx_tpa_end_cqe {
 	u8 tpa_agg_index /* TPA aggregation index */;
 	__le16 total_packet_len /* Total aggregated packet length */;
 	u8 num_of_bds /* Total number of BDs comprising the packet */;
-	u8 end_reason /* Aggregation end reason. Use enum eth_tpa_end_reason */
-	  ;
+/* Aggregation end reason. Use enum eth_tpa_end_reason */
+	u8 end_reason;
 	__le16 num_of_coalesced_segs /* Number of coalesced TCP segments */;
 	__le32 ts_delta /* TCP timestamp delta */;
-	__le16 len_list[ETH_TPA_CQE_END_LEN_LIST_SIZE]
-	    /* List of the segment sizes */;
+/* List of the segment sizes */
+	__le16 len_list[ETH_TPA_CQE_END_LEN_LIST_SIZE];
 	__le16 reserved3[ETH_TPA_CQE_END_LEN_LIST_SIZE] /* FW reserved. */;
 	__le16 reserved1;
 	u8 reserved2 /* FW reserved. */;
 	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
+
 
 /*
  * TPA-start ETH Rx FP CQE.
@@ -331,15 +373,17 @@ struct eth_fast_path_rx_tpa_end_cqe {
 struct eth_fast_path_rx_tpa_start_cqe {
 	u8 type /* CQE type */;
 	u8 bitfields;
+/* Type of calculated RSS hash (use enum rss_hash_type) */
 #define ETH_FAST_PATH_RX_TPA_START_CQE_RSS_HASH_TYPE_MASK  0x7
 #define ETH_FAST_PATH_RX_TPA_START_CQE_RSS_HASH_TYPE_SHIFT 0
+/* Traffic Class */
 #define ETH_FAST_PATH_RX_TPA_START_CQE_TC_MASK             0xF
 #define ETH_FAST_PATH_RX_TPA_START_CQE_TC_SHIFT            3
 #define ETH_FAST_PATH_RX_TPA_START_CQE_RESERVED0_MASK      0x1
 #define ETH_FAST_PATH_RX_TPA_START_CQE_RESERVED0_SHIFT     7
 	__le16 seg_len /* Segment length (packetLen from the parser) */;
-	struct parsing_and_err_flags pars_flags
-	    /* Parsing and error flags from the parser */;
+/* Parsing and error flags from the parser */
+	struct parsing_and_err_flags pars_flags;
 	__le16 vlan_tag /* 802.1q VLAN tag */;
 	__le32 rss_hash /* RSS hash result */;
 	__le16 len_on_first_bd /* Number of bytes placed on first BD */;
@@ -348,31 +392,33 @@ struct eth_fast_path_rx_tpa_start_cqe {
 	struct eth_tunnel_parsing_flags tunnel_pars_flags;
 	u8 tpa_agg_index /* TPA aggregation index */;
 	u8 header_len /* Packet L2+L3+L4 header length */;
-	__le16 ext_bd_len_list[ETH_TPA_CQE_START_LEN_LIST_SIZE]
-	    /* Additional BDs length list. */;
+/* Additional BDs length list. */
+	__le16 ext_bd_len_list[ETH_TPA_CQE_START_LEN_LIST_SIZE];
 	struct eth_fast_path_cqe_fw_debug fw_debug /* FW reserved. */;
 	u8 reserved;
 	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
+
 /*
  * The L4 pseudo checksum mode for Ethernet
  */
 enum eth_l4_pseudo_checksum_mode {
-	ETH_L4_PSEUDO_CSUM_CORRECT_LENGTH
-		/* Pseudo Header checksum on packet is calculated
-		 * with the correct packet length field.
-		*/
-	   ,
-	ETH_L4_PSEUDO_CSUM_ZERO_LENGTH
-	    /* Pseudo Hdr checksum on packet is calc with zero len field. */
-	   ,
+/* Pseudo Header checksum on packet is calculated with the correct packet length
+ * field.
+ */
+	ETH_L4_PSEUDO_CSUM_CORRECT_LENGTH,
+/* Pseudo Header checksum on packet is calculated with zero length field. */
+	ETH_L4_PSEUDO_CSUM_ZERO_LENGTH,
 	MAX_ETH_L4_PSEUDO_CHECKSUM_MODE
 };
+
+
 
 struct eth_rx_bd {
 	struct regpair addr /* single continues buffer */;
 };
+
 
 /*
  * regular ETH Rx SP CQE
@@ -391,15 +437,17 @@ struct eth_slow_path_rx_cqe {
  * union for all ETH Rx CQE types
  */
 union eth_rx_cqe {
-	struct eth_fast_path_rx_reg_cqe fast_path_regular /* Regular FP CQE */;
-	struct eth_fast_path_rx_tpa_start_cqe fast_path_tpa_start
-	    /* TPA-start CQE */;
-	struct eth_fast_path_rx_tpa_cont_cqe fast_path_tpa_cont
-	    /* TPA-continue CQE */;
-	struct eth_fast_path_rx_tpa_end_cqe fast_path_tpa_end /* TPA-end CQE */
-	  ;
+/* Regular FP CQE */
+	struct eth_fast_path_rx_reg_cqe fast_path_regular;
+/* TPA-start CQE */
+	struct eth_fast_path_rx_tpa_start_cqe fast_path_tpa_start;
+/* TPA-continue CQE */
+	struct eth_fast_path_rx_tpa_cont_cqe fast_path_tpa_cont;
+/* TPA-end CQE */
+	struct eth_fast_path_rx_tpa_end_cqe fast_path_tpa_end;
 	struct eth_slow_path_rx_cqe slow_path /* SP CQE */;
 };
+
 
 /*
  * ETH Rx CQE type
@@ -414,6 +462,7 @@ enum eth_rx_cqe_type {
 	MAX_ETH_RX_CQE_TYPE
 };
 
+
 /*
  * Wrapper for PD RX CQE - used in order to cover full cache line when writing
  * CQE
@@ -422,6 +471,7 @@ struct eth_rx_pmd_cqe {
 	union eth_rx_cqe cqe /* CQE data itself */;
 	u8 reserved[ETH_RX_CQE_GAP];
 };
+
 
 /*
  * Eth RX Tunnel Type
@@ -434,19 +484,32 @@ enum eth_rx_tunn_type {
 	MAX_ETH_RX_TUNN_TYPE
 };
 
+
+
 /*
  * Aggregation end reason.
  */
 enum eth_tpa_end_reason {
 	ETH_AGG_END_UNUSED,
 	ETH_AGG_END_SP_UPDATE /* SP configuration update */,
-	ETH_AGG_END_MAX_LEN
-	    /* Maximum aggregation length or maximum buffer number used. */,
-	ETH_AGG_END_LAST_SEG
-	    /* TCP PSH flag or TCP payload length below continue threshold. */,
+/* Maximum aggregation length or maximum buffer number used. */
+	ETH_AGG_END_MAX_LEN,
+/* TCP PSH flag or TCP payload length below continue threshold. */
+	ETH_AGG_END_LAST_SEG,
 	ETH_AGG_END_TIMEOUT /* Timeout expiration. */,
+/* Packet header not consistency: different IPv4 TOS, TTL or flags, IPv6 TC,
+ * Hop limit or Flow label, TCP header length or TS options. In GRO different
+ * TS value, SMAC, DMAC, ackNum, windowSize or VLAN
+ */
 	ETH_AGG_END_NOT_CONSISTENT,
+/* Out of order or retransmission packet: sequence, ack or timestamp not
+ * consistent with previous segment.
+ */
 	ETH_AGG_END_OUT_OF_ORDER,
+/* Next segment cant be aggregated due to LLC/SNAP, IP error, IP fragment, IPv4
+ * options, IPv6 extension, IP ECN = CE, TCP errors, TCP options, zero TCP
+ * payload length , TCP flags or not supported tunnel header options.
+ */
 	ETH_AGG_END_NON_TPA_SEG,
 	MAX_ETH_TPA_END_REASON
 };
@@ -462,6 +525,8 @@ struct eth_tx_1st_bd {
 	struct eth_tx_data_1st_bd data /* Parsing information data. */;
 };
 
+
+
 /*
  * The second tx bd of a given packet
  */
@@ -471,21 +536,29 @@ struct eth_tx_2nd_bd {
 	struct eth_tx_data_2nd_bd data /* Parsing information data. */;
 };
 
+
 /*
  * The parsing information data for the third tx bd of a given packet.
  */
 struct eth_tx_data_3rd_bd {
 	__le16 lso_mss /* For LSO packet - the MSS in bytes. */;
 	__le16 bitfields;
+/* For LSO with inner/outer IPv6+ext - TCP header length (in 4-byte WORDs) */
 #define ETH_TX_DATA_3RD_BD_TCP_HDR_LEN_DW_MASK  0xF
 #define ETH_TX_DATA_3RD_BD_TCP_HDR_LEN_DW_SHIFT 0
+/* LSO - number of BDs which contain headers. value should be in range
+ * (1..ETH_TX_MAX_LSO_HDR_NBD).
+ */
 #define ETH_TX_DATA_3RD_BD_HDR_NBD_MASK         0xF
 #define ETH_TX_DATA_3RD_BD_HDR_NBD_SHIFT        4
+/* Should be 0 in all the BDs, except the first one. (for debug) */
 #define ETH_TX_DATA_3RD_BD_START_BD_MASK        0x1
 #define ETH_TX_DATA_3RD_BD_START_BD_SHIFT       8
 #define ETH_TX_DATA_3RD_BD_RESERVED0_MASK       0x7F
 #define ETH_TX_DATA_3RD_BD_RESERVED0_SHIFT      9
+/* For tunnel with IPv6+ext - Pointer to tunnel L4 Header (in 2-byte WORDs) */
 	u8 tunn_l4_hdr_start_offset_w;
+/* For tunnel with IPv6+ext - Total size of Tunnel Header (in 2-byte WORDs) */
 	u8 tunn_hdr_size_w;
 };
 
@@ -498,6 +571,7 @@ struct eth_tx_3rd_bd {
 	struct eth_tx_data_3rd_bd data /* Parsing information data. */;
 };
 
+
 /*
  * Complementary information for the regular tx bd of a given packet.
  */
@@ -506,6 +580,7 @@ struct eth_tx_data_bd {
 	__le16 bitfields;
 #define ETH_TX_DATA_BD_RESERVED1_MASK  0xFF
 #define ETH_TX_DATA_BD_RESERVED1_SHIFT 0
+/* Should be 0 in all the BDs, except the first one. (for debug) */
 #define ETH_TX_DATA_BD_START_BD_MASK   0x1
 #define ETH_TX_DATA_BD_START_BD_SHIFT  8
 #define ETH_TX_DATA_BD_RESERVED2_MASK  0x7F
@@ -522,13 +597,19 @@ struct eth_tx_bd {
 	struct eth_tx_data_bd data /* Complementary information. */;
 };
 
+
 union eth_tx_bd_types {
 	struct eth_tx_1st_bd first_bd /* The first tx bd of a given packet */;
-	struct eth_tx_2nd_bd second_bd /* The second tx bd of a given packet */
-	  ;
+/* The second tx bd of a given packet */
+	struct eth_tx_2nd_bd second_bd;
 	struct eth_tx_3rd_bd third_bd /* The third tx bd of a given packet */;
 	struct eth_tx_bd reg_bd /* The common non-special bd */;
 };
+
+
+
+
+
 
 /*
  * Eth Tx Tunnel Type
@@ -546,26 +627,31 @@ enum eth_tx_tunn_type {
  * Ystorm Queue Zone
  */
 struct xstorm_eth_queue_zone {
-	struct coalescing_timeset int_coalescing_timeset
-	    /* Tx interrupt coalescing TimeSet */;
+/* Tx interrupt coalescing TimeSet */
+	struct coalescing_timeset int_coalescing_timeset;
 	u8 reserved[7];
 };
+
 
 /*
  * ETH doorbell data
  */
 struct eth_db_data {
 	u8 params;
+/* destination of doorbell (use enum db_dest) */
 #define ETH_DB_DATA_DEST_MASK         0x3
 #define ETH_DB_DATA_DEST_SHIFT        0
+/* aggregative command to CM (use enum db_agg_cmd_sel) */
 #define ETH_DB_DATA_AGG_CMD_MASK      0x3
 #define ETH_DB_DATA_AGG_CMD_SHIFT     2
-#define ETH_DB_DATA_BYPASS_EN_MASK    0x1
+#define ETH_DB_DATA_BYPASS_EN_MASK    0x1 /* enable QM bypass */
 #define ETH_DB_DATA_BYPASS_EN_SHIFT   4
 #define ETH_DB_DATA_RESERVED_MASK     0x1
 #define ETH_DB_DATA_RESERVED_SHIFT    5
+/* aggregative value selection */
 #define ETH_DB_DATA_AGG_VAL_SEL_MASK  0x3
 #define ETH_DB_DATA_AGG_VAL_SEL_SHIFT 6
+/* bit for every DQ counter flags in CM context that DQ can increment */
 	u8 agg_flags;
 	__le16 bd_prod;
 };

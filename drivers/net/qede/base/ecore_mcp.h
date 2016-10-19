@@ -30,19 +30,30 @@
 				  ecore_device_num_engines((_p_hwfn)->p_dev)))
 
 struct ecore_mcp_info {
-	osal_spinlock_t lock;	/* Spinlock used for accessing MCP mailbox */
+	/* Spinlock used for protecting the access to the MFW mailbox */
+	osal_spinlock_t lock;
 	/* Flag to indicate whether sending a MFW mailbox is forbidden */
 	bool block_mb_sending;
-	u32 public_base;	/* Address of the MCP public area */
-	u32 drv_mb_addr;	/* Address of the driver mailbox */
-	u32 mfw_mb_addr;	/* Address of the MFW mailbox */
-	u32 port_addr;		/* Address of the port configuration (link) */
-	u16 drv_mb_seq;		/* Current driver mailbox sequence */
-	u16 drv_pulse_seq;	/* Current driver pulse sequence */
-	struct ecore_mcp_link_params link_input;
-	struct ecore_mcp_link_state link_output;
+
+	/* Address of the MCP public area */
+	u32 public_base;
+	/* Address of the driver mailbox */
+	u32 drv_mb_addr;
+	/* Address of the MFW mailbox */
+	u32 mfw_mb_addr;
+	/* Address of the port configuration (link) */
+	u32 port_addr;
+
+	/* Current driver mailbox sequence */
+	u16 drv_mb_seq;
+	/* Current driver pulse sequence */
+	u16 drv_pulse_seq;
+
+	struct ecore_mcp_link_params       link_input;
+	struct ecore_mcp_link_state	   link_output;
 	struct ecore_mcp_link_capabilities link_capabilities;
-	struct ecore_mcp_function_info func_info;
+
+	struct ecore_mcp_function_info	   func_info;
 
 	u8 *mfw_mb_cur;
 	u8 *mfw_mb_shadow;

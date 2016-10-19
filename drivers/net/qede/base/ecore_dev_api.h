@@ -98,8 +98,8 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev);
 
 /**
  * @brief ecore_hw_stop_fastpath -should be called incase
- *        slowpath is still required for the device, but
- *        fastpath is not.
+ *        slowpath is still required for the device,
+ *        but fastpath is not.
  *
  * @param p_dev
  *
