@@ -173,12 +173,17 @@ int qede_reset_fp_rings(struct qede_dev *qdev);
 
 void qede_free_fp_arrays(struct qede_dev *qdev);
 
-void qede_free_mem_load(struct qede_dev *qdev);
+void qede_free_mem_load(struct rte_eth_dev *eth_dev);
 
 uint16_t qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 
 uint16_t qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
+
+/* Fastpath resource alloc/dealloc helpers */
+int qede_alloc_fp_resc(struct qede_dev *qdev);
+
+void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev);
 
 #endif /* _QEDE_RXTX_H_ */

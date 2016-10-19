@@ -348,52 +348,6 @@ static void qede_config_accept_any_vlan(struct qede_dev *qdev, bool action)
 	}
 }
 
-void qede_config_rx_mode(struct rte_eth_dev *eth_dev)
-{
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
-	/* TODO: - QED_FILTER_TYPE_UCAST */
-	enum qed_filter_rx_mode_type accept_flags =
-			QED_FILTER_RX_MODE_TYPE_REGULAR;
-	struct qed_filter_params rx_mode;
-	int rc;
-
-	/* Configure the struct for the Rx mode */
-	memset(&rx_mode, 0, sizeof(struct qed_filter_params));
-	rx_mode.type = QED_FILTER_TYPE_RX_MODE;
-
-	rc = qede_set_ucast_rx_mac(qdev, QED_FILTER_XCAST_TYPE_REPLACE,
-				   eth_dev->data->mac_addrs[0].addr_bytes);
-	if (rte_eth_promiscuous_get(eth_dev->data->port_id) == 1) {
-		accept_flags = QED_FILTER_RX_MODE_TYPE_PROMISC;
-	} else {
-		rc = qede_set_ucast_rx_mac(qdev, QED_FILTER_XCAST_TYPE_ADD,
-					   eth_dev->data->
-					   mac_addrs[0].addr_bytes);
-		if (rc) {
-			DP_ERR(edev, "Unable to add filter\n");
-			return;
-		}
-	}
-
-	/* take care of VLAN mode */
-	if (rte_eth_promiscuous_get(eth_dev->data->port_id) == 1) {
-		qede_config_accept_any_vlan(qdev, true);
-	} else if (!qdev->non_configured_vlans) {
-		/* If we dont have non-configured VLANs and promisc
-		 * is not set, then check if we need to disable
-		 * accept_any_vlan mode.
-		 * Because in this case, accept_any_vlan mode is set
-		 * as part of IFF_RPOMISC flag handling.
-		 */
-		qede_config_accept_any_vlan(qdev, false);
-	}
-	rx_mode.filter.accept_flags = accept_flags;
-	rc = qdev->ops->filter_config(edev, &rx_mode);
-	if (rc)
-		DP_ERR(edev, "Filter config failed rc=%d\n", rc);
-}
-
 static int qede_vlan_stripping(struct rte_eth_dev *eth_dev, bool set_stripping)
 {
 	struct qed_update_vport_params vport_update_params;
@@ -488,11 +442,39 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
+static int qede_init_vport(struct qede_dev *qdev)
+{
+	struct ecore_dev *edev = &qdev->edev;
+	struct qed_start_vport_params start = {0};
+	int rc;
+
+	start.remove_inner_vlan = 1;
+	start.gro_enable = 0;
+	start.mtu = ETHER_MTU + QEDE_ETH_OVERHEAD;
+	start.vport_id = 0;
+	start.drop_ttl0 = false;
+	start.clear_stats = 1;
+	start.handle_ptp_pkts = 0;
+
+	rc = qdev->ops->vport_start(edev, &start);
+	if (rc) {
+		DP_ERR(edev, "Start V-PORT failed %d\n", rc);
+		return rc;
+	}
+
+	DP_INFO(edev,
+		"Start vport ramrod passed, vport_id = %d, MTU = %u\n",
+		start.vport_id, ETHER_MTU);
+
+	return 0;
+}
+
 static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+	int rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -517,11 +499,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	qdev->fp_num_rx = eth_dev->data->nb_rx_queues;
 	qdev->num_queues = qdev->fp_num_tx + qdev->fp_num_rx;
 
-	/* Initial state */
-	qdev->state = QEDE_CLOSE;
-
 	/* Sanity checks and throw warnings */
-
 	if (rxmode->enable_scatter == 1) {
 		DP_ERR(edev, "RX scatter packets is not supported\n");
 		return -EINVAL;
@@ -539,16 +517,33 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		DP_INFO(edev, "IP/UDP/TCP checksum offload is always enabled "
 			      "in hw\n");
 
+	/* Check for the port restart case */
+	if (qdev->state != QEDE_DEV_INIT) {
+		rc = qdev->ops->vport_stop(edev, 0);
+		if (rc != 0)
+			return rc;
+		qede_dealloc_fp_resc(eth_dev);
+	}
 
-	DP_INFO(edev, "Allocated %d RSS queues on %d TC/s\n",
-		QEDE_RSS_CNT(qdev), qdev->num_tc);
+	/* Fastpath status block should be initialized before sending
+	 * VPORT-START in the case of VF. Anyway, do it for both VF/PF.
+	 */
+	rc = qede_alloc_fp_resc(qdev);
+	if (rc != 0)
+		return rc;
 
-	DP_INFO(edev, "my_id %u rel_pf_id %u abs_pf_id %u"
-		" port %u first_on_engine %d\n",
-		edev->hwfns[0].my_id,
-		edev->hwfns[0].rel_pf_id,
-		edev->hwfns[0].abs_pf_id,
-		edev->hwfns[0].port_id, edev->hwfns[0].first_on_engine);
+	/* Issue VPORT-START with default config values to allow
+	 * other port configurations early on.
+	 */
+	rc = qede_init_vport(qdev);
+	if (rc != 0)
+		return rc;
+
+	/* Add primary mac for PF */
+	if (IS_PF(edev))
+		qede_mac_addr_set(eth_dev, &qdev->primary_mac);
+
+	qdev->state = QEDE_DEV_CONFIG;
 
 	return 0;
 }
@@ -719,8 +714,9 @@ static void qede_poll_sp_sb_cb(void *param)
 
 static void qede_dev_close(struct rte_eth_dev *eth_dev)
 {
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	int rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -729,16 +725,16 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	 * by the app without reconfiguration. However, in dev_close() we
 	 * can release all the resources and device can be brought up newly
 	 */
-	if (qdev->state != QEDE_STOP)
+	if (qdev->state != QEDE_DEV_STOP)
 		qede_dev_stop(eth_dev);
 	else
 		DP_INFO(edev, "Device is already stopped\n");
 
-	qede_free_mem_load(qdev);
+	rc = qdev->ops->vport_stop(edev, 0);
+	if (rc != 0)
+		DP_ERR(edev, "Failed to stop VPORT\n");
 
-	qede_free_fp_arrays(qdev);
-
-	qede_dev_set_link_state(eth_dev, false);
+	qede_dealloc_fp_resc(eth_dev);
 
 	qdev->ops->common->slowpath_stop(edev);
 
@@ -752,7 +748,7 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	if (edev->num_hwfns > 1)
 		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
 
-	qdev->state = QEDE_CLOSE;
+	qdev->state = QEDE_DEV_INIT; /* Go back to init state */
 }
 
 static void
@@ -1387,6 +1383,8 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		qede_print_adapter_info(adapter);
 		do_once = false;
 	}
+
+	adapter->state = QEDE_DEV_INIT;
 
 	DP_NOTICE(edev, false, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
 		  adapter->primary_mac.addr_bytes[0],

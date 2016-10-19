@@ -158,6 +158,8 @@ struct qed_eth_ops {
 
 	int (*fastpath_stop)(struct ecore_dev *edev);
 
+	void (*fastpath_start)(struct ecore_dev *edev);
+
 	void (*get_vport_stats)(struct ecore_dev *edev,
 				struct ecore_eth_stats *stats);
 

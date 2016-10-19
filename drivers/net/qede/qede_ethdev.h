@@ -109,10 +109,11 @@
 extern char fw_file[];
 
 /* Port/function states */
-enum dev_state {
-	QEDE_START,
-	QEDE_STOP,
-	QEDE_CLOSE
+enum qede_dev_state {
+	QEDE_DEV_INIT, /* Init the chip and Slowpath */
+	QEDE_DEV_CONFIG, /* Create Vport/Fastpath resources */
+	QEDE_DEV_START, /* Start RX/TX queues, enable traffic */
+	QEDE_DEV_STOP, /* Deactivate vport and stop traffic */
 };
 
 struct qed_int_param {
@@ -148,7 +149,7 @@ struct qede_dev {
 	uint8_t fp_num_tx;
 	uint8_t fp_num_rx;
 
-	enum dev_state state;
+	enum qede_dev_state state;
 
 	/* Vlans */
 	osal_list_t vlan_list;
@@ -165,6 +166,5 @@ struct qede_dev {
 int qed_fill_eth_dev_info(struct ecore_dev *edev,
 				 struct qed_dev_eth_info *info);
 int qede_dev_set_link_state(struct rte_eth_dev *eth_dev, bool link_up);
-void qede_config_rx_mode(struct rte_eth_dev *eth_dev);
 
 #endif /* _QEDE_ETHDEV_H_ */

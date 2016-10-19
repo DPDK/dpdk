@@ -40,8 +40,6 @@ qed_start_vport(struct ecore_dev *edev, struct qed_start_vport_params *p_params)
 			return rc;
 		}
 
-		ecore_hw_start_fastpath(p_hwfn);
-
 		DP_VERBOSE(edev, ECORE_MSG_SPQ,
 			   "Started V-PORT %d with MTU %d\n",
 			   p_params->vport_id, p_params->mtu);
@@ -295,6 +293,17 @@ static int qed_fastpath_stop(struct ecore_dev *edev)
 	return 0;
 }
 
+static void qed_fastpath_start(struct ecore_dev *edev)
+{
+	struct ecore_hwfn *p_hwfn;
+	int i;
+
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		ecore_hw_start_fastpath(p_hwfn);
+	}
+}
+
 static void
 qed_get_vport_stats(struct ecore_dev *edev, struct ecore_eth_stats *stats)
 {
@@ -444,6 +453,7 @@ static const struct qed_eth_ops qed_eth_ops_pass = {
 	INIT_STRUCT_FIELD(q_tx_stop, &qed_stop_txq),
 	INIT_STRUCT_FIELD(eth_cqe_completion, &qed_fp_cqe_completion),
 	INIT_STRUCT_FIELD(fastpath_stop, &qed_fastpath_stop),
+	INIT_STRUCT_FIELD(fastpath_start, &qed_fastpath_start),
 	INIT_STRUCT_FIELD(get_vport_stats, &qed_get_vport_stats),
 	INIT_STRUCT_FIELD(filter_config, &qed_configure_filter),
 };
