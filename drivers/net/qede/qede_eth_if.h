@@ -75,6 +75,7 @@ struct qed_update_vport_params {
 	uint8_t accept_any_vlan;
 	uint8_t update_rss_flg;
 	struct qed_update_vport_rss_params rss_params;
+	uint16_t mtu;
 };
 
 struct qed_start_vport_params {

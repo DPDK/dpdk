@@ -650,6 +650,8 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 
 	/* Prepare and send the vport enable */
 	memset(&vport_update_params, 0, sizeof(vport_update_params));
+	/* Update MTU via vport update */
+	vport_update_params.mtu = qdev->mtu;
 	vport_update_params.vport_id = 0;
 	vport_update_params.update_vport_active_flg = 1;
 	vport_update_params.vport_active_flg = 1;

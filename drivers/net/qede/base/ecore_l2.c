@@ -427,6 +427,11 @@ ecore_sp_vport_update(struct ecore_hwfn *p_hwfn,
 	ecore_sp_update_accept_mode(p_hwfn, p_ramrod, p_params->accept_flags);
 	ecore_sp_vport_update_sge_tpa(p_hwfn, p_ramrod,
 				      p_params->sge_tpa_params);
+	if (p_params->mtu) {
+		p_ramrod->common.update_mtu_flg = 1;
+		p_ramrod->common.mtu = OSAL_CPU_TO_LE16(p_params->mtu);
+	}
+
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }
 

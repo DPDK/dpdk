@@ -322,6 +322,10 @@ struct ecore_sp_vport_update_params {
 	struct ecore_rss_params	*rss_params;
 	struct ecore_filter_accept_flags accept_flags;
 	struct ecore_sge_tpa_params *sge_tpa_params;
+	/* MTU change - notice this requires the vport to be disabled.
+	 * If non-zero, value would be used.
+	 */
+	u16 mtu;
 };
 
 /**

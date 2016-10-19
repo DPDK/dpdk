@@ -92,6 +92,7 @@ qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
 	sp_params.accept_any_vlan = params->accept_any_vlan;
 	sp_params.update_accept_any_vlan_flg =
 	    params->update_accept_any_vlan_flg;
+	sp_params.mtu = params->mtu;
 
 	/* RSS - is a bit tricky, since upper-layer isn't familiar with hwfns.
 	 * We need to re-fix the rss values per engine for CMT.
