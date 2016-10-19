@@ -348,14 +348,16 @@ ecore_dcbx_copy_mib(struct ecore_hwfn *p_hwfn,
 		read_count++;
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
-			   "mib type = %d, try count = %d prefix seq num  = %d suffix seq num = %d\n",
+			   "mib type = %d, try count = %d prefix seq num  ="
+			   " %d suffix seq num = %d\n",
 			   type, read_count, prefix_seq_num, suffix_seq_num);
 	} while ((prefix_seq_num != suffix_seq_num) &&
 		 (read_count < ECORE_DCBX_MAX_MIB_READ_TRY));
 
 	if (read_count >= ECORE_DCBX_MAX_MIB_READ_TRY) {
 		DP_ERR(p_hwfn,
-		       "MIB read err, mib type = %d, try count = %d prefix seq num = %d suffix seq num = %d\n",
+		       "MIB read err, mib type = %d, try count ="
+		       " %d prefix seq num = %d suffix seq num = %d\n",
 		       type, read_count, prefix_seq_num, suffix_seq_num);
 		rc = ECORE_IO;
 	}

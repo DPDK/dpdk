@@ -68,7 +68,9 @@ void ecore_init_clear_rt_data(struct ecore_hwfn *p_hwfn);
  * @param rt_offset
  * @param val
  */
-void ecore_init_store_rt_reg(struct ecore_hwfn *p_hwfn, u32 rt_offset, u32 val);
+void ecore_init_store_rt_reg(struct ecore_hwfn *p_hwfn,
+			     u32               rt_offset,
+			     u32               val);
 
 #define STORE_RT_REG(hwfn, offset, val)				\
 	ecore_init_store_rt_reg(hwfn, offset, val)
@@ -87,7 +89,9 @@ void ecore_init_store_rt_reg(struct ecore_hwfn *p_hwfn, u32 rt_offset, u32 val);
 */
 
 void ecore_init_store_rt_agg(struct ecore_hwfn *p_hwfn,
-			     u32 rt_offset, u32 *val, osal_size_t size);
+			     u32               rt_offset,
+			     u32               *val,
+			     osal_size_t       size);
 
 #define STORE_RT_REG_AGG(hwfn, offset, val)			\
 	ecore_init_store_rt_agg(hwfn, offset, (u32 *)&val, sizeof(val))

@@ -24,7 +24,9 @@ struct ecore_tunn_start_params;
  * @param dp_ctx
  */
 void ecore_init_dp(struct ecore_dev *p_dev,
-		   u32 dp_module, u8 dp_level, void *dp_ctx);
+		   u32 dp_module,
+		   u8 dp_level,
+		   void *dp_ctx);
 
 /**
  * @brief ecore_init_struct - initialize the device structure to
@@ -172,7 +174,8 @@ struct ecore_ptt *ecore_ptt_acquire(struct ecore_hwfn *p_hwfn);
  * @param p_hwfn
  * @param p_ptt
  */
-void ecore_ptt_release(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
+void ecore_ptt_release(struct ecore_hwfn *p_hwfn,
+		       struct ecore_ptt *p_ptt);
 
 #ifndef __EXTRACT__LINUX__
 struct ecore_eth_stats {
@@ -290,7 +293,9 @@ enum _ecore_status_t
 ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
 		    struct ecore_ptt *p_ptt,
 		    u64 source_addr,
-		    u32 grc_addr, u32 size_in_dwords, u32 flags);
+		    u32 grc_addr,
+		    u32 size_in_dwords,
+		    u32 flags);
 
 /**
  * @brief ecore_dmae_grc2host - Read data from dmae data offset
@@ -306,7 +311,9 @@ enum _ecore_status_t
 ecore_dmae_grc2host(struct ecore_hwfn *p_hwfn,
 		    struct ecore_ptt *p_ptt,
 		    u32 grc_addr,
-		    dma_addr_t dest_addr, u32 size_in_dwords, u32 flags);
+		    dma_addr_t dest_addr,
+		    u32 size_in_dwords,
+		    u32 flags);
 
 /**
  * @brief ecore_dmae_host2host - copy data from to source address
@@ -324,7 +331,8 @@ ecore_dmae_host2host(struct ecore_hwfn *p_hwfn,
 		     struct ecore_ptt *p_ptt,
 		     dma_addr_t source_addr,
 		     dma_addr_t dest_addr,
-		     u32 size_in_dwords, struct ecore_dmae_params *p_params);
+		     u32 size_in_dwords,
+		     struct ecore_dmae_params *p_params);
 
 /**
  * @brief ecore_chain_alloc - Allocate and initialize a chain
@@ -344,7 +352,8 @@ ecore_chain_alloc(struct ecore_dev *p_dev,
 		  enum ecore_chain_mode mode,
 		  enum ecore_chain_cnt_type cnt_type,
 		  u32 num_elems,
-		  osal_size_t elem_size, struct ecore_chain *p_chain);
+		  osal_size_t elem_size,
+		  struct ecore_chain *p_chain);
 
 /**
  * @brief ecore_chain_free - Free chain DMA memory
@@ -352,7 +361,8 @@ ecore_chain_alloc(struct ecore_dev *p_dev,
  * @param p_hwfn
  * @param p_chain
  */
-void ecore_chain_free(struct ecore_dev *p_dev, struct ecore_chain *p_chain);
+void ecore_chain_free(struct ecore_dev *p_dev,
+		      struct ecore_chain *p_chain);
 
 /**
  * @@brief ecore_fw_l2_queue - Get absolute L2 queue ID
@@ -364,7 +374,8 @@ void ecore_chain_free(struct ecore_dev *p_dev, struct ecore_chain *p_chain);
  *  @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_fw_l2_queue(struct ecore_hwfn *p_hwfn,
-				       u16 src_id, u16 *dst_id);
+				       u16 src_id,
+				       u16 *dst_id);
 
 /**
  * @@brief ecore_fw_vport - Get absolute vport ID
@@ -376,7 +387,8 @@ enum _ecore_status_t ecore_fw_l2_queue(struct ecore_hwfn *p_hwfn,
  *  @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_fw_vport(struct ecore_hwfn *p_hwfn,
-				    u8 src_id, u8 *dst_id);
+				    u8 src_id,
+				    u8 *dst_id);
 
 /**
  * @@brief ecore_fw_rss_eng - Get absolute RSS engine ID
@@ -388,7 +400,8 @@ enum _ecore_status_t ecore_fw_vport(struct ecore_hwfn *p_hwfn,
  *  @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_fw_rss_eng(struct ecore_hwfn *p_hwfn,
-				      u8 src_id, u8 *dst_id);
+				      u8 src_id,
+				      u8 *dst_id);
 
 /**
  * @brief ecore_llh_add_mac_filter - configures a MAC filter in llh

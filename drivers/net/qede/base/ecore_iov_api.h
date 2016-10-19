@@ -53,6 +53,14 @@ struct ecore_mcp_link_capabilities;
 struct ecore_vf_acquire_sw_info {
 	u32 driver_version;
 	u8 os_type;
+
+	/* We have several close releases that all use ~same FW with different
+	 * versions [making it incompatible as the versioning scheme is still
+	 * tied directly to FW version], allow to override the checking. Only
+	 * those versions would actually support this feature [so it would not
+	 * break forward compatibility with newer HV drivers that are no longer
+	 * suited].
+	 */
 	bool override_fw_version;
 };
 
@@ -132,7 +140,8 @@ void ecore_iov_set_vf_to_disable(struct ecore_hwfn *p_hwfn,
  */
 enum _ecore_status_t ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
-					      u16 rel_vf_id, u16 num_rx_queues);
+					      u16 rel_vf_id,
+					      u16 num_rx_queues);
 
 /**
  * @brief ecore_iov_process_mbx_req - process a request received
@@ -143,7 +152,8 @@ enum _ecore_status_t ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
  * @param vfid
  */
 void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
-			       struct ecore_ptt *p_ptt, int vfid);
+			       struct ecore_ptt *p_ptt,
+			       int vfid);
 
 /**
  * @brief ecore_iov_release_hw_for_vf - called once upper layer
@@ -197,7 +207,8 @@ enum _ecore_status_t ecore_iov_vf_flr_cleanup(struct ecore_hwfn *p_hwfn,
  */
 enum _ecore_status_t
 ecore_iov_single_vf_flr_cleanup(struct ecore_hwfn *p_hwfn,
-				struct ecore_ptt *p_ptt, u16 rel_vf_id);
+				struct ecore_ptt *p_ptt,
+				u16 rel_vf_id);
 
 /**
  * @brief Update the bulletin with link information. Notice this does NOT
@@ -238,7 +249,8 @@ void ecore_iov_get_link(struct ecore_hwfn *p_hwfn,
  *
  * @return bool
  */
-bool ecore_iov_is_vf_pending_flr(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+bool ecore_iov_is_vf_pending_flr(struct ecore_hwfn *p_hwfn,
+				 u16 rel_vf_id);
 
 /**
  * @brief Check if given VF ID @vfid is valid
@@ -253,7 +265,8 @@ bool ecore_iov_is_vf_pending_flr(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
  * @return bool - true for valid VF ID
  */
 bool ecore_iov_is_valid_vfid(struct ecore_hwfn *p_hwfn,
-			     int rel_vf_id, bool b_enabled_only);
+			     int rel_vf_id,
+			     bool b_enabled_only);
 
 /**
  * @brief Get VF's public info structure
@@ -264,9 +277,9 @@ bool ecore_iov_is_valid_vfid(struct ecore_hwfn *p_hwfn,
  *
  * @return struct ecore_public_vf_info *
  */
-struct ecore_public_vf_info *ecore_iov_get_public_vf_info(struct ecore_hwfn
-							  *p_hwfn, u16 vfid,
-							  bool b_enabled_only);
+struct ecore_public_vf_info*
+ecore_iov_get_public_vf_info(struct ecore_hwfn *p_hwfn,
+			     u16 vfid, bool b_enabled_only);
 
 /**
  * @brief Set pending events bitmap for given @vfid
@@ -295,7 +308,8 @@ void ecore_iov_pf_get_and_clear_pending_events(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_iov_copy_vf_msg(struct ecore_hwfn *p_hwfn,
-					   struct ecore_ptt *ptt, int vfid);
+					   struct ecore_ptt *ptt,
+					   int vfid);
 /**
  * @brief Set forced MAC address in PFs copy of bulletin board
  *        and configures FW/HW to support the configuration.
@@ -342,7 +356,9 @@ void ecore_iov_bulletin_set_forced_vlan(struct ecore_hwfn *p_hwfn,
  */
 enum _ecore_status_t
 ecore_iov_bulletin_set_forced_untagged_default(struct ecore_hwfn *p_hwfn,
-					       bool b_untagged_only, int vfid);
+					       bool b_untagged_only,
+					       int vfid);
+
 /**
  * @brief Get VFs opaque fid.
  *
@@ -486,7 +502,8 @@ u32 ecore_iov_pfvf_msg_length(void);
  *
  * @return OSAL_NULL if mac isn't forced; Otherwise, returns MAC.
  */
-u8 *ecore_iov_bulletin_get_forced_mac(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+u8 *ecore_iov_bulletin_get_forced_mac(struct ecore_hwfn *p_hwfn,
+				      u16 rel_vf_id);
 
 /**
  * @brief Returns pvid if one is configured
@@ -535,7 +552,8 @@ enum _ecore_status_t ecore_iov_get_vf_stats(struct ecore_hwfn *p_hwfn,
  *
  * @return num of rxqs chains.
  */
-u8 ecore_iov_get_vf_num_rxqs(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+u8 ecore_iov_get_vf_num_rxqs(struct ecore_hwfn *p_hwfn,
+			     u16 rel_vf_id);
 
 /**
  * @brief - Retrieves num of active rxqs chains
@@ -545,7 +563,8 @@ u8 ecore_iov_get_vf_num_rxqs(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
  *
  * @return
  */
-u8 ecore_iov_get_vf_num_active_rxqs(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+u8 ecore_iov_get_vf_num_active_rxqs(struct ecore_hwfn *p_hwfn,
+				    u16 rel_vf_id);
 
 /**
  * @brief - Retrieves ctx pointer
@@ -555,7 +574,8 @@ u8 ecore_iov_get_vf_num_active_rxqs(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
  *
  * @return
  */
-void *ecore_iov_get_vf_ctx(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+void *ecore_iov_get_vf_ctx(struct ecore_hwfn *p_hwfn,
+			   u16 rel_vf_id);
 
 /**
  * @brief - Retrieves VF`s num sbs
@@ -565,7 +585,8 @@ void *ecore_iov_get_vf_ctx(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
  *
  * @return
  */
-u8 ecore_iov_get_vf_num_sbs(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+u8 ecore_iov_get_vf_num_sbs(struct ecore_hwfn *p_hwfn,
+			    u16 rel_vf_id);
 
 /**
  * @brief - Returm true if VF is waiting for acquire
@@ -575,7 +596,8 @@ u8 ecore_iov_get_vf_num_sbs(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
  *
  * @return
  */
-bool ecore_iov_is_vf_wait_for_acquire(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+bool ecore_iov_is_vf_wait_for_acquire(struct ecore_hwfn *p_hwfn,
+				      u16 rel_vf_id);
 
 /**
  * @brief - Returm true if VF is acquired but not initialized
@@ -596,7 +618,8 @@ bool ecore_iov_is_vf_acquired_not_initialized(struct ecore_hwfn *p_hwfn,
  *
  * @return
  */
-bool ecore_iov_is_vf_initialized(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+bool ecore_iov_is_vf_initialized(struct ecore_hwfn *p_hwfn,
+				 u16 rel_vf_id);
 
 /**
  * @brief - Get VF's vport min rate configured.

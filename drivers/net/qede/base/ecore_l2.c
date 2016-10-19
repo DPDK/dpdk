@@ -35,9 +35,9 @@ ecore_sp_eth_vport_start(struct ecore_hwfn *p_hwfn,
 {
 	struct vport_start_ramrod_data *p_ramrod = OSAL_NULL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
 	u8 abs_vport_id = 0;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	u16 rx_mode = 0;
 
 	rc = ecore_fw_vport(p_hwfn, p_params->vport_id, &abs_vport_id);
@@ -449,8 +449,8 @@ enum _ecore_status_t ecore_sp_vport_stop(struct ecore_hwfn *p_hwfn,
 	struct vport_stop_ramrod_data *p_ramrod;
 	struct ecore_sp_init_data init_data;
 	struct ecore_spq_entry *p_ent;
-	enum _ecore_status_t rc;
 	u8 abs_vport_id = 0;
+	enum _ecore_status_t rc;
 
 	if (IS_VF(p_hwfn->p_dev))
 		return ecore_vf_pf_vport_stop(p_hwfn);
@@ -703,10 +703,10 @@ ecore_sp_eth_rx_queues_update(struct ecore_hwfn *p_hwfn,
 {
 	struct rx_queue_update_ramrod_data *p_ramrod = OSAL_NULL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
 	struct ecore_hw_cid_data *p_rx_cid;
 	u16 qid, abs_rx_q_id = 0;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	u8 i;
 
 	if (IS_VF(p_hwfn->p_dev))
@@ -758,9 +758,9 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
 	struct ecore_hw_cid_data *p_rx_cid = &p_hwfn->p_rx_cids[rx_queue_id];
 	struct rx_queue_stop_ramrod_data *p_ramrod = OSAL_NULL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
 	u16 abs_rx_q_id = 0;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	if (IS_VF(p_hwfn->p_dev))
 		return ecore_vf_pf_rxq_stop(p_hwfn, rx_queue_id,
@@ -816,15 +816,16 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 			      u16 pbl_size,
 			      union ecore_qm_pq_params *p_pq_params)
 {
-	struct ecore_hw_cid_data *p_tx_cid = &p_hwfn->p_tx_cids[tx_queue_id];
 	struct tx_queue_start_ramrod_data *p_ramrod = OSAL_NULL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
+	struct ecore_hw_cid_data *p_tx_cid;
 	u16 pq_id, abs_tx_q_id = 0;
 	u8 abs_vport_id;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	/* Store information for the stop */
+	p_tx_cid = &p_hwfn->p_tx_cids[tx_queue_id];
 	p_tx_cid->cid = cid;
 	p_tx_cid->opaque_fid = opaque_fid;
 
@@ -908,7 +909,8 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "opaque_fid=0x%x, cid=0x%x, tx_qid=0x%x, vport_id=0x%x, sb_id=0x%x\n",
-		   opaque_fid, p_tx_cid->cid, tx_queue_id, vport_id, sb);
+		    opaque_fid, p_tx_cid->cid, tx_queue_id,
+		    vport_id, sb);
 
 	/* TODO - set tc in the pq_params for multi-cos */
 	rc = ecore_sp_eth_txq_start_ramrod(p_hwfn,
@@ -919,7 +921,9 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 					   abs_stats_id,
 					   sb,
 					   sb_index,
-					   pbl_addr, pbl_size, &pq_params);
+					   pbl_addr,
+					   pbl_size,
+					   &pq_params);
 
 	*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
 	    DB_ADDR(p_tx_cid->cid, DQ_DEMS_LEGACY);
@@ -1011,8 +1015,8 @@ ecore_filter_ucast_common(struct ecore_hwfn *p_hwfn,
 			  enum spq_mode comp_mode,
 			  struct ecore_spq_comp_cb *p_comp_data)
 {
-	struct vport_filter_update_ramrod_data *p_ramrod;
 	u8 vport_to_add_to = 0, vport_to_remove_from = 0;
+	struct vport_filter_update_ramrod_data *p_ramrod;
 	struct eth_filter_cmd *p_first_filter;
 	struct eth_filter_cmd *p_second_filter;
 	struct ecore_sp_init_data init_data;
@@ -1304,11 +1308,10 @@ ecore_sp_eth_filter_mcast(struct ecore_hwfn *p_hwfn,
 		    0, sizeof(p_ramrod->approx_mcast.bins));
 	OSAL_MEMSET(bins, 0, sizeof(unsigned long) *
 		    ETH_MULTICAST_MAC_BINS_IN_REGS);
-
-	if (p_filter_cmd->opcode == ECORE_FILTER_ADD) {
 	/* filter ADD op is explicit set op and it removes
 	*  any existing filters for the vport.
 	*/
+	if (p_filter_cmd->opcode == ECORE_FILTER_ADD) {
 		for (i = 0; i < p_filter_cmd->num_mc_addrs; i++) {
 			u32 bit;
 

@@ -41,14 +41,18 @@
 #define ETH_NUM_VLAN_FILTERS                512
 
 /* approx. multicast constants */
+/* CRC seed for multicast bin calculation */
 #define ETH_MULTICAST_BIN_FROM_MAC_SEED     0
 #define ETH_MULTICAST_MAC_BINS              256
 #define ETH_MULTICAST_MAC_BINS_IN_REGS      (ETH_MULTICAST_MAC_BINS / 32)
 
 /*  ethernet vport update constants */
 #define ETH_FILTER_RULES_COUNT              10
+/* number of RSS indirection table entries, per Vport) */
 #define ETH_RSS_IND_TABLE_ENTRIES_NUM       128
+/* Length of RSS key (in regs) */
 #define ETH_RSS_KEY_SIZE_REGS               10
+/* number of available RSS engines in K2 */
 #define ETH_RSS_ENGINE_NUM_K2               207
 #define ETH_RSS_ENGINE_NUM_BB               127
 
@@ -156,10 +160,10 @@ struct eth_tx_data_2nd_bd {
  * Firmware data for L2-EDPM packet.
  */
 struct eth_edpm_fw_data {
-	struct eth_tx_data_1st_bd data_1st_bd
-	    /* Parsing information data from the 1st BD. */;
-	struct eth_tx_data_2nd_bd data_2nd_bd
-	    /* Parsing information data from the 2nd BD. */;
+/* Parsing information data from the 1st BD. */
+	struct eth_tx_data_1st_bd data_1st_bd;
+/* Parsing information data from the 2nd BD. */
+	struct eth_tx_data_2nd_bd data_2nd_bd;
 	__le32 reserved;
 };
 
@@ -348,7 +352,8 @@ enum eth_rx_cqe_type {
 };
 
 /*
- * Wrapp for PD RX CQE used in order to cover full cache line when writing CQE
+ * Wrapper for PD RX CQE - used in order to cover full cache line when writing
+ * CQE
  */
 struct eth_rx_pmd_cqe {
 	union eth_rx_cqe cqe /* CQE data itself */;

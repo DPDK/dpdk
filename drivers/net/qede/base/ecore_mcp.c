@@ -135,7 +135,8 @@ static enum _ecore_status_t ecore_load_mcp_offsets(struct ecore_hwfn *p_hwfn,
 						       PUBLIC_DRV_MB));
 	p_info->drv_mb_addr = SECTION_ADDR(drv_mb_offsize, mcp_pf_id);
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-		   "drv_mb_offsiz = 0x%x, drv_mb_addr = 0x%x mcp_pf_id = 0x%x\n",
+		   "drv_mb_offsiz = 0x%x, drv_mb_addr = 0x%x"
+		   " mcp_pf_id = 0x%x\n",
 		   drv_mb_offsize, p_info->drv_mb_addr, mcp_pf_id);
 
 	/* Set the MFW MB address */

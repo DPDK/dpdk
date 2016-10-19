@@ -944,7 +944,7 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 			 * previous assertion.
 			 */
 			for (j = 0, bit_idx = 0; bit_idx < 32; j++) {
-				unsigned long bitmask;
+				unsigned long int bitmask;
 				u8 bit, bit_len;
 
 				p_aeu = &sb_attn_sw->p_aeu_desc[i].bits[j];
@@ -1021,8 +1021,8 @@ static enum _ecore_status_t ecore_int_attentions(struct ecore_hwfn *p_hwfn)
 	struct ecore_sb_attn_info *p_sb_attn_sw = p_hwfn->p_sb_attn;
 	struct atten_status_block *p_sb_attn = p_sb_attn_sw->sb_attn;
 	u16 index = 0, asserted_bits, deasserted_bits;
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 attn_bits = 0, attn_acks = 0;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	/* Read current attention bits/acks - safeguard against attentions
 	 * by guaranting work on a synchronized timeframe
@@ -1162,6 +1162,7 @@ void ecore_int_sp_dpc(osal_int_ptr_t hwfn_cookie)
 	}
 
 /* Check the validity of the DPC ptt. If not ack interrupts and fail */
+
 	if (!p_hwfn->p_dpc_ptt) {
 		DP_NOTICE(p_hwfn->p_dev, true, "Failed to allocate PTT\n");
 		ecore_sb_ack(sb_info, IGU_INT_ENABLE, 1);
@@ -1582,7 +1583,7 @@ static enum _ecore_status_t ecore_int_sp_sb_alloc(struct ecore_hwfn *p_hwfn,
 	p_virt = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
 					 &p_phys, SB_ALIGNED_SIZE(p_hwfn));
 	if (!p_virt) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate status block");
+		DP_NOTICE(p_hwfn, true, "Failed to allocate status block\n");
 		OSAL_FREE(p_hwfn->p_dev, p_sb);
 		return ECORE_NOMEM;
 	}
@@ -1691,6 +1692,7 @@ static void ecore_int_igu_enable_attn(struct ecore_hwfn *p_hwfn,
 	ecore_wr(p_hwfn, p_ptt, IGU_REG_TRAILING_EDGE_LATCH, 0xfff);
 	ecore_wr(p_hwfn, p_ptt, IGU_REG_ATTENTION_ENABLE, 0xfff);
 
+	/* Flush the writes to IGU */
 	OSAL_MMIOWB(p_hwfn->p_dev);
 
 	/* Unmask AEU signals toward IGU */
@@ -1782,6 +1784,7 @@ void ecore_int_igu_cleanup_sb(struct ecore_hwfn *p_hwfn,
 
 	ecore_wr(p_hwfn, p_ptt, IGU_REG_COMMAND_REG_CTRL, cmd_ctrl);
 
+	/* Flush the write to IGU */
 	OSAL_MMIOWB(p_hwfn->p_dev);
 
 	/* calculate where to read the status bit from */

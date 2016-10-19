@@ -378,7 +378,7 @@ static void ecore_ilt_cli_blk_fill(struct ecore_ilt_client_cfg *p_cli,
 {
 	u32 ilt_size = ILT_PAGE_IN_BYTES(p_cli->p_size.val);
 
-	/* verfiy called once for each block */
+	/* verify that it's called once for each block */
 	if (p_blk->total_size)
 		return;
 
@@ -405,7 +405,8 @@ static void ecore_ilt_cli_adv_line(struct ecore_hwfn *p_hwfn,
 	p_cli->last.val = *p_line - 1;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_ILT,
-		   "ILT[Client %d] - Lines: [%08x - %08x]. Block - Size %08x [Real %08x] Start line %d\n",
+		   "ILT[Client %d] - Lines: [%08x - %08x]. Block - Size %08x"
+		   " [Real %08x] Start line %d\n",
 		   client_id, p_cli->first.val, p_cli->last.val,
 		   p_blk->total_size, p_blk->real_size_in_page,
 		   p_blk->start_line);
@@ -453,7 +454,7 @@ enum _ecore_status_t ecore_cxt_cfg_ilt_compute(struct ecore_hwfn *p_hwfn)
 	p_mngr->pf_start_line = RESC_START(p_hwfn, ECORE_ILT);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_ILT,
-		   "hwfn [%d] - Set context manager starting line to be 0x%08x\n",
+		   "hwfn [%d] - Set context mngr starting line to be 0x%08x\n",
 		   p_hwfn->my_id, p_hwfn->p_cxt_mngr->pf_start_line);
 
 	/* CDUC */
@@ -797,16 +798,20 @@ t2_fail:
 	return rc;
 }
 
+#define for_each_ilt_valid_client(pos, clients)		\
+	for (pos = 0; pos < ILT_CLI_MAX; pos++)		\
+		if (!clients[pos].active) {		\
+			continue;			\
+		} else					\
+
+
 /* Total number of ILT lines used by this PF */
 static u32 ecore_cxt_ilt_shadow_size(struct ecore_ilt_client_cfg *ilt_clients)
 {
 	u32 size = 0;
 	u32 i;
 
-	for (i = 0; i < ILT_CLI_MAX; i++)
-		if (!ilt_clients[i].active)
-			continue;
-		else
+	for_each_ilt_valid_client(i, ilt_clients)
 		size += (ilt_clients[i].last.val -
 			 ilt_clients[i].first.val + 1);
 
@@ -876,9 +881,9 @@ ecore_ilt_blk_alloc(struct ecore_hwfn *p_hwfn,
 		ilt_shadow[line].size = size;
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_ILT,
-			   "ILT shadow: Line [%d] Physical 0x%" PRIx64
+			   "ILT shadow: Line [%d] Physical 0x%lx"
 			   " Virtual %p Size %d\n",
-			   line, (u64)p_phys, p_virt, size);
+			   line, (unsigned long)p_phys, p_virt, size);
 
 		sz_left -= size;
 		line++;
@@ -892,15 +897,16 @@ static enum _ecore_status_t ecore_ilt_shadow_alloc(struct ecore_hwfn *p_hwfn)
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
 	struct ecore_ilt_client_cfg *clients = p_mngr->clients;
 	struct ecore_ilt_cli_blk *p_blk;
-	enum _ecore_status_t rc;
 	u32 size, i, j, k;
+	enum _ecore_status_t rc;
 
 	size = ecore_cxt_ilt_shadow_size(clients);
 	p_mngr->ilt_shadow = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
 					 size * sizeof(struct ecore_dma_mem));
 
 	if (!p_mngr->ilt_shadow) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate ilt shadow table");
+		DP_NOTICE(p_hwfn, true,
+			  "Failed to allocate ilt shadow table\n");
 		rc = ECORE_NOMEM;
 		goto ilt_shadow_fail;
 	}
@@ -909,10 +915,7 @@ static enum _ecore_status_t ecore_ilt_shadow_alloc(struct ecore_hwfn *p_hwfn)
 		   "Allocated 0x%x bytes for ilt shadow\n",
 		   (u32)(size * sizeof(struct ecore_dma_mem)));
 
-	for (i = 0; i < ILT_CLI_MAX; i++)
-		if (!clients[i].active) {
-			continue;
-		} else {
+	for_each_ilt_valid_client(i, clients) {
 		for (j = 0; j < ILT_CLI_PF_BLOCKS; j++) {
 			p_blk = &clients[i].pf_blks[j];
 			rc = ecore_ilt_blk_alloc(p_hwfn, p_blk, i, 0);
@@ -1362,10 +1365,7 @@ static void ecore_ilt_bounds_init(struct ecore_hwfn *p_hwfn)
 	int i;
 
 	ilt_clients = p_hwfn->p_cxt_mngr->clients;
-	for (i = 0; i < ILT_CLI_MAX; i++)
-		if (!ilt_clients[i].active) {
-			continue;
-		} else {
+	for_each_ilt_valid_client(i, ilt_clients) {
 		STORE_RT_REG(p_hwfn,
 			     ilt_clients[i].first.reg,
 			     ilt_clients[i].first.val);
@@ -1448,10 +1448,7 @@ static void ecore_ilt_init_pf(struct ecore_hwfn *p_hwfn)
 	p_shdw = p_mngr->ilt_shadow;
 	clients = p_hwfn->p_cxt_mngr->clients;
 
-	for (i = 0; i < ILT_CLI_MAX; i++)
-		if (!clients[i].active) {
-			continue;
-		} else {
+	for_each_ilt_valid_client(i, clients) {
 		/* Client's 1st val and RT array are absolute, ILT shadows'
 		 * lines are relative.
 		 */
@@ -1474,9 +1471,10 @@ static void ecore_ilt_init_pf(struct ecore_hwfn *p_hwfn)
 				DP_VERBOSE(p_hwfn, ECORE_MSG_ILT,
 					"Setting RT[0x%08x] from"
 					" ILT[0x%08x] [Client is %d] to"
-					" Physical addr: 0x%" PRIx64 "\n",
+					" Physical addr: 0x%lx\n",
 					rt_offst, line, i,
-					(u64)(p_shdw[line].p_phys >> 12));
+					(unsigned long)(p_shdw[line].
+							p_phys >> 12));
 			}
 
 			STORE_RT_REG_AGG(p_hwfn, rt_offst, ilt_hw_entry);
@@ -1557,7 +1555,7 @@ static void ecore_tm_init_pf(struct ecore_hwfn *p_hwfn)
 	SET_FIELD(cfg_word, TM_CFG_NUM_IDS, tm_iids.pf_cids);
 	SET_FIELD(cfg_word, TM_CFG_PRE_SCAN_OFFSET, 0);
 	SET_FIELD(cfg_word, TM_CFG_PARENT_PF, 0);	/* n/a for PF */
-	SET_FIELD(cfg_word, TM_CFG_CID_PRE_SCAN_ROWS, 0);
+	SET_FIELD(cfg_word, TM_CFG_CID_PRE_SCAN_ROWS, 0); /* scan all   */
 
 	rt_reg = TM_REG_CONFIG_CONN_MEM_RT_OFFSET +
 	    (sizeof(cfg_word) / sizeof(u32)) *
@@ -1650,7 +1648,7 @@ enum _ecore_status_t ecore_cxt_acquire_cid(struct ecore_hwfn *p_hwfn,
 					   p_mngr->acquired[type].max_count);
 
 	if (rel_cid >= p_mngr->acquired[type].max_count) {
-		DP_NOTICE(p_hwfn, false, "no CID available for protocol %d",
+		DP_NOTICE(p_hwfn, false, "no CID available for protocol %d\n",
 			  type);
 		return ECORE_NORESOURCES;
 	}

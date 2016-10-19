@@ -307,21 +307,23 @@ ecore_chain_advance_page(struct ecore_chain *p_chain, void **p_next_elem,
 	(((p)->u.chain32.idx & (p)->elem_per_page_mask) == (p)->usable_per_page)
 
 #define is_unusable_next_idx(p, idx)		\
-	((((p)->u.chain16.idx + 1) & (p)->elem_per_page_mask) == \
-	(p)->usable_per_page)
+	((((p)->u.chain16.idx + 1) &		\
+	(p)->elem_per_page_mask) == (p)->usable_per_page)
 
 #define is_unusable_next_idx_u32(p, idx)	\
-	((((p)->u.chain32.idx + 1) & (p)->elem_per_page_mask) \
-	== (p)->usable_per_page)
+	((((p)->u.chain32.idx + 1) &		\
+	(p)->elem_per_page_mask) == (p)->usable_per_page)
 
 #define test_and_skip(p, idx)						\
 	do {								\
 		if (is_chain_u16(p)) {					\
 			if (is_unusable_idx(p, idx))			\
-				(p)->u.chain16.idx += (p)->elem_unusable; \
+				(p)->u.chain16.idx +=			\
+					(p)->elem_unusable;		\
 		} else {						\
 			if (is_unusable_idx_u32(p, idx))		\
-				(p)->u.chain32.idx += (p)->elem_unusable; \
+				(p)->u.chain32.idx +=			\
+					(p)->elem_unusable;		\
 		}							\
 	} while (0)
 

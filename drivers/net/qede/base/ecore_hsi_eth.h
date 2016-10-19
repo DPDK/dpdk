@@ -872,7 +872,7 @@ struct eth_vport_tpa_param {
 	u8 tpa_ipv6_tunn_en_flg /* Enable TPA for IPv6 over tunnel */;
 	u8 tpa_pkt_split_flg;
 	u8 tpa_hdr_data_split_flg
-/* If set, put header of first TPA segment on bd and data on SGE */
+	    /* If set, put header of first TPA segment on bd and data on SGE */
 	   ;
 	u8 tpa_gro_consistent_flg
 	    /* If set, GRO data consistent will checked for TPA continue */;
@@ -882,10 +882,10 @@ struct eth_vport_tpa_param {
 	__le16 tpa_min_size_to_start
 	    /* minimum TCP payload size for a packet to start aggregation */;
 	__le16 tpa_min_size_to_cont
-/* minimum TCP payload size for a packet to continue aggregation */
+	    /* minimum TCP payload size for a packet to continue aggregation */
 	   ;
 	u8 max_buff_num
-/* maximal number of buffers that can be used for one aggregation */
+	    /* maximal number of buffers that can be used for one aggregation */
 	   ;
 	u8 reserved;
 };
@@ -998,7 +998,7 @@ struct rx_queue_start_ramrod_data {
 };
 
 /*
- * Ramrod data for rx queue start ramrod
+ * Ramrod data for rx queue stop ramrod
  */
 struct rx_queue_stop_ramrod_data {
 	__le16 rx_queue_id /* ID of RX queue */;

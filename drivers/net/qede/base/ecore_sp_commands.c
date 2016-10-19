@@ -323,11 +323,11 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 				       bool allow_npar_tx_switch)
 {
 	struct pf_start_ramrod_data *p_ramrod = OSAL_NULL;
-	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	u16 sb = ecore_int_get_sp_sb_id(p_hwfn);
 	u8 sb_index = p_hwfn->p_eq->eq_sb_index;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
+	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	u8 page_cnt;
 
 	/* update initial eq producer */
@@ -416,8 +416,8 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_sp_pf_update(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -445,8 +445,8 @@ ecore_sp_pf_update_tunn_cfg(struct ecore_hwfn *p_hwfn,
 			    struct ecore_spq_comp_cb *p_comp_data)
 {
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -484,9 +484,9 @@ ecore_sp_pf_update_tunn_cfg(struct ecore_hwfn *p_hwfn,
 
 enum _ecore_status_t ecore_sp_pf_stop(struct ecore_hwfn *p_hwfn)
 {
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -506,8 +506,8 @@ enum _ecore_status_t ecore_sp_pf_stop(struct ecore_hwfn *p_hwfn)
 enum _ecore_status_t ecore_sp_heartbeat_ramrod(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	struct ecore_sp_init_data init_data;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));

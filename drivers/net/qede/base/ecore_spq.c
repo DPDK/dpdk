@@ -157,7 +157,7 @@ static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 	rc = ecore_cxt_get_cid_info(p_hwfn, &cxt_info);
 
 	if (rc < 0) {
-		DP_NOTICE(p_hwfn, true, "Cannot find context info for cid=%d",
+		DP_NOTICE(p_hwfn, true, "Cannot find context info for cid=%d\n",
 			  p_spq->cid);
 		return;
 	}
@@ -352,7 +352,7 @@ struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 			      ECORE_CHAIN_CNT_TYPE_U16,
 			      num_elem,
 			      sizeof(union event_ring_element), &p_eq->chain)) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate eq chain");
+		DP_NOTICE(p_hwfn, true, "Failed to allocate eq chain\n");
 		goto eq_allocate_fail;
 	}
 
@@ -419,8 +419,8 @@ enum _ecore_status_t ecore_eth_cqe_completion(struct ecore_hwfn *p_hwfn,
  ***************************************************************************/
 void ecore_spq_setup(struct ecore_hwfn *p_hwfn)
 {
-	struct ecore_spq_entry *p_virt = OSAL_NULL;
 	struct ecore_spq *p_spq = p_hwfn->p_spq;
+	struct ecore_spq_entry *p_virt = OSAL_NULL;
 	dma_addr_t p_phys = 0;
 	u32 i, capacity;
 
@@ -475,7 +475,7 @@ enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
 	    OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(struct ecore_spq));
 	if (!p_spq) {
 		DP_NOTICE(p_hwfn, true,
-			  "Failed to allocate `struct ecore_spq'");
+			  "Failed to allocate `struct ecore_spq'\n");
 		return ECORE_NOMEM;
 	}
 
@@ -484,7 +484,7 @@ enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
 			ECORE_CHAIN_MODE_SINGLE, ECORE_CHAIN_CNT_TYPE_U16, 0,
 			/* N/A when the mode is SINGLE */
 			sizeof(struct slow_path_element), &p_spq->chain)) {
-		DP_NOTICE(p_hwfn, true, "Failed to allocate spq chain");
+		DP_NOTICE(p_hwfn, true, "Failed to allocate spq chain\n");
 		goto spq_allocate_fail;
 	}
 
@@ -745,7 +745,7 @@ enum _ecore_status_t ecore_spq_post(struct ecore_hwfn *p_hwfn,
 	if (p_hwfn->p_dev->recov_in_prog) {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ,
 			   "Recovery is in progress -> skip spq post"
-			   " [cmd %02x protocol %02x]",
+			   " [cmd %02x protocol %02x]\n",
 			   p_ent->elem.hdr.cmd_id, p_ent->elem.hdr.protocol_id);
 		/* Return success to let the flows to be completed successfully
 		 * w/o any error handling.

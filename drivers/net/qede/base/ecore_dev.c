@@ -323,8 +323,8 @@ enum _ecore_status_t ecore_qm_reconf(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt)
 {
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
-	enum _ecore_status_t rc;
 	bool b_rc;
+	enum _ecore_status_t rc;
 
 	/* qm_info is allocated in ecore_init_qm_info() which is already called
 	 * from ecore_resc_alloc() or previous call of ecore_qm_reconf().
@@ -467,12 +467,20 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 			goto alloc_no_mem;
 		p_hwfn->p_consq = p_consq;
 
+#ifdef CONFIG_ECORE_LL2
+		if (p_hwfn->using_ll2) {
+			p_ll2_info = ecore_ll2_alloc(p_hwfn);
+			if (!p_ll2_info)
+				goto alloc_no_mem;
+			p_hwfn->p_ll2_info = p_ll2_info;
+		}
+#endif
+
 		/* DMA info initialization */
 		rc = ecore_dmae_info_alloc(p_hwfn);
 		if (rc) {
 			DP_NOTICE(p_hwfn, true,
-				  "Failed to allocate memory for"
-				  " dmae_info structure\n");
+				  "Failed to allocate memory for dmae_info structure\n");
 			goto alloc_err;
 		}
 
@@ -480,7 +488,7 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 		rc = ecore_dcbx_info_alloc(p_hwfn);
 		if (rc) {
 			DP_NOTICE(p_hwfn, true,
-				  "Failed to allocate memory for dcbxstruct\n");
+				  "Failed to allocate memory for dcbx structure\n");
 			goto alloc_err;
 		}
 	}
@@ -558,9 +566,11 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn *p_hwfn,
 	command |= SDM_COMP_TYPE_AGG_INT << SDM_OP_GEN_COMP_TYPE_SHIFT;
 
 /* Make sure notification is not set before initiating final cleanup */
+
 	if (REG_RD(p_hwfn, addr)) {
 		DP_NOTICE(p_hwfn, false,
-			  "Unexpected; Found final cleanup notification "
+			  "Unexpected; Found final cleanup notification");
+		DP_NOTICE(p_hwfn, false,
 			  " before initiating final cleanup\n");
 		REG_WR(p_hwfn, addr, 0);
 	}
@@ -742,11 +752,11 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 						 int hw_mode)
 {
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	u8 vf_id, max_num_vfs;
 	u16 num_pfs, pf_id;
 	u32 concrete_fid;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	ecore_init_cau_rt_data(p_dev);
 
@@ -906,11 +916,15 @@ static void ecore_emul_link_init(struct ecore_hwfn *p_hwfn,
 		return;
 	}
 
+	/* XLPORT MAC MODE *//* 0 Quad, 4 Single... */
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLPORT_MODE_REG, (0x4 << 4) | 0x4, 1,
 			 port);
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLPORT_MAC_CONTROL, 0, 1, port);
+	/* XLMAC: SOFT RESET */
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLMAC_CTRL, 0x40, 0, port);
+	/* XLMAC: Port Speed >= 10Gbps */
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLMAC_MODE, 0x40, 0, port);
+	/* XLMAC: Max Size */
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLMAC_RX_MAX_SIZE, 0x3fff, 0, port);
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLMAC_TX_CTRL,
 			 0x01000000800ULL | (0xa << 12) | ((u64)1 << 38),
@@ -1103,13 +1117,12 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 		 bool b_hw_start,
 		 enum ecore_int_mode int_mode, bool allow_npar_tx_switch)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u8 rel_pf_id = p_hwfn->rel_pf_id;
 	u32 prs_reg;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u16 ctrl;
 	int pos;
 
-	/* ILT/DQ/CM/QM */
 	if (p_hwfn->mcp_info) {
 		struct ecore_mcp_function_info *p_info;
 
@@ -1344,6 +1357,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			if (rc)
 				break;
 
+#ifndef REAL_ASIC_ONLY
 			if (ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn)) {
 				struct init_nig_pri_tc_map_req tc_map;
 
@@ -1360,7 +1374,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 							  p_hwfn->p_main_ptt,
 							  &tc_map);
 			}
-			/* fallthrough */
+#endif
+			/* Fall into */
 		case FW_MSG_CODE_DRV_LOAD_FUNCTION:
 			rc = ecore_hw_init_pf(p_hwfn, p_hwfn->p_main_ptt,
 					      p_tunn, p_hwfn->hw_info.hw_mode,
@@ -1374,7 +1389,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 
 		if (rc != ECORE_SUCCESS)
 			DP_NOTICE(p_hwfn, true,
-				  "init phase failed loadcode 0x%x (rc %d)\n",
+				  "init phase failed for loadcode 0x%x (rc %d)\n",
 				  load_code, rc);
 
 		/* ACK mfw regardless of success or failure of initialization */
@@ -1391,8 +1406,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 
 		/* send DCBX attention request command */
 		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
-			   "sending phony dcbx set command to trigger DCBx"
-			   " attention handling\n");
+			   "sending phony dcbx set command to trigger DCBx attention handling\n");
 		mfw_rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
 				       DRV_MSG_CODE_SET_DCBX,
 				       1 << DRV_MB_PARAM_DCBX_NOTIFY_SHIFT,
@@ -1419,8 +1433,8 @@ static OSAL_INLINE void ecore_hw_timers_stop(struct ecore_dev *p_dev,
 	/* close timers */
 	ecore_wr(p_hwfn, p_ptt, TM_REG_PF_ENABLE_CONN, 0x0);
 	ecore_wr(p_hwfn, p_ptt, TM_REG_PF_ENABLE_TASK, 0x0);
-	for (i = 0; i < ECORE_HW_STOP_RETRY_LIMIT &&
-					!p_dev->recov_in_prog; i++) {
+	for (i = 0; i < ECORE_HW_STOP_RETRY_LIMIT && !p_dev->recov_in_prog;
+									i++) {
 		if ((!ecore_rd(p_hwfn, p_ptt,
 			       TM_REG_PF_SCAN_ACTIVE_CONN)) &&
 		    (!ecore_rd(p_hwfn, p_ptt, TM_REG_PF_SCAN_ACTIVE_TASK)))
@@ -1433,8 +1447,7 @@ static OSAL_INLINE void ecore_hw_timers_stop(struct ecore_dev *p_dev,
 	}
 	if (i == ECORE_HW_STOP_RETRY_LIMIT)
 		DP_NOTICE(p_hwfn, true,
-			  "Timers linear scans are not over"
-			  " [Connection %02x Tasks %02x]\n",
+			  "Timers linear scans are not over [Connection %02x Tasks %02x]\n",
 			  (u8)ecore_rd(p_hwfn, p_ptt,
 					TM_REG_PF_SCAN_ACTIVE_CONN),
 			  (u8)ecore_rd(p_hwfn, p_ptt,
@@ -1475,9 +1488,7 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		rc = ecore_sp_pf_stop(p_hwfn);
 		if (rc)
 			DP_NOTICE(p_hwfn, true,
-				  "Failed to close PF against FW. Continue to"
-				  " stop HW to prevent illegal host access"
-				  " by the device\n");
+				  "Failed to close PF against FW. Continue to stop HW to prevent illegal host access by the device\n");
 
 		/* perform debug action after PF stop was sent */
 		OSAL_AFTER_PF_STOP((void *)p_hwfn->p_dev, p_hwfn->my_id);
@@ -1938,8 +1949,7 @@ static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	link->loopback_mode = 0;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
-		   "Read default link: Speed 0x%08x, Adv. Speed 0x%08x,"
-		   " AN: 0x%02x, PAUSE AN: 0x%02x\n",
+		   "Read default link: Speed 0x%08x, Adv. Speed 0x%08x, AN: 0x%02x, PAUSE AN: 0x%02x\n",
 		   link->speed.forced_speed, link->speed.advertised_speeds,
 		   link->speed.autoneg, link->pause.autoneg);
 
@@ -2217,8 +2227,7 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 					   MISCS_REG_CHIP_METAL);
 	MASK_FIELD(CHIP_METAL, p_dev->chip_metal);
 	DP_INFO(p_dev->hwfns,
-		"Chip details - %s%d, Num: %04x Rev: %04x Bond id: %04x"
-		" Metal: %04x\n",
+		"Chip details - %s%d, Num: %04x Rev: %04x Bond id: %04x Metal: %04x\n",
 		ECORE_IS_BB(p_dev) ? "BB" : "AH",
 		CHIP_REV_IS_A0(p_dev) ? 0 : 1,
 		p_dev->chip_num, p_dev->chip_rev, p_dev->chip_bond_id,
@@ -2527,8 +2536,7 @@ ecore_chain_alloc_sanity_check(struct ecore_dev *p_dev,
 	    (cnt_type == ECORE_CHAIN_CNT_TYPE_U32 &&
 	     chain_size > ECORE_U32_MAX)) {
 		DP_NOTICE(p_dev, true,
-			  "The actual chain size (0x%lx) is larger than"
-			  " the maximal possible value\n",
+			  "The actual chain size (0x%lx) is larger than the maximal possible value\n",
 			  (unsigned long)chain_size);
 		return ECORE_INVAL;
 	}
@@ -2706,8 +2714,7 @@ enum _ecore_status_t ecore_fw_l2_queue(struct ecore_hwfn *p_hwfn,
 		min = (u16)RESC_START(p_hwfn, ECORE_L2_QUEUE);
 		max = min + RESC_NUM(p_hwfn, ECORE_L2_QUEUE);
 		DP_NOTICE(p_hwfn, true,
-			  "l2_queue id [%d] is not valid, available"
-			  " indices [%d - %d]\n",
+			  "l2_queue id [%d] is not valid, available indices [%d - %d]\n",
 			  src_id, min, max);
 
 		return ECORE_INVAL;
@@ -2727,8 +2734,7 @@ enum _ecore_status_t ecore_fw_vport(struct ecore_hwfn *p_hwfn,
 		min = (u8)RESC_START(p_hwfn, ECORE_VPORT);
 		max = min + RESC_NUM(p_hwfn, ECORE_VPORT);
 		DP_NOTICE(p_hwfn, true,
-			  "vport id [%d] is not valid, available"
-			  " indices [%d - %d]\n",
+			  "vport id [%d] is not valid, available indices [%d - %d]\n",
 			  src_id, min, max);
 
 		return ECORE_INVAL;
@@ -2748,7 +2754,7 @@ enum _ecore_status_t ecore_fw_rss_eng(struct ecore_hwfn *p_hwfn,
 		min = (u8)RESC_START(p_hwfn, ECORE_RSS_ENG);
 		max = min + RESC_NUM(p_hwfn, ECORE_RSS_ENG);
 		DP_NOTICE(p_hwfn, true,
-			  "rss_eng id [%d] is not valid,avail idx [%d - %d]\n",
+			  "rss_eng id [%d] is not valid, available indices [%d - %d]\n",
 			  src_id, min, max);
 
 		return ECORE_INVAL;
@@ -3333,7 +3339,7 @@ int ecore_configure_vport_wfq(struct ecore_dev *p_dev, u16 vp_id, u32 rate)
 	/* TBD - for multiple hardware functions - that is 100 gig */
 	if (p_dev->num_hwfns > 1) {
 		DP_NOTICE(p_dev, false,
-			  "WFQ configuration is not supported for this dev\n");
+			  "WFQ configuration is not supported for this device\n");
 		return rc;
 	}
 
@@ -3367,7 +3373,7 @@ void ecore_configure_vp_wfq_on_link_change(struct ecore_dev *p_dev,
 	/* TBD - for multiple hardware functions - that is 100 gig */
 	if (p_dev->num_hwfns > 1) {
 		DP_VERBOSE(p_dev, ECORE_MSG_LINK,
-			   "WFQ configuration is not supported for this dev\n");
+			   "WFQ configuration is not supported for this device\n");
 		return;
 	}
 

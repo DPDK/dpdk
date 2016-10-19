@@ -152,6 +152,7 @@ enum _ecore_status_t ecore_cxt_free_proto_ilt(struct ecore_hwfn *p_hwfn,
 #define ECORE_CTX_FL_MEM 1
 enum _ecore_status_t ecore_cxt_get_task_ctx(struct ecore_hwfn *p_hwfn,
 					    u32 tid,
-					    u8 ctx_type, void **task_ctx);
+					    u8 ctx_type,
+					    void **task_ctx);
 
 #endif /* _ECORE_CID_ */

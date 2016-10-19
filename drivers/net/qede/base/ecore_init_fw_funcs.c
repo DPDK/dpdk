@@ -1099,6 +1099,8 @@ void ecore_init_brb_ram(struct ecore_hwfn *p_hwfn,
 			ecore_wr(p_hwfn, p_ptt,
 				 BRB_REG_MAIN_TC_GUARANTIED_HYST_0 + reg_offset,
 				 BRB_HYST_BLOCKS);
+/* init pause/full thresholds per physical TC - for loopback traffic */
+
 			ecore_wr(p_hwfn, p_ptt,
 				 BRB_REG_LB_TC_FULL_XOFF_THRESHOLD_0 +
 				 reg_offset, full_xoff_th);
@@ -1111,6 +1113,7 @@ void ecore_init_brb_ram(struct ecore_hwfn *p_hwfn,
 			ecore_wr(p_hwfn, p_ptt,
 				 BRB_REG_LB_TC_PAUSE_XON_THRESHOLD_0 +
 				 reg_offset, pause_xon_th);
+/* init pause/full thresholds per physical TC - for main traffic */
 			ecore_wr(p_hwfn, p_ptt,
 				 BRB_REG_MAIN_TC_FULL_XOFF_THRESHOLD_0 +
 				 reg_offset, full_xoff_th);

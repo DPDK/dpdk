@@ -94,7 +94,6 @@ static OSAL_INLINE u32 DB_ADDR(u32 cid, u32 DEMS)
 	return db_addr;
 }
 
-/* @DPDK: This is a backport from latest ecore for TSS fix */
 static OSAL_INLINE u32 DB_ADDR_VF(u32 cid, u32 DEMS)
 {
 	u32 db_addr = FIELD_VALUE(DB_LEGACY_ADDR_DEMS, DEMS) |
@@ -107,12 +106,14 @@ static OSAL_INLINE u32 DB_ADDR_VF(u32 cid, u32 DEMS)
 	((sizeof(type_name) + (u32)(1 << (p_hwfn->p_dev->cache_shift)) - 1) & \
 	 ~((1 << (p_hwfn->p_dev->cache_shift)) - 1))
 
+#ifndef LINUX_REMOVE
 #ifndef U64_HI
 #define U64_HI(val) ((u32)(((u64)(val))  >> 32))
 #endif
 
 #ifndef U64_LO
 #define U64_LO(val) ((u32)(((u64)(val)) & 0xffffffff))
+#endif
 #endif
 
 #ifndef __EXTRACT__LINUX__

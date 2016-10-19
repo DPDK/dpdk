@@ -137,7 +137,8 @@ ecore_filter_mcast_cmd(struct ecore_dev *p_dev,
 
 /* Set "accept" filters */
 enum _ecore_status_t
-ecore_filter_accept_cmd(struct ecore_dev *p_dev,
+ecore_filter_accept_cmd(
+	struct ecore_dev		 *p_dev,
 	u8				 vport,
 	struct ecore_filter_accept_flags accept_flags,
 	u8				 update_accept_any_vlan,
@@ -204,7 +205,8 @@ enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t
 ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
 			   u16 rx_queue_id,
-			   bool eq_completion_only, bool cqe_completion);
+			   bool eq_completion_only,
+			   bool cqe_completion);
 
 /**
  * @brief ecore_sp_eth_tx_queue_start - TX Queue Start Ramrod
@@ -351,7 +353,8 @@ ecore_sp_vport_update(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_sp_vport_stop(struct ecore_hwfn *p_hwfn,
-					 u16 opaque_fid, u8 vport_id);
+					 u16 opaque_fid,
+					 u8 vport_id);
 
 enum _ecore_status_t
 ecore_sp_eth_filter_ucast(struct ecore_hwfn *p_hwfn,

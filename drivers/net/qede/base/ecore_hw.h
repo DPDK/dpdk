@@ -105,7 +105,8 @@ void ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn);
  *
  * @return u32
  */
-u32 ecore_ptt_get_hw_addr(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
+u32 ecore_ptt_get_hw_addr(struct ecore_hwfn	*p_hwfn,
+			  struct ecore_ptt	*p_ptt);
 
 /**
  * @brief ecore_ptt_get_bar_addr - Get PPT's external BAR address
@@ -125,7 +126,8 @@ u32 ecore_ptt_get_bar_addr(struct ecore_ptt	*p_ptt);
  * @param p_ptt
  */
 void ecore_ptt_set_win(struct ecore_hwfn	*p_hwfn,
-		       struct ecore_ptt *p_ptt, u32 new_hw_addr);
+		       struct ecore_ptt		*p_ptt,
+		       u32			new_hw_addr);
 
 /**
  * @brief ecore_get_reserved_ptt - Get a specific reserved PTT
@@ -147,7 +149,9 @@ struct ecore_ptt *ecore_get_reserved_ptt(struct ecore_hwfn	*p_hwfn,
  * @param hw_addr
  */
 void ecore_wr(struct ecore_hwfn	*p_hwfn,
-	      struct ecore_ptt *p_ptt, u32 hw_addr, u32 val);
+	      struct ecore_ptt	*p_ptt,
+	      u32		hw_addr,
+	      u32		val);
 
 /**
  * @brief ecore_rd - Read value from BAR using the given ptt
@@ -157,7 +161,9 @@ void ecore_wr(struct ecore_hwfn	*p_hwfn,
  * @param val
  * @param hw_addr
  */
-u32 ecore_rd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt, u32 hw_addr);
+u32 ecore_rd(struct ecore_hwfn	*p_hwfn,
+	     struct ecore_ptt	*p_ptt,
+	     u32		hw_addr);
 
 /**
  * @brief ecore_memcpy_from - copy n bytes from BAR using the given
@@ -171,7 +177,9 @@ u32 ecore_rd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt, u32 hw_addr);
  */
 void ecore_memcpy_from(struct ecore_hwfn	*p_hwfn,
 		       struct ecore_ptt		*p_ptt,
-		       void *dest, u32 hw_addr, osal_size_t n);
+		       void			*dest,
+		       u32			hw_addr,
+		       osal_size_t		n);
 
 /**
  * @brief ecore_memcpy_to - copy n bytes to BAR using the given
@@ -185,7 +193,9 @@ void ecore_memcpy_from(struct ecore_hwfn	*p_hwfn,
  */
 void ecore_memcpy_to(struct ecore_hwfn	*p_hwfn,
 		     struct ecore_ptt	*p_ptt,
-		     u32 hw_addr, void *src, osal_size_t n);
+		     u32		hw_addr,
+		     void		*src,
+		     osal_size_t	n);
 /**
  * @brief ecore_fid_pretend - pretend to another function when
  *        accessing the ptt window. There is no way to unpretend
@@ -198,7 +208,8 @@ void ecore_memcpy_to(struct ecore_hwfn	*p_hwfn,
  *            either pf / vf, port/path fields are don't care.
  */
 void ecore_fid_pretend(struct ecore_hwfn	*p_hwfn,
-		       struct ecore_ptt *p_ptt, u16 fid);
+		       struct ecore_ptt		*p_ptt,
+		       u16			fid);
 
 /**
  * @brief ecore_port_pretend - pretend to another port when
@@ -209,7 +220,8 @@ void ecore_fid_pretend(struct ecore_hwfn	*p_hwfn,
  * @param port_id - the port to pretend to
  */
 void ecore_port_pretend(struct ecore_hwfn	*p_hwfn,
-			struct ecore_ptt *p_ptt, u8 port_id);
+			struct ecore_ptt	*p_ptt,
+			u8			port_id);
 
 /**
  * @brief ecore_port_unpretend - cancel any previously set port
@@ -218,7 +230,8 @@ void ecore_port_pretend(struct ecore_hwfn	*p_hwfn,
  * @param p_hwfn
  * @param p_ptt
  */
-void ecore_port_unpretend(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
+void ecore_port_unpretend(struct ecore_hwfn	*p_hwfn,
+			  struct ecore_ptt	*p_ptt);
 
 /**
  * @brief ecore_vfid_to_concrete - build a concrete FID for a

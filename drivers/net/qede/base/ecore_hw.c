@@ -580,8 +580,8 @@ void ecore_dmae_info_free(struct ecore_hwfn *p_hwfn)
 
 static enum _ecore_status_t ecore_dmae_operation_wait(struct ecore_hwfn *p_hwfn)
 {
-	enum _ecore_status_t ecore_status = ECORE_SUCCESS;
 	u32 wait_cnt_limit = 10000, wait_cnt = 0;
+	enum _ecore_status_t ecore_status = ECORE_SUCCESS;
 
 #ifndef ASIC_ONLY
 	u32 factor = (CHIP_REV_IS_EMUL(p_hwfn->p_dev) ?
