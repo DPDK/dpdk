@@ -281,13 +281,6 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 	for (i = 0; i < num_ports; i++) {
 		p_qm_port = &qm_info->qm_port_params[i];
 		p_qm_port->active = 1;
-		/* @@@TMP - was NUM_OF_PHYS_TCS; Changed until dcbx will
-		 * be in place
-		 */
-		if (num_ports == 4)
-			p_qm_port->num_active_phys_tcs = 2;
-		else
-			p_qm_port->num_active_phys_tcs = 5;
 		p_qm_port->num_pbf_cmd_lines = PBF_MAX_CMD_LINES / num_ports;
 		p_qm_port->num_btb_blocks = BTB_MAX_BLOCKS / num_ports;
 	}
@@ -599,19 +592,15 @@ static void ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 {
 	int hw_mode = 0;
 
-	switch (ECORE_GET_TYPE(p_hwfn->p_dev)) {
-	case CHIP_BB_A0:
+	if (ECORE_IS_BB_A0(p_hwfn->p_dev)) {
 		hw_mode |= 1 << MODE_BB_A0;
-		break;
-	case CHIP_BB_B0:
+	} else if (ECORE_IS_BB_B0(p_hwfn->p_dev)) {
 		hw_mode |= 1 << MODE_BB_B0;
-		break;
-	case CHIP_K2:
+	} else if (ECORE_IS_AH(p_hwfn->p_dev)) {
 		hw_mode |= 1 << MODE_K2;
-		break;
-	default:
-		DP_NOTICE(p_hwfn, true, "Can't initialize chip ID %d\n",
-			  ECORE_GET_TYPE(p_hwfn->p_dev));
+	} else {
+		DP_NOTICE(p_hwfn, true, "Unknown chip type %#x\n",
+			  p_hwfn->p_dev->type);
 		return;
 	}
 
@@ -689,37 +678,6 @@ static void ecore_hw_init_chip(struct ecore_hwfn *p_hwfn,
 
 	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && ECORE_IS_AH(p_hwfn->p_dev))
 		ecore_wr(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV_2, 0x3ffffff);
-
-	/* initialize interrupt masks */
-	for (i = 0;
-	     i <
-	     attn_blocks[BLOCK_MISCS].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
-	     num_of_int_regs; i++)
-		ecore_wr(p_hwfn, p_ptt,
-			 attn_blocks[BLOCK_MISCS].
-			 chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].int_regs[i]->
-			 mask_addr, 0);
-
-	if (!CHIP_REV_IS_EMUL(p_hwfn->p_dev) || !ECORE_IS_AH(p_hwfn->p_dev))
-		ecore_wr(p_hwfn, p_ptt,
-			 attn_blocks[BLOCK_CNIG].
-			 chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].int_regs[0]->
-			 mask_addr, 0);
-	ecore_wr(p_hwfn, p_ptt,
-		 attn_blocks[BLOCK_PGLCS].
-		 chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].int_regs[0]->
-		 mask_addr, 0);
-	ecore_wr(p_hwfn, p_ptt,
-		 attn_blocks[BLOCK_CPMU].
-		 chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].int_regs[0]->
-		 mask_addr, 0);
-	/* Currently A0 and B0 interrupt bits are the same in pglue_b;
-	 * If this changes, need to set this according to chip type. <14/09/23>
-	 */
-	ecore_wr(p_hwfn, p_ptt,
-		 attn_blocks[BLOCK_PGLUE_B].
-		 chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].int_regs[0]->
-		 mask_addr, 0x80000);
 
 	/* initialize port mode to 4x10G_E (10G with 4x10 SERDES) */
 	/* CNIG_REG_NW_PORT_MODE is same for A0 and B0 */
@@ -1226,25 +1184,6 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 	 * OSAL_PCI_WRITE_CONFIG_WORD(p_hwfn->p_dev, pos + PCI_EXP_DEVCTL,
 	 *                           &ctrl);
 	 */
-
-#ifndef ASIC_ONLY
-	/*@@TMP - On B0 build 1, need to mask the datapath_registers parity */
-	if (CHIP_REV_IS_EMUL_B0(p_hwfn->p_dev) &&
-	    (p_hwfn->p_dev->chip_metal == 1)) {
-		u32 reg_addr, tmp;
-
-		reg_addr =
-		    attn_blocks[BLOCK_PGLUE_B].
-		    chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].prty_regs[0]->
-		    mask_addr;
-		DP_NOTICE(p_hwfn, false,
-			  "Masking datapath registers parity on"
-			  " B0 emulation [build 1]\n");
-		tmp = ecore_rd(p_hwfn, p_ptt, reg_addr);
-		tmp |= (1 << 0);	/* Was PRTY_MASK_DATAPATH_REGISTERS */
-		ecore_wr(p_hwfn, p_ptt, reg_addr, tmp);
-	}
-#endif
 
 	rc = ecore_hw_init_pf_doorbell_bar(p_hwfn, p_ptt);
 	if (rc)

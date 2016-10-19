@@ -575,7 +575,7 @@ enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
 
 	buf_hdr = (struct bin_buffer_hdr *)(uintptr_t)data;
 
-	offset = buf_hdr[BIN_BUF_FW_VER_INFO].offset;
+	offset = buf_hdr[BIN_BUF_INIT_FW_VER_INFO].offset;
 	fw->fw_ver_info = (struct fw_ver_info *)((uintptr_t)(data + offset));
 
 	offset = buf_hdr[BIN_BUF_INIT_CMD].offset;

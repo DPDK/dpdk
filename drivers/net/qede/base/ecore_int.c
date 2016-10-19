@@ -284,16 +284,7 @@ out:
 #define ECORE_PGLUE_ATTENTION_ILT_VALID (1 << 23)
 static enum _ecore_status_t ecore_pglub_rbc_attn_cb(struct ecore_hwfn *p_hwfn)
 {
-	u32 tmp, reg_addr;
-
-	reg_addr =
-	    attn_blocks[BLOCK_PGLUE_B].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
-	    int_regs[0]->mask_addr;
-
-	/* Mask unnecessary attentions -@TBD move to MFW */
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr);
-	tmp |= (1 << 19);	/* Was PGL_PCIE_ATTN */
-	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr, tmp);
+	u32 tmp;
 
 	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
 		       PGLUE_B_REG_TX_ERR_WR_DETAILS2);
@@ -404,32 +395,6 @@ static enum _ecore_status_t ecore_pglub_rbc_attn_cb(struct ecore_hwfn *p_hwfn)
 	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt,
 		 PGLUE_B_REG_LATCHED_ERRORS_CLR, (1 << 2));
 
-	return ECORE_SUCCESS;
-}
-
-static enum _ecore_status_t ecore_nig_attn_cb(struct ecore_hwfn *p_hwfn)
-{
-	u32 tmp, reg_addr;
-
-	/* Mask unnecessary attentions -@TBD move to MFW */
-	reg_addr =
-	    attn_blocks[BLOCK_NIG].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
-	    int_regs[3]->mask_addr;
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr);
-	tmp |= (1 << 0);	/* Was 3_P0_TX_PAUSE_TOO_LONG_INT */
-	tmp |= NIG_REG_INT_MASK_3_P0_LB_TC1_PAUSE_TOO_LONG_INT;
-	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr, tmp);
-
-	reg_addr =
-	    attn_blocks[BLOCK_NIG].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
-	    int_regs[5]->mask_addr;
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr);
-	tmp |= (1 << 0);	/* Was 5_P1_TX_PAUSE_TOO_LONG_INT */
-	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, reg_addr, tmp);
-
-	/* TODO - a bit risky to return success here; But alternative is to
-	 * actually read the multitdue of interrupt register of the block.
-	 */
 	return ECORE_SUCCESS;
 }
 
@@ -559,7 +524,7 @@ static struct aeu_invert_reg aeu_descs[NUM_ATTN_REGS] = {
 	  {"MSTAT per-path", ATTENTION_PAR_INT, OSAL_NULL, MAX_BLOCK_ID},
 	  {"Reserved %d", (6 << ATTENTION_LENGTH_SHIFT), OSAL_NULL,
 	   MAX_BLOCK_ID},
-	  {"NIG", ATTENTION_PAR_INT, ecore_nig_attn_cb, BLOCK_NIG},
+	  {"NIG", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_NIG},
 	  {"BMB/OPTE/MCP", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_BMB},
 	  {"BTB", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_BTB},
 	  {"BRB", ATTENTION_PAR_INT, OSAL_NULL, BLOCK_BRB},
@@ -839,43 +804,10 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 		rc = p_aeu->cb(p_hwfn);
 	}
 
-	/* Handle HW block interrupt registers */
-	if (p_aeu->block_index != MAX_BLOCK_ID) {
-		u16 chip_type = ECORE_GET_TYPE(p_hwfn->p_dev);
-		struct attn_hw_block *p_block;
-		int i;
-
-		p_block = &attn_blocks[p_aeu->block_index];
-
-		/* Handle each interrupt register */
-		for (i = 0;
-		     i < p_block->chip_regs[chip_type].num_of_int_regs; i++) {
-			struct attn_hw_reg *p_reg_desc;
-			u32 sts_addr;
-
-			p_reg_desc = p_block->chip_regs[chip_type].int_regs[i];
-
-			/* In case of fatal attention, don't clear the status
-			 * so it would appear in idle check.
-			 */
-			if (rc == ECORE_SUCCESS)
-				sts_addr = p_reg_desc->sts_clr_addr;
-			else
-				sts_addr = p_reg_desc->sts_addr;
-
-			val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, sts_addr);
-			mask = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-					p_reg_desc->mask_addr);
-			ecore_int_deassertion_print_bit(p_hwfn, p_reg_desc,
-							p_block,
-							ECORE_ATTN_TYPE_ATTN,
-							val, mask);
-
-#ifndef REMOVE_DBG
-			interrupts[i] = val;
-#endif
-		}
-	}
+	/* Print HW block interrupt registers */
+	if (p_aeu->block_index != MAX_BLOCK_ID)
+		DP_NOTICE(p_hwfn->p_dev, false, "[block_id %d type %d]\n",
+			  p_aeu->block_index, ATTN_TYPE_INTERRUPT);
 
 	/* Reach assertion if attention is fatal */
 	if (rc != ECORE_SUCCESS) {
@@ -905,33 +837,6 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-static void ecore_int_parity_print(struct ecore_hwfn *p_hwfn,
-				   struct aeu_invert_reg_bit *p_aeu,
-				   struct attn_hw_block *p_block, u8 bit_index)
-{
-	u16 chip_type = ECORE_GET_TYPE(p_hwfn->p_dev);
-	int i;
-
-	for (i = 0; i < p_block->chip_regs[chip_type].num_of_prty_regs; i++) {
-		struct attn_hw_reg *p_reg_desc;
-		u32 val, mask;
-
-		p_reg_desc = p_block->chip_regs[chip_type].prty_regs[i];
-
-		val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-			       p_reg_desc->sts_clr_addr);
-		mask = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-				p_reg_desc->mask_addr);
-		DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
-			   "%s[%d] - parity register[%d] is %08x [mask is %08x]\n",
-			   p_aeu->bit_name, bit_index, i, val, mask);
-		ecore_int_deassertion_print_bit(p_hwfn, p_reg_desc,
-						p_block,
-						ECORE_ATTN_TYPE_PARITY,
-						val, mask);
-	}
-}
-
 /**
  * @brief ecore_int_deassertion_parity - handle a single parity AEU source
  *
@@ -949,19 +854,15 @@ static void ecore_int_deassertion_parity(struct ecore_hwfn *p_hwfn,
 	DP_INFO(p_hwfn->p_dev, "%s[%d] parity attention is set\n",
 		p_aeu->bit_name, bit_index);
 
-	if (block_id != MAX_BLOCK_ID) {
-		ecore_int_parity_print(p_hwfn, p_aeu, &attn_blocks[block_id],
-				       bit_index);
+	if (block_id != MAX_BLOCK_ID)
+		return;
 
-		/* In A0, there's a single parity bit for several blocks */
-		if (block_id == BLOCK_BTB) {
-			ecore_int_parity_print(p_hwfn, p_aeu,
-					       &attn_blocks[BLOCK_OPTE],
-					       bit_index);
-			ecore_int_parity_print(p_hwfn, p_aeu,
-					       &attn_blocks[BLOCK_MCP],
-					       bit_index);
-		}
+	/* In A0, there's a single parity bit for several blocks */
+	if (block_id == BLOCK_BTB) {
+		DP_NOTICE(p_hwfn->p_dev, false, "[block_id %d type %d]\n",
+			  BLOCK_OPTE, ATTN_TYPE_PARITY);
+		DP_NOTICE(p_hwfn->p_dev, false, "[block_id %d type %d]\n",
+			  BLOCK_MCP, ATTN_TYPE_PARITY);
 	}
 }
 
@@ -1778,7 +1679,7 @@ ecore_int_igu_enable(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		     enum ecore_int_mode int_mode)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
-	u32 tmp, reg_addr;
+	u32 tmp;
 
 	/* @@@tmp - Mask General HW attentions 0-31, Enable 32-36 */
 	tmp = ecore_rd(p_hwfn, p_ptt, MISC_REG_AEU_ENABLE4_IGU_OUT_0);
@@ -1793,16 +1694,6 @@ ecore_int_igu_enable(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	tmp = ecore_rd(p_hwfn, p_ptt, MISC_REG_AEU_ENABLE4_IGU_OUT_0);
 	tmp &= ~0x800;
 	ecore_wr(p_hwfn, p_ptt, MISC_REG_AEU_ENABLE4_IGU_OUT_0, tmp);
-
-	/* @@@tmp - Mask interrupt sources - should move to init tool;
-	 * Also, correct for A0 [might still change in B0.
-	 */
-	reg_addr =
-	    attn_blocks[BLOCK_BRB].chip_regs[ECORE_GET_TYPE(p_hwfn->p_dev)].
-	    int_regs[0]->mask_addr;
-	tmp = ecore_rd(p_hwfn, p_ptt, reg_addr);
-	tmp |= (1 << 21);	/* Was PKT4_LEN_ERROR */
-	ecore_wr(p_hwfn, p_ptt, reg_addr, tmp);
 
 	ecore_int_igu_enable_attn(p_hwfn, p_ptt);
 

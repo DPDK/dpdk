@@ -12,7 +12,8 @@
 #include "reg_addr.h"
 #include "ecore_rt_defs.h"
 #include "ecore_hsi_common.h"
-#include "ecore_hsi_tools.h"
+#include "ecore_hsi_init_func.h"
+#include "ecore_hsi_init_tool.h"
 #include "ecore_init_fw_funcs.h"
 
 /* @DPDK CmInterfaceEnum */
@@ -187,7 +188,7 @@ static void ecore_cmdq_lines_rt_init(struct ecore_hwfn *p_hwfn,
 				     struct init_qm_port_params
 				     port_params[MAX_NUM_PORTS])
 {
-	u8 tc, voq, port_id;
+	u8 tc, voq, port_id, num_tcs_in_port;
 	bool eagle_workaround = ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn);
 	/* clear PBF lines for all VOQs */
 	for (voq = 0; voq < MAX_NUM_VOQS; voq++)
@@ -201,18 +202,22 @@ static void ecore_cmdq_lines_rt_init(struct ecore_hwfn *p_hwfn,
 			if (eagle_workaround)
 				phys_lines -= PBF_CMDQ_EAGLE_WORKAROUND_LINES;
 			/* find #lines per active physical TC */
-			phys_lines_per_tc =
-			    phys_lines /
-			    port_params[port_id].num_active_phys_tcs;
+			num_tcs_in_port = 0;
+			for (tc = 0; tc < NUM_OF_PHYS_TCS; tc++) {
+				if (((port_params[port_id].active_phys_tcs >>
+						tc) & 0x1) == 1)
+				num_tcs_in_port++;
+			}
+			phys_lines_per_tc = phys_lines / num_tcs_in_port;
 			/* init registers per active TC */
-			for (tc = 0;
-			     tc < port_params[port_id].num_active_phys_tcs;
-			     tc++) {
-				voq =
-				    PHYS_VOQ(port_id, tc,
-					     max_phys_tcs_per_port);
-				ecore_cmdq_lines_voq_rt_init(p_hwfn, voq,
-							     phys_lines_per_tc);
+			for (tc = 0; tc < NUM_OF_PHYS_TCS; tc++) {
+				if (((port_params[port_id].active_phys_tcs >>
+							tc) & 0x1) == 1) {
+					voq = PHYS_VOQ(port_id, tc,
+							max_phys_tcs_per_port);
+					ecore_cmdq_lines_voq_rt_init(p_hwfn,
+							voq, phys_lines_per_tc);
+				}
 			}
 			/* init registers for pure LB TC */
 			ecore_cmdq_lines_voq_rt_init(p_hwfn, LB_VOQ(port_id),
@@ -255,7 +260,7 @@ static void ecore_btb_blocks_rt_init(struct ecore_hwfn *p_hwfn,
 				     struct init_qm_port_params
 				     port_params[MAX_NUM_PORTS])
 {
-	u8 tc, voq, port_id;
+	u8 tc, voq, port_id, num_tcs_in_port;
 	u32 usable_blocks, pure_lb_blocks, phys_blocks;
 	bool eagle_workaround = ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn);
 	for (port_id = 0; port_id < max_ports_per_engine; port_id++) {
@@ -266,9 +271,15 @@ static void ecore_btb_blocks_rt_init(struct ecore_hwfn *p_hwfn,
 			    BTB_HEADROOM_BLOCKS;
 			if (eagle_workaround)
 				usable_blocks -= BTB_EAGLE_WORKAROUND_BLOCKS;
+
+			num_tcs_in_port = 0;
+			for (tc = 0; tc < NUM_OF_PHYS_TCS; tc++)
+				if (((port_params[port_id].active_phys_tcs >>
+								tc) & 0x1) == 1)
+					num_tcs_in_port++;
 			pure_lb_blocks =
 			    (usable_blocks * BTB_PURE_LB_FACTOR) /
-			    (port_params[port_id].num_active_phys_tcs *
+			    (num_tcs_in_port *
 			     BTB_PURE_LB_FACTOR + BTB_PURE_LB_RATIO);
 			pure_lb_blocks =
 			    OSAL_MAX_T(u32, BTB_JUMBO_PKT_BLOCKS,
@@ -276,17 +287,19 @@ static void ecore_btb_blocks_rt_init(struct ecore_hwfn *p_hwfn,
 			phys_blocks =
 			    (usable_blocks -
 			     pure_lb_blocks) /
-			    port_params[port_id].num_active_phys_tcs;
+			     num_tcs_in_port;
 			/* init physical TCs */
 			for (tc = 0;
-			     tc < port_params[port_id].num_active_phys_tcs;
+			     tc < NUM_OF_PHYS_TCS;
 			     tc++) {
-				voq =
-				    PHYS_VOQ(port_id, tc,
-					     max_phys_tcs_per_port);
-				STORE_RT_REG(p_hwfn,
+				if (((port_params[port_id].active_phys_tcs >>
+							 tc) & 0x1) == 1) {
+					voq = PHYS_VOQ(port_id, tc,
+							max_phys_tcs_per_port);
+					STORE_RT_REG(p_hwfn,
 					     PBF_BTB_GUARANTEED_RT_OFFSET(voq),
 					     phys_blocks);
+				}
 			}
 			/* init pure LB TC */
 			STORE_RT_REG(p_hwfn,
@@ -610,18 +623,6 @@ int ecore_qm_common_rt_init(struct ecore_hwfn *p_hwfn,
 	    (QM_OPPOR_PQ_EMPTY_DEF <<
 	     QM_RF_OPPORTUNISTIC_MASK_QUEUEEMPTY_SHIFT);
 	STORE_RT_REG(p_hwfn, QM_REG_AFULLOPRTNSTCCRDMASK_RT_OFFSET, mask);
-	/* check eagle workaround */
-	for (port_id = 0; port_id < max_ports_per_engine; port_id++) {
-		if (port_params[port_id].active &&
-		    port_params[port_id].num_active_phys_tcs >
-		    EAGLE_WORKAROUND_TC &&
-		    ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn)) {
-			DP_NOTICE(p_hwfn, true,
-				  "Can't config 8 TCs with Eagle"
-				  " eng1 workaround");
-			return -1;
-		}
-	}
 	/* enable/disable PF RL */
 	ecore_enable_pf_rl(p_hwfn, pf_rl_en);
 	/* enable/disable PF WFQ */

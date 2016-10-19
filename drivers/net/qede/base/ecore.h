@@ -10,7 +10,9 @@
 #define __ECORE_H
 
 #include "ecore_hsi_common.h"
-#include "ecore_hsi_tools.h"
+#include "ecore_hsi_debug_tools.h"
+#include "ecore_hsi_init_func.h"
+#include "ecore_hsi_init_tool.h"
 #include "ecore_proto_if.h"
 #include "mcp_public.h"
 
@@ -556,14 +558,15 @@ struct ecore_dev {
 #define ECORE_DEV_TYPE_AH	(1 << 0)
 /* Translate type/revision combo into the proper conditions */
 #define ECORE_IS_BB(dev)	((dev)->type == ECORE_DEV_TYPE_BB)
-#define ECORE_IS_BB_A0(dev)	(ECORE_IS_BB(dev) && \
-				 CHIP_REV_IS_A0(dev))
-#define ECORE_IS_BB_B0(dev)	(ECORE_IS_BB(dev) && \
-				 CHIP_REV_IS_B0(dev))
+#define ECORE_IS_BB_A0(dev)	(ECORE_IS_BB(dev) && CHIP_REV_IS_A0(dev))
+#ifndef ASIC_ONLY
+#define ECORE_IS_BB_B0(dev)	((ECORE_IS_BB(dev) && CHIP_REV_IS_B0(dev)) || \
+				 (CHIP_REV_IS_TEDIBEAR(dev)))
+#else
+#define ECORE_IS_BB_B0(dev)	(ECORE_IS_BB(dev) && CHIP_REV_IS_B0(dev))
+#endif
 #define ECORE_IS_AH(dev)	((dev)->type == ECORE_DEV_TYPE_AH)
 #define ECORE_IS_K2(dev)	ECORE_IS_AH(dev)
-#define ECORE_GET_TYPE(dev)	(ECORE_IS_BB_A0(dev) ? CHIP_BB_A0 : \
-				 ECORE_IS_BB_B0(dev) ? CHIP_BB_B0 : CHIP_K2)
 
 	u16 vendor_id;
 	u16 device_id;
