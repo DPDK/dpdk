@@ -27,6 +27,18 @@ enum ecore_rss_caps {
 #define ECORE_RSS_KEY_SIZE 10 /* size in 32b chunks */
 #endif
 
+struct ecore_queue_start_common_params {
+	/* Rx/Tx queue id */
+	u8 queue_id;
+	u8 vport_id;
+
+	/* stats_id is relative or absolute depends on function */
+	u8 stats_id;
+	u16 sb;
+	u16 sb_idx;
+	u16 vf_qid;
+};
+
 struct ecore_rss_params {
 	u8 update_rss_config;
 	u8 rss_enable;
@@ -154,14 +166,7 @@ ecore_filter_accept_cmd(
  *
  * @param p_hwfn
  * @param opaque_fid
- * @param rx_queue_id		RX Queue ID: Zero based, per VPort, allocated
- *				by assignment (=rssId)
- * @param vport_id		VPort ID
- * @param u8 stats_id		 VPort ID which the queue stats
- *				will be added to
- * @param sb			Status Block of the Function Event Ring
- * @param sb_index		Index into the status block of the
- *				Function Event Ring
+ * @p_params			[stats_id is relative, packed in p_params]
  * @param bd_max_bytes		Maximum bytes that can be placed on a BD
  * @param bd_chain_phys_addr	Physical address of BDs for receive.
  * @param cqe_pbl_addr		Physical address of the CQE PBL Table.
@@ -172,18 +177,15 @@ ecore_filter_accept_cmd(
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
-						 u16 opaque_fid,
-						 u8 rx_queue_id,
-						 u8 vport_id,
-						 u8 stats_id,
-						 u16 sb,
-						 u8 sb_index,
-						 u16 bd_max_bytes,
-						 dma_addr_t bd_chain_phys_addr,
-						 dma_addr_t cqe_pbl_addr,
-						 u16 cqe_pbl_size,
-						 void OSAL_IOMEM **pp_prod);
+enum _ecore_status_t
+ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
+			    u16 opaque_fid,
+			    struct ecore_queue_start_common_params *p_params,
+			    u16 bd_max_bytes,
+			    dma_addr_t bd_chain_phys_addr,
+			    dma_addr_t cqe_pbl_addr,
+			    u16 cqe_pbl_size,
+			    void OSAL_IOMEM * *pp_prod);
 
 /**
  * @brief ecore_sp_eth_rx_queue_stop -
@@ -216,13 +218,7 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
  *
  * @param p_hwfn
  * @param opaque_fid
- * @param tx_queue_id		TX Queue ID
- * @param vport_id		VPort ID
- * @param u8 stats_id		 VPort ID which the queue stats
- *				will be added to
- * @param sb			Status Block of the Function Event Ring
- * @param sb_index		Index into the status block of the Function
- *				Event Ring
+ * @p_params
  * @param tc			traffic class to use with this L2 txq
  * @param pbl_addr		address of the pbl array
  * @param pbl_size		number of entries in pbl
@@ -232,17 +228,14 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
-						 u16 opaque_fid,
-						 u16 tx_queue_id,
-						 u8 vport_id,
-						 u8 stats_id,
-						 u16 sb,
-						 u8 sb_index,
-						 u8 tc,
-						 dma_addr_t pbl_addr,
-						 u16 pbl_size,
-						 void OSAL_IOMEM **pp_doorbell);
+enum _ecore_status_t
+ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
+			    u16 opaque_fid,
+			    struct ecore_queue_start_common_params *p_params,
+			    u8 tc,
+			    dma_addr_t pbl_addr,
+			    u16 pbl_size,
+			    void OSAL_IOMEM * *pp_doorbell);
 
 /**
  * @brief ecore_sp_eth_tx_queue_stop -

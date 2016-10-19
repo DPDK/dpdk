@@ -133,9 +133,9 @@ struct qed_eth_ops {
 			    struct qed_update_vport_params *params);
 
 	int (*q_rx_start)(struct ecore_dev *cdev,
-			  uint8_t rss_id, uint8_t rx_queue_id,
-			  uint8_t vport_id, uint16_t sb,
-			  uint8_t sb_index, uint16_t bd_max_bytes,
+			  uint8_t rss_num,
+			  struct ecore_queue_start_common_params *p_params,
+			  uint16_t bd_max_bytes,
 			  dma_addr_t bd_chain_phys_addr,
 			  dma_addr_t cqe_pbl_addr,
 			  uint16_t cqe_pbl_size, void OSAL_IOMEM * *pp_prod);
@@ -144,9 +144,8 @@ struct qed_eth_ops {
 			 struct qed_stop_rxq_params *params);
 
 	int (*q_tx_start)(struct ecore_dev *edev,
-			  uint8_t rss_id, uint16_t tx_queue_id,
-			  uint8_t vport_id, uint16_t sb,
-			  uint8_t sb_index,
+			  uint8_t rss_num,
+			  struct ecore_queue_start_common_params *p_params,
 			  dma_addr_t pbl_addr,
 			  uint16_t pbl_size, void OSAL_IOMEM * *pp_doorbell);
 

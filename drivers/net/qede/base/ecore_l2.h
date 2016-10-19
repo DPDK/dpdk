@@ -40,11 +40,8 @@ ecore_sp_eth_vport_start(struct ecore_hwfn *p_hwfn,
  * @param p_hwfn
  * @param opaque_fid
  * @param cid
- * @param rx_queue_id
- * @param vport_id
- * @param stats_id
- * @param sb
- * @param sb_index
+ * @param p_params [queue_id, vport_id, stats_id, sb, sb_idx, vf_qid]
+	  stats_id is absolute packed in p_params.
  * @param bd_max_bytes
  * @param bd_chain_phys_addr
  * @param cqe_pbl_addr
@@ -57,12 +54,7 @@ enum _ecore_status_t
 ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn	*p_hwfn,
 			      u16 opaque_fid,
 			      u32 cid,
-			      u16 rx_queue_id,
-			      u8 vf_rx_queue_id,
-			      u8 vport_id,
-			      u8 stats_id,
-			      u16 sb,
-			      u8 sb_index,
+			      struct ecore_queue_start_common_params *p_params,
 			      u16 bd_max_bytes,
 			      dma_addr_t bd_chain_phys_addr,
 			      dma_addr_t cqe_pbl_addr,
@@ -74,12 +66,8 @@ ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn	*p_hwfn,
  *
  * @param p_hwfn
  * @param opaque_fid
- * @param tx_queue_id
  * @param cid
- * @param vport_id
- * @param stats_id
- * @param sb
- * @param sb_index
+ * @param p_params [queue_id, vport_id,stats_id, sb, sb_idx, vf_qid]
  * @param pbl_addr
  * @param pbl_size
  * @param p_pq_params - parameters for choosing the PQ for this Tx queue
@@ -89,12 +77,8 @@ ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn	*p_hwfn,
 enum _ecore_status_t
 ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn	*p_hwfn,
 			      u16 opaque_fid,
-			      u16 tx_queue_id,
 			      u32 cid,
-			      u8 vport_id,
-			      u8 stats_id,
-			      u16 sb,
-			      u8 sb_index,
+			      struct ecore_queue_start_common_params *p_params,
 			      dma_addr_t pbl_addr,
 			      u16 pbl_size,
 			      union ecore_qm_pq_params *p_pq_params);

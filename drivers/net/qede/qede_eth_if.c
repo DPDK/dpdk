@@ -168,9 +168,9 @@ qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
 
 static int
 qed_start_rxq(struct ecore_dev *edev,
-	      uint8_t rss_id, uint8_t rx_queue_id,
-	      uint8_t vport_id, uint16_t sb,
-	      uint8_t sb_index, uint16_t bd_max_bytes,
+	      uint8_t rss_num,
+	      struct ecore_queue_start_common_params *p_params,
+	      uint16_t bd_max_bytes,
 	      dma_addr_t bd_chain_phys_addr,
 	      dma_addr_t cqe_pbl_addr,
 	      uint16_t cqe_pbl_size, void OSAL_IOMEM * *pp_prod)
@@ -178,28 +178,28 @@ qed_start_rxq(struct ecore_dev *edev,
 	struct ecore_hwfn *p_hwfn;
 	int rc, hwfn_index;
 
-	hwfn_index = rss_id % edev->num_hwfns;
+	hwfn_index = rss_num % edev->num_hwfns;
 	p_hwfn = &edev->hwfns[hwfn_index];
+
+	p_params->queue_id = p_params->queue_id / edev->num_hwfns;
+	p_params->stats_id = p_params->vport_id;
 
 	rc = ecore_sp_eth_rx_queue_start(p_hwfn,
 					 p_hwfn->hw_info.opaque_fid,
-					 rx_queue_id / edev->num_hwfns,
-					 vport_id,
-					 vport_id,
-					 sb,
-					 sb_index,
+					 p_params,
 					 bd_max_bytes,
 					 bd_chain_phys_addr,
 					 cqe_pbl_addr, cqe_pbl_size, pp_prod);
 
 	if (rc) {
-		DP_ERR(edev, "Failed to start RXQ#%d\n", rx_queue_id);
+		DP_ERR(edev, "Failed to start RXQ#%d\n", p_params->queue_id);
 		return rc;
 	}
 
 	DP_VERBOSE(edev, ECORE_MSG_SPQ,
-		   "Started RX-Q %d [rss %d] on V-PORT %d and SB %d\n",
-		   rx_queue_id, rss_id, vport_id, sb);
+		   "Started RX-Q %d [rss_num %d] on V-PORT %d and SB %d\n",
+		   p_params->queue_id, rss_num, p_params->vport_id,
+		   p_params->sb);
 
 	return 0;
 }
@@ -226,36 +226,35 @@ qed_stop_rxq(struct ecore_dev *edev, struct qed_stop_rxq_params *params)
 
 static int
 qed_start_txq(struct ecore_dev *edev,
-	      uint8_t rss_id, uint16_t tx_queue_id,
-	      uint8_t vport_id, uint16_t sb,
-	      uint8_t sb_index,
+	      uint8_t rss_num,
+	      struct ecore_queue_start_common_params *p_params,
 	      dma_addr_t pbl_addr,
 	      uint16_t pbl_size, void OSAL_IOMEM * *pp_doorbell)
 {
 	struct ecore_hwfn *p_hwfn;
 	int rc, hwfn_index;
 
-	hwfn_index = rss_id % edev->num_hwfns;
+	hwfn_index = rss_num % edev->num_hwfns;
 	p_hwfn = &edev->hwfns[hwfn_index];
+
+	p_params->queue_id = p_params->queue_id / edev->num_hwfns;
+	p_params->stats_id = p_params->vport_id;
 
 	rc = ecore_sp_eth_tx_queue_start(p_hwfn,
 					 p_hwfn->hw_info.opaque_fid,
-					 tx_queue_id / edev->num_hwfns,
-					 vport_id,
-					 vport_id,
-					 sb,
-					 sb_index,
+					 p_params,
 					 0 /* tc */,
 					 pbl_addr, pbl_size, pp_doorbell);
 
 	if (rc) {
-		DP_ERR(edev, "Failed to start TXQ#%d\n", tx_queue_id);
+		DP_ERR(edev, "Failed to start TXQ#%d\n", p_params->queue_id);
 		return rc;
 	}
 
 	DP_VERBOSE(edev, ECORE_MSG_SPQ,
-		   "Started TX-Q %d [rss %d] on V-PORT %d and SB %d\n",
-		   tx_queue_id, rss_id, vport_id, sb);
+		   "Started TX-Q %d [rss_num %d] on V-PORT %d and SB %d\n",
+		   p_params->queue_id, rss_num, p_params->vport_id,
+		   p_params->sb);
 
 	return 0;
 }

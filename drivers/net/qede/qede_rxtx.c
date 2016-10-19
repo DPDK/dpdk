@@ -572,6 +572,7 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
+	struct ecore_queue_start_common_params q_params;
 	struct qed_update_vport_rss_params *rss_params = &qdev->rss_params;
 	struct qed_dev_info *qed_info = &qdev->dev_info.common;
 	struct qed_update_vport_params vport_update_params;
@@ -591,12 +592,15 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 			page_cnt = ecore_chain_get_page_cnt(&fp->rxq->
 								rx_comp_ring);
 
+			memset(&q_params, 0, sizeof(q_params));
+			q_params.queue_id = i;
+			q_params.vport_id = 0;
+			q_params.sb = fp->sb_info->igu_sb_id;
+			q_params.sb_idx = RX_PI;
+
 			ecore_sb_ack(fp->sb_info, IGU_INT_DISABLE, 0);
 
-			rc = qdev->ops->q_rx_start(edev, i, fp->rxq->queue_id,
-					   0,
-					   fp->sb_info->igu_sb_id,
-					   RX_PI,
+			rc = qdev->ops->q_rx_start(edev, i, &q_params,
 					   fp->rxq->rx_buf_size,
 					   fp->rxq->rx_bd_ring.p_phys_addr,
 					   p_phys_table,
@@ -622,11 +626,16 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 
 			p_phys_table = ecore_chain_get_pbl_phys(&txq->tx_pbl);
 			page_cnt = ecore_chain_get_page_cnt(&txq->tx_pbl);
-			rc = qdev->ops->q_tx_start(edev, i, txq->queue_id,
-						   0,
-						   fp->sb_info->igu_sb_id,
-						   TX_PI(tc),
-						   p_phys_table, page_cnt,
+
+			memset(&q_params, 0, sizeof(q_params));
+			q_params.queue_id = txq->queue_id;
+			q_params.vport_id = 0;
+			q_params.sb = fp->sb_info->igu_sb_id;
+			q_params.sb_idx = TX_PI(tc);
+
+			rc = qdev->ops->q_tx_start(edev, i, &q_params,
+						   p_phys_table,
+						   page_cnt, /* **pp_doorbell */
 						   &txq->doorbell_addr);
 			if (rc) {
 				DP_ERR(edev, "Start txq %u failed %d\n",

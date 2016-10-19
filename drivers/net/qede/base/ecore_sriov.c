@@ -1961,6 +1961,7 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 				       struct ecore_ptt *p_ptt,
 				       struct ecore_vf_info *vf)
 {
+	struct ecore_queue_start_common_params p_params;
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
 	u8 status = PFVF_STATUS_NO_RESOURCE;
 	struct vfpf_start_rxq_tlv *req;
@@ -1968,6 +1969,13 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 
 	req = &mbx->req_virt->start_rxq;
+	OSAL_MEMSET(&p_params, 0, sizeof(p_params));
+	p_params.queue_id = (u8)vf->vf_queues[req->rx_qid].fw_rx_qid;
+	p_params.vf_qid = req->rx_qid;
+	p_params.vport_id = vf->vport_id;
+	p_params.stats_id = vf->abs_vf_id + 0x10,
+	p_params.sb = req->hw_sb;
+	p_params.sb_idx = req->sb_index;
 
 	if (!ecore_iov_validate_rxq(p_hwfn, vf, req->rx_qid) ||
 	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
@@ -1987,12 +1995,7 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_sp_eth_rxq_start_ramrod(p_hwfn, vf->opaque_fid,
 					   vf->vf_queues[req->rx_qid].fw_cid,
-					   vf->vf_queues[req->rx_qid].fw_rx_qid,
-					   (u8)req->rx_qid,
-					   vf->vport_id,
-					   vf->abs_vf_id + 0x10,
-					   req->hw_sb,
-					   req->sb_index,
+					   &p_params,
 					   req->bd_max_bytes,
 					   req->rxq_addr,
 					   req->cqe_pbl_addr,
@@ -2057,6 +2060,7 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 				       struct ecore_ptt *p_ptt,
 				       struct ecore_vf_info *vf)
 {
+	struct ecore_queue_start_common_params p_params;
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
 	u8 status = PFVF_STATUS_NO_RESOURCE;
 	union ecore_qm_pq_params pq_params;
@@ -2069,6 +2073,12 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	pq_params.eth.vf_id = vf->relative_vf_id;
 
 	req = &mbx->req_virt->start_txq;
+	OSAL_MEMSET(&p_params, 0, sizeof(p_params));
+	p_params.queue_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
+	p_params.vport_id = vf->vport_id;
+	p_params.stats_id = vf->abs_vf_id + 0x10,
+	p_params.sb = req->hw_sb;
+	p_params.sb_idx = req->sb_index;
 
 	if (!ecore_iov_validate_txq(p_hwfn, vf, req->tx_qid) ||
 	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
@@ -2077,12 +2087,8 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	rc = ecore_sp_eth_txq_start_ramrod(
 		p_hwfn,
 		vf->opaque_fid,
-		vf->vf_queues[req->tx_qid].fw_tx_qid,
 		vf->vf_queues[req->tx_qid].fw_cid,
-		vf->vport_id,
-		vf->abs_vf_id + 0x10,
-		req->hw_sb,
-		req->sb_index,
+		&p_params,
 		req->pbl_addr,
 		req->pbl_size,
 		&pq_params);

@@ -548,12 +548,7 @@ enum _ecore_status_t
 ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 			      u16 opaque_fid,
 			      u32 cid,
-			      u16 rx_queue_id,
-			      u8 vf_rx_queue_id,
-			      u8 vport_id,
-			      u8 stats_id,
-			      u16 sb,
-			      u8 sb_index,
+			      struct ecore_queue_start_common_params *p_params,
 			      u16 bd_max_bytes,
 			      dma_addr_t bd_chain_phys_addr,
 			      dma_addr_t cqe_pbl_addr,
@@ -568,22 +563,23 @@ ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	/* Store information for the stop */
-	p_rx_cid = &p_hwfn->p_rx_cids[rx_queue_id];
+	p_rx_cid = &p_hwfn->p_rx_cids[p_params->queue_id];
 	p_rx_cid->cid = cid;
 	p_rx_cid->opaque_fid = opaque_fid;
-	p_rx_cid->vport_id = vport_id;
+	p_rx_cid->vport_id = p_params->vport_id;
 
-	rc = ecore_fw_vport(p_hwfn, vport_id, &abs_vport_id);
+	rc = ecore_fw_vport(p_hwfn, p_params->vport_id, &abs_vport_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	rc = ecore_fw_l2_queue(p_hwfn, rx_queue_id, &abs_rx_q_id);
+	rc = ecore_fw_l2_queue(p_hwfn, p_params->queue_id, &abs_rx_q_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "opaque_fid=0x%x, cid=0x%x, rx_qid=0x%x, vport_id=0x%x, sb_id=0x%x\n",
-		   opaque_fid, cid, rx_queue_id, vport_id, sb);
+		   opaque_fid, cid, p_params->queue_id,
+		   p_params->vport_id, p_params->sb);
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -599,10 +595,10 @@ ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 
 	p_ramrod = &p_ent->ramrod.rx_queue_start;
 
-	p_ramrod->sb_id = OSAL_CPU_TO_LE16(sb);
-	p_ramrod->sb_index = sb_index;
+	p_ramrod->sb_id = OSAL_CPU_TO_LE16(p_params->sb);
+	p_ramrod->sb_index = (u8)p_params->sb_idx;
 	p_ramrod->vport_id = abs_vport_id;
-	p_ramrod->stats_counter_id = stats_id;
+	p_ramrod->stats_counter_id = p_params->stats_id;
 	p_ramrod->rx_queue_id = OSAL_CPU_TO_LE16(abs_rx_q_id);
 	p_ramrod->complete_cqe_flg = 0;
 	p_ramrod->complete_event_flg = 1;
@@ -613,30 +609,27 @@ ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	p_ramrod->num_of_pbl_pages = OSAL_CPU_TO_LE16(cqe_pbl_size);
 	DMA_REGPAIR_LE(p_ramrod->cqe_pbl_addr, cqe_pbl_addr);
 
-	if (vf_rx_queue_id || b_use_zone_a_prod) {
-		p_ramrod->vf_rx_prod_index = vf_rx_queue_id;
+	if (p_params->vf_qid || b_use_zone_a_prod) {
+		p_ramrod->vf_rx_prod_index = (u8)p_params->vf_qid;
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "Queue%s is meant for VF rxq[%02x]\n",
 			   b_use_zone_a_prod ? " [legacy]" : "",
-			   vf_rx_queue_id);
+			   p_params->vf_qid);
 		p_ramrod->vf_rx_prod_use_zone_a = b_use_zone_a_prod;
 	}
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }
 
-enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
-						 u16 opaque_fid,
-						 u8 rx_queue_id,
-						 u8 vport_id,
-						 u8 stats_id,
-						 u16 sb,
-						 u8 sb_index,
-						 u16 bd_max_bytes,
-						 dma_addr_t bd_chain_phys_addr,
-						 dma_addr_t cqe_pbl_addr,
-						 u16 cqe_pbl_size,
-						 void OSAL_IOMEM **pp_prod)
+enum _ecore_status_t
+ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
+			    u16 opaque_fid,
+			    struct ecore_queue_start_common_params *p_params,
+			    u16 bd_max_bytes,
+			    dma_addr_t bd_chain_phys_addr,
+			    dma_addr_t cqe_pbl_addr,
+			    u16 cqe_pbl_size,
+			    void OSAL_IOMEM * *pp_prod)
 {
 	struct ecore_hw_cid_data *p_rx_cid;
 	u32 init_prod_val = 0;
@@ -646,20 +639,20 @@ enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 
 	if (IS_VF(p_hwfn->p_dev)) {
 		return ecore_vf_pf_rxq_start(p_hwfn,
-					     rx_queue_id,
-					     sb,
-					     sb_index,
+					     p_params->queue_id,
+					     p_params->sb,
+					     (u8)p_params->sb_idx,
 					     bd_max_bytes,
 					     bd_chain_phys_addr,
 					     cqe_pbl_addr,
 					     cqe_pbl_size, pp_prod);
 	}
 
-	rc = ecore_fw_l2_queue(p_hwfn, rx_queue_id, &abs_l2_queue);
+	rc = ecore_fw_l2_queue(p_hwfn, p_params->queue_id, &abs_l2_queue);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	rc = ecore_fw_vport(p_hwfn, stats_id, &abs_stats_id);
+	rc = ecore_fw_vport(p_hwfn, p_params->stats_id, &abs_stats_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
@@ -672,7 +665,7 @@ enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 			  (u32 *)(&init_prod_val));
 
 	/* Allocate a CID for the queue */
-	p_rx_cid = &p_hwfn->p_rx_cids[rx_queue_id];
+	p_rx_cid = &p_hwfn->p_rx_cids[p_params->queue_id];
 	rc = ecore_cxt_acquire_cid(p_hwfn, PROTOCOLID_ETH,
 				   &p_rx_cid->cid);
 	if (rc != ECORE_SUCCESS) {
@@ -680,16 +673,13 @@ enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 		return rc;
 	}
 	p_rx_cid->b_cid_allocated = true;
+	p_params->stats_id = abs_stats_id;
+	p_params->vf_qid = 0;
 
 	rc = ecore_sp_eth_rxq_start_ramrod(p_hwfn,
 					   opaque_fid,
 					   p_rx_cid->cid,
-					   rx_queue_id,
-					   0,
-					   vport_id,
-					   abs_stats_id,
-					   sb,
-					   sb_index,
+					   p_params,
 					   bd_max_bytes,
 					   bd_chain_phys_addr,
 					   cqe_pbl_addr,
@@ -816,12 +806,8 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t
 ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 			      u16 opaque_fid,
-			      u16 tx_queue_id,
 			      u32 cid,
-			      u8 vport_id,
-			      u8 stats_id,
-			      u16 sb,
-			      u8 sb_index,
+			      struct ecore_queue_start_common_params *p_params,
 			      dma_addr_t pbl_addr,
 			      u16 pbl_size,
 			      union ecore_qm_pq_params *p_pq_params)
@@ -835,15 +821,15 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
 
 	/* Store information for the stop */
-	p_tx_cid = &p_hwfn->p_tx_cids[tx_queue_id];
+	p_tx_cid = &p_hwfn->p_tx_cids[p_params->queue_id];
 	p_tx_cid->cid = cid;
 	p_tx_cid->opaque_fid = opaque_fid;
 
-	rc = ecore_fw_vport(p_hwfn, vport_id, &abs_vport_id);
+	rc = ecore_fw_vport(p_hwfn, p_params->vport_id, &abs_vport_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	rc = ecore_fw_l2_queue(p_hwfn, tx_queue_id, &abs_tx_q_id);
+	rc = ecore_fw_l2_queue(p_hwfn, p_params->queue_id, &abs_tx_q_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
@@ -862,9 +848,9 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	p_ramrod = &p_ent->ramrod.tx_queue_start;
 	p_ramrod->vport_id = abs_vport_id;
 
-	p_ramrod->sb_id = OSAL_CPU_TO_LE16(sb);
-	p_ramrod->sb_index = sb_index;
-	p_ramrod->stats_counter_id = stats_id;
+	p_ramrod->sb_id = OSAL_CPU_TO_LE16(p_params->sb);
+	p_ramrod->sb_index = (u8)p_params->sb_idx;
+	p_ramrod->stats_counter_id = p_params->stats_id;
 
 	p_ramrod->queue_zone_id = OSAL_CPU_TO_LE16(abs_tx_q_id);
 
@@ -877,17 +863,14 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }
 
-enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
-						 u16 opaque_fid,
-						 u16 tx_queue_id,
-						 u8 vport_id,
-						 u8 stats_id,
-						 u16 sb,
-						 u8 sb_index,
-						 u8 tc,
-						 dma_addr_t pbl_addr,
-						 u16 pbl_size,
-						 void OSAL_IOMEM **pp_doorbell)
+enum _ecore_status_t
+ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
+			    u16 opaque_fid,
+			    struct ecore_queue_start_common_params *p_params,
+			    u8 tc,
+			    dma_addr_t pbl_addr,
+			    u16 pbl_size,
+			    void OSAL_IOMEM * *pp_doorbell)
 {
 	struct ecore_hw_cid_data *p_tx_cid;
 	union ecore_qm_pq_params pq_params;
@@ -896,19 +879,19 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 
 	if (IS_VF(p_hwfn->p_dev)) {
 		return ecore_vf_pf_txq_start(p_hwfn,
-					     tx_queue_id,
-					     sb,
-					     sb_index,
+					     p_params->queue_id,
+					     p_params->sb,
+					     (u8)p_params->sb_idx,
 					     pbl_addr,
 					     pbl_size,
 					     pp_doorbell);
 	}
 
-	rc = ecore_fw_vport(p_hwfn, stats_id, &abs_stats_id);
+	rc = ecore_fw_vport(p_hwfn, p_params->stats_id, &abs_stats_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	p_tx_cid = &p_hwfn->p_tx_cids[tx_queue_id];
+	p_tx_cid = &p_hwfn->p_tx_cids[p_params->queue_id];
 	OSAL_MEMSET(p_tx_cid, 0, sizeof(*p_tx_cid));
 	OSAL_MEMSET(&pq_params, 0, sizeof(pq_params));
 
@@ -924,18 +907,16 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "opaque_fid=0x%x, cid=0x%x, tx_qid=0x%x, vport_id=0x%x, sb_id=0x%x\n",
-		    opaque_fid, p_tx_cid->cid, tx_queue_id,
-		    vport_id, sb);
+		    opaque_fid, p_tx_cid->cid, p_params->queue_id,
+		    p_params->vport_id, p_params->sb);
+
+	p_params->stats_id = abs_stats_id;
 
 	/* TODO - set tc in the pq_params for multi-cos */
 	rc = ecore_sp_eth_txq_start_ramrod(p_hwfn,
 					   opaque_fid,
-					   tx_queue_id,
 					   p_tx_cid->cid,
-					   vport_id,
-					   abs_stats_id,
-					   sb,
-					   sb_index,
+					   p_params,
 					   pbl_addr,
 					   pbl_size,
 					   &pq_params);
