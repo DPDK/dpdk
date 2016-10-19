@@ -432,12 +432,12 @@ fdir_set_input_mask_x550(struct rte_eth_dev *dev,
 		fdiripv6m |= IXGBE_FDIRIP6M_TUNNEL_TYPE |
 				IXGBE_FDIRIP6M_TNI_VNI;
 
-	mac_mask = input_mask->mac_addr_byte_mask;
-	fdiripv6m |= (mac_mask << IXGBE_FDIRIP6M_INNER_MAC_SHIFT)
-			& IXGBE_FDIRIP6M_INNER_MAC;
-	info->mask.mac_addr_byte_mask = input_mask->mac_addr_byte_mask;
-
 	if (mode == RTE_FDIR_MODE_PERFECT_TUNNEL) {
+		mac_mask = input_mask->mac_addr_byte_mask;
+		fdiripv6m |= (mac_mask << IXGBE_FDIRIP6M_INNER_MAC_SHIFT)
+				& IXGBE_FDIRIP6M_INNER_MAC;
+		info->mask.mac_addr_byte_mask = input_mask->mac_addr_byte_mask;
+
 		switch (input_mask->tunnel_type_mask) {
 		case 0:
 			/* Mask turnnel type */
