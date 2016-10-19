@@ -2645,7 +2645,6 @@ check_rx_burst_bulk_alloc_preconditions(struct ixgbe_rx_queue *rxq)
 	 *   rxq->rx_free_thresh >= RTE_PMD_IXGBE_RX_MAX_BURST
 	 *   rxq->rx_free_thresh < rxq->nb_rx_desc
 	 *   (rxq->nb_rx_desc % rxq->rx_free_thresh) == 0
-	 *   rxq->nb_rx_desc<(IXGBE_MAX_RING_DESC-RTE_PMD_IXGBE_RX_MAX_BURST)
 	 * Scattered packets are not supported.  This should be checked
 	 * outside of this function.
 	 */
@@ -2667,15 +2666,6 @@ check_rx_burst_bulk_alloc_preconditions(struct ixgbe_rx_queue *rxq)
 			     "rxq->rx_free_thresh=%d",
 			     rxq->nb_rx_desc, rxq->rx_free_thresh);
 		ret = -EINVAL;
-	} else if (!(rxq->nb_rx_desc <
-	       (IXGBE_MAX_RING_DESC - RTE_PMD_IXGBE_RX_MAX_BURST))) {
-		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
-			     "rxq->nb_rx_desc=%d, "
-			     "IXGBE_MAX_RING_DESC=%d, "
-			     "RTE_PMD_IXGBE_RX_MAX_BURST=%d",
-			     rxq->nb_rx_desc, IXGBE_MAX_RING_DESC,
-			     RTE_PMD_IXGBE_RX_MAX_BURST);
-		ret = -EINVAL;
 	}
 
 	return ret;
@@ -2692,12 +2682,7 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 	/*
 	 * By default, the Rx queue setup function allocates enough memory for
 	 * IXGBE_MAX_RING_DESC.  The Rx Burst bulk allocation function requires
-	 * extra memory at the end of the descriptor ring to be zero'd out. A
-	 * pre-condition for using the Rx burst bulk alloc function is that the
-	 * number of descriptors is less than or equal to
-	 * (IXGBE_MAX_RING_DESC - RTE_PMD_IXGBE_RX_MAX_BURST). Check all the
-	 * constraints here to see if we need to zero out memory after the end
-	 * of the H/W descriptor ring.
+	 * extra memory at the end of the descriptor ring to be zero'd out.
 	 */
 	if (adapter->rx_bulk_alloc_allowed)
 		/* zero out extra memory */
