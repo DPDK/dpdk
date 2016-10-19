@@ -55,31 +55,38 @@ typedef u32 offsize_t;      /* In DWORDS !!! */
 #define SECTION_OFFSIZE_ADDR(_pub_base, _section) \
 	(_pub_base + offsetof(struct mcp_public_data, sections[_section]))
 /* PHY configuration */
-struct pmm_phy_cfg {
+struct eth_phy_cfg {
 /* 0 = autoneg, 1000/10000/20000/25000/40000/50000/100000 */
 	u32 speed;
-#define PMM_SPEED_AUTONEG   0
-#define PMM_SPEED_SMARTLINQ  0x8
+#define ETH_SPEED_AUTONEG   0
+#define ETH_SPEED_SMARTLINQ  0x8
 
 	u32 pause;      /* bitmask */
-#define PMM_PAUSE_NONE		0x0
-#define PMM_PAUSE_AUTONEG	0x1
-#define PMM_PAUSE_RX		0x2
-#define PMM_PAUSE_TX		0x4
+#define ETH_PAUSE_NONE		0x0
+#define ETH_PAUSE_AUTONEG	0x1
+#define ETH_PAUSE_RX		0x2
+#define ETH_PAUSE_TX		0x4
 
 	u32 adv_speed;      /* Default should be the speed_cap_mask */
 	u32 loopback_mode;
-#define PMM_LOOPBACK_NONE		0
-#define PMM_LOOPBACK_INT_PHY		1
-#define PMM_LOOPBACK_EXT_PHY		2
-#define PMM_LOOPBACK_EXT		3
-#define PMM_LOOPBACK_MAC		4
-#define PMM_LOOPBACK_CNIG_AH_ONLY_0123	5	/* Port to itself */
-#define PMM_LOOPBACK_CNIG_AH_ONLY_2301	6	/* Port to Port */
+#define ETH_LOOPBACK_NONE		 (0)
+/* Serdes loopback. In AH, it refers to Near End */
+#define ETH_LOOPBACK_INT_PHY		 (1)
+#define ETH_LOOPBACK_EXT_PHY		 (2) /* External PHY Loopback */
+/* External Loopback (Require loopback plug) */
+#define ETH_LOOPBACK_EXT		 (3)
+#define ETH_LOOPBACK_MAC		 (4) /* MAC Loopback - not supported */
+#define ETH_LOOPBACK_CNIG_AH_ONLY_0123	 (5) /* Port to itself */
+#define ETH_LOOPBACK_CNIG_AH_ONLY_2301	 (6) /* Port to Port */
+#define ETH_LOOPBACK_PCS_AH_ONLY	 (7) /* PCS loopback (TX to RX) */
+/* Loop RX packet from PCS to TX */
+#define ETH_LOOPBACK_REVERSE_MAC_AH_ONLY (8)
+/* Remote Serdes Loopback (RX to TX) */
+#define ETH_LOOPBACK_INT_PHY_FEA_AH_ONLY (9)
 
 	/* features */
 	u32 feature_config_flags;
-
+#define ETH_EEE_MODE_ADV_LPI	(1 << 0)
 };
 
 struct port_mf_cfg {
@@ -94,7 +101,7 @@ struct port_mf_cfg {
 /* DO NOT add new fields in the middle
  * MUST be synced with struct pmm_stats_map
  */
-struct pmm_stats {
+struct eth_stats {
 	u64 r64;        /* 0x00 (Offset 0x00 ) RX 64-byte frame counter*/
 	u64 r127; /* 0x01 (Offset 0x08 ) RX 65 to 127 byte frame counter*/
 	u64 r255; /* 0x02 (Offset 0x10 ) RX 128 to 255 byte frame counter*/
@@ -163,7 +170,7 @@ struct brb_stats {
 
 struct port_stats {
 	struct brb_stats brb;
-	struct pmm_stats pmm;
+	struct eth_stats eth;
 };
 
 /*----+------------------------------------------------------------------------
@@ -593,7 +600,7 @@ struct public_port {
 
 	u32 link_status1;
 	u32 ext_phy_fw_version;
-/* Points to struct pmm_phy_cfg (For READ-ONLY) */
+/* Points to struct eth_phy_cfg (For READ-ONLY) */
 	u32 drv_phy_cfg_addr;
 
 	u32 port_stx;
@@ -647,56 +654,69 @@ struct public_port {
 	u32 fc_npiv_nvram_tbl_addr;
 	u32 fc_npiv_nvram_tbl_size;
 	u32 transceiver_data;
-#define PMM_TRANSCEIVER_STATE_MASK		0x000000FF
-#define PMM_TRANSCEIVER_STATE_SHIFT		0x00000000
-#define PMM_TRANSCEIVER_STATE_UNPLUGGED		0x00000000
-#define PMM_TRANSCEIVER_STATE_PRESENT		0x00000001
-#define PMM_TRANSCEIVER_STATE_VALID		0x00000003
-#define PMM_TRANSCEIVER_STATE_UPDATING		0x00000008
-#define PMM_TRANSCEIVER_TYPE_MASK		0x0000FF00
-#define PMM_TRANSCEIVER_TYPE_SHIFT		0x00000008
-#define PMM_TRANSCEIVER_TYPE_NONE		0x00000000
-#define PMM_TRANSCEIVER_TYPE_UNKNOWN		0x000000FF
-#define PMM_TRANSCEIVER_TYPE_1G_PCC	0x01	/* 1G Passive copper cable */
-#define PMM_TRANSCEIVER_TYPE_1G_ACC	0x02	/* 1G Active copper cable  */
-#define PMM_TRANSCEIVER_TYPE_1G_LX				0x03
-#define PMM_TRANSCEIVER_TYPE_1G_SX				0x04
-#define PMM_TRANSCEIVER_TYPE_10G_SR				0x05
-#define PMM_TRANSCEIVER_TYPE_10G_LR				0x06
-#define PMM_TRANSCEIVER_TYPE_10G_LRM			0x07
-#define PMM_TRANSCEIVER_TYPE_10G_ER				0x08
-#define PMM_TRANSCEIVER_TYPE_10G_PCC	0x09	/* 10G Passive copper cable */
-#define PMM_TRANSCEIVER_TYPE_10G_ACC	0x0a	/* 10G Active copper cable  */
-#define PMM_TRANSCEIVER_TYPE_XLPPI				0x0b
-#define PMM_TRANSCEIVER_TYPE_40G_LR4			0x0c
-#define PMM_TRANSCEIVER_TYPE_40G_SR4			0x0d
-#define PMM_TRANSCEIVER_TYPE_40G_CR4			0x0e
-#define PMM_TRANSCEIVER_TYPE_100G_AOC	0x0f	/* Active optical cable */
-#define PMM_TRANSCEIVER_TYPE_100G_SR4			0x10
-#define PMM_TRANSCEIVER_TYPE_100G_LR4			0x11
-#define PMM_TRANSCEIVER_TYPE_100G_ER4			0x12
-#define PMM_TRANSCEIVER_TYPE_100G_ACC	0x13	/* Active copper cable */
-#define PMM_TRANSCEIVER_TYPE_100G_CR4			0x14
-#define PMM_TRANSCEIVER_TYPE_4x10G_SR			0x15
-#define PMM_TRANSCEIVER_TYPE_25G_PCC_S	0x16
-#define PMM_TRANSCEIVER_TYPE_25G_ACC_S	0x17
-#define PMM_TRANSCEIVER_TYPE_25G_PCC_M	0x18
-#define PMM_TRANSCEIVER_TYPE_25G_ACC_M	0x19
-#define PMM_TRANSCEIVER_TYPE_25G_PCC_L	0x1a
-#define PMM_TRANSCEIVER_TYPE_25G_ACC_L	0x1b
-#define PMM_TRANSCEIVER_TYPE_25G_SR				0x1c
-#define PMM_TRANSCEIVER_TYPE_25G_LR				0x1d
-#define PMM_TRANSCEIVER_TYPE_25G_AOC			0x1e
+#define ETH_TRANSCEIVER_STATE_MASK		0x000000FF
+#define ETH_TRANSCEIVER_STATE_SHIFT		0x00000000
+#define ETH_TRANSCEIVER_STATE_UNPLUGGED		0x00000000
+#define ETH_TRANSCEIVER_STATE_PRESENT		0x00000001
+#define ETH_TRANSCEIVER_STATE_VALID		0x00000003
+#define ETH_TRANSCEIVER_STATE_UPDATING		0x00000008
+#define ETH_TRANSCEIVER_TYPE_MASK		0x0000FF00
+#define ETH_TRANSCEIVER_TYPE_SHIFT		0x00000008
+#define ETH_TRANSCEIVER_TYPE_NONE		0x00000000
+#define ETH_TRANSCEIVER_TYPE_UNKNOWN		0x000000FF
+/* 1G Passive copper cable */
+#define ETH_TRANSCEIVER_TYPE_1G_PCC		0x01
+/* 1G Active copper cable  */
+#define ETH_TRANSCEIVER_TYPE_1G_ACC		0x02
+#define ETH_TRANSCEIVER_TYPE_1G_LX		0x03
+#define ETH_TRANSCEIVER_TYPE_1G_SX		0x04
+#define ETH_TRANSCEIVER_TYPE_10G_SR		0x05
+#define ETH_TRANSCEIVER_TYPE_10G_LR		0x06
+#define ETH_TRANSCEIVER_TYPE_10G_LRM		0x07
+#define ETH_TRANSCEIVER_TYPE_10G_ER		0x08
+/* 10G Passive copper cable */
+#define ETH_TRANSCEIVER_TYPE_10G_PCC		0x09
+/* 10G Active copper cable  */
+#define ETH_TRANSCEIVER_TYPE_10G_ACC		0x0a
+#define ETH_TRANSCEIVER_TYPE_XLPPI		0x0b
+#define ETH_TRANSCEIVER_TYPE_40G_LR4		0x0c
+#define ETH_TRANSCEIVER_TYPE_40G_SR4		0x0d
+#define ETH_TRANSCEIVER_TYPE_40G_CR4		0x0e
+#define ETH_TRANSCEIVER_TYPE_100G_AOC		0x0f /* Active optical cable */
+#define ETH_TRANSCEIVER_TYPE_100G_SR4		0x10
+#define ETH_TRANSCEIVER_TYPE_100G_LR4		0x11
+#define ETH_TRANSCEIVER_TYPE_100G_ER4		0x12
+#define ETH_TRANSCEIVER_TYPE_100G_ACC		0x13 /* Active copper cable */
+#define ETH_TRANSCEIVER_TYPE_100G_CR4		0x14
+#define ETH_TRANSCEIVER_TYPE_4x10G_SR		0x15
+/* 25G Passive copper cable - short */
+#define ETH_TRANSCEIVER_TYPE_25G_CA_N		0x16
+/* 25G Active copper cable  - short */
+#define ETH_TRANSCEIVER_TYPE_25G_ACC_S		0x17
+/* 25G Passive copper cable - medium */
+#define ETH_TRANSCEIVER_TYPE_25G_CA_S			0x18
+/* 25G Active copper cable  - medium */
+#define ETH_TRANSCEIVER_TYPE_25G_ACC_M			0x19
+/* 25G Passive copper cable - long */
+#define ETH_TRANSCEIVER_TYPE_25G_CA_L			0x1a
+/* 25G Active copper cable  - long */
+#define ETH_TRANSCEIVER_TYPE_25G_ACC_L			0x1b
+#define ETH_TRANSCEIVER_TYPE_25G_SR			0x1c
+#define ETH_TRANSCEIVER_TYPE_25G_LR			0x1d
+#define ETH_TRANSCEIVER_TYPE_25G_AOC			0x1e
 
-#define PMM_TRANSCEIVER_TYPE_4x10G					0x1d
-#define PMM_TRANSCEIVER_TYPE_4x25G_CR					0x1e
-#define PMM_TRANSCEIVER_TYPE_MULTI_RATE_10G_40GR			0x30
-#define PMM_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_CR			0x31
-#define PMM_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_LR			0x32
-#define PMM_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_SR			0x33
-#define PMM_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_CR			0x34
-#define PMM_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_LR			0x35
-#define PMM_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_AOC			0x36
+#define ETH_TRANSCEIVER_TYPE_4x10G			0x1f
+#define ETH_TRANSCEIVER_TYPE_4x25G_CR			0x20
+#define ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_SR	0x30
+#define ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_CR	0x31
+#define ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_LR	0x32
+#define ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_SR	0x33
+#define ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_CR	0x34
+#define ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_LR	0x35
+#define ETH_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_AOC	0x36
+	u32 wol_info;
+	u32 wol_pkt_len;
+	u32 wol_pkt_details;
 	struct dcb_dscp_map dcb_dscp_map;
 };
 
@@ -959,7 +979,7 @@ union drv_union_data {
 
 /* This configuration should be set by the driver for the LINK_SET command. */
 
-	struct pmm_phy_cfg drv_phy_cfg;
+	struct eth_phy_cfg drv_phy_cfg;
 
 	struct mcp_val64 val64; /* For PHY / AVS commands */
 

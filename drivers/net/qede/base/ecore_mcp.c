@@ -659,9 +659,9 @@ static void ecore_mcp_handle_transceiver_change(struct ecore_hwfn *p_hwfn,
 					    OFFSETOF(struct public_port,
 						     transceiver_data)));
 
-	transceiver_state = GET_FIELD(transceiver_state, PMM_TRANSCEIVER_STATE);
+	transceiver_state = GET_FIELD(transceiver_state, ETH_TRANSCEIVER_STATE);
 
-	if (transceiver_state == PMM_TRANSCEIVER_STATE_PRESENT)
+	if (transceiver_state == ETH_TRANSCEIVER_STATE_PRESENT)
 		DP_NOTICE(p_hwfn, false, "Transceiver is present.\n");
 	else
 		DP_NOTICE(p_hwfn, false, "Transceiver is unplugged.\n");
@@ -813,7 +813,7 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 	struct ecore_mcp_link_params *params = &p_hwfn->mcp_info->link_input;
 	struct ecore_mcp_mb_params mb_params;
 	union drv_union_data union_data;
-	struct pmm_phy_cfg *p_phy_cfg;
+	struct eth_phy_cfg *p_phy_cfg;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 cmd;
 
@@ -828,9 +828,9 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 	cmd = b_up ? DRV_MSG_CODE_INIT_PHY : DRV_MSG_CODE_LINK_RESET;
 	if (!params->speed.autoneg)
 		p_phy_cfg->speed = params->speed.forced_speed;
-	p_phy_cfg->pause |= (params->pause.autoneg) ? PMM_PAUSE_AUTONEG : 0;
-	p_phy_cfg->pause |= (params->pause.forced_rx) ? PMM_PAUSE_RX : 0;
-	p_phy_cfg->pause |= (params->pause.forced_tx) ? PMM_PAUSE_TX : 0;
+	p_phy_cfg->pause |= (params->pause.autoneg) ? ETH_PAUSE_AUTONEG : 0;
+	p_phy_cfg->pause |= (params->pause.forced_rx) ? ETH_PAUSE_RX : 0;
+	p_phy_cfg->pause |= (params->pause.forced_tx) ? ETH_PAUSE_TX : 0;
 	p_phy_cfg->adv_speed = params->speed.advertised_speeds;
 	p_phy_cfg->loopback_mode = params->loopback_mode;
 	p_hwfn->b_drv_link_init = b_up;
