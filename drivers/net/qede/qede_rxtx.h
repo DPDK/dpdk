@@ -99,6 +99,8 @@ struct qede_rx_queue {
 	uint16_t queue_id;
 	uint16_t port_id;
 	uint16_t rx_buf_size;
+	uint64_t rcv_pkts;
+	uint64_t rx_segs;
 	uint64_t rx_hw_errors;
 	uint64_t rx_alloc_errors;
 	struct qede_dev *qdev;
@@ -130,7 +132,7 @@ struct qede_tx_queue {
 	void OSAL_IOMEM *doorbell_addr;
 	volatile union db_prod tx_db;
 	uint16_t port_id;
-	uint64_t txq_counter;
+	uint64_t xmit_pkts;
 	struct qede_dev *qdev;
 };
 

@@ -69,6 +69,9 @@
 #define QEDE_TSS_COUNT(qdev) (((qdev)->num_queues - (qdev)->fp_num_rx) * \
 					(qdev)->num_tc)
 
+#define QEDE_FASTPATH_TX        (1 << 0)
+#define QEDE_FASTPATH_RX        (1 << 1)
+
 #define QEDE_DUPLEX_FULL	1
 #define QEDE_DUPLEX_HALF	2
 #define QEDE_DUPLEX_UNKNOWN     0xff
