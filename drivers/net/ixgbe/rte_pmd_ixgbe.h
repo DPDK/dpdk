@@ -99,16 +99,17 @@ int rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
  *    The port identifier of the Ethernet device.
  * @param vf
  *    ID specifying VF.
- * @param on
- *    1 - Enable VF's vlan insert.
- *    0 - Disable VF's vlan insert
+ * @param vlan_id
+ *    0 - Disable VF's vlan insert.
+ *    n - Enable; n is inserted as the vlan id.
  *
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint8_t on);
+int rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf,
+		uint16_t vlan_id);
 
 /**
  * Enable/Disable tx loopback

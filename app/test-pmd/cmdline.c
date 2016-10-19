@@ -286,7 +286,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set vf vlan stripq (port_id) (vf_id) (on|off)\n"
 			"    Set the VLAN strip for all queues in a pool for a VF from the PF.\n\n"
 
-			"set vf vlan insert (port_id) (vf_id) (on|off)\n"
+			"set vf vlan insert (port_id) (vf_id) (vlan_id)\n"
 			"    Set VLAN insert for a VF from the PF.\n\n"
 
 			"set vf vlan antispoof (port_id) (vf_id) (on|off)\n"
@@ -11018,7 +11018,7 @@ struct cmd_vf_vlan_insert_result {
 	cmdline_fixed_string_t insert;
 	uint8_t port_id;
 	uint16_t vf_id;
-	cmdline_fixed_string_t on_off;
+	uint16_t vlan_id;
 };
 
 /* Common CLI fields for vf vlan insert enable disable */
@@ -11046,10 +11046,10 @@ cmdline_parse_token_num_t cmd_vf_vlan_insert_vf_id =
 	TOKEN_NUM_INITIALIZER
 		(struct cmd_vf_vlan_insert_result,
 		 vf_id, UINT16);
-cmdline_parse_token_string_t cmd_vf_vlan_insert_on_off =
-	TOKEN_STRING_INITIALIZER
+cmdline_parse_token_num_t cmd_vf_vlan_insert_vlan_id =
+	TOKEN_NUM_INITIALIZER
 		(struct cmd_vf_vlan_insert_result,
-		 on_off, "on#off");
+		 vlan_id, UINT16);
 
 static void
 cmd_set_vf_vlan_insert_parsed(
@@ -11059,14 +11059,13 @@ cmd_set_vf_vlan_insert_parsed(
 {
 	struct cmd_vf_vlan_insert_result *res = parsed_result;
 	int ret;
-	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
-	ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id, res->vf_id, is_on);
+	ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id, res->vf_id, res->vlan_id);
 	switch (ret) {
 	case 0:
 		break;
 	case -EINVAL:
-		printf("invalid vf_id %d or is_on %d\n", res->vf_id, is_on);
+		printf("invalid vf_id %d or vlan_id %d\n", res->vf_id, res->vlan_id);
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
@@ -11079,7 +11078,7 @@ cmd_set_vf_vlan_insert_parsed(
 cmdline_parse_inst_t cmd_set_vf_vlan_insert = {
 	.f = cmd_set_vf_vlan_insert_parsed,
 	.data = NULL,
-	.help_str = "set vf vlan insert port_id vf_id on|off",
+	.help_str = "set vf vlan insert port_id vf_id vlan_id",
 	.tokens = {
 		(void *)&cmd_vf_vlan_insert_set,
 		(void *)&cmd_vf_vlan_insert_vf,
@@ -11087,7 +11086,7 @@ cmdline_parse_inst_t cmd_set_vf_vlan_insert = {
 		(void *)&cmd_vf_vlan_insert_insert,
 		(void *)&cmd_vf_vlan_insert_port_id,
 		(void *)&cmd_vf_vlan_insert_vf_id,
-		(void *)&cmd_vf_vlan_insert_on_off,
+		(void *)&cmd_vf_vlan_insert_vlan_id,
 		NULL,
 	},
 };

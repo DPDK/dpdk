@@ -4727,7 +4727,7 @@ rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint16_t vlan_id)
 {
 	struct ixgbe_hw *hw;
 	uint32_t ctrl;
@@ -4742,13 +4742,13 @@ rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint8_t on)
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
 
-	if (on > 1)
+	if (vlan_id > 4095)
 		return -EINVAL;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	ctrl = IXGBE_READ_REG(hw, IXGBE_VMVIR(vf));
-	if (on) {
-		ctrl = on;
+	if (vlan_id) {
+		ctrl = vlan_id;
 		ctrl |= IXGBE_VMVIR_VLANA_DEFAULT;
 	} else {
 		ctrl = 0;
