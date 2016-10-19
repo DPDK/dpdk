@@ -695,8 +695,9 @@ fm10k_dev_tx_init(struct rte_eth_dev *dev)
 				base_addr >> (CHAR_BIT * sizeof(uint32_t)));
 		FM10K_WRITE_REG(hw, FM10K_TDLEN(i), size);
 
-		/* assign default SGLORT for each TX queue */
-		FM10K_WRITE_REG(hw, FM10K_TX_SGLORT(i), hw->mac.dglort_map);
+		/* assign default SGLORT for each TX queue by PF */
+		if (hw->mac.type == fm10k_mac_pf)
+			FM10K_WRITE_REG(hw, FM10K_TX_SGLORT(i), hw->mac.dglort_map);
 	}
 
 	/* set up vector or scalar TX function as appropriate */
