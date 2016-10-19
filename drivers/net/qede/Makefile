@@ -48,9 +48,13 @@ endif
 endif
 
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+ifeq ($(shell gcc -Wno-unused-but-set-variable -Werror -E - < /dev/null > /dev/null 2>&1; echo $$?),0)
 CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
+endif
 CFLAGS_BASE_DRIVER += -Wno-missing-declarations
+ifeq ($(shell gcc -Wno-maybe-uninitialized -Werror -E - < /dev/null > /dev/null 2>&1; echo $$?),0)
 CFLAGS_BASE_DRIVER += -Wno-maybe-uninitialized
+endif
 CFLAGS_BASE_DRIVER += -Wno-strict-prototypes
 ifeq ($(shell test $(GCC_VERSION) -ge 60 && echo 1), 1)
 CFLAGS_BASE_DRIVER += -Wno-shift-negative-value
