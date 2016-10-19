@@ -422,15 +422,6 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct i40e_rx_queue *rxq)
 			     "rxq->rx_free_thresh=%d",
 			     rxq->nb_rx_desc, rxq->rx_free_thresh);
 		ret = -EINVAL;
-	} else if (!(rxq->nb_rx_desc < (I40E_MAX_RING_DESC -
-				RTE_PMD_I40E_RX_MAX_BURST))) {
-		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
-			     "rxq->nb_rx_desc=%d, "
-			     "I40E_MAX_RING_DESC=%d, "
-			     "RTE_PMD_I40E_RX_MAX_BURST=%d",
-			     rxq->nb_rx_desc, I40E_MAX_RING_DESC,
-			     RTE_PMD_I40E_RX_MAX_BURST);
-		ret = -EINVAL;
 	}
 #else
 	ret = -EINVAL;
@@ -1768,8 +1759,19 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 
 	/* Allocate the maximun number of RX ring hardware descriptor. */
-	ring_size = sizeof(union i40e_rx_desc) * I40E_MAX_RING_DESC;
-	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
+	len = I40E_MAX_RING_DESC;
+
+#ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
+	/**
+	 * Allocating a little more memory because vectorized/bulk_alloc Rx
+	 * functions doesn't check boundaries each time.
+	 */
+	len += RTE_PMD_I40E_RX_MAX_BURST;
+#endif
+
+	ring_size = RTE_ALIGN(len * sizeof(union i40e_rx_desc),
+			      I40E_DMA_MEM_ALIGN);
+
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
 			      ring_size, I40E_RING_BASE_ALIGN, socket_id);
 	if (!rz) {
