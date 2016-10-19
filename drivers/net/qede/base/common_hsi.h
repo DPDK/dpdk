@@ -9,9 +9,9 @@
 #ifndef __COMMON_HSI__
 #define __COMMON_HSI__
 
-#define CORE_SPQE_PAGE_SIZE_BYTES                       4096
+#define CORE_SPQE_PAGE_SIZE_BYTES			4096
 
-#define FW_MAJOR_VERSION	8
+#define FW_MAJOR_VERSION		8
 #define FW_MINOR_VERSION	7
 #define FW_REVISION_VERSION	7
 #define FW_ENGINEERING_VERSION	0
@@ -21,68 +21,68 @@
 /***********************/
 
 /* PCI functions */
-#define MAX_NUM_PORTS_K2	(4)
-#define MAX_NUM_PORTS_BB	(2)
-#define MAX_NUM_PORTS		(MAX_NUM_PORTS_K2)
+#define MAX_NUM_PORTS_K2		(4)
+#define MAX_NUM_PORTS_BB		(2)
+#define MAX_NUM_PORTS			(MAX_NUM_PORTS_K2)
 
-#define MAX_NUM_PFS_K2	(16)
-#define MAX_NUM_PFS_BB	(8)
-#define MAX_NUM_PFS	(MAX_NUM_PFS_K2)
-#define MAX_NUM_OF_PFS_IN_CHIP (16) /* On both engines */
+#define MAX_NUM_PFS_K2			(16)
+#define MAX_NUM_PFS_BB			(8)
+#define MAX_NUM_PFS				(MAX_NUM_PFS_K2)
+#define MAX_NUM_OF_PFS_IN_CHIP	(16) /* On both engines */
 
-#define MAX_NUM_VFS_K2	(192)
-#define MAX_NUM_VFS_BB	(120)
-#define MAX_NUM_VFS	(MAX_NUM_VFS_K2)
+#define MAX_NUM_VFS_K2			(192)
+#define MAX_NUM_VFS_BB			(120)
+#define MAX_NUM_VFS				(MAX_NUM_VFS_K2)
 
 #define MAX_NUM_FUNCTIONS_BB	(MAX_NUM_PFS_BB + MAX_NUM_VFS_BB)
-#define MAX_NUM_FUNCTIONS	(MAX_NUM_PFS + MAX_NUM_VFS)
+#define MAX_NUM_FUNCTIONS		(MAX_NUM_PFS + MAX_NUM_VFS)
 
 #define MAX_FUNCTION_NUMBER_BB	(MAX_NUM_PFS + MAX_NUM_VFS_BB)
-#define MAX_FUNCTION_NUMBER	(MAX_NUM_PFS + MAX_NUM_VFS)
+#define MAX_FUNCTION_NUMBER		(MAX_NUM_PFS + MAX_NUM_VFS)
 
-#define MAX_NUM_VPORTS_K2	(208)
-#define MAX_NUM_VPORTS_BB	(160)
-#define MAX_NUM_VPORTS		(MAX_NUM_VPORTS_K2)
+#define MAX_NUM_VPORTS_K2		(208)
+#define MAX_NUM_VPORTS_BB		(160)
+#define MAX_NUM_VPORTS			(MAX_NUM_VPORTS_K2)
 
 #define MAX_NUM_L2_QUEUES_K2	(320)
 #define MAX_NUM_L2_QUEUES_BB	(256)
-#define MAX_NUM_L2_QUEUES	(MAX_NUM_L2_QUEUES_K2)
+#define MAX_NUM_L2_QUEUES		(MAX_NUM_L2_QUEUES_K2)
 
 /* Traffic classes in network-facing blocks (PBF, BTB, NIG, BRB, PRS and QM) */
 #define NUM_PHYS_TCS_4PORT_K2	(4)
-#define NUM_OF_PHYS_TCS		(8)
+#define NUM_OF_PHYS_TCS			(8)
 
-#define NUM_TCS_4PORT_K2	(NUM_PHYS_TCS_4PORT_K2 + 1)
-#define NUM_OF_TCS		(NUM_OF_PHYS_TCS + 1)
+#define NUM_TCS_4PORT_K2		(NUM_PHYS_TCS_4PORT_K2 + 1)
+#define NUM_OF_TCS				(NUM_OF_PHYS_TCS + 1)
 
-#define LB_TC			(NUM_OF_PHYS_TCS)
+#define LB_TC					(NUM_OF_PHYS_TCS)
 
 /* Num of possible traffic priority values */
-#define NUM_OF_PRIO		(8)
+#define NUM_OF_PRIO				(8)
 
-#define MAX_NUM_VOQS_K2		(NUM_TCS_4PORT_K2 * MAX_NUM_PORTS_K2)
-#define MAX_NUM_VOQS_BB		(NUM_OF_TCS * MAX_NUM_PORTS_BB)
-#define MAX_NUM_VOQS		(MAX_NUM_VOQS_K2)
-#define MAX_PHYS_VOQS		(NUM_OF_PHYS_TCS * MAX_NUM_PORTS_BB)
+#define MAX_NUM_VOQS_K2			(NUM_TCS_4PORT_K2 * MAX_NUM_PORTS_K2)
+#define MAX_NUM_VOQS_BB         (NUM_OF_TCS * MAX_NUM_PORTS_BB)
+#define MAX_NUM_VOQS			(MAX_NUM_VOQS_K2)
+#define MAX_PHYS_VOQS			(NUM_OF_PHYS_TCS * MAX_NUM_PORTS_BB)
 
 /* CIDs */
-#define NUM_OF_CONNECTION_TYPES	(8)
-#define NUM_OF_LCIDS		(320)
-#define NUM_OF_LTIDS		(320)
+#define NUM_OF_CONNECTION_TYPES (8)
+#define NUM_OF_LCIDS			(320)
+#define NUM_OF_LTIDS			(320)
 
 /*****************/
 /* CDU CONSTANTS */
 /*****************/
 
-#define CDU_SEG_TYPE_OFFSET_REG_TYPE_SHIFT              (17)
-#define CDU_SEG_TYPE_OFFSET_REG_OFFSET_MASK             (0x1ffff)
+#define CDU_SEG_TYPE_OFFSET_REG_TYPE_SHIFT		(17)
+#define CDU_SEG_TYPE_OFFSET_REG_OFFSET_MASK		(0x1ffff)
 
 /*****************/
 /* DQ CONSTANTS  */
 /*****************/
 
 /* DEMS */
-#define DQ_DEMS_LEGACY			0
+#define	DQ_DEMS_LEGACY						0
 
 /* XCM agg val selection */
 #define DQ_XCM_AGG_VAL_SEL_WORD2  0
@@ -107,7 +107,7 @@
 	DQ_XCM_AGG_VAL_SEL_WORD4
 #define DQ_XCM_CORE_SPQ_PROD_CMD \
 	DQ_XCM_AGG_VAL_SEL_WORD4
-#define DQ_XCM_ETH_GO_TO_BD_CONS_CMD            DQ_XCM_AGG_VAL_SEL_WORD5
+#define DQ_XCM_ETH_GO_TO_BD_CONS_CMD        DQ_XCM_AGG_VAL_SEL_WORD5
 
 /* XCM agg counter flag selection */
 #define DQ_XCM_AGG_FLG_SHIFT_BIT14  0
@@ -140,22 +140,22 @@
 /*****************/
 
 /* number of TX queues in the QM */
-#define MAX_QM_TX_QUEUES_K2	512
-#define MAX_QM_TX_QUEUES_BB	448
-#define MAX_QM_TX_QUEUES	MAX_QM_TX_QUEUES_K2
+#define MAX_QM_TX_QUEUES_K2			512
+#define MAX_QM_TX_QUEUES_BB			448
+#define MAX_QM_TX_QUEUES			MAX_QM_TX_QUEUES_K2
 
 /* number of Other queues in the QM */
-#define MAX_QM_OTHER_QUEUES_BB	64
-#define MAX_QM_OTHER_QUEUES_K2	128
-#define MAX_QM_OTHER_QUEUES	MAX_QM_OTHER_QUEUES_K2
+#define MAX_QM_OTHER_QUEUES_BB		64
+#define MAX_QM_OTHER_QUEUES_K2		128
+#define MAX_QM_OTHER_QUEUES			MAX_QM_OTHER_QUEUES_K2
 
 /* number of queues in a PF queue group */
-#define QM_PF_QUEUE_GROUP_SIZE	8
+#define QM_PF_QUEUE_GROUP_SIZE		8
 
 /* base number of Tx PQs in the CM PQ representation.
  * should be used when storing PQ IDs in CM PQ registers and context
  */
-#define CM_TX_PQ_BASE	0x200
+#define CM_TX_PQ_BASE               0x200
 
 /* QM registers data */
 #define QM_LINE_CRD_REG_WIDTH		16
@@ -164,7 +164,7 @@
 #define QM_BYTE_CRD_REG_SIGN_BIT	(1 << (QM_BYTE_CRD_REG_WIDTH - 1))
 #define QM_WFQ_CRD_REG_WIDTH		32
 #define QM_WFQ_CRD_REG_SIGN_BIT		(1 << (QM_WFQ_CRD_REG_WIDTH - 1))
-#define QM_RL_CRD_REG_WIDTH		32
+#define QM_RL_CRD_REG_WIDTH			32
 #define QM_RL_CRD_REG_SIGN_BIT		(1 << (QM_RL_CRD_REG_WIDTH - 1))
 
 /*****************/
@@ -185,100 +185,100 @@
 /* IGU CONSTANTS */
 /*****************/
 
-#define MAX_SB_PER_PATH_K2	(368)
-#define MAX_SB_PER_PATH_BB	(288)
+#define MAX_SB_PER_PATH_K2				(368)
+#define MAX_SB_PER_PATH_BB				(288)
 #define MAX_TOT_SB_PER_PATH \
 	MAX_SB_PER_PATH_K2
 
-#define MAX_SB_PER_PF_MIMD	129
-#define MAX_SB_PER_PF_SIMD	64
-#define MAX_SB_PER_VF		64
+#define MAX_SB_PER_PF_MIMD				129
+#define MAX_SB_PER_PF_SIMD				64
+#define MAX_SB_PER_VF					64
 
 /* Memory addresses on the BAR for the IGU Sub Block */
-#define IGU_MEM_BASE			0x0000
+#define IGU_MEM_BASE					0x0000
 
-#define IGU_MEM_MSIX_BASE		0x0000
-#define IGU_MEM_MSIX_UPPER		0x0101
-#define IGU_MEM_MSIX_RESERVED_UPPER	0x01ff
+#define IGU_MEM_MSIX_BASE				0x0000
+#define IGU_MEM_MSIX_UPPER				0x0101
+#define IGU_MEM_MSIX_RESERVED_UPPER			0x01ff
 
-#define IGU_MEM_PBA_MSIX_BASE		0x0200
-#define IGU_MEM_PBA_MSIX_UPPER		0x0202
-#define IGU_MEM_PBA_MSIX_RESERVED_UPPER	0x03ff
+#define IGU_MEM_PBA_MSIX_BASE				0x0200
+#define IGU_MEM_PBA_MSIX_UPPER				0x0202
+#define IGU_MEM_PBA_MSIX_RESERVED_UPPER			0x03ff
 
-#define IGU_CMD_INT_ACK_BASE		0x0400
+#define IGU_CMD_INT_ACK_BASE				0x0400
 #define IGU_CMD_INT_ACK_UPPER		(IGU_CMD_INT_ACK_BASE +	\
 					 MAX_TOT_SB_PER_PATH -	\
 					 1)
-#define IGU_CMD_INT_ACK_RESERVED_UPPER	0x05ff
+#define IGU_CMD_INT_ACK_RESERVED_UPPER			0x05ff
 
-#define IGU_CMD_ATTN_BIT_UPD_UPPER	0x05f0
-#define IGU_CMD_ATTN_BIT_SET_UPPER	0x05f1
-#define IGU_CMD_ATTN_BIT_CLR_UPPER	0x05f2
+#define IGU_CMD_ATTN_BIT_UPD_UPPER			0x05f0
+#define IGU_CMD_ATTN_BIT_SET_UPPER			0x05f1
+#define IGU_CMD_ATTN_BIT_CLR_UPPER			0x05f2
 
-#define IGU_REG_SISR_MDPC_WMASK_UPPER		0x05f3
-#define IGU_REG_SISR_MDPC_WMASK_LSB_UPPER	0x05f4
-#define IGU_REG_SISR_MDPC_WMASK_MSB_UPPER	0x05f5
-#define IGU_REG_SISR_MDPC_WOMASK_UPPER		0x05f6
+#define IGU_REG_SISR_MDPC_WMASK_UPPER			0x05f3
+#define IGU_REG_SISR_MDPC_WMASK_LSB_UPPER		0x05f4
+#define IGU_REG_SISR_MDPC_WMASK_MSB_UPPER		0x05f5
+#define IGU_REG_SISR_MDPC_WOMASK_UPPER			0x05f6
 
-#define IGU_CMD_PROD_UPD_BASE			0x0600
+#define IGU_CMD_PROD_UPD_BASE				0x0600
 #define IGU_CMD_PROD_UPD_UPPER			(IGU_CMD_PROD_UPD_BASE +\
 						 MAX_TOT_SB_PER_PATH - \
 						 1)
-#define IGU_CMD_PROD_UPD_RESERVED_UPPER		0x07ff
+#define IGU_CMD_PROD_UPD_RESERVED_UPPER			0x07ff
 
 /*****************/
 /* PXP CONSTANTS */
 /*****************/
 
 /* PTT and GTT */
-#define PXP_NUM_PF_WINDOWS		12
-#define PXP_PER_PF_ENTRY_SIZE		8
-#define PXP_NUM_GLOBAL_WINDOWS		243
-#define PXP_GLOBAL_ENTRY_SIZE		4
-#define PXP_ADMIN_WINDOW_ALLOWED_LENGTH	4
-#define PXP_PF_WINDOW_ADMIN_START	0
-#define PXP_PF_WINDOW_ADMIN_LENGTH	0x1000
+#define PXP_NUM_PF_WINDOWS                                  12
+#define PXP_PER_PF_ENTRY_SIZE                               8
+#define PXP_NUM_GLOBAL_WINDOWS                              243
+#define PXP_GLOBAL_ENTRY_SIZE                               4
+#define PXP_ADMIN_WINDOW_ALLOWED_LENGTH                     4
+#define PXP_PF_WINDOW_ADMIN_START                           0
+#define PXP_PF_WINDOW_ADMIN_LENGTH                          0x1000
 #define PXP_PF_WINDOW_ADMIN_END		(PXP_PF_WINDOW_ADMIN_START + \
 					 PXP_PF_WINDOW_ADMIN_LENGTH - 1)
-#define PXP_PF_WINDOW_ADMIN_PER_PF_START	0
+#define PXP_PF_WINDOW_ADMIN_PER_PF_START                    0
 #define PXP_PF_WINDOW_ADMIN_PER_PF_LENGTH	(PXP_NUM_PF_WINDOWS * \
 						 PXP_PER_PF_ENTRY_SIZE)
 #define PXP_PF_WINDOW_ADMIN_PER_PF_END	(PXP_PF_WINDOW_ADMIN_PER_PF_START + \
-					 PXP_PF_WINDOW_ADMIN_PER_PF_LENGTH - 1)
-#define PXP_PF_WINDOW_ADMIN_GLOBAL_START	0x200
+	 PXP_PF_WINDOW_ADMIN_PER_PF_LENGTH - 1)
+#define PXP_PF_WINDOW_ADMIN_GLOBAL_START                    0x200
 #define PXP_PF_WINDOW_ADMIN_GLOBAL_LENGTH	(PXP_NUM_GLOBAL_WINDOWS * \
 						 PXP_GLOBAL_ENTRY_SIZE)
-#define PXP_PF_WINDOW_ADMIN_GLOBAL_END \
-		(PXP_PF_WINDOW_ADMIN_GLOBAL_START + \
-		 PXP_PF_WINDOW_ADMIN_GLOBAL_LENGTH - 1)
-#define PXP_PF_GLOBAL_PRETEND_ADDR	0x1f0
-#define PXP_PF_ME_OPAQUE_MASK_ADDR	0xf4
-#define PXP_PF_ME_OPAQUE_ADDR		0x1f8
-#define PXP_PF_ME_CONCRETE_ADDR		0x1fc
+#define PXP_PF_WINDOW_ADMIN_GLOBAL_END                      \
+	(PXP_PF_WINDOW_ADMIN_GLOBAL_START +		    \
+	 PXP_PF_WINDOW_ADMIN_GLOBAL_LENGTH - 1)
+#define PXP_PF_GLOBAL_PRETEND_ADDR                          0x1f0
+#define PXP_PF_ME_OPAQUE_MASK_ADDR                          0xf4
+#define PXP_PF_ME_OPAQUE_ADDR                               0x1f8
+#define PXP_PF_ME_CONCRETE_ADDR                             0x1fc
 
-#define PXP_EXTERNAL_BAR_PF_WINDOW_START	0x1000
-#define PXP_EXTERNAL_BAR_PF_WINDOW_NUM		PXP_NUM_PF_WINDOWS
-#define PXP_EXTERNAL_BAR_PF_WINDOW_SINGLE_SIZE	0x1000
-#define PXP_EXTERNAL_BAR_PF_WINDOW_LENGTH \
-	(PXP_EXTERNAL_BAR_PF_WINDOW_NUM * \
+#define PXP_EXTERNAL_BAR_PF_WINDOW_START                    0x1000
+#define PXP_EXTERNAL_BAR_PF_WINDOW_NUM                      PXP_NUM_PF_WINDOWS
+#define PXP_EXTERNAL_BAR_PF_WINDOW_SINGLE_SIZE              0x1000
+#define PXP_EXTERNAL_BAR_PF_WINDOW_LENGTH                   \
+	(PXP_EXTERNAL_BAR_PF_WINDOW_NUM *		    \
 	 PXP_EXTERNAL_BAR_PF_WINDOW_SINGLE_SIZE)
-#define PXP_EXTERNAL_BAR_PF_WINDOW_END \
-	(PXP_EXTERNAL_BAR_PF_WINDOW_START + \
+#define PXP_EXTERNAL_BAR_PF_WINDOW_END                      \
+	(PXP_EXTERNAL_BAR_PF_WINDOW_START +		    \
 	 PXP_EXTERNAL_BAR_PF_WINDOW_LENGTH - 1)
 
-#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_START \
+#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_START                \
 	(PXP_EXTERNAL_BAR_PF_WINDOW_END + 1)
 #define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_NUM		PXP_NUM_GLOBAL_WINDOWS
-#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_SINGLE_SIZE	0x1000
-#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_LENGTH \
-	(PXP_EXTERNAL_BAR_GLOBAL_WINDOW_NUM * \
+#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_SINGLE_SIZE          0x1000
+#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_LENGTH               \
+	(PXP_EXTERNAL_BAR_GLOBAL_WINDOW_NUM *		    \
 	 PXP_EXTERNAL_BAR_GLOBAL_WINDOW_SINGLE_SIZE)
-#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_END \
-	(PXP_EXTERNAL_BAR_GLOBAL_WINDOW_START + \
+#define PXP_EXTERNAL_BAR_GLOBAL_WINDOW_END                  \
+	(PXP_EXTERNAL_BAR_GLOBAL_WINDOW_START +		    \
 	 PXP_EXTERNAL_BAR_GLOBAL_WINDOW_LENGTH - 1)
 
-#define PXP_ILT_PAGE_SIZE_NUM_BITS_MIN	12
-#define PXP_ILT_BLOCK_FACTOR_MULTIPLIER	1024
+#define PXP_ILT_PAGE_SIZE_NUM_BITS_MIN          12
+#define PXP_ILT_BLOCK_FACTOR_MULTIPLIER         1024
 
 /* ILT Records */
 #define PXP_NUM_ILT_RECORDS_BB 7600
@@ -301,10 +301,10 @@
 
 /* Async data KCQ CQE */
 struct async_data {
-	__le32	cid;
-	__le16	itid;
-	u8	error_code;
-	u8	fw_debug_param;
+	__le32 cid;
+	__le16 itid;
+	u8 error_code;
+	u8 fw_debug_param;
 };
 
 struct regpair {
@@ -359,12 +359,12 @@ struct event_ring_entry {
 	__le16			reserved0;
 	__le16			echo;
 	u8			fw_return_code;
-	u8			flags;
+	u8 flags;
 #define EVENT_RING_ENTRY_ASYNC_MASK      0x1
 #define EVENT_RING_ENTRY_ASYNC_SHIFT     0
 #define EVENT_RING_ENTRY_RESERVED1_MASK  0x7F
 #define EVENT_RING_ENTRY_RESERVED1_SHIFT 1
-	union event_ring_data	data;
+	union event_ring_data data;
 };
 
 /* Multi function mode */
@@ -444,8 +444,8 @@ struct core_db_data {
 #define CORE_DB_DATA_RESERVED_SHIFT    5
 #define CORE_DB_DATA_AGG_VAL_SEL_MASK  0x3
 #define CORE_DB_DATA_AGG_VAL_SEL_SHIFT 6
-	u8	agg_flags;
-	__le16	spq_prod;
+	u8 agg_flags;
+	__le16 spq_prod;
 };
 
 /* Enum of doorbell aggregative command selection */
@@ -479,10 +479,10 @@ struct db_legacy_addr {
 
 /* Igu interrupt command */
 enum igu_int_cmd {
-	IGU_INT_ENABLE	= 0,
+	IGU_INT_ENABLE = 0,
 	IGU_INT_DISABLE = 1,
-	IGU_INT_NOP	= 2,
-	IGU_INT_NOP2	= 3,
+	IGU_INT_NOP = 2,
+	IGU_INT_NOP2 = 3,
 	MAX_IGU_INT_CMD
 };
 
@@ -508,8 +508,8 @@ struct igu_prod_cons_update {
 
 /* Igu segments access for default status block only */
 enum igu_seg_access {
-	IGU_SEG_ACCESS_REG	= 0,
-	IGU_SEG_ACCESS_ATTN	= 1,
+	IGU_SEG_ACCESS_REG = 0,
+	IGU_SEG_ACCESS_ATTN = 1,
 	MAX_IGU_SEG_ACCESS
 };
 
@@ -574,13 +574,13 @@ struct pxp_pretend_concrete_fid {
 
 union pxp_pretend_fid {
 	struct pxp_pretend_concrete_fid concrete_fid;
-	__le16				opaque_fid;
+	__le16 opaque_fid;
 };
 
 /* Pxp Pretend Command Register. */
 struct pxp_pretend_cmd {
-	union pxp_pretend_fid	fid;
-	__le16			control;
+	union pxp_pretend_fid fid;
+	__le16 control;
 #define PXP_PRETEND_CMD_PATH_MASK              0x1
 #define PXP_PRETEND_CMD_PATH_SHIFT             0
 #define PXP_PRETEND_CMD_USE_PORT_MASK          0x1
@@ -603,30 +603,30 @@ struct pxp_pretend_cmd {
 
 /* PTT Record in PXP Admin Window. */
 struct pxp_ptt_entry {
-	__le32			offset;
+	__le32 offset;
 #define PXP_PTT_ENTRY_OFFSET_MASK     0x7FFFFF
 #define PXP_PTT_ENTRY_OFFSET_SHIFT    0
 #define PXP_PTT_ENTRY_RESERVED0_MASK  0x1FF
 #define PXP_PTT_ENTRY_RESERVED0_SHIFT 23
-	struct pxp_pretend_cmd	pretend;
+	struct pxp_pretend_cmd pretend;
 };
 
 /* RSS hash type */
 enum rss_hash_type {
-	RSS_HASH_TYPE_DEFAULT	= 0,
-	RSS_HASH_TYPE_IPV4	= 1,
-	RSS_HASH_TYPE_TCP_IPV4	= 2,
-	RSS_HASH_TYPE_IPV6	= 3,
-	RSS_HASH_TYPE_TCP_IPV6	= 4,
-	RSS_HASH_TYPE_UDP_IPV4	= 5,
-	RSS_HASH_TYPE_UDP_IPV6	= 6,
+	RSS_HASH_TYPE_DEFAULT = 0,
+	RSS_HASH_TYPE_IPV4 = 1,
+	RSS_HASH_TYPE_TCP_IPV4 = 2,
+	RSS_HASH_TYPE_IPV6 = 3,
+	RSS_HASH_TYPE_TCP_IPV6 = 4,
+	RSS_HASH_TYPE_UDP_IPV4 = 5,
+	RSS_HASH_TYPE_UDP_IPV6 = 6,
 	MAX_RSS_HASH_TYPE
 };
 
 /* status block structure */
 struct status_block {
-	__le16	pi_array[PIS_PER_SB];
-	__le32	sb_num;
+	__le16 pi_array[PIS_PER_SB];
+	__le32 sb_num;
 #define STATUS_BLOCK_SB_NUM_MASK      0x1FF
 #define STATUS_BLOCK_SB_NUM_SHIFT     0
 #define STATUS_BLOCK_ZERO_PAD_MASK    0x7F

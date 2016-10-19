@@ -169,8 +169,8 @@ void ecore_int_cau_conf_sb(struct ecore_hwfn *p_hwfn,
 *
 * @return enum _ecore_status_t
 */
-enum _ecore_status_t ecore_int_alloc(struct ecore_hwfn *p_hwfn,
-				     struct ecore_ptt *p_ptt);
+enum _ecore_status_t ecore_int_alloc(struct ecore_hwfn	*p_hwfn,
+				     struct ecore_ptt	*p_ptt);
 
 /**
 * @brief ecore_int_free

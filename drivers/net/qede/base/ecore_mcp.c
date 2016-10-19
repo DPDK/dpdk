@@ -333,7 +333,7 @@ enum _ecore_status_t ecore_mcp_cmd(struct ecore_hwfn *p_hwfn,
 }
 
 enum _ecore_status_t ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt,
+			struct ecore_ptt *p_ptt,
 					     u32 cmd, u32 param,
 					     union drv_union_data *p_union_data,
 					     u32 *o_mcp_resp,
@@ -354,18 +354,18 @@ enum _ecore_status_t ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->lock);
 
 	if (p_union_data != OSAL_NULL) {
-		union_data_addr = p_hwfn->mcp_info->drv_mb_addr +
-		    OFFSETOF(struct public_drv_mb, union_data);
+	union_data_addr = p_hwfn->mcp_info->drv_mb_addr +
+			  OFFSETOF(struct public_drv_mb, union_data);
 		ecore_memcpy_to(p_hwfn, p_ptt, union_data_addr, p_union_data,
 				sizeof(*p_union_data));
-	}
+}
 
 	rc = ecore_do_mcp_cmd(p_hwfn, p_ptt, cmd, param, o_mcp_resp,
 			      o_mcp_param);
 
 	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
 
-	return rc;
+		return rc;
 }
 
 enum _ecore_status_t ecore_mcp_nvm_wr_cmd(struct ecore_hwfn *p_hwfn,
@@ -577,7 +577,7 @@ static void ecore_mcp_handle_transceiver_change(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, (ECORE_MSG_HW | ECORE_MSG_SP),
 		   "Received transceiver state update [0x%08x] from mfw"
-		   "[Addr 0x%x]\n",
+		   " [Addr 0x%x]\n",
 		   transceiver_state, (u32)(p_hwfn->mcp_info->port_addr +
 					    OFFSETOF(struct public_port,
 						     transceiver_data)));
@@ -661,18 +661,18 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 	if (p_hwfn->mcp_info->func_info.bandwidth_max && p_link->speed) {
 		u8 max_bw = p_hwfn->mcp_info->func_info.bandwidth_max;
 
-		__ecore_configure_pf_max_bandwidth(p_hwfn, p_ptt,
-						   p_link, max_bw);
+	__ecore_configure_pf_max_bandwidth(p_hwfn, p_ptt,
+					   p_link, max_bw);
 	}
 
 	if (p_hwfn->mcp_info->func_info.bandwidth_min && p_link->speed) {
 		u8 min_bw = p_hwfn->mcp_info->func_info.bandwidth_min;
 
-		__ecore_configure_pf_min_bandwidth(p_hwfn, p_ptt,
-						   p_link, min_bw);
+	__ecore_configure_pf_min_bandwidth(p_hwfn, p_ptt,
+					   p_link, min_bw);
 
-		ecore_configure_vp_wfq_on_link_change(p_hwfn->p_dev,
-						      p_link->min_pf_rate);
+	ecore_configure_vp_wfq_on_link_change(p_hwfn->p_dev,
+					      p_link->min_pf_rate);
 	}
 
 	p_link->an = !!(status & LINK_STATUS_AUTO_NEGOTIATE_ENABLED);
@@ -1090,8 +1090,8 @@ enum _ecore_status_t ecore_mcp_get_mfw_ver(struct ecore_dev *p_dev,
 
 		DP_VERBOSE(p_dev, ECORE_MSG_IOV,
 			   "VF requested MFW vers prior to ACQUIRE\n");
-		return ECORE_INVAL;
-	}
+			return ECORE_INVAL;
+		}
 
 	global_offsize = ecore_rd(p_hwfn, p_ptt,
 				  SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->

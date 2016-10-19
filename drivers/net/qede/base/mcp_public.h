@@ -26,7 +26,7 @@
 #define MCP_GLOB_PORT_MAX	4	/* Global */
 #define MCP_GLOB_FUNC_MAX	16	/* Global */
 
-typedef u32 offsize_t;		/* In DWORDS !!! */
+typedef u32 offsize_t;      /* In DWORDS !!! */
 /* Offset from the beginning of the MCP scratchpad */
 #define OFFSIZE_OFFSET_SHIFT	0
 #define OFFSIZE_OFFSET_MASK	0x0000ffff
@@ -35,18 +35,18 @@ typedef u32 offsize_t;		/* In DWORDS !!! */
 #define OFFSIZE_SIZE_MASK	0xffff0000
 
 /* SECTION_OFFSET is calculating the offset in bytes out of offsize */
-#define SECTION_OFFSET(_offsize) \
-((((_offsize & OFFSIZE_OFFSET_MASK) >> OFFSIZE_OFFSET_SHIFT) << 2))
+#define SECTION_OFFSET(_offsize)	\
+	((((_offsize & OFFSIZE_OFFSET_MASK) >> OFFSIZE_OFFSET_SHIFT) << 2))
 
 /* SECTION_SIZE is calculating the size in bytes out of offsize */
-#define SECTION_SIZE(_offsize) \
-(((_offsize & OFFSIZE_SIZE_MASK) >> OFFSIZE_SIZE_SHIFT) << 2)
+#define SECTION_SIZE(_offsize)		\
+	(((_offsize & OFFSIZE_SIZE_MASK) >> OFFSIZE_SIZE_SHIFT) << 2)
 
-#define SECTION_ADDR(_offsize, idx) \
+#define SECTION_ADDR(_offsize, idx)	\
 (MCP_REG_SCRATCH + SECTION_OFFSET(_offsize) + (SECTION_SIZE(_offsize) * idx))
 
 #define SECTION_OFFSIZE_ADDR(_pub_base, _section) \
-(_pub_base + offsetof(struct mcp_public_data, sections[_section]))
+	(_pub_base + offsetof(struct mcp_public_data, sections[_section]))
 
 /* PHY configuration */
 struct pmm_phy_cfg {
@@ -54,13 +54,13 @@ struct pmm_phy_cfg {
 #define PMM_SPEED_AUTONEG   0
 #define PMM_SPEED_SMARTLINQ  0x8
 
-	u32 pause;		/* bitmask */
+	u32 pause;      /* bitmask */
 #define PMM_PAUSE_NONE		0x0
 #define PMM_PAUSE_AUTONEG	0x1
 #define PMM_PAUSE_RX		0x2
 #define PMM_PAUSE_TX		0x4
 
-	u32 adv_speed;		/* Default should be the speed_cap_mask */
+	u32 adv_speed;      /* Default should be the speed_cap_mask */
 	u32 loopback_mode;
 #define PMM_LOOPBACK_NONE		0
 #define PMM_LOOPBACK_INT_PHY		1
@@ -76,7 +76,7 @@ struct pmm_phy_cfg {
 };
 
 struct port_mf_cfg {
-	u32 dynamic_cfg;	/* device control channel */
+	u32 dynamic_cfg;    /* device control channel */
 #define PORT_MF_CFG_OV_TAG_MASK              0x0000ffff
 #define PORT_MF_CFG_OV_TAG_SHIFT             0
 #define PORT_MF_CFG_OV_TAG_DEFAULT         PORT_MF_CFG_OV_TAG_MASK
@@ -88,51 +88,51 @@ struct port_mf_cfg {
  * MUST be synced with struct pmm_stats_map
  */
 struct pmm_stats {
-	u64 r64; /* 0x00 (Offset 0x00 ) RX 64-byte frame counter */
-	u64 r127; /* 0x01 (Offset 0x08 ) RX 65 to 127 byte frame counter */
-	u64 r255; /* 0x02 (Offset 0x10 ) RX 128 to 255 byte frame counter */
-	u64 r511; /* 0x03 (Offset 0x18 ) RX 256 to 511 byte frame counter */
-	u64 r1023; /* 0x04 (Offset 0x20 ) RX 512 to 1023 byte frame counter */
+	u64 r64;        /* 0x00 (Offset 0x00 ) RX 64-byte frame counter*/
+	u64 r127; /* 0x01 (Offset 0x08 ) RX 65 to 127 byte frame counter*/
+	u64 r255; /* 0x02 (Offset 0x10 ) RX 128 to 255 byte frame counter*/
+	u64 r511; /* 0x03 (Offset 0x18 ) RX 256 to 511 byte frame counter*/
+	u64 r1023; /* 0x04 (Offset 0x20 ) RX 512 to 1023 byte frame counter*/
 	u64 r1518; /* 0x05 (Offset 0x28 ) RX 1024 to 1518 byte frame counter */
 	u64 r1522; /* 0x06 (Offset 0x30 ) RX 1519 to 1522 byte VLAN-tagged  */
-	u64 r2047; /* 0x07 (Offset 0x38 ) RX 1519 to 2047 byte frame counter */
-	u64 r4095; /* 0x08 (Offset 0x40 ) RX 2048 to 4095 byte frame counter */
-	u64 r9216; /* 0x09 (Offset 0x48 ) RX 4096 to 9216 byte frame counter */
+	u64 r2047; /* 0x07 (Offset 0x38 ) RX 1519 to 2047 byte frame counter*/
+	u64 r4095; /* 0x08 (Offset 0x40 ) RX 2048 to 4095 byte frame counter*/
+	u64 r9216; /* 0x09 (Offset 0x48 ) RX 4096 to 9216 byte frame counter*/
 	u64 r16383; /* 0x0A (Offset 0x50 ) RX 9217 to 16383 byte frame ctr */
-	u64 rfcs; /* 0x0F (Offset 0x58 ) RX FCS error frame counter */
-	u64 rxcf; /* 0x10 (Offset 0x60 ) RX control frame counter */
-	u64 rxpf; /* 0x11 (Offset 0x68 ) RX pause frame counter */
-	u64 rxpp; /* 0x12 (Offset 0x70 ) RX PFC frame counter */
-	u64 raln; /* 0x16 (Offset 0x78 ) RX alignment error counter */
-	u64 rfcr; /* 0x19 (Offset 0x80 ) RX false carrier counter */
-	u64 rovr; /* 0x1A (Offset 0x88 ) RX oversized frame counter */
-	u64 rjbr; /* 0x1B (Offset 0x90 ) RX jabber frame counter */
-	u64 rund; /* 0x34 (Offset 0x98 ) RX undersized frame counter */
-	u64 rfrg; /* 0x35 (Offset 0xa0 ) RX fragment counter */
-	u64 t64; /* 0x40 (Offset 0xa8 ) TX 64-byte frame counter */
+	u64 rfcs;       /* 0x0F (Offset 0x58 ) RX FCS error frame counter*/
+	u64 rxcf;       /* 0x10 (Offset 0x60 ) RX control frame counter*/
+	u64 rxpf;       /* 0x11 (Offset 0x68 ) RX pause frame counter*/
+	u64 rxpp;       /* 0x12 (Offset 0x70 ) RX PFC frame counter*/
+	u64 raln;       /* 0x16 (Offset 0x78 ) RX alignment error counter*/
+	u64 rfcr;       /* 0x19 (Offset 0x80 ) RX false carrier counter */
+	u64 rovr;       /* 0x1A (Offset 0x88 ) RX oversized frame counter*/
+	u64 rjbr;       /* 0x1B (Offset 0x90 ) RX jabber frame counter */
+	u64 rund;       /* 0x34 (Offset 0x98 ) RX undersized frame counter */
+	u64 rfrg;       /* 0x35 (Offset 0xa0 ) RX fragment counter */
+	u64 t64;        /* 0x40 (Offset 0xa8 ) TX 64-byte frame counter */
 	u64 t127; /* 0x41 (Offset 0xb0 ) TX 65 to 127 byte frame counter */
-	u64 t255; /* 0x42 (Offset 0xb8 ) TX 128 to 255 byte frame counter */
-	u64 t511; /* 0x43 (Offset 0xc0 ) TX 256 to 511 byte frame counter */
-	u64 t1023; /* 0x44 (Offset 0xc8 ) TX 512 to 1023 byte frame counter */
+	u64 t255; /* 0x42 (Offset 0xb8 ) TX 128 to 255 byte frame counter*/
+	u64 t511; /* 0x43 (Offset 0xc0 ) TX 256 to 511 byte frame counter*/
+	u64 t1023; /* 0x44 (Offset 0xc8 ) TX 512 to 1023 byte frame counter*/
 	u64 t1518; /* 0x45 (Offset 0xd0 ) TX 1024 to 1518 byte frame counter */
 	u64 t2047; /* 0x47 (Offset 0xd8 ) TX 1519 to 2047 byte frame counter */
 	u64 t4095; /* 0x48 (Offset 0xe0 ) TX 2048 to 4095 byte frame counter */
 	u64 t9216; /* 0x49 (Offset 0xe8 ) TX 4096 to 9216 byte frame counter */
 	u64 t16383; /* 0x4A (Offset 0xf0 ) TX 9217 to 16383 byte frame ctr */
-	u64 txpf; /* 0x50 (Offset 0xf8 ) TX pause frame counter */
-	u64 txpp; /* 0x51 (Offset 0x100) TX PFC frame counter */
+	u64 txpf;       /* 0x50 (Offset 0xf8 ) TX pause frame counter */
+	u64 txpp;       /* 0x51 (Offset 0x100) TX PFC frame counter */
 	u64 tlpiec; /* 0x6C (Offset 0x108) Transmit Logical Type LLFC */
 	u64 tncl; /* 0x6E (Offset 0x110) Transmit Total Collision Counter */
-	u64 rbyte; /* 0x3d (Offset 0x118) RX byte counter */
-	u64 rxuca; /* 0x0c (Offset 0x120) RX UC frame counter */
-	u64 rxmca; /* 0x0d (Offset 0x128) RX MC frame counter */
-	u64 rxbca; /* 0x0e (Offset 0x130) RX BC frame counter */
+	u64 rbyte;      /* 0x3d (Offset 0x118) RX byte counter */
+	u64 rxuca;      /* 0x0c (Offset 0x120) RX UC frame counter */
+	u64 rxmca;      /* 0x0d (Offset 0x128) RX MC frame counter */
+	u64 rxbca;      /* 0x0e (Offset 0x130) RX BC frame counter */
 	u64 rxpok; /* 0x22 (Offset 0x138) RX good frame */
-	u64 tbyte; /* 0x6f (Offset 0x140) TX byte counter */
-	u64 txuca; /* 0x4d (Offset 0x148) TX UC frame counter */
-	u64 txmca; /* 0x4e (Offset 0x150) TX MC frame counter */
-	u64 txbca; /* 0x4f (Offset 0x158) TX BC frame counter */
-	u64 txcf; /* 0x54 (Offset 0x160) TX control frame counter */
+	u64 tbyte;      /* 0x6f (Offset 0x140) TX byte counter */
+	u64 txuca;      /* 0x4d (Offset 0x148) TX UC frame counter */
+	u64 txmca;      /* 0x4e (Offset 0x150) TX MC frame counter */
+	u64 txbca;      /* 0x4f (Offset 0x158) TX BC frame counter */
+	u64 txcf;       /* 0x54 (Offset 0x160) TX control frame counter */
 };
 
 struct brb_stats {
@@ -151,18 +151,18 @@ struct port_stats {
  *      | ports            |         |         |        |          |
  *======+==================+=========+=========+========+======================
  * BB   | 1x100G           | This is special mode, where there are 2 HW func
- * BB   | 2x10/20Gbps      | 0,1     | NA      |  No    | 1        | 1
- * BB   | 2x40 Gbps        | 0,1     | NA      |  Yes   | 1        | 1
- * BB   | 2x50Gbps         | 0,1     | NA      |  No    | 1        | 1
+ * BB | 2x10/20Gbps| 0,1     | NA      |  No    | 1        | 1
+ * BB | 2x40 Gbps  | 0,1     | NA      |  Yes   | 1        | 1
+ * BB | 2x50Gbps   | 0,1     | NA      |  No    | 1        | 1
  * BB   | 4x10Gbps         | 0,2     | 1,3     |  No    | 1/2      | 1,2
  * BB   | 4x10Gbps         | 0,1     | 2,3     |  No    | 1/2      | 1,2
  * BB   | 4x10Gbps         | 0,3     | 1,2     |  No    | 1/2      | 1,2
- * BB   | 4x10Gbps         | 0,1,2,3 | NA      |  No    | 1        | 1
- * AH   | 2x10/20Gbps      | 0,1     | NA      |  NA    | 1        | NA
- * AH   | 4x10Gbps         | 0,1     | 2,3     |  NA    | 2        | NA
- * AH   | 4x10Gbps         | 0,2     | 1,3     |  NA    | 2        | NA
- * AH   | 4x10Gbps         | 0,3     | 1,2     |  NA    | 2        | NA
- * AH   | 4x10Gbps         | 0,1,2,3 | NA      |  NA    | 1        | NA
+ * BB | 4x10Gbps   | 0,1,2,3 | NA      |  No    | 1        | 1
+ * AH | 2x10/20Gbps| 0,1     | NA      |  NA    | 1        | NA
+ * AH | 4x10Gbps   | 0,1     | 2,3     |  NA    | 2        | NA
+ * AH | 4x10Gbps   | 0,2     | 1,3     |  NA    | 2        | NA
+ * AH | 4x10Gbps   | 0,3     | 1,2     |  NA    | 2        | NA
+ * AH | 4x10Gbps   | 0,1,2,3 | NA      |  NA    | 1        | NA
  *======+==================+=========+=========+========+=======================
  */
 
@@ -216,13 +216,13 @@ struct lldp_config_params_s {
 	u32 local_chassis_id[LLDP_CHASSIS_ID_STAT_LEN];
 	/* Holds local Port ID TLV header, subtype and 9B of payload.
 	 * If firtst byte is 0, then we will use default port ID
-	 */
+	*/
 	u32 local_port_id[LLDP_PORT_ID_STAT_LEN];
 };
 
 struct lldp_status_params_s {
 	u32 prefix_seq_num;
-	u32 status;		/* TBD */
+	u32 status; /* TBD */
 	/* Holds remote Chassis ID TLV header, subtype and 9B of payload.
 	 */
 	u32 local_port_id[LLDP_PORT_ID_STAT_LEN];
@@ -245,11 +245,11 @@ struct dcbx_ets_feature {
 #define DCBX_ETS_CBS_SHIFT                      3
 #define DCBX_ETS_MAX_TCS_MASK                   0x000000f0
 #define DCBX_ETS_MAX_TCS_SHIFT                  4
-	u32 pri_tc_tbl[1];
+	u32  pri_tc_tbl[1];
 #define DCBX_CEE_STRICT_PRIORITY		0xf
 #define DCBX_CEE_STRICT_PRIORITY_TC		0x7
-	u32 tc_bw_tbl[2];
-	u32 tc_tsa_tbl[2];
+	u32  tc_bw_tbl[2];
+	u32  tc_tsa_tbl[2];
 #define DCBX_ETS_TSA_STRICT			0
 #define DCBX_ETS_TSA_CBS			1
 #define DCBX_ETS_TSA_ETS			2
@@ -287,12 +287,12 @@ struct dcbx_app_priority_feature {
 	/* Not in use
 	 * #define DCBX_APP_DEFAULT_PRI_MASK       0x00000f00
 	 * #define DCBX_APP_DEFAULT_PRI_SHIFT      8
-	 */
+	*/
 #define DCBX_APP_MAX_TCS_MASK           0x0000f000
 #define DCBX_APP_MAX_TCS_SHIFT          12
 #define DCBX_APP_NUM_ENTRIES_MASK       0x00ff0000
 #define DCBX_APP_NUM_ENTRIES_SHIFT      16
-	struct dcbx_app_priority_entry app_pri_tbl[DCBX_MAX_APP_PROTOCOL];
+	struct dcbx_app_priority_entry  app_pri_tbl[DCBX_MAX_APP_PROTOCOL];
 };
 
 /* FW structure in BE */
@@ -350,7 +350,7 @@ struct dcbx_mib {
 	 * #define DCBX_CONFIG_VERSION_DISABLED        0
 	 * #define DCBX_CONFIG_VERSION_IEEE            1
 	 * #define DCBX_CONFIG_VERSION_CEE             2
-	 */
+	*/
 	struct dcbx_features features;
 	u32 suffix_seq_num;
 };
@@ -367,9 +367,9 @@ struct lldp_system_tlvs_buffer_s {
 /*                                    */
 /**************************************/
 struct public_global {
-	u32 max_path; /* 32bit is wasty, but this will be used often */
+	u32 max_path;       /* 32bit is wasty, but this will be used often */
 	u32 max_ports; /* (Global) 32bit is wasty, this will be used often */
-#define MODE_1P	1 /* TBD - NEED TO THINK OF A BETTER NAME */
+#define MODE_1P	1		/* TBD - NEED TO THINK OF A BETTER NAME */
 #define MODE_2P	2
 #define MODE_3P	3
 #define MODE_4P	4
@@ -406,7 +406,7 @@ struct public_global {
 struct fw_flr_mb {
 	u32 aggint;
 	u32 opgen_addr;
-	u32 accum_ack;		/* 0..15:PF, 16..207:VF, 256..271:IOV_DIS */
+	u32 accum_ack;      /* 0..15:PF, 16..207:VF, 256..271:IOV_DIS */
 #define ACCUM_ACK_PF_BASE	0
 #define ACCUM_ACK_PF_SHIFT	0
 
@@ -424,10 +424,10 @@ struct public_path {
 	 * mcp_vf_disabled is set by the MCP to indicate the driver about VFs
 	 * which were disabled/flred
 	 */
-	u32 mcp_vf_disabled[VF_MAX_STATIC / 32];	/* 0x003c */
+	u32 mcp_vf_disabled[VF_MAX_STATIC / 32];    /* 0x003c */
 
 	u32 process_kill;
-	/* Reset on mcp reset, and incremented for eveny process kill event. */
+/* Reset on mcp reset, and incremented for eveny process kill event. */
 #define PROCESS_KILL_COUNTER_MASK		0x0000ffff
 #define PROCESS_KILL_COUNTER_SHIFT		0
 #define PROCESS_KILL_GLOB_AEU_BIT_MASK		0xffff0000
@@ -464,7 +464,7 @@ struct dci_fc_npiv_tbl {
  ****************************************************************************/
 
 struct public_port {
-	u32 validity_map;	/* 0x0 (4*2 = 0x8) */
+	u32 validity_map;   /* 0x0 (4*2 = 0x8) */
 
 	/* validity bits */
 #define MCP_VALIDITY_PCI_CFG                    0x00100000
@@ -485,7 +485,7 @@ struct public_port {
 #define MCP_VALIDITY_ACTIVE_MFW_NONE            0x000001c0
 
 	u32 link_status;
-#define LINK_STATUS_LINK_UP			0x00000001
+#define LINK_STATUS_LINK_UP					0x00000001
 #define LINK_STATUS_SPEED_AND_DUPLEX_MASK			0x0000001e
 #define LINK_STATUS_SPEED_AND_DUPLEX_1000THD		(1 << 1)
 #define LINK_STATUS_SPEED_AND_DUPLEX_1000TFD		(2 << 1)
@@ -501,7 +501,7 @@ struct public_port {
 #define LINK_STATUS_AUTO_NEGOTIATE_COMPLETE			0x00000040
 #define LINK_STATUS_PARALLEL_DETECTION_USED			0x00000080
 
-#define LINK_STATUS_PFC_ENABLED				0x00000100
+#define LINK_STATUS_PFC_ENABLED					0x00000100
 #define LINK_STATUS_LINK_PARTNER_1000TFD_CAPABLE	0x00000200
 #define LINK_STATUS_LINK_PARTNER_1000THD_CAPABLE	0x00000400
 #define LINK_STATUS_LINK_PARTNER_10G_CAPABLE		0x00000800
@@ -537,15 +537,15 @@ struct public_port {
 	struct port_stats stats;
 
 	u32 media_type;
-#define	MEDIA_UNSPECIFIED		0x0
+#define	MEDIA_UNSPECIFIED	0x0
 #define	MEDIA_SFPP_10G_FIBER	0x1
 #define	MEDIA_XFP_FIBER			0x2
-#define	MEDIA_DA_TWINAX			0x3
-#define	MEDIA_BASE_T			0x4
+#define	MEDIA_DA_TWINAX		0x3
+#define	MEDIA_BASE_T		0x4
 #define MEDIA_SFP_1G_FIBER		0x5
-#define MEDIA_MODULE_FIBER		0x6
-#define	MEDIA_KR				0xf0
-#define	MEDIA_NOT_PRESENT		0xff
+#define MEDIA_MODULE_FIBER	0x6
+#define	MEDIA_KR		0xf0
+#define	MEDIA_NOT_PRESENT	0xff
 
 	u32 lfa_status;
 #define LFA_LINK_FLAP_REASON_OFFSET		0
@@ -574,7 +574,7 @@ struct public_port {
 	struct dcbx_mib remote_dcbx_mib;
 	struct dcbx_mib operational_dcbx_mib;
 
-	/* FC_NPIV table offset & size in NVRAM value of 0 means not present */
+/* FC_NPIV table offset & size in NVRAM value of 0 means not present */
 	u32 fc_npiv_nvram_tbl_addr;
 	u32 fc_npiv_nvram_tbl_size;
 	u32 transceiver_data;
@@ -641,7 +641,7 @@ struct public_func {
 
 	/* MTU size per funciton is needed for the OV feature */
 	u32 mtu_size;
-	/* 9 entires for the C2S PCP map for each inner VLAN PCP + 1 default */
+/* 9 entires for the C2S PCP map for each inner VLAN PCP + 1 default */
 	/* For PCP values 0-3 use the map lower */
 	/* 0xFF000000 - PCP 0, 0x00FF0000 - PCP 1,
 	 * 0x0000FF00 - PCP 2, 0x000000FF PCP 3
@@ -650,7 +650,7 @@ struct public_func {
 	/* For PCP values 4-7 use the map upper */
 	/* 0xFF000000 - PCP 4, 0x00FF0000 - PCP 5,
 	 * 0x0000FF00 - PCP 6, 0x000000FF PCP 7
-	 */
+	*/
 	u32 c2s_pcp_map_upper;
 
 	/* For PCP default value get the MSB byte of the map default */
@@ -683,7 +683,7 @@ struct public_func {
 	u32 status;
 #define FUNC_STATUS_VLINK_DOWN			0x00000001
 
-	u32 mac_upper;		/* MAC */
+	u32 mac_upper;      /* MAC */
 #define FUNC_MF_CFG_UPPERMAC_MASK               0x0000ffff
 #define FUNC_MF_CFG_UPPERMAC_SHIFT              0
 #define FUNC_MF_CFG_UPPERMAC_DEFAULT            FUNC_MF_CFG_UPPERMAC_MASK
@@ -692,14 +692,14 @@ struct public_func {
 
 	u32 dpdk_rsvd2[4];
 
-	u32 ovlan_stag;		/* tags */
+	u32 ovlan_stag;     /* tags */
 #define FUNC_MF_CFG_OV_STAG_MASK              0x0000ffff
 #define FUNC_MF_CFG_OV_STAG_SHIFT             0
 #define FUNC_MF_CFG_OV_STAG_DEFAULT           FUNC_MF_CFG_OV_STAG_MASK
 
-	u32 pf_allocation;	/* vf per pf */
+	u32 pf_allocation; /* vf per pf */
 
-	u32 preserve_data;	/* Will be used bt CCM */
+	u32 preserve_data; /* Will be used bt CCM */
 
 	u32 driver_last_activity_ts;
 
@@ -707,7 +707,7 @@ struct public_func {
 	 * drv_ack_vf_disabled is set by the PF driver to ack handled disabled
 	 * VFs
 	 */
-	u32 drv_ack_vf_disabled[VF_MAX_STATIC / 32];	/* 0x0044 */
+	u32 drv_ack_vf_disabled[VF_MAX_STATIC / 32];    /* 0x0044 */
 
 	u32 drv_id;
 #define DRV_ID_PDA_COMP_VER_MASK	0x0000ffff
@@ -747,7 +747,7 @@ struct public_func {
  */
 
 struct mcp_mac {
-	u32 mac_upper;		/* Upper 16 bits are always zeroes */
+	u32 mac_upper;      /* Upper 16 bits are always zeroes */
 	u32 mac_lower;
 };
 
@@ -784,12 +784,12 @@ struct ocbb_data_stc {
 };
 
 union drv_union_data {
-	u32 ver_str[MCP_DRV_VER_STR_SIZE_DWORD];	/* LOAD_REQ */
-	struct mcp_mac wol_mac;	/* UNLOAD_DONE */
+	u32 ver_str[MCP_DRV_VER_STR_SIZE_DWORD];    /* LOAD_REQ */
+	struct mcp_mac wol_mac; /* UNLOAD_DONE */
 
 	struct pmm_phy_cfg drv_phy_cfg;
 
-	struct mcp_val64 val64;	/* For PHY / AVS commands */
+	struct mcp_val64 val64; /* For PHY / AVS commands */
 
 	u8 raw_data[MCP_DRV_NVM_BUF_LEN];
 
@@ -822,7 +822,7 @@ struct public_drv_mb {
 	/* Vitaly: LLDP commands */
 #define DRV_MSG_CODE_SET_LLDP                   0x24000000
 #define DRV_MSG_CODE_SET_DCBX                   0x25000000
-	/* OneView feature driver HSI */
+	/* OneView feature driver HSI*/
 #define DRV_MSG_CODE_OV_UPDATE_CURR_CFG		0x26000000
 #define DRV_MSG_CODE_OV_UPDATE_BUS_NUM		0x27000000
 #define DRV_MSG_CODE_OV_UPDATE_BOOT_PROGRESS	0x28000000
@@ -893,7 +893,7 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_INIT_PHY_FORCE		0x00000001
 #define DRV_MB_PARAM_INIT_PHY_DONT_CARE		0x00000002
 
-	/* LLDP / DCBX params */
+	/* LLDP / DCBX params*/
 #define DRV_MB_PARAM_LLDP_SEND_MASK		0x00000001
 #define DRV_MB_PARAM_LLDP_SEND_SHIFT		0
 #define DRV_MB_PARAM_LLDP_AGENT_MASK		0x00000006
@@ -925,7 +925,7 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_PHYMOD_LANE_MASK		0x000000FF
 #define DRV_MB_PARAM_PHYMOD_SIZE_SHIFT		8
 #define DRV_MB_PARAM_PHYMOD_SIZE_MASK		0x000FFF00
-	/* configure vf MSIX params */
+	/* configure vf MSIX params*/
 #define DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_SHIFT	0
 #define DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_MASK	0x000000FF
 #define DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_SHIFT	8
@@ -943,16 +943,16 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_OV_CURR_CFG_DCI		6
 #define DRV_MB_PARAM_OV_CURR_CFG_HII		7
 
-#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_SHIFT			0
+#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_SHIFT				0
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_MASK			0x000000FF
-#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_NONE			(1 << 0)
+#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_NONE				(1 << 0)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_TRARGET_FOUND			(1 << 2)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_LOGGED_INTO_TGT		(1 << 4)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_IMG_DOWNLOADED			(1 << 5)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_OS_HANDOFF			(1 << 6)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_COMPLETED				0
 
-#define DRV_MB_PARAM_OV_PCI_BUS_NUM_SHIFT		0
+#define DRV_MB_PARAM_OV_PCI_BUS_NUM_SHIFT				0
 #define DRV_MB_PARAM_OV_PCI_BUS_NUM_MASK		0x000000FF
 
 #define DRV_MB_PARAM_OV_STORM_FW_VER_SHIFT		0
@@ -1063,7 +1063,7 @@ struct public_drv_mb {
 #define FW_MSG_CODE_TRANSCEIVER_DIAG_OK           0x00160000
 #define FW_MSG_CODE_TRANSCEIVER_DIAG_ERROR        0x00170000
 #define FW_MSG_CODE_TRANSCEIVER_NOT_PRESENT		0x00020000
-#define FW_MSG_CODE_TRANSCEIVER_BAD_BUFFER_SIZE		0x000f0000
+#define FW_MSG_CODE_TRANSCEIVER_BAD_BUFFER_SIZE	0x000f0000
 #define FW_MSG_CODE_GPIO_OK           0x00160000
 #define FW_MSG_CODE_GPIO_DIRECTION_ERR        0x00170000
 #define FW_MSG_CODE_GPIO_CTRL_ERR		0x00020000
@@ -1152,7 +1152,7 @@ enum MFW_DRV_MSG_TYPE {
 ((u8)((u8 *)(MFW_MB_P(shmem_func)->msg))[msg_id]++;)
 
 struct public_mfw_mb {
-	u32 sup_msgs;		/* Assigend with MFW_DRV_MSG_MAX */
+	u32 sup_msgs;       /* Assigend with MFW_DRV_MSG_MAX */
 	u32 msg[MFW_DRV_MSG_MAX_DWORDS(MFW_DRV_MSG_MAX)];
 	u32 ack[MFW_DRV_MSG_MAX_DWORDS(MFW_DRV_MSG_MAX)];
 };
@@ -1163,8 +1163,8 @@ struct public_mfw_mb {
 /*                                    */
 /**************************************/
 enum public_sections {
-	PUBLIC_DRV_MB,		/* Points to the first drv_mb of path0 */
-	PUBLIC_MFW_MB,		/* Points to the first mfw_mb of path0 */
+	PUBLIC_DRV_MB,      /* Points to the first drv_mb of path0 */
+	PUBLIC_MFW_MB,      /* Points to the first mfw_mb of path0 */
 	PUBLIC_GLOBAL,
 	PUBLIC_PATH,
 	PUBLIC_PORT,
@@ -1202,4 +1202,4 @@ struct mcp_public_data {
 #define MAX_I2C_TRANSACTION_SIZE	16
 #define MAX_I2C_TRANSCEIVER_PAGE_SIZE	256
 
-#endif /* MCP_PUBLIC_H */
+#endif				/* MCP_PUBLIC_H */

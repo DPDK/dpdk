@@ -57,13 +57,13 @@ struct ecore_vf_iov {
  * a message
  */
 struct ecore_iov_vf_mbx {
-	union vfpf_tlvs *req_virt;
-	dma_addr_t req_phys;
-	union pfvf_tlvs *reply_virt;
-	dma_addr_t reply_phys;
+	union vfpf_tlvs		*req_virt;
+	dma_addr_t		req_phys;
+	union pfvf_tlvs		*reply_virt;
+	dma_addr_t		reply_phys;
 
 	/* Address in VF where a pending message is located */
-	dma_addr_t pending_req;
+	dma_addr_t		pending_req;
 
 	u8 *offset;
 
@@ -72,12 +72,12 @@ struct ecore_iov_vf_mbx {
 #endif
 
 	/* VF GPA address */
-	u32 vf_addr_lo;
-	u32 vf_addr_hi;
+	u32			vf_addr_lo;
+	u32			vf_addr_hi;
 
-	struct vfpf_first_tlv first_tlv;	/* saved VF request header */
+	struct vfpf_first_tlv	first_tlv;	/* saved VF request header */
 
-	u8 flags;
+	u8			flags;
 #define VF_MSG_INPROCESS	0x1	/* failsafe - the FW should prevent
 					 * more then one pending msg
 					 */
@@ -101,11 +101,11 @@ enum int_mod {
 };
 
 enum vf_state {
-	VF_FREE = 0,		/* VF ready to be acquired holds no resc */
-	VF_ACQUIRED = 1,	/* VF, acquired, but not initalized */
-	VF_ENABLED = 2,		/* VF, Enabled */
-	VF_RESET = 3,		/* VF, FLR'd, pending cleanup */
-	VF_STOPPED = 4		/* VF, Stopped */
+	VF_FREE		= 0,	/* VF ready to be acquired holds no resc */
+	VF_ACQUIRED	= 1,	/* VF, acquired, but not initalized */
+	VF_ENABLED	= 2,	/* VF, Enabled */
+	VF_RESET	= 3,	/* VF, FLR'd, pending cleanup */
+	VF_STOPPED      = 4     /* VF, Stopped */
 };
 
 struct ecore_vf_vlan_shadow {
@@ -124,34 +124,34 @@ struct ecore_vf_shadow_config {
 struct ecore_vf_info {
 	struct ecore_iov_vf_mbx vf_mbx;
 	enum vf_state state;
-	u8 to_disable;
+	u8			to_disable;
 
-	struct ecore_bulletin bulletin;
-	dma_addr_t vf_bulletin;
+	struct ecore_bulletin	bulletin;
+	dma_addr_t		vf_bulletin;
 
-	u32 concrete_fid;
-	u16 opaque_fid;
-	u16 mtu;
+	u32			concrete_fid;
+	u16			opaque_fid;
+	u16			mtu;
 
-	u8 vport_id;
-	u8 relative_vf_id;
-	u8 abs_vf_id;
+	u8			vport_id;
+	u8			relative_vf_id;
+	u8			abs_vf_id;
 #define ECORE_VF_ABS_ID(p_hwfn, p_vf)	(ECORE_PATH_ID(p_hwfn) ? \
 					 (p_vf)->abs_vf_id + MAX_NUM_VFS_BB : \
 					 (p_vf)->abs_vf_id)
 
-	u8 vport_instance;	/* Number of active vports */
-	u8 num_rxqs;
-	u8 num_txqs;
+	u8			vport_instance; /* Number of active vports */
+	u8			num_rxqs;
+	u8			num_txqs;
 
-	u8 num_sbs;
+	u8			num_sbs;
 
-	u8 num_mac_filters;
-	u8 num_vlan_filters;
+	u8			num_mac_filters;
+	u8			num_vlan_filters;
 	u8 num_mc_filters;
 
-	struct ecore_vf_q_info vf_queues[ECORE_MAX_VF_CHAINS_PER_PF];
-	u16 igu_sbs[ECORE_MAX_VF_CHAINS_PER_PF];
+	struct ecore_vf_q_info	vf_queues[ECORE_MAX_VF_CHAINS_PER_PF];
+	u16			igu_sbs[ECORE_MAX_VF_CHAINS_PER_PF];
 
 	/* TODO - Only windows is using it - should be removed */
 	u8 was_malicious;
@@ -159,7 +159,7 @@ struct ecore_vf_info {
 	void *ctx;
 	struct ecore_public_vf_info p_vf_info;
 	bool spoof_chk;		/* Current configured on HW */
-	bool req_spoofchk_val;	/* Requested value */
+	bool req_spoofchk_val;  /* Requested value */
 
 	/* Stores the configuration requested by VF */
 	struct ecore_vf_shadow_config shadow_config;
@@ -176,21 +176,21 @@ struct ecore_vf_info {
  * capability enabled.
  */
 struct ecore_pf_iov {
-	struct ecore_vf_info vfs_array[MAX_NUM_VFS];
-	u64 pending_events[ECORE_VF_ARRAY_LENGTH];
-	u64 pending_flr[ECORE_VF_ARRAY_LENGTH];
-	u16 base_vport_id;
+	struct ecore_vf_info	vfs_array[MAX_NUM_VFS];
+	u64			pending_events[ECORE_VF_ARRAY_LENGTH];
+	u64			pending_flr[ECORE_VF_ARRAY_LENGTH];
+	u16			base_vport_id;
 
 	/* Allocate message address continuosuly and split to each VF */
-	void *mbx_msg_virt_addr;
-	dma_addr_t mbx_msg_phys_addr;
-	u32 mbx_msg_size;
-	void *mbx_reply_virt_addr;
-	dma_addr_t mbx_reply_phys_addr;
-	u32 mbx_reply_size;
-	void *p_bulletins;
-	dma_addr_t bulletins_phys;
-	u32 bulletins_size;
+	void			*mbx_msg_virt_addr;
+	dma_addr_t		mbx_msg_phys_addr;
+	u32			mbx_msg_size;
+	void			*mbx_reply_virt_addr;
+	dma_addr_t		mbx_reply_phys_addr;
+	u32			mbx_reply_size;
+	void			*p_bulletins;
+	dma_addr_t		bulletins_phys;
+	u32			bulletins_size;
 };
 
 #ifdef CONFIG_ECORE_SRIOV
@@ -217,7 +217,7 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn,
  *
  * @return pointer to the newly placed tlv
  */
-void *ecore_add_tlv(struct ecore_hwfn *p_hwfn,
+void *ecore_add_tlv(struct ecore_hwfn	*p_hwfn,
 		    u8 **offset, u16 type, u16 length);
 
 /**
@@ -260,9 +260,9 @@ void ecore_iov_free(struct ecore_hwfn *p_hwfn);
  * @param echo
  * @param data
  */
-enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn *p_hwfn,
-					   u8 opcode,
-					   __le16 echo,
+enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn	 *p_hwfn,
+					   u8			 opcode,
+					   __le16		 echo,
 					   union event_ring_data *data);
 
 /**

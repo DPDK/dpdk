@@ -21,22 +21,22 @@
 #define IS_PF_SRIOV(p_hwfn)	(0)
 #endif
 #define IS_PF_SRIOV_ALLOC(p_hwfn)	(!!((p_hwfn)->pf_iov_info))
-#define IS_PF_PDA(p_hwfn)	0	/* @@TBD Michalk */
+#define IS_PF_PDA(p_hwfn)	0 /* @@TBD Michalk */
 
 /* @@@ TBD MichalK - what should this number be*/
 #define ECORE_MAX_VF_CHAINS_PER_PF 16
 
 /* vport update extended feature tlvs flags */
 enum ecore_iov_vport_update_flag {
-	ECORE_IOV_VP_UPDATE_ACTIVATE = 0,
-	ECORE_IOV_VP_UPDATE_VLAN_STRIP = 1,
-	ECORE_IOV_VP_UPDATE_TX_SWITCH = 2,
-	ECORE_IOV_VP_UPDATE_MCAST = 3,
-	ECORE_IOV_VP_UPDATE_ACCEPT_PARAM = 4,
-	ECORE_IOV_VP_UPDATE_RSS = 5,
-	ECORE_IOV_VP_UPDATE_ACCEPT_ANY_VLAN = 6,
-	ECORE_IOV_VP_UPDATE_SGE_TPA = 7,
-	ECORE_IOV_VP_UPDATE_MAX = 8,
+	ECORE_IOV_VP_UPDATE_ACTIVATE		= 0,
+	ECORE_IOV_VP_UPDATE_VLAN_STRIP		= 1,
+	ECORE_IOV_VP_UPDATE_TX_SWITCH		= 2,
+	ECORE_IOV_VP_UPDATE_MCAST		= 3,
+	ECORE_IOV_VP_UPDATE_ACCEPT_PARAM	= 4,
+	ECORE_IOV_VP_UPDATE_RSS			= 5,
+	ECORE_IOV_VP_UPDATE_ACCEPT_ANY_VLAN	= 6,
+	ECORE_IOV_VP_UPDATE_SGE_TPA		= 7,
+	ECORE_IOV_VP_UPDATE_MAX			= 8,
 };
 
 struct ecore_mcp_link_params;
@@ -67,21 +67,21 @@ struct ecore_public_vf_info {
 #ifdef CONFIG_ECORE_SW_CHANNEL
 /* This is SW channel related only... */
 enum mbx_state {
-	VF_PF_UNKNOWN_STATE = 0,
-	VF_PF_WAIT_FOR_START_REQUEST = 1,
-	VF_PF_WAIT_FOR_NEXT_CHUNK_OF_REQUEST = 2,
-	VF_PF_REQUEST_IN_PROCESSING = 3,
-	VF_PF_RESPONSE_READY = 4,
+	VF_PF_UNKNOWN_STATE			= 0,
+	VF_PF_WAIT_FOR_START_REQUEST		= 1,
+	VF_PF_WAIT_FOR_NEXT_CHUNK_OF_REQUEST	= 2,
+	VF_PF_REQUEST_IN_PROCESSING		= 3,
+	VF_PF_RESPONSE_READY			= 4,
 };
 
 struct ecore_iov_sw_mbx {
-	enum mbx_state mbx_state;
+	enum mbx_state		mbx_state;
 
-	u32 request_size;
-	u32 request_offset;
+	u32			request_size;
+	u32			request_offset;
 
-	u32 response_size;
-	u32 response_offset;
+	u32			response_size;
+	u32			response_offset;
 };
 
 /**
@@ -93,7 +93,7 @@ struct ecore_iov_sw_mbx {
  * @return struct ecore_iov_sw_mbx*
  */
 struct ecore_iov_sw_mbx *ecore_iov_get_vf_sw_mbx(struct ecore_hwfn *p_hwfn,
-						 u16 rel_vf_id);
+			u16 rel_vf_id);
 #endif
 
 #ifdef CONFIG_ECORE_SRIOV
@@ -457,9 +457,9 @@ void ecore_iov_get_vf_req_virt_mbx_params(struct ecore_hwfn *p_hwfn,
  * @param p_reply_virt_size
  */
 void ecore_iov_get_vf_reply_virt_mbx_params(struct ecore_hwfn *p_hwfn,
-					    u16 rel_vf_id,
+					    u16	rel_vf_id,
 					    void **pp_reply_virt_addr,
-					    u16 *p_reply_virt_size);
+					    u16	*p_reply_virt_size);
 
 /**
  * @brief Validate if the given length is a valid vfpf message

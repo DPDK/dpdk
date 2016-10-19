@@ -129,7 +129,7 @@ struct ecore_chain {
 	   (1 + ((sizeof(struct ecore_chain_next) - 1) /		\
 	   (elem_size))) : 0)
 
-#define USABLE_ELEMS_PER_PAGE(elem_size, mode)			\
+#define USABLE_ELEMS_PER_PAGE(elem_size, mode)		\
 	((u32)(ELEMS_PER_PAGE(elem_size) -			\
 	UNUSABLE_ELEMS_PER_PAGE(elem_size, mode)))
 
@@ -183,7 +183,7 @@ static OSAL_INLINE u16 ecore_chain_get_elem_left(struct ecore_chain *p_chain)
 		     (u32)p_chain->u.chain16.cons_idx);
 	if (p_chain->mode == ECORE_CHAIN_MODE_NEXT_PTR)
 		used -= p_chain->u.chain16.prod_idx / p_chain->elem_per_page -
-		    p_chain->u.chain16.cons_idx / p_chain->elem_per_page;
+			p_chain->u.chain16.cons_idx / p_chain->elem_per_page;
 
 	return (u16)(p_chain->capacity - used);
 }
@@ -196,11 +196,11 @@ ecore_chain_get_elem_left_u32(struct ecore_chain *p_chain)
 	OSAL_ASSERT(is_chain_u32(p_chain));
 
 	used = (u32)(((u64)ECORE_U32_MAX + 1 +
-		       (u64)(p_chain->u.chain32.prod_idx)) -
-		      (u64)p_chain->u.chain32.cons_idx);
+		      (u64)(p_chain->u.chain32.prod_idx)) -
+		     (u64)p_chain->u.chain32.cons_idx);
 	if (p_chain->mode == ECORE_CHAIN_MODE_NEXT_PTR)
 		used -= p_chain->u.chain32.prod_idx / p_chain->elem_per_page -
-		    p_chain->u.chain32.cons_idx / p_chain->elem_per_page;
+			p_chain->u.chain32.cons_idx / p_chain->elem_per_page;
 
 	return p_chain->capacity - used;
 }
@@ -518,14 +518,14 @@ static OSAL_INLINE void ecore_chain_reset(struct ecore_chain *p_chain)
 	switch (p_chain->intended_use) {
 	case ECORE_CHAIN_USE_TO_CONSUME_PRODUCE:
 	case ECORE_CHAIN_USE_TO_PRODUCE:
-		/* Do nothing */
-		break;
+			/* Do nothing */
+			break;
 
 	case ECORE_CHAIN_USE_TO_CONSUME:
-		/* produce empty elements */
-		for (i = 0; i < p_chain->capacity; i++)
+			/* produce empty elements */
+			for (i = 0; i < p_chain->capacity; i++)
 			ecore_chain_recycle_consumed(p_chain);
-		break;
+			break;
 	}
 }
 

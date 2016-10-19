@@ -206,7 +206,7 @@ static void ecore_cmdq_lines_rt_init(struct ecore_hwfn *p_hwfn,
 			for (tc = 0; tc < NUM_OF_PHYS_TCS; tc++) {
 				if (((port_params[port_id].active_phys_tcs >>
 						tc) & 0x1) == 1)
-				num_tcs_in_port++;
+					num_tcs_in_port++;
 			}
 			phys_lines_per_tc = phys_lines / num_tcs_in_port;
 			/* init registers per active TC */
@@ -293,9 +293,9 @@ static void ecore_btb_blocks_rt_init(struct ecore_hwfn *p_hwfn,
 			     tc < NUM_OF_PHYS_TCS;
 			     tc++) {
 				if (((port_params[port_id].active_phys_tcs >>
-							 tc) & 0x1) == 1) {
+							tc) & 0x1) == 1) {
 					voq = PHYS_VOQ(port_id, tc,
-							max_phys_tcs_per_port);
+						       max_phys_tcs_per_port);
 					STORE_RT_REG(p_hwfn,
 					     PBF_BTB_GUARANTEED_RT_OFFSET(voq),
 					     phys_blocks);
@@ -412,7 +412,7 @@ static void ecore_tx_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
 				u32 curr_mask =
 				    is_first_pf ? 0 : ecore_rd(p_hwfn, p_ptt,
 						       QM_REG_MAXPQSIZETXSEL_0
-							       + i * 4);
+								+ i * 4);
 				STORE_RT_REG(p_hwfn,
 					     QM_REG_MAXPQSIZETXSEL_0_RT_OFFSET +
 					     i, curr_mask | tx_pq_vf_mask[i]);
@@ -518,8 +518,8 @@ static int ecore_vp_wfq_rt_init(struct ecore_hwfn *p_hwfn,
 				    vport_params[i].first_tx_pq_id[tc];
 				if (vport_pq_id != QM_INVALID_PQ_ID) {
 					STORE_RT_REG(p_hwfn,
-						     QM_REG_WFQVPCRD_RT_OFFSET +
-						     vport_pq_id,
+						  QM_REG_WFQVPCRD_RT_OFFSET +
+						  vport_pq_id,
 						     QM_WFQ_CRD_REG_SIGN_BIT);
 					STORE_RT_REG(p_hwfn,
 						QM_REG_WFQVPWEIGHT_RT_OFFSET

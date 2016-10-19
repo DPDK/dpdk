@@ -21,7 +21,7 @@
 #define VER_SIZE 16
 /* @DPDK ARRAY_DECL */
 #define ECORE_WFQ_UNIT	100
-#include "../qede_logs.h"	/* @DPDK */
+#include "../qede_logs.h" /* @DPDK */
 
 /* Constants */
 #define ECORE_WID_SIZE		(1024)
@@ -77,7 +77,7 @@ do {									\
 static OSAL_INLINE u32 DB_ADDR(u32 cid, u32 DEMS)
 {
 	u32 db_addr = FIELD_VALUE(DB_LEGACY_ADDR_DEMS, DEMS) |
-	    (cid * ECORE_PF_DEMS_SIZE);
+		      (cid * ECORE_PF_DEMS_SIZE);
 
 	return db_addr;
 }
@@ -105,10 +105,10 @@ static OSAL_INLINE u32 DB_ADDR_VF(u32 cid, u32 DEMS)
 
 #ifndef __EXTRACT__LINUX__
 enum DP_LEVEL {
-	ECORE_LEVEL_VERBOSE = 0x0,
-	ECORE_LEVEL_INFO = 0x1,
-	ECORE_LEVEL_NOTICE = 0x2,
-	ECORE_LEVEL_ERR = 0x3,
+	ECORE_LEVEL_VERBOSE	= 0x0,
+	ECORE_LEVEL_INFO	= 0x1,
+	ECORE_LEVEL_NOTICE	= 0x2,
+	ECORE_LEVEL_ERR		= 0x3,
 };
 
 #define ECORE_LOG_LEVEL_SHIFT	(30)
@@ -118,31 +118,31 @@ enum DP_LEVEL {
 
 enum DP_MODULE {
 #ifndef LINUX_REMOVE
-	ECORE_MSG_DRV = 0x0001,
-	ECORE_MSG_PROBE = 0x0002,
-	ECORE_MSG_LINK = 0x0004,
-	ECORE_MSG_TIMER = 0x0008,
-	ECORE_MSG_IFDOWN = 0x0010,
-	ECORE_MSG_IFUP = 0x0020,
-	ECORE_MSG_RX_ERR = 0x0040,
-	ECORE_MSG_TX_ERR = 0x0080,
-	ECORE_MSG_TX_QUEUED = 0x0100,
-	ECORE_MSG_INTR = 0x0200,
-	ECORE_MSG_TX_DONE = 0x0400,
-	ECORE_MSG_RX_STATUS = 0x0800,
-	ECORE_MSG_PKTDATA = 0x1000,
-	ECORE_MSG_HW = 0x2000,
-	ECORE_MSG_WOL = 0x4000,
+	ECORE_MSG_DRV		= 0x0001,
+	ECORE_MSG_PROBE		= 0x0002,
+	ECORE_MSG_LINK		= 0x0004,
+	ECORE_MSG_TIMER		= 0x0008,
+	ECORE_MSG_IFDOWN	= 0x0010,
+	ECORE_MSG_IFUP		= 0x0020,
+	ECORE_MSG_RX_ERR	= 0x0040,
+	ECORE_MSG_TX_ERR	= 0x0080,
+	ECORE_MSG_TX_QUEUED	= 0x0100,
+	ECORE_MSG_INTR		= 0x0200,
+	ECORE_MSG_TX_DONE	= 0x0400,
+	ECORE_MSG_RX_STATUS	= 0x0800,
+	ECORE_MSG_PKTDATA	= 0x1000,
+	ECORE_MSG_HW		= 0x2000,
+	ECORE_MSG_WOL		= 0x4000,
 #endif
-	ECORE_MSG_SPQ = 0x10000,
-	ECORE_MSG_STATS = 0x20000,
-	ECORE_MSG_DCB = 0x40000,
-	ECORE_MSG_IOV = 0x80000,
-	ECORE_MSG_SP = 0x100000,
-	ECORE_MSG_STORAGE = 0x200000,
-	ECORE_MSG_CXT = 0x800000,
-	ECORE_MSG_ILT = 0x2000000,
-	ECORE_MSG_DEBUG = 0x8000000,
+	ECORE_MSG_SPQ		= 0x10000,
+	ECORE_MSG_STATS		= 0x20000,
+	ECORE_MSG_DCB		= 0x40000,
+	ECORE_MSG_IOV		= 0x80000,
+	ECORE_MSG_SP		= 0x100000,
+	ECORE_MSG_STORAGE	= 0x200000,
+	ECORE_MSG_CXT		= 0x800000,
+	ECORE_MSG_ILT		= 0x2000000,
+	ECORE_MSG_DEBUG         = 0x8000000,
 	/* to be added...up to 0x8000000 */
 };
 #endif
@@ -166,8 +166,8 @@ struct ecore_mcp_info;
 struct ecore_dcbx_info;
 
 struct ecore_rt_data {
-	u32 *init_val;
-	bool *b_valid;
+	u32	*init_val;
+	bool	*b_valid;
 };
 
 enum ecore_tunn_mode {
@@ -188,31 +188,31 @@ enum ecore_tunn_clss {
 
 struct ecore_tunn_start_params {
 	unsigned long tunn_mode;
-	u16 vxlan_udp_port;
-	u16 geneve_udp_port;
-	u8 update_vxlan_udp_port;
-	u8 update_geneve_udp_port;
-	u8 tunn_clss_vxlan;
-	u8 tunn_clss_l2geneve;
-	u8 tunn_clss_ipgeneve;
-	u8 tunn_clss_l2gre;
-	u8 tunn_clss_ipgre;
+	u16	vxlan_udp_port;
+	u16	geneve_udp_port;
+	u8	update_vxlan_udp_port;
+	u8	update_geneve_udp_port;
+	u8	tunn_clss_vxlan;
+	u8	tunn_clss_l2geneve;
+	u8	tunn_clss_ipgeneve;
+	u8	tunn_clss_l2gre;
+	u8	tunn_clss_ipgre;
 };
 
 struct ecore_tunn_update_params {
 	unsigned long tunn_mode_update_mask;
 	unsigned long tunn_mode;
-	u16 vxlan_udp_port;
-	u16 geneve_udp_port;
-	u8 update_rx_pf_clss;
-	u8 update_tx_pf_clss;
-	u8 update_vxlan_udp_port;
-	u8 update_geneve_udp_port;
-	u8 tunn_clss_vxlan;
-	u8 tunn_clss_l2geneve;
-	u8 tunn_clss_ipgeneve;
-	u8 tunn_clss_l2gre;
-	u8 tunn_clss_ipgre;
+	u16	vxlan_udp_port;
+	u16	geneve_udp_port;
+	u8	update_rx_pf_clss;
+	u8	update_tx_pf_clss;
+	u8	update_vxlan_udp_port;
+	u8	update_geneve_udp_port;
+	u8	tunn_clss_vxlan;
+	u8	tunn_clss_l2geneve;
+	u8	tunn_clss_ipgeneve;
+	u8	tunn_clss_l2gre;
+	u8	tunn_clss_ipgre;
 };
 
 struct ecore_hw_sriov_info {
@@ -244,7 +244,7 @@ struct ecore_hw_sriov_info {
  */
 enum ecore_pci_personality {
 	ECORE_PCI_ETH,
-	ECORE_PCI_DEFAULT	/* default in shmem */
+	ECORE_PCI_DEFAULT /* default in shmem */
 };
 
 /* All VFs are symmetric, all counters are PF + all VFs */
@@ -322,11 +322,11 @@ struct ecore_hw_info {
 	u32 resc_num[ECORE_MAX_RESC];
 	u32 feat_num[ECORE_MAX_FEATURES];
 
-#define RESC_START(_p_hwfn, resc) ((_p_hwfn)->hw_info.resc_start[resc])
-#define RESC_NUM(_p_hwfn, resc) ((_p_hwfn)->hw_info.resc_num[resc])
-#define RESC_END(_p_hwfn, resc) (RESC_START(_p_hwfn, resc) + \
+	#define RESC_START(_p_hwfn, resc) ((_p_hwfn)->hw_info.resc_start[resc])
+	#define RESC_NUM(_p_hwfn, resc) ((_p_hwfn)->hw_info.resc_num[resc])
+	#define RESC_END(_p_hwfn, resc) (RESC_START(_p_hwfn, resc) + \
 					 RESC_NUM(_p_hwfn, resc))
-#define FEAT_NUM(_p_hwfn, resc) ((_p_hwfn)->hw_info.feat_num[resc])
+	#define FEAT_NUM(_p_hwfn, resc) ((_p_hwfn)->hw_info.feat_num[resc])
 
 	u8 num_tc;
 	u8 ooo_tc;
@@ -346,18 +346,18 @@ struct ecore_hw_info {
 	u8 max_chains_per_vf;
 
 	u32 port_mode;
-	u32 hw_mode;
+	u32	hw_mode;
 	unsigned long device_capabilities;
 };
 
 struct ecore_hw_cid_data {
-	u32 cid;
-	bool b_cid_allocated;
-	u8 vfid;		/* 1-based; 0 signals this is for a PF */
+	u32	cid;
+	bool	b_cid_allocated;
+	u8	vfid; /* 1-based; 0 signals this is for a PF */
 
 	/* Additional identifiers */
-	u16 opaque_fid;
-	u8 vport_id;
+	u16	opaque_fid;
+	u8	vport_id;
 };
 
 /* maximun size of read/write commands (HW limit) */
@@ -365,7 +365,7 @@ struct ecore_hw_cid_data {
 
 struct ecore_dmae_info {
 	/* Mutex for synchronizing access to functions */
-	osal_mutex_t mutex;
+	osal_mutex_t	mutex;
 
 	u8 channel;
 
@@ -389,33 +389,33 @@ struct ecore_dmae_info {
 };
 
 struct ecore_wfq_data {
-	u32 default_min_speed;	/* When wfq feature is not configured */
-	u32 min_speed;		/* when feature is configured for any 1 vport */
+	u32 default_min_speed; /* When wfq feature is not configured */
+	u32 min_speed; /* when feature is configured for any 1 vport */
 	bool configured;
 };
 
 struct ecore_qm_info {
-	struct init_qm_pq_params *qm_pq_params;
+	struct init_qm_pq_params    *qm_pq_params;
 	struct init_qm_vport_params *qm_vport_params;
-	struct init_qm_port_params *qm_port_params;
-	u16 start_pq;
-	u8 start_vport;
-	u8 pure_lb_pq;
-	u8 offload_pq;
-	u8 pure_ack_pq;
-	u8 ooo_pq;
-	u8 vf_queues_offset;
-	u16 num_pqs;
-	u16 num_vf_pqs;
-	u8 num_vports;
-	u8 max_phys_tcs_per_port;
-	bool pf_rl_en;
-	bool pf_wfq_en;
-	bool vport_rl_en;
-	bool vport_wfq_en;
-	u8 pf_wfq;
-	u32 pf_rl;
-	struct ecore_wfq_data *wfq_data;
+	struct init_qm_port_params  *qm_port_params;
+	u16			start_pq;
+	u8			start_vport;
+	u8			pure_lb_pq;
+	u8			offload_pq;
+	u8			pure_ack_pq;
+	u8			ooo_pq;
+	u8			vf_queues_offset;
+	u16			num_pqs;
+	u16			num_vf_pqs;
+	u8			num_vports;
+	u8			max_phys_tcs_per_port;
+	bool			pf_rl_en;
+	bool			pf_wfq_en;
+	bool			vport_rl_en;
+	bool			vport_wfq_en;
+	u8			pf_wfq;
+	u32			pf_rl;
+	struct ecore_wfq_data	*wfq_data;
 };
 
 struct storm_stats {
@@ -437,106 +437,106 @@ struct ecore_fw_data {
 };
 
 struct ecore_hwfn {
-	struct ecore_dev *p_dev;
-	u8 my_id;		/* ID inside the PF */
+	struct ecore_dev		*p_dev;
+	u8				my_id;		/* ID inside the PF */
 #define IS_LEAD_HWFN(edev)		(!((edev)->my_id))
-	u8 rel_pf_id;		/* Relative to engine */
-	u8 abs_pf_id;
-#define ECORE_PATH_ID(_p_hwfn) \
+	u8				rel_pf_id;	/* Relative to engine*/
+	u8				abs_pf_id;
+	#define ECORE_PATH_ID(_p_hwfn) \
 		(ECORE_IS_K2((_p_hwfn)->p_dev) ? 0 : ((_p_hwfn)->abs_pf_id & 1))
-	u8 port_id;
-	bool b_active;
+	u8				port_id;
+	bool				b_active;
 
-	u32 dp_module;
-	u8 dp_level;
-	char name[NAME_SIZE];
-	void *dp_ctx;
+	u32				dp_module;
+	u8				dp_level;
+	char				name[NAME_SIZE];
+	void                            *dp_ctx;
 
-	bool first_on_engine;
-	bool hw_init_done;
+	bool				first_on_engine;
+	bool				hw_init_done;
 
-	u8 num_funcs_on_engine;
+	u8				num_funcs_on_engine;
 
 	/* BAR access */
-	void OSAL_IOMEM *regview;
-	void OSAL_IOMEM *doorbells;
-	u64 db_phys_addr;
-	unsigned long db_size;
+	void OSAL_IOMEM			*regview;
+	void OSAL_IOMEM			*doorbells;
+	u64				db_phys_addr;
+	unsigned long			db_size;
 
 	/* PTT pool */
-	struct ecore_ptt_pool *p_ptt_pool;
+	struct ecore_ptt_pool		*p_ptt_pool;
 
 	/* HW info */
-	struct ecore_hw_info hw_info;
+	struct ecore_hw_info		hw_info;
 
 	/* rt_array (for init-tool) */
-	struct ecore_rt_data rt_data;
+	struct ecore_rt_data		rt_data;
 
 	/* SPQ */
-	struct ecore_spq *p_spq;
+	struct ecore_spq		*p_spq;
 
 	/* EQ */
-	struct ecore_eq *p_eq;
+	struct ecore_eq			*p_eq;
 
-	/* Consolidate Q */
-	struct ecore_consq *p_consq;
+	/* Consolidate Q*/
+	struct ecore_consq		*p_consq;
 
 	/* Slow-Path definitions */
-	osal_dpc_t sp_dpc;
-	bool b_sp_dpc_enabled;
+	osal_dpc_t			sp_dpc;
+	bool				b_sp_dpc_enabled;
 
-	struct ecore_ptt *p_main_ptt;
-	struct ecore_ptt *p_dpc_ptt;
+	struct ecore_ptt		*p_main_ptt;
+	struct ecore_ptt		*p_dpc_ptt;
 
-	struct ecore_sb_sp_info *p_sp_sb;
-	struct ecore_sb_attn_info *p_sb_attn;
+	struct ecore_sb_sp_info		*p_sp_sb;
+	struct ecore_sb_attn_info	*p_sb_attn;
 
 	/* Protocol related */
-	struct ecore_ooo_info *p_ooo_info;
-	struct ecore_pf_params pf_params;
+	struct ecore_ooo_info		*p_ooo_info;
+	struct ecore_pf_params		pf_params;
 
 	/* Array of sb_info of all status blocks */
-	struct ecore_sb_info *sbs_info[MAX_SB_PER_PF_MIMD];
-	u16 num_sbs;
+	struct ecore_sb_info            *sbs_info[MAX_SB_PER_PF_MIMD];
+	u16                             num_sbs;
 
-	struct ecore_cxt_mngr *p_cxt_mngr;
+	struct ecore_cxt_mngr		*p_cxt_mngr;
 
-	/* Flag indicating whether interrupts are enabled or not */
-	bool b_int_enabled;
-	bool b_int_requested;
+	/* Flag indicating whether interrupts are enabled or not*/
+	bool				b_int_enabled;
+	bool				b_int_requested;
 
 	/* True if the driver requests for the link */
-	bool b_drv_link_init;
+	bool				b_drv_link_init;
 
-	struct ecore_vf_iov *vf_iov_info;
-	struct ecore_pf_iov *pf_iov_info;
-	struct ecore_mcp_info *mcp_info;
-	struct ecore_dcbx_info *p_dcbx_info;
+	struct ecore_vf_iov		*vf_iov_info;
+	struct ecore_pf_iov		*pf_iov_info;
+	struct ecore_mcp_info		*mcp_info;
+	struct ecore_dcbx_info		*p_dcbx_info;
 
-	struct ecore_hw_cid_data *p_tx_cids;
-	struct ecore_hw_cid_data *p_rx_cids;
+	struct ecore_hw_cid_data	*p_tx_cids;
+	struct ecore_hw_cid_data	*p_rx_cids;
 
-	struct ecore_dmae_info dmae_info;
+	struct ecore_dmae_info		dmae_info;
 
 	/* QM init */
-	struct ecore_qm_info qm_info;
+	struct ecore_qm_info		qm_info;
 
 	/* Buffer for unzipping firmware data */
 #ifdef CONFIG_ECORE_ZIPPED_FW
 	void *unzip_buf;
 #endif
 
-	struct dbg_tools_data dbg_info;
+	struct dbg_tools_data		dbg_info;
 
-	struct z_stream_s *stream;
+	struct z_stream_s		*stream;
 
 	/* PWM region specific data */
-	u32 dpi_size;
-	u32 dpi_count;
-	u32 dpi_start_offset;	/* this is used to
-				 * calculate th
-				 * doorbell address
-				 */
+	u32				dpi_size;
+	u32				dpi_count;
+	u32				dpi_start_offset; /* this is used to
+							   * calculate th
+							   * doorbell address
+							   */
 };
 
 #ifndef __EXTRACT__LINUX__
@@ -548,12 +548,12 @@ enum ecore_mf_mode {
 #endif
 
 struct ecore_dev {
-	u32 dp_module;
-	u8 dp_level;
-	char name[NAME_SIZE];
-	void *dp_ctx;
+	u32				dp_module;
+	u8				dp_level;
+	char				name[NAME_SIZE];
+	void                            *dp_ctx;
 
-	u8 type;
+	u8				type;
 #define ECORE_DEV_TYPE_BB	(0 << 0)
 #define ECORE_DEV_TYPE_AH	(1 << 0)
 /* Translate type/revision combo into the proper conditions */
@@ -571,112 +571,112 @@ struct ecore_dev {
 	u16 vendor_id;
 	u16 device_id;
 
-	u16 chip_num;
-#define CHIP_NUM_MASK			0xffff
-#define CHIP_NUM_SHIFT			16
+	u16				chip_num;
+	#define CHIP_NUM_MASK			0xffff
+	#define CHIP_NUM_SHIFT			16
 
-	u16 chip_rev;
-#define CHIP_REV_MASK			0xf
-#define CHIP_REV_SHIFT			12
+	u16				chip_rev;
+	#define CHIP_REV_MASK			0xf
+	#define CHIP_REV_SHIFT			12
 #ifndef ASIC_ONLY
-#define CHIP_REV_IS_TEDIBEAR(_p_dev) ((_p_dev)->chip_rev == 0x5)
-#define CHIP_REV_IS_EMUL_A0(_p_dev) ((_p_dev)->chip_rev == 0xe)
-#define CHIP_REV_IS_EMUL_B0(_p_dev) ((_p_dev)->chip_rev == 0xc)
-#define CHIP_REV_IS_EMUL(_p_dev) (CHIP_REV_IS_EMUL_A0(_p_dev) || \
+	#define CHIP_REV_IS_TEDIBEAR(_p_dev) ((_p_dev)->chip_rev == 0x5)
+	#define CHIP_REV_IS_EMUL_A0(_p_dev) ((_p_dev)->chip_rev == 0xe)
+	#define CHIP_REV_IS_EMUL_B0(_p_dev) ((_p_dev)->chip_rev == 0xc)
+	#define CHIP_REV_IS_EMUL(_p_dev) (CHIP_REV_IS_EMUL_A0(_p_dev) || \
 					  CHIP_REV_IS_EMUL_B0(_p_dev))
-#define CHIP_REV_IS_FPGA_A0(_p_dev) ((_p_dev)->chip_rev == 0xf)
-#define CHIP_REV_IS_FPGA_B0(_p_dev) ((_p_dev)->chip_rev == 0xd)
-#define CHIP_REV_IS_FPGA(_p_dev) (CHIP_REV_IS_FPGA_A0(_p_dev) || \
+	#define CHIP_REV_IS_FPGA_A0(_p_dev) ((_p_dev)->chip_rev == 0xf)
+	#define CHIP_REV_IS_FPGA_B0(_p_dev) ((_p_dev)->chip_rev == 0xd)
+	#define CHIP_REV_IS_FPGA(_p_dev) (CHIP_REV_IS_FPGA_A0(_p_dev) || \
 					  CHIP_REV_IS_FPGA_B0(_p_dev))
-#define CHIP_REV_IS_SLOW(_p_dev) \
+	#define CHIP_REV_IS_SLOW(_p_dev) \
 		(CHIP_REV_IS_EMUL(_p_dev) || CHIP_REV_IS_FPGA(_p_dev))
-#define CHIP_REV_IS_A0(_p_dev) \
+	#define CHIP_REV_IS_A0(_p_dev) \
 		(CHIP_REV_IS_EMUL_A0(_p_dev) || \
 		 CHIP_REV_IS_FPGA_A0(_p_dev) || \
 		 !(_p_dev)->chip_rev)
-#define CHIP_REV_IS_B0(_p_dev) \
+	#define CHIP_REV_IS_B0(_p_dev) \
 		(CHIP_REV_IS_EMUL_B0(_p_dev) || \
 		 CHIP_REV_IS_FPGA_B0(_p_dev) || \
 		 (_p_dev)->chip_rev == 1)
 #define CHIP_REV_IS_ASIC(_p_dev) (!CHIP_REV_IS_SLOW(_p_dev))
 #else
-#define CHIP_REV_IS_A0(_p_dev)	(!(_p_dev)->chip_rev)
-#define CHIP_REV_IS_B0(_p_dev)	((_p_dev)->chip_rev == 1)
+	#define CHIP_REV_IS_A0(_p_dev)	(!(_p_dev)->chip_rev)
+	#define CHIP_REV_IS_B0(_p_dev)	((_p_dev)->chip_rev == 1)
 #endif
 
-	u16 chip_metal;
-#define CHIP_METAL_MASK			0xff
-#define CHIP_METAL_SHIFT		4
+	u16				chip_metal;
+	#define CHIP_METAL_MASK			0xff
+	#define CHIP_METAL_SHIFT		4
 
-	u16 chip_bond_id;
-#define CHIP_BOND_ID_MASK		0xf
-#define CHIP_BOND_ID_SHIFT		0
+	u16				chip_bond_id;
+	#define CHIP_BOND_ID_MASK		0xf
+	#define CHIP_BOND_ID_SHIFT		0
 
-	u8 num_engines;
-	u8 num_ports_in_engines;
-	u8 num_funcs_in_port;
+	u8				num_engines;
+	u8				num_ports_in_engines;
+	u8				num_funcs_in_port;
 
-	u8 path_id;
-	enum ecore_mf_mode mf_mode;
-#define IS_MF_DEFAULT(_p_hwfn) \
-		(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_DEFAULT)
+	u8				path_id;
+	enum ecore_mf_mode		mf_mode;
+	#define IS_MF_DEFAULT(_p_hwfn)	\
+			(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_DEFAULT)
 #define IS_MF_SI(_p_hwfn)	(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_NPAR)
 #define IS_MF_SD(_p_hwfn)	(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_OVLAN)
 
-	int pcie_width;
-	int pcie_speed;
+	int				pcie_width;
+	int				pcie_speed;
 	u8 ver_str[VER_SIZE];
 	/* Add MF related configuration */
-	u8 mcp_rev;
-	u8 boot_mode;
+	u8				mcp_rev;
+	u8				boot_mode;
 
-	u8 wol;
+	u8				wol;
 
-	u32 int_mode;
-	enum ecore_coalescing_mode int_coalescing_mode;
+	u32				int_mode;
+	enum ecore_coalescing_mode	int_coalescing_mode;
 	u8 rx_coalesce_usecs;
 	u8 tx_coalesce_usecs;
 
 	/* Start Bar offset of first hwfn */
-	void OSAL_IOMEM *regview;
-	void OSAL_IOMEM *doorbells;
-	u64 db_phys_addr;
-	unsigned long db_size;
+	void OSAL_IOMEM			*regview;
+	void OSAL_IOMEM			*doorbells;
+	u64				db_phys_addr;
+	unsigned long			db_size;
 
 	/* PCI */
-	u8 cache_shift;
+	u8				cache_shift;
 
 	/* Init */
-	const struct iro *iro_arr;
-#define IRO (p_hwfn->p_dev->iro_arr)
+	const struct iro		*iro_arr;
+	#define IRO (p_hwfn->p_dev->iro_arr)
 
 	/* HW functions */
-	u8 num_hwfns;
-	struct ecore_hwfn hwfns[MAX_HWFNS_PER_DEVICE];
+	u8				num_hwfns;
+	struct ecore_hwfn		hwfns[MAX_HWFNS_PER_DEVICE];
 
 	/* SRIOV */
 	struct ecore_hw_sriov_info sriov_info;
-	unsigned long tunn_mode;
+	unsigned long			tunn_mode;
 #define IS_ECORE_SRIOV(edev)		(!!((edev)->sriov_info.total_vfs))
-	bool b_is_vf;
+	bool				b_is_vf;
 
-	u32 drv_type;
+	u32				drv_type;
 
-	struct ecore_eth_stats *reset_stats;
-	struct ecore_fw_data *fw_data;
+	struct ecore_eth_stats		*reset_stats;
+	struct ecore_fw_data		*fw_data;
 
-	u32 mcp_nvm_resp;
+	u32				mcp_nvm_resp;
 
 	/* Recovery */
-	bool recov_in_prog;
+	bool				recov_in_prog;
 
 #ifndef ASIC_ONLY
-	bool b_is_emul_full;
+	bool				b_is_emul_full;
 #endif
 
-	void *firmware;
+	void				*firmware;
 
-	u64 fw_len;
+	u64				fw_len;
 
 };
 
@@ -707,10 +707,10 @@ struct ecore_dev {
  * @return OSAL_INLINE u8
  */
 static OSAL_INLINE u8 ecore_concrete_to_sw_fid(struct ecore_dev *p_dev,
-					       u32 concrete_fid)
+					  u32 concrete_fid)
 {
-	u8 vfid = GET_FIELD(concrete_fid, PXP_CONCRETE_FID_VFID);
-	u8 pfid = GET_FIELD(concrete_fid, PXP_CONCRETE_FID_PFID);
+	u8 vfid     = GET_FIELD(concrete_fid, PXP_CONCRETE_FID_VFID);
+	u8 pfid     = GET_FIELD(concrete_fid, PXP_CONCRETE_FID_PFID);
 	u8 vf_valid = GET_FIELD(concrete_fid, PXP_CONCRETE_FID_VFVALID);
 	u8 sw_fid;
 

@@ -270,22 +270,22 @@ enum ecore_dmae_address_type_t {
 #define ECORE_DMAE_FLAG_COMPLETION_DST	0x00000008
 
 struct ecore_dmae_params {
-	u32 flags;		/* consists of ECORE_DMAE_FLAG_* values */
+	u32 flags; /* consists of ECORE_DMAE_FLAG_* values */
 	u8 src_vfid;
 	u8 dst_vfid;
 };
 
 /**
-* @brief ecore_dmae_host2grc - copy data from source addr to
-* dmae registers using the given ptt
-*
-* @param p_hwfn
-* @param p_ptt
-* @param source_addr
-* @param grc_addr (dmae_data_offset)
-* @param size_in_dwords
-* @param flags (one of the flags defined above)
-*/
+ * @brief ecore_dmae_host2grc - copy data from source addr to
+ * dmae registers using the given ptt
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param source_addr
+ * @param grc_addr (dmae_data_offset)
+ * @param size_in_dwords
+ * @param flags (one of the flags defined above)
+ */
 enum _ecore_status_t
 ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
 		    struct ecore_ptt *p_ptt,
@@ -293,15 +293,15 @@ ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
 		    u32 grc_addr, u32 size_in_dwords, u32 flags);
 
 /**
-* @brief ecore_dmae_grc2host - Read data from dmae data offset
-* to source address using the given ptt
-*
-* @param p_ptt
-* @param grc_addr (dmae_data_offset)
-* @param dest_addr
-* @param size_in_dwords
-* @param flags - one of the flags defined above
-*/
+ * @brief ecore_dmae_grc2host - Read data from dmae data offset
+ * to source address using the given ptt
+ *
+ * @param p_ptt
+ * @param grc_addr (dmae_data_offset)
+ * @param dest_addr
+ * @param size_in_dwords
+ * @param flags - one of the flags defined above
+ */
 enum _ecore_status_t
 ecore_dmae_grc2host(struct ecore_hwfn *p_hwfn,
 		    struct ecore_ptt *p_ptt,
@@ -309,16 +309,16 @@ ecore_dmae_grc2host(struct ecore_hwfn *p_hwfn,
 		    dma_addr_t dest_addr, u32 size_in_dwords, u32 flags);
 
 /**
-* @brief ecore_dmae_host2host - copy data from to source address
-* to a destination address (for SRIOV) using the given ptt
-*
-* @param p_hwfn
-* @param p_ptt
-* @param source_addr
-* @param dest_addr
-* @param size_in_dwords
-* @param params
-*/
+ * @brief ecore_dmae_host2host - copy data from to source address
+ * to a destination address (for SRIOV) using the given ptt
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param source_addr
+ * @param dest_addr
+ * @param size_in_dwords
+ * @param params
+ */
 enum _ecore_status_t
 ecore_dmae_host2host(struct ecore_hwfn *p_hwfn,
 		     struct ecore_ptt *p_ptt,
@@ -398,8 +398,8 @@ enum _ecore_status_t ecore_fw_rss_eng(struct ecore_hwfn *p_hwfn,
  * @param p_filter - MAC to add
  */
 enum _ecore_status_t ecore_llh_add_mac_filter(struct ecore_hwfn *p_hwfn,
-					      struct ecore_ptt *p_ptt,
-					      u8 *p_filter);
+					  struct ecore_ptt *p_ptt,
+					  u8 *p_filter);
 
 /**
  * @brief ecore_llh_remove_mac_filter - removes a MAC filtre from llh
@@ -419,7 +419,7 @@ void ecore_llh_remove_mac_filter(struct ecore_hwfn *p_hwfn,
  * @param filter - ethertype to add
  */
 enum _ecore_status_t ecore_llh_add_ethertype_filter(struct ecore_hwfn *p_hwfn,
-						    struct ecore_ptt *p_ptt,
+			      struct ecore_ptt *p_ptt,
 						    u16 filter);
 
 /**
@@ -439,9 +439,9 @@ void ecore_llh_remove_ethertype_filter(struct ecore_hwfn *p_hwfn,
  * @param p_ptt
  */
 void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
-				 struct ecore_ptt *p_ptt);
+			     struct ecore_ptt *p_ptt);
 
- /**
+/**
 *@brief Cleanup of previous driver remains prior to load
  *
  * @param p_hwfn
@@ -461,7 +461,7 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn *p_hwfn,
  * @param p_hwfn
  * @param p_ptt
  *
- *  @return enum _ecore_status_t
+ * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_test_registers(struct ecore_hwfn *p_hwfn,
 					  struct ecore_ptt *p_ptt);

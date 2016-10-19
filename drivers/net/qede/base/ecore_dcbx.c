@@ -116,8 +116,8 @@ ecore_dcbx_set_pf_tcs(struct ecore_hw_info *p_info,
 		if (personality == ECORE_PCI_ETH)
 			p_info->non_offload_tc = tc;
 		else
-			p_info->offload_tc = tc;
-	}
+		p_info->offload_tc = tc;
+}
 }
 
 void

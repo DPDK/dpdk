@@ -18,11 +18,11 @@ struct ecore_eth_pf_params {
 	 * and these parameters need to be passed as arguments
 	 * to update_pf_params routine invoked before slowpath start
 	 */
-	u16 num_cons;
+	u16	num_cons;
 };
 
 struct ecore_pf_params {
-	struct ecore_eth_pf_params eth_pf_params;
+	struct ecore_eth_pf_params	eth_pf_params;
 };
 
 #endif

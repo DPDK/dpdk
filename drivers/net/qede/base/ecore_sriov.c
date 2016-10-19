@@ -393,16 +393,16 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn,
 		int *pos = &p_hwfn->p_dev->sriov_info.pos;
 
 		*pos = OSAL_PCI_FIND_EXT_CAPABILITY(p_hwfn->p_dev,
-						    PCI_EXT_CAP_ID_SRIOV);
+					   PCI_EXT_CAP_ID_SRIOV);
 		if (!*pos) {
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 				   "No PCIe IOV support\n");
-			return ECORE_SUCCESS;
-		}
+		return ECORE_SUCCESS;
+	}
 
-		rc = ecore_iov_pci_cfg_info(p_dev);
-		if (rc)
-			return rc;
+	rc = ecore_iov_pci_cfg_info(p_dev);
+	if (rc)
+		return rc;
 	} else if (!p_hwfn->p_dev->sriov_info.pos) {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV, "No PCIe IOV support\n");
 		return ECORE_SUCCESS;
@@ -413,7 +413,7 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn,
 	 * after the first engine's VFs.
 	 */
 	p_hwfn->hw_info.first_vf_in_pf = p_hwfn->p_dev->sriov_info.offset +
-	    p_hwfn->abs_pf_id - 16;
+					    p_hwfn->abs_pf_id - 16;
 	if (ECORE_PATH_ID(p_hwfn))
 		p_hwfn->hw_info.first_vf_in_pf -= MAX_NUM_VFS_BB;
 
@@ -448,12 +448,12 @@ void ecore_iov_set_vf_to_disable(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_vf_info *vf;
 
-	vf = ecore_iov_get_vf_info(p_hwfn, rel_vf_id, false);
-	if (!vf)
+		vf = ecore_iov_get_vf_info(p_hwfn, rel_vf_id, false);
+		if (!vf)
 		return;
 
-	vf->to_disable = to_disable;
-}
+		vf->to_disable = to_disable;
+	}
 
 void ecore_iov_set_vfs_to_disable(struct ecore_hwfn *p_hwfn, u8 to_disable)
 {
@@ -504,7 +504,7 @@ static OSAL_INLINE void ecore_iov_vf_semi_clear_err(struct ecore_hwfn *p_hwfn,
 	ecore_wr(p_hwfn, p_ptt, PSEM_REG_VF_ERROR, 1);
 }
 
-static void ecore_iov_vf_pglue_clear_err(struct ecore_hwfn *p_hwfn,
+static void ecore_iov_vf_pglue_clear_err(struct ecore_hwfn      *p_hwfn,
 					 struct ecore_ptt *p_ptt, u8 abs_vfid)
 {
 	ecore_wr(p_hwfn, p_ptt,
@@ -754,7 +754,7 @@ enum _ecore_status_t ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	struct ecore_vf_info *vf = OSAL_NULL;
-	u8 num_of_vf_available_chains = 0;
+	u8 num_of_vf_available_chains  = 0;
 	u32 cids;
 	u8 i;
 
@@ -896,9 +896,9 @@ static void ecore_iov_lock_vf_pf_channel(struct ecore_hwfn *p_hwfn,
 	/* vf->op_current = tlv; @@@TBD MichalK */
 
 	/* log the lock */
-	DP_VERBOSE(p_hwfn,
-		   ECORE_MSG_IOV,
-		   "VF[%d]: vf pf channel locked by     %s\n",
+		DP_VERBOSE(p_hwfn,
+			   ECORE_MSG_IOV,
+			   "VF[%d]: vf pf channel locked by %s\n",
 		   vf->abs_vf_id, ecore_channel_tlvs_string[tlv]);
 }
 
@@ -921,9 +921,9 @@ static void ecore_iov_unlock_vf_pf_channel(struct ecore_hwfn *p_hwfn,
 	/* mutex_unlock(&vf->op_mutex); @@@TBD MichalK add the lock */
 
 	/* log the unlock */
-	DP_VERBOSE(p_hwfn,
-		   ECORE_MSG_IOV,
-		   "VF[%d]: vf pf channel unlocked by %s\n",
+		DP_VERBOSE(p_hwfn,
+			   ECORE_MSG_IOV,
+			   "VF[%d]: vf pf channel unlocked by %s\n",
 		   vf->abs_vf_id, ecore_channel_tlvs_string[expected_tlv]);
 
 	/* record the locking op */
@@ -1131,9 +1131,9 @@ static void ecore_iov_vf_cleanup(struct ecore_hwfn *p_hwfn,
 	OSAL_IOV_VF_CLEANUP(p_hwfn, p_vf->relative_vf_id);
 }
 
-static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn *p_hwfn,
-				     struct ecore_ptt *p_ptt,
-				     struct ecore_vf_info *vf)
+static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
+				     struct ecore_ptt	     *p_ptt,
+				     struct ecore_vf_info    *vf)
 {
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
 	struct vfpf_acquire_tlv *req = &mbx->req_virt->acquire;
@@ -1148,7 +1148,7 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn *p_hwfn,
 	    req->vfdev_info.fw_minor != FW_MINOR_VERSION ||
 	    req->vfdev_info.fw_revision != FW_REVISION_VERSION ||
 	    req->vfdev_info.fw_engineering != FW_ENGINEERING_VERSION) {
-		DP_INFO(p_hwfn,
+			DP_INFO(p_hwfn,
 			"VF[%d] is running an incompatible driver [VF needs"
 			" FW %02x:%02x:%02x:%02x but Hypervisor is"
 			" using %02x:%02x:%02x:%02x]\n",
@@ -1323,24 +1323,24 @@ ecore_iov_reconfigure_unicast_vlan(struct ecore_hwfn *p_hwfn,
 	/* Reconfigure vlans */
 	for (i = 0; i < ECORE_ETH_VF_NUM_VLAN_FILTERS + 1; i++) {
 		if (p_vf->shadow_config.vlans[i].used) {
-			filter.type = ECORE_FILTER_VLAN;
-			filter.vlan = p_vf->shadow_config.vlans[i].vid;
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		filter.type = ECORE_FILTER_VLAN;
+		filter.vlan = p_vf->shadow_config.vlans[i].vid;
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 				   "Reconfig VLAN [0x%04x] for VF [%04x]\n",
-				   filter.vlan, p_vf->relative_vf_id);
-			rc = ecore_sp_eth_filter_ucast(p_hwfn,
-						       p_vf->opaque_fid,
-						       &filter,
-						       ECORE_SPQ_MODE_CB,
+			   filter.vlan, p_vf->relative_vf_id);
+		rc = ecore_sp_eth_filter_ucast(p_hwfn,
+					       p_vf->opaque_fid,
+					       &filter,
+					       ECORE_SPQ_MODE_CB,
 						       OSAL_NULL);
-			if (rc) {
-				DP_NOTICE(p_hwfn, true,
-					  "Failed to configure VLAN [%04x]"
-					  " to VF [%04x]\n",
-					  filter.vlan, p_vf->relative_vf_id);
-				break;
-			}
+		if (rc) {
+			DP_NOTICE(p_hwfn, true,
+				  "Failed to configure VLAN [%04x]"
+				  " to VF [%04x]\n",
+				  filter.vlan, p_vf->relative_vf_id);
+			break;
 		}
+	}
 	}
 
 	return rc;
@@ -1646,14 +1646,14 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	pq_params.eth.vf_id = vf->relative_vf_id;
 
 	rc = ecore_sp_eth_txq_start_ramrod(p_hwfn,
-					   vf->opaque_fid,
-					   vf->vf_queues[req->tx_qid].fw_tx_qid,
-					   vf->vf_queues[req->tx_qid].fw_cid,
-					   vf->vport_id,
-					   vf->abs_vf_id + 0x10,
-					   req->hw_sb,
-					   req->sb_index,
-					   req->pbl_addr,
+		vf->opaque_fid,
+		vf->vf_queues[req->tx_qid].fw_tx_qid,
+		vf->vf_queues[req->tx_qid].fw_cid,
+		vf->vport_id,
+		vf->abs_vf_id + 0x10,
+		req->hw_sb,
+		req->sb_index,
+		req->pbl_addr,
 					   req->pbl_size, &pq_params);
 
 	if (rc)
@@ -1852,12 +1852,12 @@ ecore_iov_vp_update_act_param(struct ecore_hwfn *p_hwfn,
 	p_act_tlv = (struct vfpf_vport_update_activate_tlv *)
 	    ecore_iov_search_list_tlvs(p_hwfn, p_mbx->req_virt, tlv);
 	if (p_act_tlv) {
-		p_data->update_vport_active_rx_flg = p_act_tlv->update_rx;
-		p_data->vport_active_rx_flg = p_act_tlv->active_rx;
-		p_data->update_vport_active_tx_flg = p_act_tlv->update_tx;
-		p_data->vport_active_tx_flg = p_act_tlv->active_tx;
-		*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_ACTIVATE;
-	}
+	p_data->update_vport_active_rx_flg = p_act_tlv->update_rx;
+	p_data->vport_active_rx_flg = p_act_tlv->active_rx;
+	p_data->update_vport_active_tx_flg = p_act_tlv->update_tx;
+	p_data->vport_active_tx_flg = p_act_tlv->active_tx;
+	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_ACTIVATE;
+}
 }
 
 static void
@@ -1905,10 +1905,10 @@ ecore_iov_vp_update_tx_switch(struct ecore_hwfn *p_hwfn,
 #endif
 
 	if (p_tx_switch_tlv) {
-		p_data->update_tx_switching_flg = 1;
-		p_data->tx_switching_flg = p_tx_switch_tlv->tx_switching;
-		*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_TX_SWITCH;
-	}
+	p_data->update_tx_switching_flg = 1;
+	p_data->tx_switching_flg = p_tx_switch_tlv->tx_switching;
+	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_TX_SWITCH;
+}
 }
 
 static void
@@ -1924,12 +1924,12 @@ ecore_iov_vp_update_mcast_bin_param(struct ecore_hwfn *p_hwfn,
 	    ecore_iov_search_list_tlvs(p_hwfn, p_mbx->req_virt, tlv);
 
 	if (p_mcast_tlv) {
-		p_data->update_approx_mcast_flg = 1;
-		OSAL_MEMCPY(p_data->bins, p_mcast_tlv->bins,
-			    sizeof(unsigned long) *
-			    ETH_MULTICAST_MAC_BINS_IN_REGS);
-		*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_MCAST;
-	}
+	p_data->update_approx_mcast_flg = 1;
+	OSAL_MEMCPY(p_data->bins, p_mcast_tlv->bins,
+		    sizeof(unsigned long) *
+		    ETH_MULTICAST_MAC_BINS_IN_REGS);
+	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_MCAST;
+}
 }
 
 static void
@@ -1952,8 +1952,8 @@ ecore_iov_vp_update_accept_flag(struct ecore_hwfn *p_hwfn,
 		    p_accept_tlv->update_tx_mode;
 		p_data->accept_flags.tx_accept_filter =
 		    p_accept_tlv->tx_accept_filter;
-		*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_ACCEPT_PARAM;
-	}
+	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_ACCEPT_PARAM;
+}
 }
 
 static void
@@ -1969,11 +1969,11 @@ ecore_iov_vp_update_accept_any_vlan(struct ecore_hwfn *p_hwfn,
 	    ecore_iov_search_list_tlvs(p_hwfn, p_mbx->req_virt, tlv);
 
 	if (p_accept_any_vlan) {
-		p_data->accept_any_vlan = p_accept_any_vlan->accept_any_vlan;
-		p_data->update_accept_any_vlan_flg =
-		    p_accept_any_vlan->update_accept_any_vlan_flg;
-		*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_ACCEPT_ANY_VLAN;
-	}
+	p_data->accept_any_vlan = p_accept_any_vlan->accept_any_vlan;
+	p_data->update_accept_any_vlan_flg =
+			p_accept_any_vlan->update_accept_any_vlan_flg;
+	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_ACCEPT_ANY_VLAN;
+}
 }
 
 static void
@@ -1991,48 +1991,48 @@ ecore_iov_vp_update_rss_param(struct ecore_hwfn *p_hwfn,
 	p_rss_tlv = (struct vfpf_vport_update_rss_tlv *)
 	    ecore_iov_search_list_tlvs(p_hwfn, p_mbx->req_virt, tlv);
 	if (p_rss_tlv) {
-		OSAL_MEMSET(p_rss, 0, sizeof(struct ecore_rss_params));
+	OSAL_MEMSET(p_rss, 0, sizeof(struct ecore_rss_params));
 
-		p_rss->update_rss_config =
-		    !!(p_rss_tlv->update_rss_flags &
-			VFPF_UPDATE_RSS_CONFIG_FLAG);
-		p_rss->update_rss_capabilities =
-		    !!(p_rss_tlv->update_rss_flags &
-			VFPF_UPDATE_RSS_CAPS_FLAG);
-		p_rss->update_rss_ind_table =
-		    !!(p_rss_tlv->update_rss_flags &
-			VFPF_UPDATE_RSS_IND_TABLE_FLAG);
-		p_rss->update_rss_key =
+	p_rss->update_rss_config =
+	    !!(p_rss_tlv->update_rss_flags &
+		VFPF_UPDATE_RSS_CONFIG_FLAG);
+	p_rss->update_rss_capabilities =
+	    !!(p_rss_tlv->update_rss_flags &
+		VFPF_UPDATE_RSS_CAPS_FLAG);
+	p_rss->update_rss_ind_table =
+	    !!(p_rss_tlv->update_rss_flags &
+		VFPF_UPDATE_RSS_IND_TABLE_FLAG);
+	p_rss->update_rss_key =
 		    !!(p_rss_tlv->update_rss_flags & VFPF_UPDATE_RSS_KEY_FLAG);
 
-		p_rss->rss_enable = p_rss_tlv->rss_enable;
-		p_rss->rss_eng_id = vf->relative_vf_id + 1;
-		p_rss->rss_caps = p_rss_tlv->rss_caps;
-		p_rss->rss_table_size_log = p_rss_tlv->rss_table_size_log;
-		OSAL_MEMCPY(p_rss->rss_ind_table, p_rss_tlv->rss_ind_table,
-			    sizeof(p_rss->rss_ind_table));
-		OSAL_MEMCPY(p_rss->rss_key, p_rss_tlv->rss_key,
-			    sizeof(p_rss->rss_key));
+	p_rss->rss_enable = p_rss_tlv->rss_enable;
+	p_rss->rss_eng_id = vf->relative_vf_id + 1;
+	p_rss->rss_caps = p_rss_tlv->rss_caps;
+	p_rss->rss_table_size_log = p_rss_tlv->rss_table_size_log;
+	OSAL_MEMCPY(p_rss->rss_ind_table, p_rss_tlv->rss_ind_table,
+		    sizeof(p_rss->rss_ind_table));
+	OSAL_MEMCPY(p_rss->rss_key, p_rss_tlv->rss_key,
+		    sizeof(p_rss->rss_key));
 
 		table_size = OSAL_MIN_T(u16,
 					OSAL_ARRAY_SIZE(p_rss->rss_ind_table),
-					(1 << p_rss_tlv->rss_table_size_log));
+				(1 << p_rss_tlv->rss_table_size_log));
 
-		max_q_idx = OSAL_ARRAY_SIZE(vf->vf_queues);
+	max_q_idx = OSAL_ARRAY_SIZE(vf->vf_queues);
 
-		for (i = 0; i < table_size; i++) {
-			q_idx = p_rss->rss_ind_table[i];
+	for (i = 0; i < table_size; i++) {
+		q_idx = p_rss->rss_ind_table[i];
 			if (q_idx >= max_q_idx) {
-				DP_NOTICE(p_hwfn, true,
+			DP_NOTICE(p_hwfn, true,
 					  "rss_ind_table[%d] = %d, rxq is out of range\n",
-					  i, q_idx);
+				  i, q_idx);
 				/* TBD: fail the request mark VF as malicious */
 				p_rss->rss_ind_table[i] =
 				    vf->vf_queues[0].fw_rx_qid;
 			} else if (!vf->vf_queues[q_idx].rxq_active) {
-				DP_NOTICE(p_hwfn, true,
-					  "rss_ind_table[%d] = %d, rxq is not active\n",
-					  i, q_idx);
+			DP_NOTICE(p_hwfn, true,
+				  "rss_ind_table[%d] = %d, rxq is not active\n",
+				  i, q_idx);
 				/* TBD: fail the request mark VF as malicious */
 				p_rss->rss_ind_table[i] =
 				    vf->vf_queues[0].fw_rx_qid;
@@ -2040,10 +2040,10 @@ ecore_iov_vp_update_rss_param(struct ecore_hwfn *p_hwfn,
 				p_rss->rss_ind_table[i] =
 				    vf->vf_queues[q_idx].fw_rx_qid;
 			}
-		}
+	}
 
-		p_data->rss_params = p_rss;
-		*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_RSS;
+	p_data->rss_params = p_rss;
+	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_RSS;
 	} else {
 		p_data->rss_params = OSAL_NULL;
 	}
@@ -2172,8 +2172,8 @@ out:
 
 static enum _ecore_status_t
 ecore_iov_vf_update_unicast_shadow(struct ecore_hwfn *p_hwfn,
-				   struct ecore_vf_info *p_vf,
-				   struct ecore_filter_ucast *p_params)
+				struct ecore_vf_info *p_vf,
+				struct ecore_filter_ucast *p_params)
 {
 	int i;
 
@@ -2212,11 +2212,11 @@ ecore_iov_vf_update_unicast_shadow(struct ecore_hwfn *p_hwfn,
 	    p_params->opcode == ECORE_FILTER_REPLACE) {
 		for (i = 0; i < ECORE_ETH_VF_NUM_VLAN_FILTERS + 1; i++)
 			if (!p_vf->shadow_config.vlans[i].used) {
-				p_vf->shadow_config.vlans[i].used = true;
+			p_vf->shadow_config.vlans[i].used = true;
 				p_vf->shadow_config.vlans[i].vid =
 				    p_params->vlan;
-				break;
-			}
+			break;
+		}
 		if (i == ECORE_ETH_VF_NUM_VLAN_FILTERS + 1) {
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 				   "VF [%d] - Tries to configure more than %d vlan filters\n",
@@ -2737,11 +2737,11 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 
 	/* check if tlv type is known */
 	if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type)) {
-		/* Lock the per vf op mutex and note the locker's identity.
-		 * The unlock will take place in mbx response.
-		 */
-		ecore_iov_lock_vf_pf_channel(p_hwfn,
-					     p_vf, mbx->first_tlv.tl.type);
+	/* Lock the per vf op mutex and note the locker's identity.
+	 * The unlock will take place in mbx response.
+	 */
+	ecore_iov_lock_vf_pf_channel(p_hwfn,
+				     p_vf, mbx->first_tlv.tl.type);
 
 		/* switch on the opcode */
 		switch (mbx->first_tlv.tl.type) {

@@ -251,9 +251,9 @@ static enum _ecore_status_t ecore_init_cmd_array(struct ecore_hwfn *p_hwfn,
 							   b_can_dmae);
 				if (rc)
 					break;
-			}
-			break;
 		}
+		break;
+	}
 	case INIT_ARR_STANDARD:
 		size = GET_FIELD(data, INIT_ARRAY_STANDARD_HDR_SIZE);
 		rc = ecore_init_array_dmae(p_hwfn, p_ptt, addr,

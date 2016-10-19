@@ -108,15 +108,15 @@ struct ecore_ptt *ecore_ptt_acquire(struct ecore_hwfn *p_hwfn)
 	}
 
 	p_ptt = OSAL_LIST_FIRST_ENTRY(&p_hwfn->p_ptt_pool->free_list,
-				      struct ecore_ptt, list_entry);
-	OSAL_LIST_REMOVE_ENTRY(&p_ptt->list_entry,
-			       &p_hwfn->p_ptt_pool->free_list);
-	OSAL_SPIN_UNLOCK(&p_hwfn->p_ptt_pool->lock);
+						struct ecore_ptt, list_entry);
+			OSAL_LIST_REMOVE_ENTRY(&p_ptt->list_entry,
+					       &p_hwfn->p_ptt_pool->free_list);
+			OSAL_SPIN_UNLOCK(&p_hwfn->p_ptt_pool->lock);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_HW, "allocated ptt %d\n", p_ptt->idx);
 
-	return p_ptt;
-}
+			return p_ptt;
+		}
 
 void ecore_ptt_release(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 {
@@ -298,7 +298,7 @@ void ecore_fid_pretend(struct ecore_hwfn *p_hwfn,
 	SET_FIELD(control, PXP_PRETEND_CMD_IS_CONCRETE, 1);
 	SET_FIELD(control, PXP_PRETEND_CMD_PRETEND_FUNCTION, 1);
 
-	/* Every pretend undos prev pretends, including previous port pretend */
+/* Every pretend undos prev pretends, including previous port pretend */
 	SET_FIELD(control, PXP_PRETEND_CMD_PORT, 0);
 	SET_FIELD(control, PXP_PRETEND_CMD_USE_PORT, 0);
 	SET_FIELD(control, PXP_PRETEND_CMD_PRETEND_PORT, 1);

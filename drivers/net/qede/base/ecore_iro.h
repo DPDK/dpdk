@@ -10,24 +10,24 @@
 #define __IRO_H__
 
 /* Ystorm flow control mode. Use enum fw_flow_ctrl_mode */
-#define YSTORM_FLOW_CONTROL_MODE_OFFSET		(IRO[0].base)
-#define YSTORM_FLOW_CONTROL_MODE_SIZE		(IRO[0].size)
+#define YSTORM_FLOW_CONTROL_MODE_OFFSET (IRO[0].base)
+#define YSTORM_FLOW_CONTROL_MODE_SIZE (IRO[0].size)
 /* Tstorm port statistics */
 #define TSTORM_PORT_STAT_OFFSET(port_id) \
 (IRO[1].base + ((port_id) * IRO[1].m1))
-#define TSTORM_PORT_STAT_SIZE			(IRO[1].size)
+#define TSTORM_PORT_STAT_SIZE (IRO[1].size)
 /* Ustorm VF-PF Channel ready flag */
 #define USTORM_VF_PF_CHANNEL_READY_OFFSET(vf_id) \
 (IRO[3].base + ((vf_id) * IRO[3].m1))
-#define USTORM_VF_PF_CHANNEL_READY_SIZE		(IRO[3].size)
+#define USTORM_VF_PF_CHANNEL_READY_SIZE (IRO[3].size)
 /* Ustorm Final flr cleanup ack */
 #define USTORM_FLR_FINAL_ACK_OFFSET(pf_id) \
 (IRO[4].base + ((pf_id) * IRO[4].m1))
-#define USTORM_FLR_FINAL_ACK_SIZE		(IRO[4].size)
+#define USTORM_FLR_FINAL_ACK_SIZE (IRO[4].size)
 /* Ustorm Event ring consumer */
 #define USTORM_EQE_CONS_OFFSET(pf_id) \
 (IRO[5].base + ((pf_id) * IRO[5].m1))
-#define USTORM_EQE_CONS_SIZE			(IRO[5].size)
+#define USTORM_EQE_CONS_SIZE (IRO[5].size)
 /* Ustorm Common Queue ring consumer */
 #define USTORM_COMMON_QUEUE_CONS_OFFSET(global_queue_id) \
 (IRO[6].base + ((global_queue_id) * IRO[6].m1))

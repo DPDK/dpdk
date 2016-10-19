@@ -391,7 +391,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 		break;
 	default:
 		DP_NOTICE(p_hwfn, true, "Unknown personality %d\n",
-			  p_hwfn->hw_info.personality);
+			 p_hwfn->hw_info.personality);
 		p_ramrod->personality = PERSONALITY_ETH;
 	}
 

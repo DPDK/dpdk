@@ -38,10 +38,10 @@ struct ecore_mcp_info {
 	u32 port_addr;		/* Address of the port configuration (link) */
 	u16 drv_mb_seq;		/* Current driver mailbox sequence */
 	u16 drv_pulse_seq;	/* Current driver pulse sequence */
-	struct ecore_mcp_link_params link_input;
-	struct ecore_mcp_link_state link_output;
+	struct ecore_mcp_link_params       link_input;
+	struct ecore_mcp_link_state	   link_output;
 	struct ecore_mcp_link_capabilities link_capabilities;
-	struct ecore_mcp_function_info func_info;
+	struct ecore_mcp_function_info	   func_info;
 
 	u8 *mfw_mb_cur;
 	u8 *mfw_mb_shadow;

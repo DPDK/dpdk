@@ -953,7 +953,7 @@ enum malicious_vf_error_id {
 	VF_ZONE_MSG_NOT_VALID /* VF channel message is not valid */,
 	VF_ZONE_FUNC_NOT_ENABLED /* Parent PF of VF channel is not active */,
 	ETH_PACKET_TOO_SMALL
-	    /* TX packet is shorter then reported on BDs or from minimal size */
+/* TX packet is shorter then reported on BDs or from minimal size */
 	    ,
 	ETH_ILLEGAL_VLAN_MODE
 	    /* Tx packet with marked as insert VLAN when its illegal */,
@@ -1060,7 +1060,7 @@ struct pf_start_ramrod_data {
 	u8 allow_npar_tx_switching;
 	u8 inner_to_outer_pri_map[8];
 	u8 pri_map_valid
-	    /* If inner_to_outer_pri_map is initialize then set pri_map_valid */
+/* If inner_to_outer_pri_map is initialize then set pri_map_valid */
 	  ;
 	__le32 outer_tag;
 	u8 reserved0[4];
@@ -1244,7 +1244,7 @@ enum tunnel_clss {
 	TUNNEL_CLSS_MAC_VNI
 	    ,
 	TUNNEL_CLSS_INNER_MAC_VLAN
-	    /* Use MAC and VLAN from last L2 header for vport classification */
+/* Use MAC and VLAN from last L2 header for vport classification */
 	    ,
 	TUNNEL_CLSS_INNER_MAC_VNI
 	    ,

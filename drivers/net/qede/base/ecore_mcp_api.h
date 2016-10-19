@@ -13,8 +13,8 @@
 
 struct ecore_mcp_link_speed_params {
 	bool autoneg;
-	u32 advertised_speeds;	/* bitmask of DRV_SPEED_CAPABILITY */
-	u32 forced_speed;	/* In Mb/s */
+	u32 advertised_speeds; /* bitmask of DRV_SPEED_CAPABILITY */
+	u32 forced_speed; /* In Mb/s */
 };
 
 struct ecore_mcp_link_pause_params {
@@ -26,7 +26,7 @@ struct ecore_mcp_link_pause_params {
 struct ecore_mcp_link_params {
 	struct ecore_mcp_link_speed_params speed;
 	struct ecore_mcp_link_pause_params pause;
-	u32 loopback_mode;	/* in PMM_LOOPBACK values */
+	u32 loopback_mode; /* in PMM_LOOPBACK values */
 };
 
 struct ecore_mcp_link_capabilities {
@@ -36,9 +36,9 @@ struct ecore_mcp_link_capabilities {
 struct ecore_mcp_link_state {
 	bool link_up;
 
-	u32 line_speed;		/* In Mb/s */
-	u32 min_pf_rate;	/* In Mb/s */
-	u32 speed;		/* In Mb/s */
+	u32 line_speed; /* In Mb/s */
+	u32 min_pf_rate; /* In Mb/s */
+	u32 speed; /* In Mb/s */
 	bool full_duplex;
 
 	bool an;
@@ -237,7 +237,7 @@ enum _ecore_status_t ecore_mcp_get_mfw_ver(struct ecore_dev *p_dev,
  *      ECORE_BUSY - Operation failed
  */
 enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_dev *p_dev,
-					      u32 *media_type);
+					   u32 *media_type);
 
 /**
  * @brief - Sends a command to the MCP mailbox.
@@ -542,7 +542,7 @@ enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
  */
 enum _ecore_status_t ecore_mcp_nvm_read(struct ecore_dev *p_dev, u32 addr,
-					u8 *p_buf, u32 len);
+			   u8 *p_buf, u32 len);
 
 /**
  * @brief Read from sfp

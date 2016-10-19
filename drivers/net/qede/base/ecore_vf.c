@@ -264,7 +264,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	p_hwfn->p_dev->chip_num = pfdev_info->chip_num & 0xffff;
 
 	return 0;
-}
+	}
 
 enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_dev *p_dev)
 {
@@ -280,7 +280,7 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_dev *p_dev)
 		       "regview should be initialized before"
 			" ecore_vf_hw_prepare is called\n");
 		return ECORE_INVAL;
-	}
+}
 
 	/* Set the doorbell bar. Assumption: regview is set */
 	p_hwfn->doorbells = (u8 OSAL_IOMEM *)p_hwfn->regview +
@@ -310,7 +310,7 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_dev *p_dev)
 								vfpf_tlvs));
 	if (!p_sriov->vf2pf_request) {
 		DP_NOTICE(p_hwfn, true,
-			  "Failed to allocate `vf2pf_request' DMA memory\n");
+			 "Failed to allocate `vf2pf_request' DMA memory\n");
 		goto free_p_sriov;
 	}
 
@@ -388,7 +388,7 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 					   dma_addr_t bd_chain_phys_addr,
 					   dma_addr_t cqe_pbl_addr,
 					   u16 cqe_pbl_size,
-					   void OSAL_IOMEM * *pp_prod)
+					   void OSAL_IOMEM **pp_prod)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_start_rxq_tlv *req;
@@ -421,7 +421,7 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 		hw_qid = p_iov->acquire_resp.resc.hw_qid[rx_qid];
 
 		*pp_prod = (u8 OSAL_IOMEM *)p_hwfn->regview +
-		    MSTORM_QZONE_START(p_hwfn->p_dev) +
+			   MSTORM_QZONE_START(p_hwfn->p_dev) +
 		    (hw_qid) * MSTORM_QZONE_SIZE +
 		    OFFSETOF(struct mstorm_eth_queue_zone, rx_producers);
 
@@ -481,7 +481,7 @@ enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 					   u8 sb_index,
 					   dma_addr_t pbl_addr,
 					   u16 pbl_size,
-					   void OSAL_IOMEM * *pp_doorbell)
+					   void OSAL_IOMEM **pp_doorbell)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_start_txq_tlv *req;
@@ -519,8 +519,8 @@ enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 		u8 cid = p_iov->acquire_resp.resc.cid[tx_queue_id];
 
 		*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
-		    DB_ADDR_VF(cid, DQ_DEMS_LEGACY);
-	}
+				DB_ADDR_VF(cid, DQ_DEMS_LEGACY);
+		}
 
 	return rc;
 }
@@ -1117,7 +1117,7 @@ enum _ecore_status_t ecore_vf_pf_int_cleanup(struct ecore_hwfn *p_hwfn)
 
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+	return rc;
 
 	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
 		return ECORE_INVAL;

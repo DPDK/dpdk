@@ -103,7 +103,7 @@ ecore_sp_eth_vport_start(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t
-ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
+ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn	*p_hwfn,
 			      u16 opaque_fid,
 			      u32 cid,
 			      u16 rx_queue_id,
@@ -134,7 +134,7 @@ ecore_sp_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t
-ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
+ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn	*p_hwfn,
 			      u16 opaque_fid,
 			      u16 tx_queue_id,
 			      u32 cid,

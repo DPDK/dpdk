@@ -53,10 +53,10 @@ enum dcbx_protocol_type {
 struct ecore_dcbx_lldp_remote {
 	u32 peer_chassis_id[LLDP_CHASSIS_ID_STAT_LEN];
 	u32 peer_port_id[LLDP_PORT_ID_STAT_LEN];
-	bool enable_rx;
-	bool enable_tx;
-	u32 tx_interval;
-	u32 max_credit;
+	bool	enable_rx;
+	bool	enable_tx;
+	u32     tx_interval;
+	u32     max_credit;
 };
 
 struct ecore_dcbx_lldp_local {
@@ -65,17 +65,17 @@ struct ecore_dcbx_lldp_local {
 };
 
 struct ecore_dcbx_app_prio {
-	u8 eth;
+	u8	eth;
 };
 
 struct ecore_dcbx_params {
 	u32 app_bitmap[DCBX_MAX_APP_PROTOCOL];
-	u16 num_app_entries;
-	bool app_willing;
-	bool app_valid;
-	bool ets_willing;
-	bool ets_enabled;
-	bool valid;		/* Indicate validity of params */
+	u16	num_app_entries;
+	bool	app_willing;
+	bool	app_valid;
+	bool	ets_willing;
+	bool	ets_enabled;
+	bool	valid;          /* Indicate validity of params */
 	u32 ets_pri_tc_tbl[1];
 	u32 ets_tc_bw_tbl[2];
 	u32 ets_tc_tsa_tbl[2];
@@ -83,7 +83,7 @@ struct ecore_dcbx_params {
 	bool pfc_enabled;
 	u32 pfc_bitmap;
 	u8 max_pfc_tc;
-	u8 max_ets_tc;
+	u8	max_ets_tc;
 };
 
 struct ecore_dcbx_admin_params {
@@ -129,7 +129,7 @@ struct ecore_dcbx_results {
 
 struct ecore_dcbx_app_metadata {
 	enum dcbx_protocol_type id;
-	const char *name;	/* @DPDK */
+	const char *name; /* @DPDK */
 	enum ecore_pci_personality personality;
 };
 

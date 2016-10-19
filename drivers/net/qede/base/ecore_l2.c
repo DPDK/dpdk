@@ -234,7 +234,7 @@ ecore_sp_update_accept_mode(struct ecore_hwfn *p_hwfn,
 
 		SET_FIELD(*state, ETH_VPORT_RX_MODE_UCAST_DROP_ALL,
 			  !(!!(accept_filter & ECORE_ACCEPT_UCAST_MATCHED) ||
-			    !!(accept_filter & ECORE_ACCEPT_UCAST_UNMATCHED)));
+			   !!(accept_filter & ECORE_ACCEPT_UCAST_UNMATCHED)));
 
 		SET_FIELD(*state, ETH_VPORT_RX_MODE_UCAST_ACCEPT_UNMATCHED,
 			  !!(accept_filter & ECORE_ACCEPT_UCAST_UNMATCHED));
@@ -429,7 +429,7 @@ ecore_sp_vport_update(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_sp_vport_update_rss(p_hwfn, p_ramrod, p_rss_params);
 	if (rc != ECORE_SUCCESS) {
-		/* Return spq entry which is taken in ecore_sp_init_request() */
+		/* Return spq entry which is taken in ecore_sp_init_request()*/
 		ecore_spq_return_entry(p_hwfn, p_ent);
 		return rc;
 	}
@@ -632,7 +632,7 @@ enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 						 dma_addr_t bd_chain_phys_addr,
 						 dma_addr_t cqe_pbl_addr,
 						 u16 cqe_pbl_size,
-						 void OSAL_IOMEM * *pp_prod)
+						 void OSAL_IOMEM **pp_prod)
 {
 	struct ecore_hw_cid_data *p_rx_cid = &p_hwfn->p_rx_cids[rx_queue_id];
 	u8 abs_stats_id = 0;
@@ -788,7 +788,7 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
 	 * In addition, VFs require the answer to come as eqe to PF.
 	 */
 	p_ramrod->complete_cqe_flg = (!!(p_rx_cid->opaque_fid ==
-					  p_hwfn->hw_info.opaque_fid) &&
+					 p_hwfn->hw_info.opaque_fid) &&
 				      !eq_completion_only) || cqe_completion;
 	p_ramrod->complete_event_flg = !(p_rx_cid->opaque_fid ==
 					 p_hwfn->hw_info.opaque_fid) ||
@@ -876,7 +876,7 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 						 u8 sb_index,
 						 dma_addr_t pbl_addr,
 						 u16 pbl_size,
-						 void OSAL_IOMEM * *pp_doorbell)
+						 void OSAL_IOMEM **pp_doorbell)
 {
 	struct ecore_hw_cid_data *p_tx_cid = &p_hwfn->p_tx_cids[tx_queue_id];
 	union ecore_qm_pq_params pq_params;
@@ -1274,7 +1274,7 @@ ecore_sp_eth_filter_mcast(struct ecore_hwfn *p_hwfn,
 	u8 abs_vport_id = 0;
 	int i;
 
-	rc = ecore_fw_vport(p_hwfn,
+		rc = ecore_fw_vport(p_hwfn,
 			    (p_filter_cmd->opcode == ECORE_FILTER_ADD) ?
 			    p_filter_cmd->vport_to_add_to :
 			    p_filter_cmd->vport_to_remove_from, &abs_vport_id);
@@ -1306,9 +1306,9 @@ ecore_sp_eth_filter_mcast(struct ecore_hwfn *p_hwfn,
 		    ETH_MULTICAST_MAC_BINS_IN_REGS);
 
 	if (p_filter_cmd->opcode == ECORE_FILTER_ADD) {
-		/* filter ADD op is explicit set op and it removes
-		 *  any existing filters for the vport.
-		 */
+	/* filter ADD op is explicit set op and it removes
+	*  any existing filters for the vport.
+	*/
 		for (i = 0; i < p_filter_cmd->num_mc_addrs; i++) {
 			u32 bit;
 

@@ -18,7 +18,7 @@
 /**
  *
  * @brief hw preparation for VF
- *	sends ACQUIRE message
+ * sends ACQUIRE message
  *
  * @param p_dev
  *
@@ -63,7 +63,7 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 					   dma_addr_t bd_chain_phys_addr,
 					   dma_addr_t cqe_pbl_addr,
 					   u16 cqe_pbl_size,
-					   void OSAL_IOMEM * *pp_prod);
+					   void OSAL_IOMEM **pp_prod);
 
 /**
  *
@@ -76,7 +76,7 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
  * @param sb_index		- index within the status block
  * @param bd_chain_phys_addr	- physical address of tx chain
  * @param pp_doorbell		- pointer to address to which to
- *		write the doorbell too..
+ *				write the doorbell too..
  *
  * @return enum _ecore_status_t
  */
@@ -86,7 +86,7 @@ enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 					   u8 sb_index,
 					   dma_addr_t pbl_addr,
 					   u16 pbl_size,
-					   void OSAL_IOMEM * *pp_doorbell);
+					   void OSAL_IOMEM **pp_doorbell);
 
 /**
  *
@@ -98,7 +98,7 @@ enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
+enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn	*p_hwfn,
 					  u16 rx_qid, bool cqe_completion);
 
 /**
@@ -110,8 +110,8 @@ enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn,
-					  u16 tx_qid);
+enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn	*p_hwfn,
+					  u16			tx_qid);
 
 /**
  * @brief VF - update the RX queue by sending a message to the
@@ -127,10 +127,10 @@ enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_vf_pf_rxqs_update(struct ecore_hwfn *p_hwfn,
-					     u16 rx_queue_id,
-					     u8 num_rxqs,
-					     u8 comp_cqe_flg,
-					     u8 comp_event_flg);
+			u16			rx_queue_id,
+			u8			num_rxqs,
+			u8			comp_cqe_flg,
+			u8			comp_event_flg);
 
 /**
  *
@@ -191,12 +191,12 @@ u16 ecore_vf_get_igu_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id);
  * @return enum _ecore_status
  */
 enum _ecore_status_t ecore_vf_pf_vport_start(struct ecore_hwfn *p_hwfn,
-					     u8 vport_id,
-					     u16 mtu,
-					     u8 inner_vlan_removal,
-					     enum ecore_tpa_mode tpa_mode,
-					     u8 max_buffers_per_cqe,
-					     u8 only_untagged);
+			u8 vport_id,
+			u16 mtu,
+			u8 inner_vlan_removal,
+			enum ecore_tpa_mode tpa_mode,
+			u8 max_buffers_per_cqe,
+			u8 only_untagged);
 
 /**
  * @brief ecore_vf_pf_vport_stop - stop the VF's vport

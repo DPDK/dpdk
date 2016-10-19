@@ -21,12 +21,12 @@ struct ecore_sp_init_data {
 	 * e.g., in IOV scenarios. CID might defer between SPQ and
 	 * other elements.
 	 */
-	u32 cid;
-	u16 opaque_fid;
+	u32				cid;
+	u16				opaque_fid;
 
 	/* Information regarding operation upon sending & completion */
-	enum spq_mode comp_mode;
-	struct ecore_spq_comp_cb *p_comp_data;
+	enum spq_mode			comp_mode;
+	struct ecore_spq_comp_cb	*p_comp_data;
 
 };
 

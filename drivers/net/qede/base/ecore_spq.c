@@ -49,7 +49,7 @@ static void ecore_spq_blocking_cb(struct ecore_hwfn *p_hwfn,
 }
 
 static enum _ecore_status_t ecore_spq_block(struct ecore_hwfn *p_hwfn,
-					    struct ecore_spq_entry *p_ent,
+					      struct ecore_spq_entry *p_ent,
 					    u8 *p_fw_ret)
 {
 	int sleep_count = SPQ_BLOCK_SLEEP_LENGTH;
@@ -83,7 +83,7 @@ static enum _ecore_status_t ecore_spq_block(struct ecore_hwfn *p_hwfn,
 		if (comp_done->done == 1) {
 			if (p_fw_ret)
 				*p_fw_ret = comp_done->fw_return_code;
-			return ECORE_SUCCESS;
+		return ECORE_SUCCESS;
 		}
 		OSAL_MSLEEP(5);
 		sleep_count--;
@@ -310,9 +310,9 @@ enum _ecore_status_t ecore_eq_completion(struct ecore_hwfn *p_hwfn,
 			   p_eqe->protocol_id,	/* Event Protocol ID */
 			   p_eqe->reserved0,	/* Reserved */
 			   OSAL_LE16_TO_CPU(p_eqe->echo),
-			   p_eqe->fw_return_code,	/* FW return code for SP
-							 * ramrods
-							 */
+			   p_eqe->fw_return_code,    /* FW return code for SP
+						      * ramrods
+						      */
 			   p_eqe->flags);
 
 		if (GET_FIELD(p_eqe->flags, EVENT_RING_ENTRY_ASYNC)) {
@@ -345,7 +345,7 @@ struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 		return OSAL_NULL;
 	}
 
-	/* Allocate and initialize EQ chain */
+	/* Allocate and initialize EQ chain*/
 	if (ecore_chain_alloc(p_hwfn->p_dev,
 			      ECORE_CHAIN_USE_TO_PRODUCE,
 			      ECORE_CHAIN_MODE_PBL,
@@ -607,32 +607,32 @@ ecore_spq_add_entry(struct ecore_hwfn *p_hwfn,
 			p_spq->unlimited_pending_count++;
 
 			return ECORE_SUCCESS;
+		} else {
+			struct ecore_spq_entry *p_en2;
+
+			p_en2 = OSAL_LIST_FIRST_ENTRY(&p_spq->free_pool,
+						     struct ecore_spq_entry,
+						     list);
+			OSAL_LIST_REMOVE_ENTRY(&p_en2->list, &p_spq->free_pool);
+
+			/* Copy the ring element physical pointer to the new
+			 * entry, since we are about to override the entire ring
+			 * entry and don't want to lose the pointer.
+			 */
+			p_ent->elem.data_ptr = p_en2->elem.data_ptr;
+
+			/* Setting the cookie to the comp_done of the
+			 * new element.
+			 */
+			if (p_ent->comp_cb.cookie == &p_ent->comp_done)
+				p_ent->comp_cb.cookie = &p_en2->comp_done;
+
+			*p_en2 = *p_ent;
+
+				OSAL_FREE(p_hwfn->p_dev, p_ent);
+
+			p_ent = p_en2;
 		}
-
-		struct ecore_spq_entry *p_en2;
-
-		p_en2 = OSAL_LIST_FIRST_ENTRY(&p_spq->free_pool,
-					      struct ecore_spq_entry,
-					      list);
-		OSAL_LIST_REMOVE_ENTRY(&p_en2->list, &p_spq->free_pool);
-
-		/* Copy the ring element physical pointer to the new
-		 * entry, since we are about to override the entire ring
-		 * entry and don't want to lose the pointer.
-		 */
-		p_ent->elem.data_ptr = p_en2->elem.data_ptr;
-
-		/* Setting the cookie to the comp_done of the
-		 * new element.
-		 */
-		if (p_ent->comp_cb.cookie == &p_ent->comp_done)
-			p_ent->comp_cb.cookie = &p_en2->comp_done;
-
-		*p_en2 = *p_ent;
-
-		OSAL_FREE(p_hwfn->p_dev, p_ent);
-
-		p_ent = p_en2;
 	}
 
 	/* entry is to be placed in 'pending' queue */
@@ -682,18 +682,18 @@ static enum _ecore_status_t ecore_spq_post_list(struct ecore_hwfn *p_hwfn,
 	       !OSAL_LIST_IS_EMPTY(head)) {
 		struct ecore_spq_entry *p_ent =
 		    OSAL_LIST_FIRST_ENTRY(head, struct ecore_spq_entry, list);
-		OSAL_LIST_REMOVE_ENTRY(&p_ent->list, head);
+			OSAL_LIST_REMOVE_ENTRY(&p_ent->list, head);
 		OSAL_LIST_PUSH_TAIL(&p_ent->list, &p_spq->completion_pending);
-		p_spq->comp_sent_count++;
+			p_spq->comp_sent_count++;
 
-		rc = ecore_spq_hw_post(p_hwfn, p_spq, p_ent);
-		if (rc) {
-			OSAL_LIST_REMOVE_ENTRY(&p_ent->list,
-					       &p_spq->completion_pending);
-			__ecore_spq_return_entry(p_hwfn, p_ent);
-			return rc;
+			rc = ecore_spq_hw_post(p_hwfn, p_spq, p_ent);
+			if (rc) {
+				OSAL_LIST_REMOVE_ENTRY(&p_ent->list,
+						    &p_spq->completion_pending);
+				__ecore_spq_return_entry(p_hwfn, p_ent);
+				return rc;
+			}
 		}
-	}
 
 	return ECORE_SUCCESS;
 }

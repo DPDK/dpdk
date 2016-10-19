@@ -807,8 +807,8 @@ static u32 ecore_cxt_ilt_shadow_size(struct ecore_ilt_client_cfg *ilt_clients)
 		if (!ilt_clients[i].active)
 			continue;
 		else
-			size += (ilt_clients[i].last.val -
-				ilt_clients[i].first.val + 1);
+		size += (ilt_clients[i].last.val -
+			 ilt_clients[i].first.val + 1);
 
 	return size;
 }
@@ -1027,8 +1027,8 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 		p_mngr->clients[i].p_size.val = ILT_DEFAULT_HW_P_SIZE;
 
 	/* Initialize task sizes */
-	p_mngr->task_type_size[0] = 512;	/* @DPDK */
-	p_mngr->task_type_size[1] = 128;	/* @DPDK */
+	p_mngr->task_type_size[0] = 512; /* @DPDK */
+	p_mngr->task_type_size[1] = 128; /* @DPDK */
 
 	p_mngr->vf_count = p_hwfn->p_dev->sriov_info.total_vfs;
 	/* Set the cxt mangr pointer priori to further allocations */
@@ -1383,11 +1383,11 @@ static void ecore_ilt_vf_bounds_init(struct ecore_hwfn *p_hwfn)
 	u32 blk_factor;
 
 	/* For simplicty  we set the 'block' to be an ILT page */
-	STORE_RT_REG(p_hwfn,
-		     PSWRQ2_REG_VF_BASE_RT_OFFSET,
+		STORE_RT_REG(p_hwfn,
+			     PSWRQ2_REG_VF_BASE_RT_OFFSET,
 		     p_hwfn->hw_info.first_vf_in_pf);
-	STORE_RT_REG(p_hwfn,
-		     PSWRQ2_REG_VF_LAST_ILT_RT_OFFSET,
+		STORE_RT_REG(p_hwfn,
+			     PSWRQ2_REG_VF_LAST_ILT_RT_OFFSET,
 		     p_hwfn->hw_info.first_vf_in_pf +
 		     p_hwfn->p_dev->sriov_info.total_vfs);
 

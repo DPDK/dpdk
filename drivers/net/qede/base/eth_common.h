@@ -12,43 +12,43 @@
 /* ETH FW CONSTANTS */
 /********************/
 #define ETH_CACHE_LINE_SIZE                 64
-#define ETH_RX_CQE_GAP						32
-#define ETH_MAX_RAMROD_PER_CON				8
-#define ETH_TX_BD_PAGE_SIZE_BYTES			4096
-#define ETH_RX_BD_PAGE_SIZE_BYTES			4096
-#define ETH_RX_CQE_PAGE_SIZE_BYTES			4096
-#define ETH_RX_NUM_NEXT_PAGE_BDS			2
+#define ETH_RX_CQE_GAP                      32
+#define ETH_MAX_RAMROD_PER_CON              8
+#define ETH_TX_BD_PAGE_SIZE_BYTES           4096
+#define ETH_RX_BD_PAGE_SIZE_BYTES           4096
+#define ETH_RX_CQE_PAGE_SIZE_BYTES          4096
+#define ETH_RX_NUM_NEXT_PAGE_BDS            2
 
-#define ETH_TX_MIN_BDS_PER_NON_LSO_PKT				1
-#define ETH_TX_MAX_BDS_PER_NON_LSO_PACKET			18
-#define ETH_TX_MAX_LSO_HDR_NBD						4
-#define ETH_TX_MIN_BDS_PER_LSO_PKT					3
-#define ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT	3
-#define ETH_TX_MIN_BDS_PER_IPV6_WITH_EXT_PKT		2
-#define ETH_TX_MIN_BDS_PER_PKT_W_LOOPBACK_MODE		2
+#define ETH_TX_MIN_BDS_PER_NON_LSO_PKT              1
+#define ETH_TX_MAX_BDS_PER_NON_LSO_PACKET           18
+#define ETH_TX_MAX_LSO_HDR_NBD                      4
+#define ETH_TX_MIN_BDS_PER_LSO_PKT                  3
+#define ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT   3
+#define ETH_TX_MIN_BDS_PER_IPV6_WITH_EXT_PKT        2
+#define ETH_TX_MIN_BDS_PER_PKT_W_LOOPBACK_MODE      2
 #define ETH_TX_MAX_NON_LSO_PKT_LEN                  (9700 - (4 + 12 + 8))
 #define ETH_TX_MAX_LSO_HDR_BYTES                    510
 #define ETH_TX_LSO_WINDOW_BDS_NUM                   18
 #define ETH_TX_LSO_WINDOW_MIN_LEN                   9700
 #define ETH_TX_MAX_LSO_PAYLOAD_LEN                  0xFFFF
 
-#define ETH_NUM_STATISTIC_COUNTERS			MAX_NUM_VPORTS
+#define ETH_NUM_STATISTIC_COUNTERS                  MAX_NUM_VPORTS
 
 #define ETH_RX_MAX_BUFF_PER_PKT             5
 
 /* num of MAC/VLAN filters */
-#define ETH_NUM_MAC_FILTERS					512
-#define ETH_NUM_VLAN_FILTERS				512
+#define ETH_NUM_MAC_FILTERS                 512
+#define ETH_NUM_VLAN_FILTERS                512
 
 /* approx. multicast constants */
-#define ETH_MULTICAST_BIN_FROM_MAC_SEED	    0
-#define ETH_MULTICAST_MAC_BINS				256
-#define ETH_MULTICAST_MAC_BINS_IN_REGS		(ETH_MULTICAST_MAC_BINS / 32)
+#define ETH_MULTICAST_BIN_FROM_MAC_SEED     0
+#define ETH_MULTICAST_MAC_BINS              256
+#define ETH_MULTICAST_MAC_BINS_IN_REGS      (ETH_MULTICAST_MAC_BINS / 32)
 
 /*  ethernet vport update constants */
-#define ETH_FILTER_RULES_COUNT				10
-#define ETH_RSS_IND_TABLE_ENTRIES_NUM		128
-#define ETH_RSS_KEY_SIZE_REGS			    10
+#define ETH_FILTER_RULES_COUNT              10
+#define ETH_RSS_IND_TABLE_ENTRIES_NUM       128
+#define ETH_RSS_KEY_SIZE_REGS               10
 #define ETH_RSS_ENGINE_NUM_K2               207
 #define ETH_RSS_ENGINE_NUM_BB               127
 
@@ -115,14 +115,14 @@ struct eth_tx_data_1st_bd {
 	__le16 vlan /* VLAN to insert to packet (if needed). */;
 		/* Number of BDs in packet. Should be at least 2 in non-LSO
 		* packet and at least 3 in LSO (or Tunnel with IPv6+ext) packet.
-		*/
+ */
 	u8 nbds;
 	struct eth_tx_1st_bd_flags bd_flags;
 	__le16 bitfields;
 #define ETH_TX_DATA_1ST_BD_TUNN_CFG_OVERRIDE_MASK  0x1
 #define ETH_TX_DATA_1ST_BD_TUNN_CFG_OVERRIDE_SHIFT 0
-#define ETH_TX_DATA_1ST_BD_RESERVED0_MASK          0x1
-#define ETH_TX_DATA_1ST_BD_RESERVED0_SHIFT         1
+#define ETH_TX_DATA_1ST_BD_RESERVED0_MASK  0x1
+#define ETH_TX_DATA_1ST_BD_RESERVED0_SHIFT 1
 #define ETH_TX_DATA_1ST_BD_FW_USE_ONLY_MASK        0x3FFF
 #define ETH_TX_DATA_1ST_BD_FW_USE_ONLY_SHIFT       2
 };

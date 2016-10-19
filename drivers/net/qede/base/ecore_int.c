@@ -100,7 +100,7 @@ static enum _ecore_status_t ecore_mcp_attn_cb(struct ecore_hwfn *p_hwfn)
 #define ECORE_PSWHST_ATTNETION_DISABLED_WRITE_SHIFT	(0)
 #define ECORE_PSWHST_ATTENTION_VF_DISABLED		(0x1)
 #define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS		(0x1)
-#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_WR_MASK	(0x1)
+#define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_WR_MASK		(0x1)
 #define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_WR_SHIFT	(0)
 #define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_CLIENT_MASK	(0x1e)
 #define ECORE_PSWHST_ATTENTION_INCORRECT_ACCESS_CLIENT_SHIFT	(1)
@@ -1138,7 +1138,7 @@ void ecore_int_sp_dpc(osal_int_ptr_t hwfn_cookie)
 		return;
 	}
 
-	/* Check the validity of the DPC ptt. If not ack interrupts and fail */
+/* Check the validity of the DPC ptt. If not ack interrupts and fail */
 	if (!p_hwfn->p_dpc_ptt) {
 		DP_NOTICE(p_hwfn->p_dev, true, "Failed to allocate PTT\n");
 		ecore_sb_ack(sb_info, IGU_INT_ENABLE, 1);
@@ -1676,7 +1676,7 @@ static void ecore_int_igu_enable_attn(struct ecore_hwfn *p_hwfn,
 
 enum _ecore_status_t
 ecore_int_igu_enable(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
-		     enum ecore_int_mode int_mode)
+			  enum ecore_int_mode int_mode)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 tmp;
@@ -2102,10 +2102,10 @@ u16 ecore_int_queue_id_from_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id)
 		return sb_id - p_info->igu_base_sb_iov + p_info->igu_sb_cnt;
 	}
 
-	DP_NOTICE(p_hwfn, true, "SB %d not in range for function\n",
-		  sb_id);
-	return 0;
-}
+		DP_NOTICE(p_hwfn, true, "SB %d not in range for function\n",
+			  sb_id);
+		return 0;
+	}
 
 void ecore_int_disable_post_isr_release(struct ecore_dev *p_dev)
 {

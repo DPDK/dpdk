@@ -12,9 +12,9 @@
 struct ecore_hwfn;
 
 struct ecore_cxt_info {
-	void *p_cxt;
-	u32 iid;
-	enum protocol_type type;
+	void			*p_cxt;
+	u32			iid;
+	enum protocol_type	type;
 };
 
 #define MAX_TID_BLOCKS			512
@@ -22,7 +22,7 @@ struct ecore_tid_mem {
 	u32 tid_size;
 	u32 num_tids_per_block;
 	u32 waste;
-	u8 *blocks[MAX_TID_BLOCKS];	/* 4K */
+	u8 *blocks[MAX_TID_BLOCKS]; /* 4K */
 };
 
 static OSAL_INLINE void *get_task_mem(struct ecore_tid_mem *info, u32 tid)
@@ -49,7 +49,7 @@ static OSAL_INLINE void *get_task_mem(struct ecore_tid_mem *info, u32 tid)
 *
 * @return enum _ecore_status_t
 */
-enum _ecore_status_t ecore_cxt_acquire_cid(struct ecore_hwfn *p_hwfn,
+enum _ecore_status_t ecore_cxt_acquire_cid(struct ecore_hwfn  *p_hwfn,
 					   enum protocol_type type,
 					   u32 *p_cid);
 

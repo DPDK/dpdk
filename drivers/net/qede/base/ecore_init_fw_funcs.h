@@ -26,8 +26,8 @@ struct init_qm_pq_params;
  * @return The required host memory size in 4KB units.
  */
 u32 ecore_qm_pf_mem_size(u8 pf_id,
-			 u32 num_pf_cids,
-			 u32 num_vf_cids,
+						 u32 num_pf_cids,
+						 u32 num_vf_cids,
 			 u32 num_tids, u16 num_pf_pqs, u16 num_vf_pqs);
 /**
  * @brief ecore_qm_common_rt_init -
@@ -45,33 +45,33 @@ u32 ecore_qm_pf_mem_size(u8 pf_id,
  * @return 0 on success, -1 on error.
  */
 int ecore_qm_common_rt_init(struct ecore_hwfn *p_hwfn,
-			    u8 max_ports_per_engine,
-			    u8 max_phys_tcs_per_port,
-			    bool pf_rl_en,
-			    bool pf_wfq_en,
-			    bool vport_rl_en,
-			    bool vport_wfq_en,
+			 u8 max_ports_per_engine,
+			 u8 max_phys_tcs_per_port,
+			 bool pf_rl_en,
+			 bool pf_wfq_en,
+			 bool vport_rl_en,
+			 bool vport_wfq_en,
 			    struct init_qm_port_params
 			    port_params[MAX_NUM_PORTS]);
 
 int ecore_qm_pf_rt_init(struct ecore_hwfn *p_hwfn,
-			struct ecore_ptt *p_ptt,
-			u8 port_id,
-			u8 pf_id,
-			u8 max_phys_tcs_per_port,
-			bool is_first_pf,
-			u32 num_pf_cids,
-			u32 num_vf_cids,
-			u32 num_tids,
-			u16 start_pq,
-			u16 num_pf_pqs,
-			u16 num_vf_pqs,
-			u8 start_vport,
-			u8 num_vports,
-			u16 pf_wfq,
-			u32 pf_rl,
-			struct init_qm_pq_params *pq_params,
-			struct init_qm_vport_params *vport_params);
+				struct ecore_ptt *p_ptt,
+				u8 port_id,
+				u8 pf_id,
+				u8 max_phys_tcs_per_port,
+				bool is_first_pf,
+				u32 num_pf_cids,
+				u32 num_vf_cids,
+				u32 num_tids,
+				u16 start_pq,
+				u16 num_pf_pqs,
+				u16 num_vf_pqs,
+				u8 start_vport,
+				u8 num_vports,
+				u16 pf_wfq,
+				u32 pf_rl,
+				struct init_qm_pq_params *pq_params,
+				struct init_qm_vport_params *vport_params);
 /**
  * @brief ecore_init_pf_wfq  Initializes the WFQ weight of the specified PF
  *
@@ -109,7 +109,7 @@ int ecore_init_pf_rl(struct ecore_hwfn *p_hwfn,
  * @return 0 on success, -1 on error.
  */
 int ecore_init_vport_wfq(struct ecore_hwfn *p_hwfn,
-			 struct ecore_ptt *p_ptt,
+						 struct ecore_ptt *p_ptt,
 			 u16 first_tx_pq_id[NUM_OF_TCS], u16 vport_wfq);
 /**
  * @brief ecore_init_vport_rl  Initializes the rate limit of the specified VPORT
@@ -137,8 +137,8 @@ int ecore_init_vport_rl(struct ecore_hwfn *p_hwfn,
  * waiting for QM command done.
  */
 bool ecore_send_qm_stop_cmd(struct ecore_hwfn *p_hwfn,
-			    struct ecore_ptt *p_ptt,
-			    bool is_release_cmd,
+							struct ecore_ptt *p_ptt,
+							bool is_release_cmd,
 			    bool is_tx_pq, u16 start_pq, u16 num_pqs);
 /**
  * @brief ecore_init_nig_ets - initializes the NIG ETS arbiter
@@ -152,7 +152,7 @@ bool ecore_send_qm_stop_cmd(struct ecore_hwfn *p_hwfn,
  *		  requirements are ignored when is_lb is cleared.
  */
 void ecore_init_nig_ets(struct ecore_hwfn *p_hwfn,
-			struct ecore_ptt *p_ptt,
+						struct ecore_ptt *p_ptt,
 			struct init_ets_req *req, bool is_lb);
 /**
  * @brief ecore_init_nig_lb_rl - initializes the NIG LB RLs
@@ -163,8 +163,8 @@ void ecore_init_nig_ets(struct ecore_hwfn *p_hwfn,
  * @param req	- the NIG LB RLs initialization requirements.
  */
 void ecore_init_nig_lb_rl(struct ecore_hwfn *p_hwfn,
-			  struct ecore_ptt *p_ptt,
-			  struct init_nig_lb_rl_req *req);
+				  struct ecore_ptt *p_ptt,
+				  struct init_nig_lb_rl_req *req);
 /**
  * @brief ecore_init_nig_pri_tc_map - initializes the NIG priority to TC map.
  *
@@ -174,8 +174,8 @@ void ecore_init_nig_lb_rl(struct ecore_hwfn *p_hwfn,
  * @param req	- required mapping from prioirties to TCs.
  */
 void ecore_init_nig_pri_tc_map(struct ecore_hwfn *p_hwfn,
-			       struct ecore_ptt *p_ptt,
-			       struct init_nig_pri_tc_map_req *req);
+					   struct ecore_ptt *p_ptt,
+					   struct init_nig_pri_tc_map_req *req);
 /**
  * @brief ecore_init_prs_ets - initializes the PRS Rx ETS arbiter
  *
@@ -227,7 +227,7 @@ void ecore_set_vxlan_dest_port(struct ecore_hwfn *p_hwfn,
 /**
  * @brief ecore_set_vxlan_enable - enable or disable VXLAN tunnel in HW
  *
- * @param p_ptt        - ptt window used for writing the registers.
+ * @param p_ptt	- ptt window used for writing the registers.
  * @param vxlan_enable - vxlan enable flag.
  */
 void ecore_set_vxlan_enable(struct ecore_hwfn *p_hwfn,

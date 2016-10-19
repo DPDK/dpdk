@@ -79,7 +79,7 @@ void ecore_vf_get_num_vlan_filters(struct ecore_hwfn *p_hwfn,
 /**
  * @brief Get number of MAC filters allocated for VF by ecore
  *
- *  @param p_hwfn
+ * @param p_hwfn
  *  @param num_mac - allocated MAC filters
  */
 void ecore_vf_get_num_mac_filters(struct ecore_hwfn *p_hwfn,
@@ -101,7 +101,7 @@ bool ecore_vf_check_mac(struct ecore_hwfn *p_hwfn, u8 *mac);
  * @param hwfn
  * @param dst_mac
  * @param p_is_forced - out param which indicate in case mac
- *	        exist if it forced or not.
+ *			exist if it forced or not.
  *
  * @return bool       - return true if mac exist and false if
  *                      not.

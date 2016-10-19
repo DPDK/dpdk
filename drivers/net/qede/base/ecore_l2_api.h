@@ -14,17 +14,17 @@
 
 #ifndef __EXTRACT__LINUX__
 enum ecore_rss_caps {
-	ECORE_RSS_IPV4 = 0x1,
-	ECORE_RSS_IPV6 = 0x2,
-	ECORE_RSS_IPV4_TCP = 0x4,
-	ECORE_RSS_IPV6_TCP = 0x8,
-	ECORE_RSS_IPV4_UDP = 0x10,
-	ECORE_RSS_IPV6_UDP = 0x20,
+	ECORE_RSS_IPV4		= 0x1,
+	ECORE_RSS_IPV6		= 0x2,
+	ECORE_RSS_IPV4_TCP	= 0x4,
+	ECORE_RSS_IPV6_TCP	= 0x8,
+	ECORE_RSS_IPV4_UDP	= 0x10,
+	ECORE_RSS_IPV6_UDP	= 0x20,
 };
 
 /* Should be the same as ETH_RSS_IND_TABLE_ENTRIES_NUM */
 #define ECORE_RSS_IND_TABLE_SIZE 128
-#define ECORE_RSS_KEY_SIZE 10	/* size in 32b chunks */
+#define ECORE_RSS_KEY_SIZE 10 /* size in 32b chunks */
 #endif
 
 struct ecore_rss_params {
@@ -35,7 +35,7 @@ struct ecore_rss_params {
 	u8 update_rss_ind_table;
 	u8 update_rss_key;
 	u8 rss_caps;
-	u8 rss_table_size_log;	/* The table size is 2 ^ rss_table_size_log */
+	u8 rss_table_size_log; /* The table size is 2 ^ rss_table_size_log */
 	u16 rss_ind_table[ECORE_RSS_IND_TABLE_SIZE];
 	u32 rss_key[ECORE_RSS_KEY_SIZE];
 };
@@ -63,8 +63,8 @@ enum ecore_filter_opcode {
 	ECORE_FILTER_ADD,
 	ECORE_FILTER_REMOVE,
 	ECORE_FILTER_MOVE,
-	ECORE_FILTER_REPLACE,	/* Delete all MACs and add new one instead */
-	ECORE_FILTER_FLUSH,	/* Removes all filters */
+	ECORE_FILTER_REPLACE, /* Delete all MACs and add new one instead */
+	ECORE_FILTER_FLUSH, /* Removes all filters */
 };
 
 enum ecore_filter_ucast_type {
@@ -97,7 +97,7 @@ struct ecore_filter_mcast {
 	enum ecore_filter_opcode opcode;
 	u8 vport_to_add_to;
 	u8 vport_to_remove_from;
-	u8 num_mc_addrs;
+	u8	num_mc_addrs;
 #define ECORE_MAX_MC_ADDRS	64
 	unsigned char mac[ECORE_MAX_MC_ADDRS][ETH_ALEN];
 };
@@ -138,12 +138,12 @@ ecore_filter_mcast_cmd(struct ecore_dev *p_dev,
 /* Set "accept" filters */
 enum _ecore_status_t
 ecore_filter_accept_cmd(struct ecore_dev *p_dev,
-			u8 vport,
-			struct ecore_filter_accept_flags accept_flags,
-			u8 update_accept_any_vlan,
-			u8 accept_any_vlan,
-			enum spq_mode comp_mode,
-			struct ecore_spq_comp_cb *p_comp_data);
+	u8				 vport,
+	struct ecore_filter_accept_flags accept_flags,
+	u8				 update_accept_any_vlan,
+	u8				 accept_any_vlan,
+	enum spq_mode			 comp_mode,
+	struct ecore_spq_comp_cb	 *p_comp_data);
 
 /**
  * @brief ecore_sp_eth_rx_queue_start - RX Queue Start Ramrod
@@ -156,11 +156,11 @@ ecore_filter_accept_cmd(struct ecore_dev *p_dev,
  * @param rx_queue_id		RX Queue ID: Zero based, per VPort, allocated
  *				by assignment (=rssId)
  * @param vport_id		VPort ID
- * @param u8 stats_id           VPort ID which the queue stats
+ * @param u8 stats_id		 VPort ID which the queue stats
  *				will be added to
  * @param sb			Status Block of the Function Event Ring
  * @param sb_index		Index into the status block of the
- *			Function Event Ring
+ *				Function Event Ring
  * @param bd_max_bytes		Maximum bytes that can be placed on a BD
  * @param bd_chain_phys_addr	Physical address of BDs for receive.
  * @param cqe_pbl_addr		Physical address of the CQE PBL Table.
@@ -182,7 +182,7 @@ enum _ecore_status_t ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 						 dma_addr_t bd_chain_phys_addr,
 						 dma_addr_t cqe_pbl_addr,
 						 u16 cqe_pbl_size,
-						 void OSAL_IOMEM * *pp_prod);
+						 void OSAL_IOMEM **pp_prod);
 
 /**
  * @brief ecore_sp_eth_rx_queue_stop -
@@ -224,7 +224,7 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
  * @param pbl_addr		address of the pbl array
  * @param pbl_size		number of entries in pbl
  * @param pp_doorbell		Pointer to place doorbell pointer (May be NULL).
- *			This address should be used with the
+ *				This address should be used with the
  *				DIRECT_REG_WR macro.
  *
  * @return enum _ecore_status_t
@@ -255,7 +255,7 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_sp_eth_tx_queue_stop(struct ecore_hwfn *p_hwfn,
 						u16 tx_queue_id);
 
-enum ecore_tpa_mode {
+enum ecore_tpa_mode	{
 	ECORE_TPA_MODE_NONE,
 	ECORE_TPA_MODE_RSC,
 	ECORE_TPA_MODE_GRO,
@@ -293,28 +293,28 @@ ecore_sp_vport_start(struct ecore_hwfn *p_hwfn,
 		     struct ecore_sp_vport_start_params *p_params);
 
 struct ecore_sp_vport_update_params {
-	u16 opaque_fid;
-	u8 vport_id;
-	u8 update_vport_active_rx_flg;
-	u8 vport_active_rx_flg;
-	u8 update_vport_active_tx_flg;
-	u8 vport_active_tx_flg;
-	u8 update_inner_vlan_removal_flg;
-	u8 inner_vlan_removal_flg;
-	u8 silent_vlan_removal_flg;
-	u8 update_default_vlan_enable_flg;
-	u8 default_vlan_enable_flg;
-	u8 update_default_vlan_flg;
-	u16 default_vlan;
-	u8 update_tx_switching_flg;
-	u8 tx_switching_flg;
-	u8 update_approx_mcast_flg;
-	u8 update_anti_spoofing_en_flg;
-	u8 anti_spoofing_en;
-	u8 update_accept_any_vlan_flg;
-	u8 accept_any_vlan;
-	unsigned long bins[8];
-	struct ecore_rss_params *rss_params;
+	u16			opaque_fid;
+	u8			vport_id;
+	u8			update_vport_active_rx_flg;
+	u8			vport_active_rx_flg;
+	u8			update_vport_active_tx_flg;
+	u8			vport_active_tx_flg;
+	u8			update_inner_vlan_removal_flg;
+	u8			inner_vlan_removal_flg;
+	u8			silent_vlan_removal_flg;
+	u8			update_default_vlan_enable_flg;
+	u8			default_vlan_enable_flg;
+	u8			update_default_vlan_flg;
+	u16			default_vlan;
+	u8			update_tx_switching_flg;
+	u8			tx_switching_flg;
+	u8			update_approx_mcast_flg;
+	u8			update_anti_spoofing_en_flg;
+	u8			anti_spoofing_en;
+	u8			update_accept_any_vlan_flg;
+	u8			accept_any_vlan;
+	unsigned long		bins[8];
+	struct ecore_rss_params	*rss_params;
 	struct ecore_filter_accept_flags accept_flags;
 	struct ecore_sge_tpa_params *sge_tpa_params;
 };

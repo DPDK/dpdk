@@ -64,11 +64,11 @@ static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn, enum BAR_ID bar_id)
 			return BAR_ID_0 ? 256 * 1024 : 512 * 1024;
 		}
 
-		DP_NOTICE(p_hwfn, false,
+			DP_NOTICE(p_hwfn, false,
 			  "BAR size not configured. Assuming BAR"
 			  " size of 512kB for GRC and 512kB for DB\n");
-		return 512 * 1024;
-	}
+			return 512 * 1024;
+		}
 
 	return 1 << (val + 15);
 }
@@ -305,7 +305,7 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 
 	return ECORE_SUCCESS;
 
-alloc_err:
+ alloc_err:
 	DP_NOTICE(p_hwfn, false, "Failed to allocate memory for QM params\n");
 	ecore_qm_info_free(p_hwfn);
 	return ECORE_NOMEM;
@@ -494,9 +494,9 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 
 	return ECORE_SUCCESS;
 
-alloc_no_mem:
+ alloc_no_mem:
 	rc = ECORE_NOMEM;
-alloc_err:
+ alloc_err:
 	ecore_resc_free(p_dev);
 	return rc;
 }
@@ -557,11 +557,11 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn *p_hwfn,
 	command |= id << SDM_AGG_INT_COMP_PARAMS_AGG_VECTOR_BIT_SHIFT;
 	command |= SDM_COMP_TYPE_AGG_INT << SDM_OP_GEN_COMP_TYPE_SHIFT;
 
-	/* Make sure notification is not set before initiating final cleanup */
+/* Make sure notification is not set before initiating final cleanup */
 	if (REG_RD(p_hwfn, addr)) {
 		DP_NOTICE(p_hwfn, false,
 			  "Unexpected; Found final cleanup notification "
-			  "before initiating final cleanup\n");
+			  " before initiating final cleanup\n");
 		REG_WR(p_hwfn, addr, 0);
 	}
 
@@ -666,7 +666,7 @@ static void ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 #ifndef ASIC_ONLY
 /* MFW-replacement initializations for non-ASIC */
 static void ecore_hw_init_chip(struct ecore_hwfn *p_hwfn,
-			       struct ecore_ptt *p_ptt)
+					       struct ecore_ptt *p_ptt)
 {
 	u32 pl_hv = 1;
 	int i;
@@ -907,7 +907,7 @@ static void ecore_emul_link_init(struct ecore_hwfn *p_hwfn,
 	}
 
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLPORT_MODE_REG, (0x4 << 4) | 0x4, 1,
-				port);
+			 port);
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLPORT_MAC_CONTROL, 0, 1, port);
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLMAC_CTRL, 0x40, 0, port);
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLMAC_MODE, 0x40, 0, port);
@@ -935,10 +935,10 @@ static void ecore_link_init(struct ecore_hwfn *p_hwfn,
 	/* Reset of XMAC */
 	/* FIXME: move to common start */
 	ecore_wr(p_hwfn, p_ptt, MISC_REG_RESET_PL_PDA_VAUX + 2 * sizeof(u32),
-		MISC_REG_RESET_REG_2_XMAC_BIT);	/* Clear */
+		 MISC_REG_RESET_REG_2_XMAC_BIT);	/* Clear */
 	OSAL_MSLEEP(1);
 	ecore_wr(p_hwfn, p_ptt, MISC_REG_RESET_PL_PDA_VAUX + sizeof(u32),
-		MISC_REG_RESET_REG_2_XMAC_BIT);	/* Set */
+		 MISC_REG_RESET_REG_2_XMAC_BIT);	/* Set */
 
 	ecore_wr(p_hwfn, p_ptt, MISC_REG_XMAC_CORE_PORT_MODE, 1);
 
@@ -1078,7 +1078,7 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 	p_hwfn->dpi_start_offset = norm_regsize; /* this is later used to
 						  * calculate the doorbell
 						  * address
-						  */
+		 */
 
 	/* Update registers */
 	/* DEMS size is configured log2 of DWORDs, hence the division by 4 */
@@ -1319,7 +1319,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		ecore_reset_mb_shadow(p_hwfn, p_hwfn->p_main_ptt);
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-			   "Load request was sent.Resp:0x%x, Load code: 0x%x\n",
+			   "Load request was sent. Resp:0x%x, Load code: 0x%x\n",
 			   rc, load_code);
 
 		/* Only relevant for recovery:
@@ -1411,8 +1411,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 
 #define ECORE_HW_STOP_RETRY_LIMIT	(10)
 static OSAL_INLINE void ecore_hw_timers_stop(struct ecore_dev *p_dev,
-					     struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt)
+				 struct ecore_hwfn *p_hwfn,
+				 struct ecore_ptt *p_ptt)
 {
 	int i;
 
@@ -1436,9 +1436,9 @@ static OSAL_INLINE void ecore_hw_timers_stop(struct ecore_dev *p_dev,
 			  "Timers linear scans are not over"
 			  " [Connection %02x Tasks %02x]\n",
 			  (u8)ecore_rd(p_hwfn, p_ptt,
-				       TM_REG_PF_SCAN_ACTIVE_CONN),
+					TM_REG_PF_SCAN_ACTIVE_CONN),
 			  (u8)ecore_rd(p_hwfn, p_ptt,
-				       TM_REG_PF_SCAN_ACTIVE_TASK));
+					TM_REG_PF_SCAN_ACTIVE_TASK));
 }
 
 void ecore_hw_timers_stop_all(struct ecore_dev *p_dev)
@@ -1679,7 +1679,7 @@ static void get_function_id(struct ecore_hwfn *p_hwfn)
 {
 	/* ME Register */
 	p_hwfn->hw_info.opaque_fid = (u16)REG_RD(p_hwfn,
-						 PXP_PF_ME_OPAQUE_ADDR);
+						  PXP_PF_ME_OPAQUE_ADDR);
 
 	p_hwfn->hw_info.concrete_fid = REG_RD(p_hwfn, PXP_PF_ME_CONCRETE_ADDR);
 
@@ -1725,7 +1725,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn)
 	struct ecore_sb_cnt_info sb_cnt_info;
 	bool b_ah = ECORE_IS_AH(p_hwfn->p_dev);
 
-	OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
+		OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
 
 #ifdef CONFIG_ECORE_SRIOV
 	max_vf_vlan_filters = ECORE_ETH_MAX_VF_NUM_VLAN_FILTERS;
@@ -1733,19 +1733,19 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn)
 	max_vf_vlan_filters = 0;
 #endif
 
-	ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
+		ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
 	resc_num[ECORE_SB] = OSAL_MIN_T(u32,
 					(MAX_SB_PER_PATH_BB / num_funcs),
 					sb_cnt_info.sb_cnt);
 
 	resc_num[ECORE_L2_QUEUE] = (b_ah ? MAX_NUM_L2_QUEUES_K2 :
-				    MAX_NUM_L2_QUEUES_BB) / num_funcs;
+				 MAX_NUM_L2_QUEUES_BB) / num_funcs;
 	resc_num[ECORE_VPORT] = (b_ah ? MAX_NUM_VPORTS_K2 :
 				 MAX_NUM_VPORTS_BB) / num_funcs;
 	resc_num[ECORE_RSS_ENG] = (b_ah ? ETH_RSS_ENGINE_NUM_K2 :
-				   ETH_RSS_ENGINE_NUM_BB) / num_funcs;
+				 ETH_RSS_ENGINE_NUM_BB) / num_funcs;
 	resc_num[ECORE_PQ] = (b_ah ? MAX_QM_TX_QUEUES_K2 :
-			      MAX_QM_TX_QUEUES_BB) / num_funcs;
+				 MAX_QM_TX_QUEUES_BB) / num_funcs;
 	resc_num[ECORE_RL] = 8;
 	resc_num[ECORE_MAC] = ETH_NUM_MAC_FILTERS / num_funcs;
 	resc_num[ECORE_VLAN] = (ETH_NUM_VLAN_FILTERS -
@@ -1754,7 +1754,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn)
 
 	/* TODO - there will be a problem in AH - there are only 11k lines */
 	resc_num[ECORE_ILT] = (b_ah ? PXP_NUM_ILT_RECORDS_K2 :
-			       PXP_NUM_ILT_RECORDS_BB) / num_funcs;
+				 PXP_NUM_ILT_RECORDS_BB) / num_funcs;
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
@@ -1840,7 +1840,7 @@ static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 	}
 
-	/* Read nvm_cfg1  (Notice this is just offset, and not offsize (TBD) */
+/* Read nvm_cfg1  (Notice this is just offset, and not offsize (TBD) */
 	nvm_cfg1_offset = ecore_rd(p_hwfn, p_ptt, nvm_cfg_addr + 4);
 
 	addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
@@ -2003,8 +2003,8 @@ static void ecore_get_num_funcs(struct ecore_hwfn *p_hwfn,
 		if (ECORE_PATH_ID(p_hwfn) && p_hwfn->p_dev->num_hwfns == 1) {
 			num_funcs = 0;
 			mask = 0xaaaa;
-		} else {
-			num_funcs = 1;
+			} else {
+				num_funcs = 1;
 			mask = 0x5554;
 		}
 
@@ -2070,12 +2070,12 @@ static void ecore_hw_info_port_num_ah(struct ecore_hwfn *p_hwfn,
 
 	p_hwfn->p_dev->num_ports_in_engines = 0;
 
-	for (i = 0; i < MAX_NUM_PORTS_K2; i++) {
-		port = ecore_rd(p_hwfn, p_ptt,
-				CNIG_REG_NIG_PORT0_CONF_K2 + (i * 4));
-		if (port & 1)
-			p_hwfn->p_dev->num_ports_in_engines++;
-	}
+		for (i = 0; i < MAX_NUM_PORTS_K2; i++) {
+			port = ecore_rd(p_hwfn, p_ptt,
+					CNIG_REG_NIG_PORT0_CONF_K2 + (i * 4));
+			if (port & 1)
+				p_hwfn->p_dev->num_ports_in_engines++;
+		}
 }
 
 static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
@@ -2095,8 +2095,8 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 
 	rc = ecore_iov_hw_info(p_hwfn, p_hwfn->p_main_ptt);
-	if (rc)
-		return rc;
+		if (rc)
+			return rc;
 
 	/* TODO In get_hw_info, amoungst others:
 	 * Get MCP FW revision and determine according to it the supported
@@ -2178,7 +2178,7 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 	p_dev->chip_num = (u16)ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
 					 MISCS_REG_CHIP_NUM);
 	p_dev->chip_rev = (u16)ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
-					MISCS_REG_CHIP_REV);
+					 MISCS_REG_CHIP_REV);
 
 	MASK_FIELD(CHIP_REV, p_dev->chip_rev);
 
@@ -2214,7 +2214,7 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 				       MISCS_REG_CHIP_TEST_REG) >> 4;
 	MASK_FIELD(CHIP_BOND_ID, p_dev->chip_bond_id);
 	p_dev->chip_metal = (u16)ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
-					  MISCS_REG_CHIP_METAL);
+					   MISCS_REG_CHIP_METAL);
 	MASK_FIELD(CHIP_METAL, p_dev->chip_metal);
 	DP_INFO(p_dev->hwfns,
 		"Chip details - %s%d, Num: %04x Rev: %04x Bond id: %04x"
@@ -2344,11 +2344,11 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 #endif
 
 	return rc;
-err2:
+ err2:
 	ecore_mcp_free(p_hwfn);
-err1:
+ err1:
 	ecore_hw_hwfn_free(p_hwfn);
-err0:
+ err0:
 	return rc;
 }
 
@@ -2361,7 +2361,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev, int personality)
 		return ecore_vf_hw_prepare(p_dev);
 
 	/* Store the precompiled init data ptrs */
-	ecore_init_iro_array(p_dev);
+		ecore_init_iro_array(p_dev);
 
 	/* Initialize the first hwfn - will learn number of hwfns */
 	rc = ecore_hw_prepare_single(p_hwfn,
@@ -2490,7 +2490,7 @@ static void ecore_chain_free_pbl(struct ecore_dev *p_dev,
 	pbl_size = page_cnt * ECORE_CHAIN_PBL_ENTRY_SIZE;
 	OSAL_DMA_FREE_COHERENT(p_dev, p_chain->pbl.p_virt_table,
 			       p_chain->pbl.p_phys_table, pbl_size);
-out:
+ out:
 	OSAL_VFREE(p_dev, p_chain->pbl.pp_virt_addr_tbl);
 }
 
@@ -2692,7 +2692,7 @@ enum _ecore_status_t ecore_chain_alloc(struct ecore_dev *p_dev,
 
 	return ECORE_SUCCESS;
 
-nomem:
+ nomem:
 	ecore_chain_free(p_dev, p_chain);
 	return rc;
 }
@@ -2848,7 +2848,7 @@ void ecore_llh_remove_mac_filter(struct ecore_hwfn *p_hwfn,
 }
 
 enum _ecore_status_t ecore_llh_add_ethertype_filter(struct ecore_hwfn *p_hwfn,
-						    struct ecore_ptt *p_ptt,
+			      struct ecore_ptt *p_ptt,
 						    u16 filter)
 {
 	u32 high, low, en;
@@ -2887,7 +2887,7 @@ enum _ecore_status_t ecore_llh_add_ethertype_filter(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 	}
 
-	DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
+		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 		   "ETH type: %x is added at %d\n", filter, i);
 
 	return ECORE_SUCCESS;
@@ -2952,7 +2952,7 @@ void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
 }
 
 enum _ecore_status_t ecore_test_registers(struct ecore_hwfn *p_hwfn,
-					  struct ecore_ptt *p_ptt)
+				  struct ecore_ptt *p_ptt)
 {
 	u32 reg_tbl[] = {
 		BRB_REG_HEADER_SIZE,
@@ -3032,8 +3032,8 @@ enum _ecore_status_t ecore_test_registers(struct ecore_hwfn *p_hwfn,
 			}
 		}
 	}
-	return ECORE_SUCCESS;
-}
+		return ECORE_SUCCESS;
+	}
 
 static enum _ecore_status_t ecore_set_coalesce(struct ecore_hwfn *p_hwfn,
 					       struct ecore_ptt *p_ptt,
@@ -3089,7 +3089,7 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 		goto out;
 
 	p_hwfn->p_dev->rx_coalesce_usecs = coalesce;
-out:
+ out:
 	return rc;
 }
 
@@ -3119,7 +3119,7 @@ enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 		goto out;
 
 	p_hwfn->p_dev->tx_coalesce_usecs = coalesce;
-out:
+ out:
 	return rc;
 }
 
@@ -3305,15 +3305,15 @@ static int __ecore_configure_vp_wfq_on_link_change(struct ecore_hwfn *p_hwfn,
 		if (p_hwfn->qm_info.wfq_data[i].configured) {
 			u32 rate = p_hwfn->qm_info.wfq_data[i].min_speed;
 
-			use_wfq = true;
-			rc = ecore_init_wfq_param(p_hwfn, i, rate, min_pf_rate);
+		use_wfq = true;
+		rc = ecore_init_wfq_param(p_hwfn, i, rate, min_pf_rate);
 			if (rc == ECORE_INVAL) {
-				DP_NOTICE(p_hwfn, false,
+			DP_NOTICE(p_hwfn, false,
 					  "Validation failed while"
 					  " configuring min rate\n");
-				break;
-			}
+			break;
 		}
+	}
 	}
 
 	if (rc == ECORE_SUCCESS && use_wfq)
