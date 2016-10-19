@@ -8,6 +8,7 @@
 
 #include "qede_ethdev.h"
 #include <rte_alarm.h>
+#include <rte_version.h>
 
 /* Globals */
 static const struct qed_eth_ops *qed_ops;
@@ -188,31 +189,28 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 {
 	struct ecore_dev *edev = &qdev->edev;
 	struct qed_dev_info *info = &qdev->dev_info.common;
-	static char ver_str[QED_DRV_VER_STR_SIZE];
+	static char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
+	static char ver_str[QEDE_PMD_DRV_VER_STR_SIZE];
 
 	DP_INFO(edev, "*********************************\n");
+	DP_INFO(edev, " DPDK version:%s\n", rte_version());
 	DP_INFO(edev, " Chip details : %s%d\n",
-		ECORE_IS_BB(edev) ? "BB" : "AH",
-		CHIP_REV_IS_A0(edev) ? 0 : 1);
-
-	sprintf(ver_str, "%s %s_%d.%d.%d.%d", QEDE_PMD_VER_PREFIX,
-		edev->ver_str, QEDE_PMD_VERSION_MAJOR, QEDE_PMD_VERSION_MINOR,
-		QEDE_PMD_VERSION_REVISION, QEDE_PMD_VERSION_PATCH);
-	strcpy(qdev->drv_ver, ver_str);
-	DP_INFO(edev, " Driver version : %s\n", ver_str);
-
-	sprintf(ver_str, "%d.%d.%d.%d", info->fw_major, info->fw_minor,
-		info->fw_rev, info->fw_eng);
+		  ECORE_IS_BB(edev) ? "BB" : "AH",
+		  CHIP_REV_IS_A0(edev) ? 0 : 1);
+	snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%d.%d.%d.%d",
+		 info->fw_major, info->fw_minor, info->fw_rev, info->fw_eng);
+	snprintf(drv_ver, QEDE_PMD_DRV_VER_STR_SIZE, "%s_%s",
+		 ver_str, QEDE_PMD_VERSION);
+	DP_INFO(edev, " Driver version : %s\n", drv_ver);
 	DP_INFO(edev, " Firmware version : %s\n", ver_str);
 
-	sprintf(ver_str, "%d.%d.%d.%d",
+	snprintf(ver_str, MCP_DRV_VER_STR_SIZE,
+		 "%d.%d.%d.%d",
 		(info->mfw_rev >> 24) & 0xff,
 		(info->mfw_rev >> 16) & 0xff,
 		(info->mfw_rev >> 8) & 0xff, (info->mfw_rev) & 0xff);
-	DP_INFO(edev, " Management firmware version : %s\n", ver_str);
-
+	DP_INFO(edev, " Management Firmware version : %s\n", ver_str);
 	DP_INFO(edev, " Firmware file : %s\n", fw_file);
-
 	DP_INFO(edev, "*********************************\n");
 }
 
@@ -1362,11 +1360,12 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	/* Start the Slowpath-process */
 	memset(&params, 0, sizeof(struct qed_slowpath_params));
 	params.int_mode = ECORE_INT_MODE_MSIX;
-	params.drv_major = QEDE_MAJOR_VERSION;
-	params.drv_minor = QEDE_MINOR_VERSION;
-	params.drv_rev = QEDE_REVISION_VERSION;
-	params.drv_eng = QEDE_ENGINEERING_VERSION;
-	strncpy((char *)params.name, "qede LAN", QED_DRV_VER_STR_SIZE);
+	params.drv_major = QEDE_PMD_VERSION_MAJOR;
+	params.drv_minor = QEDE_PMD_VERSION_MINOR;
+	params.drv_rev = QEDE_PMD_VERSION_REVISION;
+	params.drv_eng = QEDE_PMD_VERSION_PATCH;
+	strncpy((char *)params.name, QEDE_PMD_VER_PREFIX,
+		QEDE_PMD_DRV_VER_STR_SIZE);
 
 	/* For CMT mode device do periodic polling for slowpath events.
 	 * This is required since uio device uses only one MSI-x
@@ -1403,7 +1402,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	qede_alloc_etherdev(adapter, &dev_info);
 
-	adapter->ops->common->set_id(edev, edev->name, QEDE_DRV_MODULE_VERSION);
+	adapter->ops->common->set_id(edev, edev->name, QEDE_PMD_VERSION);
 
 	if (!is_vf)
 		adapter->dev_info.num_mac_addrs =

@@ -46,15 +46,14 @@
 #define QEDE_PMD_VERSION_REVISION       0
 #define QEDE_PMD_VERSION_PATCH	        1
 
-#define QEDE_MAJOR_VERSION		8
-#define QEDE_MINOR_VERSION		7
-#define QEDE_REVISION_VERSION		9
-#define QEDE_ENGINEERING_VERSION	0
+#define QEDE_PMD_VERSION qede_stringify(QEDE_PMD_VERSION_MAJOR) "."     \
+			 qede_stringify(QEDE_PMD_VERSION_MINOR) "."     \
+			 qede_stringify(QEDE_PMD_VERSION_REVISION) "."  \
+			 qede_stringify(QEDE_PMD_VERSION_PATCH)
 
-#define QEDE_DRV_MODULE_VERSION qede_stringify(QEDE_MAJOR_VERSION) "."	\
-		qede_stringify(QEDE_MINOR_VERSION) "."			\
-		qede_stringify(QEDE_REVISION_VERSION) "."		\
-		qede_stringify(QEDE_ENGINEERING_VERSION)
+#define QEDE_PMD_DRV_VER_STR_SIZE NAME_SIZE
+#define QEDE_PMD_VER_PREFIX "QEDE PMD"
+
 
 #define QEDE_RSS_INDIR_INITED     (1 << 0)
 #define QEDE_RSS_KEY_INITED       (1 << 1)
@@ -144,7 +143,7 @@ struct qede_dev {
 	bool accept_any_vlan;
 	struct ether_addr primary_mac;
 	bool handle_hw_err;
-	char drv_ver[QED_DRV_VER_STR_SIZE];
+	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
 };
 
 /* Static functions */

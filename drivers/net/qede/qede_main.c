@@ -426,7 +426,7 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 
 static void
 qed_set_id(struct ecore_dev *edev, char name[NAME_SIZE],
-	   const char ver_str[VER_SIZE])
+	   const char ver_str[NAME_SIZE])
 {
 	int i;
 
@@ -434,7 +434,7 @@ qed_set_id(struct ecore_dev *edev, char name[NAME_SIZE],
 	for_each_hwfn(edev, i) {
 		snprintf(edev->hwfns[i].name, NAME_SIZE, "%s-%d", name, i);
 	}
-	rte_memcpy(edev->ver_str, ver_str, VER_SIZE);
+	memcpy(edev->ver_str, ver_str, NAME_SIZE);
 	edev->drv_type = DRV_ID_DRV_TYPE_LINUX;
 }
 

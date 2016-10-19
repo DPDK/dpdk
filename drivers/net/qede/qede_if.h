@@ -76,14 +76,13 @@ struct qed_link_output {
 	uint32_t pause_config;
 };
 
-#define QED_DRV_VER_STR_SIZE 80
 struct qed_slowpath_params {
 	uint32_t int_mode;
 	uint8_t drv_major;
 	uint8_t drv_minor;
 	uint8_t drv_rev;
 	uint8_t drv_eng;
-	uint8_t name[QED_DRV_VER_STR_SIZE];
+	uint8_t name[NAME_SIZE];
 };
 
 #define ILT_PAGE_SIZE_TCFC 0x8000	/* 32KB */
