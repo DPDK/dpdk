@@ -202,6 +202,51 @@ err:
 	return ECORE_NOMEM;
 }
 
+/* Locks the MFW mailbox of a PF to ensure a single access.
+ * The lock is achieved in most cases by holding a spinlock, causing other
+ * threads to wait till a previous access is done.
+ * In some cases (currently when a [UN]LOAD_REQ commands are sent), the single
+ * access is achieved by setting a blocking flag, which will fail other
+ * competing contexts to send their mailboxes.
+ */
+static enum _ecore_status_t ecore_mcp_mb_lock(struct ecore_hwfn *p_hwfn,
+					      u32 cmd)
+{
+	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->lock);
+
+	/* The spinlock shouldn't be acquired when the mailbox command is
+	 * [UN]LOAD_REQ, since the engine is locked by the MFW, and a parallel
+	 * pending [UN]LOAD_REQ command of another PF together with a spinlock
+	 * (i.e. interrupts are disabled) - can lead to a deadlock.
+	 * It is assumed that for a single PF, no other mailbox commands can be
+	 * sent from another context while sending LOAD_REQ, and that any
+	 * parallel commands to UNLOAD_REQ can be cancelled.
+	 */
+	if (cmd == DRV_MSG_CODE_LOAD_DONE || cmd == DRV_MSG_CODE_UNLOAD_DONE)
+		p_hwfn->mcp_info->block_mb_sending = false;
+
+	if (p_hwfn->mcp_info->block_mb_sending) {
+		DP_NOTICE(p_hwfn, false,
+			  "Trying to send a MFW mailbox command [0x%x] in parallel to [UN]LOAD_REQ. Aborting.\n",
+			  cmd);
+		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
+		return ECORE_BUSY;
+	}
+
+	if (cmd == DRV_MSG_CODE_LOAD_REQ || cmd == DRV_MSG_CODE_UNLOAD_REQ) {
+		p_hwfn->mcp_info->block_mb_sending = true;
+		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
+	}
+
+	return ECORE_SUCCESS;
+}
+
+static void ecore_mcp_mb_unlock(struct ecore_hwfn *p_hwfn, u32 cmd)
+{
+	if (cmd != DRV_MSG_CODE_LOAD_REQ && cmd != DRV_MSG_CODE_UNLOAD_REQ)
+		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
+}
+
 enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt)
 {
@@ -214,8 +259,12 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev))
 		delay = EMUL_MCP_RESP_ITER_US;
 #endif
-
-	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->lock);
+	/* Ensure that only a single thread is accessing the mailbox at a
+	 * certain time.
+	 */
+	rc = ecore_mcp_mb_lock(p_hwfn, DRV_MSG_CODE_MCP_RESET);
+	if (rc != ECORE_SUCCESS)
+		return rc;
 
 	/* Set drv command along with the updated sequence */
 	org_mcp_reset_seq = ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0);
@@ -238,7 +287,7 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 		rc = ECORE_AGAIN;
 	}
 
-	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
+	ecore_mcp_mb_unlock(p_hwfn, DRV_MSG_CODE_MCP_RESET);
 
 	return rc;
 }
@@ -327,13 +376,15 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		return ECORE_BUSY;
 	}
 
-	/* Acquiring a spinlock is needed to ensure that only a single thread
-	 * is accessing the mailbox at a certain time.
-	 */
-	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->lock);
-
 	union_data_addr = p_hwfn->mcp_info->drv_mb_addr +
 			  OFFSETOF(struct public_drv_mb, union_data);
+
+	/* Ensure that only a single thread is accessing the mailbox at a
+	 * certain time.
+	 */
+	rc = ecore_mcp_mb_lock(p_hwfn, p_mb_params->cmd);
+	if (rc != ECORE_SUCCESS)
+		return rc;
 
 	if (p_mb_params->p_data_src != OSAL_NULL)
 		ecore_memcpy_to(p_hwfn, p_ptt, union_data_addr,
@@ -348,6 +399,9 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		ecore_memcpy_from(p_hwfn, p_ptt, p_mb_params->p_data_dst,
 				  union_data_addr,
 				  sizeof(*p_mb_params->p_data_dst));
+
+	ecore_mcp_mb_unlock(p_hwfn, p_mb_params->cmd);
+
 	return rc;
 }
 

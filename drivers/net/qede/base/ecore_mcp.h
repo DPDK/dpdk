@@ -32,6 +32,10 @@
 				 ((_p_hwfn)->p_dev->num_ports_in_engines * 2))
 struct ecore_mcp_info {
 	osal_spinlock_t lock;	/* Spinlock used for accessing MCP mailbox */
+
+	/* Flag to indicate whether sending a MFW mailbox is forbidden */
+	bool block_mb_sending;
+
 	u32 public_base;	/* Address of the MCP public area */
 	u32 drv_mb_addr;	/* Address of the driver mailbox */
 	u32 mfw_mb_addr;	/* Address of the MFW mailbox */
