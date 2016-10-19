@@ -64,8 +64,10 @@
 #define QEDE_MAX_TSS_CNT(edev)  ((edev)->dev_info.num_queues * \
 					(edev)->dev_info.num_tc)
 
-#define QEDE_RSS_CNT(edev)	((edev)->fp_num_rx)
-#define QEDE_TSS_CNT(edev)	((edev)->fp_num_rx * (edev)->num_tc)
+#define QEDE_QUEUE_CNT(qdev) ((qdev)->num_queues)
+#define QEDE_RSS_COUNT(qdev) ((qdev)->num_queues - (qdev)->fp_num_tx)
+#define QEDE_TSS_COUNT(qdev) (((qdev)->num_queues - (qdev)->fp_num_rx) * \
+					(qdev)->num_tc)
 
 #define QEDE_DUPLEX_FULL	1
 #define QEDE_DUPLEX_HALF	2
@@ -77,12 +79,6 @@
 #define QEDE_INIT_QDEV(eth_dev) (eth_dev->data->dev_private)
 
 #define QEDE_INIT_EDEV(adapter) (&((struct qede_dev *)adapter)->edev)
-
-#define QEDE_QUEUE_CNT(qdev) ((qdev)->num_queues)
-#define QEDE_RSS_COUNT(qdev) ((qdev)->num_queues - (qdev)->fp_num_tx)
-#define QEDE_TSS_COUNT(qdev) (((qdev)->num_queues - (qdev)->fp_num_rx) * \
-		(qdev)->num_tc)
-#define QEDE_TC_IDX(qdev, txqidx) ((txqidx) / QEDE_TSS_COUNT(qdev))
 
 #define QEDE_INIT(eth_dev) {					\
 	struct qede_dev *qdev = eth_dev->data->dev_private;	\
@@ -133,7 +129,6 @@ struct qede_dev {
 	struct qed_dev_eth_info dev_info;
 	struct ecore_sb_info *sb_array;
 	struct qede_fastpath *fp_array;
-	uint16_t num_rss;
 	uint8_t num_tc;
 	uint16_t mtu;
 	bool rss_enabled;
@@ -155,6 +150,16 @@ struct qede_dev {
 /* Static functions */
 static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 				uint16_t vlan_id, int on);
+
+static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
+				struct rte_eth_rss_conf *rss_conf);
+
+static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
+				struct rte_eth_rss_reta_entry64 *reta_conf,
+				uint16_t reta_size);
+
+/* Non-static functions */
+void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf);
 
 int qed_fill_eth_dev_info(struct ecore_dev *edev,
 				 struct qed_dev_eth_info *info);

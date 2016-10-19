@@ -143,8 +143,8 @@ qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
 		       ECORE_RSS_IND_TABLE_SIZE * sizeof(uint16_t));
 		rte_memcpy(sp_rss_params.rss_key, params->rss_params.rss_key,
 		       ECORE_RSS_KEY_SIZE * sizeof(uint32_t));
+		sp_params.rss_params = &sp_rss_params;
 	}
-	sp_params.rss_params = &sp_rss_params;
 
 	for_each_hwfn(edev, i) {
 		struct ecore_hwfn *p_hwfn = &edev->hwfns[i];

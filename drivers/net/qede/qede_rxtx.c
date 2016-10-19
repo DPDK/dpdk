@@ -64,7 +64,7 @@ void qede_rx_queue_release(void *rx_queue)
 		rte_free(rxq->sw_rx_ring);
 		rxq->sw_rx_ring = NULL;
 		rte_free(rxq);
-		rx_queue = NULL;
+		rxq = NULL;
 	}
 }
 
@@ -234,7 +234,7 @@ void qede_tx_queue_release(void *tx_queue)
 		}
 		rte_free(txq);
 	}
-	tx_queue = NULL;
+	txq = NULL;
 }
 
 int
@@ -502,9 +502,9 @@ static void qede_prandom_bytes(uint32_t *buff, size_t bytes)
 		buff[i] = rand();
 }
 
-static int
-qede_config_rss(struct rte_eth_dev *eth_dev,
-		struct qed_update_vport_rss_params *rss_params)
+static bool
+qede_check_vport_rss_enable(struct rte_eth_dev *eth_dev,
+			    struct qed_update_vport_rss_params *rss_params)
 {
 	struct rte_eth_rss_conf rss_conf;
 	enum rte_eth_rx_mq_mode mode = eth_dev->data->dev_conf.rxmode.mq_mode;
@@ -515,57 +515,46 @@ qede_config_rss(struct rte_eth_dev *eth_dev,
 	uint64_t hf;
 	uint32_t *key;
 
+	PMD_INIT_FUNC_TRACE(edev);
+
 	rss_conf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
 	key = (uint32_t *)rss_conf.rss_key;
 	hf = rss_conf.rss_hf;
-	PMD_INIT_FUNC_TRACE(edev);
 
 	/* Check if RSS conditions are met.
 	 * Note: Even though its meaningless to enable RSS with one queue, it
 	 * could be used to produce RSS Hash, so skipping that check.
 	 */
-
 	if (!(mode & ETH_MQ_RX_RSS)) {
 		DP_INFO(edev, "RSS flag is not set\n");
-		return -EINVAL;
+		return false;
 	}
 
-	DP_INFO(edev, "RSS flag is set\n");
-
-	if (rss_conf.rss_hf == 0)
-		DP_NOTICE(edev, false, "RSS hash function = 0, disables RSS\n");
-
-	if (rss_conf.rss_key != NULL)
-		memcpy(qdev->rss_params.rss_key, rss_conf.rss_key,
-		       rss_conf.rss_key_len);
+	if (hf == 0) {
+		DP_INFO(edev, "Request to disable RSS\n");
+		return false;
+	}
 
 	memset(rss_params, 0, sizeof(*rss_params));
 
 	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++)
 		rss_params->rss_ind_table[i] = qede_rxfh_indir_default(i,
-							QEDE_RSS_CNT(qdev));
+							QEDE_RSS_COUNT(qdev));
 
-	/* key and protocols */
-	if (rss_conf.rss_key == NULL)
+	if (!key)
 		qede_prandom_bytes(rss_params->rss_key,
 				   sizeof(rss_params->rss_key));
 	else
 		memcpy(rss_params->rss_key, rss_conf.rss_key,
 		       rss_conf.rss_key_len);
 
-	rss_caps = 0;
-	rss_caps |= (hf & ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
-	rss_caps |= (hf & ETH_RSS_IPV6)              ? ECORE_RSS_IPV6 : 0;
-	rss_caps |= (hf & ETH_RSS_IPV6_EX)           ? ECORE_RSS_IPV6 : 0;
-	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? ECORE_RSS_IPV4_TCP : 0;
-	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? ECORE_RSS_IPV6_TCP : 0;
-	rss_caps |= (hf & ETH_RSS_IPV6_TCP_EX)       ? ECORE_RSS_IPV6_TCP : 0;
+	qede_init_rss_caps(&rss_caps, hf);
 
 	rss_params->rss_caps = rss_caps;
 
-	DP_INFO(edev, "RSS check passes\n");
+	DP_INFO(edev, "RSS conditions are met\n");
 
-	return 0;
+	return true;
 }
 
 static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
@@ -618,7 +607,7 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 			continue;
 		for (tc = 0; tc < qdev->num_tc; tc++) {
 			txq = fp->txqs[tc];
-			txq_index = tc * QEDE_RSS_CNT(qdev) + i;
+			txq_index = tc * QEDE_RSS_COUNT(qdev) + i;
 
 			p_phys_table = ecore_chain_get_pbl_phys(&txq->tx_pbl);
 			page_cnt = ecore_chain_get_page_cnt(&txq->tx_pbl);
@@ -663,14 +652,11 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 		vport_update_params.tx_switching_flg = 1;
 	}
 
-	if (!qede_config_rss(eth_dev, rss_params)) {
+	if (qede_check_vport_rss_enable(eth_dev, rss_params)) {
 		vport_update_params.update_rss_flg = 1;
-
 		qdev->rss_enabled = 1;
-		DP_INFO(edev, "Updating RSS flag\n");
 	} else {
 		qdev->rss_enabled = 0;
-		DP_INFO(edev, "Not Updating RSS flag\n");
 	}
 
 	rte_memcpy(&vport_update_params.rss_params, rss_params,
@@ -1124,7 +1110,7 @@ static void qede_init_fp_queue(struct rte_eth_dev *eth_dev)
 
 		if (fp->type & QEDE_FASTPATH_TX) {
 			for (tc = 0; tc < qdev->num_tc; tc++) {
-				txq_index = tc * QEDE_TSS_CNT(qdev) + txq;
+				txq_index = tc * QEDE_TSS_COUNT(qdev) + txq;
 				fp->txqs[tc] =
 					eth_dev->data->tx_queues[txq_index];
 				fp->txqs[tc]->queue_id = txq_index;
@@ -1326,6 +1312,7 @@ int qede_reset_fp_rings(struct qede_dev *qdev)
 		if (fp->type & QEDE_FASTPATH_TX) {
 			for (tc = 0; tc < qdev->num_tc; tc++) {
 				txq = fp->txqs[tc];
+				qede_tx_queue_release_mbufs(txq);
 				ecore_chain_reset(&txq->tx_pbl);
 				txq->sw_tx_cons = 0;
 				txq->sw_tx_prod = 0;
@@ -1338,29 +1325,26 @@ int qede_reset_fp_rings(struct qede_dev *qdev)
 }
 
 /* This function frees all memory of a single fp */
-static void qede_free_mem_fp(struct rte_eth_dev *eth_dev,
-			     struct qede_fastpath *fp)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	uint8_t tc;
-
-	qede_rx_queue_release(fp->rxq);
-	for (tc = 0; tc < qdev->num_tc; tc++) {
-		qede_tx_queue_release(fp->txqs[tc]);
-		eth_dev->data->tx_queues[tc] = NULL;
-	}
-}
-
 void qede_free_mem_load(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct qede_fastpath *fp;
-	uint8_t rss_id;
+	uint16_t txq_idx;
+	uint8_t id;
+	uint8_t tc;
 
-	for_each_queue(rss_id) {
-		fp = &qdev->fp_array[rss_id];
-		qede_free_mem_fp(eth_dev, fp);
-		eth_dev->data->rx_queues[rss_id] = NULL;
+	for_each_queue(id) {
+		fp = &qdev->fp_array[id];
+		if (fp->type & QEDE_FASTPATH_RX) {
+			qede_rx_queue_release(fp->rxq);
+			eth_dev->data->rx_queues[id] = NULL;
+		} else {
+			for (tc = 0; tc < qdev->num_tc; tc++) {
+				txq_idx = fp->txqs[tc]->queue_id;
+				qede_tx_queue_release(fp->txqs[tc]);
+				eth_dev->data->tx_queues[txq_idx] = NULL;
+			}
+		}
 	}
 }
 

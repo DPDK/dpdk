@@ -537,7 +537,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
-	int rc;
+	int rc, i, j;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -558,10 +558,6 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	qdev->fp_num_tx = eth_dev->data->nb_tx_queues;
-	qdev->fp_num_rx = eth_dev->data->nb_rx_queues;
-	qdev->num_queues = qdev->fp_num_tx + qdev->fp_num_rx;
-
 	/* Sanity checks and throw warnings */
 	if (rxmode->enable_scatter == 1) {
 		DP_ERR(edev, "RX scatter packets is not supported\n");
@@ -580,8 +576,6 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		DP_INFO(edev, "IP/UDP/TCP checksum offload is always enabled "
 			      "in hw\n");
 
-	SLIST_INIT(&qdev->vlan_list_head);
-
 	/* Check for the port restart case */
 	if (qdev->state != QEDE_DEV_INIT) {
 		rc = qdev->ops->vport_stop(edev, 0);
@@ -589,6 +583,10 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 			return rc;
 		qede_dealloc_fp_resc(eth_dev);
 	}
+
+	qdev->fp_num_tx = eth_dev->data->nb_tx_queues;
+	qdev->fp_num_rx = eth_dev->data->nb_rx_queues;
+	qdev->num_queues = qdev->fp_num_tx + qdev->fp_num_rx;
 
 	/* Fastpath status block should be initialized before sending
 	 * VPORT-START in the case of VF. Anyway, do it for both VF/PF.
@@ -604,6 +602,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (rc != 0)
 		return rc;
 
+	SLIST_INIT(&qdev->vlan_list_head);
+
 	/* Add primary mac for PF */
 	if (IS_PF(edev))
 		qede_mac_addr_set(eth_dev, &qdev->primary_mac);
@@ -614,6 +614,10 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 				       ETH_VLAN_EXTEND_MASK);
 
 	qdev->state = QEDE_DEV_CONFIG;
+
+	DP_INFO(edev, "Allocated RSS=%d TSS=%d (with CoS=%d)\n",
+		(int)QEDE_RSS_COUNT(qdev), (int)QEDE_TSS_COUNT(qdev),
+		qdev->num_tc);
 
 	return 0;
 }
@@ -1037,42 +1041,51 @@ qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 	return NULL;
 }
 
-int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
-			 struct rte_eth_rss_conf *rss_conf)
+void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf)
+{
+	*rss_caps = 0;
+	*rss_caps |= (hf & ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
+	*rss_caps |= (hf & ETH_RSS_IPV6)              ? ECORE_RSS_IPV6 : 0;
+	*rss_caps |= (hf & ETH_RSS_IPV6_EX)           ? ECORE_RSS_IPV6 : 0;
+	*rss_caps |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? ECORE_RSS_IPV4_TCP : 0;
+	*rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? ECORE_RSS_IPV6_TCP : 0;
+	*rss_caps |= (hf & ETH_RSS_IPV6_TCP_EX)       ? ECORE_RSS_IPV6_TCP : 0;
+}
+
+static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
+				struct rte_eth_rss_conf *rss_conf)
 {
 	struct qed_update_vport_params vport_update_params;
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
-	uint8_t rss_caps;
 	uint32_t *key = (uint32_t *)rss_conf->rss_key;
 	uint64_t hf = rss_conf->rss_hf;
 	int i;
 
-	if (hf == 0)
-		DP_ERR(edev, "hash function 0 will disable RSS\n");
-
-	rss_caps = 0;
-	rss_caps |= (hf & ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
-	rss_caps |= (hf & ETH_RSS_IPV6)              ? ECORE_RSS_IPV6 : 0;
-	rss_caps |= (hf & ETH_RSS_IPV6_EX)           ? ECORE_RSS_IPV6 : 0;
-	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? ECORE_RSS_IPV4_TCP : 0;
-	rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? ECORE_RSS_IPV6_TCP : 0;
-	rss_caps |= (hf & ETH_RSS_IPV6_TCP_EX)       ? ECORE_RSS_IPV6_TCP : 0;
-
-	/* If the mapping doesn't fit any supported, return */
-	if (rss_caps == 0 && hf != 0)
-		return -EINVAL;
-
 	memset(&vport_update_params, 0, sizeof(vport_update_params));
 
-	if (key != NULL)
-		memcpy(qdev->rss_params.rss_key, rss_conf->rss_key,
-		       rss_conf->rss_key_len);
+	if (hf != 0) {
+		/* Enable RSS */
+		qede_init_rss_caps(&qdev->rss_params.rss_caps, hf);
+		memcpy(&vport_update_params.rss_params, &qdev->rss_params,
+		       sizeof(vport_update_params.rss_params));
+		if (key)
+			memcpy(qdev->rss_params.rss_key, rss_conf->rss_key,
+			       rss_conf->rss_key_len);
+		vport_update_params.update_rss_flg = 1;
+		qdev->rss_enabled = 1;
+	} else {
+		/* Disable RSS */
+		qdev->rss_enabled = 0;
+	}
 
-	qdev->rss_params.rss_caps = rss_caps;
-	memcpy(&vport_update_params.rss_params, &qdev->rss_params,
-	       sizeof(vport_update_params.rss_params));
-	vport_update_params.update_rss_flg = 1;
+	/* If the mapping doesn't fit any supported, return */
+	if (qdev->rss_params.rss_caps == 0 && hf != 0)
+		return -EINVAL;
+
+	DP_INFO(edev, "%s\n", (vport_update_params.update_rss_flg) ?
+				"Enabling RSS" : "Disabling RSS");
+
 	vport_update_params.vport_id = 0;
 
 	return qdev->ops->vport_update(edev, &vport_update_params);
@@ -1110,9 +1123,9 @@ int qede_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
-			 struct rte_eth_rss_reta_entry64 *reta_conf,
-			 uint16_t reta_size)
+static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
+				struct rte_eth_rss_reta_entry64 *reta_conf,
+				uint16_t reta_size)
 {
 	struct qed_update_vport_params vport_update_params;
 	struct qede_dev *qdev = eth_dev->data->dev_private;

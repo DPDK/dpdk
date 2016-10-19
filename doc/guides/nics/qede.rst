@@ -51,7 +51,7 @@ Supported Features
 - VLAN offload - Filtering and stripping
 - Stateless checksum offloads (IPv4/TCP/UDP)
 - Multiple Rx/Tx queues
-- RSS (with user configurable table/key)
+- RSS (with RETA/hash table/key)
 - TSS
 - Multiple MAC address
 - Default pause flow control
