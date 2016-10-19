@@ -75,7 +75,7 @@
 
 #define MAX_NUM_TC		8
 
-#define for_each_rss(i) for (i = 0; i < qdev->num_rss; i++)
+#define for_each_queue(i) for (i = 0; i < qdev->num_queues; i++)
 
 /*
  * RX BD descriptor ring
@@ -139,7 +139,8 @@ struct qede_tx_queue {
 
 struct qede_fastpath {
 	struct qede_dev *qdev;
-	uint8_t rss_id;
+	u8 type;
+	uint8_t id;
 	struct ecore_sb_info *sb_info;
 	struct qede_rx_queue *rxq;
 	struct qede_tx_queue *txqs[MAX_NUM_TC];
@@ -168,7 +169,7 @@ int qede_dev_start(struct rte_eth_dev *eth_dev);
 
 void qede_dev_stop(struct rte_eth_dev *eth_dev);
 
-void qede_reset_fp_rings(struct qede_dev *qdev);
+int qede_reset_fp_rings(struct qede_dev *qdev);
 
 void qede_free_fp_arrays(struct qede_dev *qdev);
 

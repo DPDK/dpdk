@@ -496,31 +496,26 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE(edev);
 
-	if (eth_dev->data->nb_rx_queues != eth_dev->data->nb_tx_queues) {
-		DP_NOTICE(edev, false,
-			  "Unequal number of rx/tx queues "
-			  "is not supported RX=%u TX=%u\n",
-			  eth_dev->data->nb_rx_queues,
-			  eth_dev->data->nb_tx_queues);
-		return -EINVAL;
-	}
-
 	/* Check requirements for 100G mode */
 	if (edev->num_hwfns > 1) {
-		if (eth_dev->data->nb_rx_queues < 2) {
+		if (eth_dev->data->nb_rx_queues < 2 ||
+		    eth_dev->data->nb_tx_queues < 2) {
 			DP_NOTICE(edev, false,
-				  "100G mode requires minimum two queues\n");
+				  "100G mode needs min. 2 RX/TX queues\n");
 			return -EINVAL;
 		}
 
-		if ((eth_dev->data->nb_rx_queues % 2) != 0) {
+		if ((eth_dev->data->nb_rx_queues % 2 != 0) ||
+		    (eth_dev->data->nb_tx_queues % 2 != 0)) {
 			DP_NOTICE(edev, false,
-				  "100G mode requires even number of queues\n");
+				  "100G mode needs even no. of RX/TX queues\n");
 			return -EINVAL;
 		}
 	}
 
-	qdev->num_rss = eth_dev->data->nb_rx_queues;
+	qdev->fp_num_tx = eth_dev->data->nb_tx_queues;
+	qdev->fp_num_rx = eth_dev->data->nb_rx_queues;
+	qdev->num_queues = qdev->fp_num_tx + qdev->fp_num_rx;
 
 	/* Initial state */
 	qdev->state = QEDE_CLOSE;

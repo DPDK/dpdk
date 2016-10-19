@@ -50,7 +50,7 @@ Supported Features
 - Jumbo frames (using single buffer)
 - VLAN offload - Filtering and stripping
 - Stateless checksum offloads (IPv4/TCP/UDP)
-- Multiple Rx/Tx queues (queue-pairs)
+- Multiple Rx/Tx queues
 - RSS (with user configurable table/key)
 - TSS
 - Multiple MAC address
@@ -63,7 +63,6 @@ Non-supported Features
 ----------------------
 
 - Scatter-Gather Rx/Tx frames
-- Unequal number of Rx/Tx queues
 - SR-IOV PF
 - Tunneling offloads
 - Reload of the PMD after a non-graceful termination

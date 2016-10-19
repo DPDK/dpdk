@@ -62,8 +62,8 @@
 #define QEDE_MAX_TSS_CNT(edev)  ((edev)->dev_info.num_queues * \
 					(edev)->dev_info.num_tc)
 
-#define QEDE_RSS_CNT(edev)	((edev)->num_rss)
-#define QEDE_TSS_CNT(edev)	((edev)->num_rss * (edev)->num_tc)
+#define QEDE_RSS_CNT(edev)	((edev)->fp_num_rx)
+#define QEDE_TSS_CNT(edev)	((edev)->fp_num_rx * (edev)->num_tc)
 
 #define QEDE_DUPLEX_FULL	1
 #define QEDE_DUPLEX_HALF	2
@@ -75,6 +75,12 @@
 #define QEDE_INIT_QDEV(eth_dev) (eth_dev->data->dev_private)
 
 #define QEDE_INIT_EDEV(adapter) (&((struct qede_dev *)adapter)->edev)
+
+#define QEDE_QUEUE_CNT(qdev) ((qdev)->num_queues)
+#define QEDE_RSS_COUNT(qdev) ((qdev)->num_queues - (qdev)->fp_num_tx)
+#define QEDE_TSS_COUNT(qdev) (((qdev)->num_queues - (qdev)->fp_num_rx) * \
+		(qdev)->num_tc)
+#define QEDE_TC_IDX(qdev, txqidx) ((txqidx) / QEDE_TSS_COUNT(qdev))
 
 #define QEDE_INIT(eth_dev) {					\
 	struct qede_dev *qdev = eth_dev->data->dev_private;	\
@@ -138,8 +144,10 @@ struct qede_dev {
 	struct qed_update_vport_rss_params rss_params;
 	uint32_t flags;
 	bool gro_disable;
-	struct qede_rx_queue **rx_queues;
-	struct qede_tx_queue **tx_queues;
+	uint16_t num_queues;
+	uint8_t fp_num_tx;
+	uint8_t fp_num_rx;
+
 	enum dev_state state;
 
 	/* Vlans */
