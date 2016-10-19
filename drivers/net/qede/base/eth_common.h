@@ -59,14 +59,6 @@
 #define ETH_TPA_CQE_END_LEN_LIST_SIZE     4
 
 /*
- * Interrupt coalescing TimeSet
- */
-struct coalescing_timeset {
-	u8 timeset;
-	u8 valid /* Only if this flag is set, timeset will take effect */;
-};
-
-/*
  * Destination port mode
  */
 enum dest_port_mode {
@@ -364,16 +356,6 @@ struct eth_rx_pmd_cqe {
 };
 
 /*
- * ETH Rx producers data
- */
-struct eth_rx_prod_data {
-	__le16 bd_prod /* BD producer */;
-	__le16 cqe_prod /* CQE producer */;
-	__le16 reserved;
-	__le16 reserved1 /* FW reserved. */;
-};
-
-/*
  * Aggregation end reason.
  */
 enum eth_tpa_end_reason {
@@ -484,15 +466,6 @@ union eth_tx_bd_types {
 struct mstorm_eth_queue_zone {
 	struct eth_rx_prod_data rx_producers;
 	__le32 reserved[2];
-};
-
-/*
- * Ustorm Queue Zone
- */
-struct ustorm_eth_queue_zone {
-	struct coalescing_timeset int_coalescing_timeset
-	    /* Rx interrupt coalescing TimeSet */;
-	__le16 reserved[3];
 };
 
 /*

@@ -25,6 +25,7 @@ enum common_event_opcode {
 	COMMON_EVENT_VF_FLR,
 	COMMON_EVENT_PF_UPDATE,
 	COMMON_EVENT_MALICIOUS_VF,
+	COMMON_EVENT_RL_UPDATE,
 	COMMON_EVENT_EMPTY,
 	MAX_COMMON_EVENT_OPCODE
 };
@@ -39,6 +40,7 @@ enum common_ramrod_cmd_id {
 	COMMON_RAMROD_VF_START /* VF Function Start */,
 	COMMON_RAMROD_VF_STOP /* VF Function Stop Ramrod */,
 	COMMON_RAMROD_PF_UPDATE /* PF update Ramrod */,
+	COMMON_RAMROD_RL_UPDATE /* QCN/DCQCN RL update Ramrod */,
 	COMMON_RAMROD_EMPTY /* Empty Ramrod */,
 	MAX_COMMON_RAMROD_CMD_ID
 };
@@ -643,6 +645,15 @@ enum core_ramrod_cmd_id {
 };
 
 /*
+ * Core RX CQE Type for Light L2
+ */
+enum core_roce_flavor_type {
+	CORE_ROCE,
+	CORE_RROCE,
+	MAX_CORE_ROCE_FLAVOR_TYPE
+};
+
+/*
  * Specifies how ll2 should deal with packets errors: packet_too_big and no_buff
  */
 struct core_rx_action_on_error {
@@ -814,10 +825,32 @@ struct core_tx_bd_flags {
 struct core_tx_bd {
 	struct regpair addr /* Buffer Address */;
 	__le16 nbytes /* Number of Bytes in Buffer */;
-	__le16 vlan /* VLAN to insert to packet (if insertion flag set) */;
-	u8 nbds /* Number of BDs that make up one packet */;
+/* Network packets: VLAN to insert to packet (if insertion flag set) LoopBack
+ * packets: echo data to pass to Rx
+ */
+	__le16 nw_vlan_or_lb_echo;
+	u8 bitfield0;
+/* Number of BDs that make up one packet - width wide enough to present
+ * X_CORE_LL2_NUM_OF_BDS_ON_ST_CT
+ */
+#define CORE_TX_BD_NBDS_MASK             0xF
+#define CORE_TX_BD_NBDS_SHIFT            0
+/* Use roce_flavor enum - Diffrentiate between Roce flavors is valid when
+ * connType is ROCE (use enum core_roce_flavor_type)
+ */
+#define CORE_TX_BD_ROCE_FLAV_MASK        0x1
+#define CORE_TX_BD_ROCE_FLAV_SHIFT       4
+#define CORE_TX_BD_RESERVED0_MASK        0x7
+#define CORE_TX_BD_RESERVED0_SHIFT       5
 	struct core_tx_bd_flags bd_flags /* BD Flags */;
-	__le16 l4_hdr_offset_w;
+	__le16 bitfield1;
+#define CORE_TX_BD_L4_HDR_OFFSET_W_MASK  0x3FFF
+#define CORE_TX_BD_L4_HDR_OFFSET_W_SHIFT 0
+/* Packet destination - Network, LB (use enum core_tx_dest) */
+#define CORE_TX_BD_TX_DST_MASK           0x1
+#define CORE_TX_BD_TX_DST_SHIFT          14
+#define CORE_TX_BD_RESERVED1_MASK        0x1
+#define CORE_TX_BD_RESERVED1_SHIFT       15
 };
 
 /*
@@ -830,22 +863,21 @@ enum core_tx_dest {
 };
 
 /*
- * Ramrod data for rx queue start ramrod
+ * Ramrod data for tx queue start ramrod
  */
 struct core_tx_start_ramrod_data {
 	struct regpair pbl_base_addr /* Address of the pbl page */;
 	__le16 mtu /* Maximum transmission unit */;
 	__le16 sb_id /* Status block ID */;
 	u8 sb_index /* Status block protocol index */;
-	u8 tx_dest /* TX Destination (either Network or LB) */;
 	u8 stats_en /* Statistics Enable */;
 	u8 stats_id /* Statistics Counter ID */;
+	u8 conn_type /* connection type that loaded ll2 */;
 	__le16 pbl_size /* Number of BD pages pointed by PBL */;
 	__le16 qm_pq_id /* QM PQ ID */;
-	u8 conn_type /* connection type that loaded ll2 */;
 	u8 gsi_offload_flag
 	    /* set when in GSI offload mode on ROCE connection */;
-	u8 resrved[2];
+	u8 resrved[3];
 };
 
 /*
@@ -853,6 +885,25 @@ struct core_tx_start_ramrod_data {
  */
 struct core_tx_stop_ramrod_data {
 	__le32 reserved0[2];
+};
+
+/*
+ * Enum flag for what type of dcb data to update
+ */
+enum dcb_dhcp_update_flag {
+/* use when no change should be done to dcb data */
+	DONT_UPDATE_DCB_DHCP,
+	UPDATE_DCB /* use to update only l2 (vlan) priority */,
+	UPDATE_DSCP /* use to update only l3 dhcp */,
+	UPDATE_DCB_DSCP /* update vlan pri and dhcp */,
+	MAX_DCB_DHCP_UPDATE_FLAG
+};
+
+struct eth_mstorm_per_pf_stat {
+	struct regpair gre_discard_pkts /* Dropped GRE RX packets */;
+	struct regpair vxlan_discard_pkts /* Dropped VXLAN RX packets */;
+	struct regpair geneve_discard_pkts /* Dropped GENEVE RX packets */;
+	struct regpair lb_discard_pkts /* Dropped Tx switched packets */;
 };
 
 struct eth_mstorm_per_queue_stat {
@@ -864,6 +915,33 @@ struct eth_mstorm_per_queue_stat {
 	struct regpair tpa_coalesced_events;
 	struct regpair tpa_aborts_num;
 	struct regpair tpa_coalesced_bytes;
+};
+
+/*
+ * Ethernet TX Per PF
+ */
+struct eth_pstorm_per_pf_stat {
+/* number of total ucast bytes sent on loopback port without errors */
+	struct regpair sent_lb_ucast_bytes;
+/* number of total mcast bytes sent on loopback port without errors */
+	struct regpair sent_lb_mcast_bytes;
+/* number of total bcast bytes sent on loopback port without errors */
+	struct regpair sent_lb_bcast_bytes;
+/* number of total ucast packets sent on loopback port without errors */
+	struct regpair sent_lb_ucast_pkts;
+/* number of total mcast packets sent on loopback port without errors */
+	struct regpair sent_lb_mcast_pkts;
+/* number of total bcast packets sent on loopback port without errors */
+	struct regpair sent_lb_bcast_pkts;
+	struct regpair sent_gre_bytes /* Sent GRE bytes */;
+	struct regpair sent_vxlan_bytes /* Sent VXLAN bytes */;
+	struct regpair sent_geneve_bytes /* Sent GENEVE bytes */;
+	struct regpair sent_gre_pkts /* Sent GRE packets */;
+	struct regpair sent_vxlan_pkts /* Sent VXLAN packets */;
+	struct regpair sent_geneve_pkts /* Sent GENEVE packets */;
+	struct regpair gre_drop_pkts /* Dropped GRE TX packets */;
+	struct regpair vxlan_drop_pkts /* Dropped VXLAN TX packets */;
+	struct regpair geneve_drop_pkts /* Dropped GENEVE TX packets */;
 };
 
 /*
@@ -896,6 +974,27 @@ struct eth_rx_rate_limit {
 	u8 add_sub_cnst /* Add (1) or subtract (0) constant term */;
 	u8 reserved0;
 	__le16 reserved1;
+};
+
+struct eth_ustorm_per_pf_stat {
+/* number of total ucast bytes received on loopback port without errors */
+	struct regpair rcv_lb_ucast_bytes;
+/* number of total mcast bytes received on loopback port without errors */
+	struct regpair rcv_lb_mcast_bytes;
+/* number of total bcast bytes received on loopback port without errors */
+	struct regpair rcv_lb_bcast_bytes;
+/* number of total ucast packets received on loopback port without errors */
+	struct regpair rcv_lb_ucast_pkts;
+/* number of total mcast packets received on loopback port without errors */
+	struct regpair rcv_lb_mcast_pkts;
+/* number of total bcast packets received on loopback port without errors */
+	struct regpair rcv_lb_bcast_pkts;
+	struct regpair rcv_gre_bytes /* Received GRE bytes */;
+	struct regpair rcv_vxlan_bytes /* Received VXLAN bytes */;
+	struct regpair rcv_geneve_bytes /* Received GENEVE bytes */;
+	struct regpair rcv_gre_pkts /* Received GRE packets */;
+	struct regpair rcv_vxlan_pkts /* Received VXLAN packets */;
+	struct regpair rcv_geneve_pkts /* Received GENEVE packets */;
 };
 
 struct eth_ustorm_per_queue_stat {
@@ -934,6 +1033,14 @@ enum fw_flow_ctrl_mode {
 };
 
 /*
+ * Major and Minor hsi Versions
+ */
+struct hsi_fp_ver_struct {
+	u8 minor_ver_arr[2] /* Minor Version of hsi loading pf */;
+	u8 major_ver_arr[2] /* Major Version of driver loading pf */;
+};
+
+/*
  * Integration Phase
  */
 enum integ_phase {
@@ -941,6 +1048,18 @@ enum integ_phase {
 	INTEG_PHASE_BB_B0_NO_MCP = 10 /* BB B0 without MCP */,
 	INTEG_PHASE_BB_B0_WITH_MCP = 11 /* BB B0 with MCP */,
 	MAX_INTEG_PHASE
+};
+
+/*
+ * Ports mode
+ */
+enum iwarp_ll2_tx_queues {
+/* LL2 queue for OOO packets sent in-order by the driver */
+	IWARP_LL2_IN_ORDER_TX_QUEUE = 1,
+/* LL2 queue for unaligned packets sent aligned by the driver */
+	IWARP_LL2_ALIGNED_TX_QUEUE,
+	IWARP_LL2_ERROR /* Error indication */,
+	MAX_IWARP_LL2_TX_QUEUES
 };
 
 /*
@@ -953,7 +1072,7 @@ enum malicious_vf_error_id {
 	VF_ZONE_MSG_NOT_VALID /* VF channel message is not valid */,
 	VF_ZONE_FUNC_NOT_ENABLED /* Parent PF of VF channel is not active */,
 	ETH_PACKET_TOO_SMALL
-/* TX packet is shorter then reported on BDs or from minimal size */
+	    /* TX packet is shorter then reported on BDs or from minimal size */
 	    ,
 	ETH_ILLEGAL_VLAN_MODE
 	    /* Tx packet with marked as insert VLAN when its illegal */,
@@ -975,6 +1094,7 @@ enum malicious_vf_error_id {
 	ETH_EDPM_OUT_OF_SYNC /* Valid BDs on local ring after EDPM L2 sync */,
 	ETH_TUNN_IPV6_EXT_NBD_ERR
 	    /* Tunneled packet with IPv6+Ext without a proper number of BDs */,
+	ETH_CONTROL_PACKET_VIOLATION /* VF sent control frame such as PFC */,
 	MAX_MALICIOUS_VF_ERROR_ID
 };
 
@@ -984,6 +1104,9 @@ enum malicious_vf_error_id {
 struct mstorm_non_trigger_vf_zone {
 	struct eth_mstorm_per_queue_stat eth_queue_stat
 	    /* VF statistic bucket */;
+/* VF RX queues producers */
+	struct eth_rx_prod_data
+		eth_rx_queue_producers[ETH_MAX_NUM_RX_QUEUES_PER_VF_QUAD];
 };
 
 /*
@@ -1060,10 +1183,11 @@ struct pf_start_ramrod_data {
 	u8 allow_npar_tx_switching;
 	u8 inner_to_outer_pri_map[8];
 	u8 pri_map_valid
-/* If inner_to_outer_pri_map is initialize then set pri_map_valid */
+	    /* If inner_to_outer_pri_map is initialize then set pri_map_valid */
 	  ;
 	__le32 outer_tag;
-	u8 reserved0[4];
+/* FP HSI version to be used by FW */
+	struct hsi_fp_ver_struct hsi_fp_ver;
 };
 
 /*
@@ -1071,9 +1195,11 @@ struct pf_start_ramrod_data {
  */
 struct protocol_dcb_data {
 	u8 dcb_enable_flag /* dcbEnable flag value */;
+	u8 dscp_enable_flag /* If set use dscp value */;
 	u8 dcb_priority /* dcbPri flag value */;
 	u8 dcb_tc /* dcb TC value */;
-	u8 reserved;
+	u8 dscp_val /* dscp value to write if dscp_enable_flag is set */;
+	u8 reserved0;
 };
 
 /*
@@ -1081,6 +1207,14 @@ struct protocol_dcb_data {
  */
 struct pf_update_tunnel_config {
 	u8 update_rx_pf_clss;
+/* Update per PORT default tunnel RX classification scheme for traffic with
+ * unknown unicast outer MAC in NPAR mode.
+ */
+	u8 update_rx_def_ucast_clss;
+/* Update per PORT default tunnel RX classification scheme for traffic with non
+ * unicast outer MAC in NPAR mode.
+ */
+	u8 update_rx_def_non_ucast_clss;
 	u8 update_tx_pf_clss;
 	u8 set_vxlan_udp_port_flg
 	    /* Update VXLAN tunnel UDP destination port. */;
@@ -1102,7 +1236,7 @@ struct pf_update_tunnel_config {
 	u8 tunnel_clss_ipgre /* Classification scheme for ip GRE tunnel. */;
 	__le16 vxlan_udp_port /* VXLAN tunnel UDP destination port. */;
 	__le16 geneve_udp_port /* GENEVE tunnel UDP destination port. */;
-	__le16 reserved[3];
+	__le16 reserved[2];
 };
 
 /*
@@ -1114,9 +1248,10 @@ struct pf_update_ramrod_data {
 	u8 update_fcoe_dcb_data_flag /* Update FCOE DCB  data indication */;
 	u8 update_iscsi_dcb_data_flag /* Update iSCSI DCB  data indication */;
 	u8 update_roce_dcb_data_flag /* Update ROCE DCB  data indication */;
+/* Update RROCE (RoceV2) DCB  data indication */
+	u8 update_rroce_dcb_data_flag;
 	u8 update_iwarp_dcb_data_flag /* Update IWARP DCB  data indication */;
 	u8 update_mf_vlan_flag /* Update MF outer vlan Id */;
-	u8 reserved;
 	struct protocol_dcb_data eth_dcb_data /* core eth related fields */;
 	struct protocol_dcb_data fcoe_dcb_data /* core fcoe related fields */;
 	struct protocol_dcb_data iscsi_dcb_data /* core iscsi related fields */
@@ -1124,10 +1259,12 @@ struct pf_update_ramrod_data {
 	struct protocol_dcb_data roce_dcb_data /* core roce related fields */;
 	struct protocol_dcb_data iwarp_dcb_data /* core iwarp related fields */
 	  ;
+/* core roce related fields */
+	struct protocol_dcb_data rroce_dcb_data;
 	__le16 mf_vlan /* new outer vlan id value */;
-	__le16 reserved2;
-	struct pf_update_tunnel_config tunnel_config /* tunnel configuration. */
-	  ;
+	__le16 reserved;
+/* tunnel configuration. */
+	struct pf_update_tunnel_config tunnel_config;
 };
 
 /*
@@ -1140,6 +1277,15 @@ enum ports_mode {
 	ENGX1_PORTX2 /* 1 engine  x 2 ports */,
 	ENGX1_PORTX4 /* 1 engine  x 4 ports */,
 	MAX_PORTS_MODE
+};
+
+/*
+ * use to index in hsi_fp_[major|minor]_ver_arr per protocol
+ */
+enum protocol_version_array_key {
+	ETH_VER_KEY = 0,
+	ROCE_VER_KEY,
+	MAX_PROTOCOL_VERSION_ARRAY_KEY
 };
 
 /*
@@ -1187,6 +1333,31 @@ struct rdma_rcv_stats {
 };
 
 /*
+ * Data for update QCN/DCQCN RL ramrod
+ */
+struct rl_update_ramrod_data {
+	u8 qcn_update_param_flg /* Update QCN global params: timeout. */;
+/* Update DCQCN global params: timeout, g, k. */
+	u8 dcqcn_update_param_flg;
+	u8 rl_init_flg /* Init RL parameters, when RL disabled. */;
+	u8 rl_start_flg /* Start RL in IDLE state. Set rate to maximum. */;
+	u8 rl_stop_flg /* Stop RL. */;
+	u8 rl_id_first /* ID of first or single RL, that will be updated. */;
+/* ID of last RL, that will be updated. If clear, single RL will updated. */
+	u8 rl_id_last;
+	u8 rl_dc_qcn_flg /* If set, RL will used for DCQCN. */;
+	__le32 rl_bc_rate /* Byte Counter Limit. */;
+	__le16 rl_max_rate /* Maximum rate in 1.6 Mbps resolution. */;
+	__le16 rl_r_ai /* Active increase rate. */;
+	__le16 rl_r_hai /* Hyper active increase rate. */;
+	__le16 dcqcn_g /* DCQCN Alpha update gain in 1/64K resolution . */;
+	__le32 dcqcn_k_us /* DCQCN Alpha update interval. */;
+	__le32 dcqcn_timeuot_us /* DCQCN timeout. */;
+	__le32 qcn_timeuot_us /* QCN timeout. */;
+	__le32 reserved[2];
+};
+
+/*
  * Slowpath Element (SPQE)
  */
 struct slow_path_element {
@@ -1223,6 +1394,11 @@ struct tstorm_per_port_stat {
 	  ;
 	struct regpair preroce_irregular_pkt
 	    /* packet is an PREROCE irregular packet */;
+	struct regpair eth_gre_tunn_filter_discard /* GRE dropped packets */;
+/* VXLAN dropped packets */
+	struct regpair eth_vxlan_tunn_filter_discard;
+/* GENEVE dropped packets */
+	struct regpair eth_geneve_tunn_filter_discard;
 };
 
 /*
@@ -1244,10 +1420,14 @@ enum tunnel_clss {
 	TUNNEL_CLSS_MAC_VNI
 	    ,
 	TUNNEL_CLSS_INNER_MAC_VLAN
-/* Use MAC and VLAN from last L2 header for vport classification */
+	    /* Use MAC and VLAN from last L2 header for vport classification */
 	    ,
 	TUNNEL_CLSS_INNER_MAC_VNI
 	    ,
+/* Use MAC and VLAN from last L2 header for vport classification. If no exact
+ * match, use MAC and VLAN from first L2 header for classification.
+ */
+	TUNNEL_CLSS_MAC_VLAN_DUAL_STAGE,
 	MAX_TUNNEL_CLSS
 };
 
@@ -1295,7 +1475,9 @@ struct vf_start_ramrod_data {
 	u8 enable_flr_ack;
 	__le16 opaque_fid /* VF opaque FID */;
 	u8 personality /* define what type of personality is new VF */;
-	u8 reserved[3];
+	u8 reserved[7];
+/* FP HSI version to be used by FW */
+	struct hsi_fp_ver_struct hsi_fp_ver;
 };
 
 /*
@@ -1309,6 +1491,19 @@ struct vf_stop_ramrod_data {
 };
 
 /*
+ * VF zone size mode.
+ */
+enum vf_zone_size_mode {
+/* Default VF zone size. Up to 192 VF supported. */
+	VF_ZONE_SIZE_MODE_DEFAULT,
+/* Doubled VF zone size. Up to 96 VF supported. */
+	VF_ZONE_SIZE_MODE_DOUBLE,
+/* Quad VF zone size. Up to 48 VF supported. */
+	VF_ZONE_SIZE_MODE_QUAD,
+	MAX_VF_ZONE_SIZE_MODE
+};
+
+/*
  * Attentions status block
  */
 struct atten_status_block {
@@ -1318,6 +1513,7 @@ struct atten_status_block {
 	__le16 sb_index /* status block running index */;
 	__le32 reserved1;
 };
+
 
 /*
  * Igu cleanup bit values to distinguish between clean or producer consumer
@@ -1376,7 +1572,7 @@ struct dmae_cmd {
 	__le32 src_addr_hi;
 	__le32 dst_addr_lo;
 	__le32 dst_addr_hi;
-	__le16 length /* Length in DW */;
+	__le16 length_dw /* Length in DW */;
 	__le16 opcode_b;
 #define DMAE_CMD_SRC_VF_ID_MASK        0xFF
 #define DMAE_CMD_SRC_VF_ID_SHIFT       0
@@ -1395,10 +1591,62 @@ struct dmae_cmd {
 	__le16 xsum8 /* checksum8 result  */;
 };
 
-struct storm_ram_section {
-	__le16 offset
-	    /* The offset of the section in the RAM (in 64 bit units) */;
-	__le16 size /* The size of the section (in 64 bit units) */;
+
+enum dmae_cmd_comp_crc_en_enum {
+	dmae_cmd_comp_crc_disabled /* Do not write a CRC word */,
+	dmae_cmd_comp_crc_enabled /* Write a CRC word */,
+	MAX_DMAE_CMD_COMP_CRC_EN_ENUM
+};
+
+
+enum dmae_cmd_comp_func_enum {
+/* completion word and/or CRC will be sent to SRC-PCI function/SRC VFID */
+	dmae_cmd_comp_func_to_src,
+/* completion word and/or CRC will be sent to DST-PCI function/DST VFID */
+	dmae_cmd_comp_func_to_dst,
+	MAX_DMAE_CMD_COMP_FUNC_ENUM
+};
+
+
+enum dmae_cmd_comp_word_en_enum {
+	dmae_cmd_comp_word_disabled /* Do not write a completion word */,
+	dmae_cmd_comp_word_enabled /* Write the completion word */,
+	MAX_DMAE_CMD_COMP_WORD_EN_ENUM
+};
+
+
+enum dmae_cmd_c_dst_enum {
+	dmae_cmd_c_dst_pcie,
+	dmae_cmd_c_dst_grc,
+	MAX_DMAE_CMD_C_DST_ENUM
+};
+
+
+enum dmae_cmd_dst_enum {
+	dmae_cmd_dst_none_0,
+	dmae_cmd_dst_pcie,
+	dmae_cmd_dst_grc,
+	dmae_cmd_dst_none_3,
+	MAX_DMAE_CMD_DST_ENUM
+};
+
+
+enum dmae_cmd_error_handling_enum {
+/* Send a regular completion (with no error indication) */
+	dmae_cmd_error_handling_send_regular_comp,
+/* Send a completion with an error indication (i.e. set bit 31 of the completion
+ * word)
+ */
+	dmae_cmd_error_handling_send_comp_with_err,
+	dmae_cmd_error_handling_dont_send_comp /* Do not send a completion */,
+	MAX_DMAE_CMD_ERROR_HANDLING_ENUM
+};
+
+
+enum dmae_cmd_src_enum {
+	dmae_cmd_src_pcie /* The source is the PCIe */,
+	dmae_cmd_src_grc /* The source is the GRC */,
+	MAX_DMAE_CMD_SRC_ENUM
 };
 
 /*
@@ -1474,6 +1722,7 @@ struct igu_msix_vector {
 #define IGU_MSIX_VECTOR_RESERVED1_MASK     0xFF
 #define IGU_MSIX_VECTOR_RESERVED1_SHIFT    24
 };
+
 
 struct mstorm_core_conn_ag_ctx {
 	u8 byte0 /* cdu_validation */;

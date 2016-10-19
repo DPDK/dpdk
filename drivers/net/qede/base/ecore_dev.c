@@ -3056,8 +3056,6 @@ static enum _ecore_status_t ecore_set_coalesce(struct ecore_hwfn *p_hwfn,
 
 	OSAL_MEMSET(p_qzone, 0, qzone_size);
 	p_coalesce_timeset = p_qzone;
-	p_coalesce_timeset->timeset = timeset;
-	p_coalesce_timeset->valid = 1;
 	ecore_memcpy_to(p_hwfn, p_ptt, hw_addr, p_qzone, qzone_size);
 
 	return ECORE_SUCCESS;

@@ -461,7 +461,7 @@ ecore_dmae_post_command(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 			  " src=0x%x:%x dst=0x%x:%x\n",
 			  idx_cmd, (u32)p_command->opcode,
 			  (u16)p_command->opcode_b,
-			  (int)p_command->length,
+			  (int)p_command->length_dw,
 			  (int)p_command->src_addr_hi,
 			  (int)p_command->src_addr_lo,
 			  (int)p_command->dst_addr_hi,
@@ -475,7 +475,7 @@ ecore_dmae_post_command(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 		   "len=0x%x src=0x%x:%x dst=0x%x:%x\n",
 		   idx_cmd, (u32)p_command->opcode,
 		   (u16)p_command->opcode_b,
-		   (int)p_command->length,
+		   (int)p_command->length_dw,
 		   (int)p_command->src_addr_hi,
 		   (int)p_command->src_addr_lo,
 		   (int)p_command->dst_addr_hi, (int)p_command->dst_addr_lo);
@@ -668,7 +668,7 @@ ecore_dmae_execute_sub_operation(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 	}
 
-	cmd->length = (u16)length;
+	cmd->length_dw = (u16)length;
 
 	if (src_type == ECORE_DMAE_ADDRESS_HOST_VIRT ||
 	    src_type == ECORE_DMAE_ADDRESS_HOST_PHYS)
