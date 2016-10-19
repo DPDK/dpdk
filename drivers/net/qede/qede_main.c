@@ -6,10 +6,6 @@
  * See LICENSE.qede_pmd for copyright and licensing details.
  */
 
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <zlib.h>
 #include <limits.h>
 #include <rte_alarm.h>
 
@@ -20,7 +16,6 @@ static uint8_t npar_tx_switching = 1;
 /* Alarm timeout. */
 #define QEDE_ALARM_TIMEOUT_US 100000
 
-#define CONFIG_QED_BINARY_FW
 /* Global variable to hold absolute path of fw file */
 char fw_file[PATH_MAX];
 
@@ -83,6 +78,7 @@ static int qed_nic_setup(struct ecore_dev *edev)
 	return rc;
 }
 
+#ifdef CONFIG_ECORE_ZIPPED_FW
 static int qed_alloc_stream_mem(struct ecore_dev *edev)
 {
 	int i;
@@ -112,7 +108,9 @@ static void qed_free_stream_mem(struct ecore_dev *edev)
 		OSAL_FREE(p_hwfn->p_dev, p_hwfn->stream);
 	}
 }
+#endif
 
+#ifdef CONFIG_ECORE_BINARY_FW
 static int qed_load_firmware_data(struct ecore_dev *edev)
 {
 	int fd;
@@ -158,6 +156,7 @@ static int qed_load_firmware_data(struct ecore_dev *edev)
 
 	return 0;
 }
+#endif
 
 static void qed_handle_bulletin_change(struct ecore_hwfn *hwfn)
 {
@@ -222,7 +221,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	struct ecore_tunn_start_params tunn_info;
 #endif
 
-#ifdef CONFIG_QED_BINARY_FW
+#ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev)) {
 		rc = qed_load_firmware_data(edev);
 		if (rc) {
@@ -240,7 +239,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	/* set int_coalescing_mode */
 	edev->int_coalescing_mode = ECORE_COAL_MODE_ENABLE;
 
-	/* Should go with CONFIG_QED_BINARY_FW */
+#ifdef CONFIG_ECORE_ZIPPED_FW
 	if (IS_PF(edev)) {
 		/* Allocate stream for unzipping */
 		rc = qed_alloc_stream_mem(edev);
@@ -252,9 +251,10 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	}
 
 	qed_start_iov_task(edev);
+#endif
 
 	/* Start the slowpath */
-#ifdef CONFIG_QED_BINARY_FW
+#ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev))
 		data = edev->firmware;
 #endif
@@ -307,7 +307,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 err2:
 	ecore_resc_free(edev);
 err:
-#ifdef CONFIG_QED_BINARY_FW
+#ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev)) {
 		if (edev->firmware)
 			rte_free(edev->firmware);
@@ -625,7 +625,9 @@ static int qed_slowpath_stop(struct ecore_dev *edev)
 		return -ENODEV;
 
 	if (IS_PF(edev)) {
+#ifdef CONFIG_ECORE_ZIPPED_FW
 		qed_free_stream_mem(edev);
+#endif
 
 #ifdef CONFIG_QED_SRIOV
 		if (IS_QED_ETH_IF(edev))

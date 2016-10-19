@@ -152,6 +152,7 @@ void *osal_dma_alloc_coherent_aligned(struct ecore_dev *p_dev,
 	return mz->addr;
 }
 
+#ifdef CONFIG_ECORE_ZIPPED_FW
 u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 		    u8 *input_buf, u32 max_size, u8 *unzip_buf)
 {
@@ -182,6 +183,7 @@ u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 
 	return p_hwfn->stream->total_out / 4;
 }
+#endif
 
 void
 qede_get_mcp_proto_stats(struct ecore_dev *edev,

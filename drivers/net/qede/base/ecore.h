@@ -9,6 +9,18 @@
 #ifndef __ECORE_H
 #define __ECORE_H
 
+/* @DPDK */
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define CONFIG_ECORE_BINARY_FW
+#define CONFIG_ECORE_ZIPPED_FW
+
+#ifdef CONFIG_ECORE_ZIPPED_FW
+#include <zlib.h>
+#endif
+
 #include "ecore_hsi_common.h"
 #include "ecore_hsi_debug_tools.h"
 #include "ecore_hsi_init_func.h"
@@ -423,9 +435,6 @@ struct storm_stats {
 	u32 len;
 };
 
-#define CONFIG_ECORE_BINARY_FW
-#define CONFIG_ECORE_ZIPPED_FW
-
 struct ecore_fw_data {
 #ifdef CONFIG_ECORE_BINARY_FW
 	struct fw_ver_info *fw_ver_info;
@@ -521,8 +530,8 @@ struct ecore_hwfn {
 	/* QM init */
 	struct ecore_qm_info		qm_info;
 
-	/* Buffer for unzipping firmware data */
 #ifdef CONFIG_ECORE_ZIPPED_FW
+	/* Buffer for unzipping firmware data */
 	void *unzip_buf;
 #endif
 
@@ -674,9 +683,10 @@ struct ecore_dev {
 	bool				b_is_emul_full;
 #endif
 
+#ifdef CONFIG_ECORE_BINARY_FW /* @DPDK */
 	void				*firmware;
-
 	u64				fw_len;
+#endif
 
 };
 
