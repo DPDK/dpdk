@@ -44,6 +44,10 @@
 		(bd)->addr.hi = rte_cpu_to_le_32(U64_HI(maddr)); \
 		(bd)->addr.lo = rte_cpu_to_le_32(U64_LO(maddr)); \
 		(bd)->nbytes = rte_cpu_to_le_16(len); \
+		/* FW 8.10.x specific change */  \
+		(bd)->data.bitfields = ((len) & \
+					 ETH_TX_DATA_1ST_BD_PKT_LEN_MASK) \
+					<< ETH_TX_DATA_1ST_BD_PKT_LEN_SHIFT; \
 	} while (0)
 
 #define CQE_HAS_VLAN(flags) \

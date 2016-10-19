@@ -53,15 +53,27 @@ static void *ecore_vf_pf_prep(struct ecore_hwfn *p_hwfn, u16 type, u16 length)
 	return p_tlv;
 }
 
+static void ecore_vf_pf_req_end(struct ecore_hwfn *p_hwfn,
+				 enum _ecore_status_t req_status)
+{
+	union pfvf_tlvs *resp = p_hwfn->vf_iov_info->pf2vf_reply;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "VF request status = 0x%x, PF reply status = 0x%x\n",
+		   req_status, resp->default_resp.hdr.status);
+
+	OSAL_MUTEX_RELEASE(&p_hwfn->vf_iov_info->mutex);
+}
+
 static int ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 			     u8 *done, u32 resp_size)
 {
-	struct ustorm_vf_zone *zone_data = (struct ustorm_vf_zone *)
-	    ((u8 *)PXP_VF_BAR0_START_USDM_ZONE_B);
 	union vfpf_tlvs *p_req = p_hwfn->vf_iov_info->vf2pf_request;
 	struct ustorm_trigger_vf_zone trigger;
+	struct ustorm_vf_zone *zone_data;
 	int rc = ECORE_SUCCESS, time = 100;
-	u8 pf_id;
+
+	zone_data = (struct ustorm_vf_zone *)PXP_VF_BAR0_START_USDM_ZONE_B;
 
 	/* output tlvs list */
 	ecore_dp_tlv_list(p_hwfn, p_req);
@@ -69,25 +81,25 @@ static int ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 	/* need to add the END TLV to the message size */
 	resp_size += sizeof(struct channel_list_end_tlv);
 
-	if (!p_hwfn->p_dev->sriov_info.b_hw_channel) {
+	if (!p_hwfn->p_dev->b_hw_channel) {
 		rc = OSAL_VF_SEND_MSG2PF(p_hwfn->p_dev,
 					 done,
 					 p_req,
 					 p_hwfn->vf_iov_info->pf2vf_reply,
 					 sizeof(union vfpf_tlvs), resp_size);
 		/* TODO - no prints about message ? */
-		goto exit;
+		return rc;
 	}
 
 	/* Send TLVs over HW channel */
 	OSAL_MEMSET(&trigger, 0, sizeof(struct ustorm_trigger_vf_zone));
 	trigger.vf_pf_msg_valid = 1;
-	/* TODO - FW should remove this requirement */
-	pf_id = GET_FIELD(p_hwfn->hw_info.concrete_fid, PXP_CONCRETE_FID_PFID);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "VF -> PF [%02x] message: [%08x, %08x] --> %p, %08x --> %p\n",
-		   pf_id,
+		   "VF -> PF [%02x] message: [%08x, %08x] --> %p,"
+		   " %08x --> %p\n",
+		   GET_FIELD(p_hwfn->hw_info.concrete_fid,
+			     PXP_CONCRETE_FID_PFID),
 		   U64_HI(p_hwfn->vf_iov_info->vf2pf_request_phys),
 		   U64_LO(p_hwfn->vf_iov_info->vf2pf_request_phys),
 		   &zone_data->non_trigger.vf_pf_msg_addr,
@@ -109,6 +121,9 @@ static int ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 	REG_WR(p_hwfn, (osal_uintptr_t)&zone_data->trigger,
 	       *((u32 *)&trigger));
 
+	/* When PF would be done with the response, it would write back to the
+	 * `done' address. Poll until then.
+	 */
 	while ((!*done) && time) {
 		OSAL_MSLEEP(25);
 		time--;
@@ -119,22 +134,41 @@ static int ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 			   "VF <-- PF Timeout [Type %d]\n",
 			   p_req->first_tlv.tl.type);
 		rc = ECORE_TIMEOUT;
-		goto exit;
+		return rc;
 	} else {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 			   "PF response: %d [Type %d]\n",
 			   *done, p_req->first_tlv.tl.type);
 	}
 
-exit:
-	OSAL_MUTEX_RELEASE(&p_hwfn->vf_iov_info->mutex);
-
 	return rc;
 }
 
 #define VF_ACQUIRE_THRESH 3
-#define VF_ACQUIRE_MAC_FILTERS 1
-#define VF_ACQUIRE_MC_FILTERS 10
+static void ecore_vf_pf_acquire_reduce_resc(struct ecore_hwfn *p_hwfn,
+					    struct vf_pf_resc_request *p_req,
+					    struct pf_vf_resc *p_resp)
+{
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "PF unwilling to fullill resource request: rxq [%02x/%02x]"
+		   " txq [%02x/%02x] sbs [%02x/%02x] mac [%02x/%02x]"
+		   " vlan [%02x/%02x] mc [%02x/%02x]."
+		   " Try PF recommended amount\n",
+		   p_req->num_rxqs, p_resp->num_rxqs,
+		   p_req->num_rxqs, p_resp->num_txqs,
+		   p_req->num_sbs, p_resp->num_sbs,
+		   p_req->num_mac_filters, p_resp->num_mac_filters,
+		   p_req->num_vlan_filters, p_resp->num_vlan_filters,
+		   p_req->num_mc_filters, p_resp->num_mc_filters);
+
+	/* humble our request */
+	p_req->num_txqs = p_resp->num_txqs;
+	p_req->num_rxqs = p_resp->num_rxqs;
+	p_req->num_sbs = p_resp->num_sbs;
+	p_req->num_mac_filters = p_resp->num_mac_filters;
+	p_req->num_vlan_filters = p_resp->num_vlan_filters;
+	p_req->num_mc_filters = p_resp->num_mc_filters;
+}
 
 static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 {
@@ -142,26 +176,24 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	struct pfvf_acquire_resp_tlv *resp = &p_iov->pf2vf_reply->acquire_resp;
 	struct pf_vf_pfdev_info *pfdev_info = &resp->pfdev_info;
 	struct ecore_vf_acquire_sw_info vf_sw_info;
-	struct vfpf_acquire_tlv *req;
-	int rc = 0, attempts = 0;
+	struct vf_pf_resc_request *p_resc;
 	bool resources_acquired = false;
-
-	/* @@@ TBD: MichalK take this from somewhere else... */
-	u8 rx_count = 1, tx_count = 1, num_sbs = 1;
-	u8 num_mac = VF_ACQUIRE_MAC_FILTERS, num_mc = VF_ACQUIRE_MC_FILTERS;
+	struct vfpf_acquire_tlv *req;
+	int attempts = 0;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_ACQUIRE, sizeof(*req));
+	p_resc = &req->resc_request;
 
 	/* @@@ TBD: PF may not be ready bnx2x_get_vf_id... */
 	req->vfdev_info.opaque_fid = p_hwfn->hw_info.opaque_fid;
 
-	req->resc_request.num_rxqs = rx_count;
-	req->resc_request.num_txqs = tx_count;
-	req->resc_request.num_sbs = num_sbs;
-	req->resc_request.num_mac_filters = num_mac;
-	req->resc_request.num_mc_filters = num_mc;
-	req->resc_request.num_vlan_filters = ECORE_ETH_VF_NUM_VLAN_FILTERS;
+	p_resc->num_rxqs = ECORE_MAX_VF_CHAINS_PER_PF;
+	p_resc->num_txqs = ECORE_MAX_VF_CHAINS_PER_PF;
+	p_resc->num_sbs = ECORE_MAX_VF_CHAINS_PER_PF;
+	p_resc->num_mac_filters = ECORE_ETH_VF_NUM_MAC_FILTERS;
+	p_resc->num_vlan_filters = ECORE_ETH_VF_NUM_VLAN_FILTERS;
 
 	OSAL_MEMSET(&vf_sw_info, 0, sizeof(vf_sw_info));
 	OSAL_VF_FILL_ACQUIRE_RESC_REQ(p_hwfn, &req->resc_request, &vf_sw_info);
@@ -172,9 +204,11 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	req->vfdev_info.fw_minor = FW_MINOR_VERSION;
 	req->vfdev_info.fw_revision = FW_REVISION_VERSION;
 	req->vfdev_info.fw_engineering = FW_ENGINEERING_VERSION;
+	req->vfdev_info.eth_fp_hsi_major = ETH_HSI_VER_MAJOR;
+	req->vfdev_info.eth_fp_hsi_minor = ETH_HSI_VER_MINOR;
 
-	if (vf_sw_info.override_fw_version)
-		req->vfdev_info.capabilties |= VFPF_ACQUIRE_CAP_OVERRIDE_FW_VER;
+	/* Fill capability field with any non-deprecated config we support */
+	req->vfdev_info.capabilities |= VFPF_ACQUIRE_CAP_100G;
 
 	/* pf 2 vf bulletin board address */
 	req->bulletin_addr = p_iov->bulletin.phys;
@@ -188,6 +222,10 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	while (!resources_acquired) {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 			   "attempting to acquire resources\n");
+
+		/* Clear response buffer, as this might be a re-send */
+		OSAL_MEMSET(p_iov->pf2vf_reply, 0,
+			    sizeof(union pfvf_tlvs));
 
 		/* send acquire request */
 		rc = ecore_send_msg2pf(p_hwfn,
@@ -203,46 +241,83 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 
 		attempts++;
 
-		/* PF agrees to allocate our resources */
 		if (resp->hdr.status == PFVF_STATUS_SUCCESS) {
+			/* PF agrees to allocate our resources */
+			if (!(resp->pfdev_info.capabilities &
+			      PFVF_ACQUIRE_CAP_POST_FW_OVERRIDE)) {
+				/* It's possible legacy PF mistakenly accepted;
+				 * but we don't care - simply mark it as
+				 * legacy and continue.
+				 */
+				req->vfdev_info.capabilities |=
+					VFPF_ACQUIRE_CAP_PRE_FP_HSI;
+			}
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 				   "resources acquired\n");
 			resources_acquired = true;
 		} /* PF refuses to allocate our resources */
-		else if (resp->hdr.status ==
-			 PFVF_STATUS_NO_RESOURCE &&
+		else if (resp->hdr.status == PFVF_STATUS_NO_RESOURCE &&
 			 attempts < VF_ACQUIRE_THRESH) {
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "PF unwilling to fullfill resource request. Try PF recommended amount\n");
+			ecore_vf_pf_acquire_reduce_resc(p_hwfn, p_resc,
+							&resp->resc);
 
-			/* humble our request */
-			req->resc_request.num_txqs = resp->resc.num_txqs;
-			req->resc_request.num_rxqs = resp->resc.num_rxqs;
-			req->resc_request.num_sbs = resp->resc.num_sbs;
-			req->resc_request.num_mac_filters =
-			    resp->resc.num_mac_filters;
-			req->resc_request.num_vlan_filters =
-			    resp->resc.num_vlan_filters;
-			req->resc_request.num_mc_filters =
-			    resp->resc.num_mc_filters;
+		} else if (resp->hdr.status == PFVF_STATUS_NOT_SUPPORTED) {
+			if (pfdev_info->major_fp_hsi &&
+			    (pfdev_info->major_fp_hsi != ETH_HSI_VER_MAJOR)) {
+				DP_NOTICE(p_hwfn, false,
+					  "PF uses an incompatible fastpath HSI"
+					  " %02x.%02x [VF requires %02x.%02x]."
+					  " Please change to a VF driver using"
+					  " %02x.xx.\n",
+					  pfdev_info->major_fp_hsi,
+					  pfdev_info->minor_fp_hsi,
+					  ETH_HSI_VER_MAJOR, ETH_HSI_VER_MINOR,
+					  pfdev_info->major_fp_hsi);
+				rc = ECORE_INVAL;
+				goto exit;
+			}
 
-			/* Clear response buffer */
-			OSAL_MEMSET(p_iov->pf2vf_reply, 0,
-				    sizeof(union pfvf_tlvs));
+			if (!pfdev_info->major_fp_hsi) {
+				if (req->vfdev_info.capabilities &
+				    VFPF_ACQUIRE_CAP_PRE_FP_HSI) {
+					DP_NOTICE(p_hwfn, false,
+						  "PF uses very old drivers."
+						  " Please change to a VF"
+						  " driver using no later than"
+						  " 8.8.x.x.\n");
+					rc = ECORE_INVAL;
+					goto exit;
+				} else {
+					DP_INFO(p_hwfn,
+						"PF is old - try re-acquire to"
+						" see if it supports FW-version"
+						" override\n");
+					req->vfdev_info.capabilities |=
+						VFPF_ACQUIRE_CAP_PRE_FP_HSI;
+				}
+			}
 		} else {
 			DP_ERR(p_hwfn,
-			       "PF returned error %d to VF acquisition request\n",
+			       "PF returned err %d to VF acquisition request\n",
 			       resp->hdr.status);
-			return ECORE_AGAIN;
+			rc = ECORE_AGAIN;
+			goto exit;
 		}
 	}
+
+	/* Mark the PF as legacy, if needed */
+	if (req->vfdev_info.capabilities &
+	    VFPF_ACQUIRE_CAP_PRE_FP_HSI)
+		p_iov->b_pre_fp_hsi = true;
 
 	rc = OSAL_VF_UPDATE_ACQUIRE_RESC_RESP(p_hwfn, &resp->resc);
 	if (rc) {
 		DP_NOTICE(p_hwfn, true,
-			  "VF_UPDATE_ACQUIRE_RESC_RESP Failed: status = 0x%x.\n",
+			  "VF_UPDATE_ACQUIRE_RESC_RESP Failed:"
+			  " status = 0x%x.\n",
 			  rc);
-		return ECORE_AGAIN;
+		rc = ECORE_AGAIN;
+		goto exit;
 	}
 
 	/* Update bulletin board size with response from PF */
@@ -256,129 +331,127 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 		ECORE_IS_BB(p_hwfn->p_dev) ? "BB" : "AH",
 		CHIP_REV_IS_A0(p_hwfn->p_dev) ? 0 : 1);
 
-	/* @@@TBD MichalK: Fw ver... */
-	/* strlcpy(p_hwfn->fw_ver, p_hwfn->acquire_resp.pfdev_info.fw_ver,
-	 *  sizeof(p_hwfn->fw_ver));
-	 */
-
 	p_hwfn->p_dev->chip_num = pfdev_info->chip_num & 0xffff;
 
-	return 0;
+	/* Learn of the possibility of CMT */
+	if (IS_LEAD_HWFN(p_hwfn)) {
+		if (resp->pfdev_info.capabilities & PFVF_ACQUIRE_CAP_100G) {
+			DP_NOTICE(p_hwfn, false, "100g VF\n");
+			p_hwfn->p_dev->num_hwfns = 2;
+		}
 	}
 
-enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_dev *p_dev)
-{
-	enum _ecore_status_t rc = ECORE_NOMEM;
-	struct ecore_vf_iov *p_sriov;
-	struct ecore_hwfn *p_hwfn = &p_dev->hwfns[0];	/* @@@TBD CMT */
+	/* @DPDK */
+	if ((~p_iov->b_pre_fp_hsi &
+	    ETH_HSI_VER_MINOR) &&
+	    (resp->pfdev_info.minor_fp_hsi < ETH_HSI_VER_MINOR))
+		DP_INFO(p_hwfn,
+			"PF is using older fastpath HSI;"
+			" %02x.%02x is configured\n",
+			ETH_HSI_VER_MAJOR,
+			resp->pfdev_info.minor_fp_hsi);
 
-	p_dev->num_hwfns = 1;	/* @@@TBD CMT must be fixed... */
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
-	p_hwfn->regview = p_dev->regview;
-	if (p_hwfn->regview == OSAL_NULL) {
-		DP_ERR(p_hwfn,
-		       "regview should be initialized before"
-			" ecore_vf_hw_prepare is called\n");
-		return ECORE_INVAL;
+	return rc;
 }
+
+enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_vf_iov *p_iov;
+	u32 reg;
+
+	/* Set number of hwfns - might be overridden once leading hwfn learns
+	 * actual configuration from PF.
+	 */
+	if (IS_LEAD_HWFN(p_hwfn))
+		p_hwfn->p_dev->num_hwfns = 1;
 
 	/* Set the doorbell bar. Assumption: regview is set */
 	p_hwfn->doorbells = (u8 OSAL_IOMEM *)p_hwfn->regview +
 	    PXP_VF_BAR0_START_DQ;
 
-	p_hwfn->hw_info.opaque_fid = (u16)REG_RD(p_hwfn,
-					  PXP_VF_BAR0_ME_OPAQUE_ADDRESS);
+	reg = PXP_VF_BAR0_ME_OPAQUE_ADDRESS;
+	p_hwfn->hw_info.opaque_fid = (u16)REG_RD(p_hwfn, reg);
 
-	p_hwfn->hw_info.concrete_fid = REG_RD(p_hwfn,
-				      PXP_VF_BAR0_ME_CONCRETE_ADDRESS);
+	reg = PXP_VF_BAR0_ME_CONCRETE_ADDRESS;
+	p_hwfn->hw_info.concrete_fid = REG_RD(p_hwfn, reg);
 
 	/* Allocate vf sriov info */
-	p_sriov = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(*p_sriov));
-	if (!p_sriov) {
+	p_iov = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(*p_iov));
+	if (!p_iov) {
 		DP_NOTICE(p_hwfn, true,
 			  "Failed to allocate `struct ecore_sriov'\n");
 		return ECORE_NOMEM;
 	}
 
-	OSAL_MEMSET(p_sriov, 0, sizeof(*p_sriov));
+	OSAL_MEMSET(p_iov, 0, sizeof(*p_iov));
 
 	/* Allocate vf2pf msg */
-	p_sriov->vf2pf_request = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
-							 &p_sriov->
+	p_iov->vf2pf_request = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
+							 &p_iov->
 							 vf2pf_request_phys,
 							 sizeof(union
 								vfpf_tlvs));
-	if (!p_sriov->vf2pf_request) {
+	if (!p_iov->vf2pf_request) {
 		DP_NOTICE(p_hwfn, true,
 			 "Failed to allocate `vf2pf_request' DMA memory\n");
-		goto free_p_sriov;
+		goto free_p_iov;
 	}
 
-	p_sriov->pf2vf_reply = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
-						       &p_sriov->
+	p_iov->pf2vf_reply = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
+						       &p_iov->
 						       pf2vf_reply_phys,
 						       sizeof(union pfvf_tlvs));
-	if (!p_sriov->pf2vf_reply) {
+	if (!p_iov->pf2vf_reply) {
 		DP_NOTICE(p_hwfn, true,
 			  "Failed to allocate `pf2vf_reply' DMA memory\n");
 		goto free_vf2pf_request;
 	}
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "VF's Request mailbox [%p virt 0x%" PRIx64 " phys], "
-		   "Response mailbox [%p virt 0x%" PRIx64 " phys]\n",
-		   p_sriov->vf2pf_request,
-		   (u64)p_sriov->vf2pf_request_phys,
-		   p_sriov->pf2vf_reply, (u64)p_sriov->pf2vf_reply_phys);
+		   "VF's Request mailbox [%p virt 0x%lx phys], "
+		   "Response mailbox [%p virt 0x%lx phys]\n",
+		   p_iov->vf2pf_request,
+		   (unsigned long)p_iov->vf2pf_request_phys,
+		   p_iov->pf2vf_reply,
+		   (unsigned long)p_iov->pf2vf_reply_phys);
 
 	/* Allocate Bulletin board */
-	p_sriov->bulletin.size = sizeof(struct ecore_bulletin_content);
-	p_sriov->bulletin.p_virt = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
-							   &p_sriov->bulletin.
+	p_iov->bulletin.size = sizeof(struct ecore_bulletin_content);
+	p_iov->bulletin.p_virt = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
+							   &p_iov->bulletin.
 							   phys,
-							   p_sriov->bulletin.
+							   p_iov->bulletin.
 							   size);
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "VF's bulletin Board [%p virt 0x%" PRIx64 " phys 0x%08x bytes]\n",
-		   p_sriov->bulletin.p_virt, (u64)p_sriov->bulletin.phys,
-		   p_sriov->bulletin.size);
+		   "VF's bulletin Board [%p virt 0x%lx phys 0x%08x bytes]\n",
+		   p_iov->bulletin.p_virt, (unsigned long)p_iov->bulletin.phys,
+		   p_iov->bulletin.size);
 
-	OSAL_MUTEX_ALLOC(p_hwfn, &p_sriov->mutex);
-	OSAL_MUTEX_INIT(&p_sriov->mutex);
+	OSAL_MUTEX_ALLOC(p_hwfn, &p_iov->mutex);
+	OSAL_MUTEX_INIT(&p_iov->mutex);
 
-	p_hwfn->vf_iov_info = p_sriov;
+	p_hwfn->vf_iov_info = p_iov;
 
 	p_hwfn->hw_info.personality = ECORE_PCI_ETH;
 
-	/* First VF needs to query for information from PF */
-	if (!p_hwfn->my_id)
-		rc = ecore_vf_pf_acquire(p_hwfn);
-
-	return rc;
+	return ecore_vf_pf_acquire(p_hwfn);
 
 free_vf2pf_request:
-	OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev, p_sriov->vf2pf_request,
-			       p_sriov->vf2pf_request_phys,
+	OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev, p_iov->vf2pf_request,
+			       p_iov->vf2pf_request_phys,
 			       sizeof(union vfpf_tlvs));
-free_p_sriov:
-	OSAL_FREE(p_hwfn->p_dev, p_sriov);
+free_p_iov:
+	OSAL_FREE(p_hwfn->p_dev, p_iov);
 
-	return rc;
+	return ECORE_NOMEM;
 }
 
-enum _ecore_status_t ecore_vf_pf_init(struct ecore_hwfn *p_hwfn)
-{
-	p_hwfn->b_int_enabled = 1;
-
-	return 0;
-}
-
-/* TEMP TEMP until in HSI */
 #define TSTORM_QZONE_START   PXP_VF_BAR0_START_SDM_ZONE_A
 #define MSTORM_QZONE_START(dev)   (TSTORM_QZONE_START + \
 				   (TSTORM_QZONE_SIZE * NUM_OF_L2_QUEUES(dev)))
-#define USTORM_QZONE_START(dev)   (MSTORM_QZONE_START + \
-				   (MSTORM_QZONE_SIZE * NUM_OF_L2_QUEUES(dev)))
 
 enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 					   u8 rx_qid,
@@ -391,16 +464,12 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 					   void OSAL_IOMEM **pp_prod)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_start_queue_resp_tlv *resp;
 	struct vfpf_start_rxq_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
 	int rc;
-	u8 hw_qid;
-	u64 init_prod_val = 0;
 
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_START_RXQ, sizeof(*req));
-
-	/* @@@TBD MichalK TPA */
 
 	req->rx_qid = rx_qid;
 	req->cqe_pbl_addr = cqe_pbl_addr;
@@ -408,34 +477,60 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 	req->rxq_addr = bd_chain_phys_addr;
 	req->hw_sb = sb;
 	req->sb_index = sb_index;
-	req->hc_rate = 0;	/* @@@TBD MichalK -> host coalescing! */
 	req->bd_max_bytes = bd_max_bytes;
-	req->stat_id = -1;	/* No stats at the moment */
+	req->stat_id = -1; /* Keep initialized, for future compatibility */
+
+	/* If PF is legacy, we'll need to calculate producers ourselves
+	 * as well as clean them.
+	 */
+	if (pp_prod && p_iov->b_pre_fp_hsi) {
+		u8 hw_qid = p_iov->acquire_resp.resc.hw_qid[rx_qid];
+		u32 init_prod_val = 0;
+
+		*pp_prod = (u8 OSAL_IOMEM *)p_hwfn->regview +
+			   MSTORM_QZONE_START(p_hwfn->p_dev) +
+			   (hw_qid) * MSTORM_QZONE_SIZE;
+
+		/* Init the rcq, rx bd and rx sge (if valid) producers to 0 */
+		__internal_ram_wr(p_hwfn, *pp_prod, sizeof(u32),
+				  (u32 *)(&init_prod_val));
+	}
 
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
-	if (pp_prod) {
-		hw_qid = p_iov->acquire_resp.resc.hw_qid[rx_qid];
-
-		*pp_prod = (u8 OSAL_IOMEM *)p_hwfn->regview +
-			   MSTORM_QZONE_START(p_hwfn->p_dev) +
-		    (hw_qid) * MSTORM_QZONE_SIZE +
-		    OFFSETOF(struct mstorm_eth_queue_zone, rx_producers);
-
-		/* Init the rcq, rx bd and rx sge (if valid) producers to 0 */
-		__internal_ram_wr(p_hwfn, *pp_prod, sizeof(u64),
-				  (u32 *)(&init_prod_val));
-	}
-
+	resp = &p_iov->pf2vf_reply->queue_start;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
+
+	/* Learn the address of the producer from the response */
+	if (pp_prod && !p_iov->b_pre_fp_hsi) {
+		u32 init_prod_val = 0;
+
+		*pp_prod = (u8 OSAL_IOMEM *)p_hwfn->regview + resp->offset;
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "Rxq[0x%02x]: producer at %p [offset 0x%08x]\n",
+			   rx_qid, *pp_prod, resp->offset);
+
+		/* Init the rcq, rx bd and rx sge (if valid) producers to 0.
+		 * It was actually the PF's responsibility, but since some
+		 * old PFs might fail to do so, we do this as well.
+		 */
+		OSAL_BUILD_BUG_ON(ETH_HSI_VER_MAJOR != 3);
+		__internal_ram_wr(p_hwfn, *pp_prod, sizeof(u32),
+				  (u32 *)&init_prod_val);
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
@@ -445,17 +540,12 @@ enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_stop_rxqs_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
+	struct pfvf_def_resp_tlv *resp;
 	int rc;
 
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_STOP_RXQS, sizeof(*req));
 
-	/* @@@TBD MichalK TPA */
-
-	/* @@@TBD MichalK - relevant ???
-	 * flags  VFPF_QUEUE_FLG_OV VFPF_QUEUE_FLG_VLAN
-	 */
 	req->rx_qid = rx_qid;
 	req->num_rxqs = 1;
 	req->cqe_completion = cqe_completion;
@@ -465,12 +555,18 @@ enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
+	resp = &p_iov->pf2vf_reply->default_resp;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
@@ -484,14 +580,12 @@ enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 					   void OSAL_IOMEM **pp_doorbell)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_start_queue_resp_tlv *resp;
 	struct vfpf_start_txq_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
 	int rc;
 
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_START_TXQ, sizeof(*req));
-
-	/* @@@TBD MichalK TPA */
 
 	req->tx_qid = tx_queue_id;
 
@@ -500,27 +594,43 @@ enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 	req->pbl_size = pbl_size;
 	req->hw_sb = sb;
 	req->sb_index = sb_index;
-	req->hc_rate = 0;	/* @@@TBD MichalK -> host coalescing! */
-	req->flags = 0;		/* @@@TBD MichalK -> flags... */
 
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
+	resp  = &p_iov->pf2vf_reply->queue_start;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
 
 	if (pp_doorbell) {
-		u8 cid = p_iov->acquire_resp.resc.cid[tx_queue_id];
+		/* Modern PFs provide the actual offsets, while legacy
+		 * provided only the queue id.
+		 */
+		if (!p_iov->b_pre_fp_hsi) {
+			*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
+						       resp->offset;
+		} else {
+			u8 cid = p_iov->acquire_resp.resc.cid[tx_queue_id];
 
 		*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
 				DB_ADDR_VF(cid, DQ_DEMS_LEGACY);
 		}
+
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "Txq[0x%02x]: doorbell at %p [offset 0x%08x]\n",
+			   tx_queue_id, *pp_doorbell, resp->offset);
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
@@ -529,17 +639,12 @@ enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn, u16 tx_qid)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_stop_txqs_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
+	struct pfvf_def_resp_tlv *resp;
 	int rc;
 
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_STOP_TXQS, sizeof(*req));
 
-	/* @@@TBD MichalK TPA */
-
-	/* @@@TBD MichalK - relevant ??? flags
-	 * VFPF_QUEUE_FLG_OV VFPF_QUEUE_FLG_VLAN
-	 */
 	req->tx_qid = tx_qid;
 	req->num_txqs = 1;
 
@@ -548,12 +653,18 @@ enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn, u16 tx_qid)
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
+	resp = &p_iov->pf2vf_reply->default_resp;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
@@ -586,10 +697,15 @@ enum _ecore_status_t ecore_vf_pf_rxqs_update(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
@@ -602,7 +718,7 @@ ecore_vf_pf_vport_start(struct ecore_hwfn *p_hwfn, u8 vport_id,
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_vport_start_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
+	struct pfvf_def_resp_tlv *resp;
 	int rc, i;
 
 	/* clear mailbox and prep first tlv */
@@ -625,12 +741,18 @@ ecore_vf_pf_vport_start(struct ecore_hwfn *p_hwfn, u8 vport_id,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
+	resp  = &p_iov->pf2vf_reply->default_resp;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
@@ -652,12 +774,54 @@ enum _ecore_status_t ecore_vf_pf_vport_stop(struct ecore_hwfn *p_hwfn)
 
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
+}
+
+static bool
+ecore_vf_handle_vp_update_is_needed(struct ecore_hwfn *p_hwfn,
+				    struct ecore_sp_vport_update_params *p_data,
+				    u16 tlv)
+{
+	switch (tlv) {
+	case CHANNEL_TLV_VPORT_UPDATE_ACTIVATE:
+		return !!(p_data->update_vport_active_rx_flg ||
+			  p_data->update_vport_active_tx_flg);
+	case CHANNEL_TLV_VPORT_UPDATE_TX_SWITCH:
+#ifndef ASIC_ONLY
+		/* FPGA doesn't have PVFC and so can't support tx-switching */
+		return !!(p_data->update_tx_switching_flg &&
+			  !CHIP_REV_IS_FPGA(p_hwfn->p_dev));
+#else
+		return !!p_data->update_tx_switching_flg;
+#endif
+	case CHANNEL_TLV_VPORT_UPDATE_VLAN_STRIP:
+		return !!p_data->update_inner_vlan_removal_flg;
+	case CHANNEL_TLV_VPORT_UPDATE_ACCEPT_ANY_VLAN:
+		return !!p_data->update_accept_any_vlan_flg;
+	case CHANNEL_TLV_VPORT_UPDATE_MCAST:
+		return !!p_data->update_approx_mcast_flg;
+	case CHANNEL_TLV_VPORT_UPDATE_ACCEPT_PARAM:
+		return !!(p_data->accept_flags.update_rx_mode_config ||
+			  p_data->accept_flags.update_tx_mode_config);
+	case CHANNEL_TLV_VPORT_UPDATE_RSS:
+		return !!p_data->rss_params;
+	case CHANNEL_TLV_VPORT_UPDATE_SGE_TPA:
+		return !!p_data->sge_tpa_params;
+	default:
+		DP_INFO(p_hwfn, "Unexpected vport-update TLV[%d] %s\n",
+			tlv, ecore_channel_tlvs_string[tlv]);
+		return false;
+	}
 }
 
 static void
@@ -668,96 +832,20 @@ ecore_vf_handle_vp_update_tlvs_resp(struct ecore_hwfn *p_hwfn,
 	struct pfvf_def_resp_tlv *p_resp;
 	u16 tlv;
 
-	if (p_data->update_vport_active_rx_flg ||
-	    p_data->update_vport_active_tx_flg) {
-		tlv = CHANNEL_TLV_VPORT_UPDATE_ACTIVATE;
-		p_resp = (struct pfvf_def_resp_tlv *)
-		    ecore_iov_search_list_tlvs(p_hwfn, p_iov->pf2vf_reply, tlv);
-		if (p_resp && p_resp->hdr.status)
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VP update activate tlv configured\n");
-		else
-			DP_NOTICE(p_hwfn, true,
-				  "VP update activate tlv config failed\n");
-	}
+	for (tlv = CHANNEL_TLV_VPORT_UPDATE_ACTIVATE;
+	     tlv < CHANNEL_TLV_VPORT_UPDATE_MAX;
+	     tlv++) {
+		if (!ecore_vf_handle_vp_update_is_needed(p_hwfn, p_data, tlv))
+			continue;
 
-	if (p_data->update_tx_switching_flg) {
-		tlv = CHANNEL_TLV_VPORT_UPDATE_TX_SWITCH;
 		p_resp = (struct pfvf_def_resp_tlv *)
 		    ecore_iov_search_list_tlvs(p_hwfn, p_iov->pf2vf_reply, tlv);
 		if (p_resp && p_resp->hdr.status)
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VP update tx switch tlv configured\n");
-#ifndef ASIC_ONLY
-		else if (CHIP_REV_IS_FPGA(p_hwfn->p_dev))
-			DP_NOTICE(p_hwfn, false,
-				  "FPGA: Skip checking whether PF"
-				  " replied to Tx-switching request\n");
-#endif
-		else
-			DP_NOTICE(p_hwfn, true,
-				  "VP update tx switch tlv config failed\n");
-	}
-
-	if (p_data->update_inner_vlan_removal_flg) {
-		tlv = CHANNEL_TLV_VPORT_UPDATE_VLAN_STRIP;
-		p_resp = (struct pfvf_def_resp_tlv *)
-		    ecore_iov_search_list_tlvs(p_hwfn, p_iov->pf2vf_reply, tlv);
-		if (p_resp && p_resp->hdr.status)
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VP update vlan strip tlv configured\n");
-		else
-			DP_NOTICE(p_hwfn, true,
-				  "VP update vlan strip tlv config failed\n");
-	}
-
-	if (p_data->update_approx_mcast_flg) {
-		tlv = CHANNEL_TLV_VPORT_UPDATE_MCAST;
-		p_resp = (struct pfvf_def_resp_tlv *)
-		    ecore_iov_search_list_tlvs(p_hwfn, p_iov->pf2vf_reply, tlv);
-		if (p_resp && p_resp->hdr.status)
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VP update mcast tlv configured\n");
-		else
-			DP_NOTICE(p_hwfn, true,
-				  "VP update mcast tlv config failed\n");
-	}
-
-	if (p_data->accept_flags.update_rx_mode_config ||
-	    p_data->accept_flags.update_tx_mode_config) {
-		tlv = CHANNEL_TLV_VPORT_UPDATE_ACCEPT_PARAM;
-		p_resp = (struct pfvf_def_resp_tlv *)
-		    ecore_iov_search_list_tlvs(p_hwfn, p_iov->pf2vf_reply, tlv);
-		if (p_resp && p_resp->hdr.status)
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VP update accept_mode tlv configured\n");
-		else
-			DP_NOTICE(p_hwfn, true,
-				  "VP update accept_mode tlv config failed\n");
-	}
-
-	if (p_data->rss_params) {
-		tlv = CHANNEL_TLV_VPORT_UPDATE_RSS;
-		p_resp = (struct pfvf_def_resp_tlv *)
-		    ecore_iov_search_list_tlvs(p_hwfn, p_iov->pf2vf_reply, tlv);
-		if (p_resp && p_resp->hdr.status)
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VP update rss tlv configured\n");
-		else
-			DP_NOTICE(p_hwfn, true,
-				  "VP update rss tlv config failed\n");
-	}
-
-	if (p_data->sge_tpa_params) {
-		tlv = CHANNEL_TLV_VPORT_UPDATE_SGE_TPA;
-		p_resp = (struct pfvf_def_resp_tlv *)
-		    ecore_iov_search_list_tlvs(p_hwfn, p_iov->pf2vf_reply, tlv);
-		if (p_resp && p_resp->hdr.status)
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VP update sge tpa tlv configured\n");
-		else
-			DP_NOTICE(p_hwfn, true,
-				  "VP update sge tpa tlv config failed\n");
+				   "TLV[%d] type %s Configuration %s\n",
+				   tlv, ecore_channel_tlvs_string[tlv],
+				   (p_resp && p_resp->hdr.status) ? "succeeded"
+								  : "failed");
 	}
 }
 
@@ -765,15 +853,7 @@ enum _ecore_status_t
 ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 			 struct ecore_sp_vport_update_params *p_params)
 {
-	struct vfpf_vport_update_accept_any_vlan_tlv *p_any_vlan_tlv;
-	struct vfpf_vport_update_accept_param_tlv *p_accept_tlv;
-	struct vfpf_vport_update_tx_switch_tlv *p_tx_switch_tlv;
-	struct vfpf_vport_update_mcast_bin_tlv *p_mcast_tlv;
-	struct vfpf_vport_update_vlan_strip_tlv *p_vlan_tlv;
-	struct vfpf_vport_update_sge_tpa_tlv *p_sge_tpa_tlv;
-	struct vfpf_vport_update_activate_tlv *p_act_tlv;
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
-	struct vfpf_vport_update_rss_tlv *p_rss_tlv;
 	struct vfpf_vport_update_tlv *req;
 	struct pfvf_def_resp_tlv *resp;
 	u8 update_rx, update_tx;
@@ -792,6 +872,8 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 
 	/* Prepare extended tlvs */
 	if (update_rx || update_tx) {
+		struct vfpf_vport_update_activate_tlv *p_act_tlv;
+
 		size = sizeof(struct vfpf_vport_update_activate_tlv);
 		p_act_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
 					  CHANNEL_TLV_VPORT_UPDATE_ACTIVATE,
@@ -810,6 +892,8 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_params->update_inner_vlan_removal_flg) {
+		struct vfpf_vport_update_vlan_strip_tlv *p_vlan_tlv;
+
 		size = sizeof(struct vfpf_vport_update_vlan_strip_tlv);
 		p_vlan_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
 					   CHANNEL_TLV_VPORT_UPDATE_VLAN_STRIP,
@@ -820,6 +904,8 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_params->update_tx_switching_flg) {
+		struct vfpf_vport_update_tx_switch_tlv *p_tx_switch_tlv;
+
 		size = sizeof(struct vfpf_vport_update_tx_switch_tlv);
 		tlv = CHANNEL_TLV_VPORT_UPDATE_TX_SWITCH;
 		p_tx_switch_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
@@ -830,6 +916,8 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_params->update_approx_mcast_flg) {
+		struct vfpf_vport_update_mcast_bin_tlv *p_mcast_tlv;
+
 		size = sizeof(struct vfpf_vport_update_mcast_bin_tlv);
 		p_mcast_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
 					    CHANNEL_TLV_VPORT_UPDATE_MCAST,
@@ -845,6 +933,8 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 	update_tx = p_params->accept_flags.update_tx_mode_config;
 
 	if (update_rx || update_tx) {
+		struct vfpf_vport_update_accept_param_tlv *p_accept_tlv;
+
 		tlv = CHANNEL_TLV_VPORT_UPDATE_ACCEPT_PARAM;
 		size = sizeof(struct vfpf_vport_update_accept_param_tlv);
 		p_accept_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset, tlv, size);
@@ -865,6 +955,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 
 	if (p_params->rss_params) {
 		struct ecore_rss_params *rss_params = p_params->rss_params;
+		struct vfpf_vport_update_rss_tlv *p_rss_tlv;
 
 		size = sizeof(struct vfpf_vport_update_rss_tlv);
 		p_rss_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
@@ -893,6 +984,8 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_params->update_accept_any_vlan_flg) {
+		struct vfpf_vport_update_accept_any_vlan_tlv *p_any_vlan_tlv;
+
 		size = sizeof(struct vfpf_vport_update_accept_any_vlan_tlv);
 		tlv = CHANNEL_TLV_VPORT_UPDATE_ACCEPT_ANY_VLAN;
 		p_any_vlan_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
@@ -905,9 +998,10 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_params->sge_tpa_params) {
-		struct ecore_sge_tpa_params *sge_tpa_params =
-		    p_params->sge_tpa_params;
+		struct ecore_sge_tpa_params *sge_tpa_params;
+		struct vfpf_vport_update_sge_tpa_tlv *p_sge_tpa_tlv;
 
+		sge_tpa_params = p_params->sge_tpa_params;
 		size = sizeof(struct vfpf_vport_update_sge_tpa_tlv);
 		p_sge_tpa_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
 					      CHANNEL_TLV_VPORT_UPDATE_SGE_TPA,
@@ -953,12 +1047,17 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, resp_size);
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
 
 	ecore_vf_handle_vp_update_tlvs_resp(p_hwfn, p_params);
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
@@ -966,8 +1065,8 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_vf_pf_reset(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_def_resp_tlv *resp;
 	struct vfpf_first_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
 	int rc;
 
 	/* clear mailbox and prep first tlv */
@@ -978,23 +1077,29 @@ enum _ecore_status_t ecore_vf_pf_reset(struct ecore_hwfn *p_hwfn)
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
+	resp = &p_iov->pf2vf_reply->default_resp;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_AGAIN;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_AGAIN;
+		goto exit;
+	}
 
 	p_hwfn->b_int_enabled = 0;
 
-	return ECORE_SUCCESS;
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
+
+	return rc;
 }
 
 enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_def_resp_tlv *resp;
 	struct vfpf_first_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
 	u32 size;
 	int rc;
 
@@ -1006,16 +1111,15 @@ enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
+	resp = &p_iov->pf2vf_reply->default_resp;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 
 	if (rc == ECORE_SUCCESS && resp->hdr.status != PFVF_STATUS_SUCCESS)
 		rc = ECORE_AGAIN;
 
-	p_hwfn->b_int_enabled = 0;
+	ecore_vf_pf_req_end(p_hwfn, rc);
 
-	/* TODO - might need to revise this for 100g */
-	if (IS_LEAD_HWFN(p_hwfn))
-		OSAL_MUTEX_DEALLOC(&p_iov->mutex);
+	p_hwfn->b_int_enabled = 0;
 
 	if (p_iov->vf2pf_request)
 		OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev,
@@ -1068,7 +1172,7 @@ enum _ecore_status_t ecore_vf_pf_filter_ucast(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_ucast_filter_tlv *req;
-	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
+	struct pfvf_def_resp_tlv *resp;
 	int rc;
 
 	/* Sanitize */
@@ -1090,14 +1194,20 @@ enum _ecore_status_t ecore_vf_pf_filter_ucast(struct ecore_hwfn *p_hwfn,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
+	resp = &p_iov->pf2vf_reply->default_resp;
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
-		return rc;
+		goto exit;
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_AGAIN;
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_AGAIN;
+		goto exit;
+	}
 
-	return ECORE_SUCCESS;
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
+
+	return rc;
 }
 
 enum _ecore_status_t ecore_vf_pf_int_cleanup(struct ecore_hwfn *p_hwfn)
@@ -1117,21 +1227,40 @@ enum _ecore_status_t ecore_vf_pf_int_cleanup(struct ecore_hwfn *p_hwfn)
 
 	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
 	if (rc)
+		goto exit;
+
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		rc = ECORE_INVAL;
+		goto exit;
+	}
+
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
+
 	return rc;
+}
 
-	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
-		return ECORE_INVAL;
+u16 ecore_vf_get_igu_sb_id(struct ecore_hwfn *p_hwfn,
+			   u16               sb_id)
+{
+	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 
-	return ECORE_SUCCESS;
+	if (!p_iov) {
+		DP_NOTICE(p_hwfn, true, "vf_sriov_info isn't initialized\n");
+		return 0;
+	}
+
+	return p_iov->acquire_resp.resc.hw_sbs[sb_id].hw_sb_id;
 }
 
 enum _ecore_status_t ecore_vf_read_bulletin(struct ecore_hwfn *p_hwfn,
 					    u8 *p_change)
 {
-	struct ecore_bulletin_content shadow;
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
-	u32 crc, crc_size = sizeof(p_iov->bulletin.p_virt->crc);
+	struct ecore_bulletin_content shadow;
+	u32 crc, crc_size;
 
+	crc_size = sizeof(p_iov->bulletin.p_virt->crc);
 	*p_change = 0;
 
 	/* Need to guarantee PF is not in the middle of writing it */
@@ -1156,18 +1285,6 @@ enum _ecore_status_t ecore_vf_read_bulletin(struct ecore_hwfn *p_hwfn,
 	*p_change = 1;
 
 	return ECORE_SUCCESS;
-}
-
-u16 ecore_vf_get_igu_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id)
-{
-	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
-
-	if (!p_iov) {
-		DP_NOTICE(p_hwfn, true, "vf_sriov_info isn't initialized\n");
-		return 0;
-	}
-
-	return p_iov->acquire_resp.resc.hw_sbs[sb_id].hw_sb_id;
 }
 
 void __ecore_vf_get_link_params(struct ecore_hwfn *p_hwfn,
@@ -1315,6 +1432,11 @@ bool ecore_vf_bulletin_get_forced_vlan(struct ecore_hwfn *hwfn, u16 *dst_pvid)
 		*dst_pvid = bulletin->pvid;
 
 	return true;
+}
+
+bool ecore_vf_get_pre_fp_hsi(struct ecore_hwfn *p_hwfn)
+{
+	return p_hwfn->vf_iov_info->b_pre_fp_hsi;
 }
 
 void ecore_vf_get_fw_version(struct ecore_hwfn *p_hwfn,

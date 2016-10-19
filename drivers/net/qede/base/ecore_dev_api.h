@@ -13,8 +13,6 @@
 #include "ecore_chain.h"
 #include "ecore_int_api.h"
 
-struct ecore_tunn_start_params;
-
 /**
  * @brief ecore_init_dp - initialize the debug level
  *
@@ -108,6 +106,7 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev);
  */
 void ecore_hw_stop_fastpath(struct ecore_dev *p_dev);
 
+#ifndef LINUX_REMOVE
 /**
  * @brief ecore_prepare_hibernate -should be called when
  *        the system is going into the hibernate state
@@ -116,6 +115,7 @@ void ecore_hw_stop_fastpath(struct ecore_dev *p_dev);
  *
  */
 void ecore_prepare_hibernate(struct ecore_dev *p_dev);
+#endif
 
 /**
  * @brief ecore_hw_start_fastpath -restart fastpath traffic,
@@ -135,15 +135,25 @@ void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn);
  */
 enum _ecore_status_t ecore_hw_reset(struct ecore_dev *p_dev);
 
+struct ecore_hw_prepare_params {
+	/* personality to initialize */
+	int personality;
+	/* force the driver's default resource allocation */
+	bool drv_resc_alloc;
+	/* check the reg_fifo after any register access */
+	bool chk_reg_fifo;
+};
+
 /**
  * @brief ecore_hw_prepare -
  *
  * @param p_dev
- * @param personality - personality to initialize
+ * @param p_params
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev, int personality);
+enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
+				      struct ecore_hw_prepare_params *p_params);
 
 /**
  * @brief ecore_hw_remove -
@@ -422,28 +432,50 @@ enum _ecore_status_t ecore_llh_add_mac_filter(struct ecore_hwfn *p_hwfn,
  * @param p_filter - MAC to remove
  */
 void ecore_llh_remove_mac_filter(struct ecore_hwfn *p_hwfn,
-				 struct ecore_ptt *p_ptt, u8 *p_filter);
+			     struct ecore_ptt *p_ptt,
+			     u8 *p_filter);
+
+enum ecore_llh_port_filter_type_t {
+	ECORE_LLH_FILTER_ETHERTYPE,
+	ECORE_LLH_FILTER_TCP_SRC_PORT,
+	ECORE_LLH_FILTER_TCP_DEST_PORT,
+	ECORE_LLH_FILTER_TCP_SRC_AND_DEST_PORT,
+	ECORE_LLH_FILTER_UDP_SRC_PORT,
+	ECORE_LLH_FILTER_UDP_DEST_PORT,
+	ECORE_LLH_FILTER_UDP_SRC_AND_DEST_PORT
+};
 
 /**
- * @brief ecore_llh_add_ethertype_filter - configures a ethertype filter in llh
+ * @brief ecore_llh_add_protocol_filter - configures a protocol filter in llh
  *
  * @param p_hwfn
  * @param p_ptt
- * @param filter - ethertype to add
+ * @param source_port_or_eth_type - source port or ethertype to add
+ * @param dest_port - destination port to add
+ * @param type - type of filters and comparing
  */
-enum _ecore_status_t ecore_llh_add_ethertype_filter(struct ecore_hwfn *p_hwfn,
+enum _ecore_status_t
+ecore_llh_add_protocol_filter(struct ecore_hwfn *p_hwfn,
 			      struct ecore_ptt *p_ptt,
-						    u16 filter);
+			      u16 source_port_or_eth_type,
+			      u16 dest_port,
+			      enum ecore_llh_port_filter_type_t type);
 
 /**
- * @brief ecore_llh_remove_ethertype_filter - removes a ethertype llh filter
+ * @brief ecore_llh_remove_protocol_filter - remove a protocol filter in llh
  *
  * @param p_hwfn
  * @param p_ptt
- * @param filter - ethertype to remove
+ * @param source_port_or_eth_type - source port or ethertype to add
+ * @param dest_port - destination port to add
+ * @param type - type of filters and comparing
  */
-void ecore_llh_remove_ethertype_filter(struct ecore_hwfn *p_hwfn,
-				       struct ecore_ptt *p_ptt, u16 filter);
+void
+ecore_llh_remove_protocol_filter(struct ecore_hwfn *p_hwfn,
+				 struct ecore_ptt *p_ptt,
+				 u16 source_port_or_eth_type,
+				 u16 dest_port,
+				 enum ecore_llh_port_filter_type_t type);
 
 /**
  * @brief ecore_llh_clear_all_filters - removes all MAC filters from llh
@@ -455,7 +487,17 @@ void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
 			     struct ecore_ptt *p_ptt);
 
 /**
-*@brief Cleanup of previous driver remains prior to load
+ * @brief ecore_llh_set_function_as_default - set function as default per port
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+enum _ecore_status_t
+ecore_llh_set_function_as_default(struct ecore_hwfn *p_hwfn,
+				  struct ecore_ptt *p_ptt);
+
+/**
+ *@brief Cleanup of previous driver remains prior to load
  *
  * @param p_hwfn
  * @param p_ptt
@@ -464,47 +506,45 @@ void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn *p_hwfn,
-					 struct ecore_ptt *p_ptt,
-					 u16 id, bool is_vf);
-
-/**
- * @brief ecore_test_registers - Perform register tests
- *
- * @param p_hwfn
- * @param p_ptt
- *
- * @return enum _ecore_status_t
- */
-enum _ecore_status_t ecore_test_registers(struct ecore_hwfn *p_hwfn,
-					  struct ecore_ptt *p_ptt);
+enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn	*p_hwfn,
+					 struct ecore_ptt	*p_ptt,
+					 u16			id,
+					 bool			is_vf);
 
 /**
  * @brief ecore_set_rxq_coalesce - Configure coalesce parameters for an Rx queue
+ *    The fact that we can configure coalescing to up to 511, but on varying
+ *    accuracy [the bigger the value the less accurate] up to a mistake of 3usec
+ *    for the highest values.
  *
  * @param p_hwfn
  * @param p_ptt
  * @param coalesce - Coalesce value in micro seconds.
  * @param qid - Queue index.
+ * @param qid - SB Id
  *
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u8 coalesce, u8 qid);
+					    u16 coalesce, u8 qid, u16 sb_id);
 
 /**
  * @brief ecore_set_txq_coalesce - Configure coalesce parameters for a Tx queue
+ *    While the API allows setting coalescing per-qid, all tx queues sharing a
+ *    SB should be in same range [i.e., either 0-0x7f, 0x80-0xff or 0x100-0x1ff]
+ *    otherwise configuration would break.
  *
  * @param p_hwfn
  * @param p_ptt
  * @param coalesce - Coalesce value in micro seconds.
  * @param qid - Queue index.
+ * @param qid - SB Id
  *
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u8 coalesce, u8 qid);
+					    u16 coalesce, u8 qid, u16 sb_id);
 
 #endif

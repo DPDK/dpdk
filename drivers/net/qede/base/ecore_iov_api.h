@@ -9,14 +9,17 @@
 #ifndef __ECORE_SRIOV_API_H__
 #define __ECORE_SRIOV_API_H__
 
+#include "common_hsi.h"
 #include "ecore_status.h"
 
+#define ECORE_ETH_VF_NUM_MAC_FILTERS 1
+#define ECORE_ETH_VF_NUM_VLAN_FILTERS 2
 #define ECORE_VF_ARRAY_LENGTH (3)
 
 #define IS_VF(p_dev)		((p_dev)->b_is_vf)
 #define IS_PF(p_dev)		(!((p_dev)->b_is_vf))
 #ifdef CONFIG_ECORE_SRIOV
-#define IS_PF_SRIOV(p_hwfn)	(!!((p_hwfn)->p_dev->sriov_info.total_vfs))
+#define IS_PF_SRIOV(p_hwfn)	(!!((p_hwfn)->p_dev->p_iov_info))
 #else
 #define IS_PF_SRIOV(p_hwfn)	(0)
 #endif
@@ -37,6 +40,18 @@ enum ecore_iov_vport_update_flag {
 	ECORE_IOV_VP_UPDATE_ACCEPT_ANY_VLAN	= 6,
 	ECORE_IOV_VP_UPDATE_SGE_TPA		= 7,
 	ECORE_IOV_VP_UPDATE_MAX			= 8,
+};
+
+/* PF to VF STATUS is part of vfpf-channel API
+ * and must be forward compatible
+*/
+enum ecore_iov_pf_to_vf_status {
+	PFVF_STATUS_WAITING = 0,
+	PFVF_STATUS_SUCCESS,
+	PFVF_STATUS_FAILURE,
+	PFVF_STATUS_NOT_SUPPORTED,
+	PFVF_STATUS_NO_RESOURCE,
+	PFVF_STATUS_FORCED,
 };
 
 struct ecore_mcp_link_params;
@@ -100,32 +115,58 @@ struct ecore_iov_sw_mbx {
  *
  * @return struct ecore_iov_sw_mbx*
  */
-struct ecore_iov_sw_mbx *ecore_iov_get_vf_sw_mbx(struct ecore_hwfn *p_hwfn,
+struct ecore_iov_sw_mbx*
+ecore_iov_get_vf_sw_mbx(struct ecore_hwfn *p_hwfn,
 			u16 rel_vf_id);
 #endif
 
+/* This struct is part of ecore_dev and contains data relevant to all hwfns;
+ * Initialized only if SR-IOV cpabability is exposed in PCIe config space.
+ */
+struct ecore_hw_sriov_info {
+	/* standard SRIOV capability fields, mostly for debugging */
+	int	pos;		/* capability position */
+	int	nres;		/* number of resources */
+	u32	cap;		/* SR-IOV Capabilities */
+	u16	ctrl;		/* SR-IOV Control */
+	u16	total_vfs;	/* total VFs associated with the PF */
+	u16	num_vfs;        /* number of vfs that have been started */
+	u16	initial_vfs;    /* initial VFs associated with the PF */
+	u16	nr_virtfn;	/* number of VFs available */
+	u16	offset;		/* first VF Routing ID offset */
+	u16	stride;		/* following VF stride */
+	u16	vf_device_id;	/* VF device id */
+	u32	pgsz;		/* page size for BAR alignment */
+	u8	link;		/* Function Dependency Link */
+
+	u32	first_vf_in_pf;
+};
+
 #ifdef CONFIG_ECORE_SRIOV
+#ifndef LINUX_REMOVE
 /**
  * @brief mark/clear all VFs before/after an incoming PCIe sriov
  *        disable.
  *
- * @param p_hwfn
+ * @param p_dev
  * @param to_disable
  */
-void ecore_iov_set_vfs_to_disable(struct ecore_hwfn *p_hwfn, u8 to_disable);
+void ecore_iov_set_vfs_to_disable(struct ecore_dev *p_dev,
+				  u8 to_disable);
 
 /**
- * @brief mark/clear chosen VFs before/after an incoming PCIe
+ * @brief mark/clear chosen VF before/after an incoming PCIe
  *        sriov disable.
  *
- * @param p_hwfn
+ * @param p_dev
+ * @param rel_vf_id
  * @param to_disable
  */
-void ecore_iov_set_vf_to_disable(struct ecore_hwfn *p_hwfn,
-				 u16 rel_vf_id, u8 to_disable);
+void ecore_iov_set_vf_to_disable(struct ecore_dev *p_dev,
+				 u16 rel_vf_id,
+				 u8 to_disable);
 
 /**
- *
  * @brief ecore_iov_init_hw_for_vf - initialize the HW for
  *        enabling access of a VF. Also includes preparing the
  *        IGU for VF access. This needs to be called AFTER hw is
@@ -171,7 +212,6 @@ enum _ecore_status_t ecore_iov_release_hw_for_vf(struct ecore_hwfn *p_hwfn,
 						 struct ecore_ptt *p_ptt,
 						 u16 rel_vf_id);
 
-#ifndef LINUX_REMOVE
 /**
  * @brief ecore_iov_set_vf_ctx - set a context for a given VF
  *
@@ -182,8 +222,8 @@ enum _ecore_status_t ecore_iov_release_hw_for_vf(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_iov_set_vf_ctx(struct ecore_hwfn *p_hwfn,
-					  u16 vf_id, void *ctx);
-#endif
+					  u16 vf_id,
+					  void *ctx);
 
 /**
  * @brief FLR cleanup for all VFs
@@ -333,17 +373,6 @@ enum _ecore_status_t ecore_iov_bulletin_set_mac(struct ecore_hwfn *p_hwfn,
 						u8 *mac, int vfid);
 
 /**
- * @brief Set forced VLAN [pvid] in PFs copy of bulletin board
- *        and configures FW/HW to support the configuration.
- *        Setting of pvid 0 would clear the feature.
- * @param p_hwfn
- * @param pvid
- * @param vfid
- */
-void ecore_iov_bulletin_set_forced_vlan(struct ecore_hwfn *p_hwfn,
-					u16 pvid, int vfid);
-
-/**
  * @brief Set default behaviour of VF in case no vlans are configured for it
  *        whether to accept only untagged traffic or all.
  *        Must be called prior to the VF vport-start.
@@ -378,6 +407,17 @@ void ecore_iov_get_vfs_opaque_fid(struct ecore_hwfn *p_hwfn, int vfid,
  */
 void ecore_iov_get_vfs_vport_id(struct ecore_hwfn *p_hwfn, int vfid,
 				u8 *p_vport_id);
+
+/**
+ * @brief Set forced VLAN [pvid] in PFs copy of bulletin board
+ *        and configures FW/HW to support the configuration.
+ *        Setting of pvid 0 would clear the feature.
+ * @param p_hwfn
+ * @param pvid
+ * @param vfid
+ */
+void ecore_iov_bulletin_set_forced_vlan(struct ecore_hwfn *p_hwfn,
+					u16 pvid, int vfid);
 
 /**
  * @brief Check if VF has VPORT instance. This can be used
@@ -953,4 +993,22 @@ static OSAL_INLINE enum _ecore_status_t ecore_iov_configure_min_tx_rate(
 	return ECORE_INVAL;
 }
 #endif
+
+/**
+ * @brief - Given a VF index, return index of next [including that] active VF.
+ *
+ * @param p_hwfn
+ * @param rel_vf_id
+ *
+ * @return MAX_NUM_VFS in case no further active VFs, otherwise index.
+ */
+u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
+
+#endif /* CONFIG_ECORE_SRIOV */
+
+#define ecore_for_each_vf(_p_hwfn, _i)					\
+	for (_i = ecore_iov_get_next_active_vf(_p_hwfn, 0);		\
+	     _i < MAX_NUM_VFS;						\
+	     _i = ecore_iov_get_next_active_vf(_p_hwfn, _i + 1))
+
 #endif

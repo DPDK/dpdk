@@ -260,6 +260,10 @@ void ecore_dmae_info_free(struct ecore_hwfn	*p_hwfn);
 
 union ecore_qm_pq_params {
 	struct {
+		u8 q_idx;
+	} iscsi;
+
+	struct {
 		u8 tc;
 	} core;
 
@@ -268,10 +272,20 @@ union ecore_qm_pq_params {
 		u8 vf_id;
 		u8 tc;
 	} eth;
+
+	struct {
+		u8 dcqcn;
+		u8 qpid; /* roce relative */
+	} roce;
+
+	struct {
+		u8 qidx;
+	} iwarp;
 };
 
 u16 ecore_get_qm_pq(struct ecore_hwfn	*p_hwfn,
-		    enum protocol_type proto, union ecore_qm_pq_params *params);
+		    enum protocol_type	proto,
+		    union ecore_qm_pq_params *params);
 
 enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
 					const u8 *fw_data);

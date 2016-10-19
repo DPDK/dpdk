@@ -118,6 +118,8 @@ struct ecore_chain {
 	u16 next_page_mask;
 
 	struct ecore_chain_pbl pbl;
+
+	void *dp_ctx;
 };
 
 #define ECORE_CHAIN_PBL_ENTRY_SIZE	(8)
@@ -542,12 +544,13 @@ static OSAL_INLINE void ecore_chain_reset(struct ecore_chain *p_chain)
  * @param intended_use
  * @param mode
  * @param cnt_type
+ * @param dp_ctx
  */
 static OSAL_INLINE void
 ecore_chain_init_params(struct ecore_chain *p_chain, u32 page_cnt, u8 elem_size,
 			enum ecore_chain_use_mode intended_use,
 			enum ecore_chain_mode mode,
-			enum ecore_chain_cnt_type cnt_type)
+			enum ecore_chain_cnt_type cnt_type, void *dp_ctx)
 {
 	/* chain fixed parameters */
 	p_chain->p_virt_addr = OSAL_NULL;
@@ -571,6 +574,8 @@ ecore_chain_init_params(struct ecore_chain *p_chain, u32 page_cnt, u8 elem_size,
 	p_chain->pbl.p_phys_table = 0;
 	p_chain->pbl.p_virt_table = OSAL_NULL;
 	p_chain->pbl.pp_virt_addr_tbl = OSAL_NULL;
+
+	p_chain->dp_ctx = dp_ctx;
 }
 
 /**
@@ -722,5 +727,15 @@ static OSAL_INLINE void ecore_chain_pbl_zero_mem(struct ecore_chain *p_chain)
 		OSAL_MEM_ZERO(p_chain->pbl.pp_virt_addr_tbl[i],
 			      ECORE_CHAIN_PAGE_SIZE);
 }
+
+int ecore_chain_print(struct ecore_chain *p_chain, char *buffer,
+		      u32 buffer_size, u32 *element_indx, u32 stop_indx,
+		      bool print_metadata,
+		      int (*func_ptr_print_element)(struct ecore_chain *p_chain,
+						    void *p_element,
+						    char *buffer),
+		      int (*func_ptr_print_metadata)(struct ecore_chain
+						     *p_chain,
+						     char *buffer));
 
 #endif /* __ECORE_CHAIN_H__ */

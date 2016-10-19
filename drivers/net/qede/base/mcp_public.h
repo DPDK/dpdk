@@ -42,15 +42,22 @@ typedef u32 offsize_t;      /* In DWORDS !!! */
 #define SECTION_SIZE(_offsize)		\
 	(((_offsize & OFFSIZE_SIZE_MASK) >> OFFSIZE_SIZE_SHIFT) << 2)
 
+/* SECTION_ADDR returns the GRC addr of a section, given offsize and index
+ * within section
+ */
 #define SECTION_ADDR(_offsize, idx)	\
-(MCP_REG_SCRATCH + SECTION_OFFSET(_offsize) + (SECTION_SIZE(_offsize) * idx))
+	(MCP_REG_SCRATCH +		\
+	 SECTION_OFFSET(_offsize) + (SECTION_SIZE(_offsize) * idx))
 
+/* SECTION_OFFSIZE_ADDR returns the GRC addr to the offsize address. Use
+ * offsetof, since the OFFSETUP collide with the firmware definition
+ */
 #define SECTION_OFFSIZE_ADDR(_pub_base, _section) \
 	(_pub_base + offsetof(struct mcp_public_data, sections[_section]))
-
 /* PHY configuration */
 struct pmm_phy_cfg {
-	u32 speed; /* 0 = autoneg, 1000/10000/20000/25000/40000/50000/100000 */
+/* 0 = autoneg, 1000/10000/20000/25000/40000/50000/100000 */
+	u32 speed;
 #define PMM_SPEED_AUTONEG   0
 #define PMM_SPEED_SMARTLINQ  0x8
 
@@ -93,12 +100,15 @@ struct pmm_stats {
 	u64 r255; /* 0x02 (Offset 0x10 ) RX 128 to 255 byte frame counter*/
 	u64 r511; /* 0x03 (Offset 0x18 ) RX 256 to 511 byte frame counter*/
 	u64 r1023; /* 0x04 (Offset 0x20 ) RX 512 to 1023 byte frame counter*/
-	u64 r1518; /* 0x05 (Offset 0x28 ) RX 1024 to 1518 byte frame counter */
-	u64 r1522; /* 0x06 (Offset 0x30 ) RX 1519 to 1522 byte VLAN-tagged  */
+/* 0x05 (Offset 0x28 ) RX 1024 to 1518 byte frame counter */
+	u64 r1518;
+/* 0x06 (Offset 0x30 ) RX 1519 to 1522 byte VLAN-tagged frame counter */
+	u64 r1522;
 	u64 r2047; /* 0x07 (Offset 0x38 ) RX 1519 to 2047 byte frame counter*/
 	u64 r4095; /* 0x08 (Offset 0x40 ) RX 2048 to 4095 byte frame counter*/
 	u64 r9216; /* 0x09 (Offset 0x48 ) RX 4096 to 9216 byte frame counter*/
-	u64 r16383; /* 0x0A (Offset 0x50 ) RX 9217 to 16383 byte frame ctr */
+/* 0x0A (Offset 0x50 ) RX 9217 to 16383 byte frame counter */
+	u64 r16383;
 	u64 rfcs;       /* 0x0F (Offset 0x58 ) RX FCS error frame counter*/
 	u64 rxcf;       /* 0x10 (Offset 0x60 ) RX control frame counter*/
 	u64 rxpf;       /* 0x11 (Offset 0x68 ) RX pause frame counter*/
@@ -114,25 +124,36 @@ struct pmm_stats {
 	u64 t255; /* 0x42 (Offset 0xb8 ) TX 128 to 255 byte frame counter*/
 	u64 t511; /* 0x43 (Offset 0xc0 ) TX 256 to 511 byte frame counter*/
 	u64 t1023; /* 0x44 (Offset 0xc8 ) TX 512 to 1023 byte frame counter*/
-	u64 t1518; /* 0x45 (Offset 0xd0 ) TX 1024 to 1518 byte frame counter */
-	u64 t2047; /* 0x47 (Offset 0xd8 ) TX 1519 to 2047 byte frame counter */
-	u64 t4095; /* 0x48 (Offset 0xe0 ) TX 2048 to 4095 byte frame counter */
-	u64 t9216; /* 0x49 (Offset 0xe8 ) TX 4096 to 9216 byte frame counter */
-	u64 t16383; /* 0x4A (Offset 0xf0 ) TX 9217 to 16383 byte frame ctr */
+/* 0x45 (Offset 0xd0 ) TX 1024 to 1518 byte frame counter */
+	u64 t1518;
+/* 0x47 (Offset 0xd8 ) TX 1519 to 2047 byte frame counter */
+	u64 t2047;
+/* 0x48 (Offset 0xe0 ) TX 2048 to 4095 byte frame counter */
+	u64 t4095;
+/* 0x49 (Offset 0xe8 ) TX 4096 to 9216 byte frame counter */
+	u64 t9216;
+/* 0x4A (Offset 0xf0 ) TX 9217 to 16383 byte frame counter */
+	u64 t16383;
 	u64 txpf;       /* 0x50 (Offset 0xf8 ) TX pause frame counter */
 	u64 txpp;       /* 0x51 (Offset 0x100) TX PFC frame counter */
-	u64 tlpiec; /* 0x6C (Offset 0x108) Transmit Logical Type LLFC */
+/* 0x6C (Offset 0x108) Transmit Logical Type LLFC message counter */
+	u64 tlpiec;
 	u64 tncl; /* 0x6E (Offset 0x110) Transmit Total Collision Counter */
 	u64 rbyte;      /* 0x3d (Offset 0x118) RX byte counter */
 	u64 rxuca;      /* 0x0c (Offset 0x120) RX UC frame counter */
 	u64 rxmca;      /* 0x0d (Offset 0x128) RX MC frame counter */
 	u64 rxbca;      /* 0x0e (Offset 0x130) RX BC frame counter */
-	u64 rxpok; /* 0x22 (Offset 0x138) RX good frame */
+/* 0x22 (Offset 0x138) RX good frame (good CRC, not oversized, no ERROR) */
+	u64 rxpok;
 	u64 tbyte;      /* 0x6f (Offset 0x140) TX byte counter */
 	u64 txuca;      /* 0x4d (Offset 0x148) TX UC frame counter */
 	u64 txmca;      /* 0x4e (Offset 0x150) TX MC frame counter */
 	u64 txbca;      /* 0x4f (Offset 0x158) TX BC frame counter */
 	u64 txcf;       /* 0x54 (Offset 0x160) TX control frame counter */
+/* HSI - Cannot add more stats to this struct. If needed, then need to open new
+ * struct
+ */
+
 };
 
 struct brb_stats {
@@ -145,25 +166,26 @@ struct port_stats {
 	struct pmm_stats pmm;
 };
 
-/*-----+-----------------------------------------------------------------------
- * Chip | Number and       | Ports in| Ports in|2 PHY-s |# of ports|# of engines
- *      | rate of physical | team #1 | team #2 |are used|per path  | (paths)
- *      | ports            |         |         |        |          |
- *======+==================+=========+=========+========+======================
- * BB   | 1x100G           | This is special mode, where there are 2 HW func
+/*----+------------------------------------------------------------------------
+ * C  | Number and | Ports in| Ports in|2 PHY-s |# of ports|# of engines
+ * h  | rate of    | team #1 | team #2 |are used|per path  | (paths)
+ * i  | physical   |         |         |        |          | enabled
+ * p  | ports      |         |         |        |          |
+ *====+============+=========+=========+========+==========+===================
+ * BB | 1x100G     | This is special mode, where there are actually 2 HW func
  * BB | 2x10/20Gbps| 0,1     | NA      |  No    | 1        | 1
  * BB | 2x40 Gbps  | 0,1     | NA      |  Yes   | 1        | 1
  * BB | 2x50Gbps   | 0,1     | NA      |  No    | 1        | 1
- * BB   | 4x10Gbps         | 0,2     | 1,3     |  No    | 1/2      | 1,2
- * BB   | 4x10Gbps         | 0,1     | 2,3     |  No    | 1/2      | 1,2
- * BB   | 4x10Gbps         | 0,3     | 1,2     |  No    | 1/2      | 1,2
+ * BB | 4x10Gbps   | 0,2     | 1,3     |  No    | 1/2      | 1,2 (2 is optional)
+ * BB | 4x10Gbps   | 0,1     | 2,3     |  No    | 1/2      | 1,2 (2 is optional)
+ * BB | 4x10Gbps   | 0,3     | 1,2     |  No    | 1/2      | 1,2 (2 is optional)
  * BB | 4x10Gbps   | 0,1,2,3 | NA      |  No    | 1        | 1
  * AH | 2x10/20Gbps| 0,1     | NA      |  NA    | 1        | NA
  * AH | 4x10Gbps   | 0,1     | 2,3     |  NA    | 2        | NA
  * AH | 4x10Gbps   | 0,2     | 1,3     |  NA    | 2        | NA
  * AH | 4x10Gbps   | 0,3     | 1,2     |  NA    | 2        | NA
  * AH | 4x10Gbps   | 0,1,2,3 | NA      |  NA    | 1        | NA
- *======+==================+=========+=========+========+=======================
+ *====+============+=========+=========+========+==========+===================
  */
 
 #define CMT_TEAM0 0
@@ -225,7 +247,6 @@ struct lldp_status_params_s {
 	u32 status; /* TBD */
 	/* Holds remote Chassis ID TLV header, subtype and 9B of payload.
 	 */
-	u32 local_port_id[LLDP_PORT_ID_STAT_LEN];
 	u32 peer_chassis_id[LLDP_CHASSIS_ID_STAT_LEN];
 	/* Holds remote Port ID TLV header, subtype and 9B of payload.
 	 */
@@ -245,10 +266,26 @@ struct dcbx_ets_feature {
 #define DCBX_ETS_CBS_SHIFT                      3
 #define DCBX_ETS_MAX_TCS_MASK                   0x000000f0
 #define DCBX_ETS_MAX_TCS_SHIFT                  4
+#define DCBX_ISCSI_OOO_TC_MASK			0x00000f00
+#define DCBX_ISCSI_OOO_TC_SHIFT                 8
+/* Entries in tc table are orginized that the left most is pri 0, right most is
+ * prio 7
+ */
+
 	u32  pri_tc_tbl[1];
+#define DCBX_ISCSI_OOO_TC			(4)
+
+#define NIG_ETS_ISCSI_OOO_CLIENT_OFFSET		(DCBX_ISCSI_OOO_TC + 1)
 #define DCBX_CEE_STRICT_PRIORITY		0xf
-#define DCBX_CEE_STRICT_PRIORITY_TC		0x7
+/* Entries in tc table are orginized that the left most is pri 0, right most is
+ * prio 7
+ */
+
 	u32  tc_bw_tbl[2];
+/* Entries in tc table are orginized that the left most is pri 0, right most is
+ * prio 7
+ */
+
 	u32  tc_tsa_tbl[2];
 #define DCBX_ETS_TSA_STRICT			0
 #define DCBX_ETS_TSA_CBS			1
@@ -271,6 +308,14 @@ struct dcbx_app_priority_entry {
 #define DCBX_APP_SF_SHIFT           8
 #define DCBX_APP_SF_ETHTYPE         0
 #define DCBX_APP_SF_PORT            1
+#define DCBX_APP_SF_IEEE_MASK       0x0000f000
+#define DCBX_APP_SF_IEEE_SHIFT      12
+#define DCBX_APP_SF_IEEE_RESERVED   0
+#define DCBX_APP_SF_IEEE_ETHTYPE    1
+#define DCBX_APP_SF_IEEE_TCP_PORT   2
+#define DCBX_APP_SF_IEEE_UDP_PORT   3
+#define DCBX_APP_SF_IEEE_TCP_UDP_PORT 4
+
 #define DCBX_APP_PROTOCOL_ID_MASK   0xffff0000
 #define DCBX_APP_PROTOCOL_ID_SHIFT  16
 };
@@ -287,7 +332,7 @@ struct dcbx_app_priority_feature {
 	/* Not in use
 	 * #define DCBX_APP_DEFAULT_PRI_MASK       0x00000f00
 	 * #define DCBX_APP_DEFAULT_PRI_SHIFT      8
-	*/
+	 */
 #define DCBX_APP_MAX_TCS_MASK           0x0000f000
 #define DCBX_APP_MAX_TCS_SHIFT          12
 #define DCBX_APP_NUM_ENTRIES_MASK       0x00ff0000
@@ -331,11 +376,12 @@ struct dcbx_features {
 
 struct dcbx_local_params {
 	u32 config;
-#define DCBX_CONFIG_VERSION_MASK            0x00000003
+#define DCBX_CONFIG_VERSION_MASK            0x00000007
 #define DCBX_CONFIG_VERSION_SHIFT           0
 #define DCBX_CONFIG_VERSION_DISABLED        0
 #define DCBX_CONFIG_VERSION_IEEE            1
 #define DCBX_CONFIG_VERSION_CEE             2
+#define DCBX_CONFIG_VERSION_STATIC          4
 
 	u32 flags;
 	struct dcbx_features features;
@@ -345,12 +391,13 @@ struct dcbx_mib {
 	u32 prefix_seq_num;
 	u32 flags;
 	/*
-	 * #define DCBX_CONFIG_VERSION_MASK            0x00000003
+	 * #define DCBX_CONFIG_VERSION_MASK            0x00000007
 	 * #define DCBX_CONFIG_VERSION_SHIFT           0
 	 * #define DCBX_CONFIG_VERSION_DISABLED        0
 	 * #define DCBX_CONFIG_VERSION_IEEE            1
 	 * #define DCBX_CONFIG_VERSION_CEE             2
-	*/
+	 * #define DCBX_CONFIG_VERSION_STATIC          4
+	 */
 	struct dcbx_features features;
 	u32 suffix_seq_num;
 };
@@ -361,6 +408,14 @@ struct lldp_system_tlvs_buffer_s {
 	u32 data[MAX_SYSTEM_LLDP_TLV_DATA];
 };
 
+struct dcb_dscp_map {
+	u32 flags;
+#define DCB_DSCP_ENABLE_MASK			0x1
+#define DCB_DSCP_ENABLE_SHIFT			0
+#define DCB_DSCP_ENABLE				1
+	u32 dscp_pri_map[8];
+};
+
 /**************************************/
 /*                                    */
 /*     P U B L I C      G L O B A L   */
@@ -368,7 +423,8 @@ struct lldp_system_tlvs_buffer_s {
 /**************************************/
 struct public_global {
 	u32 max_path;       /* 32bit is wasty, but this will be used often */
-	u32 max_ports; /* (Global) 32bit is wasty, this will be used often */
+/* (Global) 32bit is wasty, but this will be used often */
+	u32 max_ports;
 #define MODE_1P	1		/* TBD - NEED TO THINK OF A BETTER NAME */
 #define MODE_2P	2
 #define MODE_3P	3
@@ -380,6 +436,10 @@ struct public_global {
 	u32 mfw_ver;
 	u32 running_bundle_id;
 	s32 external_temperature;
+	u32 mdump_reason;
+#define MDUMP_REASON_INTERNAL_ERROR	(1 << 0)
+#define MDUMP_REASON_EXTERNAL_TRIGGER	(1 << 1)
+#define MDUMP_REASON_DUMP_AGED		(1 << 2)
 };
 
 /**************************************/
@@ -426,8 +486,8 @@ struct public_path {
 	 */
 	u32 mcp_vf_disabled[VF_MAX_STATIC / 32];    /* 0x003c */
 
-	u32 process_kill;
 /* Reset on mcp reset, and incremented for eveny process kill event. */
+	u32 process_kill;
 #define PROCESS_KILL_COUNTER_MASK		0x0000ffff
 #define PROCESS_KILL_COUNTER_SHIFT		0
 #define PROCESS_KILL_GLOB_AEU_BIT_MASK		0xffff0000
@@ -473,7 +533,8 @@ struct public_port {
 #define MCP_VALIDITY_RESERVED                   0x00000007
 
 	/* One licensing bit should be set */
-#define MCP_VALIDITY_LIC_KEY_IN_EFFECT_MASK     0x00000038 /* yaniv - tbd  */
+/* yaniv - tbd ? license */
+#define MCP_VALIDITY_LIC_KEY_IN_EFFECT_MASK     0x00000038
 #define MCP_VALIDITY_LIC_MANUF_KEY_IN_EFFECT    0x00000008
 #define MCP_VALIDITY_LIC_UPGRADE_KEY_IN_EFFECT  0x00000010
 #define MCP_VALIDITY_LIC_NO_KEY_IN_EFFECT       0x00000020
@@ -525,9 +586,15 @@ struct public_port {
 #define LINK_STATUS_MAC_REMOTE_FAULT                0x02000000
 #define LINK_STATUS_UNSUPPORTED_SPD_REQ				0x04000000
 
+#define LINK_STATUS_FEC_MODE_MASK				0x38000000
+#define LINK_STATUS_FEC_MODE_NONE				(0 << 27)
+#define LINK_STATUS_FEC_MODE_FIRECODE_CL74			(1 << 27)
+#define LINK_STATUS_FEC_MODE_RS_CL91				(2 << 27)
+
 	u32 link_status1;
 	u32 ext_phy_fw_version;
-	u32 drv_phy_cfg_addr;	/* Points to pmm_phy_cfg (For READ-ONLY) */
+/* Points to struct pmm_phy_cfg (For READ-ONLY) */
+	u32 drv_phy_cfg_addr;
 
 	u32 port_stx;
 
@@ -538,11 +605,11 @@ struct public_port {
 
 	u32 media_type;
 #define	MEDIA_UNSPECIFIED	0x0
-#define	MEDIA_SFPP_10G_FIBER	0x1
-#define	MEDIA_XFP_FIBER			0x2
+#define	MEDIA_SFPP_10G_FIBER	0x1	/* Use MEDIA_MODULE_FIBER instead */
+#define	MEDIA_XFP_FIBER		0x2	/* Use MEDIA_MODULE_FIBER instead */
 #define	MEDIA_DA_TWINAX		0x3
 #define	MEDIA_BASE_T		0x4
-#define MEDIA_SFP_1G_FIBER		0x5
+#define MEDIA_SFP_1G_FIBER	0x5	/* Use MEDIA_MODULE_FIBER instead */
 #define MEDIA_MODULE_FIBER	0x6
 #define	MEDIA_KR		0xf0
 #define	MEDIA_NOT_PRESENT	0xff
@@ -565,6 +632,7 @@ struct public_port {
 	u32 link_change_count;
 
 	/* LLDP params */
+/* offset: 536 bytes? */
 	struct lldp_config_params_s lldp_config_params[LLDP_MAX_LLDP_AGENTS];
 	struct lldp_status_params_s lldp_status_params[LLDP_MAX_LLDP_AGENTS];
 	struct lldp_system_tlvs_buffer_s system_lldp_tlvs_buf;
@@ -575,6 +643,7 @@ struct public_port {
 	struct dcbx_mib operational_dcbx_mib;
 
 /* FC_NPIV table offset & size in NVRAM value of 0 means not present */
+
 	u32 fc_npiv_nvram_tbl_addr;
 	u32 fc_npiv_nvram_tbl_size;
 	u32 transceiver_data;
@@ -628,6 +697,7 @@ struct public_port {
 #define PMM_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_CR			0x34
 #define PMM_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_LR			0x35
 #define PMM_TRANSCEIVER_TYPE_MULTI_RATE_40G_100G_AOC			0x36
+	struct dcb_dscp_map dcb_dscp_map;
 };
 
 /**************************************/
@@ -637,11 +707,12 @@ struct public_port {
 /**************************************/
 
 struct public_func {
-	u32 dpdk_rsvd1[2];
+	u32 iscsi_boot_signature;
+	u32 iscsi_boot_block_offset;
 
 	/* MTU size per funciton is needed for the OV feature */
 	u32 mtu_size;
-/* 9 entires for the C2S PCP map for each inner VLAN PCP + 1 default */
+	/* 9 entires for the C2S PCP map for each inner VLAN PCP + 1 default */
 	/* For PCP values 0-3 use the map lower */
 	/* 0xFF000000 - PCP 0, 0x00FF0000 - PCP 1,
 	 * 0x0000FF00 - PCP 2, 0x000000FF PCP 3
@@ -669,7 +740,10 @@ struct public_func {
 #define FUNC_MF_CFG_PROTOCOL_MASK               0x000000f0
 #define FUNC_MF_CFG_PROTOCOL_SHIFT              4
 #define FUNC_MF_CFG_PROTOCOL_ETHERNET           0x00000000
-#define FUNC_MF_CFG_PROTOCOL_MAX	        0x00000000
+#define FUNC_MF_CFG_PROTOCOL_ISCSI              0x00000010
+#define FUNC_MF_CFG_PROTOCOL_FCOE		0x00000020
+#define FUNC_MF_CFG_PROTOCOL_ROCE               0x00000030
+#define FUNC_MF_CFG_PROTOCOL_MAX	        0x00000030
 
 	/* MINBW, MAXBW */
 	/* value range - 0..100, increments in 1 %  */
@@ -690,7 +764,11 @@ struct public_func {
 	u32 mac_lower;
 #define FUNC_MF_CFG_LOWERMAC_DEFAULT            0xffffffff
 
-	u32 dpdk_rsvd2[4];
+	u32 fcoe_wwn_port_name_upper;
+	u32 fcoe_wwn_port_name_lower;
+
+	u32 fcoe_wwn_node_name_upper;
+	u32 fcoe_wwn_node_name_lower;
 
 	u32 ovlan_stag;     /* tags */
 #define FUNC_MF_CFG_OV_STAG_MASK              0x0000ffff
@@ -763,9 +841,9 @@ struct mcp_file_att {
 
 struct bist_nvm_image_att {
 	u32 return_code;
-	u32 image_type;         /* Image type */
-	u32 nvm_start_addr;     /* NVM address of the image */
-	u32 len;                /* Include CRC */
+	u32 image_type;		/* Image type */
+	u32 nvm_start_addr;	/* NVM address of the image */
+	u32 len;		/* Include CRC */
 };
 
 #define MCP_DRV_VER_STR_SIZE 16
@@ -784,50 +862,82 @@ struct lan_stats_stc {
 	u32 rserved;
 };
 
+struct fcoe_stats_stc {
+	u64 rx_pkts;
+	u64 tx_pkts;
+	u32 fcs_err;
+	u32 login_failure;
+};
+
+struct iscsi_stats_stc {
+	u64 rx_pdus;
+	u64 tx_pdus;
+	u64 rx_bytes;
+	u64 tx_bytes;
+};
+
+struct rdma_stats_stc {
+	u64 rx_pkts;
+	u64 tx_pkts;
+	u64 rx_bytes;
+	u64 tx_bytes;
+};
+
 struct ocbb_data_stc {
 	u32 ocbb_host_addr;
 	u32 ocsd_host_addr;
 	u32 ocsd_req_update_interval;
 };
 
-#define MAX_NUM_OF_SENSORS                      7
-#define MFW_SENSOR_LOCATION_INTERNAL            1
-#define MFW_SENSOR_LOCATION_EXTERNAL            2
-#define MFW_SENSOR_LOCATION_SFP                 3
+#define MAX_NUM_OF_SENSORS			7
+#define MFW_SENSOR_LOCATION_INTERNAL		1
+#define MFW_SENSOR_LOCATION_EXTERNAL		2
+#define MFW_SENSOR_LOCATION_SFP			3
 
-#define SENSOR_LOCATION_SHIFT                   0
-#define SENSOR_LOCATION_MASK                    0x000000ff
-#define THRESHOLD_HIGH_SHIFT                    8
-#define THRESHOLD_HIGH_MASK                     0x0000ff00
-#define CRITICAL_TEMPERATURE_SHIFT              16
-#define CRITICAL_TEMPERATURE_MASK               0x00ff0000
-#define CURRENT_TEMP_SHIFT                      24
-#define CURRENT_TEMP_MASK                       0xff000000
+#define SENSOR_LOCATION_SHIFT			0
+#define SENSOR_LOCATION_MASK			0x000000ff
+#define THRESHOLD_HIGH_SHIFT			8
+#define THRESHOLD_HIGH_MASK			0x0000ff00
+#define CRITICAL_TEMPERATURE_SHIFT		16
+#define CRITICAL_TEMPERATURE_MASK		0x00ff0000
+#define CURRENT_TEMP_SHIFT			24
+#define CURRENT_TEMP_MASK			0xff000000
 struct temperature_status_stc {
 	u32 num_of_sensors;
 	u32 sensor[MAX_NUM_OF_SENSORS];
 };
 
+/* crash dump configuration header */
+struct mdump_config_stc {
+	u32 version;
+	u32 config;
+	u32 epoc;
+	u32 num_of_logs;
+	u32 valid_logs;
+};
+
 enum resource_id_enum {
-	RESOURCE_NUM_SB_E               =       0,
-	RESOURCE_NUM_L2_QUEUE_E         =       1,
-	RESOURCE_NUM_VPORT_E            =       2,
-	RESOURCE_NUM_VMQ_E              =       3,
-	RESOURCE_FACTOR_NUM_RSS_PF_E    =       4,
-	RESOURCE_FACTOR_RSS_PER_VF_E    =       5,
-	RESOURCE_NUM_RL_E               =       6,
-	RESOURCE_NUM_PQ_E               =       7,
-	RESOURCE_NUM_VF_E               =       8,
-	RESOURCE_VFC_FILTER_E           =       9,
-	RESOURCE_ILT_E                  =       10,
-	RESOURCE_CQS_E                  =       11,
-	RESOURCE_GFT_PROFILES_E         =       12,
-	RESOURCE_NUM_TC_E               =       13,
-	RESOURCE_NUM_RSS_ENGINES_E      =       14,
-	RESOURCE_LL2_QUEUE_E            =       15,
-	RESOURCE_RDMA_STATS_QUEUE_E     =       16,
+	RESOURCE_NUM_SB_E		=	0,
+	RESOURCE_NUM_L2_QUEUE_E		=	1,
+	RESOURCE_NUM_VPORT_E		=	2,
+	RESOURCE_NUM_VMQ_E		=	3,
+/* Not a real resource!! it's a factor used to calculate others */
+	RESOURCE_FACTOR_NUM_RSS_PF_E	=	4,
+/* Not a real resource!! it's a factor used to calculate others */
+	RESOURCE_FACTOR_RSS_PER_VF_E	=	5,
+	RESOURCE_NUM_RL_E		=	6,
+	RESOURCE_NUM_PQ_E		=	7,
+	RESOURCE_NUM_VF_E		=	8,
+	RESOURCE_VFC_FILTER_E		=	9,
+	RESOURCE_ILT_E			=	10,
+	RESOURCE_CQS_E			=	11,
+	RESOURCE_GFT_PROFILES_E		=	12,
+	RESOURCE_NUM_TC_E		=	13,
+	RESOURCE_NUM_RSS_ENGINES_E	=	14,
+	RESOURCE_LL2_QUEUE_E		=	15,
+	RESOURCE_RDMA_STATS_QUEUE_E	=	16,
 	RESOURCE_MAX_NUM,
-	RESOURCE_NUM_INVALID            =       0xFFFFFFFF
+	RESOURCE_NUM_INVALID		=	0xFFFFFFFF
 };
 
 /* Resource ID is to be filled by the driver in the MB request
@@ -847,6 +957,8 @@ union drv_union_data {
 	u32 ver_str[MCP_DRV_VER_STR_SIZE_DWORD];    /* LOAD_REQ */
 	struct mcp_mac wol_mac; /* UNLOAD_DONE */
 
+/* This configuration should be set by the driver for the LINK_SET command. */
+
 	struct pmm_phy_cfg drv_phy_cfg;
 
 	struct mcp_val64 val64; /* For PHY / AVS commands */
@@ -860,12 +972,14 @@ union drv_union_data {
 	struct drv_version_stc drv_version;
 
 	struct lan_stats_stc lan_stats;
-	u32 dpdk_rsvd[3];
+	struct fcoe_stats_stc fcoe_stats;
+	struct iscsi_stats_stc icsci_stats;
+	struct rdma_stats_stc rdma_stats;
 	struct ocbb_data_stc ocbb_info;
 	struct temperature_status_stc temp_info;
 	struct resource_info resource;
 	struct bist_nvm_image_att nvm_image_att;
-
+	struct mdump_config_stc mdump_config;
 	/* ... */
 };
 
@@ -896,9 +1010,14 @@ struct public_drv_mb {
 
 #define DRV_MSG_CODE_NIG_DRAIN			0x30000000
 
+/* DRV_MB Param: driver version supp, FW_MB param: MFW version supp,
+ * data: struct resource_info
+ */
 #define DRV_MSG_GET_RESOURCE_ALLOC_MSG		0x34000000
 
-#define DRV_MSG_CODE_INITIATE_FLR               0x02000000
+/*deprecated don't use*/
+#define DRV_MSG_CODE_INITIATE_FLR_DEPRECATED    0x02000000
+#define DRV_MSG_CODE_INITIATE_PF_FLR            0x02010000
 #define DRV_MSG_CODE_VF_DISABLED_DONE           0xc0000000
 #define DRV_MSG_CODE_CFG_VF_MSIX                0xc0010000
 #define DRV_MSG_CODE_NVM_PUT_FILE_BEGIN		0x00010000
@@ -928,9 +1047,16 @@ struct public_drv_mb {
 
 #define DRV_MSG_CODE_GET_STATS                  0x00130000
 #define DRV_MSG_CODE_STATS_TYPE_LAN             1
+#define DRV_MSG_CODE_STATS_TYPE_FCOE            2
+#define DRV_MSG_CODE_STATS_TYPE_ISCSI           3
+#define DRV_MSG_CODE_STATS_TYPE_RDMA		4
 
 #define DRV_MSG_CODE_OCBB_DATA			0x00180000
 #define DRV_MSG_CODE_SET_BW			0x00190000
+#define BW_MAX_MASK				0x000000ff
+#define BW_MAX_SHIFT				0
+#define BW_MIN_MASK				0x0000ff00
+#define BW_MIN_SHIFT				8
 #define DRV_MSG_CODE_MASK_PARITIES		0x001a0000
 #define DRV_MSG_CODE_INDUCE_FAILURE		0x001b0000
 #define DRV_MSG_FAN_FAILURE_TYPE		(1 << 0)
@@ -938,17 +1064,73 @@ struct public_drv_mb {
 
 #define DRV_MSG_CODE_GPIO_READ			0x001c0000
 #define DRV_MSG_CODE_GPIO_WRITE			0x001d0000
-#define DRV_MSG_CODE_GPIO_INFO			0x00270000
+/* Param: [0:15] - gpio number */
+#define DRV_MSG_CODE_GPIO_INFO		    0x00270000
 
+/* Param: [0:7] - test enum, [8:15] - image index, [16:31] - reserved */
 #define DRV_MSG_CODE_BIST_TEST			0x001e0000
-#define DRV_MSG_CODE_GET_TEMPERATURE		0x001f0000
+#define DRV_MSG_CODE_GET_TEMPERATURE            0x001f0000
 
 #define DRV_MSG_CODE_SET_LED_MODE		0x00200000
-#define DRV_MSG_CODE_TIMESTAMP			0x00210000
+/* drv_data[7:0] - EPOC in seconds, drv_data[15:8] -
+ * driver version (MAJ MIN BUILD SUB)
+ */
+#define DRV_MSG_CODE_TIMESTAMP                  0x00210000
+/* This is an empty mailbox just return OK*/
 #define DRV_MSG_CODE_EMPTY_MB			0x00220000
+/* Param[0:4] - resource number (0-31), Param[5:7] - opcode,
+ * param[15:8] - age
+ */
+#define DRV_MSG_CODE_RESOURCE_CMD		0x00230000
 
-#define DRV_MSG_CODE_GET_MBA_VERSION		0x00240000
-#define DRV_MSG_CODE_MEM_ECC_EVENTS		0x00260000
+/* request resource ownership with default aging */
+#define RESOURCE_OPCODE_REQ			1
+/* request resource ownership without aging */
+#define RESOURCE_OPCODE_REQ_WO_AGING		2
+/* request resource ownership with specific aging timer (in seconds) */
+#define RESOURCE_OPCODE_REQ_W_AGING		3
+#define RESOURCE_OPCODE_RELEASE			4 /* release resource */
+#define RESOURCE_OPCODE_FORCE_RELEASE		5 /* force resource release */
+
+/* resource is free and granted to requester */
+#define RESOURCE_OPCODE_GNT			1
+/* resource is busy, param[7:0] indicates owner as follow 0-15 = PF0-15,
+ * 16 = MFW, 17 = diag over serial
+ */
+#define RESOURCE_OPCODE_BUSY			2
+/* indicate release request was acknowledged */
+#define RESOURCE_OPCODE_RELEASED		3
+/* indicate release request was previously received by other owner */
+#define RESOURCE_OPCODE_RELEASED_PREVIOUS	4
+/* indicate wrong owner during release */
+#define RESOURCE_OPCODE_WRONG_OWNER		5
+#define RESOURCE_OPCODE_UNKNOWN_CMD		255
+/* dedicate resource 0 for dump */
+#define RESOURCE_DUMP				(1 << 0)
+
+#define DRV_MSG_CODE_GET_MBA_VERSION		0x00240000 /* Get MBA version */
+
+/* Send crash dump commands with param[3:0] - opcode */
+#define DRV_MSG_CODE_MDUMP_CMD			0x00250000
+#define MDUMP_DRV_PARAM_OPCODE_MASK		0x0000000f
+/* acknowledge reception of error indication */
+#define DRV_MSG_CODE_MDUMP_ACK			0x01
+/* set epoc and personality as follow: drv_data[3:0] - epoch,
+ * drv_data[7:4] - personality
+ */
+#define DRV_MSG_CODE_MDUMP_SET_VALUES		0x02
+/* trigger crash dump procedure */
+#define DRV_MSG_CODE_MDUMP_TRIGGER		0x03
+/* Request valid logs and config words */
+#define DRV_MSG_CODE_MDUMP_GET_CONFIG		0x04
+/* Set triggers mask. drv_mb_param should indicate (bitwise) which trigger
+ * enabled
+ */
+#define DRV_MSG_CODE_MDUMP_SET_ENABLE		0x05
+#define DRV_MSG_CODE_MDUMP_CLEAR_LOGS		0x06 /* Clear all logs */
+
+
+#define DRV_MSG_CODE_MEM_ECC_EVENTS		0x00260000 /* Param: None */
 
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
 
@@ -1019,7 +1201,11 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_SHIFT				0
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_MASK			0x000000FF
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_NONE				(1 << 0)
+#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_ISCSI_IP_ACQUIRED		(1 << 1)
+#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_FCOE_FABRIC_LOGIN_SUCCESS	(1 << 1)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_TRARGET_FOUND			(1 << 2)
+#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_ISCSI_CHAP_SUCCESS		(1 << 3)
+#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_FCOE_LUN_FOUND			(1 << 3)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_LOGGED_INTO_TGT		(1 << 4)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_IMG_DOWNLOADED			(1 << 5)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_OS_HANDOFF			(1 << 6)
@@ -1063,28 +1249,27 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_GPIO_NUMBER_MASK		0x0000FFFF
 #define DRV_MB_PARAM_GPIO_VALUE_SHIFT		16
 #define DRV_MB_PARAM_GPIO_VALUE_MASK		0xFFFF0000
-
-#define DRV_MB_PARAM_GPIO_DIRECTION_SHIFT       16
-#define DRV_MB_PARAM_GPIO_DIRECTION_MASK        0x00FF0000
-#define DRV_MB_PARAM_GPIO_CTRL_SHIFT            24
-#define DRV_MB_PARAM_GPIO_CTRL_MASK             0xFF000000
+#define DRV_MB_PARAM_GPIO_DIRECTION_SHIFT	16
+#define DRV_MB_PARAM_GPIO_DIRECTION_MASK	0x00FF0000
+#define DRV_MB_PARAM_GPIO_CTRL_SHIFT		24
+#define DRV_MB_PARAM_GPIO_CTRL_MASK		0xFF000000
 
 	/* Resource Allocation params - Driver version support*/
-#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK  0xFFFF0000
-#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT         16
-#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK  0x0000FFFF
-#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT         0
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK	0xFFFF0000
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT		16
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK	0x0000FFFF
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT		0
 
-#define DRV_MB_PARAM_BIST_UNKNOWN_TEST          0
-#define DRV_MB_PARAM_BIST_REGISTER_TEST         1
-#define DRV_MB_PARAM_BIST_CLOCK_TEST            2
-#define DRV_MB_PARAM_BIST_NVM_TEST_NUM_IMAGES           3
-#define DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX       4
+#define DRV_MB_PARAM_BIST_UNKNOWN_TEST		0
+#define DRV_MB_PARAM_BIST_REGISTER_TEST		1
+#define DRV_MB_PARAM_BIST_CLOCK_TEST		2
+#define DRV_MB_PARAM_BIST_NVM_TEST_NUM_IMAGES		3
+#define DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX	4
 
-#define DRV_MB_PARAM_BIST_RC_UNKNOWN            0
-#define DRV_MB_PARAM_BIST_RC_PASSED             1
-#define DRV_MB_PARAM_BIST_RC_FAILED             2
-#define DRV_MB_PARAM_BIST_RC_INVALID_PARAMETER          3
+#define DRV_MB_PARAM_BIST_RC_UNKNOWN		0
+#define DRV_MB_PARAM_BIST_RC_PASSED		1
+#define DRV_MB_PARAM_BIST_RC_FAILED		2
+#define DRV_MB_PARAM_BIST_RC_INVALID_PARAMETER		3
 
 #define DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT      0
 #define DRV_MB_PARAM_BIST_TEST_INDEX_MASK       0x000000FF
@@ -1117,6 +1302,10 @@ struct public_drv_mb {
 #define FW_MSG_CODE_UPDATE_DRIVER_STATE_DONE    0x31000000
 #define FW_MSG_CODE_DRV_MSG_CODE_BW_UPDATE_DONE 0x32000000
 #define FW_MSG_CODE_DRV_MSG_CODE_MTU_SIZE_DONE  0x33000000
+#define FW_MSG_CODE_RESOURCE_ALLOC_OK           0x34000000
+#define FW_MSG_CODE_RESOURCE_ALLOC_UNKNOWN      0x35000000
+#define FW_MSG_CODE_RESOURCE_ALLOC_DEPRECATED   0x36000000
+#define FW_MSG_CODE_RESOURCE_ALLOC_GEN_ERR      0x37000000
 #define FW_MSG_CODE_NIG_DRAIN_DONE              0x30000000
 #define FW_MSG_CODE_VF_DISABLED_DONE            0xb0000000
 #define FW_MSG_CODE_DRV_CFG_VF_MSIX_DONE        0xb0010000
@@ -1169,10 +1358,24 @@ struct public_drv_mb {
 #define FW_MSG_CODE_GPIO_CTRL_ERR		0x00020000
 #define FW_MSG_CODE_GPIO_INVALID		0x000f0000
 #define FW_MSG_CODE_GPIO_INVALID_VALUE	0x00050000
+#define FW_MSG_CODE_BIST_TEST_INVALID		0x000f0000
+
+/* mdump related response codes */
+#define FW_MSG_CODE_MDUMP_NO_IMAGE_FOUND	0x00010000
+#define FW_MSG_CODE_MDUMP_ALLOC_FAILED		0x00020000
+#define FW_MSG_CODE_MDUMP_INVALID_CMD		0x00030000
+#define FW_MSG_CODE_MDUMP_IN_PROGRESS		0x00040000
+#define FW_MSG_CODE_MDUMP_WRITE_FAILED		0x00050000
 
 #define FW_MSG_SEQ_NUMBER_MASK                  0x0000ffff
 
 	u32 fw_mb_param;
+	/* Resource Allocation params - MFW  version support*/
+#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK	0xFFFF0000
+#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT		16
+#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK	0x0000FFFF
+#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT		0
+
 
 	u32 drv_pulse_mb;
 #define DRV_PULSE_SEQ_MASK                      0x00007fff
@@ -1232,6 +1435,7 @@ enum MFW_DRV_MSG_TYPE {
 	MFW_DRV_MSG_GET_RDMA_STATS,
 	MFW_DRV_MSG_FAILURE_DETECTED,
 	MFW_DRV_MSG_TRANSCEIVER_STATE_CHANGE,
+	MFW_DRV_MSG_CRITICAL_ERROR_OCCURRED,
 	MFW_DRV_MSG_MAX
 };
 

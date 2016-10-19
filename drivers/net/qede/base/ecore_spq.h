@@ -18,6 +18,7 @@
 union ramrod_data {
 	struct pf_start_ramrod_data			pf_start;
 	struct pf_update_ramrod_data			pf_update;
+	struct rl_update_ramrod_data			rl_update;
 	struct rx_queue_start_ramrod_data		rx_queue_start;
 	struct rx_queue_update_ramrod_data		rx_queue_update;
 	struct rx_queue_stop_ramrod_data		rx_queue_stop;
@@ -101,8 +102,8 @@ struct ecore_spq {
 	/* Bitmap for handling out-of-order completions */
 #define SPQ_RING_SIZE		\
 	(CORE_SPQE_PAGE_SIZE_BYTES / sizeof(struct slow_path_element))
-#define SPQ_COMP_BMAP_SIZE					\
-(SPQ_RING_SIZE / (sizeof(unsigned long) * 8 /* BITS_PER_LONG */))
+/* BITS_PER_LONG */
+#define SPQ_COMP_BMAP_SIZE	(SPQ_RING_SIZE / (sizeof(unsigned long) * 8))
 	unsigned long			p_comp_bitmap[SPQ_COMP_BMAP_SIZE];
 	u8				comp_bitmap_idx;
 #define SPQ_COMP_BMAP_SET_BIT(p_spq, idx)				\

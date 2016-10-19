@@ -9,8 +9,6 @@
 #ifndef __BCM_OSAL_H
 #define __BCM_OSAL_H
 
-#include <string.h>
-
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
@@ -42,6 +40,8 @@ void qed_link_update(struct ecore_hwfn *hwfn);
 #define __BIG_ENDIAN
 #endif
 #endif
+
+#define OSAL_WARN(arg1, arg2, arg3, ...) (0)
 
 /* Memory Types */
 typedef uint8_t u8;
@@ -330,6 +330,8 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_IOV_VF_VPORT_UPDATE(hwfn, vfid, p_params, p_mask) 0
 #define OSAL_VF_UPDATE_ACQUIRE_RESC_RESP(_dev_p, _resc_resp) 0
 #define OSAL_IOV_GET_OS_TYPE() 0
+#define OSAL_IOV_VF_MSG_TYPE(hwfn, vfid, vf_msg_type) 0
+#define OSAL_IOV_PF_RESP_TYPE(hwfn, vfid, pf_resp_type) 0
 
 u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 		   u8 *input_buf, u32 max_size, u8 *unzip_buf);

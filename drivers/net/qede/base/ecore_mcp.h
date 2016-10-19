@@ -25,27 +25,24 @@
 					     rel_pfid)
 #define MCP_PF_ID(p_hwfn) MCP_PF_ID_BY_REL(p_hwfn, (p_hwfn)->rel_pf_id)
 
-/* TODO - this is only correct as long as only BB is supported, and
- * no port-swapping is implemented; Afterwards we'll need to fix it.
- */
 #define MFW_PORT(_p_hwfn)	((_p_hwfn)->abs_pf_id % \
-				 ((_p_hwfn)->p_dev->num_ports_in_engines * 2))
+				 ((_p_hwfn)->p_dev->num_ports_in_engines * \
+				  ecore_device_num_engines((_p_hwfn)->p_dev)))
+
 struct ecore_mcp_info {
 	osal_spinlock_t lock;	/* Spinlock used for accessing MCP mailbox */
-
 	/* Flag to indicate whether sending a MFW mailbox is forbidden */
 	bool block_mb_sending;
-
 	u32 public_base;	/* Address of the MCP public area */
 	u32 drv_mb_addr;	/* Address of the driver mailbox */
 	u32 mfw_mb_addr;	/* Address of the MFW mailbox */
 	u32 port_addr;		/* Address of the port configuration (link) */
 	u16 drv_mb_seq;		/* Current driver mailbox sequence */
 	u16 drv_pulse_seq;	/* Current driver pulse sequence */
-	struct ecore_mcp_link_params       link_input;
-	struct ecore_mcp_link_state	   link_output;
+	struct ecore_mcp_link_params link_input;
+	struct ecore_mcp_link_state link_output;
 	struct ecore_mcp_link_capabilities link_capabilities;
-	struct ecore_mcp_function_info	   func_info;
+	struct ecore_mcp_function_info func_info;
 
 	u8 *mfw_mb_cur;
 	u8 *mfw_mb_shadow;
@@ -153,7 +150,8 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
  * @param p_hwfn
  * @param p_ptt
  */
-void ecore_mcp_read_mb(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
+void ecore_mcp_read_mb(struct ecore_hwfn *p_hwfn,
+		       struct ecore_ptt *p_ptt);
 
 /**
  * @brief Ack to mfw that driver finished FLR process for VFs
@@ -211,7 +209,8 @@ enum _ecore_status_t ecore_mcp_nvm_wr_cmd(struct ecore_hwfn *p_hwfn,
 					  u32 param,
 					  u32 *o_mcp_resp,
 					  u32 *o_mcp_param,
-					  u32 i_txn_size, u32 *i_buf);
+					  u32 i_txn_size,
+					  u32 *i_buf);
 
 /**
  * @brief - Sends an NVM read command request to the MFW to get
@@ -235,7 +234,8 @@ enum _ecore_status_t ecore_mcp_nvm_rd_cmd(struct ecore_hwfn *p_hwfn,
 					  u32 param,
 					  u32 *o_mcp_resp,
 					  u32 *o_mcp_param,
-					  u32 *o_txn_size, u32 *o_buf);
+					  u32 *o_txn_size,
+					  u32 *o_buf);
 
 /**
  * @brief indicates whether the MFW objects [under mcp_info] are accessible
@@ -292,4 +292,9 @@ int __ecore_configure_pf_min_bandwidth(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_mask_parities(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt,
 					     u32 mask_parities);
+enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
+					     struct ecore_ptt *p_ptt,
+					     struct resource_info *p_resc_info,
+					     u32 *p_mcp_resp, u32 *p_mcp_param);
+
 #endif /* __ECORE_MCP_H__ */

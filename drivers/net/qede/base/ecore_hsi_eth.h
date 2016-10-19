@@ -246,11 +246,11 @@ struct xstorm_eth_conn_ag_ctx {
 #define XSTORM_ETH_CONN_AG_CTX_TPH_ENABLE_SHIFT             6
 	u8 edpm_event_id /* byte2 */;
 	__le16 physical_q0 /* physical_q0 */;
-	__le16 word1 /* physical_q1 */;
+	__le16 quota /* physical_q1 */;
 	__le16 edpm_num_bds /* physical_q2 */;
 	__le16 tx_bd_cons /* word3 */;
 	__le16 tx_bd_prod /* word4 */;
-	__le16 go_to_bd_cons /* word5 */;
+	__le16 tx_class /* word5 */;
 	__le16 conn_dpi /* conn_dpi */;
 	u8 byte3 /* byte3 */;
 	u8 byte4 /* byte4 */;
@@ -306,7 +306,7 @@ struct ystorm_eth_conn_st_ctx {
 
 struct ystorm_eth_conn_ag_ctx {
 	u8 byte0 /* cdu_validation */;
-	u8 byte1 /* state */;
+	u8 state /* state */;
 	u8 flags0;
 #define YSTORM_ETH_CONN_AG_CTX_BIT0_MASK                  0x1
 #define YSTORM_ETH_CONN_AG_CTX_BIT0_SHIFT                 0
@@ -335,7 +335,7 @@ struct ystorm_eth_conn_ag_ctx {
 #define YSTORM_ETH_CONN_AG_CTX_RULE3EN_SHIFT              6
 #define YSTORM_ETH_CONN_AG_CTX_RULE4EN_MASK               0x1
 #define YSTORM_ETH_CONN_AG_CTX_RULE4EN_SHIFT              7
-	u8 byte2 /* byte2 */;
+	u8 tx_q0_int_coallecing_timeset /* byte2 */;
 	u8 byte3 /* byte3 */;
 	__le16 word0 /* word0 */;
 	__le32 terminate_spqe /* reg0 */;
@@ -635,9 +635,8 @@ enum eth_event_opcode {
 	ETH_EVENT_RX_CREATE_OPENFLOW_ACTION,
 	ETH_EVENT_RX_ADD_UDP_FILTER,
 	ETH_EVENT_RX_DELETE_UDP_FILTER,
-	ETH_EVENT_RX_ADD_GFT_FILTER,
-	ETH_EVENT_RX_DELETE_GFT_FILTER,
 	ETH_EVENT_RX_CREATE_GFT_ACTION,
+	ETH_EVENT_RX_GFT_UPDATE_FILTER,
 	MAX_ETH_EVENT_OPCODE
 };
 
@@ -732,21 +731,19 @@ enum eth_ramrod_cmd_id {
 	ETH_RAMROD_TX_QUEUE_STOP /* TX Queue Stop Ramrod */,
 	ETH_RAMROD_FILTERS_UPDATE /* Add or Remove Mac/Vlan/Pair filters */,
 	ETH_RAMROD_RX_QUEUE_UPDATE /* RX Queue Update Ramrod */,
-	ETH_RAMROD_RX_CREATE_OPENFLOW_ACTION
-	    /* RX - Create an Openflow Action */,
-	ETH_RAMROD_RX_ADD_OPENFLOW_FILTER
-	    /* RX - Add an Openflow Filter to the Searcher */,
-	ETH_RAMROD_RX_DELETE_OPENFLOW_FILTER
-	    /* RX - Delete an Openflow Filter to the Searcher */,
-	ETH_RAMROD_RX_ADD_UDP_FILTER /* RX - Add a UDP Filter to the Searcher */
-	    ,
-	ETH_RAMROD_RX_DELETE_UDP_FILTER
-	    /* RX - Delete a UDP Filter to the Searcher */,
-	ETH_RAMROD_RX_CREATE_GFT_ACTION /* RX - Create an Gft Action */,
-	ETH_RAMROD_RX_DELETE_GFT_FILTER
-	    /* RX - Delete an GFT Filter to the Searcher */,
-	ETH_RAMROD_RX_ADD_GFT_FILTER
-	    /* RX - Add an GFT Filter to the Searcher */,
+/* RX - Create an Openflow Action */
+	ETH_RAMROD_RX_CREATE_OPENFLOW_ACTION,
+/* RX - Add an Openflow Filter to the Searcher */
+	ETH_RAMROD_RX_ADD_OPENFLOW_FILTER,
+/* RX - Delete an Openflow Filter to the Searcher */
+	ETH_RAMROD_RX_DELETE_OPENFLOW_FILTER,
+/* RX - Add a UDP Filter to the Searcher */
+	ETH_RAMROD_RX_ADD_UDP_FILTER,
+/* RX - Delete a UDP Filter to the Searcher */
+	ETH_RAMROD_RX_DELETE_UDP_FILTER,
+	ETH_RAMROD_RX_CREATE_GFT_ACTION /* RX - Create a Gft Action */,
+/* RX - Add/Delete a GFT Filter to the Searcher */
+	ETH_RAMROD_GFT_UPDATE_FILTER,
 	MAX_ETH_RAMROD_CMD_ID
 };
 
@@ -911,14 +908,21 @@ struct eth_vport_tx_mode {
 };
 
 /*
- * Ramrod data for rx add gft filter data
+ * Ramrod data for rx create gft action
  */
-struct rx_add_gft_filter_data {
-	struct regpair pkt_hdr_addr /* Packet Header That Defines GFT Filter */
-	   ;
-	__le16 action_icid /* ICID of Action to run for this filter */;
-	__le16 pkt_hdr_length /* Packet Header Length */;
-	u8 reserved[4];
+enum gft_filter_update_action {
+	GFT_ADD_FILTER,
+	GFT_DELETE_FILTER,
+	MAX_GFT_FILTER_UPDATE_ACTION
+};
+
+/*
+ * Ramrod data for rx create gft action
+ */
+enum gft_logic_filter_type {
+	GFT_FILTER_TYPE /* flow FW is GFT-logic as well */,
+	RFS_FILTER_TYPE /* flow FW is A-RFS-logic */,
+	MAX_GFT_LOGIC_FILTER_TYPE
 };
 
 /*
@@ -990,7 +994,13 @@ struct rx_queue_start_ramrod_data {
 	u8 notify_en;
 	u8 toggle_val
 	    /* Initial value for the toggle valid bit - used in PMD mode */;
-	u8 reserved[7];
+/* Index of RX producers in VF zone. Used for VF only. */
+	u8 vf_rx_prod_index;
+/* Backward compatibility mode. If set, unprotected mStorm queue zone will used
+ * for VF RX producers instead of VF zone.
+ */
+	u8 vf_rx_prod_use_zone_a;
+	u8 reserved[5];
 	__le16 reserved1 /* FW reserved. */;
 	struct regpair cqe_pbl_addr /* Base address on host of CQE PBL */;
 	struct regpair bd_base /* bd address of the first bd page */;
@@ -1046,13 +1056,33 @@ struct rx_udp_filter_data {
 };
 
 /*
- * Ramrod data for rx queue start ramrod
+ * Ramrod to add filter - filter is packet headr of type of packet wished to
+ * pass certin FW flow
+ */
+struct rx_update_gft_filter_data {
+/* Pointer to Packet Header That Defines GFT Filter */
+	struct regpair pkt_hdr_addr;
+	__le16 pkt_hdr_length /* Packet Header Length */;
+/* If is_rfs flag is set: Queue Id to associate filter with else: action icid */
+	__le16 rx_qid_or_action_icid;
+/* Field is used if is_rfs flag is set: vport Id of which to associate filter
+ * with
+ */
+	u8 vport_id;
+/* Use enum to set type of flow using gft HW logic blocks */
+	u8 filter_type;
+	u8 filter_action /* Use to set type of action on filter */;
+	u8 reserved;
+};
+
+/*
+ * Ramrod data for tx queue start ramrod
  */
 struct tx_queue_start_ramrod_data {
 	__le16 sb_id /* Status block ID */;
 	u8 sb_index /* Status block protocol index */;
 	u8 vport_id /* VPort ID */;
-	u8 reserved0 /* FW reserved. */;
+	u8 reserved0 /* FW reserved. (qcn_rl_en) */;
 	u8 stats_counter_id /* Statistics counter ID to use */;
 	__le16 qm_pq_id /* QM PQ ID */;
 	u8 flags;
@@ -1076,10 +1106,16 @@ struct tx_queue_start_ramrod_data {
 	__le16 pxp_st_index /* PXP command Steering tag index */;
 	__le16 comp_agg_size /* TX completion min agg size - for PMD queues */;
 	__le16 queue_zone_id /* queue zone ID to use */;
-	__le16 test_dup_count /* In Test Mode, number of duplications */;
+	__le16 reserved2 /* FW reserved. (test_dup_count) */;
 	__le16 pbl_size /* Number of BD pages pointed by PBL */;
 	__le16 tx_queue_id
 	    /* unique Queue ID - currently used only by PMD flow */;
+/* Unique Same-As-Last Resource ID - improves performance for same-as-last
+ * packets per connection (range 0..ETH_TX_NUM_SAME_AS_LAST_ENTRIES-1 IDs
+ * available)
+ */
+	__le16 same_as_last_id;
+	__le16 reserved[3];
 	struct regpair pbl_base_addr /* address of the pbl page */;
 	struct regpair bd_cons_address
 	    /* BD consumer address in host - for PMD queues */;
@@ -1124,12 +1160,16 @@ struct vport_start_ramrod_data {
 	u8 handle_ptp_pkts /* If set, the vport handles PTP Timesync Packets */
 	   ;
 	u8 silent_vlan_removal_en;
-/* If enable then innerVlan will be striped and not written to cqe */
+	/* If enable then innerVlan will be striped and not written to cqe */
 	u8 untagged;
 	struct eth_tx_err_vals tx_err_behav
 	    /* Desired behavior per TX error type */;
 	u8 zero_placement_offset;
-	u8 reserved[7];
+/* If set, Contorl frames will be filtered according to MAC check. */
+	u8 ctl_frame_mac_check_en;
+/* If set, Contorl frames will be filtered according to ethtype check. */
+	u8 ctl_frame_ethtype_check_en;
+	u8 reserved[5];
 };
 
 /*
@@ -1459,8 +1499,8 @@ struct mstorm_eth_conn_ag_ctx {
 	__le32 reg1 /* reg1 */;
 };
 
-/* @DPDK: xstormEthConnAgCtxDqExtLdPart */
-struct xstorm_eth_conn_ag_ctx_dq_ext_ld_part {
+
+struct xstormEthConnAgCtxDqExtLdPart {
 	u8 reserved0 /* cdu_validation */;
 	u8 eth_state /* state */;
 	u8 flags0;
@@ -1672,11 +1712,11 @@ struct xstorm_eth_conn_ag_ctx_dq_ext_ld_part {
 #define XSTORMETHCONNAGCTXDQEXTLDPART_TPH_ENABLE_SHIFT             6
 	u8 edpm_event_id /* byte2 */;
 	__le16 physical_q0 /* physical_q0 */;
-	__le16 word1 /* physical_q1 */;
+	__le16 quota /* physical_q1 */;
 	__le16 edpm_num_bds /* physical_q2 */;
 	__le16 tx_bd_cons /* word3 */;
 	__le16 tx_bd_prod /* word4 */;
-	__le16 go_to_bd_cons /* word5 */;
+	__le16 tx_class /* word5 */;
 	__le16 conn_dpi /* conn_dpi */;
 	u8 byte3 /* byte3 */;
 	u8 byte4 /* byte4 */;
@@ -1901,11 +1941,11 @@ struct xstorm_eth_hw_conn_ag_ctx {
 #define XSTORM_ETH_HW_CONN_AG_CTX_TPH_ENABLE_SHIFT             6
 	u8 edpm_event_id /* byte2 */;
 	__le16 physical_q0 /* physical_q0 */;
-	__le16 word1 /* physical_q1 */;
+	__le16 quota /* physical_q1 */;
 	__le16 edpm_num_bds /* physical_q2 */;
 	__le16 tx_bd_cons /* word3 */;
 	__le16 tx_bd_prod /* word4 */;
-	__le16 go_to_bd_cons /* word5 */;
+	__le16 tx_class /* word5 */;
 	__le16 conn_dpi /* conn_dpi */;
 };
 

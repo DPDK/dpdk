@@ -25,21 +25,6 @@ struct ecore_tid_mem {
 	u8 *blocks[MAX_TID_BLOCKS]; /* 4K */
 };
 
-static OSAL_INLINE void *get_task_mem(struct ecore_tid_mem *info, u32 tid)
-{
-	/* note: waste is superfluous */
-	return (void *)(info->blocks[tid / info->num_tids_per_block] +
-			(tid % info->num_tids_per_block) * info->tid_size);
-
-	/* more elaborate alternative with no modulo
-	 * u32 mask = info->tid_size * info->num_tids_per_block +
-	 *            info->waste - 1;
-	 * u32 index = tid / info->num_tids_per_block;
-	 * u32 offset = tid * info->tid_size + index * info->waste;
-	 * return (void *)(blocks[index] + (offset & mask));
-	 */
-}
-
 /**
 * @brief ecore_cxt_acquire - Acquire a new cid of a specific protocol type
 *

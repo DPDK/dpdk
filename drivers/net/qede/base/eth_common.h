@@ -11,6 +11,21 @@
 /********************/
 /* ETH FW CONSTANTS */
 /********************/
+
+/* FP HSI version. FP HSI is compatible if (fwVer.major == drvVer.major &&
+ * fwVer.minor >= drvVer.minor)
+ */
+/* ETH FP HSI Major version */
+#define ETH_HSI_VER_MAJOR                   3
+/* ETH FP HSI Minor version */
+#define ETH_HSI_VER_MINOR                   10
+
+/* Alias for 8.7.x.x/8.8.x.x ETH FP HSI MINOR version. In this version driver
+ * is not required to set pkt_len field in eth_tx_1st_bd struct, and tunneling
+ * offload is not supported.
+ */
+#define ETH_HSI_VER_NO_PKT_LEN_TUNN         5
+
 #define ETH_CACHE_LINE_SIZE                 64
 #define ETH_RX_CQE_GAP                      32
 #define ETH_MAX_RAMROD_PER_CON              8
@@ -21,19 +36,40 @@
 
 #define ETH_TX_MIN_BDS_PER_NON_LSO_PKT              1
 #define ETH_TX_MAX_BDS_PER_NON_LSO_PACKET           18
+#define ETH_TX_MAX_BDS_PER_LSO_PACKET               255
 #define ETH_TX_MAX_LSO_HDR_NBD                      4
 #define ETH_TX_MIN_BDS_PER_LSO_PKT                  3
 #define ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT   3
 #define ETH_TX_MIN_BDS_PER_IPV6_WITH_EXT_PKT        2
 #define ETH_TX_MIN_BDS_PER_PKT_W_LOOPBACK_MODE      2
-#define ETH_TX_MAX_NON_LSO_PKT_LEN                  (9700 - (4 + 12 + 8))
+/* (QM_REG_TASKBYTECRDCOST_0, QM_VOQ_BYTE_CRD_TASK_COST) -
+ * (VLAN-TAG + CRC + IPG + PREAMBLE)
+ */
+#define ETH_TX_MAX_NON_LSO_PKT_LEN                  (9700 - (4 + 4 + 12 + 8))
 #define ETH_TX_MAX_LSO_HDR_BYTES                    510
-#define ETH_TX_LSO_WINDOW_BDS_NUM                   18
+/* Number of BDs to consider for LSO sliding window restriction is
+ * (ETH_TX_LSO_WINDOW_BDS_NUM - hdr_nbd)
+ */
+#define ETH_TX_LSO_WINDOW_BDS_NUM                   (18 - 1)
+/* Minimum data length (in bytes) in LSO sliding window */
 #define ETH_TX_LSO_WINDOW_MIN_LEN                   9700
-#define ETH_TX_MAX_LSO_PAYLOAD_LEN                  0xFFFF
+/* Maximum LSO packet TCP payload length (in bytes) */
+#define ETH_TX_MAX_LSO_PAYLOAD_LEN                  0xFE000
+/* Number of same-as-last resources in tx switching */
+#define ETH_TX_NUM_SAME_AS_LAST_ENTRIES             320
+/* Value for a connection for which same as last feature is disabled */
+#define ETH_TX_INACTIVE_SAME_AS_LAST                0xFFFF
 
+/* Maximum number of statistics counters */
 #define ETH_NUM_STATISTIC_COUNTERS                  MAX_NUM_VPORTS
+/* Maximum number of statistics counters when doubled VF zone used */
+#define ETH_NUM_STATISTIC_COUNTERS_DOUBLE_VF_ZONE \
+	(ETH_NUM_STATISTIC_COUNTERS - MAX_NUM_VFS / 2)
+/* Maximum number of statistics counters when quad VF zone used */
+#define ETH_NUM_STATISTIC_COUNTERS_QUAD_VF_ZONE \
+	(ETH_NUM_STATISTIC_COUNTERS - 3 * MAX_NUM_VFS / 4)
 
+/* Maximum number of buffers, used for RX packet placement */
 #define ETH_RX_MAX_BUFF_PER_PKT             5
 
 /* num of MAC/VLAN filters */
@@ -61,6 +97,12 @@
 #define ETH_TPA_CQE_START_LEN_LIST_SIZE   ETH_RX_MAX_BUFF_PER_PKT
 #define ETH_TPA_CQE_CONT_LEN_LIST_SIZE    6
 #define ETH_TPA_CQE_END_LEN_LIST_SIZE     4
+
+/* Control frame check constants */
+/* Number of etherType values configured by driver for control frame check */
+#define ETH_CTL_FRAME_ETH_TYPE_NUM              4
+
+
 
 /*
  * Destination port mode
@@ -108,19 +150,21 @@ struct eth_tx_1st_bd_flags {
  * The parsing information data for the first tx bd of a given packet.
  */
 struct eth_tx_data_1st_bd {
-	__le16 vlan /* VLAN to insert to packet (if needed). */;
-		/* Number of BDs in packet. Should be at least 2 in non-LSO
-		* packet and at least 3 in LSO (or Tunnel with IPv6+ext) packet.
+	__le16 vlan /* VLAN tag to insert to packet (if needed). */;
+/* Number of BDs in packet. Should be at least 2 in non-LSO packet and at least
+ * 3 in LSO (or Tunnel with IPv6+ext) packet.
  */
 	u8 nbds;
 	struct eth_tx_1st_bd_flags bd_flags;
 	__le16 bitfields;
-#define ETH_TX_DATA_1ST_BD_TUNN_CFG_OVERRIDE_MASK  0x1
-#define ETH_TX_DATA_1ST_BD_TUNN_CFG_OVERRIDE_SHIFT 0
+/* Indicates a tunneled packet. Must be set for encapsulated packet. */
+#define ETH_TX_DATA_1ST_BD_TUNN_FLAG_MASK  0x1
+#define ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT 0
 #define ETH_TX_DATA_1ST_BD_RESERVED0_MASK  0x1
 #define ETH_TX_DATA_1ST_BD_RESERVED0_SHIFT 1
-#define ETH_TX_DATA_1ST_BD_FW_USE_ONLY_MASK        0x3FFF
-#define ETH_TX_DATA_1ST_BD_FW_USE_ONLY_SHIFT       2
+/* Total packet length - must be filled for non-LSO packets. */
+#define ETH_TX_DATA_1ST_BD_PKT_LEN_MASK    0x3FFF
+#define ETH_TX_DATA_1ST_BD_PKT_LEN_SHIFT   2
 };
 
 /*
@@ -171,25 +215,51 @@ struct eth_edpm_fw_data {
  * FW debug.
  */
 struct eth_fast_path_cqe_fw_debug {
-	u8 reserved0 /* FW reserved. */;
-	u8 reserved1 /* FW reserved. */;
 	__le16 reserved2 /* FW reserved. */;
 };
 
-struct tunnel_parsing_flags {
+
+/*
+ * tunneling parsing flags
+ */
+struct eth_tunnel_parsing_flags {
 	u8 flags;
-#define TUNNEL_PARSING_FLAGS_TYPE_MASK              0x3
-#define TUNNEL_PARSING_FLAGS_TYPE_SHIFT             0
-#define TUNNEL_PARSING_FLAGS_TENNANT_ID_EXIST_MASK  0x1
-#define TUNNEL_PARSING_FLAGS_TENNANT_ID_EXIST_SHIFT 2
-#define TUNNEL_PARSING_FLAGS_NEXT_PROTOCOL_MASK     0x3
-#define TUNNEL_PARSING_FLAGS_NEXT_PROTOCOL_SHIFT    3
-#define TUNNEL_PARSING_FLAGS_FIRSTHDRIPMATCH_MASK   0x1
-#define TUNNEL_PARSING_FLAGS_FIRSTHDRIPMATCH_SHIFT  5
-#define TUNNEL_PARSING_FLAGS_IPV4_FRAGMENT_MASK     0x1
-#define TUNNEL_PARSING_FLAGS_IPV4_FRAGMENT_SHIFT    6
-#define TUNNEL_PARSING_FLAGS_IPV4_OPTIONS_MASK      0x1
-#define TUNNEL_PARSING_FLAGS_IPV4_OPTIONS_SHIFT     7
+/* 0 - no tunneling, 1 - GENEVE, 2 - GRE, 3 - VXLAN
+ * (use enum eth_rx_tunn_type)
+ */
+#define ETH_TUNNEL_PARSING_FLAGS_TYPE_MASK              0x3
+#define ETH_TUNNEL_PARSING_FLAGS_TYPE_SHIFT             0
+/*  If it s not an encapsulated packet then put 0x0. If it s an encapsulated
+ *  packet but the tenant-id doesn t exist then put 0x0. Else put 0x1
+ *
+ */
+#define ETH_TUNNEL_PARSING_FLAGS_TENNANT_ID_EXIST_MASK  0x1
+#define ETH_TUNNEL_PARSING_FLAGS_TENNANT_ID_EXIST_SHIFT 2
+/* Type of the next header above the tunneling: 0 - unknown, 1 - L2, 2 - Ipv4,
+ * 3 - IPv6 (use enum tunnel_next_protocol)
+ */
+#define ETH_TUNNEL_PARSING_FLAGS_NEXT_PROTOCOL_MASK     0x3
+#define ETH_TUNNEL_PARSING_FLAGS_NEXT_PROTOCOL_SHIFT    3
+/* The result of comparing the DA-ip of the tunnel header. */
+#define ETH_TUNNEL_PARSING_FLAGS_FIRSTHDRIPMATCH_MASK   0x1
+#define ETH_TUNNEL_PARSING_FLAGS_FIRSTHDRIPMATCH_SHIFT  5
+#define ETH_TUNNEL_PARSING_FLAGS_IPV4_FRAGMENT_MASK     0x1
+#define ETH_TUNNEL_PARSING_FLAGS_IPV4_FRAGMENT_SHIFT    6
+#define ETH_TUNNEL_PARSING_FLAGS_IPV4_OPTIONS_MASK      0x1
+#define ETH_TUNNEL_PARSING_FLAGS_IPV4_OPTIONS_SHIFT     7
+};
+
+/*
+ * PMD flow control bits
+ */
+struct eth_pmd_flow_flags {
+	u8 flags;
+#define ETH_PMD_FLOW_FLAGS_VALID_MASK     0x1 /* CQE valid bit */
+#define ETH_PMD_FLOW_FLAGS_VALID_SHIFT    0
+#define ETH_PMD_FLOW_FLAGS_TOGGLE_MASK    0x1 /* CQE ring toggle bit */
+#define ETH_PMD_FLOW_FLAGS_TOGGLE_SHIFT   1
+#define ETH_PMD_FLOW_FLAGS_RESERVED_MASK  0x3F
+#define ETH_PMD_FLOW_FLAGS_RESERVED_SHIFT 2
 };
 
 /*
@@ -205,25 +275,19 @@ struct eth_fast_path_rx_reg_cqe {
 #define ETH_FAST_PATH_RX_REG_CQE_RESERVED0_MASK      0x1
 #define ETH_FAST_PATH_RX_REG_CQE_RESERVED0_SHIFT     7
 	__le16 pkt_len /* Total packet length (from the parser) */;
-	struct parsing_and_err_flags pars_flags
-	    /* Parsing and error flags from the parser */;
+/* Parsing and error flags from the parser */
+	struct parsing_and_err_flags pars_flags;
 	__le16 vlan_tag /* 802.1q VLAN tag */;
 	__le32 rss_hash /* RSS hash result */;
 	__le16 len_on_first_bd /* Number of bytes placed on first BD */;
 	u8 placement_offset /* Offset of placement from BD start */;
-	struct tunnel_parsing_flags tunnel_pars_flags /* Tunnel Parsing Flags */
-	  ;
+/* Tunnel Parsing Flags */
+	struct eth_tunnel_parsing_flags tunnel_pars_flags;
 	u8 bd_num /* Number of BDs, used for packet */;
-	u8 reserved[7];
+	u8 reserved[9];
 	struct eth_fast_path_cqe_fw_debug fw_debug /* FW reserved. */;
 	u8 reserved1[3];
-	u8 flags;
-#define ETH_FAST_PATH_RX_REG_CQE_VALID_MASK          0x1
-#define ETH_FAST_PATH_RX_REG_CQE_VALID_SHIFT         0
-#define ETH_FAST_PATH_RX_REG_CQE_VALID_TOGGLE_MASK   0x1
-#define ETH_FAST_PATH_RX_REG_CQE_VALID_TOGGLE_SHIFT  1
-#define ETH_FAST_PATH_RX_REG_CQE_RESERVED2_MASK      0x3F
-#define ETH_FAST_PATH_RX_REG_CQE_RESERVED2_SHIFT     2
+	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
 /*
@@ -234,9 +298,11 @@ struct eth_fast_path_rx_tpa_cont_cqe {
 	u8 tpa_agg_index /* TPA aggregation index */;
 	__le16 len_list[ETH_TPA_CQE_CONT_LEN_LIST_SIZE]
 	    /* List of the segment sizes */;
-	u8 reserved[5];
+	u8 reserved;
 	u8 reserved1 /* FW reserved. */;
 	__le16 reserved2[ETH_TPA_CQE_CONT_LEN_LIST_SIZE] /* FW reserved. */;
+	u8 reserved3[3];
+	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
 /*
@@ -253,9 +319,10 @@ struct eth_fast_path_rx_tpa_end_cqe {
 	__le32 ts_delta /* TCP timestamp delta */;
 	__le16 len_list[ETH_TPA_CQE_END_LEN_LIST_SIZE]
 	    /* List of the segment sizes */;
-	u8 reserved1[3];
-	u8 reserved2 /* FW reserved. */;
 	__le16 reserved3[ETH_TPA_CQE_END_LEN_LIST_SIZE] /* FW reserved. */;
+	__le16 reserved1;
+	u8 reserved2 /* FW reserved. */;
+	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
 /*
@@ -277,13 +344,15 @@ struct eth_fast_path_rx_tpa_start_cqe {
 	__le32 rss_hash /* RSS hash result */;
 	__le16 len_on_first_bd /* Number of bytes placed on first BD */;
 	u8 placement_offset /* Offset of placement from BD start */;
-	struct tunnel_parsing_flags tunnel_pars_flags /* Tunnel Parsing Flags */
-	  ;
+/* Tunnel Parsing Flags */
+	struct eth_tunnel_parsing_flags tunnel_pars_flags;
 	u8 tpa_agg_index /* TPA aggregation index */;
 	u8 header_len /* Packet L2+L3+L4 header length */;
 	__le16 ext_bd_len_list[ETH_TPA_CQE_START_LEN_LIST_SIZE]
 	    /* Additional BDs length list. */;
 	struct eth_fast_path_cqe_fw_debug fw_debug /* FW reserved. */;
+	u8 reserved;
+	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
 /*
@@ -315,13 +384,7 @@ struct eth_slow_path_rx_cqe {
 	u8 reserved[25];
 	__le16 echo;
 	u8 reserved1;
-	u8 flags;
-#define ETH_SLOW_PATH_RX_CQE_VALID_MASK         0x1
-#define ETH_SLOW_PATH_RX_CQE_VALID_SHIFT        0
-#define ETH_SLOW_PATH_RX_CQE_VALID_TOGGLE_MASK  0x1
-#define ETH_SLOW_PATH_RX_CQE_VALID_TOGGLE_SHIFT 1
-#define ETH_SLOW_PATH_RX_CQE_RESERVED2_MASK     0x3F
-#define ETH_SLOW_PATH_RX_CQE_RESERVED2_SHIFT    2
+	struct eth_pmd_flow_flags pmd_flags /* CQE valid and toggle bits */;
 };
 
 /*
@@ -361,6 +424,17 @@ struct eth_rx_pmd_cqe {
 };
 
 /*
+ * Eth RX Tunnel Type
+ */
+enum eth_rx_tunn_type {
+	ETH_RX_NO_TUNN /* No Tunnel. */,
+	ETH_RX_TUNN_GENEVE /* GENEVE Tunnel. */,
+	ETH_RX_TUNN_GRE /* GRE Tunnel. */,
+	ETH_RX_TUNN_VXLAN /* VXLAN Tunnel. */,
+	MAX_ETH_RX_TUNN_TYPE
+};
+
+/*
  * Aggregation end reason.
  */
 enum eth_tpa_end_reason {
@@ -377,16 +451,7 @@ enum eth_tpa_end_reason {
 	MAX_ETH_TPA_END_REASON
 };
 
-/*
- * Eth Tunnel Type
- */
-enum eth_tunn_type {
-	ETH_TUNN_GENEVE /* GENEVE Tunnel. */,
-	ETH_TUNN_TTAG /* T-Tag Tunnel. */,
-	ETH_TUNN_GRE /* GRE Tunnel. */,
-	ETH_TUNN_VXLAN /* VXLAN Tunnel. */,
-	MAX_ETH_TUNN_TYPE
-};
+
 
 /*
  * The first tx bd of a given packet
@@ -466,20 +531,24 @@ union eth_tx_bd_types {
 };
 
 /*
- * Mstorm Queue Zone
+ * Eth Tx Tunnel Type
  */
-struct mstorm_eth_queue_zone {
-	struct eth_rx_prod_data rx_producers;
-	__le32 reserved[2];
+enum eth_tx_tunn_type {
+	ETH_TX_TUNN_GENEVE /* GENEVE Tunnel. */,
+	ETH_TX_TUNN_TTAG /* T-Tag Tunnel. */,
+	ETH_TX_TUNN_GRE /* GRE Tunnel. */,
+	ETH_TX_TUNN_VXLAN /* VXLAN Tunnel. */,
+	MAX_ETH_TX_TUNN_TYPE
 };
+
 
 /*
  * Ystorm Queue Zone
  */
-struct ystorm_eth_queue_zone {
+struct xstorm_eth_queue_zone {
 	struct coalescing_timeset int_coalescing_timeset
 	    /* Tx interrupt coalescing TimeSet */;
-	__le16 reserved[3];
+	u8 reserved[7];
 };
 
 /*

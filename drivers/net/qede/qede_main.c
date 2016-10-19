@@ -20,7 +20,7 @@ static uint8_t npar_tx_switching = 1;
 char fw_file[PATH_MAX];
 
 const char *QEDE_DEFAULT_FIRMWARE =
-	"/lib/firmware/qed/qed_init_values_zipped-8.7.7.0.bin";
+	"/lib/firmware/qed/qed_init_values_zipped-8.10.9.0.bin";
 
 static void
 qed_update_pf_params(struct ecore_dev *edev, struct ecore_pf_params *params)
@@ -44,6 +44,7 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 	  enum qed_protocol protocol, uint32_t dp_module,
 	  uint8_t dp_level, bool is_vf)
 {
+	struct ecore_hw_prepare_params hw_prepare_params;
 	struct qede_dev *qdev = (struct qede_dev *)edev;
 	int rc;
 
@@ -51,11 +52,16 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 	qdev->protocol = protocol;
 	if (is_vf) {
 		edev->b_is_vf = true;
-		edev->sriov_info.b_hw_channel = true;
+		edev->b_hw_channel = true; /* @DPDK */
 	}
 	ecore_init_dp(edev, dp_module, dp_level, NULL);
 	qed_init_pci(edev, pci_dev);
-	rc = ecore_hw_prepare(edev, ECORE_PCI_DEFAULT);
+
+	memset(&hw_prepare_params, 0, sizeof(hw_prepare_params));
+	hw_prepare_params.personality = ECORE_PCI_ETH;
+	hw_prepare_params.drv_resc_alloc = false;
+	hw_prepare_params.chk_reg_fifo = false;
+	rc = ecore_hw_prepare(edev, &hw_prepare_params);
 	if (rc) {
 		DP_ERR(edev, "hw prepare failed\n");
 		return rc;
@@ -256,8 +262,9 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	/* Start the slowpath */
 #ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev))
-		data = edev->firmware;
+		data = (const uint8_t *)edev->firmware + sizeof(u32);
 #endif
+
 	allow_npar_tx_switching = npar_tx_switching ? true : false;
 
 #ifdef QED_ENC_SUPPORTED
@@ -346,7 +353,7 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 	if (IS_PF(edev)) {
 		ptt = ecore_ptt_acquire(ECORE_LEADING_HWFN(edev));
 		if (ptt) {
-			ecore_mcp_get_mfw_ver(edev, ptt,
+			ecore_mcp_get_mfw_ver(ECORE_LEADING_HWFN(edev), ptt,
 					      &dev_info->mfw_rev, NULL);
 
 			ecore_mcp_get_flash_size(ECORE_LEADING_HWFN(edev), ptt,
@@ -361,7 +368,8 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 			ecore_ptt_release(ECORE_LEADING_HWFN(edev), ptt);
 		}
 	} else {
-		ecore_mcp_get_mfw_ver(edev, ptt, &dev_info->mfw_rev, NULL);
+		ecore_mcp_get_mfw_ver(ECORE_LEADING_HWFN(edev), ptt,
+				      &dev_info->mfw_rev, NULL);
 	}
 
 	return 0;

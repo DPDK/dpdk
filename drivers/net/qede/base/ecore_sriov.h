@@ -14,8 +14,6 @@
 #include "ecore_iov_api.h"
 #include "ecore_hsi_common.h"
 
-#define ECORE_ETH_VF_NUM_VLAN_FILTERS 2
-
 #define ECORE_ETH_MAX_VF_NUM_VLAN_FILTERS \
 	(MAX_NUM_VFS * ECORE_ETH_VF_NUM_VLAN_FILTERS)
 
@@ -31,25 +29,6 @@
 struct ecore_vf_mbx_msg {
 	union vfpf_tlvs req;
 	union pfvf_tlvs resp;
-};
-
-/* This data is held in the ecore_hwfn structure for VFs only. */
-struct ecore_vf_iov {
-	union vfpf_tlvs *vf2pf_request;
-	dma_addr_t vf2pf_request_phys;
-	union pfvf_tlvs *pf2vf_reply;
-	dma_addr_t pf2vf_reply_phys;
-
-	/* Should be taken whenever the mailbox buffers are accessed */
-	osal_mutex_t mutex;
-	u8 *offset;
-
-	/* Bulletin Board */
-	struct ecore_bulletin bulletin;
-	struct ecore_bulletin_content bulletin_shadow;
-
-	/* we set aside a copy of the acquire response */
-	struct pfvf_acquire_resp_tlv acquire_resp;
 };
 
 /* This mailbox is maintained per VF in its PF
@@ -91,15 +70,6 @@ struct ecore_vf_q_info {
 	u8 txq_active;
 };
 
-enum int_mod {
-	VPORT_INT_MOD_UNDEFINED = 0,
-	VPORT_INT_MOD_ADAPTIVE = 1,
-	VPORT_INT_MOD_OFF = 2,
-	VPORT_INT_MOD_LOW = 100,
-	VPORT_INT_MOD_MEDIUM = 200,
-	VPORT_INT_MOD_HIGH = 300
-};
-
 enum vf_state {
 	VF_FREE		= 0,	/* VF ready to be acquired holds no resc */
 	VF_ACQUIRED	= 1,	/* VF, acquired, but not initalized */
@@ -117,6 +87,8 @@ struct ecore_vf_shadow_config {
 	/* Shadow copy of all guest vlans */
 	struct ecore_vf_vlan_shadow vlans[ECORE_ETH_VF_NUM_VLAN_FILTERS + 1];
 
+	/* Shadow copy of all configured MACs; Empty if forcing MACs */
+	u8 macs[ECORE_ETH_VF_NUM_MAC_FILTERS][ETH_ALEN];
 	u8 inner_vlan_removal;
 };
 
@@ -124,10 +96,14 @@ struct ecore_vf_shadow_config {
 struct ecore_vf_info {
 	struct ecore_iov_vf_mbx vf_mbx;
 	enum vf_state state;
+	bool b_init;
 	u8			to_disable;
 
 	struct ecore_bulletin	bulletin;
 	dma_addr_t		vf_bulletin;
+
+	/* PF saves a copy of the last VF acquire message */
+	struct vfpf_acquire_tlv acquire;
 
 	u32			concrete_fid;
 	u16			opaque_fid;
@@ -148,7 +124,6 @@ struct ecore_vf_info {
 
 	u8			num_mac_filters;
 	u8			num_vlan_filters;
-	u8 num_mc_filters;
 
 	struct ecore_vf_q_info	vf_queues[ECORE_MAX_VF_CHAINS_PER_PF];
 	u16			igu_sbs[ECORE_MAX_VF_CHAINS_PER_PF];
@@ -181,6 +156,13 @@ struct ecore_pf_iov {
 	u64			pending_flr[ECORE_VF_ARRAY_LENGTH];
 	u16			base_vport_id;
 
+#ifndef REMOVE_DBG
+	/* This doesn't serve anything functionally, but it makes windows
+	 * debugging of IOV related issues easier.
+	 */
+	u64			active_vfs[ECORE_VF_ARRAY_LENGTH];
+#endif
+
 	/* Allocate message address continuosuly and split to each VF */
 	void			*mbx_msg_virt_addr;
 	dma_addr_t		mbx_msg_phys_addr;
@@ -196,16 +178,13 @@ struct ecore_pf_iov {
 #ifdef CONFIG_ECORE_SRIOV
 /**
  * @brief Read sriov related information and allocated resources
- *  reads from configuraiton space, shmem, and allocates the VF
- *  database in the PF.
+ *  reads from configuraiton space, shmem, etc.
  *
  * @param p_hwfn
- * @param p_ptt
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn,
-				       struct ecore_ptt *p_ptt);
+enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn);
 
 /**
  * @brief ecore_add_tlv - place a given tlv on the tlv buffer at next offset
@@ -218,7 +197,9 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn,
  * @return pointer to the newly placed tlv
  */
 void *ecore_add_tlv(struct ecore_hwfn	*p_hwfn,
-		    u8 **offset, u16 type, u16 length);
+		    u8			**offset,
+		    u16			type,
+		    u16			length);
 
 /**
  * @brief list the types and lengths of the tlvs on the buffer
@@ -226,7 +207,8 @@ void *ecore_add_tlv(struct ecore_hwfn	*p_hwfn,
  * @param p_hwfn
  * @param tlvs_list
  */
-void ecore_dp_tlv_list(struct ecore_hwfn *p_hwfn, void *tlvs_list);
+void ecore_dp_tlv_list(struct ecore_hwfn *p_hwfn,
+		       void *tlvs_list);
 
 /**
  * @brief ecore_iov_alloc - allocate sriov related resources
@@ -243,7 +225,8 @@ enum _ecore_status_t ecore_iov_alloc(struct ecore_hwfn *p_hwfn);
  * @param p_hwfn
  * @param p_ptt
  */
-void ecore_iov_setup(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
+void ecore_iov_setup(struct ecore_hwfn	*p_hwfn,
+		     struct ecore_ptt	*p_ptt);
 
 /**
  * @brief ecore_iov_free - free sriov related resources
@@ -251,6 +234,13 @@ void ecore_iov_setup(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
  * @param p_hwfn
  */
 void ecore_iov_free(struct ecore_hwfn *p_hwfn);
+
+/**
+ * @brief free sriov related memory that was allocated during hw_prepare
+ *
+ * @param p_dev
+ */
+void ecore_iov_free_hw_info(struct ecore_dev *p_dev);
 
 /**
  * @brief ecore_sriov_eqe_event - handle async sriov event arrived on eqe.
@@ -274,7 +264,9 @@ enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn	 *p_hwfn,
  *
  * @return calculated crc over buffer [with respect to seed].
  */
-u32 ecore_crc32(u32 crc, u8 *ptr, u32 length);
+u32 ecore_crc32(u32 crc,
+		u8  *ptr,
+		u32 length);
 
 /**
  * @brief Mark structs of vfs that have been FLR-ed.
@@ -284,7 +276,8 @@ u32 ecore_crc32(u32 crc, u8 *ptr, u32 length);
  *
  * @return 1 iff one of the PF's vfs got FLRed. 0 otherwise.
  */
-int ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn, u32 *disabled_vfs);
+int ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn,
+			  u32 *disabled_vfs);
 
 /**
  * @brief Search extended TLVs in request/reply buffer.
@@ -312,79 +305,5 @@ void *ecore_iov_search_list_tlvs(struct ecore_hwfn *p_hwfn,
 struct ecore_vf_info *ecore_iov_get_vf_info(struct ecore_hwfn *p_hwfn,
 					    u16 relative_vf_id,
 					    bool b_enabled_only);
-#else
-static OSAL_INLINE enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn
-							  *p_hwfn,
-							  struct ecore_ptt
-							  *p_ptt)
-{
-	return ECORE_SUCCESS;
-}
-
-static OSAL_INLINE void *ecore_add_tlv(struct ecore_hwfn *p_hwfn, u8 **offset,
-				       u16 type, u16 length)
-{
-	return OSAL_NULL;
-}
-
-static OSAL_INLINE void ecore_dp_tlv_list(struct ecore_hwfn *p_hwfn,
-					  void *tlvs_list)
-{
-}
-
-static OSAL_INLINE enum _ecore_status_t ecore_iov_alloc(struct ecore_hwfn
-							*p_hwfn)
-{
-	return ECORE_SUCCESS;
-}
-
-static OSAL_INLINE void ecore_iov_setup(struct ecore_hwfn *p_hwfn,
-					struct ecore_ptt *p_ptt)
-{
-}
-
-static OSAL_INLINE void ecore_iov_free(struct ecore_hwfn *p_hwfn)
-{
-}
-
-static OSAL_INLINE enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn
-							      *p_hwfn,
-							      u8 opcode,
-							      __le16 echo,
-							      union
-							      event_ring_data
-							      * data)
-{
-	return ECORE_INVAL;
-}
-
-static OSAL_INLINE u32 ecore_crc32(u32 crc, u8 *ptr, u32 length)
-{
-	return 0;
-}
-
-static OSAL_INLINE int ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn,
-					     u32 *disabled_vfs)
-{
-	return 0;
-}
-
-static OSAL_INLINE void *ecore_iov_search_list_tlvs(struct ecore_hwfn *p_hwfn,
-						    void *p_tlvs_list,
-						    u16 req_type)
-{
-	return OSAL_NULL;
-}
-
-static OSAL_INLINE struct ecore_vf_info *ecore_iov_get_vf_info(struct ecore_hwfn
-							       *p_hwfn,
-							       u16
-							       relative_vf_id,
-							       bool
-							       b_enabled_only)
-{
-	return OSAL_NULL;
-}
-
 #endif
 #endif /* __ECORE_SRIOV_H__ */

@@ -122,22 +122,6 @@ u16 ecore_int_get_sp_sb_id(struct ecore_hwfn *p_hwfn);
  * @param p_hwfn
  * @param p_ptt
  * @param sb_id		- igu status block id
- * @param cleanup_set	- set(1) / clear(0)
- * @param opaque_fid    - the function for which to perform
- *			cleanup, for example a PF on behalf of
- *			its VFs.
- */
-void ecore_int_igu_cleanup_sb(struct ecore_hwfn *p_hwfn,
-			      struct ecore_ptt *p_ptt,
-			      u32 sb_id, bool cleanup_set, u16 opaque_fid);
-
-/**
- * @brief Status block cleanup. Should be called for each status
- *        block that will be used -> both PF / VF
- *
- * @param p_hwfn
- * @param p_ptt
- * @param sb_id		- igu status block id
  * @param opaque	- opaque fid of the sb owner.
  * @param cleanup_set	- set(1) / clear(0)
  */
@@ -223,6 +207,9 @@ void ecore_init_cau_sb_entry(struct ecore_hwfn *p_hwfn,
 			     struct cau_sb_entry *p_sb_entry, u8 pf_id,
 			     u16 vf_number, u8 vf_valid);
 
+enum _ecore_status_t ecore_int_set_timer_res(struct ecore_hwfn *p_hwfn,
+					     struct ecore_ptt *p_ptt,
+					     u8 timer_res, u16 sb_id, bool tx);
 #ifndef ASIC_ONLY
 #define ECORE_MAPPING_MEMORY_SIZE(dev) \
 	((CHIP_REV_IS_SLOW(dev) && (!(dev)->b_is_emul_full)) ? \

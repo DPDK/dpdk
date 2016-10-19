@@ -218,11 +218,12 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
  * @param opaque_fid
  * @param tx_queue_id		TX Queue ID
  * @param vport_id		VPort ID
- * @param stats_id              VPort ID which the queue stats
+ * @param u8 stats_id		 VPort ID which the queue stats
  *				will be added to
  * @param sb			Status Block of the Function Event Ring
  * @param sb_index		Index into the status block of the Function
  *				Event Ring
+ * @param tc			traffic class to use with this L2 txq
  * @param pbl_addr		address of the pbl array
  * @param pbl_size		number of entries in pbl
  * @param pp_doorbell		Pointer to place doorbell pointer (May be NULL).
@@ -238,10 +239,10 @@ enum _ecore_status_t ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 						 u8 stats_id,
 						 u16 sb,
 						 u8 sb_index,
+						 u8 tc,
 						 dma_addr_t pbl_addr,
 						 u16 pbl_size,
-						 void OSAL_IOMEM * *
-						 pp_doorbell);
+						 void OSAL_IOMEM **pp_doorbell);
 
 /**
  * @brief ecore_sp_eth_tx_queue_stop -
@@ -277,6 +278,8 @@ struct ecore_sp_vport_start_params {
 	u8 vport_id;		/* VPORT ID */
 	u16 mtu;		/* VPORT MTU */
 	bool zero_placement_offset;
+	bool check_mac;
+	bool check_ethtype;
 };
 
 /**

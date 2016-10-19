@@ -18,6 +18,7 @@
 #include "ecore_cxt.h"
 #include "ecore_hw.h"
 #include "ecore_dev_api.h"
+#include "ecore_sriov.h"
 
 /* Max number of connection types in HW (DQ/CDU etc.) */
 #define MAX_CONN_TYPES		PROTOCOLID_COMMON
@@ -60,6 +61,14 @@ union conn_context {
 	struct eth_conn_context eth_ctx;
 };
 
+/* TYPE-0 task context - iSCSI, FCOE */
+union type0_task_context {
+};
+
+/* TYPE-1 task context - ROCE */
+union type1_task_context {
+};
+
 struct src_ent {
 	u8 opaque[56];
 	u64 next;
@@ -70,6 +79,14 @@ struct src_ent {
 
 #define CONN_CXT_SIZE(p_hwfn) \
 	ALIGNED_TYPE_SIZE(union conn_context, p_hwfn)
+
+#define SRQ_CXT_SIZE (sizeof(struct regpair) * 8) /* @DPDK */
+
+#define TYPE0_TASK_CXT_SIZE(p_hwfn) \
+	ALIGNED_TYPE_SIZE(union type0_task_context, p_hwfn)
+
+/* Alignment is inherent to the type1_task_context structure */
+#define TYPE1_TASK_CXT_SIZE(p_hwfn) sizeof(union type1_task_context)
 
 /* PF per protocl configuration object */
 #define TASK_SEGMENTS   (NUM_TASK_PF_SEGMENTS + NUM_TASK_VF_SEGMENTS)
@@ -96,6 +113,7 @@ struct ecore_conn_type_cfg {
 #define ILT_CLI_PF_BLOCKS	(1 + NUM_TASK_PF_SEGMENTS * 2)
 #define ILT_CLI_VF_BLOCKS	(1 + NUM_TASK_VF_SEGMENTS * 2)
 #define CDUC_BLK		(0)
+#define SRQ_BLK			(0)
 #define CDUT_SEG_BLK(n)		(1 + (u8)(n))
 #define CDUT_FL_SEG_BLK(n, X)	(1 + (n) + NUM_TASK_##X##_SEGMENTS)
 
@@ -105,6 +123,7 @@ enum ilt_clients {
 	ILT_CLI_QM,
 	ILT_CLI_TM,
 	ILT_CLI_SRC,
+	ILT_CLI_TSDM,
 	ILT_CLI_MAX
 };
 
@@ -172,12 +191,18 @@ struct ecore_cxt_mngr {
 	 */
 	u32 vf_count;
 
+	/* total number of SRQ's for this hwfn */
+	u32				srq_count;
+
 	/* Acquired CIDs */
 	struct ecore_cid_acquired_map acquired[MAX_CONN_TYPES];
 
 	/* ILT  shadow table */
 	struct ecore_dma_mem *ilt_shadow;
 	u32 pf_start_line;
+
+	/* Mutex for a dynamic ILT allocation */
+	osal_mutex_t mutex;
 
 	/* SRC T2 */
 	struct ecore_dma_mem *t2;
@@ -195,6 +220,11 @@ static OSAL_INLINE bool src_proto(enum protocol_type type)
 static OSAL_INLINE bool tm_cid_proto(enum protocol_type type)
 {
 	return type == PROTOCOLID_TOE;
+}
+
+static bool tm_tid_proto(enum protocol_type type)
+{
+	return type == PROTOCOLID_FCOE;
 }
 
 /* counts the iids for the CDU/CDUC ILT client configuration */
@@ -254,6 +284,22 @@ static OSAL_INLINE void ecore_cxt_tm_iids(struct ecore_cxt_mngr *p_mngr,
 		if (tm_cid_proto(i)) {
 			iids->pf_cids += p_cfg->cid_count;
 			iids->per_vf_cids += p_cfg->cids_per_vf;
+		}
+
+		if (tm_tid_proto(i)) {
+			struct ecore_tid_seg *segs = p_cfg->tid_seg;
+
+			/* for each segment there is at most one
+			 * protocol for which count is not 0.
+			 */
+			for (j = 0; j < NUM_TASK_PF_SEGMENTS; j++)
+				iids->pf_tids[j] += segs[j].count;
+
+			/* The last array elelment is for the VFs. As for PF
+			 * segments there can be only one protocol for
+			 * which this value is not 0.
+			 */
+			iids->per_vf_tids += segs[NUM_TASK_PF_SEGMENTS].count;
 		}
 	}
 
@@ -317,7 +363,7 @@ static struct ecore_tid_seg *ecore_cxt_tid_seg_info(struct ecore_hwfn *p_hwfn,
 }
 
 /* set the iids (cid/tid) count per protocol */
-void ecore_cxt_set_proto_cid_count(struct ecore_hwfn *p_hwfn,
+static void ecore_cxt_set_proto_cid_count(struct ecore_hwfn *p_hwfn,
 				   enum protocol_type type,
 				   u32 cid_count, u32 vf_cid_cnt)
 {
@@ -343,7 +389,7 @@ u32 ecore_cxt_get_proto_cid_start(struct ecore_hwfn *p_hwfn,
 	return p_hwfn->p_cxt_mngr->acquired[type].start_cid;
 }
 
-static u32 ecore_cxt_get_proto_tid_count(struct ecore_hwfn *p_hwfn,
+u32 ecore_cxt_get_proto_tid_count(struct ecore_hwfn *p_hwfn,
 					 enum protocol_type type)
 {
 	u32 cnt = 0;
@@ -671,12 +717,27 @@ enum _ecore_status_t ecore_cxt_cfg_ilt_compute(struct ecore_hwfn *p_hwfn)
 
 		ecore_ilt_cli_adv_line(p_hwfn, p_cli, p_blk, &curr_line,
 				       ILT_CLI_TM);
-		p_cli->pf_total_lines = curr_line - p_blk->start_line;
 
 		for (i = 1; i < p_mngr->vf_count; i++) {
 			ecore_ilt_cli_adv_line(p_hwfn, p_cli, p_blk, &curr_line,
 					       ILT_CLI_TM);
 		}
+
+		p_cli->vf_total_lines = curr_line - p_blk->start_line;
+	}
+
+	/* TSDM (SRQ CONTEXT) */
+	total = ecore_cxt_get_srq_count(p_hwfn);
+
+	if (total) {
+		p_cli = &p_mngr->clients[ILT_CLI_TSDM];
+		p_blk = &p_cli->pf_blks[SRQ_BLK];
+		ecore_ilt_cli_blk_fill(p_cli, p_blk, curr_line,
+				       total * SRQ_CXT_SIZE, SRQ_CXT_SIZE);
+
+		ecore_ilt_cli_adv_line(p_hwfn, p_cli, p_blk, &curr_line,
+				       ILT_CLI_TSDM);
+		p_cli->pf_total_lines = curr_line - p_blk->start_line;
 	}
 
 	if (curr_line - p_hwfn->p_cxt_mngr->pf_start_line >
@@ -788,7 +849,7 @@ static enum _ecore_status_t ecore_cxt_src_t2_alloc(struct ecore_hwfn *p_hwfn)
 			val = 0;
 		entries[j].next = OSAL_CPU_TO_BE64(val);
 
-		conn_num -= ent_per_page;
+		conn_num -= ent_num;
 	}
 
 	return ECORE_SUCCESS;
@@ -847,7 +908,7 @@ ecore_ilt_blk_alloc(struct ecore_hwfn *p_hwfn,
 	u32 lines, line, sz_left, lines_to_skip = 0;
 
 	/* Special handling for RoCE that supports dynamic allocation */
-	if (ilt_client == ILT_CLI_CDUT)
+	if (ilt_client == ILT_CLI_CDUT || ilt_client == ILT_CLI_TSDM)
 		return ECORE_SUCCESS;
 
 	lines_to_skip = p_blk->dynamic_line_cnt;
@@ -994,6 +1055,7 @@ cid_map_fail:
 
 enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 {
+	struct ecore_ilt_client_cfg *clients;
 	struct ecore_cxt_mngr *p_mngr;
 	u32 i;
 
@@ -1005,35 +1067,48 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 	}
 
 	/* Initialize ILT client registers */
-	p_mngr->clients[ILT_CLI_CDUC].first.reg = ILT_CFG_REG(CDUC, FIRST_ILT);
-	p_mngr->clients[ILT_CLI_CDUC].last.reg = ILT_CFG_REG(CDUC, LAST_ILT);
-	p_mngr->clients[ILT_CLI_CDUC].p_size.reg = ILT_CFG_REG(CDUC, P_SIZE);
+	clients = p_mngr->clients;
+	clients[ILT_CLI_CDUC].first.reg = ILT_CFG_REG(CDUC, FIRST_ILT);
+	clients[ILT_CLI_CDUC].last.reg  = ILT_CFG_REG(CDUC, LAST_ILT);
+	clients[ILT_CLI_CDUC].p_size.reg = ILT_CFG_REG(CDUC, P_SIZE);
 
-	p_mngr->clients[ILT_CLI_QM].first.reg = ILT_CFG_REG(QM, FIRST_ILT);
-	p_mngr->clients[ILT_CLI_QM].last.reg = ILT_CFG_REG(QM, LAST_ILT);
-	p_mngr->clients[ILT_CLI_QM].p_size.reg = ILT_CFG_REG(QM, P_SIZE);
+	clients[ILT_CLI_QM].first.reg   = ILT_CFG_REG(QM, FIRST_ILT);
+	clients[ILT_CLI_QM].last.reg    = ILT_CFG_REG(QM, LAST_ILT);
+	clients[ILT_CLI_QM].p_size.reg  = ILT_CFG_REG(QM, P_SIZE);
 
-	p_mngr->clients[ILT_CLI_TM].first.reg = ILT_CFG_REG(TM, FIRST_ILT);
-	p_mngr->clients[ILT_CLI_TM].last.reg = ILT_CFG_REG(TM, LAST_ILT);
-	p_mngr->clients[ILT_CLI_TM].p_size.reg = ILT_CFG_REG(TM, P_SIZE);
+	clients[ILT_CLI_TM].first.reg   = ILT_CFG_REG(TM, FIRST_ILT);
+	clients[ILT_CLI_TM].last.reg    = ILT_CFG_REG(TM, LAST_ILT);
+	clients[ILT_CLI_TM].p_size.reg  = ILT_CFG_REG(TM, P_SIZE);
 
-	p_mngr->clients[ILT_CLI_SRC].first.reg = ILT_CFG_REG(SRC, FIRST_ILT);
-	p_mngr->clients[ILT_CLI_SRC].last.reg = ILT_CFG_REG(SRC, LAST_ILT);
-	p_mngr->clients[ILT_CLI_SRC].p_size.reg = ILT_CFG_REG(SRC, P_SIZE);
+	clients[ILT_CLI_SRC].first.reg  = ILT_CFG_REG(SRC, FIRST_ILT);
+	clients[ILT_CLI_SRC].last.reg   = ILT_CFG_REG(SRC, LAST_ILT);
+	clients[ILT_CLI_SRC].p_size.reg = ILT_CFG_REG(SRC, P_SIZE);
 
-	p_mngr->clients[ILT_CLI_CDUT].first.reg = ILT_CFG_REG(CDUT, FIRST_ILT);
-	p_mngr->clients[ILT_CLI_CDUT].last.reg = ILT_CFG_REG(CDUT, LAST_ILT);
-	p_mngr->clients[ILT_CLI_CDUT].p_size.reg = ILT_CFG_REG(CDUT, P_SIZE);
+	clients[ILT_CLI_CDUT].first.reg = ILT_CFG_REG(CDUT, FIRST_ILT);
+	clients[ILT_CLI_CDUT].last.reg  = ILT_CFG_REG(CDUT, LAST_ILT);
+	clients[ILT_CLI_CDUT].p_size.reg = ILT_CFG_REG(CDUT, P_SIZE);
+
+	clients[ILT_CLI_TSDM].first.reg = ILT_CFG_REG(TSDM, FIRST_ILT);
+	clients[ILT_CLI_TSDM].last.reg  = ILT_CFG_REG(TSDM, LAST_ILT);
+	clients[ILT_CLI_TSDM].p_size.reg = ILT_CFG_REG(TSDM, P_SIZE);
 
 	/* default ILT page size for all clients is 32K */
 	for (i = 0; i < ILT_CLI_MAX; i++)
 		p_mngr->clients[i].p_size.val = ILT_DEFAULT_HW_P_SIZE;
 
-	/* Initialize task sizes */
+	/* due to removal of ISCSI/FCoE files union type0_task_context
+	 * task_type_size will be 0. So hardcoded for now.
+	 */
 	p_mngr->task_type_size[0] = 512; /* @DPDK */
 	p_mngr->task_type_size[1] = 128; /* @DPDK */
 
-	p_mngr->vf_count = p_hwfn->p_dev->sriov_info.total_vfs;
+	if (p_hwfn->p_dev->p_iov_info)
+		p_mngr->vf_count = p_hwfn->p_dev->p_iov_info->total_vfs;
+
+	/* Initialize the dynamic ILT allocation mutex */
+	OSAL_MUTEX_ALLOC(p_hwfn, &p_mngr->mutex);
+	OSAL_MUTEX_INIT(&p_mngr->mutex);
+
 	/* Set the cxt mangr pointer priori to further allocations */
 	p_hwfn->p_cxt_mngr = p_mngr;
 
@@ -1080,6 +1155,7 @@ void ecore_cxt_mngr_free(struct ecore_hwfn *p_hwfn)
 	ecore_cid_map_free(p_hwfn);
 	ecore_cxt_src_t2_free(p_hwfn);
 	ecore_ilt_shadow_free(p_hwfn);
+	OSAL_MUTEX_DEALLOC(&p_mngr->mutex);
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_cxt_mngr);
 
 	p_hwfn->p_cxt_mngr = OSAL_NULL;
@@ -1383,13 +1459,16 @@ static void ecore_ilt_vf_bounds_init(struct ecore_hwfn *p_hwfn)
 	u32 blk_factor;
 
 	/* For simplicty  we set the 'block' to be an ILT page */
+	if (p_hwfn->p_dev->p_iov_info) {
+		struct ecore_hw_sriov_info *p_iov = p_hwfn->p_dev->p_iov_info;
+
 		STORE_RT_REG(p_hwfn,
 			     PSWRQ2_REG_VF_BASE_RT_OFFSET,
-		     p_hwfn->hw_info.first_vf_in_pf);
+			     p_iov->first_vf_in_pf);
 		STORE_RT_REG(p_hwfn,
 			     PSWRQ2_REG_VF_LAST_ILT_RT_OFFSET,
-		     p_hwfn->hw_info.first_vf_in_pf +
-		     p_hwfn->p_dev->sriov_info.total_vfs);
+			     p_iov->first_vf_in_pf + p_iov->total_vfs);
+	}
 
 	p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUC];
 	blk_factor = OSAL_LOG2(ILT_PAGE_IN_BYTES(p_cli->p_size.val) >> 10);
@@ -1543,11 +1622,11 @@ static void ecore_tm_init_pf(struct ecore_hwfn *p_hwfn)
 		SET_FIELD(cfg_word, TM_CFG_NUM_IDS, tm_iids.per_vf_cids);
 		SET_FIELD(cfg_word, TM_CFG_PRE_SCAN_OFFSET, 0);
 		SET_FIELD(cfg_word, TM_CFG_PARENT_PF, p_hwfn->rel_pf_id);
-		SET_FIELD(cfg_word, TM_CFG_CID_PRE_SCAN_ROWS, 0);
+		SET_FIELD(cfg_word, TM_CFG_CID_PRE_SCAN_ROWS, 0); /* scan all */
 
 		rt_reg = TM_REG_CONFIG_CONN_MEM_RT_OFFSET +
 		    (sizeof(cfg_word) / sizeof(u32)) *
-		    (p_hwfn->hw_info.first_vf_in_pf + i);
+		    (p_hwfn->p_dev->p_iov_info->first_vf_in_pf + i);
 		STORE_RT_REG_AGG(p_hwfn, rt_reg, cfg_word);
 	}
 
@@ -1581,7 +1660,7 @@ static void ecore_tm_init_pf(struct ecore_hwfn *p_hwfn)
 
 		rt_reg = TM_REG_CONFIG_TASK_MEM_RT_OFFSET +
 		    (sizeof(cfg_word) / sizeof(u32)) *
-		    (p_hwfn->hw_info.first_vf_in_pf + i);
+		    (p_hwfn->p_dev->p_iov_info->first_vf_in_pf + i);
 
 		STORE_RT_REG_AGG(p_hwfn, rt_reg, cfg_word);
 	}
@@ -1611,15 +1690,26 @@ static void ecore_tm_init_pf(struct ecore_hwfn *p_hwfn)
 	/* @@@TBD how to enable the scan for the VFs */
 }
 
-static void ecore_prs_init_common(struct ecore_hwfn *p_hwfn)
+static void ecore_prs_init_pf(struct ecore_hwfn *p_hwfn)
 {
+	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
+	struct ecore_conn_type_cfg *p_fcoe = &p_mngr->conn_cfg[PROTOCOLID_FCOE];
+	struct ecore_tid_seg *p_tid;
+
+	/* If FCoE is active set the MAX OX_ID (tid) in the Parser */
+	if (!p_fcoe->cid_count)
+		return;
+
+	p_tid = &p_fcoe->tid_seg[ECORE_CXT_FCOE_TID_SEG];
+	STORE_RT_REG_AGG(p_hwfn,
+			PRS_REG_TASK_ID_MAX_INITIATOR_PF_RT_OFFSET,
+			p_tid->count);
 }
 
 void ecore_cxt_hw_init_common(struct ecore_hwfn *p_hwfn)
 {
 	/* CDU configuration */
 	ecore_cdu_init_common(p_hwfn);
-	ecore_prs_init_common(p_hwfn);
 }
 
 void ecore_cxt_hw_init_pf(struct ecore_hwfn *p_hwfn)
@@ -1631,6 +1721,7 @@ void ecore_cxt_hw_init_pf(struct ecore_hwfn *p_hwfn)
 	ecore_ilt_init_pf(p_hwfn);
 	ecore_src_init_pf(p_hwfn);
 	ecore_tm_init_pf(p_hwfn);
+	ecore_prs_init_pf(p_hwfn);
 }
 
 enum _ecore_status_t ecore_cxt_acquire_cid(struct ecore_hwfn *p_hwfn,
@@ -1748,6 +1839,20 @@ enum _ecore_status_t ecore_cxt_get_cid_info(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
+void ecore_cxt_set_srq_count(struct ecore_hwfn *p_hwfn, u32 num_srqs)
+{
+	struct ecore_cxt_mngr *p_mgr = p_hwfn->p_cxt_mngr;
+
+	p_mgr->srq_count = num_srqs;
+}
+
+u32 ecore_cxt_get_srq_count(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_cxt_mngr *p_mgr = p_hwfn->p_cxt_mngr;
+
+	return p_mgr->srq_count;
+}
+
 enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
 {
 	/* Set the number of required CORE connections */
@@ -1818,13 +1923,130 @@ enum _ecore_status_t ecore_cxt_get_tid_mem_info(struct ecore_hwfn *p_hwfn,
 /* This function is very RoCE oriented, if another protocol in the future
  * will want this feature we'll need to modify the function to be more generic
  */
+enum _ecore_status_t
+ecore_cxt_dynamic_ilt_alloc(struct ecore_hwfn *p_hwfn,
+			    enum ecore_cxt_elem_type elem_type,
+			    u32 iid)
+{
+	u32 reg_offset, shadow_line, elem_size, hw_p_size, elems_per_p, line;
+	struct ecore_ilt_client_cfg *p_cli;
+	struct ecore_ilt_cli_blk *p_blk;
+	struct ecore_ptt *p_ptt;
+	dma_addr_t p_phys;
+	u64 ilt_hw_entry;
+	void *p_virt;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	switch (elem_type) {
+	case ECORE_ELEM_CXT:
+		p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUC];
+		elem_size = CONN_CXT_SIZE(p_hwfn);
+		p_blk = &p_cli->pf_blks[CDUC_BLK];
+		break;
+	case ECORE_ELEM_SRQ:
+		p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_TSDM];
+		elem_size = SRQ_CXT_SIZE;
+		p_blk = &p_cli->pf_blks[SRQ_BLK];
+		break;
+	case ECORE_ELEM_TASK:
+		p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUT];
+		elem_size = TYPE1_TASK_CXT_SIZE(p_hwfn);
+		p_blk = &p_cli->pf_blks[CDUT_SEG_BLK(ECORE_CXT_ROCE_TID_SEG)];
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false,
+			  "ECORE_INVALID elem type = %d", elem_type);
+		return ECORE_INVAL;
+	}
+
+	/* Calculate line in ilt */
+	hw_p_size = p_cli->p_size.val;
+	elems_per_p = ILT_PAGE_IN_BYTES(hw_p_size) / elem_size;
+	line = p_blk->start_line + (iid / elems_per_p);
+	shadow_line = line - p_hwfn->p_cxt_mngr->pf_start_line;
+
+	/* If line is already allocated, do nothing, otherwise allocate it and
+	 * write it to the PSWRQ2 registers.
+	 * This section can be run in parallel from different contexts and thus
+	 * a mutex protection is needed.
+	 */
+
+	OSAL_MUTEX_ACQUIRE(&p_hwfn->p_cxt_mngr->mutex);
+
+	if (p_hwfn->p_cxt_mngr->ilt_shadow[shadow_line].p_virt)
+		goto out0;
+
+	p_ptt = ecore_ptt_acquire(p_hwfn);
+	if (!p_ptt) {
+		DP_NOTICE(p_hwfn, false,
+			  "ECORE_TIME_OUT on ptt acquire - dynamic allocation");
+		rc = ECORE_TIMEOUT;
+		goto out0;
+	}
+
+	p_virt = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
+					 &p_phys,
+					 p_blk->real_size_in_page);
+	if (!p_virt) {
+		rc = ECORE_NOMEM;
+		goto out1;
+	}
+	OSAL_MEM_ZERO(p_virt, p_blk->real_size_in_page);
+
+	p_hwfn->p_cxt_mngr->ilt_shadow[shadow_line].p_virt = p_virt;
+	p_hwfn->p_cxt_mngr->ilt_shadow[shadow_line].p_phys = p_phys;
+	p_hwfn->p_cxt_mngr->ilt_shadow[shadow_line].size =
+		p_blk->real_size_in_page;
+
+	/* compute absolute offset */
+	reg_offset = PSWRQ2_REG_ILT_MEMORY +
+		     (line * ILT_REG_SIZE_IN_BYTES * ILT_ENTRY_IN_REGS);
+
+	ilt_hw_entry = 0;
+	SET_FIELD(ilt_hw_entry, ILT_ENTRY_VALID, 1ULL);
+	SET_FIELD(ilt_hw_entry,
+		  ILT_ENTRY_PHY_ADDR,
+		  (p_hwfn->p_cxt_mngr->ilt_shadow[shadow_line].p_phys >> 12));
+
+/* Write via DMAE since the PSWRQ2_REG_ILT_MEMORY line is a wide-bus */
+
+	ecore_dmae_host2grc(p_hwfn, p_ptt, (u64)(osal_uintptr_t)&ilt_hw_entry,
+			    reg_offset, sizeof(ilt_hw_entry) / sizeof(u32),
+			    0 /* no flags */);
+
+	if (elem_type == ECORE_ELEM_CXT) {
+		u32 last_cid_allocated = (1 + (iid / elems_per_p)) *
+					 elems_per_p;
+
+		/* Update the relevant register in the parser */
+		ecore_wr(p_hwfn, p_ptt, PRS_REG_ROCE_DEST_QP_MAX_PF,
+			 last_cid_allocated - 1);
+
+		if (!p_hwfn->b_rdma_enabled_in_prs) {
+			/* Enable RoCE search */
+			ecore_wr(p_hwfn, p_ptt, p_hwfn->rdma_prs_search_reg, 1);
+			p_hwfn->b_rdma_enabled_in_prs = true;
+		}
+	}
+
+out1:
+	ecore_ptt_release(p_hwfn, p_ptt);
+out0:
+	OSAL_MUTEX_RELEASE(&p_hwfn->p_cxt_mngr->mutex);
+
+	return rc;
+}
+
+/* This function is very RoCE oriented, if another protocol in the future
+ * will want this feature we'll need to modify the function to be more generic
+ */
 static enum _ecore_status_t
 ecore_cxt_free_ilt_range(struct ecore_hwfn *p_hwfn,
 			 enum ecore_cxt_elem_type elem_type,
 			 u32 start_iid, u32 count)
 {
-	u32 reg_offset, elem_size, hw_p_size, elems_per_p;
 	u32 start_line, end_line, shadow_start_line, shadow_end_line;
+	u32 reg_offset, elem_size, hw_p_size, elems_per_p;
 	struct ecore_ilt_client_cfg *p_cli;
 	struct ecore_ilt_cli_blk *p_blk;
 	u32 end_iid = start_iid + count;
@@ -1832,10 +2054,26 @@ ecore_cxt_free_ilt_range(struct ecore_hwfn *p_hwfn,
 	u64 ilt_hw_entry = 0;
 	u32 i;
 
-	if (elem_type == ECORE_ELEM_CXT) {
+	switch (elem_type) {
+	case ECORE_ELEM_CXT:
 		p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUC];
 		elem_size = CONN_CXT_SIZE(p_hwfn);
 		p_blk = &p_cli->pf_blks[CDUC_BLK];
+		break;
+	case ECORE_ELEM_SRQ:
+		p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_TSDM];
+		elem_size = SRQ_CXT_SIZE;
+		p_blk = &p_cli->pf_blks[SRQ_BLK];
+		break;
+	case ECORE_ELEM_TASK:
+		p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUT];
+		elem_size = TYPE1_TASK_CXT_SIZE(p_hwfn);
+		p_blk = &p_cli->pf_blks[CDUT_SEG_BLK(ECORE_CXT_ROCE_TID_SEG)];
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false,
+			  "ECORE_INVALID elem type = %d", elem_type);
+		return ECORE_INVAL;
 	}
 
 	/* Calculate line in ilt */
@@ -1874,9 +2112,14 @@ ecore_cxt_free_ilt_range(struct ecore_hwfn *p_hwfn,
 		    ((start_line++) * ILT_REG_SIZE_IN_BYTES *
 		     ILT_ENTRY_IN_REGS);
 
-		ecore_wr(p_hwfn, p_ptt, reg_offset, U64_LO(ilt_hw_entry));
-		ecore_wr(p_hwfn, p_ptt, reg_offset + ILT_REG_SIZE_IN_BYTES,
-			 U64_HI(ilt_hw_entry));
+		/* Write via DMAE since the PSWRQ2_REG_ILT_MEMORY line is a
+		 * wide-bus.
+		 */
+		ecore_dmae_host2grc(p_hwfn, p_ptt,
+				    (u64)(osal_uintptr_t)&ilt_hw_entry,
+				    reg_offset,
+				    sizeof(ilt_hw_entry) / sizeof(u32),
+				    0 /* no flags */);
 	}
 
 	ecore_ptt_release(p_hwfn, p_ptt);
@@ -1905,6 +2148,12 @@ enum _ecore_status_t ecore_cxt_free_proto_ilt(struct ecore_hwfn *p_hwfn,
 	rc = ecore_cxt_free_ilt_range(p_hwfn, ECORE_ELEM_TASK, 0,
 				      ecore_cxt_get_proto_tid_count(p_hwfn,
 								    proto));
+	if (rc)
+		return rc;
+
+	/* Free TSDM CXT */
+	rc = ecore_cxt_free_ilt_range(p_hwfn, ECORE_ELEM_SRQ, 0,
+				      ecore_cxt_get_srq_count(p_hwfn));
 
 	return rc;
 }

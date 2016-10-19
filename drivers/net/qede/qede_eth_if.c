@@ -246,6 +246,7 @@ qed_start_txq(struct ecore_dev *edev,
 					 vport_id,
 					 sb,
 					 sb_index,
+					 0 /* tc */,
 					 pbl_addr, pbl_size, pp_doorbell);
 
 	if (rc) {

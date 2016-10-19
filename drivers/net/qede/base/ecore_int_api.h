@@ -274,4 +274,15 @@ void ecore_int_get_num_sbs(struct ecore_hwfn *p_hwfn,
  */
 void ecore_int_disable_post_isr_release(struct ecore_dev *p_dev);
 
+/**
+ * @brief ecore_int_attn_clr_enable - sets whether the general behavior is
+ *        preventing attentions from being reasserted, or following the
+ *        attributes of the specific attention.
+ *
+ * @param p_dev
+ * @param clr_enable
+ *
+ */
+void ecore_int_attn_clr_enable(struct ecore_dev *p_dev, bool clr_enable);
+
 #endif

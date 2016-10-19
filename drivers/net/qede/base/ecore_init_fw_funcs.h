@@ -28,10 +28,12 @@ struct init_qm_pq_params;
 u32 ecore_qm_pf_mem_size(u8 pf_id,
 						 u32 num_pf_cids,
 						 u32 num_vf_cids,
-			 u32 num_tids, u16 num_pf_pqs, u16 num_vf_pqs);
+						 u32 num_tids,
+						 u16 num_pf_pqs,
+						 u16 num_vf_pqs);
 /**
- * @brief ecore_qm_common_rt_init -
- * Prepare QM runtime init values for the engine phase
+ * @brief ecore_qm_common_rt_init - Prepare QM runtime init values for engine
+ *                                  phase
  *
  * @param p_hwfn
  * @param max_ports_per_engine	- max number of ports per engine in HW
@@ -51,9 +53,35 @@ int ecore_qm_common_rt_init(struct ecore_hwfn *p_hwfn,
 			 bool pf_wfq_en,
 			 bool vport_rl_en,
 			 bool vport_wfq_en,
-			    struct init_qm_port_params
-			    port_params[MAX_NUM_PORTS]);
-
+			 struct init_qm_port_params port_params[MAX_NUM_PORTS]);
+/**
+ * @brief ecore_qm_pf_rt_init  Prepare QM runtime init values for the PF phase
+ *
+ * @param p_hwfn
+ * @param p_ptt			- ptt window used for writing the registers
+ * @param port_id				- port ID
+ * @param pf_id					- PF ID
+ * @param max_phys_tcs_per_port	- max number of physical TCs per port in HW
+ * @param is_first_pf			- 1 = first PF in engine, 0 = othwerwise
+ * @param num_pf_cids			- number of connections used by this PF
+ * @param num_vf_cids		- number of connections used by VFs of this PF
+ * @param num_tids			- number of tasks used by this PF
+ * @param start_pq			- first Tx PQ ID associated with this PF
+ * @param num_pf_pqs	- number of Tx PQs associated with this PF (non-VF)
+ * @param num_vf_pqs			- number of Tx PQs associated with a VF
+ * @param start_vport			- first VPORT ID associated with this PF
+ * @param num_vports - number of VPORTs associated with this PF
+ * @param pf_wfq - WFQ weight. if PF WFQ is globally disabled, the weight must
+ *		   be 0. otherwise, the weight must be non-zero.
+ * @param pf_rl - rate limit in Mb/sec units. a value of 0 means don't
+ *                configure. ignored if PF RL is globally disabled.
+ * @param pq_params - array of size (num_pf_pqs+num_vf_pqs) with parameters for
+ *                    each Tx PQ associated with the specified PF.
+ * @param vport_params - array of size num_vports with parameters for each
+ *                       associated VPORT.
+ *
+ * @return 0 on success, -1 on error.
+ */
 int ecore_qm_pf_rt_init(struct ecore_hwfn *p_hwfn,
 				struct ecore_ptt *p_ptt,
 				u8 port_id,
@@ -287,5 +315,65 @@ void ecore_set_geneve_dest_port(struct ecore_hwfn *p_hwfn,
   */
 void ecore_set_geneve_enable(struct ecore_hwfn *p_hwfn,
 			     struct ecore_ptt *p_ptt,
-			     bool eth_geneve_enable, bool ip_geneve_enable);
+			     bool eth_geneve_enable,
+			     bool ip_geneve_enable);
+#ifndef UNUSED_HSI_FUNC
+/**
+* @brief ecore_set_gft_event_id_cm_hdr - configure GFT event id and cm header
+*
+* @param p_ptt          - ptt window used for writing the registers.
+*/
+void ecore_set_gft_event_id_cm_hdr(struct ecore_hwfn *p_hwfn,
+				   struct ecore_ptt *p_ptt);
+/**
+* @brief ecore_set_rfs_mode_enable - enable and configure HW for RFS
+*
+*
+* @param p_ptt             - ptt window used for writing the registers.
+* @param pf_id - pf on which to enable RFS.
+* @param tcp -  set profile tcp packets.
+* @param udp -  set profile udp  packet.
+* @param ipv4 - set profile ipv4 packet.
+* @param ipv6 - set profile ipv6 packet.
+*/
+void ecore_set_rfs_mode_enable(struct ecore_hwfn *p_hwfn,
+	struct ecore_ptt *p_ptt,
+	u16 pf_id,
+	bool tcp,
+	bool udp,
+	bool ipv4,
+	bool ipv6);
+#endif /* UNUSED_HSI_FUNC */
+/**
+* @brief ecore_config_vf_zone_size_mode - Configure VF zone size mode. Must be
+*                                         used before first ETH queue started.
+*
+*
+* @param p_ptt        -  ptt window used for writing the registers. Don't care
+*                        if runtime_init used
+* @param mode         -  VF zone size mode. Use enum vf_zone_size_mode.
+* @param runtime_init -  Set 1 to init runtime registers in engine phase. Set 0
+*                        if VF zone size mode configured after engine phase.
+*/
+void ecore_config_vf_zone_size_mode(struct ecore_hwfn *p_hwfn, struct ecore_ptt
+				    *p_ptt, u16 mode, bool runtime_init);
+/**
+* @brief ecore_get_mstorm_queue_stat_offset - get mstorm statistics offset by VF
+*                                             zone size mode.
+*
+* @param stat_cnt_id         -  statistic counter id
+* @param vf_zone_size_mode   -  VF zone size mode. Use enum vf_zone_size_mode.
+*/
+u32 ecore_get_mstorm_queue_stat_offset(struct ecore_hwfn *p_hwfn,
+				       u16 stat_cnt_id, u16 vf_zone_size_mode);
+/**
+* @brief ecore_get_mstorm_eth_vf_prods_offset - VF producer offset by VF zone
+*                                               size mode.
+*
+* @param vf_id               -  vf id.
+* @param vf_queue_id         -  per VF rx queue id.
+* @param vf_zone_size_mode   -  vf zone size mode. Use enum vf_zone_size_mode.
+*/
+u32 ecore_get_mstorm_eth_vf_prods_offset(struct ecore_hwfn *p_hwfn, u8 vf_id, u8
+					 vf_queue_id, u16 vf_zone_size_mode);
 #endif
