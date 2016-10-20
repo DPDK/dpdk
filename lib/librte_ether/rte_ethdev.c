@@ -2449,14 +2449,15 @@ rte_eth_dev_callback_register(uint8_t port_id,
 	}
 
 	/* create a new callback. */
-	if (user_cb == NULL)
+	if (user_cb == NULL) {
 		user_cb = rte_zmalloc("INTR_USER_CALLBACK",
 					sizeof(struct rte_eth_dev_callback), 0);
-	if (user_cb != NULL) {
-		user_cb->cb_fn = cb_fn;
-		user_cb->cb_arg = cb_arg;
-		user_cb->event = event;
-		TAILQ_INSERT_TAIL(&(dev->link_intr_cbs), user_cb, next);
+		if (user_cb != NULL) {
+			user_cb->cb_fn = cb_fn;
+			user_cb->cb_arg = cb_arg;
+			user_cb->event = event;
+			TAILQ_INSERT_TAIL(&(dev->link_intr_cbs), user_cb, next);
+		}
 	}
 
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
