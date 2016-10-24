@@ -946,6 +946,11 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	(void)conf; /* Thresholds configuration (ignored). */
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
+	/* If smaller than MRU, multi-segment support must be enabled. */
+	if (mb_len < (priv->mtu > dev->data->dev_conf.rxmode.max_rx_pkt_len ?
+		     dev->data->dev_conf.rxmode.max_rx_pkt_len :
+		     priv->mtu))
+		dev->data->dev_conf.rxmode.jumbo_frame = 1;
 	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
 	     (mb_len - RTE_PKTMBUF_HEADROOM))) {
