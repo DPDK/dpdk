@@ -149,6 +149,7 @@ void rte_eal_device_remove(struct rte_device *dev);
 struct rte_driver {
 	TAILQ_ENTRY(rte_driver) next;  /**< Next in list. */
 	const char *name;                   /**< Driver name. */
+	const char *alias;              /**< Driver alias. */
 };
 
 /**
