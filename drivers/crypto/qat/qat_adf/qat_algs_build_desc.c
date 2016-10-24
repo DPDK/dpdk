@@ -625,11 +625,13 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 				ICP_QAT_FW_LA_NO_RET_AUTH_RES);
 		ICP_QAT_FW_LA_CMP_AUTH_SET(header->serv_specif_flags,
 				ICP_QAT_FW_LA_CMP_AUTH_RES);
+		cdesc->auth_op = ICP_QAT_HW_AUTH_VERIFY;
 	} else {
 		ICP_QAT_FW_LA_RET_AUTH_SET(header->serv_specif_flags,
 					   ICP_QAT_FW_LA_RET_AUTH_RES);
 		ICP_QAT_FW_LA_CMP_AUTH_SET(header->serv_specif_flags,
 					   ICP_QAT_FW_LA_NO_CMP_AUTH_RES);
+		cdesc->auth_op = ICP_QAT_HW_AUTH_GENERATE;
 	}
 
 	/*

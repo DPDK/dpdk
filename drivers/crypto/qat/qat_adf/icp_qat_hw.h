@@ -237,6 +237,11 @@ enum icp_qat_hw_cipher_dir {
 	ICP_QAT_HW_CIPHER_DECRYPT = 1,
 };
 
+enum icp_qat_hw_auth_op {
+	ICP_QAT_HW_AUTH_VERIFY = 0,
+	ICP_QAT_HW_AUTH_GENERATE = 1,
+};
+
 enum icp_qat_hw_cipher_convert {
 	ICP_QAT_HW_CIPHER_NO_CONVERT = 0,
 	ICP_QAT_HW_CIPHER_KEY_CONVERT = 1,
