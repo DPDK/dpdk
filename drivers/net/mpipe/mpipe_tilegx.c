@@ -1632,7 +1632,9 @@ static struct rte_vdev_driver pmd_mpipe_gbe_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(net_mpipe_xgbe, pmd_mpipe_xgbe_drv);
+RTE_PMD_REGISTER_ALIAS(net_mpipe_xgbe, xgbe);
 RTE_PMD_REGISTER_VDEV(net_mpipe_gbe, pmd_mpipe_gbe_drv);
+RTE_PMD_REGISTER_ALIAS(net_mpipe_gbe, gbe);
 
 static void __attribute__((constructor, used))
 mpipe_init_contexts(void)

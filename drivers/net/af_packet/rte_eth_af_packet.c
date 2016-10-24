@@ -895,6 +895,7 @@ static struct rte_vdev_driver pmd_af_packet_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(net_af_packet, pmd_af_packet_drv);
+RTE_PMD_REGISTER_ALIAS(net_af_packet, eth_af_packet);
 RTE_PMD_REGISTER_PARAM_STRING(net_af_packet,
 	"iface=<string> "
 	"qpairs=<int> "

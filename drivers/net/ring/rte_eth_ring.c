@@ -629,5 +629,6 @@ static struct rte_vdev_driver pmd_ring_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(net_ring, pmd_ring_drv);
+RTE_PMD_REGISTER_ALIAS(net_ring, eth_ring);
 RTE_PMD_REGISTER_PARAM_STRING(net_ring,
 	ETH_RING_NUMA_NODE_ACTION_ARG "=name:node:action(ATTACH|CREATE)");
