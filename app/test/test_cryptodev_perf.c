@@ -2714,26 +2714,27 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 	}
 
 	/* Authentication Parameters */
-	op->sym->auth.digest.data = (uint8_t *)m->buf_addr +
-					(m->data_off + data_len);
-	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m, data_len);
+	op->sym->auth.digest.data = rte_pktmbuf_mtod_offset(m, uint8_t *,
+			AES_CIPHER_IV_LENGTH + data_len);
+	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+			AES_CIPHER_IV_LENGTH + data_len);
 	op->sym->auth.digest.length = digest_len;
 	op->sym->auth.aad.data = aes_iv;
 	op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = (uint8_t *)m->buf_addr + m->data_off;
+	op->sym->cipher.iv.data = rte_pktmbuf_mtod(m, uint8_t *);
 	op->sym->cipher.iv.phys_addr = rte_pktmbuf_mtophys(m);
 	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
 
 	rte_memcpy(op->sym->cipher.iv.data, aes_iv, AES_CIPHER_IV_LENGTH);
 
 	/* Data lengths/offsets Parameters */
-	op->sym->auth.data.offset = 0;
+	op->sym->auth.data.offset = AES_CIPHER_IV_LENGTH;
 	op->sym->auth.data.length = data_len;
 
-	op->sym->cipher.data.offset = AES_BLOCK_SIZE;
-	op->sym->cipher.data.length = data_len - AES_BLOCK_SIZE;
+	op->sym->cipher.data.offset = AES_CIPHER_IV_LENGTH;
+	op->sym->cipher.data.length = data_len;
 
 	op->sym->m_src = m;
 
