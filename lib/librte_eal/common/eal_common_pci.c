@@ -289,6 +289,10 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	if (dev == NULL)
 		return -1;
 
+	/* Check if a driver is already loaded */
+	if (dev->driver != NULL)
+		return 0;
+
 	TAILQ_FOREACH(dr, &pci_driver_list, next) {
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
