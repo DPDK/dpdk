@@ -211,6 +211,14 @@
 #define I40E_REG_INSET_L3_SRC_IP4                0x0001800000000000ULL
 /* Destination IPv4 address */
 #define I40E_REG_INSET_L3_DST_IP4                0x0000001800000000ULL
+/* Source IPv4 address for X722 */
+#define I40E_X722_REG_INSET_L3_SRC_IP4           0x0006000000000000ULL
+/* Destination IPv4 address for X722 */
+#define I40E_X722_REG_INSET_L3_DST_IP4           0x0000060000000000ULL
+/* IPv4 Protocol for X722 */
+#define I40E_X722_REG_INSET_L3_IP4_PROTO         0x0010000000000000ULL
+/* IPv4 Time to Live for X722 */
+#define I40E_X722_REG_INSET_L3_IP4_TTL           0x0010000000000000ULL
 /* IPv4 Type of Service (TOS) */
 #define I40E_REG_INSET_L3_IP4_TOS                0x0040000000000000ULL
 /* IPv4 Protocol */
@@ -7568,25 +7576,23 @@ i40e_parse_input_set(uint64_t *inset,
  * and vice versa
  */
 static uint64_t
-i40e_translate_input_set_reg(uint64_t input)
+i40e_translate_input_set_reg(enum i40e_mac_type type, uint64_t input)
 {
 	uint64_t val = 0;
 	uint16_t i;
 
-	static const struct {
+	struct inset_map {
 		uint64_t inset;
 		uint64_t inset_reg;
-	} inset_map[] = {
+	};
+
+	static const struct inset_map inset_map_common[] = {
 		{I40E_INSET_DMAC, I40E_REG_INSET_L2_DMAC},
 		{I40E_INSET_SMAC, I40E_REG_INSET_L2_SMAC},
 		{I40E_INSET_VLAN_OUTER, I40E_REG_INSET_L2_OUTER_VLAN},
 		{I40E_INSET_VLAN_INNER, I40E_REG_INSET_L2_INNER_VLAN},
 		{I40E_INSET_LAST_ETHER_TYPE, I40E_REG_INSET_LAST_ETHER_TYPE},
-		{I40E_INSET_IPV4_SRC, I40E_REG_INSET_L3_SRC_IP4},
-		{I40E_INSET_IPV4_DST, I40E_REG_INSET_L3_DST_IP4},
 		{I40E_INSET_IPV4_TOS, I40E_REG_INSET_L3_IP4_TOS},
-		{I40E_INSET_IPV4_PROTO, I40E_REG_INSET_L3_IP4_PROTO},
-		{I40E_INSET_IPV4_TTL, I40E_REG_INSET_L3_IP4_TTL},
 		{I40E_INSET_IPV6_SRC, I40E_REG_INSET_L3_SRC_IP6},
 		{I40E_INSET_IPV6_DST, I40E_REG_INSET_L3_DST_IP6},
 		{I40E_INSET_IPV6_TC, I40E_REG_INSET_L3_IP6_TC},
@@ -7615,13 +7621,40 @@ i40e_translate_input_set_reg(uint64_t input)
 		{I40E_INSET_FLEX_PAYLOAD_W8, I40E_REG_INSET_FLEX_PAYLOAD_WORD8},
 	};
 
+    /* some different registers map in x722*/
+	static const struct inset_map inset_map_diff_x722[] = {
+		{I40E_INSET_IPV4_SRC, I40E_X722_REG_INSET_L3_SRC_IP4},
+		{I40E_INSET_IPV4_DST, I40E_X722_REG_INSET_L3_DST_IP4},
+		{I40E_INSET_IPV4_PROTO, I40E_X722_REG_INSET_L3_IP4_PROTO},
+		{I40E_INSET_IPV4_TTL, I40E_X722_REG_INSET_L3_IP4_TTL},
+	};
+
+	static const struct inset_map inset_map_diff_not_x722[] = {
+		{I40E_INSET_IPV4_SRC, I40E_REG_INSET_L3_SRC_IP4},
+		{I40E_INSET_IPV4_DST, I40E_REG_INSET_L3_DST_IP4},
+		{I40E_INSET_IPV4_PROTO, I40E_REG_INSET_L3_IP4_PROTO},
+		{I40E_INSET_IPV4_TTL, I40E_REG_INSET_L3_IP4_TTL},
+	};
+
 	if (input == 0)
 		return val;
 
 	/* Translate input set to register aware inset */
-	for (i = 0; i < RTE_DIM(inset_map); i++) {
-		if (input & inset_map[i].inset)
-			val |= inset_map[i].inset_reg;
+	if (type == I40E_MAC_X722) {
+		for (i = 0; i < RTE_DIM(inset_map_diff_x722); i++) {
+			if (input & inset_map_diff_x722[i].inset)
+				val |= inset_map_diff_x722[i].inset_reg;
+		}
+	} else {
+		for (i = 0; i < RTE_DIM(inset_map_diff_not_x722); i++) {
+			if (input & inset_map_diff_not_x722[i].inset)
+				val |= inset_map_diff_not_x722[i].inset_reg;
+		}
+	}
+
+	for (i = 0; i < RTE_DIM(inset_map_common); i++) {
+		if (input & inset_map_common[i].inset)
+			val |= inset_map_common[i].inset_reg;
 	}
 
 	return val;
@@ -7712,7 +7745,8 @@ i40e_filter_input_set_init(struct i40e_pf *pf)
 						   I40E_INSET_MASK_NUM_REG);
 		if (num < 0)
 			return;
-		inset_reg = i40e_translate_input_set_reg(input_set);
+		inset_reg = i40e_translate_input_set_reg(hw->mac.type,
+					input_set);
 
 		i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
 				      (uint32_t)(inset_reg & UINT32_MAX));
@@ -7802,7 +7836,7 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 	if (num < 0)
 		return -EINVAL;
 
-	inset_reg |= i40e_translate_input_set_reg(input_set);
+	inset_reg |= i40e_translate_input_set_reg(hw->mac.type, input_set);
 
 	i40e_check_write_reg(hw, I40E_GLQF_HASH_INSET(0, pctype),
 			      (uint32_t)(inset_reg & UINT32_MAX));
@@ -7880,7 +7914,7 @@ i40e_fdir_filter_inset_select(struct i40e_pf *pf,
 	if (num < 0)
 		return -EINVAL;
 
-	inset_reg |= i40e_translate_input_set_reg(input_set);
+	inset_reg |= i40e_translate_input_set_reg(hw->mac.type, input_set);
 
 	i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
 			      (uint32_t)(inset_reg & UINT32_MAX));
