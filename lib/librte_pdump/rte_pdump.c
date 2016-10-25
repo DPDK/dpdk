@@ -226,29 +226,6 @@ pdump_tx(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
 }
 
 static int
-pdump_get_dombdf(char *device_id, char *domBDF, size_t len)
-{
-	int ret;
-	struct rte_pci_addr dev_addr = {0};
-
-	/* identify if device_id is pci address or name */
-	ret = eal_parse_pci_DomBDF(device_id, &dev_addr);
-	if (ret < 0)
-		return -1;
-
-	if (dev_addr.domain)
-		ret = snprintf(domBDF, len, "%u:%u:%u.%u", dev_addr.domain,
-				dev_addr.bus, dev_addr.devid,
-				dev_addr.function);
-	else
-		ret = snprintf(domBDF, len, "%u:%u.%u", dev_addr.bus,
-				dev_addr.devid,
-				dev_addr.function);
-
-	return ret;
-}
-
-static int
 pdump_regitser_rx_callbacks(uint16_t end_q, uint8_t port, uint16_t queue,
 				struct rte_ring *ring, struct rte_mempool *mp,
 				uint16_t operation)
@@ -885,7 +862,6 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
 				void *filter)
 {
 	int ret = 0;
-	char domBDF[DEVICE_ID_SIZE];
 
 	ret = pdump_validate_ring_mp(ring, mp);
 	if (ret < 0)
@@ -894,11 +870,7 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
 	if (ret < 0)
 		return ret;
 
-	if (pdump_get_dombdf(device_id, domBDF, sizeof(domBDF)) > 0)
-		ret = pdump_prepare_client_request(domBDF, queue, flags,
-						ENABLE, ring, mp, filter);
-	else
-		ret = pdump_prepare_client_request(device_id, queue, flags,
+	ret = pdump_prepare_client_request(device_id, queue, flags,
 						ENABLE, ring, mp, filter);
 
 	return ret;
@@ -928,17 +900,12 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 				uint32_t flags)
 {
 	int ret = 0;
-	char domBDF[DEVICE_ID_SIZE];
 
 	ret = pdump_validate_flags(flags);
 	if (ret < 0)
 		return ret;
 
-	if (pdump_get_dombdf(device_id, domBDF, sizeof(domBDF)) > 0)
-		ret = pdump_prepare_client_request(domBDF, queue, flags,
-						DISABLE, NULL, NULL, NULL);
-	else
-		ret = pdump_prepare_client_request(device_id, queue, flags,
+	ret = pdump_prepare_client_request(device_id, queue, flags,
 						DISABLE, NULL, NULL, NULL);
 
 	return ret;
