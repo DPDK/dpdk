@@ -428,7 +428,7 @@ rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
 
 		/* populate with the largest group of contiguous pages */
 		for (n = 1; (i + n) < pg_num &&
-			     paddr[i] + pg_sz == paddr[i+n]; n++)
+			     paddr[i + n - 1] + pg_sz == paddr[i + n]; n++)
 			;
 
 		ret = rte_mempool_populate_phys(mp, vaddr + i * pg_sz,
