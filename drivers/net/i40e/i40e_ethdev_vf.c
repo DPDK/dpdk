@@ -2548,8 +2548,11 @@ i40evf_hw_rss_hash_set(struct i40e_vf *vf, struct rte_eth_rss_conf *rss_conf)
 	rss_hf = rss_conf->rss_hf;
 	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
 	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
-	hena &= ~I40E_RSS_HENA_ALL;
-	hena |= i40e_config_hena(rss_hf);
+	if (hw->mac.type == I40E_MAC_X722)
+		hena &= ~I40E_RSS_HENA_ALL_X722;
+	else
+		hena &= ~I40E_RSS_HENA_ALL;
+	hena |= i40e_config_hena(rss_hf, hw->mac.type);
 	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
 	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40EVF_WRITE_FLUSH(hw);
@@ -2565,7 +2568,10 @@ i40evf_disable_rss(struct i40e_vf *vf)
 
 	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
 	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
-	hena &= ~I40E_RSS_HENA_ALL;
+	if (hw->mac.type == I40E_MAC_X722)
+		hena &= ~I40E_RSS_HENA_ALL_X722;
+	else
+		hena &= ~I40E_RSS_HENA_ALL;
 	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
 	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40EVF_WRITE_FLUSH(hw);
@@ -2626,7 +2632,9 @@ i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
 	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
-	if (!(hena & I40E_RSS_HENA_ALL)) { /* RSS disabled */
+	if (!(hena & ((hw->mac.type == I40E_MAC_X722)
+		 ? I40E_RSS_HENA_ALL_X722
+		 : I40E_RSS_HENA_ALL))) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
 			return -EINVAL;
 		return 0;

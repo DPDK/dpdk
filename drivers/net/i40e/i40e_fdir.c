@@ -353,8 +353,15 @@ i40e_init_flx_pld(struct i40e_pf *pf)
 	/* initialize the masks */
 	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
 	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++) {
-		if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)pctype))
-			continue;
+		if (hw->mac.type == I40E_MAC_X722) {
+			if (!I40E_VALID_PCTYPE_X722(
+				 (enum i40e_filter_pctype)pctype))
+				continue;
+		} else {
+			if (!I40E_VALID_PCTYPE(
+				 (enum i40e_filter_pctype)pctype))
+				continue;
+		}
 		pf->fdir.flex_mask[pctype].word_mask = 0;
 		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype), 0);
 		for (i = 0; i < I40E_FDIR_BITMASK_NUM_WORD; i++) {
@@ -664,14 +671,16 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 		i40e_set_flx_pld_cfg(pf, &conf->flex_set[i]);
 	/* configure flex mask*/
 	for (i = 0; i < conf->nb_flexmasks; i++) {
-#ifdef X722_SUPPORT
-		/* get translated pctype value in fd pctype register */
-		pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(hw,
-			I40E_GLQF_FD_PCTYPES((int)i40e_flowtype_to_pctype(
-			conf->flex_mask[i].flow_type)));
-#else
-		pctype = i40e_flowtype_to_pctype(conf->flex_mask[i].flow_type);
-#endif
+		if (hw->mac.type == I40E_MAC_X722) {
+			/* get translated pctype value in fd pctype register */
+			pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(
+				hw, I40E_GLQF_FD_PCTYPES(
+				(int)i40e_flowtype_to_pctype(
+				conf->flex_mask[i].flow_type)));
+		} else
+			pctype = i40e_flowtype_to_pctype(
+				conf->flex_mask[i].flow_type);
+
 		i40e_set_flex_mask_on_pctype(pf, pctype, &conf->flex_mask[i]);
 	}
 
@@ -1053,14 +1062,14 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 		return ret;
 	}
 
-#ifdef X722_SUPPORT
-	/* get translated pctype value in fd pctype register */
-	pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(hw,
-		I40E_GLQF_FD_PCTYPES((int)i40e_flowtype_to_pctype(
-		filter->input.flow_type)));
-#else
-	pctype = i40e_flowtype_to_pctype(filter->input.flow_type);
-#endif
+	if (hw->mac.type == I40E_MAC_X722) {
+		/* get translated pctype value in fd pctype register */
+		pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(
+			hw, I40E_GLQF_FD_PCTYPES(
+			(int)i40e_flowtype_to_pctype(
+			filter->input.flow_type)));
+	} else
+		pctype = i40e_flowtype_to_pctype(filter->input.flow_type);
 
 	ret = i40e_fdir_filter_programming(pf, pctype, filter, add);
 	if (ret < 0) {
@@ -1290,6 +1299,7 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
 {
 	struct i40e_fdir_flex_mask *mask;
 	struct rte_eth_fdir_flex_mask *ptr = flex_mask;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint16_t flow_type;
 	uint8_t i, j;
 	uint16_t off_bytes, mask_tmp;
@@ -1298,8 +1308,13 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
 	     i <= I40E_FILTER_PCTYPE_L2_PAYLOAD;
 	     i++) {
 		mask =  &pf->fdir.flex_mask[i];
-		if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)i))
-			continue;
+		if (hw->mac.type == I40E_MAC_X722) {
+			if (!I40E_VALID_PCTYPE_X722((enum i40e_filter_pctype)i))
+				continue;
+		} else {
+			if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)i))
+				continue;
+		}
 		flow_type = i40e_pctype_to_flowtype((enum i40e_filter_pctype)i);
 		for (j = 0; j < I40E_FDIR_MAX_FLEXWORD_NUM; j++) {
 			if (mask->word_mask & I40E_FLEX_WORD_MASK(j)) {

@@ -149,30 +149,17 @@ enum i40e_flxpld_layer_idx {
 	ETH_RSS_NONFRAG_IPV6_OTHER | \
 	ETH_RSS_L2_PAYLOAD)
 
-/* All bits of RSS hash enable */
-#ifdef X722_SUPPORT
-#define I40E_RSS_HENA_ALL ( \
+/* All bits of RSS hash enable for X722*/
+#define I40E_RSS_HENA_ALL_X722 ( \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP) | \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP) | \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER) | \
-	(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4) | \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP) | \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP) | \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP) | \
-	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER) | \
-	(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6) | \
-	(1ULL << I40E_FILTER_PCTYPE_FCOE_OX) | \
-	(1ULL << I40E_FILTER_PCTYPE_FCOE_RX) | \
-	(1ULL << I40E_FILTER_PCTYPE_FCOE_OTHER) | \
-	(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
-#else
+	I40E_RSS_HENA_ALL)
+
+/* All bits of RSS hash enable */
 #define I40E_RSS_HENA_ALL ( \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP) | \
 	(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP) | \
@@ -188,7 +175,6 @@ enum i40e_flxpld_layer_idx {
 	(1ULL << I40E_FILTER_PCTYPE_FCOE_RX) | \
 	(1ULL << I40E_FILTER_PCTYPE_FCOE_OTHER) | \
 	(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
-#endif
 
 #define I40E_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
 #define I40E_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
@@ -601,7 +587,7 @@ int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
 			   struct i40e_vsi_vlan_pvid_info *info);
 int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
 int i40e_vsi_config_vlan_filter(struct i40e_vsi *vsi, bool on);
-uint64_t i40e_config_hena(uint64_t flags);
+uint64_t i40e_config_hena(uint64_t flags, enum i40e_mac_type type);
 uint64_t i40e_parse_hena(uint64_t flags);
 enum i40e_status_code i40e_fdir_setup_tx_resources(struct i40e_pf *pf);
 enum i40e_status_code i40e_fdir_setup_rx_resources(struct i40e_pf *pf);
@@ -723,8 +709,7 @@ i40e_calc_itr_interval(int16_t interval)
 	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV6_OTHER || \
 	(flow_type) == RTE_ETH_FLOW_L2_PAYLOAD)
 
-#ifdef X722_SUPPORT
-#define I40E_VALID_PCTYPE(pctype) \
+#define I40E_VALID_PCTYPE_X722(pctype) \
 	((pctype) == I40E_FILTER_PCTYPE_FRAG_IPV4 || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_TCP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK || \
@@ -742,7 +727,7 @@ i40e_calc_itr_interval(int16_t interval)
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_SCTP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_OTHER || \
 	(pctype) == I40E_FILTER_PCTYPE_L2_PAYLOAD)
-#else
+
 #define I40E_VALID_PCTYPE(pctype) \
 	((pctype) == I40E_FILTER_PCTYPE_FRAG_IPV4 || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV4_TCP || \
@@ -755,7 +740,6 @@ i40e_calc_itr_interval(int16_t interval)
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_SCTP || \
 	(pctype) == I40E_FILTER_PCTYPE_NONF_IPV6_OTHER || \
 	(pctype) == I40E_FILTER_PCTYPE_L2_PAYLOAD)
-#endif
 
 #define I40E_PHY_TYPE_SUPPORT_40G(phy_type) \
 	(((phy_type) & I40E_CAP_PHY_TYPE_40GBASE_KR4) || \
