@@ -77,7 +77,6 @@ Limitations
 * Hash only is not supported except SNOW 3G UIA2 and KASUMI F9.
 * Cipher only is not supported except SNOW 3G UEA2, KASUMI F8 and 3DES.
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
-* Not performance tuned.
 * SNOW 3G (UEA2) and KASUMI (F8) supported only if cipher length, cipher offset fields are byte-aligned.
 * SNOW 3G (UIA2) and KASUMI (F9) supported only if hash length, hash offset fields are byte-aligned.
 * No BSD support as BSD QAT kernel driver not available.
@@ -201,7 +200,9 @@ The steps below assume you are:
 * Running DPDK on a platform with one ``DH895xCC`` device.
 * On a kernel at least version 4.4.
 
-In BIOS ensure that SRIOV is enabled and VT-d is disabled.
+In BIOS ensure that SRIOV is enabled and either
+a) disable VT-d or
+b) enable VT-d and set ``"intel_iommu=on iommu=pt"`` in the grub file.
 
 Ensure the QAT driver is loaded on your system, by executing::
 
@@ -260,7 +261,9 @@ The steps below assume you are:
 * Running DPDK on a platform with one ``C62x`` device.
 * On a kernel at least version 4.5.
 
-In BIOS ensure that SRIOV is enabled and VT-d is disabled.
+In BIOS ensure that SRIOV is enabled and either
+a) disable VT-d or
+b) enable VT-d and set ``"intel_iommu=on iommu=pt"`` in the grub file.
 
 Ensure the QAT driver is loaded on your system, by executing::
 
@@ -304,7 +307,9 @@ The steps below assume you are:
 * Running DPDK on a platform with one ``C3xxx`` device.
 * On a kernel at least version 4.5.
 
-In BIOS ensure that SRIOV is enabled and VT-d is disabled.
+In BIOS ensure that SRIOV is enabled and either
+a) disable VT-d or
+b) enable VT-d and set ``"intel_iommu=on iommu=pt"`` in the grub file.
 
 Ensure the QAT driver is loaded on your system, by executing::
 
