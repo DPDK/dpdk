@@ -626,15 +626,15 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 }
 
 /**
- * DPDK callback to retrieve physical link information (unlocked version).
+ * Retrieve physical link information (unlocked version using legacy ioctl).
  *
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param wait_to_complete
  *   Wait for request completion (ignored).
  */
-int
-mlx5_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
+static int
+mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct priv *priv = mlx5_get_priv(dev);
 	struct ethtool_cmd edata = {
@@ -687,6 +687,123 @@ mlx5_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 	}
 	/* Link status is still the same. */
 	return -1;
+}
+
+/**
+ * Retrieve physical link information (unlocked version using new ioctl from
+ * Linux 4.5).
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param wait_to_complete
+ *   Wait for request completion (ignored).
+ */
+static int
+mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
+{
+#ifdef ETHTOOL_GLINKSETTINGS
+	struct priv *priv = mlx5_get_priv(dev);
+	struct ethtool_link_settings edata = {
+		.cmd = ETHTOOL_GLINKSETTINGS,
+	};
+	struct ifreq ifr;
+	struct rte_eth_link dev_link;
+	uint64_t sc;
+
+	(void)wait_to_complete;
+	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
+		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
+		return -1;
+	}
+	memset(&dev_link, 0, sizeof(dev_link));
+	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
+				(ifr.ifr_flags & IFF_RUNNING));
+	ifr.ifr_data = (void *)&edata;
+	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
+		      strerror(errno));
+		return -1;
+	}
+	dev_link.link_speed = edata.speed;
+	sc = edata.link_mode_masks[0] |
+		((uint64_t)edata.link_mode_masks[1] << 32);
+	priv->link_speed_capa = 0;
+	/* Link speeds available in kernel v4.5. */
+	if (sc & ETHTOOL_LINK_MODE_Autoneg_BIT)
+		priv->link_speed_capa |= ETH_LINK_SPEED_AUTONEG;
+	if (sc & (ETHTOOL_LINK_MODE_1000baseT_Full_BIT |
+		  ETHTOOL_LINK_MODE_1000baseKX_Full_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_1G;
+	if (sc & (ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT |
+		  ETHTOOL_LINK_MODE_10000baseKR_Full_BIT |
+		  ETHTOOL_LINK_MODE_10000baseR_FEC_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_10G;
+	if (sc & (ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT |
+		  ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_20G;
+	if (sc & (ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_40G;
+	if (sc & (ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_56G;
+	/* Link speeds available in kernel v4.6. */
+#ifdef HAVE_ETHTOOL_LINK_MODE_25G
+	if (sc & (ETHTOOL_LINK_MODE_25000baseCR_Full_BIT |
+		  ETHTOOL_LINK_MODE_25000baseKR_Full_BIT |
+		  ETHTOOL_LINK_MODE_25000baseSR_Full_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_25G;
+#endif
+#ifdef HAVE_ETHTOOL_LINK_MODE_50G
+	if (sc & (ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT |
+		  ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_50G;
+#endif
+#ifdef HAVE_ETHTOOL_LINK_MODE_100G
+	if (sc & (ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT |
+		  ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT))
+		priv->link_speed_capa |= ETH_LINK_SPEED_100G;
+#endif
+	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
+				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+				  ETH_LINK_SPEED_FIXED);
+	if (memcmp(&dev_link, &dev->data->dev_link, sizeof(dev_link))) {
+		/* Link status changed. */
+		dev->data->dev_link = dev_link;
+		return 0;
+	}
+#else
+	(void)dev;
+	(void)wait_to_complete;
+#endif
+	/* Link status is still the same. */
+	return -1;
+}
+
+/**
+ * DPDK callback to retrieve physical link information (unlocked version).
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param wait_to_complete
+ *   Wait for request completion (ignored).
+ */
+int
+mlx5_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	int ret;
+
+	ret = mlx5_link_update_unlocked_gs(dev, wait_to_complete);
+	if (ret < 0)
+		ret = mlx5_link_update_unlocked_gset(dev, wait_to_complete);
+	return ret;
 }
 
 /**

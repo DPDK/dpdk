@@ -121,6 +121,21 @@ mlx5_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
 		infiniband/mlx5_hw.h \
 		enum MLX5_OPCODE_TSO \
 		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_ETHTOOL_LINK_MODE_25G \
+		/usr/include/linux/ethtool.h \
+		enum ETHTOOL_LINK_MODE_25000baseCR_Full_BIT \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_ETHTOOL_LINK_MODE_50G \
+		/usr/include/linux/ethtool.h \
+		enum ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_ETHTOOL_LINK_MODE_100G \
+		/usr/include/linux/ethtool.h \
+		enum ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
 
