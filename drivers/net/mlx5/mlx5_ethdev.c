@@ -603,15 +603,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->hash_key_size = ((*priv->rss_conf) ?
 			       (*priv->rss_conf)[0]->rss_key_len :
 			       0);
-	info->speed_capa =
-			ETH_LINK_SPEED_1G |
-			ETH_LINK_SPEED_10G |
-			ETH_LINK_SPEED_20G |
-			ETH_LINK_SPEED_25G |
-			ETH_LINK_SPEED_40G |
-			ETH_LINK_SPEED_50G |
-			ETH_LINK_SPEED_56G |
-			ETH_LINK_SPEED_100G;
+	info->speed_capa = priv->link_speed_capa;
 	priv_unlock(priv);
 }
 
@@ -646,7 +638,7 @@ mlx5_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct priv *priv = mlx5_get_priv(dev);
 	struct ethtool_cmd edata = {
-		.cmd = ETHTOOL_GSET
+		.cmd = ETHTOOL_GSET /* Deprecated since Linux v4.5. */
 	};
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;
@@ -671,6 +663,19 @@ mlx5_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 		dev_link.link_speed = 0;
 	else
 		dev_link.link_speed = link_speed;
+	priv->link_speed_capa = 0;
+	if (edata.supported & SUPPORTED_Autoneg)
+		priv->link_speed_capa |= ETH_LINK_SPEED_AUTONEG;
+	if (edata.supported & (SUPPORTED_1000baseT_Full |
+			       SUPPORTED_1000baseKX_Full))
+		priv->link_speed_capa |= ETH_LINK_SPEED_1G;
+	if (edata.supported & SUPPORTED_10000baseKR_Full)
+		priv->link_speed_capa |= ETH_LINK_SPEED_10G;
+	if (edata.supported & (SUPPORTED_40000baseKR4_Full |
+			       SUPPORTED_40000baseCR4_Full |
+			       SUPPORTED_40000baseSR4_Full |
+			       SUPPORTED_40000baseLR4_Full))
+		priv->link_speed_capa |= ETH_LINK_SPEED_40G;
 	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
