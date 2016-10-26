@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   Copyright 2014 6WIND S.A.
  *   All rights reserved.
  *
@@ -3313,15 +3313,16 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 
 /**
  * ixgbe_dcb_config_tx_hw_config - Configure general DCB TX parameters
- * @hw: pointer to hardware structure
+ * @dev: pointer to eth_dev structure
  * @dcb_config: pointer to ixgbe_dcb_config structure
  */
 static void
-ixgbe_dcb_tx_hw_config(struct ixgbe_hw *hw,
+ixgbe_dcb_tx_hw_config(struct rte_eth_dev *dev,
 		       struct ixgbe_dcb_config *dcb_config)
 {
 	uint32_t reg;
 	uint32_t q;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 	if (hw->mac.type != ixgbe_mac_82598EB) {
@@ -3340,10 +3341,17 @@ ixgbe_dcb_tx_hw_config(struct ixgbe_hw *hw,
 			reg |= IXGBE_MTQC_VT_ENA;
 		IXGBE_WRITE_REG(hw, IXGBE_MTQC, reg);
 
-		/* Disable drop for all queues */
-		for (q = 0; q < 128; q++)
-			IXGBE_WRITE_REG(hw, IXGBE_QDE,
-				(IXGBE_QDE_WRITE | (q << IXGBE_QDE_IDX_SHIFT)));
+		if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+			/* Disable drop for all queues in VMDQ mode*/
+			for (q = 0; q < 128; q++)
+				IXGBE_WRITE_REG(hw, IXGBE_QDE,
+						(IXGBE_QDE_WRITE | (q << IXGBE_QDE_IDX_SHIFT)));
+		} else {
+			/* Enable drop for all queues in SRIOV mode */
+			for (q = 0; q < 128; q++)
+				IXGBE_WRITE_REG(hw, IXGBE_QDE,
+						(IXGBE_QDE_WRITE | (q << IXGBE_QDE_IDX_SHIFT) | IXGBE_QDE_ENABLE));
+		}
 
 		/* Enable the Tx desc arbiter */
 		reg = IXGBE_READ_REG(hw, IXGBE_RTTDCS);
@@ -3378,7 +3386,7 @@ ixgbe_vmdq_dcb_hw_tx_config(struct rte_eth_dev *dev,
 			vmdq_tx_conf->nb_queue_pools == ETH_16_POOLS ? 0xFFFF : 0xFFFFFFFF);
 
 	/*Configure general DCB TX parameters*/
-	ixgbe_dcb_tx_hw_config(hw, dcb_config);
+	ixgbe_dcb_tx_hw_config(dev, dcb_config);
 }
 
 static void
@@ -3661,7 +3669,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		/*get DCB TX configuration parameters from rte_eth_conf*/
 		ixgbe_dcb_tx_config(dev, dcb_config);
 		/*Configure general DCB TX parameters*/
-		ixgbe_dcb_tx_hw_config(hw, dcb_config);
+		ixgbe_dcb_tx_hw_config(dev, dcb_config);
 		break;
 	default:
 		PMD_INIT_LOG(ERR, "Incorrect DCB TX mode configuration");
@@ -3810,7 +3818,7 @@ void ixgbe_configure_dcb(struct rte_eth_dev *dev)
 	    (dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB_RSS))
 		return;
 
-	if (dev->data->nb_rx_queues != ETH_DCB_NUM_QUEUES)
+	if (dev->data->nb_rx_queues > ETH_DCB_NUM_QUEUES)
 		return;
 
 	/** Configure DCB hardware **/
@@ -4082,12 +4090,13 @@ ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 		case ETH_MQ_RX_VMDQ_RSS:
 			ixgbe_config_vf_rss(dev);
 			break;
-
-		/* FIXME if support DCB/RSS together with VMDq & SRIOV */
 		case ETH_MQ_RX_VMDQ_DCB:
+			ixgbe_vmdq_dcb_configure(dev);
+			break;
+		/* FIXME if support DCB/RSS together with VMDq & SRIOV */
 		case ETH_MQ_RX_VMDQ_DCB_RSS:
 			PMD_INIT_LOG(ERR,
-				"Could not support DCB with VMDq & SRIOV");
+				"Could not support DCB/RSS with VMDq & SRIOV");
 			return -1;
 		default:
 			ixgbe_config_vf_default(dev);

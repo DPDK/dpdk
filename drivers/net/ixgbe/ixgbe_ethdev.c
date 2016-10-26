@@ -1977,6 +1977,8 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 		/* check multi-queue mode */
 		switch (dev_conf->rxmode.mq_mode) {
 		case ETH_MQ_RX_VMDQ_DCB:
+			PMD_INIT_LOG(INFO, "ETH_MQ_RX_VMDQ_DCB mode supported in SRIOV");
+			break;
 		case ETH_MQ_RX_VMDQ_DCB_RSS:
 			/* DCB/RSS VMDQ in SRIOV mode, not implement yet */
 			PMD_INIT_LOG(ERR, "SRIOV active,"
@@ -2012,11 +2014,9 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 
 		switch (dev_conf->txmode.mq_mode) {
 		case ETH_MQ_TX_VMDQ_DCB:
-			/* DCB VMDQ in SRIOV mode, not implement yet */
-			PMD_INIT_LOG(ERR, "SRIOV is active,"
-					" unsupported VMDQ mq_mode tx %d.",
-					dev_conf->txmode.mq_mode);
-			return -EINVAL;
+			PMD_INIT_LOG(INFO, "ETH_MQ_TX_VMDQ_DCB mode supported in SRIOV");
+			dev->data->dev_conf.txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
+			break;
 		default: /* ETH_MQ_TX_VMDQ_ONLY or ETH_MQ_TX_NONE */
 			dev->data->dev_conf.txmode.mq_mode = ETH_MQ_TX_VMDQ_ONLY;
 			break;
