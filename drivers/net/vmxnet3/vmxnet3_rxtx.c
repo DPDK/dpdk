@@ -140,10 +140,10 @@ vmxnet3_txq_dump(struct vmxnet3_tx_queue *txq)
 #endif
 
 static void
-vmxnet3_cmd_ring_release_mbufs(vmxnet3_cmd_ring_t *ring)
+vmxnet3_tx_cmd_ring_release_mbufs(vmxnet3_cmd_ring_t *ring)
 {
 	while (ring->next2comp != ring->next2fill) {
-		/* No need to worry about tx desc ownership, device is quiesced by now. */
+		/* No need to worry about desc ownership, device is quiesced by now. */
 		vmxnet3_buf_info_t *buf_info = ring->buf_info + ring->next2comp;
 
 		if (buf_info->m) {
@@ -157,9 +157,27 @@ vmxnet3_cmd_ring_release_mbufs(vmxnet3_cmd_ring_t *ring)
 }
 
 static void
+vmxnet3_rx_cmd_ring_release_mbufs(vmxnet3_cmd_ring_t *ring)
+{
+	uint32_t i;
+
+	for (i = 0; i < ring->size; i++) {
+		/* No need to worry about desc ownership, device is quiesced by now. */
+		vmxnet3_buf_info_t *buf_info = &ring->buf_info[i];
+
+		if (buf_info->m) {
+			rte_pktmbuf_free_seg(buf_info->m);
+			buf_info->m = NULL;
+			buf_info->bufPA = 0;
+			buf_info->len = 0;
+		}
+		vmxnet3_cmd_ring_adv_next2comp(ring);
+	}
+}
+
+static void
 vmxnet3_cmd_ring_release(vmxnet3_cmd_ring_t *ring)
 {
-	vmxnet3_cmd_ring_release_mbufs(ring);
 	rte_free(ring->buf_info);
 	ring->buf_info = NULL;
 }
@@ -170,6 +188,8 @@ vmxnet3_dev_tx_queue_release(void *txq)
 	vmxnet3_tx_queue_t *tq = txq;
 
 	if (tq != NULL) {
+		/* Release mbufs */
+		vmxnet3_tx_cmd_ring_release_mbufs(&tq->cmd_ring);
 		/* Release the cmd_ring */
 		vmxnet3_cmd_ring_release(&tq->cmd_ring);
 	}
@@ -182,6 +202,10 @@ vmxnet3_dev_rx_queue_release(void *rxq)
 	vmxnet3_rx_queue_t *rq = rxq;
 
 	if (rq != NULL) {
+		/* Release mbufs */
+		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
+			vmxnet3_rx_cmd_ring_release_mbufs(&rq->cmd_ring[i]);
+
 		/* Release both the cmd_rings */
 		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
 			vmxnet3_cmd_ring_release(&rq->cmd_ring[i]);
@@ -199,7 +223,7 @@ vmxnet3_dev_tx_queue_reset(void *txq)
 
 	if (tq != NULL) {
 		/* Release the cmd_ring mbufs */
-		vmxnet3_cmd_ring_release_mbufs(&tq->cmd_ring);
+		vmxnet3_tx_cmd_ring_release_mbufs(&tq->cmd_ring);
 	}
 
 	/* Tx vmxnet rings structure initialization*/
@@ -228,7 +252,7 @@ vmxnet3_dev_rx_queue_reset(void *rxq)
 	if (rq != NULL) {
 		/* Release both the cmd_rings mbufs */
 		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
-			vmxnet3_cmd_ring_release_mbufs(&rq->cmd_ring[i]);
+			vmxnet3_rx_cmd_ring_release_mbufs(&rq->cmd_ring[i]);
 	}
 
 	ring0 = &rq->cmd_ring[0];
