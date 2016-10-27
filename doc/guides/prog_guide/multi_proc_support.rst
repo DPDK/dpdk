@@ -35,7 +35,7 @@ Multi-process Support
 
 In the DPDK, multi-process support is designed to allow a group of DPDK processes
 to work together in a simple transparent manner to perform packet processing,
-or other workloads, on Intel® architecture hardware.
+or other workloads.
 To support this functionality,
 a number of additions have been made to the core DPDK Environment Abstraction Layer (EAL).
 
