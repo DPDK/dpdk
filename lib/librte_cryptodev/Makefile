@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_cryptodev.a
 
 # library version
-LIBABIVER := 1
+LIBABIVER := 2
 
 # build flags
 CFLAGS += -O3

@@ -18,18 +18,6 @@ Deprecation Notices
   ``nb_seg_max`` and ``nb_mtu_seg_max`` providing information about number of
   segments limit to be transmitted by device for TSO/non-TSO packets.
 
-* The ethdev hotplug API is going to be moved to EAL with a notification
-  mechanism added to crypto and ethdev libraries so that hotplug is now
-  available to both of them. This API will be stripped of the device arguments
-  so that it only cares about hotplugging.
-
-* Structures embodying pci and vdev devices are going to be reworked to
-  integrate new common rte_device / rte_driver objects (see
-  http://dpdk.org/ml/archives/dev/2016-January/031390.html).
-  ethdev and crypto libraries will then only handle those objects so that they
-  do not need to care about the kind of devices that are being used, making it
-  easier to add new buses later.
-
 * ABI changes are planned for 16.11 in the ``rte_mbuf`` structure: some fields
   may be reordered to facilitate the writing of ``data_off``, ``refcnt``, and
   ``nb_segs`` in one operation, because some platforms have an overhead if the

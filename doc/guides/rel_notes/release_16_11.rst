@@ -201,6 +201,32 @@ API Changes
 * The ``file_name`` data type of ``struct rte_port_source_params`` and
   ``struct rte_port_sink_params`` is changed from `char *`` to ``const char *``.
 
+* **Improved device/driver hierarchy and generalized hotplugging**
+
+  Device and driver relationship has been restructured by introducing generic
+  classes. This paves way for having PCI, VDEV and other device types as
+  just instantiated objects rather than classes in themselves. Hotplugging too
+  has been generalized into EAL so that ethernet or crypto devices can use the
+  common infrastructure.
+
+  * removed ``pmd_type`` as way of segregation of devices
+  * moved ``numa_node`` and ``devargs`` into ``rte_driver`` from
+    ``rte_pci_driver``. These can now be used by any instantiated object of
+    ``rte_driver``.
+  * added ``rte_device`` class and all PCI and VDEV devices inherit from it
+  * renamed devinit/devuninit handlers to probe/remove to make it more
+    semantically correct with respect to device<=>driver relationship
+  * moved hotplugging support to EAL. Hereafter, PCI and vdev can use the
+    APIs ``rte_eal_dev_attach`` and ``rte_eal_dev_detach``.
+  * helpers and support macros have been renamed to make them more synonymous
+    with their device types
+    (e.g. ``PMD_REGISTER_DRIVER`` => ``RTE_PMD_REGISTER_PCI``)
+  * Device naming functions have been generalized from ethdev and cryptodev
+    to EAL. ``rte_eal_pci_device_name`` has been introduced for obtaining
+    unique device name from PCI Domain-BDF description.
+  * Virtual device registration APIs have been added: ``rte_eal_vdrv_register``
+    and ``rte_eal_vdrv_unregister``.
+
 
 ABI Changes
 -----------
@@ -232,11 +258,11 @@ The libraries prepended with a plus sign were incremented in this version.
 
 .. code-block:: diff
 
-     libethdev.so.4
+   + libethdev.so.5
      librte_acl.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
-     librte_cryptodev.so.1
+   + librte_cryptodev.so.2
      librte_distributor.so.1
    + librte_eal.so.3
      librte_hash.so.2
