@@ -2565,6 +2565,8 @@ test_perf_create_aes_sha_session(uint8_t dev_id, enum chain_mode chain,
 	}
 }
 
+#define SNOW3G_CIPHER_IV_LENGTH 16
+
 static struct rte_cryptodev_sym_session *
 test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo, unsigned cipher_key_len,
@@ -2587,6 +2589,7 @@ test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 	auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
 	auth_xform.auth.algo = auth_algo;
 
+	auth_xform.auth.add_auth_data_length = SNOW3G_CIPHER_IV_LENGTH;
 	auth_xform.auth.key.data = snow3g_hash_key;
 	auth_xform.auth.key.length =  get_auth_key_max_length(auth_algo);
 	auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
@@ -2685,8 +2688,6 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 
 #define TRIPLE_DES_BLOCK_SIZE 8
 #define TRIPLE_DES_CIPHER_IV_LENGTH 8
-
-#define SNOW3G_CIPHER_IV_LENGTH 16
 
 static struct rte_mbuf *
 test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz)
@@ -2810,6 +2811,69 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 
 	return op;
 }
+
+static inline struct rte_crypto_op *
+test_perf_set_crypto_op_snow3g_cipher(struct rte_crypto_op *op,
+		struct rte_mbuf *m,
+		struct rte_cryptodev_sym_session *sess,
+		unsigned data_len)
+{
+	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
+		rte_crypto_op_free(op);
+		return NULL;
+	}
+
+	/* Cipher Parameters */
+	op->sym->cipher.iv.data = rte_pktmbuf_mtod(m, uint8_t *);
+	op->sym->cipher.iv.length = SNOW3G_CIPHER_IV_LENGTH;
+	rte_memcpy(op->sym->cipher.iv.data, snow3g_iv, SNOW3G_CIPHER_IV_LENGTH);
+	op->sym->cipher.iv.phys_addr = rte_pktmbuf_mtophys(m);
+
+	op->sym->cipher.data.offset = SNOW3G_CIPHER_IV_LENGTH;
+	op->sym->cipher.data.length = data_len << 3;
+
+	op->sym->m_src = m;
+
+	return op;
+}
+
+
+static inline struct rte_crypto_op *
+test_perf_set_crypto_op_snow3g_hash(struct rte_crypto_op *op,
+		struct rte_mbuf *m,
+		struct rte_cryptodev_sym_session *sess,
+		unsigned data_len,
+		unsigned digest_len)
+{
+	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
+		rte_crypto_op_free(op);
+		return NULL;
+	}
+
+	/* Authentication Parameters */
+
+	op->sym->auth.digest.data =
+			(uint8_t *)rte_pktmbuf_mtod_offset(m, uint8_t *,
+			data_len);
+	op->sym->auth.digest.phys_addr =
+				rte_pktmbuf_mtophys_offset(m, data_len +
+					SNOW3G_CIPHER_IV_LENGTH);
+	op->sym->auth.digest.length = digest_len;
+	op->sym->auth.aad.data = rte_pktmbuf_mtod(m, uint8_t *);
+	op->sym->auth.aad.length = SNOW3G_CIPHER_IV_LENGTH;
+	rte_memcpy(op->sym->auth.aad.data, snow3g_iv,
+			SNOW3G_CIPHER_IV_LENGTH);
+	op->sym->auth.aad.phys_addr = rte_pktmbuf_mtophys(m);
+
+	/* Data lengths/offsets Parameters */
+	op->sym->auth.data.offset = SNOW3G_CIPHER_IV_LENGTH;
+	op->sym->auth.data.length = data_len << 3;
+
+	op->sym->m_src = m;
+
+	return op;
+}
+
 
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
@@ -3017,9 +3081,14 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 
 	/* Generate a burst of crypto operations */
 	for (i = 0; i < (pparams->burst_size * NUM_MBUF_SETS); i++) {
+		/*
+		 * Buffer size + iv/aad len is allocated, for perf tests they
+		 * are equal + digest len.
+		 */
 		mbufs[i] = test_perf_create_pktmbuf(
 				ts_params->mbuf_mp,
-				pparams->buf_size);
+				pparams->buf_size + SNOW3G_CIPHER_IV_LENGTH +
+				digest_length);
 
 		if (mbufs[i] == NULL) {
 			printf("\nFailed to get mbuf - freeing the rest.\n");
@@ -3049,12 +3118,22 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 			/*Don't exit, dequeue, more ops should become available*/
 		} else {
 			for (i = 0; i < ops_needed; i++) {
-				ops[i+op_offset] =
-				test_perf_set_crypto_op_snow3g(ops[i+op_offset],
-				mbufs[i +
-				  (pparams->burst_size * (j % NUM_MBUF_SETS))],
-				sess,
-				pparams->buf_size, digest_length);
+				if (pparams->chain == HASH_ONLY)
+					ops[i+op_offset] =
+					test_perf_set_crypto_op_snow3g_hash(ops[i+op_offset],
+					mbufs[i +
+					  (pparams->burst_size * (j % NUM_MBUF_SETS))],
+					sess,
+					pparams->buf_size, digest_length);
+				else if (pparams->chain == CIPHER_ONLY)
+					ops[i+op_offset] =
+					test_perf_set_crypto_op_snow3g_cipher(ops[i+op_offset],
+					mbufs[i +
+					  (pparams->burst_size * (j % NUM_MBUF_SETS))],
+					sess,
+					pparams->buf_size);
+				else
+					return 1;
 			}
 
 			/* enqueue burst */
@@ -3372,8 +3451,8 @@ test_perf_snow3G_vary_pkt_size(void)
 	unsigned total_operations = 1000000;
 	uint8_t i, j;
 	unsigned k;
-	uint16_t burst_sizes[] = {64};
-	uint16_t buf_lengths[] = {40, 64, 80, 120, 240, 256, 400, 512, 600, 1024, 2048};
+	uint16_t burst_sizes[] = { 64 };
+	uint16_t buf_lengths[] = { 40, 64, 80, 120, 240, 256, 400, 512, 600, 1024, 2048 };
 
 	struct perf_test_params params_set[] = {
 		{
