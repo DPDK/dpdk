@@ -1583,7 +1583,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ena_tx_buffer *tx_info;
 	struct ena_com_buf *ebuf;
 	uint16_t rc, req_id, total_tx_descs = 0;
-	uint16_t sent_idx = 0;
+	uint16_t sent_idx = 0, empty_tx_reqs;
 	int nb_hw_desc;
 
 	/* Check adapter state */
@@ -1592,6 +1592,10 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			"Trying to xmit pkts while device is NOT running\n");
 		return 0;
 	}
+
+	empty_tx_reqs = ring_size - (next_to_use - next_to_clean);
+	if (nb_pkts > empty_tx_reqs)
+		nb_pkts = empty_tx_reqs;
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		mbuf = tx_pkts[sent_idx];
