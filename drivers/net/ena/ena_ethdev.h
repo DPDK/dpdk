@@ -42,32 +42,12 @@
 #define ENA_MEM_BAR	2
 
 #define ENA_MAX_NUM_QUEUES	128
-
-#define ENA_DEFAULT_TX_SW_DESCS	(1024)
-#define ENA_DEFAULT_TX_HW_DESCS	(1024)
 #define ENA_DEFAULT_RING_SIZE	(1024)
-
 #define ENA_MIN_FRAME_LEN	64
-
-#define ENA_NAME_MAX_LEN     20
-#define ENA_IRQNAME_SIZE     40
-
-#define ENA_PKT_MAX_BUFS     17
+#define ENA_NAME_MAX_LEN	20
+#define ENA_PKT_MAX_BUFS	17
 
 #define ENA_MMIO_DISABLE_REG_READ	BIT(0)
-
-#define	ENA_CIRC_COUNT(head, tail, size)				\
-	(((uint16_t)((uint16_t)(head) - (uint16_t)(tail))) & ((size) - 1))
-
-#define ENA_CIRC_INC(index, step, size)					\
-	((uint16_t)(index) + (uint16_t)(step))
-#define	ENA_CIRC_INC_WRAP(index, step, size)				\
-	(((uint16_t)(index) + (uint16_t)(step))	& ((size) - 1))
-
-#define	ENA_TX_RING_IDX_NEXT(idx, ring_size)				\
-		ENA_CIRC_INC_WRAP(idx, 1, ring_size)
-#define	ENA_RX_RING_IDX_NEXT(idx, ring_size)				\
-		ENA_CIRC_INC_WRAP(idx, 1, ring_size)
 
 struct ena_adapter;
 
