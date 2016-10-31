@@ -30,6 +30,7 @@
 #include "base/ecore_dev_api.h"
 #include "base/ecore_iov_api.h"
 #include "base/ecore_cxt.h"
+#include "base/nvm_cfg.h"
 
 #include "qede_logs.h"
 #include "qede_if.h"

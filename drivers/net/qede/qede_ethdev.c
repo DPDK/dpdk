@@ -646,6 +646,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
+	struct qed_link_output link;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -678,8 +679,9 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 				     DEV_TX_OFFLOAD_UDP_CKSUM |
 				     DEV_TX_OFFLOAD_TCP_CKSUM);
 
-	dev_info->speed_capa = ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G |
-			       ETH_LINK_SPEED_100G;
+	memset(&link, 0, sizeof(struct qed_link_output));
+	qdev->ops->common->get_link(edev, &link);
+	dev_info->speed_capa = rte_eth_speed_bitflag(link.adv_speed, 0);
 }
 
 /* return 0 means link status changed, -1 means not changed */
