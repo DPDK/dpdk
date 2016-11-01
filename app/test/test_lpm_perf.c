@@ -301,6 +301,7 @@ static void generate_large_route_rule_table(void)
 	uint32_t ip_class;
 	uint8_t  depth;
 
+	num_route_entries = 0;
 	memset(large_route_table, 0, sizeof(large_route_table));
 
 	for (ip_class = IP_CLASS_A; ip_class <= IP_CLASS_C; ip_class++) {
