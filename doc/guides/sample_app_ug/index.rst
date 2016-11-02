@@ -118,16 +118,6 @@ Sample Applications User Guide
 
 :numref:`figure_vmdq_dcb_example` :ref:`figure_vmdq_dcb_example`
 
-:numref:`figure_qemu_virtio_net` :ref:`figure_qemu_virtio_net`
-
-:numref:`figure_virtio_linux_vhost` :ref:`figure_virtio_linux_vhost`
-
-:numref:`figure_vhost_net_arch` :ref:`figure_vhost_net_arch`
-
-:numref:`figure_vhost_net_sample_app` :ref:`figure_vhost_net_sample_app`
-
-:numref:`figure_tx_dpdk_testpmd` :ref:`figure_tx_dpdk_testpmd`
-
 :numref:`figure_test_pipeline_app` :ref:`figure_test_pipeline_app`
 
 :numref:`figure_dist_perf` :ref:`figure_dist_perf`

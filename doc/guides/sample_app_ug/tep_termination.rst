@@ -99,7 +99,8 @@ The sample will support the followings:
 
 *   TSO offload support for tunneling packet.
 
-The following figure shows the framework of the TEP termination sample application based on vhost-cuse.
+The following figure shows the framework of the TEP termination sample
+application based on DPDK vhost lib.
 
 .. _figure_tep_termination_arch:
 
@@ -118,11 +119,6 @@ The example in this section have been validated with the following distributions
 
 *   Fedora* 20
 
-Prerequisites
--------------
-
-Refer to :ref:`vhost_app_prerequisites`.
-
 Compiling the Sample Code
 -------------------------
 #.  Compile vhost lib:
@@ -133,14 +129,6 @@ Compiling the Sample Code
 
         CONFIG_RTE_LIBRTE_VHOST=y
 
-    vhost user is turned on by default in the configure file config/common_linuxapp.
-    To enable vhost cuse, disable vhost user.
-
-    .. code-block:: console
-
-        CONFIG_RTE_LIBRTE_VHOST_USER=n
-
-     After vhost is enabled and the implementation is selected, build the vhost library.
 
 #.  Go to the examples directory:
 
@@ -167,39 +155,8 @@ Compiling the Sample Code
         cd ${RTE_SDK}/examples/tep_termination
         make
 
-#.  Go to the eventfd_link directory(vhost cuse required):
-
-    .. code-block:: console
-
-        cd ${RTE_SDK}/lib/librte_vhost/eventfd_link
-
-#.  Build the eventfd_link kernel module(vhost cuse required):
-
-    .. code-block:: console
-
-        make
-
 Running the Sample Code
 -----------------------
-
-#.  Install the cuse kernel module(vhost cuse required):
-
-    .. code-block:: console
-
-        modprobe cuse
-
-#.  Go to the eventfd_link directory(vhost cuse required):
-
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/lib/librte_vhost/eventfd_link
-
-#.  Install the eventfd_link module(vhost cuse required):
-
-    .. code-block:: console
-
-        insmod ./eventfd_link.ko
 
 #.  Go to the examples directory:
 
@@ -225,8 +182,7 @@ Parameters
 
 **The same parameters with the vhost sample.**
 
-Refer to :ref:`vhost_app_parameters` for the meanings of 'Basename',
-'Stats', 'RX Retry', 'RX Retry Number' and 'RX Retry Delay Time'.
+Refer to :ref:`vhost_app_parameters` for detailed explanation.
 
 **Number of Devices.**
 
@@ -303,12 +259,12 @@ The default value is 1.
 Running the Virtual Machine (QEMU)
 ----------------------------------
 
-Refer to :ref:`vhost_app_running`.
+Refer to :ref:`vhost_app_run_vm`.
 
 Running DPDK in the Virtual Machine
 -----------------------------------
 
-Refer to :ref:`vhost_app_running_dpdk`.
+Refer to :ref:`vhost_app_run_dpdk_inside_guest`.
 
 Passing Traffic to the Virtual Machine Device
 ---------------------------------------------
