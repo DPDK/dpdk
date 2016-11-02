@@ -241,12 +241,12 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **3.3-1.0.0.0** and **3.3-2.0.0.0**.
+- Mellanox OFED **3.4-1.0.0.0**.
 
-- Minimum firmware version:
+- firmware version:
 
-  - ConnectX-4: **12.16.1006**
-  - ConnectX-4 Lx: **14.16.1006**
+  - ConnectX-4: **12.17.1010**
+  - ConnectX-4 Lx: **14.17.1010**
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
