@@ -1151,8 +1151,7 @@ print_stats(void)
 }
 
 /**
- * Main function, does initialisation and calls the per-lcore functions. The CUSE
- * device is also registered here to handle the IOCTLs.
+ * Main function, does initialisation and calls the per-lcore functions.
  */
 int
 main(int argc, char *argv[])
@@ -1253,14 +1252,12 @@ main(int argc, char *argv[])
 	}
 	rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
-	/* Register CUSE device to handle IOCTLs. */
 	ret = rte_vhost_driver_register((char *)&dev_basename, 0);
 	if (ret != 0)
-		rte_exit(EXIT_FAILURE, "CUSE device setup failure.\n");
+		rte_exit(EXIT_FAILURE, "failed to register vhost driver.\n");
 
 	rte_vhost_driver_callback_register(&virtio_net_device_ops);
 
-	/* Start CUSE session. */
 	rte_vhost_driver_session_start();
 
 	return 0;

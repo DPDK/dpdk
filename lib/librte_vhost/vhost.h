@@ -284,7 +284,9 @@ void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);
 
 /*
- * Backend-specific cleanup. Defined by vhost-cuse and vhost-user.
+ * Backend-specific cleanup.
+ *
+ * TODO: fix it; we have one backend now
  */
 void vhost_backend_cleanup(struct virtio_net *dev);
 

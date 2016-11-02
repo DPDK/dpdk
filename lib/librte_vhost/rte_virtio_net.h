@@ -123,9 +123,8 @@ int rte_vhost_get_numa_node(int vid);
 uint32_t rte_vhost_get_queue_num(int vid);
 
 /**
- * Get the virtio net device's ifname. For vhost-cuse, ifname is the
- * path of the char device. For vhost-user, ifname is the vhost-user
- * socket file path.
+ * Get the virtio net device's ifname, which is the vhost-user socket
+ * file path.
  *
  * @param vid
  *  virtio-net device ID

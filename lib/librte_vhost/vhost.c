@@ -227,9 +227,8 @@ reset_device(struct virtio_net *dev)
 }
 
 /*
- * Function is called from the CUSE open function. The device structure is
- * initialised and a new entry is added to the device configuration linked
- * list.
+ * Invoked when there is a new vhost-user connection established (when
+ * there is a new virtio device being attached).
  */
 int
 vhost_new_device(void)
@@ -261,8 +260,8 @@ vhost_new_device(void)
 }
 
 /*
- * Function is called from the CUSE release function. This function will
- * cleanup the device and remove it from device configuration linked list.
+ * Invoked when there is the vhost-user connection is broken (when
+ * the virtio device is being detached).
  */
 void
 vhost_destroy_device(int vid)

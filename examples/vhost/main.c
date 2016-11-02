@@ -1409,8 +1409,7 @@ create_mbuf_pool(uint16_t nr_port, uint32_t nr_switch_core, uint32_t mbuf_size,
 }
 
 /*
- * Main function, does initialisation and calls the per-lcore functions. The CUSE
- * device is also registered here to handle the IOCTLs.
+ * Main function, does initialisation and calls the per-lcore functions.
  */
 int
 main(int argc, char *argv[])
@@ -1531,7 +1530,6 @@ main(int argc, char *argv[])
 
 	rte_vhost_driver_callback_register(&virtio_net_device_ops);
 
-	/* Start CUSE session. */
 	rte_vhost_driver_session_start();
 	return 0;
 

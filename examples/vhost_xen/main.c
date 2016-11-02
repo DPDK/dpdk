@@ -1407,8 +1407,7 @@ print_stats(void)
 int init_virtio_net(struct virtio_net_device_ops const * const ops);
 
 /*
- * Main function, does initialisation and calls the per-lcore functions. The CUSE
- * device is also registered here to handle the IOCTLs.
+ * Main function, does initialisation and calls the per-lcore functions.
  */
 int
 main(int argc, char *argv[])
