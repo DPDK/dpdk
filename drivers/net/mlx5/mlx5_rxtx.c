@@ -1237,29 +1237,24 @@ rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe)
 
 	if ((l3_hdr == MLX5_CQE_L3_HDR_TYPE_IPV4) ||
 	    (l3_hdr == MLX5_CQE_L3_HDR_TYPE_IPV6))
-		ol_flags |=
-			(!(cqe->hds_ip_ext & MLX5_CQE_L3_OK) *
-			 PKT_RX_IP_CKSUM_BAD);
+		ol_flags |= TRANSPOSE(cqe->hds_ip_ext,
+				      MLX5_CQE_L3_OK,
+				      PKT_RX_IP_CKSUM_GOOD);
 	if ((l4_hdr == MLX5_CQE_L4_HDR_TYPE_TCP) ||
 	    (l4_hdr == MLX5_CQE_L4_HDR_TYPE_TCP_EMP_ACK) ||
 	    (l4_hdr == MLX5_CQE_L4_HDR_TYPE_TCP_ACK) ||
 	    (l4_hdr == MLX5_CQE_L4_HDR_TYPE_UDP))
-		ol_flags |=
-			(!(cqe->hds_ip_ext & MLX5_CQE_L4_OK) *
-			 PKT_RX_L4_CKSUM_BAD);
-	/*
-	 * PKT_RX_IP_CKSUM_BAD and PKT_RX_L4_CKSUM_BAD are used in place
-	 * of PKT_RX_EIP_CKSUM_BAD because the latter is not functional
-	 * (its value is 0).
-	 */
+		ol_flags |= TRANSPOSE(cqe->hds_ip_ext,
+				      MLX5_CQE_L4_OK,
+				      PKT_RX_L4_CKSUM_GOOD);
 	if ((cqe->pkt_info & MLX5_CQE_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
 		ol_flags |=
-			TRANSPOSE(~cqe->l4_hdr_type_etc,
+			TRANSPOSE(cqe->l4_hdr_type_etc,
 				  MLX5_CQE_RX_OUTER_IP_CSUM_OK,
-				  PKT_RX_IP_CKSUM_BAD) |
-			TRANSPOSE(~cqe->l4_hdr_type_etc,
+				  PKT_RX_IP_CKSUM_GOOD) |
+			TRANSPOSE(cqe->l4_hdr_type_etc,
 				  MLX5_CQE_RX_OUTER_TCP_UDP_CSUM_OK,
-				  PKT_RX_L4_CKSUM_BAD);
+				  PKT_RX_L4_CKSUM_GOOD);
 	return ol_flags;
 }
 
