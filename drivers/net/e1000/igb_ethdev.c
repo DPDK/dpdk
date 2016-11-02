@@ -1327,6 +1327,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 	speeds = &dev->data->dev_conf.link_speeds;
 	if (*speeds == ETH_LINK_SPEED_AUTONEG) {
 		hw->phy.autoneg_advertised = E1000_ALL_SPEED_DUPLEX;
+		hw->mac.autoneg = 1;
 	} else {
 		num_speeds = 0;
 		autoneg = (*speeds & ETH_LINK_SPEED_FIXED) == 0;
@@ -1362,6 +1363,17 @@ eth_igb_start(struct rte_eth_dev *dev)
 		}
 		if (num_speeds == 0 || (!autoneg && (num_speeds > 1)))
 			goto error_invalid_config;
+
+		/* Set/reset the mac.autoneg based on the link speed,
+		 * fixed or not
+		 */
+		if (!autoneg) {
+			hw->mac.autoneg = 0;
+			hw->mac.forced_speed_duplex =
+					hw->phy.autoneg_advertised;
+		} else {
+			hw->mac.autoneg = 1;
+		}
 	}
 
 	e1000_setup_link(hw);
