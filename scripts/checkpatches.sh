@@ -64,7 +64,7 @@ verbose=false
 while getopts hn:qv ARG ; do
 	case $ARG in
 		n ) number=$OPTARG ;;
-		q ) quiet=true && options="$options --no-summary" ;;
+		q ) quiet=true ;;
 		v ) verbose=true ;;
 		h ) print_usage ; exit 0 ;;
 		? ) print_usage ; exit 1 ;;
