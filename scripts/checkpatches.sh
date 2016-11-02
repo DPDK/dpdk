@@ -53,7 +53,7 @@ print_usage () {
 	Run Linux kernel checkpatch.pl with DPDK options.
 	The environment variable DPDK_CHECKPATCH_PATH must be set.
 
-	The patches to check can be from files specified on the command line,
+	The patches to check can be from stdin, files specified on the command line,
 	or latest git commits limited with -n option (default limit: origin/master).
 	END_OF_HELP
 }
@@ -90,6 +90,8 @@ check () { # <patch> <commit> <title>
 	elif [ -n "$2" ] ; then
 		report=$(git format-patch --no-stat --stdout -1 $commit |
 			$DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
+	else
+		report=$($DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
 	fi
 	[ $? -ne 0 ] || continue
 	$verbose || printf '\n### %s\n\n' "$3"
@@ -97,7 +99,20 @@ check () { # <patch> <commit> <title>
 	status=$(($status + 1))
 }
 
-if [ -z "$1" ] ; then
+if [ -n "$1" ] ; then
+	for patch in "$@" ; do
+		subject=$(sed -n 's,^Subject: ,,p' "$patch")
+		check "$patch" '' "$subject"
+	done
+elif [ ! -t 0 ] ; then # stdin
+	subject=$(while read header value ; do
+		if [ "$header" = 'Subject:' ] ; then
+			echo $value
+			break
+		fi
+	done)
+	check '' '' "$subject"
+else
 	if [ $number -eq 0 ] ; then
 		commits=$(git rev-list --reverse origin/master..)
 	else
@@ -106,11 +121,6 @@ if [ -z "$1" ] ; then
 	for commit in $commits ; do
 		subject=$(git log --format='%s' -1 $commit)
 		check '' $commit "$subject"
-	done
-else
-	for patch in "$@" ; do
-		subject=$(sed -n 's,^Subject: ,,p' "$patch")
-		check "$patch" '' "$subject"
 	done
 fi
 pass=$(($total - $status))
