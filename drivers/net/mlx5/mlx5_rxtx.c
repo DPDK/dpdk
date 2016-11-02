@@ -1094,19 +1094,19 @@ rxq_cq_to_pkt_type(volatile struct mlx5_cqe64 *cqe)
 	uint8_t flags = cqe->l4_hdr_type_etc;
 	uint8_t info = cqe->rsvd0[0];
 
-	if (info & IBV_EXP_CQ_RX_TUNNEL_PACKET)
+	if (info & MLX5_CQE_RX_TUNNEL_PACKET)
 		pkt_type =
 			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_OUTER_IPV4_PACKET,
+				  MLX5_CQE_RX_OUTER_IPV4_PACKET,
 				  RTE_PTYPE_L3_IPV4) |
 			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_OUTER_IPV6_PACKET,
+				  MLX5_CQE_RX_OUTER_IPV6_PACKET,
 				  RTE_PTYPE_L3_IPV6) |
 			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_IPV4_PACKET,
+				  MLX5_CQE_RX_IPV4_PACKET,
 				  RTE_PTYPE_INNER_L3_IPV4) |
 			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_IPV6_PACKET,
+				  MLX5_CQE_RX_IPV6_PACKET,
 				  RTE_PTYPE_INNER_L3_IPV6);
 	else
 		pkt_type =
@@ -1254,13 +1254,13 @@ rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe64 *cqe)
 	 * of PKT_RX_EIP_CKSUM_BAD because the latter is not functional
 	 * (its value is 0).
 	 */
-	if ((info & IBV_EXP_CQ_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
+	if ((info & MLX5_CQE_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
 		ol_flags |=
 			TRANSPOSE(~cqe->l4_hdr_type_etc,
-				  IBV_EXP_CQ_RX_OUTER_IP_CSUM_OK,
+				  MLX5_CQE_RX_OUTER_IP_CSUM_OK,
 				  PKT_RX_IP_CKSUM_BAD) |
 			TRANSPOSE(~cqe->l4_hdr_type_etc,
-				  IBV_EXP_CQ_RX_OUTER_TCP_UDP_CSUM_OK,
+				  MLX5_CQE_RX_OUTER_TCP_UDP_CSUM_OK,
 				  PKT_RX_L4_CKSUM_BAD);
 	return ol_flags;
 }
