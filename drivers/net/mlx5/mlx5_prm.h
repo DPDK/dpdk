@@ -158,7 +158,21 @@ struct mlx5_cqe {
 #if (RTE_CACHE_LINE_SIZE == 128)
 	uint8_t padding[64];
 #endif
-	struct mlx5_cqe64 cqe64;
+	uint8_t pkt_info;
+	uint8_t rsvd0[11];
+	uint32_t rx_hash_res;
+	uint8_t rx_hash_type;
+	uint8_t rsvd1[11];
+	uint8_t hds_ip_ext;
+	uint8_t l4_hdr_type_etc;
+	uint16_t vlan_info;
+	uint8_t rsvd2[12];
+	uint32_t byte_cnt;
+	uint64_t timestamp;
+	uint8_t rsvd3[4];
+	uint16_t wqe_counter;
+	uint8_t rsvd4;
+	uint8_t op_own;
 };
 
 #endif /* RTE_PMD_MLX5_PRM_H_ */
