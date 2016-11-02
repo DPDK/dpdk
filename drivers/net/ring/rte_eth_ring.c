@@ -599,23 +599,21 @@ rte_pmd_ring_remove(const char *name)
 
 	eth_dev_stop(eth_dev);
 
-	if (eth_dev->data) {
-		internals = eth_dev->data->dev_private;
-		if (internals->action == DEV_CREATE) {
-			/*
-			 * it is only necessary to delete the rings in rx_queues because
-			 * they are the same used in tx_queues
-			 */
-			for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-				r = eth_dev->data->rx_queues[i];
-				rte_ring_free(r->rng);
-			}
+	internals = eth_dev->data->dev_private;
+	if (internals->action == DEV_CREATE) {
+		/*
+		 * it is only necessary to delete the rings in rx_queues because
+		 * they are the same used in tx_queues
+		 */
+		for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+			r = eth_dev->data->rx_queues[i];
+			rte_ring_free(r->rng);
 		}
-
-		rte_free(eth_dev->data->rx_queues);
-		rte_free(eth_dev->data->tx_queues);
-		rte_free(eth_dev->data->dev_private);
 	}
+
+	rte_free(eth_dev->data->rx_queues);
+	rte_free(eth_dev->data->tx_queues);
+	rte_free(eth_dev->data->dev_private);
 
 	rte_free(eth_dev->data);
 
