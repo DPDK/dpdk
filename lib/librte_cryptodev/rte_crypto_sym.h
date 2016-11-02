@@ -366,6 +366,25 @@ struct rte_cryptodev_sym_session;
  * it must have a valid *rte_mbuf* structure attached, via m_src parameter,
  * which contains the source data which the crypto operation is to be performed
  * on.
+ * While the mbuf is in use by a crypto operation no part of the mbuf should be
+ * changed by the application as the device may read or write to any part of the
+ * mbuf. In the case of hardware crypto devices some or all of the mbuf
+ * may be DMAed in and out of the device, so writing over the original data,
+ * though only the part specified by the rte_crypto_sym_op for transformation
+ * will be changed.
+ * Out-of-place (OOP) operation, where the source mbuf is different to the
+ * destination mbuf, is a special case. Data will be copied from m_src to m_dst.
+ * The part copied includes all the parts of the source mbuf that will be
+ * operated on, based on the cipher.data.offset+cipher.data.length and
+ * auth.data.offset+auth.data.length values in the rte_crypto_sym_op. The part
+ * indicated by the cipher parameters will be transformed, any extra data around
+ * this indicated by the auth parameters will be copied unchanged from source to
+ * destination mbuf.
+ * Also in OOP operation the cipher.data.offset and auth.data.offset apply to
+ * both source and destination mbufs. As these offsets are relative to the
+ * data_off parameter in each mbuf this can result in the data written to the
+ * destination buffer being at a different alignment, relative to buffer start,
+ * to the data in the source buffer.
  */
 struct rte_crypto_sym_op {
 	struct rte_mbuf *m_src;	/**< source mbuf */
