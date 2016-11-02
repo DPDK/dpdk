@@ -46,26 +46,8 @@ vhost library should be able to:
 * Know all the necessary information about the vring:
 
   Information such as where the available ring is stored. Vhost defines some
-  messages to tell the backend all the information it needs to know how to
-  manipulate the vring.
-
-Currently, there are two ways to pass these messages and as a result there are
-two Vhost implementations in DPDK: *vhost-cuse* (where the character devices
-are in user space) and *vhost-user*.
-
-Vhost-cuse creates a user space character device and hook to a function ioctl,
-so that all ioctl commands that are sent from the frontend (QEMU) will be
-captured and handled.
-
-Vhost-user creates a Unix domain socket file through which messages are
-passed.
-
-.. Note::
-
-   Since DPDK v2.2, the majority of the development effort has gone into
-   enhancing vhost-user, such as multiple queue, live migration, and
-   reconnect. Thus, it is strongly advised to use vhost-user instead of
-   vhost-cuse.
+  messages (passed through a Unix domain socket file) to tell the backend all
+  the information it needs to know how to manipulate the vring.
 
 
 Vhost API Overview
@@ -75,11 +57,10 @@ The following is an overview of the Vhost API functions:
 
 * ``rte_vhost_driver_register(path, flags)``
 
-  This function registers a vhost driver into the system. For vhost-cuse, a
-  ``/dev/path`` character device file will be created. For vhost-user server
-  mode, a Unix domain socket file ``path`` will be created.
+  This function registers a vhost driver into the system. ``path`` specifies
+  the Unix domain socket file path.
 
-  Currently supported flags are (these are valid for vhost-user only):
+  Currently supported flags are:
 
   - ``RTE_VHOST_USER_CLIENT``
 
@@ -171,35 +152,8 @@ The following is an overview of the Vhost API functions:
   default.
 
 
-Vhost Implementations
----------------------
-
-Vhost-cuse implementation
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-When vSwitch registers the vhost driver, it will register a cuse device driver
-into the system and creates a character device file. This cuse driver will
-receive vhost open/release/IOCTL messages from the QEMU simulator.
-
-When the open call is received, the vhost driver will create a vhost device
-for the virtio device in the guest.
-
-When the ``VHOST_SET_MEM_TABLE`` ioctl is received, vhost searches the memory
-region to find the starting user space virtual address that maps the memory of
-the guest virtual machine. Through this virtual address and the QEMU pid,
-vhost can find the file QEMU uses to map the guest memory. Vhost maps this
-file into its address space, in this way vhost can fully access the guest
-physical memory, which means vhost could access the shared virtio ring and the
-guest physical address specified in the entry of the ring.
-
-The guest virtual machine tells the vhost whether the virtio device is ready
-for processing or is de-activated through the ``VHOST_NET_SET_BACKEND``
-message. The registered callback from vSwitch will be called.
-
-When the release call is made, vhost will destroy the device.
-
-Vhost-user implementation
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Vhost-user Implementations
+--------------------------
 
 Vhost-user uses Unix domain sockets for passing messages. This means the DPDK
 vhost-user implementation has two options:
@@ -246,8 +200,6 @@ For ``VHOST_SET_MEM_TABLE`` message, QEMU will send information for each
 memory region and its file descriptor in the ancillary data of the message.
 The file descriptor is used to map that region.
 
-There is no ``VHOST_NET_SET_BACKEND`` message as in vhost-cuse to signal
-whether the virtio device is ready or stopped. Instead,
 ``VHOST_SET_VRING_KICK`` is used as the signal to put the vhost device into
 the data plane, and ``VHOST_GET_VRING_BASE`` is used as the signal to remove
 the vhost device from the data plane.
