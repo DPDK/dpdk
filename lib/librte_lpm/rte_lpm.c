@@ -321,6 +321,7 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 
 	if (lpm->tbl8 == NULL) {
 		RTE_LOG(ERR, LPM, "LPM tbl8 memory allocation failed\n");
+		rte_free(lpm->rules_tbl);
 		rte_free(lpm);
 		lpm = NULL;
 		rte_free(te);
@@ -402,6 +403,7 @@ rte_lpm_free_v1604(struct rte_lpm *lpm)
 
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
+	rte_free(lpm->tbl8);
 	rte_free(lpm->rules_tbl);
 	rte_free(lpm);
 	rte_free(te);
