@@ -248,7 +248,7 @@ parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
 		if (mask)
 			*mask = atoi(pch);
 	} else {
-		strncpy(ip_str, token, sizeof(ip_str));
+		strncpy(ip_str, token, sizeof(ip_str) - 1);
 		if (mask)
 			*mask = 0;
 	}
@@ -277,7 +277,7 @@ parse_ipv6_addr(const char *token, struct in6_addr *ipv6, uint32_t *mask)
 		if (mask)
 			*mask = atoi(pch);
 	} else {
-		strncpy(ip_str, token, sizeof(ip_str));
+		strncpy(ip_str, token, sizeof(ip_str) - 1);
 		if (mask)
 			*mask = 0;
 	}
