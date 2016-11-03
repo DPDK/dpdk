@@ -101,13 +101,16 @@ check () { # <patch> <commit> <title>
 
 if [ -n "$1" ] ; then
 	for patch in "$@" ; do
-		subject=$(sed -n 's,^Subject: ,,p' "$patch")
+		# Subject can be on 2 lines
+		subject=$(sed '/^Subject: */!d;s///;N;s,\n[[:space:]]\+, ,;s,\n.*,,;q' "$patch")
 		check "$patch" '' "$subject"
 	done
 elif [ ! -t 0 ] ; then # stdin
 	subject=$(while read header value ; do
 		if [ "$header" = 'Subject:' ] ; then
-			echo $value
+			IFS= read next
+			continuation=$(echo "$next" | sed -n 's,^[[:space:]]\+, ,p')
+			echo $value$continuation
 			break
 		fi
 	done)
