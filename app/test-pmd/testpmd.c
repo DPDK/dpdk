@@ -2002,8 +2002,13 @@ init_port_dcb_config(portid_t pid,
 	 * and has the same number of rxq and txq in dcb mode
 	 */
 	if (dcb_mode == DCB_VT_ENABLED) {
-		nb_rxq = rte_port->dev_info.max_rx_queues;
-		nb_txq = rte_port->dev_info.max_tx_queues;
+		if (rte_port->dev_info.max_vfs > 0) {
+			nb_rxq = rte_port->dev_info.nb_rx_queues;
+			nb_txq = rte_port->dev_info.nb_tx_queues;
+		} else {
+			nb_rxq = rte_port->dev_info.max_rx_queues;
+			nb_txq = rte_port->dev_info.max_tx_queues;
+		}
 	} else {
 		/*if vt is disabled, use all pf queues */
 		if (rte_port->dev_info.vmdq_pool_base == 0) {
