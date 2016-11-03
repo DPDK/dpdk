@@ -106,6 +106,13 @@ New Features
   Eight new API's have been added to the ixgbe PMD for VF management from the PF.
   The declarations for the API's can be found in ``rte_pmd_ixgbe.h``.
 
+* **Updated the enic driver.**
+
+  * Use interrupt for link status checking instead of polling
+  * More flow director modes on UCS Blade with firmware version >= 2.0(13e)
+  * Full support for MTU update
+  * Support for rte_eth_rx_queue_count function
+
 * **Updated the QAT PMD.**
 
   The QAT PMD was updated with following support:
@@ -157,6 +164,12 @@ EAL
 
 Drivers
 ~~~~~~~
+
+* **enic: Fixed several flow director issues.**
+
+* **enic: Fixed inadvertent setting of L4 checksum ptype on ICMP packets.**
+
+* **enic: Fixed high driver overhead when servicing Rx queues beyond the first.**
 
 
 Libraries
