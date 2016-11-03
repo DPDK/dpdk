@@ -113,6 +113,12 @@ New Features
   * Full support for MTU update
   * Support for rte_eth_rx_queue_count function
 
+* **Updated the mlx5 driver.**
+
+  * Add support for RSS hash result
+  * Several performance improvements
+  * Several bug fixes
+
 * **Updated the QAT PMD.**
 
   The QAT PMD was updated with following support:
@@ -321,6 +327,24 @@ Tested Platforms
 
    This section is a comment. Make sure to start the actual text at the margin.
 
+#. Intel(R) Server board S2600WTT
+
+   - Processor: Intel(R) Xeon(R) CPU E5-2697 v2 @ 2.70GHz
+
+#. Intel(R) Server
+
+   - Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
+
+#. Intel(R) Server
+
+   - Intel(R) Xeon(R) CPU E5-2697 v3 @ 2.60GHz
+
+#. IBM(R) Power8(R)
+
+   - Machine type-model: 8247-22L
+   - Firmware FW810.21 (SV810_108)
+   - Processor: POWER8E (raw), AltiVec supported
+
 
 Tested NICs
 -----------
@@ -335,6 +359,97 @@ Tested NICs
       * NIC details.
 
    This section is a comment. Make sure to start the actual text at the margin.
+
+#. Mellanox(R) ConnectX(R)-4 10G MCX4111A-XCAT (1x10G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 10G MCX4121A-XCAT (2x10G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 25G MCX4111A-ACAT (1x25G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 25G MCX4121A-ACAT (2x25G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 40G MCX4131A-BCAT/MCX413A-BCAT (1x40G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 40G MCX415A-BCAT (1x40G)
+
+   * Host interface: PCI Express 3.0 x16
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 50G MCX4131A-GCAT/MCX413A-GCAT (1x50G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 50G MCX414A-BCAT (2x50G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT/MCX416A-BCAT/MCX416A-GCAT (2x50G)
+
+   * Host interface: PCI Express 3.0 x16
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 50G MCX415A-CCAT (1x100G)
+
+   * Host interface: PCI Express 3.0 x16
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 100G MCX416A-CCAT (2x100G)
+
+   * Host interface: PCI Express 3.0 x16
+   * Device ID: 15b3:1013
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 12.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 Lx 10G MCX4121A-XCAT (2x10G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1015
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 14.17.1010
+
+#. Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
+
+   * Host interface: PCI Express 3.0 x8
+   * Device ID: 15b3:1015
+   * MLNX_OFED: 3.4-1.0.0.0
+   * Firmware version: 14.17.1010
 
 
 Tested OSes
@@ -354,3 +469,10 @@ Tested OSes
    * Wind River Linux 8
 
    This section is a comment. Make sure to start the actual text at the margin.
+
+* Red Hat Enterprise Linux Server release 6.7 (Santiago)
+* Red Hat Enterprise Linux Server release 7.0 (Maipo)
+* Red Hat Enterprise Linux Server release 7.2 (Maipo)
+* Wind River Linux 6.0.0.26
+* Ubuntu 14.04
+* Ubuntu 15.04
