@@ -122,6 +122,15 @@ bond_ethdev_rx_burst_active_backup(void *queue, struct rte_mbuf **bufs,
 			bd_rx_q->queue_id, bufs, nb_pkts);
 }
 
+static inline uint8_t
+is_lacp_packets(uint16_t ethertype, uint8_t subtype, uint16_t vlan_tci)
+{
+	const uint16_t ether_type_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
+
+	return !vlan_tci && (ethertype == ether_type_slow_be &&
+		(subtype == SLOW_SUBTYPE_MARKER || subtype == SLOW_SUBTYPE_LACP));
+}
+
 static uint16_t
 bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 		uint16_t nb_pkts)
@@ -141,6 +150,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	uint8_t collecting;  /* current slave collecting status */
 	const uint8_t promisc = internals->promiscuous_en;
 	uint8_t i, j, k;
+	uint8_t subtype;
 
 	rte_eth_macaddr_get(internals->port_id, &bond_mac);
 	/* Copy slave list to protect against slave up/down changes during tx
@@ -166,10 +176,12 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 				rte_prefetch0(rte_pktmbuf_mtod(bufs[j + 3], void *));
 
 			hdr = rte_pktmbuf_mtod(bufs[j], struct ether_hdr *);
+			subtype = ((struct slow_protocol_frame *)hdr)->slow_protocol.subtype;
+
 			/* Remove packet from array if it is slow packet or slave is not
 			 * in collecting state or bondign interface is not in promiscus
 			 * mode and packet address does not match. */
-			if (unlikely(hdr->ether_type == ether_type_slow_be ||
+			if (unlikely(is_lacp_packets(hdr->ether_type, subtype, bufs[j]->vlan_tci) ||
 				!collecting || (!promisc &&
 					!is_multicast_ether_addr(&hdr->d_addr) &&
 					!is_same_ether_addr(&bond_mac, &hdr->d_addr)))) {
