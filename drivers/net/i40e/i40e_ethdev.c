@@ -9428,12 +9428,12 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 	 */
 	if (sw_dcb == TRUE) {
 		ret = i40e_init_dcb(hw);
-		/* if sw_dcb, lldp agent is stopped, the return from
+		/* If lldp agent is stopped, the return value from
 		 * i40e_init_dcb we expect is failure with I40E_AQ_RC_EPERM
-		 * adminq status.
+		 * adminq status. Otherwise, it should return success.
 		 */
-		if (ret != I40E_SUCCESS &&
-		    hw->aq.asq_last_status == I40E_AQ_RC_EPERM) {
+		if ((ret == I40E_SUCCESS) || (ret != I40E_SUCCESS &&
+		    hw->aq.asq_last_status == I40E_AQ_RC_EPERM)) {
 			memset(&hw->local_dcbx_config, 0,
 				sizeof(struct i40e_dcbx_config));
 			/* set dcb default configuration */
@@ -9462,8 +9462,8 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 				return -ENOSYS;
 			}
 		} else {
-			PMD_INIT_LOG(ERR, "DCBX configuration failed, err = %d,"
-					  " aq_err = %d.", ret,
+			PMD_INIT_LOG(ERR, "DCB initialization in FW fails,"
+					  " err = %d, aq_err = %d.", ret,
 					  hw->aq.asq_last_status);
 			return -ENOTSUP;
 		}
