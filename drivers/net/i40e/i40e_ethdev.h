@@ -609,7 +609,9 @@ int i40e_hash_filter_inset_select(struct i40e_hw *hw,
 			     struct rte_eth_input_set_conf *conf);
 int i40e_fdir_filter_inset_select(struct i40e_pf *pf,
 			     struct rte_eth_input_set_conf *conf);
-
+int i40e_pf_host_send_msg_to_vf(struct i40e_pf_vf *vf, uint32_t opcode,
+				uint32_t retval, uint8_t *msg,
+				uint16_t msglen);
 void i40e_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
 void i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,

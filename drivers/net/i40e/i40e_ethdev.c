@@ -5443,6 +5443,24 @@ i40e_dev_handle_vfr_event(struct rte_eth_dev *dev)
 }
 
 static void
+i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_virtchnl_pf_event event;
+	int i;
+
+	event.event = I40E_VIRTCHNL_EVENT_LINK_CHANGE;
+	event.event_data.link_event.link_status =
+		dev->data->dev_link.link_status;
+	event.event_data.link_event.link_speed =
+		(enum i40e_aq_link_speed)dev->data->dev_link.link_speed;
+
+	for (i = 0; i < pf->vf_num; i++)
+		i40e_pf_host_send_msg_to_vf(&pf->vfs[i], I40E_VIRTCHNL_OP_EVENT,
+				I40E_SUCCESS, (uint8_t *)&event, sizeof(event));
+}
+
+static void
 i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -5480,9 +5498,11 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 			break;
 		case i40e_aqc_opc_get_link_status:
 			ret = i40e_dev_link_update(dev, 0);
-			if (!ret)
+			if (!ret) {
+				i40e_notify_all_vfs_link_status(dev);
 				_rte_eth_dev_callback_process(dev,
 					RTE_ETH_EVENT_INTR_LSC, NULL);
+			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Request %u is not supported yet",

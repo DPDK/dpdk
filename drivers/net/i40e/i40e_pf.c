@@ -250,7 +250,7 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 	return ret;
 }
 
-static int
+int
 i40e_pf_host_send_msg_to_vf(struct i40e_pf_vf *vf,
 			    uint32_t opcode,
 			    uint32_t retval,
@@ -847,18 +847,6 @@ i40e_pf_host_process_cmd_get_stats(struct i40e_pf_vf *vf)
 	return I40E_SUCCESS;
 }
 
-static void
-i40e_pf_host_process_cmd_get_link_status(struct i40e_pf_vf *vf)
-{
-	struct rte_eth_dev *dev = I40E_VSI_TO_ETH_DEV(vf->pf->main_vsi);
-
-	/* Update link status first to acquire latest link change */
-	i40e_dev_link_update(dev, 1);
-	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_GET_LINK_STAT,
-		I40E_SUCCESS, (uint8_t *)&dev->data->dev_link,
-				sizeof(struct rte_eth_link));
-}
-
 static int
 i40e_pf_host_process_cmd_cfg_vlan_offload(
 					struct i40e_pf_vf *vf,
@@ -907,6 +895,20 @@ send_msg:
 					ret, NULL, 0);
 
 	return ret;
+}
+
+static void
+i40e_notify_vf_link_status(struct rte_eth_dev *dev, struct i40e_pf_vf *vf)
+{
+	struct i40e_virtchnl_pf_event event;
+
+	event.event = I40E_VIRTCHNL_EVENT_LINK_CHANGE;
+	event.event_data.link_event.link_status =
+		dev->data->dev_link.link_status;
+	event.event_data.link_event.link_speed =
+		(enum i40e_aq_link_speed)dev->data->dev_link.link_speed;
+	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_EVENT,
+		I40E_SUCCESS, (uint8_t *)&event, sizeof(event));
 }
 
 void
@@ -964,6 +966,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	case I40E_VIRTCHNL_OP_ENABLE_QUEUES:
 		PMD_DRV_LOG(INFO, "OP_ENABLE_QUEUES received");
 		i40e_pf_host_process_cmd_enable_queues(vf, msg, msglen);
+		i40e_notify_vf_link_status(dev, vf);
 		break;
 	case I40E_VIRTCHNL_OP_DISABLE_QUEUES:
 		PMD_DRV_LOG(INFO, "OP_DISABLE_QUEUE received");
@@ -992,10 +995,6 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	case I40E_VIRTCHNL_OP_GET_STATS:
 		PMD_DRV_LOG(INFO, "OP_GET_STATS received");
 		i40e_pf_host_process_cmd_get_stats(vf);
-		break;
-	case I40E_VIRTCHNL_OP_GET_LINK_STAT:
-		PMD_DRV_LOG(INFO, "OP_GET_LINK_STAT received");
-		i40e_pf_host_process_cmd_get_link_status(vf);
 		break;
 	case I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD:
 		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_OFFLOAD received");
