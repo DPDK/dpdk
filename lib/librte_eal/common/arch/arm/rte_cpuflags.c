@@ -148,6 +148,7 @@ rte_cpu_get_features(hwcap_registers_t out)
 				out[REG_PLATFORM] = 0x0001;
 		}
 	}
+	close(auxv_fd);
 }
 
 /*
