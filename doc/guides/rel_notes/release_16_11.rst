@@ -202,6 +202,17 @@ Known Issues
 
    This section is a comment. Make sure to start the actual text at the margin.
 
+* **L3fwd-power app does not work properly when Rx vector is enabled.**
+
+  Using some drivers with vector enabled, makes L3fwd-power app not work
+  properly, since the queue monitoring works differently when using
+  scalar compared to vector, making the frequency scaling not to work correctly.
+  In addition, L3fwd-power requires the mbuf to have correct packet type,
+  but in some drivers, the vector mode must be disabled for this.
+
+  Therefore, in order to use L3fwd-power, vector mode should be disabled
+  from the config file.
+
 
 API Changes
 -----------
