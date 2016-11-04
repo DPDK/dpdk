@@ -1121,11 +1121,13 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	/* Disable double vlan by default */
 	i40e_vsi_config_double_vlan(vsi, FALSE);
 
-	/* Disable S-TAG identification by default */
-	ret = I40E_READ_REG(hw, I40E_PRT_L2TAGSEN);
-	if (ret & I40E_L2_TAGS_S_TAG_MASK) {
-		ret &= ~I40E_L2_TAGS_S_TAG_MASK;
-		I40E_WRITE_REG(hw, I40E_PRT_L2TAGSEN, ret);
+	/* Disable S-TAG identification when floating_veb is disabled */
+	if (!pf->floating_veb) {
+		ret = I40E_READ_REG(hw, I40E_PRT_L2TAGSEN);
+		if (ret & I40E_L2_TAGS_S_TAG_MASK) {
+			ret &= ~I40E_L2_TAGS_S_TAG_MASK;
+			I40E_WRITE_REG(hw, I40E_PRT_L2TAGSEN, ret);
+		}
 	}
 
 	if (!vsi->max_macaddrs)

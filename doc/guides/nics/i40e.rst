@@ -453,3 +453,9 @@ To work around this issue, ``ethtool -s <dev> autoneg on`` should be
 set first and then the link can be brought up through ``ifconfig <dev> up``.
 
 NOTE: requires Linux kernel i40e driver version >= 1.4.X
+
+Receive packets with Ethertype 0x88A8
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to the FW limitation, PF can receive packets with Ethertype 0x88A8
+only when floating VEB is disabled.
