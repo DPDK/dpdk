@@ -108,7 +108,6 @@
 		I40E_PFINT_ICR0_ENA_GRST_MASK | \
 		I40E_PFINT_ICR0_ENA_PCI_EXCEPTION_MASK | \
 		I40E_PFINT_ICR0_ENA_STORM_DETECT_MASK | \
-		I40E_PFINT_ICR0_ENA_LINK_STAT_CHANGE_MASK | \
 		I40E_PFINT_ICR0_ENA_HMC_ERR_MASK | \
 		I40E_PFINT_ICR0_ENA_PE_CRITERR_MASK | \
 		I40E_PFINT_ICR0_ENA_VFLR_MASK | \
@@ -1779,6 +1778,16 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			PMD_INIT_LOG(INFO, "lsc won't enable because of"
 				     " no intr multiplex\n");
+	} else if (dev->data->dev_conf.intr_conf.lsc != 0) {
+		ret = i40e_aq_set_phy_int_mask(hw,
+					       ~(I40E_AQ_EVENT_LINK_UPDOWN |
+					       I40E_AQ_EVENT_MODULE_QUAL_FAIL |
+					       I40E_AQ_EVENT_MEDIA_NA), NULL);
+		if (ret != I40E_SUCCESS)
+			PMD_DRV_LOG(WARNING, "Fail to set phy mask");
+
+		/* Call get_link_info aq commond to enable LSE */
+		i40e_dev_link_update(dev, 0);
 	}
 
 	/* enable uio intr after callback register */
@@ -1997,6 +2006,7 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link link, old;
 	int status;
 	unsigned rep_cnt = MAX_REPEAT_TIME;
+	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
 
 	memset(&link, 0, sizeof(link));
 	memset(&old, 0, sizeof(old));
@@ -2005,7 +2015,8 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 
 	do {
 		/* Get link status information from hardware */
-		status = i40e_aq_get_link_info(hw, false, &link_status, NULL);
+		status = i40e_aq_get_link_info(hw, enable_lse,
+						&link_status, NULL);
 		if (status != I40E_SUCCESS) {
 			link.link_speed = ETH_SPEED_NUM_100M;
 			link.link_duplex = ETH_LINK_FULL_DUPLEX;
@@ -5467,6 +5478,12 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 					info.msg_buf,
 					info.msg_len);
 			break;
+		case i40e_aqc_opc_get_link_status:
+			ret = i40e_dev_link_update(dev, 0);
+			if (!ret)
+				_rte_eth_dev_callback_process(dev,
+					RTE_ETH_EVENT_INTR_LSC, NULL);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Request %u is not supported yet",
 				    opcode);
@@ -5474,57 +5491,6 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 		}
 	}
 	rte_free(info.msg_buf);
-}
-
-/*
- * Interrupt handler is registered as the alarm callback for handling LSC
- * interrupt in a definite of time, in order to wait the NIC into a stable
- * state. Currently it waits 1 sec in i40e for the link up interrupt, and
- * no need for link down interrupt.
- */
-static void
-i40e_dev_interrupt_delayed_handler(void *param)
-{
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t icr0;
-
-	/* read interrupt causes again */
-	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
-
-#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
-	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
-		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error\n");
-	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
-		PMD_DRV_LOG(ERR, "ICR0: malicious programming detected\n");
-	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
-		PMD_DRV_LOG(INFO, "ICR0: global reset requested\n");
-	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
-		PMD_DRV_LOG(INFO, "ICR0: PCI exception\n activated\n");
-	if (icr0 & I40E_PFINT_ICR0_STORM_DETECT_MASK)
-		PMD_DRV_LOG(INFO, "ICR0: a change in the storm control "
-								"state\n");
-	if (icr0 & I40E_PFINT_ICR0_HMC_ERR_MASK)
-		PMD_DRV_LOG(ERR, "ICR0: HMC error\n");
-	if (icr0 & I40E_PFINT_ICR0_PE_CRITERR_MASK)
-		PMD_DRV_LOG(ERR, "ICR0: protocol engine critical error\n");
-#endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
-
-	if (icr0 & I40E_PFINT_ICR0_VFLR_MASK) {
-		PMD_DRV_LOG(INFO, "INT:VF reset detected\n");
-		i40e_dev_handle_vfr_event(dev);
-	}
-	if (icr0 & I40E_PFINT_ICR0_ADMINQ_MASK) {
-		PMD_DRV_LOG(INFO, "INT:ADMINQ event\n");
-		i40e_dev_handle_aq_msg(dev);
-	}
-
-	/* handle the link up interrupt in an alarm callback */
-	i40e_dev_link_update(dev, 0);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
-
-	i40e_pf_enable_irq0(hw);
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
 }
 
 /**
@@ -5582,30 +5548,6 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 	if (icr0 & I40E_PFINT_ICR0_ADMINQ_MASK) {
 		PMD_DRV_LOG(INFO, "ICR0: adminq event");
 		i40e_dev_handle_aq_msg(dev);
-	}
-
-	/* Link Status Change interrupt */
-	if (icr0 & I40E_PFINT_ICR0_LINK_STAT_CHANGE_MASK) {
-#define I40E_US_PER_SECOND 1000000
-		struct rte_eth_link link;
-
-		PMD_DRV_LOG(INFO, "ICR0: link status changed\n");
-		memset(&link, 0, sizeof(link));
-		rte_i40e_dev_atomic_read_link_status(dev, &link);
-		i40e_dev_link_update(dev, 0);
-
-		/*
-		 * For link up interrupt, it needs to wait 1 second to let the
-		 * hardware be a stable state. Otherwise several consecutive
-		 * interrupts can be observed.
-		 * For link down interrupt, no need to wait.
-		 */
-		if (!link.link_status && rte_eal_alarm_set(I40E_US_PER_SECOND,
-			i40e_dev_interrupt_delayed_handler, (void *)dev) >= 0)
-			return;
-		else
-			_rte_eth_dev_callback_process(dev,
-				RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 done:
