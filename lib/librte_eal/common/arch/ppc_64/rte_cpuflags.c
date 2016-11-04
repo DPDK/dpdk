@@ -116,6 +116,7 @@ rte_cpu_get_features(hwcap_registers_t out)
 		else if (auxv.a_type == AT_HWCAP2)
 			out[REG_HWCAP2] = auxv.a_un.a_val;
 	}
+	close(auxv_fd);
 }
 
 /*
