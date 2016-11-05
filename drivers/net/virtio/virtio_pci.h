@@ -252,7 +252,6 @@ struct virtio_hw {
 	uint16_t    vtnet_hdr_size;
 	uint8_t	    vlan_strip;
 	uint8_t	    use_msix;
-	uint8_t     started;
 	uint8_t     modern;
 	uint8_t     use_simple_rxtx;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];

@@ -602,7 +602,6 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
 	vtpci_reset(hw);
-	hw->started = 0;
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
 }
@@ -1345,17 +1344,14 @@ static int
 eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
-	struct virtio_hw *hw = eth_dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return -EPERM;
 
-	if (hw->started == 1) {
-		virtio_dev_stop(eth_dev);
-		virtio_dev_close(eth_dev);
-	}
+	virtio_dev_stop(eth_dev);
+	virtio_dev_close(eth_dev);
 	pci_dev = eth_dev->pci_dev;
 
 	eth_dev->dev_ops = NULL;
@@ -1474,7 +1470,6 @@ static int
 virtio_dev_start(struct rte_eth_dev *dev)
 {
 	uint16_t nb_queues, i;
-	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtnet_rx *rxvq;
 	struct virtnet_tx *txvq __rte_unused;
 
@@ -1493,12 +1488,6 @@ virtio_dev_start(struct rte_eth_dev *dev)
 
 	/* Initialize Link state */
 	virtio_dev_link_update(dev, 0);
-
-	/* On restart after stop do not touch queues */
-	if (hw->started)
-		return 0;
-
-	hw->started = 1;
 
 	/*Notify the backend
 	 *Otherwise the tap backend might already stop its queue due to fullness.
