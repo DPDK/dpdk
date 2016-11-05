@@ -211,7 +211,6 @@ struct virtqueue {
 	uint16_t  vq_queue_index;   /**< PCI queue index */
 	uint16_t offset; /**< relative offset to obtain addr in mbuf */
 	uint16_t  *notify_addr;
-	int configured;
 	struct rte_mbuf **sw_ring;  /**< RX software ring. */
 	struct vq_desc_extra vq_descx[0];
 };

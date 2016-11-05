@@ -530,51 +530,30 @@ int
 virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
-			unsigned int socket_id,
+			unsigned int socket_id __rte_unused,
 			__rte_unused const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
 	uint16_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
 	struct virtnet_rx *rxvq;
-	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-	ret = virtio_dev_queue_setup(dev, VTNET_RQ, queue_idx, vtpci_queue_idx,
-			nb_desc, socket_id, (void **)&rxvq);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "rvq initialization failed");
-		return ret;
-	}
 
-	/* Create mempool for rx mbuf allocation */
+	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
+		nb_desc = vq->vq_nentries;
+	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
+
+	rxvq = &vq->rxq;
 	rxvq->mpool = mp;
+	rxvq->queue_id = queue_idx;
 
 	dev->data->rx_queues[queue_idx] = rxvq;
 
 	virtio_rxq_vec_setup(rxvq);
 
 	return 0;
-}
-
-void
-virtio_dev_rx_queue_release(void *rxq)
-{
-	struct virtnet_rx *rxvq = rxq;
-	struct virtqueue *vq;
-	const struct rte_memzone *mz;
-
-	if (rxvq == NULL)
-		return;
-
-	/*
-	 * rxvq is freed when vq is freed, and as mz should be freed after the
-	 * del_queue, so we reserve the mz pointer first.
-	 */
-	vq = rxvq->vq;
-	mz = rxvq->mz;
-
-	virtio_dev_queue_release(vq);
-	rte_memzone_free(mz);
 }
 
 static void
@@ -613,27 +592,25 @@ int
 virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
-			unsigned int socket_id,
+			unsigned int socket_id __rte_unused,
 			const struct rte_eth_txconf *tx_conf)
 {
 	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
 	struct virtnet_tx *txvq;
-	struct virtqueue *vq;
 	uint16_t tx_free_thresh;
-	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
-
 	virtio_update_rxtx_handler(dev, tx_conf);
 
-	ret = virtio_dev_queue_setup(dev, VTNET_TQ, queue_idx, vtpci_queue_idx,
-			nb_desc, socket_id, (void **)&txvq);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "tvq initialization failed");
-		return ret;
-	}
-	vq = txvq->vq;
+	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
+		nb_desc = vq->vq_nentries;
+	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
+
+	txvq = &vq->txq;
+	txvq->queue_id = queue_idx;
 
 	tx_free_thresh = tx_conf->tx_free_thresh;
 	if (tx_free_thresh == 0)
@@ -653,30 +630,6 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->tx_queues[queue_idx] = txvq;
 	return 0;
-}
-
-void
-virtio_dev_tx_queue_release(void *txq)
-{
-	struct virtnet_tx *txvq = txq;
-	struct virtqueue *vq;
-	const struct rte_memzone *mz;
-	const struct rte_memzone *hdr_mz;
-
-	if (txvq == NULL)
-		return;
-
-	/*
-	 * txvq is freed when vq is freed, and as mz should be freed after the
-	 * del_queue, so we reserve the mz pointer first.
-	 */
-	vq = txvq->vq;
-	mz = txvq->mz;
-	hdr_mz = txvq->virtio_net_hdr_mz;
-
-	virtio_dev_queue_release(vq);
-	rte_memzone_free(mz);
-	rte_memzone_free(hdr_mz);
 }
 
 static void

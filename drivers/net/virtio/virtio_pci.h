@@ -264,6 +264,8 @@ struct virtio_hw {
 	struct virtio_net_config *dev_cfg;
 	const struct virtio_pci_ops *vtpci_ops;
 	void	    *virtio_user_dev;
+
+	struct virtqueue **vqs;
 };
 
 /*

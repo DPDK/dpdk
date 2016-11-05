@@ -80,28 +80,14 @@ void virtio_dev_cq_start(struct rte_eth_dev *dev);
  */
 void virtio_dev_rxtx_start(struct rte_eth_dev *dev);
 
-int virtio_dev_queue_setup(struct rte_eth_dev *dev,
-			int queue_type,
-			uint16_t queue_idx,
-			uint16_t vtpci_queue_idx,
-			uint16_t nb_desc,
-			unsigned int socket_id,
-			void **pvq);
-
-void virtio_dev_queue_release(struct virtqueue *vq);
-
 int  virtio_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mb_pool);
 
-void virtio_dev_rx_queue_release(void *rxq);
-
 int  virtio_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
-
-void virtio_dev_tx_queue_release(void *txq);
 
 uint16_t virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
