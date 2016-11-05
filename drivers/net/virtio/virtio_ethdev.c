@@ -1497,8 +1497,6 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	if (hw->started)
 		return 0;
 
-	/* Do final configuration before rx/tx engine starts */
-	virtio_dev_rxtx_start(dev);
 	vtpci_reinit_complete(hw);
 
 	hw->started = 1;
