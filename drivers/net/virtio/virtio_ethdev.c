@@ -1277,6 +1277,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	ret = virtio_alloc_queues(eth_dev);
 	if (ret < 0)
 		return ret;
+	vtpci_reinit_complete(hw);
 
 	if (pci_dev)
 		PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
@@ -1496,8 +1497,6 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	/* On restart after stop do not touch queues */
 	if (hw->started)
 		return 0;
-
-	vtpci_reinit_complete(hw);
 
 	hw->started = 1;
 
