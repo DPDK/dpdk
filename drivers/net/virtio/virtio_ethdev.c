@@ -308,6 +308,35 @@ virtio_get_nr_vq(struct virtio_hw *hw)
 	return nr_vq;
 }
 
+static void
+virtio_init_vring(struct virtqueue *vq)
+{
+	int size = vq->vq_nentries;
+	struct vring *vr = &vq->vq_ring;
+	uint8_t *ring_mem = vq->vq_ring_virt_mem;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/*
+	 * Reinitialise since virtio port might have been stopped and restarted
+	 */
+	memset(ring_mem, 0, vq->vq_ring_size);
+	vring_init(vr, size, ring_mem, VIRTIO_PCI_VRING_ALIGN);
+	vq->vq_used_cons_idx = 0;
+	vq->vq_desc_head_idx = 0;
+	vq->vq_avail_idx = 0;
+	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
+	vq->vq_free_cnt = vq->vq_nentries;
+	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
+
+	vring_desc_init(vr->desc, size);
+
+	/*
+	 * Disable device(host) interrupting guest
+	 */
+	virtqueue_disable_intr(vq);
+}
+
 static int
 virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 {
@@ -371,7 +400,6 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	vq->hw = hw;
 	vq->vq_queue_index = vtpci_queue_idx;
 	vq->vq_nentries = vq_size;
-	vq->vq_free_cnt = vq_size;
 
 	/*
 	 * Reserve a memzone for vring elements
@@ -401,6 +429,8 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		     (uint64_t)mz->phys_addr);
 	PMD_INIT_LOG(DEBUG, "vq->vq_ring_virt_mem: 0x%" PRIx64,
 		     (uint64_t)(uintptr_t)mz->addr);
+
+	virtio_init_vring(vq);
 
 	if (sz_hdr_mz) {
 		snprintf(vq_hdr_name, sizeof(vq_hdr_name), "port%d_vq%d_hdr",

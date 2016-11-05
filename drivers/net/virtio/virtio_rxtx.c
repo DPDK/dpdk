@@ -378,42 +378,12 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	vq_update_avail_ring(vq, head_idx);
 }
 
-static void
-virtio_dev_vring_start(struct virtqueue *vq)
-{
-	int size = vq->vq_nentries;
-	struct vring *vr = &vq->vq_ring;
-	uint8_t *ring_mem = vq->vq_ring_virt_mem;
-
-	PMD_INIT_FUNC_TRACE();
-
-	/*
-	 * Reinitialise since virtio port might have been stopped and restarted
-	 */
-	memset(vq->vq_ring_virt_mem, 0, vq->vq_ring_size);
-	vring_init(vr, size, ring_mem, VIRTIO_PCI_VRING_ALIGN);
-	vq->vq_used_cons_idx = 0;
-	vq->vq_desc_head_idx = 0;
-	vq->vq_avail_idx = 0;
-	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
-	vq->vq_free_cnt = vq->vq_nentries;
-	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
-
-	vring_desc_init(vr->desc, size);
-
-	/*
-	 * Disable device(host) interrupting guest
-	 */
-	virtqueue_disable_intr(vq);
-}
-
 void
 virtio_dev_cq_start(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
 
 	if (hw->cvq && hw->cvq->vq) {
-		virtio_dev_vring_start(hw->cvq->vq);
 		VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq->vq);
 	}
 }
@@ -441,7 +411,6 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 		int error, nbufs;
 		struct rte_mbuf *m;
 
-		virtio_dev_vring_start(vq);
 		if (rxvq->mpool == NULL) {
 			rte_exit(EXIT_FAILURE,
 				"Cannot allocate mbufs for rx virtqueue");
@@ -499,7 +468,6 @@ virtio_dev_rxtx_start(struct rte_eth_dev *dev)
 		struct virtnet_tx *txvq = dev->data->tx_queues[i];
 		struct virtqueue *vq = txvq->vq;
 
-		virtio_dev_vring_start(vq);
 		if (hw->use_simple_rxtx) {
 			uint16_t mid_idx  = vq->vq_nentries >> 1;
 
