@@ -312,7 +312,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	struct virtnet_tx *txvq = NULL;
 	struct virtnet_ctl *cvq = NULL;
 	struct virtqueue *vq;
-	size_t sz_vq, sz_q = 0, sz_hdr_mz = 0;
+	size_t sz_hdr_mz = 0;
 	void *sw_ring = NULL;
 	int ret;
 
@@ -337,25 +337,21 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	snprintf(vq_name, sizeof(vq_name), "port%d_vq%d",
 		 dev->data->port_id, vtpci_queue_idx);
 
-	sz_vq = RTE_ALIGN_CEIL(sizeof(*vq) +
+	size = RTE_ALIGN_CEIL(sizeof(*vq) +
 				vq_size * sizeof(struct vq_desc_extra),
 				RTE_CACHE_LINE_SIZE);
-	if (queue_type == VTNET_RQ) {
-		sz_q = sz_vq + sizeof(*rxvq);
-	} else if (queue_type == VTNET_TQ) {
-		sz_q = sz_vq + sizeof(*txvq);
+	if (queue_type == VTNET_TQ) {
 		/*
 		 * For each xmit packet, allocate a virtio_net_hdr
 		 * and indirect ring elements
 		 */
 		sz_hdr_mz = vq_size * sizeof(struct virtio_tx_region);
 	} else if (queue_type == VTNET_CQ) {
-		sz_q = sz_vq + sizeof(*cvq);
 		/* Allocate a page for control vq command, data and status */
 		sz_hdr_mz = PAGE_SIZE;
 	}
 
-	vq = rte_zmalloc_socket(vq_name, sz_q, RTE_CACHE_LINE_SIZE, socket_id);
+	vq = rte_zmalloc_socket(vq_name, size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "can not allocate vq");
 		return -ENOMEM;
@@ -425,14 +421,14 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		}
 
 		vq->sw_ring = sw_ring;
-		rxvq = (struct virtnet_rx *)RTE_PTR_ADD(vq, sz_vq);
+		rxvq = &vq->rxq;
 		rxvq->vq = vq;
 		rxvq->port_id = dev->data->port_id;
 		rxvq->queue_id = queue_idx;
 		rxvq->mz = mz;
 		*pvq = rxvq;
 	} else if (queue_type == VTNET_TQ) {
-		txvq = (struct virtnet_tx *)RTE_PTR_ADD(vq, sz_vq);
+		txvq = &vq->txq;
 		txvq->vq = vq;
 		txvq->port_id = dev->data->port_id;
 		txvq->queue_id = queue_idx;
@@ -442,7 +438,7 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 
 		*pvq = txvq;
 	} else if (queue_type == VTNET_CQ) {
-		cvq = (struct virtnet_ctl *)RTE_PTR_ADD(vq, sz_vq);
+		cvq = &vq->cq;
 		cvq->vq = vq;
 		cvq->mz = mz;
 		cvq->virtio_net_hdr_mz = hdr_mz;

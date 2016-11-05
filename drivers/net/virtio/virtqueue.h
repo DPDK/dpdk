@@ -44,6 +44,7 @@
 #include "virtio_pci.h"
 #include "virtio_ring.h"
 #include "virtio_logs.h"
+#include "virtio_rxtx.h"
 
 struct rte_mbuf;
 
@@ -190,6 +191,12 @@ struct virtqueue {
 
 	void *vq_ring_virt_mem;  /**< linear address of vring*/
 	unsigned int vq_ring_size;
+
+	union {
+		struct virtnet_rx rxq;
+		struct virtnet_tx txq;
+		struct virtnet_ctl cq;
+	};
 
 	phys_addr_t vq_ring_mem; /**< physical address of vring,
 				  * or virtual address for virtio_user. */
