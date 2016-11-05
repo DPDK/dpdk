@@ -312,7 +312,6 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 	struct virtnet_tx *txvq = NULL;
 	struct virtnet_ctl *cvq = NULL;
 	struct virtqueue *vq;
-	const char *queue_names[] = {"rvq", "txq", "cvq"};
 	size_t sz_vq, sz_q = 0, sz_hdr_mz = 0;
 	void *sw_ring = NULL;
 	int ret;
@@ -335,8 +334,8 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	snprintf(vq_name, sizeof(vq_name), "port%d_%s%d",
-		 dev->data->port_id, queue_names[queue_type], queue_idx);
+	snprintf(vq_name, sizeof(vq_name), "port%d_vq%d",
+		 dev->data->port_id, vtpci_queue_idx);
 
 	sz_vq = RTE_ALIGN_CEIL(sizeof(*vq) +
 				vq_size * sizeof(struct vq_desc_extra),
@@ -398,9 +397,8 @@ int virtio_dev_queue_setup(struct rte_eth_dev *dev,
 		     (uint64_t)(uintptr_t)mz->addr);
 
 	if (sz_hdr_mz) {
-		snprintf(vq_hdr_name, sizeof(vq_hdr_name), "port%d_%s%d_hdr",
-			 dev->data->port_id, queue_names[queue_type],
-			 queue_idx);
+		snprintf(vq_hdr_name, sizeof(vq_hdr_name), "port%d_vq%d_hdr",
+			 dev->data->port_id, vtpci_queue_idx);
 		hdr_mz = rte_memzone_reserve_aligned(vq_hdr_name, sz_hdr_mz,
 						     socket_id, 0,
 						     RTE_CACHE_LINE_SIZE);
