@@ -8,9 +8,6 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
-* The ethdev library file will be renamed from libethdev.* to librte_ethdev.*
-  in release 16.11 in order to have a more consistent namespace.
-
 * In 16.11 ABI changes are planned: the ``rte_eth_dev`` structure will be
   extended with new function pointer ``tx_pkt_prep`` allowing verification
   and processing of packet burst to meet HW specific requirements before

@@ -258,13 +258,13 @@ The libraries prepended with a plus sign were incremented in this version.
 
 .. code-block:: diff
 
-   + libethdev.so.5
      librte_acl.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
    + librte_cryptodev.so.2
      librte_distributor.so.1
    + librte_eal.so.3
+   + librte_ethdev.so.5
      librte_hash.so.2
      librte_ip_frag.so.1
      librte_jobstats.so.1

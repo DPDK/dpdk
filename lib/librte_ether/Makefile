@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = libethdev.a
+LIB = librte_ethdev.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

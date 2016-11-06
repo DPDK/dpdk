@@ -81,7 +81,7 @@ endif
 # Ignore (sub)directory dependencies which do not provide an actual library
 _IGNORE_DIRS = lib/librte_eal/% lib/librte_compat
 _DEPDIRS = $(filter-out $(_IGNORE_DIRS),$(DEPDIRS-y))
-_LDDIRS = $(subst librte_ether,libethdev,$(_DEPDIRS))
+_LDDIRS = $(subst librte_ether,librte_ethdev,$(_DEPDIRS))
 LDLIBS += $(subst lib/lib,-l,$(_LDDIRS))
 
 O_TO_A = $(AR) crDs $(LIB) $(OBJS-y)
