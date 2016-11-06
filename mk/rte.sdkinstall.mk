@@ -164,7 +164,7 @@ install-sdk:
 	$(Q)$(call rte_symlink, $(DESTDIR)$(libdir),     $(DESTDIR)$(targetdir)/lib)
 
 install-doc:
-ifneq ($(wildcard $O/doc),)
+ifneq ($(wildcard $O/doc/html),)
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(docdir))
 	$(Q)tar -cf -      -C $O/doc html --exclude 'html/guides/.*' | \
 	    tar -xf -      -C $(DESTDIR)$(docdir) --strip-components=1 \
