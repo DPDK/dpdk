@@ -170,15 +170,18 @@ static uint32_t
 parse_key_string(const char *key_str, uint8_t *key)
 {
 	const char *pt_start = key_str, *pt_end = key_str;
-	char sub_str[3];
 	uint32_t nb_bytes = 0;
 
 	while (pt_end != NULL) {
+		char sub_str[3] = {0};
+
 		pt_end = strchr(pt_start, ':');
 
-		if (pt_end == NULL)
-			strncpy(sub_str, pt_start, strlen(pt_start));
-		else {
+		if (pt_end == NULL) {
+			if (strlen(pt_start) > 2)
+				return 0;
+			strncpy(sub_str, pt_start, 2);
+		} else {
 			if (pt_end - pt_start > 2)
 				return 0;
 
