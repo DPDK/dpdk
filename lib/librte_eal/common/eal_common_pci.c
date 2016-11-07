@@ -214,7 +214,11 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 		dev->driver = dr;
 
 		/* call the driver probe() function */
-		return dr->probe(dr, dev);
+		ret = dr->probe(dr, dev);
+		if (ret)
+			dev->driver = NULL;
+
+		return ret;
 	}
 	/* return positive value if driver doesn't support this device */
 	return 1;
