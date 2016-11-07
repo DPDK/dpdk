@@ -606,6 +606,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 	switch (ring_type) {
 	case HWRM_RING_ALLOC_INPUT_RING_TYPE_TX:
 		req.queue_id = bp->cos_queue[0].id;
+		/* FALLTHROUGH */
 	case HWRM_RING_ALLOC_INPUT_RING_TYPE_RX:
 		req.ring_type = ring_type;
 		req.cmpl_ring_id =
