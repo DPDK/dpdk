@@ -44,7 +44,7 @@
  * buffers. The message buffers are stored in a mempool, using the
  * RTE mempool library.
  *
- * This library provide an API to allocate/free packet mbufs, which are
+ * This library provides an API to allocate/free packet mbufs, which are
  * used to carry network packets.
  *
  * To understand the concepts of packet buffers or mbufs, you

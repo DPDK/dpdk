@@ -42,7 +42,7 @@
  * interfaces that may be used by the RTE application to receive/transmit
  * packets from/to Linux kernel net interfaces.
  *
- * This library provide two APIs to burst receive packets from KNI interfaces,
+ * This library provides two APIs to burst receive packets from KNI interfaces,
  * and burst transmit packets to KNI interfaces.
  */
 
