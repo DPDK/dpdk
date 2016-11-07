@@ -175,7 +175,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	struct rte_pci_device *pdev = bp->pdev;
 	const struct rte_memzone *mz;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	uint16_t entry_length = RTE_CACHE_LINE_ROUNDUP(
+	uint32_t entry_length = RTE_CACHE_LINE_ROUNDUP(
 				HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table) +
 				HW_HASH_KEY_SIZE);
 	uint16_t max_vnics;
