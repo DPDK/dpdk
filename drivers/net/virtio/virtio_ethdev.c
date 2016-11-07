@@ -1472,6 +1472,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	uint16_t nb_queues, i;
 	struct virtnet_rx *rxvq;
 	struct virtnet_tx *txvq __rte_unused;
+	struct virtio_hw *hw = dev->data->dev_private;
 
 	/* check if lsc interrupt feature is enabled */
 	if (dev->data->dev_conf.intr_conf.lsc) {
@@ -1494,7 +1495,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	 *vhost backend will have no chance to be waked up
 	 */
 	nb_queues = RTE_MAX(dev->data->nb_rx_queues, dev->data->nb_tx_queues);
-	if (nb_queues > 1) {
+	if (hw->max_queue_pairs > 1) {
 		if (virtio_set_multiple_queues(dev, nb_queues) != 0)
 			return -EINVAL;
 	}
