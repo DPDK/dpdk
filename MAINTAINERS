@@ -189,6 +189,7 @@ M: Anatoly Burakov <anatoly.burakov@intel.com>
 F: lib/librte_eal/linuxapp/eal/*vfio*
 
 Linux Xen
+M: Jianfeng Tan <jianfeng.tan@intel.com>
 F: lib/librte_eal/linuxapp/xen_dom0/
 F: lib/librte_eal/linuxapp/eal/*xen*
 F: lib/librte_eal/linuxapp/eal/include/exec-env/rte_dom0_common.h
