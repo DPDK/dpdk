@@ -487,8 +487,7 @@ parse_cfg_file(const char *cfg_filename)
 	struct parse_status status = {0};
 
 	if (f == NULL) {
-		rte_panic("Error: invalid file descriptor %s\n",
-			cfg_filename);
+		rte_panic("Error: invalid file descriptor %s\n", cfg_filename);
 		goto error_exit;
 	}
 
@@ -503,86 +502,79 @@ parse_cfg_file(const char *cfg_filename)
 
 	do {
 		char oneline[1024];
-
+		char *pos;
 		get_s = fgets(oneline, 1024, f);
-		if (get_s) {
-			char *pos;
 
-			line_num++;
+		if (!get_s)
+			break;
 
-			if (strlen(oneline) > 1022) {
-				rte_panic("%s:%u: error: the line "
-					"contains more characters the "
-					"parser can handle\n",
+		line_num++;
+
+		if (strlen(oneline) > 1022) {
+			rte_panic("%s:%u: error: "
+				"the line contains more characters the parser can handle\n",
+				cfg_filename, line_num);
+			goto error_exit;
+		}
+
+		/* process comment char '#' */
+		if (oneline[0] == '#')
+			continue;
+
+		pos = strchr(oneline, '#');
+		if (pos != NULL)
+			*pos = '\0';
+
+		/* process line concatenator '\' */
+		pos = strchr(oneline, 92);
+		if (pos != NULL) {
+			if (pos != oneline+strlen(oneline) - 2) {
+				rte_panic("%s:%u: error: "
+					"no character should exist after '\\'\n",
 					cfg_filename, line_num);
 				goto error_exit;
 			}
 
-			/* process comment char '#' */
-			if (oneline[0] == '#')
-				continue;
+			*pos = '\0';
 
-			pos = strchr(oneline, '#');
-			if (pos != NULL)
-				*pos = '\0';
-
-			/* process line concatenator '\' */
-			pos = strchr(oneline, 92);
-			if (pos != NULL) {
-				if (pos != oneline+strlen(oneline) - 2) {
-					rte_panic("%s:%u: error: no "
-						"character should exist "
-						"after '\\' symbol\n",
-						cfg_filename, line_num);
-					goto error_exit;
-				}
-
-				*pos = '\0';
-
-				if (strlen(oneline) + strlen(str) > 1022) {
-					rte_panic("%s:%u: error: the "
-						"concatenated line "
-						"contains more characters "
-						"the parser can handle\n",
-						cfg_filename, line_num);
-					goto error_exit;
-				}
-
-				strncpy(str + strlen(str), oneline,
-					strlen(oneline));
-
-				continue;
-			}
-
-			/* copy the line to str and process */
 			if (strlen(oneline) + strlen(str) > 1022) {
-				rte_panic("%s:%u: error: the line "
-					"contains more characters the "
-					"parser can handle\n",
+				rte_panic("%s:%u: error: "
+					"the concatenated line contains more characters the parser can handle\n",
 					cfg_filename, line_num);
 				goto error_exit;
 			}
+
 			strncpy(str + strlen(str), oneline,
 				strlen(oneline));
 
-			str[strlen(str)] = '\n';
-			if (cmdline_parse(cl, str) < 0) {
-				rte_panic("%s:%u: error: parsing \"%s\" "
-					"failed\n", cfg_filename,
-					line_num, str);
-				goto error_exit;
-			}
-
-			if (status.status < 0) {
-				rte_panic("%s:%u: error: %s",
-					cfg_filename, line_num,
-					status.parse_msg);
-				goto error_exit;
-			}
-
-			memset(str, 0, 1024);
+			continue;
 		}
-	} while (get_s != NULL);
+
+		/* copy the line to str and process */
+		if (strlen(oneline) + strlen(str) > 1022) {
+			rte_panic("%s:%u: error: "
+				"the line contains more characters the parser can handle\n",
+				cfg_filename, line_num);
+			goto error_exit;
+		}
+		strncpy(str + strlen(str), oneline,
+			strlen(oneline));
+
+		str[strlen(str)] = '\n';
+		if (cmdline_parse(cl, str) < 0) {
+			rte_panic("%s:%u: error: parsing \"%s\" failed\n",
+				cfg_filename, line_num, str);
+			goto error_exit;
+		}
+
+		if (status.status < 0) {
+			rte_panic("%s:%u: error: %s", cfg_filename,
+				line_num, status.parse_msg);
+			goto error_exit;
+		}
+
+		memset(str, 0, 1024);
+	} while (1);
 
 	cmdline_stdin_exit(cl);
 	fclose(f);
