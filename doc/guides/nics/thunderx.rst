@@ -62,6 +62,7 @@ Supported ThunderX SoCs
 -----------------------
 - CN88xx
 - CN81xx
+- CN83xx
 
 Prerequisites
 -------------

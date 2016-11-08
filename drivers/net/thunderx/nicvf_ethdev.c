@@ -2097,6 +2097,13 @@ static const struct rte_pci_id pci_id_nicvf_map[] = {
 		.subsystem_device_id = PCI_SUB_DEVICE_ID_CN81XX_NICVF,
 	},
 	{
+		.class_id = RTE_CLASS_ANY_ID,
+		.vendor_id = PCI_VENDOR_ID_CAVIUM,
+		.device_id = PCI_DEVICE_ID_THUNDERX_NICVF,
+		.subsystem_vendor_id = PCI_VENDOR_ID_CAVIUM,
+		.subsystem_device_id = PCI_SUB_DEVICE_ID_CN83XX_NICVF,
+	},
+	{
 		.vendor_id = 0,
 	},
 };
