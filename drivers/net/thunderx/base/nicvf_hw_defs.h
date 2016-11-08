@@ -105,6 +105,8 @@
 #define NICVF_INTR_MBOX_SHIFT           22
 #define NICVF_INTR_QS_ERR_SHIFT         23
 
+#define NICVF_QS_RQ_DIS_APAD_SHIFT      22
+
 #define NICVF_INTR_CQ_MASK              (0xFF << NICVF_INTR_CQ_SHIFT)
 #define NICVF_INTR_SQ_MASK              (0xFF << NICVF_INTR_SQ_SHIFT)
 #define NICVF_INTR_RBDR_MASK            (0x03 << NICVF_INTR_RBDR_SHIFT)

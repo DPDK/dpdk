@@ -54,6 +54,8 @@
 #define NICVF_CAP_TUNNEL_PARSING	(1ULL << 0)
 /* Additional word in Rx descriptor to hold optional tunneling extension info */
 #define NICVF_CAP_CQE_RX2		(1ULL << 1)
+/* The device capable of setting NIC_CQE_RX_S[APAD] == 0 */
+#define NICVF_CAP_DISABLE_APAD		(1ULL << 2)
 
 enum nicvf_tns_mode {
 	NIC_TNS_BYPASS_MODE,
@@ -216,6 +218,8 @@ uint32_t nicvf_qsize_cq_roundup(uint32_t val);
 uint32_t nicvf_qsize_sq_roundup(uint32_t val);
 
 void nicvf_vlan_hw_strip(struct nicvf *nic, bool enable);
+
+void nicvf_apad_config(struct nicvf *nic, bool enable);
 
 int nicvf_rss_config(struct nicvf *nic, uint32_t  qcnt, uint64_t cfg);
 int nicvf_rss_term(struct nicvf *nic);

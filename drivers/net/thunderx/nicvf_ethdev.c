@@ -1527,6 +1527,16 @@ nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 	/* Configure VLAN Strip */
 	nicvf_vlan_hw_strip(nic, dev->data->dev_conf.rxmode.hw_vlan_strip);
 
+	/* Based on the packet type(IPv4 or IPv6), the nicvf HW aligns L3 data
+	 * to the 64bit memory address.
+	 * The alignment creates a hole in mbuf(between the end of headroom and
+	 * packet data start). The new revision of the HW provides an option to
+	 * disable the L3 alignment feature and make mbuf layout looks
+	 * more like other NICs. For better application compatibility, disabling
+	 * l3 alignment feature on the hardware revisions it supports
+	 */
+	nicvf_apad_config(nic, false);
+
 	/* Get queue ranges for this VF */
 	nicvf_tx_range(dev, nic, &tx_start, &tx_end);
 

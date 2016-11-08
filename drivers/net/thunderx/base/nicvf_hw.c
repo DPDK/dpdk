@@ -725,6 +725,24 @@ nicvf_vlan_hw_strip(struct nicvf *nic, bool enable)
 }
 
 void
+nicvf_apad_config(struct nicvf *nic, bool enable)
+{
+	uint64_t val;
+
+	/* APAD always enabled in this device */
+	if (!(nic->hwcap & NICVF_CAP_DISABLE_APAD))
+		return;
+
+	val = nicvf_reg_read(nic, NIC_VNIC_RQ_GEN_CFG);
+	if (enable)
+		val &= ~(1ULL << NICVF_QS_RQ_DIS_APAD_SHIFT);
+	else
+		val |= (1ULL << NICVF_QS_RQ_DIS_APAD_SHIFT);
+
+	nicvf_reg_write(nic, NIC_VNIC_RQ_GEN_CFG, val);
+}
+
+void
 nicvf_rss_set_key(struct nicvf *nic, uint8_t *key)
 {
 	int idx;
