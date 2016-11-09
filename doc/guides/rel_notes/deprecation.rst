@@ -15,16 +15,17 @@ Deprecation Notices
   ``nb_seg_max`` and ``nb_mtu_seg_max`` providing information about number of
   segments limit to be transmitted by device for TSO/non-TSO packets.
 
-* ABI changes are planned for 16.11 in the ``rte_mbuf`` structure: some fields
+* ABI changes are planned for 17.02 in the ``rte_mbuf`` structure: some fields
   may be reordered to facilitate the writing of ``data_off``, ``refcnt``, and
   ``nb_segs`` in one operation, because some platforms have an overhead if the
   store address is not naturally aligned. Other mbuf fields, such as the
-  ``port`` field, may be moved or removed as part of this mbuf work.
+  ``port`` field, may be moved or removed as part of this mbuf work. A
+  ``timestamp`` will also be added.
 
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
-  their behavior will be kept in 16.07 and will be removed in 16.11.
+  their behavior will be kept until 16.11 and will be removed in 17.02.
 
 * mempool: The functions ``rte_mempool_count`` and ``rte_mempool_free_count``
   will be removed in 17.02.
