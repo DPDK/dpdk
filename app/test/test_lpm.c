@@ -1256,7 +1256,7 @@ test18(void)
 	rte_lpm_add(lpm, ip, depth, next_hop);
 
 	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
-	tbl8_group_index = lpm->tbl8[ip>>8].group_idx;
+	tbl8_group_index = lpm->tbl24[ip>>8].group_idx;
 
 	depth = 23;
 	next_hop = 2;
@@ -1272,7 +1272,7 @@ test18(void)
 	rte_lpm_add(lpm, ip, depth, next_hop);
 
 	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
-	TEST_LPM_ASSERT(tbl8_group_index == lpm->tbl8[ip>>8].group_idx);
+	TEST_LPM_ASSERT(tbl8_group_index == lpm->tbl24[ip>>8].group_idx);
 
 	depth = 24;
 	next_hop = 4;
@@ -1288,7 +1288,7 @@ test18(void)
 	rte_lpm_add(lpm, ip, depth, next_hop);
 
 	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
-	TEST_LPM_ASSERT(tbl8_group_index == lpm->tbl8[ip>>8].group_idx);
+	TEST_LPM_ASSERT(tbl8_group_index == lpm->tbl24[ip>>8].group_idx);
 
 	rte_lpm_free(lpm);
 #undef group_idx
