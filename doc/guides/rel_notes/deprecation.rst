@@ -8,8 +8,8 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
-* In 16.11 ABI changes are planned: the ``rte_eth_dev`` structure will be
-  extended with new function pointer ``tx_pkt_prep`` allowing verification
+* In 17.02 ABI changes are planned: the ``rte_eth_dev`` structure will be
+  extended with new function pointer ``tx_pkt_prepare`` allowing verification
   and processing of packet burst to meet HW specific requirements before
   transmit. Also new fields will be added to the ``rte_eth_desc_lim`` structure:
   ``nb_seg_max`` and ``nb_mtu_seg_max`` providing information about number of
