@@ -213,6 +213,18 @@ Known Issues
   Therefore, in order to use L3fwd-power, vector mode should be disabled
   from the config file.
 
+* **Digest address must be supplied for crypto auth operation on QAT PMD.**
+
+  The cryptodev API specifies that if the rte_crypto_sym_op.digest.data field,
+  and by inference the digest.phys_addr field which points to the same location,
+  is not set for an auth operation the driver is to understand that the digest
+  result is located immediately following the region over which the digest is
+  computed. The QAT PMD doesn't correctly handle this case and reads and writes
+  to an incorrect location.
+
+  Callers can workaround this by always supplying the digest virtual and
+  physical address fields in the rte_crypto_sym_op for an auth operation.
+
 
 API Changes
 -----------
