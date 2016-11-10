@@ -42,7 +42,7 @@ The initialization and run-time paths are very similar to those of the :doc:`l2_
 The main difference from the L2 Forwarding sample application is that the forwarding decision
 is made based on information read from the input packet.
 
-The lookup method is either hash-based or LPM-based and is selected at compile time. When the selected lookup method is hash-based,
+The lookup method is either hash-based or LPM-based and is selected at run time. When the selected lookup method is hash-based,
 a hash object is used to emulate the flow classification stage.
 The hash object is used in correlation with a flow table to map each input packet to its flow at runtime.
 
