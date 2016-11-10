@@ -269,7 +269,7 @@ pdump_regitser_rx_callbacks(uint16_t end_q, uint8_t port, uint16_t queue,
 			if (ret < 0) {
 				RTE_LOG(ERR, PDUMP,
 					"failed to remove rx callback, errno=%d\n",
-					rte_errno);
+					-ret);
 				return ret;
 			}
 			cbs->cb = NULL;
@@ -324,7 +324,7 @@ pdump_regitser_tx_callbacks(uint16_t end_q, uint8_t port, uint16_t queue,
 			if (ret < 0) {
 				RTE_LOG(ERR, PDUMP,
 					"failed to remove tx callback, errno=%d\n",
-					rte_errno);
+					-ret);
 				return ret;
 			}
 			cbs->cb = NULL;
