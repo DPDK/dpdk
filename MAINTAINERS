@@ -252,6 +252,8 @@ F: examples/l2fwd-crypto/
 
 Networking Drivers
 ------------------
+M: Ferruh Yigit <ferruh.yigit@intel.com>
+T: git://dpdk.org/next/dpdk-next-net
 
 Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
