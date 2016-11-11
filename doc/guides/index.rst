@@ -36,14 +36,14 @@ DPDK documentation
 
    linux_gsg/index
    freebsd_gsg/index
-   xen/index
-   prog_guide/index
-   nics/index
-   cryptodevs/index
    sample_app_ug/index
+   prog_guide/index
+   howto/index
    tools/index
    testpmd_app_ug/index
-   faq/index
-   howto/index
-   rel_notes/index
+   nics/index
+   cryptodevs/index
+   xen/index
    contributing/index
+   rel_notes/index
+   faq/index

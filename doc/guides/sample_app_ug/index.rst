@@ -28,8 +28,8 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Sample Applications User Guide
-==============================
+Sample Applications User Guides
+===============================
 
 .. toctree::
     :maxdepth: 2
