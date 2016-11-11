@@ -488,7 +488,6 @@ static void qed_fill_link(struct ecore_hwfn *hwfn,
 	struct ecore_mcp_link_state link;
 	struct ecore_mcp_link_capabilities link_caps;
 	uint32_t media_type;
-	uint32_t adv_speed;
 	uint8_t change = 0;
 
 	memset(if_link, 0, sizeof(*if_link));
@@ -516,28 +515,8 @@ static void qed_fill_link(struct ecore_hwfn *hwfn,
 
 	if_link->duplex = QEDE_DUPLEX_FULL;
 
-	/* Fill up the native advertised speed */
-	switch (params.speed.advertised_speeds) {
-	case NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G:
-		adv_speed = 10000;
-	break;
-	case NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_25G:
-		adv_speed = 25000;
-	break;
-	case NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_40G:
-		adv_speed = 40000;
-	break;
-	case NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_50G:
-		adv_speed = 50000;
-	break;
-	case NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_BB_100G:
-		adv_speed = 100000;
-	break;
-	default:
-		DP_NOTICE(hwfn, false, "Unknown speed\n");
-		adv_speed = 0;
-	}
-	if_link->adv_speed = adv_speed;
+	/* Fill up the native advertised speed cap mask */
+	if_link->adv_speed = params.speed.advertised_speeds;
 
 	if (params.speed.autoneg)
 		if_link->supported_caps |= QEDE_SUPPORTED_AUTONEG;

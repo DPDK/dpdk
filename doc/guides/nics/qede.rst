@@ -71,7 +71,7 @@ Non-supported Features
 Supported QLogic Adapters
 -------------------------
 
-- QLogic FastLinQ QL4xxxx 25G/40G/100G CNAs.
+- QLogic FastLinQ QL4xxxx 10G/25G/40G/100G CNAs.
 
 Prerequisites
 -------------
