@@ -20,7 +20,14 @@ The DPDK development process has the following features:
 * There is a mailing list where developers submit patches.
 * There are maintainers for hierarchical components.
 * Patches are reviewed publicly on the mailing list.
-* Successfully reviewed patches are merged to the master branch of the repository.
+* Successfully reviewed patches are merged to the repository.
+
+|
+
+* There are main repository ``dpdk`` and sub-repositories ``dpdk-next-*``.
+* A patch should be sent for its target repository. Like net drivers should be on top of dpdk-next-net repository.
+* All sub-repositories are merged into main repository for -rc1 and -rc2 versions of the release.
+* After -rc2 release all patches should target main repository.
 
 The mailing list for DPDK development is `dev@dpdk.org <http://dpdk.org/ml/archives/dev/>`_.
 Contributors will need to `register for the mailing list <http://dpdk.org/ml/listinfo/dev>`_ in order to submit patches.
@@ -33,12 +40,17 @@ Refer to the `Pro Git Book <http://www.git-scm.com/book/>`_ for further informat
 Getting the Source Code
 -----------------------
 
-The source code can be cloned using either of the following::
+The source code can be cloned using either of the following:
+
+main repository::
 
     git clone git://dpdk.org/dpdk
-
     git clone http://dpdk.org/git/dpdk
 
+sub-repositories (`list <http://dpdk.org/browse/next>`_)::
+
+    git clone git://dpdk.org/next/dpdk-next-*
+    git clone http://dpdk.org/git/next/dpdk-next-*
 
 Make your Changes
 -----------------
