@@ -578,8 +578,10 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 				mz->len, pg_sz,
 				rte_mempool_memchunk_mz_free,
 				(void *)(uintptr_t)mz);
-		if (ret < 0)
+		if (ret < 0) {
+			rte_memzone_free(mz);
 			goto fail;
+		}
 	}
 
 	return mp->size;
