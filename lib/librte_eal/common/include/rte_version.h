@@ -71,14 +71,14 @@ extern "C" {
 /**
  * Extra string to be appended to version number
  */
-#define RTE_VER_SUFFIX "-rc"
+#define RTE_VER_SUFFIX ""
 
 /**
  * Patch release number
  *   0-15 = release candidates
  *   16   = release
  */
-#define RTE_VER_RELEASE 3
+#define RTE_VER_RELEASE 16
 
 /**
  * Macro to compute a version number usable for comparisons
