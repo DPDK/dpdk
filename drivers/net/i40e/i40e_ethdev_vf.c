@@ -953,7 +953,7 @@ i40evf_update_stats(struct rte_eth_dev *dev, struct i40e_eth_stats **pstats)
 }
 
 static int
-i40evf_get_statics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+i40evf_get_statistics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	int ret;
 	struct i40e_eth_stats *pstats = NULL;
@@ -2287,8 +2287,8 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 static void
 i40evf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	if (i40evf_get_statics(dev, stats))
-		PMD_DRV_LOG(ERR, "Get statics failed");
+	if (i40evf_get_statistics(dev, stats))
+		PMD_DRV_LOG(ERR, "Get statistics failed");
 }
 
 static void

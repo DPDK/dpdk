@@ -4161,7 +4161,7 @@ i40e_veb_setup(struct i40e_pf *pf, struct i40e_vsi *vsi)
 	ret = i40e_aq_get_veb_parameters(hw, veb->seid, NULL, NULL,
 				&veb->stats_idx, NULL, NULL, NULL);
 	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Get veb statics index failed, aq_err: %d",
+		PMD_DRV_LOG(ERR, "Get veb statistics index failed, aq_err: %d",
 			    hw->aq.asq_last_status);
 		goto fail;
 	}
