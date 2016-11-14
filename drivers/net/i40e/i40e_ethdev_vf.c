@@ -176,11 +176,11 @@ static const struct rte_i40evf_xstats_name_off rte_i40evf_stats_strings[] = {
 	{"rx_unknown_protocol_packets", offsetof(struct i40e_eth_stats,
 		rx_unknown_protocol)},
 	{"tx_bytes", offsetof(struct i40e_eth_stats, tx_bytes)},
-	{"tx_unicast_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
-	{"tx_multicast_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
-	{"tx_broadcast_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
-	{"tx_dropped_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
-	{"tx_error_packets", offsetof(struct i40e_eth_stats, tx_bytes)},
+	{"tx_unicast_packets", offsetof(struct i40e_eth_stats, tx_unicast)},
+	{"tx_multicast_packets", offsetof(struct i40e_eth_stats, tx_multicast)},
+	{"tx_broadcast_packets", offsetof(struct i40e_eth_stats, tx_broadcast)},
+	{"tx_dropped_packets", offsetof(struct i40e_eth_stats, tx_discards)},
+	{"tx_error_packets", offsetof(struct i40e_eth_stats, tx_errors)},
 };
 
 #define I40EVF_NB_XSTATS (sizeof(rte_i40evf_stats_strings) / \
