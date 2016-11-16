@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_VECT_H_
-#define _RTE_VECT_H_
+#ifndef _RTE_VECT_X86_H_
+#define _RTE_VECT_X86_H_
 
 /**
  * @file
@@ -41,6 +41,7 @@
  */
 
 #include <stdint.h>
+#include "generic/rte_vect.h"
 
 #if (defined(__ICC) || (__GNUC__ == 4 &&  __GNUC_MINOR__ < 4))
 
@@ -133,4 +134,4 @@ __extension__ ({                 \
 }
 #endif
 
-#endif /* _RTE_VECT_H_ */
+#endif /* _RTE_VECT_X86_H_ */

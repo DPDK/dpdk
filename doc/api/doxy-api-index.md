@@ -68,6 +68,7 @@ There are many libraries, so their headers may be grouped by topics:
 - **CPU arch**:
   [branch prediction]  (@ref rte_branch_prediction.h),
   [cache prefetch]     (@ref rte_prefetch.h),
+  [SIMD]               (@ref rte_vect.h),
   [byte order]         (@ref rte_byteorder.h),
   [CPU flags]          (@ref rte_cpuflags.h)
 
