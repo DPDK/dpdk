@@ -439,6 +439,8 @@ void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
 				proto);
 	ICP_QAT_FW_LA_UPDATE_STATE_SET(header->serv_specif_flags,
 					   ICP_QAT_FW_LA_NO_UPDATE_STATE);
+	ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(header->serv_specif_flags,
+					ICP_QAT_FW_LA_NO_DIGEST_IN_BUFFER);
 }
 
 int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,

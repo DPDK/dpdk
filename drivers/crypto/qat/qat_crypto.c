@@ -955,7 +955,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	uint32_t cipher_len = 0, cipher_ofs = 0;
 	uint32_t auth_len = 0, auth_ofs = 0;
 	uint32_t min_ofs = 0;
-	uint32_t digest_appended = 1;
 	uint64_t buf_start = 0;
 
 
@@ -1068,14 +1067,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		}
 		min_ofs = auth_ofs;
 
-		if (op->sym->auth.digest.phys_addr) {
-			ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
-					qat_req->comn_hdr.serv_specif_flags,
-					ICP_QAT_FW_LA_NO_DIGEST_IN_BUFFER);
-			auth_param->auth_res_addr =
-					op->sym->auth.digest.phys_addr;
-			digest_appended = 0;
-		}
+		auth_param->auth_res_addr = op->sym->auth.digest.phys_addr;
 
 		auth_param->u1.aad_adr = op->sym->auth.aad.phys_addr;
 
@@ -1126,14 +1118,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		(cipher_param->cipher_offset + cipher_param->cipher_length)
 		: (auth_param->auth_off + auth_param->auth_len);
 
-	if (do_auth && digest_appended) {
-		if (ctx->auth_op == ICP_QAT_HW_AUTH_GENERATE)
-			qat_req->comn_mid.dst_length
-					+= op->sym->auth.digest.length;
-		else
-			qat_req->comn_mid.src_length
-				+= op->sym->auth.digest.length;
-	}
 
 	/* out-of-place operation (OOP) */
 	if (unlikely(op->sym->m_dst != NULL)) {
