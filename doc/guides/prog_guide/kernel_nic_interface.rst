@@ -169,6 +169,8 @@ This provides flexibility in multiprocess scenarios
 (where the KNI is created in the primary process but the callbacks are handled in the secondary one).
 The constraint is that a single process can register and handle the requests.
 
+.. _kni_vhost_backend-label:
+
 KNI Working as a Kernel vHost Backend
 -------------------------------------
 
