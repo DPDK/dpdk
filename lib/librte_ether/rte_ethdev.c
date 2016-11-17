@@ -212,6 +212,7 @@ rte_eth_dev_allocate(const char *name)
 
 	eth_dev = &rte_eth_devices[port_id];
 	eth_dev->data = &rte_eth_dev_data[port_id];
+	memset(eth_dev->data, 0, sizeof(*eth_dev->data));
 	snprintf(eth_dev->data->name, sizeof(eth_dev->data->name), "%s", name);
 	eth_dev->data->port_id = port_id;
 	eth_dev->attached = DEV_ATTACHED;
@@ -259,7 +260,6 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 	}
 	eth_dev->pci_dev = pci_dev;
 	eth_dev->driver = eth_drv;
-	eth_dev->data->rx_mbuf_alloc_failed = 0;
 
 	/* init user callbacks */
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));

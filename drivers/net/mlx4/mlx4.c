@@ -5834,7 +5834,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			eth_dev->rx_pkt_burst = mlx4_rx_burst_secondary_setup;
 		} else {
 			eth_dev->data->dev_private = priv;
-			eth_dev->data->rx_mbuf_alloc_failed = 0;
 			eth_dev->data->mtu = ETHER_MTU;
 			eth_dev->data->mac_addrs = priv->mac;
 		}

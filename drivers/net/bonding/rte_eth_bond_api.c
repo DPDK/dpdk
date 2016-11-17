@@ -202,19 +202,12 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
-	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
-
 	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, ETHER_ADDR_LEN, 0,
 			socket_id);
 	if (eth_dev->data->mac_addrs == NULL) {
 		RTE_BOND_LOG(ERR, "Unable to malloc mac_addrs");
 		goto err;
 	}
-
-	eth_dev->data->dev_started = 0;
-	eth_dev->data->promiscuous = 0;
-	eth_dev->data->scattered_rx = 0;
-	eth_dev->data->all_multicast = 0;
 
 	eth_dev->dev_ops = &default_dev_ops;
 	eth_dev->data->dev_flags = RTE_ETH_DEV_INTR_LSC |

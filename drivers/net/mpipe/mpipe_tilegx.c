@@ -1603,7 +1603,6 @@ rte_pmd_mpipe_probe(const char *ifname,
 	eth_dev->data->dev_private = priv;
 	eth_dev->data->mac_addrs = &priv->mac_addr;
 
-	eth_dev->data->dev_flags = 0;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->driver = NULL;
 	eth_dev->data->drv_name = drivername;
