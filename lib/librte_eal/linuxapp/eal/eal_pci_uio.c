@@ -133,7 +133,7 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 	snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
 	dev = makedev(major, minor);
 	ret = mknod(filename, S_IFCHR | S_IRUSR | S_IWUSR, dev);
-	if (f == NULL) {
+	if (ret != 0) {
 		RTE_LOG(ERR, EAL, "%s(): mknod() failed %s\n",
 			__func__, strerror(errno));
 		return -1;
