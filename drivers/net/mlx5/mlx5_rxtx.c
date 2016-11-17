@@ -199,7 +199,7 @@ txq_complete(struct txq *txq)
 	} while (1);
 	if (unlikely(cqe == NULL))
 		return;
-	wqe = &(*txq->wqes)[htons(cqe->wqe_counter) &
+	wqe = &(*txq->wqes)[ntohs(cqe->wqe_counter) &
 			    ((1 << txq->wqe_n) - 1)].hdr;
 	elts_tail = wqe->ctrl[3];
 	assert(elts_tail < (1 << txq->wqe_n));
