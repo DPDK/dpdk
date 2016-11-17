@@ -601,8 +601,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 
-	TAILQ_INIT(&(eth_dev->link_intr_cbs));
-
 	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	eth_dev->data->dev_link.link_speed = ETH_SPEED_NUM_10G;
 	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;

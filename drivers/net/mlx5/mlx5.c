@@ -652,7 +652,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			eth_dev->rx_pkt_burst = mlx5_rx_burst_secondary_setup;
 		} else {
 			eth_dev->data->dev_private = priv;
-			eth_dev->data->mtu = ETHER_MTU;
 			eth_dev->data->mac_addrs = priv->mac;
 		}
 
@@ -661,8 +660,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->driver = &mlx5_driver;
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
-
-		TAILQ_INIT(&eth_dev->link_intr_cbs);
 
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");

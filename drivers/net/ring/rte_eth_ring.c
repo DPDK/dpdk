@@ -346,8 +346,6 @@ do_eth_dev_ring_create(const char *name,
 	data->drv_name = drivername;
 	data->numa_node = numa_node;
 
-	TAILQ_INIT(&(eth_dev->link_intr_cbs));
-
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_ring_rx;
 	eth_dev->tx_pkt_burst = eth_ring_tx;

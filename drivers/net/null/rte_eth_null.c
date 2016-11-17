@@ -550,8 +550,6 @@ eth_dev_null_create(const char *name,
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
 
-	TAILQ_INIT(&eth_dev->link_intr_cbs);
-
 	eth_dev->driver = NULL;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;

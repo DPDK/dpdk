@@ -1032,8 +1032,6 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	if (vring_state == NULL)
 		goto error;
 
-	TAILQ_INIT(&eth_dev->link_intr_cbs);
-
 	/* now put it all together
 	 * - store queue data in internal,
 	 * - store numa_node info in ethdev data

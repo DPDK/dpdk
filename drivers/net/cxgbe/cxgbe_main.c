@@ -1172,8 +1172,6 @@ allocate_mac:
 
 		rte_eth_copy_pci_info(pi->eth_dev, pi->eth_dev->pci_dev);
 
-		TAILQ_INIT(&pi->eth_dev->link_intr_cbs);
-
 		pi->eth_dev->data->mac_addrs = rte_zmalloc(name,
 							   ETHER_ADDR_LEN, 0);
 		if (!pi->eth_dev->data->mac_addrs) {

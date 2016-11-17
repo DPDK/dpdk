@@ -215,6 +215,9 @@ rte_eth_dev_allocate(const char *name)
 	memset(eth_dev->data, 0, sizeof(*eth_dev->data));
 	snprintf(eth_dev->data->name, sizeof(eth_dev->data->name), "%s", name);
 	eth_dev->data->port_id = port_id;
+	eth_dev->data->mtu = ETHER_MTU;
+	TAILQ_INIT(&(eth_dev->link_intr_cbs));
+
 	eth_dev->attached = DEV_ATTACHED;
 	eth_dev_last_created_port = port_id;
 	nb_ports++;
@@ -260,14 +263,6 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 	}
 	eth_dev->pci_dev = pci_dev;
 	eth_dev->driver = eth_drv;
-
-	/* init user callbacks */
-	TAILQ_INIT(&(eth_dev->link_intr_cbs));
-
-	/*
-	 * Set the default MTU.
-	 */
-	eth_dev->data->mtu = ETHER_MTU;
 
 	/* Invoke PMD device initialization function */
 	diag = (*eth_drv->eth_dev_init)(eth_dev);
