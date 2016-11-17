@@ -1310,10 +1310,10 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 			while (pkt != seg) {
 				assert(pkt != (*rxq->elts)[idx]);
-				seg = NEXT(pkt);
+				rep = NEXT(pkt);
 				rte_mbuf_refcnt_set(pkt, 0);
 				__rte_mbuf_raw_free(pkt);
-				pkt = seg;
+				pkt = rep;
 			}
 			break;
 		}
