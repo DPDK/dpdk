@@ -1160,7 +1160,7 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 			zip->na += 8;
 		}
 		if (unlikely(rxq->zip.ai == rxq->zip.cqe_cnt)) {
-			uint16_t idx = rxq->cq_ci;
+			uint16_t idx = rxq->cq_ci + 1;
 			uint16_t end = zip->cq_ci;
 
 			while (idx != end) {
