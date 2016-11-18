@@ -111,6 +111,14 @@ rte_eal_vdev_uninit(const char *name)
 			return driver->remove(name);
 	}
 
+	/* Give new names precedence over aliases. */
+	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
+		if (driver->driver.alias &&
+		    !strncmp(driver->driver.alias, name,
+			    strlen(driver->driver.alias)))
+			return driver->remove(name);
+	}
+
 	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
 	return -EINVAL;
 }
