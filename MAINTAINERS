@@ -618,9 +618,9 @@ M: Jingjing Wu <jingjing.wu@intel.com>
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
-Dump tool
+Procinfo tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>
-M: John McNamara <john.mcnamara@intel.com>
+M: Reshma Pattan <reshma.pattan@intel.com>
 F: app/proc_info/
 F: doc/guides/tools/proc_info.rst
 
