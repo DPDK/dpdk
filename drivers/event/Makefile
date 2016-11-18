@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2016 Cavium networks. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of Cavium networks nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,9 +31,9 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += mempool
-DIRS-y += net
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
-DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
+core-libs := librte_eal librte_eventdev
+
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_SKELETON_EVENTDEV) += skeleton
+DEPDIRS-skeleton = $(core-libs)
 
 include $(RTE_SDK)/mk/rte.subdir.mk
