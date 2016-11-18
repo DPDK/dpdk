@@ -677,7 +677,7 @@ F: examples/netmap_compat/
 F: doc/guides/sample_app_ug/netmap_compatibility.rst
 
 L-threads - EXPERIMENTAL
-M: Ian Betts <ian.betts@intel.com>
+M: John McNamara <john.mcnamara@intel.com>
 F: examples/performance-thread/
 F: doc/guides/sample_app_ug/performance_thread.rst
 
