@@ -16,12 +16,16 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#ifdef __linux__
+#include <endian.h>
+#else
+#include <sys/endian.h>
+#endif
 #include <fcntl.h>
 #include <unistd.h>
 #include <elf.h>
 #include <rte_config.h>
 #include <rte_pci.h>
-#include <rte_byteorder.h>
 
 /* On BSD-alike OSes elf.h defines these according to host's word size */
 #undef ELF_ST_BIND
@@ -75,9 +79,9 @@
 #define CONVERT_NATIVE(fend, width, x) ({ \
 typeof(x) ___x; \
 if ((fend) == ELFDATA2LSB) \
-	___x = rte_le_to_cpu_##width(x); \
+	___x = le##width##toh(x); \
 else \
-	___x = rte_be_to_cpu_##width(x); \
+	___x = be##width##toh(x); \
 	___x; \
 })
 
