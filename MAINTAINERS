@@ -247,6 +247,11 @@ F: lib/librte_cryptodev/
 F: test/test/test_cryptodev*
 F: examples/l2fwd-crypto/
 
+Eventdev API - EXPERIMENTAL
+M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+T: git://dpdk.org/next/dpdk-next-eventdev
+F: lib/librte_eventdev/
+
 
 Networking Drivers
 ------------------

@@ -42,6 +42,7 @@ There are many libraries, so their headers may be grouped by topics:
   [rte_flow]           (@ref rte_flow.h),
   [rte_flow_driver]    (@ref rte_flow_driver.h),
   [cryptodev]          (@ref rte_cryptodev.h),
+  [eventdev]           (@ref rte_eventdev.h),
   [devargs]            (@ref rte_devargs.h),
   [PCI]                (@ref rte_pci.h)
 
