@@ -252,6 +252,7 @@ M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/
 F: drivers/event/skeleton/
+F: test/test/test_eventdev.c
 
 
 Networking Drivers
