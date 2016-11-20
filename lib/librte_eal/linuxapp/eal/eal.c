@@ -841,9 +841,6 @@ rte_eal_init(int argc, char **argv)
 		rte_config.master_lcore, (int)thread_id, cpuset,
 		ret == 0 ? "" : "...");
 
-	if (rte_eal_dev_init() < 0)
-		rte_panic("Cannot init pmd devices\n");
-
 	if (rte_eal_intr_init() < 0)
 		rte_panic("Cannot init interrupt-handling thread\n");
 
@@ -886,6 +883,9 @@ rte_eal_init(int argc, char **argv)
 	/* Probe & Initialize PCI devices */
 	if (rte_eal_pci_probe())
 		rte_panic("Cannot probe PCI\n");
+
+	if (rte_eal_dev_init() < 0)
+		rte_panic("Cannot init pmd devices\n");
 
 	rte_eal_mcfg_complete();
 
