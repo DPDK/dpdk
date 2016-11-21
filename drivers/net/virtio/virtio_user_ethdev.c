@@ -274,6 +274,8 @@ get_integer_arg(const char *key __rte_unused,
 	return 0;
 }
 
+static struct rte_vdev_driver virtio_user_driver;
+
 static struct rte_eth_dev *
 virtio_user_eth_dev_alloc(const char *name)
 {
@@ -312,6 +314,7 @@ virtio_user_eth_dev_alloc(const char *name)
 	hw->use_simple_rxtx = 0;
 	hw->virtio_user_dev = dev;
 	data->dev_private = hw;
+	data->drv_name = virtio_user_driver.driver.name;
 	data->numa_node = SOCKET_ID_ANY;
 	data->kdrv = RTE_KDRV_NONE;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;

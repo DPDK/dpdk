@@ -256,6 +256,8 @@ static const struct eth_dev_ops ops = {
 	.mac_addr_add = eth_mac_addr_add,
 };
 
+static struct rte_vdev_driver pmd_ring_drv;
+
 static int
 do_eth_dev_ring_create(const char *name,
 		struct rte_ring * const rx_queues[], const unsigned nb_rx_queues,
@@ -340,7 +342,7 @@ do_eth_dev_ring_create(const char *name,
 	eth_dev->dev_ops = &ops;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = "Rings PMD";
+	data->drv_name = pmd_ring_drv.driver.name;
 	data->numa_node = numa_node;
 
 	/* finally assign rx and tx ops */

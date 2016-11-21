@@ -477,6 +477,8 @@ static const struct eth_dev_ops ops = {
 	.rss_hash_conf_get = eth_rss_hash_conf_get
 };
 
+static struct rte_vdev_driver pmd_null_drv;
+
 int
 eth_dev_null_create(const char *name,
 		const unsigned numa_node,
@@ -550,7 +552,7 @@ eth_dev_null_create(const char *name,
 	eth_dev->driver = NULL;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = "Null PMD";
+	data->drv_name = pmd_null_drv.driver.name;
 	data->numa_node = numa_node;
 
 	/* finally assign rx and tx ops */

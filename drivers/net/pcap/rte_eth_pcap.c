@@ -787,6 +787,8 @@ open_tx_iface(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
+static struct rte_vdev_driver pmd_pcap_drv;
+
 static int
 pmd_init_internals(const char *name, const unsigned int nb_rx_queues,
 		const unsigned int nb_tx_queues,
@@ -839,7 +841,7 @@ pmd_init_internals(const char *name, const unsigned int nb_rx_queues,
 	(*eth_dev)->driver = NULL;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = "Pcap PMD";
+	data->drv_name = pmd_pcap_drv.driver.name;
 	data->numa_node = numa_node;
 
 	return 0;

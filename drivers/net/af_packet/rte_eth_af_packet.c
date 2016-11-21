@@ -436,6 +436,8 @@ open_packet_iface(const char *key __rte_unused,
 	return 0;
 }
 
+static struct rte_vdev_driver pmd_af_packet_drv;
+
 static int
 rte_pmd_init_internals(const char *name,
                        const int sockfd,
@@ -689,7 +691,7 @@ rte_pmd_init_internals(const char *name,
 	(*eth_dev)->dev_ops = &ops;
 	(*eth_dev)->driver = NULL;
 	(*eth_dev)->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	(*eth_dev)->data->drv_name = "AF_PACKET PMD";
+	(*eth_dev)->data->drv_name = pmd_af_packet_drv.driver.name;
 	(*eth_dev)->data->kdrv = RTE_KDRV_NONE;
 	(*eth_dev)->data->numa_node = numa_node;
 

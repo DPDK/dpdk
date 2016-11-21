@@ -37,14 +37,13 @@
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
 #include <rte_tcp.h>
+#include <rte_vdev.h>
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
 #include "rte_eth_bond_8023ad_private.h"
 
 #define DEFAULT_POLLING_INTERVAL_10_MS (10)
-
-const char pmd_bond_driver_name[] = "rte_bond_pmd";
 
 int
 check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev)
@@ -54,7 +53,7 @@ check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev)
 		return -1;
 
 	/* return 0 if driver name matches */
-	return eth_dev->data->drv_name != pmd_bond_driver_name;
+	return eth_dev->data->drv_name != pmd_bond_drv.driver.name;
 }
 
 int
@@ -212,7 +211,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 		RTE_ETH_DEV_DETACHABLE;
 	eth_dev->driver = NULL;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
-	eth_dev->data->drv_name = pmd_bond_driver_name;
+	eth_dev->data->drv_name = pmd_bond_drv.driver.name;
 	eth_dev->data->numa_node =  socket_id;
 
 	rte_spinlock_init(&internals->lock);

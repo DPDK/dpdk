@@ -87,7 +87,6 @@ struct mpipe_local {
 static __thread struct mpipe_local mpipe_local;
 static struct mpipe_context mpipe_contexts[GXIO_MPIPE_INSTANCE_MAX];
 static int mpipe_instances;
-static const char *drivername = "MPIPE PMD";
 
 /* Per queue statistics. */
 struct mpipe_queue_stats {
@@ -1549,7 +1548,7 @@ mpipe_link_mac(const char *ifname, uint8_t *mac)
 }
 
 static int
-rte_pmd_mpipe_probe(const char *ifname,
+rte_pmd_mpipe_probe_common(struct rte_vdev_driver *drv, const char *ifname,
 		      const char *params __rte_unused)
 {
 	gxio_mpipe_context_t *context;
@@ -1605,7 +1604,7 @@ rte_pmd_mpipe_probe(const char *ifname,
 
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->driver = NULL;
-	eth_dev->data->drv_name = drivername;
+	eth_dev->data->drv_name = drv->driver.name;
 	eth_dev->data->numa_node = instance;
 
 	eth_dev->dev_ops      = &mpipe_dev_ops;
@@ -1622,12 +1621,24 @@ rte_pmd_mpipe_probe(const char *ifname,
 	return 0;
 }
 
+static int
+rte_pmd_mpipe_xgbe_probe(const char *ifname, const char *params __rte_unused)
+{
+	return rte_pmd_mpipe_probe_common(&pmd_mpipe_xgbe_drv, ifname, params);
+}
+
+static int
+rte_pmd_mpipe_gbe_probe(const char *ifname, const char *params __rte_unused)
+{
+	return rte_pmd_mpipe_probe_common(&pmd_mpipe_gbe_drv, ifname, params);
+}
+
 static struct rte_vdev_driver pmd_mpipe_xgbe_drv = {
-	.probe = rte_pmd_mpipe_probe,
+	.probe = rte_pmd_mpipe_xgbe_probe,
 };
 
 static struct rte_vdev_driver pmd_mpipe_gbe_drv = {
-	.probe = rte_pmd_mpipe_probe,
+	.probe = rte_pmd_mpipe_gbe_probe,
 };
 
 RTE_PMD_REGISTER_VDEV(net_mpipe_xgbe, pmd_mpipe_xgbe_drv);

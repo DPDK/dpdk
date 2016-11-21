@@ -982,6 +982,8 @@ static const struct eth_dev_ops ops = {
 	.xstats_get_names = vhost_dev_xstats_get_names,
 };
 
+static struct rte_vdev_driver pmd_vhost_drv;
+
 static int
 eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 		     const unsigned numa_node, uint64_t flags)
@@ -1066,7 +1068,7 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	data->dev_flags =
 		RTE_ETH_DEV_DETACHABLE | RTE_ETH_DEV_INTR_LSC;
 	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = internal->dev_name;
+	data->drv_name = pmd_vhost_drv.driver.name;
 	data->numa_node = numa_node;
 
 	/* finally assign rx and tx ops */

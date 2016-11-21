@@ -2562,12 +2562,12 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static struct rte_vdev_driver bond_drv = {
+struct rte_vdev_driver pmd_bond_drv = {
 	.probe = bond_probe,
 	.remove = bond_remove,
 };
 
-RTE_PMD_REGISTER_VDEV(net_bonding, bond_drv);
+RTE_PMD_REGISTER_VDEV(net_bonding, pmd_bond_drv);
 RTE_PMD_REGISTER_ALIAS(net_bonding, eth_bond);
 
 RTE_PMD_REGISTER_PARAM_STRING(net_bonding,

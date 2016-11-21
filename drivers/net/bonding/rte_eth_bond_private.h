@@ -63,7 +63,7 @@
 
 extern const char *pmd_bond_init_valid_arguments[];
 
-extern const char pmd_bond_driver_name[];
+extern struct rte_vdev_driver pmd_bond_drv;
 
 /** Port Queue Mapping Structure */
 struct bond_rx_queue {
