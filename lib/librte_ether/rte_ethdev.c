@@ -1343,8 +1343,10 @@ get_xstats_count(uint8_t port_id)
 	} else
 		count = 0;
 	count += RTE_NB_STATS;
-	count += dev->data->nb_rx_queues * RTE_NB_RXQ_STATS;
-	count += dev->data->nb_tx_queues * RTE_NB_TXQ_STATS;
+	count += RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS) *
+		 RTE_NB_RXQ_STATS;
+	count += RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS) *
+		 RTE_NB_TXQ_STATS;
 	return count;
 }
 
@@ -1358,6 +1360,7 @@ rte_eth_xstats_get_names(uint8_t port_id,
 	int cnt_expected_entries;
 	int cnt_driver_entries;
 	uint32_t idx, id_queue;
+	uint16_t num_q;
 
 	cnt_expected_entries = get_xstats_count(port_id);
 	if (xstats_names == NULL || cnt_expected_entries < 0 ||
@@ -1374,7 +1377,8 @@ rte_eth_xstats_get_names(uint8_t port_id,
 			"%s", rte_stats_strings[idx].name);
 		cnt_used_entries++;
 	}
-	for (id_queue = 0; id_queue < dev->data->nb_rx_queues; id_queue++) {
+	num_q = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	for (id_queue = 0; id_queue < num_q; id_queue++) {
 		for (idx = 0; idx < RTE_NB_RXQ_STATS; idx++) {
 			snprintf(xstats_names[cnt_used_entries].name,
 				sizeof(xstats_names[0].name),
@@ -1384,7 +1388,8 @@ rte_eth_xstats_get_names(uint8_t port_id,
 		}
 
 	}
-	for (id_queue = 0; id_queue < dev->data->nb_tx_queues; id_queue++) {
+	num_q = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	for (id_queue = 0; id_queue < num_q; id_queue++) {
 		for (idx = 0; idx < RTE_NB_TXQ_STATS; idx++) {
 			snprintf(xstats_names[cnt_used_entries].name,
 				sizeof(xstats_names[0].name),
@@ -1420,14 +1425,18 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 	unsigned count = 0, i, q;
 	signed xcount = 0;
 	uint64_t val, *stats_ptr;
+	uint16_t nb_rxqs, nb_txqs;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
 
+	nb_rxqs = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	nb_txqs = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
 	/* Return generic statistics */
-	count = RTE_NB_STATS + (dev->data->nb_rx_queues * RTE_NB_RXQ_STATS) +
-		(dev->data->nb_tx_queues * RTE_NB_TXQ_STATS);
+	count = RTE_NB_STATS + (nb_rxqs * RTE_NB_RXQ_STATS) +
+		(nb_txqs * RTE_NB_TXQ_STATS);
 
 	/* implemented by the driver */
 	if (dev->dev_ops->xstats_get != NULL) {
@@ -1458,7 +1467,7 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 	}
 
 	/* per-rxq stats */
-	for (q = 0; q < dev->data->nb_rx_queues; q++) {
+	for (q = 0; q < nb_rxqs; q++) {
 		for (i = 0; i < RTE_NB_RXQ_STATS; i++) {
 			stats_ptr = RTE_PTR_ADD(&eth_stats,
 					rte_rxq_stats_strings[i].offset +
@@ -1469,7 +1478,7 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 	}
 
 	/* per-txq stats */
-	for (q = 0; q < dev->data->nb_tx_queues; q++) {
+	for (q = 0; q < nb_txqs; q++) {
 		for (i = 0; i < RTE_NB_TXQ_STATS; i++) {
 			stats_ptr = RTE_PTR_ADD(&eth_stats,
 					rte_txq_stats_strings[i].offset +
