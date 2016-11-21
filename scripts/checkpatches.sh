@@ -94,7 +94,7 @@ check () { # <patch> <commit> <title>
 	else
 		report=$($DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
 	fi
-	[ $? -ne 0 ] || continue
+	[ $? -ne 0 ] || return 0
 	$verbose || printf '\n### %s\n\n' "$3"
 	printf '%s\n' "$report" | sed -n '1,/^total:.*lines checked$/p'
 	status=$(($status + 1))
