@@ -70,8 +70,6 @@
 /* virtio_idx is increased after new device is created.*/
 static int virtio_idx = 0;
 
-static const char *drivername = "xen virtio PMD";
-
 static struct rte_eth_link pmd_link = {
 		.link_speed = ETH_SPEED_NUM_10G,
 		.link_duplex = ETH_LINK_FULL_DUPLEX,
@@ -331,7 +329,6 @@ eth_dev_info(struct rte_eth_dev *dev,
 	struct pmd_internals *internals = dev->data->dev_private;
 
 	RTE_SET_USED(internals);
-	dev_info->driver_name = drivername;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)2048;
 	dev_info->max_rx_queues = (uint16_t)1;
@@ -674,7 +671,7 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 
 	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
-	eth_dev->data->drv_name = drivername;
+	eth_dev->data->drv_name = "xen virtio PMD";
 	eth_dev->driver = NULL;
 	eth_dev->data->numa_node = numa_node;
 

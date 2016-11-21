@@ -115,8 +115,6 @@ static const char *valid_arguments[] = {
 	NULL
 };
 
-static const char *drivername = "AF_PACKET PMD";
-
 static struct rte_eth_link pmd_link = {
 	.link_speed = ETH_SPEED_NUM_10G,
 	.link_duplex = ETH_LINK_FULL_DUPLEX,
@@ -280,7 +278,6 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 
-	dev_info->driver_name = drivername;
 	dev_info->if_index = internals->if_index;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)ETH_FRAME_LEN;
@@ -692,7 +689,7 @@ rte_pmd_init_internals(const char *name,
 	(*eth_dev)->dev_ops = &ops;
 	(*eth_dev)->driver = NULL;
 	(*eth_dev)->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	(*eth_dev)->data->drv_name = drivername;
+	(*eth_dev)->data->drv_name = "AF_PACKET PMD";
 	(*eth_dev)->data->kdrv = RTE_KDRV_NONE;
 	(*eth_dev)->data->numa_node = numa_node;
 

@@ -12,7 +12,6 @@
 
 /* Globals */
 static const struct qed_eth_ops *qed_ops;
-static const char *drivername = "qede pmd";
 static int64_t timer_period = 1;
 
 struct rte_qede_xstats_name_off {
@@ -664,7 +663,6 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 		dev_info->max_vfs = 0;
 	else
 		dev_info->max_vfs = (uint16_t)NUM_OF_VFS(&qdev->edev);
-	dev_info->driver_name = qdev->drv_ver;
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
 	dev_info->flow_type_rss_offloads = (uint64_t)QEDE_RSS_OFFLOAD_ALL;
 

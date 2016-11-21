@@ -53,8 +53,6 @@
 #define ETH_VHOST_CLIENT_ARG		"client"
 #define ETH_VHOST_DEQUEUE_ZERO_COPY	"dequeue-zero-copy"
 
-static const char *drivername = "VHOST PMD";
-
 static const char *valid_arguments[] = {
 	ETH_VHOST_IFACE_ARG,
 	ETH_VHOST_QUEUES_ARG,
@@ -859,7 +857,6 @@ eth_dev_info(struct rte_eth_dev *dev,
 		return;
 	}
 
-	dev_info->driver_name = drivername;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)-1;
 	dev_info->max_rx_queues = internal->max_queues;
