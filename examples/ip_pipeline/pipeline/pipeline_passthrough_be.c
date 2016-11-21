@@ -589,7 +589,7 @@ pipeline_passthrough_parse_args(struct pipeline_passthrough_params *p,
 				params->name, arg_name);
 			dma_hash_lb_present = 1;
 
-			if (strcmp(arg_value, "hash") ||
+			if (strcmp(arg_value, "hash") &&
 				strcmp(arg_value, "HASH"))
 
 				PIPELINE_PARSE_ERR_INV_VAL(0,
