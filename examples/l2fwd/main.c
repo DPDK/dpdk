@@ -392,6 +392,29 @@ l2fwd_parse_timer_period(const char *q_arg)
 	return n;
 }
 
+static const char short_options[] =
+	"p:"  /* portmask */
+	"q:"  /* number of queues */
+	"T:"  /* timer period */
+	;
+
+#define CMD_LINE_OPT_MAC_UPDATING "mac-updating"
+#define CMD_LINE_OPT_NO_MAC_UPDATING "no-mac-updating"
+
+enum {
+	/* long options mapped to a short option */
+
+	/* first long only option value must be >= 256, so that we won't
+	 * conflict with short options */
+	CMD_LINE_OPT_MIN_NUM = 256,
+};
+
+static const struct option lgopts[] = {
+	{ CMD_LINE_OPT_MAC_UPDATING, no_argument, &mac_updating, 1},
+	{ CMD_LINE_OPT_NO_MAC_UPDATING, no_argument, &mac_updating, 0},
+	{NULL, 0, 0, 0}
+};
+
 /* Parse the argument given in the command line of the application */
 static int
 l2fwd_parse_args(int argc, char **argv)
@@ -400,15 +423,10 @@ l2fwd_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
-	static struct option lgopts[] = {
-		{ "mac-updating", no_argument, &mac_updating, 1},
-		{ "no-mac-updating", no_argument, &mac_updating, 0},
-		{NULL, 0, 0, 0}
-	};
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "p:q:T:",
+	while ((opt = getopt_long(argc, argvopt, short_options,
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
