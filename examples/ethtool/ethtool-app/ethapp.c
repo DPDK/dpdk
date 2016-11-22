@@ -177,6 +177,7 @@ pcmd_drvinfo_callback(__rte_unused void *ptr_params,
 	int id_port;
 
 	for (id_port = 0; id_port < rte_eth_dev_count(); id_port++) {
+		memset(&info, 0, sizeof(info));
 		if (rte_ethtool_get_drvinfo(id_port, &info)) {
 			printf("Error getting info for port %i\n", id_port);
 			return;
