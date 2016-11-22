@@ -610,9 +610,7 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *   never be used. The access to the per-lcore table is of course
  *   faster than the multi-producer/consumer pool. The cache can be
  *   disabled if the cache_size argument is set to 0; it can be useful to
- *   avoid losing objects in cache. Note that even if not used, the
- *   memory space for cache is always reserved in a mempool structure,
- *   except if CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE is set to 0.
+ *   avoid losing objects in cache.
  * @param private_data_size
  *   The size of the private data appended after the mempool
  *   structure. This is useful for storing some private data after the
