@@ -100,7 +100,6 @@ STATIC s32 e1000_validate_nvm_checksum_with_offset(struct e1000_hw *hw,
 						   u16 offset);
 STATIC s32 e1000_validate_nvm_checksum_i350(struct e1000_hw *hw);
 STATIC s32 e1000_update_nvm_checksum_i350(struct e1000_hw *hw);
-STATIC void e1000_write_vfta_i350(struct e1000_hw *hw, u32 offset, u32 value);
 STATIC void e1000_clear_vfta_i350(struct e1000_hw *hw);
 
 STATIC void e1000_i2c_start(struct e1000_hw *hw);
