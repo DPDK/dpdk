@@ -169,6 +169,19 @@ static const struct rte_pci_id pci_id_em_map[] = {
 	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_I218_V2) },
 	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_I218_LM3) },
 	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_I218_V3) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_LM) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_V) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_LM2) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_V2) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_LBG_I219_LM3) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_LM4) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_V4) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_LM5) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_SPT_I219_V5) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_CNP_I219_LM6) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_CNP_I219_V6) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_CNP_I219_LM7) },
+	{ RTE_PCI_DEVICE(E1000_INTEL_VENDOR_ID, E1000_DEV_ID_PCH_CNP_I219_V7) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -279,6 +292,19 @@ eth_em_dev_is_ich8(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_I218_LM2:
 	case E1000_DEV_ID_PCH_I218_V3:
 	case E1000_DEV_ID_PCH_I218_LM3:
+	case E1000_DEV_ID_PCH_SPT_I219_LM:
+	case E1000_DEV_ID_PCH_SPT_I219_V:
+	case E1000_DEV_ID_PCH_SPT_I219_LM2:
+	case E1000_DEV_ID_PCH_SPT_I219_V2:
+	case E1000_DEV_ID_PCH_LBG_I219_LM3:
+	case E1000_DEV_ID_PCH_SPT_I219_LM4:
+	case E1000_DEV_ID_PCH_SPT_I219_V4:
+	case E1000_DEV_ID_PCH_SPT_I219_LM5:
+	case E1000_DEV_ID_PCH_SPT_I219_V5:
+	case E1000_DEV_ID_PCH_CNP_I219_LM6:
+	case E1000_DEV_ID_PCH_CNP_I219_V6:
+	case E1000_DEV_ID_PCH_CNP_I219_LM7:
+	case E1000_DEV_ID_PCH_CNP_I219_V7:
 		return 1;
 	default:
 		return 0;
@@ -540,6 +566,8 @@ em_set_pba(struct e1000_hw *hw)
 		case e1000_pchlan:
 		case e1000_pch2lan:
 		case e1000_pch_lpt:
+		case e1000_pch_spt:
+		case e1000_pch_cnp:
 			pba = E1000_PBA_26K;
 			break;
 		default:
@@ -856,7 +884,9 @@ em_hardware_init(struct e1000_hw *hw)
 		hw->fc.low_water = 0x5048;
 		hw->fc.pause_time = 0x0650;
 		hw->fc.refresh_time = 0x0400;
-	} else if (hw->mac.type == e1000_pch_lpt) {
+	} else if (hw->mac.type == e1000_pch_lpt ||
+		   hw->mac.type == e1000_pch_spt ||
+		   hw->mac.type == e1000_pch_cnp) {
 		hw->fc.requested_mode = e1000_fc_full;
 	}
 
@@ -1031,6 +1061,8 @@ em_get_max_pktlen(const struct e1000_hw *hw)
 	case e1000_ich10lan:
 	case e1000_pch2lan:
 	case e1000_pch_lpt:
+	case e1000_pch_spt:
+	case e1000_pch_cnp:
 	case e1000_82574:
 	case e1000_80003es2lan: /* 9K Jumbo Frame size */
 	case e1000_82583:
