@@ -567,7 +567,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 	unsigned len, ret = 0;
 	const uint16_t lcore_id = rte_lcore_id();
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%d) TX: MAC address is external\n",
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "(%d) TX: MAC address is external\n",
 		vdev->vid);
 
 	/* Add packet to the port tx queue */
@@ -649,7 +649,7 @@ switch_worker(__rte_unused void *arg)
 		if (unlikely(diff_tsc > drain_tsc)) {
 
 			if (tx_q->len) {
-				RTE_LOG(DEBUG, VHOST_DATA, "TX queue drained after "
+				RTE_LOG_DP(DEBUG, VHOST_DATA, "TX queue drained after "
 					"timeout with burst size %u\n",
 					tx_q->len);
 				ret = overlay_options.tx_handle(ports[0],

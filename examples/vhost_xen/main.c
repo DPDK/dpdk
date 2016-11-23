@@ -525,7 +525,7 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 			break;
 		}
 	}
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") GPA %p| VVA %p\n",
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") GPA %p| VVA %p\n",
 		dev->device_fh, (void*)(uintptr_t)guest_pa, (void*)(uintptr_t)vhost_va);
 
 	return vhost_va;
@@ -555,7 +555,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 	uint8_t success = 0;
 	void *userdata;
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") virtio_dev_rx()\n", dev->device_fh);
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") virtio_dev_rx()\n", dev->device_fh);
 	vq = dev->virtqueue_rx;
 	count = (count > MAX_PKT_BURST) ? MAX_PKT_BURST : count;
 	/* As many data cores may want access to available buffers, they need to be reserved. */
@@ -580,7 +580,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 									res_end_idx);
 	} while (unlikely(success == 0));
 	res_cur_idx = res_base_idx;
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") Current Index %d| End Index %d\n",
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") Current Index %d| End Index %d\n",
 		dev->device_fh, res_cur_idx, res_end_idx);
 
 	/* Prefetch available ring to retrieve indexes. */
@@ -775,7 +775,7 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 
 			/* Drop the packet if the TX packet is destined for the TX device. */
 			if (dev_ll->dev->device_fh == dev->device_fh) {
-				RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
+				RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
 					"Source and destination MAC addresses are the same. "
 					"Dropping packet.\n",
 					dev_ll->dev->device_fh);
@@ -783,12 +783,12 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 			}
 
 
-			RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
+			RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
 				"MAC address is local\n", dev_ll->dev->device_fh);
 
 			if (dev_ll->dev->remove) {
 				/*drop the packet if the device is marked for removal*/
-				RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") "
+				RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") "
 					"Device is marked for removal\n",
 					dev_ll->dev->device_fh);
 			} else {
@@ -829,7 +829,7 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 		return;
 	}
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") TX: "
 		"MAC address is external\n", dev->device_fh);
 
 	/*Add packet to the port tx queue*/
@@ -903,7 +903,7 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 	if (vq->last_used_idx == avail_idx)
 		return;
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") virtio_dev_tx()\n",
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") virtio_dev_tx()\n",
 		dev->device_fh);
 
 	/* Prefetch available ring to retrieve head indexes. */
@@ -913,7 +913,7 @@ virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 	free_entries = avail_idx - vq->last_used_idx;
 	free_entries = unlikely(free_entries < MAX_PKT_BURST) ? free_entries : MAX_PKT_BURST;
 
-	RTE_LOG(DEBUG, VHOST_DATA, "(%" PRIu64 ") Buffers available %d\n",
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "(%" PRIu64 ") Buffers available %d\n",
 		dev->device_fh, free_entries);
 	/* Retrieve all of the head indexes first to avoid caching issues. */
 	for (i = 0; i < free_entries; i++)
@@ -1003,7 +1003,7 @@ switch_worker(__attribute__((unused)) void *arg)
 		if (unlikely(diff_tsc > drain_tsc)) {
 
 			if (tx_q->len) {
-				RTE_LOG(DEBUG, VHOST_DATA,
+				RTE_LOG_DP(DEBUG, VHOST_DATA,
 					"TX queue drained after timeout with burst size %u\n",
 					tx_q->len);
 

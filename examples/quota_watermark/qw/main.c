@@ -81,7 +81,7 @@ static void send_pause_frame(uint8_t port_id, uint16_t duration)
     struct ether_hdr *hdr;
     struct ether_addr mac_addr;
 
-    RTE_LOG(DEBUG, USER1, "Sending PAUSE frame (duration=%d) on port %d\n",
+    RTE_LOG_DP(DEBUG, USER1, "Sending PAUSE frame (duration=%d) on port %d\n",
             duration, port_id);
 
     /* Get a mbuf from the pool */

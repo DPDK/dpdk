@@ -241,7 +241,7 @@ lcore_rx(struct lcore_params *p)
 		uint16_t sent = rte_ring_enqueue_burst(r, (void *)bufs, nb_ret);
 		app_stats.rx.enqueued_pkts += sent;
 		if (unlikely(sent < nb_ret)) {
-			RTE_LOG(DEBUG, DISTRAPP,
+			RTE_LOG_DP(DEBUG, DISTRAPP,
 				"%s:Packet loss due to full ring\n", __func__);
 			while (sent < nb_ret)
 				rte_pktmbuf_free(bufs[sent++]);
@@ -274,7 +274,7 @@ flush_one_port(struct output_buffer *outbuf, uint8_t outp)
 	app_stats.tx.tx_pkts += nb_tx;
 
 	if (unlikely(nb_tx < outbuf->count)) {
-		RTE_LOG(DEBUG, DISTRAPP,
+		RTE_LOG_DP(DEBUG, DISTRAPP,
 			"%s:Packet loss with tx_burst\n", __func__);
 		do {
 			rte_pktmbuf_free(outbuf->mbufs[nb_tx]);

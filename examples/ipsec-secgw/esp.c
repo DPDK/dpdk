@@ -78,7 +78,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		sizeof(struct esp_hdr) - sa->iv_len - sa->digest_len;
 
 	if ((payload_len & (sa->block_size - 1)) || (payload_len <= 0)) {
-		RTE_LOG(DEBUG, IPSEC_ESP, "payload %d not multiple of %u\n",
+		RTE_LOG_DP(DEBUG, IPSEC_ESP, "payload %d not multiple of %u\n",
 				payload_len, sa->block_size);
 		return -EINVAL;
 	}

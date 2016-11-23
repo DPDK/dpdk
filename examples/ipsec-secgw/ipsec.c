@@ -65,7 +65,7 @@ create_session(struct ipsec_ctx *ipsec_ctx __rte_unused, struct ipsec_sa *sa)
 		return -1;
 	}
 
-	RTE_LOG(DEBUG, IPSEC, "Create session for SA spi %u on cryptodev "
+	RTE_LOG_DP(DEBUG, IPSEC, "Create session for SA spi %u on cryptodev "
 			"%u qp %u\n", sa->spi,
 			ipsec_ctx->tbl[cdev_id_qp].id,
 			ipsec_ctx->tbl[cdev_id_qp].qp);
@@ -89,7 +89,7 @@ enqueue_cop(struct cdev_qp *cqp, struct rte_crypto_op *cop)
 		ret = rte_cryptodev_enqueue_burst(cqp->id, cqp->qp,
 				cqp->buf, cqp->len);
 		if (ret < cqp->len) {
-			RTE_LOG(DEBUG, IPSEC, "Cryptodev %u queue %u:"
+			RTE_LOG_DP(DEBUG, IPSEC, "Cryptodev %u queue %u:"
 					" enqueued %u crypto ops out of %u\n",
 					 cqp->id, cqp->qp,
 					 ret, cqp->len);

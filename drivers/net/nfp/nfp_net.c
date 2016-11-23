@@ -1707,7 +1707,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured
 		 */
-		RTE_LOG(ERR, PMD, "RX Bad queue\n");
+		RTE_LOG_DP(ERR, PMD, "RX Bad queue\n");
 		return -EINVAL;
 	}
 
@@ -1720,7 +1720,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		rxb = &rxq->rxbufs[idx];
 		if (unlikely(rxb == NULL)) {
-			RTE_LOG(ERR, PMD, "rxb does not exist!\n");
+			RTE_LOG_DP(ERR, PMD, "rxb does not exist!\n");
 			break;
 		}
 
@@ -1740,7 +1740,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			RTE_LOG(DEBUG, PMD, "RX mbuf alloc failed port_id=%u "
+			RTE_LOG_DP(DEBUG, PMD, "RX mbuf alloc failed port_id=%u "
 				"queue_id=%u\n", (unsigned)rxq->port_id,
 				(unsigned)rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
@@ -1771,7 +1771,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error
 			 */
-			RTE_LOG(ERR, PMD,
+			RTE_LOG_DP(ERR, PMD,
 				"mbuf overflow likely due to the RX offset.\n"
 				"\t\tYour mbuf size should have extra space for"
 				" RX offset=%u bytes.\n"

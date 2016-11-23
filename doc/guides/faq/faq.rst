@@ -101,7 +101,7 @@ Yes, the option ``--log-level=`` accepts one of these numbers:
     #define RTE_LOG_INFO 7U     /* Informational. */
     #define RTE_LOG_DEBUG 8U    /* Debug-level messages. */
 
-It is also possible to change the maximum (and default level) at compile time
+It is also possible to change the default level at compile time
 with ``CONFIG_RTE_LOG_LEVEL``.
 
 

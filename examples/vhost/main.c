@@ -832,17 +832,17 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 		return -1;
 
 	if (vdev->vid == dst_vdev->vid) {
-		RTE_LOG(DEBUG, VHOST_DATA,
+		RTE_LOG_DP(DEBUG, VHOST_DATA,
 			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
 			vdev->vid);
 		return 0;
 	}
 
-	RTE_LOG(DEBUG, VHOST_DATA,
+	RTE_LOG_DP(DEBUG, VHOST_DATA,
 		"(%d) TX: MAC address is local\n", dst_vdev->vid);
 
 	if (unlikely(dst_vdev->remove)) {
-		RTE_LOG(DEBUG, VHOST_DATA,
+		RTE_LOG_DP(DEBUG, VHOST_DATA,
 			"(%d) device is marked for removal\n", dst_vdev->vid);
 		return 0;
 	}
@@ -867,7 +867,7 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 		return 0;
 
 	if (vdev->vid == dst_vdev->vid) {
-		RTE_LOG(DEBUG, VHOST_DATA,
+		RTE_LOG_DP(DEBUG, VHOST_DATA,
 			"(%d) TX: src and dst MAC is same. Dropping packet.\n",
 			vdev->vid);
 		return -1;
@@ -881,7 +881,7 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	*offset  = VLAN_HLEN;
 	*vlan_tag = vlan_tags[vdev->vid];
 
-	RTE_LOG(DEBUG, VHOST_DATA,
+	RTE_LOG_DP(DEBUG, VHOST_DATA,
 		"(%d) TX: pkt to local VM device id: (%d), vlan tag: %u.\n",
 		vdev->vid, dst_vdev->vid, *vlan_tag);
 
@@ -973,7 +973,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 		}
 	}
 
-	RTE_LOG(DEBUG, VHOST_DATA,
+	RTE_LOG_DP(DEBUG, VHOST_DATA,
 		"(%d) TX: MAC address is external\n", vdev->vid);
 
 queue2nic:
@@ -1041,7 +1041,7 @@ drain_mbuf_table(struct mbuf_table *tx_q)
 	if (unlikely(cur_tsc - prev_tsc > MBUF_TABLE_DRAIN_TSC)) {
 		prev_tsc = cur_tsc;
 
-		RTE_LOG(DEBUG, VHOST_DATA,
+		RTE_LOG_DP(DEBUG, VHOST_DATA,
 			"TX queue drained after timeout with burst size %u\n",
 			tx_q->len);
 		do_drain_mbuf_table(tx_q);

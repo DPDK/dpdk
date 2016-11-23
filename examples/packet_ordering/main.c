@@ -229,7 +229,7 @@ flush_tx_error_callback(struct rte_mbuf **unsent, uint16_t count,
 
 	/* free the mbufs which failed from transmit */
 	app_stats.tx.ro_tx_failed_pkts += count;
-	RTE_LOG(DEBUG, REORDERAPP, "%s:Packet loss with tx_burst\n", __func__);
+	RTE_LOG_DP(DEBUG, REORDERAPP, "%s:Packet loss with tx_burst\n", __func__);
 	pktmbuf_free_bulk(unsent, count);
 
 }
@@ -410,7 +410,7 @@ rx_thread(struct rte_ring *ring_out)
 				nb_rx_pkts = rte_eth_rx_burst(port_id, 0,
 								pkts, MAX_PKTS_BURST);
 				if (nb_rx_pkts == 0) {
-					RTE_LOG(DEBUG, REORDERAPP,
+					RTE_LOG_DP(DEBUG, REORDERAPP,
 					"%s():Received zero packets\n",	__func__);
 					continue;
 				}
@@ -522,7 +522,7 @@ send_thread(struct send_thread_args *args)
 
 			if (ret == -1 && rte_errno == ERANGE) {
 				/* Too early pkts should be transmitted out directly */
-				RTE_LOG(DEBUG, REORDERAPP,
+				RTE_LOG_DP(DEBUG, REORDERAPP,
 						"%s():Cannot reorder early packet "
 						"direct enqueuing to TX\n", __func__);
 				outp = mbufs[i]->port;
