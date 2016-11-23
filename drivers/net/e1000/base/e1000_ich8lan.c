@@ -1068,6 +1068,7 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 	u32 mac_reg;
 	s32 ret_val = E1000_SUCCESS;
 	u16 phy_reg;
+	u16 oem_reg = 0;
 
 	if ((hw->mac.type < e1000_pch_lpt) ||
 	    (hw->device_id == E1000_DEV_ID_PCH_LPT_I217_LM) ||
@@ -1128,6 +1129,25 @@ s32 e1000_enable_ulp_lpt_lp(struct e1000_hw *hw, bool to_sx)
 	mac_reg |= E1000_CTRL_EXT_FORCE_SMBUS;
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, mac_reg);
 
+	/* Si workaround for ULP entry flow on i127/rev6 h/w.  Enable
+	 * LPLU and disable Gig speed when entering ULP
+	 */
+	if ((hw->phy.type == e1000_phy_i217) && (hw->phy.revision == 6)) {
+		ret_val = e1000_read_phy_reg_hv_locked(hw, HV_OEM_BITS,
+						       &oem_reg);
+		if (ret_val)
+			goto release;
+
+		phy_reg = oem_reg;
+		phy_reg |= HV_OEM_BITS_LPLU | HV_OEM_BITS_GBE_DIS;
+
+		ret_val = e1000_write_phy_reg_hv_locked(hw, HV_OEM_BITS,
+							phy_reg);
+
+		if (ret_val)
+			goto release;
+	}
+
 skip_smbus:
 	if (!to_sx) {
 		/* Change the 'Link Status Change' interrupt to trigger
@@ -1182,6 +1202,14 @@ skip_smbus:
 		mac_reg = E1000_READ_REG(hw, E1000_TCTL);
 		mac_reg &= ~E1000_TCTL_EN;
 		E1000_WRITE_REG(hw, E1000_TCTL, mac_reg);
+	}
+
+	if ((hw->phy.type == e1000_phy_i217) && (hw->phy.revision == 6) &&
+	    to_sx && (E1000_READ_REG(hw, E1000_STATUS) & E1000_STATUS_LU)) {
+		ret_val = e1000_write_phy_reg_hv_locked(hw, HV_OEM_BITS,
+							oem_reg);
+		if (ret_val)
+			goto release;
 	}
 
 release:
@@ -1401,6 +1429,8 @@ out:
 }
 
 #endif /* ULP_SUPPORT */
+
+
 /**
  *  e1000_check_for_copper_link_ich8lan - Check for link (Copper)
  *  @hw: pointer to the HW structure
