@@ -1360,6 +1360,8 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 
 			if (hw->mac.autoneg)
 				e1000_phy_setup_autoneg(hw);
+			else
+				e1000_setup_copper_link_generic(hw);
 
 			e1000_sw_lcd_config_ich8lan(hw);
 
