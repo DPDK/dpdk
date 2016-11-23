@@ -277,7 +277,7 @@ STATIC void e1000_toggle_lanphypc_pch_lpt(struct e1000_hw *hw)
 	mac_reg &= ~E1000_CTRL_LANPHYPC_VALUE;
 	E1000_WRITE_REG(hw, E1000_CTRL, mac_reg);
 	E1000_WRITE_FLUSH(hw);
-	usec_delay(10);
+	msec_delay(1);
 	mac_reg &= ~E1000_CTRL_LANPHYPC_OVERRIDE;
 	E1000_WRITE_REG(hw, E1000_CTRL, mac_reg);
 	E1000_WRITE_FLUSH(hw);
