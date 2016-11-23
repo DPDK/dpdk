@@ -198,6 +198,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define E1000_RCTL_DTYP_PS	0x00000400 /* Packet Split descriptor */
 #define E1000_RCTL_RDMTS_HALF	0x00000000 /* Rx desc min thresh size */
 #define E1000_RCTL_RDMTS_HEX	0x00010000
+#define E1000_RCTL_RDMTS1_HEX	E1000_RCTL_RDMTS_HEX
 #define E1000_RCTL_MO_SHIFT	12 /* multicast offset shift */
 #define E1000_RCTL_MO_3		0x00003000 /* multicast offset 15:4 */
 #define E1000_RCTL_BAM		0x00008000 /* broadcast enable */
@@ -752,6 +753,12 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define E1000_TSYNCTXCTL_VALID		0x00000001 /* Tx timestamp valid */
 #define E1000_TSYNCTXCTL_ENABLED	0x00000010 /* enable Tx timestamping */
+
+/* HH Time Sync */
+#define E1000_TSYNCTXCTL_MAX_ALLOWED_DLY_MASK	0x0000F000 /* max delay */
+#define E1000_TSYNCTXCTL_SYNC_COMP_ERR		0x20000000 /* sync err */
+#define E1000_TSYNCTXCTL_SYNC_COMP		0x40000000 /* sync complete */
+#define E1000_TSYNCTXCTL_START_SYNC		0x80000000 /* initiate sync */
 
 #define E1000_TSYNCRXCTL_VALID		0x00000001 /* Rx timestamp valid */
 #define E1000_TSYNCRXCTL_TYPE_MASK	0x0000000E /* Rx type mask */

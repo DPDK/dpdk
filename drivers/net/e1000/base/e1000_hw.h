@@ -136,6 +136,15 @@ struct e1000_hw;
 #define E1000_DEV_ID_PCH_I218_V2		0x15A1
 #define E1000_DEV_ID_PCH_I218_LM3		0x15A2 /* Wildcat Point PCH */
 #define E1000_DEV_ID_PCH_I218_V3		0x15A3 /* Wildcat Point PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_LM		0x156F /* Sunrise Point PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_V		0x1570 /* Sunrise Point PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_LM2		0x15B7 /* Sunrise Point-H PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_V2		0x15B8 /* Sunrise Point-H PCH */
+#define E1000_DEV_ID_PCH_LBG_I219_LM3		0x15B9 /* LEWISBURG PCH */
+#define E1000_DEV_ID_PCH_SPT_I219_LM4		0x15D7
+#define E1000_DEV_ID_PCH_SPT_I219_V4		0x15D8
+#define E1000_DEV_ID_PCH_SPT_I219_LM5		0x15E3
+#define E1000_DEV_ID_PCH_SPT_I219_V5		0x15D6
 #define E1000_DEV_ID_82576			0x10C9
 #define E1000_DEV_ID_82576_FIBER		0x10E6
 #define E1000_DEV_ID_82576_SERDES		0x10E7
@@ -221,6 +230,7 @@ enum e1000_mac_type {
 	e1000_pchlan,
 	e1000_pch2lan,
 	e1000_pch_lpt,
+	e1000_pch_spt,
 	e1000_82575,
 	e1000_82576,
 	e1000_82580,
@@ -954,7 +964,10 @@ struct e1000_dev_spec_ich8lan {
 	u16 eee_lp_ability;
 #ifdef ULP_SUPPORT
 	enum e1000_ulp_state ulp_state;
-#endif /* NAHUM6LP_HW && ULP_SUPPORT */
+	bool ulp_capability_disabled;
+	bool during_suspend_flow;
+	bool during_dpg_exit;
+#endif /* ULP_SUPPORT */
 	u16 lat_enc;
 	u16 max_ltr_enc;
 	bool smbus_disable;
