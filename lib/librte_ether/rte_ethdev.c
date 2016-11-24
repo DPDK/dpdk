@@ -529,6 +529,9 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 
 		for (i = nb_queues; i < old_nb_queues; i++)
 			(*dev->dev_ops->rx_queue_release)(rxq[i]);
+
+		rte_free(dev->data->rx_queues);
+		dev->data->rx_queues = NULL;
 	}
 	dev->data->nb_rx_queues = nb_queues;
 	return 0;
@@ -680,6 +683,9 @@ rte_eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 
 		for (i = nb_queues; i < old_nb_queues; i++)
 			(*dev->dev_ops->tx_queue_release)(txq[i]);
+
+		rte_free(dev->data->tx_queues);
+		dev->data->tx_queues = NULL;
 	}
 	dev->data->nb_tx_queues = nb_queues;
 	return 0;
