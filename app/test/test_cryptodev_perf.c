@@ -166,15 +166,15 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len);
+		unsigned int digest_len, enum chain_mode chain);
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len);
+		unsigned int digest_len, enum chain_mode chain __rte_unused);
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len);
+		unsigned int digest_len, enum chain_mode chain __rte_unused);
 static uint32_t get_auth_digest_length(enum rte_crypto_auth_algorithm algo);
 
 
@@ -2285,7 +2285,8 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 	static struct rte_crypto_op *(*test_perf_set_crypto_op)
 			(struct rte_crypto_op *, struct rte_mbuf *,
 					struct rte_cryptodev_sym_session *,
-					unsigned int, unsigned int);
+					unsigned int, unsigned int,
+					enum chain_mode);
 
 	unsigned int digest_length = get_auth_digest_length(pparams->auth_algo);
 
@@ -2323,14 +2324,14 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 			break;
 		case RTE_CRYPTO_CIPHER_AES_GCM:
 			test_perf_set_crypto_op =
-					test_perf_set_crypto_op_aes_gcm;
+						test_perf_set_crypto_op_aes_gcm;
 			break;
 		default:
 			return TEST_FAILED;
 		}
 
 		op = test_perf_set_crypto_op(op, m, sess, pparams->buf_size,
-				digest_length);
+				digest_length, pparams->chain);
 		TEST_ASSERT_NOT_NULL(op, "Failed to attach op to session");
 
 		c_ops[i] = op;
@@ -2539,16 +2540,16 @@ test_perf_create_aes_sha_session(uint8_t dev_id, enum chain_mode chain,
 
 	cipher_xform.cipher.key.data = aes_key;
 	cipher_xform.cipher.key.length = cipher_key_len;
-
-	/* Setup HMAC Parameters */
-	auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
-	auth_xform.auth.algo = auth_algo;
-
-	auth_xform.auth.key.data = hmac_sha_key;
-	auth_xform.auth.key.length =  get_auth_key_max_length(auth_algo);
-	auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
-
+	if (chain != CIPHER_ONLY) {
+		/* Setup HMAC Parameters */
+		auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+		auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+		auth_xform.auth.algo = auth_algo;
+		auth_xform.auth.key.data = hmac_sha_key;
+		auth_xform.auth.key.length = get_auth_key_max_length(auth_algo);
+		auth_xform.auth.digest_length =
+					get_auth_digest_length(auth_algo);
+	}
 	switch (chain) {
 	case CIPHER_HASH:
 		cipher_xform.next = &auth_xform;
@@ -2560,6 +2561,10 @@ test_perf_create_aes_sha_session(uint8_t dev_id, enum chain_mode chain,
 		cipher_xform.next = NULL;
 		/* Create Crypto session*/
 		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+	case CIPHER_ONLY:
+		cipher_xform.next = NULL;
+		/* Create Crypto session*/
+		return rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
 	default:
 		return NULL;
 	}
@@ -2706,8 +2711,8 @@ test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz)
 
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
-		struct rte_cryptodev_sym_session *sess, unsigned data_len,
-		unsigned digest_len)
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
+		unsigned int digest_len, enum chain_mode chain)
 {
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
@@ -2715,13 +2720,26 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 	}
 
 	/* Authentication Parameters */
-	op->sym->auth.digest.data = rte_pktmbuf_mtod_offset(m, uint8_t *,
-			AES_CIPHER_IV_LENGTH + data_len);
-	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
-			AES_CIPHER_IV_LENGTH + data_len);
-	op->sym->auth.digest.length = digest_len;
-	op->sym->auth.aad.data = aes_iv;
-	op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
+	if (chain == CIPHER_ONLY) {
+		op->sym->auth.digest.data = NULL;
+		op->sym->auth.digest.phys_addr = 0;
+		op->sym->auth.digest.length = 0;
+		op->sym->auth.aad.data = NULL;
+		op->sym->auth.aad.length = 0;
+		op->sym->auth.data.offset = 0;
+		op->sym->auth.data.length = 0;
+	} else {
+		op->sym->auth.digest.data = rte_pktmbuf_mtod_offset(m,
+				 uint8_t *, AES_CIPHER_IV_LENGTH + data_len);
+		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
+				AES_CIPHER_IV_LENGTH + data_len);
+		op->sym->auth.digest.length = digest_len;
+		op->sym->auth.aad.data = aes_iv;
+		op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
+		op->sym->auth.data.offset = AES_CIPHER_IV_LENGTH;
+		op->sym->auth.data.length = data_len;
+	}
+
 
 	/* Cipher Parameters */
 	op->sym->cipher.iv.data = rte_pktmbuf_mtod(m, uint8_t *);
@@ -2729,10 +2747,6 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
 
 	rte_memcpy(op->sym->cipher.iv.data, aes_iv, AES_CIPHER_IV_LENGTH);
-
-	/* Data lengths/offsets Parameters */
-	op->sym->auth.data.offset = AES_CIPHER_IV_LENGTH;
-	op->sym->auth.data.length = data_len;
 
 	op->sym->cipher.data.offset = AES_CIPHER_IV_LENGTH;
 	op->sym->cipher.data.length = data_len;
@@ -2745,7 +2759,7 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len)
+		unsigned int digest_len, enum chain_mode chain __rte_unused)
 {
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
@@ -2878,7 +2892,7 @@ test_perf_set_crypto_op_snow3g_hash(struct rte_crypto_op *op,
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len)
+		unsigned int digest_len, enum chain_mode chain __rte_unused)
 {
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
@@ -2961,8 +2975,10 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 				rte_pktmbuf_free(mbufs[k]);
 			return -1;
 		}
+
 		/* Make room for Digest and IV in mbuf */
-		rte_pktmbuf_append(mbufs[i], digest_length);
+		if (pparams->chain != CIPHER_ONLY)
+			rte_pktmbuf_append(mbufs[i], digest_length);
 		rte_pktmbuf_prepend(mbufs[i], AES_CIPHER_IV_LENGTH);
 	}
 
@@ -2984,7 +3000,8 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 				ops[i] = test_perf_set_crypto_op_aes(ops[i],
 					mbufs[i + (pparams->burst_size *
 						(j % NUM_MBUF_SETS))],
-					sess, pparams->buf_size, digest_length);
+					sess, pparams->buf_size, digest_length,
+					pparams->chain);
 
 			/* enqueue burst */
 			burst_enqueued = rte_cryptodev_enqueue_burst(dev_id,
@@ -3233,7 +3250,8 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 	static struct rte_crypto_op *(*test_perf_set_crypto_op)
 			(struct rte_crypto_op *, struct rte_mbuf *,
 					struct rte_cryptodev_sym_session *,
-					unsigned int, unsigned int);
+					unsigned int, unsigned int,
+					enum chain_mode);
 
 	switch (pparams->cipher_algo) {
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
@@ -3294,7 +3312,8 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 				ops[i] = test_perf_set_crypto_op(ops[i],
 					mbufs[i + (pparams->burst_size *
 						(j % NUM_MBUF_SETS))],
-					sess, pparams->buf_size, digest_length);
+					sess, pparams->buf_size, digest_length,
+					pparams->chain);
 
 			/* enqueue burst */
 			burst_enqueued = rte_cryptodev_enqueue_burst(dev_id,
@@ -3380,8 +3399,13 @@ test_perf_aes_cbc_encrypt_digest_vary_pkt_size(void)
 
 	struct perf_test_params params_set[] = {
 		{
+			.chain = CIPHER_ONLY,
+			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
+			.cipher_key_length = 16,
+			.auth_algo = RTE_CRYPTO_AUTH_NULL
+		},
+		{
 			.chain = CIPHER_HASH,
-
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
 			.cipher_key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
