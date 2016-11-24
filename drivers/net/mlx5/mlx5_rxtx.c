@@ -69,6 +69,31 @@
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
 
+static inline int
+check_cqe(volatile struct mlx5_cqe *cqe,
+	  unsigned int cqes_n, const uint16_t ci)
+	  __attribute__((always_inline));
+
+static inline uint32_t
+txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
+	__attribute__((always_inline));
+
+static inline void
+mlx5_tx_dbrec(struct txq *txq) __attribute__((always_inline));
+
+static inline uint32_t
+rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
+	__attribute__((always_inline));
+
+static inline int
+mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
+		 uint16_t cqe_cnt, uint32_t *rss_hash)
+		 __attribute__((always_inline));
+
+static inline uint32_t
+rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe)
+		   __attribute__((always_inline));
+
 #ifndef NDEBUG
 
 /**
@@ -97,11 +122,6 @@ check_cqe_seen(volatile struct mlx5_cqe *cqe)
 }
 
 #endif /* NDEBUG */
-
-static inline int
-check_cqe(volatile struct mlx5_cqe *cqe,
-	  unsigned int cqes_n, const uint16_t ci)
-	  __attribute__((always_inline));
 
 /**
  * Check whether CQE is valid.
@@ -263,10 +283,6 @@ txq_mb2mp(struct rte_mbuf *buf)
 		return rte_mbuf_from_indirect(buf)->pool;
 	return buf->pool;
 }
-
-static inline uint32_t
-txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
-	__attribute__((always_inline));
 
 /**
  * Get Memory Region (MR) <-> Memory Pool (MP) association from txq->mp2mr[].
