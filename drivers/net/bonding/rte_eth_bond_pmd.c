@@ -1454,6 +1454,9 @@ slave_remove(struct bond_dev_private *internals,
 				(internals->slave_count - i - 1));
 
 	internals->slave_count--;
+
+	/* force reconfiguration of slave interfaces */
+	_rte_eth_dev_reset(slave_eth_dev);
 }
 
 static void
