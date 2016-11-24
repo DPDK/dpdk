@@ -74,6 +74,9 @@ check_cqe(volatile struct mlx5_cqe *cqe,
 	  unsigned int cqes_n, const uint16_t ci)
 	  __attribute__((always_inline));
 
+static inline void
+txq_complete(struct txq *txq) __attribute__((always_inline));
+
 static inline uint32_t
 txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 	__attribute__((always_inline));
@@ -189,9 +192,6 @@ tx_mlx5_wqe(struct txq *txq, uint16_t ci)
 	ci &= ((1 << txq->wqe_n) - 1);
 	return (uintptr_t *)((uintptr_t)txq->wqes + ci * MLX5_WQE_SIZE);
 }
-
-static inline void
-txq_complete(struct txq *txq) __attribute__((always_inline));
 
 /**
  * Manage TX completions.
