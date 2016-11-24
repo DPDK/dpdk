@@ -1317,8 +1317,6 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	struct bond_rx_queue *bd_rx_q;
 	struct bond_tx_queue *bd_tx_q;
 
-	uint16_t old_nb_tx_queues = slave_eth_dev->data->nb_tx_queues;
-	uint16_t old_nb_rx_queues = slave_eth_dev->data->nb_rx_queues;
 	int errval;
 	uint16_t q_id;
 
@@ -1362,9 +1360,7 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	}
 
 	/* Setup Rx Queues */
-	/* Use existing queues, if any */
-	for (q_id = old_nb_rx_queues;
-	     q_id < bonded_eth_dev->data->nb_rx_queues; q_id++) {
+	for (q_id = 0; q_id < bonded_eth_dev->data->nb_rx_queues; q_id++) {
 		bd_rx_q = (struct bond_rx_queue *)bonded_eth_dev->data->rx_queues[q_id];
 
 		errval = rte_eth_rx_queue_setup(slave_eth_dev->data->port_id, q_id,
@@ -1380,9 +1376,7 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	}
 
 	/* Setup Tx Queues */
-	/* Use existing queues, if any */
-	for (q_id = old_nb_tx_queues;
-	     q_id < bonded_eth_dev->data->nb_tx_queues; q_id++) {
+	for (q_id = 0; q_id < bonded_eth_dev->data->nb_tx_queues; q_id++) {
 		bd_tx_q = (struct bond_tx_queue *)bonded_eth_dev->data->tx_queues[q_id];
 
 		errval = rte_eth_tx_queue_setup(slave_eth_dev->data->port_id, q_id,
