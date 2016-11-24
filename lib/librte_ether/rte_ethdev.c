@@ -1008,6 +1008,7 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 	uint32_t mbp_buf_size;
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	void **rxq;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1066,6 +1067,14 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
+	rxq = dev->data->rx_queues;
+	if (rxq[rx_queue_id]) {
+		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_release,
+					-ENOTSUP);
+		(*dev->dev_ops->rx_queue_release)(rxq[rx_queue_id]);
+		rxq[rx_queue_id] = NULL;
+	}
+
 	if (rx_conf == NULL)
 		rx_conf = &dev_info.default_rxconf;
 
@@ -1087,6 +1096,7 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	void **txq;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1117,6 +1127,14 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 				dev_info.tx_desc_lim.nb_min,
 				dev_info.tx_desc_lim.nb_align);
 		return -EINVAL;
+	}
+
+	txq = dev->data->tx_queues;
+	if (txq[tx_queue_id]) {
+		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_release,
+					-ENOTSUP);
+		(*dev->dev_ops->tx_queue_release)(txq[tx_queue_id]);
+		txq[tx_queue_id] = NULL;
 	}
 
 	if (tx_conf == NULL)
