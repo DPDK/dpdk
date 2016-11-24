@@ -82,7 +82,9 @@ txq_alloc_elts(struct txq_ctrl *txq_ctrl, unsigned int elts_n)
 	for (i = 0; (i != elts_n); ++i)
 		(*txq_ctrl->txq.elts)[i] = NULL;
 	for (i = 0; (i != (1u << txq_ctrl->txq.wqe_n)); ++i) {
-		volatile struct mlx5_wqe64 *wqe = &(*txq_ctrl->txq.wqes)[i];
+		volatile struct mlx5_wqe64 *wqe =
+			(volatile struct mlx5_wqe64 *)
+			txq_ctrl->txq.wqes + i;
 
 		memset((void *)(uintptr_t)wqe, 0x0, sizeof(*wqe));
 	}
@@ -214,9 +216,7 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
 	}
 	tmpl->txq.cqe_n = log2above(ibcq->cqe);
 	tmpl->txq.qp_num_8s = qp->ctrl_seg.qp_num << 8;
-	tmpl->txq.wqes =
-		(volatile struct mlx5_wqe64 (*)[])
-		(uintptr_t)qp->gen_data.sqstart;
+	tmpl->txq.wqes = qp->gen_data.sqstart;
 	tmpl->txq.wqe_n = log2above(qp->sq.wqe_cnt);
 	tmpl->txq.qp_db = &qp->gen_data.db[MLX5_SND_DBR];
 	tmpl->txq.bf_reg = qp->gen_data.bf->reg;

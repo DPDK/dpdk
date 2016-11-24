@@ -125,12 +125,19 @@ struct mlx5_wqe_eth_seg_small {
 	uint32_t rsvd2;
 	uint16_t inline_hdr_sz;
 	uint8_t inline_hdr[2];
-};
+} __rte_aligned(MLX5_WQE_DWORD_SIZE);
 
 struct mlx5_wqe_inl_small {
 	uint32_t byte_cnt;
 	uint8_t raw;
-};
+} __rte_aligned(MLX5_WQE_DWORD_SIZE);
+
+struct mlx5_wqe_ctrl {
+	uint32_t ctrl0;
+	uint32_t ctrl1;
+	uint32_t ctrl2;
+	uint32_t ctrl3;
+} __rte_aligned(MLX5_WQE_DWORD_SIZE);
 
 /* Small common part of the WQE. */
 struct mlx5_wqe {
@@ -142,7 +149,7 @@ struct mlx5_wqe {
 struct mlx5_wqe64 {
 	struct mlx5_wqe hdr;
 	uint8_t raw[32];
-} __rte_aligned(64);
+} __rte_aligned(MLX5_WQE_SIZE);
 
 /* MPW session status. */
 enum mlx5_mpw_state {
