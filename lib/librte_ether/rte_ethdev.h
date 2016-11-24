@@ -1914,6 +1914,19 @@ int rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_queue,
 		uint16_t nb_tx_queue, const struct rte_eth_conf *eth_conf);
 
 /**
+ * @internal
+ * Release device queues and clear its configuration to force the user
+ * application to reconfigure it. It is for internal use only.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  void
+ */
+void _rte_eth_dev_reset(struct rte_eth_dev *dev);
+
+/**
  * Allocate and set up a receive queue for an Ethernet device.
  *
  * The function allocates a contiguous block of memory for *nb_rx_desc*

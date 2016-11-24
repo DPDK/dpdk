@@ -856,6 +856,22 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	return 0;
 }
 
+void
+_rte_eth_dev_reset(struct rte_eth_dev *dev)
+{
+	if (dev->data->dev_started) {
+		RTE_PMD_DEBUG_TRACE(
+			"port %d must be stopped to allow reset\n",
+			dev->data->port_id);
+		return;
+	}
+
+	rte_eth_dev_rx_queue_config(dev, 0);
+	rte_eth_dev_tx_queue_config(dev, 0);
+
+	memset(&dev->data->dev_conf, 0, sizeof(dev->data->dev_conf));
+}
+
 static void
 rte_eth_dev_config_restore(uint8_t port_id)
 {

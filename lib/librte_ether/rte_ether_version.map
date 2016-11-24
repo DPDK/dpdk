@@ -147,3 +147,10 @@ DPDK_16.11 {
 	rte_eth_dev_pci_remove;
 
 } DPDK_16.07;
+
+DPDK_17.02 {
+	global:
+
+	_rte_eth_dev_reset;
+
+} DPDK_16.11;
