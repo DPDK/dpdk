@@ -389,6 +389,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint32_t length;
 		unsigned int ds = 0;
 		uintptr_t addr;
+		uint16_t pkt_inline_sz = MLX5_WQE_DWORD_SIZE;
+		uint8_t ehdr[2];
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		uint32_t total_length = 0;
 #endif
@@ -414,6 +416,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rte_prefetch0(*pkts);
 		addr = rte_pktmbuf_mtod(buf, uintptr_t);
 		length = DATA_LEN(buf);
+		ehdr[0] = ((uint8_t *)addr)[0];
+		ehdr[1] = ((uint8_t *)addr)[1];
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		total_length = length;
 #endif
@@ -437,24 +441,20 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		} else {
 			wqe->eseg.cs_flags = 0;
 		}
-		raw  = (uint8_t *)(uintptr_t)&wqe->eseg.inline_hdr[0];
-		/* Start the know and common part of the WQE structure. */
-		wqe->ctrl[0] = htonl((txq->wqe_ci << 8) | MLX5_OPCODE_SEND);
-		wqe->ctrl[2] = 0;
-		wqe->ctrl[3] = 0;
-		wqe->eseg.rsvd0 = 0;
-		wqe->eseg.rsvd1 = 0;
-		wqe->eseg.mss = 0;
-		wqe->eseg.rsvd2 = 0;
-		/* Start by copying the Ethernet Header. */
-		memcpy((uint8_t *)raw, ((uint8_t *)addr), 16);
+		raw = ((uint8_t *)(uintptr_t)wqe) + 2 * MLX5_WQE_DWORD_SIZE;
+		/*
+		 * Start by copying the Ethernet header minus the first two
+		 * bytes which will be appended at the end of the Ethernet
+		 * segment.
+		 */
+		memcpy((uint8_t *)raw, ((uint8_t *)addr) + 2, 16);
 		length -= MLX5_WQE_DWORD_SIZE;
 		addr += MLX5_WQE_DWORD_SIZE;
 		/* Replace the Ethernet type by the VLAN if necessary. */
 		if (buf->ol_flags & PKT_TX_VLAN_PKT) {
 			uint32_t vlan = htonl(0x81000000 | buf->vlan_tci);
 
-			memcpy((uint8_t *)(raw + MLX5_WQE_DWORD_SIZE -
+			memcpy((uint8_t *)(raw + MLX5_WQE_DWORD_SIZE - 2 -
 					   sizeof(vlan)),
 			       &vlan, sizeof(vlan));
 			addr -= sizeof(vlan);
@@ -466,10 +466,13 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				(uintptr_t)&(*txq->wqes)[1 << txq->wqe_n];
 			uint16_t max_inline =
 				txq->max_inline * RTE_CACHE_LINE_SIZE;
-			uint16_t pkt_inline_sz = MLX5_WQE_DWORD_SIZE;
 			uint16_t room;
 
-			raw += MLX5_WQE_DWORD_SIZE;
+			/*
+			 * raw starts two bytes before the boundary to
+			 * continue the above copy of packet data.
+			 */
+			raw += MLX5_WQE_DWORD_SIZE - 2;
 			room = end - (uintptr_t)raw;
 			if (room > max_inline) {
 				uintptr_t addr_end = (addr + max_inline) &
@@ -485,8 +488,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				/* Sanity check. */
 				assert(addr <= addr_end);
 			}
-			/* Store the inlined packet size in the WQE. */
-			wqe->eseg.inline_hdr_sz = htons(pkt_inline_sz);
 			/*
 			 * 2 DWORDs consumed by the WQE header + 1 DSEG +
 			 * the size of the inline part of the packet.
@@ -568,7 +569,18 @@ next_seg:
 			--pkts_n;
 next_pkt:
 		++i;
+		/* Initialize known and common part of the WQE structure. */
+		wqe->ctrl[0] = htonl((txq->wqe_ci << 8) | MLX5_OPCODE_SEND);
 		wqe->ctrl[1] = htonl(txq->qp_num_8s | ds);
+		wqe->ctrl[2] = 0;
+		wqe->ctrl[3] = 0;
+		wqe->eseg.rsvd0 = 0;
+		wqe->eseg.rsvd1 = 0;
+		wqe->eseg.mss = 0;
+		wqe->eseg.rsvd2 = 0;
+		wqe->eseg.inline_hdr_sz = htons(pkt_inline_sz);
+		wqe->eseg.inline_hdr[0] = ehdr[0];
+		wqe->eseg.inline_hdr[1] = ehdr[1];
 		txq->wqe_ci += (ds + 3) / 4;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
