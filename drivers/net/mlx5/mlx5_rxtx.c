@@ -346,23 +346,6 @@ mlx5_tx_dbrec(struct txq *txq)
 }
 
 /**
- * Prefetch a CQE.
- *
- * @param txq
- *   Pointer to TX queue structure.
- * @param cqe_ci
- *   CQE consumer index.
- */
-static inline void
-tx_prefetch_cqe(struct txq *txq, uint16_t ci)
-{
-	volatile struct mlx5_cqe *cqe;
-
-	cqe = &(*txq->cqes)[ci & ((1 << txq->cqe_n) - 1)];
-	rte_prefetch0(cqe);
-}
-
-/**
  * DPDK callback for TX.
  *
  * @param dpdk_txq
@@ -393,8 +376,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	if (unlikely(!pkts_n))
 		return 0;
 	/* Prefetch first packet cacheline. */
-	tx_prefetch_cqe(txq, txq->cq_ci);
-	tx_prefetch_cqe(txq, txq->cq_ci + 1);
 	rte_prefetch0(*pkts);
 	/* Start processing. */
 	txq_complete(txq);
@@ -732,7 +713,6 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	if (unlikely(!pkts_n))
 		return 0;
 	/* Prefetch first packet cacheline. */
-	tx_prefetch_cqe(txq, txq->cq_ci);
 	rte_prefetch0(tx_mlx5_wqe(txq, txq->wqe_ci));
 	rte_prefetch0(tx_mlx5_wqe(txq, txq->wqe_ci + 1));
 	/* Start processing. */
@@ -937,7 +917,6 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 	if (unlikely(!pkts_n))
 		return 0;
 	/* Prefetch first packet cacheline. */
-	tx_prefetch_cqe(txq, txq->cq_ci);
 	rte_prefetch0(tx_mlx5_wqe(txq, txq->wqe_ci));
 	rte_prefetch0(tx_mlx5_wqe(txq, txq->wqe_ci + 1));
 	/* Start processing. */
