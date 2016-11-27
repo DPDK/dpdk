@@ -1986,8 +1986,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return I40E_ERR_PARAM;
 	}
 	if (tx_free_thresh >= (nb_desc - 3)) {
-		PMD_INIT_LOG(ERR, "tx_rs_thresh must be less than the "
-			     "tx_free_thresh must be less than the "
+		PMD_INIT_LOG(ERR, "tx_free_thresh must be less than the "
 			     "number of TX descriptors minus 3. "
 			     "(tx_free_thresh=%u port=%d queue=%d)",
 			     (unsigned int)tx_free_thresh,
