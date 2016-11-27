@@ -62,6 +62,10 @@ New Features
   Six new APIs have been added to the ixgbe PMD for MACsec offload support.
   The declarations for the APIs can be found in ``rte_pmd_ixgbe.h``.
 
+* **Added I219 NICs support.**
+
+  Added support for I219 Intel 1GbE NICs.
+
 * **virtio-user with vhost-kernel as another exceptional path.**
 
   Previously, we upstreamed a virtual device, virtio-user with vhost-user
