@@ -714,6 +714,81 @@ ef10_rx_qpush(
 			    erp->er_index, &dword, B_FALSE);
 }
 
+#if EFSYS_OPT_RX_PACKED_STREAM
+
+			void
+ef10_rx_qps_update_credits(
+	__in	efx_rxq_t *erp)
+{
+	efx_nic_t *enp = erp->er_enp;
+	efx_dword_t dword;
+	efx_evq_rxq_state_t *rxq_state =
+		&erp->er_eep->ee_rxq_state[erp->er_label];
+
+	EFSYS_ASSERT(rxq_state->eers_rx_packed_stream);
+
+	if (rxq_state->eers_rx_packed_stream_credits == 0)
+		return;
+
+	EFX_POPULATE_DWORD_3(dword,
+	    ERF_DZ_RX_DESC_MAGIC_DOORBELL, 1,
+	    ERF_DZ_RX_DESC_MAGIC_CMD,
+	    ERE_DZ_RX_DESC_MAGIC_CMD_PS_CREDITS,
+	    ERF_DZ_RX_DESC_MAGIC_DATA,
+	    rxq_state->eers_rx_packed_stream_credits);
+	EFX_BAR_TBL_WRITED(enp, ER_DZ_RX_DESC_UPD_REG,
+	    erp->er_index, &dword, B_FALSE);
+
+	rxq_state->eers_rx_packed_stream_credits = 0;
+}
+
+	__checkReturn	uint8_t *
+ef10_rx_qps_packet_info(
+	__in		efx_rxq_t *erp,
+	__in		uint8_t *buffer,
+	__in		uint32_t buffer_length,
+	__in		uint32_t current_offset,
+	__out		uint16_t *lengthp,
+	__out		uint32_t *next_offsetp,
+	__out		uint32_t *timestamp)
+{
+	uint16_t buf_len;
+	uint8_t *pkt_start;
+	efx_qword_t *qwordp;
+	efx_evq_rxq_state_t *rxq_state =
+		&erp->er_eep->ee_rxq_state[erp->er_label];
+
+	EFSYS_ASSERT(rxq_state->eers_rx_packed_stream);
+
+	buffer += current_offset;
+	pkt_start = buffer + EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE;
+
+	qwordp = (efx_qword_t *)buffer;
+	*timestamp = EFX_QWORD_FIELD(*qwordp, ES_DZ_PS_RX_PREFIX_TSTAMP);
+	*lengthp   = EFX_QWORD_FIELD(*qwordp, ES_DZ_PS_RX_PREFIX_ORIG_LEN);
+	buf_len    = EFX_QWORD_FIELD(*qwordp, ES_DZ_PS_RX_PREFIX_CAP_LEN);
+
+	buf_len = P2ROUNDUP(buf_len + EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE,
+			    EFX_RX_PACKED_STREAM_ALIGNMENT);
+	*next_offsetp =
+	    current_offset + buf_len + EFX_RX_PACKED_STREAM_ALIGNMENT;
+
+	EFSYS_ASSERT3U(*next_offsetp, <=, buffer_length);
+	EFSYS_ASSERT3U(current_offset + *lengthp, <, *next_offsetp);
+
+	if ((*next_offsetp ^ current_offset) &
+	    EFX_RX_PACKED_STREAM_MEM_PER_CREDIT) {
+		if (rxq_state->eers_rx_packed_stream_credits <
+		    EFX_RX_PACKED_STREAM_MAX_CREDITS)
+			rxq_state->eers_rx_packed_stream_credits++;
+	}
+
+	return (pkt_start);
+}
+
+
+#endif
+
 	__checkReturn	efx_rc_t
 ef10_rx_qflush(
 	__in	efx_rxq_t *erp)
@@ -781,12 +856,45 @@ ef10_rx_qcreate(
 	case EFX_RXQ_TYPE_SCATTER:
 		ps_buf_size = 0;
 		break;
+#if EFSYS_OPT_RX_PACKED_STREAM
+	case EFX_RXQ_TYPE_PACKED_STREAM_1M:
+		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_1M;
+		break;
+	case EFX_RXQ_TYPE_PACKED_STREAM_512K:
+		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_512K;
+		break;
+	case EFX_RXQ_TYPE_PACKED_STREAM_256K:
+		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_256K;
+		break;
+	case EFX_RXQ_TYPE_PACKED_STREAM_128K:
+		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_128K;
+		break;
+	case EFX_RXQ_TYPE_PACKED_STREAM_64K:
+		ps_buf_size = MC_CMD_INIT_RXQ_EXT_IN_PS_BUFF_64K;
+		break;
+#endif /* EFSYS_OPT_RX_PACKED_STREAM */
 	default:
 		rc = ENOTSUP;
 		goto fail3;
 	}
 
+#if EFSYS_OPT_RX_PACKED_STREAM
+	if (ps_buf_size != 0) {
+		/* Check if datapath firmware supports packed stream mode */
+		if (encp->enc_rx_packed_stream_supported == B_FALSE) {
+			rc = ENOTSUP;
+			goto fail4;
+		}
+		/* Check if packed stream allows configurable buffer sizes */
+		if ((type != EFX_RXQ_TYPE_PACKED_STREAM_1M) &&
+		    (encp->enc_rx_var_packed_stream_supported == B_FALSE)) {
+			rc = ENOTSUP;
+			goto fail5;
+		}
+	}
+#else /* EFSYS_OPT_RX_PACKED_STREAM */
 	EFSYS_ASSERT(ps_buf_size == 0);
+#endif /* EFSYS_OPT_RX_PACKED_STREAM */
 
 	/* Scatter can only be disabled if the firmware supports doing so */
 	if (type == EFX_RXQ_TYPE_SCATTER)
@@ -807,6 +915,12 @@ ef10_rx_qcreate(
 
 fail6:
 	EFSYS_PROBE(fail6);
+#if EFSYS_OPT_RX_PACKED_STREAM
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+#endif /* EFSYS_OPT_RX_PACKED_STREAM */
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:

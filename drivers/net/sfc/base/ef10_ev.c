@@ -759,6 +759,84 @@ ef10_ev_qstats_update(
 }
 #endif /* EFSYS_OPT_QSTATS */
 
+#if EFSYS_OPT_RX_PACKED_STREAM
+
+static	__checkReturn	boolean_t
+ef10_ev_rx_packed_stream(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eqp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	uint32_t label;
+	uint32_t next_read_lbits;
+	uint16_t flags;
+	boolean_t should_abort;
+	efx_evq_rxq_state_t *eersp;
+	unsigned int pkt_count;
+	unsigned int current_id;
+	boolean_t new_buffer;
+
+	next_read_lbits = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_DSC_PTR_LBITS);
+	label = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_QLABEL);
+	new_buffer = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_EV_ROTATE);
+
+	flags = 0;
+
+	eersp = &eep->ee_rxq_state[label];
+	pkt_count = (EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS) + 1 +
+	    next_read_lbits - eersp->eers_rx_stream_npackets) &
+	    EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS);
+	eersp->eers_rx_stream_npackets += pkt_count;
+
+	if (new_buffer) {
+		flags |= EFX_PKT_PACKED_STREAM_NEW_BUFFER;
+		if (eersp->eers_rx_packed_stream_credits <
+		    EFX_RX_PACKED_STREAM_MAX_CREDITS)
+			eersp->eers_rx_packed_stream_credits++;
+		eersp->eers_rx_read_ptr++;
+	}
+	current_id = eersp->eers_rx_read_ptr & eersp->eers_rx_mask;
+
+	/* Check for errors that invalidate checksum and L3/L4 fields */
+	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_ECC_ERR) != 0) {
+		/* RX frame truncated (error flag is misnamed) */
+		EFX_EV_QSTAT_INCR(eep, EV_RX_FRM_TRUNC);
+		flags |= EFX_DISCARD;
+		goto deliver;
+	}
+	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_ECRC_ERR) != 0) {
+		/* Bad Ethernet frame CRC */
+		EFX_EV_QSTAT_INCR(eep, EV_RX_ETH_CRC_ERR);
+		flags |= EFX_DISCARD;
+		goto deliver;
+	}
+
+	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_PARSE_INCOMPLETE)) {
+		flags |= EFX_PKT_PACKED_STREAM_PARSE_INCOMPLETE;
+		goto deliver;
+	}
+
+	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_IPCKSUM_ERR))
+		EFX_EV_QSTAT_INCR(eep, EV_RX_IPV4_HDR_CHKSUM_ERR);
+
+	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_TCPUDP_CKSUM_ERR))
+		EFX_EV_QSTAT_INCR(eep, EV_RX_TCP_UDP_CHKSUM_ERR);
+
+deliver:
+	/* If we're not discarding the packet then it is ok */
+	if (~flags & EFX_DISCARD)
+		EFX_EV_QSTAT_INCR(eep, EV_RX_OK);
+
+	EFSYS_ASSERT(eecp->eec_rx_ps != NULL);
+	should_abort = eecp->eec_rx_ps(arg, label, current_id, pkt_count,
+	    flags);
+
+	return (should_abort);
+}
+
+#endif /* EFSYS_OPT_RX_PACKED_STREAM */
+
 static	__checkReturn	boolean_t
 ef10_ev_rx(
 	__in		efx_evq_t *eep,
@@ -790,6 +868,15 @@ ef10_ev_rx(
 	/* Basic packet information */
 	label = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_QLABEL);
 	eersp = &eep->ee_rxq_state[label];
+
+#if EFSYS_OPT_RX_PACKED_STREAM
+	/*
+	 * Packed stream events are very different,
+	 * so handle them separately
+	 */
+	if (eersp->eers_rx_packed_stream)
+		return (ef10_ev_rx_packed_stream(eep, eqp, eecp, arg));
+#endif
 
 	size = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_BYTES);
 	next_read_lbits = EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_DSC_PTR_LBITS);
@@ -1253,9 +1340,41 @@ ef10_ev_rxlabel_init(
 
 	EFSYS_ASSERT3U(eersp->eers_rx_mask, ==, 0);
 
+#if EFSYS_OPT_RX_PACKED_STREAM
+	/*
+	 * For packed stream modes, the very first event will
+	 * have a new buffer flag set, so it will be incremented,
+	 * yielding the correct pointer. That results in a simpler
+	 * code than trying to detect start-of-the-world condition
+	 * in the event handler.
+	 */
+	eersp->eers_rx_read_ptr = packed_stream ? ~0 : 0;
+#else
 	eersp->eers_rx_read_ptr = 0;
+#endif
 	eersp->eers_rx_mask = erp->er_mask;
+#if EFSYS_OPT_RX_PACKED_STREAM
+	eersp->eers_rx_stream_npackets = 0;
+	eersp->eers_rx_packed_stream = packed_stream;
+	if (packed_stream) {
+		eersp->eers_rx_packed_stream_credits = (eep->ee_mask + 1) /
+		    (EFX_RX_PACKED_STREAM_MEM_PER_CREDIT /
+		    EFX_RX_PACKED_STREAM_MIN_PACKET_SPACE);
+		EFSYS_ASSERT3U(eersp->eers_rx_packed_stream_credits, !=, 0);
+		/*
+		 * A single credit is allocated to the queue when it is started.
+		 * It is immediately spent by the first packet which has NEW
+		 * BUFFER flag set, though, but still we shall take into
+		 * account, as to not wrap around the maximum number of credits
+		 * accidentally
+		 */
+		eersp->eers_rx_packed_stream_credits--;
+		EFSYS_ASSERT3U(eersp->eers_rx_packed_stream_credits, <=,
+		    EFX_RX_PACKED_STREAM_MAX_CREDITS);
+	}
+#else
 	EFSYS_ASSERT(!packed_stream);
+#endif
 }
 
 		void
@@ -1272,6 +1391,11 @@ ef10_ev_rxlabel_fini(
 
 	eersp->eers_rx_read_ptr = 0;
 	eersp->eers_rx_mask = 0;
+#if EFSYS_OPT_RX_PACKED_STREAM
+	eersp->eers_rx_stream_npackets = 0;
+	eersp->eers_rx_packed_stream = B_FALSE;
+	eersp->eers_rx_packed_stream_credits = 0;
+#endif
 }
 
 #endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */

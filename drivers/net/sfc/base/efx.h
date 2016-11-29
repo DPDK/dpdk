@@ -1419,6 +1419,28 @@ typedef	__checkReturn	boolean_t
 	__in		uint32_t size,
 	__in		uint16_t flags);
 
+#if EFSYS_OPT_RX_PACKED_STREAM
+
+/*
+ * Packed stream mode is documented in SF-112241-TC.
+ * The general idea is that, instead of putting each incoming
+ * packet into a separate buffer which is specified in a RX
+ * descriptor, a large buffer is provided to the hardware and
+ * packets are put there in a continuous stream.
+ * The main advantage of such an approach is that RX queue refilling
+ * happens much less frequently.
+ */
+
+typedef	__checkReturn	boolean_t
+(*efx_rx_ps_ev_t)(
+	__in_opt	void *arg,
+	__in		uint32_t label,
+	__in		uint32_t id,
+	__in		uint32_t pkt_count,
+	__in		uint16_t flags);
+
+#endif
+
 typedef	__checkReturn	boolean_t
 (*efx_tx_ev_t)(
 	__in_opt	void *arg,
@@ -1508,6 +1530,9 @@ typedef __checkReturn	boolean_t
 typedef struct efx_ev_callbacks_s {
 	efx_initialized_ev_t		eec_initialized;
 	efx_rx_ev_t			eec_rx;
+#if EFSYS_OPT_RX_PACKED_STREAM
+	efx_rx_ps_ev_t			eec_rx_ps;
+#endif
 	efx_tx_ev_t			eec_tx;
 	efx_exception_ev_t		eec_exception;
 	efx_rxq_flush_done_ev_t		eec_rxq_flush_done;
@@ -1730,6 +1755,29 @@ efx_rx_qpush(
 	__in	efx_rxq_t *erp,
 	__in	unsigned int added,
 	__inout	unsigned int *pushedp);
+
+#if EFSYS_OPT_RX_PACKED_STREAM
+
+/*
+ * Fake length for RXQ descriptors in packed stream mode
+ * to make hardware happy
+ */
+#define	EFX_RXQ_PACKED_STREAM_FAKE_BUF_SIZE 32
+
+extern			void
+efx_rx_qps_update_credits(
+	__in		efx_rxq_t *erp);
+
+extern	__checkReturn	uint8_t *
+efx_rx_qps_packet_info(
+	__in		efx_rxq_t *erp,
+	__in		uint8_t *buffer,
+	__in		uint32_t buffer_length,
+	__in		uint32_t current_offset,
+	__out		uint16_t *lengthp,
+	__out		uint32_t *next_offsetp,
+	__out		uint32_t *timestamp);
+#endif
 
 extern	__checkReturn	efx_rc_t
 efx_rx_qflush(

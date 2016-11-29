@@ -462,6 +462,22 @@ ef10_tx_qpush(
 	__in		unsigned int added,
 	__in		unsigned int pushed);
 
+#if EFSYS_OPT_RX_PACKED_STREAM
+extern			void
+ef10_rx_qps_update_credits(
+	__in	efx_rxq_t *erp);
+
+extern	__checkReturn	uint8_t *
+ef10_rx_qps_packet_info(
+	__in		efx_rxq_t *erp,
+	__in		uint8_t *buffer,
+	__in		uint32_t buffer_length,
+	__in		uint32_t current_offset,
+	__out		uint16_t *lengthp,
+	__out		uint32_t *next_offsetp,
+	__out		uint32_t *timestamp);
+#endif
+
 extern	__checkReturn	efx_rc_t
 ef10_tx_qpace(
 	__in		efx_txq_t *etp,
@@ -843,6 +859,36 @@ ef10_external_port_mapping(
 	__in		efx_nic_t *enp,
 	__in		uint32_t port,
 	__out		uint8_t *external_portp);
+
+#if EFSYS_OPT_RX_PACKED_STREAM
+
+/* Data space per credit in packed stream mode */
+#define	EFX_RX_PACKED_STREAM_MEM_PER_CREDIT (1 << 16)
+
+/*
+ * Received packets are always aligned at this boundary. Also there always
+ * exists a gap of this size between packets.
+ * (see SF-112241-TC, 4.5)
+ */
+#define	EFX_RX_PACKED_STREAM_ALIGNMENT 64
+
+/*
+ * Size of a pseudo-header prepended to received packets
+ * in packed stream mode
+ */
+#define	EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE 8
+
+/* Minimum space for packet in packed stream mode */
+#define	EFX_RX_PACKED_STREAM_MIN_PACKET_SPACE		     \
+	P2ROUNDUP(EFX_RX_PACKED_STREAM_RX_PREFIX_SIZE +	     \
+		  EFX_MAC_PDU_MIN +			     \
+		  EFX_RX_PACKED_STREAM_ALIGNMENT,	     \
+		  EFX_RX_PACKED_STREAM_ALIGNMENT)
+
+/* Maximum number of credits */
+#define	EFX_RX_PACKED_STREAM_MAX_CREDITS 127
+
+#endif /* EFSYS_OPT_RX_PACKED_STREAM */
 
 #ifdef	__cplusplus
 }
