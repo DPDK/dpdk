@@ -27,12 +27,261 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <rte_mempool.h>
+
 #include "efx.h"
 
 #include "sfc.h"
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
+#include "sfc_tweak.h"
+
+/*
+ * Maximum number of Rx queue flush attempt in the case of failure or
+ * flush timeout
+ */
+#define SFC_RX_QFLUSH_ATTEMPTS		(3)
+
+/*
+ * Time to wait between event queue polling attempts when waiting for Rx
+ * queue flush done or failed events.
+ */
+#define SFC_RX_QFLUSH_POLL_WAIT_MS	(1)
+
+/*
+ * Maximum number of event queue polling attempts when waiting for Rx queue
+ * flush done or failed events. It defines Rx queue flush attempt timeout
+ * together with SFC_RX_QFLUSH_POLL_WAIT_MS.
+ */
+#define SFC_RX_QFLUSH_POLL_ATTEMPTS	(2000)
+
+void
+sfc_rx_qflush_done(struct sfc_rxq *rxq)
+{
+	rxq->state |= SFC_RXQ_FLUSHED;
+	rxq->state &= ~SFC_RXQ_FLUSHING;
+}
+
+void
+sfc_rx_qflush_failed(struct sfc_rxq *rxq)
+{
+	rxq->state |= SFC_RXQ_FLUSH_FAILED;
+	rxq->state &= ~SFC_RXQ_FLUSHING;
+}
+
+static void
+sfc_rx_qrefill(struct sfc_rxq *rxq)
+{
+	unsigned int free_space;
+	unsigned int bulks;
+	void *objs[SFC_RX_REFILL_BULK];
+	efsys_dma_addr_t addr[RTE_DIM(objs)];
+	unsigned int added = rxq->added;
+	unsigned int id;
+	unsigned int i;
+	struct sfc_rx_sw_desc *rxd;
+	struct rte_mbuf *m;
+	uint8_t port_id = rxq->port_id;
+
+	free_space = EFX_RXQ_LIMIT(rxq->ptr_mask + 1) -
+		(added - rxq->completed);
+	bulks = free_space / RTE_DIM(objs);
+
+	id = added & rxq->ptr_mask;
+	while (bulks-- > 0) {
+		if (rte_mempool_get_bulk(rxq->refill_mb_pool, objs,
+					 RTE_DIM(objs)) < 0) {
+			/*
+			 * It is hardly a safe way to increment counter
+			 * from different contexts, but all PMDs do it.
+			 */
+			rxq->evq->sa->eth_dev->data->rx_mbuf_alloc_failed +=
+				RTE_DIM(objs);
+			break;
+		}
+
+		for (i = 0; i < RTE_DIM(objs);
+		     ++i, id = (id + 1) & rxq->ptr_mask) {
+			m = objs[i];
+
+			rxd = &rxq->sw_desc[id];
+			rxd->mbuf = m;
+
+			rte_mbuf_refcnt_set(m, 1);
+			m->data_off = RTE_PKTMBUF_HEADROOM;
+			m->next = NULL;
+			m->nb_segs = 1;
+			m->port = port_id;
+
+			addr[i] = rte_pktmbuf_mtophys(m);
+		}
+
+		efx_rx_qpost(rxq->common, addr, rxq->buf_size,
+			     RTE_DIM(objs), rxq->completed, added);
+		added += RTE_DIM(objs);
+	}
+
+	/* Push doorbell if something is posted */
+	if (rxq->added != added) {
+		rxq->added = added;
+		efx_rx_qpush(rxq->common, added, &rxq->pushed);
+	}
+}
+
+static void
+sfc_rx_qpurge(struct sfc_rxq *rxq)
+{
+	unsigned int i;
+	struct sfc_rx_sw_desc *rxd;
+
+	for (i = rxq->completed; i != rxq->added; ++i) {
+		rxd = &rxq->sw_desc[i & rxq->ptr_mask];
+		rte_mempool_put(rxq->refill_mb_pool, rxd->mbuf);
+		rxd->mbuf = NULL;
+	}
+}
+
+static void
+sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct sfc_rxq *rxq;
+	unsigned int retry_count;
+	unsigned int wait_count;
+
+	rxq = sa->rxq_info[sw_index].rxq;
+	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
+
+	/*
+	 * Retry Rx queue flushing in the case of flush failed or
+	 * timeout. In the worst case it can delay for 6 seconds.
+	 */
+	for (retry_count = 0;
+	     ((rxq->state & SFC_RXQ_FLUSHED) == 0) &&
+	     (retry_count < SFC_RX_QFLUSH_ATTEMPTS);
+	     ++retry_count) {
+		if (efx_rx_qflush(rxq->common) != 0) {
+			rxq->state |= SFC_RXQ_FLUSH_FAILED;
+			break;
+		}
+		rxq->state &= ~SFC_RXQ_FLUSH_FAILED;
+		rxq->state |= SFC_RXQ_FLUSHING;
+
+		/*
+		 * Wait for Rx queue flush done or failed event at least
+		 * SFC_RX_QFLUSH_POLL_WAIT_MS milliseconds and not more
+		 * than 2 seconds (SFC_RX_QFLUSH_POLL_WAIT_MS multiplied
+		 * by SFC_RX_QFLUSH_POLL_ATTEMPTS).
+		 */
+		wait_count = 0;
+		do {
+			rte_delay_ms(SFC_RX_QFLUSH_POLL_WAIT_MS);
+			sfc_ev_qpoll(rxq->evq);
+		} while ((rxq->state & SFC_RXQ_FLUSHING) &&
+			 (wait_count++ < SFC_RX_QFLUSH_POLL_ATTEMPTS));
+
+		if (rxq->state & SFC_RXQ_FLUSHING)
+			sfc_err(sa, "RxQ %u flush timed out", sw_index);
+
+		if (rxq->state & SFC_RXQ_FLUSH_FAILED)
+			sfc_err(sa, "RxQ %u flush failed", sw_index);
+
+		if (rxq->state & SFC_RXQ_FLUSHED)
+			sfc_info(sa, "RxQ %u flushed", sw_index);
+	}
+
+	sfc_rx_qpurge(rxq);
+}
+
+int
+sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct sfc_rxq_info *rxq_info;
+	struct sfc_rxq *rxq;
+	struct sfc_evq *evq;
+	int rc;
+
+	sfc_log_init(sa, "sw_index=%u", sw_index);
+
+	SFC_ASSERT(sw_index < sa->rxq_count);
+
+	rxq_info = &sa->rxq_info[sw_index];
+	rxq = rxq_info->rxq;
+	SFC_ASSERT(rxq->state == SFC_RXQ_INITIALIZED);
+
+	evq = rxq->evq;
+
+	rc = sfc_ev_qstart(sa, evq->evq_index);
+	if (rc != 0)
+		goto fail_ev_qstart;
+
+	rc = efx_rx_qcreate(sa->nic, rxq->hw_index, 0, rxq_info->type,
+			    &rxq->mem, rxq_info->entries,
+			    0 /* not used on EF10 */, evq->common,
+			    &rxq->common);
+	if (rc != 0)
+		goto fail_rx_qcreate;
+
+	efx_rx_qenable(rxq->common);
+
+	rxq->pending = rxq->completed = rxq->added = rxq->pushed = 0;
+
+	rxq->state |= SFC_RXQ_STARTED;
+
+	sfc_rx_qrefill(rxq);
+
+	if (sw_index == 0) {
+		rc = efx_mac_filter_default_rxq_set(sa->nic, rxq->common,
+						    B_FALSE);
+		if (rc != 0)
+			goto fail_mac_filter_default_rxq_set;
+	}
+
+	/* It seems to be used by DPDK for debug purposes only ('rte_ether') */
+	sa->eth_dev->data->rx_queue_state[sw_index] =
+		RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+
+fail_mac_filter_default_rxq_set:
+	sfc_rx_qflush(sa, sw_index);
+
+fail_rx_qcreate:
+	sfc_ev_qstop(sa, evq->evq_index);
+
+fail_ev_qstart:
+	return rc;
+}
+
+void
+sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct sfc_rxq_info *rxq_info;
+	struct sfc_rxq *rxq;
+
+	sfc_log_init(sa, "sw_index=%u", sw_index);
+
+	SFC_ASSERT(sw_index < sa->rxq_count);
+
+	rxq_info = &sa->rxq_info[sw_index];
+	rxq = rxq_info->rxq;
+	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
+
+	/* It seems to be used by DPDK for debug purposes only ('rte_ether') */
+	sa->eth_dev->data->rx_queue_state[sw_index] =
+		RTE_ETH_QUEUE_STATE_STOPPED;
+
+	if (sw_index == 0)
+		efx_mac_filter_default_rxq_clear(sa->nic);
+
+	sfc_rx_qflush(sa, sw_index);
+
+	rxq->state = SFC_RXQ_INITIALIZED;
+
+	efx_rx_qdestroy(rxq->common);
+
+	sfc_ev_qstop(sa, rxq->evq->evq_index);
+}
 
 static int
 sfc_rx_qcheck_conf(struct sfc_adapter *sa,
@@ -243,6 +492,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq->refill_mb_pool = mb_pool;
 	rxq->buf_size = buf_size;
 	rxq->hw_index = sw_index;
+	rxq->port_id = sa->eth_dev->data->port_id;
 
 	rxq->state = SFC_RXQ_INITIALIZED;
 
@@ -286,6 +536,53 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rte_free(rxq->sw_desc);
 	sfc_dma_free(sa, &rxq->mem);
 	rte_free(rxq);
+}
+
+int
+sfc_rx_start(struct sfc_adapter *sa)
+{
+	unsigned int sw_index;
+	int rc;
+
+	sfc_log_init(sa, "rxq_count=%u", sa->rxq_count);
+
+	rc = efx_rx_init(sa->nic);
+	if (rc != 0)
+		goto fail_rx_init;
+
+	for (sw_index = 0; sw_index < sa->rxq_count; ++sw_index) {
+		rc = sfc_rx_qstart(sa, sw_index);
+		if (rc != 0)
+			goto fail_rx_qstart;
+	}
+
+	return 0;
+
+fail_rx_qstart:
+	while (sw_index-- > 0)
+		sfc_rx_qstop(sa, sw_index);
+
+	efx_rx_fini(sa->nic);
+
+fail_rx_init:
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
+}
+
+void
+sfc_rx_stop(struct sfc_adapter *sa)
+{
+	unsigned int sw_index;
+
+	sfc_log_init(sa, "rxq_count=%u", sa->rxq_count);
+
+	sw_index = sa->rxq_count;
+	while (sw_index-- > 0) {
+		if (sa->rxq_info[sw_index].rxq != NULL)
+			sfc_rx_qstop(sa, sw_index);
+	}
+
+	efx_rx_fini(sa->nic);
 }
 
 static int

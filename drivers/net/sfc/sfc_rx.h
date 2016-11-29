@@ -57,6 +57,14 @@ struct sfc_rx_sw_desc {
 enum sfc_rxq_state_bit {
 	SFC_RXQ_INITIALIZED_BIT = 0,
 #define SFC_RXQ_INITIALIZED	(1 << SFC_RXQ_INITIALIZED_BIT)
+	SFC_RXQ_STARTED_BIT,
+#define SFC_RXQ_STARTED		(1 << SFC_RXQ_STARTED_BIT)
+	SFC_RXQ_FLUSHING_BIT,
+#define SFC_RXQ_FLUSHING	(1 << SFC_RXQ_FLUSHING_BIT)
+	SFC_RXQ_FLUSHED_BIT,
+#define SFC_RXQ_FLUSHED		(1 << SFC_RXQ_FLUSHED_BIT)
+	SFC_RXQ_FLUSH_FAILED_BIT,
+#define SFC_RXQ_FLUSH_FAILED	(1 << SFC_RXQ_FLUSH_FAILED_BIT)
 };
 
 /**
@@ -69,8 +77,13 @@ struct sfc_rxq {
 	struct sfc_rx_sw_desc	*sw_desc;
 	unsigned int		state;
 	unsigned int		ptr_mask;
+	unsigned int		pending;
+	unsigned int		completed;
 
 	/* Used on refill */
+	unsigned int		added;
+	unsigned int		pushed;
+	uint8_t			port_id;
 	uint16_t		buf_size;
 	struct rte_mempool	*refill_mb_pool;
 	efx_rxq_t		*common;
@@ -105,12 +118,19 @@ struct sfc_rxq_info {
 
 int sfc_rx_init(struct sfc_adapter *sa);
 void sfc_rx_fini(struct sfc_adapter *sa);
+int sfc_rx_start(struct sfc_adapter *sa);
+void sfc_rx_stop(struct sfc_adapter *sa);
 
 int sfc_rx_qinit(struct sfc_adapter *sa, unsigned int rx_queue_id,
 		 uint16_t nb_rx_desc, unsigned int socket_id,
 		 const struct rte_eth_rxconf *rx_conf,
 		 struct rte_mempool *mb_pool);
 void sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index);
+int sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index);
+void sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
+
+void sfc_rx_qflush_done(struct sfc_rxq *rxq);
+void sfc_rx_qflush_failed(struct sfc_rxq *rxq);
 
 #ifdef __cplusplus
 }

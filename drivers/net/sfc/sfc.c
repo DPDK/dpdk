@@ -271,9 +271,16 @@ sfc_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_port_start;
 
+	rc = sfc_rx_start(sa);
+	if (rc != 0)
+		goto fail_rx_start;
+
 	sa->state = SFC_ADAPTER_STARTED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_rx_start:
+	sfc_port_stop(sa);
 
 fail_port_start:
 	sfc_ev_stop(sa);
@@ -313,6 +320,7 @@ sfc_stop(struct sfc_adapter *sa)
 
 	sa->state = SFC_ADAPTER_STOPPING;
 
+	sfc_rx_stop(sa);
 	sfc_port_stop(sa);
 	sfc_ev_stop(sa);
 	sfc_intr_stop(sa);
