@@ -82,9 +82,55 @@ sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp)
 	memset(esmp, 0, sizeof(*esmp));
 }
 
+/*
+ * Check requested device level configuration.
+ * Receive and transmit configuration is checked in corresponding
+ * modules.
+ */
+static int
+sfc_check_conf(struct sfc_adapter *sa)
+{
+	const struct rte_eth_conf *conf = &sa->eth_dev->data->dev_conf;
+	int rc = 0;
+
+	if (conf->link_speeds != ETH_LINK_SPEED_AUTONEG) {
+		sfc_err(sa, "Manual link speed/duplex choice not supported");
+		rc = EINVAL;
+	}
+
+	if (conf->lpbk_mode != 0) {
+		sfc_err(sa, "Loopback not supported");
+		rc = EINVAL;
+	}
+
+	if (conf->dcb_capability_en != 0) {
+		sfc_err(sa, "Priority-based flow control not supported");
+		rc = EINVAL;
+	}
+
+	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
+		sfc_err(sa, "Flow Director not supported");
+		rc = EINVAL;
+	}
+
+	if (conf->intr_conf.lsc != 0) {
+		sfc_err(sa, "Link status change interrupt not supported");
+		rc = EINVAL;
+	}
+
+	if (conf->intr_conf.rxq != 0) {
+		sfc_err(sa, "Receive queue interrupt not supported");
+		rc = EINVAL;
+	}
+
+	return rc;
+}
+
 int
 sfc_configure(struct sfc_adapter *sa)
 {
+	int rc;
+
 	sfc_log_init(sa, "entry");
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
@@ -92,9 +138,18 @@ sfc_configure(struct sfc_adapter *sa)
 	SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
 	sa->state = SFC_ADAPTER_CONFIGURING;
 
+	rc = sfc_check_conf(sa);
+	if (rc != 0)
+		goto fail_check_conf;
+
 	sa->state = SFC_ADAPTER_CONFIGURED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_check_conf:
+	sa->state = SFC_ADAPTER_INITIALIZED;
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
 }
 
 void

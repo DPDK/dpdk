@@ -37,6 +37,20 @@ More information can be found at `Solarflare Communications website
 <http://solarflare.com>`_.
 
 
+Non-supported Features
+----------------------
+
+The features not yet supported include:
+
+- Link status change interrupt
+
+- Receive queue interupts
+
+- Priority-based flow control
+
+- Loopback
+
+
 Supported NICs
 --------------
 
