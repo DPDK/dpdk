@@ -351,6 +351,23 @@ efx_ev_qpending(
 	return (EFX_EV_PRESENT(qword));
 }
 
+#if EFSYS_OPT_EV_PREFETCH
+
+			void
+efx_ev_qprefetch(
+	__in		efx_evq_t *eep,
+	__in		unsigned int count)
+{
+	unsigned int offset;
+
+	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
+
+	offset = (count & eep->ee_mask) * sizeof (efx_qword_t);
+	EFSYS_MEM_PREFETCH(eep->ee_esmp, offset);
+}
+
+#endif	/* EFSYS_OPT_EV_PREFETCH */
+
 #define	EFX_EV_BATCH	8
 
 			void
@@ -403,10 +420,31 @@ efx_ev_qpoll(
 			offset += sizeof (efx_qword_t);
 		}
 
+#if EFSYS_OPT_EV_PREFETCH && (EFSYS_OPT_EV_PREFETCH_PERIOD > 1)
+		/*
+		 * Prefetch the next batch when we get within PREFETCH_PERIOD
+		 * of a completed batch. If the batch is smaller, then prefetch
+		 * immediately.
+		 */
+		if (total == batch && total < EFSYS_OPT_EV_PREFETCH_PERIOD)
+			EFSYS_MEM_PREFETCH(eep->ee_esmp, offset);
+#endif	/* EFSYS_OPT_EV_PREFETCH */
+
 		/* Process the batch of events */
 		for (index = 0; index < total; ++index) {
 			boolean_t should_abort;
 			uint32_t code;
+
+#if EFSYS_OPT_EV_PREFETCH
+			/* Prefetch if we've now reached the batch period */
+			if (total == batch &&
+			    index + EFSYS_OPT_EV_PREFETCH_PERIOD == total) {
+				offset = (count + batch) & eep->ee_mask;
+				offset *= sizeof (efx_qword_t);
+
+				EFSYS_MEM_PREFETCH(eep->ee_esmp, offset);
+			}
+#endif	/* EFSYS_OPT_EV_PREFETCH */
 
 			EFX_EV_QSTAT_INCR(eep, EV_ALL);
 

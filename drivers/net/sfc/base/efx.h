@@ -1317,6 +1317,15 @@ efx_ev_qpending(
 	__in		efx_evq_t *eep,
 	__in		unsigned int count);
 
+#if EFSYS_OPT_EV_PREFETCH
+
+extern			void
+efx_ev_qprefetch(
+	__in		efx_evq_t *eep,
+	__in		unsigned int count);
+
+#endif	/* EFSYS_OPT_EV_PREFETCH */
+
 extern			void
 efx_ev_qpoll(
 	__in		efx_evq_t *eep,

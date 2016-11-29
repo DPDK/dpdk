@@ -66,6 +66,13 @@
 # endif
 #endif /* EFSYS_OPT_DIAG */
 
+#if EFSYS_OPT_EV_PREFETCH
+/* Support optimized EVQ data access */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "EV_PREFETCH requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_EV_PREFETCH */
+
 #ifdef EFSYS_OPT_FALCON_NIC_CFG_OVERRIDE
 # error "FALCON_NIC_CFG_OVERRIDE is obsolete and is not supported."
 #endif
