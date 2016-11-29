@@ -52,9 +52,18 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
 
 	dev_info->max_rx_queues = sa->rxq_max;
+	dev_info->max_tx_queues = sa->txq_max;
 
 	/* By default packets are dropped if no descriptors are available */
 	dev_info->default_rxconf.rx_drop_en = 1;
+
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM;
+
+	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOVLANOFFL |
+					     ETH_TXQ_FLAGS_NOXSUMSCTP;
 
 	dev_info->rx_desc_lim.nb_max = EFX_RXQ_MAXNDESCS;
 	dev_info->rx_desc_lim.nb_min = EFX_RXQ_MINNDESCS;
@@ -62,6 +71,14 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 * of 2, but rx_desc_lim cannot properly describe that constraint.
 	 */
 	dev_info->rx_desc_lim.nb_align = EFX_RXQ_MINNDESCS;
+
+	dev_info->tx_desc_lim.nb_max = sa->txq_max_entries;
+	dev_info->tx_desc_lim.nb_min = EFX_TXQ_MINNDESCS;
+	/*
+	 * The TXQ hardware requires that the descriptor count is a power
+	 * of 2, but tx_desc_lim cannot properly describe that constraint
+	 */
+	dev_info->tx_desc_lim.nb_align = EFX_TXQ_MINNDESCS;
 }
 
 static int

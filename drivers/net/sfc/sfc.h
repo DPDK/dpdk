@@ -118,6 +118,7 @@ struct sfc_intr {
 
 struct sfc_evq_info;
 struct sfc_rxq_info;
+struct sfc_txq_info;
 
 struct sfc_port {
 	unsigned int			flow_ctrl;
@@ -151,6 +152,8 @@ struct sfc_adapter {
 	unsigned int			rxq_max;
 	unsigned int			txq_max;
 
+	unsigned int			txq_max_entries;
+
 	unsigned int			evq_count;
 	struct sfc_evq_info		*evq_info;
 
@@ -159,6 +162,9 @@ struct sfc_adapter {
 
 	unsigned int			rxq_count;
 	struct sfc_rxq_info		*rxq_info;
+
+	unsigned int			txq_count;
+	struct sfc_txq_info		*txq_info;
 };
 
 /*

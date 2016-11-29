@@ -38,6 +38,7 @@
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
+#include "sfc_tx.h"
 
 
 int
@@ -362,9 +363,16 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_rx_init;
 
+	rc = sfc_tx_init(sa);
+	if (rc != 0)
+		goto fail_tx_init;
+
 	sa->state = SFC_ADAPTER_CONFIGURED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_tx_init:
+	sfc_rx_fini(sa);
 
 fail_rx_init:
 	sfc_port_fini(sa);
@@ -392,6 +400,7 @@ sfc_close(struct sfc_adapter *sa)
 	SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
 	sa->state = SFC_ADAPTER_CLOSING;
 
+	sfc_tx_fini(sa);
 	sfc_rx_fini(sa);
 	sfc_port_fini(sa);
 	sfc_ev_fini(sa);
@@ -438,6 +447,7 @@ int
 sfc_attach(struct sfc_adapter *sa)
 {
 	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(sa->eth_dev);
+	const efx_nic_cfg_t *encp;
 	efx_nic_t *enp;
 	int rc;
 
@@ -487,6 +497,10 @@ sfc_attach(struct sfc_adapter *sa)
 	rc = sfc_estimate_resource_limits(sa);
 	if (rc != 0)
 		goto fail_estimate_rsrc_limits;
+
+	encp = efx_nic_cfg_get(sa->nic);
+	sa->txq_max_entries = encp->enc_txq_max_ndescs;
+	SFC_ASSERT(rte_is_power_of_2(sa->txq_max_entries));
 
 	rc = sfc_intr_attach(sa);
 	if (rc != 0)

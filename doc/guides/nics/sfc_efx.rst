@@ -46,6 +46,8 @@ SFC EFX PMD has support for:
 
 - Link state information
 
+- IPv4/IPv6 TCP/UDP transmit checksum offload
+
 
 Non-supported Features
 ----------------------
