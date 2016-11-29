@@ -1241,6 +1241,88 @@ efx_nic_get_vi_pool(
 	__out		uint32_t *txq_countp);
 
 
+#if EFSYS_OPT_VPD
+
+typedef enum efx_vpd_tag_e {
+	EFX_VPD_ID = 0x02,
+	EFX_VPD_END = 0x0f,
+	EFX_VPD_RO = 0x10,
+	EFX_VPD_RW = 0x11,
+} efx_vpd_tag_t;
+
+typedef uint16_t efx_vpd_keyword_t;
+
+typedef struct efx_vpd_value_s {
+	efx_vpd_tag_t		evv_tag;
+	efx_vpd_keyword_t	evv_keyword;
+	uint8_t			evv_length;
+	uint8_t			evv_value[0x100];
+} efx_vpd_value_t;
+
+
+#define	EFX_VPD_KEYWORD(x, y) ((x) | ((y) << 8))
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_init(
+	__in			efx_nic_t *enp);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_size(
+	__in			efx_nic_t *enp,
+	__out			size_t *sizep);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_read(
+	__in			efx_nic_t *enp,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_verify(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_reinit(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_get(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__inout			efx_vpd_value_t *evvp);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_set(
+	__in			efx_nic_t *enp,
+	__inout_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			efx_vpd_value_t *evvp);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_next(
+	__in			efx_nic_t *enp,
+	__inout_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__out			efx_vpd_value_t *evvp,
+	__inout			unsigned int *contp);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_write(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern				void
+efx_vpd_fini(
+	__in			efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_VPD */
+
 /* NVRAM */
 
 #if EFSYS_OPT_NVRAM

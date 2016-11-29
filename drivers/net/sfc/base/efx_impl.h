@@ -477,6 +477,24 @@ typedef struct efx_nvram_ops_s {
 } efx_nvram_ops_t;
 #endif /* EFSYS_OPT_NVRAM */
 
+#if EFSYS_OPT_VPD
+typedef struct efx_vpd_ops_s {
+	efx_rc_t	(*evpdo_init)(efx_nic_t *);
+	efx_rc_t	(*evpdo_size)(efx_nic_t *, size_t *);
+	efx_rc_t	(*evpdo_read)(efx_nic_t *, caddr_t, size_t);
+	efx_rc_t	(*evpdo_verify)(efx_nic_t *, caddr_t, size_t);
+	efx_rc_t	(*evpdo_reinit)(efx_nic_t *, caddr_t, size_t);
+	efx_rc_t	(*evpdo_get)(efx_nic_t *, caddr_t, size_t,
+					efx_vpd_value_t *);
+	efx_rc_t	(*evpdo_set)(efx_nic_t *, caddr_t, size_t,
+					efx_vpd_value_t *);
+	efx_rc_t	(*evpdo_next)(efx_nic_t *, caddr_t, size_t,
+					efx_vpd_value_t *, unsigned int *);
+	efx_rc_t	(*evpdo_write)(efx_nic_t *, caddr_t, size_t);
+	void		(*evpdo_fini)(efx_nic_t *);
+} efx_vpd_ops_t;
+#endif	/* EFSYS_OPT_VPD */
+
 #if EFSYS_OPT_VPD || EFSYS_OPT_NVRAM
 
 	__checkReturn		efx_rc_t
@@ -591,6 +609,9 @@ struct efx_nic_s {
 	efx_nvram_type_t	en_nvram_locked;
 	const efx_nvram_ops_t	*en_envop;
 #endif	/* EFSYS_OPT_NVRAM */
+#if EFSYS_OPT_VPD
+	const efx_vpd_ops_t	*en_evpdop;
+#endif	/* EFSYS_OPT_VPD */
 #if EFSYS_OPT_RX_SCALE
 	efx_rx_hash_support_t	en_hash_support;
 	efx_rx_scale_support_t	en_rss_support;
@@ -603,6 +624,10 @@ struct efx_nic_s {
 #if EFSYS_OPT_NVRAM || EFSYS_OPT_VPD
 			unsigned int		enu_partn_mask;
 #endif	/* EFSYS_OPT_NVRAM || EFSYS_OPT_VPD */
+#if EFSYS_OPT_VPD
+			caddr_t			enu_svpd;
+			size_t			enu_svpd_length;
+#endif	/* EFSYS_OPT_VPD */
 			int			enu_unused;
 		} siena;
 #endif	/* EFSYS_OPT_SIENA */
@@ -614,6 +639,10 @@ struct efx_nic_s {
 			int			ena_vi_base;
 			int			ena_vi_count;
 			int			ena_vi_shift;
+#if EFSYS_OPT_VPD
+			caddr_t			ena_svpd;
+			size_t			ena_svpd_length;
+#endif	/* EFSYS_OPT_VPD */
 			efx_piobuf_handle_t	ena_piobuf_handle[EF10_MAX_PIOBUF_NBUFS];
 			uint32_t		ena_piobuf_count;
 			uint32_t		ena_pio_alloc_map[EF10_MAX_PIOBUF_NBUFS];
@@ -1019,6 +1048,55 @@ efx_phy_probe(
 extern			void
 efx_phy_unprobe(
 	__in		efx_nic_t *enp);
+
+#if EFSYS_OPT_VPD
+
+/* VPD utility functions */
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_hunk_length(
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__out			size_t *lengthp);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_hunk_verify(
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__out_opt		boolean_t *cksummedp);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_hunk_reinit(
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			boolean_t wantpid);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_hunk_get(
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			efx_vpd_tag_t tag,
+	__in			efx_vpd_keyword_t keyword,
+	__out			unsigned int *payloadp,
+	__out			uint8_t *paylenp);
+
+extern	__checkReturn			efx_rc_t
+efx_vpd_hunk_next(
+	__in_bcount(size)		caddr_t data,
+	__in				size_t size,
+	__out				efx_vpd_tag_t *tagp,
+	__out				efx_vpd_keyword_t *keyword,
+	__out_opt			unsigned int *payloadp,
+	__out_opt			uint8_t *paylenp,
+	__inout				unsigned int *contp);
+
+extern	__checkReturn		efx_rc_t
+efx_vpd_hunk_set(
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			efx_vpd_value_t *evvp);
+
+#endif	/* EFSYS_OPT_VPD */
 
 #if EFSYS_OPT_DIAG
 

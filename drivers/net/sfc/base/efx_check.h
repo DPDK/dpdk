@@ -290,6 +290,13 @@
 # error "STAT_NAME is obsolete (replaced by NAMES)."
 #endif
 
+#if EFSYS_OPT_VPD
+/* Support PCI Vital Product Data (VPD) */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "VPD requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_VPD */
+
 #ifdef EFSYS_OPT_WOL
 # error "WOL is obsolete and is not supported"
 #endif /* EFSYS_OPT_WOL */

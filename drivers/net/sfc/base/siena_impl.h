@@ -232,6 +232,69 @@ siena_nvram_partn_set_version(
 
 #endif	/* EFSYS_OPT_NVRAM */
 
+#if EFSYS_OPT_VPD
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_init(
+	__in			efx_nic_t *enp);
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_size(
+	__in			efx_nic_t *enp,
+	__out			size_t *sizep);
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_read(
+	__in			efx_nic_t *enp,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_verify(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_reinit(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_get(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__inout			efx_vpd_value_t *evvp);
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_set(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			efx_vpd_value_t *evvp);
+
+extern	__checkReturn		efx_rc_t
+siena_vpd_next(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__out			efx_vpd_value_t *evvp,
+	__inout			unsigned int *contp);
+
+extern __checkReturn		efx_rc_t
+siena_vpd_write(
+	__in			efx_nic_t *enp,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern				void
+siena_vpd_fini(
+	__in			efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_VPD */
+
 typedef struct siena_link_state_s {
 	uint32_t		sls_adv_cap_mask;
 	uint32_t		sls_lp_cap_mask;
