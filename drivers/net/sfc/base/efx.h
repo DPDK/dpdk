@@ -2351,6 +2351,151 @@ efx_hash_bytes(
 	__in			size_t length,
 	__in			uint32_t init);
 
+#if EFSYS_OPT_LICENSING
+
+/* LICENSING */
+
+typedef struct efx_key_stats_s {
+	uint32_t	eks_valid;
+	uint32_t	eks_invalid;
+	uint32_t	eks_blacklisted;
+	uint32_t	eks_unverifiable;
+	uint32_t	eks_wrong_node;
+	uint32_t	eks_licensed_apps_lo;
+	uint32_t	eks_licensed_apps_hi;
+	uint32_t	eks_licensed_features_lo;
+	uint32_t	eks_licensed_features_hi;
+} efx_key_stats_t;
+
+extern	__checkReturn		efx_rc_t
+efx_lic_init(
+	__in			efx_nic_t *enp);
+
+extern				void
+efx_lic_fini(
+	__in			efx_nic_t *enp);
+
+extern	__checkReturn	boolean_t
+efx_lic_check_support(
+	__in			efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+efx_lic_update_licenses(
+	__in		efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+efx_lic_get_key_stats(
+	__in		efx_nic_t *enp,
+	__out		efx_key_stats_t *ksp);
+
+extern	__checkReturn	efx_rc_t
+efx_lic_app_state(
+	__in		efx_nic_t *enp,
+	__in		uint64_t app_id,
+	__out		boolean_t *licensedp);
+
+extern	__checkReturn	efx_rc_t
+efx_lic_get_id(
+	__in		efx_nic_t *enp,
+	__in		size_t buffer_size,
+	__out		uint32_t *typep,
+	__out		size_t *lengthp,
+	__out_opt	uint8_t *bufferp);
+
+
+extern	__checkReturn		efx_rc_t
+efx_lic_find_start(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__out			uint32_t *startp
+	);
+
+extern	__checkReturn		efx_rc_t
+efx_lic_find_end(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__out			uint32_t *endp
+	);
+
+extern	__checkReturn	__success(return != B_FALSE)	boolean_t
+efx_lic_find_key(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__out			uint32_t *startp,
+	__out			uint32_t *lengthp
+	);
+
+extern	__checkReturn	__success(return != B_FALSE)	boolean_t
+efx_lic_validate_key(
+	__in			efx_nic_t *enp,
+	__in_bcount(length)	caddr_t keyp,
+	__in			uint32_t length
+	);
+
+extern	__checkReturn		efx_rc_t
+efx_lic_read_key(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__in			uint32_t length,
+	__out_bcount_part(key_max_size, *lengthp)
+				caddr_t keyp,
+	__in			size_t key_max_size,
+	__out			uint32_t *lengthp
+	);
+
+extern	__checkReturn		efx_rc_t
+efx_lic_write_key(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__in_bcount(length)	caddr_t keyp,
+	__in			uint32_t length,
+	__out			uint32_t *lengthp
+	);
+
+	__checkReturn		efx_rc_t
+efx_lic_delete_key(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__in			uint32_t length,
+	__in			uint32_t end,
+	__out			uint32_t *deltap
+	);
+
+extern	__checkReturn		efx_rc_t
+efx_lic_create_partition(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size
+	);
+
+extern	__checkReturn		efx_rc_t
+efx_lic_finish_partition(
+	__in			efx_nic_t *enp,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size
+	);
+
+#endif	/* EFSYS_OPT_LICENSING */
+
 
 
 #ifdef	__cplusplus

@@ -319,6 +319,16 @@
 # endif
 #endif /* EFSYS_OPT_BIST */
 
+#if EFSYS_OPT_LICENSING
+/* Support MCDI licensing API */
+# if !EFSYS_OPT_MCDI
+#  error "LICENSING requires MCDI"
+# endif
+# if !EFSYS_HAS_UINT64
+#  error "LICENSING requires UINT64"
+# endif
+#endif /* EFSYS_OPT_LICENSING */
+
 #if EFSYS_OPT_ALLOW_UNCONFIGURED_NIC
 /* Support adapters with missing static config (for factory use only) */
 # if !EFSYS_OPT_MEDFORD
