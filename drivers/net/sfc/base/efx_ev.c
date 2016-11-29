@@ -31,7 +31,15 @@
 #include "efx.h"
 #include "efx_impl.h"
 
+#if EFSYS_OPT_QSTATS
+#define	EFX_EV_QSTAT_INCR(_eep, _stat)					\
+	do {								\
+		(_eep)->ee_stat[_stat]++;				\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+#else
 #define	EFX_EV_QSTAT_INCR(_eep, _stat)
+#endif
 
 #define	EFX_EV_PRESENT(_qword)						\
 	(EFX_QWORD_FIELD((_qword), EFX_DWORD_0) != 0xffffffff &&	\
@@ -79,6 +87,14 @@ siena_ev_qmoderate(
 	__in		efx_evq_t *eep,
 	__in		unsigned int us);
 
+#if EFSYS_OPT_QSTATS
+static			void
+siena_ev_qstats_update(
+	__in				efx_evq_t *eep,
+	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat);
+
+#endif
+
 #endif /* EFSYS_OPT_SIENA */
 
 #if EFSYS_OPT_SIENA
@@ -90,6 +106,9 @@ static const efx_ev_ops_t	__efx_ev_siena_ops = {
 	siena_ev_qprime,			/* eevo_qprime */
 	siena_ev_qpost,				/* eevo_qpost */
 	siena_ev_qmoderate,			/* eevo_qmoderate */
+#if EFSYS_OPT_QSTATS
+	siena_ev_qstats_update,			/* eevo_qstats_update */
+#endif
 };
 #endif /* EFSYS_OPT_SIENA */
 
@@ -102,6 +121,9 @@ static const efx_ev_ops_t	__efx_ev_ef10_ops = {
 	ef10_ev_qprime,				/* eevo_qprime */
 	ef10_ev_qpost,				/* eevo_qpost */
 	ef10_ev_qmoderate,			/* eevo_qmoderate */
+#if EFSYS_OPT_QSTATS
+	ef10_ev_qstats_update,			/* eevo_qstats_update */
+#endif
 };
 #endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
 
@@ -523,6 +545,22 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
+
+#if EFSYS_OPT_QSTATS
+					void
+efx_ev_qstats_update(
+	__in				efx_evq_t *eep,
+	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat)
+
+{	efx_nic_t *enp = eep->ee_enp;
+	const efx_ev_ops_t *eevop = enp->en_eevop;
+
+	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
+
+	eevop->eevo_qstats_update(eep, stat);
+}
+
+#endif	/* EFSYS_OPT_QSTATS */
 
 #if EFSYS_OPT_SIENA
 
@@ -1220,7 +1258,81 @@ fail1:
 
 #endif /* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_QSTATS
+#if EFSYS_OPT_NAMES
+/* START MKCONFIG GENERATED EfxEventQueueStatNamesBlock c0f3bc5083b40532 */
+static const char * const __efx_ev_qstat_name[] = {
+	"all",
+	"rx",
+	"rx_ok",
+	"rx_frm_trunc",
+	"rx_tobe_disc",
+	"rx_pause_frm_err",
+	"rx_buf_owner_id_err",
+	"rx_ipv4_hdr_chksum_err",
+	"rx_tcp_udp_chksum_err",
+	"rx_eth_crc_err",
+	"rx_ip_frag_err",
+	"rx_mcast_pkt",
+	"rx_mcast_hash_match",
+	"rx_tcp_ipv4",
+	"rx_tcp_ipv6",
+	"rx_udp_ipv4",
+	"rx_udp_ipv6",
+	"rx_other_ipv4",
+	"rx_other_ipv6",
+	"rx_non_ip",
+	"rx_batch",
+	"tx",
+	"tx_wq_ff_full",
+	"tx_pkt_err",
+	"tx_pkt_too_big",
+	"tx_unexpected",
+	"global",
+	"global_mnt",
+	"driver",
+	"driver_srm_upd_done",
+	"driver_tx_descq_fls_done",
+	"driver_rx_descq_fls_done",
+	"driver_rx_descq_fls_failed",
+	"driver_rx_dsc_error",
+	"driver_tx_dsc_error",
+	"drv_gen",
+	"mcdi_response",
+};
+/* END MKCONFIG GENERATED EfxEventQueueStatNamesBlock */
+
+		const char *
+efx_ev_qstat_name(
+	__in	efx_nic_t *enp,
+	__in	unsigned int id)
+{
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(id, <, EV_NQSTATS);
+
+	return (__efx_ev_qstat_name[id]);
+}
+#endif	/* EFSYS_OPT_NAMES */
+#endif	/* EFSYS_OPT_QSTATS */
+
 #if EFSYS_OPT_SIENA
+
+#if EFSYS_OPT_QSTATS
+static					void
+siena_ev_qstats_update(
+	__in				efx_evq_t *eep,
+	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat)
+{
+	unsigned int id;
+
+	for (id = 0; id < EV_NQSTATS; id++) {
+		efsys_stat_t *essp = &stat[id];
+
+		EFSYS_STAT_INCR(essp, eep->ee_stat[id]);
+		eep->ee_stat[id] = 0;
+	}
+}
+#endif	/* EFSYS_OPT_QSTATS */
 
 static		void
 siena_ev_qdestroy(

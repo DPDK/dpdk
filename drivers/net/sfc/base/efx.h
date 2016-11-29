@@ -823,6 +823,54 @@ efx_sram_buf_tbl_clear(
 
 typedef struct efx_evq_s	efx_evq_t;
 
+#if EFSYS_OPT_QSTATS
+
+/* START MKCONFIG GENERATED EfxHeaderEventQueueBlock 6f3843f5fe7cc843 */
+typedef enum efx_ev_qstat_e {
+	EV_ALL,
+	EV_RX,
+	EV_RX_OK,
+	EV_RX_FRM_TRUNC,
+	EV_RX_TOBE_DISC,
+	EV_RX_PAUSE_FRM_ERR,
+	EV_RX_BUF_OWNER_ID_ERR,
+	EV_RX_IPV4_HDR_CHKSUM_ERR,
+	EV_RX_TCP_UDP_CHKSUM_ERR,
+	EV_RX_ETH_CRC_ERR,
+	EV_RX_IP_FRAG_ERR,
+	EV_RX_MCAST_PKT,
+	EV_RX_MCAST_HASH_MATCH,
+	EV_RX_TCP_IPV4,
+	EV_RX_TCP_IPV6,
+	EV_RX_UDP_IPV4,
+	EV_RX_UDP_IPV6,
+	EV_RX_OTHER_IPV4,
+	EV_RX_OTHER_IPV6,
+	EV_RX_NON_IP,
+	EV_RX_BATCH,
+	EV_TX,
+	EV_TX_WQ_FF_FULL,
+	EV_TX_PKT_ERR,
+	EV_TX_PKT_TOO_BIG,
+	EV_TX_UNEXPECTED,
+	EV_GLOBAL,
+	EV_GLOBAL_MNT,
+	EV_DRIVER,
+	EV_DRIVER_SRM_UPD_DONE,
+	EV_DRIVER_TX_DESCQ_FLS_DONE,
+	EV_DRIVER_RX_DESCQ_FLS_DONE,
+	EV_DRIVER_RX_DESCQ_FLS_FAILED,
+	EV_DRIVER_RX_DSC_ERROR,
+	EV_DRIVER_TX_DSC_ERROR,
+	EV_DRV_GEN,
+	EV_MCDI_RESPONSE,
+	EV_NQSTATS
+} efx_ev_qstat_t;
+
+/* END MKCONFIG GENERATED EfxHeaderEventQueueBlock */
+
+#endif	/* EFSYS_OPT_QSTATS */
+
 extern	__checkReturn	efx_rc_t
 efx_ev_init(
 	__in		efx_nic_t *enp);
@@ -1014,6 +1062,24 @@ efx_ev_qprime(
 	__in		efx_evq_t *eep,
 	__in		unsigned int count);
 
+#if EFSYS_OPT_QSTATS
+
+#if EFSYS_OPT_NAMES
+
+extern		const char *
+efx_ev_qstat_name(
+	__in	efx_nic_t *enp,
+	__in	unsigned int id);
+
+#endif	/* EFSYS_OPT_NAMES */
+
+extern					void
+efx_ev_qstats_update(
+	__in				efx_evq_t *eep,
+	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat);
+
+#endif	/* EFSYS_OPT_QSTATS */
+
 extern		void
 efx_ev_qdestroy(
 	__in	efx_evq_t *eep);
@@ -1105,6 +1171,19 @@ efx_rx_qdestroy(
 /* TX */
 
 typedef struct efx_txq_s	efx_txq_t;
+
+#if EFSYS_OPT_QSTATS
+
+/* START MKCONFIG GENERATED EfxHeaderTransmitQueueBlock 12dff8778598b2db */
+typedef enum efx_tx_qstat_e {
+	TX_POST,
+	TX_POST_PIO,
+	TX_NQSTATS
+} efx_tx_qstat_t;
+
+/* END MKCONFIG GENERATED EfxHeaderTransmitQueueBlock */
+
+#endif	/* EFSYS_OPT_QSTATS */
 
 extern	__checkReturn	efx_rc_t
 efx_tx_init(
@@ -1233,6 +1312,24 @@ efx_tx_qdesc_vlantci_create(
 	__in	efx_txq_t *etp,
 	__in	uint16_t tci,
 	__out	efx_desc_t *edp);
+
+#if EFSYS_OPT_QSTATS
+
+#if EFSYS_OPT_NAMES
+
+extern		const char *
+efx_tx_qstat_name(
+	__in	efx_nic_t *etp,
+	__in	unsigned int id);
+
+#endif	/* EFSYS_OPT_NAMES */
+
+extern					void
+efx_tx_qstats_update(
+	__in				efx_txq_t *etp,
+	__inout_ecount(TX_NQSTATS)	efsys_stat_t *stat);
+
+#endif	/* EFSYS_OPT_QSTATS */
 
 extern		void
 efx_tx_qdestroy(

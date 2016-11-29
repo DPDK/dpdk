@@ -33,7 +33,15 @@
 
 #if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
 
+#if EFSYS_OPT_QSTATS
+#define	EFX_EV_QSTAT_INCR(_eep, _stat)					\
+	do {								\
+		(_eep)->ee_stat[_stat]++;				\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+#else
 #define	EFX_EV_QSTAT_INCR(_eep, _stat)
+#endif
 
 /*
  * Non-interrupting event queue requires interrrupting event queue to
@@ -730,6 +738,23 @@ fail1:
 	return (rc);
 }
 
+
+#if EFSYS_OPT_QSTATS
+			void
+ef10_ev_qstats_update(
+	__in				efx_evq_t *eep,
+	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat)
+{
+	unsigned int id;
+
+	for (id = 0; id < EV_NQSTATS; id++) {
+		efsys_stat_t *essp = &stat[id];
+
+		EFSYS_STAT_INCR(essp, eep->ee_stat[id]);
+		eep->ee_stat[id] = 0;
+	}
+}
+#endif /* EFSYS_OPT_QSTATS */
 
 static	__checkReturn	boolean_t
 ef10_ev_rx(

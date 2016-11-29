@@ -198,6 +198,13 @@
 # error "PHY_TXC43128 is obsolete and is not supported."
 #endif
 
+#if EFSYS_OPT_QSTATS
+/* Support EVQ/RXQ/TXQ statistics */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "QSTATS requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_QSTATS */
+
 #ifdef EFSYS_OPT_RX_HDR_SPLIT
 # error "RX_HDR_SPLIT is obsolete and is not supported"
 #endif

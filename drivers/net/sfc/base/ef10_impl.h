@@ -105,6 +105,13 @@ ef10_ev_qmoderate(
 	__in		efx_evq_t *eep,
 	__in		unsigned int us);
 
+#if EFSYS_OPT_QSTATS
+			void
+ef10_ev_qstats_update(
+	__in				efx_evq_t *eep,
+	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat);
+#endif /* EFSYS_OPT_QSTATS */
+
 		void
 ef10_ev_rxlabel_init(
 	__in		efx_evq_t *eep,
@@ -489,6 +496,15 @@ ef10_tx_qdesc_vlantci_create(
 	__in	uint16_t vlan_tci,
 	__out	efx_desc_t *edp);
 
+
+#if EFSYS_OPT_QSTATS
+
+extern			void
+ef10_tx_qstats_update(
+	__in				efx_txq_t *etp,
+	__inout_ecount(TX_NQSTATS)	efsys_stat_t *stat);
+
+#endif /* EFSYS_OPT_QSTATS */
 
 typedef uint32_t	efx_piobuf_handle_t;
 

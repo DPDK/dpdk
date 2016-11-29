@@ -97,6 +97,9 @@ typedef struct efx_ev_ops_s {
 	efx_rc_t	(*eevo_qprime)(efx_evq_t *, unsigned int);
 	void		(*eevo_qpost)(efx_evq_t *, uint16_t);
 	efx_rc_t	(*eevo_qmoderate)(efx_evq_t *, unsigned int);
+#if EFSYS_OPT_QSTATS
+	void		(*eevo_qstats_update)(efx_evq_t *, efsys_stat_t *);
+#endif
 } efx_ev_ops_t;
 
 typedef struct efx_tx_ops_s {
@@ -136,6 +139,10 @@ typedef struct efx_tx_ops_s {
 						efx_desc_t *, int);
 	void		(*etxo_qdesc_vlantci_create)(efx_txq_t *, uint16_t,
 						efx_desc_t *);
+#if EFSYS_OPT_QSTATS
+	void		(*etxo_qstats_update)(efx_txq_t *,
+					      efsys_stat_t *);
+#endif
 } efx_tx_ops_t;
 
 typedef struct efx_rx_ops_s {
@@ -479,6 +486,9 @@ struct efx_evq_s {
 	unsigned int			ee_index;
 	unsigned int			ee_mask;
 	efsys_mem_t			*ee_esmp;
+#if EFSYS_OPT_QSTATS
+	uint32_t			ee_stat[EV_NQSTATS];
+#endif	/* EFSYS_OPT_QSTATS */
 
 	efx_ev_handler_t		ee_rx;
 	efx_ev_handler_t		ee_tx;
@@ -523,6 +533,9 @@ struct efx_txq_s {
 	uint32_t			et_pio_offset;
 	size_t				et_pio_size;
 #endif
+#if EFSYS_OPT_QSTATS
+	uint32_t			et_stat[TX_NQSTATS];
+#endif	/* EFSYS_OPT_QSTATS */
 };
 
 #define	EFX_TXQ_MAGIC	0x05092005

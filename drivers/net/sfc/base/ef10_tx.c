@@ -34,7 +34,15 @@
 
 #if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
 
+#if EFSYS_OPT_QSTATS
+#define	EFX_TX_QSTAT_INCR(_etp, _stat)					\
+	do {								\
+		(_etp)->et_stat[_stat]++;				\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+#else
 #define	EFX_TX_QSTAT_INCR(_etp, _stat)
+#endif
 
 static	__checkReturn	efx_rc_t
 efx_mcdi_init_txq(
@@ -679,5 +687,23 @@ ef10_tx_qenable(
 	_NOTE(ARGUNUSED(etp))
 	/* FIXME */
 }
+
+#if EFSYS_OPT_QSTATS
+			void
+ef10_tx_qstats_update(
+	__in				efx_txq_t *etp,
+	__inout_ecount(TX_NQSTATS)	efsys_stat_t *stat)
+{
+	unsigned int id;
+
+	for (id = 0; id < TX_NQSTATS; id++) {
+		efsys_stat_t *essp = &stat[id];
+
+		EFSYS_STAT_INCR(essp, etp->et_stat[id]);
+		etp->et_stat[id] = 0;
+	}
+}
+
+#endif /* EFSYS_OPT_QSTATS */
 
 #endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */

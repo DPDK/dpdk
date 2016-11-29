@@ -31,7 +31,15 @@
 #include "efx.h"
 #include "efx_impl.h"
 
+#if EFSYS_OPT_QSTATS
+#define	EFX_TX_QSTAT_INCR(_etp, _stat)					\
+	do {								\
+		(_etp)->et_stat[_stat]++;				\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+#else
 #define	EFX_TX_QSTAT_INCR(_etp, _stat)
+#endif
 
 #if EFSYS_OPT_SIENA
 
@@ -103,6 +111,13 @@ siena_tx_qdesc_dma_create(
 	__in	boolean_t eop,
 	__out	efx_desc_t *edp);
 
+#if EFSYS_OPT_QSTATS
+static			void
+siena_tx_qstats_update(
+	__in				efx_txq_t *etp,
+	__inout_ecount(TX_NQSTATS)	efsys_stat_t *stat);
+#endif
+
 #endif /* EFSYS_OPT_SIENA */
 
 
@@ -126,6 +141,9 @@ static const efx_tx_ops_t	__efx_tx_siena_ops = {
 	NULL,					/* etxo_qdesc_tso_create */
 	NULL,					/* etxo_qdesc_tso2_create */
 	NULL,					/* etxo_qdesc_vlantci_create */
+#if EFSYS_OPT_QSTATS
+	siena_tx_qstats_update,			/* etxo_qstats_update */
+#endif
 };
 #endif /* EFSYS_OPT_SIENA */
 
@@ -149,6 +167,9 @@ static const efx_tx_ops_t	__efx_tx_hunt_ops = {
 	ef10_tx_qdesc_tso_create,		/* etxo_qdesc_tso_create */
 	ef10_tx_qdesc_tso2_create,		/* etxo_qdesc_tso2_create */
 	ef10_tx_qdesc_vlantci_create,		/* etxo_qdesc_vlantci_create */
+#if EFSYS_OPT_QSTATS
+	ef10_tx_qstats_update,			/* etxo_qstats_update */
+#endif
 };
 #endif /* EFSYS_OPT_HUNTINGTON */
 
@@ -172,6 +193,9 @@ static const efx_tx_ops_t	__efx_tx_medford_ops = {
 	NULL,					/* etxo_qdesc_tso_create */
 	ef10_tx_qdesc_tso2_create,		/* etxo_qdesc_tso2_create */
 	ef10_tx_qdesc_vlantci_create,		/* etxo_qdesc_vlantci_create */
+#if EFSYS_OPT_QSTATS
+	ef10_tx_qstats_update,			/* etxo_qstats_update */
+#endif
 };
 #endif /* EFSYS_OPT_MEDFORD */
 
@@ -619,6 +643,22 @@ efx_tx_qdesc_vlantci_create(
 }
 
 
+#if EFSYS_OPT_QSTATS
+			void
+efx_tx_qstats_update(
+	__in				efx_txq_t *etp,
+	__inout_ecount(TX_NQSTATS)	efsys_stat_t *stat)
+{
+	efx_nic_t *enp = etp->et_enp;
+	const efx_tx_ops_t *etxop = enp->en_etxop;
+
+	EFSYS_ASSERT3U(etp->et_magic, ==, EFX_TXQ_MAGIC);
+
+	etxop->etxo_qstats_update(etp, stat);
+}
+#endif
+
+
 #if EFSYS_OPT_SIENA
 
 static	__checkReturn	efx_rc_t
@@ -983,7 +1023,47 @@ siena_tx_qdesc_dma_create(
 
 #endif /* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_QSTATS
+#if EFSYS_OPT_NAMES
+/* START MKCONFIG GENERATED EfxTransmitQueueStatNamesBlock 2866874ecd7a363b */
+static const char * const __efx_tx_qstat_name[] = {
+	"post",
+	"post_pio",
+};
+/* END MKCONFIG GENERATED EfxTransmitQueueStatNamesBlock */
+
+		const char *
+efx_tx_qstat_name(
+	__in	efx_nic_t *enp,
+	__in	unsigned int id)
+{
+	_NOTE(ARGUNUSED(enp))
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(id, <, TX_NQSTATS);
+
+	return (__efx_tx_qstat_name[id]);
+}
+#endif	/* EFSYS_OPT_NAMES */
+#endif /* EFSYS_OPT_QSTATS */
+
 #if EFSYS_OPT_SIENA
+
+#if EFSYS_OPT_QSTATS
+static					void
+siena_tx_qstats_update(
+	__in				efx_txq_t *etp,
+	__inout_ecount(TX_NQSTATS)	efsys_stat_t *stat)
+{
+	unsigned int id;
+
+	for (id = 0; id < TX_NQSTATS; id++) {
+		efsys_stat_t *essp = &stat[id];
+
+		EFSYS_STAT_INCR(essp, etp->et_stat[id]);
+		etp->et_stat[id] = 0;
+	}
+}
+#endif	/* EFSYS_OPT_QSTATS */
 
 static		void
 siena_tx_qdestroy(
