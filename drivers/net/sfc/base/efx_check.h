@@ -45,6 +45,13 @@
 # error "FALCON is obsolete and is not supported."
 #endif
 
+#if EFSYS_OPT_BOOTCFG
+/* Support NVRAM based boot config */
+# if !EFSYS_OPT_NVRAM
+#  error "BOOTCFG requires NVRAM"
+# endif
+#endif /* EFSYS_OPT_BOOTCFG */
+
 #if EFSYS_OPT_CHECK_REG
 /* Verify chip implements accessed registers */
 # if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
