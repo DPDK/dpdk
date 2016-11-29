@@ -82,6 +82,35 @@ sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp)
 	memset(esmp, 0, sizeof(*esmp));
 }
 
+int
+sfc_configure(struct sfc_adapter *sa)
+{
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
+	sa->state = SFC_ADAPTER_CONFIGURING;
+
+	sa->state = SFC_ADAPTER_CONFIGURED;
+	sfc_log_init(sa, "done");
+	return 0;
+}
+
+void
+sfc_close(struct sfc_adapter *sa)
+{
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
+	sa->state = SFC_ADAPTER_CLOSING;
+
+	sa->state = SFC_ADAPTER_INITIALIZED;
+	sfc_log_init(sa, "done");
+}
+
 static int
 sfc_mem_bar_init(struct sfc_adapter *sa)
 {

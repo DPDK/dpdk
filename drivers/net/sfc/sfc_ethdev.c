@@ -49,7 +49,65 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 }
 
+static int
+sfc_dev_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_dev_data *dev_data = dev->data;
+	struct sfc_adapter *sa = dev_data->dev_private;
+	int rc;
+
+	sfc_log_init(sa, "entry n_rxq=%u n_txq=%u",
+		     dev_data->nb_rx_queues, dev_data->nb_tx_queues);
+
+	sfc_adapter_lock(sa);
+	switch (sa->state) {
+	case SFC_ADAPTER_CONFIGURED:
+		sfc_close(sa);
+		SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
+		/* FALLTHROUGH */
+	case SFC_ADAPTER_INITIALIZED:
+		rc = sfc_configure(sa);
+		break;
+	default:
+		sfc_err(sa, "unexpected adapter state %u to configure",
+			sa->state);
+		rc = EINVAL;
+		break;
+	}
+	sfc_adapter_unlock(sa);
+
+	sfc_log_init(sa, "done %d", rc);
+	SFC_ASSERT(rc >= 0);
+	return -rc;
+}
+
+static void
+sfc_dev_close(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	sfc_log_init(sa, "entry");
+
+	sfc_adapter_lock(sa);
+	switch (sa->state) {
+	case SFC_ADAPTER_CONFIGURED:
+		sfc_close(sa);
+		SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
+		/* FALLTHROUGH */
+	case SFC_ADAPTER_INITIALIZED:
+		break;
+	default:
+		sfc_err(sa, "unexpected adapter state %u on close", sa->state);
+		break;
+	}
+	sfc_adapter_unlock(sa);
+
+	sfc_log_init(sa, "done");
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
+	.dev_configure			= sfc_dev_configure,
+	.dev_close			= sfc_dev_close,
 	.dev_infos_get			= sfc_dev_infos_get,
 };
 

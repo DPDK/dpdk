@@ -53,11 +53,28 @@ extern "C" {
  *	V			|
  * +---------------+------------+
  * |  INITIALIZED  |
+ * +---------------+<-----------+
+ *	|.dev_configure		|
+ *	V			|
+ * +---------------+		|
+ * |  CONFIGURING  |------------^
+ * +---------------+ failed	|
+ *	|success		|
+ *	|		+---------------+
+ *	|		|    CLOSING    |
+ *	|		+---------------+
+ *	|			^
+ *	V			|.dev_close
+ * +---------------+------------+
+ * |  CONFIGURED   |
  * +---------------+
  */
 enum sfc_adapter_state {
 	SFC_ADAPTER_UNINITIALIZED = 0,
 	SFC_ADAPTER_INITIALIZED,
+	SFC_ADAPTER_CONFIGURING,
+	SFC_ADAPTER_CONFIGURED,
+	SFC_ADAPTER_CLOSING,
 
 	SFC_ADAPTER_NSTATES
 };
@@ -81,11 +98,10 @@ struct sfc_mcdi {
 /* Adapter private data */
 struct sfc_adapter {
 	/*
-	 * PMD setup and configuration is not thread safe.
-	 * Since it is not performance sensitive, it is better to guarantee
-	 * thread-safety and add device level lock.
-	 * Adapter control operations which change its state should
-	 * acquire the lock.
+	 * PMD setup and configuration is not thread safe. Since it is not
+	 * performance sensitive, it is better to guarantee thread-safety
+	 * and add device level lock. Adapter control operations which
+	 * change its state should acquire the lock.
 	 */
 	rte_spinlock_t			lock;
 	enum sfc_adapter_state		state;
@@ -148,6 +164,9 @@ void sfc_detach(struct sfc_adapter *sa);
 
 int sfc_mcdi_init(struct sfc_adapter *sa);
 void sfc_mcdi_fini(struct sfc_adapter *sa);
+
+int sfc_configure(struct sfc_adapter *sa);
+void sfc_close(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }
