@@ -1381,6 +1381,13 @@ extern		void
 efx_rx_fini(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_RX_SCATTER
+	__checkReturn	efx_rc_t
+efx_rx_scatter_enable(
+	__in		efx_nic_t *enp,
+	__in		unsigned int buf_size);
+#endif	/* EFSYS_OPT_RX_SCATTER */
+
 extern	__checkReturn	efx_rc_t
 efx_pseudo_hdr_pkt_length_get(
 	__in		efx_rxq_t *erp,

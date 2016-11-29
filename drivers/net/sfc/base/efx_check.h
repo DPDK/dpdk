@@ -244,6 +244,13 @@
 # error "RX_HDR_SPLIT is obsolete and is not supported"
 #endif
 
+#if EFSYS_OPT_RX_SCATTER
+/* Support receive scatter DMA */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "RX_SCATTER requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_RX_SCATTER */
+
 #ifdef EFSYS_OPT_STAT_NAME
 # error "STAT_NAME is obsolete (replaced by NAMES)."
 #endif

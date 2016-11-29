@@ -159,6 +159,17 @@ ef10_rx_init(
 	return (0);
 }
 
+#if EFSYS_OPT_RX_SCATTER
+	__checkReturn	efx_rc_t
+ef10_rx_scatter_enable(
+	__in		efx_nic_t *enp,
+	__in		unsigned int buf_size)
+{
+	_NOTE(ARGUNUSED(enp, buf_size))
+	return (0);
+}
+#endif	/* EFSYS_OPT_RX_SCATTER */
+
 
 /*
  * EF10 RX pseudo-header

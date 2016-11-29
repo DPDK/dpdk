@@ -42,6 +42,13 @@ static			void
 siena_rx_fini(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_RX_SCATTER
+static	__checkReturn	efx_rc_t
+siena_rx_scatter_enable(
+	__in		efx_nic_t *enp,
+	__in		unsigned int buf_size);
+#endif /* EFSYS_OPT_RX_SCATTER */
+
 static	__checkReturn	efx_rc_t
 siena_rx_prefix_pktlen(
 	__in		efx_nic_t *enp,
@@ -94,6 +101,9 @@ siena_rx_qdestroy(
 static const efx_rx_ops_t __efx_rx_siena_ops = {
 	siena_rx_init,				/* erxo_init */
 	siena_rx_fini,				/* erxo_fini */
+#if EFSYS_OPT_RX_SCATTER
+	siena_rx_scatter_enable,		/* erxo_scatter_enable */
+#endif
 	siena_rx_prefix_pktlen,			/* erxo_prefix_pktlen */
 	siena_rx_qpost,				/* erxo_qpost */
 	siena_rx_qpush,				/* erxo_qpush */
@@ -108,6 +118,9 @@ static const efx_rx_ops_t __efx_rx_siena_ops = {
 static const efx_rx_ops_t __efx_rx_ef10_ops = {
 	ef10_rx_init,				/* erxo_init */
 	ef10_rx_fini,				/* erxo_fini */
+#if EFSYS_OPT_RX_SCATTER
+	ef10_rx_scatter_enable,			/* erxo_scatter_enable */
+#endif
 	ef10_rx_prefix_pktlen,			/* erxo_prefix_pktlen */
 	ef10_rx_qpost,				/* erxo_qpost */
 	ef10_rx_qpush,				/* erxo_qpush */
@@ -201,6 +214,29 @@ efx_rx_fini(
 	enp->en_erxop = NULL;
 	enp->en_mod_flags &= ~EFX_MOD_RX;
 }
+
+#if EFSYS_OPT_RX_SCATTER
+	__checkReturn	efx_rc_t
+efx_rx_scatter_enable(
+	__in		efx_nic_t *enp,
+	__in		unsigned int buf_size)
+{
+	const efx_rx_ops_t *erxop = enp->en_erxop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_RX);
+
+	if ((rc = erxop->erxo_scatter_enable(enp, buf_size)) != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+#endif	/* EFSYS_OPT_RX_SCATTER */
 
 			void
 efx_rx_qpost(
@@ -373,6 +409,50 @@ siena_rx_init(
 
 	return (0);
 }
+
+#if EFSYS_OPT_RX_SCATTER
+static	__checkReturn	efx_rc_t
+siena_rx_scatter_enable(
+	__in		efx_nic_t *enp,
+	__in		unsigned int buf_size)
+{
+	unsigned int nbuf32;
+	efx_oword_t oword;
+	efx_rc_t rc;
+
+	nbuf32 = buf_size / 32;
+	if ((nbuf32 == 0) ||
+	    (nbuf32 >= (1 << FRF_BZ_RX_USR_BUF_SIZE_WIDTH)) ||
+	    ((buf_size % 32) != 0)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (enp->en_rx_qcount > 0) {
+		rc = EBUSY;
+		goto fail2;
+	}
+
+	/* Set scatter buffer size */
+	EFX_BAR_READO(enp, FR_AZ_RX_CFG_REG, &oword);
+	EFX_SET_OWORD_FIELD(oword, FRF_BZ_RX_USR_BUF_SIZE, nbuf32);
+	EFX_BAR_WRITEO(enp, FR_AZ_RX_CFG_REG, &oword);
+
+	/* Enable scatter for packets not matching a filter */
+	EFX_BAR_READO(enp, FR_AZ_RX_FILTER_CTL_REG, &oword);
+	EFX_SET_OWORD_FIELD(oword, FRF_BZ_SCATTER_ENBL_NO_MATCH_Q, 1);
+	EFX_BAR_WRITEO(enp, FR_AZ_RX_FILTER_CTL_REG, &oword);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+#endif	/* EFSYS_OPT_RX_SCATTER */
 
 
 #define	EFX_RX_LFSR_HASH(_enp, _insert)					\
@@ -622,6 +702,16 @@ siena_rx_qcreate(
 	case EFX_RXQ_TYPE_DEFAULT:
 		jumbo = B_FALSE;
 		break;
+
+#if EFSYS_OPT_RX_SCATTER
+	case EFX_RXQ_TYPE_SCATTER:
+		if (enp->en_family < EFX_FAMILY_SIENA) {
+			rc = EINVAL;
+			goto fail4;
+		}
+		jumbo = B_TRUE;
+		break;
+#endif	/* EFSYS_OPT_RX_SCATTER */
 
 	default:
 		rc = EINVAL;

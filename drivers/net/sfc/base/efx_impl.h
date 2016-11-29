@@ -148,6 +148,9 @@ typedef struct efx_tx_ops_s {
 typedef struct efx_rx_ops_s {
 	efx_rc_t	(*erxo_init)(efx_nic_t *);
 	void		(*erxo_fini)(efx_nic_t *);
+#if EFSYS_OPT_RX_SCATTER
+	efx_rc_t	(*erxo_scatter_enable)(efx_nic_t *, unsigned int);
+#endif
 	efx_rc_t	(*erxo_prefix_pktlen)(efx_nic_t *, uint8_t *,
 					      uint16_t *);
 	void		(*erxo_qpost)(efx_rxq_t *, efsys_dma_addr_t *, size_t,
