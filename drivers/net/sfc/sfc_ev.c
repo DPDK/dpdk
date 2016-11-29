@@ -91,7 +91,27 @@ sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 	delta = (stop >= pending_id) ? (stop - pending_id) :
 		(rxq->ptr_mask + 1 - pending_id + stop);
 
-	if (unlikely(delta > rxq->batch_max)) {
+	if (delta == 0) {
+		/*
+		 * Rx event with no new descriptors done and zero length
+		 * is used to abort scattered packet when there is no room
+		 * for the tail.
+		 */
+		if (unlikely(size != 0)) {
+			evq->exception = B_TRUE;
+			sfc_err(evq->sa,
+				"EVQ %u RxQ %u invalid RX abort "
+				"(id=%#x size=%u flags=%#x); needs restart\n",
+				evq->evq_index, sfc_rxq_sw_index(rxq),
+				id, size, flags);
+			goto done;
+		}
+
+		/* Add discard flag to the first fragment */
+		rxq->sw_desc[pending_id].flags |= EFX_DISCARD;
+		/* Remove continue flag from the last fragment */
+		rxq->sw_desc[id].flags &= ~EFX_PKT_CONT;
+	} else if (unlikely(delta > rxq->batch_max)) {
 		evq->exception = B_TRUE;
 
 		sfc_err(evq->sa,

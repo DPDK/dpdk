@@ -137,6 +137,7 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	unsigned int completed;
 	unsigned int prefix_size = rxq->prefix_size;
 	unsigned int done_pkts = 0;
+	boolean_t discard_next = B_FALSE;
 
 	if (unlikely((rxq->state & SFC_RXQ_RUNNING) == 0))
 		return 0;
@@ -156,7 +157,13 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		m = rxd->mbuf;
 		desc_flags = rxd->flags;
 
+		if (discard_next)
+			goto discard;
+
 		if (desc_flags & (EFX_ADDR_MISMATCH | EFX_DISCARD))
+			goto discard;
+
+		if (desc_flags & EFX_PKT_CONT)
 			goto discard;
 
 		if (desc_flags & EFX_PKT_PREFIX_LEN) {
@@ -182,6 +189,7 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		continue;
 
 discard:
+		discard_next = ((desc_flags & EFX_PKT_CONT) != 0);
 		rte_mempool_put(rxq->refill_mb_pool, m);
 		rxd->mbuf = NULL;
 	}
