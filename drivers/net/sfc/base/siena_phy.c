@@ -298,7 +298,26 @@ siena_phy_reconfigure(
 	req.emr_out_buf = payload;
 	req.emr_out_length = MC_CMD_SET_ID_LED_OUT_LEN;
 
+#if EFSYS_OPT_PHY_LED_CONTROL
+	switch (epp->ep_phy_led_mode) {
+	case EFX_PHY_LED_DEFAULT:
+		led_mode = MC_CMD_LED_DEFAULT;
+		break;
+	case EFX_PHY_LED_OFF:
+		led_mode = MC_CMD_LED_OFF;
+		break;
+	case EFX_PHY_LED_ON:
+		led_mode = MC_CMD_LED_ON;
+		break;
+	default:
+		EFSYS_ASSERT(0);
+		led_mode = MC_CMD_LED_DEFAULT;
+	}
+
+	MCDI_IN_SET_DWORD(req, SET_ID_LED_IN_STATE, led_mode);
+#else
 	MCDI_IN_SET_DWORD(req, SET_ID_LED_IN_STATE, MC_CMD_LED_DEFAULT);
+#endif	/* EFSYS_OPT_PHY_LED_CONTROL */
 
 	efx_mcdi_execute(enp, &req);
 

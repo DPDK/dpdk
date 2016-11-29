@@ -132,6 +132,51 @@ efx_phy_verify(
 	return (epop->epo_verify(enp));
 }
 
+#if EFSYS_OPT_PHY_LED_CONTROL
+
+	__checkReturn	efx_rc_t
+efx_phy_led_set(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_led_mode_t mode)
+{
+	efx_nic_cfg_t *encp = (&enp->en_nic_cfg);
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+	uint32_t mask;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
+
+	if (epp->ep_phy_led_mode == mode)
+		goto done;
+
+	mask = (1 << EFX_PHY_LED_DEFAULT);
+	mask |= encp->enc_led_mask;
+
+	if (!((1 << mode) & mask)) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	EFSYS_ASSERT3U(mode, <, EFX_PHY_LED_NMODES);
+	epp->ep_phy_led_mode = mode;
+
+	if ((rc = epop->epo_reconfigure(enp)) != 0)
+		goto fail2;
+
+done:
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+#endif	/* EFSYS_OPT_PHY_LED_CONTROL */
+
 			void
 efx_phy_adv_cap_get(
 	__in		efx_nic_t *enp,

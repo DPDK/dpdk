@@ -244,6 +244,9 @@ typedef struct efx_port_s {
 #if EFSYS_OPT_PHY_FLAGS
 	uint32_t		ep_phy_flags;
 #endif	/* EFSYS_OPT_PHY_FLAGS */
+#if EFSYS_OPT_PHY_LED_CONTROL
+	efx_phy_led_mode_t	ep_phy_led_mode;
+#endif	/* EFSYS_OPT_PHY_LED_CONTROL */
 	efx_phy_media_type_t	ep_fixed_port_type;
 	efx_phy_media_type_t	ep_module_type;
 	uint32_t		ep_adv_cap_mask;

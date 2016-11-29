@@ -1409,6 +1409,11 @@ efx_mcdi_get_phy_cfg(
 		MCDI_OUT2(req, char, GET_PHY_CFG_OUT_REVISION),
 		MIN(sizeof (encp->enc_phy_revision) - 1,
 		    MC_CMD_GET_PHY_CFG_OUT_REVISION_LEN));
+#if EFSYS_OPT_PHY_LED_CONTROL
+	encp->enc_led_mask = ((1 << EFX_PHY_LED_DEFAULT) |
+			    (1 << EFX_PHY_LED_OFF) |
+			    (1 << EFX_PHY_LED_ON));
+#endif	/* EFSYS_OPT_PHY_LED_CONTROL */
 
 	/* Get the media type of the fixed port, if recognised. */
 	EFX_STATIC_ASSERT(MC_CMD_MEDIA_XAUI == EFX_PHY_MEDIA_XAUI);

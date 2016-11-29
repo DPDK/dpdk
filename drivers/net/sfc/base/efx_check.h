@@ -173,6 +173,13 @@
 # endif
 #endif /* EFSYS_OPT_PHY_FLAGS */
 
+#if EFSYS_OPT_PHY_LED_CONTROL
+/* Support for PHY LED control */
+# if !EFSYS_OPT_SIENA
+#  error "PHY_LED_CONTROL requires SIENA"
+# endif
+#endif /* EFSYS_OPT_PHY_LED_CONTROL */
+
 #ifdef EFSYS_OPT_PHY_NULL
 # error "PHY_NULL is obsolete and is not supported."
 #endif

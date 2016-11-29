@@ -463,6 +463,23 @@ extern	__checkReturn	efx_rc_t
 efx_phy_verify(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_PHY_LED_CONTROL
+
+typedef enum efx_phy_led_mode_e {
+	EFX_PHY_LED_DEFAULT = 0,
+	EFX_PHY_LED_OFF,
+	EFX_PHY_LED_ON,
+	EFX_PHY_LED_FLASH,
+	EFX_PHY_LED_NMODES
+} efx_phy_led_mode_t;
+
+extern	__checkReturn	efx_rc_t
+efx_phy_led_set(
+	__in	efx_nic_t *enp,
+	__in	efx_phy_led_mode_t mode);
+
+#endif	/* EFSYS_OPT_PHY_LED_CONTROL */
+
 extern	__checkReturn	efx_rc_t
 efx_port_init(
 	__in		efx_nic_t *enp);
@@ -745,6 +762,9 @@ typedef struct efx_nic_cfg_s {
 #if EFSYS_OPT_PHY_FLAGS
 	uint32_t		enc_phy_flags_mask;
 #endif	/* EFSYS_OPT_PHY_FLAGS */
+#if EFSYS_OPT_PHY_LED_CONTROL
+	uint32_t		enc_led_mask;
+#endif	/* EFSYS_OPT_PHY_LED_CONTROL */
 #if EFSYS_OPT_PHY_STATS
 	uint64_t		enc_phy_stat_mask;
 #endif	/* EFSYS_OPT_PHY_STATS */
