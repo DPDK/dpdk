@@ -54,6 +54,23 @@
 
 
 
+#if EFSYS_OPT_SIENA
+
+static const efx_mcdi_ops_t	__efx_mcdi_siena_ops = {
+	siena_mcdi_init,		/* emco_init */
+	siena_mcdi_send_request,	/* emco_send_request */
+	siena_mcdi_poll_reboot,		/* emco_poll_reboot */
+	siena_mcdi_poll_response,	/* emco_poll_response */
+	siena_mcdi_read_response,	/* emco_read_response */
+	siena_mcdi_fini,		/* emco_fini */
+	siena_mcdi_feature_supported,	/* emco_feature_supported */
+	siena_mcdi_get_timeout,		/* emco_get_timeout */
+};
+
+#endif	/* EFSYS_OPT_SIENA */
+
+
+
 	__checkReturn	efx_rc_t
 efx_mcdi_init(
 	__in		efx_nic_t *enp,
@@ -66,6 +83,11 @@ efx_mcdi_init(
 	EFSYS_ASSERT3U(enp->en_mod_flags, ==, 0);
 
 	switch (enp->en_family) {
+#if EFSYS_OPT_SIENA
+	case EFX_FAMILY_SIENA:
+		emcop = &__efx_mcdi_siena_ops;
+		break;
+#endif	/* EFSYS_OPT_SIENA */
 
 	default:
 		EFSYS_ASSERT(0);

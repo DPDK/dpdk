@@ -33,6 +33,101 @@
 
 #define	EFX_TX_QSTAT_INCR(_etp, _stat)
 
+#if EFSYS_OPT_SIENA
+
+static	__checkReturn	efx_rc_t
+siena_tx_init(
+	__in		efx_nic_t *enp);
+
+static			void
+siena_tx_fini(
+	__in		efx_nic_t *enp);
+
+static	__checkReturn	efx_rc_t
+siena_tx_qcreate(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index,
+	__in		unsigned int label,
+	__in		efsys_mem_t *esmp,
+	__in		size_t n,
+	__in		uint32_t id,
+	__in		uint16_t flags,
+	__in		efx_evq_t *eep,
+	__in		efx_txq_t *etp,
+	__out		unsigned int *addedp);
+
+static		void
+siena_tx_qdestroy(
+	__in	efx_txq_t *etp);
+
+static	__checkReturn	efx_rc_t
+siena_tx_qpost(
+	__in		efx_txq_t *etp,
+	__in_ecount(n)	efx_buffer_t *eb,
+	__in		unsigned int n,
+	__in		unsigned int completed,
+	__inout		unsigned int *addedp);
+
+static			void
+siena_tx_qpush(
+	__in	efx_txq_t *etp,
+	__in	unsigned int added,
+	__in	unsigned int pushed);
+
+static	__checkReturn	efx_rc_t
+siena_tx_qpace(
+	__in		efx_txq_t *etp,
+	__in		unsigned int ns);
+
+static	__checkReturn	efx_rc_t
+siena_tx_qflush(
+	__in		efx_txq_t *etp);
+
+static			void
+siena_tx_qenable(
+	__in	efx_txq_t *etp);
+
+	__checkReturn	efx_rc_t
+siena_tx_qdesc_post(
+	__in		efx_txq_t *etp,
+	__in_ecount(n)	efx_desc_t *ed,
+	__in		unsigned int n,
+	__in		unsigned int completed,
+	__inout		unsigned int *addedp);
+
+	void
+siena_tx_qdesc_dma_create(
+	__in	efx_txq_t *etp,
+	__in	efsys_dma_addr_t addr,
+	__in	size_t size,
+	__in	boolean_t eop,
+	__out	efx_desc_t *edp);
+
+#endif /* EFSYS_OPT_SIENA */
+
+
+#if EFSYS_OPT_SIENA
+static const efx_tx_ops_t	__efx_tx_siena_ops = {
+	siena_tx_init,				/* etxo_init */
+	siena_tx_fini,				/* etxo_fini */
+	siena_tx_qcreate,			/* etxo_qcreate */
+	siena_tx_qdestroy,			/* etxo_qdestroy */
+	siena_tx_qpost,				/* etxo_qpost */
+	siena_tx_qpush,				/* etxo_qpush */
+	siena_tx_qpace,				/* etxo_qpace */
+	siena_tx_qflush,			/* etxo_qflush */
+	siena_tx_qenable,			/* etxo_qenable */
+	NULL,					/* etxo_qpio_enable */
+	NULL,					/* etxo_qpio_disable */
+	NULL,					/* etxo_qpio_write */
+	NULL,					/* etxo_qpio_post */
+	siena_tx_qdesc_post,			/* etxo_qdesc_post */
+	siena_tx_qdesc_dma_create,		/* etxo_qdesc_dma_create */
+	NULL,					/* etxo_qdesc_tso_create */
+	NULL,					/* etxo_qdesc_tso2_create */
+	NULL,					/* etxo_qdesc_vlantci_create */
+};
+#endif /* EFSYS_OPT_SIENA */
 
 	__checkReturn	efx_rc_t
 efx_tx_init(
@@ -55,6 +150,11 @@ efx_tx_init(
 	}
 
 	switch (enp->en_family) {
+#if EFSYS_OPT_SIENA
+	case EFX_FAMILY_SIENA:
+		etxop = &__efx_tx_siena_ops;
+		break;
+#endif /* EFSYS_OPT_SIENA */
 
 	default:
 		EFSYS_ASSERT(0);
@@ -461,3 +561,391 @@ efx_tx_qdesc_vlantci_create(
 }
 
 
+#if EFSYS_OPT_SIENA
+
+static	__checkReturn	efx_rc_t
+siena_tx_init(
+	__in		efx_nic_t *enp)
+{
+	efx_oword_t oword;
+
+	/*
+	 * Disable the timer-based TX DMA backoff and allow TX DMA to be
+	 * controlled by the RX FIFO fill level (although always allow a
+	 * minimal trickle).
+	 */
+	EFX_BAR_READO(enp, FR_AZ_TX_RESERVED_REG, &oword);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_RX_SPACER, 0xfe);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_RX_SPACER_EN, 1);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_ONE_PKT_PER_Q, 1);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_PUSH_EN, 0);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_DIS_NON_IP_EV, 1);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_PREF_THRESHOLD, 2);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_PREF_WD_TMR, 0x3fffff);
+
+	/*
+	 * Filter all packets less than 14 bytes to avoid parsing
+	 * errors.
+	 */
+	EFX_SET_OWORD_FIELD(oword, FRF_BZ_TX_FLUSH_MIN_LEN_EN, 1);
+	EFX_BAR_WRITEO(enp, FR_AZ_TX_RESERVED_REG, &oword);
+
+	/*
+	 * Do not set TX_NO_EOP_DISC_EN, since it limits packets to 16
+	 * descriptors (which is bad).
+	 */
+	EFX_BAR_READO(enp, FR_AZ_TX_CFG_REG, &oword);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_NO_EOP_DISC_EN, 0);
+	EFX_BAR_WRITEO(enp, FR_AZ_TX_CFG_REG, &oword);
+
+	return (0);
+}
+
+#define	EFX_TX_DESC(_etp, _addr, _size, _eop, _added)			\
+	do {								\
+		unsigned int id;					\
+		size_t offset;						\
+		efx_qword_t qword;					\
+									\
+		id = (_added)++ & (_etp)->et_mask;			\
+		offset = id * sizeof (efx_qword_t);			\
+									\
+		EFSYS_PROBE5(tx_post, unsigned int, (_etp)->et_index,	\
+		    unsigned int, id, efsys_dma_addr_t, (_addr),	\
+		    size_t, (_size), boolean_t, (_eop));		\
+									\
+		EFX_POPULATE_QWORD_4(qword,				\
+		    FSF_AZ_TX_KER_CONT, (_eop) ? 0 : 1,			\
+		    FSF_AZ_TX_KER_BYTE_COUNT, (uint32_t)(_size),	\
+		    FSF_AZ_TX_KER_BUF_ADDR_DW0,				\
+		    (uint32_t)((_addr) & 0xffffffff),			\
+		    FSF_AZ_TX_KER_BUF_ADDR_DW1,				\
+		    (uint32_t)((_addr) >> 32));				\
+		EFSYS_MEM_WRITEQ((_etp)->et_esmp, offset, &qword);	\
+									\
+		_NOTE(CONSTANTCONDITION)				\
+	} while (B_FALSE)
+
+static	__checkReturn	efx_rc_t
+siena_tx_qpost(
+	__in		efx_txq_t *etp,
+	__in_ecount(n)	efx_buffer_t *eb,
+	__in		unsigned int n,
+	__in		unsigned int completed,
+	__inout		unsigned int *addedp)
+{
+	unsigned int added = *addedp;
+	unsigned int i;
+	int rc = ENOSPC;
+
+	if (added - completed + n > EFX_TXQ_LIMIT(etp->et_mask + 1))
+		goto fail1;
+
+	for (i = 0; i < n; i++) {
+		efx_buffer_t *ebp = &eb[i];
+		efsys_dma_addr_t start = ebp->eb_addr;
+		size_t size = ebp->eb_size;
+		efsys_dma_addr_t end = start + size;
+
+		/* Fragments must not span 4k boundaries. */
+		EFSYS_ASSERT(P2ROUNDUP(start + 1, 4096) >= end);
+
+		EFX_TX_DESC(etp, start, size, ebp->eb_eop, added);
+	}
+
+	EFX_TX_QSTAT_INCR(etp, TX_POST);
+
+	*addedp = added;
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static		void
+siena_tx_qpush(
+	__in	efx_txq_t *etp,
+	__in	unsigned int added,
+	__in	unsigned int pushed)
+{
+	efx_nic_t *enp = etp->et_enp;
+	uint32_t wptr;
+	efx_dword_t dword;
+	efx_oword_t oword;
+
+	/* Push the populated descriptors out */
+	wptr = added & etp->et_mask;
+
+	EFX_POPULATE_OWORD_1(oword, FRF_AZ_TX_DESC_WPTR, wptr);
+
+	/* Only write the third DWORD */
+	EFX_POPULATE_DWORD_1(dword,
+	    EFX_DWORD_0, EFX_OWORD_FIELD(oword, EFX_DWORD_3));
+
+	/* Guarantee ordering of memory (descriptors) and PIO (doorbell) */
+	EFX_DMA_SYNC_QUEUE_FOR_DEVICE(etp->et_esmp, etp->et_mask + 1,
+	    wptr, pushed & etp->et_mask);
+	EFSYS_PIO_WRITE_BARRIER();
+	EFX_BAR_TBL_WRITED3(enp, FR_BZ_TX_DESC_UPD_REGP0,
+			    etp->et_index, &dword, B_FALSE);
+}
+
+#define	EFX_MAX_PACE_VALUE 20
+
+static	__checkReturn	efx_rc_t
+siena_tx_qpace(
+	__in		efx_txq_t *etp,
+	__in		unsigned int ns)
+{
+	efx_nic_t *enp = etp->et_enp;
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_oword_t oword;
+	unsigned int pace_val;
+	unsigned int timer_period;
+	efx_rc_t rc;
+
+	if (ns == 0) {
+		pace_val = 0;
+	} else {
+		/*
+		 * The pace_val to write into the table is s.t
+		 * ns <= timer_period * (2 ^ pace_val)
+		 */
+		timer_period = 104 / encp->enc_clk_mult;
+		for (pace_val = 1; pace_val <= EFX_MAX_PACE_VALUE; pace_val++) {
+			if ((timer_period << pace_val) >= ns)
+				break;
+		}
+	}
+	if (pace_val > EFX_MAX_PACE_VALUE) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	/* Update the pacing table */
+	EFX_POPULATE_OWORD_1(oword, FRF_AZ_TX_PACE, pace_val);
+	EFX_BAR_TBL_WRITEO(enp, FR_AZ_TX_PACE_TBL, etp->et_index,
+	    &oword, B_TRUE);
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	__checkReturn	efx_rc_t
+siena_tx_qflush(
+	__in		efx_txq_t *etp)
+{
+	efx_nic_t *enp = etp->et_enp;
+	efx_oword_t oword;
+	uint32_t label;
+
+	efx_tx_qpace(etp, 0);
+
+	label = etp->et_index;
+
+	/* Flush the queue */
+	EFX_POPULATE_OWORD_2(oword, FRF_AZ_TX_FLUSH_DESCQ_CMD, 1,
+	    FRF_AZ_TX_FLUSH_DESCQ, label);
+	EFX_BAR_WRITEO(enp, FR_AZ_TX_FLUSH_DESCQ_REG, &oword);
+
+	return (0);
+}
+
+static		void
+siena_tx_qenable(
+	__in	efx_txq_t *etp)
+{
+	efx_nic_t *enp = etp->et_enp;
+	efx_oword_t oword;
+
+	EFX_BAR_TBL_READO(enp, FR_AZ_TX_DESC_PTR_TBL,
+			    etp->et_index, &oword, B_TRUE);
+
+	EFSYS_PROBE5(tx_descq_ptr, unsigned int, etp->et_index,
+	    uint32_t, EFX_OWORD_FIELD(oword, EFX_DWORD_3),
+	    uint32_t, EFX_OWORD_FIELD(oword, EFX_DWORD_2),
+	    uint32_t, EFX_OWORD_FIELD(oword, EFX_DWORD_1),
+	    uint32_t, EFX_OWORD_FIELD(oword, EFX_DWORD_0));
+
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_DC_HW_RPTR, 0);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_DESCQ_HW_RPTR, 0);
+	EFX_SET_OWORD_FIELD(oword, FRF_AZ_TX_DESCQ_EN, 1);
+
+	EFX_BAR_TBL_WRITEO(enp, FR_AZ_TX_DESC_PTR_TBL,
+			    etp->et_index, &oword, B_TRUE);
+}
+
+static	__checkReturn	efx_rc_t
+siena_tx_qcreate(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index,
+	__in		unsigned int label,
+	__in		efsys_mem_t *esmp,
+	__in		size_t n,
+	__in		uint32_t id,
+	__in		uint16_t flags,
+	__in		efx_evq_t *eep,
+	__in		efx_txq_t *etp,
+	__out		unsigned int *addedp)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_oword_t oword;
+	uint32_t size;
+	efx_rc_t rc;
+
+	_NOTE(ARGUNUSED(esmp))
+
+	EFX_STATIC_ASSERT(EFX_EV_TX_NLABELS ==
+	    (1 << FRF_AZ_TX_DESCQ_LABEL_WIDTH));
+	EFSYS_ASSERT3U(label, <, EFX_EV_TX_NLABELS);
+
+	EFSYS_ASSERT(ISP2(encp->enc_txq_max_ndescs));
+	EFX_STATIC_ASSERT(ISP2(EFX_TXQ_MINNDESCS));
+
+	if (!ISP2(n) || (n < EFX_TXQ_MINNDESCS) || (n > EFX_EVQ_MAXNEVS)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+	if (index >= encp->enc_txq_limit) {
+		rc = EINVAL;
+		goto fail2;
+	}
+	for (size = 0;
+	    (1 << size) <= (int)(encp->enc_txq_max_ndescs / EFX_TXQ_MINNDESCS);
+	    size++)
+		if ((1 << size) == (int)(n / EFX_TXQ_MINNDESCS))
+			break;
+	if (id + (1 << size) >= encp->enc_buftbl_limit) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
+	/* Set up the new descriptor queue */
+	*addedp = 0;
+
+	EFX_POPULATE_OWORD_6(oword,
+	    FRF_AZ_TX_DESCQ_BUF_BASE_ID, id,
+	    FRF_AZ_TX_DESCQ_EVQ_ID, eep->ee_index,
+	    FRF_AZ_TX_DESCQ_OWNER_ID, 0,
+	    FRF_AZ_TX_DESCQ_LABEL, label,
+	    FRF_AZ_TX_DESCQ_SIZE, size,
+	    FRF_AZ_TX_DESCQ_TYPE, 0);
+
+	EFX_SET_OWORD_FIELD(oword, FRF_BZ_TX_NON_IP_DROP_DIS, 1);
+	EFX_SET_OWORD_FIELD(oword, FRF_BZ_TX_IP_CHKSM_DIS,
+	    (flags & EFX_TXQ_CKSUM_IPV4) ? 0 : 1);
+	EFX_SET_OWORD_FIELD(oword, FRF_BZ_TX_TCP_CHKSM_DIS,
+	    (flags & EFX_TXQ_CKSUM_TCPUDP) ? 0 : 1);
+
+	EFX_BAR_TBL_WRITEO(enp, FR_AZ_TX_DESC_PTR_TBL,
+	    etp->et_index, &oword, B_TRUE);
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+siena_tx_qdesc_post(
+	__in		efx_txq_t *etp,
+	__in_ecount(n)	efx_desc_t *ed,
+	__in		unsigned int n,
+	__in		unsigned int completed,
+	__inout		unsigned int *addedp)
+{
+	unsigned int added = *addedp;
+	unsigned int i;
+	efx_rc_t rc;
+
+	if (added - completed + n > EFX_TXQ_LIMIT(etp->et_mask + 1)) {
+		rc = ENOSPC;
+		goto fail1;
+	}
+
+	for (i = 0; i < n; i++) {
+		efx_desc_t *edp = &ed[i];
+		unsigned int id;
+		size_t offset;
+
+		id = added++ & etp->et_mask;
+		offset = id * sizeof (efx_desc_t);
+
+		EFSYS_MEM_WRITEQ(etp->et_esmp, offset, &edp->ed_eq);
+	}
+
+	EFSYS_PROBE3(tx_desc_post, unsigned int, etp->et_index,
+		    unsigned int, added, unsigned int, n);
+
+	EFX_TX_QSTAT_INCR(etp, TX_POST);
+
+	*addedp = added;
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	void
+siena_tx_qdesc_dma_create(
+	__in	efx_txq_t *etp,
+	__in	efsys_dma_addr_t addr,
+	__in	size_t size,
+	__in	boolean_t eop,
+	__out	efx_desc_t *edp)
+{
+	/* Fragments must not span 4k boundaries. */
+	EFSYS_ASSERT(P2ROUNDUP(addr + 1, 4096) >= addr + size);
+
+	EFSYS_PROBE4(tx_desc_dma_create, unsigned int, etp->et_index,
+		    efsys_dma_addr_t, addr,
+		    size_t, size, boolean_t, eop);
+
+	EFX_POPULATE_QWORD_4(edp->ed_eq,
+			    FSF_AZ_TX_KER_CONT, eop ? 0 : 1,
+			    FSF_AZ_TX_KER_BYTE_COUNT, (uint32_t)size,
+			    FSF_AZ_TX_KER_BUF_ADDR_DW0,
+			    (uint32_t)(addr & 0xffffffff),
+			    FSF_AZ_TX_KER_BUF_ADDR_DW1,
+			    (uint32_t)(addr >> 32));
+}
+
+#endif /* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_SIENA
+
+static		void
+siena_tx_qdestroy(
+	__in	efx_txq_t *etp)
+{
+	efx_nic_t *enp = etp->et_enp;
+	efx_oword_t oword;
+
+	/* Purge descriptor queue */
+	EFX_ZERO_OWORD(oword);
+
+	EFX_BAR_TBL_WRITEO(enp, FR_AZ_TX_DESC_PTR_TBL,
+			    etp->et_index, &oword, B_TRUE);
+}
+
+static		void
+siena_tx_fini(
+	__in	efx_nic_t *enp)
+{
+	_NOTE(ARGUNUSED(enp))
+}
+
+#endif /* EFSYS_OPT_SIENA */

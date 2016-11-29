@@ -31,6 +31,28 @@
 #include "efx.h"
 #include "efx_impl.h"
 
+#if EFSYS_OPT_SIENA
+
+static	__checkReturn	efx_rc_t
+siena_mac_multicast_list_set(
+	__in		efx_nic_t *enp);
+
+#endif /* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_SIENA
+static const efx_mac_ops_t	__efx_siena_mac_ops = {
+	siena_mac_poll,				/* emo_poll */
+	siena_mac_up,				/* emo_up */
+	siena_mac_reconfigure,			/* emo_addr_set */
+	siena_mac_reconfigure,			/* emo_pdu_set */
+	siena_mac_pdu_get,			/* emo_pdu_get */
+	siena_mac_reconfigure,			/* emo_reconfigure */
+	siena_mac_multicast_list_set,		/* emo_multicast_list_set */
+	NULL,					/* emo_filter_set_default_rxq */
+	NULL,				/* emo_filter_default_rxq_clear */
+};
+#endif	/* EFSYS_OPT_SIENA */
+
 	__checkReturn			efx_rc_t
 efx_mac_pdu_set(
 	__in				efx_nic_t *enp,
@@ -465,6 +487,12 @@ efx_mac_select(
 	int rc = EINVAL;
 
 	switch (enp->en_family) {
+#if EFSYS_OPT_SIENA
+	case EFX_FAMILY_SIENA:
+		emop = &__efx_siena_mac_ops;
+		type = EFX_MAC_SIENA;
+		break;
+#endif /* EFSYS_OPT_SIENA */
 
 	default:
 		rc = EINVAL;
@@ -487,3 +515,72 @@ fail1:
 }
 
 
+#if EFSYS_OPT_SIENA
+
+#define	EFX_MAC_HASH_BITS	(1 << 8)
+
+/* Compute the multicast hash as used on Falcon and Siena. */
+static	void
+siena_mac_multicast_hash_compute(
+	__in_ecount(6*count)		uint8_t const *addrs,
+	__in				int count,
+	__out				efx_oword_t *hash_low,
+	__out				efx_oword_t *hash_high)
+{
+	uint32_t crc, index;
+	int i;
+
+	EFSYS_ASSERT(hash_low != NULL);
+	EFSYS_ASSERT(hash_high != NULL);
+
+	EFX_ZERO_OWORD(*hash_low);
+	EFX_ZERO_OWORD(*hash_high);
+
+	for (i = 0; i < count; i++) {
+		/* Calculate hash bucket (IEEE 802.3 CRC32 of the MAC addr) */
+		crc = efx_crc32_calculate(0xffffffff, addrs, EFX_MAC_ADDR_LEN);
+		index = crc % EFX_MAC_HASH_BITS;
+		if (index < 128) {
+			EFX_SET_OWORD_BIT(*hash_low, index);
+		} else {
+			EFX_SET_OWORD_BIT(*hash_high, index - 128);
+		}
+
+		addrs += EFX_MAC_ADDR_LEN;
+	}
+}
+
+static	__checkReturn	efx_rc_t
+siena_mac_multicast_list_set(
+	__in		efx_nic_t *enp)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_mac_ops_t *emop = epp->ep_emop;
+	efx_oword_t old_hash[2];
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
+
+	memcpy(old_hash, epp->ep_multicst_hash, sizeof (old_hash));
+
+	siena_mac_multicast_hash_compute(
+	    epp->ep_mulcst_addr_list,
+	    epp->ep_mulcst_addr_count,
+	    &epp->ep_multicst_hash[0],
+	    &epp->ep_multicst_hash[1]);
+
+	if ((rc = emop->emo_reconfigure(enp)) != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	memcpy(epp->ep_multicst_hash, old_hash, sizeof (old_hash));
+
+	return (rc);
+}
+
+#endif /* EFSYS_OPT_SIENA */

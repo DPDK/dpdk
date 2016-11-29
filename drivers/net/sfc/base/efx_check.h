@@ -47,12 +47,16 @@
 
 #if EFSYS_OPT_CHECK_REG
 /* Verify chip implements accessed registers */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
 #  error "CHECK_REG requires SIENA or HUNTINGTON or MEDFORD"
+# endif
 #endif /* EFSYS_OPT_CHECK_REG */
 
 #if EFSYS_OPT_DECODE_INTR_FATAL
 /* Decode fatal errors */
+# if !EFSYS_OPT_SIENA
 #  error "INTR_FATAL requires SIENA"
+# endif
 #endif /* EFSYS_OPT_DECODE_INTR_FATAL */
 
 #ifdef EFSYS_OPT_FALCON_NIC_CFG_OVERRIDE
@@ -61,7 +65,9 @@
 
 #if EFSYS_OPT_FILTER
 /* Support hardware packet filters */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
 #  error "FILTER requires SIENA or HUNTINGTON or MEDFORD"
+# endif
 #endif /* EFSYS_OPT_FILTER */
 
 #ifdef EFSYS_OPT_MAC_FALCON_GMAC
@@ -74,8 +80,16 @@
 
 #if EFSYS_OPT_MCDI
 /* Support management controller messages */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
 #  error "MCDI requires SIENA or HUNTINGTON or MEDFORD"
+# endif
 #endif /* EFSYS_OPT_MCDI */
+
+#if (EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+# if !EFSYS_OPT_MCDI
+#  error "SIENA or HUNTINGTON or MEDFORD requires MCDI"
+# endif
+#endif
 
 #if EFSYS_OPT_MCDI_LOGGING
 /* Support MCDI logging */

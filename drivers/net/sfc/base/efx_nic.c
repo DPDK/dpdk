@@ -39,6 +39,20 @@ efx_family(
 {
 	if (venid == EFX_PCI_VENID_SFC) {
 		switch (devid) {
+#if EFSYS_OPT_SIENA
+		case EFX_PCI_DEVID_SIENA_F1_UNINIT:
+			/*
+			 * Hardware default for PF0 of uninitialised Siena.
+			 * manftest must be able to cope with this device id.
+			 */
+			*efp = EFX_FAMILY_SIENA;
+			return (0);
+
+		case EFX_PCI_DEVID_BETHPAGE:
+		case EFX_PCI_DEVID_SIENA:
+			*efp = EFX_FAMILY_SIENA;
+			return (0);
+#endif /* EFSYS_OPT_SIENA */
 
 		case EFX_PCI_DEVID_FALCON:	/* Obsolete, not supported */
 		default:
@@ -122,6 +136,22 @@ fail1:
 	return (rc);
 }
 
+#if EFSYS_OPT_SIENA
+
+static const efx_nic_ops_t	__efx_nic_siena_ops = {
+	siena_nic_probe,		/* eno_probe */
+	NULL,				/* eno_board_cfg */
+	NULL,				/* eno_set_drv_limits */
+	siena_nic_reset,		/* eno_reset */
+	siena_nic_init,			/* eno_init */
+	NULL,				/* eno_get_vi_pool */
+	NULL,				/* eno_get_bar_region */
+	siena_nic_fini,			/* eno_fini */
+	siena_nic_unprobe,		/* eno_unprobe */
+};
+
+#endif	/* EFSYS_OPT_SIENA */
+
 
 	__checkReturn	efx_rc_t
 efx_nic_create(
@@ -148,6 +178,20 @@ efx_nic_create(
 	enp->en_magic = EFX_NIC_MAGIC;
 
 	switch (family) {
+#if EFSYS_OPT_SIENA
+	case EFX_FAMILY_SIENA:
+		enp->en_enop = &__efx_nic_siena_ops;
+		enp->en_features =
+		    EFX_FEATURE_IPV6 |
+		    EFX_FEATURE_LFSR_HASH_INSERT |
+		    EFX_FEATURE_LINK_EVENTS |
+		    EFX_FEATURE_PERIODIC_MAC_STATS |
+		    EFX_FEATURE_MCDI |
+		    EFX_FEATURE_LOOKAHEAD_SPLIT |
+		    EFX_FEATURE_MAC_HEADER_FILTERS |
+		    EFX_FEATURE_TX_SRC_FILTERS;
+		break;
+#endif	/* EFSYS_OPT_SIENA */
 
 	default:
 		rc = ENOTSUP;

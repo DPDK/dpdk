@@ -41,6 +41,10 @@
 #endif
 
 
+#if EFSYS_OPT_SIENA
+#include "siena_impl.h"
+#endif	/* EFSYS_OPT_SIENA */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -274,8 +278,69 @@ typedef struct efx_nic_ops_s {
 
 #if EFSYS_OPT_FILTER
 
+#if EFSYS_OPT_SIENA
+
+typedef struct siena_filter_spec_s {
+	uint8_t		sfs_type;
+	uint32_t	sfs_flags;
+	uint32_t	sfs_dmaq_id;
+	uint32_t	sfs_dword[3];
+} siena_filter_spec_t;
+
+typedef enum siena_filter_type_e {
+	EFX_SIENA_FILTER_RX_TCP_FULL,	/* TCP/IPv4 {dIP,dTCP,sIP,sTCP} */
+	EFX_SIENA_FILTER_RX_TCP_WILD,	/* TCP/IPv4 {dIP,dTCP,  -,   -} */
+	EFX_SIENA_FILTER_RX_UDP_FULL,	/* UDP/IPv4 {dIP,dUDP,sIP,sUDP} */
+	EFX_SIENA_FILTER_RX_UDP_WILD,	/* UDP/IPv4 {dIP,dUDP,  -,   -} */
+	EFX_SIENA_FILTER_RX_MAC_FULL,	/* Ethernet {dMAC,VLAN} */
+	EFX_SIENA_FILTER_RX_MAC_WILD,	/* Ethernet {dMAC,   -} */
+
+	EFX_SIENA_FILTER_TX_TCP_FULL,	/* TCP/IPv4 {dIP,dTCP,sIP,sTCP} */
+	EFX_SIENA_FILTER_TX_TCP_WILD,	/* TCP/IPv4 {  -,   -,sIP,sTCP} */
+	EFX_SIENA_FILTER_TX_UDP_FULL,	/* UDP/IPv4 {dIP,dTCP,sIP,sTCP} */
+	EFX_SIENA_FILTER_TX_UDP_WILD,	/* UDP/IPv4 {  -,   -,sIP,sUDP} */
+	EFX_SIENA_FILTER_TX_MAC_FULL,	/* Ethernet {sMAC,VLAN} */
+	EFX_SIENA_FILTER_TX_MAC_WILD,	/* Ethernet {sMAC,   -} */
+
+	EFX_SIENA_FILTER_NTYPES
+} siena_filter_type_t;
+
+typedef enum siena_filter_tbl_id_e {
+	EFX_SIENA_FILTER_TBL_RX_IP = 0,
+	EFX_SIENA_FILTER_TBL_RX_MAC,
+	EFX_SIENA_FILTER_TBL_TX_IP,
+	EFX_SIENA_FILTER_TBL_TX_MAC,
+	EFX_SIENA_FILTER_NTBLS
+} siena_filter_tbl_id_t;
+
+typedef struct siena_filter_tbl_s {
+	int			sft_size;	/* number of entries */
+	int			sft_used;	/* active count */
+	uint32_t		*sft_bitmap;	/* active bitmap */
+	siena_filter_spec_t	*sft_spec;	/* array of saved specs */
+} siena_filter_tbl_t;
+
+typedef struct siena_filter_s {
+	siena_filter_tbl_t	sf_tbl[EFX_SIENA_FILTER_NTBLS];
+	unsigned int		sf_depth[EFX_SIENA_FILTER_NTYPES];
+} siena_filter_t;
+
+#endif	/* EFSYS_OPT_SIENA */
+
 typedef struct efx_filter_s {
+#if EFSYS_OPT_SIENA
+	siena_filter_t		*ef_siena_filter;
+#endif /* EFSYS_OPT_SIENA */
 } efx_filter_t;
+
+#if EFSYS_OPT_SIENA
+
+extern			void
+siena_filter_tbl_clear(
+	__in		efx_nic_t *enp,
+	__in		siena_filter_tbl_id_t tbl);
+
+#endif	/* EFSYS_OPT_SIENA */
 
 #endif	/* EFSYS_OPT_FILTER */
 
@@ -341,6 +406,11 @@ struct efx_nic_s {
 #endif	/* EFSYS_OPT_MCDI */
 	uint32_t		en_vport_id;
 	union {
+#if EFSYS_OPT_SIENA
+		struct {
+			int			enu_unused;
+		} siena;
+#endif	/* EFSYS_OPT_SIENA */
 		int	enu_unused;
 	} en_u;
 };

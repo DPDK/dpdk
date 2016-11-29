@@ -32,6 +32,16 @@
 #include "efx_impl.h"
 
 
+#if EFSYS_OPT_SIENA
+static const efx_phy_ops_t	__efx_phy_siena_ops = {
+	siena_phy_power,		/* epo_power */
+	NULL,				/* epo_reset */
+	siena_phy_reconfigure,		/* epo_reconfigure */
+	siena_phy_verify,		/* epo_verify */
+	siena_phy_oui_get,		/* epo_oui_get */
+};
+#endif	/* EFSYS_OPT_SIENA */
+
 	__checkReturn	efx_rc_t
 efx_phy_probe(
 	__in		efx_nic_t *enp)
@@ -48,6 +58,11 @@ efx_phy_probe(
 
 	/* Hook in operations structure */
 	switch (enp->en_family) {
+#if EFSYS_OPT_SIENA
+	case EFX_FAMILY_SIENA:
+		epop = &__efx_phy_siena_ops;
+		break;
+#endif	/* EFSYS_OPT_SIENA */
 	default:
 		rc = ENOTSUP;
 		goto fail1;
