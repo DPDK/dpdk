@@ -112,6 +112,10 @@ struct sfc_mcdi {
 	efx_mcdi_transport_t		transport;
 };
 
+struct sfc_intr {
+	efx_intr_type_t			type;
+};
+
 /* Adapter private data */
 struct sfc_adapter {
 	/*
@@ -132,6 +136,7 @@ struct sfc_adapter {
 	rte_spinlock_t			nic_lock;
 
 	struct sfc_mcdi			mcdi;
+	struct sfc_intr			intr;
 
 	unsigned int			rxq_max;
 	unsigned int			txq_max;
@@ -186,6 +191,13 @@ void sfc_mcdi_fini(struct sfc_adapter *sa);
 
 int sfc_configure(struct sfc_adapter *sa);
 void sfc_close(struct sfc_adapter *sa);
+
+int sfc_intr_attach(struct sfc_adapter *sa);
+void sfc_intr_detach(struct sfc_adapter *sa);
+int sfc_intr_init(struct sfc_adapter *sa);
+void sfc_intr_fini(struct sfc_adapter *sa);
+int sfc_intr_start(struct sfc_adapter *sa);
+void sfc_intr_stop(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }

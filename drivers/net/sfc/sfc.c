@@ -257,9 +257,16 @@ sfc_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_nic_init;
 
+	rc = sfc_intr_start(sa);
+	if (rc != 0)
+		goto fail_intr_start;
+
 	sa->state = SFC_ADAPTER_STARTED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_intr_start:
+	efx_nic_fini(sa->nic);
 
 fail_nic_init:
 fail_set_drv_limits:
@@ -290,6 +297,7 @@ sfc_stop(struct sfc_adapter *sa)
 
 	sa->state = SFC_ADAPTER_STOPPING;
 
+	sfc_intr_stop(sa);
 	efx_nic_fini(sa->nic);
 
 	sa->state = SFC_ADAPTER_CONFIGURED;
@@ -312,10 +320,15 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_check_conf;
 
+	rc = sfc_intr_init(sa);
+	if (rc != 0)
+		goto fail_intr_init;
+
 	sa->state = SFC_ADAPTER_CONFIGURED;
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_intr_init:
 fail_check_conf:
 	sa->state = SFC_ADAPTER_INITIALIZED;
 	sfc_log_init(sa, "failed %d", rc);
@@ -331,6 +344,8 @@ sfc_close(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
 	sa->state = SFC_ADAPTER_CLOSING;
+
+	sfc_intr_fini(sa);
 
 	sa->state = SFC_ADAPTER_INITIALIZED;
 	sfc_log_init(sa, "done");
@@ -423,6 +438,10 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_estimate_rsrc_limits;
 
+	rc = sfc_intr_attach(sa);
+	if (rc != 0)
+		goto fail_intr_attach;
+
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);
 
@@ -431,6 +450,7 @@ sfc_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_intr_attach:
 fail_estimate_rsrc_limits:
 fail_nic_reset:
 	sfc_log_init(sa, "unprobe nic");
@@ -461,6 +481,8 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "entry");
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	sfc_intr_detach(sa);
 
 	sfc_log_init(sa, "unprobe nic");
 	efx_nic_unprobe(enp);
