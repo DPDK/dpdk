@@ -175,6 +175,14 @@ typedef struct efx_phy_ops_s {
 	efx_rc_t	(*epo_reconfigure)(efx_nic_t *);
 	efx_rc_t	(*epo_verify)(efx_nic_t *);
 	efx_rc_t	(*epo_oui_get)(efx_nic_t *, uint32_t *);
+#if EFSYS_OPT_BIST
+	efx_rc_t	(*epo_bist_enable_offline)(efx_nic_t *);
+	efx_rc_t	(*epo_bist_start)(efx_nic_t *, efx_bist_type_t);
+	efx_rc_t	(*epo_bist_poll)(efx_nic_t *, efx_bist_type_t,
+					 efx_bist_result_t *, uint32_t *,
+					 unsigned long *, size_t);
+	void		(*epo_bist_stop)(efx_nic_t *, efx_bist_type_t);
+#endif	/* EFSYS_OPT_BIST */
 } efx_phy_ops_t;
 
 #if EFSYS_OPT_FILTER
@@ -230,6 +238,9 @@ typedef struct efx_port_s {
 	uint32_t		ep_phy_cap_mask;
 	boolean_t		ep_mac_drain;
 	boolean_t		ep_mac_stats_pending;
+#if EFSYS_OPT_BIST
+	efx_bist_type_t		ep_current_bist;
+#endif
 	const efx_mac_ops_t	*ep_emop;
 	const efx_phy_ops_t	*ep_epop;
 } efx_port_t;

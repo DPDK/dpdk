@@ -170,6 +170,31 @@ siena_phy_oui_get(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *ouip);
 
+#if EFSYS_OPT_BIST
+
+extern	__checkReturn		efx_rc_t
+siena_phy_bist_start(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type);
+
+extern	__checkReturn		efx_rc_t
+siena_phy_bist_poll(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type,
+	__out			efx_bist_result_t *resultp,
+	__out_opt __drv_when(count > 0, __notnull)
+	uint32_t	*value_maskp,
+	__out_ecount_opt(count)	__drv_when(count > 0, __notnull)
+	unsigned long	*valuesp,
+	__in			size_t count);
+
+extern				void
+siena_phy_bist_stop(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type);
+
+#endif	/* EFSYS_OPT_BIST */
+
 extern	__checkReturn	efx_rc_t
 siena_mac_poll(
 	__in		efx_nic_t *enp,

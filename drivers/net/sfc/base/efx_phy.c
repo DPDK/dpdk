@@ -39,6 +39,12 @@ static const efx_phy_ops_t	__efx_phy_siena_ops = {
 	siena_phy_reconfigure,		/* epo_reconfigure */
 	siena_phy_verify,		/* epo_verify */
 	siena_phy_oui_get,		/* epo_oui_get */
+#if EFSYS_OPT_BIST
+	NULL,				/* epo_bist_enable_offline */
+	siena_phy_bist_start,		/* epo_bist_start */
+	siena_phy_bist_poll,		/* epo_bist_poll */
+	siena_phy_bist_stop,		/* epo_bist_stop */
+#endif	/* EFSYS_OPT_BIST */
 };
 #endif	/* EFSYS_OPT_SIENA */
 
@@ -49,6 +55,12 @@ static const efx_phy_ops_t	__efx_phy_ef10_ops = {
 	ef10_phy_reconfigure,		/* epo_reconfigure */
 	ef10_phy_verify,		/* epo_verify */
 	ef10_phy_oui_get,		/* epo_oui_get */
+#if EFSYS_OPT_BIST
+	ef10_bist_enable_offline,	/* epo_bist_enable_offline */
+	ef10_bist_start,		/* epo_bist_start */
+	ef10_bist_poll,			/* epo_bist_poll */
+	ef10_bist_stop,			/* epo_bist_stop */
+#endif	/* EFSYS_OPT_BIST */
 };
 #endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
 
@@ -266,6 +278,134 @@ fail1:
 }
 
 
+#if EFSYS_OPT_BIST
+
+	__checkReturn		efx_rc_t
+efx_bist_enable_offline(
+	__in			efx_nic_t *enp)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+
+	if (epop->epo_bist_enable_offline == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if ((rc = epop->epo_bist_enable_offline(enp)) != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+
+}
+
+	__checkReturn		efx_rc_t
+efx_bist_start(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+
+	EFSYS_ASSERT3U(type, !=, EFX_BIST_TYPE_UNKNOWN);
+	EFSYS_ASSERT3U(type, <, EFX_BIST_TYPE_NTYPES);
+	EFSYS_ASSERT3U(epp->ep_current_bist, ==, EFX_BIST_TYPE_UNKNOWN);
+
+	if (epop->epo_bist_start == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if ((rc = epop->epo_bist_start(enp, type)) != 0)
+		goto fail2;
+
+	epp->ep_current_bist = type;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_bist_poll(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type,
+	__out			efx_bist_result_t *resultp,
+	__out_opt		uint32_t *value_maskp,
+	__out_ecount_opt(count)	unsigned long *valuesp,
+	__in			size_t count)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+
+	EFSYS_ASSERT3U(type, !=, EFX_BIST_TYPE_UNKNOWN);
+	EFSYS_ASSERT3U(type, <, EFX_BIST_TYPE_NTYPES);
+	EFSYS_ASSERT3U(epp->ep_current_bist, ==, type);
+
+	EFSYS_ASSERT(epop->epo_bist_poll != NULL);
+	if (epop->epo_bist_poll == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if ((rc = epop->epo_bist_poll(enp, type, resultp, value_maskp,
+	    valuesp, count)) != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+			void
+efx_bist_stop(
+	__in		efx_nic_t *enp,
+	__in		efx_bist_type_t type)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+
+	EFSYS_ASSERT3U(type, !=, EFX_BIST_TYPE_UNKNOWN);
+	EFSYS_ASSERT3U(type, <, EFX_BIST_TYPE_NTYPES);
+	EFSYS_ASSERT3U(epp->ep_current_bist, ==, type);
+
+	EFSYS_ASSERT(epop->epo_bist_stop != NULL);
+
+	if (epop->epo_bist_stop != NULL)
+		epop->epo_bist_stop(enp, type);
+
+	epp->ep_current_bist = EFX_BIST_TYPE_UNKNOWN;
+}
+
+#endif	/* EFSYS_OPT_BIST */
 			void
 efx_phy_unprobe(
 	__in	efx_nic_t *enp)

@@ -1432,6 +1432,19 @@ efx_mcdi_get_phy_cfg(
 	encp->enc_mcdi_mdio_channel =
 		(uint8_t)MCDI_OUT_DWORD(req, GET_PHY_CFG_OUT_CHANNEL);
 
+#if EFSYS_OPT_BIST
+	encp->enc_bist_mask = 0;
+	if (MCDI_OUT_DWORD_FIELD(req, GET_PHY_CFG_OUT_FLAGS,
+	    GET_PHY_CFG_OUT_BIST_CABLE_SHORT))
+		encp->enc_bist_mask |= (1 << EFX_BIST_TYPE_PHY_CABLE_SHORT);
+	if (MCDI_OUT_DWORD_FIELD(req, GET_PHY_CFG_OUT_FLAGS,
+	    GET_PHY_CFG_OUT_BIST_CABLE_LONG))
+		encp->enc_bist_mask |= (1 << EFX_BIST_TYPE_PHY_CABLE_LONG);
+	if (MCDI_OUT_DWORD_FIELD(req, GET_PHY_CFG_OUT_FLAGS,
+	    GET_PHY_CFG_OUT_BIST))
+		encp->enc_bist_mask |= (1 << EFX_BIST_TYPE_PHY_NORMAL);
+#endif  /* EFSYS_OPT_BIST */
+
 	return (0);
 
 fail2:
@@ -1541,6 +1554,108 @@ fail1:
 
 	return (rc);
 }
+
+#if EFSYS_OPT_BIST
+
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+/*
+ * Enter bist offline mode. This is a fw mode which puts the NIC into a state
+ * where memory BIST tests can be run and not much else can interfere or happen.
+ * A reboot is required to exit this mode.
+ */
+	__checkReturn		efx_rc_t
+efx_mcdi_bist_enable_offline(
+	__in			efx_nic_t *enp)
+{
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(MC_CMD_ENABLE_OFFLINE_BIST_IN_LEN == 0);
+	EFX_STATIC_ASSERT(MC_CMD_ENABLE_OFFLINE_BIST_OUT_LEN == 0);
+
+	req.emr_cmd = MC_CMD_ENABLE_OFFLINE_BIST;
+	req.emr_in_buf = NULL;
+	req.emr_in_length = 0;
+	req.emr_out_buf = NULL;
+	req.emr_out_length = 0;
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
+
+	__checkReturn		efx_rc_t
+efx_mcdi_bist_start(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type)
+{
+	efx_mcdi_req_t req;
+	uint8_t payload[MAX(MC_CMD_START_BIST_IN_LEN,
+			    MC_CMD_START_BIST_OUT_LEN)];
+	efx_rc_t rc;
+
+	(void) memset(payload, 0, sizeof (payload));
+	req.emr_cmd = MC_CMD_START_BIST;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_START_BIST_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_START_BIST_OUT_LEN;
+
+	switch (type) {
+	case EFX_BIST_TYPE_PHY_NORMAL:
+		MCDI_IN_SET_DWORD(req, START_BIST_IN_TYPE, MC_CMD_PHY_BIST);
+		break;
+	case EFX_BIST_TYPE_PHY_CABLE_SHORT:
+		MCDI_IN_SET_DWORD(req, START_BIST_IN_TYPE,
+		    MC_CMD_PHY_BIST_CABLE_SHORT);
+		break;
+	case EFX_BIST_TYPE_PHY_CABLE_LONG:
+		MCDI_IN_SET_DWORD(req, START_BIST_IN_TYPE,
+		    MC_CMD_PHY_BIST_CABLE_LONG);
+		break;
+	case EFX_BIST_TYPE_MC_MEM:
+		MCDI_IN_SET_DWORD(req, START_BIST_IN_TYPE,
+		    MC_CMD_MC_MEM_BIST);
+		break;
+	case EFX_BIST_TYPE_SAT_MEM:
+		MCDI_IN_SET_DWORD(req, START_BIST_IN_TYPE,
+		    MC_CMD_PORT_MEM_BIST);
+		break;
+	case EFX_BIST_TYPE_REG:
+		MCDI_IN_SET_DWORD(req, START_BIST_IN_TYPE,
+		    MC_CMD_REG_BIST);
+		break;
+	default:
+		EFSYS_ASSERT(0);
+	}
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif /* EFSYS_OPT_BIST */
 
 
 /* Enable logging of some events (e.g. link state changes) */

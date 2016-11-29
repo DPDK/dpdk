@@ -214,6 +214,13 @@
 #  error "MCAST_FILTER_LIST is obsolete and is not supported"
 #endif
 
+#if EFSYS_OPT_BIST
+/* Support BIST */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "BIST requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_BIST */
+
 #if EFSYS_OPT_ALLOW_UNCONFIGURED_NIC
 /* Support adapters with missing static config (for factory use only) */
 # if !EFSYS_OPT_MEDFORD

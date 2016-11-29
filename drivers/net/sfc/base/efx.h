@@ -549,6 +549,83 @@ efx_phy_module_get_info(
 	__out_bcount(len)		uint8_t *data);
 
 
+#if EFSYS_OPT_BIST
+
+typedef enum efx_bist_type_e {
+	EFX_BIST_TYPE_UNKNOWN,
+	EFX_BIST_TYPE_PHY_NORMAL,
+	EFX_BIST_TYPE_PHY_CABLE_SHORT,
+	EFX_BIST_TYPE_PHY_CABLE_LONG,
+	EFX_BIST_TYPE_MC_MEM,	/* Test the MC DMEM and IMEM */
+	EFX_BIST_TYPE_SAT_MEM,	/* Test the DMEM and IMEM of satellite cpus*/
+	EFX_BIST_TYPE_REG,	/* Test the register memories */
+	EFX_BIST_TYPE_NTYPES,
+} efx_bist_type_t;
+
+typedef enum efx_bist_result_e {
+	EFX_BIST_RESULT_UNKNOWN,
+	EFX_BIST_RESULT_RUNNING,
+	EFX_BIST_RESULT_PASSED,
+	EFX_BIST_RESULT_FAILED,
+} efx_bist_result_t;
+
+typedef enum efx_phy_cable_status_e {
+	EFX_PHY_CABLE_STATUS_OK,
+	EFX_PHY_CABLE_STATUS_INVALID,
+	EFX_PHY_CABLE_STATUS_OPEN,
+	EFX_PHY_CABLE_STATUS_INTRAPAIRSHORT,
+	EFX_PHY_CABLE_STATUS_INTERPAIRSHORT,
+	EFX_PHY_CABLE_STATUS_BUSY,
+} efx_phy_cable_status_t;
+
+typedef enum efx_bist_value_e {
+	EFX_BIST_PHY_CABLE_LENGTH_A,
+	EFX_BIST_PHY_CABLE_LENGTH_B,
+	EFX_BIST_PHY_CABLE_LENGTH_C,
+	EFX_BIST_PHY_CABLE_LENGTH_D,
+	EFX_BIST_PHY_CABLE_STATUS_A,
+	EFX_BIST_PHY_CABLE_STATUS_B,
+	EFX_BIST_PHY_CABLE_STATUS_C,
+	EFX_BIST_PHY_CABLE_STATUS_D,
+	EFX_BIST_FAULT_CODE,
+	/* Memory BIST specific values. These match to the MC_CMD_BIST_POLL
+	 * response. */
+	EFX_BIST_MEM_TEST,
+	EFX_BIST_MEM_ADDR,
+	EFX_BIST_MEM_BUS,
+	EFX_BIST_MEM_EXPECT,
+	EFX_BIST_MEM_ACTUAL,
+	EFX_BIST_MEM_ECC,
+	EFX_BIST_MEM_ECC_PARITY,
+	EFX_BIST_MEM_ECC_FATAL,
+	EFX_BIST_NVALUES,
+} efx_bist_value_t;
+
+extern	__checkReturn		efx_rc_t
+efx_bist_enable_offline(
+	__in			efx_nic_t *enp);
+
+extern	__checkReturn		efx_rc_t
+efx_bist_start(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type);
+
+extern	__checkReturn		efx_rc_t
+efx_bist_poll(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type,
+	__out			efx_bist_result_t *resultp,
+	__out_opt		uint32_t *value_maskp,
+	__out_ecount_opt(count)	unsigned long *valuesp,
+	__in			size_t count);
+
+extern				void
+efx_bist_stop(
+	__in			efx_nic_t *enp,
+	__in			efx_bist_type_t type);
+
+#endif	/* EFSYS_OPT_BIST */
+
 #define	EFX_FEATURE_IPV6		0x00000001
 #define	EFX_FEATURE_LFSR_HASH_INSERT	0x00000002
 #define	EFX_FEATURE_LINK_EVENTS		0x00000004
@@ -594,6 +671,9 @@ typedef struct efx_nic_cfg_s {
 #if EFSYS_OPT_MCDI
 	uint8_t			enc_mcdi_mdio_channel;
 #endif	/* EFSYS_OPT_MCDI */
+#if EFSYS_OPT_BIST
+	uint32_t		enc_bist_mask;
+#endif	/* EFSYS_OPT_BIST */
 #if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
 	uint32_t		enc_pf;
 	uint32_t		enc_vf;
