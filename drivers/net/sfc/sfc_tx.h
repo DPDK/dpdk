@@ -49,6 +49,14 @@ struct sfc_tx_sw_desc {
 enum sfc_txq_state_bit {
 	SFC_TXQ_INITIALIZED_BIT = 0,
 #define SFC_TXQ_INITIALIZED	(1 << SFC_TXQ_INITIALIZED_BIT)
+	SFC_TXQ_STARTED_BIT,
+#define SFC_TXQ_STARTED		(1 << SFC_TXQ_STARTED_BIT)
+	SFC_TXQ_RUNNING_BIT,
+#define SFC_TXQ_RUNNING		(1 << SFC_TXQ_RUNNING_BIT)
+	SFC_TXQ_FLUSHING_BIT,
+#define SFC_TXQ_FLUSHING	(1 << SFC_TXQ_FLUSHING_BIT)
+	SFC_TXQ_FLUSHED_BIT,
+#define SFC_TXQ_FLUSHED		(1 << SFC_TXQ_FLUSHED_BIT)
 };
 
 struct sfc_txq {
@@ -59,6 +67,9 @@ struct sfc_txq {
 	efx_desc_t		*pend_desc;
 	efx_txq_t		*common;
 	efsys_mem_t		mem;
+	unsigned int		added;
+	unsigned int		pending;
+	unsigned int		completed;
 
 	unsigned int		hw_index;
 	unsigned int		flags;
@@ -82,6 +93,12 @@ int sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		 uint16_t nb_tx_desc, unsigned int socket_id,
 		 const struct rte_eth_txconf *tx_conf);
 void sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index);
+
+void sfc_tx_qflush_done(struct sfc_txq *txq);
+int sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index);
+void sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
+int sfc_tx_start(struct sfc_adapter *sa);
+void sfc_tx_stop(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }

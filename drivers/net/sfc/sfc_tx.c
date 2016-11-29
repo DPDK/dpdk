@@ -28,9 +28,29 @@
  */
 
 #include "sfc.h"
+#include "sfc_debug.h"
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_tx.h"
+
+/*
+ * Maximum number of TX queue flush attempts in case of
+ * failure or flush timeout
+ */
+#define SFC_TX_QFLUSH_ATTEMPTS		(3)
+
+/*
+ * Time to wait between event queue polling attempts when waiting for TX
+ * queue flush done or flush failed events
+ */
+#define SFC_TX_QFLUSH_POLL_WAIT_MS	(1)
+
+/*
+ * Maximum number of event queue polling attempts when waiting for TX queue
+ * flush done or flush failed events; it defines TX queue flush attempt timeout
+ * together with SFC_TX_QFLUSH_POLL_WAIT_MS
+ */
+#define SFC_TX_QFLUSH_POLL_ATTEMPTS	(2000)
 
 static int
 sfc_tx_qcheck_conf(struct sfc_adapter *sa,
@@ -81,6 +101,36 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa,
 	}
 
 	return rc;
+}
+
+void
+sfc_tx_qflush_done(struct sfc_txq *txq)
+{
+	txq->state |= SFC_TXQ_FLUSHED;
+	txq->state &= ~SFC_TXQ_FLUSHING;
+}
+
+static void
+sfc_tx_reap(struct sfc_txq *txq)
+{
+	unsigned int    completed;
+
+
+	sfc_ev_qpoll(txq->evq);
+
+	for (completed = txq->completed;
+	     completed != txq->pending; completed++) {
+		struct sfc_tx_sw_desc *txd;
+
+		txd = &txq->sw_ring[completed & txq->ptr_mask];
+
+		if (txd->mbuf != NULL) {
+			rte_pktmbuf_free(txd->mbuf);
+			txd->mbuf = NULL;
+		}
+	}
+
+	txq->completed = completed;
 }
 
 int
@@ -288,4 +338,191 @@ sfc_tx_fini(struct sfc_adapter *sa)
 	rte_free(sa->txq_info);
 	sa->txq_info = NULL;
 	sa->txq_count = 0;
+}
+
+int
+sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct rte_eth_dev_data *dev_data;
+	struct sfc_txq_info *txq_info;
+	struct sfc_txq *txq;
+	struct sfc_evq *evq;
+	uint16_t flags;
+	unsigned int desc_index;
+	int rc = 0;
+
+	sfc_log_init(sa, "TxQ = %u", sw_index);
+
+	SFC_ASSERT(sw_index < sa->txq_count);
+	txq_info = &sa->txq_info[sw_index];
+
+	txq = txq_info->txq;
+
+	SFC_ASSERT(txq->state == SFC_TXQ_INITIALIZED);
+
+	evq = txq->evq;
+
+	rc = sfc_ev_qstart(sa, evq->evq_index);
+	if (rc != 0)
+		goto fail_ev_qstart;
+
+	/*
+	 * It seems that DPDK has no controls regarding IPv4 offloads,
+	 * hence, we always enable it here
+	 */
+	if ((txq->flags & ETH_TXQ_FLAGS_NOXSUMTCP) ||
+	    (txq->flags & ETH_TXQ_FLAGS_NOXSUMUDP))
+		flags = EFX_TXQ_CKSUM_IPV4;
+	else
+		flags = EFX_TXQ_CKSUM_IPV4 | EFX_TXQ_CKSUM_TCPUDP;
+
+	rc = efx_tx_qcreate(sa->nic, sw_index, 0, &txq->mem,
+			    txq_info->entries, 0 /* not used on EF10 */,
+			    flags, evq->common,
+			    &txq->common, &desc_index);
+	if (rc != 0)
+		goto fail_tx_qcreate;
+
+	txq->added = txq->pending = txq->completed = desc_index;
+
+	efx_tx_qenable(txq->common);
+
+	txq->state |= (SFC_TXQ_STARTED | SFC_TXQ_RUNNING);
+
+	/*
+	 * It seems to be used by DPDK for debug purposes only ('rte_ether')
+	 */
+	dev_data = sa->eth_dev->data;
+	dev_data->tx_queue_state[sw_index] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+
+fail_tx_qcreate:
+	sfc_ev_qstop(sa, evq->evq_index);
+
+fail_ev_qstart:
+	return rc;
+}
+
+void
+sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct rte_eth_dev_data *dev_data;
+	struct sfc_txq_info *txq_info;
+	struct sfc_txq *txq;
+	unsigned int retry_count;
+	unsigned int wait_count;
+	unsigned int txds;
+
+	sfc_log_init(sa, "TxQ = %u", sw_index);
+
+	SFC_ASSERT(sw_index < sa->txq_count);
+	txq_info = &sa->txq_info[sw_index];
+
+	txq = txq_info->txq;
+
+	SFC_ASSERT(txq->state & SFC_TXQ_STARTED);
+
+	txq->state &= ~SFC_TXQ_RUNNING;
+
+	/*
+	 * Retry TX queue flushing in case of flush failed or
+	 * timeout; in the worst case it can delay for 6 seconds
+	 */
+	for (retry_count = 0;
+	     ((txq->state & SFC_TXQ_FLUSHED) == 0) &&
+	     (retry_count < SFC_TX_QFLUSH_ATTEMPTS);
+	     ++retry_count) {
+		if (efx_tx_qflush(txq->common) != 0) {
+			txq->state |= SFC_TXQ_FLUSHING;
+			break;
+		}
+
+		/*
+		 * Wait for TX queue flush done or flush failed event at least
+		 * SFC_TX_QFLUSH_POLL_WAIT_MS milliseconds and not more
+		 * than 2 seconds (SFC_TX_QFLUSH_POLL_WAIT_MS multiplied
+		 * by SFC_TX_QFLUSH_POLL_ATTEMPTS)
+		 */
+		wait_count = 0;
+		do {
+			rte_delay_ms(SFC_TX_QFLUSH_POLL_WAIT_MS);
+			sfc_ev_qpoll(txq->evq);
+		} while ((txq->state & SFC_TXQ_FLUSHING) &&
+			 wait_count++ < SFC_TX_QFLUSH_POLL_ATTEMPTS);
+
+		if (txq->state & SFC_TXQ_FLUSHING)
+			sfc_err(sa, "TxQ %u flush timed out", sw_index);
+
+		if (txq->state & SFC_TXQ_FLUSHED)
+			sfc_info(sa, "TxQ %u flushed", sw_index);
+	}
+
+	sfc_tx_reap(txq);
+
+	for (txds = 0; txds < txq_info->entries; txds++) {
+		if (txq->sw_ring[txds].mbuf != NULL) {
+			rte_pktmbuf_free(txq->sw_ring[txds].mbuf);
+			txq->sw_ring[txds].mbuf = NULL;
+		}
+	}
+
+	txq->state = SFC_TXQ_INITIALIZED;
+
+	efx_tx_qdestroy(txq->common);
+
+	sfc_ev_qstop(sa, txq->evq->evq_index);
+
+	/*
+	 * It seems to be used by DPDK for debug purposes only ('rte_ether')
+	 */
+	dev_data = sa->eth_dev->data;
+	dev_data->tx_queue_state[sw_index] = RTE_ETH_QUEUE_STATE_STOPPED;
+}
+
+int
+sfc_tx_start(struct sfc_adapter *sa)
+{
+	unsigned int sw_index;
+	int rc = 0;
+
+	sfc_log_init(sa, "txq_count = %u", sa->txq_count);
+
+	rc = efx_tx_init(sa->nic);
+	if (rc != 0)
+		goto fail_efx_tx_init;
+
+	for (sw_index = 0; sw_index < sa->txq_count; ++sw_index) {
+		rc = sfc_tx_qstart(sa, sw_index);
+		if (rc != 0)
+			goto fail_tx_qstart;
+	}
+
+	return 0;
+
+fail_tx_qstart:
+	while (sw_index-- > 0)
+		sfc_tx_qstop(sa, sw_index);
+
+	efx_tx_fini(sa->nic);
+
+fail_efx_tx_init:
+	sfc_log_init(sa, "failed (rc = %d)", rc);
+	return rc;
+}
+
+void
+sfc_tx_stop(struct sfc_adapter *sa)
+{
+	unsigned int sw_index;
+
+	sfc_log_init(sa, "txq_count = %u", sa->txq_count);
+
+	sw_index = sa->txq_count;
+	while (sw_index-- > 0) {
+		if (sa->txq_info[sw_index].txq != NULL)
+			sfc_tx_qstop(sa, sw_index);
+	}
+
+	efx_tx_fini(sa->nic);
 }

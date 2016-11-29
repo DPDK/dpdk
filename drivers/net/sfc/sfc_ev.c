@@ -38,6 +38,7 @@
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
+#include "sfc_tx.h"
 
 
 /* Initial delay when waiting for event queue init complete event */
@@ -208,10 +209,15 @@ static boolean_t
 sfc_ev_txq_flush_done(void *arg, __rte_unused uint32_t txq_hw_index)
 {
 	struct sfc_evq *evq = arg;
+	struct sfc_txq *txq;
 
-	sfc_err(evq->sa, "EVQ %u unexpected Tx flush done event",
-		evq->evq_index);
-	return B_TRUE;
+	txq = evq->txq;
+	SFC_ASSERT(txq != NULL);
+	SFC_ASSERT(txq->hw_index == txq_hw_index);
+	SFC_ASSERT(txq->evq == evq);
+	sfc_tx_qflush_done(txq);
+
+	return B_FALSE;
 }
 
 static boolean_t
