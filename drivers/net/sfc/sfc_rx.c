@@ -31,7 +31,146 @@
 
 #include "sfc.h"
 #include "sfc_log.h"
+#include "sfc_ev.h"
 #include "sfc_rx.h"
+
+static int
+sfc_rx_qcheck_conf(struct sfc_adapter *sa,
+		   const struct rte_eth_rxconf *rx_conf)
+{
+	int rc = 0;
+
+	if (rx_conf->rx_thresh.pthresh != 0 ||
+	    rx_conf->rx_thresh.hthresh != 0 ||
+	    rx_conf->rx_thresh.wthresh != 0) {
+		sfc_err(sa,
+			"RxQ prefetch/host/writeback thresholds are not supported");
+		rc = EINVAL;
+	}
+
+	if (rx_conf->rx_free_thresh != 0) {
+		sfc_err(sa, "RxQ free threshold is not supported");
+		rc = EINVAL;
+	}
+
+	if (rx_conf->rx_drop_en == 0) {
+		sfc_err(sa, "RxQ drop disable is not supported");
+		rc = EINVAL;
+	}
+
+	if (rx_conf->rx_deferred_start != 0) {
+		sfc_err(sa, "RxQ deferred start is not supported");
+		rc = EINVAL;
+	}
+
+	return rc;
+}
+
+int
+sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+	     uint16_t nb_rx_desc, unsigned int socket_id,
+	     const struct rte_eth_rxconf *rx_conf,
+	     struct rte_mempool *mb_pool)
+{
+	int rc;
+	struct sfc_rxq_info *rxq_info;
+	unsigned int evq_index;
+	struct sfc_evq *evq;
+	struct sfc_rxq *rxq;
+
+	rc = sfc_rx_qcheck_conf(sa, rx_conf);
+	if (rc != 0)
+		goto fail_bad_conf;
+
+	if (rte_pktmbuf_data_room_size(mb_pool) <= RTE_PKTMBUF_HEADROOM) {
+		sfc_err(sa, "RxQ %u mbuf is too small, %u vs headroom %u",
+			sw_index, rte_pktmbuf_data_room_size(mb_pool),
+			RTE_PKTMBUF_HEADROOM);
+		goto fail_bad_conf;
+	}
+
+	SFC_ASSERT(sw_index < sa->rxq_count);
+	rxq_info = &sa->rxq_info[sw_index];
+
+	SFC_ASSERT(nb_rx_desc <= rxq_info->max_entries);
+	rxq_info->entries = nb_rx_desc;
+	rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
+
+	evq_index = sfc_evq_index_by_rxq_sw_index(sa, sw_index);
+
+	rc = sfc_ev_qinit(sa, evq_index, rxq_info->entries, socket_id);
+	if (rc != 0)
+		goto fail_ev_qinit;
+
+	evq = sa->evq_info[evq_index].evq;
+
+	rc = ENOMEM;
+	rxq = rte_zmalloc_socket("sfc-rxq", sizeof(*rxq), RTE_CACHE_LINE_SIZE,
+				 socket_id);
+	if (rxq == NULL)
+		goto fail_rxq_alloc;
+
+	rc = sfc_dma_alloc(sa, "rxq", sw_index, EFX_RXQ_SIZE(rxq_info->entries),
+			   socket_id, &rxq->mem);
+	if (rc != 0)
+		goto fail_dma_alloc;
+
+	rc = ENOMEM;
+	rxq->sw_desc = rte_calloc_socket("sfc-rxq-sw_desc", rxq_info->entries,
+					 sizeof(*rxq->sw_desc),
+					 RTE_CACHE_LINE_SIZE, socket_id);
+	if (rxq->sw_desc == NULL)
+		goto fail_desc_alloc;
+
+	evq->rxq = rxq;
+	rxq->evq = evq;
+	rxq->ptr_mask = rxq_info->entries - 1;
+	rxq->refill_mb_pool = mb_pool;
+	rxq->hw_index = sw_index;
+
+	rxq->state = SFC_RXQ_INITIALIZED;
+
+	rxq_info->rxq = rxq;
+
+	return 0;
+
+fail_desc_alloc:
+	sfc_dma_free(sa, &rxq->mem);
+
+fail_dma_alloc:
+	rte_free(rxq);
+
+fail_rxq_alloc:
+	sfc_ev_qfini(sa, evq_index);
+
+fail_ev_qinit:
+	rxq_info->entries = 0;
+
+fail_bad_conf:
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
+}
+
+void
+sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct sfc_rxq_info *rxq_info;
+	struct sfc_rxq *rxq;
+
+	SFC_ASSERT(sw_index < sa->rxq_count);
+
+	rxq_info = &sa->rxq_info[sw_index];
+
+	rxq = rxq_info->rxq;
+	SFC_ASSERT(rxq->state == SFC_RXQ_INITIALIZED);
+
+	rxq_info->rxq = NULL;
+	rxq_info->entries = 0;
+
+	rte_free(rxq->sw_desc);
+	sfc_dma_free(sa, &rxq->mem);
+	rte_free(rxq);
+}
 
 static int
 sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
@@ -158,6 +297,14 @@ fail_check_mode:
 void
 sfc_rx_fini(struct sfc_adapter *sa)
 {
+	unsigned int sw_index;
+
+	sw_index = sa->rxq_count;
+	while (sw_index-- > 0) {
+		if (sa->rxq_info[sw_index].rxq != NULL)
+			sfc_rx_qfini(sa, sw_index);
+	}
+
 	rte_free(sa->rxq_info);
 	sa->rxq_info = NULL;
 	sa->rxq_count = 0;

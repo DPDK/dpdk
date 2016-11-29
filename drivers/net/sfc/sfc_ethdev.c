@@ -38,6 +38,7 @@
 #include "sfc_log.h"
 #include "sfc_kvargs.h"
 #include "sfc_ev.h"
+#include "sfc_rx.h"
 
 
 static void
@@ -49,6 +50,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
+
+	dev_info->max_rx_queues = sa->rxq_max;
 
 	/* By default packets are dropped if no descriptors are available */
 	dev_info->default_rxconf.rx_drop_en = 1;
@@ -192,6 +195,61 @@ sfc_dev_close(struct rte_eth_dev *dev)
 	sfc_log_init(sa, "done");
 }
 
+static int
+sfc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		   uint16_t nb_rx_desc, unsigned int socket_id,
+		   const struct rte_eth_rxconf *rx_conf,
+		   struct rte_mempool *mb_pool)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int rc;
+
+	sfc_log_init(sa, "RxQ=%u nb_rx_desc=%u socket_id=%u",
+		     rx_queue_id, nb_rx_desc, socket_id);
+
+	sfc_adapter_lock(sa);
+
+	rc = sfc_rx_qinit(sa, rx_queue_id, nb_rx_desc, socket_id,
+			  rx_conf, mb_pool);
+	if (rc != 0)
+		goto fail_rx_qinit;
+
+	dev->data->rx_queues[rx_queue_id] = sa->rxq_info[rx_queue_id].rxq;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+
+fail_rx_qinit:
+	sfc_adapter_unlock(sa);
+	SFC_ASSERT(rc > 0);
+	return -rc;
+}
+
+static void
+sfc_rx_queue_release(void *queue)
+{
+	struct sfc_rxq *rxq = queue;
+	struct sfc_adapter *sa;
+	unsigned int sw_index;
+
+	if (rxq == NULL)
+		return;
+
+	sa = rxq->evq->sa;
+	sfc_adapter_lock(sa);
+
+	sw_index = sfc_rxq_sw_index(rxq);
+
+	sfc_log_init(sa, "RxQ=%u", sw_index);
+
+	sa->eth_dev->data->rx_queues[sw_index] = NULL;
+
+	sfc_rx_qfini(sa, sw_index);
+
+	sfc_adapter_unlock(sa);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -199,6 +257,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_close			= sfc_dev_close,
 	.link_update			= sfc_dev_link_update,
 	.dev_infos_get			= sfc_dev_infos_get,
+	.rx_queue_setup			= sfc_rx_queue_setup,
+	.rx_queue_release		= sfc_rx_queue_release,
 };
 
 static int

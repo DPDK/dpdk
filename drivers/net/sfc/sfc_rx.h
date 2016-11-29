@@ -30,11 +30,66 @@
 #ifndef _SFC_RX_H
 #define _SFC_RX_H
 
+#include <rte_mbuf.h>
+#include <rte_mempool.h>
+#include <rte_ethdev.h>
+
+#include "efx.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct sfc_adapter;
+struct sfc_evq;
+
+/**
+ * Software Rx descriptor information associated with hardware Rx
+ * descriptor.
+ */
+struct sfc_rx_sw_desc {
+	struct rte_mbuf		*mbuf;
+	unsigned int		flags;
+	unsigned int		size;
+};
+
+/** Receive queue state bits */
+enum sfc_rxq_state_bit {
+	SFC_RXQ_INITIALIZED_BIT = 0,
+#define SFC_RXQ_INITIALIZED	(1 << SFC_RXQ_INITIALIZED_BIT)
+};
+
+/**
+ * Receive queue information used on data path.
+ * Allocated on the socket specified on the queue setup.
+ */
+struct sfc_rxq {
+	/* Used on data path */
+	struct sfc_evq		*evq;
+	struct sfc_rx_sw_desc	*sw_desc;
+	unsigned int		state;
+	unsigned int		ptr_mask;
+
+	/* Used on refill */
+	struct rte_mempool	*refill_mb_pool;
+	efx_rxq_t		*common;
+	efsys_mem_t		mem;
+
+	/* Not used on data path */
+	unsigned int		hw_index;
+};
+
+static inline unsigned int
+sfc_rxq_sw_index_by_hw_index(unsigned int hw_index)
+{
+	return hw_index;
+}
+
+static inline unsigned int
+sfc_rxq_sw_index(const struct sfc_rxq *rxq)
+{
+	return sfc_rxq_sw_index_by_hw_index(rxq->hw_index);
+}
 
 /**
  * Receive queue information used during setup/release only.
@@ -42,10 +97,19 @@ struct sfc_adapter;
  */
 struct sfc_rxq_info {
 	unsigned int		max_entries;
+	unsigned int		entries;
+	efx_rxq_type_t		type;
+	struct sfc_rxq		*rxq;
 };
 
 int sfc_rx_init(struct sfc_adapter *sa);
 void sfc_rx_fini(struct sfc_adapter *sa);
+
+int sfc_rx_qinit(struct sfc_adapter *sa, unsigned int rx_queue_id,
+		 uint16_t nb_rx_desc, unsigned int socket_id,
+		 const struct rte_eth_rxconf *rx_conf,
+		 struct rte_mempool *mb_pool);
+void sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index);
 
 #ifdef __cplusplus
 }

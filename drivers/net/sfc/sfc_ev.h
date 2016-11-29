@@ -40,6 +40,7 @@ extern "C" {
 #define SFC_MGMT_EVQ_ENTRIES	(EFX_EVQ_MINNEVS)
 
 struct sfc_adapter;
+struct sfc_rxq;
 
 enum sfc_evq_state {
 	SFC_EVQ_UNINITIALIZED = 0,
@@ -56,6 +57,7 @@ struct sfc_evq {
 	unsigned int		read_ptr;
 	boolean_t		exception;
 	efsys_mem_t		mem;
+	struct sfc_rxq		*rxq;
 
 	/* Not used on datapath */
 	struct sfc_adapter	*sa;
