@@ -1103,6 +1103,12 @@ ef10_ev_mcdi(
 		break;
 
 	case MCDI_EVENT_CODE_MAC_STATS_DMA:
+#if EFSYS_OPT_MAC_STATS
+		if (eecp->eec_mac_stats != NULL) {
+			eecp->eec_mac_stats(arg,
+			    MCDI_EV_FIELD(eqp, MAC_STATS_DMA_GENERATION));
+		}
+#endif
 		break;
 
 	case MCDI_EVENT_CODE_FWALERT: {

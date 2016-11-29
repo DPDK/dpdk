@@ -232,6 +232,23 @@ siena_mac_pdu_get(
 	__in	efx_nic_t *enp,
 	__out	size_t *pdu);
 
+#if EFSYS_OPT_MAC_STATS
+
+extern	__checkReturn			efx_rc_t
+siena_mac_stats_get_mask(
+	__in				efx_nic_t *enp,
+	__inout_bcount(mask_size)	uint32_t *maskp,
+	__in				size_t mask_size);
+
+extern	__checkReturn			efx_rc_t
+siena_mac_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_MAC_NSTATS)	efsys_stat_t *stat,
+	__inout_opt			uint32_t *generationp);
+
+#endif	/* EFSYS_OPT_MAC_STATS */
+
 #ifdef	__cplusplus
 }
 #endif

@@ -210,10 +210,20 @@ siena_nic_probe(
 	epp->ep_default_adv_cap_mask = sls.sls_adv_cap_mask;
 	epp->ep_adv_cap_mask = sls.sls_adv_cap_mask;
 
+#if EFSYS_OPT_MAC_STATS
+	/* Wipe the MAC statistics */
+	if ((rc = efx_mcdi_mac_stats_clear(enp)) != 0)
+		goto fail10;
+#endif
+
 	encp->enc_features = enp->en_features;
 
 	return (0);
 
+#if EFSYS_OPT_MAC_STATS
+fail10:
+	EFSYS_PROBE(fail10);
+#endif
 fail8:
 	EFSYS_PROBE(fail8);
 fail7:

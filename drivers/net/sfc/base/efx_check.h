@@ -91,6 +91,13 @@
 # error "MAC_FALCON_XMAC is obsolete and is not supported."
 #endif
 
+#if EFSYS_OPT_MAC_STATS
+/* Support MAC statistics */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "MAC_STATS requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_MAC_STATS */
+
 #if EFSYS_OPT_MCDI
 /* Support management controller messages */
 # if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)

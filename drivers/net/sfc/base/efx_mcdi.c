@@ -1708,6 +1708,164 @@ fail1:
 }
 
 
+#if EFSYS_OPT_MAC_STATS
+
+typedef enum efx_stats_action_e {
+	EFX_STATS_CLEAR,
+	EFX_STATS_UPLOAD,
+	EFX_STATS_ENABLE_NOEVENTS,
+	EFX_STATS_ENABLE_EVENTS,
+	EFX_STATS_DISABLE,
+} efx_stats_action_t;
+
+static	__checkReturn	efx_rc_t
+efx_mcdi_mac_stats(
+	__in		efx_nic_t *enp,
+	__in_opt	efsys_mem_t *esmp,
+	__in		efx_stats_action_t action)
+{
+	efx_mcdi_req_t req;
+	uint8_t payload[MAX(MC_CMD_MAC_STATS_IN_LEN,
+			    MC_CMD_MAC_STATS_OUT_DMA_LEN)];
+	int clear = (action == EFX_STATS_CLEAR);
+	int upload = (action == EFX_STATS_UPLOAD);
+	int enable = (action == EFX_STATS_ENABLE_NOEVENTS);
+	int events = (action == EFX_STATS_ENABLE_EVENTS);
+	int disable = (action == EFX_STATS_DISABLE);
+	efx_rc_t rc;
+
+	(void) memset(payload, 0, sizeof (payload));
+	req.emr_cmd = MC_CMD_MAC_STATS;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAC_STATS_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAC_STATS_OUT_DMA_LEN;
+
+	MCDI_IN_POPULATE_DWORD_6(req, MAC_STATS_IN_CMD,
+	    MAC_STATS_IN_DMA, upload,
+	    MAC_STATS_IN_CLEAR, clear,
+	    MAC_STATS_IN_PERIODIC_CHANGE, enable | events | disable,
+	    MAC_STATS_IN_PERIODIC_ENABLE, enable | events,
+	    MAC_STATS_IN_PERIODIC_NOEVENT, !events,
+	    MAC_STATS_IN_PERIOD_MS, (enable | events) ? 1000 : 0);
+
+	if (esmp != NULL) {
+		int bytes = MC_CMD_MAC_NSTATS * sizeof (uint64_t);
+
+		EFX_STATIC_ASSERT(MC_CMD_MAC_NSTATS * sizeof (uint64_t) <=
+		    EFX_MAC_STATS_SIZE);
+
+		MCDI_IN_SET_DWORD(req, MAC_STATS_IN_DMA_ADDR_LO,
+			    EFSYS_MEM_ADDR(esmp) & 0xffffffff);
+		MCDI_IN_SET_DWORD(req, MAC_STATS_IN_DMA_ADDR_HI,
+			    EFSYS_MEM_ADDR(esmp) >> 32);
+		MCDI_IN_SET_DWORD(req, MAC_STATS_IN_DMA_LEN, bytes);
+	} else {
+		EFSYS_ASSERT(!upload && !enable && !events);
+	}
+
+	/*
+	 * NOTE: Do not use EVB_PORT_ID_ASSIGNED when disabling periodic stats,
+	 *	 as this may fail (and leave periodic DMA enabled) if the
+	 *	 vadapter has already been deleted.
+	 */
+	MCDI_IN_SET_DWORD(req, MAC_STATS_IN_PORT_ID,
+	    (disable ? EVB_PORT_ID_NULL : enp->en_vport_id));
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		/* EF10: Expect ENOENT if no DMA queues are initialised */
+		if ((req.emr_rc != ENOENT) ||
+		    (enp->en_rx_qcount + enp->en_tx_qcount != 0)) {
+			rc = req.emr_rc;
+			goto fail1;
+		}
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_mcdi_mac_stats_clear(
+	__in		efx_nic_t *enp)
+{
+	efx_rc_t rc;
+
+	if ((rc = efx_mcdi_mac_stats(enp, NULL, EFX_STATS_CLEAR)) != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_mcdi_mac_stats_upload(
+	__in		efx_nic_t *enp,
+	__in		efsys_mem_t *esmp)
+{
+	efx_rc_t rc;
+
+	/*
+	 * The MC DMAs aggregate statistics for our convenience, so we can
+	 * avoid having to pull the statistics buffer into the cache to
+	 * maintain cumulative statistics.
+	 */
+	if ((rc = efx_mcdi_mac_stats(enp, esmp, EFX_STATS_UPLOAD)) != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_mcdi_mac_stats_periodic(
+	__in		efx_nic_t *enp,
+	__in		efsys_mem_t *esmp,
+	__in		uint16_t period,
+	__in		boolean_t events)
+{
+	efx_rc_t rc;
+
+	/*
+	 * The MC DMAs aggregate statistics for our convenience, so we can
+	 * avoid having to pull the statistics buffer into the cache to
+	 * maintain cumulative statistics.
+	 * Huntington uses a fixed 1sec period, so use that on Siena too.
+	 */
+	if (period == 0)
+		rc = efx_mcdi_mac_stats(enp, NULL, EFX_STATS_DISABLE);
+	else if (events)
+		rc = efx_mcdi_mac_stats(enp, esmp, EFX_STATS_ENABLE_EVENTS);
+	else
+		rc = efx_mcdi_mac_stats(enp, esmp, EFX_STATS_ENABLE_NOEVENTS);
+
+	if (rc != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif	/* EFSYS_OPT_MAC_STATS */
+
 #if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
 
 /*

@@ -1371,10 +1371,20 @@ ef10_nic_probe(
 	edcp->edc_max_piobuf_count = 0;
 	edcp->edc_pio_alloc_size = 0;
 
+#if EFSYS_OPT_MAC_STATS
+	/* Wipe the MAC statistics */
+	if ((rc = efx_mcdi_mac_stats_clear(enp)) != 0)
+		goto fail5;
+#endif
+
 	encp->enc_features = enp->en_features;
 
 	return (0);
 
+#if EFSYS_OPT_MAC_STATS
+fail5:
+	EFSYS_PROBE(fail5);
+#endif
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:

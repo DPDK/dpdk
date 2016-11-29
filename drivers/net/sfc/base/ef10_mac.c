@@ -443,4 +443,419 @@ ef10_mac_filter_default_rxq_clear(
 }
 
 
+#if EFSYS_OPT_MAC_STATS
+
+	__checkReturn			efx_rc_t
+ef10_mac_stats_get_mask(
+	__in				efx_nic_t *enp,
+	__inout_bcount(mask_size)	uint32_t *maskp,
+	__in				size_t mask_size)
+{
+	const struct efx_mac_stats_range ef10_common[] = {
+		{ EFX_MAC_RX_OCTETS, EFX_MAC_RX_GE_15XX_PKTS },
+		{ EFX_MAC_RX_FCS_ERRORS, EFX_MAC_RX_DROP_EVENTS },
+		{ EFX_MAC_RX_JABBER_PKTS, EFX_MAC_RX_JABBER_PKTS },
+		{ EFX_MAC_RX_NODESC_DROP_CNT, EFX_MAC_TX_PAUSE_PKTS },
+	};
+	const struct efx_mac_stats_range ef10_tx_size_bins[] = {
+		{ EFX_MAC_TX_LE_64_PKTS, EFX_MAC_TX_GE_15XX_PKTS },
+	};
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_port_t *epp = &(enp->en_port);
+	efx_rc_t rc;
+
+	if ((rc = efx_mac_stats_mask_add_ranges(maskp, mask_size,
+	    ef10_common, EFX_ARRAY_SIZE(ef10_common))) != 0)
+		goto fail1;
+
+	if (epp->ep_phy_cap_mask & (1 << MC_CMD_PHY_CAP_40000FDX_LBN)) {
+		const struct efx_mac_stats_range ef10_40g_extra[] = {
+			{ EFX_MAC_RX_ALIGN_ERRORS, EFX_MAC_RX_ALIGN_ERRORS },
+		};
+
+		if ((rc = efx_mac_stats_mask_add_ranges(maskp, mask_size,
+		    ef10_40g_extra, EFX_ARRAY_SIZE(ef10_40g_extra))) != 0)
+			goto fail2;
+
+		if (encp->enc_mac_stats_40g_tx_size_bins) {
+			if ((rc = efx_mac_stats_mask_add_ranges(maskp,
+			    mask_size, ef10_tx_size_bins,
+			    EFX_ARRAY_SIZE(ef10_tx_size_bins))) != 0)
+				goto fail3;
+		}
+	} else {
+		if ((rc = efx_mac_stats_mask_add_ranges(maskp, mask_size,
+		    ef10_tx_size_bins, EFX_ARRAY_SIZE(ef10_tx_size_bins))) != 0)
+			goto fail4;
+	}
+
+	if (encp->enc_pm_and_rxdp_counters) {
+		const struct efx_mac_stats_range ef10_pm_and_rxdp[] = {
+			{ EFX_MAC_PM_TRUNC_BB_OVERFLOW, EFX_MAC_RXDP_HLB_WAIT },
+		};
+
+		if ((rc = efx_mac_stats_mask_add_ranges(maskp, mask_size,
+		    ef10_pm_and_rxdp, EFX_ARRAY_SIZE(ef10_pm_and_rxdp))) != 0)
+			goto fail5;
+	}
+
+	if (encp->enc_datapath_cap_evb) {
+		const struct efx_mac_stats_range ef10_vadaptor[] = {
+			{ EFX_MAC_VADAPTER_RX_UNICAST_PACKETS,
+			    EFX_MAC_VADAPTER_TX_OVERFLOW },
+		};
+
+		if ((rc = efx_mac_stats_mask_add_ranges(maskp, mask_size,
+		    ef10_vadaptor, EFX_ARRAY_SIZE(ef10_vadaptor))) != 0)
+			goto fail6;
+	}
+
+	return (0);
+
+fail6:
+	EFSYS_PROBE(fail6);
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#define	EF10_MAC_STAT_READ(_esmp, _field, _eqp)			\
+	EFSYS_MEM_READQ((_esmp), (_field) * sizeof (efx_qword_t), _eqp)
+
+
+	__checkReturn			efx_rc_t
+ef10_mac_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_MAC_NSTATS)	efsys_stat_t *stat,
+	__inout_opt			uint32_t *generationp)
+{
+	efx_qword_t value;
+	efx_qword_t generation_start;
+	efx_qword_t generation_end;
+
+	_NOTE(ARGUNUSED(enp))
+
+	/* Read END first so we don't race with the MC */
+	EFSYS_DMA_SYNC_FOR_KERNEL(esmp, 0, EFX_MAC_STATS_SIZE);
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_GENERATION_END,
+			    &generation_end);
+	EFSYS_MEM_READ_BARRIER();
+
+	/* TX */
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_CONTROL_PKTS, &value);
+	EFSYS_STAT_SUBR_QWORD(&(stat[EFX_MAC_TX_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_PAUSE_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_PAUSE_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_UNICAST_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_UNICST_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_MULTICAST_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_MULTICST_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_BROADCAST_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_BRDCST_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_BYTES, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_OCTETS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_LT64_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_LE_64_PKTS]), &value);
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_64_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_LE_64_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_65_TO_127_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_65_TO_127_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_128_TO_255_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_128_TO_255_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_256_TO_511_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_256_TO_511_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_512_TO_1023_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_512_TO_1023_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_1024_TO_15XX_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_1024_TO_15XX_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_15XX_TO_JUMBO_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_GE_15XX_PKTS]), &value);
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_GTJUMBO_PKTS, &value);
+	EFSYS_STAT_INCR_QWORD(&(stat[EFX_MAC_TX_GE_15XX_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_BAD_FCS_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_ERRORS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_SINGLE_COLLISION_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_SGL_COL_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_MULTIPLE_COLLISION_PKTS,
+			    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_MULT_COL_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_EXCESSIVE_COLLISION_PKTS,
+			    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_EX_COL_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_LATE_COLLISION_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_LATE_COL_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_DEFERRED_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_DEF_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_TX_EXCESSIVE_DEFERRED_PKTS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_TX_EX_DEF_PKTS]), &value);
+
+	/* RX */
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_BYTES, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_OCTETS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_UNICAST_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_UNICST_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_MULTICAST_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_MULTICST_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_BROADCAST_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_BRDCST_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_PAUSE_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_PAUSE_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_UNDERSIZE_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_LE_64_PKTS]), &value);
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_64_PKTS, &value);
+	EFSYS_STAT_INCR_QWORD(&(stat[EFX_MAC_RX_LE_64_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_65_TO_127_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_65_TO_127_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_128_TO_255_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_128_TO_255_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_256_TO_511_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_256_TO_511_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_512_TO_1023_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_512_TO_1023_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_1024_TO_15XX_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_1024_TO_15XX_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_15XX_TO_JUMBO_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_GE_15XX_PKTS]), &value);
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_GTJUMBO_PKTS, &value);
+	EFSYS_STAT_INCR_QWORD(&(stat[EFX_MAC_RX_GE_15XX_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_BAD_FCS_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_FCS_ERRORS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_OVERFLOW_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_DROP_EVENTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_FALSE_CARRIER_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_FALSE_CARRIER_ERRORS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_SYMBOL_ERROR_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_SYMBOL_ERRORS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_ALIGN_ERROR_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_ALIGN_ERRORS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_INTERNAL_ERROR_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_INTERNAL_ERRORS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_JABBER_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_JABBER_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_LANES01_CHAR_ERR, &value);
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE0_CHAR_ERR]),
+			    &(value.eq_dword[0]));
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE1_CHAR_ERR]),
+			    &(value.eq_dword[1]));
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_LANES23_CHAR_ERR, &value);
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE2_CHAR_ERR]),
+			    &(value.eq_dword[0]));
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE3_CHAR_ERR]),
+			    &(value.eq_dword[1]));
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_LANES01_DISP_ERR, &value);
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE0_DISP_ERR]),
+			    &(value.eq_dword[0]));
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE1_DISP_ERR]),
+			    &(value.eq_dword[1]));
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_LANES23_DISP_ERR, &value);
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE2_DISP_ERR]),
+			    &(value.eq_dword[0]));
+	EFSYS_STAT_SET_DWORD(&(stat[EFX_MAC_RX_LANE3_DISP_ERR]),
+			    &(value.eq_dword[1]));
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_MATCH_FAULT, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_MATCH_FAULT]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RX_NODESC_DROPS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RX_NODESC_DROP_CNT]), &value);
+
+	/* Packet memory (EF10 only) */
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_PM_TRUNC_BB_OVERFLOW, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_PM_TRUNC_BB_OVERFLOW]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_PM_DISCARD_BB_OVERFLOW, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_PM_DISCARD_BB_OVERFLOW]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_PM_TRUNC_VFIFO_FULL, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_PM_TRUNC_VFIFO_FULL]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_PM_DISCARD_VFIFO_FULL, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_PM_DISCARD_VFIFO_FULL]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_PM_TRUNC_QBB, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_PM_TRUNC_QBB]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_PM_DISCARD_QBB, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_PM_DISCARD_QBB]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_PM_DISCARD_MAPPING, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_PM_DISCARD_MAPPING]), &value);
+
+	/* RX datapath */
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RXDP_Q_DISABLED_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RXDP_Q_DISABLED_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RXDP_DI_DROPPED_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RXDP_DI_DROPPED_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RXDP_STREAMING_PKTS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RXDP_STREAMING_PKTS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RXDP_HLB_FETCH_CONDITIONS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RXDP_HLB_FETCH]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_RXDP_HLB_WAIT_CONDITIONS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_RXDP_HLB_WAIT]), &value);
+
+
+	/* VADAPTER RX */
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_UNICAST_PACKETS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_UNICAST_PACKETS]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_UNICAST_BYTES,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_UNICAST_BYTES]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_MULTICAST_PACKETS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_MULTICAST_PACKETS]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_MULTICAST_BYTES,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_MULTICAST_BYTES]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_BROADCAST_PACKETS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_BROADCAST_PACKETS]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_BROADCAST_BYTES,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_BROADCAST_BYTES]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_BAD_PACKETS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_BAD_PACKETS]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_BAD_BYTES, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_BAD_BYTES]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_RX_OVERFLOW, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_RX_OVERFLOW]), &value);
+
+	/* VADAPTER TX */
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_UNICAST_PACKETS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_UNICAST_PACKETS]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_UNICAST_BYTES,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_UNICAST_BYTES]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_MULTICAST_PACKETS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_MULTICAST_PACKETS]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_MULTICAST_BYTES,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_MULTICAST_BYTES]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_BROADCAST_PACKETS,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_BROADCAST_PACKETS]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_BROADCAST_BYTES,
+	    &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_BROADCAST_BYTES]),
+	    &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_BAD_PACKETS, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_BAD_PACKETS]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_BAD_BYTES, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_BAD_BYTES]), &value);
+
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_VADAPTER_TX_OVERFLOW, &value);
+	EFSYS_STAT_SET_QWORD(&(stat[EFX_MAC_VADAPTER_TX_OVERFLOW]), &value);
+
+
+	EFSYS_DMA_SYNC_FOR_KERNEL(esmp, 0, EFX_MAC_STATS_SIZE);
+	EFSYS_MEM_READ_BARRIER();
+	EF10_MAC_STAT_READ(esmp, MC_CMD_MAC_GENERATION_START,
+			    &generation_start);
+
+	/* Check that we didn't read the stats in the middle of a DMA */
+	/* Not a good enough check ? */
+	if (memcmp(&generation_start, &generation_end,
+	    sizeof (generation_start)))
+		return (EAGAIN);
+
+	if (generationp)
+		*generationp = EFX_QWORD_FIELD(generation_start, EFX_DWORD_0);
+
+	return (0);
+}
+
+#endif	/* EFSYS_OPT_MAC_STATS */
+
 #endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
