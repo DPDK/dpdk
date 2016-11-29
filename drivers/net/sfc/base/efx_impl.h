@@ -161,6 +161,33 @@ typedef struct efx_phy_ops_s {
 	efx_rc_t	(*epo_oui_get)(efx_nic_t *, uint32_t *);
 } efx_phy_ops_t;
 
+#if EFSYS_OPT_FILTER
+typedef struct efx_filter_ops_s {
+	efx_rc_t	(*efo_init)(efx_nic_t *);
+	void		(*efo_fini)(efx_nic_t *);
+	efx_rc_t	(*efo_restore)(efx_nic_t *);
+	efx_rc_t	(*efo_add)(efx_nic_t *, efx_filter_spec_t *,
+				   boolean_t may_replace);
+	efx_rc_t	(*efo_delete)(efx_nic_t *, efx_filter_spec_t *);
+	efx_rc_t	(*efo_supported_filters)(efx_nic_t *, uint32_t *, size_t *);
+	efx_rc_t	(*efo_reconfigure)(efx_nic_t *, uint8_t const *, boolean_t,
+				   boolean_t, boolean_t, boolean_t,
+				   uint8_t const *, uint32_t);
+} efx_filter_ops_t;
+
+extern	__checkReturn	efx_rc_t
+efx_filter_reconfigure(
+	__in				efx_nic_t *enp,
+	__in_ecount(6)			uint8_t const *mac_addr,
+	__in				boolean_t all_unicst,
+	__in				boolean_t mulcst,
+	__in				boolean_t all_mulcst,
+	__in				boolean_t brdcst,
+	__in_ecount(6*count)		uint8_t const *addrs,
+	__in				uint32_t count);
+
+#endif /* EFSYS_OPT_FILTER */
+
 
 typedef struct efx_port_s {
 	efx_mac_type_t		ep_mac_type;
@@ -245,6 +272,13 @@ typedef struct efx_nic_ops_s {
 #define	EFX_RXQ_DC_SIZE 3 /* 64 descriptors */
 #endif
 
+#if EFSYS_OPT_FILTER
+
+typedef struct efx_filter_s {
+} efx_filter_t;
+
+#endif	/* EFSYS_OPT_FILTER */
+
 typedef struct efx_drv_cfg_s {
 	uint32_t		edc_min_vi_count;
 	uint32_t		edc_max_vi_count;
@@ -274,6 +308,10 @@ struct efx_nic_s {
 	const efx_ev_ops_t	*en_eevop;
 	const efx_tx_ops_t	*en_etxop;
 	const efx_rx_ops_t	*en_erxop;
+#if EFSYS_OPT_FILTER
+	efx_filter_t		en_filter;
+	const efx_filter_ops_t	*en_efop;
+#endif	/* EFSYS_OPT_FILTER */
 	uint32_t		en_vport_id;
 	union {
 		int	enu_unused;

@@ -1044,6 +1044,165 @@ efx_tx_qdestroy(
 
 /* FILTER */
 
+#if EFSYS_OPT_FILTER
+
+#define	EFX_ETHER_TYPE_IPV4 0x0800
+#define	EFX_ETHER_TYPE_IPV6 0x86DD
+
+#define	EFX_IPPROTO_TCP 6
+#define	EFX_IPPROTO_UDP 17
+
+/* Use RSS to spread across multiple queues */
+#define	EFX_FILTER_FLAG_RX_RSS		0x01
+/* Enable RX scatter */
+#define	EFX_FILTER_FLAG_RX_SCATTER	0x02
+/*
+ * Override an automatic filter (priority EFX_FILTER_PRI_AUTO).
+ * May only be set by the filter implementation for each type.
+ * A removal request will restore the automatic filter in its place.
+ */
+#define	EFX_FILTER_FLAG_RX_OVER_AUTO	0x04
+/* Filter is for RX */
+#define	EFX_FILTER_FLAG_RX		0x08
+/* Filter is for TX */
+#define	EFX_FILTER_FLAG_TX		0x10
+
+typedef unsigned int efx_filter_flags_t;
+
+typedef enum efx_filter_match_flags_e {
+	EFX_FILTER_MATCH_REM_HOST = 0x0001,	/* Match by remote IP host
+						 * address */
+	EFX_FILTER_MATCH_LOC_HOST = 0x0002,	/* Match by local IP host
+						 * address */
+	EFX_FILTER_MATCH_REM_MAC = 0x0004,	/* Match by remote MAC address */
+	EFX_FILTER_MATCH_REM_PORT = 0x0008,	/* Match by remote TCP/UDP port */
+	EFX_FILTER_MATCH_LOC_MAC = 0x0010,	/* Match by remote TCP/UDP port */
+	EFX_FILTER_MATCH_LOC_PORT = 0x0020,	/* Match by local TCP/UDP port */
+	EFX_FILTER_MATCH_ETHER_TYPE = 0x0040,	/* Match by Ether-type */
+	EFX_FILTER_MATCH_INNER_VID = 0x0080,	/* Match by inner VLAN ID */
+	EFX_FILTER_MATCH_OUTER_VID = 0x0100,	/* Match by outer VLAN ID */
+	EFX_FILTER_MATCH_IP_PROTO = 0x0200,	/* Match by IP transport
+						 * protocol */
+	EFX_FILTER_MATCH_LOC_MAC_IG = 0x0400,	/* Match by local MAC address
+						 * I/G bit. Used for RX default
+						 * unicast and multicast/
+						 * broadcast filters. */
+} efx_filter_match_flags_t;
+
+typedef enum efx_filter_priority_s {
+	EFX_FILTER_PRI_HINT = 0,	/* Performance hint */
+	EFX_FILTER_PRI_AUTO,		/* Automatic filter based on device
+					 * address list or hardware
+					 * requirements. This may only be used
+					 * by the filter implementation for
+					 * each NIC type. */
+	EFX_FILTER_PRI_MANUAL,		/* Manually configured filter */
+	EFX_FILTER_PRI_REQUIRED,	/* Required for correct behaviour of the
+					 * client (e.g. SR-IOV, HyperV VMQ etc.)
+					 */
+} efx_filter_priority_t;
+
+/*
+ * FIXME: All these fields are assumed to be in little-endian byte order.
+ * It may be better for some to be big-endian. See bug42804.
+ */
+
+typedef struct efx_filter_spec_s {
+	uint32_t	efs_match_flags:12;
+	uint32_t	efs_priority:2;
+	uint32_t	efs_flags:6;
+	uint32_t	efs_dmaq_id:12;
+	uint32_t	efs_rss_context;
+	uint16_t	efs_outer_vid;
+	uint16_t	efs_inner_vid;
+	uint8_t		efs_loc_mac[EFX_MAC_ADDR_LEN];
+	uint8_t		efs_rem_mac[EFX_MAC_ADDR_LEN];
+	uint16_t	efs_ether_type;
+	uint8_t		efs_ip_proto;
+	uint16_t	efs_loc_port;
+	uint16_t	efs_rem_port;
+	efx_oword_t	efs_rem_host;
+	efx_oword_t	efs_loc_host;
+} efx_filter_spec_t;
+
+
+/* Default values for use in filter specifications */
+#define	EFX_FILTER_SPEC_RSS_CONTEXT_DEFAULT	0xffffffff
+#define	EFX_FILTER_SPEC_RX_DMAQ_ID_DROP		0xfff
+#define	EFX_FILTER_SPEC_VID_UNSPEC		0xffff
+
+extern	__checkReturn	efx_rc_t
+efx_filter_init(
+	__in		efx_nic_t *enp);
+
+extern			void
+efx_filter_fini(
+	__in		efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_insert(
+	__in		efx_nic_t *enp,
+	__inout		efx_filter_spec_t *spec);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_remove(
+	__in		efx_nic_t *enp,
+	__inout		efx_filter_spec_t *spec);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_restore(
+	__in		efx_nic_t *enp);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_supported_filters(
+	__in		efx_nic_t *enp,
+	__out		uint32_t *list,
+	__out		size_t *length);
+
+extern			void
+efx_filter_spec_init_rx(
+	__out		efx_filter_spec_t *spec,
+	__in		efx_filter_priority_t priority,
+	__in		efx_filter_flags_t flags,
+	__in		efx_rxq_t *erp);
+
+extern			void
+efx_filter_spec_init_tx(
+	__out		efx_filter_spec_t *spec,
+	__in		efx_txq_t *etp);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_spec_set_ipv4_local(
+	__inout		efx_filter_spec_t *spec,
+	__in		uint8_t proto,
+	__in		uint32_t host,
+	__in		uint16_t port);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_spec_set_ipv4_full(
+	__inout		efx_filter_spec_t *spec,
+	__in		uint8_t proto,
+	__in		uint32_t lhost,
+	__in		uint16_t lport,
+	__in		uint32_t rhost,
+	__in		uint16_t rport);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_spec_set_eth_local(
+	__inout		efx_filter_spec_t *spec,
+	__in		uint16_t vid,
+	__in		const uint8_t *addr);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_spec_set_uc_def(
+	__inout		efx_filter_spec_t *spec);
+
+extern	__checkReturn	efx_rc_t
+efx_filter_spec_set_mc_def(
+	__inout		efx_filter_spec_t *spec);
+
+#endif	/* EFSYS_OPT_FILTER */
+
 /* HASH */
 
 extern	__checkReturn		uint32_t

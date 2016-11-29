@@ -59,6 +59,11 @@
 # error "FALCON_NIC_CFG_OVERRIDE is obsolete and is not supported."
 #endif
 
+#if EFSYS_OPT_FILTER
+/* Support hardware packet filters */
+#  error "FILTER requires SIENA or HUNTINGTON or MEDFORD"
+#endif /* EFSYS_OPT_FILTER */
+
 #ifdef EFSYS_OPT_MAC_FALCON_GMAC
 # error "MAC_FALCON_GMAC is obsolete and is not supported."
 #endif
