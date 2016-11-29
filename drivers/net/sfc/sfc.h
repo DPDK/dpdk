@@ -34,6 +34,9 @@
 
 #include <rte_ethdev.h>
 #include <rte_kvargs.h>
+#include <rte_spinlock.h>
+
+#include "efx.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,12 +45,109 @@ extern "C" {
 #define SFC_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)
 
+/*
+ * +---------------+
+ * | UNINITIALIZED |<-----------+
+ * +---------------+		|
+ *	|.eth_dev_init		|.eth_dev_uninit
+ *	V			|
+ * +---------------+------------+
+ * |  INITIALIZED  |
+ * +---------------+
+ */
+enum sfc_adapter_state {
+	SFC_ADAPTER_UNINITIALIZED = 0,
+	SFC_ADAPTER_INITIALIZED,
+
+	SFC_ADAPTER_NSTATES
+};
+
+enum sfc_mcdi_state {
+	SFC_MCDI_UNINITIALIZED = 0,
+	SFC_MCDI_INITIALIZED,
+	SFC_MCDI_BUSY,
+	SFC_MCDI_COMPLETED,
+
+	SFC_MCDI_NSTATES
+};
+
+struct sfc_mcdi {
+	rte_spinlock_t			lock;
+	efsys_mem_t			mem;
+	enum sfc_mcdi_state		state;
+	efx_mcdi_transport_t		transport;
+};
+
 /* Adapter private data */
 struct sfc_adapter {
+	/*
+	 * PMD setup and configuration is not thread safe.
+	 * Since it is not performance sensitive, it is better to guarantee
+	 * thread-safety and add device level lock.
+	 * Adapter control operations which change its state should
+	 * acquire the lock.
+	 */
+	rte_spinlock_t			lock;
+	enum sfc_adapter_state		state;
 	struct rte_eth_dev		*eth_dev;
 	struct rte_kvargs		*kvargs;
 	bool				debug_init;
+	int				socket_id;
+	efsys_bar_t			mem_bar;
+	efx_family_t			family;
+	efx_nic_t			*nic;
+	rte_spinlock_t			nic_lock;
+
+	struct sfc_mcdi			mcdi;
+
+	unsigned int			rxq_max;
+	unsigned int			txq_max;
 };
+
+/*
+ * Add wrapper functions to acquire/release lock to be able to remove or
+ * change the lock in one place.
+ */
+
+static inline void
+sfc_adapter_lock_init(struct sfc_adapter *sa)
+{
+	rte_spinlock_init(&sa->lock);
+}
+
+static inline int
+sfc_adapter_is_locked(struct sfc_adapter *sa)
+{
+	return rte_spinlock_is_locked(&sa->lock);
+}
+
+static inline void
+sfc_adapter_lock(struct sfc_adapter *sa)
+{
+	rte_spinlock_lock(&sa->lock);
+}
+
+static inline void
+sfc_adapter_unlock(struct sfc_adapter *sa)
+{
+	rte_spinlock_unlock(&sa->lock);
+}
+
+static inline void
+sfc_adapter_lock_fini(__rte_unused struct sfc_adapter *sa)
+{
+	/* Just for symmetry of the API */
+}
+
+int sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
+		  size_t len, int socket_id, efsys_mem_t *esmp);
+void sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp);
+
+int sfc_attach(struct sfc_adapter *sa);
+void sfc_detach(struct sfc_adapter *sa);
+
+int sfc_mcdi_init(struct sfc_adapter *sa);
+void sfc_mcdi_fini(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }

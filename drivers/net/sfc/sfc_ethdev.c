@@ -31,6 +31,8 @@
 #include <rte_ethdev.h>
 #include <rte_pci.h>
 
+#include "efx.h"
+
 #include "sfc.h"
 #include "sfc_debug.h"
 #include "sfc_log.h"
@@ -57,6 +59,8 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(dev);
 	int rc;
+	const efx_nic_cfg_t *encp;
+	const struct ether_addr *from;
 
 	/* Required for logging */
 	sa->eth_dev = dev;
@@ -75,11 +79,43 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 
 	sfc_log_init(sa, "entry");
 
+	dev->data->mac_addrs = rte_zmalloc("sfc", ETHER_ADDR_LEN, 0);
+	if (dev->data->mac_addrs == NULL) {
+		rc = ENOMEM;
+		goto fail_mac_addrs;
+	}
+
+	sfc_adapter_lock_init(sa);
+	sfc_adapter_lock(sa);
+
+	sfc_log_init(sa, "attaching");
+	rc = sfc_attach(sa);
+	if (rc != 0)
+		goto fail_attach;
+
+	encp = efx_nic_cfg_get(sa->nic);
+
+	/*
+	 * The arguments are really reverse order in comparison to
+	 * Linux kernel. Copy from NIC config to Ethernet device data.
+	 */
+	from = (const struct ether_addr *)(encp->enc_mac_addr);
+	ether_addr_copy(from, &dev->data->mac_addrs[0]);
+
 	dev->dev_ops = &sfc_eth_dev_ops;
+
+	sfc_adapter_unlock(sa);
 
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_attach:
+	sfc_adapter_unlock(sa);
+	sfc_adapter_lock_fini(sa);
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
+
+fail_mac_addrs:
 fail_kvarg_debug_init:
 	sfc_kvargs_cleanup(sa);
 
@@ -96,9 +132,19 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 
 	sfc_log_init(sa, "entry");
 
+	sfc_adapter_lock(sa);
+
+	sfc_detach(sa);
+
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
+
 	dev->dev_ops = NULL;
 
 	sfc_kvargs_cleanup(sa);
+
+	sfc_adapter_unlock(sa);
+	sfc_adapter_lock_fini(sa);
 
 	sfc_log_init(sa, "done");
 
@@ -108,13 +154,17 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 }
 
 static const struct rte_pci_id pci_id_sfc_efx_map[] = {
+	{ RTE_PCI_DEVICE(EFX_PCI_VENID_SFC, EFX_PCI_DEVID_FARMINGDALE) },
+	{ RTE_PCI_DEVICE(EFX_PCI_VENID_SFC, EFX_PCI_DEVID_GREENPORT) },
+	{ RTE_PCI_DEVICE(EFX_PCI_VENID_SFC, EFX_PCI_DEVID_MEDFORD) },
 	{ .vendor_id = 0 /* sentinel */ }
 };
 
 static struct eth_driver sfc_efx_pmd = {
 	.pci_drv = {
 		.id_table = pci_id_sfc_efx_map,
-		.drv_flags = 0,
+		.drv_flags =
+			RTE_PCI_DRV_NEED_MAPPING,
 		.probe = rte_eth_dev_pci_probe,
 		.remove = rte_eth_dev_pci_remove,
 	},
