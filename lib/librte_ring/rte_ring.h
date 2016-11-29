@@ -106,7 +106,7 @@ extern "C" {
 
 enum rte_ring_queue_behavior {
 	RTE_RING_QUEUE_FIXED = 0, /* Enq/Deq a fixed number of items from a ring */
-	RTE_RING_QUEUE_VARIABLE   /* Enq/Deq as many items a possible from ring */
+	RTE_RING_QUEUE_VARIABLE   /* Enq/Deq as many items as possible from ring */
 };
 
 #ifdef RTE_LIBRTE_RING_DEBUG

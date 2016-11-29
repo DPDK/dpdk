@@ -551,7 +551,7 @@ int rte_mempool_register_ops(const struct rte_mempool_ops *ops);
 /**
  * Macro to statically register the ops of a mempool handler.
  * Note that the rte_mempool_register_ops fails silently here when
- * more then RTE_MEMPOOL_MAX_OPS_IDX is registered.
+ * more than RTE_MEMPOOL_MAX_OPS_IDX is registered.
  */
 #define MEMPOOL_REGISTER_OPS(ops)					\
 	void mp_hdlr_init_##ops(void);					\
