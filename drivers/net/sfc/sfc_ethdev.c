@@ -47,6 +47,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	sfc_log_init(sa, "entry");
 
 	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
+	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
 }
 
 static int

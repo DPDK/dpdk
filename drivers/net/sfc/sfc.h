@@ -118,6 +118,12 @@ struct sfc_intr {
 
 struct sfc_evq_info;
 
+struct sfc_port {
+	unsigned int			flow_ctrl;
+	boolean_t			flow_ctrl_autoneg;
+	size_t				pdu;
+};
+
 /* Adapter private data */
 struct sfc_adapter {
 	/*
@@ -139,6 +145,7 @@ struct sfc_adapter {
 
 	struct sfc_mcdi			mcdi;
 	struct sfc_intr			intr;
+	struct sfc_port			port;
 
 	unsigned int			rxq_max;
 	unsigned int			txq_max;
@@ -206,6 +213,11 @@ int sfc_intr_init(struct sfc_adapter *sa);
 void sfc_intr_fini(struct sfc_adapter *sa);
 int sfc_intr_start(struct sfc_adapter *sa);
 void sfc_intr_stop(struct sfc_adapter *sa);
+
+int sfc_port_init(struct sfc_adapter *sa);
+void sfc_port_fini(struct sfc_adapter *sa);
+int sfc_port_start(struct sfc_adapter *sa);
+void sfc_port_stop(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }
