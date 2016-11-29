@@ -66,13 +66,56 @@ sfc_ev_initialized(void *arg)
 }
 
 static boolean_t
-sfc_ev_rx(void *arg, __rte_unused uint32_t label, __rte_unused uint32_t id,
-	  __rte_unused uint32_t size, __rte_unused uint16_t flags)
+sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
+	  uint32_t size, uint16_t flags)
 {
 	struct sfc_evq *evq = arg;
+	struct sfc_rxq *rxq;
+	unsigned int stop;
+	unsigned int pending_id;
+	unsigned int delta;
+	unsigned int i;
+	struct sfc_rx_sw_desc *rxd;
 
-	sfc_err(evq->sa, "EVQ %u unexpected Rx event", evq->evq_index);
-	return B_TRUE;
+	if (unlikely(evq->exception))
+		goto done;
+
+	rxq = evq->rxq;
+
+	SFC_ASSERT(rxq != NULL);
+	SFC_ASSERT(rxq->evq == evq);
+	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
+
+	stop = (id + 1) & rxq->ptr_mask;
+	pending_id = rxq->pending & rxq->ptr_mask;
+	delta = (stop >= pending_id) ? (stop - pending_id) :
+		(rxq->ptr_mask + 1 - pending_id + stop);
+
+	if (unlikely(delta > rxq->batch_max)) {
+		evq->exception = B_TRUE;
+
+		sfc_err(evq->sa,
+			"EVQ %u RxQ %u completion out of order "
+			"(id=%#x delta=%u flags=%#x); needs restart\n",
+			evq->evq_index, sfc_rxq_sw_index(rxq), id, delta,
+			flags);
+
+		goto done;
+	}
+
+	for (i = pending_id; i != stop; i = (i + 1) & rxq->ptr_mask) {
+		rxd = &rxq->sw_desc[i];
+
+		rxd->flags = flags;
+
+		SFC_ASSERT(size < (1 << 16));
+		rxd->size = (uint16_t)size;
+	}
+
+	rxq->pending += delta;
+
+done:
+	return B_FALSE;
 }
 
 static boolean_t

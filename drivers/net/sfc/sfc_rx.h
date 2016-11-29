@@ -59,6 +59,8 @@ enum sfc_rxq_state_bit {
 #define SFC_RXQ_INITIALIZED	(1 << SFC_RXQ_INITIALIZED_BIT)
 	SFC_RXQ_STARTED_BIT,
 #define SFC_RXQ_STARTED		(1 << SFC_RXQ_STARTED_BIT)
+	SFC_RXQ_RUNNING_BIT,
+#define SFC_RXQ_RUNNING		(1 << SFC_RXQ_RUNNING_BIT)
 	SFC_RXQ_FLUSHING_BIT,
 #define SFC_RXQ_FLUSHING	(1 << SFC_RXQ_FLUSHING_BIT)
 	SFC_RXQ_FLUSHED_BIT,
@@ -79,6 +81,8 @@ struct sfc_rxq {
 	unsigned int		ptr_mask;
 	unsigned int		pending;
 	unsigned int		completed;
+	uint16_t		batch_max;
+	uint16_t		prefix_size;
 
 	/* Used on refill */
 	unsigned int		added;
@@ -131,6 +135,9 @@ void sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
 
 void sfc_rx_qflush_done(struct sfc_rxq *rxq);
 void sfc_rx_qflush_failed(struct sfc_rxq *rxq);
+
+uint16_t sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts);
 
 #ifdef __cplusplus
 }

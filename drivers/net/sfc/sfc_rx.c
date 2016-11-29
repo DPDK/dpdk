@@ -32,6 +32,7 @@
 #include "efx.h"
 
 #include "sfc.h"
+#include "sfc_debug.h"
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
@@ -127,6 +128,69 @@ sfc_rx_qrefill(struct sfc_rxq *rxq)
 		rxq->added = added;
 		efx_rx_qpush(rxq->common, added, &rxq->pushed);
 	}
+}
+
+uint16_t
+sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct sfc_rxq *rxq = rx_queue;
+	unsigned int completed;
+	unsigned int prefix_size = rxq->prefix_size;
+	unsigned int done_pkts = 0;
+
+	if (unlikely((rxq->state & SFC_RXQ_RUNNING) == 0))
+		return 0;
+
+	sfc_ev_qpoll(rxq->evq);
+
+	completed = rxq->completed;
+	while (completed != rxq->pending && done_pkts < nb_pkts) {
+		unsigned int id;
+		struct sfc_rx_sw_desc *rxd;
+		struct rte_mbuf *m;
+		unsigned int seg_len;
+		unsigned int desc_flags;
+
+		id = completed++ & rxq->ptr_mask;
+		rxd = &rxq->sw_desc[id];
+		m = rxd->mbuf;
+		desc_flags = rxd->flags;
+
+		if (desc_flags & (EFX_ADDR_MISMATCH | EFX_DISCARD))
+			goto discard;
+
+		if (desc_flags & EFX_PKT_PREFIX_LEN) {
+			uint16_t tmp_size;
+			int rc __rte_unused;
+
+			rc = efx_pseudo_hdr_pkt_length_get(rxq->common,
+				rte_pktmbuf_mtod(m, uint8_t *), &tmp_size);
+			SFC_ASSERT(rc == 0);
+			seg_len = tmp_size;
+		} else {
+			seg_len = rxd->size - prefix_size;
+		}
+
+		m->data_off += prefix_size;
+		rte_pktmbuf_data_len(m) = seg_len;
+		rte_pktmbuf_pkt_len(m) = seg_len;
+
+		m->packet_type = RTE_PTYPE_L2_ETHER;
+
+		*rx_pkts++ = m;
+		done_pkts++;
+		continue;
+
+discard:
+		rte_mempool_put(rxq->refill_mb_pool, m);
+		rxd->mbuf = NULL;
+	}
+
+	rxq->completed = completed;
+
+	sfc_rx_qrefill(rxq);
+
+	return done_pkts;
 }
 
 static void
@@ -226,7 +290,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	rxq->pending = rxq->completed = rxq->added = rxq->pushed = 0;
 
-	rxq->state |= SFC_RXQ_STARTED;
+	rxq->state |= (SFC_RXQ_STARTED | SFC_RXQ_RUNNING);
 
 	sfc_rx_qrefill(rxq);
 
@@ -270,6 +334,8 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	/* It seems to be used by DPDK for debug purposes only ('rte_ether') */
 	sa->eth_dev->data->rx_queue_state[sw_index] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
+
+	rxq->state &= ~SFC_RXQ_RUNNING;
 
 	if (sw_index == 0)
 		efx_mac_filter_default_rxq_clear(sa->nic);
@@ -493,6 +559,10 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq->buf_size = buf_size;
 	rxq->hw_index = sw_index;
 	rxq->port_id = sa->eth_dev->data->port_id;
+
+	/* Cache limits required on datapath in RxQ structure */
+	rxq->batch_max = encp->enc_rx_batch_max;
+	rxq->prefix_size = encp->enc_rx_prefix_size;
 
 	rxq->state = SFC_RXQ_INITIALIZED;
 

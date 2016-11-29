@@ -311,6 +311,7 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	ether_addr_copy(from, &dev->data->mac_addrs[0]);
 
 	dev->dev_ops = &sfc_eth_dev_ops;
+	dev->rx_pkt_burst = &sfc_recv_pkts;
 
 	sfc_adapter_unlock(sa);
 
@@ -348,6 +349,7 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 	dev->data->mac_addrs = NULL;
 
 	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
 
 	sfc_kvargs_cleanup(sa);
 
