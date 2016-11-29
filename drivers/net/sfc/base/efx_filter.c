@@ -79,6 +79,18 @@ static const efx_filter_ops_t	__efx_filter_siena_ops = {
 };
 #endif /* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+static const efx_filter_ops_t	__efx_filter_ef10_ops = {
+	ef10_filter_init,		/* efo_init */
+	ef10_filter_fini,		/* efo_fini */
+	ef10_filter_restore,		/* efo_restore */
+	ef10_filter_add,		/* efo_add */
+	ef10_filter_delete,		/* efo_delete */
+	ef10_filter_supported_filters,	/* efo_supported_filters */
+	ef10_filter_reconfigure,	/* efo_reconfigure */
+};
+#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
+
 	__checkReturn	efx_rc_t
 efx_filter_insert(
 	__in		efx_nic_t *enp,
@@ -146,6 +158,12 @@ efx_filter_init(
 		efop = &__efx_filter_siena_ops;
 		break;
 #endif /* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_HUNTINGTON
+	case EFX_FAMILY_HUNTINGTON:
+		efop = &__efx_filter_ef10_ops;
+		break;
+#endif /* EFSYS_OPT_HUNTINGTON */
 
 	default:
 		EFSYS_ASSERT(0);

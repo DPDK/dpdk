@@ -104,6 +104,20 @@ static const efx_rx_ops_t __efx_rx_siena_ops = {
 };
 #endif	/* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+static const efx_rx_ops_t __efx_rx_ef10_ops = {
+	ef10_rx_init,				/* erxo_init */
+	ef10_rx_fini,				/* erxo_fini */
+	ef10_rx_prefix_pktlen,			/* erxo_prefix_pktlen */
+	ef10_rx_qpost,				/* erxo_qpost */
+	ef10_rx_qpush,				/* erxo_qpush */
+	ef10_rx_qflush,				/* erxo_qflush */
+	ef10_rx_qenable,			/* erxo_qenable */
+	ef10_rx_qcreate,			/* erxo_qcreate */
+	ef10_rx_qdestroy,			/* erxo_qdestroy */
+};
+#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
+
 
 	__checkReturn	efx_rc_t
 efx_rx_init(
@@ -131,6 +145,12 @@ efx_rx_init(
 		erxop = &__efx_rx_siena_ops;
 		break;
 #endif /* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_HUNTINGTON
+	case EFX_FAMILY_HUNTINGTON:
+		erxop = &__efx_rx_ef10_ops;
+		break;
+#endif /* EFSYS_OPT_HUNTINGTON */
 
 	default:
 		EFSYS_ASSERT(0);

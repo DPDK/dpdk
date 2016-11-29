@@ -45,6 +45,14 @@
 #include "siena_impl.h"
 #endif	/* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON
+#include "hunt_impl.h"
+#endif	/* EFSYS_OPT_HUNTINGTON */
+
+#if (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#include "ef10_impl.h"
+#endif	/* (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD) */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -331,6 +339,9 @@ typedef struct efx_filter_s {
 #if EFSYS_OPT_SIENA
 	siena_filter_t		*ef_siena_filter;
 #endif /* EFSYS_OPT_SIENA */
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+	ef10_filter_table_t	*ef_ef10_filter_table;
+#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
 } efx_filter_t;
 
 #if EFSYS_OPT_SIENA
@@ -413,6 +424,24 @@ struct efx_nic_s {
 #endif	/* EFSYS_OPT_SIENA */
 		int	enu_unused;
 	} en_u;
+#if (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+	union en_arch {
+		struct {
+			int			ena_vi_base;
+			int			ena_vi_count;
+			int			ena_vi_shift;
+			efx_piobuf_handle_t	ena_piobuf_handle[EF10_MAX_PIOBUF_NBUFS];
+			uint32_t		ena_piobuf_count;
+			uint32_t		ena_pio_alloc_map[EF10_MAX_PIOBUF_NBUFS];
+			uint32_t		ena_pio_write_vi_base;
+			/* Memory BAR mapping regions */
+			uint32_t		ena_uc_mem_map_offset;
+			size_t			ena_uc_mem_map_size;
+			uint32_t		ena_wc_mem_map_offset;
+			size_t			ena_wc_mem_map_size;
+		} ef10;
+	} en_arch;
+#endif	/* (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD) */
 };
 
 
@@ -469,6 +498,13 @@ struct efx_txq_s {
 	unsigned int			et_index;
 	unsigned int			et_mask;
 	efsys_mem_t			*et_esmp;
+#if EFSYS_OPT_HUNTINGTON
+	uint32_t			et_pio_bufnum;
+	uint32_t			et_pio_blknum;
+	uint32_t			et_pio_write_offset;
+	uint32_t			et_pio_offset;
+	size_t				et_pio_size;
+#endif
 };
 
 #define	EFX_TXQ_MAGIC	0x05092005

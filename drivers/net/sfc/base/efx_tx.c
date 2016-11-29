@@ -129,6 +129,29 @@ static const efx_tx_ops_t	__efx_tx_siena_ops = {
 };
 #endif /* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON
+static const efx_tx_ops_t	__efx_tx_hunt_ops = {
+	ef10_tx_init,				/* etxo_init */
+	ef10_tx_fini,				/* etxo_fini */
+	ef10_tx_qcreate,			/* etxo_qcreate */
+	ef10_tx_qdestroy,			/* etxo_qdestroy */
+	ef10_tx_qpost,				/* etxo_qpost */
+	ef10_tx_qpush,				/* etxo_qpush */
+	ef10_tx_qpace,				/* etxo_qpace */
+	ef10_tx_qflush,				/* etxo_qflush */
+	ef10_tx_qenable,			/* etxo_qenable */
+	ef10_tx_qpio_enable,			/* etxo_qpio_enable */
+	ef10_tx_qpio_disable,			/* etxo_qpio_disable */
+	ef10_tx_qpio_write,			/* etxo_qpio_write */
+	ef10_tx_qpio_post,			/* etxo_qpio_post */
+	ef10_tx_qdesc_post,			/* etxo_qdesc_post */
+	ef10_tx_qdesc_dma_create,		/* etxo_qdesc_dma_create */
+	ef10_tx_qdesc_tso_create,		/* etxo_qdesc_tso_create */
+	ef10_tx_qdesc_tso2_create,		/* etxo_qdesc_tso2_create */
+	ef10_tx_qdesc_vlantci_create,		/* etxo_qdesc_vlantci_create */
+};
+#endif /* EFSYS_OPT_HUNTINGTON */
+
 	__checkReturn	efx_rc_t
 efx_tx_init(
 	__in		efx_nic_t *enp)
@@ -155,6 +178,12 @@ efx_tx_init(
 		etxop = &__efx_tx_siena_ops;
 		break;
 #endif /* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_HUNTINGTON
+	case EFX_FAMILY_HUNTINGTON:
+		etxop = &__efx_tx_hunt_ops;
+		break;
+#endif /* EFSYS_OPT_HUNTINGTON */
 
 	default:
 		EFSYS_ASSERT(0);

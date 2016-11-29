@@ -53,6 +53,21 @@ static const efx_mac_ops_t	__efx_siena_mac_ops = {
 };
 #endif	/* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+static const efx_mac_ops_t	__efx_ef10_mac_ops = {
+	ef10_mac_poll,				/* emo_poll */
+	ef10_mac_up,				/* emo_up */
+	ef10_mac_addr_set,			/* emo_addr_set */
+	ef10_mac_pdu_set,			/* emo_pdu_set */
+	ef10_mac_pdu_get,			/* emo_pdu_get */
+	ef10_mac_reconfigure,			/* emo_reconfigure */
+	ef10_mac_multicast_list_set,		/* emo_multicast_list_set */
+	ef10_mac_filter_default_rxq_set,	/* emo_filter_default_rxq_set */
+	ef10_mac_filter_default_rxq_clear,
+					/* emo_filter_default_rxq_clear */
+};
+#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
+
 	__checkReturn			efx_rc_t
 efx_mac_pdu_set(
 	__in				efx_nic_t *enp,
@@ -493,6 +508,13 @@ efx_mac_select(
 		type = EFX_MAC_SIENA;
 		break;
 #endif /* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_HUNTINGTON
+	case EFX_FAMILY_HUNTINGTON:
+		emop = &__efx_ef10_mac_ops;
+		type = EFX_MAC_HUNTINGTON;
+		break;
+#endif /* EFSYS_OPT_HUNTINGTON */
 
 	default:
 		rc = EINVAL;

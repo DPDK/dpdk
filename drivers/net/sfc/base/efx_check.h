@@ -70,6 +70,12 @@
 # endif
 #endif /* EFSYS_OPT_FILTER */
 
+#if (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+# if !EFSYS_OPT_FILTER
+#  error "HUNTINGTON or MEDFORD requires FILTER"
+# endif
+#endif /* EFSYS_OPT_HUNTINGTON */
+
 #ifdef EFSYS_OPT_MAC_FALCON_GMAC
 # error "MAC_FALCON_GMAC is obsolete and is not supported."
 #endif

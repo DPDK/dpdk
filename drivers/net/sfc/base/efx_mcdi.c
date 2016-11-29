@@ -69,6 +69,21 @@ static const efx_mcdi_ops_t	__efx_mcdi_siena_ops = {
 
 #endif	/* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+
+static const efx_mcdi_ops_t	__efx_mcdi_ef10_ops = {
+	ef10_mcdi_init,			/* emco_init */
+	ef10_mcdi_send_request,		/* emco_send_request */
+	ef10_mcdi_poll_reboot,		/* emco_poll_reboot */
+	ef10_mcdi_poll_response,	/* emco_poll_response */
+	ef10_mcdi_read_response,	/* emco_read_response */
+	ef10_mcdi_fini,			/* emco_fini */
+	ef10_mcdi_feature_supported,	/* emco_feature_supported */
+	ef10_mcdi_get_timeout,		/* emco_get_timeout */
+};
+
+#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
+
 
 
 	__checkReturn	efx_rc_t
@@ -88,6 +103,12 @@ efx_mcdi_init(
 		emcop = &__efx_mcdi_siena_ops;
 		break;
 #endif	/* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_HUNTINGTON
+	case EFX_FAMILY_HUNTINGTON:
+		emcop = &__efx_mcdi_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_HUNTINGTON */
 
 	default:
 		EFSYS_ASSERT(0);
@@ -1552,6 +1573,107 @@ fail1:
 	return (rc);
 }
 
+
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+
+/*
+ * This function returns the pf and vf number of a function.  If it is a pf the
+ * vf number is 0xffff.  The vf number is the index of the vf on that
+ * function. So if you have 3 vfs on pf 0 the 3 vfs will return (pf=0,vf=0),
+ * (pf=0,vf=1), (pf=0,vf=2) aand the pf will return (pf=0, vf=0xffff).
+ */
+	__checkReturn		efx_rc_t
+efx_mcdi_get_function_info(
+	__in			efx_nic_t *enp,
+	__out			uint32_t *pfp,
+	__out_opt		uint32_t *vfp)
+{
+	efx_mcdi_req_t req;
+	uint8_t payload[MAX(MC_CMD_GET_FUNCTION_INFO_IN_LEN,
+			    MC_CMD_GET_FUNCTION_INFO_OUT_LEN)];
+	efx_rc_t rc;
+
+	(void) memset(payload, 0, sizeof (payload));
+	req.emr_cmd = MC_CMD_GET_FUNCTION_INFO;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_GET_FUNCTION_INFO_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_GET_FUNCTION_INFO_OUT_LEN;
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_GET_FUNCTION_INFO_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	*pfp = MCDI_OUT_DWORD(req, GET_FUNCTION_INFO_OUT_PF);
+	if (vfp != NULL)
+		*vfp = MCDI_OUT_DWORD(req, GET_FUNCTION_INFO_OUT_VF);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_mcdi_privilege_mask(
+	__in			efx_nic_t *enp,
+	__in			uint32_t pf,
+	__in			uint32_t vf,
+	__out			uint32_t *maskp)
+{
+	efx_mcdi_req_t req;
+	uint8_t payload[MAX(MC_CMD_PRIVILEGE_MASK_IN_LEN,
+			    MC_CMD_PRIVILEGE_MASK_OUT_LEN)];
+	efx_rc_t rc;
+
+	(void) memset(payload, 0, sizeof (payload));
+	req.emr_cmd = MC_CMD_PRIVILEGE_MASK;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_PRIVILEGE_MASK_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_PRIVILEGE_MASK_OUT_LEN;
+
+	MCDI_IN_POPULATE_DWORD_2(req, PRIVILEGE_MASK_IN_FUNCTION,
+	    PRIVILEGE_MASK_IN_FUNCTION_PF, pf,
+	    PRIVILEGE_MASK_IN_FUNCTION_VF, vf);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_PRIVILEGE_MASK_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	*maskp = MCDI_OUT_DWORD(req, PRIVILEGE_MASK_OUT_OLD_MASK);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
 
 	__checkReturn		efx_rc_t
 efx_mcdi_set_workaround(

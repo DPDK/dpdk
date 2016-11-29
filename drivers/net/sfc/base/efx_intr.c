@@ -99,6 +99,20 @@ static const efx_intr_ops_t	__efx_intr_siena_ops = {
 };
 #endif	/* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+static const efx_intr_ops_t	__efx_intr_ef10_ops = {
+	ef10_intr_init,			/* eio_init */
+	ef10_intr_enable,		/* eio_enable */
+	ef10_intr_disable,		/* eio_disable */
+	ef10_intr_disable_unlocked,	/* eio_disable_unlocked */
+	ef10_intr_trigger,		/* eio_trigger */
+	ef10_intr_status_line,		/* eio_status_line */
+	ef10_intr_status_message,	/* eio_status_message */
+	ef10_intr_fatal,		/* eio_fatal */
+	ef10_intr_fini,			/* eio_fini */
+};
+#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
+
 	__checkReturn	efx_rc_t
 efx_intr_init(
 	__in		efx_nic_t *enp,
@@ -129,6 +143,12 @@ efx_intr_init(
 		eiop = &__efx_intr_siena_ops;
 		break;
 #endif	/* EFSYS_OPT_SIENA */
+
+#if EFSYS_OPT_HUNTINGTON
+	case EFX_FAMILY_HUNTINGTON:
+		eiop = &__efx_intr_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_HUNTINGTON */
 
 	default:
 		EFSYS_ASSERT(B_FALSE);

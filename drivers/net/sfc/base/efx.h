@@ -184,6 +184,11 @@ efx_nic_check_pcie_link_speed(
 
 #if EFSYS_OPT_MCDI
 
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+/* Huntington and Medford require MCDIv2 commands */
+#define	WITH_MCDI_V2 1
+#endif
+
 typedef struct efx_mcdi_req_s efx_mcdi_req_t;
 
 typedef enum efx_mcdi_exception_e {
@@ -581,6 +586,11 @@ typedef struct efx_nic_cfg_s {
 #if EFSYS_OPT_MCDI
 	uint8_t			enc_mcdi_mdio_channel;
 #endif	/* EFSYS_OPT_MCDI */
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+	uint32_t		enc_pf;
+	uint32_t		enc_vf;
+	uint32_t		enc_privilege_mask;
+#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
 	boolean_t		enc_bug26807_workaround;
 	boolean_t		enc_bug35388_workaround;
 	boolean_t		enc_bug41750_workaround;

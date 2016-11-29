@@ -42,6 +42,16 @@ static const efx_phy_ops_t	__efx_phy_siena_ops = {
 };
 #endif	/* EFSYS_OPT_SIENA */
 
+#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
+static const efx_phy_ops_t	__efx_phy_ef10_ops = {
+	ef10_phy_power,			/* epo_power */
+	NULL,				/* epo_reset */
+	ef10_phy_reconfigure,		/* epo_reconfigure */
+	ef10_phy_verify,		/* epo_verify */
+	ef10_phy_oui_get,		/* epo_oui_get */
+};
+#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */
+
 	__checkReturn	efx_rc_t
 efx_phy_probe(
 	__in		efx_nic_t *enp)
@@ -63,6 +73,11 @@ efx_phy_probe(
 		epop = &__efx_phy_siena_ops;
 		break;
 #endif	/* EFSYS_OPT_SIENA */
+#if EFSYS_OPT_HUNTINGTON
+	case EFX_FAMILY_HUNTINGTON:
+		epop = &__efx_phy_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_HUNTINGTON */
 	default:
 		rc = ENOTSUP;
 		goto fail1;
