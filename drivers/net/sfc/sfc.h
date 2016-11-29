@@ -147,6 +147,7 @@ struct sfc_adapter {
 	struct sfc_evq_info		*evq_info;
 
 	unsigned int			mgmt_evq_index;
+	rte_spinlock_t			mgmt_evq_lock;
 };
 
 /*

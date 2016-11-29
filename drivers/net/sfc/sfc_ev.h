@@ -133,6 +133,8 @@ void sfc_ev_qstop(struct sfc_adapter *sa, unsigned int sw_index);
 int sfc_ev_qprime(struct sfc_evq *evq);
 void sfc_ev_qpoll(struct sfc_evq *evq);
 
+void sfc_ev_mgmt_qpoll(struct sfc_adapter *sa);
+
 #ifdef __cplusplus
 }
 #endif
