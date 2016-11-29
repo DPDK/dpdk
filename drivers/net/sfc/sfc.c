@@ -127,6 +127,71 @@ sfc_check_conf(struct sfc_adapter *sa)
 }
 
 int
+sfc_start(struct sfc_adapter *sa)
+{
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	switch (sa->state) {
+	case SFC_ADAPTER_CONFIGURED:
+		break;
+	case SFC_ADAPTER_STARTED:
+		sfc_info(sa, "already started");
+		return 0;
+	default:
+		rc = EINVAL;
+		goto fail_bad_state;
+	}
+
+	sa->state = SFC_ADAPTER_STARTING;
+
+	sfc_log_init(sa, "init nic");
+	rc = efx_nic_init(sa->nic);
+	if (rc != 0)
+		goto fail_nic_init;
+
+	sa->state = SFC_ADAPTER_STARTED;
+	sfc_log_init(sa, "done");
+	return 0;
+
+fail_nic_init:
+	sa->state = SFC_ADAPTER_CONFIGURED;
+fail_bad_state:
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
+}
+
+void
+sfc_stop(struct sfc_adapter *sa)
+{
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	switch (sa->state) {
+	case SFC_ADAPTER_STARTED:
+		break;
+	case SFC_ADAPTER_CONFIGURED:
+		sfc_info(sa, "already stopped");
+		return;
+	default:
+		sfc_err(sa, "stop in unexpected state %u", sa->state);
+		SFC_ASSERT(B_FALSE);
+		return;
+	}
+
+	sa->state = SFC_ADAPTER_STOPPING;
+
+	efx_nic_fini(sa->nic);
+
+	sa->state = SFC_ADAPTER_CONFIGURED;
+	sfc_log_init(sa, "done");
+}
+
+int
 sfc_configure(struct sfc_adapter *sa)
 {
 	int rc;

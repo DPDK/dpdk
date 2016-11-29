@@ -67,6 +67,20 @@ extern "C" {
  *	V			|.dev_close
  * +---------------+------------+
  * |  CONFIGURED   |
+ * +---------------+<-----------+
+ *	|.dev_start		|
+ *	V			|
+ * +---------------+		|
+ * |   STARTING    |------------^
+ * +---------------+ failed	|
+ *	|success		|
+ *	|		+---------------+
+ *	|		|   STOPPING    |
+ *	|		+---------------+
+ *	|			^
+ *	V			|.dev_stop
+ * +---------------+------------+
+ * |    STARTED    |
  * +---------------+
  */
 enum sfc_adapter_state {
@@ -75,6 +89,9 @@ enum sfc_adapter_state {
 	SFC_ADAPTER_CONFIGURING,
 	SFC_ADAPTER_CONFIGURED,
 	SFC_ADAPTER_CLOSING,
+	SFC_ADAPTER_STARTING,
+	SFC_ADAPTER_STARTED,
+	SFC_ADAPTER_STOPPING,
 
 	SFC_ADAPTER_NSTATES
 };
@@ -161,6 +178,8 @@ void sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp);
 
 int sfc_attach(struct sfc_adapter *sa);
 void sfc_detach(struct sfc_adapter *sa);
+int sfc_start(struct sfc_adapter *sa);
+void sfc_stop(struct sfc_adapter *sa);
 
 int sfc_mcdi_init(struct sfc_adapter *sa);
 void sfc_mcdi_fini(struct sfc_adapter *sa);

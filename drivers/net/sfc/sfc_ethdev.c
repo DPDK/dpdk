@@ -81,6 +81,37 @@ sfc_dev_configure(struct rte_eth_dev *dev)
 	return -rc;
 }
 
+static int
+sfc_dev_start(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	sfc_adapter_lock(sa);
+	rc = sfc_start(sa);
+	sfc_adapter_unlock(sa);
+
+	sfc_log_init(sa, "done %d", rc);
+	SFC_ASSERT(rc >= 0);
+	return -rc;
+}
+
+static void
+sfc_dev_stop(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	sfc_log_init(sa, "entry");
+
+	sfc_adapter_lock(sa);
+	sfc_stop(sa);
+	sfc_adapter_unlock(sa);
+
+	sfc_log_init(sa, "done");
+}
+
 static void
 sfc_dev_close(struct rte_eth_dev *dev)
 {
@@ -90,6 +121,10 @@ sfc_dev_close(struct rte_eth_dev *dev)
 
 	sfc_adapter_lock(sa);
 	switch (sa->state) {
+	case SFC_ADAPTER_STARTED:
+		sfc_stop(sa);
+		SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
+		/* FALLTHROUGH */
 	case SFC_ADAPTER_CONFIGURED:
 		sfc_close(sa);
 		SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
@@ -107,6 +142,8 @@ sfc_dev_close(struct rte_eth_dev *dev)
 
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
+	.dev_start			= sfc_dev_start,
+	.dev_stop			= sfc_dev_stop,
 	.dev_close			= sfc_dev_close,
 	.dev_infos_get			= sfc_dev_infos_get,
 };
