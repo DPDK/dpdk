@@ -387,7 +387,6 @@ T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
 
 PCAP PMD
-M: Nicolás Pernas Maradei <nicolas.pernas.maradei@emutex.com>
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
