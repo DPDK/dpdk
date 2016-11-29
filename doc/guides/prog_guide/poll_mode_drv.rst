@@ -200,8 +200,8 @@ Ethernet* flow control (pause frame) can be configured on the individual port.
 Refer to the testpmd source code for details.
 Also, L4 (UDP/TCP/ SCTP) checksum offload by the NIC can be enabled for an individual packet as long as the packet mbuf is set up correctly. See `Hardware Offload`_ for details.
 
-Configuration of Transmit and Receive Queues
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuration of Transmit Queues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each transmit queue is independently configured with the following information:
 

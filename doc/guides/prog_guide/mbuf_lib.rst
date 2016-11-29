@@ -175,8 +175,8 @@ a vxlan-encapsulated tcp packet:
     set out_ip checksum to 0 in the packet
     set out_udp checksum to pseudo header using rte_ipv4_phdr_cksum()
 
-   This is supported on hardware advertising DEV_TX_OFFLOAD_IPV4_CKSUM
-   and DEV_TX_OFFLOAD_UDP_CKSUM.
+  This is supported on hardware advertising DEV_TX_OFFLOAD_IPV4_CKSUM
+  and DEV_TX_OFFLOAD_UDP_CKSUM.
 
 - calculate checksum of in_ip::
 
@@ -228,8 +228,8 @@ a vxlan-encapsulated tcp packet:
     set in_ip checksum to 0 in the packet
     set in_tcp checksum to pseudo header using rte_ipv4_phdr_cksum()
 
-   This is supported on hardware advertising DEV_TX_OFFLOAD_IPV4_CKSUM,
-   DEV_TX_OFFLOAD_UDP_CKSUM and DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM.
+  This is supported on hardware advertising DEV_TX_OFFLOAD_IPV4_CKSUM,
+  DEV_TX_OFFLOAD_UDP_CKSUM and DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM.
 
 The list of flags and their precise meaning is described in the mbuf API
 documentation (rte_mbuf.h). Also refer to the testpmd source code

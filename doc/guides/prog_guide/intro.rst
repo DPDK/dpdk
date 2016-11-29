@@ -44,7 +44,7 @@ Documentation Roadmap
 
 The following is a list of DPDK documents in the suggested reading order:
 
-*   **Release Notes** (this document): Provides release-specific information, including supported features,
+*   **Release Notes** : Provides release-specific information, including supported features,
     limitations, fixed issues, known issues and so on.
     Also, provides the answers to frequently asked questions in FAQ format.
 
