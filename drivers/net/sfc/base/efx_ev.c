@@ -270,6 +270,10 @@ efx_ev_qpoll(
 	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_DRIVER_EV == FSE_AZ_EV_CODE_DRIVER_EV);
 	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_DRV_GEN_EV ==
 	    FSE_AZ_EV_CODE_DRV_GEN_EV);
+#if EFSYS_OPT_MCDI
+	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_MCDI_EV ==
+	    FSE_AZ_EV_CODE_MCDI_EVRESPONSE);
+#endif
 
 	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
 	EFSYS_ASSERT(countp != NULL);
@@ -318,6 +322,12 @@ efx_ev_qpoll(
 				should_abort = eep->ee_drv_gen(eep,
 				    &(ev[index]), eecp, arg);
 				break;
+#if EFSYS_OPT_MCDI
+			case FSE_AZ_EV_CODE_MCDI_EVRESPONSE:
+				should_abort = eep->ee_mcdi(eep,
+				    &(ev[index]), eecp, arg);
+				break;
+#endif
 			case FSE_AZ_EV_CODE_GLOBAL_EV:
 				if (eep->ee_global) {
 					should_abort = eep->ee_global(eep,

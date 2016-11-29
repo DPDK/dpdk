@@ -279,6 +279,30 @@ typedef struct efx_filter_s {
 
 #endif	/* EFSYS_OPT_FILTER */
 
+#if EFSYS_OPT_MCDI
+
+typedef struct efx_mcdi_ops_s {
+	efx_rc_t	(*emco_init)(efx_nic_t *, const efx_mcdi_transport_t *);
+	void		(*emco_send_request)(efx_nic_t *, void *, size_t,
+					void *, size_t);
+	efx_rc_t	(*emco_poll_reboot)(efx_nic_t *);
+	boolean_t	(*emco_poll_response)(efx_nic_t *);
+	void		(*emco_read_response)(efx_nic_t *, void *, size_t, size_t);
+	void		(*emco_fini)(efx_nic_t *);
+	efx_rc_t	(*emco_feature_supported)(efx_nic_t *,
+					    efx_mcdi_feature_id_t, boolean_t *);
+	void		(*emco_get_timeout)(efx_nic_t *, efx_mcdi_req_t *,
+					    uint32_t *);
+} efx_mcdi_ops_t;
+
+typedef struct efx_mcdi_s {
+	const efx_mcdi_ops_t		*em_emcop;
+	const efx_mcdi_transport_t	*em_emtp;
+	efx_mcdi_iface_t		em_emip;
+} efx_mcdi_t;
+
+#endif /* EFSYS_OPT_MCDI */
+
 typedef struct efx_drv_cfg_s {
 	uint32_t		edc_min_vi_count;
 	uint32_t		edc_max_vi_count;
@@ -312,6 +336,9 @@ struct efx_nic_s {
 	efx_filter_t		en_filter;
 	const efx_filter_ops_t	*en_efop;
 #endif	/* EFSYS_OPT_FILTER */
+#if EFSYS_OPT_MCDI
+	efx_mcdi_t		en_mcdi;
+#endif	/* EFSYS_OPT_MCDI */
 	uint32_t		en_vport_id;
 	union {
 		int	enu_unused;
@@ -341,6 +368,9 @@ struct efx_evq_s {
 	efx_ev_handler_t		ee_driver;
 	efx_ev_handler_t		ee_global;
 	efx_ev_handler_t		ee_drv_gen;
+#if EFSYS_OPT_MCDI
+	efx_ev_handler_t		ee_mcdi;
+#endif	/* EFSYS_OPT_MCDI */
 
 	efx_evq_rxq_state_t		ee_rxq_state[EFX_EV_RX_NLABELS];
 
@@ -688,6 +718,23 @@ efx_phy_probe(
 extern			void
 efx_phy_unprobe(
 	__in		efx_nic_t *enp);
+
+#if EFSYS_OPT_MCDI
+
+extern	__checkReturn		efx_rc_t
+efx_mcdi_set_workaround(
+	__in			efx_nic_t *enp,
+	__in			uint32_t type,
+	__in			boolean_t enabled,
+	__out_opt		uint32_t *flagsp);
+
+extern	__checkReturn		efx_rc_t
+efx_mcdi_get_workarounds(
+	__in			efx_nic_t *enp,
+	__out_opt		uint32_t *implementedp,
+	__out_opt		uint32_t *enabledp);
+
+#endif /* EFSYS_OPT_MCDI */
 
 #ifdef	__cplusplus
 }

@@ -72,6 +72,11 @@
 # error "MAC_FALCON_XMAC is obsolete and is not supported."
 #endif
 
+#if EFSYS_OPT_MCDI
+/* Support management controller messages */
+#  error "MCDI requires SIENA or HUNTINGTON or MEDFORD"
+#endif /* EFSYS_OPT_MCDI */
+
 #ifdef EFSYS_OPT_MON_LM87
 # error "MON_LM87 is obsolete and is not supported."
 #endif

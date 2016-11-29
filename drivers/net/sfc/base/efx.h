@@ -182,6 +182,62 @@ efx_nic_check_pcie_link_speed(
 	__in		uint32_t pcie_link_gen,
 	__out		efx_pcie_link_performance_t *resultp);
 
+#if EFSYS_OPT_MCDI
+
+typedef struct efx_mcdi_req_s efx_mcdi_req_t;
+
+typedef enum efx_mcdi_exception_e {
+	EFX_MCDI_EXCEPTION_MC_REBOOT,
+	EFX_MCDI_EXCEPTION_MC_BADASSERT,
+} efx_mcdi_exception_t;
+
+typedef struct efx_mcdi_transport_s {
+	void		*emt_context;
+	efsys_mem_t	*emt_dma_mem;
+	void		(*emt_execute)(void *, efx_mcdi_req_t *);
+	void		(*emt_ev_cpl)(void *);
+	void		(*emt_exception)(void *, efx_mcdi_exception_t);
+} efx_mcdi_transport_t;
+
+extern	__checkReturn	efx_rc_t
+efx_mcdi_init(
+	__in		efx_nic_t *enp,
+	__in		const efx_mcdi_transport_t *mtp);
+
+extern	__checkReturn	efx_rc_t
+efx_mcdi_reboot(
+	__in		efx_nic_t *enp);
+
+			void
+efx_mcdi_new_epoch(
+	__in		efx_nic_t *enp);
+
+extern			void
+efx_mcdi_get_timeout(
+	__in		efx_nic_t *enp,
+	__in		efx_mcdi_req_t *emrp,
+	__out		uint32_t *usec_timeoutp);
+
+extern			void
+efx_mcdi_request_start(
+	__in		efx_nic_t *enp,
+	__in		efx_mcdi_req_t *emrp,
+	__in		boolean_t ev_cpl);
+
+extern	__checkReturn	boolean_t
+efx_mcdi_request_poll(
+	__in		efx_nic_t *enp);
+
+extern	__checkReturn	boolean_t
+efx_mcdi_request_abort(
+	__in		efx_nic_t *enp);
+
+extern			void
+efx_mcdi_fini(
+	__in		efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_MCDI */
+
 /* INTR */
 
 #define	EFX_NINTR_SIENA 1024
@@ -507,6 +563,9 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_rx_prefix_size;
 	uint32_t		enc_rx_buf_align_start;
 	uint32_t		enc_rx_buf_align_end;
+#if EFSYS_OPT_MCDI
+	uint8_t			enc_mcdi_mdio_channel;
+#endif	/* EFSYS_OPT_MCDI */
 	boolean_t		enc_bug26807_workaround;
 	boolean_t		enc_bug35388_workaround;
 	boolean_t		enc_bug41750_workaround;

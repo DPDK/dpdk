@@ -185,6 +185,9 @@ efx_nic_probe(
 	efx_rc_t rc;
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+#if EFSYS_OPT_MCDI
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_MCDI);
+#endif	/* EFSYS_OPT_MCDI */
 	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_PROBE));
 
 	enop = enp->en_enop;
@@ -364,6 +367,9 @@ efx_nic_unprobe(
 	const efx_nic_ops_t *enop = enp->en_enop;
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+#if EFSYS_OPT_MCDI
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_MCDI);
+#endif	/* EFSYS_OPT_MCDI */
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
 	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_NIC));
 	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_INTR));
