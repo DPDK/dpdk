@@ -166,6 +166,13 @@
 # endif
 #endif /* EFSYS_OPT_MON_STATS */
 
+#if EFSYS_OPT_MON_MCDI
+/* Support Monitor via mcdi */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "MON_MCDI requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_MON_MCDI*/
+
 #if EFSYS_OPT_NAMES
 /* Support printable names for statistics */
 # if !(EFSYS_OPT_LOOPBACK || EFSYS_OPT_MAC_STATS || EFSYS_OPT_MCDI || \

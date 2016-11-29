@@ -31,6 +31,10 @@
 #include "efx.h"
 #include "efx_impl.h"
 
+#if EFSYS_OPT_MON_MCDI
+#include "mcdi_mon.h"
+#endif
+
 #if EFSYS_OPT_NAMES
 
 static const char * const __efx_mon_name[] = {
@@ -54,6 +58,14 @@ efx_mon_name(
 }
 
 #endif	/* EFSYS_OPT_NAMES */
+
+#if EFSYS_OPT_MON_MCDI
+static const efx_mon_ops_t	__efx_mon_mcdi_ops = {
+#if EFSYS_OPT_MON_STATS
+	mcdi_mon_stats_update		/* emo_stats_update */
+#endif	/* EFSYS_OPT_MON_STATS */
+};
+#endif
 
 
 	__checkReturn	efx_rc_t
@@ -79,6 +91,13 @@ efx_mon_init(
 
 	EFSYS_ASSERT(encp->enc_mon_type != EFX_MON_INVALID);
 	switch (emp->em_type) {
+#if EFSYS_OPT_MON_MCDI
+	case EFX_MON_SFC90X0:
+	case EFX_MON_SFC91X0:
+	case EFX_MON_SFC92X0:
+		emop = &__efx_mon_mcdi_ops;
+		break;
+#endif
 	default:
 		rc = ENOTSUP;
 		goto fail2;
@@ -104,7 +123,7 @@ fail1:
 
 #if EFSYS_OPT_NAMES
 
-/* START MKCONFIG GENERATED MonitorStatNamesBlock 31f437eafb0b0437 */
+/* START MKCONFIG GENERATED MonitorStatNamesBlock 5daa2a5725ba734b */
 static const char * const __mon_stat_name[] = {
 	"value_2_5v",
 	"value_vccp1",

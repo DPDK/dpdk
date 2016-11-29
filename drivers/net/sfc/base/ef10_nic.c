@@ -30,6 +30,9 @@
 
 #include "efx.h"
 #include "efx_impl.h"
+#if EFSYS_OPT_MON_MCDI
+#include "mcdi_mon.h"
+#endif
 
 #if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
 
