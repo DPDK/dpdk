@@ -117,6 +117,7 @@ struct sfc_intr {
 };
 
 struct sfc_evq_info;
+struct sfc_rxq_info;
 
 struct sfc_port {
 	unsigned int			flow_ctrl;
@@ -155,6 +156,9 @@ struct sfc_adapter {
 
 	unsigned int			mgmt_evq_index;
 	rte_spinlock_t			mgmt_evq_lock;
+
+	unsigned int			rxq_count;
+	struct sfc_rxq_info		*rxq_info;
 };
 
 /*

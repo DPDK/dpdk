@@ -37,6 +37,7 @@
 #include "sfc.h"
 #include "sfc_log.h"
 #include "sfc_ev.h"
+#include "sfc_rx.h"
 
 
 int
@@ -349,9 +350,16 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_port_init;
 
+	rc = sfc_rx_init(sa);
+	if (rc != 0)
+		goto fail_rx_init;
+
 	sa->state = SFC_ADAPTER_CONFIGURED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_rx_init:
+	sfc_port_fini(sa);
 
 fail_port_init:
 	sfc_ev_fini(sa);
@@ -376,6 +384,7 @@ sfc_close(struct sfc_adapter *sa)
 	SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
 	sa->state = SFC_ADAPTER_CLOSING;
 
+	sfc_rx_fini(sa);
 	sfc_port_fini(sa);
 	sfc_ev_fini(sa);
 	sfc_intr_fini(sa);
