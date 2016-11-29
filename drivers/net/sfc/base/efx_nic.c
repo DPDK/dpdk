@@ -775,6 +775,194 @@ fail1:
 
 #endif	/* EFSYS_OPT_DIAG */
 
+#if EFSYS_OPT_LOOPBACK
+
+extern			void
+efx_loopback_mask(
+	__in	efx_loopback_kind_t loopback_kind,
+	__out	efx_qword_t *maskp)
+{
+	efx_qword_t mask;
+
+	EFSYS_ASSERT3U(loopback_kind, <, EFX_LOOPBACK_NKINDS);
+	EFSYS_ASSERT(maskp != NULL);
+
+	/* Assert the MC_CMD_LOOPBACK and EFX_LOOPBACK namespace agree */
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_NONE == EFX_LOOPBACK_OFF);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_DATA == EFX_LOOPBACK_DATA);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_GMAC == EFX_LOOPBACK_GMAC);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XGMII == EFX_LOOPBACK_XGMII);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XGXS == EFX_LOOPBACK_XGXS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XAUI == EFX_LOOPBACK_XAUI);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_GMII == EFX_LOOPBACK_GMII);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SGMII == EFX_LOOPBACK_SGMII);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XGBR == EFX_LOOPBACK_XGBR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XFI == EFX_LOOPBACK_XFI);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XAUI_FAR == EFX_LOOPBACK_XAUI_FAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_GMII_FAR == EFX_LOOPBACK_GMII_FAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SGMII_FAR == EFX_LOOPBACK_SGMII_FAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XFI_FAR == EFX_LOOPBACK_XFI_FAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_GPHY == EFX_LOOPBACK_GPHY);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_PHYXS == EFX_LOOPBACK_PHY_XS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_PCS == EFX_LOOPBACK_PCS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_PMAPMD == EFX_LOOPBACK_PMA_PMD);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XPORT == EFX_LOOPBACK_XPORT);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XGMII_WS == EFX_LOOPBACK_XGMII_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XAUI_WS == EFX_LOOPBACK_XAUI_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XAUI_WS_FAR ==
+	    EFX_LOOPBACK_XAUI_WS_FAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XAUI_WS_NEAR ==
+	    EFX_LOOPBACK_XAUI_WS_NEAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_GMII_WS == EFX_LOOPBACK_GMII_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XFI_WS == EFX_LOOPBACK_XFI_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_XFI_WS_FAR ==
+	    EFX_LOOPBACK_XFI_WS_FAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_PHYXS_WS == EFX_LOOPBACK_PHYXS_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_PMA_INT == EFX_LOOPBACK_PMA_INT);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SD_NEAR == EFX_LOOPBACK_SD_NEAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SD_FAR == EFX_LOOPBACK_SD_FAR);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_PMA_INT_WS ==
+	    EFX_LOOPBACK_PMA_INT_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SD_FEP2_WS ==
+	    EFX_LOOPBACK_SD_FEP2_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SD_FEP1_5_WS ==
+	    EFX_LOOPBACK_SD_FEP1_5_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SD_FEP_WS == EFX_LOOPBACK_SD_FEP_WS);
+	EFX_STATIC_ASSERT(MC_CMD_LOOPBACK_SD_FES_WS == EFX_LOOPBACK_SD_FES_WS);
+
+	/* Build bitmask of possible loopback types */
+	EFX_ZERO_QWORD(mask);
+
+	if ((loopback_kind == EFX_LOOPBACK_KIND_OFF) ||
+	    (loopback_kind == EFX_LOOPBACK_KIND_ALL)) {
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_OFF);
+	}
+
+	if ((loopback_kind == EFX_LOOPBACK_KIND_MAC) ||
+	    (loopback_kind == EFX_LOOPBACK_KIND_ALL)) {
+		/*
+		 * The "MAC" grouping has historically been used by drivers to
+		 * mean loopbacks supported by on-chip hardware. Keep that
+		 * meaning here, and include on-chip PHY layer loopbacks.
+		 */
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_DATA);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_GMAC);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_XGMII);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_XGXS);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_XAUI);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_GMII);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_SGMII);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_XGBR);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_XFI);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_XAUI_FAR);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_GMII_FAR);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_SGMII_FAR);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_XFI_FAR);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_PMA_INT);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_SD_NEAR);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_SD_FAR);
+	}
+
+	if ((loopback_kind == EFX_LOOPBACK_KIND_PHY) ||
+	    (loopback_kind == EFX_LOOPBACK_KIND_ALL)) {
+		/*
+		 * The "PHY" grouping has historically been used by drivers to
+		 * mean loopbacks supported by off-chip hardware. Keep that
+		 * meaning here.
+		 */
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_GPHY);
+		EFX_SET_QWORD_BIT(mask,	EFX_LOOPBACK_PHY_XS);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_PCS);
+		EFX_SET_QWORD_BIT(mask, EFX_LOOPBACK_PMA_PMD);
+	}
+
+	*maskp = mask;
+}
+
+	__checkReturn	efx_rc_t
+efx_mcdi_get_loopback_modes(
+	__in		efx_nic_t *enp)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_mcdi_req_t req;
+	uint8_t payload[MAX(MC_CMD_GET_LOOPBACK_MODES_IN_LEN,
+			    MC_CMD_GET_LOOPBACK_MODES_OUT_LEN)];
+	efx_qword_t mask;
+	efx_qword_t modes;
+	efx_rc_t rc;
+
+	(void) memset(payload, 0, sizeof (payload));
+	req.emr_cmd = MC_CMD_GET_LOOPBACK_MODES;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_GET_LOOPBACK_MODES_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_GET_LOOPBACK_MODES_OUT_LEN;
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used <
+	    MC_CMD_GET_LOOPBACK_MODES_OUT_SUGGESTED_OFST +
+	    MC_CMD_GET_LOOPBACK_MODES_OUT_SUGGESTED_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	/*
+	 * We assert the MC_CMD_LOOPBACK and EFX_LOOPBACK namespaces agree
+	 * in efx_loopback_mask() and in siena_phy.c:siena_phy_get_link().
+	 */
+	efx_loopback_mask(EFX_LOOPBACK_KIND_ALL, &mask);
+
+	EFX_AND_QWORD(mask,
+	    *MCDI_OUT2(req, efx_qword_t, GET_LOOPBACK_MODES_OUT_SUGGESTED));
+
+	modes = *MCDI_OUT2(req, efx_qword_t, GET_LOOPBACK_MODES_OUT_100M);
+	EFX_AND_QWORD(modes, mask);
+	encp->enc_loopback_types[EFX_LINK_100FDX] = modes;
+
+	modes = *MCDI_OUT2(req, efx_qword_t, GET_LOOPBACK_MODES_OUT_1G);
+	EFX_AND_QWORD(modes, mask);
+	encp->enc_loopback_types[EFX_LINK_1000FDX] = modes;
+
+	modes = *MCDI_OUT2(req, efx_qword_t, GET_LOOPBACK_MODES_OUT_10G);
+	EFX_AND_QWORD(modes, mask);
+	encp->enc_loopback_types[EFX_LINK_10000FDX] = modes;
+
+	if (req.emr_out_length_used >=
+	    MC_CMD_GET_LOOPBACK_MODES_OUT_40G_OFST +
+	    MC_CMD_GET_LOOPBACK_MODES_OUT_40G_LEN) {
+		/* Response includes 40G loopback modes */
+		modes =
+		    *MCDI_OUT2(req, efx_qword_t, GET_LOOPBACK_MODES_OUT_40G);
+		EFX_AND_QWORD(modes, mask);
+		encp->enc_loopback_types[EFX_LINK_40000FDX] = modes;
+	}
+
+	EFX_ZERO_QWORD(modes);
+	EFX_SET_QWORD_BIT(modes, EFX_LOOPBACK_OFF);
+	EFX_OR_QWORD(modes, encp->enc_loopback_types[EFX_LINK_100FDX]);
+	EFX_OR_QWORD(modes, encp->enc_loopback_types[EFX_LINK_1000FDX]);
+	EFX_OR_QWORD(modes, encp->enc_loopback_types[EFX_LINK_10000FDX]);
+	EFX_OR_QWORD(modes, encp->enc_loopback_types[EFX_LINK_40000FDX]);
+	encp->enc_loopback_types[EFX_LINK_UNKNOWN] = modes;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif /* EFSYS_OPT_LOOPBACK */
+
 	__checkReturn	efx_rc_t
 efx_nic_calculate_pcie_link_bandwidth(
 	__in		uint32_t pcie_link_width,

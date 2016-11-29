@@ -1377,10 +1377,19 @@ ef10_nic_probe(
 		goto fail5;
 #endif
 
+#if EFSYS_OPT_LOOPBACK
+	if ((rc = efx_mcdi_get_loopback_modes(enp)) != 0)
+		goto fail6;
+#endif
+
 	encp->enc_features = enp->en_features;
 
 	return (0);
 
+#if EFSYS_OPT_LOOPBACK
+fail6:
+	EFSYS_PROBE(fail6);
+#endif
 #if EFSYS_OPT_MAC_STATS
 fail5:
 	EFSYS_PROBE(fail5);

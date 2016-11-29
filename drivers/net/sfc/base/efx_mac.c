@@ -50,6 +50,9 @@ static const efx_mac_ops_t	__efx_siena_mac_ops = {
 	siena_mac_multicast_list_set,		/* emo_multicast_list_set */
 	NULL,					/* emo_filter_set_default_rxq */
 	NULL,				/* emo_filter_default_rxq_clear */
+#if EFSYS_OPT_LOOPBACK
+	siena_mac_loopback_set,			/* emo_loopback_set */
+#endif	/* EFSYS_OPT_LOOPBACK */
 #if EFSYS_OPT_MAC_STATS
 	siena_mac_stats_get_mask,		/* emo_stats_get_mask */
 	efx_mcdi_mac_stats_upload,		/* emo_stats_upload */
@@ -71,6 +74,9 @@ static const efx_mac_ops_t	__efx_ef10_mac_ops = {
 	ef10_mac_filter_default_rxq_set,	/* emo_filter_default_rxq_set */
 	ef10_mac_filter_default_rxq_clear,
 					/* emo_filter_default_rxq_clear */
+#if EFSYS_OPT_LOOPBACK
+	ef10_mac_loopback_set,			/* emo_loopback_set */
+#endif	/* EFSYS_OPT_LOOPBACK */
 #if EFSYS_OPT_MAC_STATS
 	ef10_mac_stats_get_mask,		/* emo_stats_get_mask */
 	efx_mcdi_mac_stats_upload,		/* emo_stats_upload */

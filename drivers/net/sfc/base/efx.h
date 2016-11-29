@@ -646,6 +646,77 @@ extern	__checkReturn	efx_rc_t
 efx_port_init(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_LOOPBACK
+
+typedef enum efx_loopback_type_e {
+	EFX_LOOPBACK_OFF = 0,
+	EFX_LOOPBACK_DATA = 1,
+	EFX_LOOPBACK_GMAC = 2,
+	EFX_LOOPBACK_XGMII = 3,
+	EFX_LOOPBACK_XGXS = 4,
+	EFX_LOOPBACK_XAUI = 5,
+	EFX_LOOPBACK_GMII = 6,
+	EFX_LOOPBACK_SGMII = 7,
+	EFX_LOOPBACK_XGBR = 8,
+	EFX_LOOPBACK_XFI = 9,
+	EFX_LOOPBACK_XAUI_FAR = 10,
+	EFX_LOOPBACK_GMII_FAR = 11,
+	EFX_LOOPBACK_SGMII_FAR = 12,
+	EFX_LOOPBACK_XFI_FAR = 13,
+	EFX_LOOPBACK_GPHY = 14,
+	EFX_LOOPBACK_PHY_XS = 15,
+	EFX_LOOPBACK_PCS = 16,
+	EFX_LOOPBACK_PMA_PMD = 17,
+	EFX_LOOPBACK_XPORT = 18,
+	EFX_LOOPBACK_XGMII_WS = 19,
+	EFX_LOOPBACK_XAUI_WS = 20,
+	EFX_LOOPBACK_XAUI_WS_FAR = 21,
+	EFX_LOOPBACK_XAUI_WS_NEAR = 22,
+	EFX_LOOPBACK_GMII_WS = 23,
+	EFX_LOOPBACK_XFI_WS = 24,
+	EFX_LOOPBACK_XFI_WS_FAR = 25,
+	EFX_LOOPBACK_PHYXS_WS = 26,
+	EFX_LOOPBACK_PMA_INT = 27,
+	EFX_LOOPBACK_SD_NEAR = 28,
+	EFX_LOOPBACK_SD_FAR = 29,
+	EFX_LOOPBACK_PMA_INT_WS = 30,
+	EFX_LOOPBACK_SD_FEP2_WS = 31,
+	EFX_LOOPBACK_SD_FEP1_5_WS = 32,
+	EFX_LOOPBACK_SD_FEP_WS = 33,
+	EFX_LOOPBACK_SD_FES_WS = 34,
+	EFX_LOOPBACK_NTYPES
+} efx_loopback_type_t;
+
+typedef enum efx_loopback_kind_e {
+	EFX_LOOPBACK_KIND_OFF = 0,
+	EFX_LOOPBACK_KIND_ALL,
+	EFX_LOOPBACK_KIND_MAC,
+	EFX_LOOPBACK_KIND_PHY,
+	EFX_LOOPBACK_NKINDS
+} efx_loopback_kind_t;
+
+extern			void
+efx_loopback_mask(
+	__in	efx_loopback_kind_t loopback_kind,
+	__out	efx_qword_t *maskp);
+
+extern	__checkReturn	efx_rc_t
+efx_port_loopback_set(
+	__in	efx_nic_t *enp,
+	__in	efx_link_mode_t link_mode,
+	__in	efx_loopback_type_t type);
+
+#if EFSYS_OPT_NAMES
+
+extern	__checkReturn	const char *
+efx_loopback_type_name(
+	__in		efx_nic_t *enp,
+	__in		efx_loopback_type_t type);
+
+#endif	/* EFSYS_OPT_NAMES */
+
+#endif	/* EFSYS_OPT_LOOPBACK */
+
 extern	__checkReturn	efx_rc_t
 efx_port_poll(
 	__in		efx_nic_t *enp,
@@ -921,6 +992,9 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_rx_prefix_size;
 	uint32_t		enc_rx_buf_align_start;
 	uint32_t		enc_rx_buf_align_end;
+#if EFSYS_OPT_LOOPBACK
+	efx_qword_t		enc_loopback_types[EFX_LINK_NMODES];
+#endif	/* EFSYS_OPT_LOOPBACK */
 #if EFSYS_OPT_PHY_FLAGS
 	uint32_t		enc_phy_flags_mask;
 #endif	/* EFSYS_OPT_PHY_FLAGS */

@@ -220,6 +220,12 @@ efx_mcdi_mac_stats_periodic(
 	__in		boolean_t events);
 
 
+#if EFSYS_OPT_LOOPBACK
+extern	__checkReturn	efx_rc_t
+efx_mcdi_get_loopback_modes(
+	__in		efx_nic_t *enp);
+#endif /* EFSYS_OPT_LOOPBACK */
+
 extern	__checkReturn	efx_rc_t
 efx_mcdi_phy_module_get_info(
 	__in			efx_nic_t *enp,

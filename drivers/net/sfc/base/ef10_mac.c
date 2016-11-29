@@ -443,6 +443,42 @@ ef10_mac_filter_default_rxq_clear(
 }
 
 
+#if EFSYS_OPT_LOOPBACK
+
+	__checkReturn	efx_rc_t
+ef10_mac_loopback_set(
+	__in		efx_nic_t *enp,
+	__in		efx_link_mode_t link_mode,
+	__in		efx_loopback_type_t loopback_type)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+	efx_loopback_type_t old_loopback_type;
+	efx_link_mode_t old_loopback_link_mode;
+	efx_rc_t rc;
+
+	/* The PHY object handles this on EF10 */
+	old_loopback_type = epp->ep_loopback_type;
+	old_loopback_link_mode = epp->ep_loopback_link_mode;
+	epp->ep_loopback_type = loopback_type;
+	epp->ep_loopback_link_mode = link_mode;
+
+	if ((rc = epop->epo_reconfigure(enp)) != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	epp->ep_loopback_type = old_loopback_type;
+	epp->ep_loopback_link_mode = old_loopback_link_mode;
+
+	return (rc);
+}
+
+#endif	/* EFSYS_OPT_LOOPBACK */
+
 #if EFSYS_OPT_MAC_STATS
 
 	__checkReturn			efx_rc_t

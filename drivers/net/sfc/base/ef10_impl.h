@@ -259,6 +259,16 @@ extern			void
 ef10_mac_filter_default_rxq_clear(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_LOOPBACK
+
+extern	__checkReturn	efx_rc_t
+ef10_mac_loopback_set(
+	__in		efx_nic_t *enp,
+	__in		efx_link_mode_t link_mode,
+	__in		efx_loopback_type_t loopback_type);
+
+#endif	/* EFSYS_OPT_LOOPBACK */
+
 #if EFSYS_OPT_MAC_STATS
 
 extern	__checkReturn			efx_rc_t
@@ -337,6 +347,9 @@ typedef struct ef10_link_state_s {
 	uint32_t		els_lp_cap_mask;
 	unsigned int		els_fcntl;
 	efx_link_mode_t		els_link_mode;
+#if EFSYS_OPT_LOOPBACK
+	efx_loopback_type_t	els_loopback;
+#endif
 	boolean_t		els_mac_up;
 } ef10_link_state_t;
 

@@ -216,10 +216,19 @@ siena_nic_probe(
 		goto fail10;
 #endif
 
+#if EFSYS_OPT_LOOPBACK
+	if ((rc = efx_mcdi_get_loopback_modes(enp)) != 0)
+		goto fail11;
+#endif
+
 	encp->enc_features = enp->en_features;
 
 	return (0);
 
+#if EFSYS_OPT_LOOPBACK
+fail11:
+	EFSYS_PROBE(fail11);
+#endif
 #if EFSYS_OPT_MAC_STATS
 fail10:
 	EFSYS_PROBE(fail10);

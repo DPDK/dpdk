@@ -90,6 +90,13 @@
 # endif
 #endif /* EFSYS_OPT_HUNTINGTON */
 
+#if EFSYS_OPT_LOOPBACK
+/* Support hardware loopback modes */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "LOOPBACK requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_LOOPBACK */
+
 #ifdef EFSYS_OPT_MAC_FALCON_GMAC
 # error "MAC_FALCON_GMAC is obsolete and is not supported."
 #endif

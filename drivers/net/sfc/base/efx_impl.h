@@ -186,6 +186,10 @@ typedef struct efx_mac_ops_s {
 	efx_rc_t	(*emo_filter_default_rxq_set)(efx_nic_t *,
 						      efx_rxq_t *, boolean_t);
 	void		(*emo_filter_default_rxq_clear)(efx_nic_t *);
+#if EFSYS_OPT_LOOPBACK
+	efx_rc_t	(*emo_loopback_set)(efx_nic_t *, efx_link_mode_t,
+					    efx_loopback_type_t);
+#endif	/* EFSYS_OPT_LOOPBACK */
 #if EFSYS_OPT_MAC_STATS
 	efx_rc_t	(*emo_stats_get_mask)(efx_nic_t *, uint32_t *, size_t);
 	efx_rc_t	(*emo_stats_upload)(efx_nic_t *, efsys_mem_t *);
@@ -261,6 +265,10 @@ typedef struct efx_port_s {
 	uint8_t			ep_mulcst_addr_list[EFX_MAC_ADDR_LEN *
 						    EFX_MAC_MULTICAST_LIST_MAX];
 	uint32_t		ep_mulcst_addr_count;
+#if EFSYS_OPT_LOOPBACK
+	efx_loopback_type_t	ep_loopback_type;
+	efx_link_mode_t		ep_loopback_link_mode;
+#endif	/* EFSYS_OPT_LOOPBACK */
 #if EFSYS_OPT_PHY_FLAGS
 	uint32_t		ep_phy_flags;
 #endif	/* EFSYS_OPT_PHY_FLAGS */

@@ -138,6 +138,9 @@ typedef struct siena_link_state_s {
 	uint32_t		sls_lp_cap_mask;
 	unsigned int		sls_fcntl;
 	efx_link_mode_t		sls_link_mode;
+#if EFSYS_OPT_LOOPBACK
+	efx_loopback_type_t	sls_loopback;
+#endif
 	boolean_t		sls_mac_up;
 } siena_link_state_t;
 
@@ -231,6 +234,16 @@ extern	__checkReturn	efx_rc_t
 siena_mac_pdu_get(
 	__in	efx_nic_t *enp,
 	__out	size_t *pdu);
+
+#if EFSYS_OPT_LOOPBACK
+
+extern	__checkReturn	efx_rc_t
+siena_mac_loopback_set(
+	__in		efx_nic_t *enp,
+	__in		efx_link_mode_t link_mode,
+	__in		efx_loopback_type_t loopback_type);
+
+#endif	/* EFSYS_OPT_LOOPBACK */
 
 #if EFSYS_OPT_MAC_STATS
 
