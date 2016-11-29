@@ -66,6 +66,106 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa,
 	return rc;
 }
 
+static unsigned int
+sfc_rx_mbuf_data_alignment(struct rte_mempool *mb_pool)
+{
+	uint32_t data_off;
+	uint32_t order;
+
+	/* The mbuf object itself is always cache line aligned */
+	order = rte_bsf32(RTE_CACHE_LINE_SIZE);
+
+	/* Data offset from mbuf object start */
+	data_off = sizeof(struct rte_mbuf) + rte_pktmbuf_priv_size(mb_pool) +
+		RTE_PKTMBUF_HEADROOM;
+
+	order = MIN(order, rte_bsf32(data_off));
+
+	return 1u << (order - 1);
+}
+
+static uint16_t
+sfc_rx_mb_pool_buf_size(struct sfc_adapter *sa, struct rte_mempool *mb_pool)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	const uint32_t nic_align_start = MAX(1, encp->enc_rx_buf_align_start);
+	const uint32_t nic_align_end = MAX(1, encp->enc_rx_buf_align_end);
+	uint16_t buf_size;
+	unsigned int buf_aligned;
+	unsigned int start_alignment;
+	unsigned int end_padding_alignment;
+
+	/* Below it is assumed that both alignments are power of 2 */
+	SFC_ASSERT(rte_is_power_of_2(nic_align_start));
+	SFC_ASSERT(rte_is_power_of_2(nic_align_end));
+
+	/*
+	 * mbuf is always cache line aligned, double-check
+	 * that it meets rx buffer start alignment requirements.
+	 */
+
+	/* Start from mbuf pool data room size */
+	buf_size = rte_pktmbuf_data_room_size(mb_pool);
+
+	/* Remove headroom */
+	if (buf_size <= RTE_PKTMBUF_HEADROOM) {
+		sfc_err(sa,
+			"RxQ mbuf pool %s object data room size %u is smaller than headroom %u",
+			mb_pool->name, buf_size, RTE_PKTMBUF_HEADROOM);
+		return 0;
+	}
+	buf_size -= RTE_PKTMBUF_HEADROOM;
+
+	/* Calculate guaranteed data start alignment */
+	buf_aligned = sfc_rx_mbuf_data_alignment(mb_pool);
+
+	/* Reserve space for start alignment */
+	if (buf_aligned < nic_align_start) {
+		start_alignment = nic_align_start - buf_aligned;
+		if (buf_size <= start_alignment) {
+			sfc_err(sa,
+				"RxQ mbuf pool %s object data room size %u is insufficient for headroom %u and buffer start alignment %u required by NIC",
+				mb_pool->name,
+				rte_pktmbuf_data_room_size(mb_pool),
+				RTE_PKTMBUF_HEADROOM, start_alignment);
+			return 0;
+		}
+		buf_aligned = nic_align_start;
+		buf_size -= start_alignment;
+	} else {
+		start_alignment = 0;
+	}
+
+	/* Make sure that end padding does not write beyond the buffer */
+	if (buf_aligned < nic_align_end) {
+		/*
+		 * Estimate space which can be lost. If guarnteed buffer
+		 * size is odd, lost space is (nic_align_end - 1). More
+		 * accurate formula is below.
+		 */
+		end_padding_alignment = nic_align_end -
+			MIN(buf_aligned, 1u << (rte_bsf32(buf_size) - 1));
+		if (buf_size <= end_padding_alignment) {
+			sfc_err(sa,
+				"RxQ mbuf pool %s object data room size %u is insufficient for headroom %u, buffer start alignment %u and end padding alignment %u required by NIC",
+				mb_pool->name,
+				rte_pktmbuf_data_room_size(mb_pool),
+				RTE_PKTMBUF_HEADROOM, start_alignment,
+				end_padding_alignment);
+			return 0;
+		}
+		buf_size -= end_padding_alignment;
+	} else {
+		/*
+		 * Start is aligned the same or better than end,
+		 * just align length.
+		 */
+		buf_size = P2ALIGN(buf_size, nic_align_end);
+	}
+
+	return buf_size;
+}
+
 int
 sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     uint16_t nb_rx_desc, unsigned int socket_id,
@@ -73,6 +173,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     struct rte_mempool *mb_pool)
 {
 	int rc;
+	uint16_t buf_size;
 	struct sfc_rxq_info *rxq_info;
 	unsigned int evq_index;
 	struct sfc_evq *evq;
@@ -82,10 +183,10 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	if (rc != 0)
 		goto fail_bad_conf;
 
-	if (rte_pktmbuf_data_room_size(mb_pool) <= RTE_PKTMBUF_HEADROOM) {
-		sfc_err(sa, "RxQ %u mbuf is too small, %u vs headroom %u",
-			sw_index, rte_pktmbuf_data_room_size(mb_pool),
-			RTE_PKTMBUF_HEADROOM);
+	buf_size = sfc_rx_mb_pool_buf_size(sa, mb_pool);
+	if (buf_size == 0) {
+		sfc_err(sa, "RxQ %u mbuf pool object size is too small",
+			sw_index);
 		goto fail_bad_conf;
 	}
 
@@ -126,6 +227,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq->evq = evq;
 	rxq->ptr_mask = rxq_info->entries - 1;
 	rxq->refill_mb_pool = mb_pool;
+	rxq->buf_size = buf_size;
 	rxq->hw_index = sw_index;
 
 	rxq->state = SFC_RXQ_INITIALIZED;

@@ -71,6 +71,7 @@ struct sfc_rxq {
 	unsigned int		ptr_mask;
 
 	/* Used on refill */
+	uint16_t		buf_size;
 	struct rte_mempool	*refill_mb_pool;
 	efx_rxq_t		*common;
 	efsys_mem_t		mem;
