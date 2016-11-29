@@ -1641,6 +1641,8 @@ i40e_phy_conf_link(struct i40e_hw *hw,
 
 	/* use get_phy_abilities_resp value for the rest */
 	phy_conf.phy_type = phy_ab.phy_type;
+	phy_conf.phy_type_ext = phy_ab.phy_type_ext;
+	phy_conf.fec_config = phy_ab.mod_type_ext;
 	phy_conf.eee_capability = phy_ab.eee_capability;
 	phy_conf.eeer = phy_ab.eeer_val;
 	phy_conf.low_power_ctrl = phy_ab.d3_lpan;
@@ -1666,8 +1668,7 @@ i40e_apply_link_speed(struct rte_eth_dev *dev)
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 
 	speed = i40e_parse_link_speeds(conf->link_speeds);
-	if (!I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types))
-		abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
+	abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
 	if (!(conf->link_speeds & ETH_LINK_SPEED_FIXED))
 		abilities |= I40E_AQ_PHY_AN_ENABLED;
 	abilities |= I40E_AQ_PHY_LINK_ENABLED;
@@ -2007,8 +2008,7 @@ i40e_dev_set_link_down(struct rte_eth_dev *dev)
 	uint8_t abilities = 0;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types))
-		abilities = I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
+	abilities = I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
 	return i40e_phy_conf_link(hw, abilities, speed);
 }
 
