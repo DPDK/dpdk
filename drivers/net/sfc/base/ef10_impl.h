@@ -192,6 +192,14 @@ extern	__checkReturn	efx_rc_t
 ef10_nic_init(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_DIAG
+
+extern	__checkReturn	efx_rc_t
+ef10_nic_register_test(
+	__in		efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_DIAG */
+
 extern			void
 ef10_nic_fini(
 	__in		efx_nic_t *enp);

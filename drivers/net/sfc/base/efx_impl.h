@@ -271,6 +271,9 @@ typedef struct efx_nic_ops_s {
 	efx_rc_t	(*eno_get_vi_pool)(efx_nic_t *, uint32_t *);
 	efx_rc_t	(*eno_get_bar_region)(efx_nic_t *, efx_nic_region_t,
 					uint32_t *, size_t *);
+#if EFSYS_OPT_DIAG
+	efx_rc_t	(*eno_register_test)(efx_nic_t *);
+#endif	/* EFSYS_OPT_DIAG */
 	void		(*eno_fini)(efx_nic_t *);
 	void		(*eno_unprobe)(efx_nic_t *);
 } efx_nic_ops_t;
@@ -828,6 +831,32 @@ efx_phy_probe(
 extern			void
 efx_phy_unprobe(
 	__in		efx_nic_t *enp);
+
+#if EFSYS_OPT_DIAG
+
+extern	efx_sram_pattern_fn_t	__efx_sram_pattern_fns[];
+
+typedef struct efx_register_set_s {
+	unsigned int		address;
+	unsigned int		step;
+	unsigned int		rows;
+	efx_oword_t		mask;
+} efx_register_set_t;
+
+extern	__checkReturn	efx_rc_t
+efx_nic_test_registers(
+	__in		efx_nic_t *enp,
+	__in		efx_register_set_t *rsp,
+	__in		size_t count);
+
+extern	__checkReturn	efx_rc_t
+efx_nic_test_tables(
+	__in		efx_nic_t *enp,
+	__in		efx_register_set_t *rsp,
+	__in		efx_pattern_type_t pattern,
+	__in		size_t count);
+
+#endif	/* EFSYS_OPT_DIAG */
 
 #if EFSYS_OPT_MCDI
 

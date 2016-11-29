@@ -71,4 +71,108 @@ siena_sram_init(
 	EFX_BAR_WRITEO(enp, FR_AZ_SRM_UPD_EVQ_REG, &oword);
 }
 
+#if EFSYS_OPT_DIAG
+
+	__checkReturn	efx_rc_t
+siena_sram_test(
+	__in		efx_nic_t *enp,
+	__in		efx_sram_pattern_fn_t func)
+{
+	efx_oword_t oword;
+	efx_qword_t qword;
+	efx_qword_t verify;
+	size_t rows;
+	unsigned int wptr;
+	unsigned int rptr;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_SIENA);
+
+	/* Reconfigure into HALF buffer table mode */
+	EFX_POPULATE_OWORD_1(oword, FRF_AZ_BUF_TBL_MODE, 0);
+	EFX_BAR_WRITEO(enp, FR_AZ_BUF_TBL_CFG_REG, &oword);
+
+	/*
+	 * Move the descriptor caches up to the top of SRAM, and test
+	 * all of SRAM below them. We only miss out one row here.
+	 */
+	rows = SIENA_SRAM_ROWS - 1;
+	EFX_POPULATE_OWORD_1(oword, FRF_AZ_SRM_RX_DC_BASE_ADR, rows);
+	EFX_BAR_WRITEO(enp, FR_AZ_SRM_RX_DC_CFG_REG, &oword);
+
+	EFX_POPULATE_OWORD_1(oword, FRF_AZ_SRM_TX_DC_BASE_ADR, rows + 1);
+	EFX_BAR_WRITEO(enp, FR_AZ_SRM_TX_DC_CFG_REG, &oword);
+
+	/*
+	 * Write the pattern through BUF_HALF_TBL. Write
+	 * in 64 entry batches, waiting 1us in between each batch
+	 * to guarantee not to overflow the SRAM fifo
+	 */
+	for (wptr = 0, rptr = 0; wptr < rows; ++wptr) {
+		func(wptr, B_FALSE, &qword);
+		EFX_BAR_TBL_WRITEQ(enp, FR_AZ_BUF_HALF_TBL, wptr, &qword);
+
+		if ((wptr - rptr) < 64 && wptr < rows - 1)
+			continue;
+
+		EFSYS_SPIN(1);
+
+		for (; rptr <= wptr; ++rptr) {
+			func(rptr, B_FALSE, &qword);
+			EFX_BAR_TBL_READQ(enp, FR_AZ_BUF_HALF_TBL, rptr,
+			    &verify);
+
+			if (!EFX_QWORD_IS_EQUAL(verify, qword)) {
+				rc = EFAULT;
+				goto fail1;
+			}
+		}
+	}
+
+	/* And do the same negated */
+	for (wptr = 0, rptr = 0; wptr < rows; ++wptr) {
+		func(wptr, B_TRUE, &qword);
+		EFX_BAR_TBL_WRITEQ(enp, FR_AZ_BUF_HALF_TBL, wptr, &qword);
+
+		if ((wptr - rptr) < 64 && wptr < rows - 1)
+			continue;
+
+		EFSYS_SPIN(1);
+
+		for (; rptr <= wptr; ++rptr) {
+			func(rptr, B_TRUE, &qword);
+			EFX_BAR_TBL_READQ(enp, FR_AZ_BUF_HALF_TBL, rptr,
+			    &verify);
+
+			if (!EFX_QWORD_IS_EQUAL(verify, qword)) {
+				rc = EFAULT;
+				goto fail2;
+			}
+		}
+	}
+
+	/* Restore back to FULL buffer table mode */
+	EFX_POPULATE_OWORD_1(oword, FRF_AZ_BUF_TBL_MODE, 1);
+	EFX_BAR_WRITEO(enp, FR_AZ_BUF_TBL_CFG_REG, &oword);
+
+	/*
+	 * We don't need to reconfigure SRAM again because the API
+	 * requires efx_nic_fini() to be called after an sram test.
+	 */
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	/* Restore back to FULL buffer table mode */
+	EFX_POPULATE_OWORD_1(oword, FRF_AZ_BUF_TBL_MODE, 1);
+	EFX_BAR_WRITEO(enp, FR_AZ_BUF_TBL_CFG_REG, &oword);
+
+	return (rc);
+}
+
+#endif	/* EFSYS_OPT_DIAG */
+
 #endif	/* EFSYS_OPT_SIENA */

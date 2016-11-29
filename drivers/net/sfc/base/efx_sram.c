@@ -198,3 +198,134 @@ efx_sram_buf_tbl_clear(
 }
 
 
+#if EFSYS_OPT_DIAG
+
+static			void
+efx_sram_byte_increment_set(
+	__in		size_t row,
+	__in		boolean_t negate,
+	__out		efx_qword_t *eqp)
+{
+	size_t offset = row * FR_AZ_SRM_DBG_REG_STEP;
+	unsigned int index;
+
+	_NOTE(ARGUNUSED(negate))
+
+	for (index = 0; index < sizeof (efx_qword_t); index++)
+		eqp->eq_u8[index] = offset + index;
+}
+
+static			void
+efx_sram_all_the_same_set(
+	__in		size_t row,
+	__in		boolean_t negate,
+	__out		efx_qword_t *eqp)
+{
+	_NOTE(ARGUNUSED(row))
+
+	if (negate)
+		EFX_SET_QWORD(*eqp);
+	else
+		EFX_ZERO_QWORD(*eqp);
+}
+
+static			void
+efx_sram_bit_alternate_set(
+	__in		size_t row,
+	__in		boolean_t negate,
+	__out		efx_qword_t *eqp)
+{
+	_NOTE(ARGUNUSED(row))
+
+	EFX_POPULATE_QWORD_2(*eqp,
+	    EFX_DWORD_0, (negate) ? 0x55555555 : 0xaaaaaaaa,
+	    EFX_DWORD_1, (negate) ? 0x55555555 : 0xaaaaaaaa);
+}
+
+static			void
+efx_sram_byte_alternate_set(
+	__in		size_t row,
+	__in		boolean_t negate,
+	__out		efx_qword_t *eqp)
+{
+	_NOTE(ARGUNUSED(row))
+
+	EFX_POPULATE_QWORD_2(*eqp,
+	    EFX_DWORD_0, (negate) ? 0x00ff00ff : 0xff00ff00,
+	    EFX_DWORD_1, (negate) ? 0x00ff00ff : 0xff00ff00);
+}
+
+static			void
+efx_sram_byte_changing_set(
+	__in		size_t row,
+	__in		boolean_t negate,
+	__out		efx_qword_t *eqp)
+{
+	size_t offset = row * FR_AZ_SRM_DBG_REG_STEP;
+	unsigned int index;
+
+	for (index = 0; index < sizeof (efx_qword_t); index++) {
+		uint8_t byte;
+
+		if (offset / 256 == 0)
+			byte = (uint8_t)((offset % 257) % 256);
+		else
+			byte = (uint8_t)(~((offset - 8) % 257) % 256);
+
+		eqp->eq_u8[index] = (negate) ? ~byte : byte;
+	}
+}
+
+static			void
+efx_sram_bit_sweep_set(
+	__in		size_t row,
+	__in		boolean_t negate,
+	__out		efx_qword_t *eqp)
+{
+	size_t offset = row * FR_AZ_SRM_DBG_REG_STEP;
+
+	if (negate) {
+		EFX_SET_QWORD(*eqp);
+		EFX_CLEAR_QWORD_BIT(*eqp, (offset / sizeof (efx_qword_t)) % 64);
+	} else {
+		EFX_ZERO_QWORD(*eqp);
+		EFX_SET_QWORD_BIT(*eqp, (offset / sizeof (efx_qword_t)) % 64);
+	}
+}
+
+efx_sram_pattern_fn_t	__efx_sram_pattern_fns[] = {
+	efx_sram_byte_increment_set,
+	efx_sram_all_the_same_set,
+	efx_sram_bit_alternate_set,
+	efx_sram_byte_alternate_set,
+	efx_sram_byte_changing_set,
+	efx_sram_bit_sweep_set
+};
+
+	__checkReturn	efx_rc_t
+efx_sram_test(
+	__in		efx_nic_t *enp,
+	__in		efx_pattern_type_t type)
+{
+	efx_sram_pattern_fn_t func;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NIC);
+
+	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_RX));
+	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_TX));
+	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_EV));
+
+	/* SRAM testing is only available on Siena. */
+	if (enp->en_family != EFX_FAMILY_SIENA)
+		return (0);
+
+	/* Select pattern generator */
+	EFSYS_ASSERT3U(type, <, EFX_PATTERN_NTYPES);
+	func = __efx_sram_pattern_fns[type];
+
+	return (siena_sram_test(enp, func));
+}
+
+#endif	/* EFSYS_OPT_DIAG */

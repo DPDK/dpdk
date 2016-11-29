@@ -184,6 +184,9 @@ static const efx_nic_ops_t	__efx_nic_siena_ops = {
 	siena_nic_init,			/* eno_init */
 	NULL,				/* eno_get_vi_pool */
 	NULL,				/* eno_get_bar_region */
+#if EFSYS_OPT_DIAG
+	siena_nic_register_test,	/* eno_register_test */
+#endif	/* EFSYS_OPT_DIAG */
 	siena_nic_fini,			/* eno_fini */
 	siena_nic_unprobe,		/* eno_unprobe */
 };
@@ -200,6 +203,9 @@ static const efx_nic_ops_t	__efx_nic_hunt_ops = {
 	ef10_nic_init,			/* eno_init */
 	ef10_nic_get_vi_pool,		/* eno_get_vi_pool */
 	ef10_nic_get_bar_region,	/* eno_get_bar_region */
+#if EFSYS_OPT_DIAG
+	ef10_nic_register_test,		/* eno_register_test */
+#endif	/* EFSYS_OPT_DIAG */
 	ef10_nic_fini,			/* eno_fini */
 	ef10_nic_unprobe,		/* eno_unprobe */
 };
@@ -216,6 +222,9 @@ static const efx_nic_ops_t	__efx_nic_medford_ops = {
 	ef10_nic_init,			/* eno_init */
 	ef10_nic_get_vi_pool,		/* eno_get_vi_pool */
 	ef10_nic_get_bar_region,	/* eno_get_bar_region */
+#if EFSYS_OPT_DIAG
+	ef10_nic_register_test,		/* eno_register_test */
+#endif	/* EFSYS_OPT_DIAG */
 	ef10_nic_fini,			/* eno_fini */
 	ef10_nic_unprobe,		/* eno_unprobe */
 };
@@ -606,6 +615,165 @@ efx_nic_cfg_get(
 
 	return (&(enp->en_nic_cfg));
 }
+
+#if EFSYS_OPT_DIAG
+
+	__checkReturn	efx_rc_t
+efx_nic_register_test(
+	__in		efx_nic_t *enp)
+{
+	const efx_nic_ops_t *enop = enp->en_enop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
+	EFSYS_ASSERT(!(enp->en_mod_flags & EFX_MOD_NIC));
+
+	if ((rc = enop->eno_register_test(enp)) != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_nic_test_registers(
+	__in		efx_nic_t *enp,
+	__in		efx_register_set_t *rsp,
+	__in		size_t count)
+{
+	unsigned int bit;
+	efx_oword_t original;
+	efx_oword_t reg;
+	efx_oword_t buf;
+	efx_rc_t rc;
+
+	while (count > 0) {
+		/* This function is only suitable for registers */
+		EFSYS_ASSERT(rsp->rows == 1);
+
+		/* bit sweep on and off */
+		EFSYS_BAR_READO(enp->en_esbp, rsp->address, &original,
+			    B_TRUE);
+		for (bit = 0; bit < 128; bit++) {
+			/* Is this bit in the mask? */
+			if (~(rsp->mask.eo_u32[bit >> 5]) & (1 << bit))
+				continue;
+
+			/* Test this bit can be set in isolation */
+			reg = original;
+			EFX_AND_OWORD(reg, rsp->mask);
+			EFX_SET_OWORD_BIT(reg, bit);
+
+			EFSYS_BAR_WRITEO(enp->en_esbp, rsp->address, &reg,
+				    B_TRUE);
+			EFSYS_BAR_READO(enp->en_esbp, rsp->address, &buf,
+				    B_TRUE);
+
+			EFX_AND_OWORD(buf, rsp->mask);
+			if (memcmp(&reg, &buf, sizeof (reg))) {
+				rc = EIO;
+				goto fail1;
+			}
+
+			/* Test this bit can be cleared in isolation */
+			EFX_OR_OWORD(reg, rsp->mask);
+			EFX_CLEAR_OWORD_BIT(reg, bit);
+
+			EFSYS_BAR_WRITEO(enp->en_esbp, rsp->address, &reg,
+				    B_TRUE);
+			EFSYS_BAR_READO(enp->en_esbp, rsp->address, &buf,
+				    B_TRUE);
+
+			EFX_AND_OWORD(buf, rsp->mask);
+			if (memcmp(&reg, &buf, sizeof (reg))) {
+				rc = EIO;
+				goto fail2;
+			}
+		}
+
+		/* Restore the old value */
+		EFSYS_BAR_WRITEO(enp->en_esbp, rsp->address, &original,
+			    B_TRUE);
+
+		--count;
+		++rsp;
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	/* Restore the old value */
+	EFSYS_BAR_WRITEO(enp->en_esbp, rsp->address, &original, B_TRUE);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_nic_test_tables(
+	__in		efx_nic_t *enp,
+	__in		efx_register_set_t *rsp,
+	__in		efx_pattern_type_t pattern,
+	__in		size_t count)
+{
+	efx_sram_pattern_fn_t func;
+	unsigned int index;
+	unsigned int address;
+	efx_oword_t reg;
+	efx_oword_t buf;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT(pattern < EFX_PATTERN_NTYPES);
+	func = __efx_sram_pattern_fns[pattern];
+
+	while (count > 0) {
+		/* Write */
+		address = rsp->address;
+		for (index = 0; index < rsp->rows; ++index) {
+			func(2 * index + 0, B_FALSE, &reg.eo_qword[0]);
+			func(2 * index + 1, B_FALSE, &reg.eo_qword[1]);
+			EFX_AND_OWORD(reg, rsp->mask);
+			EFSYS_BAR_WRITEO(enp->en_esbp, address, &reg, B_TRUE);
+
+			address += rsp->step;
+		}
+
+		/* Read */
+		address = rsp->address;
+		for (index = 0; index < rsp->rows; ++index) {
+			func(2 * index + 0, B_FALSE, &reg.eo_qword[0]);
+			func(2 * index + 1, B_FALSE, &reg.eo_qword[1]);
+			EFX_AND_OWORD(reg, rsp->mask);
+			EFSYS_BAR_READO(enp->en_esbp, address, &buf, B_TRUE);
+			if (memcmp(&reg, &buf, sizeof (reg))) {
+				rc = EIO;
+				goto fail1;
+			}
+
+			address += rsp->step;
+		}
+
+		++rsp;
+		--count;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif	/* EFSYS_OPT_DIAG */
 
 	__checkReturn	efx_rc_t
 efx_nic_calculate_pcie_link_bandwidth(

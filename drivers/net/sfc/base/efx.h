@@ -146,6 +146,14 @@ extern	__checkReturn	efx_rc_t
 efx_nic_reset(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_DIAG
+
+extern	__checkReturn	efx_rc_t
+efx_nic_register_test(
+	__in		efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_DIAG */
+
 extern		void
 efx_nic_fini(
 	__in		efx_nic_t *enp);
@@ -688,6 +696,31 @@ efx_nic_get_vi_pool(
 
 
 /* NVRAM */
+
+#if EFSYS_OPT_DIAG
+
+typedef enum efx_pattern_type_t {
+	EFX_PATTERN_BYTE_INCREMENT = 0,
+	EFX_PATTERN_ALL_THE_SAME,
+	EFX_PATTERN_BIT_ALTERNATE,
+	EFX_PATTERN_BYTE_ALTERNATE,
+	EFX_PATTERN_BYTE_CHANGING,
+	EFX_PATTERN_BIT_SWEEP,
+	EFX_PATTERN_NTYPES
+} efx_pattern_type_t;
+
+typedef			void
+(*efx_sram_pattern_fn_t)(
+	__in		size_t row,
+	__in		boolean_t negate,
+	__out		efx_qword_t *eqp);
+
+extern	__checkReturn	efx_rc_t
+efx_sram_test(
+	__in		efx_nic_t *enp,
+	__in		efx_pattern_type_t type);
+
+#endif	/* EFSYS_OPT_DIAG */
 
 extern	__checkReturn	efx_rc_t
 efx_sram_buf_tbl_set(

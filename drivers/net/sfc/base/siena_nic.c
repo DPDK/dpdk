@@ -354,4 +354,136 @@ siena_nic_unprobe(
 	(void) efx_mcdi_drv_attach(enp, B_FALSE);
 }
 
+#if EFSYS_OPT_DIAG
+
+static efx_register_set_t __siena_registers[] = {
+	{ FR_AZ_ADR_REGION_REG_OFST, 0, 1 },
+	{ FR_CZ_USR_EV_CFG_OFST, 0, 1 },
+	{ FR_AZ_RX_CFG_REG_OFST, 0, 1 },
+	{ FR_AZ_TX_CFG_REG_OFST, 0, 1 },
+	{ FR_AZ_TX_RESERVED_REG_OFST, 0, 1 },
+	{ FR_AZ_SRM_TX_DC_CFG_REG_OFST, 0, 1 },
+	{ FR_AZ_RX_DC_CFG_REG_OFST, 0, 1 },
+	{ FR_AZ_RX_DC_PF_WM_REG_OFST, 0, 1 },
+	{ FR_AZ_DP_CTRL_REG_OFST, 0, 1 },
+	{ FR_BZ_RX_RSS_TKEY_REG_OFST, 0, 1},
+	{ FR_CZ_RX_RSS_IPV6_REG1_OFST, 0, 1},
+	{ FR_CZ_RX_RSS_IPV6_REG2_OFST, 0, 1},
+	{ FR_CZ_RX_RSS_IPV6_REG3_OFST, 0, 1}
+};
+
+static const uint32_t __siena_register_masks[] = {
+	0x0003FFFF, 0x0003FFFF, 0x0003FFFF, 0x0003FFFF,
+	0x000103FF, 0x00000000, 0x00000000, 0x00000000,
+	0xFFFFFFFE, 0xFFFFFFFF, 0x0003FFFF, 0x00000000,
+	0x7FFF0037, 0xFFFF8000, 0xFFFFFFFF, 0x03FFFFFF,
+	0xFFFEFE80, 0x1FFFFFFF, 0x020000FE, 0x007FFFFF,
+	0x001FFFFF, 0x00000000, 0x00000000, 0x00000000,
+	0x00000003, 0x00000000, 0x00000000, 0x00000000,
+	0x000003FF, 0x00000000, 0x00000000, 0x00000000,
+	0x00000FFF, 0x00000000, 0x00000000, 0x00000000,
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+	0xFFFFFFFF, 0xFFFFFFFF, 0x00000007, 0x00000000
+};
+
+static efx_register_set_t __siena_tables[] = {
+	{ FR_AZ_RX_FILTER_TBL0_OFST, FR_AZ_RX_FILTER_TBL0_STEP,
+	    FR_AZ_RX_FILTER_TBL0_ROWS },
+	{ FR_CZ_RX_MAC_FILTER_TBL0_OFST, FR_CZ_RX_MAC_FILTER_TBL0_STEP,
+	    FR_CZ_RX_MAC_FILTER_TBL0_ROWS },
+	{ FR_AZ_RX_DESC_PTR_TBL_OFST,
+	    FR_AZ_RX_DESC_PTR_TBL_STEP, FR_CZ_RX_DESC_PTR_TBL_ROWS },
+	{ FR_AZ_TX_DESC_PTR_TBL_OFST,
+	    FR_AZ_TX_DESC_PTR_TBL_STEP, FR_CZ_TX_DESC_PTR_TBL_ROWS },
+	{ FR_AZ_TIMER_TBL_OFST, FR_AZ_TIMER_TBL_STEP, FR_CZ_TIMER_TBL_ROWS },
+	{ FR_CZ_TX_FILTER_TBL0_OFST,
+	    FR_CZ_TX_FILTER_TBL0_STEP, FR_CZ_TX_FILTER_TBL0_ROWS },
+	{ FR_CZ_TX_MAC_FILTER_TBL0_OFST,
+	    FR_CZ_TX_MAC_FILTER_TBL0_STEP, FR_CZ_TX_MAC_FILTER_TBL0_ROWS }
+};
+
+static const uint32_t __siena_table_masks[] = {
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x000003FF,
+	0xFFFF0FFF, 0xFFFFFFFF, 0x00000E7F, 0x00000000,
+	0xFFFFFFFE, 0x0FFFFFFF, 0x01800000, 0x00000000,
+	0xFFFFFFFE, 0x0FFFFFFF, 0x0C000000, 0x00000000,
+	0x3FFFFFFF, 0x00000000, 0x00000000, 0x00000000,
+	0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x000013FF,
+	0xFFFF07FF, 0xFFFFFFFF, 0x0000007F, 0x00000000,
+};
+
+	__checkReturn	efx_rc_t
+siena_nic_register_test(
+	__in		efx_nic_t *enp)
+{
+	efx_register_set_t *rsp;
+	const uint32_t *dwordp;
+	unsigned int nitems;
+	unsigned int count;
+	efx_rc_t rc;
+
+	/* Fill out the register mask entries */
+	EFX_STATIC_ASSERT(EFX_ARRAY_SIZE(__siena_register_masks)
+		    == EFX_ARRAY_SIZE(__siena_registers) * 4);
+
+	nitems = EFX_ARRAY_SIZE(__siena_registers);
+	dwordp = __siena_register_masks;
+	for (count = 0; count < nitems; ++count) {
+		rsp = __siena_registers + count;
+		rsp->mask.eo_u32[0] = *dwordp++;
+		rsp->mask.eo_u32[1] = *dwordp++;
+		rsp->mask.eo_u32[2] = *dwordp++;
+		rsp->mask.eo_u32[3] = *dwordp++;
+	}
+
+	/* Fill out the register table entries */
+	EFX_STATIC_ASSERT(EFX_ARRAY_SIZE(__siena_table_masks)
+		    == EFX_ARRAY_SIZE(__siena_tables) * 4);
+
+	nitems = EFX_ARRAY_SIZE(__siena_tables);
+	dwordp = __siena_table_masks;
+	for (count = 0; count < nitems; ++count) {
+		rsp = __siena_tables + count;
+		rsp->mask.eo_u32[0] = *dwordp++;
+		rsp->mask.eo_u32[1] = *dwordp++;
+		rsp->mask.eo_u32[2] = *dwordp++;
+		rsp->mask.eo_u32[3] = *dwordp++;
+	}
+
+	if ((rc = efx_nic_test_registers(enp, __siena_registers,
+	    EFX_ARRAY_SIZE(__siena_registers))) != 0)
+		goto fail1;
+
+	if ((rc = efx_nic_test_tables(enp, __siena_tables,
+	    EFX_PATTERN_BYTE_ALTERNATE,
+	    EFX_ARRAY_SIZE(__siena_tables))) != 0)
+		goto fail2;
+
+	if ((rc = efx_nic_test_tables(enp, __siena_tables,
+	    EFX_PATTERN_BYTE_CHANGING,
+	    EFX_ARRAY_SIZE(__siena_tables))) != 0)
+		goto fail3;
+
+	if ((rc = efx_nic_test_tables(enp, __siena_tables,
+	    EFX_PATTERN_BIT_SWEEP, EFX_ARRAY_SIZE(__siena_tables))) != 0)
+		goto fail4;
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif	/* EFSYS_OPT_DIAG */
+
 #endif	/* EFSYS_OPT_SIENA */

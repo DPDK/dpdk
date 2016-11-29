@@ -54,6 +54,14 @@ extern	__checkReturn	efx_rc_t
 siena_nic_init(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_DIAG
+
+extern	__checkReturn	efx_rc_t
+siena_nic_register_test(
+	__in		efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_DIAG */
+
 extern			void
 siena_nic_fini(
 	__in		efx_nic_t *enp);
@@ -67,6 +75,15 @@ siena_nic_unprobe(
 extern			void
 siena_sram_init(
 	__in		efx_nic_t *enp);
+
+#if EFSYS_OPT_DIAG
+
+extern	__checkReturn	efx_rc_t
+siena_sram_test(
+	__in		efx_nic_t *enp,
+	__in		efx_sram_pattern_fn_t func);
+
+#endif	/* EFSYS_OPT_DIAG */
 
 #if EFSYS_OPT_MCDI
 

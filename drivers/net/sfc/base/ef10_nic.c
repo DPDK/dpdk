@@ -1765,5 +1765,32 @@ ef10_nic_unprobe(
 	(void) efx_mcdi_drv_attach(enp, B_FALSE);
 }
 
+#if EFSYS_OPT_DIAG
+
+	__checkReturn	efx_rc_t
+ef10_nic_register_test(
+	__in		efx_nic_t *enp)
+{
+	efx_rc_t rc;
+
+	/* FIXME */
+	_NOTE(ARGUNUSED(enp))
+	_NOTE(CONSTANTCONDITION)
+	if (B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+	/* FIXME */
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif	/* EFSYS_OPT_DIAG */
+
 
 #endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD */

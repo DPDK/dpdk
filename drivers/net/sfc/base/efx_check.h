@@ -59,6 +59,13 @@
 # endif
 #endif /* EFSYS_OPT_DECODE_INTR_FATAL */
 
+#if EFSYS_OPT_DIAG
+/* Support diagnostic hardware tests */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "DIAG requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_DIAG */
+
 #ifdef EFSYS_OPT_FALCON_NIC_CFG_OVERRIDE
 # error "FALCON_NIC_CFG_OVERRIDE is obsolete and is not supported."
 #endif
