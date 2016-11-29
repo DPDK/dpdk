@@ -116,6 +116,8 @@ struct sfc_intr {
 	efx_intr_type_t			type;
 };
 
+struct sfc_evq_info;
+
 /* Adapter private data */
 struct sfc_adapter {
 	/*
@@ -140,6 +142,11 @@ struct sfc_adapter {
 
 	unsigned int			rxq_max;
 	unsigned int			txq_max;
+
+	unsigned int			evq_count;
+	struct sfc_evq_info		*evq_info;
+
+	unsigned int			mgmt_evq_index;
 };
 
 /*

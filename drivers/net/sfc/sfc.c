@@ -36,6 +36,7 @@
 
 #include "sfc.h"
 #include "sfc_log.h"
+#include "sfc_ev.h"
 
 
 int
@@ -261,9 +262,16 @@ sfc_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_intr_start;
 
+	rc = sfc_ev_start(sa);
+	if (rc != 0)
+		goto fail_ev_start;
+
 	sa->state = SFC_ADAPTER_STARTED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_ev_start:
+	sfc_intr_stop(sa);
 
 fail_intr_start:
 	efx_nic_fini(sa->nic);
@@ -297,6 +305,7 @@ sfc_stop(struct sfc_adapter *sa)
 
 	sa->state = SFC_ADAPTER_STOPPING;
 
+	sfc_ev_stop(sa);
 	sfc_intr_stop(sa);
 	efx_nic_fini(sa->nic);
 
@@ -324,9 +333,16 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_intr_init;
 
+	rc = sfc_ev_init(sa);
+	if (rc != 0)
+		goto fail_ev_init;
+
 	sa->state = SFC_ADAPTER_CONFIGURED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_ev_init:
+	sfc_intr_fini(sa);
 
 fail_intr_init:
 fail_check_conf:
@@ -345,6 +361,7 @@ sfc_close(struct sfc_adapter *sa)
 	SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
 	sa->state = SFC_ADAPTER_CLOSING;
 
+	sfc_ev_fini(sa);
 	sfc_intr_fini(sa);
 
 	sa->state = SFC_ADAPTER_INITIALIZED;
