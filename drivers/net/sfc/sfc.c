@@ -126,6 +126,105 @@ sfc_check_conf(struct sfc_adapter *sa)
 	return rc;
 }
 
+/*
+ * Find out maximum number of receive and transmit queues which could be
+ * advertised.
+ *
+ * NIC is kept initialized on success to allow other modules acquire
+ * defaults and capabilities.
+ */
+static int
+sfc_estimate_resource_limits(struct sfc_adapter *sa)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	efx_drv_limits_t limits;
+	int rc;
+	uint32_t evq_allocated;
+	uint32_t rxq_allocated;
+	uint32_t txq_allocated;
+
+	memset(&limits, 0, sizeof(limits));
+
+	/* Request at least one Rx and Tx queue */
+	limits.edl_min_rxq_count = 1;
+	limits.edl_min_txq_count = 1;
+	/* Management event queue plus event queue for each Tx and Rx queue */
+	limits.edl_min_evq_count =
+		1 + limits.edl_min_rxq_count + limits.edl_min_txq_count;
+
+	/* Divide by number of functions to guarantee that all functions
+	 * will get promised resources
+	 */
+	/* FIXME Divide by number of functions (not 2) below */
+	limits.edl_max_evq_count = encp->enc_evq_limit / 2;
+	SFC_ASSERT(limits.edl_max_evq_count >= limits.edl_min_rxq_count);
+
+	/* Split equally between receive and transmit */
+	limits.edl_max_rxq_count =
+		MIN(encp->enc_rxq_limit, (limits.edl_max_evq_count - 1) / 2);
+	SFC_ASSERT(limits.edl_max_rxq_count >= limits.edl_min_rxq_count);
+
+	limits.edl_max_txq_count =
+		MIN(encp->enc_txq_limit,
+		    limits.edl_max_evq_count - 1 - limits.edl_max_rxq_count);
+	SFC_ASSERT(limits.edl_max_txq_count >= limits.edl_min_rxq_count);
+
+	/* Configure the minimum required resources needed for the
+	 * driver to operate, and the maximum desired resources that the
+	 * driver is capable of using.
+	 */
+	efx_nic_set_drv_limits(sa->nic, &limits);
+
+	sfc_log_init(sa, "init nic");
+	rc = efx_nic_init(sa->nic);
+	if (rc != 0)
+		goto fail_nic_init;
+
+	/* Find resource dimensions assigned by firmware to this function */
+	rc = efx_nic_get_vi_pool(sa->nic, &evq_allocated, &rxq_allocated,
+				 &txq_allocated);
+	if (rc != 0)
+		goto fail_get_vi_pool;
+
+	/* It still may allocate more than maximum, ensure limit */
+	evq_allocated = MIN(evq_allocated, limits.edl_max_evq_count);
+	rxq_allocated = MIN(rxq_allocated, limits.edl_max_rxq_count);
+	txq_allocated = MIN(txq_allocated, limits.edl_max_txq_count);
+
+	/* Subtract management EVQ not used for traffic */
+	SFC_ASSERT(evq_allocated > 0);
+	evq_allocated--;
+
+	/* Right now we use separate EVQ for Rx and Tx */
+	sa->rxq_max = MIN(rxq_allocated, evq_allocated / 2);
+	sa->txq_max = MIN(txq_allocated, evq_allocated - sa->rxq_max);
+
+	/* Keep NIC initialized */
+	return 0;
+
+fail_get_vi_pool:
+fail_nic_init:
+	efx_nic_fini(sa->nic);
+	return rc;
+}
+
+static int
+sfc_set_drv_limits(struct sfc_adapter *sa)
+{
+	const struct rte_eth_dev_data *data = sa->eth_dev->data;
+	efx_drv_limits_t lim;
+
+	memset(&lim, 0, sizeof(lim));
+
+	/* Limits are strict since take into account initial estimation */
+	lim.edl_min_evq_count = lim.edl_max_evq_count =
+		1 + data->nb_rx_queues + data->nb_tx_queues;
+	lim.edl_min_rxq_count = lim.edl_max_rxq_count = data->nb_rx_queues;
+	lim.edl_min_txq_count = lim.edl_max_txq_count = data->nb_tx_queues;
+
+	return efx_nic_set_drv_limits(sa->nic, &lim);
+}
+
 int
 sfc_start(struct sfc_adapter *sa)
 {
@@ -148,6 +247,11 @@ sfc_start(struct sfc_adapter *sa)
 
 	sa->state = SFC_ADAPTER_STARTING;
 
+	sfc_log_init(sa, "set resource limits");
+	rc = sfc_set_drv_limits(sa);
+	if (rc != 0)
+		goto fail_set_drv_limits;
+
 	sfc_log_init(sa, "init nic");
 	rc = efx_nic_init(sa->nic);
 	if (rc != 0)
@@ -158,6 +262,7 @@ sfc_start(struct sfc_adapter *sa)
 	return 0;
 
 fail_nic_init:
+fail_set_drv_limits:
 	sa->state = SFC_ADAPTER_CONFIGURED;
 fail_bad_state:
 	sfc_log_init(sa, "failed %d", rc);
@@ -313,24 +418,20 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_nic_reset;
 
-	/* Initialize NIC to double-check hardware */
-	sfc_log_init(sa, "init nic");
-	rc = efx_nic_init(enp);
+	sfc_log_init(sa, "estimate resource limits");
+	rc = sfc_estimate_resource_limits(sa);
 	if (rc != 0)
-		goto fail_nic_init;
+		goto fail_estimate_rsrc_limits;
 
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);
-
-	sa->rxq_max = 1;
-	sa->txq_max = 1;
 
 	sa->state = SFC_ADAPTER_INITIALIZED;
 
 	sfc_log_init(sa, "done");
 	return 0;
 
-fail_nic_init:
+fail_estimate_rsrc_limits:
 fail_nic_reset:
 	sfc_log_init(sa, "unprobe nic");
 	efx_nic_unprobe(enp);

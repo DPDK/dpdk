@@ -37,6 +37,14 @@ More information can be found at `Solarflare Communications website
 <http://solarflare.com>`_.
 
 
+Features
+--------
+
+SFC EFX PMD has support for:
+
+- Multiple transmit and receive queues
+
+
 Non-supported Features
 ----------------------
 
