@@ -84,6 +84,13 @@
 # endif
 #endif /* EFSYS_OPT_MCDI_LOGGING */
 
+#if EFSYS_OPT_MCDI_PROXY_AUTH
+/* Support MCDI proxy authorization */
+# if !EFSYS_OPT_MCDI
+#  error "MCDI_PROXY_AUTH requires MCDI"
+# endif
+#endif /* EFSYS_OPT_MCDI_PROXY_AUTH */
+
 #ifdef EFSYS_OPT_MON_LM87
 # error "MON_LM87 is obsolete and is not supported."
 #endif
