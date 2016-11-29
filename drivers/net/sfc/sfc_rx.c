@@ -47,6 +47,61 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 	return 0;
 }
 
+static int
+sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
+{
+	int rc = 0;
+
+	switch (rxmode->mq_mode) {
+	case ETH_MQ_RX_NONE:
+		/* No special checks are required */
+		break;
+	default:
+		sfc_err(sa, "Rx multi-queue mode %u not supported",
+			rxmode->mq_mode);
+		rc = EINVAL;
+	}
+
+	if (rxmode->header_split) {
+		sfc_err(sa, "Header split on Rx not supported");
+		rc = EINVAL;
+	}
+
+	if (rxmode->hw_vlan_filter) {
+		sfc_err(sa, "HW VLAN filtering not supported");
+		rc = EINVAL;
+	}
+
+	if (rxmode->hw_vlan_strip) {
+		sfc_err(sa, "HW VLAN stripping not supported");
+		rc = EINVAL;
+	}
+
+	if (rxmode->hw_vlan_extend) {
+		sfc_err(sa,
+			"Q-in-Q HW VLAN stripping not supported");
+		rc = EINVAL;
+	}
+
+	if (!rxmode->hw_strip_crc) {
+		sfc_warn(sa,
+			 "FCS stripping control not supported - always stripped");
+		rxmode->hw_strip_crc = 1;
+	}
+
+	if (rxmode->enable_scatter) {
+		sfc_err(sa, "Scatter on Rx not supported");
+		rc = EINVAL;
+	}
+
+	if (rxmode->enable_lro) {
+		sfc_err(sa, "LRO not supported");
+		rc = EINVAL;
+	}
+
+	return rc;
+}
+
 /**
  * Initialize Rx subsystem.
  *
@@ -58,8 +113,13 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 int
 sfc_rx_init(struct sfc_adapter *sa)
 {
+	struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	unsigned int sw_index;
 	int rc;
+
+	rc = sfc_rx_check_mode(sa, &dev_conf->rxmode);
+	if (rc != 0)
+		goto fail_check_mode;
 
 	sa->rxq_count = sa->eth_dev->data->nb_rx_queues;
 
@@ -84,6 +144,7 @@ fail_rx_qinit_info:
 
 fail_rxqs_alloc:
 	sa->rxq_count = 0;
+fail_check_mode:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }

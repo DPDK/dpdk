@@ -60,6 +60,18 @@ The features not yet supported include:
 
 - Loopback
 
+- Configurable RX CRC stripping (always stripped)
+
+- Header split on receive
+
+- VLAN filtering
+
+- VLAN stripping
+
+- Scattered receive
+
+- LRO
+
 
 Supported NICs
 --------------
