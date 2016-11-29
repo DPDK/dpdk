@@ -1382,10 +1382,22 @@ ef10_nic_probe(
 		goto fail6;
 #endif
 
+#if EFSYS_OPT_MON_STATS
+	if ((rc = mcdi_mon_cfg_build(enp)) != 0) {
+		/* Unprivileged functions do not have access to sensors */
+		if (rc != EACCES)
+			goto fail7;
+	}
+#endif
+
 	encp->enc_features = enp->en_features;
 
 	return (0);
 
+#if EFSYS_OPT_MON_STATS
+fail7:
+	EFSYS_PROBE(fail7);
+#endif
 #if EFSYS_OPT_LOOPBACK
 fail6:
 	EFSYS_PROBE(fail6);
@@ -1781,6 +1793,9 @@ ef10_nic_fini(
 ef10_nic_unprobe(
 	__in		efx_nic_t *enp)
 {
+#if EFSYS_OPT_MON_STATS
+	mcdi_mon_cfg_free(enp);
+#endif /* EFSYS_OPT_MON_STATS */
 	(void) efx_mcdi_drv_attach(enp, B_FALSE);
 }
 

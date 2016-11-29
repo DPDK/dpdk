@@ -291,6 +291,10 @@ typedef struct efx_port_s {
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {
+#if EFSYS_OPT_MON_STATS
+	efx_rc_t	(*emo_stats_update)(efx_nic_t *, efsys_mem_t *,
+					    efx_mon_stat_value_t *);
+#endif	/* EFSYS_OPT_MON_STATS */
 } efx_mon_ops_t;
 
 typedef struct efx_mon_s {

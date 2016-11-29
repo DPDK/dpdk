@@ -159,6 +159,13 @@
 #  error "MON_HUNTINGTON is obsolete (replaced by MON_MCDI)."
 #endif
 
+#if EFSYS_OPT_MON_STATS
+/* Support monitor statistics (voltage/temperature) */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "MON_STATS requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_MON_STATS */
+
 #if EFSYS_OPT_NAMES
 /* Support printable names for statistics */
 # if !(EFSYS_OPT_LOOPBACK || EFSYS_OPT_MAC_STATS || EFSYS_OPT_MCDI || \

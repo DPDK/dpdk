@@ -30,6 +30,9 @@
 
 #include "efx.h"
 #include "efx_impl.h"
+#if EFSYS_OPT_MON_STATS
+#include "mcdi_mon.h"
+#endif
 
 #if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD
 
@@ -1085,6 +1088,23 @@ ef10_ev_mcdi(
 	}
 
 	case MCDI_EVENT_CODE_SENSOREVT: {
+#if EFSYS_OPT_MON_STATS
+		efx_mon_stat_t id;
+		efx_mon_stat_value_t value;
+		efx_rc_t rc;
+
+		/* Decode monitor stat for MCDI sensor (if supported) */
+		if ((rc = mcdi_mon_ev(enp, eqp, &id, &value)) == 0) {
+			/* Report monitor stat change */
+			should_abort = eecp->eec_monitor(arg, id, value);
+		} else if (rc == ENOTSUP) {
+			should_abort = eecp->eec_exception(arg,
+				EFX_EXCEPTION_UNKNOWN_SENSOREVT,
+				MCDI_EV_FIELD(eqp, DATA));
+		} else {
+			EFSYS_ASSERT(rc == ENODEV);	/* Wrong port */
+		}
+#endif
 		break;
 	}
 

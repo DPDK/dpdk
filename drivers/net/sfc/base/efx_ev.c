@@ -1100,6 +1100,9 @@ siena_ev_mcdi(
 
 	EFSYS_ASSERT(eecp->eec_link_change != NULL);
 	EFSYS_ASSERT(eecp->eec_exception != NULL);
+#if EFSYS_OPT_MON_STATS
+	EFSYS_ASSERT(eecp->eec_monitor != NULL);
+#endif
 
 	EFX_EV_QSTAT_INCR(eep, EV_MCDI_RESPONSE);
 
@@ -1124,7 +1127,22 @@ siena_ev_mcdi(
 		break;
 	}
 	case MCDI_EVENT_CODE_SENSOREVT: {
+#if EFSYS_OPT_MON_STATS
+		efx_mon_stat_t id;
+		efx_mon_stat_value_t value;
+		efx_rc_t rc;
+
+		if ((rc = mcdi_mon_ev(enp, eqp, &id, &value)) == 0)
+			should_abort = eecp->eec_monitor(arg, id, value);
+		else if (rc == ENOTSUP) {
+			should_abort = eecp->eec_exception(arg,
+				EFX_EXCEPTION_UNKNOWN_SENSOREVT,
+				MCDI_EV_FIELD(eqp, DATA));
+		} else
+			EFSYS_ASSERT(rc == ENODEV);	/* Wrong port */
+#else
 		should_abort = B_FALSE;
+#endif
 		break;
 	}
 	case MCDI_EVENT_CODE_SCHEDERR:

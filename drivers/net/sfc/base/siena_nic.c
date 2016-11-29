@@ -221,10 +221,19 @@ siena_nic_probe(
 		goto fail11;
 #endif
 
+#if EFSYS_OPT_MON_STATS
+	if ((rc = mcdi_mon_cfg_build(enp)) != 0)
+		goto fail12;
+#endif
+
 	encp->enc_features = enp->en_features;
 
 	return (0);
 
+#if EFSYS_OPT_MON_STATS
+fail12:
+	EFSYS_PROBE(fail12);
+#endif
 #if EFSYS_OPT_LOOPBACK
 fail11:
 	EFSYS_PROBE(fail11);
@@ -376,6 +385,9 @@ siena_nic_fini(
 siena_nic_unprobe(
 	__in		efx_nic_t *enp)
 {
+#if EFSYS_OPT_MON_STATS
+	mcdi_mon_cfg_free(enp);
+#endif /* EFSYS_OPT_MON_STATS */
 	(void) efx_mcdi_drv_attach(enp, B_FALSE);
 }
 

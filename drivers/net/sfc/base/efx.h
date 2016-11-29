@@ -615,6 +615,125 @@ extern	__checkReturn	efx_rc_t
 efx_mon_init(
 	__in		efx_nic_t *enp);
 
+#if EFSYS_OPT_MON_STATS
+
+#define	EFX_MON_STATS_PAGE_SIZE 0x100
+#define	EFX_MON_MASK_ELEMENT_SIZE 32
+
+/* START MKCONFIG GENERATED MonitorHeaderStatsBlock 5d4ee5185e419abe */
+typedef enum efx_mon_stat_e {
+	EFX_MON_STAT_2_5V,
+	EFX_MON_STAT_VCCP1,
+	EFX_MON_STAT_VCC,
+	EFX_MON_STAT_5V,
+	EFX_MON_STAT_12V,
+	EFX_MON_STAT_VCCP2,
+	EFX_MON_STAT_EXT_TEMP,
+	EFX_MON_STAT_INT_TEMP,
+	EFX_MON_STAT_AIN1,
+	EFX_MON_STAT_AIN2,
+	EFX_MON_STAT_INT_COOLING,
+	EFX_MON_STAT_EXT_COOLING,
+	EFX_MON_STAT_1V,
+	EFX_MON_STAT_1_2V,
+	EFX_MON_STAT_1_8V,
+	EFX_MON_STAT_3_3V,
+	EFX_MON_STAT_1_2VA,
+	EFX_MON_STAT_VREF,
+	EFX_MON_STAT_VAOE,
+	EFX_MON_STAT_AOE_TEMP,
+	EFX_MON_STAT_PSU_AOE_TEMP,
+	EFX_MON_STAT_PSU_TEMP,
+	EFX_MON_STAT_FAN0,
+	EFX_MON_STAT_FAN1,
+	EFX_MON_STAT_FAN2,
+	EFX_MON_STAT_FAN3,
+	EFX_MON_STAT_FAN4,
+	EFX_MON_STAT_VAOE_IN,
+	EFX_MON_STAT_IAOE,
+	EFX_MON_STAT_IAOE_IN,
+	EFX_MON_STAT_NIC_POWER,
+	EFX_MON_STAT_0_9V,
+	EFX_MON_STAT_I0_9V,
+	EFX_MON_STAT_I1_2V,
+	EFX_MON_STAT_0_9V_ADC,
+	EFX_MON_STAT_INT_TEMP2,
+	EFX_MON_STAT_VREG_TEMP,
+	EFX_MON_STAT_VREG_0_9V_TEMP,
+	EFX_MON_STAT_VREG_1_2V_TEMP,
+	EFX_MON_STAT_INT_VPTAT,
+	EFX_MON_STAT_INT_ADC_TEMP,
+	EFX_MON_STAT_EXT_VPTAT,
+	EFX_MON_STAT_EXT_ADC_TEMP,
+	EFX_MON_STAT_AMBIENT_TEMP,
+	EFX_MON_STAT_AIRFLOW,
+	EFX_MON_STAT_VDD08D_VSS08D_CSR,
+	EFX_MON_STAT_VDD08D_VSS08D_CSR_EXTADC,
+	EFX_MON_STAT_HOTPOINT_TEMP,
+	EFX_MON_STAT_PHY_POWER_SWITCH_PORT0,
+	EFX_MON_STAT_PHY_POWER_SWITCH_PORT1,
+	EFX_MON_STAT_MUM_VCC,
+	EFX_MON_STAT_0V9_A,
+	EFX_MON_STAT_I0V9_A,
+	EFX_MON_STAT_0V9_A_TEMP,
+	EFX_MON_STAT_0V9_B,
+	EFX_MON_STAT_I0V9_B,
+	EFX_MON_STAT_0V9_B_TEMP,
+	EFX_MON_STAT_CCOM_AVREG_1V2_SUPPLY,
+	EFX_MON_STAT_CCOM_AVREG_1V2_SUPPLY_EXT_ADC,
+	EFX_MON_STAT_CCOM_AVREG_1V8_SUPPLY,
+	EFX_MON_STAT_CCOM_AVREG_1V8_SUPPLY_EXT_ADC,
+	EFX_MON_STAT_CONTROLLER_MASTER_VPTAT,
+	EFX_MON_STAT_CONTROLLER_MASTER_INTERNAL_TEMP,
+	EFX_MON_STAT_CONTROLLER_MASTER_VPTAT_EXT_ADC,
+	EFX_MON_STAT_CONTROLLER_MASTER_INTERNAL_TEMP_EXT_ADC,
+	EFX_MON_STAT_CONTROLLER_SLAVE_VPTAT,
+	EFX_MON_STAT_CONTROLLER_SLAVE_INTERNAL_TEMP,
+	EFX_MON_STAT_CONTROLLER_SLAVE_VPTAT_EXT_ADC,
+	EFX_MON_STAT_CONTROLLER_SLAVE_INTERNAL_TEMP_EXT_ADC,
+	EFX_MON_STAT_SODIMM_VOUT,
+	EFX_MON_STAT_SODIMM_0_TEMP,
+	EFX_MON_STAT_SODIMM_1_TEMP,
+	EFX_MON_STAT_PHY0_VCC,
+	EFX_MON_STAT_PHY1_VCC,
+	EFX_MON_STAT_CONTROLLER_TDIODE_TEMP,
+	EFX_MON_STAT_BOARD_FRONT_TEMP,
+	EFX_MON_STAT_BOARD_BACK_TEMP,
+	EFX_MON_NSTATS
+} efx_mon_stat_t;
+
+/* END MKCONFIG GENERATED MonitorHeaderStatsBlock */
+
+typedef enum efx_mon_stat_state_e {
+	EFX_MON_STAT_STATE_OK = 0,
+	EFX_MON_STAT_STATE_WARNING = 1,
+	EFX_MON_STAT_STATE_FATAL = 2,
+	EFX_MON_STAT_STATE_BROKEN = 3,
+	EFX_MON_STAT_STATE_NO_READING = 4,
+} efx_mon_stat_state_t;
+
+typedef struct efx_mon_stat_value_s {
+	uint16_t	emsv_value;
+	uint16_t	emsv_state;
+} efx_mon_stat_value_t;
+
+#if EFSYS_OPT_NAMES
+
+extern					const char *
+efx_mon_stat_name(
+	__in				efx_nic_t *enp,
+	__in				efx_mon_stat_t id);
+
+#endif	/* EFSYS_OPT_NAMES */
+
+extern	__checkReturn			efx_rc_t
+efx_mon_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_MON_NSTATS)	efx_mon_stat_value_t *values);
+
+#endif	/* EFSYS_OPT_MON_STATS */
+
 extern		void
 efx_mon_fini(
 	__in	efx_nic_t *enp);
@@ -973,6 +1092,10 @@ typedef struct efx_nic_cfg_s {
 #endif
 	char			enc_phy_revision[21];
 	efx_mon_type_t		enc_mon_type;
+#if EFSYS_OPT_MON_STATS
+	uint32_t		enc_mon_stat_dma_buf_size;
+	uint32_t		enc_mon_stat_mask[(EFX_MON_NSTATS + 31) / 32];
+#endif
 	unsigned int		enc_features;
 	uint8_t			enc_mac_addr[6];
 	uint8_t			enc_port;	/* PHY port number */
@@ -1009,6 +1132,10 @@ typedef struct efx_nic_cfg_s {
 #if EFSYS_OPT_PHY_STATS
 	uint32_t		enc_mcdi_phy_stat_mask;
 #endif	/* EFSYS_OPT_PHY_STATS */
+#if EFSYS_OPT_MON_STATS
+	uint32_t		*enc_mcdi_sensor_maskp;
+	uint32_t		enc_mcdi_sensor_mask_size;
+#endif	/* EFSYS_OPT_MON_STATS */
 #endif	/* EFSYS_OPT_MCDI */
 #if EFSYS_OPT_BIST
 	uint32_t		enc_bist_mask;
@@ -1358,6 +1485,16 @@ typedef __checkReturn	boolean_t
 	__in_opt	void *arg,
 	__in		efx_link_mode_t	link_mode);
 
+#if EFSYS_OPT_MON_STATS
+
+typedef __checkReturn	boolean_t
+(*efx_monitor_ev_t)(
+	__in_opt	void *arg,
+	__in		efx_mon_stat_t id,
+	__in		efx_mon_stat_value_t value);
+
+#endif	/* EFSYS_OPT_MON_STATS */
+
 #if EFSYS_OPT_MAC_STATS
 
 typedef __checkReturn	boolean_t
@@ -1381,6 +1518,9 @@ typedef struct efx_ev_callbacks_s {
 	efx_wake_up_ev_t		eec_wake_up;
 	efx_timer_ev_t			eec_timer;
 	efx_link_change_ev_t		eec_link_change;
+#if EFSYS_OPT_MON_STATS
+	efx_monitor_ev_t		eec_monitor;
+#endif	/* EFSYS_OPT_MON_STATS */
 #if EFSYS_OPT_MAC_STATS
 	efx_mac_stats_ev_t		eec_mac_stats;
 #endif	/* EFSYS_OPT_MAC_STATS */
