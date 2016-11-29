@@ -172,6 +172,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     const struct rte_eth_rxconf *rx_conf,
 	     struct rte_mempool *mb_pool)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	int rc;
 	uint16_t buf_size;
 	struct sfc_rxq_info *rxq_info;
@@ -187,6 +188,19 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	if (buf_size == 0) {
 		sfc_err(sa, "RxQ %u mbuf pool object size is too small",
 			sw_index);
+		rc = EINVAL;
+		goto fail_bad_conf;
+	}
+
+	if ((buf_size < sa->port.pdu + encp->enc_rx_prefix_size) &&
+	    !sa->eth_dev->data->dev_conf.rxmode.enable_scatter) {
+		sfc_err(sa, "Rx scatter is disabled and RxQ %u mbuf pool "
+			"object size is too small", sw_index);
+		sfc_err(sa, "RxQ %u calculated Rx buffer size is %u vs "
+			"PDU size %u plus Rx prefix %u bytes",
+			sw_index, buf_size, (unsigned int)sa->port.pdu,
+			encp->enc_rx_prefix_size);
+		rc = EINVAL;
 		goto fail_bad_conf;
 	}
 

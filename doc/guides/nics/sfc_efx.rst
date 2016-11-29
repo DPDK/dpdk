@@ -73,6 +73,16 @@ The features not yet supported include:
 - LRO
 
 
+Limitations
+-----------
+
+Due to requirements on receive buffer alignment and usage of the receive
+buffer for the auxiliary packet information provided by the NIC up to
+extra 269 (14 bytes prefix plus up to 255 bytes for end padding) bytes may be
+required in the receive buffer.
+It should be taken into account when mbuf pool for receive is created.
+
+
 Supported NICs
 --------------
 
