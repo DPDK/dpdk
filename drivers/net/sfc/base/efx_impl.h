@@ -49,6 +49,10 @@
 #include "hunt_impl.h"
 #endif	/* EFSYS_OPT_HUNTINGTON */
 
+#if EFSYS_OPT_MEDFORD
+#include "medford_impl.h"
+#endif	/* EFSYS_OPT_MEDFORD */
+
 #if (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
 #include "ef10_impl.h"
 #endif	/* (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD) */

@@ -78,6 +78,11 @@ efx_phy_probe(
 		epop = &__efx_phy_ef10_ops;
 		break;
 #endif	/* EFSYS_OPT_HUNTINGTON */
+#if EFSYS_OPT_MEDFORD
+	case EFX_FAMILY_MEDFORD:
+		epop = &__efx_phy_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_MEDFORD */
 	default:
 		rc = ENOTSUP;
 		goto fail1;

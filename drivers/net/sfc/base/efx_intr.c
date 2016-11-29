@@ -150,6 +150,12 @@ efx_intr_init(
 		break;
 #endif	/* EFSYS_OPT_HUNTINGTON */
 
+#if EFSYS_OPT_MEDFORD
+	case EFX_FAMILY_MEDFORD:
+		eiop = &__efx_intr_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_MEDFORD */
+
 	default:
 		EFSYS_ASSERT(B_FALSE);
 		rc = ENOTSUP;

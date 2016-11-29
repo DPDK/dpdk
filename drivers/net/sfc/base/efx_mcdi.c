@@ -110,6 +110,12 @@ efx_mcdi_init(
 		break;
 #endif	/* EFSYS_OPT_HUNTINGTON */
 
+#if EFSYS_OPT_MEDFORD
+	case EFX_FAMILY_MEDFORD:
+		emcop = &__efx_mcdi_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_MEDFORD */
+
 	default:
 		EFSYS_ASSERT(0);
 		rc = ENOTSUP;

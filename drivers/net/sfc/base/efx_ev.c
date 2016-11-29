@@ -134,6 +134,12 @@ efx_ev_init(
 		break;
 #endif /* EFSYS_OPT_HUNTINGTON */
 
+#if EFSYS_OPT_MEDFORD
+	case EFX_FAMILY_MEDFORD:
+		eevop = &__efx_ev_ef10_ops;
+		break;
+#endif /* EFSYS_OPT_MEDFORD */
+
 	default:
 		EFSYS_ASSERT(0);
 		rc = ENOTSUP;
