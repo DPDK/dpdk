@@ -40,11 +40,52 @@ sfc_tx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 	return 0;
 }
 
+static int
+sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
+{
+	int rc = 0;
+
+	switch (txmode->mq_mode) {
+	case ETH_MQ_TX_NONE:
+		break;
+	default:
+		sfc_err(sa, "Tx multi-queue mode %u not supported",
+			txmode->mq_mode);
+		rc = EINVAL;
+	}
+
+	/*
+	 * These features are claimed to be i40e-specific,
+	 * but it does make sense to double-check their absence
+	 */
+	if (txmode->hw_vlan_reject_tagged) {
+		sfc_err(sa, "Rejecting tagged packets not supported");
+		rc = EINVAL;
+	}
+
+	if (txmode->hw_vlan_reject_untagged) {
+		sfc_err(sa, "Rejecting untagged packets not supported");
+		rc = EINVAL;
+	}
+
+	if (txmode->hw_vlan_insert_pvid) {
+		sfc_err(sa, "Port-based VLAN insertion not supported");
+		rc = EINVAL;
+	}
+
+	return rc;
+}
+
 int
 sfc_tx_init(struct sfc_adapter *sa)
 {
+	const struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	unsigned int sw_index;
 	int rc = 0;
+
+	rc = sfc_tx_check_mode(sa, &dev_conf->txmode);
+	if (rc != 0)
+		goto fail_check_mode;
 
 	sa->txq_count = sa->eth_dev->data->nb_tx_queues;
 
@@ -69,6 +110,7 @@ fail_tx_qinit_info:
 fail_txqs_alloc:
 	sa->txq_count = 0;
 
+fail_check_mode:
 	sfc_log_init(sa, "failed (rc = %d)", rc);
 	return rc;
 }
