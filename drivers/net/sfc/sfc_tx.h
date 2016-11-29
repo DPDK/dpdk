@@ -39,6 +39,21 @@
 extern "C" {
 #endif
 
+/**
+ * Estimated maximum number of segments that transmit packet consists of;
+ * it is determined with respect to the expectation of a packet to consist
+ * of a header plus a couple of data segments one of those crossing 4K page;
+ * it is used by transmit path to avoid redundant reaping and, thus,
+ * to avoid increase of latency
+ */
+#define SFC_TX_MAX_PKT_DESC	4
+
+/**
+ * A segment must not cross 4K boundary
+ * (this is a requirement of NIC TX descriptors)
+ */
+#define SFC_TX_SEG_BOUNDARY	4096
+
 struct sfc_adapter;
 struct sfc_evq;
 
@@ -99,6 +114,9 @@ int sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index);
 void sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
 int sfc_tx_start(struct sfc_adapter *sa);
 void sfc_tx_stop(struct sfc_adapter *sa);
+
+uint16_t sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts);
 
 #ifdef __cplusplus
 }

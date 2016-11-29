@@ -32,6 +32,7 @@
 #include "sfc_log.h"
 #include "sfc_ev.h"
 #include "sfc_tx.h"
+#include "sfc_tweak.h"
 
 /*
  * Maximum number of TX queue flush attempts in case of
@@ -525,4 +526,118 @@ sfc_tx_stop(struct sfc_adapter *sa)
 	}
 
 	efx_tx_fini(sa->nic);
+}
+
+uint16_t
+sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct sfc_txq *txq = (struct sfc_txq *)tx_queue;
+	unsigned int added = txq->added;
+	unsigned int pushed = added;
+	unsigned int pkts_sent = 0;
+	efx_desc_t *pend = &txq->pend_desc[0];
+	const unsigned int hard_max_fill = EFX_TXQ_LIMIT(txq->ptr_mask + 1);
+	const unsigned int soft_max_fill = hard_max_fill -
+					   SFC_TX_MAX_PKT_DESC;
+	unsigned int fill_level = added - txq->completed;
+	boolean_t reap_done;
+	int rc __rte_unused;
+	struct rte_mbuf **pktp;
+
+	if (unlikely((txq->state & SFC_TXQ_RUNNING) == 0))
+		goto done;
+
+	/*
+	 * If insufficient space for a single packet is present,
+	 * we should reap; otherwise, we shouldn't do that all the time
+	 * to avoid latency increase
+	 */
+	reap_done = (fill_level > soft_max_fill);
+
+	if (reap_done) {
+		sfc_tx_reap(txq);
+		/*
+		 * Recalculate fill level since 'txq->completed'
+		 * might have changed on reap
+		 */
+		fill_level = added - txq->completed;
+	}
+
+	for (pkts_sent = 0, pktp = &tx_pkts[0];
+	     (pkts_sent < nb_pkts) && (fill_level <= soft_max_fill);
+	     pkts_sent++, pktp++) {
+		struct rte_mbuf		*m_seg = *pktp;
+		size_t			pkt_len = m_seg->pkt_len;
+		unsigned int		pkt_descs = 0;
+
+		for (; m_seg != NULL; m_seg = m_seg->next) {
+			efsys_dma_addr_t	next_frag;
+			size_t			seg_len;
+
+			seg_len = m_seg->data_len;
+			next_frag = rte_mbuf_data_dma_addr(m_seg);
+
+			do {
+				efsys_dma_addr_t	frag_addr = next_frag;
+				size_t			frag_len;
+
+				next_frag = RTE_ALIGN(frag_addr + 1,
+						      SFC_TX_SEG_BOUNDARY);
+				frag_len = MIN(next_frag - frag_addr, seg_len);
+				seg_len -= frag_len;
+				pkt_len -= frag_len;
+
+				efx_tx_qdesc_dma_create(txq->common,
+							frag_addr, frag_len,
+							(pkt_len == 0),
+							pend++);
+
+				pkt_descs++;
+			} while (seg_len != 0);
+		}
+
+		added += pkt_descs;
+
+		fill_level += pkt_descs;
+		if (unlikely(fill_level > hard_max_fill)) {
+			/*
+			 * Our estimation for maximum number of descriptors
+			 * required to send a packet seems to be wrong.
+			 * Try to reap (if we haven't yet).
+			 */
+			if (!reap_done) {
+				sfc_tx_reap(txq);
+				reap_done = B_TRUE;
+				fill_level = added - txq->completed;
+				if (fill_level > hard_max_fill) {
+					pend -= pkt_descs;
+					break;
+				}
+			} else {
+				pend -= pkt_descs;
+				break;
+			}
+		}
+
+		/* Assign mbuf to the last used desc */
+		txq->sw_ring[(added - 1) & txq->ptr_mask].mbuf = *pktp;
+	}
+
+	if (likely(pkts_sent > 0)) {
+		rc = efx_tx_qdesc_post(txq->common, txq->pend_desc,
+				       pend - &txq->pend_desc[0],
+				       txq->completed, &txq->added);
+		SFC_ASSERT(rc == 0);
+
+		if (likely(pushed != txq->added))
+			efx_tx_qpush(txq->common, txq->added, pushed);
+	}
+
+#if SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE
+	if (!reap_done)
+		sfc_tx_reap(txq);
+#endif
+
+done:
+	return pkts_sent;
 }

@@ -41,4 +41,11 @@
  */
 #define SFC_RX_REFILL_BULK	(RTE_CACHE_LINE_SIZE / sizeof(efx_qword_t))
 
+/**
+ * Make the transmit path reap at least one time per a burst;
+ * this improves cache locality because the same mbufs may be used to send
+ * subsequent bursts in certain cases because of well-timed reap
+ */
+#define SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE	0
+
 #endif /* _SFC_TWEAK_H_ */

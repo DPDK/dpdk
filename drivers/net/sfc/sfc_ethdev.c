@@ -387,6 +387,7 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 
 	dev->dev_ops = &sfc_eth_dev_ops;
 	dev->rx_pkt_burst = &sfc_recv_pkts;
+	dev->tx_pkt_burst = &sfc_xmit_pkts;
 
 	sfc_adapter_unlock(sa);
 
@@ -425,6 +426,7 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
 
 	sfc_kvargs_cleanup(sa);
 
