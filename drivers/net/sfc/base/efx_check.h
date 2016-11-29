@@ -166,6 +166,13 @@
 # error "PHY_BIST is obsolete (replaced by BIST)."
 #endif
 
+#if EFSYS_OPT_PHY_FLAGS
+/* Support PHY flags */
+# if !EFSYS_OPT_SIENA
+#  error "PHY_FLAGS requires SIENA"
+# endif
+#endif /* EFSYS_OPT_PHY_FLAGS */
+
 #ifdef EFSYS_OPT_PHY_NULL
 # error "PHY_NULL is obsolete and is not supported."
 #endif

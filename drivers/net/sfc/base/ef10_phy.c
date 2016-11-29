@@ -293,7 +293,11 @@ ef10_phy_reconfigure(
 	speed = 0;
 	MCDI_IN_SET_DWORD(req, SET_LINK_IN_LOOPBACK_SPEED, speed);
 
+#if EFSYS_OPT_PHY_FLAGS
+	MCDI_IN_SET_DWORD(req, SET_LINK_IN_FLAGS, epp->ep_phy_flags);
+#else
 	MCDI_IN_SET_DWORD(req, SET_LINK_IN_FLAGS, 0);
+#endif	/* EFSYS_OPT_PHY_FLAGS */
 
 	efx_mcdi_execute(enp, &req);
 

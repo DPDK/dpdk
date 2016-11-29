@@ -237,6 +237,9 @@ typedef struct efx_port_s {
 	uint8_t			ep_mulcst_addr_list[EFX_MAC_ADDR_LEN *
 						    EFX_MAC_MULTICAST_LIST_MAX];
 	uint32_t		ep_mulcst_addr_count;
+#if EFSYS_OPT_PHY_FLAGS
+	uint32_t		ep_phy_flags;
+#endif	/* EFSYS_OPT_PHY_FLAGS */
 	efx_phy_media_type_t	ep_fixed_port_type;
 	efx_phy_media_type_t	ep_module_type;
 	uint32_t		ep_adv_cap_mask;

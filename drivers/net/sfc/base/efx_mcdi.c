@@ -1425,6 +1425,9 @@ efx_mcdi_get_phy_cfg(
 
 	epp->ep_phy_cap_mask =
 		MCDI_OUT_DWORD(req, GET_PHY_CFG_OUT_SUPPORTED_CAP);
+#if EFSYS_OPT_PHY_FLAGS
+	encp->enc_phy_flags_mask = MCDI_OUT_DWORD(req, GET_PHY_CFG_OUT_FLAGS);
+#endif	/* EFSYS_OPT_PHY_FLAGS */
 
 	encp->enc_port = (uint8_t)MCDI_OUT_DWORD(req, GET_PHY_CFG_OUT_PRT);
 

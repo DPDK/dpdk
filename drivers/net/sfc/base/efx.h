@@ -668,6 +668,9 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_rx_prefix_size;
 	uint32_t		enc_rx_buf_align_start;
 	uint32_t		enc_rx_buf_align_end;
+#if EFSYS_OPT_PHY_FLAGS
+	uint32_t		enc_phy_flags_mask;
+#endif	/* EFSYS_OPT_PHY_FLAGS */
 #if EFSYS_OPT_MCDI
 	uint8_t			enc_mcdi_mdio_channel;
 #endif	/* EFSYS_OPT_MCDI */
