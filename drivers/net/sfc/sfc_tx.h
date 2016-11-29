@@ -40,12 +40,48 @@ extern "C" {
 #endif
 
 struct sfc_adapter;
+struct sfc_evq;
+
+struct sfc_tx_sw_desc {
+	struct rte_mbuf		*mbuf;
+};
+
+enum sfc_txq_state_bit {
+	SFC_TXQ_INITIALIZED_BIT = 0,
+#define SFC_TXQ_INITIALIZED	(1 << SFC_TXQ_INITIALIZED_BIT)
+};
+
+struct sfc_txq {
+	struct sfc_evq		*evq;
+	struct sfc_tx_sw_desc	*sw_ring;
+	unsigned int		state;
+	unsigned int		ptr_mask;
+	efx_desc_t		*pend_desc;
+	efx_txq_t		*common;
+	efsys_mem_t		mem;
+
+	unsigned int		hw_index;
+	unsigned int		flags;
+};
+
+static inline unsigned int
+sfc_txq_sw_index(const struct sfc_txq *txq)
+{
+	return txq->hw_index;
+}
 
 struct sfc_txq_info {
+	unsigned int		entries;
+	struct sfc_txq		*txq;
 };
 
 int sfc_tx_init(struct sfc_adapter *sa);
 void sfc_tx_fini(struct sfc_adapter *sa);
+
+int sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+		 uint16_t nb_tx_desc, unsigned int socket_id,
+		 const struct rte_eth_txconf *tx_conf);
+void sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index);
 
 #ifdef __cplusplus
 }

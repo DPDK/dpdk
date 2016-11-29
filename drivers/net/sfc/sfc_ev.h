@@ -41,6 +41,7 @@ extern "C" {
 
 struct sfc_adapter;
 struct sfc_rxq;
+struct sfc_txq;
 
 enum sfc_evq_state {
 	SFC_EVQ_UNINITIALIZED = 0,
@@ -58,6 +59,7 @@ struct sfc_evq {
 	boolean_t		exception;
 	efsys_mem_t		mem;
 	struct sfc_rxq		*rxq;
+	struct sfc_txq		*txq;
 
 	/* Not used on datapath */
 	struct sfc_adapter	*sa;

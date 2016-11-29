@@ -33,6 +33,165 @@
 #include "sfc_tx.h"
 
 static int
+sfc_tx_qcheck_conf(struct sfc_adapter *sa,
+		   const struct rte_eth_txconf *tx_conf)
+{
+	unsigned int flags = tx_conf->txq_flags;
+	int rc = 0;
+
+	if (tx_conf->tx_rs_thresh != 0) {
+		sfc_err(sa, "RS bit in transmit descriptor is not supported");
+		rc = EINVAL;
+	}
+
+	if (tx_conf->tx_free_thresh != 0) {
+		sfc_err(sa,
+			"setting explicit TX free threshold is not supported");
+		rc = EINVAL;
+	}
+
+	if (tx_conf->tx_deferred_start != 0) {
+		sfc_err(sa, "TX queue deferred start is not supported (yet)");
+		rc = EINVAL;
+	}
+
+	if (tx_conf->tx_thresh.pthresh != 0 ||
+	    tx_conf->tx_thresh.hthresh != 0 ||
+	    tx_conf->tx_thresh.wthresh != 0) {
+		sfc_err(sa,
+			"prefetch/host/writeback thresholds are not supported");
+		rc = EINVAL;
+	}
+
+	if ((flags & ETH_TXQ_FLAGS_NOVLANOFFL) == 0) {
+		sfc_err(sa, "VLAN offload is not supported");
+		rc = EINVAL;
+	}
+
+	if ((flags & ETH_TXQ_FLAGS_NOXSUMSCTP) == 0) {
+		sfc_err(sa, "SCTP offload is not supported");
+		rc = EINVAL;
+	}
+
+	/* We either perform both TCP and UDP offload, or no offload at all */
+	if (((flags & ETH_TXQ_FLAGS_NOXSUMTCP) == 0) !=
+	    ((flags & ETH_TXQ_FLAGS_NOXSUMUDP) == 0)) {
+		sfc_err(sa, "TCP and UDP offloads can't be set independently");
+		rc = EINVAL;
+	}
+
+	return rc;
+}
+
+int
+sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+	     uint16_t nb_tx_desc, unsigned int socket_id,
+	     const struct rte_eth_txconf *tx_conf)
+{
+	struct sfc_txq_info *txq_info;
+	struct sfc_evq *evq;
+	struct sfc_txq *txq;
+	unsigned int evq_index = sfc_evq_index_by_txq_sw_index(sa, sw_index);
+	int rc = 0;
+
+	sfc_log_init(sa, "TxQ = %u", sw_index);
+
+	rc = sfc_tx_qcheck_conf(sa, tx_conf);
+	if (rc != 0)
+		goto fail_bad_conf;
+
+	SFC_ASSERT(sw_index < sa->txq_count);
+	txq_info = &sa->txq_info[sw_index];
+
+	SFC_ASSERT(nb_tx_desc <= sa->txq_max_entries);
+	txq_info->entries = nb_tx_desc;
+
+	rc = sfc_ev_qinit(sa, evq_index, txq_info->entries, socket_id);
+	if (rc != 0)
+		goto fail_ev_qinit;
+
+	evq = sa->evq_info[evq_index].evq;
+
+	rc = ENOMEM;
+	txq = rte_zmalloc_socket("sfc-txq", sizeof(*txq), 0, socket_id);
+	if (txq == NULL)
+		goto fail_txq_alloc;
+
+	rc = sfc_dma_alloc(sa, "txq", sw_index, EFX_TXQ_SIZE(txq_info->entries),
+			   socket_id, &txq->mem);
+	if (rc != 0)
+		goto fail_dma_alloc;
+
+	rc = ENOMEM;
+	txq->pend_desc = rte_calloc_socket("sfc-txq-pend-desc",
+					   EFX_TXQ_LIMIT(txq_info->entries),
+					   sizeof(efx_desc_t), 0, socket_id);
+	if (txq->pend_desc == NULL)
+		goto fail_pend_desc_alloc;
+
+	rc = ENOMEM;
+	txq->sw_ring = rte_calloc_socket("sfc-txq-desc", txq_info->entries,
+					 sizeof(*txq->sw_ring), 0, socket_id);
+	if (txq->sw_ring == NULL)
+		goto fail_desc_alloc;
+
+	txq->state = SFC_TXQ_INITIALIZED;
+	txq->ptr_mask = txq_info->entries - 1;
+	txq->hw_index = sw_index;
+	txq->flags = tx_conf->txq_flags;
+	txq->evq = evq;
+
+	evq->txq = txq;
+
+	txq_info->txq = txq;
+
+	return 0;
+
+fail_desc_alloc:
+	rte_free(txq->pend_desc);
+
+fail_pend_desc_alloc:
+	sfc_dma_free(sa, &txq->mem);
+
+fail_dma_alloc:
+	rte_free(txq);
+
+fail_txq_alloc:
+	sfc_ev_qfini(sa, evq_index);
+
+fail_ev_qinit:
+	txq_info->entries = 0;
+
+fail_bad_conf:
+	sfc_log_init(sa, "failed (TxQ = %u, rc = %d)", sw_index, rc);
+	return rc;
+}
+
+void
+sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct sfc_txq_info *txq_info;
+	struct sfc_txq *txq;
+
+	sfc_log_init(sa, "TxQ = %u", sw_index);
+
+	SFC_ASSERT(sw_index < sa->txq_count);
+	txq_info = &sa->txq_info[sw_index];
+
+	txq = txq_info->txq;
+	SFC_ASSERT(txq != NULL);
+	SFC_ASSERT(txq->state == SFC_TXQ_INITIALIZED);
+
+	txq_info->txq = NULL;
+	txq_info->entries = 0;
+
+	rte_free(txq->sw_ring);
+	rte_free(txq->pend_desc);
+	sfc_dma_free(sa, &txq->mem);
+	rte_free(txq);
+}
+
+static int
 sfc_tx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 {
 	sfc_log_init(sa, "TxQ = %u", sw_index);
@@ -118,6 +277,14 @@ fail_check_mode:
 void
 sfc_tx_fini(struct sfc_adapter *sa)
 {
+	int sw_index;
+
+	sw_index = sa->txq_count;
+	while (--sw_index >= 0) {
+		if (sa->txq_info[sw_index].txq != NULL)
+			sfc_tx_qfini(sa, sw_index);
+	}
+
 	rte_free(sa->txq_info);
 	sa->txq_info = NULL;
 	sa->txq_count = 0;

@@ -39,6 +39,7 @@
 #include "sfc_kvargs.h"
 #include "sfc_ev.h"
 #include "sfc_rx.h"
+#include "sfc_tx.h"
 
 
 static void
@@ -267,6 +268,61 @@ sfc_rx_queue_release(void *queue)
 	sfc_adapter_unlock(sa);
 }
 
+static int
+sfc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		   uint16_t nb_tx_desc, unsigned int socket_id,
+		   const struct rte_eth_txconf *tx_conf)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int rc;
+
+	sfc_log_init(sa, "TxQ = %u, nb_tx_desc = %u, socket_id = %u",
+		     tx_queue_id, nb_tx_desc, socket_id);
+
+	sfc_adapter_lock(sa);
+
+	rc = sfc_tx_qinit(sa, tx_queue_id, nb_tx_desc, socket_id, tx_conf);
+	if (rc != 0)
+		goto fail_tx_qinit;
+
+	dev->data->tx_queues[tx_queue_id] = sa->txq_info[tx_queue_id].txq;
+
+	sfc_adapter_unlock(sa);
+	return 0;
+
+fail_tx_qinit:
+	sfc_adapter_unlock(sa);
+	SFC_ASSERT(rc > 0);
+	return -rc;
+}
+
+static void
+sfc_tx_queue_release(void *queue)
+{
+	struct sfc_txq *txq = queue;
+	unsigned int sw_index;
+	struct sfc_adapter *sa;
+
+	if (txq == NULL)
+		return;
+
+	sw_index = sfc_txq_sw_index(txq);
+
+	SFC_ASSERT(txq->evq != NULL);
+	sa = txq->evq->sa;
+
+	sfc_log_init(sa, "TxQ = %u", sw_index);
+
+	sfc_adapter_lock(sa);
+
+	SFC_ASSERT(sw_index < sa->eth_dev->data->nb_tx_queues);
+	sa->eth_dev->data->tx_queues[sw_index] = NULL;
+
+	sfc_tx_qfini(sa, sw_index);
+
+	sfc_adapter_unlock(sa);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -276,6 +332,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_infos_get			= sfc_dev_infos_get,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,
+	.tx_queue_setup			= sfc_tx_queue_setup,
+	.tx_queue_release		= sfc_tx_queue_release,
 };
 
 static int
