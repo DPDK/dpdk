@@ -29,6 +29,7 @@
 
 #include <rte_debug.h>
 #include <rte_cycles.h>
+#include <rte_alarm.h>
 
 #include "efx.h"
 
@@ -44,6 +45,9 @@
 #define SFC_EVQ_INIT_BACKOFF_MAX_US	(10 * 1000)
 /* Event queue init approx timeout */
 #define SFC_EVQ_INIT_TIMEOUT_US		(2 * US_PER_S)
+
+/* Management event queue polling period in microseconds */
+#define SFC_MGMT_EV_QPOLL_PERIOD_US	(US_PER_S)
 
 
 static boolean_t
@@ -328,6 +332,34 @@ sfc_ev_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	efx_ev_qdestroy(evq->common);
 }
 
+static void
+sfc_ev_mgmt_periodic_qpoll(void *arg)
+{
+	struct sfc_adapter *sa = arg;
+	int rc;
+
+	sfc_ev_mgmt_qpoll(sa);
+
+	rc = rte_eal_alarm_set(SFC_MGMT_EV_QPOLL_PERIOD_US,
+			       sfc_ev_mgmt_periodic_qpoll, sa);
+	if (rc != 0)
+		sfc_panic(sa,
+			  "cannot rearm management EVQ polling alarm (rc=%d)",
+			  rc);
+}
+
+static void
+sfc_ev_mgmt_periodic_qpoll_start(struct sfc_adapter *sa)
+{
+	sfc_ev_mgmt_periodic_qpoll(sa);
+}
+
+static void
+sfc_ev_mgmt_periodic_qpoll_stop(struct sfc_adapter *sa)
+{
+	rte_eal_alarm_cancel(sfc_ev_mgmt_periodic_qpoll, sa);
+}
+
 int
 sfc_ev_start(struct sfc_adapter *sa)
 {
@@ -347,6 +379,14 @@ sfc_ev_start(struct sfc_adapter *sa)
 		goto fail_mgmt_evq_start;
 
 	rte_spinlock_unlock(&sa->mgmt_evq_lock);
+
+	/*
+	 * Start management EVQ polling. If interrupts are disabled
+	 * (not used), it is required to process link status change
+	 * and other device level events to avoid unrecoverable
+	 * error because the event queue overflow.
+	 */
+	sfc_ev_mgmt_periodic_qpoll_start(sa);
 
 	/*
 	 * Rx/Tx event queues are started/stopped when corresponding
@@ -370,6 +410,8 @@ sfc_ev_stop(struct sfc_adapter *sa)
 	unsigned int sw_index;
 
 	sfc_log_init(sa, "entry");
+
+	sfc_ev_mgmt_periodic_qpoll_stop(sa);
 
 	/* Make sure that all event queues are stopped */
 	sw_index = sa->evq_count;
