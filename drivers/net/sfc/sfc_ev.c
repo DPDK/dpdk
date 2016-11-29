@@ -85,8 +85,24 @@ sfc_ev_exception(void *arg, __rte_unused uint32_t code,
 {
 	struct sfc_evq *evq = arg;
 
-	sfc_err(evq->sa, "EVQ %u unexpected exception event",
-		evq->evq_index);
+	if (code == EFX_EXCEPTION_UNKNOWN_SENSOREVT)
+		return B_FALSE;
+
+	evq->exception = B_TRUE;
+	sfc_warn(evq->sa,
+		 "hardware exception %s (code=%u, data=%#x) on EVQ %u;"
+		 " needs recovery",
+		 (code == EFX_EXCEPTION_RX_RECOVERY) ? "RX_RECOVERY" :
+		 (code == EFX_EXCEPTION_RX_DSC_ERROR) ? "RX_DSC_ERROR" :
+		 (code == EFX_EXCEPTION_TX_DSC_ERROR) ? "TX_DSC_ERROR" :
+		 (code == EFX_EXCEPTION_FWALERT_SRAM) ? "FWALERT_SRAM" :
+		 (code == EFX_EXCEPTION_UNKNOWN_FWALERT) ? "UNKNOWN_FWALERT" :
+		 (code == EFX_EXCEPTION_RX_ERROR) ? "RX_ERROR" :
+		 (code == EFX_EXCEPTION_TX_ERROR) ? "TX_ERROR" :
+		 (code == EFX_EXCEPTION_EV_ERROR) ? "EV_ERROR" :
+		 "UNKNOWN",
+		 code, data, evq->evq_index);
+
 	return B_TRUE;
 }
 
