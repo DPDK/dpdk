@@ -50,6 +50,7 @@ Network Interface Controller Drivers
     mlx5
     nfp
     qede
+    sfc_efx
     szedata2
     thunderx
     virtio

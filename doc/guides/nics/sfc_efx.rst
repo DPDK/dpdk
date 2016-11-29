@@ -1,0 +1,109 @@
+..  BSD LICENSE
+    Copyright (c) 2016 Solarflare Communications Inc.
+    All rights reserved.
+
+    This software was jointly developed between OKTET Labs (under contract
+    for Solarflare) and Solarflare Communications, Inc.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Solarflare libefx-based Poll Mode Driver
+========================================
+
+The SFC EFX PMD (**librte_pmd_sfc_efx**) provides poll mode driver support
+for **Solarflare SFN7xxx and SFN8xxx** family of 10/40 Gbps adapters.
+SFC EFX PMD has support for the latest Linux and FreeBSD operating systems.
+
+More information can be found at `Solarflare Communications website
+<http://solarflare.com>`_.
+
+
+Supported NICs
+--------------
+
+- Solarflare Flareon [Ultra] Server Adapters:
+
+   - Solarflare SFN8522 Dual Port SFP+ Server Adapter
+
+   - Solarflare SFN8542 Dual Port QSFP+ Server Adapter
+
+   - Solarflare SFN7002F Dual Port SFP+ Server Adapter
+
+   - Solarflare SFN7004F Quad Port SFP+ Server Adapter
+
+   - Solarflare SFN7042Q Dual Port QSFP+ Server Adapter
+
+   - Solarflare SFN7122F Dual Port SFP+ Server Adapter
+
+   - Solarflare SFN7124F Quad Port SFP+ Server Adapter
+
+   - Solarflare SFN7142Q Dual Port QSFP+ Server Adapter
+
+   - Solarflare SFN7322F Precision Time Synchronization Server Adapter
+
+
+Prerequisites
+-------------
+
+- Requires firmware version:
+
+   - SFN7xxx: **4.7.1.1001** or higher
+
+   - SFN8xxx: **6.0.2.1004** or higher
+
+Visit `Solarflare Support Downloads <https://support.solarflare.com>`_ to get
+Solarflare Utilities (either Linux or FreeBSD) with the latest firmware.
+Follow instructions from Solarflare Server Adapter User's Guide to
+update firmware and configure the adapter.
+
+
+Pre-Installation Configuration
+------------------------------
+
+
+Config File Options
+~~~~~~~~~~~~~~~~~~~
+
+The following options can be modified in the ``.config`` file.
+Please note that enabling debugging options may affect system performance.
+
+- ``CONFIG_RTE_LIBRTE_SFC_EFX_PMD`` (default **y**)
+
+  Enable compilation of Solarflare libefx-based poll-mode driver.
+
+- ``CONFIG_RTE_LIBRTE_SFC_EFX_DEBUG`` (default **n**)
+
+  Enable compilation of the extra run-time consistency checks.
+
+
+Per-Device Parameters
+~~~~~~~~~~~~~~~~~~~~~
+
+The following per-device parameters can be passed via EAL PCI device
+whitelist option like "-w 02:00.0,arg1=value1,...".
+
+Case-insensitive 1/y/yes/on or 0/n/no/off may be used to specify
+boolean parameters value.
+
+- ``debug_init`` [bool] (default **n**)
+
+  Enable extra logging during device intialization and startup.

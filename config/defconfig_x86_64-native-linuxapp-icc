@@ -41,3 +41,8 @@ CONFIG_RTE_ARCH_64=y
 
 CONFIG_RTE_TOOLCHAIN="icc"
 CONFIG_RTE_TOOLCHAIN_ICC=y
+
+#
+# Solarflare PMD build is not supported using icc toolchain
+#
+CONFIG_RTE_LIBRTE_SFC_EFX_PMD=n

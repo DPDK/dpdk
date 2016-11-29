@@ -66,6 +66,11 @@ New Features
 
   Added support for I219 Intel 1GbE NICs.
 
+* **Added Solarflare libefx-based network PMD.**
+
+  A new network PMD which supports Solarflare SFN7xxx and SFN8xxx family
+  of 10/40 Gbps adapters has been added.
+
 * **virtio-user with vhost-kernel as another exceptional path.**
 
   Previously, we upstreamed a virtual device, virtio-user with vhost-user

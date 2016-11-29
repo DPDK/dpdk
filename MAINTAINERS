@@ -366,6 +366,12 @@ M: Harish Patil <harish.patil@cavium.com>
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
 
+Solarflare sfc_efx
+M: Andrew Rybchenko <arybchenko@solarflare.com>
+F: drivers/net/sfc/
+F: doc/guides/nics/sfc_efx.rst
+F: doc/guides/nics/features/sfc_efx.ini
+
 RedHat virtio
 M: Huawei Xie <huawei.xie@intel.com>
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>

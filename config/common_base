@@ -257,6 +257,12 @@ CONFIG_RTE_LIBRTE_NFP_DEBUG=n
 CONFIG_RTE_LIBRTE_BNXT_PMD=y
 
 #
+# Compile burst-oriented Solarflare libefx-based PMD
+#
+CONFIG_RTE_LIBRTE_SFC_EFX_PMD=y
+CONFIG_RTE_LIBRTE_SFC_EFX_DEBUG=n
+
+#
 # Compile software PMD backed by SZEDATA2 device
 #
 CONFIG_RTE_LIBRTE_PMD_SZEDATA2=n

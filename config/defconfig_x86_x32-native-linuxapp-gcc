@@ -45,3 +45,8 @@ CONFIG_RTE_TOOLCHAIN_GCC=y
 # KNI is not supported on 32-bit
 #
 CONFIG_RTE_LIBRTE_KNI=n
+
+#
+# Solarflare PMD is not supported on 32-bit
+#
+CONFIG_RTE_LIBRTE_SFC_EFX_PMD=n
