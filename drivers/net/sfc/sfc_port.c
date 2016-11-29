@@ -129,3 +129,61 @@ sfc_port_fini(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "done");
 }
+
+void
+sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
+			   struct rte_eth_link *link_info)
+{
+	SFC_ASSERT(link_mode < EFX_LINK_NMODES);
+
+	memset(link_info, 0, sizeof(*link_info));
+	if ((link_mode == EFX_LINK_DOWN) || (link_mode == EFX_LINK_UNKNOWN))
+		link_info->link_status = ETH_LINK_DOWN;
+	else
+		link_info->link_status = ETH_LINK_UP;
+
+	switch (link_mode) {
+	case EFX_LINK_10HDX:
+		link_info->link_speed  = ETH_SPEED_NUM_10M;
+		link_info->link_duplex = ETH_LINK_HALF_DUPLEX;
+		break;
+	case EFX_LINK_10FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_10M;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	case EFX_LINK_100HDX:
+		link_info->link_speed  = ETH_SPEED_NUM_100M;
+		link_info->link_duplex = ETH_LINK_HALF_DUPLEX;
+		break;
+	case EFX_LINK_100FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_100M;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	case EFX_LINK_1000HDX:
+		link_info->link_speed  = ETH_SPEED_NUM_1G;
+		link_info->link_duplex = ETH_LINK_HALF_DUPLEX;
+		break;
+	case EFX_LINK_1000FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_1G;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	case EFX_LINK_10000FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_10G;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	case EFX_LINK_40000FDX:
+		link_info->link_speed  = ETH_SPEED_NUM_40G;
+		link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+		/* FALLTHROUGH */
+	case EFX_LINK_UNKNOWN:
+	case EFX_LINK_DOWN:
+		link_info->link_speed  = ETH_SPEED_NUM_NONE;
+		link_info->link_duplex = 0;
+		break;
+	}
+
+	link_info->link_autoneg = ETH_LINK_AUTONEG;
+}

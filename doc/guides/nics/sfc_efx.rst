@@ -44,6 +44,8 @@ SFC EFX PMD has support for:
 
 - Multiple transmit and receive queues
 
+- Link state information
+
 
 Non-supported Features
 ----------------------

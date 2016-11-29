@@ -218,6 +218,9 @@ int sfc_port_init(struct sfc_adapter *sa);
 void sfc_port_fini(struct sfc_adapter *sa);
 int sfc_port_start(struct sfc_adapter *sa);
 void sfc_port_stop(struct sfc_adapter *sa);
+void sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
+				struct rte_eth_link *link_info);
+
 
 #ifdef __cplusplus
 }

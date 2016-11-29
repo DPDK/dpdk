@@ -37,6 +37,8 @@ CFLAGS += -I$(SRCDIR)/base/
 CFLAGS += -I$(SRCDIR)
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+# Strict-aliasing rules are violated by rte_eth_link to uint64_t casts
+CFLAGS += -Wno-strict-aliasing
 
 # Enable extra warnings
 CFLAGS += -Wextra

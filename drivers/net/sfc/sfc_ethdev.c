@@ -37,6 +37,7 @@
 #include "sfc_debug.h"
 #include "sfc_log.h"
 #include "sfc_kvargs.h"
+#include "sfc_ev.h"
 
 
 static void
@@ -99,6 +100,46 @@ sfc_dev_start(struct rte_eth_dev *dev)
 	return -rc;
 }
 
+static int
+sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct rte_eth_link *dev_link = &dev->data->dev_link;
+	struct rte_eth_link old_link;
+	struct rte_eth_link current_link;
+
+	sfc_log_init(sa, "entry");
+
+	if (sa->state != SFC_ADAPTER_STARTED)
+		return 0;
+
+retry:
+	EFX_STATIC_ASSERT(sizeof(*dev_link) == sizeof(rte_atomic64_t));
+	*(int64_t *)&old_link = rte_atomic64_read((rte_atomic64_t *)dev_link);
+
+	if (wait_to_complete) {
+		efx_link_mode_t link_mode;
+
+		efx_port_poll(sa->nic, &link_mode);
+		sfc_port_link_mode_to_info(link_mode, &current_link);
+
+		if (!rte_atomic64_cmpset((volatile uint64_t *)dev_link,
+					 *(uint64_t *)&old_link,
+					 *(uint64_t *)&current_link))
+			goto retry;
+	} else {
+		sfc_ev_mgmt_qpoll(sa);
+		*(int64_t *)&current_link =
+			rte_atomic64_read((rte_atomic64_t *)dev_link);
+	}
+
+	if (old_link.link_status != current_link.link_status)
+		sfc_info(sa, "Link status is %s",
+			 current_link.link_status ? "UP" : "DOWN");
+
+	return old_link.link_status == current_link.link_status ? 0 : -1;
+}
+
 static void
 sfc_dev_stop(struct rte_eth_dev *dev)
 {
@@ -146,6 +187,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_start			= sfc_dev_start,
 	.dev_stop			= sfc_dev_stop,
 	.dev_close			= sfc_dev_close,
+	.link_update			= sfc_dev_link_update,
 	.dev_infos_get			= sfc_dev_infos_get,
 };
 

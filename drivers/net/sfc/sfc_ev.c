@@ -181,13 +181,19 @@ sfc_ev_timer(void *arg, uint32_t index)
 }
 
 static boolean_t
-sfc_ev_link_change(void *arg, __rte_unused efx_link_mode_t link_mode)
+sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 {
 	struct sfc_evq *evq = arg;
+	struct sfc_adapter *sa = evq->sa;
+	struct rte_eth_link *dev_link = &sa->eth_dev->data->dev_link;
+	struct rte_eth_link new_link;
 
-	sfc_err(evq->sa, "EVQ %u unexpected link change",
-		evq->evq_index);
-	return B_TRUE;
+	EFX_STATIC_ASSERT(sizeof(*dev_link) == sizeof(rte_atomic64_t));
+
+	sfc_port_link_mode_to_info(link_mode, &new_link);
+	rte_atomic64_set((rte_atomic64_t *)dev_link, *(uint64_t *)&new_link);
+
+	return B_FALSE;
 }
 
 static const efx_ev_callbacks_t sfc_ev_callbacks = {
