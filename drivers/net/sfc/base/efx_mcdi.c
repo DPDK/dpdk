@@ -192,6 +192,9 @@ efx_mcdi_request_start(
 	__in		efx_mcdi_req_t *emrp,
 	__in		boolean_t ev_cpl)
 {
+#if EFSYS_OPT_MCDI_LOGGING
+	const efx_mcdi_transport_t *emtp = enp->en_mcdi.em_emtp;
+#endif
 	efx_mcdi_iface_t *emip = &(enp->en_mcdi.em_emip);
 	efx_dword_t hdr[2];
 	size_t hdr_len;
@@ -268,6 +271,14 @@ efx_mcdi_request_start(
 		    MCDI_HEADER_XFLAGS, xflags);
 	}
 
+#if EFSYS_OPT_MCDI_LOGGING
+	if (emtp->emt_logger != NULL) {
+		emtp->emt_logger(emtp->emt_context, EFX_LOG_MCDI_REQUEST,
+		    &hdr[0], hdr_len,
+		    emrp->emr_in_buf, emrp->emr_in_length);
+	}
+#endif /* EFSYS_OPT_MCDI_LOGGING */
+
 	efx_mcdi_send_request(enp, &hdr[0], hdr_len,
 	    emrp->emr_in_buf, emrp->emr_in_length);
 }
@@ -278,6 +289,9 @@ efx_mcdi_read_response_header(
 	__in		efx_nic_t *enp,
 	__inout		efx_mcdi_req_t *emrp)
 {
+#if EFSYS_OPT_MCDI_LOGGING
+	const efx_mcdi_transport_t *emtp = enp->en_mcdi.em_emtp;
+#endif /* EFSYS_OPT_MCDI_LOGGING */
 	efx_mcdi_iface_t *emip = &(enp->en_mcdi.em_emip);
 	efx_dword_t hdr[2];
 	unsigned int hdr_len;
@@ -338,6 +352,15 @@ efx_mcdi_read_response_header(
 		emrp->emr_err_code = err_code;
 		emrp->emr_err_arg = err_arg;
 
+#if EFSYS_OPT_MCDI_LOGGING
+		if (emtp->emt_logger != NULL) {
+			emtp->emt_logger(emtp->emt_context,
+			    EFX_LOG_MCDI_RESPONSE,
+			    &hdr[0], hdr_len,
+			    &err[0], err_len);
+		}
+#endif /* EFSYS_OPT_MCDI_LOGGING */
+
 		if (!emrp->emr_quiet) {
 			EFSYS_PROBE3(mcdi_err_arg, int, emrp->emr_cmd,
 			    int, err_code, int, err_arg);
@@ -363,6 +386,9 @@ efx_mcdi_finish_response(
 	__in		efx_nic_t *enp,
 	__in		efx_mcdi_req_t *emrp)
 {
+#if EFSYS_OPT_MCDI_LOGGING
+	const efx_mcdi_transport_t *emtp = enp->en_mcdi.em_emtp;
+#endif /* EFSYS_OPT_MCDI_LOGGING */
 	efx_dword_t hdr[2];
 	unsigned int hdr_len;
 	size_t bytes;
@@ -389,6 +415,14 @@ efx_mcdi_finish_response(
 	bytes = MIN(emrp->emr_out_length_used, emrp->emr_out_length);
 	efx_mcdi_read_response(enp, emrp->emr_out_buf, hdr_len, bytes);
 
+#if EFSYS_OPT_MCDI_LOGGING
+	if (emtp->emt_logger != NULL) {
+		emtp->emt_logger(emtp->emt_context,
+		    EFX_LOG_MCDI_RESPONSE,
+		    &hdr[0], hdr_len,
+		    emrp->emr_out_buf, bytes);
+	}
+#endif /* EFSYS_OPT_MCDI_LOGGING */
 }
 
 

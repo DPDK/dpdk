@@ -77,6 +77,13 @@
 #  error "MCDI requires SIENA or HUNTINGTON or MEDFORD"
 #endif /* EFSYS_OPT_MCDI */
 
+#if EFSYS_OPT_MCDI_LOGGING
+/* Support MCDI logging */
+# if !EFSYS_OPT_MCDI
+#  error "MCDI_LOGGING requires MCDI"
+# endif
+#endif /* EFSYS_OPT_MCDI_LOGGING */
+
 #ifdef EFSYS_OPT_MON_LM87
 # error "MON_LM87 is obsolete and is not supported."
 #endif
