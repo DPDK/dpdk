@@ -116,6 +116,10 @@ efx_filter_remove(
 	EFSYS_ASSERT3P(spec, !=, NULL);
 	EFSYS_ASSERT3U(spec->efs_flags, &, EFX_FILTER_FLAG_RX);
 
+#if EFSYS_OPT_RX_SCALE
+	spec->efs_rss_context = enp->en_rss_context;
+#endif
+
 	return (efop->efo_delete(enp, spec));
 }
 

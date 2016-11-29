@@ -1285,6 +1285,13 @@ siena_ev_qcreate(
 		rc = EINVAL;
 		goto fail2;
 	}
+#if EFSYS_OPT_RX_SCALE
+	if (enp->en_intr.ei_type == EFX_INTR_LINE &&
+	    index >= EFX_MAXRSS_LEGACY) {
+		rc = EINVAL;
+		goto fail3;
+	}
+#endif
 	for (size = 0; (1 << size) <= (EFX_EVQ_MAXNEVS / EFX_EVQ_MINNEVS);
 	    size++)
 		if ((1 << size) == (int)(n / EFX_EVQ_MINNEVS))
@@ -1325,6 +1332,10 @@ siena_ev_qcreate(
 
 fail4:
 	EFSYS_PROBE(fail4);
+#if EFSYS_OPT_RX_SCALE
+fail3:
+	EFSYS_PROBE(fail3);
+#endif
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:

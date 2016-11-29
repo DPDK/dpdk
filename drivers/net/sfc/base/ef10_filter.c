@@ -562,6 +562,10 @@ ef10_filter_add_internal(
 	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
 		    enp->en_family == EFX_FAMILY_MEDFORD);
 
+#if EFSYS_OPT_RX_SCALE
+	spec->efs_rss_context = enp->en_rss_context;
+#endif
+
 	hash = ef10_filter_hash(spec);
 
 	/*
@@ -1448,8 +1452,14 @@ ef10_filter_default_rxq_set(
 {
 	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
 
+#if EFSYS_OPT_RX_SCALE
+	EFSYS_ASSERT((using_rss == B_FALSE) ||
+	    (enp->en_rss_context != EF10_RSS_CONTEXT_INVALID));
+	table->eft_using_rss = using_rss;
+#else
 	EFSYS_ASSERT(using_rss == B_FALSE);
 	table->eft_using_rss = B_FALSE;
+#endif
 	table->eft_default_rxq = erp;
 }
 

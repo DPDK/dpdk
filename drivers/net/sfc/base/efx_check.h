@@ -244,6 +244,13 @@
 # error "RX_HDR_SPLIT is obsolete and is not supported"
 #endif
 
+#if EFSYS_OPT_RX_SCALE
+/* Support receive scaling (RSS) */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "RX_SCALE requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_RX_SCALE */
+
 #if EFSYS_OPT_RX_SCATTER
 /* Support receive scatter DMA */
 # if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)

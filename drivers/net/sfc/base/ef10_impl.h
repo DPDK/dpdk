@@ -581,6 +581,35 @@ ef10_rx_scatter_enable(
 #endif	/* EFSYS_OPT_RX_SCATTER */
 
 
+#if EFSYS_OPT_RX_SCALE
+
+extern	__checkReturn	efx_rc_t
+ef10_rx_scale_mode_set(
+	__in		efx_nic_t *enp,
+	__in		efx_rx_hash_alg_t alg,
+	__in		efx_rx_hash_type_t type,
+	__in		boolean_t insert);
+
+extern	__checkReturn	efx_rc_t
+ef10_rx_scale_key_set(
+	__in		efx_nic_t *enp,
+	__in_ecount(n)	uint8_t *key,
+	__in		size_t n);
+
+extern	__checkReturn	efx_rc_t
+ef10_rx_scale_tbl_set(
+	__in		efx_nic_t *enp,
+	__in_ecount(n)	unsigned int *table,
+	__in		size_t n);
+
+extern	__checkReturn	uint32_t
+ef10_rx_prefix_hash(
+	__in		efx_nic_t *enp,
+	__in		efx_rx_hash_alg_t func,
+	__in		uint8_t *buffer);
+
+#endif /* EFSYS_OPT_RX_SCALE */
+
 extern	__checkReturn	efx_rc_t
 ef10_rx_prefix_pktlen(
 	__in		efx_nic_t *enp,

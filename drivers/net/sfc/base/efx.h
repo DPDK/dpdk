@@ -1388,6 +1388,73 @@ efx_rx_scatter_enable(
 	__in		unsigned int buf_size);
 #endif	/* EFSYS_OPT_RX_SCATTER */
 
+#if EFSYS_OPT_RX_SCALE
+
+typedef enum efx_rx_hash_alg_e {
+	EFX_RX_HASHALG_LFSR = 0,
+	EFX_RX_HASHALG_TOEPLITZ
+} efx_rx_hash_alg_t;
+
+typedef enum efx_rx_hash_type_e {
+	EFX_RX_HASH_IPV4 = 0,
+	EFX_RX_HASH_TCPIPV4,
+	EFX_RX_HASH_IPV6,
+	EFX_RX_HASH_TCPIPV6,
+} efx_rx_hash_type_t;
+
+typedef enum efx_rx_hash_support_e {
+	EFX_RX_HASH_UNAVAILABLE = 0,	/* Hardware hash not inserted */
+	EFX_RX_HASH_AVAILABLE		/* Insert hash with/without RSS */
+} efx_rx_hash_support_t;
+
+#define	EFX_RSS_TBL_SIZE	128	/* Rows in RX indirection table */
+#define	EFX_MAXRSS		64	/* RX indirection entry range */
+#define	EFX_MAXRSS_LEGACY	16	/* See bug16611 and bug17213 */
+
+typedef enum efx_rx_scale_support_e {
+	EFX_RX_SCALE_UNAVAILABLE = 0,	/* Not supported */
+	EFX_RX_SCALE_EXCLUSIVE,		/* Writable key/indirection table */
+	EFX_RX_SCALE_SHARED		/* Read-only key/indirection table */
+} efx_rx_scale_support_t;
+
+extern	__checkReturn	efx_rc_t
+efx_rx_hash_support_get(
+	__in		efx_nic_t *enp,
+	__out		efx_rx_hash_support_t *supportp);
+
+
+extern	__checkReturn	efx_rc_t
+efx_rx_scale_support_get(
+	__in		efx_nic_t *enp,
+	__out		efx_rx_scale_support_t *supportp);
+
+extern	__checkReturn	efx_rc_t
+efx_rx_scale_mode_set(
+	__in	efx_nic_t *enp,
+	__in	efx_rx_hash_alg_t alg,
+	__in	efx_rx_hash_type_t type,
+	__in	boolean_t insert);
+
+extern	__checkReturn	efx_rc_t
+efx_rx_scale_tbl_set(
+	__in		efx_nic_t *enp,
+	__in_ecount(n)	unsigned int *table,
+	__in		size_t n);
+
+extern	__checkReturn	efx_rc_t
+efx_rx_scale_key_set(
+	__in		efx_nic_t *enp,
+	__in_ecount(n)	uint8_t *key,
+	__in		size_t n);
+
+extern	__checkReturn	uint32_t
+efx_pseudo_hdr_hash_get(
+	__in		efx_rxq_t *erp,
+	__in		efx_rx_hash_alg_t func,
+	__in		uint8_t *buffer);
+
+#endif	/* EFSYS_OPT_RX_SCALE */
+
 extern	__checkReturn	efx_rc_t
 efx_pseudo_hdr_pkt_length_get(
 	__in		efx_rxq_t *erp,
