@@ -376,6 +376,158 @@ siena_phy_oui_get(
 	return (ENOTSUP);
 }
 
+#if EFSYS_OPT_PHY_STATS
+
+#define	SIENA_SIMPLE_STAT_SET(_vmask, _esmp, _smask, _stat,		\
+			    _mc_record, _efx_record)			\
+	if ((_vmask) & (1ULL << (_mc_record))) {			\
+		(_smask) |= (1ULL << (_efx_record));			\
+		if ((_stat) != NULL && !EFSYS_MEM_IS_NULL(_esmp)) {	\
+			efx_dword_t dword;				\
+			EFSYS_MEM_READD(_esmp, (_mc_record) * 4, &dword);\
+			(_stat)[_efx_record] =				\
+				EFX_DWORD_FIELD(dword, EFX_DWORD_0);	\
+		}							\
+	}
+
+#define	SIENA_SIMPLE_STAT_SET2(_vmask, _esmp, _smask, _stat, _record)	\
+	SIENA_SIMPLE_STAT_SET(_vmask, _esmp, _smask, _stat,		\
+			    MC_CMD_ ## _record,				\
+			    EFX_PHY_STAT_ ## _record)
+
+						void
+siena_phy_decode_stats(
+	__in					efx_nic_t *enp,
+	__in					uint32_t vmask,
+	__in_opt				efsys_mem_t *esmp,
+	__out_opt				uint64_t *smaskp,
+	__inout_ecount_opt(EFX_PHY_NSTATS)	uint32_t *stat)
+{
+	uint64_t smask = 0;
+
+	_NOTE(ARGUNUSED(enp))
+
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, OUI);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PMA_PMD_LINK_UP);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PMA_PMD_RX_FAULT);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PMA_PMD_TX_FAULT);
+
+	if (vmask & (1 << MC_CMD_PMA_PMD_SIGNAL)) {
+		smask |=   ((1ULL << EFX_PHY_STAT_PMA_PMD_SIGNAL_A) |
+			    (1ULL << EFX_PHY_STAT_PMA_PMD_SIGNAL_B) |
+			    (1ULL << EFX_PHY_STAT_PMA_PMD_SIGNAL_C) |
+			    (1ULL << EFX_PHY_STAT_PMA_PMD_SIGNAL_D));
+		if (stat != NULL && esmp != NULL && !EFSYS_MEM_IS_NULL(esmp)) {
+			efx_dword_t dword;
+			uint32_t sig;
+			EFSYS_MEM_READD(esmp, 4 * MC_CMD_PMA_PMD_SIGNAL,
+					&dword);
+			sig = EFX_DWORD_FIELD(dword, EFX_DWORD_0);
+			stat[EFX_PHY_STAT_PMA_PMD_SIGNAL_A] = (sig >> 1) & 1;
+			stat[EFX_PHY_STAT_PMA_PMD_SIGNAL_B] = (sig >> 2) & 1;
+			stat[EFX_PHY_STAT_PMA_PMD_SIGNAL_C] = (sig >> 3) & 1;
+			stat[EFX_PHY_STAT_PMA_PMD_SIGNAL_D] = (sig >> 4) & 1;
+		}
+	}
+
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PMA_PMD_SNR_A,
+			    EFX_PHY_STAT_SNR_A);
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PMA_PMD_SNR_B,
+			    EFX_PHY_STAT_SNR_B);
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PMA_PMD_SNR_C,
+			    EFX_PHY_STAT_SNR_C);
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PMA_PMD_SNR_D,
+			    EFX_PHY_STAT_SNR_D);
+
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PCS_LINK_UP);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PCS_RX_FAULT);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PCS_TX_FAULT);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PCS_BER);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, PCS_BLOCK_ERRORS);
+
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PHYXS_LINK_UP,
+			    EFX_PHY_STAT_PHY_XS_LINK_UP);
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PHYXS_RX_FAULT,
+			    EFX_PHY_STAT_PHY_XS_RX_FAULT);
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PHYXS_TX_FAULT,
+			    EFX_PHY_STAT_PHY_XS_TX_FAULT);
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_PHYXS_ALIGN,
+			    EFX_PHY_STAT_PHY_XS_ALIGN);
+
+	if (vmask & (1 << MC_CMD_PHYXS_SYNC)) {
+		smask |=   ((1 << EFX_PHY_STAT_PHY_XS_SYNC_A) |
+			    (1 << EFX_PHY_STAT_PHY_XS_SYNC_B) |
+			    (1 << EFX_PHY_STAT_PHY_XS_SYNC_C) |
+			    (1 << EFX_PHY_STAT_PHY_XS_SYNC_D));
+		if (stat != NULL && !EFSYS_MEM_IS_NULL(esmp)) {
+			efx_dword_t dword;
+			uint32_t sync;
+			EFSYS_MEM_READD(esmp, 4 * MC_CMD_PHYXS_SYNC, &dword);
+			sync = EFX_DWORD_FIELD(dword, EFX_DWORD_0);
+			stat[EFX_PHY_STAT_PHY_XS_SYNC_A] = (sync >> 0) & 1;
+			stat[EFX_PHY_STAT_PHY_XS_SYNC_B] = (sync >> 1) & 1;
+			stat[EFX_PHY_STAT_PHY_XS_SYNC_C] = (sync >> 2) & 1;
+			stat[EFX_PHY_STAT_PHY_XS_SYNC_D] = (sync >> 3) & 1;
+		}
+	}
+
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, AN_LINK_UP);
+	SIENA_SIMPLE_STAT_SET2(vmask, esmp, smask, stat, AN_COMPLETE);
+
+	SIENA_SIMPLE_STAT_SET(vmask, esmp, smask, stat, MC_CMD_CL22_LINK_UP,
+			    EFX_PHY_STAT_CL22EXT_LINK_UP);
+
+	if (smaskp != NULL)
+		*smaskp = smask;
+}
+
+	__checkReturn				efx_rc_t
+siena_phy_stats_update(
+	__in					efx_nic_t *enp,
+	__in					efsys_mem_t *esmp,
+	__inout_ecount(EFX_PHY_NSTATS)		uint32_t *stat)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	uint32_t vmask = encp->enc_mcdi_phy_stat_mask;
+	uint64_t smask;
+	efx_mcdi_req_t req;
+	uint8_t payload[MAX(MC_CMD_PHY_STATS_IN_LEN,
+			    MC_CMD_PHY_STATS_OUT_DMA_LEN)];
+	efx_rc_t rc;
+
+	(void) memset(payload, 0, sizeof (payload));
+	req.emr_cmd = MC_CMD_PHY_STATS;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_PHY_STATS_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_PHY_STATS_OUT_DMA_LEN;
+
+	MCDI_IN_SET_DWORD(req, PHY_STATS_IN_DMA_ADDR_LO,
+			    EFSYS_MEM_ADDR(esmp) & 0xffffffff);
+	MCDI_IN_SET_DWORD(req, PHY_STATS_IN_DMA_ADDR_HI,
+			    EFSYS_MEM_ADDR(esmp) >> 32);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+	EFSYS_ASSERT3U(req.emr_out_length, ==, MC_CMD_PHY_STATS_OUT_DMA_LEN);
+
+	siena_phy_decode_stats(enp, vmask, esmp, &smask, stat);
+	EFSYS_ASSERT(smask == encp->enc_phy_stat_mask);
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (0);
+}
+
+#endif	/* EFSYS_OPT_PHY_STATS */
+
 #if EFSYS_OPT_BIST
 
 	__checkReturn		efx_rc_t

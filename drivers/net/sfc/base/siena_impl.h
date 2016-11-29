@@ -170,6 +170,24 @@ siena_phy_oui_get(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *ouip);
 
+#if EFSYS_OPT_PHY_STATS
+
+extern						void
+siena_phy_decode_stats(
+	__in					efx_nic_t *enp,
+	__in					uint32_t vmask,
+	__in_opt				efsys_mem_t *esmp,
+	__out_opt				uint64_t *smaskp,
+	__inout_ecount_opt(EFX_PHY_NSTATS)	uint32_t *stat);
+
+extern	__checkReturn			efx_rc_t
+siena_phy_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_PHY_NSTATS)	uint32_t *stat);
+
+#endif	/* EFSYS_OPT_PHY_STATS */
+
 #if EFSYS_OPT_BIST
 
 extern	__checkReturn		efx_rc_t

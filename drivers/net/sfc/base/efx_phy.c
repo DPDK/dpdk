@@ -39,6 +39,9 @@ static const efx_phy_ops_t	__efx_phy_siena_ops = {
 	siena_phy_reconfigure,		/* epo_reconfigure */
 	siena_phy_verify,		/* epo_verify */
 	siena_phy_oui_get,		/* epo_oui_get */
+#if EFSYS_OPT_PHY_STATS
+	siena_phy_stats_update,		/* epo_stats_update */
+#endif	/* EFSYS_OPT_PHY_STATS */
 #if EFSYS_OPT_BIST
 	NULL,				/* epo_bist_enable_offline */
 	siena_phy_bist_start,		/* epo_bist_start */
@@ -55,6 +58,9 @@ static const efx_phy_ops_t	__efx_phy_ef10_ops = {
 	ef10_phy_reconfigure,		/* epo_reconfigure */
 	ef10_phy_verify,		/* epo_verify */
 	ef10_phy_oui_get,		/* epo_oui_get */
+#if EFSYS_OPT_PHY_STATS
+	ef10_phy_stats_update,		/* epo_stats_update */
+#endif	/* EFSYS_OPT_PHY_STATS */
 #if EFSYS_OPT_BIST
 	ef10_bist_enable_offline,	/* epo_bist_enable_offline */
 	ef10_bist_start,		/* epo_bist_start */
@@ -276,6 +282,93 @@ fail1:
 
 	return (rc);
 }
+
+#if EFSYS_OPT_PHY_STATS
+
+#if EFSYS_OPT_NAMES
+
+/* START MKCONFIG GENERATED PhyStatNamesBlock af9ffa24da3bc100 */
+static const char * const __efx_phy_stat_name[] = {
+	"oui",
+	"pma_pmd_link_up",
+	"pma_pmd_rx_fault",
+	"pma_pmd_tx_fault",
+	"pma_pmd_rev_a",
+	"pma_pmd_rev_b",
+	"pma_pmd_rev_c",
+	"pma_pmd_rev_d",
+	"pcs_link_up",
+	"pcs_rx_fault",
+	"pcs_tx_fault",
+	"pcs_ber",
+	"pcs_block_errors",
+	"phy_xs_link_up",
+	"phy_xs_rx_fault",
+	"phy_xs_tx_fault",
+	"phy_xs_align",
+	"phy_xs_sync_a",
+	"phy_xs_sync_b",
+	"phy_xs_sync_c",
+	"phy_xs_sync_d",
+	"an_link_up",
+	"an_master",
+	"an_local_rx_ok",
+	"an_remote_rx_ok",
+	"cl22ext_link_up",
+	"snr_a",
+	"snr_b",
+	"snr_c",
+	"snr_d",
+	"pma_pmd_signal_a",
+	"pma_pmd_signal_b",
+	"pma_pmd_signal_c",
+	"pma_pmd_signal_d",
+	"an_complete",
+	"pma_pmd_rev_major",
+	"pma_pmd_rev_minor",
+	"pma_pmd_rev_micro",
+	"pcs_fw_version_0",
+	"pcs_fw_version_1",
+	"pcs_fw_version_2",
+	"pcs_fw_version_3",
+	"pcs_fw_build_yy",
+	"pcs_fw_build_mm",
+	"pcs_fw_build_dd",
+	"pcs_op_mode",
+};
+
+/* END MKCONFIG GENERATED PhyStatNamesBlock */
+
+					const char *
+efx_phy_stat_name(
+	__in				efx_nic_t *enp,
+	__in				efx_phy_stat_t type)
+{
+	_NOTE(ARGUNUSED(enp))
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(type, <, EFX_PHY_NSTATS);
+
+	return (__efx_phy_stat_name[type]);
+}
+
+#endif	/* EFSYS_OPT_NAMES */
+
+	__checkReturn			efx_rc_t
+efx_phy_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_PHY_NSTATS)	uint32_t *stat)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
+
+	return (epop->epo_stats_update(enp, esmp, stat));
+}
+
+#endif	/* EFSYS_OPT_PHY_STATS */
 
 
 #if EFSYS_OPT_BIST

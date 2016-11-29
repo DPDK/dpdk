@@ -394,6 +394,23 @@ ef10_phy_oui_get(
 	return (ENOTSUP);
 }
 
+#if EFSYS_OPT_PHY_STATS
+
+	__checkReturn				efx_rc_t
+ef10_phy_stats_update(
+	__in					efx_nic_t *enp,
+	__in					efsys_mem_t *esmp,
+	__inout_ecount(EFX_PHY_NSTATS)		uint32_t *stat)
+{
+	/* TBD: no stats support in firmware yet */
+	_NOTE(ARGUNUSED(enp, esmp))
+	memset(stat, 0, EFX_PHY_NSTATS * sizeof (*stat));
+
+	return (0);
+}
+
+#endif	/* EFSYS_OPT_PHY_STATS */
+
 #if EFSYS_OPT_BIST
 
 	__checkReturn		efx_rc_t

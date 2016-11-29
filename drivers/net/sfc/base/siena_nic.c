@@ -145,6 +145,12 @@ siena_phy_cfg(
 	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
 		goto fail1;
 
+#if EFSYS_OPT_PHY_STATS
+	/* Convert the MCDI statistic mask into the EFX_PHY_STAT mask */
+	siena_phy_decode_stats(enp, encp->enc_mcdi_phy_stat_mask,
+			    NULL, &encp->enc_phy_stat_mask, NULL);
+#endif	/* EFSYS_OPT_PHY_STATS */
+
 	return (0);
 
 fail1:

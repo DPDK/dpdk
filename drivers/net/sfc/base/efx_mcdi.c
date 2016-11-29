@@ -1435,6 +1435,11 @@ efx_mcdi_get_phy_cfg(
 	encp->enc_mcdi_mdio_channel =
 		(uint8_t)MCDI_OUT_DWORD(req, GET_PHY_CFG_OUT_CHANNEL);
 
+#if EFSYS_OPT_PHY_STATS
+	encp->enc_mcdi_phy_stat_mask =
+		MCDI_OUT_DWORD(req, GET_PHY_CFG_OUT_STATS_MASK);
+#endif	/* EFSYS_OPT_PHY_STATS */
+
 #if EFSYS_OPT_BIST
 	encp->enc_bist_mask = 0;
 	if (MCDI_OUT_DWORD_FIELD(req, GET_PHY_CFG_OUT_FLAGS,

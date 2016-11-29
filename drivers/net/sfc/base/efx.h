@@ -548,6 +548,80 @@ efx_phy_module_get_info(
 	__in				uint8_t len,
 	__out_bcount(len)		uint8_t *data);
 
+#if EFSYS_OPT_PHY_STATS
+
+/* START MKCONFIG GENERATED PhyHeaderStatsBlock 30ed56ad501f8e36 */
+typedef enum efx_phy_stat_e {
+	EFX_PHY_STAT_OUI,
+	EFX_PHY_STAT_PMA_PMD_LINK_UP,
+	EFX_PHY_STAT_PMA_PMD_RX_FAULT,
+	EFX_PHY_STAT_PMA_PMD_TX_FAULT,
+	EFX_PHY_STAT_PMA_PMD_REV_A,
+	EFX_PHY_STAT_PMA_PMD_REV_B,
+	EFX_PHY_STAT_PMA_PMD_REV_C,
+	EFX_PHY_STAT_PMA_PMD_REV_D,
+	EFX_PHY_STAT_PCS_LINK_UP,
+	EFX_PHY_STAT_PCS_RX_FAULT,
+	EFX_PHY_STAT_PCS_TX_FAULT,
+	EFX_PHY_STAT_PCS_BER,
+	EFX_PHY_STAT_PCS_BLOCK_ERRORS,
+	EFX_PHY_STAT_PHY_XS_LINK_UP,
+	EFX_PHY_STAT_PHY_XS_RX_FAULT,
+	EFX_PHY_STAT_PHY_XS_TX_FAULT,
+	EFX_PHY_STAT_PHY_XS_ALIGN,
+	EFX_PHY_STAT_PHY_XS_SYNC_A,
+	EFX_PHY_STAT_PHY_XS_SYNC_B,
+	EFX_PHY_STAT_PHY_XS_SYNC_C,
+	EFX_PHY_STAT_PHY_XS_SYNC_D,
+	EFX_PHY_STAT_AN_LINK_UP,
+	EFX_PHY_STAT_AN_MASTER,
+	EFX_PHY_STAT_AN_LOCAL_RX_OK,
+	EFX_PHY_STAT_AN_REMOTE_RX_OK,
+	EFX_PHY_STAT_CL22EXT_LINK_UP,
+	EFX_PHY_STAT_SNR_A,
+	EFX_PHY_STAT_SNR_B,
+	EFX_PHY_STAT_SNR_C,
+	EFX_PHY_STAT_SNR_D,
+	EFX_PHY_STAT_PMA_PMD_SIGNAL_A,
+	EFX_PHY_STAT_PMA_PMD_SIGNAL_B,
+	EFX_PHY_STAT_PMA_PMD_SIGNAL_C,
+	EFX_PHY_STAT_PMA_PMD_SIGNAL_D,
+	EFX_PHY_STAT_AN_COMPLETE,
+	EFX_PHY_STAT_PMA_PMD_REV_MAJOR,
+	EFX_PHY_STAT_PMA_PMD_REV_MINOR,
+	EFX_PHY_STAT_PMA_PMD_REV_MICRO,
+	EFX_PHY_STAT_PCS_FW_VERSION_0,
+	EFX_PHY_STAT_PCS_FW_VERSION_1,
+	EFX_PHY_STAT_PCS_FW_VERSION_2,
+	EFX_PHY_STAT_PCS_FW_VERSION_3,
+	EFX_PHY_STAT_PCS_FW_BUILD_YY,
+	EFX_PHY_STAT_PCS_FW_BUILD_MM,
+	EFX_PHY_STAT_PCS_FW_BUILD_DD,
+	EFX_PHY_STAT_PCS_OP_MODE,
+	EFX_PHY_NSTATS
+} efx_phy_stat_t;
+
+/* END MKCONFIG GENERATED PhyHeaderStatsBlock */
+
+#if EFSYS_OPT_NAMES
+
+extern					const char *
+efx_phy_stat_name(
+	__in				efx_nic_t *enp,
+	__in				efx_phy_stat_t stat);
+
+#endif	/* EFSYS_OPT_NAMES */
+
+#define	EFX_PHY_STATS_SIZE 0x100
+
+extern	__checkReturn			efx_rc_t
+efx_phy_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_PHY_NSTATS)	uint32_t *stat);
+
+#endif	/* EFSYS_OPT_PHY_STATS */
+
 
 #if EFSYS_OPT_BIST
 
@@ -671,8 +745,14 @@ typedef struct efx_nic_cfg_s {
 #if EFSYS_OPT_PHY_FLAGS
 	uint32_t		enc_phy_flags_mask;
 #endif	/* EFSYS_OPT_PHY_FLAGS */
+#if EFSYS_OPT_PHY_STATS
+	uint64_t		enc_phy_stat_mask;
+#endif	/* EFSYS_OPT_PHY_STATS */
 #if EFSYS_OPT_MCDI
 	uint8_t			enc_mcdi_mdio_channel;
+#if EFSYS_OPT_PHY_STATS
+	uint32_t		enc_mcdi_phy_stat_mask;
+#endif	/* EFSYS_OPT_PHY_STATS */
 #endif	/* EFSYS_OPT_MCDI */
 #if EFSYS_OPT_BIST
 	uint32_t		enc_bist_mask;

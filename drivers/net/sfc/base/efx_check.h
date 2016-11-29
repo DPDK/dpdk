@@ -201,6 +201,13 @@
 # error "PHY_SFX7101 is obsolete and is not supported."
 #endif
 
+#if EFSYS_OPT_PHY_STATS
+/* Support PHY statistics */
+# if !EFSYS_OPT_SIENA
+#  error "PHY_STATS requires SIENA"
+# endif
+#endif /* EFSYS_OPT_PHY_STATS */
+
 #ifdef EFSYS_OPT_PHY_TXC43128
 # error "PHY_TXC43128 is obsolete and is not supported."
 #endif

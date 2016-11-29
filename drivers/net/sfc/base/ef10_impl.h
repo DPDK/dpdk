@@ -352,6 +352,16 @@ ef10_phy_oui_get(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *ouip);
 
+#if EFSYS_OPT_PHY_STATS
+
+extern	__checkReturn			efx_rc_t
+ef10_phy_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_PHY_NSTATS)	uint32_t *stat);
+
+#endif	/* EFSYS_OPT_PHY_STATS */
+
 #if EFSYS_OPT_BIST
 
 extern	__checkReturn		efx_rc_t

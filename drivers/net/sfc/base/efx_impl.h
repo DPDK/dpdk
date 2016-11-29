@@ -182,6 +182,10 @@ typedef struct efx_phy_ops_s {
 	efx_rc_t	(*epo_reconfigure)(efx_nic_t *);
 	efx_rc_t	(*epo_verify)(efx_nic_t *);
 	efx_rc_t	(*epo_oui_get)(efx_nic_t *, uint32_t *);
+#if EFSYS_OPT_PHY_STATS
+	efx_rc_t	(*epo_stats_update)(efx_nic_t *, efsys_mem_t *,
+					    uint32_t *);
+#endif	/* EFSYS_OPT_PHY_STATS */
 #if EFSYS_OPT_BIST
 	efx_rc_t	(*epo_bist_enable_offline)(efx_nic_t *);
 	efx_rc_t	(*epo_bist_start)(efx_nic_t *, efx_bist_type_t);
