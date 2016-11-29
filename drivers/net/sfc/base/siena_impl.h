@@ -133,6 +133,105 @@ siena_mcdi_get_timeout(
 
 #endif /* EFSYS_OPT_MCDI */
 
+#if EFSYS_OPT_NVRAM || EFSYS_OPT_VPD
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_lock(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_unlock(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_get_dynamic_cfg(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			boolean_t vpd,
+	__out			siena_mc_dynamic_config_hdr_t **dcfgp,
+	__out			size_t *sizep);
+
+#endif	/* EFSYS_OPT_VPD || EFSYS_OPT_NVRAM */
+
+#if EFSYS_OPT_NVRAM
+
+#if EFSYS_OPT_DIAG
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_test(
+	__in			efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_DIAG */
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_get_subtype(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			uint32_t *subtypep);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_type_to_partn(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__out			uint32_t *partnp);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_size(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			size_t *sizep);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_rw_start(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			size_t *chunk_sizep);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_read(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			unsigned int offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_erase(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			unsigned int offset,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_write(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			unsigned int offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_rw_finish(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_get_version(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			uint32_t *subtypep,
+	__out_ecount(4)		uint16_t version[4]);
+
+extern	__checkReturn		efx_rc_t
+siena_nvram_partn_set_version(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in_ecount(4)		uint16_t version[4]);
+
+#endif	/* EFSYS_OPT_NVRAM */
+
 typedef struct siena_link_state_s {
 	uint32_t		sls_adv_cap_mask;
 	uint32_t		sls_lp_cap_mask;

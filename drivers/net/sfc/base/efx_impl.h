@@ -452,6 +452,105 @@ typedef struct efx_mcdi_s {
 
 #endif /* EFSYS_OPT_MCDI */
 
+#if EFSYS_OPT_NVRAM
+typedef struct efx_nvram_ops_s {
+#if EFSYS_OPT_DIAG
+	efx_rc_t	(*envo_test)(efx_nic_t *);
+#endif	/* EFSYS_OPT_DIAG */
+	efx_rc_t	(*envo_type_to_partn)(efx_nic_t *, efx_nvram_type_t,
+					    uint32_t *);
+	efx_rc_t	(*envo_partn_size)(efx_nic_t *, uint32_t, size_t *);
+	efx_rc_t	(*envo_partn_rw_start)(efx_nic_t *, uint32_t, size_t *);
+	efx_rc_t	(*envo_partn_read)(efx_nic_t *, uint32_t,
+					    unsigned int, caddr_t, size_t);
+	efx_rc_t	(*envo_partn_erase)(efx_nic_t *, uint32_t,
+					    unsigned int, size_t);
+	efx_rc_t	(*envo_partn_write)(efx_nic_t *, uint32_t,
+					    unsigned int, caddr_t, size_t);
+	efx_rc_t	(*envo_partn_rw_finish)(efx_nic_t *, uint32_t);
+	efx_rc_t	(*envo_partn_get_version)(efx_nic_t *, uint32_t,
+					    uint32_t *, uint16_t *);
+	efx_rc_t	(*envo_partn_set_version)(efx_nic_t *, uint32_t,
+					    uint16_t *);
+	efx_rc_t	(*envo_buffer_validate)(efx_nic_t *, uint32_t,
+					    caddr_t, size_t);
+} efx_nvram_ops_t;
+#endif /* EFSYS_OPT_NVRAM */
+
+#if EFSYS_OPT_VPD || EFSYS_OPT_NVRAM
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_partitions(
+	__in			efx_nic_t *enp,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__out			unsigned int *npartnp);
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_metadata(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			uint32_t *subtypep,
+	__out_ecount(4)		uint16_t version[4],
+	__out_bcount_opt(size)	char *descp,
+	__in			size_t size);
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_info(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out_opt		size_t *sizep,
+	__out_opt		uint32_t *addressp,
+	__out_opt		uint32_t *erase_sizep,
+	__out_opt		uint32_t *write_sizep);
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_update_start(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn);
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_read(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			uint32_t offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			uint32_t mode);
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_erase(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			uint32_t offset,
+	__in			size_t size);
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_write(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			uint32_t offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_update_finish(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			boolean_t reboot,
+	__out_opt		uint32_t *resultp);
+
+#if EFSYS_OPT_DIAG
+
+	__checkReturn		efx_rc_t
+efx_mcdi_nvram_test(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn);
+
+#endif	/* EFSYS_OPT_DIAG */
+
+#endif /* EFSYS_OPT_VPD || EFSYS_OPT_NVRAM */
+
 typedef struct efx_drv_cfg_s {
 	uint32_t		edc_min_vi_count;
 	uint32_t		edc_max_vi_count;
@@ -488,6 +587,10 @@ struct efx_nic_s {
 #if EFSYS_OPT_MCDI
 	efx_mcdi_t		en_mcdi;
 #endif	/* EFSYS_OPT_MCDI */
+#if EFSYS_OPT_NVRAM
+	efx_nvram_type_t	en_nvram_locked;
+	const efx_nvram_ops_t	*en_envop;
+#endif	/* EFSYS_OPT_NVRAM */
 #if EFSYS_OPT_RX_SCALE
 	efx_rx_hash_support_t	en_hash_support;
 	efx_rx_scale_support_t	en_rss_support;
@@ -497,6 +600,9 @@ struct efx_nic_s {
 	union {
 #if EFSYS_OPT_SIENA
 		struct {
+#if EFSYS_OPT_NVRAM || EFSYS_OPT_VPD
+			unsigned int		enu_partn_mask;
+#endif	/* EFSYS_OPT_NVRAM || EFSYS_OPT_VPD */
 			int			enu_unused;
 		} siena;
 #endif	/* EFSYS_OPT_SIENA */

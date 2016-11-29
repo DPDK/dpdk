@@ -34,6 +34,51 @@
 
 #if EFSYS_OPT_SIENA
 
+#if EFSYS_OPT_VPD || EFSYS_OPT_NVRAM
+
+static	__checkReturn		efx_rc_t
+siena_nic_get_partn_mask(
+	__in			efx_nic_t *enp,
+	__out			unsigned int *maskp)
+{
+	efx_mcdi_req_t req;
+	uint8_t payload[MAX(MC_CMD_NVRAM_TYPES_IN_LEN,
+			    MC_CMD_NVRAM_TYPES_OUT_LEN)];
+	efx_rc_t rc;
+
+	(void) memset(payload, 0, sizeof (payload));
+	req.emr_cmd = MC_CMD_NVRAM_TYPES;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_NVRAM_TYPES_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_NVRAM_TYPES_OUT_LEN;
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_NVRAM_TYPES_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	*maskp = MCDI_OUT_DWORD(req, NVRAM_TYPES_OUT_TYPES);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+#endif /* EFSYS_OPT_VPD || EFSYS_OPT_NVRAM */
+
 static	__checkReturn	efx_rc_t
 siena_board_cfg(
 	__in		efx_nic_t *enp)
@@ -210,6 +255,12 @@ siena_nic_probe(
 	epp->ep_default_adv_cap_mask = sls.sls_adv_cap_mask;
 	epp->ep_adv_cap_mask = sls.sls_adv_cap_mask;
 
+#if EFSYS_OPT_VPD || EFSYS_OPT_NVRAM
+	if ((rc = siena_nic_get_partn_mask(enp, &mask)) != 0)
+		goto fail9;
+	enp->en_u.siena.enu_partn_mask = mask;
+#endif
+
 #if EFSYS_OPT_MAC_STATS
 	/* Wipe the MAC statistics */
 	if ((rc = efx_mcdi_mac_stats_clear(enp)) != 0)
@@ -241,6 +292,10 @@ fail11:
 #if EFSYS_OPT_MAC_STATS
 fail10:
 	EFSYS_PROBE(fail10);
+#endif
+#if EFSYS_OPT_VPD || EFSYS_OPT_NVRAM
+fail9:
+	EFSYS_PROBE(fail9);
 #endif
 fail8:
 	EFSYS_PROBE(fail8);

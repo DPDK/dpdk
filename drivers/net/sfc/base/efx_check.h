@@ -181,6 +181,13 @@
 # endif
 #endif /* EFSYS_OPT_NAMES */
 
+#if EFSYS_OPT_NVRAM
+/* Support non volatile configuration */
+# if !(EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD)
+#  error "NVRAM requires SIENA or HUNTINGTON or MEDFORD"
+# endif
+#endif /* EFSYS_OPT_NVRAM */
+
 #ifdef EFSYS_OPT_NVRAM_FALCON_BOOTROM
 # error "NVRAM_FALCON_BOOTROM is obsolete and is not supported."
 #endif

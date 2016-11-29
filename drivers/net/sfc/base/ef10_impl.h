@@ -339,6 +339,228 @@ ef10_mcdi_get_timeout(
 
 /* NVRAM */
 
+#if EFSYS_OPT_NVRAM || EFSYS_OPT_VPD
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buf_read_tlv(
+	__in				efx_nic_t *enp,
+	__in_bcount(max_seg_size)	caddr_t seg_data,
+	__in				size_t max_seg_size,
+	__in				uint32_t tag,
+	__deref_out_bcount_opt(*sizep)	caddr_t *datap,
+	__out				size_t *sizep);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buf_write_tlv(
+	__inout_bcount(partn_size)	caddr_t partn_data,
+	__in				size_t partn_size,
+	__in				uint32_t tag,
+	__in_bcount(tag_size)		caddr_t tag_data,
+	__in				size_t tag_size,
+	__out				size_t *total_lengthp);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_read_tlv(
+	__in				efx_nic_t *enp,
+	__in				uint32_t partn,
+	__in				uint32_t tag,
+	__deref_out_bcount_opt(*sizep)	caddr_t *datap,
+	__out				size_t *sizep);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_write_tlv(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			uint32_t tag,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_write_segment_tlv(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			uint32_t tag,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			boolean_t all_segments);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_lock(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_unlock(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out_opt		uint32_t *resultp);
+
+#endif /* EFSYS_OPT_NVRAM || EFSYS_OPT_VPD */
+
+#if EFSYS_OPT_NVRAM
+
+#if EFSYS_OPT_DIAG
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_test(
+	__in			efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_DIAG */
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_type_to_partn(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__out			uint32_t *partnp);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_size(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			size_t *sizep);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_rw_start(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			size_t *chunk_sizep);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_read_mode(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			unsigned int offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size,
+	__in			uint32_t mode);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_read(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			unsigned int offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_erase(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			unsigned int offset,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_write(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in			unsigned int offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_rw_finish(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_get_version(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__out			uint32_t *subtypep,
+	__out_ecount(4)		uint16_t version[4]);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_partn_set_version(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in_ecount(4)		uint16_t version[4]);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_validate(
+	__in			efx_nic_t *enp,
+	__in			uint32_t partn,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_create(
+	__in			efx_nic_t *enp,
+	__in			uint16_t partn_type,
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_find_item_start(
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__out			uint32_t *startp
+	);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_find_end(
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__out			uint32_t *endp
+	);
+
+extern	__checkReturn	__success(return != B_FALSE)	boolean_t
+ef10_nvram_buffer_find_item(
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__out			uint32_t *startp,
+	__out			uint32_t *lengthp
+	);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_get_item(
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__in			uint32_t length,
+	__out_bcount_part(item_max_size, *lengthp)
+				caddr_t itemp,
+	__in			size_t item_max_size,
+	__out			uint32_t *lengthp
+	);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_insert_item(
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__in_bcount(length)	caddr_t keyp,
+	__in			uint32_t length,
+	__out			uint32_t *lengthp
+	);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_delete_item(
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size,
+	__in			uint32_t offset,
+	__in			uint32_t length,
+	__in			uint32_t end
+	);
+
+extern	__checkReturn		efx_rc_t
+ef10_nvram_buffer_finish(
+	__in_bcount(buffer_size)
+				caddr_t bufferp,
+	__in			size_t buffer_size
+	);
+
+#endif	/* EFSYS_OPT_NVRAM */
+
 
 /* PHY */
 

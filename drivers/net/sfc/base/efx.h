@@ -1243,6 +1243,102 @@ efx_nic_get_vi_pool(
 
 /* NVRAM */
 
+#if EFSYS_OPT_NVRAM
+
+typedef enum efx_nvram_type_e {
+	EFX_NVRAM_INVALID = 0,
+	EFX_NVRAM_BOOTROM,
+	EFX_NVRAM_BOOTROM_CFG,
+	EFX_NVRAM_MC_FIRMWARE,
+	EFX_NVRAM_MC_GOLDEN,
+	EFX_NVRAM_PHY,
+	EFX_NVRAM_NULLPHY,
+	EFX_NVRAM_FPGA,
+	EFX_NVRAM_FCFW,
+	EFX_NVRAM_CPLD,
+	EFX_NVRAM_FPGA_BACKUP,
+	EFX_NVRAM_DYNAMIC_CFG,
+	EFX_NVRAM_LICENSE,
+	EFX_NVRAM_UEFIROM,
+	EFX_NVRAM_NTYPES,
+} efx_nvram_type_t;
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_init(
+	__in			efx_nic_t *enp);
+
+#if EFSYS_OPT_DIAG
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_test(
+	__in			efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_DIAG */
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_size(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__out			size_t *sizep);
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_rw_start(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__out_opt		size_t *pref_chunkp);
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_rw_finish(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type);
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_get_version(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__out			uint32_t *subtypep,
+	__out_ecount(4)		uint16_t version[4]);
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_read_chunk(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__in			unsigned int offset,
+	__out_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_set_version(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__in_ecount(4)		uint16_t version[4]);
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_validate(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__in_bcount(partn_size)	caddr_t partn_data,
+	__in			size_t partn_size);
+
+extern	 __checkReturn		efx_rc_t
+efx_nvram_erase(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type);
+
+extern	__checkReturn		efx_rc_t
+efx_nvram_write_chunk(
+	__in			efx_nic_t *enp,
+	__in			efx_nvram_type_t type,
+	__in			unsigned int offset,
+	__in_bcount(size)	caddr_t data,
+	__in			size_t size);
+
+extern				void
+efx_nvram_fini(
+	__in			efx_nic_t *enp);
+
+#endif	/* EFSYS_OPT_NVRAM */
+
 #if EFSYS_OPT_DIAG
 
 typedef enum efx_pattern_type_t {
