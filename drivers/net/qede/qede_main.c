@@ -137,6 +137,7 @@ static int qed_load_firmware_data(struct ecore_dev *edev)
 
 	if (fstat(fd, &st) < 0) {
 		DP_NOTICE(edev, false, "Can't stat firmware file\n");
+		close(fd);
 		return -1;
 	}
 
@@ -158,9 +159,11 @@ static int qed_load_firmware_data(struct ecore_dev *edev)
 	if (edev->fw_len < 104) {
 		DP_NOTICE(edev, false, "Invalid fw size: %" PRIu64 "\n",
 			  edev->fw_len);
+		close(fd);
 		return -EINVAL;
 	}
 
+	close(fd);
 	return 0;
 }
 #endif
