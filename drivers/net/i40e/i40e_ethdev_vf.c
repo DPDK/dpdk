@@ -1337,8 +1337,9 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_arq_event_info info;
-	struct i40e_virtchnl_msg *v_msg;
-	uint16_t pending, opcode;
+	uint16_t pending, aq_opc;
+	enum i40e_virtchnl_ops msg_opc;
+	enum i40e_status_code msg_ret;
 	int ret;
 
 	info.buf_len = I40E_AQ_BUF_SZ;
@@ -1347,7 +1348,6 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
 		return;
 	}
 	info.msg_buf = vf->aq_resp;
-	v_msg = (struct i40e_virtchnl_msg *)&info.desc;
 
 	pending = 1;
 	while (pending) {
@@ -1358,32 +1358,39 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
 				    "ret: %d", ret);
 			break;
 		}
-		opcode = rte_le_to_cpu_16(info.desc.opcode);
-
-		switch (opcode) {
+		aq_opc = rte_le_to_cpu_16(info.desc.opcode);
+		/* For the message sent from pf to vf, opcode is stored in
+		 * cookie_high of struct i40e_aq_desc, while return error code
+		 * are stored in cookie_low, Which is done by
+		 * i40e_aq_send_msg_to_vf in PF driver.*/
+		msg_opc = (enum i40e_virtchnl_ops)rte_le_to_cpu_32(
+						  info.desc.cookie_high);
+		msg_ret = (enum i40e_status_code)rte_le_to_cpu_32(
+						  info.desc.cookie_low);
+		switch (aq_opc) {
 		case i40e_aqc_opc_send_msg_to_vf:
-			if (v_msg->v_opcode == I40E_VIRTCHNL_OP_EVENT)
+			if (msg_opc == I40E_VIRTCHNL_OP_EVENT)
 				/* process event*/
 				i40evf_handle_pf_event(dev, info.msg_buf,
 						       info.msg_len);
 			else {
 				/* read message and it's expected one */
-				if (v_msg->v_opcode == vf->pend_cmd) {
-					vf->cmd_retval = v_msg->v_retval;
+				if (msg_opc == vf->pend_cmd) {
+					vf->cmd_retval = msg_ret;
 					/* prevent compiler reordering */
 					rte_compiler_barrier();
 					_clear_cmd(vf);
 				} else
 					PMD_DRV_LOG(ERR, "command mismatch,"
 						"expect %u, get %u",
-						vf->pend_cmd, v_msg->v_opcode);
+						vf->pend_cmd, msg_opc);
 				PMD_DRV_LOG(DEBUG, "adminq response is received,"
-					     " opcode = %d\n", v_msg->v_opcode);
+					     " opcode = %d\n", msg_opc);
 			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Request %u is not supported yet",
-				    opcode);
+				    aq_opc);
 			break;
 		}
 	}
