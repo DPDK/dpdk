@@ -70,6 +70,11 @@ Libraries
 Examples
 ~~~~~~~~
 
+* **examples/ethtool: Fixed crash with non-PCI devices.**
+
+  Querying a non-PCI device was dereferencing non-existent PCI data
+  resulting in a segmentation fault.
+
 
 Other
 ~~~~~

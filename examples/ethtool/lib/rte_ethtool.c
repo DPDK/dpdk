@@ -61,10 +61,15 @@ rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo)
 		dev_info.driver_name);
 	snprintf(drvinfo->version, sizeof(drvinfo->version), "%s",
 		rte_version());
-	snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info),
-		"%04x:%02x:%02x.%x",
-		dev_info.pci_dev->addr.domain, dev_info.pci_dev->addr.bus,
-		dev_info.pci_dev->addr.devid, dev_info.pci_dev->addr.function);
+	if (dev_info.pci_dev)
+		snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info),
+			"%04x:%02x:%02x.%x",
+			dev_info.pci_dev->addr.domain,
+			dev_info.pci_dev->addr.bus,
+			dev_info.pci_dev->addr.devid,
+			dev_info.pci_dev->addr.function);
+	else
+		snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info), "N/A");
 
 	memset(&reg_info, 0, sizeof(reg_info));
 	rte_eth_dev_get_reg_info(port_id, &reg_info);
