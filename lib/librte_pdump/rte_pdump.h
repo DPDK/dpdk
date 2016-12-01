@@ -201,7 +201,7 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
  *
  * @param path
  * directory path for server or client socket.
- * @type
+ * @param type
  * specifies RTE_PDUMP_SOCKET_SERVER if socket path is for server.
  * (or)
  * specifies RTE_PDUMP_SOCKET_CLIENT if socket path is for client.

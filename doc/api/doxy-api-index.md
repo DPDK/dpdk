@@ -136,6 +136,7 @@ There are many libraries, so their headers may be grouped by topics:
 
 - **debug**:
   [jobstats]           (@ref rte_jobstats.h),
+  [pdump]              (@ref rte_pdump.h),
   [hexdump]            (@ref rte_hexdump.h),
   [debug]              (@ref rte_debug.h),
   [log]                (@ref rte_log.h),
