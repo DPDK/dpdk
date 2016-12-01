@@ -447,14 +447,14 @@ add_guest_pages(struct virtio_net *dev, struct virtio_memory_region *reg,
 	reg_size -= size;
 
 	while (reg_size > 0) {
+		size = RTE_MIN(reg_size, page_size);
 		host_phys_addr = rte_mem_virt2phy((void *)(uintptr_t)
 						  host_user_addr);
-		add_one_guest_page(dev, guest_phys_addr, host_phys_addr,
-				   page_size);
+		add_one_guest_page(dev, guest_phys_addr, host_phys_addr, size);
 
-		host_user_addr  += page_size;
-		guest_phys_addr += page_size;
-		reg_size -= page_size;
+		host_user_addr  += size;
+		guest_phys_addr += size;
+		reg_size -= size;
 	}
 }
 
