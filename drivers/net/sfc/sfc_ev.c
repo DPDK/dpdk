@@ -339,6 +339,20 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 					rxq_sw_index);
 		}
 
+		if (evq->txq != NULL) {
+			unsigned int txq_sw_index = sfc_txq_sw_index(evq->txq);
+
+			sfc_warn(sa,
+				 "restart TxQ %u because of exception on its EvQ %u",
+				 txq_sw_index, evq->evq_index);
+
+			sfc_tx_qstop(sa, txq_sw_index);
+			rc = sfc_tx_qstart(sa, txq_sw_index);
+			if (rc != 0)
+				sfc_err(sa, "cannot restart TxQ %u",
+					txq_sw_index);
+		}
+
 		if (evq->exception)
 			sfc_panic(sa, "unrecoverable exception on EvQ %u",
 				  evq->evq_index);
