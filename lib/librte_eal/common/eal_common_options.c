@@ -126,6 +126,7 @@ static const char dpdk_solib_path[] __attribute__((used)) =
 
 static int master_lcore_parsed;
 static int mem_parsed;
+static int core_parsed;
 
 void
 eal_reset_internal_config(struct internal_config *internal_cfg)
@@ -797,6 +798,7 @@ eal_parse_common_option(int opt, const char *optarg,
 			RTE_LOG(ERR, EAL, "invalid coremask\n");
 			return -1;
 		}
+		core_parsed = 1;
 		break;
 	/* corelist */
 	case 'l':
@@ -804,6 +806,7 @@ eal_parse_common_option(int opt, const char *optarg,
 			RTE_LOG(ERR, EAL, "invalid core list\n");
 			return -1;
 		}
+		core_parsed = 1;
 		break;
 	/* size of memory */
 	case 'm':
@@ -912,6 +915,7 @@ eal_parse_common_option(int opt, const char *optarg,
 				OPT_LCORES "\n");
 			return -1;
 		}
+		core_parsed = 1;
 		break;
 
 	/* don't know what to do, leave this to caller */
@@ -923,11 +927,37 @@ eal_parse_common_option(int opt, const char *optarg,
 	return 0;
 }
 
+static void
+eal_auto_detect_cores(struct rte_config *cfg)
+{
+	unsigned int lcore_id;
+	unsigned int removed = 0;
+	rte_cpuset_t affinity_set;
+	pthread_t tid = pthread_self();
+
+	if (pthread_getaffinity_np(tid, sizeof(rte_cpuset_t),
+				&affinity_set) < 0)
+		CPU_ZERO(&affinity_set);
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (cfg->lcore_role[lcore_id] == ROLE_RTE &&
+		    !CPU_ISSET(lcore_id, &affinity_set)) {
+			cfg->lcore_role[lcore_id] = ROLE_OFF;
+			removed++;
+		}
+	}
+
+	cfg->lcore_count -= removed;
+}
+
 int
 eal_adjust_config(struct internal_config *internal_cfg)
 {
 	int i;
 	struct rte_config *cfg = rte_eal_get_configuration();
+
+	if (!core_parsed)
+		eal_auto_detect_cores(cfg);
 
 	if (internal_config.process_type == RTE_PROC_AUTO)
 		internal_config.process_type = eal_proc_type_detect();
