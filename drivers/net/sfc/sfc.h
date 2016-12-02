@@ -190,6 +190,12 @@ sfc_adapter_lock(struct sfc_adapter *sa)
 	rte_spinlock_lock(&sa->lock);
 }
 
+static inline int
+sfc_adapter_trylock(struct sfc_adapter *sa)
+{
+	return rte_spinlock_trylock(&sa->lock);
+}
+
 static inline void
 sfc_adapter_unlock(struct sfc_adapter *sa)
 {

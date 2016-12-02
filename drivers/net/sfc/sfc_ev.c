@@ -30,6 +30,7 @@
 #include <rte_debug.h>
 #include <rte_cycles.h>
 #include <rte_alarm.h>
+#include <rte_branch_prediction.h>
 
 #include "efx.h"
 
@@ -319,6 +320,31 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 	/* Synchronize the DMA memory for reading not required */
 
 	efx_ev_qpoll(evq->common, &evq->read_ptr, &sfc_ev_callbacks, evq);
+
+	if (unlikely(evq->exception) && sfc_adapter_trylock(evq->sa)) {
+		struct sfc_adapter *sa = evq->sa;
+		int rc;
+
+		if ((evq->rxq != NULL) && (evq->rxq->state & SFC_RXQ_RUNNING)) {
+			unsigned int rxq_sw_index = sfc_rxq_sw_index(evq->rxq);
+
+			sfc_warn(sa,
+				 "restart RxQ %u because of exception on its EvQ %u",
+				 rxq_sw_index, evq->evq_index);
+
+			sfc_rx_qstop(sa, rxq_sw_index);
+			rc = sfc_rx_qstart(sa, rxq_sw_index);
+			if (rc != 0)
+				sfc_err(sa, "cannot restart RxQ %u",
+					rxq_sw_index);
+		}
+
+		if (evq->exception)
+			sfc_panic(sa, "unrecoverable exception on EvQ %u",
+				  evq->evq_index);
+
+		sfc_adapter_unlock(sa);
+	}
 
 	/* Poll-mode driver does not re-prime the event queue for interrupts */
 }
