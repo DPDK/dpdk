@@ -144,4 +144,5 @@ int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int qat_alg_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 #endif

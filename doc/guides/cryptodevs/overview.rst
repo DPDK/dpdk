@@ -58,6 +58,7 @@ Supported Cipher Algorithms
    "AES_CTR_128",x,,x,,,
    "AES_CTR_192",x,,x,,,
    "AES_CTR_256",x,,x,,,
+   "DES_CBC",x,,,,,
    "SNOW3G_UEA2",x,,,,x,
    "KASUMI_F8",,,,,,x
 

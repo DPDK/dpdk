@@ -148,6 +148,12 @@ New Features
   See the :ref:`Virtio Interrupt Mode <virtio_interrupt_mode>` documentation
   for more information.
 
+* **Updated the QAT PMD.**
+
+  The QAT PMD was updated with additional support for:
+
+  * DES algorithm.
+
 * **Added Elastic Flow Distributor library (rte_efd).**
 
   This new library uses perfect hashing to determine a target/value for a

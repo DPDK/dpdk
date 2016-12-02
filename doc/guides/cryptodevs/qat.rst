@@ -54,6 +54,7 @@ Cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_AES_GCM``
 * ``RTE_CRYPTO_CIPHER_NULL``
 * ``RTE_CRYPTO_CIPHER_KASUMI_F8``
+* ``RTE_CRYPTO_CIPHER_DES_CBC``
 
 Hash algorithms:
 
