@@ -105,7 +105,11 @@ enum rte_crypto_cipher_algorithm {
 	RTE_CRYPTO_CIPHER_ZUC_EEA3,
 	/**< ZUC algorithm in EEA3 mode */
 
+	RTE_CRYPTO_CIPHER_DES_CBC,
+	/**< DES algorithm in CBC mode */
+
 	RTE_CRYPTO_CIPHER_LIST_END
+
 };
 
 /** Symmetric Cipher Direction */
