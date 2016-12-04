@@ -140,7 +140,6 @@ There are many libraries, so their headers may be grouped by topics:
   [hexdump]            (@ref rte_hexdump.h),
   [debug]              (@ref rte_debug.h),
   [log]                (@ref rte_log.h),
-  [warnings]           (@ref rte_warnings.h),
   [errno]              (@ref rte_errno.h)
 
 - **misc**:
