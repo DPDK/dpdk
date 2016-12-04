@@ -312,7 +312,8 @@ def print_table_divider(outfile, num_cols):
 
 
 def setup(app):
-    generate_nic_overview_table('doc/guides/nics/overview_table.txt')
+    table_file = dirname(__file__) + '/nics/overview_table.txt'
+    generate_nic_overview_table(table_file)
 
     if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
         print('Upgrade sphinx to version >= 1.3.1 for '
