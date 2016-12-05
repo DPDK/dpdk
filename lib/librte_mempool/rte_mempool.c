@@ -818,7 +818,6 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 		goto exit_unlock;
 	}
 	mp->mz = mz;
-	mp->socket_id = socket_id;
 	mp->size = n;
 	mp->flags = flags;
 	mp->socket_id = socket_id;
