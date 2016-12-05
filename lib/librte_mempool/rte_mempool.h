@@ -357,7 +357,7 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
  * Prototype for implementation specific data provisioning function.
  *
  * The function should provide the implementation specific memory for
- * for use by the other mempool ops functions in a given mempool ops struct.
+ * use by the other mempool ops functions in a given mempool ops struct.
  * E.g. the default ops provides an instance of the rte_ring for this purpose.
  * it will most likely point to a different type of data structure, and
  * will be transparent to the application programmer.
