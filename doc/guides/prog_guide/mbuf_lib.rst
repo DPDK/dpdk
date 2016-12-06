@@ -253,7 +253,8 @@ Similarly, whenever the indirect buffer is detached, the reference counter on th
 If the resulting reference counter is equal to 0, the direct buffer is freed since it is no longer in use.
 
 There are a few things to remember when dealing with indirect buffers.
-First of all, it is not possible to attach an indirect buffer to another indirect buffer.
+First of all, an indirect buffer is never attached to another indirect buffer.
+Attempting to attach buffer A to indirect buffer B that is attached to C, makes rte_pktmbuf_attach() automatically attach A to C, effectively cloning B.
 Secondly, for a buffer to become indirect, its reference counter must be equal to 1,
 that is, it must not be already referenced by another indirect buffer.
 Finally, it is not possible to reattach an indirect buffer to the direct buffer (unless it is detached first).
