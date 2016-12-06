@@ -44,7 +44,116 @@
 extern "C" {
 #endif
 
+#include <string.h>
+
+#include <rte_dev.h>
+#include <rte_pci.h>
+#include <rte_malloc.h>
+#include <rte_log.h>
+#include <rte_common.h>
+
 #include "rte_eventdev.h"
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+#define RTE_PMD_DEBUG_TRACE(...) \
+	rte_pmd_debug_trace(__func__, __VA_ARGS__)
+#else
+#define RTE_PMD_DEBUG_TRACE(...)
+#endif
+
+/* Logging Macros */
+#define RTE_EDEV_LOG_ERR(fmt, args...) \
+	RTE_LOG(ERR, EVENTDEV, "%s() line %u: " fmt "\n",  \
+			__func__, __LINE__, ## args)
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+#define RTE_EDEV_LOG_DEBUG(fmt, args...) \
+	RTE_LOG(DEBUG, EVENTDEV, "%s() line %u: " fmt "\n",  \
+			__func__, __LINE__, ## args)
+#else
+#define RTE_EDEV_LOG_DEBUG(fmt, args...) (void)0
+#endif
+
+/* Macros to check for valid device */
+#define RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, retval) do { \
+	if (!rte_event_pmd_is_valid_dev((dev_id))) { \
+		RTE_EDEV_LOG_ERR("Invalid dev_id=%d\n", dev_id); \
+		return retval; \
+	} \
+} while (0)
+
+#define RTE_EVENTDEV_VALID_DEVID_OR_RET(dev_id) do { \
+	if (!rte_event_pmd_is_valid_dev((dev_id))) { \
+		RTE_EDEV_LOG_ERR("Invalid dev_id=%d\n", dev_id); \
+		return; \
+	} \
+} while (0)
+
+#define RTE_EVENTDEV_DETACHED  (0)
+#define RTE_EVENTDEV_ATTACHED  (1)
+
+/** Global structure used for maintaining state of allocated event devices */
+struct rte_eventdev_global {
+	uint8_t nb_devs;	/**< Number of devices found */
+	uint8_t max_devs;	/**< Max number of devices */
+};
+
+extern struct rte_eventdev_global *rte_eventdev_globals;
+/** Pointer to global event devices data structure. */
+extern struct rte_eventdev *rte_eventdevs;
+/** The pool of rte_eventdev structures. */
+
+/**
+ * Get the rte_eventdev structure device pointer for the named device.
+ *
+ * @param name
+ *   device name to select the device structure.
+ *
+ * @return
+ *   - The rte_eventdev structure pointer for the given device ID.
+ */
+static inline struct rte_eventdev *
+rte_event_pmd_get_named_dev(const char *name)
+{
+	struct rte_eventdev *dev;
+	unsigned int i;
+
+	if (name == NULL)
+		return NULL;
+
+	for (i = 0, dev = &rte_eventdevs[i];
+			i < rte_eventdev_globals->max_devs; i++) {
+		if ((dev->attached == RTE_EVENTDEV_ATTACHED) &&
+				(strcmp(dev->data->name, name) == 0))
+			return dev;
+	}
+
+	return NULL;
+}
+
+/**
+ * Validate if the event device index is valid attached event device.
+ *
+ * @param dev_id
+ *   Event device index.
+ *
+ * @return
+ *   - If the device index is valid (1) or not (0).
+ */
+static inline unsigned
+rte_event_pmd_is_valid_dev(uint8_t dev_id)
+{
+	struct rte_eventdev *dev;
+
+	if (dev_id >= rte_eventdev_globals->nb_devs)
+		return 0;
+
+	dev = &rte_eventdevs[dev_id];
+	if (dev->attached != RTE_EVENTDEV_ATTACHED)
+		return 0;
+	else
+		return 1;
+}
 
 /**
  * Definitions of all functions exported by a driver through the

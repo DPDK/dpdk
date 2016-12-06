@@ -972,6 +972,8 @@ struct rte_event {
 	};
 };
 
+
+struct rte_eventdev_driver;
 struct rte_eventdev_ops;
 struct rte_eventdev;
 
@@ -993,6 +995,49 @@ typedef uint16_t (*event_dequeue_burst_t)(void *port, struct rte_event ev[],
 		uint16_t nb_events, uint64_t timeout_ticks);
 /**< @internal Dequeue burst of events from port of a device */
 
+#define RTE_EVENTDEV_NAME_MAX_LEN	(64)
+/**< @internal Max length of name of event PMD */
+
+/**
+ * @internal
+ * The data part, with no function pointers, associated with each device.
+ *
+ * This structure is safe to place in shared memory to be common among
+ * different processes in a multi-process configuration.
+ */
+struct rte_eventdev_data {
+	int socket_id;
+	/**< Socket ID where memory is allocated */
+	uint8_t dev_id;
+	/**< Device ID for this instance */
+	uint8_t nb_queues;
+	/**< Number of event queues. */
+	uint8_t nb_ports;
+	/**< Number of event ports. */
+	void **ports;
+	/**< Array of pointers to ports. */
+	uint8_t *ports_dequeue_depth;
+	/**< Array of port dequeue depth. */
+	uint8_t *ports_enqueue_depth;
+	/**< Array of port enqueue depth. */
+	uint8_t *queues_prio;
+	/**< Array of queue priority. */
+	uint16_t *links_map;
+	/**< Memory to store queues to port connections. */
+	void *dev_private;
+	/**< PMD-specific private data */
+	uint32_t event_dev_cap;
+	/**< Event device capabilities(RTE_EVENT_DEV_CAP_)*/
+	struct rte_event_dev_config dev_conf;
+	/**< Configuration applied to device. */
+
+	RTE_STD_C11
+	uint8_t dev_started : 1;
+	/**< Device state: STARTED(1)/STOPPED(0) */
+
+	char name[RTE_EVENTDEV_NAME_MAX_LEN];
+	/**< Unique identifier name */
+} __rte_cache_aligned;
 
 /** @internal The data structure associated with each event device. */
 struct rte_eventdev {
@@ -1007,7 +1052,22 @@ struct rte_eventdev {
 	event_dequeue_burst_t dequeue_burst;
 	/**< Pointer to PMD dequeue burst function. */
 
+	struct rte_eventdev_data *data;
+	/**< Pointer to device data */
+	const struct rte_eventdev_ops *dev_ops;
+	/**< Functions exported by PMD */
+	struct rte_pci_device *pci_dev;
+	/**< PCI info. supplied by probing */
+	const struct rte_eventdev_driver *driver;
+	/**< Driver for this device */
+
+	RTE_STD_C11
+	uint8_t attached : 1;
+	/**< Flag indicating the device is attached */
 } __rte_cache_aligned;
+
+extern struct rte_eventdev *rte_eventdevs;
+/** @internal The pool of rte_eventdev structures. */
 
 
 /**
@@ -1019,8 +1079,13 @@ struct rte_eventdev {
  * @param dev_id
  *   The identifier of the device.
  */
-void
-rte_event_schedule(uint8_t dev_id);
+static inline void
+rte_event_schedule(uint8_t dev_id)
+{
+	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	if (*dev->schedule)
+		(*dev->schedule)(dev);
+}
 
 /**
  * Enqueue a burst of events objects or an event object supplied in *rte_event*
@@ -1055,9 +1120,23 @@ rte_event_schedule(uint8_t dev_id);
  *
  * @see rte_event_port_enqueue_depth()
  */
-uint16_t
+static inline uint16_t
 rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
-			const struct rte_event ev[], uint16_t nb_events);
+			const struct rte_event ev[], uint16_t nb_events)
+{
+	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	/*
+	 * Allow zero cost non burst mode routine invocation if application
+	 * requests nb_events as const one
+	 */
+	if (nb_events == 1)
+		return (*dev->enqueue)(
+			dev->data->ports[port_id], ev);
+	else
+		return (*dev->enqueue_burst)(
+			dev->data->ports[port_id], ev, nb_events);
+}
 
 /**
  * Converts nanoseconds to *timeout_ticks* value for rte_event_dequeue_burst()
@@ -1149,9 +1228,24 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
  *
  * @see rte_event_port_dequeue_depth()
  */
-uint16_t
+static inline uint16_t
 rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
-			uint16_t nb_events, uint64_t timeout_ticks);
+			uint16_t nb_events, uint64_t timeout_ticks)
+{
+	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	/*
+	 * Allow zero cost non burst mode routine invocation if application
+	 * requests nb_events as const one
+	 */
+	if (nb_events == 1)
+		return (*dev->dequeue)(
+			dev->data->ports[port_id], ev, timeout_ticks);
+	else
+		return (*dev->dequeue_burst)(
+			dev->data->ports[port_id], ev, nb_events,
+				timeout_ticks);
+}
 
 /**
  * Link multiple source event queues supplied in *queues* to the destination
