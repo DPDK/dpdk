@@ -126,6 +126,8 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 	dev_info->dequeue_timeout_ns = dev->data->dev_conf.dequeue_timeout_ns;
 
 	dev_info->pci_dev = dev->pci_dev;
+	if (dev->driver)
+		dev_info->driver_name = dev->driver->pci_drv.driver.name;
 	return 0;
 }
 
@@ -983,4 +985,238 @@ rte_event_dev_close(uint8_t dev_id)
 	}
 
 	return (*dev->dev_ops->dev_close)(dev);
+}
+
+static inline int
+rte_eventdev_data_alloc(uint8_t dev_id, struct rte_eventdev_data **data,
+		int socket_id)
+{
+	char mz_name[RTE_EVENTDEV_NAME_MAX_LEN];
+	const struct rte_memzone *mz;
+	int n;
+
+	/* Generate memzone name */
+	n = snprintf(mz_name, sizeof(mz_name), "rte_eventdev_data_%u", dev_id);
+	if (n >= (int)sizeof(mz_name))
+		return -EINVAL;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		mz = rte_memzone_reserve(mz_name,
+				sizeof(struct rte_eventdev_data),
+				socket_id, 0);
+	} else
+		mz = rte_memzone_lookup(mz_name);
+
+	if (mz == NULL)
+		return -ENOMEM;
+
+	*data = mz->addr;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		memset(*data, 0, sizeof(struct rte_eventdev_data));
+
+	return 0;
+}
+
+static inline uint8_t
+rte_eventdev_find_free_device_index(void)
+{
+	uint8_t dev_id;
+
+	for (dev_id = 0; dev_id < RTE_EVENT_MAX_DEVS; dev_id++) {
+		if (rte_eventdevs[dev_id].attached ==
+				RTE_EVENTDEV_DETACHED)
+			return dev_id;
+	}
+	return RTE_EVENT_MAX_DEVS;
+}
+
+struct rte_eventdev *
+rte_event_pmd_allocate(const char *name, int socket_id)
+{
+	struct rte_eventdev *eventdev;
+	uint8_t dev_id;
+
+	if (rte_event_pmd_get_named_dev(name) != NULL) {
+		RTE_EDEV_LOG_ERR("Event device with name %s already "
+				"allocated!", name);
+		return NULL;
+	}
+
+	dev_id = rte_eventdev_find_free_device_index();
+	if (dev_id == RTE_EVENT_MAX_DEVS) {
+		RTE_EDEV_LOG_ERR("Reached maximum number of event devices");
+		return NULL;
+	}
+
+	eventdev = &rte_eventdevs[dev_id];
+
+	if (eventdev->data == NULL) {
+		struct rte_eventdev_data *eventdev_data = NULL;
+
+		int retval = rte_eventdev_data_alloc(dev_id, &eventdev_data,
+				socket_id);
+
+		if (retval < 0 || eventdev_data == NULL)
+			return NULL;
+
+		eventdev->data = eventdev_data;
+
+		snprintf(eventdev->data->name, RTE_EVENTDEV_NAME_MAX_LEN,
+				"%s", name);
+
+		eventdev->data->dev_id = dev_id;
+		eventdev->data->socket_id = socket_id;
+		eventdev->data->dev_started = 0;
+
+		eventdev->attached = RTE_EVENTDEV_ATTACHED;
+
+		eventdev_globals.nb_devs++;
+	}
+
+	return eventdev;
+}
+
+int
+rte_event_pmd_release(struct rte_eventdev *eventdev)
+{
+	int ret;
+
+	if (eventdev == NULL)
+		return -EINVAL;
+
+	ret = rte_event_dev_close(eventdev->data->dev_id);
+	if (ret < 0)
+		return ret;
+
+	eventdev->attached = RTE_EVENTDEV_DETACHED;
+	eventdev_globals.nb_devs--;
+	eventdev->data = NULL;
+
+	return 0;
+}
+
+struct rte_eventdev *
+rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
+		int socket_id)
+{
+	struct rte_eventdev *eventdev;
+
+	/* Allocate device structure */
+	eventdev = rte_event_pmd_allocate(name, socket_id);
+	if (eventdev == NULL)
+		return NULL;
+
+	/* Allocate private device structure */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eventdev->data->dev_private =
+				rte_zmalloc_socket("eventdev device private",
+						dev_private_size,
+						RTE_CACHE_LINE_SIZE,
+						socket_id);
+
+		if (eventdev->data->dev_private == NULL)
+			rte_panic("Cannot allocate memzone for private device"
+					" data");
+	}
+
+	return eventdev;
+}
+
+int
+rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
+			struct rte_pci_device *pci_dev)
+{
+	struct rte_eventdev_driver *eventdrv;
+	struct rte_eventdev *eventdev;
+
+	char eventdev_name[RTE_EVENTDEV_NAME_MAX_LEN];
+
+	int retval;
+
+	eventdrv = (struct rte_eventdev_driver *)pci_drv;
+	if (eventdrv == NULL)
+		return -ENODEV;
+
+	rte_eal_pci_device_name(&pci_dev->addr, eventdev_name,
+			sizeof(eventdev_name));
+
+	eventdev = rte_event_pmd_allocate(eventdev_name,
+			 pci_dev->device.numa_node);
+	if (eventdev == NULL)
+		return -ENOMEM;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eventdev->data->dev_private =
+				rte_zmalloc_socket(
+						"eventdev private structure",
+						eventdrv->dev_private_size,
+						RTE_CACHE_LINE_SIZE,
+						rte_socket_id());
+
+		if (eventdev->data->dev_private == NULL)
+			rte_panic("Cannot allocate memzone for private "
+					"device data");
+	}
+
+	eventdev->pci_dev = pci_dev;
+	eventdev->driver = eventdrv;
+
+	/* Invoke PMD device initialization function */
+	retval = (*eventdrv->eventdev_init)(eventdev);
+	if (retval == 0)
+		return 0;
+
+	RTE_EDEV_LOG_ERR("driver %s: (vendor_id=0x%x device_id=0x%x)"
+			" failed", pci_drv->driver.name,
+			(unsigned int) pci_dev->id.vendor_id,
+			(unsigned int) pci_dev->id.device_id);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_free(eventdev->data->dev_private);
+
+	eventdev->attached = RTE_EVENTDEV_DETACHED;
+	eventdev_globals.nb_devs--;
+
+	return -ENXIO;
+}
+
+int
+rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev)
+{
+	const struct rte_eventdev_driver *eventdrv;
+	struct rte_eventdev *eventdev;
+	char eventdev_name[RTE_EVENTDEV_NAME_MAX_LEN];
+	int ret;
+
+	if (pci_dev == NULL)
+		return -EINVAL;
+
+	rte_eal_pci_device_name(&pci_dev->addr, eventdev_name,
+			sizeof(eventdev_name));
+
+	eventdev = rte_event_pmd_get_named_dev(eventdev_name);
+	if (eventdev == NULL)
+		return -ENODEV;
+
+	eventdrv = (const struct rte_eventdev_driver *)pci_dev->driver;
+	if (eventdrv == NULL)
+		return -ENODEV;
+
+	/* Invoke PMD device un-init function */
+	if (*eventdrv->eventdev_uninit) {
+		ret = (*eventdrv->eventdev_uninit)(eventdev);
+		if (ret)
+			return ret;
+	}
+
+	/* Free event device */
+	rte_event_pmd_release(eventdev);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_free(eventdev->data->dev_private);
+
+	eventdev->pci_dev = NULL;
+	eventdev->driver = NULL;
+
+	return 0;
 }
