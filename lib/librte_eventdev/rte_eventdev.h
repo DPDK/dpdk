@@ -972,6 +972,44 @@ struct rte_event {
 	};
 };
 
+struct rte_eventdev_ops;
+struct rte_eventdev;
+
+typedef void (*event_schedule_t)(struct rte_eventdev *dev);
+/**< @internal Schedule one or more events in the event dev. */
+
+typedef uint16_t (*event_enqueue_t)(void *port, const struct rte_event *ev);
+/**< @internal Enqueue event on port of a device */
+
+typedef uint16_t (*event_enqueue_burst_t)(void *port,
+			const struct rte_event ev[], uint16_t nb_events);
+/**< @internal Enqueue burst of events on port of a device */
+
+typedef uint16_t (*event_dequeue_t)(void *port, struct rte_event *ev,
+		uint64_t timeout_ticks);
+/**< @internal Dequeue event from port of a device */
+
+typedef uint16_t (*event_dequeue_burst_t)(void *port, struct rte_event ev[],
+		uint16_t nb_events, uint64_t timeout_ticks);
+/**< @internal Dequeue burst of events from port of a device */
+
+
+/** @internal The data structure associated with each event device. */
+struct rte_eventdev {
+	event_schedule_t schedule;
+	/**< Pointer to PMD schedule function. */
+	event_enqueue_t enqueue;
+	/**< Pointer to PMD enqueue function. */
+	event_enqueue_burst_t enqueue_burst;
+	/**< Pointer to PMD enqueue burst function. */
+	event_dequeue_t dequeue;
+	/**< Pointer to PMD dequeue function. */
+	event_dequeue_burst_t dequeue_burst;
+	/**< Pointer to PMD dequeue burst function. */
+
+} __rte_cache_aligned;
+
+
 /**
  * Schedule one or more events in the event dev.
  *
