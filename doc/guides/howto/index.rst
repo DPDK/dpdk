@@ -38,3 +38,4 @@ HowTo Guides
     lm_bond_virtio_sriov
     lm_virtio_vhost_user
     flow_bifurcation
+    pvp_reference_benchmark
