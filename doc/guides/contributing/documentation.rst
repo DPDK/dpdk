@@ -332,7 +332,7 @@ Whitespace
 Section Headers
 ~~~~~~~~~~~~~~~
 
-* Section headers should use the use the following underline formats::
+* Section headers should use the following underline formats::
 
    Level 1 Heading
    ===============
