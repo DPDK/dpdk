@@ -496,6 +496,8 @@ process_openssl_cipher_encrypt(uint8_t *src, uint8_t *dst,
 	if (EVP_EncryptInit_ex(ctx, algo, NULL, key, iv) <= 0)
 		goto process_cipher_encrypt_err;
 
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+
 	if (EVP_EncryptUpdate(ctx, dst, &dstlen, src, srclen) <= 0)
 		goto process_cipher_encrypt_err;
 
