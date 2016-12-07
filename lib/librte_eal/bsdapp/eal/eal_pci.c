@@ -87,15 +87,6 @@
  * enabling bus master.
  */
 
-/* unbind kernel driver for this device */
-int
-pci_unbind_kernel_driver(struct rte_pci_device *dev __rte_unused)
-{
-	RTE_LOG(ERR, EAL, "RTE_PCI_DRV_FORCE_UNBIND flag is not implemented "
-		"for BSD\n");
-	return -ENOTSUP;
-}
-
 /* Map pci device */
 int
 rte_eal_pci_map_device(struct rte_pci_device *dev)

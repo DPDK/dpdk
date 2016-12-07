@@ -208,8 +208,6 @@ struct rte_pci_driver {
 
 /** Device needs PCI BAR mapping (done with either IGB_UIO or VFIO) */
 #define RTE_PCI_DRV_NEED_MAPPING 0x0001
-/** Device needs to be unbound even if no module is provided */
-#define RTE_PCI_DRV_FORCE_UNBIND 0x0004
 /** Device driver supports link state interrupt */
 #define RTE_PCI_DRV_INTR_LSC	0x0008
 /** Device driver supports detaching capability */
