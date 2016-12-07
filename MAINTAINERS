@@ -351,16 +351,14 @@ F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
 
 QLogic bnx2x
-M: Sony Chacko <sony.chacko@qlogic.com>
-M: Harish Patil <harish.patil@qlogic.com>
-M: Rasesh Mody <rasesh.mody@qlogic.com>
+M: Harish Patil <harish.patil@cavium.com>
+M: Rasesh Mody <rasesh.mody@cavium.com>
 F: drivers/net/bnx2x/
 F: doc/guides/nics/bnx2x.rst
 
 QLogic qede PMD
-M: Harish Patil <harish.patil@qlogic.com>
-M: Rasesh Mody <rasesh.mody@qlogic.com>
-M: Sony Chacko <sony.chacko@qlogic.com>
+M: Rasesh Mody <rasesh.mody@cavium.com>
+M: Harish Patil <harish.patil@cavium.com>
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
 
