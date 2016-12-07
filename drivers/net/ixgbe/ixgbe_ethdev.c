@@ -2619,9 +2619,9 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	uint32_t delta_gprc = 0;
 	unsigned i;
 	/* Workaround for RX byte count not including CRC bytes when CRC
-+	 * strip is enabled. CRC bytes are removed from counters when crc_strip
+	 * strip is enabled. CRC bytes are removed from counters when crc_strip
 	 * is disabled.
-+	 */
+	 */
 	int crc_strip = (IXGBE_READ_REG(hw, IXGBE_HLREG0) &
 			IXGBE_HLREG0_RXCRCSTRP);
 
