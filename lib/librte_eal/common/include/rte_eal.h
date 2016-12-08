@@ -146,14 +146,19 @@ int rte_eal_iopl_init(void);
  * This behavior may change in the future.
  *
  * @param argc
- *   The argc argument that was given to the main() function.
+ *   A non-negative value.  If it is greater than 0, the array members
+ *   for argv[0] through argv[argc] (non-inclusive) shall contain pointers
+ *   to strings.
  * @param argv
- *   The argv argument that was given to the main() function.
+ *   An array of strings.  The contents of the array, as well as the strings
+ *   which are pointed to by the array, may be modified by this function.
  * @return
  *   - On success, the number of parsed arguments, which is greater or
  *     equal to zero. After the call to rte_eal_init(),
- *     all arguments argv[x] with x < ret may be modified and should
- *     not be accessed by the application.
+ *     all arguments argv[x] with x < ret may have been modified by this
+ *     function call and should not be further interpreted by the
+ *     application.  The EAL does not take any ownership of the memory used
+ *     for either the argv array, or its members.
  *   - On failure, a negative error value.
  */
 int rte_eal_init(int argc, char **argv);
