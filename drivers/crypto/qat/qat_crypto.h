@@ -43,6 +43,7 @@
  */
 #define ALIGN_POW2_ROUNDUP(num, align) \
 	(((num) + (align) - 1) & ~((align) - 1))
+#define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
 /**
  * Structure associated with each queue.

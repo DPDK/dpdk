@@ -955,7 +955,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	uint32_t cipher_len = 0, cipher_ofs = 0;
 	uint32_t auth_len = 0, auth_ofs = 0;
 	uint32_t min_ofs = 0;
-	uint64_t buf_start = 0;
+	uint64_t src_buf_start = 0, dst_buf_start = 0;
 
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
@@ -1077,27 +1077,40 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	if (do_cipher && do_auth)
 		min_ofs = cipher_ofs < auth_ofs ? cipher_ofs : auth_ofs;
 
-
-	/* Start DMA at nearest aligned address below min_ofs */
-	#define QAT_64_BTYE_ALIGN_MASK (~0x3f)
-	buf_start = rte_pktmbuf_mtophys_offset(op->sym->m_src, min_ofs) &
-							QAT_64_BTYE_ALIGN_MASK;
-
-	if (unlikely((rte_pktmbuf_mtophys(op->sym->m_src)
-			- rte_pktmbuf_headroom(op->sym->m_src)) > buf_start)) {
-		/* alignment has pushed addr ahead of start of mbuf
-		 * so revert and take the performance hit
+	if (unlikely(op->sym->m_dst != NULL)) {
+		/* Out-of-place operation (OOP)
+		 * Don't align DMA start. DMA the minimum data-set
+		 * so as not to overwrite data in dest buffer
 		 */
-		buf_start = rte_pktmbuf_mtophys(op->sym->m_src);
-	}
+		src_buf_start =
+			rte_pktmbuf_mtophys_offset(op->sym->m_src, min_ofs);
+		dst_buf_start =
+			rte_pktmbuf_mtophys_offset(op->sym->m_dst, min_ofs);
+	} else {
+		/* In-place operation
+		 * Start DMA at nearest aligned address below min_ofs
+		 */
+		src_buf_start =
+			rte_pktmbuf_mtophys_offset(op->sym->m_src, min_ofs)
+						& QAT_64_BTYE_ALIGN_MASK;
 
-	qat_req->comn_mid.dest_data_addr =
-		qat_req->comn_mid.src_data_addr = buf_start;
+		if (unlikely((rte_pktmbuf_mtophys(op->sym->m_src) -
+					rte_pktmbuf_headroom(op->sym->m_src))
+							> src_buf_start)) {
+			/* alignment has pushed addr ahead of start of mbuf
+			 * so revert and take the performance hit
+			 */
+			src_buf_start =
+				rte_pktmbuf_mtophys_offset(op->sym->m_src,
+								min_ofs);
+		}
+		dst_buf_start = src_buf_start;
+	}
 
 	if (do_cipher) {
 		cipher_param->cipher_offset =
-					(uint32_t)rte_pktmbuf_mtophys_offset(
-					op->sym->m_src, cipher_ofs) - buf_start;
+				(uint32_t)rte_pktmbuf_mtophys_offset(
+				op->sym->m_src, cipher_ofs) - src_buf_start;
 		cipher_param->cipher_length = cipher_len;
 	} else {
 		cipher_param->cipher_offset = 0;
@@ -1105,7 +1118,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	}
 	if (do_auth) {
 		auth_param->auth_off = (uint32_t)rte_pktmbuf_mtophys_offset(
-					op->sym->m_src, auth_ofs) - buf_start;
+				op->sym->m_src, auth_ofs) - src_buf_start;
 		auth_param->auth_len = auth_len;
 	} else {
 		auth_param->auth_off = 0;
@@ -1118,21 +1131,8 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		(cipher_param->cipher_offset + cipher_param->cipher_length)
 		: (auth_param->auth_off + auth_param->auth_len);
 
-
-	/* out-of-place operation (OOP) */
-	if (unlikely(op->sym->m_dst != NULL)) {
-
-		if (do_auth)
-			qat_req->comn_mid.dest_data_addr =
-				rte_pktmbuf_mtophys_offset(op->sym->m_dst,
-						auth_ofs)
-						- auth_param->auth_off;
-		else
-			qat_req->comn_mid.dest_data_addr =
-				rte_pktmbuf_mtophys_offset(op->sym->m_dst,
-						cipher_ofs)
-						- cipher_param->cipher_offset;
-	}
+	qat_req->comn_mid.src_data_addr = src_buf_start;
+	qat_req->comn_mid.dest_data_addr = dst_buf_start;
 
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
