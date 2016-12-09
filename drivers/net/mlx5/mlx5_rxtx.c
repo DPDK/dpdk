@@ -82,7 +82,8 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 	__attribute__((always_inline));
 
 static inline void
-mlx5_tx_dbrec(struct txq *txq) __attribute__((always_inline));
+mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe)
+	__attribute__((always_inline));
 
 static inline uint32_t
 rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
@@ -326,23 +327,20 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
  *
  * @param txq
  *   Pointer to TX queue structure.
+ * @param wqe
+ *   Pointer to the last WQE posted in the NIC.
  */
 static inline void
-mlx5_tx_dbrec(struct txq *txq)
+mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe)
 {
-	uint8_t *dst = (uint8_t *)((uintptr_t)txq->bf_reg + txq->bf_offset);
-	uint32_t data[4] = {
-		htonl((txq->wqe_ci << 8) | MLX5_OPCODE_SEND),
-		htonl(txq->qp_num_8s),
-		0,
-		0,
-	};
+	uint64_t *dst = (uint64_t *)((uintptr_t)txq->bf_reg);
+	volatile uint64_t *src = ((volatile uint64_t *)wqe);
+
 	rte_wmb();
 	*txq->qp_db = htonl(txq->wqe_ci);
 	/* Ensure ordering between DB record and BF copy. */
 	rte_wmb();
-	memcpy(dst, (uint8_t *)data, 16);
-	txq->bf_offset ^= (1 << txq->bf_buf_size);
+	*dst = *src;
 }
 
 /**
@@ -610,7 +608,7 @@ next_pkt:
 	txq->stats.opackets += i;
 #endif
 	/* Ring QP doorbell. */
-	mlx5_tx_dbrec(txq);
+	mlx5_tx_dbrec(txq, (volatile struct mlx5_wqe *)wqe);
 	txq->elts_head = elts_head;
 	return i;
 }
@@ -817,7 +815,7 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	/* Ring QP doorbell. */
 	if (mpw.state == MLX5_MPW_STATE_OPENED)
 		mlx5_mpw_close(txq, &mpw);
-	mlx5_tx_dbrec(txq);
+	mlx5_tx_dbrec(txq, mpw.wqe);
 	txq->elts_head = elts_head;
 	return i;
 }
@@ -1085,7 +1083,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		mlx5_mpw_inline_close(txq, &mpw);
 	else if (mpw.state == MLX5_MPW_STATE_OPENED)
 		mlx5_mpw_close(txq, &mpw);
-	mlx5_tx_dbrec(txq);
+	mlx5_tx_dbrec(txq, mpw.wqe);
 	txq->elts_head = elts_head;
 	return i;
 }

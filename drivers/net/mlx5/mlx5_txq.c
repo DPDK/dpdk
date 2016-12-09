@@ -220,8 +220,6 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
 	tmpl->txq.wqe_n = log2above(qp->sq.wqe_cnt);
 	tmpl->txq.qp_db = &qp->gen_data.db[MLX5_SND_DBR];
 	tmpl->txq.bf_reg = qp->gen_data.bf->reg;
-	tmpl->txq.bf_offset = qp->gen_data.bf->offset;
-	tmpl->txq.bf_buf_size = log2above(qp->gen_data.bf->buf_size);
 	tmpl->txq.cq_db = cq->dbrec;
 	tmpl->txq.cqes =
 		(volatile struct mlx5_cqe (*)[])
