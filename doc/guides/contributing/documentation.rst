@@ -380,11 +380,10 @@ Lists
 
      #. Item one.
 
-     #. Item two is a long line that is wrapped and then indented
-        to match the start of the e first line.
-
      #. Item two is a long line that is wrapped and then indented to match
         the start of the previous line.
+
+     #. Item three.
 
 * Definition lists can be written with or without a bullet::
 
@@ -477,7 +476,7 @@ Images
 
 * `Inkscape <http://inkscape.org>`_ is the recommended graphics editor for creating the images.
   Use some of the older images in ``doc/guides/prog_guide/img/`` as a template, for example ``mbuf1.svg``
-  or ``ring-enqueue.svg``.
+  or ``ring-enqueue1.svg``.
 
 * The SVG images should include a copyright notice, as an XML comment.
 
