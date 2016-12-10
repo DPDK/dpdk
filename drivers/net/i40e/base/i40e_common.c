@@ -6900,4 +6900,24 @@ enum i40e_status_code i40e_aq_get_wake_event_reason(struct i40e_hw *hw,
 	return status;
 }
 
+/**
+* i40e_aq_clear_all_wol_filters
+* @hw: pointer to the hw struct
+* @cmd_details: pointer to command details structure or NULL
+*
+* Get information for the reason of a Wake Up event
+**/
+enum i40e_status_code i40e_aq_clear_all_wol_filters(struct i40e_hw *hw,
+	struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc,
+					  i40e_aqc_opc_clear_all_wol_filters);
+
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
+
+	return status;
+}
 #endif /* X722_SUPPORT */

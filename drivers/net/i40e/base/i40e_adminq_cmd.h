@@ -156,6 +156,7 @@ enum i40e_admin_queue_opc {
 	/* WoL commands */
 	i40e_aqc_opc_set_wol_filter	= 0x0120,
 	i40e_aqc_opc_get_wake_reason	= 0x0121,
+	i40e_aqc_opc_clear_all_wol_filters = 0x025E,
 
 #endif
 	/* internal switch commands */

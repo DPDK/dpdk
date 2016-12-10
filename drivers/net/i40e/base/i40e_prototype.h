@@ -537,6 +537,8 @@ enum i40e_status_code i40e_aq_set_clear_wol_filter(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_get_wake_event_reason(struct i40e_hw *hw,
 			u16 *wake_reason,
 			struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_clear_all_wol_filters(struct i40e_hw *hw,
+			struct i40e_asq_cmd_details *cmd_details);
 #endif
 enum i40e_status_code i40e_read_phy_register_clause22(struct i40e_hw *hw,
 					u16 reg, u8 phy_addr, u16 *value);
