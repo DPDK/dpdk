@@ -1642,7 +1642,7 @@ i40e_phy_conf_link(struct i40e_hw *hw,
 	/* use get_phy_abilities_resp value for the rest */
 	phy_conf.phy_type = phy_ab.phy_type;
 	phy_conf.phy_type_ext = phy_ab.phy_type_ext;
-	phy_conf.fec_config = phy_ab.mod_type_ext;
+	phy_conf.fec_config = phy_ab.fec_cfg_curr_mod_ext_info;
 	phy_conf.eee_capability = phy_ab.eee_capability;
 	phy_conf.eeer = phy_ab.eeer_val;
 	phy_conf.low_power_ctrl = phy_ab.d3_lpan;

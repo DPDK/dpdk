@@ -1785,7 +1785,16 @@ struct i40e_aq_get_phy_abilities_resp {
 #define I40E_AQ_PHY_TYPE_EXT_25G_CR	0X02
 #define I40E_AQ_PHY_TYPE_EXT_25G_SR	0x04
 #define I40E_AQ_PHY_TYPE_EXT_25G_LR	0x08
-	u8	mod_type_ext;
+	u8	fec_cfg_curr_mod_ext_info;
+#define I40E_AQ_ENABLE_FEC_KR		0x01
+#define I40E_AQ_ENABLE_FEC_RS		0x02
+#define I40E_AQ_REQUEST_FEC_KR		0x04
+#define I40E_AQ_REQUEST_FEC_RS		0x08
+#define I40E_AQ_ENABLE_FEC_AUTO		0x10
+#define I40E_AQ_FEC
+#define I40E_AQ_MODULE_TYPE_EXT_MASK	0xE0
+#define I40E_AQ_MODULE_TYPE_EXT_SHIFT	5
+
 	u8	ext_comp_code;
 	u8	phy_id[4];
 	u8	module_type[3];
@@ -1819,6 +1828,8 @@ struct i40e_aq_set_phy_config { /* same bits as above in all */
 #define I40E_AQ_SET_FEC_REQUEST_KR	(1 << 2)
 #define I40E_AQ_SET_FEC_REQUEST_RS	(1 << 3)
 #define I40E_AQ_SET_FEC_AUTO		(1 << 4)
+#define I40E_AQ_PHY_FEC_CONFIG_SHIFT	0x0
+#define I40E_AQ_PHY_FEC_CONFIG_MASK	(0x1F << I40E_AQ_PHY_FEC_CONFIG_SHIFT)
 	u8	reserved;
 };
 
