@@ -541,7 +541,8 @@ struct i40e_aqc_mac_address_read {
 #define I40E_AQC_PORT_ADDR_VALID	0x40
 #define I40E_AQC_WOL_ADDR_VALID		0x80
 #define I40E_AQC_MC_MAG_EN_VALID	0x100
-#define I40E_AQC_ADDR_VALID_MASK	0x1F0
+#define I40E_AQC_WOL_PRESERVE_STATUS	0x200
+#define I40E_AQC_ADDR_VALID_MASK	0x3F0
 	u8	reserved[6];
 	__le32	addr_high;
 	__le32	addr_low;
@@ -562,6 +563,7 @@ I40E_CHECK_STRUCT_LEN(24, i40e_aqc_mac_address_read_data);
 struct i40e_aqc_mac_address_write {
 	__le16	command_flags;
 #define I40E_AQC_MC_MAG_EN		0x0100
+#define I40E_AQC_WOL_PRESERVE_ON_PFR	0x0200
 #define I40E_AQC_WRITE_TYPE_LAA_ONLY	0x0000
 #define I40E_AQC_WRITE_TYPE_LAA_WOL	0x4000
 #define I40E_AQC_WRITE_TYPE_PORT	0x8000
@@ -601,6 +603,7 @@ struct i40e_aqc_set_wol_filter {
 	__le16 cmd_flags;
 #define I40E_AQC_SET_WOL_FILTER				0x8000
 #define I40E_AQC_SET_WOL_FILTER_NO_TCO_WOL		0x4000
+#define I40E_AQC_SET_WOL_FILTER_WOL_PRESERVE_ON_PFR	0x2000
 #define I40E_AQC_SET_WOL_FILTER_ACTION_CLEAR		0
 #define I40E_AQC_SET_WOL_FILTER_ACTION_SET		1
 	__le16 valid_flags;
