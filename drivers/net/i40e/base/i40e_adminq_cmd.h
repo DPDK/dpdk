@@ -1785,8 +1785,8 @@ struct i40e_aq_get_phy_abilities_resp {
 	u8	d3_lpan;
 #define I40E_AQ_SET_PHY_D3_LPAN_ENA	0x01
 	u8	phy_type_ext;
-#define I40E_AQ_PHY_TYPE_EXT_25G_KR	0X01
-#define I40E_AQ_PHY_TYPE_EXT_25G_CR	0X02
+#define I40E_AQ_PHY_TYPE_EXT_25G_KR	0x01
+#define I40E_AQ_PHY_TYPE_EXT_25G_CR	0x02
 #define I40E_AQ_PHY_TYPE_EXT_25G_SR	0x04
 #define I40E_AQ_PHY_TYPE_EXT_25G_LR	0x08
 	u8	fec_cfg_curr_mod_ext_info;
@@ -1822,10 +1822,6 @@ struct i40e_aq_set_phy_config { /* same bits as above in all */
 	__le32	eeer;
 	u8	low_power_ctrl;
 	u8	phy_type_ext;
-#define I40E_AQ_PHY_TYPE_EXT_25G_KR	0X01
-#define I40E_AQ_PHY_TYPE_EXT_25G_CR	0X02
-#define I40E_AQ_PHY_TYPE_EXT_25G_SR	0x04
-#define I40E_AQ_PHY_TYPE_EXT_25G_LR	0x08
 	u8	fec_config;
 #define I40E_AQ_SET_FEC_ABILITY_KR	BIT(0)
 #define I40E_AQ_SET_FEC_ABILITY_RS	BIT(1)
