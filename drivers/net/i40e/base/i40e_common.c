@@ -4419,11 +4419,15 @@ enum i40e_status_code i40e_aq_start_stop_dcbx(struct i40e_hw *hw,
 /**
  * i40e_aq_add_udp_tunnel
  * @hw: pointer to the hw struct
- * @udp_port: the UDP port to add
+ * @udp_port: the UDP port to add in Host byte order
  * @header_len: length of the tunneling header length in DWords
  * @protocol_index: protocol index type
  * @filter_index: pointer to filter index
  * @cmd_details: pointer to command details structure or NULL
+ *
+ * Note: Firmware expects the udp_port value to be in Little Endian format,
+ * and this function will call CPU_TO_LE16 to convert from Host byte order to
+ * Little Endian order.
  **/
 enum i40e_status_code i40e_aq_add_udp_tunnel(struct i40e_hw *hw,
 				u16 udp_port, u8 protocol_index,
