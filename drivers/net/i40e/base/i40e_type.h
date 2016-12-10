@@ -499,6 +499,7 @@ enum i40e_nvmupd_state {
 	I40E_NVMUPD_STATE_WRITING,
 	I40E_NVMUPD_STATE_INIT_WAIT,
 	I40E_NVMUPD_STATE_WRITE_WAIT,
+	I40E_NVMUPD_STATE_ERROR
 };
 
 /* nvm_access definition and its masks/shifts need to be accessible to
@@ -1526,6 +1527,7 @@ struct i40e_hw_port_stats {
 #define I40E_SR_EMPR_REGS_AUTO_LOAD_PTR		0x3A
 #define I40E_SR_GLOBR_REGS_AUTO_LOAD_PTR	0x3B
 #define I40E_SR_CORER_REGS_AUTO_LOAD_PTR	0x3C
+#define I40E_SR_PHY_ACTIVITY_LIST_PTR		0x3D
 #define I40E_SR_PCIE_ALT_AUTO_LOAD_PTR		0x3E
 #define I40E_SR_SW_CHECKSUM_WORD		0x3F
 #define I40E_SR_1ST_FREE_PROVISION_AREA_PTR	0x40
