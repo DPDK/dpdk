@@ -1126,7 +1126,8 @@ enum i40e_status_code i40e_get_mac_addr(struct i40e_hw *hw, u8 *mac_addr)
 	status = i40e_aq_mac_address_read(hw, &flags, &addrs, NULL);
 
 	if (flags & I40E_AQC_LAN_ADDR_VALID)
-		memcpy(mac_addr, &addrs.pf_lan_mac, sizeof(addrs.pf_lan_mac));
+		i40e_memcpy(mac_addr, &addrs.pf_lan_mac, sizeof(addrs.pf_lan_mac),
+			I40E_NONDMA_TO_NONDMA);
 
 	return status;
 }
@@ -1149,7 +1150,8 @@ enum i40e_status_code i40e_get_port_mac_addr(struct i40e_hw *hw, u8 *mac_addr)
 		return status;
 
 	if (flags & I40E_AQC_PORT_ADDR_VALID)
-		memcpy(mac_addr, &addrs.port_mac, sizeof(addrs.port_mac));
+		i40e_memcpy(mac_addr, &addrs.port_mac, sizeof(addrs.port_mac),
+			I40E_NONDMA_TO_NONDMA);
 	else
 		status = I40E_ERR_INVALID_MAC_ADDR;
 
@@ -1207,7 +1209,8 @@ enum i40e_status_code i40e_get_san_mac_addr(struct i40e_hw *hw,
 		return status;
 
 	if (flags & I40E_AQC_SAN_ADDR_VALID)
-		memcpy(mac_addr, &addrs.pf_san_mac, sizeof(addrs.pf_san_mac));
+		i40e_memcpy(mac_addr, &addrs.pf_san_mac, sizeof(addrs.pf_san_mac),
+			I40E_NONDMA_TO_NONDMA);
 	else
 		status = I40E_ERR_INVALID_MAC_ADDR;
 
@@ -2760,8 +2763,8 @@ enum i40e_status_code i40e_update_link_info(struct i40e_hw *hw)
 		if (status)
 			return status;
 
-		memcpy(hw->phy.link_info.module_type, &abilities.module_type,
-			sizeof(hw->phy.link_info.module_type));
+		i40e_memcpy(hw->phy.link_info.module_type, &abilities.module_type,
+			sizeof(hw->phy.link_info.module_type), I40E_NONDMA_TO_NONDMA);
 	}
 	return status;
 }

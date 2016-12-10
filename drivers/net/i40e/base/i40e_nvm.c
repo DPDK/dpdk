@@ -1423,7 +1423,8 @@ STATIC enum i40e_status_code i40e_nvmupd_exec_aq(struct i40e_hw *hw,
 
 		if (hw->nvm_buff.va) {
 			buff = hw->nvm_buff.va;
-			memcpy(buff, &bytes[aq_desc_len], aq_data_len);
+			i40e_memcpy(buff, &bytes[aq_desc_len], aq_data_len,
+				I40E_NONDMA_TO_NONDMA);
 		}
 	}
 
@@ -1496,7 +1497,7 @@ STATIC enum i40e_status_code i40e_nvmupd_get_aq_result(struct i40e_hw *hw,
 			   __func__, cmd->offset, cmd->offset + len);
 
 		buff = ((u8 *)&hw->nvm_wb_desc) + cmd->offset;
-		memcpy(bytes, buff, len);
+		i40e_memcpy(bytes, buff, len, I40E_NONDMA_TO_NONDMA);
 
 		bytes += len;
 		remainder -= len;
@@ -1510,7 +1511,7 @@ STATIC enum i40e_status_code i40e_nvmupd_get_aq_result(struct i40e_hw *hw,
 
 		i40e_debug(hw, I40E_DEBUG_NVM, "%s: databuf bytes %d to %d\n",
 			   __func__, start_byte, start_byte + remainder);
-		memcpy(bytes, buff, remainder);
+		i40e_memcpy(bytes, buff, remainder, I40E_NONDMA_TO_NONDMA);
 	}
 
 	return I40E_SUCCESS;
