@@ -3833,7 +3833,6 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 			else
 				p->acpi_prog_method = I40E_ACPI_PROGRAMMING_METHOD_HW_FVL;
 			p->proxy_support = (phys_id & I40E_PROXY_SUPPORT_MASK) ? 1 : 0;
-			p->proxy_support = p->proxy_support;
 			i40e_debug(hw, I40E_DEBUG_INIT,
 				   "HW Capability: WOL proxy filters = %d\n",
 				   hw->num_wol_proxy_filters);
@@ -6007,9 +6006,6 @@ enum i40e_status_code i40e_aq_configure_partition_bw(struct i40e_hw *hw,
 	/* Indirect command */
 	desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_BUF);
 	desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_RD);
-
-	if (bwd_size > I40E_AQ_LARGE_BUF)
-		desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_LB);
 
 	desc.datalen = CPU_TO_LE16(bwd_size);
 
