@@ -1088,7 +1088,6 @@ static const struct rte_pci_id pci_id_i40evf_map[] = {
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_VF_HV) },
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_X722_A0_VF) },
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_X722_VF) },
-	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_X722_VF_HV) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 

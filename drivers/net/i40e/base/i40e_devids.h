@@ -70,7 +70,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I40E_DEV_ID_SFP_I_X722		0x37D3
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
 #define I40E_DEV_ID_X722_VF		0x37CD
-#define I40E_DEV_ID_X722_VF_HV		0x37D9
 #endif /* VF_DRIVER */
 #endif /* X722_SUPPORT */
 

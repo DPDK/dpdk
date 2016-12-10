@@ -87,7 +87,6 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 #ifdef X722_SUPPORT
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER)
 		case I40E_DEV_ID_X722_VF:
-		case I40E_DEV_ID_X722_VF_HV:
 #ifdef X722_A0_SUPPORT
 		case I40E_DEV_ID_X722_A0_VF:
 #endif
