@@ -1823,11 +1823,11 @@ struct i40e_aq_set_phy_config { /* same bits as above in all */
 #define I40E_AQ_PHY_TYPE_EXT_25G_SR	0x04
 #define I40E_AQ_PHY_TYPE_EXT_25G_LR	0x08
 	u8	fec_config;
-#define I40E_AQ_SET_FEC_ABILITY_KR	(1 << 0)
-#define I40E_AQ_SET_FEC_ABILITY_RS	(1 << 1)
-#define I40E_AQ_SET_FEC_REQUEST_KR	(1 << 2)
-#define I40E_AQ_SET_FEC_REQUEST_RS	(1 << 3)
-#define I40E_AQ_SET_FEC_AUTO		(1 << 4)
+#define I40E_AQ_SET_FEC_ABILITY_KR	BIT(0)
+#define I40E_AQ_SET_FEC_ABILITY_RS	BIT(1)
+#define I40E_AQ_SET_FEC_REQUEST_KR	BIT(2)
+#define I40E_AQ_SET_FEC_REQUEST_RS	BIT(3)
+#define I40E_AQ_SET_FEC_AUTO		BIT(4)
 #define I40E_AQ_PHY_FEC_CONFIG_SHIFT	0x0
 #define I40E_AQ_PHY_FEC_CONFIG_MASK	(0x1F << I40E_AQ_PHY_FEC_CONFIG_SHIFT)
 	u8	reserved;
