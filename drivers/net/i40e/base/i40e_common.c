@@ -6852,7 +6852,7 @@ enum i40e_status_code i40e_aq_set_arp_proxy_config(struct i40e_hw *hw,
 				  CPU_TO_LE32(I40E_HI_DWORD((u64)proxy_config));
 	desc.params.external.addr_low =
 				  CPU_TO_LE32(I40E_LO_DWORD((u64)proxy_config));
-	desc.datalen = sizeof(struct i40e_aqc_arp_proxy_data);
+	desc.datalen = CPU_TO_LE16(sizeof(struct i40e_aqc_arp_proxy_data));
 
 	status = i40e_asq_send_command(hw, &desc, proxy_config,
 				       sizeof(struct i40e_aqc_arp_proxy_data),
@@ -6889,7 +6889,7 @@ enum i40e_status_code i40e_aq_set_ns_proxy_table_entry(struct i40e_hw *hw,
 		CPU_TO_LE32(I40E_HI_DWORD((u64)ns_proxy_table_entry));
 	desc.params.external.addr_low =
 		CPU_TO_LE32(I40E_LO_DWORD((u64)ns_proxy_table_entry));
-	desc.datalen = sizeof(struct i40e_aqc_ns_proxy_data);
+	desc.datalen = CPU_TO_LE16(sizeof(struct i40e_aqc_ns_proxy_data));
 
 	status = i40e_asq_send_command(hw, &desc, ns_proxy_table_entry,
 				       sizeof(struct i40e_aqc_ns_proxy_data),
@@ -6952,7 +6952,7 @@ enum i40e_status_code i40e_aq_set_clear_wol_filter(struct i40e_hw *hw,
 	cmd->valid_flags = CPU_TO_LE16(valid_flags);
 
 	buff_len = sizeof(*filter);
-	desc.datalen = buff_len;
+	desc.datalen = CPU_TO_LE16(buff_len);
 
 	desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_BUF);
 	desc.flags |= CPU_TO_LE16((u16)I40E_AQ_FLAG_RD);
