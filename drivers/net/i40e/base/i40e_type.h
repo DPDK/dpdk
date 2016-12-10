@@ -365,9 +365,9 @@ enum i40e_acpi_programming_method {
 	I40E_ACPI_PROGRAMMING_METHOD_AQC_FPK = 1
 };
 
-#define I40E_WOL_SUPPORT_MASK			1
-#define I40E_ACPI_PROGRAMMING_METHOD_MASK	(1 << 1)
-#define I40E_PROXY_SUPPORT_MASK			(1 << 2)
+#define I40E_WOL_SUPPORT_MASK			0x1
+#define I40E_ACPI_PROGRAMMING_METHOD_MASK	0x2
+#define I40E_PROXY_SUPPORT_MASK			0x4
 
 #endif
 /* Capabilities of a PF or a VF or the whole device */
