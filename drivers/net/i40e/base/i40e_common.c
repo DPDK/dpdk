@@ -1789,6 +1789,7 @@ enum i40e_status_code i40e_set_fc(struct i40e_hw *hw, u8 *aq_failures,
 			config.abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
 		/* Copy over all the old settings */
 		config.phy_type = abilities.phy_type;
+		config.phy_type_ext = abilities.phy_type_ext;
 		config.link_speed = abilities.link_speed;
 		config.eee_capability = abilities.eee_capability;
 		config.eeer = abilities.eeer_val;
