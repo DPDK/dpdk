@@ -219,19 +219,19 @@ enum i40e_status_code i40e_read_nvm_word(struct i40e_hw *hw, u16 offset,
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
 
+	ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
+	if (!ret_code) {
 #ifdef X722_SUPPORT
-	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE) {
-		ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
-		if (!ret_code) {
+		if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE) {
 			ret_code = i40e_read_nvm_word_aq(hw, offset, data);
-			i40e_release_nvm(hw);
+		} else {
+			ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
 		}
-	} else {
-		ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
-	}
 #else
-	ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
+		ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
 #endif
+		i40e_release_nvm(hw);
+	}
 	return ret_code;
 }
 
