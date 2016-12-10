@@ -212,7 +212,6 @@ enum i40e_memcpy_type {
  */
 enum i40e_mac_type {
 	I40E_MAC_UNKNOWN = 0,
-	I40E_MAC_X710,
 	I40E_MAC_XL710,
 	I40E_MAC_VF,
 #ifdef X722_SUPPORT
