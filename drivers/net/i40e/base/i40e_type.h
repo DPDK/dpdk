@@ -196,9 +196,7 @@ enum i40e_memcpy_type {
 	I40E_DMA_TO_NONDMA
 };
 
-#ifdef X722_SUPPORT
 #define I40E_FW_API_VERSION_MINOR_X722	0x0005
-#endif
 #define I40E_FW_API_VERSION_MINOR_X710	0x0005
 
 
@@ -214,10 +212,8 @@ enum i40e_mac_type {
 	I40E_MAC_UNKNOWN = 0,
 	I40E_MAC_XL710,
 	I40E_MAC_VF,
-#ifdef X722_SUPPORT
 	I40E_MAC_X722,
 	I40E_MAC_X722_VF,
-#endif
 	I40E_MAC_GENERIC,
 };
 
@@ -359,7 +355,6 @@ struct i40e_phy_info {
 #define I40E_HW_CAP_MDIO_PORT_MODE_MDIO		0
 #define I40E_HW_CAP_MDIO_PORT_MODE_I2C		1
 
-#ifdef X722_SUPPORT
 enum i40e_acpi_programming_method {
 	I40E_ACPI_PROGRAMMING_METHOD_HW_FVL = 0,
 	I40E_ACPI_PROGRAMMING_METHOD_AQC_FPK = 1
@@ -369,7 +364,6 @@ enum i40e_acpi_programming_method {
 #define I40E_ACPI_PROGRAMMING_METHOD_MASK	0x2
 #define I40E_PROXY_SUPPORT_MASK			0x4
 
-#endif
 /* Capabilities of a PF or a VF or the whole device */
 struct i40e_hw_capabilities {
 	u32  switch_mode;
@@ -437,11 +431,9 @@ struct i40e_hw_capabilities {
 	u32 enabled_tcmap;
 	u32 maxtc;
 	u64 wr_csr_prot;
-#ifdef X722_SUPPORT
 	bool apm_wol_support;
 	enum i40e_acpi_programming_method acpi_prog_method;
 	bool proxy_support;
-#endif
 };
 
 struct i40e_mac_info {
@@ -703,30 +695,22 @@ struct i40e_hw {
 	struct i40e_dcbx_config remote_dcbx_config; /* Peer Cfg */
 	struct i40e_dcbx_config desired_dcbx_config; /* CEE Desired Cfg */
 
-#ifdef X722_SUPPORT
 	/* WoL and proxy support */
 	u16 num_wol_proxy_filters;
 	u16 wol_proxy_vsi_seid;
 
-#endif
 #define I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE BIT_ULL(0)
 	u64 flags;
 
 	/* debug mask */
 	u32 debug_mask;
-#ifndef I40E_NDIS_SUPPORT
 	char err_str[16];
-#endif /* I40E_NDIS_SUPPORT */
 };
 
 STATIC INLINE bool i40e_is_vf(struct i40e_hw *hw)
 {
-#ifdef X722_SUPPORT
 	return (hw->mac.type == I40E_MAC_VF ||
 		hw->mac.type == I40E_MAC_X722_VF);
-#else
-	return hw->mac.type == I40E_MAC_VF;
-#endif
 }
 
 struct i40e_driver_version {
@@ -830,11 +814,7 @@ enum i40e_rx_desc_status_bits {
 	I40E_RX_DESC_STATUS_CRCP_SHIFT		= 4,
 	I40E_RX_DESC_STATUS_TSYNINDX_SHIFT	= 5, /* 2 BITS */
 	I40E_RX_DESC_STATUS_TSYNVALID_SHIFT	= 7,
-#ifdef X722_SUPPORT
 	I40E_RX_DESC_STATUS_EXT_UDP_0_SHIFT	= 8,
-#else
-	I40E_RX_DESC_STATUS_RESERVED1_SHIFT	= 8,
-#endif
 
 	I40E_RX_DESC_STATUS_UMBCAST_SHIFT	= 9, /* 2 BITS */
 	I40E_RX_DESC_STATUS_FLM_SHIFT		= 11,
@@ -842,11 +822,7 @@ enum i40e_rx_desc_status_bits {
 	I40E_RX_DESC_STATUS_LPBK_SHIFT		= 14,
 	I40E_RX_DESC_STATUS_IPV6EXADD_SHIFT	= 15,
 	I40E_RX_DESC_STATUS_RESERVED2_SHIFT	= 16, /* 2 BITS */
-#ifdef X722_SUPPORT
 	I40E_RX_DESC_STATUS_INT_UDP_0_SHIFT	= 18,
-#else
-	I40E_RX_DESC_STATUS_UDP_0_SHIFT		= 18,
-#endif
 	I40E_RX_DESC_STATUS_LAST /* this entry must be last!!! */
 };
 
@@ -1224,10 +1200,8 @@ enum i40e_tx_ctx_desc_eipt_offload {
 #define I40E_TXD_CTX_QW0_DECTTL_MASK	(0xFULL << \
 					 I40E_TXD_CTX_QW0_DECTTL_SHIFT)
 
-#ifdef X722_SUPPORT
 #define I40E_TXD_CTX_QW0_L4T_CS_SHIFT	23
 #define I40E_TXD_CTX_QW0_L4T_CS_MASK	BIT_ULL(I40E_TXD_CTX_QW0_L4T_CS_SHIFT)
-#endif
 struct i40e_nop_desc {
 	__le64 rsvd;
 	__le64 dtype_cmd;
@@ -1264,38 +1238,24 @@ struct i40e_filter_program_desc {
 
 /* Packet Classifier Types for filters */
 enum i40e_filter_pctype {
-#ifdef X722_SUPPORT
 	/* Note: Values 0-28 are reserved for future use.
 	 * Value 29, 30, 32 are not supported on XL710 and X710.
 	 */
 	I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP	= 29,
 	I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP	= 30,
-#else
-	/* Note: Values 0-30 are reserved for future use */
-#endif
 	I40E_FILTER_PCTYPE_NONF_IPV4_UDP		= 31,
-#ifdef X722_SUPPORT
 	I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK	= 32,
-#else
-	/* Note: Value 32 is reserved for future use */
-#endif
 	I40E_FILTER_PCTYPE_NONF_IPV4_TCP		= 33,
 	I40E_FILTER_PCTYPE_NONF_IPV4_SCTP		= 34,
 	I40E_FILTER_PCTYPE_NONF_IPV4_OTHER		= 35,
 	I40E_FILTER_PCTYPE_FRAG_IPV4			= 36,
-#ifdef X722_SUPPORT
 	/* Note: Values 37-38 are reserved for future use.
 	 * Value 39, 40, 42 are not supported on XL710 and X710.
 	 */
 	I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP	= 39,
 	I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP	= 40,
-#else
-	/* Note: Values 37-40 are reserved for future use */
-#endif
 	I40E_FILTER_PCTYPE_NONF_IPV6_UDP		= 41,
-#ifdef X722_SUPPORT
 	I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK	= 42,
-#endif
 	I40E_FILTER_PCTYPE_NONF_IPV6_TCP		= 43,
 	I40E_FILTER_PCTYPE_NONF_IPV6_SCTP		= 44,
 	I40E_FILTER_PCTYPE_NONF_IPV6_OTHER		= 45,
@@ -1350,12 +1310,10 @@ enum i40e_filter_program_desc_pcmd {
 						 I40E_TXD_FLTR_QW1_CMD_SHIFT)
 #define I40E_TXD_FLTR_QW1_FD_STATUS_MASK (0x3ULL << \
 					  I40E_TXD_FLTR_QW1_FD_STATUS_SHIFT)
-#ifdef X722_SUPPORT
 
 #define I40E_TXD_FLTR_QW1_ATR_SHIFT	(0xEULL + \
 					 I40E_TXD_FLTR_QW1_CMD_SHIFT)
 #define I40E_TXD_FLTR_QW1_ATR_MASK	BIT_ULL(I40E_TXD_FLTR_QW1_ATR_SHIFT)
-#endif
 
 #define I40E_TXD_FLTR_QW1_CNTINDEX_SHIFT 20
 #define I40E_TXD_FLTR_QW1_CNTINDEX_MASK	(0x1FFUL << \

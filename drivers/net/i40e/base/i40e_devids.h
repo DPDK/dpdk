@@ -55,7 +55,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define I40E_DEV_ID_VF			0x154C
 #define I40E_DEV_ID_VF_HV		0x1571
 #endif /* VF_DRIVER */
-#ifdef X722_SUPPORT
 #ifdef X722_A0_SUPPORT
 #define I40E_DEV_ID_X722_A0		0x374C
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER)
@@ -71,7 +70,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
 #define I40E_DEV_ID_X722_VF		0x37CD
 #endif /* VF_DRIVER */
-#endif /* X722_SUPPORT */
 
 #define i40e_is_40G_device(d)		((d) == I40E_DEV_ID_QSFP_A  || \
 					 (d) == I40E_DEV_ID_QSFP_B  || \

@@ -221,15 +221,11 @@ enum i40e_status_code i40e_read_nvm_word(struct i40e_hw *hw, u16 offset,
 
 	ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 	if (!ret_code) {
-#ifdef X722_SUPPORT
 		if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE) {
 			ret_code = i40e_read_nvm_word_aq(hw, offset, data);
 		} else {
 			ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
 		}
-#else
-		ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
-#endif
 		i40e_release_nvm(hw);
 	}
 	return ret_code;
@@ -249,14 +245,10 @@ enum i40e_status_code __i40e_read_nvm_word(struct i40e_hw *hw,
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
 
-#ifdef X722_SUPPORT
 	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE)
 		ret_code = i40e_read_nvm_word_aq(hw, offset, data);
 	else
 		ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
-#else
-	ret_code = i40e_read_nvm_word_srctl(hw, offset, data);
-#endif
 	return ret_code;
 }
 
@@ -348,14 +340,10 @@ enum i40e_status_code __i40e_read_nvm_buffer(struct i40e_hw *hw,
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
 
-#ifdef X722_SUPPORT
 	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE)
 		ret_code = i40e_read_nvm_buffer_aq(hw, offset, words, data);
 	else
 		ret_code = i40e_read_nvm_buffer_srctl(hw, offset, words, data);
-#else
-	ret_code = i40e_read_nvm_buffer_srctl(hw, offset, words, data);
-#endif
 	return ret_code;
 }
 
@@ -375,7 +363,6 @@ enum i40e_status_code i40e_read_nvm_buffer(struct i40e_hw *hw, u16 offset,
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
 
-#ifdef X722_SUPPORT
 	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE) {
 		ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 		if (!ret_code) {
@@ -386,9 +373,6 @@ enum i40e_status_code i40e_read_nvm_buffer(struct i40e_hw *hw, u16 offset,
 	} else {
 		ret_code = i40e_read_nvm_buffer_srctl(hw, offset, words, data);
 	}
-#else
-	ret_code = i40e_read_nvm_buffer_srctl(hw, offset, words, data);
-#endif
 	return ret_code;
 }
 

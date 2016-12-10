@@ -139,12 +139,10 @@ enum i40e_admin_queue_opc {
 	i40e_aqc_opc_list_func_capabilities	= 0x000A,
 	i40e_aqc_opc_list_dev_capabilities	= 0x000B,
 
-#ifdef X722_SUPPORT
 	/* Proxy commands */
 	i40e_aqc_opc_set_proxy_config		= 0x0104,
 	i40e_aqc_opc_set_ns_proxy_table_entry	= 0x0105,
 
-#endif
 	/* LAA */
 	i40e_aqc_opc_mac_address_read	= 0x0107,
 	i40e_aqc_opc_mac_address_write	= 0x0108,
@@ -152,13 +150,11 @@ enum i40e_admin_queue_opc {
 	/* PXE */
 	i40e_aqc_opc_clear_pxe_mode	= 0x0110,
 
-#ifdef X722_SUPPORT
 	/* WoL commands */
 	i40e_aqc_opc_set_wol_filter	= 0x0120,
 	i40e_aqc_opc_get_wake_reason	= 0x0121,
 	i40e_aqc_opc_clear_all_wol_filters = 0x025E,
 
-#endif
 	/* internal switch commands */
 	i40e_aqc_opc_get_switch_config		= 0x0200,
 	i40e_aqc_opc_add_statistics		= 0x0201,
@@ -283,12 +279,10 @@ enum i40e_admin_queue_opc {
 	/* Tunnel commands */
 	i40e_aqc_opc_add_udp_tunnel	= 0x0B00,
 	i40e_aqc_opc_del_udp_tunnel	= 0x0B01,
-#ifdef X722_SUPPORT
 	i40e_aqc_opc_set_rss_key	= 0x0B02,
 	i40e_aqc_opc_set_rss_lut	= 0x0B03,
 	i40e_aqc_opc_get_rss_key	= 0x0B04,
 	i40e_aqc_opc_get_rss_lut	= 0x0B05,
-#endif
 
 	/* Async Events */
 	i40e_aqc_opc_event_lan_overflow		= 0x1001,
@@ -587,7 +581,6 @@ struct i40e_aqc_clear_pxe {
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_clear_pxe);
 
-#ifdef X722_SUPPORT
 /* Set WoL Filter (0x0120) */
 
 struct i40e_aqc_set_wol_filter {
@@ -639,7 +632,6 @@ struct i40e_aqc_get_wake_reason_completion {
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_get_wake_reason_completion);
 
-#endif /* X722_SUPPORT */
 /* Switch configuration commands (0x02xx) */
 
 /* Used by many indirect commands that only pass an seid and a buffer in the
@@ -944,16 +936,12 @@ struct i40e_aqc_vsi_properties_data {
 					 I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT)
 	/* queueing option section */
 	u8	queueing_opt_flags;
-#ifdef X722_SUPPORT
 #define I40E_AQ_VSI_QUE_OPT_MULTICAST_UDP_ENA	0x04
 #define I40E_AQ_VSI_QUE_OPT_UNICAST_UDP_ENA	0x08
-#endif
 #define I40E_AQ_VSI_QUE_OPT_TCP_ENA	0x10
 #define I40E_AQ_VSI_QUE_OPT_FCOE_ENA	0x20
-#ifdef X722_SUPPORT
 #define I40E_AQ_VSI_QUE_OPT_RSS_LUT_PF	0x00
 #define I40E_AQ_VSI_QUE_OPT_RSS_LUT_VSI	0x40
-#endif
 	u8	queueing_opt_reserved[3];
 	/* scheduler section */
 	u8	up_enable_bits;
@@ -2427,7 +2415,6 @@ struct i40e_aqc_del_udp_tunnel_completion {
 };
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_del_udp_tunnel_completion);
-#ifdef X722_SUPPORT
 
 struct i40e_aqc_get_set_rss_key {
 #define I40E_AQC_SET_RSS_KEY_VSI_VALID		(0x1 << 15)
@@ -2468,7 +2455,6 @@ struct  i40e_aqc_get_set_rss_lut {
 };
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_get_set_rss_lut);
-#endif
 
 /* tunnel key structure 0x0B10 */
 

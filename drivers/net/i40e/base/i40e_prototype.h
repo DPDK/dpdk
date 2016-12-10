@@ -78,7 +78,6 @@ void i40e_debug_aq(struct i40e_hw *hw, enum i40e_debug_mask mask,
 void i40e_idle_aq(struct i40e_hw *hw);
 bool i40e_check_asq_alive(struct i40e_hw *hw);
 enum i40e_status_code i40e_aq_queue_shutdown(struct i40e_hw *hw, bool unloading);
-#ifdef X722_SUPPORT
 
 enum i40e_status_code i40e_aq_get_rss_lut(struct i40e_hw *hw, u16 seid,
 					  bool pf_lut, u8 *lut, u16 lut_size);
@@ -90,11 +89,8 @@ enum i40e_status_code i40e_aq_get_rss_key(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_set_rss_key(struct i40e_hw *hw,
 				     u16 seid,
 				     struct i40e_aqc_get_set_rss_key_data *key);
-#endif
-#ifndef I40E_NDIS_SUPPORT
 const char *i40e_aq_str(struct i40e_hw *hw, enum i40e_admin_queue_err aq_err);
 const char *i40e_stat_str(struct i40e_hw *hw, enum i40e_status_code stat_err);
-#endif /* I40E_NDIS_SUPPORT */
 
 #ifdef PF_DRIVER
 
@@ -527,7 +523,6 @@ enum i40e_status_code i40e_aq_rx_ctl_write_register(struct i40e_hw *hw,
 				u32 reg_addr, u32 reg_val,
 				struct i40e_asq_cmd_details *cmd_details);
 void i40e_write_rx_ctl(struct i40e_hw *hw, u32 reg_addr, u32 reg_val);
-#ifdef X722_SUPPORT
 enum i40e_status_code i40e_aq_set_arp_proxy_config(struct i40e_hw *hw,
 			struct i40e_aqc_arp_proxy_data *proxy_config,
 			struct i40e_asq_cmd_details *cmd_details);
@@ -545,7 +540,6 @@ enum i40e_status_code i40e_aq_get_wake_event_reason(struct i40e_hw *hw,
 			struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_clear_all_wol_filters(struct i40e_hw *hw,
 			struct i40e_asq_cmd_details *cmd_details);
-#endif
 enum i40e_status_code i40e_read_phy_register_clause22(struct i40e_hw *hw,
 					u16 reg, u8 phy_addr, u16 *value);
 enum i40e_status_code i40e_write_phy_register_clause22(struct i40e_hw *hw,

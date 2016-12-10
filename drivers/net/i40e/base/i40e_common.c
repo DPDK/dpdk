@@ -71,7 +71,6 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_25G_SFP28:
 			hw->mac.type = I40E_MAC_XL710;
 			break;
-#ifdef X722_SUPPORT
 #ifdef X722_A0_SUPPORT
 		case I40E_DEV_ID_X722_A0:
 #endif
@@ -83,8 +82,6 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_SFP_I_X722:
 			hw->mac.type = I40E_MAC_X722;
 			break;
-#endif
-#ifdef X722_SUPPORT
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER)
 		case I40E_DEV_ID_X722_VF:
 #ifdef X722_A0_SUPPORT
@@ -93,7 +90,6 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 			hw->mac.type = I40E_MAC_X722_VF;
 			break;
 #endif /* INTEGRATED_VF || VF_DRIVER */
-#endif /* X722_SUPPORT */
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER)
 		case I40E_DEV_ID_VF:
 		case I40E_DEV_ID_VF_HV:
@@ -113,7 +109,6 @@ STATIC enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 	return status;
 }
 
-#ifndef I40E_NDIS_SUPPORT
 /**
  * i40e_aq_str - convert AQ err code to a string
  * @hw: pointer to the HW structure
@@ -320,7 +315,6 @@ const char *i40e_stat_str(struct i40e_hw *hw, enum i40e_status_code stat_err)
 	return hw->err_str;
 }
 
-#endif /* I40E_NDIS_SUPPORT */
 /**
  * i40e_debug_aq
  * @hw: debug mask related to admin queue
@@ -446,7 +440,6 @@ enum i40e_status_code i40e_aq_queue_shutdown(struct i40e_hw *hw,
 
 	return status;
 }
-#ifdef X722_SUPPORT
 
 /**
  * i40e_aq_get_set_rss_lut
@@ -605,7 +598,6 @@ enum i40e_status_code i40e_aq_set_rss_key(struct i40e_hw *hw,
 {
 	return i40e_aq_get_set_rss_key(hw, vsi_id, key, true);
 }
-#endif /* X722_SUPPORT */
 
 /* The i40e_ptype_lookup table is used to convert from the 8-bit ptype in the
  * hardware to a bit-field that can be used by SW to more easily determine the
@@ -1021,9 +1013,7 @@ enum i40e_status_code i40e_init_shared_code(struct i40e_hw *hw)
 
 	switch (hw->mac.type) {
 	case I40E_MAC_XL710:
-#ifdef X722_SUPPORT
 	case I40E_MAC_X722:
-#endif
 		break;
 	default:
 		return I40E_ERR_DEVICE_NOT_SUPPORTED;
@@ -1043,11 +1033,9 @@ enum i40e_status_code i40e_init_shared_code(struct i40e_hw *hw)
 	else
 		hw->pf_id = (u8)(func_rid & 0x7);
 
-#ifdef X722_SUPPORT
 	if (hw->mac.type == I40E_MAC_X722)
 		hw->flags |= I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE;
 
-#endif
 	status = i40e_init_nvm(hw);
 	return status;
 }
@@ -3916,7 +3904,6 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 			if (number & I40E_NVM_MGMT_UPDATE_DISABLED)
 				p->update_disabled = true;
 			break;
-#ifdef X722_SUPPORT
 		case I40E_AQ_CAP_ID_WOL_AND_PROXY:
 			hw->num_wol_proxy_filters = (u16)number;
 			hw->wol_proxy_vsi_seid = (u16)logical_id;
@@ -3930,7 +3917,6 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 				   "HW Capability: WOL proxy filters = %d\n",
 				   hw->num_wol_proxy_filters);
 			break;
-#endif
 		default:
 			break;
 		}
@@ -6823,7 +6809,6 @@ enum i40e_status_code i40e_vf_reset(struct i40e_hw *hw)
 				      I40E_SUCCESS, NULL, 0, NULL);
 }
 #endif /* VF_DRIVER */
-#ifdef X722_SUPPORT
 
 /**
  * i40e_aq_set_arp_proxy_config
@@ -7013,4 +6998,3 @@ enum i40e_status_code i40e_aq_clear_all_wol_filters(struct i40e_hw *hw,
 
 	return status;
 }
-#endif /* X722_SUPPORT */
