@@ -46,10 +46,12 @@
 #define VHOST_USER_PROTOCOL_F_MQ	0
 #define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
 #define VHOST_USER_PROTOCOL_F_RARP	2
+#define VHOST_USER_PROTOCOL_F_REPLY_ACK	3
 
 #define VHOST_USER_PROTOCOL_FEATURES	((1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |\
-					 (1ULL << VHOST_USER_PROTOCOL_F_RARP))
+					 (1ULL << VHOST_USER_PROTOCOL_F_RARP) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK))
 
 typedef enum VhostUserRequest {
 	VHOST_USER_NONE = 0,
@@ -98,6 +100,7 @@ typedef struct VhostUserMsg {
 
 #define VHOST_USER_VERSION_MASK     0x3
 #define VHOST_USER_REPLY_MASK       (0x1 << 2)
+#define VHOST_USER_NEED_REPLY		(0x1 << 3)
 	uint32_t flags;
 	uint32_t size; /* the following payload size */
 	union {

@@ -903,6 +903,7 @@ send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 		return 0;
 
 	msg->flags &= ~VHOST_USER_VERSION_MASK;
+	msg->flags &= ~VHOST_USER_NEED_REPLY;
 	msg->flags |= VHOST_USER_VERSION;
 	msg->flags |= VHOST_USER_REPLY_MASK;
 
@@ -938,6 +939,7 @@ vhost_user_msg_handler(int vid, int fd)
 		return -1;
 	}
 
+	ret = 0;
 	RTE_LOG(INFO, VHOST_CONFIG, "read message %s\n",
 		vhost_message_str[msg.request]);
 	switch (msg.request) {
@@ -967,7 +969,7 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_MEM_TABLE:
-		vhost_user_set_mem_table(dev, &msg);
+		ret = vhost_user_set_mem_table(dev, &msg);
 		break;
 
 	case VHOST_USER_SET_LOG_BASE:
@@ -1025,8 +1027,15 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	default:
+		ret = -1;
 		break;
 
+	}
+
+	if (msg.flags & VHOST_USER_NEED_REPLY) {
+		msg.payload.u64 = !!ret;
+		msg.size = sizeof(msg.payload.u64);
+		send_vhost_message(fd, &msg);
 	}
 
 	return 0;
