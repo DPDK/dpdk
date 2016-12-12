@@ -348,6 +348,12 @@ CONFIG_RTE_LIBRTE_QEDE_FW=""
 CONFIG_RTE_LIBRTE_PMD_AF_PACKET=n
 
 #
+# Compile the TAP PMD
+# It is enabled by default for Linux only.
+#
+CONFIG_RTE_LIBRTE_PMD_TAP=n
+
+#
 # Compile Xen PMD
 #
 CONFIG_RTE_LIBRTE_PMD_XENVIRT=n

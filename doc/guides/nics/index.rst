@@ -52,6 +52,7 @@ Network Interface Controller Drivers
     qede
     sfc_efx
     szedata2
+    tap
     thunderx
     virtio
     vhost
