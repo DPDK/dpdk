@@ -6654,6 +6654,7 @@ cmdline_parse_inst_t cmd_set_vf_macvlan_filter = {
 	},
 };
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** CONFIGURE VF TRAFFIC CONTROL *** */
 struct cmd_set_vf_traffic {
 	cmdline_fixed_string_t set;
@@ -6714,7 +6715,9 @@ cmdline_parse_inst_t cmd_set_vf_traffic = {
 		NULL,
 	},
 };
+#endif
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** CONFIGURE VF RECEIVE MODE *** */
 struct cmd_set_vf_rxmode {
 	cmdline_fixed_string_t set;
@@ -6748,7 +6751,7 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 			rx_mode |= ETH_VMDQ_ACCEPT_MULTICAST;
 	}
 
-	ret = rte_eth_dev_set_vf_rxmode(res->port_id,res->vf_id,rx_mode,(uint8_t)is_on);
+	ret = rte_pmd_ixgbe_set_vf_rxmode(res->port_id, res->vf_id, rx_mode, (uint8_t)is_on);
 	if (ret < 0)
 		printf("bad VF receive mode parameter, return code = %d \n",
 		ret);
@@ -6796,6 +6799,7 @@ cmdline_parse_inst_t cmd_set_vf_rxmode = {
 		NULL,
 	},
 };
+#endif
 
 /* *** ADD MAC ADDRESS FILTER FOR A VF OF A PORT *** */
 struct cmd_vf_mac_addr_result {
@@ -6862,6 +6866,7 @@ cmdline_parse_inst_t cmd_vf_mac_addr_filter = {
 	},
 };
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** ADD/REMOVE A VLAN IDENTIFIER TO/FROM A PORT VLAN RX FILTER *** */
 struct cmd_vf_rx_vlan_filter {
 	cmdline_fixed_string_t rx_vlan;
@@ -6924,6 +6929,7 @@ cmdline_parse_inst_t cmd_vf_rxvlan_filter = {
 		NULL,
 	},
 };
+#endif
 
 /* *** SET RATE LIMIT FOR A QUEUE OF A PORT *** */
 struct cmd_queue_rate_limit_result {
@@ -6992,6 +6998,7 @@ cmdline_parse_inst_t cmd_queue_rate_limit = {
 	},
 };
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** SET RATE LIMIT FOR A VF OF A PORT *** */
 struct cmd_vf_rate_limit_result {
 	cmdline_fixed_string_t set;
@@ -7070,6 +7077,7 @@ cmdline_parse_inst_t cmd_vf_rate_limit = {
 		NULL,
 	},
 };
+#endif
 
 /* *** ADD TUNNEL FILTER OF A PORT *** */
 struct cmd_tunnel_filter_result {
@@ -12001,15 +12009,11 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_burst,
 	(cmdline_parse_inst_t *)&cmd_config_thresh,
 	(cmdline_parse_inst_t *)&cmd_config_threshold,
-	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
 	(cmdline_parse_inst_t *)&cmd_set_uc_hash_filter,
 	(cmdline_parse_inst_t *)&cmd_set_uc_all_hash_filter,
 	(cmdline_parse_inst_t *)&cmd_vf_mac_addr_filter,
 	(cmdline_parse_inst_t *)&cmd_set_vf_macvlan_filter,
-	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
-	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_queue_rate_limit,
-	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_tunnel_filter,
 	(cmdline_parse_inst_t *)&cmd_tunnel_udp_config,
 	(cmdline_parse_inst_t *)&cmd_global_config,
@@ -12069,6 +12073,10 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_macsec_offload_off,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sc,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sa,
+	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
+	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
+	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
+	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 #endif
 	NULL,
 };

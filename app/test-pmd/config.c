@@ -94,6 +94,9 @@
 #include <rte_cycles.h>
 #include <rte_flow.h>
 #include <rte_errno.h>
+#ifdef RTE_LIBRTE_IXGBE_PMD
+#include <rte_pmd_ixgbe.h>
+#endif
 
 #include "testpmd.h"
 
@@ -2822,6 +2825,7 @@ fdir_set_flex_payload(portid_t port_id, struct rte_eth_flex_payload_cfg *cfg)
 
 }
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 void
 set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
@@ -2830,16 +2834,17 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 	if (is_rx)
-		diag = rte_eth_dev_set_vf_rx(port_id,vf,on);
+		diag = rte_pmd_ixgbe_set_vf_rx(port_id, vf, on);
 	else
-		diag = rte_eth_dev_set_vf_tx(port_id,vf,on);
+		diag = rte_pmd_ixgbe_set_vf_tx(port_id, vf, on);
+
 	if (diag == 0)
 		return;
 	if(is_rx)
-		printf("rte_eth_dev_set_vf_rx for port_id=%d failed "
+		printf("rte_pmd_ixgbe_set_vf_rx for port_id=%d failed "
 	       		"diag=%d\n", port_id, diag);
 	else
-		printf("rte_eth_dev_set_vf_tx for port_id=%d failed "
+		printf("rte_pmd_ixgbe_set_vf_tx for port_id=%d failed "
 	       		"diag=%d\n", port_id, diag);
 
 }
@@ -2853,12 +2858,15 @@ set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
 		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
-	diag = rte_eth_dev_set_vf_vlan_filter(port_id, vlan_id, vf_mask, on);
+
+	diag = rte_pmd_ixgbe_set_vf_vlan_filter(port_id, vlan_id, vf_mask, on);
+
 	if (diag == 0)
 		return;
-	printf("rte_eth_dev_set_vf_vlan_filter for port_id=%d failed "
+	printf("rte_pmd_ixgbe_set_vf_vlan_filter for port_id=%d failed "
 	       "diag=%d\n", port_id, diag);
 }
+#endif
 
 int
 set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
@@ -2882,6 +2890,7 @@ set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
 	return diag;
 }
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 int
 set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 {
@@ -2899,13 +2908,14 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 			rate, link.link_speed);
 		return 1;
 	}
-	diag = rte_eth_set_vf_rate_limit(port_id, vf, rate, q_msk);
+	diag = rte_pmd_ixgbe_set_vf_rate_limit(port_id, vf, rate, q_msk);
 	if (diag == 0)
 		return diag;
-	printf("rte_eth_set_vf_rate_limit for port_id=%d failed diag=%d\n",
+	printf("rte_pmd_ixgbe_set_vf_rate_limit for port_id=%d failed diag=%d\n",
 		port_id, diag);
 	return diag;
 }
+#endif
 
 /*
  * Functions to manage the set of filtered Multicast MAC addresses.
