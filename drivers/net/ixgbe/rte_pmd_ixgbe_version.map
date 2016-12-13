@@ -19,10 +19,15 @@ DPDK_16.11 {
 DPDK_17.02 {
 	global:
 
-	rte_pmd_ixgbe_macsec_enable;
-	rte_pmd_ixgbe_macsec_disable;
-	rte_pmd_ixgbe_macsec_config_txsc;
 	rte_pmd_ixgbe_macsec_config_rxsc;
-	rte_pmd_ixgbe_macsec_select_txsa;
+	rte_pmd_ixgbe_macsec_config_txsc;
+	rte_pmd_ixgbe_macsec_disable;
+	rte_pmd_ixgbe_macsec_enable;
 	rte_pmd_ixgbe_macsec_select_rxsa;
+	rte_pmd_ixgbe_macsec_select_txsa;
+	rte_pmd_ixgbe_set_vf_rate_limit;
+	rte_pmd_ixgbe_set_vf_rx;
+	rte_pmd_ixgbe_set_vf_rxmode;
+	rte_pmd_ixgbe_set_vf_tx;
+	rte_pmd_ixgbe_set_vf_vlan_filter;
 } DPDK_16.11;

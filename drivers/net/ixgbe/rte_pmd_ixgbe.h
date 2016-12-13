@@ -283,6 +283,110 @@ int rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,
 		uint32_t pn, uint8_t *key);
 
 /**
+* Set RX L2 Filtering mode of a VF of an Ethernet device.
+*
+* @param port
+*   The port identifier of the Ethernet device.
+* @param vf
+*   VF id.
+* @param rx_mode
+*    The RX mode mask, which is one or more of accepting Untagged Packets,
+*    packets that match the PFUTA table, Broadcast and Multicast Promiscuous.
+*    ETH_VMDQ_ACCEPT_UNTAG,ETH_VMDQ_ACCEPT_HASH_UC,
+*    ETH_VMDQ_ACCEPT_BROADCAST and ETH_VMDQ_ACCEPT_MULTICAST will be used
+*    in rx_mode.
+* @param on
+*    1 - Enable a VF RX mode.
+*    0 - Disable a VF RX mode.
+* @return
+*   - (0) if successful.
+*   - (-ENOTSUP) if hardware doesn't support.
+*   - (-ENODEV) if *port_id* invalid.
+*   - (-EINVAL) if bad parameter.
+*/
+int
+rte_pmd_ixgbe_set_vf_rxmode(uint8_t port, uint16_t vf, uint16_t rx_mask, uint8_t on);
+
+/**
+* Enable or disable a VF traffic receive of an Ethernet device.
+*
+* @param port
+*   The port identifier of the Ethernet device.
+* @param vf
+*   VF id.
+* @param on
+*    1 - Enable a VF traffic receive.
+*    0 - Disable a VF traffic receive.
+* @return
+*   - (0) if successful.
+*   - (-ENOTSUP) if hardware doesn't support.
+*   - (-ENODEV) if *port_id* invalid.
+*   - (-EINVAL) if bad parameter.
+*/
+int
+rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on);
+
+/**
+* Enable or disable a VF traffic transmit of the Ethernet device.
+*
+* @param port
+*   The port identifier of the Ethernet device.
+* @param vf
+*   VF id.
+* @param on
+*    1 - Enable a VF traffic transmit.
+*    0 - Disable a VF traffic transmit.
+* @return
+*   - (0) if successful.
+*   - (-ENODEV) if *port_id* invalid.
+*   - (-ENOTSUP) if hardware doesn't support.
+*   - (-EINVAL) if bad parameter.
+*/
+int
+rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on);
+
+/**
+* Enable/Disable hardware VF VLAN filtering by an Ethernet device of
+* received VLAN packets tagged with a given VLAN Tag Identifier.
+*
+* @param port id
+*   The port identifier of the Ethernet device.
+* @param vlan_id
+*   The VLAN Tag Identifier whose filtering must be enabled or disabled.
+* @param vf_mask
+*    Bitmap listing which VFs participate in the VLAN filtering.
+* @param vlan_on
+*    1 - Enable VFs VLAN filtering.
+*    0 - Disable VFs VLAN filtering.
+* @return
+*   - (0) if successful.
+*   - (-ENOTSUP) if hardware doesn't support.
+*   - (-ENODEV) if *port_id* invalid.
+*   - (-EINVAL) if bad parameter.
+*/
+int
+rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan, uint64_t vf_mask, uint8_t vlan_on);
+
+/**
+ * Set the rate limitation for a vf on an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param tx_rate
+ *   The tx rate allocated from the total link speed for this VF id.
+ * @param q_msk
+ *   The queue mask which need to set the rate.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf, uint16_t tx_rate, uint64_t q_msk);
+
+/**
  * Response sent back to ixgbe driver from user app after callback
  */
 enum rte_pmd_ixgbe_mb_event_rsp {

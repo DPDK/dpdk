@@ -2348,7 +2348,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		for (vf = 0; vf < pci_dev->max_vfs; vf++)
 			for (idx = 0; idx < IXGBE_MAX_QUEUE_NUM_PER_VF; idx++)
 				if (vfinfo[vf].tx_rate[idx] != 0)
-					ixgbe_set_vf_rate_limit(dev, vf,
+					rte_pmd_ixgbe_set_vf_rate_limit(
+						dev->data->port_id, vf,
 						vfinfo[vf].tx_rate[idx],
 						1 << idx);
 	}
@@ -5069,6 +5070,271 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 	for (q = 0; q < queues_per_pool; q++)
 		(*dev->dev_ops->vlan_strip_queue_set)(dev,
 				q + vf * queues_per_pool, on);
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_rxmode(uint8_t port, uint16_t vf, uint16_t rx_mask, uint8_t on)
+{
+	int val = 0;
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct ixgbe_hw *hw;
+	uint32_t vmolr;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+		return -ENOTSUP;
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf));
+
+	if (hw->mac.type == ixgbe_mac_82598EB) {
+		PMD_INIT_LOG(ERR, "setting VF receive mode set should be done"
+			     " on 82599 hardware and newer");
+		return -ENOTSUP;
+	}
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return -ENOTSUP;
+
+	val = ixgbe_convert_vm_rx_mask_to_val(rx_mask, val);
+
+	if (on)
+		vmolr |= val;
+	else
+		vmolr &= ~val;
+
+	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(vf), vmolr);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	uint32_t reg, addr;
+	uint32_t val;
+	const uint8_t bit1 = 0x1;
+	struct ixgbe_hw *hw;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+		return -ENOTSUP;
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return -ENOTSUP;
+
+	/* for vf >= 32, set bit in PFVFRE[1], otherwise PFVFRE[0] */
+	if (vf >= 32) {
+		addr = IXGBE_VFRE(1);
+		val = bit1 << (vf - 32);
+	} else {
+		addr = IXGBE_VFRE(0);
+		val = bit1 << vf;
+	}
+
+	reg = IXGBE_READ_REG(hw, addr);
+
+	if (on)
+		reg |= val;
+	else
+		reg &= ~val;
+
+	IXGBE_WRITE_REG(hw, addr, reg);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	uint32_t reg, addr;
+	uint32_t val;
+	const uint8_t bit1 = 0x1;
+
+	struct ixgbe_hw *hw;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+		return -ENOTSUP;
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (on > 1)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return -ENOTSUP;
+
+	/* for vf >= 32, set bit in PFVFTE[1], otherwise PFVFTE[0] */
+	if (vf >= 32) {
+		addr = IXGBE_VFTE(1);
+		val = bit1 << (vf - 32);
+	} else {
+		addr = IXGBE_VFTE(0);
+		val = bit1 << vf;
+	}
+
+	reg = IXGBE_READ_REG(hw, addr);
+
+	if (on)
+		reg |= val;
+	else
+		reg &= ~val;
+
+	IXGBE_WRITE_REG(hw, addr, reg);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
+			uint64_t vf_mask, uint8_t vlan_on)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	int ret = 0;
+	uint16_t vf_idx;
+	struct ixgbe_hw *hw;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+		return -ENOTSUP;
+
+	if ((vlan > ETHER_MAX_VLAN_ID) || (vf_mask == 0))
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (ixgbe_vmdq_mode_check(hw) < 0)
+		return -ENOTSUP;
+
+	for (vf_idx = 0; vf_idx < 64; vf_idx++) {
+		if (vf_mask & ((uint64_t)(1ULL << vf_idx))) {
+			ret = hw->mac.ops.set_vfta(hw, vlan, vf_idx,
+						   vlan_on, false);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return ret;
+}
+
+int rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf,
+	uint16_t tx_rate, uint64_t q_msk)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct ixgbe_hw *hw;
+	struct ixgbe_vf_info *vfinfo;
+	struct rte_eth_link link;
+	uint8_t  nb_q_per_pool;
+	uint32_t queue_stride;
+	uint32_t queue_idx, idx = 0, vf_idx;
+	uint32_t queue_end;
+	uint16_t total_rate = 0;
+	struct rte_pci_device *pci_dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	rte_eth_link_get_nowait(port, &link);
+
+	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+		return -ENOTSUP;
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (tx_rate > link.link_speed)
+		return -EINVAL;
+
+	if (q_msk == 0)
+		return 0;
+
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	vfinfo = *(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
+	nb_q_per_pool = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	queue_stride = IXGBE_MAX_RX_QUEUE_NUM / RTE_ETH_DEV_SRIOV(dev).active;
+	queue_idx = vf * queue_stride;
+	queue_end = queue_idx + nb_q_per_pool - 1;
+	if (queue_end >= hw->mac.max_tx_queues)
+		return -EINVAL;
+
+	if (vfinfo) {
+		for (vf_idx = 0; vf_idx < pci_dev->max_vfs; vf_idx++) {
+			if (vf_idx == vf)
+				continue;
+			for (idx = 0; idx < RTE_DIM(vfinfo[vf_idx].tx_rate);
+				idx++)
+				total_rate += vfinfo[vf_idx].tx_rate[idx];
+		}
+	} else {
+		return -EINVAL;
+	}
+
+	/* Store tx_rate for this vf. */
+	for (idx = 0; idx < nb_q_per_pool; idx++) {
+		if (((uint64_t)0x1 << idx) & q_msk) {
+			if (vfinfo[vf].tx_rate[idx] != tx_rate)
+				vfinfo[vf].tx_rate[idx] = tx_rate;
+			total_rate += tx_rate;
+		}
+	}
+
+	if (total_rate > dev->data->dev_link.link_speed) {
+		/* Reset stored TX rate of the VF if it causes exceed
+		 * link speed.
+		 */
+		memset(vfinfo[vf].tx_rate, 0, sizeof(vfinfo[vf].tx_rate));
+		return -EINVAL;
+	}
+
+	/* Set RTTBCNRC of each queue/pool for vf X  */
+	for (; queue_idx <= queue_end; queue_idx++) {
+		if (0x1 & q_msk)
+			ixgbe_set_queue_rate_limit(dev, queue_idx, tx_rate);
+		q_msk = q_msk >> 1;
+	}
+
 	return 0;
 }
 
