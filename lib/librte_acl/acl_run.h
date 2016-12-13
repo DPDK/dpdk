@@ -69,10 +69,10 @@ struct acl_flow_data {
 	uint32_t            trie;
 	/* current trie index (0 to N-1) */
 	uint32_t            cmplt_size;
-	uint32_t            total_packets;
-	uint32_t            categories;
-	/* number of result categories per packet. */
 	/* maximum number of packets to process */
+	uint32_t            total_packets;
+	/* number of result categories per packet. */
+	uint32_t            categories;
 	const uint64_t     *trans;
 	const uint8_t     **data;
 	uint32_t           *results;
