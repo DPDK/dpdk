@@ -83,6 +83,7 @@ struct pkt_rx_queue {
 
 struct pkt_tx_queue {
 	int sockfd;
+	unsigned int frame_data_size;
 
 	struct iovec *rd;
 	uint8_t *map;
@@ -204,13 +205,20 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	framenum = pkt_q->framenum;
 	ppd = (struct tpacket2_hdr *) pkt_q->rd[framenum].iov_base;
 	for (i = 0; i < nb_pkts; i++) {
+		mbuf = *bufs++;
+
+		/* drop oversized packets */
+		if (rte_pktmbuf_data_len(mbuf) > pkt_q->frame_data_size) {
+			rte_pktmbuf_free(mbuf);
+			continue;
+		}
+
 		/* point at the next incoming frame */
 		if ((ppd->tp_status != TP_STATUS_AVAILABLE) &&
 		    (poll(&pfd, 1, -1) < 0))
-				continue;
+			break;
 
 		/* copy the tx frame data */
-		mbuf = bufs[num_tx];
 		pbuf = (uint8_t *) ppd + TPACKET2_HDRLEN -
 			sizeof(struct sockaddr_ll);
 		memcpy(pbuf, rte_pktmbuf_mtod(mbuf, void*), rte_pktmbuf_data_len(mbuf));
@@ -229,13 +237,13 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	/* kick-off transmits */
 	if (sendto(pkt_q->sockfd, NULL, 0, MSG_DONTWAIT, NULL, 0) == -1)
-		return 0; /* error sending -- no packets transmitted */
+		num_tx = 0; /* error sending -- no packets transmitted */
 
 	pkt_q->framenum = framenum;
 	pkt_q->tx_pkts += num_tx;
-	pkt_q->err_pkts += nb_pkts - num_tx;
+	pkt_q->err_pkts += i - num_tx;
 	pkt_q->tx_bytes += num_tx_bytes;
-	return num_tx;
+	return i;
 }
 
 static int
@@ -633,6 +641,9 @@ rte_pmd_init_internals(const char *name,
 
 		tx_queue = &((*internals)->tx_queue[q]);
 		tx_queue->framecount = req->tp_frame_nr;
+		tx_queue->frame_data_size = req->tp_frame_size;
+		tx_queue->frame_data_size -= TPACKET2_HDRLEN -
+			sizeof(struct sockaddr_ll);
 
 		tx_queue->map = rx_queue->map + req->tp_block_size * req->tp_block_nr;
 
