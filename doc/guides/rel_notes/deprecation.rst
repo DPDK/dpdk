@@ -34,19 +34,6 @@ Deprecation Notices
   ``_rte_eth_dev_callback_process``. In 17.02 the function will return an ``int``
   instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
 
-* ethdev: for 17.02 it is planned to deprecate the following five functions
-  and move them in ixgbe:
-
-  ``rte_eth_dev_set_vf_rxmode``
-
-  ``rte_eth_dev_set_vf_rx``
-
-  ``rte_eth_dev_set_vf_tx``
-
-  ``rte_eth_dev_set_vf_vlan_filter``
-
-  ``rte_eth_set_vf_rate_limit``
-
 * ABI changes are planned for 17.02 in the ``rte_mbuf`` structure: some fields
   may be reordered to facilitate the writing of ``data_off``, ``refcnt``, and
   ``nb_segs`` in one operation, because some platforms have an overhead if the

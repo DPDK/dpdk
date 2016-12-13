@@ -1287,38 +1287,10 @@ typedef int (*eth_uc_all_hash_table_set_t)(struct rte_eth_dev *dev,
 				  uint8_t on);
 /**< @internal Set all Unicast Hash bitmap */
 
-typedef int (*eth_set_vf_rx_mode_t)(struct rte_eth_dev *dev,
-				  uint16_t vf,
-				  uint16_t rx_mode,
-				  uint8_t on);
-/**< @internal Set a VF receive mode */
-
-typedef int (*eth_set_vf_rx_t)(struct rte_eth_dev *dev,
-				uint16_t vf,
-				uint8_t on);
-/**< @internal Set a VF receive  mode */
-
-typedef int (*eth_set_vf_tx_t)(struct rte_eth_dev *dev,
-				uint16_t vf,
-				uint8_t on);
-/**< @internal Enable or disable a VF transmit   */
-
-typedef int (*eth_set_vf_vlan_filter_t)(struct rte_eth_dev *dev,
-				  uint16_t vlan,
-				  uint64_t vf_mask,
-				  uint8_t vlan_on);
-/**< @internal Set VF VLAN pool filter */
-
 typedef int (*eth_set_queue_rate_limit_t)(struct rte_eth_dev *dev,
 				uint16_t queue_idx,
 				uint16_t tx_rate);
 /**< @internal Set queue TX rate */
-
-typedef int (*eth_set_vf_rate_limit_t)(struct rte_eth_dev *dev,
-				uint16_t vf,
-				uint16_t tx_rate,
-				uint64_t q_msk);
-/**< @internal Set VF TX rate */
 
 typedef int (*eth_mirror_rule_set_t)(struct rte_eth_dev *dev,
 				  struct rte_eth_mirror_conf *mirror_conf,
@@ -1528,12 +1500,6 @@ struct eth_dev_ops {
 
 	eth_mirror_rule_set_t	   mirror_rule_set; /**< Add a traffic mirror rule. */
 	eth_mirror_rule_reset_t	   mirror_rule_reset; /**< reset a traffic mirror rule. */
-
-	eth_set_vf_rx_mode_t       set_vf_rx_mode;/**< Set VF RX mode. */
-	eth_set_vf_rx_t            set_vf_rx;     /**< enable/disable a VF receive. */
-	eth_set_vf_tx_t            set_vf_tx;     /**< enable/disable a VF transmit. */
-	eth_set_vf_vlan_filter_t   set_vf_vlan_filter; /**< Set VF VLAN filter. */
-	eth_set_vf_rate_limit_t    set_vf_rate_limit; /**< Set VF rate limit. */
 
 	eth_udp_tunnel_port_add_t  udp_tunnel_port_add; /** Add UDP tunnel port. */
 	eth_udp_tunnel_port_del_t  udp_tunnel_port_del; /** Del UDP tunnel port. */
@@ -3586,93 +3552,6 @@ int rte_eth_dev_uc_hash_table_set(uint8_t port,struct ether_addr *addr,
  */
 int rte_eth_dev_uc_all_hash_table_set(uint8_t port,uint8_t on);
 
- /**
- * Set RX L2 Filtering mode of a VF of an Ethernet device.
- *
- * @param port
- *   The port identifier of the Ethernet device.
- * @param vf
- *   VF id.
- * @param rx_mode
- *    The RX mode mask, which  is one or more of  accepting Untagged Packets,
- *    packets that match the PFUTA table, Broadcast and Multicast Promiscuous.
- *    ETH_VMDQ_ACCEPT_UNTAG,ETH_VMDQ_ACCEPT_HASH_UC,
- *    ETH_VMDQ_ACCEPT_BROADCAST and ETH_VMDQ_ACCEPT_MULTICAST will be used
- *    in rx_mode.
- * @param on
- *    1 - Enable a VF RX mode.
- *    0 - Disable a VF RX mode.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support.
- *   - (-ENOTSUP) if hardware doesn't support.
- *   - (-EINVAL) if bad parameter.
- */
-int rte_eth_dev_set_vf_rxmode(uint8_t port, uint16_t vf, uint16_t rx_mode,
-				uint8_t on);
-
-/**
-* Enable or disable a VF traffic transmit of the Ethernet device.
-*
-* @param port
-*   The port identifier of the Ethernet device.
-* @param vf
-*   VF id.
-* @param on
-*    1 - Enable a VF traffic transmit.
-*    0 - Disable a VF traffic transmit.
-* @return
-*   - (0) if successful.
-*   - (-ENODEV) if *port_id* invalid.
-*   - (-ENOTSUP) if hardware doesn't support.
-*   - (-EINVAL) if bad parameter.
-*/
-int
-rte_eth_dev_set_vf_tx(uint8_t port,uint16_t vf, uint8_t on);
-
-/**
-* Enable or disable a VF traffic receive of an Ethernet device.
-*
-* @param port
-*   The port identifier of the Ethernet device.
-* @param vf
-*   VF id.
-* @param on
-*    1 - Enable a VF traffic receive.
-*    0 - Disable a VF traffic receive.
-* @return
-*   - (0) if successful.
-*   - (-ENOTSUP) if hardware doesn't support.
-*   - (-ENODEV) if *port_id* invalid.
-*   - (-EINVAL) if bad parameter.
-*/
-int
-rte_eth_dev_set_vf_rx(uint8_t port,uint16_t vf, uint8_t on);
-
-/**
-* Enable/Disable hardware VF VLAN filtering by an Ethernet device of
-* received VLAN packets tagged with a given VLAN Tag Identifier.
-*
-* @param port id
-*   The port identifier of the Ethernet device.
-* @param vlan_id
-*   The VLAN Tag Identifier whose filtering must be enabled or disabled.
-* @param vf_mask
-*    Bitmap listing which VFs participate in the VLAN filtering.
-* @param vlan_on
-*    1 - Enable VFs VLAN filtering.
-*    0 - Disable VFs VLAN filtering.
-* @return
-*   - (0) if successful.
-*   - (-ENOTSUP) if hardware doesn't support.
-*   - (-ENODEV) if *port_id* invalid.
-*   - (-EINVAL) if bad parameter.
-*/
-int
-rte_eth_dev_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
-				uint64_t vf_mask,
-				uint8_t vlan_on);
-
 /**
  * Set a traffic mirroring rule on an Ethernet device
  *
@@ -3732,26 +3611,6 @@ int rte_eth_mirror_rule_reset(uint8_t port_id,
  */
 int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx,
 			uint16_t tx_rate);
-
-/**
- * Set the rate limitation for a vf on an Ethernet device.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param vf
- *   VF id.
- * @param tx_rate
- *   The tx rate allocated from the total link speed for this VF id.
- * @param q_msk
- *   The queue mask which need to set the rate.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support this feature.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EINVAL) if bad parameter.
- */
-int rte_eth_set_vf_rate_limit(uint8_t port_id, uint16_t vf,
-			uint16_t tx_rate, uint64_t q_msk);
 
 /**
  * Initialize bypass logic. This function needs to be called before

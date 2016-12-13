@@ -2240,32 +2240,6 @@ rte_eth_dev_default_mac_addr_set(uint8_t port_id, struct ether_addr *addr)
 	return 0;
 }
 
-int
-rte_eth_dev_set_vf_rxmode(uint8_t port_id,  uint16_t vf,
-				uint16_t rx_mode, uint8_t on)
-{
-	uint16_t num_vfs;
-	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-	rte_eth_dev_info_get(port_id, &dev_info);
-
-	num_vfs = dev_info.max_vfs;
-	if (vf > num_vfs) {
-		RTE_PMD_DEBUG_TRACE("set VF RX mode:invalid VF id %d\n", vf);
-		return -EINVAL;
-	}
-
-	if (rx_mode == 0) {
-		RTE_PMD_DEBUG_TRACE("set VF RX mode:mode mask ca not be zero\n");
-		return -EINVAL;
-	}
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_rx_mode, -ENOTSUP);
-	return (*dev->dev_ops->set_vf_rx_mode)(dev, vf, rx_mode, on);
-}
 
 /*
  * Returns index into MAC address array of addr. Use 00:00:00:00:00:00 to find
@@ -2355,76 +2329,6 @@ rte_eth_dev_uc_all_hash_table_set(uint8_t port_id, uint8_t on)
 	return (*dev->dev_ops->uc_all_hash_table_set)(dev, on);
 }
 
-int
-rte_eth_dev_set_vf_rx(uint8_t port_id, uint16_t vf, uint8_t on)
-{
-	uint16_t num_vfs;
-	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-	rte_eth_dev_info_get(port_id, &dev_info);
-
-	num_vfs = dev_info.max_vfs;
-	if (vf > num_vfs) {
-		RTE_PMD_DEBUG_TRACE("port %d: invalid vf id\n", port_id);
-		return -EINVAL;
-	}
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_rx, -ENOTSUP);
-	return (*dev->dev_ops->set_vf_rx)(dev, vf, on);
-}
-
-int
-rte_eth_dev_set_vf_tx(uint8_t port_id, uint16_t vf, uint8_t on)
-{
-	uint16_t num_vfs;
-	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-	rte_eth_dev_info_get(port_id, &dev_info);
-
-	num_vfs = dev_info.max_vfs;
-	if (vf > num_vfs) {
-		RTE_PMD_DEBUG_TRACE("set pool tx:invalid pool id=%d\n", vf);
-		return -EINVAL;
-	}
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_tx, -ENOTSUP);
-	return (*dev->dev_ops->set_vf_tx)(dev, vf, on);
-}
-
-int
-rte_eth_dev_set_vf_vlan_filter(uint8_t port_id, uint16_t vlan_id,
-			       uint64_t vf_mask, uint8_t vlan_on)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-
-	if (vlan_id > ETHER_MAX_VLAN_ID) {
-		RTE_PMD_DEBUG_TRACE("VF VLAN filter:invalid VLAN id=%d\n",
-			vlan_id);
-		return -EINVAL;
-	}
-
-	if (vf_mask == 0) {
-		RTE_PMD_DEBUG_TRACE("VF VLAN filter:pool_mask can not be 0\n");
-		return -EINVAL;
-	}
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_vlan_filter, -ENOTSUP);
-	return (*dev->dev_ops->set_vf_vlan_filter)(dev, vlan_id,
-						   vf_mask, vlan_on);
-}
-
 int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx,
 					uint16_t tx_rate)
 {
@@ -2453,39 +2357,6 @@ int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx,
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_queue_rate_limit, -ENOTSUP);
 	return (*dev->dev_ops->set_queue_rate_limit)(dev, queue_idx, tx_rate);
-}
-
-int rte_eth_set_vf_rate_limit(uint8_t port_id, uint16_t vf, uint16_t tx_rate,
-				uint64_t q_msk)
-{
-	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
-	struct rte_eth_link link;
-
-	if (q_msk == 0)
-		return 0;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-	rte_eth_dev_info_get(port_id, &dev_info);
-	link = dev->data->dev_link;
-
-	if (vf > dev_info.max_vfs) {
-		RTE_PMD_DEBUG_TRACE("set VF rate limit:port %d: "
-				"invalid vf id=%d\n", port_id, vf);
-		return -EINVAL;
-	}
-
-	if (tx_rate > link.link_speed) {
-		RTE_PMD_DEBUG_TRACE("set VF rate limit:invalid tx_rate=%d, "
-				"bigger than link speed= %d\n",
-				tx_rate, link.link_speed);
-		return -EINVAL;
-	}
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->set_vf_rate_limit, -ENOTSUP);
-	return (*dev->dev_ops->set_vf_rate_limit)(dev, vf, tx_rate, q_msk);
 }
 
 int

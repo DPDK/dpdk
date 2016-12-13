@@ -60,10 +60,6 @@ DPDK_2.2 {
 	rte_eth_dev_set_mtu;
 	rte_eth_dev_set_rx_queue_stats_mapping;
 	rte_eth_dev_set_tx_queue_stats_mapping;
-	rte_eth_dev_set_vf_rx;
-	rte_eth_dev_set_vf_rxmode;
-	rte_eth_dev_set_vf_tx;
-	rte_eth_dev_set_vf_vlan_filter;
 	rte_eth_dev_set_vlan_offload;
 	rte_eth_dev_set_vlan_pvid;
 	rte_eth_dev_set_vlan_strip_on_queue;
@@ -93,7 +89,6 @@ DPDK_2.2 {
 	rte_eth_rx_queue_info_get;
 	rte_eth_rx_queue_setup;
 	rte_eth_set_queue_rate_limit;
-	rte_eth_set_vf_rate_limit;
 	rte_eth_stats;
 	rte_eth_stats_get;
 	rte_eth_stats_reset;

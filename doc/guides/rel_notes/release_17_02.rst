@@ -179,6 +179,26 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Moved five APIs for VF management from the ethdev to the ixgbe PMD.**
+
+  The following five APIs for VF management from the PF have been removed from the ethdev,
+  renamed and added to the ixgbe PMD::
+
+    rte_eth_dev_set_vf_rate_limit
+    rte_eth_dev_set_vf_rx
+    rte_eth_dev_set_vf_rxmode
+    rte_eth_dev_set_vf_tx
+    rte_eth_dev_set_vf_vlan_filter
+
+  The API's have been renamed to the following::
+
+    rte_pmd_ixgbe_set_vf_rate_limit
+    rte_pmd_ixgbe_set_vf_rx
+    rte_pmd_ixgbe_set_vf_rxmode
+    rte_pmd_ixgbe_set_vf_tx
+    rte_pmd_ixgbe_set_vf_vlan_filter
+
+  The declarations for the API’s can be found in ``rte_pmd_ixgbe.h``.
 
 ABI Changes
 -----------
@@ -219,7 +239,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cryptodev.so.2
      librte_distributor.so.1
      librte_eal.so.3
-     librte_ethdev.so.5
+   + librte_ethdev.so.6
      librte_hash.so.2
      librte_ip_frag.so.1
      librte_jobstats.so.1
