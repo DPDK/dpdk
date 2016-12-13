@@ -366,18 +366,20 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pkt_rx_queue *pkt_q = &internals->rx_queue[rx_queue_id];
-	uint16_t buf_size;
+	unsigned int buf_size, data_size;
 
 	pkt_q->mb_pool = mb_pool;
 
 	/* Now get the space available for data in the mbuf */
-	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(pkt_q->mb_pool) -
-		RTE_PKTMBUF_HEADROOM);
+	buf_size = rte_pktmbuf_data_room_size(pkt_q->mb_pool) -
+		RTE_PKTMBUF_HEADROOM;
+	data_size = internals->req.tp_frame_size;
+	data_size -= TPACKET2_HDRLEN - sizeof(struct sockaddr_ll);
 
-	if (ETH_FRAME_LEN > buf_size) {
+	if (data_size > buf_size) {
 		RTE_LOG(ERR, PMD,
 			"%s: %d bytes will not fit in mbuf (%d bytes)\n",
-			dev->data->name, ETH_FRAME_LEN, buf_size);
+			dev->data->name, data_size, buf_size);
 		return -ENOMEM;
 	}
 
