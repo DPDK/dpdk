@@ -45,8 +45,8 @@ First, uncompress the archive and move to the uncompressed DPDK source directory
 
 .. code-block:: console
 
-    unzip DPDK-<version>.zip
-    cd DPDK-<version>
+    tar xJf dpdk-<version>.tar.xz
+    cd dpdk-<version>
 
 The DPDK is composed of several directories:
 
