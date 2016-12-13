@@ -47,7 +47,7 @@ To compile the application:
     .. code-block:: console
 
         export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SD}/examples/ethtool
+        cd ${RTE_SDK}/examples/ethtool
 
 #.  Set the target (a default target is used if not specified). For example:
 
