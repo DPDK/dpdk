@@ -10898,6 +10898,9 @@ cmd_set_vf_vlan_anti_spoof_parsed(
 	int ret = 0;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
 	ret = rte_pmd_ixgbe_set_vf_vlan_anti_spoof(res->port_id, res->vf_id,
 			is_on);
 	switch (ret) {
@@ -10982,6 +10985,9 @@ cmd_set_vf_mac_anti_spoof_parsed(
 	struct cmd_vf_mac_anti_spoof_result *res = parsed_result;
 	int ret;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
 
 	ret = rte_pmd_ixgbe_set_vf_mac_anti_spoof(res->port_id, res->vf_id,
 			is_on);
@@ -11068,6 +11074,9 @@ cmd_set_vf_vlan_stripq_parsed(
 	int ret = 0;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
 	ret = rte_pmd_ixgbe_set_vf_vlan_stripq(res->port_id, res->vf_id, is_on);
 	switch (ret) {
 	case 0:
@@ -11151,6 +11160,9 @@ cmd_set_vf_vlan_insert_parsed(
 	struct cmd_vf_vlan_insert_result *res = parsed_result;
 	int ret;
 
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
 	ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id, res->vf_id, res->vlan_id);
 	switch (ret) {
 	case 0:
@@ -11224,6 +11236,9 @@ cmd_set_tx_loopback_parsed(
 	struct cmd_tx_loopback_result *res = parsed_result;
 	int ret;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
 
 	ret = rte_pmd_ixgbe_set_tx_loopback(res->port_id, is_on);
 	switch (ret) {
@@ -11301,6 +11316,9 @@ cmd_set_all_queues_drop_en_parsed(
 	struct cmd_all_queues_drop_en_result *res = parsed_result;
 	int ret = 0;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
 
 	ret = rte_pmd_ixgbe_set_all_queues_drop_en(res->port_id, is_on);
 	switch (ret) {
@@ -11385,6 +11403,9 @@ cmd_set_vf_split_drop_en_parsed(
 	int ret;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
 	ret = rte_pmd_ixgbe_set_vf_split_drop_en(res->port_id, res->vf_id,
 			is_on);
 	switch (ret) {
@@ -11468,6 +11489,9 @@ cmd_set_vf_mac_addr_parsed(
 {
 	struct cmd_set_vf_mac_addr_result *res = parsed_result;
 	int ret;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
 
 	ret = rte_pmd_ixgbe_set_vf_mac_addr(res->port_id, res->vf_id,
 			&res->mac_addr);
