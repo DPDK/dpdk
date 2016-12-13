@@ -362,8 +362,8 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	up_read(&knet->kni_list_lock);
 
 	net_dev = alloc_netdev(sizeof(struct kni_dev), dev_info.name,
-#ifdef NET_NAME_UNKNOWN
-							NET_NAME_UNKNOWN,
+#ifdef NET_NAME_USER
+							NET_NAME_USER,
 #endif
 							kni_net_init);
 	if (net_dev == NULL) {
