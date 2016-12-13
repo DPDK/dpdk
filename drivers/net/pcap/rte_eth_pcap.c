@@ -246,7 +246,7 @@ calculate_timestamp(struct timeval *ts) {
 
 	cycles = rte_get_timer_cycles() - start_cycles;
 	cur_time.tv_sec = cycles / hz;
-	cur_time.tv_usec = (cycles % hz) * 10e6 / hz;
+	cur_time.tv_usec = (cycles % hz) * 1e6 / hz;
 	timeradd(&start_time, &cur_time, ts);
 }
 
