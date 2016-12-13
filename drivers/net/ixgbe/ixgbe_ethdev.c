@@ -280,12 +280,6 @@ static void ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct
 		ether_addr * mac_addr, uint8_t on);
 static int ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on);
-static int  ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev,  uint16_t pool,
-		uint16_t rx_mask, uint8_t on);
-static int ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on);
-static int ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on);
-static int ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
-		uint64_t pool_mask, uint8_t vlan_on);
 static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		struct rte_eth_mirror_conf *mirror_conf,
 		uint8_t rule_id, uint8_t on);
@@ -301,8 +295,6 @@ static void ixgbe_configure_msix(struct rte_eth_dev *dev);
 
 static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 		uint16_t queue_idx, uint16_t tx_rate);
-static int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
-		uint16_t tx_rate, uint64_t q_msk);
 
 static void ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 				 struct ether_addr *mac_addr,
@@ -575,12 +567,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.uc_all_hash_table_set  = ixgbe_uc_all_hash_table_set,
 	.mirror_rule_set      = ixgbe_mirror_rule_set,
 	.mirror_rule_reset    = ixgbe_mirror_rule_reset,
-	.set_vf_rx_mode       = ixgbe_set_pool_rx_mode,
-	.set_vf_rx            = ixgbe_set_pool_rx,
-	.set_vf_tx            = ixgbe_set_pool_tx,
-	.set_vf_vlan_filter   = ixgbe_set_pool_vlan_filter,
 	.set_queue_rate_limit = ixgbe_set_queue_rate_limit,
-	.set_vf_rate_limit    = ixgbe_set_vf_rate_limit,
 	.reta_update          = ixgbe_dev_rss_reta_update,
 	.reta_query           = ixgbe_dev_rss_reta_query,
 #ifdef RTE_NIC_BYPASS
@@ -4736,132 +4723,6 @@ ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val)
 	return new_val;
 }
 
-static int
-ixgbe_set_pool_rx_mode(struct rte_eth_dev *dev, uint16_t pool,
-			       uint16_t rx_mask, uint8_t on)
-{
-	int val = 0;
-
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(pool));
-
-	if (hw->mac.type == ixgbe_mac_82598EB) {
-		PMD_INIT_LOG(ERR, "setting VF receive mode set should be done"
-			     " on 82599 hardware and newer");
-		return -ENOTSUP;
-	}
-	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return -ENOTSUP;
-
-	val = ixgbe_convert_vm_rx_mask_to_val(rx_mask, val);
-
-	if (on)
-		vmolr |= val;
-	else
-		vmolr &= ~val;
-
-	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(pool), vmolr);
-
-	return 0;
-}
-
-static int
-ixgbe_set_pool_rx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
-{
-	uint32_t reg, addr;
-	uint32_t val;
-	const uint8_t bit1 = 0x1;
-
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return -ENOTSUP;
-
-	if (pool >= ETH_64_POOLS)
-		return -EINVAL;
-
-	/* for pool >= 32, set bit in PFVFRE[1], otherwise PFVFRE[0] */
-	if (pool >= 32) {
-		addr = IXGBE_VFRE(1);
-		val = bit1 << (pool - 32);
-	} else {
-		addr = IXGBE_VFRE(0);
-		val = bit1 << pool;
-	}
-
-	reg = IXGBE_READ_REG(hw, addr);
-
-	if (on)
-		reg |= val;
-	else
-		reg &= ~val;
-
-	IXGBE_WRITE_REG(hw, addr, reg);
-
-	return 0;
-}
-
-static int
-ixgbe_set_pool_tx(struct rte_eth_dev *dev, uint16_t pool, uint8_t on)
-{
-	uint32_t reg, addr;
-	uint32_t val;
-	const uint8_t bit1 = 0x1;
-
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return -ENOTSUP;
-
-	if (pool >= ETH_64_POOLS)
-		return -EINVAL;
-
-	/* for pool >= 32, set bit in PFVFTE[1], otherwise PFVFTE[0] */
-	if (pool >= 32) {
-		addr = IXGBE_VFTE(1);
-		val = bit1 << (pool - 32);
-	} else {
-		addr = IXGBE_VFTE(0);
-		val = bit1 << pool;
-	}
-
-	reg = IXGBE_READ_REG(hw, addr);
-
-	if (on)
-		reg |= val;
-	else
-		reg &= ~val;
-
-	IXGBE_WRITE_REG(hw, addr, reg);
-
-	return 0;
-}
-
-static int
-ixgbe_set_pool_vlan_filter(struct rte_eth_dev *dev, uint16_t vlan,
-			uint64_t pool_mask, uint8_t vlan_on)
-{
-	int ret = 0;
-	uint16_t pool_idx;
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	if (ixgbe_vmdq_mode_check(hw) < 0)
-		return -ENOTSUP;
-	for (pool_idx = 0; pool_idx < ETH_64_POOLS; pool_idx++) {
-		if (pool_mask & ((uint64_t)(1ULL << pool_idx))) {
-			ret = hw->mac.ops.set_vfta(hw, vlan, pool_idx,
-						   vlan_on, false);
-			if (ret < 0)
-				return ret;
-		}
-	}
-
-	return ret;
-}
 
 int
 rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
@@ -5821,62 +5682,6 @@ static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 	IXGBE_WRITE_REG(hw, IXGBE_RTTDQSEL, queue_idx);
 	IXGBE_WRITE_REG(hw, IXGBE_RTTBCNRC, bcnrc_val);
 	IXGBE_WRITE_FLUSH(hw);
-
-	return 0;
-}
-
-static int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
-	uint16_t tx_rate, uint64_t q_msk)
-{
-	struct rte_pci_device *pci_dev = IXGBE_DEV_TO_PCI(dev);
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_vf_info *vfinfo =
-		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
-	uint8_t  nb_q_per_pool = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
-	uint32_t queue_stride =
-		IXGBE_MAX_RX_QUEUE_NUM / RTE_ETH_DEV_SRIOV(dev).active;
-	uint32_t queue_idx = vf * queue_stride, idx = 0, vf_idx;
-	uint32_t queue_end = queue_idx + nb_q_per_pool - 1;
-	uint16_t total_rate = 0;
-
-	if (queue_end >= hw->mac.max_tx_queues)
-		return -EINVAL;
-
-	if (vfinfo != NULL) {
-		for (vf_idx = 0; vf_idx < pci_dev->max_vfs; vf_idx++) {
-			if (vf_idx == vf)
-				continue;
-			for (idx = 0; idx < RTE_DIM(vfinfo[vf_idx].tx_rate);
-				idx++)
-				total_rate += vfinfo[vf_idx].tx_rate[idx];
-		}
-	} else
-		return -EINVAL;
-
-	/* Store tx_rate for this vf. */
-	for (idx = 0; idx < nb_q_per_pool; idx++) {
-		if (((uint64_t)0x1 << idx) & q_msk) {
-			if (vfinfo[vf].tx_rate[idx] != tx_rate)
-				vfinfo[vf].tx_rate[idx] = tx_rate;
-			total_rate += tx_rate;
-		}
-	}
-
-	if (total_rate > dev->data->dev_link.link_speed) {
-		/*
-		 * Reset stored TX rate of the VF if it causes exceed
-		 * link speed.
-		 */
-		memset(vfinfo[vf].tx_rate, 0, sizeof(vfinfo[vf].tx_rate));
-		return -EINVAL;
-	}
-
-	/* Set RTTBCNRC of each queue/pool for vf X  */
-	for (; queue_idx <= queue_end; queue_idx++) {
-		if (0x1 & q_msk)
-			ixgbe_set_queue_rate_limit(dev, queue_idx, tx_rate);
-		q_msk = q_msk >> 1;
-	}
 
 	return 0;
 }
