@@ -1881,8 +1881,9 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	     !RTE_ETH_DEV_SRIOV(dev).active) &&
 	    dev->data->dev_conf.intr_conf.rxq != 0) {
 		intr_vector = dev->data->nb_rx_queues;
-		if (rte_intr_efd_enable(intr_handle, intr_vector))
-			return -1;
+		ret = rte_intr_efd_enable(intr_handle, intr_vector);
+		if (ret)
+			return ret;
 	}
 
 	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {

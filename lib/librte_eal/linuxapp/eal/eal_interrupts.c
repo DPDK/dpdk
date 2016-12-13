@@ -1181,7 +1181,7 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 				RTE_LOG(ERR, EAL,
 					"can't setup eventfd, error %i (%s)\n",
 					errno, strerror(errno));
-				return -1;
+				return -errno;
 			}
 			intr_handle->efds[i] = fd;
 		}
