@@ -54,6 +54,10 @@ SRCS-y := rte_ethtool.c
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
+LDLIBS += -lrte_pmd_ixgbe
+endif
+
 # internal dependencies
 DEPDIRS-y += lib/librte_eal
 DEPDIRS-y += lib/librte_ether

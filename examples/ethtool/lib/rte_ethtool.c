@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,9 @@
 #include <rte_version.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
+#ifdef RTE_LIBRTE_IXGBE_PMD
+#include <rte_pmd_ixgbe.h>
+#endif
 #include "rte_ethtool.h"
 
 #define PKTPOOL_SIZE 512
@@ -367,9 +370,12 @@ rte_ethtool_net_set_rx_mode(uint8_t port_id)
 	num_vfs = dev_info.max_vfs;
 
 	/* Set VF vf_rx_mode, VF unsupport status is discard */
-	for (vf = 0; vf < num_vfs; vf++)
-		rte_eth_dev_set_vf_rxmode(port_id, vf,
+	for (vf = 0; vf < num_vfs; vf++) {
+#ifdef RTE_LIBRTE_IXGBE_PMD
+		rte_pmd_ixgbe_set_vf_rxmode(port_id, vf,
 			ETH_VMDQ_ACCEPT_UNTAG, 0);
+#endif
+	}
 
 	/* Enable Rx vlan filter, VF unspport status is discard */
 	rte_eth_dev_set_vlan_offload(port_id, ETH_VLAN_FILTER_MASK);
