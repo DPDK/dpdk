@@ -343,6 +343,12 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 		return -EIO;
 	}
 
+	/* Check if name is zero-ended */
+	if (strnlen(dev_info.name, sizeof(dev_info.name)) == sizeof(dev_info.name)) {
+		pr_err("kni.name not zero-terminated");
+		return -EINVAL;
+	}
+
 	/**
 	 * Check if the cpu core id is valid for binding.
 	 */
