@@ -2831,8 +2831,6 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
 	int diag;
 
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
 	if (is_rx)
 		diag = rte_pmd_ixgbe_set_vf_rx(port_id, vf, on);
 	else
@@ -2853,11 +2851,6 @@ void
 set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
 {
 	int diag;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (vlan_id_is_invalid(vlan_id))
-		return;
 
 	diag = rte_pmd_ixgbe_set_vf_vlan_filter(port_id, vlan_id, vf_mask, on);
 
@@ -2895,19 +2888,7 @@ int
 set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 {
 	int diag;
-	struct rte_eth_link link;
 
-	if (q_msk == 0)
-		return 0;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return 1;
-	rte_eth_link_get_nowait(port_id, &link);
-	if (rate > link.link_speed) {
-		printf("Invalid rate value:%u bigger than link speed: %u\n",
-			rate, link.link_speed);
-		return 1;
-	}
 	diag = rte_pmd_ixgbe_set_vf_rate_limit(port_id, vf, rate, q_msk);
 	if (diag == 0)
 		return diag;
