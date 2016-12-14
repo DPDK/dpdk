@@ -3461,7 +3461,7 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 	dev_info->min_rx_bufsize = 1024; /* cf BSIZEPACKET in SRRCTL reg */
-	dev_info->max_rx_pktlen = 15872; /* includes CRC, cf MAXFRS reg */
+	dev_info->max_rx_pktlen = 9728; /* includes CRC, cf MAXFRS reg */
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
 	dev_info->max_hash_mac_addrs = IXGBE_VMDQ_NUM_UC_MAC;
 	dev_info->max_vfs = pci_dev->max_vfs;
