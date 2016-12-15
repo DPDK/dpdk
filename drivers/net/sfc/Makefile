@@ -90,6 +90,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += sfc_port.c
 SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += sfc_rx.c
 SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += sfc_tx.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_TSO) += sfc_tso.c
+
 VPATH += $(SRCDIR)/base
 
 SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += efx_bootcfg.c
@@ -138,5 +140,7 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_kvargs
 DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_mbuf
+
+DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_TSO) += lib/librte_net
 
 include $(RTE_SDK)/mk/rte.lib.mk

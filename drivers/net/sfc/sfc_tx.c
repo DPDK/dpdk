@@ -184,6 +184,13 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	if (txq->sw_ring == NULL)
 		goto fail_desc_alloc;
 
+	if (sa->tso) {
+		rc = sfc_tso_alloc_tsoh_objs(txq->sw_ring, txq_info->entries,
+					     socket_id);
+		if (rc != 0)
+			goto fail_alloc_tsoh_objs;
+	}
+
 	txq->state = SFC_TXQ_INITIALIZED;
 	txq->ptr_mask = txq_info->entries - 1;
 	txq->free_thresh = (tx_conf->tx_free_thresh) ? tx_conf->tx_free_thresh :
@@ -198,6 +205,9 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	txq_info->deferred_start = (tx_conf->tx_deferred_start != 0);
 
 	return 0;
+
+fail_alloc_tsoh_objs:
+	rte_free(txq->sw_ring);
 
 fail_desc_alloc:
 	rte_free(txq->pend_desc);
@@ -233,6 +243,8 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	txq = txq_info->txq;
 	SFC_ASSERT(txq != NULL);
 	SFC_ASSERT(txq->state == SFC_TXQ_INITIALIZED);
+
+	sfc_tso_free_tsoh_objs(txq->sw_ring, txq_info->entries);
 
 	txq_info->txq = NULL;
 	txq_info->entries = 0;
@@ -299,6 +311,11 @@ sfc_tx_init(struct sfc_adapter *sa)
 		goto fail_check_mode;
 
 	sa->txq_count = sa->eth_dev->data->nb_tx_queues;
+
+	if (sa->tso)
+		sa->txq_count = MIN(sa->txq_count,
+		   efx_nic_cfg_get(sa->nic)->enc_fw_assisted_tso_v2_n_contexts /
+		   efx_nic_cfg_get(sa->nic)->enc_hw_pf_count);
 
 	sa->txq_info = rte_calloc_socket("sfc-txqs", sa->txq_count,
 					 sizeof(sa->txq_info[0]), 0,
@@ -373,17 +390,25 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	 * hence, we always enable it here
 	 */
 	if ((txq->flags & ETH_TXQ_FLAGS_NOXSUMTCP) ||
-	    (txq->flags & ETH_TXQ_FLAGS_NOXSUMUDP))
+	    (txq->flags & ETH_TXQ_FLAGS_NOXSUMUDP)) {
 		flags = EFX_TXQ_CKSUM_IPV4;
-	else
+	} else {
 		flags = EFX_TXQ_CKSUM_IPV4 | EFX_TXQ_CKSUM_TCPUDP;
+
+		if (sa->tso)
+			flags |= EFX_TXQ_FATSOV2;
+	}
 
 	rc = efx_tx_qcreate(sa->nic, sw_index, 0, &txq->mem,
 			    txq_info->entries, 0 /* not used on EF10 */,
 			    flags, evq->common,
 			    &txq->common, &desc_index);
-	if (rc != 0)
+	if (rc != 0) {
+		if (sa->tso && (rc == ENOSPC))
+			sfc_err(sa, "ran out of TSO contexts");
+
 		goto fail_tx_qcreate;
+	}
 
 	txq->added = txq->pending = txq->completed = desc_index;
 	txq->hw_vlan_tci = 0;
@@ -493,6 +518,13 @@ sfc_tx_start(struct sfc_adapter *sa)
 	int rc = 0;
 
 	sfc_log_init(sa, "txq_count = %u", sa->txq_count);
+
+	if (sa->tso) {
+		if (!efx_nic_cfg_get(sa->nic)->enc_fw_assisted_tso_v2_enabled) {
+			sfc_warn(sa, "TSO support was unable to be restored");
+			sa->tso = B_FALSE;
+		}
+	}
 
 	rc = efx_tx_init(sa->nic);
 	if (rc != 0)
@@ -607,6 +639,7 @@ sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		struct rte_mbuf		*m_seg = *pktp;
 		size_t			pkt_len = m_seg->pkt_len;
 		unsigned int		pkt_descs = 0;
+		size_t			in_off = 0;
 
 		/*
 		 * Here VLAN TCI is expected to be zero in case if no
@@ -617,12 +650,62 @@ sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 */
 		pkt_descs += sfc_tx_maybe_insert_tag(txq, m_seg, &pend);
 
+#ifdef RTE_LIBRTE_SFC_EFX_TSO
+		if (m_seg->ol_flags & PKT_TX_TCP_SEG) {
+			/*
+			 * We expect correct 'pkt->l[2, 3, 4]_len' values
+			 * to be set correctly by the caller
+			 */
+			if (sfc_tso_do(txq, added, &m_seg, &in_off, &pend,
+				       &pkt_descs, &pkt_len) != 0) {
+				/* We may have reached this place for
+				 * one of the following reasons:
+				 *
+				 * 1) Packet header length is greater
+				 *    than SFC_TSOH_STD_LEN
+				 * 2) TCP header starts at more then
+				 *    208 bytes into the frame
+				 *
+				 * We will deceive RTE saying that we have sent
+				 * the packet, but we will actually drop it.
+				 * Hence, we should revert 'pend' to the
+				 * previous state (in case we have added
+				 * VLAN descriptor) and start processing
+				 * another one packet. But the original
+				 * mbuf shouldn't be orphaned
+				 */
+				pend -= pkt_descs;
+
+				rte_pktmbuf_free(*pktp);
+
+				continue;
+			}
+
+			/*
+			 * We've only added 2 FATSOv2 option descriptors
+			 * and 1 descriptor for the linearized packet header.
+			 * The outstanding work will be done in the same manner
+			 * as for the usual non-TSO path
+			 */
+		}
+#endif /* RTE_LIBRTE_SFC_EFX_TSO */
+
 		for (; m_seg != NULL; m_seg = m_seg->next) {
 			efsys_dma_addr_t	next_frag;
 			size_t			seg_len;
 
 			seg_len = m_seg->data_len;
 			next_frag = rte_mbuf_data_dma_addr(m_seg);
+
+			/*
+			 * If we've started TSO transaction few steps earlier,
+			 * we'll skip packet header using an offset in the
+			 * current segment (which has been set to the
+			 * first one containing payload)
+			 */
+			seg_len -= in_off;
+			next_frag += in_off;
+			in_off = 0;
 
 			do {
 				efsys_dma_addr_t	frag_addr = next_frag;

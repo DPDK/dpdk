@@ -198,6 +198,8 @@ struct sfc_adapter {
 	unsigned int			txq_count;
 	struct sfc_txq_info		*txq_info;
 
+	boolean_t			tso;
+
 	unsigned int			rss_channels;
 
 #if EFSYS_OPT_RX_SCALE

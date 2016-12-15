@@ -63,6 +63,8 @@ SFC EFX PMD has support for:
 
 - Allmulticast mode
 
+- TCP segmentation offload (TSO)
+
 - Multicast MAC filter
 
 - IPv4/IPv6 TCP/UDP receive checksum offload
@@ -168,6 +170,12 @@ Please note that enabling debugging options may affect system performance.
 - ``CONFIG_RTE_LIBRTE_SFC_EFX_DEBUG`` (default **n**)
 
   Enable compilation of the extra run-time consistency checks.
+
+- ``CONFIG_RTE_LIBRTE_SFC_EFX_TSO`` (default **n**)
+
+  Toggle TCP segmentation offload support.
+  Enabling the feature limits the number of available transmit queues
+  significantly due to the limited number of adapter TSO contexts.
 
 
 Per-Device Parameters
