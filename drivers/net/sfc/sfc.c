@@ -484,6 +484,73 @@ sfc_mem_bar_fini(struct sfc_adapter *sa)
 	memset(ebp, 0, sizeof(*ebp));
 }
 
+#if EFSYS_OPT_RX_SCALE
+/*
+ * A fixed RSS key which has a property of being symmetric
+ * (symmetrical flows are distributed to the same CPU)
+ * and also known to give a uniform distribution
+ * (a good distribution of traffic between different CPUs)
+ */
+static const uint8_t default_rss_key[SFC_RSS_KEY_SIZE] = {
+	0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+	0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+	0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+	0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+	0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+};
+#endif
+
+static int
+sfc_set_rss_defaults(struct sfc_adapter *sa)
+{
+#if EFSYS_OPT_RX_SCALE
+	int rc;
+
+	rc = efx_intr_init(sa->nic, sa->intr.type, NULL);
+	if (rc != 0)
+		goto fail_intr_init;
+
+	rc = efx_ev_init(sa->nic);
+	if (rc != 0)
+		goto fail_ev_init;
+
+	rc = efx_rx_init(sa->nic);
+	if (rc != 0)
+		goto fail_rx_init;
+
+	rc = efx_rx_scale_support_get(sa->nic, &sa->rss_support);
+	if (rc != 0)
+		goto fail_scale_support_get;
+
+	rc = efx_rx_hash_support_get(sa->nic, &sa->hash_support);
+	if (rc != 0)
+		goto fail_hash_support_get;
+
+	efx_rx_fini(sa->nic);
+	efx_ev_fini(sa->nic);
+	efx_intr_fini(sa->nic);
+
+	sa->rss_hash_types = sfc_rte_to_efx_hash_type(SFC_RSS_OFFLOADS);
+
+	rte_memcpy(sa->rss_key, default_rss_key, sizeof(sa->rss_key));
+
+	return 0;
+
+fail_hash_support_get:
+fail_scale_support_get:
+fail_rx_init:
+	efx_ev_fini(sa->nic);
+
+fail_ev_init:
+	efx_intr_fini(sa->nic);
+
+fail_intr_init:
+	return rc;
+#else
+	return 0;
+#endif
+}
+
 int
 sfc_attach(struct sfc_adapter *sa)
 {
@@ -550,6 +617,10 @@ sfc_attach(struct sfc_adapter *sa)
 	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_PERM,
 			    &sa->port.phy_adv_cap_mask);
 
+	rc = sfc_set_rss_defaults(sa);
+	if (rc != 0)
+		goto fail_set_rss_defaults;
+
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);
 
@@ -558,7 +629,12 @@ sfc_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_set_rss_defaults:
+	sfc_intr_detach(sa);
+
 fail_intr_attach:
+	efx_nic_fini(sa->nic);
+
 fail_estimate_rsrc_limits:
 fail_nic_reset:
 	sfc_log_init(sa, "unprobe nic");

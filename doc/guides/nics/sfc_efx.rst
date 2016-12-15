@@ -69,6 +69,8 @@ SFC EFX PMD has support for:
 
 - Received packet type information
 
+- Receive side scaling (RSS)
+
 - Scattered Rx DMA for packet that are larger that a single Rx descriptor
 
 - Deferred receive and transmit queue start

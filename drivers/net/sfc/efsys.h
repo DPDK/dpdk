@@ -195,7 +195,7 @@ prefetch_read_once(const volatile void *addr)
 #define EFSYS_OPT_BOOTCFG 0
 
 #define EFSYS_OPT_DIAG 0
-#define EFSYS_OPT_RX_SCALE 0
+#define EFSYS_OPT_RX_SCALE 1
 #define EFSYS_OPT_QSTATS 0
 /* Filters support is required for SFN7xxx and SFN8xx */
 #define EFSYS_OPT_FILTER 1

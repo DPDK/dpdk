@@ -411,7 +411,8 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	if (sw_index == 0) {
 		rc = efx_mac_filter_default_rxq_set(sa->nic, rxq->common,
-						    B_FALSE);
+						    (sa->rss_channels > 1) ?
+						    B_TRUE : B_FALSE);
 		if (rc != 0)
 			goto fail_mac_filter_default_rxq_set;
 	}
@@ -683,6 +684,11 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq->batch_max = encp->enc_rx_batch_max;
 	rxq->prefix_size = encp->enc_rx_prefix_size;
 
+#if EFSYS_OPT_RX_SCALE
+	if (sa->hash_support == EFX_RX_HASH_AVAILABLE)
+		rxq->flags |= SFC_RXQ_RSS_HASH;
+#endif
+
 	rxq->state = SFC_RXQ_INITIALIZED;
 
 	rxq_info->rxq = rxq;
@@ -728,6 +734,56 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rte_free(rxq);
 }
 
+#if EFSYS_OPT_RX_SCALE
+efx_rx_hash_type_t
+sfc_rte_to_efx_hash_type(uint64_t rss_hf)
+{
+	efx_rx_hash_type_t efx_hash_types = 0;
+
+	if ((rss_hf & (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+		       ETH_RSS_NONFRAG_IPV4_OTHER)) != 0)
+		efx_hash_types |= EFX_RX_HASH_IPV4;
+
+	if ((rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) != 0)
+		efx_hash_types |= EFX_RX_HASH_TCPIPV4;
+
+	if ((rss_hf & (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
+			ETH_RSS_NONFRAG_IPV6_OTHER | ETH_RSS_IPV6_EX)) != 0)
+		efx_hash_types |= EFX_RX_HASH_IPV6;
+
+	if ((rss_hf & (ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX)) != 0)
+		efx_hash_types |= EFX_RX_HASH_TCPIPV6;
+
+	return efx_hash_types;
+}
+#endif
+
+static int
+sfc_rx_rss_config(struct sfc_adapter *sa)
+{
+	int rc = 0;
+
+#if EFSYS_OPT_RX_SCALE
+	if (sa->rss_channels > 1) {
+		rc = efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
+					   sa->rss_hash_types, B_TRUE);
+		if (rc != 0)
+			goto finish;
+
+		rc = efx_rx_scale_key_set(sa->nic, sa->rss_key,
+					  sizeof(sa->rss_key));
+		if (rc != 0)
+			goto finish;
+
+		rc = efx_rx_scale_tbl_set(sa->nic, sa->rss_tbl,
+					  sizeof(sa->rss_tbl));
+	}
+
+finish:
+#endif
+	return rc;
+}
+
 int
 sfc_rx_start(struct sfc_adapter *sa)
 {
@@ -739,6 +795,10 @@ sfc_rx_start(struct sfc_adapter *sa)
 	rc = efx_rx_init(sa->nic);
 	if (rc != 0)
 		goto fail_rx_init;
+
+	rc = sfc_rx_rss_config(sa);
+	if (rc != 0)
+		goto fail_rss_config;
 
 	for (sw_index = 0; sw_index < sa->rxq_count; ++sw_index) {
 		if ((!sa->rxq_info[sw_index].deferred_start ||
@@ -755,6 +815,7 @@ fail_rx_qstart:
 	while (sw_index-- > 0)
 		sfc_rx_qstop(sa, sw_index);
 
+fail_rss_config:
 	efx_rx_fini(sa->nic);
 
 fail_rx_init:
@@ -801,6 +862,14 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	case ETH_MQ_RX_NONE:
 		/* No special checks are required */
 		break;
+#if EFSYS_OPT_RX_SCALE
+	case ETH_MQ_RX_RSS:
+		if (sa->rss_support == EFX_RX_SCALE_UNAVAILABLE) {
+			sfc_err(sa, "RSS is not available");
+			rc = EINVAL;
+		}
+		break;
+#endif
 	default:
 		sfc_err(sa, "Rx multi-queue mode %u not supported",
 			rxmode->mq_mode);
@@ -875,6 +944,16 @@ sfc_rx_init(struct sfc_adapter *sa)
 		if (rc != 0)
 			goto fail_rx_qinit_info;
 	}
+
+#if EFSYS_OPT_RX_SCALE
+	sa->rss_channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
+			   MIN(sa->rxq_count, EFX_MAXRSS) : 1;
+
+	if (sa->rss_channels > 1) {
+		for (sw_index = 0; sw_index < EFX_RSS_TBL_SIZE; ++sw_index)
+			sa->rss_tbl[sw_index] = sw_index % sa->rss_channels;
+	}
+#endif
 
 	return 0;
 

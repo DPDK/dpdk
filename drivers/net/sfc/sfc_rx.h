@@ -83,6 +83,10 @@ struct sfc_rxq {
 	unsigned int		completed;
 	uint16_t		batch_max;
 	uint16_t		prefix_size;
+#if EFSYS_OPT_RX_SCALE
+	unsigned int		flags;
+#define SFC_RXQ_RSS_HASH	0x1
+#endif
 
 	/* Used on refill */
 	unsigned int		added;
@@ -145,6 +149,10 @@ uint16_t sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 unsigned int sfc_rx_qdesc_npending(struct sfc_adapter *sa,
 				   unsigned int sw_index);
 int sfc_rx_qdesc_done(struct sfc_rxq *rxq, unsigned int offset);
+
+#if EFSYS_OPT_RX_SCALE
+efx_rx_hash_type_t sfc_rte_to_efx_hash_type(uint64_t rss_hf);
+#endif
 
 #ifdef __cplusplus
 }
