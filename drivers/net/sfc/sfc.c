@@ -85,6 +85,33 @@ sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp)
 	memset(esmp, 0, sizeof(*esmp));
 }
 
+static uint32_t
+sfc_phy_cap_from_link_speeds(uint32_t speeds)
+{
+	uint32_t phy_caps = 0;
+
+	if (~speeds & ETH_LINK_SPEED_FIXED) {
+		phy_caps |= (1 << EFX_PHY_CAP_AN);
+		/*
+		 * If no speeds are specified in the mask, any supported
+		 * may be negotiated
+		 */
+		if (speeds == ETH_LINK_SPEED_AUTONEG)
+			phy_caps |=
+				(1 << EFX_PHY_CAP_1000FDX) |
+				(1 << EFX_PHY_CAP_10000FDX) |
+				(1 << EFX_PHY_CAP_40000FDX);
+	}
+	if (speeds & ETH_LINK_SPEED_1G)
+		phy_caps |= (1 << EFX_PHY_CAP_1000FDX);
+	if (speeds & ETH_LINK_SPEED_10G)
+		phy_caps |= (1 << EFX_PHY_CAP_10000FDX);
+	if (speeds & ETH_LINK_SPEED_40G)
+		phy_caps |= (1 << EFX_PHY_CAP_40000FDX);
+
+	return phy_caps;
+}
+
 /*
  * Check requested device level configuration.
  * Receive and transmit configuration is checked in corresponding
@@ -96,8 +123,12 @@ sfc_check_conf(struct sfc_adapter *sa)
 	const struct rte_eth_conf *conf = &sa->eth_dev->data->dev_conf;
 	int rc = 0;
 
-	if (conf->link_speeds != ETH_LINK_SPEED_AUTONEG) {
-		sfc_err(sa, "Manual link speed/duplex choice not supported");
+	sa->port.phy_adv_cap =
+		sfc_phy_cap_from_link_speeds(conf->link_speeds) &
+		sa->port.phy_adv_cap_mask;
+	if ((sa->port.phy_adv_cap & ~(1 << EFX_PHY_CAP_AN)) == 0) {
+		sfc_err(sa, "No link speeds from mask %#x are supported",
+			conf->link_speeds);
 		rc = EINVAL;
 	}
 
@@ -515,6 +546,9 @@ sfc_attach(struct sfc_adapter *sa)
 	rc = sfc_intr_attach(sa);
 	if (rc != 0)
 		goto fail_intr_attach;
+
+	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_PERM,
+			    &sa->port.phy_adv_cap_mask);
 
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);

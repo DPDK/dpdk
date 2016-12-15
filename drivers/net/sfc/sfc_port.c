@@ -86,6 +86,11 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_fcntl_set;
 
+	sfc_log_init(sa, "set phy adv caps to %#x", port->phy_adv_cap);
+	rc = efx_phy_adv_cap_set(sa->nic, port->phy_adv_cap);
+	if (rc != 0)
+		goto fail_phy_adv_cap_set;
+
 	sfc_log_init(sa, "set MAC PDU %u", (unsigned int)port->pdu);
 	rc = efx_mac_pdu_set(sa->nic, port->pdu);
 	if (rc != 0)
@@ -131,6 +136,7 @@ fail_mac_stats_periodic:
 fail_mac_filter_set:
 fail_mac_addr_set:
 fail_mac_pdu_set:
+fail_phy_adv_cap_set:
 fail_mac_fcntl_set:
 	efx_port_fini(sa->nic);
 

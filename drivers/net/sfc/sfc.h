@@ -126,6 +126,9 @@ struct sfc_txq_info;
 struct sfc_port {
 	unsigned int			lsc_seq;
 
+	uint32_t			phy_adv_cap_mask;
+	uint32_t			phy_adv_cap;
+
 	unsigned int			flow_ctrl;
 	boolean_t			flow_ctrl_autoneg;
 	size_t				pdu;

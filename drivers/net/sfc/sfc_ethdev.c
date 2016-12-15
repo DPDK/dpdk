@@ -52,6 +52,15 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
 
+	/* Autonegotiation may be disabled */
+	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
+	if (sa->port.phy_adv_cap_mask & EFX_PHY_CAP_1000FDX)
+		dev_info->speed_capa |= ETH_LINK_SPEED_1G;
+	if (sa->port.phy_adv_cap_mask & EFX_PHY_CAP_10000FDX)
+		dev_info->speed_capa |= ETH_LINK_SPEED_10G;
+	if (sa->port.phy_adv_cap_mask & EFX_PHY_CAP_40000FDX)
+		dev_info->speed_capa |= ETH_LINK_SPEED_40G;
+
 	dev_info->max_rx_queues = sa->rxq_max;
 	dev_info->max_tx_queues = sa->txq_max;
 
