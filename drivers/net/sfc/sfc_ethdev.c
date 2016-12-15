@@ -864,6 +864,7 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 
 	qinfo->conf.txq_flags = txq_info->txq->flags;
 	qinfo->conf.tx_free_thresh = txq_info->txq->free_thresh;
+	qinfo->conf.tx_deferred_start = txq_info->deferred_start;
 	qinfo->nb_desc = txq_info->entries;
 
 	sfc_adapter_unlock(sa);
@@ -935,6 +936,54 @@ sfc_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return 0;
 }
 
+static int
+sfc_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int rc;
+
+	sfc_log_init(sa, "TxQ = %u", tx_queue_id);
+
+	sfc_adapter_lock(sa);
+
+	rc = EINVAL;
+	if (sa->state != SFC_ADAPTER_STARTED)
+		goto fail_not_started;
+
+	rc = sfc_tx_qstart(sa, tx_queue_id);
+	if (rc != 0)
+		goto fail_tx_qstart;
+
+	sa->txq_info[tx_queue_id].deferred_started = B_TRUE;
+
+	sfc_adapter_unlock(sa);
+	return 0;
+
+fail_tx_qstart:
+
+fail_not_started:
+	sfc_adapter_unlock(sa);
+	SFC_ASSERT(rc > 0);
+	return -rc;
+}
+
+static int
+sfc_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	sfc_log_init(sa, "TxQ = %u", tx_queue_id);
+
+	sfc_adapter_lock(sa);
+
+	sfc_tx_qstop(sa, tx_queue_id);
+
+	sa->txq_info[tx_queue_id].deferred_started = B_FALSE;
+
+	sfc_adapter_unlock(sa);
+	return 0;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -955,6 +1004,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.mtu_set			= sfc_dev_set_mtu,
 	.rx_queue_start			= sfc_rx_queue_start,
 	.rx_queue_stop			= sfc_rx_queue_stop,
+	.tx_queue_start			= sfc_tx_queue_start,
+	.tx_queue_stop			= sfc_tx_queue_stop,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,
 	.rx_queue_count			= sfc_rx_queue_count,

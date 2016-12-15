@@ -72,11 +72,6 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 		rc = EINVAL;
 	}
 
-	if (tx_conf->tx_deferred_start != 0) {
-		sfc_err(sa, "TX queue deferred start is not supported (yet)");
-		rc = EINVAL;
-	}
-
 	if (tx_conf->tx_thresh.pthresh != 0 ||
 	    tx_conf->tx_thresh.hthresh != 0 ||
 	    tx_conf->tx_thresh.wthresh != 0) {
@@ -198,6 +193,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	evq->txq = txq;
 
 	txq_info->txq = txq;
+	txq_info->deferred_start = (tx_conf->tx_deferred_start != 0);
 
 	return 0;
 
@@ -425,6 +421,9 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	txq = txq_info->txq;
 
+	if (txq->state == SFC_TXQ_INITIALIZED)
+		return;
+
 	SFC_ASSERT(txq->state & SFC_TXQ_STARTED);
 
 	txq->state &= ~SFC_TXQ_RUNNING;
@@ -497,9 +496,12 @@ sfc_tx_start(struct sfc_adapter *sa)
 		goto fail_efx_tx_init;
 
 	for (sw_index = 0; sw_index < sa->txq_count; ++sw_index) {
-		rc = sfc_tx_qstart(sa, sw_index);
-		if (rc != 0)
-			goto fail_tx_qstart;
+		if (!(sa->txq_info[sw_index].deferred_start) ||
+		    sa->txq_info[sw_index].deferred_started) {
+			rc = sfc_tx_qstart(sa, sw_index);
+			if (rc != 0)
+				goto fail_tx_qstart;
+		}
 	}
 
 	return 0;

@@ -91,6 +91,8 @@ sfc_txq_sw_index(const struct sfc_txq *txq)
 struct sfc_txq_info {
 	unsigned int		entries;
 	struct sfc_txq		*txq;
+	boolean_t		deferred_start;
+	boolean_t		deferred_started;
 };
 
 int sfc_tx_init(struct sfc_adapter *sa);
