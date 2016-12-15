@@ -839,6 +839,7 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->mp = rxq->refill_mb_pool;
 	qinfo->conf.rx_free_thresh = rxq->refill_threshold;
 	qinfo->conf.rx_drop_en = 1;
+	qinfo->scattered_rx = (rxq_info->type == EFX_RXQ_TYPE_SCATTER);
 	qinfo->nb_desc = rxq_info->entries;
 
 	sfc_adapter_unlock(sa);

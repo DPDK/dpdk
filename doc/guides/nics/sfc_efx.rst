@@ -69,6 +69,8 @@ SFC EFX PMD has support for:
 
 - Received packet type information
 
+- Scattered Rx DMA for packet that are larger that a single Rx descriptor
+
 
 Non-supported Features
 ----------------------
@@ -88,8 +90,6 @@ The features not yet supported include:
 - VLAN filtering
 
 - VLAN stripping
-
-- Scattered receive
 
 - LRO
 

@@ -193,6 +193,7 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	unsigned int prefix_size = rxq->prefix_size;
 	unsigned int done_pkts = 0;
 	boolean_t discard_next = B_FALSE;
+	struct rte_mbuf *scatter_pkt = NULL;
 
 	if (unlikely((rxq->state & SFC_RXQ_RUNNING) == 0))
 		return 0;
@@ -218,9 +219,6 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (desc_flags & (EFX_ADDR_MISMATCH | EFX_DISCARD))
 			goto discard;
 
-		if (desc_flags & EFX_PKT_CONT)
-			goto discard;
-
 		if (desc_flags & EFX_PKT_PREFIX_LEN) {
 			uint16_t tmp_size;
 			int rc __rte_unused;
@@ -237,6 +235,29 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rte_pktmbuf_data_len(m) = seg_len;
 		rte_pktmbuf_pkt_len(m) = seg_len;
 
+		if (scatter_pkt != NULL) {
+			if (rte_pktmbuf_chain(scatter_pkt, m) != 0) {
+				rte_mempool_put(rxq->refill_mb_pool,
+						scatter_pkt);
+				goto discard;
+			}
+			/* The packet to deliver */
+			m = scatter_pkt;
+		}
+
+		if (desc_flags & EFX_PKT_CONT) {
+			/* The packet is scattered, more fragments to come */
+			scatter_pkt = m;
+			/* Futher fragments have no prefix */
+			prefix_size = 0;
+			continue;
+		}
+
+		/* Scattered packet is done */
+		scatter_pkt = NULL;
+		/* The first fragment of the packet has prefix */
+		prefix_size = rxq->prefix_size;
+
 		m->ol_flags = sfc_rx_desc_flags_to_offload_flags(desc_flags);
 		m->packet_type = sfc_rx_desc_flags_to_packet_type(desc_flags);
 
@@ -249,6 +270,9 @@ discard:
 		rte_mempool_put(rxq->refill_mb_pool, m);
 		rxd->mbuf = NULL;
 	}
+
+	/* pending is only moved when entire packet is received */
+	SFC_ASSERT(scatter_pkt == NULL);
 
 	rxq->completed = completed;
 
@@ -618,7 +642,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	SFC_ASSERT(nb_rx_desc <= rxq_info->max_entries);
 	rxq_info->entries = nb_rx_desc;
-	rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
+	rxq_info->type =
+		sa->eth_dev->data->dev_conf.rxmode.enable_scatter ?
+		EFX_RXQ_TYPE_SCATTER : EFX_RXQ_TYPE_DEFAULT;
 
 	evq_index = sfc_evq_index_by_rxq_sw_index(sa, sw_index);
 
@@ -804,11 +830,6 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		sfc_warn(sa,
 			 "FCS stripping control not supported - always stripped");
 		rxmode->hw_strip_crc = 1;
-	}
-
-	if (rxmode->enable_scatter) {
-		sfc_err(sa, "Scatter on Rx not supported");
-		rc = EINVAL;
 	}
 
 	if (rxmode->enable_lro) {
