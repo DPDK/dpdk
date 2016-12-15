@@ -33,7 +33,7 @@
 # Apply coccinelle transforms.
 
 SRCTREE=$(readlink -f $(dirname $0)/..)
-COCCI=$SRCTREE/scripts/cocci
+COCCI=$SRCTREE/devtools/cocci
 [ -n "$SPATCH" ] || SPATCH=$(which spatch)
 
 PATCH_LIST="$@"

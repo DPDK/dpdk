@@ -24,13 +24,13 @@ General Project Administration
 M: Thomas Monjalon <thomas.monjalon@6wind.com>
 T: git://dpdk.org/dpdk
 F: MAINTAINERS
-F: scripts/check-maintainers.sh
-F: scripts/check-git-log.sh
-F: scripts/check-includes.sh
-F: scripts/checkpatches.sh
-F: scripts/git-log-fixes.sh
-F: scripts/load-devel-config
-F: scripts/test-build.sh
+F: devtools/check-maintainers.sh
+F: devtools/check-git-log.sh
+F: devtools/check-includes.sh
+F: devtools/checkpatches.sh
+F: devtools/git-log-fixes.sh
+F: devtools/load-devel-config
+F: devtools/test-build.sh
 
 Stable Branches
 ---------------

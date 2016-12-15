@@ -457,7 +457,7 @@ versions of the symbol.
 Running the ABI Validator
 -------------------------
 
-The ``scripts`` directory in the DPDK source tree contains a utility program,
+The ``devtools`` directory in the DPDK source tree contains a utility program,
 ``validate-abi.sh``, for validating the DPDK ABI based on the Linux `ABI
 Compliance Checker
 <http://ispras.linuxbase.org/index.php/ABI_compliance_checker>`_.
@@ -470,7 +470,7 @@ utilities which can be installed via a package manager. For example::
 
 The syntax of the ``validate-abi.sh`` utility is::
 
-   ./scripts/validate-abi.sh <REV1> <REV2> <TARGET>
+   ./devtools/validate-abi.sh <REV1> <REV2> <TARGET>
 
 Where ``REV1`` and ``REV2`` are valid gitrevisions(7)
 https://www.kernel.org/pub/software/scm/git/docs/gitrevisions.html
@@ -479,13 +479,13 @@ on the local repo and target is the usual DPDK compilation target.
 For example::
 
    # Check between the previous and latest commit:
-   ./scripts/validate-abi.sh HEAD~1 HEAD x86_64-native-linuxapp-gcc
+   ./devtools/validate-abi.sh HEAD~1 HEAD x86_64-native-linuxapp-gcc
 
    # Check between two tags:
-   ./scripts/validate-abi.sh v2.0.0 v2.1.0 x86_64-native-linuxapp-gcc
+   ./devtools/validate-abi.sh v2.0.0 v2.1.0 x86_64-native-linuxapp-gcc
 
    # Check between git master and local topic-branch "vhost-hacking":
-   ./scripts/validate-abi.sh master vhost-hacking x86_64-native-linuxapp-gcc
+   ./devtools/validate-abi.sh master vhost-hacking x86_64-native-linuxapp-gcc
 
 After the validation script completes (it can take a while since it need to
 compile both tags) it will create compatibility reports in the

@@ -298,7 +298,7 @@ For example::
 Checking the Patches
 --------------------
 
-Patches should be checked for formatting and syntax issues using the ``checkpatches.sh`` script in the ``scripts``
+Patches should be checked for formatting and syntax issues using the ``checkpatches.sh`` script in the ``devtools``
 directory of the DPDK repo.
 This uses the Linux kernel development tool ``checkpatch.pl`` which  can be obtained by cloning, and periodically,
 updating the Linux kernel sources.
@@ -313,7 +313,7 @@ files, in order of preference::
 
 Once the environment variable the script can be run as follows::
 
-   scripts/checkpatches.sh ~/patch/
+   devtools/checkpatches.sh ~/patch/
 
 The script usage is::
 
@@ -340,10 +340,10 @@ Where the range is a ``git log`` option.
 Checking Compilation
 --------------------
 
-Compilation of patches and changes should be tested using the the ``test-build.sh`` script in the ``scripts``
+Compilation of patches and changes should be tested using the the ``test-build.sh`` script in the ``devtools``
 directory of the DPDK repo::
 
-  scripts/test-build.sh x86_64-native-linuxapp-gcc+next+shared
+  devtools/test-build.sh x86_64-native-linuxapp-gcc+next+shared
 
 The script usage is::
 
