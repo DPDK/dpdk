@@ -116,7 +116,9 @@ sfc_check_conf(struct sfc_adapter *sa)
 		rc = EINVAL;
 	}
 
-	if (conf->intr_conf.lsc != 0) {
+	if ((conf->intr_conf.lsc != 0) &&
+	    (sa->intr.type != EFX_INTR_LINE) &&
+	    (sa->intr.type != EFX_INTR_MESSAGE)) {
 		sfc_err(sa, "Link status change interrupt not supported");
 		rc = EINVAL;
 	}

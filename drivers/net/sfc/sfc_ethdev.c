@@ -681,6 +681,7 @@ static struct eth_driver sfc_efx_pmd = {
 	.pci_drv = {
 		.id_table = pci_id_sfc_efx_map,
 		.drv_flags =
+			RTE_PCI_DRV_INTR_LSC |
 			RTE_PCI_DRV_NEED_MAPPING,
 		.probe = rte_eth_dev_pci_probe,
 		.remove = rte_eth_dev_pci_remove,

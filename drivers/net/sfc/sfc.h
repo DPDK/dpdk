@@ -115,6 +115,8 @@ struct sfc_mcdi {
 
 struct sfc_intr {
 	efx_intr_type_t			type;
+	rte_intr_callback_fn		handler;
+	boolean_t			lsc_intr;
 };
 
 struct sfc_evq_info;
@@ -122,6 +124,8 @@ struct sfc_rxq_info;
 struct sfc_txq_info;
 
 struct sfc_port {
+	unsigned int			lsc_seq;
+
 	unsigned int			flow_ctrl;
 	boolean_t			flow_ctrl_autoneg;
 	size_t				pdu;

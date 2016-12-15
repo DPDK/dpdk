@@ -44,7 +44,7 @@ SFC EFX PMD has support for:
 
 - Multiple transmit and receive queues
 
-- Link state information
+- Link state information including link status change interrupt
 
 - IPv4/IPv6 TCP/UDP transmit checksum offload
 
@@ -60,8 +60,6 @@ Non-supported Features
 ----------------------
 
 The features not yet supported include:
-
-- Link status change interrupt
 
 - Receive queue interupts
 

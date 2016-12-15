@@ -287,11 +287,25 @@ sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 	struct sfc_adapter *sa = evq->sa;
 	struct rte_eth_link *dev_link = &sa->eth_dev->data->dev_link;
 	struct rte_eth_link new_link;
+	uint64_t new_link_u64;
+	uint64_t old_link_u64;
 
 	EFX_STATIC_ASSERT(sizeof(*dev_link) == sizeof(rte_atomic64_t));
 
 	sfc_port_link_mode_to_info(link_mode, &new_link);
-	rte_atomic64_set((rte_atomic64_t *)dev_link, *(uint64_t *)&new_link);
+
+	new_link_u64 = *(uint64_t *)&new_link;
+	do {
+		old_link_u64 = rte_atomic64_read((rte_atomic64_t *)dev_link);
+		if (old_link_u64 == new_link_u64)
+			break;
+
+		if (rte_atomic64_cmpset((volatile uint64_t *)dev_link,
+					old_link_u64, new_link_u64)) {
+			evq->sa->port.lsc_seq++;
+			break;
+		}
+	} while (B_TRUE);
 
 	return B_FALSE;
 }
@@ -521,6 +535,12 @@ sfc_ev_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mgmt_evq_start;
 
+	if (sa->intr.lsc_intr) {
+		rc = sfc_ev_qprime(sa->evq_info[sa->mgmt_evq_index].evq);
+		if (rc != 0)
+			goto fail_evq0_prime;
+	}
+
 	rte_spinlock_unlock(&sa->mgmt_evq_lock);
 
 	/*
@@ -537,6 +557,9 @@ sfc_ev_start(struct sfc_adapter *sa)
 	 */
 
 	return 0;
+
+fail_evq0_prime:
+	sfc_ev_qstop(sa, 0);
 
 fail_mgmt_evq_start:
 	rte_spinlock_unlock(&sa->mgmt_evq_lock);
@@ -639,7 +662,10 @@ sfc_ev_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(rte_is_power_of_2(max_entries));
 
 	evq_info->max_entries = max_entries;
-	evq_info->flags = sa->evq_flags | EFX_EVQ_FLAGS_NOTIFY_DISABLED;
+	evq_info->flags = sa->evq_flags |
+		((sa->intr.lsc_intr && sw_index == sa->mgmt_evq_index) ?
+			EFX_EVQ_FLAGS_NOTIFY_INTERRUPT :
+			EFX_EVQ_FLAGS_NOTIFY_DISABLED);
 
 	return 0;
 }
