@@ -42,6 +42,16 @@ extern "C" {
 
 #define SFC_KVARG_MCDI_LOGGING		"mcdi_logging"
 
+#define SFC_KVARG_PERF_PROFILE		"perf_profile"
+
+#define SFC_KVARG_PERF_PROFILE_AUTO		"auto"
+#define SFC_KVARG_PERF_PROFILE_THROUGHPUT	"throughput"
+#define SFC_KVARG_PERF_PROFILE_LOW_LATENCY	"low-latency"
+#define SFC_KVARG_VALUES_PERF_PROFILE \
+	"[" SFC_KVARG_PERF_PROFILE_AUTO "|" \
+	    SFC_KVARG_PERF_PROFILE_THROUGHPUT "|" \
+	    SFC_KVARG_PERF_PROFILE_LOW_LATENCY "]"
+
 struct sfc_adapter;
 
 int sfc_kvargs_parse(struct sfc_adapter *sa);

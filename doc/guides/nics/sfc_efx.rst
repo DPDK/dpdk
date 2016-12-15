@@ -152,6 +152,13 @@ whitelist option like "-w 02:00.0,arg1=value1,...".
 Case-insensitive 1/y/yes/on or 0/n/no/off may be used to specify
 boolean parameters value.
 
+- ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
+
+  Choose hardware tunning to be optimized for either throughput or
+  low-latency.
+  **auto** allows NIC firmware to make a choice based on
+  installed licences and firmware variant configured using **sfboot**.
+
 - ``debug_init`` [bool] (default **n**)
 
   Enable extra logging during device intialization and startup.

@@ -44,6 +44,7 @@ sfc_kvargs_parse(struct sfc_adapter *sa)
 	const char **params = (const char *[]){
 		SFC_KVARG_DEBUG_INIT,
 		SFC_KVARG_MCDI_LOGGING,
+		SFC_KVARG_PERF_PROFILE,
 		NULL,
 	};
 

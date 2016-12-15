@@ -40,6 +40,7 @@
 #include "sfc_ev.h"
 #include "sfc_rx.h"
 #include "sfc_tx.h"
+#include "sfc_kvargs.h"
 
 
 /* Initial delay when waiting for event queue init complete event */
@@ -405,9 +406,7 @@ sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	/* Create the common code event queue */
 	rc = efx_ev_qcreate(sa->nic, sw_index, esmp, evq_info->entries,
-			    0 /* unused on EF10 */, 0,
-			    EFX_EVQ_FLAGS_TYPE_THROUGHPUT |
-			    EFX_EVQ_FLAGS_NOTIFY_DISABLED,
+			    0 /* unused on EF10 */, 0, evq_info->flags,
 			    &evq->common);
 	if (rc != 0)
 		goto fail_ev_qcreate;
@@ -640,6 +639,25 @@ sfc_ev_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(rte_is_power_of_2(max_entries));
 
 	evq_info->max_entries = max_entries;
+	evq_info->flags = sa->evq_flags | EFX_EVQ_FLAGS_NOTIFY_DISABLED;
+
+	return 0;
+}
+
+static int
+sfc_kvarg_perf_profile_handler(__rte_unused const char *key,
+			       const char *value_str, void *opaque)
+{
+	uint64_t *value = opaque;
+
+	if (strcasecmp(value_str, SFC_KVARG_PERF_PROFILE_THROUGHPUT) == 0)
+		*value = EFX_EVQ_FLAGS_TYPE_THROUGHPUT;
+	else if (strcasecmp(value_str, SFC_KVARG_PERF_PROFILE_LOW_LATENCY) == 0)
+		*value = EFX_EVQ_FLAGS_TYPE_LOW_LATENCY;
+	else if (strcasecmp(value_str, SFC_KVARG_PERF_PROFILE_AUTO) == 0)
+		*value = EFX_EVQ_FLAGS_TYPE_AUTO;
+	else
+		return -EINVAL;
 
 	return 0;
 }
@@ -659,6 +677,16 @@ sfc_ev_init(struct sfc_adapter *sa)
 	unsigned int sw_index;
 
 	sfc_log_init(sa, "entry");
+
+	sa->evq_flags = EFX_EVQ_FLAGS_TYPE_THROUGHPUT;
+	rc = sfc_kvargs_process(sa, SFC_KVARG_PERF_PROFILE,
+				sfc_kvarg_perf_profile_handler,
+				&sa->evq_flags);
+	if (rc != 0) {
+		sfc_err(sa, "invalid %s parameter value",
+			SFC_KVARG_PERF_PROFILE);
+		goto fail_kvarg_perf_profile;
+	}
 
 	sa->evq_count = sfc_ev_qcount(sa);
 	sa->mgmt_evq_index = 0;
@@ -700,6 +728,8 @@ fail_ev_qinit_info:
 
 fail_evqs_alloc:
 	sa->evq_count = 0;
+
+fail_kvarg_perf_profile:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }

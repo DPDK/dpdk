@@ -74,6 +74,8 @@ struct sfc_evq_info {
 	unsigned int		max_entries;
 	/* Real number of EVQ entries, less or equal to max_entries */
 	unsigned int		entries;
+	/* Event queue creation flags */
+	uint32_t		flags;
 	/* NUMA-aware EVQ data structure used on datapath */
 	struct sfc_evq		*evq;
 };
