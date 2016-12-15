@@ -837,6 +837,7 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	SFC_ASSERT(rxq != NULL);
 
 	qinfo->mp = rxq->refill_mb_pool;
+	qinfo->conf.rx_free_thresh = rxq->refill_threshold;
 	qinfo->conf.rx_drop_en = 1;
 	qinfo->nb_desc = rxq_info->entries;
 

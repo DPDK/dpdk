@@ -87,6 +87,10 @@ sfc_rx_qrefill(struct sfc_rxq *rxq)
 
 	free_space = EFX_RXQ_LIMIT(rxq->ptr_mask + 1) -
 		(added - rxq->completed);
+
+	if (free_space < rxq->refill_threshold)
+		return;
+
 	bulks = free_space / RTE_DIM(objs);
 
 	id = added & rxq->ptr_mask;
@@ -410,9 +414,10 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 }
 
 static int
-sfc_rx_qcheck_conf(struct sfc_adapter *sa,
+sfc_rx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_rx_desc,
 		   const struct rte_eth_rxconf *rx_conf)
 {
+	const uint16_t rx_free_thresh_max = EFX_RXQ_LIMIT(nb_rx_desc);
 	int rc = 0;
 
 	if (rx_conf->rx_thresh.pthresh != 0 ||
@@ -423,8 +428,10 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa,
 		rc = EINVAL;
 	}
 
-	if (rx_conf->rx_free_thresh != 0) {
-		sfc_err(sa, "RxQ free threshold is not supported");
+	if (rx_conf->rx_free_thresh > rx_free_thresh_max) {
+		sfc_err(sa,
+			"RxQ free threshold too large: %u vs maximum %u",
+			rx_conf->rx_free_thresh, rx_free_thresh_max);
 		rc = EINVAL;
 	}
 
@@ -555,7 +562,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	struct sfc_evq *evq;
 	struct sfc_rxq *rxq;
 
-	rc = sfc_rx_qcheck_conf(sa, rx_conf);
+	rc = sfc_rx_qcheck_conf(sa, nb_rx_desc, rx_conf);
 	if (rc != 0)
 		goto fail_bad_conf;
 
@@ -615,6 +622,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	evq->rxq = rxq;
 	rxq->evq = evq;
 	rxq->ptr_mask = rxq_info->entries - 1;
+	rxq->refill_threshold = rx_conf->rx_free_thresh;
 	rxq->refill_mb_pool = mb_pool;
 	rxq->buf_size = buf_size;
 	rxq->hw_index = sw_index;

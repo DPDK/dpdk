@@ -87,6 +87,7 @@ struct sfc_rxq {
 	/* Used on refill */
 	unsigned int		added;
 	unsigned int		pushed;
+	unsigned int		refill_threshold;
 	uint8_t			port_id;
 	uint16_t		buf_size;
 	struct rte_mempool	*refill_mb_pool;
