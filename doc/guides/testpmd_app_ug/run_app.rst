@@ -72,7 +72,7 @@ See the DPDK Getting Started Guides for more information on these options.
 
 *   ``-b, --pci-blacklist domain:bus:devid.func``
 
-    Blacklist a PCI devise to prevent EAL from using it. Multiple -b options are allowed.
+    Blacklist a PCI device to prevent EAL from using it. Multiple -b options are allowed.
 
 *   ``-d LIB.so``
 
