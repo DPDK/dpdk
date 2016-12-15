@@ -63,6 +63,8 @@ SFC EFX PMD has support for:
 
 - Allmulticast mode
 
+- Multicast MAC filter
+
 
 Non-supported Features
 ----------------------
