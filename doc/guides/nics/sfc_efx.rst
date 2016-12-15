@@ -55,6 +55,10 @@ SFC EFX PMD has support for:
 
 - Basic flow control
 
+- MTU update
+
+- Jumbo frames up to 9K
+
 
 Non-supported Features
 ----------------------

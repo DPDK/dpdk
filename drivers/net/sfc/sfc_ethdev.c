@@ -548,6 +548,72 @@ fail_inval:
 	return -rc;
 }
 
+static int
+sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	size_t pdu = EFX_MAC_PDU(mtu);
+	size_t old_pdu;
+	int rc;
+
+	sfc_log_init(sa, "mtu=%u", mtu);
+
+	rc = EINVAL;
+	if (pdu < EFX_MAC_PDU_MIN) {
+		sfc_err(sa, "too small MTU %u (PDU size %u less than min %u)",
+			(unsigned int)mtu, (unsigned int)pdu,
+			EFX_MAC_PDU_MIN);
+		goto fail_inval;
+	}
+	if (pdu > EFX_MAC_PDU_MAX) {
+		sfc_err(sa, "too big MTU %u (PDU size %u greater than max %u)",
+			(unsigned int)mtu, (unsigned int)pdu,
+			EFX_MAC_PDU_MAX);
+		goto fail_inval;
+	}
+
+	sfc_adapter_lock(sa);
+
+	if (pdu != sa->port.pdu) {
+		if (sa->state == SFC_ADAPTER_STARTED) {
+			sfc_stop(sa);
+
+			old_pdu = sa->port.pdu;
+			sa->port.pdu = pdu;
+			rc = sfc_start(sa);
+			if (rc != 0)
+				goto fail_start;
+		} else {
+			sa->port.pdu = pdu;
+		}
+	}
+
+	/*
+	 * The driver does not use it, but other PMDs update jumbo_frame
+	 * flag and max_rx_pkt_len when MTU is set.
+	 */
+	dev->data->dev_conf.rxmode.jumbo_frame = (mtu > ETHER_MAX_LEN);
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = sa->port.pdu;
+
+	sfc_adapter_unlock(sa);
+
+	sfc_log_init(sa, "done");
+	return 0;
+
+fail_start:
+	sa->port.pdu = old_pdu;
+	if (sfc_start(sa) != 0)
+		sfc_err(sa, "cannot start with neither new (%u) nor old (%u) "
+			"PDU max size - port is stopped",
+			(unsigned int)pdu, (unsigned int)old_pdu);
+	sfc_adapter_unlock(sa);
+
+fail_inval:
+	sfc_log_init(sa, "failed %d", rc);
+	SFC_ASSERT(rc > 0);
+	return -rc;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -558,6 +624,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.xstats_get			= sfc_xstats_get,
 	.xstats_get_names		= sfc_xstats_get_names,
 	.dev_infos_get			= sfc_dev_infos_get,
+	.mtu_set			= sfc_dev_set_mtu,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,
 	.tx_queue_setup			= sfc_tx_queue_setup,
