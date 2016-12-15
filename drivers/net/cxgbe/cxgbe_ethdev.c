@@ -1050,3 +1050,4 @@ static struct eth_driver rte_cxgbe_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_cxgbe, rte_cxgbe_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_cxgbe, cxgb4_pci_tbl);
+RTE_PMD_REGISTER_KMOD_DEP(net_cxgbe, "* igb_uio | uio_pci_generic | vfio");

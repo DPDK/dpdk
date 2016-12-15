@@ -3074,3 +3074,4 @@ static struct eth_driver rte_pmd_fm10k = {
 
 RTE_PMD_REGISTER_PCI(net_fm10k, rte_pmd_fm10k.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_fm10k, pci_id_fm10k_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_fm10k, "* igb_uio | uio_pci_generic | vfio");

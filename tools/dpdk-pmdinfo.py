@@ -312,7 +312,10 @@ class ReadElf(object):
         global raw_output
         global pcidb
 
-        optional_pmd_info = [{'id': 'params', 'tag': 'PMD PARAMETERS'}]
+        optional_pmd_info = [
+            {'id': 'params', 'tag': 'PMD PARAMETERS'},
+            {'id': 'kmod', 'tag': 'PMD KMOD DEPENDENCIES'}
+        ]
 
         i = mystring.index("=")
         mystring = mystring[i + 2:]

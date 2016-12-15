@@ -1173,3 +1173,4 @@ static struct eth_driver bnxt_rte_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_bnxt, bnxt_rte_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnxt, bnxt_pci_id_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_bnxt, "* igb_uio | uio_pci_generic | vfio");

@@ -1807,3 +1807,4 @@ eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
 
 RTE_PMD_REGISTER_PCI(net_e1000_em, rte_em_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_e1000_em, pci_id_em_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_e1000_em, "* igb_uio | uio_pci_generic | vfio");

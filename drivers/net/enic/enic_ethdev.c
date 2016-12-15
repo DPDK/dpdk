@@ -645,3 +645,4 @@ static struct eth_driver rte_enic_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_enic, rte_enic_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_enic, "* igb_uio | uio_pci_generic | vfio");

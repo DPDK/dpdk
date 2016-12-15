@@ -269,6 +269,7 @@ struct opt_tag {
 
 static const struct opt_tag opt_tags[] = {
 	{"_param_string_export", "params"},
+	{"_kmod_dep_export", "kmod"},
 };
 
 static int complete_pmd_entry(struct elf_info *info, struct pmd_driver *drv)

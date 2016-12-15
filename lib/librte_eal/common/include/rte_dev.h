@@ -239,6 +239,31 @@ RTE_STR(table)
 static const char DRV_EXP_TAG(name, param_string_export)[] \
 __attribute__((used)) = str
 
+/**
+ * Advertise the list of kernel modules required to run this driver
+ *
+ * This string lists the kernel modules required for the devices
+ * associated to a PMD. The format of each line of the string is:
+ * "<device-pattern> <kmod-expression>".
+ *
+ * The possible formats for the device pattern are:
+ *   "*"                     all devices supported by this driver
+ *   "pci:*"                 all PCI devices supported by this driver
+ *   "pci:v8086:d*:sv*:sd*"  all PCI devices supported by this driver
+ *                           whose vendor id is 0x8086.
+ *
+ * The format of the kernel modules list is a parenthesed expression
+ * containing logical-and (&) and logical-or (|).
+ *
+ * The device pattern and the kmod expression are separated by a space.
+ *
+ * Example:
+ * - "* igb_uio | uio_pci_generic | vfio"
+ */
+#define RTE_PMD_REGISTER_KMOD_DEP(name, str) \
+static const char DRV_EXP_TAG(name, kmod_dep_export)[] \
+__attribute__((used)) = str
+
 #ifdef __cplusplus
 }
 #endif

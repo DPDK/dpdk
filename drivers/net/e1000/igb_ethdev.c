@@ -5240,5 +5240,7 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 
 RTE_PMD_REGISTER_PCI(net_e1000_igb, rte_igb_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_e1000_igb, pci_id_igb_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_e1000_igb, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_PCI(net_e1000_igb_vf, rte_igbvf_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_e1000_igb_vf, pci_id_igbvf_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_e1000_igb_vf, "* igb_uio | vfio");

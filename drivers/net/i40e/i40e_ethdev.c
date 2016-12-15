@@ -711,6 +711,7 @@ rte_i40e_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 
 RTE_PMD_REGISTER_PCI(net_i40e, rte_i40e_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_i40e, pci_id_i40e_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_i40e, "* igb_uio | uio_pci_generic | vfio");
 
 #ifndef I40E_GLQF_ORT
 #define I40E_GLQF_ORT(_i)    (0x00268900 + ((_i) * 4))

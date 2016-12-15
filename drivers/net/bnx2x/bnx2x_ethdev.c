@@ -643,5 +643,7 @@ static struct eth_driver rte_bnx2xvf_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_bnx2x, rte_bnx2x_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnx2x, pci_id_bnx2x_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_bnx2x, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_bnx2xvf, "* igb_uio | vfio");
