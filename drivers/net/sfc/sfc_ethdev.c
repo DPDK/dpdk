@@ -839,6 +839,7 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->mp = rxq->refill_mb_pool;
 	qinfo->conf.rx_free_thresh = rxq->refill_threshold;
 	qinfo->conf.rx_drop_en = 1;
+	qinfo->conf.rx_deferred_start = rxq_info->deferred_start;
 	qinfo->scattered_rx = (rxq_info->type == EFX_RXQ_TYPE_SCATTER);
 	qinfo->nb_desc = rxq_info->entries;
 
@@ -863,6 +864,54 @@ sfc_rx_descriptor_done(void *queue, uint16_t offset)
 	return sfc_rx_qdesc_done(rxq, offset);
 }
 
+static int
+sfc_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int rc;
+
+	sfc_log_init(sa, "RxQ=%u", rx_queue_id);
+
+	sfc_adapter_lock(sa);
+
+	rc = EINVAL;
+	if (sa->state != SFC_ADAPTER_STARTED)
+		goto fail_not_started;
+
+	rc = sfc_rx_qstart(sa, rx_queue_id);
+	if (rc != 0)
+		goto fail_rx_qstart;
+
+	sa->rxq_info[rx_queue_id].deferred_started = B_TRUE;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+
+fail_rx_qstart:
+fail_not_started:
+	sfc_adapter_unlock(sa);
+	SFC_ASSERT(rc > 0);
+	return -rc;
+}
+
+static int
+sfc_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	sfc_log_init(sa, "RxQ=%u", rx_queue_id);
+
+	sfc_adapter_lock(sa);
+	sfc_rx_qstop(sa, rx_queue_id);
+
+	sa->rxq_info[rx_queue_id].deferred_started = B_FALSE;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -881,6 +930,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_infos_get			= sfc_dev_infos_get,
 	.dev_supported_ptypes_get	= sfc_dev_supported_ptypes_get,
 	.mtu_set			= sfc_dev_set_mtu,
+	.rx_queue_start			= sfc_rx_queue_start,
+	.rx_queue_stop			= sfc_rx_queue_stop,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,
 	.rx_queue_count			= sfc_rx_queue_count,

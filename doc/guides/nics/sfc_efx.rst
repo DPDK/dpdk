@@ -71,6 +71,8 @@ SFC EFX PMD has support for:
 
 - Scattered Rx DMA for packet that are larger that a single Rx descriptor
 
+- Deferred receive queue start
+
 
 Non-supported Features
 ----------------------

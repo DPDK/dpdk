@@ -119,6 +119,8 @@ struct sfc_rxq_info {
 	unsigned int		entries;
 	efx_rxq_type_t		type;
 	struct sfc_rxq		*rxq;
+	boolean_t		deferred_start;
+	boolean_t		deferred_started;
 };
 
 int sfc_rx_init(struct sfc_adapter *sa);

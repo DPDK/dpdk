@@ -444,6 +444,9 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	rxq_info = &sa->rxq_info[sw_index];
 	rxq = rxq_info->rxq;
+
+	if (rxq->state == SFC_RXQ_INITIALIZED)
+		return;
 	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
 
 	/* It seems to be used by DPDK for debug purposes only ('rte_ether') */
@@ -488,11 +491,6 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_rx_desc,
 
 	if (rx_conf->rx_drop_en == 0) {
 		sfc_err(sa, "RxQ drop disable is not supported");
-		rc = EINVAL;
-	}
-
-	if (rx_conf->rx_deferred_start != 0) {
-		sfc_err(sa, "RxQ deferred start is not supported");
 		rc = EINVAL;
 	}
 
@@ -688,6 +686,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq->state = SFC_RXQ_INITIALIZED;
 
 	rxq_info->rxq = rxq;
+	rxq_info->deferred_start = (rx_conf->rx_deferred_start != 0);
 
 	return 0;
 
@@ -742,9 +741,12 @@ sfc_rx_start(struct sfc_adapter *sa)
 		goto fail_rx_init;
 
 	for (sw_index = 0; sw_index < sa->rxq_count; ++sw_index) {
-		rc = sfc_rx_qstart(sa, sw_index);
-		if (rc != 0)
-			goto fail_rx_qstart;
+		if ((!sa->rxq_info[sw_index].deferred_start ||
+		     sa->rxq_info[sw_index].deferred_started)) {
+			rc = sfc_rx_qstart(sa, sw_index);
+			if (rc != 0)
+				goto fail_rx_qstart;
+		}
 	}
 
 	return 0;
