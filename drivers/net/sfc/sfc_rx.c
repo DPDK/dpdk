@@ -130,6 +130,45 @@ sfc_rx_qrefill(struct sfc_rxq *rxq)
 	}
 }
 
+static uint64_t
+sfc_rx_desc_flags_to_offload_flags(const unsigned int desc_flags)
+{
+	uint64_t mbuf_flags = 0;
+
+	switch (desc_flags & (EFX_PKT_IPV4 | EFX_CKSUM_IPV4)) {
+	case (EFX_PKT_IPV4 | EFX_CKSUM_IPV4):
+		mbuf_flags |= PKT_RX_IP_CKSUM_GOOD;
+		break;
+	case EFX_PKT_IPV4:
+		mbuf_flags |= PKT_RX_IP_CKSUM_BAD;
+		break;
+	default:
+		RTE_BUILD_BUG_ON(PKT_RX_IP_CKSUM_UNKNOWN != 0);
+		SFC_ASSERT((mbuf_flags & PKT_RX_IP_CKSUM_MASK) ==
+			   PKT_RX_IP_CKSUM_UNKNOWN);
+		break;
+	}
+
+	switch ((desc_flags &
+		 (EFX_PKT_TCP | EFX_PKT_UDP | EFX_CKSUM_TCPUDP))) {
+	case (EFX_PKT_TCP | EFX_CKSUM_TCPUDP):
+	case (EFX_PKT_UDP | EFX_CKSUM_TCPUDP):
+		mbuf_flags |= PKT_RX_L4_CKSUM_GOOD;
+		break;
+	case EFX_PKT_TCP:
+	case EFX_PKT_UDP:
+		mbuf_flags |= PKT_RX_L4_CKSUM_BAD;
+		break;
+	default:
+		RTE_BUILD_BUG_ON(PKT_RX_L4_CKSUM_UNKNOWN != 0);
+		SFC_ASSERT((mbuf_flags & PKT_RX_L4_CKSUM_MASK) ==
+			   PKT_RX_L4_CKSUM_UNKNOWN);
+		break;
+	}
+
+	return mbuf_flags;
+}
+
 uint16_t
 sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -182,6 +221,7 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rte_pktmbuf_data_len(m) = seg_len;
 		rte_pktmbuf_pkt_len(m) = seg_len;
 
+		m->ol_flags = sfc_rx_desc_flags_to_offload_flags(desc_flags);
 		m->packet_type = RTE_PTYPE_L2_ETHER;
 
 		*rx_pkts++ = m;

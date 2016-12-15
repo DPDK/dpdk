@@ -65,6 +65,8 @@ SFC EFX PMD has support for:
 
 - Multicast MAC filter
 
+- IPv4/IPv6 TCP/UDP receive checksum offload
+
 
 Non-supported Features
 ----------------------
