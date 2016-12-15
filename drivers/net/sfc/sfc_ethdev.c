@@ -820,6 +820,29 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 	return -rc;
 }
 
+static void
+sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		      struct rte_eth_rxq_info *qinfo)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_rxq_info *rxq_info;
+	struct sfc_rxq *rxq;
+
+	sfc_adapter_lock(sa);
+
+	SFC_ASSERT(rx_queue_id < sa->rxq_count);
+
+	rxq_info = &sa->rxq_info[rx_queue_id];
+	rxq = rxq_info->rxq;
+	SFC_ASSERT(rxq != NULL);
+
+	qinfo->mp = rxq->refill_mb_pool;
+	qinfo->conf.rx_drop_en = 1;
+	qinfo->nb_desc = rxq_info->entries;
+
+	sfc_adapter_unlock(sa);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -846,6 +869,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.flow_ctrl_set			= sfc_flow_ctrl_set,
 	.mac_addr_set			= sfc_mac_addr_set,
 	.set_mc_addr_list		= sfc_set_mc_addr_list,
+	.rxq_info_get			= sfc_rx_queue_info_get,
 };
 
 static int
