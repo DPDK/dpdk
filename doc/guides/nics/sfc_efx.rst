@@ -71,6 +71,8 @@ SFC EFX PMD has support for:
 
 - Receive side scaling (RSS)
 
+- RSS hash
+
 - Scattered Rx DMA for packet that are larger that a single Rx descriptor
 
 - Deferred receive and transmit queue start

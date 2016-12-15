@@ -185,6 +185,28 @@ sfc_rx_desc_flags_to_packet_type(const unsigned int desc_flags)
 		((desc_flags & EFX_PKT_UDP) ? RTE_PTYPE_L4_UDP : 0);
 }
 
+static void
+sfc_rx_set_rss_hash(struct sfc_rxq *rxq, unsigned int flags, struct rte_mbuf *m)
+{
+#if EFSYS_OPT_RX_SCALE
+	uint8_t *mbuf_data;
+
+
+	if ((rxq->flags & SFC_RXQ_RSS_HASH) == 0)
+		return;
+
+	mbuf_data = rte_pktmbuf_mtod(m, uint8_t *);
+
+	if (flags & (EFX_PKT_IPV4 | EFX_PKT_IPV6)) {
+		m->hash.rss = efx_pseudo_hdr_hash_get(rxq->common,
+						      EFX_RX_HASHALG_TOEPLITZ,
+						      mbuf_data);
+
+		m->ol_flags |= PKT_RX_RSS_HASH;
+	}
+#endif
+}
+
 uint16_t
 sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -231,7 +253,6 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			seg_len = rxd->size - prefix_size;
 		}
 
-		m->data_off += prefix_size;
 		rte_pktmbuf_data_len(m) = seg_len;
 		rte_pktmbuf_pkt_len(m) = seg_len;
 
@@ -260,6 +281,14 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		m->ol_flags = sfc_rx_desc_flags_to_offload_flags(desc_flags);
 		m->packet_type = sfc_rx_desc_flags_to_packet_type(desc_flags);
+
+		/*
+		 * Extract RSS hash from the packet prefix and
+		 * set the corresponding field (if needed and possible)
+		 */
+		sfc_rx_set_rss_hash(rxq, desc_flags, m);
+
+		m->data_off += prefix_size;
 
 		*rx_pkts++ = m;
 		done_pkts++;
