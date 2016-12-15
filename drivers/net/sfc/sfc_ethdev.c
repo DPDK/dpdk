@@ -452,6 +452,102 @@ sfc_xstats_get_names(struct rte_eth_dev *dev,
 	return nstats;
 }
 
+static int
+sfc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	unsigned int wanted_fc, link_fc;
+
+	memset(fc_conf, 0, sizeof(*fc_conf));
+
+	sfc_adapter_lock(sa);
+
+	if (sa->state == SFC_ADAPTER_STARTED)
+		efx_mac_fcntl_get(sa->nic, &wanted_fc, &link_fc);
+	else
+		link_fc = sa->port.flow_ctrl;
+
+	switch (link_fc) {
+	case 0:
+		fc_conf->mode = RTE_FC_NONE;
+		break;
+	case EFX_FCNTL_RESPOND:
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+		break;
+	case EFX_FCNTL_GENERATE:
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+		break;
+	case (EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE):
+		fc_conf->mode = RTE_FC_FULL;
+		break;
+	default:
+		sfc_err(sa, "%s: unexpected flow control value %#x",
+			__func__, link_fc);
+	}
+
+	fc_conf->autoneg = sa->port.flow_ctrl_autoneg;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+}
+
+static int
+sfc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	unsigned int fcntl;
+	int rc;
+
+	if (fc_conf->high_water != 0 || fc_conf->low_water != 0 ||
+	    fc_conf->pause_time != 0 || fc_conf->send_xon != 0 ||
+	    fc_conf->mac_ctrl_frame_fwd != 0) {
+		sfc_err(sa, "unsupported flow control settings specified");
+		rc = EINVAL;
+		goto fail_inval;
+	}
+
+	switch (fc_conf->mode) {
+	case RTE_FC_NONE:
+		fcntl = 0;
+		break;
+	case RTE_FC_RX_PAUSE:
+		fcntl = EFX_FCNTL_RESPOND;
+		break;
+	case RTE_FC_TX_PAUSE:
+		fcntl = EFX_FCNTL_GENERATE;
+		break;
+	case RTE_FC_FULL:
+		fcntl = EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE;
+		break;
+	default:
+		rc = EINVAL;
+		goto fail_inval;
+	}
+
+	sfc_adapter_lock(sa);
+
+	if (sa->state == SFC_ADAPTER_STARTED) {
+		rc = efx_mac_fcntl_set(sa->nic, fcntl, fc_conf->autoneg);
+		if (rc != 0)
+			goto fail_mac_fcntl_set;
+	}
+
+	port->flow_ctrl = fcntl;
+	port->flow_ctrl_autoneg = fc_conf->autoneg;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+
+fail_mac_fcntl_set:
+	sfc_adapter_unlock(sa);
+fail_inval:
+	SFC_ASSERT(rc > 0);
+	return -rc;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -466,6 +562,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.rx_queue_release		= sfc_rx_queue_release,
 	.tx_queue_setup			= sfc_tx_queue_setup,
 	.tx_queue_release		= sfc_tx_queue_release,
+	.flow_ctrl_get			= sfc_flow_ctrl_get,
+	.flow_ctrl_set			= sfc_flow_ctrl_set,
 };
 
 static int

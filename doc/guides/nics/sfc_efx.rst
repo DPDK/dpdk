@@ -53,6 +53,8 @@ SFC EFX PMD has support for:
 - Extended statistics (see Solarflare Server Adapter User's Guide for
   the statistics description)
 
+- Basic flow control
+
 
 Non-supported Features
 ----------------------

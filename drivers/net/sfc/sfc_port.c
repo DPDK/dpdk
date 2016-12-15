@@ -79,6 +79,13 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_port_init;
 
+	sfc_log_init(sa, "set flow control to %#x autoneg=%u",
+		     port->flow_ctrl, port->flow_ctrl_autoneg);
+	rc = efx_mac_fcntl_set(sa->nic, port->flow_ctrl,
+			       port->flow_ctrl_autoneg);
+	if (rc != 0)
+		goto fail_mac_fcntl_set;
+
 	sfc_log_init(sa, "set MAC PDU %u", (unsigned int)port->pdu);
 	rc = efx_mac_pdu_set(sa->nic, port->pdu);
 	if (rc != 0)
@@ -124,6 +131,7 @@ fail_mac_stats_periodic:
 fail_mac_filter_set:
 fail_mac_addr_set:
 fail_mac_pdu_set:
+fail_mac_fcntl_set:
 	efx_port_fini(sa->nic);
 
 fail_port_init:
