@@ -73,6 +73,8 @@ SFC EFX PMD has support for:
 
 - Deferred receive and transmit queue start
 
+- Transmit VLAN insertion (if running firmware variant supports it)
+
 
 Non-supported Features
 ----------------------

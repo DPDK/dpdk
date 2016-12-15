@@ -46,6 +46,7 @@ static void
 sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 
 	sfc_log_init(sa, "entry");
 
@@ -77,8 +78,11 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM;
 
-	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOVLANOFFL |
-					     ETH_TXQ_FLAGS_NOXSUMSCTP;
+	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOXSUMSCTP;
+	if (!encp->enc_hw_tx_insert_vlan_enabled)
+		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOVLANOFFL;
+	else
+		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_VLAN_INSERT;
 
 	dev_info->rx_desc_lim.nb_max = EFX_RXQ_MAXNDESCS;
 	dev_info->rx_desc_lim.nb_min = EFX_RXQ_MINNDESCS;

@@ -58,6 +58,7 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 		   const struct rte_eth_txconf *tx_conf)
 {
 	unsigned int flags = tx_conf->txq_flags;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	int rc = 0;
 
 	if (tx_conf->tx_rs_thresh != 0) {
@@ -80,7 +81,8 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 		rc = EINVAL;
 	}
 
-	if ((flags & ETH_TXQ_FLAGS_NOVLANOFFL) == 0) {
+	if (!encp->enc_hw_tx_insert_vlan_enabled &&
+	    (flags & ETH_TXQ_FLAGS_NOVLANOFFL) == 0) {
 		sfc_err(sa, "VLAN offload is not supported");
 		rc = EINVAL;
 	}
@@ -384,6 +386,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 		goto fail_tx_qcreate;
 
 	txq->added = txq->pending = txq->completed = desc_index;
+	txq->hw_vlan_tci = 0;
 
 	efx_tx_qenable(txq->common);
 
@@ -533,6 +536,37 @@ sfc_tx_stop(struct sfc_adapter *sa)
 	efx_tx_fini(sa->nic);
 }
 
+/*
+ * The function is used to insert or update VLAN tag;
+ * the firmware has state of the firmware tag to insert per TxQ
+ * (controlled by option descriptors), hence, if the tag of the
+ * packet to be sent is different from one remembered by the firmware,
+ * the function will update it
+ */
+static unsigned int
+sfc_tx_maybe_insert_tag(struct sfc_txq *txq, struct rte_mbuf *m,
+			efx_desc_t **pend)
+{
+	uint16_t this_tag = ((m->ol_flags & PKT_TX_VLAN_PKT) ?
+			     m->vlan_tci : 0);
+
+	if (this_tag == txq->hw_vlan_tci)
+		return 0;
+
+	/*
+	 * The expression inside SFC_ASSERT() is not desired to be checked in
+	 * a non-debug build because it might be too expensive on the data path
+	 */
+	SFC_ASSERT(efx_nic_cfg_get(txq->evq->sa->nic)->enc_hw_tx_insert_vlan_enabled);
+
+	efx_tx_qdesc_vlantci_create(txq->common, rte_cpu_to_be_16(this_tag),
+				    *pend);
+	(*pend)++;
+	txq->hw_vlan_tci = this_tag;
+
+	return 1;
+}
+
 uint16_t
 sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -573,6 +607,15 @@ sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		struct rte_mbuf		*m_seg = *pktp;
 		size_t			pkt_len = m_seg->pkt_len;
 		unsigned int		pkt_descs = 0;
+
+		/*
+		 * Here VLAN TCI is expected to be zero in case if no
+		 * DEV_TX_VLAN_OFFLOAD capability is advertised;
+		 * if the calling app ignores the absence of
+		 * DEV_TX_VLAN_OFFLOAD and pushes VLAN TCI, then
+		 * TX_ERROR will occur
+		 */
+		pkt_descs += sfc_tx_maybe_insert_tag(txq, m_seg, &pend);
 
 		for (; m_seg != NULL; m_seg = m_seg->next) {
 			efsys_dma_addr_t	next_frag;

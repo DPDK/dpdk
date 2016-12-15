@@ -77,6 +77,7 @@ struct sfc_txq {
 	unsigned int		pending;
 	unsigned int		completed;
 	unsigned int		free_thresh;
+	uint16_t		hw_vlan_tci;
 
 	unsigned int		hw_index;
 	unsigned int		flags;
