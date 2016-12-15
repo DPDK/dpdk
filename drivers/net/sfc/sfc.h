@@ -110,6 +110,7 @@ struct sfc_mcdi {
 	efsys_mem_t			mem;
 	enum sfc_mcdi_state		state;
 	efx_mcdi_transport_t		transport;
+	bool				logging;
 };
 
 struct sfc_intr {

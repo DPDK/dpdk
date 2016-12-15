@@ -155,3 +155,9 @@ boolean parameters value.
 - ``debug_init`` [bool] (default **n**)
 
   Enable extra logging during device intialization and startup.
+
+- ``mcdi_logging`` [bool] (default **n**)
+
+  Enable extra logging of the communication with the NIC's management CPU.
+  The logging is done using RTE_LOG() with INFO level and PMD type.
+  The format is consumed by the Solarflare netlogdecode cross-platform tool.

@@ -40,6 +40,8 @@ extern "C" {
 
 #define SFC_KVARG_DEBUG_INIT		"debug_init"
 
+#define SFC_KVARG_MCDI_LOGGING		"mcdi_logging"
+
 struct sfc_adapter;
 
 int sfc_kvargs_parse(struct sfc_adapter *sa);

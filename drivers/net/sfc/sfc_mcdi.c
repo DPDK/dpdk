@@ -35,6 +35,7 @@
 
 #include "sfc.h"
 #include "sfc_log.h"
+#include "sfc_kvargs.h"
 
 #define SFC_MCDI_POLL_INTERVAL_MIN_US	10		/* 10us in 1us units */
 #define SFC_MCDI_POLL_INTERVAL_MAX_US	(US_PER_S / 10)	/* 100ms in 1us units */
@@ -125,6 +126,65 @@ sfc_mcdi_exception(void *arg, efx_mcdi_exception_t eme)
 	sfc_panic(sa, "MCDI exceptions handling is not implemented\n");
 }
 
+#define SFC_MCDI_LOG_BUF_SIZE	128
+
+static size_t
+sfc_mcdi_do_log(const struct sfc_adapter *sa,
+		char *buffer, void *data, size_t data_size,
+		size_t pfxsize, size_t position)
+{
+	uint32_t *words = data;
+	/* Space separator plus 2 characters per byte */
+	const size_t word_str_space = 1 + 2 * sizeof(*words);
+	size_t i;
+
+	for (i = 0; i < data_size; i += sizeof(*words)) {
+		if (position + word_str_space >=
+		    SFC_MCDI_LOG_BUF_SIZE) {
+			/* Flush at SFC_MCDI_LOG_BUF_SIZE with backslash
+			 * at the end which is required by netlogdecode.
+			 */
+			buffer[position] = '\0';
+			sfc_info(sa, "%s \\", buffer);
+			/* Preserve prefix for the next log message */
+			position = pfxsize;
+		}
+		position += snprintf(buffer + position,
+				     SFC_MCDI_LOG_BUF_SIZE - position,
+				     " %08x", *words);
+		words++;
+	}
+	return position;
+}
+
+static void
+sfc_mcdi_logger(void *arg, efx_log_msg_t type,
+		void *header, size_t header_size,
+		void *data, size_t data_size)
+{
+	struct sfc_adapter *sa = (struct sfc_adapter *)arg;
+	char buffer[SFC_MCDI_LOG_BUF_SIZE];
+	size_t pfxsize;
+	size_t start;
+
+	if (!sa->mcdi.logging)
+		return;
+
+	/* The format including prefix added by sfc_info() is the format
+	 * consumed by the Solarflare netlogdecode tool.
+	 */
+	pfxsize = snprintf(buffer, sizeof(buffer), "MCDI RPC %s:",
+			   type == EFX_LOG_MCDI_REQUEST ? "REQ" :
+			   type == EFX_LOG_MCDI_RESPONSE ? "RESP" : "???");
+	start = sfc_mcdi_do_log(sa, buffer, header, header_size,
+				pfxsize, pfxsize);
+	start = sfc_mcdi_do_log(sa, buffer, data, data_size, pfxsize, start);
+	if (start != pfxsize) {
+		buffer[start] = '\0';
+		sfc_info(sa, "%s", buffer);
+	}
+}
+
 int
 sfc_mcdi_init(struct sfc_adapter *sa)
 {
@@ -149,12 +209,19 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_dma_alloc;
 
+	/* Convert negative error to positive used in the driver */
+	rc = sfc_kvargs_process(sa, SFC_KVARG_MCDI_LOGGING,
+				sfc_kvarg_bool_handler, &mcdi->logging);
+	if (rc != 0)
+		goto fail_kvargs_process;
+
 	emtp = &mcdi->transport;
 	emtp->emt_context = sa;
 	emtp->emt_dma_mem = &mcdi->mem;
 	emtp->emt_execute = sfc_mcdi_execute;
 	emtp->emt_ev_cpl = sfc_mcdi_ev_cpl;
 	emtp->emt_exception = sfc_mcdi_exception;
+	emtp->emt_logger = sfc_mcdi_logger;
 
 	sfc_log_init(sa, "init MCDI");
 	rc = efx_mcdi_init(sa->nic, emtp);
@@ -165,6 +232,8 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 
 fail_mcdi_init:
 	memset(emtp, 0, sizeof(*emtp));
+
+fail_kvargs_process:
 	sfc_dma_free(sa, &mcdi->mem);
 
 fail_dma_alloc:

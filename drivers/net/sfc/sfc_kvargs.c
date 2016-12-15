@@ -43,6 +43,7 @@ sfc_kvargs_parse(struct sfc_adapter *sa)
 	struct rte_devargs *devargs = eth_dev->device->devargs;
 	const char **params = (const char *[]){
 		SFC_KVARG_DEBUG_INIT,
+		SFC_KVARG_MCDI_LOGGING,
 		NULL,
 	};
 
