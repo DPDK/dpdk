@@ -96,6 +96,24 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->tx_desc_lim.nb_align = EFX_TXQ_MINNDESCS;
 }
 
+static const uint32_t *
+sfc_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == sfc_recv_pkts)
+		return ptypes;
+
+	return NULL;
+}
+
 static int
 sfc_dev_configure(struct rte_eth_dev *dev)
 {
@@ -818,6 +836,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.xstats_get			= sfc_xstats_get,
 	.xstats_get_names		= sfc_xstats_get_names,
 	.dev_infos_get			= sfc_dev_infos_get,
+	.dev_supported_ptypes_get	= sfc_dev_supported_ptypes_get,
 	.mtu_set			= sfc_dev_set_mtu,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,

@@ -169,6 +169,18 @@ sfc_rx_desc_flags_to_offload_flags(const unsigned int desc_flags)
 	return mbuf_flags;
 }
 
+static uint32_t
+sfc_rx_desc_flags_to_packet_type(const unsigned int desc_flags)
+{
+	return RTE_PTYPE_L2_ETHER |
+		((desc_flags & EFX_PKT_IPV4) ?
+			RTE_PTYPE_L3_IPV4_EXT_UNKNOWN : 0) |
+		((desc_flags & EFX_PKT_IPV6) ?
+			RTE_PTYPE_L3_IPV6_EXT_UNKNOWN : 0) |
+		((desc_flags & EFX_PKT_TCP) ? RTE_PTYPE_L4_TCP : 0) |
+		((desc_flags & EFX_PKT_UDP) ? RTE_PTYPE_L4_UDP : 0);
+}
+
 uint16_t
 sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -222,7 +234,7 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rte_pktmbuf_pkt_len(m) = seg_len;
 
 		m->ol_flags = sfc_rx_desc_flags_to_offload_flags(desc_flags);
-		m->packet_type = RTE_PTYPE_L2_ETHER;
+		m->packet_type = sfc_rx_desc_flags_to_packet_type(desc_flags);
 
 		*rx_pkts++ = m;
 		done_pkts++;
