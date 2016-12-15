@@ -273,6 +273,17 @@ sfc_rx_qdesc_npending(struct sfc_adapter *sa, unsigned int sw_index)
 	return rxq->pending - rxq->completed;
 }
 
+int
+sfc_rx_qdesc_done(struct sfc_rxq *rxq, unsigned int offset)
+{
+	if ((rxq->state & SFC_RXQ_RUNNING) == 0)
+		return 0;
+
+	sfc_ev_qpoll(rxq->evq);
+
+	return offset < (rxq->pending - rxq->completed);
+}
+
 static void
 sfc_rx_qpurge(struct sfc_rxq *rxq)
 {

@@ -854,6 +854,14 @@ sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return sfc_rx_qdesc_npending(sa, rx_queue_id);
 }
 
+static int
+sfc_rx_descriptor_done(void *queue, uint16_t offset)
+{
+	struct sfc_rxq *rxq = queue;
+
+	return sfc_rx_qdesc_done(rxq, offset);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -875,6 +883,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,
 	.rx_queue_count			= sfc_rx_queue_count,
+	.rx_descriptor_done		= sfc_rx_descriptor_done,
 	.tx_queue_setup			= sfc_tx_queue_setup,
 	.tx_queue_release		= sfc_tx_queue_release,
 	.flow_ctrl_get			= sfc_flow_ctrl_get,

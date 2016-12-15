@@ -142,6 +142,7 @@ uint16_t sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 unsigned int sfc_rx_qdesc_npending(struct sfc_adapter *sa,
 				   unsigned int sw_index);
+int sfc_rx_qdesc_done(struct sfc_rxq *rxq, unsigned int offset);
 
 #ifdef __cplusplus
 }
