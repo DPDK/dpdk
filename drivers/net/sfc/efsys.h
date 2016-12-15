@@ -159,7 +159,7 @@ prefetch_read_once(const volatile void *addr)
 /* Code inclusion options */
 
 
-#define EFSYS_OPT_NAMES 0
+#define EFSYS_OPT_NAMES 1
 
 /* Disable SFN5xxx/SFN6xxx since it requires specific support in the PMD */
 #define EFSYS_OPT_SIENA 0

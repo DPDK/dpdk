@@ -50,6 +50,9 @@ SFC EFX PMD has support for:
 
 - Port hardware statistics
 
+- Extended statistics (see Solarflare Server Adapter User's Guide for
+  the statistics description)
+
 
 Non-supported Features
 ----------------------

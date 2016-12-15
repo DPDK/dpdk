@@ -391,6 +391,67 @@ unlock:
 	rte_spinlock_unlock(&port->mac_stats_lock);
 }
 
+static int
+sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+	       unsigned int xstats_count)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	uint64_t *mac_stats;
+	int rc;
+	unsigned int i;
+	int nstats = 0;
+
+	rte_spinlock_lock(&port->mac_stats_lock);
+
+	rc = sfc_port_update_mac_stats(sa);
+	if (rc != 0) {
+		SFC_ASSERT(rc > 0);
+		nstats = -rc;
+		goto unlock;
+	}
+
+	mac_stats = port->mac_stats_buf;
+
+	for (i = 0; i < EFX_MAC_NSTATS; ++i) {
+		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i)) {
+			if (xstats != NULL && nstats < (int)xstats_count) {
+				xstats[nstats].id = nstats;
+				xstats[nstats].value = mac_stats[i];
+			}
+			nstats++;
+		}
+	}
+
+unlock:
+	rte_spinlock_unlock(&port->mac_stats_lock);
+
+	return nstats;
+}
+
+static int
+sfc_xstats_get_names(struct rte_eth_dev *dev,
+		     struct rte_eth_xstat_name *xstats_names,
+		     unsigned int xstats_count)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	unsigned int i;
+	unsigned int nstats = 0;
+
+	for (i = 0; i < EFX_MAC_NSTATS; ++i) {
+		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i)) {
+			if (xstats_names != NULL && nstats < xstats_count)
+				strncpy(xstats_names[nstats].name,
+					efx_mac_stat_name(sa->nic, i),
+					sizeof(xstats_names[0].name));
+			nstats++;
+		}
+	}
+
+	return nstats;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -398,6 +459,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_close			= sfc_dev_close,
 	.link_update			= sfc_dev_link_update,
 	.stats_get			= sfc_stats_get,
+	.xstats_get			= sfc_xstats_get,
+	.xstats_get_names		= sfc_xstats_get_names,
 	.dev_infos_get			= sfc_dev_infos_get,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,
