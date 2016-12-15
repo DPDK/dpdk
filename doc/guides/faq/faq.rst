@@ -50,7 +50,7 @@ When you stop and restart the test application, it looks to see if the pages are
 If you look in the directory, you will see ``n`` number of 2M pages files. If you specified 1024, you will see 1024 page files.
 These are then placed in memory segments to get contiguous memory.
 
-If you need to change the number of pages, it is easier to first remove the pages. The tools/dpdk-setup.sh script provides an option to do this.
+If you need to change the number of pages, it is easier to first remove the pages. The usertools/dpdk-setup.sh script provides an option to do this.
 See the "Quick Start Setup Script" section in the :ref:`DPDK Getting Started Guide <linux_gsg>` for more information.
 
 

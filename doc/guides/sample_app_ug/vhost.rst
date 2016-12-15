@@ -115,7 +115,7 @@ could be done by:
 .. code-block:: console
 
    modprobe uio_pci_generic
-   $RTE_SDK/tools/dpdk-devbind.py -b=uio_pci_generic 0000:00:04.0
+   $RTE_SDK/usertools/dpdk-devbind.py -b=uio_pci_generic 0000:00:04.0
 
 Then start testpmd for packet forwarding testing.
 

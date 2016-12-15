@@ -175,7 +175,7 @@ devices managed by ``librte_pmd_qede`` in Linux operating system.
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --bind igb_uio 0000:84:00.0 0000:84:00.1 \
+      ./usertools/dpdk-devbind.py --bind igb_uio 0000:84:00.0 0000:84:00.1 \
                                               0000:84:00.2 0000:84:00.3
 
 #. Start ``testpmd`` with basic parameters:

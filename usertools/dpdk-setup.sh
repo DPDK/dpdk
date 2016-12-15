@@ -428,7 +428,7 @@ grep_meminfo()
 show_devices()
 {
 	if [ -d /sys/module/vfio_pci -o -d /sys/module/igb_uio ]; then
-		${RTE_SDK}/tools/dpdk-devbind.py --status
+		${RTE_SDK}/usertools/dpdk-devbind.py --status
 	else
 		echo "# Please load the 'igb_uio' or 'vfio-pci' kernel module before "
 		echo "# querying or adjusting device bindings"
@@ -441,11 +441,11 @@ show_devices()
 bind_devices_to_vfio()
 {
 	if [ -d /sys/module/vfio_pci ]; then
-		${RTE_SDK}/tools/dpdk-devbind.py --status
+		${RTE_SDK}/usertools/dpdk-devbind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to VFIO driver: "
 		read PCI_PATH
-		sudo ${RTE_SDK}/tools/dpdk-devbind.py -b vfio-pci $PCI_PATH &&
+		sudo ${RTE_SDK}/usertools/dpdk-devbind.py -b vfio-pci $PCI_PATH &&
 			echo "OK"
 	else
 		echo "# Please load the 'vfio-pci' kernel module before querying or "
@@ -459,11 +459,11 @@ bind_devices_to_vfio()
 bind_devices_to_igb_uio()
 {
 	if [ -d /sys/module/igb_uio ]; then
-		${RTE_SDK}/tools/dpdk-devbind.py --status
+		${RTE_SDK}/usertools/dpdk-devbind.py --status
 		echo ""
 		echo -n "Enter PCI address of device to bind to IGB UIO driver: "
 		read PCI_PATH
-		sudo ${RTE_SDK}/tools/dpdk-devbind.py -b igb_uio $PCI_PATH && echo "OK"
+		sudo ${RTE_SDK}/usertools/dpdk-devbind.py -b igb_uio $PCI_PATH && echo "OK"
 	else
 		echo "# Please load the 'igb_uio' kernel module before querying or "
 		echo "# adjusting device bindings"
@@ -475,14 +475,14 @@ bind_devices_to_igb_uio()
 #
 unbind_devices()
 {
-	${RTE_SDK}/tools/dpdk-devbind.py --status
+	${RTE_SDK}/usertools/dpdk-devbind.py --status
 	echo ""
 	echo -n "Enter PCI address of device to unbind: "
 	read PCI_PATH
 	echo ""
 	echo -n "Enter name of kernel driver to bind the device to: "
 	read DRV
-	sudo ${RTE_SDK}/tools/dpdk-devbind.py -b $DRV $PCI_PATH && echo "OK"
+	sudo ${RTE_SDK}/usertools/dpdk-devbind.py -b $DRV $PCI_PATH && echo "OK"
 }
 
 #

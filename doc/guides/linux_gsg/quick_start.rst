@@ -33,7 +33,7 @@
 Quick Start Setup Script
 ========================
 
-The dpdk-setup.sh script, found in the tools subdirectory, allows the user to perform the following tasks:
+The dpdk-setup.sh script, found in the usertools subdirectory, allows the user to perform the following tasks:
 
 *   Build the DPDK libraries
 
@@ -108,7 +108,7 @@ Some options in the script prompt the user for further data before proceeding.
 
 .. code-block:: console
 
-    source tools/dpdk-setup.sh
+    source usertools/dpdk-setup.sh
 
     ------------------------------------------------------------------------
 

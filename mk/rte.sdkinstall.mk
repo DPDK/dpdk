@@ -124,15 +124,11 @@ install-runtime:
 	    tar -xf -      -C $(DESTDIR)$(bindir) --strip-components=1 \
 		--keep-newer-files
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(datadir))
-	$(Q)cp -a $(RTE_SDK)/tools $(DESTDIR)$(datadir)
-	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/tools/dpdk-setup.sh, \
-	                           $(DESTDIR)$(datadir)/tools/setup.sh)
-	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/tools/dpdk-devbind.py, \
-	                           $(DESTDIR)$(datadir)/tools/dpdk_nic_bind.py)
+	$(Q)cp -a $(RTE_SDK)/usertools $(DESTDIR)$(datadir)
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(sbindir))
-	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/tools/dpdk-devbind.py, \
+	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/usertools/dpdk-devbind.py, \
 	                           $(DESTDIR)$(sbindir)/dpdk-devbind)
-	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/tools/dpdk-pmdinfo.py, \
+	$(Q)$(call rte_symlink,    $(DESTDIR)$(datadir)/usertools/dpdk-pmdinfo.py, \
 	                           $(DESTDIR)$(bindir)/dpdk-pmdinfo)
 ifneq ($(wildcard $O/doc/man/*/*.1),)
 	$(Q)$(call rte_mkdir,      $(DESTDIR)$(mandir)/man1)

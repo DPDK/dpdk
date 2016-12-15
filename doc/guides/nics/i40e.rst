@@ -164,13 +164,13 @@ devices managed by ``librte_pmd_i40e`` in the Linux operating system.
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --bind igb_uio 0000:83:00.0
+      ./usertools/dpdk-devbind.py --bind igb_uio 0000:83:00.0
 
    Or setup VFIO permissions for regular users and then bind to ``vfio-pci``:
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --bind vfio-pci 0000:83:00.0
+      ./usertools/dpdk-devbind.py --bind vfio-pci 0000:83:00.0
 
 #. Start ``testpmd`` with basic parameters:
 

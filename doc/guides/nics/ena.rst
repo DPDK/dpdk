@@ -225,7 +225,7 @@ devices managed by librte_pmd_ena.
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --bind=igb_uio 0000:02:00.1
+      ./usertools/dpdk-devbind.py --bind=igb_uio 0000:02:00.1
 
 #. Start testpmd with basic parameters:
 

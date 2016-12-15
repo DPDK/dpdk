@@ -94,7 +94,7 @@ make install O=%{target} DESTDIR=%{buildroot} \
 
 %files
 %dir %{_datadir}/dpdk
-%{_datadir}/dpdk/tools
+%{_datadir}/dpdk/usertools
 /lib/modules/%(uname -r)/extra/*
 %{_sbindir}/*
 %{_bindir}/*

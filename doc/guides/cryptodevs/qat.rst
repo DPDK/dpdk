@@ -413,4 +413,4 @@ The other way to bind the VFs to the DPDK UIO driver is by using the ``dpdk-devb
 .. code-block:: console
 
     cd $RTE_SDK
-    ./tools/dpdk-devbind.py -b igb_uio 0000:03:01.1
+    ./usertools/dpdk-devbind.py -b igb_uio 0000:03:01.1

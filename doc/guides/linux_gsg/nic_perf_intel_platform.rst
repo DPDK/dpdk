@@ -158,7 +158,7 @@ Configurations before running DPDK
 
       cd dpdk_folder
 
-      tools/cpu_layout.py
+      usertools/cpu_layout.py
 
    Or run ``lscpu`` to check the the cores on each socket.
 
@@ -192,10 +192,10 @@ Configurations before running DPDK
 
 
       # Bind ports 82:00.0 and 85:00.0 to dpdk driver
-      ./dpdk_folder/tools/dpdk-devbind.py -b igb_uio 82:00.0 85:00.0
+      ./dpdk_folder/usertools/dpdk-devbind.py -b igb_uio 82:00.0 85:00.0
 
       # Check the port driver status
-      ./dpdk_folder/tools/dpdk-devbind.py --status
+      ./dpdk_folder/usertools/dpdk-devbind.py --status
 
    See ``dpdk-devbind.py --help`` for more details.
 

@@ -149,7 +149,7 @@ managed by ``librte_pmd_thunderx_nicvf`` in the Linux operating system.
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
+      ./usertools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
 
 #. Start ``testpmd`` with basic parameters:
 
@@ -253,7 +253,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --status
+      ./usertools/dpdk-devbind.py --status
 
    Example output:
 
@@ -275,14 +275,14 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --bind vfio-pci 0002:01:00.1
-      ./tools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
+      ./usertools/dpdk-devbind.py --bind vfio-pci 0002:01:00.1
+      ./usertools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
 
 #. Verify VF bind using ``dpdk-devbind.py``:
 
    .. code-block:: console
 
-      ./tools/dpdk-devbind.py --status
+      ./usertools/dpdk-devbind.py --status
 
    Example output:
 
@@ -352,7 +352,7 @@ driver' list, secondary VFs are on the remaining on the remaining part of the li
    .. note::
 
       The VNIC driver in the multiqueue setup works differently than other drivers like `ixgbe`.
-      We need to bind separately each specific queue set device with the ``tools/dpdk-devbind.py`` utility.
+      We need to bind separately each specific queue set device with the ``usertools/dpdk-devbind.py`` utility.
 
    .. note::
 
@@ -372,7 +372,7 @@ on a non-NUMA machine.
 
    .. code-block:: console
 
-      # tools/dpdk-devbind.py --status
+      # usertools/dpdk-devbind.py --status
 
       Network devices using DPDK-compatible driver
       ============================================
@@ -416,17 +416,17 @@ We will choose four secondary queue sets from the ending of the list (0002:01:01
 
    .. code-block:: console
 
-      tools/dpdk-devbind.py -b vfio-pci 0002:01:00.2
-      tools/dpdk-devbind.py -b vfio-pci 0002:01:00.3
+      usertools/dpdk-devbind.py -b vfio-pci 0002:01:00.2
+      usertools/dpdk-devbind.py -b vfio-pci 0002:01:00.3
 
 #. Bind four primary VFs to the ``vfio-pci`` driver:
 
    .. code-block:: console
 
-      tools/dpdk-devbind.py -b vfio-pci 0002:01:01.7
-      tools/dpdk-devbind.py -b vfio-pci 0002:01:02.0
-      tools/dpdk-devbind.py -b vfio-pci 0002:01:02.1
-      tools/dpdk-devbind.py -b vfio-pci 0002:01:02.2
+      usertools/dpdk-devbind.py -b vfio-pci 0002:01:01.7
+      usertools/dpdk-devbind.py -b vfio-pci 0002:01:02.0
+      usertools/dpdk-devbind.py -b vfio-pci 0002:01:02.1
+      usertools/dpdk-devbind.py -b vfio-pci 0002:01:02.2
 
 The nicvf thunderx driver will make use of attached secondary VFs automatically during the interface configuration stage.
 

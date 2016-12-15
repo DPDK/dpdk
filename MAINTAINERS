@@ -74,7 +74,7 @@ F: scripts/validate-abi.sh
 
 Driver information
 F: buildtools/pmdinfogen/
-F: tools/dpdk-pmdinfo.py
+F: usertools/dpdk-pmdinfo.py
 F: doc/guides/tools/pmdinfo.rst
 
 
