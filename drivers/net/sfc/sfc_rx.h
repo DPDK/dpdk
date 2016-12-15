@@ -140,6 +140,9 @@ void sfc_rx_qflush_failed(struct sfc_rxq *rxq);
 uint16_t sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		       uint16_t nb_pkts);
 
+unsigned int sfc_rx_qdesc_npending(struct sfc_adapter *sa,
+				   unsigned int sw_index);
+
 #ifdef __cplusplus
 }
 #endif

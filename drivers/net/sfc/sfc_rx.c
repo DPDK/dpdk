@@ -257,6 +257,22 @@ discard:
 	return done_pkts;
 }
 
+unsigned int
+sfc_rx_qdesc_npending(struct sfc_adapter *sa, unsigned int sw_index)
+{
+	struct sfc_rxq *rxq;
+
+	SFC_ASSERT(sw_index < sa->rxq_count);
+	rxq = sa->rxq_info[sw_index].rxq;
+
+	if (rxq == NULL || (rxq->state & SFC_RXQ_RUNNING) == 0)
+		return 0;
+
+	sfc_ev_qpoll(rxq->evq);
+
+	return rxq->pending - rxq->completed;
+}
+
 static void
 sfc_rx_qpurge(struct sfc_rxq *rxq)
 {

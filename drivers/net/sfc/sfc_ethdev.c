@@ -844,6 +844,16 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	sfc_adapter_unlock(sa);
 }
 
+static uint32_t
+sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	sfc_log_init(sa, "RxQ=%u", rx_queue_id);
+
+	return sfc_rx_qdesc_npending(sa, rx_queue_id);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -864,6 +874,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.mtu_set			= sfc_dev_set_mtu,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,
+	.rx_queue_count			= sfc_rx_queue_count,
 	.tx_queue_setup			= sfc_tx_queue_setup,
 	.tx_queue_release		= sfc_tx_queue_release,
 	.flow_ctrl_get			= sfc_flow_ctrl_get,
