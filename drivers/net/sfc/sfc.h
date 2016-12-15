@@ -96,6 +96,13 @@ enum sfc_adapter_state {
 	SFC_ADAPTER_NSTATES
 };
 
+enum sfc_dev_filter_mode {
+	SFC_DEV_FILTER_MODE_PROMISC = 0,
+	SFC_DEV_FILTER_MODE_ALLMULTI,
+
+	SFC_DEV_FILTER_NMODES
+};
+
 enum sfc_mcdi_state {
 	SFC_MCDI_UNINITIALIZED = 0,
 	SFC_MCDI_INITIALIZED,
@@ -132,6 +139,9 @@ struct sfc_port {
 	unsigned int			flow_ctrl;
 	boolean_t			flow_ctrl_autoneg;
 	size_t				pdu;
+
+	boolean_t			promisc;
+	boolean_t			allmulti;
 
 	rte_spinlock_t			mac_stats_lock;
 	uint64_t			*mac_stats_buf;
@@ -252,6 +262,7 @@ void sfc_port_stop(struct sfc_adapter *sa);
 void sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
 				struct rte_eth_link *link_info);
 int sfc_port_update_mac_stats(struct sfc_adapter *sa);
+int sfc_set_rx_mode(struct sfc_adapter *sa);
 
 
 #ifdef __cplusplus

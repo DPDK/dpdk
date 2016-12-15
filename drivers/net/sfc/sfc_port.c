@@ -103,7 +103,11 @@ sfc_port_start(struct sfc_adapter *sa)
 		goto fail_mac_addr_set;
 
 	sfc_log_init(sa, "set MAC filters");
-	rc = efx_mac_filter_set(sa->nic, B_TRUE, B_TRUE, B_TRUE, B_TRUE);
+	port->promisc = (sa->eth_dev->data->promiscuous != 0) ?
+			B_TRUE : B_FALSE;
+	port->allmulti = (sa->eth_dev->data->all_multicast != 0) ?
+			 B_TRUE : B_FALSE;
+	rc = sfc_set_rx_mode(sa);
 	if (rc != 0)
 		goto fail_mac_filter_set;
 
@@ -217,6 +221,18 @@ sfc_port_fini(struct sfc_adapter *sa)
 	rte_free(port->mac_stats_buf);
 
 	sfc_log_init(sa, "done");
+}
+
+int
+sfc_set_rx_mode(struct sfc_adapter *sa)
+{
+	struct sfc_port *port = &sa->port;
+	int rc;
+
+	rc = efx_mac_filter_set(sa->nic, port->promisc, B_TRUE,
+				port->promisc || port->allmulti, B_TRUE);
+
+	return rc;
 }
 
 void

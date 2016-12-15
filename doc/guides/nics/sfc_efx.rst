@@ -59,6 +59,10 @@ SFC EFX PMD has support for:
 
 - Jumbo frames up to 9K
 
+- Promiscuous mode
+
+- Allmulticast mode
+
 
 Non-supported Features
 ----------------------

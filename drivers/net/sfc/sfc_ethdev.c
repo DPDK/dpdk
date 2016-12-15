@@ -252,6 +252,59 @@ sfc_dev_close(struct rte_eth_dev *dev)
 	sfc_log_init(sa, "done");
 }
 
+static void
+sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
+		   boolean_t enabled)
+{
+	struct sfc_port *port;
+	boolean_t *toggle;
+	struct sfc_adapter *sa = dev->data->dev_private;
+	boolean_t allmulti = (mode == SFC_DEV_FILTER_MODE_ALLMULTI);
+	const char *desc = (allmulti) ? "all-multi" : "promiscuous";
+
+	sfc_adapter_lock(sa);
+
+	port = &sa->port;
+	toggle = (allmulti) ? (&port->allmulti) : (&port->promisc);
+
+	if (*toggle != enabled) {
+		*toggle = enabled;
+
+		if ((sa->state == SFC_ADAPTER_STARTED) &&
+		    (sfc_set_rx_mode(sa) != 0)) {
+			*toggle = !(enabled);
+			sfc_warn(sa, "Failed to %s %s mode",
+				 ((enabled) ? "enable" : "disable"), desc);
+		}
+	}
+
+	sfc_adapter_unlock(sa);
+}
+
+static void
+sfc_dev_promisc_enable(struct rte_eth_dev *dev)
+{
+	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_PROMISC, B_TRUE);
+}
+
+static void
+sfc_dev_promisc_disable(struct rte_eth_dev *dev)
+{
+	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_PROMISC, B_FALSE);
+}
+
+static void
+sfc_dev_allmulti_enable(struct rte_eth_dev *dev)
+{
+	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_ALLMULTI, B_TRUE);
+}
+
+static void
+sfc_dev_allmulti_disable(struct rte_eth_dev *dev)
+{
+	sfc_dev_filter_set(dev, SFC_DEV_FILTER_MODE_ALLMULTI, B_FALSE);
+}
+
 static int
 sfc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		   uint16_t nb_rx_desc, unsigned int socket_id,
@@ -660,6 +713,10 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_set_link_up		= sfc_dev_set_link_up,
 	.dev_set_link_down		= sfc_dev_set_link_down,
 	.dev_close			= sfc_dev_close,
+	.promiscuous_enable		= sfc_dev_promisc_enable,
+	.promiscuous_disable		= sfc_dev_promisc_disable,
+	.allmulticast_enable		= sfc_dev_allmulti_enable,
+	.allmulticast_disable		= sfc_dev_allmulti_disable,
 	.link_update			= sfc_dev_link_update,
 	.stats_get			= sfc_stats_get,
 	.xstats_get			= sfc_xstats_get,
