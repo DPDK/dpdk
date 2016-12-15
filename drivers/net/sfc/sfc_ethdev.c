@@ -194,6 +194,36 @@ sfc_dev_stop(struct rte_eth_dev *dev)
 	sfc_log_init(sa, "done");
 }
 
+static int
+sfc_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	sfc_adapter_lock(sa);
+	rc = sfc_start(sa);
+	sfc_adapter_unlock(sa);
+
+	SFC_ASSERT(rc >= 0);
+	return -rc;
+}
+
+static int
+sfc_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	sfc_log_init(sa, "entry");
+
+	sfc_adapter_lock(sa);
+	sfc_stop(sa);
+	sfc_adapter_unlock(sa);
+
+	return 0;
+}
+
 static void
 sfc_dev_close(struct rte_eth_dev *dev)
 {
@@ -627,6 +657,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
 	.dev_stop			= sfc_dev_stop,
+	.dev_set_link_up		= sfc_dev_set_link_up,
+	.dev_set_link_down		= sfc_dev_set_link_down,
 	.dev_close			= sfc_dev_close,
 	.link_update			= sfc_dev_link_update,
 	.stats_get			= sfc_stats_get,
