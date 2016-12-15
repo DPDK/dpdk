@@ -846,6 +846,28 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	sfc_adapter_unlock(sa);
 }
 
+static void
+sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		      struct rte_eth_txq_info *qinfo)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_txq_info *txq_info;
+
+	sfc_adapter_lock(sa);
+
+	SFC_ASSERT(tx_queue_id < sa->txq_count);
+
+	txq_info = &sa->txq_info[tx_queue_id];
+	SFC_ASSERT(txq_info->txq != NULL);
+
+	memset(qinfo, 0, sizeof(*qinfo));
+
+	qinfo->conf.txq_flags = txq_info->txq->flags;
+	qinfo->nb_desc = txq_info->entries;
+
+	sfc_adapter_unlock(sa);
+}
+
 static uint32_t
 sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
@@ -943,6 +965,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.mac_addr_set			= sfc_mac_addr_set,
 	.set_mc_addr_list		= sfc_set_mc_addr_list,
 	.rxq_info_get			= sfc_rx_queue_info_get,
+	.txq_info_get			= sfc_tx_queue_info_get,
 };
 
 static int
