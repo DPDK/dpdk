@@ -1024,6 +1024,68 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	return 0;
 }
+
+static int
+sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	unsigned int efx_hash_types;
+	int rc = 0;
+
+	if ((sa->rss_channels == 1) ||
+	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)) {
+		sfc_err(sa, "RSS is not available");
+		return -ENOTSUP;
+	}
+
+	if ((rss_conf->rss_key != NULL) &&
+	    (rss_conf->rss_key_len != sizeof(sa->rss_key))) {
+		sfc_err(sa, "RSS key size is wrong (should be %lu)",
+			sizeof(sa->rss_key));
+		return -EINVAL;
+	}
+
+	if ((rss_conf->rss_hf & ~SFC_RSS_OFFLOADS) != 0) {
+		sfc_err(sa, "unsupported hash functions requested");
+		return -EINVAL;
+	}
+
+	sfc_adapter_lock(sa);
+
+	efx_hash_types = sfc_rte_to_efx_hash_type(rss_conf->rss_hf);
+
+	rc = efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
+				   efx_hash_types, B_TRUE);
+	if (rc != 0)
+		goto fail_scale_mode_set;
+
+	if (rss_conf->rss_key != NULL) {
+		if (sa->state == SFC_ADAPTER_STARTED) {
+			rc = efx_rx_scale_key_set(sa->nic, rss_conf->rss_key,
+						  sizeof(sa->rss_key));
+			if (rc != 0)
+				goto fail_scale_key_set;
+		}
+
+		rte_memcpy(sa->rss_key, rss_conf->rss_key, sizeof(sa->rss_key));
+	}
+
+	sa->rss_hash_types = efx_hash_types;
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+
+fail_scale_key_set:
+	if (efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
+				  sa->rss_hash_types, B_TRUE) != 0)
+		sfc_err(sa, "failed to restore RSS mode");
+
+fail_scale_mode_set:
+	sfc_adapter_unlock(sa);
+	return -rc;
+}
 #endif
 
 static const struct eth_dev_ops sfc_eth_dev_ops = {
@@ -1058,6 +1120,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.flow_ctrl_set			= sfc_flow_ctrl_set,
 	.mac_addr_set			= sfc_mac_addr_set,
 #if EFSYS_OPT_RX_SCALE
+	.rss_hash_update		= sfc_dev_rss_hash_update,
 	.rss_hash_conf_get		= sfc_dev_rss_hash_conf_get,
 #endif
 	.set_mc_addr_list		= sfc_set_mc_addr_list,
