@@ -705,6 +705,58 @@ fail_inval:
 	SFC_ASSERT(rc > 0);
 	return -rc;
 }
+static void
+sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	int rc;
+
+	sfc_adapter_lock(sa);
+
+	if (sa->state != SFC_ADAPTER_STARTED) {
+		sfc_info(sa, "the port is not started");
+		sfc_info(sa, "the new MAC address will be set on port start");
+
+		goto unlock;
+	}
+
+	if (encp->enc_allow_set_mac_with_installed_filters) {
+		rc = efx_mac_addr_set(sa->nic, mac_addr->addr_bytes);
+		if (rc != 0) {
+			sfc_err(sa, "cannot set MAC address (rc = %u)", rc);
+			goto unlock;
+		}
+
+		/*
+		 * Changing the MAC address by means of MCDI request
+		 * has no effect on received traffic, therefore
+		 * we also need to update unicast filters
+		 */
+		rc = sfc_set_rx_mode(sa);
+		if (rc != 0)
+			sfc_err(sa, "cannot set filter (rc = %u)", rc);
+	} else {
+		sfc_warn(sa, "cannot set MAC address with filters installed");
+		sfc_warn(sa, "adapter will be restarted to pick the new MAC");
+		sfc_warn(sa, "(some traffic may be dropped)");
+
+		/*
+		 * Since setting MAC address with filters installed is not
+		 * allowed on the adapter, one needs to simply restart adapter
+		 * so that the new MAC address will be taken from an outer
+		 * storage and set flawlessly by means of sfc_start() call
+		 */
+		sfc_stop(sa);
+		rc = sfc_start(sa);
+		if (rc != 0)
+			sfc_err(sa, "cannot restart adapter (rc = %u)", rc);
+	}
+
+unlock:
+	sfc_adapter_unlock(sa);
+}
+
 
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
@@ -729,6 +781,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.tx_queue_release		= sfc_tx_queue_release,
 	.flow_ctrl_get			= sfc_flow_ctrl_get,
 	.flow_ctrl_set			= sfc_flow_ctrl_set,
+	.mac_addr_set			= sfc_mac_addr_set,
 };
 
 static int
