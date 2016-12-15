@@ -1086,6 +1086,36 @@ fail_scale_mode_set:
 	sfc_adapter_unlock(sa);
 	return -rc;
 }
+
+static int
+sfc_dev_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int entry;
+
+	if ((sa->rss_channels == 1) ||
+	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE))
+		return -ENOTSUP;
+
+	if (reta_size != EFX_RSS_TBL_SIZE)
+		return -EINVAL;
+
+	sfc_adapter_lock(sa);
+
+	for (entry = 0; entry < reta_size; entry++) {
+		int grp = entry / RTE_RETA_GROUP_SIZE;
+		int grp_idx = entry % RTE_RETA_GROUP_SIZE;
+
+		if ((reta_conf[grp].mask >> grp_idx) & 1)
+			reta_conf[grp].reta[grp_idx] = sa->rss_tbl[entry];
+	}
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+}
 #endif
 
 static const struct eth_dev_ops sfc_eth_dev_ops = {
@@ -1120,6 +1150,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.flow_ctrl_set			= sfc_flow_ctrl_set,
 	.mac_addr_set			= sfc_mac_addr_set,
 #if EFSYS_OPT_RX_SCALE
+	.reta_query			= sfc_dev_rss_reta_query,
 	.rss_hash_update		= sfc_dev_rss_hash_update,
 	.rss_hash_conf_get		= sfc_dev_rss_hash_conf_get,
 #endif
