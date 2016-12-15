@@ -1116,6 +1116,65 @@ sfc_dev_rss_reta_query(struct rte_eth_dev *dev,
 
 	return 0;
 }
+
+static int
+sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	unsigned int *rss_tbl_new;
+	uint16_t entry;
+	int rc;
+
+
+	if ((sa->rss_channels == 1) ||
+	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)) {
+		sfc_err(sa, "RSS is not available");
+		return -ENOTSUP;
+	}
+
+	if (reta_size != EFX_RSS_TBL_SIZE) {
+		sfc_err(sa, "RETA size is wrong (should be %u)",
+			EFX_RSS_TBL_SIZE);
+		return -EINVAL;
+	}
+
+	rss_tbl_new = rte_zmalloc("rss_tbl_new", sizeof(sa->rss_tbl), 0);
+	if (rss_tbl_new == NULL)
+		return -ENOMEM;
+
+	sfc_adapter_lock(sa);
+
+	rte_memcpy(rss_tbl_new, sa->rss_tbl, sizeof(sa->rss_tbl));
+
+	for (entry = 0; entry < reta_size; entry++) {
+		int grp_idx = entry % RTE_RETA_GROUP_SIZE;
+		struct rte_eth_rss_reta_entry64 *grp;
+
+		grp = &reta_conf[entry / RTE_RETA_GROUP_SIZE];
+
+		if (grp->mask & (1ull << grp_idx)) {
+			if (grp->reta[grp_idx] >= sa->rss_channels) {
+				rc = EINVAL;
+				goto bad_reta_entry;
+			}
+			rss_tbl_new[entry] = grp->reta[grp_idx];
+		}
+	}
+
+	rc = efx_rx_scale_tbl_set(sa->nic, rss_tbl_new, EFX_RSS_TBL_SIZE);
+	if (rc == 0)
+		rte_memcpy(sa->rss_tbl, rss_tbl_new, sizeof(sa->rss_tbl));
+
+bad_reta_entry:
+	sfc_adapter_unlock(sa);
+
+	rte_free(rss_tbl_new);
+
+	SFC_ASSERT(rc >= 0);
+	return -rc;
+}
 #endif
 
 static const struct eth_dev_ops sfc_eth_dev_ops = {
@@ -1150,6 +1209,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.flow_ctrl_set			= sfc_flow_ctrl_set,
 	.mac_addr_set			= sfc_mac_addr_set,
 #if EFSYS_OPT_RX_SCALE
+	.reta_update			= sfc_dev_rss_reta_update,
 	.reta_query			= sfc_dev_rss_reta_query,
 	.rss_hash_update		= sfc_dev_rss_hash_update,
 	.rss_hash_conf_get		= sfc_dev_rss_hash_conf_get,
