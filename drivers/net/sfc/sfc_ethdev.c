@@ -996,6 +996,36 @@ sfc_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	return 0;
 }
 
+#if EFSYS_OPT_RX_SCALE
+static int
+sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	if ((sa->rss_channels == 1) ||
+	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE))
+		return -ENOTSUP;
+
+	sfc_adapter_lock(sa);
+
+	/*
+	 * Mapping of hash configuration between RTE and EFX is not one-to-one,
+	 * hence, conversion is done here to derive a correct set of ETH_RSS
+	 * flags which corresponds to the active EFX configuration stored
+	 * locally in 'sfc_adapter' and kept up-to-date
+	 */
+	rss_conf->rss_hf = sfc_efx_to_rte_hash_type(sa->rss_hash_types);
+	rss_conf->rss_key_len = SFC_RSS_KEY_SIZE;
+	if (rss_conf->rss_key != NULL)
+		rte_memcpy(rss_conf->rss_key, sa->rss_key, SFC_RSS_KEY_SIZE);
+
+	sfc_adapter_unlock(sa);
+
+	return 0;
+}
+#endif
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -1027,6 +1057,9 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.flow_ctrl_get			= sfc_flow_ctrl_get,
 	.flow_ctrl_set			= sfc_flow_ctrl_set,
 	.mac_addr_set			= sfc_mac_addr_set,
+#if EFSYS_OPT_RX_SCALE
+	.rss_hash_conf_get		= sfc_dev_rss_hash_conf_get,
+#endif
 	.set_mc_addr_list		= sfc_set_mc_addr_list,
 	.rxq_info_get			= sfc_rx_queue_info_get,
 	.txq_info_get			= sfc_tx_queue_info_get,

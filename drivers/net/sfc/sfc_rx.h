@@ -152,6 +152,7 @@ int sfc_rx_qdesc_done(struct sfc_rxq *rxq, unsigned int offset);
 
 #if EFSYS_OPT_RX_SCALE
 efx_rx_hash_type_t sfc_rte_to_efx_hash_type(uint64_t rss_hf);
+uint64_t sfc_efx_to_rte_hash_type(efx_rx_hash_type_t efx_hash_types);
 #endif
 
 #ifdef __cplusplus

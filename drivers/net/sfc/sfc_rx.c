@@ -785,6 +785,28 @@ sfc_rte_to_efx_hash_type(uint64_t rss_hf)
 
 	return efx_hash_types;
 }
+
+uint64_t
+sfc_efx_to_rte_hash_type(efx_rx_hash_type_t efx_hash_types)
+{
+	uint64_t rss_hf = 0;
+
+	if ((efx_hash_types & EFX_RX_HASH_IPV4) != 0)
+		rss_hf |= (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+			   ETH_RSS_NONFRAG_IPV4_OTHER);
+
+	if ((efx_hash_types & EFX_RX_HASH_TCPIPV4) != 0)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+
+	if ((efx_hash_types & EFX_RX_HASH_IPV6) != 0)
+		rss_hf |= (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
+			   ETH_RSS_NONFRAG_IPV6_OTHER | ETH_RSS_IPV6_EX);
+
+	if ((efx_hash_types & EFX_RX_HASH_TCPIPV6) != 0)
+		rss_hf |= (ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX);
+
+	return rss_hf;
+}
 #endif
 
 static int
