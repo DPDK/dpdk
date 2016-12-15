@@ -54,7 +54,7 @@
 #define SFC_TX_QFLUSH_POLL_ATTEMPTS	(2000)
 
 static int
-sfc_tx_qcheck_conf(struct sfc_adapter *sa,
+sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 		   const struct rte_eth_txconf *tx_conf)
 {
 	unsigned int flags = tx_conf->txq_flags;
@@ -65,9 +65,10 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa,
 		rc = EINVAL;
 	}
 
-	if (tx_conf->tx_free_thresh != 0) {
+	if (tx_conf->tx_free_thresh > EFX_TXQ_LIMIT(nb_tx_desc)) {
 		sfc_err(sa,
-			"setting explicit TX free threshold is not supported");
+			"TxQ free threshold too large: %u vs maximum %u",
+			tx_conf->tx_free_thresh, EFX_TXQ_LIMIT(nb_tx_desc));
 		rc = EINVAL;
 	}
 
@@ -147,7 +148,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
-	rc = sfc_tx_qcheck_conf(sa, tx_conf);
+	rc = sfc_tx_qcheck_conf(sa, nb_tx_desc, tx_conf);
 	if (rc != 0)
 		goto fail_bad_conf;
 
@@ -188,6 +189,8 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	txq->state = SFC_TXQ_INITIALIZED;
 	txq->ptr_mask = txq_info->entries - 1;
+	txq->free_thresh = (tx_conf->tx_free_thresh) ? tx_conf->tx_free_thresh :
+						     SFC_TX_DEFAULT_FREE_THRESH;
 	txq->hw_index = sw_index;
 	txq->flags = tx_conf->txq_flags;
 	txq->evq = evq;
@@ -537,8 +540,7 @@ sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	unsigned int pkts_sent = 0;
 	efx_desc_t *pend = &txq->pend_desc[0];
 	const unsigned int hard_max_fill = EFX_TXQ_LIMIT(txq->ptr_mask + 1);
-	const unsigned int soft_max_fill = hard_max_fill -
-					   SFC_TX_MAX_PKT_DESC;
+	const unsigned int soft_max_fill = hard_max_fill - txq->free_thresh;
 	unsigned int fill_level = added - txq->completed;
 	boolean_t reap_done;
 	int rc __rte_unused;

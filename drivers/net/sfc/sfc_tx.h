@@ -40,15 +40,6 @@ extern "C" {
 #endif
 
 /**
- * Estimated maximum number of segments that transmit packet consists of;
- * it is determined with respect to the expectation of a packet to consist
- * of a header plus a couple of data segments one of those crossing 4K page;
- * it is used by transmit path to avoid redundant reaping and, thus,
- * to avoid increase of latency
- */
-#define SFC_TX_MAX_PKT_DESC	4
-
-/**
  * A segment must not cross 4K boundary
  * (this is a requirement of NIC TX descriptors)
  */
@@ -85,6 +76,7 @@ struct sfc_txq {
 	unsigned int		added;
 	unsigned int		pending;
 	unsigned int		completed;
+	unsigned int		free_thresh;
 
 	unsigned int		hw_index;
 	unsigned int		flags;

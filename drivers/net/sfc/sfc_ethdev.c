@@ -863,6 +863,7 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	memset(qinfo, 0, sizeof(*qinfo));
 
 	qinfo->conf.txq_flags = txq_info->txq->flags;
+	qinfo->conf.tx_free_thresh = txq_info->txq->free_thresh;
 	qinfo->nb_desc = txq_info->entries;
 
 	sfc_adapter_unlock(sa);

@@ -48,4 +48,7 @@
  */
 #define SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE	0
 
+/** Default free threshold follows recommendations from DPDK documentation */
+#define SFC_TX_DEFAULT_FREE_THRESH	32
+
 #endif /* _SFC_TWEAK_H_ */
