@@ -59,7 +59,7 @@ define symlink_rule
 $(addprefix $(RTE_OUTPUT)/$(1)/,$(notdir $(2))): $(2)
 	@echo "  SYMLINK-FILE $(addprefix $(1)/,$(notdir $(2)))"
 	@[ -d $(RTE_OUTPUT)/$(1) ] || mkdir -p $(RTE_OUTPUT)/$(1)
-	$(Q)ln -nsf `$(RTE_SDK)/scripts/relpath.sh $$(<) $(RTE_OUTPUT)/$(1)` \
+	$(Q)ln -nsf `$(RTE_SDK)/buildtools/relpath.sh $$(<) $(RTE_OUTPUT)/$(1)` \
 		$(RTE_OUTPUT)/$(1)
 endef
 

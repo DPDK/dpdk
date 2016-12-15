@@ -32,7 +32,7 @@
 .PHONY: depdirs
 depdirs:
 	@for d in $(DEPDIRS-y); do \
-		$(RTE_SDK)/scripts/depdirs-rule.sh $(S) $$d ; \
+		$(RTE_SDK)/buildtools/depdirs-rule.sh $(S) $$d ; \
 	done
 
 .PHONY: depgraph

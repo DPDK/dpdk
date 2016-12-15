@@ -56,11 +56,11 @@ F: Makefile
 F: config/
 F: mk/
 F: pkg/
-F: scripts/auto-config-h.sh
-F: scripts/depdirs-rule.sh
-F: scripts/gen-build-mk.sh
-F: scripts/gen-config-h.sh
-F: scripts/relpath.sh
+F: buildtools/auto-config-h.sh
+F: buildtools/depdirs-rule.sh
+F: buildtools/gen-build-mk.sh
+F: buildtools/gen-config-h.sh
+F: buildtools/relpath.sh
 F: doc/build-sdk-quick.txt
 F: doc/guides/prog_guide/build_app.rst
 F: doc/guides/prog_guide/dev_kit_*

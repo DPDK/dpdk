@@ -119,7 +119,7 @@ The DPDK is composed of several directories:
 
 *   examples: Source code of DPDK applications
 
-*   config, tools, scripts, mk: Framework-related makefiles, scripts and configuration
+*   config, buildtools, mk: Framework-related makefiles, scripts and configuration
 
 Installation of the DPDK Target Environments
 --------------------------------------------

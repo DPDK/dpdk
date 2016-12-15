@@ -107,12 +107,12 @@ endif
 
 # generate a Makefile for this build directory
 # use a relative path so it will continue to work even if we move the directory
-SDK_RELPATH=$(shell $(RTE_SDK)/scripts/relpath.sh $(abspath $(RTE_SRCDIR)) \
+SDK_RELPATH=$(shell $(RTE_SDK)/buildtools/relpath.sh $(abspath $(RTE_SRCDIR)) \
 				$(abspath $(RTE_OUTPUT)))
-OUTPUT_RELPATH=$(shell $(RTE_SDK)/scripts/relpath.sh $(abspath $(RTE_OUTPUT)) \
+OUTPUT_RELPATH=$(shell $(RTE_SDK)/buildtools/relpath.sh $(abspath $(RTE_OUTPUT)) \
 				$(abspath $(RTE_SRCDIR)))
 $(RTE_OUTPUT)/Makefile: | $(RTE_OUTPUT)
-	$(Q)$(RTE_SDK)/scripts/gen-build-mk.sh $(SDK_RELPATH) $(OUTPUT_RELPATH) \
+	$(Q)$(RTE_SDK)/buildtools/gen-build-mk.sh $(SDK_RELPATH) $(OUTPUT_RELPATH) \
 		> $(RTE_OUTPUT)/Makefile
 
 # clean installed files, and generate a new config header file
@@ -122,7 +122,7 @@ $(RTE_OUTPUT)/include/rte_config.h: $(RTE_OUTPUT)/.config
 		$(RTE_OUTPUT)/lib \
 		$(RTE_OUTPUT)/hostlib $(RTE_OUTPUT)/kmod $(RTE_OUTPUT)/build
 	$(Q)mkdir -p $(RTE_OUTPUT)/include
-	$(Q)$(RTE_SDK)/scripts/gen-config-h.sh $(RTE_OUTPUT)/.config \
+	$(Q)$(RTE_SDK)/buildtools/gen-config-h.sh $(RTE_OUTPUT)/.config \
 		> $(RTE_OUTPUT)/include/rte_config.h
 
 # generate the rte_config.h

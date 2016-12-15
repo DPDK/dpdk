@@ -77,7 +77,7 @@ rte_mkdir = test -d $1 || mkdir -p $1
 
 # Create the relative symbolic link $2 -> $1
 # May be replaced with --relative option of ln from coreutils-8.16
-rte_symlink = ln -snf $$($(RTE_SDK)/scripts/relpath.sh $1 $(dir $2)) $2
+rte_symlink = ln -snf $$($(RTE_SDK)/buildtools/relpath.sh $1 $(dir $2)) $2
 
 .PHONY: pre_install
 pre_install:
@@ -156,7 +156,7 @@ install-sdk:
 		--keep-newer-files
 	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(sdkdir))
 	$(Q)cp -a               $(RTE_SDK)/mk            $(DESTDIR)$(sdkdir)
-	$(Q)cp -a               $(RTE_SDK)/scripts       $(DESTDIR)$(sdkdir)
+	$(Q)cp -a               $(RTE_SDK)/buildtools    $(DESTDIR)$(sdkdir)
 	$(Q)$(call rte_mkdir,                            $(DESTDIR)$(targetdir)/app)
 	$(Q)cp -a               $O/.config               $(DESTDIR)$(targetdir)
 	$(Q)cp -a               $O/app/dpdk-pmdinfogen   $(DESTDIR)$(targetdir)/app

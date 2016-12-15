@@ -102,7 +102,7 @@ endif
 
 mlx4_autoconf.h.new: FORCE
 
-mlx4_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
+mlx4_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
 		RSS_SUPPORT \

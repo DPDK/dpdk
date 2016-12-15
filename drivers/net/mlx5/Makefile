@@ -104,7 +104,7 @@ endif
 
 mlx5_autoconf.h.new: FORCE
 
-mlx5_autoconf.h.new: $(RTE_SDK)/scripts/auto-config-h.sh
+mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
 		HAVE_VERBS_IBV_EXP_CQ_COMPRESSED_CQE \

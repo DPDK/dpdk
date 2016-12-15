@@ -103,7 +103,7 @@ make install O=%{target} DESTDIR=%{buildroot} \
 %files devel
 %{_includedir}/dpdk
 %{_datadir}/dpdk/mk
-%{_datadir}/dpdk/scripts
+%{_datadir}/dpdk/buildtools
 %{_datadir}/dpdk/%{target}
 %{_datadir}/dpdk/examples
 
