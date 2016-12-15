@@ -48,6 +48,8 @@ SFC EFX PMD has support for:
 
 - IPv4/IPv6 TCP/UDP transmit checksum offload
 
+- Port hardware statistics
+
 
 Non-supported Features
 ----------------------

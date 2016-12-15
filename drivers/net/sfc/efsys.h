@@ -178,7 +178,7 @@ prefetch_read_once(const volatile void *addr)
 #define EFSYS_OPT_MCDI_LOGGING 1
 #define EFSYS_OPT_MCDI_PROXY_AUTH 0
 
-#define EFSYS_OPT_MAC_STATS 0
+#define EFSYS_OPT_MAC_STATS 1
 
 #define EFSYS_OPT_LOOPBACK 0
 

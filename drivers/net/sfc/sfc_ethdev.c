@@ -323,12 +323,81 @@ sfc_tx_queue_release(void *queue)
 	sfc_adapter_unlock(sa);
 }
 
+static void
+sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	uint64_t *mac_stats;
+
+	rte_spinlock_lock(&port->mac_stats_lock);
+
+	if (sfc_port_update_mac_stats(sa) != 0)
+		goto unlock;
+
+	mac_stats = port->mac_stats_buf;
+
+	if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask,
+				   EFX_MAC_VADAPTER_RX_UNICAST_PACKETS)) {
+		stats->ipackets =
+			mac_stats[EFX_MAC_VADAPTER_RX_UNICAST_PACKETS] +
+			mac_stats[EFX_MAC_VADAPTER_RX_MULTICAST_PACKETS] +
+			mac_stats[EFX_MAC_VADAPTER_RX_BROADCAST_PACKETS];
+		stats->opackets =
+			mac_stats[EFX_MAC_VADAPTER_TX_UNICAST_PACKETS] +
+			mac_stats[EFX_MAC_VADAPTER_TX_MULTICAST_PACKETS] +
+			mac_stats[EFX_MAC_VADAPTER_TX_BROADCAST_PACKETS];
+		stats->ibytes =
+			mac_stats[EFX_MAC_VADAPTER_RX_UNICAST_BYTES] +
+			mac_stats[EFX_MAC_VADAPTER_RX_MULTICAST_BYTES] +
+			mac_stats[EFX_MAC_VADAPTER_RX_BROADCAST_BYTES];
+		stats->obytes =
+			mac_stats[EFX_MAC_VADAPTER_TX_UNICAST_BYTES] +
+			mac_stats[EFX_MAC_VADAPTER_TX_MULTICAST_BYTES] +
+			mac_stats[EFX_MAC_VADAPTER_TX_BROADCAST_BYTES];
+		stats->imissed = mac_stats[EFX_MAC_VADAPTER_RX_OVERFLOW];
+		stats->ierrors = mac_stats[EFX_MAC_VADAPTER_RX_BAD_PACKETS];
+		stats->oerrors = mac_stats[EFX_MAC_VADAPTER_TX_BAD_PACKETS];
+	} else {
+		stats->ipackets = mac_stats[EFX_MAC_RX_PKTS];
+		stats->opackets = mac_stats[EFX_MAC_TX_PKTS];
+		stats->ibytes = mac_stats[EFX_MAC_RX_OCTETS];
+		stats->obytes = mac_stats[EFX_MAC_TX_OCTETS];
+		/*
+		 * Take into account stats which are whenever supported
+		 * on EF10. If some stat is not supported by current
+		 * firmware variant or HW revision, it is guaranteed
+		 * to be zero in mac_stats.
+		 */
+		stats->imissed =
+			mac_stats[EFX_MAC_RX_NODESC_DROP_CNT] +
+			mac_stats[EFX_MAC_PM_TRUNC_BB_OVERFLOW] +
+			mac_stats[EFX_MAC_PM_DISCARD_BB_OVERFLOW] +
+			mac_stats[EFX_MAC_PM_TRUNC_VFIFO_FULL] +
+			mac_stats[EFX_MAC_PM_DISCARD_VFIFO_FULL] +
+			mac_stats[EFX_MAC_PM_TRUNC_QBB] +
+			mac_stats[EFX_MAC_PM_DISCARD_QBB] +
+			mac_stats[EFX_MAC_PM_DISCARD_MAPPING] +
+			mac_stats[EFX_MAC_RXDP_Q_DISABLED_PKTS] +
+			mac_stats[EFX_MAC_RXDP_DI_DROPPED_PKTS];
+		stats->ierrors =
+			mac_stats[EFX_MAC_RX_FCS_ERRORS] +
+			mac_stats[EFX_MAC_RX_ALIGN_ERRORS] +
+			mac_stats[EFX_MAC_RX_JABBER_PKTS];
+		/* no oerrors counters supported on EF10 */
+	}
+
+unlock:
+	rte_spinlock_unlock(&port->mac_stats_lock);
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
 	.dev_stop			= sfc_dev_stop,
 	.dev_close			= sfc_dev_close,
 	.link_update			= sfc_dev_link_update,
+	.stats_get			= sfc_stats_get,
 	.dev_infos_get			= sfc_dev_infos_get,
 	.rx_queue_setup			= sfc_rx_queue_setup,
 	.rx_queue_release		= sfc_rx_queue_release,

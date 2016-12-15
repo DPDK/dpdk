@@ -32,6 +32,34 @@
 #include "sfc.h"
 #include "sfc_log.h"
 
+/**
+ * Update MAC statistics in the buffer.
+ *
+ * @param	sa	Adapter
+ *
+ * @return Status code
+ * @retval	0	Success
+ * @retval	EAGAIN	Try again
+ * @retval	ENOMEM	Memory allocation failure
+ */
+int
+sfc_port_update_mac_stats(struct sfc_adapter *sa)
+{
+	struct sfc_port *port = &sa->port;
+	int rc;
+
+	SFC_ASSERT(rte_spinlock_is_locked(&port->mac_stats_lock));
+
+	if (sa->state != SFC_ADAPTER_STARTED)
+		return EINVAL;
+
+	rc = efx_mac_stats_update(sa->nic, &port->mac_stats_dma_mem,
+				  port->mac_stats_buf, NULL);
+	if (rc != 0)
+		return rc;
+
+	return 0;
+}
 
 int
 sfc_port_start(struct sfc_adapter *sa)
@@ -67,6 +95,19 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_filter_set;
 
+	efx_mac_stats_get_mask(sa->nic, port->mac_stats_mask,
+			       sizeof(port->mac_stats_mask));
+
+	/* Update MAC stats using periodic DMA.
+	 * Common code always uses 1000ms update period, so period_ms
+	 * parameter only needs to be non-zero to start updates.
+	 */
+	sfc_log_init(sa, "request MAC stats DMA'ing");
+	rc = efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
+				    1000, B_FALSE);
+	if (rc != 0)
+		goto fail_mac_stats_periodic;
+
 	sfc_log_init(sa, "disable MAC drain");
 	rc = efx_mac_drain(sa->nic, B_FALSE);
 	if (rc != 0)
@@ -76,6 +117,10 @@ sfc_port_start(struct sfc_adapter *sa)
 	return 0;
 
 fail_mac_drain:
+	(void)efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
+				     0, B_FALSE);
+
+fail_mac_stats_periodic:
 fail_mac_filter_set:
 fail_mac_addr_set:
 fail_mac_pdu_set:
@@ -95,6 +140,10 @@ sfc_port_stop(struct sfc_adapter *sa)
 	sfc_log_init(sa, "entry");
 
 	efx_mac_drain(sa->nic, B_TRUE);
+
+	(void)efx_mac_stats_periodic(sa->nic, &sa->port.mac_stats_dma_mem,
+				     0, B_FALSE);
+
 	efx_port_fini(sa->nic);
 	efx_filter_fini(sa->nic);
 
@@ -106,6 +155,7 @@ sfc_port_init(struct sfc_adapter *sa)
 {
 	const struct rte_eth_dev_data *dev_data = sa->eth_dev->data;
 	struct sfc_port *port = &sa->port;
+	int rc;
 
 	sfc_log_init(sa, "entry");
 
@@ -118,14 +168,39 @@ sfc_port_init(struct sfc_adapter *sa)
 	else
 		port->pdu = EFX_MAC_PDU(dev_data->mtu);
 
+	rte_spinlock_init(&port->mac_stats_lock);
+
+	rc = ENOMEM;
+	port->mac_stats_buf = rte_calloc_socket("mac_stats_buf", EFX_MAC_NSTATS,
+						sizeof(uint64_t), 0,
+						sa->socket_id);
+	if (port->mac_stats_buf == NULL)
+		goto fail_mac_stats_buf_alloc;
+
+	rc = sfc_dma_alloc(sa, "mac_stats", 0, EFX_MAC_STATS_SIZE,
+			   sa->socket_id, &port->mac_stats_dma_mem);
+	if (rc != 0)
+		goto fail_mac_stats_dma_alloc;
+
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_mac_stats_dma_alloc:
+	rte_free(port->mac_stats_buf);
+fail_mac_stats_buf_alloc:
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
 }
 
 void
 sfc_port_fini(struct sfc_adapter *sa)
 {
+	struct sfc_port *port = &sa->port;
+
 	sfc_log_init(sa, "entry");
+
+	sfc_dma_free(sa, &port->mac_stats_dma_mem);
+	rte_free(port->mac_stats_buf);
 
 	sfc_log_init(sa, "done");
 }
