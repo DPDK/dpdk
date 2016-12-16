@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -90,6 +90,64 @@
 #define APP_LOOKUP_METHOD             APP_LOOKUP_LPM
 #endif
 
+static int
+check_ptype(int portid)
+{
+	int i, ret;
+	int ipv4 = 0, ipv6 = 0;
+
+	ret = rte_eth_dev_get_supported_ptypes(portid, RTE_PTYPE_L3_MASK, NULL,
+			0);
+	if (ret <= 0)
+		return 0;
+
+	uint32_t ptypes[ret];
+
+	ret = rte_eth_dev_get_supported_ptypes(portid, RTE_PTYPE_L3_MASK,
+			ptypes, ret);
+	for (i = 0; i < ret; ++i) {
+		if (ptypes[i] & RTE_PTYPE_L3_IPV4)
+			ipv4 = 1;
+		if (ptypes[i] & RTE_PTYPE_L3_IPV6)
+			ipv6 = 1;
+	}
+
+	if (ipv4 && ipv6)
+		return 1;
+
+	return 0;
+}
+
+static inline void
+parse_ptype(struct rte_mbuf *m)
+{
+	struct ether_hdr *eth_hdr;
+	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
+	uint16_t ether_type;
+
+	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	ether_type = eth_hdr->ether_type;
+	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4))
+		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+	else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6))
+		packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+
+	m->packet_type = packet_type;
+}
+
+static uint16_t
+cb_parse_ptype(__rte_unused uint8_t port, __rte_unused uint16_t queue,
+		struct rte_mbuf *pkts[], uint16_t nb_pkts,
+		__rte_unused uint16_t max_pkts, __rte_unused void *user_param)
+{
+	unsigned int i;
+
+	for (i = 0; i < nb_pkts; i++)
+		parse_ptype(pkts[i]);
+
+	return nb_pkts;
+}
+
 /*
  *  When set to zero, simple forwaring path is eanbled.
  *  When set to one, optimized forwarding path is enabled.
@@ -170,8 +228,9 @@ static __m128i val_eth[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask;
-static int promiscuous_on; /**< $et in promiscuous mode off by default. */
+static int promiscuous_on; /**< Set in promiscuous mode off by default. */
 static int numa_on = 1;    /**< NUMA is enabled by default. */
+static int parse_ptype_on;
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 static int ipv6;           /**< ipv6 is false by default. */
@@ -2610,6 +2669,7 @@ print_usage(const char *prgname)
 		"  [--rx (port,queue,lcore,thread)[,(port,queue,lcore,thread]]"
 		"  [--tx (lcore,thread)[,(lcore,thread]]"
 		"  [--enable-jumbo [--max-pkt-len PKTLEN]]\n"
+		"  [--parse-ptype]\n\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -P : enable promiscuous mode\n"
 		"  --rx (port,queue,lcore,thread): rx queues configuration\n"
@@ -2621,7 +2681,8 @@ print_usage(const char *prgname)
 		"  --enable-jumbo: enable jumbo frame"
 		" which max packet len is PKTLEN in decimal (64-9600)\n"
 		"  --hash-entry-num: specify the hash entry number in hexadecimal to be setup\n"
-		"  --no-lthreads: turn off lthread model\n",
+		"  --no-lthreads: turn off lthread model\n"
+		"  --parse-ptype: set to use software to analyze packet type\n\n",
 		prgname);
 }
 
@@ -2840,6 +2901,7 @@ parse_eth_dest(const char *optarg)
 #define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
 #define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 #define CMD_LINE_OPT_NO_LTHREADS "no-lthreads"
+#define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
 
 /* Parse the argument given in the command line of the application */
 static int
@@ -2859,6 +2921,7 @@ parse_args(int argc, char **argv)
 		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
 		{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, 0},
 		{CMD_LINE_OPT_NO_LTHREADS, 0, 0, 0},
+		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -2933,6 +2996,12 @@ parse_args(int argc, char **argv)
 					sizeof(CMD_LINE_OPT_NO_LTHREADS))) {
 				printf("l-threads model is disabled\n");
 				lthreads_on = 0;
+			}
+
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_PARSE_PTYPE,
+					sizeof(CMD_LINE_OPT_PARSE_PTYPE))) {
+				printf("software packet type parsing enabled\n");
+				parse_ptype_on = 1;
 			}
 
 			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO,
@@ -3621,6 +3690,31 @@ main(int argc, char **argv)
 		 */
 		if (promiscuous_on)
 			rte_eth_promiscuous_enable(portid);
+	}
+
+	for (i = 0; i < n_rx_thread; i++) {
+		lcore_id = rx_thread[i].conf.lcore_id;
+		if (rte_lcore_is_enabled(lcore_id) == 0)
+			continue;
+
+		/* check if hw packet type is supported */
+		for (queue = 0; queue < rx_thread[i].n_rx_queue; ++queue) {
+			portid = rx_thread[i].rx_queue_list[queue].port_id;
+			queueid = rx_thread[i].rx_queue_list[queue].queue_id;
+
+			if (parse_ptype_on) {
+				if (!rte_eth_add_rx_callback(portid, queueid,
+						cb_parse_ptype, NULL))
+					rte_exit(EXIT_FAILURE,
+						"Failed to add rx callback: "
+						"port=%d\n", portid);
+			} else if (!check_ptype(portid))
+				rte_exit(EXIT_FAILURE,
+					"Port %d cannot parse packet type.\n\n"
+					"Please add --parse-ptype to use sw "
+					"packet type analyzer.\n\n",
+					portid);
+		}
 	}
 
 	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);

@@ -107,6 +107,7 @@ The application has a number of command line options::
         --tx(lcore,thread)[,(lcore,thread)]
         [--enable-jumbo] [--max-pkt-len PKTLEN]]  [--no-numa]
         [--hash-entry-num] [--ipv6] [--no-lthreads] [--stat-lcore lcore]
+        [--parse-ptype]
 
 Where:
 
@@ -141,6 +142,9 @@ Where:
 
 * ``--stat-lcore``: optional, run CPU load stats collector on the specified
   lcore.
+
+* ``--parse-ptype:`` optional, set to use software to analyze packet type.
+  Without this option, hardware will check the packet type.
 
 The parameters of the ``--rx`` and ``--tx`` options are:
 
