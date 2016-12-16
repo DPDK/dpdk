@@ -1317,6 +1317,7 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	for (i = 0; i < FM10K_NB_HW_XSTATS; i++) {
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 			fm10k_hw_stats_strings[count].offset);
+		xstats[count].id = count;
 		count++;
 	}
 
@@ -1326,12 +1327,14 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			xstats[count].value =
 				*(uint64_t *)(((char *)&hw_stats->q[q]) +
 				fm10k_hw_stats_rx_q_strings[i].offset);
+			xstats[count].id = count;
 			count++;
 		}
 		for (i = 0; i < FM10K_NB_TX_Q_XSTATS; i++) {
 			xstats[count].value =
 				*(uint64_t *)(((char *)&hw_stats->q[q]) +
 				fm10k_hw_stats_tx_q_strings[i].offset);
+			xstats[count].id = count;
 			count++;
 		}
 	}

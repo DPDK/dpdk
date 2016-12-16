@@ -893,6 +893,7 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		for (t = 0; t < VIRTIO_NB_RXQ_XSTATS; t++) {
 			xstats[count].value = *(uint64_t *)(((char *)rxvq) +
 				rte_virtio_rxq_stat_strings[t].offset);
+			xstats[count].id = count;
 			count++;
 		}
 	}
@@ -908,6 +909,7 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		for (t = 0; t < VIRTIO_NB_TXQ_XSTATS; t++) {
 			xstats[count].value = *(uint64_t *)(((char *)txvq) +
 				rte_virtio_txq_stat_strings[t].offset);
+			xstats[count].id = count;
 			count++;
 		}
 	}

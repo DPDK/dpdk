@@ -422,6 +422,7 @@ bnx2x_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			xstats[num].value =
 					  *(uint64_t *)((char *)&sc->eth_stats +
 					  bnx2x_xstats_strings[num].offset_lo);
+		xstats[num].id = num;
 	}
 
 	return num;

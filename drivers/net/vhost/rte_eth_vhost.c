@@ -324,6 +324,7 @@ vhost_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 				*(uint64_t *)(((char *)vq)
 				+ vhost_rxport_stat_strings[t].offset);
 		}
+		xstats[count].id = count;
 		count++;
 	}
 	for (t = 0; t < VHOST_NB_XSTATS_TXPORT; t++) {
@@ -336,6 +337,7 @@ vhost_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 				*(uint64_t *)(((char *)vq)
 				+ vhost_txport_stat_strings[t].offset);
 		}
+		xstats[count].id = count;
 		count++;
 	}
 	return count;

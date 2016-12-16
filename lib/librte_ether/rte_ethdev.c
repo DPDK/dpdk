@@ -1527,8 +1527,11 @@ rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 		}
 	}
 
-	for (i = 0; i < count + xcount; i++)
+	for (i = 0; i < count; i++)
 		xstats[i].id = i;
+	/* add an offset to driver-specific stats */
+	for ( ; i < count + xcount; i++)
+		xstats[i].id += count;
 
 	return count + xcount;
 }
