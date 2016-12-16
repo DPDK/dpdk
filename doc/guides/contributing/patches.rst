@@ -12,7 +12,7 @@ The rationale for many of the DPDK guidelines is explained in greater detail in 
 
 
 The DPDK Development Process
------------------------------
+----------------------------
 
 The DPDK development process has the following features:
 
@@ -21,13 +21,9 @@ The DPDK development process has the following features:
 * There are maintainers for hierarchical components.
 * Patches are reviewed publicly on the mailing list.
 * Successfully reviewed patches are merged to the repository.
-
-|
-
-* There are main repository ``dpdk`` and sub-repositories ``dpdk-next-*``.
-* A patch should be sent for its target repository. Like net drivers should be on top of dpdk-next-net repository.
-* All sub-repositories are merged into main repository for -rc1 and -rc2 versions of the release.
-* After -rc2 release all patches should target main repository.
+* Patches should be sent to the target repository or sub-tree, see below.
+* All sub-repositories are merged into main repository for ``-rc1`` and ``-rc2`` versions of the release.
+* After the ``-rc2`` release all patches should target the main repository.
 
 The mailing list for DPDK development is `dev@dpdk.org <http://dpdk.org/ml/archives/dev/>`_.
 Contributors will need to `register for the mailing list <http://dpdk.org/ml/listinfo/dev>`_ in order to submit patches.
@@ -35,6 +31,66 @@ It is also worth registering for the DPDK `Patchwork <http://dpdk.org/dev/patchw
 
 The development process requires some familiarity with the ``git`` version control system.
 Refer to the `Pro Git Book <http://www.git-scm.com/book/>`_ for further information.
+
+
+Maintainers and Sub-trees
+-------------------------
+
+The DPDK maintenance hierarchy is divided into a main repository ``dpdk`` and sub-repositories ``dpdk-next-*``.
+
+There are maintainers for the trees and for components within the tree.
+
+Trees and maintainers are listed in the ``MAINTAINERS`` file. For example::
+
+    Crypto Drivers
+    --------------
+    M: Some Name <some.name@email.com>
+    B: Another Name <another.name@email.com>
+    T: git://dpdk.org/next/dpdk-next-crypto
+
+    Intel AES-NI GCM PMD
+    M: Some One <some.one@email.com>
+    F: drivers/crypto/aesni_gcm/
+    F: doc/guides/cryptodevs/aesni_gcm.rst
+
+Where:
+
+* ``M`` is a tree or component maintainer.
+* ``B`` is a tree backup maintainer.
+* ``T`` is a repository tree.
+* ``F`` is a maintained file or directory.
+
+Additional details are given in the ``MAINTAINERS`` file.
+
+The role of the component maintainers is to:
+
+* Review patches for the component or delegate the review.
+  The review should be done, ideally, within 1 week of submission to the mailing list.
+* Add an ``acked-by`` to patches, or patchsets, that are ready for committing to a tree.
+
+Component maintainers can be added or removed by submitting a patch to the ``MAINTAINERS`` file.
+Maintainers should have demonstrated a reasonable level of contributions or reviews to the component area.
+The maintainer should be confirmed by an ``ack`` from an established contributor.
+There can be more than one component maintainer if desired.
+
+The role of the tree maintainers is to:
+
+* Maintain the overall quality of their tree.
+  This can entail additional review, compilation checks or other tests deemed necessary by the maintainer.
+* Commit patches that have been reviewed by component maintainers and/or other contributors.
+  The tree maintainer should determine if patches have been reviewed sufficiently.
+* Ensure that patches are reviewed in a timely manner.
+* Prepare the tree for integration.
+* Ensure that there is a designated back-up maintainer and coordinate a handover for periods where the
+  tree maintainer can't perform their role.
+
+Tree maintainers can be added or removed by submitting a patch to the ``MAINTAINERS`` file.
+The proposer should justify the need for a new sub-tree and should have demonstrated a sufficient level of contributions in the area or to a similar area.
+The maintainer should be confirmed by an ``ack`` from an existing tree maintainer.
+Disagreements on trees or maintainers can be brought to the Technical Board.
+
+The backup maintainer for the master tree should be selected from the existing sub-tree maintainers from the project.
+The backup maintainer for a sub-tree should be selected from among the component maintainers within that sub-tree.
 
 
 Getting the Source Code
