@@ -322,6 +322,7 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 			rte_mempool_put(qp->sess_mp, _sess);
 			sess = NULL;
 		}
+		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
 	}
 
 	return sess;
