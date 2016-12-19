@@ -66,21 +66,17 @@ Limitations
 * Cipher only is not supported.
 * Only in-place is currently supported (destination address is the same as source address).
 * Only supports session-oriented API implementation (session-less APIs are not supported).
-*  Not performance tuned.
 
 Installation
 ------------
 
 To build DPDK with the AESNI_MB_PMD the user is required to download the mult-
-buffer library from `here <https://downloadcenter.intel.com/download/22972>`_
-and compile it on their user system before building DPDK. When building the
-multi-buffer library it is necessary to have YASM package installed and also
-requires the overriding of YASM path when building, as a path is hard coded in
-the Makefile of the release package.
+buffer library from `here <https://github.com/01org/intel-ipsec-mb>`_
+and compile it on their user system before building DPDK.
 
 .. code-block:: console
 
-	make YASM=/usr/bin/yasm
+	make
 
 Initialization
 --------------

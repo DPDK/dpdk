@@ -155,6 +155,11 @@ New Features
   * DES algorithm.
   * Scatter-gather list (SGL) support.
 
+* **Updated the AESNI MB PMD.**
+
+  * The Intel(R) Multi Buffer Crypto for IPsec library used in
+    AESNI MB PMD has been moved to a new repository, in GitHub.
+
 * **Added Elastic Flow Distributor library (rte_efd).**
 
   This new library uses perfect hashing to determine a target/value for a
