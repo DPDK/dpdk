@@ -62,8 +62,6 @@ Limitations
 -----------
 
 * Chained mbufs are not supported.
-* Hash only is not supported.
-* Cipher only is not supported.
 * Only in-place is currently supported (destination address is the same as source address).
 * Only supports session-oriented API implementation (session-less APIs are not supported).
 

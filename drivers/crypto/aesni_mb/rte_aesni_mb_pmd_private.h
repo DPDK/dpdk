@@ -125,6 +125,13 @@ get_digest_byte_length(JOB_HASH_ALG algo)
 	return auth_digest_byte_lengths[algo];
 }
 
+enum aesni_mb_operation {
+	AESNI_MB_OP_HASH_CIPHER,
+	AESNI_MB_OP_CIPHER_HASH,
+	AESNI_MB_OP_HASH_ONLY,
+	AESNI_MB_OP_CIPHER_ONLY,
+	AESNI_MB_OP_NOT_SUPPORTED
+};
 
 /** private data structure for each virtual AESNI device */
 struct aesni_mb_private {
@@ -185,6 +192,8 @@ struct aesni_mb_session {
 	/** Authentication Parameters */
 	struct {
 		JOB_HASH_ALG algo; /**< Authentication Algorithm */
+		enum rte_crypto_auth_operation operation;
+		/**< auth operation generate or verify */
 		union {
 			struct {
 				uint8_t inner[128] __rte_aligned(16);

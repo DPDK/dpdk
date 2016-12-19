@@ -159,6 +159,7 @@ New Features
 
   * The Intel(R) Multi Buffer Crypto for IPsec library used in
     AESNI MB PMD has been moved to a new repository, in GitHub.
+  * Support for single operations (cipher only and authentication only).
 
 * **Added Elastic Flow Distributor library (rte_efd).**
 

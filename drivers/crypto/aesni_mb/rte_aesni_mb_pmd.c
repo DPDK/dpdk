@@ -107,26 +107,27 @@ calculate_auth_precomputes(hash_one_block_t one_block_hash,
 }
 
 /** Get xform chain order */
-static int
+static enum aesni_mb_operation
 aesni_mb_get_chain_order(const struct rte_crypto_sym_xform *xform)
 {
-	/*
-	 * Multi-buffer only supports HASH_CIPHER or CIPHER_HASH chained
-	 * operations, all other options are invalid, so we must have exactly
-	 * 2 xform structs chained together
-	 */
-	if (xform->next == NULL || xform->next->next != NULL)
-		return -1;
+	if (xform == NULL)
+		return AESNI_MB_OP_NOT_SUPPORTED;
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-			xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
-		return HASH_CIPHER;
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+		if (xform->next == NULL)
+			return AESNI_MB_OP_CIPHER_ONLY;
+		if (xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
+			return AESNI_MB_OP_CIPHER_HASH;
+	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-				xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
-		return CIPHER_HASH;
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		if (xform->next == NULL)
+			return AESNI_MB_OP_HASH_ONLY;
+		if (xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
+			return AESNI_MB_OP_HASH_CIPHER;
+	}
 
-	return -1;
+	return AESNI_MB_OP_NOT_SUPPORTED;
 }
 
 /** Set session authentication parameters */
@@ -137,10 +138,18 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_ops *mb_ops,
 {
 	hash_one_block_t hash_oneblock_fn;
 
+	if (xform == NULL) {
+		sess->auth.algo = NULL_HASH;
+		return 0;
+	}
+
 	if (xform->type != RTE_CRYPTO_SYM_XFORM_AUTH) {
 		MB_LOG_ERR("Crypto xform struct not of type auth");
 		return -1;
 	}
+
+	/* Select auth generate/verify */
+	sess->auth.operation = xform->auth.op;
 
 	/* Set Authentication Parameters */
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
@@ -198,6 +207,11 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_ops *mb_ops,
 		const struct rte_crypto_sym_xform *xform)
 {
 	aes_keyexp_t aes_keyexp_fn;
+
+	if (xform == NULL) {
+		sess->cipher.mode = NULL_CIPHER;
+		return 0;
+	}
 
 	if (xform->type != RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		MB_LOG_ERR("Crypto xform struct not of type cipher");
@@ -268,16 +282,36 @@ aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
 
 	/* Select Crypto operation - hash then cipher / cipher then hash */
 	switch (aesni_mb_get_chain_order(xform)) {
-	case HASH_CIPHER:
+	case AESNI_MB_OP_HASH_CIPHER:
 		sess->chain_order = HASH_CIPHER;
 		auth_xform = xform;
 		cipher_xform = xform->next;
 		break;
-	case CIPHER_HASH:
+	case AESNI_MB_OP_CIPHER_HASH:
 		sess->chain_order = CIPHER_HASH;
 		auth_xform = xform->next;
 		cipher_xform = xform;
 		break;
+	case AESNI_MB_OP_HASH_ONLY:
+		sess->chain_order = HASH_CIPHER;
+		auth_xform = xform;
+		cipher_xform = NULL;
+		break;
+	case AESNI_MB_OP_CIPHER_ONLY:
+		/*
+		 * Multi buffer library operates only at two modes,
+		 * CIPHER_HASH and HASH_CIPHER. When doing ciphering only,
+		 * chain order depends on cipher operation: encryption is always
+		 * the first operation and decryption the last one.
+		 */
+		if (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+			sess->chain_order = CIPHER_HASH;
+		else
+			sess->chain_order = HASH_CIPHER;
+		auth_xform = NULL;
+		cipher_xform = xform;
+		break;
+	case AESNI_MB_OP_NOT_SUPPORTED:
 	default:
 		MB_LOG_ERR("Unsupported operation chain order parameter");
 		return -1;
@@ -397,7 +431,8 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
 	}
 
 	/* Set digest output location */
-	if (job->cipher_direction == DECRYPT) {
+	if (job->hash_alg != NULL_HASH &&
+			session->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
 		job->auth_tag_output = (uint8_t *)rte_pktmbuf_append(m_dst,
 				get_digest_byte_length(job->hash_alg));
 
@@ -459,6 +494,7 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 			(struct rte_crypto_op *)job->user_data;
 	struct rte_mbuf *m_dst =
 			(struct rte_mbuf *)job->user_data2;
+	struct aesni_mb_session *sess;
 
 	if (op == NULL || m_dst == NULL)
 		return NULL;
@@ -470,14 +506,19 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 	if (unlikely(job->status != STS_COMPLETED)) {
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		return op;
-	} else if (job->chain_order == HASH_CIPHER) {
-		/* Verify digest if required */
-		if (memcmp(job->auth_tag_output, op->sym->auth.digest.data,
-				job->auth_tag_output_len_in_bytes) != 0)
-			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	} else if (job->hash_alg != NULL_HASH) {
+		sess = (struct aesni_mb_session *)op->sym->session->_private;
+		if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
+			/* Verify digest if required */
+			if (memcmp(job->auth_tag_output,
+					op->sym->auth.digest.data,
+					job->auth_tag_output_len_in_bytes) != 0)
+				op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
-		/* trim area used for digest from mbuf */
-		rte_pktmbuf_trim(m_dst, get_digest_byte_length(job->hash_alg));
+			/* trim area used for digest from mbuf */
+			rte_pktmbuf_trim(m_dst,
+					get_digest_byte_length(job->hash_alg));
+		}
 	}
 
 	/* Free session if a session-less crypto op */
