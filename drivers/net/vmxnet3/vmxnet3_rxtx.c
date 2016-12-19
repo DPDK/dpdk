@@ -574,6 +574,32 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
+static inline void
+vmxnet3_renew_desc(vmxnet3_rx_queue_t *rxq, uint8_t ring_id,
+		   struct rte_mbuf *mbuf)
+{
+	uint32_t val = 0;
+	struct vmxnet3_cmd_ring *ring = &rxq->cmd_ring[ring_id];
+	struct Vmxnet3_RxDesc *rxd =
+		(struct Vmxnet3_RxDesc *)(ring->base + ring->next2fill);
+	vmxnet3_buf_info_t *buf_info = &ring->buf_info[ring->next2fill];
+
+	if (ring_id == 0)
+		val = VMXNET3_RXD_BTYPE_HEAD;
+	else
+		val = VMXNET3_RXD_BTYPE_BODY;
+
+	buf_info->m = mbuf;
+	buf_info->len = (uint16_t)(mbuf->buf_len - RTE_PKTMBUF_HEADROOM);
+	buf_info->bufPA = rte_mbuf_data_dma_addr_default(mbuf);
+
+	rxd->addr = buf_info->bufPA;
+	rxd->btype = val;
+	rxd->len = buf_info->len;
+	rxd->gen = ring->gen;
+
+	vmxnet3_cmd_ring_adv_next2fill(ring);
+}
 /*
  *  Allocates mbufs and clusters. Post rx descriptors with buffer details
  *  so that device can receive packets in those buffers.
@@ -713,8 +739,17 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	}
 
 	while (rcd->gen == rxq->comp_ring.gen) {
+		struct rte_mbuf *newm;
+
 		if (nb_rx >= nb_pkts)
 			break;
+
+		newm = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(newm == NULL)) {
+			PMD_RX_LOG(ERR, "Error allocating mbuf");
+			rxq->stats.rx_buf_alloc_failure++;
+			break;
+		}
 
 		idx = rcd->rxdIdx;
 		ring_idx = (uint8_t)((rcd->rqID == rxq->qid1) ? 0 : 1);
@@ -815,8 +850,8 @@ rcd_done:
 		VMXNET3_INC_RING_IDX_ONLY(rxq->cmd_ring[ring_idx].next2comp,
 					  rxq->cmd_ring[ring_idx].size);
 
-		/* It's time to allocate some new buf and renew descriptors */
-		vmxnet3_post_rx_bufs(rxq, ring_idx);
+		/* It's time to renew descriptors */
+		vmxnet3_renew_desc(rxq, ring_idx, newm);
 		if (unlikely(rxq->shared->ctrl.updateRxProd)) {
 			VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[ring_idx] + (rxq->queue_id * VMXNET3_REG_ALIGN),
 					       rxq->cmd_ring[ring_idx].next2fill);
