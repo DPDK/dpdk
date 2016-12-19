@@ -95,7 +95,7 @@ The following is an overview of the Vhost API functions:
     * for VM2NIC case, the ``nb_tx_desc`` has to be small enough: <= 64 if virtio
       indirect feature is not enabled and <= 128 if it is enabled.
 
-      The is because when dequeue zero copy is enabled, guest Tx used vring will
+      This is because when dequeue zero copy is enabled, guest Tx used vring will
       be updated only when corresponding mbuf is freed. Thus, the nb_tx_desc
       has to be small enough so that the PMD driver will run out of available
       Tx descriptors and free mbufs timely. Otherwise, guest Tx vring would be
