@@ -1609,12 +1609,6 @@ nfp_net_set_hash(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 	hash = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_OFFSET);
 	hash_type = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_TYPE_OFFSET);
 
-	/*
-	 * hash type is sharing the same word with input port info
-	 * 31-8: input port
-	 * 7:0: hash type
-	 */
-	hash_type &= 0xff;
 	mbuf->hash.rss = hash;
 	mbuf->ol_flags |= PKT_RX_RSS_HASH;
 
@@ -1631,29 +1625,6 @@ nfp_net_set_hash(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 	default:
 		mbuf->packet_type |= RTE_PTYPE_INNER_L4_MASK;
 	}
-}
-
-/* nfp_net_check_port - Set mbuf in_port field */
-static void
-nfp_net_check_port(struct nfp_net_rx_desc *rxd, struct rte_mbuf *mbuf)
-{
-	uint32_t port;
-
-	if (!(rxd->rxd.flags & PCIE_DESC_RX_INGRESS_PORT)) {
-		mbuf->port = 0;
-		return;
-	}
-
-	port = rte_be_to_cpu_32(*(uint32_t *)((uint8_t *)mbuf->buf_addr +
-					      mbuf->data_off - 8));
-
-	/*
-	 * hash type is sharing the same word with input port info
-	 * 31-8: input port
-	 * 7:0: hash type
-	 */
-	port = (uint8_t)(port >> 8);
-	mbuf->port = port;
 }
 
 static inline void
@@ -1804,9 +1775,6 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);
-
-		/* Checking the port flag */
-		nfp_net_check_port(rxds, mb);
 
 		if ((rxds->rxd.flags & PCIE_DESC_RX_VLAN) &&
 		    (hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN)) {

@@ -269,7 +269,7 @@ struct nfp_net_txq {
 #define PCIE_DESC_RX_I_TCP_CSUM_OK      (1 << 11)
 #define PCIE_DESC_RX_I_UDP_CSUM         (1 << 10)
 #define PCIE_DESC_RX_I_UDP_CSUM_OK      (1 <<  9)
-#define PCIE_DESC_RX_INGRESS_PORT       (1 <<  8)
+#define PCIE_DESC_RX_SPARE              (1 <<  8)
 #define PCIE_DESC_RX_EOP                (1 <<  7)
 #define PCIE_DESC_RX_IP4_CSUM           (1 <<  6)
 #define PCIE_DESC_RX_IP4_CSUM_OK        (1 <<  5)
