@@ -216,12 +216,10 @@ struct nfp_net_txq {
 
 	uint32_t wr_p;
 	uint32_t rd_p;
-	uint32_t qcp_rd_p;
 
 	uint32_t tx_count;
 
 	uint32_t tx_free_thresh;
-	uint32_t tail;
 
 	/*
 	 * For each descriptor keep a reference to the mbuff and
@@ -240,7 +238,7 @@ struct nfp_net_txq {
 	struct nfp_net_tx_desc *txds;
 
 	/*
-	 * At this point 56 bytes have been used for all the fields in the
+	 * At this point 48 bytes have been used for all the fields in the
 	 * TX critical path. We have room for 8 bytes and still all placed
 	 * in a cache line. We are not using the threshold values below nor
 	 * the txq_flags but if we need to, we can add the most used in the
@@ -326,7 +324,6 @@ struct nfp_net_rxq {
 	 * freelist descriptors and @rd_p is where the driver start
 	 * reading descriptors for newly arrive packets from.
 	 */
-	uint32_t wr_p;
 	uint32_t rd_p;
 
 	/*

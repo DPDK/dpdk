@@ -308,7 +308,6 @@ static void
 nfp_net_reset_rx_queue(struct nfp_net_rxq *rxq)
 {
 	nfp_net_rx_queue_release_mbufs(rxq);
-	rxq->wr_p = 0;
 	rxq->rd_p = 0;
 	rxq->nb_rx_hold = 0;
 }
@@ -347,8 +346,6 @@ nfp_net_reset_tx_queue(struct nfp_net_txq *txq)
 	nfp_net_tx_queue_release_mbufs(txq);
 	txq->wr_p = 0;
 	txq->rd_p = 0;
-	txq->tail = 0;
-	txq->qcp_rd_p = 0;
 }
 
 static int
@@ -1118,8 +1115,7 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 		return 0;
 	}
 
-	idx = rxq->rd_p % rxq->rx_count;
-	rxds = &rxq->rxds[idx];
+	idx = rxq->rd_p;
 
 	count = 0;
 
@@ -1421,8 +1417,6 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		rxd->fld.dma_addr_lo = dma_addr & 0xffffffff;
 		rxe[i].mbuf = mbuf;
 		PMD_RX_LOG(DEBUG, "[%d]: %" PRIx64 "\n", i, dma_addr);
-
-		rxq->wr_p++;
 	}
 
 	/* Make sure all writes are flushed before telling the hardware */
@@ -1506,7 +1500,6 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	}
 
 	txq->tx_count = nb_desc;
-	txq->tail = 0;
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->tx_pthresh = tx_conf->tx_thresh.pthresh;
 	txq->tx_hthresh = tx_conf->tx_thresh.hthresh;
@@ -1698,7 +1691,6 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct nfp_net_hw *hw;
 	struct rte_mbuf *mb;
 	struct rte_mbuf *new_mb;
-	int idx;
 	uint16_t nb_hold;
 	uint64_t dma_addr;
 	int avail;
@@ -1718,9 +1710,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	nb_hold = 0;
 
 	while (avail < nb_pkts) {
-		idx = rxq->rd_p % rxq->rx_count;
-
-		rxb = &rxq->rxbufs[idx];
+		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
 			RTE_LOG_DP(ERR, PMD, "rxb does not exist!\n");
 			break;
@@ -1732,7 +1722,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		rte_rmb();
 
-		rxds = &rxq->rxds[idx];
+		rxds = &rxq->rxds[rxq->rd_p];
 		if ((rxds->rxd.meta_len_dd & PCIE_DESC_RX_DD) == 0)
 			break;
 
@@ -1820,6 +1810,8 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;
 
 		rxq->rd_p++;
+		if (unlikely(rxq->rd_p == rxq->rx_count)) /* wrapping?*/
+			rxq->rd_p = 0;
 	}
 
 	if (nb_hold == 0)
@@ -1865,33 +1857,40 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	/* Work out how many packets have been sent */
 	qcp_rd_p = nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
 
-	if (qcp_rd_p == txq->qcp_rd_p) {
+	if (qcp_rd_p == txq->rd_p) {
 		PMD_TX_LOG(DEBUG, "queue %u: It seems harrier is not sending "
 			   "packets (%u, %u)\n", txq->qidx,
-			   qcp_rd_p, txq->qcp_rd_p);
+			   qcp_rd_p, txq->rd_p);
 		return 0;
 	}
 
-	if (qcp_rd_p > txq->qcp_rd_p)
-		todo = qcp_rd_p - txq->qcp_rd_p;
+	if (qcp_rd_p > txq->rd_p)
+		todo = qcp_rd_p - txq->rd_p;
 	else
-		todo = qcp_rd_p + txq->tx_count - txq->qcp_rd_p;
+		todo = qcp_rd_p + txq->tx_count - txq->rd_p;
 
-	PMD_TX_LOG(DEBUG, "qcp_rd_p %u, txq->qcp_rd_p: %u, qcp->rd_p: %u\n",
-		   qcp_rd_p, txq->qcp_rd_p, txq->rd_p);
+	PMD_TX_LOG(DEBUG, "qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u\n",
+		   qcp_rd_p, txq->rd_p, txq->rd_p);
 
 	if (todo == 0)
 		return todo;
 
-	txq->qcp_rd_p += todo;
-	txq->qcp_rd_p %= txq->tx_count;
 	txq->rd_p += todo;
+	if (unlikely(txq->rd_p >= txq->tx_count))
+		txq->rd_p -= txq->tx_count;
 
 	return todo;
 }
 
 /* Leaving always free descriptors for avoiding wrapping confusion */
-#define NFP_FREE_TX_DESC(t) (t->tx_count - (t->wr_p - t->rd_p) - 8)
+static inline
+uint32_t nfp_free_tx_desc(struct nfp_net_txq *txq)
+{
+	if (txq->wr_p >= txq->rd_p)
+		return txq->tx_count - (txq->wr_p - txq->rd_p) - 8;
+	else
+		return txq->rd_p - txq->wr_p - 8;
+}
 
 /*
  * nfp_net_txq_full - Check if the TX queue free descriptors
@@ -1902,9 +1901,9 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
  * This function uses the host copy* of read/write pointers
  */
 static inline
-int nfp_net_txq_full(struct nfp_net_txq *txq)
+uint32_t nfp_net_txq_full(struct nfp_net_txq *txq)
 {
-	return NFP_FREE_TX_DESC(txq) < txq->tx_free_thresh;
+	return (nfp_free_tx_desc(txq) < txq->tx_free_thresh);
 }
 
 static uint16_t
@@ -1922,15 +1921,15 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	txq = tx_queue;
 	hw = txq->hw;
-	txds = &txq->txds[txq->tail];
+	txds = &txq->txds[txq->wr_p];
 
 	PMD_TX_LOG(DEBUG, "working for queue %u at pos %d and %u packets\n",
-		   txq->qidx, txq->tail, nb_pkts);
+		   txq->qidx, txq->wr_p, nb_pkts);
 
-	if ((NFP_FREE_TX_DESC(txq) < nb_pkts) || (nfp_net_txq_full(txq)))
+	if ((nfp_free_tx_desc(txq) < nb_pkts) || (nfp_net_txq_full(txq)))
 		nfp_net_tx_free_bufs(txq);
 
-	free_descs = (uint16_t)NFP_FREE_TX_DESC(txq);
+	free_descs = (uint16_t)nfp_free_tx_desc(txq);
 	if (unlikely(free_descs == 0))
 		return 0;
 
@@ -1943,7 +1942,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	/* Sending packets */
 	while ((i < nb_pkts) && free_descs) {
 		/* Grabbing the mbuf linked to the current descriptor */
-		lmbuf = &txq->txbufs[txq->tail].mbuf;
+		lmbuf = &txq->txbufs[txq->wr_p].mbuf;
 		/* Warming the cache for releasing the mbuf later on */
 		RTE_MBUF_PREFETCH_TO_FREE(*lmbuf);
 
@@ -2005,9 +2004,8 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			free_descs--;
 
 			txq->wr_p++;
-			txq->tail++;
-			if (unlikely(txq->tail == txq->tx_count)) /* wrapping?*/
-				txq->tail = 0;
+			if (unlikely(txq->wr_p == txq->tx_count)) /* wrapping?*/
+				txq->wr_p = 0;
 
 			pkt_size -= dma_size;
 			if (!pkt_size) {
@@ -2018,7 +2016,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				pkt = pkt->next;
 			}
 			/* Referencing next free TX descriptor */
-			txds = &txq->txds[txq->tail];
+			txds = &txq->txds[txq->wr_p];
 			issued_descs++;
 		}
 		i++;
