@@ -79,14 +79,12 @@ Compilation of the DPDK
 
     * glibc.ppc64, libgcc.ppc64, libstdc++.ppc64 and glibc-devel.ppc64 for IBM ppc_64;
 
-.. note::
+    .. note::
 
-    x86_x32 ABI is currently supported with distribution packages only on Ubuntu
-    higher than 13.10 or recent Debian distribution. The only supported  compiler is gcc 4.9+.
+       x86_x32 ABI is currently supported with distribution packages only on Ubuntu
+       higher than 13.10 or recent Debian distribution. The only supported  compiler is gcc 4.9+.
 
-.. note::
-
-    Python, version 2.6 or 2.7, to use various helper scripts included in the DPDK package.
+*   Python, version 2.6 or 2.7, to use various helper scripts included in the DPDK package.
 
 
 **Optional Tools:**
