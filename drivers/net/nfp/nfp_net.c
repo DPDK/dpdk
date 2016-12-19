@@ -626,10 +626,52 @@ static void nfp_net_read_mac(struct nfp_net_hw *hw)
 }
 
 static int
+nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
+			   struct rte_intr_handle *intr_handle)
+{
+	struct nfp_net_hw *hw;
+	int i;
+
+	if (!intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (!intr_handle->intr_vec) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec\n", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (intr_handle->type == RTE_INTR_HANDLE_UIO) {
+		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with UIO\n");
+		/* UIO just supports one queue and no LSC*/
+		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
+	} else {
+		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with VFIO\n");
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			/*
+			 * The first msix vector is reserved for non
+			 * efd interrupts
+			*/
+			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
+	}
+
+	/* Avoiding TX interrupts */
+	hw->ctrl |= NFP_NET_CFG_CTRL_MSIX_TX_OFF;
+	return 0;
+}
+
+static int
 nfp_net_start(struct rte_eth_dev *dev)
 {
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
+	uint32_t intr_vector;
 	int ret;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -645,9 +687,38 @@ nfp_net_start(struct rte_eth_dev *dev)
 	/* Enabling the required queues in the device */
 	nfp_net_enable_queues(dev);
 
+	/* check and configure queue intr-vector mapping */
+	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		if (intr_handle->type == RTE_INTR_HANDLE_UIO) {
+			/*
+			 * Better not to share LSC with RX interrupts.
+			 * Unregistering LSC interrupt handler
+			 */
+			rte_intr_callback_unregister(&pci_dev->intr_handle,
+				nfp_net_dev_interrupt_handler, (void *)dev);
+
+			if (dev->data->nb_rx_queues > 1) {
+				PMD_INIT_LOG(ERR, "PMD rx interrupt only "
+					     "supports 1 queue with UIO");
+				return -EIO;
+			}
+		}
+		intr_vector = dev->data->nb_rx_queues;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	nfp_configure_rx_interrupt(dev, intr_handle);
+
+	rte_intr_enable(intr_handle);
+
 	/* Enable device */
-	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_ENABLE | NFP_NET_CFG_UPDATE_MSIX;
+	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
+
+	/* Just configuring queues interrupts when necessary */
+	if (rte_intr_dp_is_en(intr_handle))
+		update |= NFP_NET_CFG_UPDATE_MSIX;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
@@ -1141,6 +1212,45 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 	}
 
 	return count;
+}
+
+static int
+nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw *hw;
+	int base = 0;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UIO)
+		base = 1;
+
+	/* Make sure all updates are written before un-masking */
+	rte_wmb();
+	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(base + queue_id),
+		      NFP_NET_CFG_ICR_UNMASKED);
+	return 0;
+}
+
+static int
+nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw *hw;
+	int base = 0;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UIO)
+		base = 1;
+
+	/* Make sure all updates are written before un-masking */
+	rte_wmb();
+	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(base + queue_id), 0x1);
+	return 0;
 }
 
 static void
@@ -2303,6 +2413,8 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.rx_queue_count		= nfp_net_rx_queue_count,
 	.tx_queue_setup		= nfp_net_tx_queue_setup,
 	.tx_queue_release	= nfp_net_tx_queue_release,
+	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
+	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 };
 
 static int
@@ -2437,9 +2549,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	rte_intr_callback_register(&pci_dev->intr_handle,
 				   nfp_net_dev_interrupt_handler,
 				   (void *)eth_dev);
-
-	/* enable uio intr after callback register */
-	rte_intr_enable(&pci_dev->intr_handle);
 
 	/* Telling the firmware about the LSC interrupt entry */
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
