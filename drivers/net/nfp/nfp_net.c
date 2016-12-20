@@ -1152,6 +1152,9 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->speed_capa = ETH_SPEED_NUM_1G | ETH_LINK_SPEED_10G |
 			       ETH_SPEED_NUM_25G | ETH_SPEED_NUM_40G |
 			       ETH_SPEED_NUM_50G | ETH_LINK_SPEED_100G;
+
+	if (hw->cap & NFP_NET_CFG_CTRL_LSO)
+		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 }
 
 static const uint32_t *
@@ -1653,6 +1656,27 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
+/* nfp_net_tx_tso - Set TX descriptor for TSO */
+static inline void
+nfp_net_tx_tso(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
+	       struct rte_mbuf *mb)
+{
+	uint64_t ol_flags;
+	struct nfp_net_hw *hw = txq->hw;
+
+	if (!(hw->cap & NFP_NET_CFG_CTRL_LSO))
+		return;
+
+	ol_flags = mb->ol_flags;
+
+	if (!(ol_flags & PKT_TX_TCP_SEG))
+		return;
+
+	txd->l4_offset = mb->l2_len + mb->l3_len + mb->l4_len;
+	txd->lso = rte_cpu_to_le_16(mb->tso_segsz);
+	txd->flags |= PCIE_DESC_TX_LSO;
+}
+
 /* nfp_net_tx_cksum - Set TX CSUM offload flags in TX descriptor */
 static inline void
 nfp_net_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
@@ -2021,7 +2045,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct nfp_net_txq *txq;
 	struct nfp_net_hw *hw;
-	struct nfp_net_tx_desc *txds;
+	struct nfp_net_tx_desc *txds, txd;
 	struct rte_mbuf *pkt;
 	uint64_t dma_addr;
 	int pkt_size, dma_size;
@@ -2070,18 +2094,16 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/*
 		 * Checksum and VLAN flags just in the first descriptor for a
-		 * multisegment packet
+		 * multisegment packet, but TSO info needs to be in all of them.
 		 */
-		nfp_net_tx_cksum(txq, txds, pkt);
+		nfp_net_tx_tso(txq, &txd, pkt);
+		nfp_net_tx_cksum(txq, &txd, pkt);
 
 		if ((pkt->ol_flags & PKT_TX_VLAN_PKT) &&
 		    (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)) {
-			txds->flags |= PCIE_DESC_TX_VLAN;
-			txds->vlan = pkt->vlan_tci;
+			txd.flags |= PCIE_DESC_TX_VLAN;
+			txd.vlan = pkt->vlan_tci;
 		}
-
-		if (pkt->ol_flags & PKT_TX_TCP_SEG)
-			rte_panic("TSO is not supported\n");
 
 		/*
 		 * mbuf data_len is the data in one segment and pkt_len data
@@ -2100,6 +2122,8 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		*lmbuf = pkt;
 
 		while (pkt_size) {
+			/* Copying TSO, VLAN and cksum info */
+			*txds = txd;
 			dma_size = pkt->data_len;
 			dma_addr = rte_mbuf_data_dma_addr(pkt);
 			PMD_TX_LOG(DEBUG, "Working with mbuf at dma address:"
