@@ -818,6 +818,17 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	struct rte_eth_link link, old;
 	uint32_t nn_link_status;
 
+	static const uint32_t ls_to_ethtool[] = {
+		[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = ETH_SPEED_NUM_NONE,
+		[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = ETH_SPEED_NUM_NONE,
+		[NFP_NET_CFG_STS_LINK_RATE_1G]          = ETH_SPEED_NUM_1G,
+		[NFP_NET_CFG_STS_LINK_RATE_10G]         = ETH_SPEED_NUM_10G,
+		[NFP_NET_CFG_STS_LINK_RATE_25G]         = ETH_SPEED_NUM_25G,
+		[NFP_NET_CFG_STS_LINK_RATE_40G]         = ETH_SPEED_NUM_40G,
+		[NFP_NET_CFG_STS_LINK_RATE_50G]         = ETH_SPEED_NUM_50G,
+		[NFP_NET_CFG_STS_LINK_RATE_100G]        = ETH_SPEED_NUM_100G,
+	};
+
 	PMD_DRV_LOG(DEBUG, "Link update\n");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -833,8 +844,21 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 		link.link_status = ETH_LINK_UP;
 
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	/* Other cards can limit the tx and rx rate per VF */
-	link.link_speed = ETH_SPEED_NUM_40G;
+
+	nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
+			 NFP_NET_CFG_STS_LINK_RATE_MASK;
+
+	if ((NFD_CFG_MAJOR_VERSION_of(hw->ver) < 4) ||
+	    ((NFD_CFG_MINOR_VERSION_of(hw->ver) == 4) &&
+	    (NFD_CFG_MINOR_VERSION_of(hw->ver) == 0)))
+		/* We really do not know the speed wil old firmware */
+		link.link_speed = ETH_SPEED_NUM_NONE;
+	else {
+		if (nn_link_status >= RTE_DIM(ls_to_ethtool))
+			link.link_speed = ETH_SPEED_NUM_NONE;
+		else
+			link.link_speed = ls_to_ethtool[nn_link_status];
+	}
 
 	if (old.link_status != link.link_status) {
 		nfp_net_dev_atomic_write_link_status(dev, &link);
