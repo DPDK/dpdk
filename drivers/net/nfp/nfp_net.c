@@ -1081,7 +1081,9 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
 	dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
 
-	dev_info->speed_capa = ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G;
+	dev_info->speed_capa = ETH_SPEED_NUM_1G | ETH_LINK_SPEED_10G |
+			       ETH_SPEED_NUM_25G | ETH_SPEED_NUM_40G |
+			       ETH_SPEED_NUM_50G | ETH_LINK_SPEED_100G;
 }
 
 static const uint32_t *
