@@ -132,6 +132,20 @@ enum index {
 	ITEM_IPV6,
 	ITEM_IPV6_SRC,
 	ITEM_IPV6_DST,
+	ITEM_ICMP,
+	ITEM_ICMP_TYPE,
+	ITEM_ICMP_CODE,
+	ITEM_UDP,
+	ITEM_UDP_SRC,
+	ITEM_UDP_DST,
+	ITEM_TCP,
+	ITEM_TCP_SRC,
+	ITEM_TCP_DST,
+	ITEM_SCTP,
+	ITEM_SCTP_SRC,
+	ITEM_SCTP_DST,
+	ITEM_VXLAN,
+	ITEM_VXLAN_VNI,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -359,6 +373,11 @@ static const enum index next_item[] = {
 	ITEM_VLAN,
 	ITEM_IPV4,
 	ITEM_IPV6,
+	ITEM_ICMP,
+	ITEM_UDP,
+	ITEM_TCP,
+	ITEM_SCTP,
+	ITEM_VXLAN,
 	ZERO,
 };
 
@@ -415,6 +434,40 @@ static const enum index item_ipv4[] = {
 static const enum index item_ipv6[] = {
 	ITEM_IPV6_SRC,
 	ITEM_IPV6_DST,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_icmp[] = {
+	ITEM_ICMP_TYPE,
+	ITEM_ICMP_CODE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_udp[] = {
+	ITEM_UDP_SRC,
+	ITEM_UDP_DST,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_tcp[] = {
+	ITEM_TCP_SRC,
+	ITEM_TCP_DST,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_sctp[] = {
+	ITEM_SCTP_SRC,
+	ITEM_SCTP_DST,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_vxlan[] = {
+	ITEM_VXLAN_VNI,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -929,6 +982,103 @@ static const struct token token_list[] = {
 		.next = NEXT(item_ipv6, NEXT_ENTRY(IPV6_ADDR), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6,
 					     hdr.dst_addr)),
+	},
+	[ITEM_ICMP] = {
+		.name = "icmp",
+		.help = "match ICMP header",
+		.priv = PRIV_ITEM(ICMP, sizeof(struct rte_flow_item_icmp)),
+		.next = NEXT(item_icmp),
+		.call = parse_vc,
+	},
+	[ITEM_ICMP_TYPE] = {
+		.name = "type",
+		.help = "ICMP packet type",
+		.next = NEXT(item_icmp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp,
+					     hdr.icmp_type)),
+	},
+	[ITEM_ICMP_CODE] = {
+		.name = "code",
+		.help = "ICMP packet code",
+		.next = NEXT(item_icmp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp,
+					     hdr.icmp_code)),
+	},
+	[ITEM_UDP] = {
+		.name = "udp",
+		.help = "match UDP header",
+		.priv = PRIV_ITEM(UDP, sizeof(struct rte_flow_item_udp)),
+		.next = NEXT(item_udp),
+		.call = parse_vc,
+	},
+	[ITEM_UDP_SRC] = {
+		.name = "src",
+		.help = "UDP source port",
+		.next = NEXT(item_udp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_udp,
+					     hdr.src_port)),
+	},
+	[ITEM_UDP_DST] = {
+		.name = "dst",
+		.help = "UDP destination port",
+		.next = NEXT(item_udp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_udp,
+					     hdr.dst_port)),
+	},
+	[ITEM_TCP] = {
+		.name = "tcp",
+		.help = "match TCP header",
+		.priv = PRIV_ITEM(TCP, sizeof(struct rte_flow_item_tcp)),
+		.next = NEXT(item_tcp),
+		.call = parse_vc,
+	},
+	[ITEM_TCP_SRC] = {
+		.name = "src",
+		.help = "TCP source port",
+		.next = NEXT(item_tcp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_tcp,
+					     hdr.src_port)),
+	},
+	[ITEM_TCP_DST] = {
+		.name = "dst",
+		.help = "TCP destination port",
+		.next = NEXT(item_tcp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_tcp,
+					     hdr.dst_port)),
+	},
+	[ITEM_SCTP] = {
+		.name = "sctp",
+		.help = "match SCTP header",
+		.priv = PRIV_ITEM(SCTP, sizeof(struct rte_flow_item_sctp)),
+		.next = NEXT(item_sctp),
+		.call = parse_vc,
+	},
+	[ITEM_SCTP_SRC] = {
+		.name = "src",
+		.help = "SCTP source port",
+		.next = NEXT(item_sctp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_sctp,
+					     hdr.src_port)),
+	},
+	[ITEM_SCTP_DST] = {
+		.name = "dst",
+		.help = "SCTP destination port",
+		.next = NEXT(item_sctp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_sctp,
+					     hdr.dst_port)),
+	},
+	[ITEM_VXLAN] = {
+		.name = "vxlan",
+		.help = "match VXLAN header",
+		.priv = PRIV_ITEM(VXLAN, sizeof(struct rte_flow_item_vxlan)),
+		.next = NEXT(item_vxlan),
+		.call = parse_vc,
+	},
+	[ITEM_VXLAN_VNI] = {
+		.name = "vni",
+		.help = "VXLAN identifier",
+		.next = NEXT(item_vxlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan, vni)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -1501,6 +1651,19 @@ objmask:
 		break;
 	case sizeof(uint16_t):
 		*(uint16_t *)buf = arg->hton ? rte_cpu_to_be_16(u) : u;
+		break;
+	case sizeof(uint8_t [3]):
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		if (!arg->hton) {
+			((uint8_t *)buf)[0] = u;
+			((uint8_t *)buf)[1] = u >> 8;
+			((uint8_t *)buf)[2] = u >> 16;
+			break;
+		}
+#endif
+		((uint8_t *)buf)[0] = u >> 16;
+		((uint8_t *)buf)[1] = u >> 8;
+		((uint8_t *)buf)[2] = u;
 		break;
 	case sizeof(uint32_t):
 		*(uint32_t *)buf = arg->hton ? rte_cpu_to_be_32(u) : u;
