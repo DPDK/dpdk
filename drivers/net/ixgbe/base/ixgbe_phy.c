@@ -787,91 +787,63 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 
 	ixgbe_get_copper_link_capabilities_generic(hw, &speed, &autoneg);
 
-	if (speed & IXGBE_LINK_SPEED_10GB_FULL) {
-		/* Set or unset auto-negotiation 10G advertisement */
-		hw->phy.ops.read_reg(hw, IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
-				     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				     &autoneg_reg);
+	/* Set or unset auto-negotiation 10G advertisement */
+	hw->phy.ops.read_reg(hw, IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			     &autoneg_reg);
 
-		autoneg_reg &= ~IXGBE_MII_10GBASE_T_ADVERTISE;
-		if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_10GB_FULL)
-			autoneg_reg |= IXGBE_MII_10GBASE_T_ADVERTISE;
+	autoneg_reg &= ~IXGBE_MII_10GBASE_T_ADVERTISE;
+	if ((hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_10GB_FULL) &&
+	    (speed & IXGBE_LINK_SPEED_10GB_FULL))
+		autoneg_reg |= IXGBE_MII_10GBASE_T_ADVERTISE;
 
-		hw->phy.ops.write_reg(hw, IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      autoneg_reg);
-	}
+	hw->phy.ops.write_reg(hw, IXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			      autoneg_reg);
+
+	hw->phy.ops.read_reg(hw, IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			     &autoneg_reg);
 
 	if (hw->mac.type == ixgbe_mac_X550) {
-		if (speed & IXGBE_LINK_SPEED_5GB_FULL) {
-			/* Set or unset auto-negotiation 5G advertisement */
-			hw->phy.ops.read_reg(hw,
-				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				&autoneg_reg);
+		/* Set or unset auto-negotiation 5G advertisement */
+		autoneg_reg &= ~IXGBE_MII_5GBASE_T_ADVERTISE;
+		if ((hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_5GB_FULL) &&
+		    (speed & IXGBE_LINK_SPEED_5GB_FULL))
+			autoneg_reg |= IXGBE_MII_5GBASE_T_ADVERTISE;
 
-			autoneg_reg &= ~IXGBE_MII_5GBASE_T_ADVERTISE;
-			if (hw->phy.autoneg_advertised &
-			     IXGBE_LINK_SPEED_5GB_FULL)
-				autoneg_reg |= IXGBE_MII_5GBASE_T_ADVERTISE;
-
-			hw->phy.ops.write_reg(hw,
-				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				autoneg_reg);
-		}
-
-		if (speed & IXGBE_LINK_SPEED_2_5GB_FULL) {
-			/* Set or unset auto-negotiation 2.5G advertisement */
-			hw->phy.ops.read_reg(hw,
-				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				&autoneg_reg);
-
-			autoneg_reg &= ~IXGBE_MII_2_5GBASE_T_ADVERTISE;
-			if (hw->phy.autoneg_advertised &
-			    IXGBE_LINK_SPEED_2_5GB_FULL)
-				autoneg_reg |= IXGBE_MII_2_5GBASE_T_ADVERTISE;
-
-			hw->phy.ops.write_reg(hw,
-				IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
-				IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				autoneg_reg);
-		}
+		/* Set or unset auto-negotiation 2.5G advertisement */
+		autoneg_reg &= ~IXGBE_MII_2_5GBASE_T_ADVERTISE;
+		if ((hw->phy.autoneg_advertised &
+		     IXGBE_LINK_SPEED_2_5GB_FULL) &&
+		    (speed & IXGBE_LINK_SPEED_2_5GB_FULL))
+			autoneg_reg |= IXGBE_MII_2_5GBASE_T_ADVERTISE;
 	}
 
-	if (speed & IXGBE_LINK_SPEED_1GB_FULL) {
-		/* Set or unset auto-negotiation 1G advertisement */
-		hw->phy.ops.read_reg(hw,
-				     IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
-				     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				     &autoneg_reg);
+	/* Set or unset auto-negotiation 1G advertisement */
+	autoneg_reg &= ~IXGBE_MII_1GBASE_T_ADVERTISE;
+	if ((hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_1GB_FULL) &&
+	    (speed & IXGBE_LINK_SPEED_1GB_FULL))
+		autoneg_reg |= IXGBE_MII_1GBASE_T_ADVERTISE;
 
-		autoneg_reg &= ~IXGBE_MII_1GBASE_T_ADVERTISE;
-		if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_1GB_FULL)
-			autoneg_reg |= IXGBE_MII_1GBASE_T_ADVERTISE;
+	hw->phy.ops.write_reg(hw, IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			      autoneg_reg);
 
-		hw->phy.ops.write_reg(hw,
-				      IXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      autoneg_reg);
-	}
+	/* Set or unset auto-negotiation 100M advertisement */
+	hw->phy.ops.read_reg(hw, IXGBE_MII_AUTONEG_ADVERTISE_REG,
+			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			     &autoneg_reg);
 
-	if (speed & IXGBE_LINK_SPEED_100_FULL) {
-		/* Set or unset auto-negotiation 100M advertisement */
-		hw->phy.ops.read_reg(hw, IXGBE_MII_AUTONEG_ADVERTISE_REG,
-				     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				     &autoneg_reg);
+	autoneg_reg &= ~(IXGBE_MII_100BASE_T_ADVERTISE |
+			 IXGBE_MII_100BASE_T_ADVERTISE_HALF);
+	if ((hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_100_FULL) &&
+	    (speed & IXGBE_LINK_SPEED_100_FULL))
+		autoneg_reg |= IXGBE_MII_100BASE_T_ADVERTISE;
 
-		autoneg_reg &= ~(IXGBE_MII_100BASE_T_ADVERTISE |
-				 IXGBE_MII_100BASE_T_ADVERTISE_HALF);
-		if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_100_FULL)
-			autoneg_reg |= IXGBE_MII_100BASE_T_ADVERTISE;
-
-		hw->phy.ops.write_reg(hw, IXGBE_MII_AUTONEG_ADVERTISE_REG,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      autoneg_reg);
-	}
+	hw->phy.ops.write_reg(hw, IXGBE_MII_AUTONEG_ADVERTISE_REG,
+			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+			      autoneg_reg);
 
 	/* Blocked by MNG FW so don't reset PHY */
 	if (ixgbe_check_reset_blocked(hw))
