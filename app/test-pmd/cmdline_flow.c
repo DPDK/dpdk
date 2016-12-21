@@ -89,6 +89,10 @@ enum index {
 
 	/* Validate/create pattern. */
 	PATTERN,
+	ITEM_PARAM_IS,
+	ITEM_PARAM_SPEC,
+	ITEM_PARAM_LAST,
+	ITEM_PARAM_MASK,
 	ITEM_NEXT,
 	ITEM_END,
 	ITEM_VOID,
@@ -121,6 +125,7 @@ struct context {
 	uint16_t port; /**< Current port ID (for completions). */
 	uint32_t objdata; /**< Object-specific data. */
 	void *object; /**< Address of current object for relative offsets. */
+	void *objmask; /**< Object a full mask must be written to. */
 };
 
 /** Token argument. */
@@ -267,6 +272,15 @@ static const enum index next_list_attr[] = {
 	ZERO,
 };
 
+__rte_unused
+static const enum index item_param[] = {
+	ITEM_PARAM_IS,
+	ITEM_PARAM_SPEC,
+	ITEM_PARAM_LAST,
+	ITEM_PARAM_MASK,
+	ZERO,
+};
+
 static const enum index next_item[] = {
 	ITEM_END,
 	ITEM_VOID,
@@ -287,6 +301,8 @@ static int parse_init(struct context *, const struct token *,
 static int parse_vc(struct context *, const struct token *,
 		    const char *, unsigned int,
 		    void *, unsigned int);
+static int parse_vc_spec(struct context *, const struct token *,
+			 const char *, unsigned int, void *, unsigned int);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -492,6 +508,26 @@ static const struct token token_list[] = {
 		.next = NEXT(next_item),
 		.call = parse_vc,
 	},
+	[ITEM_PARAM_IS] = {
+		.name = "is",
+		.help = "match value perfectly (with full bit-mask)",
+		.call = parse_vc_spec,
+	},
+	[ITEM_PARAM_SPEC] = {
+		.name = "spec",
+		.help = "match value according to configured bit-mask",
+		.call = parse_vc_spec,
+	},
+	[ITEM_PARAM_LAST] = {
+		.name = "last",
+		.help = "specify upper bound to establish a range",
+		.call = parse_vc_spec,
+	},
+	[ITEM_PARAM_MASK] = {
+		.name = "mask",
+		.help = "specify bit-mask with relevant bits set to one",
+		.call = parse_vc_spec,
+	},
 	[ITEM_NEXT] = {
 		.name = "/",
 		.help = "specify next pattern item",
@@ -605,6 +641,7 @@ parse_init(struct context *ctx, const struct token *token,
 	memset((uint8_t *)out + sizeof(*out), 0x22, size - sizeof(*out));
 	ctx->objdata = 0;
 	ctx->object = out;
+	ctx->objmask = NULL;
 	return len;
 }
 
@@ -632,11 +669,13 @@ parse_vc(struct context *ctx, const struct token *token,
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
+		ctx->objmask = NULL;
 		out->args.vc.data = (uint8_t *)out + size;
 		return len;
 	}
 	ctx->objdata = 0;
 	ctx->object = &out->args.vc.attr;
+	ctx->objmask = NULL;
 	switch (ctx->curr) {
 	case GROUP:
 	case PRIORITY:
@@ -652,6 +691,7 @@ parse_vc(struct context *ctx, const struct token *token,
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
 		ctx->object = out->args.vc.pattern;
+		ctx->objmask = NULL;
 		return len;
 	case ACTIONS:
 		out->args.vc.actions =
@@ -660,6 +700,7 @@ parse_vc(struct context *ctx, const struct token *token,
 						out->args.vc.pattern_n),
 					       sizeof(double));
 		ctx->object = out->args.vc.actions;
+		ctx->objmask = NULL;
 		return len;
 	default:
 		if (!token->priv)
@@ -682,6 +723,7 @@ parse_vc(struct context *ctx, const struct token *token,
 		};
 		++out->args.vc.pattern_n;
 		ctx->object = item;
+		ctx->objmask = NULL;
 	} else {
 		const struct parse_action_priv *priv = token->priv;
 		struct rte_flow_action *action =
@@ -698,10 +740,65 @@ parse_vc(struct context *ctx, const struct token *token,
 		};
 		++out->args.vc.actions_n;
 		ctx->object = action;
+		ctx->objmask = NULL;
 	}
 	memset(data, 0, data_size);
 	out->args.vc.data = data;
 	ctx->objdata = data_size;
+	return len;
+}
+
+/** Parse pattern item parameter type. */
+static int
+parse_vc_spec(struct context *ctx, const struct token *token,
+	      const char *str, unsigned int len,
+	      void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_item *item;
+	uint32_t data_size;
+	int index;
+	int objmask = 0;
+
+	(void)size;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Parse parameter types. */
+	switch (ctx->curr) {
+	case ITEM_PARAM_IS:
+		index = 0;
+		objmask = 1;
+		break;
+	case ITEM_PARAM_SPEC:
+		index = 0;
+		break;
+	case ITEM_PARAM_LAST:
+		index = 1;
+		break;
+	case ITEM_PARAM_MASK:
+		index = 2;
+		break;
+	default:
+		return -1;
+	}
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->args.vc.pattern_n)
+		return -1;
+	item = &out->args.vc.pattern[out->args.vc.pattern_n - 1];
+	data_size = ctx->objdata / 3; /* spec, last, mask */
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data + (data_size * index);
+	if (objmask) {
+		ctx->objmask = out->args.vc.data + (data_size * 2); /* mask */
+		item->mask = ctx->objmask;
+	} else
+		ctx->objmask = NULL;
+	/* Update relevant item pointer. */
+	*((const void **[]){ &item->spec, &item->last, &item->mask })[index] =
+		ctx->object;
 	return len;
 }
 
@@ -727,6 +824,7 @@ parse_destroy(struct context *ctx, const struct token *token,
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
+		ctx->objmask = NULL;
 		out->args.destroy.rule =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
@@ -737,6 +835,7 @@ parse_destroy(struct context *ctx, const struct token *token,
 		return -1;
 	ctx->objdata = 0;
 	ctx->object = out->args.destroy.rule + out->args.destroy.rule_n++;
+	ctx->objmask = NULL;
 	return len;
 }
 
@@ -762,6 +861,7 @@ parse_flush(struct context *ctx, const struct token *token,
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
+		ctx->objmask = NULL;
 	}
 	return len;
 }
@@ -788,6 +888,7 @@ parse_query(struct context *ctx, const struct token *token,
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
+		ctx->objmask = NULL;
 	}
 	return len;
 }
@@ -849,6 +950,7 @@ parse_list(struct context *ctx, const struct token *token,
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
+		ctx->objmask = NULL;
 		out->args.list.group =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
@@ -859,6 +961,7 @@ parse_list(struct context *ctx, const struct token *token,
 		return -1;
 	ctx->objdata = 0;
 	ctx->object = out->args.list.group + out->args.list.group_n++;
+	ctx->objmask = NULL;
 	return len;
 }
 
@@ -891,6 +994,7 @@ parse_int(struct context *ctx, const struct token *token,
 		return len;
 	buf = (uint8_t *)ctx->object + arg->offset;
 	size = arg->size;
+objmask:
 	switch (size) {
 	case sizeof(uint8_t):
 		*(uint8_t *)buf = u;
@@ -906,6 +1010,11 @@ parse_int(struct context *ctx, const struct token *token,
 		break;
 	default:
 		goto error;
+	}
+	if (ctx->objmask && buf != (uint8_t *)ctx->objmask + arg->offset) {
+		u = -1;
+		buf = (uint8_t *)ctx->objmask + arg->offset;
+		goto objmask;
 	}
 	return len;
 error:
@@ -927,6 +1036,7 @@ parse_port(struct context *ctx, const struct token *token,
 	else {
 		ctx->objdata = 0;
 		ctx->object = out;
+		ctx->objmask = NULL;
 		size = sizeof(*out);
 	}
 	ret = parse_int(ctx, token, str, len, out, size);
@@ -1033,6 +1143,7 @@ cmd_flow_context_init(struct context *ctx)
 	ctx->port = 0;
 	ctx->objdata = 0;
 	ctx->object = NULL;
+	ctx->objmask = NULL;
 }
 
 /** Parse a token (cmdline API). */
