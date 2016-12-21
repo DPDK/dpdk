@@ -71,3 +71,11 @@ Deprecation Notices
 * mempool: The functions for single/multi producer/consumer are deprecated
   and will be removed in 17.02.
   It is replaced by ``rte_mempool_generic_get/put`` functions.
+
+* ethdev: the legacy filter API, including
+  ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
+  as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,
+  HASH and L2_TUNNEL, is superseded by the generic flow API (rte_flow) in
+  PMDs that implement the latter.
+  Target release for removal of the legacy API will be defined once most
+  PMDs have switched to rte_flow.
