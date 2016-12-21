@@ -57,8 +57,6 @@ s32 ixgbe_read_ee_hostif_X550(struct ixgbe_hw *hw, u16 offset,
 u16				*data);
 s32 ixgbe_write_ee_hostif_data_X550(struct ixgbe_hw *hw, u16 offset,
 				    u16 data);
-s32 ixgbe_set_eee_X550(struct ixgbe_hw *hw, bool enable_eee);
-s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee);
 void ixgbe_set_source_address_pruning_X550(struct ixgbe_hw *hw, bool enable,
 					   unsigned int pool);
 void ixgbe_set_ethertype_anti_spoofing_X550(struct ixgbe_hw *hw,

@@ -942,6 +942,7 @@ s32 ixgbe_init_ops_X550EM_x(struct ixgbe_hw *hw)
 				      ixgbe_write_i2c_combined_generic_unlocked;
 	link->addr = IXGBE_CS4227;
 
+
 	return ret_val;
 }
 
@@ -1104,118 +1105,6 @@ s32 ixgbe_init_eeprom_params_X550(struct ixgbe_hw *hw)
 		DEBUGOUT2("Eeprom params: type = %d, size = %d\n",
 			  eeprom->type, eeprom->word_size);
 	}
-
-	return IXGBE_SUCCESS;
-}
-
-/**
- * ixgbe_enable_eee_x550 - Enable EEE support
- * @hw: pointer to hardware structure
- */
-STATIC s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
-{
-	u32 link_reg;
-	s32 status;
-
-	switch (hw->device_id) {
-	case IXGBE_DEV_ID_X550EM_A_KR:
-	case IXGBE_DEV_ID_X550EM_A_KR_L:
-		status = hw->mac.ops.read_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
-			    IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX;
-
-		/* Don't advertise FEC capability when EEE enabled. */
-		link_reg &= ~IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
-
-		status = hw->mac.ops.write_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
-		if (status != IXGBE_SUCCESS)
-			return status;
-		break;
-	default:
-		break;
-	}
-
-	return IXGBE_SUCCESS;
-}
-
-/**
- * ixgbe_disable_eee_x550 - Disable EEE support
- * @hw: pointer to hardware structure
- */
-STATIC s32 ixgbe_disable_eee_x550(struct ixgbe_hw *hw)
-{
-	u32 link_reg;
-	s32 status;
-
-	switch (hw->device_id) {
-	case IXGBE_DEV_ID_X550EM_X_KR:
-	case IXGBE_DEV_ID_X550EM_A_KR:
-	case IXGBE_DEV_ID_X550EM_A_KR_L:
-		status = hw->mac.ops.read_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, &link_reg);
-		if (status != IXGBE_SUCCESS)
-			return status;
-
-		link_reg &= ~(IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KR |
-			      IXGBE_KRM_LINK_CTRL_1_TETH_EEE_CAP_KX);
-
-		/* Advertise FEC capability when EEE is disabled. */
-		link_reg |= IXGBE_KRM_LINK_CTRL_1_TETH_AN_CAP_FEC;
-
-		status = hw->mac.ops.write_iosf_sb_reg(hw,
-					IXGBE_KRM_LINK_CTRL_1(hw->bus.lan_id),
-					IXGBE_SB_IOSF_TARGET_KR_PHY, link_reg);
-		if (status != IXGBE_SUCCESS)
-			return status;
-		break;
-	default:
-		break;
-	}
-
-	return IXGBE_SUCCESS;
-}
-
-/**
- *  ixgbe_setup_eee_X550 - Enable/disable EEE support
- *  @hw: pointer to the HW structure
- *  @enable_eee: boolean flag to enable EEE
- *
- *  Enable/disable EEE based on enable_eee flag.
- *  Auto-negotiation must be started after BASE-T EEE bits in PHY register 7.3C
- *  are modified.
- *
- **/
-s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
-{
-	s32 status;
-	u32 eeer;
-
-	DEBUGFUNC("ixgbe_setup_eee_X550");
-
-	eeer = IXGBE_READ_REG(hw, IXGBE_EEER);
-	/* Enable or disable EEE per flag */
-	if (enable_eee) {
-		eeer |= (IXGBE_EEER_TX_LPI_EN | IXGBE_EEER_RX_LPI_EN);
-
-		status = ixgbe_enable_eee_x550(hw);
-		if (status)
-			return status;
-	} else {
-		eeer &= ~(IXGBE_EEER_TX_LPI_EN | IXGBE_EEER_RX_LPI_EN);
-
-		status = ixgbe_disable_eee_x550(hw);
-		if (status)
-			return status;
-	}
-	IXGBE_WRITE_REG(hw, IXGBE_EEER, eeer);
 
 	return IXGBE_SUCCESS;
 }
