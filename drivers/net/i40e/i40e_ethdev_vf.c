@@ -361,6 +361,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		err = -1;
 		do {
 			ret = i40evf_read_pfmsg(dev, &info);
+			vf->cmd_retval = info.result;
 			if (ret == I40EVF_MSG_CMD) {
 				err = 0;
 				break;

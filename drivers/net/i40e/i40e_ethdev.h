@@ -527,7 +527,7 @@ struct i40e_vf {
 	enum i40e_aq_link_speed link_speed;
 	bool vf_reset;
 	volatile uint32_t pend_cmd; /* pending command not finished yet */
-	uint32_t cmd_retval; /* return value of the cmd response from PF */
+	int32_t cmd_retval; /* return value of the cmd response from PF */
 	u16 pend_msg; /* flags indicates events from pf not handled yet */
 	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
 
