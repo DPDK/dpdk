@@ -81,6 +81,7 @@
 #define UNREFERENCED_2PARAMETER(_p, _q)
 #define UNREFERENCED_3PARAMETER(_p, _q, _r) 
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) 
+#define UNREFERENCED_5PARAMETER(_p, _q, _r, _s, _t)
 
 /* Shared code error reporting */
 enum {

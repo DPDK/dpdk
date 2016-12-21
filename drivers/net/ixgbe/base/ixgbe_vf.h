@@ -34,6 +34,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _IXGBE_VF_H_
 #define _IXGBE_VF_H_
 
+#include "ixgbe_type.h"
+
 #define IXGBE_VF_IRQ_CLEAR_MASK	7
 #define IXGBE_VF_MAX_TX_QUEUES	8
 #define IXGBE_VF_MAX_RX_QUEUES	8
@@ -114,6 +116,7 @@ struct ixgbevf_hw_stats {
 	u64 saved_reset_vfmprc;
 };
 
+s32 ixgbe_init_ops_vf(struct ixgbe_hw *hw);
 s32 ixgbe_init_hw_vf(struct ixgbe_hw *hw);
 s32 ixgbe_start_hw_vf(struct ixgbe_hw *hw);
 s32 ixgbe_reset_hw_vf(struct ixgbe_hw *hw);
