@@ -151,5 +151,10 @@ DPDK_17.02 {
 	global:
 
 	_rte_eth_dev_reset;
+	rte_flow_create;
+	rte_flow_destroy;
+	rte_flow_flush;
+	rte_flow_query;
+	rte_flow_validate;
 
 } DPDK_16.11;

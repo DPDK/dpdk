@@ -243,6 +243,10 @@ M: Thomas Monjalon <thomas.monjalon@6wind.com>
 F: lib/librte_ether/
 F: scripts/test-null.sh
 
+Flow API
+M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+F: lib/librte_ether/rte_flow*
+
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_cryptodev/

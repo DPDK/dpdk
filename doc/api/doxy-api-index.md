@@ -39,6 +39,8 @@ There are many libraries, so their headers may be grouped by topics:
   [dev]                (@ref rte_dev.h),
   [ethdev]             (@ref rte_ethdev.h),
   [ethctrl]            (@ref rte_eth_ctrl.h),
+  [rte_flow]           (@ref rte_flow.h),
+  [rte_flow_driver]    (@ref rte_flow_driver.h),
   [cryptodev]          (@ref rte_cryptodev.h),
   [devargs]            (@ref rte_devargs.h),
   [bond]               (@ref rte_eth_bond.h),
