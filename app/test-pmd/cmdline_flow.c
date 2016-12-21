@@ -34,11 +34,14 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <inttypes.h>
+#include <errno.h>
 #include <ctype.h>
 #include <string.h>
 
 #include <rte_common.h>
 #include <rte_ethdev.h>
+#include <rte_byteorder.h>
 #include <cmdline_parse.h>
 #include <rte_flow.h>
 
@@ -49,6 +52,10 @@ enum index {
 	/* Special tokens. */
 	ZERO = 0,
 	END,
+
+	/* Common tokens. */
+	INTEGER,
+	UNSIGNED,
 
 	/* Top-level command. */
 	FLOW,
@@ -61,12 +68,24 @@ enum index {
 struct context {
 	/** Stack of subsequent token lists to process. */
 	const enum index *next[CTX_STACK_SIZE];
+	/** Arguments for stacked tokens. */
+	const void *args[CTX_STACK_SIZE];
 	enum index curr; /**< Current token index. */
 	enum index prev; /**< Index of the last token seen. */
 	int next_num; /**< Number of entries in next[]. */
+	int args_num; /**< Number of entries in args[]. */
 	uint32_t reparse:1; /**< Start over from the beginning. */
 	uint32_t eol:1; /**< EOL has been detected. */
 	uint32_t last:1; /**< No more arguments. */
+	void *object; /**< Address of current object for relative offsets. */
+};
+
+/** Token argument. */
+struct arg {
+	uint32_t hton:1; /**< Use network byte ordering. */
+	uint32_t sign:1; /**< Value is signed. */
+	uint32_t offset; /**< Relative offset from ctx->object. */
+	uint32_t size; /**< Field size. */
 };
 
 /** Parser token definition. */
@@ -80,6 +99,8 @@ struct token {
 	 * parser consumes the last entry of that stack.
 	 */
 	const enum index *const *next;
+	/** Arguments stack for subsequent tokens that need them. */
+	const struct arg *const *args;
 	/**
 	 * Token-processing callback, returns -1 in case of error, the
 	 * length of the matched string otherwise. If NULL, attempts to
@@ -112,6 +133,22 @@ struct token {
 /** Static initializer for a NEXT() entry. */
 #define NEXT_ENTRY(...) (const enum index []){ __VA_ARGS__, ZERO, }
 
+/** Static initializer for the args field. */
+#define ARGS(...) (const struct arg *const []){ __VA_ARGS__, NULL, }
+
+/** Static initializer for ARGS() to target a field. */
+#define ARGS_ENTRY(s, f) \
+	(&(const struct arg){ \
+		.offset = offsetof(s, f), \
+		.size = sizeof(((s *)0)->f), \
+	})
+
+/** Static initializer for ARGS() to target a pointer. */
+#define ARGS_ENTRY_PTR(s, f) \
+	(&(const struct arg){ \
+		.size = sizeof(*((s *)0)->f), \
+	})
+
 /** Parser output buffer layout expected by cmd_flow_parsed(). */
 struct buffer {
 	enum index command; /**< Flow command. */
@@ -121,6 +158,11 @@ struct buffer {
 static int parse_init(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_int(struct context *, const struct token *,
+		     const char *, unsigned int,
+		     void *, unsigned int);
+static int comp_none(struct context *, const struct token *,
+		     unsigned int, char *, unsigned int);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -135,6 +177,21 @@ static const struct token token_list[] = {
 		.type = "RETURN",
 		.help = "command may end here",
 	},
+	/* Common tokens. */
+	[INTEGER] = {
+		.name = "{int}",
+		.type = "INTEGER",
+		.help = "integer value",
+		.call = parse_int,
+		.comp = comp_none,
+	},
+	[UNSIGNED] = {
+		.name = "{unsigned}",
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.call = parse_int,
+		.comp = comp_none,
+	},
 	/* Top-level command. */
 	[FLOW] = {
 		.name = "flow",
@@ -143,6 +200,23 @@ static const struct token token_list[] = {
 		.call = parse_init,
 	},
 };
+
+/** Remove and return last entry from argument stack. */
+static const struct arg *
+pop_args(struct context *ctx)
+{
+	return ctx->args_num ? ctx->args[--ctx->args_num] : NULL;
+}
+
+/** Add entry on top of the argument stack. */
+static int
+push_args(struct context *ctx, const struct arg *arg)
+{
+	if (ctx->args_num == CTX_STACK_SIZE)
+		return -1;
+	ctx->args[ctx->args_num++] = arg;
+	return 0;
+}
 
 /** Default parsing function for token name matching. */
 static int
@@ -178,7 +252,72 @@ parse_init(struct context *ctx, const struct token *token,
 	/* Initialize buffer. */
 	memset(out, 0x00, sizeof(*out));
 	memset((uint8_t *)out + sizeof(*out), 0x22, size - sizeof(*out));
+	ctx->object = out;
 	return len;
+}
+
+/**
+ * Parse signed/unsigned integers 8 to 64-bit long.
+ *
+ * Last argument (ctx->args) is retrieved to determine integer type and
+ * storage location.
+ */
+static int
+parse_int(struct context *ctx, const struct token *token,
+	  const char *str, unsigned int len,
+	  void *buf, unsigned int size)
+{
+	const struct arg *arg = pop_args(ctx);
+	uintmax_t u;
+	char *end;
+
+	(void)token;
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	errno = 0;
+	u = arg->sign ?
+		(uintmax_t)strtoimax(str, &end, 0) :
+		strtoumax(str, &end, 0);
+	if (errno || (size_t)(end - str) != len)
+		goto error;
+	if (!ctx->object)
+		return len;
+	buf = (uint8_t *)ctx->object + arg->offset;
+	size = arg->size;
+	switch (size) {
+	case sizeof(uint8_t):
+		*(uint8_t *)buf = u;
+		break;
+	case sizeof(uint16_t):
+		*(uint16_t *)buf = arg->hton ? rte_cpu_to_be_16(u) : u;
+		break;
+	case sizeof(uint32_t):
+		*(uint32_t *)buf = arg->hton ? rte_cpu_to_be_32(u) : u;
+		break;
+	case sizeof(uint64_t):
+		*(uint64_t *)buf = arg->hton ? rte_cpu_to_be_64(u) : u;
+		break;
+	default:
+		goto error;
+	}
+	return len;
+error:
+	push_args(ctx, arg);
+	return -1;
+}
+
+/** No completion. */
+static int
+comp_none(struct context *ctx, const struct token *token,
+	  unsigned int ent, char *buf, unsigned int size)
+{
+	(void)ctx;
+	(void)token;
+	(void)ent;
+	(void)buf;
+	(void)size;
+	return 0;
 }
 
 /** Internal context. */
@@ -195,9 +334,11 @@ cmd_flow_context_init(struct context *ctx)
 	ctx->curr = ZERO;
 	ctx->prev = ZERO;
 	ctx->next_num = 0;
+	ctx->args_num = 0;
 	ctx->reparse = 0;
 	ctx->eol = 0;
 	ctx->last = 0;
+	ctx->object = NULL;
 }
 
 /** Parse a token (cmdline API). */
@@ -269,6 +410,13 @@ cmd_flow_parse(cmdline_parse_token_hdr_t *hdr, const char *src, void *result,
 			if (ctx->next_num == RTE_DIM(ctx->next))
 				return -1;
 			ctx->next[ctx->next_num++] = token->next[i];
+		}
+	/* Push arguments if any. */
+	if (token->args)
+		for (i = 0; token->args[i]; ++i) {
+			if (ctx->args_num == RTE_DIM(ctx->args))
+				return -1;
+			ctx->args[ctx->args_num++] = token->args[i];
 		}
 	return len;
 }
