@@ -690,6 +690,7 @@ Control Statements
 Python Code
 -----------
 
-All python code should be compliant with `PEP8 (Style Guide for Python Code) <https://www.python.org/dev/peps/pep-0008/>`_.
+All Python code should work with Python 2.7+ and 3.2+ and be compliant with
+`PEP8 (Style Guide for Python Code) <https://www.python.org/dev/peps/pep-0008/>`_.
 
 The ``pep8`` tool can be used for testing compliance with the guidelines.
