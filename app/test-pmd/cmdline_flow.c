@@ -153,6 +153,15 @@ enum index {
 	ACTION_END,
 	ACTION_VOID,
 	ACTION_PASSTHRU,
+	ACTION_MARK,
+	ACTION_MARK_ID,
+	ACTION_FLAG,
+	ACTION_DROP,
+	ACTION_COUNT,
+	ACTION_PF,
+	ACTION_VF,
+	ACTION_VF_ORIGINAL,
+	ACTION_VF_ID,
 };
 
 /** Size of pattern[] field in struct rte_flow_item_raw. */
@@ -476,6 +485,25 @@ static const enum index next_action[] = {
 	ACTION_END,
 	ACTION_VOID,
 	ACTION_PASSTHRU,
+	ACTION_MARK,
+	ACTION_FLAG,
+	ACTION_DROP,
+	ACTION_COUNT,
+	ACTION_PF,
+	ACTION_VF,
+	ZERO,
+};
+
+static const enum index action_mark[] = {
+	ACTION_MARK_ID,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_vf[] = {
+	ACTION_VF_ORIGINAL,
+	ACTION_VF_ID,
+	ACTION_NEXT,
 	ZERO,
 };
 
@@ -486,6 +514,8 @@ static int parse_vc(struct context *, const struct token *,
 		    const char *, unsigned int,
 		    void *, unsigned int);
 static int parse_vc_spec(struct context *, const struct token *,
+			 const char *, unsigned int, void *, unsigned int);
+static int parse_vc_conf(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
@@ -1112,6 +1142,70 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
 	},
+	[ACTION_MARK] = {
+		.name = "mark",
+		.help = "attach 32 bit value to packets",
+		.priv = PRIV_ACTION(MARK, sizeof(struct rte_flow_action_mark)),
+		.next = NEXT(action_mark),
+		.call = parse_vc,
+	},
+	[ACTION_MARK_ID] = {
+		.name = "id",
+		.help = "32 bit value to return with packets",
+		.next = NEXT(action_mark, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_mark, id)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_FLAG] = {
+		.name = "flag",
+		.help = "flag packets",
+		.priv = PRIV_ACTION(FLAG, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_DROP] = {
+		.name = "drop",
+		.help = "drop packets (note: passthru has priority)",
+		.priv = PRIV_ACTION(DROP, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_COUNT] = {
+		.name = "count",
+		.help = "enable counters for this rule",
+		.priv = PRIV_ACTION(COUNT, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_PF] = {
+		.name = "pf",
+		.help = "redirect packets to physical device function",
+		.priv = PRIV_ACTION(PF, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_VF] = {
+		.name = "vf",
+		.help = "redirect packets to virtual device function",
+		.priv = PRIV_ACTION(VF, sizeof(struct rte_flow_action_vf)),
+		.next = NEXT(action_vf),
+		.call = parse_vc,
+	},
+	[ACTION_VF_ORIGINAL] = {
+		.name = "original",
+		.help = "use original VF ID if possible",
+		.next = NEXT(action_vf, NEXT_ENTRY(BOOLEAN)),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_action_vf,
+					   original, 1)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_VF_ID] = {
+		.name = "id",
+		.help = "VF ID to redirect packets to",
+		.next = NEXT(action_vf, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_vf, id)),
+		.call = parse_vc_conf,
+	},
 };
 
 /** Remove and return last entry from argument stack. */
@@ -1443,6 +1537,33 @@ parse_vc_spec(struct context *ctx, const struct token *token,
 	/* Update relevant item pointer. */
 	*((const void **[]){ &item->spec, &item->last, &item->mask })[index] =
 		ctx->object;
+	return len;
+}
+
+/** Parse action configuration field. */
+static int
+parse_vc_conf(struct context *ctx, const struct token *token,
+	      const char *str, unsigned int len,
+	      void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+
+	(void)size;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Update configuration pointer. */
+	action->conf = ctx->object;
 	return len;
 }
 
