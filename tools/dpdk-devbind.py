@@ -93,10 +93,10 @@ Options:
         Unbind a device (Equivalent to \"-b none\")
 
     --force:
-        By default, network devices which are used by Linux - as indicated by having
-        routes in the routing table - cannot be modified. Using the --force
-        flag overrides this behavior, allowing active links to be forcibly
-        unbound.
+        By default, network devices which are used by Linux - as indicated by
+        having routes in the routing table - cannot be modified. Using the
+        --force flag overrides this behavior, allowing active links to be
+        forcibly unbound.
         WARNING: This can lead to loss of network connection and should be used
         with caution.
 
@@ -151,7 +151,7 @@ def find_module(mod):
 
     # check for a copy based off current path
     tools_dir = dirname(abspath(sys.argv[0]))
-    if (tools_dir.endswith("tools")):
+    if tools_dir.endswith("tools"):
         base_dir = dirname(tools_dir)
         find_out = check_output(["find", base_dir, "-name", mod + ".ko"])
         if len(find_out) > 0:  # something matched
@@ -249,7 +249,7 @@ def get_nic_details():
     dev = {}
     dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
     for dev_line in dev_lines:
-        if (len(dev_line) == 0):
+        if len(dev_line) == 0:
             if dev["Class"][0:2] == NETWORK_BASE_CLASS:
                 # convert device and vendor ids to numbers, then add to global
                 dev["Vendor"] = int(dev["Vendor"], 16)
@@ -315,8 +315,8 @@ def get_crypto_details():
     dev = {}
     dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
     for dev_line in dev_lines:
-        if (len(dev_line) == 0):
-            if (dev["Class"][0:2] == CRYPTO_BASE_CLASS):
+        if len(dev_line) == 0:
+            if dev["Class"][0:2] == CRYPTO_BASE_CLASS:
                 # convert device and vendor ids to numbers, then add to global
                 dev["Vendor"] = int(dev["Vendor"], 16)
                 dev["Device"] = int(dev["Device"], 16)
@@ -513,7 +513,8 @@ def display_devices(title, dev_list, extra_params=None):
         for dev in dev_list:
             if extra_params is not None:
                 strings.append("%s '%s' %s" % (dev["Slot"],
-                               dev["Device_str"], extra_params % dev))
+                                               dev["Device_str"],
+                                               extra_params % dev))
             else:
                 strings.append("%s '%s'" % (dev["Slot"], dev["Device_str"]))
     # sort before printing, so that the entries appear in PCI order
@@ -532,7 +533,7 @@ def show_status():
 
     # split our list of network devices into the three categories above
     for d in devices.keys():
-        if (NETWORK_BASE_CLASS in devices[d]["Class"]):
+        if NETWORK_BASE_CLASS in devices[d]["Class"]:
             if not has_driver(d):
                 no_drv.append(devices[d])
                 continue
@@ -555,7 +556,7 @@ def show_status():
     no_drv = []
 
     for d in devices.keys():
-        if (CRYPTO_BASE_CLASS in devices[d]["Class"]):
+        if CRYPTO_BASE_CLASS in devices[d]["Class"]:
             if not has_driver(d):
                 no_drv.append(devices[d])
                 continue

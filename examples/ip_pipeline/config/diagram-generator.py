@@ -36,7 +36,8 @@
 # the DPDK ip_pipeline application.
 #
 # The input configuration file is translated to an output file in DOT syntax,
-# which is then used to create the image file using graphviz (www.graphviz.org).
+# which is then used to create the image file using graphviz
+# (www.graphviz.org).
 #
 
 from __future__ import print_function
@@ -93,6 +94,7 @@ DOT_GRAPH_END = \
 # TAPx TX | TAPx       | PIPELINEy   | TAPx TX       | TAPx
 # SOURCEx | SOURCEx    | SOURCEx     | PIPELINEy     | SOURCEx
 # SINKx   | SINKx      | PIPELINEy   | SINKx         | SINKx
+
 
 #
 # Parse the input configuration file to detect the graph nodes and edges
@@ -321,16 +323,17 @@ def process_config_file(cfgfile):
     #
     print('Creating image file "%s" ...' % imgfile)
     if os.system('which dot > /dev/null'):
-        print('Error: Unable to locate "dot" executable.' \
-            'Please install the "graphviz" package (www.graphviz.org).')
+        print('Error: Unable to locate "dot" executable.'
+              'Please install the "graphviz" package (www.graphviz.org).')
         return
 
     os.system(dot_cmd)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=\
-        'Create diagram for IP pipeline configuration file.')
+    parser = argparse.ArgumentParser(description='Create diagram for IP '
+                                                 'pipeline configuration '
+                                                 'file.')
 
     parser.add_argument(
         '-f',

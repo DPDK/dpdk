@@ -39,15 +39,14 @@
 #
 
 from __future__ import print_function
-import sys
+from collections import namedtuple
+import argparse
+import array
 import errno
+import itertools
 import os
 import re
-import array
-import itertools
-import re
-import argparse
-from collections import namedtuple
+import sys
 
 # default values
 enable_stage0_traceout = 1

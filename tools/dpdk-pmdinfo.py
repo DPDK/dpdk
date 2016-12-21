@@ -4,51 +4,19 @@
 # Utility to dump PMD_INFO_STRING support from an object file
 #
 # -------------------------------------------------------------------------
-import os
-import sys
-from optparse import OptionParser
-import string
 import json
+import os
 import platform
+import string
+import sys
+from elftools.common.exceptions import ELFError
+from elftools.common.py3compat import (byte2int, bytes2str, str2bytes)
+from elftools.elf.elffile import ELFFile
+from optparse import OptionParser
 
 # For running from development directory. It should take precedence over the
 # installed pyelftools.
 sys.path.insert(0, '.')
-
-
-from elftools import __version__
-from elftools.common.exceptions import ELFError
-from elftools.common.py3compat import (
-    ifilter, byte2int, bytes2str, itervalues, str2bytes)
-from elftools.elf.elffile import ELFFile
-from elftools.elf.dynamic import DynamicSection, DynamicSegment
-from elftools.elf.enums import ENUM_D_TAG
-from elftools.elf.segments import InterpSegment
-from elftools.elf.sections import SymbolTableSection
-from elftools.elf.gnuversions import (
-    GNUVerSymSection, GNUVerDefSection,
-    GNUVerNeedSection,
-)
-from elftools.elf.relocation import RelocationSection
-from elftools.elf.descriptions import (
-    describe_ei_class, describe_ei_data, describe_ei_version,
-    describe_ei_osabi, describe_e_type, describe_e_machine,
-    describe_e_version_numeric, describe_p_type, describe_p_flags,
-    describe_sh_type, describe_sh_flags,
-    describe_symbol_type, describe_symbol_bind, describe_symbol_visibility,
-    describe_symbol_shndx, describe_reloc_type, describe_dyn_tag,
-    describe_ver_flags,
-)
-from elftools.elf.constants import E_FLAGS
-from elftools.dwarf.dwarfinfo import DWARFInfo
-from elftools.dwarf.descriptions import (
-    describe_reg_name, describe_attr_value, set_global_machine_arch,
-    describe_CFI_instructions, describe_CFI_register_rule,
-    describe_CFI_CFA_rule,
-)
-from elftools.dwarf.constants import (
-    DW_LNS_copy, DW_LNS_set_file, DW_LNE_define_file)
-from elftools.dwarf.callframe import CIE, FDE
 
 raw_output = False
 pcidb = None
@@ -329,7 +297,7 @@ class ReadElf(object):
         for i in optional_pmd_info:
             try:
                 print("%s: %s" % (i['tag'], pmdinfo[i['id']]))
-            except KeyError as e:
+            except KeyError:
                 continue
 
         if (len(pmdinfo["pci_ids"]) != 0):
@@ -478,7 +446,7 @@ class ReadElf(object):
                         with open(library, 'rb') as file:
                             try:
                                 libelf = ReadElf(file, sys.stdout)
-                            except ELFError as e:
+                            except ELFError:
                                 print("%s is no an ELF file" % library)
                                 continue
                             libelf.process_dt_needed_entries()
@@ -494,7 +462,7 @@ def scan_autoload_path(autoload_path):
 
     try:
         dirs = os.listdir(autoload_path)
-    except OSError as e:
+    except OSError:
         # Couldn't read the directory, give up
         return
 
@@ -506,10 +474,10 @@ def scan_autoload_path(autoload_path):
             try:
                 file = open(dpath, 'rb')
                 readelf = ReadElf(file, sys.stdout)
-            except ELFError as e:
+            except ELFError:
                 # this is likely not an elf file, skip it
                 continue
-            except IOError as e:
+            except IOError:
                 # No permission to read the file, skip it
                 continue
 
@@ -534,7 +502,7 @@ def scan_for_autoload_pmds(dpdk_path):
     file = open(dpdk_path, 'rb')
     try:
         readelf = ReadElf(file, sys.stdout)
-    except ElfError as e:
+    except ElfError:
         if raw_output is False:
             print("Unable to parse %s" % file)
         return
@@ -560,7 +528,7 @@ def main(stream=None):
     global raw_output
     global pcidb
 
-    pcifile_default = "./pci.ids" # for unknown OS's assume local file
+    pcifile_default = "./pci.ids"  # For unknown OS's assume local file
     if platform.system() == 'Linux':
         pcifile_default = "/usr/share/hwdata/pci.ids"
     elif platform.system() == 'FreeBSD':
@@ -580,7 +548,8 @@ def main(stream=None):
                               "to get vendor names from",
                          default=pcifile_default, metavar="FILE")
     optparser.add_option("-t", "--table", dest="tblout",
-                         help="output information on hw support as a hex table",
+                         help="output information on hw support as a "
+                              "hex table",
                          action='store_true')
     optparser.add_option("-p", "--plugindir", dest="pdir",
                          help="scan dpdk for autoload plugins",

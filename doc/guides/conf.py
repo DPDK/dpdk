@@ -58,7 +58,8 @@ html_add_permalinks = ""
 html_show_copyright = False
 highlight_language = 'none'
 
-version = subprocess.check_output(['make', '-sRrC', '../../', 'showversion']).decode('utf-8').rstrip()
+version = subprocess.check_output(['make', '-sRrC', '../../', 'showversion'])
+version = version.decode('utf-8').rstrip()
 release = version
 
 master_doc = 'index'
@@ -94,6 +95,7 @@ latex_elements = {
     'preamble': latex_preamble
 }
 
+
 # Override the default Latex formatter in order to modify the
 # code/verbatim blocks.
 class CustomLatexFormatter(LatexFormatter):
@@ -117,12 +119,12 @@ man_pages = [("testpmd_app_ug/run_app", "testpmd",
              ("tools/devbind", "dpdk-devbind",
               "check device status and bind/unbind them from drivers", "", 8)]
 
-######## :numref: fallback ########
+
+# ####### :numref: fallback ########
 # The following hook functions add some simple handling for the :numref:
 # directive for Sphinx versions prior to 1.3.1. The functions replace the
 # :numref: reference with a link to the target (for all Sphinx doc types).
 # It doesn't try to label figures/tables.
-
 def numref_role(reftype, rawtext, text, lineno, inliner):
     """
     Add a Sphinx role to handle numref references. Note, we can't convert
@@ -135,6 +137,7 @@ def numref_role(reftype, rawtext, text, lineno, inliner):
                               refuri='_local_numref_#%s' % text,
                               internal=True)
     return [newnode], []
+
 
 def process_numref(app, doctree, from_docname):
     """
