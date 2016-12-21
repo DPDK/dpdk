@@ -56,6 +56,7 @@ enum index {
 	/* Common tokens. */
 	INTEGER,
 	UNSIGNED,
+	PREFIX,
 	RULE_ID,
 	PORT_ID,
 	GROUP_ID,
@@ -93,6 +94,7 @@ enum index {
 	ITEM_PARAM_SPEC,
 	ITEM_PARAM_LAST,
 	ITEM_PARAM_MASK,
+	ITEM_PARAM_PREFIX,
 	ITEM_NEXT,
 	ITEM_END,
 	ITEM_VOID,
@@ -278,6 +280,7 @@ static const enum index item_param[] = {
 	ITEM_PARAM_SPEC,
 	ITEM_PARAM_LAST,
 	ITEM_PARAM_MASK,
+	ITEM_PARAM_PREFIX,
 	ZERO,
 };
 
@@ -321,6 +324,9 @@ static int parse_list(struct context *, const struct token *,
 static int parse_int(struct context *, const struct token *,
 		     const char *, unsigned int,
 		     void *, unsigned int);
+static int parse_prefix(struct context *, const struct token *,
+			const char *, unsigned int,
+			void *, unsigned int);
 static int parse_port(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
@@ -359,6 +365,13 @@ static const struct token token_list[] = {
 		.type = "UNSIGNED",
 		.help = "unsigned integer value",
 		.call = parse_int,
+		.comp = comp_none,
+	},
+	[PREFIX] = {
+		.name = "{prefix}",
+		.type = "PREFIX",
+		.help = "prefix length for bit-mask",
+		.call = parse_prefix,
 		.comp = comp_none,
 	},
 	[RULE_ID] = {
@@ -528,6 +541,11 @@ static const struct token token_list[] = {
 		.help = "specify bit-mask with relevant bits set to one",
 		.call = parse_vc_spec,
 	},
+	[ITEM_PARAM_PREFIX] = {
+		.name = "prefix",
+		.help = "generate bit-mask from a prefix length",
+		.call = parse_vc_spec,
+	},
 	[ITEM_NEXT] = {
 		.name = "/",
 		.help = "specify next pattern item",
@@ -603,6 +621,62 @@ push_args(struct context *ctx, const struct arg *arg)
 		return -1;
 	ctx->args[ctx->args_num++] = arg;
 	return 0;
+}
+
+/**
+ * Parse a prefix length and generate a bit-mask.
+ *
+ * Last argument (ctx->args) is retrieved to determine mask size, storage
+ * location and whether the result must use network byte ordering.
+ */
+static int
+parse_prefix(struct context *ctx, const struct token *token,
+	     const char *str, unsigned int len,
+	     void *buf, unsigned int size)
+{
+	const struct arg *arg = pop_args(ctx);
+	static const uint8_t conv[] = "\x00\x80\xc0\xe0\xf0\xf8\xfc\xfe\xff";
+	char *end;
+	uintmax_t u;
+	unsigned int bytes;
+	unsigned int extra;
+
+	(void)token;
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	errno = 0;
+	u = strtoumax(str, &end, 0);
+	if (errno || (size_t)(end - str) != len)
+		goto error;
+	bytes = u / 8;
+	extra = u % 8;
+	size = arg->size;
+	if (bytes > size || bytes + !!extra > size)
+		goto error;
+	if (!ctx->object)
+		return len;
+	buf = (uint8_t *)ctx->object + arg->offset;
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	if (!arg->hton) {
+		memset((uint8_t *)buf + size - bytes, 0xff, bytes);
+		memset(buf, 0x00, size - bytes);
+		if (extra)
+			((uint8_t *)buf)[size - bytes - 1] = conv[extra];
+	} else
+#endif
+	{
+		memset(buf, 0xff, bytes);
+		memset((uint8_t *)buf + bytes, 0x00, size - bytes);
+		if (extra)
+			((uint8_t *)buf)[bytes] = conv[extra];
+	}
+	if (ctx->objmask)
+		memset((uint8_t *)ctx->objmask + arg->offset, 0xff, size);
+	return len;
+error:
+	push_args(ctx, arg);
+	return -1;
 }
 
 /** Default parsing function for token name matching. */
@@ -776,6 +850,12 @@ parse_vc_spec(struct context *ctx, const struct token *token,
 	case ITEM_PARAM_LAST:
 		index = 1;
 		break;
+	case ITEM_PARAM_PREFIX:
+		/* Modify next token to expect a prefix. */
+		if (ctx->next_num < 2)
+			return -1;
+		ctx->next[ctx->next_num - 2] = NEXT_ENTRY(PREFIX);
+		/* Fall through. */
 	case ITEM_PARAM_MASK:
 		index = 2;
 		break;
