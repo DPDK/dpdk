@@ -2333,14 +2333,24 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``tpid {unsigned}``: tag protocol identifier.
   - ``tci {unsigned}``: tag control information.
+  - ``pcp {unsigned}``: priority code point.
+  - ``dei {unsigned}``: drop eligible indicator.
+  - ``vid {unsigned}``: VLAN identifier.
 
 - ``ipv4``: match IPv4 header.
 
+  - ``tos {unsigned}``: type of service.
+  - ``ttl {unsigned}``: time to live.
+  - ``proto {unsigned}``: next protocol ID.
   - ``src {ipv4 address}``: source address.
   - ``dst {ipv4 address}``: destination address.
 
 - ``ipv6``: match IPv6 header.
 
+  - ``tc {unsigned}``: traffic class.
+  - ``flow {unsigned}``: flow label.
+  - ``proto {unsigned}``: protocol (next header).
+  - ``hop {unsigned}``: hop limit.
   - ``src {ipv6 address}``: source address.
   - ``dst {ipv6 address}``: destination address.
 
@@ -2363,6 +2373,8 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``src {unsigned}``: SCTP source port.
   - ``dst {unsigned}``: SCTP destination port.
+  - ``tag {unsigned}``: validation tag.
+  - ``cksum {unsigned}``: checksum.
 
 - ``vxlan``: match VXLAN header.
 

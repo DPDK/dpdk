@@ -126,10 +126,20 @@ enum index {
 	ITEM_VLAN,
 	ITEM_VLAN_TPID,
 	ITEM_VLAN_TCI,
+	ITEM_VLAN_PCP,
+	ITEM_VLAN_DEI,
+	ITEM_VLAN_VID,
 	ITEM_IPV4,
+	ITEM_IPV4_TOS,
+	ITEM_IPV4_TTL,
+	ITEM_IPV4_PROTO,
 	ITEM_IPV4_SRC,
 	ITEM_IPV4_DST,
 	ITEM_IPV6,
+	ITEM_IPV6_TC,
+	ITEM_IPV6_FLOW,
+	ITEM_IPV6_PROTO,
+	ITEM_IPV6_HOP,
 	ITEM_IPV6_SRC,
 	ITEM_IPV6_DST,
 	ITEM_ICMP,
@@ -144,6 +154,8 @@ enum index {
 	ITEM_SCTP,
 	ITEM_SCTP_SRC,
 	ITEM_SCTP_DST,
+	ITEM_SCTP_TAG,
+	ITEM_SCTP_CKSUM,
 	ITEM_VXLAN,
 	ITEM_VXLAN_VNI,
 
@@ -279,6 +291,23 @@ struct token {
 	(&(const struct arg){ \
 		.size = sizeof(s), \
 		.mask = (const void *)&(const s){ .f = (1 << (b)) - 1 }, \
+	})
+
+/** Static initializer for ARGS() to target an arbitrary bit-mask. */
+#define ARGS_ENTRY_MASK(s, f, m) \
+	(&(const struct arg){ \
+		.offset = offsetof(s, f), \
+		.size = sizeof(((s *)0)->f), \
+		.mask = (const void *)(m), \
+	})
+
+/** Same as ARGS_ENTRY_MASK() using network byte ordering for the value. */
+#define ARGS_ENTRY_MASK_HTON(s, f, m) \
+	(&(const struct arg){ \
+		.hton = 1, \
+		.offset = offsetof(s, f), \
+		.size = sizeof(((s *)0)->f), \
+		.mask = (const void *)(m), \
 	})
 
 /** Static initializer for ARGS() to target a pointer. */
@@ -444,11 +473,17 @@ static const enum index item_eth[] = {
 static const enum index item_vlan[] = {
 	ITEM_VLAN_TPID,
 	ITEM_VLAN_TCI,
+	ITEM_VLAN_PCP,
+	ITEM_VLAN_DEI,
+	ITEM_VLAN_VID,
 	ITEM_NEXT,
 	ZERO,
 };
 
 static const enum index item_ipv4[] = {
+	ITEM_IPV4_TOS,
+	ITEM_IPV4_TTL,
+	ITEM_IPV4_PROTO,
 	ITEM_IPV4_SRC,
 	ITEM_IPV4_DST,
 	ITEM_NEXT,
@@ -456,6 +491,10 @@ static const enum index item_ipv4[] = {
 };
 
 static const enum index item_ipv6[] = {
+	ITEM_IPV6_TC,
+	ITEM_IPV6_FLOW,
+	ITEM_IPV6_PROTO,
+	ITEM_IPV6_HOP,
 	ITEM_IPV6_SRC,
 	ITEM_IPV6_DST,
 	ITEM_NEXT,
@@ -486,6 +525,8 @@ static const enum index item_tcp[] = {
 static const enum index item_sctp[] = {
 	ITEM_SCTP_SRC,
 	ITEM_SCTP_DST,
+	ITEM_SCTP_TAG,
+	ITEM_SCTP_CKSUM,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1012,12 +1053,54 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, tci)),
 	},
+	[ITEM_VLAN_PCP] = {
+		.name = "pcp",
+		.help = "priority code point",
+		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
+						  tci, "\xe0\x00")),
+	},
+	[ITEM_VLAN_DEI] = {
+		.name = "dei",
+		.help = "drop eligible indicator",
+		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
+						  tci, "\x10\x00")),
+	},
+	[ITEM_VLAN_VID] = {
+		.name = "vid",
+		.help = "VLAN identifier",
+		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
+						  tci, "\x0f\xff")),
+	},
 	[ITEM_IPV4] = {
 		.name = "ipv4",
 		.help = "match IPv4 header",
 		.priv = PRIV_ITEM(IPV4, sizeof(struct rte_flow_item_ipv4)),
 		.next = NEXT(item_ipv4),
 		.call = parse_vc,
+	},
+	[ITEM_IPV4_TOS] = {
+		.name = "tos",
+		.help = "type of service",
+		.next = NEXT(item_ipv4, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
+					     hdr.type_of_service)),
+	},
+	[ITEM_IPV4_TTL] = {
+		.name = "ttl",
+		.help = "time to live",
+		.next = NEXT(item_ipv4, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
+					     hdr.time_to_live)),
+	},
+	[ITEM_IPV4_PROTO] = {
+		.name = "proto",
+		.help = "next protocol ID",
+		.next = NEXT(item_ipv4, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
+					     hdr.next_proto_id)),
 	},
 	[ITEM_IPV4_SRC] = {
 		.name = "src",
@@ -1039,6 +1122,36 @@ static const struct token token_list[] = {
 		.priv = PRIV_ITEM(IPV6, sizeof(struct rte_flow_item_ipv6)),
 		.next = NEXT(item_ipv6),
 		.call = parse_vc,
+	},
+	[ITEM_IPV6_TC] = {
+		.name = "tc",
+		.help = "traffic class",
+		.next = NEXT(item_ipv6, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_ipv6,
+						  hdr.vtc_flow,
+						  "\x0f\xf0\x00\x00")),
+	},
+	[ITEM_IPV6_FLOW] = {
+		.name = "flow",
+		.help = "flow label",
+		.next = NEXT(item_ipv6, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_ipv6,
+						  hdr.vtc_flow,
+						  "\x00\x0f\xff\xff")),
+	},
+	[ITEM_IPV6_PROTO] = {
+		.name = "proto",
+		.help = "protocol (next header)",
+		.next = NEXT(item_ipv6, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6,
+					     hdr.proto)),
+	},
+	[ITEM_IPV6_HOP] = {
+		.name = "hop",
+		.help = "hop limit",
+		.next = NEXT(item_ipv6, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6,
+					     hdr.hop_limits)),
 	},
 	[ITEM_IPV6_SRC] = {
 		.name = "src",
@@ -1137,6 +1250,20 @@ static const struct token token_list[] = {
 		.next = NEXT(item_sctp, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_sctp,
 					     hdr.dst_port)),
+	},
+	[ITEM_SCTP_TAG] = {
+		.name = "tag",
+		.help = "validation tag",
+		.next = NEXT(item_sctp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_sctp,
+					     hdr.tag)),
+	},
+	[ITEM_SCTP_CKSUM] = {
+		.name = "cksum",
+		.help = "checksum",
+		.next = NEXT(item_sctp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_sctp,
+					     hdr.cksum)),
 	},
 	[ITEM_VXLAN] = {
 		.name = "vxlan",
