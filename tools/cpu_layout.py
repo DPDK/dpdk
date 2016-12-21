@@ -1,4 +1,5 @@
-#! /usr/bin/python
+#!/usr/bin/env python
+
 #
 #   BSD LICENSE
 #
@@ -31,7 +32,7 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-
+from __future__ import print_function
 import sys
 
 sockets = []
@@ -55,7 +56,7 @@ for line in lines:
 for core in core_details:
     for field in ["processor", "core id", "physical id"]:
         if field not in core:
-            print "Error getting '%s' value from /proc/cpuinfo" % field
+            print("Error getting '%s' value from /proc/cpuinfo" % field)
             sys.exit(1)
         core[field] = int(core[field])
 
@@ -68,29 +69,30 @@ for core in core_details:
         core_map[key] = []
     core_map[key].append(core["processor"])
 
-print "============================================================"
-print "Core and Socket Information (as reported by '/proc/cpuinfo')"
-print "============================================================\n"
-print "cores = ", cores
-print "sockets = ", sockets
-print ""
+print("============================================================")
+print("Core and Socket Information (as reported by '/proc/cpuinfo')")
+print("============================================================\n")
+print("cores = ", cores)
+print("sockets = ", sockets)
+print("")
 
 max_processor_len = len(str(len(cores) * len(sockets) * 2 - 1))
 max_core_map_len = max_processor_len * 2 + len('[, ]') + len('Socket ')
 max_core_id_len = len(str(max(cores)))
 
-print " ".ljust(max_core_id_len + len('Core ')),
+output = " ".ljust(max_core_id_len + len('Core '))
 for s in sockets:
-    print "Socket %s" % str(s).ljust(max_core_map_len - len('Socket ')),
-print ""
+    output += " Socket %s" % str(s).ljust(max_core_map_len - len('Socket '))
+print(output)
 
-print " ".ljust(max_core_id_len + len('Core ')),
+output = " ".ljust(max_core_id_len + len('Core '))
 for s in sockets:
-    print "--------".ljust(max_core_map_len),
-print ""
+    output += " --------".ljust(max_core_map_len)
+    output += " "
+print(output)
 
 for c in cores:
-    print "Core %s" % str(c).ljust(max_core_id_len),
+    output = "Core %s" % str(c).ljust(max_core_id_len)
     for s in sockets:
-        print str(core_map[(s, c)]).ljust(max_core_map_len),
-    print ""
+        output += " " + str(core_map[(s, c)]).ljust(max_core_map_len)
+    print(output)

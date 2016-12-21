@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 #   BSD LICENSE
 #
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
@@ -271,15 +269,16 @@ class AutotestRunner:
             total_time = int(cur_time - self.start)
 
             # print results, test run time and total time since start
-            print ("%s:" % test_name).ljust(30),
-            print result_str.ljust(29),
-            print "[%02dm %02ds]" % (test_time / 60, test_time % 60),
+            result = ("%s:" % test_name).ljust(30)
+            result += result_str.ljust(29)
+            result += "[%02dm %02ds]" % (test_time / 60, test_time % 60)
 
             # don't print out total time every line, it's the same anyway
             if i == len(results) - 1:
-                print "[%02dm %02ds]" % (total_time / 60, total_time % 60)
+                print(result,
+                      "[%02dm %02ds]" % (total_time / 60, total_time % 60))
             else:
-                print ""
+                print(result)
 
             # if test failed and it wasn't a "start" test
             if test_result < 0 and not i == 0:
@@ -294,7 +293,7 @@ class AutotestRunner:
                     f = open("%s_%s_report.rst" %
                              (self.target, test_name), "w")
                 except IOError:
-                    print "Report for %s could not be created!" % test_name
+                    print("Report for %s could not be created!" % test_name)
                 else:
                     with f:
                         f.write(report)
@@ -360,12 +359,10 @@ class AutotestRunner:
         try:
 
             # create table header
-            print ""
-            print "Test name".ljust(30),
-            print "Test result".ljust(29),
-            print "Test".center(9),
-            print "Total".center(9)
-            print "=" * 80
+            print("")
+            print("Test name".ljust(30), "Test result".ljust(29),
+                  "Test".center(9), "Total".center(9))
+            print("=" * 80)
 
             # make a note of tests start time
             self.start = time.time()
@@ -407,11 +404,11 @@ class AutotestRunner:
             total_time = int(cur_time - self.start)
 
             # print out summary
-            print "=" * 80
-            print "Total run time: %02dm %02ds" % (total_time / 60,
-                                                   total_time % 60)
+            print("=" * 80)
+            print("Total run time: %02dm %02ds" % (total_time / 60,
+                                                   total_time % 60))
             if self.fails != 0:
-                print "Number of failed tests: %s" % str(self.fails)
+                print("Number of failed tests: %s" % str(self.fails))
 
             # write summary to logfile
             self.logfile.write("Summary\n")
@@ -420,8 +417,8 @@ class AutotestRunner:
             self.logfile.write("Failed tests: ".ljust(
                 15) + "%i\n" % self.fails)
         except:
-            print "Exception occurred"
-            print sys.exc_info()
+            print("Exception occurred")
+            print(sys.exc_info())
             self.fails = 1
 
         # drop logs from all executions to a logfile

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #   BSD LICENSE
 #
@@ -32,7 +32,7 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Script that runs cmdline_test app and feeds keystrokes into it.
-
+from __future__ import print_function
 import cmdline_test_data
 import os
 import pexpect
@@ -81,38 +81,38 @@ def runHistoryTest(child):
 
 # the path to cmdline_test executable is supplied via command-line.
 if len(sys.argv) < 2:
-    print "Error: please supply cmdline_test app path"
+    print("Error: please supply cmdline_test app path")
     sys.exit(1)
 
 test_app_path = sys.argv[1]
 
 if not os.path.exists(test_app_path):
-    print "Error: please supply cmdline_test app path"
+    print("Error: please supply cmdline_test app path")
     sys.exit(1)
 
 child = pexpect.spawn(test_app_path)
 
-print "Running command-line tests..."
+print("Running command-line tests...")
 for test in cmdline_test_data.tests:
-    print (test["Name"] + ":").ljust(30),
+    testname = (test["Name"] + ":").ljust(30)
     try:
         runTest(child, test)
-        print "PASS"
+        print(testname, "PASS")
     except:
-        print "FAIL"
-        print child
+        print(testname, "FAIL")
+        print(child)
         sys.exit(1)
 
 # since last test quits the app, run new instance
 child = pexpect.spawn(test_app_path)
 
-print ("History fill test:").ljust(30),
+testname = ("History fill test:").ljust(30)
 try:
     runHistoryTest(child)
-    print "PASS"
+    print(testname, "PASS")
 except:
-    print "FAIL"
-    print child
+    print(testname, "FAIL")
+    print(child)
     sys.exit(1)
 child.close()
 sys.exit(0)

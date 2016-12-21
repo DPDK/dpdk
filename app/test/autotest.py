@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #   BSD LICENSE
 #
@@ -32,15 +32,15 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Script that uses either test app or qemu controlled by python-pexpect
-
+from __future__ import print_function
 import autotest_data
 import autotest_runner
 import sys
 
 
 def usage():
-    print"Usage: autotest.py [test app|test iso image]",
-    print "[target] [whitelist|-blacklist]"
+    print("Usage: autotest.py [test app|test iso image] ",
+          "[target] [whitelist|-blacklist]")
 
 if len(sys.argv) < 3:
     usage()
@@ -63,7 +63,7 @@ if len(sys.argv) > 3:
 
 cmdline = "%s -c f -n 4" % (sys.argv[1])
 
-print cmdline
+print(cmdline)
 
 runner = autotest_runner.AutotestRunner(cmdline, target, test_blacklist,
                                         test_whitelist)

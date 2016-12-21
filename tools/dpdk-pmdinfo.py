@@ -1,9 +1,11 @@
 #!/usr/bin/env python
+
 # -------------------------------------------------------------------------
 #
 # Utility to dump PMD_INFO_STRING support from an object file
 #
 # -------------------------------------------------------------------------
+from __future__ import print_function
 import json
 import os
 import platform
@@ -54,7 +56,7 @@ class Vendor:
             self.devices[devID] = Device(deviceStr)
 
     def report(self):
-        print self.ID, self.name
+        print(self.ID, self.name)
         for id, dev in self.devices.items():
             dev.report()
 
@@ -80,7 +82,7 @@ class Device:
         self.subdevices = {}
 
     def report(self):
-        print "\t%s\t%s" % (self.ID, self.name)
+        print("\t%s\t%s" % (self.ID, self.name))
         for subID, subdev in self.subdevices.items():
             subdev.report()
 
@@ -126,7 +128,7 @@ class SubDevice:
         self.name = name
 
     def report(self):
-        print "\t\t%s\t%s\t%s" % (self.vendorID, self.deviceID, self.name)
+        print("\t\t%s\t%s\t%s" % (self.vendorID, self.deviceID, self.name))
 
 
 class PCIIds:
@@ -154,7 +156,7 @@ class PCIIds:
         """Reports the vendors
         """
         for vid, v in self.vendors.items():
-            print v.ID, v.name
+            print(v.ID, v.name)
 
     def report(self, vendor=None):
         """
@@ -185,7 +187,7 @@ class PCIIds:
 
     def parse(self):
         if len(self.contents) < 1:
-            print "data/%s-pci.ids not found" % self.date
+            print("data/%s-pci.ids not found" % self.date)
         else:
             vendorID = ""
             deviceID = ""
@@ -435,7 +437,7 @@ class ReadElf(object):
 
         for tag in dynsec.iter_tags():
             if tag.entry.d_tag == 'DT_NEEDED':
-                rc = tag.needed.find("librte_pmd")
+                rc = tag.needed.find(b"librte_pmd")
                 if (rc != -1):
                     library = search_file(tag.needed,
                                           runpath + ":" + ldlibpath +
