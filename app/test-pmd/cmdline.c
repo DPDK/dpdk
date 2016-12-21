@@ -9567,6 +9567,9 @@ cmdline_parse_inst_t cmd_set_flow_director_flex_payload = {
 	},
 };
 
+/* Generic flow interface command. */
+extern cmdline_parse_inst_t cmd_flow;
+
 /* *** Classification Filters Control *** */
 /* *** Get symmetric hash enable per port *** */
 struct cmd_get_sym_hash_ena_per_port_result {
@@ -11605,6 +11608,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_hash_global_config,
 	(cmdline_parse_inst_t *)&cmd_set_hash_input_set,
 	(cmdline_parse_inst_t *)&cmd_set_fdir_input_set,
+	(cmdline_parse_inst_t *)&cmd_flow,
 	(cmdline_parse_inst_t *)&cmd_mcast_addr,
 	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_eth_type_all,
 	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_eth_type_specific,
