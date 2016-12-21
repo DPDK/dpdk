@@ -2549,14 +2549,19 @@ STATIC void ixgbe_set_mdio_speed(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
 	case IXGBE_DEV_ID_X550EM_A_SGMII:
 	case IXGBE_DEV_ID_X550EM_A_SGMII_L:
-	case IXGBE_DEV_ID_X550EM_A_1G_T:
-	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 	case IXGBE_DEV_ID_X550EM_A_10G_T:
 	case IXGBE_DEV_ID_X550EM_A_SFP:
 	case IXGBE_DEV_ID_X550EM_A_QSFP:
 		/* Config MDIO clock speed before the first MDIO PHY access */
 		hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
 		hlreg0 &= ~IXGBE_HLREG0_MDCSPD;
+		IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
+		break;
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+		/* Select fast MDIO clock speed for these devices */
+		hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
+		hlreg0 |= IXGBE_HLREG0_MDCSPD;
 		IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 		break;
 	default:
